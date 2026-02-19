@@ -1,0 +1,12 @@
+name: Influx Browser Cleaner
+version: "0.5.24"
+slug: influx_browser_cleaner
+description: Browse and manage InfluxDB data
+startup: services
+boot: auto
+ports:
+  8099/tcp: 8099
+options:
+  autodetect_path: "/homeassistant/influx.yaml"
+schema:
+  autodetect_path: str

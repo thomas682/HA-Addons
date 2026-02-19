@@ -1,0 +1,20 @@
+<html>
+<body>
+<h2>Konfiguration</h2>
+<p>Version: {{ version }}</p>
+<input id="path" value="/homeassistant/influx.yaml"/>
+<button onclick="search()">InfluxDB.yaml suchen</button>
+<pre id="result"></pre>
+<script>
+function search() {
+  fetch("/api/autodetect", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({path: document.getElementById("path").value})
+  }).then(r=>r.json()).then(d=>{
+    document.getElementById("result").innerText = JSON.stringify(d, null, 2);
+  });
+}
+</script>
+</body>
+</html>
