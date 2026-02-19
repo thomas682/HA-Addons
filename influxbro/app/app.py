@@ -10,79 +10,90 @@ from influxdb import InfluxDBClient as InfluxDBClientV1
 
 import yaml
 
-AUTODETECT_PATHS = [
-    "/config/influx.yaml",
-    "/config/homeassistant/influx.yaml",
-]
+DEFAULT_INFLUX_YAML_PATH = "homeassistant/influx.yaml"
 
-def autodetect_influx_cfg():
-    """Read Home Assistant's InfluxDB YAML config from /config (if present).
+def _resolve_cfg_path(path_str: str) -> Path:
+    """
+    Resolve a user-provided path to a file inside /config.
+
+    Accepted inputs:
+      - "homeassistant/influx.yaml"  -> /config/homeassistant/influx.yaml
+      - "/config/homeassistant/influx.yaml" -> unchanged
+      - "influx.yaml" -> /config/influx.yaml
+
+    Any path traversal is rejected.
+    """
+    if not path_str:
+        raise ValueError("influx_yaml_path is empty")
+
+    p = Path(path_str)
+
+    # Make relative paths relative to /config
+    if not p.is_absolute():
+        p = Path("/config") / p
+    else:
+        # Only allow absolute paths under /config
+        if not str(p).startswith("/config/") and str(p) != "/config":
+            raise ValueError("Only paths under /config are allowed")
+
+    rp = p.resolve()
+    cfg_root = Path("/config").resolve()
+    if cfg_root not in rp.parents and rp != cfg_root:
+        raise ValueError("Path must stay within /config")
+
+    return rp
+
+def load_influx_yaml(influx_yaml_path: str):
+    """
+    Read Home Assistant's InfluxDB YAML config from a specific file path.
 
     Returns (detected_cfg_dict, source_path) or (None, None).
     """
-    for p in AUTODETECT_PATHS:
-        try:
-            fp = Path(p)
-            if not fp.exists():
-                continue
-            data = yaml.safe_load(fp.read_text(encoding="utf-8")) or {}
-            if not isinstance(data, dict):
-                continue
+    try:
+        fp = _resolve_cfg_path(influx_yaml_path)
+        if not fp.exists():
+            return None, None
 
-            # Sometimes configs are nested (e.g., {"influxdb": {...}})
-            cfg_block = data.get("influxdb") if isinstance(data.get("influxdb"), dict) else data
+        data = yaml.safe_load(fp.read_text(encoding="utf-8")) or {}
+        if not isinstance(data, dict):
+            return None, None
 
-            # Heuristic: must contain at least some typical keys
-            if not any(k in cfg_block for k in ("host", "port", "token", "organization", "bucket", "database", "api_version")):
-                continue
+        # Sometimes configs are nested (e.g., {"influxdb": {...}})
+        cfg_block = data.get("influxdb") if isinstance(data.get("influxdb"), dict) else data
 
-            api_version = cfg_block.get("api_version", 2)
-            api_version = int(api_version) if str(api_version) in ("1", "2") else 2
+        # Heuristic: must contain at least some typical keys
+        if not any(k in cfg_block for k in ("host", "port", "token", "organization", "bucket", "database", "api_version")):
+            return None, None
 
-            ssl = bool(cfg_block.get("ssl", False))
-            scheme = "https" if ssl else "http"
+        api_version = cfg_block.get("api_version", 2)
+        api_version = int(api_version) if str(api_version) in ("1", "2") else 2
 
-            detected = {
-                "influx_version": api_version,
-                "scheme": scheme,
-                "host": cfg_block.get("host", DEFAULT_CFG["host"]),
-                "port": int(cfg_block.get("port", DEFAULT_CFG["port"])),
-            }
+        ssl = bool(cfg_block.get("ssl", False))
+        scheme = "https" if ssl else "http"
 
-            if api_version == 2:
-                detected.update({
-                    "token": cfg_block.get("token", ""),
-                    "org": cfg_block.get("organization", cfg_block.get("org", "")),
-                    "bucket": cfg_block.get("bucket", ""),
-                })
-            else:
-                detected.update({
-                    "username": cfg_block.get("username", ""),
-                    "password": cfg_block.get("password", ""),
-                    "database": cfg_block.get("database", ""),
-                })
+        detected = {
+            "influx_version": api_version,
+            "scheme": scheme,
+            "host": cfg_block.get("host", DEFAULT_CFG["host"]),
+            "port": int(cfg_block.get("port", DEFAULT_CFG["port"])),
+        }
 
-            return detected, p
-        except Exception:
-            continue
-    return None, None
+        if api_version == 2:
+            detected.update({
+                "token": cfg_block.get("token", ""),
+                "org": cfg_block.get("organization", cfg_block.get("org", "")),
+                "bucket": cfg_block.get("bucket", ""),
+            })
+        else:
+            detected.update({
+                "username": cfg_block.get("username", ""),
+                "password": cfg_block.get("password", ""),
+                "database": cfg_block.get("database", ""),
+            })
 
-def apply_autodetect_defaults(cfg: dict):
-    """Fill missing/empty config values from autodetect (does not overwrite user values)."""
-    detected, src = autodetect_influx_cfg()
-    if not detected:
-        return cfg, None
-
-    def is_empty(v):
-        return v is None or (isinstance(v, str) and v.strip() == "")
-
-    merged = dict(cfg)
-    for k, v in detected.items():
-        if k not in merged or is_empty(merged.get(k)):
-            merged[k] = v
-    return merged, src
-
-
+        return detected, str(fp)
+    except Exception:
+        return None, None
 app = Flask(__name__)
 
 DATA_DIR = Path("/data")
@@ -104,6 +115,7 @@ DEFAULT_CFG = {
     "port": 8086,
     "verify_ssl": True,
     "timeout_seconds": 10,
+    "influx_yaml_path": DEFAULT_INFLUX_YAML_PATH,
     # v2
     "token": "",
     "org": "",
@@ -139,14 +151,25 @@ def config_page():
     return render_template("config.html", cfg=cfg, allow_delete=ALLOW_DELETE, delete_phrase=DELETE_CONFIRM_PHRASE, autodetect_source=LAST_AUTODETECT_SOURCE)
 
 
-@app.post("/api/autodetect")
-def api_autodetect():
-    """Detect InfluxDB settings from /config/influx.yaml (or /config/homeassistant/influx.yaml).
+@app.post("/api/load_influx_yaml")
+def api_load_influx_yaml():
+    """
+    Load InfluxDB settings from a specific Home Assistant YAML config file (default: /config/homeassistant/influx.yaml).
+
     Does NOT persist anything. UI must call /api/config (POST) to save.
     """
-    detected, src = autodetect_influx_cfg()
+    body = request.get_json(force=True) or {}
+    cfg = load_cfg()
+    path_str = (body.get("influx_yaml_path") or cfg.get("influx_yaml_path") or DEFAULT_INFLUX_YAML_PATH).strip()
+
+    detected, src = load_influx_yaml(path_str)
     if not detected:
-        return jsonify({"ok": False, "error": "Keine influx.yaml gefunden oder Inhalt nicht erkennbar.", "source": None, "config": None})
+        return jsonify({"ok": False, "error": f"Keine influx.yaml gefunden/lesbar unter: {path_str}", "source": None, "config": None})
+
+    # Remember last source for UI display (runtime only)
+    global LAST_AUTODETECT_SOURCE
+    LAST_AUTODETECT_SOURCE = src
+
     return jsonify({"ok": True, "source": src, "config": detected})
 
 @app.get("/api/config")
