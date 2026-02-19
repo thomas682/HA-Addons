@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from flask import Flask, render_template, jsonify, request
 
+from contextlib import contextmanager
 from influxdb_client import InfluxDBClient
 from influxdb import InfluxDBClient as InfluxDBClientV1
 
@@ -131,6 +132,47 @@ def load_cfg():
     # Autodetect is only triggered by explicit user action in the Config UI.
     global LAST_AUTODETECT_SOURCE
     LAST_AUTODETECT_SOURCE = None
+
+
+@contextmanager
+def v2_client(cfg: dict):
+    """Context-managed InfluxDB v2 client."""
+    url = cfg.get("url") or f'{cfg.get("scheme","http")}://{cfg.get("host","localhost")}:{int(cfg.get("port",8086))}'
+    token = cfg.get("token")
+    org = cfg.get("org")
+    timeout_ms = int(cfg.get("timeout_seconds", 10)) * 1000
+    verify_ssl = bool(cfg.get("verify_ssl", True))
+
+    client = InfluxDBClient(url=url, token=token, org=org, timeout=timeout_ms, verify_ssl=verify_ssl)
+    try:
+        yield client
+    finally:
+        try:
+            client.close()
+        except Exception:
+            pass
+
+
+def v1_client(cfg: dict):
+    """Create an InfluxDB v1 client (caller is responsible for closing if needed)."""
+    host = cfg.get("host", "localhost")
+    port = int(cfg.get("port", 8086))
+    username = cfg.get("username") or None
+    password = cfg.get("password") or None
+    database = cfg.get("database") or None
+    ssl = (cfg.get("scheme") == "https")
+    verify_ssl = bool(cfg.get("verify_ssl", True))
+
+    return InfluxDBClientV1(
+        host=host,
+        port=port,
+        username=username,
+        password=password,
+        database=database,
+        ssl=ssl,
+        verify_ssl=verify_ssl,
+        timeout=int(cfg.get("timeout_seconds", 10)),
+    )
 
     cfg = dict(DEFAULT_CFG)
     if RUNTIME_CFG_FILE.exists():
