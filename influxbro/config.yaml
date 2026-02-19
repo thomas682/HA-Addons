@@ -1,5 +1,5 @@
 name: InfluxBro by Thomas
-description: Browse and delete measures from InfluxDB data
+description: "Browse InfluxDB (table + mini graph), configure in UI, entity_id/friendly_name filters, and optionally delete ranges"
 version: "1.1.1"
 slug: influxbro
 url: "http://192.168.2.65:7070/thomas/ha_addons/influxbro"
@@ -16,8 +16,14 @@ boot: auto
 ports:
   8099/tcp: 8099
 
-options:
-  autodetect_path: "/homeassistant/influx.yaml"
 
+panel_icon: "mdi:database-eye"
+panel_title: "Influx Browser"
+map:
+  - config:ro
+options:
+  allow_delete: false
+  delete_confirm_phrase: "DELETE"
 schema:
-  autodetect_path: str
+  allow_delete: bool
+  delete_confirm_phrase: str

@@ -1,5 +1,9 @@
-FROM python:3.11-slim
+FROM python:3.12-alpine
+RUN apk add --no-cache bash curl jq
 WORKDIR /app
-COPY app /app
-RUN pip install flask influxdb-client influxdb pyyaml
-CMD ["python", "app.py"]
+RUN pip install --no-cache-dir flask influxdb-client influxdb PyYAML
+COPY run.sh /run.sh
+RUN chmod +x /run.sh
+COPY app/ /app/
+EXPOSE 8099
+CMD ["/run.sh"]

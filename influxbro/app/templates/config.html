@@ -1,20 +1,138 @@
-<html>
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Influx Browser – Konfiguration</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 16px; max-width: 920px; }
+    .row { display:flex; gap:12px; flex-wrap:wrap; align-items:end; }
+    label { display:block; font-size:12px; opacity:0.8; }
+    input, select, button { padding:8px; min-width: 240px; }
+    .err { color: #b00020; margin-top: 8px; white-space: pre-wrap; }
+    .ok { color: #0a7a28; margin-top: 8px; white-space: pre-wrap; }
+    .card { border: 1px solid #ddd; border-radius: 10px; padding: 12px; margin-top: 12px; }
+    .muted { opacity: 0.7; font-size: 12px; }
+    code { background:#f6f6f6; padding:2px 6px; border-radius:6px; }
+    a { color: inherit; }
+  </style>
+</head>
 <body>
-<h2>Konfiguration</h2>
-<p>Version: {{ version }}</p>
-<input id="path" value="/homeassistant/influx.yaml"/>
-<button onclick="search()">InfluxDB.yaml suchen</button>
-<pre id="result"></pre>
+  <h2>⚙️ Konfiguration</h2>
+  <div class="muted"><a href="./">← zurück</a> &nbsp;|&nbsp; Delete enabled (Add-on Option): {{ "yes" if allow_delete else "no" }}</div>
+  <div class="card" id="autodetect_card" style="display:none;">
+  <div class="muted" id="autodetect_txt"></div>
+</div>
+
+<div class="card"><div class="muted">Einstellungen werden in <code>/data/influx_browser_config.json</code> gespeichert (persistent). Token/Passwort erscheinen als ********.</div></div>
+
+  <div class="card">
+    <div class="row">
+      <div><label>Influx Version</label><select id="influx_version"><option value="2">2 (Flux)</option><option value="1">1 (InfluxQL)</option></select></div>
+      <div><label>Scheme</label><select id="scheme"><option value="http">http</option><option value="https">https</option></select></div>
+      <div><label>Host</label><input id="host" /></div>
+      <div><label>Port</label><input id="port" type="number" /></div>
+      <div><label>verify_ssl</label><select id="verify_ssl"><option value="true">true</option><option value="false">false</option></select></div>
+      <div><label>timeout_seconds</label><input id="timeout_seconds" type="number" /></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>InfluxDB v2</h3>
+    <div class="row">
+      <div><label>org</label><input id="org" /></div>
+      <div><label>bucket</label><input id="bucket" /></div>
+      <div><label>token</label><input id="token" /></div>
+    </div>
+    <div class="muted">Token: lass <code>********</code> stehen, wenn du es nicht ändern willst.</div>
+  </div>
+
+  <div class="card">
+    <h3>InfluxDB v1</h3>
+    <div class="row">
+      <div><label>database</label><input id="database" /></div>
+      <div><label>username</label><input id="username" /></div>
+      <div><label>password</label><input id="password" /></div>
+    </div>
+    <div class="muted">Passwort: lass <code>********</code> stehen, wenn du es nicht ändern willst.</div>
+  </div>
+
+  <div class="card">
+    <button id="autodetect">Suche influx.yaml Daten</button>
+    <button id="save">Speichern</button>
+    <button id="test">Test Connection</button>
+    <div id="err" class="err"></div>
+    <div id="ok" class="ok"></div>
+  </div>
+
 <script>
-function search() {
-  fetch("/api/autodetect", {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({path: document.getElementById("path").value})
-  }).then(r=>r.json()).then(d=>{
-    document.getElementById("result").innerText = JSON.stringify(d, null, 2);
-  });
+const err = (msg) => { document.getElementById('err').textContent = msg || ""; };
+const ok = (msg) => { document.getElementById('ok').textContent = msg || ""; };
+const ids = ["influx_version","scheme","host","port","verify_ssl","timeout_seconds","org","bucket","token","database","username","password"];
+const el = {}; ids.forEach(id => el[id] = document.getElementById(id));
+
+async function api(url, opts){
+  const r = await fetch(url, opts);
+  const j = await r.json().catch(()=>({ok:false,error:"Invalid JSON"}));
+  if(!r.ok || !j.ok) throw new Error(j.error || ("HTTP " + r.status));
+  return j;
 }
+function setForm(cfg){
+  el.influx_version.value = String(cfg.influx_version ?? 2);
+  el.scheme.value = cfg.scheme ?? "http";
+  el.host.value = cfg.host ?? "";
+  el.port.value = cfg.port ?? 8086;
+  el.verify_ssl.value = String(!!cfg.verify_ssl);
+  el.timeout_seconds.value = cfg.timeout_seconds ?? 10;
+  el.org.value = cfg.org ?? "";
+  el.bucket.value = cfg.bucket ?? "";
+  el.token.value = cfg.token ?? "";
+  el.database.value = cfg.database ?? "";
+  el.username.value = cfg.username ?? "";
+  el.password.value = cfg.password ?? "";
+}
+function getForm(){
+  return {
+    influx_version: parseInt(el.influx_version.value,10),
+    scheme: el.scheme.value,
+    host: el.host.value.trim(),
+    port: parseInt(el.port.value,10),
+    verify_ssl: el.verify_ssl.value === "true",
+    timeout_seconds: parseInt(el.timeout_seconds.value,10),
+    org: el.org.value.trim(),
+    bucket: el.bucket.value.trim(),
+    token: el.token.value.trim(),
+    database: el.database.value.trim(),
+    username: el.username.value.trim(),
+    password: el.password.value.trim(),
+  };
+}
+async function load(){ err(""); ok(""); const j = await api("./api/config"); setForm(j.config); const card=document.getElementById("autodetect_card"); if(card) card.style.display="none"; } else { card.style.display="none"; } }
+async function autodetect(){
+  err(""); ok("");
+  const j = await api("./api/autodetect", {method:"POST"});
+  if(!j.ok){
+    err(j.error || "Autodetect fehlgeschlagen");
+    return;
+  }
+  // Merge detected fields into form (does NOT save)
+  setForm(Object.assign(getForm(), j.config));
+  const card = document.getElementById("autodetect_card");
+  const txt = document.getElementById("autodetect_txt");
+  if(card && txt){
+    card.style.display="block";
+    txt.textContent = "InfluxDB Konfiguration erkannt aus: " + j.source + ". Bitte prüfen/anpassen und anschließend 'Speichern' klicken.";
+  }
+  ok("InfluxDB Einstellungen geladen (noch nicht gespeichert).");
+}
+
+async function save(){ err(""); ok(""); const j = await api("./api/config", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(getForm())}); ok(j.message || "Saved."); }
+async function testConn(){ err(""); ok(""); const j = await api("./api/test", {method:"POST"}); ok(j.message || "OK"); }
+document.getElementById("save").addEventListener("click", ()=>save().catch(e=>err(String(e))));
+document.getElementById("test").addEventListener("click", ()=>testConn().catch(e=>err(String(e))));
+load().catch(e=>err(String(e)));
+
+document.getElementById('autodetect').addEventListener('click', autodetect);
 </script>
 </body>
 </html>

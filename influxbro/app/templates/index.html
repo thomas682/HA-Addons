@@ -1,7 +1,232 @@
-<html>
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Influx Browser</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 16px; }
+    .row { display:flex; gap:12px; flex-wrap:wrap; align-items:end; }
+    label { display:block; font-size:12px; opacity:0.8; }
+    select, button, input { padding:8px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 12px; }
+    th, td { border: 1px solid #ddd; padding: 6px; font-size: 12px; }
+    th { background:#f4f4f4; text-align:left; }
+    canvas { width: 100%; height: 160px; border: 1px solid #ddd; margin-top: 12px; }
+    .err { color: #b00020; margin-top: 8px; white-space: pre-wrap; }
+    .ok { color: #0a7a28; margin-top: 8px; white-space: pre-wrap; }
+    .muted { opacity: 0.7; font-size: 12px; }
+    .danger { border: 1px solid #d33; padding: 12px; border-radius: 8px; margin-top: 16px; }
+    .danger h3 { margin: 0 0 8px 0; color: #b00020; }
+    .stats { border:1px solid #ddd; border-radius:10px; padding:10px; margin-top:12px; display:flex; gap:18px; flex-wrap:wrap; }
+    .stat { min-width: 180px; }
+    .stat .k { font-size:12px; opacity:.75; }
+    .stat .v { font-weight:600; }
+    a { color: inherit; }
+  </style>
+</head>
 <body>
-<h2>Influx Browser Cleaner</h2>
-<p>Version: {{ version }}</p>
-<a href="/config">Konfiguration</a>
+  <h2>Influx Browser</h2>
+  <div class="muted">
+    <a href="./config">⚙️ Konfiguration</a>
+    &nbsp;|&nbsp; Delete enabled: {{ "yes" if allow_delete else "no" }}
+  </div>
+
+  <div class="row" style="margin-top:12px;">
+    <div><label>Measurement</label><select id="measurement"></select></div>
+    <div><label>Field</label><select id="field"></select></div>
+    <div><label>Zeitraum</label>
+      <select id="range">
+        <option value="24h">Letzte 24h</option>
+        <option value="7d">Letzte Woche</option>
+        <option value="30d">Letzter Monat</option>
+        <option value="365d">Letztes Jahr</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="row" style="margin-top:12px;">
+    <div><label>entity_id (Tag)</label><select id="entity_id"></select></div>
+    <div><label>friendly_name (Tag)</label><select id="friendly_name"></select></div>
+    <button id="load">Anzeigen</button>
+  </div>
+
+  <div id="err" class="err"></div>
+  <div id="ok" class="ok"></div>
+
+  <div class="stats" id="stats" style="display:none;">
+    <div class="stat"><div class="k">Anzahl Messwerte</div><div class="v" id="s_count"></div></div>
+    <div class="stat"><div class="k">Ältestes Datum</div><div class="v" id="s_old"></div></div>
+    <div class="stat"><div class="k">Neustes Datum</div><div class="v" id="s_new"></div></div>
+    <div class="stat"><div class="k">Minimaler Wert</div><div class="v" id="s_min"></div></div>
+    <div class="stat"><div class="k">Maximaler Wert</div><div class="v" id="s_max"></div></div>
+  </div>
+
+  <canvas id="chart" width="800" height="200"></canvas>
+
+  <table id="tbl">
+    <thead><tr><th>Zeit</th><th>Wert</th></tr></thead>
+    <tbody></tbody>
+  </table>
+
+  <div class="danger">
+    <h3>Daten löschen</h3>
+    <div class="muted">
+      Achtung: Löschen ist endgültig. Influx v1: Löschen nach Measurement+Zeitraum (und ggf. Tag-Filter). Influx v2: optional Field + Tag-Filter.
+      Delete ist standardmäßig aus und muss in Add-on Optionen aktiviert werden.
+    </div>
+    <div class="row" style="margin-top: 8px;">
+      <div><label>Bestätigungstext (genau eintippen)</label><input id="confirm" placeholder="DELETE" /></div>
+      <button id="del">Delete (Auswahl + Zeitraum)</button>
+    </div>
+  </div>
+
+<script>
+const err = (msg) => { document.getElementById('err').textContent = msg || ""; };
+const ok = (msg) => { document.getElementById('ok').textContent = msg || ""; };
+
+const $m = document.getElementById('measurement');
+const $f = document.getElementById('field');
+const $r = document.getElementById('range');
+const $e = document.getElementById('entity_id');
+const $n = document.getElementById('friendly_name');
+const $tbl = document.querySelector('#tbl tbody');
+const $confirm = document.getElementById('confirm');
+
+const $stats = document.getElementById('stats');
+const $sCount = document.getElementById('s_count');
+const $sOld = document.getElementById('s_old');
+const $sNew = document.getElementById('s_new');
+const $sMin = document.getElementById('s_min');
+const $sMax = document.getElementById('s_max');
+
+const canvas = document.getElementById('chart');
+const ctx = canvas.getContext('2d');
+
+function fmt(x){ if(x === null || x === undefined || x === "") return ""; return String(x); }
+
+function draw(rows){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  if(!rows || rows.length < 2) return;
+  const pts = rows.filter(x => typeof x.value === "number" && isFinite(x.value));
+  if(pts.length < 2) return;
+  const ys = pts.map(p=>p.value);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  const pad = 10, w = canvas.width, h = canvas.height;
+  const rangeY = (maxY - minY) || 1;
+  function X(i){ return pad + (i/(pts.length-1))*(w-2*pad); }
+  function Y(v){ return h-pad - ((v-minY)/rangeY)*(h-2*pad); }
+  ctx.strokeStyle = "#bbb";
+  ctx.beginPath(); ctx.moveTo(pad, pad); ctx.lineTo(pad, h-pad); ctx.lineTo(w-pad, h-pad); ctx.stroke();
+  ctx.strokeStyle = "#1f77b4"; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(X(0), Y(pts[0].value));
+  for(let i=1;i<pts.length;i++) ctx.lineTo(X(i), Y(pts[i].value));
+  ctx.stroke();
+  ctx.fillStyle = "#333"; ctx.font = "12px system-ui";
+  ctx.fillText(String(minY.toFixed(2)), pad+4, h-pad-4);
+  ctx.fillText(String(maxY.toFixed(2)), pad+4, pad+12);
+}
+
+async function api(url, opts){
+  const r = await fetch(url, opts);
+  const j = await r.json().catch(()=>({ok:false,error:"Invalid JSON"}));
+  if(!r.ok || !j.ok) throw new Error(j.error || ("HTTP " + r.status));
+  return j;
+}
+
+function currentFilters(){
+  return { measurement: $m.value, field: $f.value, range: $r.value, entity_id: $e.value || null, friendly_name: $n.value || null };
+}
+
+async function loadMeasurements(){
+  $m.innerHTML = "";
+  const j = await api("./api/measurements");
+  j.measurements.forEach(x=>{ const o=document.createElement("option"); o.value=x; o.textContent=x; $m.appendChild(o); });
+  if($m.value) await loadFields();
+}
+
+async function loadFields(){
+  $f.innerHTML = "";
+  const j = await api("./api/fields?measurement=" + encodeURIComponent($m.value));
+  j.fields.forEach(x=>{ const o=document.createElement("option"); o.value=x; o.textContent=x; $f.appendChild(o); });
+}
+
+async function loadEntityIds(){
+  $e.innerHTML = "";
+  const url = "./api/tag_values?tag=entity_id&measurement=" + encodeURIComponent($m.value) + "&range=" + encodeURIComponent($r.value);
+  const j = await api(url);
+  const empty=document.createElement("option"); empty.value=""; empty.textContent="(alle)"; $e.appendChild(empty);
+  (j.values||[]).forEach(x=>{ const o=document.createElement("option"); o.value=x; o.textContent=x; $e.appendChild(o); });
+}
+
+async function loadFriendlyNames(){
+  $n.innerHTML = "";
+  let url = "./api/tag_values?tag=friendly_name&measurement=" + encodeURIComponent($m.value) + "&range=" + encodeURIComponent($r.value);
+  if($e.value) url += "&entity_id=" + encodeURIComponent($e.value);
+  const j = await api(url);
+  const empty=document.createElement("option"); empty.value=""; empty.textContent="(alle)"; $n.appendChild(empty);
+  (j.values||[]).forEach(x=>{ const o=document.createElement("option"); o.value=x; o.textContent=x; $n.appendChild(o); });
+}
+
+async function loadStats(){
+  const j = await api("./api/stats", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(currentFilters())});
+  const s = j.stats || {};
+  $sCount.textContent = fmt(s.count);
+  $sOld.textContent = fmt(s.oldest_time);
+  $sNew.textContent = fmt(s.newest_time);
+  $sMin.textContent = fmt(s.min);
+  $sMax.textContent = fmt(s.max);
+  $stats.style.display = "flex";
+}
+
+async function loadData(){
+  err(""); ok("");
+  $tbl.innerHTML = "";
+  $stats.style.display = "none";
+  const j = await api("./api/query", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(currentFilters())});
+  const rows = j.rows || [];
+  rows.slice(-300).forEach(row=>{
+    const tr=document.createElement("tr");
+    const tdT=document.createElement("td"); tdT.textContent=row.time;
+    const tdV=document.createElement("td"); tdV.textContent=(row.value===null||row.value===undefined)?"":row.value;
+    tr.appendChild(tdT); tr.appendChild(tdV); $tbl.appendChild(tr);
+  });
+  draw(rows);
+  await loadStats();
+}
+
+async function deleteData(){
+  err(""); ok("");
+  if(!confirm("Wirklich löschen? Das ist endgültig.")) return;
+  const payload = {...currentFilters(), confirm: $confirm.value};
+  const j = await api("./api/delete", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)});
+  ok(j.message || "Deleted.");
+  await loadData();
+}
+
+async function refreshTags(){ await loadEntityIds(); await loadFriendlyNames(); }
+
+$m.addEventListener("change", async ()=>{ try{ await loadFields(); await refreshTags(); } catch(e){ err(String(e)); } });
+$r.addEventListener("change", async ()=>{ try{ await refreshTags(); } catch(e){ err(String(e)); } });
+$e.addEventListener("change", async ()=>{ try{ await loadFriendlyNames(); } catch(e){ err(String(e)); } });
+
+document.getElementById("load").addEventListener("click", ()=>loadData().catch(e=>err(String(e))));
+document.getElementById("del").addEventListener("click", ()=>deleteData().catch(e=>err(String(e))));
+
+(async ()=>{ try{ await loadMeasurements(); await refreshTags(); } catch(e){ err(String(e)); } })();
+</script>
+<div style="position:absolute;top:10px;right:20px;font-size:12px;color:#888;" id="version_box"></div>
+<script>
+(async () => {
+  try{
+    const r = await fetch("./api/info");
+    const j = await r.json();
+    if(j && j.ok){
+      document.getElementById("version_box").innerText = "Version: " + j.version;
+    }
+  }catch(e){}
+})();
+</script>
+
 </body>
 </html>
