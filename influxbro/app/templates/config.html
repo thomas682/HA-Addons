@@ -189,7 +189,11 @@ async function save(){
 
 async function testConn(){
   err(""); ok("");
-  const j = await api("./api/test", {method:"POST"});
+  const j = await api("./api/test", {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify(getForm())
+  });
   ok(j.message || "OK");
 }
 

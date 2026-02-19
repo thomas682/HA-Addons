@@ -213,24 +213,101 @@ def api_set_config():
 
 @app.post("/api/test")
 def api_test():
-    cfg = load_cfg()
+    """Test InfluxDB connectivity.
+
+    Uses (in order):
+      1) Optional JSON body fields (current UI form values)
+      2) Persisted runtime config
+      3) Fallback: read missing values from the configured influx_yaml_path (does not persist)
+
+    This matches the UI expectation: after loading values from influx.yaml (or even without saving),
+    the test should succeed as long as the YAML contains the required parameters.
+    """
+    base_cfg = load_cfg()
+
+    body = {}
     try:
-        if int(cfg.get("influx_version",2)) == 2:
+        body = request.get_json(silent=True) or {}
+    except Exception:
+        body = {}
+
+    # Start with persisted config, then overlay request body (but keep secrets if body is redacted)
+    cfg = dict(base_cfg)
+    allowed = set(DEFAULT_CFG.keys())
+    for k, v in (body or {}).items():
+        if k not in allowed:
+            continue
+        if k in ("token", "password") and v == "********":
+            continue
+        cfg[k] = v
+
+    # Normalize types
+    try:
+        cfg["influx_version"] = int(cfg.get("influx_version", 2))
+    except Exception:
+        cfg["influx_version"] = 2
+    try:
+        cfg["port"] = int(cfg.get("port", 8086))
+    except Exception:
+        cfg["port"] = 8086
+    cfg["verify_ssl"] = bool(cfg.get("verify_ssl", True))
+    try:
+        cfg["timeout_seconds"] = int(cfg.get("timeout_seconds", 10))
+    except Exception:
+        cfg["timeout_seconds"] = 10
+
+    # If required fields are missing, try to load them from influx.yaml (no persistence)
+    def _overlay_from_yaml_if_possible(cfg_in: dict) -> dict:
+        path_str = (cfg_in.get("influx_yaml_path") or DEFAULT_INFLUX_YAML_PATH).strip()
+        detected, src = load_influx_yaml(path_str)
+        if not detected:
+            return cfg_in
+
+        merged = dict(cfg_in)
+
+        # Only fill missing/empty values from YAML, do not override explicit UI inputs
+        for k, v in detected.items():
+            if k not in merged or merged.get(k) in (None, "", 0):
+                merged[k] = v
+
+        # Keep some additional fields in sync if YAML provided them and UI left defaults
+        if merged.get("scheme") in (None, "") and detected.get("scheme"):
+            merged["scheme"] = detected["scheme"]
+        if merged.get("host") in (None, "") and detected.get("host"):
+            merged["host"] = detected["host"]
+        if merged.get("port") in (None, "", 0) and detected.get("port"):
+            merged["port"] = detected["port"]
+
+        # Remember last source for UI display (runtime only)
+        global LAST_AUTODETECT_SOURCE
+        LAST_AUTODETECT_SOURCE = src
+
+        return merged
+
+    try:
+        if cfg["influx_version"] == 2:
             if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
-                return jsonify({"ok": False, "error": "v2 needs token, org, bucket"}), 400
+                cfg = _overlay_from_yaml_if_possible(cfg)
+
+            if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+                return jsonify({"ok": False, "error": "v2 needs token, org, bucket (oder gültige influx.yaml im angegebenen Pfad)."}), 400
+
             with v2_client(cfg) as c:
-                q = f'import "influxdata/influxdb/schema"\\nschema.measurements(bucket: "{cfg["bucket"]}") |> limit(n:1)'
+                q = f'import "influxdata/influxdb/schema"\nschema.measurements(bucket: "{cfg["bucket"]}") |> limit(n:1)'
                 c.query_api().query(q, org=cfg["org"])
                 return jsonify({"ok": True, "message": "Connection OK (v2)."})
         else:
             if not cfg.get("database"):
-                return jsonify({"ok": False, "error": "v1 needs database"}), 400
+                cfg = _overlay_from_yaml_if_possible(cfg)
+
+            if not cfg.get("database"):
+                return jsonify({"ok": False, "error": "v1 needs database (oder gültige influx.yaml im angegebenen Pfad)."}), 400
+
             c = v1_client(cfg)
             c.ping()
             return jsonify({"ok": True, "message": "Connection OK (v1)."})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
-
 @app.get("/api/measurements")
 def measurements():
     cfg = load_cfg()
