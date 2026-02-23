@@ -90,3 +90,11 @@ Das Format orientiert sich an "Keep a Changelog" (kurz gehalten).
 ### Fixed
 
 - API: `GET ./api/measurements` Flux-Query nutzt wieder echte Zeilenumbrueche (kein `\\n` Literal), damit keine 400er Compile-Fehler mehr auftreten.
+
+## 1.1.2o - 2026-02-23
+
+### Fixed
+
+- Main UI: automatische Klartext-Aufloesung (`/api/resolve_signal`) funktioniert wieder in InfluxDB v2 (kein `_value`-Fehler mehr).
+- UI: Delete-Button ist hoehenmaessig sauber am Bestaetigungsfeld ausgerichtet.
+- Config-UI: Ausrichtung/Spacing im YAML-Block und Grid verbessert.
