@@ -110,3 +110,13 @@ Das Format orientiert sich an "Keep a Changelog" (kurz gehalten).
 
 - API: v2 Statistik-Query kompiliert wieder (kein Flux Parser-Fehler wegen `_time` Label).
 - API: Influx-Fehlertexte werden kuerzer/lesbarer an die UI zurueckgegeben.
+
+## 1.1.2q - 2026-02-23
+
+### Added
+
+- Main UI: Tabellen-Filter fuer Werte (>, >=, <, <=) und Zeilenlimit auf 20.
+
+### Fixed
+
+- Statistik (Total): kein Flux `union` mehr (verhindert "schema collision" bei gemischten Datentypen).
