@@ -92,6 +92,22 @@
   </div>
 
   <div class="card">
+    <h3>UI</h3>
+    <div class="grid">
+      <div>
+        <label>Tabellenzeilen (sichtbar)</label>
+        <input id="ui_table_visible_rows" type="number" min="5" max="500" />
+        <div class="muted">Hoehe der Tabelle in Zeilen (Scroll zeigt trotzdem alle Messwerte).</div>
+      </div>
+      <div>
+        <label>Dezimalstellen (Anzeige)</label>
+        <input id="ui_decimals" type="number" min="0" max="10" />
+        <div class="muted">Rundung fuer Zahlen in Statistik/Tabelle (nur Anzeige).</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
     <div class="grid">
       <div><button id="save">Speichern</button></div>
       <div><button id="test">Influx Verbindung testen</button></div>
@@ -108,7 +124,8 @@ const ids = [
   "influx_yaml_path",
   "influx_version","scheme","host","port","verify_ssl","timeout_seconds",
   "org","bucket","token",
-  "database","username","password"
+  "database","username","password",
+  "ui_table_visible_rows","ui_decimals"
 ];
 
 const el = {};
@@ -138,6 +155,9 @@ function setForm(cfg){
   el.database.value = cfg.database ?? "";
   el.username.value = cfg.username ?? "";
   el.password.value = cfg.password ?? "";
+
+  el.ui_table_visible_rows.value = cfg.ui_table_visible_rows ?? 20;
+  el.ui_decimals.value = cfg.ui_decimals ?? 3;
 }
 
 function getForm(){
@@ -158,6 +178,9 @@ function getForm(){
     database: (el.database.value || "").trim(),
     username: (el.username.value || "").trim(),
     password: (el.password.value || "").trim(),
+
+    ui_table_visible_rows: parseInt(el.ui_table_visible_rows.value, 10),
+    ui_decimals: parseInt(el.ui_decimals.value, 10),
   };
 }
 

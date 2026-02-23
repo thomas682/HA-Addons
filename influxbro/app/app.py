@@ -282,6 +282,10 @@ DEFAULT_CFG = {
     "username": "",
     "password": "",
     "database": "",
+
+    # UI defaults
+    "ui_table_visible_rows": 20,
+    "ui_decimals": 3,
 }
 
 def load_cfg():
@@ -604,6 +608,22 @@ def api_set_config():
         cfg["timeout_seconds"] = int(cfg.get("timeout_seconds", 10))
     except Exception:
         cfg["timeout_seconds"] = 10
+
+    try:
+        cfg["ui_table_visible_rows"] = int(cfg.get("ui_table_visible_rows", 20))
+    except Exception:
+        cfg["ui_table_visible_rows"] = 20
+    if cfg["ui_table_visible_rows"] <= 0:
+        cfg["ui_table_visible_rows"] = 20
+
+    try:
+        cfg["ui_decimals"] = int(cfg.get("ui_decimals", 3))
+    except Exception:
+        cfg["ui_decimals"] = 3
+    if cfg["ui_decimals"] < 0:
+        cfg["ui_decimals"] = 0
+    if cfg["ui_decimals"] > 10:
+        cfg["ui_decimals"] = 10
 
     save_cfg(cfg)
     return jsonify({"ok": True, "message": "Saved. New settings are used immediately."})
