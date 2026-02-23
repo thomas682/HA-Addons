@@ -98,3 +98,53 @@ def test_measurements_flux_has_real_newline(load_app_module, tmp_path, monkeypat
     assert isinstance(q, str)
     assert "\\n" not in q
     assert "\n" in q
+
+
+def test_resolve_signal_does_not_require_value_column(load_app_module, tmp_path, monkeypatch):
+    app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
+    captured: dict[str, object] = {"q": None}
+
+    class _FakeRecord:
+        def __init__(self, m: str, f: str):
+            self.values = {"_measurement": m, "_field": f}
+
+    class _FakeTable:
+        def __init__(self, records):
+            self.records = records
+
+    class _FakeQueryAPI:
+        def query(self, q: str, org: str | None = None):
+            captured["q"] = q
+            return [_FakeTable([_FakeRecord("state", "value")])]
+
+    class _FakeClient:
+        def query_api(self):
+            return _FakeQueryAPI()
+
+        def close(self):
+            return None
+
+    @contextmanager
+    def _fake_v2_client(cfg: dict):
+        yield _FakeClient()
+
+    monkeypatch.setattr(app_mod, "_overlay_from_yaml_if_enabled", lambda cfg: {
+        **cfg,
+        "influx_version": 2,
+        "token": "t",
+        "org": "o",
+        "bucket": "b",
+    })
+    monkeypatch.setattr(app_mod, "v2_client", _fake_v2_client)
+
+    client = app_mod.app.test_client()
+    r = client.post(
+        "/api/resolve_signal",
+        json={"friendly_name": "X", "range": "24h", "measurement_filter": "W"},
+    )
+    j = r.get_json()
+    assert r.status_code == 200
+    assert j["ok"] is True
+    q = captured["q"]
+    assert isinstance(q, str)
+    assert "first()" not in q
