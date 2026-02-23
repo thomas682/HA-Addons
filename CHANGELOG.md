@@ -98,3 +98,15 @@ Das Format orientiert sich an "Keep a Changelog" (kurz gehalten).
 - Main UI: automatische Klartext-Aufloesung (`/api/resolve_signal`) funktioniert wieder in InfluxDB v2 (kein `_value`-Fehler mehr).
 - UI: Delete-Button ist hoehenmaessig sauber am Bestaetigungsfeld ausgerichtet.
 - Config-UI: Ausrichtung/Spacing im YAML-Block und Grid verbessert.
+
+## 1.1.2p - 2026-02-23
+
+### Added
+
+- Main UI: Suchfelder fuer `_measurement`, `friendly_name` und `entity_id` (case-insensitive Filter beim Tippen).
+- Main UI: Tabelle parallel zum Graphen (scrollbar, ~100 Zeilen Hoehe) und sortierbar per Klick auf die Spaltenkoepfe.
+
+### Fixed
+
+- API: v2 Statistik-Query kompiliert wieder (kein Flux Parser-Fehler wegen `_time` Label).
+- API: Influx-Fehlertexte werden kuerzer/lesbarer an die UI zurueckgegeben.
