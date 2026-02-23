@@ -7,22 +7,37 @@
   <style>
     body { font-family: system-ui, sans-serif; margin: 16px; }
     .row { display:flex; gap:12px; flex-wrap:wrap; align-items:end; }
+    .grid { display:grid; grid-template-columns: repeat(2, minmax(260px, 1fr)); gap: 12px; margin-top: 12px; align-items:end; }
+    @media (max-width: 860px){ .grid { grid-template-columns: 1fr; } }
+    .control { min-width: 0; }
+    .control.span2 { grid-column: 1 / -1; }
     label { display:block; font-size:12px; opacity:0.8; }
-    select, button, input { padding:8px; }
+    select, button, input { padding:10px 12px; height: 40px; box-sizing: border-box; }
+    select, input { width: 100%; }
+    input[type="datetime-local"] { width: 100%; }
     table { border-collapse: collapse; width: 100%; margin-top: 12px; }
     th, td { border: 1px solid #ddd; padding: 6px; font-size: 12px; }
     th { background:#f4f4f4; text-align:left; }
-    canvas { width: 100%; height: 160px; border: 1px solid #ddd; margin-top: 12px; }
+    canvas { width: 100%; height: 180px; border: 1px solid #ddd; margin-top: 12px; border-radius: 10px; }
     .err { color: #b00020; margin-top: 8px; white-space: pre-wrap; }
     .ok { color: #0a7a28; margin-top: 8px; white-space: pre-wrap; }
     .muted { opacity: 0.7; font-size: 12px; }
     .danger { border: 1px solid #d33; padding: 12px; border-radius: 8px; margin-top: 16px; }
     .danger h3 { margin: 0 0 8px 0; color: #b00020; }
-    .stats { border:1px solid #ddd; border-radius:10px; padding:10px; margin-top:12px; display:flex; gap:18px; flex-wrap:wrap; }
-    .stat { min-width: 180px; }
-    .stat .k { font-size:12px; opacity:.75; }
-    .stat .v { font-weight:600; }
+    .stats_wrap { margin-top: 12px; }
+    .stats_header { display:flex; gap:12px; align-items:end; flex-wrap:wrap; }
+    .stats_grid { display:grid; grid-template-columns: repeat(2, minmax(300px, 1fr)); gap: 12px; margin-top: 12px; }
+    @media (max-width: 860px){ .stats_grid { grid-template-columns: 1fr; } }
+    .stat_block { border:1px solid #ddd; border-radius:10px; padding:10px; }
+    .stat_block .head { font-weight: 700; margin-bottom: 8px; }
+    .cards { display:grid; grid-template-columns: repeat(2, minmax(180px, 1fr)); gap: 10px; }
+    @media (max-width: 500px){ .cards { grid-template-columns: 1fr; } }
+    .card { border:1px solid #eee; border-radius:10px; padding:10px; }
+    .card .k { font-size:12px; opacity:.75; }
+    .card .v { font-weight:600; overflow-wrap:anywhere; }
     a { color: inherit; }
+    details { margin-top: 10px; border: 1px solid #ddd; border-radius: 10px; padding: 10px; }
+    details > summary { cursor: pointer; font-weight: 600; }
   </style>
 </head>
 <body>
@@ -32,41 +47,100 @@
     &nbsp;|&nbsp; Delete enabled: {{ "yes" if allow_delete else "no" }}
   </div>
 
-  <div class="row" style="margin-top:12px;">
-    <div><label>Measurement</label><select id="measurement"></select></div>
-    <div><label>Field</label><select id="field"></select></div>
-    <div><label>Zeitraum</label>
+  <div class="grid" id="filters">
+    <div class="control" id="c_measurement_filter"><label>_measurement (Filter)</label><select id="measurement_filter"></select></div>
+    <div class="control" id="c_friendly"><label>Messwert (Klartext / friendly_name)</label><select id="friendly_name"></select></div>
+    <div class="control" id="c_range"><label>Zeitraum (Graph/Tabelle)</label>
       <select id="range">
-        <option value="24h">Letzte 24h</option>
-        <option value="7d">Letzte Woche</option>
-        <option value="30d">Letzter Monat</option>
+        <option value="1h">Letzte 1h</option>
+        <option value="6h">Letzte 6h</option>
+        <option value="12h">Letzte 12h</option>
+        <option value="24h" selected>Letzte 24h</option>
+        <option value="7d">Letzte 7 Tage</option>
+        <option value="30d">Letzte 30 Tage</option>
+        <option value="90d">Letzte 90 Tage</option>
         <option value="365d">Letztes Jahr</option>
+        <option value="custom">Benutzerdefiniert…</option>
       </select>
     </div>
+    <div class="control" id="c_entity"><label>entity_id (optional)</label><select id="entity_id"></select></div>
+    <div class="control span2" id="custom_range" style="display:none;">
+      <div class="grid" style="margin-top:0;">
+        <div class="control"><label>Von</label><input id="start" type="datetime-local"/></div>
+        <div class="control"><label>Bis</label><input id="stop" type="datetime-local"/></div>
+      </div>
+      <div class="muted">Zeitangaben werden als lokale Zeit interpretiert und als UTC an die API gesendet.</div>
+    </div>
+    <div class="control"><button id="load" style="width:100%;">Aktualisieren</button></div>
+    <div class="control"><div class="muted" style="padding-top: 4px;">Auto-Refresh aktiv (mit kurzer Verzoegerung).</div></div>
   </div>
 
-  <div class="row" style="margin-top:12px;">
-    <div><label>entity_id (Tag)</label><select id="entity_id"></select></div>
-    <div><label>friendly_name (Tag)</label><select id="friendly_name"></select></div>
-    <button id="load">Anzeigen</button>
-  </div>
+  <details>
+    <summary>Erweitert: Measurement / Field</summary>
+    <div class="grid" style="margin-top:12px;">
+      <div class="control"><label>Measurement (intern)</label><select id="measurement"></select></div>
+      <div class="control"><label>Field (intern)</label><select id="field"></select></div>
+      <div class="control span2"><div class="muted">Wird automatisch anhand des Klartextnamens ermittelt (wenn moeglich).</div></div>
+    </div>
+  </details>
 
   <div class="muted">
-    Tipps: Tag-Filter sind optional. Wenn du zuerst <code>entity_id</code> auswaehlst, wird <code>friendly_name</code> passend eingeschraenkt.
+    Tipps: Messwert = <code>friendly_name</code>. Falls mehrere Entity-IDs denselben Namen haben, nutze den optionalen <code>entity_id</code>-Filter.
   </div>
 
   <div id="err" class="err"></div>
   <div id="ok" class="ok"></div>
 
-  <div class="stats" id="stats" style="display:none;">
-    <div class="stat"><div class="k">Anzahl Messwerte</div><div class="v" id="s_count"></div></div>
-    <div class="stat"><div class="k">Ältestes Datum</div><div class="v" id="s_old"></div></div>
-    <div class="stat"><div class="k">Neustes Datum</div><div class="v" id="s_new"></div></div>
-    <div class="stat"><div class="k">Minimaler Wert</div><div class="v" id="s_min"></div></div>
-    <div class="stat"><div class="k">Maximaler Wert</div><div class="v" id="s_max"></div></div>
-  </div>
-
   <canvas id="chart" width="800" height="200"></canvas>
+
+  <div class="stats_wrap">
+    <div class="stats_header">
+      <div class="control" style="min-width: 260px;">
+        <label>Statistik (Total-Auswahl)</label>
+        <select id="stats_scope">
+          <option value="range">Zeitraum (wie Graph)</option>
+          <option value="1y" selected>1 Jahr</option>
+          <option value="inf">Unendlich</option>
+        </select>
+      </div>
+      <div class="muted">Statistik-Auswahl betrifft nur die Statistik, nicht Graph/Tabelle.</div>
+    </div>
+
+    <div class="stats_grid" id="stats" style="display:none;">
+      <div class="stat_block">
+        <div class="head">Zeitraum (Graph/Tabelle)</div>
+        <div class="cards">
+          <div class="card"><div class="k">Aktueller Wert</div><div class="v" id="s_curr_last"></div></div>
+          <div class="card"><div class="k">Anzahl Werte</div><div class="v" id="s_curr_count"></div></div>
+          <div class="card"><div class="k">Aeltester Zeitstempel</div><div class="v" id="s_curr_old"></div></div>
+          <div class="card"><div class="k">Neuster Zeitstempel</div><div class="v" id="s_curr_new"></div></div>
+          <div class="card"><div class="k">Minimum</div><div class="v" id="s_curr_min"></div></div>
+          <div class="card"><div class="k">Maximum</div><div class="v" id="s_curr_max"></div></div>
+          <div class="card"><div class="k">Mittelwert</div><div class="v" id="s_curr_mean"></div></div>
+          <div class="card"><div class="k">Median (p50)</div><div class="v" id="s_curr_p50"></div></div>
+          <div class="card"><div class="k">p05 / p95</div><div class="v" id="s_curr_p05p95"></div></div>
+          <div class="card"><div class="k">StdDev</div><div class="v" id="s_curr_stddev"></div></div>
+          <div class="card"><div class="k">Tabelle (geladen) kB</div><div class="v" id="s_curr_tblkb"></div></div>
+        </div>
+      </div>
+
+      <div class="stat_block">
+        <div class="head">Total (<span id="s_total_label">1 Jahr</span>)</div>
+        <div class="cards">
+          <div class="card"><div class="k">Aktueller Wert</div><div class="v" id="s_tot_last"></div></div>
+          <div class="card"><div class="k">Anzahl Werte</div><div class="v" id="s_tot_count"></div></div>
+          <div class="card"><div class="k">Aeltester Zeitstempel</div><div class="v" id="s_tot_old"></div></div>
+          <div class="card"><div class="k">Neuster Zeitstempel</div><div class="v" id="s_tot_new"></div></div>
+          <div class="card"><div class="k">Minimum</div><div class="v" id="s_tot_min"></div></div>
+          <div class="card"><div class="k">Maximum</div><div class="v" id="s_tot_max"></div></div>
+          <div class="card"><div class="k">Mittelwert</div><div class="v" id="s_tot_mean"></div></div>
+          <div class="card"><div class="k">Median (p50)</div><div class="v" id="s_tot_p50"></div></div>
+          <div class="card"><div class="k">p05 / p95</div><div class="v" id="s_tot_p05p95"></div></div>
+          <div class="card"><div class="k">StdDev</div><div class="v" id="s_tot_stddev"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <table id="tbl">
     <thead><tr><th>Zeit</th><th>Wert</th></tr></thead>
@@ -98,20 +172,52 @@ const $f = document.getElementById('field');
 const $r = document.getElementById('range');
 const $e = document.getElementById('entity_id');
 const $n = document.getElementById('friendly_name');
+const $mf = document.getElementById('measurement_filter');
+const $start = document.getElementById('start');
+const $stop = document.getElementById('stop');
+const $custom = document.getElementById('custom_range');
 const $tbl = document.querySelector('#tbl tbody');
 const $confirm = document.getElementById('confirm');
 
 const $stats = document.getElementById('stats');
-const $sCount = document.getElementById('s_count');
-const $sOld = document.getElementById('s_old');
-const $sNew = document.getElementById('s_new');
-const $sMin = document.getElementById('s_min');
-const $sMax = document.getElementById('s_max');
+const $statsScope = document.getElementById('stats_scope');
+const $sTotalLabel = document.getElementById('s_total_label');
+
+const $sCurrLast = document.getElementById('s_curr_last');
+const $sCurrCount = document.getElementById('s_curr_count');
+const $sCurrOld = document.getElementById('s_curr_old');
+const $sCurrNew = document.getElementById('s_curr_new');
+const $sCurrMin = document.getElementById('s_curr_min');
+const $sCurrMax = document.getElementById('s_curr_max');
+const $sCurrMean = document.getElementById('s_curr_mean');
+const $sCurrP50 = document.getElementById('s_curr_p50');
+const $sCurrP05P95 = document.getElementById('s_curr_p05p95');
+const $sCurrStddev = document.getElementById('s_curr_stddev');
+const $sCurrTblKb = document.getElementById('s_curr_tblkb');
+
+const $sTotLast = document.getElementById('s_tot_last');
+const $sTotCount = document.getElementById('s_tot_count');
+const $sTotOld = document.getElementById('s_tot_old');
+const $sTotNew = document.getElementById('s_tot_new');
+const $sTotMin = document.getElementById('s_tot_min');
+const $sTotMax = document.getElementById('s_tot_max');
+const $sTotMean = document.getElementById('s_tot_mean');
+const $sTotP50 = document.getElementById('s_tot_p50');
+const $sTotP05P95 = document.getElementById('s_tot_p05p95');
+const $sTotStddev = document.getElementById('s_tot_stddev');
 
 const canvas = document.getElementById('chart');
 const ctx = canvas.getContext('2d');
 
 function fmt(x){ if(x === null || x === undefined || x === "") return ""; return String(x); }
+
+function debounce(fn, ms){
+  let t = null;
+  return (...args) => {
+    if(t) clearTimeout(t);
+    t = setTimeout(()=>fn(...args), ms);
+  };
+}
 
 function draw(rows){
   ctx.clearRect(0,0,canvas.width,canvas.height);
@@ -142,14 +248,71 @@ async function api(url, opts){
   return j;
 }
 
+function toLocalDatetimeValue(d){
+  const pad = (n) => String(n).padStart(2,"0");
+  return d.getFullYear() + "-" + pad(d.getMonth()+1) + "-" + pad(d.getDate()) + "T" + pad(d.getHours()) + ":" + pad(d.getMinutes());
+}
+
+function localToIsoUtc(v){
+  // v is "YYYY-MM-DDTHH:MM" in local time
+  if(!v) return "";
+  const m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/);
+  if(!m) return "";
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4]), Number(m[5]), 0, 0);
+  if(!isFinite(d.getTime())) return "";
+  return d.toISOString();
+}
+
+function currentTimeFilter(){
+  if($r.value !== "custom") return { range: $r.value };
+  const s = localToIsoUtc($start.value);
+  const e = localToIsoUtc($stop.value);
+  if(!s || !e) throw new Error("Bitte 'Von' und 'Bis' setzen (benutzerdefinierter Zeitraum).");
+  return { start: s, stop: e, range: $r.value };
+}
+
 function currentFilters(){
-  return { measurement: $m.value, field: $f.value, range: $r.value, entity_id: $e.value || null, friendly_name: $n.value || null };
+  return {
+    measurement: $m.value,
+    field: $f.value,
+    ...currentTimeFilter(),
+    entity_id: $e.value || null,
+    friendly_name: $n.value || null,
+  };
+}
+
+function tagQueryParams(opts){
+  const o = opts || {};
+  const q = [];
+  if($mf.value) q.push("measurement=" + encodeURIComponent($mf.value));
+  if(o.includeFriendly && $n.value) q.push("friendly_name=" + encodeURIComponent($n.value));
+  if(o.includeEntity && $e.value) q.push("entity_id=" + encodeURIComponent($e.value));
+  if($r.value !== "custom") q.push("range=" + encodeURIComponent($r.value));
+  if($r.value === "custom"){
+    const s = localToIsoUtc($start.value);
+    const e = localToIsoUtc($stop.value);
+    if(s && e){
+      q.push("start=" + encodeURIComponent(s));
+      q.push("stop=" + encodeURIComponent(e));
+    }
+  }
+  return q.join("&");
+}
+
+function updateTotalLabel(){
+  const v = $statsScope.value;
+  $sTotalLabel.textContent = (v === "1y") ? "1 Jahr" : (v === "inf") ? "Unendlich" : "Zeitraum";
 }
 
 async function loadMeasurements(){
+  $mf.innerHTML = "";
   $m.innerHTML = "";
   const j = await api("./api/measurements");
-  j.measurements.forEach(x=>{ const o=document.createElement("option"); o.value=x; o.textContent=x; $m.appendChild(o); });
+  const empty=document.createElement("option"); empty.value=""; empty.textContent="(alle)"; $mf.appendChild(empty);
+  j.measurements.forEach(x=>{
+    const o=document.createElement("option"); o.value=x; o.textContent=x; $mf.appendChild(o);
+    const o2=document.createElement("option"); o2.value=x; o2.textContent=x; $m.appendChild(o2);
+  });
   if($m.value) await loadFields();
 }
 
@@ -160,39 +323,94 @@ async function loadFields(){
 }
 
 async function loadEntityIds(){
+  const prev = $e.value;
   $e.innerHTML = "";
-  const url = "./api/tag_values?tag=entity_id&measurement=" + encodeURIComponent($m.value) + "&range=" + encodeURIComponent($r.value);
+  let url = "./api/tag_values?tag=entity_id";
+  const qp = tagQueryParams({includeFriendly: true, includeEntity: false});
+  if(qp) url += "&" + qp;
   const j = await api(url);
   const empty=document.createElement("option"); empty.value=""; empty.textContent="(alle)"; $e.appendChild(empty);
   (j.values||[]).forEach(x=>{ const o=document.createElement("option"); o.value=x; o.textContent=x; $e.appendChild(o); });
+  if(prev && Array.from($e.options).some(o=>o.value===prev)) $e.value = prev;
 }
 
 async function loadFriendlyNames(){
+  const prev = $n.value;
   $n.innerHTML = "";
-  let url = "./api/tag_values?tag=friendly_name&measurement=" + encodeURIComponent($m.value) + "&range=" + encodeURIComponent($r.value);
-  if($e.value) url += "&entity_id=" + encodeURIComponent($e.value);
+  let url = "./api/tag_values?tag=friendly_name";
+  const qp = tagQueryParams({includeFriendly: false, includeEntity: true});
+  if(qp) url += "&" + qp;
   const j = await api(url);
-  const empty=document.createElement("option"); empty.value=""; empty.textContent="(alle)"; $n.appendChild(empty);
+  const empty=document.createElement("option"); empty.value=""; empty.textContent="(bitte waehlen)"; $n.appendChild(empty);
   (j.values||[]).forEach(x=>{ const o=document.createElement("option"); o.value=x; o.textContent=x; $n.appendChild(o); });
+  if(prev && Array.from($n.options).some(o=>o.value===prev)) $n.value = prev;
+}
+
+async function resolveSignal(){
+  if(!$n.value) return;
+  const payload = { friendly_name: $n.value, entity_id: $e.value || null, measurement_filter: $mf.value || null, ...currentTimeFilter() };
+  const j = await api("./api/resolve_signal", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)});
+  if(j.measurement) $m.value = j.measurement;
+  await loadFields();
+  if(j.field) $f.value = j.field;
+}
+
+let LAST_ROWS = [];
+
+function tableKbLoaded(){
+  try{
+    const b = new Blob([JSON.stringify(LAST_ROWS || [])]);
+    return (b.size / 1024.0);
+  }catch(e){
+    return null;
+  }
+}
+
+function fmtLastValue(s){
+  if(!s) return "";
+  const v = (s.last_value === null || s.last_value === undefined) ? "" : String(s.last_value);
+  const t = s.newest_time ? String(s.newest_time) : "";
+  return v ? (t ? (v + " @ " + t) : v) : "";
+}
+
+function fillStats(prefix, s){
+  const set = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = fmt(val); };
+  set(prefix + "_last", fmtLastValue(s));
+  set(prefix + "_count", s.count);
+  set(prefix + "_old", s.oldest_time);
+  set(prefix + "_new", s.newest_time);
+  set(prefix + "_min", s.min);
+  set(prefix + "_max", s.max);
+  set(prefix + "_mean", s.mean);
+  set(prefix + "_p50", s.p50);
+  const p05 = (s.p05 === null || s.p05 === undefined) ? "" : String(s.p05);
+  const p95 = (s.p95 === null || s.p95 === undefined) ? "" : String(s.p95);
+  set(prefix + "_p05p95", (p05 || p95) ? (p05 + " / " + p95) : "");
+  set(prefix + "_stddev", s.stddev);
 }
 
 async function loadStats(){
-  const j = await api("./api/stats", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(currentFilters())});
-  const s = j.stats || {};
-  $sCount.textContent = fmt(s.count);
-  $sOld.textContent = fmt(s.oldest_time);
-  $sNew.textContent = fmt(s.newest_time);
-  $sMin.textContent = fmt(s.min);
-  $sMax.textContent = fmt(s.max);
-  $stats.style.display = "flex";
+  updateTotalLabel();
+  const base = currentFilters();
+  const jCurr = await api("./api/stats", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({...base, stats_scope: "current"})});
+  const jTot = await api("./api/stats", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({...base, stats_scope: $statsScope.value})});
+
+  fillStats("s_curr", jCurr.stats || {});
+  fillStats("s_tot", jTot.stats || {});
+
+  const kb = tableKbLoaded();
+  $sCurrTblKb.textContent = (kb === null) ? "" : kb.toFixed(1);
+  $stats.style.display = "grid";
 }
 
 async function loadData(){
   err(""); ok("");
+  if(!$n.value){ err("Bitte zuerst einen Messwert (friendly_name) auswaehlen."); return; }
   $tbl.innerHTML = "";
   $stats.style.display = "none";
   const j = await api("./api/query", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(currentFilters())});
   const rows = j.rows || [];
+  LAST_ROWS = rows;
   rows.slice(-300).forEach(row=>{
     const tr=document.createElement("tr");
     const tdT=document.createElement("td"); tdT.textContent=row.time;
@@ -202,6 +420,18 @@ async function loadData(){
   draw(rows);
   await loadStats();
 }
+
+async function refreshAll(){
+  try{
+    if(!$n.value){ return; }
+    await resolveSignal();
+    await loadData();
+  }catch(e){
+    err(String(e));
+  }
+}
+
+const refreshAllDebounced = debounce(()=>refreshAll(), 350);
 
 async function deleteData(){
   err(""); ok("");
@@ -214,14 +444,84 @@ async function deleteData(){
 
 async function refreshTags(){ await loadEntityIds(); await loadFriendlyNames(); }
 
-$m.addEventListener("change", async ()=>{ try{ await loadFields(); await refreshTags(); } catch(e){ err(String(e)); } });
-$r.addEventListener("change", async ()=>{ try{ await refreshTags(); } catch(e){ err(String(e)); } });
-$e.addEventListener("change", async ()=>{ try{ await loadFriendlyNames(); } catch(e){ err(String(e)); } });
+function autoSpanSelect(controlId, selectEl){
+  try{
+    const c = document.getElementById(controlId);
+    if(!c || !selectEl) return;
+    const opt = selectEl.selectedOptions && selectEl.selectedOptions[0];
+    const text = opt ? opt.textContent : "";
+    if(!text) { c.classList.remove("span2"); return; }
+    const w = c.getBoundingClientRect().width;
+    const meas = document.createElement("canvas").getContext("2d");
+    meas.font = getComputedStyle(selectEl).font || "14px system-ui";
+    const tw = meas.measureText(text).width + 90;
+    if(tw > w) c.classList.add("span2"); else c.classList.remove("span2");
+  }catch(e){}
+}
 
-document.getElementById("load").addEventListener("click", ()=>loadData().catch(e=>err(String(e))));
+function autoSpanAll(){
+  autoSpanSelect("c_measurement_filter", $mf);
+  autoSpanSelect("c_friendly", $n);
+  autoSpanSelect("c_range", $r);
+  autoSpanSelect("c_entity", $e);
+}
+
+$mf.addEventListener("change", async ()=>{
+  try{
+    await loadFriendlyNames();
+    $e.innerHTML = "";
+    autoSpanAll();
+    refreshAllDebounced();
+  }catch(e){ err(String(e)); }
+});
+
+$n.addEventListener("change", async ()=>{
+  try{
+    await loadEntityIds();
+    autoSpanAll();
+    refreshAllDebounced();
+  }catch(e){ err(String(e)); }
+});
+
+$r.addEventListener("change", async ()=>{
+  try{
+    $custom.style.display = ($r.value === "custom") ? "block" : "none";
+    await loadFriendlyNames();
+    await loadEntityIds();
+    autoSpanAll();
+    refreshAllDebounced();
+  }catch(e){ err(String(e)); }
+});
+
+$e.addEventListener("change", async ()=>{
+  try{
+    await loadFriendlyNames();
+    autoSpanAll();
+    refreshAllDebounced();
+  }catch(e){ err(String(e)); }
+});
+$start.addEventListener("change", async ()=>{ if($r.value==="custom") { autoSpanAll(); refreshAllDebounced(); } });
+$stop.addEventListener("change", async ()=>{ if($r.value==="custom") { autoSpanAll(); refreshAllDebounced(); } });
+$statsScope.addEventListener("change", async ()=>{ updateTotalLabel(); refreshAllDebounced(); });
+
+$m.addEventListener("change", async ()=>{ try{ await loadFields(); } catch(e){ err(String(e)); } });
+
+document.getElementById("load").addEventListener("click", ()=>refreshAll().catch(e=>err(String(e))));
 document.getElementById("del").addEventListener("click", ()=>deleteData().catch(e=>err(String(e))));
 
-(async ()=>{ try{ await loadMeasurements(); await refreshTags(); } catch(e){ err(String(e)); } })();
+(async ()=>{
+  try{
+    const now = new Date();
+    const start = new Date(now.getTime() - 24*60*60*1000);
+    $start.value = toLocalDatetimeValue(start);
+    $stop.value = toLocalDatetimeValue(now);
+    await loadMeasurements();
+    await loadFriendlyNames();
+    await loadEntityIds();
+    updateTotalLabel();
+    autoSpanAll();
+  } catch(e){ err(String(e)); }
+})();
 </script>
 <div style="position:absolute;top:10px;right:20px;font-size:12px;color:#888;" id="version_box"></div>
 <script>
