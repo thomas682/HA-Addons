@@ -445,6 +445,15 @@ def _flux_str(v: str) -> str:
     return f'"{_flux_escape(v)}"'
 
 
+def _short_influx_error(e: Exception) -> str:
+    s = str(e) or e.__class__.__name__
+    # Try to extract the JSON {"message":"..."} part from influxdb-client exception strings.
+    m = re.search(r'"message"\s*:\s*"([^"]+)"', s)
+    if m:
+        return m.group(1)
+    return s
+
+
 def flux_tag_filter(entity_id: str | None, friendly_name: str | None) -> str:
     extra = ""
     if entity_id:
@@ -675,7 +684,7 @@ def api_test():
             c.ping()
             return jsonify({"ok": True, "message": "Connection OK (v1)."})
     except Exception as e:
-        return jsonify({"ok": False, "error": str(e)}), 500
+        return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
 @app.get("/api/measurements")
 def measurements():
     cfg = _overlay_from_yaml_if_enabled(load_cfg())
@@ -705,7 +714,7 @@ def measurements():
                     items.append(p.get("name"))
             return jsonify({"ok": True, "measurements": sorted(set(items))})
     except Exception as e:
-        return jsonify({"ok": False, "error": str(e)}), 500
+        return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
 
 @app.get("/api/fields")
 def fields():
@@ -742,7 +751,7 @@ def fields():
                     fs.append(p.get("fieldKey"))
             return jsonify({"ok": True, "fields": sorted(set(fs))})
     except Exception as e:
-        return jsonify({"ok": False, "error": str(e)}), 500
+        return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
 
 @app.get("/api/tag_values")
 def tag_values():
@@ -841,7 +850,7 @@ schema.tagValues(
                         vals.append(str(v))
             return jsonify({"ok": True, "values": sorted(set(vals))})
     except Exception as e:
-        return jsonify({"ok": False, "error": str(e)}), 500
+        return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
 
 @app.post("/api/query")
 def query():
@@ -908,7 +917,7 @@ from(bucket: "{cfg["bucket"]}")
                 rows = rows[::step]
             return jsonify({"ok": True, "rows": rows})
     except Exception as e:
-        return jsonify({"ok": False, "error": str(e)}), 500
+        return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
 
 @app.post("/api/stats")
 def stats():
@@ -953,11 +962,11 @@ data = from(bucket: "{cfg["bucket"]}")
   |> keep(columns: ["_time", "_value"])
   |> group()
 
-countT = data |> count() |> map(fn: (r) => ({{ _value: r._value, _field: "count" }}))
-oldT   = data |> sort(columns: ["_time"]) |> first() |> map(fn: (r) => ({{ _value: r._value, _time: r._time, _field: "oldest" }}))
-newT   = data |> sort(columns: ["_time"], desc: true) |> first() |> map(fn: (r) => ({{ _value: r._value, _time: r._time, _field: "newest" }}))
+countT = data |> count() |> map(fn: (r) => ({{ r with stat: "count" }})) |> keep(columns: ["stat", "_value"])
+oldT   = data |> sort(columns: ["_time"]) |> first() |> map(fn: (r) => ({{ r with stat: "oldest" }})) |> keep(columns: ["stat", "_time", "_value"])
+newT   = data |> sort(columns: ["_time"], desc: true) |> first() |> map(fn: (r) => ({{ r with stat: "newest" }})) |> keep(columns: ["stat", "_time", "_value"])
 
-union(tables: [countT, oldT, newT])
+union(tables: [countT, oldT, newT]) |> keep(columns: ["stat", "_time", "_value"])
 '''
                 tables = c.query_api().query(q_basic, org=cfg["org"])
                 out = {
@@ -976,7 +985,7 @@ union(tables: [countT, oldT, newT])
                 }
                 for t in tables:
                     for r in t.records:
-                        k = r.get_field()
+                        k = r.values.get("stat")
                         if k == "count":
                             out["count"] = int(r.get_value() or 0)
                         elif k == "oldest":
@@ -997,23 +1006,23 @@ data = from(bucket: "{cfg["bucket"]}")
   |> keep(columns: ["_time", "_value"])
   |> group()
 
-minT    = data |> min()    |> map(fn: (r) => ({{ _value: r._value, _field: "min" }}))
-maxT    = data |> max()    |> map(fn: (r) => ({{ _value: r._value, _field: "max" }}))
-meanT   = data |> mean()   |> map(fn: (r) => ({{ _value: r._value, _field: "mean" }}))
-stddevT = data |> stddev() |> map(fn: (r) => ({{ _value: r._value, _field: "stddev" }}))
-p05T    = data |> quantile(q: 0.05) |> map(fn: (r) => ({{ _value: r._value, _field: "p05" }}))
-p50T    = data |> quantile(q: 0.50) |> map(fn: (r) => ({{ _value: r._value, _field: "p50" }}))
-p95T    = data |> quantile(q: 0.95) |> map(fn: (r) => ({{ _value: r._value, _field: "p95" }}))
+minT    = data |> min()    |> map(fn: (r) => ({{ r with stat: "min" }})) |> keep(columns: ["stat", "_value"])
+maxT    = data |> max()    |> map(fn: (r) => ({{ r with stat: "max" }})) |> keep(columns: ["stat", "_value"])
+meanT   = data |> mean()   |> map(fn: (r) => ({{ r with stat: "mean" }})) |> keep(columns: ["stat", "_value"])
+stddevT = data |> stddev() |> map(fn: (r) => ({{ r with stat: "stddev" }})) |> keep(columns: ["stat", "_value"])
+p05T    = data |> quantile(q: 0.05) |> map(fn: (r) => ({{ r with stat: "p05" }})) |> keep(columns: ["stat", "_value"])
+p50T    = data |> quantile(q: 0.50) |> map(fn: (r) => ({{ r with stat: "p50" }})) |> keep(columns: ["stat", "_value"])
+p95T    = data |> quantile(q: 0.95) |> map(fn: (r) => ({{ r with stat: "p95" }})) |> keep(columns: ["stat", "_value"])
 
-union(tables: [minT, maxT, meanT, stddevT, p05T, p50T, p95T])
+union(tables: [minT, maxT, meanT, stddevT, p05T, p50T, p95T]) |> keep(columns: ["stat", "_value"])
 '''
                     try:
                         tables2 = c.query_api().query(q_num, org=cfg["org"])
                         for t in tables2:
                             for r in t.records:
-                                k = r.get_field()
+                                k = r.values.get("stat")
                                 if k in ("min", "max", "mean", "stddev", "p05", "p50", "p95"):
-                                    out[k] = r.get_value()
+                                    out[str(k)] = r.get_value()
                     except Exception:
                         pass
 
@@ -1092,7 +1101,7 @@ union(tables: [minT, maxT, meanT, stddevT, p05T, p50T, p95T])
 
             return jsonify({"ok": True, "stats": out, "stats_scope": stats_scope})
     except Exception as e:
-        return jsonify({"ok": False, "error": str(e)}), 500
+        return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
 
 
 @app.post("/api/resolve_signal")
@@ -1217,7 +1226,7 @@ from(bucket: "{cfg["bucket"]}")
             "fields": fs,
         })
     except Exception as e:
-        return jsonify({"ok": False, "error": str(e)}), 500
+        return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
 
 @app.post("/api/delete")
 def delete():
@@ -1272,7 +1281,7 @@ def delete():
             c.query(q)
             return jsonify({"ok": True, "message": f"Deleted v1: measurement={measurement}, last {dur}{' with tag filters' if tag_where else ''}."})
     except Exception as e:
-        return jsonify({"ok": False, "error": str(e)}), 500
+        return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
 
 _VERSION_RE = re.compile(r"^[0-9A-Za-z][0-9A-Za-z._-]*$")
 

@@ -148,3 +148,53 @@ def test_resolve_signal_does_not_require_value_column(load_app_module, tmp_path,
     q = captured["q"]
     assert isinstance(q, str)
     assert "first()" not in q
+
+
+def test_stats_v2_flux_avoids_time_label_literal(load_app_module, tmp_path, monkeypatch):
+    app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
+    captured: list[str] = []
+
+    class _FakeQueryAPI:
+        def query(self, q: str, org: str | None = None):
+            captured.append(q)
+            return []
+
+    class _FakeClient:
+        def query_api(self):
+            return _FakeQueryAPI()
+
+        def close(self):
+            return None
+
+    @contextmanager
+    def _fake_v2_client(cfg: dict):
+        yield _FakeClient()
+
+    monkeypatch.setattr(app_mod, "_overlay_from_yaml_if_enabled", lambda cfg: {
+        **cfg,
+        "influx_version": 2,
+        "token": "t",
+        "org": "o",
+        "bucket": "b",
+    })
+    monkeypatch.setattr(app_mod, "v2_client", _fake_v2_client)
+
+    client = app_mod.app.test_client()
+    r = client.post(
+        "/api/stats",
+        json={
+            "measurement": "state",
+            "field": "value",
+            "range": "24h",
+            "friendly_name": "X",
+            "entity_id": "Y",
+            "stats_scope": "current",
+        },
+    )
+    j = r.get_json()
+    assert r.status_code == 200
+    assert j["ok"] is True
+    assert captured
+    q = "\n".join(captured)
+    assert "with stat" in q
+    assert "_time:" not in q
