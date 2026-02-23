@@ -954,79 +954,93 @@ def stats():
             def _is_number(v: object) -> bool:
                 return isinstance(v, (int, float)) and not isinstance(v, bool)
 
-            with v2_client(cfg) as c:
-                q_basic = f'''
+            # Avoid Flux `union` schema collisions (e.g. count int vs values float) by querying stats separately.
+            base_flux = f'''
 data = from(bucket: "{cfg["bucket"]}")
   {range_clause}
   |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
   |> keep(columns: ["_time", "_value"])
   |> group()
-
-countT = data |> count() |> map(fn: (r) => ({{ r with stat: "count" }})) |> keep(columns: ["stat", "_value"])
-oldT   = data |> sort(columns: ["_time"]) |> first() |> map(fn: (r) => ({{ r with stat: "oldest" }})) |> keep(columns: ["stat", "_time", "_value"])
-newT   = data |> sort(columns: ["_time"], desc: true) |> first() |> map(fn: (r) => ({{ r with stat: "newest" }})) |> keep(columns: ["stat", "_time", "_value"])
-
-union(tables: [countT, oldT, newT]) |> keep(columns: ["stat", "_time", "_value"])
 '''
-                tables = c.query_api().query(q_basic, org=cfg["org"])
-                out = {
-                    "count": 0,
-                    "oldest_time": None,
-                    "newest_time": None,
-                    "first_value": None,
-                    "last_value": None,
-                    "min": None,
-                    "max": None,
-                    "mean": None,
-                    "stddev": None,
-                    "p05": None,
-                    "p50": None,
-                    "p95": None,
-                }
-                for t in tables:
-                    for r in t.records:
-                        k = r.values.get("stat")
-                        if k == "count":
-                            out["count"] = int(r.get_value() or 0)
-                        elif k == "oldest":
-                            ts = r.get_time()
-                            out["oldest_time"] = ts.astimezone(timezone.utc).isoformat() if isinstance(ts, datetime) else ts
-                            out["first_value"] = r.get_value()
-                        elif k == "newest":
-                            ts = r.get_time()
-                            out["newest_time"] = ts.astimezone(timezone.utc).isoformat() if isinstance(ts, datetime) else ts
-                            out["last_value"] = r.get_value()
+
+            def _q_one(suffix: str) -> str:
+                return (base_flux + "\n" + suffix).strip() + "\n"
+
+            def _first_record(tables):
+                for t in tables or []:
+                    for rec in getattr(t, "records", []) or []:
+                        return rec
+                return None
+
+            out = {
+                "count": 0,
+                "oldest_time": None,
+                "newest_time": None,
+                "first_value": None,
+                "last_value": None,
+                "min": None,
+                "max": None,
+                "mean": None,
+                "stddev": None,
+                "p05": None,
+                "p50": None,
+                "p95": None,
+            }
+
+            with v2_client(cfg) as c:
+                # count
+                try:
+                    tables = c.query_api().query(_q_one("data |> count() |> limit(n:1)"), org=cfg["org"])
+                    rec = _first_record(tables)
+                    if rec is not None:
+                        out["count"] = int(rec.get_value() or 0)
+                except Exception:
+                    pass
+
+                # oldest/newest (+ first/last values)
+                try:
+                    tables = c.query_api().query(_q_one('data |> sort(columns: ["_time"]) |> limit(n:1)'), org=cfg["org"])
+                    rec = _first_record(tables)
+                    if rec is not None:
+                        ts = rec.get_time()
+                        out["oldest_time"] = ts.astimezone(timezone.utc).isoformat() if isinstance(ts, datetime) else ts
+                        out["first_value"] = rec.get_value()
+                except Exception:
+                    pass
+
+                try:
+                    tables = c.query_api().query(
+                        _q_one('data |> sort(columns: ["_time"], desc: true) |> limit(n:1)'),
+                        org=cfg["org"],
+                    )
+                    rec = _first_record(tables)
+                    if rec is not None:
+                        ts = rec.get_time()
+                        out["newest_time"] = ts.astimezone(timezone.utc).isoformat() if isinstance(ts, datetime) else ts
+                        out["last_value"] = rec.get_value()
+                except Exception:
+                    pass
 
                 # Numeric-only aggregates (best-effort)
                 if _is_number(out.get("last_value")) and out["count"] > 0:
-                    q_num = f'''
-data = from(bucket: "{cfg["bucket"]}")
-  {range_clause}
-  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
-  |> keep(columns: ["_time", "_value"])
-  |> group()
+                    def _try_stat(name: str, flux_tail: str) -> None:
+                        try:
+                            tables = c.query_api().query(_q_one(flux_tail), org=cfg["org"])
+                            rec = _first_record(tables)
+                            if rec is not None:
+                                out[name] = rec.get_value()
+                        except Exception:
+                            return
 
-minT    = data |> min()    |> map(fn: (r) => ({{ r with stat: "min" }})) |> keep(columns: ["stat", "_value"])
-maxT    = data |> max()    |> map(fn: (r) => ({{ r with stat: "max" }})) |> keep(columns: ["stat", "_value"])
-meanT   = data |> mean()   |> map(fn: (r) => ({{ r with stat: "mean" }})) |> keep(columns: ["stat", "_value"])
-stddevT = data |> stddev() |> map(fn: (r) => ({{ r with stat: "stddev" }})) |> keep(columns: ["stat", "_value"])
-p05T    = data |> quantile(q: 0.05) |> map(fn: (r) => ({{ r with stat: "p05" }})) |> keep(columns: ["stat", "_value"])
-p50T    = data |> quantile(q: 0.50) |> map(fn: (r) => ({{ r with stat: "p50" }})) |> keep(columns: ["stat", "_value"])
-p95T    = data |> quantile(q: 0.95) |> map(fn: (r) => ({{ r with stat: "p95" }})) |> keep(columns: ["stat", "_value"])
+                    _try_stat("min", "data |> min() |> limit(n:1)")
+                    _try_stat("max", "data |> max() |> limit(n:1)")
+                    _try_stat("mean", "data |> mean() |> limit(n:1)")
+                    _try_stat("stddev", "data |> stddev() |> limit(n:1)")
+                    _try_stat("p05", "data |> quantile(q: 0.05) |> limit(n:1)")
+                    _try_stat("p50", "data |> quantile(q: 0.50) |> limit(n:1)")
+                    _try_stat("p95", "data |> quantile(q: 0.95) |> limit(n:1)")
 
-union(tables: [minT, maxT, meanT, stddevT, p05T, p50T, p95T]) |> keep(columns: ["stat", "_value"])
-'''
-                    try:
-                        tables2 = c.query_api().query(q_num, org=cfg["org"])
-                        for t in tables2:
-                            for r in t.records:
-                                k = r.values.get("stat")
-                                if k in ("min", "max", "mean", "stddev", "p05", "p50", "p95"):
-                                    out[str(k)] = r.get_value()
-                    except Exception:
-                        pass
-
-                return jsonify({"ok": True, "stats": out, "stats_scope": stats_scope})
+            return jsonify({"ok": True, "stats": out, "stats_scope": stats_scope})
         else:
             if not cfg.get("database"):
                 return jsonify({"ok": False, "error": "InfluxDB v1 requires database. Bitte konfigurieren."}), 400

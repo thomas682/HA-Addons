@@ -196,5 +196,5 @@ def test_stats_v2_flux_avoids_time_label_literal(load_app_module, tmp_path, monk
     assert j["ok"] is True
     assert captured
     q = "\n".join(captured)
-    assert "with stat" in q
     assert "_time:" not in q
+    assert "union(" not in q
