@@ -84,3 +84,9 @@ Das Format orientiert sich an "Keep a Changelog" (kurz gehalten).
 ### Fixed
 
 - API: Zeitfenster (start/stop) konsistent fuer Query/Stats/Tag-Values verarbeitet.
+
+## 1.1.2n - 2026-02-23
+
+### Fixed
+
+- API: `GET ./api/measurements` Flux-Query nutzt wieder echte Zeilenumbrueche (kein `\\n` Literal), damit keine 400er Compile-Fehler mehr auftreten.
