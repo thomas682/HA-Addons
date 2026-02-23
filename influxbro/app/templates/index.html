@@ -40,6 +40,11 @@
     .card { border:1px solid #eee; border-radius:10px; padding:10px; }
     .card .k { font-size:12px; opacity:.75; }
     .card .v { font-weight:600; overflow-wrap:anywhere; }
+
+    .stats_wrap .stat_block { padding: 8px; }
+    .stats_wrap .card { padding: 8px; }
+    .stats_wrap .card .k { font-size: 11px; }
+    .stats_wrap .card .v { font-size: 13px; }
     a { color: inherit; }
     details { margin-top: 10px; border: 1px solid #ddd; border-radius: 10px; padding: 10px; }
     details > summary { cursor: pointer; font-weight: 600; }
@@ -104,7 +109,7 @@
       <div class="muted">Zeitangaben werden als lokale Zeit interpretiert und als UTC an die API gesendet.</div>
     </div>
     <div class="control"><button id="load" style="width:100%;">Aktualisieren</button></div>
-    <div class="control"><div class="muted" style="padding-top: 4px;">Auto-Refresh aktiv (mit kurzer Verzoegerung).</div></div>
+    <div class="control"><div class="muted" style="padding-top: 4px;">Laedt Graph/Tabelle/Statistik erst nach Klick auf <code>Aktualisieren</code>.</div></div>
   </div>
 
   <details>
@@ -129,15 +134,7 @@
 
       <div class="stats_wrap">
     <div class="stats_header">
-      <div class="control" style="min-width: 260px;">
-        <label>Statistik (Total-Auswahl)</label>
-        <select id="stats_scope">
-          <option value="range" selected>Zeitraum (wie Graph)</option>
-          <option value="1y">1 Jahr</option>
-          <option value="inf">Unendlich</option>
-        </select>
-      </div>
-      <div class="muted">Statistik-Auswahl betrifft nur die Statistik, nicht Graph/Tabelle.</div>
+      <div class="muted">Statistik links = Zeitraum, rechts = alles.</div>
     </div>
 
     <div class="stats_grid" id="stats" style="display:none;">
@@ -158,9 +155,9 @@
         </div>
       </div>
 
-      <div class="stat_block">
-        <div class="head">Total (<span id="s_total_label">1 Jahr</span>)</div>
-        <div class="cards">
+          <div class="stat_block">
+            <div class="head">Alles</div>
+            <div class="cards">
           <div class="card"><div class="k">Aktueller Wert</div><div class="v" id="s_tot_last"></div></div>
           <div class="card"><div class="k">Anzahl Werte</div><div class="v" id="s_tot_count"></div></div>
           <div class="card"><div class="k">Aeltester Zeitstempel</div><div class="v" id="s_tot_old"></div></div>
@@ -183,22 +180,17 @@
         <div class="table_head">
           <div>
             <div style="font-weight:700;">Tabelle (wie Graph)</div>
+            <div class="muted" id="table_range"></div>
             <div class="muted" id="table_info"></div>
           </div>
           <div class="row" style="margin-top:0;">
-            <div style="min-width: 120px;">
-              <label>Filter Wert</label>
-              <select id="tbl_op">
-                <option value="" selected>(aus)</option>
-                <option value=">">&gt;</option>
-                <option value=">=">&gt;=</option>
-                <option value="<">&lt;</option>
-                <option value="<=">&lt;=</option>
-              </select>
+            <div style="min-width: 140px;">
+              <label>Wert von (>=)</label>
+              <input id="tbl_min" placeholder="0" />
             </div>
             <div style="min-width: 140px;">
-              <label>&nbsp;</label>
-              <input id="tbl_val" placeholder="z.B. 100" />
+              <label>bis (<=)</label>
+              <input id="tbl_max" placeholder="999999" />
             </div>
           </div>
         </div>
@@ -251,13 +243,13 @@ const $tbl = document.querySelector('#tbl tbody');
 const $tableInfo = document.getElementById('table_info');
 const $thTime = document.getElementById('th_time');
 const $thValue = document.getElementById('th_value');
-const $tblOp = document.getElementById('tbl_op');
-const $tblVal = document.getElementById('tbl_val');
+const $tableRange = document.getElementById('table_range');
+const $tblMin = document.getElementById('tbl_min');
+const $tblMax = document.getElementById('tbl_max');
+const $tableBox = document.getElementById('table_box');
 const $confirm = document.getElementById('confirm');
 
 const $stats = document.getElementById('stats');
-const $statsScope = document.getElementById('stats_scope');
-const $sTotalLabel = document.getElementById('s_total_label');
 
 const $sCurrLast = document.getElementById('s_curr_last');
 const $sCurrCount = document.getElementById('s_curr_count');
@@ -285,7 +277,29 @@ const $sTotStddev = document.getElementById('s_tot_stddev');
 const canvas = document.getElementById('chart');
 const ctx = canvas.getContext('2d');
 
+let UI_DECIMALS = 3;
+let UI_TABLE_VISIBLE_ROWS = 20;
+
 function fmt(x){ if(x === null || x === undefined || x === "") return ""; return String(x); }
+
+function fmtNum(v){
+  if(typeof v === "number" && isFinite(v)) return v.toFixed(UI_DECIMALS);
+  // Also handle numeric strings from API
+  const n = Number(v);
+  if(String(v).trim() !== "" && isFinite(n)) return n.toFixed(UI_DECIMALS);
+  return fmt(v);
+}
+
+function fmtTs(iso){
+  if(!iso) return "";
+  const d = new Date(iso);
+  if(!isFinite(d.getTime())) return fmt(iso);
+  const pad = (n, w=2) => String(n).padStart(w, "0");
+  return (
+    pad(d.getDate()) + "." + pad(d.getMonth()+1) + "." + String(d.getFullYear()).slice(-2) +
+    " " + pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":" + pad(d.getSeconds()) + "." + pad(d.getMilliseconds(), 3)
+  );
+}
 
 function norm(s){ return String(s || "").toLowerCase(); }
 
@@ -311,6 +325,40 @@ function setSelectOptions(selectEl, items, placeholder){
     selectEl.appendChild(o);
   });
   if(prev && Array.from(selectEl.options).some(o=>o.value===prev)) selectEl.value = prev;
+}
+
+const LS_KEY = "influxbro_ui_state_v1";
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(LS_KEY);
+    if(!raw) return {};
+    const j = JSON.parse(raw);
+    return (j && typeof j === "object") ? j : {};
+  }catch(e){
+    return {};
+  }
+}
+
+function saveState(){
+  try{
+    const j = {
+      measurement_filter: $mf ? $mf.value : "",
+      friendly_name: $n ? $n.value : "",
+      entity_id: $e ? $e.value : "",
+      range: $r ? $r.value : "24h",
+      start: $start ? $start.value : "",
+      stop: $stop ? $stop.value : "",
+      q_measurement_filter: $qMf ? $qMf.value : "",
+      q_friendly_name: $qFn ? $qFn.value : "",
+      q_entity_id: $qEid ? $qEid.value : "",
+      tbl_min: $tblMin ? $tblMin.value : "",
+      tbl_max: $tblMax ? $tblMax.value : "",
+      sort_key: TABLE_SORT.key,
+      sort_dir: TABLE_SORT.dir,
+    };
+    localStorage.setItem(LS_KEY, JSON.stringify(j));
+  }catch(e){}
 }
 
 function debounce(fn, ms){
@@ -354,6 +402,20 @@ function displayError(e){
   const s = String(e && e.message ? e.message : e);
   // Avoid dumping huge API exception strings.
   err(s.length > 600 ? (s.slice(0, 600) + "...") : s);
+}
+
+async function loadUiConfig(){
+  try{
+    const j = await api("./api/config");
+    const cfg = j.config || {};
+    const d = Number(cfg.ui_decimals);
+    if(isFinite(d) && d >= 0 && d <= 10) UI_DECIMALS = Math.trunc(d);
+    const r = Number(cfg.ui_table_visible_rows);
+    if(isFinite(r) && r > 0) UI_TABLE_VISIBLE_ROWS = Math.trunc(r);
+    if($tableBox) $tableBox.style.setProperty("--max-rows", String(UI_TABLE_VISIBLE_ROWS));
+  }catch(e){
+    // ignore; fallback to defaults
+  }
 }
 
 function toLocalDatetimeValue(d){
@@ -407,9 +469,29 @@ function tagQueryParams(opts){
   return q.join("&");
 }
 
-function updateTotalLabel(){
-  const v = $statsScope.value;
-  $sTotalLabel.textContent = (v === "1y") ? "1 Jahr" : (v === "inf") ? "Unendlich" : "Zeitraum";
+function rangeToStartStop(){
+  const now = new Date();
+  if($r.value === "custom"){
+    const s = $start.value ? new Date($start.value) : null;
+    const e = $stop.value ? new Date($stop.value) : null;
+    return { start: s, stop: e };
+  }
+  const m = String($r.value || "").match(/^(\d+)([hd])$/);
+  if(!m) return { start: null, stop: now };
+  const n = Number(m[1]);
+  const unit = m[2];
+  const ms = (unit === "d") ? (n * 24 * 60 * 60 * 1000) : (n * 60 * 60 * 1000);
+  return { start: new Date(now.getTime() - ms), stop: now };
+}
+
+function renderTableRange(){
+  if(!$tableRange) return;
+  const {start, stop} = rangeToStartStop();
+  const s = start ? fmtTs(start.toISOString()) : "";
+  const e = stop ? fmtTs(stop.toISOString()) : "";
+  if(s && e) $tableRange.textContent = `Zeitraum: ${s} bis ${e}`;
+  else if(e) $tableRange.textContent = `Zeitraum bis: ${e}`;
+  else $tableRange.textContent = "";
 }
 
 let ALL_MEASUREMENTS = [];
@@ -475,8 +557,7 @@ async function resolveSignal(){
 
 let LAST_ROWS = [];
 let TABLE_SORT = { key: "time", dir: "asc" };
-let TABLE_FILTER = { op: "", value: "" };
-const MAX_TABLE_ROWS = 20;
+let TABLE_FILTER = { min: "0", max: "999999" };
 
 function tableKbLoaded(){
   try{
@@ -489,25 +570,25 @@ function tableKbLoaded(){
 
 function fmtLastValue(s){
   if(!s) return "";
-  const v = (s.last_value === null || s.last_value === undefined) ? "" : String(s.last_value);
+  const v = (s.last_value === null || s.last_value === undefined) ? "" : fmtNum(s.last_value);
   const t = s.newest_time ? String(s.newest_time) : "";
-  return v ? (t ? (v + " @ " + t) : v) : "";
+  return v ? (t ? (v + " @ " + fmtTs(t)) : v) : "";
 }
 
 function fillStats(prefix, s){
   const set = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = fmt(val); };
   set(prefix + "_last", fmtLastValue(s));
   set(prefix + "_count", s.count);
-  set(prefix + "_old", s.oldest_time);
-  set(prefix + "_new", s.newest_time);
-  set(prefix + "_min", s.min);
-  set(prefix + "_max", s.max);
-  set(prefix + "_mean", s.mean);
-  set(prefix + "_p50", s.p50);
-  const p05 = (s.p05 === null || s.p05 === undefined) ? "" : String(s.p05);
-  const p95 = (s.p95 === null || s.p95 === undefined) ? "" : String(s.p95);
+  set(prefix + "_old", fmtTs(s.oldest_time));
+  set(prefix + "_new", fmtTs(s.newest_time));
+  set(prefix + "_min", fmtNum(s.min));
+  set(prefix + "_max", fmtNum(s.max));
+  set(prefix + "_mean", fmtNum(s.mean));
+  set(prefix + "_p50", fmtNum(s.p50));
+  const p05 = (s.p05 === null || s.p05 === undefined) ? "" : fmtNum(s.p05);
+  const p95 = (s.p95 === null || s.p95 === undefined) ? "" : fmtNum(s.p95);
   set(prefix + "_p05p95", (p05 || p95) ? (p05 + " / " + p95) : "");
-  set(prefix + "_stddev", s.stddev);
+  set(prefix + "_stddev", fmtNum(s.stddev));
 }
 
 function sortRowsForTable(rows){
@@ -534,34 +615,32 @@ function sortRowsForTable(rows){
 }
 
 function applyValueFilter(rows){
-  const op = (TABLE_FILTER.op || "").trim();
-  const raw = (TABLE_FILTER.value || "").trim();
-  if(!op || !raw) return rows;
-  const n = Number(raw);
-  if(!isFinite(n)) return rows;
-
-  const cmp = (v) => {
+  const minRaw = (TABLE_FILTER.min || "").trim();
+  const maxRaw = (TABLE_FILTER.max || "").trim();
+  const hasMin = minRaw !== "" && isFinite(Number(minRaw));
+  const hasMax = maxRaw !== "" && isFinite(Number(maxRaw));
+  if(!hasMin && !hasMax) return rows;
+  const minV = hasMin ? Number(minRaw) : null;
+  const maxV = hasMax ? Number(maxRaw) : null;
+  return (rows || []).filter(r => {
+    const v = r && r.value;
     if(typeof v !== "number" || !isFinite(v)) return false;
-    if(op === ">") return v > n;
-    if(op === ">=") return v >= n;
-    if(op === "<") return v < n;
-    if(op === "<=") return v <= n;
+    if(minV !== null && v < minV) return false;
+    if(maxV !== null && v > maxV) return false;
     return true;
-  };
-  return (rows || []).filter(r => cmp(r && r.value));
+  });
 }
 
 function renderTable(){
   const filtered = applyValueFilter(LAST_ROWS);
   const rows = sortRowsForTable(filtered);
-  let display = rows;
-  if(display.length > MAX_TABLE_ROWS) display = display.slice(-MAX_TABLE_ROWS);
+  const display = rows;
 
   $tbl.innerHTML = "";
   display.forEach(row=>{
     const tr=document.createElement("tr");
-    const tdT=document.createElement("td"); tdT.textContent=row.time;
-    const tdV=document.createElement("td"); tdV.textContent=(row.value===null||row.value===undefined)?"":row.value;
+    const tdT=document.createElement("td"); tdT.textContent=fmtTs(row.time);
+    const tdV=document.createElement("td"); tdV.textContent=(row.value===null||row.value===undefined)?"":fmtNum(row.value);
     tr.appendChild(tdT); tr.appendChild(tdV);
     $tbl.appendChild(tr);
   });
@@ -571,13 +650,12 @@ function renderTable(){
   const baseTotal = (LAST_ROWS || []).length;
   if($tableInfo){
     const arrow = TABLE_SORT.dir === "desc" ? "↓" : "↑";
-    const filt = (baseTotal !== total) ? ` | Filter: ${TABLE_FILTER.op}${TABLE_FILTER.value}` : "";
-    $tableInfo.textContent = `Zeilen: ${shown}/${total}${baseTotal!==total?` (von ${baseTotal})`:""} | Sort: ${TABLE_SORT.key} ${arrow}${filt}`;
+    const filt = (baseTotal !== total) ? ` | Filter: ${TABLE_FILTER.min}..${TABLE_FILTER.max}` : "";
+    $tableInfo.textContent = `Zeilen: ${shown}${baseTotal!==shown?` (von ${baseTotal})`:""} | Sort: ${TABLE_SORT.key} ${arrow}${filt}`;
   }
 }
 
 async function loadStats(){
-  updateTotalLabel();
   $stats.style.display = "grid";
   fillStats("s_curr", {});
   fillStats("s_tot", {});
@@ -592,7 +670,7 @@ async function loadStats(){
   }
 
   try{
-    const jTot = await api("./api/stats", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({...base, stats_scope: $statsScope.value})});
+    const jTot = await api("./api/stats", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({...base, stats_scope: "inf"})});
     fillStats("s_tot", jTot.stats || {});
     anyOk = true;
   }catch(e){
@@ -607,6 +685,7 @@ async function loadStats(){
 async function loadData(){
   err(""); ok("");
   if(!$n.value){ err("Bitte zuerst einen Messwert (friendly_name) auswaehlen."); return; }
+  renderTableRange();
   $tbl.innerHTML = "";
   const j = await api("./api/query", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(currentFilters())});
   const rows = j.rows || [];
@@ -619,14 +698,13 @@ async function loadData(){
 async function refreshAll(){
   try{
     if(!$n.value){ return; }
+    saveState();
     try{ await resolveSignal(); } catch(e){ displayError(e); }
     await loadData();
   }catch(e){
     displayError(e);
   }
 }
-
-const refreshAllDebounced = debounce(()=>refreshAll(), 350);
 
 async function deleteData(){
   err(""); ok("");
@@ -663,48 +741,48 @@ function autoSpanAll(){
 
 $mf.addEventListener("change", async ()=>{
   try{
+    saveState();
     await loadFriendlyNames();
     await loadEntityIds();
     autoSpanAll();
-    refreshAllDebounced();
   }catch(e){ displayError(e); }
 });
 
 $n.addEventListener("change", async ()=>{
   try{
+    saveState();
     await loadEntityIds();
     autoSpanAll();
-    refreshAllDebounced();
   }catch(e){ displayError(e); }
 });
 
 $r.addEventListener("change", async ()=>{
   try{
+    saveState();
     $custom.style.display = ($r.value === "custom") ? "block" : "none";
     await loadFriendlyNames();
     await loadEntityIds();
     autoSpanAll();
-    refreshAllDebounced();
+    renderTableRange();
   }catch(e){ displayError(e); }
 });
 
 $e.addEventListener("change", async ()=>{
   try{
+    saveState();
     await loadFriendlyNames();
     autoSpanAll();
-    refreshAllDebounced();
   }catch(e){ displayError(e); }
 });
-$start.addEventListener("change", async ()=>{ if($r.value==="custom") { autoSpanAll(); refreshAllDebounced(); } });
-$stop.addEventListener("change", async ()=>{ if($r.value==="custom") { autoSpanAll(); refreshAllDebounced(); } });
-$statsScope.addEventListener("change", async ()=>{ updateTotalLabel(); refreshAllDebounced(); });
+$start.addEventListener("change", async ()=>{ if($r.value==="custom") { saveState(); autoSpanAll(); renderTableRange(); } });
+$stop.addEventListener("change", async ()=>{ if($r.value==="custom") { saveState(); autoSpanAll(); renderTableRange(); } });
 
 $m.addEventListener("change", async ()=>{ try{ await loadFields(); } catch(e){ err(String(e)); } });
 
 // Search inputs (case-insensitive filtering)
-if($qMf) $qMf.addEventListener("input", ()=>{ renderMeasurements(); });
-if($qFn) $qFn.addEventListener("input", ()=>{ renderFriendly(); });
-if($qEid) $qEid.addEventListener("input", ()=>{ renderEntity(); });
+if($qMf) $qMf.addEventListener("input", ()=>{ saveState(); renderMeasurements(); });
+if($qFn) $qFn.addEventListener("input", ()=>{ saveState(); renderFriendly(); });
+if($qEid) $qEid.addEventListener("input", ()=>{ saveState(); renderEntity(); });
 
 // Sortable table
 function toggleSort(key){
@@ -714,6 +792,7 @@ function toggleSort(key){
     TABLE_SORT.key = key;
     TABLE_SORT.dir = (key === "time") ? "asc" : "desc";
   }
+  saveState();
   renderTable();
 }
 if($thTime) $thTime.addEventListener("click", ()=>toggleSort("time"));
@@ -721,28 +800,61 @@ if($thValue) $thValue.addEventListener("click", ()=>toggleSort("value"));
 
 // Table value filter
 function onTableFilter(){
-  TABLE_FILTER.op = $tblOp ? $tblOp.value : "";
-  TABLE_FILTER.value = $tblVal ? $tblVal.value : "";
+  TABLE_FILTER.min = $tblMin ? $tblMin.value : "";
+  TABLE_FILTER.max = $tblMax ? $tblMax.value : "";
+  saveState();
   renderTable();
 }
-if($tblOp) $tblOp.addEventListener("change", onTableFilter);
-if($tblVal) $tblVal.addEventListener("input", debounce(onTableFilter, 200));
+if($tblMin) $tblMin.addEventListener("input", debounce(onTableFilter, 200));
+if($tblMax) $tblMax.addEventListener("input", debounce(onTableFilter, 200));
 
-document.getElementById("load").addEventListener("click", ()=>refreshAll().catch(e=>err(String(e))));
+document.getElementById("load").addEventListener("click", ()=>refreshAll().catch(displayError));
 document.getElementById("del").addEventListener("click", ()=>deleteData().catch(e=>err(String(e))));
 
 (async ()=>{
   try{
+    await loadUiConfig();
+
+    const st = loadState();
+    if($qMf && st.q_measurement_filter) $qMf.value = st.q_measurement_filter;
+    if($qFn && st.q_friendly_name) $qFn.value = st.q_friendly_name;
+    if($qEid && st.q_entity_id) $qEid.value = st.q_entity_id;
+
+    if($r && st.range) $r.value = st.range;
+    if($start && st.start) $start.value = st.start;
+    if($stop && st.stop) $stop.value = st.stop;
+    $custom.style.display = ($r.value === "custom") ? "block" : "none";
+
+    if($tblMin) $tblMin.value = (st.tbl_min !== undefined && st.tbl_min !== "") ? st.tbl_min : "0";
+    if($tblMax) $tblMax.value = (st.tbl_max !== undefined && st.tbl_max !== "") ? st.tbl_max : "999999";
+    TABLE_FILTER.min = $tblMin ? $tblMin.value : "0";
+    TABLE_FILTER.max = $tblMax ? $tblMax.value : "999999";
+
+    if(st.sort_key) TABLE_SORT.key = st.sort_key;
+    if(st.sort_dir) TABLE_SORT.dir = st.sort_dir;
+
+    // Default custom times to last 24h if empty.
     const now = new Date();
     const start = new Date(now.getTime() - 24*60*60*1000);
-    $start.value = toLocalDatetimeValue(start);
-    $stop.value = toLocalDatetimeValue(now);
-    $r.value = "24h";
+    if(!$start.value) $start.value = toLocalDatetimeValue(start);
+    if(!$stop.value) $stop.value = toLocalDatetimeValue(now);
+    if(!$r.value) $r.value = "24h";
+
     await loadMeasurements();
+    if(st.measurement_filter) $mf.value = st.measurement_filter;
+    renderMeasurements();
+
     await loadFriendlyNames();
+    if(st.friendly_name) $n.value = st.friendly_name;
+    renderFriendly();
+
     await loadEntityIds();
-    updateTotalLabel();
+    if(st.entity_id) $e.value = st.entity_id;
+    renderEntity();
+
+    renderTableRange();
     autoSpanAll();
+    saveState();
   } catch(e){ displayError(e); }
 })();
 </script>
