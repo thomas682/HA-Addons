@@ -7,10 +7,13 @@
   <style>
     body { font-family: system-ui, sans-serif; margin: 16px; max-width: 980px; }
     .row { display:flex; gap:12px; flex-wrap:wrap; align-items:end; }
+    .grid { display:grid; grid-template-columns: repeat(2, minmax(260px, 1fr)); gap: 12px; align-items:end; }
+    @media (max-width: 860px){ .grid { grid-template-columns: 1fr; } }
     label { display:block; font-size:12px; opacity:0.8; }
-    input, select, button { padding:8px; min-width: 240px; }
-    input[type="number"]{ min-width: 140px; }
-    button { min-width: unset; }
+    input, select, button { padding:10px 12px; height: 40px; box-sizing: border-box; }
+    input, select { width: 100%; }
+    input[type="number"]{ width: 100%; }
+    button { width: 100%; }
     .err { color: #b00020; margin-top: 8px; white-space: pre-wrap; }
     .ok { color: #0a7a28; margin-top: 8px; white-space: pre-wrap; }
     .card { border: 1px solid #ddd; border-radius: 10px; padding: 12px; margin-top: 12px; }
@@ -37,14 +40,15 @@
 
   <div class="card">
     <h3>Parametrierung aus Home Assistant YAML</h3>
-    <div class="row">
-      <div style="flex:1; min-width: 360px;">
+    <div class="grid">
+      <div>
         <label>Konfigurationsdatei (relativ zu <code>/config</code> oder absolut unter <code>/config</code>)</label>
         <input id="influx_yaml_path" />
         <div class="muted">Beispiel: <code>homeassistant/influx.yaml</code> (entspricht <code>/config/homeassistant/influx.yaml</code>)</div>
         <div class="muted">Ablauf: erst <code>influx.yaml suchen</code>, Pfad ggf. anpassen, dann <code>yaml Daten einlesen</code> (traegt Werte ein, speichert aber nicht).</div>
       </div>
       <div>
+        <label>&nbsp;</label>
         <button id="find_yaml">influx.yaml suchen</button>
         <button id="read_yaml">yaml Daten einlesen</button>
       </div>
@@ -52,7 +56,7 @@
   </div>
 
   <div class="card">
-    <div class="row">
+    <div class="grid">
       <div><label>Influx Version</label><select id="influx_version"><option value="2">2 (Flux)</option><option value="1">1 (InfluxQL)</option></select></div>
       <div><label>Scheme</label><select id="scheme"><option value="http">http</option><option value="https">https</option></select></div>
       <div><label>Host</label><input id="host" /><div class="muted">DNS-Name oder IP der InfluxDB (z.B. <code>localhost</code> oder HA Add-on Hostname).</div></div>
@@ -65,7 +69,7 @@
 
   <div class="card">
     <h3>InfluxDB v2</h3>
-    <div class="row">
+    <div class="grid">
       <div><label>org</label><input id="org" /><div class="muted">Organisation (InfluxDB v2).</div></div>
       <div><label>bucket</label><input id="bucket" /><div class="muted">Bucket-Name (InfluxDB v2).</div></div>
       <div><label>token</label><input id="token" /><div class="muted">In der UI wird Token als <code>********</code> maskiert.</div></div>
@@ -75,7 +79,7 @@
 
   <div class="card">
     <h3>InfluxDB v1</h3>
-    <div class="row">
+    <div class="grid">
       <div><label>database</label><input id="database" /><div class="muted">DB Name (InfluxDB v1).</div></div>
       <div><label>username</label><input id="username" /><div class="muted">Optional, je nach Influx Konfiguration.</div></div>
       <div><label>password</label><input id="password" /><div class="muted">In der UI wird Passwort als <code>********</code> maskiert.</div></div>
@@ -84,8 +88,10 @@
   </div>
 
   <div class="card">
-    <button id="save">Speichern</button>
-    <button id="test">Influx Verbindung testen</button>
+    <div class="grid">
+      <div><button id="save">Speichern</button></div>
+      <div><button id="test">Influx Verbindung testen</button></div>
+    </div>
     <div id="err" class="err"></div>
     <div id="ok" class="ok"></div>
   </div>

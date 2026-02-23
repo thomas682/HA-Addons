@@ -687,7 +687,7 @@ def measurements():
                     "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
                 }), 400
             with v2_client(cfg) as c:
-                q = f'import "influxdata/influxdb/schema"\\nschema.measurements(bucket: "{cfg["bucket"]}")'
+                q = f'import "influxdata/influxdb/schema"\nschema.measurements(bucket: "{cfg["bucket"]}")'
                 tables = c.query_api().query(q, org=cfg["org"])
                 items = []
                 for t in tables:
