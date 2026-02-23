@@ -155,3 +155,10 @@ Das Format orientiert sich an "Keep a Changelog" (kurz gehalten).
 
 - Main UI: Tabellenfilter ohne Min/Max-Shortcuts; Operatoren inkl. >0.
 - Main UI: Anzahl Auswahloptionen wird bei Dropdowns angezeigt.
+
+## 1.1.2u - 2026-02-23
+
+### Changed
+
+- Main UI: Tabellenfilter als zwei Bedingungen (links/rechts) mit Operatoren (>, <, >=, <=) und Verbindung (und/oder).
+- Main UI: Standardfilter = "< 0" oder "> 999999" (zeigt Ausreisser).
