@@ -120,3 +120,16 @@ Das Format orientiert sich an "Keep a Changelog" (kurz gehalten).
 ### Fixed
 
 - Statistik (Total): kein Flux `union` mehr (verhindert "schema collision" bei gemischten Datentypen).
+
+## 1.1.2r - 2026-02-23
+
+### Added
+
+- Main UI: Einstellungen bleiben nach Reload erhalten (LocalStorage).
+- Main UI: Tabelle zeigt alle Messwerte (Scroll), Hoehe konfigurierbar ueber "Tabellenzeilen (sichtbar)".
+- Main UI: Tabellen-Filter als Bereich (min/max, inklusiv).
+- UI: Formatierung fuer Zeiten (tt.mm.jj hh:mm:ss.mmm) und Zahlen-Rundung konfigurierbar.
+
+### Changed
+
+- Main UI: Graph/Tabelle/Statistik werden erst nach Klick auf "Aktualisieren" geladen.
