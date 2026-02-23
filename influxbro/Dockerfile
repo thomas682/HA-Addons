@@ -3,6 +3,7 @@ RUN apk add --no-cache bash curl jq
 WORKDIR /app
 COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
+COPY config.yaml /app/addon_config.yaml
 COPY run.sh /run.sh
 RUN chmod +x /run.sh
 COPY app/ /app/

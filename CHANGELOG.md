@@ -55,3 +55,16 @@ Das Format orientiert sich an "Keep a Changelog" (kurz gehalten).
 
 - UI zeigt Add-on Version jetzt auch in der Konfiguration an.
 - Kleine Hilfetexte unter den relevanten Eingabefeldern (Config + Delete-Bestaetigung).
+
+## 1.1.2k - 2026-02-23
+
+### Fixed
+
+- Versionsanzeige: `/api/info` liefert jetzt auch dann die korrekte Version, wenn `ADDON_VERSION` im Add-on nicht gesetzt ist (Fallback auf `/app/addon_config.yaml`).
+
+## 1.1.2l - 2026-02-23
+
+### Fixed
+
+- Main UI: leere Measurement/Field Listen geben jetzt klare Fehlermeldungen, wenn die Influx-Konfiguration fehlt.
+- Optionales YAML-Fallback fuer API Calls (nur fuer die laufende Session, nachdem in der Konfiguration einmal "yaml Daten einlesen" gedrueckt wurde).

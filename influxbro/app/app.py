@@ -1,6 +1,7 @@
 import json
 import math
 import os
+import re
 from datetime import datetime, timedelta, timezone
 from contextlib import contextmanager
 from pathlib import Path
@@ -210,6 +211,47 @@ def load_influx_yaml(influx_yaml_path: str):
         # Avoid leaking secrets; keep details minimal.
         LAST_YAML_ERROR = f"failed to read/parse YAML: {e.__class__.__name__}"
         return None, None
+
+
+def _overlay_from_yaml(cfg_in: dict) -> tuple[dict, str | None]:
+    """Overlay missing config values from influx.yaml (no persistence)."""
+
+    path_str = (cfg_in.get("influx_yaml_path") or DEFAULT_INFLUX_YAML_PATH).strip()
+    detected, src = load_influx_yaml(path_str)
+    if not detected:
+        return cfg_in, None
+
+    merged = dict(cfg_in)
+
+    # Only fill missing/empty values from YAML, do not override explicit UI inputs
+    for k, v in detected.items():
+        if k not in merged or merged.get(k) in (None, "", 0):
+            merged[k] = v
+
+    # Keep some additional fields in sync if YAML provided them and UI left defaults
+    if merged.get("scheme") in (None, "") and detected.get("scheme"):
+        merged["scheme"] = detected["scheme"]
+    if merged.get("host") in (None, "") and detected.get("host"):
+        merged["host"] = detected["host"]
+    if merged.get("port") in (None, "", 0) and detected.get("port"):
+        merged["port"] = detected["port"]
+
+    return merged, src
+
+
+def _overlay_from_yaml_if_enabled(cfg_in: dict) -> dict:
+    """Overlay from YAML only after explicit user action in Config UI."""
+
+    if not YAML_FALLBACK_ENABLED:
+        return cfg_in
+
+    merged, src = _overlay_from_yaml(cfg_in)
+    if src:
+        global LAST_AUTODETECT_SOURCE
+        LAST_AUTODETECT_SOURCE = src
+    return merged
+
+
 app = Flask(__name__)
 RUNTIME_CFG_FILE = DATA_DIR / "influx_browser_config.json"
 
@@ -221,6 +263,7 @@ ALLOW_DELETE = env_bool("ALLOW_DELETE", False)
 DELETE_CONFIRM_PHRASE = os.environ.get("DELETE_CONFIRM_PHRASE", "DELETE")
 
 LAST_AUTODETECT_SOURCE = None
+YAML_FALLBACK_ENABLED = False
 
 DEFAULT_CFG = {
     "influx_version": 2,
@@ -403,6 +446,10 @@ def api_load_influx_yaml():
     global LAST_AUTODETECT_SOURCE
     LAST_AUTODETECT_SOURCE = src
 
+    # Enable YAML fallback for this runtime session (explicit user action)
+    global YAML_FALLBACK_ENABLED
+    YAML_FALLBACK_ENABLED = True
+
     return jsonify({"ok": True, "source": src, "config": detected})
 
 
@@ -504,30 +551,10 @@ def api_test():
 
     # If required fields are missing, try to load them from influx.yaml (no persistence)
     def _overlay_from_yaml_if_possible(cfg_in: dict) -> dict:
-        path_str = (cfg_in.get("influx_yaml_path") or DEFAULT_INFLUX_YAML_PATH).strip()
-        detected, src = load_influx_yaml(path_str)
-        if not detected:
-            return cfg_in
-
-        merged = dict(cfg_in)
-
-        # Only fill missing/empty values from YAML, do not override explicit UI inputs
-        for k, v in detected.items():
-            if k not in merged or merged.get(k) in (None, "", 0):
-                merged[k] = v
-
-        # Keep some additional fields in sync if YAML provided them and UI left defaults
-        if merged.get("scheme") in (None, "") and detected.get("scheme"):
-            merged["scheme"] = detected["scheme"]
-        if merged.get("host") in (None, "") and detected.get("host"):
-            merged["host"] = detected["host"]
-        if merged.get("port") in (None, "", 0) and detected.get("port"):
-            merged["port"] = detected["port"]
-
-        # Remember last source for UI display (runtime only)
-        global LAST_AUTODETECT_SOURCE
-        LAST_AUTODETECT_SOURCE = src
-
+        merged, src = _overlay_from_yaml(cfg_in)
+        if src:
+            global LAST_AUTODETECT_SOURCE
+            LAST_AUTODETECT_SOURCE = src
         return merged
 
     try:
@@ -556,11 +583,14 @@ def api_test():
         return jsonify({"ok": False, "error": str(e)}), 500
 @app.get("/api/measurements")
 def measurements():
-    cfg = load_cfg()
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
     try:
         if int(cfg.get("influx_version",2)) == 2:
             if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
-                return jsonify({"ok": False, "error": "InfluxDB v2 requires token, org, bucket"}), 400
+                return jsonify({
+                    "ok": False,
+                    "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
+                }), 400
             with v2_client(cfg) as c:
                 q = f'import "influxdata/influxdb/schema"\\nschema.measurements(bucket: "{cfg["bucket"]}")'
                 tables = c.query_api().query(q, org=cfg["org"])
@@ -571,7 +601,7 @@ def measurements():
                 return jsonify({"ok": True, "measurements": sorted(set(items))})
         else:
             if not cfg.get("database"):
-                return jsonify({"ok": False, "error": "InfluxDB v1 requires database"}), 400
+                return jsonify({"ok": False, "error": "InfluxDB v1 requires database. Bitte konfigurieren."}), 400
             c = v1_client(cfg)
             res = c.query("SHOW MEASUREMENTS")
             items = []
@@ -584,17 +614,22 @@ def measurements():
 
 @app.get("/api/fields")
 def fields():
-    cfg = load_cfg()
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
     measurement = request.args.get("measurement", "")
     if not measurement:
         return jsonify({"ok": False, "error": "measurement required"}), 400
     try:
         if int(cfg.get("influx_version",2)) == 2:
+            if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+                return jsonify({
+                    "ok": False,
+                    "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
+                }), 400
             with v2_client(cfg) as c:
                 q = f'''
-import "influxdata/influxdb/schema"
-schema.measurementFieldKeys(bucket: "{cfg["bucket"]}", measurement: "{measurement}")
-'''
+ import "influxdata/influxdb/schema"
+ schema.measurementFieldKeys(bucket: "{cfg["bucket"]}", measurement: "{measurement}")
+ '''
                 tables = c.query_api().query(q, org=cfg["org"])
                 fs = []
                 for t in tables:
@@ -602,6 +637,8 @@ schema.measurementFieldKeys(bucket: "{cfg["bucket"]}", measurement: "{measuremen
                         fs.append(str(r.get_value()))
                 return jsonify({"ok": True, "fields": sorted(set(fs))})
         else:
+            if not cfg.get("database"):
+                return jsonify({"ok": False, "error": "InfluxDB v1 requires database. Bitte konfigurieren."}), 400
             c = v1_client(cfg)
             res = c.query(f'SHOW FIELD KEYS FROM "{measurement}"')
             fs = []
@@ -614,7 +651,7 @@ schema.measurementFieldKeys(bucket: "{cfg["bucket"]}", measurement: "{measuremen
 
 @app.get("/api/tag_values")
 def tag_values():
-    cfg = load_cfg()
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
     tag = request.args.get("tag", "")
     measurement = request.args.get("measurement", "")
     range_key = request.args.get("range", "24h")
@@ -625,6 +662,11 @@ def tag_values():
 
     try:
         if int(cfg.get("influx_version",2)) == 2:
+            if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+                return jsonify({
+                    "ok": False,
+                    "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
+                }), 400
             start = range_to_flux(range_key)
             predicate_parts = []
             if measurement:
@@ -650,6 +692,8 @@ schema.tagValues(
                         vals.append(str(r.get_value()))
                 return jsonify({"ok": True, "values": sorted(set(vals))})
         else:
+            if not cfg.get("database"):
+                return jsonify({"ok": False, "error": "InfluxDB v1 requires database. Bitte konfigurieren."}), 400
             dur = range_to_influxql(range_key)
             c = v1_client(cfg)
             where = f"WHERE time > now() - {dur}"
@@ -670,7 +714,7 @@ schema.tagValues(
 
 @app.post("/api/query")
 def query():
-    cfg = load_cfg()
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
     body = request.get_json(force=True) or {}
     measurement = body.get("measurement", "")
     field = body.get("field", "")
@@ -683,6 +727,11 @@ def query():
 
     try:
         if int(cfg.get("influx_version",2)) == 2:
+            if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+                return jsonify({
+                    "ok": False,
+                    "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
+                }), 400
             flux_range = range_to_flux(range_key)
             extra = flux_tag_filter(entity_id, friendly_name)
             with v2_client(cfg) as c:
@@ -707,6 +756,8 @@ from(bucket: "{cfg["bucket"]}")
                     rows = rows[::step]
                 return jsonify({"ok": True, "rows": rows})
         else:
+            if not cfg.get("database"):
+                return jsonify({"ok": False, "error": "InfluxDB v1 requires database. Bitte konfigurieren."}), 400
             dur = range_to_influxql(range_key)
             c = v1_client(cfg)
             tag_where = influxql_tag_filter(entity_id, friendly_name)
@@ -725,7 +776,7 @@ from(bucket: "{cfg["bucket"]}")
 
 @app.post("/api/stats")
 def stats():
-    cfg = load_cfg()
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
     body = request.get_json(force=True) or {}
     measurement = body.get("measurement", "")
     field = body.get("field", "")
@@ -738,6 +789,11 @@ def stats():
 
     try:
         if int(cfg.get("influx_version",2)) == 2:
+            if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+                return jsonify({
+                    "ok": False,
+                    "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
+                }), 400
             flux_range = range_to_flux(range_key)
             extra = flux_tag_filter(entity_id, friendly_name)
             with v2_client(cfg) as c:
@@ -773,6 +829,8 @@ union(tables: [countT, minT, maxT, firstT, lastT])
                             out["newest_time"] = ts.astimezone(timezone.utc).isoformat() if isinstance(ts, datetime) else ts
                 return jsonify({"ok": True, "stats": out})
         else:
+            if not cfg.get("database"):
+                return jsonify({"ok": False, "error": "InfluxDB v1 requires database. Bitte konfigurieren."}), 400
             dur = range_to_influxql(range_key)
             c = v1_client(cfg)
             tag_where = influxql_tag_filter(entity_id, friendly_name)
@@ -803,7 +861,7 @@ union(tables: [countT, minT, maxT, firstT, lastT])
 
 @app.post("/api/delete")
 def delete():
-    cfg = load_cfg()
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
     if not ALLOW_DELETE:
         return jsonify({"ok": False, "error": "Deletion is disabled. Enable allow_delete in add-on options."}), 403
 
@@ -824,6 +882,11 @@ def delete():
 
     try:
         if int(cfg.get("influx_version",2)) == 2:
+            if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+                return jsonify({
+                    "ok": False,
+                    "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
+                }), 400
             predicate = f'_measurement="{measurement}"'
             if field:
                 predicate += f' AND _field="{field}"'
@@ -835,6 +898,8 @@ def delete():
                 c.delete_api().delete(start=start, stop=stop, predicate=predicate, bucket=cfg["bucket"], org=cfg["org"])
             return jsonify({"ok": True, "message": f"Deleted v2: {predicate} in {cfg['bucket']} from {start.isoformat()} to {stop.isoformat()}"})
         else:
+            if not cfg.get("database"):
+                return jsonify({"ok": False, "error": "InfluxDB v1 requires database. Bitte konfigurieren."}), 400
             dur = range_to_influxql(range_key)
             c = v1_client(cfg)
             tag_where = influxql_tag_filter(entity_id, friendly_name)
@@ -844,7 +909,30 @@ def delete():
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
 
-ADDON_VERSION = os.environ.get("ADDON_VERSION", "dev")
+_VERSION_RE = re.compile(r"^[0-9A-Za-z][0-9A-Za-z._-]*$")
+
+
+def _read_addon_version() -> str:
+    env = (os.environ.get("ADDON_VERSION") or "").strip()
+    if env and env not in ("0", "null") and _VERSION_RE.match(env):
+        return env
+
+    # Fallback to the metadata file baked into the image.
+    try:
+        meta = Path(__file__).resolve().parent / "addon_config.yaml"
+        if meta.exists():
+            data = yaml.safe_load(meta.read_text(encoding="utf-8")) or {}
+            if isinstance(data, dict):
+                v = (data.get("version") or "").strip()
+                if v and _VERSION_RE.match(v):
+                    return v
+    except Exception:
+        pass
+
+    return "dev"
+
+
+ADDON_VERSION = _read_addon_version()
 
 @app.get("/api/info")
 def api_info():
