@@ -73,7 +73,7 @@ python influxbro/app/app.py
 
 ### Lint / Static checks
 
-There is no configured linter in the repo today.
+There is no enforced linter in CI today, but ruff/black + pre-commit config exist.
 
 Baseline checks that should always work:
 
@@ -88,20 +88,22 @@ Recommended (optional) tooling for agents:
 python -m pip install ruff black
 ruff check influxbro/app/app.py
 black --check influxbro/app/app.py
+
+# or run via pre-commit
+python -m pip install pre-commit
+pre-commit run --all-files
 ```
 
 ### Tests
 
-There is currently no automated test suite (`tests/`, `pytest.ini`, etc.).
-
-If/when pytest is added, prefer patterns that make running a single test easy:
+Pytest is available (see `tests/` + `pytest.ini`). Prefer patterns that make running a single test easy:
 
 ```bash
 # run one file
-pytest tests/test_api.py -q
+pytest tests/test_api_yaml_flow.py -q
 
 # run one test by node id
-pytest tests/test_api.py::test_measurements_v2 -q
+pytest tests/test_api_yaml_flow.py::test_load_influx_yaml_resolves_secret -q
 
 # run a subset by keyword
 pytest -k measurements -q

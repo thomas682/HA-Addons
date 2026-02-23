@@ -1,6 +1,6 @@
 ---
 
-# Influx Browser & Cleaner – Home Assistant Add-on
+# InfluxBro – Home Assistant Add-on
 
 Custom Home Assistant Add-on zur direkten Analyse und Verwaltung von InfluxDB-Daten – ohne Grafana oder Influx Data Explorer.
 
@@ -126,7 +126,7 @@ Dann:
 
 ```
 repository.yaml
-influx_browser_cleaner/
+influxbro/
   config.yaml
   Dockerfile
   run.sh
@@ -144,7 +144,7 @@ Home Assistant erkennt Updates ausschließlich über die Versionsnummer im Add-o
 In:
 
 ```
-influx_browser_cleaner/config.yaml
+influxbro/config.yaml
 ```
 
 z. B.:
@@ -201,7 +201,7 @@ Update anklicken → Installieren → Neustarten.
 
 # Wichtige Hinweise
 
-* Der `slug` im `config.yaml` darf nicht verändert werden.
+* Der `slug` im `influxbro/config.yaml` darf nicht verändert werden.
 * Die Ordnerstruktur darf nicht verändert werden.
 * `repository.yaml` muss im Root des Repositories liegen.
 * Home Assistant muss das Repository im Netzwerk erreichen können.
@@ -228,7 +228,7 @@ Zusätzlich ist eine manuelle Bestätigung in der UI erforderlich.
 
 * Ingress Add-on (läuft innerhalb von Home Assistant)
 * Kommunikation direkt mit InfluxDB API
-* Persistente Konfiguration im Add-on Datenverzeichnis
+* Persistente Konfiguration im Add-on Datenverzeichnis (`/data/influx_browser_config.json`)
 * Kein externer Port notwendig
 
 ---
@@ -240,3 +240,33 @@ Wenn du möchtest, kann ich dir zusätzlich noch einen Abschnitt zu:
 * Branching-Strategie für Test/Stable-Versionen
 
 einbauen, damit dein Repo sauber wartbar bleibt.
+
+---
+
+## Lokale Entwicklung (kurz)
+
+### Docker Build/Run
+
+```bash
+docker build -t influxbro:dev ./influxbro
+```
+
+```bash
+mkdir -p .local-data
+cat > .local-data/options.json <<'JSON'
+{ "version": "dev", "allow_delete": false, "delete_confirm_phrase": "DELETE" }
+JSON
+
+docker run --rm -p 8099:8099 \
+  -v "$PWD/.local-data:/data" \
+  -v "$PWD:/repo:ro" \
+  influxbro:dev
+```
+
+### YAML Import in der UI
+
+In der Konfiguration gibt es zwei Schritte:
+1) `influx.yaml suchen` (findet die Datei unter `/config` und fuellt den Pfad)
+2) `yaml Daten einlesen` (traegt die Werte in die Felder ein; erst mit `Speichern` wird persistiert)
+
+Danach: `Influx Verbindung testen`.

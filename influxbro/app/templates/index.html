@@ -51,6 +51,10 @@
     <button id="load">Anzeigen</button>
   </div>
 
+  <div class="muted">
+    Tipps: Tag-Filter sind optional. Wenn du zuerst <code>entity_id</code> auswaehlst, wird <code>friendly_name</code> passend eingeschraenkt.
+  </div>
+
   <div id="err" class="err"></div>
   <div id="ok" class="ok"></div>
 
@@ -76,7 +80,11 @@
       Delete ist standardmäßig aus und muss in Add-on Optionen aktiviert werden.
     </div>
     <div class="row" style="margin-top: 8px;">
-      <div><label>Bestätigungstext (genau eintippen)</label><input id="confirm" placeholder="DELETE" /></div>
+      <div>
+        <label>Bestaetigungstext (genau eintippen)</label>
+        <input id="confirm" placeholder="{{ delete_phrase }}" />
+        <div class="muted">Muss exakt dem Add-on Setting <code>delete_confirm_phrase</code> entsprechen.</div>
+      </div>
       <button id="del">Delete (Auswahl + Zeitraum)</button>
     </div>
   </div>

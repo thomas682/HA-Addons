@@ -1,0 +1,8 @@
+influxdb:
+  api_version: 2
+  host: localhost
+  port: 8086
+  ssl: false
+  organization: myorg
+  bucket: mybucket
+  token: !secret influx_token

@@ -11,6 +11,9 @@ from influxdb import InfluxDBClient as InfluxDBClientV1
 
 import yaml
 
+CONFIG_DIR = Path(os.environ.get("CONFIG_DIR", "/config"))
+DATA_DIR = Path(os.environ.get("DATA_DIR", "/data"))
+
 DEFAULT_INFLUX_YAML_PATH = "homeassistant/influx.yaml"
 LAST_YAML_ERROR = None
 
@@ -23,7 +26,8 @@ def _load_secrets_for_config(cfg_file: Path) -> dict:
     - /config/secrets.yaml
     """
 
-    candidates = [cfg_file.parent / "secrets.yaml", Path("/config/secrets.yaml")]
+    cfg_root = CONFIG_DIR.resolve()
+    candidates = [cfg_file.parent / "secrets.yaml", cfg_root / "secrets.yaml"]
     for p in candidates:
         try:
             if not p.exists():
@@ -77,16 +81,12 @@ def _resolve_cfg_path(path_str: str) -> Path:
 
     p = Path(path_str)
 
+    cfg_root = CONFIG_DIR.resolve()
     # Make relative paths relative to /config
     if not p.is_absolute():
-        p = Path("/config") / p
-    else:
-        # Only allow absolute paths under /config
-        if not str(p).startswith("/config/") and str(p) != "/config":
-            raise ValueError("Only paths under /config are allowed")
+        p = cfg_root / p
 
     rp = p.resolve()
-    cfg_root = Path("/config").resolve()
     if cfg_root not in rp.parents and rp != cfg_root:
         raise ValueError("Path must stay within /config")
 
@@ -99,7 +99,7 @@ def find_influx_yaml() -> tuple[str | None, list[str]]:
     Returns (best_relative_path, all_relative_matches).
     """
 
-    cfg_root = Path("/config").resolve()
+    cfg_root = CONFIG_DIR.resolve()
 
     # Prefer the canonical HA location first.
     preferred = [
@@ -211,8 +211,6 @@ def load_influx_yaml(influx_yaml_path: str):
         LAST_YAML_ERROR = f"failed to read/parse YAML: {e.__class__.__name__}"
         return None, None
 app = Flask(__name__)
-
-DATA_DIR = Path("/data")
 RUNTIME_CFG_FILE = DATA_DIR / "influx_browser_config.json"
 
 def env_bool(key: str, default: bool) -> bool:
@@ -373,7 +371,11 @@ def v1_client(cfg: dict):
     
 @app.get("/")
 def index():
-    return render_template("index.html", allow_delete=ALLOW_DELETE)
+    return render_template(
+        "index.html",
+        allow_delete=ALLOW_DELETE,
+        delete_phrase=DELETE_CONFIRM_PHRASE,
+    )
 
 @app.get("/config")
 def config_page():

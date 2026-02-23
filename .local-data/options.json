@@ -1,0 +1,5 @@
+{
+  "version": "dev",
+  "allow_delete": false,
+  "delete_confirm_phrase": "DELETE"
+}
