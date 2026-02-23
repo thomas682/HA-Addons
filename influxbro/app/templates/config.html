@@ -7,7 +7,7 @@
   <style>
     body { font-family: system-ui, sans-serif; margin: 16px; max-width: 980px; }
     .row { display:flex; gap:12px; flex-wrap:wrap; align-items:end; }
-    .grid { display:grid; grid-template-columns: repeat(2, minmax(260px, 1fr)); gap: 12px; align-items:end; }
+    .grid { display:grid; grid-template-columns: repeat(2, minmax(260px, 1fr)); gap: 12px; align-items:start; }
     @media (max-width: 860px){ .grid { grid-template-columns: 1fr; } }
     label { display:block; font-size:12px; opacity:0.8; }
     input, select, button { padding:10px 12px; height: 40px; box-sizing: border-box; }
@@ -20,6 +20,8 @@
     .muted { opacity: 0.7; font-size: 12px; }
     code { background:#f6f6f6; padding:2px 6px; border-radius:6px; }
     a { color: inherit; }
+    .btn_stack { display:flex; flex-direction:column; gap: 12px; }
+    .span2 { grid-column: 1 / -1; }
   </style>
 </head>
 <body>
@@ -44,14 +46,16 @@
       <div>
         <label>Konfigurationsdatei (relativ zu <code>/config</code> oder absolut unter <code>/config</code>)</label>
         <input id="influx_yaml_path" />
-        <div class="muted">Beispiel: <code>homeassistant/influx.yaml</code> (entspricht <code>/config/homeassistant/influx.yaml</code>)</div>
-        <div class="muted">Ablauf: erst <code>influx.yaml suchen</code>, Pfad ggf. anpassen, dann <code>yaml Daten einlesen</code> (traegt Werte ein, speichert aber nicht).</div>
       </div>
       <div>
         <label>&nbsp;</label>
-        <button id="find_yaml">influx.yaml suchen</button>
-        <button id="read_yaml">yaml Daten einlesen</button>
+        <div class="btn_stack">
+          <button id="find_yaml">influx.yaml suchen</button>
+          <button id="read_yaml">yaml Daten einlesen</button>
+        </div>
       </div>
+      <div class="muted span2">Beispiel: <code>homeassistant/influx.yaml</code> (entspricht <code>/config/homeassistant/influx.yaml</code>)</div>
+      <div class="muted span2">Ablauf: erst <code>influx.yaml suchen</code>, Pfad ggf. anpassen, dann <code>yaml Daten einlesen</code> (traegt Werte ein, speichert aber nicht).</div>
     </div>
   </div>
 

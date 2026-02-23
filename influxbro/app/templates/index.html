@@ -24,8 +24,9 @@
     .muted { opacity: 0.7; font-size: 12px; }
     .danger { border: 1px solid #d33; padding: 12px; border-radius: 8px; margin-top: 16px; }
     .danger h3 { margin: 0 0 8px 0; color: #b00020; }
-    .danger_grid { display:grid; grid-template-columns: minmax(260px, 1fr) minmax(220px, 0.6fr); gap: 12px; align-items:end; margin-top: 8px; }
-    @media (max-width: 860px){ .danger_grid { grid-template-columns: 1fr; } }
+    .danger_controls { display:grid; grid-template-columns: minmax(260px, 1fr) minmax(220px, 0.6fr); gap: 12px; align-items:end; margin-top: 8px; }
+    @media (max-width: 860px){ .danger_controls { grid-template-columns: 1fr; } }
+    .danger_note { margin-top: 6px; }
     .stats_wrap { margin-top: 12px; }
     .stats_header { display:flex; gap:12px; align-items:end; flex-wrap:wrap; }
     .stats_grid { display:grid; grid-template-columns: repeat(2, minmax(300px, 1fr)); gap: 12px; margin-top: 12px; }
@@ -155,17 +156,17 @@
       Achtung: Löschen ist endgültig. Influx v1: Löschen nach Measurement+Zeitraum (und ggf. Tag-Filter). Influx v2: optional Field + Tag-Filter.
       Delete ist standardmäßig aus und muss in Add-on Optionen aktiviert werden.
     </div>
-    <div class="danger_grid">
+    <div class="danger_controls">
       <div>
         <label>Bestaetigungstext (genau eintippen)</label>
         <input id="confirm" placeholder="{{ delete_phrase }}" />
-        <div class="muted">Muss exakt dem Add-on Setting <code>delete_confirm_phrase</code> entsprechen.</div>
       </div>
       <div>
         <label>&nbsp;</label>
         <button id="del" style="width:100%;">Delete (Auswahl + Zeitraum)</button>
       </div>
     </div>
+    <div class="muted danger_note">Muss exakt dem Add-on Setting <code>delete_confirm_phrase</code> entsprechen.</div>
   </div>
 
 <script>
