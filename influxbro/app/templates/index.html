@@ -191,31 +191,41 @@
                 <option value="off">aus</option>
               </select>
             </div>
+
             <div style="min-width: 110px;">
-              <label>Von</label>
-              <select id="tbl_lo_op">
+              <label>Verb.</label>
+              <select id="tbl_mode">
+                <option value="or" selected>oder</option>
+                <option value="and">und</option>
+              </select>
+            </div>
+
+            <div style="min-width: 110px;">
+              <label>Links</label>
+              <select id="tbl_a_op">
                 <option value=">">&gt;</option>
                 <option value=">=">&gt;=</option>
-                <option value="=">=</option>
-                <option value="min">Min</option>
+                <option value="<" selected>&lt;</option>
+                <option value="<=">&lt;=</option>
               </select>
             </div>
             <div style="min-width: 130px;">
               <label>&nbsp;</label>
-              <input id="tbl_lo_val" placeholder="0" />
+              <input id="tbl_a_val" placeholder="0" />
             </div>
+
             <div style="min-width: 110px;">
-              <label>Bis</label>
-              <select id="tbl_hi_op">
+              <label>Rechts</label>
+              <select id="tbl_b_op">
+                <option value=">" selected>&gt;</option>
+                <option value=">=">&gt;=</option>
                 <option value="<">&lt;</option>
                 <option value="<=">&lt;=</option>
-                <option value="=">=</option>
-                <option value="max">Max</option>
               </select>
             </div>
             <div style="min-width: 130px;">
               <label>&nbsp;</label>
-              <input id="tbl_hi_val" placeholder="999999" />
+              <input id="tbl_b_val" placeholder="999999" />
             </div>
           </div>
         </div>
@@ -270,10 +280,11 @@ const $thTime = document.getElementById('th_time');
 const $thValue = document.getElementById('th_value');
 const $tableRange = document.getElementById('table_range');
 const $tblEnabled = document.getElementById('tbl_enabled');
-const $tblLoOp = document.getElementById('tbl_lo_op');
-const $tblLoVal = document.getElementById('tbl_lo_val');
-const $tblHiOp = document.getElementById('tbl_hi_op');
-const $tblHiVal = document.getElementById('tbl_hi_val');
+const $tblMode = document.getElementById('tbl_mode');
+const $tblAOp = document.getElementById('tbl_a_op');
+const $tblAVal = document.getElementById('tbl_a_val');
+const $tblBOp = document.getElementById('tbl_b_op');
+const $tblBVal = document.getElementById('tbl_b_val');
 const $tableBox = document.getElementById('table_box');
 
 const $cntMf = document.getElementById('cnt_measurement_filter');
@@ -396,10 +407,11 @@ function saveState(){
       q_friendly_name: $qFn ? $qFn.value : "",
       q_entity_id: $qEid ? $qEid.value : "",
       tbl_filter_enabled: TABLE_FILTER.enabled,
-      tbl_lo_op: TABLE_FILTER.lo_op,
-      tbl_lo_val: TABLE_FILTER.lo_val,
-      tbl_hi_op: TABLE_FILTER.hi_op,
-      tbl_hi_val: TABLE_FILTER.hi_val,
+      tbl_mode: TABLE_FILTER.mode,
+      tbl_a_op: TABLE_FILTER.a_op,
+      tbl_a_val: TABLE_FILTER.a_val,
+      tbl_b_op: TABLE_FILTER.b_op,
+      tbl_b_val: TABLE_FILTER.b_val,
       sort_key: TABLE_SORT.key,
       sort_dir: TABLE_SORT.dir,
     };
@@ -560,7 +572,7 @@ function renderFriendly(){
 function renderEntity(){
   const filtered = filterList(ALL_ENTITY, $qEid && $qEid.value);
   setSelectOptions($e, filtered, {value:"", label:"(alle)"});
-  if($cntEid) $cntEid.textContent = filtered.length > 1 ? `(${filtered.length})` : (filtered.length === 1 ? "(1)" : "");
+  if($cntEid) $cntEid.textContent = filtered.length > 1 ? `(${filtered.length})` : "";
 }
 
 async function loadMeasurements(){
@@ -608,10 +620,11 @@ let LAST_ROWS = [];
 let TABLE_SORT = { key: "time", dir: "asc" };
 let TABLE_FILTER = {
   enabled: true,
-  lo_op: ">=",
-  lo_val: "0",
-  hi_op: "<=",
-  hi_val: "999999",
+  mode: "or",
+  a_op: "<",
+  a_val: "0",
+  b_op: ">",
+  b_val: "999999",
 };
 
 function tableKbLoaded(){
@@ -674,34 +687,31 @@ function _cmp(op, v, ref){
   if(op === ">=") return v >= ref;
   if(op === "<") return v < ref;
   if(op === "<=") return v <= ref;
-  if(op === "=") return v === ref;
-  if(op === ">0") return v > 0;
   return true;
 }
 
 function applyValueFilter(rows){
   if(!TABLE_FILTER.enabled) return rows;
 
-  const loOp = (TABLE_FILTER.lo_op || "").trim();
-  const hiOp = (TABLE_FILTER.hi_op || "").trim();
-  let loRaw = (TABLE_FILTER.lo_val || "").trim();
-  let hiRaw = (TABLE_FILTER.hi_val || "").trim();
+  const mode = (TABLE_FILTER.mode || "or").toLowerCase() === "and" ? "and" : "or";
+  const aOp = (TABLE_FILTER.a_op || "").trim();
+  const bOp = (TABLE_FILTER.b_op || "").trim();
+  const aRaw = (TABLE_FILTER.a_val || "").trim();
+  const bRaw = (TABLE_FILTER.b_val || "").trim();
 
-  if(loOp === ">0") loRaw = "0";
+  const hasA = aRaw !== "" && isFinite(Number(aRaw));
+  const hasB = bRaw !== "" && isFinite(Number(bRaw));
+  if(!hasA && !hasB) return rows;
 
-  const hasLo = loRaw !== "" && isFinite(Number(loRaw));
-  const hasHi = hiRaw !== "" && isFinite(Number(hiRaw));
-  const loV = hasLo ? Number(loRaw) : null;
-  const hiV = hasHi ? Number(hiRaw) : null;
-  if(!hasLo && !hasHi && loOp !== ">0") return rows;
+  const aV = hasA ? Number(aRaw) : null;
+  const bV = hasB ? Number(bRaw) : null;
 
   return (rows || []).filter(r => {
     const v = r && r.value;
     if(typeof v !== "number" || !isFinite(v)) return false;
-    if(loOp === ">0" && !_cmp(">0", v, 0)) return false;
-    if(loV !== null && loOp !== ">0" && !_cmp(loOp, v, loV)) return false;
-    if(hiV !== null && !_cmp(hiOp, v, hiV)) return false;
-    return true;
+    const okA = (aV === null) ? (mode === "and") : _cmp(aOp, v, aV);
+    const okB = (bV === null) ? (mode === "and") : _cmp(bOp, v, bV);
+    return mode === "and" ? (okA && okB) : (okA || okB);
   });
 }
 
@@ -724,7 +734,7 @@ function renderTable(){
   if($tableInfo){
     const arrow = TABLE_SORT.dir === "desc" ? "↓" : "↑";
     const filt = TABLE_FILTER.enabled
-      ? ` | Filter: ${TABLE_FILTER.lo_op} ${TABLE_FILTER.lo_val} .. ${TABLE_FILTER.hi_op} ${TABLE_FILTER.hi_val}`
+      ? ` | Filter: (${TABLE_FILTER.a_op} ${TABLE_FILTER.a_val}) ${TABLE_FILTER.mode} (${TABLE_FILTER.b_op} ${TABLE_FILTER.b_val})`
       : " | Filter: aus";
     $tableInfo.textContent = `Eintraege: ${shown}${baseTotal!==shown?` (von ${baseTotal})`:""} | Sort: ${TABLE_SORT.key} ${arrow}${filt}`;
   }
@@ -878,18 +888,20 @@ if($thValue) $thValue.addEventListener("click", ()=>toggleSort("value"));
 // Table value filter
 function onTableFilter(){
   TABLE_FILTER.enabled = ($tblEnabled ? $tblEnabled.value : "on") !== "off";
-  TABLE_FILTER.lo_op = $tblLoOp ? $tblLoOp.value : ">=";
-  TABLE_FILTER.lo_val = $tblLoVal ? $tblLoVal.value : "";
-  TABLE_FILTER.hi_op = $tblHiOp ? $tblHiOp.value : "<=";
-  TABLE_FILTER.hi_val = $tblHiVal ? $tblHiVal.value : "";
+  TABLE_FILTER.mode = $tblMode ? $tblMode.value : "or";
+  TABLE_FILTER.a_op = $tblAOp ? $tblAOp.value : "<";
+  TABLE_FILTER.a_val = $tblAVal ? $tblAVal.value : "0";
+  TABLE_FILTER.b_op = $tblBOp ? $tblBOp.value : ">";
+  TABLE_FILTER.b_val = $tblBVal ? $tblBVal.value : "999999";
   saveState();
   renderTable();
 }
 if($tblEnabled) $tblEnabled.addEventListener("change", onTableFilter);
-if($tblLoOp) $tblLoOp.addEventListener("change", onTableFilter);
-if($tblHiOp) $tblHiOp.addEventListener("change", onTableFilter);
-if($tblLoVal) $tblLoVal.addEventListener("input", debounce(onTableFilter, 200));
-if($tblHiVal) $tblHiVal.addEventListener("input", debounce(onTableFilter, 200));
+if($tblMode) $tblMode.addEventListener("change", onTableFilter);
+if($tblAOp) $tblAOp.addEventListener("change", onTableFilter);
+if($tblBOp) $tblBOp.addEventListener("change", onTableFilter);
+if($tblAVal) $tblAVal.addEventListener("input", debounce(onTableFilter, 200));
+if($tblBVal) $tblBVal.addEventListener("input", debounce(onTableFilter, 200));
 
 document.getElementById("load").addEventListener("click", ()=>refreshAll().catch(displayError));
 document.getElementById("del").addEventListener("click", ()=>deleteData().catch(e=>err(String(e))));
@@ -909,16 +921,24 @@ document.getElementById("del").addEventListener("click", ()=>deleteData().catch(
     $custom.style.display = ($r.value === "custom") ? "block" : "none";
 
     TABLE_FILTER.enabled = (st.tbl_filter_enabled !== false);
-    TABLE_FILTER.lo_op = st.tbl_lo_op || ">=";
-    TABLE_FILTER.lo_val = (st.tbl_lo_val !== undefined) ? st.tbl_lo_val : "0";
-    TABLE_FILTER.hi_op = st.tbl_hi_op || "<=";
-    TABLE_FILTER.hi_val = (st.tbl_hi_val !== undefined) ? st.tbl_hi_val : "999999";
+    TABLE_FILTER.mode = st.tbl_mode || "or";
+    TABLE_FILTER.a_op = st.tbl_a_op || "<";
+    TABLE_FILTER.a_val = (st.tbl_a_val !== undefined) ? st.tbl_a_val : "0";
+    TABLE_FILTER.b_op = st.tbl_b_op || ">";
+    TABLE_FILTER.b_val = (st.tbl_b_val !== undefined) ? st.tbl_b_val : "999999";
+
+    // Backward-compat for old stored keys
+    if(st.tbl_lo_op && !st.tbl_a_op) TABLE_FILTER.a_op = st.tbl_lo_op;
+    if(st.tbl_lo_val !== undefined && st.tbl_a_val === undefined) TABLE_FILTER.a_val = st.tbl_lo_val;
+    if(st.tbl_hi_op && !st.tbl_b_op) TABLE_FILTER.b_op = st.tbl_hi_op;
+    if(st.tbl_hi_val !== undefined && st.tbl_b_val === undefined) TABLE_FILTER.b_val = st.tbl_hi_val;
 
     if($tblEnabled) $tblEnabled.value = TABLE_FILTER.enabled ? "on" : "off";
-    if($tblLoOp) $tblLoOp.value = TABLE_FILTER.lo_op;
-    if($tblLoVal) $tblLoVal.value = TABLE_FILTER.lo_val;
-    if($tblHiOp) $tblHiOp.value = TABLE_FILTER.hi_op;
-    if($tblHiVal) $tblHiVal.value = TABLE_FILTER.hi_val;
+    if($tblMode) $tblMode.value = TABLE_FILTER.mode;
+    if($tblAOp) $tblAOp.value = TABLE_FILTER.a_op;
+    if($tblAVal) $tblAVal.value = TABLE_FILTER.a_val;
+    if($tblBOp) $tblBOp.value = TABLE_FILTER.b_op;
+    if($tblBVal) $tblBVal.value = TABLE_FILTER.b_val;
 
     if(st.sort_key) TABLE_SORT.key = st.sort_key;
     if(st.sort_dir) TABLE_SORT.dir = st.sort_dir;
