@@ -184,13 +184,38 @@
             <div class="muted" id="table_info"></div>
           </div>
           <div class="row" style="margin-top:0;">
-            <div style="min-width: 140px;">
-              <label>Wert von (>=)</label>
-              <input id="tbl_min" placeholder="0" />
+            <div style="min-width: 120px;">
+              <label>Filter</label>
+              <select id="tbl_enabled">
+                <option value="on" selected>aktiv</option>
+                <option value="off">aus</option>
+              </select>
             </div>
-            <div style="min-width: 140px;">
-              <label>bis (<=)</label>
-              <input id="tbl_max" placeholder="999999" />
+            <div style="min-width: 110px;">
+              <label>Von</label>
+              <select id="tbl_lo_op">
+                <option value=">">&gt;</option>
+                <option value=">=">&gt;=</option>
+                <option value="=">=</option>
+                <option value="min">Min</option>
+              </select>
+            </div>
+            <div style="min-width: 130px;">
+              <label>&nbsp;</label>
+              <input id="tbl_lo_val" placeholder="0" />
+            </div>
+            <div style="min-width: 110px;">
+              <label>Bis</label>
+              <select id="tbl_hi_op">
+                <option value="<">&lt;</option>
+                <option value="<=">&lt;=</option>
+                <option value="=">=</option>
+                <option value="max">Max</option>
+              </select>
+            </div>
+            <div style="min-width: 130px;">
+              <label>&nbsp;</label>
+              <input id="tbl_hi_val" placeholder="999999" />
             </div>
           </div>
         </div>
@@ -244,8 +269,11 @@ const $tableInfo = document.getElementById('table_info');
 const $thTime = document.getElementById('th_time');
 const $thValue = document.getElementById('th_value');
 const $tableRange = document.getElementById('table_range');
-const $tblMin = document.getElementById('tbl_min');
-const $tblMax = document.getElementById('tbl_max');
+const $tblEnabled = document.getElementById('tbl_enabled');
+const $tblLoOp = document.getElementById('tbl_lo_op');
+const $tblLoVal = document.getElementById('tbl_lo_val');
+const $tblHiOp = document.getElementById('tbl_hi_op');
+const $tblHiVal = document.getElementById('tbl_hi_val');
 const $tableBox = document.getElementById('table_box');
 const $confirm = document.getElementById('confirm');
 
@@ -318,6 +346,17 @@ function setSelectOptions(selectEl, items, placeholder){
     p.textContent = placeholder.label;
     selectEl.appendChild(p);
   }
+
+  // Preserve previous selection even if it isn't in the new list.
+  // This avoids "emptying" dropdowns when filters/time ranges change.
+  const hasPrev = prev && items && items.includes(prev);
+  if(prev && !hasPrev){
+    const o=document.createElement("option");
+    o.value=prev;
+    o.textContent=prev;
+    selectEl.appendChild(o);
+  }
+
   items.forEach(x=>{
     const o=document.createElement("option");
     o.value=x;
@@ -352,8 +391,11 @@ function saveState(){
       q_measurement_filter: $qMf ? $qMf.value : "",
       q_friendly_name: $qFn ? $qFn.value : "",
       q_entity_id: $qEid ? $qEid.value : "",
-      tbl_min: $tblMin ? $tblMin.value : "",
-      tbl_max: $tblMax ? $tblMax.value : "",
+      tbl_filter_enabled: TABLE_FILTER.enabled,
+      tbl_lo_op: TABLE_FILTER.lo_op,
+      tbl_lo_val: TABLE_FILTER.lo_val,
+      tbl_hi_op: TABLE_FILTER.hi_op,
+      tbl_hi_val: TABLE_FILTER.hi_val,
       sort_key: TABLE_SORT.key,
       sort_dir: TABLE_SORT.dir,
     };
@@ -760,8 +802,6 @@ $r.addEventListener("change", async ()=>{
   try{
     saveState();
     $custom.style.display = ($r.value === "custom") ? "block" : "none";
-    await loadFriendlyNames();
-    await loadEntityIds();
     autoSpanAll();
     renderTableRange();
   }catch(e){ displayError(e); }
@@ -770,7 +810,6 @@ $r.addEventListener("change", async ()=>{
 $e.addEventListener("change", async ()=>{
   try{
     saveState();
-    await loadFriendlyNames();
     autoSpanAll();
   }catch(e){ displayError(e); }
 });
@@ -800,13 +839,19 @@ if($thValue) $thValue.addEventListener("click", ()=>toggleSort("value"));
 
 // Table value filter
 function onTableFilter(){
-  TABLE_FILTER.min = $tblMin ? $tblMin.value : "";
-  TABLE_FILTER.max = $tblMax ? $tblMax.value : "";
+  TABLE_FILTER.enabled = ($tblEnabled ? $tblEnabled.value : "on") !== "off";
+  TABLE_FILTER.lo_op = $tblLoOp ? $tblLoOp.value : ">=";
+  TABLE_FILTER.lo_val = $tblLoVal ? $tblLoVal.value : "";
+  TABLE_FILTER.hi_op = $tblHiOp ? $tblHiOp.value : "<=";
+  TABLE_FILTER.hi_val = $tblHiVal ? $tblHiVal.value : "";
   saveState();
   renderTable();
 }
-if($tblMin) $tblMin.addEventListener("input", debounce(onTableFilter, 200));
-if($tblMax) $tblMax.addEventListener("input", debounce(onTableFilter, 200));
+if($tblEnabled) $tblEnabled.addEventListener("change", onTableFilter);
+if($tblLoOp) $tblLoOp.addEventListener("change", onTableFilter);
+if($tblHiOp) $tblHiOp.addEventListener("change", onTableFilter);
+if($tblLoVal) $tblLoVal.addEventListener("input", debounce(onTableFilter, 200));
+if($tblHiVal) $tblHiVal.addEventListener("input", debounce(onTableFilter, 200));
 
 document.getElementById("load").addEventListener("click", ()=>refreshAll().catch(displayError));
 document.getElementById("del").addEventListener("click", ()=>deleteData().catch(e=>err(String(e))));
@@ -825,10 +870,17 @@ document.getElementById("del").addEventListener("click", ()=>deleteData().catch(
     if($stop && st.stop) $stop.value = st.stop;
     $custom.style.display = ($r.value === "custom") ? "block" : "none";
 
-    if($tblMin) $tblMin.value = (st.tbl_min !== undefined && st.tbl_min !== "") ? st.tbl_min : "0";
-    if($tblMax) $tblMax.value = (st.tbl_max !== undefined && st.tbl_max !== "") ? st.tbl_max : "999999";
-    TABLE_FILTER.min = $tblMin ? $tblMin.value : "0";
-    TABLE_FILTER.max = $tblMax ? $tblMax.value : "999999";
+    TABLE_FILTER.enabled = (st.tbl_filter_enabled !== false);
+    TABLE_FILTER.lo_op = st.tbl_lo_op || ">=";
+    TABLE_FILTER.lo_val = (st.tbl_lo_val !== undefined) ? st.tbl_lo_val : "0";
+    TABLE_FILTER.hi_op = st.tbl_hi_op || "<=";
+    TABLE_FILTER.hi_val = (st.tbl_hi_val !== undefined) ? st.tbl_hi_val : "999999";
+
+    if($tblEnabled) $tblEnabled.value = TABLE_FILTER.enabled ? "on" : "off";
+    if($tblLoOp) $tblLoOp.value = TABLE_FILTER.lo_op;
+    if($tblLoVal) $tblLoVal.value = TABLE_FILTER.lo_val;
+    if($tblHiOp) $tblHiOp.value = TABLE_FILTER.hi_op;
+    if($tblHiVal) $tblHiVal.value = TABLE_FILTER.hi_val;
 
     if(st.sort_key) TABLE_SORT.key = st.sort_key;
     if(st.sort_dir) TABLE_SORT.dir = st.sort_dir;
