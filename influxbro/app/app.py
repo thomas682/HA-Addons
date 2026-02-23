@@ -5,6 +5,7 @@ import re
 from datetime import datetime, timedelta, timezone
 from contextlib import contextmanager
 from pathlib import Path
+from typing import Any
 
 from flask import Flask, jsonify, render_template, request
 from influxdb_client import InfluxDBClient
@@ -346,6 +347,96 @@ def parse_range_to_datetimes(range_key: str) -> tuple[datetime, datetime]:
     return now - delta, now
 
 
+def _parse_iso_datetime(s: str) -> datetime:
+    """Parse an ISO datetime string into a timezone-aware UTC datetime.
+
+    Accepts strings like:
+      - 2026-02-23T10:00:00Z
+      - 2026-02-23T10:00:00+00:00
+      - 2026-02-23T10:00:00.123Z
+    """
+
+    v = (s or "").strip()
+    if not v:
+        raise ValueError("empty datetime")
+    if v.endswith("Z"):
+        v = v[:-1] + "+00:00"
+    dt = datetime.fromisoformat(v)
+    if dt.tzinfo is None:
+        raise ValueError("datetime must include timezone")
+    return dt.astimezone(timezone.utc)
+
+
+def _get_start_stop_from_payload(payload: dict[str, Any]) -> tuple[datetime | None, datetime | None]:
+    start_raw = payload.get("start") or payload.get("start_time")
+    stop_raw = payload.get("stop") or payload.get("end") or payload.get("stop_time")
+    if not start_raw and not stop_raw:
+        return None, None
+
+    if not (start_raw and stop_raw):
+        raise ValueError("start and stop required")
+
+    start_dt = _parse_iso_datetime(str(start_raw))
+    stop_dt = _parse_iso_datetime(str(stop_raw))
+    if stop_dt <= start_dt:
+        raise ValueError("stop must be after start")
+    return start_dt, stop_dt
+
+
+def _dt_to_rfc3339_utc(dt: datetime) -> str:
+    s = dt.astimezone(timezone.utc).replace(microsecond=0).isoformat()
+    return s.replace("+00:00", "Z")
+
+
+def _flux_range_clause(range_key: str, start: datetime | None, stop: datetime | None) -> str:
+    if start and stop:
+        s = _dt_to_rfc3339_utc(start)
+        e = _dt_to_rfc3339_utc(stop)
+        return f'|> range(start: time(v: "{s}"), stop: time(v: "{e}"))'
+    return f"|> range(start: {range_to_flux(range_key)})"
+
+
+def _flux_range_clause_for_scope(
+    scope: str,
+    range_key: str,
+    start: datetime | None,
+    stop: datetime | None,
+) -> str:
+    s = (scope or "current").strip().lower()
+    if s in ("current", "range"):
+        return _flux_range_clause(range_key, start, stop)
+    if s in ("1y", "1yr", "year"):
+        return "|> range(start: -365d)"
+    if s in ("inf", "infinite", "all"):
+        return '|> range(start: time(v: "1970-01-01T00:00:00Z"))'
+    return _flux_range_clause(range_key, start, stop)
+
+
+def _influxql_time_where(range_key: str, start: datetime | None, stop: datetime | None) -> str:
+    if start and stop:
+        s = _dt_to_rfc3339_utc(start)
+        e = _dt_to_rfc3339_utc(stop)
+        return f"time >= '{s}' AND time <= '{e}'"
+    dur = range_to_influxql(range_key)
+    return f"time > now() - {dur}"
+
+
+def _influxql_time_where_for_scope(
+    scope: str,
+    range_key: str,
+    start: datetime | None,
+    stop: datetime | None,
+) -> str:
+    s = (scope or "current").strip().lower()
+    if s in ("current", "range"):
+        return _influxql_time_where(range_key, start, stop)
+    if s in ("1y", "1yr", "year"):
+        return "time > now() - 365d"
+    if s in ("inf", "infinite", "all"):
+        return "1=1"
+    return _influxql_time_where(range_key, start, stop)
+
+
 def _flux_escape(v: str) -> str:
     return (v or "").replace("\\", "\\\\").replace('"', "\\\"")
 
@@ -656,9 +747,25 @@ def tag_values():
     measurement = request.args.get("measurement", "")
     range_key = request.args.get("range", "24h")
     entity_id = request.args.get("entity_id", "") or None
+    friendly_name = request.args.get("friendly_name", "") or None
+    start_raw = request.args.get("start")
+    stop_raw = request.args.get("stop")
 
     if not tag:
         return jsonify({"ok": False, "error": "tag required"}), 400
+
+    # Keep this endpoint constrained; tag name is interpolated into Flux.
+    allowed_tags = {"entity_id", "friendly_name"}
+    if tag not in allowed_tags:
+        return jsonify({"ok": False, "error": "unsupported tag"}), 400
+
+    start_dt: datetime | None = None
+    stop_dt: datetime | None = None
+    if start_raw or stop_raw:
+        try:
+            start_dt, stop_dt = _get_start_stop_from_payload({"start": start_raw, "stop": stop_raw})
+        except Exception as e:
+            return jsonify({"ok": False, "error": f"invalid start/stop: {e}"}), 400
 
     try:
         if int(cfg.get("influx_version",2)) == 2:
@@ -667,22 +774,40 @@ def tag_values():
                     "ok": False,
                     "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
                 }), 400
-            start = range_to_flux(range_key)
             predicate_parts = []
             if measurement:
                 predicate_parts.append(f'r._measurement == "{measurement}"')
             if entity_id:
                 predicate_parts.append(f'r.entity_id == "{entity_id}"')
+            if friendly_name:
+                predicate_parts.append(f'r.friendly_name == "{friendly_name}"')
             predicate = " and ".join(predicate_parts) if predicate_parts else "true"
 
             with v2_client(cfg) as c:
-                q = f'''
+                # schema.tagValues does not support stop; for custom ranges we use a direct query.
+                if stop_dt and start_dt:
+                    range_clause = _flux_range_clause(range_key, start_dt, stop_dt)
+                    q = f'''
+from(bucket: "{cfg["bucket"]}")
+  {range_clause}
+  |> filter(fn: (r) => {predicate})
+  |> filter(fn: (r) => exists r.{tag})
+  |> keep(columns: ["{tag}"])
+  |> distinct(column: "{tag}")
+  |> sort(columns: ["{tag}"])
+  |> map(fn: (r) => ({{ _value: r.{tag} }}))
+  |> keep(columns: ["_value"])
+  |> limit(n: 5000)
+'''
+                else:
+                    start_arg = range_to_flux(range_key)
+                    q = f'''
 import "influxdata/influxdb/schema"
 schema.tagValues(
   bucket: "{cfg["bucket"]}",
   tag: "{tag}",
   predicate: (r) => {predicate},
-  start: {start}
+  start: {start_arg}
 )
 '''
                 tables = c.query_api().query(q, org=cfg["org"])
@@ -694,12 +819,14 @@ schema.tagValues(
         else:
             if not cfg.get("database"):
                 return jsonify({"ok": False, "error": "InfluxDB v1 requires database. Bitte konfigurieren."}), 400
-            dur = range_to_influxql(range_key)
             c = v1_client(cfg)
-            where = f"WHERE time > now() - {dur}"
+            where = f"WHERE {_influxql_time_where(range_key, start_dt, stop_dt)}"
             if entity_id:
                 safe_entity_id = entity_id.replace("'", "\\'")
                 where += f' AND "entity_id"=\'{safe_entity_id}\''
+            if friendly_name:
+                safe_name = friendly_name.replace("'", "\\'")
+                where += f' AND "friendly_name"=\'{safe_name}\''
             q = f'SHOW TAG VALUES WITH KEY = "{tag}" {where}'
             res = c.query(q)
             vals = []
@@ -722,6 +849,11 @@ def query():
     entity_id = body.get("entity_id") or None
     friendly_name = body.get("friendly_name") or None
 
+    try:
+        start_dt, stop_dt = _get_start_stop_from_payload(body)
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"invalid start/stop: {e}"}), 400
+
     if not measurement or not field:
         return jsonify({"ok": False, "error": "measurement and field required"}), 400
 
@@ -732,12 +864,12 @@ def query():
                     "ok": False,
                     "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
                 }), 400
-            flux_range = range_to_flux(range_key)
             extra = flux_tag_filter(entity_id, friendly_name)
             with v2_client(cfg) as c:
+                range_clause = _flux_range_clause(range_key, start_dt, stop_dt)
                 q = f'''
 from(bucket: "{cfg["bucket"]}")
-  |> range(start: {flux_range})
+  {range_clause}
   |> filter(fn: (r) => r._measurement == "{measurement}" and r._field == "{field}"{extra})
   |> keep(columns: ["_time","_value"])
   |> sort(columns: ["_time"])
@@ -758,10 +890,10 @@ from(bucket: "{cfg["bucket"]}")
         else:
             if not cfg.get("database"):
                 return jsonify({"ok": False, "error": "InfluxDB v1 requires database. Bitte konfigurieren."}), 400
-            dur = range_to_influxql(range_key)
             c = v1_client(cfg)
             tag_where = influxql_tag_filter(entity_id, friendly_name)
-            q = f'SELECT "{field}" FROM "{measurement}" WHERE time > now() - {dur}{tag_where} ORDER BY time ASC'
+            time_where = _influxql_time_where(range_key, start_dt, stop_dt)
+            q = f'SELECT "{field}" FROM "{measurement}" WHERE {time_where}{tag_where} ORDER BY time ASC'
             res = c.query(q)
             rows = []
             for _, points in res.items():
@@ -784,6 +916,15 @@ def stats():
     entity_id = body.get("entity_id") or None
     friendly_name = body.get("friendly_name") or None
 
+    stats_scope = (body.get("stats_scope") or "current").strip().lower()
+    start_dt: datetime | None = None
+    stop_dt: datetime | None = None
+    if stats_scope in ("current", "range"):
+        try:
+            start_dt, stop_dt = _get_start_stop_from_payload(body)
+        except Exception as e:
+            return jsonify({"ok": False, "error": f"invalid start/stop: {e}"}), 400
+
     if not measurement or not field:
         return jsonify({"ok": False, "error": "measurement and field required"}), 400
 
@@ -794,68 +935,282 @@ def stats():
                     "ok": False,
                     "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
                 }), 400
-            flux_range = range_to_flux(range_key)
             extra = flux_tag_filter(entity_id, friendly_name)
+            range_clause = _flux_range_clause_for_scope(stats_scope, range_key, start_dt, stop_dt)
+
+            def _is_number(v: object) -> bool:
+                return isinstance(v, (int, float)) and not isinstance(v, bool)
+
             with v2_client(cfg) as c:
-                q = f'''
+                q_basic = f'''
 data = from(bucket: "{cfg["bucket"]}")
-  |> range(start: {flux_range})
+  {range_clause}
   |> filter(fn: (r) => r._measurement == "{measurement}" and r._field == "{field}"{extra})
+  |> keep(columns: ["_time", "_value"])
+  |> group()
 
 countT = data |> count() |> map(fn: (r) => ({{ _value: r._value, _field: "count" }}))
-minT   = data |> min()   |> map(fn: (r) => ({{ _value: r._value, _time: r._time, _field: "min" }}))
-maxT   = data |> max()   |> map(fn: (r) => ({{ _value: r._value, _time: r._time, _field: "max" }}))
-firstT = data |> first() |> map(fn: (r) => ({{ _value: r._value, _time: r._time, _field: "first" }}))
-lastT  = data |> last()  |> map(fn: (r) => ({{ _value: r._value, _time: r._time, _field: "last" }}))
+oldT   = data |> sort(columns: ["_time"]) |> first() |> map(fn: (r) => ({{ _value: r._value, _time: r._time, _field: "oldest" }}))
+newT   = data |> sort(columns: ["_time"], desc: true) |> first() |> map(fn: (r) => ({{ _value: r._value, _time: r._time, _field: "newest" }}))
 
-union(tables: [countT, minT, maxT, firstT, lastT])
+union(tables: [countT, oldT, newT])
 '''
-                tables = c.query_api().query(q, org=cfg["org"])
-                out = {"count": 0, "min": None, "max": None, "oldest_time": None, "newest_time": None}
+                tables = c.query_api().query(q_basic, org=cfg["org"])
+                out = {
+                    "count": 0,
+                    "oldest_time": None,
+                    "newest_time": None,
+                    "first_value": None,
+                    "last_value": None,
+                    "min": None,
+                    "max": None,
+                    "mean": None,
+                    "stddev": None,
+                    "p05": None,
+                    "p50": None,
+                    "p95": None,
+                }
                 for t in tables:
                     for r in t.records:
                         k = r.get_field()
                         if k == "count":
                             out["count"] = int(r.get_value() or 0)
-                        elif k == "min":
-                            out["min"] = r.get_value()
-                        elif k == "max":
-                            out["max"] = r.get_value()
-                        elif k == "first":
+                        elif k == "oldest":
                             ts = r.get_time()
                             out["oldest_time"] = ts.astimezone(timezone.utc).isoformat() if isinstance(ts, datetime) else ts
-                        elif k == "last":
+                            out["first_value"] = r.get_value()
+                        elif k == "newest":
                             ts = r.get_time()
                             out["newest_time"] = ts.astimezone(timezone.utc).isoformat() if isinstance(ts, datetime) else ts
-                return jsonify({"ok": True, "stats": out})
+                            out["last_value"] = r.get_value()
+
+                # Numeric-only aggregates (best-effort)
+                if _is_number(out.get("last_value")) and out["count"] > 0:
+                    q_num = f'''
+data = from(bucket: "{cfg["bucket"]}")
+  {range_clause}
+  |> filter(fn: (r) => r._measurement == "{measurement}" and r._field == "{field}"{extra})
+  |> keep(columns: ["_time", "_value"])
+  |> group()
+
+minT    = data |> min()    |> map(fn: (r) => ({{ _value: r._value, _field: "min" }}))
+maxT    = data |> max()    |> map(fn: (r) => ({{ _value: r._value, _field: "max" }}))
+meanT   = data |> mean()   |> map(fn: (r) => ({{ _value: r._value, _field: "mean" }}))
+stddevT = data |> stddev() |> map(fn: (r) => ({{ _value: r._value, _field: "stddev" }}))
+p05T    = data |> quantile(q: 0.05) |> map(fn: (r) => ({{ _value: r._value, _field: "p05" }}))
+p50T    = data |> quantile(q: 0.50) |> map(fn: (r) => ({{ _value: r._value, _field: "p50" }}))
+p95T    = data |> quantile(q: 0.95) |> map(fn: (r) => ({{ _value: r._value, _field: "p95" }}))
+
+union(tables: [minT, maxT, meanT, stddevT, p05T, p50T, p95T])
+'''
+                    try:
+                        tables2 = c.query_api().query(q_num, org=cfg["org"])
+                        for t in tables2:
+                            for r in t.records:
+                                k = r.get_field()
+                                if k in ("min", "max", "mean", "stddev", "p05", "p50", "p95"):
+                                    out[k] = r.get_value()
+                    except Exception:
+                        pass
+
+                return jsonify({"ok": True, "stats": out, "stats_scope": stats_scope})
         else:
             if not cfg.get("database"):
                 return jsonify({"ok": False, "error": "InfluxDB v1 requires database. Bitte konfigurieren."}), 400
-            dur = range_to_influxql(range_key)
             c = v1_client(cfg)
             tag_where = influxql_tag_filter(entity_id, friendly_name)
-            q = f'SELECT COUNT("{field}") as count, MIN("{field}") as min, MAX("{field}") as max FROM "{measurement}" WHERE time > now() - {dur}{tag_where}'
-            res = c.query(q)
-            out = {"count": 0, "min": None, "max": None, "oldest_time": None, "newest_time": None}
+            time_where = _influxql_time_where_for_scope(stats_scope, range_key, start_dt, stop_dt)
+
+            where_clause = f"WHERE {time_where}{tag_where}"
+            out = {
+                "count": 0,
+                "oldest_time": None,
+                "newest_time": None,
+                "first_value": None,
+                "last_value": None,
+                "min": None,
+                "max": None,
+                "mean": None,
+                "stddev": None,
+                "p05": None,
+                "p50": None,
+                "p95": None,
+            }
+
+            # Count
+            res = c.query(f'SELECT COUNT("{field}") as count FROM "{measurement}" {where_clause}')
             for _, points in res.items():
                 if points:
-                    p = points[0]
-                    out["count"] = int(p.get("count") or 0)
-                    out["min"] = p.get("min")
-                    out["max"] = p.get("max")
-            q_old = f'SELECT FIRST("{field}") FROM "{measurement}" WHERE time > now() - {dur}{tag_where}'
-            q_new = f'SELECT LAST("{field}") FROM "{measurement}" WHERE time > now() - {dur}{tag_where}'
-            ro = c.query(q_old)
-            rn = c.query(q_new)
+                    out["count"] = int(points[0].get("count") or 0)
+                    break
+
+            # Oldest/newest timestamps + values
+            ro = c.query(f'SELECT FIRST("{field}") FROM "{measurement}" {where_clause}')
+            rn = c.query(f'SELECT LAST("{field}") FROM "{measurement}" {where_clause}')
             for _, pts in ro.items():
                 if pts:
                     out["oldest_time"] = pts[0].get("time")
+                    out["first_value"] = pts[0].get("first") if "first" in pts[0] else pts[0].get(field)
                     break
             for _, pts in rn.items():
                 if pts:
                     out["newest_time"] = pts[0].get("time")
+                    out["last_value"] = pts[0].get("last") if "last" in pts[0] else pts[0].get(field)
                     break
-            return jsonify({"ok": True, "stats": out})
+
+            def _is_number(v: object) -> bool:
+                return isinstance(v, (int, float)) and not isinstance(v, bool)
+
+            # Numeric-only aggregates (best-effort)
+            if _is_number(out.get("last_value")) and out["count"] > 0:
+                try:
+                    q_num = (
+                        f'SELECT MIN("{field}") as min, MAX("{field}") as max, MEAN("{field}") as mean, '
+                        f'STDDEV("{field}") as stddev, PERCENTILE("{field}", 5) as p05, '
+                        f'PERCENTILE("{field}", 50) as p50, PERCENTILE("{field}", 95) as p95 '
+                        f'FROM "{measurement}" {where_clause}'
+                    )
+                    res2 = c.query(q_num)
+                    for _, points in res2.items():
+                        if not points:
+                            continue
+                        p = points[0]
+                        out["min"] = p.get("min")
+                        out["max"] = p.get("max")
+                        out["mean"] = p.get("mean")
+                        out["stddev"] = p.get("stddev")
+                        out["p05"] = p.get("p05")
+                        out["p50"] = p.get("p50")
+                        out["p95"] = p.get("p95")
+                        break
+                except Exception:
+                    pass
+
+            return jsonify({"ok": True, "stats": out, "stats_scope": stats_scope})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.post("/api/resolve_signal")
+def resolve_signal():
+    """Resolve a friendly_name/entity_id to a likely measurement+field."""
+
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    body = request.get_json(force=True) or {}
+    friendly_name = (body.get("friendly_name") or "").strip() or None
+    entity_id = (body.get("entity_id") or "").strip() or None
+    range_key = body.get("range", "24h")
+    measurement_filter = (body.get("measurement_filter") or body.get("measurement") or "").strip() or None
+
+    if not friendly_name and not entity_id:
+        return jsonify({"ok": False, "error": "friendly_name or entity_id required"}), 400
+
+    try:
+        start_dt, stop_dt = _get_start_stop_from_payload(body)
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"invalid start/stop: {e}"}), 400
+
+    try:
+        if int(cfg.get("influx_version", 2)) == 2:
+            if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+                return jsonify({
+                    "ok": False,
+                    "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
+                }), 400
+
+            extra = flux_tag_filter(entity_id, friendly_name)
+            range_clause = _flux_range_clause(range_key, start_dt, stop_dt)
+            mfilter = f' and r._measurement == "{measurement_filter}"' if measurement_filter else ""
+            with v2_client(cfg) as c:
+                q = f'''
+from(bucket: "{cfg["bucket"]}")
+  {range_clause}
+  |> filter(fn: (r) => exists r._measurement and exists r._field{extra}{mfilter})
+  |> keep(columns: ["_measurement", "_field"])
+  |> group(columns: ["_measurement", "_field"])
+  |> first()
+  |> limit(n:200)
+'''
+                tables = c.query_api().query(q, org=cfg["org"])
+                combos: set[tuple[str, str]] = set()
+                for t in tables:
+                    for r in t.records:
+                        m = r.values.get("_measurement")
+                        f = r.values.get("_field")
+                        if m and f:
+                            combos.add((str(m), str(f)))
+
+            if not combos:
+                return jsonify({"ok": False, "error": "No matching series found for selection."}), 404
+
+            # Pick a sensible default
+            preferred = None
+            if measurement_filter:
+                # We already filtered by measurement; pick best field.
+                value_fields = sorted([c for c in combos if c[1] == "value"])
+                preferred = value_fields[0] if value_fields else sorted(combos)[0]
+            elif ("state", "value") in combos:
+                preferred = ("state", "value")
+            else:
+                value_fields = sorted([c for c in combos if c[1] == "value"])
+                preferred = value_fields[0] if value_fields else sorted(combos)[0]
+
+            measurements = sorted({m for m, _ in combos})
+            fields = sorted({f for m, f in combos if m == preferred[0]})
+            return jsonify({
+                "ok": True,
+                "measurement": preferred[0],
+                "field": preferred[1],
+                "measurements": measurements,
+                "fields": fields,
+            })
+
+        # v1
+        if not cfg.get("database"):
+            return jsonify({"ok": False, "error": "InfluxDB v1 requires database. Bitte konfigurieren."}), 400
+        c = v1_client(cfg)
+
+        where = []
+        if entity_id:
+            where.append(f'"entity_id"=\'{_influxql_escape(entity_id)}\'')
+        if friendly_name:
+            where.append(f'"friendly_name"=\'{_influxql_escape(friendly_name)}\'')
+        where_clause = ("WHERE " + " AND ".join(where)) if where else ""
+
+        res = c.query(f"SHOW SERIES {where_clause} LIMIT 2000")
+        ms: set[str] = set()
+        for _, points in res.items():
+            for p in points:
+                key = p.get("key")
+                if not key:
+                    continue
+                m = str(key).split(",", 1)[0]
+                if m:
+                    ms.add(m)
+        if not ms:
+            return jsonify({"ok": False, "error": "No matching series found for selection."}), 404
+
+        if measurement_filter:
+            if measurement_filter not in ms:
+                return jsonify({"ok": False, "error": "No matching series found for selected measurement."}), 404
+            measurement = measurement_filter
+        else:
+            measurement = "state" if "state" in ms else sorted(ms)[0]
+        res_f = c.query(f'SHOW FIELD KEYS FROM "{measurement}"')
+        fs: list[str] = []
+        for _, points in res_f.items():
+            for p in points:
+                if p.get("fieldKey"):
+                    fs.append(str(p.get("fieldKey")))
+        fs = sorted(set(fs))
+        field = "value" if "value" in fs else (fs[0] if fs else "")
+        return jsonify({
+            "ok": True,
+            "measurement": measurement,
+            "field": field,
+            "measurements": sorted(ms),
+            "fields": fs,
+        })
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
 
@@ -878,7 +1233,12 @@ def delete():
     if not measurement:
         return jsonify({"ok": False, "error": "measurement required"}), 400
 
-    start, stop = parse_range_to_datetimes(range_key)
+    try:
+        start_dt, stop_dt = _get_start_stop_from_payload(body)
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"invalid start/stop: {e}"}), 400
+
+    start, stop = (start_dt, stop_dt) if (start_dt and stop_dt) else parse_range_to_datetimes(range_key)
 
     try:
         if int(cfg.get("influx_version",2)) == 2:
