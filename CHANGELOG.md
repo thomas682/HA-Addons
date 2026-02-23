@@ -144,3 +144,14 @@ Das Format orientiert sich an "Keep a Changelog" (kurz gehalten).
 
 - Main UI: `entity_id` wird nach Messwert-Auswahl automatisch vorbelegt.
 - Main UI: Tabellenfilter kann deaktiviert werden und unterstuetzt Operatoren inkl. Min/Max.
+
+## 1.1.2t - 2026-02-23
+
+### Fixed
+
+- Main UI: Zeitraum-Wechsel/Aktualisieren loescht Messwert/entity_id nicht; entity_id wird nach Messwert-Wahl automatisch vorbelegt.
+
+### Changed
+
+- Main UI: Tabellenfilter ohne Min/Max-Shortcuts; Operatoren inkl. >0.
+- Main UI: Anzahl Auswahloptionen wird bei Dropdowns angezeigt.
