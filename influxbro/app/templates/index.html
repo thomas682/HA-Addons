@@ -181,8 +181,26 @@
     <div class="right">
       <div class="table_wrap">
         <div class="table_head">
-          <div style="font-weight:700;">Tabelle (wie Graph)</div>
-          <div class="muted" id="table_info"></div>
+          <div>
+            <div style="font-weight:700;">Tabelle (wie Graph)</div>
+            <div class="muted" id="table_info"></div>
+          </div>
+          <div class="row" style="margin-top:0;">
+            <div style="min-width: 120px;">
+              <label>Filter Wert</label>
+              <select id="tbl_op">
+                <option value="" selected>(aus)</option>
+                <option value=">">&gt;</option>
+                <option value=">=">&gt;=</option>
+                <option value="<">&lt;</option>
+                <option value="<=">&lt;=</option>
+              </select>
+            </div>
+            <div style="min-width: 140px;">
+              <label>&nbsp;</label>
+              <input id="tbl_val" placeholder="z.B. 100" />
+            </div>
+          </div>
         </div>
         <div class="table_box" id="table_box">
           <table id="tbl">
@@ -233,6 +251,8 @@ const $tbl = document.querySelector('#tbl tbody');
 const $tableInfo = document.getElementById('table_info');
 const $thTime = document.getElementById('th_time');
 const $thValue = document.getElementById('th_value');
+const $tblOp = document.getElementById('tbl_op');
+const $tblVal = document.getElementById('tbl_val');
 const $confirm = document.getElementById('confirm');
 
 const $stats = document.getElementById('stats');
@@ -455,7 +475,8 @@ async function resolveSignal(){
 
 let LAST_ROWS = [];
 let TABLE_SORT = { key: "time", dir: "asc" };
-const MAX_TABLE_ROWS = 2000;
+let TABLE_FILTER = { op: "", value: "" };
+const MAX_TABLE_ROWS = 20;
 
 function tableKbLoaded(){
   try{
@@ -512,13 +533,29 @@ function sortRowsForTable(rows){
   return out;
 }
 
+function applyValueFilter(rows){
+  const op = (TABLE_FILTER.op || "").trim();
+  const raw = (TABLE_FILTER.value || "").trim();
+  if(!op || !raw) return rows;
+  const n = Number(raw);
+  if(!isFinite(n)) return rows;
+
+  const cmp = (v) => {
+    if(typeof v !== "number" || !isFinite(v)) return false;
+    if(op === ">") return v > n;
+    if(op === ">=") return v >= n;
+    if(op === "<") return v < n;
+    if(op === "<=") return v <= n;
+    return true;
+  };
+  return (rows || []).filter(r => cmp(r && r.value));
+}
+
 function renderTable(){
-  const rows = sortRowsForTable(LAST_ROWS);
+  const filtered = applyValueFilter(LAST_ROWS);
+  const rows = sortRowsForTable(filtered);
   let display = rows;
-  if(display.length > MAX_TABLE_ROWS){
-    // Keep the newest chunk by default.
-    display = display.slice(-MAX_TABLE_ROWS);
-  }
+  if(display.length > MAX_TABLE_ROWS) display = display.slice(-MAX_TABLE_ROWS);
 
   $tbl.innerHTML = "";
   display.forEach(row=>{
@@ -531,9 +568,11 @@ function renderTable(){
 
   const shown = display.length;
   const total = rows.length;
+  const baseTotal = (LAST_ROWS || []).length;
   if($tableInfo){
     const arrow = TABLE_SORT.dir === "desc" ? "↓" : "↑";
-    $tableInfo.textContent = `Sort: ${TABLE_SORT.key} ${arrow} | Zeilen: ${shown}/${total}`;
+    const filt = (baseTotal !== total) ? ` | Filter: ${TABLE_FILTER.op}${TABLE_FILTER.value}` : "";
+    $tableInfo.textContent = `Zeilen: ${shown}/${total}${baseTotal!==total?` (von ${baseTotal})`:""} | Sort: ${TABLE_SORT.key} ${arrow}${filt}`;
   }
 }
 
@@ -679,6 +718,15 @@ function toggleSort(key){
 }
 if($thTime) $thTime.addEventListener("click", ()=>toggleSort("time"));
 if($thValue) $thValue.addEventListener("click", ()=>toggleSort("value"));
+
+// Table value filter
+function onTableFilter(){
+  TABLE_FILTER.op = $tblOp ? $tblOp.value : "";
+  TABLE_FILTER.value = $tblVal ? $tblVal.value : "";
+  renderTable();
+}
+if($tblOp) $tblOp.addEventListener("change", onTableFilter);
+if($tblVal) $tblVal.addEventListener("input", debounce(onTableFilter, 200));
 
 document.getElementById("load").addEventListener("click", ()=>refreshAll().catch(e=>err(String(e))));
 document.getElementById("del").addEventListener("click", ()=>deleteData().catch(e=>err(String(e))));
