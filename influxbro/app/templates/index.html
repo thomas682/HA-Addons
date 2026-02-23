@@ -15,6 +15,8 @@
     select, button, input { padding:10px 12px; height: 40px; box-sizing: border-box; }
     select, input { width: 100%; }
     input[type="datetime-local"] { width: 100%; }
+    input.search { height: 34px; padding: 8px 10px; }
+    .stack { display:flex; flex-direction:column; gap:6px; }
     table { border-collapse: collapse; width: 100%; margin-top: 12px; }
     th, td { border: 1px solid #ddd; padding: 6px; font-size: 12px; }
     th { background:#f4f4f4; text-align:left; }
@@ -41,6 +43,15 @@
     a { color: inherit; }
     details { margin-top: 10px; border: 1px solid #ddd; border-radius: 10px; padding: 10px; }
     details > summary { cursor: pointer; font-weight: 600; }
+
+    .main { display:grid; grid-template-columns: 1.35fr 1fr; gap: 12px; align-items:start; margin-top: 12px; }
+    @media (max-width: 1100px){ .main { grid-template-columns: 1fr; } }
+    .table_wrap { border: 1px solid #ddd; border-radius: 10px; padding: 10px; margin-top: 12px; }
+    .table_head { display:flex; justify-content:space-between; gap: 12px; align-items:baseline; flex-wrap:wrap; }
+    .table_box { --row-h: 18px; --max-rows: 100; max-height: calc(var(--max-rows) * var(--row-h) + 42px); overflow:auto; border: 1px solid #eee; border-radius: 10px; margin-top: 8px; }
+    .table_box table { margin-top: 0; }
+    .table_box th, .table_box td { font-size: 11px; padding: 3px 6px; line-height: 1.2; }
+    .table_box th { position: sticky; top: 0; z-index: 1; cursor: pointer; }
   </style>
 </head>
 <body>
@@ -51,8 +62,20 @@
   </div>
 
   <div class="grid" id="filters">
-    <div class="control" id="c_measurement_filter"><label>_measurement (Filter)</label><select id="measurement_filter"></select></div>
-    <div class="control" id="c_friendly"><label>Messwert (Klartext / friendly_name)</label><select id="friendly_name"></select></div>
+    <div class="control" id="c_measurement_filter">
+      <label>_measurement (Filter)</label>
+      <div class="stack">
+        <input id="q_measurement_filter" class="search" placeholder="Suchen..." />
+        <select id="measurement_filter"></select>
+      </div>
+    </div>
+    <div class="control" id="c_friendly">
+      <label>Messwert (Klartext / friendly_name)</label>
+      <div class="stack">
+        <input id="q_friendly_name" class="search" placeholder="Suchen..." />
+        <select id="friendly_name"></select>
+      </div>
+    </div>
     <div class="control" id="c_range"><label>Zeitraum (Graph/Tabelle)</label>
       <select id="range">
         <option value="1h">Letzte 1h</option>
@@ -66,7 +89,13 @@
         <option value="custom">Benutzerdefiniert…</option>
       </select>
     </div>
-    <div class="control" id="c_entity"><label>entity_id (optional)</label><select id="entity_id"></select></div>
+    <div class="control" id="c_entity">
+      <label>entity_id (optional)</label>
+      <div class="stack">
+        <input id="q_entity_id" class="search" placeholder="Suchen..." />
+        <select id="entity_id"></select>
+      </div>
+    </div>
     <div class="control span2" id="custom_range" style="display:none;">
       <div class="grid" style="margin-top:0;">
         <div class="control"><label>Von</label><input id="start" type="datetime-local"/></div>
@@ -94,9 +123,11 @@
   <div id="err" class="err"></div>
   <div id="ok" class="ok"></div>
 
-  <canvas id="chart" width="800" height="200"></canvas>
+  <div class="main">
+    <div class="left">
+      <canvas id="chart" width="800" height="200"></canvas>
 
-  <div class="stats_wrap">
+      <div class="stats_wrap">
     <div class="stats_header">
       <div class="control" style="min-width: 260px;">
         <label>Statistik (Total-Auswahl)</label>
@@ -145,10 +176,23 @@
     </div>
   </div>
 
-  <table id="tbl">
-    <thead><tr><th>Zeit</th><th>Wert</th></tr></thead>
-    <tbody></tbody>
-  </table>
+    </div>
+
+    <div class="right">
+      <div class="table_wrap">
+        <div class="table_head">
+          <div style="font-weight:700;">Tabelle (wie Graph)</div>
+          <div class="muted" id="table_info"></div>
+        </div>
+        <div class="table_box" id="table_box">
+          <table id="tbl">
+            <thead><tr><th id="th_time" data-key="time">Zeit</th><th id="th_value" data-key="value">Wert</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <div class="danger">
     <h3>Daten löschen</h3>
@@ -179,10 +223,16 @@ const $r = document.getElementById('range');
 const $e = document.getElementById('entity_id');
 const $n = document.getElementById('friendly_name');
 const $mf = document.getElementById('measurement_filter');
+const $qMf = document.getElementById('q_measurement_filter');
+const $qFn = document.getElementById('q_friendly_name');
+const $qEid = document.getElementById('q_entity_id');
 const $start = document.getElementById('start');
 const $stop = document.getElementById('stop');
 const $custom = document.getElementById('custom_range');
 const $tbl = document.querySelector('#tbl tbody');
+const $tableInfo = document.getElementById('table_info');
+const $thTime = document.getElementById('th_time');
+const $thValue = document.getElementById('th_value');
 const $confirm = document.getElementById('confirm');
 
 const $stats = document.getElementById('stats');
@@ -216,6 +266,32 @@ const canvas = document.getElementById('chart');
 const ctx = canvas.getContext('2d');
 
 function fmt(x){ if(x === null || x === undefined || x === "") return ""; return String(x); }
+
+function norm(s){ return String(s || "").toLowerCase(); }
+
+function filterList(list, term){
+  const t = norm(term).trim();
+  if(!t) return list.slice();
+  return list.filter(x => norm(x).includes(t));
+}
+
+function setSelectOptions(selectEl, items, placeholder){
+  const prev = selectEl.value;
+  selectEl.innerHTML = "";
+  if(placeholder){
+    const p = document.createElement("option");
+    p.value = placeholder.value;
+    p.textContent = placeholder.label;
+    selectEl.appendChild(p);
+  }
+  items.forEach(x=>{
+    const o=document.createElement("option");
+    o.value=x;
+    o.textContent=x;
+    selectEl.appendChild(o);
+  });
+  if(prev && Array.from(selectEl.options).some(o=>o.value===prev)) selectEl.value = prev;
+}
 
 function debounce(fn, ms){
   let t = null;
@@ -252,6 +328,12 @@ async function api(url, opts){
   const j = await r.json().catch(()=>({ok:false,error:"Invalid JSON"}));
   if(!r.ok || !j.ok) throw new Error(j.error || ("HTTP " + r.status));
   return j;
+}
+
+function displayError(e){
+  const s = String(e && e.message ? e.message : e);
+  // Avoid dumping huge API exception strings.
+  err(s.length > 600 ? (s.slice(0, 600) + "...") : s);
 }
 
 function toLocalDatetimeValue(d){
@@ -310,15 +392,30 @@ function updateTotalLabel(){
   $sTotalLabel.textContent = (v === "1y") ? "1 Jahr" : (v === "inf") ? "Unendlich" : "Zeitraum";
 }
 
+let ALL_MEASUREMENTS = [];
+let ALL_FRIENDLY = [];
+let ALL_ENTITY = [];
+
+function renderMeasurements(){
+  const filtered = filterList(ALL_MEASUREMENTS, $qMf && $qMf.value);
+  setSelectOptions($mf, filtered, {value:"", label:"(alle)"});
+  setSelectOptions($m, ALL_MEASUREMENTS, null);
+}
+
+function renderFriendly(){
+  const filtered = filterList(ALL_FRIENDLY, $qFn && $qFn.value);
+  setSelectOptions($n, filtered, {value:"", label:"(bitte waehlen)"});
+}
+
+function renderEntity(){
+  const filtered = filterList(ALL_ENTITY, $qEid && $qEid.value);
+  setSelectOptions($e, filtered, {value:"", label:"(alle)"});
+}
+
 async function loadMeasurements(){
-  $mf.innerHTML = "";
-  $m.innerHTML = "";
   const j = await api("./api/measurements");
-  const empty=document.createElement("option"); empty.value=""; empty.textContent="(alle)"; $mf.appendChild(empty);
-  j.measurements.forEach(x=>{
-    const o=document.createElement("option"); o.value=x; o.textContent=x; $mf.appendChild(o);
-    const o2=document.createElement("option"); o2.value=x; o2.textContent=x; $m.appendChild(o2);
-  });
+  ALL_MEASUREMENTS = (j.measurements || []).map(String);
+  renderMeasurements();
 }
 
 async function loadFields(){
@@ -328,27 +425,23 @@ async function loadFields(){
 }
 
 async function loadEntityIds(){
-  const prev = $e.value;
   $e.innerHTML = "";
   let url = "./api/tag_values?tag=entity_id";
   const qp = tagQueryParams({includeFriendly: true, includeEntity: false});
   if(qp) url += "&" + qp;
   const j = await api(url);
-  const empty=document.createElement("option"); empty.value=""; empty.textContent="(alle)"; $e.appendChild(empty);
-  (j.values||[]).forEach(x=>{ const o=document.createElement("option"); o.value=x; o.textContent=x; $e.appendChild(o); });
-  if(prev && Array.from($e.options).some(o=>o.value===prev)) $e.value = prev;
+  ALL_ENTITY = (j.values || []).map(String);
+  renderEntity();
 }
 
 async function loadFriendlyNames(){
-  const prev = $n.value;
   $n.innerHTML = "";
   let url = "./api/tag_values?tag=friendly_name";
   const qp = tagQueryParams({includeFriendly: false, includeEntity: true});
   if(qp) url += "&" + qp;
   const j = await api(url);
-  const empty=document.createElement("option"); empty.value=""; empty.textContent="(bitte waehlen)"; $n.appendChild(empty);
-  (j.values||[]).forEach(x=>{ const o=document.createElement("option"); o.value=x; o.textContent=x; $n.appendChild(o); });
-  if(prev && Array.from($n.options).some(o=>o.value===prev)) $n.value = prev;
+  ALL_FRIENDLY = (j.values || []).map(String);
+  renderFriendly();
 }
 
 async function resolveSignal(){
@@ -361,6 +454,8 @@ async function resolveSignal(){
 }
 
 let LAST_ROWS = [];
+let TABLE_SORT = { key: "time", dir: "asc" };
+const MAX_TABLE_ROWS = 2000;
 
 function tableKbLoaded(){
   try{
@@ -394,34 +489,90 @@ function fillStats(prefix, s){
   set(prefix + "_stddev", s.stddev);
 }
 
+function sortRowsForTable(rows){
+  const key = TABLE_SORT.key;
+  const dir = TABLE_SORT.dir === "desc" ? -1 : 1;
+  const out = (rows || []).slice();
+  out.sort((a,b)=>{
+    if(key === "value"){
+      const av = a && a.value;
+      const bv = b && b.value;
+      const an = (typeof av === "number" && isFinite(av));
+      const bn = (typeof bv === "number" && isFinite(bv));
+      if(an && bn) return (av - bv) * dir;
+      if(an && !bn) return -1;
+      if(!an && bn) return 1;
+      return (String(av||"").localeCompare(String(bv||""))) * dir;
+    }
+    const at = Date.parse(a && a.time ? a.time : "");
+    const bt = Date.parse(b && b.time ? b.time : "");
+    if(isFinite(at) && isFinite(bt)) return (at - bt) * dir;
+    return (String(a && a.time || "").localeCompare(String(b && b.time || ""))) * dir;
+  });
+  return out;
+}
+
+function renderTable(){
+  const rows = sortRowsForTable(LAST_ROWS);
+  let display = rows;
+  if(display.length > MAX_TABLE_ROWS){
+    // Keep the newest chunk by default.
+    display = display.slice(-MAX_TABLE_ROWS);
+  }
+
+  $tbl.innerHTML = "";
+  display.forEach(row=>{
+    const tr=document.createElement("tr");
+    const tdT=document.createElement("td"); tdT.textContent=row.time;
+    const tdV=document.createElement("td"); tdV.textContent=(row.value===null||row.value===undefined)?"":row.value;
+    tr.appendChild(tdT); tr.appendChild(tdV);
+    $tbl.appendChild(tr);
+  });
+
+  const shown = display.length;
+  const total = rows.length;
+  if($tableInfo){
+    const arrow = TABLE_SORT.dir === "desc" ? "↓" : "↑";
+    $tableInfo.textContent = `Sort: ${TABLE_SORT.key} ${arrow} | Zeilen: ${shown}/${total}`;
+  }
+}
+
 async function loadStats(){
   updateTotalLabel();
+  $stats.style.display = "grid";
+  fillStats("s_curr", {});
+  fillStats("s_tot", {});
   const base = currentFilters();
-  const jCurr = await api("./api/stats", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({...base, stats_scope: "current"})});
-  const jTot = await api("./api/stats", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({...base, stats_scope: $statsScope.value})});
+  let anyOk = false;
+  try{
+    const jCurr = await api("./api/stats", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({...base, stats_scope: "current"})});
+    fillStats("s_curr", jCurr.stats || {});
+    anyOk = true;
+  }catch(e){
+    err("Stats (Zeitraum): " + String(e && e.message ? e.message : e));
+  }
 
-  fillStats("s_curr", jCurr.stats || {});
-  fillStats("s_tot", jTot.stats || {});
+  try{
+    const jTot = await api("./api/stats", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({...base, stats_scope: $statsScope.value})});
+    fillStats("s_tot", jTot.stats || {});
+    anyOk = true;
+  }catch(e){
+    err("Stats (Total): " + String(e && e.message ? e.message : e));
+  }
 
   const kb = tableKbLoaded();
   $sCurrTblKb.textContent = (kb === null) ? "" : kb.toFixed(1);
-  $stats.style.display = "grid";
+  if(!anyOk) $stats.style.display = "none";
 }
 
 async function loadData(){
   err(""); ok("");
   if(!$n.value){ err("Bitte zuerst einen Messwert (friendly_name) auswaehlen."); return; }
   $tbl.innerHTML = "";
-  $stats.style.display = "none";
   const j = await api("./api/query", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(currentFilters())});
   const rows = j.rows || [];
   LAST_ROWS = rows;
-  rows.slice(-300).forEach(row=>{
-    const tr=document.createElement("tr");
-    const tdT=document.createElement("td"); tdT.textContent=row.time;
-    const tdV=document.createElement("td"); tdV.textContent=(row.value===null||row.value===undefined)?"":row.value;
-    tr.appendChild(tdT); tr.appendChild(tdV); $tbl.appendChild(tr);
-  });
+  renderTable();
   draw(rows);
   await loadStats();
 }
@@ -429,10 +580,10 @@ async function loadData(){
 async function refreshAll(){
   try{
     if(!$n.value){ return; }
-    await resolveSignal();
+    try{ await resolveSignal(); } catch(e){ displayError(e); }
     await loadData();
   }catch(e){
-    err(String(e));
+    displayError(e);
   }
 }
 
@@ -474,10 +625,10 @@ function autoSpanAll(){
 $mf.addEventListener("change", async ()=>{
   try{
     await loadFriendlyNames();
-    $e.innerHTML = "";
+    await loadEntityIds();
     autoSpanAll();
     refreshAllDebounced();
-  }catch(e){ err(String(e)); }
+  }catch(e){ displayError(e); }
 });
 
 $n.addEventListener("change", async ()=>{
@@ -485,7 +636,7 @@ $n.addEventListener("change", async ()=>{
     await loadEntityIds();
     autoSpanAll();
     refreshAllDebounced();
-  }catch(e){ err(String(e)); }
+  }catch(e){ displayError(e); }
 });
 
 $r.addEventListener("change", async ()=>{
@@ -495,7 +646,7 @@ $r.addEventListener("change", async ()=>{
     await loadEntityIds();
     autoSpanAll();
     refreshAllDebounced();
-  }catch(e){ err(String(e)); }
+  }catch(e){ displayError(e); }
 });
 
 $e.addEventListener("change", async ()=>{
@@ -503,13 +654,31 @@ $e.addEventListener("change", async ()=>{
     await loadFriendlyNames();
     autoSpanAll();
     refreshAllDebounced();
-  }catch(e){ err(String(e)); }
+  }catch(e){ displayError(e); }
 });
 $start.addEventListener("change", async ()=>{ if($r.value==="custom") { autoSpanAll(); refreshAllDebounced(); } });
 $stop.addEventListener("change", async ()=>{ if($r.value==="custom") { autoSpanAll(); refreshAllDebounced(); } });
 $statsScope.addEventListener("change", async ()=>{ updateTotalLabel(); refreshAllDebounced(); });
 
 $m.addEventListener("change", async ()=>{ try{ await loadFields(); } catch(e){ err(String(e)); } });
+
+// Search inputs (case-insensitive filtering)
+if($qMf) $qMf.addEventListener("input", ()=>{ renderMeasurements(); });
+if($qFn) $qFn.addEventListener("input", ()=>{ renderFriendly(); });
+if($qEid) $qEid.addEventListener("input", ()=>{ renderEntity(); });
+
+// Sortable table
+function toggleSort(key){
+  if(TABLE_SORT.key === key){
+    TABLE_SORT.dir = (TABLE_SORT.dir === "asc") ? "desc" : "asc";
+  }else{
+    TABLE_SORT.key = key;
+    TABLE_SORT.dir = (key === "time") ? "asc" : "desc";
+  }
+  renderTable();
+}
+if($thTime) $thTime.addEventListener("click", ()=>toggleSort("time"));
+if($thValue) $thValue.addEventListener("click", ()=>toggleSort("value"));
 
 document.getElementById("load").addEventListener("click", ()=>refreshAll().catch(e=>err(String(e))));
 document.getElementById("del").addEventListener("click", ()=>deleteData().catch(e=>err(String(e))));
@@ -526,7 +695,7 @@ document.getElementById("del").addEventListener("click", ()=>deleteData().catch(
     await loadEntityIds();
     updateTotalLabel();
     autoSpanAll();
-  } catch(e){ err(String(e)); }
+  } catch(e){ displayError(e); }
 })();
 </script>
 <div style="position:absolute;top:10px;right:20px;font-size:12px;color:#888;" id="version_box"></div>
