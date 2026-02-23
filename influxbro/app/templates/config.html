@@ -43,7 +43,8 @@
         <div class="muted">Beispiel: <code>homeassistant/influx.yaml</code> (entspricht <code>/config/homeassistant/influx.yaml</code>)</div>
       </div>
       <div>
-        <button id="load_yaml">Lade Influx Parametrierung</button>
+        <button id="find_yaml">influx.yaml suchen</button>
+        <button id="read_yaml">yaml Daten einlesen</button>
       </div>
     </div>
   </div>
@@ -81,7 +82,7 @@
 
   <div class="card">
     <button id="save">Speichern</button>
-    <button id="test">Teste Connection</button>
+    <button id="test">Influx Verbindung testen</button>
     <div id="err" class="err"></div>
     <div id="ok" class="ok"></div>
   </div>
@@ -177,6 +178,20 @@ async function loadYaml(){
   ok("InfluxDB Einstellungen geladen (noch nicht gespeichert).");
 }
 
+async function findYaml(){
+  err(""); ok("");
+  const j = await api("./api/find_influx_yaml");
+  if(j.path) el.influx_yaml_path.value = j.path;
+
+  const card = document.getElementById("loadyaml_card");
+  const txt = document.getElementById("loadyaml_txt");
+  if(card && txt){
+    card.style.display = "block";
+    txt.textContent = "influx.yaml gefunden: " + (j.resolved || j.path) + ". Du kannst den Pfad noch anpassen und dann 'yaml Daten einlesen' klicken.";
+  }
+  ok("influx.yaml gefunden (noch nicht eingelesen)." );
+}
+
 async function save(){
   err(""); ok("");
   const j = await api("./api/config", {
@@ -197,7 +212,8 @@ async function testConn(){
   ok(j.message || "OK");
 }
 
-document.getElementById("load_yaml").addEventListener("click", ()=>loadYaml().catch(e=>err(String(e))));
+document.getElementById("find_yaml").addEventListener("click", ()=>findYaml().catch(e=>err(String(e))));
+document.getElementById("read_yaml").addEventListener("click", ()=>loadYaml().catch(e=>err(String(e))));
 document.getElementById("save").addEventListener("click", ()=>save().catch(e=>err(String(e))));
 document.getElementById("test").addEventListener("click", ()=>testConn().catch(e=>err(String(e))));
 

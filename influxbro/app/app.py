@@ -1,17 +1,65 @@
 import json
-import os
 import math
+import os
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
-from flask import Flask, render_template, jsonify, request
-
 from contextlib import contextmanager
+from pathlib import Path
+
+from flask import Flask, jsonify, render_template, request
 from influxdb_client import InfluxDBClient
 from influxdb import InfluxDBClient as InfluxDBClientV1
 
 import yaml
 
 DEFAULT_INFLUX_YAML_PATH = "homeassistant/influx.yaml"
+LAST_YAML_ERROR = None
+
+
+def _load_secrets_for_config(cfg_file: Path) -> dict:
+    """Load Home Assistant secrets.yaml near a given config file.
+
+    Tries (in order):
+    - <cfg_file_dir>/secrets.yaml
+    - /config/secrets.yaml
+    """
+
+    candidates = [cfg_file.parent / "secrets.yaml", Path("/config/secrets.yaml")]
+    for p in candidates:
+        try:
+            if not p.exists():
+                continue
+            data = yaml.safe_load(p.read_text(encoding="utf-8")) or {}
+            if isinstance(data, dict):
+                return data
+        except Exception:
+            continue
+    return {}
+
+
+class _HALoader(yaml.SafeLoader):
+    _ha_secrets: dict = {}
+    pass
+
+
+def _ha_multi_constructor(loader: yaml.SafeLoader, tag_suffix: str, node: yaml.Node):
+    """Handle Home Assistant YAML tags like !secret without failing."""
+
+    if tag_suffix == "secret" and isinstance(node, yaml.ScalarNode):
+        key = loader.construct_scalar(node)
+        secrets = getattr(loader, "_ha_secrets", {}) or {}
+        return secrets.get(key, "")
+
+    # Generic fallback for other tags: just construct the underlying value.
+    if isinstance(node, yaml.ScalarNode):
+        return loader.construct_scalar(node)
+    if isinstance(node, yaml.SequenceNode):
+        return loader.construct_sequence(node)
+    if isinstance(node, yaml.MappingNode):
+        return loader.construct_mapping(node)
+    return None
+
+
+_HALoader.add_multi_constructor("!", _ha_multi_constructor)
 
 def _resolve_cfg_path(path_str: str) -> Path:
     """
@@ -44,30 +92,95 @@ def _resolve_cfg_path(path_str: str) -> Path:
 
     return rp
 
+
+def find_influx_yaml() -> tuple[str | None, list[str]]:
+    """Find an `influx.yaml` under /config.
+
+    Returns (best_relative_path, all_relative_matches).
+    """
+
+    cfg_root = Path("/config").resolve()
+
+    # Prefer the canonical HA location first.
+    preferred = [
+        cfg_root / "homeassistant" / "influx.yaml",
+        cfg_root / "influx.yaml",
+    ]
+    matches: list[Path] = []
+    for p in preferred:
+        try:
+            if p.exists() and p.is_file():
+                matches.append(p)
+        except Exception:
+            continue
+
+    # Fallback: search under /config (keep it bounded).
+    if not matches:
+        try:
+            for p in cfg_root.rglob("influx.yaml"):
+                if p.is_file():
+                    matches.append(p)
+                if len(matches) >= 10:
+                    break
+        except Exception:
+            pass
+
+    rels: list[str] = []
+    for p in matches:
+        try:
+            rp = p.resolve()
+            if cfg_root in rp.parents:
+                rels.append(str(rp.relative_to(cfg_root)))
+        except Exception:
+            continue
+
+    best = rels[0] if rels else None
+    return best, rels
+
+
 def load_influx_yaml(influx_yaml_path: str):
     """
     Read Home Assistant's InfluxDB YAML config from a specific file path.
 
     Returns (detected_cfg_dict, source_path) or (None, None).
     """
+    global LAST_YAML_ERROR
+    LAST_YAML_ERROR = None
+
     try:
         fp = _resolve_cfg_path(influx_yaml_path)
         if not fp.exists():
+            LAST_YAML_ERROR = "file not found"
             return None, None
 
-        data = yaml.safe_load(fp.read_text(encoding="utf-8")) or {}
+        secrets = _load_secrets_for_config(fp)
+
+        class _Loader(_HALoader):
+            pass
+
+        _Loader._ha_secrets = secrets
+        data = yaml.load(fp.read_text(encoding="utf-8"), Loader=_Loader) or {}
         if not isinstance(data, dict):
+            LAST_YAML_ERROR = "top-level YAML is not a mapping"
             return None, None
 
         # Sometimes configs are nested (e.g., {"influxdb": {...}})
         cfg_block = data.get("influxdb") if isinstance(data.get("influxdb"), dict) else data
+        if not isinstance(cfg_block, dict):
+            LAST_YAML_ERROR = "influxdb block is not a mapping"
+            return None, None
 
         # Heuristic: must contain at least some typical keys
         if not any(k in cfg_block for k in ("host", "port", "token", "organization", "bucket", "database", "api_version")):
+            LAST_YAML_ERROR = "no influxdb-like keys found"
             return None, None
 
-        api_version = cfg_block.get("api_version", 2)
-        api_version = int(api_version) if str(api_version) in ("1", "2") else 2
+        api_version_raw = cfg_block.get("api_version", 2)
+        try:
+            api_version = int(api_version_raw)
+        except Exception:
+            api_version = 2
+        api_version = 1 if api_version == 1 else 2
 
         ssl = bool(cfg_block.get("ssl", False))
         scheme = "https" if ssl else "http"
@@ -76,7 +189,7 @@ def load_influx_yaml(influx_yaml_path: str):
             "influx_version": api_version,
             "scheme": scheme,
             "host": cfg_block.get("host", DEFAULT_CFG["host"]),
-            "port": int(cfg_block.get("port", DEFAULT_CFG["port"])),
+            "port": int(cfg_block.get("port") or DEFAULT_CFG["port"]),
         }
 
         if api_version == 2:
@@ -93,7 +206,9 @@ def load_influx_yaml(influx_yaml_path: str):
             })
 
         return detected, str(fp)
-    except Exception:
+    except Exception as e:
+        # Avoid leaking secrets; keep details minimal.
+        LAST_YAML_ERROR = f"failed to read/parse YAML: {e.__class__.__name__}"
         return None, None
 app = Flask(__name__)
 
@@ -132,6 +247,88 @@ def load_cfg():
     # Autodetect is only triggered by explicit user action in the Config UI.
     global LAST_AUTODETECT_SOURCE
     LAST_AUTODETECT_SOURCE = None
+
+    cfg = dict(DEFAULT_CFG)
+    if RUNTIME_CFG_FILE.exists():
+        try:
+            disk = json.loads(RUNTIME_CFG_FILE.read_text(encoding="utf-8")) or {}
+            if isinstance(disk, dict):
+                cfg.update(disk)
+        except Exception:
+            pass
+    return cfg
+
+
+def save_cfg(cfg: dict) -> None:
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    RUNTIME_CFG_FILE.write_text(json.dumps(cfg, indent=2, sort_keys=True), encoding="utf-8")
+
+
+def _parse_range_key(range_key: str) -> tuple[int, str]:
+    s = (range_key or "").strip().lower()
+    if not s:
+        return 24, "h"
+    num = ""
+    unit = ""
+    for ch in s:
+        if ch.isdigit() and not unit:
+            num += ch
+        else:
+            unit += ch
+    try:
+        n = int(num or "0")
+    except Exception:
+        n = 0
+    u = unit or "h"
+    if u not in ("h", "d"):
+        u = "h"
+    if n <= 0:
+        n = 24
+        u = "h"
+    return n, u
+
+
+def range_to_flux(range_key: str) -> str:
+    n, u = _parse_range_key(range_key)
+    return f"-{n}{u}"
+
+
+def range_to_influxql(range_key: str) -> str:
+    n, u = _parse_range_key(range_key)
+    return f"{n}{u}"
+
+
+def parse_range_to_datetimes(range_key: str) -> tuple[datetime, datetime]:
+    now = datetime.now(timezone.utc)
+    n, u = _parse_range_key(range_key)
+    delta = timedelta(hours=n) if u == "h" else timedelta(days=n)
+    return now - delta, now
+
+
+def _flux_escape(v: str) -> str:
+    return (v or "").replace("\\", "\\\\").replace('"', "\\\"")
+
+
+def flux_tag_filter(entity_id: str | None, friendly_name: str | None) -> str:
+    extra = ""
+    if entity_id:
+        extra += f' and r.entity_id == "{_flux_escape(entity_id)}"'
+    if friendly_name:
+        extra += f' and r.friendly_name == "{_flux_escape(friendly_name)}"'
+    return extra
+
+
+def _influxql_escape(v: str) -> str:
+    return (v or "").replace("\\", "\\\\").replace("'", "\\'")
+
+
+def influxql_tag_filter(entity_id: str | None, friendly_name: str | None) -> str:
+    out = ""
+    if entity_id:
+        out += f' AND "entity_id"=\'{_influxql_escape(entity_id)}\''
+    if friendly_name:
+        out += f' AND "friendly_name"=\'{_influxql_escape(friendly_name)}\''
+    return out
 
 
 @contextmanager
@@ -173,15 +370,6 @@ def v1_client(cfg: dict):
         verify_ssl=verify_ssl,
         timeout=int(cfg.get("timeout_seconds", 10)),
     )
-
-    cfg = dict(DEFAULT_CFG)
-    if RUNTIME_CFG_FILE.exists():
-        try:
-            disk = json.loads(RUNTIME_CFG_FILE.read_text(encoding="utf-8")) or {}
-            cfg.update(disk)
-        except Exception:
-            pass
-    return cfg
     
 @app.get("/")
 def index():
@@ -206,13 +394,27 @@ def api_load_influx_yaml():
 
     detected, src = load_influx_yaml(path_str)
     if not detected:
-        return jsonify({"ok": False, "error": f"Keine influx.yaml gefunden/lesbar unter: {path_str}", "source": None, "config": None})
+        detail = f" ({LAST_YAML_ERROR})" if LAST_YAML_ERROR else ""
+        return jsonify({"ok": False, "error": f"Keine influx.yaml gefunden/lesbar unter: {path_str}{detail}", "source": None, "config": None})
 
     # Remember last source for UI display (runtime only)
     global LAST_AUTODETECT_SOURCE
     LAST_AUTODETECT_SOURCE = src
 
     return jsonify({"ok": True, "source": src, "config": detected})
+
+
+@app.get("/api/find_influx_yaml")
+def api_find_influx_yaml():
+    best, matches = find_influx_yaml()
+    if not best:
+        return jsonify({"ok": False, "error": "Keine influx.yaml unter /config gefunden.", "path": None, "matches": []})
+
+    # Remember last source for UI display (runtime only)
+    global LAST_AUTODETECT_SOURCE
+    LAST_AUTODETECT_SOURCE = str(_resolve_cfg_path(best))
+
+    return jsonify({"ok": True, "path": best, "matches": matches, "resolved": LAST_AUTODETECT_SOURCE})
 
 @app.get("/api/config")
 def api_get_config():
