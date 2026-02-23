@@ -275,6 +275,10 @@ const $tblLoVal = document.getElementById('tbl_lo_val');
 const $tblHiOp = document.getElementById('tbl_hi_op');
 const $tblHiVal = document.getElementById('tbl_hi_val');
 const $tableBox = document.getElementById('table_box');
+
+const $cntMf = document.getElementById('cnt_measurement_filter');
+const $cntFn = document.getElementById('cnt_friendly_name');
+const $cntEid = document.getElementById('cnt_entity_id');
 const $confirm = document.getElementById('confirm');
 
 const $stats = document.getElementById('stats');
@@ -544,16 +548,19 @@ function renderMeasurements(){
   const filtered = filterList(ALL_MEASUREMENTS, $qMf && $qMf.value);
   setSelectOptions($mf, filtered, {value:"", label:"(alle)"});
   setSelectOptions($m, ALL_MEASUREMENTS, null);
+  if($cntMf) $cntMf.textContent = filtered.length ? `(${filtered.length})` : "";
 }
 
 function renderFriendly(){
   const filtered = filterList(ALL_FRIENDLY, $qFn && $qFn.value);
   setSelectOptions($n, filtered, {value:"", label:"(bitte waehlen)"});
+  if($cntFn) $cntFn.textContent = filtered.length ? `(${filtered.length})` : "";
 }
 
 function renderEntity(){
   const filtered = filterList(ALL_ENTITY, $qEid && $qEid.value);
   setSelectOptions($e, filtered, {value:"", label:"(alle)"});
+  if($cntEid) $cntEid.textContent = filtered.length > 1 ? `(${filtered.length})` : (filtered.length === 1 ? "(1)" : "");
 }
 
 async function loadMeasurements(){
@@ -599,7 +606,13 @@ async function resolveSignal(){
 
 let LAST_ROWS = [];
 let TABLE_SORT = { key: "time", dir: "asc" };
-let TABLE_FILTER = { min: "0", max: "999999" };
+let TABLE_FILTER = {
+  enabled: true,
+  lo_op: ">=",
+  lo_val: "0",
+  hi_op: "<=",
+  hi_val: "999999",
+};
 
 function tableKbLoaded(){
   try{
@@ -656,19 +669,38 @@ function sortRowsForTable(rows){
   return out;
 }
 
+function _cmp(op, v, ref){
+  if(op === ">") return v > ref;
+  if(op === ">=") return v >= ref;
+  if(op === "<") return v < ref;
+  if(op === "<=") return v <= ref;
+  if(op === "=") return v === ref;
+  if(op === ">0") return v > 0;
+  return true;
+}
+
 function applyValueFilter(rows){
-  const minRaw = (TABLE_FILTER.min || "").trim();
-  const maxRaw = (TABLE_FILTER.max || "").trim();
-  const hasMin = minRaw !== "" && isFinite(Number(minRaw));
-  const hasMax = maxRaw !== "" && isFinite(Number(maxRaw));
-  if(!hasMin && !hasMax) return rows;
-  const minV = hasMin ? Number(minRaw) : null;
-  const maxV = hasMax ? Number(maxRaw) : null;
+  if(!TABLE_FILTER.enabled) return rows;
+
+  const loOp = (TABLE_FILTER.lo_op || "").trim();
+  const hiOp = (TABLE_FILTER.hi_op || "").trim();
+  let loRaw = (TABLE_FILTER.lo_val || "").trim();
+  let hiRaw = (TABLE_FILTER.hi_val || "").trim();
+
+  if(loOp === ">0") loRaw = "0";
+
+  const hasLo = loRaw !== "" && isFinite(Number(loRaw));
+  const hasHi = hiRaw !== "" && isFinite(Number(hiRaw));
+  const loV = hasLo ? Number(loRaw) : null;
+  const hiV = hasHi ? Number(hiRaw) : null;
+  if(!hasLo && !hasHi && loOp !== ">0") return rows;
+
   return (rows || []).filter(r => {
     const v = r && r.value;
     if(typeof v !== "number" || !isFinite(v)) return false;
-    if(minV !== null && v < minV) return false;
-    if(maxV !== null && v > maxV) return false;
+    if(loOp === ">0" && !_cmp(">0", v, 0)) return false;
+    if(loV !== null && loOp !== ">0" && !_cmp(loOp, v, loV)) return false;
+    if(hiV !== null && !_cmp(hiOp, v, hiV)) return false;
     return true;
   });
 }
@@ -688,12 +720,13 @@ function renderTable(){
   });
 
   const shown = display.length;
-  const total = rows.length;
   const baseTotal = (LAST_ROWS || []).length;
   if($tableInfo){
     const arrow = TABLE_SORT.dir === "desc" ? "↓" : "↑";
-    const filt = (baseTotal !== total) ? ` | Filter: ${TABLE_FILTER.min}..${TABLE_FILTER.max}` : "";
-    $tableInfo.textContent = `Zeilen: ${shown}${baseTotal!==shown?` (von ${baseTotal})`:""} | Sort: ${TABLE_SORT.key} ${arrow}${filt}`;
+    const filt = TABLE_FILTER.enabled
+      ? ` | Filter: ${TABLE_FILTER.lo_op} ${TABLE_FILTER.lo_val} .. ${TABLE_FILTER.hi_op} ${TABLE_FILTER.hi_val}`
+      : " | Filter: aus";
+    $tableInfo.textContent = `Eintraege: ${shown}${baseTotal!==shown?` (von ${baseTotal})`:""} | Sort: ${TABLE_SORT.key} ${arrow}${filt}`;
   }
 }
 
@@ -757,8 +790,6 @@ async function deleteData(){
   await loadData();
 }
 
-async function refreshTags(){ await loadEntityIds(); await loadFriendlyNames(); }
-
 function autoSpanSelect(controlId, selectEl){
   try{
     const c = document.getElementById(controlId);
@@ -794,6 +825,13 @@ $n.addEventListener("change", async ()=>{
   try{
     saveState();
     await loadEntityIds();
+    // Auto-select entity_id: if there are candidates, pick the first.
+    const candidates = (ALL_ENTITY || []).filter(x => x);
+    if(candidates.length >= 1){
+      $e.value = candidates[0];
+      saveState();
+      renderEntity();
+    }
     autoSpanAll();
   }catch(e){ displayError(e); }
 });
@@ -918,6 +956,14 @@ document.getElementById("del").addEventListener("click", ()=>deleteData().catch(
     const j = await r.json();
     if(j && j.ok){
       document.getElementById("version_box").innerText = "Version: " + j.version;
+    }
+  }catch(e){}
+})();
+</script>
+
+</body>
+</html>
+("version_box").innerText = "Version: " + j.version;
     }
   }catch(e){}
 })();
