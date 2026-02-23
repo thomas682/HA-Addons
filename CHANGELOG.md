@@ -133,3 +133,14 @@ Das Format orientiert sich an "Keep a Changelog" (kurz gehalten).
 ### Changed
 
 - Main UI: Graph/Tabelle/Statistik werden erst nach Klick auf "Aktualisieren" geladen.
+
+## 1.1.2s - 2026-02-23
+
+### Fixed
+
+- Main UI: Auswahlfelder bleiben stabil (Zeitraum-Wechsel und Aktualisieren loeschen Messwert/entity_id nicht mehr).
+
+### Added
+
+- Main UI: `entity_id` wird nach Messwert-Auswahl automatisch vorbelegt.
+- Main UI: Tabellenfilter kann deaktiviert werden und unterstuetzt Operatoren inkl. Min/Max.
