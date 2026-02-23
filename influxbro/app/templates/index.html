@@ -24,6 +24,8 @@
     .muted { opacity: 0.7; font-size: 12px; }
     .danger { border: 1px solid #d33; padding: 12px; border-radius: 8px; margin-top: 16px; }
     .danger h3 { margin: 0 0 8px 0; color: #b00020; }
+    .danger_grid { display:grid; grid-template-columns: minmax(260px, 1fr) minmax(220px, 0.6fr); gap: 12px; align-items:end; margin-top: 8px; }
+    @media (max-width: 860px){ .danger_grid { grid-template-columns: 1fr; } }
     .stats_wrap { margin-top: 12px; }
     .stats_header { display:flex; gap:12px; align-items:end; flex-wrap:wrap; }
     .stats_grid { display:grid; grid-template-columns: repeat(2, minmax(300px, 1fr)); gap: 12px; margin-top: 12px; }
@@ -98,8 +100,8 @@
       <div class="control" style="min-width: 260px;">
         <label>Statistik (Total-Auswahl)</label>
         <select id="stats_scope">
-          <option value="range">Zeitraum (wie Graph)</option>
-          <option value="1y" selected>1 Jahr</option>
+          <option value="range" selected>Zeitraum (wie Graph)</option>
+          <option value="1y">1 Jahr</option>
           <option value="inf">Unendlich</option>
         </select>
       </div>
@@ -153,13 +155,16 @@
       Achtung: Löschen ist endgültig. Influx v1: Löschen nach Measurement+Zeitraum (und ggf. Tag-Filter). Influx v2: optional Field + Tag-Filter.
       Delete ist standardmäßig aus und muss in Add-on Optionen aktiviert werden.
     </div>
-    <div class="row" style="margin-top: 8px;">
+    <div class="danger_grid">
       <div>
         <label>Bestaetigungstext (genau eintippen)</label>
         <input id="confirm" placeholder="{{ delete_phrase }}" />
         <div class="muted">Muss exakt dem Add-on Setting <code>delete_confirm_phrase</code> entsprechen.</div>
       </div>
-      <button id="del">Delete (Auswahl + Zeitraum)</button>
+      <div>
+        <label>&nbsp;</label>
+        <button id="del" style="width:100%;">Delete (Auswahl + Zeitraum)</button>
+      </div>
     </div>
   </div>
 
@@ -313,7 +318,6 @@ async function loadMeasurements(){
     const o=document.createElement("option"); o.value=x; o.textContent=x; $mf.appendChild(o);
     const o2=document.createElement("option"); o2.value=x; o2.textContent=x; $m.appendChild(o2);
   });
-  if($m.value) await loadFields();
 }
 
 async function loadFields(){
@@ -515,6 +519,7 @@ document.getElementById("del").addEventListener("click", ()=>deleteData().catch(
     const start = new Date(now.getTime() - 24*60*60*1000);
     $start.value = toLocalDatetimeValue(start);
     $stop.value = toLocalDatetimeValue(now);
+    $r.value = "24h";
     await loadMeasurements();
     await loadFriendlyNames();
     await loadEntityIds();
