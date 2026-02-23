@@ -68,3 +68,19 @@ Das Format orientiert sich an "Keep a Changelog" (kurz gehalten).
 
 - Main UI: leere Measurement/Field Listen geben jetzt klare Fehlermeldungen, wenn die Influx-Konfiguration fehlt.
 - Optionales YAML-Fallback fuer API Calls (nur fuer die laufende Session, nachdem in der Konfiguration einmal "yaml Daten einlesen" gedrueckt wurde).
+
+## 1.1.2m - 2026-02-23
+
+### Added
+
+- Main UI: Auswahl nach Klartext (`friendly_name`) mit optionalem `_measurement`-Filter.
+- Main UI: benutzerdefinierter Zeitraum (Von/Bis inkl. Uhrzeit) zusaetzlich zu sinnvollen Presets.
+- Main UI: Statistiktafeln unter dem Graphen inkl. Auswahl (Zeitraum / 1 Jahr / Unendlich) nur fuer Statistik.
+
+### Changed
+
+- Main UI: Graph/Tabelle aktualisieren sich automatisch bei Filter-Aenderungen (mit kurzer Verzoegerung).
+
+### Fixed
+
+- API: Zeitfenster (start/stop) konsistent fuer Query/Stats/Tag-Values verarbeitet.
