@@ -441,12 +441,16 @@ def _flux_escape(v: str) -> str:
     return (v or "").replace("\\", "\\\\").replace('"', "\\\"")
 
 
+def _flux_str(v: str) -> str:
+    return f'"{_flux_escape(v)}"'
+
+
 def flux_tag_filter(entity_id: str | None, friendly_name: str | None) -> str:
     extra = ""
     if entity_id:
-        extra += f' and r.entity_id == "{_flux_escape(entity_id)}"'
+        extra += f" and r.entity_id == {_flux_str(entity_id)}"
     if friendly_name:
-        extra += f' and r.friendly_name == "{_flux_escape(friendly_name)}"'
+        extra += f" and r.friendly_name == {_flux_str(friendly_name)}"
     return extra
 
 
@@ -719,7 +723,7 @@ def fields():
             with v2_client(cfg) as c:
                 q = f'''
  import "influxdata/influxdb/schema"
- schema.measurementFieldKeys(bucket: "{cfg["bucket"]}", measurement: "{measurement}")
+  schema.measurementFieldKeys(bucket: "{cfg["bucket"]}", measurement: "{_flux_escape(measurement)}")
  '''
                 tables = c.query_api().query(q, org=cfg["org"])
                 fs = []
@@ -776,11 +780,11 @@ def tag_values():
                 }), 400
             predicate_parts = []
             if measurement:
-                predicate_parts.append(f'r._measurement == "{measurement}"')
+                predicate_parts.append(f"r._measurement == {_flux_str(measurement)}")
             if entity_id:
-                predicate_parts.append(f'r.entity_id == "{entity_id}"')
+                predicate_parts.append(f"r.entity_id == {_flux_str(entity_id)}")
             if friendly_name:
-                predicate_parts.append(f'r.friendly_name == "{friendly_name}"')
+                predicate_parts.append(f"r.friendly_name == {_flux_str(friendly_name)}")
             predicate = " and ".join(predicate_parts) if predicate_parts else "true"
 
             with v2_client(cfg) as c:
@@ -870,7 +874,7 @@ def query():
                 q = f'''
 from(bucket: "{cfg["bucket"]}")
   {range_clause}
-  |> filter(fn: (r) => r._measurement == "{measurement}" and r._field == "{field}"{extra})
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
   |> keep(columns: ["_time","_value"])
   |> sort(columns: ["_time"])
 '''
@@ -945,7 +949,7 @@ def stats():
                 q_basic = f'''
 data = from(bucket: "{cfg["bucket"]}")
   {range_clause}
-  |> filter(fn: (r) => r._measurement == "{measurement}" and r._field == "{field}"{extra})
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
   |> keep(columns: ["_time", "_value"])
   |> group()
 
@@ -989,7 +993,7 @@ union(tables: [countT, oldT, newT])
                     q_num = f'''
 data = from(bucket: "{cfg["bucket"]}")
   {range_clause}
-  |> filter(fn: (r) => r._measurement == "{measurement}" and r._field == "{field}"{extra})
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
   |> keep(columns: ["_time", "_value"])
   |> group()
 
@@ -1120,7 +1124,7 @@ def resolve_signal():
 
             extra = flux_tag_filter(entity_id, friendly_name)
             range_clause = _flux_range_clause(range_key, start_dt, stop_dt)
-            mfilter = f' and r._measurement == "{measurement_filter}"' if measurement_filter else ""
+            mfilter = f" and r._measurement == {_flux_str(measurement_filter)}" if measurement_filter else ""
             with v2_client(cfg) as c:
                 q = f'''
 from(bucket: "{cfg["bucket"]}")
@@ -1247,13 +1251,13 @@ def delete():
                     "ok": False,
                     "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
                 }), 400
-            predicate = f'_measurement="{measurement}"'
+            predicate = f"_measurement={_flux_str(measurement)}"
             if field:
-                predicate += f' AND _field="{field}"'
+                predicate += f" AND _field={_flux_str(field)}"
             if entity_id:
-                predicate += f' AND entity_id="{entity_id}"'
+                predicate += f" AND entity_id={_flux_str(entity_id)}"
             if friendly_name:
-                predicate += f' AND friendly_name="{friendly_name}"'
+                predicate += f" AND friendly_name={_flux_str(friendly_name)}"
             with v2_client(cfg) as c:
                 c.delete_api().delete(start=start, stop=stop, predicate=predicate, bucket=cfg["bucket"], org=cfg["org"])
             return jsonify({"ok": True, "message": f"Deleted v2: {predicate} in {cfg['bucket']} from {start.isoformat()} to {stop.isoformat()}"})
