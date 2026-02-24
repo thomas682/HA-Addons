@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.0
+- Feature: Plotly.js Graph (Zoom/Pan/Range-Slider) statt Canvas.
+- Fix: add-on changelog file for Home Assistant install/upgrade dialog.
+
 ## 1.3.0-beta.2
 - Fix: add-on changelog file for Home Assistant install/upgrade dialog.
 
