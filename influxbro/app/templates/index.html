@@ -107,6 +107,9 @@
   <h2>Dashboard</h2>
   <div class="muted" id="backup_badge" data-ui="dashboard.backup_badge" title="dashboard.backup_badge"></div>
 
+  <details id="selection_details" {{ 'open' if cfg.get('ui_open_selection') else '' }} data-ui="section.selection" title="section.selection">
+    <summary>Auswahl</summary>
+
   <div class="grid" id="filters" data-ui="dashboard.filters" title="dashboard.filters">
     <div class="control control_lr" id="c_measurement_filter" data-ui="filter_measurement">
       <label>_measurement (Filter)</label>
@@ -136,6 +139,9 @@
         <option value="30d">Letzte 30 Tage</option>
         <option value="90d">Letzte 90 Tage</option>
         <option value="365d">Letztes Jahr</option>
+        <option value="this_year">Dieses Jahr</option>
+        <option value="12mo">Letzte 12 Monate</option>
+        <option value="24mo">Letzte 24 Monate</option>
         <option value="all">Alle</option>
         <option value="custom">Benutzerdefiniert…</option>
       </select>
@@ -160,6 +166,8 @@
     <div class="control"><div class="muted" style="padding-top: 4px;">Laedt Graph/Tabelle/Statistik erst nach Klick auf <code>Aktualisieren</code>.</div></div>
   </div>
 
+  </details>
+
   <details>
     <summary>Erweitert: Measurement / Field</summary>
     <div class="grid" style="margin-top:12px;">
@@ -178,49 +186,36 @@
 
   <div class="main">
 
-    <div class="section" id="graph_section">
-      <div class="section_title">Graph</div>
+    <details id="graph_section" class="section" {{ 'open' if cfg.get('ui_open_graph') else '' }} data-ui="section.graph" title="section.graph">
+      <summary class="section_title">Graph</summary>
       <div class="tbl_actions" data-ui="graph_actions">
         <label><input type="checkbox" id="graph_markers" class="row_sel" data-ui="graph_markers"/>Messpunkte markieren</label>
       </div>
       <div id="chart_plotly"></div>
       <canvas id="chart" width="800" height="200"></canvas>
-    </div>
+    </details>
 
-    <div class="section" id="filterlist_section">
-      <div class="section_title">Filterliste</div>
+    <details id="filterlist_section" class="section" {{ 'open' if cfg.get('ui_open_filterlist') else '' }} data-ui="section.filterlist" title="section.filterlist">
+      <summary class="section_title">Fehler-/Filtertabelle</summary>
       <div class="table_wrap">
         <div class="table_head">
           <div>
-            <div style="font-weight:700;">Tabelle (wie Graph)</div>
+            <div style="font-weight:700;">Fehler-/Filtertabelle</div>
             <div class="muted" id="table_range"></div>
             <div class="muted" id="table_info"></div>
 
             <div class="tbl_actions">
               <label><input type="checkbox" id="tbl_time_from_graph" class="row_sel" data-ui="filterlist_time_from_graph"/>Zeit gefuehrt durch Graph</label>
-              <button class="btn_sm" id="tbl_to_edit" data-ui="filterlist_to_edit">In Bearbeitungsliste</button>
             </div>
           </div>
           <div class="row" style="margin-top:0;">
-            <div style="min-width: 120px;">
-              <label>Filter</label>
-              <select id="tbl_enabled">
-                <option value="on" selected>aktiv</option>
-                <option value="off">aus</option>
-              </select>
-            </div>
-
-            <div style="min-width: 110px;">
-              <label>Verb.</label>
-              <select id="tbl_mode">
-                <option value="or" selected>oder</option>
-                <option value="and">und</option>
-              </select>
+            <div style="min-width: 130px;">
+              <label><input type="checkbox" id="tbl_enabled" class="row_sel" data-ui="filterlist_filter_enabled"/> Filter aktiv</label>
             </div>
 
             <div style="min-width: 110px;">
               <label>Links</label>
-              <select id="tbl_a_op">
+              <select id="tbl_a_op" data-ui="filterlist_left_op">
                 <option value=">">&gt;</option>
                 <option value=">=">&gt;=</option>
                 <option value="<" selected>&lt;</option>
@@ -229,12 +224,20 @@
             </div>
             <div style="min-width: 130px;">
               <label>&nbsp;</label>
-              <input id="tbl_a_val" placeholder="0" />
+              <input id="tbl_a_val" placeholder="0" data-ui="filterlist_left_val" />
+            </div>
+
+            <div style="min-width: 110px;">
+              <label>Verb.</label>
+              <select id="tbl_mode" data-ui="filterlist_mode">
+                <option value="or" selected>oder</option>
+                <option value="and">und</option>
+              </select>
             </div>
 
             <div style="min-width: 110px;">
               <label>Rechts</label>
-              <select id="tbl_b_op">
+              <select id="tbl_b_op" data-ui="filterlist_right_op">
                 <option value=">" selected>&gt;</option>
                 <option value=">=">&gt;=</option>
                 <option value="<">&lt;</option>
@@ -243,7 +246,7 @@
             </div>
             <div style="min-width: 130px;">
               <label>&nbsp;</label>
-              <input id="tbl_b_val" placeholder="999999" />
+              <input id="tbl_b_val" placeholder="999999" data-ui="filterlist_right_val" />
             </div>
           </div>
         </div>
@@ -253,12 +256,16 @@
             <tbody></tbody>
           </table>
         </div>
+
+        <div class="tbl_actions" style="justify-content:flex-end; margin-top: 10px;">
+          <button class="btn_sm" id="tbl_to_edit" data-ui="filterlist_to_edit">In Bearbeitungsliste</button>
+        </div>
       </div>
 
-    </div>
+    </details>
 
-    <div class="section" id="edit_section">
-      <div class="section_title">Bearbeitungsliste</div>
+    <details class="section" id="edit_section" {{ 'open' if cfg.get('ui_open_editlist') else '' }} data-ui="section.editlist" title="section.editlist">
+      <summary class="section_title">Bearbeitungsliste</summary>
       <div class="table_wrap" id="edit_wrap">
         <div class="table_head">
           <div>
@@ -284,33 +291,18 @@
           </table>
         </div>
 
-        <div class="tbl_actions" style="justify-content:space-between; margin-top: 10px;">
-          <div class="row" style="margin-top:0;">
-            <button class="btn_sm" id="edit_remove" data-ui="editlist_remove">Aus Liste loeschen</button>
-            <button class="btn_sm" id="edit_undo_all" data-ui="editlist_undo_all">Undo alle</button>
-          </div>
-          <div class="row" style="margin-top:0; align-items:end;">
-            <div style="min-width: 320px;">
-              <label>Bestaetigungstext (genau eintippen)</label>
-              <input id="confirm" placeholder="{{ delete_phrase }}" data-ui="editlist_confirm" />
-              <div class="muted">Schreiben ist an <code>allow_delete</code> + <code>delete_confirm_phrase</code> gekoppelt.</div>
-            </div>
-            <div style="min-width: 260px;">
-              <label>&nbsp;</label>
-              <button class="btn_sm" id="edit_apply" style="width:100%;" data-ui="editlist_apply">Alle Werte in Datenbank uebernehmen</button>
-            </div>
-          </div>
+        <div class="tbl_actions" style="justify-content:flex-end; margin-top: 10px;">
+          <button class="btn_sm" id="edit_remove" data-ui="editlist_remove">Aus Liste loeschen</button>
+          <button class="btn_sm" id="edit_undo_all" data-ui="editlist_undo_all">Undo alle</button>
+          <button class="btn_sm" id="edit_apply" data-ui="editlist_apply">Alle Werte in Datenbank uebernehmen</button>
         </div>
       </div>
-    </div>
+    </details>
 
-    <div class="section" id="stats_section">
-      <div class="section_title">Statistik</div>
+    <details class="section" id="stats_section" {{ 'open' if cfg.get('ui_open_stats') else '' }} data-ui="section.stats" title="section.stats">
+      <summary class="section_title">Statistik</summary>
       <div class="table_wrap">
-        <div class="tbl_actions">
-          <label><input type="checkbox" id="stats_toggle" class="row_sel" data-ui="stats_toggle"/>Statistik anzeigen</label>
-        </div>
-        <div class="stats_box" id="stats_box">
+        <div class="stats_box" id="stats_box" style="display:block;">
           <div style="font-weight:700; margin-top: 8px;">Gesamtstatistik (Alles)</div>
           <table class="stats_tbl"><tbody id="stats_tot_body"></tbody></table>
 
@@ -318,46 +310,7 @@
           <table class="stats_tbl"><tbody id="stats_curr_body"></tbody></table>
         </div>
       </div>
-    </div>
-
-    <div class="section" id="global_stats_section" data-ui="global_stats.section" title="global_stats.section">
-      <div class="section_title">Gesamtstatistik (alle Messwerte)</div>
-      <div class="table_wrap">
-        <div class="row" style="margin-top:0;">
-          <div style="flex:1; min-width: 260px;">
-            <label>Suche</label>
-            <input id="gstats_q" placeholder="Volltext..." data-ui="global_stats.search" />
-          </div>
-          <div>
-            <label>&nbsp;</label>
-            <button id="gstats_load" data-ui="global_stats.load">Gesamtstatistik laden</button>
-          </div>
-          <div class="muted" id="gstats_info" data-ui="global_stats.info" style="padding-top: 6px;"></div>
-        </div>
-
-        <div class="table_box" id="gstats_box">
-          <table id="gstats_tbl" data-ui="global_stats.table">
-            <thead>
-              <tr>
-                <th data-key="friendly_name" data-ui="global_stats.col.friendly_name">friendly_name</th>
-                <th data-key="entity_id" data-ui="global_stats.col.entity_id">entity_id</th>
-                <th data-key="measurement" data-ui="global_stats.col.measurement">_measurement</th>
-                <th data-key="field" data-ui="global_stats.col.field">_field</th>
-                <th data-key="count" data-ui="global_stats.col.count">count</th>
-                <th data-key="oldest_time" data-ui="global_stats.col.oldest">oldest</th>
-                <th data-key="newest_time" data-ui="global_stats.col.newest">newest</th>
-                <th data-key="last_value" data-ui="global_stats.col.last_value">last_value</th>
-                <th data-key="min" data-ui="global_stats.col.min">min</th>
-                <th data-key="max" data-ui="global_stats.col.max">max</th>
-                <th data-key="mean" data-ui="global_stats.col.mean">mean</th>
-                <th data-key="p50" data-ui="global_stats.col.p50">p50</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
+    </details>
 
   </div>
 
@@ -400,21 +353,13 @@ const $rangeFromTo = document.getElementById('range_from_to');
 const $cntMf = document.getElementById('cnt_measurement_filter');
 const $cntFn = document.getElementById('cnt_friendly_name');
 const $cntEid = document.getElementById('cnt_entity_id');
-const $confirm = document.getElementById('confirm');
 const $backupBadge = document.getElementById('backup_badge');
 
 const $graphMarkers = document.getElementById('graph_markers');
 
-const $statsToggle = document.getElementById('stats_toggle');
 const $statsBox = document.getElementById('stats_box');
 const $statsTotBody = document.getElementById('stats_tot_body');
 const $statsCurrBody = document.getElementById('stats_curr_body');
-
-const $gstatsQ = document.getElementById('gstats_q');
-const $gstatsLoad = document.getElementById('gstats_load');
-const $gstatsInfo = document.getElementById('gstats_info');
-const $gstatsTbody = document.querySelector('#gstats_tbl tbody');
-const $gstatsThead = document.querySelector('#gstats_tbl thead');
 
 const canvas = document.getElementById('chart');
 const ctx = canvas.getContext('2d');
@@ -523,7 +468,6 @@ function saveState(){
       sort_dir: TABLE_SORT.dir,
       tbl_time_from_graph: TABLE_TIME.from_graph,
       graph_markers: GRAPH_MARKERS,
-      stats_visible: STATS_VISIBLE,
     };
     localStorage.setItem(LS_KEY, JSON.stringify(j));
   }catch(e){}
@@ -536,10 +480,7 @@ let TABLE_TIME = {
 };
 
 let GRAPH_MARKERS = false;
-let STATS_VISIBLE = false;
-
-let GSTATS_ROWS = [];
-let GSTATS_SORT = { key: "count", dir: "desc" };
+let DELETE_PHRASE = "";
 
 let _PLOTLY_EVENTS_BOUND = false;
 
@@ -714,7 +655,7 @@ function drawPlotly(rows){
           TABLE_TIME.graph_start_ms = null;
           TABLE_TIME.graph_stop_ms = null;
           renderTableRange();
-          if(TABLE_TIME.from_graph) renderTable();
+          renderTable();
           return;
         }
 
@@ -727,7 +668,7 @@ function drawPlotly(rows){
             TABLE_TIME.graph_start_ms = Math.min(a, b);
             TABLE_TIME.graph_stop_ms = Math.max(a, b);
             renderTableRange();
-            if(TABLE_TIME.from_graph) renderTable();
+            renderTable();
           }
         }
       }catch(e){}
@@ -737,7 +678,7 @@ function drawPlotly(rows){
       TABLE_TIME.graph_start_ms = null;
       TABLE_TIME.graph_stop_ms = null;
       renderTableRange();
-      if(TABLE_TIME.from_graph) renderTable();
+      renderTable();
     });
   }
   return true;
@@ -775,6 +716,7 @@ async function loadUiConfig(){
   try{
     const j = await api("./api/config");
     const cfg = j.config || {};
+    if(j && j.delete_confirm_phrase) DELETE_PHRASE = String(j.delete_confirm_phrase);
     const d = Number(cfg.ui_decimals);
     if(isFinite(d) && d >= 0 && d <= 10) UI_DECIMALS = Math.trunc(d);
     const r = Number(cfg.ui_table_visible_rows);
@@ -818,11 +760,27 @@ function localToIsoUtc(v){
 }
 
 function currentTimeFilter(){
-  if($r.value !== "custom") return { range: $r.value };
+  const rk = $r.value;
+  if(rk === "this_year"){
+    const now = new Date();
+    const start = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
+    return { start: start.toISOString(), stop: now.toISOString(), range: rk };
+  }
+  if(rk === "12mo"){
+    const now = new Date();
+    const start = new Date(now.getTime() - 365*24*60*60*1000);
+    return { start: start.toISOString(), stop: now.toISOString(), range: rk };
+  }
+  if(rk === "24mo"){
+    const now = new Date();
+    const start = new Date(now.getTime() - 730*24*60*60*1000);
+    return { start: start.toISOString(), stop: now.toISOString(), range: rk };
+  }
+  if(rk !== "custom") return { range: rk };
   const s = localToIsoUtc($start.value);
   const e = localToIsoUtc($stop.value);
   if(!s || !e) throw new Error("Bitte 'Von' und 'Bis' setzen (benutzerdefinierter Zeitraum).");
-  return { start: s, stop: e, range: $r.value };
+  return { start: s, stop: e, range: rk };
 }
 
 function currentFilters(){
@@ -841,14 +799,11 @@ function tagQueryParams(opts){
   if($mf.value) q.push("measurement=" + encodeURIComponent($mf.value));
   if(o.includeFriendly && $n.value) q.push("friendly_name=" + encodeURIComponent($n.value));
   if(o.includeEntity && $e.value) q.push("entity_id=" + encodeURIComponent($e.value));
-  if($r.value !== "custom") q.push("range=" + encodeURIComponent($r.value));
-  if($r.value === "custom"){
-    const s = localToIsoUtc($start.value);
-    const e = localToIsoUtc($stop.value);
-    if(s && e){
-      q.push("start=" + encodeURIComponent(s));
-      q.push("stop=" + encodeURIComponent(e));
-    }
+  const tf = currentTimeFilter();
+  if(tf && tf.range) q.push("range=" + encodeURIComponent(tf.range));
+  if(tf && tf.start && tf.stop){
+    q.push("start=" + encodeURIComponent(tf.start));
+    q.push("stop=" + encodeURIComponent(tf.stop));
   }
   return q.join("&");
 }
@@ -857,6 +812,16 @@ function rangeToStartStop(){
   const now = new Date();
   if($r.value === "all"){
     return { start: null, stop: null, all: true };
+  }
+  if($r.value === "this_year" || $r.value === "12mo" || $r.value === "24mo"){
+    try{
+      const tf = currentTimeFilter();
+      const s = tf.start ? new Date(tf.start) : null;
+      const e = tf.stop ? new Date(tf.stop) : now;
+      return { start: s, stop: e };
+    }catch(e){
+      return { start: null, stop: now };
+    }
   }
   if($r.value === "custom"){
     const s = $start.value ? new Date($start.value) : null;
@@ -1074,100 +1039,8 @@ function _statsRowsCurrent(stats){
 
 function renderStats(){
   if(!$statsBox) return;
-  $statsBox.style.display = STATS_VISIBLE ? "block" : "none";
-  if(!STATS_VISIBLE) return;
   _setStatsBody($statsTotBody, _statsRowsTotal(LAST_STATS_TOT));
   _setStatsBody($statsCurrBody, _statsRowsCurrent(LAST_STATS_CURR));
-}
-
-function _gstatsTextRow(r){
-  return [r.friendly_name, r.entity_id, r.measurement, r.field, r.count, r.oldest_time, r.newest_time, r.last_value, r.min, r.max, r.mean, r.p50]
-    .map(x => String(x === null || x === undefined ? "" : x))
-    .join(" ")
-    .toLowerCase();
-}
-
-function _gstatsSortRows(rows){
-  const key = GSTATS_SORT.key;
-  const dir = GSTATS_SORT.dir === "desc" ? -1 : 1;
-  const out = (rows || []).slice();
-  out.sort((a,b)=>{
-    const av = a ? a[key] : null;
-    const bv = b ? b[key] : null;
-    if(key.endsWith("_time")){
-      const at = Date.parse(String(av||""));
-      const bt = Date.parse(String(bv||""));
-      if(isFinite(at) && isFinite(bt)) return (at - bt) * dir;
-    }
-    const an = (typeof av === "number" && isFinite(av)) ? av : (isFinite(Number(av)) ? Number(av) : null);
-    const bn = (typeof bv === "number" && isFinite(bv)) ? bv : (isFinite(Number(bv)) ? Number(bv) : null);
-    if(an !== null && bn !== null) return (an - bn) * dir;
-    return String(av||"").localeCompare(String(bv||"")) * dir;
-  });
-  return out;
-}
-
-function renderGlobalStats(){
-  if(!$gstatsTbody) return;
-  const q = String($gstatsQ && $gstatsQ.value ? $gstatsQ.value : "").trim().toLowerCase();
-  let rows = GSTATS_ROWS || [];
-  if(q){
-    rows = rows.filter(r => _gstatsTextRow(r).includes(q));
-  }
-  rows = _gstatsSortRows(rows);
-
-  $gstatsTbody.innerHTML = "";
-  rows.forEach(r=>{
-    const tr = document.createElement("tr");
-    const add = (v, isTime=false, isNum=false) => {
-      const td = document.createElement("td");
-      if(isTime) td.textContent = fmtTs(v);
-      else if(isNum) td.textContent = (v===null||v===undefined)?"":fmtNum(v);
-      else td.textContent = String(v===null||v===undefined?"":v);
-      tr.appendChild(td);
-    };
-    add(r.friendly_name);
-    add(r.entity_id);
-    add(r.measurement);
-    add(r.field);
-    add(r.count, false, false);
-    add(r.oldest_time, true, false);
-    add(r.newest_time, true, false);
-    add(r.last_value, false, true);
-    add(r.min, false, true);
-    add(r.max, false, true);
-    add(r.mean, false, true);
-    add(r.p50, false, true);
-    $gstatsTbody.appendChild(tr);
-  });
-
-  if($gstatsInfo){
-    const base = (GSTATS_ROWS || []).length;
-    const shown = rows.length;
-    const arrow = GSTATS_SORT.dir === "desc" ? "↓" : "↑";
-    $gstatsInfo.textContent = `Zeilen: ${shown}${shown!==base?` (von ${base})`:""} | Sort: ${GSTATS_SORT.key} ${arrow}`;
-  }
-}
-
-async function loadGlobalStats(){
-  err(""); ok("");
-  if($gstatsInfo) $gstatsInfo.textContent = "laedt...";
-  const j = await api("./api/global_stats?limit=5000");
-  GSTATS_ROWS = (j.rows || []).map(r => ({
-    measurement: r.measurement || "",
-    field: r.field || "",
-    entity_id: r.entity_id || "",
-    friendly_name: r.friendly_name || "",
-    count: r.count,
-    oldest_time: r.oldest_time,
-    newest_time: r.newest_time,
-    last_value: r.last_value,
-    min: r.min,
-    max: r.max,
-    mean: r.mean,
-    p50: r.p50,
-  }));
-  renderGlobalStats();
 }
 
 function sortRowsForTable(rows){
@@ -1565,7 +1438,7 @@ async function applyAllEdits(){
 
   const base = currentFilters();
   const payload = {
-    confirm: $confirm ? $confirm.value : "",
+    confirm: DELETE_PHRASE,
     measurement: base.measurement,
     field: base.field,
     entity_id: base.entity_id,
@@ -1797,7 +1670,7 @@ if($thValue) $thValue.addEventListener("click", ()=>toggleSort("value"));
 
 // Table value filter
 function onTableFilter(){
-  TABLE_FILTER.enabled = ($tblEnabled ? $tblEnabled.value : "on") !== "off";
+  TABLE_FILTER.enabled = ($tblEnabled ? !!$tblEnabled.checked : true);
   TABLE_FILTER.mode = $tblMode ? $tblMode.value : "or";
   TABLE_FILTER.a_op = $tblAOp ? $tblAOp.value : "<";
   TABLE_FILTER.a_val = $tblAVal ? $tblAVal.value : "0";
@@ -1818,30 +1691,6 @@ if($graphMarkers) $graphMarkers.addEventListener("change", ()=>{
   GRAPH_MARKERS = !!$graphMarkers.checked;
   saveState();
   draw(LAST_ROWS);
-});
-
-// Stats toggle
-if($statsToggle) $statsToggle.addEventListener("change", ()=>{
-  STATS_VISIBLE = !!$statsToggle.checked;
-  saveState();
-  renderStats();
-});
-
-// Global stats
-if($gstatsLoad) $gstatsLoad.addEventListener("click", ()=>loadGlobalStats().catch(displayError));
-if($gstatsQ) $gstatsQ.addEventListener("input", debounce(()=>renderGlobalStats(), 120));
-if($gstatsThead) $gstatsThead.addEventListener("click", (ev)=>{
-  const th = ev && ev.target ? ev.target.closest('th') : null;
-  if(!th) return;
-  const key = th.getAttribute('data-key');
-  if(!key) return;
-  if(GSTATS_SORT.key === key){
-    GSTATS_SORT.dir = (GSTATS_SORT.dir === 'asc') ? 'desc' : 'asc';
-  }else{
-    GSTATS_SORT.key = key;
-    GSTATS_SORT.dir = (key === 'friendly_name' || key === 'entity_id' || key === 'measurement' || key === 'field') ? 'asc' : 'desc';
-  }
-  renderGlobalStats();
 });
 
 // Table time from graph
@@ -1913,7 +1762,7 @@ document.getElementById("load").addEventListener("click", ()=>refreshAll().catch
     if(st.tbl_hi_op && !st.tbl_b_op) TABLE_FILTER.b_op = st.tbl_hi_op;
     if(st.tbl_hi_val !== undefined && st.tbl_b_val === undefined) TABLE_FILTER.b_val = st.tbl_hi_val;
 
-    if($tblEnabled) $tblEnabled.value = TABLE_FILTER.enabled ? "on" : "off";
+    if($tblEnabled) $tblEnabled.checked = !!TABLE_FILTER.enabled;
     if($tblMode) $tblMode.value = TABLE_FILTER.mode;
     if($tblAOp) $tblAOp.value = TABLE_FILTER.a_op;
     if($tblAVal) $tblAVal.value = TABLE_FILTER.a_val;
@@ -1926,8 +1775,6 @@ document.getElementById("load").addEventListener("click", ()=>refreshAll().catch
     GRAPH_MARKERS = !!st.graph_markers;
     if($graphMarkers) $graphMarkers.checked = GRAPH_MARKERS;
 
-    STATS_VISIBLE = !!st.stats_visible;
-    if($statsToggle) $statsToggle.checked = STATS_VISIBLE;
     renderStats();
 
     if(st.sort_key) TABLE_SORT.key = st.sort_key;
@@ -1958,6 +1805,11 @@ document.getElementById("load").addEventListener("click", ()=>refreshAll().catch
     saveState();
 
     renderEditTable();
+
+    // Auto-load data if a selection exists in stored state.
+    if((st.friendly_name && String(st.friendly_name).trim()) || (st.entity_id && String(st.entity_id).trim())){
+      refreshAll().catch(displayError);
+    }
   } catch(e){ displayError(e); }
 })();
 

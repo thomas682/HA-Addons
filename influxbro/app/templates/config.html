@@ -160,6 +160,18 @@
         <input id="ui_repo_url" />
         <div class="muted">Wird in der Info-Seite als Link angezeigt (Gitea/GitHub).</div>
       </div>
+
+      <div class="span2">
+        <label>Bereiche standardmaessig geoeffnet</label>
+        <div class="muted">Standard ist "zu" (nicht geoeffnet).</div>
+        <div class="grid" style="margin-top:8px;">
+          <div><label><input type="checkbox" id="ui_open_selection" /> Auswahl</label></div>
+          <div><label><input type="checkbox" id="ui_open_graph" /> Graph</label></div>
+          <div><label><input type="checkbox" id="ui_open_filterlist" /> Fehler-/Filtertabelle</label></div>
+          <div><label><input type="checkbox" id="ui_open_editlist" /> Bearbeitungsliste</label></div>
+          <div><label><input type="checkbox" id="ui_open_stats" /> Statistik</label></div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -185,6 +197,7 @@ const ids = [
   "ui_font_size_px","ui_font_small_px","ui_checkbox_scale",
   "ui_filter_label_width_px","ui_filter_control_width_px","ui_filter_search_width_px"
   ,"ui_repo_url"
+  ,"ui_open_selection","ui_open_graph","ui_open_filterlist","ui_open_editlist","ui_open_stats"
 ];
 
 const el = {};
@@ -225,6 +238,12 @@ function setForm(cfg){
   el.ui_filter_control_width_px.value = cfg.ui_filter_control_width_px ?? 320;
   el.ui_filter_search_width_px.value = cfg.ui_filter_search_width_px ?? 160;
   el.ui_repo_url.value = cfg.ui_repo_url ?? "";
+
+  el.ui_open_selection.checked = !!cfg.ui_open_selection;
+  el.ui_open_graph.checked = !!cfg.ui_open_graph;
+  el.ui_open_filterlist.checked = !!cfg.ui_open_filterlist;
+  el.ui_open_editlist.checked = !!cfg.ui_open_editlist;
+  el.ui_open_stats.checked = !!cfg.ui_open_stats;
 }
 
 function getForm(){
@@ -257,6 +276,12 @@ function getForm(){
     ui_filter_search_width_px: parseInt(el.ui_filter_search_width_px.value, 10),
 
     ui_repo_url: (el.ui_repo_url.value || "").trim(),
+
+    ui_open_selection: !!el.ui_open_selection.checked,
+    ui_open_graph: !!el.ui_open_graph.checked,
+    ui_open_filterlist: !!el.ui_open_filterlist.checked,
+    ui_open_editlist: !!el.ui_open_editlist.checked,
+    ui_open_stats: !!el.ui_open_stats.checked,
   };
 }
 

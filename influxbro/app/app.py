@@ -305,6 +305,13 @@ DEFAULT_CFG = {
 
     # Links / Info
     "ui_repo_url": "http://192.168.2.65:7070/thomas/ha-addons",
+
+    # Default collapsed sections
+    "ui_open_selection": False,
+    "ui_open_graph": False,
+    "ui_open_filterlist": False,
+    "ui_open_editlist": False,
+    "ui_open_stats": False,
 }
 
 def load_cfg():
@@ -559,12 +566,19 @@ def v1_client(cfg: dict):
     
 @app.get("/")
 def index():
+    cfg = load_cfg()
     return render_template(
         "index.html",
+        cfg=cfg,
         allow_delete=ALLOW_DELETE,
         delete_phrase=DELETE_CONFIRM_PHRASE,
         nav="dashboard",
     )
+
+
+@app.get("/stats")
+def stats_page():
+    return render_template("stats.html", allow_delete=ALLOW_DELETE, nav="stats")
 
 
 @app.get("/logs")
@@ -1171,6 +1185,20 @@ def api_set_config():
         cfg["ui_repo_url"] = str(cfg.get("ui_repo_url") or "").strip()
     except Exception:
         cfg["ui_repo_url"] = ""
+
+    def _bool(key: str, default: bool = False) -> None:
+        v = cfg.get(key, default)
+        if isinstance(v, bool):
+            cfg[key] = v
+            return
+        s = str(v).strip().lower()
+        cfg[key] = s in ("1", "true", "yes", "on")
+
+    _bool("ui_open_selection", False)
+    _bool("ui_open_graph", False)
+    _bool("ui_open_filterlist", False)
+    _bool("ui_open_editlist", False)
+    _bool("ui_open_stats", False)
 
     save_cfg(cfg)
     return jsonify({"ok": True, "message": "Saved. New settings are used immediately."})

@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>InfluxBro – Statistik</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; }
+    .shell { display:grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
+    @media (max-width: 980px){ .shell { grid-template-columns: 1fr; } }
+    .sidebar { padding: 14px; border-right: 1px solid #eee; }
+    @media (max-width: 980px){ .sidebar { border-right: 0; border-bottom: 1px solid #eee; } }
+    .brand { margin-bottom: 10px; }
+    .brand_title { font-weight: 800; font-size: 18px; }
+    .brand_meta { opacity: 0.7; font-size: 12px; margin-top: 2px; }
+    .nav_item { display:flex; align-items:center; gap: 10px; padding: 10px 10px; border-radius: 12px; text-decoration:none; color: inherit; }
+    .nav_item:hover { background: #f6f6f6; }
+    .nav_item.active { background: #0b0b0c; color: #fff; }
+    .ico { width: 22px; height: 22px; display:inline-flex; align-items:center; justify-content:center; font-weight: 800; }
+
+    .content { padding: 16px; }
+    h2 { margin: 0; }
+    .muted { opacity: 0.7; font-size: 12px; }
+    .row { display:flex; gap: 10px; flex-wrap:wrap; align-items:end; margin-top: 10px; }
+    label { display:block; font-size: 12px; opacity: 0.8; }
+    input, select, button { padding: 10px 12px; height: 40px; box-sizing: border-box; }
+    button { cursor:pointer; }
+    .card { border: 1px solid #ddd; border-radius: 12px; padding: 12px; margin-top: 12px; }
+    .err { color: #b00020; margin-top: 8px; white-space: pre-wrap; }
+
+    table { border-collapse: collapse; width: 100%; margin-top: 10px; }
+    th, td { border: 1px solid #eee; padding: 6px; font-size: 12px; }
+    th { background: #f6f6f6; text-align:left; cursor:pointer; position: sticky; top: 0; z-index: 1; }
+    .table_box { max-height: 70vh; overflow:auto; border: 1px solid #eee; border-radius: 12px; }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    {% include "_nav.html" %}
+    <main class="content" data-ui="stats.page" title="stats.page">
+      <h2>Statistik</h2>
+      <div class="muted">Gesamtstatistik fuer alle Messwerte (eine Zeile pro Serie).</div>
+
+      <div class="card">
+        <div class="row">
+          <div style="flex:1; min-width: 260px;">
+            <label>Suche</label>
+            <input id="q" placeholder="Volltext..." data-ui="stats.search" title="stats.search" />
+          </div>
+          <div>
+            <label>&nbsp;</label>
+            <button id="load" data-ui="stats.load" title="stats.load">Gesamtstatistik laden</button>
+          </div>
+          <div class="muted" id="info" data-ui="stats.info" title="stats.info" style="padding-top: 6px;"></div>
+        </div>
+        <div id="err" class="err"></div>
+
+        <div class="table_box">
+          <table id="tbl" data-ui="stats.table" title="stats.table">
+            <thead>
+              <tr>
+                <th data-key="friendly_name">friendly_name</th>
+                <th data-key="entity_id">entity_id</th>
+                <th data-key="measurement">_measurement</th>
+                <th data-key="field">_field</th>
+                <th data-key="count">count</th>
+                <th data-key="oldest_time">oldest</th>
+                <th data-key="newest_time">newest</th>
+                <th data-key="last_value">last_value</th>
+                <th data-key="min">min</th>
+                <th data-key="max">max</th>
+                <th data-key="mean">mean</th>
+                <th data-key="p50">p50</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <script>
+      const $q = document.getElementById('q');
+      const $load = document.getElementById('load');
+      const $info = document.getElementById('info');
+      const $err = document.getElementById('err');
+      const $tbody = document.querySelector('#tbl tbody');
+      const $thead = document.querySelector('#tbl thead');
+
+      let UI_DECIMALS = 3;
+      let ROWS = [];
+      let SORT = { key: 'count', dir: 'desc' };
+
+      function err(s){ $err.textContent = s || ""; }
+      function fmtNum(v){
+        if(typeof v === 'number' && isFinite(v)) return v.toFixed(UI_DECIMALS);
+        const n = Number(v);
+        if(String(v).trim() !== '' && isFinite(n)) return n.toFixed(UI_DECIMALS);
+        return String(v === null || v === undefined ? '' : v);
+      }
+      function fmtTs(iso){
+        if(!iso) return '';
+        const d = new Date(String(iso));
+        if(!isFinite(d.getTime())) return String(iso);
+        const pad = (n) => String(n).padStart(2,'0');
+        return pad(d.getDate()) + '.' + pad(d.getMonth()+1) + '.' + d.getFullYear() + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+      }
+
+      async function api(url, opts){
+        const r = await fetch(url, opts);
+        const j = await r.json().catch(()=>({ok:false,error:'Invalid JSON'}));
+        if(!r.ok || !j.ok) throw new Error(j.error || ('HTTP ' + r.status));
+        return j;
+      }
+
+      async function loadUiCfg(){
+        try{
+          const j = await api('./api/config');
+          const d = Number(j.config && j.config.ui_decimals);
+          if(isFinite(d) && d >= 0 && d <= 10) UI_DECIMALS = Math.trunc(d);
+        }catch(e){}
+      }
+
+      function txtRow(r){
+        return [r.friendly_name,r.entity_id,r.measurement,r.field,r.count,r.oldest_time,r.newest_time,r.last_value,r.min,r.max,r.mean,r.p50]
+          .map(x=>String(x===null||x===undefined?'':x)).join(' ').toLowerCase();
+      }
+      function sortRows(rows){
+        const key = SORT.key;
+        const dir = SORT.dir === 'desc' ? -1 : 1;
+        const out = (rows||[]).slice();
+        out.sort((a,b)=>{
+          const av = a ? a[key] : null;
+          const bv = b ? b[key] : null;
+          if(key.endsWith('_time')){
+            const at = Date.parse(String(av||''));
+            const bt = Date.parse(String(bv||''));
+            if(isFinite(at) && isFinite(bt)) return (at-bt)*dir;
+          }
+          const an = (typeof av === 'number' && isFinite(av)) ? av : (isFinite(Number(av)) ? Number(av) : null);
+          const bn = (typeof bv === 'number' && isFinite(bv)) ? bv : (isFinite(Number(bv)) ? Number(bv) : null);
+          if(an!==null && bn!==null) return (an-bn)*dir;
+          return String(av||'').localeCompare(String(bv||''))*dir;
+        });
+        return out;
+      }
+
+      function render(){
+        const q = String($q.value||'').trim().toLowerCase();
+        let rows = ROWS || [];
+        if(q) rows = rows.filter(r=>txtRow(r).includes(q));
+        rows = sortRows(rows);
+
+        $tbody.innerHTML = '';
+        rows.forEach(r=>{
+          const tr=document.createElement('tr');
+          const add=(v,isTime=false,isNum=false)=>{
+            const td=document.createElement('td');
+            td.textContent = isTime ? fmtTs(v) : (isNum ? fmtNum(v) : String(v===null||v===undefined?'':v));
+            tr.appendChild(td);
+          };
+          add(r.friendly_name);
+          add(r.entity_id);
+          add(r.measurement);
+          add(r.field);
+          add(r.count);
+          add(r.oldest_time,true,false);
+          add(r.newest_time,true,false);
+          add(r.last_value,false,true);
+          add(r.min,false,true);
+          add(r.max,false,true);
+          add(r.mean,false,true);
+          add(r.p50,false,true);
+          $tbody.appendChild(tr);
+        });
+
+        const base = (ROWS||[]).length;
+        const shown = rows.length;
+        const arrow = SORT.dir === 'desc' ? '↓' : '↑';
+        $info.textContent = `Zeilen: ${shown}${shown!==base?` (von ${base})`:''} | Sort: ${SORT.key} ${arrow}`;
+      }
+
+      async function load(){
+        err('');
+        $info.textContent = 'laedt...';
+        const j = await api('./api/global_stats?limit=5000');
+        ROWS = (j.rows||[]).map(r=>({
+          measurement: r.measurement||'',
+          field: r.field||'',
+          entity_id: r.entity_id||'',
+          friendly_name: r.friendly_name||'',
+          count: r.count,
+          oldest_time: r.oldest_time,
+          newest_time: r.newest_time,
+          last_value: r.last_value,
+          min: r.min,
+          max: r.max,
+          mean: r.mean,
+          p50: r.p50,
+        }));
+        render();
+      }
+
+      function debounce(fn, ms){
+        let t=null;
+        return ()=>{ if(t) clearTimeout(t); t=setTimeout(fn, ms); };
+      }
+
+      $load.addEventListener('click', ()=>load().catch(e=>err(String(e && e.message ? e.message : e))));
+      $q.addEventListener('input', debounce(()=>render(), 120));
+      $thead.addEventListener('click', (ev)=>{
+        const th = ev && ev.target ? ev.target.closest('th') : null;
+        if(!th) return;
+        const key = th.getAttribute('data-key');
+        if(!key) return;
+        if(SORT.key === key){
+          SORT.dir = (SORT.dir === 'asc') ? 'desc' : 'asc';
+        }else{
+          SORT.key = key;
+          SORT.dir = (key === 'friendly_name' || key === 'entity_id' || key === 'measurement' || key === 'field') ? 'asc' : 'desc';
+        }
+        render();
+      });
+
+      loadUiCfg().then(()=>{});
+      </script>
+    </main>
+  </div>
+</body>
+</html>

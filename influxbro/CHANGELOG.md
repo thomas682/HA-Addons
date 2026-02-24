@@ -24,6 +24,12 @@
 ## 1.7.0
 - Dashboard: Gesamtstatistik Tabelle fuer alle Messwerte (Suche + sortierbare Spalten).
 
+## 1.8.0
+- Statistik: Gesamtstatistik auf eigener Seite im Menu.
+- Dashboard: Bereiche (Auswahl/Graph/Fehler-/Filtertabelle/Bearbeitungsliste/Statistik) klappbar; Default ueber Einstellungen.
+- UI: Filter aktiv als Checkbox; Verb-Logik zwischen Links/Rechts.
+- UI: Filtertabelle laedt automatisch beim Seitenstart (wenn Auswahl vorhanden).
+
 ## 1.4.0
 - Feature: Tabelle kann optional zeitlich vom Graph-Zoom gefuehrt werden.
 - Feature: Bearbeitungsliste fuer selektierte Datenpunkte inkl. Undo und "alle uebernehmen".
