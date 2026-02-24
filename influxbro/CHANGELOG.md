@@ -35,6 +35,10 @@
 - Einstellungen: Maximaler Sprung je Einheit (W/kW/Wh/kWh) vorbelegt fuer typischen Haushalt.
 - Logs: Supervisor-API Pfade robuster + supervisor_api aktiviert.
 
+## 1.10.0
+- Graph: Y-Achse skaliert automatisch beim Zoomen (sichtbarer Bereich).
+- Backup: Fullbackup umbenannt + neuer Zeitbereich-Backup (aktueller Graph-Ausschnitt) + Backup-Pfad angezeigt.
+
 ## 1.4.0
 - Feature: Tabelle kann optional zeitlich vom Graph-Zoom gefuehrt werden.
 - Feature: Bearbeitungsliste fuer selektierte Datenpunkte inkl. Undo und "alle uebernehmen".

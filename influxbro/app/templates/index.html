@@ -496,6 +496,8 @@ function saveState(){
       sort_dir: TABLE_SORT.dir,
       tbl_time_from_graph: TABLE_TIME.from_graph,
       graph_markers: GRAPH_MARKERS,
+      graph_window_start_ms: TABLE_TIME.graph_start_ms,
+      graph_window_stop_ms: TABLE_TIME.graph_stop_ms,
     };
     localStorage.setItem(LS_KEY, JSON.stringify(j));
   }catch(e){}
@@ -514,6 +516,7 @@ let OUTLIER_ACTIVE = false;
 let OUTLIER_ROWS = [];
 
 let _PLOTLY_EVENTS_BOUND = false;
+let _IN_Y_RELAYOUT = false;
 
 let FILTER_SELECTED = new Set();
 let EDIT_SELECTED = new Set();
@@ -662,6 +665,7 @@ function drawPlotly(rows){
       TABLE_TIME.graph_start_ms = minX;
       TABLE_TIME.graph_stop_ms = maxX;
       renderTableRange();
+      saveState();
     }
   }catch(e){}
 
@@ -694,6 +698,10 @@ function drawPlotly(rows){
     $plotly.on("plotly_relayout", (ev) => {
       try{
         if(!ev) return;
+
+        // Ignore relayout events triggered by our y-axis adjustments
+        if(_IN_Y_RELAYOUT) return;
+
         if(_isTruthy(ev["xaxis.autorange"])){
           // Reset to full dataset bounds
           const xs = (LAST_ROWS || []).map(r => Date.parse(r && r.time ? r.time : "")).filter(t => isFinite(t));
@@ -705,7 +713,9 @@ function drawPlotly(rows){
             TABLE_TIME.graph_stop_ms = null;
           }
           renderTableRange();
+          saveState();
           renderTable();
+          autoScaleYFromWindow();
           return;
         }
 
@@ -718,7 +728,9 @@ function drawPlotly(rows){
             TABLE_TIME.graph_start_ms = Math.min(a, b);
             TABLE_TIME.graph_stop_ms = Math.max(a, b);
             renderTableRange();
+            saveState();
             renderTable();
+            autoScaleYFromWindow();
           }
         }
       }catch(e){}
@@ -734,10 +746,50 @@ function drawPlotly(rows){
         TABLE_TIME.graph_stop_ms = null;
       }
       renderTableRange();
+      saveState();
       renderTable();
+      try{ window.Plotly.relayout($plotly, {"yaxis.autorange": true}); }catch(e){}
     });
   }
   return true;
+}
+
+function autoScaleYFromWindow(){
+  if(!$plotly || !window.Plotly) return;
+  const a = TABLE_TIME.graph_start_ms;
+  const b = TABLE_TIME.graph_stop_ms;
+  if(!(isFinite(a) && isFinite(b))) return;
+
+  const ys = (LAST_ROWS || []).filter(r => {
+    const t = Date.parse(r && r.time ? r.time : "");
+    return isFinite(t) && t >= a && t <= b && (typeof r.value === "number" && isFinite(r.value));
+  }).map(r => r.value);
+
+  if(!ys.length) return;
+  let minY = Math.min(...ys);
+  let maxY = Math.max(...ys);
+  if(!isFinite(minY) || !isFinite(maxY)) return;
+
+  if(minY === maxY){
+    const bump = (minY === 0) ? 1 : Math.abs(minY) * 0.02;
+    minY -= bump;
+    maxY += bump;
+  }
+  const pad = (maxY - minY) * 0.05;
+  const y0 = minY - pad;
+  const y1 = maxY + pad;
+
+  _IN_Y_RELAYOUT = true;
+  try{
+    const p = window.Plotly.relayout($plotly, {"yaxis.autorange": false, "yaxis.range": [y0, y1]});
+    if(p && typeof p.finally === "function"){
+      p.finally(()=>{ _IN_Y_RELAYOUT = false; });
+    }else{
+      _IN_Y_RELAYOUT = false;
+    }
+  }catch(e){
+    _IN_Y_RELAYOUT = false;
+  }
 }
 
 function draw(rows){
@@ -1638,10 +1690,12 @@ async function loadData(){
     if(xs.length){
       TABLE_TIME.graph_start_ms = Math.min(...xs);
       TABLE_TIME.graph_stop_ms = Math.max(...xs);
+      saveState();
     }
   }catch(e){}
   renderTable();
   draw(rows);
+  autoScaleYFromWindow();
   await loadStats();
 }
 

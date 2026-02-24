@@ -985,7 +985,8 @@ def api_backup_create():
     # Derive a stable display name for file ids
     display = friendly_name or entity_id or f"{measurement}_{field}"
     ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    backup_id = _backup_safe(display) + "__" + ts
+    backup_kind = "full"
+    backup_id = _backup_safe(display) + "__" + backup_kind + "__" + ts
     meta_path, lp_path = _backup_files(backup_id)
     if meta_path.exists() or lp_path.exists():
         return jsonify({"ok": False, "error": "backup id collision"}), 409
@@ -1051,6 +1052,7 @@ from(bucket: "{cfg["bucket"]}")
         meta = {
             "id": backup_id,
             "created_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+            "kind": backup_kind,
             "display_name": display,
             "measurement": measurement,
             "field": field,
@@ -1065,6 +1067,133 @@ from(bucket: "{cfg["bucket"]}")
         return jsonify({"ok": True, "message": f"Backup created: {backup_id}", "backup": meta})
     except Exception as e:
         # Cleanup partial files
+        try:
+            if meta_path.exists():
+                meta_path.unlink()
+        except Exception:
+            pass
+        try:
+            if lp_path.exists():
+                lp_path.unlink()
+        except Exception:
+            pass
+        return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
+
+
+@app.get("/api/backup_location")
+def api_backup_location():
+    return jsonify({"ok": True, "container_path": str(BACKUP_DIR), "slug": "influxbro"})
+
+
+@app.post("/api/backup_create_range")
+def api_backup_create_range():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    body = request.get_json(force=True) or {}
+    measurement = (body.get("measurement") or "").strip()
+    field = (body.get("field") or "").strip()
+    entity_id = (body.get("entity_id") or "").strip() or None
+    friendly_name = (body.get("friendly_name") or "").strip() or None
+
+    if not measurement or not field:
+        return jsonify({"ok": False, "error": "measurement and field required"}), 400
+    if not entity_id and not friendly_name:
+        return jsonify({"ok": False, "error": "entity_id or friendly_name required"}), 400
+
+    try:
+        start_dt, stop_dt = _get_start_stop_from_payload(body)
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+
+    if int(cfg.get("influx_version", 2)) != 2:
+        return jsonify({"ok": False, "error": "backup currently supports InfluxDB v2 only"}), 400
+    if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+        return jsonify({
+            "ok": False,
+            "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
+        }), 400
+
+    BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+
+    display = friendly_name or entity_id or f"{measurement}_{field}"
+    ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    backup_kind = "range"
+    backup_id = _backup_safe(display) + "__" + backup_kind + "__" + ts
+    meta_path, lp_path = _backup_files(backup_id)
+    if meta_path.exists() or lp_path.exists():
+        return jsonify({"ok": False, "error": "backup id collision"}), 409
+
+    extra = flux_tag_filter(entity_id, friendly_name)
+    start = _dt_to_rfc3339_utc(start_dt)
+    stop = _dt_to_rfc3339_utc(stop_dt)
+    range_clause = f'|> range(start: time(v: "{start}"), stop: time(v: "{stop}"))'
+    q = f'''
+from(bucket: "{cfg["bucket"]}")
+  {range_clause}
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
+  |> sort(columns: ["_time"])
+'''
+
+    count = 0
+    oldest: datetime | None = None
+    newest: datetime | None = None
+
+    try:
+        with v2_client(cfg) as c:
+            qapi = c.query_api()
+            with lp_path.open("w", encoding="utf-8") as f:
+                for rec in qapi.query_stream(q, org=cfg["org"]):
+                    try:
+                        t = rec.get_time()
+                        v = rec.get_value()
+                        m = rec.values.get("_measurement") or measurement
+                        fld = rec.values.get("_field") or field
+                        if v is None:
+                            continue
+                        p = Point(str(m))
+                        for k, tv in (rec.values or {}).items():
+                            if k in ("result", "table"):
+                                continue
+                            if str(k).startswith("_"):
+                                continue
+                            if tv is None:
+                                continue
+                            p = p.tag(str(k), str(tv))
+                        p = p.field(str(fld), v)
+                        if isinstance(t, datetime):
+                            p = p.time(t, WritePrecision.NS)
+                        lp = p.to_line_protocol()
+                        if lp:
+                            f.write(lp)
+                            f.write("\n")
+                            count += 1
+                            if isinstance(t, datetime):
+                                if oldest is None or t < oldest:
+                                    oldest = t
+                                if newest is None or t > newest:
+                                    newest = t
+                    except Exception:
+                        continue
+
+        bytes_size = int(lp_path.stat().st_size) if lp_path.exists() else 0
+        meta = {
+            "id": backup_id,
+            "created_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+            "kind": backup_kind,
+            "display_name": display,
+            "measurement": measurement,
+            "field": field,
+            "entity_id": entity_id,
+            "friendly_name": friendly_name,
+            "start": start,
+            "stop": stop,
+            "point_count": count,
+            "bytes": bytes_size,
+            "oldest_time": _dt_to_rfc3339_utc(oldest) if oldest else None,
+            "newest_time": _dt_to_rfc3339_utc(newest) if newest else None,
+        }
+        meta_path.write_text(json.dumps(meta, indent=2, sort_keys=True), encoding="utf-8")
+        return jsonify({"ok": True, "message": f"Backup created: {backup_id}", "backup": meta})
+    except Exception as e:
         try:
             if meta_path.exists():
                 meta_path.unlink()
