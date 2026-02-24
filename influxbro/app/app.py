@@ -22,6 +22,9 @@ import yaml
 CONFIG_DIR = Path(os.environ.get("CONFIG_DIR", "/config"))
 DATA_DIR = Path(os.environ.get("DATA_DIR", "/data"))
 
+APP_DIR = Path(__file__).resolve().parent
+BACKUP_DIR = DATA_DIR / "backups"
+
 DEFAULT_INFLUX_YAML_PATH = "homeassistant/influx.yaml"
 LAST_YAML_ERROR = None
 
@@ -299,6 +302,9 @@ DEFAULT_CFG = {
     "ui_filter_label_width_px": 170,
     "ui_filter_control_width_px": 320,
     "ui_filter_search_width_px": 160,
+
+    # Links / Info
+    "ui_repo_url": "http://192.168.2.65:7070/thomas/ha-addons",
 }
 
 def load_cfg():
@@ -557,12 +563,73 @@ def index():
         "index.html",
         allow_delete=ALLOW_DELETE,
         delete_phrase=DELETE_CONFIRM_PHRASE,
+        nav="dashboard",
+    )
+
+
+@app.get("/logs")
+def logs_page():
+    return render_template("logs.html", allow_delete=ALLOW_DELETE, nav="logs")
+
+
+@app.get("/backup")
+def backup_page():
+    return render_template("backup.html", allow_delete=ALLOW_DELETE, nav="backup")
+
+
+@app.get("/restore")
+def restore_page():
+    return render_template(
+        "restore.html",
+        allow_delete=ALLOW_DELETE,
+        delete_phrase=DELETE_CONFIRM_PHRASE,
+        nav="restore",
+    )
+
+
+@app.get("/info")
+def info_page():
+    cfg = load_cfg()
+    repo_url = (cfg.get("ui_repo_url") or "").strip()
+    changelog = ""
+    try:
+        changelog = (APP_DIR / "CHANGELOG.md").read_text(encoding="utf-8")
+    except Exception:
+        changelog = ""
+    return render_template(
+        "info.html",
+        allow_delete=ALLOW_DELETE,
+        nav="info",
+        repo_url=repo_url,
+        changelog_text=changelog,
+    )
+
+
+@app.get("/manual")
+def manual_page():
+    manual = ""
+    try:
+        manual = (APP_DIR / "MANUAL.md").read_text(encoding="utf-8")
+    except Exception:
+        manual = ""
+    return render_template(
+        "manual.html",
+        allow_delete=ALLOW_DELETE,
+        nav="manual",
+        manual_text=manual,
     )
 
 @app.get("/config")
 def config_page():
     cfg = load_cfg()
-    return render_template("config.html", cfg=cfg, allow_delete=ALLOW_DELETE, delete_phrase=DELETE_CONFIRM_PHRASE, autodetect_source=LAST_AUTODETECT_SOURCE)
+    return render_template(
+        "config.html",
+        cfg=cfg,
+        allow_delete=ALLOW_DELETE,
+        delete_phrase=DELETE_CONFIRM_PHRASE,
+        autodetect_source=LAST_AUTODETECT_SOURCE,
+        nav="settings",
+    )
 
 
 @app.post("/api/load_influx_yaml")
@@ -618,6 +685,66 @@ def api_get_config():
 _ENTITY_ID_RE = re.compile(r"^[A-Za-z0-9_]+\.[A-Za-z0-9_]+$")
 
 
+def _supervisor_token() -> str:
+    return (os.environ.get("SUPERVISOR_TOKEN") or "").strip()
+
+
+def _supervisor_get(path: str, timeout_s: int = 8) -> tuple[int, str]:
+    """GET from Supervisor API.
+
+    Returns: (status_code, text)
+    """
+
+    token = _supervisor_token()
+    if not token:
+        return 0, "SUPERVISOR_TOKEN not set"
+
+    url = "http://supervisor" + (path if path.startswith("/") else ("/" + path))
+    req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"}, method="GET")
+    try:
+        with urllib.request.urlopen(req, timeout=timeout_s) as resp:
+            raw = resp.read().decode("utf-8", errors="replace")
+            status = int(getattr(resp, "status", 200))
+            return status, raw
+    except urllib.error.HTTPError as e:
+        body = ""
+        try:
+            body = e.read().decode("utf-8", errors="replace")
+        except Exception:
+            body = ""
+        return int(getattr(e, "code", 0) or 0), body or (str(e) or "HTTPError")
+    except Exception as e:
+        return 0, str(e) or e.__class__.__name__
+
+
+def _resolve_ha_entity_id(raw_entity_id: str) -> tuple[str | None, str | None]:
+    """Resolve entity_id.
+
+    If raw value has no domain (no '.'), treat as object_id and probe common domains.
+
+    Returns: (resolved_entity_id, error)
+    """
+
+    v = (raw_entity_id or "").strip()
+    if not v:
+        return None, "entity_id required"
+
+    if "." in v:
+        return v, None if _ENTITY_ID_RE.match(v) else "invalid entity_id"
+
+    # object_id only
+    obj = v
+    domains = ["sensor", "binary_sensor", "switch", "number", "input_number"]
+    for d in domains:
+        cand = f"{d}.{obj}"
+        if not _ENTITY_ID_RE.match(cand):
+            continue
+        status, txt = _supervisor_get("/core/api/states/" + urllib.parse.quote(cand, safe=""), timeout_s=6)
+        if status == 200 and txt:
+            return cand, None
+    return None, "invalid entity_id"
+
+
 @app.get("/api/ha_entity")
 def api_ha_entity():
     """Fetch entity metadata from Home Assistant Core.
@@ -625,30 +752,23 @@ def api_ha_entity():
     Uses Supervisor to call: /core/api/states/<entity_id>
     """
 
-    entity_id = (request.args.get("entity_id") or "").strip()
-    if not entity_id:
-        return jsonify({"ok": True, "available": False, "error": "entity_id required", "entity": None})
-    if not _ENTITY_ID_RE.match(entity_id):
-        return jsonify({"ok": True, "available": False, "error": "invalid entity_id", "entity": None})
-
-    token = (os.environ.get("SUPERVISOR_TOKEN") or "").strip()
-    if not token:
-        return jsonify({"ok": True, "available": False, "error": "SUPERVISOR_TOKEN not set", "entity": None})
+    raw = (request.args.get("entity_id") or "").strip()
+    resolved, rerr = _resolve_ha_entity_id(raw)
+    if not resolved:
+        return jsonify({"ok": True, "available": False, "error": rerr or "invalid entity_id", "entity": None})
 
     try:
-        url = "http://supervisor/core/api/states/" + urllib.parse.quote(entity_id, safe="")
-        req = urllib.request.Request(
-            url,
-            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
-            method="GET",
-        )
-        with urllib.request.urlopen(req, timeout=8) as resp:
-            raw = resp.read().decode("utf-8", errors="replace")
+        status, txt = _supervisor_get("/core/api/states/" + urllib.parse.quote(resolved, safe=""), timeout_s=8)
+        if status != 200:
+            return jsonify({"ok": True, "available": False, "error": f"HTTP {status}" if status else txt, "entity": None})
+
+        raw_txt = txt
+        raw = raw_txt
         data = json.loads(raw) if raw else {}
         attrs = (data.get("attributes") or {}) if isinstance(data, dict) else {}
 
         entity = {
-            "entity_id": data.get("entity_id") if isinstance(data, dict) else entity_id,
+            "entity_id": data.get("entity_id") if isinstance(data, dict) else resolved,
             "state": data.get("state") if isinstance(data, dict) else None,
             "friendly_name": attrs.get("friendly_name"),
             "device_class": attrs.get("device_class"),
@@ -657,21 +777,9 @@ def api_ha_entity():
             "icon": attrs.get("icon"),
             "last_changed": data.get("last_changed") if isinstance(data, dict) else None,
             "last_updated": data.get("last_updated") if isinstance(data, dict) else None,
+            "resolved_entity_id": resolved,
         }
         return jsonify({"ok": True, "available": True, "entity": entity, "error": None})
-    except urllib.error.HTTPError as e:
-        detail = ""
-        try:
-            body = e.read().decode("utf-8", errors="replace")
-            if body:
-                detail = body
-        except Exception:
-            pass
-        msg = f"HTTP {e.code} {getattr(e, 'reason', '')}".strip()
-        if detail:
-            # Avoid huge responses
-            msg = msg + ": " + (detail[:300] + ("..." if len(detail) > 300 else ""))
-        return jsonify({"ok": True, "available": False, "error": msg, "entity": None})
     except Exception as e:
         return jsonify({"ok": True, "available": False, "error": str(e) or e.__class__.__name__, "entity": None})
 
@@ -708,6 +816,286 @@ def api_ha_debug():
         out["supervisor_core_api"]["error"] = str(e) or e.__class__.__name__
 
     return jsonify(out)
+
+
+@app.get("/api/logs")
+def api_logs():
+    """Fetch InfluxBro add-on logs via Supervisor."""
+
+    try:
+        tail = int(request.args.get("tail", "2000"))
+    except Exception:
+        tail = 2000
+    if tail < 0:
+        tail = 0
+    if tail > 20000:
+        tail = 20000
+
+    status, txt = _supervisor_get("/supervisor/api/addons/self/logs", timeout_s=10)
+    if status != 200:
+        return jsonify({"ok": False, "error": f"Logs not available: {txt or status}"}), 502
+
+    lines = (txt or "").splitlines()
+    if tail and len(lines) > tail:
+        lines = lines[-tail:]
+    return jsonify({"ok": True, "text": "\n".join(lines)})
+
+
+def _backup_safe(s: str) -> str:
+    out = re.sub(r"[^A-Za-z0-9_.-]+", "_", (s or "").strip())
+    out = out.strip("_.-")
+    return out[:80] if out else "backup"
+
+
+def _backup_files(backup_id: str) -> tuple[Path, Path]:
+    stem = _backup_safe(backup_id)
+    return BACKUP_DIR / f"{stem}.json", BACKUP_DIR / f"{stem}.lp"
+
+
+def _list_backups() -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    if not BACKUP_DIR.exists():
+        return out
+    for p in sorted(BACKUP_DIR.glob("*.json")):
+        try:
+            meta = json.loads(p.read_text(encoding="utf-8"))
+            if not isinstance(meta, dict):
+                continue
+            backup_id = str(meta.get("id") or p.stem)
+            lp = BACKUP_DIR / (p.stem + ".lp")
+            out.append({
+                **meta,
+                "id": backup_id,
+                "file": p.stem,
+                "bytes": int(lp.stat().st_size) if lp.exists() else int(meta.get("bytes") or 0),
+            })
+        except Exception:
+            continue
+    # newest first
+    out.sort(key=lambda x: str(x.get("created_at") or ""), reverse=True)
+    return out
+
+
+@app.get("/api/backups")
+def api_backups():
+    measurement = (request.args.get("measurement") or "").strip()
+    field = (request.args.get("field") or "").strip()
+    entity_id = (request.args.get("entity_id") or "").strip() or None
+    friendly_name = (request.args.get("friendly_name") or "").strip() or None
+
+    if not measurement or not field:
+        return jsonify({"ok": False, "error": "measurement and field required"}), 400
+
+    backups = _list_backups()
+    filtered: list[dict[str, Any]] = []
+    for b in backups:
+        if str(b.get("measurement") or "") != measurement:
+            continue
+        if str(b.get("field") or "") != field:
+            continue
+        if entity_id and str(b.get("entity_id") or "") != entity_id:
+            continue
+        if friendly_name and str(b.get("friendly_name") or "") != friendly_name:
+            continue
+        filtered.append(b)
+
+    latest = filtered[0] if filtered else None
+    return jsonify({"ok": True, "backups": filtered, "latest": latest})
+
+
+@app.post("/api/backup_create")
+def api_backup_create():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    body = request.get_json(force=True) or {}
+    measurement = (body.get("measurement") or "").strip()
+    field = (body.get("field") or "").strip()
+    entity_id = (body.get("entity_id") or "").strip() or None
+    friendly_name = (body.get("friendly_name") or "").strip() or None
+
+    if not measurement or not field:
+        return jsonify({"ok": False, "error": "measurement and field required"}), 400
+    if not entity_id and not friendly_name:
+        return jsonify({"ok": False, "error": "entity_id or friendly_name required"}), 400
+
+    if int(cfg.get("influx_version", 2)) != 2:
+        return jsonify({"ok": False, "error": "backup currently supports InfluxDB v2 only"}), 400
+    if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+        return jsonify({
+            "ok": False,
+            "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
+        }), 400
+
+    BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Derive a stable display name for file ids
+    display = friendly_name or entity_id or f"{measurement}_{field}"
+    ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    backup_id = _backup_safe(display) + "__" + ts
+    meta_path, lp_path = _backup_files(backup_id)
+    if meta_path.exists() or lp_path.exists():
+        return jsonify({"ok": False, "error": "backup id collision"}), 409
+
+    # Export all points for this single signal
+    extra = flux_tag_filter(entity_id, friendly_name)
+    range_clause = '|> range(start: time(v: "1970-01-01T00:00:00Z"))'
+    q = f'''
+from(bucket: "{cfg["bucket"]}")
+  {range_clause}
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
+  |> sort(columns: ["_time"])
+'''
+
+    count = 0
+    oldest: datetime | None = None
+    newest: datetime | None = None
+
+    try:
+        with v2_client(cfg) as c:
+            qapi = c.query_api()
+
+            with lp_path.open("w", encoding="utf-8") as f:
+                for rec in qapi.query_stream(q, org=cfg["org"]):
+                    # rec is a FluxRecord
+                    try:
+                        t = rec.get_time()
+                        v = rec.get_value()
+                        m = rec.values.get("_measurement") or measurement
+                        fld = rec.values.get("_field") or field
+
+                        # Only export points with a value
+                        if v is None:
+                            continue
+
+                        p = Point(str(m))
+                        for k, tv in (rec.values or {}).items():
+                            if k in ("result", "table"):
+                                continue
+                            if str(k).startswith("_"):
+                                continue
+                            if tv is None:
+                                continue
+                            p = p.tag(str(k), str(tv))
+
+                        p = p.field(str(fld), v)
+                        if isinstance(t, datetime):
+                            p = p.time(t, WritePrecision.NS)
+                        lp = p.to_line_protocol()
+                        if lp:
+                            f.write(lp)
+                            f.write("\n")
+                            count += 1
+                            if isinstance(t, datetime):
+                                if oldest is None or t < oldest:
+                                    oldest = t
+                                if newest is None or t > newest:
+                                    newest = t
+                    except Exception:
+                        continue
+
+        bytes_size = int(lp_path.stat().st_size) if lp_path.exists() else 0
+        meta = {
+            "id": backup_id,
+            "created_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+            "display_name": display,
+            "measurement": measurement,
+            "field": field,
+            "entity_id": entity_id,
+            "friendly_name": friendly_name,
+            "point_count": count,
+            "bytes": bytes_size,
+            "oldest_time": _dt_to_rfc3339_utc(oldest) if oldest else None,
+            "newest_time": _dt_to_rfc3339_utc(newest) if newest else None,
+        }
+        meta_path.write_text(json.dumps(meta, indent=2, sort_keys=True), encoding="utf-8")
+        return jsonify({"ok": True, "message": f"Backup created: {backup_id}", "backup": meta})
+    except Exception as e:
+        # Cleanup partial files
+        try:
+            if meta_path.exists():
+                meta_path.unlink()
+        except Exception:
+            pass
+        try:
+            if lp_path.exists():
+                lp_path.unlink()
+        except Exception:
+            pass
+        return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
+
+
+@app.post("/api/backup_delete")
+def api_backup_delete():
+    body = request.get_json(force=True) or {}
+    backup_id = (body.get("id") or "").strip()
+    if not backup_id:
+        return jsonify({"ok": False, "error": "id required"}), 400
+    BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+    meta_path, lp_path = _backup_files(backup_id)
+    removed = 0
+    for p in (meta_path, lp_path):
+        try:
+            if p.exists():
+                p.unlink()
+                removed += 1
+        except Exception:
+            pass
+    if removed == 0:
+        return jsonify({"ok": False, "error": "backup not found"}), 404
+    return jsonify({"ok": True, "message": f"Deleted: {backup_id}"})
+
+
+@app.post("/api/backup_restore")
+def api_backup_restore():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    if not ALLOW_DELETE:
+        return jsonify({"ok": False, "error": "Writes are disabled. Enable allow_delete in add-on options."}), 403
+
+    body = request.get_json(force=True) or {}
+    confirm = body.get("confirm", "")
+    if confirm != DELETE_CONFIRM_PHRASE:
+        return (
+            jsonify({"ok": False, "error": f"Confirmation phrase mismatch. Type exactly: {DELETE_CONFIRM_PHRASE}"}),
+            400,
+        )
+
+    backup_id = (body.get("id") or "").strip()
+    if not backup_id:
+        return jsonify({"ok": False, "error": "id required"}), 400
+
+    if int(cfg.get("influx_version", 2)) != 2:
+        return jsonify({"ok": False, "error": "restore currently supports InfluxDB v2 only"}), 400
+    if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+        return jsonify({
+            "ok": False,
+            "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
+        }), 400
+
+    meta_path, lp_path = _backup_files(backup_id)
+    if not lp_path.exists():
+        return jsonify({"ok": False, "error": "backup not found"}), 404
+
+    try:
+        with v2_client(cfg) as c:
+            wapi = c.write_api(write_options=SYNCHRONOUS)
+            batch: list[str] = []
+            applied = 0
+            with lp_path.open("r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip("\n")
+                    if not line.strip():
+                        continue
+                    batch.append(line)
+                    if len(batch) >= 2000:
+                        wapi.write(bucket=cfg["bucket"], org=cfg["org"], record=batch, write_precision=WritePrecision.NS)
+                        applied += len(batch)
+                        batch = []
+                if batch:
+                    wapi.write(bucket=cfg["bucket"], org=cfg["org"], record=batch, write_precision=WritePrecision.NS)
+                    applied += len(batch)
+
+        return jsonify({"ok": True, "message": f"Restored points: {applied}", "applied": applied})
+    except Exception as e:
+        return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
 
 @app.post("/api/config")
 def api_set_config():
@@ -777,6 +1165,12 @@ def api_set_config():
     _clamp_int("ui_filter_label_width_px", 170, 80, 360)
     _clamp_int("ui_filter_control_width_px", 320, 180, 900)
     _clamp_int("ui_filter_search_width_px", 160, 80, 420)
+
+    # Optional link
+    try:
+        cfg["ui_repo_url"] = str(cfg.get("ui_repo_url") or "").strip()
+    except Exception:
+        cfg["ui_repo_url"] = ""
 
     save_cfg(cfg)
     return jsonify({"ok": True, "message": "Saved. New settings are used immediately."})

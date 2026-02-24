@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>InfluxBro – Restore</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; }
+    .shell { display:grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
+    @media (max-width: 980px){ .shell { grid-template-columns: 1fr; } }
+    .sidebar { padding: 14px; border-right: 1px solid #eee; }
+    @media (max-width: 980px){ .sidebar { border-right: 0; border-bottom: 1px solid #eee; } }
+    .brand { margin-bottom: 10px; }
+    .brand_title { font-weight: 800; font-size: 18px; }
+    .brand_meta { opacity: 0.7; font-size: 12px; margin-top: 2px; }
+    .nav_item { display:flex; align-items:center; gap: 10px; padding: 10px 10px; border-radius: 12px; text-decoration:none; color: inherit; }
+    .nav_item:hover { background: #f6f6f6; }
+    .nav_item.active { background: #0b0b0c; color: #fff; }
+    .ico { width: 22px; height: 22px; display:inline-flex; align-items:center; justify-content:center; font-weight: 800; }
+
+    .content { padding: 16px; }
+    h2 { margin: 0; }
+    .muted { opacity: 0.7; font-size: 12px; }
+    .row { display:flex; gap: 10px; flex-wrap:wrap; align-items:end; margin-top: 10px; }
+    label { display:block; font-size: 12px; opacity: 0.8; }
+    input, select, button { padding: 10px 12px; height: 40px; box-sizing: border-box; }
+    button { cursor:pointer; }
+    .card { border: 1px solid #ddd; border-radius: 12px; padding: 12px; margin-top: 12px; }
+    .err { color: #b00020; margin-top: 8px; white-space: pre-wrap; }
+    .ok { color: #0a7a28; margin-top: 8px; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    {% include "_nav.html" %}
+    <main class="content" data-ui="restore.page" title="restore.page">
+      <h2>Restore</h2>
+      <div class="muted">Stellt ein Backup fuer den aktuell im Dashboard gewaehlt en Messwert wieder her (ohne Duplikate).</div>
+
+      <div class="card">
+        <div class="row">
+          <div style="min-width: 320px; flex:1;">
+            <label>Aktueller Messwert</label>
+            <input id="sel" readonly data-ui="restore.selection" title="restore.selection" />
+          </div>
+          <div style="min-width: 320px; flex:1;">
+            <label>Backup auswaehlen</label>
+            <select id="backup" data-ui="restore.backup_select" title="restore.backup_select"></select>
+          </div>
+        </div>
+
+        <div class="row">
+          <div style="min-width: 320px; flex:1;">
+            <label>Bestaetigungstext (delete_confirm_phrase)</label>
+            <input id="confirm" placeholder="{{ delete_phrase }}" data-ui="restore.confirm" title="restore.confirm" />
+            <div class="muted">Restore ist an <code>allow_delete</code> + <code>delete_confirm_phrase</code> gekoppelt.</div>
+          </div>
+          <div>
+            <label>&nbsp;</label>
+            <button id="run" data-ui="restore.run" title="restore.run">Restore starten</button>
+          </div>
+          <div>
+            <label>&nbsp;</label>
+            <button id="reload" data-ui="restore.reload" title="restore.reload">Liste aktualisieren</button>
+          </div>
+        </div>
+
+        <div id="err" class="err"></div>
+        <div id="ok" class="ok"></div>
+      </div>
+
+      <script>
+      const LS_KEY = "influxbro_ui_state_v1";
+      const $sel = document.getElementById('sel');
+      const $backup = document.getElementById('backup');
+      const $confirm = document.getElementById('confirm');
+      const $err = document.getElementById('err');
+      const $ok = document.getElementById('ok');
+      const $run = document.getElementById('run');
+      const $reload = document.getElementById('reload');
+
+      let LAST_RESOLVED = null;
+
+      function err(s){ $err.textContent = s || ""; }
+      function ok(s){ $ok.textContent = s || ""; }
+      function loadState(){
+        try{ return JSON.parse(localStorage.getItem(LS_KEY) || "{}") || {}; }catch(e){ return {}; }
+      }
+
+      async function api(url, opts){
+        const r = await fetch(url, opts);
+        const j = await r.json().catch(()=>({ok:false,error:"Invalid JSON"}));
+        if(!r.ok || !j.ok) throw new Error(j.error || ("HTTP " + r.status));
+        return j;
+      }
+
+      async function resolveFromState(){
+        const st = loadState();
+        const friendly_name = (st.friendly_name || "").trim();
+        const entity_id = (st.entity_id || "").trim();
+        const measurement_filter = (st.measurement_filter || "").trim();
+        if(!friendly_name && !entity_id) throw new Error("Bitte im Dashboard zuerst einen Messwert auswaehlen.");
+
+        const j = await api("./api/resolve_signal", {
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body: JSON.stringify({
+            friendly_name: friendly_name || null,
+            entity_id: entity_id || null,
+            measurement_filter: measurement_filter || null,
+            range: "all"
+          })
+        });
+        return {
+          measurement: j.measurement,
+          field: j.field,
+          friendly_name: friendly_name || null,
+          entity_id: entity_id || null,
+          measurement_filter: measurement_filter || null,
+        };
+      }
+
+      function setOptions(list){
+        $backup.innerHTML = "";
+        (list || []).forEach(b => {
+          const o = document.createElement('option');
+          o.value = String(b.id || "");
+          o.textContent = `${b.created_at || ""} | ${b.point_count ?? ""} | ${b.bytes ?? ""}`;
+          $backup.appendChild(o);
+        });
+      }
+
+      async function loadList(){
+        err(""); ok("");
+        LAST_RESOLVED = await resolveFromState();
+        $sel.value = [LAST_RESOLVED.friendly_name || "", LAST_RESOLVED.entity_id || "", LAST_RESOLVED.measurement, LAST_RESOLVED.field].filter(Boolean).join(" | ");
+        const qs = new URLSearchParams({
+          measurement: LAST_RESOLVED.measurement,
+          field: LAST_RESOLVED.field,
+          entity_id: LAST_RESOLVED.entity_id || "",
+          friendly_name: LAST_RESOLVED.friendly_name || "",
+        });
+        const j = await api("./api/backups?" + qs.toString());
+        setOptions(j.backups || []);
+      }
+
+      async function runRestore(){
+        err(""); ok("");
+        const id = String($backup.value || "").trim();
+        if(!id) throw new Error("Bitte ein Backup auswaehlen.");
+        if(!confirm("Restore wirklich starten?")) return;
+        const j = await api("./api/backup_restore", {
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body: JSON.stringify({ id, confirm: $confirm.value || "" })
+        });
+        ok(j.message || "Restore fertig.");
+      }
+
+      $reload.addEventListener('click', ()=>loadList().catch(e=>err(String(e && e.message ? e.message : e))));
+      $run.addEventListener('click', ()=>runRestore().catch(e=>err(String(e && e.message ? e.message : e))));
+      loadList().catch(e=>err(String(e && e.message ? e.message : e)));
+      </script>
+    </main>
+  </div>
+</body>
+</html>

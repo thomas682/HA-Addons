@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>InfluxBro – Logs</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; }
+    .shell { display:grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
+    @media (max-width: 980px){ .shell { grid-template-columns: 1fr; } }
+    .sidebar { padding: 14px; border-right: 1px solid #eee; }
+    @media (max-width: 980px){ .sidebar { border-right: 0; border-bottom: 1px solid #eee; } }
+    .brand { margin-bottom: 10px; }
+    .brand_title { font-weight: 800; font-size: 18px; }
+    .brand_meta { opacity: 0.7; font-size: 12px; margin-top: 2px; }
+    .nav_item { display:flex; align-items:center; gap: 10px; padding: 10px 10px; border-radius: 12px; text-decoration:none; color: inherit; }
+    .nav_item:hover { background: #f6f6f6; }
+    .nav_item.active { background: #0b0b0c; color: #fff; }
+    .ico { width: 22px; height: 22px; display:inline-flex; align-items:center; justify-content:center; font-weight: 800; }
+
+    .content { padding: 16px; }
+    h2 { margin: 0; }
+    .muted { opacity: 0.7; font-size: 12px; }
+    .row { display:flex; gap: 10px; flex-wrap:wrap; align-items:end; margin-top: 10px; }
+    label { display:block; font-size: 12px; opacity: 0.8; }
+    input, select, button { padding: 10px 12px; height: 40px; box-sizing: border-box; }
+    button { cursor:pointer; }
+    input[type="checkbox"] { height:auto; }
+    .card { border: 1px solid #ddd; border-radius: 12px; padding: 12px; margin-top: 12px; }
+    .logbox { border: 1px solid #eee; border-radius: 12px; padding: 12px; height: 65vh; overflow:auto; background: #0b0b0c; color: #f3f3f3; }
+    pre { margin: 0; font-size: 12px; line-height: 1.35; white-space: pre; }
+    .wrap pre { white-space: pre-wrap; word-break: break-word; }
+    .err { color: #b00020; margin-top: 8px; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    {% include "_nav.html" %}
+    <main class="content" data-ui="logs.page" title="logs.page">
+      <h2>Logs</h2>
+      <div class="muted">InfluxBro Add-on Logs (Supervisor)</div>
+
+      <div class="row">
+        <div>
+          <label>Tail</label>
+          <select id="tail" data-ui="logs.tail" title="logs.tail">
+            <option value="200">200</option>
+            <option value="1000">1000</option>
+            <option value="2000" selected>2000</option>
+            <option value="5000">5000</option>
+          </select>
+        </div>
+        <div>
+          <label>&nbsp;</label>
+          <button id="refresh" data-ui="logs.refresh" title="logs.refresh">Refresh</button>
+        </div>
+        <div>
+          <label>&nbsp;</label>
+          <button id="follow" data-ui="logs.follow" title="logs.follow">Follow: aus</button>
+        </div>
+        <div>
+          <label>&nbsp;</label>
+          <button id="copy" data-ui="logs.copy" title="logs.copy">Copy</button>
+        </div>
+        <div>
+          <label>&nbsp;</label>
+          <button id="download" data-ui="logs.download" title="logs.download">Download</button>
+        </div>
+        <div>
+          <label>&nbsp;</label>
+          <button id="clear" data-ui="logs.clear" title="logs.clear">Clear view</button>
+        </div>
+        <div>
+          <label>Wrap</label>
+          <input id="wrap" type="checkbox" data-ui="logs.wrap" title="logs.wrap" />
+        </div>
+        <div style="flex:1; min-width: 220px;">
+          <label>Suche</label>
+          <input id="q" placeholder="Text..." data-ui="logs.search" title="logs.search" />
+        </div>
+      </div>
+
+      <div id="err" class="err"></div>
+
+      <div class="card" id="log_card">
+        <div class="logbox" id="logbox">
+          <pre id="logpre" data-ui="logs.text" title="logs.text"></pre>
+        </div>
+      </div>
+
+      <script>
+      const $tail = document.getElementById('tail');
+      const $refresh = document.getElementById('refresh');
+      const $follow = document.getElementById('follow');
+      const $copy = document.getElementById('copy');
+      const $download = document.getElementById('download');
+      const $clear = document.getElementById('clear');
+      const $wrap = document.getElementById('wrap');
+      const $q = document.getElementById('q');
+      const $err = document.getElementById('err');
+      const $logbox = document.getElementById('logbox');
+      const $logpre = document.getElementById('logpre');
+
+      let FOLLOW = false;
+      let RAW = "";
+      let TIMER = null;
+
+      function err(s){ $err.textContent = s || ""; }
+      function applyWrap(){
+        const card = document.getElementById('log_card');
+        if(card) card.classList.toggle('wrap', !!$wrap.checked);
+      }
+
+      function applySearch(){
+        const t = String($q.value || "").toLowerCase();
+        if(!t){ $logpre.textContent = RAW; return; }
+        const lines = RAW.split("\n").filter(l => l.toLowerCase().includes(t));
+        $logpre.textContent = lines.join("\n");
+      }
+
+      async function loadLogs(){
+        err("");
+        const tail = Number($tail.value || 2000);
+        const r = await fetch(`./api/logs?tail=${encodeURIComponent(tail)}`);
+        const j = await r.json().catch(()=>({ok:false,error:"Invalid JSON"}));
+        if(!r.ok || !j.ok){ throw new Error(j.error || ("HTTP " + r.status)); }
+        RAW = String(j.text || "");
+        applySearch();
+        // autoscroll only when following and near bottom
+        if(FOLLOW){
+          $logbox.scrollTop = $logbox.scrollHeight;
+        }
+      }
+
+      function setFollow(v){
+        FOLLOW = !!v;
+        $follow.textContent = FOLLOW ? "Follow: ein" : "Follow: aus";
+        if(TIMER){ clearInterval(TIMER); TIMER = null; }
+        if(FOLLOW){
+          TIMER = setInterval(()=>loadLogs().catch(e=>err(String(e && e.message ? e.message : e))), 2000);
+        }
+      }
+
+      $refresh.addEventListener('click', ()=>loadLogs().catch(e=>err(String(e && e.message ? e.message : e))));
+      $follow.addEventListener('click', ()=>setFollow(!FOLLOW));
+      $wrap.addEventListener('change', ()=>{ applyWrap(); });
+      $q.addEventListener('input', ()=>applySearch());
+      $clear.addEventListener('click', ()=>{ RAW = ""; $logpre.textContent = ""; err(""); });
+      $copy.addEventListener('click', async ()=>{
+        try{ await navigator.clipboard.writeText($logpre.textContent || ""); }catch(e){ err("Copy failed: " + String(e)); }
+      });
+      $download.addEventListener('click', ()=>{
+        const blob = new Blob([$logpre.textContent || ""], {type:"text/plain"});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'influxbro-logs.txt';
+        a.click();
+        setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+      });
+
+      applyWrap();
+      loadLogs().catch(e=>err(String(e && e.message ? e.message : e)));
+      </script>
+    </main>
+  </div>
+</body>
+</html>

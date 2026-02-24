@@ -14,6 +14,13 @@
 ## 1.5.2
 - Debug: HA Info Fehlermeldung wird in der Statistik angezeigt; zusaetzlicher Endpoint /api/ha_debug.
 
+## 1.6.0
+- UI: Linkes Menu (Dashboard/Logs/Backup/Restore/Info/Handbuch/Einstellungen).
+- Backup/Restore: Sicherung fuer einen Messwert (alle Werte), inkl. Liste/Loeschen/Restore.
+- Handbuch: In-App Doku aus MANUAL.md.
+- Info: Release Notes aus CHANGELOG.md + konfigurierbarer Repo-Link.
+- HA: entity_id ohne Domain wird automatisch als sensor/binary_sensor/... aufgeloest.
+
 ## 1.4.0
 - Feature: Tabelle kann optional zeitlich vom Graph-Zoom gefuehrt werden.
 - Feature: Bearbeitungsliste fuer selektierte Datenpunkte inkl. Undo und "alle uebernehmen".

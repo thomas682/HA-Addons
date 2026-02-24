@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>InfluxBro – Backup</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; }
+    .shell { display:grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
+    @media (max-width: 980px){ .shell { grid-template-columns: 1fr; } }
+    .sidebar { padding: 14px; border-right: 1px solid #eee; }
+    @media (max-width: 980px){ .sidebar { border-right: 0; border-bottom: 1px solid #eee; } }
+    .brand { margin-bottom: 10px; }
+    .brand_title { font-weight: 800; font-size: 18px; }
+    .brand_meta { opacity: 0.7; font-size: 12px; margin-top: 2px; }
+    .nav_item { display:flex; align-items:center; gap: 10px; padding: 10px 10px; border-radius: 12px; text-decoration:none; color: inherit; }
+    .nav_item:hover { background: #f6f6f6; }
+    .nav_item.active { background: #0b0b0c; color: #fff; }
+    .ico { width: 22px; height: 22px; display:inline-flex; align-items:center; justify-content:center; font-weight: 800; }
+
+    .content { padding: 16px; }
+    h2 { margin: 0; }
+    .muted { opacity: 0.7; font-size: 12px; }
+    .row { display:flex; gap: 10px; flex-wrap:wrap; align-items:end; margin-top: 10px; }
+    label { display:block; font-size: 12px; opacity: 0.8; }
+    input, select, button { padding: 10px 12px; height: 40px; box-sizing: border-box; }
+    button { cursor:pointer; }
+    .card { border: 1px solid #ddd; border-radius: 12px; padding: 12px; margin-top: 12px; }
+    .err { color: #b00020; margin-top: 8px; white-space: pre-wrap; }
+    .ok { color: #0a7a28; margin-top: 8px; white-space: pre-wrap; }
+    table { border-collapse: collapse; width: 100%; margin-top: 10px; }
+    th, td { border: 1px solid #eee; padding: 6px; font-size: 12px; }
+    th { background: #f6f6f6; text-align:left; }
+    tr.selected { background: #e8f1ff; }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    {% include "_nav.html" %}
+    <main class="content" data-ui="backup.page" title="backup.page">
+      <h2>Backup</h2>
+      <div class="muted">Backups fuer einen einzelnen Messwert (immer alle Werte dieses Messwertes).</div>
+
+      <div class="card">
+        <div class="muted">Auswahl wird aus dem Dashboard uebernommen (Browser-Speicher).</div>
+        <div class="row">
+          <div style="min-width: 320px; flex:1;">
+            <label>Aktueller Messwert</label>
+            <input id="sel" readonly data-ui="backup.selection" title="backup.selection" />
+          </div>
+          <div>
+            <label>&nbsp;</label>
+            <button id="create" data-ui="backup.create" title="backup.create">Backup erstellen</button>
+          </div>
+          <div>
+            <label>&nbsp;</label>
+            <button id="reload" data-ui="backup.reload" title="backup.reload">Liste aktualisieren</button>
+          </div>
+          <div>
+            <label>&nbsp;</label>
+            <button id="del" data-ui="backup.delete" title="backup.delete">Backup loeschen</button>
+          </div>
+        </div>
+        <div id="err" class="err"></div>
+        <div id="ok" class="ok"></div>
+
+        <table data-ui="backup.table" title="backup.table">
+          <thead>
+            <tr>
+              <th style="width:26px;"></th>
+              <th>Backup Datum</th>
+              <th>Anzahl Werte</th>
+              <th>Groesse</th>
+              <th>Datei</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+
+      <script>
+      const LS_KEY = "influxbro_ui_state_v1";
+      const $sel = document.getElementById('sel');
+      const $rows = document.getElementById('rows');
+      const $err = document.getElementById('err');
+      const $ok = document.getElementById('ok');
+      const $create = document.getElementById('create');
+      const $reload = document.getElementById('reload');
+      const $del = document.getElementById('del');
+
+      let SELECTED_ID = "";
+      let LAST_RESOLVED = null;
+
+      function err(s){ $err.textContent = s || ""; }
+      function ok(s){ $ok.textContent = s || ""; }
+
+      function loadState(){
+        try{ return JSON.parse(localStorage.getItem(LS_KEY) || "{}") || {}; }catch(e){ return {}; }
+      }
+
+      async function api(url, opts){
+        const r = await fetch(url, opts);
+        const j = await r.json().catch(()=>({ok:false,error:"Invalid JSON"}));
+        if(!r.ok || !j.ok) throw new Error(j.error || ("HTTP " + r.status));
+        return j;
+      }
+
+      async function resolveFromState(){
+        const st = loadState();
+        const friendly_name = (st.friendly_name || "").trim();
+        const entity_id = (st.entity_id || "").trim();
+        const measurement_filter = (st.measurement_filter || "").trim();
+        if(!friendly_name && !entity_id) throw new Error("Bitte im Dashboard zuerst einen Messwert auswaehlen.");
+
+        const j = await api("./api/resolve_signal", {
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body: JSON.stringify({
+            friendly_name: friendly_name || null,
+            entity_id: entity_id || null,
+            measurement_filter: measurement_filter || null,
+            range: "all"
+          })
+        });
+        return {
+          measurement: j.measurement,
+          field: j.field,
+          friendly_name: friendly_name || null,
+          entity_id: entity_id || null,
+          measurement_filter: measurement_filter || null,
+        };
+      }
+
+      function fmtBytes(n){
+        const b = Number(n);
+        if(!isFinite(b) || b < 0) return "";
+        if(b < 1024) return b + " B";
+        if(b < 1024*1024) return (b/1024).toFixed(1) + " kB";
+        if(b < 1024*1024*1024) return (b/1024/1024).toFixed(1) + " MB";
+        return (b/1024/1024/1024).toFixed(2) + " GB";
+      }
+
+      function render(list){
+        $rows.innerHTML = "";
+        (list || []).forEach(b => {
+          const id = String(b.id || "");
+          const tr = document.createElement('tr');
+          if(id && id === SELECTED_ID) tr.classList.add('selected');
+          const td0 = document.createElement('td');
+          const rb = document.createElement('input');
+          rb.type = 'radio';
+          rb.name = 'backup';
+          rb.checked = id === SELECTED_ID;
+          rb.addEventListener('change', ()=>{ SELECTED_ID = id; render(list); });
+          td0.appendChild(rb);
+
+          const td1 = document.createElement('td'); td1.textContent = b.created_at || "";
+          const td2 = document.createElement('td'); td2.textContent = (b.point_count === null || b.point_count === undefined) ? "" : String(b.point_count);
+          const td3 = document.createElement('td'); td3.textContent = fmtBytes(b.bytes);
+          const td4 = document.createElement('td'); td4.textContent = b.file || "";
+          tr.appendChild(td0); tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tr.appendChild(td4);
+          tr.addEventListener('click', ()=>{ SELECTED_ID = id; render(list); });
+          $rows.appendChild(tr);
+        });
+      }
+
+      async function loadList(){
+        err(""); ok("");
+        LAST_RESOLVED = await resolveFromState();
+        $sel.value = [LAST_RESOLVED.friendly_name || "", LAST_RESOLVED.entity_id || "", LAST_RESOLVED.measurement, LAST_RESOLVED.field].filter(Boolean).join(" | ");
+        const qs = new URLSearchParams({
+          measurement: LAST_RESOLVED.measurement,
+          field: LAST_RESOLVED.field,
+          entity_id: LAST_RESOLVED.entity_id || "",
+          friendly_name: LAST_RESOLVED.friendly_name || "",
+        });
+        const j = await api("./api/backups?" + qs.toString());
+        render(j.backups || []);
+      }
+
+      async function createBackup(){
+        err(""); ok("");
+        if(!LAST_RESOLVED) LAST_RESOLVED = await resolveFromState();
+        const j = await api("./api/backup_create", {
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body: JSON.stringify(LAST_RESOLVED)
+        });
+        ok(j.message || "Backup erstellt.");
+        await loadList();
+      }
+
+      async function deleteBackup(){
+        err(""); ok("");
+        if(!SELECTED_ID) throw new Error("Bitte ein Backup auswaehlen.");
+        if(!confirm("Backup wirklich loeschen?")) return;
+        const j = await api("./api/backup_delete", {
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body: JSON.stringify({ id: SELECTED_ID })
+        });
+        ok(j.message || "Geloescht.");
+        SELECTED_ID = "";
+        await loadList();
+      }
+
+      $reload.addEventListener('click', ()=>loadList().catch(e=>err(String(e && e.message ? e.message : e))));
+      $create.addEventListener('click', ()=>createBackup().catch(e=>err(String(e && e.message ? e.message : e))));
+      $del.addEventListener('click', ()=>deleteBackup().catch(e=>err(String(e && e.message ? e.message : e))));
+      loadList().catch(e=>err(String(e && e.message ? e.message : e)));
+      </script>
+    </main>
+  </div>
+</body>
+</html>

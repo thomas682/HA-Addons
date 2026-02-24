@@ -3,9 +3,21 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Influx Browser – Konfiguration</title>
+  <title>InfluxBro – Einstellungen</title>
   <style>
-    body { font-family: system-ui, sans-serif; margin: 16px; max-width: 980px; }
+    body { font-family: system-ui, sans-serif; margin: 0; }
+    .shell { display:grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
+    @media (max-width: 980px){ .shell { grid-template-columns: 1fr; } }
+    .sidebar { padding: 14px; border-right: 1px solid #eee; }
+    @media (max-width: 980px){ .sidebar { border-right: 0; border-bottom: 1px solid #eee; } }
+    .brand { margin-bottom: 10px; }
+    .brand_title { font-weight: 800; font-size: 18px; }
+    .brand_meta { opacity: 0.7; font-size: 12px; margin-top: 2px; }
+    .nav_item { display:flex; align-items:center; gap: 10px; padding: 10px 10px; border-radius: 12px; text-decoration:none; color: inherit; }
+    .nav_item:hover { background: #f6f6f6; }
+    .nav_item.active { background: #0b0b0c; color: #fff; }
+    .ico { width: 22px; height: 22px; display:inline-flex; align-items:center; justify-content:center; font-weight: 800; }
+    .content { padding: 16px; max-width: 980px; }
     .row { display:flex; gap:12px; flex-wrap:wrap; align-items:end; }
     .grid { display:grid; grid-template-columns: repeat(2, minmax(260px, 1fr)); gap: 12px; align-items:start; }
     @media (max-width: 860px){ .grid { grid-template-columns: 1fr; } }
@@ -25,8 +37,12 @@
   </style>
 </head>
 <body>
-  <h2>⚙️ Konfiguration</h2>
-  <div class="muted"><a href="./">← zurück</a> &nbsp;|&nbsp; Delete enabled (Add-on Option): {{ "yes" if allow_delete else "no" }}</div>
+  <div class="shell">
+    {% include "_nav.html" %}
+    <main class="content" data-ui="settings.page" title="settings.page">
+
+  <h2>Einstellungen</h2>
+  <div class="muted">Schreiben (allow_delete): {{ "yes" if allow_delete else "no" }}</div>
   <div style="position:absolute;top:10px;right:20px;font-size:12px;color:#888;" id="version_box"></div>
 
   <div class="card" id="loadyaml_card" style="display:none;">
@@ -138,6 +154,12 @@
         <input id="ui_filter_search_width_px" type="number" min="80" max="420" />
         <div class="muted">Breite fuer das Suchfeld links neben der Auswahl.</div>
       </div>
+
+      <div class="span2">
+        <label>Repository URL (Info Seite)</label>
+        <input id="ui_repo_url" />
+        <div class="muted">Wird in der Info-Seite als Link angezeigt (Gitea/GitHub).</div>
+      </div>
     </div>
   </div>
 
@@ -162,6 +184,7 @@ const ids = [
   "ui_table_visible_rows","ui_decimals",
   "ui_font_size_px","ui_font_small_px","ui_checkbox_scale",
   "ui_filter_label_width_px","ui_filter_control_width_px","ui_filter_search_width_px"
+  ,"ui_repo_url"
 ];
 
 const el = {};
@@ -201,6 +224,7 @@ function setForm(cfg){
   el.ui_filter_label_width_px.value = cfg.ui_filter_label_width_px ?? 170;
   el.ui_filter_control_width_px.value = cfg.ui_filter_control_width_px ?? 320;
   el.ui_filter_search_width_px.value = cfg.ui_filter_search_width_px ?? 160;
+  el.ui_repo_url.value = cfg.ui_repo_url ?? "";
 }
 
 function getForm(){
@@ -231,6 +255,8 @@ function getForm(){
     ui_filter_label_width_px: parseInt(el.ui_filter_label_width_px.value, 10),
     ui_filter_control_width_px: parseInt(el.ui_filter_control_width_px.value, 10),
     ui_filter_search_width_px: parseInt(el.ui_filter_search_width_px.value, 10),
+
+    ui_repo_url: (el.ui_repo_url.value || "").trim(),
   };
 }
 
@@ -304,6 +330,13 @@ document.getElementById("save").addEventListener("click", ()=>save().catch(e=>er
 document.getElementById("test").addEventListener("click", ()=>testConn().catch(e=>err(String(e))));
 
 load().catch(e=>err(String(e)));
+
+// Tooltips: show internal field name on hover
+try{
+  document.querySelectorAll('[data-ui]').forEach(el => {
+    if(!el.getAttribute('title')) el.setAttribute('title', el.getAttribute('data-ui') || '');
+  });
+}catch(e){}
 </script>
 
 <script>
@@ -317,5 +350,8 @@ load().catch(e=>err(String(e)));
   }catch(e){}
 })();
 </script>
+
+    </main>
+  </div>
 </body>
 </html>
