@@ -312,6 +312,14 @@ DEFAULT_CFG = {
     "ui_open_filterlist": False,
     "ui_open_editlist": False,
     "ui_open_stats": False,
+
+    # Outlier scan defaults (max jump per point)
+    # Based on a typical household connection: 3-phase 400V, 35A -> ~24.2kW; use 30kW as practical ceiling.
+    "outlier_max_step_w": 30000,
+    "outlier_max_step_kw": 30,
+    # Energy deltas depend on sampling interval; defaults assume coarse (hour-ish) steps.
+    "outlier_max_step_wh": 30000,
+    "outlier_max_step_kwh": 30,
 }
 
 def load_cfg():
@@ -845,7 +853,22 @@ def api_logs():
     if tail > 20000:
         tail = 20000
 
-    status, txt = _supervisor_get("/supervisor/api/addons/self/logs", timeout_s=10)
+    candidates = [
+        "/supervisor/api/addons/self/logs",
+        "/addons/self/logs",
+        "/supervisor/api/addons/influxbro/logs",
+        "/addons/influxbro/logs",
+    ]
+
+    status = 0
+    txt = ""
+    for p in candidates:
+        st, out = _supervisor_get(p, timeout_s=10)
+        if st == 200 and out:
+            status, txt = st, out
+            break
+        status, txt = st, out
+
     if status != 200:
         return jsonify({"ok": False, "error": f"Logs not available: {txt or status}"}), 502
 
@@ -864,6 +887,24 @@ def _backup_safe(s: str) -> str:
 def _backup_files(backup_id: str) -> tuple[Path, Path]:
     stem = _backup_safe(backup_id)
     return BACKUP_DIR / f"{stem}.json", BACKUP_DIR / f"{stem}.lp"
+
+
+def _norm_unit(u: str) -> str:
+    return (u or "").strip().lower().replace(" ", "")
+
+
+def _outlier_max_step(cfg: dict[str, Any], unit: str) -> float:
+    u = _norm_unit(unit)
+    if u in ("w", "watt"):
+        return float(cfg.get("outlier_max_step_w", 30000))
+    if u in ("kw", "kilowatt"):
+        return float(cfg.get("outlier_max_step_kw", 30))
+    if u in ("wh", "watt-hour", "watthour", "watthours"):
+        return float(cfg.get("outlier_max_step_wh", 30000))
+    if u in ("kwh", "kilowatt-hour", "kilowatthour", "kilowatthours"):
+        return float(cfg.get("outlier_max_step_kwh", 30))
+    # fallback
+    return float(cfg.get("outlier_max_step_w", 30000))
 
 
 def _list_backups() -> list[dict[str, Any]]:
@@ -1199,6 +1240,21 @@ def api_set_config():
     _bool("ui_open_filterlist", False)
     _bool("ui_open_editlist", False)
     _bool("ui_open_stats", False)
+
+    def _clamp_num(key: str, default: float, lo: float, hi: float) -> None:
+        try:
+            cfg[key] = float(cfg.get(key, default))
+        except Exception:
+            cfg[key] = default
+        if cfg[key] < lo:
+            cfg[key] = lo
+        if cfg[key] > hi:
+            cfg[key] = hi
+
+    _clamp_num("outlier_max_step_w", 30000, 1000, 200000)
+    _clamp_num("outlier_max_step_kw", 30, 0.5, 200)
+    _clamp_num("outlier_max_step_wh", 30000, 100, 10000000)
+    _clamp_num("outlier_max_step_kwh", 30, 0.01, 100000)
 
     save_cfg(cfg)
     return jsonify({"ok": True, "message": "Saved. New settings are used immediately."})
@@ -1822,6 +1878,147 @@ j6 |> group() |> limit(n: {limit})
                         "p50": vals.get("p50"),
                     })
             return jsonify({"ok": True, "rows": rows, "limit": limit})
+    except Exception as e:
+        return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
+
+
+@app.post("/api/outliers")
+def api_outliers():
+    """Find outliers in a time window (raw points).
+
+    Uses the graph time window (start/stop) and returns matching points.
+    """
+
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    body = request.get_json(force=True) or {}
+
+    measurement = (body.get("measurement") or "").strip()
+    field = (body.get("field") or "").strip()
+    entity_id = (body.get("entity_id") or "").strip() or None
+    friendly_name = (body.get("friendly_name") or "").strip() or None
+    unit = (body.get("unit") or "").strip()
+
+    if not measurement or not field:
+        return jsonify({"ok": False, "error": "measurement and field required"}), 400
+
+    try:
+        start_dt, stop_dt = _get_start_stop_from_payload(body)
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+
+    if int(cfg.get("influx_version", 2)) != 2:
+        return jsonify({"ok": False, "error": "outliers currently supports InfluxDB v2 only"}), 400
+    if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+        return jsonify({
+            "ok": False,
+            "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
+        }), 400
+
+    include_null = bool(body.get("include_null", False))
+    include_zero = bool(body.get("include_zero", False))
+    bounds_enabled = bool(body.get("bounds_enabled", False))
+    min_v = body.get("min")
+    max_v = body.get("max")
+    counter_enabled = bool(body.get("counter_enabled", False))
+    counter_decrease = bool(body.get("counter_decrease", True))
+    counter_max_step = bool(body.get("counter_max_step", True))
+
+    try:
+        min_num = float(min_v) if bounds_enabled and min_v is not None and str(min_v).strip() != "" else None
+    except Exception:
+        min_num = None
+    try:
+        max_num = float(max_v) if bounds_enabled and max_v is not None and str(max_v).strip() != "" else None
+    except Exception:
+        max_num = None
+
+    if bounds_enabled and min_num is None and max_num is None:
+        bounds_enabled = False
+
+    max_step = _outlier_max_step(cfg, unit)
+    try:
+        if "max_step" in body and body.get("max_step") is not None and str(body.get("max_step")).strip() != "":
+            max_step = float(body.get("max_step"))
+    except Exception:
+        pass
+
+    extra = flux_tag_filter(entity_id, friendly_name)
+    start = _dt_to_rfc3339_utc(start_dt)
+    stop = _dt_to_rfc3339_utc(stop_dt)
+    q = f'''
+from(bucket: "{cfg["bucket"]}")
+  |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
+  |> sort(columns: ["_time"])
+'''
+
+    MAX_SCAN = 200000
+    MAX_OUT = 5000
+
+    rows: list[dict[str, Any]] = []
+    scanned = 0
+    prev_val: float | None = None
+    prev_time: datetime | None = None
+
+    try:
+        with v2_client(cfg) as c:
+            qapi = c.query_api()
+            for rec in qapi.query_stream(q, org=cfg["org"]):
+                scanned += 1
+                if scanned > MAX_SCAN:
+                    return jsonify({
+                        "ok": False,
+                        "error": f"Zu viele Punkte im Zeitraum ({MAX_SCAN}+). Bitte im Graph weiter reinzoomen.",
+                    }), 413
+
+                t = rec.get_time()
+                v = rec.get_value()
+                iso = _dt_to_rfc3339_utc(t) if isinstance(t, datetime) else None
+
+                reasons: list[str] = []
+                if v is None:
+                    if include_null:
+                        reasons.append("NULL")
+                        rows.append({"time": iso, "value": None, "reason": ", ".join(reasons)})
+                    continue
+
+                if isinstance(v, bool) or not isinstance(v, (int, float)):
+                    # ignore non-numeric
+                    continue
+
+                fv = float(v)
+                if include_zero and fv == 0.0:
+                    reasons.append("0")
+                if bounds_enabled:
+                    if min_num is not None and fv < min_num:
+                        reasons.append(f"< min ({min_num})")
+                    if max_num is not None and fv > max_num:
+                        reasons.append(f"> max ({max_num})")
+
+                if counter_enabled and prev_val is not None:
+                    d = fv - prev_val
+                    if counter_decrease and d < 0:
+                        reasons.append("counter decrease")
+                    if counter_max_step and max_step is not None and d > float(max_step):
+                        reasons.append(f"step > {max_step} {unit or ''}".strip())
+
+                if reasons:
+                    rows.append({"time": iso, "value": fv, "reason": ", ".join(reasons)})
+                    if len(rows) >= MAX_OUT:
+                        break
+
+                prev_val = fv
+                prev_time = t if isinstance(t, datetime) else prev_time
+
+        return jsonify({
+            "ok": True,
+            "rows": rows,
+            "scanned": scanned,
+            "start": start,
+            "stop": stop,
+            "max_step": max_step,
+            "unit": unit,
+        })
     except Exception as e:
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
 

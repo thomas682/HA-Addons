@@ -172,6 +172,33 @@
           <div><label><input type="checkbox" id="ui_open_stats" /> Statistik</label></div>
         </div>
       </div>
+
+      <div class="span2">
+        <h4>Ausreisser-Suche (Maximaler Sprung pro Datenpunkt)</h4>
+        <div class="muted">Werte gelten als "unsinnig", wenn ein Sprung groesser als diese Grenze ist (nur Counter-Regel).</div>
+        <div class="grid" style="margin-top:8px;">
+          <div>
+            <label>W (max step)</label>
+            <input id="outlier_max_step_w" type="number" min="1000" max="200000" step="100" />
+            <div class="muted">Default: 30000 W (ca. 3x35A Hausanschluss).</div>
+          </div>
+          <div>
+            <label>kW (max step)</label>
+            <input id="outlier_max_step_kw" type="number" min="0.5" max="200" step="0.5" />
+            <div class="muted">Default: 30 kW.</div>
+          </div>
+          <div>
+            <label>Wh (max step)</label>
+            <input id="outlier_max_step_wh" type="number" min="100" max="10000000" step="100" />
+            <div class="muted">Achtung: abhaengig vom Messintervall.</div>
+          </div>
+          <div>
+            <label>kWh (max step)</label>
+            <input id="outlier_max_step_kwh" type="number" min="0.01" max="100000" step="0.1" />
+            <div class="muted">Achtung: abhaengig vom Messintervall.</div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -198,6 +225,7 @@ const ids = [
   "ui_filter_label_width_px","ui_filter_control_width_px","ui_filter_search_width_px"
   ,"ui_repo_url"
   ,"ui_open_selection","ui_open_graph","ui_open_filterlist","ui_open_editlist","ui_open_stats"
+  ,"outlier_max_step_w","outlier_max_step_kw","outlier_max_step_wh","outlier_max_step_kwh"
 ];
 
 const el = {};
@@ -244,6 +272,11 @@ function setForm(cfg){
   el.ui_open_filterlist.checked = !!cfg.ui_open_filterlist;
   el.ui_open_editlist.checked = !!cfg.ui_open_editlist;
   el.ui_open_stats.checked = !!cfg.ui_open_stats;
+
+  el.outlier_max_step_w.value = cfg.outlier_max_step_w ?? 30000;
+  el.outlier_max_step_kw.value = cfg.outlier_max_step_kw ?? 30;
+  el.outlier_max_step_wh.value = cfg.outlier_max_step_wh ?? 30000;
+  el.outlier_max_step_kwh.value = cfg.outlier_max_step_kwh ?? 30;
 }
 
 function getForm(){
@@ -282,6 +315,11 @@ function getForm(){
     ui_open_filterlist: !!el.ui_open_filterlist.checked,
     ui_open_editlist: !!el.ui_open_editlist.checked,
     ui_open_stats: !!el.ui_open_stats.checked,
+
+    outlier_max_step_w: parseFloat(el.outlier_max_step_w.value),
+    outlier_max_step_kw: parseFloat(el.outlier_max_step_kw.value),
+    outlier_max_step_wh: parseFloat(el.outlier_max_step_wh.value),
+    outlier_max_step_kwh: parseFloat(el.outlier_max_step_kwh.value),
   };
 }
 

@@ -252,12 +252,31 @@
         </div>
         <div class="table_box" id="table_box">
           <table id="tbl">
-            <thead><tr><th style="width:26px;"><input type="checkbox" id="tbl_sel_all" class="row_sel" data-ui="filterlist_select_all"/></th><th id="th_time" data-key="time" data-ui="filterlist_col_time">Zeit</th><th id="th_value" data-key="value" data-ui="filterlist_col_value">Wert</th></tr></thead>
+            <thead><tr><th style="width:26px;"><input type="checkbox" id="tbl_sel_all" class="row_sel" data-ui="filterlist_select_all"/></th><th id="th_time" data-key="time" data-ui="filterlist_col_time">Zeit</th><th id="th_value" data-key="value" data-ui="filterlist_col_value">Wert</th><th data-ui="filterlist_col_reason">Grund</th></tr></thead>
             <tbody></tbody>
           </table>
         </div>
 
         <div class="tbl_actions" style="justify-content:flex-end; margin-top: 10px;">
+          <button class="btn_sm" id="outlier_scan" data-ui="filterlist_outlier_scan">Fehlersuche Ausreisser</button>
+          <button class="btn_sm" id="outlier_reset" data-ui="filterlist_outlier_reset">Zuruecksetzen</button>
+          <details id="outlier_opts" style="margin-top:0;" data-ui="filterlist_outlier_opts">
+            <summary>Optionen</summary>
+            <div class="grid" style="margin-top:12px; align-items:end;">
+              <div class="control"><label><input type="checkbox" id="out_null" class="row_sel" data-ui="outliers.null"/> NULL Werte</label></div>
+              <div class="control"><label><input type="checkbox" id="out_zero" class="row_sel" data-ui="outliers.zero"/> 0-Werte</label></div>
+
+              <div class="control"><label><input type="checkbox" id="out_bounds" class="row_sel" data-ui="outliers.bounds"/> Grenzen</label></div>
+              <div class="control"><label>Min</label><input id="out_min" placeholder="" data-ui="outliers.min"/></div>
+              <div class="control"><label>Max</label><input id="out_max" placeholder="" data-ui="outliers.max"/></div>
+
+              <div class="control span2">
+                <label><input type="checkbox" id="out_counter" class="row_sel" data-ui="outliers.counter"/> Counter-Ausreisser (Spruenge)</label>
+                <div class="muted">Nutzt Maximal-Sprung je Einheit aus Einstellungen, kann hier ueberschrieben werden.</div>
+              </div>
+              <div class="control"><label>Max Sprung</label><input id="out_max_step" placeholder="(auto)" data-ui="outliers.max_step"/></div>
+            </div>
+          </details>
           <button class="btn_sm" id="tbl_to_edit" data-ui="filterlist_to_edit">In Bearbeitungsliste</button>
         </div>
       </div>
@@ -341,6 +360,15 @@ const $tableRange = document.getElementById('table_range');
 const $tblSelAll = document.getElementById('tbl_sel_all');
 const $tblTimeFromGraph = document.getElementById('tbl_time_from_graph');
 const $btnTblToEdit = document.getElementById('tbl_to_edit');
+const $btnOutlierScan = document.getElementById('outlier_scan');
+const $btnOutlierReset = document.getElementById('outlier_reset');
+const $outNull = document.getElementById('out_null');
+const $outZero = document.getElementById('out_zero');
+const $outBounds = document.getElementById('out_bounds');
+const $outMin = document.getElementById('out_min');
+const $outMax = document.getElementById('out_max');
+const $outCounter = document.getElementById('out_counter');
+const $outMaxStep = document.getElementById('out_max_step');
 const $tblEnabled = document.getElementById('tbl_enabled');
 const $tblMode = document.getElementById('tbl_mode');
 const $tblAOp = document.getElementById('tbl_a_op');
@@ -482,6 +510,9 @@ let TABLE_TIME = {
 let GRAPH_MARKERS = false;
 let DELETE_PHRASE = "";
 
+let OUTLIER_ACTIVE = false;
+let OUTLIER_ROWS = [];
+
 let _PLOTLY_EVENTS_BOUND = false;
 
 let FILTER_SELECTED = new Set();
@@ -622,6 +653,18 @@ function drawPlotly(rows){
   const x = pts.map(p => p.x);
   const y = pts.map(p => p.y);
 
+  // Track current full bounds for outlier scan / table sync.
+  try{
+    const xs = pts.map(p => p.x.getTime());
+    const minX = Math.min(...xs);
+    const maxX = Math.max(...xs);
+    if(isFinite(minX) && isFinite(maxX)){
+      TABLE_TIME.graph_start_ms = minX;
+      TABLE_TIME.graph_stop_ms = maxX;
+      renderTableRange();
+    }
+  }catch(e){}
+
   const data = [{
     x,
     y,
@@ -652,8 +695,15 @@ function drawPlotly(rows){
       try{
         if(!ev) return;
         if(_isTruthy(ev["xaxis.autorange"])){
-          TABLE_TIME.graph_start_ms = null;
-          TABLE_TIME.graph_stop_ms = null;
+          // Reset to full dataset bounds
+          const xs = (LAST_ROWS || []).map(r => Date.parse(r && r.time ? r.time : "")).filter(t => isFinite(t));
+          if(xs.length){
+            TABLE_TIME.graph_start_ms = Math.min(...xs);
+            TABLE_TIME.graph_stop_ms = Math.max(...xs);
+          }else{
+            TABLE_TIME.graph_start_ms = null;
+            TABLE_TIME.graph_stop_ms = null;
+          }
           renderTableRange();
           renderTable();
           return;
@@ -675,8 +725,14 @@ function drawPlotly(rows){
     });
 
     $plotly.on("plotly_doubleclick", () => {
-      TABLE_TIME.graph_start_ms = null;
-      TABLE_TIME.graph_stop_ms = null;
+      const xs = (LAST_ROWS || []).map(r => Date.parse(r && r.time ? r.time : "")).filter(t => isFinite(t));
+      if(xs.length){
+        TABLE_TIME.graph_start_ms = Math.min(...xs);
+        TABLE_TIME.graph_stop_ms = Math.max(...xs);
+      }else{
+        TABLE_TIME.graph_start_ms = null;
+        TABLE_TIME.graph_stop_ms = null;
+      }
       renderTableRange();
       renderTable();
     });
@@ -1099,6 +1155,10 @@ function applyValueFilter(rows){
   });
 }
 
+function _rowsForFilterTable(){
+  return OUTLIER_ACTIVE ? (OUTLIER_ROWS || []) : (LAST_ROWS || []);
+}
+
 function _tableTimeFilteredRows(rows){
   if(!TABLE_TIME.from_graph) return rows;
   if(!(isFinite(TABLE_TIME.graph_start_ms) && isFinite(TABLE_TIME.graph_stop_ms))) return rows;
@@ -1121,7 +1181,7 @@ function _renderSelAll(checkboxEl, keysInView, selectedSet){
 }
 
 function renderTable(){
-  let base = (LAST_ROWS || []).slice();
+  let base = _rowsForFilterTable().slice();
   base = _tableTimeFilteredRows(base);
   const filtered = applyValueFilter(base);
   const rows = sortRowsForTable(filtered);
@@ -1157,10 +1217,13 @@ function renderTable(){
     tdT.textContent = fmtTs(row.time);
     const tdV = document.createElement("td");
     tdV.textContent = (row.value===null||row.value===undefined)?"":fmtNum(row.value);
+    const tdR = document.createElement("td");
+    tdR.textContent = row && row.reason ? String(row.reason) : "";
 
     tr.appendChild(tdSel);
     tr.appendChild(tdT);
     tr.appendChild(tdV);
+    tr.appendChild(tdR);
 
     tr.addEventListener("click", (e)=>{
       const target = e && e.target;
@@ -1181,14 +1244,15 @@ function renderTable(){
   LAST_FILTER_KEYS_IN_VIEW = keysInView.slice();
 
   const shown = rows.length;
-  const baseTotal = (LAST_ROWS || []).length;
+  const baseTotal = _rowsForFilterTable().length;
   if($tableInfo){
     const arrow = TABLE_SORT.dir === "desc" ? "↓" : "↑";
     const filt = TABLE_FILTER.enabled
       ? ` | Filter: (${TABLE_FILTER.a_op} ${TABLE_FILTER.a_val}) ${TABLE_FILTER.mode} (${TABLE_FILTER.b_op} ${TABLE_FILTER.b_val})`
       : " | Filter: aus";
     const tf = (TABLE_TIME.from_graph && isFinite(TABLE_TIME.graph_start_ms) && isFinite(TABLE_TIME.graph_stop_ms)) ? " | Zeit: Graph" : "";
-    $tableInfo.textContent = `Eintraege: ${shown}${baseTotal!==shown?` (von ${baseTotal})`:""} | Sort: ${TABLE_SORT.key} ${arrow}${filt}${tf}`;
+    const om = OUTLIER_ACTIVE ? " | Modus: Ausreisser" : "";
+    $tableInfo.textContent = `Eintraege: ${shown}${baseTotal!==shown?` (von ${baseTotal})`:""} | Sort: ${TABLE_SORT.key} ${arrow}${filt}${tf}${om}`;
   }
 }
 
@@ -1336,7 +1400,8 @@ function renderEditTable(){
 function addToEditListByKey(key){
   if(!key) return;
   if(EDIT_LIST.has(key)) return;
-  const row = (LAST_ROWS || []).find(r => rowKey(r) === key);
+  let row = (LAST_ROWS || []).find(r => rowKey(r) === key);
+  if(!row && OUTLIER_ACTIVE) row = (OUTLIER_ROWS || []).find(r => rowKey(r) === key);
   if(!row) return;
 
   const origV = row.value;
@@ -1564,6 +1629,17 @@ async function loadData(){
   const j = await api("./api/query", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(filters)});
   const rows = j.rows || [];
   LAST_ROWS = rows;
+  OUTLIER_ACTIVE = false;
+  OUTLIER_ROWS = [];
+
+  // Sync graph window bounds to the freshly loaded data.
+  try{
+    const xs = rows.map(r => Date.parse(r && r.time ? r.time : "")).filter(t => isFinite(t));
+    if(xs.length){
+      TABLE_TIME.graph_start_ms = Math.min(...xs);
+      TABLE_TIME.graph_stop_ms = Math.max(...xs);
+    }
+  }catch(e){}
   renderTable();
   draw(rows);
   await loadStats();
@@ -1720,6 +1796,58 @@ if($btnTblToEdit) $btnTblToEdit.addEventListener("click", (ev)=>{
   const keys = Array.from(FILTER_SELECTED);
   keys.forEach(k => addToEditListByKey(k));
 });
+
+async function runOutlierScan(){
+  err(""); ok("");
+  if(!LAST_ROWS || !LAST_ROWS.length){ err("Bitte zuerst Daten laden (Aktualisieren). "); return; }
+  const base = currentFilters();
+
+  const startMs = TABLE_TIME.graph_start_ms;
+  const stopMs = TABLE_TIME.graph_stop_ms;
+  if(!(isFinite(startMs) && isFinite(stopMs))){
+    err("Kein Graph-Zeitraum bekannt. Bitte einmal zoomen oder Aktualisieren.");
+    return;
+  }
+
+  const unit = (HA_ENTITY_INFO && HA_ENTITY_INFO.entity && HA_ENTITY_INFO.entity.unit_of_measurement) ? String(HA_ENTITY_INFO.entity.unit_of_measurement) : "";
+  const stateClass = (HA_ENTITY_INFO && HA_ENTITY_INFO.entity && HA_ENTITY_INFO.entity.state_class) ? String(HA_ENTITY_INFO.entity.state_class) : "";
+  const counterDefault = (stateClass === "total" || stateClass === "total_increasing");
+
+  const payload = {
+    measurement: base.measurement,
+    field: base.field,
+    entity_id: base.entity_id,
+    friendly_name: base.friendly_name,
+    start: new Date(startMs).toISOString(),
+    stop: new Date(stopMs).toISOString(),
+    unit,
+    include_null: !!($outNull && $outNull.checked),
+    include_zero: !!($outZero && $outZero.checked),
+    bounds_enabled: !!($outBounds && $outBounds.checked),
+    min: $outMin ? $outMin.value : "",
+    max: $outMax ? $outMax.value : "",
+    counter_enabled: $outCounter ? !!$outCounter.checked : counterDefault,
+    max_step: $outMaxStep ? $outMaxStep.value : "",
+  };
+
+  const j = await api("./api/outliers", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)});
+  OUTLIER_ACTIVE = true;
+  OUTLIER_ROWS = (j.rows || []).map(r => ({ time: r.time, value: r.value, reason: r.reason || "" }));
+  FILTER_SELECTED = new Set();
+  renderTableRange();
+  renderTable();
+  ok(`Ausreisser gefunden: ${(OUTLIER_ROWS||[]).length} (geprueft: ${j.scanned})`);
+}
+
+function resetOutliers(){
+  OUTLIER_ACTIVE = false;
+  OUTLIER_ROWS = [];
+  FILTER_SELECTED = new Set();
+  renderTable();
+}
+
+if($btnOutlierScan) $btnOutlierScan.addEventListener("click", (ev)=>{ _stop(ev); runOutlierScan().catch(displayError); });
+if($btnOutlierReset) $btnOutlierReset.addEventListener("click", (ev)=>{ _stop(ev); resetOutliers(); });
 if($btnEditRemove) $btnEditRemove.addEventListener("click", (ev)=>{
   _stop(ev);
   const keys = Array.from(EDIT_SELECTED);
@@ -1817,6 +1945,16 @@ document.getElementById("load").addEventListener("click", ()=>refreshAll().catch
 try{
   document.querySelectorAll('[data-ui]').forEach(el => {
     if(!el.getAttribute('title')) el.setAttribute('title', el.getAttribute('data-ui') || '');
+  });
+}catch(e){}
+
+// Also add tooltips for selects/inputs without data-ui
+try{
+  document.querySelectorAll('select, input, button').forEach(el => {
+    if(el.getAttribute('data-ui')) return;
+    if(el.getAttribute('title')) return;
+    const id = el.getAttribute('id');
+    if(id) el.setAttribute('title', id);
   });
 }catch(e){}
 </script>

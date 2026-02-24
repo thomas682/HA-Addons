@@ -30,6 +30,11 @@
 - UI: Filter aktiv als Checkbox; Verb-Logik zwischen Links/Rechts.
 - UI: Filtertabelle laedt automatisch beim Seitenstart (wenn Auswahl vorhanden).
 
+## 1.9.0
+- Ausreisser: Raw-Fehlersuche im aktuellen Graph-Zeitraum (NULL/0/Grenzen/Counter-Max-Sprung) mit Optionen.
+- Einstellungen: Maximaler Sprung je Einheit (W/kW/Wh/kWh) vorbelegt fuer typischen Haushalt.
+- Logs: Supervisor-API Pfade robuster + supervisor_api aktiviert.
+
 ## 1.4.0
 - Feature: Tabelle kann optional zeitlich vom Graph-Zoom gefuehrt werden.
 - Feature: Bearbeitungsliste fuer selektierte Datenpunkte inkl. Undo und "alle uebernehmen".
