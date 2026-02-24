@@ -660,9 +660,54 @@ def api_ha_entity():
         }
         return jsonify({"ok": True, "available": True, "entity": entity, "error": None})
     except urllib.error.HTTPError as e:
-        return jsonify({"ok": True, "available": False, "error": f"HTTP {e.code}", "entity": None})
+        detail = ""
+        try:
+            body = e.read().decode("utf-8", errors="replace")
+            if body:
+                detail = body
+        except Exception:
+            pass
+        msg = f"HTTP {e.code} {getattr(e, 'reason', '')}".strip()
+        if detail:
+            # Avoid huge responses
+            msg = msg + ": " + (detail[:300] + ("..." if len(detail) > 300 else ""))
+        return jsonify({"ok": True, "available": False, "error": msg, "entity": None})
     except Exception as e:
         return jsonify({"ok": True, "available": False, "error": str(e) or e.__class__.__name__, "entity": None})
+
+
+@app.get("/api/ha_debug")
+def api_ha_debug():
+    """Small diagnostics for HA connectivity.
+
+    Does not expose the Supervisor token.
+    """
+
+    token_present = bool((os.environ.get("SUPERVISOR_TOKEN") or "").strip())
+    out: dict[str, Any] = {
+        "ok": True,
+        "token_present": token_present,
+        "supervisor_core_api": {"ok": False, "status": None, "error": None},
+    }
+
+    if not token_present:
+        out["supervisor_core_api"]["error"] = "SUPERVISOR_TOKEN not set"
+        return jsonify(out)
+
+    token = (os.environ.get("SUPERVISOR_TOKEN") or "").strip()
+    try:
+        url = "http://supervisor/core/api/"
+        req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"}, method="GET")
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            out["supervisor_core_api"]["ok"] = True
+            out["supervisor_core_api"]["status"] = getattr(resp, "status", 200)
+    except urllib.error.HTTPError as e:
+        out["supervisor_core_api"]["status"] = e.code
+        out["supervisor_core_api"]["error"] = f"HTTP {e.code} {getattr(e, 'reason', '')}".strip()
+    except Exception as e:
+        out["supervisor_core_api"]["error"] = str(e) or e.__class__.__name__
+
+    return jsonify(out)
 
 @app.post("/api/config")
 def api_set_config():

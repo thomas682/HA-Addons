@@ -11,6 +11,9 @@
 - UI: Suchfeld steht links neben dem Auswahlfeld; Breite konfigurierbar.
 - UI: Zusaetzliche data-ui Namen an Elementen fuer eindeutige Referenzen.
 
+## 1.5.2
+- Debug: HA Info Fehlermeldung wird in der Statistik angezeigt; zusaetzlicher Endpoint /api/ha_debug.
+
 ## 1.4.0
 - Feature: Tabelle kann optional zeitlich vom Graph-Zoom gefuehrt werden.
 - Feature: Bearbeitungsliste fuer selektierte Datenpunkte inkl. Undo und "alle uebernehmen".

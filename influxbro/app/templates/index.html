@@ -978,7 +978,7 @@ function _statsRowsTotal(stats){
     if(e.state_class) out.push({k: "state_class", v: e.state_class});
     if(e.unit_of_measurement) out.push({k: "unit_of_measurement", v: e.unit_of_measurement});
   }else if(HA_ENTITY_INFO && HA_ENTITY_INFO.error){
-    out.push({k: "HA Info", v: "nicht verfuegbar"});
+    out.push({k: "HA Info", v: String(HA_ENTITY_INFO.error)});
   }
 
   out.push({k: "Aktueller Wert", v: fmtLastValue(s)});
