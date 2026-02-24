@@ -320,6 +320,45 @@
       </div>
     </div>
 
+    <div class="section" id="global_stats_section" data-ui="global_stats.section" title="global_stats.section">
+      <div class="section_title">Gesamtstatistik (alle Messwerte)</div>
+      <div class="table_wrap">
+        <div class="row" style="margin-top:0;">
+          <div style="flex:1; min-width: 260px;">
+            <label>Suche</label>
+            <input id="gstats_q" placeholder="Volltext..." data-ui="global_stats.search" />
+          </div>
+          <div>
+            <label>&nbsp;</label>
+            <button id="gstats_load" data-ui="global_stats.load">Gesamtstatistik laden</button>
+          </div>
+          <div class="muted" id="gstats_info" data-ui="global_stats.info" style="padding-top: 6px;"></div>
+        </div>
+
+        <div class="table_box" id="gstats_box">
+          <table id="gstats_tbl" data-ui="global_stats.table">
+            <thead>
+              <tr>
+                <th data-key="friendly_name" data-ui="global_stats.col.friendly_name">friendly_name</th>
+                <th data-key="entity_id" data-ui="global_stats.col.entity_id">entity_id</th>
+                <th data-key="measurement" data-ui="global_stats.col.measurement">_measurement</th>
+                <th data-key="field" data-ui="global_stats.col.field">_field</th>
+                <th data-key="count" data-ui="global_stats.col.count">count</th>
+                <th data-key="oldest_time" data-ui="global_stats.col.oldest">oldest</th>
+                <th data-key="newest_time" data-ui="global_stats.col.newest">newest</th>
+                <th data-key="last_value" data-ui="global_stats.col.last_value">last_value</th>
+                <th data-key="min" data-ui="global_stats.col.min">min</th>
+                <th data-key="max" data-ui="global_stats.col.max">max</th>
+                <th data-key="mean" data-ui="global_stats.col.mean">mean</th>
+                <th data-key="p50" data-ui="global_stats.col.p50">p50</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <script src="./static/plotly.min.js"></script>
@@ -370,6 +409,12 @@ const $statsToggle = document.getElementById('stats_toggle');
 const $statsBox = document.getElementById('stats_box');
 const $statsTotBody = document.getElementById('stats_tot_body');
 const $statsCurrBody = document.getElementById('stats_curr_body');
+
+const $gstatsQ = document.getElementById('gstats_q');
+const $gstatsLoad = document.getElementById('gstats_load');
+const $gstatsInfo = document.getElementById('gstats_info');
+const $gstatsTbody = document.querySelector('#gstats_tbl tbody');
+const $gstatsThead = document.querySelector('#gstats_tbl thead');
 
 const canvas = document.getElementById('chart');
 const ctx = canvas.getContext('2d');
@@ -492,6 +537,9 @@ let TABLE_TIME = {
 
 let GRAPH_MARKERS = false;
 let STATS_VISIBLE = false;
+
+let GSTATS_ROWS = [];
+let GSTATS_SORT = { key: "count", dir: "desc" };
 
 let _PLOTLY_EVENTS_BOUND = false;
 
@@ -1030,6 +1078,96 @@ function renderStats(){
   if(!STATS_VISIBLE) return;
   _setStatsBody($statsTotBody, _statsRowsTotal(LAST_STATS_TOT));
   _setStatsBody($statsCurrBody, _statsRowsCurrent(LAST_STATS_CURR));
+}
+
+function _gstatsTextRow(r){
+  return [r.friendly_name, r.entity_id, r.measurement, r.field, r.count, r.oldest_time, r.newest_time, r.last_value, r.min, r.max, r.mean, r.p50]
+    .map(x => String(x === null || x === undefined ? "" : x))
+    .join(" ")
+    .toLowerCase();
+}
+
+function _gstatsSortRows(rows){
+  const key = GSTATS_SORT.key;
+  const dir = GSTATS_SORT.dir === "desc" ? -1 : 1;
+  const out = (rows || []).slice();
+  out.sort((a,b)=>{
+    const av = a ? a[key] : null;
+    const bv = b ? b[key] : null;
+    if(key.endsWith("_time")){
+      const at = Date.parse(String(av||""));
+      const bt = Date.parse(String(bv||""));
+      if(isFinite(at) && isFinite(bt)) return (at - bt) * dir;
+    }
+    const an = (typeof av === "number" && isFinite(av)) ? av : (isFinite(Number(av)) ? Number(av) : null);
+    const bn = (typeof bv === "number" && isFinite(bv)) ? bv : (isFinite(Number(bv)) ? Number(bv) : null);
+    if(an !== null && bn !== null) return (an - bn) * dir;
+    return String(av||"").localeCompare(String(bv||"")) * dir;
+  });
+  return out;
+}
+
+function renderGlobalStats(){
+  if(!$gstatsTbody) return;
+  const q = String($gstatsQ && $gstatsQ.value ? $gstatsQ.value : "").trim().toLowerCase();
+  let rows = GSTATS_ROWS || [];
+  if(q){
+    rows = rows.filter(r => _gstatsTextRow(r).includes(q));
+  }
+  rows = _gstatsSortRows(rows);
+
+  $gstatsTbody.innerHTML = "";
+  rows.forEach(r=>{
+    const tr = document.createElement("tr");
+    const add = (v, isTime=false, isNum=false) => {
+      const td = document.createElement("td");
+      if(isTime) td.textContent = fmtTs(v);
+      else if(isNum) td.textContent = (v===null||v===undefined)?"":fmtNum(v);
+      else td.textContent = String(v===null||v===undefined?"":v);
+      tr.appendChild(td);
+    };
+    add(r.friendly_name);
+    add(r.entity_id);
+    add(r.measurement);
+    add(r.field);
+    add(r.count, false, false);
+    add(r.oldest_time, true, false);
+    add(r.newest_time, true, false);
+    add(r.last_value, false, true);
+    add(r.min, false, true);
+    add(r.max, false, true);
+    add(r.mean, false, true);
+    add(r.p50, false, true);
+    $gstatsTbody.appendChild(tr);
+  });
+
+  if($gstatsInfo){
+    const base = (GSTATS_ROWS || []).length;
+    const shown = rows.length;
+    const arrow = GSTATS_SORT.dir === "desc" ? "↓" : "↑";
+    $gstatsInfo.textContent = `Zeilen: ${shown}${shown!==base?` (von ${base})`:""} | Sort: ${GSTATS_SORT.key} ${arrow}`;
+  }
+}
+
+async function loadGlobalStats(){
+  err(""); ok("");
+  if($gstatsInfo) $gstatsInfo.textContent = "laedt...";
+  const j = await api("./api/global_stats?limit=5000");
+  GSTATS_ROWS = (j.rows || []).map(r => ({
+    measurement: r.measurement || "",
+    field: r.field || "",
+    entity_id: r.entity_id || "",
+    friendly_name: r.friendly_name || "",
+    count: r.count,
+    oldest_time: r.oldest_time,
+    newest_time: r.newest_time,
+    last_value: r.last_value,
+    min: r.min,
+    max: r.max,
+    mean: r.mean,
+    p50: r.p50,
+  }));
+  renderGlobalStats();
 }
 
 function sortRowsForTable(rows){
@@ -1687,6 +1825,23 @@ if($statsToggle) $statsToggle.addEventListener("change", ()=>{
   STATS_VISIBLE = !!$statsToggle.checked;
   saveState();
   renderStats();
+});
+
+// Global stats
+if($gstatsLoad) $gstatsLoad.addEventListener("click", ()=>loadGlobalStats().catch(displayError));
+if($gstatsQ) $gstatsQ.addEventListener("input", debounce(()=>renderGlobalStats(), 120));
+if($gstatsThead) $gstatsThead.addEventListener("click", (ev)=>{
+  const th = ev && ev.target ? ev.target.closest('th') : null;
+  if(!th) return;
+  const key = th.getAttribute('data-key');
+  if(!key) return;
+  if(GSTATS_SORT.key === key){
+    GSTATS_SORT.dir = (GSTATS_SORT.dir === 'asc') ? 'desc' : 'asc';
+  }else{
+    GSTATS_SORT.key = key;
+    GSTATS_SORT.dir = (key === 'friendly_name' || key === 'entity_id' || key === 'measurement' || key === 'field') ? 'asc' : 'desc';
+  }
+  renderGlobalStats();
 });
 
 // Table time from graph

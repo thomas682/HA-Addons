@@ -1685,6 +1685,119 @@ data = from(bucket: "{cfg["bucket"]}")
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
 
 
+@app.get("/api/global_stats")
+def global_stats():
+    """Compute global stats per signal.
+
+    NOTE: Potentially expensive on large buckets; call on demand.
+    """
+
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    try:
+        limit = int(request.args.get("limit", "3000"))
+    except Exception:
+        limit = 3000
+    if limit < 1:
+        limit = 1
+    if limit > 20000:
+        limit = 20000
+
+    if int(cfg.get("influx_version", 2)) != 2:
+        return jsonify({"ok": False, "error": "global_stats currently supports InfluxDB v2 only"}), 400
+    if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+        return jsonify({
+            "ok": False,
+            "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
+        }), 400
+
+    keys = '["_measurement","_field","entity_id","friendly_name"]'
+    start = 'time(v: "1970-01-01T00:00:00Z")'
+    q = f'''
+base = from(bucket: "{cfg["bucket"]}")
+  |> range(start: {start})
+  |> filter(fn: (r) => exists r._measurement and exists r._field)
+  |> group(columns: {keys})
+
+c = base
+  |> count(column: "_value")
+  |> keep(columns: ["_measurement","_field","entity_id","friendly_name","_value"])
+  |> rename(columns: {{_value: "count"}})
+
+mn = base
+  |> min(column: "_value")
+  |> keep(columns: ["_measurement","_field","entity_id","friendly_name","_value"])
+  |> rename(columns: {{_value: "min"}})
+
+mx = base
+  |> max(column: "_value")
+  |> keep(columns: ["_measurement","_field","entity_id","friendly_name","_value"])
+  |> rename(columns: {{_value: "max"}})
+
+me = base
+  |> mean(column: "_value")
+  |> keep(columns: ["_measurement","_field","entity_id","friendly_name","_value"])
+  |> rename(columns: {{_value: "mean"}})
+
+p = base
+  |> quantile(q: 0.5, method: "estimate_tdigest")
+  |> keep(columns: ["_measurement","_field","entity_id","friendly_name","_value"])
+  |> rename(columns: {{_value: "p50"}})
+
+old = base
+  |> sort(columns: ["_time"], desc: false)
+  |> first()
+  |> keep(columns: ["_measurement","_field","entity_id","friendly_name","_time"])
+  |> rename(columns: {{_time: "oldest_time"}})
+
+nw = base
+  |> sort(columns: ["_time"], desc: true)
+  |> first()
+  |> keep(columns: ["_measurement","_field","entity_id","friendly_name","_time","_value"])
+  |> rename(columns: {{_time: "newest_time", _value: "last_value"}})
+
+j1 = join(tables: {{a: c, b: mn}}, on: ["_measurement","_field","entity_id","friendly_name"], method: "inner")
+j2 = join(tables: {{a: j1, b: mx}}, on: ["_measurement","_field","entity_id","friendly_name"], method: "inner")
+j3 = join(tables: {{a: j2, b: me}}, on: ["_measurement","_field","entity_id","friendly_name"], method: "inner")
+j4 = join(tables: {{a: j3, b: p}}, on: ["_measurement","_field","entity_id","friendly_name"], method: "inner")
+j5 = join(tables: {{a: j4, b: old}}, on: ["_measurement","_field","entity_id","friendly_name"], method: "inner")
+j6 = join(tables: {{a: j5, b: nw}}, on: ["_measurement","_field","entity_id","friendly_name"], method: "inner")
+
+j6 |> group() |> limit(n: {limit})
+'''
+
+    def _iso(v: Any) -> str | None:
+        if v is None:
+            return None
+        if isinstance(v, datetime):
+            return _dt_to_rfc3339_utc(v)
+        return str(v)
+
+    try:
+        with v2_client(cfg) as c:
+            tables = c.query_api().query(q, org=cfg["org"])
+            rows: list[dict[str, Any]] = []
+            for t in tables or []:
+                for rec in getattr(t, "records", []) or []:
+                    vals = getattr(rec, "values", {}) or {}
+                    rows.append({
+                        "measurement": vals.get("_measurement"),
+                        "field": vals.get("_field"),
+                        "entity_id": vals.get("entity_id") or "",
+                        "friendly_name": vals.get("friendly_name") or "",
+                        "count": vals.get("count"),
+                        "oldest_time": _iso(vals.get("oldest_time")),
+                        "newest_time": _iso(vals.get("newest_time")),
+                        "last_value": vals.get("last_value"),
+                        "min": vals.get("min"),
+                        "max": vals.get("max"),
+                        "mean": vals.get("mean"),
+                        "p50": vals.get("p50"),
+                    })
+            return jsonify({"ok": True, "rows": rows, "limit": limit})
+    except Exception as e:
+        return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
+
+
 @app.post("/api/resolve_signal")
 def resolve_signal():
     """Resolve a friendly_name/entity_id to a likely measurement+field."""

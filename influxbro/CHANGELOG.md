@@ -21,6 +21,9 @@
 - Info: Release Notes aus CHANGELOG.md + konfigurierbarer Repo-Link.
 - HA: entity_id ohne Domain wird automatisch als sensor/binary_sensor/... aufgeloest.
 
+## 1.7.0
+- Dashboard: Gesamtstatistik Tabelle fuer alle Messwerte (Suche + sortierbare Spalten).
+
 ## 1.4.0
 - Feature: Tabelle kann optional zeitlich vom Graph-Zoom gefuehrt werden.
 - Feature: Bearbeitungsliste fuer selektierte Datenpunkte inkl. Undo und "alle uebernehmen".
