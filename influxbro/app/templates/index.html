@@ -23,6 +23,7 @@
     th, td { border: 1px solid #ddd; padding: 6px; font-size: 12px; }
     th { background:#f4f4f4; text-align:left; }
     canvas { width: 100%; height: 180px; border: 1px solid #ddd; margin-top: 12px; border-radius: 10px; }
+    #chart_plotly { width: 100%; height: 220px; border: 1px solid #ddd; margin-top: 12px; border-radius: 10px; display:none; }
     .err { color: #b00020; margin-top: 8px; white-space: pre-wrap; }
     .ok { color: #0a7a28; margin-top: 8px; white-space: pre-wrap; }
     .muted { opacity: 0.7; font-size: 12px; }
@@ -133,6 +134,7 @@
 
   <div class="main">
     <div class="left">
+      <div id="chart_plotly"></div>
       <canvas id="chart" width="800" height="200"></canvas>
 
       <div class="stats_wrap">
@@ -261,6 +263,8 @@
     <div class="muted danger_note">Muss exakt dem Add-on Setting <code>delete_confirm_phrase</code> entsprechen.</div>
   </div>
 
+  <script src="./static/plotly.min.js"></script>
+
 <script>
 const err = (msg) => { document.getElementById('err').textContent = msg || ""; };
 const ok = (msg) => { document.getElementById('ok').textContent = msg || ""; };
@@ -323,6 +327,7 @@ const $sTotStddev = document.getElementById('s_tot_stddev');
 
 const canvas = document.getElementById('chart');
 const ctx = canvas.getContext('2d');
+const $plotly = document.getElementById('chart_plotly');
 
 let UI_DECIMALS = 3;
 let UI_TABLE_VISIBLE_ROWS = 20;
@@ -431,7 +436,7 @@ function debounce(fn, ms){
   };
 }
 
-function draw(rows){
+function drawCanvas(rows){
   ctx.clearRect(0,0,canvas.width,canvas.height);
   if(!rows || rows.length < 2) return;
 
@@ -512,6 +517,61 @@ function draw(rows){
     ctx.stroke();
     ctx.fillText(fmtAxis(t, rangeX), x, h-padB+6);
   }
+}
+
+function drawPlotly(rows){
+  if(!$plotly || !window.Plotly) return false;
+  const pts = (rows || []).map(r => {
+    const t = (r && r.time) ? String(r.time) : "";
+    const v = r && r.value;
+    const ms = Date.parse(t);
+    return {
+      x: isFinite(ms) ? new Date(ms) : null,
+      y: (typeof v === "number" && isFinite(v)) ? v : null,
+    };
+  }).filter(p => p.x && p.y !== null);
+  if(pts.length < 2) return false;
+
+  const x = pts.map(p => p.x);
+  const y = pts.map(p => p.y);
+
+  const data = [{
+    x,
+    y,
+    type: "scatter",
+    mode: "lines",
+    line: { color: "#1f77b4", width: 1.5 },
+    hovertemplate: "%{x}<br>%{y}<extra></extra>",
+  }];
+
+  const layout = {
+    margin: { l: 52, r: 10, t: 10, b: 40 },
+    height: 220,
+    xaxis: {
+      type: "date",
+      rangeslider: { visible: true, thickness: 0.12 },
+    },
+    yaxis: { automargin: true },
+  };
+
+  const config = { displayModeBar: false, responsive: true };
+  window.Plotly.react($plotly, data, layout, config);
+  return true;
+}
+
+function draw(rows){
+  const hasPlotly = !!(window.Plotly && $plotly);
+  if(hasPlotly){
+    const ok = drawPlotly(rows);
+    if(ok){
+      $plotly.style.display = "block";
+      canvas.style.display = "none";
+      return;
+    }
+    $plotly.style.display = "none";
+    canvas.style.display = "block";
+  }
+  drawCanvas(rows);
 }
 
 async function api(url, opts){
