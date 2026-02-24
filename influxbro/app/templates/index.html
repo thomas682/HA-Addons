@@ -11,6 +11,7 @@
       --ui-cb-scale: 0.85;
       --ui-label-w: 170px;
       --ui-ctrl-w: 320px;
+      --ui-search-w: 160px;
     }
 
     body { font-family: system-ui, sans-serif; margin: 16px; font-size: var(--ui-font); }
@@ -49,6 +50,14 @@
 
     input[type="checkbox"].row_sel { transform: scale(var(--ui-cb-scale)); transform-origin: left center; }
 
+    .filter_pair { display:flex; gap: 10px; align-items:stretch; }
+    .filter_pair input.search { height: 40px; padding:10px 12px; width: var(--ui-search-w); }
+    .filter_pair select { flex: 1; min-width: 0; }
+    @media (max-width: 860px){
+      .filter_pair { flex-direction: column; }
+      .filter_pair input.search { width: 100%; }
+    }
+
     .main { display:block; margin-top: 12px; }
     .table_wrap { border: 1px solid #ddd; border-radius: 10px; padding: 10px; margin-top: 12px; }
     .table_head { display:flex; justify-content:space-between; gap: 12px; align-items:baseline; flex-wrap:wrap; }
@@ -84,22 +93,26 @@
   </div>
 
   <div class="grid" id="filters">
-    <div class="control control_lr" id="c_measurement_filter">
+    <div class="control control_lr" id="c_measurement_filter" data-ui="filter_measurement">
       <label>_measurement (Filter)</label>
       <div class="stack">
-        <input id="q_measurement_filter" class="search" placeholder="Suchen..." />
-        <select id="measurement_filter"></select>
+        <div class="filter_pair" data-ui="filter_measurement_pair">
+          <input id="q_measurement_filter" class="search" placeholder="Suchen..." data-ui="filter_measurement_search" />
+          <select id="measurement_filter" data-ui="filter_measurement_select"></select>
+        </div>
       </div>
     </div>
-    <div class="control control_lr" id="c_friendly">
+    <div class="control control_lr" id="c_friendly" data-ui="filter_friendly">
       <label>Messwert (Klartext / friendly_name)</label>
       <div class="stack">
-        <input id="q_friendly_name" class="search" placeholder="Suchen..." />
-        <select id="friendly_name"></select>
+        <div class="filter_pair" data-ui="filter_friendly_pair">
+          <input id="q_friendly_name" class="search" placeholder="Suchen..." data-ui="filter_friendly_search" />
+          <select id="friendly_name" data-ui="filter_friendly_select"></select>
+        </div>
       </div>
     </div>
-    <div class="control" id="c_range"><label class="label_row"><span>Zeitraum (Graph/Tabelle)</span><span id="range_from_to"></span></label>
-      <select id="range">
+    <div class="control" id="c_range" data-ui="filter_range"><label class="label_row"><span>Zeitraum (Graph/Tabelle)</span><span id="range_from_to" data-ui="filter_range_bounds"></span></label>
+      <select id="range" data-ui="filter_range_select">
         <option value="1h">Letzte 1h</option>
         <option value="6h">Letzte 6h</option>
         <option value="12h">Letzte 12h</option>
@@ -112,11 +125,13 @@
         <option value="custom">Benutzerdefiniert…</option>
       </select>
     </div>
-    <div class="control control_lr" id="c_entity">
+    <div class="control control_lr" id="c_entity" data-ui="filter_entity">
       <label>entity_id (optional)</label>
       <div class="stack">
-        <input id="q_entity_id" class="search" placeholder="Suchen..." />
-        <select id="entity_id"></select>
+        <div class="filter_pair" data-ui="filter_entity_pair">
+          <input id="q_entity_id" class="search" placeholder="Suchen..." data-ui="filter_entity_search" />
+          <select id="entity_id" data-ui="filter_entity_select"></select>
+        </div>
       </div>
     </div>
     <div class="control span2" id="custom_range" style="display:none;">
@@ -150,8 +165,8 @@
 
     <div class="section" id="graph_section">
       <div class="section_title">Graph</div>
-      <div class="tbl_actions">
-        <label><input type="checkbox" id="graph_markers" class="row_sel"/>Messpunkte markieren</label>
+      <div class="tbl_actions" data-ui="graph_actions">
+        <label><input type="checkbox" id="graph_markers" class="row_sel" data-ui="graph_markers"/>Messpunkte markieren</label>
       </div>
       <div id="chart_plotly"></div>
       <canvas id="chart" width="800" height="200"></canvas>
@@ -167,8 +182,8 @@
             <div class="muted" id="table_info"></div>
 
             <div class="tbl_actions">
-              <label><input type="checkbox" id="tbl_time_from_graph" class="row_sel"/>Zeit gefuehrt durch Graph</label>
-              <button class="btn_sm" id="tbl_to_edit">In Bearbeitungsliste</button>
+              <label><input type="checkbox" id="tbl_time_from_graph" class="row_sel" data-ui="filterlist_time_from_graph"/>Zeit gefuehrt durch Graph</label>
+              <button class="btn_sm" id="tbl_to_edit" data-ui="filterlist_to_edit">In Bearbeitungsliste</button>
             </div>
           </div>
           <div class="row" style="margin-top:0;">
@@ -219,7 +234,7 @@
         </div>
         <div class="table_box" id="table_box">
           <table id="tbl">
-            <thead><tr><th style="width:26px;"><input type="checkbox" id="tbl_sel_all" class="row_sel"/></th><th id="th_time" data-key="time">Zeit</th><th id="th_value" data-key="value">Wert</th></tr></thead>
+            <thead><tr><th style="width:26px;"><input type="checkbox" id="tbl_sel_all" class="row_sel" data-ui="filterlist_select_all"/></th><th id="th_time" data-key="time" data-ui="filterlist_col_time">Zeit</th><th id="th_value" data-key="value" data-ui="filterlist_col_value">Wert</th></tr></thead>
             <tbody></tbody>
           </table>
         </div>
@@ -240,7 +255,7 @@
           <table id="edit_tbl">
             <thead>
               <tr>
-                <th style="width:26px;"><input type="checkbox" id="edit_sel_all" class="row_sel"/></th>
+                <th style="width:26px;"><input type="checkbox" id="edit_sel_all" class="row_sel" data-ui="editlist_select_all"/></th>
                 <th>Zeit</th>
                 <th>Alt</th>
                 <th>Neu</th>
@@ -256,18 +271,18 @@
 
         <div class="tbl_actions" style="justify-content:space-between; margin-top: 10px;">
           <div class="row" style="margin-top:0;">
-            <button class="btn_sm" id="edit_remove">Aus Liste loeschen</button>
-            <button class="btn_sm" id="edit_undo_all">Undo alle</button>
+            <button class="btn_sm" id="edit_remove" data-ui="editlist_remove">Aus Liste loeschen</button>
+            <button class="btn_sm" id="edit_undo_all" data-ui="editlist_undo_all">Undo alle</button>
           </div>
           <div class="row" style="margin-top:0; align-items:end;">
             <div style="min-width: 320px;">
               <label>Bestaetigungstext (genau eintippen)</label>
-              <input id="confirm" placeholder="{{ delete_phrase }}" />
+              <input id="confirm" placeholder="{{ delete_phrase }}" data-ui="editlist_confirm" />
               <div class="muted">Schreiben ist an <code>allow_delete</code> + <code>delete_confirm_phrase</code> gekoppelt.</div>
             </div>
             <div style="min-width: 260px;">
               <label>&nbsp;</label>
-              <button class="btn_sm" id="edit_apply" style="width:100%;">Alle Werte in Datenbank uebernehmen</button>
+              <button class="btn_sm" id="edit_apply" style="width:100%;" data-ui="editlist_apply">Alle Werte in Datenbank uebernehmen</button>
             </div>
           </div>
         </div>
@@ -278,7 +293,7 @@
       <div class="section_title">Statistik</div>
       <div class="table_wrap">
         <div class="tbl_actions">
-          <label><input type="checkbox" id="stats_toggle" class="row_sel"/>Statistik anzeigen</label>
+          <label><input type="checkbox" id="stats_toggle" class="row_sel" data-ui="stats_toggle"/>Statistik anzeigen</label>
         </div>
         <div class="stats_box" id="stats_box">
           <div style="font-weight:700; margin-top: 8px;">Gesamtstatistik (Alles)</div>
@@ -715,6 +730,9 @@ async function loadUiConfig(){
 
     const cw = Number(cfg.ui_filter_control_width_px);
     if(isFinite(cw) && cw >= 180 && cw <= 900) document.documentElement.style.setProperty("--ui-ctrl-w", cw + "px");
+
+    const sw = Number(cfg.ui_filter_search_width_px);
+    if(isFinite(sw) && sw >= 80 && sw <= 420) document.documentElement.style.setProperty("--ui-search-w", sw + "px");
   }catch(e){
     // ignore; fallback to defaults
   }
@@ -1097,6 +1115,8 @@ function renderTable(){
     const cb = document.createElement("input");
     cb.type = "checkbox";
     cb.className = "row_sel";
+    cb.dataset.ui = "filterlist_row_select";
+    cb.dataset.key = key;
     cb.checked = FILTER_SELECTED.has(key);
     cb.addEventListener("click", (e)=>_stop(e));
     cb.addEventListener("change", ()=>{
@@ -1170,6 +1190,8 @@ function renderEditTable(){
     const cb = document.createElement("input");
     cb.type = "checkbox";
     cb.className = "row_sel";
+    cb.dataset.ui = "editlist_row_select";
+    cb.dataset.key = key;
     cb.checked = EDIT_SELECTED.has(key);
     cb.addEventListener("click", (ev)=>_stop(ev));
     cb.addEventListener("change", ()=>{
@@ -1199,6 +1221,7 @@ function renderEditTable(){
     const btnOlder = document.createElement("button");
     btnOlder.className = "btn_sm";
     btnOlder.textContent = "nehmen";
+    btnOlder.dataset.ui = "editlist_use_older";
     btnOlder.disabled = (e.older_value === null || e.older_value === undefined);
     btnOlder.addEventListener("click", (ev)=>{ _stop(ev); setDraftValue(key, e.older_value); });
     olderWrap.appendChild(olderVal);
@@ -1216,6 +1239,7 @@ function renderEditTable(){
     const btnNewer = document.createElement("button");
     btnNewer.className = "btn_sm";
     btnNewer.textContent = "nehmen";
+    btnNewer.dataset.ui = "editlist_use_newer";
     btnNewer.disabled = (e.newer_value === null || e.newer_value === undefined);
     btnNewer.addEventListener("click", (ev)=>{ _stop(ev); setDraftValue(key, e.newer_value); });
     newerWrap.appendChild(newerVal);
@@ -1229,12 +1253,14 @@ function renderEditTable(){
     customWrap.style.alignItems = "center";
     const inp = document.createElement("input");
     inp.className = "inline";
+    inp.dataset.ui = "editlist_custom_input";
     inp.placeholder = e.orig_fmt;
     inp.value = e.draft_value_str ? e.draft_value_str : "";
     inp.addEventListener("click", (ev)=>_stop(ev));
     const btnSet = document.createElement("button");
     btnSet.className = "btn_sm";
     btnSet.textContent = "setzen";
+    btnSet.dataset.ui = "editlist_custom_set";
     btnSet.addEventListener("click", (ev)=>{ _stop(ev); setDraftValue(key, inp.value); });
     customWrap.appendChild(inp);
     customWrap.appendChild(btnSet);
@@ -1244,6 +1270,7 @@ function renderEditTable(){
     const btnUndo = document.createElement("button");
     btnUndo.className = "btn_sm";
     btnUndo.textContent = "undo";
+    btnUndo.dataset.ui = "editlist_row_undo";
     btnUndo.disabled = !e.dirty;
     btnUndo.addEventListener("click", (ev)=>{ _stop(ev); undoEdit(key); });
     tdAct.appendChild(btnUndo);

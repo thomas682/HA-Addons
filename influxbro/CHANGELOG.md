@@ -7,6 +7,10 @@
 - HA: Zeigt device_class/state_class via SUPERVISOR_TOKEN.
 - UI: "Daten loeschen" Bereich entfernt.
 
+## 1.5.1
+- UI: Suchfeld steht links neben dem Auswahlfeld; Breite konfigurierbar.
+- UI: Zusaetzliche data-ui Namen an Elementen fuer eindeutige Referenzen.
+
 ## 1.4.0
 - Feature: Tabelle kann optional zeitlich vom Graph-Zoom gefuehrt werden.
 - Feature: Bearbeitungsliste fuer selektierte Datenpunkte inkl. Undo und "alle uebernehmen".

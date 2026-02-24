@@ -298,6 +298,7 @@ DEFAULT_CFG = {
     "ui_checkbox_scale": 0.85,
     "ui_filter_label_width_px": 170,
     "ui_filter_control_width_px": 320,
+    "ui_filter_search_width_px": 160,
 }
 
 def load_cfg():
@@ -730,6 +731,7 @@ def api_set_config():
     _clamp_float("ui_checkbox_scale", 0.85, 0.5, 1.6)
     _clamp_int("ui_filter_label_width_px", 170, 80, 360)
     _clamp_int("ui_filter_control_width_px", 320, 180, 900)
+    _clamp_int("ui_filter_search_width_px", 160, 80, 420)
 
     save_cfg(cfg)
     return jsonify({"ok": True, "message": "Saved. New settings are used immediately."})

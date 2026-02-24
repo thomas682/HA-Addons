@@ -132,6 +132,12 @@
         <input id="ui_filter_control_width_px" type="number" min="180" max="900" />
         <div class="muted">Breite fuer Suche+Auswahl (Desktop).</div>
       </div>
+
+      <div>
+        <label>Filter Suche Breite (px)</label>
+        <input id="ui_filter_search_width_px" type="number" min="80" max="420" />
+        <div class="muted">Breite fuer das Suchfeld links neben der Auswahl.</div>
+      </div>
     </div>
   </div>
 
@@ -155,7 +161,7 @@ const ids = [
   "database","username","password",
   "ui_table_visible_rows","ui_decimals",
   "ui_font_size_px","ui_font_small_px","ui_checkbox_scale",
-  "ui_filter_label_width_px","ui_filter_control_width_px"
+  "ui_filter_label_width_px","ui_filter_control_width_px","ui_filter_search_width_px"
 ];
 
 const el = {};
@@ -194,6 +200,7 @@ function setForm(cfg){
   el.ui_checkbox_scale.value = cfg.ui_checkbox_scale ?? 0.85;
   el.ui_filter_label_width_px.value = cfg.ui_filter_label_width_px ?? 170;
   el.ui_filter_control_width_px.value = cfg.ui_filter_control_width_px ?? 320;
+  el.ui_filter_search_width_px.value = cfg.ui_filter_search_width_px ?? 160;
 }
 
 function getForm(){
@@ -223,6 +230,7 @@ function getForm(){
     ui_checkbox_scale: parseFloat(el.ui_checkbox_scale.value),
     ui_filter_label_width_px: parseInt(el.ui_filter_label_width_px.value, 10),
     ui_filter_control_width_px: parseInt(el.ui_filter_control_width_px.value, 10),
+    ui_filter_search_width_px: parseInt(el.ui_filter_search_width_px.value, 10),
   };
 }
 
