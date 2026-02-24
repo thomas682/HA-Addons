@@ -60,6 +60,16 @@
     .table_box table { margin-top: 0; }
     .table_box th, .table_box td { font-size: 11px; padding: 3px 6px; line-height: 1.2; }
     .table_box th { position: sticky; top: 0; z-index: 1; cursor: pointer; }
+
+    .tbl_actions { display:flex; gap: 10px; align-items:center; flex-wrap:wrap; margin-top: 6px; }
+    .tbl_actions label { display:flex; gap: 6px; align-items:center; font-size: 12px; opacity: 0.85; }
+    .tbl_actions input[type="checkbox"] { width: auto; height: auto; padding: 0; }
+    .btn_sm { height: 34px; padding: 6px 10px; }
+    tr.selected { background: #e8f1ff; }
+    tr.in_edit { background: #fff7d9; }
+    tr.dirty { background: #e8ffe8; }
+    .cell_muted { opacity: 0.7; }
+    input.inline { height: 30px; padding: 6px 8px; }
   </style>
 </head>
 <body>
@@ -187,6 +197,11 @@
             <div style="font-weight:700;">Tabelle (wie Graph)</div>
             <div class="muted" id="table_range"></div>
             <div class="muted" id="table_info"></div>
+
+            <div class="tbl_actions">
+              <label><input type="checkbox" id="tbl_time_from_graph"/>Zeit gefuehrt durch Graph</label>
+              <button class="btn_sm" id="tbl_to_edit">In Bearbeitungsliste</button>
+            </div>
           </div>
           <div class="row" style="margin-top:0;">
             <div style="min-width: 120px;">
@@ -236,7 +251,38 @@
         </div>
         <div class="table_box" id="table_box">
           <table id="tbl">
-            <thead><tr><th id="th_time" data-key="time">Zeit</th><th id="th_value" data-key="value">Wert</th></tr></thead>
+            <thead><tr><th style="width:26px;"><input type="checkbox" id="tbl_sel_all"/></th><th id="th_time" data-key="time">Zeit</th><th id="th_value" data-key="value">Wert</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="table_wrap" id="edit_wrap">
+        <div class="table_head">
+          <div>
+            <div style="font-weight:700;">Bearbeitungsliste</div>
+            <div class="muted" id="edit_info"></div>
+          </div>
+          <div class="row" style="margin-top:0;">
+            <button class="btn_sm" id="edit_remove">Aus Liste loeschen</button>
+            <button class="btn_sm" id="edit_undo_all">Undo alle</button>
+            <button class="btn_sm" id="edit_apply">Alle Werte in Datenbank uebernehmen</button>
+          </div>
+        </div>
+        <div class="table_box" id="edit_box">
+          <table id="edit_tbl">
+            <thead>
+              <tr>
+                <th style="width:26px;"><input type="checkbox" id="edit_sel_all"/></th>
+                <th>Zeit</th>
+                <th>Alt</th>
+                <th>Neu</th>
+                <th>aelter</th>
+                <th>juenger</th>
+                <th>eigener Wert</th>
+                <th style="width:70px;">Aktion</th>
+              </tr>
+            </thead>
             <tbody></tbody>
           </table>
         </div>
@@ -282,10 +328,14 @@ const $start = document.getElementById('start');
 const $stop = document.getElementById('stop');
 const $custom = document.getElementById('custom_range');
 const $tbl = document.querySelector('#tbl tbody');
+const $tblHead = document.querySelector('#tbl thead');
 const $tableInfo = document.getElementById('table_info');
 const $thTime = document.getElementById('th_time');
 const $thValue = document.getElementById('th_value');
 const $tableRange = document.getElementById('table_range');
+const $tblSelAll = document.getElementById('tbl_sel_all');
+const $tblTimeFromGraph = document.getElementById('tbl_time_from_graph');
+const $btnTblToEdit = document.getElementById('tbl_to_edit');
 const $tblEnabled = document.getElementById('tbl_enabled');
 const $tblMode = document.getElementById('tbl_mode');
 const $tblAOp = document.getElementById('tbl_a_op');
@@ -328,6 +378,13 @@ const $sTotStddev = document.getElementById('s_tot_stddev');
 const canvas = document.getElementById('chart');
 const ctx = canvas.getContext('2d');
 const $plotly = document.getElementById('chart_plotly');
+
+const $editTbl = document.querySelector('#edit_tbl tbody');
+const $editInfo = document.getElementById('edit_info');
+const $editSelAll = document.getElementById('edit_sel_all');
+const $btnEditRemove = document.getElementById('edit_remove');
+const $btnEditUndoAll = document.getElementById('edit_undo_all');
+const $btnEditApply = document.getElementById('edit_apply');
 
 let UI_DECIMALS = 3;
 let UI_TABLE_VISIBLE_ROWS = 20;
@@ -423,9 +480,49 @@ function saveState(){
       tbl_b_val: TABLE_FILTER.b_val,
       sort_key: TABLE_SORT.key,
       sort_dir: TABLE_SORT.dir,
+      tbl_time_from_graph: TABLE_TIME.from_graph,
     };
     localStorage.setItem(LS_KEY, JSON.stringify(j));
   }catch(e){}
+}
+
+let TABLE_TIME = {
+  from_graph: false,
+  graph_start_ms: null,
+  graph_stop_ms: null,
+};
+
+let _PLOTLY_EVENTS_BOUND = false;
+
+let FILTER_SELECTED = new Set();
+let EDIT_SELECTED = new Set();
+
+let LAST_FILTER_KEYS_IN_VIEW = [];
+
+let EDIT_LIST = new Map();
+
+let LAST_SERIES_KEY = "";
+
+function rowKey(row){
+  return String(row && row.time ? row.time : "");
+}
+
+function _stop(e){ try{ e.preventDefault(); e.stopPropagation(); }catch(_){} }
+
+function _isTruthy(v){ return v === true || v === 1 || v === "1" || v === "true" || v === "on"; }
+
+function _decimalsFromFormatted(s){
+  const m = String(s || "").match(/\.(\d+)$/);
+  return m ? m[1].length : 0;
+}
+
+function _normalizeNumericInput(raw){
+  const s = String(raw === null || raw === undefined ? "" : raw).trim().replace(",", ".");
+  if(!s) return { ok: false, error: "leer" };
+  if(!/^[-+]?\d+(\.\d+)?$/.test(s)) return { ok: false, error: "keine Zahl" };
+  const n = Number(s);
+  if(!isFinite(n)) return { ok: false, error: "ungueltig" };
+  return { ok: true, n, s };
 }
 
 function debounce(fn, ms){
@@ -556,6 +653,43 @@ function drawPlotly(rows){
 
   const config = { displayModeBar: false, responsive: true };
   window.Plotly.react($plotly, data, layout, config);
+
+  if(!_PLOTLY_EVENTS_BOUND && $plotly && typeof $plotly.on === "function"){
+    _PLOTLY_EVENTS_BOUND = true;
+
+    $plotly.on("plotly_relayout", (ev) => {
+      try{
+        if(!ev) return;
+        if(_isTruthy(ev["xaxis.autorange"])){
+          TABLE_TIME.graph_start_ms = null;
+          TABLE_TIME.graph_stop_ms = null;
+          renderTableRange();
+          if(TABLE_TIME.from_graph) renderTable();
+          return;
+        }
+
+        const r0 = ev["xaxis.range[0]"];
+        const r1 = ev["xaxis.range[1]"];
+        if(r0 && r1){
+          const a = Date.parse(String(r0));
+          const b = Date.parse(String(r1));
+          if(isFinite(a) && isFinite(b)){
+            TABLE_TIME.graph_start_ms = Math.min(a, b);
+            TABLE_TIME.graph_stop_ms = Math.max(a, b);
+            renderTableRange();
+            if(TABLE_TIME.from_graph) renderTable();
+          }
+        }
+      }catch(e){}
+    });
+
+    $plotly.on("plotly_doubleclick", () => {
+      TABLE_TIME.graph_start_ms = null;
+      TABLE_TIME.graph_stop_ms = null;
+      renderTableRange();
+      if(TABLE_TIME.from_graph) renderTable();
+    });
+  }
   return true;
 }
 
@@ -672,6 +806,14 @@ function rangeToStartStop(){
 
 function renderTableRange(){
   if(!$tableRange) return;
+
+  if(TABLE_TIME.from_graph && isFinite(TABLE_TIME.graph_start_ms) && isFinite(TABLE_TIME.graph_stop_ms)){
+    const s = fmtTs(new Date(TABLE_TIME.graph_start_ms).toISOString());
+    const e = fmtTs(new Date(TABLE_TIME.graph_stop_ms).toISOString());
+    $tableRange.textContent = `Zeitraum (Graph): ${s} bis ${e}`;
+    return;
+  }
+
   const r = rangeToStartStop();
   if(r && r.all){
     if(LAST_TOTAL_BOUNDS.oldest_time && LAST_TOTAL_BOUNDS.newest_time){
@@ -872,29 +1014,366 @@ function applyValueFilter(rows){
   });
 }
 
+function _tableTimeFilteredRows(rows){
+  if(!TABLE_TIME.from_graph) return rows;
+  if(!(isFinite(TABLE_TIME.graph_start_ms) && isFinite(TABLE_TIME.graph_stop_ms))) return rows;
+  const a = TABLE_TIME.graph_start_ms;
+  const b = TABLE_TIME.graph_stop_ms;
+  return (rows || []).filter(r => {
+    const t = Date.parse(r && r.time ? r.time : "");
+    return isFinite(t) && t >= a && t <= b;
+  });
+}
+
+function _renderSelAll(checkboxEl, keysInView, selectedSet){
+  if(!checkboxEl) return;
+  const keys = keysInView || [];
+  if(!keys.length){ checkboxEl.checked = false; checkboxEl.indeterminate = false; return; }
+  let sel = 0;
+  keys.forEach(k => { if(selectedSet.has(k)) sel++; });
+  checkboxEl.checked = sel === keys.length;
+  checkboxEl.indeterminate = sel > 0 && sel < keys.length;
+}
+
 function renderTable(){
-  const filtered = applyValueFilter(LAST_ROWS);
+  let base = (LAST_ROWS || []).slice();
+  base = _tableTimeFilteredRows(base);
+  const filtered = applyValueFilter(base);
   const rows = sortRowsForTable(filtered);
-  const display = rows;
 
   $tbl.innerHTML = "";
-  display.forEach(row=>{
-    const tr=document.createElement("tr");
-    const tdT=document.createElement("td"); tdT.textContent=fmtTs(row.time);
-    const tdV=document.createElement("td"); tdV.textContent=(row.value===null||row.value===undefined)?"":fmtNum(row.value);
-    tr.appendChild(tdT); tr.appendChild(tdV);
+  const keysInView = [];
+
+  rows.forEach(row=>{
+    const key = rowKey(row);
+    if(!key) return;
+    keysInView.push(key);
+
+    const tr = document.createElement("tr");
+    if(FILTER_SELECTED.has(key)) tr.classList.add("selected");
+    if(EDIT_LIST.has(key)) tr.classList.add("in_edit");
+
+    const tdSel = document.createElement("td");
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.checked = FILTER_SELECTED.has(key);
+    cb.addEventListener("click", (e)=>_stop(e));
+    cb.addEventListener("change", ()=>{
+      if(cb.checked) FILTER_SELECTED.add(key); else FILTER_SELECTED.delete(key);
+      saveState();
+      renderTable();
+    });
+    tdSel.appendChild(cb);
+
+    const tdT = document.createElement("td");
+    tdT.textContent = fmtTs(row.time);
+    const tdV = document.createElement("td");
+    tdV.textContent = (row.value===null||row.value===undefined)?"":fmtNum(row.value);
+
+    tr.appendChild(tdSel);
+    tr.appendChild(tdT);
+    tr.appendChild(tdV);
+
+    tr.addEventListener("click", (e)=>{
+      const target = e && e.target;
+      if(target && target.tagName && String(target.tagName).toLowerCase() === "input") return;
+      if(FILTER_SELECTED.has(key)) FILTER_SELECTED.delete(key); else FILTER_SELECTED.add(key);
+      saveState();
+      renderTable();
+    });
+
+    tr.addEventListener("dblclick", ()=>{
+      addToEditListByKey(key);
+    });
+
     $tbl.appendChild(tr);
   });
 
-  const shown = display.length;
+  _renderSelAll($tblSelAll, keysInView, FILTER_SELECTED);
+  LAST_FILTER_KEYS_IN_VIEW = keysInView.slice();
+
+  const shown = rows.length;
   const baseTotal = (LAST_ROWS || []).length;
   if($tableInfo){
     const arrow = TABLE_SORT.dir === "desc" ? "↓" : "↑";
     const filt = TABLE_FILTER.enabled
       ? ` | Filter: (${TABLE_FILTER.a_op} ${TABLE_FILTER.a_val}) ${TABLE_FILTER.mode} (${TABLE_FILTER.b_op} ${TABLE_FILTER.b_val})`
       : " | Filter: aus";
-    $tableInfo.textContent = `Eintraege: ${shown}${baseTotal!==shown?` (von ${baseTotal})`:""} | Sort: ${TABLE_SORT.key} ${arrow}${filt}`;
+    const tf = (TABLE_TIME.from_graph && isFinite(TABLE_TIME.graph_start_ms) && isFinite(TABLE_TIME.graph_stop_ms)) ? " | Zeit: Graph" : "";
+    $tableInfo.textContent = `Eintraege: ${shown}${baseTotal!==shown?` (von ${baseTotal})`:""} | Sort: ${TABLE_SORT.key} ${arrow}${filt}${tf}`;
   }
+}
+
+function renderEditTable(){
+  if(!$editTbl) return;
+  $editTbl.innerHTML = "";
+
+  const keys = Array.from(EDIT_LIST.keys());
+  keys.sort((a,b)=>{
+    const ea = EDIT_LIST.get(a);
+    const eb = EDIT_LIST.get(b);
+    const ta = ea ? Date.parse(ea.time) : NaN;
+    const tb = eb ? Date.parse(eb.time) : NaN;
+    if(isFinite(ta) && isFinite(tb)) return ta - tb;
+    return String(a).localeCompare(String(b));
+  });
+
+  keys.forEach((key)=>{
+    const e = EDIT_LIST.get(key);
+    if(!e) return;
+    const tr = document.createElement("tr");
+    if(EDIT_SELECTED.has(key)) tr.classList.add("selected");
+    if(e.dirty) tr.classList.add("dirty");
+
+    const tdSel = document.createElement("td");
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.checked = EDIT_SELECTED.has(key);
+    cb.addEventListener("click", (ev)=>_stop(ev));
+    cb.addEventListener("change", ()=>{
+      if(cb.checked) EDIT_SELECTED.add(key); else EDIT_SELECTED.delete(key);
+      renderEditTable();
+    });
+    tdSel.appendChild(cb);
+
+    const tdT = document.createElement("td");
+    tdT.textContent = fmtTs(e.time);
+
+    const tdOld = document.createElement("td");
+    tdOld.textContent = e.orig_fmt;
+
+    const tdNew = document.createElement("td");
+    tdNew.textContent = e.draft_value_str ? e.draft_value_str : "";
+    if(!e.draft_value_str) tdNew.classList.add("cell_muted");
+
+    const tdOlder = document.createElement("td");
+    const olderWrap = document.createElement("div");
+    olderWrap.style.display = "flex";
+    olderWrap.style.gap = "8px";
+    olderWrap.style.alignItems = "center";
+    const olderVal = document.createElement("span");
+    olderVal.textContent = (e.older_value === null || e.older_value === undefined) ? "" : fmtNum(e.older_value);
+    olderVal.className = (e.older_value === null || e.older_value === undefined) ? "cell_muted" : "";
+    const btnOlder = document.createElement("button");
+    btnOlder.className = "btn_sm";
+    btnOlder.textContent = "nehmen";
+    btnOlder.disabled = (e.older_value === null || e.older_value === undefined);
+    btnOlder.addEventListener("click", (ev)=>{ _stop(ev); setDraftValue(key, e.older_value); });
+    olderWrap.appendChild(olderVal);
+    olderWrap.appendChild(btnOlder);
+    tdOlder.appendChild(olderWrap);
+
+    const tdNewer = document.createElement("td");
+    const newerWrap = document.createElement("div");
+    newerWrap.style.display = "flex";
+    newerWrap.style.gap = "8px";
+    newerWrap.style.alignItems = "center";
+    const newerVal = document.createElement("span");
+    newerVal.textContent = (e.newer_value === null || e.newer_value === undefined) ? "" : fmtNum(e.newer_value);
+    newerVal.className = (e.newer_value === null || e.newer_value === undefined) ? "cell_muted" : "";
+    const btnNewer = document.createElement("button");
+    btnNewer.className = "btn_sm";
+    btnNewer.textContent = "nehmen";
+    btnNewer.disabled = (e.newer_value === null || e.newer_value === undefined);
+    btnNewer.addEventListener("click", (ev)=>{ _stop(ev); setDraftValue(key, e.newer_value); });
+    newerWrap.appendChild(newerVal);
+    newerWrap.appendChild(btnNewer);
+    tdNewer.appendChild(newerWrap);
+
+    const tdCustom = document.createElement("td");
+    const customWrap = document.createElement("div");
+    customWrap.style.display = "flex";
+    customWrap.style.gap = "8px";
+    customWrap.style.alignItems = "center";
+    const inp = document.createElement("input");
+    inp.className = "inline";
+    inp.placeholder = e.orig_fmt;
+    inp.value = e.draft_value_str ? e.draft_value_str : "";
+    inp.addEventListener("click", (ev)=>_stop(ev));
+    const btnSet = document.createElement("button");
+    btnSet.className = "btn_sm";
+    btnSet.textContent = "setzen";
+    btnSet.addEventListener("click", (ev)=>{ _stop(ev); setDraftValue(key, inp.value); });
+    customWrap.appendChild(inp);
+    customWrap.appendChild(btnSet);
+    tdCustom.appendChild(customWrap);
+
+    const tdAct = document.createElement("td");
+    const btnUndo = document.createElement("button");
+    btnUndo.className = "btn_sm";
+    btnUndo.textContent = "undo";
+    btnUndo.disabled = !e.dirty;
+    btnUndo.addEventListener("click", (ev)=>{ _stop(ev); undoEdit(key); });
+    tdAct.appendChild(btnUndo);
+
+    tr.appendChild(tdSel);
+    tr.appendChild(tdT);
+    tr.appendChild(tdOld);
+    tr.appendChild(tdNew);
+    tr.appendChild(tdOlder);
+    tr.appendChild(tdNewer);
+    tr.appendChild(tdCustom);
+    tr.appendChild(tdAct);
+
+    tr.addEventListener("click", (ev)=>{
+      const target = ev && ev.target;
+      const tag = target && target.tagName ? String(target.tagName).toLowerCase() : "";
+      if(tag === "input" || tag === "button") return;
+      if(EDIT_SELECTED.has(key)) EDIT_SELECTED.delete(key); else EDIT_SELECTED.add(key);
+      renderEditTable();
+    });
+
+    tr.addEventListener("dblclick", ()=>{ removeFromEditListByKey(key); });
+
+    $editTbl.appendChild(tr);
+  });
+
+  _renderSelAll($editSelAll, keys, EDIT_SELECTED);
+
+  if($editInfo){
+    const total = EDIT_LIST.size;
+    const dirty = Array.from(EDIT_LIST.values()).filter(x=>x && x.dirty).length;
+    $editInfo.textContent = `Eintraege: ${total}${dirty?` | geaendert: ${dirty}`:""}`;
+  }
+}
+
+function addToEditListByKey(key){
+  if(!key) return;
+  if(EDIT_LIST.has(key)) return;
+  const row = (LAST_ROWS || []).find(r => rowKey(r) === key);
+  if(!row) return;
+
+  const origV = row.value;
+  if(!(typeof origV === "number" && isFinite(origV))) return;
+  const decimals = Number.isInteger(origV) ? 0 : _decimalsFromFormatted(fmtNum(origV));
+  const origFmt = (decimals === 0) ? String(Math.trunc(origV)) : fmtNum(origV);
+
+  // find neighbors by time
+  const byTime = (LAST_ROWS || []).slice().sort((a,b)=>{
+    const at = Date.parse(a && a.time ? a.time : "");
+    const bt = Date.parse(b && b.time ? b.time : "");
+    if(isFinite(at) && isFinite(bt)) return at - bt;
+    return String(a && a.time || "").localeCompare(String(b && b.time || ""));
+  });
+  const idx = byTime.findIndex(r => rowKey(r) === key);
+  const older = (idx > 0) ? byTime[idx-1] : null;
+  const newer = (idx >= 0 && idx < byTime.length-1) ? byTime[idx+1] : null;
+
+  EDIT_LIST.set(key, {
+    key,
+    time: row.time,
+    orig_value: origV,
+    orig_fmt: origFmt,
+    decimals,
+    older_value: (older && typeof older.value === "number" && isFinite(older.value)) ? older.value : null,
+    newer_value: (newer && typeof newer.value === "number" && isFinite(newer.value)) ? newer.value : null,
+    draft_value_str: null,
+    dirty: false,
+  });
+
+  renderEditTable();
+  renderTable();
+}
+
+function removeFromEditListByKey(key){
+  if(!key) return;
+  EDIT_LIST.delete(key);
+  EDIT_SELECTED.delete(key);
+  renderEditTable();
+  renderTable();
+}
+
+function setDraftValue(key, raw){
+  const e = EDIT_LIST.get(key);
+  if(!e) return;
+
+  const parsed = _normalizeNumericInput(raw);
+  if(!parsed.ok){
+    err(`Ungueltiger Wert (${parsed.error}).`);
+    return;
+  }
+
+  const n = parsed.n;
+  if(e.orig_value >= 0 && n < 0){
+    err("Ungueltiger Wert: Altwert ist nicht negativ.");
+    return;
+  }
+
+  const d = Number(e.decimals);
+  const out = (isFinite(d) && d >= 0) ? n.toFixed(d) : String(n);
+  if(isFinite(d) && d >= 0){
+    const decNow = _decimalsFromFormatted(out);
+    if(decNow !== d){
+      err(`Ungueltige Kommastellen: erwartet ${d}.`);
+      return;
+    }
+  }
+
+  e.draft_value_str = out;
+  e.dirty = true;
+  renderEditTable();
+  renderTable();
+}
+
+function undoEdit(key){
+  const e = EDIT_LIST.get(key);
+  if(!e) return;
+  e.draft_value_str = null;
+  e.dirty = false;
+  renderEditTable();
+  renderTable();
+}
+
+function undoAllEdits(){
+  EDIT_LIST.forEach((e)=>{
+    if(!e) return;
+    e.draft_value_str = null;
+    e.dirty = false;
+  });
+  renderEditTable();
+  renderTable();
+}
+
+async function applyAllEdits(){
+  err(""); ok("");
+  const dirty = Array.from(EDIT_LIST.values()).filter(e=>e && e.dirty);
+  if(!dirty.length){ err("Keine geaenderten Werte in der Bearbeitungsliste."); return; }
+  if(!confirm("Alle geaenderten Werte jetzt in die Datenbank schreiben?")) return;
+
+  const base = currentFilters();
+  const payload = {
+    confirm: $confirm ? $confirm.value : "",
+    measurement: base.measurement,
+    field: base.field,
+    entity_id: base.entity_id,
+    friendly_name: base.friendly_name,
+    edits: dirty.map(e => ({ time: e.time, new_value: e.draft_value_str, decimals: e.decimals })),
+  };
+  const j = await api("./api/apply_edits", {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify(payload),
+  });
+
+  // Update in-memory rows
+  const byKey = new Map(dirty.map(e => [e.key, Number(e.draft_value_str)]));
+  LAST_ROWS = (LAST_ROWS || []).map(r => {
+    const k = rowKey(r);
+    if(byKey.has(k)) return { ...r, value: byKey.get(k) };
+    return r;
+  });
+
+  dirty.forEach(e => {
+    e.orig_value = Number(e.draft_value_str);
+    e.orig_fmt = fmtNum(e.orig_value);
+    e.draft_value_str = null;
+    e.dirty = false;
+  });
+
+  ok(j.message || `Applied: ${dirty.length}`);
+  renderEditTable();
+  renderTable();
+  draw(LAST_ROWS);
 }
 
 async function loadStats(){
@@ -936,7 +1415,17 @@ async function loadData(){
   renderTableRange();
   renderRangeFromTo();
   $tbl.innerHTML = "";
-  const j = await api("./api/query", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(currentFilters())});
+  const filters = currentFilters();
+  const seriesKey = [filters.measurement, filters.field, filters.entity_id || "", filters.friendly_name || ""].join("|");
+  if(LAST_SERIES_KEY && seriesKey !== LAST_SERIES_KEY){
+    FILTER_SELECTED = new Set();
+    EDIT_SELECTED = new Set();
+    EDIT_LIST = new Map();
+    renderEditTable();
+  }
+  LAST_SERIES_KEY = seriesKey;
+
+  const j = await api("./api/query", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(filters)});
   const rows = j.rows || [];
   LAST_ROWS = rows;
   renderTable();
@@ -1072,6 +1561,46 @@ if($tblBOp) $tblBOp.addEventListener("change", onTableFilter);
 if($tblAVal) $tblAVal.addEventListener("input", debounce(onTableFilter, 200));
 if($tblBVal) $tblBVal.addEventListener("input", debounce(onTableFilter, 200));
 
+// Table time from graph
+if($tblTimeFromGraph) $tblTimeFromGraph.addEventListener("change", ()=>{
+  TABLE_TIME.from_graph = !!$tblTimeFromGraph.checked;
+  saveState();
+  renderTableRange();
+  renderTable();
+});
+
+// Select all (filter list)
+if($tblSelAll) $tblSelAll.addEventListener("change", ()=>{
+  const want = !!$tblSelAll.checked;
+  const keys = LAST_FILTER_KEYS_IN_VIEW || [];
+  if(want){
+    keys.forEach(k => FILTER_SELECTED.add(k));
+  }else{
+    keys.forEach(k => FILTER_SELECTED.delete(k));
+  }
+  saveState();
+  renderTable();
+});
+
+// Edit list actions
+if($btnTblToEdit) $btnTblToEdit.addEventListener("click", (ev)=>{
+  _stop(ev);
+  const keys = Array.from(FILTER_SELECTED);
+  keys.forEach(k => addToEditListByKey(k));
+});
+if($btnEditRemove) $btnEditRemove.addEventListener("click", (ev)=>{
+  _stop(ev);
+  const keys = Array.from(EDIT_SELECTED);
+  keys.forEach(k => removeFromEditListByKey(k));
+});
+if($btnEditUndoAll) $btnEditUndoAll.addEventListener("click", (ev)=>{ _stop(ev); undoAllEdits(); });
+if($btnEditApply) $btnEditApply.addEventListener("click", (ev)=>{ _stop(ev); applyAllEdits().catch(displayError); });
+if($editSelAll) $editSelAll.addEventListener("change", ()=>{
+  const want = !!$editSelAll.checked;
+  EDIT_SELECTED = new Set(want ? Array.from(EDIT_LIST.keys()) : []);
+  renderEditTable();
+});
+
 document.getElementById("load").addEventListener("click", ()=>refreshAll().catch(displayError));
 document.getElementById("del").addEventListener("click", ()=>deleteData().catch(e=>err(String(e))));
 
@@ -1109,6 +1638,9 @@ document.getElementById("del").addEventListener("click", ()=>deleteData().catch(
     if($tblBOp) $tblBOp.value = TABLE_FILTER.b_op;
     if($tblBVal) $tblBVal.value = TABLE_FILTER.b_val;
 
+    TABLE_TIME.from_graph = !!st.tbl_time_from_graph;
+    if($tblTimeFromGraph) $tblTimeFromGraph.checked = TABLE_TIME.from_graph;
+
     if(st.sort_key) TABLE_SORT.key = st.sort_key;
     if(st.sort_dir) TABLE_SORT.dir = st.sort_dir;
 
@@ -1135,6 +1667,8 @@ document.getElementById("del").addEventListener("click", ()=>deleteData().catch(
     renderRangeFromTo();
     autoSpanAll();
     saveState();
+
+    renderEditTable();
   } catch(e){ displayError(e); }
 })();
 </script>

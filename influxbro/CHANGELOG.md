@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.0
+- Feature: Tabelle kann optional zeitlich vom Graph-Zoom gefuehrt werden.
+- Feature: Bearbeitungsliste fuer selektierte Datenpunkte inkl. Undo und "alle uebernehmen".
+
 ## 1.3.0
 - Feature: Plotly.js Graph (Zoom/Pan/Range-Slider) statt Canvas.
 - Fix: add-on changelog file for Home Assistant install/upgrade dialog.

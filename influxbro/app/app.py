@@ -9,6 +9,9 @@ from typing import Any
 
 from flask import Flask, jsonify, render_template, request
 from influxdb_client import InfluxDBClient
+from influxdb_client import Point
+from influxdb_client import WritePrecision
+from influxdb_client.client.write_api import SYNCHRONOUS
 from influxdb import InfluxDBClient as InfluxDBClientV1
 
 import yaml
@@ -1279,6 +1282,174 @@ from(bucket: "{cfg["bucket"]}")
         })
     except Exception as e:
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
+
+
+def _dt_to_rfc3339_utc_full(dt: datetime) -> str:
+    s = dt.astimezone(timezone.utc).isoformat()
+    return s.replace("+00:00", "Z")
+
+
+def _count_decimals(s: str) -> int:
+    m = re.search(r"\.(\d+)$", (s or "").strip())
+    return len(m.group(1)) if m else 0
+
+
+@app.post("/api/apply_edits")
+def apply_edits():
+    """Apply point edits by writing new values at the same timestamp.
+
+    Safety: gated behind allow_delete + delete_confirm_phrase.
+    """
+
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    if not ALLOW_DELETE:
+        return jsonify({"ok": False, "error": "Writes are disabled. Enable allow_delete in add-on options."}), 403
+
+    body = request.get_json(force=True) or {}
+    confirm = body.get("confirm", "")
+    if confirm != DELETE_CONFIRM_PHRASE:
+        return (
+            jsonify({"ok": False, "error": f"Confirmation phrase mismatch. Type exactly: {DELETE_CONFIRM_PHRASE}"}),
+            400,
+        )
+
+    measurement = (body.get("measurement") or "").strip()
+    field = (body.get("field") or "").strip()
+    entity_id = (body.get("entity_id") or "").strip() or None
+    friendly_name = (body.get("friendly_name") or "").strip() or None
+    edits = body.get("edits")
+
+    if not measurement or not field:
+        return jsonify({"ok": False, "error": "measurement and field required"}), 400
+    if not isinstance(edits, list) or not edits:
+        return jsonify({"ok": False, "error": "edits must be a non-empty list"}), 400
+
+    if int(cfg.get("influx_version", 2)) != 2:
+        return jsonify({"ok": False, "error": "apply_edits currently supports InfluxDB v2 only"}), 400
+
+    if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+        return jsonify({
+            "ok": False,
+            "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
+        }), 400
+
+    extra = flux_tag_filter(entity_id, friendly_name)
+
+    def _parse_decimal_payload(v: object) -> int:
+        try:
+            return int(v)
+        except Exception:
+            return -1
+
+    try:
+        with v2_client(cfg) as c:
+            qapi = c.query_api()
+            wapi = c.write_api(write_options=SYNCHRONOUS)
+            applied = 0
+
+            for e in edits:
+                if not isinstance(e, dict):
+                    return jsonify({"ok": False, "error": "each edit must be an object"}), 400
+
+                time_raw = (e.get("time") or "").strip()
+                new_raw = (e.get("new_value") or "").strip()
+                expected_decimals = _parse_decimal_payload(e.get("decimals"))
+
+                if not time_raw or not new_raw:
+                    return jsonify({"ok": False, "error": "edit requires time and new_value"}), 400
+                if expected_decimals < 0 or expected_decimals > 12:
+                    return jsonify({"ok": False, "error": "invalid decimals"}), 400
+
+                # Strict decimal validation based on UI expectation
+                if _count_decimals(new_raw) != expected_decimals:
+                    return (
+                        jsonify({"ok": False, "error": f"invalid decimals for {time_raw}: expected {expected_decimals}"}),
+                        400,
+                    )
+
+                try:
+                    dt = _parse_iso_datetime(time_raw)
+                except Exception as ex:
+                    return jsonify({"ok": False, "error": f"invalid time: {ex}"}), 400
+
+                # Find the original point (to preserve full tag set)
+                start = _dt_to_rfc3339_utc_full(dt - timedelta(seconds=2))
+                stop = _dt_to_rfc3339_utc_full(dt + timedelta(seconds=2))
+                q = f'''
+from(bucket: "{cfg["bucket"]}")
+  |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
+  |> group()
+  |> sort(columns: ["_time"])
+  |> limit(n: 50)
+'''
+                tables = qapi.query(q, org=cfg["org"])
+
+                best_rec = None
+                best_dt = None
+                best_abs = None
+                for t in tables or []:
+                    for rec in getattr(t, "records", []) or []:
+                        rdt = rec.get_time()
+                        if not isinstance(rdt, datetime):
+                            continue
+                        delta = abs((rdt.astimezone(timezone.utc) - dt).total_seconds())
+                        if best_abs is None or delta < best_abs:
+                            best_abs = delta
+                            best_rec = rec
+                            best_dt = rdt
+
+                if best_rec is None or best_abs is None or best_abs > 1.0:
+                    return (
+                        jsonify({"ok": False, "error": f"original point not found near: {time_raw}"}),
+                        404,
+                    )
+
+                orig_val = best_rec.get_value()
+                if isinstance(orig_val, bool) or not isinstance(orig_val, (int, float)):
+                    return (
+                        jsonify({"ok": False, "error": f"unsupported field type at {time_raw}"}),
+                        400,
+                    )
+
+                # Parse new value, keep field type consistent
+                if isinstance(orig_val, int) and not isinstance(orig_val, bool):
+                    if expected_decimals != 0 or "." in new_raw:
+                        return (
+                            jsonify({"ok": False, "error": f"field is integer at {time_raw}; decimals must be 0"}),
+                            400,
+                        )
+                    try:
+                        new_val: int | float = int(new_raw)
+                    except Exception:
+                        return jsonify({"ok": False, "error": f"invalid integer at {time_raw}"}), 400
+                else:
+                    try:
+                        new_val = float(new_raw)
+                    except Exception:
+                        return jsonify({"ok": False, "error": f"invalid float at {time_raw}"}), 400
+
+                tags: dict[str, str] = {}
+                for k, v in (getattr(best_rec, "values", {}) or {}).items():
+                    if k in ("result", "table"):
+                        continue
+                    if k.startswith("_"):
+                        continue
+                    if v is None:
+                        continue
+                    # Influx tags are strings; coerce here.
+                    tags[str(k)] = str(v)
+
+                p = Point(measurement)
+                for tk, tv in tags.items():
+                    p = p.tag(tk, tv)
+                p = p.field(field, new_val).time(dt, WritePrecision.NS)
+                wapi.write(bucket=cfg["bucket"], org=cfg["org"], record=p)
+                applied += 1
+
+            return jsonify({"ok": True, "message": f"Applied edits: {applied}", "applied": applied})
+    except Exception as ex:
+        return jsonify({"ok": False, "error": _short_influx_error(ex)}), 500
 
 @app.post("/api/delete")
 def delete():
