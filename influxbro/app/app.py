@@ -314,6 +314,9 @@ def _parse_range_key(range_key: str) -> tuple[int, str]:
     s = (range_key or "").strip().lower()
     if not s:
         return 24, "h"
+    # Special keys are handled by callers.
+    if s in ("all", "alle", "inf", "infinite", "infinity"):
+        return 24, "h"
     num = ""
     unit = ""
     for ch in s:
@@ -335,17 +338,26 @@ def _parse_range_key(range_key: str) -> tuple[int, str]:
 
 
 def range_to_flux(range_key: str) -> str:
+    s = (range_key or "").strip().lower()
+    if s in ("all", "alle", "inf", "infinite", "infinity"):
+        return 'time(v: "1970-01-01T00:00:00Z")'
     n, u = _parse_range_key(range_key)
     return f"-{n}{u}"
 
 
 def range_to_influxql(range_key: str) -> str:
+    s = (range_key or "").strip().lower()
+    if s in ("all", "alle", "inf", "infinite", "infinity"):
+        return "0h"
     n, u = _parse_range_key(range_key)
     return f"{n}{u}"
 
 
 def parse_range_to_datetimes(range_key: str) -> tuple[datetime, datetime]:
     now = datetime.now(timezone.utc)
+    s = (range_key or "").strip().lower()
+    if s in ("all", "alle", "inf", "infinite", "infinity"):
+        return datetime(1970, 1, 1, tzinfo=timezone.utc), now
     n, u = _parse_range_key(range_key)
     delta = timedelta(hours=n) if u == "h" else timedelta(days=n)
     return now - delta, now
@@ -397,6 +409,9 @@ def _flux_range_clause(range_key: str, start: datetime | None, stop: datetime | 
         s = _dt_to_rfc3339_utc(start)
         e = _dt_to_rfc3339_utc(stop)
         return f'|> range(start: time(v: "{s}"), stop: time(v: "{e}"))'
+    rk = (range_key or "").strip().lower()
+    if rk in ("all", "alle", "inf", "infinite", "infinity"):
+        return '|> range(start: time(v: "1970-01-01T00:00:00Z"))'
     return f"|> range(start: {range_to_flux(range_key)})"
 
 
@@ -421,6 +436,9 @@ def _influxql_time_where(range_key: str, start: datetime | None, stop: datetime 
         s = _dt_to_rfc3339_utc(start)
         e = _dt_to_rfc3339_utc(stop)
         return f"time >= '{s}' AND time <= '{e}'"
+    rk = (range_key or "").strip().lower()
+    if rk in ("all", "alle", "inf", "infinite", "infinity"):
+        return "1=1"
     dur = range_to_influxql(range_key)
     return f"time > now() - {dur}"
 
@@ -1275,6 +1293,10 @@ def delete():
     confirm = body.get("confirm", "")
     entity_id = body.get("entity_id") or None
     friendly_name = body.get("friendly_name") or None
+
+    rk = (range_key or "").strip().lower()
+    if rk in ("all", "alle", "inf", "infinite", "infinity"):
+        return jsonify({"ok": False, "error": "Delete not allowed for Zeitraum=Alle. Bitte Benutzerdefiniert waehlen."}), 400
 
     if confirm != DELETE_CONFIRM_PHRASE:
         return jsonify({"ok": False, "error": f"Confirmation phrase mismatch. Type exactly: {DELETE_CONFIRM_PHRASE}"}), 400

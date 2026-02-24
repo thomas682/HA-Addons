@@ -12,6 +12,8 @@
     .control { min-width: 0; }
     .control.span2 { grid-column: 1 / -1; }
     label { display:block; font-size:12px; opacity:0.8; }
+    .label_row { display:flex; justify-content:space-between; gap: 10px; align-items:baseline; }
+    #range_from_to { white-space: nowrap; }
     select, button, input { padding:10px 12px; height: 40px; box-sizing: border-box; }
     select, input { width: 100%; }
     input[type="datetime-local"] { width: 100%; }
@@ -81,7 +83,7 @@
         <select id="friendly_name"></select>
       </div>
     </div>
-    <div class="control" id="c_range"><label>Zeitraum (Graph/Tabelle)</label>
+    <div class="control" id="c_range"><label class="label_row"><span>Zeitraum (Graph/Tabelle)</span><span id="range_from_to"></span></label>
       <select id="range">
         <option value="1h">Letzte 1h</option>
         <option value="6h">Letzte 6h</option>
@@ -91,6 +93,7 @@
         <option value="30d">Letzte 30 Tage</option>
         <option value="90d">Letzte 90 Tage</option>
         <option value="365d">Letztes Jahr</option>
+        <option value="all">Alle</option>
         <option value="custom">Benutzerdefiniert…</option>
       </select>
     </div>
@@ -286,6 +289,7 @@ const $tblAVal = document.getElementById('tbl_a_val');
 const $tblBOp = document.getElementById('tbl_b_op');
 const $tblBVal = document.getElementById('tbl_b_val');
 const $tableBox = document.getElementById('table_box');
+const $rangeFromTo = document.getElementById('range_from_to');
 
 const $cntMf = document.getElementById('cnt_measurement_filter');
 const $cntFn = document.getElementById('cnt_friendly_name');
@@ -339,8 +343,8 @@ function fmtTs(iso){
   if(!isFinite(d.getTime())) return fmt(iso);
   const pad = (n, w=2) => String(n).padStart(w, "0");
   return (
-    pad(d.getDate()) + "." + pad(d.getMonth()+1) + "." + String(d.getFullYear()).slice(-2) +
-    " " + pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":" + pad(d.getSeconds()) + "." + pad(d.getMilliseconds(), 3)
+    pad(d.getDate()) + "." + pad(d.getMonth()+1) + "." + String(d.getFullYear()) +
+    " " + pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":" + pad(d.getSeconds())
   );
 }
 
@@ -430,23 +434,84 @@ function debounce(fn, ms){
 function draw(rows){
   ctx.clearRect(0,0,canvas.width,canvas.height);
   if(!rows || rows.length < 2) return;
-  const pts = rows.filter(x => typeof x.value === "number" && isFinite(x.value));
+
+  const pts = (rows || []).map(r => {
+    const t = Date.parse(r && r.time ? r.time : "");
+    const v = r && r.value;
+    return {
+      t: isFinite(t) ? t : null,
+      v: (typeof v === "number" && isFinite(v)) ? v : null,
+    };
+  }).filter(p => p.t !== null && p.v !== null);
+
   if(pts.length < 2) return;
-  const ys = pts.map(p=>p.value);
+
+  const ys = pts.map(p=>p.v);
+  const xs = pts.map(p=>p.t);
   const minY = Math.min(...ys), maxY = Math.max(...ys);
-  const pad = 10, w = canvas.width, h = canvas.height;
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
   const rangeY = (maxY - minY) || 1;
-  function X(i){ return pad + (i/(pts.length-1))*(w-2*pad); }
-  function Y(v){ return h-pad - ((v-minY)/rangeY)*(h-2*pad); }
+  const rangeX = (maxX - minX) || 1;
+
+  const w = canvas.width, h = canvas.height;
+  const padL = 52, padR = 10, padT = 10, padB = 30;
+
+  function X(t){ return padL + ((t-minX)/rangeX)*(w-padL-padR); }
+  function Y(v){ return h-padB - ((v-minY)/rangeY)*(h-padT-padB); }
+
+  // axes
   ctx.strokeStyle = "#bbb";
-  ctx.beginPath(); ctx.moveTo(pad, pad); ctx.lineTo(pad, h-pad); ctx.lineTo(w-pad, h-pad); ctx.stroke();
-  ctx.strokeStyle = "#1f77b4"; ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.moveTo(X(0), Y(pts[0].value));
-  for(let i=1;i<pts.length;i++) ctx.lineTo(X(i), Y(pts[i].value));
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(padL, padT);
+  ctx.lineTo(padL, h-padB);
+  ctx.lineTo(w-padR, h-padB);
   ctx.stroke();
-  ctx.fillStyle = "#333"; ctx.font = "12px system-ui";
-  ctx.fillText(String(minY.toFixed(2)), pad+4, h-pad-4);
-  ctx.fillText(String(maxY.toFixed(2)), pad+4, pad+12);
+
+  // line
+  ctx.strokeStyle = "#1f77b4";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(X(pts[0].t), Y(pts[0].v));
+  for(let i=1;i<pts.length;i++) ctx.lineTo(X(pts[i].t), Y(pts[i].v));
+  ctx.stroke();
+
+  // y labels
+  ctx.fillStyle = "#333";
+  ctx.font = "12px system-ui";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "alphabetic";
+  ctx.fillText(String(minY.toFixed(2)), 6, h-padB-2);
+  ctx.fillText(String(maxY.toFixed(2)), 6, padT+12);
+
+  // x ticks
+  function fmtAxis(ms, spanMs){
+    const d = new Date(ms);
+    const pad = (n) => String(n).padStart(2, "0");
+    if(spanMs <= 48*60*60*1000){
+      return pad(d.getHours()) + ":" + pad(d.getMinutes());
+    }
+    if(spanMs <= 14*24*60*60*1000){
+      return pad(d.getDate()) + "." + pad(d.getMonth()+1) + " " + pad(d.getHours()) + ":" + pad(d.getMinutes());
+    }
+    return pad(d.getDate()) + "." + pad(d.getMonth()+1) + "." + String(d.getFullYear());
+  }
+
+  const tickN = 5;
+  ctx.strokeStyle = "#bbb";
+  ctx.fillStyle = "#333";
+  ctx.font = "11px system-ui";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+  for(let i=0;i<tickN;i++){
+    const t = minX + (i/(tickN-1))*rangeX;
+    const x = X(t);
+    ctx.beginPath();
+    ctx.moveTo(x, h-padB);
+    ctx.lineTo(x, h-padB+4);
+    ctx.stroke();
+    ctx.fillText(fmtAxis(t, rangeX), x, h-padB+6);
+  }
 }
 
 async function api(url, opts){
@@ -529,6 +594,9 @@ function tagQueryParams(opts){
 
 function rangeToStartStop(){
   const now = new Date();
+  if($r.value === "all"){
+    return { start: null, stop: null, all: true };
+  }
   if($r.value === "custom"){
     const s = $start.value ? new Date($start.value) : null;
     const e = $stop.value ? new Date($stop.value) : null;
@@ -544,12 +612,41 @@ function rangeToStartStop(){
 
 function renderTableRange(){
   if(!$tableRange) return;
-  const {start, stop} = rangeToStartStop();
+  const r = rangeToStartStop();
+  if(r && r.all){
+    if(LAST_TOTAL_BOUNDS.oldest_time && LAST_TOTAL_BOUNDS.newest_time){
+      $tableRange.textContent = `Zeitraum: ${fmtTs(LAST_TOTAL_BOUNDS.oldest_time)} bis ${fmtTs(LAST_TOTAL_BOUNDS.newest_time)}`;
+    }else{
+      $tableRange.textContent = "Zeitraum: alle";
+    }
+    return;
+  }
+  const {start, stop} = r;
   const s = start ? fmtTs(start.toISOString()) : "";
   const e = stop ? fmtTs(stop.toISOString()) : "";
   if(s && e) $tableRange.textContent = `Zeitraum: ${s} bis ${e}`;
   else if(e) $tableRange.textContent = `Zeitraum bis: ${e}`;
   else $tableRange.textContent = "";
+}
+
+let LAST_TOTAL_BOUNDS = { oldest_time: null, newest_time: null };
+
+function renderRangeFromTo(){
+  if(!$rangeFromTo) return;
+
+  const r = rangeToStartStop();
+  if(r && r.all){
+    if(LAST_TOTAL_BOUNDS.oldest_time && LAST_TOTAL_BOUNDS.newest_time){
+      $rangeFromTo.textContent = `${fmtTs(LAST_TOTAL_BOUNDS.oldest_time)} bis ${fmtTs(LAST_TOTAL_BOUNDS.newest_time)}`;
+    }else{
+      $rangeFromTo.textContent = "alle";
+    }
+    return;
+  }
+
+  const s = r && r.start ? fmtTs(r.start.toISOString()) : "";
+  const e = r && r.stop ? fmtTs(r.stop.toISOString()) : "";
+  $rangeFromTo.textContent = (s && e) ? (`${s} bis ${e}`) : "";
 }
 
 let ALL_MEASUREMENTS = [];
@@ -757,6 +854,12 @@ async function loadStats(){
   try{
     const jTot = await api("./api/stats", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({...base, stats_scope: "inf"})});
     fillStats("s_tot", jTot.stats || {});
+    LAST_TOTAL_BOUNDS = {
+      oldest_time: (jTot && jTot.stats && jTot.stats.oldest_time) ? String(jTot.stats.oldest_time) : null,
+      newest_time: (jTot && jTot.stats && jTot.stats.newest_time) ? String(jTot.stats.newest_time) : null,
+    };
+    renderTableRange();
+    renderRangeFromTo();
     anyOk = true;
   }catch(e){
     err("Stats (Total): " + String(e && e.message ? e.message : e));
@@ -771,6 +874,7 @@ async function loadData(){
   err(""); ok("");
   if(!$n.value){ err("Bitte zuerst einen Messwert (friendly_name) auswaehlen."); return; }
   renderTableRange();
+  renderRangeFromTo();
   $tbl.innerHTML = "";
   const j = await api("./api/query", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(currentFilters())});
   const rows = j.rows || [];
@@ -793,6 +897,10 @@ async function refreshAll(){
 
 async function deleteData(){
   err(""); ok("");
+  if($r && $r.value === "all"){
+    err("Delete ist fuer Zeitraum=Alle deaktiviert. Bitte Benutzerdefiniert waehlen.");
+    return;
+  }
   if(!confirm("Wirklich löschen? Das ist endgültig.")) return;
   const payload = {...currentFilters(), confirm: $confirm.value};
   const j = await api("./api/delete", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)});
@@ -852,6 +960,7 @@ $r.addEventListener("change", async ()=>{
     $custom.style.display = ($r.value === "custom") ? "block" : "none";
     autoSpanAll();
     renderTableRange();
+    renderRangeFromTo();
   }catch(e){ displayError(e); }
 });
 
@@ -861,8 +970,8 @@ $e.addEventListener("change", async ()=>{
     autoSpanAll();
   }catch(e){ displayError(e); }
 });
-$start.addEventListener("change", async ()=>{ if($r.value==="custom") { saveState(); autoSpanAll(); renderTableRange(); } });
-$stop.addEventListener("change", async ()=>{ if($r.value==="custom") { saveState(); autoSpanAll(); renderTableRange(); } });
+$start.addEventListener("change", async ()=>{ if($r.value==="custom") { saveState(); autoSpanAll(); renderTableRange(); renderRangeFromTo(); } });
+$stop.addEventListener("change", async ()=>{ if($r.value==="custom") { saveState(); autoSpanAll(); renderTableRange(); renderRangeFromTo(); } });
 
 $m.addEventListener("change", async ()=>{ try{ await loadFields(); } catch(e){ err(String(e)); } });
 
@@ -963,6 +1072,7 @@ document.getElementById("del").addEventListener("click", ()=>deleteData().catch(
     renderEntity();
 
     renderTableRange();
+    renderRangeFromTo();
     autoSpanAll();
     saveState();
   } catch(e){ displayError(e); }
@@ -976,14 +1086,6 @@ document.getElementById("del").addEventListener("click", ()=>deleteData().catch(
     const j = await r.json();
     if(j && j.ok){
       document.getElementById("version_box").innerText = "Version: " + j.version;
-    }
-  }catch(e){}
-})();
-</script>
-
-</body>
-</html>
-("version_box").innerText = "Version: " + j.version;
     }
   }catch(e){}
 })();
