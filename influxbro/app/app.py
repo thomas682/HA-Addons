@@ -2,6 +2,9 @@ import json
 import math
 import os
 import re
+import urllib.error
+import urllib.request
+import urllib.parse
 from datetime import datetime, timedelta, timezone
 from contextlib import contextmanager
 from pathlib import Path
@@ -289,6 +292,12 @@ DEFAULT_CFG = {
     # UI defaults
     "ui_table_visible_rows": 20,
     "ui_decimals": 3,
+
+    "ui_font_size_px": 14,
+    "ui_font_small_px": 11,
+    "ui_checkbox_scale": 0.85,
+    "ui_filter_label_width_px": 170,
+    "ui_filter_control_width_px": 320,
 }
 
 def load_cfg():
@@ -604,6 +613,56 @@ def api_get_config():
         redacted["password"] = "********"
     return jsonify({"ok": True, "config": redacted, "allow_delete": ALLOW_DELETE, "delete_confirm_phrase": DELETE_CONFIRM_PHRASE, "autodetect_source": LAST_AUTODETECT_SOURCE})
 
+
+_ENTITY_ID_RE = re.compile(r"^[A-Za-z0-9_]+\.[A-Za-z0-9_]+$")
+
+
+@app.get("/api/ha_entity")
+def api_ha_entity():
+    """Fetch entity metadata from Home Assistant Core.
+
+    Uses Supervisor to call: /core/api/states/<entity_id>
+    """
+
+    entity_id = (request.args.get("entity_id") or "").strip()
+    if not entity_id:
+        return jsonify({"ok": True, "available": False, "error": "entity_id required", "entity": None})
+    if not _ENTITY_ID_RE.match(entity_id):
+        return jsonify({"ok": True, "available": False, "error": "invalid entity_id", "entity": None})
+
+    token = (os.environ.get("SUPERVISOR_TOKEN") or "").strip()
+    if not token:
+        return jsonify({"ok": True, "available": False, "error": "SUPERVISOR_TOKEN not set", "entity": None})
+
+    try:
+        url = "http://supervisor/core/api/states/" + urllib.parse.quote(entity_id, safe="")
+        req = urllib.request.Request(
+            url,
+            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+            method="GET",
+        )
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            raw = resp.read().decode("utf-8", errors="replace")
+        data = json.loads(raw) if raw else {}
+        attrs = (data.get("attributes") or {}) if isinstance(data, dict) else {}
+
+        entity = {
+            "entity_id": data.get("entity_id") if isinstance(data, dict) else entity_id,
+            "state": data.get("state") if isinstance(data, dict) else None,
+            "friendly_name": attrs.get("friendly_name"),
+            "device_class": attrs.get("device_class"),
+            "state_class": attrs.get("state_class"),
+            "unit_of_measurement": attrs.get("unit_of_measurement"),
+            "icon": attrs.get("icon"),
+            "last_changed": data.get("last_changed") if isinstance(data, dict) else None,
+            "last_updated": data.get("last_updated") if isinstance(data, dict) else None,
+        }
+        return jsonify({"ok": True, "available": True, "entity": entity, "error": None})
+    except urllib.error.HTTPError as e:
+        return jsonify({"ok": True, "available": False, "error": f"HTTP {e.code}", "entity": None})
+    except Exception as e:
+        return jsonify({"ok": True, "available": False, "error": str(e) or e.__class__.__name__, "entity": None})
+
 @app.post("/api/config")
 def api_set_config():
     body = request.get_json(force=True) or {}
@@ -645,6 +704,32 @@ def api_set_config():
         cfg["ui_decimals"] = 0
     if cfg["ui_decimals"] > 10:
         cfg["ui_decimals"] = 10
+
+    def _clamp_int(key: str, default: int, lo: int, hi: int) -> None:
+        try:
+            cfg[key] = int(cfg.get(key, default))
+        except Exception:
+            cfg[key] = default
+        if cfg[key] < lo:
+            cfg[key] = lo
+        if cfg[key] > hi:
+            cfg[key] = hi
+
+    def _clamp_float(key: str, default: float, lo: float, hi: float) -> None:
+        try:
+            cfg[key] = float(cfg.get(key, default))
+        except Exception:
+            cfg[key] = default
+        if cfg[key] < lo:
+            cfg[key] = lo
+        if cfg[key] > hi:
+            cfg[key] = hi
+
+    _clamp_int("ui_font_size_px", 14, 10, 22)
+    _clamp_int("ui_font_small_px", 11, 9, 18)
+    _clamp_float("ui_checkbox_scale", 0.85, 0.5, 1.6)
+    _clamp_int("ui_filter_label_width_px", 170, 80, 360)
+    _clamp_int("ui_filter_control_width_px", 320, 180, 900)
 
     save_cfg(cfg)
     return jsonify({"ok": True, "message": "Saved. New settings are used immediately."})

@@ -5,7 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Influx Browser</title>
   <style>
-    body { font-family: system-ui, sans-serif; margin: 16px; }
+    :root {
+      --ui-font: 14px;
+      --ui-font-small: 11px;
+      --ui-cb-scale: 0.85;
+      --ui-label-w: 170px;
+      --ui-ctrl-w: 320px;
+    }
+
+    body { font-family: system-ui, sans-serif; margin: 16px; font-size: var(--ui-font); }
     .row { display:flex; gap:12px; flex-wrap:wrap; align-items:end; }
     .grid { display:grid; grid-template-columns: repeat(2, minmax(260px, 1fr)); gap: 12px; margin-top: 12px; align-items:end; }
     @media (max-width: 860px){ .grid { grid-template-columns: 1fr; } }
@@ -26,34 +34,22 @@
     #chart_plotly { width: 100%; height: 220px; border: 1px solid #ddd; margin-top: 12px; border-radius: 10px; display:none; }
     .err { color: #b00020; margin-top: 8px; white-space: pre-wrap; }
     .ok { color: #0a7a28; margin-top: 8px; white-space: pre-wrap; }
-    .muted { opacity: 0.7; font-size: 12px; }
-    .danger { border: 1px solid #d33; padding: 12px; border-radius: 8px; margin-top: 16px; }
-    .danger h3 { margin: 0 0 8px 0; color: #b00020; }
-    .danger_controls { display:grid; grid-template-columns: minmax(260px, 1fr) minmax(220px, 0.6fr); gap: 12px; align-items:end; margin-top: 8px; }
-    @media (max-width: 860px){ .danger_controls { grid-template-columns: 1fr; } }
-    .danger_note { margin-top: 6px; }
-    .stats_wrap { margin-top: 12px; }
-    .stats_header { display:flex; gap:12px; align-items:end; flex-wrap:wrap; }
-    .stats_grid { display:grid; grid-template-columns: repeat(2, minmax(300px, 1fr)); gap: 12px; margin-top: 12px; }
-    @media (max-width: 860px){ .stats_grid { grid-template-columns: 1fr; } }
-    .stat_block { border:1px solid #ddd; border-radius:10px; padding:10px; }
-    .stat_block .head { font-weight: 700; margin-bottom: 8px; }
-    .cards { display:grid; grid-template-columns: repeat(2, minmax(180px, 1fr)); gap: 10px; }
-    @media (max-width: 500px){ .cards { grid-template-columns: 1fr; } }
-    .card { border:1px solid #eee; border-radius:10px; padding:10px; }
-    .card .k { font-size:12px; opacity:.75; }
-    .card .v { font-weight:600; overflow-wrap:anywhere; }
-
-    .stats_wrap .stat_block { padding: 8px; }
-    .stats_wrap .card { padding: 8px; }
-    .stats_wrap .card .k { font-size: 11px; }
-    .stats_wrap .card .v { font-size: 13px; }
+    .muted { opacity: 0.7; font-size: var(--ui-font-small); }
     a { color: inherit; }
     details { margin-top: 10px; border: 1px solid #ddd; border-radius: 10px; padding: 10px; }
     details > summary { cursor: pointer; font-weight: 600; }
 
-    .main { display:grid; grid-template-columns: 1.35fr 1fr; gap: 12px; align-items:start; margin-top: 12px; }
-    @media (max-width: 1100px){ .main { grid-template-columns: 1fr; } }
+    .control_lr { display:flex; gap: 12px; align-items:flex-end; flex-wrap:wrap; }
+    .control_lr > label { width: var(--ui-label-w); min-width: 120px; margin-bottom: 6px; }
+    .control_lr .stack { width: var(--ui-ctrl-w); min-width: 220px; flex: 1; }
+    @media (max-width: 860px){
+      .control_lr > label { width: auto; min-width: 0; margin-bottom: 4px; }
+      .control_lr .stack { width: 100%; min-width: 0; }
+    }
+
+    input[type="checkbox"].row_sel { transform: scale(var(--ui-cb-scale)); transform-origin: left center; }
+
+    .main { display:block; margin-top: 12px; }
     .table_wrap { border: 1px solid #ddd; border-radius: 10px; padding: 10px; margin-top: 12px; }
     .table_head { display:flex; justify-content:space-between; gap: 12px; align-items:baseline; flex-wrap:wrap; }
     .table_box { --row-h: 18px; --max-rows: 100; max-height: calc(var(--max-rows) * var(--row-h) + 42px); overflow:auto; border: 1px solid #eee; border-radius: 10px; margin-top: 8px; }
@@ -70,24 +66,32 @@
     tr.dirty { background: #e8ffe8; }
     .cell_muted { opacity: 0.7; }
     input.inline { height: 30px; padding: 6px 8px; }
+
+    .section { margin-top: 14px; }
+    .section_title { font-weight: 700; margin: 14px 0 6px 0; }
+    .stats_tbl { border-collapse: collapse; width: 100%; }
+    .stats_tbl td { border: 1px solid #eee; padding: 4px 6px; font-size: 11px; }
+    .stats_tbl td.k { width: 220px; opacity: 0.75; }
+    .stats_tbl td.v { font-weight: 600; overflow-wrap:anywhere; }
+    .stats_box { display:none; margin-top: 8px; }
   </style>
 </head>
 <body>
   <h2>Influx Browser</h2>
   <div class="muted">
     <a href="./config">⚙️ Konfiguration</a>
-    &nbsp;|&nbsp; Delete enabled: {{ "yes" if allow_delete else "no" }}
+    &nbsp;|&nbsp; Writes enabled: {{ "yes" if allow_delete else "no" }}
   </div>
 
   <div class="grid" id="filters">
-    <div class="control" id="c_measurement_filter">
+    <div class="control control_lr" id="c_measurement_filter">
       <label>_measurement (Filter)</label>
       <div class="stack">
         <input id="q_measurement_filter" class="search" placeholder="Suchen..." />
         <select id="measurement_filter"></select>
       </div>
     </div>
-    <div class="control" id="c_friendly">
+    <div class="control control_lr" id="c_friendly">
       <label>Messwert (Klartext / friendly_name)</label>
       <div class="stack">
         <input id="q_friendly_name" class="search" placeholder="Suchen..." />
@@ -108,7 +112,7 @@
         <option value="custom">Benutzerdefiniert…</option>
       </select>
     </div>
-    <div class="control" id="c_entity">
+    <div class="control control_lr" id="c_entity">
       <label>entity_id (optional)</label>
       <div class="stack">
         <input id="q_entity_id" class="search" placeholder="Suchen..." />
@@ -143,54 +147,18 @@
   <div id="ok" class="ok"></div>
 
   <div class="main">
-    <div class="left">
+
+    <div class="section" id="graph_section">
+      <div class="section_title">Graph</div>
+      <div class="tbl_actions">
+        <label><input type="checkbox" id="graph_markers" class="row_sel"/>Messpunkte markieren</label>
+      </div>
       <div id="chart_plotly"></div>
       <canvas id="chart" width="800" height="200"></canvas>
-
-      <div class="stats_wrap">
-    <div class="stats_header">
-      <div class="muted">Statistik links = Zeitraum, rechts = alles.</div>
     </div>
 
-    <div class="stats_grid" id="stats" style="display:none;">
-      <div class="stat_block">
-        <div class="head">Zeitraum (Graph/Tabelle)</div>
-        <div class="cards">
-          <div class="card"><div class="k">Aktueller Wert</div><div class="v" id="s_curr_last"></div></div>
-          <div class="card"><div class="k">Anzahl Werte</div><div class="v" id="s_curr_count"></div></div>
-          <div class="card"><div class="k">Aeltester Zeitstempel</div><div class="v" id="s_curr_old"></div></div>
-          <div class="card"><div class="k">Neuster Zeitstempel</div><div class="v" id="s_curr_new"></div></div>
-          <div class="card"><div class="k">Minimum</div><div class="v" id="s_curr_min"></div></div>
-          <div class="card"><div class="k">Maximum</div><div class="v" id="s_curr_max"></div></div>
-          <div class="card"><div class="k">Mittelwert</div><div class="v" id="s_curr_mean"></div></div>
-          <div class="card"><div class="k">Median (p50)</div><div class="v" id="s_curr_p50"></div></div>
-          <div class="card"><div class="k">p05 / p95</div><div class="v" id="s_curr_p05p95"></div></div>
-          <div class="card"><div class="k">StdDev</div><div class="v" id="s_curr_stddev"></div></div>
-          <div class="card"><div class="k">Tabelle (geladen) kB</div><div class="v" id="s_curr_tblkb"></div></div>
-        </div>
-      </div>
-
-          <div class="stat_block">
-            <div class="head">Alles</div>
-            <div class="cards">
-          <div class="card"><div class="k">Aktueller Wert</div><div class="v" id="s_tot_last"></div></div>
-          <div class="card"><div class="k">Anzahl Werte</div><div class="v" id="s_tot_count"></div></div>
-          <div class="card"><div class="k">Aeltester Zeitstempel</div><div class="v" id="s_tot_old"></div></div>
-          <div class="card"><div class="k">Neuster Zeitstempel</div><div class="v" id="s_tot_new"></div></div>
-          <div class="card"><div class="k">Minimum</div><div class="v" id="s_tot_min"></div></div>
-          <div class="card"><div class="k">Maximum</div><div class="v" id="s_tot_max"></div></div>
-          <div class="card"><div class="k">Mittelwert</div><div class="v" id="s_tot_mean"></div></div>
-          <div class="card"><div class="k">Median (p50)</div><div class="v" id="s_tot_p50"></div></div>
-          <div class="card"><div class="k">p05 / p95</div><div class="v" id="s_tot_p05p95"></div></div>
-          <div class="card"><div class="k">StdDev</div><div class="v" id="s_tot_stddev"></div></div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-    </div>
-
-    <div class="right">
+    <div class="section" id="filterlist_section">
+      <div class="section_title">Filterliste</div>
       <div class="table_wrap">
         <div class="table_head">
           <div>
@@ -199,7 +167,7 @@
             <div class="muted" id="table_info"></div>
 
             <div class="tbl_actions">
-              <label><input type="checkbox" id="tbl_time_from_graph"/>Zeit gefuehrt durch Graph</label>
+              <label><input type="checkbox" id="tbl_time_from_graph" class="row_sel"/>Zeit gefuehrt durch Graph</label>
               <button class="btn_sm" id="tbl_to_edit">In Bearbeitungsliste</button>
             </div>
           </div>
@@ -251,29 +219,28 @@
         </div>
         <div class="table_box" id="table_box">
           <table id="tbl">
-            <thead><tr><th style="width:26px;"><input type="checkbox" id="tbl_sel_all"/></th><th id="th_time" data-key="time">Zeit</th><th id="th_value" data-key="value">Wert</th></tr></thead>
+            <thead><tr><th style="width:26px;"><input type="checkbox" id="tbl_sel_all" class="row_sel"/></th><th id="th_time" data-key="time">Zeit</th><th id="th_value" data-key="value">Wert</th></tr></thead>
             <tbody></tbody>
           </table>
         </div>
       </div>
 
+    </div>
+
+    <div class="section" id="edit_section">
+      <div class="section_title">Bearbeitungsliste</div>
       <div class="table_wrap" id="edit_wrap">
         <div class="table_head">
           <div>
             <div style="font-weight:700;">Bearbeitungsliste</div>
             <div class="muted" id="edit_info"></div>
           </div>
-          <div class="row" style="margin-top:0;">
-            <button class="btn_sm" id="edit_remove">Aus Liste loeschen</button>
-            <button class="btn_sm" id="edit_undo_all">Undo alle</button>
-            <button class="btn_sm" id="edit_apply">Alle Werte in Datenbank uebernehmen</button>
-          </div>
         </div>
         <div class="table_box" id="edit_box">
           <table id="edit_tbl">
             <thead>
               <tr>
-                <th style="width:26px;"><input type="checkbox" id="edit_sel_all"/></th>
+                <th style="width:26px;"><input type="checkbox" id="edit_sel_all" class="row_sel"/></th>
                 <th>Zeit</th>
                 <th>Alt</th>
                 <th>Neu</th>
@@ -286,27 +253,43 @@
             <tbody></tbody>
           </table>
         </div>
-      </div>
-    </div>
-  </div>
 
-  <div class="danger">
-    <h3>Daten löschen</h3>
-    <div class="muted">
-      Achtung: Löschen ist endgültig. Influx v1: Löschen nach Measurement+Zeitraum (und ggf. Tag-Filter). Influx v2: optional Field + Tag-Filter.
-      Delete ist standardmäßig aus und muss in Add-on Optionen aktiviert werden.
-    </div>
-    <div class="danger_controls">
-      <div>
-        <label>Bestaetigungstext (genau eintippen)</label>
-        <input id="confirm" placeholder="{{ delete_phrase }}" />
+        <div class="tbl_actions" style="justify-content:space-between; margin-top: 10px;">
+          <div class="row" style="margin-top:0;">
+            <button class="btn_sm" id="edit_remove">Aus Liste loeschen</button>
+            <button class="btn_sm" id="edit_undo_all">Undo alle</button>
+          </div>
+          <div class="row" style="margin-top:0; align-items:end;">
+            <div style="min-width: 320px;">
+              <label>Bestaetigungstext (genau eintippen)</label>
+              <input id="confirm" placeholder="{{ delete_phrase }}" />
+              <div class="muted">Schreiben ist an <code>allow_delete</code> + <code>delete_confirm_phrase</code> gekoppelt.</div>
+            </div>
+            <div style="min-width: 260px;">
+              <label>&nbsp;</label>
+              <button class="btn_sm" id="edit_apply" style="width:100%;">Alle Werte in Datenbank uebernehmen</button>
+            </div>
+          </div>
+        </div>
       </div>
-      <div>
-        <label>&nbsp;</label>
-        <button id="del" style="width:100%;">Delete (Auswahl + Zeitraum)</button>
+    </div>
+
+    <div class="section" id="stats_section">
+      <div class="section_title">Statistik</div>
+      <div class="table_wrap">
+        <div class="tbl_actions">
+          <label><input type="checkbox" id="stats_toggle" class="row_sel"/>Statistik anzeigen</label>
+        </div>
+        <div class="stats_box" id="stats_box">
+          <div style="font-weight:700; margin-top: 8px;">Gesamtstatistik (Alles)</div>
+          <table class="stats_tbl"><tbody id="stats_tot_body"></tbody></table>
+
+          <div style="font-weight:700; margin-top: 10px;">Statistik Zeitraum (Graph/Tabelle)</div>
+          <table class="stats_tbl"><tbody id="stats_curr_body"></tbody></table>
+        </div>
       </div>
     </div>
-    <div class="muted danger_note">Muss exakt dem Add-on Setting <code>delete_confirm_phrase</code> entsprechen.</div>
+
   </div>
 
   <script src="./static/plotly.min.js"></script>
@@ -350,30 +333,12 @@ const $cntFn = document.getElementById('cnt_friendly_name');
 const $cntEid = document.getElementById('cnt_entity_id');
 const $confirm = document.getElementById('confirm');
 
-const $stats = document.getElementById('stats');
+const $graphMarkers = document.getElementById('graph_markers');
 
-const $sCurrLast = document.getElementById('s_curr_last');
-const $sCurrCount = document.getElementById('s_curr_count');
-const $sCurrOld = document.getElementById('s_curr_old');
-const $sCurrNew = document.getElementById('s_curr_new');
-const $sCurrMin = document.getElementById('s_curr_min');
-const $sCurrMax = document.getElementById('s_curr_max');
-const $sCurrMean = document.getElementById('s_curr_mean');
-const $sCurrP50 = document.getElementById('s_curr_p50');
-const $sCurrP05P95 = document.getElementById('s_curr_p05p95');
-const $sCurrStddev = document.getElementById('s_curr_stddev');
-const $sCurrTblKb = document.getElementById('s_curr_tblkb');
-
-const $sTotLast = document.getElementById('s_tot_last');
-const $sTotCount = document.getElementById('s_tot_count');
-const $sTotOld = document.getElementById('s_tot_old');
-const $sTotNew = document.getElementById('s_tot_new');
-const $sTotMin = document.getElementById('s_tot_min');
-const $sTotMax = document.getElementById('s_tot_max');
-const $sTotMean = document.getElementById('s_tot_mean');
-const $sTotP50 = document.getElementById('s_tot_p50');
-const $sTotP05P95 = document.getElementById('s_tot_p05p95');
-const $sTotStddev = document.getElementById('s_tot_stddev');
+const $statsToggle = document.getElementById('stats_toggle');
+const $statsBox = document.getElementById('stats_box');
+const $statsTotBody = document.getElementById('stats_tot_body');
+const $statsCurrBody = document.getElementById('stats_curr_body');
 
 const canvas = document.getElementById('chart');
 const ctx = canvas.getContext('2d');
@@ -481,6 +446,8 @@ function saveState(){
       sort_key: TABLE_SORT.key,
       sort_dir: TABLE_SORT.dir,
       tbl_time_from_graph: TABLE_TIME.from_graph,
+      graph_markers: GRAPH_MARKERS,
+      stats_visible: STATS_VISIBLE,
     };
     localStorage.setItem(LS_KEY, JSON.stringify(j));
   }catch(e){}
@@ -491,6 +458,9 @@ let TABLE_TIME = {
   graph_start_ms: null,
   graph_stop_ms: null,
 };
+
+let GRAPH_MARKERS = false;
+let STATS_VISIBLE = false;
 
 let _PLOTLY_EVENTS_BOUND = false;
 
@@ -636,8 +606,9 @@ function drawPlotly(rows){
     x,
     y,
     type: "scatter",
-    mode: "lines",
+    mode: GRAPH_MARKERS ? "lines+markers" : "lines",
     line: { color: "#1f77b4", width: 1.5 },
+    marker: { size: 6, symbol: "circle", color: "#1f77b4" },
     hovertemplate: "%{x}<br>%{y}<extra></extra>",
   }];
 
@@ -730,6 +701,20 @@ async function loadUiConfig(){
     const r = Number(cfg.ui_table_visible_rows);
     if(isFinite(r) && r > 0) UI_TABLE_VISIBLE_ROWS = Math.trunc(r);
     if($tableBox) $tableBox.style.setProperty("--max-rows", String(UI_TABLE_VISIBLE_ROWS));
+
+    const fs = Number(cfg.ui_font_size_px);
+    if(isFinite(fs) && fs >= 10 && fs <= 22) document.documentElement.style.setProperty("--ui-font", fs + "px");
+    const fss = Number(cfg.ui_font_small_px);
+    if(isFinite(fss) && fss >= 9 && fss <= 18) document.documentElement.style.setProperty("--ui-font-small", fss + "px");
+
+    const cb = Number(cfg.ui_checkbox_scale);
+    if(isFinite(cb) && cb >= 0.5 && cb <= 1.6) document.documentElement.style.setProperty("--ui-cb-scale", String(cb));
+
+    const lw = Number(cfg.ui_filter_label_width_px);
+    if(isFinite(lw) && lw >= 80 && lw <= 360) document.documentElement.style.setProperty("--ui-label-w", lw + "px");
+
+    const cw = Number(cfg.ui_filter_control_width_px);
+    if(isFinite(cw) && cw >= 180 && cw <= 900) document.documentElement.style.setProperty("--ui-ctrl-w", cw + "px");
   }catch(e){
     // ignore; fallback to defaults
   }
@@ -942,20 +927,75 @@ function fmtLastValue(s){
   return v ? (t ? (v + " @ " + fmtTs(t)) : v) : "";
 }
 
-function fillStats(prefix, s){
-  const set = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = fmt(val); };
-  set(prefix + "_last", fmtLastValue(s));
-  set(prefix + "_count", s.count);
-  set(prefix + "_old", fmtTs(s.oldest_time));
-  set(prefix + "_new", fmtTs(s.newest_time));
-  set(prefix + "_min", fmtNum(s.min));
-  set(prefix + "_max", fmtNum(s.max));
-  set(prefix + "_mean", fmtNum(s.mean));
-  set(prefix + "_p50", fmtNum(s.p50));
-  const p05 = (s.p05 === null || s.p05 === undefined) ? "" : fmtNum(s.p05);
-  const p95 = (s.p95 === null || s.p95 === undefined) ? "" : fmtNum(s.p95);
-  set(prefix + "_p05p95", (p05 || p95) ? (p05 + " / " + p95) : "");
-  set(prefix + "_stddev", fmtNum(s.stddev));
+let HA_ENTITY_INFO = { available: false, entity: null, error: null };
+let LAST_STATS_TOT = null;
+let LAST_STATS_CURR = null;
+
+function _setStatsBody(tbody, rows){
+  if(!tbody) return;
+  tbody.innerHTML = "";
+  (rows || []).forEach(r => {
+    const tr = document.createElement("tr");
+    const tdK = document.createElement("td");
+    tdK.className = "k";
+    tdK.textContent = r.k;
+    const tdV = document.createElement("td");
+    tdV.className = "v";
+    tdV.textContent = fmt(r.v);
+    tr.appendChild(tdK);
+    tr.appendChild(tdV);
+    tbody.appendChild(tr);
+  });
+}
+
+function _statsRowsTotal(stats){
+  const s = stats || {};
+  const out = [];
+  const e = HA_ENTITY_INFO && HA_ENTITY_INFO.entity;
+
+  if(HA_ENTITY_INFO && HA_ENTITY_INFO.available && e){
+    out.push({k: "entity_id", v: e.entity_id});
+    if(e.friendly_name) out.push({k: "friendly_name", v: e.friendly_name});
+    if(e.device_class) out.push({k: "device_class", v: e.device_class});
+    if(e.state_class) out.push({k: "state_class", v: e.state_class});
+    if(e.unit_of_measurement) out.push({k: "unit_of_measurement", v: e.unit_of_measurement});
+  }else if(HA_ENTITY_INFO && HA_ENTITY_INFO.error){
+    out.push({k: "HA Info", v: "nicht verfuegbar"});
+  }
+
+  out.push({k: "Aktueller Wert", v: fmtLastValue(s)});
+  out.push({k: "Anzahl Werte", v: s.count});
+  out.push({k: "Aeltester Zeitstempel", v: fmtTs(s.oldest_time)});
+  out.push({k: "Neuster Zeitstempel", v: fmtTs(s.newest_time)});
+  out.push({k: "Minimum", v: fmtNum(s.min)});
+  out.push({k: "Maximum", v: fmtNum(s.max)});
+  out.push({k: "Mittelwert", v: fmtNum(s.mean)});
+  out.push({k: "Median (p50)", v: fmtNum(s.p50)});
+  return out;
+}
+
+function _statsRowsCurrent(stats){
+  const s = stats || {};
+  const out = [];
+  out.push({k: "Aktueller Wert", v: fmtLastValue(s)});
+  out.push({k: "Anzahl Werte", v: s.count});
+  out.push({k: "Aeltester Zeitstempel", v: fmtTs(s.oldest_time)});
+  out.push({k: "Neuster Zeitstempel", v: fmtTs(s.newest_time)});
+  out.push({k: "Minimum", v: fmtNum(s.min)});
+  out.push({k: "Maximum", v: fmtNum(s.max)});
+  out.push({k: "Mittelwert", v: fmtNum(s.mean)});
+  out.push({k: "Median (p50)", v: fmtNum(s.p50)});
+  const kb = tableKbLoaded();
+  out.push({k: "Tabelle (geladen) kB", v: (kb === null) ? "" : kb.toFixed(1)});
+  return out;
+}
+
+function renderStats(){
+  if(!$statsBox) return;
+  $statsBox.style.display = STATS_VISIBLE ? "block" : "none";
+  if(!STATS_VISIBLE) return;
+  _setStatsBody($statsTotBody, _statsRowsTotal(LAST_STATS_TOT));
+  _setStatsBody($statsCurrBody, _statsRowsCurrent(LAST_STATS_CURR));
 }
 
 function sortRowsForTable(rows){
@@ -1056,6 +1096,7 @@ function renderTable(){
     const tdSel = document.createElement("td");
     const cb = document.createElement("input");
     cb.type = "checkbox";
+    cb.className = "row_sel";
     cb.checked = FILTER_SELECTED.has(key);
     cb.addEventListener("click", (e)=>_stop(e));
     cb.addEventListener("change", ()=>{
@@ -1128,6 +1169,7 @@ function renderEditTable(){
     const tdSel = document.createElement("td");
     const cb = document.createElement("input");
     cb.type = "checkbox";
+    cb.className = "row_sel";
     cb.checked = EDIT_SELECTED.has(key);
     cb.addEventListener("click", (ev)=>_stop(ev));
     cb.addEventListener("change", ()=>{
@@ -1377,36 +1419,46 @@ async function applyAllEdits(){
 }
 
 async function loadStats(){
-  $stats.style.display = "grid";
-  fillStats("s_curr", {});
-  fillStats("s_tot", {});
   const base = currentFilters();
-  let anyOk = false;
+
+  // HA entity metadata (best-effort)
+  HA_ENTITY_INFO = { available: false, entity: null, error: null };
   try{
-    const jCurr = await api("./api/stats", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({...base, stats_scope: "current"})});
-    fillStats("s_curr", jCurr.stats || {});
-    anyOk = true;
+    if($e && $e.value){
+      const j = await api("./api/ha_entity?entity_id=" + encodeURIComponent($e.value));
+      HA_ENTITY_INFO = {
+        available: !!(j && j.available),
+        entity: (j && j.entity) ? j.entity : null,
+        error: (j && j.error) ? j.error : null,
+      };
+    }
   }catch(e){
-    err("Stats (Zeitraum): " + String(e && e.message ? e.message : e));
+    HA_ENTITY_INFO = { available: false, entity: null, error: String(e && e.message ? e.message : e) };
   }
 
+  // Total first
   try{
     const jTot = await api("./api/stats", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({...base, stats_scope: "inf"})});
-    fillStats("s_tot", jTot.stats || {});
+    LAST_STATS_TOT = jTot.stats || {};
     LAST_TOTAL_BOUNDS = {
       oldest_time: (jTot && jTot.stats && jTot.stats.oldest_time) ? String(jTot.stats.oldest_time) : null,
       newest_time: (jTot && jTot.stats && jTot.stats.newest_time) ? String(jTot.stats.newest_time) : null,
     };
-    renderTableRange();
-    renderRangeFromTo();
-    anyOk = true;
   }catch(e){
-    err("Stats (Total): " + String(e && e.message ? e.message : e));
+    LAST_STATS_TOT = {};
   }
 
-  const kb = tableKbLoaded();
-  $sCurrTblKb.textContent = (kb === null) ? "" : kb.toFixed(1);
-  if(!anyOk) $stats.style.display = "none";
+  // Current range
+  try{
+    const jCurr = await api("./api/stats", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({...base, stats_scope: "current"})});
+    LAST_STATS_CURR = jCurr.stats || {};
+  }catch(e){
+    LAST_STATS_CURR = {};
+  }
+
+  renderTableRange();
+  renderRangeFromTo();
+  renderStats();
 }
 
 async function loadData(){
@@ -1444,18 +1496,7 @@ async function refreshAll(){
   }
 }
 
-async function deleteData(){
-  err(""); ok("");
-  if($r && $r.value === "all"){
-    err("Delete ist fuer Zeitraum=Alle deaktiviert. Bitte Benutzerdefiniert waehlen.");
-    return;
-  }
-  if(!confirm("Wirklich löschen? Das ist endgültig.")) return;
-  const payload = {...currentFilters(), confirm: $confirm.value};
-  const j = await api("./api/delete", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)});
-  ok(j.message || "Deleted.");
-  await loadData();
-}
+
 
 function autoSpanSelect(controlId, selectEl){
   try{
@@ -1561,6 +1602,20 @@ if($tblBOp) $tblBOp.addEventListener("change", onTableFilter);
 if($tblAVal) $tblAVal.addEventListener("input", debounce(onTableFilter, 200));
 if($tblBVal) $tblBVal.addEventListener("input", debounce(onTableFilter, 200));
 
+// Graph markers
+if($graphMarkers) $graphMarkers.addEventListener("change", ()=>{
+  GRAPH_MARKERS = !!$graphMarkers.checked;
+  saveState();
+  draw(LAST_ROWS);
+});
+
+// Stats toggle
+if($statsToggle) $statsToggle.addEventListener("change", ()=>{
+  STATS_VISIBLE = !!$statsToggle.checked;
+  saveState();
+  renderStats();
+});
+
 // Table time from graph
 if($tblTimeFromGraph) $tblTimeFromGraph.addEventListener("change", ()=>{
   TABLE_TIME.from_graph = !!$tblTimeFromGraph.checked;
@@ -1602,7 +1657,6 @@ if($editSelAll) $editSelAll.addEventListener("change", ()=>{
 });
 
 document.getElementById("load").addEventListener("click", ()=>refreshAll().catch(displayError));
-document.getElementById("del").addEventListener("click", ()=>deleteData().catch(e=>err(String(e))));
 
 (async ()=>{
   try{
@@ -1640,6 +1694,13 @@ document.getElementById("del").addEventListener("click", ()=>deleteData().catch(
 
     TABLE_TIME.from_graph = !!st.tbl_time_from_graph;
     if($tblTimeFromGraph) $tblTimeFromGraph.checked = TABLE_TIME.from_graph;
+
+    GRAPH_MARKERS = !!st.graph_markers;
+    if($graphMarkers) $graphMarkers.checked = GRAPH_MARKERS;
+
+    STATS_VISIBLE = !!st.stats_visible;
+    if($statsToggle) $statsToggle.checked = STATS_VISIBLE;
+    renderStats();
 
     if(st.sort_key) TABLE_SORT.key = st.sort_key;
     if(st.sort_dir) TABLE_SORT.dir = st.sort_dir;

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.5.0
+- UI: Workflow von oben nach unten; Statistik als kleine Tabelle mit Toggle.
+- UI: Konfigurierbare Schrift-/Checkboxgroessen und Filterbreiten.
+- UI: Plotly Marker (Messpunkte) zuschaltbar.
+- HA: Zeigt device_class/state_class via SUPERVISOR_TOKEN.
+- UI: "Daten loeschen" Bereich entfernt.
+
 ## 1.4.0
 - Feature: Tabelle kann optional zeitlich vom Graph-Zoom gefuehrt werden.
 - Feature: Bearbeitungsliste fuer selektierte Datenpunkte inkl. Undo und "alle uebernehmen".
