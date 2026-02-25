@@ -172,9 +172,18 @@
       <div class="muted">Zeitangaben werden als lokale Zeit interpretiert und als UTC an die API gesendet.</div>
     </div>
     <div class="control"><button id="load" style="width:100%;">Aktualisieren</button></div>
-    <div class="control"><div class="muted" style="padding-top: 4px;">Laedt Graph/Tabelle/Statistik erst nach Klick auf <code>Aktualisieren</code>.</div></div>
   </div>
 
+  <div class="muted" data-ui="tip.selection" title="tip.selection">Laedt Graph/Tabelle/Statistik erst nach Klick auf <code>Aktualisieren</code>.</div>
+
+  </details>
+
+  <details id="stats_total_section" class="section" {{ 'open' if cfg.get('ui_open_stats_total') else '' }} data-ui="section.stats_total" title="section.stats_total">
+    <summary class="section_title">Gesamtstatistik (Alles)</summary>
+    <div class="table_wrap">
+      <div class="muted" data-ui="tip.stats_total" title="tip.stats_total">Zeigt Kennzahlen ueber alle Werte (kann je nach Datenmenge laenger dauern).</div>
+      <table class="stats_tbl"><tbody id="stats_tot_body"></tbody></table>
+    </div>
   </details>
 
   <details>
@@ -200,10 +209,19 @@
       <div class="tbl_actions" data-ui="graph_actions">
         <label><input type="checkbox" id="graph_markers" class="row_sel" data-ui="graph_markers"/>Messpunkte markieren</label>
       </div>
+      <div class="muted" data-ui="tip.graph" title="tip.graph">Zoomen/Pan im Plot. Doppelklick setzt Zoom zurueck. Griff unten zieht die Hoehe.</div>
       <div class="graph_frame" data-ui="graph.frame" title="graph.frame">
         <div id="chart_plotly"></div>
         <canvas id="chart" width="800" height="200"></canvas>
         <div id="graph_resize" data-ui="graph.resize" title="graph.resize" style="height: 12px; cursor: ns-resize; margin-top: 8px; border-radius: 999px; background: linear-gradient(90deg, #eee, #f8f8f8);"></div>
+      </div>
+    </details>
+
+    <details id="stats_curr_section" class="section" {{ 'open' if cfg.get('ui_open_stats_current', true) else '' }} data-ui="section.stats_current" title="section.stats_current">
+      <summary class="section_title">Statistik Zeitraum (Graph/Tabelle)</summary>
+      <div class="table_wrap">
+        <div class="muted" data-ui="tip.stats_current" title="tip.stats_current">Folgt dem aktuellen Zoom/Range-Slider im Graph.</div>
+        <table class="stats_tbl"><tbody id="stats_curr_body"></tbody></table>
       </div>
     </details>
 
@@ -219,7 +237,10 @@
             <div class="tbl_actions">
               <label><input type="checkbox" id="tbl_time_from_graph" class="row_sel" data-ui="filterlist_time_from_graph"/>Zeit gefuehrt durch Graph</label>
               <label><input type="checkbox" id="tbl_enabled" class="row_sel" data-ui="filterlist_filter_enabled"/> Filter aktiv</label>
+              <button class="btn_sm" id="tbl_all_values" data-ui="filterlist_all_values">Alle Werte</button>
             </div>
+
+            <div class="muted" data-ui="tip.filterlist" title="tip.filterlist">Mit <code>Alle Werte</code> wird die Tabelle auf den Graph-Zeitbereich gesetzt und Filter deaktiviert.</div>
 
             <div class="row" style="margin-top:0;">
               <div style="min-width: 110px;">
@@ -302,6 +323,7 @@
             <div class="muted" id="edit_info"></div>
           </div>
         </div>
+        <div class="muted" data-ui="tip.editlist" title="tip.editlist">Doppelklick in der Tabelle uebernimmt einen Punkt. Nachbarwerte zeigen Kontext vor/nach dem Punkt.</div>
         <div class="table_box" id="edit_box">
           <table id="edit_tbl">
             <thead>
@@ -320,23 +342,27 @@
           </table>
         </div>
 
+        <details id="edit_neighbors" class="table_wrap" style="margin-top: 10px;" data-ui="editlist_neighbors" title="editlist_neighbors">
+          <summary>Nachbarwerte (n davor / n danach)</summary>
+          <div class="muted" id="edit_neighbors_info" data-ui="editlist_neighbors_info" title="editlist_neighbors_info"></div>
+          <div class="table_box" style="margin-top: 8px;">
+            <table id="edit_neighbors_tbl" data-ui="editlist_neighbors_table" title="editlist_neighbors_table">
+              <thead>
+                <tr>
+                  <th style="width:70px;">Aktion</th>
+                  <th>Zeit</th>
+                  <th>Wert</th>
+                </tr>
+              </thead>
+              <tbody id="edit_neighbors_rows"></tbody>
+            </table>
+          </div>
+        </details>
+
         <div class="tbl_actions" style="justify-content:flex-start; margin-top: 10px;">
           <button class="btn_sm" id="edit_remove" data-ui="editlist_remove">Aus Liste loeschen</button>
           <button class="btn_sm" id="edit_undo_all" data-ui="editlist_undo_all">Undo alle</button>
           <button class="btn_sm" id="edit_apply" data-ui="editlist_apply">Alle Werte in Datenbank uebernehmen</button>
-        </div>
-      </div>
-    </details>
-
-    <details class="section" id="stats_section" {{ 'open' if cfg.get('ui_open_stats') else '' }} data-ui="section.stats" title="section.stats">
-      <summary class="section_title">Statistik</summary>
-      <div class="table_wrap">
-        <div class="stats_box" id="stats_box" style="display:block;">
-          <div style="font-weight:700; margin-top: 8px;">Gesamtstatistik (Alles)</div>
-          <table class="stats_tbl"><tbody id="stats_tot_body"></tbody></table>
-
-          <div style="font-weight:700; margin-top: 10px;">Statistik Zeitraum (Graph/Tabelle)</div>
-          <table class="stats_tbl"><tbody id="stats_curr_body"></tbody></table>
         </div>
       </div>
     </details>
@@ -396,9 +422,14 @@ const $backupBadge = document.getElementById('backup_badge');
 
 const $graphMarkers = document.getElementById('graph_markers');
 
-const $statsBox = document.getElementById('stats_box');
 const $statsTotBody = document.getElementById('stats_tot_body');
 const $statsCurrBody = document.getElementById('stats_curr_body');
+
+const $btnTblAllValues = document.getElementById('tbl_all_values');
+
+const $editNeighbors = document.getElementById('edit_neighbors');
+const $editNeighborsInfo = document.getElementById('edit_neighbors_info');
+const $editNeighborsRows = document.getElementById('edit_neighbors_rows');
 
 const canvas = document.getElementById('chart');
 const ctx = canvas.getContext('2d');
@@ -417,6 +448,7 @@ const $btnEditApply = document.getElementById('edit_apply');
 
 let UI_DECIMALS = 3;
 let UI_TABLE_VISIBLE_ROWS = 20;
+let UI_EDIT_NEIGHBORS_N = 5;
 
 function fmt(x){ if(x === null || x === undefined || x === "") return ""; return String(x); }
 
@@ -540,7 +572,120 @@ let LAST_FILTER_KEYS_IN_VIEW = [];
 
 let EDIT_LIST = new Map();
 
+let EDIT_ACTIVE_KEY = "";
+let _NEIGHBOR_TIMER = null;
+let _NEIGHBOR_INFLIGHT = false;
+
 let LAST_SERIES_KEY = "";
+
+function _activeEditKey(){
+  if(EDIT_ACTIVE_KEY && EDIT_LIST.has(EDIT_ACTIVE_KEY)) return EDIT_ACTIVE_KEY;
+  const keys = Array.from(EDIT_SELECTED || []);
+  for(const k of keys){ if(EDIT_LIST.has(k)) return k; }
+  return "";
+}
+
+function _graphWindowForNeighbors(){
+  const startMs = TABLE_TIME.graph_start_ms;
+  const stopMs = TABLE_TIME.graph_stop_ms;
+  if(!(isFinite(startMs) && isFinite(stopMs))) return null;
+  const s = new Date(Math.min(startMs, stopMs)).toISOString();
+  const e = new Date(Math.max(startMs, stopMs)).toISOString();
+  return { start: s, stop: e };
+}
+
+function scheduleEditNeighborsLoad(key){
+  if(_NEIGHBOR_TIMER) clearTimeout(_NEIGHBOR_TIMER);
+  _NEIGHBOR_TIMER = setTimeout(()=>{ loadEditNeighbors(key || _activeEditKey()).catch(()=>{}); }, 250);
+}
+
+async function loadEditNeighbors(key){
+  if(!$editNeighbors || !$editNeighborsRows) return;
+  const k = key || _activeEditKey();
+  if(!k){
+    try{ $editNeighbors.open = false; }catch(e){}
+    if($editNeighborsRows) $editNeighborsRows.innerHTML = "";
+    if($editNeighborsInfo) $editNeighborsInfo.textContent = "";
+    return;
+  }
+  if(_NEIGHBOR_INFLIGHT) return;
+  if(!LAST_ROWS || !LAST_ROWS.length){
+    if($editNeighborsInfo) $editNeighborsInfo.textContent = "Bitte zuerst Daten laden (Aktualisieren).";
+    return;
+  }
+  const win = _graphWindowForNeighbors();
+  if(!win){
+    if($editNeighborsInfo) $editNeighborsInfo.textContent = "Bitte im Graph einen Bereich waehlen (Zoom/Range-Slider).";
+    return;
+  }
+
+  const e = EDIT_LIST.get(k);
+  if(!e) return;
+  _NEIGHBOR_INFLIGHT = true;
+  try{
+    if($editNeighborsInfo) $editNeighborsInfo.textContent = `Lade Nachbarwerte (${UI_EDIT_NEIGHBORS_N} davor / ${UI_EDIT_NEIGHBORS_N} danach)...`;
+    const payload = {
+      measurement: e.measurement,
+      field: e.field,
+      entity_id: e.entity_id,
+      friendly_name: e.friendly_name,
+      center_time: e.time,
+      start: win.start,
+      stop: win.stop,
+      n: UI_EDIT_NEIGHBORS_N,
+    };
+    const j = await api("./api/point_neighbors", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)});
+    const older = j.older || [];
+    const newer = j.newer || [];
+
+    // Update direct neighbors for the row buttons
+    const closestOlder = older.length ? older[older.length - 1].value : null;
+    const closestNewer = newer.length ? newer[0].value : null;
+    e.older_value = (typeof closestOlder === "number" && isFinite(closestOlder)) ? closestOlder : e.older_value;
+    e.newer_value = (typeof closestNewer === "number" && isFinite(closestNewer)) ? closestNewer : e.newer_value;
+    EDIT_LIST.set(k, e);
+
+    // Render table
+    $editNeighborsRows.innerHTML = "";
+    function addRow(kind, ts, val){
+      const tr = document.createElement("tr");
+      if(kind === "center") tr.classList.add("selected");
+      const tdA = document.createElement("td");
+      if(kind === "center"){
+        tdA.textContent = "";
+      }else{
+        const b = document.createElement("button");
+        b.className = "btn_sm";
+        b.textContent = "nehmen";
+        b.addEventListener("click", (ev)=>{ _stop(ev); setDraftValue(k, val); });
+        tdA.appendChild(b);
+      }
+      const tdT = document.createElement("td");
+      tdT.textContent = fmtTs(ts);
+      const tdV = document.createElement("td");
+      tdV.textContent = (val === null || val === undefined) ? "" : fmtNum(val);
+      tr.appendChild(tdA);
+      tr.appendChild(tdT);
+      tr.appendChild(tdV);
+      $editNeighborsRows.appendChild(tr);
+    }
+    older.forEach(r=>addRow("older", r.time, r.value));
+    addRow("center", e.time, e.orig_value);
+    newer.forEach(r=>addRow("newer", r.time, r.value));
+
+    if($editNeighborsInfo){
+      $editNeighborsInfo.textContent = `Zeitraum (Graph): ${fmtTs(win.start)} bis ${fmtTs(win.stop)}`;
+    }
+    try{ $editNeighbors.open = true; }catch(e){}
+
+    // Re-render edit table so older/newer buttons enable
+    renderEditTable();
+  }catch(ex){
+    if($editNeighborsInfo) $editNeighborsInfo.textContent = String(ex && ex.message ? ex.message : ex);
+  }finally{
+    _NEIGHBOR_INFLIGHT = false;
+  }
+}
 
 function rowKey(row){
   return String(row && row.time ? row.time : "");
@@ -865,6 +1010,15 @@ async function loadUiConfig(){
       if($tableBox) $tableBox.style.setProperty("--row-h", Math.trunc(rh) + "px");
       if($editBox) $editBox.style.setProperty("--row-h", Math.trunc(rh) + "px");
     }
+
+    const nn = Number(cfg.ui_edit_neighbors_n);
+    if(isFinite(nn) && nn >= 1 && nn <= 50) UI_EDIT_NEIGHBORS_N = Math.trunc(nn);
+    try{
+      if($editNeighbors){
+        const sum = $editNeighbors.querySelector('summary');
+        if(sum) sum.textContent = `Nachbarwerte (${UI_EDIT_NEIGHBORS_N} davor / ${UI_EDIT_NEIGHBORS_N} danach)`;
+      }
+    }catch(e){}
 
     const fs = Number(cfg.ui_font_size_px);
     if(isFinite(fs) && fs >= 10 && fs <= 22) document.documentElement.style.setProperty("--ui-font", fs + "px");
@@ -1287,7 +1441,6 @@ function _statsRowsCurrent(stats){
 }
 
 function renderStats(){
-  if(!$statsBox) return;
   _setStatsBody($statsTotBody, _statsRowsTotal(LAST_STATS_TOT));
   _setStatsBody($statsCurrBody, _statsRowsCurrent(LAST_STATS_CURR));
 }
@@ -1480,7 +1633,9 @@ function renderEditTable(){
     cb.addEventListener("click", (ev)=>_stop(ev));
     cb.addEventListener("change", ()=>{
       if(cb.checked) EDIT_SELECTED.add(key); else EDIT_SELECTED.delete(key);
+      EDIT_ACTIVE_KEY = key;
       renderEditTable();
+      scheduleEditNeighborsLoad(key);
     });
     tdSel.appendChild(cb);
 
@@ -1573,7 +1728,9 @@ function renderEditTable(){
       const tag = target && target.tagName ? String(target.tagName).toLowerCase() : "";
       if(tag === "input" || tag === "button") return;
       if(EDIT_SELECTED.has(key)) EDIT_SELECTED.delete(key); else EDIT_SELECTED.add(key);
+      EDIT_ACTIVE_KEY = key;
       renderEditTable();
+      scheduleEditNeighborsLoad(key);
     });
 
     tr.addEventListener("dblclick", ()=>{ removeFromEditListByKey(key); });
@@ -1616,6 +1773,10 @@ function addToEditListByKey(key){
   EDIT_LIST.set(key, {
     key,
     time: row.time,
+    measurement: $m ? $m.value : "",
+    field: $f ? $f.value : "",
+    entity_id: $e ? ($e.value || null) : null,
+    friendly_name: $n ? ($n.value || null) : null,
     orig_value: origV,
     orig_fmt: origFmt,
     decimals,
@@ -1633,8 +1794,10 @@ function removeFromEditListByKey(key){
   if(!key) return;
   EDIT_LIST.delete(key);
   EDIT_SELECTED.delete(key);
+  if(EDIT_ACTIVE_KEY === key) EDIT_ACTIVE_KEY = "";
   renderEditTable();
   renderTable();
+  scheduleEditNeighborsLoad("");
 }
 
 function setDraftValue(key, raw){
@@ -1971,6 +2134,30 @@ if($graphMarkers) $graphMarkers.addEventListener("change", ()=>{
 // Table time from graph
 if($tblTimeFromGraph) $tblTimeFromGraph.addEventListener("change", ()=>{
   TABLE_TIME.from_graph = !!$tblTimeFromGraph.checked;
+  saveState();
+  renderTableRange();
+  renderTable();
+});
+
+// Show all values in current graph window (no value filter)
+if($btnTblAllValues) $btnTblAllValues.addEventListener("click", (ev)=>{
+  _stop(ev);
+  if(!LAST_ROWS || !LAST_ROWS.length){ err("Bitte zuerst Daten laden (Aktualisieren). "); return; }
+  const startMs = TABLE_TIME.graph_start_ms;
+  const stopMs = TABLE_TIME.graph_stop_ms;
+  if(!(isFinite(startMs) && isFinite(stopMs))){
+    err("Alle Werte ist nur verfuegbar, wenn der Graph einen Bereich anzeigt (Zoom/Range-Slider).");
+    return;
+  }
+  // Force graph-window + disable value filter
+  TABLE_TIME.from_graph = true;
+  if($tblTimeFromGraph) $tblTimeFromGraph.checked = true;
+  TABLE_FILTER.enabled = false;
+  if($tblEnabled) $tblEnabled.checked = false;
+  // Leave OUTLIER mode
+  OUTLIER_ACTIVE = false;
+  OUTLIER_ROWS = [];
+  FILTER_SELECTED = new Set();
   saveState();
   renderTableRange();
   renderTable();

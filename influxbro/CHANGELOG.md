@@ -2,6 +2,20 @@
 
 <!-- markdownlint-disable MD024 MD013 -->
 
+## 1.11.7
+
+### Features
+- Dashboard: Statistik aufgeteilt (Gesamtstatistik unter Auswahl, Zeitraum-Statistik direkt unter Graph).
+- Filtertabelle: Button "Alle Werte" (zeigt alle Werte im Graph-Zeitbereich ohne Werte-Filter).
+- Bearbeitungsliste: Nachbarwerte (n davor/n danach) unterhalb der Liste; n ist konfigurierbar.
+- Restore: nur noch Ja/Nein Bestaetigung (kein Phrase-Input).
+
+### Bug Fixes
+- Logs: Supervisor-Logs robuster (Fallback ueber Add-on slug, falls /addons/self/logs fehlschlaegt).
+
+### Maintenance
+- Markdownlint: MD013 in `.markdownlint.json` deaktiviert.
+
 ## 1.11.6
 
 ### Features

@@ -301,6 +301,7 @@ DEFAULT_CFG = {
     # UI defaults
     "ui_table_visible_rows": 20,
     "ui_table_row_height_px": 16,
+    "ui_edit_neighbors_n": 5,
     "ui_decimals": 3,
 
     "ui_font_size_px": 14,
@@ -318,7 +319,8 @@ DEFAULT_CFG = {
     "ui_open_graph": False,
     "ui_open_filterlist": False,
     "ui_open_editlist": False,
-    "ui_open_stats": False,
+    "ui_open_stats_total": False,
+    "ui_open_stats_current": True,
 
     # Outlier scan defaults (max jump per point)
     # Based on a typical household connection: 3-phase 400V, 35A -> ~24.2kW; use 30kW as practical ceiling.
@@ -881,6 +883,23 @@ def api_logs():
         t = (txt or "").strip().replace("\n", " ")
         return (t[:240] + "...") if len(t) > 240 else t
 
+    def _extract_slug(txt: str) -> str | None:
+        raw = _unwrap(txt)
+        try:
+            data = json.loads(raw) if raw else {}
+        except Exception:
+            return None
+        if not isinstance(data, dict):
+            return None
+        d = data.get("data") if "data" in data else data
+        if not isinstance(d, dict):
+            return None
+        for k in ("slug", "addon", "add_on", "addon_slug"):
+            v = d.get(k)
+            if isinstance(v, str) and v.strip():
+                return v.strip()
+        return None
+
     try:
         tail = int(request.args.get("tail", "2000"))
     except Exception:
@@ -892,7 +911,7 @@ def api_logs():
 
     sup_lines = min(max(tail, 0), 5000)
     q = f"?lines={sup_lines}" if sup_lines else ""
-    # Prefer self to avoid slug mismatch; keep both legacy path prefixes.
+    # Try self first. Some Supervisor versions return 500 for self/logs; fall back to explicit slug.
     candidates = [
         "/addons/self/logs" + q,
         "/addons/self/logs",
@@ -907,6 +926,19 @@ def api_logs():
             status, txt, used = st, out, p
             break
         status, txt, used = st, out, p
+
+    if status == 500:
+        # Try to resolve slug and re-run logs with explicit addon id.
+        st_info, info_txt = _supervisor_get("/addons/self/info", timeout_s=8)
+        if st_info == 200 and info_txt:
+            slug = _extract_slug(info_txt)
+            if slug:
+                for p in (f"/addons/{slug}/logs" + q, f"/addons/{slug}/logs"):
+                    st, out = _supervisor_get(p, timeout_s=10)
+                    if st == 200 and out:
+                        status, txt, used = st, out, p
+                        break
+                    status, txt, used = st, out, p
 
     if status != 200:
         msg = _short_err_body(txt)
@@ -960,6 +992,23 @@ def api_logs_diag():
         t = t.replace("\n", " ")
         return (t[:n] + "...") if len(t) > n else t
 
+    def _extract_slug(txt: str) -> str | None:
+        raw = _unwrap(txt)
+        try:
+            data = json.loads(raw) if raw else {}
+        except Exception:
+            return None
+        if not isinstance(data, dict):
+            return None
+        d = data.get("data") if "data" in data else data
+        if not isinstance(d, dict):
+            return None
+        for k in ("slug", "addon", "add_on", "addon_slug"):
+            v = d.get(k)
+            if isinstance(v, str) and v.strip():
+                return v.strip()
+        return None
+
     token_present = bool(_supervisor_token())
     try:
         lines = int(request.args.get("lines", "80"))
@@ -976,6 +1025,16 @@ def api_logs_diag():
         "/addons/self/logs",
     ]
 
+    slug: str | None = None
+    st_info, info_txt = _supervisor_get("/addons/self/info", timeout_s=8)
+    if st_info == 200 and info_txt:
+        slug = _extract_slug(info_txt)
+        if slug:
+            candidates.extend([
+                f"/addons/{slug}/logs" + q,
+                f"/addons/{slug}/logs",
+            ])
+
     checks: list[dict[str, Any]] = []
     for p in candidates:
         st, out = _supervisor_get(p, timeout_s=8)
@@ -987,7 +1046,12 @@ def api_logs_diag():
             "unwrapped": _snip(_unwrap(out)),
         })
 
-    return jsonify({"ok": True, "token_present": token_present, "checks": checks})
+    return jsonify({
+        "ok": True,
+        "token_present": token_present,
+        "self_info": {"status": st_info, "slug": slug, "body": _snip(info_txt)},
+        "checks": checks,
+    })
 
 
 def _backup_safe(s: str) -> str:
@@ -1366,12 +1430,10 @@ def api_backup_restore():
         return jsonify({"ok": False, "error": "Writes are disabled. Enable allow_delete in add-on options."}), 403
 
     body = request.get_json(force=True) or {}
-    confirm = body.get("confirm", "")
-    if confirm != DELETE_CONFIRM_PHRASE:
-        return (
-            jsonify({"ok": False, "error": f"Confirmation phrase mismatch. Type exactly: {DELETE_CONFIRM_PHRASE}"}),
-            400,
-        )
+    confirm = body.get("confirm", False)
+    ok_confirm = confirm is True or str(confirm).strip().lower() in ("1", "true", "yes", "on")
+    if not ok_confirm:
+        return jsonify({"ok": False, "error": "Confirmation required"}), 400
 
     backup_id = (body.get("id") or "").strip()
     if not backup_id:
@@ -1426,12 +1488,10 @@ def api_backup_copy():
         return jsonify({"ok": False, "error": "Writes are disabled. Enable allow_delete in add-on options."}), 403
 
     body = request.get_json(force=True) or {}
-    confirm = body.get("confirm", "")
-    if confirm != DELETE_CONFIRM_PHRASE:
-        return (
-            jsonify({"ok": False, "error": f"Confirmation phrase mismatch. Type exactly: {DELETE_CONFIRM_PHRASE}"}),
-            400,
-        )
+    confirm = body.get("confirm", False)
+    ok_confirm = confirm is True or str(confirm).strip().lower() in ("1", "true", "yes", "on")
+    if not ok_confirm:
+        return jsonify({"ok": False, "error": "Confirmation required"}), 400
 
     backup_id = (body.get("id") or "").strip()
     if not backup_id:
@@ -1450,6 +1510,8 @@ def api_backup_copy():
     if body.get("start") and body.get("stop"):
         try:
             start_dt, stop_dt = _get_start_stop_from_payload(body)
+            if not start_dt or not stop_dt:
+                raise ValueError("start and stop required")
             start_ns = _dt_to_ns(start_dt)
             stop_ns = _dt_to_ns(stop_dt)
         except Exception as e:
@@ -1632,6 +1694,7 @@ def api_set_config():
     _clamp_int("ui_font_size_px", 14, 10, 22)
     _clamp_int("ui_font_small_px", 11, 9, 18)
     _clamp_int("ui_table_row_height_px", 16, 12, 40)
+    _clamp_int("ui_edit_neighbors_n", 5, 1, 50)
     _clamp_float("ui_checkbox_scale", 0.85, 0.5, 1.6)
     _clamp_int("ui_filter_label_width_px", 170, 80, 360)
     _clamp_int("ui_filter_control_width_px", 320, 180, 900)
@@ -1985,6 +2048,103 @@ from(bucket: "{cfg["bucket"]}")
             return jsonify({"ok": True, "rows": rows})
     except Exception as e:
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
+
+
+@app.post("/api/point_neighbors")
+def api_point_neighbors():
+    """Return n points before/after a given center time within a time window."""
+
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    if int(cfg.get("influx_version", 2)) != 2:
+        return jsonify({"ok": False, "error": "neighbors currently supports InfluxDB v2 only"}), 400
+    if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+        return jsonify({
+            "ok": False,
+            "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
+        }), 400
+
+    body = request.get_json(force=True) or {}
+    measurement = str(body.get("measurement") or "").strip()
+    field = str(body.get("field") or "").strip()
+    entity_id = str(body.get("entity_id") or "").strip() or None
+    friendly_name = str(body.get("friendly_name") or "").strip() or None
+    center_raw = str(body.get("center_time") or "").strip()
+
+    if not measurement or not field:
+        return jsonify({"ok": False, "error": "measurement and field required"}), 400
+    if not center_raw:
+        return jsonify({"ok": False, "error": "center_time required"}), 400
+
+    try:
+        center_dt = _parse_iso_datetime(center_raw)
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"invalid center_time: {e}"}), 400
+
+    try:
+        start_dt, stop_dt = _get_start_stop_from_payload(body)
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"invalid start/stop: {e}"}), 400
+    if not start_dt or not stop_dt:
+        return jsonify({"ok": False, "error": "start and stop required"}), 400
+
+    try:
+        n = int(body.get("n", 5))
+    except Exception:
+        n = 5
+    if n < 1:
+        n = 1
+    if n > 50:
+        n = 50
+
+    start = _dt_to_rfc3339_utc(start_dt)
+    stop = _dt_to_rfc3339_utc(stop_dt)
+    center = _dt_to_rfc3339_utc(center_dt)
+    extra = flux_tag_filter(entity_id, friendly_name)
+
+    q_older = f'''
+from(bucket: "{cfg["bucket"]}")
+  |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
+  |> filter(fn: (r) => r._time < time(v: "{center}"))
+  |> keep(columns: ["_time","_value"])
+  |> sort(columns: ["_time"], desc: true)
+  |> limit(n: {n})
+'''
+
+    q_newer = f'''
+from(bucket: "{cfg["bucket"]}")
+  |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
+  |> filter(fn: (r) => r._time > time(v: "{center}"))
+  |> keep(columns: ["_time","_value"])
+  |> sort(columns: ["_time"], desc: false)
+  |> limit(n: {n})
+'''
+
+    older: list[dict[str, Any]] = []
+    newer: list[dict[str, Any]] = []
+    try:
+        with v2_client(cfg) as c:
+            qapi = c.query_api()
+            tables = qapi.query(q_older, org=cfg["org"])
+            for t in tables or []:
+                for r in getattr(t, "records", []) or []:
+                    ts = r.get_time()
+                    val = r.get_value()
+                    if isinstance(ts, datetime):
+                        older.append({"time": _dt_to_rfc3339_utc(ts), "value": val})
+            tables = qapi.query(q_newer, org=cfg["org"])
+            for t in tables or []:
+                for r in getattr(t, "records", []) or []:
+                    ts = r.get_time()
+                    val = r.get_value()
+                    if isinstance(ts, datetime):
+                        newer.append({"time": _dt_to_rfc3339_utc(ts), "value": val})
+    except Exception as e:
+        return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
+
+    older.reverse()  # ascending: oldest -> closest
+    return jsonify({"ok": True, "older": older, "newer": newer, "n": n})
 
 @app.post("/api/stats")
 def stats():

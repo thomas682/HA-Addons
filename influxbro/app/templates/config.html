@@ -137,6 +137,12 @@
         <input id="ui_table_row_height_px" type="number" min="12" max="40" />
         <div class="muted">Zellen-Hoehe in der Fehler-/Filtertabelle und Bearbeitungsliste.</div>
       </div>
+
+      <div>
+        <label>Bearbeitungsliste: Nachbarwerte (n)</label>
+        <input id="ui_edit_neighbors_n" type="number" min="1" max="50" />
+        <div class="muted">Zeigt n Werte davor und n Werte danach unterhalb der Bearbeitungsliste.</div>
+      </div>
       <div>
         <label>Dezimalstellen (Anzeige)</label>
         <input id="ui_decimals" type="number" min="0" max="10" />
@@ -191,7 +197,8 @@
           <div><label><input type="checkbox" id="ui_open_graph" /> Graph</label></div>
           <div><label><input type="checkbox" id="ui_open_filterlist" /> Fehler-/Filtertabelle</label></div>
           <div><label><input type="checkbox" id="ui_open_editlist" /> Bearbeitungsliste</label></div>
-          <div><label><input type="checkbox" id="ui_open_stats" /> Statistik</label></div>
+          <div><label><input type="checkbox" id="ui_open_stats_total" /> Gesamtstatistik (Alles)</label></div>
+          <div><label><input type="checkbox" id="ui_open_stats_current" /> Statistik Zeitraum (Graph)</label></div>
         </div>
       </div>
     </div>
@@ -247,11 +254,12 @@ const ids = [
   "influx_version","scheme","host","port","verify_ssl","timeout_seconds",
   "org","bucket","token",
   "database","username","password",
-  "ui_table_visible_rows","ui_table_row_height_px","ui_decimals",
+  "ui_table_visible_rows","ui_table_row_height_px","ui_edit_neighbors_n","ui_decimals",
   "ui_font_size_px","ui_font_small_px","ui_checkbox_scale",
   "ui_filter_label_width_px","ui_filter_control_width_px","ui_filter_search_width_px"
   ,"ui_repo_url"
-  ,"ui_open_selection","ui_open_graph","ui_open_filterlist","ui_open_editlist","ui_open_stats"
+  ,"ui_open_selection","ui_open_graph","ui_open_filterlist","ui_open_editlist"
+  ,"ui_open_stats_total","ui_open_stats_current"
   ,"outlier_max_step_w","outlier_max_step_kw","outlier_max_step_wh","outlier_max_step_kwh"
 ];
 
@@ -285,6 +293,7 @@ function setForm(cfg){
 
   el.ui_table_visible_rows.value = cfg.ui_table_visible_rows ?? 20;
   el.ui_table_row_height_px.value = cfg.ui_table_row_height_px ?? 16;
+  el.ui_edit_neighbors_n.value = cfg.ui_edit_neighbors_n ?? 5;
   el.ui_decimals.value = cfg.ui_decimals ?? 3;
 
   el.ui_font_size_px.value = cfg.ui_font_size_px ?? 14;
@@ -299,7 +308,8 @@ function setForm(cfg){
   el.ui_open_graph.checked = !!cfg.ui_open_graph;
   el.ui_open_filterlist.checked = !!cfg.ui_open_filterlist;
   el.ui_open_editlist.checked = !!cfg.ui_open_editlist;
-  el.ui_open_stats.checked = !!cfg.ui_open_stats;
+  el.ui_open_stats_total.checked = !!cfg.ui_open_stats_total;
+  el.ui_open_stats_current.checked = (cfg.ui_open_stats_current !== false);
 
   el.outlier_max_step_w.value = cfg.outlier_max_step_w ?? 30000;
   el.outlier_max_step_kw.value = cfg.outlier_max_step_kw ?? 30;
@@ -328,6 +338,7 @@ function getForm(){
 
     ui_table_visible_rows: parseInt(el.ui_table_visible_rows.value, 10),
     ui_table_row_height_px: parseInt(el.ui_table_row_height_px.value, 10),
+    ui_edit_neighbors_n: parseInt(el.ui_edit_neighbors_n.value, 10),
     ui_decimals: parseInt(el.ui_decimals.value, 10),
 
     ui_font_size_px: parseInt(el.ui_font_size_px.value, 10),
@@ -343,7 +354,8 @@ function getForm(){
     ui_open_graph: !!el.ui_open_graph.checked,
     ui_open_filterlist: !!el.ui_open_filterlist.checked,
     ui_open_editlist: !!el.ui_open_editlist.checked,
-    ui_open_stats: !!el.ui_open_stats.checked,
+    ui_open_stats_total: !!el.ui_open_stats_total.checked,
+    ui_open_stats_current: !!el.ui_open_stats_current.checked,
 
     outlier_max_step_w: parseFloat(el.outlier_max_step_w.value),
     outlier_max_step_kw: parseFloat(el.outlier_max_step_kw.value),

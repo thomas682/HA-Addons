@@ -131,21 +131,17 @@
            </div>
          </div>
 
-         <div class="row" data-ui="restore.actions" title="restore.actions">
-           <div style="min-width: 320px; flex:1;">
-             <label>Bestaetigungstext (delete_confirm_phrase)</label>
-             <input id="confirm" placeholder="{{ delete_phrase }}" data-ui="restore.confirm" title="restore.confirm" />
-             <div class="muted">Schreibzugriff ist an <code>allow_delete</code> + <code>delete_confirm_phrase</code> gekoppelt.</div>
-           </div>
-           <div>
-             <label>&nbsp;</label>
-             <button id="copy" data-ui="restore.copy" title="restore.copy">Quelle -> Ziel (ueberschreiben)</button>
-           </div>
-           <div>
-             <label>&nbsp;</label>
-             <button id="run" data-ui="restore.run" title="restore.run">Restore auf gleiche Serie</button>
-           </div>
-         </div>
+          <div class="row" data-ui="restore.actions" title="restore.actions">
+            <div class="muted" style="min-width: 320px; flex:1; padding-top: 6px;" data-ui="restore.write_hint" title="restore.write_hint">Hinweis: Schreiben ist nur moeglich, wenn <code>allow_delete</code> im Add-on aktiviert ist.</div>
+            <div>
+              <label>&nbsp;</label>
+              <button id="copy" data-ui="restore.copy" title="restore.copy">Quelle -> Ziel (ueberschreiben)</button>
+            </div>
+            <div>
+              <label>&nbsp;</label>
+              <button id="run" data-ui="restore.run" title="restore.run">Restore auf gleiche Serie</button>
+            </div>
+          </div>
 
          <div id="err" class="err"></div>
          <div id="ok" class="ok"></div>
@@ -157,7 +153,6 @@
       const $rows = document.getElementById('rows');
       const $qBackup = document.getElementById('q_backup');
       const $srcInfo = document.getElementById('src_info');
-      const $confirm = document.getElementById('confirm');
       const $err = document.getElementById('err');
       const $ok = document.getElementById('ok');
       const $run = document.getElementById('run');
@@ -337,11 +332,11 @@
         err(""); ok("");
         const id = String(SELECTED_ID || "").trim();
         if(!id) throw new Error("Bitte ein Backup auswaehlen.");
-        if(!confirm("Restore wirklich starten?\n\n" + id)) return;
+        if(!confirm("Restore wirklich ueberschreiben? Datenverlust moeglich.\n\nBackup: " + id)) return;
         const j = await api("./api/backup_restore", {
           method:"POST",
           headers:{"Content-Type":"application/json"},
-          body: JSON.stringify({ id, confirm: $confirm.value || "" })
+          body: JSON.stringify({ id, confirm: true })
         });
         ok(j.message || "Restore fertig.");
       }
@@ -353,11 +348,11 @@
         await resolveTarget();
         if(!LAST_TARGET) throw new Error('Ziel nicht aufgeloest.');
         const tf = timeFilter();
-        const msg = `Quelle -> Ziel wirklich schreiben?\n\nBackup: ${id}\nZiel: ${LAST_TARGET.measurement}/${LAST_TARGET.field}`;
+        const msg = `Quelle -> Ziel wirklich ueberschreiben? Datenverlust moeglich.\n\nBackup: ${id}\nZiel: ${LAST_TARGET.measurement}/${LAST_TARGET.field}`;
         if(!confirm(msg)) return;
         const payload = {
           id,
-          confirm: $confirm.value || '',
+          confirm: true,
           target_measurement: LAST_TARGET.measurement,
           target_field: LAST_TARGET.field,
           target_entity_id: LAST_TARGET.entity_id,
