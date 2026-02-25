@@ -733,6 +733,7 @@ function drawPlotly(rows){
           saveState();
           renderTable();
           autoScaleYFromWindow();
+          scheduleStatsCurrentReload();
           return;
         }
 
@@ -748,6 +749,7 @@ function drawPlotly(rows){
             saveState();
             renderTable();
             autoScaleYFromWindow();
+            scheduleStatsCurrentReload();
           }
         }
       }catch(e){}
@@ -766,6 +768,7 @@ function drawPlotly(rows){
       saveState();
       renderTable();
       try{ window.Plotly.relayout($plotly, {"yaxis.autorange": true}); }catch(e){}
+      scheduleStatsCurrentReload();
     });
   }
   return true;
@@ -1171,6 +1174,50 @@ function fmtLastValue(s){
 let HA_ENTITY_INFO = { available: false, entity: null, error: null };
 let LAST_STATS_TOT = null;
 let LAST_STATS_CURR = null;
+
+let _STATS_CURR_TIMER = null;
+let _STATS_CURR_INFLIGHT = false;
+
+function _graphWindowIso(){
+  const a = TABLE_TIME.graph_start_ms;
+  const b = TABLE_TIME.graph_stop_ms;
+  if(!(isFinite(a) && isFinite(b))) return null;
+  const start = new Date(Math.min(a, b));
+  const stop = new Date(Math.max(a, b));
+  if(!isFinite(start.getTime()) || !isFinite(stop.getTime())) return null;
+  return { start: start.toISOString(), stop: stop.toISOString() };
+}
+
+async function loadStatsCurrentFromGraph(){
+  const win = _graphWindowIso();
+  if(!win) return;
+  if(_STATS_CURR_INFLIGHT) return;
+  _STATS_CURR_INFLIGHT = true;
+  try{
+    const base = currentFilters();
+    const jCurr = await api("./api/stats", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({
+        ...base,
+        stats_scope: "range",
+        start: win.start,
+        stop: win.stop,
+      }),
+    });
+    LAST_STATS_CURR = jCurr.stats || {};
+    renderStats();
+  }catch(e){
+    // keep previous stats
+  }finally{
+    _STATS_CURR_INFLIGHT = false;
+  }
+}
+
+function scheduleStatsCurrentReload(){
+  if(_STATS_CURR_TIMER) clearTimeout(_STATS_CURR_TIMER);
+  _STATS_CURR_TIMER = setTimeout(()=>{ loadStatsCurrentFromGraph().catch(()=>{}); }, 650);
+}
 
 function _setStatsBody(tbody, rows){
   if(!tbody) return;
@@ -1705,7 +1752,11 @@ async function loadStats(){
 
   // Current range
   try{
-    const jCurr = await api("./api/stats", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({...base, stats_scope: "current"})});
+    const win = _graphWindowIso();
+    const payload = win
+      ? {...base, stats_scope: "range", start: win.start, stop: win.stop}
+      : {...base, stats_scope: "current"};
+    const jCurr = await api("./api/stats", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)});
     LAST_STATS_CURR = jCurr.stats || {};
   }catch(e){
     LAST_STATS_CURR = {};

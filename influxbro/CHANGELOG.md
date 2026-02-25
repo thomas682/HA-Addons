@@ -29,6 +29,17 @@
 ### Maintenance
 - (keine)
 
+## 1.11.4
+
+### Features
+- Dashboard: Statistik "Zeitraum (Graph/Tabelle)" folgt dem aktuell im Graph selektierten Bereich (Zoom/Range-Slider).
+
+### Bug Fixes
+- (keine)
+
+### Maintenance
+- (keine)
+
 ## 1.11.1
 
 ### Features
