@@ -21,9 +21,10 @@
     .content { padding: 16px; }
     h2 { margin: 0; }
     .muted { opacity: 0.7; font-size: 12px; }
-    .row { display:flex; gap: 10px; flex-wrap:wrap; align-items:end; margin-top: 10px; }
+    .row { display:flex; gap: 10px; flex-wrap:wrap; align-items:end; margin-top: 10px; justify-content:flex-start; }
     label { display:block; font-size: 12px; opacity: 0.8; }
-    input, select, button { padding: 10px 12px; height: 40px; box-sizing: border-box; }
+    input, select, button, textarea { padding: 10px 12px; height: 40px; box-sizing: border-box; }
+    textarea { font: inherit; resize: vertical; min-height: 40px; width: 100%; white-space: pre-wrap; overflow-wrap: anywhere; }
     button { cursor:pointer; }
     .card { border: 1px solid #ddd; border-radius: 12px; padding: 12px; margin-top: 12px; }
     .err { color: #b00020; margin-top: 8px; white-space: pre-wrap; }
@@ -76,31 +77,19 @@
           </div>
         </div>
 
-        <div class="row">
+        <div class="row" data-ui="backup.selection_row" title="backup.selection_row">
           <div style="min-width: 320px; flex:1;">
             <label>Aktueller Messwert</label>
-            <input id="sel" readonly data-ui="backup.selection" title="backup.selection" />
+            <textarea id="sel" readonly data-ui="backup.selection" title="backup.selection"></textarea>
           </div>
-          <div>
-            <label>&nbsp;</label>
-            <button id="create_full" data-ui="backup.create_full" title="backup.create_full">Fullbackup</button>
-          </div>
-          <div>
-            <label>&nbsp;</label>
-            <button id="create_range" data-ui="backup.create_range_zoom" title="backup.create_range_zoom">Zeitbereich Backup (Zoom)</button>
-          </div>
-          <div>
-            <label>&nbsp;</label>
-            <button id="create_range_sel" data-ui="backup.create_range_sel" title="backup.create_range_sel">Zeitbereich Backup (Auswahl)</button>
-          </div>
-          <div>
-            <label>&nbsp;</label>
-            <button id="reload" data-ui="backup.reload" title="backup.reload">Liste aktualisieren</button>
-          </div>
-          <div>
-            <label>&nbsp;</label>
-            <button id="del" data-ui="backup.delete" title="backup.delete">Backup loeschen</button>
-          </div>
+        </div>
+
+        <div class="row" data-ui="backup.actions" title="backup.actions">
+          <div><label>&nbsp;</label><button id="create_full" data-ui="backup.create_full" title="backup.create_full">Fullbackup</button></div>
+          <div><label>&nbsp;</label><button id="create_range" data-ui="backup.create_range_zoom" title="backup.create_range_zoom">Zeitbereich Backup (Zoom)</button></div>
+          <div><label>&nbsp;</label><button id="create_range_sel" data-ui="backup.create_range_sel" title="backup.create_range_sel">Zeitbereich Backup (Auswahl)</button></div>
+          <div><label>&nbsp;</label><button id="reload" data-ui="backup.reload" title="backup.reload">Liste aktualisieren</button></div>
+          <div><label>&nbsp;</label><button id="del" data-ui="backup.delete" title="backup.delete">Backup loeschen</button></div>
         </div>
         <div id="err" class="err"></div>
         <div id="ok" class="ok"></div>
@@ -108,7 +97,7 @@
         <table data-ui="backup.table" title="backup.table">
           <thead>
             <tr>
-              <th style="width:26px;"></th>
+              <th style="width:20px;"><input type="checkbox" id="sel_all" data-ui="backup.select_all" title="backup.select_all"/></th>
               <th>Backup Datum</th>
               <th>Anzahl Werte</th>
               <th>Groesse</th>
@@ -137,9 +126,20 @@
       const $createRangeSel = document.getElementById('create_range_sel');
       const $reload = document.getElementById('reload');
       const $del = document.getElementById('del');
+      const $selAll = document.getElementById('sel_all');
 
       let SELECTED_ID = "";
+      let SELECTED_IDS = new Set();
       let LAST_RESOLVED = null;
+      let BACKUP_META = new Map();
+
+      function autoGrow(el){
+        try{
+          if(!el) return;
+          el.style.height = 'auto';
+          el.style.height = Math.min(260, Math.max(40, el.scrollHeight)) + 'px';
+        }catch(e){}
+      }
 
       function err(s){ $err.textContent = s || ""; }
       function ok(s){ $ok.textContent = s || ""; }
@@ -280,27 +280,63 @@
       }
 
       function render(list){
+        BACKUP_META = new Map();
         $rows.innerHTML = "";
-        (list || []).forEach(b => {
+        const shown = (list || []).slice();
+        (shown || []).forEach(b => {
           const id = String(b.id || "");
+          if(id) BACKUP_META.set(id, b);
           const tr = document.createElement('tr');
-          if(id && id === SELECTED_ID) tr.classList.add('selected');
+          tr.dataset.id = id;
+          if(id && SELECTED_IDS.has(id)) tr.classList.add('selected');
+
           const td0 = document.createElement('td');
-          const rb = document.createElement('input');
-          rb.type = 'radio';
-          rb.name = 'backup';
-          rb.checked = id === SELECTED_ID;
-          rb.addEventListener('change', ()=>{ SELECTED_ID = id; render(list); });
-          td0.appendChild(rb);
+          const cb = document.createElement('input');
+          cb.type = 'checkbox';
+          cb.checked = id && SELECTED_IDS.has(id);
+          cb.addEventListener('click', (ev)=>{ ev.stopPropagation(); });
+          cb.addEventListener('change', ()=>{
+            if(!id) return;
+            if(cb.checked) SELECTED_IDS.add(id); else SELECTED_IDS.delete(id);
+            SELECTED_ID = id;
+            tr.classList.toggle('selected', SELECTED_IDS.has(id));
+            renderSelectAll(shown);
+          });
+          td0.appendChild(cb);
 
           const td1 = document.createElement('td'); td1.textContent = b.created_at || "";
           const td2 = document.createElement('td'); td2.textContent = (b.point_count === null || b.point_count === undefined) ? "" : String(b.point_count);
           const td3 = document.createElement('td'); td3.textContent = fmtBytes(b.bytes);
           const td4 = document.createElement('td'); td4.textContent = b.file || "";
           tr.appendChild(td0); tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tr.appendChild(td4);
-          tr.addEventListener('click', ()=>{ SELECTED_ID = id; render(list); });
+
+          tr.addEventListener('click', ()=>{
+            if(!id) return;
+            SELECTED_ID = id;
+            if(SELECTED_IDS.has(id)) SELECTED_IDS.delete(id); else SELECTED_IDS.add(id);
+            cb.checked = SELECTED_IDS.has(id);
+            tr.classList.toggle('selected', SELECTED_IDS.has(id));
+            renderSelectAll(shown);
+          });
           $rows.appendChild(tr);
         });
+
+        renderSelectAll(shown);
+      }
+
+      function renderSelectAll(list){
+        if(!$selAll) return;
+        const ids = (list || []).map(b => String(b.id||""))
+          .filter(Boolean);
+        if(!ids.length){
+          $selAll.checked = false;
+          $selAll.indeterminate = false;
+          return;
+        }
+        let sel = 0;
+        ids.forEach(id=>{ if(SELECTED_IDS.has(id)) sel++; });
+        $selAll.checked = sel === ids.length;
+        $selAll.indeterminate = sel > 0 && sel < ids.length;
       }
 
       async function loadList(){
@@ -316,6 +352,7 @@
         renderZoomTxt();
         LAST_RESOLVED = await resolveFromState();
         $sel.value = [LAST_RESOLVED.friendly_name || "", LAST_RESOLVED.entity_id || "", LAST_RESOLVED.measurement, LAST_RESOLVED.field].filter(Boolean).join(" | ");
+        autoGrow($sel);
         const qs = new URLSearchParams({
           measurement: LAST_RESOLVED.measurement,
           field: LAST_RESOLVED.field,
@@ -367,15 +404,27 @@
 
       async function deleteBackup(){
         err(""); ok("");
-        if(!SELECTED_ID) throw new Error("Bitte ein Backup auswaehlen.");
-        if(!confirm("Backup wirklich loeschen?")) return;
-        const j = await api("./api/backup_delete", {
-          method:"POST",
-          headers:{"Content-Type":"application/json"},
-          body: JSON.stringify({ id: SELECTED_ID })
+        const ids = Array.from(SELECTED_IDS || []).filter(Boolean);
+        if(!ids.length) throw new Error("Bitte ein oder mehrere Backups auswaehlen.");
+        const labels = ids.map(id=>{
+          const b = BACKUP_META.get(id) || {};
+          const dt = b.created_at || '';
+          const name = b.display_name || '';
+          const file = b.file || id;
+          return [dt, name, file].filter(Boolean).join(' | ') || id;
         });
-        ok(j.message || "Geloescht.");
+        const msg = ids.length === 1
+          ? ("Backup wirklich loeschen?\n\n" + labels[0])
+          : ("Backups wirklich loeschen?\n\n" + labels.slice(0, 6).join("\n") + (labels.length > 6 ? `\n... (+${labels.length-6})` : ""));
+        if(!confirm(msg)) return;
+        let del = 0;
+        for(const id of ids){
+          await api("./api/backup_delete", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ id })});
+          del++;
+        }
+        ok(`Backups geloescht: ${del}`);
         SELECTED_ID = "";
+        SELECTED_IDS = new Set();
         await loadList();
       }
 
@@ -384,6 +433,16 @@
       $createRange.addEventListener('click', ()=>createRangeBackup().catch(e=>err(String(e && e.message ? e.message : e))));
       $createRangeSel.addEventListener('click', ()=>createRangeBackupSel().catch(e=>err(String(e && e.message ? e.message : e))));
       $del.addEventListener('click', ()=>deleteBackup().catch(e=>err(String(e && e.message ? e.message : e))));
+
+      if($selAll){
+        $selAll.addEventListener('change', ()=>{
+          const want = !!$selAll.checked;
+          const ids = Array.from(document.querySelectorAll('#rows tr')).map(tr=>String(tr.dataset.id||""))
+            .filter(Boolean);
+          SELECTED_IDS = new Set(want ? ids : []);
+          loadList().catch(()=>{});
+        });
+      }
 
       // Default time range from dashboard state
       try{

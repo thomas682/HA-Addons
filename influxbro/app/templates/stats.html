@@ -22,7 +22,9 @@
     h2 { margin: 0; }
     .muted { opacity: 0.7; font-size: 12px; }
     .row { display:flex; gap: 10px; flex-wrap:wrap; align-items:end; margin-top: 10px; justify-content:flex-start; }
+    [data-ui="stats.controls"] { align-items: flex-start; }
     label { display:block; font-size: 12px; opacity: 0.8; }
+    .help { min-height: 16px; margin-top: 4px; }
     input, select, button { padding: 10px 12px; height: 40px; box-sizing: border-box; }
     button { cursor:pointer; }
     .card { border: 1px solid #ddd; border-radius: 12px; padding: 12px; margin-top: 12px; }
@@ -75,12 +77,13 @@
               <option value="all">Alle</option>
               <option value="custom">Benutzerdefiniert…</option>
             </select>
+            <div class="muted help" data-ui="stats.range_help" title="stats.range_help"></div>
           </div>
 
           <div style="min-width: 180px;">
             <label>_field Filter</label>
             <input id="field_filter" value="value" data-ui="stats.field_filter" title="stats.field_filter" />
-            <div class="muted">Legt fest, welche Serien/Zeilen geladen werden (Default: <code>value</code>).</div>
+            <div class="muted help" data-ui="stats.field_filter_help" title="stats.field_filter_help">Legt fest, welche Serien/Zeilen geladen werden (Default: <code>value</code>).</div>
           </div>
 
           <div id="custom" style="min-width: 320px; display:none;">
@@ -94,6 +97,7 @@
           <div style="flex:1; min-width: 260px;">
             <label>Suche</label>
             <input id="q" placeholder="Volltext..." data-ui="stats.search" title="stats.search" />
+            <div class="muted help" data-ui="stats.search_help" title="stats.search_help"></div>
           </div>
         </div>
 

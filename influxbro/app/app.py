@@ -894,9 +894,7 @@ def api_logs():
     # Prefer self to avoid slug mismatch; keep both legacy path prefixes.
     candidates = [
         "/addons/self/logs" + q,
-        "/supervisor/api/addons/self/logs" + q,
         "/addons/self/logs",
-        "/supervisor/api/addons/self/logs",
     ]
 
     status = 0
@@ -974,9 +972,7 @@ def api_logs_diag():
     q = f"?lines={lines}" if lines else ""
     candidates = [
         "/addons/self/logs" + q,
-        "/supervisor/api/addons/self/logs" + q,
         "/addons/self/logs",
-        "/supervisor/api/addons/self/logs",
     ]
 
     checks: list[dict[str, Any]] = []
@@ -1046,6 +1042,19 @@ def _list_backups() -> list[dict[str, Any]]:
     return out
 
 
+def _lp_escape_key(v: str) -> str:
+    # For measurement, tag keys, and field keys.
+    return (v or "").replace("\\", "\\\\").replace(" ", "\\ ").replace(",", "\\,").replace("=", "\\=")
+
+
+def _lp_escape_tag_value(v: str) -> str:
+    return (v or "").replace("\\", "\\\\").replace(" ", "\\ ").replace(",", "\\,").replace("=", "\\=")
+
+
+def _dt_to_ns(dt: datetime) -> int:
+    return int(dt.astimezone(timezone.utc).timestamp() * 1_000_000_000)
+
+
 @app.get("/api/backups")
 def api_backups():
     measurement = (request.args.get("measurement") or "").strip()
@@ -1071,6 +1080,12 @@ def api_backups():
 
     latest = filtered[0] if filtered else None
     return jsonify({"ok": True, "backups": filtered, "latest": latest})
+
+
+@app.get("/api/backups_all")
+def api_backups_all():
+    backups = _list_backups()
+    return jsonify({"ok": True, "backups": backups})
 
 
 @app.post("/api/backup_create")
@@ -1393,6 +1408,161 @@ def api_backup_restore():
                     applied += len(batch)
 
         return jsonify({"ok": True, "message": f"Restored points: {applied}", "applied": applied})
+    except Exception as e:
+        return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
+
+
+@app.post("/api/backup_copy")
+def api_backup_copy():
+    """Copy points from a backup to a target signal.
+
+    This rewrites measurement/field and optionally overrides entity_id/friendly_name tags.
+    Existing points in the target series are overwritten (upsert) for matching timestamp+tags.
+    """
+
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    if not ALLOW_DELETE:
+        return jsonify({"ok": False, "error": "Writes are disabled. Enable allow_delete in add-on options."}), 403
+
+    body = request.get_json(force=True) or {}
+    confirm = body.get("confirm", "")
+    if confirm != DELETE_CONFIRM_PHRASE:
+        return (
+            jsonify({"ok": False, "error": f"Confirmation phrase mismatch. Type exactly: {DELETE_CONFIRM_PHRASE}"}),
+            400,
+        )
+
+    backup_id = (body.get("id") or "").strip()
+    if not backup_id:
+        return jsonify({"ok": False, "error": "id required"}), 400
+
+    target_measurement = (body.get("target_measurement") or "").strip()
+    target_field = (body.get("target_field") or "").strip()
+    if not target_measurement or not target_field:
+        return jsonify({"ok": False, "error": "target_measurement and target_field required"}), 400
+
+    target_entity_id = (body.get("target_entity_id") or "").strip() or None
+    target_friendly_name = (body.get("target_friendly_name") or "").strip() or None
+
+    start_ns: int | None = None
+    stop_ns: int | None = None
+    if body.get("start") and body.get("stop"):
+        try:
+            start_dt, stop_dt = _get_start_stop_from_payload(body)
+            start_ns = _dt_to_ns(start_dt)
+            stop_ns = _dt_to_ns(stop_dt)
+        except Exception as e:
+            return jsonify({"ok": False, "error": f"invalid start/stop: {e}"}), 400
+
+    if int(cfg.get("influx_version", 2)) != 2:
+        return jsonify({"ok": False, "error": "copy currently supports InfluxDB v2 only"}), 400
+    if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+        return jsonify({
+            "ok": False,
+            "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
+        }), 400
+
+    meta_path, lp_path = _backup_files(backup_id)
+    if not lp_path.exists():
+        return jsonify({"ok": False, "error": "backup not found"}), 404
+
+    tgt_meas = _lp_escape_key(target_measurement)
+    tgt_field = _lp_escape_key(target_field)
+    override_tags: dict[str, str] = {}
+    if target_entity_id:
+        override_tags["entity_id"] = _lp_escape_tag_value(target_entity_id)
+    if target_friendly_name:
+        override_tags["friendly_name"] = _lp_escape_tag_value(target_friendly_name)
+
+    def _rewrite_line(line: str) -> str | None:
+        # Split: <measurement,tags> <fieldset> <timestamp>
+        s = line.strip("\n")
+        if not s.strip():
+            return None
+        i = s.find(" ")
+        if i <= 0:
+            return None
+        mt = s[:i]
+        rest = s[i + 1 :]
+        j = rest.rfind(" ")
+        if j <= 0:
+            return None
+        fieldset = rest[:j]
+        ts_raw = rest[j + 1 :].strip()
+        if not ts_raw:
+            return None
+
+        # Optional time filter
+        if start_ns is not None and stop_ns is not None:
+            try:
+                ts = int(ts_raw)
+            except Exception:
+                return None
+            if ts < start_ns or ts > stop_ns:
+                return None
+
+        # Parse measurement + tags
+        parts = mt.split(",")
+        tags_in = parts[1:]
+        tag_map: dict[str, str] = {}
+        tag_order: list[str] = []
+        for tok in tags_in:
+            if "=" not in tok:
+                continue
+            k, v = tok.split("=", 1)
+            tag_order.append(k)
+            tag_map[k] = v
+        for k, v in override_tags.items():
+            tag_map[k] = v
+
+        tags_out: list[str] = []
+        for k in tag_order:
+            if k in tag_map:
+                tags_out.append(f"{k}={tag_map[k]}")
+        for k in sorted(tag_map.keys()):
+            if k not in tag_order:
+                tags_out.append(f"{k}={tag_map[k]}")
+
+        # Replace field key (first key only)
+        eq = fieldset.find("=")
+        if eq <= 0:
+            return None
+        field_val = fieldset[eq + 1 :]
+        new_fieldset = f"{tgt_field}={field_val}"
+
+        if tags_out:
+            new_mt = tgt_meas + "," + ",".join(tags_out)
+        else:
+            new_mt = tgt_meas
+        return f"{new_mt} {new_fieldset} {ts_raw}"
+
+    try:
+        with v2_client(cfg) as c:
+            wapi = c.write_api(write_options=SYNCHRONOUS)
+            batch: list[str] = []
+            applied = 0
+            skipped = 0
+            with lp_path.open("r", encoding="utf-8") as f:
+                for raw in f:
+                    out = _rewrite_line(raw)
+                    if not out:
+                        skipped += 1
+                        continue
+                    batch.append(out)
+                    if len(batch) >= 2000:
+                        wapi.write(bucket=cfg["bucket"], org=cfg["org"], record=batch, write_precision=WritePrecision.NS)
+                        applied += len(batch)
+                        batch = []
+                if batch:
+                    wapi.write(bucket=cfg["bucket"], org=cfg["org"], record=batch, write_precision=WritePrecision.NS)
+                    applied += len(batch)
+
+        return jsonify({
+            "ok": True,
+            "message": f"Copied points: {applied}",
+            "applied": applied,
+            "skipped": skipped,
+        })
     except Exception as e:
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
 
@@ -2258,15 +2428,15 @@ data = from(bucket: "{cfg_local["bucket"]}")
 data
   |> reduce(
     identity: {{seen: false, count: 0, sum: 0.0, min: 0.0, max: 0.0, oldest_time: time(v: "1970-01-01T00:00:00Z"), newest_time: time(v: "1970-01-01T00:00:00Z"), last_value: 0.0}},
-    fn: (r, acc) => ({{
+    fn: (r, accumulator) => ({{
       seen: true,
-      count: acc.count + 1,
-      sum: acc.sum + float(v: r._value),
-      min: if acc.seen == false then float(v: r._value) else if float(v: r._value) < acc.min then float(v: r._value) else acc.min,
-      max: if acc.seen == false then float(v: r._value) else if float(v: r._value) > acc.max then float(v: r._value) else acc.max,
-      oldest_time: if acc.seen == false then r._time else if r._time < acc.oldest_time then r._time else acc.oldest_time,
-      newest_time: if acc.seen == false then r._time else if r._time > acc.newest_time then r._time else acc.newest_time,
-      last_value: if acc.seen == false then float(v: r._value) else if r._time >= acc.newest_time then float(v: r._value) else acc.last_value,
+      count: accumulator.count + 1,
+      sum: accumulator.sum + float(v: r._value),
+      min: if accumulator.seen == false then float(v: r._value) else if float(v: r._value) < accumulator.min then float(v: r._value) else accumulator.min,
+      max: if accumulator.seen == false then float(v: r._value) else if float(v: r._value) > accumulator.max then float(v: r._value) else accumulator.max,
+      oldest_time: if accumulator.seen == false then r._time else if r._time < accumulator.oldest_time then r._time else accumulator.oldest_time,
+      newest_time: if accumulator.seen == false then r._time else if r._time > accumulator.newest_time then r._time else accumulator.newest_time,
+      last_value: if accumulator.seen == false then float(v: r._value) else if r._time >= accumulator.newest_time then float(v: r._value) else accumulator.last_value,
     }})
   )
   |> map(fn: (r) => ({{

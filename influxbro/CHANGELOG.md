@@ -40,6 +40,20 @@
 ### Maintenance
 - (keine)
 
+## 1.11.5
+
+### Features
+- Handbuch: als eigene HTML-Seite mit Inhaltsverzeichnis links (Markdown Rendering).
+- Restore: neue UI (Backup-Liste mit Volltextsuche, Ziel-Auswahl wie Dashboard, Copy Quelle->Ziel, Restore gleiche Serie, optionaler Zeitfilter).
+- Backup: Messwert-Anzeige mehrzeilig + Multi-Select in Backup-Liste.
+
+### Bug Fixes
+- Gesamtstatistik: Flux `reduce()` kompatibel (Parameter `accumulator`).
+- Logs: Supervisor-Logs Pfad korrigiert (kein `/supervisor/api/...`).
+
+### Maintenance
+- Statistik: Controls sauber ausgerichtet.
+
 ## 1.11.1
 
 ### Features

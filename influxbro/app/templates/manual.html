@@ -21,8 +21,30 @@
     .content { padding: 16px; }
     .muted { opacity: 0.7; font-size: 12px; }
     .card { border: 1px solid #ddd; border-radius: 12px; padding: 12px; margin-top: 12px; }
-    pre { white-space: pre-wrap; word-break: break-word; margin: 0; font-size: 13px; line-height: 1.45; }
     h2 { margin: 0; }
+
+    .manual_layout { display:grid; grid-template-columns: 240px 1fr; gap: 12px; margin-top: 12px; }
+    @media (max-width: 980px){ .manual_layout { grid-template-columns: 1fr; } }
+    .toc { border: 1px solid #ddd; border-radius: 12px; padding: 10px; max-height: calc(100vh - 130px); overflow:auto; position: sticky; top: 12px; }
+    @media (max-width: 980px){ .toc { position: relative; top: auto; max-height: none; } }
+    .toc_title { font-weight: 800; margin-bottom: 6px; }
+    .toc a { display:block; text-decoration:none; color: inherit; padding: 4px 6px; border-radius: 8px; }
+    .toc a:hover { background: #f6f6f6; }
+    .toc .lvl2 { padding-left: 10px; opacity: 0.9; }
+    .toc .lvl3 { padding-left: 20px; opacity: 0.85; }
+    .toc .lvl4 { padding-left: 30px; opacity: 0.8; }
+
+    .md { line-height: 1.5; }
+    .md h1, .md h2, .md h3, .md h4 { margin: 18px 0 10px 0; }
+    .md h1:first-child, .md h2:first-child { margin-top: 0; }
+    .md p { margin: 8px 0; }
+    .md ul { margin: 8px 0 8px 20px; }
+    .md li { margin: 4px 0; }
+    .md code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.95em; background: #f6f6f6; padding: 1px 4px; border-radius: 6px; }
+    .md pre { overflow:auto; background: #0b0b0c; color: #f2f2f2; padding: 10px 12px; border-radius: 12px; }
+    .md pre code { background: transparent; padding: 0; }
+    .md a { color: inherit; }
+    .md img { max-width: 100%; height: auto; border-radius: 12px; border: 1px solid #eee; }
   </style>
 </head>
 <body>
@@ -31,9 +53,148 @@
     <main class="content" data-ui="manual.page" title="manual.page">
       <h2>Handbuch</h2>
       <div class="muted">Quelle: <code>influxbro/MANUAL.md</code></div>
-      <div class="card">
-        <pre id="manual_txt" data-ui="manual.text" title="manual.text">{{ manual_text }}</pre>
+
+      <div class="manual_layout" data-ui="manual.layout" title="manual.layout">
+        <aside class="toc" data-ui="manual.toc" title="manual.toc">
+          <div class="toc_title">Inhalt</div>
+          <div id="toc_links"></div>
+        </aside>
+
+        <section class="card md" data-ui="manual.content" title="manual.content">
+          <div id="manual_html"></div>
+        </section>
       </div>
+
+      <script>
+      const RAW = {{ (manual_text or "") | tojson }};
+
+      function esc(s){
+        return String(s||"")
+          .replace(/&/g,'&amp;')
+          .replace(/</g,'&lt;')
+          .replace(/>/g,'&gt;');
+      }
+
+      function slugify(s){
+        return String(s||"")
+          .toLowerCase()
+          .replace(/[^a-z0-9\s_-]/g,'')
+          .trim()
+          .replace(/[\s_]+/g,'-')
+          .replace(/-+/g,'-') || 'section';
+      }
+
+      function inlineMd(s){
+        let out = esc(s);
+        // images
+        out = out.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (m, alt, url)=>{
+          const u = String(url||'').trim();
+          return `<img alt="${esc(alt)}" src="${esc(u)}"/>`;
+        });
+        // links
+        out = out.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (m, txt, url)=>{
+          const u = String(url||'').trim();
+          return `<a href="${esc(u)}" target="_blank" rel="noreferrer">${esc(txt)}</a>`;
+        });
+        // inline code
+        out = out.replace(/`([^`]+)`/g, (m, code)=>`<code>${esc(code)}</code>`);
+        return out;
+      }
+
+      function renderMarkdown(md){
+        const lines = String(md||'').replace(/\r\n/g,'\n').split('\n');
+        const toc = [];
+        const used = new Map();
+
+        let html = '';
+        let inCode = false;
+        let codeLang = '';
+        let codeBuf = [];
+        let inUl = false;
+
+        function closeUl(){ if(inUl){ html += '</ul>'; inUl = false; } }
+        function closeCode(){
+          if(inCode){
+            const code = esc(codeBuf.join('\n'));
+            html += `<pre><code class="lang-${esc(codeLang)}">${code}</code></pre>`;
+            inCode = false; codeLang=''; codeBuf=[];
+          }
+        }
+
+        function uniqId(base){
+          const n = (used.get(base)||0) + 1;
+          used.set(base, n);
+          return n === 1 ? base : `${base}-${n}`;
+        }
+
+        for(const raw of lines){
+          const line = raw || '';
+
+          const mFence = line.match(/^```\s*(\S+)?\s*$/);
+          if(mFence){
+            if(inCode){
+              closeCode();
+            }else{
+              closeUl();
+              inCode = true;
+              codeLang = (mFence[1]||'').trim();
+              codeBuf = [];
+            }
+            continue;
+          }
+
+          if(inCode){
+            codeBuf.push(line);
+            continue;
+          }
+
+          const mHead = line.match(/^(#{1,4})\s+(.*)$/);
+          if(mHead){
+            closeUl();
+            const lvl = mHead[1].length;
+            const txt = (mHead[2]||'').trim();
+            const id = uniqId(slugify(txt));
+            toc.push({lvl, txt, id});
+            html += `<h${lvl} id="${esc(id)}">${inlineMd(txt)}</h${lvl}>`;
+            continue;
+          }
+
+          const mLi = line.match(/^\s*-\s+(.*)$/);
+          if(mLi){
+            if(!inUl){ html += '<ul>'; inUl = true; }
+            html += `<li>${inlineMd(mLi[1])}</li>`;
+            continue;
+          }
+
+          if(!line.trim()){
+            closeUl();
+            continue;
+          }
+
+          closeUl();
+          html += `<p>${inlineMd(line)}</p>`;
+        }
+
+        closeUl();
+        closeCode();
+        return {html, toc};
+      }
+
+      const out = renderMarkdown(RAW);
+      const $html = document.getElementById('manual_html');
+      const $toc = document.getElementById('toc_links');
+      if($html) $html.innerHTML = out.html;
+      if($toc){
+        $toc.innerHTML = '';
+        out.toc.forEach(x=>{
+          const a = document.createElement('a');
+          a.href = '#' + x.id;
+          a.textContent = x.txt;
+          a.className = x.lvl === 1 ? '' : (x.lvl === 2 ? 'lvl2' : (x.lvl === 3 ? 'lvl3' : 'lvl4'));
+          $toc.appendChild(a);
+        });
+      }
+      </script>
     </main>
   </div>
 </body>
