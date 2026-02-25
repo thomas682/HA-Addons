@@ -42,6 +42,11 @@
     .col_num { min-width: 80px; text-align: right; }
     .col_act { min-width: 110px; }
     .btn_xs { padding: 6px 10px; height: 30px; font-size: 12px; }
+    .col_fn { min-width: 240px; }
+    .col_eid { min-width: 200px; }
+    .col_meas { min-width: 200px; }
+    .col_field { min-width: 140px; }
+    .col_last { min-width: 120px; text-align: right; }
   </style>
 </head>
 <body>
@@ -52,7 +57,7 @@
       <div class="muted">Gesamtstatistik fuer alle Messwerte (eine Zeile pro Serie).</div>
 
       <div class="card">
-        <div class="row">
+        <div class="row" data-ui="stats.controls" title="stats.controls">
           <div style="min-width: 220px;">
             <label>Zeitraum</label>
             <select id="range" data-ui="stats.range" title="stats.range">
@@ -72,6 +77,12 @@
             </select>
           </div>
 
+          <div style="min-width: 180px;">
+            <label>_field Filter</label>
+            <input id="field_filter" value="value" data-ui="stats.field_filter" title="stats.field_filter" />
+            <div class="muted">Legt fest, welche Serien/Zeilen geladen werden (Default: <code>value</code>).</div>
+          </div>
+
           <div id="custom" style="min-width: 320px; display:none;">
             <label>Von/Bis (lokal)</label>
             <div class="row" style="margin-top:0;">
@@ -84,6 +95,9 @@
             <label>Suche</label>
             <input id="q" placeholder="Volltext..." data-ui="stats.search" title="stats.search" />
           </div>
+        </div>
+
+        <div class="row" data-ui="stats.actions" title="stats.actions">
           <div>
             <label>&nbsp;</label>
             <button id="load" data-ui="stats.load" title="stats.load">Gesamtstatistik laden</button>
@@ -95,6 +109,10 @@
           <div>
             <label>&nbsp;</label>
             <button id="details_all" data-ui="stats.details_all" title="stats.details_all">Lade alle Details</button>
+          </div>
+          <div>
+            <label>&nbsp;</label>
+            <button id="delete_rows" data-ui="stats.delete_rows" title="stats.delete_rows">Loeschen</button>
           </div>
         </div>
 
@@ -110,11 +128,11 @@
             <thead>
               <tr>
                 <th class="col_act">Aktion</th>
-                <th data-key="friendly_name">friendly_name</th>
-                <th data-key="entity_id">entity_id</th>
-                <th data-key="measurement">_measurement</th>
-                <th data-key="field">_field</th>
-                <th data-key="last_value">last_value</th>
+                <th data-key="friendly_name" class="col_fn">friendly_name</th>
+                <th data-key="entity_id" class="col_eid">entity_id</th>
+                <th data-key="measurement" class="col_meas">_measurement</th>
+                <th data-key="field" class="col_field">_field</th>
+                <th data-key="last_value" class="col_last">last_value</th>
                 <th data-key="oldest_time" class="col_time">oldest</th>
                 <th data-key="newest_time" class="col_time">newest</th>
                 <th data-key="count" class="col_num">count</th>
@@ -134,10 +152,12 @@
       const $custom = document.getElementById('custom');
       const $start = document.getElementById('start');
       const $stop = document.getElementById('stop');
+      const $fieldFilter = document.getElementById('field_filter');
       const $q = document.getElementById('q');
       const $load = document.getElementById('load');
       const $cancel = document.getElementById('cancel');
       const $detailsAll = document.getElementById('details_all');
+      const $deleteRows = document.getElementById('delete_rows');
       const $info = document.getElementById('info');
       const $err = document.getElementById('err');
       const $count = document.getElementById('count');
@@ -150,6 +170,7 @@
       let SORT = { key: 'count', dir: 'desc' };
 
       const DELETED = new Set();
+      let LAST_VISIBLE_KEYS = [];
 
       let JOB_ID = "";
       let TIMER = null;
@@ -307,7 +328,15 @@
         }
         const tf = timeFilter();
         $info.textContent = 'starte...';
-        const j = await api('./api/global_stats_job/start', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({start: tf.start, stop: tf.stop})});
+        const j = await api('./api/global_stats_job/start', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({
+            start: tf.start,
+            stop: tf.stop,
+            field_filter: String(($fieldFilter && $fieldFilter.value) ? $fieldFilter.value : '').trim() || null,
+          })
+        });
         JOB_ID = String(j.job_id || '');
         TIMER = setInterval(()=>poll().catch(e=>err(String(e && e.message ? e.message : e))), 500);
         poll().catch(e=>err(String(e && e.message ? e.message : e)));
@@ -360,6 +389,8 @@
         if(q) rows = rows.filter(r=>txtRow(r).includes(q));
         rows = sortRows(rows);
 
+        LAST_VISIBLE_KEYS = rows.map(r => rowKey(r));
+
         if($count){
           const total = (ROWS || []).length;
           const visible = rows.length;
@@ -385,20 +416,14 @@
           btnDet.className = 'btn_xs';
           btnDet.textContent = r._details ? 'Detail: an' : 'Detail';
           btnDet.addEventListener('click', (ev)=>{ ev.preventDefault(); ev.stopPropagation(); r._details = !r._details; render(); });
-          const btnDel = document.createElement('button');
-          btnDel.className = 'btn_xs';
-          btnDel.style.marginLeft = '8px';
-          btnDel.textContent = 'Loeschen';
-          btnDel.addEventListener('click', (ev)=>{ ev.preventDefault(); ev.stopPropagation(); DELETED.add(rowKey(r)); render(); });
           tdAct.appendChild(btnDet);
-          tdAct.appendChild(btnDel);
           tr.appendChild(tdAct);
 
-          add(r.friendly_name,false,false);
-          add(r.entity_id,false,false);
-          add(r.measurement,false,false);
-          add(r.field,false,false);
-          add(r.last_value,false,true,'col_num');
+          add(r.friendly_name,false,false,'col_fn');
+          add(r.entity_id,false,false,'col_eid');
+          add(r.measurement,false,false,'col_meas');
+          add(r.field,false,false,'col_field');
+          add(r.last_value,false,true,'col_last');
           add(r.oldest_time,true,false,'col_time nowrap');
           add(r.newest_time,true,false,'col_time nowrap');
           add(r._details ? r.count : null,false,true,'col_num');
@@ -422,6 +447,10 @@
       $cancel.addEventListener('click', ()=>cancelJob().catch(e=>err(String(e && e.message ? e.message : e))));
       $detailsAll.addEventListener('click', ()=>{
         (ROWS||[]).forEach(r => r._details = true);
+        render();
+      });
+      $deleteRows.addEventListener('click', ()=>{
+        (LAST_VISIBLE_KEYS || []).forEach(k => { if(k) DELETED.add(k); });
         render();
       });
       $q.addEventListener('input', debounce(()=>render(), 120));

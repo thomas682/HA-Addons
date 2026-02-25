@@ -188,32 +188,36 @@
           <div><label><input type="checkbox" id="ui_open_stats" /> Statistik</label></div>
         </div>
       </div>
+    </div>
+    </div>
+  </details>
 
+  <details class="card" open data-ui="settings.section.outliers" title="settings.section.outliers">
+    <summary>Ausreisser</summary>
+    <div class="card_body">
+    <div class="grid">
       <div class="span2">
-        <h4>Ausreisser-Suche (Maximaler Sprung pro Datenpunkt)</h4>
         <div class="muted">Werte gelten als "unsinnig", wenn ein Sprung groesser als diese Grenze ist (nur Counter-Regel).</div>
-        <div class="grid" style="margin-top:8px;">
-          <div>
-            <label>W (max step)</label>
-            <input id="outlier_max_step_w" type="number" min="1000" max="200000" step="100" />
-            <div class="muted">Default: 30000 W (ca. 3x35A Hausanschluss).</div>
-          </div>
-          <div>
-            <label>kW (max step)</label>
-            <input id="outlier_max_step_kw" type="number" min="0.5" max="200" step="0.5" />
-            <div class="muted">Default: 30 kW.</div>
-          </div>
-          <div>
-            <label>Wh (max step)</label>
-            <input id="outlier_max_step_wh" type="number" min="100" max="10000000" step="100" />
-            <div class="muted">Achtung: abhaengig vom Messintervall.</div>
-          </div>
-          <div>
-            <label>kWh (max step)</label>
-            <input id="outlier_max_step_kwh" type="number" min="0.01" max="100000" step="0.1" />
-            <div class="muted">Achtung: abhaengig vom Messintervall.</div>
-          </div>
-        </div>
+      </div>
+      <div>
+        <label>W (max step)</label>
+        <input id="outlier_max_step_w" type="number" min="1000" max="200000" step="100" />
+        <div class="muted">Default: 30000 W (ca. 3x35A Hausanschluss).</div>
+      </div>
+      <div>
+        <label>kW (max step)</label>
+        <input id="outlier_max_step_kw" type="number" min="0.5" max="200" step="0.5" />
+        <div class="muted">Default: 30 kW.</div>
+      </div>
+      <div>
+        <label>Wh (max step)</label>
+        <input id="outlier_max_step_wh" type="number" min="100" max="10000000" step="100" />
+        <div class="muted">Achtung: abhaengig vom Messintervall.</div>
+      </div>
+      <div>
+        <label>kWh (max step)</label>
+        <input id="outlier_max_step_kwh" type="number" min="0.01" max="100000" step="0.1" />
+        <div class="muted">Achtung: abhaengig vom Messintervall.</div>
       </div>
     </div>
     </div>

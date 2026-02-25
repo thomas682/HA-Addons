@@ -2176,7 +2176,13 @@ def _job_public(job: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _global_stats_job_thread(job_id: str, cfg: dict[str, Any], start_dt: datetime, stop_dt: datetime) -> None:
+def _global_stats_job_thread(
+    job_id: str,
+    cfg: dict[str, Any],
+    start_dt: datetime,
+    stop_dt: datetime,
+    field_filter: str | None,
+) -> None:
     with GLOBAL_STATS_LOCK:
         job = GLOBAL_STATS_JOBS.get(job_id)
     if not job:
@@ -2190,6 +2196,7 @@ def _global_stats_job_thread(job_id: str, cfg: dict[str, Any], start_dt: datetim
 
     start = _dt_to_rfc3339_utc(start_dt)
     stop = _dt_to_rfc3339_utc(stop_dt)
+    ff = (field_filter or "").strip()
 
     def set_state(state: str, msg: str) -> None:
         with GLOBAL_STATS_LOCK:
@@ -2207,9 +2214,11 @@ def _global_stats_job_thread(job_id: str, cfg: dict[str, Any], start_dt: datetim
         set_state("counting", "Zaehle Datenpunkte (optional)...")
         total_points: int | None = None
         try:
+            ff_clause = f"  |> filter(fn: (r) => r._field == {_flux_str(ff)})\n" if ff else ""
             q_count = f'''
 from(bucket: "{cfg_local["bucket"]}")
   |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
+{ff_clause}  |> filter(fn: (r) => exists r._measurement and exists r._field)
   |> group()
   |> count(column: "_value")
 '''
@@ -2234,104 +2243,110 @@ from(bucket: "{cfg_local["bucket"]}")
             set_state("cancelled", "Abgebrochen.")
             return
 
-        set_state("scanning", "Lese Datenpunkte (Stream)...")
-        q = f'''
-from(bucket: "{cfg_local["bucket"]}")
+        set_state("query", "Berechne Statistiken in InfluxDB...")
+
+        # Server-side aggregation to avoid streaming all raw points.
+        ff_clause = f"|> filter(fn: (r) => r._field == {_flux_str(ff)})" if ff else ""
+        q_stats = f'''
+data = from(bucket: "{cfg_local["bucket"]}")
   |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
+  |> filter(fn: (r) => exists r._measurement and exists r._field)
+  {ff_clause}
   |> keep(columns: ["_measurement","_field","entity_id","friendly_name","_time","_value"])
+  |> group(columns: ["_measurement","_field","entity_id","friendly_name"])
+
+data
+  |> reduce(
+    identity: {{seen: false, count: 0, sum: 0.0, min: 0.0, max: 0.0, oldest_time: time(v: "1970-01-01T00:00:00Z"), newest_time: time(v: "1970-01-01T00:00:00Z"), last_value: 0.0}},
+    fn: (r, acc) => ({
+      seen: true,
+      count: acc.count + 1,
+      sum: acc.sum + float(v: r._value),
+      min: if acc.seen == false then float(v: r._value) else if float(v: r._value) < acc.min then float(v: r._value) else acc.min,
+      max: if acc.seen == false then float(v: r._value) else if float(v: r._value) > acc.max then float(v: r._value) else acc.max,
+      oldest_time: if acc.seen == false then r._time else if r._time < acc.oldest_time then r._time else acc.oldest_time,
+      newest_time: if acc.seen == false then r._time else if r._time > acc.newest_time then r._time else acc.newest_time,
+      last_value: if acc.seen == false then float(v: r._value) else if r._time >= acc.newest_time then float(v: r._value) else acc.last_value,
+    })
+  )
+  |> map(fn: (r) => ({
+    _measurement: r._measurement,
+    _field: r._field,
+    entity_id: r.entity_id,
+    friendly_name: r.friendly_name,
+    count: r.count,
+    min: r.min,
+    max: r.max,
+    mean: if r.count > 0 then r.sum / float(v: r.count) else 0.0,
+    oldest_time: r.oldest_time,
+    newest_time: r.newest_time,
+    last_value: r.last_value,
+  }))
+  |> keep(columns: ["_measurement","_field","entity_id","friendly_name","count","min","max","mean","oldest_time","newest_time","last_value"])
 '''
 
-        groups: dict[tuple[str, str, str, str], dict[str, Any]] = {}
-        scanned = 0
+        def _as_rfc3339(v: Any) -> str | None:
+            if isinstance(v, datetime):
+                return _dt_to_rfc3339_utc(v)
+            if isinstance(v, str) and v.strip():
+                return v.strip()
+            return None
+
+        rows: list[dict[str, Any]] = []
+        scanned_points = 0
+        groups_count = 0
         last_update = time.monotonic()
 
         with v2_client(cfg_local) as c:
             qapi = c.query_api()
-            for rec in qapi.query_stream(q, org=cfg_local["org"]):
+            for rec in qapi.query_stream(q_stats, org=cfg_local["org"]):
                 if should_cancel():
                     set_state("cancelled", "Abgebrochen.")
                     return
 
-                scanned += 1
-                t = rec.get_time()
-                v = rec.get_value()
                 vals = getattr(rec, "values", {}) or {}
                 m = str(vals.get("_measurement") or "")
                 f = str(vals.get("_field") or "")
                 eid = str(vals.get("entity_id") or "")
                 fn = str(vals.get("friendly_name") or "")
-                key = (m, f, eid, fn)
 
-                # Update progress occasionally
+                try:
+                    cnum = int(vals.get("count") or 0)
+                except Exception:
+                    cnum = 0
+
+                groups_count += 1
+                scanned_points += max(0, cnum)
+
+                rows.append({
+                    "measurement": m,
+                    "field": f,
+                    "entity_id": eid,
+                    "friendly_name": fn,
+                    "count": cnum,
+                    "oldest_time": _as_rfc3339(vals.get("oldest_time")),
+                    "newest_time": _as_rfc3339(vals.get("newest_time")),
+                    "last_value": vals.get("last_value"),
+                    "min": vals.get("min"),
+                    "max": vals.get("max"),
+                    "mean": vals.get("mean"),
+                })
+
                 now = time.monotonic()
                 if now - last_update > 0.3:
                     with GLOBAL_STATS_LOCK:
                         if job_id in GLOBAL_STATS_JOBS:
-                            GLOBAL_STATS_JOBS[job_id]["scanned_points"] = scanned
-                            GLOBAL_STATS_JOBS[job_id]["groups_count"] = len(groups)
+                            GLOBAL_STATS_JOBS[job_id]["scanned_points"] = scanned_points
+                            GLOBAL_STATS_JOBS[job_id]["groups_count"] = groups_count
                             GLOBAL_STATS_JOBS[job_id]["current"] = fn or eid or (m + "/" + f)
                     last_update = now
-
-                if not isinstance(t, datetime):
-                    continue
-                if isinstance(v, bool) or not isinstance(v, (int, float)):
-                    continue
-                fv = float(v)
-
-                st = groups.get(key)
-                if not st:
-                    st = {
-                        "measurement": m,
-                        "field": f,
-                        "entity_id": eid,
-                        "friendly_name": fn,
-                        "count": 0,
-                        "sum": 0.0,
-                        "min": fv,
-                        "max": fv,
-                        "oldest_time": t,
-                        "newest_time": t,
-                        "last_value": fv,
-                    }
-                    groups[key] = st
-
-                st["count"] += 1
-                st["sum"] += fv
-                if fv < st["min"]:
-                    st["min"] = fv
-                if fv > st["max"]:
-                    st["max"] = fv
-                if t < st["oldest_time"]:
-                    st["oldest_time"] = t
-                if t >= st["newest_time"]:
-                    st["newest_time"] = t
-                    st["last_value"] = fv
-
-        # Finalize rows
-        rows: list[dict[str, Any]] = []
-        for st in groups.values():
-            cnum = int(st.get("count") or 0)
-            mean = (float(st.get("sum") or 0.0) / float(cnum)) if cnum > 0 else None
-            rows.append({
-                "measurement": st.get("measurement") or "",
-                "field": st.get("field") or "",
-                "entity_id": st.get("entity_id") or "",
-                "friendly_name": st.get("friendly_name") or "",
-                "count": cnum,
-                "oldest_time": _dt_to_rfc3339_utc(st["oldest_time"]),
-                "newest_time": _dt_to_rfc3339_utc(st["newest_time"]),
-                "last_value": st.get("last_value"),
-                "min": st.get("min"),
-                "max": st.get("max"),
-                "mean": mean,
-            })
 
         rows.sort(key=lambda r: int(r.get("count") or 0), reverse=True)
 
         with GLOBAL_STATS_LOCK:
             if job_id in GLOBAL_STATS_JOBS:
                 GLOBAL_STATS_JOBS[job_id]["rows"] = rows
-                GLOBAL_STATS_JOBS[job_id]["scanned_points"] = scanned
+                GLOBAL_STATS_JOBS[job_id]["scanned_points"] = scanned_points
                 GLOBAL_STATS_JOBS[job_id]["groups_count"] = len(rows)
 
         set_state("done", f"Fertig. Zeilen: {len(rows)}")
@@ -2359,6 +2374,11 @@ def api_global_stats_job_start():
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 400
 
+    field_filter = body.get("field_filter")
+    if field_filter is not None:
+        field_filter = str(field_filter)
+    ff = (field_filter or "").strip() or None
+
     job_id = uuid.uuid4().hex
     job = {
         "id": job_id,
@@ -2373,6 +2393,7 @@ def api_global_stats_job_start():
         "rows": [],
         "cancelled": False,
         "error": None,
+        "field_filter": ff,
     }
 
     # Cleanup old jobs
@@ -2386,7 +2407,7 @@ def api_global_stats_job_start():
 
     t = threading.Thread(
         target=_global_stats_job_thread,
-        args=(job_id, cfg, start_dt, stop_dt),
+        args=(job_id, cfg, start_dt, stop_dt, ff),
         daemon=True,
     )
     t.start()
@@ -2966,9 +2987,11 @@ def _read_addon_version() -> str:
 
 ADDON_VERSION = _read_addon_version()
 
+
 @app.get("/api/info")
 def api_info():
     return jsonify({"ok": True, "version": ADDON_VERSION})
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8099)

@@ -4,6 +4,16 @@
 
 InfluxBro hilft dir, InfluxDB-Zeitreihen aus Home Assistant zu durchsuchen, auszuwerten, zu sichern und bei Bedarf Werte gezielt zu korrigieren.
 
+Dieses Handbuch ist absichtlich sehr konkret: Jedes sichtbare Element in der GUI wird beschrieben, damit du immer weisst, wofuer es ist.
+
+## Screenshots
+
+### Dashboard (Beispiel)
+
+> Hinweis: Lege das Screenshot-Bild als Datei im Repository ab, dann wird es hier angezeigt.
+
+![Dashboard Beispiel](docs/images/dashboard-hardcopy.png)
+
 ## Navigation
 
 Links findest du die Bereiche:
@@ -23,6 +33,12 @@ Links findest du die Bereiche:
 - `Messwert (Klartext / friendly_name)`: den sichtbaren Namen aus HA auswaehlen.
 - `entity_id (optional)`: falls mehrere Entities denselben Namen haben, hier eingrenzen.
 
+Weitere Elemente:
+
+- `Erweitert: Measurement / Field`: zeigt die intern aufgeloesten Werte `_measurement` und `_field`.
+- `Aktualisieren`: laedt Graph, Fehler-/Filtertabelle und Statistik fuer den aktuellen Zeitraum.
+- `Donate`/`PayPal`: Link zur freiwilligen Unterstuetzung.
+
 Tipp: Wenn du mit der Maus ueber einem Feld bleibst, zeigt der Tooltip den internen Feldnamen (z.B. `filter.friendly.select`). Damit kannst du mir exakt sagen, welches Feld du meinst.
 
 ### 2) Zeitraum setzen
@@ -38,6 +54,7 @@ Tipp: Wenn du mit der Maus ueber einem Feld bleibst, zeigt der Tooltip den inter
 
 - Zoom/Pan ist moeglich.
 - Option `Messpunkte markieren`: schaltet runde Marker ein/aus.
+- Ziehen der Groesse: Unter dem Plot gibt es einen horizontalen Griff. Ziehen nach oben/unten aendert die Plot-Hoehe.
 
 ## Filterliste (Tabelle)
 
@@ -45,8 +62,20 @@ Tipp: Wenn du mit der Maus ueber einem Feld bleibst, zeigt der Tooltip den inter
 - `Zeit gefuehrt durch Graph`:
   - EIN: Zoombereich im Graph bestimmt die Zeit-Einschraenkung der Tabelle.
   - AUS: Tabelle zeigt wieder den Zeitraum aus der Zeitraum-Auswahl.
+- `Filter aktiv`: schaltet den Werte-Filter (Links/Verb/Rechts) an/aus.
+- `Links`/`Verb.`/`Rechts`: einfache Regel um Werte als Fehler zu markieren (z.B. kleiner als 0 oder groesser als 999999).
 - Doppelklick auf eine Zeile: uebernimmt den Punkt direkt in die Bearbeitungsliste.
 - Button `In Bearbeitungsliste`: uebernimmt alle markierten Zeilen.
+
+Ausreisser-Fehlersuche:
+
+- `Optionen`: oeffnet Regeln fuer die Scan-Logik.
+- `NULL Werte`: markiert NULL/fehlende Werte.
+- `0-Werte`: markiert exakte 0.
+- `Grenzen` + `Min/Max`: markiert Werte ausserhalb eines Bereichs.
+- `Counter-Ausreisser (Spruenge)` + `Max Sprung`: erkennt Spruenge in Counter-Serien (Grenzen kommen aus den Einstellungen).
+- `Fehlersuche Ausreisser`: fuehrt den Scan im aktuellen Graph-Fenster aus.
+- `Zuruecksetzen`: entfernt Ausreisser-Markierungen.
 
 Hinweis: Werte, die bereits in der Bearbeitungsliste sind, werden in der Filterliste farblich markiert und koennen nicht doppelt hinzugefuegt werden.
 
@@ -108,10 +137,26 @@ Wichtig: Die Aenderungen bleiben markiert, bis du sie wirklich uebernimmst.
 
 ## Einstellungen
 
-- InfluxDB Verbindung (v1/v2) konfigurieren.
-- UI-Parameter:
-  - Schriftgroessen, Checkbox-Groesse
-  - Breiten der Filterfelder
+- Bereiche sind einklappbar.
+
+Verbindung:
+
+- `Influx Version`, `Scheme`, `Host`, `Port`, `verify_ssl`, `timeout_seconds`: steuern die Verbindung zur InfluxDB.
+- `InfluxDB v2` (`org`, `bucket`, `token`): v2 Zugangsdaten.
+- `InfluxDB v1` (`database`, `username`, `password`): v1 Zugangsdaten.
+
+UI:
+
+- `Tabellenzeilen (sichtbar)`: Hoehe der Tabellenboxen.
+- `Dezimalstellen (Anzeige)`: Rundung in der UI.
+- `Basis/Kleine Schriftgroesse`: UI Typografie.
+- `Checkbox Groesse (Scale)`: Checkbox-Scaling fuer bessere Bedienbarkeit.
+- `Filter ... Breite`: steuert die Layout-Breiten im Dashboard.
+- `Bereiche standardmaessig geoeffnet`: welche <details>-Sektionen beim Start offen sind.
+
+Ausreisser:
+
+- `W/kW/Wh/kWh (max step)`: Standard-Grenzen fuer Counter-Ausreisser (Spruenge) in der Fehler-/Filtertabelle.
 
 ## Info
 

@@ -1,7 +1,7 @@
 <nav class="sidebar" aria-label="Navigation">
   <div class="brand">
-    <div class="brand_title">InfluxBro</div>
-    <div class="brand_meta">{{ "Writes: yes" if allow_delete else "Writes: no" }}</div>
+    <div class="brand_title" style="font-weight:900; font-size: 22px; letter-spacing: 0.2px;">InfluxBro</div>
+    <div class="brand_meta" style="margin-top: 4px;">by Thomas Schatz • {{ "Writes: yes" if allow_delete else "Writes: no" }}</div>
   </div>
 
   <a class="nav_item {{ 'active' if nav == 'dashboard' else '' }}" href="./" data-ui="nav.dashboard" title="nav.dashboard">

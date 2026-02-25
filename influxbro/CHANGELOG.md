@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.11.2
+
+### Features
+- Statistik: Server-side Aggregation (keine Rohpunkte zur App streamen) + neuer `_field` Filter (Default: `value`).
+- Statistik: Tabellenlayout/Spaltenbreiten verbessert + globaler Button "Loeschen" (nur Ansicht).
+- Graph: Plot-Hoehe per Ziehen anpassbar (Dashboard).
+- Navigation: Branding vergroessert + "by Thomas Schatz".
+- Einstellungen: UI und Ausreisser getrennte aufklappbare Bereiche.
+- Handbuch: erweitert (Elemente beschrieben) + Screenshot-Platzhalter.
+
+### Bug Fixes
+- (keine)
+
+### Maintenance
+- (keine)
+
 ## 1.11.1
 
 ### Features

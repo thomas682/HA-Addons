@@ -46,7 +46,7 @@
     th, td { border: 1px solid #ddd; padding: 6px; font-size: 12px; }
     th { background:#f4f4f4; text-align:left; }
     canvas { width: 100%; height: 180px; border: 1px solid #ddd; margin-top: 12px; border-radius: 10px; }
-    #chart_plotly { width: 100%; height: 220px; border: 1px solid #ddd; margin-top: 12px; border-radius: 10px; display:none; }
+    #chart_plotly { width: 100%; height: var(--graph-h, 220px); border: 1px solid #ddd; margin-top: 12px; border-radius: 10px; display:none; }
     .err { color: #b00020; margin-top: 8px; white-space: pre-wrap; }
     .ok { color: #0a7a28; margin-top: 8px; white-space: pre-wrap; }
     .muted { opacity: 0.7; font-size: var(--ui-font-small); }
@@ -81,6 +81,8 @@
     .table_box th { position: sticky; top: 0; z-index: 1; cursor: pointer; }
 
     .tbl_actions { display:flex; gap: 10px; align-items:center; flex-wrap:wrap; margin-top: 6px; }
+    .tbl_actions details { margin: 0; }
+    .tbl_actions summary { cursor: pointer; }
     .tbl_actions label { display:flex; gap: 6px; align-items:center; font-size: 12px; opacity: 0.85; }
     .tbl_actions input[type="checkbox"] { width: auto; height: auto; padding: 0; }
     .btn_sm { height: 34px; padding: 6px 10px; }
@@ -197,6 +199,7 @@
         <label><input type="checkbox" id="graph_markers" class="row_sel" data-ui="graph_markers"/>Messpunkte markieren</label>
       </div>
       <div id="chart_plotly"></div>
+      <div id="graph_resize" data-ui="graph.resize" title="graph.resize" style="height: 12px; cursor: ns-resize; margin-top: 6px; border-radius: 999px; background: linear-gradient(90deg, #eee, #f8f8f8);"></div>
       <canvas id="chart" width="800" height="200"></canvas>
     </details>
 
@@ -211,47 +214,45 @@
 
             <div class="tbl_actions">
               <label><input type="checkbox" id="tbl_time_from_graph" class="row_sel" data-ui="filterlist_time_from_graph"/>Zeit gefuehrt durch Graph</label>
-            </div>
-          </div>
-          <div class="row" style="margin-top:0;">
-            <div style="min-width: 130px;">
               <label><input type="checkbox" id="tbl_enabled" class="row_sel" data-ui="filterlist_filter_enabled"/> Filter aktiv</label>
             </div>
 
-            <div style="min-width: 110px;">
-              <label>Links</label>
-              <select id="tbl_a_op" data-ui="filterlist_left_op">
-                <option value=">">&gt;</option>
-                <option value=">=">&gt;=</option>
-                <option value="<" selected>&lt;</option>
-                <option value="<=">&lt;=</option>
-              </select>
-            </div>
-            <div style="min-width: 130px;">
-              <label>&nbsp;</label>
-              <input id="tbl_a_val" placeholder="0" data-ui="filterlist_left_val" />
-            </div>
+            <div class="row" style="margin-top:0;">
+              <div style="min-width: 110px;">
+                <label>Links</label>
+                <select id="tbl_a_op" data-ui="filterlist_left_op">
+                  <option value=">">&gt;</option>
+                  <option value=">=">&gt;=</option>
+                  <option value="<" selected>&lt;</option>
+                  <option value="<=">&lt;=</option>
+                </select>
+              </div>
+              <div style="min-width: 130px;">
+                <label>&nbsp;</label>
+                <input id="tbl_a_val" placeholder="0" data-ui="filterlist_left_val" />
+              </div>
 
-            <div style="min-width: 110px;">
-              <label>Verb.</label>
-              <select id="tbl_mode" data-ui="filterlist_mode">
-                <option value="or" selected>oder</option>
-                <option value="and">und</option>
-              </select>
-            </div>
+              <div style="min-width: 110px;">
+                <label>Verb.</label>
+                <select id="tbl_mode" data-ui="filterlist_mode">
+                  <option value="or" selected>oder</option>
+                  <option value="and">und</option>
+                </select>
+              </div>
 
-            <div style="min-width: 110px;">
-              <label>Rechts</label>
-              <select id="tbl_b_op" data-ui="filterlist_right_op">
-                <option value=">" selected>&gt;</option>
-                <option value=">=">&gt;=</option>
-                <option value="<">&lt;</option>
-                <option value="<=">&lt;=</option>
-              </select>
-            </div>
-            <div style="min-width: 130px;">
-              <label>&nbsp;</label>
-              <input id="tbl_b_val" placeholder="999999" data-ui="filterlist_right_val" />
+              <div style="min-width: 110px;">
+                <label>Rechts</label>
+                <select id="tbl_b_op" data-ui="filterlist_right_op">
+                  <option value=">" selected>&gt;</option>
+                  <option value=">=">&gt;=</option>
+                  <option value="<">&lt;</option>
+                  <option value="<=">&lt;=</option>
+                </select>
+              </div>
+              <div style="min-width: 130px;">
+                <label>&nbsp;</label>
+                <input id="tbl_b_val" placeholder="999999" data-ui="filterlist_right_val" />
+              </div>
             </div>
           </div>
         </div>
@@ -263,8 +264,6 @@
         </div>
 
         <div class="tbl_actions" style="justify-content:flex-start; margin-top: 10px;">
-          <button class="btn_sm" id="outlier_scan" data-ui="filterlist_outlier_scan">Fehlersuche Ausreisser</button>
-          <button class="btn_sm" id="outlier_reset" data-ui="filterlist_outlier_reset">Zuruecksetzen</button>
           <details id="outlier_opts" style="margin-top:0;" data-ui="filterlist_outlier_opts">
             <summary>Optionen</summary>
             <div class="grid" style="margin-top:12px; align-items:end;">
@@ -282,6 +281,8 @@
               <div class="control"><label>Max Sprung</label><input id="out_max_step" placeholder="(auto)" data-ui="outliers.max_step"/></div>
             </div>
           </details>
+          <button class="btn_sm" id="outlier_scan" data-ui="filterlist_outlier_scan">Fehlersuche Ausreisser</button>
+          <button class="btn_sm" id="outlier_reset" data-ui="filterlist_outlier_reset">Zuruecksetzen</button>
           <button class="btn_sm" id="tbl_to_edit" data-ui="filterlist_to_edit">In Bearbeitungsliste</button>
         </div>
       </div>
@@ -397,6 +398,10 @@ const $statsCurrBody = document.getElementById('stats_curr_body');
 const canvas = document.getElementById('chart');
 const ctx = canvas.getContext('2d');
 const $plotly = document.getElementById('chart_plotly');
+const $graphResize = document.getElementById('graph_resize');
+
+const GRAPH_H_KEY = 'influxbro_graph_height_px';
+let GRAPH_H_PX = null;
 
 const $editTbl = document.querySelector('#edit_tbl tbody');
 const $editInfo = document.getElementById('edit_info');
@@ -686,7 +691,7 @@ function drawPlotly(rows){
 
   const layout = {
     margin: { l: 52, r: 10, t: 10, b: 40 },
-    height: 220,
+    height: (GRAPH_H_PX && isFinite(GRAPH_H_PX)) ? Math.round(GRAPH_H_PX) : 220,
     xaxis: {
       type: "date",
       rangeslider: { visible: true, thickness: 0.12 },
@@ -858,6 +863,70 @@ async function loadUiConfig(){
   }catch(e){
     // ignore; fallback to defaults
   }
+}
+
+function loadGraphHeight(){
+  try{
+    const v = Number(localStorage.getItem(GRAPH_H_KEY));
+    if(isFinite(v) && v >= 200 && v <= 900){
+      GRAPH_H_PX = v;
+      document.documentElement.style.setProperty('--graph-h', Math.round(v) + 'px');
+    }
+  }catch(e){}
+}
+
+function saveGraphHeight(v){
+  try{ localStorage.setItem(GRAPH_H_KEY, String(Math.round(v))); }catch(e){}
+}
+
+function initGraphResize(){
+  if(!$graphResize) return;
+  let startY = 0;
+  let startH = 0;
+  let dragging = false;
+
+  function onMove(ev){
+    if(!dragging) return;
+    const y = (ev && (ev.touches && ev.touches[0] ? ev.touches[0].clientY : ev.clientY)) || 0;
+    const dy = y - startY;
+    let h = startH + dy;
+    if(h < 200) h = 200;
+    if(h > 900) h = 900;
+    GRAPH_H_PX = h;
+    document.documentElement.style.setProperty('--graph-h', Math.round(h) + 'px');
+    if(window.Plotly && $plotly){
+      try{ window.Plotly.relayout($plotly, {height: Math.round(h)}); }catch(e){}
+    }
+  }
+
+  function onUp(){
+    if(!dragging) return;
+    dragging = false;
+    document.body.style.userSelect = '';
+    saveGraphHeight(GRAPH_H_PX);
+    window.removeEventListener('mousemove', onMove);
+    window.removeEventListener('mouseup', onUp);
+    window.removeEventListener('touchmove', onMove);
+    window.removeEventListener('touchend', onUp);
+  }
+
+  function onDown(ev){
+    try{
+      const y = (ev && (ev.touches && ev.touches[0] ? ev.touches[0].clientY : ev.clientY)) || 0;
+      startY = y;
+      startH = (GRAPH_H_PX && isFinite(GRAPH_H_PX)) ? GRAPH_H_PX : ($plotly ? $plotly.getBoundingClientRect().height : 220);
+      dragging = true;
+      document.body.style.userSelect = 'none';
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+      window.addEventListener('touchmove', onMove, {passive:false});
+      window.addEventListener('touchend', onUp);
+      ev.preventDefault();
+    }catch(e){}
+  }
+
+  $graphResize.addEventListener('mousedown', onDown);
+  $graphResize.addEventListener('touchstart', onDown, {passive:false});
 }
 
 function toLocalDatetimeValue(d){
@@ -1926,6 +1995,8 @@ document.getElementById("load").addEventListener("click", ()=>refreshAll().catch
 (async ()=>{
   try{
     await loadUiConfig();
+    loadGraphHeight();
+    initGraphResize();
 
     const st = loadState();
     if($qMf && st.q_measurement_filter) $qMf.value = st.q_measurement_filter;
