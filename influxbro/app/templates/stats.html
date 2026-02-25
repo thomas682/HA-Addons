@@ -112,6 +112,18 @@
           </div>
           <div>
             <label>&nbsp;</label>
+            <button id="prev" data-ui="stats.prev" title="stats.prev">Vorherige 10</button>
+          </div>
+          <div>
+            <label>&nbsp;</label>
+            <button id="next" data-ui="stats.next" title="stats.next">Naechste 10</button>
+          </div>
+          <div>
+            <label>&nbsp;</label>
+            <button id="details_page" data-ui="stats.details_page" title="stats.details_page">Details (Seite)</button>
+          </div>
+          <div>
+            <label>&nbsp;</label>
             <button id="details_all" data-ui="stats.details_all" title="stats.details_all">Lade alle Details</button>
           </div>
           <div>
@@ -160,6 +172,9 @@
       const $q = document.getElementById('q');
       const $load = document.getElementById('load');
       const $cancel = document.getElementById('cancel');
+      const $prev = document.getElementById('prev');
+      const $next = document.getElementById('next');
+      const $detailsPage = document.getElementById('details_page');
       const $detailsAll = document.getElementById('details_all');
       const $deleteRows = document.getElementById('delete_rows');
       const $info = document.getElementById('info');
@@ -171,13 +186,16 @@
 
       let UI_DECIMALS = 3;
       let ROWS = [];
-      let SORT = { key: 'count', dir: 'desc' };
+      let SORT = { key: 'newest_time', dir: 'desc' };
 
       const DELETED = new Set();
       let LAST_VISIBLE_KEYS = [];
 
-      let JOB_ID = "";
-      let TIMER = null;
+      const PAGE_LIMIT = 10;
+      let PAGE_OFFSET = 0;
+      let TOTAL_SERIES = null;
+      let RUN_CANCELLED = false;
+      let RUNNING = false;
 
       function err(s){ $err.textContent = s || ""; }
       function fmtNum(v){
@@ -280,75 +298,186 @@
         $bar.style.width = (isFinite(v) ? Math.max(0, Math.min(100, v)) : 0) + '%';
       }
 
-      async function poll(){
-        if(!JOB_ID) return;
-        const j = await api('./api/global_stats_job/status?job_id=' + encodeURIComponent(JOB_ID));
-        const s = j.status;
-        if(!s) return;
-        const pct = (s.percent === null || s.percent === undefined) ? null : Number(s.percent);
-        setBar(pct);
-
-        const lines = [];
-        if(s.state || s.message) lines.push(`${String(s.state||'')}${s.message ? ' - ' + String(s.message) : ''}`.trim());
-        if(s.elapsed) lines.push('Zeit: ' + s.elapsed);
-        if(s.scanned_points !== null && s.scanned_points !== undefined){
-          if(s.total_points){
-            lines.push(`Punkte: ${s.scanned_points}/${s.total_points}`);
-          }else{
-            lines.push(`Punkte: ${s.scanned_points}`);
-          }
-          const sec = parseHmsToSeconds(s.elapsed);
-          if(sec && sec > 0){
-            lines.push(`Rate: ${(Number(s.scanned_points)/sec).toFixed(1)} Punkte/s`);
-          }
-        }
-        if(pct !== null && isFinite(pct)) lines.push('Fortschritt: ' + pct.toFixed(1) + '%');
-        if(s.groups !== null && s.groups !== undefined) lines.push('Gruppen: ' + String(s.groups));
-        if(s.current) lines.push('Aktuell: ' + s.current);
-        $info.textContent = lines.join("\n");
-
-        if(s.state === 'done'){
-          clearInterval(TIMER); TIMER = null;
-          const r = await api('./api/global_stats_job/result?job_id=' + encodeURIComponent(JOB_ID) + '&limit=5000');
-          ROWS = (r.rows||[]);
-          render();
-        }
-        if(s.state === 'error'){
-          clearInterval(TIMER); TIMER = null;
-          err(s.error || 'Fehler');
-        }
-        if(s.state === 'cancelled'){
-          clearInterval(TIMER); TIMER = null;
-          err('Abgebrochen.');
-        }
+      function setStatus(lines){
+        $info.textContent = (lines || []).filter(Boolean).join("\n");
       }
 
-      async function startJob(){
-        err('');
-        setBar(0);
-        if(TIMER){ clearInterval(TIMER); TIMER = null; }
-        if(JOB_ID){
-          try{ await api('./api/global_stats_job/cancel', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({job_id: JOB_ID})}); }catch(e){}
+      function pageInfo(){
+        const total = (TOTAL_SERIES === null || TOTAL_SERIES === undefined) ? null : Number(TOTAL_SERIES);
+        const from = PAGE_OFFSET + 1;
+        const to = PAGE_OFFSET + Math.min(PAGE_LIMIT, (ROWS || []).length);
+        if(total && isFinite(total) && total > 0){
+          return `Seite: ${Math.floor(PAGE_OFFSET / PAGE_LIMIT) + 1} / ${Math.max(1, Math.ceil(total / PAGE_LIMIT))} (Zeilen ${from}-${Math.min(PAGE_OFFSET + PAGE_LIMIT, total)} von ${total})`;
         }
-        const tf = timeFilter();
-        $info.textContent = 'starte...';
-        const j = await api('./api/global_stats_job/start', {
+        return `Seite: ${Math.floor(PAGE_OFFSET / PAGE_LIMIT) + 1} (Offset ${PAGE_OFFSET})`;
+      }
+
+      async function loadTotalSeries(tf, fieldFilter){
+        const j = await api('./api/global_series_total', {
           method:'POST',
           headers:{'Content-Type':'application/json'},
           body: JSON.stringify({
             start: tf.start,
             stop: tf.stop,
-            field_filter: String(($fieldFilter && $fieldFilter.value) ? $fieldFilter.value : '').trim() || null,
+            field_filter: fieldFilter || null,
           })
         });
-        JOB_ID = String(j.job_id || '');
-        TIMER = setInterval(()=>poll().catch(e=>err(String(e && e.message ? e.message : e))), 500);
-        poll().catch(e=>err(String(e && e.message ? e.message : e)));
+        TOTAL_SERIES = j.total_series;
       }
 
-      async function cancelJob(){
-        if(!JOB_ID) return;
-        try{ await api('./api/global_stats_job/cancel', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({job_id: JOB_ID})}); }catch(e){}
+      async function loadSeriesPage(tf, fieldFilter, offset){
+        const j = await api('./api/global_series_page', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({
+            start: tf.start,
+            stop: tf.stop,
+            field_filter: fieldFilter || null,
+            offset: offset,
+            limit: PAGE_LIMIT,
+          })
+        });
+        return j.rows || [];
+      }
+
+      async function loadDetailsFor(rows, tf){
+        const series = (rows || []).map(r => ({
+          measurement: r.measurement,
+          field: r.field,
+          entity_id: r.entity_id,
+          friendly_name: r.friendly_name,
+        }));
+        const j = await api('./api/global_series_details', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ start: tf.start, stop: tf.stop, series })
+        });
+        const map = new Map();
+        (j.rows || []).forEach(d => { map.set(rowKey(d), d); });
+        (rows || []).forEach(r => {
+          const d = map.get(rowKey(r));
+          if(!d) return;
+          r.count = d.count;
+          r.min = d.min;
+          r.max = d.max;
+          r.mean = d.mean;
+          r.oldest_time = d.oldest_time;
+          r.newest_time = d.newest_time || r.newest_time;
+          r.last_value = (d.last_value !== undefined) ? d.last_value : r.last_value;
+          r._detail_loaded = true;
+        });
+      }
+
+      async function loadPage(offset){
+        if(RUNNING) return;
+        RUNNING = true;
+        RUN_CANCELLED = false;
+        err('');
+        setBar(0);
+        const tf = timeFilter();
+        const fieldFilter = String(($fieldFilter && $fieldFilter.value) ? $fieldFilter.value : '').trim();
+
+        try{
+          setStatus(['Serien laden...', pageInfo()]);
+          if(TOTAL_SERIES === null){
+            try{
+              setStatus(['Zaehle Serien...', '']);
+              await loadTotalSeries(tf, fieldFilter);
+            }catch(e){
+              TOTAL_SERIES = null;
+            }
+          }
+
+          PAGE_OFFSET = Math.max(0, offset);
+          setStatus(['Serien laden...', pageInfo()]);
+          const rows = await loadSeriesPage(tf, fieldFilter, PAGE_OFFSET);
+          ROWS = rows;
+          render();
+
+          if(TOTAL_SERIES && isFinite(Number(TOTAL_SERIES)) && Number(TOTAL_SERIES) > 0){
+            const pct = Math.min(100, Math.max(0, ((PAGE_OFFSET + rows.length) / Number(TOTAL_SERIES)) * 100));
+            setBar(pct);
+          }else{
+            setBar(0);
+          }
+          setStatus(['Serien geladen.', pageInfo()]);
+        }finally{
+          RUNNING = false;
+        }
+      }
+
+      async function detailsPage(){
+        if(RUNNING) return;
+        if(!(ROWS || []).length) return;
+        RUNNING = true;
+        RUN_CANCELLED = false;
+        err('');
+        setBar(0);
+        const tf = timeFilter();
+        try{
+          setStatus([`Details laden (Seite)...`, pageInfo()]);
+          await loadDetailsFor(ROWS, tf);
+          (ROWS || []).forEach(r => { r._details = true; });
+          render();
+          setBar(100);
+          setStatus([`Details geladen (Seite).`, pageInfo()]);
+        }finally{
+          RUNNING = false;
+        }
+      }
+
+      async function detailsAll(){
+        if(RUNNING) return;
+        RUNNING = true;
+        RUN_CANCELLED = false;
+        err('');
+        setBar(0);
+        const tf = timeFilter();
+        const fieldFilter = String(($fieldFilter && $fieldFilter.value) ? $fieldFilter.value : '').trim();
+        try{
+          if(TOTAL_SERIES === null){
+            try{
+              setStatus(['Zaehle Serien...', '']);
+              await loadTotalSeries(tf, fieldFilter);
+            }catch(e){ TOTAL_SERIES = null; }
+          }
+
+          const total = (TOTAL_SERIES && isFinite(Number(TOTAL_SERIES)) && Number(TOTAL_SERIES) > 0) ? Number(TOTAL_SERIES) : null;
+          const all = [];
+          let processed = 0;
+          let page = 0;
+          for(let off = 0; ; off += PAGE_LIMIT){
+            if(RUN_CANCELLED) throw new Error('Abgebrochen.');
+            setStatus([`Serien laden... Seite ${page+1}`, total ? `Serien: ${processed}/${total}` : `Offset: ${off}`]);
+            const rows = await loadSeriesPage(tf, fieldFilter, off);
+            if(!rows.length) break;
+
+            setStatus([`Details laden... Seite ${page+1}`, total ? `Serien: ${processed}/${total}` : `Offset: ${off}`]);
+            await loadDetailsFor(rows, tf);
+            rows.forEach(r => { r._details = true; });
+            all.push(...rows);
+
+            processed += rows.length;
+            page += 1;
+            if(total){
+              setBar(Math.min(100, Math.max(0, (processed / total) * 100)));
+            }
+          }
+
+          ROWS = all;
+          PAGE_OFFSET = 0;
+          render();
+          setBar(100);
+          setStatus([`Fertig. Serien: ${all.length}`, '']);
+        }catch(e){
+          err(String(e && e.message ? e.message : e));
+        }finally{
+          RUNNING = false;
+        }
+      }
+
+      async function cancelRun(){
+        RUN_CANCELLED = true;
       }
 
       async function loadUiCfg(){
@@ -400,7 +529,7 @@
           const visible = rows.length;
           const del = DELETED.size;
           const arrow = SORT.dir === 'desc' ? '↓' : '↑';
-          $count.textContent = `Zeilen: ${visible} / ${total}` + (del ? ` (geloescht: ${del})` : "") + ` | Sort: ${SORT.key} ${arrow}`;
+          $count.textContent = `Zeilen: ${visible} / ${total}` + (del ? ` (geloescht: ${del})` : "") + ` | Sort: ${SORT.key} ${arrow}` + ` | ` + pageInfo();
         }
 
         $tbody.innerHTML = '';
@@ -419,7 +548,20 @@
           const btnDet = document.createElement('button');
           btnDet.className = 'btn_xs';
           btnDet.textContent = r._details ? 'Detail: an' : 'Detail';
-          btnDet.addEventListener('click', (ev)=>{ ev.preventDefault(); ev.stopPropagation(); r._details = !r._details; render(); });
+          btnDet.addEventListener('click', async (ev)=>{
+            ev.preventDefault(); ev.stopPropagation();
+            try{
+              if(!r._detail_loaded){
+                const tf = timeFilter();
+                setStatus([`Detail laden...`, r.friendly_name || r.entity_id || (r.measurement + '/' + r.field)]);
+                await loadDetailsFor([r], tf);
+              }
+              r._details = !r._details;
+              render();
+            }catch(e){
+              err(String(e && e.message ? e.message : e));
+            }
+          });
           tdAct.appendChild(btnDet);
           tr.appendChild(tdAct);
 
@@ -439,7 +581,9 @@
       }
 
       async function load(){
-        await startJob();
+        TOTAL_SERIES = null;
+        PAGE_OFFSET = 0;
+        await loadPage(0);
       }
 
       function debounce(fn, ms){
@@ -448,11 +592,11 @@
       }
 
       $load.addEventListener('click', ()=>load().catch(e=>err(String(e && e.message ? e.message : e))));
-      $cancel.addEventListener('click', ()=>cancelJob().catch(e=>err(String(e && e.message ? e.message : e))));
-      $detailsAll.addEventListener('click', ()=>{
-        (ROWS||[]).forEach(r => r._details = true);
-        render();
-      });
+      $cancel.addEventListener('click', ()=>cancelRun());
+      $prev.addEventListener('click', ()=>loadPage(Math.max(0, PAGE_OFFSET - PAGE_LIMIT)).catch(e=>err(String(e && e.message ? e.message : e))));
+      $next.addEventListener('click', ()=>loadPage(PAGE_OFFSET + PAGE_LIMIT).catch(e=>err(String(e && e.message ? e.message : e))));
+      $detailsPage.addEventListener('click', ()=>detailsPage().catch(e=>err(String(e && e.message ? e.message : e))));
+      $detailsAll.addEventListener('click', ()=>detailsAll().catch(e=>err(String(e && e.message ? e.message : e))));
       $deleteRows.addEventListener('click', ()=>{
         (LAST_VISIBLE_KEYS || []).forEach(k => { if(k) DELETED.add(k); });
         render();

@@ -1,5 +1,19 @@
 # Changelog
 
+<!-- markdownlint-disable MD024 MD013 -->
+
+## 1.11.6
+
+### Features
+- Statistik: Gesamtstatistik laedt schrittweise (Serien seitenweise, Details seitenweise/alle) mit Status + Balken.
+- Einstellungen: Tabellenzeilen-Hoehe (px) konfigurierbar.
+
+### Bug Fixes
+- (keine)
+
+### Maintenance
+- Markdownlint: Repo-Config `.markdownlint.json` (weniger Noise in VSCode).
+
 ## 1.11.2
 
 ### Features

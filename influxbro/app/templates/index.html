@@ -12,6 +12,7 @@
       --ui-label-w: 170px;
       --ui-ctrl-w: 320px;
       --ui-search-w: 160px;
+      --ui-table-row-h: 16px;
     }
 
     body { font-family: system-ui, sans-serif; margin: 0; font-size: var(--ui-font); }
@@ -76,9 +77,9 @@
     .main { display:block; margin-top: 12px; }
     .table_wrap { border: 1px solid #ddd; border-radius: 10px; padding: 10px; margin-top: 12px; }
     .table_head { display:flex; justify-content:space-between; gap: 12px; align-items:baseline; flex-wrap:wrap; }
-    .table_box { --row-h: 16px; --max-rows: 100; max-height: calc(var(--max-rows) * var(--row-h) + 42px); overflow:auto; border: 1px solid #eee; border-radius: 10px; margin-top: 8px; }
+    .table_box { --row-h: var(--ui-table-row-h, 16px); --max-rows: 100; max-height: calc(var(--max-rows) * var(--row-h) + 42px); overflow:auto; border: 1px solid #eee; border-radius: 10px; margin-top: 8px; }
     .table_box table { margin-top: 0; }
-    .table_box th, .table_box td { font-size: 10px; padding: 2px 5px; line-height: 1.15; }
+    .table_box th, .table_box td { font-size: var(--ui-font-small); padding: 0 6px; line-height: 1.05; height: var(--row-h); vertical-align: middle; }
     .table_box th { position: sticky; top: 0; z-index: 1; cursor: pointer; }
 
     .tbl_actions { display:flex; gap: 10px; align-items:center; flex-wrap:wrap; margin-top: 6px; }
@@ -385,6 +386,7 @@ const $tblAVal = document.getElementById('tbl_a_val');
 const $tblBOp = document.getElementById('tbl_b_op');
 const $tblBVal = document.getElementById('tbl_b_val');
 const $tableBox = document.getElementById('table_box');
+const $editBox = document.getElementById('edit_box');
 const $rangeFromTo = document.getElementById('range_from_to');
 
 const $cntMf = document.getElementById('cnt_measurement_filter');
@@ -855,6 +857,14 @@ async function loadUiConfig(){
     const r = Number(cfg.ui_table_visible_rows);
     if(isFinite(r) && r > 0) UI_TABLE_VISIBLE_ROWS = Math.trunc(r);
     if($tableBox) $tableBox.style.setProperty("--max-rows", String(UI_TABLE_VISIBLE_ROWS));
+    if($editBox) $editBox.style.setProperty("--max-rows", String(UI_TABLE_VISIBLE_ROWS));
+
+    const rh = Number(cfg.ui_table_row_height_px);
+    if(isFinite(rh) && rh >= 12 && rh <= 40){
+      document.documentElement.style.setProperty("--ui-table-row-h", Math.trunc(rh) + "px");
+      if($tableBox) $tableBox.style.setProperty("--row-h", Math.trunc(rh) + "px");
+      if($editBox) $editBox.style.setProperty("--row-h", Math.trunc(rh) + "px");
+    }
 
     const fs = Number(cfg.ui_font_size_px);
     if(isFinite(fs) && fs >= 10 && fs <= 22) document.documentElement.style.setProperty("--ui-font", fs + "px");

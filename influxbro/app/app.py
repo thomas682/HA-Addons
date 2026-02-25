@@ -20,7 +20,7 @@ from influxdb_client import WritePrecision
 from influxdb_client.client.write_api import SYNCHRONOUS
 from influxdb import InfluxDBClient as InfluxDBClientV1
 
-import yaml
+import yaml # pyright: ignore[reportMissingModuleSource]
 
 CONFIG_DIR = Path(os.environ.get("CONFIG_DIR", "/config"))
 DATA_DIR = Path(os.environ.get("DATA_DIR", "/data"))
@@ -300,6 +300,7 @@ DEFAULT_CFG = {
 
     # UI defaults
     "ui_table_visible_rows": 20,
+    "ui_table_row_height_px": 16,
     "ui_decimals": 3,
 
     "ui_font_size_px": 14,
@@ -1630,6 +1631,7 @@ def api_set_config():
 
     _clamp_int("ui_font_size_px", 14, 10, 22)
     _clamp_int("ui_font_small_px", 11, 9, 18)
+    _clamp_int("ui_table_row_height_px", 16, 12, 40)
     _clamp_float("ui_checkbox_scale", 0.85, 0.5, 1.6)
     _clamp_int("ui_filter_label_width_px", 170, 80, 360)
     _clamp_int("ui_filter_control_width_px", 320, 180, 900)
@@ -2638,6 +2640,268 @@ def api_global_stats_job_cancel():
             return jsonify({"ok": False, "error": "job not found"}), 404
         job["cancelled"] = True
     return jsonify({"ok": True})
+
+
+@app.post("/api/global_series_page")
+def api_global_series_page():
+    """Load a page of series matching a time window.
+
+    Returns one row per series with newest_time + last_value.
+    """
+
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    if int(cfg.get("influx_version", 2)) != 2:
+        return jsonify({"ok": False, "error": "global_series currently supports InfluxDB v2 only"}), 400
+    if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+        return jsonify({
+            "ok": False,
+            "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
+        }), 400
+
+    body = request.get_json(force=True) or {}
+    try:
+        start_dt, stop_dt = _get_start_stop_from_payload(body)
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+
+    try:
+        offset = int(body.get("offset", 0))
+    except Exception:
+        offset = 0
+    if offset < 0:
+        offset = 0
+
+    try:
+        limit = int(body.get("limit", 10))
+    except Exception:
+        limit = 10
+    if limit < 1:
+        limit = 1
+    if limit > 200:
+        limit = 200
+
+    field_filter = body.get("field_filter")
+    ff = (str(field_filter) if field_filter is not None else "").strip()
+
+    start = _dt_to_rfc3339_utc(start_dt)
+    stop = _dt_to_rfc3339_utc(stop_dt)
+    ff_clause = f"|> filter(fn: (r) => r._field == {_flux_str(ff)})" if ff else ""
+    q = f'''
+from(bucket: "{cfg["bucket"]}")
+  |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
+  |> filter(fn: (r) => exists r._measurement and exists r._field)
+  {ff_clause}
+  |> keep(columns: ["_measurement","_field","entity_id","friendly_name","_time","_value"])
+  |> group(columns: ["_measurement","_field","entity_id","friendly_name"])
+  |> last()
+  |> group()
+  |> sort(columns: ["_time"], desc: true)
+  |> limit(n: {limit}, offset: {offset})
+'''
+
+    rows: list[dict[str, Any]] = []
+    try:
+        with v2_client(cfg) as c:
+            tables = c.query_api().query(q, org=cfg["org"])
+            for t in tables or []:
+                for rec in getattr(t, "records", []) or []:
+                    vals = getattr(rec, "values", {}) or {}
+                    m = str(vals.get("_measurement") or "")
+                    f = str(vals.get("_field") or "")
+                    eid = str(vals.get("entity_id") or "")
+                    fn = str(vals.get("friendly_name") or "")
+                    newest = rec.get_time() or vals.get("_time")
+                    newest_s = None
+                    if isinstance(newest, datetime):
+                        newest_s = _dt_to_rfc3339_utc(newest)
+                    elif isinstance(newest, str) and newest.strip():
+                        newest_s = newest.strip()
+                    rows.append({
+                        "measurement": m,
+                        "field": f,
+                        "entity_id": eid,
+                        "friendly_name": fn,
+                        "newest_time": newest_s,
+                        "last_value": rec.get_value(),
+                        "oldest_time": None,
+                        "count": None,
+                        "min": None,
+                        "max": None,
+                        "mean": None,
+                    })
+    except Exception as e:
+        return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
+
+    return jsonify({"ok": True, "rows": rows, "offset": offset, "limit": limit})
+
+
+@app.post("/api/global_series_total")
+def api_global_series_total():
+    """Return total number of series for a time window (best effort)."""
+
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    if int(cfg.get("influx_version", 2)) != 2:
+        return jsonify({"ok": False, "error": "global_series currently supports InfluxDB v2 only"}), 400
+    if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+        return jsonify({
+            "ok": False,
+            "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
+        }), 400
+
+    body = request.get_json(force=True) or {}
+    try:
+        start_dt, stop_dt = _get_start_stop_from_payload(body)
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+
+    field_filter = body.get("field_filter")
+    ff = (str(field_filter) if field_filter is not None else "").strip()
+
+    start = _dt_to_rfc3339_utc(start_dt)
+    stop = _dt_to_rfc3339_utc(stop_dt)
+    ff_clause = f"|> filter(fn: (r) => r._field == {_flux_str(ff)})" if ff else ""
+    q = f'''
+from(bucket: "{cfg["bucket"]}")
+  |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
+  |> filter(fn: (r) => exists r._measurement and exists r._field)
+  {ff_clause}
+  |> keep(columns: ["_measurement","_field","entity_id","friendly_name","_time","_value"])
+  |> group(columns: ["_measurement","_field","entity_id","friendly_name"])
+  |> last()
+  |> group()
+  |> count(column: "_value")
+'''
+
+    total: int | None = None
+    try:
+        with v2_client(cfg) as c:
+            tables = c.query_api().query(q, org=cfg["org"])
+            for t in tables or []:
+                for rec in getattr(t, "records", []) or []:
+                    v = rec.get_value()
+                    if isinstance(v, (int, float)):
+                        total = int(v)
+                        break
+                if total is not None:
+                    break
+    except Exception as e:
+        return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
+
+    return jsonify({"ok": True, "total_series": total})
+
+
+@app.post("/api/global_series_details")
+def api_global_series_details():
+    """Load detailed stats for a set of series keys."""
+
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    if int(cfg.get("influx_version", 2)) != 2:
+        return jsonify({"ok": False, "error": "global_series currently supports InfluxDB v2 only"}), 400
+    if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+        return jsonify({
+            "ok": False,
+            "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
+        }), 400
+
+    body = request.get_json(force=True) or {}
+    try:
+        start_dt, stop_dt = _get_start_stop_from_payload(body)
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+
+    series = body.get("series") or []
+    if not isinstance(series, list) or not series:
+        return jsonify({"ok": False, "error": "series list required"}), 400
+    if len(series) > 50:
+        return jsonify({"ok": False, "error": "series list too large (max 50)"}), 400
+
+    start = _dt_to_rfc3339_utc(start_dt)
+    stop = _dt_to_rfc3339_utc(stop_dt)
+
+    parts: list[str] = []
+    keys: list[tuple[str, str, str, str]] = []
+    for it in series:
+        if not isinstance(it, dict):
+            continue
+        m = str(it.get("measurement") or "").strip()
+        f = str(it.get("field") or "").strip()
+        eid = str(it.get("entity_id") or "").strip()
+        fn = str(it.get("friendly_name") or "").strip()
+        if not m or not f:
+            continue
+        conds = [f"r._measurement == {_flux_str(m)}", f"r._field == {_flux_str(f)}"]
+        if eid:
+            conds.append(f"r.entity_id == {_flux_str(eid)}")
+        if fn:
+            conds.append(f"r.friendly_name == {_flux_str(fn)}")
+        parts.append("(" + " and ".join(conds) + ")")
+        keys.append((m, f, eid, fn))
+
+    if not parts:
+        return jsonify({"ok": False, "error": "no valid series keys"}), 400
+
+    predicate = " or ".join(parts)
+    q = f'''
+data = from(bucket: "{cfg["bucket"]}")
+  |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
+  |> filter(fn: (r) => {predicate})
+  |> keep(columns: ["_measurement","_field","entity_id","friendly_name","_time","_value"])
+  |> group(columns: ["_measurement","_field","entity_id","friendly_name"])
+
+data
+  |> reduce(
+    identity: {{seen: false, count: 0, sum: 0.0, min: 0.0, max: 0.0, oldest_time: time(v: "1970-01-01T00:00:00Z"), newest_time: time(v: "1970-01-01T00:00:00Z"), last_value: 0.0}},
+    fn: (r, accumulator) => ({{
+      seen: true,
+      count: accumulator.count + 1,
+      sum: accumulator.sum + float(v: r._value),
+      min: if accumulator.seen == false then float(v: r._value) else if float(v: r._value) < accumulator.min then float(v: r._value) else accumulator.min,
+      max: if accumulator.seen == false then float(v: r._value) else if float(v: r._value) > accumulator.max then float(v: r._value) else accumulator.max,
+      oldest_time: if accumulator.seen == false then r._time else if r._time < accumulator.oldest_time then r._time else accumulator.oldest_time,
+      newest_time: if accumulator.seen == false then r._time else if r._time > accumulator.newest_time then r._time else accumulator.newest_time,
+      last_value: if accumulator.seen == false then float(v: r._value) else if r._time >= accumulator.newest_time then float(v: r._value) else accumulator.last_value,
+    }})
+  )
+  |> map(fn: (r) => ({{
+    _measurement: r._measurement,
+    _field: r._field,
+    entity_id: r.entity_id,
+    friendly_name: r.friendly_name,
+    count: r.count,
+    min: r.min,
+    max: r.max,
+    mean: if r.count > 0 then r.sum / float(v: r.count) else 0.0,
+    oldest_time: r.oldest_time,
+    newest_time: r.newest_time,
+    last_value: r.last_value,
+  }}))
+  |> keep(columns: ["_measurement","_field","entity_id","friendly_name","count","min","max","mean","oldest_time","newest_time","last_value"])
+'''
+
+    out_rows: list[dict[str, Any]] = []
+    try:
+        with v2_client(cfg) as c:
+            tables = c.query_api().query(q, org=cfg["org"])
+            for t in tables or []:
+                for rec in getattr(t, "records", []) or []:
+                    vals = getattr(rec, "values", {}) or {}
+                    out_rows.append({
+                        "measurement": str(vals.get("_measurement") or ""),
+                        "field": str(vals.get("_field") or ""),
+                        "entity_id": str(vals.get("entity_id") or ""),
+                        "friendly_name": str(vals.get("friendly_name") or ""),
+                        "count": int(vals.get("count") or 0),
+                        "min": vals.get("min"),
+                        "max": vals.get("max"),
+                        "mean": vals.get("mean"),
+                        "oldest_time": str(vals.get("oldest_time") or "") or None,
+                        "newest_time": str(vals.get("newest_time") or "") or None,
+                        "last_value": vals.get("last_value"),
+                    })
+    except Exception as e:
+        return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
+
+    return jsonify({"ok": True, "rows": out_rows})
 
 
 @app.post("/api/outliers")
