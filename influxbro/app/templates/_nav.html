@@ -46,7 +46,105 @@
 
   <script>
   // Ensure every visible control has a stable tooltip + internal name.
+  // Also persist non-sensitive UI input state in localStorage so navigating away
+  // (or updating the add-on) keeps the last UI selections.
   (function(){
+    const SENSITIVE_IDS = new Set([
+      'token',
+      'password',
+      'delete_confirm_phrase',
+      'confirm_phrase',
+      'confirm',
+      'confirm_text',
+    ]);
+
+    function stablePath(){
+      try{
+        const p = String(location && location.pathname ? location.pathname : '/');
+        // Home Assistant ingress adds a volatile token segment.
+        return p.replace(/\/api\/hassio_ingress\/[0-9a-fA-F]+/g, '').replace(/\/+/g, '/');
+      }catch(e){
+        return '/';
+      }
+    }
+
+    function storageKeyForId(id){
+      return 'influxbro_ui:' + stablePath() + ':' + String(id || '');
+    }
+
+    function isSensitive(el){
+      try{
+        const id = (el.getAttribute('id') || '').trim();
+        if(id && SENSITIVE_IDS.has(id)) return true;
+        const t = (el.getAttribute('type') || '').toLowerCase();
+        if(t === 'password') return true;
+        const nm = (el.getAttribute('name') || '').toLowerCase();
+        if(nm.includes('token') || nm.includes('password')) return true;
+        return false;
+      }catch(e){
+        return true;
+      }
+    }
+
+    function snapshotValue(el){
+      const tag = (el.tagName || '').toLowerCase();
+      const type = (el.getAttribute('type') || '').toLowerCase();
+      if(type === 'checkbox') return {t:'cb', v: !!el.checked};
+      if(type === 'radio') return {t:'radio', v: !!el.checked};
+      if(tag === 'select') return {t:'sel', v: String(el.value || '')};
+      return {t:'txt', v: String(el.value || '')};
+    }
+
+    function applySnapshot(el, snap){
+      if(!snap || typeof snap !== 'object') return;
+      const type = (el.getAttribute('type') || '').toLowerCase();
+      const tag = (el.tagName || '').toLowerCase();
+      if((snap.t === 'cb' || snap.t === 'radio') && (type === 'checkbox' || type === 'radio')){
+        el.checked = !!snap.v;
+        return;
+      }
+      if(snap.t === 'sel' && tag === 'select'){
+        el.value = String(snap.v || '');
+        return;
+      }
+      if(snap.t === 'txt' && (tag === 'input' || tag === 'textarea')){
+        el.value = String(snap.v || '');
+      }
+    }
+
+    const RESTORED = new Set();
+    function restoreEl(el){
+      try{
+        if(!el || !el.getAttribute) return;
+        const id = (el.getAttribute('id') || '').trim();
+        if(!id) return;
+        if(RESTORED.has(id)) return;
+        if(isSensitive(el)) return;
+        const key = storageKeyForId(id);
+        const raw = localStorage.getItem(key);
+        if(!raw) return;
+        const snap = JSON.parse(raw);
+        applySnapshot(el, snap);
+        // Mark restored after applying once.
+        RESTORED.add(id);
+      }catch(e){}
+    }
+
+    function watchEl(el){
+      try{
+        if(!el || !el.getAttribute) return;
+        const id = (el.getAttribute('id') || '').trim();
+        if(!id) return;
+        if(isSensitive(el)) return;
+        const key = storageKeyForId(id);
+        const save = ()=>{
+          try{ localStorage.setItem(key, JSON.stringify(snapshotValue(el))); }catch(e){}
+        };
+        el.addEventListener('change', save);
+        el.addEventListener('input', save);
+      }catch(e){}
+    }
+
     function applyTooltips(){
       document.querySelectorAll('[data-ui]').forEach(el => {
         const ui = el.getAttribute('data-ui') || '';
@@ -64,13 +162,32 @@
         }
       });
     }
+
+    function scanPersistence(){
+      document.querySelectorAll('input[id], select[id], textarea[id]').forEach(el => {
+        restoreEl(el);
+        watchEl(el);
+      });
+    }
     try{
-      if(document.readyState === 'loading'){
-        document.addEventListener('DOMContentLoaded', applyTooltips);
-      }else{
+      // Start early so values restore before page scripts use them.
+      applyTooltips();
+      scanPersistence();
+      const obs = new MutationObserver((mut)=>{
         applyTooltips();
-      }
-      const obs = new MutationObserver(()=>applyTooltips());
+        try{
+          // Restore/save for newly added nodes.
+          (mut||[]).forEach(m=>{
+            (m.addedNodes||[]).forEach(n=>{
+              if(!n || !n.querySelectorAll) return;
+              n.querySelectorAll('input[id], select[id], textarea[id]').forEach(el=>{
+                restoreEl(el);
+                watchEl(el);
+              });
+            });
+          });
+        }catch(e){}
+      });
       obs.observe(document.documentElement, {childList:true, subtree:true});
     }catch(e){}
   })();

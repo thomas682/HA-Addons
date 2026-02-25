@@ -45,8 +45,9 @@
     table { border-collapse: collapse; width: 100%; margin-top: 12px; }
     th, td { border: 1px solid #ddd; padding: 6px; font-size: 12px; }
     th { background:#f4f4f4; text-align:left; }
-    canvas { width: 100%; height: 180px; border: 1px solid #ddd; margin-top: 12px; border-radius: 10px; }
-    #chart_plotly { width: 100%; height: var(--graph-h, 220px); border: 1px solid #ddd; margin-top: 12px; border-radius: 10px; display:none; }
+    .graph_frame { width: 100%; max-width: 100%; border: 1px solid #ddd; border-radius: 10px; padding: 10px; margin-top: 12px; box-sizing: border-box; }
+    canvas { width: 100%; height: 180px; border: 0; margin-top: 0; border-radius: 10px; }
+    #chart_plotly { width: 100%; height: var(--graph-h, 220px); border: 0; margin-top: 0; border-radius: 10px; display:none; }
     .err { color: #b00020; margin-top: 8px; white-space: pre-wrap; }
     .ok { color: #0a7a28; margin-top: 8px; white-space: pre-wrap; }
     .muted { opacity: 0.7; font-size: var(--ui-font-small); }
@@ -198,9 +199,11 @@
       <div class="tbl_actions" data-ui="graph_actions">
         <label><input type="checkbox" id="graph_markers" class="row_sel" data-ui="graph_markers"/>Messpunkte markieren</label>
       </div>
-      <div id="chart_plotly"></div>
-      <div id="graph_resize" data-ui="graph.resize" title="graph.resize" style="height: 12px; cursor: ns-resize; margin-top: 6px; border-radius: 999px; background: linear-gradient(90deg, #eee, #f8f8f8);"></div>
-      <canvas id="chart" width="800" height="200"></canvas>
+      <div class="graph_frame" data-ui="graph.frame" title="graph.frame">
+        <div id="chart_plotly"></div>
+        <canvas id="chart" width="800" height="200"></canvas>
+        <div id="graph_resize" data-ui="graph.resize" title="graph.resize" style="height: 12px; cursor: ns-resize; margin-top: 8px; border-radius: 999px; background: linear-gradient(90deg, #eee, #f8f8f8);"></div>
+      </div>
     </details>
 
     <details id="filterlist_section" class="section" {{ 'open' if cfg.get('ui_open_filterlist') else '' }} data-ui="section.filterlist" title="section.filterlist">
@@ -258,7 +261,7 @@
         </div>
         <div class="table_box" id="table_box">
           <table id="tbl">
-            <thead><tr><th style="width:26px;"><input type="checkbox" id="tbl_sel_all" class="row_sel" data-ui="filterlist_select_all"/></th><th id="th_time" data-key="time" data-ui="filterlist_col_time">Zeit</th><th id="th_value" data-key="value" data-ui="filterlist_col_value">Wert</th><th data-ui="filterlist_col_reason">Grund</th></tr></thead>
+            <thead><tr><th style="width:20px;"><input type="checkbox" id="tbl_sel_all" class="row_sel" data-ui="filterlist_select_all"/></th><th id="th_time" data-key="time" data-ui="filterlist_col_time">Zeit</th><th id="th_value" data-key="value" data-ui="filterlist_col_value">Wert</th><th data-ui="filterlist_col_reason">Grund</th></tr></thead>
             <tbody></tbody>
           </table>
         </div>
@@ -302,7 +305,7 @@
           <table id="edit_tbl">
             <thead>
               <tr>
-                <th style="width:26px;"><input type="checkbox" id="edit_sel_all" class="row_sel" data-ui="editlist_select_all"/></th>
+                <th style="width:20px;"><input type="checkbox" id="edit_sel_all" class="row_sel" data-ui="editlist_select_all"/></th>
                 <th>Zeit</th>
                 <th>Alt</th>
                 <th>Neu</th>
@@ -692,6 +695,7 @@ function drawPlotly(rows){
   const layout = {
     margin: { l: 52, r: 10, t: 10, b: 40 },
     height: (GRAPH_H_PX && isFinite(GRAPH_H_PX)) ? Math.round(GRAPH_H_PX) : 220,
+    autosize: true,
     xaxis: {
       type: "date",
       rangeslider: { visible: true, thickness: 0.12 },
@@ -808,10 +812,15 @@ function autoScaleYFromWindow(){
 function draw(rows){
   const hasPlotly = !!(window.Plotly && $plotly);
   if(hasPlotly){
+    // Ensure container is visible before Plotly measures width.
+    $plotly.style.display = "block";
     const ok = drawPlotly(rows);
     if(ok){
-      $plotly.style.display = "block";
       canvas.style.display = "none";
+      try{
+        // Resize to max width after layout.
+        requestAnimationFrame(()=>{ try{ window.Plotly.Plots.resize($plotly); }catch(e){} });
+      }catch(e){}
       return;
     }
     $plotly.style.display = "none";
@@ -2082,6 +2091,32 @@ try{
 // Also add tooltips for selects/inputs without data-ui
 try{
   document.querySelectorAll('select, input, button').forEach(el => {
+    if(el.getAttribute('data-ui')) return;
+    if(el.getAttribute('title')) return;
+    const id = el.getAttribute('id');
+    if(id) el.setAttribute('title', id);
+  });
+}catch(e){}
+</script>
+<div style="position:absolute;top:10px;right:20px;font-size:12px;color:#888;" id="version_box"></div>
+<script>
+(async () => {
+  try{
+    const r = await fetch("./api/info");
+    const j = await r.json();
+    if(j && j.ok){
+      document.getElementById("version_box").innerText = "Version: " + j.version;
+    }
+  }catch(e){}
+})();
+</script>
+
+    </div>
+  </div>
+
+</body>
+</html>
+('select, input, button').forEach(el => {
     if(el.getAttribute('data-ui')) return;
     if(el.getAttribute('title')) return;
     const id = el.getAttribute('id');

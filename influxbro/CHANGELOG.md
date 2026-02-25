@@ -16,6 +16,19 @@
 ### Maintenance
 - (keine)
 
+## 1.11.3
+
+### Features
+- UI: Merkt sich GUI-Eingaben (non-sensitive) in Browser storage ueber App-Wechsel/Reload/Update hinweg.
+- Dashboard: Graph mit Rahmen und maximaler Breite; Plot-Hoehe bleibt per Drag einstellbar.
+- Dashboard: Filter-/Bearbeitungstabellen kompaktere Zeilenhoehe.
+
+### Bug Fixes
+- Statistik: Flux query braces korrekt escaped ("seen is not defined" behoben).
+
+### Maintenance
+- (keine)
+
 ## 1.11.1
 
 ### Features
