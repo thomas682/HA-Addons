@@ -2,6 +2,8 @@
 
 # InfluxBro – Home Assistant Add-on
 
+[![Donate with PayPal](https://img.shields.io/badge/Donate-PayPal-blue.svg)](https://paypal.me/ThomasSchatz)
+
 Custom Home Assistant Add-on zur direkten Analyse und Verwaltung von InfluxDB-Daten – ohne Grafana oder Influx Data Explorer.
 
 ---
@@ -28,6 +30,14 @@ Custom Home Assistant Add-on zur direkten Analyse und Verwaltung von InfluxDB-Da
   * Minimalwert
   * Maximalwert
 * Optionale Löschfunktion mit Sicherheitsbestätigung
+
+---
+
+## License
+
+MIT License
+
+See `LICENSE.md`.
 
 ---
 

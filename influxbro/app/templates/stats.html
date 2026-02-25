@@ -21,15 +21,18 @@
     .content { padding: 16px; }
     h2 { margin: 0; }
     .muted { opacity: 0.7; font-size: 12px; }
-    .row { display:flex; gap: 10px; flex-wrap:wrap; align-items:end; margin-top: 10px; }
+    .row { display:flex; gap: 10px; flex-wrap:wrap; align-items:end; margin-top: 10px; justify-content:flex-start; }
     label { display:block; font-size: 12px; opacity: 0.8; }
     input, select, button { padding: 10px 12px; height: 40px; box-sizing: border-box; }
     button { cursor:pointer; }
     .card { border: 1px solid #ddd; border-radius: 12px; padding: 12px; margin-top: 12px; }
     .err { color: #b00020; margin-top: 8px; white-space: pre-wrap; }
 
+    .progress { height: 10px; background: #eee; border-radius: 999px; overflow: hidden; margin-top: 10px; }
+    .progress > div { height: 100%; background: #0b0b0c; width: 0%; }
+
     table { border-collapse: collapse; width: 100%; margin-top: 10px; }
-    th, td { border: 1px solid #eee; padding: 6px; font-size: 12px; }
+    th, td { border: 1px solid #eee; padding: 4px 6px; font-size: 11px; line-height: 1.2; }
     th { background: #f6f6f6; text-align:left; cursor:pointer; position: sticky; top: 0; z-index: 1; }
     .table_box { max-height: 70vh; overflow:auto; border: 1px solid #eee; border-radius: 12px; }
   </style>
@@ -43,6 +46,34 @@
 
       <div class="card">
         <div class="row">
+          <div style="min-width: 220px;">
+            <label>Zeitraum</label>
+            <select id="range" data-ui="stats.range" title="stats.range">
+              <option value="1h">Letzte 1h</option>
+              <option value="6h">Letzte 6h</option>
+              <option value="12h">Letzte 12h</option>
+              <option value="24h">Letzte 24h</option>
+              <option value="7d">Letzte 7 Tage</option>
+              <option value="30d" selected>Letzte 30 Tage</option>
+              <option value="90d">Letzte 90 Tage</option>
+              <option value="365d">Letztes Jahr</option>
+              <option value="this_year">Dieses Jahr</option>
+              <option value="12mo">Letzte 12 Monate</option>
+              <option value="24mo">Letzte 24 Monate</option>
+              <option value="all">Alle</option>
+              <option value="custom">Benutzerdefiniert…</option>
+            </select>
+            <div class="muted" id="range_txt" data-ui="stats.range_txt" title="stats.range_txt"></div>
+          </div>
+
+          <div id="custom" style="min-width: 320px; display:none;">
+            <label>Von/Bis (lokal)</label>
+            <div class="row" style="margin-top:0;">
+              <input id="start" type="datetime-local" data-ui="stats.start" title="stats.start" />
+              <input id="stop" type="datetime-local" data-ui="stats.stop" title="stats.stop" />
+            </div>
+          </div>
+
           <div style="flex:1; min-width: 260px;">
             <label>Suche</label>
             <input id="q" placeholder="Volltext..." data-ui="stats.search" title="stats.search" />
@@ -51,8 +82,13 @@
             <label>&nbsp;</label>
             <button id="load" data-ui="stats.load" title="stats.load">Gesamtstatistik laden</button>
           </div>
+          <div>
+            <label>&nbsp;</label>
+            <button id="cancel" data-ui="stats.cancel" title="stats.cancel">Abbrechen</button>
+          </div>
           <div class="muted" id="info" data-ui="stats.info" title="stats.info" style="padding-top: 6px;"></div>
         </div>
+        <div class="progress" aria-hidden="true"><div id="bar"></div></div>
         <div id="err" class="err"></div>
 
         <div class="table_box">
@@ -70,7 +106,6 @@
                 <th data-key="min">min</th>
                 <th data-key="max">max</th>
                 <th data-key="mean">mean</th>
-                <th data-key="p50">p50</th>
               </tr>
             </thead>
             <tbody></tbody>
@@ -79,16 +114,26 @@
       </div>
 
       <script>
+      const $range = document.getElementById('range');
+      const $rangeTxt = document.getElementById('range_txt');
+      const $custom = document.getElementById('custom');
+      const $start = document.getElementById('start');
+      const $stop = document.getElementById('stop');
       const $q = document.getElementById('q');
       const $load = document.getElementById('load');
+      const $cancel = document.getElementById('cancel');
       const $info = document.getElementById('info');
       const $err = document.getElementById('err');
       const $tbody = document.querySelector('#tbl tbody');
       const $thead = document.querySelector('#tbl thead');
+      const $bar = document.getElementById('bar');
 
       let UI_DECIMALS = 3;
       let ROWS = [];
       let SORT = { key: 'count', dir: 'desc' };
+
+      let JOB_ID = "";
+      let TIMER = null;
 
       function err(s){ $err.textContent = s || ""; }
       function fmtNum(v){
@@ -112,6 +157,136 @@
         return j;
       }
 
+      function pad2(n){ return String(n).padStart(2,'0'); }
+      function toLocalDatetimeValue(d){
+        return d.getFullYear() + "-" + pad2(d.getMonth()+1) + "-" + pad2(d.getDate()) + "T" + pad2(d.getHours()) + ":" + pad2(d.getMinutes());
+      }
+      function localToIsoUtc(v){
+        if(!v) return "";
+        const m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/);
+        if(!m) return "";
+        const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4]), Number(m[5]), 0, 0);
+        if(!isFinite(d.getTime())) return "";
+        return d.toISOString();
+      }
+
+      function timeFilter(){
+        const now = new Date();
+        const rk = $range.value;
+        if(rk === 'custom'){
+          const s = localToIsoUtc($start.value);
+          const e = localToIsoUtc($stop.value);
+          if(!s || !e) throw new Error("Bitte 'Von' und 'Bis' setzen.");
+          return { start: s, stop: e, range: rk };
+        }
+        if(rk === 'all'){
+          return { start: new Date(0).toISOString(), stop: now.toISOString(), range: rk };
+        }
+        if(rk === 'this_year'){
+          const s = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
+          return { start: s.toISOString(), stop: now.toISOString(), range: rk };
+        }
+        if(rk === '12mo'){
+          const s = new Date(now.getTime() - 365*24*60*60*1000);
+          return { start: s.toISOString(), stop: now.toISOString(), range: rk };
+        }
+        if(rk === '24mo'){
+          const s = new Date(now.getTime() - 730*24*60*60*1000);
+          return { start: s.toISOString(), stop: now.toISOString(), range: rk };
+        }
+        const m = String(rk||'').match(/^(\d+)([hd])$/);
+        if(m){
+          const n = Number(m[1]);
+          const unit = m[2];
+          const ms = (unit === 'd') ? (n*24*60*60*1000) : (n*60*60*1000);
+          const s = new Date(now.getTime() - ms);
+          return { start: s.toISOString(), stop: now.toISOString(), range: rk };
+        }
+        // 365d etc
+        const md = String(rk||'').match(/^(\d+)d$/);
+        if(md){
+          const n = Number(md[1]);
+          const s = new Date(now.getTime() - n*24*60*60*1000);
+          return { start: s.toISOString(), stop: now.toISOString(), range: rk };
+        }
+        return { start: new Date(now.getTime() - 30*24*60*60*1000).toISOString(), stop: now.toISOString(), range: '30d' };
+      }
+
+      function renderRangeTxt(){
+        try{
+          const tf = timeFilter();
+          $rangeTxt.textContent = fmtTs(tf.start) + " bis " + fmtTs(tf.stop);
+        }catch(e){
+          $rangeTxt.textContent = "";
+        }
+      }
+
+      function setBar(pct){
+        if(!$bar) return;
+        const v = Number(pct);
+        $bar.style.width = (isFinite(v) ? Math.max(0, Math.min(100, v)) : 0) + '%';
+      }
+
+      async function poll(){
+        if(!JOB_ID) return;
+        const j = await api('./api/global_stats_job/status?job_id=' + encodeURIComponent(JOB_ID));
+        const s = j.status;
+        if(!s) return;
+        const pct = (s.percent === null || s.percent === undefined) ? null : Number(s.percent);
+        setBar(pct);
+
+        const parts = [];
+        if(s.state) parts.push(String(s.state));
+        if(s.message) parts.push(String(s.message));
+        if(s.scanned_points !== null && s.scanned_points !== undefined){
+          if(s.total_points){
+            parts.push(`Punkte: ${s.scanned_points}/${s.total_points}`);
+          }else{
+            parts.push(`Punkte: ${s.scanned_points}`);
+          }
+        }
+        if(pct !== null && isFinite(pct)) parts.push(pct.toFixed(1) + '%');
+        if(s.groups !== null && s.groups !== undefined) parts.push('Gruppen: ' + String(s.groups));
+        if(s.current) parts.push('Aktuell: ' + s.current);
+        if(s.elapsed) parts.push('Zeit: ' + s.elapsed);
+        $info.textContent = parts.join(' | ');
+
+        if(s.state === 'done'){
+          clearInterval(TIMER); TIMER = null;
+          const r = await api('./api/global_stats_job/result?job_id=' + encodeURIComponent(JOB_ID) + '&limit=5000');
+          ROWS = (r.rows||[]);
+          render();
+        }
+        if(s.state === 'error'){
+          clearInterval(TIMER); TIMER = null;
+          err(s.error || 'Fehler');
+        }
+        if(s.state === 'cancelled'){
+          clearInterval(TIMER); TIMER = null;
+          err('Abgebrochen.');
+        }
+      }
+
+      async function startJob(){
+        err('');
+        setBar(0);
+        if(TIMER){ clearInterval(TIMER); TIMER = null; }
+        if(JOB_ID){
+          try{ await api('./api/global_stats_job/cancel', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({job_id: JOB_ID})}); }catch(e){}
+        }
+        const tf = timeFilter();
+        $info.textContent = 'starte...';
+        const j = await api('./api/global_stats_job/start', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({start: tf.start, stop: tf.stop})});
+        JOB_ID = String(j.job_id || '');
+        TIMER = setInterval(()=>poll().catch(e=>err(String(e && e.message ? e.message : e))), 500);
+        poll().catch(e=>err(String(e && e.message ? e.message : e)));
+      }
+
+      async function cancelJob(){
+        if(!JOB_ID) return;
+        try{ await api('./api/global_stats_job/cancel', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({job_id: JOB_ID})}); }catch(e){}
+      }
+
       async function loadUiCfg(){
         try{
           const j = await api('./api/config');
@@ -121,7 +296,7 @@
       }
 
       function txtRow(r){
-        return [r.friendly_name,r.entity_id,r.measurement,r.field,r.count,r.oldest_time,r.newest_time,r.last_value,r.min,r.max,r.mean,r.p50]
+        return [r.friendly_name,r.entity_id,r.measurement,r.field,r.count,r.oldest_time,r.newest_time,r.last_value,r.min,r.max,r.mean]
           .map(x=>String(x===null||x===undefined?'':x)).join(' ').toLowerCase();
       }
       function sortRows(rows){
@@ -169,7 +344,6 @@
           add(r.min,false,true);
           add(r.max,false,true);
           add(r.mean,false,true);
-          add(r.p50,false,true);
           $tbody.appendChild(tr);
         });
 
@@ -180,24 +354,7 @@
       }
 
       async function load(){
-        err('');
-        $info.textContent = 'laedt...';
-        const j = await api('./api/global_stats?limit=5000');
-        ROWS = (j.rows||[]).map(r=>({
-          measurement: r.measurement||'',
-          field: r.field||'',
-          entity_id: r.entity_id||'',
-          friendly_name: r.friendly_name||'',
-          count: r.count,
-          oldest_time: r.oldest_time,
-          newest_time: r.newest_time,
-          last_value: r.last_value,
-          min: r.min,
-          max: r.max,
-          mean: r.mean,
-          p50: r.p50,
-        }));
-        render();
+        await startJob();
       }
 
       function debounce(fn, ms){
@@ -206,6 +363,7 @@
       }
 
       $load.addEventListener('click', ()=>load().catch(e=>err(String(e && e.message ? e.message : e))));
+      $cancel.addEventListener('click', ()=>cancelJob().catch(e=>err(String(e && e.message ? e.message : e))));
       $q.addEventListener('input', debounce(()=>render(), 120));
       $thead.addEventListener('click', (ev)=>{
         const th = ev && ev.target ? ev.target.closest('th') : null;
@@ -222,6 +380,37 @@
       });
 
       loadUiCfg().then(()=>{});
+
+      // default custom times
+      const now = new Date();
+      const s = new Date(now.getTime() - 30*24*60*60*1000);
+      if($start && !$start.value) $start.value = toLocalDatetimeValue(s);
+      if($stop && !$stop.value) $stop.value = toLocalDatetimeValue(now);
+      if($range) $range.addEventListener('change', ()=>{
+        $custom.style.display = ($range.value === 'custom') ? 'block' : 'none';
+        renderRangeTxt();
+      });
+      if($start) $start.addEventListener('change', renderRangeTxt);
+      if($stop) $stop.addEventListener('change', renderRangeTxt);
+      renderRangeTxt();
+
+      // Tooltips
+      function applyTooltips(){
+        document.querySelectorAll('[data-ui]').forEach(el => {
+          if(!el.getAttribute('title')) el.setAttribute('title', el.getAttribute('data-ui') || '');
+        });
+        document.querySelectorAll('select, input, button').forEach(el => {
+          if(el.getAttribute('data-ui')) return;
+          if(el.getAttribute('title')) return;
+          const id = el.getAttribute('id');
+          if(id) el.setAttribute('title', id);
+        });
+      }
+      try{
+        applyTooltips();
+        const obs = new MutationObserver(()=>applyTooltips());
+        obs.observe(document.body, {childList:true, subtree:true});
+      }catch(e){}
       </script>
     </main>
   </div>

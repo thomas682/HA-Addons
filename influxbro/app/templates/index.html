@@ -75,9 +75,9 @@
     .main { display:block; margin-top: 12px; }
     .table_wrap { border: 1px solid #ddd; border-radius: 10px; padding: 10px; margin-top: 12px; }
     .table_head { display:flex; justify-content:space-between; gap: 12px; align-items:baseline; flex-wrap:wrap; }
-    .table_box { --row-h: 18px; --max-rows: 100; max-height: calc(var(--max-rows) * var(--row-h) + 42px); overflow:auto; border: 1px solid #eee; border-radius: 10px; margin-top: 8px; }
+    .table_box { --row-h: 16px; --max-rows: 100; max-height: calc(var(--max-rows) * var(--row-h) + 42px); overflow:auto; border: 1px solid #eee; border-radius: 10px; margin-top: 8px; }
     .table_box table { margin-top: 0; }
-    .table_box th, .table_box td { font-size: 11px; padding: 3px 6px; line-height: 1.2; }
+    .table_box th, .table_box td { font-size: 10px; padding: 2px 5px; line-height: 1.15; }
     .table_box th { position: sticky; top: 0; z-index: 1; cursor: pointer; }
 
     .tbl_actions { display:flex; gap: 10px; align-items:center; flex-wrap:wrap; margin-top: 6px; }
@@ -105,6 +105,11 @@
     <div class="content" data-ui="dashboard.page" title="dashboard.page">
 
   <h2>Dashboard</h2>
+  <div class="muted" style="margin-top:6px;" data-ui="dashboard.donate" title="dashboard.donate">
+    <a href="https://paypal.me/ThomasSchatz" target="_blank" rel="noreferrer">
+      <img alt="Donate with PayPal" src="https://img.shields.io/badge/Donate-PayPal-blue.svg"/>
+    </a>
+  </div>
   <div class="muted" id="backup_badge" data-ui="dashboard.backup_badge" title="dashboard.backup_badge"></div>
 
   <details id="selection_details" {{ 'open' if cfg.get('ui_open_selection') else '' }} data-ui="section.selection" title="section.selection">
@@ -257,7 +262,7 @@
           </table>
         </div>
 
-        <div class="tbl_actions" style="justify-content:flex-end; margin-top: 10px;">
+        <div class="tbl_actions" style="justify-content:flex-start; margin-top: 10px;">
           <button class="btn_sm" id="outlier_scan" data-ui="filterlist_outlier_scan">Fehlersuche Ausreisser</button>
           <button class="btn_sm" id="outlier_reset" data-ui="filterlist_outlier_reset">Zuruecksetzen</button>
           <details id="outlier_opts" style="margin-top:0;" data-ui="filterlist_outlier_opts">
@@ -310,7 +315,7 @@
           </table>
         </div>
 
-        <div class="tbl_actions" style="justify-content:flex-end; margin-top: 10px;">
+        <div class="tbl_actions" style="justify-content:flex-start; margin-top: 10px;">
           <button class="btn_sm" id="edit_remove" data-ui="editlist_remove">Aus Liste loeschen</button>
           <button class="btn_sm" id="edit_undo_all" data-ui="editlist_undo_all">Undo alle</button>
           <button class="btn_sm" id="edit_apply" data-ui="editlist_apply">Alle Werte in Datenbank uebernehmen</button>
@@ -699,8 +704,11 @@ function drawPlotly(rows){
       try{
         if(!ev) return;
 
-        // Ignore relayout events triggered by our y-axis adjustments
-        if(_IN_Y_RELAYOUT) return;
+        const keys = Object.keys(ev || {});
+        const hasX = keys.some(k => k.startsWith('xaxis.'));
+        const hasY = keys.some(k => k.startsWith('yaxis.'));
+        // Ignore relayout events triggered by our y-axis adjustments (y-only)
+        if(!hasX && hasY) return;
 
         if(_isTruthy(ev["xaxis.autorange"])){
           // Reset to full dataset bounds
@@ -719,8 +727,8 @@ function drawPlotly(rows){
           return;
         }
 
-        const r0 = ev["xaxis.range[0]"];
-        const r1 = ev["xaxis.range[1]"];
+        const r0 = ev["xaxis.range[0]"] || ev["xaxis.rangeslider.range[0]"];
+        const r1 = ev["xaxis.range[1]"] || ev["xaxis.rangeslider.range[1]"];
         if(r0 && r1){
           const a = Date.parse(String(r0));
           const b = Date.parse(String(r1));
@@ -1125,7 +1133,6 @@ function _statsRowsTotal(stats){
   out.push({k: "Minimum", v: fmtNum(s.min)});
   out.push({k: "Maximum", v: fmtNum(s.max)});
   out.push({k: "Mittelwert", v: fmtNum(s.mean)});
-  out.push({k: "Median (p50)", v: fmtNum(s.p50)});
   return out;
 }
 
@@ -1139,7 +1146,6 @@ function _statsRowsCurrent(stats){
   out.push({k: "Minimum", v: fmtNum(s.min)});
   out.push({k: "Maximum", v: fmtNum(s.max)});
   out.push({k: "Mittelwert", v: fmtNum(s.mean)});
-  out.push({k: "Median (p50)", v: fmtNum(s.p50)});
   const kb = tableKbLoaded();
   out.push({k: "Tabelle (geladen) kB", v: (kb === null) ? "" : kb.toFixed(1)});
   return out;

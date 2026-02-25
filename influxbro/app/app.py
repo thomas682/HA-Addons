@@ -2,6 +2,9 @@ import json
 import math
 import os
 import re
+import threading
+import time
+import uuid
 import urllib.error
 import urllib.request
 import urllib.parse
@@ -24,6 +27,9 @@ DATA_DIR = Path(os.environ.get("DATA_DIR", "/data"))
 
 APP_DIR = Path(__file__).resolve().parent
 BACKUP_DIR = DATA_DIR / "backups"
+
+GLOBAL_STATS_JOBS: dict[str, dict[str, Any]] = {}
+GLOBAL_STATS_LOCK = threading.Lock()
 
 DEFAULT_INFLUX_YAML_PATH = "homeassistant/influx.yaml"
 LAST_YAML_ERROR = None
@@ -844,6 +850,36 @@ def api_ha_debug():
 def api_logs():
     """Fetch InfluxBro add-on logs via Supervisor."""
 
+    def _unwrap(txt: str) -> str:
+        raw = (txt or "").strip()
+        if not raw:
+            return ""
+        if not (raw.startswith("{") or raw.startswith("[")):
+            return txt
+        try:
+            data = json.loads(raw)
+        except Exception:
+            return txt
+        if isinstance(data, dict):
+            d = data.get("data")
+            if isinstance(d, str):
+                return d
+            if isinstance(d, dict):
+                for k in ("content", "logs", "result", "stdout", "text"):
+                    v = d.get(k)
+                    if isinstance(v, str):
+                        return v
+            # Some endpoints return the body directly
+            for k in ("result", "content", "logs", "stdout", "text"):
+                v = data.get(k)
+                if isinstance(v, str):
+                    return v
+        return txt
+
+    def _short_err_body(txt: str) -> str:
+        t = (txt or "").strip().replace("\n", " ")
+        return (t[:240] + "...") if len(t) > 240 else t
+
     try:
         tail = int(request.args.get("tail", "2000"))
     except Exception:
@@ -853,29 +889,107 @@ def api_logs():
     if tail > 20000:
         tail = 20000
 
+    sup_lines = min(max(tail, 0), 5000)
+    q = f"?lines={sup_lines}" if sup_lines else ""
     candidates = [
-        "/supervisor/api/addons/self/logs",
-        "/addons/self/logs",
-        "/supervisor/api/addons/influxbro/logs",
-        "/addons/influxbro/logs",
+        "/supervisor/api/addons/self/logs" + q,
+        "/addons/self/logs" + q,
+        "/supervisor/api/addons/influxbro/logs" + q,
+        "/addons/influxbro/logs" + q,
     ]
 
     status = 0
     txt = ""
+    used = ""
     for p in candidates:
         st, out = _supervisor_get(p, timeout_s=10)
         if st == 200 and out:
-            status, txt = st, out
+            status, txt, used = st, out, p
             break
-        status, txt = st, out
+        status, txt, used = st, out, p
 
     if status != 200:
-        return jsonify({"ok": False, "error": f"Logs not available: {txt or status}"}), 502
+        msg = _short_err_body(txt)
+        return jsonify({
+            "ok": False,
+            "error": f"Logs not available: HTTP {status} ({used}) {msg}".strip(),
+        }), 502
 
+    txt = _unwrap(txt)
     lines = (txt or "").splitlines()
     if tail and len(lines) > tail:
         lines = lines[-tail:]
     return jsonify({"ok": True, "text": "\n".join(lines)})
+
+
+@app.get("/api/logs_diag")
+def api_logs_diag():
+    """Diagnostics for Supervisor logs access.
+
+    Helps debug 403/404 by listing candidate paths and status codes.
+    Does not expose the Supervisor token.
+    """
+
+    def _unwrap(txt: str) -> str:
+        raw = (txt or "").strip()
+        if not raw:
+            return ""
+        if not (raw.startswith("{") or raw.startswith("[")):
+            return txt
+        try:
+            data = json.loads(raw)
+        except Exception:
+            return txt
+        if isinstance(data, dict):
+            d = data.get("data")
+            if isinstance(d, str):
+                return d
+            if isinstance(d, dict):
+                for k in ("content", "logs", "result", "stdout", "text"):
+                    v = d.get(k)
+                    if isinstance(v, str):
+                        return v
+            for k in ("result", "content", "logs", "stdout", "text"):
+                v = data.get(k)
+                if isinstance(v, str):
+                    return v
+        return txt
+
+    def _snip(s: str, n: int = 200) -> str:
+        t = (s or "").replace("\r", "").strip()
+        t = t.replace("\n", " ")
+        return (t[:n] + "...") if len(t) > n else t
+
+    token_present = bool(_supervisor_token())
+    try:
+        lines = int(request.args.get("lines", "80"))
+    except Exception:
+        lines = 80
+    if lines < 0:
+        lines = 0
+    if lines > 500:
+        lines = 500
+
+    q = f"?lines={lines}" if lines else ""
+    candidates = [
+        "/supervisor/api/addons/self/logs" + q,
+        "/addons/self/logs" + q,
+        "/supervisor/api/addons/influxbro/logs" + q,
+        "/addons/influxbro/logs" + q,
+    ]
+
+    checks: list[dict[str, Any]] = []
+    for p in candidates:
+        st, out = _supervisor_get(p, timeout_s=8)
+        checks.append({
+            "path": p,
+            "status": st,
+            "ok": st == 200,
+            "body": _snip(out),
+            "unwrapped": _snip(_unwrap(out)),
+        })
+
+    return jsonify({"ok": True, "token_present": token_present, "checks": checks})
 
 
 def _backup_safe(s: str) -> str:
@@ -1924,10 +2038,28 @@ def global_stats():
         }), 400
 
     keys = '["_measurement","_field","entity_id","friendly_name"]'
-    start = 'time(v: "1970-01-01T00:00:00Z")'
+
+    # Optional time window to reduce load
+    start_q = (request.args.get("start") or "").strip()
+    stop_q = (request.args.get("stop") or "").strip()
+    if start_q and stop_q:
+        try:
+            start_dt = _parse_iso_datetime(start_q)
+            stop_dt = _parse_iso_datetime(stop_q)
+            start = f'time(v: "{_dt_to_rfc3339_utc(start_dt)}")'
+            stop = f'time(v: "{_dt_to_rfc3339_utc(stop_dt)}")'
+        except Exception:
+            start = 'time(v: "1970-01-01T00:00:00Z")'
+            stop = None
+    else:
+        # Default to last 30 days
+        start = "-30d"
+        stop = None
+
+    range_clause = f"|> range(start: {start}{', stop: ' + stop if stop else ''})"
     q = f'''
 base = from(bucket: "{cfg["bucket"]}")
-  |> range(start: {start})
+  {range_clause}
   |> filter(fn: (r) => exists r._measurement and exists r._field)
   |> group(columns: {keys})
 
@@ -1951,11 +2083,6 @@ me = base
   |> keep(columns: ["_measurement","_field","entity_id","friendly_name","_value"])
   |> rename(columns: {{_value: "mean"}})
 
-p = base
-  |> quantile(q: 0.5, method: "estimate_tdigest")
-  |> keep(columns: ["_measurement","_field","entity_id","friendly_name","_value"])
-  |> rename(columns: {{_value: "p50"}})
-
 old = base
   |> sort(columns: ["_time"], desc: false)
   |> first()
@@ -1971,11 +2098,10 @@ nw = base
 j1 = join(tables: {{a: c, b: mn}}, on: ["_measurement","_field","entity_id","friendly_name"], method: "inner")
 j2 = join(tables: {{a: j1, b: mx}}, on: ["_measurement","_field","entity_id","friendly_name"], method: "inner")
 j3 = join(tables: {{a: j2, b: me}}, on: ["_measurement","_field","entity_id","friendly_name"], method: "inner")
-j4 = join(tables: {{a: j3, b: p}}, on: ["_measurement","_field","entity_id","friendly_name"], method: "inner")
-j5 = join(tables: {{a: j4, b: old}}, on: ["_measurement","_field","entity_id","friendly_name"], method: "inner")
-j6 = join(tables: {{a: j5, b: nw}}, on: ["_measurement","_field","entity_id","friendly_name"], method: "inner")
+j4 = join(tables: {{a: j3, b: old}}, on: ["_measurement","_field","entity_id","friendly_name"], method: "inner")
+j5 = join(tables: {{a: j4, b: nw}}, on: ["_measurement","_field","entity_id","friendly_name"], method: "inner")
 
-j6 |> group() |> limit(n: {limit})
+j5 |> group() |> limit(n: {limit})
 '''
 
     def _iso(v: Any) -> str | None:
@@ -2004,11 +2130,322 @@ j6 |> group() |> limit(n: {limit})
                         "min": vals.get("min"),
                         "max": vals.get("max"),
                         "mean": vals.get("mean"),
-                        "p50": vals.get("p50"),
                     })
             return jsonify({"ok": True, "rows": rows, "limit": limit})
     except Exception as e:
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
+
+
+def _hms(seconds: float | int) -> str:
+    try:
+        s = int(max(0, float(seconds)))
+    except Exception:
+        s = 0
+    h = s // 3600
+    m = (s % 3600) // 60
+    sec = s % 60
+    return f"{h:02d}:{m:02d}:{sec:02d}"
+
+
+def _job_get(job_id: str) -> dict[str, Any] | None:
+    with GLOBAL_STATS_LOCK:
+        return GLOBAL_STATS_JOBS.get(job_id)
+
+
+def _job_public(job: dict[str, Any]) -> dict[str, Any]:
+    total = job.get("total_points")
+    scanned = int(job.get("scanned_points") or 0)
+    pct = None
+    if isinstance(total, int) and total > 0:
+        pct = min(100.0, (scanned / float(total)) * 100.0)
+    return {
+        "id": job.get("id"),
+        "state": job.get("state"),
+        "message": job.get("message"),
+        "started_at": job.get("started_at"),
+        "elapsed": _hms(time.monotonic() - float(job.get("started_mono") or time.monotonic())),
+        "total_points": total,
+        "scanned_points": scanned,
+        "percent": pct,
+        "groups": int(job.get("groups_count") or 0),
+        "current": job.get("current") or "",
+        "cancelled": bool(job.get("cancelled")),
+        "error": job.get("error"),
+        "ready": job.get("state") == "done",
+    }
+
+
+def _global_stats_job_thread(job_id: str, cfg: dict[str, Any], start_dt: datetime, stop_dt: datetime) -> None:
+    with GLOBAL_STATS_LOCK:
+        job = GLOBAL_STATS_JOBS.get(job_id)
+    if not job:
+        return
+
+    cfg_local = dict(cfg)
+    try:
+        cfg_local["timeout_seconds"] = max(int(cfg_local.get("timeout_seconds", 10)), 120)
+    except Exception:
+        cfg_local["timeout_seconds"] = 120
+
+    start = _dt_to_rfc3339_utc(start_dt)
+    stop = _dt_to_rfc3339_utc(stop_dt)
+
+    def set_state(state: str, msg: str) -> None:
+        with GLOBAL_STATS_LOCK:
+            if job_id in GLOBAL_STATS_JOBS:
+                GLOBAL_STATS_JOBS[job_id]["state"] = state
+                GLOBAL_STATS_JOBS[job_id]["message"] = msg
+
+    def should_cancel() -> bool:
+        with GLOBAL_STATS_LOCK:
+            j = GLOBAL_STATS_JOBS.get(job_id)
+            return bool(j and j.get("cancelled"))
+
+    try:
+        # Optional: total count for percent progress (can be expensive)
+        set_state("counting", "Zaehle Datenpunkte (optional)...")
+        total_points: int | None = None
+        try:
+            q_count = f'''
+from(bucket: "{cfg_local["bucket"]}")
+  |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
+  |> group()
+  |> count(column: "_value")
+'''
+            with v2_client(cfg_local) as c:
+                tables = c.query_api().query(q_count, org=cfg_local["org"])
+                for t in tables or []:
+                    for rec in getattr(t, "records", []) or []:
+                        v = rec.get_value()
+                        if isinstance(v, (int, float)):
+                            total_points = int(v)
+                            break
+                    if total_points is not None:
+                        break
+        except Exception:
+            total_points = None
+
+        with GLOBAL_STATS_LOCK:
+            if job_id in GLOBAL_STATS_JOBS:
+                GLOBAL_STATS_JOBS[job_id]["total_points"] = total_points
+
+        if should_cancel():
+            set_state("cancelled", "Abgebrochen.")
+            return
+
+        set_state("scanning", "Lese Datenpunkte (Stream)...")
+        q = f'''
+from(bucket: "{cfg_local["bucket"]}")
+  |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
+  |> keep(columns: ["_measurement","_field","entity_id","friendly_name","_time","_value"])
+'''
+
+        groups: dict[tuple[str, str, str, str], dict[str, Any]] = {}
+        scanned = 0
+        last_update = time.monotonic()
+
+        with v2_client(cfg_local) as c:
+            qapi = c.query_api()
+            for rec in qapi.query_stream(q, org=cfg_local["org"]):
+                if should_cancel():
+                    set_state("cancelled", "Abgebrochen.")
+                    return
+
+                scanned += 1
+                t = rec.get_time()
+                v = rec.get_value()
+                vals = getattr(rec, "values", {}) or {}
+                m = str(vals.get("_measurement") or "")
+                f = str(vals.get("_field") or "")
+                eid = str(vals.get("entity_id") or "")
+                fn = str(vals.get("friendly_name") or "")
+                key = (m, f, eid, fn)
+
+                # Update progress occasionally
+                now = time.monotonic()
+                if now - last_update > 0.3:
+                    with GLOBAL_STATS_LOCK:
+                        if job_id in GLOBAL_STATS_JOBS:
+                            GLOBAL_STATS_JOBS[job_id]["scanned_points"] = scanned
+                            GLOBAL_STATS_JOBS[job_id]["groups_count"] = len(groups)
+                            GLOBAL_STATS_JOBS[job_id]["current"] = fn or eid or (m + "/" + f)
+                    last_update = now
+
+                if not isinstance(t, datetime):
+                    continue
+                if isinstance(v, bool) or not isinstance(v, (int, float)):
+                    continue
+                fv = float(v)
+
+                st = groups.get(key)
+                if not st:
+                    st = {
+                        "measurement": m,
+                        "field": f,
+                        "entity_id": eid,
+                        "friendly_name": fn,
+                        "count": 0,
+                        "sum": 0.0,
+                        "min": fv,
+                        "max": fv,
+                        "oldest_time": t,
+                        "newest_time": t,
+                        "last_value": fv,
+                    }
+                    groups[key] = st
+
+                st["count"] += 1
+                st["sum"] += fv
+                if fv < st["min"]:
+                    st["min"] = fv
+                if fv > st["max"]:
+                    st["max"] = fv
+                if t < st["oldest_time"]:
+                    st["oldest_time"] = t
+                if t >= st["newest_time"]:
+                    st["newest_time"] = t
+                    st["last_value"] = fv
+
+        # Finalize rows
+        rows: list[dict[str, Any]] = []
+        for st in groups.values():
+            cnum = int(st.get("count") or 0)
+            mean = (float(st.get("sum") or 0.0) / float(cnum)) if cnum > 0 else None
+            rows.append({
+                "measurement": st.get("measurement") or "",
+                "field": st.get("field") or "",
+                "entity_id": st.get("entity_id") or "",
+                "friendly_name": st.get("friendly_name") or "",
+                "count": cnum,
+                "oldest_time": _dt_to_rfc3339_utc(st["oldest_time"]),
+                "newest_time": _dt_to_rfc3339_utc(st["newest_time"]),
+                "last_value": st.get("last_value"),
+                "min": st.get("min"),
+                "max": st.get("max"),
+                "mean": mean,
+            })
+
+        rows.sort(key=lambda r: int(r.get("count") or 0), reverse=True)
+
+        with GLOBAL_STATS_LOCK:
+            if job_id in GLOBAL_STATS_JOBS:
+                GLOBAL_STATS_JOBS[job_id]["rows"] = rows
+                GLOBAL_STATS_JOBS[job_id]["scanned_points"] = scanned
+                GLOBAL_STATS_JOBS[job_id]["groups_count"] = len(rows)
+
+        set_state("done", f"Fertig. Zeilen: {len(rows)}")
+    except Exception as e:
+        with GLOBAL_STATS_LOCK:
+            if job_id in GLOBAL_STATS_JOBS:
+                GLOBAL_STATS_JOBS[job_id]["error"] = _short_influx_error(e)
+        set_state("error", "Fehler")
+
+
+@app.post("/api/global_stats_job/start")
+def api_global_stats_job_start():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    if int(cfg.get("influx_version", 2)) != 2:
+        return jsonify({"ok": False, "error": "global_stats currently supports InfluxDB v2 only"}), 400
+    if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+        return jsonify({
+            "ok": False,
+            "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
+        }), 400
+
+    body = request.get_json(force=True) or {}
+    try:
+        start_dt, stop_dt = _get_start_stop_from_payload(body)
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+
+    job_id = uuid.uuid4().hex
+    job = {
+        "id": job_id,
+        "state": "queued",
+        "message": "Start...",
+        "started_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+        "started_mono": time.monotonic(),
+        "total_points": None,
+        "scanned_points": 0,
+        "groups_count": 0,
+        "current": "",
+        "rows": [],
+        "cancelled": False,
+        "error": None,
+    }
+
+    # Cleanup old jobs
+    with GLOBAL_STATS_LOCK:
+        GLOBAL_STATS_JOBS[job_id] = job
+        cutoff = time.monotonic() - 3600
+        old = [k for k, v in GLOBAL_STATS_JOBS.items() if float(v.get("started_mono") or 0) < cutoff]
+        for k in old:
+            if k != job_id:
+                GLOBAL_STATS_JOBS.pop(k, None)
+
+    t = threading.Thread(
+        target=_global_stats_job_thread,
+        args=(job_id, cfg, start_dt, stop_dt),
+        daemon=True,
+    )
+    t.start()
+    return jsonify({"ok": True, "job_id": job_id})
+
+
+@app.get("/api/global_stats_job/status")
+def api_global_stats_job_status():
+    job_id = (request.args.get("job_id") or "").strip()
+    if not job_id:
+        return jsonify({"ok": False, "error": "job_id required"}), 400
+    job = _job_get(job_id)
+    if not job:
+        return jsonify({"ok": False, "error": "job not found"}), 404
+    return jsonify({"ok": True, "status": _job_public(job)})
+
+
+@app.get("/api/global_stats_job/result")
+def api_global_stats_job_result():
+    job_id = (request.args.get("job_id") or "").strip()
+    if not job_id:
+        return jsonify({"ok": False, "error": "job_id required"}), 400
+    job = _job_get(job_id)
+    if not job:
+        return jsonify({"ok": False, "error": "job not found"}), 404
+    if job.get("state") != "done":
+        return jsonify({"ok": True, "ready": False, "rows": []})
+
+    try:
+        limit = int(request.args.get("limit", "5000"))
+    except Exception:
+        limit = 5000
+    if limit < 1:
+        limit = 1
+    if limit > 20000:
+        limit = 20000
+
+    try:
+        offset = int(request.args.get("offset", "0"))
+    except Exception:
+        offset = 0
+    if offset < 0:
+        offset = 0
+
+    rows = job.get("rows") or []
+    return jsonify({"ok": True, "ready": True, "rows": rows[offset : offset + limit], "total": len(rows)})
+
+
+@app.post("/api/global_stats_job/cancel")
+def api_global_stats_job_cancel():
+    body = request.get_json(force=True) or {}
+    job_id = (body.get("job_id") or "").strip()
+    if not job_id:
+        return jsonify({"ok": False, "error": "job_id required"}), 400
+    with GLOBAL_STATS_LOCK:
+        job = GLOBAL_STATS_JOBS.get(job_id)
+        if not job:
+            return jsonify({"ok": False, "error": "job not found"}), 404
+        job["cancelled"] = True
+    return jsonify({"ok": True})
 
 
 @app.post("/api/outliers")

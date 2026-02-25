@@ -44,6 +44,38 @@
       <div class="card">
         <div class="muted">Auswahl wird aus dem Dashboard uebernommen (Browser-Speicher).</div>
         <div class="muted" id="loc" data-ui="backup.location" title="backup.location"></div>
+        <div class="muted" id="zoom_txt" data-ui="backup.zoom_txt" title="backup.zoom_txt"></div>
+
+        <div class="row">
+          <div style="min-width: 220px;">
+            <label>Zeitraum</label>
+            <select id="range" data-ui="backup.range" title="backup.range">
+              <option value="1h">Letzte 1h</option>
+              <option value="6h">Letzte 6h</option>
+              <option value="12h">Letzte 12h</option>
+              <option value="24h">Letzte 24h</option>
+              <option value="7d">Letzte 7 Tage</option>
+              <option value="30d">Letzte 30 Tage</option>
+              <option value="90d">Letzte 90 Tage</option>
+              <option value="365d">Letztes Jahr</option>
+              <option value="this_year">Dieses Jahr</option>
+              <option value="12mo">Letzte 12 Monate</option>
+              <option value="24mo">Letzte 24 Monate</option>
+              <option value="all">Alle</option>
+              <option value="custom">Benutzerdefiniert…</option>
+            </select>
+            <div class="muted" id="range_txt" data-ui="backup.range_txt" title="backup.range_txt"></div>
+          </div>
+
+          <div id="custom" style="min-width: 320px; display:none;">
+            <label>Von/Bis (lokal)</label>
+            <div class="row" style="margin-top:0;">
+              <input id="start" type="datetime-local" data-ui="backup.start" title="backup.start" />
+              <input id="stop" type="datetime-local" data-ui="backup.stop" title="backup.stop" />
+            </div>
+          </div>
+        </div>
+
         <div class="row">
           <div style="min-width: 320px; flex:1;">
             <label>Aktueller Messwert</label>
@@ -55,7 +87,11 @@
           </div>
           <div>
             <label>&nbsp;</label>
-            <button id="create_range" data-ui="backup.create_range" title="backup.create_range">Zeitbereich Backup</button>
+            <button id="create_range" data-ui="backup.create_range_zoom" title="backup.create_range_zoom">Zeitbereich Backup (Zoom)</button>
+          </div>
+          <div>
+            <label>&nbsp;</label>
+            <button id="create_range_sel" data-ui="backup.create_range_sel" title="backup.create_range_sel">Zeitbereich Backup (Auswahl)</button>
           </div>
           <div>
             <label>&nbsp;</label>
@@ -90,8 +126,15 @@
       const $err = document.getElementById('err');
       const $ok = document.getElementById('ok');
       const $loc = document.getElementById('loc');
+      const $zoomTxt = document.getElementById('zoom_txt');
+      const $range = document.getElementById('range');
+      const $rangeTxt = document.getElementById('range_txt');
+      const $custom = document.getElementById('custom');
+      const $start = document.getElementById('start');
+      const $stop = document.getElementById('stop');
       const $createFull = document.getElementById('create_full');
       const $createRange = document.getElementById('create_range');
+      const $createRangeSel = document.getElementById('create_range_sel');
       const $reload = document.getElementById('reload');
       const $del = document.getElementById('del');
 
@@ -103,6 +146,85 @@
 
       function loadState(){
         try{ return JSON.parse(localStorage.getItem(LS_KEY) || "{}") || {}; }catch(e){ return {}; }
+      }
+
+      function pad2(n){ return String(n).padStart(2,'0'); }
+      function fmtTs(iso){
+        if(!iso) return '';
+        const d = new Date(String(iso));
+        if(!isFinite(d.getTime())) return String(iso);
+        return pad2(d.getDate()) + '.' + pad2(d.getMonth()+1) + '.' + d.getFullYear() + ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds());
+      }
+      function toLocalDatetimeValue(d){
+        return d.getFullYear() + "-" + pad2(d.getMonth()+1) + "-" + pad2(d.getDate()) + "T" + pad2(d.getHours()) + ":" + pad2(d.getMinutes());
+      }
+      function localToIsoUtc(v){
+        if(!v) return "";
+        const m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/);
+        if(!m) return "";
+        const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4]), Number(m[5]), 0, 0);
+        if(!isFinite(d.getTime())) return "";
+        return d.toISOString();
+      }
+
+      function timeFilter(){
+        const now = new Date();
+        const rk = $range.value;
+        if(rk === 'custom'){
+          const s = localToIsoUtc($start.value);
+          const e = localToIsoUtc($stop.value);
+          if(!s || !e) throw new Error("Bitte 'Von' und 'Bis' setzen.");
+          return { start: s, stop: e, range: rk };
+        }
+        if(rk === 'all'){
+          return { start: new Date(0).toISOString(), stop: now.toISOString(), range: rk };
+        }
+        if(rk === 'this_year'){
+          const s = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
+          return { start: s.toISOString(), stop: now.toISOString(), range: rk };
+        }
+        if(rk === '12mo'){
+          const s = new Date(now.getTime() - 365*24*60*60*1000);
+          return { start: s.toISOString(), stop: now.toISOString(), range: rk };
+        }
+        if(rk === '24mo'){
+          const s = new Date(now.getTime() - 730*24*60*60*1000);
+          return { start: s.toISOString(), stop: now.toISOString(), range: rk };
+        }
+        const m = String(rk||'').match(/^(\d+)([hd])$/);
+        if(m){
+          const n = Number(m[1]);
+          const unit = m[2];
+          const ms = (unit === 'd') ? (n*24*60*60*1000) : (n*60*60*1000);
+          const s = new Date(now.getTime() - ms);
+          return { start: s.toISOString(), stop: now.toISOString(), range: rk };
+        }
+        const md = String(rk||'').match(/^(\d+)d$/);
+        if(md){
+          const n = Number(md[1]);
+          const s = new Date(now.getTime() - n*24*60*60*1000);
+          return { start: s.toISOString(), stop: now.toISOString(), range: rk };
+        }
+        return { start: new Date(now.getTime() - 30*24*60*60*1000).toISOString(), stop: now.toISOString(), range: '30d' };
+      }
+
+      function renderRangeTxt(){
+        try{
+          const tf = timeFilter();
+          $rangeTxt.textContent = fmtTs(tf.start) + ' bis ' + fmtTs(tf.stop);
+        }catch(e){
+          $rangeTxt.textContent = '';
+        }
+      }
+
+      function renderZoomTxt(){
+        if(!$zoomTxt) return;
+        const win = getGraphWindowFromState();
+        if(!win){
+          $zoomTxt.textContent = 'Zoom-Fenster (Dashboard): -';
+          return;
+        }
+        $zoomTxt.textContent = 'Zoom-Fenster (Dashboard): ' + fmtTs(win.start) + ' bis ' + fmtTs(win.stop);
       }
 
       async function api(url, opts){
@@ -191,6 +313,7 @@
         }catch(e){
           if($loc) $loc.textContent = "Speicherort (Add-on): /data/backups";
         }
+        renderZoomTxt();
         LAST_RESOLVED = await resolveFromState();
         $sel.value = [LAST_RESOLVED.friendly_name || "", LAST_RESOLVED.entity_id || "", LAST_RESOLVED.measurement, LAST_RESOLVED.field].filter(Boolean).join(" | ");
         const qs = new URLSearchParams({
@@ -229,6 +352,19 @@
         await loadList();
       }
 
+      async function createRangeBackupSel(){
+        err(""); ok("");
+        if(!LAST_RESOLVED) LAST_RESOLVED = await resolveFromState();
+        const tf = timeFilter();
+        const j = await api("./api/backup_create_range", {
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body: JSON.stringify({ ...LAST_RESOLVED, start: tf.start, stop: tf.stop })
+        });
+        ok(j.message || "Zeitbereich Backup erstellt.");
+        await loadList();
+      }
+
       async function deleteBackup(){
         err(""); ok("");
         if(!SELECTED_ID) throw new Error("Bitte ein Backup auswaehlen.");
@@ -246,7 +382,49 @@
       $reload.addEventListener('click', ()=>loadList().catch(e=>err(String(e && e.message ? e.message : e))));
       $createFull.addEventListener('click', ()=>createBackup().catch(e=>err(String(e && e.message ? e.message : e))));
       $createRange.addEventListener('click', ()=>createRangeBackup().catch(e=>err(String(e && e.message ? e.message : e))));
+      $createRangeSel.addEventListener('click', ()=>createRangeBackupSel().catch(e=>err(String(e && e.message ? e.message : e))));
       $del.addEventListener('click', ()=>deleteBackup().catch(e=>err(String(e && e.message ? e.message : e))));
+
+      // Default time range from dashboard state
+      try{
+        const st = loadState();
+        if($range && st.range) $range.value = st.range;
+        if($start && st.start) $start.value = st.start;
+        if($stop && st.stop) $stop.value = st.stop;
+      }catch(e){}
+      if($range) $range.addEventListener('change', ()=>{
+        $custom.style.display = ($range.value === 'custom') ? 'block' : 'none';
+        renderRangeTxt();
+      });
+      if($start) $start.addEventListener('change', renderRangeTxt);
+      if($stop) $stop.addEventListener('change', renderRangeTxt);
+      // fill missing custom times
+      const now = new Date();
+      const s = new Date(now.getTime() - 30*24*60*60*1000);
+      if($start && !$start.value) $start.value = toLocalDatetimeValue(s);
+      if($stop && !$stop.value) $stop.value = toLocalDatetimeValue(now);
+      if($range) $custom.style.display = ($range.value === 'custom') ? 'block' : 'none';
+      renderRangeTxt();
+      renderZoomTxt();
+
+      // Tooltips
+      function applyTooltips(){
+        document.querySelectorAll('[data-ui]').forEach(el => {
+          if(!el.getAttribute('title')) el.setAttribute('title', el.getAttribute('data-ui') || '');
+        });
+        document.querySelectorAll('select, input, button').forEach(el => {
+          if(el.getAttribute('data-ui')) return;
+          if(el.getAttribute('title')) return;
+          const id = el.getAttribute('id');
+          if(id) el.setAttribute('title', id);
+        });
+      }
+      try{
+        applyTooltips();
+        const obs = new MutationObserver(()=>applyTooltips());
+        obs.observe(document.body, {childList:true, subtree:true});
+      }catch(e){}
+
       loadList().catch(e=>err(String(e && e.message ? e.message : e)));
       </script>
     </main>

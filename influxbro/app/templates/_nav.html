@@ -43,4 +43,36 @@
     <span class="ico" aria-hidden="true">S</span>
     <span>Einstellungen</span>
   </a>
+
+  <script>
+  // Ensure every visible control has a stable tooltip + internal name.
+  (function(){
+    function applyTooltips(){
+      document.querySelectorAll('[data-ui]').forEach(el => {
+        const ui = el.getAttribute('data-ui') || '';
+        if(ui && !el.getAttribute('title')) el.setAttribute('title', ui);
+      });
+      document.querySelectorAll('input, select, textarea, button, a').forEach(el => {
+        if(el.getAttribute('data-ui')){
+          if(!el.getAttribute('title')) el.setAttribute('title', el.getAttribute('data-ui') || '');
+          return;
+        }
+        const id = el.getAttribute('id');
+        if(id){
+          el.setAttribute('data-ui', id);
+          if(!el.getAttribute('title')) el.setAttribute('title', id);
+        }
+      });
+    }
+    try{
+      if(document.readyState === 'loading'){
+        document.addEventListener('DOMContentLoaded', applyTooltips);
+      }else{
+        applyTooltips();
+      }
+      const obs = new MutationObserver(()=>applyTooltips());
+      obs.observe(document.documentElement, {childList:true, subtree:true});
+    }catch(e){}
+  })();
+  </script>
 </nav>
