@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.11.1
+
+### Features
+- Statistik: Statusfeld als linksbuendiges Feld + mehr Live-Infos (Zeit/Rate/Fortschritt/Aktuell).
+- Statistik: Details-Spalten (count/min/max/mean) erst per "Detail" Button pro Zeile; Button "Lade alle Details".
+- Statistik: Anzeige Zeilenanzahl ueber der Tabelle; Loeschen-Button pro Zeile (nur Ansicht).
+- Einstellungen: Bereiche einklappbar.
+
+### Bug Fixes
+- Logs: Supervisor-Logs nur noch ueber "self" Pfade (kein slug-mismatch mehr).
+
+### Maintenance
+- (keine)
+
 ## 1.11.0
 
 ### Features
