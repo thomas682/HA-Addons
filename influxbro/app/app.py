@@ -891,11 +891,12 @@ def api_logs():
 
     sup_lines = min(max(tail, 0), 5000)
     q = f"?lines={sup_lines}" if sup_lines else ""
+    # Prefer self to avoid slug mismatch; keep both legacy path prefixes.
     candidates = [
-        "/supervisor/api/addons/self/logs" + q,
         "/addons/self/logs" + q,
-        "/supervisor/api/addons/influxbro/logs" + q,
-        "/addons/influxbro/logs" + q,
+        "/supervisor/api/addons/self/logs" + q,
+        "/addons/self/logs",
+        "/supervisor/api/addons/self/logs",
     ]
 
     status = 0
@@ -972,10 +973,10 @@ def api_logs_diag():
 
     q = f"?lines={lines}" if lines else ""
     candidates = [
-        "/supervisor/api/addons/self/logs" + q,
         "/addons/self/logs" + q,
-        "/supervisor/api/addons/influxbro/logs" + q,
-        "/addons/influxbro/logs" + q,
+        "/supervisor/api/addons/self/logs" + q,
+        "/addons/self/logs",
+        "/supervisor/api/addons/self/logs",
     ]
 
     checks: list[dict[str, Any]] = []

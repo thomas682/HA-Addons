@@ -28,6 +28,9 @@
     .card { border: 1px solid #ddd; border-radius: 12px; padding: 12px; margin-top: 12px; }
     .err { color: #b00020; margin-top: 8px; white-space: pre-wrap; }
 
+    .status { border: 1px dashed #ddd; border-radius: 12px; padding: 10px 12px; margin-top: 10px; background: #fafafa; font-size: 12px; white-space: pre-wrap; }
+    .nowrap { white-space: nowrap; }
+
     .progress { height: 10px; background: #eee; border-radius: 999px; overflow: hidden; margin-top: 10px; }
     .progress > div { height: 100%; background: #0b0b0c; width: 0%; }
 
@@ -35,6 +38,10 @@
     th, td { border: 1px solid #eee; padding: 4px 6px; font-size: 11px; line-height: 1.2; }
     th { background: #f6f6f6; text-align:left; cursor:pointer; position: sticky; top: 0; z-index: 1; }
     .table_box { max-height: 70vh; overflow:auto; border: 1px solid #eee; border-radius: 12px; }
+    .col_time { min-width: 170px; }
+    .col_num { min-width: 80px; text-align: right; }
+    .col_act { min-width: 110px; }
+    .btn_xs { padding: 6px 10px; height: 30px; font-size: 12px; }
   </style>
 </head>
 <body>
@@ -63,7 +70,6 @@
               <option value="all">Alle</option>
               <option value="custom">Benutzerdefiniert…</option>
             </select>
-            <div class="muted" id="range_txt" data-ui="stats.range_txt" title="stats.range_txt"></div>
           </div>
 
           <div id="custom" style="min-width: 320px; display:none;">
@@ -86,26 +92,35 @@
             <label>&nbsp;</label>
             <button id="cancel" data-ui="stats.cancel" title="stats.cancel">Abbrechen</button>
           </div>
-          <div class="muted" id="info" data-ui="stats.info" title="stats.info" style="padding-top: 6px;"></div>
+          <div>
+            <label>&nbsp;</label>
+            <button id="details_all" data-ui="stats.details_all" title="stats.details_all">Lade alle Details</button>
+          </div>
         </div>
+
+        <div class="muted" id="range_txt" data-ui="stats.range_txt" title="stats.range_txt"></div>
+        <div class="status" id="info" data-ui="stats.info" title="stats.info"></div>
         <div class="progress" aria-hidden="true"><div id="bar"></div></div>
         <div id="err" class="err"></div>
+
+        <div class="muted" id="count" data-ui="stats.count" title="stats.count" style="margin-top: 10px;"></div>
 
         <div class="table_box">
           <table id="tbl" data-ui="stats.table" title="stats.table">
             <thead>
               <tr>
+                <th class="col_act">Aktion</th>
                 <th data-key="friendly_name">friendly_name</th>
                 <th data-key="entity_id">entity_id</th>
                 <th data-key="measurement">_measurement</th>
                 <th data-key="field">_field</th>
-                <th data-key="count">count</th>
-                <th data-key="oldest_time">oldest</th>
-                <th data-key="newest_time">newest</th>
                 <th data-key="last_value">last_value</th>
-                <th data-key="min">min</th>
-                <th data-key="max">max</th>
-                <th data-key="mean">mean</th>
+                <th data-key="oldest_time" class="col_time">oldest</th>
+                <th data-key="newest_time" class="col_time">newest</th>
+                <th data-key="count" class="col_num">count</th>
+                <th data-key="min" class="col_num">min</th>
+                <th data-key="max" class="col_num">max</th>
+                <th data-key="mean" class="col_num">mean</th>
               </tr>
             </thead>
             <tbody></tbody>
@@ -122,8 +137,10 @@
       const $q = document.getElementById('q');
       const $load = document.getElementById('load');
       const $cancel = document.getElementById('cancel');
+      const $detailsAll = document.getElementById('details_all');
       const $info = document.getElementById('info');
       const $err = document.getElementById('err');
+      const $count = document.getElementById('count');
       const $tbody = document.querySelector('#tbl tbody');
       const $thead = document.querySelector('#tbl thead');
       const $bar = document.getElementById('bar');
@@ -131,6 +148,8 @@
       let UI_DECIMALS = 3;
       let ROWS = [];
       let SORT = { key: 'count', dir: 'desc' };
+
+      const DELETED = new Set();
 
       let JOB_ID = "";
       let TIMER = null;
@@ -158,6 +177,15 @@
       }
 
       function pad2(n){ return String(n).padStart(2,'0'); }
+      function parseHmsToSeconds(hms){
+        const m = String(hms||'').match(/^(\d{2}):(\d{2}):(\d{2})$/);
+        if(!m) return null;
+        const h = Number(m[1]);
+        const mi = Number(m[2]);
+        const s = Number(m[3]);
+        if(!isFinite(h)||!isFinite(mi)||!isFinite(s)) return null;
+        return h*3600 + mi*60 + s;
+      }
       function toLocalDatetimeValue(d){
         return d.getFullYear() + "-" + pad2(d.getMonth()+1) + "-" + pad2(d.getDate()) + "T" + pad2(d.getHours()) + ":" + pad2(d.getMinutes());
       }
@@ -235,21 +263,24 @@
         const pct = (s.percent === null || s.percent === undefined) ? null : Number(s.percent);
         setBar(pct);
 
-        const parts = [];
-        if(s.state) parts.push(String(s.state));
-        if(s.message) parts.push(String(s.message));
+        const lines = [];
+        if(s.state || s.message) lines.push(`${String(s.state||'')}${s.message ? ' - ' + String(s.message) : ''}`.trim());
+        if(s.elapsed) lines.push('Zeit: ' + s.elapsed);
         if(s.scanned_points !== null && s.scanned_points !== undefined){
           if(s.total_points){
-            parts.push(`Punkte: ${s.scanned_points}/${s.total_points}`);
+            lines.push(`Punkte: ${s.scanned_points}/${s.total_points}`);
           }else{
-            parts.push(`Punkte: ${s.scanned_points}`);
+            lines.push(`Punkte: ${s.scanned_points}`);
+          }
+          const sec = parseHmsToSeconds(s.elapsed);
+          if(sec && sec > 0){
+            lines.push(`Rate: ${(Number(s.scanned_points)/sec).toFixed(1)} Punkte/s`);
           }
         }
-        if(pct !== null && isFinite(pct)) parts.push(pct.toFixed(1) + '%');
-        if(s.groups !== null && s.groups !== undefined) parts.push('Gruppen: ' + String(s.groups));
-        if(s.current) parts.push('Aktuell: ' + s.current);
-        if(s.elapsed) parts.push('Zeit: ' + s.elapsed);
-        $info.textContent = parts.join(' | ');
+        if(pct !== null && isFinite(pct)) lines.push('Fortschritt: ' + pct.toFixed(1) + '%');
+        if(s.groups !== null && s.groups !== undefined) lines.push('Gruppen: ' + String(s.groups));
+        if(s.current) lines.push('Aktuell: ' + s.current);
+        $info.textContent = lines.join("\n");
 
         if(s.state === 'done'){
           clearInterval(TIMER); TIMER = null;
@@ -299,6 +330,10 @@
         return [r.friendly_name,r.entity_id,r.measurement,r.field,r.count,r.oldest_time,r.newest_time,r.last_value,r.min,r.max,r.mean]
           .map(x=>String(x===null||x===undefined?'':x)).join(' ').toLowerCase();
       }
+
+      function rowKey(r){
+        return [r.measurement||'', r.field||'', r.entity_id||'', r.friendly_name||''].join('|');
+      }
       function sortRows(rows){
         const key = SORT.key;
         const dir = SORT.dir === 'desc' ? -1 : 1;
@@ -321,36 +356,57 @@
 
       function render(){
         const q = String($q.value||'').trim().toLowerCase();
-        let rows = ROWS || [];
+        let rows = (ROWS || []).filter(r => !DELETED.has(rowKey(r)));
         if(q) rows = rows.filter(r=>txtRow(r).includes(q));
         rows = sortRows(rows);
+
+        if($count){
+          const total = (ROWS || []).length;
+          const visible = rows.length;
+          const del = DELETED.size;
+          const arrow = SORT.dir === 'desc' ? '↓' : '↑';
+          $count.textContent = `Zeilen: ${visible} / ${total}` + (del ? ` (geloescht: ${del})` : "") + ` | Sort: ${SORT.key} ${arrow}`;
+        }
 
         $tbody.innerHTML = '';
         rows.forEach(r=>{
           const tr=document.createElement('tr');
-          const add=(v,isTime=false,isNum=false)=>{
+          const add=(v,isTime=false,isNum=false,cls="")=>{
             const td=document.createElement('td');
+            if(cls) td.className = cls;
             td.textContent = isTime ? fmtTs(v) : (isNum ? fmtNum(v) : String(v===null||v===undefined?'':v));
             tr.appendChild(td);
           };
-          add(r.friendly_name);
-          add(r.entity_id);
-          add(r.measurement);
-          add(r.field);
-          add(r.count);
-          add(r.oldest_time,true,false);
-          add(r.newest_time,true,false);
-          add(r.last_value,false,true);
-          add(r.min,false,true);
-          add(r.max,false,true);
-          add(r.mean,false,true);
+
+          // actions
+          const tdAct = document.createElement('td');
+          tdAct.className = 'col_act nowrap';
+          const btnDet = document.createElement('button');
+          btnDet.className = 'btn_xs';
+          btnDet.textContent = r._details ? 'Detail: an' : 'Detail';
+          btnDet.addEventListener('click', (ev)=>{ ev.preventDefault(); ev.stopPropagation(); r._details = !r._details; render(); });
+          const btnDel = document.createElement('button');
+          btnDel.className = 'btn_xs';
+          btnDel.style.marginLeft = '8px';
+          btnDel.textContent = 'Loeschen';
+          btnDel.addEventListener('click', (ev)=>{ ev.preventDefault(); ev.stopPropagation(); DELETED.add(rowKey(r)); render(); });
+          tdAct.appendChild(btnDet);
+          tdAct.appendChild(btnDel);
+          tr.appendChild(tdAct);
+
+          add(r.friendly_name,false,false);
+          add(r.entity_id,false,false);
+          add(r.measurement,false,false);
+          add(r.field,false,false);
+          add(r.last_value,false,true,'col_num');
+          add(r.oldest_time,true,false,'col_time nowrap');
+          add(r.newest_time,true,false,'col_time nowrap');
+          add(r._details ? r.count : null,false,true,'col_num');
+          add(r._details ? r.min : null,false,true,'col_num');
+          add(r._details ? r.max : null,false,true,'col_num');
+          add(r._details ? r.mean : null,false,true,'col_num');
           $tbody.appendChild(tr);
         });
-
-        const base = (ROWS||[]).length;
-        const shown = rows.length;
-        const arrow = SORT.dir === 'desc' ? '↓' : '↑';
-        $info.textContent = `Zeilen: ${shown}${shown!==base?` (von ${base})`:''} | Sort: ${SORT.key} ${arrow}`;
       }
 
       async function load(){
@@ -364,6 +420,10 @@
 
       $load.addEventListener('click', ()=>load().catch(e=>err(String(e && e.message ? e.message : e))));
       $cancel.addEventListener('click', ()=>cancelJob().catch(e=>err(String(e && e.message ? e.message : e))));
+      $detailsAll.addEventListener('click', ()=>{
+        (ROWS||[]).forEach(r => r._details = true);
+        render();
+      });
       $q.addEventListener('input', debounce(()=>render(), 120));
       $thead.addEventListener('click', (ev)=>{
         const th = ev && ev.target ? ev.target.closest('th') : null;

@@ -29,6 +29,12 @@
     .err { color: #b00020; margin-top: 8px; white-space: pre-wrap; }
     .ok { color: #0a7a28; margin-top: 8px; white-space: pre-wrap; }
     .card { border: 1px solid #ddd; border-radius: 10px; padding: 12px; margin-top: 12px; }
+    details.card { padding: 0; }
+    details.card > summary { list-style: none; cursor: pointer; padding: 12px; font-weight: 700; }
+    details.card > summary::-webkit-details-marker { display: none; }
+    details.card > summary:after { content: "▾"; float: right; opacity: 0.6; }
+    details.card[open] > summary:after { content: "▴"; }
+    details.card > .card_body { padding: 0 12px 12px 12px; }
     .muted { opacity: 0.7; font-size: 12px; }
     code { background:#f6f6f6; padding:2px 6px; border-radius:6px; }
     a { color: inherit; }
@@ -56,8 +62,9 @@
     </div>
   </div>
 
-  <div class="card">
-    <h3>Parametrierung aus Home Assistant YAML</h3>
+  <details class="card" open data-ui="settings.section.yaml" title="settings.section.yaml">
+    <summary>Parametrierung aus Home Assistant YAML</summary>
+    <div class="card_body">
     <div class="grid">
       <div>
         <label>Konfigurationsdatei (relativ zu <code>/config</code> oder absolut unter <code>/config</code>)</label>
@@ -73,9 +80,12 @@
       <div class="muted span2">Beispiel: <code>homeassistant/influx.yaml</code> (entspricht <code>/config/homeassistant/influx.yaml</code>)</div>
       <div class="muted span2">Ablauf: erst <code>influx.yaml suchen</code>, Pfad ggf. anpassen, dann <code>yaml Daten einlesen</code> (traegt Werte ein, speichert aber nicht).</div>
     </div>
-  </div>
+    </div>
+  </details>
 
-  <div class="card">
+  <details class="card" open data-ui="settings.section.conn" title="settings.section.conn">
+    <summary>Verbindung</summary>
+    <div class="card_body">
     <div class="grid">
       <div><label>Influx Version</label><select id="influx_version"><option value="2">2 (Flux)</option><option value="1">1 (InfluxQL)</option></select></div>
       <div><label>Scheme</label><select id="scheme"><option value="http">http</option><option value="https">https</option></select></div>
@@ -85,30 +95,36 @@
       <div><label>timeout_seconds</label><input id="timeout_seconds" type="number" /><div class="muted">Timeout fuer API Calls (Sekunden).</div></div>
     </div>
     <div class="muted">Hinweis: Diese Werte werden in <code>/data/influx_browser_config.json</code> gespeichert (persistent).</div>
-  </div>
+    </div>
+  </details>
 
-  <div class="card">
-    <h3>InfluxDB v2</h3>
+  <details class="card" open data-ui="settings.section.v2" title="settings.section.v2">
+    <summary>InfluxDB v2</summary>
+    <div class="card_body">
     <div class="grid">
       <div><label>org</label><input id="org" /><div class="muted">Organisation (InfluxDB v2).</div></div>
       <div><label>bucket</label><input id="bucket" /><div class="muted">Bucket-Name (InfluxDB v2).</div></div>
       <div><label>token</label><input id="token" /><div class="muted">In der UI wird Token als <code>********</code> maskiert.</div></div>
     </div>
     <div class="muted">Token: lass <code>********</code> stehen, wenn du es nicht ändern willst.</div>
-  </div>
+    </div>
+  </details>
 
-  <div class="card">
-    <h3>InfluxDB v1</h3>
+  <details class="card" data-ui="settings.section.v1" title="settings.section.v1">
+    <summary>InfluxDB v1</summary>
+    <div class="card_body">
     <div class="grid">
       <div><label>database</label><input id="database" /><div class="muted">DB Name (InfluxDB v1).</div></div>
       <div><label>username</label><input id="username" /><div class="muted">Optional, je nach Influx Konfiguration.</div></div>
       <div><label>password</label><input id="password" /><div class="muted">In der UI wird Passwort als <code>********</code> maskiert.</div></div>
     </div>
     <div class="muted">Passwort: lass <code>********</code> stehen, wenn du es nicht ändern willst.</div>
-  </div>
+    </div>
+  </details>
 
-  <div class="card">
-    <h3>UI</h3>
+  <details class="card" open data-ui="settings.section.ui" title="settings.section.ui">
+    <summary>UI</summary>
+    <div class="card_body">
     <div class="grid">
       <div>
         <label>Tabellenzeilen (sichtbar)</label>
@@ -200,7 +216,8 @@
         </div>
       </div>
     </div>
-  </div>
+    </div>
+  </details>
 
   <div class="card">
     <div class="grid">
