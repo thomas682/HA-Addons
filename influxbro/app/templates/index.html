@@ -717,16 +717,25 @@ function debounce(fn, ms){
   };
 }
 
+function toFiniteNumber(v){
+  if(typeof v === "number") return isFinite(v) ? v : null;
+  if(typeof v === "boolean") return null;
+  const s = String(v === null || v === undefined ? "" : v).trim().replace(",", ".");
+  if(!s) return null;
+  const n = Number(s);
+  return isFinite(n) ? n : null;
+}
+
 function drawCanvas(rows){
   ctx.clearRect(0,0,canvas.width,canvas.height);
   if(!rows || rows.length < 2) return;
 
   const pts = (rows || []).map(r => {
     const t = Date.parse(r && r.time ? r.time : "");
-    const v = r && r.value;
+    const v = toFiniteNumber(r && r.value);
     return {
       t: isFinite(t) ? t : null,
-      v: (typeof v === "number" && isFinite(v)) ? v : null,
+      v,
     };
   }).filter(p => p.t !== null && p.v !== null);
 
@@ -804,11 +813,11 @@ function drawPlotly(rows){
   if(!$plotly || !window.Plotly) return false;
   const pts = (rows || []).map(r => {
     const t = (r && r.time) ? String(r.time) : "";
-    const v = r && r.value;
     const ms = Date.parse(t);
+    const v = toFiniteNumber(r && r.value);
     return {
       x: isFinite(ms) ? new Date(ms) : null,
-      y: (typeof v === "number" && isFinite(v)) ? v : null,
+      y: v,
     };
   }).filter(p => p.x && p.y !== null);
   if(pts.length < 2) return false;
@@ -929,8 +938,9 @@ function autoScaleYFromWindow(){
 
   const ys = (LAST_ROWS || []).filter(r => {
     const t = Date.parse(r && r.time ? r.time : "");
-    return isFinite(t) && t >= a && t <= b && (typeof r.value === "number" && isFinite(r.value));
-  }).map(r => r.value);
+    if(!(isFinite(t) && t >= a && t <= b)) return false;
+    return toFiniteNumber(r && r.value) !== null;
+  }).map(r => toFiniteNumber(r && r.value)).filter(v => v !== null);
 
   if(!ys.length) return;
   let minY = Math.min(...ys);
