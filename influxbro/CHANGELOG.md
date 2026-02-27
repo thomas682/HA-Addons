@@ -2,6 +2,17 @@
 
 <!-- markdownlint-disable MD024 MD013 -->
 
+## 1.11.14
+
+### Features
+- (keine)
+
+### Bug Fixes
+- Raw Daten: "Kopieren" und "Query kopieren" nutzen jetzt einen robusten Clipboard-Fallback (funktioniert auch in restriktiven/embedded Browser-Kontexten).
+
+### Maintenance
+- (keine)
+
 ## 1.11.13
 
 ### Features

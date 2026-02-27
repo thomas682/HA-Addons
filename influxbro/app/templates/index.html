@@ -520,6 +520,37 @@ function fmtTs(iso){
   );
 }
 
+async function copyTextToClipboard(text){
+  const s = String(text === null || text === undefined ? "" : text);
+  // Modern API (requires secure context + permission)
+  try{
+    if(navigator.clipboard && window.isSecureContext){
+      await navigator.clipboard.writeText(s);
+      return true;
+    }
+  }catch(e){}
+
+  // Fallback for restricted/embedded contexts (e.g. HA ingress iframe)
+  try{
+    const ta = document.createElement('textarea');
+    ta.value = s;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    ta.style.top = '0';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    ta.setSelectionRange(0, ta.value.length);
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    return !!ok;
+  }catch(e){
+    return false;
+  }
+}
+
 function norm(s){ return String(s || "").toLowerCase(); }
 
 function filterList(list, term){
@@ -2401,8 +2432,9 @@ if($rawCopy) $rawCopy.addEventListener("click", async (ev)=>{
     const rows = RAW_ROWS || [];
     const lines = ["Zeit\tWert"];
     rows.forEach(r => { lines.push(fmtTs(r.time) + "\t" + fmtNum(r.value)); });
-    await navigator.clipboard.writeText(lines.join("\n"));
-    ok(`Raw Daten kopiert: ${rows.length} Zeilen.`);
+    const okCopy = await copyTextToClipboard(lines.join("\n"));
+    if(okCopy) ok(`Raw Daten kopiert: ${rows.length} Zeilen.`);
+    else err("Copy failed (Clipboard blockiert). Bitte im Browser Clipboard erlauben.");
   }catch(e){
     err("Copy failed: " + String(e && e.message ? e.message : e));
   }
@@ -2411,8 +2443,9 @@ if($rawCopyQuery) $rawCopyQuery.addEventListener("click", async (ev)=>{
   _stop(ev);
   try{
     const q = (RAW_META && RAW_META.query) ? String(RAW_META.query) : "";
-    await navigator.clipboard.writeText(q);
-    ok(q ? "Query kopiert." : "Query ist leer.");
+    const okCopy = await copyTextToClipboard(q);
+    if(okCopy) ok(q ? "Query kopiert." : "Query ist leer.");
+    else err("Copy failed (Clipboard blockiert). Bitte im Browser Clipboard erlauben.");
   }catch(e){
     err("Copy failed: " + String(e && e.message ? e.message : e));
   }
