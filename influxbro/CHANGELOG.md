@@ -2,6 +2,28 @@
 
 <!-- markdownlint-disable MD024 MD013 -->
 
+## 1.11.22
+
+### Features
+- (keine)
+
+### Bug Fixes
+- Statistik: Background-Job Fehler werden jetzt ins Log geschrieben (inkl. letztem Query-Label; Query gekuerzt).
+
+### Maintenance
+- (keine)
+
+## 1.11.21
+
+### Features
+- (keine)
+
+### Bug Fixes
+- Statistik: behebt einen Runtime-Fehler beim Erzeugen der Flux-Reduce Query (f-string Klammern/"seen" NameError).
+
+### Maintenance
+- (keine)
+
 ## 1.11.20
 
 ### Features

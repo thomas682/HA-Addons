@@ -3145,7 +3145,7 @@ data = from(bucket: "{bucket}")
 data
   |> reduce(
     identity: {{seen: false, count: 0, sum: 0.0, min: 0.0, max: 0.0, oldest_time: time(v: "1970-01-01T00:00:00Z"), newest_time: time(v: "1970-01-01T00:00:00Z"), last_value: 0.0}},
-    fn: (r, accumulator) => ({
+    fn: (r, accumulator) => ({{
       seen: true,
       count: accumulator.count + 1,
       sum: accumulator.sum + float(v: r._value),
@@ -3154,9 +3154,9 @@ data
       oldest_time: if accumulator.seen == false then r._time else if r._time < accumulator.oldest_time then r._time else accumulator.oldest_time,
       newest_time: if accumulator.seen == false then r._time else if r._time > accumulator.newest_time then r._time else accumulator.newest_time,
       last_value: if accumulator.seen == false then float(v: r._value) else if r._time >= accumulator.newest_time then float(v: r._value) else accumulator.last_value,
-    })
+    }})
   )
-  |> map(fn: (r) => ({
+  |> map(fn: (r) => ({{
     _measurement: r._measurement,
     _field: r._field,
     entity_id: r.entity_id,
@@ -3168,7 +3168,7 @@ data
     oldest_time: r.oldest_time,
     newest_time: r.newest_time,
     last_value: r.last_value,
-  }))
+  }}))
   |> keep(columns: ["_measurement","_field","entity_id","friendly_name","count","sum","min","max","oldest_time","newest_time","last_value"])
 '''
 
@@ -3390,10 +3390,36 @@ from(bucket: "{cfg_local["bucket"]}")
                 GLOBAL_STATS_JOBS[job_id]["groups_count"] = len(rows)
 
         set_state("done", f"Fertig. Zeilen: {len(rows)}")
-    except Exception as e:
+    except RuntimeError as e:
+        if str(e) == "cancelled":
+            set_state("cancelled", "Abgebrochen.")
+            return
         with GLOBAL_STATS_LOCK:
             if job_id in GLOBAL_STATS_JOBS:
                 GLOBAL_STATS_JOBS[job_id]["error"] = _short_influx_error(e)
+        LOG.exception("global_stats_job failed (job_id=%s)", job_id)
+        set_state("error", "Fehler")
+    except Exception as e:
+        last_label = ""
+        last_query = ""
+        with GLOBAL_STATS_LOCK:
+            if job_id in GLOBAL_STATS_JOBS:
+                GLOBAL_STATS_JOBS[job_id]["error"] = _short_influx_error(e)
+                try:
+                    last_label = str(GLOBAL_STATS_JOBS[job_id].get("last_query_label") or "")
+                    last_query = str(GLOBAL_STATS_JOBS[job_id].get("last_query") or "")
+                except Exception:
+                    last_label = ""
+                    last_query = ""
+        if last_query:
+            LOG.exception(
+                "global_stats_job failed (job_id=%s, last_query_label=%s, last_query=%s)",
+                job_id,
+                last_label,
+                last_query[:1000],
+            )
+        else:
+            LOG.exception("global_stats_job failed (job_id=%s, last_query_label=%s)", job_id, last_label)
         set_state("error", "Fehler")
 
 
