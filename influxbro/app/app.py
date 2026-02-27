@@ -3031,8 +3031,13 @@ def _job_get(job_id: str) -> dict[str, Any] | None:
 def _job_public(job: dict[str, Any]) -> dict[str, Any]:
     total = job.get("total_points")
     scanned = int(job.get("scanned_points") or 0)
+
     pct = None
-    if isinstance(total, int) and total > 0:
+    total_series = job.get("total_series")
+    groups = int(job.get("groups_count") or 0)
+    if isinstance(total_series, int) and total_series > 0:
+        pct = min(100.0, (groups / float(total_series)) * 100.0)
+    elif isinstance(total, int) and total > 0:
         pct = min(100.0, (scanned / float(total)) * 100.0)
     return {
         "id": job.get("id"),
@@ -3043,8 +3048,11 @@ def _job_public(job: dict[str, Any]) -> dict[str, Any]:
         "total_points": total,
         "scanned_points": scanned,
         "percent": pct,
-        "groups": int(job.get("groups_count") or 0),
+        "groups": groups,
+        "total_series": total_series,
         "current": job.get("current") or "",
+        "last_query_label": job.get("last_query_label") or "",
+        "last_query": job.get("last_query") or "",
         "cancelled": bool(job.get("cancelled")),
         "error": job.get("error"),
         "ready": job.get("state") == "done",
@@ -3084,56 +3092,60 @@ def _global_stats_job_thread(
             j = GLOBAL_STATS_JOBS.get(job_id)
             return bool(j and j.get("cancelled"))
 
-    try:
-        # Optional: total count for percent progress (can be expensive)
-        set_state("counting", "Zaehle Datenpunkte (optional)...")
-        total_points: int | None = None
-        try:
-            ff_clause = f"  |> filter(fn: (r) => r._field == {_flux_str(ff)})\n" if ff else ""
-            q_count = f'''
-from(bucket: "{cfg_local["bucket"]}")
-  |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
-{ff_clause}  |> filter(fn: (r) => exists r._measurement and exists r._field)
-  |> group()
-  |> count(column: "_value")
-'''
-            with v2_client(cfg_local) as c:
-                tables = c.query_api().query(q_count, org=cfg_local["org"])
-                for t in tables or []:
-                    for rec in getattr(t, "records", []) or []:
-                        v = rec.get_value()
-                        if isinstance(v, (int, float)):
-                            total_points = int(v)
-                            break
-                    if total_points is not None:
-                        break
-        except Exception:
-            total_points = None
-
+    def set_query(label: str, q: str) -> None:
         with GLOBAL_STATS_LOCK:
             if job_id in GLOBAL_STATS_JOBS:
-                GLOBAL_STATS_JOBS[job_id]["total_points"] = total_points
+                GLOBAL_STATS_JOBS[job_id]["last_query_label"] = label
+                GLOBAL_STATS_JOBS[job_id]["last_query"] = (q or "").strip()
 
-        if should_cancel():
-            set_state("cancelled", "Abgebrochen.")
-            return
+    def _parse_ts(s: str | None) -> datetime | None:
+        if not s:
+            return None
 
-        set_state("query", "Berechne Statistiken in InfluxDB...")
+    def _as_rfc3339(v: Any) -> str | None:
+        if isinstance(v, datetime):
+            return _dt_to_rfc3339_utc(v)
+        if isinstance(v, str) and v.strip():
+            return v.strip()
+        return None
+        try:
+            t = str(s).strip()
+            if t.endswith("Z"):
+                t = t[:-1] + "+00:00"
+            return datetime.fromisoformat(t)
+        except Exception:
+            return None
 
-        # Server-side aggregation to avoid streaming all raw points.
-        ff_clause = f"|> filter(fn: (r) => r._field == {_flux_str(ff)})" if ff else ""
-        q_stats = f'''
-data = from(bucket: "{cfg_local["bucket"]}")
-  |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
-  |> filter(fn: (r) => exists r._measurement and exists r._field)
-  {ff_clause}
+    def _chunk_ranges(a: datetime, b: datetime, max_days: int) -> list[tuple[datetime, datetime]]:
+        out: list[tuple[datetime, datetime]] = []
+        cur = a
+        step = timedelta(days=max_days)
+        while cur < b:
+            nxt = cur + step
+            if nxt > b:
+                nxt = b
+            out.append((cur, nxt))
+            cur = nxt
+        return out
+
+    def _series_reduce_query(bucket: str, s_iso: str, e_iso: str, m: str, f: str, eid: str, fn: str) -> str:
+        conds = [f"r._measurement == {_flux_str(m)}", f"r._field == {_flux_str(f)}"]
+        if eid:
+            conds.append(f"r.entity_id == {_flux_str(eid)}")
+        if fn:
+            conds.append(f"r.friendly_name == {_flux_str(fn)}")
+        pred = " and ".join(conds)
+        return f'''
+data = from(bucket: "{bucket}")
+  |> range(start: time(v: "{s_iso}"), stop: time(v: "{e_iso}"))
+  |> filter(fn: (r) => {pred})
   |> keep(columns: ["_measurement","_field","entity_id","friendly_name","_time","_value"])
   |> group(columns: ["_measurement","_field","entity_id","friendly_name"])
 
 data
   |> reduce(
     identity: {{seen: false, count: 0, sum: 0.0, min: 0.0, max: 0.0, oldest_time: time(v: "1970-01-01T00:00:00Z"), newest_time: time(v: "1970-01-01T00:00:00Z"), last_value: 0.0}},
-    fn: (r, accumulator) => ({{
+    fn: (r, accumulator) => ({
       seen: true,
       count: accumulator.count + 1,
       sum: accumulator.sum + float(v: r._value),
@@ -3142,82 +3154,235 @@ data
       oldest_time: if accumulator.seen == false then r._time else if r._time < accumulator.oldest_time then r._time else accumulator.oldest_time,
       newest_time: if accumulator.seen == false then r._time else if r._time > accumulator.newest_time then r._time else accumulator.newest_time,
       last_value: if accumulator.seen == false then float(v: r._value) else if r._time >= accumulator.newest_time then float(v: r._value) else accumulator.last_value,
-    }})
+    })
   )
-  |> map(fn: (r) => ({{
+  |> map(fn: (r) => ({
     _measurement: r._measurement,
     _field: r._field,
     entity_id: r.entity_id,
     friendly_name: r.friendly_name,
     count: r.count,
+    sum: r.sum,
     min: r.min,
     max: r.max,
-    mean: if r.count > 0 then r.sum / float(v: r.count) else 0.0,
     oldest_time: r.oldest_time,
     newest_time: r.newest_time,
     last_value: r.last_value,
-  }}))
-  |> keep(columns: ["_measurement","_field","entity_id","friendly_name","count","min","max","mean","oldest_time","newest_time","last_value"])
+  }))
+  |> keep(columns: ["_measurement","_field","entity_id","friendly_name","count","sum","min","max","oldest_time","newest_time","last_value"])
 '''
 
-        def _as_rfc3339(v: Any) -> str | None:
-            if isinstance(v, datetime):
-                return _dt_to_rfc3339_utc(v)
-            if isinstance(v, str) and v.strip():
-                return v.strip()
-            return None
+    def _series_stats(qapi: Any, bucket: str, m: str, f: str, eid: str, fn: str) -> dict[str, Any]:
+        span_days = max(0.0, (stop_dt - start_dt).total_seconds() / 86400.0)
+        chunks = _chunk_ranges(start_dt, stop_dt, 14) if span_days > 20 else [(start_dt, stop_dt)]
+
+        count = 0
+        ssum = 0.0
+        min_v: float | None = None
+        max_v: float | None = None
+        oldest_s: str | None = None
+        newest_s: str | None = None
+        newest_dt: datetime | None = None
+        last_val: Any = None
+
+        for i, (a, b) in enumerate(chunks):
+            if should_cancel():
+                raise RuntimeError("cancelled")
+            s_iso = _dt_to_rfc3339_utc(a)
+            e_iso = _dt_to_rfc3339_utc(b)
+            q = _series_reduce_query(bucket, s_iso, e_iso, m, f, eid, fn)
+            set_query(f"Details {m}/{f} chunk {i+1}/{len(chunks)}", q)
+            tables = qapi.query(q, org=cfg_local["org"])
+            vals: dict[str, Any] | None = None
+            for t in tables or []:
+                for rec in getattr(t, "records", []) or []:
+                    vals = getattr(rec, "values", {}) or {}
+                    break
+                if vals is not None:
+                    break
+            if not vals:
+                continue
+
+            try:
+                cnum = int(vals.get("count") or 0)
+            except Exception:
+                cnum = 0
+            if cnum <= 0:
+                continue
+
+            count += cnum
+            try:
+                ssum += float(vals.get("sum") or 0.0)
+            except Exception:
+                pass
+
+            try:
+                vmin = float(vals.get("min"))
+                min_v = vmin if min_v is None else min(min_v, vmin)
+            except Exception:
+                pass
+            try:
+                vmax = float(vals.get("max"))
+                max_v = vmax if max_v is None else max(max_v, vmax)
+            except Exception:
+                pass
+
+            ot_s = _as_rfc3339(vals.get("oldest_time"))
+            nt_s = _as_rfc3339(vals.get("newest_time"))
+            if ot_s:
+                if oldest_s is None:
+                    oldest_s = ot_s
+                else:
+                    odt = _parse_ts(oldest_s)
+                    ndt = _parse_ts(ot_s)
+                    if odt and ndt and ndt < odt:
+                        oldest_s = ot_s
+            if nt_s:
+                ndt = _parse_ts(nt_s)
+                if newest_dt is None or (ndt and newest_dt and ndt > newest_dt):
+                    newest_dt = ndt
+                    newest_s = nt_s
+                    last_val = vals.get("last_value")
+
+        mean = (ssum / float(count)) if count > 0 else None
+        return {
+            "count": count,
+            "min": min_v,
+            "max": max_v,
+            "mean": mean,
+            "oldest_time": oldest_s,
+            "newest_time": newest_s,
+            "last_value": last_val,
+        }
+
+    try:
+        set_state("counting", "Zaehle Serien...")
+        total_series: int | None = None
+        try:
+            ff_clause2 = f"|> filter(fn: (r) => r._field == {_flux_str(ff)})" if ff else ""
+            q_total = f'''
+from(bucket: "{cfg_local["bucket"]}")
+  |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
+  |> filter(fn: (r) => exists r._measurement and exists r._field)
+  {ff_clause2}
+  |> keep(columns: ["_measurement","_field","entity_id","friendly_name","_time","_value"])
+  |> group(columns: ["_measurement","_field","entity_id","friendly_name"])
+  |> last()
+  |> group()
+  |> count(column: "_value")
+'''
+            set_query("Total series", q_total)
+            with v2_client(cfg_local) as c:
+                tables = c.query_api().query(q_total, org=cfg_local["org"])
+                for t in tables or []:
+                    for rec in getattr(t, "records", []) or []:
+                        v = rec.get_value()
+                        if isinstance(v, (int, float)):
+                            total_series = int(v)
+                            break
+                    if total_series is not None:
+                        break
+        except Exception:
+            total_series = None
+
+        with GLOBAL_STATS_LOCK:
+            if job_id in GLOBAL_STATS_JOBS:
+                GLOBAL_STATS_JOBS[job_id]["total_series"] = total_series
+
+        if should_cancel():
+            set_state("cancelled", "Abgebrochen.")
+            return
+
+        set_state("query", "Berechne Statistiken in Happen...")
 
         rows: list[dict[str, Any]] = []
         scanned_points = 0
-        groups_count = 0
-        last_update = time.monotonic()
+        off = 0
+        page = 0
+        limit = 10
+        ff_clause = f"|> filter(fn: (r) => r._field == {_flux_str(ff)})" if ff else ""
 
         with v2_client(cfg_local) as c:
             qapi = c.query_api()
-            for rec in qapi.query_stream(q_stats, org=cfg_local["org"]):
+            while True:
                 if should_cancel():
                     set_state("cancelled", "Abgebrochen.")
                     return
 
-                vals = getattr(rec, "values", {}) or {}
-                m = str(vals.get("_measurement") or "")
-                f = str(vals.get("_field") or "")
-                eid = str(vals.get("entity_id") or "")
-                fn = str(vals.get("friendly_name") or "")
+                page += 1
+                set_state("query", f"Lade Serienliste (Seite {page})...")
+                q_page = f'''
+from(bucket: "{cfg_local["bucket"]}")
+  |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
+  |> filter(fn: (r) => exists r._measurement and exists r._field)
+  {ff_clause}
+  |> keep(columns: ["_measurement","_field","entity_id","friendly_name","_time","_value"])
+  |> group(columns: ["_measurement","_field","entity_id","friendly_name"])
+  |> last()
+  |> group()
+  |> sort(columns: ["_time"], desc: true)
+  |> limit(n: {limit}, offset: {off})
+'''
+                set_query(f"Series page {page}", q_page)
+                tables = qapi.query(q_page, org=cfg_local["org"])
 
-                try:
-                    cnum = int(vals.get("count") or 0)
-                except Exception:
-                    cnum = 0
+                series_page: list[dict[str, Any]] = []
+                for t in tables or []:
+                    for rec in getattr(t, "records", []) or []:
+                        vals = getattr(rec, "values", {}) or {}
+                        series_page.append({
+                            "measurement": str(vals.get("_measurement") or ""),
+                            "field": str(vals.get("_field") or ""),
+                            "entity_id": str(vals.get("entity_id") or ""),
+                            "friendly_name": str(vals.get("friendly_name") or ""),
+                        })
 
-                groups_count += 1
-                scanned_points += max(0, cnum)
+                if not series_page:
+                    break
 
-                rows.append({
-                    "measurement": m,
-                    "field": f,
-                    "entity_id": eid,
-                    "friendly_name": fn,
-                    "count": cnum,
-                    "oldest_time": _as_rfc3339(vals.get("oldest_time")),
-                    "newest_time": _as_rfc3339(vals.get("newest_time")),
-                    "last_value": vals.get("last_value"),
-                    "min": vals.get("min"),
-                    "max": vals.get("max"),
-                    "mean": vals.get("mean"),
-                })
+                for srow in series_page:
+                    if should_cancel():
+                        set_state("cancelled", "Abgebrochen.")
+                        return
 
-                now = time.monotonic()
-                if now - last_update > 0.3:
+                    m = str(srow.get("measurement") or "")
+                    f = str(srow.get("field") or "")
+                    eid = str(srow.get("entity_id") or "")
+                    fn = str(srow.get("friendly_name") or "")
+
+                    with GLOBAL_STATS_LOCK:
+                        if job_id in GLOBAL_STATS_JOBS:
+                            GLOBAL_STATS_JOBS[job_id]["current"] = fn or eid or (m + "/" + f)
+
+                    pos = len(rows) + 1
+                    tot_s = str(total_series) if isinstance(total_series, int) else "?"
+                    set_state("query", f"Details {pos}/{tot_s}: {fn or eid or (m + '/' + f)}")
+
+                    det = _series_stats(qapi, cfg_local["bucket"], m, f, eid, fn)
+                    cnum = int(det.get("count") or 0)
+                    scanned_points += max(0, cnum)
+                    rows.append({
+                        "measurement": m,
+                        "field": f,
+                        "entity_id": eid,
+                        "friendly_name": fn,
+                        "count": cnum,
+                        "oldest_time": det.get("oldest_time"),
+                        "newest_time": det.get("newest_time"),
+                        "last_value": det.get("last_value"),
+                        "min": det.get("min"),
+                        "max": det.get("max"),
+                        "mean": det.get("mean"),
+                    })
+
                     with GLOBAL_STATS_LOCK:
                         if job_id in GLOBAL_STATS_JOBS:
                             GLOBAL_STATS_JOBS[job_id]["scanned_points"] = scanned_points
-                            GLOBAL_STATS_JOBS[job_id]["groups_count"] = groups_count
-                            GLOBAL_STATS_JOBS[job_id]["current"] = fn or eid or (m + "/" + f)
-                    last_update = now
+                            GLOBAL_STATS_JOBS[job_id]["groups_count"] = len(rows)
+
+                off += len(series_page)
 
         rows.sort(key=lambda r: int(r.get("count") or 0), reverse=True)
-
         with GLOBAL_STATS_LOCK:
             if job_id in GLOBAL_STATS_JOBS:
                 GLOBAL_STATS_JOBS[job_id]["rows"] = rows
@@ -3263,8 +3428,11 @@ def api_global_stats_job_start():
         "started_mono": time.monotonic(),
         "total_points": None,
         "scanned_points": 0,
+        "total_series": None,
         "groups_count": 0,
         "current": "",
+        "last_query_label": "",
+        "last_query": "",
         "rows": [],
         "cancelled": False,
         "error": None,

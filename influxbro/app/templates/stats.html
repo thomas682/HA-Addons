@@ -123,6 +123,14 @@
         <div class="muted" id="range_txt" data-ui="stats.range_txt" title="stats.range_txt"></div>
         <div class="status" id="info" data-ui="stats.info" title="stats.info"></div>
         <div class="progress" aria-hidden="true"><div id="bar"></div></div>
+
+        <details class="card" id="query_details" style="display:none; margin-top: 10px;" data-ui="stats.query_details" title="stats.query_details">
+          <summary>Query Details</summary>
+          <div class="card_body">
+            <div class="muted" id="query_label"></div>
+            <pre id="query_pre" style="margin:6px 0 0 0; padding:10px 12px; border:1px solid #eee; border-radius:12px; background:#fafafa; white-space:pre; overflow:auto; max-height: 260px;"></pre>
+          </div>
+        </details>
         <div id="err" class="err"></div>
 
         <div class="muted" id="count" data-ui="stats.count" title="stats.count" style="margin-top: 10px;"></div>
@@ -167,6 +175,10 @@
       const $tbody = document.querySelector('#tbl tbody');
       const $thead = document.querySelector('#tbl thead');
       const $bar = document.getElementById('bar');
+
+      const $queryDetails = document.getElementById('query_details');
+      const $queryLabel = document.getElementById('query_label');
+      const $queryPre = document.getElementById('query_pre');
 
       let UI_DECIMALS = 3;
       let ROWS = [];
@@ -327,6 +339,19 @@
         $info.textContent = (lines || []).filter(Boolean).join("\n");
       }
 
+      function setQueryDetails(label, query){
+        if(!$queryDetails || !$queryPre) return;
+        const q = String(query || '').trim();
+        const l = String(label || '').trim();
+        if(!q){
+          $queryDetails.style.display = 'none';
+          return;
+        }
+        $queryDetails.style.display = 'block';
+        if($queryLabel) $queryLabel.textContent = l;
+        $queryPre.textContent = q;
+      }
+
       function seriesInfo(processed){
         const total = (TOTAL_SERIES === null || TOTAL_SERIES === undefined) ? null : Number(TOTAL_SERIES);
         if(total && isFinite(total) && total > 0){
@@ -422,6 +447,8 @@
             const pct = (st.percent !== null && st.percent !== undefined) ? Number(st.percent) : null;
             if(pct !== null && isFinite(pct)) setBar(pct);
 
+            setQueryDetails(st.last_query_label, st.last_query);
+
             let eta = '';
             try{
               const es = parseHmsToSeconds(elapsed);
@@ -432,7 +459,7 @@
             }catch(e){}
             setStatus([
               `Status: ${state} | Laufzeit: ${elapsed}` + (eta ? (` | ${eta}`) : ''),
-              msg,
+              msg ? ('Aktion: ' + msg) : '',
               cur ? (`Aktuell: ${cur}`) : '',
             ]);
 

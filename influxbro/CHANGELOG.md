@@ -2,6 +2,18 @@
 
 <!-- markdownlint-disable MD024 MD013 -->
 
+## 1.11.20
+
+### Features
+- Statistik: Hintergrundabfrage laeuft jetzt in Happen (Serien/Zeitchunks), um lange Einzelqueries und Timeouts zu vermeiden.
+- Statistik: Info zeigt laufende Aktion, grobe Restzeit und optional ausklappbar den zuletzt ausgefuehrten Query.
+
+### Bug Fixes
+- (keine)
+
+### Maintenance
+- (keine)
+
 ## 1.11.19
 
 ### Features
