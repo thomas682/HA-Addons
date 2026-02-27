@@ -208,3 +208,13 @@ from flask import Flask, jsonify, request
 - Bump `version:` in `influxbro/config.yaml` for any user-visible change.
 - Do not change `slug:`.
 - Keep `repository.yaml` in the repo root.
+
+## Workflow Rule (Repo Convention)
+
+- If you change add-on behavior (Python/HTML/JS/CSS, Dockerfile, run scripts, configs that affect runtime), also:
+  - bump `influxbro/config.yaml:version` (so Home Assistant detects the update)
+  - add an entry to `influxbro/CHANGELOG.md` for that version
+
+## Agent Command Convention
+
+- If the user writes `go`, treat that as: stage relevant changes, create a git commit with an appropriate message, and push to the tracked remote branch.

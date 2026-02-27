@@ -2,6 +2,52 @@
 
 <!-- markdownlint-disable MD024 MD013 -->
 
+## 1.11.11
+
+### Features
+- Logs: eigenes rotierendes Logfile unter <code>/data/influxbro.log</code> (groessen- und altersbegrenzt, konfigurierbar).
+- Logs: Log-Viewer kann Logfile anzeigen (Fallback wenn Supervisor-Logs nicht verfuegbar sind).
+- Einstellungen: Logfile/Rotation/Level/HTTP-Request-Logs konfigurierbar.
+
+### Bug Fixes
+- (keine)
+
+### Maintenance
+- (keine)
+
+## 1.11.10
+
+### Features
+- Dashboard: Versionsnummer wird oben im Header angezeigt.
+
+### Bug Fixes
+- (keine)
+
+### Maintenance
+- (keine)
+
+## 1.11.9
+
+### Features
+- UI: Tooltips zeigen zusaetzlich Element-Groesse und Position (size/vp/page) zur UI-Diagnose.
+
+### Bug Fixes
+- UI: Tabellenzeilen-Dichte konsistent gemacht (Zeilenhoehe max. +20% ueber Schriftgroesse).
+
+### Maintenance
+- Einstellungen: Hinweistext zur Tabellen-Dichte ergaenzt.
+
+## 1.11.8
+
+### Features
+- (keine)
+
+### Bug Fixes
+- Graph: numerische String-Werte werden wie in der Tabelle geplottet (Punktanzahl konsistenter).
+
+### Maintenance
+- (keine)
+
 ## 1.11.7
 
 ### Features
@@ -27,22 +73,6 @@
 
 ### Maintenance
 - Markdownlint: Repo-Config `.markdownlint.json` (weniger Noise in VSCode).
-
-## 1.11.2
-
-### Features
-- Statistik: Server-side Aggregation (keine Rohpunkte zur App streamen) + neuer `_field` Filter (Default: `value`).
-- Statistik: Tabellenlayout/Spaltenbreiten verbessert + globaler Button "Loeschen" (nur Ansicht).
-- Graph: Plot-Hoehe per Ziehen anpassbar (Dashboard).
-- Navigation: Branding vergroessert + "by Thomas Schatz".
-- Einstellungen: UI und Ausreisser getrennte aufklappbare Bereiche.
-- Handbuch: erweitert (Elemente beschrieben) + Screenshot-Platzhalter.
-
-### Bug Fixes
-- (keine)
-
-### Maintenance
-- (keine)
 
 ## 1.11.3
 
@@ -81,6 +111,22 @@
 
 ### Maintenance
 - Statistik: Controls sauber ausgerichtet.
+
+## 1.11.2
+
+### Features
+- Statistik: Server-side Aggregation (keine Rohpunkte zur App streamen) + neuer `_field` Filter (Default: `value`).
+- Statistik: Tabellenlayout/Spaltenbreiten verbessert + globaler Button "Loeschen" (nur Ansicht).
+- Graph: Plot-Hoehe per Ziehen anpassbar (Dashboard).
+- Navigation: Branding vergroessert + "by Thomas Schatz".
+- Einstellungen: UI und Ausreisser getrennte aufklappbare Bereiche.
+- Handbuch: erweitert (Elemente beschrieben) + Screenshot-Platzhalter.
+
+### Bug Fixes
+- (keine)
+
+### Maintenance
+- (keine)
 
 ## 1.11.1
 

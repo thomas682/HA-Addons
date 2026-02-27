@@ -42,6 +42,13 @@
 
       <div class="row">
         <div>
+          <label>Quelle</label>
+          <select id="source" data-ui="logs.source" title="logs.source">
+            <option value="logfile" selected>Logfile</option>
+            <option value="supervisor">Supervisor</option>
+          </select>
+        </div>
+        <div>
           <label>Tail</label>
           <select id="tail" data-ui="logs.tail" title="logs.tail">
             <option value="200">200</option>
@@ -89,6 +96,7 @@
       </div>
 
       <script>
+      const $source = document.getElementById('source');
       const $tail = document.getElementById('tail');
       const $refresh = document.getElementById('refresh');
       const $follow = document.getElementById('follow');
@@ -121,9 +129,28 @@
       async function loadLogs(){
         err("");
         const tail = Number($tail.value || 2000);
-        const r = await fetch(`./api/logs?tail=${encodeURIComponent(tail)}`);
-        const j = await r.json().catch(()=>({ok:false,error:"Invalid JSON"}));
-        if(!r.ok || !j.ok){ throw new Error(j.error || ("HTTP " + r.status)); }
+        const src = ($source && $source.value) ? String($source.value) : "logfile";
+        const url = (src === "supervisor") ? `./api/logs?tail=${encodeURIComponent(tail)}` : `./api/logfile?tail=${encodeURIComponent(tail)}`;
+        let r = await fetch(url);
+        let j = await r.json().catch(()=>({ok:false,error:"Invalid JSON"}));
+        if(!r.ok || !j.ok){
+          // Fallback: if supervisor fails, try logfile automatically.
+          if(src === "supervisor"){
+            try{
+              r = await fetch(`./api/logfile?tail=${encodeURIComponent(tail)}`);
+              j = await r.json().catch(()=>({ok:false,error:"Invalid JSON"}));
+              if(r.ok && j.ok){
+                err("Supervisor Logs nicht verfuegbar, zeige Logfile.");
+              } else {
+                throw new Error(j.error || ("HTTP " + r.status));
+              }
+            }catch(e){
+              throw new Error(j.error || ("HTTP " + r.status));
+            }
+          } else {
+            throw new Error(j.error || ("HTTP " + r.status));
+          }
+        }
         RAW = String(j.text || "");
         applySearch();
         // autoscroll only when following and near bottom
@@ -142,6 +169,7 @@
       }
 
       $refresh.addEventListener('click', ()=>loadLogs().catch(e=>err(String(e && e.message ? e.message : e))));
+      if($source) $source.addEventListener('change', ()=>loadLogs().catch(e=>err(String(e && e.message ? e.message : e))));
       $follow.addEventListener('click', ()=>setFollow(!FOLLOW));
       $wrap.addEventListener('change', ()=>{ applyWrap(); });
       $q.addEventListener('input', ()=>applySearch());

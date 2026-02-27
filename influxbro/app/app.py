@@ -1,7 +1,10 @@
 import json
+import logging
+import logging.handlers
 import math
 import os
 import re
+import sys
 import threading
 import time
 import uuid
@@ -271,6 +274,161 @@ def _overlay_from_yaml_if_enabled(cfg_in: dict) -> dict:
 app = Flask(__name__)
 RUNTIME_CFG_FILE = DATA_DIR / "influx_browser_config.json"
 
+LOG_FILE = DATA_DIR / "influxbro.log"
+
+
+def _redact_secrets(s: str) -> str:
+    if not s:
+        return ""
+    out = s
+    # Bearer tokens
+    out = re.sub(r"(?i)(authorization\s*[:=]\s*bearer\s+)([^\s\"]+)", r"\1***", out)
+    # Common key=value patterns
+    out = re.sub(r"(?i)\b(token|password|passwd|api_key|apikey)\s*[:=]\s*([^\s,;\"]+)", r"\1=***", out)
+    return out
+
+
+class _RedactFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        try:
+            msg = record.getMessage()
+            record.msg = _redact_secrets(str(msg))
+            record.args = ()
+        except Exception:
+            # Keep record as-is.
+            pass
+        return True
+
+
+_LOG_CONFIGURED = False
+
+
+def _cleanup_old_logs(max_age_days: int) -> None:
+    if not max_age_days or max_age_days <= 0:
+        return
+    try:
+        cutoff = time.time() - (max_age_days * 86400)
+        for p in DATA_DIR.glob("influxbro.log*"):
+            try:
+                if p.is_file() and p.stat().st_mtime < cutoff:
+                    p.unlink(missing_ok=True)
+            except Exception:
+                continue
+    except Exception:
+        return
+
+
+def configure_logging(cfg: dict[str, Any]) -> None:
+    """Configure logging to stdout (HA) and optional rotating logfile under /data."""
+
+    global _LOG_CONFIGURED
+
+    try:
+        level_s = str(cfg.get("log_level") or "INFO").strip().upper()
+    except Exception:
+        level_s = "INFO"
+    level = getattr(logging, level_s, logging.INFO)
+
+    log_to_file = bool(cfg.get("log_to_file", True))
+    try:
+        max_mb = int(cfg.get("log_max_mb", 5))
+    except Exception:
+        max_mb = 5
+    if max_mb < 1:
+        max_mb = 1
+    if max_mb > 200:
+        max_mb = 200
+
+    try:
+        backup_count = int(cfg.get("log_backup_count", 5))
+    except Exception:
+        backup_count = 5
+    if backup_count < 1:
+        backup_count = 1
+    if backup_count > 50:
+        backup_count = 50
+
+    try:
+        max_age_days = int(cfg.get("log_max_age_days", 14))
+    except Exception:
+        max_age_days = 14
+    if max_age_days < 0:
+        max_age_days = 0
+    if max_age_days > 365:
+        max_age_days = 365
+
+    log_http_requests = bool(cfg.get("log_http_requests", False))
+
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    if log_to_file:
+        _cleanup_old_logs(max_age_days)
+
+    root = logging.getLogger()
+    root.setLevel(level)
+
+    # Remove old handlers to avoid duplicates on reconfigure.
+    for h in list(root.handlers):
+        try:
+            root.removeHandler(h)
+            h.close()
+        except Exception:
+            continue
+
+    fmt = logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s")
+    red = _RedactFilter()
+
+    sh = logging.StreamHandler(sys.stdout)
+    sh.setLevel(level)
+    sh.setFormatter(fmt)
+    sh.addFilter(red)
+    root.addHandler(sh)
+
+    if log_to_file:
+        try:
+            fh = logging.handlers.RotatingFileHandler(
+                LOG_FILE,
+                maxBytes=max_mb * 1024 * 1024,
+                backupCount=backup_count,
+                encoding="utf-8",
+            )
+            fh.setLevel(level)
+            fh.setFormatter(fmt)
+            fh.addFilter(red)
+            root.addHandler(fh)
+        except Exception:
+            # Keep stdout logging even if file handler fails.
+            pass
+
+    # Flask app logger: make it propagate to root handlers.
+    try:
+        app.logger.handlers = []
+        app.logger.propagate = True
+        app.logger.setLevel(level)
+    except Exception:
+        pass
+
+    # Werkzeug request logs are very chatty; keep off by default.
+    try:
+        wz = logging.getLogger("werkzeug")
+        if log_http_requests:
+            wz.setLevel(level)
+        else:
+            wz.setLevel(logging.WARNING)
+    except Exception:
+        pass
+
+    if not _LOG_CONFIGURED:
+        _LOG_CONFIGURED = True
+        logging.getLogger(__name__).info(
+            "Logging configured (to_file=%s, level=%s, max_mb=%s, backups=%s, max_age_days=%s, http_requests=%s)",
+            log_to_file,
+            level_s,
+            max_mb,
+            backup_count,
+            max_age_days,
+            log_http_requests,
+        )
+
 def env_bool(key: str, default: bool) -> bool:
     v = os.environ.get(key, str(default)).lower()
     return v in ("1", "true", "yes", "on")
@@ -329,6 +487,14 @@ DEFAULT_CFG = {
     # Energy deltas depend on sampling interval; defaults assume coarse (hour-ish) steps.
     "outlier_max_step_wh": 30000,
     "outlier_max_step_kwh": 30,
+
+    # Logging (stdout + optional /data log file)
+    "log_to_file": True,
+    "log_level": "INFO",
+    "log_max_mb": 5,
+    "log_backup_count": 5,
+    "log_max_age_days": 14,
+    "log_http_requests": False,
 }
 
 def load_cfg():
@@ -346,6 +512,14 @@ def load_cfg():
         except Exception:
             pass
     return cfg
+
+
+# Configure logging early from persisted config.
+try:
+    configure_logging(load_cfg())
+except Exception:
+    # Worst case: Flask still logs to stderr.
+    pass
 
 
 def save_cfg(cfg: dict) -> None:
@@ -948,6 +1122,32 @@ def api_logs():
         }), 502
 
     txt = _unwrap(txt)
+    lines = (txt or "").splitlines()
+    if tail and len(lines) > tail:
+        lines = lines[-tail:]
+    return jsonify({"ok": True, "text": "\n".join(lines)})
+
+
+@app.get("/api/logfile")
+def api_logfile():
+    """Fetch InfluxBro logfile from /data (rotating)."""
+
+    try:
+        tail = int(request.args.get("tail", "2000"))
+    except Exception:
+        tail = 2000
+    if tail < 0:
+        tail = 0
+    if tail > 20000:
+        tail = 20000
+
+    try:
+        if not LOG_FILE.exists():
+            return jsonify({"ok": True, "text": ""})
+        txt = LOG_FILE.read_text(encoding="utf-8", errors="replace")
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 500
+
     lines = (txt or "").splitlines()
     if tail and len(lines) > tail:
         lines = lines[-tail:]
@@ -1693,7 +1893,7 @@ def api_set_config():
 
     _clamp_int("ui_font_size_px", 14, 10, 22)
     _clamp_int("ui_font_small_px", 11, 9, 18)
-    _clamp_int("ui_table_row_height_px", 16, 12, 40)
+    _clamp_int("ui_table_row_height_px", 13, 9, 60)
     _clamp_int("ui_edit_neighbors_n", 5, 1, 50)
     _clamp_float("ui_checkbox_scale", 0.85, 0.5, 1.6)
     _clamp_int("ui_filter_label_width_px", 170, 80, 360)
@@ -1720,6 +1920,20 @@ def api_set_config():
     _bool("ui_open_editlist", False)
     _bool("ui_open_stats", False)
 
+    # Logging
+    _bool("log_to_file", True)
+    _bool("log_http_requests", False)
+    try:
+        lvl = str(cfg.get("log_level") or "INFO").strip().upper()
+    except Exception:
+        lvl = "INFO"
+    if lvl not in ("DEBUG", "INFO", "WARNING", "ERROR"):
+        lvl = "INFO"
+    cfg["log_level"] = lvl
+    _clamp_int("log_max_mb", 5, 1, 200)
+    _clamp_int("log_backup_count", 5, 1, 50)
+    _clamp_int("log_max_age_days", 14, 0, 365)
+
     def _clamp_num(key: str, default: float, lo: float, hi: float) -> None:
         try:
             cfg[key] = float(cfg.get(key, default))
@@ -1736,6 +1950,10 @@ def api_set_config():
     _clamp_num("outlier_max_step_kwh", 30, 0.01, 100000)
 
     save_cfg(cfg)
+    try:
+        configure_logging(cfg)
+    except Exception:
+        pass
     return jsonify({"ok": True, "message": "Saved. New settings are used immediately."})
 
 @app.post("/api/test")
