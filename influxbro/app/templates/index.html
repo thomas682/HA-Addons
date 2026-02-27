@@ -12,7 +12,8 @@
       --ui-label-w: 170px;
       --ui-ctrl-w: 320px;
       --ui-search-w: 160px;
-      --ui-table-row-h: 16px;
+      /* Table density: effective row height is at most +20% above font size. */
+      --ui-table-line-height: 1.2;
     }
 
     body { font-family: system-ui, sans-serif; margin: 0; font-size: var(--ui-font); }
@@ -44,7 +45,7 @@
     input.search { height: 34px; padding: 8px 10px; }
     .stack { display:flex; flex-direction:column; gap:6px; }
     table { border-collapse: collapse; width: 100%; margin-top: 12px; }
-    th, td { border: 1px solid #ddd; padding: 6px; font-size: 12px; }
+    th, td { border: 1px solid #ddd; padding: 0 6px; font-size: 12px; line-height: 1.2; vertical-align: middle; }
     th { background:#f4f4f4; text-align:left; }
     .graph_frame { width: 100%; max-width: 100%; border: 1px solid #ddd; border-radius: 10px; padding: 10px; margin-top: 12px; box-sizing: border-box; }
     canvas { width: 100%; height: 180px; border: 0; margin-top: 0; border-radius: 10px; }
@@ -77,9 +78,9 @@
     .main { display:block; margin-top: 12px; }
     .table_wrap { border: 1px solid #ddd; border-radius: 10px; padding: 10px; margin-top: 12px; }
     .table_head { display:flex; justify-content:space-between; gap: 12px; align-items:baseline; flex-wrap:wrap; }
-    .table_box { --row-h: var(--ui-table-row-h, 16px); --max-rows: 100; max-height: calc(var(--max-rows) * var(--row-h) + 42px); overflow:auto; border: 1px solid #eee; border-radius: 10px; margin-top: 8px; }
+    .table_box { --max-rows: 100; --lh: var(--ui-table-line-height, 1.2); font-size: var(--ui-font-small); max-height: calc(var(--max-rows) * 1em * var(--lh) + 42px); overflow:auto; border: 1px solid #eee; border-radius: 10px; margin-top: 8px; }
     .table_box table { margin-top: 0; }
-    .table_box th, .table_box td { font-size: var(--ui-font-small); padding: 0 6px; line-height: 1.05; height: var(--row-h); vertical-align: middle; }
+    .table_box th, .table_box td { font-size: inherit; padding: 0 6px; line-height: var(--lh); height: auto; vertical-align: middle; }
     .table_box th { position: sticky; top: 0; z-index: 1; cursor: pointer; }
 
     .tbl_actions { display:flex; gap: 10px; align-items:center; flex-wrap:wrap; margin-top: 6px; }
@@ -97,7 +98,7 @@
     .section { margin-top: 14px; }
     .section_title { font-weight: 700; margin: 14px 0 6px 0; }
     .stats_tbl { border-collapse: collapse; width: 100%; }
-    .stats_tbl td { border: 1px solid #eee; padding: 4px 6px; font-size: 11px; }
+    .stats_tbl td { border: 1px solid #eee; padding: 0 6px; font-size: 11px; line-height: 1.2; vertical-align: middle; }
     .stats_tbl td.k { width: 220px; opacity: 0.75; }
     .stats_tbl td.v { font-weight: 600; overflow-wrap:anywhere; }
     .stats_box { display:none; margin-top: 8px; }
@@ -449,6 +450,7 @@ const $btnEditApply = document.getElementById('edit_apply');
 let UI_DECIMALS = 3;
 let UI_TABLE_VISIBLE_ROWS = 20;
 let UI_EDIT_NEIGHBORS_N = 5;
+let UI_FONT_SMALL_FALLBACK = 11;
 
 function fmt(x){ if(x === null || x === undefined || x === "") return ""; return String(x); }
 
@@ -1014,13 +1016,6 @@ async function loadUiConfig(){
     if($tableBox) $tableBox.style.setProperty("--max-rows", String(UI_TABLE_VISIBLE_ROWS));
     if($editBox) $editBox.style.setProperty("--max-rows", String(UI_TABLE_VISIBLE_ROWS));
 
-    const rh = Number(cfg.ui_table_row_height_px);
-    if(isFinite(rh) && rh >= 12 && rh <= 40){
-      document.documentElement.style.setProperty("--ui-table-row-h", Math.trunc(rh) + "px");
-      if($tableBox) $tableBox.style.setProperty("--row-h", Math.trunc(rh) + "px");
-      if($editBox) $editBox.style.setProperty("--row-h", Math.trunc(rh) + "px");
-    }
-
     const nn = Number(cfg.ui_edit_neighbors_n);
     if(isFinite(nn) && nn >= 1 && nn <= 50) UI_EDIT_NEIGHBORS_N = Math.trunc(nn);
     try{
@@ -1033,7 +1028,22 @@ async function loadUiConfig(){
     const fs = Number(cfg.ui_font_size_px);
     if(isFinite(fs) && fs >= 10 && fs <= 22) document.documentElement.style.setProperty("--ui-font", fs + "px");
     const fss = Number(cfg.ui_font_small_px);
-    if(isFinite(fss) && fss >= 9 && fss <= 18) document.documentElement.style.setProperty("--ui-font-small", fss + "px");
+    if(isFinite(fss) && fss >= 9 && fss <= 18){
+      UI_FONT_SMALL_FALLBACK = Math.trunc(fss);
+      document.documentElement.style.setProperty("--ui-font-small", fss + "px");
+    }
+
+    // Table density: user sets desired px height; effective row height is clamped to max +20% above font size.
+    try{
+      const rh = Number(cfg.ui_table_row_height_px);
+      const fontPx = (isFinite(fss) && fss >= 9 && fss <= 18) ? fss : UI_FONT_SMALL_FALLBACK;
+      const wantPx = (isFinite(rh) && rh > 0) ? rh : (fontPx * 1.2);
+      const effPx = Math.min(fontPx * 1.2, Math.max(fontPx, wantPx));
+      const lh = effPx / fontPx;
+      if(isFinite(lh) && lh >= 1.0 && lh <= 1.2){
+        document.documentElement.style.setProperty("--ui-table-line-height", lh.toFixed(3));
+      }
+    }catch(e){}
 
     const cb = Number(cfg.ui_checkbox_scale);
     if(isFinite(cb) && cb >= 0.5 && cb <= 1.6) document.documentElement.style.setProperty("--ui-cb-scale", String(cb));
@@ -2355,44 +2365,6 @@ try{
     if(id) el.setAttribute('title', id);
   });
 }catch(e){}
-</script>
-<div style="position:absolute;top:10px;right:20px;font-size:12px;color:#888;" id="version_box"></div>
-<script>
-(async () => {
-  try{
-    const r = await fetch("./api/info");
-    const j = await r.json();
-    if(j && j.ok){
-      document.getElementById("version_box").innerText = "Version: " + j.version;
-    }
-  }catch(e){}
-})();
-</script>
-
-    </div>
-  </div>
-
-</body>
-</html>
-('select, input, button').forEach(el => {
-    if(el.getAttribute('data-ui')) return;
-    if(el.getAttribute('title')) return;
-    const id = el.getAttribute('id');
-    if(id) el.setAttribute('title', id);
-  });
-}catch(e){}
-</script>
-<div style="position:absolute;top:10px;right:20px;font-size:12px;color:#888;" id="version_box"></div>
-<script>
-(async () => {
-  try{
-    const r = await fetch("./api/info");
-    const j = await r.json();
-    if(j && j.ok){
-      document.getElementById("version_box").innerText = "Version: " + j.version;
-    }
-  }catch(e){}
-})();
 </script>
 
     </div>

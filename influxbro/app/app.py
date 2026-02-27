@@ -300,7 +300,7 @@ DEFAULT_CFG = {
 
     # UI defaults
     "ui_table_visible_rows": 20,
-    "ui_table_row_height_px": 16,
+    "ui_table_row_height_px": 13,
     "ui_edit_neighbors_n": 5,
     "ui_decimals": 3,
 
