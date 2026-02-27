@@ -109,7 +109,10 @@
     {% include "_nav.html" %}
     <div class="content" data-ui="dashboard.page" title="dashboard.page">
 
-  <h2>Dashboard</h2>
+  <div style="display:flex; justify-content:space-between; gap: 12px; align-items:baseline; flex-wrap:wrap;">
+    <h2 style="margin:0;">Dashboard</h2>
+    <div class="muted" id="version_box" data-ui="dashboard.version" title="dashboard.version"></div>
+  </div>
   <div class="muted" style="margin-top:6px;" data-ui="dashboard.donate" title="dashboard.donate">
     <a href="https://paypal.me/ThomasSchatz" target="_blank" rel="noreferrer">
       <img alt="Donate with PayPal" src="https://img.shields.io/badge/Donate-PayPal-blue.svg"/>
@@ -425,6 +428,8 @@ const $graphMarkers = document.getElementById('graph_markers');
 
 const $statsTotBody = document.getElementById('stats_tot_body');
 const $statsCurrBody = document.getElementById('stats_curr_body');
+
+const $versionBox = document.getElementById('version_box');
 
 const $btnTblAllValues = document.getElementById('tbl_all_values');
 
@@ -996,6 +1001,15 @@ async function api(url, opts){
   const j = await r.json().catch(()=>({ok:false,error:"Invalid JSON"}));
   if(!r.ok || !j.ok) throw new Error(j.error || ("HTTP " + r.status));
   return j;
+}
+
+async function loadVersion(){
+  if(!$versionBox) return;
+  try{
+    const r = await fetch("./api/info");
+    const j = await r.json().catch(()=>null);
+    if(j && j.ok && j.version) $versionBox.textContent = "Version: " + String(j.version);
+  }catch(e){}
 }
 
 function displayError(e){
@@ -2272,6 +2286,7 @@ document.getElementById("load").addEventListener("click", ()=>refreshAll().catch
 (async ()=>{
   try{
     await loadUiConfig();
+    loadVersion().catch(()=>{});
     loadGraphHeight();
     initGraphResize();
 
