@@ -2,6 +2,18 @@
 
 <!-- markdownlint-disable MD024 MD013 -->
 
+## 1.11.16
+
+### Features
+- Schreiben/Loeschen: Freigabe ist jetzt eine UI-Einstellung (`writes_enabled`) und ist standardmaessig erlaubt (Add-on Option `allow_delete` entfernt).
+- Statistik: "Gesamtstatistik laden" laedt automatisch alle Serien (weiterhin 10 pro Influx-Request) und Details werden direkt mitgeladen.
+
+### Bug Fixes
+- (keine)
+
+### Maintenance
+- (keine)
+
 ## 1.11.15
 
 ### Features

@@ -175,6 +175,15 @@
         <div class="muted">Default: aus (sehr viele Zeilen).</div>
       </div>
 
+      <div class="span2">
+        <div style="font-weight:700; margin-top: 6px;">Schreiben</div>
+        <div class="muted">Erlaubt das Schreiben/Loeschen in InfluxDB aus der UI (Bearbeitungsliste/Loeschen). Default: erlaubt.</div>
+      </div>
+      <div>
+        <label><input type="checkbox" id="writes_enabled" /> Schreiben/Loeschen erlauben</label>
+        <div class="muted">Wenn deaktiviert, werden Schreiboperationen blockiert.</div>
+      </div>
+
       <div>
         <label>Bearbeitungsliste: Nachbarwerte (n)</label>
         <input id="ui_edit_neighbors_n" type="number" min="1" max="50" />
@@ -299,6 +308,7 @@ const ids = [
   ,"ui_open_stats_total","ui_open_stats_current"
   ,"outlier_max_step_w","outlier_max_step_kw","outlier_max_step_wh","outlier_max_step_kwh"
   ,"log_to_file","log_profile","log_max_mb","log_backup_count","log_max_age_days","log_http_requests"
+  ,"writes_enabled"
 ];
 
 const el = {};
@@ -360,6 +370,8 @@ function setForm(cfg){
   el.log_backup_count.value = cfg.log_backup_count ?? 5;
   el.log_max_age_days.value = cfg.log_max_age_days ?? 14;
   el.log_http_requests.checked = !!cfg.log_http_requests;
+
+  el.writes_enabled.checked = (cfg.writes_enabled !== false);
 }
 
 function getForm(){
@@ -413,6 +425,8 @@ function getForm(){
     log_backup_count: parseInt(el.log_backup_count.value, 10),
     log_max_age_days: parseInt(el.log_max_age_days.value, 10),
     log_http_requests: !!el.log_http_requests.checked,
+
+    writes_enabled: !!el.writes_enabled.checked,
   };
 }
 

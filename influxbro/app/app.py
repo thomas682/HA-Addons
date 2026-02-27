@@ -466,7 +466,9 @@ def env_bool(key: str, default: bool) -> bool:
     v = os.environ.get(key, str(default)).lower()
     return v in ("1", "true", "yes", "on")
 
-ALLOW_DELETE = env_bool("ALLOW_DELETE", False)
+# Writing/editing/deleting is controlled via runtime config (UI settings).
+# Keep env var unused for backward compatibility (do not rely on it).
+_ALLOW_DELETE_ENV = env_bool("ALLOW_DELETE", False)
 DELETE_CONFIRM_PHRASE = os.environ.get("DELETE_CONFIRM_PHRASE", "DELETE")
 
 LAST_AUTODETECT_SOURCE = None
@@ -531,7 +533,21 @@ DEFAULT_CFG = {
     "log_backup_count": 5,
     "log_max_age_days": 14,
     "log_http_requests": False,
+
+    # Safety: allow writes/deletes from UI
+    "writes_enabled": True,
 }
+
+
+def writes_enabled(cfg: dict[str, Any]) -> bool:
+    try:
+        v = cfg.get("writes_enabled", True)
+        if isinstance(v, bool):
+            return v
+        s = str(v).strip().lower()
+        return s in ("1", "true", "yes", "on")
+    except Exception:
+        return True
 
 def load_cfg():
     # NOTE: No automatic autodetect at startup.
@@ -797,7 +813,7 @@ def index():
     return render_template(
         "index.html",
         cfg=cfg,
-        allow_delete=ALLOW_DELETE,
+        allow_delete=writes_enabled(cfg),
         delete_phrase=DELETE_CONFIRM_PHRASE,
         nav="dashboard",
     )
@@ -805,24 +821,28 @@ def index():
 
 @app.get("/stats")
 def stats_page():
-    return render_template("stats.html", allow_delete=ALLOW_DELETE, nav="stats")
+    cfg = load_cfg()
+    return render_template("stats.html", allow_delete=writes_enabled(cfg), nav="stats")
 
 
 @app.get("/logs")
 def logs_page():
-    return render_template("logs.html", allow_delete=ALLOW_DELETE, nav="logs")
+    cfg = load_cfg()
+    return render_template("logs.html", allow_delete=writes_enabled(cfg), nav="logs")
 
 
 @app.get("/backup")
 def backup_page():
-    return render_template("backup.html", allow_delete=ALLOW_DELETE, nav="backup")
+    cfg = load_cfg()
+    return render_template("backup.html", allow_delete=writes_enabled(cfg), nav="backup")
 
 
 @app.get("/restore")
 def restore_page():
+    cfg = load_cfg()
     return render_template(
         "restore.html",
-        allow_delete=ALLOW_DELETE,
+        allow_delete=writes_enabled(cfg),
         delete_phrase=DELETE_CONFIRM_PHRASE,
         nav="restore",
     )
@@ -839,7 +859,7 @@ def info_page():
         changelog = ""
     return render_template(
         "info.html",
-        allow_delete=ALLOW_DELETE,
+        allow_delete=writes_enabled(cfg),
         nav="info",
         repo_url=repo_url,
         changelog_text=changelog,
@@ -848,6 +868,7 @@ def info_page():
 
 @app.get("/manual")
 def manual_page():
+    cfg = load_cfg()
     manual = ""
     try:
         manual = (APP_DIR / "MANUAL.md").read_text(encoding="utf-8")
@@ -855,7 +876,7 @@ def manual_page():
         manual = ""
     return render_template(
         "manual.html",
-        allow_delete=ALLOW_DELETE,
+        allow_delete=writes_enabled(cfg),
         nav="manual",
         manual_text=manual,
     )
@@ -866,7 +887,7 @@ def config_page():
     return render_template(
         "config.html",
         cfg=cfg,
-        allow_delete=ALLOW_DELETE,
+        allow_delete=writes_enabled(cfg),
         delete_phrase=DELETE_CONFIRM_PHRASE,
         autodetect_source=LAST_AUTODETECT_SOURCE,
         nav="settings",
@@ -920,7 +941,15 @@ def api_get_config():
         redacted["token"] = "********"
     if redacted.get("password"):
         redacted["password"] = "********"
-    return jsonify({"ok": True, "config": redacted, "allow_delete": ALLOW_DELETE, "delete_confirm_phrase": DELETE_CONFIRM_PHRASE, "autodetect_source": LAST_AUTODETECT_SOURCE})
+    return jsonify({
+        "ok": True,
+        "config": redacted,
+        # Backward-compat key; now reflects writes_enabled from config.
+        "allow_delete": writes_enabled(cfg),
+        "writes_enabled": writes_enabled(cfg),
+        "delete_confirm_phrase": DELETE_CONFIRM_PHRASE,
+        "autodetect_source": LAST_AUTODETECT_SOURCE,
+    })
 
 
 _ENTITY_ID_RE = re.compile(r"^[A-Za-z0-9_]+\.[A-Za-z0-9_]+$")
@@ -1662,8 +1691,8 @@ def api_backup_delete():
 @app.post("/api/backup_restore")
 def api_backup_restore():
     cfg = _overlay_from_yaml_if_enabled(load_cfg())
-    if not ALLOW_DELETE:
-        return jsonify({"ok": False, "error": "Writes are disabled. Enable allow_delete in add-on options."}), 403
+    if not writes_enabled(cfg):
+        return jsonify({"ok": False, "error": "Writes are disabled. Enable writes in Settings."}), 403
 
     body = request.get_json(force=True) or {}
     confirm = body.get("confirm", False)
@@ -1720,8 +1749,8 @@ def api_backup_copy():
     """
 
     cfg = _overlay_from_yaml_if_enabled(load_cfg())
-    if not ALLOW_DELETE:
-        return jsonify({"ok": False, "error": "Writes are disabled. Enable allow_delete in add-on options."}), 403
+    if not writes_enabled(cfg):
+        return jsonify({"ok": False, "error": "Writes are disabled. Enable writes in Settings."}), 403
 
     body = request.get_json(force=True) or {}
     confirm = body.get("confirm", False)
@@ -1955,6 +1984,9 @@ def api_set_config():
     _bool("ui_open_filterlist", False)
     _bool("ui_open_editlist", False)
     _bool("ui_open_stats", False)
+
+    # Safety
+    _bool("writes_enabled", True)
 
     # Logging
     _bool("log_to_file", True)
@@ -3839,12 +3871,12 @@ def apply_edits():
     """
 
     cfg = _overlay_from_yaml_if_enabled(load_cfg())
-    if not ALLOW_DELETE:
+    if not writes_enabled(cfg):
         try:
-            LOG.error("apply_edits blocked: allow_delete disabled")
+            LOG.error("apply_edits blocked: writes disabled")
         except Exception:
             pass
-        return jsonify({"ok": False, "error": "Writes are disabled. Enable allow_delete in add-on options."}), 403
+        return jsonify({"ok": False, "error": "Writes are disabled. Enable writes in Settings."}), 403
 
     body = request.get_json(force=True) or {}
     confirm = body.get("confirm", "")
@@ -4015,8 +4047,8 @@ from(bucket: "{cfg["bucket"]}")
 @app.post("/api/delete")
 def delete():
     cfg = _overlay_from_yaml_if_enabled(load_cfg())
-    if not ALLOW_DELETE:
-        return jsonify({"ok": False, "error": "Deletion is disabled. Enable allow_delete in add-on options."}), 403
+    if not writes_enabled(cfg):
+        return jsonify({"ok": False, "error": "Writes are disabled. Enable writes in Settings."}), 403
 
     body = request.get_json(force=True) or {}
     measurement = body.get("measurement", "")
