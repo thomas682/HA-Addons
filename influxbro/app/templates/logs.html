@@ -49,6 +49,22 @@
           </select>
         </div>
         <div>
+          <label>Anzeigen</label>
+          <select id="view_profile" data-ui="logs.view_profile" title="logs.view_profile">
+            <option value="error">ERROR (nur Fehler)</option>
+            <option value="debug">DEBUG</option>
+            <option value="trace" selected>TRACE (Details)</option>
+          </select>
+        </div>
+        <div>
+          <label>Log Stufe (Server)</label>
+          <select id="server_profile" data-ui="logs.server_profile" title="logs.server_profile">
+            <option value="error">ERROR</option>
+            <option value="debug" selected>DEBUG</option>
+            <option value="trace">TRACE</option>
+          </select>
+        </div>
+        <div>
           <label>Tail</label>
           <select id="tail" data-ui="logs.tail" title="logs.tail">
             <option value="200">200</option>
@@ -97,6 +113,8 @@
 
       <script>
       const $source = document.getElementById('source');
+      const $viewProfile = document.getElementById('view_profile');
+      const $serverProfile = document.getElementById('server_profile');
       const $tail = document.getElementById('tail');
       const $refresh = document.getElementById('refresh');
       const $follow = document.getElementById('follow');
@@ -113,6 +131,18 @@
       let RAW = "";
       let TIMER = null;
 
+      const LS_VIEW = "influxbro_logs_view_profile_v1";
+
+      function loadViewProfile(){
+        try{
+          const v = localStorage.getItem(LS_VIEW);
+          if(v && $viewProfile) $viewProfile.value = v;
+        }catch(e){}
+      }
+      function saveViewProfile(){
+        try{ if($viewProfile) localStorage.setItem(LS_VIEW, String($viewProfile.value||"")); }catch(e){}
+      }
+
       function err(s){ $err.textContent = s || ""; }
       function applyWrap(){
         const card = document.getElementById('log_card');
@@ -121,9 +151,53 @@
 
       function applySearch(){
         const t = String($q.value || "").toLowerCase();
-        if(!t){ $logpre.textContent = RAW; return; }
-        const lines = RAW.split("\n").filter(l => l.toLowerCase().includes(t));
-        $logpre.textContent = lines.join("\n");
+        const view = $viewProfile ? String($viewProfile.value || "trace") : "trace";
+        const all = RAW.split("\n");
+
+        const filtered = all.filter(l => {
+          const s = String(l || "");
+          const up = s.toUpperCase();
+          const hasLvl = (up.includes(" ERROR ") || up.includes(" WARNING ") || up.includes(" INFO ") || up.includes(" DEBUG "));
+          const isDetails = s.includes("influxbro.details");
+          if(view === "error") return up.includes(" ERROR ") || up.includes("TRACEBACK") || up.includes("EXCEPTION");
+          if(view === "debug"){
+            if(isDetails) return false;
+            return hasLvl ? true : true;
+          }
+          // trace
+          return true;
+        });
+
+        if(!t){
+          $logpre.textContent = filtered.join("\n");
+          return;
+        }
+        $logpre.textContent = filtered.filter(l => String(l||"").toLowerCase().includes(t)).join("\n");
+      }
+
+      async function setServerProfile(p){
+        try{
+          const payload = { log_profile: String(p || "debug") };
+          const r = await fetch("./api/config", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)});
+          const j = await r.json().catch(()=>({ok:false,error:"Invalid JSON"}));
+          if(!r.ok || !j.ok) throw new Error(j.error || ("HTTP " + r.status));
+          return true;
+        }catch(e){
+          err(String(e && e.message ? e.message : e));
+          return false;
+        }
+      }
+
+      async function loadServerProfile(){
+        if(!$serverProfile) return;
+        try{
+          const r = await fetch("./api/config");
+          const j = await r.json().catch(()=>({ok:false,error:"Invalid JSON"}));
+          if(!r.ok || !j.ok) return;
+          const cfg = j.config || {};
+          const p = String(cfg.log_profile || "debug");
+          if(["error","debug","trace"].includes(p)) $serverProfile.value = p;
+        }catch(e){}
       }
 
       async function loadLogs(){
@@ -170,6 +244,8 @@
 
       $refresh.addEventListener('click', ()=>loadLogs().catch(e=>err(String(e && e.message ? e.message : e))));
       if($source) $source.addEventListener('change', ()=>loadLogs().catch(e=>err(String(e && e.message ? e.message : e))));
+      if($viewProfile) $viewProfile.addEventListener('change', ()=>{ saveViewProfile(); applySearch(); });
+      if($serverProfile) $serverProfile.addEventListener('change', ()=>{ setServerProfile($serverProfile.value).then(()=>loadLogs().catch(()=>{})); });
       $follow.addEventListener('click', ()=>setFollow(!FOLLOW));
       $wrap.addEventListener('change', ()=>{ applyWrap(); });
       $q.addEventListener('input', ()=>applySearch());
@@ -187,6 +263,8 @@
       });
 
       applyWrap();
+      loadViewProfile();
+      loadServerProfile();
       loadLogs().catch(e=>err(String(e && e.message ? e.message : e)));
       </script>
     </main>

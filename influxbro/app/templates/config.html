@@ -147,14 +147,13 @@
         <div class="muted">Wenn aktiv, werden Logs zusaetzlich persistent gespeichert.</div>
       </div>
       <div>
-        <label>Log Level</label>
-        <select id="log_level">
-          <option value="DEBUG">DEBUG</option>
-          <option value="INFO" selected>INFO</option>
-          <option value="WARNING">WARNING</option>
-          <option value="ERROR">ERROR</option>
+        <label>Log Stufe</label>
+        <select id="log_profile">
+          <option value="error">ERROR (nur Fehler)</option>
+          <option value="debug" selected>DEBUG</option>
+          <option value="trace">TRACE (Details)</option>
         </select>
-        <div class="muted">Default: INFO.</div>
+        <div class="muted">ERROR = nur Fehler. DEBUG = Debugpunkte. TRACE = zusaetzlich interne Abfragen/Details.</div>
       </div>
       <div>
         <label>Max MB pro Datei</label>
@@ -299,7 +298,7 @@ const ids = [
   ,"ui_open_selection","ui_open_graph","ui_open_filterlist","ui_open_editlist"
   ,"ui_open_stats_total","ui_open_stats_current"
   ,"outlier_max_step_w","outlier_max_step_kw","outlier_max_step_wh","outlier_max_step_kwh"
-  ,"log_to_file","log_level","log_max_mb","log_backup_count","log_max_age_days","log_http_requests"
+  ,"log_to_file","log_profile","log_max_mb","log_backup_count","log_max_age_days","log_http_requests"
 ];
 
 const el = {};
@@ -356,7 +355,7 @@ function setForm(cfg){
   el.outlier_max_step_kwh.value = cfg.outlier_max_step_kwh ?? 30;
 
   el.log_to_file.checked = (cfg.log_to_file !== false);
-  el.log_level.value = String(cfg.log_level ?? "INFO");
+  el.log_profile.value = String(cfg.log_profile ?? "debug");
   el.log_max_mb.value = cfg.log_max_mb ?? 5;
   el.log_backup_count.value = cfg.log_backup_count ?? 5;
   el.log_max_age_days.value = cfg.log_max_age_days ?? 14;
@@ -409,7 +408,7 @@ function getForm(){
     outlier_max_step_kwh: parseFloat(el.outlier_max_step_kwh.value),
 
     log_to_file: !!el.log_to_file.checked,
-    log_level: String(el.log_level.value || "INFO"),
+    log_profile: String(el.log_profile.value || "debug"),
     log_max_mb: parseInt(el.log_max_mb.value, 10),
     log_backup_count: parseInt(el.log_backup_count.value, 10),
     log_max_age_days: parseInt(el.log_max_age_days.value, 10),

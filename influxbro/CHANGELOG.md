@@ -2,6 +2,19 @@
 
 <!-- markdownlint-disable MD024 MD013 -->
 
+## 1.11.15
+
+### Features
+- Logs: Log-Stufenprofile ERROR/DEBUG/TRACE (TRACE loggt zusaetzlich interne Abfragen/Details).
+- Logs: Logs-Seite mit Anzeige-Filter (ERROR/DEBUG/TRACE) und Server-Logstufe umschaltbar.
+- Bearbeitungsliste: Schreiben zeigt einen Dialog mit Ueberschreib-Vorschau und einklappbarem Influx-Query zum Gegenpruefen.
+
+### Bug Fixes
+- Bearbeitungsliste: Hinweis "Writes are disabled..." wird unter dem Schreiben-Button angezeigt (wenn allow_delete aus ist).
+
+### Maintenance
+- (keine)
+
 ## 1.11.14
 
 ### Features

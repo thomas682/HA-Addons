@@ -301,6 +301,19 @@ class _RedactFilter(logging.Filter):
 
 
 _LOG_CONFIGURED = False
+DETAILS_ENABLED = False
+
+LOG = logging.getLogger("influxbro")
+DETAIL_LOG = logging.getLogger("influxbro.details")
+
+
+def log_details(msg: str, *args: object) -> None:
+    if not DETAILS_ENABLED:
+        return
+    try:
+        DETAIL_LOG.debug(msg, *args)
+    except Exception:
+        return
 
 
 def _cleanup_old_logs(max_age_days: int) -> None:
@@ -323,11 +336,30 @@ def configure_logging(cfg: dict[str, Any]) -> None:
 
     global _LOG_CONFIGURED
 
+    global DETAILS_ENABLED
+
     try:
-        level_s = str(cfg.get("log_level") or "INFO").strip().upper()
+        profile = str(cfg.get("log_profile") or "").strip().lower()
     except Exception:
-        level_s = "INFO"
-    level = getattr(logging, level_s, logging.INFO)
+        profile = ""
+
+    # Profiles:
+    # - error: only errors
+    # - debug: debug points
+    # - trace: debug + internal query/details
+    if profile in ("error", "errors", "only_errors", "fehler"):
+        level_s = "ERROR"
+        DETAILS_ENABLED = False
+    elif profile in ("trace", "details", "verbose"):
+        level_s = "DEBUG"
+        DETAILS_ENABLED = True
+    else:
+        # default
+        profile = "debug"
+        level_s = "DEBUG"
+        DETAILS_ENABLED = False
+
+    level = getattr(logging, level_s, logging.DEBUG)
 
     log_to_file = bool(cfg.get("log_to_file", True))
     try:
@@ -420,7 +452,8 @@ def configure_logging(cfg: dict[str, Any]) -> None:
     if not _LOG_CONFIGURED:
         _LOG_CONFIGURED = True
         logging.getLogger(__name__).info(
-            "Logging configured (to_file=%s, level=%s, max_mb=%s, backups=%s, max_age_days=%s, http_requests=%s)",
+            "Logging configured (profile=%s, to_file=%s, level=%s, max_mb=%s, backups=%s, max_age_days=%s, http_requests=%s)",
+            profile,
             log_to_file,
             level_s,
             max_mb,
@@ -490,7 +523,10 @@ DEFAULT_CFG = {
 
     # Logging (stdout + optional /data log file)
     "log_to_file": True,
-    "log_level": "INFO",
+    # Log profiles (standard-ish): error, debug, trace
+    "log_profile": "debug",
+    # Backward-compat / advanced (ignored if log_profile is set)
+    "log_level": "DEBUG",
     "log_max_mb": 5,
     "log_backup_count": 5,
     "log_max_age_days": 14,
@@ -1924,12 +1960,19 @@ def api_set_config():
     _bool("log_to_file", True)
     _bool("log_http_requests", False)
     try:
-        lvl = str(cfg.get("log_level") or "INFO").strip().upper()
+        prof = str(cfg.get("log_profile") or "debug").strip().lower()
     except Exception:
-        lvl = "INFO"
-    if lvl not in ("DEBUG", "INFO", "WARNING", "ERROR"):
-        lvl = "INFO"
-    cfg["log_level"] = lvl
+        prof = "debug"
+    if prof not in ("error", "debug", "trace"):
+        prof = "debug"
+    cfg["log_profile"] = prof
+
+    # Backward compat: keep log_level in sync (used only if log_profile missing).
+    if prof == "error":
+        cfg["log_level"] = "ERROR"
+    else:
+        cfg["log_level"] = "DEBUG"
+
     _clamp_int("log_max_mb", 5, 1, 200)
     _clamp_int("log_backup_count", 5, 1, 50)
     _clamp_int("log_max_age_days", 14, 0, 365)
@@ -2219,6 +2262,18 @@ def query():
         return jsonify({"ok": False, "error": "measurement and field required"}), 400
 
     try:
+        LOG.debug(
+            "api.query measurement=%s field=%s range=%s entity_id=%s friendly_name=%s",
+            measurement,
+            field,
+            range_key,
+            bool(entity_id),
+            bool(friendly_name),
+        )
+    except Exception:
+        pass
+
+    try:
         if int(cfg.get("influx_version",2)) == 2:
             if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
                 return jsonify({
@@ -2235,6 +2290,7 @@ from(bucket: "{cfg["bucket"]}")
   |> keep(columns: ["_time","_value"])
   |> sort(columns: ["_time"])
 '''
+                log_details("api.query flux:\n%s", q.strip())
                 tables = c.query_api().query(q, org=cfg["org"])
                 rows = []
                 for t in tables:
@@ -2255,6 +2311,7 @@ from(bucket: "{cfg["bucket"]}")
             tag_where = influxql_tag_filter(entity_id, friendly_name)
             time_where = _influxql_time_where(range_key, start_dt, stop_dt)
             q = f'SELECT "{field}" FROM "{measurement}" WHERE {time_where}{tag_where} ORDER BY time ASC'
+            log_details("api.query influxql: %s", q)
             res = c.query(q)
             rows = []
             for _, points in res.items():
@@ -2312,6 +2369,19 @@ def api_raw_points():
     include_total = bool(body.get("include_total", True))
 
     try:
+        LOG.debug(
+            "api.raw_points measurement=%s field=%s entity_id=%s friendly_name=%s limit=%s offset=%s",
+            measurement,
+            field,
+            bool(entity_id),
+            bool(friendly_name),
+            limit,
+            offset,
+        )
+    except Exception:
+        pass
+
+    try:
         if int(cfg.get("influx_version", 2)) == 2:
             if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
                 return jsonify({
@@ -2332,6 +2402,8 @@ from(bucket: "{cfg["bucket"]}")
   |> limit(n: {limit}, offset: {offset})
 '''
 
+            log_details("api.raw_points flux:\n%s", q.strip())
+
             q_count = f'''
 from(bucket: "{cfg["bucket"]}")
   |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
@@ -2340,6 +2412,9 @@ from(bucket: "{cfg["bucket"]}")
   |> group()
   |> count(column: "_value")
 '''
+
+            if include_total:
+                log_details("api.raw_points flux(count):\n%s", q_count.strip())
 
             rows: list[dict[str, Any]] = []
             total_count: int | None = None
@@ -2393,6 +2468,7 @@ from(bucket: "{cfg["bucket"]}")
         tag_where = influxql_tag_filter(entity_id, friendly_name)
         time_where = f"time >= '{start}' AND time <= '{stop}'"
         q = f'SELECT "{field}" FROM "{measurement}" WHERE {time_where}{tag_where} ORDER BY time ASC LIMIT {limit} OFFSET {offset}'
+        log_details("api.raw_points influxql: %s", q)
         res = c.query(q)
         rows: list[dict[str, Any]] = []
         for _, points in res.items():
@@ -2403,6 +2479,7 @@ from(bucket: "{cfg["bucket"]}")
         if include_total:
             try:
                 q2 = f'SELECT COUNT("{field}") AS c FROM "{measurement}" WHERE {time_where}{tag_where}'
+                log_details("api.raw_points influxql(count): %s", q2)
                 res2 = c.query(q2)
                 for _, points in res2.items():
                     for p in points:
@@ -2508,6 +2585,8 @@ from(bucket: "{cfg["bucket"]}")
 
     older: list[dict[str, Any]] = []
     newer: list[dict[str, Any]] = []
+    log_details("api.point_neighbors flux(older):\n%s", q_older.strip())
+    log_details("api.point_neighbors flux(newer):\n%s", q_newer.strip())
     try:
         with v2_client(cfg) as c:
             qapi = c.query_api()
@@ -2554,6 +2633,19 @@ def stats():
         return jsonify({"ok": False, "error": "measurement and field required"}), 400
 
     try:
+        LOG.debug(
+            "api.stats measurement=%s field=%s scope=%s range=%s entity_id=%s friendly_name=%s",
+            measurement,
+            field,
+            stats_scope,
+            range_key,
+            bool(entity_id),
+            bool(friendly_name),
+        )
+    except Exception:
+        pass
+
+    try:
         if int(cfg.get("influx_version",2)) == 2:
             if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
                 return jsonify({
@@ -2574,6 +2666,8 @@ data = from(bucket: "{cfg["bucket"]}")
   |> keep(columns: ["_time", "_value"])
   |> group()
 '''
+
+            log_details("api.stats flux(base):\n%s", base_flux.strip())
 
             def _q_one(suffix: str) -> str:
                 return (base_flux + "\n" + suffix).strip() + "\n"
@@ -2602,7 +2696,9 @@ data = from(bucket: "{cfg["bucket"]}")
             with v2_client(cfg) as c:
                 # count
                 try:
-                    tables = c.query_api().query(_q_one("data |> count() |> limit(n:1)"), org=cfg["org"])
+                    q_count = _q_one("data |> count() |> limit(n:1)")
+                    log_details("api.stats flux(count):\n%s", q_count.strip())
+                    tables = c.query_api().query(q_count, org=cfg["org"])
                     rec = _first_record(tables)
                     if rec is not None:
                         out["count"] = int(rec.get_value() or 0)
@@ -2611,7 +2707,9 @@ data = from(bucket: "{cfg["bucket"]}")
 
                 # oldest/newest (+ first/last values)
                 try:
-                    tables = c.query_api().query(_q_one('data |> sort(columns: ["_time"]) |> limit(n:1)'), org=cfg["org"])
+                    q_old = _q_one('data |> sort(columns: ["_time"]) |> limit(n:1)')
+                    log_details("api.stats flux(oldest):\n%s", q_old.strip())
+                    tables = c.query_api().query(q_old, org=cfg["org"])
                     rec = _first_record(tables)
                     if rec is not None:
                         ts = rec.get_time()
@@ -2621,10 +2719,9 @@ data = from(bucket: "{cfg["bucket"]}")
                     pass
 
                 try:
-                    tables = c.query_api().query(
-                        _q_one('data |> sort(columns: ["_time"], desc: true) |> limit(n:1)'),
-                        org=cfg["org"],
-                    )
+                    q_new = _q_one('data |> sort(columns: ["_time"], desc: true) |> limit(n:1)')
+                    log_details("api.stats flux(newest):\n%s", q_new.strip())
+                    tables = c.query_api().query(q_new, org=cfg["org"])
                     rec = _first_record(tables)
                     if rec is not None:
                         ts = rec.get_time()
@@ -2637,7 +2734,9 @@ data = from(bucket: "{cfg["bucket"]}")
                 if _is_number(out.get("last_value")) and out["count"] > 0:
                     def _try_stat(name: str, flux_tail: str) -> None:
                         try:
-                            tables = c.query_api().query(_q_one(flux_tail), org=cfg["org"])
+                            qx = _q_one(flux_tail)
+                            log_details("api.stats flux(%s):\n%s", name, qx.strip())
+                            tables = c.query_api().query(qx, org=cfg["org"])
                             rec = _first_record(tables)
                             if rec is not None:
                                 out[name] = rec.get_value()
@@ -2677,15 +2776,21 @@ data = from(bucket: "{cfg["bucket"]}")
             }
 
             # Count
-            res = c.query(f'SELECT COUNT("{field}") as count FROM "{measurement}" {where_clause}')
+            q_count = f'SELECT COUNT("{field}") as count FROM "{measurement}" {where_clause}'
+            log_details("api.stats influxql(count): %s", q_count)
+            res = c.query(q_count)
             for _, points in res.items():
                 if points:
                     out["count"] = int(points[0].get("count") or 0)
                     break
 
             # Oldest/newest timestamps + values
-            ro = c.query(f'SELECT FIRST("{field}") FROM "{measurement}" {where_clause}')
-            rn = c.query(f'SELECT LAST("{field}") FROM "{measurement}" {where_clause}')
+            q_first = f'SELECT FIRST("{field}") FROM "{measurement}" {where_clause}'
+            q_last = f'SELECT LAST("{field}") FROM "{measurement}" {where_clause}'
+            log_details("api.stats influxql(first): %s", q_first)
+            log_details("api.stats influxql(last): %s", q_last)
+            ro = c.query(q_first)
+            rn = c.query(q_last)
             for _, pts in ro.items():
                 if pts:
                     out["oldest_time"] = pts[0].get("time")
@@ -2709,6 +2814,7 @@ data = from(bucket: "{cfg["bucket"]}")
                         f'PERCENTILE("{field}", 50) as p50, PERCENTILE("{field}", 95) as p95 '
                         f'FROM "{measurement}" {where_clause}'
                     )
+                    log_details("api.stats influxql(numeric): %s", q_num)
                     res2 = c.query(q_num)
                     for _, points in res2.items():
                         if not points:
@@ -3734,6 +3840,10 @@ def apply_edits():
 
     cfg = _overlay_from_yaml_if_enabled(load_cfg())
     if not ALLOW_DELETE:
+        try:
+            LOG.error("apply_edits blocked: allow_delete disabled")
+        except Exception:
+            pass
         return jsonify({"ok": False, "error": "Writes are disabled. Enable allow_delete in add-on options."}), 403
 
     body = request.get_json(force=True) or {}
@@ -3754,6 +3864,18 @@ def apply_edits():
         return jsonify({"ok": False, "error": "measurement and field required"}), 400
     if not isinstance(edits, list) or not edits:
         return jsonify({"ok": False, "error": "edits must be a non-empty list"}), 400
+
+    try:
+        LOG.debug(
+            "apply_edits measurement=%s field=%s entity_id=%s friendly_name=%s edits=%s",
+            measurement,
+            field,
+            bool(entity_id),
+            bool(friendly_name),
+            len(edits),
+        )
+    except Exception:
+        pass
 
     if int(cfg.get("influx_version", 2)) != 2:
         return jsonify({"ok": False, "error": "apply_edits currently supports InfluxDB v2 only"}), 400
@@ -3814,6 +3936,7 @@ from(bucket: "{cfg["bucket"]}")
   |> sort(columns: ["_time"])
   |> limit(n: 50)
 '''
+                log_details("apply_edits find_orig flux:\n%s", q.strip())
                 tables = qapi.query(q, org=cfg["org"])
 
                 best_rec = None
@@ -3875,6 +3998,13 @@ from(bucket: "{cfg["bucket"]}")
                 for tk, tv in tags.items():
                     p = p.tag(tk, tv)
                 p = p.field(field, new_val).time(dt, WritePrecision.NS)
+                log_details(
+                    "apply_edits write point time=%s orig=%s new=%s tags=%s",
+                    _dt_to_rfc3339_utc_full(dt),
+                    orig_val,
+                    new_val,
+                    ",".join(sorted(tags.keys())),
+                )
                 wapi.write(bucket=cfg["bucket"], org=cfg["org"], record=p)
                 applied += 1
 

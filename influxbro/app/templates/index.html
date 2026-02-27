@@ -399,8 +399,40 @@
           <button class="btn_sm" id="edit_undo_all" data-ui="editlist_undo_all">Undo alle</button>
           <button class="btn_sm" id="edit_apply" data-ui="editlist_apply">Alle Werte in Datenbank uebernehmen</button>
         </div>
+
+        <div class="err" id="edit_apply_err" data-ui="editlist_apply_err" title="editlist_apply_err"></div>
       </div>
     </details>
+
+    <div id="apply_modal" style="display:none; position:fixed; inset:0; z-index: 9999; background: rgba(0,0,0,0.45);" data-ui="editlist_apply_modal" title="editlist_apply_modal">
+      <div style="max-width: 980px; margin: 6vh auto; background: #fff; border-radius: 16px; padding: 14px 14px 12px 14px; box-shadow: 0 12px 60px rgba(0,0,0,0.28);">
+        <div style="display:flex; justify-content:space-between; align-items:baseline; gap:12px;">
+          <div style="font-weight:800; font-size: 16px;">Schreiben bestaetigen</div>
+          <button class="btn_sm" id="apply_modal_close" data-ui="editlist_apply_modal_close" title="editlist_apply_modal_close">Schliessen</button>
+        </div>
+        <div class="muted" id="apply_modal_info" style="margin-top: 6px;"></div>
+
+        <details id="apply_modal_query_section" style="margin-top: 10px;" data-ui="editlist_apply_modal_query" title="editlist_apply_modal_query">
+          <summary>Influx Query (zum Pruefen)</summary>
+          <div class="tbl_actions" style="justify-content:flex-start; margin-top: 8px;">
+            <button class="btn_sm" id="apply_modal_copy_query" data-ui="editlist_apply_modal_copy_query" title="editlist_apply_modal_copy_query">Query kopieren</button>
+          </div>
+          <pre id="apply_modal_query" style="margin:6px 0 0 0; padding:10px 12px; border:1px solid #eee; border-radius:12px; background:#fafafa; white-space:pre; overflow:auto; max-height: 220px;"></pre>
+        </details>
+
+        <div class="table_box" style="margin-top: 10px; max-height: 45vh;" data-ui="editlist_apply_modal_table" title="editlist_apply_modal_table">
+          <table>
+            <thead><tr><th>Zeit</th><th>Alt</th><th>Neu</th></tr></thead>
+            <tbody id="apply_modal_rows"></tbody>
+          </table>
+        </div>
+
+        <div class="tbl_actions" style="justify-content:flex-end; margin-top: 10px;">
+          <button class="btn_sm" id="apply_modal_cancel" data-ui="editlist_apply_modal_cancel" title="editlist_apply_modal_cancel">Abbrechen</button>
+          <button class="btn_sm" id="apply_modal_confirm" data-ui="editlist_apply_modal_confirm" title="editlist_apply_modal_confirm">Jetzt schreiben</button>
+        </div>
+      </div>
+    </div>
 
   </div>
 
@@ -493,11 +525,24 @@ const $editSelAll = document.getElementById('edit_sel_all');
 const $btnEditRemove = document.getElementById('edit_remove');
 const $btnEditUndoAll = document.getElementById('edit_undo_all');
 const $btnEditApply = document.getElementById('edit_apply');
+const $editApplyErr = document.getElementById('edit_apply_err');
+
+const $applyModal = document.getElementById('apply_modal');
+const $applyModalClose = document.getElementById('apply_modal_close');
+const $applyModalInfo = document.getElementById('apply_modal_info');
+const $applyModalQuerySection = document.getElementById('apply_modal_query_section');
+const $applyModalQuery = document.getElementById('apply_modal_query');
+const $applyModalCopyQuery = document.getElementById('apply_modal_copy_query');
+const $applyModalRows = document.getElementById('apply_modal_rows');
+const $applyModalCancel = document.getElementById('apply_modal_cancel');
+const $applyModalConfirm = document.getElementById('apply_modal_confirm');
 
 let UI_DECIMALS = 3;
 let UI_TABLE_VISIBLE_ROWS = 20;
 let UI_EDIT_NEIGHBORS_N = 5;
 let UI_FONT_SMALL_FALLBACK = 11;
+
+let CFG_BUCKET = "";
 
 function fmt(x){ if(x === null || x === undefined || x === "") return ""; return String(x); }
 
@@ -2140,46 +2185,166 @@ function undoAllEdits(){
   renderTable();
 }
 
+let _APPLY_DIALOG_RESOLVE = null;
+
+function _buildApplyPreviewQuery(base, dirty){
+  try{
+    const ms = (dirty || []).map(e => Date.parse(String(e.time || ""))).filter(t => isFinite(t));
+    if(!ms.length) return "";
+    const mn = Math.min(...ms) - 2000;
+    const mx = Math.max(...ms) + 2000;
+    const start = new Date(mn).toISOString();
+    const stop = new Date(mx).toISOString();
+
+    const bucket = CFG_BUCKET ? CFG_BUCKET : "YOUR_BUCKET";
+    const m = String(base.measurement || "");
+    const f = String(base.field || "");
+    const eid = base.entity_id ? String(base.entity_id) : "";
+    const fn = base.friendly_name ? String(base.friendly_name) : "";
+
+    let extra = "";
+    if(eid) extra += ` and r.entity_id == ${JSON.stringify(eid)}`;
+    if(fn) extra += ` and r.friendly_name == ${JSON.stringify(fn)}`;
+
+    return (
+`from(bucket: ${JSON.stringify(bucket)})
+  |> range(start: time(v: ${JSON.stringify(start)}), stop: time(v: ${JSON.stringify(stop)}))
+  |> filter(fn: (r) => r._measurement == ${JSON.stringify(m)} and r._field == ${JSON.stringify(f)}${extra})
+  |> keep(columns: ["_time","_value"])
+  |> sort(columns: ["_time"], desc: false)`
+    );
+  }catch(e){
+    return "";
+  }
+}
+
+function closeApplyDialog(want){
+  try{ if($applyModal) $applyModal.style.display = "none"; }catch(e){}
+  const r = _APPLY_DIALOG_RESOLVE;
+  _APPLY_DIALOG_RESOLVE = null;
+  try{ if(typeof r === "function") r(!!want); }catch(e){}
+}
+
+function openApplyDialog(dirty){
+  return new Promise((resolve) => {
+    _APPLY_DIALOG_RESOLVE = resolve;
+
+    const base = currentFilters();
+    const d = (dirty || []).slice().sort((a,b)=>{
+      const ta = Date.parse(String(a && a.time ? a.time : ""));
+      const tb = Date.parse(String(b && b.time ? b.time : ""));
+      return (isFinite(ta) && isFinite(tb)) ? (ta - tb) : 0;
+    });
+
+    if($applyModalInfo){
+      $applyModalInfo.textContent = `Es werden ${d.length} Werte ueberschrieben (${base.measurement || ""} / ${base.field || ""}).`;
+    }
+
+    if($applyModalRows){
+      $applyModalRows.innerHTML = "";
+      d.forEach(e => {
+        const tr = document.createElement('tr');
+        const tdT = document.createElement('td');
+        tdT.textContent = fmtTs(e.time);
+        const tdO = document.createElement('td');
+        tdO.textContent = (e.orig_fmt !== null && e.orig_fmt !== undefined) ? String(e.orig_fmt) : fmtNum(e.orig_value);
+        const tdN = document.createElement('td');
+        tdN.textContent = String(e.draft_value_str || "");
+        tr.appendChild(tdT); tr.appendChild(tdO); tr.appendChild(tdN);
+        $applyModalRows.appendChild(tr);
+      });
+    }
+
+    const q = _buildApplyPreviewQuery(base, d);
+    if($applyModalQuery){
+      $applyModalQuery.textContent = q;
+    }
+    if($applyModalQuerySection){
+      $applyModalQuerySection.style.display = q ? "block" : "none";
+    }
+
+    if($applyModalCopyQuery){
+      $applyModalCopyQuery.onclick = async (ev)=>{
+        _stop(ev);
+        const okCopy = await copyTextToClipboard(q);
+        if(okCopy) ok("Query kopiert.");
+        else err("Copy failed (Clipboard blockiert). Bitte im Browser Clipboard erlauben.");
+      };
+    }
+
+    if($applyModalClose) $applyModalClose.onclick = (ev)=>{ _stop(ev); closeApplyDialog(false); };
+    if($applyModalCancel) $applyModalCancel.onclick = (ev)=>{ _stop(ev); closeApplyDialog(false); };
+    if($applyModalConfirm) $applyModalConfirm.onclick = (ev)=>{ _stop(ev); closeApplyDialog(true); };
+
+    if($applyModal){
+      $applyModal.style.display = "block";
+      $applyModal.onclick = (ev)=>{
+        // click outside dialog closes
+        if(ev && ev.target === $applyModal) closeApplyDialog(false);
+      };
+    }
+  });
+}
+
 async function applyAllEdits(){
-  err(""); ok("");
-  const dirty = Array.from(EDIT_LIST.values()).filter(e=>e && e.dirty);
-  if(!dirty.length){ err("Keine geaenderten Werte in der Bearbeitungsliste."); return; }
-  if(!confirm("Alle geaenderten Werte jetzt in die Datenbank schreiben?")) return;
+  try{
+    err(""); ok("");
+    if($editApplyErr) $editApplyErr.textContent = "";
 
-  const base = currentFilters();
-  const payload = {
-    confirm: DELETE_PHRASE,
-    measurement: base.measurement,
-    field: base.field,
-    entity_id: base.entity_id,
-    friendly_name: base.friendly_name,
-    edits: dirty.map(e => ({ time: e.time, new_value: e.draft_value_str, decimals: e.decimals })),
-  };
-  const j = await api("./api/apply_edits", {
-    method: "POST",
-    headers: {"Content-Type":"application/json"},
-    body: JSON.stringify(payload),
-  });
+    const dirty = Array.from(EDIT_LIST.values()).filter(e=>e && e.dirty);
+    if(!dirty.length){ err("Keine geaenderten Werte in der Bearbeitungsliste."); return; }
 
-  // Update in-memory rows
-  const byKey = new Map(dirty.map(e => [e.key, Number(e.draft_value_str)]));
-  LAST_ROWS = (LAST_ROWS || []).map(r => {
-    const k = rowKey(r);
-    if(byKey.has(k)) return { ...r, value: byKey.get(k) };
-    return r;
-  });
+    if(!ALLOW_WRITES){
+      if($editApplyErr) $editApplyErr.textContent = "Writes are disabled. Enable allow_delete in add-on options.";
+      return;
+    }
 
-  dirty.forEach(e => {
-    e.orig_value = Number(e.draft_value_str);
-    e.orig_fmt = fmtNum(e.orig_value);
-    e.draft_value_str = null;
-    e.dirty = false;
-  });
+    const want = await openApplyDialog(dirty);
+    if(!want) return;
 
-  ok(j.message || `Applied: ${dirty.length}`);
-  renderEditTable();
-  renderTable();
-  draw(LAST_ROWS);
+    const base = currentFilters();
+    const payload = {
+      confirm: DELETE_PHRASE,
+      measurement: base.measurement,
+      field: base.field,
+      entity_id: base.entity_id,
+      friendly_name: base.friendly_name,
+      edits: dirty.map(e => ({ time: e.time, new_value: e.draft_value_str, decimals: e.decimals })),
+    };
+
+    const j = await api("./api/apply_edits", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify(payload),
+    });
+
+    // Update in-memory rows
+    const byKey = new Map(dirty.map(e => [e.key, Number(e.draft_value_str)]));
+    LAST_ROWS = (LAST_ROWS || []).map(r => {
+      const k = rowKey(r);
+      if(byKey.has(k)) return { ...r, value: byKey.get(k) };
+      return r;
+    });
+
+    dirty.forEach(e => {
+      e.orig_value = Number(e.draft_value_str);
+      e.orig_fmt = fmtNum(e.orig_value);
+      e.draft_value_str = null;
+      e.dirty = false;
+    });
+
+    ok(j.message || `Applied: ${dirty.length}`);
+    renderEditTable();
+    renderTable();
+    draw(LAST_ROWS);
+  }catch(e){
+    const msg = String(e && e.message ? e.message : e);
+    if(msg.includes("Writes are disabled")){
+      if($editApplyErr) $editApplyErr.textContent = msg;
+      return;
+    }
+    err(msg);
+  }
 }
 
 async function loadStats(){
@@ -2560,7 +2725,7 @@ if($btnEditRemove) $btnEditRemove.addEventListener("click", (ev)=>{
   keys.forEach(k => removeFromEditListByKey(k));
 });
 if($btnEditUndoAll) $btnEditUndoAll.addEventListener("click", (ev)=>{ _stop(ev); undoAllEdits(); });
-if($btnEditApply) $btnEditApply.addEventListener("click", (ev)=>{ _stop(ev); applyAllEdits().catch(displayError); });
+if($btnEditApply) $btnEditApply.addEventListener("click", (ev)=>{ _stop(ev); applyAllEdits(); });
 if($editSelAll) $editSelAll.addEventListener("change", ()=>{
   const want = !!$editSelAll.checked;
   EDIT_SELECTED = new Set(want ? Array.from(EDIT_LIST.keys()) : []);
@@ -2577,6 +2742,11 @@ document.getElementById("load").addEventListener("click", ()=>refreshAll().catch
     initGraphResize();
     loadRawRows();
     initRawResize();
+
+    if(!ALLOW_WRITES){
+      if($btnEditApply) $btnEditApply.disabled = true;
+      if($editApplyErr) $editApplyErr.textContent = "Writes are disabled. Enable allow_delete in add-on options.";
+    }
 
     const st = loadState();
     if($qMf && st.q_measurement_filter) $qMf.value = st.q_measurement_filter;
