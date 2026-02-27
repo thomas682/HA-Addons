@@ -2377,6 +2377,9 @@ from(bucket: "{cfg["bucket"]}")
                     "offset": offset,
                     "returned": len(rows),
                     "total_count": total_count,
+                    "query_language": "flux",
+                    "query": q.strip(),
+                    "query_count": q_count.strip() if include_total else None,
                 },
             })
 
@@ -2422,6 +2425,9 @@ from(bucket: "{cfg["bucket"]}")
                 "offset": offset,
                 "returned": len(rows),
                 "total_count": total_count,
+                "query_language": "influxql",
+                "query": q,
+                "query_count": q2 if include_total else None,
             },
         })
 

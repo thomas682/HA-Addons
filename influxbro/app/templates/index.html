@@ -230,9 +230,17 @@
             </div>
             <div class="tbl_actions" style="margin-top:0;">
               <button class="btn_sm" id="raw_copy" data-ui="raw.copy" title="raw.copy">Kopieren</button>
+              <button class="btn_sm" id="raw_copy_query" data-ui="raw.copy_query" title="raw.copy_query">Query kopieren</button>
               <button class="btn_sm" id="raw_more" data-ui="raw.more" title="raw.more" style="display:none;">Mehr laden</button>
             </div>
           </div>
+
+          <details id="raw_query_section" style="margin-top: 8px;" data-ui="raw.query_section" title="raw.query_section">
+            <summary>Influx Query</summary>
+            <div class="muted" style="margin-top: 6px;">Query (genau wie von InfluxBro genutzt):</div>
+            <pre id="raw_query" data-ui="raw.query" title="raw.query" style="margin:6px 0 0 0; padding:10px 12px; border:1px solid #eee; border-radius:12px; background:#fafafa; white-space:pre; overflow:auto; max-height: 220px;"></pre>
+          </details>
+
           <div class="table_box" id="raw_box" style="--max-rows: 10;">
             <table id="raw_tbl" data-ui="raw.table" title="raw.table">
               <thead><tr><th style="min-width: 170px;">Zeit</th><th>Wert</th></tr></thead>
@@ -471,7 +479,10 @@ const $rawBox = document.getElementById('raw_box');
 const $rawBody = document.getElementById('raw_body');
 const $rawResize = document.getElementById('raw_resize');
 const $rawCopy = document.getElementById('raw_copy');
+const $rawCopyQuery = document.getElementById('raw_copy_query');
 const $rawMore = document.getElementById('raw_more');
+const $rawQuerySection = document.getElementById('raw_query_section');
+const $rawQuery = document.getElementById('raw_query');
 
 const GRAPH_H_KEY = 'influxbro_graph_height_px';
 let GRAPH_H_PX = null;
@@ -1491,6 +1502,13 @@ let RAW_OFFSET = 0;
 const RAW_LIMIT = 5000;
 let RAW_LAST_KEY = "";
 
+function renderRawQuery(){
+  if(!$rawQuery) return;
+  const q = (RAW_META && RAW_META.query) ? String(RAW_META.query) : "";
+  $rawQuery.textContent = q;
+  if($rawQuerySection) $rawQuerySection.style.display = q ? "block" : "none";
+}
+
 function _graphWindowIso(){
   const a = TABLE_TIME.graph_start_ms;
   const b = TABLE_TIME.graph_stop_ms;
@@ -1569,6 +1587,8 @@ function renderRawTable(){
       (RAW_META && RAW_META.returned === RAW_LIMIT);
     $rawMore.style.display = canMore ? "inline-block" : "none";
   }
+
+  renderRawQuery();
 }
 
 async function loadRawFromGraph(reset){
@@ -1585,6 +1605,7 @@ async function loadRawFromGraph(reset){
     RAW_ROWS = [];
     RAW_META = null;
     RAW_LAST_KEY = key;
+    renderRawQuery();
   }
 
   _RAW_INFLIGHT = true;
@@ -2382,6 +2403,16 @@ if($rawCopy) $rawCopy.addEventListener("click", async (ev)=>{
     rows.forEach(r => { lines.push(fmtTs(r.time) + "\t" + fmtNum(r.value)); });
     await navigator.clipboard.writeText(lines.join("\n"));
     ok(`Raw Daten kopiert: ${rows.length} Zeilen.`);
+  }catch(e){
+    err("Copy failed: " + String(e && e.message ? e.message : e));
+  }
+});
+if($rawCopyQuery) $rawCopyQuery.addEventListener("click", async (ev)=>{
+  _stop(ev);
+  try{
+    const q = (RAW_META && RAW_META.query) ? String(RAW_META.query) : "";
+    await navigator.clipboard.writeText(q);
+    ok(q ? "Query kopiert." : "Query ist leer.");
   }catch(e){
     err("Copy failed: " + String(e && e.message ? e.message : e));
   }
