@@ -2,6 +2,18 @@
 
 <!-- markdownlint-disable MD024 MD013 -->
 
+## 1.11.19
+
+### Features
+- Statistik: Tabelle bleibt sichtbar waehrend Hintergrundabfrage laeuft; letztes Ergebnis wird beim Zurueckkehren zur Seite automatisch wiederhergestellt.
+- Statistik: Restzeit-Schaetzung im Status (falls Prozent-Fortschritt verfuegbar).
+
+### Bug Fixes
+- (keine)
+
+### Maintenance
+- (keine)
+
 ## 1.11.18
 
 ### Features

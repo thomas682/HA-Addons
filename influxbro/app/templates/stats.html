@@ -183,6 +183,7 @@
       let POLL = null;
 
       const LS_JOB = 'influxbro_global_stats_job_id_v1';
+      const LS_LAST = 'influxbro_global_stats_last_job_id_v1';
       const LS_COLS = 'influxbro_stats_col_widths_v1';
 
       function err(s){ $err.textContent = s || ""; }
@@ -215,6 +216,17 @@
         try{ return localStorage.getItem(LS_JOB) || null; }catch(e){ return null; }
       }
 
+      function setLastJobId(id){
+        try{
+          const v = id ? String(id) : '';
+          if(v) localStorage.setItem(LS_LAST, v);
+          else localStorage.removeItem(LS_LAST);
+        }catch(e){}
+      }
+      function getLastJobId(){
+        try{ return localStorage.getItem(LS_LAST) || null; }catch(e){ return null; }
+      }
+
       function stopPolling(){
         if(POLL) clearInterval(POLL);
         POLL = null;
@@ -229,6 +241,18 @@
         const s = Number(m[3]);
         if(!isFinite(h)||!isFinite(mi)||!isFinite(s)) return null;
         return h*3600 + mi*60 + s;
+      }
+
+      function fmtHms(seconds){
+        try{
+          const s = Math.max(0, Math.trunc(Number(seconds)));
+          const h = Math.trunc(s / 3600);
+          const m = Math.trunc((s % 3600) / 60);
+          const sec = s % 60;
+          return pad2(h) + ':' + pad2(m) + ':' + pad2(sec);
+        }catch(e){
+          return '00:00:00';
+        }
       }
       function toLocalDatetimeValue(d){
         return d.getFullYear() + "-" + pad2(d.getMonth()+1) + "-" + pad2(d.getDate()) + "T" + pad2(d.getHours()) + ":" + pad2(d.getMinutes());
@@ -351,17 +375,32 @@
         render();
       }
 
+      async function loadLastResults(){
+        const last = getLastJobId();
+        if(!last) return;
+        try{
+          const j = await api(`./api/global_stats_job/result?job_id=${encodeURIComponent(last)}&limit=20000&offset=0`);
+          if(!j.ready) return;
+          const rows = j.rows || [];
+          if(!rows.length) return;
+          ROWS = rows;
+          render();
+          setStatus([`Letztes Ergebnis geladen. Zeilen: ${ROWS.length}`, '']);
+        }catch(e){
+          // ignore if job expired
+        }
+      }
+
       async function load(){
         if(RUNNING) return;
         RUNNING = true;
         RUN_CANCELLED = false;
         err('');
         setBar(0);
-        ROWS = [];
-        render();
+        // Keep existing table visible while the new job runs.
 
         try{
-          setStatus(['Starte Hintergrundabfrage...', '']);
+          setStatus(['Starte Hintergrundabfrage...', ROWS && ROWS.length ? 'Hinweis: Tabelle zeigt letztes Ergebnis waehrend der neuen Berechnung.' : '']);
           await startJob();
           beginPolling();
         }catch(e){
@@ -382,8 +421,17 @@
             const cur = String(st.current || '');
             const pct = (st.percent !== null && st.percent !== undefined) ? Number(st.percent) : null;
             if(pct !== null && isFinite(pct)) setBar(pct);
+
+            let eta = '';
+            try{
+              const es = parseHmsToSeconds(elapsed);
+              if(pct !== null && isFinite(pct) && pct > 0.1 && es !== null && es >= 0){
+                const rem = Math.trunc((es * (100 - pct)) / pct);
+                eta = `Restzeit: ~${fmtHms(rem)}`;
+              }
+            }catch(e){}
             setStatus([
-              `Status: ${state} | Laufzeit: ${elapsed}`,
+              `Status: ${state} | Laufzeit: ${elapsed}` + (eta ? (` | ${eta}`) : ''),
               msg,
               cur ? (`Aktuell: ${cur}`) : '',
             ]);
@@ -393,6 +441,7 @@
               fetchAllResults().then(()=>{
                 setBar(100);
                 setStatus([`Fertig. Zeilen: ${(ROWS||[]).length}`, '']);
+                setLastJobId(JOB_ID);
                 setJobId(null);
                 RUNNING = false;
               }).catch(e=>{
@@ -639,6 +688,9 @@
           resumeJob().catch(()=>{});
         }
       }catch(e){}
+
+      // Load last completed result (best-effort)
+      loadLastResults().catch(()=>{});
 
       // default custom times
       const now = new Date();
