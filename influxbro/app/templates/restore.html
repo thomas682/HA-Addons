@@ -47,7 +47,7 @@
     {% include "_nav.html" %}
     <main class="content" data-ui="restore.page" title="restore.page">
        <h2>Restore</h2>
-       <div class="muted">Quelle: Backup auswaehlen. Ziel: Messwert auswaehlen. Restore/Copy schreibt Daten (allow_delete + Phrase erforderlich).</div>
+       <div class="muted">Quelle: Backup auswaehlen. Ziel: Messwert auswaehlen. Restore schreibt Daten (Schreiben muss erlaubt sein).</div>
 
        <div class="card" data-ui="restore.source" title="restore.source">
          <div style="font-weight:700;">Quelle (Backup)</div>
@@ -85,7 +85,16 @@
        </div>
 
        <div class="card" data-ui="restore.target" title="restore.target">
-         <div style="font-weight:700;">Ziel (Messwert)</div>
+          <div style="font-weight:700;">Ziel (Messwert)</div>
+          <div class="status" id="plan_info" data-ui="restore.plan" title="restore.plan" style="margin-top:8px; border: 1px dashed #ddd; border-radius: 12px; padding: 10px 12px; background: #fafafa; font-size: 12px; white-space: pre-wrap;"></div>
+
+          <div class="row" style="margin-top: 8px;" data-ui="restore.plan_query" title="restore.plan_query">
+            <label style="display:flex; gap: 8px; align-items:center; height:40px; padding:0 4px;">
+              <input id="show_query" type="checkbox" data-ui="restore.show_query" title="restore.show_query" />
+              <span class="muted" style="opacity:0.85;">Query anzeigen</span>
+            </label>
+          </div>
+          <pre id="plan_query" style="display:none; margin:6px 0 0 0; padding:10px 12px; border:1px solid #eee; border-radius:12px; background:#fafafa; white-space:pre; overflow:auto; max-height: 220px;" data-ui="restore.query" title="restore.query"></pre>
          <div class="grid">
            <div>
              <label>_measurement (Filter)</label>
@@ -131,17 +140,17 @@
            </div>
          </div>
 
-          <div class="row" data-ui="restore.actions" title="restore.actions">
-            <div class="muted" style="min-width: 320px; flex:1; padding-top: 6px;" data-ui="restore.write_hint" title="restore.write_hint">Hinweis: Schreiben ist nur moeglich, wenn <code>allow_delete</code> im Add-on aktiviert ist.</div>
-            <div>
-              <label>&nbsp;</label>
-              <button id="copy" data-ui="restore.copy" title="restore.copy">Quelle -> Ziel (ueberschreiben)</button>
-            </div>
-            <div>
-              <label>&nbsp;</label>
-              <button id="run" data-ui="restore.run" title="restore.run">Restore auf gleiche Serie</button>
-            </div>
-          </div>
+           <div class="row" data-ui="restore.actions" title="restore.actions">
+             <div class="muted" style="min-width: 320px; flex:1; padding-top: 6px;" data-ui="restore.write_hint" title="restore.write_hint">Hinweis: Schreiben ist nur moeglich, wenn es in Einstellungen erlaubt ist.</div>
+             <div>
+               <label>&nbsp;</label>
+               <button id="source_to_target" data-ui="restore.source_to_target" title="restore.source_to_target">Uebertrage Quellenamen auf Zielnamen</button>
+             </div>
+             <div>
+               <label>&nbsp;</label>
+               <button id="run" data-ui="restore.run" title="restore.run">Restore ausfuehren</button>
+             </div>
+           </div>
 
          <div id="err" class="err"></div>
          <div id="ok" class="ok"></div>
@@ -155,8 +164,8 @@
       const $srcInfo = document.getElementById('src_info');
       const $err = document.getElementById('err');
       const $ok = document.getElementById('ok');
-      const $run = document.getElementById('run');
-      const $copy = document.getElementById('copy');
+       const $run = document.getElementById('run');
+       const $srcToTarget = document.getElementById('source_to_target');
       const $reload = document.getElementById('reload');
 
       const $mf = document.getElementById('measurement_filter');
@@ -165,14 +174,20 @@
       const $qMf = document.getElementById('q_measurement_filter');
       const $qFn = document.getElementById('q_friendly_name');
       const $qEid = document.getElementById('q_entity_id');
-      const $range = document.getElementById('range');
+       const $range = document.getElementById('range');
       const $custom = document.getElementById('custom');
       const $start = document.getElementById('start');
       const $stop = document.getElementById('stop');
 
+      const $planInfo = document.getElementById('plan_info');
+      const $showQuery = document.getElementById('show_query');
+      const $planQuery = document.getElementById('plan_query');
+
       let BACKUPS = [];
       let SELECTED_ID = '';
       let LAST_TARGET = null;
+
+      let CFG = { influx_version: 2, bucket: '' };
 
       function err(s){ $err.textContent = s || ""; }
       function ok(s){ $ok.textContent = s || ""; }
@@ -195,6 +210,96 @@
         return j;
       }
 
+      async function loadCfg(){
+        try{
+          const j = await api('./api/config');
+          const cfg = j.config || {};
+          CFG = { influx_version: Number(cfg.influx_version || 2), bucket: String(cfg.bucket || '') };
+        }catch(e){
+          CFG = { influx_version: 2, bucket: '' };
+        }
+      }
+
+      function selBackup(){
+        const id = String(SELECTED_ID || '').trim();
+        return (BACKUPS || []).find(b => String(b.id||'') === id) || null;
+      }
+
+      function ensureOption(selectEl, value){
+        try{
+          const v = String(value || '');
+          if(!v) return;
+          const has = Array.from(selectEl.options || []).some(o => String(o.value) === v);
+          if(!has){
+            const o = document.createElement('option');
+            o.value = v;
+            o.textContent = v;
+            selectEl.appendChild(o);
+          }
+          selectEl.value = v;
+        }catch(e){}
+      }
+
+      function buildVerifyQuery(){
+        try{
+          const b = selBackup();
+          if(!b) return '';
+          const tf = timeFilter();
+          const start = tf ? tf.start : (b.oldest_time || '1970-01-01T00:00:00Z');
+          const stop = tf ? tf.stop : (b.newest_time || new Date().toISOString());
+          if(!LAST_TARGET) return '';
+          const bucket = CFG.bucket || 'YOUR_BUCKET';
+          const extra = [];
+          if(LAST_TARGET.entity_id) extra.push(`r.entity_id == ${JSON.stringify(LAST_TARGET.entity_id)}`);
+          if(LAST_TARGET.friendly_name) extra.push(`r.friendly_name == ${JSON.stringify(LAST_TARGET.friendly_name)}`);
+          const extraStr = extra.length ? (' and ' + extra.join(' and ')) : '';
+          return (
+`from(bucket: ${JSON.stringify(bucket)})
+  |> range(start: time(v: ${JSON.stringify(String(start))}), stop: time(v: ${JSON.stringify(String(stop))}))
+  |> filter(fn: (r) => r._measurement == ${JSON.stringify(LAST_TARGET.measurement)} and r._field == ${JSON.stringify(LAST_TARGET.field)}${extraStr})
+  |> keep(columns: ["_time","_value","entity_id","friendly_name"])
+  |> sort(columns: ["_time"], desc: false)`
+          );
+        }catch(e){
+          return '';
+        }
+      }
+
+      function renderPlan(){
+        try{
+          const b = selBackup();
+          if(!$planInfo) return;
+          if(!b){
+            $planInfo.textContent = 'Bitte ein Backup als Quelle auswaehlen.';
+            return;
+          }
+          const tf = timeFilter();
+          const start = tf ? tf.start : (b.oldest_time || '');
+          const stop = tf ? tf.stop : (b.newest_time || '');
+          const tgt = LAST_TARGET;
+          const lines = [];
+          lines.push(`Quelle (Backup): ${b.display_name || b.id || ''}`);
+          lines.push(`Quelle Serie: ${b.measurement || ''}/${b.field || ''}`);
+          lines.push(`Quelle Tags: entity_id=${b.entity_id || ''} | friendly_name=${b.friendly_name || ''}`);
+          if(start && stop) lines.push(`Zeitraum: ${start} bis ${stop}`);
+          lines.push('');
+          if(tgt){
+            lines.push(`Ziel Serie: ${tgt.measurement}/${tgt.field}`);
+            lines.push(`Ziel Tags: entity_id=${tgt.entity_id || ''} | friendly_name=${tgt.friendly_name || ''}`);
+            lines.push('Aktion: Werte werden in das Ziel geschrieben und vorhandene Punkte im Ziel-Zeitbereich koennen ueberschrieben werden.');
+          }else{
+            lines.push('Ziel: Bitte friendly_name/entity_id waehlen (Ziel wird aufgeloest).');
+          }
+          $planInfo.textContent = lines.join('\n');
+
+          const q = (tgt && $showQuery && $showQuery.checked) ? buildVerifyQuery() : '';
+          if($planQuery){
+            $planQuery.style.display = (q && $showQuery && $showQuery.checked) ? 'block' : 'none';
+            $planQuery.textContent = q;
+          }
+        }catch(e){}
+      }
+
       function filt(list, term){
         const t = String(term||'').trim().toLowerCase();
         if(!t) return (list||[]).slice();
@@ -215,7 +320,7 @@
           rb.type = 'radio';
           rb.name = 'backup_sel';
           rb.checked = (id === SELECTED_ID);
-          rb.addEventListener('change', ()=>{ SELECTED_ID = id; renderList(); });
+          rb.addEventListener('change', ()=>{ SELECTED_ID = id; renderList(); renderPlan(); });
           tdSel.appendChild(rb);
           const tdDt = document.createElement('td'); tdDt.textContent = b.created_at || '';
           const tdName = document.createElement('td'); tdName.textContent = b.display_name || '';
@@ -236,7 +341,7 @@
           tr.appendChild(tdFn);
           tr.appendChild(tdCnt);
           tr.appendChild(tdFile);
-          tr.addEventListener('click', ()=>{ SELECTED_ID = id; renderList(); });
+          tr.addEventListener('click', ()=>{ SELECTED_ID = id; renderList(); renderPlan(); });
           $rows.appendChild(tr);
         });
       }
@@ -316,6 +421,21 @@
         };
         $sel.value = [LAST_TARGET.friendly_name||'', LAST_TARGET.entity_id||'', LAST_TARGET.measurement, LAST_TARGET.field].filter(Boolean).join(' | ');
         autoGrow($sel);
+        renderPlan();
+      }
+
+      async function autoPickEntityId(){
+        try{
+          const fn = String($n.value||'').trim();
+          if(!fn) return;
+          if(String($e.value||'').trim()) return;
+          const qs = new URLSearchParams({tag:'entity_id', friendly_name: fn, range:'30d'});
+          const j = await api('./api/tag_values?' + qs.toString());
+          const vals = (j.values || []).map(x=>String(x)).filter(Boolean);
+          if(vals.length){
+            ensureOption($e, vals[0]);
+          }
+        }catch(e){}
       }
 
       function timeFilter(){
@@ -328,19 +448,6 @@
         return {start: start.toISOString(), stop: stop.toISOString()};
       }
 
-      async function runRestore(){
-        err(""); ok("");
-        const id = String(SELECTED_ID || "").trim();
-        if(!id) throw new Error("Bitte ein Backup auswaehlen.");
-        if(!confirm("Restore wirklich ueberschreiben? Datenverlust moeglich.\n\nBackup: " + id)) return;
-        const j = await api("./api/backup_restore", {
-          method:"POST",
-          headers:{"Content-Type":"application/json"},
-          body: JSON.stringify({ id, confirm: true })
-        });
-        ok(j.message || "Restore fertig.");
-      }
-
       async function runCopy(){
         err(""); ok("");
         const id = String(SELECTED_ID || "").trim();
@@ -348,7 +455,7 @@
         await resolveTarget();
         if(!LAST_TARGET) throw new Error('Ziel nicht aufgeloest.');
         const tf = timeFilter();
-        const msg = `Quelle -> Ziel wirklich ueberschreiben? Datenverlust moeglich.\n\nBackup: ${id}\nZiel: ${LAST_TARGET.measurement}/${LAST_TARGET.field}`;
+        const msg = `Restore wirklich ueberschreiben? Datenverlust moeglich.\n\nBackup: ${id}\nZiel: ${LAST_TARGET.measurement}/${LAST_TARGET.field}`;
         if(!confirm(msg)) return;
         const payload = {
           id,
@@ -363,18 +470,39 @@
         ok(j.message || 'Copy fertig.');
       }
 
+      async function copySourceToTarget(){
+        try{
+          const b = selBackup();
+          if(!b) throw new Error('Bitte ein Backup auswaehlen.');
+          if(b.measurement) ensureOption($mf, String(b.measurement));
+          if(b.friendly_name) ensureOption($n, String(b.friendly_name));
+          if(b.entity_id) ensureOption($e, String(b.entity_id));
+          await autoPickEntityId();
+          await resolveTarget();
+        }catch(e){
+          err(String(e && e.message ? e.message : e));
+        }
+      }
+
       $reload.addEventListener('click', ()=>loadBackups().catch(e=>err(String(e && e.message ? e.message : e))));
-      $run.addEventListener('click', ()=>runRestore().catch(e=>err(String(e && e.message ? e.message : e))));
-      $copy.addEventListener('click', ()=>runCopy().catch(e=>err(String(e && e.message ? e.message : e))));
+      if($srcToTarget) $srcToTarget.addEventListener('click', ()=>copySourceToTarget());
+      $run.addEventListener('click', ()=>runCopy().catch(e=>err(String(e && e.message ? e.message : e))));
 
       if($qBackup) $qBackup.addEventListener('input', ()=>renderList());
       if($qMf) $qMf.addEventListener('input', ()=>renderTargetLists());
       if($qFn) $qFn.addEventListener('input', ()=>renderTargetLists());
       if($qEid) $qEid.addEventListener('input', ()=>renderTargetLists());
+      if($n) $n.addEventListener('change', ()=>{ autoPickEntityId().then(()=>resolveTarget().catch(()=>{})); });
+      if($e) $e.addEventListener('change', ()=>resolveTarget().catch(()=>{}));
+      if($mf) $mf.addEventListener('change', ()=>resolveTarget().catch(()=>{}));
       if($range) $range.addEventListener('change', ()=>{ $custom.style.display = ($range.value === 'custom') ? 'block' : 'none'; });
+      if($start) $start.addEventListener('change', ()=>renderPlan());
+      if($stop) $stop.addEventListener('change', ()=>renderPlan());
+      if($showQuery) $showQuery.addEventListener('change', ()=>renderPlan());
 
+      loadCfg().catch(()=>{});
       loadBackups().catch(e=>err(String(e && e.message ? e.message : e)));
-      loadTargetLists().catch(()=>{});
+      loadTargetLists().then(()=>{ renderPlan(); }).catch(()=>{});
       </script>
     </main>
   </div>

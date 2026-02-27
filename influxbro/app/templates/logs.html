@@ -65,6 +65,13 @@
           </select>
         </div>
         <div>
+          <label>Influx Queries</label>
+          <label style="display:flex; align-items:center; gap:8px; height:40px; padding:0 4px;">
+            <input id="server_influx_queries" type="checkbox" data-ui="logs.server_influx_queries" title="logs.server_influx_queries" />
+            <span class="muted" style="opacity:0.85;">protokollieren</span>
+          </label>
+        </div>
+        <div>
           <label>Tail</label>
           <select id="tail" data-ui="logs.tail" title="logs.tail">
             <option value="200">200</option>
@@ -115,6 +122,7 @@
       const $source = document.getElementById('source');
       const $viewProfile = document.getElementById('view_profile');
       const $serverProfile = document.getElementById('server_profile');
+      const $serverInfluxQueries = document.getElementById('server_influx_queries');
       const $tail = document.getElementById('tail');
       const $refresh = document.getElementById('refresh');
       const $follow = document.getElementById('follow');
@@ -197,7 +205,21 @@
           const cfg = j.config || {};
           const p = String(cfg.log_profile || "debug");
           if(["error","debug","trace"].includes(p)) $serverProfile.value = p;
+          if($serverInfluxQueries) $serverInfluxQueries.checked = !!cfg.log_influx_queries;
         }catch(e){}
+      }
+
+      async function setServerInfluxQueries(on){
+        try{
+          const payload = { log_influx_queries: !!on };
+          const r = await fetch("./api/config", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)});
+          const j = await r.json().catch(()=>({ok:false,error:"Invalid JSON"}));
+          if(!r.ok || !j.ok) throw new Error(j.error || ("HTTP " + r.status));
+          return true;
+        }catch(e){
+          err(String(e && e.message ? e.message : e));
+          return false;
+        }
       }
 
       async function loadLogs(){
@@ -246,6 +268,7 @@
       if($source) $source.addEventListener('change', ()=>loadLogs().catch(e=>err(String(e && e.message ? e.message : e))));
       if($viewProfile) $viewProfile.addEventListener('change', ()=>{ saveViewProfile(); applySearch(); });
       if($serverProfile) $serverProfile.addEventListener('change', ()=>{ setServerProfile($serverProfile.value).then(()=>loadLogs().catch(()=>{})); });
+      if($serverInfluxQueries) $serverInfluxQueries.addEventListener('change', ()=>{ setServerInfluxQueries($serverInfluxQueries.checked).then(()=>loadLogs().catch(()=>{})); });
       $follow.addEventListener('click', ()=>setFollow(!FOLLOW));
       $wrap.addEventListener('change', ()=>{ applyWrap(); });
       $q.addEventListener('input', ()=>applySearch());

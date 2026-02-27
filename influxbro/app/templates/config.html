@@ -267,6 +267,10 @@
         <label><input type="checkbox" id="log_http_requests" /> HTTP Request Logs</label>
         <div class="muted">Default: aus (sehr viele Zeilen).</div>
       </div>
+      <div>
+        <label><input type="checkbox" id="log_influx_queries" /> Influx Query protokollieren</label>
+        <div class="muted">Schreibt Query-Strings ins Log (nur wenn Log Stufe TRACE aktiv ist).</div>
+      </div>
     </div>
     </div>
   </details>
@@ -340,6 +344,7 @@ const ids = [
   ,"ui_open_stats_total","ui_open_stats_current"
   ,"outlier_max_step_w","outlier_max_step_kw","outlier_max_step_wh","outlier_max_step_kwh"
   ,"log_to_file","log_profile","log_max_mb","log_backup_count","log_max_age_days","log_http_requests"
+  ,"log_influx_queries"
   ,"writes_enabled"
 ];
 
@@ -402,6 +407,7 @@ function setForm(cfg){
   el.log_backup_count.value = cfg.log_backup_count ?? 5;
   el.log_max_age_days.value = cfg.log_max_age_days ?? 14;
   el.log_http_requests.checked = !!cfg.log_http_requests;
+  el.log_influx_queries.checked = !!cfg.log_influx_queries;
 
   el.writes_enabled.checked = (cfg.writes_enabled !== false);
 }
@@ -457,6 +463,7 @@ function getForm(){
     log_backup_count: parseInt(el.log_backup_count.value, 10),
     log_max_age_days: parseInt(el.log_max_age_days.value, 10),
     log_http_requests: !!el.log_http_requests.checked,
+    log_influx_queries: !!el.log_influx_queries.checked,
 
     writes_enabled: !!el.writes_enabled.checked,
   };

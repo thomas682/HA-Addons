@@ -302,6 +302,7 @@ class _RedactFilter(logging.Filter):
 
 _LOG_CONFIGURED = False
 DETAILS_ENABLED = False
+INFLUX_QUERY_LOGGING = False
 
 LOG = logging.getLogger("influxbro")
 DETAIL_LOG = logging.getLogger("influxbro.details")
@@ -312,6 +313,20 @@ def log_details(msg: str, *args: object) -> None:
         return
     try:
         DETAIL_LOG.debug(msg, *args)
+    except Exception:
+        return
+
+
+def log_query(label: str, query: str) -> None:
+    """Log an Influx query string under TRACE when enabled."""
+
+    if not (DETAILS_ENABLED and INFLUX_QUERY_LOGGING):
+        return
+    q = (query or "").strip()
+    if not q:
+        return
+    try:
+        DETAIL_LOG.debug("%s:\n%s", label, q)
     except Exception:
         return
 
@@ -337,6 +352,7 @@ def configure_logging(cfg: dict[str, Any]) -> None:
     global _LOG_CONFIGURED
 
     global DETAILS_ENABLED
+    global INFLUX_QUERY_LOGGING
 
     try:
         profile = str(cfg.get("log_profile") or "").strip().lower()
@@ -390,6 +406,7 @@ def configure_logging(cfg: dict[str, Any]) -> None:
         max_age_days = 365
 
     log_http_requests = bool(cfg.get("log_http_requests", False))
+    INFLUX_QUERY_LOGGING = bool(cfg.get("log_influx_queries", False))
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     if log_to_file:
@@ -533,6 +550,7 @@ DEFAULT_CFG = {
     "log_backup_count": 5,
     "log_max_age_days": 14,
     "log_http_requests": False,
+    "log_influx_queries": False,
 
     # Safety: allow writes/deletes from UI
     "writes_enabled": True,
@@ -1992,6 +2010,7 @@ def api_set_config():
     # Logging
     _bool("log_to_file", True)
     _bool("log_http_requests", False)
+    _bool("log_influx_queries", False)
     try:
         prof = str(cfg.get("log_profile") or "debug").strip().lower()
     except Exception:
@@ -2323,7 +2342,7 @@ from(bucket: "{cfg["bucket"]}")
   |> keep(columns: ["_time","_value"])
   |> sort(columns: ["_time"])
 '''
-                log_details("api.query flux:\n%s", q.strip())
+                log_query("api.query (flux)", q)
                 tables = c.query_api().query(q, org=cfg["org"])
                 rows = []
                 for t in tables:
@@ -2344,7 +2363,7 @@ from(bucket: "{cfg["bucket"]}")
             tag_where = influxql_tag_filter(entity_id, friendly_name)
             time_where = _influxql_time_where(range_key, start_dt, stop_dt)
             q = f'SELECT "{field}" FROM "{measurement}" WHERE {time_where}{tag_where} ORDER BY time ASC'
-            log_details("api.query influxql: %s", q)
+            log_query("api.query (influxql)", q)
             res = c.query(q)
             rows = []
             for _, points in res.items():
@@ -2435,7 +2454,7 @@ from(bucket: "{cfg["bucket"]}")
   |> limit(n: {limit}, offset: {offset})
 '''
 
-            log_details("api.raw_points flux:\n%s", q.strip())
+            log_query("api.raw_points (flux)", q)
 
             q_count = f'''
 from(bucket: "{cfg["bucket"]}")
@@ -2447,7 +2466,7 @@ from(bucket: "{cfg["bucket"]}")
 '''
 
             if include_total:
-                log_details("api.raw_points flux(count):\n%s", q_count.strip())
+                log_query("api.raw_points (flux count)", q_count)
 
             rows: list[dict[str, Any]] = []
             total_count: int | None = None
@@ -2501,7 +2520,7 @@ from(bucket: "{cfg["bucket"]}")
         tag_where = influxql_tag_filter(entity_id, friendly_name)
         time_where = f"time >= '{start}' AND time <= '{stop}'"
         q = f'SELECT "{field}" FROM "{measurement}" WHERE {time_where}{tag_where} ORDER BY time ASC LIMIT {limit} OFFSET {offset}'
-        log_details("api.raw_points influxql: %s", q)
+        log_query("api.raw_points (influxql)", q)
         res = c.query(q)
         rows: list[dict[str, Any]] = []
         for _, points in res.items():
@@ -2512,7 +2531,7 @@ from(bucket: "{cfg["bucket"]}")
         if include_total:
             try:
                 q2 = f'SELECT COUNT("{field}") AS c FROM "{measurement}" WHERE {time_where}{tag_where}'
-                log_details("api.raw_points influxql(count): %s", q2)
+                log_query("api.raw_points (influxql count)", q2)
                 res2 = c.query(q2)
                 for _, points in res2.items():
                     for p in points:
@@ -2618,8 +2637,8 @@ from(bucket: "{cfg["bucket"]}")
 
     older: list[dict[str, Any]] = []
     newer: list[dict[str, Any]] = []
-    log_details("api.point_neighbors flux(older):\n%s", q_older.strip())
-    log_details("api.point_neighbors flux(newer):\n%s", q_newer.strip())
+    log_query("api.point_neighbors (flux older)", q_older)
+    log_query("api.point_neighbors (flux newer)", q_newer)
     try:
         with v2_client(cfg) as c:
             qapi = c.query_api()
@@ -2700,7 +2719,7 @@ data = from(bucket: "{cfg["bucket"]}")
   |> group()
 '''
 
-            log_details("api.stats flux(base):\n%s", base_flux.strip())
+            log_query("api.stats (flux base)", base_flux)
 
             def _q_one(suffix: str) -> str:
                 return (base_flux + "\n" + suffix).strip() + "\n"
@@ -2730,7 +2749,7 @@ data = from(bucket: "{cfg["bucket"]}")
                 # count
                 try:
                     q_count = _q_one("data |> count() |> limit(n:1)")
-                    log_details("api.stats flux(count):\n%s", q_count.strip())
+                    log_query("api.stats (flux count)", q_count)
                     tables = c.query_api().query(q_count, org=cfg["org"])
                     rec = _first_record(tables)
                     if rec is not None:
@@ -2741,7 +2760,7 @@ data = from(bucket: "{cfg["bucket"]}")
                 # oldest/newest (+ first/last values)
                 try:
                     q_old = _q_one('data |> sort(columns: ["_time"]) |> limit(n:1)')
-                    log_details("api.stats flux(oldest):\n%s", q_old.strip())
+                    log_query("api.stats (flux oldest)", q_old)
                     tables = c.query_api().query(q_old, org=cfg["org"])
                     rec = _first_record(tables)
                     if rec is not None:
@@ -2753,7 +2772,7 @@ data = from(bucket: "{cfg["bucket"]}")
 
                 try:
                     q_new = _q_one('data |> sort(columns: ["_time"], desc: true) |> limit(n:1)')
-                    log_details("api.stats flux(newest):\n%s", q_new.strip())
+                    log_query("api.stats (flux newest)", q_new)
                     tables = c.query_api().query(q_new, org=cfg["org"])
                     rec = _first_record(tables)
                     if rec is not None:
@@ -2768,7 +2787,7 @@ data = from(bucket: "{cfg["bucket"]}")
                     def _try_stat(name: str, flux_tail: str) -> None:
                         try:
                             qx = _q_one(flux_tail)
-                            log_details("api.stats flux(%s):\n%s", name, qx.strip())
+                            log_query(f"api.stats (flux {name})", qx)
                             tables = c.query_api().query(qx, org=cfg["org"])
                             rec = _first_record(tables)
                             if rec is not None:
@@ -2810,7 +2829,7 @@ data = from(bucket: "{cfg["bucket"]}")
 
             # Count
             q_count = f'SELECT COUNT("{field}") as count FROM "{measurement}" {where_clause}'
-            log_details("api.stats influxql(count): %s", q_count)
+            log_query("api.stats (influxql count)", q_count)
             res = c.query(q_count)
             for _, points in res.items():
                 if points:
@@ -2820,8 +2839,8 @@ data = from(bucket: "{cfg["bucket"]}")
             # Oldest/newest timestamps + values
             q_first = f'SELECT FIRST("{field}") FROM "{measurement}" {where_clause}'
             q_last = f'SELECT LAST("{field}") FROM "{measurement}" {where_clause}'
-            log_details("api.stats influxql(first): %s", q_first)
-            log_details("api.stats influxql(last): %s", q_last)
+            log_query("api.stats (influxql first)", q_first)
+            log_query("api.stats (influxql last)", q_last)
             ro = c.query(q_first)
             rn = c.query(q_last)
             for _, pts in ro.items():
@@ -2847,7 +2866,7 @@ data = from(bucket: "{cfg["bucket"]}")
                         f'PERCENTILE("{field}", 50) as p50, PERCENTILE("{field}", 95) as p95 '
                         f'FROM "{measurement}" {where_clause}'
                     )
-                    log_details("api.stats influxql(numeric): %s", q_num)
+                    log_query("api.stats (influxql numeric)", q_num)
                     res2 = c.query(q_num)
                     for _, points in res2.items():
                         if not points:
@@ -3969,7 +3988,7 @@ from(bucket: "{cfg["bucket"]}")
   |> sort(columns: ["_time"])
   |> limit(n: 50)
 '''
-                log_details("apply_edits find_orig flux:\n%s", q.strip())
+                log_query("apply_edits find_orig (flux)", q)
                 tables = qapi.query(q, org=cfg["org"])
 
                 best_rec = None

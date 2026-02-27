@@ -268,74 +268,46 @@
       }catch(e){}
     }
 
+    const HELP = {
+      'sections.open_all': 'Oeffnet alle einklappbaren Bereiche auf dieser Seite.',
+      'sections.close_all': 'Schliesst alle einklappbaren Bereiche auf dieser Seite.',
+      'sections.save': 'Speichert den aktuellen Auf/Zu-Zustand der Bereiche fuer diese Seite.',
+      'logs.server_profile': 'Setzt die Log-Stufe im Backend (wirkt sofort).',
+      'logs.server_influx_queries': 'Wenn aktiv, werden Influx Query-Strings in TRACE geloggt.',
+      'restore.source_to_target': 'Uebernimmt Measurement/Field/Tags aus dem Backup ins Ziel.',
+      'restore.run': 'Fuehrt den Restore/Copy aus und ueberschreibt Daten im Ziel.',
+    };
+
+    function _tooltipFor(el){
+      try{
+        const ui = (el.getAttribute('data-ui') || '').trim();
+        if(!ui) return '';
+        const explicit = (el.getAttribute('data-help') || '').trim();
+        const help = explicit || HELP[ui] || '';
+        return help ? (ui + "\n" + help) : ui;
+      }catch(e){
+        return '';
+      }
+    }
+
     function applyTooltips(){
       document.querySelectorAll('[data-ui]').forEach(el => {
-        const ui = el.getAttribute('data-ui') || '';
-        if(ui && !el.getAttribute('title')) el.setAttribute('title', ui);
+        const ui = (el.getAttribute('data-ui') || '').trim();
+        if(!ui) return;
+        const want = _tooltipFor(el);
+        const cur = el.getAttribute('title');
+        // Preserve custom titles; otherwise keep title stable + helpful.
+        if(!cur || cur === ui || cur.startsWith(ui + "\n")) el.setAttribute('title', want);
       });
+
       document.querySelectorAll('input, select, textarea, button, a').forEach(el => {
-        if(el.getAttribute('data-ui')){
-          if(!el.getAttribute('title')) el.setAttribute('title', el.getAttribute('data-ui') || '');
-          return;
-        }
+        if(el.getAttribute('data-ui')) return;
         const id = el.getAttribute('id');
         if(id){
           el.setAttribute('data-ui', id);
           if(!el.getAttribute('title')) el.setAttribute('title', id);
         }
       });
-    }
-
-    function _fmtDims(el){
-      try{
-        const r = el.getBoundingClientRect();
-        const w = Math.round(r.width);
-        const h = Math.round(r.height);
-        const vpX = Math.round(r.left);
-        const vpY = Math.round(r.top);
-        const pageX = Math.round(r.left + (window.scrollX || 0));
-        const pageY = Math.round(r.top + (window.scrollY || 0));
-        return `size ${w}x${h} px | vp ${vpX},${vpY} | page ${pageX},${pageY}`;
-      }catch(e){
-        return '';
-      }
-    }
-
-    function _baseTitle(el){
-      try{
-        const base = el.getAttribute('data-title-base');
-        if(base !== null) return base;
-        const t = el.getAttribute('title') || '';
-        el.setAttribute('data-title-base', t);
-        return t;
-      }catch(e){
-        return el && el.getAttribute ? (el.getAttribute('title') || '') : '';
-      }
-    }
-
-    function bindTooltipDims(){
-      try{
-        document.addEventListener('mouseover', (ev)=>{
-          const t = ev && ev.target ? ev.target : null;
-          const el = (t && t.closest) ? t.closest('[title]') : null;
-          if(!el) return;
-          const base = _baseTitle(el);
-          const dims = _fmtDims(el);
-          if(!dims) return;
-          el.setAttribute('title', base ? (base + ' | ' + dims) : dims);
-        }, true);
-
-        document.addEventListener('mouseout', (ev)=>{
-          const t = ev && ev.target ? ev.target : null;
-          const el = (t && t.closest) ? t.closest('[title]') : null;
-          if(!el) return;
-          // Only restore if pointer leaves the element.
-          const rel = ev && ev.relatedTarget ? ev.relatedTarget : null;
-          if(rel && el.contains && el.contains(rel)) return;
-          const base = el.getAttribute('data-title-base');
-          if(base !== null) el.setAttribute('title', base);
-        }, true);
-      }catch(e){}
     }
 
     function scanPersistence(){
@@ -348,7 +320,6 @@
       // Start early so values restore before page scripts use them.
     applyTooltips();
     scanPersistence();
-    bindTooltipDims();
     ensureSectionToolbar();
     const obs = new MutationObserver((mut)=>{
       applyTooltips();
