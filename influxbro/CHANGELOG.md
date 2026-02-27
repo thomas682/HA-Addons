@@ -2,6 +2,19 @@
 
 <!-- markdownlint-disable MD024 MD013 -->
 
+## 1.11.12
+
+### Features
+- Dashboard: aufklappbare Tabelle "Raw Daten (DB)" direkt unter dem Graph (folgt dem Graph-Fenster, aktualisiert bei Zoom und bei "Aktualisieren").
+- Raw Daten: Kopieren in die Zwischenablage (Zeitformat: DD.MM.YYYY HH:MM:SS) und "Mehr laden" bei grossen Zeitfenstern.
+- API: neuer Endpoint `POST ./api/raw_points` fuer direkte DB-Abfrage im Graph-Zeitfenster.
+
+### Bug Fixes
+- (keine)
+
+### Maintenance
+- (keine)
+
 ## 1.11.11
 
 ### Features

@@ -219,6 +219,29 @@
         <canvas id="chart" width="800" height="200"></canvas>
         <div id="graph_resize" data-ui="graph.resize" title="graph.resize" style="height: 12px; cursor: ns-resize; margin-top: 8px; border-radius: 999px; background: linear-gradient(90deg, #eee, #f8f8f8);"></div>
       </div>
+
+      <details id="raw_section" style="margin-top: 10px;" data-ui="section.raw" title="section.raw">
+        <summary>Raw Daten (DB)</summary>
+        <div class="table_wrap" style="margin-top: 10px;">
+          <div class="table_head">
+            <div>
+              <div style="font-weight:700;">Raw Daten</div>
+              <div class="muted" id="raw_info" data-ui="raw.info" title="raw.info"></div>
+            </div>
+            <div class="tbl_actions" style="margin-top:0;">
+              <button class="btn_sm" id="raw_copy" data-ui="raw.copy" title="raw.copy">Kopieren</button>
+              <button class="btn_sm" id="raw_more" data-ui="raw.more" title="raw.more" style="display:none;">Mehr laden</button>
+            </div>
+          </div>
+          <div class="table_box" id="raw_box" style="--max-rows: 10;">
+            <table id="raw_tbl" data-ui="raw.table" title="raw.table">
+              <thead><tr><th style="min-width: 170px;">Zeit</th><th>Wert</th></tr></thead>
+              <tbody id="raw_body"></tbody>
+            </table>
+          </div>
+          <div id="raw_resize" data-ui="raw.resize" title="raw.resize" style="height: 12px; cursor: ns-resize; margin-top: 8px; border-radius: 999px; background: linear-gradient(90deg, #eee, #f8f8f8);"></div>
+        </div>
+      </details>
     </details>
 
     <details id="stats_curr_section" class="section" {{ 'open' if cfg.get('ui_open_stats_current', true) else '' }} data-ui="section.stats_current" title="section.stats_current">
@@ -441,6 +464,14 @@ const canvas = document.getElementById('chart');
 const ctx = canvas.getContext('2d');
 const $plotly = document.getElementById('chart_plotly');
 const $graphResize = document.getElementById('graph_resize');
+
+const $rawSection = document.getElementById('raw_section');
+const $rawInfo = document.getElementById('raw_info');
+const $rawBox = document.getElementById('raw_box');
+const $rawBody = document.getElementById('raw_body');
+const $rawResize = document.getElementById('raw_resize');
+const $rawCopy = document.getElementById('raw_copy');
+const $rawMore = document.getElementById('raw_more');
 
 const GRAPH_H_KEY = 'influxbro_graph_height_px';
 let GRAPH_H_PX = null;
@@ -897,6 +928,7 @@ function drawPlotly(rows){
           renderTable();
           autoScaleYFromWindow();
           scheduleStatsCurrentReload();
+          scheduleRawReload(true);
           return;
         }
 
@@ -913,6 +945,7 @@ function drawPlotly(rows){
             renderTable();
             autoScaleYFromWindow();
             scheduleStatsCurrentReload();
+            scheduleRawReload(true);
           }
         }
       }catch(e){}
@@ -932,6 +965,7 @@ function drawPlotly(rows){
       renderTable();
       try{ window.Plotly.relayout($plotly, {"yaxis.autorange": true}); }catch(e){}
       scheduleStatsCurrentReload();
+      scheduleRawReload(true);
     });
   }
   return true;
@@ -1137,6 +1171,79 @@ function initGraphResize(){
 
   $graphResize.addEventListener('mousedown', onDown);
   $graphResize.addEventListener('touchstart', onDown, {passive:false});
+}
+
+const RAW_ROWS_KEY = 'influxbro_raw_rows_visible_v1';
+let RAW_VISIBLE_ROWS = 10;
+
+function loadRawRows(){
+  try{
+    const v = Number(localStorage.getItem(RAW_ROWS_KEY));
+    if(isFinite(v) && v >= 3 && v <= 500) RAW_VISIBLE_ROWS = Math.trunc(v);
+  }catch(e){}
+  if($rawBox) $rawBox.style.setProperty('--max-rows', String(RAW_VISIBLE_ROWS));
+}
+
+function saveRawRows(v){
+  try{ localStorage.setItem(RAW_ROWS_KEY, String(Math.trunc(v))); }catch(e){}
+}
+
+function initRawResize(){
+  if(!$rawResize || !$rawBox) return;
+  let startY = 0;
+  let startRows = RAW_VISIBLE_ROWS;
+  let dragging = false;
+
+  function rowPx(){
+    try{
+      // Use actual computed line-height from the box (px).
+      const lh = parseFloat(getComputedStyle($rawBox).lineHeight || '0');
+      return (isFinite(lh) && lh > 0) ? lh : 14;
+    }catch(e){
+      return 14;
+    }
+  }
+
+  function onMove(ev){
+    if(!dragging) return;
+    const y = (ev && (ev.touches && ev.touches[0] ? ev.touches[0].clientY : ev.clientY)) || 0;
+    const dy = y - startY;
+    const deltaRows = Math.round(dy / rowPx());
+    let rows = startRows + deltaRows;
+    if(rows < 3) rows = 3;
+    if(rows > 500) rows = 500;
+    RAW_VISIBLE_ROWS = rows;
+    $rawBox.style.setProperty('--max-rows', String(rows));
+  }
+
+  function onUp(){
+    if(!dragging) return;
+    dragging = false;
+    document.body.style.userSelect = '';
+    saveRawRows(RAW_VISIBLE_ROWS);
+    window.removeEventListener('mousemove', onMove);
+    window.removeEventListener('mouseup', onUp);
+    window.removeEventListener('touchmove', onMove);
+    window.removeEventListener('touchend', onUp);
+  }
+
+  function onDown(ev){
+    try{
+      const y = (ev && (ev.touches && ev.touches[0] ? ev.touches[0].clientY : ev.clientY)) || 0;
+      startY = y;
+      startRows = RAW_VISIBLE_ROWS;
+      dragging = true;
+      document.body.style.userSelect = 'none';
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+      window.addEventListener('touchmove', onMove, {passive:false});
+      window.addEventListener('touchend', onUp);
+      ev.preventDefault();
+    }catch(e){}
+  }
+
+  $rawResize.addEventListener('mousedown', onDown);
+  $rawResize.addEventListener('touchstart', onDown, {passive:false});
 }
 
 function toLocalDatetimeValue(d){
@@ -1376,6 +1483,14 @@ let LAST_STATS_CURR = null;
 let _STATS_CURR_TIMER = null;
 let _STATS_CURR_INFLIGHT = false;
 
+let RAW_ROWS = [];
+let RAW_META = null;
+let _RAW_TIMER = null;
+let _RAW_INFLIGHT = false;
+let RAW_OFFSET = 0;
+const RAW_LIMIT = 5000;
+let RAW_LAST_KEY = "";
+
 function _graphWindowIso(){
   const a = TABLE_TIME.graph_start_ms;
   const b = TABLE_TIME.graph_stop_ms;
@@ -1415,6 +1530,94 @@ async function loadStatsCurrentFromGraph(){
 function scheduleStatsCurrentReload(){
   if(_STATS_CURR_TIMER) clearTimeout(_STATS_CURR_TIMER);
   _STATS_CURR_TIMER = setTimeout(()=>{ loadStatsCurrentFromGraph().catch(()=>{}); }, 650);
+}
+
+function _rawKey(base, win){
+  const k = [base.measurement, base.field, base.entity_id || "", base.friendly_name || "", win ? win.start : "", win ? win.stop : ""].join("|");
+  return k;
+}
+
+function renderRawTable(){
+  if(!$rawBody || !$rawInfo) return;
+  $rawBody.innerHTML = "";
+
+  const win = _graphWindowIso();
+  const sTxt = win ? fmtTs(win.start) : "";
+  const eTxt = win ? fmtTs(win.stop) : "";
+  const loaded = (RAW_ROWS || []).length;
+  const total = RAW_META && (RAW_META.total_count !== null && RAW_META.total_count !== undefined) ? Number(RAW_META.total_count) : null;
+
+  let info = "";
+  if(isFinite(total)) info += `Eintraege: ${loaded} / ${total}`; else info += `Eintraege: ${loaded}`;
+  if(sTxt && eTxt) info += ` | Zeitraum: ${sTxt} bis ${eTxt}`;
+  $rawInfo.textContent = info;
+
+  (RAW_ROWS || []).forEach(r => {
+    const tr = document.createElement('tr');
+    const tdT = document.createElement('td');
+    tdT.textContent = fmtTs(r.time);
+    const tdV = document.createElement('td');
+    tdV.textContent = fmtNum(r.value);
+    tr.appendChild(tdT);
+    tr.appendChild(tdV);
+    $rawBody.appendChild(tr);
+  });
+
+  // More button
+  if($rawMore){
+    const canMore = (RAW_META && isFinite(Number(RAW_META.total_count)) && loaded < Number(RAW_META.total_count)) ||
+      (RAW_META && RAW_META.returned === RAW_LIMIT);
+    $rawMore.style.display = canMore ? "inline-block" : "none";
+  }
+}
+
+async function loadRawFromGraph(reset){
+  if(!$rawSection || !$rawBody) return;
+  if(!$rawSection.open) return;
+  const base = currentFilters();
+  const win = _graphWindowIso();
+  if(!win) return;
+  if(_RAW_INFLIGHT) return;
+
+  const key = _rawKey(base, win);
+  if(reset || key !== RAW_LAST_KEY){
+    RAW_OFFSET = 0;
+    RAW_ROWS = [];
+    RAW_META = null;
+    RAW_LAST_KEY = key;
+  }
+
+  _RAW_INFLIGHT = true;
+  try{
+    const payload = {
+      measurement: base.measurement,
+      field: base.field,
+      entity_id: base.entity_id,
+      friendly_name: base.friendly_name,
+      start: win.start,
+      stop: win.stop,
+      limit: RAW_LIMIT,
+      offset: RAW_OFFSET,
+      include_total: true,
+    };
+    const j = await api("./api/raw_points", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)});
+    const rows = j.rows || [];
+    const meta = j.meta || null;
+    RAW_META = meta;
+    if(RAW_OFFSET === 0) RAW_ROWS = rows;
+    else RAW_ROWS = (RAW_ROWS || []).concat(rows);
+    RAW_OFFSET = (RAW_ROWS || []).length;
+    renderRawTable();
+  }catch(e){
+    // keep previous
+  }finally{
+    _RAW_INFLIGHT = false;
+  }
+}
+
+function scheduleRawReload(reset){
+  if(_RAW_TIMER) clearTimeout(_RAW_TIMER);
+  _RAW_TIMER = setTimeout(()=>{ loadRawFromGraph(!!reset).catch(()=>{}); }, 650);
 }
 
 function _setStatsBody(tbody, rows){
@@ -2039,6 +2242,7 @@ async function loadData(){
   draw(rows);
   autoScaleYFromWindow();
   await loadStats();
+  scheduleRawReload(true);
 }
 
 async function refreshAll(){
@@ -2165,6 +2369,24 @@ if($graphMarkers) $graphMarkers.addEventListener("change", ()=>{
   draw(LAST_ROWS);
 });
 
+// Raw data table
+if($rawSection) $rawSection.addEventListener("toggle", ()=>{
+  if($rawSection.open) scheduleRawReload(true);
+});
+if($rawMore) $rawMore.addEventListener("click", (ev)=>{ _stop(ev); loadRawFromGraph(false).catch(()=>{}); });
+if($rawCopy) $rawCopy.addEventListener("click", async (ev)=>{
+  _stop(ev);
+  try{
+    const rows = RAW_ROWS || [];
+    const lines = ["Zeit\tWert"];
+    rows.forEach(r => { lines.push(fmtTs(r.time) + "\t" + fmtNum(r.value)); });
+    await navigator.clipboard.writeText(lines.join("\n"));
+    ok(`Raw Daten kopiert: ${rows.length} Zeilen.`);
+  }catch(e){
+    err("Copy failed: " + String(e && e.message ? e.message : e));
+  }
+});
+
 // Table time from graph
 if($tblTimeFromGraph) $tblTimeFromGraph.addEventListener("change", ()=>{
   TABLE_TIME.from_graph = !!$tblTimeFromGraph.checked;
@@ -2289,6 +2511,8 @@ document.getElementById("load").addEventListener("click", ()=>refreshAll().catch
     loadVersion().catch(()=>{});
     loadGraphHeight();
     initGraphResize();
+    loadRawRows();
+    initRawResize();
 
     const st = loadState();
     if($qMf && st.q_measurement_filter) $qMf.value = st.q_measurement_filter;

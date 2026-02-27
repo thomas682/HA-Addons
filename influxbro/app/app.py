@@ -2268,6 +2268,167 @@ from(bucket: "{cfg["bucket"]}")
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
 
 
+@app.post("/api/raw_points")
+def api_raw_points():
+    """Fetch raw points directly from InfluxDB for a specific time window.
+
+    Intended for the Dashboard "Raw Daten" table.
+    """
+
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    body = request.get_json(force=True) or {}
+
+    measurement = str(body.get("measurement") or "").strip()
+    field = str(body.get("field") or "").strip()
+    entity_id = str(body.get("entity_id") or "").strip() or None
+    friendly_name = str(body.get("friendly_name") or "").strip() or None
+
+    if not measurement or not field:
+        return jsonify({"ok": False, "error": "measurement and field required"}), 400
+
+    try:
+        start_dt, stop_dt = _get_start_stop_from_payload(body)
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"invalid start/stop: {e}"}), 400
+    if not start_dt or not stop_dt:
+        return jsonify({"ok": False, "error": "start and stop required"}), 400
+
+    try:
+        limit = int(body.get("limit", 20000))
+    except Exception:
+        limit = 20000
+    if limit < 1:
+        limit = 1
+    if limit > 20000:
+        limit = 20000
+
+    try:
+        offset = int(body.get("offset", 0))
+    except Exception:
+        offset = 0
+    if offset < 0:
+        offset = 0
+
+    include_total = bool(body.get("include_total", True))
+
+    try:
+        if int(cfg.get("influx_version", 2)) == 2:
+            if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+                return jsonify({
+                    "ok": False,
+                    "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
+                }), 400
+
+            start = _dt_to_rfc3339_utc(start_dt)
+            stop = _dt_to_rfc3339_utc(stop_dt)
+            extra = flux_tag_filter(entity_id, friendly_name)
+
+            q = f'''
+from(bucket: "{cfg["bucket"]}")
+  |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
+  |> keep(columns: ["_time","_value"])
+  |> sort(columns: ["_time"], desc: false)
+  |> limit(n: {limit}, offset: {offset})
+'''
+
+            q_count = f'''
+from(bucket: "{cfg["bucket"]}")
+  |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
+  |> keep(columns: ["_value"])
+  |> group()
+  |> count(column: "_value")
+'''
+
+            rows: list[dict[str, Any]] = []
+            total_count: int | None = None
+            with v2_client(cfg) as c:
+                qapi = c.query_api()
+                tables = qapi.query(q, org=cfg["org"])
+                for t in tables or []:
+                    for r in getattr(t, "records", []) or []:
+                        ts = r.get_time()
+                        val = r.get_value()
+                        if isinstance(ts, datetime):
+                            rows.append({"time": _dt_to_rfc3339_utc(ts), "value": val})
+
+                if include_total:
+                    try:
+                        tables = qapi.query(q_count, org=cfg["org"])
+                        for t in tables or []:
+                            for r in getattr(t, "records", []) or []:
+                                v = r.get_value()
+                                if v is not None:
+                                    total_count = int(v)
+                                    break
+                            if total_count is not None:
+                                break
+                    except Exception:
+                        total_count = None
+
+            return jsonify({
+                "ok": True,
+                "rows": rows,
+                "meta": {
+                    "start": start,
+                    "stop": stop,
+                    "limit": limit,
+                    "offset": offset,
+                    "returned": len(rows),
+                    "total_count": total_count,
+                },
+            })
+
+        # v1
+        if not cfg.get("database"):
+            return jsonify({"ok": False, "error": "InfluxDB v1 requires database. Bitte konfigurieren."}), 400
+
+        c = v1_client(cfg)
+        start = _dt_to_rfc3339_utc(start_dt)
+        stop = _dt_to_rfc3339_utc(stop_dt)
+        tag_where = influxql_tag_filter(entity_id, friendly_name)
+        time_where = f"time >= '{start}' AND time <= '{stop}'"
+        q = f'SELECT "{field}" FROM "{measurement}" WHERE {time_where}{tag_where} ORDER BY time ASC LIMIT {limit} OFFSET {offset}'
+        res = c.query(q)
+        rows: list[dict[str, Any]] = []
+        for _, points in res.items():
+            for p in points:
+                rows.append({"time": p.get("time"), "value": p.get(field)})
+
+        total_count: int | None = None
+        if include_total:
+            try:
+                q2 = f'SELECT COUNT("{field}") AS c FROM "{measurement}" WHERE {time_where}{tag_where}'
+                res2 = c.query(q2)
+                for _, points in res2.items():
+                    for p in points:
+                        v = p.get("c")
+                        if v is not None:
+                            total_count = int(v)
+                            break
+                    if total_count is not None:
+                        break
+            except Exception:
+                total_count = None
+
+        return jsonify({
+            "ok": True,
+            "rows": rows,
+            "meta": {
+                "start": start,
+                "stop": stop,
+                "limit": limit,
+                "offset": offset,
+                "returned": len(rows),
+                "total_count": total_count,
+            },
+        })
+
+    except Exception as e:
+        return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
+
+
 @app.post("/api/point_neighbors")
 def api_point_neighbors():
     """Return n points before/after a given center time within a time window."""
