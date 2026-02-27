@@ -130,6 +130,129 @@
       }catch(e){}
     }
 
+    // Persist <details> open/closed state per page.
+    function detailsStorageKey(){
+      return 'influxbro_details:' + stablePath();
+    }
+
+    function restoreDetailsState(root){
+      try{
+        const raw = localStorage.getItem(detailsStorageKey());
+        if(!raw) return;
+        const j = JSON.parse(raw);
+        if(!j || typeof j !== 'object') return;
+        const scope = root || document;
+        scope.querySelectorAll('details[id]').forEach(d => {
+          const id = d.getAttribute('id');
+          if(!id) return;
+          if(Object.prototype.hasOwnProperty.call(j, id)){
+            d.open = !!j[id];
+          }
+        });
+      }catch(e){}
+    }
+
+    function snapshotDetailsState(root){
+      const out = {};
+      try{
+        const scope = root || document;
+        scope.querySelectorAll('details[id]').forEach(d => {
+          const id = d.getAttribute('id');
+          if(!id) return;
+          out[id] = !!d.open;
+        });
+      }catch(e){}
+      return out;
+    }
+
+    function saveDetailsState(root){
+      try{
+        const snap = snapshotDetailsState(root);
+        localStorage.setItem(detailsStorageKey(), JSON.stringify(snap));
+        return true;
+      }catch(e){
+        return false;
+      }
+    }
+
+    function setAllDetailsOpen(root, wantOpen){
+      try{
+        const scope = root || document;
+        scope.querySelectorAll('details').forEach(d => { d.open = !!wantOpen; });
+      }catch(e){}
+    }
+
+    function ensureSectionToolbar(){
+      try{
+        const main = document.querySelector('main.content');
+        if(!main) return;
+        const h2 = main.querySelector('h2');
+        if(!h2) return;
+        const anyDetails = main.querySelector('details');
+        if(!anyDetails) return;
+        if(document.getElementById('influxbro_sections_bar')) return;
+
+        const bar = document.createElement('div');
+        bar.id = 'influxbro_sections_bar';
+        bar.style.display = 'flex';
+        bar.style.flexWrap = 'wrap';
+        bar.style.gap = '8px';
+        bar.style.alignItems = 'center';
+        bar.style.margin = '8px 0 10px 0';
+
+        const mkBtn = (txt) => {
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.textContent = txt;
+          b.style.padding = '8px 10px';
+          b.style.height = '34px';
+          b.style.borderRadius = '10px';
+          b.style.border = '1px solid #ddd';
+          b.style.background = '#fff';
+          b.style.cursor = 'pointer';
+          return b;
+        };
+
+        const bOpen = mkBtn('Alle oeffnen');
+        bOpen.setAttribute('data-ui', 'sections.open_all');
+        bOpen.onclick = (ev)=>{
+          try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+          setAllDetailsOpen(main, true);
+        };
+        const bClose = mkBtn('Alle schliessen');
+        bClose.setAttribute('data-ui', 'sections.close_all');
+        bClose.onclick = (ev)=>{
+          try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+          setAllDetailsOpen(main, false);
+        };
+
+        const bSave = mkBtn('Darstellung speichern');
+        bSave.setAttribute('data-ui', 'sections.save');
+        bSave.style.fontSize = '12px';
+        bSave.style.opacity = '0.85';
+        bSave.onclick = (ev)=>{
+          try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+          const ok = saveDetailsState(main);
+          // lightweight feedback via title
+          bSave.setAttribute('title', ok ? 'Gespeichert.' : 'Speichern fehlgeschlagen.');
+        };
+
+        bar.appendChild(bOpen);
+        bar.appendChild(bClose);
+        bar.appendChild(bSave);
+
+        // Insert after h2
+        if(h2.nextSibling){
+          h2.parentNode.insertBefore(bar, h2.nextSibling);
+        }else{
+          h2.parentNode.appendChild(bar);
+        }
+
+        // Restore persisted state (after bar exists)
+        restoreDetailsState(main);
+      }catch(e){}
+    }
+
     function watchEl(el){
       try{
         if(!el || !el.getAttribute) return;
@@ -223,12 +346,13 @@
     }
     try{
       // Start early so values restore before page scripts use them.
+    applyTooltips();
+    scanPersistence();
+    bindTooltipDims();
+    ensureSectionToolbar();
+    const obs = new MutationObserver((mut)=>{
       applyTooltips();
-      scanPersistence();
-      bindTooltipDims();
-      const obs = new MutationObserver((mut)=>{
-        applyTooltips();
-        try{
+      try{
           // Restore/save for newly added nodes.
           (mut||[]).forEach(m=>{
             (m.addedNodes||[]).forEach(n=>{
@@ -239,6 +363,7 @@
               });
             });
           });
+          ensureSectionToolbar();
         }catch(e){}
       });
       obs.observe(document.documentElement, {childList:true, subtree:true});

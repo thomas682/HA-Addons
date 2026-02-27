@@ -48,7 +48,7 @@
     <main class="content" data-ui="settings.page" title="settings.page">
 
   <h2>Einstellungen</h2>
-  <div class="muted">Schreiben (allow_delete): {{ "yes" if allow_delete else "no" }}</div>
+  <div class="muted">Schreiben: {{ "yes" if allow_delete else "no" }}</div>
   <div style="position:absolute;top:10px;right:20px;font-size:12px;color:#888;" id="version_box"></div>
 
   <div class="card" id="loadyaml_card" style="display:none;">
@@ -125,26 +125,119 @@
   <details class="card" open data-ui="settings.section.ui" title="settings.section.ui">
     <summary>UI</summary>
     <div class="card_body">
+
+    <details class="card" id="ui_table" open data-ui="settings.ui.table" title="settings.ui.table">
+      <summary>Tabellen</summary>
+      <div class="card_body">
+      <div class="grid">
+        <div>
+          <label>Tabellenzeilen (sichtbar)</label>
+          <input id="ui_table_visible_rows" type="number" min="5" max="500" />
+          <div class="muted">Hoehe der Tabelle in Zeilen (Scroll zeigt trotzdem alle Messwerte).</div>
+        </div>
+        <div>
+          <label>Tabellenzeilen Hoehe (px)</label>
+          <input id="ui_table_row_height_px" type="number" min="9" max="60" />
+          <div class="muted">Effektive Zeilenhoehe ist max. +20% ueber kleiner Schriftgroesse.</div>
+        </div>
+        <div>
+          <label>Dezimalstellen (Anzeige)</label>
+          <input id="ui_decimals" type="number" min="0" max="10" />
+          <div class="muted">Rundung fuer Zahlen in Statistik/Tabelle (nur Anzeige).</div>
+        </div>
+      </div>
+      </div>
+    </details>
+
+    <details class="card" id="ui_edit" open data-ui="settings.ui.edit" title="settings.ui.edit">
+      <summary>Bearbeitungsliste</summary>
+      <div class="card_body">
+      <div class="grid">
+        <div>
+          <label>Nachbarwerte (n)</label>
+          <input id="ui_edit_neighbors_n" type="number" min="1" max="50" />
+          <div class="muted">Zeigt n Werte davor und n Werte danach unterhalb der Bearbeitungsliste.</div>
+        </div>
+      </div>
+      </div>
+    </details>
+
+    <details class="card" id="ui_layout" open data-ui="settings.ui.layout" title="settings.ui.layout">
+      <summary>Darstellung</summary>
+      <div class="card_body">
+      <div class="grid">
+        <div>
+          <label>Basis Schriftgroesse (px)</label>
+          <input id="ui_font_size_px" type="number" min="10" max="22" />
+          <div class="muted">Standard: 14.</div>
+        </div>
+        <div>
+          <label>Kleine Schriftgroesse (px)</label>
+          <input id="ui_font_small_px" type="number" min="9" max="18" />
+          <div class="muted">z.B. fuer Statistik/Infotexte.</div>
+        </div>
+        <div>
+          <label>Checkbox Groesse (Scale)</label>
+          <input id="ui_checkbox_scale" type="number" min="0.5" max="1.6" step="0.05" />
+          <div class="muted">0.85 = kleiner, 1.0 = normal.</div>
+        </div>
+        <div>
+          <label>Filter Label Breite (px)</label>
+          <input id="ui_filter_label_width_px" type="number" min="80" max="360" />
+          <div class="muted">Label links neben dem Auswahlfeld.</div>
+        </div>
+        <div>
+          <label>Filter Feld Breite (px)</label>
+          <input id="ui_filter_control_width_px" type="number" min="180" max="900" />
+          <div class="muted">Breite fuer Suche+Auswahl (Desktop).</div>
+        </div>
+        <div>
+          <label>Filter Suche Breite (px)</label>
+          <input id="ui_filter_search_width_px" type="number" min="80" max="420" />
+          <div class="muted">Breite fuer das Suchfeld links neben der Auswahl.</div>
+        </div>
+      </div>
+      </div>
+    </details>
+
+    <details class="card" id="ui_sections" data-ui="settings.ui.sections" title="settings.ui.sections">
+      <summary>Standardmaessig geoeffnete Bereiche</summary>
+      <div class="card_body">
+      <div class="grid">
+        <div class="span2 muted">Standard ist "zu" (nicht geoeffnet).</div>
+        <div><label><input type="checkbox" id="ui_open_selection" /> Auswahl</label></div>
+        <div><label><input type="checkbox" id="ui_open_graph" /> Graph</label></div>
+        <div><label><input type="checkbox" id="ui_open_filterlist" /> Fehler-/Filtertabelle</label></div>
+        <div><label><input type="checkbox" id="ui_open_editlist" /> Bearbeitungsliste</label></div>
+        <div><label><input type="checkbox" id="ui_open_stats_total" /> Gesamtstatistik (Alles)</label></div>
+        <div><label><input type="checkbox" id="ui_open_stats_current" /> Statistik Zeitraum (Graph)</label></div>
+      </div>
+      </div>
+    </details>
+
+    <details class="card" id="ui_links" data-ui="settings.ui.links" title="settings.ui.links">
+      <summary>Links</summary>
+      <div class="card_body">
+      <div class="grid">
+        <div class="span2">
+          <label>Repository URL (Info Seite)</label>
+          <input id="ui_repo_url" />
+          <div class="muted">Wird in der Info-Seite als Link angezeigt.</div>
+        </div>
+      </div>
+      </div>
+    </details>
+
+    </div>
+  </details>
+
+  <details class="card" open data-ui="settings.section.logs" title="settings.section.logs">
+    <summary>Logs</summary>
+    <div class="card_body">
     <div class="grid">
       <div>
-        <label>Tabellenzeilen (sichtbar)</label>
-        <input id="ui_table_visible_rows" type="number" min="5" max="500" />
-        <div class="muted">Hoehe der Tabelle in Zeilen (Scroll zeigt trotzdem alle Messwerte).</div>
-      </div>
-
-      <div>
-        <label>Tabellenzeilen Hoehe (px)</label>
-        <input id="ui_table_row_height_px" type="number" min="9" max="60" />
-        <div class="muted">Dichte der Tabellen: effektive Zeilenhoehe wird automatisch auf max. +20% ueber der kleinen Schriftgroesse begrenzt.</div>
-      </div>
-
-      <div class="span2">
-        <div style="font-weight:700; margin-top: 6px;">Logs</div>
-        <div class="muted">Schreibt Logs nach stdout (Home Assistant) und optional zusaetzlich nach <code>/data/influxbro.log</code> (Rotation).</div>
-      </div>
-      <div>
         <label><input type="checkbox" id="log_to_file" /> Logfile aktiv</label>
-        <div class="muted">Wenn aktiv, werden Logs zusaetzlich persistent gespeichert.</div>
+        <div class="muted">Schreibt zusaetzlich nach <code>/data/influxbro.log</code> (Rotation).</div>
       </div>
       <div>
         <label>Log Stufe</label>
@@ -153,7 +246,7 @@
           <option value="debug" selected>DEBUG</option>
           <option value="trace">TRACE (Details)</option>
         </select>
-        <div class="muted">ERROR = nur Fehler. DEBUG = Debugpunkte. TRACE = zusaetzlich interne Abfragen/Details.</div>
+        <div class="muted">TRACE loggt zusaetzlich interne Abfragen/Details.</div>
       </div>
       <div>
         <label>Max MB pro Datei</label>
@@ -168,84 +261,23 @@
       <div>
         <label>Max Alter (Tage)</label>
         <input id="log_max_age_days" type="number" min="0" max="365" />
-        <div class="muted">0 = deaktiviert. Loescht alte Logfiles nach Alter.</div>
+        <div class="muted">0 = deaktiviert.</div>
       </div>
       <div>
         <label><input type="checkbox" id="log_http_requests" /> HTTP Request Logs</label>
         <div class="muted">Default: aus (sehr viele Zeilen).</div>
       </div>
+    </div>
+    </div>
+  </details>
 
-      <div class="span2">
-        <div style="font-weight:700; margin-top: 6px;">Schreiben</div>
-        <div class="muted">Erlaubt das Schreiben/Loeschen in InfluxDB aus der UI (Bearbeitungsliste/Loeschen). Default: erlaubt.</div>
-      </div>
+  <details class="card" open data-ui="settings.section.writes" title="settings.section.writes">
+    <summary>Schreiben</summary>
+    <div class="card_body">
+    <div class="grid">
       <div>
         <label><input type="checkbox" id="writes_enabled" /> Schreiben/Loeschen erlauben</label>
-        <div class="muted">Wenn deaktiviert, werden Schreiboperationen blockiert.</div>
-      </div>
-
-      <div>
-        <label>Bearbeitungsliste: Nachbarwerte (n)</label>
-        <input id="ui_edit_neighbors_n" type="number" min="1" max="50" />
-        <div class="muted">Zeigt n Werte davor und n Werte danach unterhalb der Bearbeitungsliste.</div>
-      </div>
-      <div>
-        <label>Dezimalstellen (Anzeige)</label>
-        <input id="ui_decimals" type="number" min="0" max="10" />
-        <div class="muted">Rundung fuer Zahlen in Statistik/Tabelle (nur Anzeige).</div>
-      </div>
-
-      <div>
-        <label>Basis Schriftgroesse (px)</label>
-        <input id="ui_font_size_px" type="number" min="10" max="22" />
-        <div class="muted">Standard: 14.</div>
-      </div>
-      <div>
-        <label>Kleine Schriftgroesse (px)</label>
-        <input id="ui_font_small_px" type="number" min="9" max="18" />
-        <div class="muted">z.B. fuer Statistik/Infotexte.</div>
-      </div>
-
-      <div>
-        <label>Checkbox Groesse (Scale)</label>
-        <input id="ui_checkbox_scale" type="number" min="0.5" max="1.6" step="0.05" />
-        <div class="muted">0.85 = kleiner, 1.0 = normal.</div>
-      </div>
-      <div>
-        <label>Filter Label Breite (px)</label>
-        <input id="ui_filter_label_width_px" type="number" min="80" max="360" />
-        <div class="muted">Label links neben dem Auswahlfeld.</div>
-      </div>
-
-      <div>
-        <label>Filter Feld Breite (px)</label>
-        <input id="ui_filter_control_width_px" type="number" min="180" max="900" />
-        <div class="muted">Breite fuer Suche+Auswahl (Desktop).</div>
-      </div>
-
-      <div>
-        <label>Filter Suche Breite (px)</label>
-        <input id="ui_filter_search_width_px" type="number" min="80" max="420" />
-        <div class="muted">Breite fuer das Suchfeld links neben der Auswahl.</div>
-      </div>
-
-      <div class="span2">
-        <label>Repository URL (Info Seite)</label>
-        <input id="ui_repo_url" />
-        <div class="muted">Wird in der Info-Seite als Link angezeigt (Gitea/GitHub).</div>
-      </div>
-
-      <div class="span2">
-        <label>Bereiche standardmaessig geoeffnet</label>
-        <div class="muted">Standard ist "zu" (nicht geoeffnet).</div>
-        <div class="grid" style="margin-top:8px;">
-          <div><label><input type="checkbox" id="ui_open_selection" /> Auswahl</label></div>
-          <div><label><input type="checkbox" id="ui_open_graph" /> Graph</label></div>
-          <div><label><input type="checkbox" id="ui_open_filterlist" /> Fehler-/Filtertabelle</label></div>
-          <div><label><input type="checkbox" id="ui_open_editlist" /> Bearbeitungsliste</label></div>
-          <div><label><input type="checkbox" id="ui_open_stats_total" /> Gesamtstatistik (Alles)</label></div>
-          <div><label><input type="checkbox" id="ui_open_stats_current" /> Statistik Zeitraum (Graph)</label></div>
-        </div>
+        <div class="muted">Default: erlaubt. Blockiert Bearbeitungsliste/Loeschen/Backup-Restore.</div>
       </div>
     </div>
     </div>

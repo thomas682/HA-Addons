@@ -681,6 +681,9 @@ let TABLE_TIME = {
   graph_stop_ms: null,
 };
 
+let FULL_GRAPH_BOUNDS = null; // {min,max} in ms
+let _IN_X_RELAYOUT = false;
+
 let GRAPH_MARKERS = false;
 let DELETE_PHRASE = "";
 let ALLOW_WRITES = true;
@@ -951,17 +954,12 @@ function drawPlotly(rows){
   const x = pts.map(p => p.x);
   const y = pts.map(p => p.y);
 
-  // Track current full bounds for outlier scan / table sync.
+  // Track full dataset bounds (do not overwrite current zoom window).
   try{
     const xs = pts.map(p => p.x.getTime());
     const minX = Math.min(...xs);
     const maxX = Math.max(...xs);
-    if(isFinite(minX) && isFinite(maxX)){
-      TABLE_TIME.graph_start_ms = minX;
-      TABLE_TIME.graph_stop_ms = maxX;
-      renderTableRange();
-      saveState();
-    }
+    if(isFinite(minX) && isFinite(maxX)) FULL_GRAPH_BOUNDS = {min: minX, max: maxX};
   }catch(e){}
 
   const data = [{
@@ -985,14 +983,40 @@ function drawPlotly(rows){
     yaxis: { automargin: true },
   };
 
+  // Apply stored/current x-window.
+  try{
+    const a = TABLE_TIME.graph_start_ms;
+    const b = TABLE_TIME.graph_stop_ms;
+    if(isFinite(a) && isFinite(b)){
+      const lo = Math.min(a,b);
+      const hi = Math.max(a,b);
+      if(FULL_GRAPH_BOUNDS && isFinite(FULL_GRAPH_BOUNDS.min) && isFinite(FULL_GRAPH_BOUNDS.max)){
+        const isFull = (Math.abs(lo - FULL_GRAPH_BOUNDS.min) <= 1000) && (Math.abs(hi - FULL_GRAPH_BOUNDS.max) <= 1000);
+        if(!isFull){
+          layout.xaxis.autorange = false;
+          layout.xaxis.range = [new Date(lo), new Date(hi)];
+        }
+      }else{
+        layout.xaxis.autorange = false;
+        layout.xaxis.range = [new Date(lo), new Date(hi)];
+      }
+    }
+  }catch(e){}
+
   const config = { displayModeBar: false, responsive: true };
-  window.Plotly.react($plotly, data, layout, config);
+  _IN_X_RELAYOUT = true;
+  try{
+    window.Plotly.react($plotly, data, layout, config);
+  }finally{
+    setTimeout(()=>{ _IN_X_RELAYOUT = false; }, 0);
+  }
 
   if(!_PLOTLY_EVENTS_BOUND && $plotly && typeof $plotly.on === "function"){
     _PLOTLY_EVENTS_BOUND = true;
 
     $plotly.on("plotly_relayout", (ev) => {
       try{
+        if(_IN_X_RELAYOUT) return;
         if(!ev) return;
 
         const keys = Object.keys(ev || {});
@@ -1993,8 +2017,22 @@ function renderEditTable(){
     tdOld.textContent = e.orig_fmt;
 
     const tdNew = document.createElement("td");
-    tdNew.textContent = e.draft_value_str ? e.draft_value_str : "";
-    if(!e.draft_value_str) tdNew.classList.add("cell_muted");
+    const newWrap = document.createElement("div");
+    newWrap.style.display = "flex";
+    newWrap.style.gap = "8px";
+    newWrap.style.alignItems = "center";
+    const newVal = document.createElement("span");
+    newVal.textContent = e.draft_value_str ? e.draft_value_str : "";
+    if(!e.draft_value_str) newVal.classList.add("cell_muted");
+    const btnApplyOne = document.createElement("button");
+    btnApplyOne.className = "btn_sm";
+    btnApplyOne.textContent = "Daten uebernehmen";
+    btnApplyOne.dataset.ui = "editlist_apply_one";
+    btnApplyOne.disabled = !(e.dirty && e.draft_value_str) || !ALLOW_WRITES;
+    btnApplyOne.addEventListener("click", (ev)=>{ _stop(ev); applyOneEdit(key).catch(displayError); });
+    newWrap.appendChild(newVal);
+    newWrap.appendChild(btnApplyOne);
+    tdNew.appendChild(newWrap);
 
     const tdOlder = document.createElement("td");
     const olderWrap = document.createElement("div");
@@ -2360,6 +2398,56 @@ async function applyAllEdits(){
   }
 }
 
+async function applyOneEdit(key){
+  err(""); ok("");
+  if($editApplyErr) $editApplyErr.textContent = "";
+  const e = EDIT_LIST.get(key);
+  if(!e || !e.dirty || !e.draft_value_str){
+    err("Keine Aenderung zum Schreiben.");
+    return;
+  }
+  if(!ALLOW_WRITES){
+    if($editApplyErr) $editApplyErr.textContent = "Writes are disabled. Enable writes in Settings.";
+    return;
+  }
+
+  const want = await openApplyDialog([e]);
+  if(!want) return;
+
+  const payload = {
+    confirm: DELETE_PHRASE,
+    measurement: e.measurement,
+    field: e.field,
+    entity_id: e.entity_id,
+    friendly_name: e.friendly_name,
+    edits: [{ time: e.time, new_value: e.draft_value_str, decimals: e.decimals }],
+  };
+  const j = await api("./api/apply_edits", {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify(payload),
+  });
+
+  // Update in-memory row
+  const newNum = Number(e.draft_value_str);
+  LAST_ROWS = (LAST_ROWS || []).map(r => {
+    const k = rowKey(r);
+    if(k === e.key) return { ...r, value: newNum };
+    return r;
+  });
+
+  e.orig_value = newNum;
+  e.orig_fmt = fmtNum(newNum);
+  e.draft_value_str = null;
+  e.dirty = false;
+  EDIT_LIST.set(key, e);
+
+  ok(j.message || "Applied: 1");
+  renderEditTable();
+  renderTable();
+  draw(LAST_ROWS);
+}
+
 async function loadStats(){
   const base = currentFilters();
 
@@ -2463,8 +2551,19 @@ async function loadData(){
   try{
     const xs = rows.map(r => Date.parse(r && r.time ? r.time : "")).filter(t => isFinite(t));
     if(xs.length){
-      TABLE_TIME.graph_start_ms = Math.min(...xs);
-      TABLE_TIME.graph_stop_ms = Math.max(...xs);
+      const mn = Math.min(...xs);
+      const mx = Math.max(...xs);
+      FULL_GRAPH_BOUNDS = {min: mn, max: mx};
+
+      // Keep previously stored zoom window if it still fits; otherwise fall back to full.
+      const hasWin = isFinite(TABLE_TIME.graph_start_ms) && isFinite(TABLE_TIME.graph_stop_ms);
+      const lo = hasWin ? Math.min(TABLE_TIME.graph_start_ms, TABLE_TIME.graph_stop_ms) : null;
+      const hi = hasWin ? Math.max(TABLE_TIME.graph_start_ms, TABLE_TIME.graph_stop_ms) : null;
+      const okWin = hasWin && lo !== null && hi !== null && lo >= mn && hi <= mx && hi > lo;
+      if(!okWin){
+        TABLE_TIME.graph_start_ms = mn;
+        TABLE_TIME.graph_stop_ms = mx;
+      }
       saveState();
     }
   }catch(e){}
@@ -2793,6 +2892,16 @@ document.getElementById("load").addEventListener("click", ()=>refreshAll().catch
 
     TABLE_TIME.from_graph = !!st.tbl_time_from_graph;
     if($tblTimeFromGraph) $tblTimeFromGraph.checked = TABLE_TIME.from_graph;
+
+    // Restore graph zoom window
+    try{
+      const a = Number(st.graph_window_start_ms);
+      const b = Number(st.graph_window_stop_ms);
+      if(isFinite(a) && isFinite(b) && Math.abs(a-b) > 500){
+        TABLE_TIME.graph_start_ms = a;
+        TABLE_TIME.graph_stop_ms = b;
+      }
+    }catch(e){}
 
     GRAPH_MARKERS = !!st.graph_markers;
     if($graphMarkers) $graphMarkers.checked = GRAPH_MARKERS;

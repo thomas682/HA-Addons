@@ -36,7 +36,7 @@
     .progress { height: 10px; background: #eee; border-radius: 999px; overflow: hidden; margin-top: 10px; }
     .progress > div { height: 100%; background: #0b0b0c; width: 0%; }
 
-    table { border-collapse: collapse; width: 100%; margin-top: 10px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 10px; table-layout: fixed; }
     th, td { border: 1px solid #eee; padding: 0 6px; font-size: 11px; line-height: 1.2; vertical-align: middle; }
     th { background: #f6f6f6; text-align:left; cursor:pointer; position: sticky; top: 0; z-index: 1; }
     .table_box { max-height: 70vh; overflow:auto; border: 1px solid #eee; border-radius: 12px; }
@@ -114,6 +114,10 @@
             <label>&nbsp;</label>
             <button id="delete_rows" data-ui="stats.delete_rows" title="stats.delete_rows">Loeschen</button>
           </div>
+          <div>
+            <label>&nbsp;</label>
+            <button id="save_cols" data-ui="stats.save_cols" title="stats.save_cols">Spalten speichern</button>
+          </div>
         </div>
 
         <div class="muted" id="range_txt" data-ui="stats.range_txt" title="stats.range_txt"></div>
@@ -156,6 +160,7 @@
       const $load = document.getElementById('load');
       const $cancel = document.getElementById('cancel');
       const $deleteRows = document.getElementById('delete_rows');
+      const $saveCols = document.getElementById('save_cols');
       const $info = document.getElementById('info');
       const $err = document.getElementById('err');
       const $count = document.getElementById('count');
@@ -170,10 +175,15 @@
       const DELETED = new Set();
       let LAST_VISIBLE_KEYS = [];
 
-      const PAGE_LIMIT = 10;
       let TOTAL_SERIES = null;
       let RUN_CANCELLED = false;
       let RUNNING = false;
+
+      let JOB_ID = null;
+      let POLL = null;
+
+      const LS_JOB = 'influxbro_global_stats_job_id_v1';
+      const LS_COLS = 'influxbro_stats_col_widths_v1';
 
       function err(s){ $err.textContent = s || ""; }
       function fmtNum(v){
@@ -195,6 +205,19 @@
         const j = await r.json().catch(()=>({ok:false,error:'Invalid JSON'}));
         if(!r.ok || !j.ok) throw new Error(j.error || ('HTTP ' + r.status));
         return j;
+      }
+
+      function setJobId(id){
+        JOB_ID = id ? String(id) : null;
+        try{ if(JOB_ID) localStorage.setItem(LS_JOB, JOB_ID); else localStorage.removeItem(LS_JOB); }catch(e){}
+      }
+      function getSavedJobId(){
+        try{ return localStorage.getItem(LS_JOB) || null; }catch(e){ return null; }
+      }
+
+      function stopPolling(){
+        if(POLL) clearInterval(POLL);
+        POLL = null;
       }
 
       function pad2(n){ return String(n).padStart(2,'0'); }
@@ -288,121 +311,215 @@
         return `Serien: ${processed}`;
       }
 
-      async function loadTotalSeries(tf, fieldFilter){
-        const j = await api('./api/global_series_total', {
+      async function startJob(){
+        const tf = timeFilter();
+        const fieldFilter = String(($fieldFilter && $fieldFilter.value) ? $fieldFilter.value : '').trim();
+        const j = await api('./api/global_stats_job/start', {
           method:'POST',
           headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({
-            start: tf.start,
-            stop: tf.stop,
-            field_filter: fieldFilter || null,
-          })
+          body: JSON.stringify({ start: tf.start, stop: tf.stop, field_filter: fieldFilter || null })
         });
-        TOTAL_SERIES = j.total_series;
+        setJobId(j.job_id);
+        return j.job_id;
       }
 
-      async function loadSeriesPage(tf, fieldFilter, offset){
-        const j = await api('./api/global_series_page', {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({
-            start: tf.start,
-            stop: tf.stop,
-            field_filter: fieldFilter || null,
-            offset: offset,
-            limit: PAGE_LIMIT,
-          })
-        });
-        return j.rows || [];
+      async function fetchStatus(){
+        if(!JOB_ID) return null;
+        const j = await api('./api/global_stats_job/status?job_id=' + encodeURIComponent(JOB_ID));
+        return j.status || null;
       }
 
-      async function loadDetailsFor(rows, tf){
-        const series = (rows || []).map(r => ({
-          measurement: r.measurement,
-          field: r.field,
-          entity_id: r.entity_id,
-          friendly_name: r.friendly_name,
-        }));
-        const j = await api('./api/global_series_details', {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ start: tf.start, stop: tf.stop, series })
-        });
-        const map = new Map();
-        (j.rows || []).forEach(d => { map.set(rowKey(d), d); });
-        (rows || []).forEach(r => {
-          const d = map.get(rowKey(r));
-          if(!d) return;
-          r.count = d.count;
-          r.min = d.min;
-          r.max = d.max;
-          r.mean = d.mean;
-          r.oldest_time = d.oldest_time;
-          r.newest_time = d.newest_time || r.newest_time;
-          r.last_value = (d.last_value !== undefined) ? d.last_value : r.last_value;
-          r._detail_loaded = true;
-        });
+      async function fetchAllResults(){
+        if(!JOB_ID) return;
+        const all = [];
+        let offset = 0;
+        const limit = 2000;
+        while(true){
+          if(RUN_CANCELLED) throw new Error('Abgebrochen.');
+          const j = await api(`./api/global_stats_job/result?job_id=${encodeURIComponent(JOB_ID)}&limit=${limit}&offset=${offset}`);
+          if(!j.ready) return;
+          const rows = j.rows || [];
+          if(!rows.length) break;
+          all.push(...rows);
+          offset += rows.length;
+          const total = (j.total !== null && j.total !== undefined) ? Number(j.total) : null;
+          if(total && isFinite(total)) setStatus([`Ergebnis laden...`, `Zeilen: ${all.length}/${total}`]);
+          else setStatus([`Ergebnis laden...`, `Zeilen: ${all.length}`]);
+          await new Promise(r => setTimeout(r, 0));
+        }
+        ROWS = all;
+        render();
       }
 
-      async function loadAll(){
+      async function load(){
         if(RUNNING) return;
         RUNNING = true;
         RUN_CANCELLED = false;
         err('');
         setBar(0);
-
-        const tf = timeFilter();
-        const fieldFilter = String(($fieldFilter && $fieldFilter.value) ? $fieldFilter.value : '').trim();
+        ROWS = [];
+        render();
 
         try{
-          TOTAL_SERIES = null;
-          try{
-            setStatus(['Zaehle Serien...', '']);
-            await loadTotalSeries(tf, fieldFilter);
-          }catch(e){
-            TOTAL_SERIES = null;
-          }
-
-          const total = (TOTAL_SERIES && isFinite(Number(TOTAL_SERIES)) && Number(TOTAL_SERIES) > 0) ? Number(TOTAL_SERIES) : null;
-          const all = [];
-          let processed = 0;
-          let page = 0;
-
-          for(let off = 0; ; off += PAGE_LIMIT){
-            if(RUN_CANCELLED) throw new Error('Abgebrochen.');
-            setStatus([`Serien laden... Seite ${page+1}`, total ? `Serien: ${processed}/${total}` : `Offset: ${off}`]);
-            const rows = await loadSeriesPage(tf, fieldFilter, off);
-            if(!rows.length) break;
-
-            // Always load details for every series (but keep 10 per request).
-            setStatus([`Details laden... Seite ${page+1}`, seriesInfo(processed)]);
-            await loadDetailsFor(rows, tf);
-            rows.forEach(r => {
-              r._detail_loaded = true;
-            });
-
-            all.push(...rows);
-            processed += rows.length;
-            page += 1;
-
-            if(total){
-              setBar(Math.min(100, Math.max(0, (processed / total) * 100)));
-            }
-          }
-
-          ROWS = all;
-          render();
-          setBar(100);
-          setStatus([`Fertig. Serien: ${all.length}`, '']);
+          setStatus(['Starte Hintergrundabfrage...', '']);
+          await startJob();
+          beginPolling();
         }catch(e){
           err(String(e && e.message ? e.message : e));
-        }finally{
+          setJobId(null);
           RUNNING = false;
         }
       }
 
+      function beginPolling(){
+        stopPolling();
+        POLL = setInterval(()=>{
+          fetchStatus().then(st => {
+            if(!st) return;
+            const state = String(st.state || '');
+            const msg = String(st.message || '');
+            const elapsed = String(st.elapsed || '');
+            const cur = String(st.current || '');
+            const pct = (st.percent !== null && st.percent !== undefined) ? Number(st.percent) : null;
+            if(pct !== null && isFinite(pct)) setBar(pct);
+            setStatus([
+              `Status: ${state} | Laufzeit: ${elapsed}`,
+              msg,
+              cur ? (`Aktuell: ${cur}`) : '',
+            ]);
+
+            if(st.ready){
+              stopPolling();
+              fetchAllResults().then(()=>{
+                setBar(100);
+                setStatus([`Fertig. Zeilen: ${(ROWS||[]).length}`, '']);
+                setJobId(null);
+                RUNNING = false;
+              }).catch(e=>{
+                err(String(e && e.message ? e.message : e));
+                setJobId(null);
+                RUNNING = false;
+              });
+            }
+            if(state === 'error'){
+              stopPolling();
+              err(String(st.error || 'Fehler'));
+              setJobId(null);
+              RUNNING = false;
+            }
+            if(state === 'cancelled'){
+              stopPolling();
+              setStatus(['Abgebrochen.', '']);
+              setJobId(null);
+              RUNNING = false;
+            }
+          }).catch(()=>{});
+        }, 800);
+
+        fetchStatus().catch(()=>{});
+      }
+
+      async function resumeJob(){
+        if(RUNNING) return;
+        if(!JOB_ID) return;
+        RUNNING = true;
+        RUN_CANCELLED = false;
+        err('');
+        setBar(0);
+        setStatus(['Hintergrundabfrage laeuft...', '']);
+        beginPolling();
+      }
+
       async function cancelRun(){
         RUN_CANCELLED = true;
+        if(JOB_ID){
+          try{
+            await api('./api/global_stats_job/cancel', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({job_id: JOB_ID})});
+          }catch(e){}
+        }
+      }
+
+      function applySavedColWidths(){
+        try{
+          const raw = localStorage.getItem(LS_COLS);
+          if(!raw) return;
+          const j = JSON.parse(raw);
+          if(!j || typeof j !== 'object') return;
+          document.querySelectorAll('#tbl thead th[data-key]').forEach(th => {
+            const k = th.getAttribute('data-key');
+            if(!k) return;
+            const w = Number(j[k]);
+            if(isFinite(w) && w >= 60 && w <= 1200) th.style.width = Math.round(w) + 'px';
+          });
+        }catch(e){}
+      }
+
+      function saveColWidths(){
+        try{
+          const out = {};
+          document.querySelectorAll('#tbl thead th[data-key]').forEach(th => {
+            const k = th.getAttribute('data-key');
+            if(!k) return;
+            const w = Math.round(th.getBoundingClientRect().width);
+            out[k] = w;
+          });
+          localStorage.setItem(LS_COLS, JSON.stringify(out));
+          setStatus(['Spaltenbreiten gespeichert.', '']);
+        }catch(e){
+          err('Spaltenbreiten speichern fehlgeschlagen.');
+        }
+      }
+
+      function initColResize(){
+        try{
+          document.querySelectorAll('#tbl thead th[data-key]').forEach(th => {
+            if(th.querySelector('.resizer')) return;
+            const rz = document.createElement('div');
+            rz.className = 'resizer';
+            rz.style.position = 'absolute';
+            rz.style.right = '0';
+            rz.style.top = '0';
+            rz.style.width = '10px';
+            rz.style.height = '100%';
+            rz.style.cursor = 'col-resize';
+            rz.style.userSelect = 'none';
+            rz.style.opacity = '0.35';
+            rz.style.background = 'linear-gradient(90deg, rgba(0,0,0,0), rgba(0,0,0,0.08))';
+
+            let startX = 0;
+            let startW = 0;
+            let dragging = false;
+
+            function onMove(ev){
+              if(!dragging) return;
+              const x = ev && ev.clientX ? ev.clientX : 0;
+              const dx = x - startX;
+              let w = startW + dx;
+              if(w < 60) w = 60;
+              if(w > 1200) w = 1200;
+              th.style.width = Math.round(w) + 'px';
+            }
+            function onUp(){
+              if(!dragging) return;
+              dragging = false;
+              document.body.style.userSelect = '';
+              window.removeEventListener('mousemove', onMove);
+              window.removeEventListener('mouseup', onUp);
+            }
+            rz.addEventListener('mousedown', (ev)=>{
+              ev.preventDefault(); ev.stopPropagation();
+              dragging = true;
+              startX = ev.clientX;
+              startW = th.getBoundingClientRect().width;
+              document.body.style.userSelect = 'none';
+              window.addEventListener('mousemove', onMove);
+              window.addEventListener('mouseup', onUp);
+            });
+
+            th.style.position = 'sticky';
+            th.appendChild(rz);
+          });
+        }catch(e){}
       }
 
       async function loadUiCfg(){
@@ -482,10 +599,6 @@
         });
       }
 
-      async function load(){
-        await loadAll();
-      }
-
       function debounce(fn, ms){
         let t=null;
         return ()=>{ if(t) clearTimeout(t); t=setTimeout(fn, ms); };
@@ -493,6 +606,7 @@
 
       $load.addEventListener('click', ()=>load().catch(e=>err(String(e && e.message ? e.message : e))));
       $cancel.addEventListener('click', ()=>cancelRun());
+      if($saveCols) $saveCols.addEventListener('click', (ev)=>{ ev.preventDefault(); ev.stopPropagation(); saveColWidths(); });
       $deleteRows.addEventListener('click', ()=>{
         (LAST_VISIBLE_KEYS || []).forEach(k => { if(k) DELETED.add(k); });
         render();
@@ -513,6 +627,18 @@
       });
 
       loadUiCfg().then(()=>{});
+
+      applySavedColWidths();
+      initColResize();
+
+      // Resume an in-flight background job (if any)
+      try{
+        const old = getSavedJobId();
+        if(old){
+          setJobId(old);
+          resumeJob().catch(()=>{});
+        }
+      }catch(e){}
 
       // default custom times
       const now = new Date();

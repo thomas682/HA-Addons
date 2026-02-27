@@ -768,12 +768,13 @@ def influxql_tag_filter(entity_id: str | None, friendly_name: str | None) -> str
 
 
 @contextmanager
-def v2_client(cfg: dict):
+def v2_client(cfg: dict, timeout_seconds_override: int | None = None):
     """Context-managed InfluxDB v2 client."""
     url = cfg.get("url") or f'{cfg.get("scheme","http")}://{cfg.get("host","localhost")}:{int(cfg.get("port",8086))}'
     token = cfg.get("token")
     org = cfg.get("org")
-    timeout_ms = int(cfg.get("timeout_seconds", 10)) * 1000
+    ts = timeout_seconds_override if timeout_seconds_override is not None else int(cfg.get("timeout_seconds", 10))
+    timeout_ms = int(ts) * 1000
     verify_ssl = bool(cfg.get("verify_ssl", True))
 
     client = InfluxDBClient(url=url, token=token, org=org, timeout=timeout_ms, verify_ssl=verify_ssl)
