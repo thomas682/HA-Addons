@@ -22,6 +22,7 @@
     h2 { margin: 0; }
     .muted { opacity: 0.7; font-size: 12px; }
     .row { display:flex; gap: 10px; flex-wrap:wrap; align-items:end; margin-top: 10px; justify-content:flex-start; }
+    .label_row { display:flex; justify-content:space-between; gap: 10px; align-items:baseline; }
     label { display:block; font-size: 12px; opacity: 0.8; }
     input, select, button, textarea { padding: 10px 12px; height: 40px; box-sizing: border-box; }
     textarea { font: inherit; resize: vertical; min-height: 40px; width: 100%; white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -100,17 +101,17 @@
 
             <div class="grid">
               <div>
-                <label>_measurement (Filter)</label>
+                <label class="label_row"><span>_measurement (Filter)</span><span id="cnt_measurement_filter" class="muted"></span></label>
                 <input id="measurement_filter" list="measurement_list" placeholder="optional" data-ui="restore.measurement_filter" title="restore.measurement_filter" />
                 <datalist id="measurement_list"></datalist>
               </div>
               <div>
-                <label>Messwert (Klartext / friendly_name)</label>
+                <label class="label_row"><span>Messwert (Klartext / friendly_name)</span><span id="cnt_friendly_name" class="muted"></span></label>
                 <input id="friendly_name" list="friendly_list" placeholder="optional" data-ui="restore.friendly_name" title="restore.friendly_name" />
                 <datalist id="friendly_list"></datalist>
               </div>
               <div>
-                <label>entity_id (optional)</label>
+                <label class="label_row"><span>entity_id (optional)</span><span id="cnt_entity_id" class="muted"></span></label>
                 <input id="entity_id" list="entity_list" placeholder="optional" data-ui="restore.entity_id" title="restore.entity_id" />
                 <datalist id="entity_list"></datalist>
               </div>
@@ -172,6 +173,10 @@
        const $mfList = document.getElementById('measurement_list');
        const $fnList = document.getElementById('friendly_list');
        const $eidList = document.getElementById('entity_list');
+
+       const $cntMf = document.getElementById('cnt_measurement_filter');
+       const $cntFn = document.getElementById('cnt_friendly_name');
+       const $cntEid = document.getElementById('cnt_entity_id');
        const $range = document.getElementById('range');
       const $custom = document.getElementById('custom');
       const $start = document.getElementById('start');
@@ -362,6 +367,16 @@
          }catch(e){}
        }
 
+       function setCount(el, n, showIfOne){
+         try{
+           if(!el) return;
+           const v = Number(n);
+           if(!isFinite(v) || v <= 0){ el.textContent = ''; return; }
+           if(!showIfOne && v === 1){ el.textContent = ''; return; }
+           el.textContent = `(${v})`;
+         }catch(e){}
+       }
+
        let ALL_MF = []; let ALL_FN = []; let ALL_EID = [];
 
        async function loadTargetLists(){
@@ -376,6 +391,31 @@
          setDatalistOptions($mfList, ALL_MF);
          setDatalistOptions($fnList, ALL_FN);
          setDatalistOptions($eidList, ALL_EID);
+
+         setCount($cntMf, ALL_MF.length, true);
+         setCount($cntFn, ALL_FN.length, true);
+         setCount($cntEid, ALL_EID.length, false);
+       }
+
+       async function refreshEntityIdsForFriendly(){
+         try{
+           const fn = String($n && $n.value ? $n.value : '').trim();
+           if(!fn){
+             setDatalistOptions($eidList, ALL_EID);
+             setCount($cntEid, ALL_EID.length, false);
+             return;
+           }
+           const qs = new URLSearchParams({tag:'entity_id', friendly_name: fn, range:'30d'});
+           const j = await api('./api/tag_values?' + qs.toString());
+           const vals = (j.values || []).map(x=>String(x)).filter(Boolean);
+           setDatalistOptions($eidList, vals);
+           setCount($cntEid, vals.length, false);
+
+           const cur = String($e && $e.value ? $e.value : '').trim();
+           if(vals.length >= 1 && (!cur || !vals.includes(cur))){
+             $e.value = vals[0];
+           }
+         }catch(e){}
        }
 
       async function resolveTarget(){
@@ -479,7 +519,7 @@
       }, 250);
 
       if($mf) $mf.addEventListener('input', onTargetChanged);
-      if($n) $n.addEventListener('input', ()=>{ autoPickEntityId().then(()=>onTargetChanged()); });
+      if($n) $n.addEventListener('input', ()=>{ refreshEntityIdsForFriendly().then(()=>autoPickEntityId().then(()=>onTargetChanged())); });
       if($e) $e.addEventListener('input', onTargetChanged);
       if($range) $range.addEventListener('change', ()=>{ $custom.style.display = ($range.value === 'custom') ? 'block' : 'none'; });
       if($start) $start.addEventListener('change', ()=>renderPlan());

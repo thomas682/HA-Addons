@@ -23,6 +23,7 @@
     .muted { opacity: 0.7; font-size: 12px; }
     .row { display:flex; gap: 10px; flex-wrap:wrap; align-items:end; margin-top: 10px; justify-content:flex-start; }
     [data-ui="stats.controls"] { align-items: flex-start; }
+    .label_row { display:flex; justify-content:space-between; gap: 10px; align-items:baseline; }
     label { display:block; font-size: 12px; opacity: 0.8; }
     .help { min-height: 16px; margin-top: 4px; }
     input, select, button { padding: 10px 12px; height: 40px; box-sizing: border-box; }
@@ -84,28 +85,28 @@
             </div>
 
             <div style="min-width: 180px;">
-              <label>_field Filter</label>
+              <label class="label_row"><span>_field Filter</span><span id="cnt_field_filter" class="muted"></span></label>
               <input id="field_filter" value="value" list="field_list" data-ui="stats.field_filter" title="stats.field_filter" />
               <datalist id="field_list"></datalist>
               <div class="muted help" data-ui="stats.field_filter_help" title="stats.field_filter_help">Legt fest, welche Serien/Zeilen geladen werden (Default: <code>value</code>).</div>
             </div>
 
             <div style="min-width: 180px;">
-              <label>_measurement Filter</label>
+              <label class="label_row"><span>_measurement Filter</span><span id="cnt_measurement_filter" class="muted"></span></label>
               <input id="measurement_filter" list="measurement_list" placeholder="optional" data-ui="stats.measurement_filter" title="stats.measurement_filter" />
               <datalist id="measurement_list"></datalist>
               <div class="muted help" data-ui="stats.measurement_filter_help" title="stats.measurement_filter_help">Filtert Serien nach _measurement (optional).</div>
             </div>
 
             <div style="min-width: 220px;">
-              <label>friendly_name Filter</label>
+              <label class="label_row"><span>friendly_name Filter</span><span id="cnt_friendly_name" class="muted"></span></label>
               <input id="friendly_filter" list="friendly_list" placeholder="optional" data-ui="stats.friendly_filter" title="stats.friendly_filter" />
               <datalist id="friendly_list"></datalist>
               <div class="muted help" data-ui="stats.friendly_filter_help" title="stats.friendly_filter_help">Filtert Serien nach friendly_name (optional).</div>
             </div>
 
             <div style="min-width: 220px;">
-              <label>entity_id Filter</label>
+              <label class="label_row"><span>entity_id Filter</span><span id="cnt_entity_id" class="muted"></span></label>
               <input id="entity_filter" list="entity_list" placeholder="optional" data-ui="stats.entity_filter" title="stats.entity_filter" />
               <datalist id="entity_list"></datalist>
               <div class="muted help" data-ui="stats.entity_filter_help" title="stats.entity_filter_help">Filtert Serien nach entity_id (optional).</div>
@@ -230,6 +231,11 @@
       const $measurementList = document.getElementById('measurement_list');
       const $friendlyList = document.getElementById('friendly_list');
       const $entityList = document.getElementById('entity_list');
+
+      const $cntField = document.getElementById('cnt_field_filter');
+      const $cntMeas = document.getElementById('cnt_measurement_filter');
+      const $cntFn = document.getElementById('cnt_friendly_name');
+      const $cntEid = document.getElementById('cnt_entity_id');
       const $q = document.getElementById('q');
       const $load = document.getElementById('load');
       const $cancel = document.getElementById('cancel');
@@ -302,6 +308,16 @@
         const j = await r.json().catch(()=>({ok:false,error:'Invalid JSON'}));
         if(!r.ok || !j.ok) throw new Error(j.error || ('HTTP ' + r.status));
         return j;
+      }
+
+      function setCount(el, n, showIfOne){
+        try{
+          if(!el) return;
+          const v = Number(n);
+          if(!isFinite(v) || v <= 0){ el.textContent = ''; return; }
+          if(!showIfOne && v === 1){ el.textContent = ''; return; }
+          el.textContent = `(${v})`;
+        }catch(e){}
       }
 
       function setJobId(id){
@@ -568,18 +584,22 @@
           if($fieldList){
             const xs = Array.from(new Set((ROWS||[]).map(r=>String(r.field||'')).filter(Boolean))).sort();
             $fieldList.innerHTML = xs.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"></option>`).join('');
+            setCount($cntField, xs.length, true);
           }
           if($measurementList){
             const ms = Array.from(new Set((ROWS||[]).map(r=>String(r.measurement||'')).filter(Boolean))).sort();
             $measurementList.innerHTML = ms.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"></option>`).join('');
+            setCount($cntMeas, ms.length, true);
           }
           if($friendlyList){
             const xs = Array.from(new Set((ROWS||[]).map(r=>String(r.friendly_name||'')).filter(Boolean))).sort();
             $friendlyList.innerHTML = xs.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"></option>`).join('');
+            setCount($cntFn, xs.length, true);
           }
           if($entityList){
             const xs = Array.from(new Set((ROWS||[]).map(r=>String(r.entity_id||'')).filter(Boolean))).sort();
             $entityList.innerHTML = xs.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"></option>`).join('');
+            setCount($cntEid, xs.length, false);
           }
         }catch(e){}
       }

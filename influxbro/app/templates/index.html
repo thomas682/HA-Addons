@@ -113,11 +113,6 @@
     <h2 style="margin:0;">Dashboard</h2>
     <div class="muted" id="version_box" data-ui="dashboard.version" title="dashboard.version"></div>
   </div>
-  <div class="muted" style="margin-top:6px;" data-ui="dashboard.donate" title="dashboard.donate">
-    <a href="https://paypal.me/ThomasSchatz" target="_blank" rel="noreferrer">
-      <img alt="Donate with PayPal" src="https://img.shields.io/badge/Donate-PayPal-blue.svg"/>
-    </a>
-  </div>
   <div class="muted" id="backup_badge" data-ui="dashboard.backup_badge" title="dashboard.backup_badge"></div>
 
   <details id="selection_details" {{ 'open' if cfg.get('ui_open_selection') else '' }} data-ui="section.selection" title="section.selection">
@@ -125,14 +120,14 @@
 
   <div class="grid" id="filters" data-ui="dashboard.filters" title="dashboard.filters">
     <div class="control control_lr" id="c_measurement_filter" data-ui="filter_measurement">
-      <label>_measurement (Filter)</label>
+      <label class="label_row"><span>_measurement (Filter)</span><span id="cnt_measurement_filter" class="muted"></span></label>
       <div class="stack">
         <input id="measurement_filter" list="measurement_filter_list" placeholder="optional" data-ui="filter_measurement_input" />
         <datalist id="measurement_filter_list"></datalist>
       </div>
     </div>
     <div class="control control_lr" id="c_friendly" data-ui="filter_friendly">
-      <label>Messwert (Klartext / friendly_name)</label>
+      <label class="label_row"><span>Messwert (Klartext / friendly_name)</span><span id="cnt_friendly_name" class="muted"></span></label>
       <div class="stack">
         <input id="friendly_name" list="friendly_list" placeholder="optional" data-ui="filter_friendly_input" />
         <datalist id="friendly_list"></datalist>
@@ -156,7 +151,7 @@
       </select>
     </div>
     <div class="control control_lr" id="c_entity" data-ui="filter_entity">
-      <label>entity_id (optional)</label>
+      <label class="label_row"><span>entity_id (optional)</span><span id="cnt_entity_id" class="muted"></span></label>
       <div class="stack">
         <input id="entity_id" list="entity_list" placeholder="optional" data-ui="filter_entity_input" />
         <datalist id="entity_list"></datalist>
@@ -1551,7 +1546,7 @@ async function loadEntityIds(){
 
 async function loadFriendlyNames(){
   let url = "./api/tag_values?tag=friendly_name";
-  const qp = tagQueryParams({includeFriendly: false, includeEntity: true});
+  const qp = tagQueryParams({includeFriendly: false, includeEntity: false});
   if(qp) url += "&" + qp;
   const j = await api(url);
   ALL_FRIENDLY = (j.values || []).map(String);
@@ -2604,29 +2599,54 @@ function autoSpanAll(){
   autoSpanSelect("c_entity", $e);
 }
 
-$mf.addEventListener("change", async ()=>{
-  try{
-    saveState();
-    await loadFriendlyNames();
-    await loadEntityIds();
-    autoSpanAll();
-  }catch(e){ displayError(e); }
-});
 
-$n.addEventListener("change", async ()=>{
-  try{
-    saveState();
-    await loadEntityIds();
-    // Auto-select entity_id: if there are candidates, pick the first.
-    const candidates = (ALL_ENTITY || []).filter(x => x);
-    if(!String($e.value || '').trim() && candidates.length >= 1){
-      $e.value = candidates[0];
-      saveState();
-      renderEntity();
-    }
-    autoSpanAll();
-  }catch(e){ displayError(e); }
-});
+function _asyncNoThrow(fn){
+  try{ fn(); }catch(e){}
+}
+
+const onMeasurementFilterChanged = debounce(()=>{
+  _asyncNoThrow(()=>{
+    (async ()=>{
+      try{
+        saveState();
+        await loadFriendlyNames();
+        await loadEntityIds();
+        autoSpanAll();
+      }catch(e){ displayError(e); }
+    })();
+  });
+}, 300);
+
+const onFriendlyChanged = debounce(()=>{
+  _asyncNoThrow(()=>{
+    (async ()=>{
+      try{
+        saveState();
+        await loadEntityIds();
+        // Auto-select entity_id: if there are candidates, pick the first.
+        const candidates = (ALL_ENTITY || []).filter(x => x);
+        const cur = String($e.value || '').trim();
+        const fn = String($n.value || '').trim();
+        if(fn && candidates.length >= 1 && (!cur || !candidates.includes(cur))){
+          $e.value = candidates[0];
+          saveState();
+          renderEntity();
+        }
+        autoSpanAll();
+      }catch(e){ displayError(e); }
+    })();
+  });
+}, 250);
+
+const onEntityChanged = debounce(()=>{
+  _asyncNoThrow(()=>{
+    try{ saveState(); autoSpanAll(); }catch(e){}
+  });
+}, 150);
+
+$mf.addEventListener("input", ()=>onMeasurementFilterChanged());
+$n.addEventListener("input", ()=>onFriendlyChanged());
+$e.addEventListener("input", ()=>onEntityChanged());
 
 $r.addEventListener("change", async ()=>{
   try{
@@ -2638,12 +2658,7 @@ $r.addEventListener("change", async ()=>{
   }catch(e){ displayError(e); }
 });
 
-$e.addEventListener("change", async ()=>{
-  try{
-    saveState();
-    autoSpanAll();
-  }catch(e){ displayError(e); }
-});
+$e.addEventListener("change", ()=>onEntityChanged());
 $start.addEventListener("change", async ()=>{ if($r.value==="custom") { saveState(); autoSpanAll(); renderTableRange(); renderRangeFromTo(); } });
 $stop.addEventListener("change", async ()=>{ if($r.value==="custom") { saveState(); autoSpanAll(); renderTableRange(); renderRangeFromTo(); } });
 

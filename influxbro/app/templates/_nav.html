@@ -2,6 +2,12 @@
   <div class="brand">
     <div class="brand_title" style="font-weight:900; font-size: 22px; letter-spacing: 0.2px;">InfluxBro</div>
     <div class="brand_meta" style="margin-top: 4px;">by Thomas Schatz • {{ "Writes: yes" if allow_delete else "Writes: no" }}</div>
+
+    <div class="brand_meta" style="margin-top: 8px;" data-ui="nav.donate" title="nav.donate">
+      <a href="https://paypal.me/ThomasSchatz" target="_blank" rel="noreferrer" style="display:inline-block;">
+        <img alt="Donate with PayPal" src="https://img.shields.io/badge/Donate-PayPal-blue.svg"/>
+      </a>
+    </div>
   </div>
 
   <a class="nav_item {{ 'active' if nav == 'dashboard' else '' }}" href="./" data-ui="nav.dashboard" title="nav.dashboard">

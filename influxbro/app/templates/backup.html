@@ -24,6 +24,7 @@
     .row { display:flex; gap: 10px; flex-wrap:wrap; align-items:end; margin-top: 10px; justify-content:flex-start; }
     .grid { display:grid; grid-template-columns: repeat(2, minmax(260px, 1fr)); gap: 12px; margin-top: 12px; align-items:end; }
     @media (max-width: 980px){ .grid { grid-template-columns: 1fr; } }
+    .label_row { display:flex; justify-content:space-between; gap: 10px; align-items:baseline; }
     label { display:block; font-size: 12px; opacity: 0.8; }
     input, select, button, textarea { padding: 10px 12px; height: 40px; box-sizing: border-box; }
     textarea { font: inherit; resize: vertical; min-height: 40px; width: 100%; white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -54,17 +55,17 @@
 
           <div class="grid" style="margin-top: 10px;" data-ui="backup.target" title="backup.target">
             <div>
-              <label>_measurement (Filter)</label>
+              <label class="label_row"><span>_measurement (Filter)</span><span id="cnt_measurement_filter" class="muted"></span></label>
               <input id="measurement_filter" list="measurement_list" placeholder="optional" data-ui="backup.measurement_filter" title="backup.measurement_filter" />
               <datalist id="measurement_list"></datalist>
             </div>
             <div>
-              <label>Messwert (Klartext / friendly_name)</label>
+              <label class="label_row"><span>Messwert (Klartext / friendly_name)</span><span id="cnt_friendly_name" class="muted"></span></label>
               <input id="friendly_name" list="friendly_list" placeholder="optional" data-ui="backup.friendly_name" title="backup.friendly_name" />
               <datalist id="friendly_list"></datalist>
             </div>
             <div>
-              <label>entity_id (optional)</label>
+              <label class="label_row"><span>entity_id (optional)</span><span id="cnt_entity_id" class="muted"></span></label>
               <input id="entity_id" list="entity_list" placeholder="optional" data-ui="backup.entity_id" title="backup.entity_id" />
               <datalist id="entity_list"></datalist>
             </div>
@@ -123,6 +124,8 @@
             <tr>
               <th style="width:20px;"><input type="checkbox" id="sel_all" data-ui="backup.select_all" title="backup.select_all"/></th>
               <th>Backup Datum</th>
+              <th>friendly_name</th>
+              <th>entity_id</th>
               <th>Anzahl Werte</th>
               <th>Groesse</th>
               <th>Datei</th>
@@ -158,6 +161,10 @@
       const $mfList = document.getElementById('measurement_list');
       const $fnList = document.getElementById('friendly_list');
       const $eidList = document.getElementById('entity_list');
+
+      const $cntMf = document.getElementById('cnt_measurement_filter');
+      const $cntFn = document.getElementById('cnt_friendly_name');
+      const $cntEid = document.getElementById('cnt_entity_id');
 
       let SELECTED_ID = "";
       let SELECTED_IDS = new Set();
@@ -296,6 +303,16 @@
         }catch(e){}
       }
 
+      function setCount(el, n, showIfOne){
+        try{
+          if(!el) return;
+          const v = Number(n);
+          if(!isFinite(v) || v <= 0){ el.textContent = ''; return; }
+          if(!showIfOne && v === 1){ el.textContent = ''; return; }
+          el.textContent = `(${v})`;
+        }catch(e){}
+      }
+
       async function loadTargetLists(){
         try{
           const jm = await api('./api/measurements');
@@ -308,6 +325,31 @@
         setDatalistOptions($mfList, ALL_MF);
         setDatalistOptions($fnList, ALL_FN);
         setDatalistOptions($eidList, ALL_EID);
+
+        setCount($cntMf, ALL_MF.length, true);
+        setCount($cntFn, ALL_FN.length, true);
+        setCount($cntEid, ALL_EID.length, false);
+      }
+
+      async function refreshEntityIdsForFriendly(){
+        try{
+          const fn = String($n && $n.value ? $n.value : '').trim();
+          if(!fn){
+            setDatalistOptions($eidList, ALL_EID);
+            setCount($cntEid, ALL_EID.length, false);
+            return;
+          }
+          const qs = new URLSearchParams({tag:'entity_id', friendly_name: fn, range:'30d'});
+          const j = await api('./api/tag_values?' + qs.toString());
+          const vals = (j.values || []).map(x=>String(x)).filter(Boolean);
+          setDatalistOptions($eidList, vals);
+          setCount($cntEid, vals.length, false);
+
+          const cur = String($e && $e.value ? $e.value : '').trim();
+          if(vals.length >= 1 && (!cur || !vals.includes(cur))){
+            $e.value = vals[0];
+          }
+        }catch(e){}
       }
 
       async function autoPickEntityId(){
@@ -399,10 +441,12 @@
           td0.appendChild(cb);
 
           const td1 = document.createElement('td'); td1.textContent = b.created_at || "";
+          const tdFn = document.createElement('td'); tdFn.textContent = b.friendly_name || "";
+          const tdEid = document.createElement('td'); tdEid.textContent = b.entity_id || "";
           const td2 = document.createElement('td'); td2.textContent = (b.point_count === null || b.point_count === undefined) ? "" : String(b.point_count);
           const td3 = document.createElement('td'); td3.textContent = fmtBytes(b.bytes);
           const td4 = document.createElement('td'); td4.textContent = b.file || "";
-          tr.appendChild(td0); tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tr.appendChild(td4);
+          tr.appendChild(td0); tr.appendChild(td1); tr.appendChild(tdFn); tr.appendChild(tdEid); tr.appendChild(td2); tr.appendChild(td3); tr.appendChild(td4);
 
           tr.addEventListener('click', ()=>{
             if(!id) return;
@@ -536,7 +580,7 @@
       }, 250);
 
       if($mf) $mf.addEventListener('input', onTargetChanged);
-      if($n) $n.addEventListener('input', ()=>{ autoPickEntityId().then(()=>onTargetChanged()); });
+      if($n) $n.addEventListener('input', ()=>{ refreshEntityIdsForFriendly().then(()=>autoPickEntityId().then(()=>onTargetChanged())); });
       if($e) $e.addEventListener('input', onTargetChanged);
 
       if($selAll){

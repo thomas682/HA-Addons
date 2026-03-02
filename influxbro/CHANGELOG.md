@@ -2,6 +2,19 @@
 
 <!-- markdownlint-disable MD024 MD013 -->
 
+## 1.11.28
+
+### Features
+- UI: PayPal Donate-Link ist jetzt im Menue unter "by Thomas Schatz".
+- UI: Auswahl zeigt jetzt die Anzahl der verfuegbaren Eintraege (measurement/friendly_name/entity_id) auf Dashboard/Backup/Restore/Statistik.
+- Backup: Liste zeigt zusaetzlich friendly_name und entity_id als Spalten.
+
+### Bug Fixes
+- Dashboard/Backup/Restore: Auswahl folgt friendly_name -> entity_id (bei mehreren entity_ids wird die erste gesetzt).
+
+### Maintenance
+- (keine)
+
 ## 1.11.27
 
 ### Features
