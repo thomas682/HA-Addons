@@ -26,6 +26,7 @@
     .brand_title { font-weight: 800; font-size: 18px; }
     .brand_meta { opacity: 0.7; font-size: 12px; margin-top: 2px; }
     .nav_item { display:flex; align-items:center; gap: 10px; padding: 10px 10px; border-radius: 12px; text-decoration:none; color: inherit; }
+    .nav_item { font-size: 16px; }
     .nav_item:hover { background: #f6f6f6; }
     .nav_item.active { background: #0b0b0c; color: #fff; }
     .ico { width: 22px; height: 22px; display:inline-flex; align-items:center; justify-content:center; font-weight: 800; }
@@ -266,7 +267,35 @@
 
             <div class="muted" data-ui="tip.filterlist" title="tip.filterlist">Mit <code>Alle Werte</code> wird die Tabelle auf den Graph-Zeitbereich gesetzt und Filter deaktiviert.</div>
 
-            <div class="row" style="margin-top:0;">
+            <div class="row" style="margin-top:0;" data-ui="filterlist_scan_row" title="filterlist_scan_row">
+              <div style="min-width: 260px;">
+                <label>Filter (DB-Scan)</label>
+                <select id="scan_preset" data-ui="filterlist_scan_preset" title="filterlist_scan_preset">
+                  <option value="free">Filter frei</option>
+                  <option value="counter" selected>Counter Ausreisser</option>
+                  <option value="bounds">Grenzen</option>
+                  <option value="null">NULL Werte</option>
+                  <option value="zero">0-Werte</option>
+                  <option value="all">alle werte</option>
+                </select>
+              </div>
+
+              <div id="scan_counter" style="min-width: 220px; display:none;">
+                <label>Max Sprung (optional)</label>
+                <input id="out_max_step" placeholder="(auto)" data-ui="outliers.max_step" title="outliers.max_step" />
+                <div class="muted">Ueberschreibt das Einheit-Default aus Einstellungen.</div>
+              </div>
+
+              <div id="scan_bounds" style="min-width: 320px; display:none;">
+                <label>Grenzen (Min/Max)</label>
+                <div class="row" style="margin-top:0;">
+                  <input id="out_min" placeholder="Min" data-ui="outliers.min" title="outliers.min" />
+                  <input id="out_max" placeholder="Max" data-ui="outliers.max" title="outliers.max" />
+                </div>
+              </div>
+            </div>
+
+            <div class="row" style="margin-top:0;" id="free_filter_row" data-ui="filterlist_free_row" title="filterlist_free_row">
               <div style="min-width: 110px;">
                 <label>Links</label>
                 <select id="tbl_a_op" data-ui="filterlist_left_op">
@@ -313,23 +342,6 @@
         </div>
 
         <div class="tbl_actions" style="justify-content:flex-start; margin-top: 10px;">
-          <details id="outlier_opts" style="margin-top:0;" data-ui="filterlist_outlier_opts">
-            <summary>Optionen</summary>
-            <div class="grid" style="margin-top:12px; align-items:end;">
-              <div class="control"><label><input type="checkbox" id="out_null" class="row_sel" data-ui="outliers.null"/> NULL Werte</label></div>
-              <div class="control"><label><input type="checkbox" id="out_zero" class="row_sel" data-ui="outliers.zero"/> 0-Werte</label></div>
-
-              <div class="control"><label><input type="checkbox" id="out_bounds" class="row_sel" data-ui="outliers.bounds"/> Grenzen</label></div>
-              <div class="control"><label>Min</label><input id="out_min" placeholder="" data-ui="outliers.min"/></div>
-              <div class="control"><label>Max</label><input id="out_max" placeholder="" data-ui="outliers.max"/></div>
-
-              <div class="control span2">
-                <label><input type="checkbox" id="out_counter" class="row_sel" data-ui="outliers.counter"/> Counter-Ausreisser (Spruenge)</label>
-                <div class="muted">Nutzt Maximal-Sprung je Einheit aus Einstellungen, kann hier ueberschrieben werden.</div>
-              </div>
-              <div class="control"><label>Max Sprung</label><input id="out_max_step" placeholder="(auto)" data-ui="outliers.max_step"/></div>
-            </div>
-          </details>
           <button class="btn_sm" id="outlier_scan" data-ui="filterlist_outlier_scan">Fehlersuche Ausreisser</button>
           <button class="btn_sm" id="outlier_reset" data-ui="filterlist_outlier_reset">Zuruecksetzen</button>
           <button class="btn_sm" id="tbl_to_edit" data-ui="filterlist_to_edit">In Bearbeitungsliste</button>
@@ -454,12 +466,12 @@ const $tblTimeFromGraph = document.getElementById('tbl_time_from_graph');
 const $btnTblToEdit = document.getElementById('tbl_to_edit');
 const $btnOutlierScan = document.getElementById('outlier_scan');
 const $btnOutlierReset = document.getElementById('outlier_reset');
-const $outNull = document.getElementById('out_null');
-const $outZero = document.getElementById('out_zero');
-const $outBounds = document.getElementById('out_bounds');
+const $scanPreset = document.getElementById('scan_preset');
+const $freeFilterRow = document.getElementById('free_filter_row');
+const $scanCounter = document.getElementById('scan_counter');
+const $scanBounds = document.getElementById('scan_bounds');
 const $outMin = document.getElementById('out_min');
 const $outMax = document.getElementById('out_max');
-const $outCounter = document.getElementById('out_counter');
 const $outMaxStep = document.getElementById('out_max_step');
 const $tblEnabled = document.getElementById('tbl_enabled');
 const $tblMode = document.getElementById('tbl_mode');
@@ -644,6 +656,10 @@ function saveState(){
       range: $r ? $r.value : "24h",
       start: $start ? $start.value : "",
       stop: $stop ? $stop.value : "",
+      scan_preset: $scanPreset ? $scanPreset.value : "counter",
+      out_min: $outMin ? $outMin.value : "",
+      out_max: $outMax ? $outMax.value : "",
+      out_max_step: $outMaxStep ? $outMaxStep.value : "",
       tbl_filter_enabled: TABLE_FILTER.enabled,
       tbl_mode: TABLE_FILTER.mode,
       tbl_a_op: TABLE_FILTER.a_op,
@@ -658,6 +674,15 @@ function saveState(){
       graph_window_stop_ms: TABLE_TIME.graph_stop_ms,
     };
     localStorage.setItem(LS_KEY, JSON.stringify(j));
+  }catch(e){}
+}
+
+function applyScanPreset(){
+  try{
+    const p = $scanPreset ? String($scanPreset.value || "") : "counter";
+    if($freeFilterRow) $freeFilterRow.style.display = (p === "free") ? "flex" : "none";
+    if($scanCounter) $scanCounter.style.display = (p === "counter") ? "block" : "none";
+    if($scanBounds) $scanBounds.style.display = (p === "bounds") ? "block" : "none";
   }catch(e){}
 }
 
@@ -2699,6 +2724,12 @@ if($tblBOp) $tblBOp.addEventListener("change", onTableFilter);
 if($tblAVal) $tblAVal.addEventListener("input", debounce(onTableFilter, 200));
 if($tblBVal) $tblBVal.addEventListener("input", debounce(onTableFilter, 200));
 
+// Scan preset
+if($scanPreset) $scanPreset.addEventListener("change", ()=>{
+  applyScanPreset();
+  saveState();
+});
+
 // Graph markers
 if($graphMarkers) $graphMarkers.addEventListener("change", ()=>{
   GRAPH_MARKERS = !!$graphMarkers.checked;
@@ -2801,8 +2832,12 @@ async function runOutlierScan(){
   }
 
   const unit = (HA_ENTITY_INFO && HA_ENTITY_INFO.entity && HA_ENTITY_INFO.entity.unit_of_measurement) ? String(HA_ENTITY_INFO.entity.unit_of_measurement) : "";
-  const stateClass = (HA_ENTITY_INFO && HA_ENTITY_INFO.entity && HA_ENTITY_INFO.entity.state_class) ? String(HA_ENTITY_INFO.entity.state_class) : "";
-  const counterDefault = (stateClass === "total" || stateClass === "total_increasing");
+  const preset = $scanPreset ? String($scanPreset.value || "counter") : "counter";
+
+  // Ensure the UI doesn't hide scan results via local filter.
+  TABLE_FILTER.enabled = false;
+  if($tblEnabled) $tblEnabled.checked = false;
+  saveState();
 
   const payload = {
     measurement: base.measurement,
@@ -2812,13 +2847,20 @@ async function runOutlierScan(){
     start: new Date(startMs).toISOString(),
     stop: new Date(stopMs).toISOString(),
     unit,
-    include_null: !!($outNull && $outNull.checked),
-    include_zero: !!($outZero && $outZero.checked),
-    bounds_enabled: !!($outBounds && $outBounds.checked),
+    return_all: preset === "all",
+    include_null: (preset === "null" || preset === "all"),
+    include_zero: (preset === "zero" || preset === "all"),
+    bounds_enabled: preset === "bounds",
     min: $outMin ? $outMin.value : "",
     max: $outMax ? $outMax.value : "",
-    counter_enabled: $outCounter ? !!$outCounter.checked : counterDefault,
+    counter_enabled: preset === "counter",
     max_step: $outMaxStep ? $outMaxStep.value : "",
+    value_filter_enabled: preset === "free",
+    value_mode: $tblMode ? $tblMode.value : "or",
+    value_a_op: $tblAOp ? $tblAOp.value : "<",
+    value_a_val: $tblAVal ? $tblAVal.value : "0",
+    value_b_op: $tblBOp ? $tblBOp.value : ">",
+    value_b_val: $tblBVal ? $tblBVal.value : "999999",
   };
 
   const j = await api("./api/outliers", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)});
@@ -2893,6 +2935,12 @@ document.getElementById("load").addEventListener("click", ()=>refreshAll().catch
     if($tblAVal) $tblAVal.value = TABLE_FILTER.a_val;
     if($tblBOp) $tblBOp.value = TABLE_FILTER.b_op;
     if($tblBVal) $tblBVal.value = TABLE_FILTER.b_val;
+
+    if($scanPreset && st.scan_preset) $scanPreset.value = String(st.scan_preset);
+    if($outMin && st.out_min !== undefined) $outMin.value = String(st.out_min || "");
+    if($outMax && st.out_max !== undefined) $outMax.value = String(st.out_max || "");
+    if($outMaxStep && st.out_max_step !== undefined) $outMaxStep.value = String(st.out_max_step || "");
+    applyScanPreset();
 
     TABLE_TIME.from_graph = !!st.tbl_time_from_graph;
     if($tblTimeFromGraph) $tblTimeFromGraph.checked = TABLE_TIME.from_graph;

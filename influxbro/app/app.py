@@ -3979,6 +3979,19 @@ def api_outliers():
     counter_decrease = bool(body.get("counter_decrease", True))
     counter_max_step = bool(body.get("counter_max_step", True))
 
+    # Optional value filter mode (e.g. free filter on the dashboard).
+    value_filter_enabled = bool(body.get("value_filter_enabled", False))
+    value_mode = str(body.get("value_mode") or body.get("mode") or "or").strip().lower()
+    value_mode = "and" if value_mode == "and" else "or"
+    value_a_op = str(body.get("value_a_op") or body.get("a_op") or "").strip()
+    value_b_op = str(body.get("value_b_op") or body.get("b_op") or "").strip()
+    value_a_raw = body.get("value_a_val") if ("value_a_val" in body) else body.get("a_val")
+    value_b_raw = body.get("value_b_val") if ("value_b_val" in body) else body.get("b_val")
+    value_a_raw = "" if value_a_raw is None else str(value_a_raw).strip()
+    value_b_raw = "" if value_b_raw is None else str(value_b_raw).strip()
+
+    return_all = bool(body.get("return_all", False))
+
     try:
         min_num = float(min_v) if bounds_enabled and min_v is not None and str(min_v).strip() != "" else None
     except Exception:
@@ -4016,6 +4029,49 @@ from(bucket: "{cfg["bucket"]}")
     prev_val: float | None = None
     prev_time: datetime | None = None
 
+    def _cmp(op: str, v: float, ref: float) -> bool:
+        if op == ">":
+            return v > ref
+        if op == ">=":
+            return v >= ref
+        if op == "<":
+            return v < ref
+        if op == "<=":
+            return v <= ref
+        return True
+
+    allowed_ops = {">", ">=", "<", "<="}
+    has_a = value_a_raw != "" and value_a_op in allowed_ops
+    has_b = value_b_raw != "" and value_b_op in allowed_ops
+    try:
+        a_num = float(value_a_raw) if has_a else None
+    except Exception:
+        a_num = None
+        has_a = False
+    try:
+        b_num = float(value_b_raw) if has_b else None
+    except Exception:
+        b_num = None
+        has_b = False
+
+    def value_filter_hit(v: float) -> bool:
+        if not value_filter_enabled:
+            return False
+        if not has_a and not has_b:
+            return False
+        ok_a = True if not has_a else _cmp(value_a_op, v, float(a_num))
+        ok_b = True if not has_b else _cmp(value_b_op, v, float(b_num))
+        return (ok_a and ok_b) if value_mode == "and" else (ok_a or ok_b)
+
+    def value_filter_reason() -> str:
+        if not value_filter_enabled or (not has_a and not has_b):
+            return ""
+        a_txt = f"({value_a_op} {value_a_raw})" if has_a else ""
+        b_txt = f"({value_b_op} {value_b_raw})" if has_b else ""
+        if has_a and has_b:
+            return f"Filter: {a_txt} {value_mode} {b_txt}"
+        return f"Filter: {a_txt or b_txt}"
+
     try:
         with v2_client(cfg) as c:
             qapi = c.query_api()
@@ -4033,9 +4089,9 @@ from(bucket: "{cfg["bucket"]}")
 
                 reasons: list[str] = []
                 if v is None:
-                    if include_null:
+                    if return_all or include_null:
                         reasons.append("NULL")
-                        rows.append({"time": iso, "value": None, "reason": ", ".join(reasons)})
+                        rows.append({"time": iso, "value": None, "reason": ", ".join(reasons) if not return_all else ""})
                     continue
 
                 if isinstance(v, bool) or not isinstance(v, (int, float)):
@@ -4043,6 +4099,18 @@ from(bucket: "{cfg["bucket"]}")
                     continue
 
                 fv = float(v)
+
+                if return_all:
+                    rows.append({"time": iso, "value": fv, "reason": ""})
+                    if len(rows) >= MAX_OUT:
+                        break
+                    prev_val = fv
+                    prev_time = t if isinstance(t, datetime) else prev_time
+                    continue
+
+                if value_filter_enabled and value_filter_hit(fv):
+                    r = value_filter_reason()
+                    reasons.append(r or "Filter")
                 if include_zero and fv == 0.0:
                     reasons.append("0")
                 if bounds_enabled:

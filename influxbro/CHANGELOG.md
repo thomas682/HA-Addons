@@ -2,6 +2,17 @@
 
 <!-- markdownlint-disable MD024 MD013 -->
 
+## 1.11.29
+
+### Features
+- Dashboard: Preset-Auswahl fuer DB-Scan in der Fehler-/Filtertabelle (Filter frei, Counter-Ausreisser, Grenzen, NULL, 0, alle Werte).
+
+### Bug Fixes
+- UI: Sidebar-Menue im Dashboard hat jetzt die gleiche Schriftgroesse wie die anderen Seiten.
+
+### Maintenance
+- (keine)
+
 ## 1.11.28
 
 ### Features
