@@ -3065,6 +3065,12 @@ def _global_stats_job_thread(
     start_dt: datetime,
     stop_dt: datetime,
     field_filter: str | None,
+    measurement_filter: str | None,
+    entity_id_filter: str | None,
+    friendly_name_filter: str | None,
+    series_list: list[dict[str, str]] | None,
+    columns: list[str] | None,
+    page_limit: int,
 ) -> None:
     with GLOBAL_STATS_LOCK:
         job = GLOBAL_STATS_JOBS.get(job_id)
@@ -3080,6 +3086,17 @@ def _global_stats_job_thread(
     start = _dt_to_rfc3339_utc(start_dt)
     stop = _dt_to_rfc3339_utc(stop_dt)
     ff = (field_filter or "").strip()
+    mf = (measurement_filter or "").strip()
+    eid_f = (entity_id_filter or "").strip()
+    fn_f = (friendly_name_filter or "").strip()
+
+    want_cols = [str(c).strip() for c in (columns or []) if str(c).strip()]
+    if not want_cols:
+        want_cols = ["last_value", "newest_time", "count", "min", "max", "mean", "oldest_time"]
+    want_set = set(want_cols)
+
+    want_details = any(c in want_set for c in ("count", "min", "max", "mean", "oldest_time"))
+    want_last = ("last_value" in want_set) or ("newest_time" in want_set)
 
     def set_state(state: str, msg: str) -> None:
         with GLOBAL_STATS_LOCK:
@@ -3255,16 +3272,55 @@ data
             "last_value": last_val,
         }
 
+    def _series_last(qapi: Any, bucket: str, m: str, f: str, eid: str, fn: str) -> dict[str, Any]:
+        conds = [f"r._measurement == {_flux_str(m)}", f"r._field == {_flux_str(f)}"]
+        if eid:
+            conds.append(f"r.entity_id == {_flux_str(eid)}")
+        if fn:
+            conds.append(f"r.friendly_name == {_flux_str(fn)}")
+        pred = " and ".join(conds)
+        q = f'''
+from(bucket: "{bucket}")
+  |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
+  |> filter(fn: (r) => {pred})
+  |> keep(columns: ["_time","_value"])
+  |> sort(columns: ["_time"], desc: true)
+  |> limit(n: 1)
+'''
+        set_query(f"Last {m}/{f}", q)
+        tables = qapi.query(q, org=cfg_local["org"])
+        newest = None
+        last_v = None
+        for t in tables or []:
+            for rec in getattr(t, "records", []) or []:
+                newest = rec.get_time()
+                last_v = rec.get_value()
+                break
+            if newest is not None:
+                break
+        return {
+            "newest_time": _as_rfc3339(newest),
+            "last_value": last_v,
+        }
+
     try:
         set_state("counting", "Zaehle Serien...")
         total_series: int | None = None
         try:
             ff_clause2 = f"|> filter(fn: (r) => r._field == {_flux_str(ff)})" if ff else ""
+            mf_clause = f"|> filter(fn: (r) => r._measurement == {_flux_str(mf)})" if mf else ""
+            tag_clause = ""
+            if eid_f:
+                tag_clause += f"|> filter(fn: (r) => r.entity_id == {_flux_str(eid_f)})\n"
+            if fn_f:
+                tag_clause += f"|> filter(fn: (r) => r.friendly_name == {_flux_str(fn_f)})\n"
             q_total = f'''
 from(bucket: "{cfg_local["bucket"]}")
   |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
   |> filter(fn: (r) => exists r._measurement and exists r._field)
+  {mf_clause}
   {ff_clause2}
+  {tag_clause.strip()}
   |> keep(columns: ["_measurement","_field","entity_id","friendly_name","_time","_value"])
   |> group(columns: ["_measurement","_field","entity_id","friendly_name"])
   |> last()
@@ -3288,6 +3344,7 @@ from(bucket: "{cfg_local["bucket"]}")
         with GLOBAL_STATS_LOCK:
             if job_id in GLOBAL_STATS_JOBS:
                 GLOBAL_STATS_JOBS[job_id]["total_series"] = total_series
+                GLOBAL_STATS_JOBS[job_id]["columns"] = list(want_cols)
 
         if should_cancel():
             set_state("cancelled", "Abgebrochen.")
@@ -3297,25 +3354,102 @@ from(bucket: "{cfg_local["bucket"]}")
 
         rows: list[dict[str, Any]] = []
         scanned_points = 0
-        off = 0
-        page = 0
-        limit = 10
-        ff_clause = f"|> filter(fn: (r) => r._field == {_flux_str(ff)})" if ff else ""
+
+        def add_row(m: str, f: str, eid: str, fn: str, base_last: dict[str, Any] | None = None, det: dict[str, Any] | None = None) -> None:
+            r: dict[str, Any] = {
+                "measurement": m,
+                "field": f,
+                "entity_id": eid,
+                "friendly_name": fn,
+            }
+            if base_last:
+                if "newest_time" in base_last:
+                    r["newest_time"] = base_last.get("newest_time")
+                if "last_value" in base_last:
+                    r["last_value"] = base_last.get("last_value")
+            if det:
+                for k in ("count", "min", "max", "mean", "oldest_time"):
+                    if k in det:
+                        r[k] = det.get(k)
+                # det may also include newest/last
+                if "newest_time" in det and "newest_time" not in r:
+                    r["newest_time"] = det.get("newest_time")
+                if "last_value" in det and "last_value" not in r:
+                    r["last_value"] = det.get("last_value")
+            rows.append(r)
 
         with v2_client(cfg_local) as c:
             qapi = c.query_api()
-            while True:
-                if should_cancel():
-                    set_state("cancelled", "Abgebrochen.")
-                    return
 
-                page += 1
-                set_state("query", f"Lade Serienliste (Seite {page})...")
-                q_page = f'''
+            # If series_list is provided: enrich only these series.
+            if series_list is not None:
+                total_series2 = len(series_list)
+                with GLOBAL_STATS_LOCK:
+                    if job_id in GLOBAL_STATS_JOBS:
+                        GLOBAL_STATS_JOBS[job_id]["total_series"] = total_series2
+
+                for idx, srow in enumerate(series_list):
+                    if should_cancel():
+                        set_state("cancelled", "Abgebrochen.")
+                        return
+                    m = str(srow.get("measurement") or "")
+                    f = str(srow.get("field") or "")
+                    eid = str(srow.get("entity_id") or "")
+                    fn = str(srow.get("friendly_name") or "")
+                    with GLOBAL_STATS_LOCK:
+                        if job_id in GLOBAL_STATS_JOBS:
+                            GLOBAL_STATS_JOBS[job_id]["current"] = fn or eid or (m + "/" + f)
+                            GLOBAL_STATS_JOBS[job_id]["groups_count"] = idx
+
+                    if want_details:
+                        set_state("query", f"Details {idx+1}/{total_series2}: {fn or eid or (m + '/' + f)}")
+                        det = _series_stats(qapi, cfg_local["bucket"], m, f, eid, fn)
+                        cnum = int(det.get("count") or 0)
+                        scanned_points += max(0, cnum)
+                        add_row(m, f, eid, fn, None, det)
+                    elif want_last:
+                        set_state("query", f"Letzter Wert {idx+1}/{total_series2}: {fn or eid or (m + '/' + f)}")
+                        base_last = _series_last(qapi, cfg_local["bucket"], m, f, eid, fn)
+                        add_row(m, f, eid, fn, base_last, None)
+                    else:
+                        add_row(m, f, eid, fn, None, None)
+
+                    with GLOBAL_STATS_LOCK:
+                        if job_id in GLOBAL_STATS_JOBS:
+                            GLOBAL_STATS_JOBS[job_id]["scanned_points"] = scanned_points
+                            GLOBAL_STATS_JOBS[job_id]["groups_count"] = idx + 1
+
+            else:
+                # Full scan: load series pages and optionally compute details.
+                off = 0
+                page = 0
+                limit = page_limit
+                if limit < 10:
+                    limit = 10
+                if limit > 200:
+                    limit = 200
+
+                ff_clause = f"|> filter(fn: (r) => r._field == {_flux_str(ff)})" if ff else ""
+                mf_clause = f"|> filter(fn: (r) => r._measurement == {_flux_str(mf)})" if mf else ""
+                tag_clause = ""
+                if eid_f:
+                    tag_clause += f"|> filter(fn: (r) => r.entity_id == {_flux_str(eid_f)})\n"
+                if fn_f:
+                    tag_clause += f"|> filter(fn: (r) => r.friendly_name == {_flux_str(fn_f)})\n"
+
+                while True:
+                    if should_cancel():
+                        set_state("cancelled", "Abgebrochen.")
+                        return
+                    page += 1
+                    set_state("query", f"Lade Serienliste (Seite {page})...")
+                    q_page = f'''
 from(bucket: "{cfg_local["bucket"]}")
   |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
   |> filter(fn: (r) => exists r._measurement and exists r._field)
+  {mf_clause}
   {ff_clause}
+  {tag_clause.strip()}
   |> keep(columns: ["_measurement","_field","entity_id","friendly_name","_time","_value"])
   |> group(columns: ["_measurement","_field","entity_id","friendly_name"])
   |> last()
@@ -3323,64 +3457,58 @@ from(bucket: "{cfg_local["bucket"]}")
   |> sort(columns: ["_time"], desc: true)
   |> limit(n: {limit}, offset: {off})
 '''
-                set_query(f"Series page {page}", q_page)
-                tables = qapi.query(q_page, org=cfg_local["org"])
+                    set_query(f"Series page {page}", q_page)
+                    tables = qapi.query(q_page, org=cfg_local["org"])
 
-                series_page: list[dict[str, Any]] = []
-                for t in tables or []:
-                    for rec in getattr(t, "records", []) or []:
-                        vals = getattr(rec, "values", {}) or {}
-                        series_page.append({
-                            "measurement": str(vals.get("_measurement") or ""),
-                            "field": str(vals.get("_field") or ""),
-                            "entity_id": str(vals.get("entity_id") or ""),
-                            "friendly_name": str(vals.get("friendly_name") or ""),
-                        })
+                    series_page: list[dict[str, Any]] = []
+                    for t in tables or []:
+                        for rec in getattr(t, "records", []) or []:
+                            vals = getattr(rec, "values", {}) or {}
+                            newest = rec.get_time() or vals.get("_time")
+                            series_page.append({
+                                "measurement": str(vals.get("_measurement") or ""),
+                                "field": str(vals.get("_field") or ""),
+                                "entity_id": str(vals.get("entity_id") or ""),
+                                "friendly_name": str(vals.get("friendly_name") or ""),
+                                "newest_time": _as_rfc3339(newest),
+                                "last_value": rec.get_value(),
+                            })
 
-                if not series_page:
-                    break
+                    if not series_page:
+                        break
 
-                for srow in series_page:
-                    if should_cancel():
-                        set_state("cancelled", "Abgebrochen.")
-                        return
+                    for srow in series_page:
+                        if should_cancel():
+                            set_state("cancelled", "Abgebrochen.")
+                            return
 
-                    m = str(srow.get("measurement") or "")
-                    f = str(srow.get("field") or "")
-                    eid = str(srow.get("entity_id") or "")
-                    fn = str(srow.get("friendly_name") or "")
+                        m = str(srow.get("measurement") or "")
+                        f = str(srow.get("field") or "")
+                        eid = str(srow.get("entity_id") or "")
+                        fn = str(srow.get("friendly_name") or "")
 
-                    with GLOBAL_STATS_LOCK:
-                        if job_id in GLOBAL_STATS_JOBS:
-                            GLOBAL_STATS_JOBS[job_id]["current"] = fn or eid or (m + "/" + f)
+                        with GLOBAL_STATS_LOCK:
+                            if job_id in GLOBAL_STATS_JOBS:
+                                GLOBAL_STATS_JOBS[job_id]["current"] = fn or eid or (m + "/" + f)
 
-                    pos = len(rows) + 1
-                    tot_s = str(total_series) if isinstance(total_series, int) else "?"
-                    set_state("query", f"Details {pos}/{tot_s}: {fn or eid or (m + '/' + f)}")
+                        base_last = {"newest_time": srow.get("newest_time"), "last_value": srow.get("last_value")}
+                        if want_details:
+                            pos = len(rows) + 1
+                            tot_s = str(total_series) if isinstance(total_series, int) else "?"
+                            set_state("query", f"Details {pos}/{tot_s}: {fn or eid or (m + '/' + f)}")
+                            det = _series_stats(qapi, cfg_local["bucket"], m, f, eid, fn)
+                            cnum = int(det.get("count") or 0)
+                            scanned_points += max(0, cnum)
+                            add_row(m, f, eid, fn, base_last if want_last else None, det)
+                        else:
+                            add_row(m, f, eid, fn, base_last if want_last else None, None)
 
-                    det = _series_stats(qapi, cfg_local["bucket"], m, f, eid, fn)
-                    cnum = int(det.get("count") or 0)
-                    scanned_points += max(0, cnum)
-                    rows.append({
-                        "measurement": m,
-                        "field": f,
-                        "entity_id": eid,
-                        "friendly_name": fn,
-                        "count": cnum,
-                        "oldest_time": det.get("oldest_time"),
-                        "newest_time": det.get("newest_time"),
-                        "last_value": det.get("last_value"),
-                        "min": det.get("min"),
-                        "max": det.get("max"),
-                        "mean": det.get("mean"),
-                    })
+                        with GLOBAL_STATS_LOCK:
+                            if job_id in GLOBAL_STATS_JOBS:
+                                GLOBAL_STATS_JOBS[job_id]["scanned_points"] = scanned_points
+                                GLOBAL_STATS_JOBS[job_id]["groups_count"] = len(rows)
 
-                    with GLOBAL_STATS_LOCK:
-                        if job_id in GLOBAL_STATS_JOBS:
-                            GLOBAL_STATS_JOBS[job_id]["scanned_points"] = scanned_points
-                            GLOBAL_STATS_JOBS[job_id]["groups_count"] = len(rows)
-
-                off += len(series_page)
+                    off += len(series_page)
 
         rows.sort(key=lambda r: int(r.get("count") or 0), reverse=True)
         with GLOBAL_STATS_LOCK:
@@ -3445,6 +3573,39 @@ def api_global_stats_job_start():
         field_filter = str(field_filter)
     ff = (field_filter or "").strip() or None
 
+    measurement_filter = (body.get("measurement") or "").strip() or None
+    entity_id_filter = (body.get("entity_id") or "").strip() or None
+    friendly_name_filter = (body.get("friendly_name") or "").strip() or None
+
+    cols = body.get("columns")
+    columns: list[str] | None = None
+    if isinstance(cols, list):
+        columns = [str(x) for x in cols if x is not None]
+
+    series_list: list[dict[str, str]] | None = None
+    raw_series = body.get("series")
+    if isinstance(raw_series, list):
+        tmp: list[dict[str, str]] = []
+        for it in raw_series:
+            if not isinstance(it, dict):
+                continue
+            tmp.append({
+                "measurement": str(it.get("measurement") or ""),
+                "field": str(it.get("field") or ""),
+                "entity_id": str(it.get("entity_id") or ""),
+                "friendly_name": str(it.get("friendly_name") or ""),
+            })
+        series_list = tmp
+
+    try:
+        page_limit = int(body.get("page_limit", 200))
+    except Exception:
+        page_limit = 200
+    if page_limit < 10:
+        page_limit = 10
+    if page_limit > 200:
+        page_limit = 200
+
     job_id = uuid.uuid4().hex
     job = {
         "id": job_id,
@@ -3463,6 +3624,10 @@ def api_global_stats_job_start():
         "cancelled": False,
         "error": None,
         "field_filter": ff,
+        "measurement": measurement_filter,
+        "entity_id": entity_id_filter,
+        "friendly_name": friendly_name_filter,
+        "columns": columns or [],
     }
 
     # Cleanup old jobs
@@ -3476,7 +3641,19 @@ def api_global_stats_job_start():
 
     t = threading.Thread(
         target=_global_stats_job_thread,
-        args=(job_id, cfg, start_dt, stop_dt, ff),
+        args=(
+            job_id,
+            cfg,
+            start_dt,
+            stop_dt,
+            ff,
+            measurement_filter,
+            entity_id_filter,
+            friendly_name_filter,
+            series_list,
+            columns,
+            page_limit,
+        ),
         daemon=True,
     )
     t.start()

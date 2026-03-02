@@ -2,6 +2,17 @@
 
 <!-- markdownlint-disable MD024 MD013 -->
 
+## 1.11.23
+
+### Features
+- Statistik: erweiterte Filter (measurement/friendly_name/entity_id) und Spaltenauswahl mit "Nachladen" (markiert / alle im Filter).
+
+### Bug Fixes
+- (keine)
+
+### Maintenance
+- markdownlint: MD032 deaktiviert.
+
 ## 1.11.22
 
 ### Features
