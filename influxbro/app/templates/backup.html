@@ -22,6 +22,12 @@
     h2 { margin: 0; }
     .muted { opacity: 0.7; font-size: 12px; }
     .row { display:flex; gap: 10px; flex-wrap:wrap; align-items:end; margin-top: 10px; justify-content:flex-start; }
+    .grid { display:grid; grid-template-columns: repeat(2, minmax(260px, 1fr)); gap: 12px; margin-top: 12px; align-items:end; }
+    @media (max-width: 980px){ .grid { grid-template-columns: 1fr; } }
+    .filter_pair { display:flex; gap: 10px; align-items:stretch; }
+    .filter_pair input.search { height: 34px; padding: 8px 10px; width: 200px; }
+    .filter_pair select { flex: 1; min-width: 0; }
+    @media (max-width: 980px){ .filter_pair { flex-direction: column; } .filter_pair input.search { width: 100%; } }
     label { display:block; font-size: 12px; opacity: 0.8; }
     input, select, button, textarea { padding: 10px 12px; height: 40px; box-sizing: border-box; }
     textarea { font: inherit; resize: vertical; min-height: 40px; width: 100%; white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -43,46 +49,74 @@
       <div class="muted">Backups fuer einen einzelnen Messwert (immer alle Werte dieses Messwertes).</div>
 
       <div class="card">
-        <div class="muted">Auswahl wird aus dem Dashboard uebernommen (Browser-Speicher).</div>
-        <div class="muted" id="loc" data-ui="backup.location" title="backup.location"></div>
-        <div class="muted" id="zoom_txt" data-ui="backup.zoom_txt" title="backup.zoom_txt"></div>
+        <details id="selection_details" open data-ui="section.selection" title="section.selection">
+          <summary>Auswahl</summary>
 
-        <div class="row">
-          <div style="min-width: 220px;">
-            <label>Zeitraum</label>
-            <select id="range" data-ui="backup.range" title="backup.range">
-              <option value="1h">Letzte 1h</option>
-              <option value="6h">Letzte 6h</option>
-              <option value="12h">Letzte 12h</option>
-              <option value="24h">Letzte 24h</option>
-              <option value="7d">Letzte 7 Tage</option>
-              <option value="30d">Letzte 30 Tage</option>
-              <option value="90d">Letzte 90 Tage</option>
-              <option value="365d">Letztes Jahr</option>
-              <option value="this_year">Dieses Jahr</option>
-              <option value="12mo">Letzte 12 Monate</option>
-              <option value="24mo">Letzte 24 Monate</option>
-              <option value="all">Alle</option>
-              <option value="custom">Benutzerdefiniert…</option>
-            </select>
-            <div class="muted" id="range_txt" data-ui="backup.range_txt" title="backup.range_txt"></div>
-          </div>
+          <div class="muted">Auswahl wird initial aus dem Dashboard uebernommen (Browser-Speicher) und kann hier angepasst werden.</div>
+          <div class="muted" id="loc" data-ui="backup.location" title="backup.location"></div>
+          <div class="muted" id="zoom_txt" data-ui="backup.zoom_txt" title="backup.zoom_txt"></div>
 
-          <div id="custom" style="min-width: 320px; display:none;">
-            <label>Von/Bis (lokal)</label>
-            <div class="row" style="margin-top:0;">
-              <input id="start" type="datetime-local" data-ui="backup.start" title="backup.start" />
-              <input id="stop" type="datetime-local" data-ui="backup.stop" title="backup.stop" />
+          <div class="grid" style="margin-top: 10px;" data-ui="backup.target" title="backup.target">
+            <div>
+              <label>_measurement (Filter)</label>
+              <div class="filter_pair">
+                <input id="q_measurement_filter" class="search" placeholder="Suchen..." data-ui="backup.measurement_filter_search" title="backup.measurement_filter_search" />
+                <select id="measurement_filter" data-ui="backup.measurement_filter_select" title="backup.measurement_filter_select"></select>
+              </div>
+            </div>
+            <div>
+              <label>Messwert (Klartext / friendly_name)</label>
+              <div class="filter_pair">
+                <input id="q_friendly_name" class="search" placeholder="Suchen..." data-ui="backup.friendly_search" title="backup.friendly_search" />
+                <select id="friendly_name" data-ui="backup.friendly_select" title="backup.friendly_select"></select>
+              </div>
+            </div>
+            <div>
+              <label>entity_id (optional)</label>
+              <div class="filter_pair">
+                <input id="q_entity_id" class="search" placeholder="Suchen..." data-ui="backup.entity_search" title="backup.entity_search" />
+                <select id="entity_id" data-ui="backup.entity_select" title="backup.entity_select"></select>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div class="row" data-ui="backup.selection_row" title="backup.selection_row">
-          <div style="min-width: 320px; flex:1;">
-            <label>Aktueller Messwert</label>
-            <textarea id="sel" readonly data-ui="backup.selection" title="backup.selection"></textarea>
+          <div class="row" style="margin-top: 8px;">
+            <div style="min-width: 220px;">
+              <label>Zeitraum</label>
+              <select id="range" data-ui="backup.range" title="backup.range">
+                <option value="1h">Letzte 1h</option>
+                <option value="6h">Letzte 6h</option>
+                <option value="12h">Letzte 12h</option>
+                <option value="24h">Letzte 24h</option>
+                <option value="7d">Letzte 7 Tage</option>
+                <option value="30d">Letzte 30 Tage</option>
+                <option value="90d">Letzte 90 Tage</option>
+                <option value="365d">Letztes Jahr</option>
+                <option value="this_year">Dieses Jahr</option>
+                <option value="12mo">Letzte 12 Monate</option>
+                <option value="24mo">Letzte 24 Monate</option>
+                <option value="all">Alle</option>
+                <option value="custom">Benutzerdefiniert…</option>
+              </select>
+              <div class="muted" id="range_txt" data-ui="backup.range_txt" title="backup.range_txt"></div>
+            </div>
+
+            <div id="custom" style="min-width: 320px; display:none;">
+              <label>Von/Bis (lokal)</label>
+              <div class="row" style="margin-top:0;">
+                <input id="start" type="datetime-local" data-ui="backup.start" title="backup.start" />
+                <input id="stop" type="datetime-local" data-ui="backup.stop" title="backup.stop" />
+              </div>
+            </div>
           </div>
-        </div>
+
+          <div class="row" data-ui="backup.selection_row" title="backup.selection_row">
+            <div style="min-width: 320px; flex:1;">
+              <label>Auswahl (aufgeloest)</label>
+              <textarea id="sel" readonly data-ui="backup.selection" title="backup.selection"></textarea>
+            </div>
+          </div>
+        </details>
 
         <div class="row" data-ui="backup.actions" title="backup.actions">
           <div><label>&nbsp;</label><button id="create_full" data-ui="backup.create_full" title="backup.create_full">Fullbackup</button></div>
@@ -128,10 +162,22 @@
       const $del = document.getElementById('del');
       const $selAll = document.getElementById('sel_all');
 
+      const $mf = document.getElementById('measurement_filter');
+      const $n = document.getElementById('friendly_name');
+      const $e = document.getElementById('entity_id');
+      const $qMf = document.getElementById('q_measurement_filter');
+      const $qFn = document.getElementById('q_friendly_name');
+      const $qEid = document.getElementById('q_entity_id');
+
       let SELECTED_ID = "";
       let SELECTED_IDS = new Set();
-      let LAST_RESOLVED = null;
+      let LAST_TARGET = null;
       let BACKUP_META = new Map();
+      let LAST_SHOWN = [];
+
+      let ALL_MF = [];
+      let ALL_FN = [];
+      let ALL_EID = [];
 
       function autoGrow(el){
         try{
@@ -234,12 +280,91 @@
         return j;
       }
 
-      async function resolveFromState(){
-        const st = loadState();
-        const friendly_name = (st.friendly_name || "").trim();
-        const entity_id = (st.entity_id || "").trim();
-        const measurement_filter = (st.measurement_filter || "").trim();
-        if(!friendly_name && !entity_id) throw new Error("Bitte im Dashboard zuerst einen Messwert auswaehlen.");
+      function ensureOption(selectEl, value){
+        try{
+          const v = String(value || '');
+          if(!v) return;
+          const has = Array.from(selectEl.options || []).some(o => String(o.value) === v);
+          if(!has){
+            const o = document.createElement('option');
+            o.value = v;
+            o.textContent = v;
+            selectEl.appendChild(o);
+          }
+          selectEl.value = v;
+        }catch(e){}
+      }
+
+      async function loadTagValues(tag, measurement){
+        const qs = new URLSearchParams({tag: tag});
+        if(measurement) qs.set('measurement', measurement);
+        qs.set('range', '30d');
+        const j = await api('./api/tag_values?' + qs.toString());
+        return (j.values || []).map(x => String(x));
+      }
+
+      function setSelectOptions(selectEl, items){
+        const prev = selectEl.value;
+        selectEl.innerHTML = '';
+        // Preserve previous selection even if it isn't in the new list.
+        // This avoids clearing the dropdown when the search input narrows the list.
+        const hasPrev = prev && Array.isArray(items) && items.includes(prev);
+        if(prev && !hasPrev){
+          const o=document.createElement('option');
+          o.value=prev; o.textContent=prev; selectEl.appendChild(o);
+        }
+        (items||[]).forEach(x=>{
+          const o=document.createElement('option');
+          o.value=x; o.textContent=x; selectEl.appendChild(o);
+        });
+        if(prev && Array.from(selectEl.options).some(o=>o.value===prev)) selectEl.value = prev;
+      }
+
+      function filterList(list, term){
+        const t = String(term||'').toLowerCase().trim();
+        if(!t) return (list||[]).slice();
+        return (list||[]).filter(x => String(x||'').toLowerCase().includes(t));
+      }
+
+      function renderTargetLists(){
+        if($mf) setSelectOptions($mf, filterList(ALL_MF, $qMf ? $qMf.value : ''));
+        if($n) setSelectOptions($n, filterList(ALL_FN, $qFn ? $qFn.value : ''));
+        if($e) setSelectOptions($e, filterList(ALL_EID, $qEid ? $qEid.value : ''));
+      }
+
+      async function loadTargetLists(){
+        try{
+          const jm = await api('./api/measurements');
+          ALL_MF = (jm.measurements||[]).map(x=>String(x));
+        }catch(e){ ALL_MF = []; }
+
+        renderTargetLists();
+
+        try{ ALL_FN = await loadTagValues('friendly_name', ''); }catch(e){ ALL_FN = []; }
+        try{ ALL_EID = await loadTagValues('entity_id', ''); }catch(e){ ALL_EID = []; }
+        renderTargetLists();
+      }
+
+      async function autoPickEntityId(){
+        try{
+          const fn = String($n && $n.value ? $n.value : '').trim();
+          if(!fn) return;
+          const cur = String($e && $e.value ? $e.value : '').trim();
+          if(cur) return;
+          const qs = new URLSearchParams({tag:'entity_id', friendly_name: fn, range:'30d'});
+          const j = await api('./api/tag_values?' + qs.toString());
+          const vals = (j.values || []).map(x=>String(x)).filter(Boolean);
+          if(vals.length && $e){
+            ensureOption($e, vals[0]);
+          }
+        }catch(e){}
+      }
+
+      async function resolveTarget(){
+        const friendly_name = String(($n && $n.value) ? $n.value : '').trim();
+        const entity_id = String(($e && $e.value) ? $e.value : '').trim();
+        const measurement_filter = String(($mf && $mf.value) ? $mf.value : '').trim();
+        if(!friendly_name && !entity_id) throw new Error("Bitte einen friendly_name oder entity_id waehlen.");
 
         const j = await api("./api/resolve_signal", {
           method:"POST",
@@ -251,13 +376,18 @@
             range: "all"
           })
         });
-        return {
+        LAST_TARGET = {
           measurement: j.measurement,
           field: j.field,
           friendly_name: friendly_name || null,
           entity_id: entity_id || null,
           measurement_filter: measurement_filter || null,
         };
+        if($sel){
+          $sel.value = [LAST_TARGET.friendly_name || "", LAST_TARGET.entity_id || "", LAST_TARGET.measurement, LAST_TARGET.field].filter(Boolean).join(" | ");
+          autoGrow($sel);
+        }
+        return LAST_TARGET;
       }
 
       function getGraphWindowFromState(){
@@ -283,6 +413,7 @@
         BACKUP_META = new Map();
         $rows.innerHTML = "";
         const shown = (list || []).slice();
+        LAST_SHOWN = shown;
         (shown || []).forEach(b => {
           const id = String(b.id || "");
           if(id) BACKUP_META.set(id, b);
@@ -350,14 +481,12 @@
           if($loc) $loc.textContent = "Speicherort (Add-on): /data/backups";
         }
         renderZoomTxt();
-        LAST_RESOLVED = await resolveFromState();
-        $sel.value = [LAST_RESOLVED.friendly_name || "", LAST_RESOLVED.entity_id || "", LAST_RESOLVED.measurement, LAST_RESOLVED.field].filter(Boolean).join(" | ");
-        autoGrow($sel);
+        if(!LAST_TARGET) throw new Error("Bitte zuerst Auswahl setzen.");
         const qs = new URLSearchParams({
-          measurement: LAST_RESOLVED.measurement,
-          field: LAST_RESOLVED.field,
-          entity_id: LAST_RESOLVED.entity_id || "",
-          friendly_name: LAST_RESOLVED.friendly_name || "",
+          measurement: LAST_TARGET.measurement,
+          field: LAST_TARGET.field,
+          entity_id: LAST_TARGET.entity_id || "",
+          friendly_name: LAST_TARGET.friendly_name || "",
         });
         const j = await api("./api/backups?" + qs.toString());
         render(j.backups || []);
@@ -365,11 +494,11 @@
 
       async function createBackup(){
         err(""); ok("");
-        if(!LAST_RESOLVED) LAST_RESOLVED = await resolveFromState();
+        await resolveTarget();
         const j = await api("./api/backup_create", {
           method:"POST",
           headers:{"Content-Type":"application/json"},
-          body: JSON.stringify(LAST_RESOLVED)
+          body: JSON.stringify(LAST_TARGET)
         });
         ok(j.message || "Backup erstellt.");
         await loadList();
@@ -377,13 +506,13 @@
 
       async function createRangeBackup(){
         err(""); ok("");
-        if(!LAST_RESOLVED) LAST_RESOLVED = await resolveFromState();
+        await resolveTarget();
         const win = getGraphWindowFromState();
         if(!win) throw new Error("Kein Graph-Zeitraum vorhanden. Bitte im Dashboard Daten laden und ggf. zoomen.");
         const j = await api("./api/backup_create_range", {
           method:"POST",
           headers:{"Content-Type":"application/json"},
-          body: JSON.stringify({ ...LAST_RESOLVED, ...win })
+          body: JSON.stringify({ ...LAST_TARGET, ...win })
         });
         ok(j.message || "Zeitbereich Backup erstellt.");
         await loadList();
@@ -391,12 +520,12 @@
 
       async function createRangeBackupSel(){
         err(""); ok("");
-        if(!LAST_RESOLVED) LAST_RESOLVED = await resolveFromState();
+        await resolveTarget();
         const tf = timeFilter();
         const j = await api("./api/backup_create_range", {
           method:"POST",
           headers:{"Content-Type":"application/json"},
-          body: JSON.stringify({ ...LAST_RESOLVED, start: tf.start, stop: tf.stop })
+          body: JSON.stringify({ ...LAST_TARGET, start: tf.start, stop: tf.stop })
         });
         ok(j.message || "Zeitbereich Backup erstellt.");
         await loadList();
@@ -428,11 +557,18 @@
         await loadList();
       }
 
-      $reload.addEventListener('click', ()=>loadList().catch(e=>err(String(e && e.message ? e.message : e))));
+      $reload.addEventListener('click', ()=>resolveTarget().then(()=>loadList()).catch(e=>err(String(e && e.message ? e.message : e))));
       $createFull.addEventListener('click', ()=>createBackup().catch(e=>err(String(e && e.message ? e.message : e))));
       $createRange.addEventListener('click', ()=>createRangeBackup().catch(e=>err(String(e && e.message ? e.message : e))));
       $createRangeSel.addEventListener('click', ()=>createRangeBackupSel().catch(e=>err(String(e && e.message ? e.message : e))));
       $del.addEventListener('click', ()=>deleteBackup().catch(e=>err(String(e && e.message ? e.message : e))));
+
+      if($qMf) $qMf.addEventListener('input', ()=>renderTargetLists());
+      if($qFn) $qFn.addEventListener('input', ()=>renderTargetLists());
+      if($qEid) $qEid.addEventListener('input', ()=>renderTargetLists());
+      if($mf) $mf.addEventListener('change', ()=>resolveTarget().then(()=>loadList()).catch(e=>err(String(e && e.message ? e.message : e))));
+      if($n) $n.addEventListener('change', ()=>{ autoPickEntityId().then(()=>resolveTarget().then(()=>loadList()).catch(e=>err(String(e && e.message ? e.message : e)))); });
+      if($e) $e.addEventListener('change', ()=>resolveTarget().then(()=>loadList()).catch(e=>err(String(e && e.message ? e.message : e))));
 
       if($selAll){
         $selAll.addEventListener('change', ()=>{
@@ -440,7 +576,16 @@
           const ids = Array.from(document.querySelectorAll('#rows tr')).map(tr=>String(tr.dataset.id||""))
             .filter(Boolean);
           SELECTED_IDS = new Set(want ? ids : []);
-          loadList().catch(()=>{});
+          try{
+            document.querySelectorAll('#rows tr').forEach(tr=>{
+              const id = String(tr.dataset.id||'');
+              const on = id && SELECTED_IDS.has(id);
+              tr.classList.toggle('selected', !!on);
+              const cb = tr.querySelector('input[type="checkbox"]');
+              if(cb) cb.checked = !!on;
+            });
+          }catch(e){}
+          try{ renderSelectAll(LAST_SHOWN || []); }catch(e){}
         });
       }
 
@@ -450,6 +595,17 @@
         if($range && st.range) $range.value = st.range;
         if($start && st.start) $start.value = st.start;
         if($stop && st.stop) $stop.value = st.stop;
+
+        // Default selection from dashboard state (only if not already set on this page)
+        const mf0 = String(st.measurement_filter || '').trim();
+        const fn0 = String(st.friendly_name || '').trim();
+        const e0 = String(st.entity_id || '').trim();
+        if($qMf && !$qMf.value && st.q_measurement_filter) $qMf.value = String(st.q_measurement_filter);
+        if($qFn && !$qFn.value && st.q_friendly_name) $qFn.value = String(st.q_friendly_name);
+        if($qEid && !$qEid.value && st.q_entity_id) $qEid.value = String(st.q_entity_id);
+
+        // Values will be applied after list load.
+        window.__INFLUXBRO_BACKUP_INIT = { mf: mf0, fn: fn0, eid: e0 };
       }catch(e){}
       if($range) $range.addEventListener('change', ()=>{
         $custom.style.display = ($range.value === 'custom') ? 'block' : 'none';
@@ -484,7 +640,16 @@
         obs.observe(document.body, {childList:true, subtree:true});
       }catch(e){}
 
-      loadList().catch(e=>err(String(e && e.message ? e.message : e)));
+      loadTargetLists().then(()=>{
+        try{
+          const init = window.__INFLUXBRO_BACKUP_INIT || {};
+          if($mf && !$mf.value && init.mf) ensureOption($mf, init.mf);
+          if($n && !$n.value && init.fn) ensureOption($n, init.fn);
+          if($e && !$e.value && init.eid) ensureOption($e, init.eid);
+        }catch(e){}
+        renderTargetLists();
+        autoPickEntityId().then(()=>resolveTarget().then(()=>loadList()).catch(e=>err(String(e && e.message ? e.message : e))));
+      }).catch(e=>err(String(e && e.message ? e.message : e)));
       </script>
     </main>
   </div>

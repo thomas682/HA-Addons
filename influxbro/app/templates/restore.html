@@ -95,50 +95,54 @@
             </label>
           </div>
           <pre id="plan_query" style="display:none; margin:6px 0 0 0; padding:10px 12px; border:1px solid #eee; border-radius:12px; background:#fafafa; white-space:pre; overflow:auto; max-height: 220px;" data-ui="restore.query" title="restore.query"></pre>
-         <div class="grid">
-           <div>
-             <label>_measurement (Filter)</label>
-             <div class="filter_pair">
-               <input id="q_measurement_filter" class="search" placeholder="Suchen..." data-ui="restore.measurement_filter_search" title="restore.measurement_filter_search" />
-               <select id="measurement_filter" data-ui="restore.measurement_filter_select" title="restore.measurement_filter_select"></select>
-             </div>
-           </div>
-           <div>
-             <label>Messwert (Klartext / friendly_name)</label>
-             <div class="filter_pair">
-               <input id="q_friendly_name" class="search" placeholder="Suchen..." data-ui="restore.friendly_search" title="restore.friendly_search" />
-               <select id="friendly_name" data-ui="restore.friendly_select" title="restore.friendly_select"></select>
-             </div>
-           </div>
-           <div>
-             <label>entity_id (optional)</label>
-             <div class="filter_pair">
-               <input id="q_entity_id" class="search" placeholder="Suchen..." data-ui="restore.entity_search" title="restore.entity_search" />
-               <select id="entity_id" data-ui="restore.entity_select" title="restore.entity_select"></select>
-             </div>
-           </div>
-           <div>
-             <label>Ziel (aufgeloest)</label>
-             <textarea id="sel" readonly data-ui="restore.selection" title="restore.selection"></textarea>
-           </div>
-         </div>
+          <details id="selection_details" open data-ui="section.selection" title="section.selection" style="margin-top: 10px;">
+            <summary>Auswahl</summary>
 
-         <div class="row" data-ui="restore.time" title="restore.time">
-           <div style="min-width: 220px;">
-             <label>Zeitfilter</label>
-             <select id="range" data-ui="restore.range" title="restore.range">
-               <option value="all" selected>Alle Werte</option>
-               <option value="custom">Benutzerdefiniert…</option>
-             </select>
-           </div>
-           <div id="custom" style="min-width: 320px; display:none;">
-             <label>Von/Bis (lokal)</label>
-             <div class="row" style="margin-top:0;">
-               <input id="start" type="datetime-local" data-ui="restore.start" title="restore.start" />
-               <input id="stop" type="datetime-local" data-ui="restore.stop" title="restore.stop" />
-             </div>
-           </div>
-         </div>
+            <div class="grid">
+              <div>
+                <label>_measurement (Filter)</label>
+                <div class="filter_pair">
+                  <input id="q_measurement_filter" class="search" placeholder="Suchen..." data-ui="restore.measurement_filter_search" title="restore.measurement_filter_search" />
+                  <select id="measurement_filter" data-ui="restore.measurement_filter_select" title="restore.measurement_filter_select"></select>
+                </div>
+              </div>
+              <div>
+                <label>Messwert (Klartext / friendly_name)</label>
+                <div class="filter_pair">
+                  <input id="q_friendly_name" class="search" placeholder="Suchen..." data-ui="restore.friendly_search" title="restore.friendly_search" />
+                  <select id="friendly_name" data-ui="restore.friendly_select" title="restore.friendly_select"></select>
+                </div>
+              </div>
+              <div>
+                <label>entity_id (optional)</label>
+                <div class="filter_pair">
+                  <input id="q_entity_id" class="search" placeholder="Suchen..." data-ui="restore.entity_search" title="restore.entity_search" />
+                  <select id="entity_id" data-ui="restore.entity_select" title="restore.entity_select"></select>
+                </div>
+              </div>
+              <div>
+                <label>Ziel (aufgeloest)</label>
+                <textarea id="sel" readonly data-ui="restore.selection" title="restore.selection"></textarea>
+              </div>
+            </div>
+
+            <div class="row" data-ui="restore.time" title="restore.time">
+              <div style="min-width: 220px;">
+                <label>Zeitfilter</label>
+                <select id="range" data-ui="restore.range" title="restore.range">
+                  <option value="all" selected>Alle Werte</option>
+                  <option value="custom">Benutzerdefiniert…</option>
+                </select>
+              </div>
+              <div id="custom" style="min-width: 320px; display:none;">
+                <label>Von/Bis (lokal)</label>
+                <div class="row" style="margin-top:0;">
+                  <input id="start" type="datetime-local" data-ui="restore.start" title="restore.start" />
+                  <input id="stop" type="datetime-local" data-ui="restore.stop" title="restore.stop" />
+                </div>
+              </div>
+            </div>
+          </details>
 
            <div class="row" data-ui="restore.actions" title="restore.actions">
              <div class="muted" style="min-width: 320px; flex:1; padding-top: 6px;" data-ui="restore.write_hint" title="restore.write_hint">Hinweis: Schreiben ist nur moeglich, wenn es in Einstellungen erlaubt ist.</div>

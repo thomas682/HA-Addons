@@ -2,13 +2,13 @@
 
 <!-- markdownlint-disable MD024 MD013 -->
 
-## 1.11.24
+## 1.11.26
 
 ### Features
-- Statistik: Entfernt das langsame "counting" (Vorzaehlen) und zeigt keinen Prozentbalken/Restzeit mehr.
+- UI: "Auswahl" ist jetzt auch auf Statistik/Backup/Restore ein- und ausklappbar (wie Dashboard).
 
 ### Bug Fixes
-- Statistik: Abbrechen reagiert schneller durch kleinere per-query Timeouts im Background-Job.
+- (keine)
 
 ### Maintenance
 - (keine)
@@ -20,6 +20,17 @@
 
 ### Bug Fixes
 - (keine)
+
+### Maintenance
+- (keine)
+
+## 1.11.24
+
+### Features
+- Statistik: Entfernt das langsame "counting" (Vorzaehlen) und zeigt keinen Prozentbalken/Restzeit mehr.
+
+### Bug Fixes
+- Statistik: Abbrechen reagiert schneller durch kleinere per-query Timeouts im Background-Job.
 
 ### Maintenance
 - (keine)
