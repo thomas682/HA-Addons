@@ -2,6 +2,28 @@
 
 <!-- markdownlint-disable MD024 MD013 -->
 
+## 1.11.24
+
+### Features
+- Statistik: Entfernt das langsame "counting" (Vorzaehlen) und zeigt keinen Prozentbalken/Restzeit mehr.
+
+### Bug Fixes
+- Statistik: Abbrechen reagiert schneller durch kleinere per-query Timeouts im Background-Job.
+
+### Maintenance
+- (keine)
+
+## 1.11.25
+
+### Features
+- Statistik: _field Filter ist jetzt eine Auswahl (Datalist) wie die anderen Filter und bleibt vorbelegt mit "value".
+
+### Bug Fixes
+- (keine)
+
+### Maintenance
+- (keine)
+
 ## 1.11.23
 
 ### Features

@@ -3078,10 +3078,11 @@ def _global_stats_job_thread(
         return
 
     cfg_local = dict(cfg)
+    # Keep per-query timeouts bounded so cancellation is responsive.
     try:
-        cfg_local["timeout_seconds"] = max(int(cfg_local.get("timeout_seconds", 10)), 120)
+        cfg_local["timeout_seconds"] = min(max(int(cfg_local.get("timeout_seconds", 10)), 10), 30)
     except Exception:
-        cfg_local["timeout_seconds"] = 120
+        cfg_local["timeout_seconds"] = 30
 
     start = _dt_to_rfc3339_utc(start_dt)
     stop = _dt_to_rfc3339_utc(stop_dt)
@@ -3304,46 +3305,10 @@ from(bucket: "{bucket}")
         }
 
     try:
-        set_state("counting", "Zaehle Serien...")
-        total_series: int | None = None
-        try:
-            ff_clause2 = f"|> filter(fn: (r) => r._field == {_flux_str(ff)})" if ff else ""
-            mf_clause = f"|> filter(fn: (r) => r._measurement == {_flux_str(mf)})" if mf else ""
-            tag_clause = ""
-            if eid_f:
-                tag_clause += f"|> filter(fn: (r) => r.entity_id == {_flux_str(eid_f)})\n"
-            if fn_f:
-                tag_clause += f"|> filter(fn: (r) => r.friendly_name == {_flux_str(fn_f)})\n"
-            q_total = f'''
-from(bucket: "{cfg_local["bucket"]}")
-  |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
-  |> filter(fn: (r) => exists r._measurement and exists r._field)
-  {mf_clause}
-  {ff_clause2}
-  {tag_clause.strip()}
-  |> keep(columns: ["_measurement","_field","entity_id","friendly_name","_time","_value"])
-  |> group(columns: ["_measurement","_field","entity_id","friendly_name"])
-  |> last()
-  |> group()
-  |> count(column: "_value")
-'''
-            set_query("Total series", q_total)
-            with v2_client(cfg_local) as c:
-                tables = c.query_api().query(q_total, org=cfg_local["org"])
-                for t in tables or []:
-                    for rec in getattr(t, "records", []) or []:
-                        v = rec.get_value()
-                        if isinstance(v, (int, float)):
-                            total_series = int(v)
-                            break
-                    if total_series is not None:
-                        break
-        except Exception:
-            total_series = None
-
+        # Skip expensive pre-counting. This keeps the job responsive and starts work immediately.
         with GLOBAL_STATS_LOCK:
             if job_id in GLOBAL_STATS_JOBS:
-                GLOBAL_STATS_JOBS[job_id]["total_series"] = total_series
+                GLOBAL_STATS_JOBS[job_id]["total_series"] = None
                 GLOBAL_STATS_JOBS[job_id]["columns"] = list(want_cols)
 
         if should_cancel():
@@ -3383,11 +3348,6 @@ from(bucket: "{cfg_local["bucket"]}")
 
             # If series_list is provided: enrich only these series.
             if series_list is not None:
-                total_series2 = len(series_list)
-                with GLOBAL_STATS_LOCK:
-                    if job_id in GLOBAL_STATS_JOBS:
-                        GLOBAL_STATS_JOBS[job_id]["total_series"] = total_series2
-
                 for idx, srow in enumerate(series_list):
                     if should_cancel():
                         set_state("cancelled", "Abgebrochen.")
@@ -3402,13 +3362,13 @@ from(bucket: "{cfg_local["bucket"]}")
                             GLOBAL_STATS_JOBS[job_id]["groups_count"] = idx
 
                     if want_details:
-                        set_state("query", f"Details {idx+1}/{total_series2}: {fn or eid or (m + '/' + f)}")
+                        set_state("query", f"Details {idx+1}: {fn or eid or (m + '/' + f)}")
                         det = _series_stats(qapi, cfg_local["bucket"], m, f, eid, fn)
                         cnum = int(det.get("count") or 0)
                         scanned_points += max(0, cnum)
                         add_row(m, f, eid, fn, None, det)
                     elif want_last:
-                        set_state("query", f"Letzter Wert {idx+1}/{total_series2}: {fn or eid or (m + '/' + f)}")
+                        set_state("query", f"Letzter Wert {idx+1}: {fn or eid or (m + '/' + f)}")
                         base_last = _series_last(qapi, cfg_local["bucket"], m, f, eid, fn)
                         add_row(m, f, eid, fn, base_last, None)
                     else:

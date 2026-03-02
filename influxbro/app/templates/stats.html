@@ -82,7 +82,8 @@
 
           <div style="min-width: 180px;">
             <label>_field Filter</label>
-            <input id="field_filter" value="value" data-ui="stats.field_filter" title="stats.field_filter" />
+            <input id="field_filter" value="value" list="field_list" data-ui="stats.field_filter" title="stats.field_filter" />
+            <datalist id="field_list"></datalist>
             <div class="muted help" data-ui="stats.field_filter_help" title="stats.field_filter_help">Legt fest, welche Serien/Zeilen geladen werden (Default: <code>value</code>).</div>
           </div>
 
@@ -175,7 +176,7 @@
 
         <div class="muted" id="range_txt" data-ui="stats.range_txt" title="stats.range_txt"></div>
         <div class="status" id="info" data-ui="stats.info" title="stats.info"></div>
-        <div class="progress" aria-hidden="true"><div id="bar"></div></div>
+        <div class="progress" aria-hidden="true" style="display:none;"><div id="bar"></div></div>
 
         <details class="card" id="query_details" style="display:none; margin-top: 10px;" data-ui="stats.query_details" title="stats.query_details">
           <summary>Query Details</summary>
@@ -218,6 +219,7 @@
       const $start = document.getElementById('start');
       const $stop = document.getElementById('stop');
       const $fieldFilter = document.getElementById('field_filter');
+      const $fieldList = document.getElementById('field_list');
       const $measurementFilter = document.getElementById('measurement_filter');
       const $friendlyFilter = document.getElementById('friendly_filter');
       const $entityFilter = document.getElementById('entity_filter');
@@ -559,6 +561,10 @@
 
       function rebuildDatalists(){
         try{
+          if($fieldList){
+            const xs = Array.from(new Set((ROWS||[]).map(r=>String(r.field||'')).filter(Boolean))).sort();
+            $fieldList.innerHTML = xs.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"></option>`).join('');
+          }
           if($measurementList){
             const ms = Array.from(new Set((ROWS||[]).map(r=>String(r.measurement||'')).filter(Boolean))).sort();
             $measurementList.innerHTML = ms.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"></option>`).join('');
@@ -595,7 +601,7 @@
         RUNNING = true;
         RUN_CANCELLED = false;
         err('');
-        setBar(0);
+        setQueryDetails('', '');
         // Keep existing table visible while the new job runs.
 
         try{
@@ -618,21 +624,10 @@
             const msg = String(st.message || '');
             const elapsed = String(st.elapsed || '');
             const cur = String(st.current || '');
-            const pct = (st.percent !== null && st.percent !== undefined) ? Number(st.percent) : null;
-            if(pct !== null && isFinite(pct)) setBar(pct);
 
             setQueryDetails(st.last_query_label, st.last_query);
-
-            let eta = '';
-            try{
-              const es = parseHmsToSeconds(elapsed);
-              if(pct !== null && isFinite(pct) && pct > 0.1 && es !== null && es >= 0){
-                const rem = Math.trunc((es * (100 - pct)) / pct);
-                eta = `Restzeit: ~${fmtHms(rem)}`;
-              }
-            }catch(e){}
             setStatus([
-              `Status: ${state} | Laufzeit: ${elapsed}` + (eta ? (` | ${eta}`) : ''),
+              `Status: ${state} | Laufzeit: ${elapsed}`,
               msg ? ('Aktion: ' + msg) : '',
               cur ? (`Aktuell: ${cur}`) : '',
             ]);
@@ -640,7 +635,6 @@
             if(st.ready){
               stopPolling();
               fetchAllResults().then(()=>{
-                setBar(100);
                 setStatus([`Fertig. Zeilen: ${(ROWS||[]).length}`, '']);
                 if(!JOB_MERGE) setLastJobId(JOB_ID);
                 setJobId(null);
@@ -675,7 +669,7 @@
         RUNNING = true;
         RUN_CANCELLED = false;
         err('');
-        setBar(0);
+        setQueryDetails('', '');
         setStatus(['Hintergrundabfrage laeuft...', '']);
         beginPolling();
       }
@@ -940,6 +934,7 @@
       });
       $deleteRows.addEventListener('click', ()=>{
         (LAST_VISIBLE_KEYS || []).forEach(k => { if(k) DELETED.add(k); });
+        setQueryDetails('', '');
         render();
       });
       $q.addEventListener('input', debounce(()=>render(), 120));
