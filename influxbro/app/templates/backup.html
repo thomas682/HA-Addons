@@ -24,10 +24,6 @@
     .row { display:flex; gap: 10px; flex-wrap:wrap; align-items:end; margin-top: 10px; justify-content:flex-start; }
     .grid { display:grid; grid-template-columns: repeat(2, minmax(260px, 1fr)); gap: 12px; margin-top: 12px; align-items:end; }
     @media (max-width: 980px){ .grid { grid-template-columns: 1fr; } }
-    .filter_pair { display:flex; gap: 10px; align-items:stretch; }
-    .filter_pair input.search { height: 34px; padding: 8px 10px; width: 200px; }
-    .filter_pair select { flex: 1; min-width: 0; }
-    @media (max-width: 980px){ .filter_pair { flex-direction: column; } .filter_pair input.search { width: 100%; } }
     label { display:block; font-size: 12px; opacity: 0.8; }
     input, select, button, textarea { padding: 10px 12px; height: 40px; box-sizing: border-box; }
     textarea { font: inherit; resize: vertical; min-height: 40px; width: 100%; white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -59,24 +55,18 @@
           <div class="grid" style="margin-top: 10px;" data-ui="backup.target" title="backup.target">
             <div>
               <label>_measurement (Filter)</label>
-              <div class="filter_pair">
-                <input id="q_measurement_filter" class="search" placeholder="Suchen..." data-ui="backup.measurement_filter_search" title="backup.measurement_filter_search" />
-                <select id="measurement_filter" data-ui="backup.measurement_filter_select" title="backup.measurement_filter_select"></select>
-              </div>
+              <input id="measurement_filter" list="measurement_list" placeholder="optional" data-ui="backup.measurement_filter" title="backup.measurement_filter" />
+              <datalist id="measurement_list"></datalist>
             </div>
             <div>
               <label>Messwert (Klartext / friendly_name)</label>
-              <div class="filter_pair">
-                <input id="q_friendly_name" class="search" placeholder="Suchen..." data-ui="backup.friendly_search" title="backup.friendly_search" />
-                <select id="friendly_name" data-ui="backup.friendly_select" title="backup.friendly_select"></select>
-              </div>
+              <input id="friendly_name" list="friendly_list" placeholder="optional" data-ui="backup.friendly_name" title="backup.friendly_name" />
+              <datalist id="friendly_list"></datalist>
             </div>
             <div>
               <label>entity_id (optional)</label>
-              <div class="filter_pair">
-                <input id="q_entity_id" class="search" placeholder="Suchen..." data-ui="backup.entity_search" title="backup.entity_search" />
-                <select id="entity_id" data-ui="backup.entity_select" title="backup.entity_select"></select>
-              </div>
+              <input id="entity_id" list="entity_list" placeholder="optional" data-ui="backup.entity_id" title="backup.entity_id" />
+              <datalist id="entity_list"></datalist>
             </div>
           </div>
 
@@ -165,9 +155,9 @@
       const $mf = document.getElementById('measurement_filter');
       const $n = document.getElementById('friendly_name');
       const $e = document.getElementById('entity_id');
-      const $qMf = document.getElementById('q_measurement_filter');
-      const $qFn = document.getElementById('q_friendly_name');
-      const $qEid = document.getElementById('q_entity_id');
+      const $mfList = document.getElementById('measurement_list');
+      const $fnList = document.getElementById('friendly_list');
+      const $eidList = document.getElementById('entity_list');
 
       let SELECTED_ID = "";
       let SELECTED_IDS = new Set();
@@ -280,18 +270,13 @@
         return j;
       }
 
-      function ensureOption(selectEl, value){
+      function setValueIfEmpty(inputEl, value){
         try{
-          const v = String(value || '');
+          if(!inputEl) return;
+          if(String(inputEl.value || '').trim()) return;
+          const v = String(value || '').trim();
           if(!v) return;
-          const has = Array.from(selectEl.options || []).some(o => String(o.value) === v);
-          if(!has){
-            const o = document.createElement('option');
-            o.value = v;
-            o.textContent = v;
-            selectEl.appendChild(o);
-          }
-          selectEl.value = v;
+          inputEl.value = v;
         }catch(e){}
       }
 
@@ -303,33 +288,12 @@
         return (j.values || []).map(x => String(x));
       }
 
-      function setSelectOptions(selectEl, items){
-        const prev = selectEl.value;
-        selectEl.innerHTML = '';
-        // Preserve previous selection even if it isn't in the new list.
-        // This avoids clearing the dropdown when the search input narrows the list.
-        const hasPrev = prev && Array.isArray(items) && items.includes(prev);
-        if(prev && !hasPrev){
-          const o=document.createElement('option');
-          o.value=prev; o.textContent=prev; selectEl.appendChild(o);
-        }
-        (items||[]).forEach(x=>{
-          const o=document.createElement('option');
-          o.value=x; o.textContent=x; selectEl.appendChild(o);
-        });
-        if(prev && Array.from(selectEl.options).some(o=>o.value===prev)) selectEl.value = prev;
-      }
-
-      function filterList(list, term){
-        const t = String(term||'').toLowerCase().trim();
-        if(!t) return (list||[]).slice();
-        return (list||[]).filter(x => String(x||'').toLowerCase().includes(t));
-      }
-
-      function renderTargetLists(){
-        if($mf) setSelectOptions($mf, filterList(ALL_MF, $qMf ? $qMf.value : ''));
-        if($n) setSelectOptions($n, filterList(ALL_FN, $qFn ? $qFn.value : ''));
-        if($e) setSelectOptions($e, filterList(ALL_EID, $qEid ? $qEid.value : ''));
+      function setDatalistOptions(listEl, items){
+        try{
+          if(!listEl) return;
+          const xs = (items || []).map(x => String(x)).filter(Boolean);
+          listEl.innerHTML = xs.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"></option>`).join('');
+        }catch(e){}
       }
 
       async function loadTargetLists(){
@@ -338,11 +302,12 @@
           ALL_MF = (jm.measurements||[]).map(x=>String(x));
         }catch(e){ ALL_MF = []; }
 
-        renderTargetLists();
-
         try{ ALL_FN = await loadTagValues('friendly_name', ''); }catch(e){ ALL_FN = []; }
         try{ ALL_EID = await loadTagValues('entity_id', ''); }catch(e){ ALL_EID = []; }
-        renderTargetLists();
+
+        setDatalistOptions($mfList, ALL_MF);
+        setDatalistOptions($fnList, ALL_FN);
+        setDatalistOptions($eidList, ALL_EID);
       }
 
       async function autoPickEntityId(){
@@ -354,9 +319,7 @@
           const qs = new URLSearchParams({tag:'entity_id', friendly_name: fn, range:'30d'});
           const j = await api('./api/tag_values?' + qs.toString());
           const vals = (j.values || []).map(x=>String(x)).filter(Boolean);
-          if(vals.length && $e){
-            ensureOption($e, vals[0]);
-          }
+          if(vals.length && $e) setValueIfEmpty($e, vals[0]);
         }catch(e){}
       }
 
@@ -563,12 +526,18 @@
       $createRangeSel.addEventListener('click', ()=>createRangeBackupSel().catch(e=>err(String(e && e.message ? e.message : e))));
       $del.addEventListener('click', ()=>deleteBackup().catch(e=>err(String(e && e.message ? e.message : e))));
 
-      if($qMf) $qMf.addEventListener('input', ()=>renderTargetLists());
-      if($qFn) $qFn.addEventListener('input', ()=>renderTargetLists());
-      if($qEid) $qEid.addEventListener('input', ()=>renderTargetLists());
-      if($mf) $mf.addEventListener('change', ()=>resolveTarget().then(()=>loadList()).catch(e=>err(String(e && e.message ? e.message : e))));
-      if($n) $n.addEventListener('change', ()=>{ autoPickEntityId().then(()=>resolveTarget().then(()=>loadList()).catch(e=>err(String(e && e.message ? e.message : e)))); });
-      if($e) $e.addEventListener('change', ()=>resolveTarget().then(()=>loadList()).catch(e=>err(String(e && e.message ? e.message : e))));
+      function debounce(fn, ms){
+        let t=null;
+        return ()=>{ if(t) clearTimeout(t); t=setTimeout(fn, ms); };
+      }
+
+      const onTargetChanged = debounce(()=>{
+        resolveTarget().then(()=>loadList()).catch(e=>err(String(e && e.message ? e.message : e)));
+      }, 250);
+
+      if($mf) $mf.addEventListener('input', onTargetChanged);
+      if($n) $n.addEventListener('input', ()=>{ autoPickEntityId().then(()=>onTargetChanged()); });
+      if($e) $e.addEventListener('input', onTargetChanged);
 
       if($selAll){
         $selAll.addEventListener('change', ()=>{
@@ -600,10 +569,6 @@
         const mf0 = String(st.measurement_filter || '').trim();
         const fn0 = String(st.friendly_name || '').trim();
         const e0 = String(st.entity_id || '').trim();
-        if($qMf && !$qMf.value && st.q_measurement_filter) $qMf.value = String(st.q_measurement_filter);
-        if($qFn && !$qFn.value && st.q_friendly_name) $qFn.value = String(st.q_friendly_name);
-        if($qEid && !$qEid.value && st.q_entity_id) $qEid.value = String(st.q_entity_id);
-
         // Values will be applied after list load.
         window.__INFLUXBRO_BACKUP_INIT = { mf: mf0, fn: fn0, eid: e0 };
       }catch(e){}
@@ -643,11 +608,10 @@
       loadTargetLists().then(()=>{
         try{
           const init = window.__INFLUXBRO_BACKUP_INIT || {};
-          if($mf && !$mf.value && init.mf) ensureOption($mf, init.mf);
-          if($n && !$n.value && init.fn) ensureOption($n, init.fn);
-          if($e && !$e.value && init.eid) ensureOption($e, init.eid);
+          if($mf && !$mf.value && init.mf) $mf.value = String(init.mf);
+          if($n && !$n.value && init.fn) $n.value = String(init.fn);
+          if($e && !$e.value && init.eid) $e.value = String(init.eid);
         }catch(e){}
-        renderTargetLists();
         autoPickEntityId().then(()=>resolveTarget().then(()=>loadList()).catch(e=>err(String(e && e.message ? e.message : e))));
       }).catch(e=>err(String(e && e.message ? e.message : e)));
       </script>

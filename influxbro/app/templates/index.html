@@ -127,19 +127,15 @@
     <div class="control control_lr" id="c_measurement_filter" data-ui="filter_measurement">
       <label>_measurement (Filter)</label>
       <div class="stack">
-        <div class="filter_pair" data-ui="filter_measurement_pair">
-          <input id="q_measurement_filter" class="search" placeholder="Suchen..." data-ui="filter_measurement_search" />
-          <select id="measurement_filter" data-ui="filter_measurement_select"></select>
-        </div>
+        <input id="measurement_filter" list="measurement_filter_list" placeholder="optional" data-ui="filter_measurement_input" />
+        <datalist id="measurement_filter_list"></datalist>
       </div>
     </div>
     <div class="control control_lr" id="c_friendly" data-ui="filter_friendly">
       <label>Messwert (Klartext / friendly_name)</label>
       <div class="stack">
-        <div class="filter_pair" data-ui="filter_friendly_pair">
-          <input id="q_friendly_name" class="search" placeholder="Suchen..." data-ui="filter_friendly_search" />
-          <select id="friendly_name" data-ui="filter_friendly_select"></select>
-        </div>
+        <input id="friendly_name" list="friendly_list" placeholder="optional" data-ui="filter_friendly_input" />
+        <datalist id="friendly_list"></datalist>
       </div>
     </div>
     <div class="control" id="c_range" data-ui="filter_range"><label class="label_row"><span>Zeitraum (Graph/Tabelle)</span><span id="range_from_to" data-ui="filter_range_bounds"></span></label>
@@ -162,10 +158,8 @@
     <div class="control control_lr" id="c_entity" data-ui="filter_entity">
       <label>entity_id (optional)</label>
       <div class="stack">
-        <div class="filter_pair" data-ui="filter_entity_pair">
-          <input id="q_entity_id" class="search" placeholder="Suchen..." data-ui="filter_entity_search" />
-          <select id="entity_id" data-ui="filter_entity_select"></select>
-        </div>
+        <input id="entity_id" list="entity_list" placeholder="optional" data-ui="filter_entity_input" />
+        <datalist id="entity_list"></datalist>
       </div>
     </div>
     <div class="control span2" id="custom_range" style="display:none;">
@@ -448,9 +442,9 @@ const $r = document.getElementById('range');
 const $e = document.getElementById('entity_id');
 const $n = document.getElementById('friendly_name');
 const $mf = document.getElementById('measurement_filter');
-const $qMf = document.getElementById('q_measurement_filter');
-const $qFn = document.getElementById('q_friendly_name');
-const $qEid = document.getElementById('q_entity_id');
+const $mfList = document.getElementById('measurement_filter_list');
+const $friendlyList = document.getElementById('friendly_list');
+const $entityList = document.getElementById('entity_list');
 const $start = document.getElementById('start');
 const $stop = document.getElementById('stop');
 const $custom = document.getElementById('custom_range');
@@ -655,9 +649,6 @@ function saveState(){
       range: $r ? $r.value : "24h",
       start: $start ? $start.value : "",
       stop: $stop ? $stop.value : "",
-      q_measurement_filter: $qMf ? $qMf.value : "",
-      q_friendly_name: $qFn ? $qFn.value : "",
-      q_entity_id: $qEid ? $qEid.value : "",
       tbl_filter_enabled: TABLE_FILTER.enabled,
       tbl_mode: TABLE_FILTER.mode,
       tbl_a_op: TABLE_FILTER.a_op,
@@ -1513,23 +1504,28 @@ let ALL_MEASUREMENTS = [];
 let ALL_FRIENDLY = [];
 let ALL_ENTITY = [];
 
+function setDatalistOptions(listEl, items){
+  try{
+    if(!listEl) return;
+    const xs = (items || []).map(x => String(x)).filter(Boolean);
+    listEl.innerHTML = xs.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"></option>`).join('');
+  }catch(e){}
+}
+
 function renderMeasurements(){
-  const filtered = filterList(ALL_MEASUREMENTS, $qMf && $qMf.value);
-  setSelectOptions($mf, filtered, {value:"", label:"(alle)"});
+  setDatalistOptions($mfList, ALL_MEASUREMENTS);
   setSelectOptions($m, ALL_MEASUREMENTS, null);
-  if($cntMf) $cntMf.textContent = filtered.length ? `(${filtered.length})` : "";
+  if($cntMf) $cntMf.textContent = ALL_MEASUREMENTS.length ? `(${ALL_MEASUREMENTS.length})` : "";
 }
 
 function renderFriendly(){
-  const filtered = filterList(ALL_FRIENDLY, $qFn && $qFn.value);
-  setSelectOptions($n, filtered, {value:"", label:"(bitte waehlen)"});
-  if($cntFn) $cntFn.textContent = filtered.length ? `(${filtered.length})` : "";
+  setDatalistOptions($friendlyList, ALL_FRIENDLY);
+  if($cntFn) $cntFn.textContent = ALL_FRIENDLY.length ? `(${ALL_FRIENDLY.length})` : "";
 }
 
 function renderEntity(){
-  const filtered = filterList(ALL_ENTITY, $qEid && $qEid.value);
-  setSelectOptions($e, filtered, {value:"", label:"(alle)"});
-  if($cntEid) $cntEid.textContent = filtered.length > 1 ? `(${filtered.length})` : "";
+  setDatalistOptions($entityList, ALL_ENTITY);
+  if($cntEid) $cntEid.textContent = ALL_ENTITY.length > 1 ? `(${ALL_ENTITY.length})` : "";
 }
 
 async function loadMeasurements(){
@@ -1545,7 +1541,6 @@ async function loadFields(){
 }
 
 async function loadEntityIds(){
-  $e.innerHTML = "";
   let url = "./api/tag_values?tag=entity_id";
   const qp = tagQueryParams({includeFriendly: true, includeEntity: false});
   if(qp) url += "&" + qp;
@@ -1555,7 +1550,6 @@ async function loadEntityIds(){
 }
 
 async function loadFriendlyNames(){
-  $n.innerHTML = "";
   let url = "./api/tag_values?tag=friendly_name";
   const qp = tagQueryParams({includeFriendly: false, includeEntity: true});
   if(qp) url += "&" + qp;
@@ -2591,8 +2585,9 @@ function autoSpanSelect(controlId, selectEl){
   try{
     const c = document.getElementById(controlId);
     if(!c || !selectEl) return;
-    const opt = selectEl.selectedOptions && selectEl.selectedOptions[0];
-    const text = opt ? opt.textContent : "";
+    const tag = String(selectEl.tagName || '').toLowerCase();
+    const opt = (tag === 'select') ? (selectEl.selectedOptions && selectEl.selectedOptions[0]) : null;
+    const text = (tag === 'select') ? (opt ? opt.textContent : "") : String(selectEl.value || "");
     if(!text) { c.classList.remove("span2"); return; }
     const w = c.getBoundingClientRect().width;
     const meas = document.createElement("canvas").getContext("2d");
@@ -2624,7 +2619,7 @@ $n.addEventListener("change", async ()=>{
     await loadEntityIds();
     // Auto-select entity_id: if there are candidates, pick the first.
     const candidates = (ALL_ENTITY || []).filter(x => x);
-    if(candidates.length >= 1){
+    if(!String($e.value || '').trim() && candidates.length >= 1){
       $e.value = candidates[0];
       saveState();
       renderEntity();
@@ -2655,9 +2650,7 @@ $stop.addEventListener("change", async ()=>{ if($r.value==="custom") { saveState
 $m.addEventListener("change", async ()=>{ try{ await loadFields(); } catch(e){ err(String(e)); } });
 
 // Search inputs (case-insensitive filtering)
-if($qMf) $qMf.addEventListener("input", ()=>{ saveState(); renderMeasurements(); });
-if($qFn) $qFn.addEventListener("input", ()=>{ saveState(); renderFriendly(); });
-if($qEid) $qEid.addEventListener("input", ()=>{ saveState(); renderEntity(); });
+// (search inputs removed; datalist inputs filter automatically)
 
 // Sortable table
 function toggleSort(key){
@@ -2861,10 +2854,6 @@ document.getElementById("load").addEventListener("click", ()=>refreshAll().catch
     }
 
     const st = loadState();
-    if($qMf && st.q_measurement_filter) $qMf.value = st.q_measurement_filter;
-    if($qFn && st.q_friendly_name) $qFn.value = st.q_friendly_name;
-    if($qEid && st.q_entity_id) $qEid.value = st.q_entity_id;
-
     if($r && st.range) $r.value = st.range;
     if($start && st.start) $start.value = st.start;
     if($stop && st.stop) $stop.value = st.stop;

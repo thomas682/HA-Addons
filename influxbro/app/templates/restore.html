@@ -101,24 +101,18 @@
             <div class="grid">
               <div>
                 <label>_measurement (Filter)</label>
-                <div class="filter_pair">
-                  <input id="q_measurement_filter" class="search" placeholder="Suchen..." data-ui="restore.measurement_filter_search" title="restore.measurement_filter_search" />
-                  <select id="measurement_filter" data-ui="restore.measurement_filter_select" title="restore.measurement_filter_select"></select>
-                </div>
+                <input id="measurement_filter" list="measurement_list" placeholder="optional" data-ui="restore.measurement_filter" title="restore.measurement_filter" />
+                <datalist id="measurement_list"></datalist>
               </div>
               <div>
                 <label>Messwert (Klartext / friendly_name)</label>
-                <div class="filter_pair">
-                  <input id="q_friendly_name" class="search" placeholder="Suchen..." data-ui="restore.friendly_search" title="restore.friendly_search" />
-                  <select id="friendly_name" data-ui="restore.friendly_select" title="restore.friendly_select"></select>
-                </div>
+                <input id="friendly_name" list="friendly_list" placeholder="optional" data-ui="restore.friendly_name" title="restore.friendly_name" />
+                <datalist id="friendly_list"></datalist>
               </div>
               <div>
                 <label>entity_id (optional)</label>
-                <div class="filter_pair">
-                  <input id="q_entity_id" class="search" placeholder="Suchen..." data-ui="restore.entity_search" title="restore.entity_search" />
-                  <select id="entity_id" data-ui="restore.entity_select" title="restore.entity_select"></select>
-                </div>
+                <input id="entity_id" list="entity_list" placeholder="optional" data-ui="restore.entity_id" title="restore.entity_id" />
+                <datalist id="entity_list"></datalist>
               </div>
               <div>
                 <label>Ziel (aufgeloest)</label>
@@ -172,12 +166,12 @@
        const $srcToTarget = document.getElementById('source_to_target');
       const $reload = document.getElementById('reload');
 
-      const $mf = document.getElementById('measurement_filter');
-      const $n = document.getElementById('friendly_name');
-      const $e = document.getElementById('entity_id');
-      const $qMf = document.getElementById('q_measurement_filter');
-      const $qFn = document.getElementById('q_friendly_name');
-      const $qEid = document.getElementById('q_entity_id');
+       const $mf = document.getElementById('measurement_filter');
+       const $n = document.getElementById('friendly_name');
+       const $e = document.getElementById('entity_id');
+       const $mfList = document.getElementById('measurement_list');
+       const $fnList = document.getElementById('friendly_list');
+       const $eidList = document.getElementById('entity_list');
        const $range = document.getElementById('range');
       const $custom = document.getElementById('custom');
       const $start = document.getElementById('start');
@@ -229,20 +223,15 @@
         return (BACKUPS || []).find(b => String(b.id||'') === id) || null;
       }
 
-      function ensureOption(selectEl, value){
-        try{
-          const v = String(value || '');
-          if(!v) return;
-          const has = Array.from(selectEl.options || []).some(o => String(o.value) === v);
-          if(!has){
-            const o = document.createElement('option');
-            o.value = v;
-            o.textContent = v;
-            selectEl.appendChild(o);
-          }
-          selectEl.value = v;
-        }catch(e){}
-      }
+       function setValueIfEmpty(inputEl, value){
+         try{
+           if(!inputEl) return;
+           if(String(inputEl.value || '').trim()) return;
+           const v = String(value || '').trim();
+           if(!v) return;
+           inputEl.value = v;
+         }catch(e){}
+       }
 
       function buildVerifyQuery(){
         try{
@@ -365,41 +354,29 @@
         return (j.values || []).map(x => String(x));
       }
 
-      function setSelectOptions(selectEl, items){
-        const prev = selectEl.value;
-        selectEl.innerHTML = '';
-        (items||[]).forEach(x=>{
-          const o=document.createElement('option');
-          o.value=x; o.textContent=x; selectEl.appendChild(o);
-        });
-        if(prev && Array.from(selectEl.options).some(o=>o.value===prev)) selectEl.value = prev;
-      }
+       function setDatalistOptions(listEl, items){
+         try{
+           if(!listEl) return;
+           const xs = (items || []).map(x => String(x)).filter(Boolean);
+           listEl.innerHTML = xs.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"></option>`).join('');
+         }catch(e){}
+       }
 
-      function filterList(list, term){
-        const t = String(term||'').toLowerCase().trim();
-        if(!t) return (list||[]).slice();
-        return (list||[]).filter(x => String(x||'').toLowerCase().includes(t));
-      }
+       let ALL_MF = []; let ALL_FN = []; let ALL_EID = [];
 
-      let ALL_MF = []; let ALL_FN = []; let ALL_EID = [];
-      function renderTargetLists(){
-        setSelectOptions($mf, filterList(ALL_MF, $qMf.value));
-        setSelectOptions($n, filterList(ALL_FN, $qFn.value));
-        setSelectOptions($e, filterList(ALL_EID, $qEid.value));
-      }
-
-      async function loadTargetLists(){
-        // Measurements list for filter
-        try{
-          const jm = await api('./api/measurements');
-          ALL_MF = (jm.measurements||[]).map(x=>String(x));
-        }catch(e){ ALL_MF = []; }
-        renderTargetLists();
-        // friendly/entity values are global (same as dashboard)
-        try{ ALL_FN = await loadTagValues('friendly_name', ''); }catch(e){ ALL_FN = []; }
-        try{ ALL_EID = await loadTagValues('entity_id', ''); }catch(e){ ALL_EID = []; }
-        renderTargetLists();
-      }
+       async function loadTargetLists(){
+         // Measurements list for filter
+         try{
+           const jm = await api('./api/measurements');
+           ALL_MF = (jm.measurements||[]).map(x=>String(x));
+         }catch(e){ ALL_MF = []; }
+         // friendly/entity values are global (same as dashboard)
+         try{ ALL_FN = await loadTagValues('friendly_name', ''); }catch(e){ ALL_FN = []; }
+         try{ ALL_EID = await loadTagValues('entity_id', ''); }catch(e){ ALL_EID = []; }
+         setDatalistOptions($mfList, ALL_MF);
+         setDatalistOptions($fnList, ALL_FN);
+         setDatalistOptions($eidList, ALL_EID);
+       }
 
       async function resolveTarget(){
         const friendly_name = ($n.value||'').trim();
@@ -428,19 +405,17 @@
         renderPlan();
       }
 
-      async function autoPickEntityId(){
-        try{
-          const fn = String($n.value||'').trim();
-          if(!fn) return;
-          if(String($e.value||'').trim()) return;
-          const qs = new URLSearchParams({tag:'entity_id', friendly_name: fn, range:'30d'});
-          const j = await api('./api/tag_values?' + qs.toString());
-          const vals = (j.values || []).map(x=>String(x)).filter(Boolean);
-          if(vals.length){
-            ensureOption($e, vals[0]);
-          }
-        }catch(e){}
-      }
+       async function autoPickEntityId(){
+         try{
+           const fn = String($n.value||'').trim();
+           if(!fn) return;
+           if(String($e.value||'').trim()) return;
+           const qs = new URLSearchParams({tag:'entity_id', friendly_name: fn, range:'30d'});
+           const j = await api('./api/tag_values?' + qs.toString());
+           const vals = (j.values || []).map(x=>String(x)).filter(Boolean);
+           if(vals.length) setValueIfEmpty($e, vals[0]);
+         }catch(e){}
+       }
 
       function timeFilter(){
         if(!$range || $range.value !== 'custom') return null;
@@ -478,9 +453,9 @@
         try{
           const b = selBackup();
           if(!b) throw new Error('Bitte ein Backup auswaehlen.');
-          if(b.measurement) ensureOption($mf, String(b.measurement));
-          if(b.friendly_name) ensureOption($n, String(b.friendly_name));
-          if(b.entity_id) ensureOption($e, String(b.entity_id));
+          if(b.measurement && $mf) $mf.value = String(b.measurement);
+          if(b.friendly_name && $n) $n.value = String(b.friendly_name);
+          if(b.entity_id && $e) $e.value = String(b.entity_id);
           await autoPickEntityId();
           await resolveTarget();
         }catch(e){
@@ -493,12 +468,19 @@
       $run.addEventListener('click', ()=>runCopy().catch(e=>err(String(e && e.message ? e.message : e))));
 
       if($qBackup) $qBackup.addEventListener('input', ()=>renderList());
-      if($qMf) $qMf.addEventListener('input', ()=>renderTargetLists());
-      if($qFn) $qFn.addEventListener('input', ()=>renderTargetLists());
-      if($qEid) $qEid.addEventListener('input', ()=>renderTargetLists());
-      if($n) $n.addEventListener('change', ()=>{ autoPickEntityId().then(()=>resolveTarget().catch(()=>{})); });
-      if($e) $e.addEventListener('change', ()=>resolveTarget().catch(()=>{}));
-      if($mf) $mf.addEventListener('change', ()=>resolveTarget().catch(()=>{}));
+
+      function debounce(fn, ms){
+        let t=null;
+        return ()=>{ if(t) clearTimeout(t); t=setTimeout(fn, ms); };
+      }
+
+      const onTargetChanged = debounce(()=>{
+        resolveTarget().catch(()=>{});
+      }, 250);
+
+      if($mf) $mf.addEventListener('input', onTargetChanged);
+      if($n) $n.addEventListener('input', ()=>{ autoPickEntityId().then(()=>onTargetChanged()); });
+      if($e) $e.addEventListener('input', onTargetChanged);
       if($range) $range.addEventListener('change', ()=>{ $custom.style.display = ($range.value === 'custom') ? 'block' : 'none'; });
       if($start) $start.addEventListener('change', ()=>renderPlan());
       if($stop) $stop.addEventListener('change', ()=>renderPlan());

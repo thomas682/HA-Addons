@@ -2,6 +2,17 @@
 
 <!-- markdownlint-disable MD024 MD013 -->
 
+## 1.11.27
+
+### Features
+- UI: Auswahl-Filter (measurement/friendly_name/entity_id) sind jetzt als eine Eingabebox mit Vorschlaegen (Datalist) umgesetzt (Dashboard/Backup/Restore).
+
+### Bug Fixes
+- (keine)
+
+### Maintenance
+- (keine)
+
 ## 1.11.26
 
 ### Features
