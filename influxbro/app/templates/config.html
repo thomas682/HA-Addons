@@ -233,9 +233,9 @@
       <div class="card_body">
       <div class="grid">
         <div class="span2">
-          <label>Backup Verzeichnis (unter <code>/data</code>)</label>
+          <label>Backup Verzeichnis (unter <code>/config</code> oder <code>/data</code>)</label>
           <input id="backup_dir" />
-          <div class="muted">Default: <code>/data/backups</code>. Relative Pfade werden unter <code>/data</code> abgelegt. Aus Sicherheitsgruenden sind nur Pfade unter <code>/data</code> erlaubt.</div>
+          <div class="muted">Default: <code>/config/homeassistant/influxbro/backup</code> (im HA Filebrowser sichtbar). Relative Pfade werden unter <code>/config</code> abgelegt. Aus Sicherheitsgruenden sind nur Pfade unter <code>/config</code> oder <code>/data</code> erlaubt.</div>
         </div>
       </div>
       </div>
@@ -403,7 +403,7 @@ function setForm(cfg){
   el.ui_filter_search_width_px.value = cfg.ui_filter_search_width_px ?? 160;
   el.ui_repo_url.value = cfg.ui_repo_url ?? "";
 
-  el.backup_dir.value = cfg.backup_dir ?? "/data/backups";
+  el.backup_dir.value = cfg.backup_dir ?? "/config/homeassistant/influxbro/backup";
 
   el.ui_open_selection.checked = !!cfg.ui_open_selection;
   el.ui_open_graph.checked = !!cfg.ui_open_graph;

@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.11.42
+
+### Features
+
+- Backup: Standard-Backup-Pfad ist jetzt unter <code>/config/homeassistant/influxbro/backup</code> (im HA Filebrowser sichtbar).
+
+### Bug Fixes
+
+- Backup: Beim Update werden vorhandene Backups aus <code>/data/backups</code> automatisch nach <code>/config/homeassistant/influxbro/backup</code> migriert und der alte Ordner geloescht.
+
+### Maintenance
+
+- (keine)
+
 ## 1.11.41
 
 ### Features

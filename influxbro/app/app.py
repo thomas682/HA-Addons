@@ -4,6 +4,7 @@ import logging.handlers
 import math
 import os
 import re
+import shutil
 import sys
 import threading
 import time
@@ -29,7 +30,11 @@ CONFIG_DIR = Path(os.environ.get("CONFIG_DIR", "/config"))
 DATA_DIR = Path(os.environ.get("DATA_DIR", "/data"))
 
 APP_DIR = Path(__file__).resolve().parent
-BACKUP_DIR = DATA_DIR / "backups"  # default; may be overridden via UI config
+DEFAULT_BACKUP_DIR = CONFIG_DIR / "homeassistant" / "influxbro" / "backup"
+OLD_DEFAULT_BACKUP_DIR = DATA_DIR / "backups"
+
+# default; may be overridden via UI config
+BACKUP_DIR = DEFAULT_BACKUP_DIR
 
 GLOBAL_STATS_JOBS: dict[str, dict[str, Any]] = {}
 GLOBAL_STATS_LOCK = threading.Lock()
@@ -524,8 +529,10 @@ DEFAULT_CFG = {
     # Links / Info
     "ui_repo_url": "http://192.168.2.65:7070/thomas/ha-addons",
 
-    # Backups (must live under /data)
-    "backup_dir": "/data/backups",
+    # Backups (must live under /config or /data)
+    "backup_dir": str(DEFAULT_BACKUP_DIR),
+    # One-time migration marker when moving from the old default (/data/backups)
+    "backup_migrated_to_config": False,
 
     # Default collapsed sections
     "ui_open_selection": False,
@@ -587,29 +594,129 @@ def load_cfg():
     return cfg
 
 
+def _path_is_within(root: Path, p: Path) -> bool:
+    try:
+        rr = root.resolve()
+        rp = p.resolve()
+        return rp == rr or rr in rp.parents
+    except Exception:
+        return False
+
+
+def _maybe_migrate_backups(cfg: dict[str, Any], target_dir: Path) -> None:
+    """One-time migrate backups from old default (/data/backups) to /config.
+
+    This is used to make backups visible in the HA file browser (under /config).
+    """
+
+    try:
+        if not _path_is_within(CONFIG_DIR, target_dir):
+            return
+        # Only migrate when we're using the new default.
+        if target_dir.resolve() != DEFAULT_BACKUP_DIR.resolve():
+            return
+        if bool(cfg.get("backup_migrated_to_config")):
+            return
+
+        src = OLD_DEFAULT_BACKUP_DIR
+        if not src.exists() or not src.is_dir():
+            cfg["backup_migrated_to_config"] = True
+            save_cfg(cfg)
+            return
+
+        files = [p for p in src.iterdir() if p.is_file()]
+        if not files:
+            cfg["backup_migrated_to_config"] = True
+            save_cfg(cfg)
+            try:
+                shutil.rmtree(src, ignore_errors=True)
+            except Exception:
+                pass
+            return
+
+        target_dir.mkdir(parents=True, exist_ok=True)
+
+        for p in files:
+            dst = target_dir / p.name
+            if dst.exists():
+                try:
+                    if dst.stat().st_size == p.stat().st_size:
+                        p.unlink(missing_ok=True)
+                        continue
+                except Exception:
+                    pass
+                # Avoid overwriting: copy with a suffix
+                stem = p.name
+                n = 1
+                while True:
+                    cand = target_dir / f"{stem}.dup{n}"
+                    if not cand.exists():
+                        dst = cand
+                        break
+                    n += 1
+
+            shutil.copy2(p, dst)
+            # Only delete source if destination exists and is non-empty (best-effort)
+            try:
+                if dst.exists() and dst.stat().st_size >= 0:
+                    p.unlink(missing_ok=True)
+            except Exception:
+                pass
+
+        # Remove old directory (user requested delete)
+        try:
+            shutil.rmtree(src, ignore_errors=True)
+        except Exception:
+            pass
+
+        # Ensure persisted config points to the new path
+        cfg["backup_dir"] = str(DEFAULT_BACKUP_DIR)
+        cfg["backup_migrated_to_config"] = True
+        save_cfg(cfg)
+    except Exception:
+        # Never break normal operation due to migration issues
+        return
+
+
 def backup_dir(cfg: dict[str, Any] | None = None) -> Path:
-    """Return the configured backup directory (constrained under /data)."""
+    """Return the configured backup directory (constrained under /config or /data)."""
 
     try:
         c = cfg or load_cfg()
         raw = str(c.get("backup_dir") or "").strip()
     except Exception:
+        c = cfg or {}
+        raw = ""
+
+    # Treat the old default as legacy; keep behavior aligned with the new default.
+    if raw in (str(OLD_DEFAULT_BACKUP_DIR), "/data/backups"):
         raw = ""
 
     if not raw:
-        return BACKUP_DIR
+        target = BACKUP_DIR
+    else:
+        try:
+            p = Path(raw)
+            if not p.is_absolute():
+                # Relative paths live under /config.
+                p = CONFIG_DIR / raw
+            p = p.resolve()
+            cfg_root = CONFIG_DIR.resolve()
+            data_root = DATA_DIR.resolve()
+            if _path_is_within(cfg_root, p) or _path_is_within(data_root, p):
+                target = p
+            else:
+                target = BACKUP_DIR
+        except Exception:
+            target = BACKUP_DIR
 
+    # Migrate old default backups to /config when applicable.
+    # Use persisted runtime config (do not persist YAML overlays).
     try:
-        p = Path(raw)
-        if not p.is_absolute():
-            p = DATA_DIR / raw
-        p = p.resolve()
-        root = DATA_DIR.resolve()
-        if p == root or root in p.parents:
-            return p
+        _maybe_migrate_backups(load_cfg(), target)
     except Exception:
-        return BACKUP_DIR
-    return BACKUP_DIR
+        pass
+    return target
 
 
 # Configure logging early from persisted config.

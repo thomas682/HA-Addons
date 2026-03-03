@@ -675,7 +675,7 @@
             $loc.textContent = `Speicherort (Add-on): ${jLoc.container_path || "/data/backups"}`;
           }
         }catch(e){
-          if($loc) $loc.textContent = "Speicherort (Add-on): /data/backups";
+          if($loc) $loc.textContent = "Speicherort (Add-on): /config/homeassistant/influxbro/backup";
         }
         renderZoomTxt();
         renderActionHints();
