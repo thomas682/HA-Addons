@@ -2,6 +2,18 @@
 
 <!-- markdownlint-disable MD024 MD013 -->
 
+## 1.11.33
+
+### Features
+- Dashboard: Bei mehrfachen Treffern zeigt eine Liste die moeglichen entity_id/friendly_name inkl. Zeitraum (von/bis) und Anzahl.
+- Backup: Button "Messwert aus Dashboard uebernehmen" uebernimmt die aktuelle Auswahl aus dem Dashboard.
+
+### Bug Fixes
+- (keine)
+
+### Maintenance
+- (keine)
+
 ## 1.11.32
 
 ### Features

@@ -2345,6 +2345,109 @@ schema.tagValues(
     except Exception as e:
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
 
+
+@app.post("/api/tag_combo_ranges")
+def api_tag_combo_ranges():
+    """Return per-tag time ranges for a measurement/field.
+
+    Used to show "multiple entity_id" for a friendly_name (and vice versa).
+    """
+
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    body = request.get_json(force=True) or {}
+
+    measurement = str(body.get("measurement") or "").strip()
+    field = str(body.get("field") or "").strip()
+    group_tag = str(body.get("group_tag") or "").strip()
+    entity_id = str(body.get("entity_id") or "").strip() or None
+    friendly_name = str(body.get("friendly_name") or "").strip() or None
+
+    if not measurement or not field:
+        return jsonify({"ok": False, "error": "measurement and field required"}), 400
+
+    allowed_tags = {"entity_id", "friendly_name"}
+    if group_tag not in allowed_tags:
+        return jsonify({"ok": False, "error": "unsupported group_tag"}), 400
+
+    # fixed filters must use supported tags
+    if entity_id and friendly_name:
+        # Both is allowed but typically only one is used.
+        pass
+
+    try:
+        limit = int(body.get("limit", 50))
+    except Exception:
+        limit = 50
+    if limit < 1:
+        limit = 1
+    if limit > 200:
+        limit = 200
+
+    if int(cfg.get("influx_version", 2)) != 2:
+        return jsonify({"ok": False, "error": "tag_combo_ranges currently supports InfluxDB v2 only"}), 400
+    if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+        return jsonify({
+            "ok": False,
+            "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
+        }), 400
+
+    conds = [f"r._measurement == {_flux_str(measurement)}", f"r._field == {_flux_str(field)}"]
+    if entity_id:
+        conds.append(f"r.entity_id == {_flux_str(entity_id)}")
+    if friendly_name:
+        conds.append(f"r.friendly_name == {_flux_str(friendly_name)}")
+    conds.append(f"exists r.{group_tag}")
+    predicate = " and ".join(conds)
+
+    bucket = str(cfg["bucket"])
+    q = f'''
+base = from(bucket: "{bucket}")
+  |> range(start: time(v: "1970-01-01T00:00:00Z"))
+  |> filter(fn: (r) => {predicate})
+  |> keep(columns: ["{group_tag}", "_time"])
+  |> group(columns: ["{group_tag}"])
+
+base
+  |> reduce(
+    identity: {{oldest_time: time(v: "2100-01-01T00:00:00Z"), newest_time: time(v: "1970-01-01T00:00:00Z"), count: 0}},
+    fn: (r, acc) => ({{
+      oldest_time: if r._time < acc.oldest_time then r._time else acc.oldest_time,
+      newest_time: if r._time > acc.newest_time then r._time else acc.newest_time,
+      count: acc.count + 1,
+    }}),
+  )
+  |> keep(columns: ["{group_tag}", "oldest_time", "newest_time", "count"])
+  |> sort(columns: ["count"], desc: true)
+  |> limit(n: {limit})
+'''
+
+    def _iso_any(v: Any) -> str | None:
+        if isinstance(v, datetime):
+            return _dt_to_rfc3339_utc(v)
+        if isinstance(v, str) and v.strip():
+            return v.strip()
+        return None
+
+    out_rows: list[dict[str, Any]] = []
+    try:
+        with v2_client(cfg) as c:
+            tables = c.query_api().query(q, org=cfg["org"])
+            for t in tables or []:
+                for rec in getattr(t, "records", []) or []:
+                    vals = getattr(rec, "values", {}) or {}
+                    v = vals.get(group_tag)
+                    if v is None:
+                        continue
+                    out_rows.append({
+                        "value": str(v),
+                        "count": int(vals.get("count") or 0),
+                        "oldest_time": _iso_any(vals.get("oldest_time")),
+                        "newest_time": _iso_any(vals.get("newest_time")),
+                    })
+        return jsonify({"ok": True, "rows": out_rows})
+    except Exception as e:
+        return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
+
 @app.post("/api/query")
 def query():
     cfg = _overlay_from_yaml_if_enabled(load_cfg())

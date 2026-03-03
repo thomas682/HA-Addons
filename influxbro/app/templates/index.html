@@ -180,6 +180,23 @@
     </div>
   </div>
 
+  <div class="table_wrap" id="tag_choices" style="display:none; margin-top: 10px;" data-ui="dashboard.tag_choices" title="dashboard.tag_choices">
+    <div class="muted" id="tag_choices_title"></div>
+    <div class="table_box" style="max-height: 220px; overflow:auto; border: 1px solid #eee; border-radius: 10px; margin-top: 8px;">
+      <table style="margin-top:0;">
+        <thead>
+          <tr>
+            <th>Wert</th>
+            <th>Von</th>
+            <th>Bis</th>
+            <th>Anzahl</th>
+          </tr>
+        </thead>
+        <tbody id="tag_choices_rows"></tbody>
+      </table>
+    </div>
+  </div>
+
   <div class="muted" data-ui="tip.selection" title="tip.selection">Laedt Graph/Tabelle/Statistik erst nach Klick auf <code>Aktualisieren</code>.</div>
 
   </details>
@@ -514,6 +531,10 @@ const $loadStatus = document.getElementById('load_status');
 const $loadSpinner = document.getElementById('load_spinner');
 const $loadStatusTxt = document.getElementById('load_status_txt');
 const $loadStatusTime = document.getElementById('load_status_time');
+
+const $tagChoices = document.getElementById('tag_choices');
+const $tagChoicesTitle = document.getElementById('tag_choices_title');
+const $tagChoicesRows = document.getElementById('tag_choices_rows');
 
 const $editNeighbors = document.getElementById('edit_neighbors');
 const $editNeighborsInfo = document.getElementById('edit_neighbors_info');
@@ -1255,6 +1276,104 @@ function displayError(e){
   err(s.length > 600 ? (s.slice(0, 600) + "...") : s);
 }
 
+function _hideTagChoices(){
+  try{
+    if($tagChoices) $tagChoices.style.display = 'none';
+    if($tagChoicesRows) $tagChoicesRows.innerHTML = '';
+    if($tagChoicesTitle) $tagChoicesTitle.textContent = '';
+  }catch(e){}
+}
+
+function _renderTagChoices(kind, rows){
+  try{
+    const rs = (rows || []).slice();
+    if(!$tagChoices || !$tagChoicesRows || !$tagChoicesTitle){
+      return;
+    }
+    if(rs.length <= 1){
+      _hideTagChoices();
+      return;
+    }
+
+    const isEntity = kind === 'entity_id';
+    $tagChoicesTitle.textContent = isEntity
+      ? `Mehrere entity_id gefunden (${rs.length}) – bitte waehlen:`
+      : `Mehrere friendly_name gefunden (${rs.length}) – bitte waehlen:`;
+
+    $tagChoicesRows.innerHTML = '';
+    rs.forEach(r => {
+      const v = String(r.value || '');
+      const tr = document.createElement('tr');
+      tr.style.cursor = 'pointer';
+      const tdV = document.createElement('td'); tdV.textContent = v;
+      const tdA = document.createElement('td'); tdA.textContent = r.oldest_time ? fmtTs(String(r.oldest_time)) : '';
+      const tdB = document.createElement('td'); tdB.textContent = r.newest_time ? fmtTs(String(r.newest_time)) : '';
+      const tdC = document.createElement('td'); tdC.textContent = (r.count !== null && r.count !== undefined) ? String(r.count) : '';
+      tr.appendChild(tdV);
+      tr.appendChild(tdA);
+      tr.appendChild(tdB);
+      tr.appendChild(tdC);
+      tr.addEventListener('click', ()=>{
+        (async ()=>{
+          try{
+            if(isEntity){
+              if($e) $e.value = v;
+              saveState();
+              try{ await resolveSignal(); }catch(e){}
+              await loadFriendlyNames();
+              try{
+                const cur = String($n && $n.value ? $n.value : '').trim();
+                if(cur && !(ALL_FRIENDLY || []).includes(cur)){
+                  $n.value = '';
+                  saveState();
+                  renderFriendly();
+                }
+              }catch(e){}
+            }else{
+              if($n) $n.value = v;
+              saveState();
+              try{ await resolveSignal(); }catch(e){}
+              await loadEntityIds();
+              try{
+                const cur = String($e && $e.value ? $e.value : '').trim();
+                if(cur && !(ALL_ENTITY || []).includes(cur)){
+                  $e.value = '';
+                  saveState();
+                  renderEntity();
+                }
+              }catch(e){}
+            }
+            autoSpanAll();
+          }catch(e){}
+          _hideTagChoices();
+        })();
+      });
+      $tagChoicesRows.appendChild(tr);
+    });
+    $tagChoices.style.display = 'block';
+  }catch(e){}
+}
+
+async function loadComboRanges(groupTag, fixed){
+  const gt = String(groupTag || '').trim();
+  if(gt !== 'entity_id' && gt !== 'friendly_name') return [];
+  const fx = fixed || {};
+  const payload = {
+    measurement: $m ? $m.value : '',
+    field: $f ? $f.value : '',
+    group_tag: gt,
+    entity_id: (fx.entity_id !== undefined) ? fx.entity_id : ($e ? ($e.value || null) : null),
+    friendly_name: (fx.friendly_name !== undefined) ? fx.friendly_name : ($n ? ($n.value || null) : null),
+    limit: 80,
+  };
+  const j = await api('./api/tag_combo_ranges', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(payload),
+  });
+  return j.rows || [];
+}
+
 async function loadUiConfig(){
   try{
     const j = await api("./api/config");
@@ -1651,7 +1770,8 @@ async function loadEntityIds(){
 
 async function loadFriendlyNames(){
   let url = "./api/tag_values?tag=friendly_name";
-  const qp = tagQueryParams({includeFriendly: false, includeEntity: false});
+  // When an entity_id is selected, friendly_name suggestions should be narrowed to that entity.
+  const qp = tagQueryParams({includeFriendly: false, includeEntity: true});
   if(qp) url += "&" + qp;
   const j = await api(url);
   ALL_FRIENDLY = (j.values || []).map(String);
@@ -1659,8 +1779,15 @@ async function loadFriendlyNames(){
 }
 
 async function resolveSignal(){
-  if(!$n.value) return;
-  const payload = { friendly_name: $n.value, entity_id: $e.value || null, measurement_filter: $mf.value || null, ...currentTimeFilter() };
+  const fn = $n ? String($n.value || "").trim() : "";
+  const eid = $e ? String($e.value || "").trim() : "";
+  if(!fn && !eid) return;
+  const payload = {
+    friendly_name: fn || null,
+    entity_id: eid || null,
+    measurement_filter: $mf.value || null,
+    ...currentTimeFilter(),
+  };
   const j = await api("./api/resolve_signal", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)});
   if(j.measurement) $m.value = j.measurement;
   await loadFields();
@@ -2621,7 +2748,10 @@ async function loadStats(){
 
 async function loadData(){
   err(""); ok("");
-  if(!$n.value){ err("Bitte zuerst einen Messwert (friendly_name) auswaehlen."); return; }
+  if(!($n && $n.value) && !($e && $e.value)){
+    err("Bitte zuerst friendly_name oder entity_id auswaehlen.");
+    return;
+  }
   renderTableRange();
   renderRangeFromTo();
   $tbl.innerHTML = "";
@@ -2673,7 +2803,7 @@ async function loadData(){
 
 async function refreshAll(){
   try{
-    if(!$n.value){ return; }
+    if(!($n && $n.value) && !($e && $e.value)) return;
     saveState();
     try{ await resolveSignal(); } catch(e){ displayError(e); }
     await loadData();
@@ -2685,8 +2815,8 @@ async function refreshAll(){
 async function refreshAllWithStatus(){
   try{
     if(LOAD_INFLIGHT) return;
-    if(!$n.value){
-      err("Bitte zuerst einen Messwert (friendly_name) auswaehlen.");
+    if(!($n && $n.value) && !($e && $e.value)){
+      err("Bitte zuerst friendly_name oder entity_id auswaehlen.");
       return;
     }
     startLoadUi();
@@ -2732,6 +2862,7 @@ const onMeasurementFilterChanged = debounce(()=>{
   _asyncNoThrow(()=>{
     (async ()=>{
       try{
+        _hideTagChoices();
         saveState();
         await loadFriendlyNames();
         await loadEntityIds();
@@ -2745,13 +2876,33 @@ const onFriendlyChanged = debounce(()=>{
   _asyncNoThrow(()=>{
     (async ()=>{
       try{
+        // Friendly selection drives entity_id list; clear stale entity_id first.
+        if($e && String($e.value||'').trim()) $e.value = '';
+        if(!$n || !String($n.value||'').trim()){
+          _hideTagChoices();
+          saveState();
+          await loadEntityIds();
+          autoSpanAll();
+          return;
+        }
         saveState();
+        // Resolve measurement/field first so combo-range query can be precise.
+        try{ await resolveSignal(); }catch(e){}
         await loadEntityIds();
-        // Auto-select entity_id: if there are candidates, pick the first.
+
+        // If multiple entity_ids exist for this friendly_name, show list with ranges.
+        try{
+          const combo = await loadComboRanges('entity_id', { entity_id: null, friendly_name: ($n ? ($n.value || null) : null) });
+          _renderTagChoices('entity_id', combo);
+        }catch(e){
+          _hideTagChoices();
+        }
+
+        // Auto-select entity_id only when there is a single match.
         const candidates = (ALL_ENTITY || []).filter(x => x);
         const cur = String($e.value || '').trim();
         const fn = String($n.value || '').trim();
-        if(fn && candidates.length >= 1 && (!cur || !candidates.includes(cur))){
+        if(fn && candidates.length === 1 && (!cur || !candidates.includes(cur))){
           $e.value = candidates[0];
           saveState();
           renderEntity();
@@ -2764,7 +2915,41 @@ const onFriendlyChanged = debounce(()=>{
 
 const onEntityChanged = debounce(()=>{
   _asyncNoThrow(()=>{
-    try{ saveState(); autoSpanAll(); }catch(e){}
+    (async ()=>{
+      try{
+        saveState();
+        if(!$e || !String($e.value||'').trim()){
+          _hideTagChoices();
+          await loadFriendlyNames();
+          autoSpanAll();
+          return;
+        }
+        // Resolve measurement/field first so combo-range query can be precise.
+        try{ await resolveSignal(); }catch(e){}
+
+        // Narrow friendly_name to those that match this entity_id
+        await loadFriendlyNames();
+
+        // Keep current friendly_name only if still valid.
+        try{
+          const cur = String($n && $n.value ? $n.value : '').trim();
+          if(cur && !(ALL_FRIENDLY || []).includes(cur)){
+            $n.value = '';
+            saveState();
+            renderFriendly();
+          }
+        }catch(e){}
+        autoSpanAll();
+
+        // If multiple friendly_names exist for this entity_id, show list with ranges.
+        try{
+          const combo = await loadComboRanges('friendly_name', { entity_id: ($e ? ($e.value || null) : null), friendly_name: null });
+          _renderTagChoices('friendly_name', combo);
+        }catch(e){
+          _hideTagChoices();
+        }
+      }catch(e){}
+    })();
   });
 }, 150);
 
@@ -3073,12 +3258,14 @@ if($btnLoad) $btnLoad.addEventListener("click", (ev)=>{ _stop(ev); refreshAllWit
     if(st.measurement_filter) $mf.value = st.measurement_filter;
     renderMeasurements();
 
-    await loadFriendlyNames();
+    // Restore stored selection early so list loads can narrow correctly.
     if(st.friendly_name) $n.value = st.friendly_name;
+    if(st.entity_id) $e.value = st.entity_id;
+
+    await loadFriendlyNames();
     renderFriendly();
 
     await loadEntityIds();
-    if(st.entity_id) $e.value = st.entity_id;
     renderEntity();
 
     renderTableRange();
