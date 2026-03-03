@@ -23,8 +23,12 @@
     .muted { opacity: 0.7; font-size: 12px; }
     .row { display:flex; gap: 10px; flex-wrap:wrap; align-items:end; margin-top: 10px; justify-content:flex-start; }
     .grid { display:grid; grid-template-columns: repeat(2, minmax(260px, 1fr)); gap: 12px; margin-top: 12px; align-items:end; }
+    .grid4 { display:grid; grid-template-columns: repeat(4, minmax(220px, 1fr)); gap: 12px; margin-top: 12px; align-items:end; }
     @media (max-width: 980px){ .grid { grid-template-columns: 1fr; } }
+    @media (max-width: 980px){ .grid4 { grid-template-columns: repeat(2, minmax(220px, 1fr)); } }
+    @media (max-width: 720px){ .grid4 { grid-template-columns: 1fr; } }
     .label_row { display:flex; justify-content:space-between; gap: 10px; align-items:baseline; }
+    .span4 { grid-column: 1 / -1; }
     label { display:block; font-size: 12px; opacity: 0.8; }
     input, select, button, textarea { padding: 10px 12px; height: 40px; box-sizing: border-box; }
     textarea { font: inherit; resize: vertical; min-height: 40px; width: 100%; white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -53,7 +57,7 @@
           <div class="muted" id="loc" data-ui="backup.location" title="backup.location"></div>
           <div class="muted" id="zoom_txt" data-ui="backup.zoom_txt" title="backup.zoom_txt"></div>
 
-          <div class="grid" style="margin-top: 10px;" data-ui="backup.target" title="backup.target">
+          <div class="grid4" style="margin-top: 10px;" data-ui="backup.target" title="backup.target">
             <div>
               <label class="label_row"><span>_measurement (Filter)</span><span id="cnt_measurement_filter" class="muted"></span></label>
               <input id="measurement_filter" list="measurement_list" placeholder="optional" data-ui="backup.measurement_filter" title="backup.measurement_filter" />
@@ -69,11 +73,9 @@
               <input id="entity_id" list="entity_list" placeholder="optional" data-ui="backup.entity_id" title="backup.entity_id" />
               <datalist id="entity_list"></datalist>
             </div>
-          </div>
 
-          <div class="row" style="margin-top: 8px;">
-            <div style="min-width: 220px;">
-              <label>Zeitraum</label>
+            <div>
+              <label class="label_row"><span>Zeitraum</span><span id="cnt_range" class="muted"></span></label>
               <select id="range" data-ui="backup.range" title="backup.range">
                 <option value="1h">Letzte 1h</option>
                 <option value="6h">Letzte 6h</option>
@@ -91,8 +93,10 @@
               </select>
               <div class="muted" id="range_txt" data-ui="backup.range_txt" title="backup.range_txt"></div>
             </div>
+          </div>
 
-            <div id="custom" style="min-width: 320px; display:none;">
+          <div id="custom" class="row" style="margin-top: 8px; display:none;" data-ui="backup.custom_range" title="backup.custom_range">
+            <div style="min-width: 320px; flex:1;">
               <label>Von/Bis (lokal)</label>
               <div class="row" style="margin-top:0;">
                 <input id="start" type="datetime-local" data-ui="backup.start" title="backup.start" />
@@ -165,6 +169,7 @@
       const $cntMf = document.getElementById('cnt_measurement_filter');
       const $cntFn = document.getElementById('cnt_friendly_name');
       const $cntEid = document.getElementById('cnt_entity_id');
+      const $cntRange = document.getElementById('cnt_range');
 
       let SELECTED_ID = "";
       let SELECTED_IDS = new Set();
@@ -319,27 +324,49 @@
           ALL_MF = (jm.measurements||[]).map(x=>String(x));
         }catch(e){ ALL_MF = []; }
 
-        try{ ALL_FN = await loadTagValues('friendly_name', ''); }catch(e){ ALL_FN = []; }
-        try{ ALL_EID = await loadTagValues('entity_id', ''); }catch(e){ ALL_EID = []; }
-
         setDatalistOptions($mfList, ALL_MF);
-        setDatalistOptions($fnList, ALL_FN);
-        setDatalistOptions($eidList, ALL_EID);
-
         setCount($cntMf, ALL_MF.length, true);
-        setCount($cntFn, ALL_FN.length, true);
-        setCount($cntEid, ALL_EID.length, false);
+
+        if($cntRange && $range && $range.options) setCount($cntRange, $range.options.length, true);
+
+        await refreshFriendlyAndEntityForMeasurement();
+      }
+
+      async function refreshFriendlyAndEntityForMeasurement(){
+        try{
+          const mf = String($mf && $mf.value ? $mf.value : '').trim();
+          try{ ALL_FN = await loadTagValues('friendly_name', mf); }catch(e){ ALL_FN = []; }
+          try{ ALL_EID = await loadTagValues('entity_id', mf); }catch(e){ ALL_EID = []; }
+
+          setDatalistOptions($fnList, ALL_FN);
+          setCount($cntFn, ALL_FN.length, true);
+
+          setDatalistOptions($eidList, ALL_EID);
+          setCount($cntEid, ALL_EID.length, false);
+
+          // Keep existing values only if still valid.
+          const curFn = String($n && $n.value ? $n.value : '').trim();
+          if(curFn && !ALL_FN.includes(curFn)){
+            if($n) $n.value = "";
+          }
+          const curE = String($e && $e.value ? $e.value : '').trim();
+          if(curE && !ALL_EID.includes(curE)){
+            if($e) $e.value = "";
+          }
+        }catch(e){}
       }
 
       async function refreshEntityIdsForFriendly(){
         try{
           const fn = String($n && $n.value ? $n.value : '').trim();
+          const mf = String($mf && $mf.value ? $mf.value : '').trim();
           if(!fn){
             setDatalistOptions($eidList, ALL_EID);
             setCount($cntEid, ALL_EID.length, false);
             return;
           }
           const qs = new URLSearchParams({tag:'entity_id', friendly_name: fn, range:'30d'});
+          if(mf) qs.set('measurement', mf);
           const j = await api('./api/tag_values?' + qs.toString());
           const vals = (j.values || []).map(x=>String(x)).filter(Boolean);
           setDatalistOptions($eidList, vals);
@@ -358,7 +385,9 @@
           if(!fn) return;
           const cur = String($e && $e.value ? $e.value : '').trim();
           if(cur) return;
+          const mf = String($mf && $mf.value ? $mf.value : '').trim();
           const qs = new URLSearchParams({tag:'entity_id', friendly_name: fn, range:'30d'});
+          if(mf) qs.set('measurement', mf);
           const j = await api('./api/tag_values?' + qs.toString());
           const vals = (j.values || []).map(x=>String(x)).filter(Boolean);
           if(vals.length && $e) setValueIfEmpty($e, vals[0]);
@@ -575,13 +604,41 @@
         return ()=>{ if(t) clearTimeout(t); t=setTimeout(fn, ms); };
       }
 
-      const onTargetChanged = debounce(()=>{
-        resolveTarget().then(()=>loadList()).catch(e=>err(String(e && e.message ? e.message : e)));
+      async function resolveAndLoad(){
+        err("");
+        ok("");
+        const has = (String($n && $n.value ? $n.value : '').trim() || String($e && $e.value ? $e.value : '').trim());
+        if(!has) return;
+        await resolveTarget();
+        await loadList();
+      }
+
+      const scheduleResolveAndLoad = debounce(()=>{
+        resolveAndLoad().catch(e=>err(String(e && e.message ? e.message : e)));
       }, 250);
 
-      if($mf) $mf.addEventListener('input', onTargetChanged);
-      if($n) $n.addEventListener('input', ()=>{ refreshEntityIdsForFriendly().then(()=>autoPickEntityId().then(()=>onTargetChanged())); });
-      if($e) $e.addEventListener('input', onTargetChanged);
+      const onMeasurementChanged = debounce(()=>{
+        refreshFriendlyAndEntityForMeasurement()
+          .then(()=>{
+            // Do not auto-select friendly_name; only narrow the lists.
+            scheduleResolveAndLoad();
+          })
+          .catch(e=>err(String(e && e.message ? e.message : e)));
+      }, 300);
+
+      const onFriendlyChanged = debounce(()=>{
+        refreshEntityIdsForFriendly()
+          .then(()=>scheduleResolveAndLoad())
+          .catch(e=>err(String(e && e.message ? e.message : e)));
+      }, 250);
+
+      const onEntityChanged = debounce(()=>{
+        scheduleResolveAndLoad();
+      }, 250);
+
+      if($mf) $mf.addEventListener('input', onMeasurementChanged);
+      if($n) $n.addEventListener('input', onFriendlyChanged);
+      if($e) $e.addEventListener('input', onEntityChanged);
 
       if($selAll){
         $selAll.addEventListener('change', ()=>{
@@ -617,7 +674,7 @@
         window.__INFLUXBRO_BACKUP_INIT = { mf: mf0, fn: fn0, eid: e0 };
       }catch(e){}
       if($range) $range.addEventListener('change', ()=>{
-        $custom.style.display = ($range.value === 'custom') ? 'block' : 'none';
+        $custom.style.display = ($range.value === 'custom') ? 'flex' : 'none';
         renderRangeTxt();
       });
       if($start) $start.addEventListener('change', renderRangeTxt);
@@ -627,7 +684,7 @@
       const s = new Date(now.getTime() - 30*24*60*60*1000);
       if($start && !$start.value) $start.value = toLocalDatetimeValue(s);
       if($stop && !$stop.value) $stop.value = toLocalDatetimeValue(now);
-      if($range) $custom.style.display = ($range.value === 'custom') ? 'block' : 'none';
+      if($range) $custom.style.display = ($range.value === 'custom') ? 'flex' : 'none';
       renderRangeTxt();
       renderZoomTxt();
 
@@ -649,15 +706,19 @@
         obs.observe(document.body, {childList:true, subtree:true});
       }catch(e){}
 
-      loadTargetLists().then(()=>{
-        try{
-          const init = window.__INFLUXBRO_BACKUP_INIT || {};
-          if($mf && !$mf.value && init.mf) $mf.value = String(init.mf);
-          if($n && !$n.value && init.fn) $n.value = String(init.fn);
-          if($e && !$e.value && init.eid) $e.value = String(init.eid);
-        }catch(e){}
-        autoPickEntityId().then(()=>resolveTarget().then(()=>loadList()).catch(e=>err(String(e && e.message ? e.message : e))));
-      }).catch(e=>err(String(e && e.message ? e.message : e)));
+       // Apply initial values before list load (so friendly/entity lists can be narrowed by measurement).
+       try{
+         const init = window.__INFLUXBRO_BACKUP_INIT || {};
+         if($mf && !$mf.value && init.mf) $mf.value = String(init.mf);
+         if($n && !$n.value && init.fn) $n.value = String(init.fn);
+         if($e && !$e.value && init.eid) $e.value = String(init.eid);
+       }catch(e){}
+
+       loadTargetLists()
+         .then(()=>refreshEntityIdsForFriendly())
+         .then(()=>autoPickEntityId())
+         .then(()=>resolveAndLoad())
+         .catch(e=>err(String(e && e.message ? e.message : e)));
       </script>
     </main>
   </div>
