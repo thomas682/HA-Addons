@@ -299,30 +299,6 @@
 ### Maintenance
 - Markdownlint: Repo-Config `.markdownlint.json` (weniger Noise in VSCode).
 
-## 1.11.3
-
-### Features
-- UI: Merkt sich GUI-Eingaben (non-sensitive) in Browser storage ueber App-Wechsel/Reload/Update hinweg.
-- Dashboard: Graph mit Rahmen und maximaler Breite; Plot-Hoehe bleibt per Drag einstellbar.
-- Dashboard: Filter-/Bearbeitungstabellen kompaktere Zeilenhoehe.
-
-### Bug Fixes
-- Statistik: Flux query braces korrekt escaped ("seen is not defined" behoben).
-
-### Maintenance
-- (keine)
-
-## 1.11.4
-
-### Features
-- Dashboard: Statistik "Zeitraum (Graph/Tabelle)" folgt dem aktuell im Graph selektierten Bereich (Zoom/Range-Slider).
-
-### Bug Fixes
-- (keine)
-
-### Maintenance
-- (keine)
-
 ## 1.11.5
 
 ### Features
@@ -336,6 +312,30 @@
 
 ### Maintenance
 - Statistik: Controls sauber ausgerichtet.
+
+## 1.11.4
+
+### Features
+- Dashboard: Statistik "Zeitraum (Graph/Tabelle)" folgt dem aktuell im Graph selektierten Bereich (Zoom/Range-Slider).
+
+### Bug Fixes
+- (keine)
+
+### Maintenance
+- (keine)
+
+## 1.11.3
+
+### Features
+- UI: Merkt sich GUI-Eingaben (non-sensitive) in Browser storage ueber App-Wechsel/Reload/Update hinweg.
+- Dashboard: Graph mit Rahmen und maximaler Breite; Plot-Hoehe bleibt per Drag einstellbar.
+- Dashboard: Filter-/Bearbeitungstabellen kompaktere Zeilenhoehe.
+
+### Bug Fixes
+- Statistik: Flux query braces korrekt escaped ("seen is not defined" behoben).
+
+### Maintenance
+- (keine)
 
 ## 1.11.2
 
