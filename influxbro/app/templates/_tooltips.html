@@ -1,0 +1,149 @@
+<script>
+// Global tooltips helper (all pages)
+// - Prefer explicit tips by data-ui key
+// - Otherwise derive a short tooltip from nearby label/help text
+(function(){
+  const TIPS = {
+    // Dashboard
+    'dashboard.load': 'Laedt Graph, Tabelle und Statistik aus InfluxDB (mit aktueller Auswahl/Zeitraum).',
+    'dashboard.reset': 'Bricht laufende Abfragen ab und setzt Auswahlfelder zurueck (Zeitraum bleibt erhalten).',
+    'filterlist_outlier_scan': 'Startet Fehlersuche (DB-Scan) im aktuellen Graph-Zeitraum.',
+    'filterlist_outlier_reset': 'Beendet Ausreisser-Modus und zeigt wieder normale Tabelle.',
+    'filterlist_to_edit': 'Uebernimmt markierte Tabellenzeilen in die Bearbeitungsliste.',
+    'editlist_apply': 'Schreibt alle geaenderten Werte aus der Bearbeitungsliste in die Datenbank (mit Bestaetigung).',
+
+    // Backup
+    'backup.take_dashboard': 'Uebernimmt measurement/field/entity_id/friendly_name aus dem Dashboard (aus Browser-Speicher).',
+    'backup.create_full': 'Erstellt ein Fullbackup (alle Daten) in das Backup-Verzeichnis.',
+    'backup.create_range_zoom': 'Erstellt ein Backup fuer den aktuellen Graph-Zoom-Zeitraum.',
+    'backup.create_range_sel': 'Erstellt ein Backup fuer den ausgewaehlten Zeitraum (Zeitraum-Auswahl).',
+    'backup.reload': 'Laedt die Backup-Liste neu.',
+    'backup.delete': 'Loescht die ausgewaehlten Backups aus dem Backup-Verzeichnis.',
+
+    // Restore
+    'restore.reload': 'Laedt die Backup-Liste neu.',
+    'restore.source_to_target': 'Uebernimmt Quellenamen (measurement/field/entity_id/friendly_name) in die Zielnamen.',
+    'restore.run': 'Fuehrt den Restore in die Zielserie aus (schreibt Daten in InfluxDB).',
+
+    // Logs
+    'logs.refresh': 'Laedt Logs neu.',
+    'logs.follow': 'Automatisch nachladen (Follow) ein/aus.',
+    'logs.copy': 'Kopiert die aktuelle Log-Ansicht in die Zwischenablage.',
+    'logs.download': 'Laedt Logs als Datei herunter.',
+    'logs.clear': 'Leert nur die Ansicht (keine Logs werden geloescht).',
+
+    // Stats page
+    'stats.load': 'Startet die Gesamtstatistik (Hintergrundjob) fuer alle Serien im Filter.',
+    'stats.cancel': 'Bricht den laufenden Statistik-Job ab.',
+    'stats.delete_rows': 'Markiert alle aktuell sichtbaren Zeilen als geloescht (nur Ansicht).',
+    'stats.save_cols': 'Speichert Spaltenbreiten der Tabelle im Browser.',
+    'stats.mark_all': 'Markiert alle aktuell sichtbaren Zeilen (nach Filter+Suche).',
+    'stats.clear_mark': 'Loescht die aktuelle Markierung.',
+    'stats.reload_marked': 'Berechnet/Laedt fehlende Spalten nur fuer markierte Zeilen nach.',
+    'stats.reload_filtered': 'Berechnet/Laedt fehlende Spalten fuer alle Zeilen im aktuellen Filter nach.',
+  };
+
+  function _norm(s){
+    return String(s || '').replace(/\s+/g, ' ').trim();
+  }
+
+  function _short(s, n){
+    const x = _norm(s);
+    if(!x) return '';
+    const m = Number(n) || 180;
+    return x.length > m ? (x.slice(0, m) + '...') : x;
+  }
+
+  function _autoTitleFromContext(el){
+    try{
+      const tag = String(el && el.tagName ? el.tagName : '').toLowerCase();
+      const isBtn = tag === 'button';
+      const isInput = (tag === 'input' || tag === 'select' || tag === 'textarea');
+
+      let labelTxt = '';
+      let helpTxt = '';
+
+      // Search a few ancestor levels for a nearby label/help.
+      let cur = el;
+      for(let i=0; i<5; i++){
+        const p = cur && cur.parentElement ? cur.parentElement : null;
+        if(!p) break;
+
+        // Prefer a single label in the container.
+        const labels = Array.from(p.querySelectorAll('label'))
+          .map(l => _norm(l.textContent))
+          .filter(Boolean);
+        if(!labelTxt && labels.length){
+          labelTxt = labels[0];
+        }
+
+        // Prefer explicit help blocks.
+        if(!helpTxt){
+          const h = p.querySelector('.muted.help') || p.querySelector('.muted');
+          if(h) helpTxt = _norm(h.textContent);
+        }
+
+        if(labelTxt || helpTxt) break;
+        cur = p;
+      }
+
+      if(isBtn){
+        const t = _norm(el.textContent);
+        const extra = helpTxt && helpTxt !== t ? helpTxt : '';
+        return _short(extra ? (t + ': ' + extra) : t, 220);
+      }
+
+      if(isInput){
+        if(labelTxt && helpTxt && helpTxt !== labelTxt){
+          return _short(labelTxt + ': ' + helpTxt, 220);
+        }
+        if(labelTxt) return _short(labelTxt, 220);
+        if(helpTxt) return _short(helpTxt, 220);
+      }
+    }catch(e){}
+    return '';
+  }
+
+  function _shouldOverride(existing, key){
+    const t = _norm(existing);
+    if(!t) return true;
+    // If title was auto-filled with the raw key/id, replace it.
+    if(key && t === _norm(key)) return true;
+    return false;
+  }
+
+  function apply(){
+    try{
+      // data-ui based (preferred)
+      document.querySelectorAll('[data-ui]').forEach(el => {
+        const k = el.getAttribute('data-ui') || '';
+        const want = TIPS[k] || _autoTitleFromContext(el) || '';
+        if(!want) return;
+        if(!_shouldOverride(el.getAttribute('title'), k)) return;
+        el.setAttribute('title', want);
+      });
+
+      // Fallback for plain controls without data-ui
+      document.querySelectorAll('button, input, select, textarea').forEach(el => {
+        if(el.getAttribute('data-ui')) return;
+        const id = el.getAttribute('id') || '';
+        const want = _autoTitleFromContext(el) || '';
+        if(!want) return;
+        if(!_shouldOverride(el.getAttribute('title'), id)) return;
+        el.setAttribute('title', want);
+      });
+    }catch(e){}
+  }
+
+  try{
+    if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', apply);
+    else apply();
+  }catch(e){}
+
+  // Apply again on dynamic UI changes (tables, modals, etc.)
+  try{
+    const obs = new MutationObserver(()=>apply());
+    obs.observe(document.body, { childList:true, subtree:true });
+  }catch(e){}
+})();
+</script>

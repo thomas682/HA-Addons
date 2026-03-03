@@ -290,6 +290,8 @@
       loadServerProfile();
       loadLogs().catch(e=>err(String(e && e.message ? e.message : e)));
       </script>
+
+      {% include "_tooltips.html" %}
     </main>
   </div>
 </body>

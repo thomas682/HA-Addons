@@ -845,8 +845,10 @@
          .then(()=>autoPickEntityId())
          .then(()=>resolveAndLoad())
          .catch(e=>err(String(e && e.message ? e.message : e)));
-      </script>
-    </main>
-  </div>
-</body>
-</html>
+       </script>
+
+       {% include "_tooltips.html" %}
+     </main>
+   </div>
+ </body>
+ </html>

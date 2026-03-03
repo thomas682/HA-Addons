@@ -554,6 +554,8 @@
       loadBackups().catch(e=>err(String(e && e.message ? e.message : e)));
       loadTargetLists().then(()=>{ renderPlan(); }).catch(()=>{});
       </script>
+
+      {% include "_tooltips.html" %}
     </main>
   </div>
 </body>

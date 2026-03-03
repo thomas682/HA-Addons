@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.11.37
+
+### Features
+
+- UI: Tooltips zeigen kurze Beschreibungen fuer Buttons und Felder auf allen Seiten.
+
+### Bug Fixes
+
+- (keine)
+
+### Maintenance
+
+- (keine)
+
 ## 1.11.36
 
 ### Features

@@ -176,7 +176,7 @@
     </div>
     <div class="control">
       <div style="display:flex; gap: 8px; align-items: stretch;">
-        <button id="load" style="flex:1;">Aktualisieren</button>
+        <button id="load" style="flex:1;" data-ui="dashboard.load">Aktualisieren</button>
         <button id="reset_filters" class="btn_sm" style="width:auto; white-space:nowrap;" data-ui="dashboard.reset" title="dashboard.reset">Reset</button>
       </div>
       <div id="load_status" data-ui="dashboard.load_status" title="dashboard.load_status">
@@ -3570,6 +3570,8 @@ try{
   });
 }catch(e){}
 </script>
+
+{% include "_tooltips.html" %}
 
     </div>
   </div>
