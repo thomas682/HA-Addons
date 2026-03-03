@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.11.34
+
+### Features
+
+- Dashboard: Fehlermeldungen werden immer mit Zeitstempel angezeigt.
+- Dashboard: Statusanzeige (Spinner + laufende Zeit) wird bei Abfragen automatisch eingeblendet.
+- Dashboard: Reset-Button bricht laufende Abfragen ab und setzt Filter zurueck (Zeitraum bleibt erhalten).
+
+### Bug Fixes
+
+- Dashboard: Auswahl-Listen (Datalist) sind robuster bei schnellen Filteraenderungen (AbortController pro Request-Gruppe).
+
+### Maintenance
+
+- (keine)
+
 ## 1.11.33
 
 ### Features

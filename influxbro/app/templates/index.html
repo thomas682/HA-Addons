@@ -171,7 +171,10 @@
       <div class="muted">Zeitangaben werden als lokale Zeit interpretiert und als UTC an die API gesendet.</div>
     </div>
     <div class="control">
-      <button id="load" style="width:100%;">Aktualisieren</button>
+      <div style="display:flex; gap: 8px; align-items: stretch;">
+        <button id="load" style="flex:1;">Aktualisieren</button>
+        <button id="reset_filters" class="btn_sm" style="width:auto; white-space:nowrap;" data-ui="dashboard.reset" title="dashboard.reset">Reset</button>
+      </div>
       <div id="load_status" data-ui="dashboard.load_status" title="dashboard.load_status">
         <span id="load_spinner" aria-hidden="true"></span>
         <span id="load_status_txt">Abfrage laeuft...</span>
@@ -469,7 +472,14 @@
   <script src="./static/plotly.min.js"></script>
 
  <script>
-const err = (msg) => { document.getElementById('err').textContent = msg || ""; };
+const err = (msg) => {
+  const el = document.getElementById('err');
+  const s = String(msg || "");
+  if(!s){ el.textContent = ""; return; }
+  // Always prefix errors with a timestamp (local browser time)
+  const ts = fmtTs(new Date().toISOString());
+  el.textContent = `${ts} - ${s}`;
+};
 const ok = (msg) => { document.getElementById('ok').textContent = msg || ""; };
 
 const $m = document.getElementById('measurement');
@@ -531,6 +541,7 @@ const $loadStatus = document.getElementById('load_status');
 const $loadSpinner = document.getElementById('load_spinner');
 const $loadStatusTxt = document.getElementById('load_status_txt');
 const $loadStatusTime = document.getElementById('load_status_time');
+const $btnReset = document.getElementById('reset_filters');
 
 const $tagChoices = document.getElementById('tag_choices');
 const $tagChoicesTitle = document.getElementById('tag_choices_title');
@@ -738,19 +749,58 @@ function _renderLoadTime(){
   }catch(e){}
 }
 
+let STATUS_COUNT = 0;
+let _STATUS_HIDE_TIMER = null;
+
+function _statusShow(label){
+  try{
+    if(_STATUS_HIDE_TIMER) clearTimeout(_STATUS_HIDE_TIMER);
+    _STATUS_HIDE_TIMER = null;
+    if($loadStatus) $loadStatus.style.display = "flex";
+    if($loadSpinner) $loadSpinner.style.display = "inline-block";
+    _setLoadStatus(label || "Abfrage laeuft...");
+    _renderLoadTime();
+    if(LOAD_TIMER) clearInterval(LOAD_TIMER);
+    LOAD_TIMER = setInterval(_renderLoadTime, 120);
+  }catch(e){}
+}
+
+function statusBegin(label){
+  STATUS_COUNT = Math.max(0, STATUS_COUNT) + 1;
+  if(STATUS_COUNT === 1){
+    LOAD_T0 = performance.now();
+    LOAD_QUERY_MS = null;
+  }
+  _statusShow(label);
+}
+
+function statusEnd(okDone, errText){
+  STATUS_COUNT = Math.max(0, STATUS_COUNT - 1);
+  if(STATUS_COUNT > 0) return;
+  try{
+    if(LOAD_TIMER) clearInterval(LOAD_TIMER);
+    LOAD_TIMER = null;
+    _renderLoadTime();
+    if($loadSpinner) $loadSpinner.style.display = "none";
+    if(okDone) _setLoadStatus("Fertig.");
+    else _setLoadStatus(errText ? ("Fehler: " + String(errText)) : "Fehler.");
+    if(_STATUS_HIDE_TIMER) clearTimeout(_STATUS_HIDE_TIMER);
+    _STATUS_HIDE_TIMER = setTimeout(()=>{
+      if(STATUS_COUNT === 0){
+        try{ if($loadStatus) $loadStatus.style.display = "none"; }catch(e){}
+        try{ if($loadStatusTime) $loadStatusTime.textContent = ""; }catch(e){}
+        _setLoadStatus("");
+      }
+    }, 1400);
+  }catch(e){}
+}
+
 function startLoadUi(){
   try{
     if(LOAD_INFLIGHT) return false;
     LOAD_INFLIGHT = true;
-    LOAD_T0 = performance.now();
-    LOAD_QUERY_MS = null;
     if($btnLoad) $btnLoad.disabled = true;
-    if($loadStatus) $loadStatus.style.display = "flex";
-    if($loadSpinner) $loadSpinner.style.display = "inline-block";
-    _setLoadStatus("Abfrage laeuft...");
-    _renderLoadTime();
-    if(LOAD_TIMER) clearInterval(LOAD_TIMER);
-    LOAD_TIMER = setInterval(_renderLoadTime, 120);
+    statusBegin("Abfrage laeuft...");
     return true;
   }catch(e){
     return true;
@@ -759,15 +809,7 @@ function startLoadUi(){
 
 function stopLoadUi(okDone, errText){
   try{
-    if(LOAD_TIMER) clearInterval(LOAD_TIMER);
-    LOAD_TIMER = null;
-    _renderLoadTime();
-    if($loadSpinner) $loadSpinner.style.display = "none";
-    if(okDone){
-      _setLoadStatus("Fertig.");
-    }else{
-      _setLoadStatus(errText ? ("Fehler: " + String(errText)) : "Fehler.");
-    }
+    statusEnd(!!okDone, errText);
     if($btnLoad) $btnLoad.disabled = false;
   }catch(e){}
   LOAD_INFLIGHT = false;
@@ -1255,10 +1297,66 @@ function draw(rows){
 }
 
 async function api(url, opts){
-  const r = await fetch(url, opts);
-  const j = await r.json().catch(()=>({ok:false,error:"Invalid JSON"}));
-  if(!r.ok || !j.ok) throw new Error(j.error || ("HTTP " + r.status));
-  return j;
+  // Backwards compatible signature: api(url, opts, meta)
+  const meta = arguments.length >= 3 ? arguments[2] : null;
+  const o = opts || {};
+
+  // Abort + in-flight tracking
+  if(!window.__INFLUXBRO_INFLIGHT) window.__INFLUXBRO_INFLIGHT = { all: new Set(), keyed: new Map() };
+  const inflight = window.__INFLUXBRO_INFLIGHT;
+
+  const ctrl = new AbortController();
+  const key = meta && meta.key ? String(meta.key) : "";
+  if(key){
+    try{
+      const prev = inflight.keyed.get(key);
+      if(prev && prev.abort) prev.abort();
+    }catch(e){}
+    inflight.keyed.set(key, ctrl);
+  }
+  inflight.all.add(ctrl);
+
+  const wantStatus = !(meta && meta.silent);
+  const label = meta && meta.status ? String(meta.status) : "Abfrage laeuft...";
+  let shown = false;
+  let showTimer = null;
+  if(wantStatus){
+    showTimer = setTimeout(()=>{ shown = true; statusBegin(label); }, 180);
+  }
+
+  let caught = null;
+  try{
+    const r = await fetch(url, { ...o, signal: ctrl.signal });
+    const j = await r.json().catch(()=>({ok:false,error:"Invalid JSON"}));
+    if(!r.ok || !j.ok) throw new Error(j.error || ("HTTP " + r.status));
+    return j;
+  }catch(e){
+    if(e && (e.name === "AbortError" || String(e).includes("AbortError"))){
+      const er = new Error("Abgebrochen.");
+      er.aborted = true;
+      caught = er;
+      throw er;
+    }
+    caught = e;
+    throw e;
+  }finally{
+    try{
+      if(showTimer) clearTimeout(showTimer);
+      if(shown){
+        if(caught && caught.aborted) statusEnd(true);
+        else if(caught) statusEnd(false, (caught && caught.message) ? caught.message : String(caught));
+        else statusEnd(true);
+      }
+    }catch(e){}
+
+    try{ inflight.all.delete(ctrl); }catch(e){}
+    if(key){
+      try{
+        const cur = inflight.keyed.get(key);
+        if(cur === ctrl) inflight.keyed.delete(key);
+      }catch(e){}
+    }
+  }
 }
 
 async function loadVersion(){
@@ -1271,9 +1369,56 @@ async function loadVersion(){
 }
 
 function displayError(e){
+  if(e && e.aborted) return;
   const s = String(e && e.message ? e.message : e);
   // Avoid dumping huge API exception strings.
   err(s.length > 600 ? (s.slice(0, 600) + "...") : s);
+}
+
+function abortAllRequests(reason){
+  try{
+    const inflight = window.__INFLUXBRO_INFLIGHT;
+    if(inflight && inflight.all){
+      Array.from(inflight.all).forEach(c => { try{ c.abort(); }catch(e){} });
+    }
+    if(inflight && inflight.keyed){
+      inflight.keyed.forEach((c)=>{ try{ c.abort(); }catch(e){} });
+      inflight.keyed.clear();
+    }
+  }catch(e){}
+}
+
+async function resetFiltersKeepRange(){
+  try{
+    abortAllRequests("reset");
+    _hideTagChoices();
+    err(""); ok("");
+
+    if($mf) $mf.value = "";
+    if($n) $n.value = "";
+    if($e) $e.value = "";
+
+    // Clear loaded data but keep time range as-is.
+    try{ LAST_ROWS = []; }catch(e){}
+    try{ if($tbl) $tbl.innerHTML = ""; }catch(e){}
+    try{ draw([]); }catch(e){}
+    try{ if($backupBadge) $backupBadge.textContent = ""; }catch(e){}
+
+    try{ FILTER_SELECTED = new Set(); EDIT_SELECTED = new Set(); EDIT_LIST = new Map(); renderEditTable(); }catch(e){}
+    saveState();
+    autoSpanAll();
+
+    // If a main load is running, release the lock.
+    if(LOAD_INFLIGHT){
+      try{ stopLoadUi(true); }catch(e){}
+    }
+
+    await loadFriendlyNames();
+    await loadEntityIds();
+    autoSpanAll();
+  }catch(e){
+    displayError(e);
+  }
 }
 
 function _hideTagChoices(){
@@ -1366,11 +1511,15 @@ async function loadComboRanges(groupTag, fixed){
     friendly_name: (fx.friendly_name !== undefined) ? fx.friendly_name : ($n ? ($n.value || null) : null),
     limit: 80,
   };
-  const j = await api('./api/tag_combo_ranges', {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify(payload),
-  });
+  const j = await api(
+    './api/tag_combo_ranges',
+    {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload),
+    },
+    { key: `tag_combo_ranges:${gt}`, status: `Suche ${gt} Kombinationen...` },
+  );
   return j.rows || [];
 }
 
@@ -1748,14 +1897,18 @@ function renderEntity(){
 }
 
 async function loadMeasurements(){
-  const j = await api("./api/measurements");
+  const j = await api("./api/measurements", null, { key: "measurements", status: "Lade Measurements..." });
   ALL_MEASUREMENTS = (j.measurements || []).map(String);
   renderMeasurements();
 }
 
 async function loadFields(){
   $f.innerHTML = "";
-  const j = await api("./api/fields?measurement=" + encodeURIComponent($m.value));
+  const j = await api(
+    "./api/fields?measurement=" + encodeURIComponent($m.value),
+    null,
+    { key: "fields", status: "Lade Fields..." },
+  );
   j.fields.forEach(x=>{ const o=document.createElement("option"); o.value=x; o.textContent=x; $f.appendChild(o); });
 }
 
@@ -1763,7 +1916,7 @@ async function loadEntityIds(){
   let url = "./api/tag_values?tag=entity_id";
   const qp = tagQueryParams({includeFriendly: true, includeEntity: false});
   if(qp) url += "&" + qp;
-  const j = await api(url);
+  const j = await api(url, null, { key: "tag_values_entity_id", status: "Lade entity_id..." });
   ALL_ENTITY = (j.values || []).map(String);
   renderEntity();
 }
@@ -1773,7 +1926,7 @@ async function loadFriendlyNames(){
   // When an entity_id is selected, friendly_name suggestions should be narrowed to that entity.
   const qp = tagQueryParams({includeFriendly: false, includeEntity: true});
   if(qp) url += "&" + qp;
-  const j = await api(url);
+  const j = await api(url, null, { key: "tag_values_friendly_name", status: "Lade friendly_name..." });
   ALL_FRIENDLY = (j.values || []).map(String);
   renderFriendly();
 }
@@ -1788,7 +1941,11 @@ async function resolveSignal(){
     measurement_filter: $mf.value || null,
     ...currentTimeFilter(),
   };
-  const j = await api("./api/resolve_signal", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)});
+  const j = await api(
+    "./api/resolve_signal",
+    {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)},
+    { key: "resolve_signal", status: "Ermittle Measurement/Field..." },
+  );
   if(j.measurement) $m.value = j.measurement;
   await loadFields();
   if(j.field) $f.value = j.field;
@@ -2766,9 +2923,13 @@ async function loadData(){
   LAST_SERIES_KEY = seriesKey;
 
   const q0 = performance.now();
-  const j = await api("./api/query", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(filters)});
+  const j = await api(
+    "./api/query",
+    {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(filters)},
+    { key: "query", status: "Query laeuft..." },
+  );
   LOAD_QUERY_MS = performance.now() - q0;
-  if(LOAD_INFLIGHT) _setLoadStatus("Query fertig – Graph wird aktualisiert...");
+  if(STATUS_COUNT > 0) _setLoadStatus("Query fertig – Graph wird aktualisiert...");
   const rows = j.rows || [];
   LAST_ROWS = rows;
   OUTLIER_ACTIVE = false;
@@ -2956,6 +3117,8 @@ const onEntityChanged = debounce(()=>{
 $mf.addEventListener("input", ()=>onMeasurementFilterChanged());
 $n.addEventListener("input", ()=>onFriendlyChanged());
 $e.addEventListener("input", ()=>onEntityChanged());
+
+if($btnReset) $btnReset.addEventListener("click", (ev)=>{ _stop(ev); resetFiltersKeepRange().catch(()=>{}); });
 
 $r.addEventListener("change", async ()=>{
   try{
