@@ -121,9 +121,21 @@
         </details>
 
         <div class="row" data-ui="backup.actions" title="backup.actions">
-          <div><label>&nbsp;</label><button id="create_full" data-ui="backup.create_full" title="backup.create_full">Fullbackup</button></div>
-          <div><label>&nbsp;</label><button id="create_range" data-ui="backup.create_range_zoom" title="backup.create_range_zoom">Zeitbereich Backup (Zoom)</button></div>
-          <div><label>&nbsp;</label><button id="create_range_sel" data-ui="backup.create_range_sel" title="backup.create_range_sel">Zeitbereich Backup (Auswahl)</button></div>
+          <div>
+            <label>&nbsp;</label>
+            <button id="create_full" data-ui="backup.create_full" title="backup.create_full">Fullbackup</button>
+            <div class="muted" id="hint_full" data-ui="backup.hint_full" title="backup.hint_full" style="margin-top:4px; max-width: 260px;"></div>
+          </div>
+          <div>
+            <label>&nbsp;</label>
+            <button id="create_range" data-ui="backup.create_range_zoom" title="backup.create_range_zoom">Zeitbereich Backup (Zoom)</button>
+            <div class="muted" id="hint_zoom" data-ui="backup.hint_zoom" title="backup.hint_zoom" style="margin-top:4px; max-width: 260px;"></div>
+          </div>
+          <div>
+            <label>&nbsp;</label>
+            <button id="create_range_sel" data-ui="backup.create_range_sel" title="backup.create_range_sel">Zeitbereich Backup (Auswahl)</button>
+            <div class="muted" id="hint_sel" data-ui="backup.hint_sel" title="backup.hint_sel" style="margin-top:4px; max-width: 260px;"></div>
+          </div>
           <div><label>&nbsp;</label><button id="reload" data-ui="backup.reload" title="backup.reload">Liste aktualisieren</button></div>
           <div><label>&nbsp;</label><button id="del" data-ui="backup.delete" title="backup.delete">Backup loeschen</button></div>
         </div>
@@ -185,6 +197,10 @@
       const $reload = document.getElementById('reload');
       const $del = document.getElementById('del');
       const $selAll = document.getElementById('sel_all');
+
+      const $hintFull = document.getElementById('hint_full');
+      const $hintZoom = document.getElementById('hint_zoom');
+      const $hintSel = document.getElementById('hint_sel');
 
       const $takeDashboard = document.getElementById('take_dashboard');
 
@@ -375,6 +391,28 @@
           return;
         }
         $zoomTxt.textContent = 'Zoom-Fenster (Dashboard): ' + fmtTs(win.start) + ' bis ' + fmtTs(win.stop);
+      }
+
+      function renderActionHints(){
+        try{
+          if($hintFull) $hintFull.textContent = 'Zeitraum: alle Daten';
+        }catch(e){}
+        try{
+          if($hintZoom){
+            const win = getGraphWindowFromState();
+            $hintZoom.textContent = win
+              ? ('Zeitraum: ' + fmtTs(win.start) + ' bis ' + fmtTs(win.stop))
+              : 'Zeitraum: (kein Zoom-Fenster im Dashboard)';
+          }
+        }catch(e){}
+        try{
+          if($hintSel){
+            const tf = timeFilter();
+            $hintSel.textContent = tf
+              ? ('Zeitraum: ' + fmtTs(tf.start) + ' bis ' + fmtTs(tf.stop))
+              : 'Zeitraum: -';
+          }
+        }catch(e){}
       }
 
       async function api(url, opts){
@@ -640,6 +678,7 @@
           if($loc) $loc.textContent = "Speicherort (Add-on): /data/backups";
         }
         renderZoomTxt();
+        renderActionHints();
         if(!LAST_TARGET) throw new Error("Bitte zuerst Auswahl setzen.");
         const qs = new URLSearchParams({
           measurement: LAST_TARGET.measurement,
@@ -673,31 +712,45 @@
 
       async function createRangeBackup(){
         err(""); ok("");
-        await resolveTarget();
-        const win = getGraphWindowFromState();
-        if(!win) throw new Error("Kein Graph-Zeitraum vorhanden. Bitte im Dashboard Daten laden und ggf. zoomen.");
-        const j = await api("./api/backup_create_range", {
-          method:"POST",
-          headers:{"Content-Type":"application/json"},
-          body: JSON.stringify({ ...LAST_TARGET, ...win })
-        });
-        setBackupQuery(j.query || "");
-        ok(j.message || "Zeitbereich Backup erstellt.");
-        await loadList();
+        startCreateUi('Zeitbereich Backup (Zoom) laeuft...');
+        try{
+          await resolveTarget();
+          const win = getGraphWindowFromState();
+          if(!win) throw new Error("Kein Graph-Zeitraum vorhanden. Bitte im Dashboard Daten laden und ggf. zoomen.");
+          const j = await api("./api/backup_create_range", {
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body: JSON.stringify({ ...LAST_TARGET, ...win })
+          });
+          setBackupQuery(j.query || "");
+          ok(j.message || "Zeitbereich Backup erstellt.");
+          await loadList();
+          stopCreateUi(true);
+        }catch(e){
+          stopCreateUi(false);
+          throw e;
+        }
       }
 
       async function createRangeBackupSel(){
         err(""); ok("");
-        await resolveTarget();
-        const tf = timeFilter();
-        const j = await api("./api/backup_create_range", {
-          method:"POST",
-          headers:{"Content-Type":"application/json"},
-          body: JSON.stringify({ ...LAST_TARGET, start: tf.start, stop: tf.stop })
-        });
-        setBackupQuery(j.query || "");
-        ok(j.message || "Zeitbereich Backup erstellt.");
-        await loadList();
+        startCreateUi('Zeitbereich Backup (Auswahl) laeuft...');
+        try{
+          await resolveTarget();
+          const tf = timeFilter();
+          const j = await api("./api/backup_create_range", {
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body: JSON.stringify({ ...LAST_TARGET, start: tf.start, stop: tf.stop })
+          });
+          setBackupQuery(j.query || "");
+          ok(j.message || "Zeitbereich Backup erstellt.");
+          await loadList();
+          stopCreateUi(true);
+        }catch(e){
+          stopCreateUi(false);
+          throw e;
+        }
       }
 
       async function deleteBackup(){
@@ -819,6 +872,7 @@
             if($stop && st.stop) $stop.value = String(st.stop);
             if($range) $custom.style.display = ($range.value === 'custom') ? 'flex' : 'none';
             renderRangeTxt();
+            renderActionHints();
             onMeasurementChanged();
           }catch(e){
             err(String(e && e.message ? e.message : e));
@@ -828,9 +882,10 @@
       if($range) $range.addEventListener('change', ()=>{
         $custom.style.display = ($range.value === 'custom') ? 'flex' : 'none';
         renderRangeTxt();
+        renderActionHints();
       });
-      if($start) $start.addEventListener('change', renderRangeTxt);
-      if($stop) $stop.addEventListener('change', renderRangeTxt);
+      if($start) $start.addEventListener('change', ()=>{ renderRangeTxt(); renderActionHints(); });
+      if($stop) $stop.addEventListener('change', ()=>{ renderRangeTxt(); renderActionHints(); });
       // fill missing custom times
       const now = new Date();
       const s = new Date(now.getTime() - 30*24*60*60*1000);
@@ -839,6 +894,7 @@
       if($range) $custom.style.display = ($range.value === 'custom') ? 'flex' : 'none';
       renderRangeTxt();
       renderZoomTxt();
+      renderActionHints();
 
       // Tooltips
       function applyTooltips(){
