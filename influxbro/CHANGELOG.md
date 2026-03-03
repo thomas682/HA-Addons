@@ -2,6 +2,17 @@
 
 <!-- markdownlint-disable MD024 MD013 -->
 
+## 1.11.30
+
+### Features
+- Dashboard: "Aktualisieren" zeigt jetzt eine laufende Anzeige und misst Abfragezeit (Query + Gesamt).
+
+### Bug Fixes
+- (keine)
+
+### Maintenance
+- (keine)
+
 ## 1.11.29
 
 ### Features

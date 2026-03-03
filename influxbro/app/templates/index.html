@@ -55,6 +55,11 @@
     .ok { color: #0a7a28; margin-top: 8px; white-space: pre-wrap; }
     .muted { opacity: 0.7; font-size: var(--ui-font-small); }
     a { color: inherit; }
+
+    #load_status { display:none; margin-top: 6px; font-size: 12px; opacity: 0.85; align-items:center; gap: 8px; }
+    #load_spinner { width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(0,0,0,0.18); border-top-color: rgba(0,0,0,0.75); animation: spin 0.9s linear infinite; }
+    #load_status_time { opacity: 0.85; white-space: nowrap; }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     details { margin-top: 10px; border: 1px solid #ddd; border-radius: 10px; padding: 10px; }
     details > summary { cursor: pointer; font-weight: 600; }
 
@@ -165,7 +170,14 @@
       </div>
       <div class="muted">Zeitangaben werden als lokale Zeit interpretiert und als UTC an die API gesendet.</div>
     </div>
-    <div class="control"><button id="load" style="width:100%;">Aktualisieren</button></div>
+    <div class="control">
+      <button id="load" style="width:100%;">Aktualisieren</button>
+      <div id="load_status" data-ui="dashboard.load_status" title="dashboard.load_status">
+        <span id="load_spinner" aria-hidden="true"></span>
+        <span id="load_status_txt">Abfrage laeuft...</span>
+        <span id="load_status_time"></span>
+      </div>
+    </div>
   </div>
 
   <div class="muted" data-ui="tip.selection" title="tip.selection">Laedt Graph/Tabelle/Statistik erst nach Klick auf <code>Aktualisieren</code>.</div>
@@ -497,6 +509,12 @@ const $versionBox = document.getElementById('version_box');
 
 const $btnTblAllValues = document.getElementById('tbl_all_values');
 
+const $btnLoad = document.getElementById('load');
+const $loadStatus = document.getElementById('load_status');
+const $loadSpinner = document.getElementById('load_spinner');
+const $loadStatusTxt = document.getElementById('load_status_txt');
+const $loadStatusTime = document.getElementById('load_status_time');
+
 const $editNeighbors = document.getElementById('edit_neighbors');
 const $editNeighborsInfo = document.getElementById('edit_neighbors_info');
 const $editNeighborsRows = document.getElementById('edit_neighbors_rows');
@@ -677,6 +695,63 @@ function saveState(){
   }catch(e){}
 }
 
+function _fmtDur(ms){
+  const n = Number(ms);
+  if(!isFinite(n) || n < 0) return "-";
+  if(n < 1000) return n.toFixed(0) + "ms";
+  return (n/1000).toFixed(1) + "s";
+}
+
+function _setLoadStatus(text){
+  try{
+    if($loadStatusTxt) $loadStatusTxt.textContent = text || "";
+  }catch(e){}
+}
+
+function _renderLoadTime(){
+  try{
+    if(!$loadStatusTime) return;
+    const total = performance.now() - LOAD_T0;
+    const q = (LOAD_QUERY_MS !== null && LOAD_QUERY_MS !== undefined) ? ` | Query: ${_fmtDur(LOAD_QUERY_MS)}` : "";
+    $loadStatusTime.textContent = `Gesamt: ${_fmtDur(total)}${q}`;
+  }catch(e){}
+}
+
+function startLoadUi(){
+  try{
+    if(LOAD_INFLIGHT) return false;
+    LOAD_INFLIGHT = true;
+    LOAD_T0 = performance.now();
+    LOAD_QUERY_MS = null;
+    if($btnLoad) $btnLoad.disabled = true;
+    if($loadStatus) $loadStatus.style.display = "flex";
+    if($loadSpinner) $loadSpinner.style.display = "inline-block";
+    _setLoadStatus("Abfrage laeuft...");
+    _renderLoadTime();
+    if(LOAD_TIMER) clearInterval(LOAD_TIMER);
+    LOAD_TIMER = setInterval(_renderLoadTime, 120);
+    return true;
+  }catch(e){
+    return true;
+  }
+}
+
+function stopLoadUi(okDone, errText){
+  try{
+    if(LOAD_TIMER) clearInterval(LOAD_TIMER);
+    LOAD_TIMER = null;
+    _renderLoadTime();
+    if($loadSpinner) $loadSpinner.style.display = "none";
+    if(okDone){
+      _setLoadStatus("Fertig.");
+    }else{
+      _setLoadStatus(errText ? ("Fehler: " + String(errText)) : "Fehler.");
+    }
+    if($btnLoad) $btnLoad.disabled = false;
+  }catch(e){}
+  LOAD_INFLIGHT = false;
+}
+
 function applyScanPreset(){
   try{
     const p = $scanPreset ? String($scanPreset.value || "") : "counter";
@@ -701,6 +776,11 @@ let ALLOW_WRITES = true;
 
 let OUTLIER_ACTIVE = false;
 let OUTLIER_ROWS = [];
+
+let LOAD_INFLIGHT = false;
+let LOAD_T0 = 0;
+let LOAD_TIMER = null;
+let LOAD_QUERY_MS = null;
 
 let _PLOTLY_EVENTS_BOUND = false;
 let _IN_Y_RELAYOUT = false;
@@ -2555,7 +2635,10 @@ async function loadData(){
   }
   LAST_SERIES_KEY = seriesKey;
 
+  const q0 = performance.now();
   const j = await api("./api/query", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(filters)});
+  LOAD_QUERY_MS = performance.now() - q0;
+  if(LOAD_INFLIGHT) _setLoadStatus("Query fertig – Graph wird aktualisiert...");
   const rows = j.rows || [];
   LAST_ROWS = rows;
   OUTLIER_ACTIVE = false;
@@ -2595,6 +2678,22 @@ async function refreshAll(){
     try{ await resolveSignal(); } catch(e){ displayError(e); }
     await loadData();
   }catch(e){
+    displayError(e);
+  }
+}
+
+async function refreshAllWithStatus(){
+  try{
+    if(LOAD_INFLIGHT) return;
+    if(!$n.value){
+      err("Bitte zuerst einen Messwert (friendly_name) auswaehlen.");
+      return;
+    }
+    startLoadUi();
+    await refreshAll();
+    stopLoadUi(true);
+  }catch(e){
+    stopLoadUi(false, (e && e.message) ? e.message : String(e));
     displayError(e);
   }
 }
@@ -2894,7 +2993,7 @@ if($editSelAll) $editSelAll.addEventListener("change", ()=>{
   renderEditTable();
 });
 
-document.getElementById("load").addEventListener("click", ()=>refreshAll().catch(displayError));
+if($btnLoad) $btnLoad.addEventListener("click", (ev)=>{ _stop(ev); refreshAllWithStatus().catch(displayError); });
 
 (async ()=>{
   try{
