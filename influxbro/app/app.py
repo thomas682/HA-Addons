@@ -29,7 +29,7 @@ CONFIG_DIR = Path(os.environ.get("CONFIG_DIR", "/config"))
 DATA_DIR = Path(os.environ.get("DATA_DIR", "/data"))
 
 APP_DIR = Path(__file__).resolve().parent
-BACKUP_DIR = DATA_DIR / "backups"
+BACKUP_DIR = DATA_DIR / "backups"  # default; may be overridden via UI config
 
 GLOBAL_STATS_JOBS: dict[str, dict[str, Any]] = {}
 GLOBAL_STATS_LOCK = threading.Lock()
@@ -524,6 +524,9 @@ DEFAULT_CFG = {
     # Links / Info
     "ui_repo_url": "http://192.168.2.65:7070/thomas/ha-addons",
 
+    # Backups (must live under /data)
+    "backup_dir": "/data/backups",
+
     # Default collapsed sections
     "ui_open_selection": False,
     "ui_open_graph": False,
@@ -582,6 +585,31 @@ def load_cfg():
         except Exception:
             pass
     return cfg
+
+
+def backup_dir(cfg: dict[str, Any] | None = None) -> Path:
+    """Return the configured backup directory (constrained under /data)."""
+
+    try:
+        c = cfg or load_cfg()
+        raw = str(c.get("backup_dir") or "").strip()
+    except Exception:
+        raw = ""
+
+    if not raw:
+        return BACKUP_DIR
+
+    try:
+        p = Path(raw)
+        if not p.is_absolute():
+            p = DATA_DIR / raw
+        p = p.resolve()
+        root = DATA_DIR.resolve()
+        if p == root or root in p.parents:
+            return p
+    except Exception:
+        return BACKUP_DIR
+    return BACKUP_DIR
 
 
 # Configure logging early from persisted config.
@@ -1344,9 +1372,9 @@ def _backup_safe(s: str) -> str:
     return out[:80] if out else "backup"
 
 
-def _backup_files(backup_id: str) -> tuple[Path, Path]:
+def _backup_files(dir_path: Path, backup_id: str) -> tuple[Path, Path]:
     stem = _backup_safe(backup_id)
-    return BACKUP_DIR / f"{stem}.json", BACKUP_DIR / f"{stem}.lp"
+    return dir_path / f"{stem}.json", dir_path / f"{stem}.lp"
 
 
 def _norm_unit(u: str) -> str:
@@ -1367,17 +1395,17 @@ def _outlier_max_step(cfg: dict[str, Any], unit: str) -> float:
     return float(cfg.get("outlier_max_step_w", 30000))
 
 
-def _list_backups() -> list[dict[str, Any]]:
+def _list_backups(dir_path: Path) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
-    if not BACKUP_DIR.exists():
+    if not dir_path.exists():
         return out
-    for p in sorted(BACKUP_DIR.glob("*.json")):
+    for p in sorted(dir_path.glob("*.json")):
         try:
             meta = json.loads(p.read_text(encoding="utf-8"))
             if not isinstance(meta, dict):
                 continue
             backup_id = str(meta.get("id") or p.stem)
-            lp = BACKUP_DIR / (p.stem + ".lp")
+            lp = dir_path / (p.stem + ".lp")
             out.append({
                 **meta,
                 "id": backup_id,
@@ -1406,6 +1434,9 @@ def _dt_to_ns(dt: datetime) -> int:
 
 @app.get("/api/backups")
 def api_backups():
+    cfg = load_cfg()
+    bdir = backup_dir(cfg)
+
     measurement = (request.args.get("measurement") or "").strip()
     field = (request.args.get("field") or "").strip()
     entity_id = (request.args.get("entity_id") or "").strip() or None
@@ -1414,7 +1445,7 @@ def api_backups():
     if not measurement or not field:
         return jsonify({"ok": False, "error": "measurement and field required"}), 400
 
-    backups = _list_backups()
+    backups = _list_backups(bdir)
     filtered: list[dict[str, Any]] = []
     for b in backups:
         if str(b.get("measurement") or "") != measurement:
@@ -1433,13 +1464,16 @@ def api_backups():
 
 @app.get("/api/backups_all")
 def api_backups_all():
-    backups = _list_backups()
+    cfg = load_cfg()
+    bdir = backup_dir(cfg)
+    backups = _list_backups(bdir)
     return jsonify({"ok": True, "backups": backups})
 
 
 @app.post("/api/backup_create")
 def api_backup_create():
     cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    bdir = backup_dir(cfg)
     body = request.get_json(force=True) or {}
     measurement = (body.get("measurement") or "").strip()
     field = (body.get("field") or "").strip()
@@ -1459,14 +1493,14 @@ def api_backup_create():
             "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
         }), 400
 
-    BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+    bdir.mkdir(parents=True, exist_ok=True)
 
     # Derive a stable display name for file ids
     display = friendly_name or entity_id or f"{measurement}_{field}"
     ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     backup_kind = "full"
     backup_id = _backup_safe(display) + "__" + backup_kind + "__" + ts
-    meta_path, lp_path = _backup_files(backup_id)
+    meta_path, lp_path = _backup_files(bdir, backup_id)
     if meta_path.exists() or lp_path.exists():
         return jsonify({"ok": False, "error": "backup id collision"}), 409
 
@@ -1541,6 +1575,8 @@ from(bucket: "{cfg["bucket"]}")
             "bytes": bytes_size,
             "oldest_time": _dt_to_rfc3339_utc(oldest) if oldest else None,
             "newest_time": _dt_to_rfc3339_utc(newest) if newest else None,
+            "start": _dt_to_rfc3339_utc(oldest) if oldest else None,
+            "stop": _dt_to_rfc3339_utc(newest) if newest else None,
         }
         meta_path.write_text(json.dumps(meta, indent=2, sort_keys=True), encoding="utf-8")
         return jsonify({"ok": True, "message": f"Backup created: {backup_id}", "backup": meta})
@@ -1561,12 +1597,15 @@ from(bucket: "{cfg["bucket"]}")
 
 @app.get("/api/backup_location")
 def api_backup_location():
-    return jsonify({"ok": True, "container_path": str(BACKUP_DIR), "slug": "influxbro"})
+    cfg = load_cfg()
+    bdir = backup_dir(cfg)
+    return jsonify({"ok": True, "container_path": str(bdir), "slug": "influxbro"})
 
 
 @app.post("/api/backup_create_range")
 def api_backup_create_range():
     cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    bdir = backup_dir(cfg)
     body = request.get_json(force=True) or {}
     measurement = (body.get("measurement") or "").strip()
     field = (body.get("field") or "").strip()
@@ -1591,13 +1630,13 @@ def api_backup_create_range():
             "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
         }), 400
 
-    BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+    bdir.mkdir(parents=True, exist_ok=True)
 
     display = friendly_name or entity_id or f"{measurement}_{field}"
     ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     backup_kind = "range"
     backup_id = _backup_safe(display) + "__" + backup_kind + "__" + ts
-    meta_path, lp_path = _backup_files(backup_id)
+    meta_path, lp_path = _backup_files(bdir, backup_id)
     if meta_path.exists() or lp_path.exists():
         return jsonify({"ok": False, "error": "backup id collision"}), 409
 
@@ -1692,8 +1731,10 @@ def api_backup_delete():
     backup_id = (body.get("id") or "").strip()
     if not backup_id:
         return jsonify({"ok": False, "error": "id required"}), 400
-    BACKUP_DIR.mkdir(parents=True, exist_ok=True)
-    meta_path, lp_path = _backup_files(backup_id)
+    cfg = load_cfg()
+    bdir = backup_dir(cfg)
+    bdir.mkdir(parents=True, exist_ok=True)
+    meta_path, lp_path = _backup_files(bdir, backup_id)
     removed = 0
     for p in (meta_path, lp_path):
         try:
@@ -1731,7 +1772,8 @@ def api_backup_restore():
             "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
         }), 400
 
-    meta_path, lp_path = _backup_files(backup_id)
+    bdir = backup_dir(cfg)
+    meta_path, lp_path = _backup_files(bdir, backup_id)
     if not lp_path.exists():
         return jsonify({"ok": False, "error": "backup not found"}), 404
 
@@ -1809,7 +1851,8 @@ def api_backup_copy():
             "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
         }), 400
 
-    meta_path, lp_path = _backup_files(backup_id)
+    bdir = backup_dir(cfg)
+    meta_path, lp_path = _backup_files(bdir, backup_id)
     if not lp_path.exists():
         return jsonify({"ok": False, "error": "backup not found"}), 404
 
@@ -1989,6 +2032,13 @@ def api_set_config():
         cfg["ui_repo_url"] = str(cfg.get("ui_repo_url") or "").strip()
     except Exception:
         cfg["ui_repo_url"] = ""
+
+    # Backups directory (must stay under /data)
+    try:
+        cfg["backup_dir"] = str(cfg.get("backup_dir") or "").strip()
+    except Exception:
+        cfg["backup_dir"] = str(DEFAULT_CFG.get("backup_dir") or "/data/backups")
+    cfg["backup_dir"] = str(backup_dir(cfg))
 
     def _bool(key: str, default: bool = False) -> None:
         v = cfg.get(key, default)

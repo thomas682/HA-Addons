@@ -64,21 +64,23 @@
          </div>
 
          <div class="table_box">
-           <table data-ui="restore.backup_table" title="restore.backup_table">
-             <thead>
-               <tr>
-                 <th style="width: 34px;">Ausw.</th>
-                 <th>Backup Datum</th>
-                 <th>Name</th>
-                 <th>kind</th>
-                 <th>_measurement</th>
-                 <th>_field</th>
-                 <th>entity_id</th>
-                 <th>friendly_name</th>
-                 <th>Werte</th>
-                 <th>Datei</th>
-               </tr>
-             </thead>
+            <table data-ui="restore.backup_table" title="restore.backup_table">
+              <thead>
+                <tr>
+                  <th style="width: 34px;">Ausw.</th>
+                  <th>Backup Datum</th>
+                  <th>Zeitraum</th>
+                  <th>Name</th>
+                  <th>kind</th>
+                  <th>_measurement</th>
+                  <th>_field</th>
+                  <th>entity_id</th>
+                  <th>friendly_name</th>
+                  <th>Werte</th>
+                  <th>Groesse</th>
+                  <th>Datei</th>
+                </tr>
+              </thead>
              <tbody id="rows"></tbody>
            </table>
          </div>
@@ -89,13 +91,17 @@
           <div style="font-weight:700;">Ziel (Messwert)</div>
           <div class="status" id="plan_info" data-ui="restore.plan" title="restore.plan" style="margin-top:8px; border: 1px dashed #ddd; border-radius: 12px; padding: 10px 12px; background: #fafafa; font-size: 12px; white-space: pre-wrap;"></div>
 
-          <div class="row" style="margin-top: 8px;" data-ui="restore.plan_query" title="restore.plan_query">
-            <label style="display:flex; gap: 8px; align-items:center; height:40px; padding:0 4px;">
-              <input id="show_query" type="checkbox" data-ui="restore.show_query" title="restore.show_query" />
-              <span class="muted" style="opacity:0.85;">Query anzeigen</span>
-            </label>
-          </div>
-          <pre id="plan_query" style="display:none; margin:6px 0 0 0; padding:10px 12px; border:1px solid #eee; border-radius:12px; background:#fafafa; white-space:pre; overflow:auto; max-height: 220px;" data-ui="restore.query" title="restore.query"></pre>
+           <div class="row" style="margin-top: 8px;" data-ui="restore.plan_query" title="restore.plan_query">
+             <label style="display:flex; gap: 8px; align-items:center; height:40px; padding:0 4px;">
+               <input id="show_query" type="checkbox" data-ui="restore.show_query" title="restore.show_query" />
+               <span class="muted" style="opacity:0.85;">Query anzeigen</span>
+             </label>
+           </div>
+           <pre id="plan_query" style="display:none; margin:6px 0 0 0; padding:10px 12px; border:1px solid #eee; border-radius:12px; background:#fafafa; white-space:pre; overflow:auto; max-height: 220px;" data-ui="restore.query" title="restore.query"></pre>
+
+           <div class="row" style="margin-top: 8px; justify-content:flex-start;" data-ui="restore.copy_source" title="restore.copy_source">
+             <button id="source_to_target" data-ui="restore.source_to_target" title="restore.source_to_target">Uebertrage Quellenamen auf Zielnamen</button>
+           </div>
           <details id="selection_details" open data-ui="section.selection" title="section.selection" style="margin-top: 10px;">
             <summary>Auswahl</summary>
 
@@ -139,17 +145,12 @@
             </div>
           </details>
 
-           <div class="row" data-ui="restore.actions" title="restore.actions">
-             <div class="muted" style="min-width: 320px; flex:1; padding-top: 6px;" data-ui="restore.write_hint" title="restore.write_hint">Hinweis: Schreiben ist nur moeglich, wenn es in Einstellungen erlaubt ist.</div>
-             <div>
-               <label>&nbsp;</label>
-               <button id="source_to_target" data-ui="restore.source_to_target" title="restore.source_to_target">Uebertrage Quellenamen auf Zielnamen</button>
-             </div>
-             <div>
-               <label>&nbsp;</label>
-               <button id="run" data-ui="restore.run" title="restore.run">Restore ausfuehren</button>
-             </div>
-           </div>
+            <div class="row" data-ui="restore.actions" title="restore.actions" style="justify-content:flex-start;">
+              <div>
+                <button id="run" data-ui="restore.run" title="restore.run">Restore ausfuehren</button>
+              </div>
+              <div class="muted" style="min-width: 320px; flex:1; padding-top: 6px;" data-ui="restore.write_hint" title="restore.write_hint">Hinweis: Schreiben ist nur moeglich, wenn es in Einstellungen erlaubt ist.</div>
+            </div>
 
          <div id="err" class="err"></div>
          <div id="ok" class="ok"></div>
@@ -238,13 +239,30 @@
          }catch(e){}
        }
 
+       function pad2(n){ return String(n).padStart(2,'0'); }
+       function fmtTs(iso){
+         if(!iso) return '';
+         const d = new Date(String(iso));
+         if(!isFinite(d.getTime())) return String(iso);
+         return pad2(d.getDate()) + '.' + pad2(d.getMonth()+1) + '.' + d.getFullYear() + ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds());
+       }
+
+       function fmtBytes(n){
+         const b = Number(n);
+         if(!isFinite(b) || b < 0) return '';
+         if(b < 1024) return b + ' B';
+         if(b < 1024*1024) return (b/1024).toFixed(1) + ' kB';
+         if(b < 1024*1024*1024) return (b/1024/1024).toFixed(1) + ' MB';
+         return (b/1024/1024/1024).toFixed(2) + ' GB';
+       }
+
       function buildVerifyQuery(){
         try{
           const b = selBackup();
           if(!b) return '';
           const tf = timeFilter();
-          const start = tf ? tf.start : (b.oldest_time || '1970-01-01T00:00:00Z');
-          const stop = tf ? tf.stop : (b.newest_time || new Date().toISOString());
+          const start = tf ? tf.start : (b.start || b.oldest_time || '1970-01-01T00:00:00Z');
+          const stop = tf ? tf.stop : (b.stop || b.newest_time || new Date().toISOString());
           if(!LAST_TARGET) return '';
           const bucket = CFG.bucket || 'YOUR_BUCKET';
           const extra = [];
@@ -272,14 +290,14 @@
             return;
           }
           const tf = timeFilter();
-          const start = tf ? tf.start : (b.oldest_time || '');
-          const stop = tf ? tf.stop : (b.newest_time || '');
+          const start = tf ? tf.start : (b.start || b.oldest_time || '');
+          const stop = tf ? tf.stop : (b.stop || b.newest_time || '');
           const tgt = LAST_TARGET;
           const lines = [];
           lines.push(`Quelle (Backup): ${b.display_name || b.id || ''}`);
           lines.push(`Quelle Serie: ${b.measurement || ''}/${b.field || ''}`);
           lines.push(`Quelle Tags: entity_id=${b.entity_id || ''} | friendly_name=${b.friendly_name || ''}`);
-          if(start && stop) lines.push(`Zeitraum: ${start} bis ${stop}`);
+          if(start && stop) lines.push(`Zeitraum: ${fmtTs(start)} bis ${fmtTs(stop)}`);
           lines.push('');
           if(tgt){
             lines.push(`Ziel Serie: ${tgt.measurement}/${tgt.field}`);
@@ -320,7 +338,10 @@
           rb.checked = (id === SELECTED_ID);
           rb.addEventListener('change', ()=>{ SELECTED_ID = id; renderList(); renderPlan(); });
           tdSel.appendChild(rb);
-          const tdDt = document.createElement('td'); tdDt.textContent = b.created_at || '';
+          const tdDt = document.createElement('td'); tdDt.textContent = fmtTs(b.created_at || '');
+          const s = b.start || b.oldest_time || '';
+          const e = b.stop || b.newest_time || '';
+          const tdSpan = document.createElement('td'); tdSpan.textContent = (s && e) ? (fmtTs(s) + ' bis ' + fmtTs(e)) : '';
           const tdName = document.createElement('td'); tdName.textContent = b.display_name || '';
           const tdKind = document.createElement('td'); tdKind.textContent = b.kind || '';
           const tdM = document.createElement('td'); tdM.textContent = b.measurement || '';
@@ -328,9 +349,11 @@
           const tdE = document.createElement('td'); tdE.textContent = b.entity_id || '';
           const tdFn = document.createElement('td'); tdFn.textContent = b.friendly_name || '';
           const tdCnt = document.createElement('td'); tdCnt.textContent = (b.point_count ?? '') + '';
+          const tdSize = document.createElement('td'); tdSize.textContent = fmtBytes(b.bytes);
           const tdFile = document.createElement('td'); tdFile.textContent = b.file || b.id || '';
           tr.appendChild(tdSel);
           tr.appendChild(tdDt);
+          tr.appendChild(tdSpan);
           tr.appendChild(tdName);
           tr.appendChild(tdKind);
           tr.appendChild(tdM);
@@ -338,6 +361,7 @@
           tr.appendChild(tdE);
           tr.appendChild(tdFn);
           tr.appendChild(tdCnt);
+          tr.appendChild(tdSize);
           tr.appendChild(tdFile);
           tr.addEventListener('click', ()=>{ SELECTED_ID = id; renderList(); renderPlan(); });
           $rows.appendChild(tr);

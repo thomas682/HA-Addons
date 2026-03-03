@@ -21,9 +21,9 @@
     .content { padding: 16px; }
     h2 { margin: 0; }
     .muted { opacity: 0.7; font-size: 12px; }
-    .row { display:flex; gap: 10px; flex-wrap:wrap; align-items:end; margin-top: 10px; justify-content:flex-start; }
+    .row { display:flex; gap: 8px; flex-wrap:wrap; align-items:end; margin-top: 10px; justify-content:flex-start; }
     .grid { display:grid; grid-template-columns: repeat(2, minmax(260px, 1fr)); gap: 12px; margin-top: 12px; align-items:end; }
-    .grid4 { display:grid; grid-template-columns: repeat(4, minmax(220px, 1fr)); gap: 12px; margin-top: 12px; align-items:end; }
+    .grid4 { display:grid; grid-template-columns: repeat(4, minmax(180px, 240px)); gap: 8px; margin-top: 10px; align-items:start; justify-content:start; }
     @media (max-width: 980px){ .grid { grid-template-columns: 1fr; } }
     @media (max-width: 980px){ .grid4 { grid-template-columns: repeat(2, minmax(220px, 1fr)); } }
     @media (max-width: 720px){ .grid4 { grid-template-columns: 1fr; } }
@@ -40,6 +40,11 @@
     th, td { border: 1px solid #eee; padding: 0 6px; font-size: 12px; line-height: 1.2; vertical-align: middle; }
     th { background: #f6f6f6; text-align:left; }
     tr.selected { background: #e8f1ff; }
+
+    #create_status { display:none; margin-top: 8px; font-size: 12px; opacity: 0.85; align-items:center; gap: 8px; }
+    #create_spinner { width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(0,0,0,0.18); border-top-color: rgba(0,0,0,0.75); animation: spin 0.9s linear infinite; }
+    #create_status_time { opacity: 0.85; white-space: nowrap; }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
@@ -54,8 +59,7 @@
           <summary>Auswahl</summary>
 
           <div class="muted">Auswahl wird initial aus dem Dashboard uebernommen (Browser-Speicher) und kann hier angepasst werden.</div>
-          <div class="muted" id="loc" data-ui="backup.location" title="backup.location"></div>
-          <div class="muted" id="zoom_txt" data-ui="backup.zoom_txt" title="backup.zoom_txt"></div>
+           <div class="muted" id="zoom_txt" data-ui="backup.zoom_txt" title="backup.zoom_txt"></div>
 
           <div class="grid4" style="margin-top: 10px;" data-ui="backup.target" title="backup.target">
             <div>
@@ -123,13 +127,26 @@
         <div id="err" class="err"></div>
         <div id="ok" class="ok"></div>
 
+        <div id="create_status" data-ui="backup.create_status" title="backup.create_status">
+          <span id="create_spinner" aria-hidden="true"></span>
+          <span id="create_status_txt">Backup laeuft...</span>
+          <span id="create_status_time"></span>
+        </div>
+
+        <div class="muted" id="loc" data-ui="backup.location" title="backup.location" style="margin-top:10px;"></div>
+
         <table data-ui="backup.table" title="backup.table">
           <thead>
             <tr>
               <th style="width:20px;"><input type="checkbox" id="sel_all" data-ui="backup.select_all" title="backup.select_all"/></th>
               <th>Backup Datum</th>
-              <th>friendly_name</th>
+              <th>Zeitraum</th>
+              <th>Name</th>
+              <th>kind</th>
+              <th>_measurement</th>
+              <th>_field</th>
               <th>entity_id</th>
+              <th>friendly_name</th>
               <th>Anzahl Werte</th>
               <th>Groesse</th>
               <th>Datei</th>
@@ -159,6 +176,11 @@
       const $del = document.getElementById('del');
       const $selAll = document.getElementById('sel_all');
 
+      const $createStatus = document.getElementById('create_status');
+      const $createSpinner = document.getElementById('create_spinner');
+      const $createStatusTxt = document.getElementById('create_status_txt');
+      const $createStatusTime = document.getElementById('create_status_time');
+
       const $mf = document.getElementById('measurement_filter');
       const $n = document.getElementById('friendly_name');
       const $e = document.getElementById('entity_id');
@@ -181,6 +203,10 @@
       let ALL_FN = [];
       let ALL_EID = [];
 
+      let CREATE_INFLIGHT = false;
+      let CREATE_T0 = 0;
+      let CREATE_TIMER = null;
+
       function autoGrow(el){
         try{
           if(!el) return;
@@ -191,6 +217,54 @@
 
       function err(s){ $err.textContent = s || ""; }
       function ok(s){ $ok.textContent = s || ""; }
+
+      function _fmtDur(ms){
+        const n = Number(ms);
+        if(!isFinite(n) || n < 0) return "-";
+        if(n < 1000) return n.toFixed(0) + "ms";
+        return (n/1000).toFixed(1) + "s";
+      }
+
+      function renderCreateTime(){
+        try{
+          if(!$createStatusTime) return;
+          $createStatusTime.textContent = 'Gesamt: ' + _fmtDur(performance.now() - CREATE_T0);
+        }catch(e){}
+      }
+
+      function setCreateStatus(txt){
+        try{ if($createStatusTxt) $createStatusTxt.textContent = txt || ""; }catch(e){}
+      }
+
+      function startCreateUi(txt){
+        if(CREATE_INFLIGHT) return false;
+        CREATE_INFLIGHT = true;
+        CREATE_T0 = performance.now();
+        if($createStatus) $createStatus.style.display = 'flex';
+        if($createSpinner) $createSpinner.style.display = 'inline-block';
+        setCreateStatus(txt || 'Backup laeuft...');
+        renderCreateTime();
+        if(CREATE_TIMER) clearInterval(CREATE_TIMER);
+        CREATE_TIMER = setInterval(renderCreateTime, 150);
+        try{ if($createFull) $createFull.disabled = true; }catch(e){}
+        try{ if($createRange) $createRange.disabled = true; }catch(e){}
+        try{ if($createRangeSel) $createRangeSel.disabled = true; }catch(e){}
+        try{ if($reload) $reload.disabled = true; }catch(e){}
+        return true;
+      }
+
+      function stopCreateUi(okDone){
+        try{ if(CREATE_TIMER) clearInterval(CREATE_TIMER); }catch(e){}
+        CREATE_TIMER = null;
+        renderCreateTime();
+        try{ if($createSpinner) $createSpinner.style.display = 'none'; }catch(e){}
+        setCreateStatus(okDone ? 'Fertig.' : 'Fehler.');
+        try{ if($createFull) $createFull.disabled = false; }catch(e){}
+        try{ if($createRange) $createRange.disabled = false; }catch(e){}
+        try{ if($createRangeSel) $createRangeSel.disabled = false; }catch(e){}
+        try{ if($reload) $reload.disabled = false; }catch(e){}
+        CREATE_INFLIGHT = false;
+      }
 
       function loadState(){
         try{ return JSON.parse(localStorage.getItem(LS_KEY) || "{}") || {}; }catch(e){ return {}; }
@@ -469,13 +543,34 @@
           });
           td0.appendChild(cb);
 
-          const td1 = document.createElement('td'); td1.textContent = b.created_at || "";
-          const tdFn = document.createElement('td'); tdFn.textContent = b.friendly_name || "";
+          const td1 = document.createElement('td'); td1.textContent = fmtTs(b.created_at || "");
+
+          const s = b.start || b.oldest_time || "";
+          const e = b.stop || b.newest_time || "";
+          const tdSpan = document.createElement('td');
+          tdSpan.textContent = (s && e) ? (fmtTs(s) + " bis " + fmtTs(e)) : "";
+
+          const tdName = document.createElement('td'); tdName.textContent = b.display_name || "";
+          const tdKind = document.createElement('td'); tdKind.textContent = b.kind || "";
+          const tdM = document.createElement('td'); tdM.textContent = b.measurement || "";
+          const tdF = document.createElement('td'); tdF.textContent = b.field || "";
           const tdEid = document.createElement('td'); tdEid.textContent = b.entity_id || "";
+          const tdFn = document.createElement('td'); tdFn.textContent = b.friendly_name || "";
           const td2 = document.createElement('td'); td2.textContent = (b.point_count === null || b.point_count === undefined) ? "" : String(b.point_count);
           const td3 = document.createElement('td'); td3.textContent = fmtBytes(b.bytes);
           const td4 = document.createElement('td'); td4.textContent = b.file || "";
-          tr.appendChild(td0); tr.appendChild(td1); tr.appendChild(tdFn); tr.appendChild(tdEid); tr.appendChild(td2); tr.appendChild(td3); tr.appendChild(td4);
+          tr.appendChild(td0);
+          tr.appendChild(td1);
+          tr.appendChild(tdSpan);
+          tr.appendChild(tdName);
+          tr.appendChild(tdKind);
+          tr.appendChild(tdM);
+          tr.appendChild(tdF);
+          tr.appendChild(tdEid);
+          tr.appendChild(tdFn);
+          tr.appendChild(td2);
+          tr.appendChild(td3);
+          tr.appendChild(td4);
 
           tr.addEventListener('click', ()=>{
             if(!id) return;
@@ -530,14 +625,21 @@
 
       async function createBackup(){
         err(""); ok("");
-        await resolveTarget();
-        const j = await api("./api/backup_create", {
-          method:"POST",
-          headers:{"Content-Type":"application/json"},
-          body: JSON.stringify(LAST_TARGET)
-        });
-        ok(j.message || "Backup erstellt.");
-        await loadList();
+        startCreateUi('Fullbackup laeuft...');
+        try{
+          await resolveTarget();
+          const j = await api("./api/backup_create", {
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body: JSON.stringify(LAST_TARGET)
+          });
+          ok(j.message || "Backup erstellt.");
+          await loadList();
+          stopCreateUi(true);
+        }catch(e){
+          stopCreateUi(false);
+          throw e;
+        }
       }
 
       async function createRangeBackup(){

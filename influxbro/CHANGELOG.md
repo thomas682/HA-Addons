@@ -2,6 +2,19 @@
 
 <!-- markdownlint-disable MD024 MD013 -->
 
+## 1.11.32
+
+### Features
+- Backup/Restore: Tabellen harmonisiert (inkl. Zeitraum-Spalte) und Zeiten werden in lokaler Browserzeit angezeigt.
+- Backup: Fullbackup zeigt jetzt eine laufende Statusanzeige wie Dashboard.
+- Einstellungen: Backup-Verzeichnis ist jetzt konfigurierbar (unter /data).
+
+### Bug Fixes
+- Backup: Messwert-/Zeitenanzeige um 1h versetzt behoben (UTC wird als lokale Zeit formatiert).
+
+### Maintenance
+- (keine)
+
 ## 1.11.31
 
 ### Features
