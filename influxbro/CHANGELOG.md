@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.11.43
+
+### Features
+
+- Dashboard: Fehler-/Filtertabelle zeigt eine kompakte Statuszeile (Zeitraum Graph, Eintraege, Sort, Filter, Zeit, Modus).
+- Dashboard: Fehlersuche-Ausreisser Statusanzeige bleibt nach Abschluss sichtbar.
+- Dashboard: Neuer DB-Scan Preset "nicht ansteigende Spruenge" (findet fallende Werte gegenueber dem Vorwert).
+
+### Bug Fixes
+
+- (keine)
+
+### Maintenance
+
+- (keine)
+
 ## 1.11.42
 
 ### Features

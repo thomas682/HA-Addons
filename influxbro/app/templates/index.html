@@ -298,18 +298,17 @@
       <summary class="section_title">Fehler-/Filtertabelle</summary>
       <div class="table_wrap">
         <div class="table_head">
-          <div>
-            <div style="font-weight:700;">Fehler-/Filtertabelle</div>
-            <div class="muted" id="table_range"></div>
-            <div class="muted" id="table_info"></div>
+            <div>
+              <div style="font-weight:700;">Fehler-/Filtertabelle</div>
+              <div class="muted" id="table_range"></div>
+              <div class="muted" id="table_info"></div>
 
-            <div class="tbl_actions">
-              <label><input type="checkbox" id="tbl_time_from_graph" class="row_sel" data-ui="filterlist_time_from_graph"/>Zeit gefuehrt durch Graph</label>
-              <label><input type="checkbox" id="tbl_enabled" class="row_sel" data-ui="filterlist_filter_enabled"/> Filter aktiv</label>
-              <button class="btn_sm" id="tbl_all_values" data-ui="filterlist_all_values">Alle Werte</button>
-            </div>
+              <div class="tbl_actions">
+                <label><input type="checkbox" id="tbl_time_from_graph" class="row_sel" data-ui="filterlist_time_from_graph"/>Zeit gefuehrt durch Graph</label>
+                <label><input type="checkbox" id="tbl_enabled" class="row_sel" data-ui="filterlist_filter_enabled"/> Filter aktiv</label>
+              </div>
 
-            <div class="muted" data-ui="tip.filterlist" title="tip.filterlist">Mit <code>Alle Werte</code> wird die Tabelle auf den Graph-Zeitbereich gesetzt und Filter deaktiviert.</div>
+              <div class="muted" data-ui="tip.filterlist" title="tip.filterlist">Filter (DB-Scan) steuert, welche Punkte als "Ausreisser" markiert werden.</div>
 
             <div class="row" style="margin-top:0;" data-ui="filterlist_scan_row" title="filterlist_scan_row">
               <div style="min-width: 260px;">
@@ -317,6 +316,7 @@
                 <select id="scan_preset" data-ui="filterlist_scan_preset" title="filterlist_scan_preset">
                   <option value="free">Filter frei</option>
                   <option value="counter" selected>Counter Ausreisser</option>
+                  <option value="decrease">nicht ansteigende Spruenge</option>
                   <option value="bounds">Grenzen</option>
                   <option value="null">NULL Werte</option>
                   <option value="zero">0-Werte</option>
@@ -885,19 +885,12 @@ function stopOutlierUi(okDone, errText){
     OUTLIER_TIMER = null;
     _renderOutlierTime();
     if($outlierSpinner) $outlierSpinner.style.display = "none";
+    if($outlierStatus) $outlierStatus.style.display = "flex";
     if($outlierStatusTxt){
       if(okDone) $outlierStatusTxt.textContent = "Fertig.";
       else $outlierStatusTxt.textContent = errText ? ("Fehler: " + String(errText)) : "Fehler.";
     }
     if($btnOutlierScan) $btnOutlierScan.disabled = false;
-    if(_OUTLIER_HIDE_TIMER) clearTimeout(_OUTLIER_HIDE_TIMER);
-    _OUTLIER_HIDE_TIMER = setTimeout(()=>{
-      if(!OUTLIER_INFLIGHT){
-        try{ if($outlierStatus) $outlierStatus.style.display = "none"; }catch(e){}
-        try{ if($outlierStatusTime) $outlierStatusTime.textContent = ""; }catch(e){}
-        try{ if($outlierStatusTxt) $outlierStatusTxt.textContent = ""; }catch(e){}
-      }
-    }, 1400);
   }catch(e){}
   OUTLIER_INFLIGHT = false;
 }
@@ -906,7 +899,7 @@ function applyScanPreset(){
   try{
     const p = $scanPreset ? String($scanPreset.value || "") : "counter";
     if($freeFilterRow) $freeFilterRow.style.display = (p === "free") ? "flex" : "none";
-    if($scanCounter) $scanCounter.style.display = (p === "counter") ? "block" : "none";
+    if($scanCounter) $scanCounter.style.display = (p === "counter" || p === "decrease") ? "block" : "none";
     if($scanBounds) $scanBounds.style.display = (p === "bounds") ? "block" : "none";
   }catch(e){}
 }
@@ -938,7 +931,7 @@ let RESET_UNTIL_MS = 0;
 let OUTLIER_INFLIGHT = false;
 let OUTLIER_T0 = 0;
 let OUTLIER_TIMER = null;
-let _OUTLIER_HIDE_TIMER = null;
+// outlier status stays visible after completion
 
 let _PLOTLY_EVENTS_BOUND = false;
 let _IN_Y_RELAYOUT = false;
@@ -2494,8 +2487,10 @@ function renderTable(){
     const filt = TABLE_FILTER.enabled
       ? ` | Filter: (${TABLE_FILTER.a_op} ${TABLE_FILTER.a_val}) ${TABLE_FILTER.mode} (${TABLE_FILTER.b_op} ${TABLE_FILTER.b_val})`
       : " | Filter: aus";
-    const tf = (TABLE_TIME.from_graph && isFinite(TABLE_TIME.graph_start_ms) && isFinite(TABLE_TIME.graph_stop_ms)) ? " | Zeit: Graph" : "";
-    const om = OUTLIER_ACTIVE ? " | Modus: Ausreisser" : "";
+    const tf = (TABLE_TIME.from_graph && isFinite(TABLE_TIME.graph_start_ms) && isFinite(TABLE_TIME.graph_stop_ms))
+      ? " | Zeit: Graph"
+      : " | Zeit: Zeitraum";
+    const om = OUTLIER_ACTIVE ? " | Modus: Ausreisser" : " | Modus: Normal";
     $tableInfo.textContent = `Eintraege: ${shown}${baseTotal!==shown?` (von ${baseTotal})`:""} | Sort: ${TABLE_SORT.key} ${arrow}${filt}${tf}${om}`;
   }
 }
@@ -3459,7 +3454,9 @@ async function runOutlierScan(){
     bounds_enabled: preset === "bounds",
     min: $outMin ? $outMin.value : "",
     max: $outMax ? $outMax.value : "",
-    counter_enabled: preset === "counter",
+    counter_enabled: (preset === "counter" || preset === "decrease"),
+    counter_decrease: (preset === "counter" || preset === "decrease"),
+    counter_max_step: (preset === "counter"),
     max_step: $outMaxStep ? $outMaxStep.value : "",
     value_filter_enabled: preset === "free",
     value_mode: $tblMode ? $tblMode.value : "or",
@@ -3631,6 +3628,26 @@ try{
 try{
   document.querySelectorAll('select, input, button').forEach(el => {
     if(el.getAttribute('data-ui')) return;
+    if(el.getAttribute('title')) return;
+    const id = el.getAttribute('id');
+    if(id) el.setAttribute('title', id);
+  });
+}catch(e){}
+</script>
+
+{% include "_tooltips.html" %}
+
+    </div>
+  </div>
+
+</body>
+</html>
+v>
+  </div>
+
+</body>
+</html>
+getAttribute('data-ui')) return;
     if(el.getAttribute('title')) return;
     const id = el.getAttribute('id');
     if(id) el.setAttribute('title', id);
