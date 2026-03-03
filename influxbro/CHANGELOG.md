@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.11.39
+
+### Features
+
+- Dashboard: Button "Abbruch" bricht laufende Abfragen ab; zuletzt genutzter Query ist ausklappbar sichtbar.
+- Backup: Zuletzt genutzter Query der Backup-Erstellung ist ausklappbar sichtbar.
+
+### Bug Fixes
+
+- (keine)
+
+### Maintenance
+
+- (keine)
+
 ## 1.11.38
 
 ### Features

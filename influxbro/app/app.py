@@ -1579,7 +1579,7 @@ from(bucket: "{cfg["bucket"]}")
             "stop": _dt_to_rfc3339_utc(newest) if newest else None,
         }
         meta_path.write_text(json.dumps(meta, indent=2, sort_keys=True), encoding="utf-8")
-        return jsonify({"ok": True, "message": f"Backup created: {backup_id}", "backup": meta})
+        return jsonify({"ok": True, "message": f"Backup created: {backup_id}", "backup": meta, "query": q.strip()})
     except Exception as e:
         # Cleanup partial files
         try:
@@ -1710,7 +1710,7 @@ from(bucket: "{cfg["bucket"]}")
             "newest_time": _dt_to_rfc3339_utc(newest) if newest else None,
         }
         meta_path.write_text(json.dumps(meta, indent=2, sort_keys=True), encoding="utf-8")
-        return jsonify({"ok": True, "message": f"Backup created: {backup_id}", "backup": meta})
+        return jsonify({"ok": True, "message": f"Backup created: {backup_id}", "backup": meta, "query": q.strip()})
     except Exception as e:
         try:
             if meta_path.exists():
@@ -2508,7 +2508,7 @@ from(bucket: "{cfg["bucket"]}")
                 if len(rows) > 5000:
                     step = math.ceil(len(rows) / 5000)
                     rows = rows[::step]
-                return jsonify({"ok": True, "rows": rows})
+                return jsonify({"ok": True, "rows": rows, "query": q.strip()})
         else:
             if not cfg.get("database"):
                 return jsonify({"ok": False, "error": "InfluxDB v1 requires database. Bitte konfigurieren."}), 400
@@ -2525,7 +2525,7 @@ from(bucket: "{cfg["bucket"]}")
             if len(rows) > 5000:
                 step = math.ceil(len(rows) / 5000)
                 rows = rows[::step]
-            return jsonify({"ok": True, "rows": rows})
+            return jsonify({"ok": True, "rows": rows, "query": q.strip()})
     except Exception as e:
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
 

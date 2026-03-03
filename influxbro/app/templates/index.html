@@ -177,6 +177,7 @@
     <div class="control">
       <div style="display:flex; gap: 8px; align-items: stretch;">
         <button id="load" style="flex:1;" data-ui="dashboard.load">Aktualisieren</button>
+        <button id="cancel_load" class="btn_sm" style="width:auto; white-space:nowrap;" data-ui="dashboard.cancel">Abbruch</button>
         <button id="reset_filters" class="btn_sm" style="width:auto; white-space:nowrap;" data-ui="dashboard.reset" title="dashboard.reset">Reset</button>
       </div>
       <div id="load_status" data-ui="dashboard.load_status" title="dashboard.load_status">
@@ -184,6 +185,13 @@
         <span id="load_status_txt">Abfrage laeuft...</span>
         <span id="load_status_time"></span>
       </div>
+
+      <details id="query_details" class="card" style="display:none; margin-top: 10px;" data-ui="dashboard.query_details" title="dashboard.query_details">
+        <summary>Query anzeigen</summary>
+        <div class="card_body">
+          <pre id="query_pre" style="margin:6px 0 0 0; padding:10px 12px; border:1px solid #eee; border-radius:12px; background:#fafafa; white-space:pre; overflow:auto; max-height: 260px;"></pre>
+        </div>
+      </details>
     </div>
   </div>
 
@@ -553,11 +561,15 @@ const $versionBox = document.getElementById('version_box');
 const $btnTblAllValues = document.getElementById('tbl_all_values');
 
 const $btnLoad = document.getElementById('load');
+const $btnCancelLoad = document.getElementById('cancel_load');
 const $loadStatus = document.getElementById('load_status');
 const $loadSpinner = document.getElementById('load_spinner');
 const $loadStatusTxt = document.getElementById('load_status_txt');
 const $loadStatusTime = document.getElementById('load_status_time');
 const $btnReset = document.getElementById('reset_filters');
+
+const $queryDetails = document.getElementById('query_details');
+const $queryPre = document.getElementById('query_pre');
 
 const $outlierStatus = document.getElementById('outlier_status');
 const $outlierSpinner = document.getElementById('outlier_spinner');
@@ -821,6 +833,7 @@ function startLoadUi(){
     if(LOAD_INFLIGHT) return false;
     LOAD_INFLIGHT = true;
     if($btnLoad) $btnLoad.disabled = true;
+    if($btnCancelLoad) $btnCancelLoad.disabled = false;
     statusBegin("Abfrage laeuft...");
     return true;
   }catch(e){
@@ -832,6 +845,7 @@ function stopLoadUi(okDone, errText){
   try{
     statusEnd(!!okDone, errText);
     if($btnLoad) $btnLoad.disabled = false;
+    if($btnCancelLoad) $btnCancelLoad.disabled = true;
   }catch(e){}
   LOAD_INFLIGHT = false;
 }
@@ -1456,6 +1470,34 @@ function displayError(e){
   err(s.length > 600 ? (s.slice(0, 600) + "...") : s);
 }
 
+function setLastQuery(q){
+  try{
+    const s = String(q || '').trim();
+    if(!$queryDetails || !$queryPre){
+      return;
+    }
+    if(!s){
+      $queryDetails.style.display = 'none';
+      $queryPre.textContent = '';
+      return;
+    }
+    $queryPre.textContent = s;
+    $queryDetails.style.display = 'block';
+  }catch(e){}
+}
+
+function cancelLoadNow(){
+  try{
+    abortAllRequests('cancel');
+    // Release UI locks (if any)
+    if(LOAD_INFLIGHT){
+      try{ stopLoadUi(true); }catch(e){}
+    }
+    try{ stopOutlierUi(true); }catch(e){}
+    ok('Abgebrochen.');
+  }catch(e){}
+}
+
 function abortAllRequests(reason){
   try{
     const inflight = window.__INFLUXBRO_INFLIGHT;
@@ -1473,6 +1515,9 @@ async function resetFiltersKeepRange(){
   try{
     RESET_UNTIL_MS = Date.now() + 900;
     abortAllRequests("reset");
+
+    // Clear query details
+    try{ setLastQuery(""); }catch(e){}
 
     // Cancel scheduled background loads.
     try{ if(_RAW_TIMER) clearTimeout(_RAW_TIMER); }catch(e){}
@@ -3033,6 +3078,7 @@ async function loadData(){
     {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(filters)},
     { key: "query", status: "Query laeuft..." },
   );
+  setLastQuery(j.query || "");
   LOAD_QUERY_MS = performance.now() - q0;
   if(STATUS_COUNT > 0) _setLoadStatus("Query fertig – Graph wird aktualisiert...");
   const rows = j.rows || [];
@@ -3089,6 +3135,11 @@ async function refreshAllWithStatus(){
     await refreshAll();
     stopLoadUi(true);
   }catch(e){
+    if(e && e.aborted){
+      stopLoadUi(true);
+      ok('Abgebrochen.');
+      return;
+    }
     stopLoadUi(false, (e && e.message) ? e.message : String(e));
     displayError(e);
   }
@@ -3462,6 +3513,7 @@ if($editSelAll) $editSelAll.addEventListener("change", ()=>{
 });
 
 if($btnLoad) $btnLoad.addEventListener("click", (ev)=>{ _stop(ev); refreshAllWithStatus().catch(displayError); });
+if($btnCancelLoad) $btnCancelLoad.addEventListener("click", (ev)=>{ _stop(ev); cancelLoadNow(); });
 
 (async ()=>{
   try{
@@ -3550,6 +3602,9 @@ if($btnLoad) $btnLoad.addEventListener("click", (ev)=>{ _stop(ev); refreshAllWit
 
     await loadEntityIds();
     renderEntity();
+
+    // Cancel button disabled unless a load is in progress.
+    try{ if($btnCancelLoad) $btnCancelLoad.disabled = true; }catch(e){}
 
     renderTableRange();
     renderRangeFromTo();

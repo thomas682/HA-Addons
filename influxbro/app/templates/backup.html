@@ -136,6 +136,13 @@
           <span id="create_status_time"></span>
         </div>
 
+        <details id="backup_query_details" class="card" style="display:none; margin-top: 10px;" data-ui="backup.query_details" title="backup.query_details">
+          <summary>Query anzeigen</summary>
+          <div class="card_body">
+            <pre id="backup_query_pre" style="margin:6px 0 0 0; padding:10px 12px; border:1px solid #eee; border-radius:12px; background:#fafafa; white-space:pre; overflow:auto; max-height: 260px;"></pre>
+          </div>
+        </details>
+
         <div class="muted" id="loc" data-ui="backup.location" title="backup.location" style="margin-top:10px;"></div>
 
         <table data-ui="backup.table" title="backup.table">
@@ -185,6 +192,8 @@
       const $createSpinner = document.getElementById('create_spinner');
       const $createStatusTxt = document.getElementById('create_status_txt');
       const $createStatusTime = document.getElementById('create_status_time');
+      const $backupQueryDetails = document.getElementById('backup_query_details');
+      const $backupQueryPre = document.getElementById('backup_query_pre');
 
       const $mf = document.getElementById('measurement_filter');
       const $n = document.getElementById('friendly_name');
@@ -269,6 +278,20 @@
         try{ if($createRangeSel) $createRangeSel.disabled = false; }catch(e){}
         try{ if($reload) $reload.disabled = false; }catch(e){}
         CREATE_INFLIGHT = false;
+      }
+
+      function setBackupQuery(q){
+        try{
+          const s = String(q || '').trim();
+          if(!$backupQueryDetails || !$backupQueryPre) return;
+          if(!s){
+            $backupQueryDetails.style.display = 'none';
+            $backupQueryPre.textContent = '';
+            return;
+          }
+          $backupQueryPre.textContent = s;
+          $backupQueryDetails.style.display = 'block';
+        }catch(e){}
       }
 
       function loadState(){
@@ -638,6 +661,7 @@
             headers:{"Content-Type":"application/json"},
             body: JSON.stringify(LAST_TARGET)
           });
+          setBackupQuery(j.query || "");
           ok(j.message || "Backup erstellt.");
           await loadList();
           stopCreateUi(true);
@@ -657,6 +681,7 @@
           headers:{"Content-Type":"application/json"},
           body: JSON.stringify({ ...LAST_TARGET, ...win })
         });
+        setBackupQuery(j.query || "");
         ok(j.message || "Zeitbereich Backup erstellt.");
         await loadList();
       }
@@ -670,6 +695,7 @@
           headers:{"Content-Type":"application/json"},
           body: JSON.stringify({ ...LAST_TARGET, start: tf.start, stop: tf.stop })
         });
+        setBackupQuery(j.query || "");
         ok(j.message || "Zeitbereich Backup erstellt.");
         await loadList();
       }
