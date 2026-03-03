@@ -214,6 +214,7 @@ from flask import Flask, jsonify, request
 - If you change add-on behavior (Python/HTML/JS/CSS, Dockerfile, run scripts, configs that affect runtime), also:
   - bump `influxbro/config.yaml:version` (so Home Assistant detects the update)
   - add an entry to `influxbro/CHANGELOG.md` for that version
+  - verify `influxbro/CHANGELOG.md` completeness/order (new version present at top; headings in descending order)
 
 ## Agent Command Convention
 
