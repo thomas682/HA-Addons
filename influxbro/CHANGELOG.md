@@ -1,5 +1,35 @@
 # Changelog
 
+## 1.11.36
+
+### Features
+
+- Dashboard: Fehlersuche Ausreisser zeigt jetzt eine eigene Statusanzeige (Sanduhr + laufende Zeit).
+- Dashboard: Buttons fuer Ausreisser-Scan/Reset sind direkt unter den Filtern; "in Bearbeitungsliste uebernehmen" steht unter der Tabelle.
+- Dashboard: Bearbeitungsliste Buttons umsortiert und Schreib-Button heisst jetzt "Aenderungen in Datenbank uebernehmen" (ganz unten).
+
+### Bug Fixes
+
+- (keine)
+
+### Maintenance
+
+- (keine)
+
+## 1.11.35
+
+### Features
+
+- Dashboard: Datenabfrage (Graph/Tabelle/Stats/Raw) erfolgt nur noch, wenn `entity_id` gesetzt ist.
+
+### Bug Fixes
+
+- Dashboard: Reset bricht auch geplante Hintergrundabfragen ab und laedt keine Daten nach, wenn Filter leer sind.
+
+### Maintenance
+
+- (keine)
+
 ## 1.11.34
 
 ### Features

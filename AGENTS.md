@@ -224,5 +224,5 @@ from flask import Flask, jsonify, request
   - If the workflow fails, play an error sound:
     - `afplay /System/Library/Sounds/Basso.aiff`
 - After the completion sound, speak a short status message via macOS `say`:
-  - On success: `say "Generierung erfolgt, Version <version> wurde erzeugt"` (version from `influxbro/config.yaml`)
+  - On success: use a female voice and speak the version as a version number (not a date), e.g. `say -v Anna "Generierung erfolgt, Version 1 Punkt 11 Punkt 34 wurde erzeugt"` (version derived from `influxbro/config.yaml`)
   - If the workflow ends with pending questions/blockers: `say "Einige Punkte müssten noch beantwortet werden"`

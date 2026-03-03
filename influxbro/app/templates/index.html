@@ -59,6 +59,10 @@
     #load_status { display:none; margin-top: 6px; font-size: 12px; opacity: 0.85; align-items:center; gap: 8px; }
     #load_spinner { width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(0,0,0,0.18); border-top-color: rgba(0,0,0,0.75); animation: spin 0.9s linear infinite; }
     #load_status_time { opacity: 0.85; white-space: nowrap; }
+
+    #outlier_status { display:none; margin-top: 6px; font-size: 12px; opacity: 0.85; align-items:center; gap: 8px; }
+    #outlier_spinner { width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(0,0,0,0.18); border-top-color: rgba(0,0,0,0.75); animation: spin 0.9s linear infinite; }
+    #outlier_status_time { opacity: 0.85; white-space: nowrap; }
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     details { margin-top: 10px; border: 1px solid #ddd; border-radius: 10px; padding: 10px; }
     details > summary { cursor: pointer; font-weight: 600; }
@@ -327,7 +331,7 @@
               </div>
             </div>
 
-            <div class="row" style="margin-top:0;" id="free_filter_row" data-ui="filterlist_free_row" title="filterlist_free_row">
+           <div class="row" style="margin-top:0;" id="free_filter_row" data-ui="filterlist_free_row" title="filterlist_free_row">
               <div style="min-width: 110px;">
                 <label>Links</label>
                 <select id="tbl_a_op" data-ui="filterlist_left_op">
@@ -362,21 +366,30 @@
               <div style="min-width: 130px;">
                 <label>&nbsp;</label>
                 <input id="tbl_b_val" placeholder="999999" data-ui="filterlist_right_val" />
-              </div>
-            </div>
-          </div>
-        </div>
+             </div>
+           </div>
+
+           <div class="tbl_actions" style="justify-content:flex-start; margin-top: 10px;" data-ui="filterlist_outlier_actions" title="filterlist_outlier_actions">
+             <button class="btn_sm" id="outlier_scan" data-ui="filterlist_outlier_scan">Fehlersuche Ausreisser</button>
+             <button class="btn_sm" id="outlier_reset" data-ui="filterlist_outlier_reset">Zuruecksetzen</button>
+           </div>
+
+           <div id="outlier_status" data-ui="filterlist_outlier_status" title="filterlist_outlier_status">
+             <span id="outlier_spinner" aria-hidden="true"></span>
+             <span id="outlier_status_txt">Fehlersuche laeuft...</span>
+             <span id="outlier_status_time"></span>
+           </div>
+         </div>
+       </div>
         <div class="table_box" id="table_box">
           <table id="tbl">
             <thead><tr><th style="width:20px;"><input type="checkbox" id="tbl_sel_all" class="row_sel" data-ui="filterlist_select_all"/></th><th id="th_time" data-key="time" data-ui="filterlist_col_time">Zeit</th><th id="th_value" data-key="value" data-ui="filterlist_col_value">Wert</th><th data-ui="filterlist_col_reason">Grund</th></tr></thead>
             <tbody></tbody>
-          </table>
-        </div>
+           </table>
+         </div>
 
         <div class="tbl_actions" style="justify-content:flex-start; margin-top: 10px;">
-          <button class="btn_sm" id="outlier_scan" data-ui="filterlist_outlier_scan">Fehlersuche Ausreisser</button>
-          <button class="btn_sm" id="outlier_reset" data-ui="filterlist_outlier_reset">Zuruecksetzen</button>
-          <button class="btn_sm" id="tbl_to_edit" data-ui="filterlist_to_edit">In Bearbeitungsliste</button>
+          <button class="btn_sm" id="tbl_to_edit" data-ui="filterlist_to_edit">in Bearbeitungsliste uebernehmen</button>
         </div>
       </div>
 
@@ -410,6 +423,11 @@
           </table>
         </div>
 
+        <div class="tbl_actions" style="justify-content:flex-start; margin-top: 10px;">
+          <button class="btn_sm" id="edit_remove" data-ui="editlist_remove">Aus Liste loeschen</button>
+          <button class="btn_sm" id="edit_undo_all" data-ui="editlist_undo_all">Undo alle</button>
+        </div>
+
         <details id="edit_neighbors" class="table_wrap" style="margin-top: 10px;" data-ui="editlist_neighbors" title="editlist_neighbors">
           <summary>Nachbarwerte (n davor / n danach)</summary>
           <div class="muted" id="edit_neighbors_info" data-ui="editlist_neighbors_info" title="editlist_neighbors_info"></div>
@@ -427,15 +445,13 @@
           </div>
         </details>
 
-        <div class="tbl_actions" style="justify-content:flex-start; margin-top: 10px;">
-          <button class="btn_sm" id="edit_remove" data-ui="editlist_remove">Aus Liste loeschen</button>
-          <button class="btn_sm" id="edit_undo_all" data-ui="editlist_undo_all">Undo alle</button>
-          <button class="btn_sm" id="edit_apply" data-ui="editlist_apply">Alle Werte in Datenbank uebernehmen</button>
-        </div>
-
-        <div class="err" id="edit_apply_err" data-ui="editlist_apply_err" title="editlist_apply_err"></div>
       </div>
     </details>
+
+    <div class="tbl_actions" style="justify-content:flex-start; margin-top: 14px;" data-ui="editlist_apply_page" title="editlist_apply_page">
+      <button class="btn_sm" id="edit_apply" data-ui="editlist_apply">Aenderungen in Datenbank uebernehmen</button>
+    </div>
+    <div class="err" id="edit_apply_err" data-ui="editlist_apply_err" title="editlist_apply_err"></div>
 
     <div id="apply_modal" style="display:none; position:fixed; inset:0; z-index: 9999; background: rgba(0,0,0,0.45);" data-ui="editlist_apply_modal" title="editlist_apply_modal">
       <div style="max-width: 980px; margin: 6vh auto; background: #fff; border-radius: 16px; padding: 14px 14px 12px 14px; box-shadow: 0 12px 60px rgba(0,0,0,0.28);">
@@ -542,6 +558,11 @@ const $loadSpinner = document.getElementById('load_spinner');
 const $loadStatusTxt = document.getElementById('load_status_txt');
 const $loadStatusTime = document.getElementById('load_status_time');
 const $btnReset = document.getElementById('reset_filters');
+
+const $outlierStatus = document.getElementById('outlier_status');
+const $outlierSpinner = document.getElementById('outlier_spinner');
+const $outlierStatusTxt = document.getElementById('outlier_status_txt');
+const $outlierStatusTime = document.getElementById('outlier_status_time');
 
 const $tagChoices = document.getElementById('tag_choices');
 const $tagChoicesTitle = document.getElementById('tag_choices_title');
@@ -815,6 +836,58 @@ function stopLoadUi(okDone, errText){
   LOAD_INFLIGHT = false;
 }
 
+function _renderOutlierTime(){
+  try{
+    if(!$outlierStatusTime) return;
+    const total = performance.now() - OUTLIER_T0;
+    $outlierStatusTime.textContent = `Gesamt: ${_fmtDur(total)}`;
+  }catch(e){}
+}
+
+function startOutlierUi(){
+  try{
+    if(OUTLIER_INFLIGHT) return false;
+    OUTLIER_INFLIGHT = true;
+    OUTLIER_T0 = performance.now();
+    if($btnOutlierScan) $btnOutlierScan.disabled = true;
+    if($outlierStatus) $outlierStatus.style.display = "flex";
+    if($outlierSpinner) $outlierSpinner.style.display = "inline-block";
+    if($outlierStatusTxt) $outlierStatusTxt.textContent = "Fehlersuche laeuft...";
+    _renderOutlierTime();
+    if(OUTLIER_TIMER) clearInterval(OUTLIER_TIMER);
+    OUTLIER_TIMER = setInterval(_renderOutlierTime, 120);
+    if(_OUTLIER_HIDE_TIMER) clearTimeout(_OUTLIER_HIDE_TIMER);
+    _OUTLIER_HIDE_TIMER = null;
+    return true;
+  }catch(e){
+    OUTLIER_INFLIGHT = true;
+    return true;
+  }
+}
+
+function stopOutlierUi(okDone, errText){
+  try{
+    if(OUTLIER_TIMER) clearInterval(OUTLIER_TIMER);
+    OUTLIER_TIMER = null;
+    _renderOutlierTime();
+    if($outlierSpinner) $outlierSpinner.style.display = "none";
+    if($outlierStatusTxt){
+      if(okDone) $outlierStatusTxt.textContent = "Fertig.";
+      else $outlierStatusTxt.textContent = errText ? ("Fehler: " + String(errText)) : "Fehler.";
+    }
+    if($btnOutlierScan) $btnOutlierScan.disabled = false;
+    if(_OUTLIER_HIDE_TIMER) clearTimeout(_OUTLIER_HIDE_TIMER);
+    _OUTLIER_HIDE_TIMER = setTimeout(()=>{
+      if(!OUTLIER_INFLIGHT){
+        try{ if($outlierStatus) $outlierStatus.style.display = "none"; }catch(e){}
+        try{ if($outlierStatusTime) $outlierStatusTime.textContent = ""; }catch(e){}
+        try{ if($outlierStatusTxt) $outlierStatusTxt.textContent = ""; }catch(e){}
+      }
+    }, 1400);
+  }catch(e){}
+  OUTLIER_INFLIGHT = false;
+}
+
 function applyScanPreset(){
   try{
     const p = $scanPreset ? String($scanPreset.value || "") : "counter";
@@ -844,6 +917,11 @@ let LOAD_INFLIGHT = false;
 let LOAD_T0 = 0;
 let LOAD_TIMER = null;
 let LOAD_QUERY_MS = null;
+
+let OUTLIER_INFLIGHT = false;
+let OUTLIER_T0 = 0;
+let OUTLIER_TIMER = null;
+let _OUTLIER_HIDE_TIMER = null;
 
 let _PLOTLY_EVENTS_BOUND = false;
 let _IN_Y_RELAYOUT = false;
@@ -1391,6 +1469,15 @@ function abortAllRequests(reason){
 async function resetFiltersKeepRange(){
   try{
     abortAllRequests("reset");
+
+    // Cancel scheduled background loads.
+    try{ if(_RAW_TIMER) clearTimeout(_RAW_TIMER); }catch(e){}
+    _RAW_TIMER = null;
+    try{ if(_STATS_CURR_TIMER) clearTimeout(_STATS_CURR_TIMER); }catch(e){}
+    _STATS_CURR_TIMER = null;
+    try{ if(_NEIGHBOR_TIMER) clearTimeout(_NEIGHBOR_TIMER); }catch(e){}
+    _NEIGHBOR_TIMER = null;
+
     _hideTagChoices();
     err(""); ok("");
 
@@ -1400,9 +1487,15 @@ async function resetFiltersKeepRange(){
 
     // Clear loaded data but keep time range as-is.
     try{ LAST_ROWS = []; }catch(e){}
+    try{ FULL_GRAPH_BOUNDS = null; }catch(e){}
+    try{ TABLE_TIME.graph_start_ms = null; TABLE_TIME.graph_stop_ms = null; }catch(e){}
     try{ if($tbl) $tbl.innerHTML = ""; }catch(e){}
     try{ draw([]); }catch(e){}
     try{ if($backupBadge) $backupBadge.textContent = ""; }catch(e){}
+
+    // Clear raw caches (avoid reloads with stale graph window).
+    try{ RAW_ROWS = []; RAW_META = null; RAW_OFFSET = 0; RAW_LAST_KEY = ""; }catch(e){}
+    try{ renderRawTable(); }catch(e){}
 
     try{ FILTER_SELECTED = new Set(); EDIT_SELECTED = new Set(); EDIT_LIST = new Map(); renderEditTable(); }catch(e){}
     saveState();
@@ -2013,10 +2106,11 @@ function _graphWindowIso(){
 async function loadStatsCurrentFromGraph(){
   const win = _graphWindowIso();
   if(!win) return;
+  const base = currentFilters();
+  if(!base || !base.entity_id) return;
   if(_STATS_CURR_INFLIGHT) return;
   _STATS_CURR_INFLIGHT = true;
   try{
-    const base = currentFilters();
     const jCurr = await api("./api/stats", {
       method: "POST",
       headers: {"Content-Type":"application/json"},
@@ -2086,6 +2180,7 @@ async function loadRawFromGraph(reset){
   if(!$rawSection || !$rawBody) return;
   if(!$rawSection.open) return;
   const base = currentFilters();
+  if(!base || !base.entity_id) return;
   const win = _graphWindowIso();
   if(!win) return;
   if(_RAW_INFLIGHT) return;
@@ -2905,8 +3000,9 @@ async function loadStats(){
 
 async function loadData(){
   err(""); ok("");
-  if(!($n && $n.value) && !($e && $e.value)){
-    err("Bitte zuerst friendly_name oder entity_id auswaehlen.");
+  // A data query only makes sense with a concrete entity_id selection.
+  if(!($e && String($e.value || "").trim())){
+    err("Bitte zuerst entity_id auswaehlen.");
     return;
   }
   renderTableRange();
@@ -2964,7 +3060,7 @@ async function loadData(){
 
 async function refreshAll(){
   try{
-    if(!($n && $n.value) && !($e && $e.value)) return;
+    if(!($e && String($e.value || "").trim())) return;
     saveState();
     try{ await resolveSignal(); } catch(e){ displayError(e); }
     await loadData();
@@ -2976,8 +3072,8 @@ async function refreshAll(){
 async function refreshAllWithStatus(){
   try{
     if(LOAD_INFLIGHT) return;
-    if(!($n && $n.value) && !($e && $e.value)){
-      err("Bitte zuerst friendly_name oder entity_id auswaehlen.");
+    if(!($e && String($e.value || "").trim())){
+      err("Bitte zuerst entity_id auswaehlen.");
       return;
     }
     startLoadUi();
@@ -3310,19 +3406,31 @@ async function runOutlierScan(){
     value_b_val: $tblBVal ? $tblBVal.value : "999999",
   };
 
-  const j = await api("./api/outliers", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)});
-  OUTLIER_ACTIVE = true;
-  OUTLIER_ROWS = (j.rows || []).map(r => ({ time: r.time, value: r.value, reason: r.reason || "" }));
-  FILTER_SELECTED = new Set();
-  renderTableRange();
-  renderTable();
-  ok(`Ausreisser gefunden: ${(OUTLIER_ROWS||[]).length} (geprueft: ${j.scanned})`);
+  startOutlierUi();
+  try{
+    const j = await api(
+      "./api/outliers",
+      {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)},
+      { key: "outliers_scan", status: "Fehlersuche Ausreisser...", silent: true },
+    );
+    OUTLIER_ACTIVE = true;
+    OUTLIER_ROWS = (j.rows || []).map(r => ({ time: r.time, value: r.value, reason: r.reason || "" }));
+    FILTER_SELECTED = new Set();
+    renderTableRange();
+    renderTable();
+    ok(`Ausreisser gefunden: ${(OUTLIER_ROWS||[]).length} (geprueft: ${j.scanned})`);
+    stopOutlierUi(true);
+  }catch(e){
+    stopOutlierUi(false, (e && e.message) ? e.message : String(e));
+    throw e;
+  }
 }
 
 function resetOutliers(){
   OUTLIER_ACTIVE = false;
   OUTLIER_ROWS = [];
   FILTER_SELECTED = new Set();
+  try{ stopOutlierUi(true); }catch(e){}
   renderTable();
 }
 
@@ -3438,8 +3546,8 @@ if($btnLoad) $btnLoad.addEventListener("click", (ev)=>{ _stop(ev); refreshAllWit
 
     renderEditTable();
 
-    // Auto-load data if a selection exists in stored state.
-    if((st.friendly_name && String(st.friendly_name).trim()) || (st.entity_id && String(st.entity_id).trim())){
+    // Auto-load data only if entity_id exists in stored state.
+    if(st.entity_id && String(st.entity_id).trim()){
       refreshAll().catch(displayError);
     }
   } catch(e){ displayError(e); }
