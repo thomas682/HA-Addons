@@ -918,6 +918,9 @@ let LOAD_T0 = 0;
 let LOAD_TIMER = null;
 let LOAD_QUERY_MS = null;
 
+// Used to suppress debounced input handlers during/shortly after Reset.
+let RESET_UNTIL_MS = 0;
+
 let OUTLIER_INFLIGHT = false;
 let OUTLIER_T0 = 0;
 let OUTLIER_TIMER = null;
@@ -1468,6 +1471,7 @@ function abortAllRequests(reason){
 
 async function resetFiltersKeepRange(){
   try{
+    RESET_UNTIL_MS = Date.now() + 900;
     abortAllRequests("reset");
 
     // Cancel scheduled background loads.
@@ -1484,6 +1488,12 @@ async function resetFiltersKeepRange(){
     if($mf) $mf.value = "";
     if($n) $n.value = "";
     if($e) $e.value = "";
+
+    // Clear suggestion lists (datalists) too.
+    ALL_FRIENDLY = [];
+    ALL_ENTITY = [];
+    renderFriendly();
+    renderEntity();
 
     // Clear loaded data but keep time range as-is.
     try{ LAST_ROWS = []; }catch(e){}
@@ -1506,8 +1516,7 @@ async function resetFiltersKeepRange(){
       try{ stopLoadUi(true); }catch(e){}
     }
 
-    await loadFriendlyNames();
-    await loadEntityIds();
+    // No network calls on Reset.
     autoSpanAll();
   }catch(e){
     displayError(e);
@@ -3119,6 +3128,7 @@ const onMeasurementFilterChanged = debounce(()=>{
   _asyncNoThrow(()=>{
     (async ()=>{
       try{
+        if(Date.now() < RESET_UNTIL_MS) return;
         _hideTagChoices();
         saveState();
         await loadFriendlyNames();
@@ -3133,6 +3143,7 @@ const onFriendlyChanged = debounce(()=>{
   _asyncNoThrow(()=>{
     (async ()=>{
       try{
+        if(Date.now() < RESET_UNTIL_MS) return;
         // Friendly selection drives entity_id list; clear stale entity_id first.
         if($e && String($e.value||'').trim()) $e.value = '';
         if(!$n || !String($n.value||'').trim()){
@@ -3174,6 +3185,7 @@ const onEntityChanged = debounce(()=>{
   _asyncNoThrow(()=>{
     (async ()=>{
       try{
+        if(Date.now() < RESET_UNTIL_MS) return;
         saveState();
         if(!$e || !String($e.value||'').trim()){
           _hideTagChoices();

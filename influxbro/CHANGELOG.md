@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.11.38
+
+### Features
+
+- UI: Tooltips zeigen jetzt immer den Elementnamen zusaetzlich in Klammern.
+
+### Bug Fixes
+
+- Dashboard: Reset startet keine Tag-Value Requests mehr (keine "Lade friendly_name" Timeouts nach Reset).
+
+### Maintenance
+
+- (keine)
+
 ## 1.11.37
 
 ### Features

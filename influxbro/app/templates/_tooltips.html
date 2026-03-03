@@ -47,6 +47,47 @@
     return String(s || '').replace(/\s+/g, ' ').trim();
   }
 
+  function _keyFromEl(el){
+    try{
+      if(!el) return '';
+      const dui = _norm(el.getAttribute('data-ui'));
+      if(dui) return dui;
+      const id = _norm(el.getAttribute('id'));
+      if(id) return '#' + id;
+
+      // Table cells: try to derive a stable key from table + column
+      const td = String(el.tagName||'').toLowerCase() === 'td' ? el : null;
+      const th = String(el.tagName||'').toLowerCase() === 'th' ? el : null;
+      const cell = td || th;
+      if(cell){
+        const tbl = cell.closest('table');
+        const tid = tbl && tbl.getAttribute('id') ? _norm(tbl.getAttribute('id')) : '';
+        const colKey = _norm(cell.getAttribute('data-key'));
+        if(tid && colKey) return tid + ':' + colKey;
+        if(tid) return tid;
+      }
+
+      const tag = String(el.tagName||'').toLowerCase();
+      const cls = _norm(el.getAttribute('class'));
+      if(cls){
+        const c0 = cls.split(' ').filter(Boolean)[0] || '';
+        if(c0) return tag + '.' + c0;
+      }
+      return tag;
+    }catch(e){
+      return '';
+    }
+  }
+
+  function _ensureKeySuffix(title, key){
+    const t = _norm(title);
+    const k = _norm(key);
+    if(!k) return t;
+    const suffix = `(${k})`;
+    if(t.includes(suffix)) return t;
+    return (t ? (t + ' ' + suffix) : suffix);
+  }
+
   function _short(s, n){
     const x = _norm(s);
     if(!x) return '';
@@ -104,33 +145,96 @@
     return '';
   }
 
-  function _shouldOverride(existing, key){
+  function _looksLikeAutoKeyTitle(existing, key){
     const t = _norm(existing);
+    const k = _norm(key);
     if(!t) return true;
-    // If title was auto-filled with the raw key/id, replace it.
-    if(key && t === _norm(key)) return true;
+    if(k && (t === k || t === ('#' + k) || t === ('data-ui:' + k))) return true;
+    if(k && t === ('(' + k + ')')) return true;
     return false;
+  }
+
+  function _setTooltip(el, desc, key){
+    try{
+      const k = _norm(key);
+      const d = _norm(desc);
+      const existing = _norm(el.getAttribute('title'));
+      let base = existing;
+
+      // If missing or auto-key title, replace with description.
+      if(!existing || _looksLikeAutoKeyTitle(existing, k)){
+        base = d || existing;
+      }
+
+      // If still empty, fall back to element text.
+      if(!base){
+        const txt = _norm(el.textContent);
+        base = _short(txt, 220);
+      }
+
+      // Always append the element key in parentheses.
+      base = _ensureKeySuffix(base, k);
+      if(base) el.setAttribute('title', base);
+    }catch(e){}
+  }
+
+  function _tableCellDesc(td){
+    try{
+      const tr = td && td.parentElement ? td.parentElement : null;
+      const tbl = td.closest('table');
+      if(!tbl) return _short(td.textContent, 200);
+      const thead = tbl.querySelector('thead');
+      const ths = thead ? Array.from(thead.querySelectorAll('th')) : [];
+      const tds = tr ? Array.from(tr.querySelectorAll('td')) : [];
+      const idx = tds.indexOf(td);
+      const th = (idx >= 0 && idx < ths.length) ? ths[idx] : null;
+      const col = th ? _norm(th.textContent) : '';
+      const val = _short(td.textContent, 200);
+      if(col && val) return col + ': ' + val;
+      if(col) return col;
+      return val;
+    }catch(e){
+      return _short(td && td.textContent ? td.textContent : '', 200);
+    }
   }
 
   function apply(){
     try{
-      // data-ui based (preferred)
-      document.querySelectorAll('[data-ui]').forEach(el => {
-        const k = el.getAttribute('data-ui') || '';
-        const want = TIPS[k] || _autoTitleFromContext(el) || '';
-        if(!want) return;
-        if(!_shouldOverride(el.getAttribute('title'), k)) return;
-        el.setAttribute('title', want);
-      });
+      const root = document.querySelector('main.content') || document.body;
+      const nodes = Array.from(root.querySelectorAll('*'));
+      nodes.forEach(el => {
+        const tag = String(el.tagName||'').toLowerCase();
+        if(!tag) return;
+        if(tag === 'script' || tag === 'style' || tag === 'meta' || tag === 'link' || tag === 'option') return;
 
-      // Fallback for plain controls without data-ui
-      document.querySelectorAll('button, input, select, textarea').forEach(el => {
-        if(el.getAttribute('data-ui')) return;
-        const id = el.getAttribute('id') || '';
-        const want = _autoTitleFromContext(el) || '';
-        if(!want) return;
-        if(!_shouldOverride(el.getAttribute('title'), id)) return;
-        el.setAttribute('title', want);
+        // Only for visible elements.
+        try{
+          if(el.offsetParent === null && tag !== 'body') return;
+        }catch(e){}
+
+        const key = _keyFromEl(el);
+        let desc = '';
+
+        const dui = _norm(el.getAttribute('data-ui'));
+        if(dui && TIPS[dui]) desc = TIPS[dui];
+        else if(tag === 'th'){
+          const t = _norm(el.textContent);
+          desc = t ? ('Spalte: ' + t) : '';
+        }else if(tag === 'td'){
+          desc = _tableCellDesc(el);
+        }else if(tag === 'summary'){
+          const t = _norm(el.textContent);
+          desc = t ? ('Abschnitt: ' + t) : '';
+        }else if(tag === 'details'){
+          const sum = el.querySelector('summary');
+          const t = sum ? _norm(sum.textContent) : '';
+          desc = t ? ('Bereich: ' + t) : '';
+        }else{
+          desc = _autoTitleFromContext(el) || '';
+        }
+
+        // If we have no description, still provide a stable tooltip (name only).
+        _setTooltip(el, desc, key);
       });
     }catch(e){}
   }
@@ -140,9 +244,13 @@
     else apply();
   }catch(e){}
 
-  // Apply again on dynamic UI changes (tables, modals, etc.)
+  // Apply again on dynamic UI changes (tables, modals, etc.) - debounced
   try{
-    const obs = new MutationObserver(()=>apply());
+    let t = null;
+    const obs = new MutationObserver(()=>{
+      if(t) return;
+      t = setTimeout(()=>{ t = null; apply(); }, 80);
+    });
     obs.observe(document.body, { childList:true, subtree:true });
   }catch(e){}
 })();
