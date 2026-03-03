@@ -218,7 +218,7 @@ from flask import Flask, jsonify, request
 
 ## Agent Command Convention
 
-- If the user writes `go`, treat that as: stage relevant changes, create a git commit with an appropriate message, and push to the tracked remote branch.
+- If the user writes `go` (or `GO`), treat that as: stage relevant changes, create a git commit with an appropriate message, and push to the tracked remote branch.
 - After a successful `go` workflow (commit + push), play a macOS completion sound:
   - `afplay /System/Library/Sounds/Glass.aiff`
   - If the workflow fails, play an error sound:
