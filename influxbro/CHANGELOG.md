@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.11.40
+
+### Features
+
+- Statistik: Button heisst jetzt "Statistik laden".
+
+### Bug Fixes
+
+- Statistik: Fix NameError "total_series is not defined" beim Laden/Na chladen von Detail-Spalten.
+
+### Maintenance
+
+- (keine)
+
 ## 1.11.39
 
 ### Features

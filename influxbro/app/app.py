@@ -3252,6 +3252,17 @@ def _global_stats_job_thread(
     want_details = any(c in want_set for c in ("count", "min", "max", "mean", "oldest_time"))
     want_last = ("last_value" in want_set) or ("newest_time" in want_set)
 
+    # Used only for progress messages. May be unknown for full scans.
+    total_series: int | None = None
+    if series_list is not None:
+        try:
+            total_series = len(series_list)
+        except Exception:
+            total_series = None
+        with GLOBAL_STATS_LOCK:
+            if job_id in GLOBAL_STATS_JOBS:
+                GLOBAL_STATS_JOBS[job_id]["total_series"] = total_series
+
     def set_state(state: str, msg: str) -> None:
         with GLOBAL_STATS_LOCK:
             if job_id in GLOBAL_STATS_JOBS:
