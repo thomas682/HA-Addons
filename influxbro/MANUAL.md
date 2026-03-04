@@ -19,10 +19,12 @@ Dieses Handbuch ist absichtlich sehr konkret: Jedes sichtbare Element in der GUI
 Links findest du die Bereiche:
 
 - Dashboard: Messwerte auswaehlen, Graph/Tabelle ansehen, Werte in eine Bearbeitungsliste uebernehmen.
-- Logs: Add-on Logs von InfluxBro ansehen.
+- Statistik: Gesamtstatistik ueber viele Serien anzeigen.
 - Backup: Backups fuer einen einzelnen Messwert erstellen und verwalten.
+- Logs: Add-on Logs von InfluxBro ansehen (Menuepunkt ist unter Backup einsortiert).
 - Restore: Ein vorhandenes Backup fuer einen Messwert wiederherstellen.
 - Info: Release Notes + Repository-Link.
+- Handbuch: Diese Dokumentation.
 - Einstellungen: Influx-Verbindung und UI-Parameter konfigurieren.
 
 ## Dashboard (typischer Ablauf)

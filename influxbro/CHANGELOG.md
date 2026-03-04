@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.11.65
+
+### Features
+
+- UI: Menuepunkt "Logs" ist jetzt unter "Backup" einsortiert.
+
+### Bug Fixes
+
+- (keine)
+
+### Maintenance
+
+- (keine)
+
 ## 1.11.64
 
 ### Features
