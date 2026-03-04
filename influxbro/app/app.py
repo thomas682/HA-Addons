@@ -3058,10 +3058,6 @@ data = from(bucket: "{cfg["bucket"]}")
                     _try_stat("min", "data |> min() |> limit(n:1)")
                     _try_stat("max", "data |> max() |> limit(n:1)")
                     _try_stat("mean", "data |> mean() |> limit(n:1)")
-                    _try_stat("stddev", "data |> stddev() |> limit(n:1)")
-                    _try_stat("p05", "data |> quantile(q: 0.05) |> limit(n:1)")
-                    _try_stat("p50", "data |> quantile(q: 0.50) |> limit(n:1)")
-                    _try_stat("p95", "data |> quantile(q: 0.95) |> limit(n:1)")
 
             return jsonify({"ok": True, "stats": out, "stats_scope": stats_scope})
         else:
@@ -3121,9 +3117,7 @@ data = from(bucket: "{cfg["bucket"]}")
             if _is_number(out.get("last_value")) and out["count"] > 0:
                 try:
                     q_num = (
-                        f'SELECT MIN("{field}") as min, MAX("{field}") as max, MEAN("{field}") as mean, '
-                        f'STDDEV("{field}") as stddev, PERCENTILE("{field}", 5) as p05, '
-                        f'PERCENTILE("{field}", 50) as p50, PERCENTILE("{field}", 95) as p95 '
+                        f'SELECT MIN("{field}") as min, MAX("{field}") as max, MEAN("{field}") as mean '
                         f'FROM "{measurement}" {where_clause}'
                     )
                     log_query("api.stats (influxql numeric)", q_num)
@@ -3135,10 +3129,6 @@ data = from(bucket: "{cfg["bucket"]}")
                         out["min"] = p.get("min")
                         out["max"] = p.get("max")
                         out["mean"] = p.get("mean")
-                        out["stddev"] = p.get("stddev")
-                        out["p05"] = p.get("p05")
-                        out["p50"] = p.get("p50")
-                        out["p95"] = p.get("p95")
                         break
                 except Exception:
                     pass

@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.11.44
+
+### Features
+
+- Dashboard/Statistik: stddev und p05/p50/p95 werden nicht mehr automatisch berechnet (schneller, weniger Last).
+
+### Bug Fixes
+
+- (keine)
+
+### Maintenance
+
+- (keine)
+
 ## 1.11.43
 
 ### Features
