@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.11.50
+
+### Features
+
+- Backup: Buttons in der Aktionen-Zeile sind oben ausgerichtet.
+- Dashboard: Fehler-/Filtertabelle hat einen Button "Liste leeren".
+- Add-on: /data/share zeigt jetzt auf <code>/config/influxbro</code> (statt <code>/config/homeassistant/influxbro</code>).
+
+### Bug Fixes
+
+- (keine)
+
+### Maintenance
+
+- (keine)
+
 ## 1.11.49
 
 ### Features

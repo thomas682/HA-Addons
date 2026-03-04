@@ -402,6 +402,7 @@
 
         <div class="tbl_actions" style="justify-content:flex-start; margin-top: 10px;">
           <button class="btn_sm" id="tbl_autowidth" data-ui="filterlist.autowidth" title="filterlist.autowidth">Spaltenbreite automatisch</button>
+          <button class="btn_sm" id="tbl_clear" data-ui="filterlist.clear" title="filterlist.clear">Liste leeren</button>
           <button class="btn_sm" id="tbl_to_edit" data-ui="filterlist_to_edit">in Bearbeitungsliste uebernehmen</button>
         </div>
       </div>
@@ -2106,6 +2107,7 @@ async function resolveSignal(){
 }
 
 let LAST_ROWS = [];
+let FILTER_TABLE_CLEARED = false;
 let TABLE_SORT = { key: "time", dir: "asc" };
 let TABLE_FILTER = {
   enabled: true,
@@ -2432,7 +2434,7 @@ function _renderSelAll(checkboxEl, keysInView, selectedSet){
 }
 
 function renderTable(){
-  let base = _rowsForFilterTable().slice();
+  let base = (FILTER_TABLE_CLEARED ? [] : _rowsForFilterTable().slice());
   base = _tableTimeFilteredRows(base);
   const filtered = applyValueFilter(base);
   const rows = sortRowsForTable(filtered);
@@ -3091,6 +3093,7 @@ async function loadData(){
   LOAD_QUERY_MS = performance.now() - q0;
   if(STATUS_COUNT > 0) _setLoadStatus("Query fertig – Graph wird aktualisiert...");
   const rows = j.rows || [];
+  FILTER_TABLE_CLEARED = false;
   LAST_ROWS = rows;
   OUTLIER_ACTIVE = false;
   OUTLIER_ROWS = [];
@@ -3505,6 +3508,17 @@ function resetOutliers(){
   OUTLIER_ROWS = [];
   FILTER_SELECTED = new Set();
   try{ stopOutlierUi(true); }catch(e){}
+  renderTable();
+}
+
+function clearFilterTable(){
+  try{
+    FILTER_TABLE_CLEARED = true;
+    FILTER_SELECTED = new Set();
+    OUTLIER_ACTIVE = false;
+    OUTLIER_ROWS = [];
+    saveState();
+  }catch(e){}
   renderTable();
 }
 
