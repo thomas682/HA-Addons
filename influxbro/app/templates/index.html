@@ -189,6 +189,7 @@
       <details id="query_details" class="card" style="display:none; margin-top: 10px;" data-ui="dashboard.query_details" title="dashboard.query_details">
         <summary>Query anzeigen</summary>
         <div class="card_body">
+          <div class="muted" id="query_meta" data-ui="dashboard.query_meta" title="dashboard.query_meta" style="margin-top:6px;"></div>
           <pre id="query_pre" style="margin:6px 0 0 0; padding:10px 12px; border:1px solid #eee; border-radius:12px; background:#fafafa; white-space:pre; overflow:auto; max-height: 260px;"></pre>
         </div>
       </details>
@@ -570,6 +571,7 @@ const $btnReset = document.getElementById('reset_filters');
 
 const $queryDetails = document.getElementById('query_details');
 const $queryPre = document.getElementById('query_pre');
+const $queryMeta = document.getElementById('query_meta');
 
 const $outlierStatus = document.getElementById('outlier_status');
 const $outlierSpinner = document.getElementById('outlier_spinner');
@@ -1463,7 +1465,7 @@ function displayError(e){
   err(s.length > 600 ? (s.slice(0, 600) + "...") : s);
 }
 
-function setLastQuery(q){
+function setLastQuery(q, triggeredAtIso){
   try{
     const s = String(q || '').trim();
     if(!$queryDetails || !$queryPre){
@@ -1472,7 +1474,12 @@ function setLastQuery(q){
     if(!s){
       $queryDetails.style.display = 'none';
       $queryPre.textContent = '';
+      if($queryMeta) $queryMeta.textContent = '';
       return;
+    }
+    const at = String(triggeredAtIso || '').trim();
+    if($queryMeta){
+      $queryMeta.textContent = at ? (`Ausgeloest: ${fmtTs(at)}`) : '';
     }
     $queryPre.textContent = s;
     $queryDetails.style.display = 'block';

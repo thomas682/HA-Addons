@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.11.45
+
+### Features
+
+- Dashboard: Bei "Query anzeigen" wird jetzt auch angezeigt, wann der Query ausgeloest wurde.
+
+### Bug Fixes
+
+- (keine)
+
+### Maintenance
+
+- (keine)
+
 ## 1.11.44
 
 ### Features
