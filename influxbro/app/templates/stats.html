@@ -653,10 +653,19 @@
             const cur = String(st.current || '');
 
             setQueryDetails(st.last_query_label, st.last_query);
+
+            const g = (st.groups !== null && st.groups !== undefined) ? Number(st.groups) : null;
+            const ts = (st.total_series !== null && st.total_series !== undefined) ? Number(st.total_series) : null;
+            const pct = (st.percent !== null && st.percent !== undefined) ? Number(st.percent) : null;
+            const prog = (g !== null && isFinite(g) && ts !== null && isFinite(ts) && ts > 0)
+              ? (`Fortschritt: ${g}/${ts}` + (pct !== null && isFinite(pct) ? (` (${Math.round(pct)}%)`) : ''))
+              : '';
+
             setStatus([
               `Status: ${state} | Laufzeit: ${elapsed}`,
               msg ? ('Aktion: ' + msg) : '',
               cur ? (`Aktuell: ${cur}`) : '',
+              prog,
             ]);
 
             if(st.ready){

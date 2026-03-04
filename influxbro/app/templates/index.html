@@ -61,7 +61,10 @@
     #load_status_time { opacity: 0.85; white-space: nowrap; }
 
     #outlier_status { display:none; margin-top: 6px; font-size: 12px; opacity: 0.85; align-items:center; gap: 8px; }
+    #outlier_status { flex-wrap: wrap; }
     #outlier_spinner { width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(0,0,0,0.18); border-top-color: rgba(0,0,0,0.75); animation: spin 0.9s linear infinite; }
+    #outlier_status_meta { opacity: 0.9; }
+    #outlier_status_now { opacity: 0.8; white-space: nowrap; }
     #outlier_status_time { opacity: 0.85; white-space: nowrap; }
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     details { margin-top: 10px; border: 1px solid #ddd; border-radius: 10px; padding: 10px; }
@@ -582,6 +585,8 @@ const $queryMeta = document.getElementById('query_meta');
 const $outlierStatus = document.getElementById('outlier_status');
 const $outlierSpinner = document.getElementById('outlier_spinner');
 const $outlierStatusTxt = document.getElementById('outlier_status_txt');
+const $outlierStatusMeta = document.getElementById('outlier_status_meta');
+const $outlierStatusNow = document.getElementById('outlier_status_now');
 const $outlierStatusTime = document.getElementById('outlier_status_time');
 
 const $tagChoices = document.getElementById('tag_choices');
@@ -865,14 +870,38 @@ function _renderOutlierTime(){
     if(!$outlierStatusTime) return;
     const total = performance.now() - OUTLIER_T0;
     $outlierStatusTime.textContent = `Gesamt: ${_fmtDur(total)}`;
+    if($outlierStatusNow) $outlierStatusNow.textContent = `Jetzt: ${fmtTs(new Date().toISOString())}`;
+    if($outlierStatusMeta) $outlierStatusMeta.textContent = OUTLIER_META_TEXT || "";
   }catch(e){}
 }
 
-function startOutlierUi(){
+function _outlierMetaFromPayload(payload){
+  try{
+    const p = payload || {};
+    const m = String(p.measurement || '').trim();
+    const f = String(p.field || '').trim();
+    const eid = String(p.entity_id || '').trim();
+    const fn = String(p.friendly_name || '').trim();
+    const start = String(p.start || '').trim();
+    const stop = String(p.stop || '').trim();
+
+    const mf = m && f ? `${m}/${f}` : (m || f || '');
+    const who = [eid ? (`entity_id=${eid}`) : '', fn ? (`friendly_name=${fn}`) : ''].filter(Boolean).join(' | ');
+    const span = (start && stop) ? (`Suchbereich: ${fmtTs(start)} bis ${fmtTs(stop)}`) : '';
+    const head = mf ? (`Messstelle: ${mf}`) : 'Messstelle: -';
+    const tail = who ? (` | ${who}`) : '';
+    return [head + tail, span].filter(Boolean).join(' | ');
+  }catch(e){
+    return '';
+  }
+}
+
+function startOutlierUi(metaText){
   try{
     if(OUTLIER_INFLIGHT) return false;
     OUTLIER_INFLIGHT = true;
     OUTLIER_T0 = performance.now();
+    OUTLIER_META_TEXT = String(metaText || "");
     if($btnOutlierScan) $btnOutlierScan.disabled = true;
     if($outlierStatus) $outlierStatus.style.display = "flex";
     if($outlierSpinner) $outlierSpinner.style.display = "inline-block";
@@ -880,8 +909,6 @@ function startOutlierUi(){
     _renderOutlierTime();
     if(OUTLIER_TIMER) clearInterval(OUTLIER_TIMER);
     OUTLIER_TIMER = setInterval(_renderOutlierTime, 120);
-    if(_OUTLIER_HIDE_TIMER) clearTimeout(_OUTLIER_HIDE_TIMER);
-    _OUTLIER_HIDE_TIMER = null;
     return true;
   }catch(e){
     OUTLIER_INFLIGHT = true;
@@ -942,6 +969,7 @@ let OUTLIER_INFLIGHT = false;
 let OUTLIER_T0 = 0;
 let OUTLIER_TIMER = null;
 // outlier status stays visible after completion
+let OUTLIER_META_TEXT = "";
 
 let _PLOTLY_EVENTS_BOUND = false;
 let _IN_Y_RELAYOUT = false;
@@ -3483,7 +3511,7 @@ async function runOutlierScan(){
     value_b_val: $tblBVal ? $tblBVal.value : "999999",
   };
 
-  startOutlierUi();
+  startOutlierUi(_outlierMetaFromPayload(payload));
   try{
     const j = await api(
       "./api/outliers",
@@ -3675,6 +3703,15 @@ try{
 })();
 
 </script>
+
+{% include "_table_cols.html" %}
+{% include "_tooltips.html" %}
+
+    </div>
+  </div>
+
+</body>
+</html>
 
 {% include "_table_cols.html" %}
 {% include "_tooltips.html" %}

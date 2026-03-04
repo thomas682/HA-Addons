@@ -1,5 +1,33 @@
 # Changelog
 
+## 1.11.52
+
+### Features
+
+- Statistik: Statusanzeige zeigt jetzt aktuellen Messwert sowie Gesamtanzahl und Prozent-Fortschritt.
+
+### Bug Fixes
+
+- Statistik: Fix Serienlisten-Builder (Zeilen werden wieder korrekt gefuellt).
+
+### Maintenance
+
+- (keine)
+
+## 1.11.51
+
+### Features
+
+- Dashboard: Ausreisser-Suche zeigt neben dem Timer Messstelle, Suchbereich und aktuelle Zeit.
+
+### Bug Fixes
+
+- (keine)
+
+### Maintenance
+
+- (keine)
+
 ## 1.11.50
 
 ### Features

@@ -3784,24 +3784,24 @@ from(bucket: "{cfg_local["bucket"]}")
                         set_state("cancelled", "Abgebrochen.")
                         return
 
-                        m = str(srow.get("measurement") or "")
-                        f = str(srow.get("field") or "")
-                        eid = str(srow.get("entity_id") or "")
-                        fn = str(srow.get("friendly_name") or "")
+                    m = str(srow.get("measurement") or "")
+                    f = str(srow.get("field") or "")
+                    eid = str(srow.get("entity_id") or "")
+                    fn = str(srow.get("friendly_name") or "")
 
-                        k = (m, f, eid, fn)
-                        nt = str(srow.get("newest_time") or "")
-                        cur = series_map.get(k)
-                        if not cur:
-                            series_map[k] = srow
-                        else:
-                            try:
-                                at = _parse_ts(str(cur.get("newest_time") or "") or None)
-                                bt = _parse_ts(nt or None)
-                                if bt and (not at or bt > at):
-                                    series_map[k] = srow
-                            except Exception:
+                    k = (m, f, eid, fn)
+                    nt = str(srow.get("newest_time") or "")
+                    cur = series_map.get(k)
+                    if not cur:
+                        series_map[k] = srow
+                    else:
+                        try:
+                            at = _parse_ts(str(cur.get("newest_time") or "") or None)
+                            bt = _parse_ts(nt or None)
+                            if bt and (not at or bt > at):
                                 series_map[k] = srow
+                        except Exception:
+                            series_map[k] = srow
 
                 series_list_full = list(series_map.values())
                 with GLOBAL_STATS_LOCK:
