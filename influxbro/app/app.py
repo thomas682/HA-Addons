@@ -39,6 +39,9 @@ BACKUP_DIR = DEFAULT_BACKUP_DIR
 GLOBAL_STATS_JOBS: dict[str, dict[str, Any]] = {}
 GLOBAL_STATS_LOCK = threading.Lock()
 
+RESTORE_COPY_JOBS: dict[str, dict[str, Any]] = {}
+RESTORE_COPY_LOCK = threading.Lock()
+
 DEFAULT_INFLUX_YAML_PATH = "homeassistant/influx.yaml"
 LAST_YAML_ERROR = None
 
@@ -2140,6 +2143,453 @@ def api_backup_copy():
         })
     except Exception as e:
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
+
+
+def _restore_copy_job_public(job: dict[str, Any]) -> dict[str, Any]:
+    total_b = job.get("total_bytes")
+    read_b = int(job.get("read_bytes") or 0)
+    pct = None
+    if isinstance(total_b, int) and total_b > 0:
+        pct = min(100.0, (read_b / float(total_b)) * 100.0)
+    return {
+        "id": job.get("id"),
+        "state": job.get("state"),
+        "message": job.get("message"),
+        "started_at": job.get("started_at"),
+        "elapsed": _hms(time.monotonic() - float(job.get("started_mono") or time.monotonic())),
+        "applied": int(job.get("applied") or 0),
+        "skipped": int(job.get("skipped") or 0),
+        "read_bytes": read_b,
+        "total_bytes": total_b,
+        "percent": pct,
+        "current_time_ms": job.get("current_time_ms"),
+        "last_written_time_ms": job.get("last_written_time_ms"),
+        "cancelled": bool(job.get("cancelled")),
+        "error": job.get("error"),
+        "ready": job.get("state") in ("done", "error", "cancelled"),
+    }
+
+
+def _restore_copy_job_thread(
+    job_id: str,
+    cfg: dict[str, Any],
+    backup_id: str,
+    target_measurement: str,
+    target_field: str,
+    target_entity_id: str | None,
+    target_friendly_name: str | None,
+    start_ns: int | None,
+    stop_ns: int | None,
+) -> None:
+    with RESTORE_COPY_LOCK:
+        job = RESTORE_COPY_JOBS.get(job_id)
+    if not job:
+        return
+
+    def set_state(state: str, msg: str) -> None:
+        with RESTORE_COPY_LOCK:
+            if job_id in RESTORE_COPY_JOBS:
+                RESTORE_COPY_JOBS[job_id]["state"] = state
+                RESTORE_COPY_JOBS[job_id]["message"] = msg
+
+    def set_error(msg: str) -> None:
+        with RESTORE_COPY_LOCK:
+            if job_id in RESTORE_COPY_JOBS:
+                RESTORE_COPY_JOBS[job_id]["error"] = msg
+
+    def set_progress(**kw: Any) -> None:
+        with RESTORE_COPY_LOCK:
+            j = RESTORE_COPY_JOBS.get(job_id)
+            if not j:
+                return
+            for k, v in kw.items():
+                j[k] = v
+
+    set_state("running", "Starte...")
+
+    bdir = backup_dir(cfg)
+    meta_path, lp_path = _backup_files(bdir, backup_id)
+    if not lp_path.exists():
+        set_state("error", "Fehler")
+        set_error("backup not found")
+        return
+
+    try:
+        total_bytes = int(lp_path.stat().st_size)
+    except Exception:
+        total_bytes = None
+    set_progress(total_bytes=total_bytes)
+
+    tgt_meas = _lp_escape_key(target_measurement)
+    tgt_field = _lp_escape_key(target_field)
+
+    try:
+        preview_limit = int(cfg.get("restore_preview_lines", 5))
+    except Exception:
+        preview_limit = 5
+    if preview_limit < 0:
+        preview_limit = 0
+    if preview_limit > 200:
+        preview_limit = 200
+
+    preview_lines: list[str] = []
+    override_tags: dict[str, str] = {}
+    if target_entity_id:
+        override_tags["entity_id"] = _lp_escape_tag_value(target_entity_id)
+    if target_friendly_name:
+        override_tags["friendly_name"] = _lp_escape_tag_value(target_friendly_name)
+
+    def _is_escaped(s: str, i: int) -> bool:
+        n = 0
+        j = i - 1
+        while j >= 0 and s[j] == "\\":
+            n += 1
+            j -= 1
+        return (n % 2) == 1
+
+    def _find_unescaped(s: str, ch: str) -> int:
+        for i, c in enumerate(s):
+            if c != ch:
+                continue
+            if not _is_escaped(s, i):
+                return i
+        return -1
+
+    def _split_unescaped(s: str, ch: str) -> list[str]:
+        out: list[str] = []
+        cur: list[str] = []
+        for i, c in enumerate(s):
+            if c == ch and not _is_escaped(s, i):
+                out.append("".join(cur))
+                cur = []
+            else:
+                cur.append(c)
+        out.append("".join(cur))
+        return out
+
+    def _split_tag_kv(tok: str) -> tuple[str, str] | None:
+        i = _find_unescaped(tok, "=")
+        if i <= 0:
+            return None
+        return tok[:i], tok[i + 1 :]
+
+    def _raw_ts_ns(line: str) -> int | None:
+        s = (line or "").strip("\r\n")
+        j = s.rfind(" ")
+        if j <= 0:
+            return None
+        ts_raw = s[j + 1 :].strip()
+        if not ts_raw or not ts_raw.isdigit():
+            return None
+        try:
+            return int(ts_raw)
+        except Exception:
+            return None
+
+    def _rewrite_line(line: str) -> str | None:
+        s = line.strip("\r\n")
+        if not s.strip():
+            return None
+
+        j = s.rfind(" ")
+        if j <= 0:
+            return None
+        ts_raw = s[j + 1 :].strip()
+        if not ts_raw or not ts_raw.isdigit():
+            return None
+
+        rest = s[:j]
+        i = _find_unescaped(rest, " ")
+        if i <= 0:
+            return None
+        mt = rest[:i]
+        fieldset = rest[i + 1 :].strip()
+        if not fieldset:
+            return None
+
+        if start_ns is not None and stop_ns is not None:
+            try:
+                ts = int(ts_raw)
+            except Exception:
+                return None
+            if ts < start_ns or ts > stop_ns:
+                return None
+
+        parts = _split_unescaped(mt, ",")
+        if not parts:
+            return None
+        tags_in = parts[1:]
+        tag_map: dict[str, str] = {}
+        tag_order: list[str] = []
+        for tok in tags_in:
+            kv = _split_tag_kv(tok)
+            if not kv:
+                continue
+            k, v = kv
+            tag_order.append(k)
+            tag_map[k] = v
+        for k, v in override_tags.items():
+            tag_map[k] = v
+
+        tags_out: list[str] = []
+        for k in tag_order:
+            if k in tag_map:
+                tags_out.append(f"{k}={tag_map[k]}")
+        for k in sorted(tag_map.keys()):
+            if k not in tag_order:
+                tags_out.append(f"{k}={tag_map[k]}")
+
+        fields = _split_unescaped(fieldset, ",")
+        if not fields:
+            return None
+        f0 = fields[0]
+        eq = f0.find("=")
+        if eq <= 0:
+            return None
+        field_val = f0[eq + 1 :]
+        fields[0] = f"{tgt_field}={field_val}"
+        new_fieldset = ",".join(fields)
+
+        if tags_out:
+            new_mt = tgt_meas + "," + ",".join(tags_out)
+        else:
+            new_mt = tgt_meas
+        return f"{new_mt} {new_fieldset} {ts_raw}"
+
+    applied = 0
+    skipped = 0
+    read_bytes = 0
+    batch: list[str] = []
+    last_written_time_ms: int | None = None
+    current_time_ms: int | None = None
+    last_tick = time.monotonic()
+
+    try:
+        with v2_client(cfg) as c:
+            wapi = c.write_api(write_options=SYNCHRONOUS)
+            set_state("running", "Lese Backup...")
+            with lp_path.open("rb") as f:
+                for raw_b in f:
+                    with RESTORE_COPY_LOCK:
+                        j = RESTORE_COPY_JOBS.get(job_id) or {}
+                        if bool(j.get("cancelled")):
+                            set_state("cancelled", "Abgebrochen")
+                            return
+
+                    read_bytes += len(raw_b)
+                    raw = raw_b.decode("utf-8", errors="replace")
+
+                    ts_ns = _raw_ts_ns(raw)
+                    if ts_ns is not None:
+                        current_time_ms = int(ts_ns // 1_000_000)
+
+                    out = _rewrite_line(raw)
+                    if not out:
+                        skipped += 1
+                    else:
+                        if preview_limit > 0 and len(preview_lines) < preview_limit:
+                            preview_lines.append(out)
+                        batch.append(out)
+
+                    now = time.monotonic()
+                    if (now - last_tick) >= 0.25:
+                        set_progress(
+                            read_bytes=read_bytes,
+                            applied=applied,
+                            skipped=skipped,
+                            current_time_ms=current_time_ms,
+                            last_written_time_ms=last_written_time_ms,
+                        )
+                        last_tick = now
+
+                    if len(batch) >= 2000:
+                        set_state("running", "Schreibe in InfluxDB...")
+                        wapi.write(
+                            bucket=cfg["bucket"],
+                            org=cfg["org"],
+                            record=batch,
+                            write_precision=WritePrecision.NS,
+                        )
+                        applied += len(batch)
+                        # last point timestamp in the batch
+                        ts_last = _raw_ts_ns(batch[-1])
+                        if ts_last is not None:
+                            last_written_time_ms = int(ts_last // 1_000_000)
+                        batch = []
+                        set_progress(
+                            read_bytes=read_bytes,
+                            applied=applied,
+                            skipped=skipped,
+                            current_time_ms=current_time_ms,
+                            last_written_time_ms=last_written_time_ms,
+                        )
+
+                if batch:
+                    set_state("running", "Schreibe in InfluxDB...")
+                    wapi.write(
+                        bucket=cfg["bucket"],
+                        org=cfg["org"],
+                        record=batch,
+                        write_precision=WritePrecision.NS,
+                    )
+                    applied += len(batch)
+                    ts_last = _raw_ts_ns(batch[-1])
+                    if ts_last is not None:
+                        last_written_time_ms = int(ts_last // 1_000_000)
+                    batch = []
+                    set_progress(
+                        read_bytes=read_bytes,
+                        applied=applied,
+                        skipped=skipped,
+                        current_time_ms=current_time_ms,
+                        last_written_time_ms=last_written_time_ms,
+                    )
+
+        with RESTORE_COPY_LOCK:
+            if job_id in RESTORE_COPY_JOBS:
+                RESTORE_COPY_JOBS[job_id]["result"] = {
+                    "applied": applied,
+                    "skipped": skipped,
+                    "preview_limit": preview_limit,
+                    "preview_lines": preview_lines,
+                }
+        set_state("done", f"Copied points: {applied}")
+    except Exception as e:
+        set_error(_short_influx_error(e))
+        set_state("error", "Fehler")
+
+
+@app.post("/api/restore_job/start")
+def api_restore_job_start():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    if not writes_enabled(cfg):
+        return jsonify({"ok": False, "error": "Writes are disabled. Enable writes in Settings."}), 403
+
+    body = request.get_json(force=True) or {}
+    confirm = body.get("confirm", False)
+    ok_confirm = confirm is True or str(confirm).strip().lower() in ("1", "true", "yes", "on")
+    if not ok_confirm:
+        return jsonify({"ok": False, "error": "Confirmation required"}), 400
+
+    backup_id = (body.get("id") or "").strip()
+    if not backup_id:
+        return jsonify({"ok": False, "error": "id required"}), 400
+
+    target_measurement = (body.get("target_measurement") or "").strip()
+    target_field = (body.get("target_field") or "").strip()
+    if not target_measurement or not target_field:
+        return jsonify({"ok": False, "error": "target_measurement and target_field required"}), 400
+
+    target_entity_id = (body.get("target_entity_id") or "").strip() or None
+    target_friendly_name = (body.get("target_friendly_name") or "").strip() or None
+
+    start_ns: int | None = None
+    stop_ns: int | None = None
+    if body.get("start") and body.get("stop"):
+        try:
+            start_dt, stop_dt = _get_start_stop_from_payload(body)
+            if not start_dt or not stop_dt:
+                raise ValueError("start and stop required")
+            start_ns = _dt_to_ns(start_dt)
+            stop_ns = _dt_to_ns(stop_dt)
+        except Exception as e:
+            return jsonify({"ok": False, "error": f"invalid start/stop: {e}"}), 400
+
+    if int(cfg.get("influx_version", 2)) != 2:
+        return jsonify({"ok": False, "error": "copy currently supports InfluxDB v2 only"}), 400
+    if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+        return jsonify({
+            "ok": False,
+            "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
+        }), 400
+
+    job_id = uuid.uuid4().hex
+    job = {
+        "id": job_id,
+        "state": "queued",
+        "message": "Start...",
+        "started_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+        "started_mono": time.monotonic(),
+        "applied": 0,
+        "skipped": 0,
+        "read_bytes": 0,
+        "total_bytes": None,
+        "current_time_ms": None,
+        "last_written_time_ms": None,
+        "cancelled": False,
+        "error": None,
+        "result": None,
+    }
+
+    # Cleanup old jobs
+    with RESTORE_COPY_LOCK:
+        RESTORE_COPY_JOBS[job_id] = job
+        cutoff = time.monotonic() - 3600
+        old = [k for k, v in RESTORE_COPY_JOBS.items() if float(v.get("started_mono") or 0) < cutoff]
+        for k in old:
+            if k != job_id:
+                RESTORE_COPY_JOBS.pop(k, None)
+
+    t = threading.Thread(
+        target=_restore_copy_job_thread,
+        args=(
+            job_id,
+            cfg,
+            backup_id,
+            target_measurement,
+            target_field,
+            target_entity_id,
+            target_friendly_name,
+            start_ns,
+            stop_ns,
+        ),
+        daemon=True,
+    )
+    t.start()
+    return jsonify({"ok": True, "job_id": job_id})
+
+
+@app.get("/api/restore_job/status")
+def api_restore_job_status():
+    job_id = (request.args.get("job_id") or "").strip()
+    if not job_id:
+        return jsonify({"ok": False, "error": "job_id required"}), 400
+    with RESTORE_COPY_LOCK:
+        job = RESTORE_COPY_JOBS.get(job_id)
+    if not job:
+        return jsonify({"ok": False, "error": "job not found"}), 404
+    return jsonify({"ok": True, "status": _restore_copy_job_public(job)})
+
+
+@app.get("/api/restore_job/result")
+def api_restore_job_result():
+    job_id = (request.args.get("job_id") or "").strip()
+    if not job_id:
+        return jsonify({"ok": False, "error": "job_id required"}), 400
+    with RESTORE_COPY_LOCK:
+        job = RESTORE_COPY_JOBS.get(job_id)
+        res = job.get("result") if job else None
+        state = job.get("state") if job else None
+        err = job.get("error") if job else None
+    if not job:
+        return jsonify({"ok": False, "error": "job not found"}), 404
+    if state != "done":
+        return jsonify({"ok": True, "ready": False, "state": state, "error": err})
+    return jsonify({"ok": True, "ready": True, **(res or {})})
+
+
+@app.post("/api/restore_job/cancel")
+def api_restore_job_cancel():
+    body = request.get_json(force=True) or {}
+    job_id = (body.get("job_id") or "").strip()
+    if not job_id:
+        return jsonify({"ok": False, "error": "job_id required"}), 400
+    with RESTORE_COPY_LOCK:
+        job = RESTORE_COPY_JOBS.get(job_id)
+        if not job:
+            return jsonify({"ok": False, "error": "job not found"}), 404
+        job["cancelled"] = True
+    return jsonify({"ok": True})
 
 @app.post("/api/config")
 def api_set_config():

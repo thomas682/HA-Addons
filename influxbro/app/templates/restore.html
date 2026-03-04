@@ -231,13 +231,32 @@
 
        let RUN_T0 = null;
        let RUN_TIMER = null;
-       let RUN_CTX = { backup_id: '', target: '', range: '' };
+       let RUN_CTX = { backup_id: '', target: '', range: '', write_time: '', pct: '' };
+       let RUN_JOB_ID = '';
 
        function fmtNow(){
          try{
            const d = new Date();
            const pad2 = (n)=>String(n).padStart(2,'0');
            return pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds());
+         }catch(e){
+           return '';
+         }
+       }
+
+       function fmtTsMsFromEpochMs(ms){
+         try{
+           const n = Number(ms);
+           if(!isFinite(n) || n <= 0) return '';
+           const d = new Date(n);
+           if(!isFinite(d.getTime())) return '';
+           const pad2 = (x)=>String(x).padStart(2,'0');
+           const pad3 = (x)=>String(x).padStart(3,'0');
+           return (
+             pad2(d.getDate()) + '.' + pad2(d.getMonth()+1) + '.' + d.getFullYear() + ' ' +
+             pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds()) + '.' +
+             pad3(d.getMilliseconds())
+           );
          }catch(e){
            return '';
          }
@@ -267,6 +286,8 @@
            if(RUN_CTX && RUN_CTX.backup_id) ctx.push('Backup: ' + RUN_CTX.backup_id);
            if(RUN_CTX && RUN_CTX.target) ctx.push('Ziel: ' + RUN_CTX.target);
            if(RUN_CTX && RUN_CTX.range) ctx.push('Zeit: ' + RUN_CTX.range);
+           if(RUN_CTX && RUN_CTX.write_time) ctx.push('Schreibe Zeitpunkt: ' + RUN_CTX.write_time);
+           if(RUN_CTX && RUN_CTX.pct) ctx.push('Fortschritt: ' + RUN_CTX.pct);
            const ctxStr = ctx.length ? (' | ' + ctx.join(' | ')) : '';
            $runStatusTxt.textContent = parts.join(' ') + ctxStr;
          }catch(e){}
@@ -285,7 +306,8 @@
              $runStatus.style.display = 'flex';
            }
            if($runSpinner) $runSpinner.style.display = 'inline-block';
-           RUN_CTX = { backup_id: '', target: '', range: '' };
+           RUN_CTX = { backup_id: '', target: '', range: '', write_time: '', pct: '' };
+           RUN_JOB_ID = '';
            setRunStatusText(msg || 'Restore laeuft...');
            if($runStatusTime) $runStatusTime.textContent = '';
            if($run) $run.disabled = true;
@@ -306,6 +328,7 @@
        function stopRunUi(success, msg){
          try{ if(RUN_TIMER) clearInterval(RUN_TIMER); }catch(e){}
          RUN_TIMER = null;
+         RUN_JOB_ID = '';
          const dur = RUN_T0 ? (Date.now() - RUN_T0) : null;
          RUN_T0 = null;
 
@@ -664,49 +687,105 @@
          const payload = {
            id,
            confirm: true,
-          target_measurement: LAST_TARGET.measurement,
-          target_field: LAST_TARGET.field,
-          target_entity_id: LAST_TARGET.entity_id,
-          target_friendly_name: LAST_TARGET.friendly_name,
-        };
-        if(tf){ payload.start = tf.start; payload.stop = tf.stop; }
-         let j;
+           target_measurement: LAST_TARGET.measurement,
+           target_field: LAST_TARGET.field,
+           target_entity_id: LAST_TARGET.entity_id,
+           target_friendly_name: LAST_TARGET.friendly_name,
+         };
+         if(tf){ payload.start = tf.start; payload.stop = tf.stop; }
          try{
-           setRunStatusText('Schreibe in InfluxDB...');
-           j = await api('./api/backup_copy', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+           const started = await api('./api/restore_job/start', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+           RUN_JOB_ID = String(started.job_id || '');
+           if(!RUN_JOB_ID) throw new Error('restore job_id missing');
          }catch(e){
            stopRunUi(false, (e && e.message) ? e.message : String(e));
            throw e;
          }
 
-         const applied = Number(j.applied || 0);
-         const skipped = Number(j.skipped || 0);
-         ok((j.message || 'Restore fertig.') + ` (applied=${applied}, skipped=${skipped})`);
+         async function pollOnce(){
+           if(!RUN_JOB_ID) return null;
+           const j = await api('./api/restore_job/status?job_id=' + encodeURIComponent(RUN_JOB_ID));
+           return j.status || null;
+         }
+
+         // Poll until done/error
+         while(true){
+           let st;
+           try{
+             st = await pollOnce();
+           }catch(e){
+             stopRunUi(false, (e && e.message) ? e.message : String(e));
+             throw e;
+           }
+           if(!st){
+             stopRunUi(false, 'Restore-Status nicht verfuegbar.');
+             throw new Error('restore status missing');
+           }
+
+           try{
+             const pct = (st.percent === null || st.percent === undefined) ? '' : (Number(st.percent).toFixed(1) + '%');
+             RUN_CTX.pct = pct;
+             const tms = (st.last_written_time_ms || st.current_time_ms || 0);
+             RUN_CTX.write_time = fmtTsMsFromEpochMs(tms);
+           }catch(e){}
+
+           setRunStatusText(String(st.message || 'Restore laeuft...'));
+
+           const state = String(st.state || '');
+           if(state === 'done') break;
+           if(state === 'error'){
+             const em = String(st.error || st.message || 'Fehler');
+             stopRunUi(false, em);
+             throw new Error(em);
+           }
+           if(state === 'cancelled'){
+             stopRunUi(true, 'Abgebrochen.');
+             return;
+           }
+           await new Promise(r=>setTimeout(r, 450));
+         }
+
+         // Fetch final result (preview + counts)
+         let res;
+         try{
+           res = await api('./api/restore_job/result?job_id=' + encodeURIComponent(RUN_JOB_ID));
+         }catch(e){
+           stopRunUi(false, (e && e.message) ? e.message : String(e));
+           throw e;
+         }
+         if(!res.ready){
+           stopRunUi(false, 'Restore Ergebnis noch nicht bereit.');
+           throw new Error('restore result not ready');
+         }
+
+         const applied = Number(res.applied || 0);
+         const skipped = Number(res.skipped || 0);
+         ok(`Restore fertig. (applied=${applied}, skipped=${skipped})`);
          setRunStatusText(`Fertig (applied=${applied}, skipped=${skipped}).`);
 
-        try{
-          if($runDetails){
-            $runDetails.style.display = 'block';
-            $runDetails.open = true;
-          }
-          if($runDetailsMeta){
-            const lim = Number(j.preview_limit || CFG.restore_preview_lines || 5);
-            $runDetailsMeta.textContent = `Preview: erste ${lim} Zeile(n) (konfigurierbar in Einstellungen -> Restore).`;
-          }
-          if($runDetailsPre){
-            const lines = [];
-            lines.push(`Backup: ${id}`);
-            lines.push(`Ziel: ${LAST_TARGET.measurement}/${LAST_TARGET.field}`);
-            lines.push(`Ziel Tags: entity_id=${LAST_TARGET.entity_id || ''} | friendly_name=${LAST_TARGET.friendly_name || ''}`);
-            if(tf) lines.push(`Zeitfilter: ${fmtTs(tf.start)} bis ${fmtTs(tf.stop)}`);
-            lines.push(`Ergebnis: applied=${applied}, skipped=${skipped}`);
-            $runDetailsPre.textContent = lines.join('\n');
-          }
-          if($runPreviewPre){
-            const xs = (j.preview_lines || []).map(x=>String(x));
-            $runPreviewPre.textContent = xs.join('\n');
-          }
-        }catch(e){}
+         try{
+           if($runDetails){
+             $runDetails.style.display = 'block';
+             $runDetails.open = true;
+           }
+           if($runDetailsMeta){
+             const lim = Number(res.preview_limit || CFG.restore_preview_lines || 5);
+             $runDetailsMeta.textContent = `Preview: erste ${lim} Zeile(n) (konfigurierbar in Einstellungen -> Restore).`;
+           }
+           if($runDetailsPre){
+             const lines = [];
+             lines.push(`Backup: ${id}`);
+             lines.push(`Ziel: ${LAST_TARGET.measurement}/${LAST_TARGET.field}`);
+             lines.push(`Ziel Tags: entity_id=${LAST_TARGET.entity_id || ''} | friendly_name=${LAST_TARGET.friendly_name || ''}`);
+             if(tf) lines.push(`Zeitfilter: ${fmtTs(tf.start)} bis ${fmtTs(tf.stop)}`);
+             lines.push(`Ergebnis: applied=${applied}, skipped=${skipped}`);
+             $runDetailsPre.textContent = lines.join('\n');
+           }
+           if($runPreviewPre){
+             const xs = (res.preview_lines || []).map(x=>String(x));
+             $runPreviewPre.textContent = xs.join('\n');
+           }
+         }catch(e){}
 
          stopRunUi(true);
        }

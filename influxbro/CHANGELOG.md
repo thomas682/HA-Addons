@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.11.63
+
+### Features
+
+- Restore: Live-Status zeigt jetzt Schreib-Zeitpunkt (bis Millisekunden) und Fortschritt in % waehrend des Schreibens.
+
+### Bug Fixes
+
+- (keine)
+
+### Maintenance
+
+- (keine)
+
 ## 1.11.62
 
 ### Features
