@@ -3,6 +3,26 @@
 // - Prefer explicit tips by data-ui key
 // - Otherwise derive a short tooltip from nearby label/help text
 (function(){
+  const ENABLED = {{ 'true' if (cfg and cfg.get('ui_tooltips_enabled', true)) else 'false' }};
+
+  function clearTitles(){
+    try{
+      const root = document.querySelector('main.content') || document.body;
+      // Remove all title attributes so no tooltip is shown.
+      root.querySelectorAll('[title]').forEach(el => {
+        try{ el.removeAttribute('title'); }catch(e){}
+      });
+    }catch(e){}
+  }
+
+  if(!ENABLED){
+    try{
+      if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', clearTitles);
+      else clearTitles();
+    }catch(e){}
+    return;
+  }
+
   const TIPS = {
     // Dashboard
     'dashboard.load': 'Laedt Graph, Tabelle und Statistik aus InfluxDB (mit aktueller Auswahl/Zeitraum).',

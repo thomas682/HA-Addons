@@ -896,24 +896,6 @@
       renderZoomTxt();
       renderActionHints();
 
-      // Tooltips
-      function applyTooltips(){
-        document.querySelectorAll('[data-ui]').forEach(el => {
-          if(!el.getAttribute('title')) el.setAttribute('title', el.getAttribute('data-ui') || '');
-        });
-        document.querySelectorAll('select, input, button').forEach(el => {
-          if(el.getAttribute('data-ui')) return;
-          if(el.getAttribute('title')) return;
-          const id = el.getAttribute('id');
-          if(id) el.setAttribute('title', id);
-        });
-      }
-      try{
-        applyTooltips();
-        const obs = new MutationObserver(()=>applyTooltips());
-        obs.observe(document.body, {childList:true, subtree:true});
-      }catch(e){}
-
        // Apply initial values before list load (so friendly/entity lists can be narrowed by measurement).
        try{
          const init = window.__INFLUXBRO_BACKUP_INIT || {};

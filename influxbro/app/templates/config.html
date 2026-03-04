@@ -211,6 +211,10 @@
         <div><label><input type="checkbox" id="ui_open_editlist" /> Bearbeitungsliste</label></div>
         <div><label><input type="checkbox" id="ui_open_stats_total" /> Gesamtstatistik (Alles)</label></div>
         <div><label><input type="checkbox" id="ui_open_stats_current" /> Statistik Zeitraum (Graph)</label></div>
+        <div>
+          <label><input type="checkbox" id="ui_tooltips_enabled" /> Tooltips anzeigen</label>
+          <div class="muted">Wenn deaktiviert, werden keine Tooltips erzeugt/angezeigt.</div>
+        </div>
       </div>
       </div>
     </details>
@@ -355,6 +359,7 @@ const ids = [
   ,"ui_repo_url"
   ,"ui_open_selection","ui_open_graph","ui_open_filterlist","ui_open_editlist"
   ,"ui_open_stats_total","ui_open_stats_current"
+  ,"ui_tooltips_enabled"
   ,"outlier_max_step_w","outlier_max_step_kw","outlier_max_step_wh","outlier_max_step_kwh"
   ,"log_to_file","log_profile","log_max_mb","log_backup_count","log_max_age_days","log_http_requests"
   ,"log_influx_queries"
@@ -411,6 +416,7 @@ function setForm(cfg){
   el.ui_open_editlist.checked = !!cfg.ui_open_editlist;
   el.ui_open_stats_total.checked = !!cfg.ui_open_stats_total;
   el.ui_open_stats_current.checked = (cfg.ui_open_stats_current !== false);
+  el.ui_tooltips_enabled.checked = (cfg.ui_tooltips_enabled !== false);
 
   el.outlier_max_step_w.value = cfg.outlier_max_step_w ?? 30000;
   el.outlier_max_step_kw.value = cfg.outlier_max_step_kw ?? 30;
@@ -469,6 +475,7 @@ function getForm(){
     ui_open_editlist: !!el.ui_open_editlist.checked,
     ui_open_stats_total: !!el.ui_open_stats_total.checked,
     ui_open_stats_current: !!el.ui_open_stats_current.checked,
+    ui_tooltips_enabled: !!el.ui_tooltips_enabled.checked,
 
     outlier_max_step_w: parseFloat(el.outlier_max_step_w.value),
     outlier_max_step_kw: parseFloat(el.outlier_max_step_kw.value),
@@ -557,13 +564,6 @@ document.getElementById("save").addEventListener("click", ()=>save().catch(e=>er
 document.getElementById("test").addEventListener("click", ()=>testConn().catch(e=>err(String(e))));
 
 load().catch(e=>err(String(e)));
-
-// Tooltips: show internal field name on hover
-try{
-  document.querySelectorAll('[data-ui]').forEach(el => {
-    if(!el.getAttribute('title')) el.setAttribute('title', el.getAttribute('data-ui') || '');
-  });
-}catch(e){}
 </script>
 
 <script>

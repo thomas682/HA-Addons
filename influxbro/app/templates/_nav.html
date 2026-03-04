@@ -55,6 +55,7 @@
   // Also persist non-sensitive UI input state in localStorage so navigating away
   // (or updating the add-on) keeps the last UI selections.
   (function(){
+    const TOOLTIP_ENABLED = {{ 'true' if (cfg and cfg.get('ui_tooltips_enabled', true)) else 'false' }};
     const SENSITIVE_IDS = new Set([
       'token',
       'password',
@@ -297,6 +298,7 @@
     }
 
     function applyTooltips(){
+      if(!TOOLTIP_ENABLED) return;
       document.querySelectorAll('[data-ui]').forEach(el => {
         const ui = (el.getAttribute('data-ui') || '').trim();
         if(!ui) return;
@@ -316,6 +318,14 @@
       });
     }
 
+    function clearTitles(){
+      try{
+        document.querySelectorAll('[title]').forEach(el => {
+          try{ el.removeAttribute('title'); }catch(e){}
+        });
+      }catch(e){}
+    }
+
     function scanPersistence(){
       document.querySelectorAll('input[id], select[id], textarea[id]').forEach(el => {
         restoreEl(el);
@@ -324,11 +334,12 @@
     }
     try{
       // Start early so values restore before page scripts use them.
-    applyTooltips();
+    if(TOOLTIP_ENABLED) applyTooltips();
+    else clearTitles();
     scanPersistence();
     ensureSectionToolbar();
     const obs = new MutationObserver((mut)=>{
-      applyTooltips();
+      if(TOOLTIP_ENABLED) applyTooltips();
       try{
           // Restore/save for newly added nodes.
           (mut||[]).forEach(m=>{

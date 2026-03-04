@@ -3624,42 +3624,6 @@ if($btnCancelLoad) $btnCancelLoad.addEventListener("click", (ev)=>{ _stop(ev); c
   } catch(e){ displayError(e); }
 })();
 
-// Tooltips: show internal field name on hover
-try{
-  document.querySelectorAll('[data-ui]').forEach(el => {
-    if(!el.getAttribute('title')) el.setAttribute('title', el.getAttribute('data-ui') || '');
-  });
-}catch(e){}
-
-// Also add tooltips for selects/inputs without data-ui
-try{
-  document.querySelectorAll('select, input, button').forEach(el => {
-    if(el.getAttribute('data-ui')) return;
-    if(el.getAttribute('title')) return;
-    const id = el.getAttribute('id');
-    if(id) el.setAttribute('title', id);
-  });
-}catch(e){}
-</script>
-
-{% include "_tooltips.html" %}
-
-    </div>
-  </div>
-
-</body>
-</html>
-v>
-  </div>
-
-</body>
-</html>
-getAttribute('data-ui')) return;
-    if(el.getAttribute('title')) return;
-    const id = el.getAttribute('id');
-    if(id) el.setAttribute('title', id);
-  });
-}catch(e){}
 </script>
 
 {% include "_tooltips.html" %}

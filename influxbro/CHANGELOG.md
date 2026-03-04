@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.11.46
+
+### Features
+
+- Einstellungen: Neue Checkbox zum globalen Abschalten der Tooltips.
+
+### Bug Fixes
+
+- Dashboard: Entfernt versehentlich gerenderten Resttext am Seitenende.
+
+### Maintenance
+
+- (keine)
+
 ## 1.11.45
 
 ### Features

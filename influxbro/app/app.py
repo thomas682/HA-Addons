@@ -526,6 +526,9 @@ DEFAULT_CFG = {
     "ui_filter_control_width_px": 320,
     "ui_filter_search_width_px": 160,
 
+    # Tooltips
+    "ui_tooltips_enabled": True,
+
     # Links / Info
     "ui_repo_url": "http://192.168.2.65:7070/thomas/ha-addons",
 
@@ -976,19 +979,19 @@ def index():
 @app.get("/stats")
 def stats_page():
     cfg = load_cfg()
-    return render_template("stats.html", allow_delete=writes_enabled(cfg), nav="stats")
+    return render_template("stats.html", cfg=cfg, allow_delete=writes_enabled(cfg), nav="stats")
 
 
 @app.get("/logs")
 def logs_page():
     cfg = load_cfg()
-    return render_template("logs.html", allow_delete=writes_enabled(cfg), nav="logs")
+    return render_template("logs.html", cfg=cfg, allow_delete=writes_enabled(cfg), nav="logs")
 
 
 @app.get("/backup")
 def backup_page():
     cfg = load_cfg()
-    return render_template("backup.html", allow_delete=writes_enabled(cfg), nav="backup")
+    return render_template("backup.html", cfg=cfg, allow_delete=writes_enabled(cfg), nav="backup")
 
 
 @app.get("/restore")
@@ -996,6 +999,7 @@ def restore_page():
     cfg = load_cfg()
     return render_template(
         "restore.html",
+        cfg=cfg,
         allow_delete=writes_enabled(cfg),
         delete_phrase=DELETE_CONFIRM_PHRASE,
         nav="restore",
@@ -1013,6 +1017,7 @@ def info_page():
         changelog = ""
     return render_template(
         "info.html",
+        cfg=cfg,
         allow_delete=writes_enabled(cfg),
         nav="info",
         repo_url=repo_url,
@@ -1030,6 +1035,7 @@ def manual_page():
         manual = ""
     return render_template(
         "manual.html",
+        cfg=cfg,
         allow_delete=writes_enabled(cfg),
         nav="manual",
         manual_text=manual,
@@ -2160,6 +2166,8 @@ def api_set_config():
     _bool("ui_open_filterlist", False)
     _bool("ui_open_editlist", False)
     _bool("ui_open_stats", False)
+
+    _bool("ui_tooltips_enabled", True)
 
     # Safety
     _bool("writes_enabled", True)
