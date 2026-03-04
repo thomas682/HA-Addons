@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.11.64
+
+### Features
+
+- (keine)
+
+### Bug Fixes
+
+- Einstellungen: behebt JS-Fehler "Cannot set properties of undefined" (Restore Preview-Zeilen Feld).
+
+### Maintenance
+
+- (keine)
+
 ## 1.11.63
 
 ### Features
