@@ -41,6 +41,7 @@
     .filter_pair { display:flex; gap: 10px; align-items:stretch; }
     .filter_pair input.search { height: 34px; padding: 8px 10px; width: 200px; }
     .filter_pair select { flex: 1; min-width: 0; }
+    table.list_tbl th, table.list_tbl td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   </style>
 </head>
 <body>
@@ -57,14 +58,18 @@
              <label>Volltextsuche</label>
              <input id="q_backup" placeholder="created_at, name, measurement, field..." data-ui="restore.backup_search" title="restore.backup_search" />
            </div>
-           <div>
-             <label>&nbsp;</label>
-             <button id="reload" data-ui="restore.reload" title="restore.reload">Liste aktualisieren</button>
-           </div>
-         </div>
+            <div>
+              <label>&nbsp;</label>
+              <button id="reload" data-ui="restore.reload" title="restore.reload">Liste aktualisieren</button>
+            </div>
+            <div>
+              <label>&nbsp;</label>
+              <button id="restore_autowidth" class="btn_sm" data-ui="restore.autowidth" title="restore.autowidth">Spaltenbreite automatisch</button>
+            </div>
+          </div>
 
          <div class="table_box">
-            <table data-ui="restore.backup_table" title="restore.backup_table">
+             <table id="restore_tbl" class="list_tbl" data-ui="restore.backup_table" title="restore.backup_table">
               <thead>
                 <tr>
                   <th style="width: 34px;">Ausw.</th>
@@ -167,6 +172,7 @@
        const $run = document.getElementById('run');
        const $srcToTarget = document.getElementById('source_to_target');
       const $reload = document.getElementById('reload');
+      const $restoreAutoWidth = document.getElementById('restore_autowidth');
 
        const $mf = document.getElementById('measurement_filter');
        const $n = document.getElementById('friendly_name');
@@ -553,8 +559,19 @@
       loadCfg().catch(()=>{});
       loadBackups().catch(e=>err(String(e && e.message ? e.message : e)));
       loadTargetLists().then(()=>{ renderPlan(); }).catch(()=>{});
+
+      try{
+        if(window.InfluxBroTableCols) window.InfluxBroTableCols.init('#restore_tbl');
+      }catch(e){}
+      try{
+        if($restoreAutoWidth) $restoreAutoWidth.addEventListener('click', (ev)=>{
+          ev.preventDefault(); ev.stopPropagation();
+          try{ window.InfluxBroTableCols && window.InfluxBroTableCols.autoFit('#restore_tbl', {maxRows: 200}); }catch(e){}
+        });
+      }catch(e){}
       </script>
 
+      {% include "_table_cols.html" %}
       {% include "_tooltips.html" %}
     </main>
   </div>

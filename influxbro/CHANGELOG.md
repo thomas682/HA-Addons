@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.11.48
+
+### Features
+
+- Add-on: /data/share wird nach <code>/config/homeassistant/influxbro/</code> gemountet (sichtbar im HA Filebrowser).
+- UI: Grosse Listen-Tabellen haben jetzt resizable Spalten und Button "Spaltenbreite automatisch" (Dashboard/Backup/Restore/Statistik).
+
+### Bug Fixes
+
+- Statistik: Hintergrundjob splittet Chunks bei Timeouts weiter auf (robuster fuer Zeitraum "Alle").
+- Ausreisser: Scan laeuft immer chunked und bricht grosse Zeitraeume seltener ab.
+
+### Maintenance
+
+- (keine)
+
 ## 1.11.46
 
 ### Features

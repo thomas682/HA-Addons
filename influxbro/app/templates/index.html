@@ -90,6 +90,7 @@
     .table_head { display:flex; justify-content:space-between; gap: 12px; align-items:baseline; flex-wrap:wrap; }
     .table_box { --max-rows: 100; --lh: var(--ui-table-line-height, 1.2); font-size: var(--ui-font-small); max-height: calc(var(--max-rows) * 1em * var(--lh) + 42px); overflow:auto; border: 1px solid #eee; border-radius: 10px; margin-top: 8px; }
     .table_box table { margin-top: 0; }
+    table.list_tbl th, table.list_tbl td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .table_box th, .table_box td { font-size: inherit; padding: 0 6px; line-height: var(--lh); height: auto; vertical-align: middle; }
     .table_box th { position: sticky; top: 0; z-index: 1; cursor: pointer; }
 
@@ -264,6 +265,7 @@
               <div class="muted" id="raw_info" data-ui="raw.info" title="raw.info"></div>
             </div>
             <div class="tbl_actions" style="margin-top:0;">
+              <button class="btn_sm" id="raw_autowidth" data-ui="raw.autowidth" title="raw.autowidth">Spaltenbreite automatisch</button>
               <button class="btn_sm" id="raw_copy" data-ui="raw.copy" title="raw.copy">Kopieren</button>
               <button class="btn_sm" id="raw_copy_query" data-ui="raw.copy_query" title="raw.copy_query">Query kopieren</button>
               <button class="btn_sm" id="raw_more" data-ui="raw.more" title="raw.more" style="display:none;">Mehr laden</button>
@@ -277,7 +279,7 @@
           </details>
 
           <div class="table_box" id="raw_box" style="--max-rows: 10;">
-            <table id="raw_tbl" data-ui="raw.table" title="raw.table">
+            <table id="raw_tbl" class="list_tbl" data-ui="raw.table" title="raw.table">
               <thead><tr><th style="min-width: 170px;">Zeit</th><th>Wert</th></tr></thead>
               <tbody id="raw_body"></tbody>
             </table>
@@ -323,6 +325,7 @@
                   <option value="zero">0-Werte</option>
                   <option value="all">alle werte</option>
                 </select>
+                <div class="muted">&nbsp;</div>
               </div>
 
               <div id="scan_counter" style="min-width: 220px; display:none;">
@@ -391,13 +394,14 @@
          </div>
        </div>
         <div class="table_box" id="table_box">
-          <table id="tbl">
+          <table id="tbl" class="list_tbl">
             <thead><tr><th style="width:20px;"><input type="checkbox" id="tbl_sel_all" class="row_sel" data-ui="filterlist_select_all"/></th><th id="th_time" data-key="time" data-ui="filterlist_col_time">Zeit</th><th id="th_value" data-key="value" data-ui="filterlist_col_value">Wert</th><th data-ui="filterlist_col_reason">Grund</th></tr></thead>
             <tbody></tbody>
            </table>
          </div>
 
         <div class="tbl_actions" style="justify-content:flex-start; margin-top: 10px;">
+          <button class="btn_sm" id="tbl_autowidth" data-ui="filterlist.autowidth" title="filterlist.autowidth">Spaltenbreite automatisch</button>
           <button class="btn_sm" id="tbl_to_edit" data-ui="filterlist_to_edit">in Bearbeitungsliste uebernehmen</button>
         </div>
       </div>
@@ -415,7 +419,7 @@
         </div>
         <div class="muted" data-ui="tip.editlist" title="tip.editlist">Doppelklick in der Tabelle uebernimmt einen Punkt. Nachbarwerte zeigen Kontext vor/nach dem Punkt.</div>
         <div class="table_box" id="edit_box">
-          <table id="edit_tbl">
+          <table id="edit_tbl" class="list_tbl">
             <thead>
               <tr>
                 <th style="width:20px;"><input type="checkbox" id="edit_sel_all" class="row_sel" data-ui="editlist_select_all"/></th>
@@ -433,6 +437,7 @@
         </div>
 
         <div class="tbl_actions" style="justify-content:flex-start; margin-top: 10px;">
+          <button class="btn_sm" id="edit_autowidth" data-ui="editlist.autowidth" title="editlist.autowidth">Spaltenbreite automatisch</button>
           <button class="btn_sm" id="edit_remove" data-ui="editlist_remove">Aus Liste loeschen</button>
           <button class="btn_sm" id="edit_undo_all" data-ui="editlist_undo_all">Undo alle</button>
         </div>
@@ -441,7 +446,7 @@
           <summary>Nachbarwerte (n davor / n danach)</summary>
           <div class="muted" id="edit_neighbors_info" data-ui="editlist_neighbors_info" title="editlist_neighbors_info"></div>
           <div class="table_box" style="margin-top: 8px;">
-            <table id="edit_neighbors_tbl" data-ui="editlist_neighbors_table" title="editlist_neighbors_table">
+            <table id="edit_neighbors_tbl" class="list_tbl" data-ui="editlist_neighbors_table" title="editlist_neighbors_table">
               <thead>
                 <tr>
                   <th style="width:70px;">Aktion</th>
@@ -596,6 +601,7 @@ const $rawInfo = document.getElementById('raw_info');
 const $rawBox = document.getElementById('raw_box');
 const $rawBody = document.getElementById('raw_body');
 const $rawResize = document.getElementById('raw_resize');
+const $rawAutoWidth = document.getElementById('raw_autowidth');
 const $rawCopy = document.getElementById('raw_copy');
 const $rawCopyQuery = document.getElementById('raw_copy_query');
 const $rawMore = document.getElementById('raw_more');
@@ -610,6 +616,7 @@ const $editInfo = document.getElementById('edit_info');
 const $editSelAll = document.getElementById('edit_sel_all');
 const $btnEditRemove = document.getElementById('edit_remove');
 const $btnEditUndoAll = document.getElementById('edit_undo_all');
+const $btnEditAutoWidth = document.getElementById('edit_autowidth');
 const $btnEditApply = document.getElementById('edit_apply');
 const $editApplyErr = document.getElementById('edit_apply_err');
 
@@ -3510,6 +3517,10 @@ if($btnEditRemove) $btnEditRemove.addEventListener("click", (ev)=>{
 });
 if($btnEditUndoAll) $btnEditUndoAll.addEventListener("click", (ev)=>{ _stop(ev); undoAllEdits(); });
 if($btnEditApply) $btnEditApply.addEventListener("click", (ev)=>{ _stop(ev); applyAllEdits(); });
+if($btnEditAutoWidth) $btnEditAutoWidth.addEventListener("click", (ev)=>{
+  _stop(ev);
+  try{ window.InfluxBroTableCols && window.InfluxBroTableCols.autoFit('#edit_tbl', {maxRows: 200}); }catch(e){}
+});
 if($editSelAll) $editSelAll.addEventListener("change", ()=>{
   const want = !!$editSelAll.checked;
   EDIT_SELECTED = new Set(want ? Array.from(EDIT_LIST.keys()) : []);
@@ -3518,6 +3529,21 @@ if($editSelAll) $editSelAll.addEventListener("change", ()=>{
 
 if($btnLoad) $btnLoad.addEventListener("click", (ev)=>{ _stop(ev); refreshAllWithStatus().catch(displayError); });
 if($btnCancelLoad) $btnCancelLoad.addEventListener("click", (ev)=>{ _stop(ev); cancelLoadNow(); });
+
+try{
+  const $tblAuto = document.getElementById('tbl_autowidth');
+  if($tblAuto) $tblAuto.addEventListener('click', (ev)=>{
+    _stop(ev);
+    try{ window.InfluxBroTableCols && window.InfluxBroTableCols.autoFit('#tbl', {maxRows: 200}); }catch(e){}
+  });
+}catch(e){}
+
+try{
+  if($rawAutoWidth) $rawAutoWidth.addEventListener('click', (ev)=>{
+    _stop(ev);
+    try{ window.InfluxBroTableCols && window.InfluxBroTableCols.autoFit('#raw_tbl', {maxRows: 80}); }catch(e){}
+  });
+}catch(e){}
 
 (async ()=>{
   try{
@@ -3607,6 +3633,16 @@ if($btnCancelLoad) $btnCancelLoad.addEventListener("click", (ev)=>{ _stop(ev); c
     await loadEntityIds();
     renderEntity();
 
+    // Init list table column resizing (best-effort)
+    try{
+      if(window.InfluxBroTableCols){
+        window.InfluxBroTableCols.init('#tbl');
+        window.InfluxBroTableCols.init('#edit_tbl');
+        window.InfluxBroTableCols.init('#raw_tbl');
+        window.InfluxBroTableCols.init('#edit_neighbors_tbl');
+      }
+    }catch(e){}
+
     // Cancel button disabled unless a load is in progress.
     try{ if($btnCancelLoad) $btnCancelLoad.disabled = true; }catch(e){}
 
@@ -3626,6 +3662,7 @@ if($btnCancelLoad) $btnCancelLoad.addEventListener("click", (ev)=>{ _stop(ev); c
 
 </script>
 
+{% include "_table_cols.html" %}
 {% include "_tooltips.html" %}
 
     </div>

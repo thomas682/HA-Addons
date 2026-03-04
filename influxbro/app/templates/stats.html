@@ -40,6 +40,7 @@
     table { border-collapse: collapse; width: 100%; margin-top: 10px; table-layout: fixed; }
     th, td { border: 1px solid #eee; padding: 0 6px; font-size: 11px; line-height: 1.2; vertical-align: middle; }
     th { background: #f6f6f6; text-align:left; cursor:pointer; position: sticky; top: 0; z-index: 1; }
+    #tbl.list_tbl th, #tbl.list_tbl td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .table_box { max-height: 70vh; overflow:auto; border: 1px solid #eee; border-radius: 12px; }
     .col_time { min-width: 170px; }
     .col_num { min-width: 80px; text-align: right; }
@@ -143,6 +144,7 @@
             <div>
               <label>&nbsp;</label>
               <button id="save_cols" data-ui="stats.save_cols" title="stats.save_cols">Spalten speichern</button>
+              <button id="auto_cols" data-ui="stats.auto_cols" title="stats.auto_cols">Spaltenbreite automatisch</button>
             </div>
             <div>
               <label>&nbsp;</label>
@@ -195,7 +197,7 @@
         <div class="muted" id="count" data-ui="stats.count" title="stats.count" style="margin-top: 10px;"></div>
 
         <div class="table_box">
-          <table id="tbl" data-ui="stats.table" title="stats.table">
+          <table id="tbl" class="list_tbl" data-ui="stats.table" title="stats.table">
             <thead>
               <tr>
                 <th data-key="_sel" style="width: 46px;">sel</th>
@@ -241,6 +243,7 @@
       const $cancel = document.getElementById('cancel');
       const $deleteRows = document.getElementById('delete_rows');
       const $saveCols = document.getElementById('save_cols');
+      const $autoCols = document.getElementById('auto_cols');
       const $markAll = document.getElementById('mark_all');
       const $clearMark = document.getElementById('clear_mark');
       const $reloadMarked = document.getElementById('reload_marked');
@@ -937,6 +940,11 @@
       $load.addEventListener('click', ()=>load().catch(e=>err(String(e && e.message ? e.message : e))));
       $cancel.addEventListener('click', ()=>cancelRun());
       if($saveCols) $saveCols.addEventListener('click', (ev)=>{ ev.preventDefault(); ev.stopPropagation(); saveColWidths(); });
+      if($autoCols) $autoCols.addEventListener('click', (ev)=>{
+        ev.preventDefault(); ev.stopPropagation();
+        try{ window.InfluxBroTableCols && window.InfluxBroTableCols.autoFit('#tbl', {maxRows: 200}); }catch(e){}
+        try{ saveColWidths(); }catch(e){}
+      });
       if($markAll) $markAll.addEventListener('click', (ev)=>{
         ev.preventDefault(); ev.stopPropagation();
         visibleRows().forEach(r => { SELECTED.add(rowKey(r)); });
@@ -1018,6 +1026,7 @@
 
       </script>
 
+      {% include "_table_cols.html" %}
       {% include "_tooltips.html" %}
     </main>
   </div>

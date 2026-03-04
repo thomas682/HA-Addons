@@ -1,0 +1,192 @@
+<script>
+// Shared helper for resizable table columns + auto-fit widths.
+// Uses localStorage per table id.
+(function(){
+  if(window.InfluxBroTableCols) return;
+
+  function _norm(s){
+    return String(s || '').trim();
+  }
+
+  function _lsKey(tableId){
+    const id = _norm(tableId || '');
+    return id ? (`influxbro.cols.${id}`) : 'influxbro.cols.unknown';
+  }
+
+  function _colKey(th, idx){
+    const k = _norm(th && th.getAttribute ? th.getAttribute('data-key') : '');
+    return k ? k : String(idx);
+  }
+
+  function _getTable(table){
+    if(!table) return null;
+    if(typeof table === 'string') return document.querySelector(table);
+    return table;
+  }
+
+  function _getTableId(tbl){
+    if(!tbl) return '';
+    const id = _norm(tbl.getAttribute('id'));
+    return id || '';
+  }
+
+  function _readWidths(tbl){
+    try{
+      const id = _getTableId(tbl);
+      if(!id) return null;
+      const raw = localStorage.getItem(_lsKey(id));
+      if(!raw) return null;
+      const j = JSON.parse(raw);
+      return (j && typeof j === 'object') ? j : null;
+    }catch(e){
+      return null;
+    }
+  }
+
+  function _writeWidths(tbl){
+    try{
+      const id = _getTableId(tbl);
+      if(!id) return;
+      const out = {};
+      const ths = Array.from(tbl.querySelectorAll('thead th'));
+      ths.forEach((th, idx)=>{
+        const k = _colKey(th, idx);
+        const w = Math.round(th.getBoundingClientRect().width);
+        out[k] = w;
+      });
+      localStorage.setItem(_lsKey(id), JSON.stringify(out));
+    }catch(e){}
+  }
+
+  function applySavedWidths(tbl){
+    try{
+      const saved = _readWidths(tbl);
+      if(!saved) return;
+      const ths = Array.from(tbl.querySelectorAll('thead th'));
+      ths.forEach((th, idx)=>{
+        const k = _colKey(th, idx);
+        const w = Number(saved[k]);
+        if(isFinite(w) && w >= 40 && w <= 1600) th.style.width = Math.round(w) + 'px';
+      });
+    }catch(e){}
+  }
+
+  function _ensureResizer(th, onDone){
+    if(!th || th.querySelector('.col_resizer')) return;
+    const rz = document.createElement('div');
+    rz.className = 'col_resizer';
+    rz.style.position = 'absolute';
+    rz.style.right = '0';
+    rz.style.top = '0';
+    rz.style.width = '10px';
+    rz.style.height = '100%';
+    rz.style.cursor = 'col-resize';
+    rz.style.userSelect = 'none';
+    rz.style.opacity = '0.32';
+    rz.style.background = 'linear-gradient(90deg, rgba(0,0,0,0), rgba(0,0,0,0.10))';
+
+    let startX = 0;
+    let startW = 0;
+    let dragging = false;
+
+    function onMove(ev){
+      if(!dragging) return;
+      const x = ev && ev.clientX ? ev.clientX : 0;
+      const dx = x - startX;
+      let w = startW + dx;
+      if(w < 40) w = 40;
+      if(w > 1600) w = 1600;
+      th.style.width = Math.round(w) + 'px';
+    }
+    function onUp(){
+      if(!dragging) return;
+      dragging = false;
+      document.body.style.userSelect = '';
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      try{ onDone && onDone(); }catch(e){}
+    }
+    rz.addEventListener('mousedown', (ev)=>{
+      ev.preventDefault();
+      ev.stopPropagation();
+      dragging = true;
+      startX = ev.clientX;
+      startW = th.getBoundingClientRect().width;
+      document.body.style.userSelect = 'none';
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+    });
+
+    th.style.position = 'relative';
+    th.appendChild(rz);
+  }
+
+  function init(table){
+    const tbl = _getTable(table);
+    if(!tbl) return;
+    // Needs an id for persistence.
+    if(!_getTableId(tbl)) return;
+
+    try{
+      // Reasonable defaults for list tables.
+      tbl.style.tableLayout = tbl.style.tableLayout || 'fixed';
+    }catch(e){}
+
+    applySavedWidths(tbl);
+    const ths = Array.from(tbl.querySelectorAll('thead th'));
+    ths.forEach((th)=>{
+      _ensureResizer(th, ()=>_writeWidths(tbl));
+    });
+  }
+
+  function autoFit(table, opts){
+    const tbl = _getTable(table);
+    if(!tbl) return;
+    const maxRows = (opts && isFinite(Number(opts.maxRows))) ? Math.max(0, Math.trunc(Number(opts.maxRows))) : 120;
+    const pad = (opts && isFinite(Number(opts.pad))) ? Math.max(0, Math.trunc(Number(opts.pad))) : 24;
+
+    const ths = Array.from(tbl.querySelectorAll('thead th'));
+    const tbody = tbl.querySelector('tbody');
+    const rows = tbody ? Array.from(tbody.querySelectorAll('tr')) : [];
+    const sample = rows.slice(0, maxRows);
+
+    // Temporarily ensure nowrap so scrollWidth reflects full content.
+    const prev = [];
+    try{
+      sample.forEach(tr=>{
+        Array.from(tr.children || []).forEach(td=>{
+          prev.push([td, td.style.whiteSpace]);
+          td.style.whiteSpace = 'nowrap';
+        });
+      });
+    }catch(e){}
+
+    try{
+      ths.forEach((th, colIdx)=>{
+        let w = th.scrollWidth || th.getBoundingClientRect().width;
+        sample.forEach(tr=>{
+          const td = tr.children && tr.children[colIdx] ? tr.children[colIdx] : null;
+          if(!td) return;
+          const sw = td.scrollWidth || td.getBoundingClientRect().width;
+          if(sw > w) w = sw;
+        });
+        w = Math.round(w + pad);
+        if(w < 40) w = 40;
+        if(w > 1600) w = 1600;
+        th.style.width = w + 'px';
+      });
+      _writeWidths(tbl);
+    }catch(e){}
+
+    try{
+      prev.forEach(([td, ws])=>{ td.style.whiteSpace = ws || ''; });
+    }catch(e){}
+  }
+
+  window.InfluxBroTableCols = {
+    init,
+    autoFit,
+    applySavedWidths,
+  };
+})();
+</script>

@@ -3388,6 +3388,15 @@ def _global_stats_job_thread(
     def _parse_ts(s: str | None) -> datetime | None:
         if not s:
             return None
+        try:
+            t = str(s).strip()
+            if not t:
+                return None
+            if t.endswith("Z"):
+                t = t[:-1] + "+00:00"
+            return datetime.fromisoformat(t)
+        except Exception:
+            return None
 
     def _as_rfc3339(v: Any) -> str | None:
         if isinstance(v, datetime):
@@ -3395,13 +3404,6 @@ def _global_stats_job_thread(
         if isinstance(v, str) and v.strip():
             return v.strip()
         return None
-        try:
-            t = str(s).strip()
-            if t.endswith("Z"):
-                t = t[:-1] + "+00:00"
-            return datetime.fromisoformat(t)
-        except Exception:
-            return None
 
     def _chunk_ranges(a: datetime, b: datetime, max_days: int) -> list[tuple[datetime, datetime]]:
         out: list[tuple[datetime, datetime]] = []
@@ -3463,6 +3465,80 @@ data
         span_days = max(0.0, (stop_dt - start_dt).total_seconds() / 86400.0)
         chunks = _chunk_ranges(start_dt, stop_dt, 14) if span_days > 20 else [(start_dt, stop_dt)]
 
+        min_chunk_seconds = 5 * 60
+
+        def _is_timeout_error(e: Exception) -> bool:
+            s = str(e).lower()
+            return ("timed out" in s) or ("timeout" in s) or ("read timed out" in s)
+
+        def _fetch_reduce_vals(a: datetime, b: datetime, depth: int = 0) -> dict[str, Any] | None:
+            if should_cancel():
+                raise RuntimeError("cancelled")
+            s_iso = _dt_to_rfc3339_utc(a)
+            e_iso = _dt_to_rfc3339_utc(b)
+            q = _series_reduce_query(bucket, s_iso, e_iso, m, f, eid, fn)
+            set_query(f"Details {m}/{f} chunk", q)
+            try:
+                tables = qapi.query(q, org=cfg_local["org"])
+            except Exception as e:
+                span_s = max(0.0, (b - a).total_seconds())
+                if _is_timeout_error(e) and span_s > min_chunk_seconds:
+                    mid = a + timedelta(seconds=(span_s / 2.0))
+                    left = _fetch_reduce_vals(a, mid, depth + 1)
+                    right = _fetch_reduce_vals(mid, b, depth + 1)
+                    if not left:
+                        return right
+                    if not right:
+                        return left
+                    # Merge two reduce outputs into one
+                    outm: dict[str, Any] = {}
+                    try:
+                        outm["count"] = int(left.get("count") or 0) + int(right.get("count") or 0)
+                    except Exception:
+                        outm["count"] = 0
+                    try:
+                        outm["sum"] = float(left.get("sum") or 0.0) + float(right.get("sum") or 0.0)
+                    except Exception:
+                        outm["sum"] = 0.0
+                    try:
+                        outm["min"] = min(float(left.get("min")), float(right.get("min")))
+                    except Exception:
+                        outm["min"] = left.get("min") if left.get("min") is not None else right.get("min")
+                    try:
+                        outm["max"] = max(float(left.get("max")), float(right.get("max")))
+                    except Exception:
+                        outm["max"] = left.get("max") if left.get("max") is not None else right.get("max")
+                    outm["oldest_time"] = left.get("oldest_time") or right.get("oldest_time")
+                    try:
+                        lt = _parse_ts(str(left.get("oldest_time") or "") or None)
+                        rt = _parse_ts(str(right.get("oldest_time") or "") or None)
+                        if lt and rt:
+                            outm["oldest_time"] = _dt_to_rfc3339_utc(min(lt, rt))
+                    except Exception:
+                        pass
+                    outm["newest_time"] = right.get("newest_time") or left.get("newest_time")
+                    try:
+                        lt = _parse_ts(str(left.get("newest_time") or "") or None)
+                        rt = _parse_ts(str(right.get("newest_time") or "") or None)
+                        if lt and rt:
+                            outm["newest_time"] = _dt_to_rfc3339_utc(max(lt, rt))
+                    except Exception:
+                        pass
+                    # last_value should come from newest
+                    outm["last_value"] = right.get("last_value") if right.get("last_value") is not None else left.get("last_value")
+                    return outm
+                # Give up; caller handles.
+                raise
+
+            vals: dict[str, Any] | None = None
+            for t in tables or []:
+                for rec in getattr(t, "records", []) or []:
+                    vals = getattr(rec, "values", {}) or {}
+                    break
+                if vals is not None:
+                    break
+            return vals
+
         count = 0
         ssum = 0.0
         min_v: float | None = None
@@ -3475,18 +3551,8 @@ data
         for i, (a, b) in enumerate(chunks):
             if should_cancel():
                 raise RuntimeError("cancelled")
-            s_iso = _dt_to_rfc3339_utc(a)
-            e_iso = _dt_to_rfc3339_utc(b)
-            q = _series_reduce_query(bucket, s_iso, e_iso, m, f, eid, fn)
-            set_query(f"Details {m}/{f} chunk {i+1}/{len(chunks)}", q)
-            tables = qapi.query(q, org=cfg_local["org"])
-            vals: dict[str, Any] | None = None
-            for t in tables or []:
-                for rec in getattr(t, "records", []) or []:
-                    vals = getattr(rec, "values", {}) or {}
-                    break
-                if vals is not None:
-                    break
+            set_query(f"Details {m}/{f} chunk {i+1}/{len(chunks)}", "")
+            vals = _fetch_reduce_vals(a, b)
             if not vals:
                 continue
 
@@ -4283,15 +4349,13 @@ def api_outliers():
     extra = flux_tag_filter(entity_id, friendly_name)
     start = _dt_to_rfc3339_utc(start_dt)
     stop = _dt_to_rfc3339_utc(stop_dt)
-    q = f'''
-from(bucket: "{cfg["bucket"]}")
-  |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
-  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
-  |> sort(columns: ["_time"])
-'''
+    # Note: scanning is done chunked (see _scan_span_split below).
 
-    MAX_SCAN = 200000
+    # Always scan in chunks to support large time windows.
+    # If a chunk still contains too many points, split it recursively.
+    MAX_SCAN_CHUNK = 200000
     MAX_OUT = 5000
+    MIN_CHUNK_SECONDS = 5 * 60
 
     rows: list[dict[str, Any]] = []
     scanned = 0
@@ -4341,16 +4405,33 @@ from(bucket: "{cfg["bucket"]}")
             return f"Filter: {a_txt} {value_mode} {b_txt}"
         return f"Filter: {a_txt or b_txt}"
 
-    try:
-        with v2_client(cfg) as c:
-            qapi = c.query_api()
-            for rec in qapi.query_stream(q, org=cfg["org"]):
-                scanned += 1
-                if scanned > MAX_SCAN:
-                    return jsonify({
-                        "ok": False,
-                        "error": f"Zu viele Punkte im Zeitraum ({MAX_SCAN}+). Bitte im Graph weiter reinzoomen.",
-                    }), 413
+    def _scan_span(qapi: Any, a: datetime, b: datetime, prev: float | None) -> float | None:
+        nonlocal scanned
+        nonlocal rows
+
+        if len(rows) >= MAX_OUT:
+            return prev
+
+        s_iso = _dt_to_rfc3339_utc(a)
+        e_iso = _dt_to_rfc3339_utc(b)
+
+        q_span = f'''
+from(bucket: "{cfg["bucket"]}")
+  |> range(start: time(v: "{s_iso}"), stop: time(v: "{e_iso}"))
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
+  |> keep(columns: ["_time", "_value"])
+  |> group()
+  |> sort(columns: ["_time"])
+  |> limit(n: {MAX_SCAN_CHUNK + 1})
+'''
+
+        scanned_local = 0
+        for rec in qapi.query_stream(q_span, org=cfg["org"]):
+            scanned_local += 1
+            scanned += 1
+            if scanned_local > MAX_SCAN_CHUNK:
+                # too dense for this span; caller will split
+                raise OverflowError("too_many_points")
 
                 t = rec.get_time()
                 v = rec.get_value()
@@ -4359,12 +4440,12 @@ from(bucket: "{cfg["bucket"]}")
                 reasons: list[str] = []
                 if v is None:
                     if return_all or include_null:
-                        reasons.append("NULL")
-                        rows.append({"time": iso, "value": None, "reason": ", ".join(reasons) if not return_all else ""})
+                        rows.append({"time": iso, "value": None, "reason": "NULL" if not return_all else ""})
+                        if len(rows) >= MAX_OUT:
+                            return prev
                     continue
 
                 if isinstance(v, bool) or not isinstance(v, (int, float)):
-                    # ignore non-numeric
                     continue
 
                 fv = float(v)
@@ -4372,9 +4453,8 @@ from(bucket: "{cfg["bucket"]}")
                 if return_all:
                     rows.append({"time": iso, "value": fv, "reason": ""})
                     if len(rows) >= MAX_OUT:
-                        break
-                    prev_val = fv
-                    prev_time = t if isinstance(t, datetime) else prev_time
+                        return fv
+                    prev = fv
                     continue
 
                 if value_filter_enabled and value_filter_hit(fv):
@@ -4388,8 +4468,8 @@ from(bucket: "{cfg["bucket"]}")
                     if max_num is not None and fv > max_num:
                         reasons.append(f"> max ({max_num})")
 
-                if counter_enabled and prev_val is not None:
-                    d = fv - prev_val
+                if counter_enabled and prev is not None:
+                    d = fv - prev
                     if counter_decrease and d < 0:
                         reasons.append("counter decrease")
                     if counter_max_step and max_step is not None and d > float(max_step):
@@ -4398,10 +4478,33 @@ from(bucket: "{cfg["bucket"]}")
                 if reasons:
                     rows.append({"time": iso, "value": fv, "reason": ", ".join(reasons)})
                     if len(rows) >= MAX_OUT:
-                        break
+                        return fv
 
-                prev_val = fv
-                prev_time = t if isinstance(t, datetime) else prev_time
+                prev = fv
+
+        return prev
+
+    def _scan_span_split(qapi: Any, a: datetime, b: datetime, prev: float | None) -> float | None:
+        span_s = max(0.0, (b - a).total_seconds())
+        try:
+            return _scan_span(qapi, a, b, prev)
+        except OverflowError:
+            if span_s <= MIN_CHUNK_SECONDS:
+                raise
+            mid = a + timedelta(seconds=(span_s / 2.0))
+            prev2 = _scan_span_split(qapi, a, mid, prev)
+            return _scan_span_split(qapi, mid, b, prev2)
+
+    try:
+        with v2_client(cfg) as c:
+            qapi = c.query_api()
+            try:
+                prev_val = _scan_span_split(qapi, start_dt, stop_dt, prev_val)
+            except OverflowError:
+                return jsonify({
+                    "ok": False,
+                    "error": f"Zu viele Punkte im Zeitraum ({MAX_SCAN_CHUNK}+ in kleinstem Chunk). Bitte im Graph weiter reinzoomen.",
+                }), 413
 
         return jsonify({
             "ok": True,
@@ -4411,6 +4514,7 @@ from(bucket: "{cfg["bucket"]}")
             "stop": stop,
             "max_step": max_step,
             "unit": unit,
+            "chunked": True,
         })
     except Exception as e:
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
