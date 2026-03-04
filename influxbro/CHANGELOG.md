@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.11.58
+
+### Features
+
+- Restore: "Restore ausfuehren" (Backup Copy) verarbeitet Line Protocol korrekt auch bei escaped Spaces in Tags (z.B. friendly_name).
+
+### Bug Fixes
+
+- Restore: Fix "invalid boolean" durch falsches Parsen von Line Protocol in `backup_copy`.
+
+### Maintenance
+
+- (keine)
+
 ## 1.11.57
 
 ### Features

@@ -1977,22 +1977,69 @@ def api_backup_copy():
     if target_friendly_name:
         override_tags["friendly_name"] = _lp_escape_tag_value(target_friendly_name)
 
-    def _rewrite_line(line: str) -> str | None:
-        # Split: <measurement,tags> <fieldset> <timestamp>
-        s = line.strip("\n")
-        if not s.strip():
-            return None
-        i = s.find(" ")
+    def _is_escaped(s: str, i: int) -> bool:
+        # true if s[i] is escaped by an odd number of backslashes before it
+        n = 0
+        j = i - 1
+        while j >= 0 and s[j] == "\\":
+            n += 1
+            j -= 1
+        return (n % 2) == 1
+
+    def _find_unescaped(s: str, ch: str) -> int:
+        for i, c in enumerate(s):
+            if c != ch:
+                continue
+            if not _is_escaped(s, i):
+                return i
+        return -1
+
+    def _split_unescaped(s: str, ch: str) -> list[str]:
+        out: list[str] = []
+        cur: list[str] = []
+        for i, c in enumerate(s):
+            if c == ch and not _is_escaped(s, i):
+                out.append("".join(cur))
+                cur = []
+            else:
+                cur.append(c)
+        out.append("".join(cur))
+        return out
+
+    def _split_tag_kv(tok: str) -> tuple[str, str] | None:
+        i = _find_unescaped(tok, "=")
         if i <= 0:
             return None
-        mt = s[:i]
-        rest = s[i + 1 :]
-        j = rest.rfind(" ")
+        return tok[:i], tok[i + 1 :]
+
+    def _rewrite_line(line: str) -> str | None:
+        # Split: <measurement,tags> <fieldset> <timestamp>
+        # NOTE: tag values can contain escaped spaces ("\\ "), so we must not use find(" ")
+        # blindly.
+        s = line.strip("\r\n")
+        if not s.strip():
+            return None
+
+        # Timestamp is always the last token (unescaped).
+        j = s.rfind(" ")
         if j <= 0:
             return None
-        fieldset = rest[:j]
-        ts_raw = rest[j + 1 :].strip()
+        ts_raw = s[j + 1 :].strip()
         if not ts_raw:
+            return None
+        # Guard against weird tails
+        if not ts_raw.isdigit():
+            return None
+
+        rest = s[:j]
+
+        # Split mt vs fieldset on the first unescaped space.
+        i = _find_unescaped(rest, " ")
+        if i <= 0:
+            return None
+        mt = rest[:i]
+        fieldset = rest[i + 1 :].strip()
+        if not fieldset:
             return None
 
         # Optional time filter
@@ -2004,15 +2051,18 @@ def api_backup_copy():
             if ts < start_ns or ts > stop_ns:
                 return None
 
-        # Parse measurement + tags
-        parts = mt.split(",")
+        # Parse measurement + tags (comma is escaped in line protocol).
+        parts = _split_unescaped(mt, ",")
+        if not parts:
+            return None
         tags_in = parts[1:]
         tag_map: dict[str, str] = {}
         tag_order: list[str] = []
         for tok in tags_in:
-            if "=" not in tok:
+            kv = _split_tag_kv(tok)
+            if not kv:
                 continue
-            k, v = tok.split("=", 1)
+            k, v = kv
             tag_order.append(k)
             tag_map[k] = v
         for k, v in override_tags.items():
@@ -2026,12 +2076,17 @@ def api_backup_copy():
             if k not in tag_order:
                 tags_out.append(f"{k}={tag_map[k]}")
 
-        # Replace field key (first key only)
-        eq = fieldset.find("=")
+        # Replace field key (first field key only, keep remaining fields as-is)
+        fields = _split_unescaped(fieldset, ",")
+        if not fields:
+            return None
+        f0 = fields[0]
+        eq = f0.find("=")
         if eq <= 0:
             return None
-        field_val = fieldset[eq + 1 :]
-        new_fieldset = f"{tgt_field}={field_val}"
+        field_val = f0[eq + 1 :]
+        fields[0] = f"{tgt_field}={field_val}"
+        new_fieldset = ",".join(fields)
 
         if tags_out:
             new_mt = tgt_meas + "," + ",".join(tags_out)
