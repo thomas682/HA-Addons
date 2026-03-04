@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.11.53
+
+### Features
+
+- Dashboard: Button "Liste leeren" in der Fehler-/Filtertabelle funktioniert jetzt.
+
+### Bug Fixes
+
+- (keine)
+
+### Maintenance
+
+- (keine)
+
 ## 1.11.52
 
 ### Features

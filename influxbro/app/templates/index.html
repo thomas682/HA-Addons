@@ -537,6 +537,7 @@ const $tableRange = document.getElementById('table_range');
 const $tblSelAll = document.getElementById('tbl_sel_all');
 const $tblTimeFromGraph = document.getElementById('tbl_time_from_graph');
 const $btnTblToEdit = document.getElementById('tbl_to_edit');
+const $btnTblClear = document.getElementById('tbl_clear');
 const $btnOutlierScan = document.getElementById('outlier_scan');
 const $btnOutlierReset = document.getElementById('outlier_reset');
 const $scanPreset = document.getElementById('scan_preset');
@@ -3552,6 +3553,7 @@ function clearFilterTable(){
 
 if($btnOutlierScan) $btnOutlierScan.addEventListener("click", (ev)=>{ _stop(ev); runOutlierScan().catch(displayError); });
 if($btnOutlierReset) $btnOutlierReset.addEventListener("click", (ev)=>{ _stop(ev); resetOutliers(); });
+if($btnTblClear) $btnTblClear.addEventListener("click", (ev)=>{ _stop(ev); clearFilterTable(); });
 if($btnEditRemove) $btnEditRemove.addEventListener("click", (ev)=>{
   _stop(ev);
   const keys = Array.from(EDIT_SELECTED);
