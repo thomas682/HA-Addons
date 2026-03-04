@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.11.60
+
+### Features
+
+- (keine)
+
+### Bug Fixes
+
+- Restore: behebt JS-Fehler "startRunUi is not defined" (Status-/Runtime-Anzeige laeuft wieder).
+- Restore: entfernt versehentlich doppelt angehaengten Template-Block am Dateiende.
+
+### Maintenance
+
+- (keine)
+
 ## 1.11.59
 
 ### Features

@@ -191,9 +191,18 @@
       const $err = document.getElementById('err');
       const $ok = document.getElementById('ok');
        const $run = document.getElementById('run');
-       const $srcToTarget = document.getElementById('source_to_target');
-      const $reload = document.getElementById('reload');
-      const $restoreAutoWidth = document.getElementById('restore_autowidth');
+        const $srcToTarget = document.getElementById('source_to_target');
+       const $reload = document.getElementById('reload');
+       const $restoreAutoWidth = document.getElementById('restore_autowidth');
+
+       const $runStatus = document.getElementById('run_status');
+       const $runStatusTxt = document.getElementById('run_status_txt');
+       const $runStatusTime = document.getElementById('run_status_time');
+       const $runSpinner = document.getElementById('run_spinner');
+       const $runDetails = document.getElementById('run_details');
+       const $runDetailsMeta = document.getElementById('run_details_meta');
+       const $runDetailsPre = document.getElementById('run_details_pre');
+       const $runPreviewPre = document.getElementById('run_preview_pre');
 
        const $mf = document.getElementById('measurement_filter');
        const $n = document.getElementById('friendly_name');
@@ -216,9 +225,80 @@
 
       let BACKUPS = [];
       let SELECTED_ID = '';
-      let LAST_TARGET = null;
+       let LAST_TARGET = null;
 
-      let CFG = { influx_version: 2, bucket: '' };
+       let CFG = { influx_version: 2, bucket: '' };
+
+       let RUN_T0 = null;
+       let RUN_TIMER = null;
+
+       function fmtRuntime(ms){
+         const x = Math.max(0, Number(ms || 0));
+         if(!isFinite(x)) return '';
+         const s = Math.floor(x / 1000);
+         const h = Math.floor(s / 3600);
+         const m = Math.floor((s % 3600) / 60);
+         const ss = s % 60;
+         const mm = String(m).padStart(2, '0');
+         const sss = String(ss).padStart(2, '0');
+         return h > 0 ? (h + ':' + mm + ':' + sss) : (m + ':' + sss);
+       }
+
+       function setRunStatusText(msg){
+         try{ if($runStatusTxt) $runStatusTxt.textContent = String(msg || ''); }catch(e){}
+       }
+
+       function startRunUi(msg){
+         try{
+           if($runDetails) $runDetails.style.display = 'none';
+           if($runDetailsPre) $runDetailsPre.textContent = '';
+           if($runDetailsMeta) $runDetailsMeta.textContent = '';
+           if($runPreviewPre) $runPreviewPre.textContent = '';
+         }catch(e){}
+
+         try{
+           if($runStatus){
+             $runStatus.style.display = 'flex';
+           }
+           if($runSpinner) $runSpinner.style.display = 'inline-block';
+           setRunStatusText(msg || 'Restore laeuft...');
+           if($runStatusTime) $runStatusTime.textContent = '';
+           if($run) $run.disabled = true;
+           if($reload) $reload.disabled = true;
+           if($srcToTarget) $srcToTarget.disabled = true;
+         }catch(e){}
+
+         RUN_T0 = Date.now();
+         try{ if(RUN_TIMER) clearInterval(RUN_TIMER); }catch(e){}
+         RUN_TIMER = setInterval(()=>{
+           try{
+             if(!$runStatusTime || !RUN_T0) return;
+             $runStatusTime.textContent = fmtRuntime(Date.now() - RUN_T0);
+           }catch(e){}
+         }, 250);
+       }
+
+       function stopRunUi(success, msg){
+         try{ if(RUN_TIMER) clearInterval(RUN_TIMER); }catch(e){}
+         RUN_TIMER = null;
+         const dur = RUN_T0 ? (Date.now() - RUN_T0) : null;
+         RUN_T0 = null;
+
+         try{
+           if($run) $run.disabled = false;
+           if($reload) $reload.disabled = false;
+           if($srcToTarget) $srcToTarget.disabled = false;
+         }catch(e){}
+
+         try{
+           if(msg) setRunStatusText(msg);
+           if($runSpinner) $runSpinner.style.display = 'none';
+           if($runStatusTime && dur !== null) $runStatusTime.textContent = fmtRuntime(dur);
+           if($runStatus && success === true){
+             // keep visible; user sees the final runtime
+           }
+         }catch(e){}
+       }
 
       function err(s){ $err.textContent = s || ""; }
       function ok(s){ $ok.textContent = s || ""; }
@@ -522,11 +602,11 @@
         return {start: start.toISOString(), stop: stop.toISOString()};
       }
 
-      async function runCopy(){
-        err(""); ok("");
-        const id = String(SELECTED_ID || "").trim();
-        if(!id) throw new Error('Bitte ein Backup auswaehlen.');
-        startRunUi('Ziel wird aufgeloest...');
+       async function runCopy(){
+         err(""); ok("");
+         const id = String(SELECTED_ID || "").trim();
+         if(!id) throw new Error('Bitte ein Backup auswaehlen.');
+         startRunUi('Ziel wird aufgeloest...');
         try{
           await resolveTarget();
           if(!LAST_TARGET) throw new Error('Ziel nicht aufgeloest.');
@@ -536,11 +616,11 @@
         }
         const tf = timeFilter();
         const msg = `Restore wirklich ueberschreiben? Datenverlust moeglich.\n\nBackup: ${id}\nZiel: ${LAST_TARGET.measurement}/${LAST_TARGET.field}`;
-        if(!confirm(msg)){
-          stopRunUi(true);
-          return;
-        }
-        if($runStatusTxt) $runStatusTxt.textContent = 'Restore wird ausgefuehrt...';
+         if(!confirm(msg)){
+           stopRunUi(true, 'Abgebrochen.');
+           return;
+         }
+         if($runStatusTxt) $runStatusTxt.textContent = 'Restore wird ausgefuehrt...';
         const payload = {
           id,
           confirm: true,
@@ -586,8 +666,8 @@
           }
         }catch(e){}
 
-        stopRunUi(true);
-      }
+         stopRunUi(true);
+       }
 
       async function copySourceToTarget(){
         try{
@@ -639,60 +719,7 @@
           try{ window.InfluxBroTableCols && window.InfluxBroTableCols.autoFit('#restore_tbl', {maxRows: 200}); }catch(e){}
         });
       }catch(e){}
-      </script>
-
-      {% include "_table_cols.html" %}
-      {% include "_tooltips.html" %}
-    </main>
-  </div>
-</body>
-</html>
-dly_name);
-          if(b.entity_id && $e) $e.value = String(b.entity_id);
-          await autoPickEntityId();
-          await resolveTarget();
-        }catch(e){
-          err(String(e && e.message ? e.message : e));
-        }
-      }
-
-      $reload.addEventListener('click', ()=>loadBackups().catch(e=>err(String(e && e.message ? e.message : e))));
-      if($srcToTarget) $srcToTarget.addEventListener('click', ()=>copySourceToTarget());
-      $run.addEventListener('click', ()=>runCopy().catch(e=>err(String(e && e.message ? e.message : e))));
-
-      if($qBackup) $qBackup.addEventListener('input', ()=>renderList());
-
-      function debounce(fn, ms){
-        let t=null;
-        return ()=>{ if(t) clearTimeout(t); t=setTimeout(fn, ms); };
-      }
-
-      const onTargetChanged = debounce(()=>{
-        resolveTarget().catch(()=>{});
-      }, 250);
-
-      if($mf) $mf.addEventListener('input', onTargetChanged);
-      if($n) $n.addEventListener('input', ()=>{ refreshEntityIdsForFriendly().then(()=>autoPickEntityId().then(()=>onTargetChanged())); });
-      if($e) $e.addEventListener('input', onTargetChanged);
-      if($range) $range.addEventListener('change', ()=>{ $custom.style.display = ($range.value === 'custom') ? 'block' : 'none'; });
-      if($start) $start.addEventListener('change', ()=>renderPlan());
-      if($stop) $stop.addEventListener('change', ()=>renderPlan());
-      if($showQuery) $showQuery.addEventListener('change', ()=>renderPlan());
-
-      loadCfg().catch(()=>{});
-      loadBackups().catch(e=>err(String(e && e.message ? e.message : e)));
-      loadTargetLists().then(()=>{ renderPlan(); }).catch(()=>{});
-
-      try{
-        if(window.InfluxBroTableCols) window.InfluxBroTableCols.init('#restore_tbl');
-      }catch(e){}
-      try{
-        if($restoreAutoWidth) $restoreAutoWidth.addEventListener('click', (ev)=>{
-          ev.preventDefault(); ev.stopPropagation();
-          try{ window.InfluxBroTableCols && window.InfluxBroTableCols.autoFit('#restore_tbl', {maxRows: 200}); }catch(e){}
-        });
-      }catch(e){}
-      </script>
+       </script>
 
       {% include "_table_cols.html" %}
       {% include "_tooltips.html" %}
