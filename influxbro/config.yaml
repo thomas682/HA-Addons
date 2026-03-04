@@ -1,6 +1,6 @@
-name: InfluxBro by Thomas
+name: InfluxBro
 description: "Browse InfluxDB (table + mini graph), configure in UI, entity_id/friendly_name filters, and optionally delete ranges"
-version: "1.11.66"
+version: "1.11.67"
 slug: influxbro
 url: "http://192.168.2.65:7070/thomas/ha_addons/influxbro"
 
@@ -26,7 +26,7 @@ supervisor_api: true
 hassio_role: manager
 
 panel_icon: "mdi:database-eye"
-panel_title: "Influx Browser"
+panel_title: "InfluxBro"
 map:
   - config:rw
 options:

@@ -4,6 +4,8 @@
 
 InfluxBro hilft dir, InfluxDB-Zeitreihen aus Home Assistant zu durchsuchen, auszuwerten, zu sichern und bei Bedarf Werte gezielt zu korrigieren.
 
+Hinweis: In Home Assistant heisst das Add-on/Panel "InfluxBro".
+
 Dieses Handbuch ist absichtlich sehr konkret: Jedes sichtbare Element in der GUI wird beschrieben, damit du immer weisst, wofuer es ist.
 
 ## Screenshots

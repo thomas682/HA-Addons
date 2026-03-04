@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.11.67
+
+### Features
+
+- HA: Add-on/Paneltitel heisst jetzt "InfluxBro".
+
+### Bug Fixes
+
+- (keine)
+
+### Maintenance
+
+- (keine)
+
 ## 1.11.66
 
 ### Features
