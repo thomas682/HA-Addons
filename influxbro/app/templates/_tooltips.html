@@ -293,3 +293,109 @@
   }catch(e){}
 })();
 </script>
+
+<script>
+// Global popup helper (all pages)
+// Used by err(...) functions to make errors visible.
+(function(){
+  if(window.InfluxBroPopup && window.InfluxBroPopup.error) return;
+
+  let LAST = { msg: '', at: 0 };
+
+  function _ensureUi(){
+    let root = document.getElementById('influxbro_popup_root');
+    if(root) return root;
+
+    root = document.createElement('div');
+    root.id = 'influxbro_popup_root';
+    root.style.position = 'fixed';
+    root.style.inset = '0';
+    root.style.zIndex = '10050';
+    root.style.display = 'none';
+    root.style.background = 'rgba(0,0,0,0.45)';
+    root.style.padding = '6vh 12px 12px 12px';
+    root.style.boxSizing = 'border-box';
+    root.style.overflow = 'auto';
+
+    const card = document.createElement('div');
+    card.id = 'influxbro_popup_card';
+    card.style.maxWidth = '760px';
+    card.style.margin = '0 auto';
+    card.style.background = '#fff';
+    card.style.borderRadius = '16px';
+    card.style.boxShadow = '0 12px 60px rgba(0,0,0,0.28)';
+    card.style.padding = '14px 14px 12px 14px';
+    card.style.boxSizing = 'border-box';
+
+    const head = document.createElement('div');
+    head.style.display = 'flex';
+    head.style.alignItems = 'baseline';
+    head.style.justifyContent = 'space-between';
+    head.style.gap = '12px';
+
+    const title = document.createElement('div');
+    title.id = 'influxbro_popup_title';
+    title.textContent = 'Fehler';
+    title.style.fontWeight = '800';
+    title.style.fontSize = '16px';
+
+    const btn = document.createElement('button');
+    btn.id = 'influxbro_popup_close';
+    btn.textContent = 'Schliessen';
+    btn.style.cursor = 'pointer';
+    btn.style.padding = '10px 12px';
+
+    head.appendChild(title);
+    head.appendChild(btn);
+
+    const pre = document.createElement('pre');
+    pre.id = 'influxbro_popup_pre';
+    pre.style.margin = '10px 0 0 0';
+    pre.style.padding = '10px 12px';
+    pre.style.border = '1px solid #eee';
+    pre.style.borderRadius = '12px';
+    pre.style.background = '#fafafa';
+    pre.style.whiteSpace = 'pre-wrap';
+    pre.style.overflowWrap = 'anywhere';
+
+    card.appendChild(head);
+    card.appendChild(pre);
+    root.appendChild(card);
+    document.body.appendChild(root);
+
+    function close(){
+      try{ root.style.display = 'none'; }catch(e){}
+    }
+
+    btn.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} close(); });
+    root.addEventListener('click', (ev)=>{
+      if(ev && ev.target === root) close();
+    });
+    document.addEventListener('keydown', (ev)=>{
+      try{ if(ev && ev.key === 'Escape' && root.style.display !== 'none') close(); }catch(e){}
+    });
+
+    return root;
+  }
+
+  function _show(title, msg){
+    const root = _ensureUi();
+    const t = document.getElementById('influxbro_popup_title');
+    const pre = document.getElementById('influxbro_popup_pre');
+    if(t) t.textContent = title || 'Hinweis';
+    if(pre) pre.textContent = String(msg || '');
+    root.style.display = 'block';
+  }
+
+  window.InfluxBroPopup = {
+    error: (msg) => {
+      const s = String(msg || '').trim();
+      if(!s) return;
+      const now = Date.now();
+      if(LAST.msg === s && (now - LAST.at) < 800) return;
+      LAST = { msg: s, at: now };
+      _show('Fehler', s);
+    }
+  };
+})();
+</script>

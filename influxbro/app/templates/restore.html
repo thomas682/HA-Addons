@@ -231,6 +231,17 @@
 
        let RUN_T0 = null;
        let RUN_TIMER = null;
+       let RUN_CTX = { backup_id: '', target: '', range: '' };
+
+       function fmtNow(){
+         try{
+           const d = new Date();
+           const pad2 = (n)=>String(n).padStart(2,'0');
+           return pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds());
+         }catch(e){
+           return '';
+         }
+       }
 
        function fmtRuntime(ms){
          const x = Math.max(0, Number(ms || 0));
@@ -245,7 +256,20 @@
        }
 
        function setRunStatusText(msg){
-         try{ if($runStatusTxt) $runStatusTxt.textContent = String(msg || ''); }catch(e){}
+         try{
+           if(!$runStatusTxt) return;
+           const parts = [];
+           const ts = fmtNow();
+           if(ts) parts.push(ts);
+           const m = String(msg || '').trim();
+           if(m) parts.push(m);
+           const ctx = [];
+           if(RUN_CTX && RUN_CTX.backup_id) ctx.push('Backup: ' + RUN_CTX.backup_id);
+           if(RUN_CTX && RUN_CTX.target) ctx.push('Ziel: ' + RUN_CTX.target);
+           if(RUN_CTX && RUN_CTX.range) ctx.push('Zeit: ' + RUN_CTX.range);
+           const ctxStr = ctx.length ? (' | ' + ctx.join(' | ')) : '';
+           $runStatusTxt.textContent = parts.join(' ') + ctxStr;
+         }catch(e){}
        }
 
        function startRunUi(msg){
@@ -261,6 +285,7 @@
              $runStatus.style.display = 'flex';
            }
            if($runSpinner) $runSpinner.style.display = 'inline-block';
+           RUN_CTX = { backup_id: '', target: '', range: '' };
            setRunStatusText(msg || 'Restore laeuft...');
            if($runStatusTime) $runStatusTime.textContent = '';
            if($run) $run.disabled = true;
@@ -300,7 +325,16 @@
          }catch(e){}
        }
 
-      function err(s){ $err.textContent = s || ""; }
+      function err(s){
+        const msg = s || "";
+        $err.textContent = msg;
+        if(msg){
+          try{
+            if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error(msg);
+            else alert(msg);
+          }catch(e){}
+        }
+      }
       function ok(s){ $ok.textContent = s || ""; }
       function loadState(){
         try{ return JSON.parse(localStorage.getItem(LS_KEY) || "{}") || {}; }catch(e){ return {}; }
@@ -606,41 +640,49 @@
          err(""); ok("");
          const id = String(SELECTED_ID || "").trim();
          if(!id) throw new Error('Bitte ein Backup auswaehlen.');
+         RUN_CTX.backup_id = id;
          startRunUi('Ziel wird aufgeloest...');
-        try{
-          await resolveTarget();
-          if(!LAST_TARGET) throw new Error('Ziel nicht aufgeloest.');
-        }catch(e){
-          stopRunUi(false, (e && e.message) ? e.message : String(e));
-          throw e;
-        }
-        const tf = timeFilter();
-        const msg = `Restore wirklich ueberschreiben? Datenverlust moeglich.\n\nBackup: ${id}\nZiel: ${LAST_TARGET.measurement}/${LAST_TARGET.field}`;
+         try{
+           await resolveTarget();
+           if(!LAST_TARGET) throw new Error('Ziel nicht aufgeloest.');
+           RUN_CTX.target = String(LAST_TARGET.measurement || '') + '/' + String(LAST_TARGET.field || '');
+           setRunStatusText('Ziel aufgeloest.');
+         }catch(e){
+           stopRunUi(false, (e && e.message) ? e.message : String(e));
+           throw e;
+         }
+         const tf = timeFilter();
+         if(tf){
+           RUN_CTX.range = fmtTs(tf.start) + ' bis ' + fmtTs(tf.stop);
+         }
+         const msg = `Restore wirklich ueberschreiben? Datenverlust moeglich.\n\nBackup: ${id}\nZiel: ${LAST_TARGET.measurement}/${LAST_TARGET.field}`;
          if(!confirm(msg)){
            stopRunUi(true, 'Abgebrochen.');
            return;
          }
-         if($runStatusTxt) $runStatusTxt.textContent = 'Restore wird ausgefuehrt...';
-        const payload = {
-          id,
-          confirm: true,
+         setRunStatusText('Restore wird ausgefuehrt...');
+         const payload = {
+           id,
+           confirm: true,
           target_measurement: LAST_TARGET.measurement,
           target_field: LAST_TARGET.field,
           target_entity_id: LAST_TARGET.entity_id,
           target_friendly_name: LAST_TARGET.friendly_name,
         };
         if(tf){ payload.start = tf.start; payload.stop = tf.stop; }
-        let j;
-        try{
-          j = await api('./api/backup_copy', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
-        }catch(e){
-          stopRunUi(false, (e && e.message) ? e.message : String(e));
-          throw e;
-        }
+         let j;
+         try{
+           setRunStatusText('Schreibe in InfluxDB...');
+           j = await api('./api/backup_copy', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+         }catch(e){
+           stopRunUi(false, (e && e.message) ? e.message : String(e));
+           throw e;
+         }
 
-        const applied = Number(j.applied || 0);
-        const skipped = Number(j.skipped || 0);
-        ok((j.message || 'Restore fertig.') + ` (applied=${applied}, skipped=${skipped})`);
+         const applied = Number(j.applied || 0);
+         const skipped = Number(j.skipped || 0);
+         ok((j.message || 'Restore fertig.') + ` (applied=${applied}, skipped=${skipped})`);
+         setRunStatusText(`Fertig (applied=${applied}, skipped=${skipped}).`);
 
         try{
           if($runDetails){

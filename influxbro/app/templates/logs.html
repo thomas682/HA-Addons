@@ -151,7 +151,16 @@
         try{ if($viewProfile) localStorage.setItem(LS_VIEW, String($viewProfile.value||"")); }catch(e){}
       }
 
-      function err(s){ $err.textContent = s || ""; }
+      function err(s){
+        const msg = s || "";
+        $err.textContent = msg;
+        if(msg){
+          try{
+            if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error(msg);
+            else alert(msg);
+          }catch(e){}
+        }
+      }
       function applyWrap(){
         const card = document.getElementById('log_card');
         if(card) card.classList.toggle('wrap', !!$wrap.checked);

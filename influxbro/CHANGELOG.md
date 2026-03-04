@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.11.62
+
+### Features
+
+- UI: Fehlermeldungen werden zusaetzlich als Popup angezeigt (alle Seiten).
+- Restore: Statuszeile zeigt jetzt zusaetzlich aktuellen Zeitpunkt sowie Kontext (Backup/Ziel/Zeitbereich).
+
+### Bug Fixes
+
+- Dashboard: Eigene Werte in der Bearbeitungsliste akzeptieren jetzt auch weniger Kommastellen (z.B. Ganzzahl) und formatieren auf die eingestellten Stellen.
+
+### Maintenance
+
+- (keine)
+
 ## 1.11.60
 
 ### Features

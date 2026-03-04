@@ -515,6 +515,10 @@ const err = (msg) => {
   // Always prefix errors with a timestamp (local browser time)
   const ts = fmtTs(new Date().toISOString());
   el.textContent = `${ts} - ${s}`;
+  try{
+    if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error(el.textContent);
+    else alert(el.textContent);
+  }catch(e){}
 };
 const ok = (msg) => { document.getElementById('ok').textContent = msg || ""; };
 
@@ -2799,8 +2803,8 @@ function setDraftValue(key, raw){
   const d = Number(e.decimals);
   if(isFinite(d) && d >= 0 && typeof raw === 'string'){
     const decNow = _decimalsFromFormatted(parsed.s);
-    if(decNow !== d){
-      err(`Ungueltige Kommastellen: erwartet ${d}.`);
+    if(decNow > d){
+      err(`Ungueltige Kommastellen: max ${d}.`);
       return;
     }
   }

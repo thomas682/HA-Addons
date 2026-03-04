@@ -358,7 +358,17 @@
   </div>
 
 <script>
-const err = (msg) => { document.getElementById('err').textContent = msg || ""; };
+const err = (msg) => {
+  const el = document.getElementById('err');
+  const s = String(msg || "");
+  el.textContent = s;
+  if(s){
+    try{
+      if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error(s);
+      else alert(s);
+    }catch(e){}
+  }
+};
 const ok = (msg) => { document.getElementById('ok').textContent = msg || ""; };
 
 const ids = [
