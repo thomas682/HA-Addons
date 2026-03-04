@@ -885,15 +885,14 @@ function _outlierMetaFromPayload(payload){
     const f = String(p.field || '').trim();
     const eid = String(p.entity_id || '').trim();
     const fn = String(p.friendly_name || '').trim();
-    const start = String(p.start || '').trim();
-    const stop = String(p.stop || '').trim();
 
     const mf = m && f ? `${m}/${f}` : (m || f || '');
-    const who = [eid ? (`entity_id=${eid}`) : '', fn ? (`friendly_name=${fn}`) : ''].filter(Boolean).join(' | ');
-    const span = (start && stop) ? (`Suchbereich: ${fmtTs(start)} bis ${fmtTs(stop)}`) : '';
-    const head = mf ? (`Messstelle: ${mf}`) : 'Messstelle: -';
-    const tail = who ? (` | ${who}`) : '';
-    return [head + tail, span].filter(Boolean).join(' | ');
+    const parts = [];
+    if(mf) parts.push(mf);
+    if(eid) parts.push(`entity_id=${eid}`);
+    if(fn) parts.push(`friendly_name=${fn}`);
+    if(!parts.length) return '';
+    return parts.join(' | ') + ' |';
   }catch(e){
     return '';
   }
@@ -3515,6 +3514,7 @@ async function runOutlierScan(){
   };
 
   const baseMeta = _outlierMetaFromPayload(payload);
+  const overallSpanTxt = `Suchbereich: ${fmtTs(payload.start)} bis ${fmtTs(payload.stop)}`;
   startOutlierUi(baseMeta);
   try{
     const spanMs = Math.max(0, stopMs - startMs);
@@ -3542,7 +3542,8 @@ async function runOutlierScan(){
 
     for(let i=0; i<chunks.length; i++){
       const [aIso, bIso] = chunks[i];
-      OUTLIER_META_TEXT = `${baseMeta} | Chunk ${i+1}/${chunks.length}: ${fmtTs(aIso)} bis ${fmtTs(bIso)}`;
+      const upto = lastIso || aIso;
+      OUTLIER_META_TEXT = `Chunk ${i+1}/${chunks.length}: ${fmtTs(aIso)} bis ${fmtTs(bIso)} | ${overallSpanTxt} | Geprueft bis: ${fmtTs(upto)} | Punkte: ${scannedTotal} | ${baseMeta}`;
       _renderOutlierTime();
 
       const pj = await api(
@@ -3572,7 +3573,7 @@ async function runOutlierScan(){
         break;
       }
 
-      OUTLIER_META_TEXT = `${baseMeta} | Geprueft bis: ${fmtTs(lastIso || bIso)} | Punkte: ${scannedTotal}`;
+      OUTLIER_META_TEXT = `${overallSpanTxt} | Geprueft bis: ${fmtTs(lastIso || bIso)} | Punkte: ${scannedTotal} | ${baseMeta}`;
       _renderOutlierTime();
     }
 

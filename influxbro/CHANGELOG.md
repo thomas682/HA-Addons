@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.11.57
+
+### Features
+
+- Dashboard: Ausreisser-Status zeigt zuerst Fortschritt/Suchbereich und haengt Messstelle/Tags am Ende an.
+
+### Bug Fixes
+
+- (keine)
+
+### Maintenance
+
+- (keine)
+
 ## 1.11.56
 
 ### Features
