@@ -332,6 +332,48 @@
         watchEl(el);
       });
     }
+
+    // UI event logging (buttons) - best-effort, debounced
+    function logUiClick(el){
+      try{
+        if(!el || !el.getAttribute) return;
+        // Skip very noisy checkbox row selectors
+        const cls = (el.getAttribute('class') || '').toLowerCase();
+        if(cls.includes('row_sel')) return;
+
+        const ui = (el.getAttribute('data-ui') || el.getAttribute('id') || '').trim();
+        if(!ui) return;
+        const txt = (el.textContent || '').trim().slice(0, 120);
+
+        const page = '{{ nav }}';
+
+        // debounce identical clicks
+        const now = Date.now();
+        const key = page + '|' + ui;
+        if(!window.__INFLUXBRO_UI_LOG) window.__INFLUXBRO_UI_LOG = { last: new Map() };
+        const m = window.__INFLUXBRO_UI_LOG.last;
+        const prev = m.get(key) || 0;
+        if(now - prev < 250) return;
+        m.set(key, now);
+
+        fetch('./api/ui_event', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ page, ui, text: txt }),
+        }).catch(()=>{});
+      }catch(e){}
+    }
+
+    try{
+      document.addEventListener('click', (ev)=>{
+        try{
+          const t = ev && ev.target ? ev.target : null;
+          if(!t) return;
+          const b = t.closest ? t.closest('button') : null;
+          if(b) return logUiClick(b);
+        }catch(e){}
+      }, true);
+    }catch(e){}
     try{
       // Start early so values restore before page scripts use them.
     if(TOOLTIP_ENABLED) applyTooltips();

@@ -644,6 +644,7 @@
 
       function beginPolling(){
         stopPolling();
+        setStatus(['Hintergrundabfrage laeuft...', '']);
         POLL = setInterval(()=>{
           fetchStatus().then(st => {
             if(!st) return;
@@ -693,10 +694,22 @@
               setJobId(null);
               RUNNING = false;
             }
-          }).catch(()=>{});
+          }).catch((e)=>{
+            stopPolling();
+            err(String(e && e.message ? e.message : e));
+            setStatus(['Job nicht gefunden oder Fehler beim Status-Update.', '']);
+            setJobId(null);
+            RUNNING = false;
+          });
         }, 800);
 
-        fetchStatus().catch(()=>{});
+        fetchStatus().catch((e)=>{
+          stopPolling();
+          err(String(e && e.message ? e.message : e));
+          setStatus(['Job nicht gefunden oder Fehler beim Starten.', '']);
+          setJobId(null);
+          RUNNING = false;
+        });
       }
 
       async function resumeJob(){
@@ -707,6 +720,15 @@
         err('');
         setQueryDetails('', '');
         setStatus(['Hintergrundabfrage laeuft...', '']);
+        try{
+          await fetchStatus();
+        }catch(e){
+          err(String(e && e.message ? e.message : e));
+          setStatus(['Kein laufender Job vorhanden.', '']);
+          setJobId(null);
+          RUNNING = false;
+          return;
+        }
         beginPolling();
       }
 

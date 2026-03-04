@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.11.55
+
+### Features
+
+- Logs: UI protokolliert Button-Klicks (Seite + data-ui) im Backend-Log.
+
+### Bug Fixes
+
+- Statistik: Haengender Status "Hintergrundabfrage laeuft..." wird beendet, wenn der Job nicht gefunden wird oder Status-Abfrage fehlschlaegt.
+
+### Maintenance
+
+- (keine)
+
 ## 1.11.54
 
 ### Features

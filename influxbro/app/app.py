@@ -4040,6 +4040,37 @@ def api_global_stats_job_result():
     return jsonify({"ok": True, "ready": True, "rows": rows[offset : offset + limit], "total": len(rows)})
 
 
+@app.post("/api/ui_event")
+def api_ui_event():
+    """Log UI events (button clicks etc.) for debugging."""
+
+    try:
+        body = request.get_json(force=True) or {}
+    except Exception:
+        body = {}
+
+    try:
+        page = str(body.get("page") or "").strip()[:40]
+        ui = str(body.get("ui") or "").strip()[:120]
+        text = str(body.get("text") or "").strip()[:120]
+        extra = body.get("extra")
+        extra_s = ""
+        if isinstance(extra, dict):
+            # keep small and non-sensitive
+            safe = {str(k)[:40]: str(v)[:120] for k, v in list(extra.items())[:10]}
+            extra_s = json.dumps(safe, ensure_ascii=True)
+        elif extra is not None:
+            extra_s = str(extra)[:200]
+
+        ip = request.headers.get("X-Forwarded-For") or request.remote_addr or ""
+        ua = request.headers.get("User-Agent") or ""
+        LOG.debug("ui_event page=%s ui=%s text=%s ip=%s ua=%s extra=%s", page, ui, text, ip, ua[:80], extra_s)
+    except Exception:
+        pass
+
+    return jsonify({"ok": True})
+
+
 @app.post("/api/global_stats_job/cancel")
 def api_global_stats_job_cancel():
     body = request.get_json(force=True) or {}
