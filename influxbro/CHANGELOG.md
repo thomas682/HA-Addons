@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.11.66
+
+### Features
+
+- UI: Sidebar zeigt jetzt die Add-on Version unter "by Thomas Schatz".
+
+### Bug Fixes
+
+- (keine)
+
+### Maintenance
+
+- UI: Entfernt "Writes: yes/no" aus der Sidebar.
+
 ## 1.11.65
 
 ### Features

@@ -27,6 +27,8 @@ Links findest du die Bereiche:
 - Handbuch: Diese Dokumentation.
 - Einstellungen: Influx-Verbindung und UI-Parameter konfigurieren.
 
+Im Sidebar-Kopf wird ausserdem die aktuell laufende Add-on Version angezeigt.
+
 ## Dashboard (typischer Ablauf)
 
 ### 1) Messwert auswaehlen

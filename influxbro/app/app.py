@@ -5529,6 +5529,11 @@ def _read_addon_version() -> str:
 ADDON_VERSION = _read_addon_version()
 
 
+@app.context_processor
+def _inject_globals():
+    return {"addon_version": ADDON_VERSION}
+
+
 @app.get("/api/info")
 def api_info():
     return jsonify({"ok": True, "version": ADDON_VERSION})
