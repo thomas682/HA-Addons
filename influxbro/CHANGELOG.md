@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.11.49
+
+### Features
+
+- Statistik: Serienliste wird nicht mehr per Paging mit Vollscan geladen, sondern chunked/streamed mit Timeout-Splitting (robuster fuer Zeitraum "Alle").
+
+### Bug Fixes
+
+- (keine)
+
+### Maintenance
+
+- (keine)
+
 ## 1.11.48
 
 ### Features

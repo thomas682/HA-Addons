@@ -3338,9 +3338,9 @@ def _global_stats_job_thread(
     cfg_local = dict(cfg)
     # Keep per-query timeouts bounded so cancellation is responsive.
     try:
-        cfg_local["timeout_seconds"] = min(max(int(cfg_local.get("timeout_seconds", 10)), 10), 30)
+        cfg_local["timeout_seconds"] = min(max(int(cfg_local.get("timeout_seconds", 10)), 10), 60)
     except Exception:
-        cfg_local["timeout_seconds"] = 30
+        cfg_local["timeout_seconds"] = 60
 
     start = _dt_to_rfc3339_utc(start_dt)
     stop = _dt_to_rfc3339_utc(stop_dt)
@@ -3356,6 +3356,10 @@ def _global_stats_job_thread(
 
     want_details = any(c in want_set for c in ("count", "min", "max", "mean", "oldest_time"))
     want_last = ("last_value" in want_set) or ("newest_time" in want_set)
+
+    def _is_timeout_error(e: Exception) -> bool:
+        s = str(e).lower()
+        return ("timed out" in s) or ("timeout" in s) or ("read timed out" in s)
 
     # Used only for progress messages. May be unknown for full scans.
     total_series: int | None = None
@@ -3716,14 +3720,6 @@ from(bucket: "{bucket}")
 
             else:
                 # Full scan: load series pages and optionally compute details.
-                off = 0
-                page = 0
-                limit = page_limit
-                if limit < 10:
-                    limit = 10
-                if limit > 200:
-                    limit = 200
-
                 ff_clause = f"|> filter(fn: (r) => r._field == {_flux_str(ff)})" if ff else ""
                 mf_clause = f"|> filter(fn: (r) => r._measurement == {_flux_str(mf)})" if mf else ""
                 tag_clause = ""
@@ -3732,15 +3728,16 @@ from(bucket: "{bucket}")
                 if fn_f:
                     tag_clause += f"|> filter(fn: (r) => r.friendly_name == {_flux_str(fn_f)})\n"
 
-                while True:
-                    if should_cancel():
-                        set_state("cancelled", "Abgebrochen.")
-                        return
-                    page += 1
-                    set_state("query", f"Lade Serienliste (Seite {page})...")
-                    q_page = f'''
+                # Load series list for the whole window in a single pass, chunking further on timeouts.
+                # This avoids the previous paging approach which repeated a full scan per page.
+                min_chunk_seconds = 5 * 60
+
+                def _series_last_span(a: datetime, b: datetime) -> list[dict[str, Any]]:
+                    s_iso = _dt_to_rfc3339_utc(a)
+                    e_iso = _dt_to_rfc3339_utc(b)
+                    q_last = f'''
 from(bucket: "{cfg_local["bucket"]}")
-  |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
+  |> range(start: time(v: "{s_iso}"), stop: time(v: "{e_iso}"))
   |> filter(fn: (r) => exists r._measurement and exists r._field)
   {mf_clause}
   {ff_clause}
@@ -3748,43 +3745,91 @@ from(bucket: "{cfg_local["bucket"]}")
   |> keep(columns: ["_measurement","_field","entity_id","friendly_name","_time","_value"])
   |> group(columns: ["_measurement","_field","entity_id","friendly_name"])
   |> last()
-  |> group()
-  |> sort(columns: ["_time"], desc: true)
-  |> limit(n: {limit}, offset: {off})
 '''
-                    set_query(f"Series page {page}", q_page)
-                    tables = qapi.query(q_page, org=cfg_local["org"])
+                    set_query("Series span", q_last)
+                    out: list[dict[str, Any]] = []
+                    for rec in qapi.query_stream(q_last, org=cfg_local["org"]):
+                        vals = getattr(rec, "values", {}) or {}
+                        newest = rec.get_time() or vals.get("_time")
+                        out.append({
+                            "measurement": str(vals.get("_measurement") or ""),
+                            "field": str(vals.get("_field") or ""),
+                            "entity_id": str(vals.get("entity_id") or ""),
+                            "friendly_name": str(vals.get("friendly_name") or ""),
+                            "newest_time": _as_rfc3339(newest),
+                            "last_value": rec.get_value(),
+                        })
+                    return out
 
-                    series_page: list[dict[str, Any]] = []
-                    for t in tables or []:
-                        for rec in getattr(t, "records", []) or []:
-                            vals = getattr(rec, "values", {}) or {}
-                            newest = rec.get_time() or vals.get("_time")
-                            series_page.append({
-                                "measurement": str(vals.get("_measurement") or ""),
-                                "field": str(vals.get("_field") or ""),
-                                "entity_id": str(vals.get("entity_id") or ""),
-                                "friendly_name": str(vals.get("friendly_name") or ""),
-                                "newest_time": _as_rfc3339(newest),
-                                "last_value": rec.get_value(),
-                            })
+                def _series_last_span_split(a: datetime, b: datetime) -> list[dict[str, Any]]:
+                    if should_cancel():
+                        raise RuntimeError("cancelled")
+                    span_s = max(0.0, (b - a).total_seconds())
+                    try:
+                        return _series_last_span(a, b)
+                    except Exception as e:
+                        if _is_timeout_error(e) and span_s > min_chunk_seconds:
+                            mid = a + timedelta(seconds=(span_s / 2.0))
+                            left = _series_last_span_split(a, mid)
+                            right = _series_last_span_split(mid, b)
+                            return left + right
+                        raise
 
-                    if not series_page:
-                        break
+                set_state("query", "Lade Serienliste...")
 
-                    for srow in series_page:
-                        if should_cancel():
-                            set_state("cancelled", "Abgebrochen.")
-                            return
+                series_map: dict[tuple[str, str, str, str], dict[str, Any]] = {}
+                series_rows = _series_last_span_split(start_dt, stop_dt)
+                for srow in series_rows:
+                    if should_cancel():
+                        set_state("cancelled", "Abgebrochen.")
+                        return
 
                         m = str(srow.get("measurement") or "")
                         f = str(srow.get("field") or "")
                         eid = str(srow.get("entity_id") or "")
                         fn = str(srow.get("friendly_name") or "")
 
-                        with GLOBAL_STATS_LOCK:
-                            if job_id in GLOBAL_STATS_JOBS:
-                                GLOBAL_STATS_JOBS[job_id]["current"] = fn or eid or (m + "/" + f)
+                        k = (m, f, eid, fn)
+                        nt = str(srow.get("newest_time") or "")
+                        cur = series_map.get(k)
+                        if not cur:
+                            series_map[k] = srow
+                        else:
+                            try:
+                                at = _parse_ts(str(cur.get("newest_time") or "") or None)
+                                bt = _parse_ts(nt or None)
+                                if bt and (not at or bt > at):
+                                    series_map[k] = srow
+                            except Exception:
+                                series_map[k] = srow
+
+                series_list_full = list(series_map.values())
+                with GLOBAL_STATS_LOCK:
+                    if job_id in GLOBAL_STATS_JOBS:
+                        GLOBAL_STATS_JOBS[job_id]["total_series"] = len(series_list_full)
+
+                def _sort_key(it: dict[str, Any]) -> float:
+                    try:
+                        t = _parse_ts(str(it.get("newest_time") or "") or None)
+                        return t.timestamp() if t else 0.0
+                    except Exception:
+                        return 0.0
+
+                series_list_full.sort(key=_sort_key, reverse=True)
+
+                for srow in series_list_full:
+                    if should_cancel():
+                        set_state("cancelled", "Abgebrochen.")
+                        return
+
+                    m = str(srow.get("measurement") or "")
+                    f = str(srow.get("field") or "")
+                    eid = str(srow.get("entity_id") or "")
+                    fn = str(srow.get("friendly_name") or "")
+
+                    with GLOBAL_STATS_LOCK:
+                        if job_id in GLOBAL_STATS_JOBS:
+                            GLOBAL_STATS_JOBS[job_id]["current"] = fn or eid or (m + "/" + f)
 
                         base_last = {"newest_time": srow.get("newest_time"), "last_value": srow.get("last_value")}
                         if want_details:
@@ -3798,12 +3843,10 @@ from(bucket: "{cfg_local["bucket"]}")
                         else:
                             add_row(m, f, eid, fn, base_last if want_last else None, None)
 
-                        with GLOBAL_STATS_LOCK:
-                            if job_id in GLOBAL_STATS_JOBS:
-                                GLOBAL_STATS_JOBS[job_id]["scanned_points"] = scanned_points
-                                GLOBAL_STATS_JOBS[job_id]["groups_count"] = len(rows)
-
-                    off += len(series_page)
+                    with GLOBAL_STATS_LOCK:
+                        if job_id in GLOBAL_STATS_JOBS:
+                            GLOBAL_STATS_JOBS[job_id]["scanned_points"] = scanned_points
+                            GLOBAL_STATS_JOBS[job_id]["groups_count"] = len(rows)
 
         rows.sort(key=lambda r: int(r.get("count") or 0), reverse=True)
         with GLOBAL_STATS_LOCK:
