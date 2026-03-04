@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.11.56
+
+### Features
+
+- Add-on: /data/share Symlink wird beim Start immer erzwungen (korrigiert alte Zielpfade automatisch).
+
+### Bug Fixes
+
+- (keine)
+
+### Maintenance
+
+- (keine)
+
 ## 1.11.55
 
 ### Features

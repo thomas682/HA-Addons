@@ -15,12 +15,24 @@ SRC_SHARE_DIR="/data/share"
 
 mkdir -p "${TARGET_SHARE_DIR}"
 
-# Migrate existing /data/share contents into /config (best-effort), then replace with a symlink.
+# Migrate existing /data/share contents into /config (best-effort), then enforce a symlink.
+shopt -s dotglob nullglob
+
+cur_link=""
 if [ -L "${SRC_SHARE_DIR}" ]; then
-  true
+  cur_link="$(readlink "${SRC_SHARE_DIR}" 2>/dev/null || true)"
+  if [ "${cur_link}" != "${TARGET_SHARE_DIR}" ]; then
+    # If the symlink pointed somewhere else previously, migrate from that target into the new target.
+    cur_real="$(readlink -f "${SRC_SHARE_DIR}" 2>/dev/null || true)"
+    if [ -n "${cur_real}" ] && [ -d "${cur_real}" ]; then
+      if [ -n "$(ls -A "${cur_real}" 2>/dev/null || true)" ]; then
+        mv "${cur_real}"/* "${TARGET_SHARE_DIR}"/ 2>/dev/null || true
+      fi
+    fi
+    ln -sfn "${TARGET_SHARE_DIR}" "${SRC_SHARE_DIR}" || true
+  fi
 else
   if [ -d "${SRC_SHARE_DIR}" ]; then
-    shopt -s dotglob nullglob
     if [ -n "$(ls -A "${SRC_SHARE_DIR}" 2>/dev/null || true)" ]; then
       mv "${SRC_SHARE_DIR}"/* "${TARGET_SHARE_DIR}"/ 2>/dev/null || true
     fi
@@ -28,8 +40,7 @@ else
   elif [ -e "${SRC_SHARE_DIR}" ]; then
     rm -f "${SRC_SHARE_DIR}" || true
   fi
-
-  ln -s "${TARGET_SHARE_DIR}" "${SRC_SHARE_DIR}" || true
+  ln -sfn "${TARGET_SHARE_DIR}" "${SRC_SHARE_DIR}" || true
 fi
 
 python /app/app.py
