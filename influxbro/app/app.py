@@ -526,6 +526,9 @@ DEFAULT_CFG = {
     "ui_filter_control_width_px": 320,
     "ui_filter_search_width_px": 160,
 
+    # Restore
+    "restore_preview_lines": 5,
+
     # Tooltips
     "ui_tooltips_enabled": True,
 
@@ -1971,6 +1974,16 @@ def api_backup_copy():
 
     tgt_meas = _lp_escape_key(target_measurement)
     tgt_field = _lp_escape_key(target_field)
+
+    try:
+        preview_limit = int(cfg.get("restore_preview_lines", 5))
+    except Exception:
+        preview_limit = 5
+    if preview_limit < 0:
+        preview_limit = 0
+    if preview_limit > 200:
+        preview_limit = 200
+    preview_lines: list[str] = []
     override_tags: dict[str, str] = {}
     if target_entity_id:
         override_tags["entity_id"] = _lp_escape_tag_value(target_entity_id)
@@ -2106,6 +2119,8 @@ def api_backup_copy():
                     if not out:
                         skipped += 1
                         continue
+                    if preview_limit > 0 and len(preview_lines) < preview_limit:
+                        preview_lines.append(out)
                     batch.append(out)
                     if len(batch) >= 2000:
                         wapi.write(bucket=cfg["bucket"], org=cfg["org"], record=batch, write_precision=WritePrecision.NS)
@@ -2120,6 +2135,8 @@ def api_backup_copy():
             "message": f"Copied points: {applied}",
             "applied": applied,
             "skipped": skipped,
+            "preview_limit": preview_limit,
+            "preview_lines": preview_lines,
         })
     except Exception as e:
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500

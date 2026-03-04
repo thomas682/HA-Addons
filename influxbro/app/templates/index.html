@@ -656,6 +656,33 @@ function fmtNum(v){
   return fmt(v);
 }
 
+function _truncToDecimals(n, d){
+  try{
+    const dec = Math.max(0, Math.trunc(Number(d)));
+    if(!isFinite(n)) return null;
+    if(dec === 0) return Math.trunc(n);
+    const f = Math.pow(10, dec);
+    // Truncate towards zero (no rounding).
+    // Add a tiny epsilon to reduce floating point artifacts for values like 1.23.
+    const eps = 1e-12;
+    const x = (n >= 0) ? (n + eps) : (n - eps);
+    return Math.trunc(x * f) / f;
+  }catch(e){
+    return null;
+  }
+}
+
+function fmtNumNoRound(v, d){
+  const dec = (d === null || d === undefined) ? UI_DECIMALS : Math.max(0, Math.trunc(Number(d)));
+  const n = (typeof v === "number") ? v : Number(v);
+  if(String(v).trim() !== "" && isFinite(n)){
+    const t = _truncToDecimals(n, dec);
+    if(t === null) return fmt(v);
+    return Number(t).toFixed(dec);
+  }
+  return fmt(v);
+}
+
 function fmtTs(iso){
   if(!iso) return "";
   const d = new Date(iso);
@@ -2608,7 +2635,7 @@ function renderEditTable(){
     olderWrap.style.gap = "8px";
     olderWrap.style.alignItems = "center";
     const olderVal = document.createElement("span");
-    olderVal.textContent = (e.older_value === null || e.older_value === undefined) ? "" : fmtNum(e.older_value);
+    olderVal.textContent = (e.older_value === null || e.older_value === undefined) ? "" : fmtNumNoRound(e.older_value, e.decimals);
     olderVal.className = (e.older_value === null || e.older_value === undefined) ? "cell_muted" : "";
     const btnOlder = document.createElement("button");
     btnOlder.className = "btn_sm";
@@ -2626,7 +2653,7 @@ function renderEditTable(){
     newerWrap.style.gap = "8px";
     newerWrap.style.alignItems = "center";
     const newerVal = document.createElement("span");
-    newerVal.textContent = (e.newer_value === null || e.newer_value === undefined) ? "" : fmtNum(e.newer_value);
+    newerVal.textContent = (e.newer_value === null || e.newer_value === undefined) ? "" : fmtNumNoRound(e.newer_value, e.decimals);
     newerVal.className = (e.newer_value === null || e.newer_value === undefined) ? "cell_muted" : "";
     const btnNewer = document.createElement("button");
     btnNewer.className = "btn_sm";
@@ -2709,8 +2736,8 @@ function addToEditListByKey(key){
 
   const origV = row.value;
   if(!(typeof origV === "number" && isFinite(origV))) return;
-  const decimals = Number.isInteger(origV) ? 0 : _decimalsFromFormatted(fmtNum(origV));
-  const origFmt = (decimals === 0) ? String(Math.trunc(origV)) : fmtNum(origV);
+  const decimals = UI_DECIMALS;
+  const origFmt = fmtNumNoRound(origV, decimals);
 
   // find neighbors by time
   const byTime = (LAST_ROWS || []).slice().sort((a,b)=>{
@@ -2770,10 +2797,19 @@ function setDraftValue(key, raw){
   }
 
   const d = Number(e.decimals);
-  const out = (isFinite(d) && d >= 0) ? n.toFixed(d) : String(n);
+  if(isFinite(d) && d >= 0 && typeof raw === 'string'){
+    const decNow = _decimalsFromFormatted(parsed.s);
+    if(decNow !== d){
+      err(`Ungueltige Kommastellen: erwartet ${d}.`);
+      return;
+    }
+  }
+
+  let out = (isFinite(d) && d >= 0) ? fmtNumNoRound(n, d) : String(n);
   if(isFinite(d) && d >= 0){
     const decNow = _decimalsFromFormatted(out);
     if(decNow !== d){
+      // Safety: should not happen (fmtNumNoRound uses toFixed)
       err(`Ungueltige Kommastellen: erwartet ${d}.`);
       return;
     }

@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.11.59
+
+### Features
+
+- Restore: Laufzeit/Status + Details inkl. Write Preview (erste N umgeschriebene Zeilen) bei "Restore ausfuehren".
+- Einstellungen: Restore Preview-Zeilen sind konfigurierbar (Default: 5).
+- Bearbeitungsliste: Werte werden ohne Rundung angezeigt und immer mit der eingestellten Stellenzahl formatiert.
+
+### Bug Fixes
+
+- (keine)
+
+### Maintenance
+
+- (keine)
+
 ## 1.11.58
 
 ### Features

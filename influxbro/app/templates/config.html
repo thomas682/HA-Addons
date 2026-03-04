@@ -245,6 +245,19 @@
       </div>
     </details>
 
+    <details class="card" id="ui_restore" open data-ui="settings.ui.restore" title="settings.ui.restore">
+      <summary>Restore</summary>
+      <div class="card_body">
+      <div class="grid">
+        <div>
+          <label>Vorschauzeilen (Restore)</label>
+          <input id="restore_preview_lines" type="number" min="0" max="200" />
+          <div class="muted">Anzahl der ersten umgeschriebenen Line-Protocol Zeilen, die nach "Restore ausfuehren" angezeigt werden. Default: 5.</div>
+        </div>
+      </div>
+      </div>
+    </details>
+
     </div>
   </details>
 
@@ -418,6 +431,8 @@ function setForm(cfg){
   el.ui_open_stats_current.checked = (cfg.ui_open_stats_current !== false);
   el.ui_tooltips_enabled.checked = (cfg.ui_tooltips_enabled !== false);
 
+  el.restore_preview_lines.value = (cfg.restore_preview_lines !== null && cfg.restore_preview_lines !== undefined) ? String(cfg.restore_preview_lines) : '5';
+
   el.outlier_max_step_w.value = cfg.outlier_max_step_w ?? 30000;
   el.outlier_max_step_kw.value = cfg.outlier_max_step_kw ?? 30;
   el.outlier_max_step_wh.value = cfg.outlier_max_step_wh ?? 30000;
@@ -476,6 +491,8 @@ function getForm(){
     ui_open_stats_total: !!el.ui_open_stats_total.checked,
     ui_open_stats_current: !!el.ui_open_stats_current.checked,
     ui_tooltips_enabled: !!el.ui_tooltips_enabled.checked,
+
+    restore_preview_lines: Number(el.restore_preview_lines.value || 5),
 
     outlier_max_step_w: parseFloat(el.outlier_max_step_w.value),
     outlier_max_step_kw: parseFloat(el.outlier_max_step_kw.value),
