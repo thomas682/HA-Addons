@@ -392,6 +392,8 @@
            <div id="outlier_status" data-ui="filterlist_outlier_status" title="filterlist_outlier_status">
              <span id="outlier_spinner" aria-hidden="true"></span>
              <span id="outlier_status_txt">Fehlersuche laeuft...</span>
+             <span id="outlier_status_meta"></span>
+             <span id="outlier_status_now"></span>
              <span id="outlier_status_time"></span>
            </div>
          </div>
@@ -3512,21 +3514,80 @@ async function runOutlierScan(){
     value_b_val: $tblBVal ? $tblBVal.value : "999999",
   };
 
-  startOutlierUi(_outlierMetaFromPayload(payload));
+  const baseMeta = _outlierMetaFromPayload(payload);
+  startOutlierUi(baseMeta);
   try{
-    const j = await api(
-      "./api/outliers",
-      {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)},
-      { key: "outliers_scan", status: "Fehlersuche Ausreisser...", silent: true },
-    );
+    const spanMs = Math.max(0, stopMs - startMs);
+    const spanDays = spanMs / 86400000;
+    let chunkDays = 1;
+    if(spanDays > 180) chunkDays = 14;
+    else if(spanDays > 60) chunkDays = 7;
+    else if(spanDays > 14) chunkDays = 2;
+
+    const chunks = [];
+    let cur = startMs;
+    const step = chunkDays * 86400000;
+    while(cur < stopMs){
+      const nxt = Math.min(stopMs, cur + step);
+      chunks.push([new Date(cur).toISOString(), new Date(nxt).toISOString()]);
+      cur = nxt;
+    }
+
     OUTLIER_ACTIVE = true;
-    OUTLIER_ROWS = (j.rows || []).map(r => ({ time: r.time, value: r.value, reason: r.reason || "" }));
+    OUTLIER_ROWS = [];
     FILTER_SELECTED = new Set();
+    let scannedTotal = 0;
+    let prevValue = null;
+    let lastIso = null;
+
+    for(let i=0; i<chunks.length; i++){
+      const [aIso, bIso] = chunks[i];
+      OUTLIER_META_TEXT = `${baseMeta} | Chunk ${i+1}/${chunks.length}: ${fmtTs(aIso)} bis ${fmtTs(bIso)}`;
+      _renderOutlierTime();
+
+      const pj = await api(
+        "./api/outliers",
+        {
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body: JSON.stringify({
+            ...payload,
+            start: aIso,
+            stop: bIso,
+            prev_value: prevValue,
+          }),
+        },
+        { key: "outliers_scan", status: "Fehlersuche Ausreisser...", silent: true },
+      );
+
+      scannedTotal += Number(pj.scanned || 0);
+      lastIso = pj.last_time || lastIso;
+      prevValue = (pj.last_value !== undefined && pj.last_value !== null) ? pj.last_value : prevValue;
+
+      const got = (pj.rows || []).map(r => ({ time: r.time, value: r.value, reason: r.reason || "" }));
+      OUTLIER_ROWS = OUTLIER_ROWS.concat(got);
+      if(OUTLIER_ROWS.length >= 5000){
+        OUTLIER_ROWS = OUTLIER_ROWS.slice(0, 5000);
+        ok(`Ausreisser gefunden: ${OUTLIER_ROWS.length} (Limit 5000 erreicht) | geprueft: ${scannedTotal}`);
+        break;
+      }
+
+      OUTLIER_META_TEXT = `${baseMeta} | Geprueft bis: ${fmtTs(lastIso || bIso)} | Punkte: ${scannedTotal}`;
+      _renderOutlierTime();
+    }
+
     renderTableRange();
     renderTable();
-    ok(`Ausreisser gefunden: ${(OUTLIER_ROWS||[]).length} (geprueft: ${j.scanned})`);
+    if(!document.getElementById('ok').textContent){
+      ok(`Ausreisser gefunden: ${(OUTLIER_ROWS||[]).length} | geprueft: ${scannedTotal}`);
+    }
     stopOutlierUi(true);
   }catch(e){
+    if(e && e.aborted){
+      ok('Abgebrochen.');
+      stopOutlierUi(true);
+      return;
+    }
     stopOutlierUi(false, (e && e.message) ? e.message : String(e));
     throw e;
   }

@@ -4403,7 +4403,14 @@ def api_outliers():
     rows: list[dict[str, Any]] = []
     scanned = 0
     prev_val: float | None = None
-    prev_time: datetime | None = None
+    last_time_iso: str | None = None
+
+    try:
+        pv = body.get("prev_value")
+        if pv is not None and str(pv).strip() != "":
+            prev_val = float(pv)
+    except Exception:
+        prev_val = None
 
     def _cmp(op: str, v: float, ref: float) -> bool:
         if op == ">":
@@ -4451,6 +4458,7 @@ def api_outliers():
     def _scan_span(qapi: Any, a: datetime, b: datetime, prev: float | None) -> float | None:
         nonlocal scanned
         nonlocal rows
+        nonlocal last_time_iso
 
         if len(rows) >= MAX_OUT:
             return prev
@@ -4476,54 +4484,56 @@ from(bucket: "{cfg["bucket"]}")
                 # too dense for this span; caller will split
                 raise OverflowError("too_many_points")
 
-                t = rec.get_time()
-                v = rec.get_value()
-                iso = _dt_to_rfc3339_utc(t) if isinstance(t, datetime) else None
+            t = rec.get_time()
+            v = rec.get_value()
+            iso = _dt_to_rfc3339_utc(t) if isinstance(t, datetime) else None
+            if iso:
+                last_time_iso = iso
 
-                reasons: list[str] = []
-                if v is None:
-                    if return_all or include_null:
-                        rows.append({"time": iso, "value": None, "reason": "NULL" if not return_all else ""})
-                        if len(rows) >= MAX_OUT:
-                            return prev
-                    continue
-
-                if isinstance(v, bool) or not isinstance(v, (int, float)):
-                    continue
-
-                fv = float(v)
-
-                if return_all:
-                    rows.append({"time": iso, "value": fv, "reason": ""})
+            reasons: list[str] = []
+            if v is None:
+                if return_all or include_null:
+                    rows.append({"time": iso, "value": None, "reason": "NULL" if not return_all else ""})
                     if len(rows) >= MAX_OUT:
-                        return fv
-                    prev = fv
-                    continue
+                        return prev
+                continue
 
-                if value_filter_enabled and value_filter_hit(fv):
-                    r = value_filter_reason()
-                    reasons.append(r or "Filter")
-                if include_zero and fv == 0.0:
-                    reasons.append("0")
-                if bounds_enabled:
-                    if min_num is not None and fv < min_num:
-                        reasons.append(f"< min ({min_num})")
-                    if max_num is not None and fv > max_num:
-                        reasons.append(f"> max ({max_num})")
+            if isinstance(v, bool) or not isinstance(v, (int, float)):
+                continue
 
-                if counter_enabled and prev is not None:
-                    d = fv - prev
-                    if counter_decrease and d < 0:
-                        reasons.append("counter decrease")
-                    if counter_max_step and max_step is not None and d > float(max_step):
-                        reasons.append(f"step > {max_step} {unit or ''}".strip())
+            fv = float(v)
 
-                if reasons:
-                    rows.append({"time": iso, "value": fv, "reason": ", ".join(reasons)})
-                    if len(rows) >= MAX_OUT:
-                        return fv
-
+            if return_all:
+                rows.append({"time": iso, "value": fv, "reason": ""})
+                if len(rows) >= MAX_OUT:
+                    return fv
                 prev = fv
+                continue
+
+            if value_filter_enabled and value_filter_hit(fv):
+                r = value_filter_reason()
+                reasons.append(r or "Filter")
+            if include_zero and fv == 0.0:
+                reasons.append("0")
+            if bounds_enabled:
+                if min_num is not None and fv < min_num:
+                    reasons.append(f"< min ({min_num})")
+                if max_num is not None and fv > max_num:
+                    reasons.append(f"> max ({max_num})")
+
+            if counter_enabled and prev is not None:
+                d = fv - prev
+                if counter_decrease and d < 0:
+                    reasons.append("counter decrease")
+                if counter_max_step and max_step is not None and d > float(max_step):
+                    reasons.append(f"step > {max_step} {unit or ''}".strip())
+
+            if reasons:
+                rows.append({"time": iso, "value": fv, "reason": ", ".join(reasons)})
+                if len(rows) >= MAX_OUT:
+                    return fv
+
+            prev = fv
 
         return prev
 
@@ -4558,6 +4568,8 @@ from(bucket: "{cfg["bucket"]}")
             "max_step": max_step,
             "unit": unit,
             "chunked": True,
+            "last_time": last_time_iso,
+            "last_value": prev_val,
         })
     except Exception as e:
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500

@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.11.54
+
+### Features
+
+- Dashboard: Ausreisser-Suche zeigt den aktuellen Chunk/Suchbereich und Fortschritt (geprueft bis Zeit / Punkte).
+
+### Bug Fixes
+
+- Ausreisser: API liefert jetzt last_time/last_value fuer chunked Scans.
+
+### Maintenance
+
+- (keine)
+
 ## 1.11.53
 
 ### Features
