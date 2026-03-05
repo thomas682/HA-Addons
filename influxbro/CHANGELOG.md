@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.11.68
+
+### Features
+
+- UI: Spendenlink "Buy me a coffee" im Sidebar hinzugefuegt.
+
+### Bug Fixes
+
+- Statistik: verhindert versehentliches Navigieren/405 durch explizite Button-Typen.
+
+### Maintenance
+
+- (keine)
+
 ## 1.11.67
 
 ### Features

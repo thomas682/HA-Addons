@@ -977,8 +977,8 @@
         return ()=>{ if(t) clearTimeout(t); t=setTimeout(fn, ms); };
       }
 
-      $load.addEventListener('click', ()=>load().catch(e=>err(String(e && e.message ? e.message : e))));
-      $cancel.addEventListener('click', ()=>cancelRun());
+      $load.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} load().catch(e=>err(String(e && e.message ? e.message : e))); });
+      $cancel.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} cancelRun(); });
       if($saveCols) $saveCols.addEventListener('click', (ev)=>{ ev.preventDefault(); ev.stopPropagation(); saveColWidths(); });
       if($autoCols) $autoCols.addEventListener('click', (ev)=>{
         ev.preventDefault(); ev.stopPropagation();
@@ -1004,7 +1004,8 @@
         ev.preventDefault(); ev.stopPropagation();
         reloadForSeries(visibleRows()).catch(e=>err(String(e && e.message ? e.message : e)));
       });
-      $deleteRows.addEventListener('click', ()=>{
+      $deleteRows.addEventListener('click', (ev)=>{
+        try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
         (LAST_VISIBLE_KEYS || []).forEach(k => { if(k) DELETED.add(k); });
         setQueryDetails('', '');
         render();

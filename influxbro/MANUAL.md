@@ -44,6 +44,7 @@ Weitere Elemente:
 - `Erweitert: Measurement / Field`: zeigt die intern aufgeloesten Werte `_measurement` und `_field`.
 - `Aktualisieren`: laedt Graph, Fehler-/Filtertabelle und Statistik fuer den aktuellen Zeitraum.
 - `Donate`/`PayPal`: Link zur freiwilligen Unterstuetzung.
+- Zusaetzlich gibt es einen "Buy me a coffee" Spendenlink.
 
 Tipp: Wenn du mit der Maus ueber einem Feld bleibst, zeigt der Tooltip den internen Feldnamen (z.B. `filter.friendly.select`). Damit kannst du mir exakt sagen, welches Feld du meinst.
 
