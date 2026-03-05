@@ -74,6 +74,7 @@ Dann:
 * Add-on auswählen
 * Installieren
 * Starten
+* Optional aber empfohlen: Schalter `In Seitenleiste anzeigen` aktivieren (damit InfluxBro links in der Seitenleiste erscheint)
 
 ---
 

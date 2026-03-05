@@ -44,6 +44,7 @@ Im Sidebar-Kopf wird ausserdem die aktuell laufende Add-on Version angezeigt.
 
 - Add-on `InfluxBro` aus dem Add-on Store auswaehlen
 - `Installieren` -> `Starten`
+- Optional aber empfohlen: Schalter `In Seitenleiste anzeigen` aktivieren (damit InfluxBro links in der Seitenleiste erscheint)
 
 3) Web UI oeffnen
 
