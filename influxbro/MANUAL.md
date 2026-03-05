@@ -125,6 +125,7 @@ Wichtig: Die Aenderungen bleiben markiert, bis du sie wirklich uebernimmst.
   - Follow/Refresh fuer Live-Ansicht
   - Suche/Filter um Fehler schneller zu finden
   - Copy/Download fuer Support oder Analyse
+  - Export: erstellt ein Debug-Bundle (inkl. Client-Fehler wie "Failed to fetch").
 
 ## Backup (ein Messwert, alle Werte)
 

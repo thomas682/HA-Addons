@@ -1485,7 +1485,13 @@ async function api(url, opts){
 
   let caught = null;
   try{
-    const r = await fetch(url, { ...o, signal: ctrl.signal });
+    let r;
+    try{
+      r = await fetch(url, { ...o, signal: ctrl.signal });
+    }catch(e){
+      try{ window.InfluxBroClientLog && window.InfluxBroClientLog.fetchError && window.InfluxBroClientLog.fetchError(url, o, e); }catch(x){}
+      throw new Error('Failed to fetch');
+    }
     const j = await r.json().catch(()=>({ok:false,error:"Invalid JSON"}));
     if(!r.ok || !j.ok) throw new Error(j.error || ("HTTP " + r.status));
     return j;

@@ -387,7 +387,7 @@
     root.style.display = 'block';
   }
 
-  window.InfluxBroPopup = {
+window.InfluxBroPopup = {
     error: (msg) => {
       const s = String(msg || '').trim();
       if(!s) return;
@@ -397,5 +397,122 @@
       _show('Fehler', s);
     }
   };
+})();
+</script>
+
+<script>
+// Client-side error logging (browser -> server log)
+// Also keeps a small local ring buffer for export.
+(function(){
+  if(window.InfluxBroClientLog) return;
+
+  const LS_KEY = 'influxbro_client_errors_v1';
+  const MAX = 50;
+
+  function _page(){
+    try{ return (document && document.querySelector('main[data-ui]') && document.querySelector('main[data-ui]').getAttribute('data-ui')) || ''; }catch(e){ return ''; }
+  }
+  function _href(){
+    try{ return String(location && location.href ? location.href : ''); }catch(e){ return ''; }
+  }
+  function _ua(){
+    try{ return String(navigator && navigator.userAgent ? navigator.userAgent : ''); }catch(e){ return ''; }
+  }
+  function _nowIso(){
+    try{ return new Date().toISOString(); }catch(e){ return ''; }
+  }
+
+  function _load(){
+    try{
+      const raw = localStorage.getItem(LS_KEY);
+      const j = raw ? JSON.parse(raw) : [];
+      return Array.isArray(j) ? j : [];
+    }catch(e){
+      return [];
+    }
+  }
+  function _save(xs){
+    try{ localStorage.setItem(LS_KEY, JSON.stringify(xs)); }catch(e){}
+  }
+  function _push(entry){
+    const xs = _load();
+    xs.push(entry);
+    while(xs.length > MAX) xs.shift();
+    _save(xs);
+  }
+
+  let LAST_SEND = { key: '', at: 0 };
+
+  async function _send(entry){
+    try{
+      const key = String(entry && entry.message ? entry.message : '');
+      const now = Date.now();
+      if(key && LAST_SEND.key === key && (now - LAST_SEND.at) < 800) return;
+      LAST_SEND = { key, at: now };
+
+      await fetch('./api/client_error', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          page: entry.page,
+          message: entry.message,
+          href: entry.href,
+          ua: entry.ua,
+          stack: entry.stack,
+          extra: entry.extra,
+        })
+      });
+    }catch(e){}
+  }
+
+  function reportError(message, extra, stack){
+    const entry = {
+      at: _nowIso(),
+      page: _page(),
+      message: String(message || '').slice(0, 8000),
+      href: _href(),
+      ua: _ua(),
+      stack: String(stack || '').slice(0, 8000),
+      extra: extra || null,
+    };
+    _push(entry);
+    _send(entry);
+  }
+
+  function fetchError(url, opts, err){
+    const m = (err && err.message) ? String(err.message) : String(err);
+    reportError('Failed to fetch: ' + String(url || ''), {
+      kind: 'fetch',
+      url: String(url || ''),
+      method: (opts && opts.method) ? String(opts.method) : 'GET',
+      err: m,
+    }, (err && err.stack) ? String(err.stack) : '');
+  }
+
+  window.InfluxBroClientLog = {
+    reportError,
+    fetchError,
+    getBuffer: () => _load(),
+  };
+
+  // Global JS error hooks
+  window.addEventListener('error', (ev)=>{
+    try{
+      const msg = ev && ev.message ? String(ev.message) : 'JS error';
+      const src = ev && ev.filename ? String(ev.filename) : '';
+      const line = ev && typeof ev.lineno === 'number' ? ev.lineno : null;
+      const col = ev && typeof ev.colno === 'number' ? ev.colno : null;
+      const stack = (ev && ev.error && ev.error.stack) ? String(ev.error.stack) : '';
+      reportError(msg, { kind:'window.error', src, line, col }, stack);
+    }catch(e){}
+  });
+  window.addEventListener('unhandledrejection', (ev)=>{
+    try{
+      const r = ev ? ev.reason : null;
+      const msg = (r && r.message) ? String(r.message) : String(r || 'Unhandled promise rejection');
+      const stack = (r && r.stack) ? String(r.stack) : '';
+      reportError(msg, { kind:'unhandledrejection' }, stack);
+    }catch(e){}
+  });
 })();
 </script>

@@ -98,6 +98,10 @@
         </div>
         <div>
           <label>&nbsp;</label>
+          <button id="export" type="button" data-ui="logs.export" title="logs.export">Export</button>
+        </div>
+        <div>
+          <label>&nbsp;</label>
           <button id="clear" data-ui="logs.clear" title="logs.clear">Clear view</button>
         </div>
         <div>
@@ -129,6 +133,7 @@
       const $copy = document.getElementById('copy');
       const $download = document.getElementById('download');
       const $clear = document.getElementById('clear');
+      const $export = document.getElementById('export');
       const $wrap = document.getElementById('wrap');
       const $q = document.getElementById('q');
       const $err = document.getElementById('err');
@@ -195,7 +200,13 @@
       async function setServerProfile(p){
         try{
           const payload = { log_profile: String(p || "debug") };
-          const r = await fetch("./api/config", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)});
+          let r;
+          try{
+            r = await fetch("./api/config", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)});
+          }catch(e){
+            try{ window.InfluxBroClientLog && window.InfluxBroClientLog.fetchError && window.InfluxBroClientLog.fetchError('./api/config', {method:'POST'}, e); }catch(x){}
+            throw new Error('Failed to fetch');
+          }
           const j = await r.json().catch(()=>({ok:false,error:"Invalid JSON"}));
           if(!r.ok || !j.ok) throw new Error(j.error || ("HTTP " + r.status));
           return true;
@@ -208,7 +219,9 @@
       async function loadServerProfile(){
         if(!$serverProfile) return;
         try{
-          const r = await fetch("./api/config");
+          let r;
+          try{ r = await fetch("./api/config"); }
+          catch(e){ try{ window.InfluxBroClientLog && window.InfluxBroClientLog.fetchError && window.InfluxBroClientLog.fetchError('./api/config', {}, e); }catch(x){} return; }
           const j = await r.json().catch(()=>({ok:false,error:"Invalid JSON"}));
           if(!r.ok || !j.ok) return;
           const cfg = j.config || {};
@@ -221,7 +234,13 @@
       async function setServerInfluxQueries(on){
         try{
           const payload = { log_influx_queries: !!on };
-          const r = await fetch("./api/config", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)});
+          let r;
+          try{
+            r = await fetch("./api/config", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)});
+          }catch(e){
+            try{ window.InfluxBroClientLog && window.InfluxBroClientLog.fetchError && window.InfluxBroClientLog.fetchError('./api/config', {method:'POST'}, e); }catch(x){}
+            throw new Error('Failed to fetch');
+          }
           const j = await r.json().catch(()=>({ok:false,error:"Invalid JSON"}));
           if(!r.ok || !j.ok) throw new Error(j.error || ("HTTP " + r.status));
           return true;
@@ -236,19 +255,30 @@
         const tail = Number($tail.value || 2000);
         const src = ($source && $source.value) ? String($source.value) : "logfile";
         const url = (src === "supervisor") ? `./api/logs?tail=${encodeURIComponent(tail)}` : `./api/logfile?tail=${encodeURIComponent(tail)}`;
-        let r = await fetch(url);
+        let r;
+        try{
+          r = await fetch(url);
+        }catch(e){
+          try{ window.InfluxBroClientLog && window.InfluxBroClientLog.fetchError && window.InfluxBroClientLog.fetchError(url, {}, e); }catch(x){}
+          throw new Error('Failed to fetch');
+        }
         let j = await r.json().catch(()=>({ok:false,error:"Invalid JSON"}));
         if(!r.ok || !j.ok){
           // Fallback: if supervisor fails, try logfile automatically.
           if(src === "supervisor"){
-            try{
-              r = await fetch(`./api/logfile?tail=${encodeURIComponent(tail)}`);
-              j = await r.json().catch(()=>({ok:false,error:"Invalid JSON"}));
-              if(r.ok && j.ok){
-                err("Supervisor Logs nicht verfuegbar, zeige Logfile.");
-              } else {
-                throw new Error(j.error || ("HTTP " + r.status));
-              }
+              try{
+                try{
+                  r = await fetch(`./api/logfile?tail=${encodeURIComponent(tail)}`);
+                }catch(e){
+                  try{ window.InfluxBroClientLog && window.InfluxBroClientLog.fetchError && window.InfluxBroClientLog.fetchError(`./api/logfile?tail=${encodeURIComponent(tail)}`, {}, e); }catch(x){}
+                  throw new Error('Failed to fetch');
+                }
+                j = await r.json().catch(()=>({ok:false,error:"Invalid JSON"}));
+                if(r.ok && j.ok){
+                  err("Supervisor Logs nicht verfuegbar, zeige Logfile.");
+                } else {
+                  throw new Error(j.error || ("HTTP " + r.status));
+                }
             }catch(e){
               throw new Error(j.error || ("HTTP " + r.status));
             }
@@ -262,6 +292,87 @@
         if(FOLLOW){
           $logbox.scrollTop = $logbox.scrollHeight;
         }
+      }
+
+      function snapshotLocalStorage(){
+        const out = {};
+        try{
+          for(let i=0;i<localStorage.length;i++){
+            const k = localStorage.key(i);
+            if(!k) continue;
+            if(!String(k).startsWith('influxbro_')) continue;
+            if(k.toLowerCase().includes('token') || k.toLowerCase().includes('password')) continue;
+            let v = '';
+            try{ v = String(localStorage.getItem(k) || ''); }catch(e){ v = ''; }
+            if(v.length > 4000) v = v.slice(0, 4000) + '...';
+            out[k] = v;
+          }
+        }catch(e){}
+        return out;
+      }
+
+      async function exportBundle(){
+        err('');
+        const tail = Number($tail.value || 2000);
+        const bundle = {
+          exported_at: new Date().toISOString(),
+          page: 'logs',
+          href: String(location && location.href ? location.href : ''),
+          user_agent: String(navigator && navigator.userAgent ? navigator.userAgent : ''),
+          ui: {
+            source: String($source && $source.value ? $source.value : ''),
+            view_profile: String($viewProfile && $viewProfile.value ? $viewProfile.value : ''),
+            server_profile: String($serverProfile && $serverProfile.value ? $serverProfile.value : ''),
+            server_influx_queries: !!($serverInfluxQueries && $serverInfluxQueries.checked),
+            tail: tail,
+            wrap: !!($wrap && $wrap.checked),
+            search: String($q && $q.value ? $q.value : ''),
+          },
+          client_errors: (window.InfluxBroClientLog && window.InfluxBroClientLog.getBuffer) ? window.InfluxBroClientLog.getBuffer() : [],
+          local_storage: snapshotLocalStorage(),
+          visible_log_text: String($logpre && $logpre.textContent ? $logpre.textContent : ''),
+          api: {},
+        };
+
+        async function addApi(name, url, opts){
+          try{
+            const r = await fetch(url, opts);
+            const ct = String(r.headers.get('content-type') || '');
+            const text = await r.text();
+            bundle.api[name] = { ok: r.ok, status: r.status, content_type: ct, body: text };
+          }catch(e){
+            try{ window.InfluxBroClientLog && window.InfluxBroClientLog.fetchError && window.InfluxBroClientLog.fetchError(url, opts, e); }catch(x){}
+            bundle.api[name] = { ok: false, error: String(e && e.message ? e.message : e) };
+          }
+        }
+
+        await addApi('info', './api/info', {});
+        await addApi('config', './api/config', {});
+        await addApi('ha_debug', './api/ha_debug', {});
+        await addApi('logs_diag', './api/logs_diag', {});
+        await addApi('logfile', `./api/logfile?tail=${encodeURIComponent(tail)}`, {});
+        await addApi('supervisor_logs', `./api/logs?tail=${encodeURIComponent(tail)}`, {});
+
+        const ver = (function(){
+          try{
+            const j = JSON.parse(String(bundle.api.info && bundle.api.info.body ? bundle.api.info.body : '{}'));
+            return (j && j.version) ? String(j.version) : 'unknown';
+          }catch(e){
+            return 'unknown';
+          }
+        })();
+
+        const fn = `influxbro_export_${ver}_${new Date().toISOString().replace(/[:.]/g,'-')}.json`;
+        const blob = new Blob([JSON.stringify(bundle, null, 2)], {type:'application/json'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = fn;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(()=>{
+          try{ URL.revokeObjectURL(a.href); }catch(e){}
+          try{ a.remove(); }catch(e){}
+        }, 0);
       }
 
       function setFollow(v){
@@ -293,6 +404,8 @@
         a.click();
         setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
       });
+
+      if($export) $export.addEventListener('click', ()=>exportBundle().catch(e=>err(String(e && e.message ? e.message : e))));
 
       applyWrap();
       loadViewProfile();

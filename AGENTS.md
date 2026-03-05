@@ -217,6 +217,12 @@ from flask import Flask, jsonify, request
   - update the user handbook `influxbro/MANUAL.md` so it reflects the current UI/behavior for that version
   - verify `influxbro/CHANGELOG.md` completeness/order (new version present at top; headings in descending order)
 
+## Logging Rule (Support)
+
+- Ensure user-visible UI errors are also written to the add-on log file.
+  - In particular: client-side/network errors like "Failed to fetch" must be reported from the browser to the backend and logged.
+  - When adding new UI error messages, verify they show up in `Logs` (logfile) during failure scenarios.
+
 ## Agent Command Convention
 
 - If the user writes `go` (or `GO`), treat that as: stage relevant changes, create a git commit with an appropriate message, and push to the tracked remote branch.

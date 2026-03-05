@@ -4593,6 +4593,47 @@ def api_ui_event():
     return jsonify({"ok": True})
 
 
+@app.post("/api/client_error")
+def api_client_error():
+    """Receive client-side errors from the browser and write them to the server log.
+
+    This is important because network errors (e.g. "Failed to fetch") and JS errors
+    otherwise never show up in the add-on logs.
+    """
+
+    try:
+        body = request.get_json(force=True) or {}
+    except Exception:
+        body = {}
+
+    try:
+        page = str(body.get("page") or "").strip()[:80]
+        message = str(body.get("message") or "").strip()[:500]
+        href = str(body.get("href") or "").strip()[:500]
+        ua = str(body.get("ua") or "").strip()[:200]
+        stack = str(body.get("stack") or "").strip()[:4000]
+        extra = body.get("extra")
+        try:
+            extra_s = json.dumps(extra, ensure_ascii=True)[:2000] if extra is not None else ""
+        except Exception:
+            extra_s = str(extra)[:2000] if extra is not None else ""
+
+        LOG.error(
+            "client_error page=%s msg=%s href=%s ua=%s stack=%s extra=%s",
+            page,
+            message,
+            href,
+            ua,
+            stack,
+            extra_s,
+        )
+    except Exception:
+        # Never fail the request.
+        pass
+
+    return jsonify({"ok": True})
+
+
 @app.post("/api/global_stats_job/cancel")
 def api_global_stats_job_cancel():
     body = request.get_json(force=True) or {}

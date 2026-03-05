@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.11.70
+
+### Features
+
+- Logs: neuer Button "Export" fuer ein Debug-Bundle (Config+Diag+Logs+Client-Fehler).
+
+### Bug Fixes
+
+- UI: "Failed to fetch" wird jetzt als client_error ins Logfile geschrieben.
+
+### Maintenance
+
+- (keine)
+
 ## 1.11.69
 
 ### Features
