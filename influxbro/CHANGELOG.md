@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.11.72
+
+### Features
+
+- UI: PayPal-Donate Button im Sidebar auf das "paypal-donate-button" Layout umgestellt.
+
+### Bug Fixes
+
+- (keine)
+
+### Maintenance
+
+- (keine)
+
 ## 1.11.71
 
 ### Features
