@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.11.75
+
+### Features
+
+- Dashboard: Fehler-/Filtertabelle und Bearbeitungsliste zur gemeinsamen Punktliste zusammengefuehrt (inkl. Grund-Spalte und Inline-Bearbeitung).
+
+### Bug Fixes
+
+- (keine)
+
+### Maintenance
+
+- (keine)
+
 ## 1.11.74
 
 ### Features
