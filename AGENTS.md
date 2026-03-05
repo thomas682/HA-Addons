@@ -217,6 +217,13 @@ from flask import Flask, jsonify, request
   - update the user handbook `influxbro/MANUAL.md` so it reflects the current UI/behavior for that version
   - verify `influxbro/CHANGELOG.md` completeness/order (new version present at top; headings in descending order)
 
+## Dependency / Compatibility Rule
+
+- If you change Python dependencies (new imports, add/remove packages, or behavior that requires a new library version), update `influxbro/requirements.txt` in the same change.
+- For each released add-on version, record the Home Assistant Core version the add-on was tested with.
+  - Preferred place: the corresponding entry in `influxbro/CHANGELOG.md` (e.g. a Maintenance bullet: `Tested with Home Assistant Core: 2026.3.0`).
+  - If the HA version cannot be determined in the current environment, explicitly note it as `unknown` and update once you have the value.
+
 ## Logging Rule (Support)
 
 - Ensure user-visible UI errors are also written to the add-on log file.
