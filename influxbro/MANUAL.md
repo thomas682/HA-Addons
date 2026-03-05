@@ -113,7 +113,7 @@ Hinweis: Punkte, die in Bearbeitung sind, werden gelb markiert. Geaenderte (dirt
 
 Bearbeitung in der Punktliste:
 
-- Sobald mindestens ein Punkt in Bearbeitung ist, erscheinen zusaetzliche Spalten: `Neu`, `aelter`, `juenger`, `eigener Wert`.
+- Sobald mindestens ein Punkt in Bearbeitung ist, erscheinen zusaetzliche Spalten: `Alt`, `Neu`, `aelter`, `juenger`, `eigener Wert`.
 - `aelter`/`juenger`: Nachbarwerte (ein Datenpunkt davor/danach) + Button `nehmen`.
 - `eigener Wert`: manueller Wert + `setzen`.
 - `Neu`: zeigt den neuen Wert und bietet `uebernehmen` (schreibt nur diese eine Zeile, wenn Schreiben erlaubt ist).

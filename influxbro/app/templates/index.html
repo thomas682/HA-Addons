@@ -411,6 +411,7 @@
                 <th id="th_time" data-key="time" data-ui="filterlist_col_time">Zeit</th>
                 <th id="th_value" data-key="value" data-ui="filterlist_col_value">Wert</th>
                 <th data-ui="filterlist_col_reason">Grund</th>
+                <th class="col_edit" data-ui="editlist_col_old">Alt</th>
                 <th class="col_edit" data-ui="editlist_col_new">Neu</th>
                 <th class="col_edit" data-ui="editlist_col_older">aelter</th>
                 <th class="col_edit" data-ui="editlist_col_newer">juenger</th>
@@ -2545,6 +2546,13 @@ function renderTable(){
     const tdR = document.createElement("td");
     tdR.textContent = row && row.reason ? String(row.reason) : "";
 
+    const tdOld = document.createElement("td");
+    tdOld.className = "col_edit";
+    if(e){
+      tdOld.textContent = String(e.orig_fmt || "");
+      tdOld.title = String(e.orig_fmt || "");
+    }
+
     const tdNew = document.createElement("td");
     tdNew.className = "col_edit";
     if(e){
@@ -2660,6 +2668,7 @@ function renderTable(){
     tr.appendChild(tdT);
     tr.appendChild(tdV);
     tr.appendChild(tdR);
+    tr.appendChild(tdOld);
     tr.appendChild(tdNew);
     tr.appendChild(tdOlder);
     tr.appendChild(tdNewer);
