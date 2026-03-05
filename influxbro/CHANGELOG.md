@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.11.79
+
+### Bug Fixes
+
+- Dashboard: Bearbeiten funktioniert auch bei numerischen String-Werten aus der API (Edit-Mode laesst sich wieder aktivieren).
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.11.78
 
 ### Bug Fixes

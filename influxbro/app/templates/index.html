@@ -2706,8 +2706,8 @@ function addToEditListByKey(key){
   if(!row && OUTLIER_ACTIVE) row = (OUTLIER_ROWS || []).find(r => rowKey(r) === key);
   if(!row) return;
 
-  const origV = row.value;
-  if(!(typeof origV === "number" && isFinite(origV))) return;
+  const origV = (typeof row.value === "number") ? row.value : Number(row.value);
+  if(!(String(row.value).trim() !== "" && isFinite(origV))) return;
   const decimals = UI_DECIMALS;
   const origFmt = fmtNumNoRound(origV, decimals);
 
@@ -2722,6 +2722,11 @@ function addToEditListByKey(key){
   const older = (idx > 0) ? byTime[idx-1] : null;
   const newer = (idx >= 0 && idx < byTime.length-1) ? byTime[idx+1] : null;
 
+  const _numOrNull = (v) => {
+    const n = (typeof v === "number") ? v : Number(v);
+    return (v !== null && v !== undefined && String(v).trim() !== "" && isFinite(n)) ? n : null;
+  };
+
   EDIT_LIST.set(key, {
     key,
     time: row.time,
@@ -2732,8 +2737,8 @@ function addToEditListByKey(key){
     orig_value: origV,
     orig_fmt: origFmt,
     decimals,
-    older_value: (older && typeof older.value === "number" && isFinite(older.value)) ? older.value : null,
-    newer_value: (newer && typeof newer.value === "number" && isFinite(newer.value)) ? newer.value : null,
+    older_value: older ? _numOrNull(older.value) : null,
+    newer_value: newer ? _numOrNull(newer.value) : null,
     draft_value_str: null,
     dirty: false,
   });
