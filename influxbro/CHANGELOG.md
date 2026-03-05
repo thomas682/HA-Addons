@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.11.78
+
+### Bug Fixes
+
+- Dashboard: repariert JS-Fehler (entfernte Bearbeitungslisten-Referenz), so dass `Aktualisieren` wieder laeuft.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.11.77
 
 ### Features

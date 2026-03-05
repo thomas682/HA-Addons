@@ -3462,13 +3462,6 @@ if($tblSelAll) $tblSelAll.addEventListener("change", ()=>{
   renderTable();
 });
 
-// Edit list actions
-if($btnTblToEdit) $btnTblToEdit.addEventListener("click", (ev)=>{
-  _stop(ev);
-  const keys = Array.from(FILTER_SELECTED);
-  keys.forEach(k => addToEditListByKey(k));
-});
-
 async function runOutlierScan(){
   err(""); ok("");
   if(!LAST_ROWS || !LAST_ROWS.length){ err("Bitte zuerst Daten laden (Aktualisieren). "); return; }
