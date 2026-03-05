@@ -97,10 +97,6 @@
     .table_box th, .table_box td { font-size: inherit; padding: 0 6px; line-height: var(--lh); height: auto; vertical-align: middle; }
     .table_box th { position: sticky; top: 0; z-index: 1; cursor: pointer; }
 
-    /* Hide edit-only columns until there are items in the edit list */
-    .col_edit { display: none; }
-    table.has_edits .col_edit { display: table-cell; }
-
     .tbl_actions { display:flex; gap: 10px; align-items:center; flex-wrap:wrap; margin-top: 6px; }
     .tbl_actions details { margin: 0; }
     .tbl_actions summary { cursor: pointer; }
@@ -304,15 +300,14 @@
       </div>
     </details>
 
-    <details id="filterlist_section" class="section" {{ 'open' if (cfg.get('ui_open_filterlist') or cfg.get('ui_open_editlist')) else '' }} data-ui="section.filterlist" title="section.filterlist">
-      <summary class="section_title">Punktliste (Filter + Bearbeitung)</summary>
+    <details id="filterlist_section" class="section" {{ 'open' if cfg.get('ui_open_filterlist') else '' }} data-ui="section.filterlist" title="section.filterlist">
+      <summary class="section_title">Fehler-/Filtertabelle</summary>
       <div class="table_wrap">
         <div class="table_head">
             <div>
-              <div style="font-weight:700;">Punktliste</div>
+              <div style="font-weight:700;">Fehler-/Filtertabelle</div>
               <div class="muted" id="table_range"></div>
               <div class="muted" id="table_info"></div>
-              <div class="muted" id="edit_info"></div>
 
               <div class="tbl_actions">
                 <label><input type="checkbox" id="tbl_time_from_graph" class="row_sel" data-ui="filterlist_time_from_graph"/>Zeit gefuehrt durch Graph</label>
@@ -405,31 +400,53 @@
        </div>
         <div class="table_box" id="table_box">
           <table id="tbl" class="list_tbl">
-            <thead>
-              <tr>
-                <th style="width:20px;"><input type="checkbox" id="tbl_sel_all" class="row_sel" data-ui="filterlist_select_all"/></th>
-                <th id="th_time" data-key="time" data-ui="filterlist_col_time">Zeit</th>
-                <th id="th_value" data-key="value" data-ui="filterlist_col_value">Wert</th>
-                <th data-ui="filterlist_col_reason">Grund</th>
-                <th class="col_edit" data-ui="editlist_col_old">Alt</th>
-                <th class="col_edit" data-ui="editlist_col_new">Neu</th>
-                <th class="col_edit" data-ui="editlist_col_older">aelter</th>
-                <th class="col_edit" data-ui="editlist_col_newer">juenger</th>
-                <th class="col_edit" data-ui="editlist_col_custom">eigener Wert</th>
-                <th style="width:160px;" data-ui="editlist_col_actions">Aktion</th>
-              </tr>
-            </thead>
+            <thead><tr><th style="width:20px;"><input type="checkbox" id="tbl_sel_all" class="row_sel" data-ui="filterlist_select_all"/></th><th id="th_time" data-key="time" data-ui="filterlist_col_time">Zeit</th><th id="th_value" data-key="value" data-ui="filterlist_col_value">Wert</th><th data-ui="filterlist_col_reason">Grund</th></tr></thead>
             <tbody></tbody>
            </table>
          </div>
 
-         <div class="tbl_actions" style="justify-content:flex-start; margin-top: 10px;">
-           <button class="btn_sm" id="tbl_autowidth" data-ui="filterlist.autowidth" title="filterlist.autowidth">Spaltenbreite automatisch</button>
-           <button class="btn_sm" id="tbl_clear" data-ui="filterlist.clear" title="filterlist.clear">Liste leeren</button>
-          <button class="btn_sm" id="tbl_to_edit" data-ui="filterlist_to_edit">in Bearbeitung uebernehmen</button>
-          <button class="btn_sm" id="edit_remove" data-ui="editlist_remove">Aus Bearbeitung loeschen</button>
+        <div class="tbl_actions" style="justify-content:flex-start; margin-top: 10px;">
+          <button class="btn_sm" id="tbl_autowidth" data-ui="filterlist.autowidth" title="filterlist.autowidth">Spaltenbreite automatisch</button>
+          <button class="btn_sm" id="tbl_clear" data-ui="filterlist.clear" title="filterlist.clear">Liste leeren</button>
+          <button class="btn_sm" id="tbl_to_edit" data-ui="filterlist_to_edit">in Bearbeitungsliste uebernehmen</button>
+        </div>
+      </div>
+
+    </details>
+
+    <details class="section" id="edit_section" {{ 'open' if cfg.get('ui_open_editlist') else '' }} data-ui="section.editlist" title="section.editlist">
+      <summary class="section_title">Bearbeitungsliste</summary>
+      <div class="table_wrap" id="edit_wrap">
+        <div class="table_head">
+          <div>
+            <div style="font-weight:700;">Bearbeitungsliste</div>
+            <div class="muted" id="edit_info"></div>
+          </div>
+        </div>
+        <div class="muted" data-ui="tip.editlist" title="tip.editlist">Doppelklick in der Tabelle uebernimmt einen Punkt. Nachbarwerte zeigen Kontext vor/nach dem Punkt.</div>
+        <div class="table_box" id="edit_box">
+          <table id="edit_tbl" class="list_tbl">
+            <thead>
+              <tr>
+                <th style="width:20px;"><input type="checkbox" id="edit_sel_all" class="row_sel" data-ui="editlist_select_all"/></th>
+                <th>Zeit</th>
+                <th>Alt</th>
+                <th>Neu</th>
+                <th>aelter</th>
+                <th>juenger</th>
+                <th>eigener Wert</th>
+                <th style="width:70px;">Aktion</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <div class="tbl_actions" style="justify-content:flex-start; margin-top: 10px;">
+          <button class="btn_sm" id="edit_autowidth" data-ui="editlist.autowidth" title="editlist.autowidth">Spaltenbreite automatisch</button>
+          <button class="btn_sm" id="edit_remove" data-ui="editlist_remove">Aus Liste loeschen</button>
           <button class="btn_sm" id="edit_undo_all" data-ui="editlist_undo_all">Undo alle</button>
-         </div>
+        </div>
 
         <details id="edit_neighbors" class="table_wrap" style="margin-top: 10px;" data-ui="editlist_neighbors" title="editlist_neighbors">
           <summary>Nachbarwerte (n davor / n danach)</summary>
@@ -447,8 +464,8 @@
             </table>
           </div>
         </details>
-      </div>
 
+      </div>
     </details>
 
     <div class="tbl_actions" style="justify-content:flex-start; margin-top: 14px;" data-ui="editlist_apply_page" title="editlist_apply_page">
@@ -518,7 +535,6 @@ const $start = document.getElementById('start');
 const $stop = document.getElementById('stop');
 const $custom = document.getElementById('custom_range');
 const $tbl = document.querySelector('#tbl tbody');
-const $tblEl = document.getElementById('tbl');
 const $tblHead = document.querySelector('#tbl thead');
 const $tableInfo = document.getElementById('table_info');
 const $thTime = document.getElementById('th_time');
@@ -1009,16 +1025,6 @@ function _activeEditKey(){
   const keys = Array.from(EDIT_SELECTED || []);
   for(const k of keys){ if(EDIT_LIST.has(k)) return k; }
   return "";
-}
-
-function syncEditSelected(){
-  try{
-    EDIT_SELECTED = new Set(Array.from(FILTER_SELECTED || []).filter(k => EDIT_LIST.has(k)));
-    if(EDIT_ACTIVE_KEY && !EDIT_LIST.has(EDIT_ACTIVE_KEY)) EDIT_ACTIVE_KEY = "";
-    if(!EDIT_ACTIVE_KEY){
-      for(const k of EDIT_SELECTED){ EDIT_ACTIVE_KEY = k; break; }
-    }
-  }catch(e){}
 }
 
 function _graphWindowForNeighbors(){
@@ -2495,8 +2501,6 @@ function _renderSelAll(checkboxEl, keysInView, selectedSet){
 }
 
 function renderTable(){
-  syncEditSelected();
-
   let base = (FILTER_TABLE_CLEARED ? [] : _rowsForFilterTable().slice());
   base = _tableTimeFilteredRows(base);
   const filtered = applyValueFilter(base);
@@ -2512,9 +2516,7 @@ function renderTable(){
 
     const tr = document.createElement("tr");
     if(FILTER_SELECTED.has(key)) tr.classList.add("selected");
-    const e = EDIT_LIST.has(key) ? EDIT_LIST.get(key) : null;
-    if(e) tr.classList.add("in_edit");
-    if(e && e.dirty) tr.classList.add("dirty");
+    if(EDIT_LIST.has(key)) tr.classList.add("in_edit");
 
     const tdSel = document.createElement("td");
     const cb = document.createElement("input");
@@ -2526,174 +2528,33 @@ function renderTable(){
     cb.addEventListener("click", (e)=>_stop(e));
     cb.addEventListener("change", ()=>{
       if(cb.checked) FILTER_SELECTED.add(key); else FILTER_SELECTED.delete(key);
-      syncEditSelected();
-      if(e) EDIT_ACTIVE_KEY = key;
       saveState();
       renderTable();
-      scheduleEditNeighborsLoad(_activeEditKey());
     });
     tdSel.appendChild(cb);
 
     const tdT = document.createElement("td");
     tdT.textContent = fmtTs(row.time);
     const tdV = document.createElement("td");
-    if(e){
-      tdV.textContent = String(e.orig_fmt || "");
-      tdV.title = String(e.orig_fmt || "");
-    }else{
-      tdV.textContent = (row.value===null||row.value===undefined)?"":fmtNum(row.value);
-    }
+    tdV.textContent = (row.value===null||row.value===undefined)?"":fmtNum(row.value);
     const tdR = document.createElement("td");
     tdR.textContent = row && row.reason ? String(row.reason) : "";
-
-    const tdOld = document.createElement("td");
-    tdOld.className = "col_edit";
-    if(e){
-      tdOld.textContent = String(e.orig_fmt || "");
-      tdOld.title = String(e.orig_fmt || "");
-    }
-
-    const tdNew = document.createElement("td");
-    tdNew.className = "col_edit";
-    if(e){
-      const newWrap = document.createElement("div");
-      newWrap.style.display = "flex";
-      newWrap.style.gap = "8px";
-      newWrap.style.alignItems = "center";
-      const newVal = document.createElement("span");
-      newVal.textContent = e.draft_value_str ? e.draft_value_str : "";
-      if(!e.draft_value_str) newVal.classList.add("cell_muted");
-      const btnApplyOne = document.createElement("button");
-      btnApplyOne.className = "btn_sm";
-      btnApplyOne.textContent = "uebernehmen";
-      btnApplyOne.dataset.ui = "editlist_apply_one";
-      btnApplyOne.disabled = !(e.dirty && e.draft_value_str) || !ALLOW_WRITES;
-      btnApplyOne.addEventListener("click", (ev)=>{ _stop(ev); applyOneEdit(key).catch(displayError); });
-      newWrap.appendChild(newVal);
-      newWrap.appendChild(btnApplyOne);
-      tdNew.appendChild(newWrap);
-    }
-
-    const tdOlder = document.createElement("td");
-    tdOlder.className = "col_edit";
-    if(e){
-      const olderWrap = document.createElement("div");
-      olderWrap.style.display = "flex";
-      olderWrap.style.gap = "8px";
-      olderWrap.style.alignItems = "center";
-      const olderVal = document.createElement("span");
-      olderVal.textContent = (e.older_value === null || e.older_value === undefined) ? "" : fmtNumNoRound(e.older_value, e.decimals);
-      olderVal.className = (e.older_value === null || e.older_value === undefined) ? "cell_muted" : "";
-      const btnOlder = document.createElement("button");
-      btnOlder.className = "btn_sm";
-      btnOlder.textContent = "nehmen";
-      btnOlder.dataset.ui = "editlist_use_older";
-      btnOlder.disabled = (e.older_value === null || e.older_value === undefined);
-      btnOlder.addEventListener("click", (ev)=>{ _stop(ev); setDraftValue(key, e.older_value); });
-      olderWrap.appendChild(olderVal);
-      olderWrap.appendChild(btnOlder);
-      tdOlder.appendChild(olderWrap);
-    }
-
-    const tdNewer = document.createElement("td");
-    tdNewer.className = "col_edit";
-    if(e){
-      const newerWrap = document.createElement("div");
-      newerWrap.style.display = "flex";
-      newerWrap.style.gap = "8px";
-      newerWrap.style.alignItems = "center";
-      const newerVal = document.createElement("span");
-      newerVal.textContent = (e.newer_value === null || e.newer_value === undefined) ? "" : fmtNumNoRound(e.newer_value, e.decimals);
-      newerVal.className = (e.newer_value === null || e.newer_value === undefined) ? "cell_muted" : "";
-      const btnNewer = document.createElement("button");
-      btnNewer.className = "btn_sm";
-      btnNewer.textContent = "nehmen";
-      btnNewer.dataset.ui = "editlist_use_newer";
-      btnNewer.disabled = (e.newer_value === null || e.newer_value === undefined);
-      btnNewer.addEventListener("click", (ev)=>{ _stop(ev); setDraftValue(key, e.newer_value); });
-      newerWrap.appendChild(newerVal);
-      newerWrap.appendChild(btnNewer);
-      tdNewer.appendChild(newerWrap);
-    }
-
-    const tdCustom = document.createElement("td");
-    tdCustom.className = "col_edit";
-    if(e){
-      const customWrap = document.createElement("div");
-      customWrap.style.display = "flex";
-      customWrap.style.gap = "8px";
-      customWrap.style.alignItems = "center";
-      const inp = document.createElement("input");
-      inp.className = "inline";
-      inp.dataset.ui = "editlist_custom_input";
-      inp.placeholder = e.orig_fmt;
-      inp.value = e.draft_value_str ? e.draft_value_str : "";
-      inp.addEventListener("click", (ev)=>_stop(ev));
-      const btnSet = document.createElement("button");
-      btnSet.className = "btn_sm";
-      btnSet.textContent = "setzen";
-      btnSet.dataset.ui = "editlist_custom_set";
-      btnSet.addEventListener("click", (ev)=>{ _stop(ev); setDraftValue(key, inp.value); });
-      customWrap.appendChild(inp);
-      customWrap.appendChild(btnSet);
-      tdCustom.appendChild(customWrap);
-    }
-
-    const tdAct = document.createElement("td");
-    if(e){
-      const btnUndo = document.createElement("button");
-      btnUndo.className = "btn_sm";
-      btnUndo.textContent = "undo";
-      btnUndo.dataset.ui = "editlist_row_undo";
-      btnUndo.disabled = !e.dirty;
-      btnUndo.addEventListener("click", (ev)=>{ _stop(ev); undoEdit(key); });
-      const btnRm = document.createElement("button");
-      btnRm.className = "btn_sm";
-      btnRm.style.marginLeft = "8px";
-      btnRm.textContent = "entfernen";
-      btnRm.dataset.ui = "editlist_row_remove";
-      btnRm.addEventListener("click", (ev)=>{ _stop(ev); removeFromEditListByKey(key); });
-      tdAct.appendChild(btnUndo);
-      tdAct.appendChild(btnRm);
-    }else{
-      const btnAdd = document.createElement("button");
-      btnAdd.className = "btn_sm";
-      btnAdd.textContent = "bearbeiten";
-      btnAdd.dataset.ui = "editlist_row_add";
-      btnAdd.addEventListener("click", (ev)=>{ _stop(ev); addToEditListByKey(key); syncEditSelected(); scheduleEditNeighborsLoad(_activeEditKey()); });
-      tdAct.appendChild(btnAdd);
-    }
 
     tr.appendChild(tdSel);
     tr.appendChild(tdT);
     tr.appendChild(tdV);
     tr.appendChild(tdR);
-    tr.appendChild(tdOld);
-    tr.appendChild(tdNew);
-    tr.appendChild(tdOlder);
-    tr.appendChild(tdNewer);
-    tr.appendChild(tdCustom);
-    tr.appendChild(tdAct);
 
     tr.addEventListener("click", (e)=>{
       const target = e && e.target;
-      if(target && target.tagName){
-        const tag = String(target.tagName).toLowerCase();
-        if(tag === "input" || tag === "button") return;
-      }
+      if(target && target.tagName && String(target.tagName).toLowerCase() === "input") return;
       if(FILTER_SELECTED.has(key)) FILTER_SELECTED.delete(key); else FILTER_SELECTED.add(key);
-      syncEditSelected();
-      if(EDIT_LIST.has(key)) EDIT_ACTIVE_KEY = key;
       saveState();
       renderTable();
-      scheduleEditNeighborsLoad(_activeEditKey());
     });
 
     tr.addEventListener("dblclick", ()=>{
-      if(EDIT_LIST.has(key)) removeFromEditListByKey(key);
-      else addToEditListByKey(key);
-      syncEditSelected();
-      scheduleEditNeighborsLoad(_activeEditKey());
+      addToEditListByKey(key);
     });
 
     $tbl.appendChild(tr);
@@ -2701,16 +2562,6 @@ function renderTable(){
 
   _renderSelAll($tblSelAll, keysInView, FILTER_SELECTED);
   LAST_FILTER_KEYS_IN_VIEW = keysInView.slice();
-
-  try{
-    const total = EDIT_LIST.size;
-    const dirty = Array.from(EDIT_LIST.values()).filter(x=>x && x.dirty).length;
-    if($editInfo) $editInfo.textContent = `In Bearbeitung: ${total}${dirty?` | geaendert: ${dirty}`:""}`;
-    if($tblEl){
-      if(total > 0) $tblEl.classList.add("has_edits");
-      else $tblEl.classList.remove("has_edits");
-    }
-  }catch(e){}
 
   const shown = rows.length;
   const baseTotal = _rowsForFilterTable().length;
@@ -3651,10 +3502,8 @@ if($tblSelAll) $tblSelAll.addEventListener("change", ()=>{
   }else{
     keys.forEach(k => FILTER_SELECTED.delete(k));
   }
-  syncEditSelected();
   saveState();
   renderTable();
-  scheduleEditNeighborsLoad(_activeEditKey());
 });
 
 // Edit list actions
@@ -3815,12 +3664,8 @@ if($btnOutlierReset) $btnOutlierReset.addEventListener("click", (ev)=>{ _stop(ev
 if($btnTblClear) $btnTblClear.addEventListener("click", (ev)=>{ _stop(ev); clearFilterTable(); });
 if($btnEditRemove) $btnEditRemove.addEventListener("click", (ev)=>{
   _stop(ev);
-  syncEditSelected();
-  const keys = Array.from(EDIT_SELECTED || []);
+  const keys = Array.from(EDIT_SELECTED);
   keys.forEach(k => removeFromEditListByKey(k));
-  syncEditSelected();
-  renderTable();
-  scheduleEditNeighborsLoad(_activeEditKey());
 });
 if($btnEditUndoAll) $btnEditUndoAll.addEventListener("click", (ev)=>{ _stop(ev); undoAllEdits(); });
 if($btnEditApply) $btnEditApply.addEventListener("click", (ev)=>{ _stop(ev); applyAllEdits(); });

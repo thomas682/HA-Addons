@@ -88,7 +88,7 @@ Tipp: Wenn du mit der Maus ueber einem Feld bleibst, zeigt der Tooltip den inter
 - Option `Messpunkte markieren`: schaltet runde Marker ein/aus.
 - Ziehen der Groesse: Unter dem Plot gibt es einen horizontalen Griff. Ziehen nach oben/unten aendert die Plot-Hoehe.
 
-## Punktliste (Filter + Bearbeitung)
+## Filterliste (Tabelle)
 
 - Linke Checkbox: Zeilen selektieren (Mehrfachauswahl moeglich).
 - `Zeit gefuehrt durch Graph`:
@@ -96,8 +96,8 @@ Tipp: Wenn du mit der Maus ueber einem Feld bleibst, zeigt der Tooltip den inter
   - AUS: Tabelle zeigt wieder den Zeitraum aus der Zeitraum-Auswahl.
 - `Filter aktiv`: schaltet den Werte-Filter (Links/Verb/Rechts) an/aus.
 - `Links`/`Verb.`/`Rechts`: einfache Regel um Werte als Fehler zu markieren (z.B. kleiner als 0 oder groesser als 999999).
-- Doppelklick auf eine Zeile: toggelt den Punkt in die Bearbeitung (hinzufuegen/entfernen).
-- Button `in Bearbeitung uebernehmen`: uebernimmt alle markierten Zeilen in die Bearbeitung.
+- Doppelklick auf eine Zeile: uebernimmt den Punkt direkt in die Bearbeitungsliste.
+- Button `In Bearbeitungsliste`: uebernimmt alle markierten Zeilen.
 
 Ausreisser-Fehlersuche:
 
@@ -109,15 +109,21 @@ Ausreisser-Fehlersuche:
 - `Fehlersuche Ausreisser`: fuehrt den Scan im aktuellen Graph-Fenster aus.
 - `Zuruecksetzen`: entfernt Ausreisser-Markierungen.
 
-Hinweis: Punkte, die in Bearbeitung sind, werden gelb markiert. Geaenderte (dirty) Zeilen werden gruen markiert.
+Hinweis: Werte, die bereits in der Bearbeitungsliste sind, werden in der Filterliste farblich markiert und koennen nicht doppelt hinzugefuegt werden.
 
-Bearbeitung in der Punktliste:
+## Bearbeitungsliste
 
-- Sobald mindestens ein Punkt in Bearbeitung ist, erscheinen zusaetzliche Spalten: `Alt`, `Neu`, `aelter`, `juenger`, `eigener Wert`.
-- `aelter`/`juenger`: Nachbarwerte (ein Datenpunkt davor/danach) + Button `nehmen`.
-- `eigener Wert`: manueller Wert + `setzen`.
-- `Neu`: zeigt den neuen Wert und bietet `uebernehmen` (schreibt nur diese eine Zeile, wenn Schreiben erlaubt ist).
-- `Aktion`: `undo`/`entfernen` pro Zeile; ausserdem `Aus Bearbeitung loeschen` und `Undo alle` als globale Buttons.
+Hier sammelst du einzelne Datenpunkte zur Korrektur.
+
+- Entfernen:
+  - Button `Aus Liste loeschen` oder Doppelklick auf den Eintrag.
+- Aendern:
+  - Spalten `aelter` / `juenger`: Nachbarwerte (ein Datenpunkt davor/danach).
+  - Button `nehmen`: uebernimmt den jeweiligen Nachbarwert als neuen Wert.
+  - `eigener Wert`: manueller Wert + `setzen`.
+- Undo:
+  - Pro Zeile `undo`.
+  - Global `Undo alle`.
 
 ### In Datenbank uebernehmen
 
