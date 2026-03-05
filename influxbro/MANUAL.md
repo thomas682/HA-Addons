@@ -104,6 +104,11 @@ Bearbeitung in der Punktliste:
 - `Bearbeitung aus`: beendet den Bearbeitungsmodus fuer die Zeile. Bei ungespeicherten Aenderungen kommt eine Bestaetigung.
 - `Undo`: stellt den Wert auf den Originalwert zurueck (vor der Bearbeitung).
 
+Ueberschreiben-History:
+
+- Nach dem Ueberschreiben wird der Wert in der Punktliste sofort aktualisiert.
+- Unter der Zeile erscheint eine eingerueckte History (letzte 3 Ueberschreibungen) mit Datum, Altwert, Neuwert und Button `restore`.
+
 Ausreisser-Fehlersuche:
 
 - `Optionen`: oeffnet Regeln fuer die Scan-Logik.

@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.11.80
+
+### Features
+
+- Punktliste: Button in Spalte `Neu` heisst jetzt `Ueberschreiben`.
+- Punktliste: pro Datenpunkt History der letzten 3 Ueberschreibungen (Datum/Alt/Neu) inkl. `restore`.
+
+### Bug Fixes
+
+- Punktliste: nach Ueberschreiben wird der neue Wert sofort in der Tabelle aktualisiert.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.11.79
 
 ### Bug Fixes

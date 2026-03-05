@@ -101,6 +101,13 @@
     .col_edit { display: none; }
     table.has_edits .col_edit { display: table-cell; }
 
+    .hist_row td { background: #fafafa; }
+    .hist_box { padding: 8px 10px 8px 28px; }
+    .hist_title { font-size: 12px; opacity: 0.75; margin-bottom: 6px; }
+    .hist_tbl { width: 100%; border-collapse: collapse; }
+    .hist_tbl th, .hist_tbl td { border: 1px solid #eee; padding: 4px 6px; font-size: 11px; }
+    .hist_tbl th { background: #f6f6f6; position: static; cursor: default; }
+
     .tbl_actions { display:flex; gap: 10px; align-items:center; flex-wrap:wrap; margin-top: 6px; }
     .tbl_actions details { margin: 0; }
     .tbl_actions summary { cursor: pointer; }
@@ -993,6 +1000,10 @@ let LAST_FILTER_KEYS_IN_VIEW = [];
 let EDIT_LIST = new Map();
 
 let EDIT_ACTIVE_KEY = "";
+
+// Per datapoint (rowKey) store last overwrite operations (newest first).
+let OVERWRITE_HISTORY = new Map();
+
 let _NEIGHBOR_TIMER = null;
 let _NEIGHBOR_INFLIGHT = false;
 
@@ -1109,6 +1120,127 @@ async function loadEditNeighbors(key){
 
 function rowKey(row){
   return String(row && row.time ? row.time : "");
+}
+
+function _histGet(key){
+  try{
+    const h = OVERWRITE_HISTORY.get(key);
+    return Array.isArray(h) ? h : [];
+  }catch(e){
+    return [];
+  }
+}
+
+function _histRemember(e, oldValueNum, oldFmt, newValueNum, newFmt){
+  try{
+    const key = e && e.key ? String(e.key) : "";
+    if(!key) return;
+    const item = {
+      at: new Date().toISOString(),
+      time: String(e.time || ""),
+      measurement: String(e.measurement || ""),
+      field: String(e.field || ""),
+      entity_id: (e.entity_id === null || e.entity_id === undefined) ? null : String(e.entity_id),
+      friendly_name: (e.friendly_name === null || e.friendly_name === undefined) ? null : String(e.friendly_name),
+      decimals: (e.decimals === null || e.decimals === undefined) ? UI_DECIMALS : Number(e.decimals),
+      old_value: Number(oldValueNum),
+      old_fmt: String(oldFmt),
+      new_value: Number(newValueNum),
+      new_fmt: String(newFmt),
+    };
+    if(!isFinite(item.old_value) || !isFinite(item.new_value)) return;
+
+    const cur = _histGet(key).slice();
+    cur.unshift(item);
+    OVERWRITE_HISTORY.set(key, cur.slice(0, 3));
+  }catch(ex){}
+}
+
+async function restoreFromHistory(key, idx){
+  try{
+    err(""); ok("");
+    if($editApplyErr) $editApplyErr.textContent = "";
+
+    const k = String(key || "");
+    const h = _histGet(k);
+    const it = h && h[idx] ? h[idx] : null;
+    if(!it){ err("Kein History-Eintrag gefunden."); return; }
+
+    if(!ALLOW_WRITES){
+      if($editApplyErr) $editApplyErr.textContent = "Writes are disabled. Enable writes in Settings.";
+      return;
+    }
+
+    // Best-effort current value from loaded rows
+    let curRow = (LAST_ROWS || []).find(r => rowKey(r) === k);
+    if(!curRow && OUTLIER_ACTIVE) curRow = (OUTLIER_ROWS || []).find(r => rowKey(r) === k);
+    const curNum = curRow ? ((typeof curRow.value === 'number') ? curRow.value : Number(curRow.value)) : Number(it.new_value);
+    const curFmt = fmtNum(curNum);
+
+    const fakeEdit = {
+      key: k,
+      time: it.time,
+      measurement: it.measurement,
+      field: it.field,
+      entity_id: it.entity_id,
+      friendly_name: it.friendly_name,
+      orig_value: curNum,
+      orig_fmt: curFmt,
+      decimals: it.decimals,
+      draft_value_str: fmtNumNoRound(Number(it.old_value), it.decimals),
+      dirty: true,
+    };
+
+    const want = await openApplyDialog([fakeEdit]);
+    if(!want) return;
+
+    const payload = {
+      confirm: DELETE_PHRASE,
+      measurement: it.measurement,
+      field: it.field,
+      entity_id: it.entity_id,
+      friendly_name: it.friendly_name,
+      edits: [{ time: it.time, new_value: fakeEdit.draft_value_str, decimals: it.decimals }],
+    };
+    const j = await api("./api/apply_edits", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify(payload),
+    });
+
+    const newNum = Number(fakeEdit.draft_value_str);
+    LAST_ROWS = (LAST_ROWS || []).map(r => {
+      const rk = rowKey(r);
+      if(rk === k) return { ...r, value: newNum };
+      return r;
+    });
+
+    // Remember as an overwrite operation too
+    _histRemember(fakeEdit, curNum, curFmt, newNum, fmtNum(newNum));
+
+    // If the point is currently in edit-mode, sync orig value
+    try{
+      const ee = EDIT_LIST.get(k);
+      if(ee){
+        ee.orig_value = newNum;
+        ee.orig_fmt = fmtNum(newNum);
+        ee.draft_value_str = null;
+        ee.dirty = false;
+        EDIT_LIST.set(k, ee);
+      }
+    }catch(e){}
+
+    ok(j.message || "Restore geschrieben.");
+    renderTable();
+    draw(LAST_ROWS);
+  }catch(e){
+    const msg = String(e && e.message ? e.message : e);
+    if(msg.includes("Writes are disabled")){
+      if($editApplyErr) $editApplyErr.textContent = msg;
+      return;
+    }
+    err(msg);
+  }
 }
 
 function _stop(e){ try{ e.preventDefault(); e.stopPropagation(); }catch(_){} }
@@ -2501,6 +2633,7 @@ function renderTable(){
     keysInView.push(key);
 
     const e = EDIT_LIST.has(key) ? EDIT_LIST.get(key) : null;
+    const hist = _histGet(key);
 
     const tr = document.createElement("tr");
     if(FILTER_SELECTED.has(key)) tr.classList.add("selected");
@@ -2533,7 +2666,7 @@ function renderTable(){
     tdOld.className = "col_edit";
     tdOld.textContent = e ? String(e.orig_fmt || "") : "";
 
-    const tdNew = document.createElement("td");
+const tdNew = document.createElement("td");
     tdNew.className = "col_edit";
     if(e){
       const newWrap = document.createElement("div");
@@ -2545,7 +2678,7 @@ function renderTable(){
       if(!e.dirty) newVal.classList.add("cell_muted");
       const btnApplyOne = document.createElement("button");
       btnApplyOne.className = "btn_sm";
-      btnApplyOne.textContent = "uebernehmen";
+      btnApplyOne.textContent = "Ueberschreiben";
       btnApplyOne.disabled = !(e.dirty && e.draft_value_str) || !ALLOW_WRITES;
       btnApplyOne.addEventListener("click", (ev)=>{ _stop(ev); applyOneEdit(key).catch(displayError); });
       newWrap.appendChild(newVal);
@@ -2619,8 +2752,12 @@ function renderTable(){
       const btnUndo = document.createElement("button");
       btnUndo.className = "btn_sm";
       btnUndo.textContent = "Undo";
-      btnUndo.disabled = !e.dirty;
-      btnUndo.addEventListener("click", (ev)=>{ _stop(ev); undoEdit(key); });
+      btnUndo.disabled = !(e.dirty || (hist && hist.length));
+      btnUndo.addEventListener("click", (ev)=>{
+        _stop(ev);
+        if(e.dirty) undoEdit(key);
+        else restoreFromHistory(key, 0);
+      });
 
       const btnOff = document.createElement("button");
       btnOff.className = "btn_sm";
@@ -2673,6 +2810,53 @@ function renderTable(){
     });
 
     $tbl.appendChild(tr);
+
+    if(hist && hist.length){
+      const hr = document.createElement('tr');
+      hr.className = 'hist_row';
+      const td = document.createElement('td');
+      td.colSpan = tr.children.length;
+      const box = document.createElement('div');
+      box.className = 'hist_box';
+      const title = document.createElement('div');
+      title.className = 'hist_title';
+      title.textContent = 'History (letzte 3 Ueberschreibungen)';
+      box.appendChild(title);
+
+      const t = document.createElement('table');
+      t.className = 'hist_tbl';
+      const thead = document.createElement('thead');
+      thead.innerHTML = '<tr><th style="width:170px;">Datum</th><th style="width:120px;">Alt</th><th style="width:120px;">Neu</th><th style="width:120px;">Aktion</th></tr>';
+      t.appendChild(thead);
+      const tb = document.createElement('tbody');
+
+      hist.forEach((it, i)=>{
+        const trh = document.createElement('tr');
+        const tdAt = document.createElement('td');
+        tdAt.textContent = fmtTs(String(it.at || ''));
+        const tdO = document.createElement('td');
+        tdO.textContent = String(it.old_fmt || fmtNum(it.old_value));
+        const tdN = document.createElement('td');
+        tdN.textContent = String(it.new_fmt || fmtNum(it.new_value));
+        const tdA = document.createElement('td');
+        const b = document.createElement('button');
+        b.className = 'btn_sm';
+        b.textContent = 'restore';
+        b.disabled = !ALLOW_WRITES;
+        b.addEventListener('click', (ev)=>{ _stop(ev); restoreFromHistory(key, i); });
+        tdA.appendChild(b);
+        trh.appendChild(tdAt);
+        trh.appendChild(tdO);
+        trh.appendChild(tdN);
+        trh.appendChild(tdA);
+        tb.appendChild(trh);
+      });
+      t.appendChild(tb);
+      box.appendChild(t);
+      td.appendChild(box);
+      hr.appendChild(td);
+      $tbl.appendChild(hr);
+    }
   });
 
   _renderSelAll($tblSelAll, keysInView, FILTER_SELECTED);
@@ -2926,6 +3110,19 @@ async function applyAllEdits(){
       return;
     }
 
+    const snap = dirty.map(e => ({
+      key: e.key,
+      time: e.time,
+      measurement: e.measurement,
+      field: e.field,
+      entity_id: e.entity_id,
+      friendly_name: e.friendly_name,
+      decimals: e.decimals,
+      old_value: e.orig_value,
+      old_fmt: e.orig_fmt,
+      new_str: e.draft_value_str,
+    }));
+
     const want = await openApplyDialog(dirty);
     if(!want) return;
 
@@ -2954,6 +3151,15 @@ async function applyAllEdits(){
     });
 
     dirty.forEach(e => {
+      // Remember overwrite operation before mutating orig_*
+      try{
+        const s = snap.find(x => x.key === e.key);
+        if(s){
+          const newNum = Number(s.new_str);
+          _histRemember(e, Number(s.old_value), String(s.old_fmt), newNum, fmtNum(newNum));
+        }
+      }catch(x){}
+
       e.orig_value = Number(e.draft_value_str);
       e.orig_fmt = fmtNum(e.orig_value);
       e.draft_value_str = null;
@@ -3003,19 +3209,36 @@ async function applyOneEdit(key){
     body: JSON.stringify(payload),
   });
 
+  // Remember overwrite before mutating orig_*
+  const prevNum = Number(e.orig_value);
+  const prevFmt = String(e.orig_fmt);
+
   // Update in-memory row
   const newNum = Number(e.draft_value_str);
+  if(!isFinite(prevNum) || !isFinite(newNum)){
+    err("Ungueltiger Wert.");
+    return;
+  }
   LAST_ROWS = (LAST_ROWS || []).map(r => {
     const k = rowKey(r);
     if(k === e.key) return { ...r, value: newNum };
     return r;
   });
+  if(OUTLIER_ACTIVE){
+    OUTLIER_ROWS = (OUTLIER_ROWS || []).map(r => {
+      const k = rowKey(r);
+      if(k === e.key) return { ...r, value: newNum };
+      return r;
+    });
+  }
 
   e.orig_value = newNum;
   e.orig_fmt = fmtNum(newNum);
   e.draft_value_str = null;
   e.dirty = false;
   EDIT_LIST.set(key, e);
+
+  _histRemember(e, prevNum, prevFmt, newNum, fmtNum(newNum));
 
   ok(j.message || "Applied: 1");
   renderTable();
