@@ -23,8 +23,8 @@ Links findest du die Bereiche:
 - Dashboard: Messwerte auswaehlen, Graph/Tabelle ansehen, Werte in eine Bearbeitungsliste uebernehmen.
 - Statistik: Gesamtstatistik ueber viele Serien anzeigen.
 - Backup: Backups fuer einen einzelnen Messwert erstellen und verwalten.
-- Logs: Add-on Logs von InfluxBro ansehen (Menuepunkt ist unter Backup einsortiert).
 - Restore: Ein vorhandenes Backup fuer einen Messwert wiederherstellen.
+- Logs: Add-on Logs von InfluxBro ansehen (Menuepunkt ist unter Restore einsortiert).
 - Info: Release Notes + Repository-Link.
 - Handbuch: Diese Dokumentation.
 - Einstellungen: Influx-Verbindung und UI-Parameter konfigurieren.

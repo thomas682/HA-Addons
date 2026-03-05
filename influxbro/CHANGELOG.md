@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.11.69
+
+### Features
+
+- UI: Menuepunkt "Logs" ist jetzt unter "Restore" einsortiert.
+
+### Bug Fixes
+
+- (keine)
+
+### Maintenance
+
+- (keine)
+
 ## 1.11.68
 
 ### Features
