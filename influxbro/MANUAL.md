@@ -20,7 +20,7 @@ Dieses Handbuch ist absichtlich sehr konkret: Jedes sichtbare Element in der GUI
 
 Links findest du die Bereiche:
 
-- Dashboard: Messwerte auswaehlen, Graph/Tabelle ansehen, Werte in eine Bearbeitungsliste uebernehmen.
+- Dashboard: Messwerte auswaehlen, Graph/Tabelle ansehen, Ausreisser finden und Werte direkt in der Punktliste bearbeiten.
 - Statistik: Gesamtstatistik ueber viele Serien anzeigen.
 - Backup: Backups fuer einen einzelnen Messwert erstellen und verwalten.
 - Restore: Ein vorhandenes Backup fuer einen Messwert wiederherstellen.
@@ -80,7 +80,7 @@ Tipp: Wenn du mit der Maus ueber einem Feld bleibst, zeigt der Tooltip den inter
 
 ### 3) Aktualisieren
 
-- Erst mit `Aktualisieren` werden Graph, Filterliste und Statistik geladen.
+- Erst mit `Aktualisieren` werden Graph, Punktliste und Statistik geladen.
 
 ## Graph
 
@@ -88,7 +88,7 @@ Tipp: Wenn du mit der Maus ueber einem Feld bleibst, zeigt der Tooltip den inter
 - Option `Messpunkte markieren`: schaltet runde Marker ein/aus.
 - Ziehen der Groesse: Unter dem Plot gibt es einen horizontalen Griff. Ziehen nach oben/unten aendert die Plot-Hoehe.
 
-## Filterliste (Tabelle)
+## Punktliste (Tabelle)
 
 - Linke Checkbox: Zeilen selektieren (Mehrfachauswahl moeglich).
 - `Zeit gefuehrt durch Graph`:
@@ -96,8 +96,13 @@ Tipp: Wenn du mit der Maus ueber einem Feld bleibst, zeigt der Tooltip den inter
   - AUS: Tabelle zeigt wieder den Zeitraum aus der Zeitraum-Auswahl.
 - `Filter aktiv`: schaltet den Werte-Filter (Links/Verb/Rechts) an/aus.
 - `Links`/`Verb.`/`Rechts`: einfache Regel um Werte als Fehler zu markieren (z.B. kleiner als 0 oder groesser als 999999).
-- Doppelklick auf eine Zeile: uebernimmt den Punkt direkt in die Bearbeitungsliste.
-- Button `In Bearbeitungsliste`: uebernimmt alle markierten Zeilen.
+
+Bearbeitung in der Punktliste:
+
+- Pro Zeile in der Spalte `Aktion`: `Bearbeiten` aktiviert den Bearbeitungsmodus fuer diesen Punkt.
+- Sobald mindestens ein Punkt in Bearbeitung ist, werden zusaetzliche Spalten eingeblendet: `Alt`, `Neu`, `aelter`, `juenger`, `eigener Wert`.
+- `Bearbeitung aus`: beendet den Bearbeitungsmodus fuer die Zeile. Bei ungespeicherten Aenderungen kommt eine Bestaetigung.
+- `Undo`: stellt den Wert auf den Originalwert zurueck (vor der Bearbeitung).
 
 Ausreisser-Fehlersuche:
 
@@ -109,25 +114,11 @@ Ausreisser-Fehlersuche:
 - `Fehlersuche Ausreisser`: fuehrt den Scan im aktuellen Graph-Fenster aus.
 - `Zuruecksetzen`: entfernt Ausreisser-Markierungen.
 
-Hinweis: Werte, die bereits in der Bearbeitungsliste sind, werden in der Filterliste farblich markiert und koennen nicht doppelt hinzugefuegt werden.
-
-## Bearbeitungsliste
-
-Hier sammelst du einzelne Datenpunkte zur Korrektur.
-
-- Entfernen:
-  - Button `Aus Liste loeschen` oder Doppelklick auf den Eintrag.
-- Aendern:
-  - Spalten `aelter` / `juenger`: Nachbarwerte (ein Datenpunkt davor/danach).
-  - Button `nehmen`: uebernimmt den jeweiligen Nachbarwert als neuen Wert.
-  - `eigener Wert`: manueller Wert + `setzen`.
-- Undo:
-  - Pro Zeile `undo`.
-  - Global `Undo alle`.
+Hinweis: Werte in Bearbeitung werden gelb markiert. Geaenderte (dirty) Zeilen werden gruen markiert.
 
 ### In Datenbank uebernehmen
 
-- Button: `Alle Werte in Datenbank uebernehmen`
+- Button: `Aenderungen in Datenbank uebernehmen`
 - Sicherheitsmechanismus:
   - Schreiben ist nur aktiv, wenn in den Add-on Optionen `allow_delete` aktiviert ist.
   - Zusaetzlich musst du das exakte `delete_confirm_phrase` eintippen.

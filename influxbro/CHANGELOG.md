@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.11.77
+
+### Features
+
+- Dashboard: Filterliste und Bearbeitungsliste zu einer einzigen Tabelle (Punktliste) zusammengefuehrt; Bearbeitung pro Zeile per Button (kein Doppelklick).
+- Punktliste: Bearbeitungsspalten werden automatisch eingeblendet, sobald mindestens ein Eintrag im Bearbeitungsmodus ist.
+
+### Bug Fixes
+
+- (keine)
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.11.74
 
 ### Features
