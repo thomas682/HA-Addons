@@ -4,8 +4,9 @@
     <div class="brand_meta" style="margin-top: 4px;">by Thomas Schatz</div>
     <div class="brand_meta" style="margin-top: 2px;">Version: {{ addon_version }}</div>
 
+    {% set _pp_url = (cfg.get('ui_paypal_donate_url') or 'https://www.paypal.com/donate/?hosted_button_id=ZWZE3WM4NBUW6') %}
     <div class="brand_meta" style="margin-top: 8px;" data-ui="nav.donate" title="nav.donate">
-      <a href="https://paypal.me/ThomasSchatz" target="_blank" rel="noreferrer" style="display:inline-block;">
+      <a href="{{ _pp_url }}" target="_blank" rel="noreferrer" style="display:inline-block;">
         <img
           alt="Donate with PayPal"
           src="https://raw.githubusercontent.com/stefan-niedermann/paypal-donate-button/master/paypal-donate-button.png"

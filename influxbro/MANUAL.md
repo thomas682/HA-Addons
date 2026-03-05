@@ -1,6 +1,6 @@
 # InfluxBro Handbuch
 
-[![Donate with PayPal](https://raw.githubusercontent.com/stefan-niedermann/paypal-donate-button/master/paypal-donate-button.png)](https://paypal.me/ThomasSchatz)
+[![Donate with PayPal](https://raw.githubusercontent.com/stefan-niedermann/paypal-donate-button/master/paypal-donate-button.png)](https://www.paypal.com/donate/?hosted_button_id=ZWZE3WM4NBUW6)
 
 InfluxBro hilft dir, InfluxDB-Zeitreihen aus Home Assistant zu durchsuchen, auszuwerten, zu sichern und bei Bedarf Werte gezielt zu korrigieren.
 
@@ -168,6 +168,7 @@ UI:
 - `Checkbox Groesse (Scale)`: Checkbox-Scaling fuer bessere Bedienbarkeit.
 - `Filter ... Breite`: steuert die Layout-Breiten im Dashboard.
 - `Bereiche standardmaessig geoeffnet`: welche <details>-Sektionen beim Start offen sind.
+- `PayPal Donate URL (Sidebar)`: Linkziel des PayPal-Spendenbuttons im Sidebar.
 
 Ausreisser:
 

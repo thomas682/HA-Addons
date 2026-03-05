@@ -228,6 +228,11 @@
           <input id="ui_repo_url" />
           <div class="muted">Wird in der Info-Seite als Link angezeigt.</div>
         </div>
+        <div class="span2">
+          <label>PayPal Donate URL (Sidebar)</label>
+          <input id="ui_paypal_donate_url" />
+          <div class="muted">Wird vom PayPal Spendenbutton im Sidebar verwendet (z.B. hosted_button_id URL).</div>
+        </div>
       </div>
       </div>
     </details>
@@ -380,6 +385,7 @@ const ids = [
   "ui_font_size_px","ui_font_small_px","ui_checkbox_scale",
   "ui_filter_label_width_px","ui_filter_control_width_px","ui_filter_search_width_px"
   ,"ui_repo_url"
+  ,"ui_paypal_donate_url"
   ,"ui_open_selection","ui_open_graph","ui_open_filterlist","ui_open_editlist"
   ,"ui_open_stats_total","ui_open_stats_current"
   ,"ui_tooltips_enabled"
@@ -437,6 +443,7 @@ function setForm(cfg){
   el.ui_filter_control_width_px.value = cfg.ui_filter_control_width_px ?? 320;
   el.ui_filter_search_width_px.value = cfg.ui_filter_search_width_px ?? 160;
   el.ui_repo_url.value = cfg.ui_repo_url ?? "";
+  el.ui_paypal_donate_url.value = cfg.ui_paypal_donate_url ?? "";
 
   el.backup_dir.value = cfg.backup_dir ?? "/config/homeassistant/influxbro/backup";
 
@@ -498,6 +505,7 @@ function getForm(){
     ui_filter_search_width_px: parseInt(el.ui_filter_search_width_px.value, 10),
 
     ui_repo_url: (el.ui_repo_url.value || "").trim(),
+    ui_paypal_donate_url: (el.ui_paypal_donate_url.value || "").trim(),
 
     backup_dir: (el.backup_dir.value || "").trim(),
 

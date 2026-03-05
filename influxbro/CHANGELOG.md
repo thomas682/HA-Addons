@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.11.73
+
+### Features
+
+- UI: PayPal Donate URL ist jetzt in den Einstellungen parametrierbar (Sidebar Button verweist darauf).
+
+### Bug Fixes
+
+- (keine)
+
+### Maintenance
+
+- (keine)
+
 ## 1.11.72
 
 ### Features

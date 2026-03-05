@@ -558,6 +558,7 @@ DEFAULT_CFG = {
 
     # Links / Info
     "ui_repo_url": "http://192.168.2.65:7070/thomas/ha-addons",
+    "ui_paypal_donate_url": "https://www.paypal.com/donate/?hosted_button_id=ZWZE3WM4NBUW6",
 
     # Backups (must live under /config or /data)
     "backup_dir": str(DEFAULT_BACKUP_DIR),
@@ -2804,6 +2805,13 @@ def api_set_config():
         cfg["ui_repo_url"] = str(cfg.get("ui_repo_url") or "").strip()
     except Exception:
         cfg["ui_repo_url"] = ""
+
+    try:
+        cfg["ui_paypal_donate_url"] = str(cfg.get("ui_paypal_donate_url") or "").strip()
+    except Exception:
+        cfg["ui_paypal_donate_url"] = ""
+    if len(cfg["ui_paypal_donate_url"]) > 600:
+        cfg["ui_paypal_donate_url"] = cfg["ui_paypal_donate_url"][:600]
 
     # Backups directory (must stay under /data)
     try:
