@@ -271,6 +271,22 @@
 
         // Restore persisted state (after bar exists)
         restoreDetailsState(main);
+
+        // Auto-save <details> open/closed state on toggle.
+        // This makes the UI remember the last expand/collapse state per page.
+        try{
+          if(!main.__influxbro_details_autosave){
+            main.__influxbro_details_autosave = true;
+            let t = null;
+            main.addEventListener('toggle', (ev)=>{
+              const el = ev && ev.target;
+              if(!el || !el.tagName) return;
+              if(String(el.tagName).toLowerCase() !== 'details') return;
+              try{ if(t) clearTimeout(t); }catch(e){}
+              t = setTimeout(()=>{ try{ saveDetailsState(main); }catch(e){} }, 80);
+            }, true);
+          }
+        }catch(e){}
       }catch(e){}
     }
 

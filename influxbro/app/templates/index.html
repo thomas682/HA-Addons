@@ -101,12 +101,12 @@
     .col_edit { display: none; }
     table.has_edits .col_edit { display: table-cell; }
 
-    .hist_row td { background: #fafafa; }
-    .hist_box { padding: 8px 10px 8px 28px; }
-    .hist_title { font-size: 12px; opacity: 0.75; margin-bottom: 6px; }
-    .hist_tbl { width: 100%; border-collapse: collapse; }
-    .hist_tbl th, .hist_tbl td { border: 1px solid #eee; padding: 4px 6px; font-size: 11px; }
-    .hist_tbl th { background: #f6f6f6; position: static; cursor: default; }
+    .hist_row td, .nbr_row td { background: #fafafa; }
+    .hist_box, .nbr_box { padding: 8px 10px 8px 28px; }
+    .hist_title, .nbr_title { font-size: 12px; opacity: 0.75; margin-bottom: 6px; }
+    .hist_tbl, .nbr_tbl { width: 100%; border-collapse: collapse; }
+    .hist_tbl th, .hist_tbl td, .nbr_tbl th, .nbr_tbl td { border: 1px solid #eee; padding: 4px 6px; font-size: 11px; }
+    .hist_tbl th, .nbr_tbl th { background: #f6f6f6; position: static; cursor: default; }
 
     .tbl_actions { display:flex; gap: 10px; align-items:center; flex-wrap:wrap; margin-top: 6px; }
     .tbl_actions details { margin: 0; }
@@ -438,22 +438,7 @@
 
         <div class="muted" data-ui="tip.pointlist" title="tip.pointlist">Bearbeitung pro Zeile ueber den Button <code>Bearbeiten</code>. Beim Beenden mit ungespeicherten Aenderungen kommt eine Bestaetigung.</div>
 
-        <details id="edit_neighbors" class="table_wrap" style="margin-top: 10px;" data-ui="editlist_neighbors" title="editlist_neighbors">
-          <summary>Nachbarwerte (n davor / n danach)</summary>
-          <div class="muted" id="edit_neighbors_info" data-ui="editlist_neighbors_info" title="editlist_neighbors_info"></div>
-          <div class="table_box" style="margin-top: 8px;">
-            <table id="edit_neighbors_tbl" class="list_tbl" data-ui="editlist_neighbors_table" title="editlist_neighbors_table">
-              <thead>
-                <tr>
-                  <th style="width:70px;">Aktion</th>
-                  <th>Zeit</th>
-                  <th>Wert</th>
-                </tr>
-              </thead>
-              <tbody id="edit_neighbors_rows"></tbody>
-            </table>
-          </div>
-        </details>
+
       </div>
 
     </details>
@@ -589,9 +574,7 @@ const $tagChoices = document.getElementById('tag_choices');
 const $tagChoicesTitle = document.getElementById('tag_choices_title');
 const $tagChoicesRows = document.getElementById('tag_choices_rows');
 
-const $editNeighbors = document.getElementById('edit_neighbors');
-const $editNeighborsInfo = document.getElementById('edit_neighbors_info');
-const $editNeighborsRows = document.getElementById('edit_neighbors_rows');
+// Row details (before/after list) are rendered inline under the selected row.
 
 const canvas = document.getElementById('chart');
 const ctx = canvas.getContext('2d');
@@ -1004,6 +987,10 @@ let EDIT_ACTIVE_KEY = "";
 // Per datapoint (rowKey) store last overwrite operations (newest first).
 let OVERWRITE_HISTORY = new Map();
 
+// Inline per-row "Details" (before/after list)
+let ROW_DETAILS_OPEN = new Set();
+let ROW_NEIGHBORS = new Map();
+
 let _NEIGHBOR_TIMER = null;
 let _NEIGHBOR_INFLIGHT = false;
 
@@ -1027,92 +1014,79 @@ function _graphWindowForNeighbors(){
 
 function scheduleEditNeighborsLoad(key){
   if(_NEIGHBOR_TIMER) clearTimeout(_NEIGHBOR_TIMER);
-  _NEIGHBOR_TIMER = setTimeout(()=>{ loadEditNeighbors(key || _activeEditKey()).catch(()=>{}); }, 250);
+  _NEIGHBOR_TIMER = setTimeout(()=>{ loadRowNeighbors(key).catch(()=>{}); }, 120);
 }
 
-async function loadEditNeighbors(key){
-  if(!$editNeighbors || !$editNeighborsRows) return;
-  const k = key || _activeEditKey();
-  if(!k){
-    try{ $editNeighbors.open = false; }catch(e){}
-    if($editNeighborsRows) $editNeighborsRows.innerHTML = "";
-    if($editNeighborsInfo) $editNeighborsInfo.textContent = "";
-    return;
-  }
+function _neighborsCacheGet(key){
+  try{ return ROW_NEIGHBORS.get(key) || null; }catch(e){ return null; }
+}
+
+async function loadRowNeighbors(key){
+  const k = String(key || "");
+  if(!k) return;
   if(_NEIGHBOR_INFLIGHT) return;
   if(!LAST_ROWS || !LAST_ROWS.length){
-    if($editNeighborsInfo) $editNeighborsInfo.textContent = "Bitte zuerst Daten laden (Aktualisieren).";
+    ROW_NEIGHBORS.set(k, { ok: false, error: "Bitte zuerst Daten laden (Aktualisieren).", older: [], newer: [], meta: "" });
+    renderTable();
     return;
   }
   const win = _graphWindowForNeighbors();
   if(!win){
-    if($editNeighborsInfo) $editNeighborsInfo.textContent = "Bitte im Graph einen Bereich waehlen (Zoom/Range-Slider).";
+    ROW_NEIGHBORS.set(k, { ok: false, error: "Bitte im Graph einen Bereich waehlen (Zoom/Range-Slider).", older: [], newer: [], meta: "" });
+    renderTable();
     return;
   }
 
-  const e = EDIT_LIST.get(k);
-  if(!e) return;
+  // Find center row in current data
+  let row = (LAST_ROWS || []).find(r => rowKey(r) === k);
+  if(!row && OUTLIER_ACTIVE) row = (OUTLIER_ROWS || []).find(r => rowKey(r) === k);
+  if(!row){
+    ROW_NEIGHBORS.set(k, { ok: false, error: "Zeile nicht gefunden.", older: [], newer: [], meta: "" });
+    renderTable();
+    return;
+  }
+
+  const base = currentFilters();
   _NEIGHBOR_INFLIGHT = true;
   try{
-    if($editNeighborsInfo) $editNeighborsInfo.textContent = `Lade Nachbarwerte (${UI_EDIT_NEIGHBORS_N} davor / ${UI_EDIT_NEIGHBORS_N} danach)...`;
+    ROW_NEIGHBORS.set(k, { ok: true, loading: true, error: null, older: [], newer: [], meta: "" });
+    renderTable();
+
     const payload = {
-      measurement: e.measurement,
-      field: e.field,
-      entity_id: e.entity_id,
-      friendly_name: e.friendly_name,
-      center_time: e.time,
+      measurement: base.measurement,
+      field: base.field,
+      entity_id: base.entity_id,
+      friendly_name: base.friendly_name,
+      center_time: row.time,
       start: win.start,
       stop: win.stop,
       n: UI_EDIT_NEIGHBORS_N,
     };
-    const j = await api("./api/point_neighbors", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)});
+    const j = await api("./api/point_neighbors", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)}, { key: "neighbors", silent: true });
     const older = j.older || [];
     const newer = j.newer || [];
+    const meta = `Zeitraum (Graph): ${fmtTs(win.start)} bis ${fmtTs(win.stop)}`;
 
-    // Update direct neighbors for the row buttons
-    const closestOlder = older.length ? older[older.length - 1].value : null;
-    const closestNewer = newer.length ? newer[0].value : null;
-    e.older_value = (typeof closestOlder === "number" && isFinite(closestOlder)) ? closestOlder : e.older_value;
-    e.newer_value = (typeof closestNewer === "number" && isFinite(closestNewer)) ? closestNewer : e.newer_value;
-    EDIT_LIST.set(k, e);
+    ROW_NEIGHBORS.set(k, { ok: true, loading: false, error: null, older, newer, meta });
 
-    // Render table
-    $editNeighborsRows.innerHTML = "";
-    function addRow(kind, ts, val){
-      const tr = document.createElement("tr");
-      if(kind === "center") tr.classList.add("selected");
-      const tdA = document.createElement("td");
-      if(kind === "center"){
-        tdA.textContent = "";
-      }else{
-        const b = document.createElement("button");
-        b.className = "btn_sm";
-        b.textContent = "nehmen";
-        b.addEventListener("click", (ev)=>{ _stop(ev); setDraftValue(k, val); });
-        tdA.appendChild(b);
+    // If in edit mode: update direct neighbors for row buttons
+    try{
+      const e = EDIT_LIST.get(k);
+      if(e){
+        const closestOlder = older.length ? older[older.length - 1].value : null;
+        const closestNewer = newer.length ? newer[0].value : null;
+        const oNum = (typeof closestOlder === 'number') ? closestOlder : Number(closestOlder);
+        const nNum = (typeof closestNewer === 'number') ? closestNewer : Number(closestNewer);
+        if(isFinite(oNum)) e.older_value = oNum;
+        if(isFinite(nNum)) e.newer_value = nNum;
+        EDIT_LIST.set(k, e);
       }
-      const tdT = document.createElement("td");
-      tdT.textContent = fmtTs(ts);
-      const tdV = document.createElement("td");
-      tdV.textContent = (val === null || val === undefined) ? "" : fmtNum(val);
-      tr.appendChild(tdA);
-      tr.appendChild(tdT);
-      tr.appendChild(tdV);
-      $editNeighborsRows.appendChild(tr);
-    }
-    older.forEach(r=>addRow("older", r.time, r.value));
-    addRow("center", e.time, e.orig_value);
-    newer.forEach(r=>addRow("newer", r.time, r.value));
+    }catch(e){}
 
-    if($editNeighborsInfo){
-      $editNeighborsInfo.textContent = `Zeitraum (Graph): ${fmtTs(win.start)} bis ${fmtTs(win.stop)}`;
-    }
-    try{ $editNeighbors.open = true; }catch(e){}
-
-    // Re-render main table so older/newer buttons enable
     renderTable();
   }catch(ex){
-    if($editNeighborsInfo) $editNeighborsInfo.textContent = String(ex && ex.message ? ex.message : ex);
+    ROW_NEIGHBORS.set(k, { ok: false, loading: false, error: String(ex && ex.message ? ex.message : ex), older: [], newer: [], meta: "" });
+    renderTable();
   }finally{
     _NEIGHBOR_INFLIGHT = false;
   }
@@ -1214,6 +1188,13 @@ async function restoreFromHistory(key, idx){
       if(rk === k) return { ...r, value: newNum };
       return r;
     });
+    if(OUTLIER_ACTIVE){
+      OUTLIER_ROWS = (OUTLIER_ROWS || []).map(r => {
+        const rk = rowKey(r);
+        if(rk === k) return { ...r, value: newNum };
+        return r;
+      });
+    }
 
     // Remember as an overwrite operation too
     _histRemember(fakeEdit, curNum, curFmt, newNum, fmtNum(newNum));
@@ -1880,12 +1861,7 @@ async function loadUiConfig(){
 
     const nn = Number(cfg.ui_edit_neighbors_n);
     if(isFinite(nn) && nn >= 1 && nn <= 50) UI_EDIT_NEIGHBORS_N = Math.trunc(nn);
-    try{
-      if($editNeighbors){
-        const sum = $editNeighbors.querySelector('summary');
-        if(sum) sum.textContent = `Nachbarwerte (${UI_EDIT_NEIGHBORS_N} davor / ${UI_EDIT_NEIGHBORS_N} danach)`;
-      }
-    }catch(e){}
+    // Neighbor UI is rendered inline per row.
 
     const fs = Number(cfg.ui_font_size_px);
     if(isFinite(fs) && fs >= 10 && fs <= 22) document.documentElement.style.setProperty("--ui-font", fs + "px");
@@ -2748,6 +2724,23 @@ const tdNew = document.createElement("td");
     }
 
     const tdAct = document.createElement("td");
+    const btnDetails = document.createElement("button");
+    btnDetails.className = "btn_sm";
+    btnDetails.textContent = ROW_DETAILS_OPEN.has(key) ? "Details zu" : "Details";
+    btnDetails.disabled = !FILTER_SELECTED.has(key);
+    btnDetails.addEventListener("click", (ev)=>{
+      _stop(ev);
+      if(!FILTER_SELECTED.has(key)) return;
+      if(ROW_DETAILS_OPEN.has(key)){
+        ROW_DETAILS_OPEN.delete(key);
+        renderTable();
+        return;
+      }
+      ROW_DETAILS_OPEN.add(key);
+      scheduleEditNeighborsLoad(key);
+      renderTable();
+    });
+
     if(e){
       const btnUndo = document.createElement("button");
       btnUndo.className = "btn_sm";
@@ -2772,6 +2765,7 @@ const tdNew = document.createElement("td");
         removeFromEditListByKey(key);
       });
 
+      tdAct.appendChild(btnDetails);
       tdAct.appendChild(btnUndo);
       tdAct.appendChild(btnOff);
     }else{
@@ -2784,6 +2778,7 @@ const tdNew = document.createElement("td");
         EDIT_ACTIVE_KEY = key;
         scheduleEditNeighborsLoad(key);
       });
+      tdAct.appendChild(btnDetails);
       tdAct.appendChild(btnOn);
     }
 
@@ -2810,6 +2805,68 @@ const tdNew = document.createElement("td");
     });
 
     $tbl.appendChild(tr);
+
+    if(ROW_DETAILS_OPEN.has(key)){
+      const n = _neighborsCacheGet(key);
+      const hr = document.createElement('tr');
+      hr.className = 'nbr_row';
+      const td = document.createElement('td');
+      td.colSpan = tr.children.length;
+      const box = document.createElement('div');
+      box.className = 'nbr_box';
+
+      const title = document.createElement('div');
+      title.className = 'nbr_title';
+      title.textContent = 'Davor / Danach';
+      box.appendChild(title);
+
+      const meta = document.createElement('div');
+      meta.className = 'muted';
+      meta.style.marginBottom = '6px';
+      meta.textContent = n ? (n.loading ? 'Lade...' : (n.error ? String(n.error) : String(n.meta || ''))) : 'Lade...';
+      box.appendChild(meta);
+
+      const t = document.createElement('table');
+      t.className = 'nbr_tbl';
+      const thead = document.createElement('thead');
+      thead.innerHTML = '<tr><th style="width:90px;">Aktion</th><th style="width:170px;">Zeit</th><th>Wert</th></tr>';
+      t.appendChild(thead);
+      const tb = document.createElement('tbody');
+
+      const addNRow = (kind, ts, val) => {
+        const trn = document.createElement('tr');
+        if(kind === 'center') trn.classList.add('selected');
+        const tdA = document.createElement('td');
+        if(kind !== 'center'){
+          const b = document.createElement('button');
+          b.className = 'btn_sm';
+          b.textContent = 'nehmen';
+          b.disabled = !EDIT_LIST.has(key);
+          b.addEventListener('click', (ev)=>{ _stop(ev); setDraftValue(key, val); });
+          tdA.appendChild(b);
+        }
+        const tdT = document.createElement('td');
+        tdT.textContent = fmtTs(String(ts || ''));
+        const tdV = document.createElement('td');
+        tdV.textContent = (val === null || val === undefined) ? '' : fmtNum(val);
+        trn.appendChild(tdA);
+        trn.appendChild(tdT);
+        trn.appendChild(tdV);
+        tb.appendChild(trn);
+      };
+
+      if(n && n.ok && !n.loading){
+        (n.older || []).forEach(r => addNRow('older', r.time, r.value));
+        addNRow('center', row.time, row.value);
+        (n.newer || []).forEach(r => addNRow('newer', r.time, r.value));
+      }
+
+      t.appendChild(tb);
+      box.appendChild(t);
+      td.appendChild(box);
+      hr.appendChild(td);
+      $tbl.appendChild(hr);
+    }
 
     if(hist && hist.length){
       const hr = document.createElement('tr');
@@ -3143,12 +3200,19 @@ async function applyAllEdits(){
     });
 
     // Update in-memory rows
-    const byKey = new Map(dirty.map(e => [e.key, Number(e.draft_value_str)]));
-    LAST_ROWS = (LAST_ROWS || []).map(r => {
+  const byKey = new Map(dirty.map(e => [e.key, Number(e.draft_value_str)]));
+  LAST_ROWS = (LAST_ROWS || []).map(r => {
+    const k = rowKey(r);
+    if(byKey.has(k)) return { ...r, value: byKey.get(k) };
+    return r;
+  });
+  if(OUTLIER_ACTIVE){
+    OUTLIER_ROWS = (OUTLIER_ROWS || []).map(r => {
       const k = rowKey(r);
       if(byKey.has(k)) return { ...r, value: byKey.get(k) };
       return r;
     });
+  }
 
     dirty.forEach(e => {
       // Remember overwrite operation before mutating orig_*
@@ -3953,7 +4017,7 @@ try{
       if(window.InfluxBroTableCols){
         window.InfluxBroTableCols.init('#tbl');
         window.InfluxBroTableCols.init('#raw_tbl');
-        window.InfluxBroTableCols.init('#edit_neighbors_tbl');
+        // row details tables are inline
       }
     }catch(e){}
 

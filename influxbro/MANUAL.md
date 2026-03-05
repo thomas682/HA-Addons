@@ -103,6 +103,7 @@ Bearbeitung in der Punktliste:
 - Sobald mindestens ein Punkt in Bearbeitung ist, werden zusaetzliche Spalten eingeblendet: `Alt`, `Neu`, `aelter`, `juenger`, `eigener Wert`.
 - `Bearbeitung aus`: beendet den Bearbeitungsmodus fuer die Zeile. Bei ungespeicherten Aenderungen kommt eine Bestaetigung.
 - `Undo`: stellt den Wert auf den Originalwert zurueck (vor der Bearbeitung).
+- `Details` (nur bei selektierter Zeile): zeigt Davor/Danach-Werte direkt unter der Zeile.
 
 Ueberschreiben-History:
 

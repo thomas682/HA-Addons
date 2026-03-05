@@ -15,6 +15,21 @@
 
 - Tested with Home Assistant Core: unknown
 
+## 1.11.81
+
+### Features
+
+- Punktliste: neuer Button `Details` pro Zeile (aktiv bei Selektion) zeigt Davor/Danach-Liste direkt unter der Zeile.
+- UI: Auf-/Zuklappen von Bereichen wird jetzt automatisch pro Seite gespeichert und beim naechsten Oeffnen wiederhergestellt.
+
+### Bug Fixes
+
+- Punktliste: Ueberschreiben aktualisiert auch Ausreisser-Ansicht sofort.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.11.79
 
 ### Bug Fixes
