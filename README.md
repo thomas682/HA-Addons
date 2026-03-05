@@ -41,7 +41,7 @@ See `LICENSE.md`.
 
 ---
 
-# Installation über Gitea Repository
+# Installation über GitHub Repository
 
 ## 1️⃣ Repository in Home Assistant hinzufügen
 
@@ -60,62 +60,8 @@ Oben rechts:
 Dann Repository-URL eintragen:
 
 ```
-http://stirling.localdomain:7070/thomas/influx_browser_addons
+https://github.com/thomas682/HA-Addons
 ```
-
-Falls `stirling.localdomain` nicht erreichbar ist, stattdessen die IP-Adresse verwenden:
-
-```
-http://192.168.x.x:7070/thomas/influx_browser_addons
-```
-
----
-
-# 🔐 Wichtiger Hinweis zur Authentifizierung (Git Clone Fehler)
-
-Falls folgende Fehlermeldung erscheint:
-
-```
-fatal: could not read Username for 'http://...'
-```
-
-Dann verlangt Gitea eine Anmeldung. Home Assistant kann jedoch keine interaktive Login-Abfrage durchführen.
-
-## Lösung A (empfohlen im LAN): Repository öffentlich machen
-
-In Gitea:
-
-```
-Repository → Settings → Visibility → Public
-```
-
-Danach funktioniert der Zugriff ohne Login.
-
----
-
-## Lösung B: Access Token verwenden
-
-1. In Gitea:
-
-   ```
-   Settings → Applications → Generate New Token
-   ```
-
-   Scope: `repository read`
-
-2. Repository-URL in HA so eintragen:
-
-```
-http://USERNAME:TOKEN@stirling.localdomain:7070/thomas/influx_browser_addons
-```
-
-Beispiel:
-
-```
-http://thomas:ghp_xxxxxxxxx@192.168.x.x:7070/thomas/influx_browser_addons
-```
-
-⚠ Falls der Token Sonderzeichen enthält, muss er URL-encodiert werden.
 
 ---
 
@@ -127,8 +73,23 @@ Dann:
 
 * Add-on auswählen
 * Installieren
-* Konfigurieren
 * Starten
+
+---
+
+# 3️⃣ Web UI öffnen
+
+- Nach dem Start: Add-on öffnen → `Open Web UI`.
+- Ingress: InfluxBro läuft als Ingress-Panel innerhalb von Home Assistant (kein externer Port nötig).
+
+---
+
+# 4️⃣ InfluxDB konfigurieren
+
+- In der InfluxBro UI: `Einstellungen` öffnen.
+- Influx Version (v1/v2) auswählen und Zugangsdaten setzen.
+- Optional: unter "Parametrierung aus Home Assistant YAML" `influx.yaml suchen` + `yaml Daten einlesen` verwenden.
+- Danach: `Influx Verbindung testen` und dann `Speichern`.
 
 ---
 
@@ -177,11 +138,9 @@ Ohne Versionsänderung erkennt HA kein Update.
 
 ## Schritt 2 – Änderungen committen & pushen
 
-In Gitea:
-
 * Änderungen speichern
 * Commit erstellen
-* Push durchführen
+* Push nach GitHub durchführen
 
 ---
 

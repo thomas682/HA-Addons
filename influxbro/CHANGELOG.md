@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.11.74
+
+### Features
+
+- Links: Standard-Repository-URLs auf GitHub umgestellt (UI + Add-on Metadaten).
+
+### Bug Fixes
+
+- (keine)
+
+### Maintenance
+
+- Dokumentation: entfernt verbleibende Gitea-Hinweise.
+
 ## 1.11.73
 
 ### Features

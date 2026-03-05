@@ -557,7 +557,7 @@ DEFAULT_CFG = {
     "ui_tooltips_enabled": True,
 
     # Links / Info
-    "ui_repo_url": "http://192.168.2.65:7070/thomas/ha-addons",
+    "ui_repo_url": "https://github.com/thomas682/HA-Addons",
     "ui_paypal_donate_url": "https://www.paypal.com/donate/?hosted_button_id=ZWZE3WM4NBUW6",
 
     # Backups (must live under /config or /data)

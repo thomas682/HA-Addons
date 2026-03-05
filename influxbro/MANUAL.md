@@ -32,6 +32,29 @@ Links findest du die Bereiche:
 
 Im Sidebar-Kopf wird ausserdem die aktuell laufende Add-on Version angezeigt.
 
+## Installation in Home Assistant
+
+1) Add-on Repository hinzufuegen
+
+- Home Assistant: `Einstellungen -> Add-ons -> Add-on Store`
+- Oben rechts: `... -> Repositories`
+- Repository-URL eintragen: `https://github.com/thomas682/HA-Addons`
+
+2) Add-on installieren und starten
+
+- Add-on `InfluxBro` aus dem Add-on Store auswaehlen
+- `Installieren` -> `Starten`
+
+3) Web UI oeffnen
+
+- Im Add-on: `Open Web UI` (Ingress)
+
+4) InfluxDB konfigurieren
+
+- In der InfluxBro UI: `Einstellungen`
+- Optional: YAML Import (Abschnitt "Parametrierung aus Home Assistant YAML")
+- `Influx Verbindung testen` -> `Speichern`
+
 ## Dashboard (typischer Ablauf)
 
 ### 1) Messwert auswaehlen
@@ -177,4 +200,4 @@ Ausreisser:
 ## Info
 
 - Zeigt Release Notes (Changelog).
-- Zeigt einen Link zum Repository (Gitea / spaeter GitHub).
+- Zeigt einen Link zum Repository (GitHub).
