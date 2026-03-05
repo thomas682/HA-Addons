@@ -37,10 +37,31 @@ OLD_DEFAULT_BACKUP_DIR = DATA_DIR / "backups"
 BACKUP_DIR = DEFAULT_BACKUP_DIR
 
 GLOBAL_STATS_JOBS: dict[str, dict[str, Any]] = {}
-GLOBAL_STATS_LOCK = threading.Lock()
+GLOBAL_STATS_LOCK = threading.RLock()
 
 RESTORE_COPY_JOBS: dict[str, dict[str, Any]] = {}
-RESTORE_COPY_LOCK = threading.Lock()
+RESTORE_COPY_LOCK = threading.RLock()
+
+
+def _req_ip() -> str:
+    try:
+        # access_route includes proxies; keep the chain for support.
+        rt = list(getattr(request, "access_route", []) or [])
+        if rt:
+            return ", ".join(str(x) for x in rt if x)
+    except Exception:
+        pass
+    try:
+        return str(getattr(request, "remote_addr", "") or "")
+    except Exception:
+        return ""
+
+
+def _req_ua() -> str:
+    try:
+        return str(request.headers.get("User-Agent") or "")[:200]
+    except Exception:
+        return ""
 
 DEFAULT_INFLUX_YAML_PATH = "homeassistant/influx.yaml"
 LAST_YAML_ERROR = None
@@ -992,6 +1013,12 @@ def stats_page():
 def logs_page():
     cfg = load_cfg()
     return render_template("logs.html", cfg=cfg, allow_delete=writes_enabled(cfg), nav="logs")
+
+
+@app.get("/jobs")
+def jobs_page():
+    cfg = load_cfg()
+    return render_template("jobs.html", cfg=cfg, allow_delete=writes_enabled(cfg), nav="jobs")
 
 
 @app.get("/backup")
@@ -1950,6 +1977,8 @@ def api_backup_copy():
     target_entity_id = (body.get("target_entity_id") or "").strip() or None
     target_friendly_name = (body.get("target_friendly_name") or "").strip() or None
 
+    start_dt: datetime | None = None
+    stop_dt: datetime | None = None
     start_ns: int | None = None
     stop_ns: int | None = None
     if body.get("start") and body.get("stop"):
@@ -2504,12 +2533,17 @@ def api_restore_job_start():
         }), 400
 
     job_id = uuid.uuid4().hex
+    ip = _req_ip()
+    ua = _req_ua()
     job = {
         "id": job_id,
         "state": "queued",
         "message": "Start...",
         "started_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
         "started_mono": time.monotonic(),
+        "trigger_page": "restore",
+        "trigger_ip": ip,
+        "trigger_ua": ua,
         "applied": 0,
         "skipped": 0,
         "read_bytes": 0,
@@ -2520,6 +2554,29 @@ def api_restore_job_start():
         "error": None,
         "result": None,
     }
+
+    try:
+        start_s = _dt_to_rfc3339_utc(start_dt) if (body.get("start") and body.get("stop") and start_dt) else ""
+        stop_s = _dt_to_rfc3339_utc(stop_dt) if (body.get("start") and body.get("stop") and stop_dt) else ""
+    except Exception:
+        start_s = ""
+        stop_s = ""
+    try:
+        LOG.info(
+            "job_start type=restore_copy job_id=%s ip=%s ua=%s backup_id=%s target=%s/%s entity_id=%s friendly_name=%s start=%s stop=%s",
+            job_id,
+            ip,
+            ua,
+            backup_id,
+            target_measurement,
+            target_field,
+            target_entity_id or "",
+            target_friendly_name or "",
+            start_s,
+            stop_s,
+        )
+    except Exception:
+        pass
 
     # Cleanup old jobs
     with RESTORE_COPY_LOCK:
@@ -2589,7 +2646,87 @@ def api_restore_job_cancel():
         if not job:
             return jsonify({"ok": False, "error": "job not found"}), 404
         job["cancelled"] = True
+    try:
+        LOG.info("job_cancel type=restore_copy job_id=%s ip=%s ua=%s", job_id, _req_ip(), _req_ua())
+    except Exception:
+        pass
     return jsonify({"ok": True})
+
+
+@app.get("/api/jobs")
+def api_jobs():
+    """List background jobs across subsystems."""
+
+    try:
+        limit = int(request.args.get("limit", "80"))
+    except Exception:
+        limit = 80
+    if limit < 1:
+        limit = 1
+    if limit > 500:
+        limit = 500
+
+    out: list[dict[str, Any]] = []
+
+    with GLOBAL_STATS_LOCK:
+        g_items = list(GLOBAL_STATS_JOBS.items())
+    for _, j in g_items:
+        pub = _job_public(j)
+        pub["type"] = "global_stats"
+        pub["trigger_page"] = j.get("trigger_page")
+        pub["trigger_ip"] = j.get("trigger_ip")
+        pub["trigger_ua"] = j.get("trigger_ua")
+        out.append(pub)
+
+    with RESTORE_COPY_LOCK:
+        r_items = list(RESTORE_COPY_JOBS.items())
+    for _, j in r_items:
+        pub = _restore_copy_job_public(j)
+        pub["type"] = "restore_copy"
+        pub["trigger_page"] = j.get("trigger_page")
+        pub["trigger_ip"] = j.get("trigger_ip")
+        pub["trigger_ua"] = j.get("trigger_ua")
+        out.append(pub)
+
+    def _sort_key(x: dict[str, Any]) -> float:
+        try:
+            # Prefer started_mono if available via elapsed? Not exposed, so sort by started_at.
+            return datetime.fromisoformat(str(x.get("started_at") or "").replace("Z", "+00:00")).timestamp()
+        except Exception:
+            return 0.0
+
+    out.sort(key=_sort_key, reverse=True)
+    if len(out) > limit:
+        out = out[:limit]
+    return jsonify({"ok": True, "jobs": out})
+
+
+@app.post("/api/jobs/cancel")
+def api_jobs_cancel():
+    body = request.get_json(force=True) or {}
+    job_id = (body.get("job_id") or "").strip()
+    if not job_id:
+        return jsonify({"ok": False, "error": "job_id required"}), 400
+
+    with GLOBAL_STATS_LOCK:
+        if job_id in GLOBAL_STATS_JOBS:
+            GLOBAL_STATS_JOBS[job_id]["cancelled"] = True
+            try:
+                LOG.info("job_cancel type=global_stats job_id=%s ip=%s ua=%s", job_id, _req_ip(), _req_ua())
+            except Exception:
+                pass
+            return jsonify({"ok": True})
+
+    with RESTORE_COPY_LOCK:
+        if job_id in RESTORE_COPY_JOBS:
+            RESTORE_COPY_JOBS[job_id]["cancelled"] = True
+            try:
+                LOG.info("job_cancel type=restore_copy job_id=%s ip=%s ua=%s", job_id, _req_ip(), _req_ua())
+            except Exception:
+                pass
+            return jsonify({"ok": True})
+
+    return jsonify({"ok": False, "error": "job not found"}), 404
 
 @app.post("/api/config")
 def api_set_config():
@@ -4349,21 +4486,22 @@ from(bucket: "{cfg_local["bucket"]}")
                     eid = str(srow.get("entity_id") or "")
                     fn = str(srow.get("friendly_name") or "")
 
+                    display = fn or eid or (m + "/" + f)
                     with GLOBAL_STATS_LOCK:
                         if job_id in GLOBAL_STATS_JOBS:
-                            GLOBAL_STATS_JOBS[job_id]["current"] = fn or eid or (m + "/" + f)
+                            GLOBAL_STATS_JOBS[job_id]["current"] = display
 
-                        base_last = {"newest_time": srow.get("newest_time"), "last_value": srow.get("last_value")}
-                        if want_details:
-                            pos = len(rows) + 1
-                            tot_s = str(total_series) if isinstance(total_series, int) else "?"
-                            set_state("query", f"Details {pos}/{tot_s}: {fn or eid or (m + '/' + f)}")
-                            det = _series_stats(qapi, cfg_local["bucket"], m, f, eid, fn)
-                            cnum = int(det.get("count") or 0)
-                            scanned_points += max(0, cnum)
-                            add_row(m, f, eid, fn, base_last if want_last else None, det)
-                        else:
-                            add_row(m, f, eid, fn, base_last if want_last else None, None)
+                    base_last = {"newest_time": srow.get("newest_time"), "last_value": srow.get("last_value")}
+                    if want_details:
+                        pos = len(rows) + 1
+                        tot_s = str(total_series) if isinstance(total_series, int) else "?"
+                        set_state("query", f"Details {pos}/{tot_s}: {display}")
+                        det = _series_stats(qapi, cfg_local["bucket"], m, f, eid, fn)
+                        cnum = int(det.get("count") or 0)
+                        scanned_points += max(0, cnum)
+                        add_row(m, f, eid, fn, base_last if want_last else None, det)
+                    else:
+                        add_row(m, f, eid, fn, base_last if want_last else None, None)
 
                     with GLOBAL_STATS_LOCK:
                         if job_id in GLOBAL_STATS_JOBS:
@@ -4467,12 +4605,17 @@ def api_global_stats_job_start():
         page_limit = 200
 
     job_id = uuid.uuid4().hex
+    ip = _req_ip()
+    ua = _req_ua()
     job = {
         "id": job_id,
         "state": "queued",
         "message": "Start...",
         "started_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
         "started_mono": time.monotonic(),
+        "trigger_page": "stats",
+        "trigger_ip": ip,
+        "trigger_ua": ua,
         "total_points": None,
         "scanned_points": 0,
         "total_series": None,
@@ -4489,6 +4632,23 @@ def api_global_stats_job_start():
         "friendly_name": friendly_name_filter,
         "columns": columns or [],
     }
+
+    try:
+        LOG.info(
+            "job_start type=global_stats job_id=%s ip=%s ua=%s start=%s stop=%s field_filter=%s measurement=%s entity_id=%s friendly_name=%s cols=%s",
+            job_id,
+            ip,
+            ua,
+            _dt_to_rfc3339_utc(start_dt),
+            _dt_to_rfc3339_utc(stop_dt),
+            ff or "",
+            measurement_filter or "",
+            entity_id_filter or "",
+            friendly_name_filter or "",
+            ",".join(columns or []),
+        )
+    except Exception:
+        pass
 
     # Cleanup old jobs
     with GLOBAL_STATS_LOCK:
@@ -4645,6 +4805,10 @@ def api_global_stats_job_cancel():
         if not job:
             return jsonify({"ok": False, "error": "job not found"}), 404
         job["cancelled"] = True
+    try:
+        LOG.info("job_cancel type=global_stats job_id=%s ip=%s ua=%s", job_id, _req_ip(), _req_ua())
+    except Exception:
+        pass
     return jsonify({"ok": True})
 
 

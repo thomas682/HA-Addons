@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>InfluxBro – Jobs</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; }
+    .shell { display:grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
+    @media (max-width: 980px){ .shell { grid-template-columns: 1fr; } }
+    .sidebar { padding: 14px; border-right: 1px solid #eee; }
+    @media (max-width: 980px){ .sidebar { border-right: 0; border-bottom: 1px solid #eee; } }
+    .nav_item { display:flex; align-items:center; gap: 10px; padding: 10px 10px; border-radius: 12px; text-decoration:none; color: inherit; }
+    .nav_item:hover { background: #f6f6f6; }
+    .nav_item.active { background: #0b0b0c; color: #fff; }
+    .ico { width: 22px; height: 22px; display:inline-flex; align-items:center; justify-content:center; font-weight: 800; }
+
+    .content { padding: 16px; }
+    h2 { margin: 0; }
+    .muted { opacity: 0.7; font-size: 12px; }
+    .row { display:flex; gap: 10px; flex-wrap:wrap; align-items:end; margin-top: 10px; justify-content:flex-start; }
+    input, select, button { padding: 10px 12px; height: 40px; box-sizing: border-box; }
+    button { cursor:pointer; }
+    .btn_xs { padding: 6px 10px; height: 30px; font-size: 12px; }
+    .card { border: 1px solid #ddd; border-radius: 12px; padding: 12px; margin-top: 12px; }
+    .err { color: #b00020; margin-top: 8px; white-space: pre-wrap; }
+    .status { border: 1px dashed #ddd; border-radius: 12px; padding: 10px 12px; margin-top: 10px; background: #fafafa; font-size: 12px; white-space: pre-wrap; }
+
+    table { border-collapse: collapse; width: 100%; margin-top: 10px; table-layout: fixed; }
+    th, td { border: 1px solid #eee; padding: 6px; font-size: 11px; line-height: 1.25; vertical-align: top; }
+    th { background: #f6f6f6; text-align:left; position: sticky; top: 0; z-index: 1; }
+    .table_box { max-height: 72vh; overflow:auto; border: 1px solid #eee; border-radius: 12px; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    .pill { display:inline-block; padding: 2px 8px; border-radius: 999px; border: 1px solid #ddd; font-size: 11px; background: #fff; }
+    .pill.ok { border-color: #b6e2c0; background: #eefaf1; }
+    .pill.err { border-color: #f2b0b0; background: #fff0f0; color: #b00020; }
+    .pill.run { border-color: #c7d7ff; background: #f0f5ff; }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    {% include "_nav.html" %}
+    <main class="content" data-ui="jobs.page" title="jobs.page">
+      <h2>Jobs</h2>
+      <div class="muted">Background-Jobs (Statistik, Restore/Copy). Hier kannst du laufende Jobs sehen und abbrechen.</div>
+
+      <div class="card">
+        <div class="row" data-ui="jobs.controls" title="jobs.controls">
+          <div>
+            <label class="muted" style="display:block; font-size: 12px;">Auto-Refresh</label>
+            <select id="auto" data-ui="jobs.auto" title="jobs.auto">
+              <option value="on" selected>an (2s)</option>
+              <option value="off">aus</option>
+            </select>
+          </div>
+          <div>
+            <label class="muted" style="display:block; font-size: 12px;">Typ</label>
+            <select id="type" data-ui="jobs.type" title="jobs.type">
+              <option value="">alle</option>
+              <option value="global_stats">global_stats</option>
+              <option value="restore_copy">restore_copy</option>
+            </select>
+          </div>
+          <div style="flex:1; min-width: 260px;">
+            <label class="muted" style="display:block; font-size: 12px;">Suche</label>
+            <input id="q" placeholder="job_id/state/message..." data-ui="jobs.search" title="jobs.search" />
+          </div>
+          <div>
+            <label class="muted" style="display:block; font-size: 12px;">&nbsp;</label>
+            <button id="refresh" data-ui="jobs.refresh" title="jobs.refresh">Aktualisieren</button>
+          </div>
+        </div>
+
+        <div class="status" id="info" data-ui="jobs.info" title="jobs.info"></div>
+        <div id="err" class="err"></div>
+
+        <div class="table_box">
+          <table id="tbl" data-ui="jobs.table" title="jobs.table">
+            <thead>
+              <tr>
+                <th style="width: 160px;">started</th>
+                <th style="width: 90px;">elapsed</th>
+                <th style="width: 120px;">type</th>
+                <th style="width: 110px;">state</th>
+                <th style="width: 70px;">%</th>
+                <th style="width: 220px;">message</th>
+                <th style="width: 240px;">current</th>
+                <th style="width: 260px;">error</th>
+                <th style="width: 180px;">actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <script>
+      const $auto = document.getElementById('auto');
+      const $type = document.getElementById('type');
+      const $q = document.getElementById('q');
+      const $refresh = document.getElementById('refresh');
+      const $info = document.getElementById('info');
+      const $err = document.getElementById('err');
+      const $tblBody = document.querySelector('#tbl tbody');
+
+      let POLL = null;
+
+      function err(s){
+        const msg = s || '';
+        $err.textContent = msg;
+        if(msg){
+          try{
+            if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error(msg);
+            else alert(msg);
+          }catch(e){}
+        }
+      }
+
+      function fmtTs(iso){
+        if(!iso) return '';
+        const d = new Date(String(iso));
+        if(!isFinite(d.getTime())) return String(iso);
+        const pad = (n) => String(n).padStart(2,'0');
+        return pad(d.getDate()) + '.' + pad(d.getMonth()+1) + '.' + d.getFullYear() + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+      }
+
+      function pillForState(state){
+        const s = String(state||'');
+        if(s === 'done') return 'pill ok';
+        if(s === 'error') return 'pill err';
+        if(s === 'cancelled') return 'pill';
+        return 'pill run';
+      }
+
+      async function api(url, opts){
+        let r;
+        try{
+          r = await fetch(url, opts);
+        }catch(e){
+          try{ window.InfluxBroClientLog && window.InfluxBroClientLog.fetchError && window.InfluxBroClientLog.fetchError(url, opts, e); }catch(x){}
+          throw new Error('Failed to fetch');
+        }
+        const j = await r.json().catch(()=>({ok:false,error:'Invalid JSON'}));
+        if(!r.ok || !j.ok) throw new Error(j.error || ('HTTP ' + r.status));
+        return j;
+      }
+
+      function isActive(j){
+        const st = String(j && j.state ? j.state : '');
+        return st && !['done','error','cancelled'].includes(st);
+      }
+
+      function wantsAuto(){ return ($auto.value || 'on') === 'on'; }
+
+      function filterJobs(jobs){
+        const t = String($type.value || '').trim();
+        const q = String($q.value || '').trim().toLowerCase();
+        return (jobs||[]).filter(j => {
+          if(t && String(j.type||'') !== t) return false;
+          if(!q) return true;
+          const blob = [j.id, j.type, j.state, j.message, j.current, j.error].map(x => String(x||'')).join(' ').toLowerCase();
+          return blob.includes(q);
+        });
+      }
+
+      function render(jobs){
+        $tblBody.textContent = '';
+        const rows = filterJobs(jobs);
+        for(const j of rows){
+          const tr = document.createElement('tr');
+
+          const pct = (typeof j.percent === 'number' && isFinite(j.percent)) ? String(Math.round(j.percent)) : '';
+          const cur = String(j.current || '');
+          const msg = String(j.message || '');
+          const er = String(j.error || '');
+
+          tr.innerHTML = [
+            `<td>${fmtTs(j.started_at)}</td>`,
+            `<td class="mono">${String(j.elapsed||'')}</td>`,
+            `<td class="mono">${String(j.type||'')}</td>`,
+            `<td><span class="${pillForState(j.state)}">${String(j.state||'')}</span></td>`,
+            `<td class="mono" style="text-align:right;">${pct}</td>`,
+            `<td>${msg}</td>`,
+            `<td title="${cur.replace(/\"/g,'&quot;')}">${cur}</td>`,
+            `<td title="${er.replace(/\"/g,'&quot;')}">${er}</td>`,
+            `<td></td>`,
+          ].join('');
+
+          const tdAct = tr.lastChild;
+          const id = String(j.id || '');
+
+          const bCopy = document.createElement('button');
+          bCopy.className = 'btn_xs';
+          bCopy.textContent = 'Copy ID';
+          bCopy.onclick = async ()=>{
+            try{ await navigator.clipboard.writeText(id); }catch(e){}
+          };
+          tdAct.appendChild(bCopy);
+
+          if(String(j.type||'') === 'global_stats'){
+            const bOpen = document.createElement('button');
+            bOpen.className = 'btn_xs';
+            bOpen.style.marginLeft = '6px';
+            bOpen.textContent = 'Open Statistik';
+            bOpen.onclick = ()=>{
+              try{ localStorage.setItem('influxbro_global_stats_job_id_v1', id); }catch(e){}
+              location.href = './stats';
+            };
+            tdAct.appendChild(bOpen);
+          }
+
+          const canCancel = isActive(j) && id;
+          if(canCancel){
+            const bCancel = document.createElement('button');
+            bCancel.className = 'btn_xs';
+            bCancel.style.marginLeft = '6px';
+            bCancel.textContent = 'Cancel';
+            bCancel.onclick = async ()=>{
+              try{
+                if(!confirm('Job abbrechen?\n\n' + id)) return;
+                await api('./api/jobs/cancel', {
+                  method: 'POST',
+                  headers: {'Content-Type':'application/json'},
+                  body: JSON.stringify({job_id: id}),
+                });
+                await load();
+              }catch(e){
+                err(e && e.message ? e.message : String(e));
+              }
+            };
+            tdAct.appendChild(bCancel);
+          }
+
+          $tblBody.appendChild(tr);
+        }
+        $info.textContent = `Jobs: ${rows.length}`;
+      }
+
+      async function load(){
+        err('');
+        const j = await api('./api/jobs?limit=200', {});
+        render(j.jobs || []);
+        const anyActive = (j.jobs || []).some(isActive);
+        if(wantsAuto() && anyActive){
+          if(!POLL) POLL = setInterval(()=>{ load().catch(()=>{}); }, 2000);
+        }else{
+          if(POLL) clearInterval(POLL);
+          POLL = null;
+        }
+      }
+
+      $refresh.onclick = ()=>{ load().catch(e => err(e && e.message ? e.message : String(e))); };
+      $auto.onchange = ()=>{ load().catch(()=>{}); };
+      $type.onchange = ()=>{ load().catch(()=>{}); };
+      $q.oninput = ()=>{ load().catch(()=>{}); };
+
+      load().catch(e => err(e && e.message ? e.message : String(e)));
+      </script>
+
+      {% include "_tooltips.html" %}
+    </main>
+  </div>
+</body>
+</html>

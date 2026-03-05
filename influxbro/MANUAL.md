@@ -25,6 +25,7 @@ Links findest du die Bereiche:
 - Backup: Backups fuer einen einzelnen Messwert erstellen und verwalten.
 - Restore: Ein vorhandenes Backup fuer einen Messwert wiederherstellen.
 - Logs: Add-on Logs von InfluxBro ansehen (Menuepunkt ist unter Restore einsortiert).
+- Jobs: Laufende Background-Jobs ansehen (Statistik/Restore) und abbrechen.
 - Info: Release Notes + Repository-Link.
 - Handbuch: Diese Dokumentation.
 - Einstellungen: Influx-Verbindung und UI-Parameter konfigurieren.
@@ -125,7 +126,13 @@ Wichtig: Die Aenderungen bleiben markiert, bis du sie wirklich uebernimmst.
   - Follow/Refresh fuer Live-Ansicht
   - Suche/Filter um Fehler schneller zu finden
   - Copy/Download fuer Support oder Analyse
-  - Export: erstellt ein Debug-Bundle (inkl. Client-Fehler wie "Failed to fetch").
+- Export: erstellt ein Debug-Bundle (inkl. Client-Fehler wie "Failed to fetch").
+
+## Jobs
+
+- Zeigt laufende Background-Jobs (z.B. Statistik laden, Restore/Copy).
+- Button `Cancel`: bricht den Job ab (bestaetigen).
+- Tipp: `Open Statistik` setzt die Job-ID fuer die Statistik-Seite und wechselt dorthin.
 
 ## Backup (ein Messwert, alle Werte)
 

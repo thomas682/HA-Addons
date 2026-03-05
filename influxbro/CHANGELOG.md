@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.11.71
+
+### Features
+
+- UI: neue Seite "Jobs" (laufende Background-Jobs anzeigen und abbrechen).
+
+### Bug Fixes
+
+- Statistik: Jobs haengen nicht mehr durch Lock-Deadlocks (Start/Status bleiben nicht mehr auf pending).
+
+### Maintenance
+
+- Logging: job_start/job_cancel werden im Logfile nachvollziehbar protokolliert (inkl. IP/UA).
+
 ## 1.11.70
 
 ### Features
