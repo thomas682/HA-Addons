@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.11.83
+
+### Features
+
+- Backup: Erstellung laeuft als Background-Job (Fortschritt + Abbruch; partielle Dateien werden bei Abbruch geloescht).
+- Status: Backup/Restore Aktionen werden im Sidebar-Statuspanel angezeigt.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.11.82
 
 ### Features

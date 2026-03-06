@@ -666,47 +666,54 @@
       }
 
        async function runCopy(){
-         err(""); ok("");
-         const id = String(SELECTED_ID || "").trim();
-         if(!id) throw new Error('Bitte ein Backup auswaehlen.');
-         RUN_CTX.backup_id = id;
-         startRunUi('Ziel wird aufgeloest...');
-         try{
-           await resolveTarget();
-           if(!LAST_TARGET) throw new Error('Ziel nicht aufgeloest.');
-           RUN_CTX.target = String(LAST_TARGET.measurement || '') + '/' + String(LAST_TARGET.field || '');
-           setRunStatusText('Ziel aufgeloest.');
-         }catch(e){
-           stopRunUi(false, (e && e.message) ? e.message : String(e));
-           throw e;
-         }
+          err(""); ok("");
+          const statusKey = 'restore.run';
+          const id = String(SELECTED_ID || "").trim();
+          if(!id) throw new Error('Bitte ein Backup auswaehlen.');
+          RUN_CTX.backup_id = id;
+          startRunUi('Ziel wird aufgeloest...');
+          try{ window.InfluxBroStatus && window.InfluxBroStatus.start && window.InfluxBroStatus.start(statusKey, 'Ziel wird aufgeloest...'); }catch(e){}
+          try{
+            await resolveTarget();
+            if(!LAST_TARGET) throw new Error('Ziel nicht aufgeloest.');
+            RUN_CTX.target = String(LAST_TARGET.measurement || '') + '/' + String(LAST_TARGET.field || '');
+            setRunStatusText('Ziel aufgeloest.');
+            try{ window.InfluxBroStatus && window.InfluxBroStatus.progress && window.InfluxBroStatus.progress(statusKey, 'Ziel aufgeloest.'); }catch(e){}
+          }catch(e){
+            stopRunUi(false, (e && e.message) ? e.message : String(e));
+            try{ window.InfluxBroStatus && window.InfluxBroStatus.fail && window.InfluxBroStatus.fail(statusKey, String(e && e.message ? e.message : e)); }catch(ex){}
+            throw e;
+          }
          const tf = timeFilter();
          if(tf){
            RUN_CTX.range = fmtTs(tf.start) + ' bis ' + fmtTs(tf.stop);
          }
          const msg = `Restore wirklich ueberschreiben? Datenverlust moeglich.\n\nBackup: ${id}\nZiel: ${LAST_TARGET.measurement}/${LAST_TARGET.field}`;
-         if(!confirm(msg)){
-           stopRunUi(true, 'Abgebrochen.');
-           return;
-         }
-         setRunStatusText('Restore wird ausgefuehrt...');
-         const payload = {
-           id,
-           confirm: true,
-           target_measurement: LAST_TARGET.measurement,
-           target_field: LAST_TARGET.field,
-           target_entity_id: LAST_TARGET.entity_id,
-           target_friendly_name: LAST_TARGET.friendly_name,
-         };
+          if(!confirm(msg)){
+            stopRunUi(true, 'Abgebrochen.');
+            try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done(statusKey, 'Abgebrochen.'); }catch(e){}
+            return;
+          }
+          setRunStatusText('Restore wird ausgefuehrt...');
+          try{ window.InfluxBroStatus && window.InfluxBroStatus.progress && window.InfluxBroStatus.progress(statusKey, 'Restore wird ausgefuehrt...'); }catch(e){}
+          const payload = {
+            id,
+            confirm: true,
+            target_measurement: LAST_TARGET.measurement,
+            target_field: LAST_TARGET.field,
+            target_entity_id: LAST_TARGET.entity_id,
+            target_friendly_name: LAST_TARGET.friendly_name,
+          };
          if(tf){ payload.start = tf.start; payload.stop = tf.stop; }
-         try{
-           const started = await api('./api/restore_job/start', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
-           RUN_JOB_ID = String(started.job_id || '');
-           if(!RUN_JOB_ID) throw new Error('restore job_id missing');
-         }catch(e){
-           stopRunUi(false, (e && e.message) ? e.message : String(e));
-           throw e;
-         }
+          try{
+            const started = await api('./api/restore_job/start', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+            RUN_JOB_ID = String(started.job_id || '');
+            if(!RUN_JOB_ID) throw new Error('restore job_id missing');
+          }catch(e){
+            stopRunUi(false, (e && e.message) ? e.message : String(e));
+            try{ window.InfluxBroStatus && window.InfluxBroStatus.fail && window.InfluxBroStatus.fail(statusKey, String(e && e.message ? e.message : e)); }catch(ex){}
+            throw e;
+          }
 
          async function pollOnce(){
            if(!RUN_JOB_ID) return null;
@@ -735,21 +742,27 @@
              RUN_CTX.write_time = fmtTsMsFromEpochMs(tms);
            }catch(e){}
 
-           setRunStatusText(String(st.message || 'Restore laeuft...'));
+            setRunStatusText(String(st.message || 'Restore laeuft...'));
+            try{
+              const pct = RUN_CTX && RUN_CTX.pct ? (' | ' + RUN_CTX.pct) : '';
+              window.InfluxBroStatus && window.InfluxBroStatus.progress && window.InfluxBroStatus.progress(statusKey, String(st.message || 'Restore laeuft...') + pct);
+            }catch(e){}
 
            const state = String(st.state || '');
-           if(state === 'done') break;
-           if(state === 'error'){
-             const em = String(st.error || st.message || 'Fehler');
-             stopRunUi(false, em);
-             throw new Error(em);
-           }
-           if(state === 'cancelled'){
-             stopRunUi(true, 'Abgebrochen.');
-             return;
-           }
-           await new Promise(r=>setTimeout(r, 450));
-         }
+            if(state === 'done') break;
+            if(state === 'error'){
+              const em = String(st.error || st.message || 'Fehler');
+              stopRunUi(false, em);
+              try{ window.InfluxBroStatus && window.InfluxBroStatus.fail && window.InfluxBroStatus.fail(statusKey, 'Restore Fehler: ' + em); }catch(e){}
+              throw new Error(em);
+            }
+            if(state === 'cancelled'){
+              stopRunUi(true, 'Abgebrochen.');
+              try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done(statusKey, 'Abgebrochen.'); }catch(e){}
+              return;
+            }
+            await new Promise(r=>setTimeout(r, 450));
+          }
 
          // Fetch final result (preview + counts)
          let res;
@@ -766,8 +779,9 @@
 
          const applied = Number(res.applied || 0);
          const skipped = Number(res.skipped || 0);
-         ok(`Restore fertig. (applied=${applied}, skipped=${skipped})`);
-         setRunStatusText(`Fertig (applied=${applied}, skipped=${skipped}).`);
+          ok(`Restore fertig. (applied=${applied}, skipped=${skipped})`);
+          setRunStatusText(`Fertig (applied=${applied}, skipped=${skipped}).`);
+          try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done(statusKey, `Restore fertig (applied=${applied}, skipped=${skipped}).`); }catch(e){}
 
          try{
            if($runDetails){
@@ -793,8 +807,8 @@
            }
          }catch(e){}
 
-         stopRunUi(true);
-       }
+          stopRunUi(true);
+        }
 
       async function copySourceToTarget(){
         try{

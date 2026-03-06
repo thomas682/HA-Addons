@@ -182,6 +182,7 @@ Wichtig: Die Aenderungen bleiben markiert, bis du sie wirklich uebernimmst.
 ## Backup (ein Messwert, alle Werte)
 
 - Backups werden fuer den aktuell ausgewaehlten Messwert erstellt und enthalten alle Werte dieses Messwertes.
+- Die Erstellung laeuft als Background-Job: du siehst Laufzeit und Groesse waehrend des Exports, und kannst per `Abbruch` stoppen.
 - In der Backup-Liste siehst du:
   - Name des Messwertes
   - Zeitpunkt des Backups
@@ -193,7 +194,9 @@ Wichtig: Die Aenderungen bleiben markiert, bis du sie wirklich uebernimmst.
 
 - Waehle ein Backup aus der Liste fuer den Messwert.
 - Restore schreibt die Werte zurueck, ohne doppelte Messpunkte zu erzeugen (idempotent, weil gleiche Zeitpunkte/Tags/Field ueberschrieben werden).
-- Restore ist ebenfalls an `allow_delete` + `delete_confirm_phrase` gekoppelt.
+- Restore ist ebenfalls an `Schreiben/Loeschen erlauben` (Einstellungen) + `delete_confirm_phrase` gekoppelt.
+
+Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore/Abfragen) und die letzte Meldung anzeigt.
 
 ## Einstellungen
 

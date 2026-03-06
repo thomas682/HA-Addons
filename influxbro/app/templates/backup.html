@@ -314,12 +314,12 @@
         return true;
       }
 
-      function stopCreateUi(okDone){
+      function stopCreateUi(okDone, finalTxt){
         try{ if(CREATE_TIMER) clearInterval(CREATE_TIMER); }catch(e){}
         CREATE_TIMER = null;
         renderCreateTime();
         try{ if($createSpinner) $createSpinner.style.display = 'none'; }catch(e){}
-        setCreateStatus(okDone ? 'Fertig.' : 'Fehler.');
+        setCreateStatus(finalTxt ? String(finalTxt) : (okDone ? 'Fertig.' : 'Fehler.'));
         try{ if($createFull) $createFull.disabled = false; }catch(e){}
         try{ if($createRange) $createRange.disabled = false; }catch(e){}
         try{ if($createRangeSel) $createRangeSel.disabled = false; }catch(e){}
@@ -739,19 +739,64 @@
       async function createBackup(){
         err(""); ok("");
         startCreateUi('Fullbackup laeuft...');
+        const statusKey = 'backup.create';
         try{
           await resolveTarget();
-          const j = await api("./api/backup_create", {
+          const payload = { ...LAST_TARGET, kind: 'full' };
+          const started = await api("./api/backup_job/start", {
             method:"POST",
             headers:{"Content-Type":"application/json"},
-            body: JSON.stringify(LAST_TARGET)
+            body: JSON.stringify(payload)
           });
-          setBackupQuery(j.query || "");
-          ok(j.message || "Backup erstellt.");
-          await loadList();
-          stopCreateUi(true);
+          CREATE_JOB_ID = String(started.job_id || '');
+          if(!CREATE_JOB_ID) throw new Error('backup job_id missing');
+
+          try{ window.InfluxBroStatus && window.InfluxBroStatus.start && window.InfluxBroStatus.start(statusKey, 'Backup laeuft...'); }catch(e){}
+
+          while(true){
+            const j = await api("./api/backup_job/status?job_id=" + encodeURIComponent(CREATE_JOB_ID));
+            const st = j.status || {};
+            try{
+              CREATE_BYTES_HUMAN = String(st.written_human || '');
+              renderCreateTime();
+            }catch(e){}
+            try{ setBackupQuery(st.query || ''); }catch(e){}
+
+            const msg = String(st.message || 'Backup laeuft...');
+            const pc = Number(st.point_count || 0);
+            const sz = String(st.written_human || '');
+            const detail = [msg, (pc ? ('Punkte: ' + pc) : ''), (sz ? ('Groesse: ' + sz) : '')].filter(Boolean).join(' | ');
+            setCreateStatus(detail || msg);
+            try{ window.InfluxBroStatus && window.InfluxBroStatus.progress && window.InfluxBroStatus.progress(statusKey, detail || msg); }catch(e){}
+
+            const state = String(st.state || '');
+            if(state === 'done'){
+              ok('Backup erstellt: ' + String(st.backup_id || started.backup_id || ''));
+              await loadList();
+              stopCreateUi(true, 'Fertig.');
+              try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done(statusKey, 'Backup fertig.'); }catch(e){}
+              return;
+            }
+            if(state === 'cancelled'){
+              ok('Abgebrochen.');
+              await loadList().catch(()=>{});
+              stopCreateUi(true, 'Abgebrochen.');
+              try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done(statusKey, 'Backup abgebrochen.'); }catch(e){}
+              return;
+            }
+            if(state === 'error'){
+              const em = String(st.error || st.message || 'Fehler');
+              err(em);
+              stopCreateUi(false, 'Fehler.');
+              try{ window.InfluxBroStatus && window.InfluxBroStatus.fail && window.InfluxBroStatus.fail(statusKey, 'Backup Fehler: ' + em); }catch(e){}
+              throw new Error(em);
+            }
+
+            await new Promise(r=>setTimeout(r, 450));
+          }
         }catch(e){
-          stopCreateUi(false);
+          stopCreateUi(false, 'Fehler.');
+          try{ window.InfluxBroStatus && window.InfluxBroStatus.fail && window.InfluxBroStatus.fail(statusKey, String(e && e.message ? e.message : e)); }catch(ex){}
           throw e;
         }
       }
@@ -759,21 +804,62 @@
       async function createRangeBackup(){
         err(""); ok("");
         startCreateUi('Zeitbereich Backup (Zoom) laeuft...');
+        const statusKey = 'backup.create';
         try{
           await resolveTarget();
           const win = getGraphWindowFromState();
           if(!win) throw new Error("Kein Graph-Zeitraum vorhanden. Bitte im Dashboard Daten laden und ggf. zoomen.");
-          const j = await api("./api/backup_create_range", {
+          const payload = { ...LAST_TARGET, kind: 'range', start: win.start, stop: win.stop };
+          const started = await api("./api/backup_job/start", {
             method:"POST",
             headers:{"Content-Type":"application/json"},
-            body: JSON.stringify({ ...LAST_TARGET, ...win })
+            body: JSON.stringify(payload)
           });
-          setBackupQuery(j.query || "");
-          ok(j.message || "Zeitbereich Backup erstellt.");
-          await loadList();
-          stopCreateUi(true);
+          CREATE_JOB_ID = String(started.job_id || '');
+          if(!CREATE_JOB_ID) throw new Error('backup job_id missing');
+          try{ window.InfluxBroStatus && window.InfluxBroStatus.start && window.InfluxBroStatus.start(statusKey, 'Backup laeuft...'); }catch(e){}
+
+          while(true){
+            const j = await api("./api/backup_job/status?job_id=" + encodeURIComponent(CREATE_JOB_ID));
+            const st = j.status || {};
+            try{
+              CREATE_BYTES_HUMAN = String(st.written_human || '');
+              renderCreateTime();
+            }catch(e){}
+            try{ setBackupQuery(st.query || ''); }catch(e){}
+            const msg = String(st.message || 'Backup laeuft...');
+            const pc = Number(st.point_count || 0);
+            const sz = String(st.written_human || '');
+            const detail = [msg, (pc ? ('Punkte: ' + pc) : ''), (sz ? ('Groesse: ' + sz) : '')].filter(Boolean).join(' | ');
+            setCreateStatus(detail || msg);
+            try{ window.InfluxBroStatus && window.InfluxBroStatus.progress && window.InfluxBroStatus.progress(statusKey, detail || msg); }catch(e){}
+            const state = String(st.state || '');
+            if(state === 'done'){
+              ok('Backup erstellt: ' + String(st.backup_id || started.backup_id || ''));
+              await loadList();
+              stopCreateUi(true, 'Fertig.');
+              try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done(statusKey, 'Backup fertig.'); }catch(e){}
+              return;
+            }
+            if(state === 'cancelled'){
+              ok('Abgebrochen.');
+              await loadList().catch(()=>{});
+              stopCreateUi(true, 'Abgebrochen.');
+              try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done(statusKey, 'Backup abgebrochen.'); }catch(e){}
+              return;
+            }
+            if(state === 'error'){
+              const em = String(st.error || st.message || 'Fehler');
+              err(em);
+              stopCreateUi(false, 'Fehler.');
+              try{ window.InfluxBroStatus && window.InfluxBroStatus.fail && window.InfluxBroStatus.fail(statusKey, 'Backup Fehler: ' + em); }catch(e){}
+              throw new Error(em);
+            }
+            await new Promise(r=>setTimeout(r, 450));
+          }
         }catch(e){
-          stopCreateUi(false);
+          stopCreateUi(false, 'Fehler.');
+          try{ window.InfluxBroStatus && window.InfluxBroStatus.fail && window.InfluxBroStatus.fail(statusKey, String(e && e.message ? e.message : e)); }catch(ex){}
           throw e;
         }
       }
@@ -781,21 +867,78 @@
       async function createRangeBackupSel(){
         err(""); ok("");
         startCreateUi('Zeitbereich Backup (Auswahl) laeuft...');
+        const statusKey = 'backup.create';
         try{
           await resolveTarget();
           const tf = timeFilter();
-          const j = await api("./api/backup_create_range", {
+          const payload = { ...LAST_TARGET, kind: 'range', start: tf.start, stop: tf.stop };
+          const started = await api("./api/backup_job/start", {
             method:"POST",
             headers:{"Content-Type":"application/json"},
-            body: JSON.stringify({ ...LAST_TARGET, start: tf.start, stop: tf.stop })
+            body: JSON.stringify(payload)
           });
-          setBackupQuery(j.query || "");
-          ok(j.message || "Zeitbereich Backup erstellt.");
-          await loadList();
-          stopCreateUi(true);
+          CREATE_JOB_ID = String(started.job_id || '');
+          if(!CREATE_JOB_ID) throw new Error('backup job_id missing');
+          try{ window.InfluxBroStatus && window.InfluxBroStatus.start && window.InfluxBroStatus.start(statusKey, 'Backup laeuft...'); }catch(e){}
+
+          while(true){
+            const j = await api("./api/backup_job/status?job_id=" + encodeURIComponent(CREATE_JOB_ID));
+            const st = j.status || {};
+            try{
+              CREATE_BYTES_HUMAN = String(st.written_human || '');
+              renderCreateTime();
+            }catch(e){}
+            try{ setBackupQuery(st.query || ''); }catch(e){}
+            const msg = String(st.message || 'Backup laeuft...');
+            const pc = Number(st.point_count || 0);
+            const sz = String(st.written_human || '');
+            const detail = [msg, (pc ? ('Punkte: ' + pc) : ''), (sz ? ('Groesse: ' + sz) : '')].filter(Boolean).join(' | ');
+            setCreateStatus(detail || msg);
+            try{ window.InfluxBroStatus && window.InfluxBroStatus.progress && window.InfluxBroStatus.progress(statusKey, detail || msg); }catch(e){}
+            const state = String(st.state || '');
+            if(state === 'done'){
+              ok('Backup erstellt: ' + String(st.backup_id || started.backup_id || ''));
+              await loadList();
+              stopCreateUi(true, 'Fertig.');
+              try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done(statusKey, 'Backup fertig.'); }catch(e){}
+              return;
+            }
+            if(state === 'cancelled'){
+              ok('Abgebrochen.');
+              await loadList().catch(()=>{});
+              stopCreateUi(true, 'Abgebrochen.');
+              try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done(statusKey, 'Backup abgebrochen.'); }catch(e){}
+              return;
+            }
+            if(state === 'error'){
+              const em = String(st.error || st.message || 'Fehler');
+              err(em);
+              stopCreateUi(false, 'Fehler.');
+              try{ window.InfluxBroStatus && window.InfluxBroStatus.fail && window.InfluxBroStatus.fail(statusKey, 'Backup Fehler: ' + em); }catch(e){}
+              throw new Error(em);
+            }
+            await new Promise(r=>setTimeout(r, 450));
+          }
         }catch(e){
-          stopCreateUi(false);
+          stopCreateUi(false, 'Fehler.');
+          try{ window.InfluxBroStatus && window.InfluxBroStatus.fail && window.InfluxBroStatus.fail(statusKey, String(e && e.message ? e.message : e)); }catch(ex){}
           throw e;
+        }
+      }
+
+      async function cancelCreate(){
+        try{
+          if(!CREATE_JOB_ID) return;
+          err("");
+          setCreateStatus('Abbruch angefordert...');
+          try{ window.InfluxBroStatus && window.InfluxBroStatus.progress && window.InfluxBroStatus.progress('backup.create', 'Abbruch angefordert...'); }catch(e){}
+          await api('./api/backup_job/cancel', {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ job_id: CREATE_JOB_ID })
+          });
+        }catch(e){
+          err(String(e && e.message ? e.message : e));
         }
       }
 
@@ -829,6 +972,7 @@
       $createFull.addEventListener('click', ()=>createBackup().catch(e=>err(String(e && e.message ? e.message : e))));
       $createRange.addEventListener('click', ()=>createRangeBackup().catch(e=>err(String(e && e.message ? e.message : e))));
       $createRangeSel.addEventListener('click', ()=>createRangeBackupSel().catch(e=>err(String(e && e.message ? e.message : e))));
+      if($cancel) $cancel.addEventListener('click', ()=>cancelCreate());
       $del.addEventListener('click', ()=>deleteBackup().catch(e=>err(String(e && e.message ? e.message : e))));
 
       function debounce(fn, ms){
