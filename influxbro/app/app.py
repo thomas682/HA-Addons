@@ -5,6 +5,8 @@ import math
 import os
 import re
 import shutil
+import socket
+import ssl
 import sys
 import threading
 import time
@@ -1154,6 +1156,117 @@ def api_get_config():
         "delete_confirm_phrase": DELETE_CONFIRM_PHRASE,
         "autodetect_source": LAST_AUTODETECT_SOURCE,
     })
+
+
+def _resolve_host_ip(host: str) -> str | None:
+    h = (host or "").strip()
+    if not h:
+        return None
+    try:
+        return socket.gethostbyname(h)
+    except Exception:
+        return None
+
+
+def _http_get_json(url: str, verify_ssl: bool, timeout_s: int) -> tuple[int, dict[str, Any] | None, str | None]:
+    """Best-effort JSON GET; returns (status, json, error)."""
+
+    req = urllib.request.Request(url, method="GET")
+    ctx = None
+    try:
+        if url.lower().startswith("https://") and not verify_ssl:
+            ctx = ssl.create_default_context()
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+    except Exception:
+        ctx = None
+
+    try:
+        with urllib.request.urlopen(req, timeout=timeout_s, context=ctx) as resp:
+            raw = resp.read().decode("utf-8", errors="replace")
+            status = int(getattr(resp, "status", 200))
+            try:
+                data = json.loads(raw) if raw else None
+            except Exception:
+                data = None
+            return status, data if isinstance(data, dict) else None, None
+    except urllib.error.HTTPError as e:
+        body = ""
+        try:
+            body = e.read().decode("utf-8", errors="replace")
+        except Exception:
+            body = ""
+        return int(getattr(e, "code", 0) or 0), None, body or (str(e) or "HTTPError")
+    except Exception as e:
+        return 0, None, str(e) or e.__class__.__name__
+
+
+@app.get("/api/influx_info")
+def api_influx_info():
+    """Return best-effort diagnostics about the configured InfluxDB."""
+
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    scheme = str(cfg.get("scheme") or "http").strip() or "http"
+    host = str(cfg.get("host") or "").strip()
+    port = int(cfg.get("port") or 8086)
+    verify_ssl = bool(cfg.get("verify_ssl", True))
+    timeout_s = int(cfg.get("timeout_seconds") or 10)
+    base_url = str(cfg.get("url") or f"{scheme}://{host}:{port}").strip()
+
+    info: dict[str, Any] = {
+        "url": base_url,
+        "host": host,
+        "ip": _resolve_host_ip(host),
+        "verify_ssl": verify_ssl,
+        "timeout_seconds": timeout_s,
+        "influx_version": None,
+        "health": None,
+        "bucket_count": None,
+        "database_count": None,
+        "ha_database": (cfg.get("bucket") if int(cfg.get("influx_version", 2)) == 2 else cfg.get("database")) or None,
+        "note": "Hinweis: Speicherplatz/Freiplatz/Memory der InfluxDB sind ueber die Influx HTTP API nicht verlaesslich abrufbar. Anzeige ist best-effort.",
+    }
+
+    # Health endpoint (v2 + some v1 builds)
+    try:
+        st, js, err = _http_get_json(base_url.rstrip("/") + "/health", verify_ssl=verify_ssl, timeout_s=min(8, timeout_s))
+        if js:
+            info["health"] = str(js.get("status") or "") or (f"HTTP {st}" if st else None)
+            info["influx_version"] = str(js.get("version") or js.get("build") or "") or None
+        elif err:
+            info["health"] = (f"HTTP {st}" if st else None) or ""
+    except Exception:
+        pass
+
+    # Buckets (InfluxDB v2)
+    try:
+        if int(cfg.get("influx_version", 2)) == 2 and cfg.get("token") and cfg.get("org") and cfg.get("bucket"):
+            with v2_client(cfg, timeout_seconds_override=min(8, timeout_s)) as c:
+                b = c.buckets_api().find_buckets(org=cfg.get("org"))
+                buckets = getattr(b, "buckets", None) or []
+                info["bucket_count"] = int(len(buckets))
+    except Exception:
+        info["bucket_count"] = None
+
+    # Databases (InfluxDB v1)
+    try:
+        if int(cfg.get("influx_version", 2)) != 2 and cfg.get("database"):
+            c = v1_client(cfg)
+            res = c.query("SHOW DATABASES")
+            dbs = []
+            try:
+                for _, points in res.items():
+                    for p in points:
+                        n = p.get("name")
+                        if n:
+                            dbs.append(str(n))
+            except Exception:
+                dbs = []
+            info["database_count"] = int(len(dbs)) if dbs else None
+    except Exception:
+        info["database_count"] = None
+
+    return jsonify({"ok": True, "info": info})
 
 
 _ENTITY_ID_RE = re.compile(r"^[A-Za-z0-9_]+\.[A-Za-z0-9_]+$")

@@ -57,12 +57,16 @@
        <div class="muted">Quelle: Backup auswaehlen. Ziel: Messwert auswaehlen. Restore schreibt Daten (Schreiben muss erlaubt sein).</div>
 
        <div class="card" data-ui="restore.source" title="restore.source">
-         <div style="font-weight:700;">Quelle (Backup)</div>
-         <div class="row">
-           <div style="min-width: 320px; flex:1;">
-             <label>Volltextsuche</label>
-             <input id="q_backup" placeholder="created_at, name, measurement, field..." data-ui="restore.backup_search" title="restore.backup_search" />
-           </div>
+          <div style="font-weight:700;">Quelle (Backup)</div>
+          <div class="row">
+            <div style="min-width: 320px; flex:1;">
+              <label>Volltextsuche</label>
+              <div class="row" style="margin-top:0; align-items:center; gap: 8px;">
+                <input id="q_backup" placeholder="created_at, name, measurement, field..." data-ui="restore.backup_search" title="restore.backup_search" style="flex:1; min-width: 220px;" />
+                <button id="q_backup_all" class="btn_sm" data-ui="restore.search_all" title="restore.search_all" style="height:34px; padding:8px 10px;">Alle</button>
+                <button id="q_backup_from_dash" class="btn_sm" data-ui="restore.search_from_dash" title="restore.search_from_dash" style="height:34px; padding:8px 10px;">aus Dashboardauswahl</button>
+              </div>
+            </div>
             <div>
               <label>&nbsp;</label>
               <button id="reload" data-ui="restore.reload" title="restore.reload">Liste aktualisieren</button>
@@ -186,7 +190,9 @@
       const LS_KEY = "influxbro_ui_state_v1";
       const $sel = document.getElementById('sel');
       const $rows = document.getElementById('rows');
-      const $qBackup = document.getElementById('q_backup');
+       const $qBackup = document.getElementById('q_backup');
+       const $qBackupAll = document.getElementById('q_backup_all');
+       const $qBackupFromDash = document.getElementById('q_backup_from_dash');
       const $srcInfo = document.getElementById('src_info');
       const $err = document.getElementById('err');
       const $ok = document.getElementById('ok');
@@ -855,6 +861,35 @@
         const st = loadState();
         const q0 = String(st.friendly_name || st.entity_id || '').trim();
         if($qBackup && !$qBackup.value && q0) $qBackup.value = q0;
+      }catch(e){}
+
+      function applyBackupSearchFromDashboard(){
+        try{
+          const st = loadState();
+          const fn0 = String(st.friendly_name || '').trim();
+          const e0 = String(st.entity_id || '').trim();
+          const q0 = String(fn0 || e0 || '').trim();
+          if(!q0){
+            err('Kein Messwert in der Dashboard-Auswahl gefunden (friendly_name/entity_id).');
+            return;
+          }
+          if($qBackup) $qBackup.value = q0;
+          try{ if($qBackup) $qBackup.dispatchEvent(new Event('input')); }catch(e){}
+        }catch(e){
+          err(String(e && e.message ? e.message : e));
+        }
+      }
+
+      try{
+        if($qBackupAll) $qBackupAll.addEventListener('click', (ev)=>{
+          ev.preventDefault(); ev.stopPropagation();
+          try{ if($qBackup) $qBackup.value = ''; }catch(e){}
+          try{ if($qBackup) $qBackup.dispatchEvent(new Event('input')); }catch(e){}
+        });
+        if($qBackupFromDash) $qBackupFromDash.addEventListener('click', (ev)=>{
+          ev.preventDefault(); ev.stopPropagation();
+          applyBackupSearchFromDashboard();
+        });
       }catch(e){}
 
       loadBackups().catch(e=>err(String(e && e.message ? e.message : e)));

@@ -168,6 +168,7 @@ Wichtig: Die Aenderungen bleiben markiert, bis du sie wirklich uebernimmst.
 - Reihenfolge:
   - Gesamtstatistik (Alles)
   - Statistik Zeitraum (Graph/Tabelle)
+- Zusaetzlich gibt es den Bereich `Statistik Influx Datenbank` (Health/Version/IP/Buckets; best-effort) mit Button `Refresh`.
 - HA-Infos:
   - device_class, state_class, unit_of_measurement werden (wenn moeglich) aus Home Assistant geladen.
 
@@ -196,12 +197,14 @@ Wichtig: Die Aenderungen bleiben markiert, bis du sie wirklich uebernimmst.
   - Anzahl Werte
   - Dateigroesse
 - Backups koennen geloescht werden (nur die Sicherung, nicht die Datenbank).
+- Tipp: In der Volltextsuche gibt es Buttons `Alle` (leeren) und `aus Dashboardauswahl`.
 
 ## Restore
 
 - Waehle ein Backup aus der Liste fuer den Messwert.
 - Restore schreibt die Werte zurueck, ohne doppelte Messpunkte zu erzeugen (idempotent, weil gleiche Zeitpunkte/Tags/Field ueberschrieben werden).
 - Restore ist ebenfalls an `Schreiben/Loeschen erlauben` (Einstellungen) + `delete_confirm_phrase` gekoppelt.
+- Tipp: In der Volltextsuche gibt es Buttons `Alle` (leeren) und `aus Dashboardauswahl`.
 
 Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore/Abfragen) und die letzte Meldung anzeigt.
 

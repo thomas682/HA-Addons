@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.11.87
+
+### Features
+
+- Backup/Restore: Buttons neben Volltextsuche: `Alle` (Filter leeren) und `aus Dashboardauswahl` (friendly_name/entity_id uebernehmen).
+- Statistik: neuer Bereich "Statistik Influx Datenbank" mit `Refresh` (best-effort Infos ueber Health/Version/IP/Buckets).
+- Statistik: Query Details hat jetzt einen Button `Query kopieren`.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.11.86
 
 ### Features

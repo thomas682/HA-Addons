@@ -163,7 +163,11 @@
         <div class="row" style="margin-top: 10px;" data-ui="backup.search_row" title="backup.search_row">
           <div style="min-width: 320px; flex:1;">
             <label>Volltextsuche (Backups)</label>
-            <input id="q_backup" placeholder="created_at, name, measurement, field, entity_id..." data-ui="backup.search" title="backup.search" />
+            <div class="row" style="margin-top:0; align-items:center; gap: 8px;">
+              <input id="q_backup" placeholder="created_at, name, measurement, field, entity_id..." data-ui="backup.search" title="backup.search" style="flex:1; min-width: 220px;" />
+              <button id="q_backup_all" class="btn_sm" data-ui="backup.search_all" title="backup.search_all" style="height:34px; padding:8px 10px;">Alle</button>
+              <button id="q_backup_from_dash" class="btn_sm" data-ui="backup.search_from_dash" title="backup.search_from_dash" style="height:34px; padding:8px 10px;">aus Dashboardauswahl</button>
+            </div>
             <div class="muted" id="list_info" data-ui="backup.list_info" title="backup.list_info"></div>
           </div>
         </div>
@@ -210,6 +214,9 @@
       const $backupAutoWidth = document.getElementById('backup_autowidth');
       const $del = document.getElementById('del');
       const $selAll = document.getElementById('sel_all');
+
+      const $qBackupAll = document.getElementById('q_backup_all');
+      const $qBackupFromDash = document.getElementById('q_backup_from_dash');
 
       const $hintFull = document.getElementById('hint_full');
       const $hintZoom = document.getElementById('hint_zoom');
@@ -1058,6 +1065,35 @@
           const q0 = String(fn0 || e0 || '').trim();
           if(q0) $qBackup.value = q0;
         }
+      }catch(e){}
+
+      function applyBackupSearchFromDashboard(){
+        try{
+          const st = loadState();
+          const fn0 = String(st.friendly_name || '').trim();
+          const e0 = String(st.entity_id || '').trim();
+          const q0 = String(fn0 || e0 || '').trim();
+          if(!q0){
+            err('Kein Messwert in der Dashboard-Auswahl gefunden (friendly_name/entity_id).');
+            return;
+          }
+          if($qBackup) $qBackup.value = q0;
+          try{ if($qBackup) $qBackup.dispatchEvent(new Event('input')); }catch(e){}
+        }catch(e){
+          err(String(e && e.message ? e.message : e));
+        }
+      }
+
+      try{
+        if($qBackupAll) $qBackupAll.addEventListener('click', (ev)=>{
+          ev.preventDefault(); ev.stopPropagation();
+          try{ if($qBackup) $qBackup.value = ''; }catch(e){}
+          try{ if($qBackup) $qBackup.dispatchEvent(new Event('input')); }catch(e){}
+        });
+        if($qBackupFromDash) $qBackupFromDash.addEventListener('click', (ev)=>{
+          ev.preventDefault(); ev.stopPropagation();
+          applyBackupSearchFromDashboard();
+        });
       }catch(e){}
 
       if($takeDashboard){

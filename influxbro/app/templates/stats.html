@@ -143,7 +143,6 @@
             </div>
             <div>
               <label>&nbsp;</label>
-              <button id="save_cols" data-ui="stats.save_cols" title="stats.save_cols">Spalten speichern</button>
               <button id="auto_cols" data-ui="stats.auto_cols" title="stats.auto_cols">Spaltenbreite automatisch</button>
             </div>
             <div>
@@ -177,6 +176,19 @@
                 <div><label><input type="checkbox" id="col_mean" /> mean</label></div>
                 <div class="span2 muted">Hinweis: count/min/max/mean/oldest sind teuer und koennen bei grossen Zeitraeumen lange dauern.</div>
               </div>
+            </div>
+          </details>
+
+          <details class="card" id="influxdb_section" style="margin-top: 10px;" data-ui="stats.influxdb" title="stats.influxdb">
+            <summary>Statistik Influx Datenbank</summary>
+            <div class="card_body">
+              <div class="row" style="margin-top: 0;">
+                <div>
+                  <button id="influxdb_refresh" class="btn_xs" data-ui="stats.influxdb.refresh" title="stats.influxdb.refresh">Refresh</button>
+                </div>
+                <div class="muted" id="influxdb_hint" style="padding-top: 6px;"></div>
+              </div>
+              <div class="status" id="influxdb_info" style="margin-top: 8px; white-space: pre-wrap;"></div>
             </div>
           </details>
 
@@ -242,7 +254,6 @@
       const $load = document.getElementById('load');
       const $cancel = document.getElementById('cancel');
       const $deleteRows = document.getElementById('delete_rows');
-      const $saveCols = document.getElementById('save_cols');
       const $autoCols = document.getElementById('auto_cols');
       const $markAll = document.getElementById('mark_all');
       const $clearMark = document.getElementById('clear_mark');
@@ -258,6 +269,7 @@
       const $queryDetails = document.getElementById('query_details');
       const $queryLabel = document.getElementById('query_label');
       const $queryPre = document.getElementById('query_pre');
+      const $queryCopy = document.getElementById('query_copy');
 
       const $colLast = document.getElementById('col_last_value');
       const $colNewest = document.getElementById('col_newest_time');
@@ -266,6 +278,10 @@
       const $colMin = document.getElementById('col_min');
       const $colMax = document.getElementById('col_max');
       const $colMean = document.getElementById('col_mean');
+
+      const $influxDbRefresh = document.getElementById('influxdb_refresh');
+      const $influxDbHint = document.getElementById('influxdb_hint');
+      const $influxDbInfo = document.getElementById('influxdb_info');
 
       let UI_DECIMALS = 3;
       let ROWS = [];
@@ -327,6 +343,61 @@
         const j = await r.json().catch(()=>({ok:false,error:'Invalid JSON'}));
         if(!r.ok || !j.ok) throw new Error(j.error || ('HTTP ' + r.status));
         return j;
+      }
+
+      async function copyText(txt){
+        const s = String(txt || '');
+        if(!s) return;
+        try{
+          if(navigator && navigator.clipboard && navigator.clipboard.writeText){
+            await navigator.clipboard.writeText(s);
+            return;
+          }
+        }catch(e){}
+        // Fallback
+        const ta = document.createElement('textarea');
+        ta.value = s;
+        ta.setAttribute('readonly','readonly');
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        try{ document.execCommand('copy'); }catch(e){}
+        try{ document.body.removeChild(ta); }catch(e){}
+      }
+
+      function renderInfluxDbInfo(info){
+        try{
+          const i = info || {};
+          const lines = [];
+          const add = (k, v)=>{ if(v === null || v === undefined || String(v).trim() === '') return; lines.push(String(k) + ': ' + String(v)); };
+
+          add('URL', i.url);
+          add('Host', i.host);
+          add('IP', i.ip);
+          add('Influx Version', i.influx_version);
+          add('Health', i.health);
+          add('Buckets', i.bucket_count);
+          add('Databases', i.database_count);
+          add('HA DB Name', i.ha_database);
+          add('Hinweis', i.note);
+
+          if($influxDbInfo) $influxDbInfo.textContent = lines.join('\n');
+        }catch(e){
+          if($influxDbInfo) $influxDbInfo.textContent = 'Fehler beim Rendern.';
+        }
+      }
+
+      async function refreshInfluxDbInfo(){
+        try{
+          if($influxDbHint) $influxDbHint.textContent = 'Lade...';
+          const j = await api('./api/influx_info');
+          renderInfluxDbInfo(j.info || {});
+          if($influxDbHint) $influxDbHint.textContent = 'Aktualisiert: ' + fmtTs(new Date().toISOString());
+        }catch(e){
+          if($influxDbHint) $influxDbHint.textContent = '';
+          err(String(e && e.message ? e.message : e));
+        }
       }
 
       function setCount(el, n, showIfOne){
@@ -986,7 +1057,6 @@
 
       $load.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} load().catch(e=>err(String(e && e.message ? e.message : e))); });
       $cancel.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} cancelRun(); });
-      if($saveCols) $saveCols.addEventListener('click', (ev)=>{ ev.preventDefault(); ev.stopPropagation(); saveColWidths(); });
       if($autoCols) $autoCols.addEventListener('click', (ev)=>{
         ev.preventDefault(); ev.stopPropagation();
         try{ window.InfluxBroTableCols && window.InfluxBroTableCols.autoFit('#tbl', {maxRows: 200}); }catch(e){}
@@ -1016,6 +1086,21 @@
         (LAST_VISIBLE_KEYS || []).forEach(k => { if(k) DELETED.add(k); });
         setQueryDetails('', '');
         render();
+      });
+
+      if($influxDbRefresh) $influxDbRefresh.addEventListener('click', (ev)=>{
+        try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+        refreshInfluxDbInfo().catch(e=>err(String(e && e.message ? e.message : e)));
+      });
+
+      if($queryCopy) $queryCopy.addEventListener('click', (ev)=>{
+        try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+        try{
+          const txt = $queryPre ? String($queryPre.textContent || '') : '';
+          copyText(txt).then(()=>{ setStatus(['Query kopiert.', '']); }).catch(()=>{ err('Kopieren fehlgeschlagen.'); });
+        }catch(e){
+          err(String(e && e.message ? e.message : e));
+        }
       });
       $q.addEventListener('input', debounce(()=>render(), 120));
       if($measurementFilter) $measurementFilter.addEventListener('input', debounce(()=>render(), 120));
@@ -1069,6 +1154,18 @@
         renderRangeTxt();
       });
       if($start) $start.addEventListener('change', renderRangeTxt);
+      if($stop) $stop.addEventListener('change', renderRangeTxt);
+      renderRangeTxt();
+
+      </script>
+
+      {% include "_table_cols.html" %}
+      {% include "_tooltips.html" %}
+    </main>
+  </div>
+</body>
+</html>
+f($start) $start.addEventListener('change', renderRangeTxt);
       if($stop) $stop.addEventListener('change', renderRangeTxt);
       renderRangeTxt();
 
