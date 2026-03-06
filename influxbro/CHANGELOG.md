@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.11.85
+
+### Features
+
+- UI: Zeitstempel zeigen jetzt Millisekunden (dd.mm.yyyy HH:MM:SS.mmm).
+
+### Fixes
+
+- Dashboard: Checkboxen in der Bearbeitungsliste sind wieder normalgross (wie in der Toolbar).
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.11.84
 
 ### Features

@@ -97,6 +97,8 @@ Weitere Elemente:
 
 Tipp: Wenn du mit der Maus ueber einem Feld bleibst, zeigt der Tooltip den internen Feldnamen (z.B. `filter.friendly.select`). Damit kannst du mir exakt sagen, welches Feld du meinst.
 
+Hinweis: Zeitstempel werden im gesamten UI inklusive Millisekunden angezeigt.
+
 ### 2) Zeitraum setzen
 
 - `Zeitraum (Graph/Tabelle)`: z.B. 24h, 7d, oder `Alle`.

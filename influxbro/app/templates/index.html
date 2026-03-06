@@ -80,6 +80,10 @@
 
     input[type="checkbox"].row_sel { transform: scale(var(--ui-cb-scale)); transform-origin: left center; }
 
+    /* Table row selectors must not inherit the global input height/padding. */
+    #tbl input[type="checkbox"].row_sel { height: auto; width: auto; padding: 0; margin: 0; }
+    #tbl th:first-child, #tbl td:first-child { text-align: center; }
+
     .filter_pair { display:flex; gap: 10px; align-items:stretch; }
     .filter_pair input.search { height: 40px; padding:10px 12px; width: var(--ui-search-w); }
     .filter_pair select { flex: 1; min-width: 0; }
@@ -671,9 +675,10 @@ function fmtTs(iso){
   const d = new Date(iso);
   if(!isFinite(d.getTime())) return fmt(iso);
   const pad = (n, w=2) => String(n).padStart(w, "0");
+  const pad3 = (n) => String(n).padStart(3, "0");
   return (
     pad(d.getDate()) + "." + pad(d.getMonth()+1) + "." + String(d.getFullYear()) +
-    " " + pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":" + pad(d.getSeconds())
+    " " + pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":" + pad(d.getSeconds()) + "." + pad3(d.getMilliseconds())
   );
 }
 
