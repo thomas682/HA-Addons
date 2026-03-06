@@ -115,6 +115,10 @@ Hinweis: Zeitstempel werden im gesamten UI inklusive Millisekunden angezeigt.
 - Option `Messpunkte markieren`: schaltet runde Marker ein/aus.
 - Ziehen der Groesse: Unter dem Plot gibt es einen horizontalen Griff. Ziehen nach oben/unten aendert die Plot-Hoehe.
 
+Raw Daten (DB):
+
+- Optional kannst du per Checkbox steuern, ob Raw Daten dem Zoom-Bereich im Graph folgen (oder dem Zeitraum aus der Zeitraum-Auswahl).
+
 ## Bearbeitungsliste (Ausreisser)
 
 - Linke Checkbox: Zeilen selektieren (Mehrfachauswahl moeglich).

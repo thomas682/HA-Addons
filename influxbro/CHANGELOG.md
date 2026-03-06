@@ -1,14 +1,15 @@
 # Changelog
 
-## 1.11.85
+## 1.11.86
 
 ### Features
 
-- UI: Zeitstempel zeigen jetzt Millisekunden (dd.mm.yyyy HH:MM:SS.mmm).
+- Dashboard: Raw Daten koennen optional dem Zoom folgen (Checkbox "Zeit gefuehrt durch Graph").
+- Bearbeitungsliste: "Details" aktiviert automatisch "Bearbeiten" (damit "nehmen" direkt geht).
 
 ### Fixes
 
-- Dashboard: Checkboxen in der Bearbeitungsliste sind wieder normalgross (wie in der Toolbar).
+- Details/Ausreisser: Zeitstempel behalten jetzt Millisekunden (keine ungewollte Rundung auf .000).
 
 ### Maintenance
 

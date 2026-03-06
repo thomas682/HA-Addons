@@ -860,6 +860,13 @@ def _dt_to_rfc3339_utc(dt: datetime) -> str:
     return s.replace("+00:00", "Z")
 
 
+def _dt_to_rfc3339_utc_ms(dt: datetime) -> str:
+    """RFC3339 UTC with millisecond precision."""
+
+    s = dt.astimezone(timezone.utc).isoformat(timespec="milliseconds")
+    return s.replace("+00:00", "Z")
+
+
 def _flux_range_clause(range_key: str, start: datetime | None, stop: datetime | None) -> str:
     if start and stop:
         s = _dt_to_rfc3339_utc(start)
@@ -3779,7 +3786,7 @@ from(bucket: "{cfg["bucket"]}")
                         ts = r.get_time()
                         val = r.get_value()
                         if isinstance(ts, datetime):
-                            rows.append({"time": _dt_to_rfc3339_utc(ts), "value": val})
+                            rows.append({"time": _dt_to_rfc3339_utc_ms(ts), "value": val})
 
                 if include_total:
                     try:
@@ -3949,14 +3956,14 @@ from(bucket: "{cfg["bucket"]}")
                     ts = r.get_time()
                     val = r.get_value()
                     if isinstance(ts, datetime):
-                        older.append({"time": _dt_to_rfc3339_utc(ts), "value": val})
+                        older.append({"time": _dt_to_rfc3339_utc_ms(ts), "value": val})
             tables = qapi.query(q_newer, org=cfg["org"])
             for t in tables or []:
                 for r in getattr(t, "records", []) or []:
                     ts = r.get_time()
                     val = r.get_value()
                     if isinstance(ts, datetime):
-                        newer.append({"time": _dt_to_rfc3339_utc(ts), "value": val})
+                        newer.append({"time": _dt_to_rfc3339_utc_ms(ts), "value": val})
     except Exception as e:
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
 

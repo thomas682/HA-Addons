@@ -284,6 +284,10 @@
               </div>
             </div>
 
+            <div class="tbl_actions" style="justify-content:flex-start; margin-top: 6px;" data-ui="raw.opts" title="raw.opts">
+              <label><input type="checkbox" id="raw_time_from_graph" class="row_sel" data-ui="raw.time_from_graph" checked/>Zeit gefuehrt durch Graph</label>
+            </div>
+
             <div class="tbl_actions" style="justify-content:flex-start; margin-top: 8px;" data-ui="raw.actions" title="raw.actions">
               <button class="btn_sm" id="raw_autowidth" data-ui="raw.autowidth" title="raw.autowidth">Spaltenbreite automatisch</button>
               <button class="btn_sm" id="raw_copy" data-ui="raw.copy" title="raw.copy">Kopieren</button>
@@ -604,6 +608,8 @@ const $rawMore = document.getElementById('raw_more');
 const $rawQuerySection = document.getElementById('raw_query_section');
 const $rawQuery = document.getElementById('raw_query');
 
+const $rawTimeFromGraph = document.getElementById('raw_time_from_graph');
+
 const $rawStatus = document.getElementById('raw_status');
 const $rawStatusTxt = document.getElementById('raw_status_txt');
 const $rawStatusTime = document.getElementById('raw_status_time');
@@ -788,6 +794,7 @@ function saveState(){
       graph_markers: GRAPH_MARKERS,
       graph_window_start_ms: TABLE_TIME.graph_start_ms,
       graph_window_stop_ms: TABLE_TIME.graph_stop_ms,
+      raw_time_from_graph: RAW_TIME_FROM_GRAPH,
     };
     localStorage.setItem(LS_KEY, JSON.stringify(j));
   }catch(e){}
@@ -2335,6 +2342,7 @@ let RAW_LAST_KEY = "";
 let _RAW_STATUS_T0 = 0;
 let _RAW_STATUS_TIMER = null;
 let _RAW_AUTO_MORE_T = 0;
+let RAW_TIME_FROM_GRAPH = true;
 
 function renderRawQuery(){
   if(!$rawQuery) return;
@@ -2351,6 +2359,32 @@ function _graphWindowIso(){
   const stop = new Date(Math.max(a, b));
   if(!isFinite(start.getTime()) || !isFinite(stop.getTime())) return null;
   return { start: start.toISOString(), stop: stop.toISOString() };
+}
+
+function _rawWindowIso(){
+  try{
+    if(RAW_TIME_FROM_GRAPH){
+      return _graphWindowIso();
+    }
+    const tf = currentTimeFilter();
+    if(!tf) return null;
+    if(tf.range && tf.range !== 'custom'){
+      // For non-custom ranges we use the same derived start/stop as the dashboard uses.
+      const rr = rangeToStartStop();
+      if(rr && rr.all) return { start: new Date(0).toISOString(), stop: new Date().toISOString() };
+      if(rr && rr.start && rr.stop){
+        return { start: rr.start.toISOString(), stop: rr.stop.toISOString() };
+      }
+      if(rr && rr.stop){
+        return { start: new Date(rr.stop.getTime() - 24*60*60*1000).toISOString(), stop: rr.stop.toISOString() };
+      }
+      return null;
+    }
+    if(tf.start && tf.stop) return { start: tf.start, stop: tf.stop };
+    return null;
+  }catch(e){
+    return null;
+  }
 }
 
 async function loadStatsCurrentFromGraph(){
@@ -2394,7 +2428,7 @@ function renderRawTable(){
   if(!$rawBody || !$rawInfo) return;
   $rawBody.innerHTML = "";
 
-  const win = _graphWindowIso();
+  const win = _rawWindowIso();
   const sTxt = win ? fmtTs(win.start) : "";
   const eTxt = win ? fmtTs(win.stop) : "";
   const loaded = (RAW_ROWS || []).length;
@@ -2471,7 +2505,7 @@ async function loadRawFromGraph(reset){
   if(!$rawSection.open) return;
   const base = currentFilters();
   if(!base || !base.entity_id) return;
-  const win = _graphWindowIso();
+  const win = _rawWindowIso();
   if(!win) return;
   if(_RAW_INFLIGHT) return;
 
@@ -2522,6 +2556,19 @@ function scheduleRawReload(reset){
   if(_RAW_TIMER) clearTimeout(_RAW_TIMER);
   _RAW_TIMER = setTimeout(()=>{ loadRawFromGraph(!!reset).catch(()=>{}); }, 650);
 }
+
+try{
+  if($rawTimeFromGraph){
+    $rawTimeFromGraph.addEventListener('change', ()=>{
+      try{
+        RAW_TIME_FROM_GRAPH = !!$rawTimeFromGraph.checked;
+        saveState();
+        if($rawSection && $rawSection.open) scheduleRawReload(true);
+        renderRawTable();
+      }catch(e){}
+    });
+  }
+}catch(e){}
 
 function initRawAutoMore(){
   if(!$rawBox) return;
@@ -2838,6 +2885,11 @@ const tdNew = document.createElement("td");
         renderTable();
         return;
       }
+      // UX: opening details should enable edit mode so "nehmen" works immediately.
+      try{
+        if(!EDIT_LIST.has(key)) addToEditListByKey(key);
+        EDIT_ACTIVE_KEY = key;
+      }catch(e){}
       ROW_DETAILS_OPEN.add(key);
       scheduleEditNeighborsLoad(key);
       renderTable();
@@ -4097,6 +4149,12 @@ try{
 
     GRAPH_MARKERS = !!st.graph_markers;
     if($graphMarkers) $graphMarkers.checked = GRAPH_MARKERS;
+
+    // Raw options
+    try{
+      RAW_TIME_FROM_GRAPH = (st.raw_time_from_graph !== false);
+      if($rawTimeFromGraph) $rawTimeFromGraph.checked = RAW_TIME_FROM_GRAPH;
+    }catch(e){}
 
     renderStats();
 
