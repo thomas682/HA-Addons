@@ -7,6 +7,23 @@ No Cursor/Copilot instruction files were found at:
 - `.cursorrules`
 - `.github/copilot-instructions.md`
 
+## Plan Mode Workflow
+
+When plan mode is active:
+
+- Create a detailed plan first.
+- Show all tasks that need to be done.
+- Group tasks logically.
+- Wait for explicit user approval before implementing anything (no file edits, no commits, no pushes).
+
+## Task Tracking (ToDo List)
+
+- Always create and show a ToDo list for the current request.
+- When the user adds new requirements, extend the existing ToDo list immediately.
+- Keep exactly one item `in_progress` at a time.
+- Mark items `completed` as soon as they are done.
+- Ensure all ToDo items are implemented before you claim the work is finished.
+
 ## Repo Layout (important for HA)
 
 - `repository.yaml`: must stay in repo root for Home Assistant add-on repositories.
