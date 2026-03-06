@@ -1,242 +1,63 @@
 ---
 
-# InfluxBro – Home Assistant Add-on
+# InfluxBro - Home Assistant Add-on
 
-[![Donate with PayPal](https://img.shields.io/badge/Donate-PayPal-blue.svg)](https://paypal.me/ThomasSchatz)
+InfluxBro ist ein Home Assistant Ingress Add-on, mit dem du InfluxDB (v1/v2) Daten direkt in HA durchsuchen, auswerten, sichern und bei Bedarf gezielt korrigieren kannst - ohne Grafana oder Influx Data Explorer.
 
-Custom Home Assistant Add-on zur direkten Analyse und Verwaltung von InfluxDB-Daten – ohne Grafana oder Influx Data Explorer.
+## Was kann das Add-on?
 
----
+- Messwerte nach `_measurement`, `friendly_name` und `entity_id` filtern
+- Graph + Punktliste (Tabelle) im gleichen Zeitraum (Zoom optional fuer Tabelle)
+- Ausreisser-/Fehlersuche (NULL/0/Grenzen/Counter-Spruenge)
+- Punktliste: Werte bearbeiten/ueberschreiben (opt-in, mit Sicherheitsbestaetigung)
+- Backup/Restore fuer einen einzelnen Messwert
+- Statistikseite, Logs-Viewer, Background-Jobs (anzeigen + abbrechen)
 
-## Funktionen
+## Screenshots
 
-* Unterstützung für InfluxDB v1 und v2
-* Auswahl nach:
+![InfluxBro Uebersicht](<influxbro/images/InlfuxBro Übersicht.png>)
 
-  * Measurement
-  * Field
-  * `entity_id`
-  * `friendly_name`
-* Zeitfilter: 24h, Woche, Monat, Jahr
-* Anzeige als:
+![Einstellungen](influxbro/images/Einstellungen.png)
 
-  * Tabelle
-  * Mini-Graph
-* Statistikübersicht:
+![Backup](influxbro/images/Backup.png)
 
-  * Anzahl der Messwerte
-  * Ältester Messwert
-  * Neuester Messwert
-  * Minimalwert
-  * Maximalwert
-* Optionale Löschfunktion mit Sicherheitsbestätigung
+![Restore](influxbro/images/Restore.png)
 
----
+![Logs](influxbro/images/LOG.png)
+
+![Jobs](influxbro/images/Jobs.png)
+
+![Statistik](influxbro/images/Statistik.png)
+
+## Installation in Home Assistant
+
+1) Repository hinzufuegen
+
+- Home Assistant: `Einstellungen -> Add-ons -> Add-on Store`
+- Oben rechts: `... -> Repositories`
+- Repository-URL: `https://github.com/thomas682/HA-Addons`
+
+2) Add-on installieren und starten
+
+- Add-on `InfluxBro` auswaehlen
+- `Installieren` -> `Starten`
+- Optional: `In Seitenleiste anzeigen` aktivieren
+
+3) Web UI oeffnen
+
+- Im Add-on: `Open Web UI` (Ingress)
+
+4) InfluxDB konfigurieren
+
+- In InfluxBro: `Einstellungen`
+- Zugangsdaten setzen (v1/v2) oder YAML Import nutzen
+- `Influx Verbindung testen` -> `Speichern`
+
+## Sicherheit
+
+- Schreiben/Loeschen ist standardmaessig deaktiviert und muss in den Einstellungen explizit aktiviert werden.
+- Zusaetzlich ist eine manuelle Bestaetigung per `delete_confirm_phrase` erforderlich (Add-on Option).
 
 ## License
 
-MIT License
-
-See `LICENSE.md`.
-
----
-
-# Installation über GitHub Repository
-
-## 1️⃣ Repository in Home Assistant hinzufügen
-
-In Home Assistant:
-
-```
-Einstellungen → Add-ons → Add-on Store
-```
-
-Oben rechts:
-
-```
-⋮ → Repositories
-```
-
-Dann Repository-URL eintragen:
-
-```
-https://github.com/thomas682/HA-Addons
-```
-
----
-
-# 2️⃣ Add-on installieren
-
-Nach dem Hinzufügen erscheint das Repository im Add-on Store.
-
-Dann:
-
-* Add-on auswählen
-* Installieren
-* Starten
-* Optional aber empfohlen: Schalter `In Seitenleiste anzeigen` aktivieren (damit InfluxBro links in der Seitenleiste erscheint)
-
----
-
-# 3️⃣ Web UI öffnen
-
-- Nach dem Start: Add-on öffnen → `Open Web UI`.
-- Ingress: InfluxBro läuft als Ingress-Panel innerhalb von Home Assistant (kein externer Port nötig).
-
----
-
-# 4️⃣ InfluxDB konfigurieren
-
-- In der InfluxBro UI: `Einstellungen` öffnen.
-- Influx Version (v1/v2) auswählen und Zugangsdaten setzen.
-- Optional: unter "Parametrierung aus Home Assistant YAML" `influx.yaml suchen` + `yaml Daten einlesen` verwenden.
-- Danach: `Influx Verbindung testen` und dann `Speichern`.
-
----
-
-# Repository-Struktur
-
-```
-repository.yaml
-influxbro/
-  config.yaml
-  Dockerfile
-  run.sh
-  app/
-```
-
----
-
-# Update-Prozess
-
-Home Assistant erkennt Updates ausschließlich über die Versionsnummer im Add-on.
-
-## Schritt 1 – Version erhöhen
-
-In:
-
-```
-influxbro/config.yaml
-```
-
-z. B.:
-
-```yaml
-version: "0.5.0"
-```
-
-Bei jeder Änderung muss die Version erhöht werden:
-
-```
-0.5.1
-0.6.0
-1.0.0
-```
-
-Ohne Versionsänderung erkennt HA kein Update.
-
----
-
-## Schritt 2 – Änderungen committen & pushen
-
-* Änderungen speichern
-* Commit erstellen
-* Push nach GitHub durchführen
-
----
-
-## Schritt 3 – Update in Home Assistant durchführen
-
-In HA:
-
-```
-Einstellungen → Add-ons → Add-on Store
-```
-
-Dann:
-
-```
-⋮ → Check for updates
-```
-
-Wenn die Version höher ist, erscheint beim Add-on:
-
-```
-Update verfügbar
-```
-
-Update anklicken → Installieren → Neustarten.
-
----
-
-# Wichtige Hinweise
-
-* Der `slug` im `influxbro/config.yaml` darf nicht verändert werden.
-* Die Ordnerstruktur darf nicht verändert werden.
-* `repository.yaml` muss im Root des Repositories liegen.
-* Home Assistant muss das Repository im Netzwerk erreichen können.
-* Falls Hostnamen nicht aufgelöst werden, IP-Adresse verwenden.
-
----
-
-# Sicherheitshinweis
-
-Die Löschfunktion ist standardmäßig deaktiviert.
-Zur Aktivierung muss in der Add-on-Konfiguration explizit:
-
-```yaml
-allow_delete: true
-```
-
-gesetzt werden.
-
-Zusätzlich ist eine manuelle Bestätigung in der UI erforderlich.
-
----
-
-# Architekturüberblick
-
-* Ingress Add-on (läuft innerhalb von Home Assistant)
-* Kommunikation direkt mit InfluxDB API
-* Persistente Konfiguration im Add-on Datenverzeichnis (`/data/influx_browser_config.json`)
-* Kein externer Port notwendig
-
----
-
-Wenn du möchtest, kann ich dir zusätzlich noch einen Abschnitt zu:
-
-* Versionsstrategie (SemVer)
-* Release-Workflow mit Git-Tags
-* Branching-Strategie für Test/Stable-Versionen
-
-einbauen, damit dein Repo sauber wartbar bleibt.
-
----
-
-## Lokale Entwicklung (kurz)
-
-### Docker Build/Run
-
-```bash
-docker build -t influxbro:dev ./influxbro
-```
-
-```bash
-mkdir -p .local-data
-cat > .local-data/options.json <<'JSON'
-{ "version": "dev", "allow_delete": false, "delete_confirm_phrase": "DELETE" }
-JSON
-
-docker run --rm -p 8099:8099 \
-  -v "$PWD/.local-data:/data" \
-  -v "$PWD:/repo:ro" \
-  influxbro:dev
-```
-
-### YAML Import in der UI
-
-In der Konfiguration gibt es zwei Schritte:
-1) `influx.yaml suchen` (findet die Datei unter `/config` und fuellt den Pfad)
-2) `yaml Daten einlesen` (traegt die Werte in die Felder ein; erst mit `Speichern` wird persistiert)
-
-Danach: `Influx Verbindung testen`.
+MIT License - siehe `LICENSE.md`.

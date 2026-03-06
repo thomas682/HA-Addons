@@ -246,4 +246,7 @@ from flask import Flask, jsonify, request
 - After completing any user-requested execution/workflow that runs commands (independent of plan/build mode and independent of `go`), play a macOS completion sound:
   - Success: `afplay /System/Library/Sounds/Glass.aiff`
   - Failure/blocker: `afplay /System/Library/Sounds/Basso.aiff`
+- After completing a unit of work where you either (a) expect an answer from the user to continue, or (b) you are fully done and ready for a new input, play a macOS completion sound:
+  - Ready/awaiting input: `afplay /System/Library/Sounds/Glass.aiff`
+  - Blocked/failed: `afplay /System/Library/Sounds/Basso.aiff`
 - Only speak the "Generierung erfolgt..." message when a new add-on version was produced (version bump in `influxbro/config.yaml`).

@@ -138,6 +138,7 @@
             <div class="muted" id="hint_sel" data-ui="backup.hint_sel" title="backup.hint_sel" style="margin-top:4px; max-width: 260px;"></div>
           </div>
           <div><label>&nbsp;</label><button id="reload" data-ui="backup.reload" title="backup.reload">Liste aktualisieren</button></div>
+          <div><label>&nbsp;</label><button id="cancel" class="btn_sm" data-ui="backup.cancel" title="backup.cancel" disabled>Abbruch</button></div>
           <div><label>&nbsp;</label><button id="backup_autowidth" class="btn_sm" data-ui="backup.autowidth" title="backup.autowidth">Spaltenbreite automatisch</button></div>
           <div><label>&nbsp;</label><button id="del" data-ui="backup.delete" title="backup.delete">Backup loeschen</button></div>
         </div>
@@ -159,7 +160,15 @@
 
         <div class="muted" id="loc" data-ui="backup.location" title="backup.location" style="margin-top:10px;"></div>
 
-        <table data-ui="backup.table" title="backup.table">
+        <div class="row" style="margin-top: 10px;" data-ui="backup.search_row" title="backup.search_row">
+          <div style="min-width: 320px; flex:1;">
+            <label>Volltextsuche (Backups)</label>
+            <input id="q_backup" placeholder="created_at, name, measurement, field, entity_id..." data-ui="backup.search" title="backup.search" />
+            <div class="muted" id="list_info" data-ui="backup.list_info" title="backup.list_info"></div>
+          </div>
+        </div>
+
+        <table data-ui="backup.table" title="backup.table" id="backup_tbl">
           <thead>
             <tr>
               <th style="width:20px;"><input type="checkbox" id="sel_all" data-ui="backup.select_all" title="backup.select_all"/></th>
@@ -197,6 +206,7 @@
       const $createRange = document.getElementById('create_range');
       const $createRangeSel = document.getElementById('create_range_sel');
       const $reload = document.getElementById('reload');
+      const $cancel = document.getElementById('cancel');
       const $backupAutoWidth = document.getElementById('backup_autowidth');
       const $del = document.getElementById('del');
       const $selAll = document.getElementById('sel_all');
@@ -213,6 +223,9 @@
       const $createStatusTime = document.getElementById('create_status_time');
       const $backupQueryDetails = document.getElementById('backup_query_details');
       const $backupQueryPre = document.getElementById('backup_query_pre');
+
+      const $qBackup = document.getElementById('q_backup');
+      const $listInfo = document.getElementById('list_info');
 
       const $mf = document.getElementById('measurement_filter');
       const $n = document.getElementById('friendly_name');
@@ -232,6 +245,8 @@
       let BACKUP_META = new Map();
       let LAST_SHOWN = [];
 
+      let BACKUPS = [];
+
       let ALL_MF = [];
       let ALL_FN = [];
       let ALL_EID = [];
@@ -239,6 +254,8 @@
       let CREATE_INFLIGHT = false;
       let CREATE_T0 = 0;
       let CREATE_TIMER = null;
+      let CREATE_JOB_ID = '';
+      let CREATE_BYTES_HUMAN = '';
 
       function autoGrow(el){
         try{
@@ -270,7 +287,8 @@
       function renderCreateTime(){
         try{
           if(!$createStatusTime) return;
-          $createStatusTime.textContent = 'Gesamt: ' + _fmtDur(performance.now() - CREATE_T0);
+          const b = CREATE_BYTES_HUMAN ? (' | Groesse: ' + CREATE_BYTES_HUMAN) : '';
+          $createStatusTime.textContent = 'Gesamt: ' + _fmtDur(performance.now() - CREATE_T0) + b;
         }catch(e){}
       }
 
@@ -292,6 +310,7 @@
         try{ if($createRange) $createRange.disabled = true; }catch(e){}
         try{ if($createRangeSel) $createRangeSel.disabled = true; }catch(e){}
         try{ if($reload) $reload.disabled = true; }catch(e){}
+        try{ if($cancel) { $cancel.disabled = false; } }catch(e){}
         return true;
       }
 
@@ -305,6 +324,9 @@
         try{ if($createRange) $createRange.disabled = false; }catch(e){}
         try{ if($createRangeSel) $createRangeSel.disabled = false; }catch(e){}
         try{ if($reload) $reload.disabled = false; }catch(e){}
+        try{ if($cancel) $cancel.disabled = true; }catch(e){}
+        CREATE_JOB_ID = '';
+        CREATE_BYTES_HUMAN = '';
         CREATE_INFLIGHT = false;
       }
 
@@ -685,6 +707,18 @@
         $selAll.indeterminate = sel > 0 && sel < ids.length;
       }
 
+      function filt(list, term){
+        const t = String(term||'').trim().toLowerCase();
+        if(!t) return (list||[]).slice();
+        return (list||[]).filter(b => JSON.stringify(b||{}).toLowerCase().includes(t));
+      }
+
+      function renderList(){
+        const shown = filt(BACKUPS, $qBackup ? $qBackup.value : '');
+        if($listInfo) $listInfo.textContent = `Backups: ${shown.length} / ${(BACKUPS||[]).length}`;
+        render(shown);
+      }
+
       async function loadList(){
         err(""); ok("");
         try{
@@ -693,19 +727,13 @@
             $loc.textContent = `Speicherort (Add-on): ${jLoc.container_path || "/data/backups"}`;
           }
         }catch(e){
-          if($loc) $loc.textContent = "Speicherort (Add-on): /config/homeassistant/influxbro/backup";
+          if($loc) $loc.textContent = "Speicherort (Add-on): /config/influxbro/backup";
         }
         renderZoomTxt();
         renderActionHints();
-        if(!LAST_TARGET) throw new Error("Bitte zuerst Auswahl setzen.");
-        const qs = new URLSearchParams({
-          measurement: LAST_TARGET.measurement,
-          field: LAST_TARGET.field,
-          entity_id: LAST_TARGET.entity_id || "",
-          friendly_name: LAST_TARGET.friendly_name || "",
-        });
-        const j = await api("./api/backups?" + qs.toString());
-        render(j.backups || []);
+        const j = await api("./api/backups_all");
+        BACKUPS = j.backups || [];
+        renderList();
       }
 
       async function createBackup(){
@@ -821,6 +849,8 @@
         resolveAndLoad().catch(e=>err(String(e && e.message ? e.message : e)));
       }, 250);
 
+      const onBackupSearch = debounce(()=>{ try{ renderList(); }catch(e){} }, 120);
+
       const onMeasurementChanged = debounce(()=>{
         refreshFriendlyAndEntityForMeasurement()
           .then(()=>{
@@ -843,6 +873,7 @@
       if($mf) $mf.addEventListener('input', onMeasurementChanged);
       if($n) $n.addEventListener('input', onFriendlyChanged);
       if($e) $e.addEventListener('input', onEntityChanged);
+      if($qBackup) $qBackup.addEventListener('input', onBackupSearch);
 
       if($selAll){
         $selAll.addEventListener('change', ()=>{
@@ -876,6 +907,12 @@
         const e0 = String(st.entity_id || '').trim();
         // Values will be applied after list load.
         window.__INFLUXBRO_BACKUP_INIT = { mf: mf0, fn: fn0, eid: e0 };
+
+        // Default backup search filter from dashboard selection.
+        if($qBackup && !$qBackup.value){
+          const q0 = String(fn0 || e0 || '').trim();
+          if(q0) $qBackup.value = q0;
+        }
       }catch(e){}
 
       if($takeDashboard){

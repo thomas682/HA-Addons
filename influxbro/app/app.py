@@ -30,7 +30,7 @@ CONFIG_DIR = Path(os.environ.get("CONFIG_DIR", "/config"))
 DATA_DIR = Path(os.environ.get("DATA_DIR", "/data"))
 
 APP_DIR = Path(__file__).resolve().parent
-DEFAULT_BACKUP_DIR = CONFIG_DIR / "homeassistant" / "influxbro" / "backup"
+DEFAULT_BACKUP_DIR = CONFIG_DIR / "influxbro" / "backup"
 OLD_DEFAULT_BACKUP_DIR = DATA_DIR / "backups"
 
 # default; may be overridden via UI config
@@ -41,6 +41,9 @@ GLOBAL_STATS_LOCK = threading.RLock()
 
 RESTORE_COPY_JOBS: dict[str, dict[str, Any]] = {}
 RESTORE_COPY_LOCK = threading.RLock()
+
+BACKUP_JOBS: dict[str, dict[str, Any]] = {}
+BACKUP_LOCK = threading.RLock()
 
 
 def _req_ip() -> str:
@@ -1566,6 +1569,218 @@ def _list_backups(dir_path: Path) -> list[dict[str, Any]]:
     return out
 
 
+def _fmt_bytes(n: int | None) -> str:
+    try:
+        if n is None:
+            return ""
+        b = int(n)
+        if b < 0:
+            return ""
+        if b < 1024:
+            return f"{b} B"
+        if b < 1024 * 1024:
+            return f"{b / 1024.0:.1f} kB"
+        if b < 1024 * 1024 * 1024:
+            return f"{b / 1024.0 / 1024.0:.1f} MB"
+        return f"{b / 1024.0 / 1024.0 / 1024.0:.2f} GB"
+    except Exception:
+        return ""
+
+
+def _backup_job_public(job: dict[str, Any]) -> dict[str, Any]:
+    written_b = int(job.get("written_bytes") or 0)
+    return {
+        "id": job.get("id"),
+        "state": job.get("state"),
+        "message": job.get("message"),
+        "started_at": job.get("started_at"),
+        "elapsed": _hms(time.monotonic() - float(job.get("started_mono") or time.monotonic())),
+        "written_bytes": written_b,
+        "written_human": _fmt_bytes(written_b),
+        "point_count": int(job.get("point_count") or 0),
+        "backup_id": job.get("backup_id"),
+        "backup_kind": job.get("backup_kind"),
+        "query": job.get("query") or "",
+        "cancelled": bool(job.get("cancelled")),
+        "error": job.get("error"),
+        "ready": job.get("state") in ("done", "error", "cancelled"),
+    }
+
+
+def _backup_job_thread(
+    job_id: str,
+    cfg: dict[str, Any],
+    backup_kind: str,
+    backup_id: str,
+    measurement: str,
+    field: str,
+    entity_id: str | None,
+    friendly_name: str | None,
+    start_dt: datetime | None,
+    stop_dt: datetime | None,
+) -> None:
+    with BACKUP_LOCK:
+        job = BACKUP_JOBS.get(job_id)
+    if not job:
+        return
+
+    def set_state(state: str, msg: str) -> None:
+        with BACKUP_LOCK:
+            if job_id in BACKUP_JOBS:
+                BACKUP_JOBS[job_id]["state"] = state
+                BACKUP_JOBS[job_id]["message"] = msg
+
+    def set_error(msg: str) -> None:
+        with BACKUP_LOCK:
+            if job_id in BACKUP_JOBS:
+                BACKUP_JOBS[job_id]["error"] = msg
+
+    def set_progress(**kw: Any) -> None:
+        with BACKUP_LOCK:
+            j = BACKUP_JOBS.get(job_id)
+            if not j:
+                return
+            for k, v in kw.items():
+                j[k] = v
+
+    def is_cancelled() -> bool:
+        with BACKUP_LOCK:
+            j = BACKUP_JOBS.get(job_id) or {}
+            return bool(j.get("cancelled"))
+
+    bdir = backup_dir(cfg)
+    bdir.mkdir(parents=True, exist_ok=True)
+    meta_path, lp_path = _backup_files(bdir, backup_id)
+
+    extra = flux_tag_filter(entity_id, friendly_name)
+    range_clause = '|> range(start: time(v: "1970-01-01T00:00:00Z"))'
+    start_iso = None
+    stop_iso = None
+    if backup_kind == "range" and start_dt and stop_dt:
+        start_iso = _dt_to_rfc3339_utc(start_dt)
+        stop_iso = _dt_to_rfc3339_utc(stop_dt)
+        range_clause = f'|> range(start: time(v: "{start_iso}"), stop: time(v: "{stop_iso}"))'
+
+    q = f'''
+from(bucket: "{cfg["bucket"]}")
+  {range_clause}
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
+  |> sort(columns: ["_time"])
+'''
+
+    set_state("running", "Export laeuft...")
+    set_progress(query=q.strip(), written_bytes=0, point_count=0)
+
+    count = 0
+    oldest: datetime | None = None
+    newest: datetime | None = None
+    written_b = 0
+    last_tick = time.monotonic()
+
+    try:
+        with v2_client(cfg) as c:
+            qapi = c.query_api()
+            with lp_path.open("w", encoding="utf-8") as f:
+                for rec in qapi.query_stream(q, org=cfg["org"]):
+                    if is_cancelled():
+                        set_state("cancelled", "Abgebrochen")
+                        raise RuntimeError("cancelled")
+                    try:
+                        t = rec.get_time()
+                        v = rec.get_value()
+                        m = rec.values.get("_measurement") or measurement
+                        fld = rec.values.get("_field") or field
+                        if v is None:
+                            continue
+                        p = Point(str(m))
+                        for k, tv in (rec.values or {}).items():
+                            if k in ("result", "table"):
+                                continue
+                            if str(k).startswith("_"):
+                                continue
+                            if tv is None:
+                                continue
+                            p = p.tag(str(k), str(tv))
+                        p = p.field(str(fld), v)
+                        if isinstance(t, datetime):
+                            p = p.time(t, WritePrecision.NS)
+                        lp = p.to_line_protocol()
+                        if lp:
+                            f.write(lp)
+                            f.write("\n")
+                            written_b += len(lp) + 1
+                            count += 1
+                            if isinstance(t, datetime):
+                                if oldest is None or t < oldest:
+                                    oldest = t
+                                if newest is None or t > newest:
+                                    newest = t
+                    except Exception:
+                        continue
+
+                    now = time.monotonic()
+                    if (now - last_tick) >= 0.25:
+                        set_progress(written_bytes=written_b, point_count=count)
+                        last_tick = now
+
+        bytes_size = written_b
+        if bytes_size <= 0:
+            try:
+                bytes_size = int(lp_path.stat().st_size)
+            except Exception:
+                bytes_size = written_b
+
+        meta = {
+            "id": backup_id,
+            "created_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+            "kind": backup_kind,
+            "display_name": friendly_name or entity_id or f"{measurement}_{field}",
+            "measurement": measurement,
+            "field": field,
+            "entity_id": entity_id,
+            "friendly_name": friendly_name,
+            "point_count": count,
+            "bytes": bytes_size,
+            "oldest_time": _dt_to_rfc3339_utc(oldest) if oldest else None,
+            "newest_time": _dt_to_rfc3339_utc(newest) if newest else None,
+            "start": start_iso or (_dt_to_rfc3339_utc(oldest) if oldest else None),
+            "stop": stop_iso or (_dt_to_rfc3339_utc(newest) if newest else None),
+        }
+        meta_path.write_text(json.dumps(meta, indent=2, sort_keys=True), encoding="utf-8")
+        set_progress(written_bytes=bytes_size, point_count=count)
+        set_state("done", f"Backup created: {backup_id}")
+        return
+    except Exception as e:
+        # On cancel, delete partial files (requested).
+        msg = str(e)
+        if "cancelled" in msg:
+            try:
+                if meta_path.exists():
+                    meta_path.unlink()
+            except Exception:
+                pass
+            try:
+                if lp_path.exists():
+                    lp_path.unlink()
+            except Exception:
+                pass
+            return
+
+        set_state("error", "Fehler")
+        set_error(_short_influx_error(e))
+        try:
+            if meta_path.exists():
+                meta_path.unlink()
+        except Exception:
+            pass
+        try:
+            if lp_path.exists():
+                lp_path.unlink()
+        except Exception:
+            pass
+        return
+
+
 def _lp_escape_key(v: str) -> str:
     # For measurement, tag keys, and field keys.
     return (v or "").replace("\\", "\\\\").replace(" ", "\\ ").replace(",", "\\,").replace("=", "\\=")
@@ -1747,6 +1962,138 @@ def api_backup_location():
     cfg = load_cfg()
     bdir = backup_dir(cfg)
     return jsonify({"ok": True, "container_path": str(bdir), "slug": "influxbro"})
+
+
+@app.post("/api/backup_job/start")
+def api_backup_job_start():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    body = request.get_json(force=True) or {}
+
+    kind = str(body.get("kind") or "full").strip().lower()
+    if kind not in ("full", "range"):
+        return jsonify({"ok": False, "error": "kind must be full or range"}), 400
+
+    measurement = (body.get("measurement") or "").strip()
+    field = (body.get("field") or "").strip()
+    entity_id = (body.get("entity_id") or "").strip() or None
+    friendly_name = (body.get("friendly_name") or "").strip() or None
+    if not measurement or not field:
+        return jsonify({"ok": False, "error": "measurement and field required"}), 400
+    if not entity_id and not friendly_name:
+        return jsonify({"ok": False, "error": "entity_id or friendly_name required"}), 400
+
+    start_dt: datetime | None = None
+    stop_dt: datetime | None = None
+    if kind == "range":
+        try:
+            start_dt, stop_dt = _get_start_stop_from_payload(body)
+        except Exception as e:
+            return jsonify({"ok": False, "error": str(e)}), 400
+
+    if int(cfg.get("influx_version", 2)) != 2:
+        return jsonify({"ok": False, "error": "backup currently supports InfluxDB v2 only"}), 400
+    if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+        return jsonify({
+            "ok": False,
+            "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
+        }), 400
+
+    job_id = uuid.uuid4().hex
+    display = friendly_name or entity_id or f"{measurement}_{field}"
+    ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    backup_id = _backup_safe(display) + "__" + kind + "__" + ts
+
+    bdir = backup_dir(cfg)
+    bdir.mkdir(parents=True, exist_ok=True)
+    meta_path, lp_path = _backup_files(bdir, backup_id)
+    if meta_path.exists() or lp_path.exists():
+        return jsonify({"ok": False, "error": "backup id collision"}), 409
+
+    ip = _req_ip()
+    ua = _req_ua()
+    job = {
+        "id": job_id,
+        "state": "queued",
+        "message": "Start...",
+        "started_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+        "started_mono": time.monotonic(),
+        "trigger_page": "backup",
+        "trigger_ip": ip,
+        "trigger_ua": ua,
+        "backup_kind": kind,
+        "backup_id": backup_id,
+        "measurement": measurement,
+        "field": field,
+        "entity_id": entity_id,
+        "friendly_name": friendly_name,
+        "start": _dt_to_rfc3339_utc(start_dt) if (start_dt and stop_dt) else None,
+        "stop": _dt_to_rfc3339_utc(stop_dt) if (start_dt and stop_dt) else None,
+        "written_bytes": 0,
+        "point_count": 0,
+        "cancelled": False,
+        "error": None,
+    }
+
+    with BACKUP_LOCK:
+        BACKUP_JOBS[job_id] = job
+        cutoff = time.monotonic() - 24 * 3600
+        old = [k for k, v in BACKUP_JOBS.items() if float(v.get("started_mono") or 0) < cutoff]
+        for k in old:
+            BACKUP_JOBS.pop(k, None)
+
+    try:
+        LOG.info(
+            "job_start type=backup job_id=%s ip=%s ua=%s backup_id=%s kind=%s measurement=%s field=%s entity_id=%s friendly_name=%s",
+            job_id,
+            ip,
+            ua,
+            backup_id,
+            kind,
+            measurement,
+            field,
+            entity_id or "",
+            friendly_name or "",
+        )
+    except Exception:
+        pass
+
+    t = threading.Thread(
+        target=_backup_job_thread,
+        args=(job_id, cfg, kind, backup_id, measurement, field, entity_id, friendly_name, start_dt, stop_dt),
+        daemon=True,
+    )
+    t.start()
+    return jsonify({"ok": True, "job_id": job_id, "backup_id": backup_id})
+
+
+@app.get("/api/backup_job/status")
+def api_backup_job_status():
+    job_id = (request.args.get("job_id") or "").strip()
+    if not job_id:
+        return jsonify({"ok": False, "error": "job_id required"}), 400
+    with BACKUP_LOCK:
+        job = BACKUP_JOBS.get(job_id)
+    if not job:
+        return jsonify({"ok": False, "error": "job not found"}), 404
+    return jsonify({"ok": True, "status": _backup_job_public(job)})
+
+
+@app.post("/api/backup_job/cancel")
+def api_backup_job_cancel():
+    body = request.get_json(force=True) or {}
+    job_id = (body.get("job_id") or "").strip()
+    if not job_id:
+        return jsonify({"ok": False, "error": "job_id required"}), 400
+    with BACKUP_LOCK:
+        job = BACKUP_JOBS.get(job_id)
+        if not job:
+            return jsonify({"ok": False, "error": "job not found"}), 404
+        job["cancelled"] = True
+    try:
+        LOG.info("job_cancel type=backup job_id=%s ip=%s ua=%s", job_id, _req_ip(), _req_ua())
+    except Exception:
+        pass
+    return jsonify({"ok": True})
 
 
 @app.post("/api/backup_create_range")
@@ -2689,6 +3036,16 @@ def api_jobs():
         pub["trigger_ua"] = j.get("trigger_ua")
         out.append(pub)
 
+    with BACKUP_LOCK:
+        b_items = list(BACKUP_JOBS.items())
+    for _, j in b_items:
+        pub = _backup_job_public(j)
+        pub["type"] = "backup"
+        pub["trigger_page"] = j.get("trigger_page")
+        pub["trigger_ip"] = j.get("trigger_ip")
+        pub["trigger_ua"] = j.get("trigger_ua")
+        out.append(pub)
+
     def _sort_key(x: dict[str, Any]) -> float:
         try:
             # Prefer started_mono if available via elapsed? Not exposed, so sort by started_at.
@@ -2723,6 +3080,15 @@ def api_jobs_cancel():
             RESTORE_COPY_JOBS[job_id]["cancelled"] = True
             try:
                 LOG.info("job_cancel type=restore_copy job_id=%s ip=%s ua=%s", job_id, _req_ip(), _req_ua())
+            except Exception:
+                pass
+            return jsonify({"ok": True})
+
+    with BACKUP_LOCK:
+        if job_id in BACKUP_JOBS:
+            BACKUP_JOBS[job_id]["cancelled"] = True
+            try:
+                LOG.info("job_cancel type=backup job_id=%s ip=%s ua=%s", job_id, _req_ip(), _req_ua())
             except Exception:
                 pass
             return jsonify({"ok": True})

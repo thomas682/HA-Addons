@@ -834,6 +834,14 @@
       if($showQuery) $showQuery.addEventListener('change', ()=>renderPlan());
 
       loadCfg().catch(()=>{});
+
+      // Prefill backup search from dashboard selection (if empty)
+      try{
+        const st = loadState();
+        const q0 = String(st.friendly_name || st.entity_id || '').trim();
+        if($qBackup && !$qBackup.value && q0) $qBackup.value = q0;
+      }catch(e){}
+
       loadBackups().catch(e=>err(String(e && e.message ? e.message : e)));
       loadTargetLists().then(()=>{ renderPlan(); }).catch(()=>{});
 

@@ -10,11 +10,35 @@ Dieses Handbuch ist absichtlich sehr konkret: Jedes sichtbare Element in der GUI
 
 ## Screenshots
 
-### Dashboard (Beispiel)
+Aktuelle UI (Beispiele):
 
-> Hinweis: Lege das Screenshot-Bild als Datei im Repository ab, dann wird es hier angezeigt.
+### Uebersicht (Dashboard)
 
-![Dashboard Beispiel](docs/images/dashboard-hardcopy.png)
+![InfluxBro Uebersicht](<images/InlfuxBro Übersicht.png>)
+
+### Einstellungen
+
+![Einstellungen](images/Einstellungen.png)
+
+### Backup
+
+![Backup](images/Backup.png)
+
+### Restore
+
+![Restore](images/Restore.png)
+
+### Logs
+
+![Logs](images/LOG.png)
+
+### Jobs
+
+![Jobs](images/Jobs.png)
+
+### Statistik
+
+![Statistik](images/Statistik.png)
 
 ## Navigation
 
@@ -126,8 +150,8 @@ Hinweis: Werte in Bearbeitung werden gelb markiert. Geaenderte (dirty) Zeilen we
 
 - Button: `Aenderungen in Datenbank uebernehmen`
 - Sicherheitsmechanismus:
-  - Schreiben ist nur aktiv, wenn in den Add-on Optionen `allow_delete` aktiviert ist.
-  - Zusaetzlich musst du das exakte `delete_confirm_phrase` eintippen.
+  - Schreiben/Loeschen ist nur aktiv, wenn in den Einstellungen `Schreiben/Loeschen erlauben` aktiviert ist.
+  - Zusaetzlich musst du das exakte `delete_confirm_phrase` eintippen (Add-on Option).
 
 Wichtig: Die Aenderungen bleiben markiert, bis du sie wirklich uebernimmst.
 

@@ -1,4 +1,36 @@
 <nav class="sidebar" aria-label="Navigation">
+  <style>
+    /* Desktop: keep sidebar fixed; scroll only content area. */
+    @media (min-width: 981px){
+      html, body { height: 100%; }
+      body { overflow: hidden; }
+      .shell { height: 100vh; min-height: 100vh; }
+      .shell > nav.sidebar { position: sticky; top: 0; height: 100vh; overflow: auto; }
+      .shell > main.content { height: 100vh; overflow: auto; }
+    }
+    /* Mobile: normal page scrolling. */
+    @media (max-width: 980px){
+      body { overflow: auto; }
+      .shell { height: auto; }
+      .shell > nav.sidebar { position: static; height: auto; overflow: visible; }
+      .shell > main.content { height: auto; overflow: visible; }
+    }
+
+    #influxbro_status_panel { margin-top: 12px; padding-top: 10px; border-top: 1px solid #eee; }
+    #influxbro_status_panel .title { font-weight: 700; font-size: 12px; opacity: 0.8; }
+    #influxbro_status_panel .box { margin-top: 6px; border: 1px solid #eee; border-radius: 12px; padding: 10px 10px; background: #fafafa; }
+    #influxbro_status_panel .row { display:flex; align-items:center; gap: 8px; }
+    #influxbro_status_panel .spin { width: 12px; height: 12px; border-radius: 50%; border: 2px solid rgba(0,0,0,0.16); border-top-color: rgba(0,0,0,0.7); animation: influxbro_spin 0.9s linear infinite; }
+    #influxbro_status_panel .muted { font-size: 12px; opacity: 0.75; }
+    #influxbro_status_panel .list { margin-top: 8px; max-height: 180px; overflow: auto; }
+    #influxbro_status_panel .item { display:flex; align-items:baseline; justify-content:space-between; gap: 10px; padding: 4px 0; border-bottom: 1px dashed rgba(0,0,0,0.08); }
+    #influxbro_status_panel .item:last-child { border-bottom: 0; }
+    #influxbro_status_panel .k { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 11px; opacity: 0.7; }
+    #influxbro_status_panel .t { font-size: 12px; }
+    #influxbro_status_panel .tm { font-size: 11px; opacity: 0.75; white-space: nowrap; }
+    #influxbro_status_panel .last { margin-top: 10px; font-size: 12px; }
+    @keyframes influxbro_spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  </style>
   <div class="brand">
     <div class="brand_title" style="font-weight:900; font-size: 22px; letter-spacing: 0.2px;">InfluxBro</div>
     <div class="brand_meta" style="margin-top: 4px;">by Thomas Schatz</div>
@@ -63,6 +95,19 @@
     <span class="ico" aria-hidden="true">S</span>
     <span>Einstellungen</span>
   </a>
+
+  <div id="influxbro_status_panel" data-ui="nav.status" title="nav.status">
+    <div class="title">Status</div>
+    <div class="box">
+      <div class="row" id="influxbro_status_head" style="display:none;">
+        <span class="spin" aria-hidden="true"></span>
+        <span class="t" id="influxbro_status_head_txt">Aktion laeuft...</span>
+        <span class="tm" id="influxbro_status_head_time"></span>
+      </div>
+      <div class="list" id="influxbro_status_list"></div>
+      <div class="last" id="influxbro_status_last" style="display:none;"></div>
+    </div>
+  </div>
 
   <script>
   // Ensure every visible control has a stable tooltip + internal name.
@@ -290,6 +335,138 @@
       }catch(e){}
     }
 
+    function ensureStatusBus(){
+      try{
+        if(window.InfluxBroStatus) return;
+        const $head = document.getElementById('influxbro_status_head');
+        const $headTxt = document.getElementById('influxbro_status_head_txt');
+        const $headTime = document.getElementById('influxbro_status_head_time');
+        const $list = document.getElementById('influxbro_status_list');
+        const $last = document.getElementById('influxbro_status_last');
+
+        const items = new Map();
+        let last = null;
+        let timer = null;
+
+        function fmtMs(ms){
+          try{
+            const s = Math.max(0, ms) / 1000;
+            if(s < 60) return s.toFixed(1) + 's';
+            const m = Math.floor(s/60);
+            const r = (s - m*60);
+            return m + 'm ' + r.toFixed(0) + 's';
+          }catch(e){
+            return '';
+          }
+        }
+
+        function render(){
+          try{
+            const running = Array.from(items.values()).filter(x => x.state === 'running');
+            if($head) $head.style.display = running.length ? 'flex' : 'none';
+            if($headTxt) $headTxt.textContent = running.length ? String(running[0].text || 'Aktion laeuft...') : '';
+            if($headTime) $headTime.textContent = running.length ? fmtMs(performance.now() - running[0].t0) : '';
+
+            if($list){
+              const xs = Array.from(items.values()).slice().sort((a,b)=>a.t0 - b.t0);
+              $list.innerHTML = '';
+              xs.forEach(x => {
+                const div = document.createElement('div');
+                div.className = 'item';
+                const left = document.createElement('div');
+                const t = document.createElement('div');
+                t.className = 't';
+                t.textContent = String(x.text || '');
+                const k = document.createElement('div');
+                k.className = 'k';
+                k.textContent = String(x.key || '');
+                left.appendChild(t);
+                left.appendChild(k);
+                const tm = document.createElement('div');
+                tm.className = 'tm';
+                tm.textContent = (x.state === 'running') ? fmtMs(performance.now() - x.t0) : (x.done_ms ? fmtMs(x.done_ms) : '');
+                div.appendChild(left);
+                div.appendChild(tm);
+                $list.appendChild(div);
+              });
+            }
+
+            if($last){
+              if(last && last.text){
+                $last.style.display = 'block';
+                $last.textContent = String(last.text);
+              }else{
+                $last.style.display = 'none';
+                $last.textContent = '';
+              }
+            }
+          }catch(e){}
+        }
+
+        function ensureTimer(){
+          if(timer) return;
+          timer = setInterval(render, 180);
+        }
+
+        function stopTimerIfIdle(){
+          const running = Array.from(items.values()).some(x => x.state === 'running');
+          if(running) return;
+          if(timer){ clearInterval(timer); timer = null; }
+        }
+
+        window.InfluxBroStatus = {
+          start: (key, text)=>{
+            const k = String(key || '');
+            if(!k) return;
+            items.set(k, { key: k, text: String(text || ''), t0: performance.now(), state: 'running' });
+            ensureTimer();
+            render();
+          },
+          progress: (key, text)=>{
+            const k = String(key || '');
+            const it = items.get(k);
+            if(!it) return;
+            it.text = String(text || it.text || '');
+            items.set(k, it);
+            render();
+          },
+          done: (key, text)=>{
+            const k = String(key || '');
+            const it = items.get(k);
+            if(it){
+              it.state = 'done';
+              it.done_ms = performance.now() - it.t0;
+              it.text = String(text || it.text || '');
+              items.set(k, it);
+            }
+            last = { text: String(text || '') };
+            render();
+            stopTimerIfIdle();
+          },
+          fail: (key, text)=>{
+            const k = String(key || '');
+            const it = items.get(k);
+            if(it){
+              it.state = 'fail';
+              it.done_ms = performance.now() - it.t0;
+              it.text = String(text || it.text || '');
+              items.set(k, it);
+            }
+            last = { text: String(text || '') };
+            render();
+            stopTimerIfIdle();
+          },
+          clear: (key)=>{
+            const k = String(key || '');
+            if(!k) return;
+            items.delete(k);
+            render();
+            stopTimerIfIdle();
+          },
+        };
+      }catch(e){}
+    }
+
     function watchEl(el){
       try{
         if(!el || !el.getAttribute) return;
@@ -406,6 +583,7 @@
     }catch(e){}
     try{
       // Start early so values restore before page scripts use them.
+    ensureStatusBus();
     if(TOOLTIP_ENABLED) applyTooltips();
     else clearTitles();
     scanPersistence();

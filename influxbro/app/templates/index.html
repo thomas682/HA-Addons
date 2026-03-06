@@ -270,21 +270,28 @@
         <div id="graph_resize" data-ui="graph.resize" title="graph.resize" style="height: 12px; cursor: ns-resize; margin-top: 8px; border-radius: 999px; background: linear-gradient(90deg, #eee, #f8f8f8);"></div>
       </div>
 
-      <details id="raw_section" style="margin-top: 10px;" data-ui="section.raw" title="section.raw">
-        <summary>Raw Daten (DB)</summary>
-        <div class="table_wrap" style="margin-top: 10px;">
-          <div class="table_head">
-            <div>
-              <div style="font-weight:700;">Raw Daten</div>
-              <div class="muted" id="raw_info" data-ui="raw.info" title="raw.info"></div>
+        <details id="raw_section" style="margin-top: 10px;" data-ui="section.raw" title="section.raw">
+          <summary>Raw Daten (DB)</summary>
+          <div class="table_wrap" style="margin-top: 10px;">
+            <div class="table_head">
+              <div>
+                <div style="font-weight:700;">Raw Daten</div>
+                <div class="muted" id="raw_info" data-ui="raw.info" title="raw.info"></div>
+              </div>
             </div>
-            <div class="tbl_actions" style="margin-top:0;">
+
+            <div class="tbl_actions" style="justify-content:flex-start; margin-top: 8px;" data-ui="raw.actions" title="raw.actions">
               <button class="btn_sm" id="raw_autowidth" data-ui="raw.autowidth" title="raw.autowidth">Spaltenbreite automatisch</button>
               <button class="btn_sm" id="raw_copy" data-ui="raw.copy" title="raw.copy">Kopieren</button>
               <button class="btn_sm" id="raw_copy_query" data-ui="raw.copy_query" title="raw.copy_query">Query kopieren</button>
               <button class="btn_sm" id="raw_more" data-ui="raw.more" title="raw.more" style="display:none;">Mehr laden</button>
             </div>
-          </div>
+
+            <div id="raw_status" style="display:none; margin-top: 6px; font-size: 12px; opacity: 0.85; align-items:center; gap: 8px;" data-ui="raw.status" title="raw.status">
+              <span id="raw_spinner" aria-hidden="true" style="width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(0,0,0,0.18); border-top-color: rgba(0,0,0,0.75); animation: spin 0.9s linear infinite;"></span>
+              <span id="raw_status_txt">Raw laeuft...</span>
+              <span id="raw_status_time" style="opacity:0.85; white-space: nowrap;"></span>
+            </div>
 
           <details id="raw_query_section" style="margin-top: 8px;" data-ui="raw.query_section" title="raw.query_section">
             <summary>Influx Query</summary>
@@ -292,7 +299,7 @@
             <pre id="raw_query" data-ui="raw.query" title="raw.query" style="margin:6px 0 0 0; padding:10px 12px; border:1px solid #eee; border-radius:12px; background:#fafafa; white-space:pre; overflow:auto; max-height: 220px;"></pre>
           </details>
 
-          <div class="table_box" id="raw_box" style="--max-rows: 10;">
+            <div class="table_box" id="raw_box" style="--max-rows: 10;">
             <table id="raw_tbl" class="list_tbl" data-ui="raw.table" title="raw.table">
               <thead><tr><th style="min-width: 170px;">Zeit</th><th>Wert</th></tr></thead>
               <tbody id="raw_body"></tbody>
@@ -312,11 +319,11 @@
     </details>
 
     <details id="filterlist_section" class="section" {{ 'open' if cfg.get('ui_open_filterlist') else '' }} data-ui="section.filterlist" title="section.filterlist">
-      <summary class="section_title">Punktliste</summary>
+      <summary class="section_title">Bearbeitungsliste</summary>
       <div class="table_wrap">
         <div class="table_head">
             <div>
-              <div style="font-weight:700;">Punktliste</div>
+              <div style="font-weight:700;">Bearbeitungsliste</div>
               <div class="muted" id="table_range"></div>
               <div class="muted" id="table_info"></div>
               <div class="muted" id="edit_info"></div>
@@ -436,7 +443,7 @@
           <button class="btn_sm" id="edit_undo_all" data-ui="editlist_undo_all">Undo alle</button>
         </div>
 
-        <div class="muted" data-ui="tip.pointlist" title="tip.pointlist">Bearbeitung pro Zeile ueber den Button <code>Bearbeiten</code>. Beim Beenden mit ungespeicherten Aenderungen kommt eine Bestaetigung.</div>
+        <div class="muted" data-ui="tip.pointlist" title="tip.pointlist">Bearbeitung pro Zeile ueber den Button <code>Bearbeiten</code>. <code>Details</code> zeigt Davor/Danach. Beim Beenden mit ungespeicherten Aenderungen kommt eine Bestaetigung.</div>
 
 
       </div>
@@ -592,6 +599,10 @@ const $rawCopyQuery = document.getElementById('raw_copy_query');
 const $rawMore = document.getElementById('raw_more');
 const $rawQuerySection = document.getElementById('raw_query_section');
 const $rawQuery = document.getElementById('raw_query');
+
+const $rawStatus = document.getElementById('raw_status');
+const $rawStatusTxt = document.getElementById('raw_status_txt');
+const $rawStatusTime = document.getElementById('raw_status_time');
 
 const GRAPH_H_KEY = 'influxbro_graph_height_px';
 let GRAPH_H_PX = null;
@@ -852,6 +863,7 @@ function startLoadUi(){
     if($btnLoad) $btnLoad.disabled = true;
     if($btnCancelLoad) $btnCancelLoad.disabled = false;
     statusBegin("Abfrage laeuft...");
+    try{ window.InfluxBroStatus && window.InfluxBroStatus.start && window.InfluxBroStatus.start('dashboard.query', 'Abfrage laeuft...'); }catch(e){}
     return true;
   }catch(e){
     return true;
@@ -863,6 +875,10 @@ function stopLoadUi(okDone, errText){
     statusEnd(!!okDone, errText);
     if($btnLoad) $btnLoad.disabled = false;
     if($btnCancelLoad) $btnCancelLoad.disabled = true;
+    try{
+      if(okDone) window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done('dashboard.query', 'Abfrage fertig.');
+      else window.InfluxBroStatus && window.InfluxBroStatus.fail && window.InfluxBroStatus.fail('dashboard.query', errText ? ('Fehler: ' + String(errText)) : 'Fehler.');
+    }catch(e){}
   }catch(e){}
   LOAD_INFLIGHT = false;
 }
@@ -2300,6 +2316,9 @@ let _RAW_INFLIGHT = false;
 let RAW_OFFSET = 0;
 const RAW_LIMIT = 5000;
 let RAW_LAST_KEY = "";
+let _RAW_STATUS_T0 = 0;
+let _RAW_STATUS_TIMER = null;
+let _RAW_AUTO_MORE_T = 0;
 
 function renderRawQuery(){
   if(!$rawQuery) return;
@@ -2391,6 +2410,46 @@ function renderRawTable(){
   renderRawQuery();
 }
 
+function _rawCanMore(){
+  try{
+    const loaded = (RAW_ROWS || []).length;
+    const total = RAW_META && (RAW_META.total_count !== null && RAW_META.total_count !== undefined) ? Number(RAW_META.total_count) : null;
+    return (isFinite(total) && loaded < total) || (RAW_META && RAW_META.returned === RAW_LIMIT);
+  }catch(e){
+    return false;
+  }
+}
+
+function _rawStatusStart(txt){
+  try{
+    if(!$rawStatus) return;
+    _RAW_STATUS_T0 = performance.now();
+    if($rawStatusTxt) $rawStatusTxt.textContent = String(txt || 'Raw laeuft...');
+    $rawStatus.style.display = 'flex';
+    if(_RAW_STATUS_TIMER) clearInterval(_RAW_STATUS_TIMER);
+    _RAW_STATUS_TIMER = setInterval(()=>{
+      try{
+        if($rawStatusTime) $rawStatusTime.textContent = 'Gesamt: ' + _fmtDur(performance.now() - _RAW_STATUS_T0);
+      }catch(e){}
+    }, 120);
+  }catch(e){}
+}
+
+function _rawStatusEnd(okDone, errText){
+  try{
+    if(_RAW_STATUS_TIMER) clearInterval(_RAW_STATUS_TIMER);
+    _RAW_STATUS_TIMER = null;
+    if($rawStatusTxt){
+      if(okDone) $rawStatusTxt.textContent = 'Fertig.';
+      else $rawStatusTxt.textContent = errText ? ('Fehler: ' + String(errText)) : 'Fehler.';
+    }
+    setTimeout(()=>{
+      try{ if($rawStatus) $rawStatus.style.display = 'none'; }catch(e){}
+      try{ if($rawStatusTime) $rawStatusTime.textContent = ''; }catch(e){}
+    }, 1400);
+  }catch(e){}
+}
+
 async function loadRawFromGraph(reset){
   if(!$rawSection || !$rawBody) return;
   if(!$rawSection.open) return;
@@ -2411,6 +2470,8 @@ async function loadRawFromGraph(reset){
 
   _RAW_INFLIGHT = true;
   try{
+    _rawStatusStart(reset ? 'Raw laedt...' : 'Raw laedt mehr...');
+    try{ window.InfluxBroStatus && window.InfluxBroStatus.start && window.InfluxBroStatus.start('dashboard.raw', reset ? 'Raw laedt...' : 'Raw laedt mehr...'); }catch(e){}
     const payload = {
       measurement: base.measurement,
       field: base.field,
@@ -2430,8 +2491,12 @@ async function loadRawFromGraph(reset){
     else RAW_ROWS = (RAW_ROWS || []).concat(rows);
     RAW_OFFSET = (RAW_ROWS || []).length;
     renderRawTable();
+    try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done('dashboard.raw', `Raw: ${RAW_OFFSET}`); }catch(e){}
+    _rawStatusEnd(true);
   }catch(e){
     // keep previous
+    try{ window.InfluxBroStatus && window.InfluxBroStatus.fail && window.InfluxBroStatus.fail('dashboard.raw', String(e && e.message ? e.message : e)); }catch(ex){}
+    _rawStatusEnd(false, (e && e.message) ? e.message : String(e));
   }finally{
     _RAW_INFLIGHT = false;
   }
@@ -2440,6 +2505,26 @@ async function loadRawFromGraph(reset){
 function scheduleRawReload(reset){
   if(_RAW_TIMER) clearTimeout(_RAW_TIMER);
   _RAW_TIMER = setTimeout(()=>{ loadRawFromGraph(!!reset).catch(()=>{}); }, 650);
+}
+
+function initRawAutoMore(){
+  if(!$rawBox) return;
+  try{
+    $rawBox.addEventListener('scroll', ()=>{
+      try{
+        if(_RAW_INFLIGHT) return;
+        if(!$rawSection || !$rawSection.open) return;
+        if(!_rawCanMore()) return;
+        const el = $rawBox;
+        const near = (el.scrollTop + el.clientHeight) >= (el.scrollHeight - 40);
+        if(!near) return;
+        const now = Date.now();
+        if(now - _RAW_AUTO_MORE_T < 350) return;
+        _RAW_AUTO_MORE_T = now;
+        loadRawFromGraph(false).catch(()=>{});
+      }catch(e){}
+    }, {passive:true});
+  }catch(e){}
 }
 
 function _setStatsBody(tbody, rows){
@@ -3803,6 +3888,7 @@ async function runOutlierScan(){
   const baseMeta = _outlierMetaFromPayload(payload);
   const overallSpanTxt = `Suchbereich: ${fmtTs(payload.start)} bis ${fmtTs(payload.stop)}`;
   startOutlierUi(baseMeta);
+  try{ window.InfluxBroStatus && window.InfluxBroStatus.start && window.InfluxBroStatus.start('dashboard.outliers', 'Fehlersuche Ausreisser...'); }catch(e){}
   try{
     const spanMs = Math.max(0, stopMs - startMs);
     const spanDays = spanMs / 86400000;
@@ -3832,6 +3918,7 @@ async function runOutlierScan(){
       const upto = lastIso || aIso;
       OUTLIER_META_TEXT = `Chunk ${i+1}/${chunks.length}: ${fmtTs(aIso)} bis ${fmtTs(bIso)} | ${overallSpanTxt} | Geprueft bis: ${fmtTs(upto)} | Punkte: ${scannedTotal} | ${baseMeta}`;
       _renderOutlierTime();
+      try{ window.InfluxBroStatus && window.InfluxBroStatus.progress && window.InfluxBroStatus.progress('dashboard.outliers', OUTLIER_META_TEXT); }catch(e){}
 
       const pj = await api(
         "./api/outliers",
@@ -3857,6 +3944,7 @@ async function runOutlierScan(){
       if(OUTLIER_ROWS.length >= 5000){
         OUTLIER_ROWS = OUTLIER_ROWS.slice(0, 5000);
         ok(`Ausreisser gefunden: ${OUTLIER_ROWS.length} (Limit 5000 erreicht) | geprueft: ${scannedTotal}`);
+        try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done('dashboard.outliers', `Ausreisser gefunden: ${OUTLIER_ROWS.length} | geprueft: ${scannedTotal}`); }catch(e){}
         break;
       }
 
@@ -3869,14 +3957,17 @@ async function runOutlierScan(){
     if(!document.getElementById('ok').textContent){
       ok(`Ausreisser gefunden: ${(OUTLIER_ROWS||[]).length} | geprueft: ${scannedTotal}`);
     }
+    try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done('dashboard.outliers', `Ausreisser gefunden: ${(OUTLIER_ROWS||[]).length} | geprueft: ${scannedTotal}`); }catch(e){}
     stopOutlierUi(true);
   }catch(e){
     if(e && e.aborted){
       ok('Abgebrochen.');
+      try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done('dashboard.outliers', 'Abgebrochen.'); }catch(ex){}
       stopOutlierUi(true);
       return;
     }
     stopOutlierUi(false, (e && e.message) ? e.message : String(e));
+    try{ window.InfluxBroStatus && window.InfluxBroStatus.fail && window.InfluxBroStatus.fail('dashboard.outliers', String(e && e.message ? e.message : e)); }catch(ex){}
     throw e;
   }
 }
@@ -3932,6 +4023,7 @@ try{
     initGraphResize();
     loadRawRows();
     initRawResize();
+    initRawAutoMore();
 
     if(!ALLOW_WRITES){
       if($btnEditApply) $btnEditApply.disabled = true;
