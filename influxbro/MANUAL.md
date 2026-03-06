@@ -155,12 +155,17 @@ Hinweis: Werte in Bearbeitung werden gelb markiert. Geaenderte (dirty) Zeilen we
 
 ### In Datenbank uebernehmen
 
-- Button: `Aenderungen in Datenbank uebernehmen`
+- Bearbeitung passiert als Staging in der Tabelle:
+  - Spalte `Aktion`: `ueberschreiben` oder `loeschen`
+  - Spalte `Neuwert`: neuer Zahlenwert (nur bei `ueberschreiben`)
+- Button: `Aenderungen in Datenbank uebernehmen` (ueber der Bearbeitungsliste)
 - Sicherheitsmechanismus:
   - Schreiben/Loeschen ist nur aktiv, wenn in den Einstellungen `Schreiben/Loeschen erlauben` aktiviert ist.
   - Zusaetzlich musst du das exakte `delete_confirm_phrase` eintippen (Add-on Option).
 
 Wichtig: Die Aenderungen bleiben markiert, bis du sie wirklich uebernimmst.
+
+Tipp: In der Toolbar gibt es Mehrfachaktionen (z.B. Werte davor uebernehmen oder Durchschnitt davor+danach), die automatisch `Aktion/Neuwert` fuellen.
 
 ## Statistik
 
@@ -207,6 +212,17 @@ Wichtig: Die Aenderungen bleiben markiert, bis du sie wirklich uebernimmst.
 - Tipp: In der Volltextsuche gibt es Buttons `Alle` (leeren) und `aus Dashboardauswahl`.
 
 Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore/Abfragen) und die letzte Meldung anzeigt.
+
+## History
+
+- Zeigt ein Protokoll ueber `ueberschreiben`/`loeschen` sowie Rollbacks.
+- Filter:
+  - Volltextsuche
+  - Aktion / Messwert / entity_id / Grund
+- Rollback:
+  - selektierte Eintraege
+  - oder Zeitraum-Presets (z.B. letzte 15 Minuten)
+- Sicherheit: Rollback erfordert eine Bestaetigung und die exakte Phrase `delete_confirm_phrase`.
 
 ## Einstellungen
 

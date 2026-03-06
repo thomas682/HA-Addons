@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>InfluxBro – History</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; }
+    .shell { display:grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
+    @media (max-width: 980px){ .shell { grid-template-columns: 1fr; } }
+    .content { padding: 16px; }
+    h2 { margin: 0; }
+    .muted { opacity: 0.7; font-size: 12px; }
+    .row { display:flex; gap: 10px; flex-wrap:wrap; align-items:end; margin-top: 10px; justify-content:flex-start; }
+    label { display:block; font-size: 12px; opacity: 0.8; }
+    input, select, button { padding: 10px 12px; height: 40px; box-sizing: border-box; }
+    button { cursor:pointer; }
+    .btn_sm { height: 34px; padding: 6px 10px; }
+    .card { border: 1px solid #ddd; border-radius: 12px; padding: 12px; margin-top: 12px; }
+    .err { color: #b00020; margin-top: 8px; white-space: pre-wrap; }
+    .ok { color: #0a7a28; margin-top: 8px; white-space: pre-wrap; }
+    table { border-collapse: collapse; width: 100%; margin-top: 10px; }
+    th, td { border: 1px solid #eee; padding: 0 6px; font-size: 12px; line-height: 1.2; vertical-align: middle; }
+    th { background: #f6f6f6; text-align:left; position: sticky; top: 0; }
+    .table_box { max-height: 70vh; overflow:auto; border: 1px solid #eee; border-radius: 12px; margin-top: 10px; }
+    tr.selected { background: #e8f1ff; }
+    code { background:#f6f6f6; padding:2px 6px; border-radius:6px; }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    {% include "_nav.html" %}
+    <main class="content" data-ui="history.page" title="history.page">
+      <h2>History</h2>
+      <div class="muted">Protokolliert ueberschreiben/loeschen und Rollbacks. Rollback ist ebenfalls protokolliert.</div>
+
+      <div class="card">
+        <div class="row" data-ui="history.filters" title="history.filters">
+          <div style="min-width: 220px; flex:1;">
+            <label>Suche (Volltext)</label>
+            <input id="q" placeholder="reason, measurement, entity_id..." />
+          </div>
+          <div style="min-width: 160px;">
+            <label>Aktion</label>
+            <select id="action">
+              <option value="">alle</option>
+              <option value="overwrite">ueberschreiben</option>
+              <option value="delete">loeschen</option>
+              <option value="rollback">rollback</option>
+            </select>
+          </div>
+          <div style="min-width: 220px;">
+            <label>_measurement</label>
+            <input id="measurement" placeholder="optional" />
+          </div>
+          <div style="min-width: 220px;">
+            <label>entity_id</label>
+            <input id="entity_id" placeholder="optional" />
+          </div>
+          <div style="min-width: 220px;">
+            <label>Grund (contains)</label>
+            <input id="reason" placeholder="optional" />
+          </div>
+        </div>
+
+        <div class="row" data-ui="history.actions" title="history.actions">
+          <div>
+            <label>&nbsp;</label>
+            <button id="refresh">Refresh</button>
+          </div>
+          <div>
+            <label>Rollback Zeitraum</label>
+            <select id="preset">
+              <option value="">-</option>
+              <option value="300">letzte 5 Minuten</option>
+              <option value="900">letzte 15 Minuten</option>
+              <option value="3600">letzte 1 Stunde</option>
+              <option value="21600">letzte 6 Stunden</option>
+              <option value="86400">letzte 24 Stunden</option>
+            </select>
+          </div>
+          <div>
+            <label>&nbsp;</label>
+            <button id="rollback_preset" class="btn_sm">Rollback Zeitraum</button>
+          </div>
+          <div>
+            <label>&nbsp;</label>
+            <button id="rollback_selected" class="btn_sm">Rollback selektierte</button>
+          </div>
+          <div class="muted" style="min-width: 320px; flex:1; padding-top: 6px;">Sicherheit: Rollback erfordert die Phrase <code>{{ delete_phrase }}</code>.</div>
+        </div>
+
+        <div id="err" class="err"></div>
+        <div id="ok" class="ok"></div>
+
+        <div class="table_box">
+          <table id="tbl" data-ui="history.table" title="history.table">
+            <thead>
+              <tr>
+                <th style="width: 34px;"><input type="checkbox" id="sel_all"/></th>
+                <th style="width: 170px;">Datum</th>
+                <th style="width: 90px;">Aktion</th>
+                <th style="width: 220px;">Serie</th>
+                <th style="width: 190px;">Zeitpunkt</th>
+                <th style="width: 120px;">Alt</th>
+                <th style="width: 120px;">Neu</th>
+                <th>Grund</th>
+              </tr>
+            </thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+        <div class="muted" id="info" style="margin-top: 10px;"></div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const $err = document.getElementById('err');
+    const $ok = document.getElementById('ok');
+    const $q = document.getElementById('q');
+    const $action = document.getElementById('action');
+    const $measurement = document.getElementById('measurement');
+    const $entityId = document.getElementById('entity_id');
+    const $reason = document.getElementById('reason');
+    const $refresh = document.getElementById('refresh');
+    const $rows = document.getElementById('rows');
+    const $info = document.getElementById('info');
+    const $selAll = document.getElementById('sel_all');
+    const $preset = document.getElementById('preset');
+    const $rollbackPreset = document.getElementById('rollback_preset');
+    const $rollbackSelected = document.getElementById('rollback_selected');
+
+    let LIST = [];
+    const SELECTED = new Set();
+
+    function err(s){ $err.textContent = s || ''; if(s) { try{ alert(s); }catch(e){} } }
+    function ok(s){ $ok.textContent = s || ''; }
+    function pad2(n){ return String(n).padStart(2,'0'); }
+    function pad3(n){ return String(n).padStart(3,'0'); }
+    function fmtTs(iso){
+      if(!iso) return '';
+      const d = new Date(String(iso));
+      if(!isFinite(d.getTime())) return String(iso);
+      return pad2(d.getDate()) + '.' + pad2(d.getMonth()+1) + '.' + d.getFullYear() + ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds()) + '.' + pad3(d.getMilliseconds());
+    }
+
+    async function api(url, opts){
+      const r = await fetch(url, opts);
+      const j = await r.json().catch(()=>({ok:false,error:'Invalid JSON'}));
+      if(!r.ok || !j.ok) throw new Error(j.error || ('HTTP ' + r.status));
+      return j;
+    }
+
+    function render(){
+      const shown = (LIST || []);
+      $rows.innerHTML = '';
+      shown.forEach(it=>{
+        const id = String(it.id || '');
+        const tr = document.createElement('tr');
+        if(id && SELECTED.has(id)) tr.classList.add('selected');
+        const tdSel = document.createElement('td');
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = id && SELECTED.has(id);
+        cb.addEventListener('click', (ev)=>{ ev.stopPropagation(); });
+        cb.addEventListener('change', ()=>{ if(cb.checked) SELECTED.add(id); else SELECTED.delete(id); renderSelAll(); tr.classList.toggle('selected', cb.checked); });
+        tdSel.appendChild(cb);
+        const tdAt = document.createElement('td');
+        tdAt.textContent = fmtTs(it.at);
+        const tdA = document.createElement('td');
+        tdA.textContent = String(it.action || '');
+        const tdS = document.createElement('td');
+        const s = it.series || {};
+        tdS.textContent = String((s.measurement||'') + '/' + (s.field||''));
+        const tdT = document.createElement('td');
+        tdT.textContent = fmtTs(it.time);
+        const tdO = document.createElement('td');
+        tdO.textContent = (it.old_value === null || it.old_value === undefined) ? '' : String(it.old_value);
+        const tdN = document.createElement('td');
+        tdN.textContent = (it.new_value === null || it.new_value === undefined) ? '' : String(it.new_value);
+        const tdR = document.createElement('td');
+        tdR.textContent = String(it.reason || '');
+        tr.appendChild(tdSel);
+        tr.appendChild(tdAt);
+        tr.appendChild(tdA);
+        tr.appendChild(tdS);
+        tr.appendChild(tdT);
+        tr.appendChild(tdO);
+        tr.appendChild(tdN);
+        tr.appendChild(tdR);
+        tr.addEventListener('click', ()=>{
+          if(!id) return;
+          if(SELECTED.has(id)) SELECTED.delete(id); else SELECTED.add(id);
+          render();
+        });
+        $rows.appendChild(tr);
+      });
+      $info.textContent = `Eintraege: ${shown.length}`;
+      renderSelAll();
+    }
+
+    function renderSelAll(){
+      const ids = (LIST || []).map(x=>String(x.id||'')).filter(Boolean);
+      if(!ids.length){ $selAll.checked = false; $selAll.indeterminate = false; return; }
+      let sel = 0;
+      ids.forEach(id=>{ if(SELECTED.has(id)) sel++; });
+      $selAll.checked = sel === ids.length;
+      $selAll.indeterminate = sel > 0 && sel < ids.length;
+    }
+
+    async function load(){
+      err(''); ok('');
+      const qs = new URLSearchParams({
+        q: ($q.value||'').trim(),
+        action: ($action.value||'').trim(),
+        measurement: ($measurement.value||'').trim(),
+        entity_id: ($entityId.value||'').trim(),
+        reason: ($reason.value||'').trim(),
+        limit: '500',
+      });
+      const j = await api('./api/history_list?' + qs.toString());
+      LIST = j.rows || [];
+      SELECTED.clear();
+      render();
+    }
+
+    async function rollbackIds(ids){
+      if(!ids.length){ err('Keine Eintraege selektiert.'); return; }
+      if(!confirm('Rollback wirklich ausfuehren?')) return;
+      const phrase = prompt('Bitte bestaetigen: {{ delete_phrase }}');
+      if(phrase !== '{{ delete_phrase }}'){
+        err('Bestaetigung fehlgeschlagen.');
+        return;
+      }
+      const j = await api('./api/history_rollback', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({confirm: phrase, ids})});
+      ok(j.message || 'Rollback ausgefuehrt.');
+      await load();
+    }
+
+    async function rollbackPreset(seconds){
+      const s = Number(seconds);
+      if(!isFinite(s) || s <= 0){ err('Bitte Zeitraum waehlen.'); return; }
+      if(!confirm('Rollback fuer den Zeitraum wirklich ausfuehren?')) return;
+      const phrase = prompt('Bitte bestaetigen: {{ delete_phrase }}');
+      if(phrase !== '{{ delete_phrase }}'){
+        err('Bestaetigung fehlgeschlagen.');
+        return;
+      }
+      const j = await api('./api/history_rollback', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({confirm: phrase, since_seconds: s})});
+      ok(j.message || 'Rollback ausgefuehrt.');
+      await load();
+    }
+
+    $refresh.addEventListener('click', (ev)=>{ ev.preventDefault(); ev.stopPropagation(); load().catch(e=>err(String(e.message||e))); });
+    [$q,$action,$measurement,$entityId,$reason].forEach(el=>{ el.addEventListener('change', ()=>load().catch(()=>{})); });
+    $selAll.addEventListener('change', ()=>{
+      const ids = (LIST || []).map(x=>String(x.id||'')).filter(Boolean);
+      if($selAll.checked) ids.forEach(id=>SELECTED.add(id)); else ids.forEach(id=>SELECTED.delete(id));
+      render();
+    });
+    $rollbackSelected.addEventListener('click', (ev)=>{ ev.preventDefault(); ev.stopPropagation(); rollbackIds(Array.from(SELECTED)).catch(e=>err(String(e.message||e))); });
+    $rollbackPreset.addEventListener('click', (ev)=>{ ev.preventDefault(); ev.stopPropagation(); rollbackPreset($preset.value).catch(e=>err(String(e.message||e))); });
+
+    load().catch(()=>{});
+  </script>
+
+  {% include "_tooltips.html" %}
+</body>
+</html>

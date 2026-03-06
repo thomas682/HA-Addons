@@ -41,6 +41,9 @@ BACKUP_DIR = DEFAULT_BACKUP_DIR
 GLOBAL_STATS_JOBS: dict[str, dict[str, Any]] = {}
 GLOBAL_STATS_LOCK = threading.RLock()
 
+HISTORY_LOCK = threading.RLock()
+HISTORY_PATH = DATA_DIR / "influxbro_history.jsonl"
+
 RESTORE_COPY_JOBS: dict[str, dict[str, Any]] = {}
 RESTORE_COPY_LOCK = threading.RLock()
 
@@ -546,6 +549,9 @@ DEFAULT_CFG = {
     "ui_table_visible_rows": 20,
     "ui_table_row_height_px": 13,
     "ui_edit_neighbors_n": 5,
+    "ui_edit_details_visible_rows": 12,
+    "ui_edit_graph_buffer_minutes": 30,
+    "ui_edit_graph_max_points": 50000,
     "ui_decimals": 3,
 
     "ui_font_size_px": 14,
@@ -612,6 +618,48 @@ def writes_enabled(cfg: dict[str, Any]) -> bool:
         return s in ("1", "true", "yes", "on")
     except Exception:
         return True
+
+
+def _history_append(entry: dict[str, Any]) -> None:
+    try:
+        entry = dict(entry or {})
+        if "id" not in entry:
+            entry["id"] = uuid.uuid4().hex
+        if "at" not in entry:
+            entry["at"] = datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+        line = json.dumps(entry, ensure_ascii=True, separators=(",", ":"))
+        with HISTORY_LOCK:
+            try:
+                HISTORY_PATH.parent.mkdir(parents=True, exist_ok=True)
+            except Exception:
+                pass
+            with HISTORY_PATH.open("a", encoding="utf-8") as f:
+                f.write(line + "\n")
+    except Exception:
+        # History is best-effort; never break runtime due to logging.
+        return
+
+
+def _history_read_all() -> list[dict[str, Any]]:
+    try:
+        if not HISTORY_PATH.exists():
+            return []
+        with HISTORY_LOCK:
+            raw = HISTORY_PATH.read_text(encoding="utf-8", errors="replace")
+        out: list[dict[str, Any]] = []
+        for ln in (raw or "").splitlines():
+            ln = ln.strip()
+            if not ln:
+                continue
+            try:
+                j = json.loads(ln)
+            except Exception:
+                continue
+            if isinstance(j, dict):
+                out.append(j)
+        return out
+    except Exception:
+        return []
 
 def load_cfg():
     # NOTE: No automatic autodetect at startup.
@@ -1032,6 +1080,18 @@ def logs_page():
 def jobs_page():
     cfg = load_cfg()
     return render_template("jobs.html", cfg=cfg, allow_delete=writes_enabled(cfg), nav="jobs")
+
+
+@app.get("/history")
+def history_page():
+    cfg = load_cfg()
+    return render_template(
+        "history.html",
+        cfg=cfg,
+        allow_delete=writes_enabled(cfg),
+        delete_phrase=DELETE_CONFIRM_PHRASE,
+        nav="history",
+    )
 
 
 @app.get("/backup")
@@ -3281,6 +3341,9 @@ def api_set_config():
     _clamp_int("ui_font_small_px", 11, 9, 18)
     _clamp_int("ui_table_row_height_px", 13, 9, 60)
     _clamp_int("ui_edit_neighbors_n", 5, 1, 50)
+    _clamp_int("ui_edit_details_visible_rows", 12, 4, 80)
+    _clamp_int("ui_edit_graph_buffer_minutes", 30, 0, 24 * 60)
+    _clamp_int("ui_edit_graph_max_points", 50000, 1000, 200000)
     _clamp_float("ui_checkbox_scale", 0.85, 0.5, 1.6)
     _clamp_int("ui_filter_label_width_px", 170, 80, 360)
     _clamp_int("ui_filter_control_width_px", 320, 180, 900)
@@ -3981,6 +4044,85 @@ from(bucket: "{cfg["bucket"]}")
             },
         })
 
+    except Exception as e:
+        return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
+
+
+@app.post("/api/window_points")
+def api_window_points():
+    """Return time/value points for a given window, optionally downsampled."""
+
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    body = request.get_json(force=True) or {}
+    measurement = str(body.get("measurement") or "").strip()
+    field = str(body.get("field") or "").strip()
+    entity_id = str(body.get("entity_id") or "").strip() or None
+    friendly_name = str(body.get("friendly_name") or "").strip() or None
+    if not measurement or not field:
+        return jsonify({"ok": False, "error": "measurement and field required"}), 400
+
+    try:
+        start_dt, stop_dt = _get_start_stop_from_payload(body)
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"invalid start/stop: {e}"}), 400
+    if not start_dt or not stop_dt:
+        return jsonify({"ok": False, "error": "start and stop required"}), 400
+
+    try:
+        max_points = int(body.get("max_points") or cfg.get("ui_edit_graph_max_points") or 50000)
+    except Exception:
+        max_points = int(cfg.get("ui_edit_graph_max_points") or 50000)
+    if max_points < 1000:
+        max_points = 1000
+    if max_points > 200000:
+        max_points = 200000
+
+    if int(cfg.get("influx_version", 2)) != 2:
+        return jsonify({"ok": False, "error": "window_points currently supports InfluxDB v2 only"}), 400
+
+    if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+        return jsonify({
+            "ok": False,
+            "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
+        }), 400
+
+    extra = flux_tag_filter(entity_id, friendly_name)
+    dur_ms = max(0.0, (stop_dt - start_dt).total_seconds() * 1000.0)
+    every_ms = int(math.ceil(dur_ms / float(max_points))) if dur_ms > 0 else 1
+    if every_ms < 1:
+        every_ms = 1
+
+    start = _dt_to_rfc3339_utc(start_dt)
+    stop = _dt_to_rfc3339_utc(stop_dt)
+
+    # If the window is dense, downsample via aggregateWindow.
+    agg = ""
+    mode = "raw"
+    if every_ms > 1:
+        agg = f'  |> aggregateWindow(every: {every_ms}ms, fn: mean, createEmpty: false)\n'
+        mode = "downsample"
+
+    q = f'''
+from(bucket: "{cfg["bucket"]}")
+  |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
+{agg}  |> keep(columns: ["_time","_value"])
+  |> sort(columns: ["_time"], desc: false)
+  |> limit(n: {max_points})
+'''
+
+    try:
+        log_query("api.window_points (flux)", q)
+        rows: list[dict[str, Any]] = []
+        with v2_client(cfg) as c:
+            tables = c.query_api().query(q, org=cfg["org"])
+            for t in tables or []:
+                for r in getattr(t, "records", []) or []:
+                    ts = r.get_time()
+                    val = r.get_value()
+                    if isinstance(ts, datetime):
+                        rows.append({"time": _dt_to_rfc3339_utc_ms(ts), "value": val})
+        return jsonify({"ok": True, "rows": rows, "meta": {"mode": mode, "every_ms": every_ms, "max_points": max_points}})
     except Exception as e:
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
 
@@ -6142,6 +6284,369 @@ from(bucket: "{cfg["bucket"]}")
             return jsonify({"ok": True, "message": f"Applied edits: {applied}", "applied": applied})
     except Exception as ex:
         return jsonify({"ok": False, "error": _short_influx_error(ex)}), 500
+
+
+@app.post("/api/apply_changes")
+def apply_changes():
+    """Apply staged changes from the dashboard.
+
+    Supports:
+    - overwrite: write new value at timestamp (preserve tags)
+    - delete: delete the point at timestamp (narrow window + tag predicate)
+
+    Safety: gated behind writes_enabled + delete_confirm_phrase.
+    """
+
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    if not writes_enabled(cfg):
+        return jsonify({"ok": False, "error": "Writes are disabled. Enable writes in Settings."}), 403
+
+    body = request.get_json(force=True) or {}
+    confirm = body.get("confirm", "")
+    if confirm != DELETE_CONFIRM_PHRASE:
+        return (
+            jsonify({"ok": False, "error": f"Confirmation phrase mismatch. Type exactly: {DELETE_CONFIRM_PHRASE}"}),
+            400,
+        )
+
+    measurement = (body.get("measurement") or "").strip()
+    field = (body.get("field") or "").strip()
+    entity_id = (body.get("entity_id") or "").strip() or None
+    friendly_name = (body.get("friendly_name") or "").strip() or None
+    changes = body.get("changes")
+
+    if not measurement or not field:
+        return jsonify({"ok": False, "error": "measurement and field required"}), 400
+    if not isinstance(changes, list) or not changes:
+        return jsonify({"ok": False, "error": "changes must be a non-empty list"}), 400
+
+    if int(cfg.get("influx_version", 2)) != 2:
+        return jsonify({"ok": False, "error": "apply_changes currently supports InfluxDB v2 only"}), 400
+
+    if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+        return jsonify({
+            "ok": False,
+            "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
+        }), 400
+
+    extra = flux_tag_filter(entity_id, friendly_name)
+
+    def _pred_escape(v: str) -> str:
+        return (v or "").replace("\\", "\\\\").replace('"', '\\"')
+
+    def _predicate(measurement_s: str, field_s: str, tags: dict[str, str]) -> str:
+        parts = [f'_measurement="{_pred_escape(measurement_s)}"', f'_field="{_pred_escape(field_s)}"']
+        for k, v in (tags or {}).items():
+            if not k:
+                continue
+            parts.append(f'{k}="{_pred_escape(v)}"')
+        return " AND ".join(parts)
+
+    applied = 0
+    with v2_client(cfg) as c:
+        qapi = c.query_api()
+        wapi = c.write_api(write_options=SYNCHRONOUS)
+        dapi = c.delete_api()
+
+        for ch in changes:
+            if not isinstance(ch, dict):
+                return jsonify({"ok": False, "error": "each change must be an object"}), 400
+
+            action = str(ch.get("action") or "").strip().lower()
+            if action not in ("overwrite", "delete"):
+                return jsonify({"ok": False, "error": "invalid action"}), 400
+
+            time_raw = (ch.get("time") or "").strip()
+            if not time_raw:
+                return jsonify({"ok": False, "error": "change requires time"}), 400
+
+            reason = str(ch.get("reason") or "").strip()[:200]
+            try:
+                expected_decimals = int(ch.get("decimals", 0))
+            except Exception:
+                expected_decimals = 0
+            if expected_decimals < 0 or expected_decimals > 12:
+                expected_decimals = 0
+
+            try:
+                dt = _parse_iso_datetime(time_raw)
+            except Exception as ex:
+                return jsonify({"ok": False, "error": f"invalid time: {ex}"}), 400
+
+            # Find original point (preserve full tag set; get old value)
+            start = _dt_to_rfc3339_utc_full(dt - timedelta(seconds=2))
+            stop = _dt_to_rfc3339_utc_full(dt + timedelta(seconds=2))
+            q = f'''
+from(bucket: "{cfg["bucket"]}")
+  |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
+  |> group()
+  |> sort(columns: ["_time"])
+  |> limit(n: 50)
+'''
+            tables = qapi.query(q, org=cfg["org"])
+            best_rec = None
+            best_abs = None
+            for t in tables or []:
+                for rec in getattr(t, "records", []) or []:
+                    rdt = rec.get_time()
+                    if not isinstance(rdt, datetime):
+                        continue
+                    delta = abs((rdt.astimezone(timezone.utc) - dt).total_seconds())
+                    if best_abs is None or delta < best_abs:
+                        best_abs = delta
+                        best_rec = rec
+
+            if best_rec is None or best_abs is None or best_abs > 1.0:
+                return (
+                    jsonify({"ok": False, "error": f"original point not found near: {time_raw}"}),
+                    404,
+                )
+
+            old_val = best_rec.get_value()
+            if isinstance(old_val, bool) or not isinstance(old_val, (int, float)):
+                return (
+                    jsonify({"ok": False, "error": f"unsupported field type at {time_raw}"}),
+                    400,
+                )
+
+            tags: dict[str, str] = {}
+            for k, v in (getattr(best_rec, "values", {}) or {}).items():
+                if k in ("result", "table"):
+                    continue
+                if str(k).startswith("_"):
+                    continue
+                if v is None:
+                    continue
+                tags[str(k)] = str(v)
+
+            new_val: int | float | None = None
+            if action == "overwrite":
+                new_raw = (ch.get("new_value") or "").strip()
+                if not new_raw:
+                    return jsonify({"ok": False, "error": "overwrite requires new_value"}), 400
+                if _count_decimals(new_raw) != expected_decimals:
+                    return (
+                        jsonify({"ok": False, "error": f"invalid decimals for {time_raw}: expected {expected_decimals}"}),
+                        400,
+                    )
+                if isinstance(old_val, int) and not isinstance(old_val, bool):
+                    if expected_decimals != 0 or "." in new_raw:
+                        return (
+                            jsonify({"ok": False, "error": f"field is integer at {time_raw}; decimals must be 0"}),
+                            400,
+                        )
+                    try:
+                        new_val = int(new_raw)
+                    except Exception:
+                        return jsonify({"ok": False, "error": f"invalid integer at {time_raw}"}), 400
+                else:
+                    try:
+                        new_val = float(new_raw)
+                    except Exception:
+                        return jsonify({"ok": False, "error": f"invalid float at {time_raw}"}), 400
+
+                p = Point(measurement)
+                for tk, tv in tags.items():
+                    p = p.tag(tk, tv)
+                p = p.field(field, new_val).time(dt, WritePrecision.NS)
+                wapi.write(bucket=cfg["bucket"], org=cfg["org"], record=p)
+
+            if action == "delete":
+                # Narrow time window around the timestamp to delete the single point.
+                s = _dt_to_rfc3339_utc_ms(dt - timedelta(milliseconds=2))
+                e = _dt_to_rfc3339_utc_ms(dt + timedelta(milliseconds=2))
+                pred = _predicate(measurement, field, tags)
+                dapi.delete(start=s, stop=e, predicate=pred, bucket=cfg["bucket"], org=cfg["org"])
+
+            _history_append({
+                "kind": "change",
+                "series": {
+                    "measurement": measurement,
+                    "field": field,
+                    "entity_id": entity_id,
+                    "friendly_name": friendly_name,
+                    "tags": tags,
+                },
+                "time": time_raw,
+                "action": action,
+                "old_value": old_val,
+                "new_value": new_val,
+                "reason": reason,
+                "ip": _req_ip(),
+                "ua": _req_ua(),
+            })
+
+            applied += 1
+
+    return jsonify({"ok": True, "applied": applied, "message": f"Applied changes: {applied}"})
+
+
+@app.get("/api/history_list")
+def api_history_list():
+    try:
+        q = str(request.args.get("q") or "").strip().lower()
+        action = str(request.args.get("action") or "").strip().lower()
+        measurement = str(request.args.get("measurement") or "").strip().lower()
+        entity_id = str(request.args.get("entity_id") or "").strip().lower()
+        reason = str(request.args.get("reason") or "").strip().lower()
+        try:
+            limit = int(request.args.get("limit") or 200)
+        except Exception:
+            limit = 200
+        if limit < 1:
+            limit = 1
+        if limit > 2000:
+            limit = 2000
+
+        rows = _history_read_all()
+        # newest first
+        rows = list(reversed(rows))
+
+        def _match(it: dict[str, Any]) -> bool:
+            try:
+                if action and str(it.get("action") or "").lower() != action:
+                    return False
+                s = it.get("series") or {}
+                if measurement and measurement not in str(s.get("measurement") or "").lower():
+                    return False
+                if entity_id and entity_id not in str(s.get("entity_id") or "").lower():
+                    return False
+                if reason and reason not in str(it.get("reason") or "").lower():
+                    return False
+                if q:
+                    blob = json.dumps(it, ensure_ascii=True).lower()
+                    if q not in blob:
+                        return False
+                return True
+            except Exception:
+                return False
+
+        out: list[dict[str, Any]] = []
+        for it in rows:
+            if not isinstance(it, dict):
+                continue
+            if not _match(it):
+                continue
+            out.append(it)
+            if len(out) >= limit:
+                break
+
+        return jsonify({"ok": True, "rows": out})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 500
+
+
+@app.post("/api/history_rollback")
+def api_history_rollback():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    if not writes_enabled(cfg):
+        return jsonify({"ok": False, "error": "Writes are disabled. Enable writes in Settings."}), 403
+
+    body = request.get_json(force=True) or {}
+    confirm = body.get("confirm", "")
+    if confirm != DELETE_CONFIRM_PHRASE:
+        return (
+            jsonify({"ok": False, "error": f"Confirmation phrase mismatch. Type exactly: {DELETE_CONFIRM_PHRASE}"}),
+            400,
+        )
+
+    ids = body.get("ids")
+    since_seconds = body.get("since_seconds")
+
+    rows = _history_read_all()
+
+    wanted: list[dict[str, Any]] = []
+    if isinstance(ids, list) and ids:
+        idset = {str(x) for x in ids if str(x)}
+        for it in rows:
+            if isinstance(it, dict) and str(it.get("id") or "") in idset:
+                wanted.append(it)
+    elif since_seconds is not None:
+        try:
+            s = int(since_seconds)
+        except Exception:
+            s = 0
+        if s <= 0:
+            return jsonify({"ok": False, "error": "since_seconds must be > 0"}), 400
+        cutoff = datetime.now(timezone.utc) - timedelta(seconds=s)
+        for it in rows:
+            if not isinstance(it, dict):
+                continue
+            at = str(it.get("at") or "")
+            try:
+                dt_at = _parse_iso_datetime(at)
+            except Exception:
+                continue
+            if dt_at >= cutoff:
+                wanted.append(it)
+    else:
+        return jsonify({"ok": False, "error": "ids or since_seconds required"}), 400
+
+    # Rollback newest first
+    wanted.sort(key=lambda x: str(x.get("at") or ""), reverse=True)
+
+    if int(cfg.get("influx_version", 2)) != 2:
+        return jsonify({"ok": False, "error": "history rollback currently supports InfluxDB v2 only"}), 400
+    if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+        return jsonify({
+            "ok": False,
+            "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
+        }), 400
+
+    applied = 0
+    with v2_client(cfg) as c:
+        wapi = c.write_api(write_options=SYNCHRONOUS)
+
+        for it in wanted:
+            action = str(it.get("action") or "").strip().lower()
+            if action not in ("overwrite", "delete"):
+                # Ignore other entries (e.g., rollbacks)
+                continue
+            s = it.get("series") or {}
+            measurement = str(s.get("measurement") or "").strip()
+            field = str(s.get("field") or "").strip()
+            tags = s.get("tags") or {}
+            if not isinstance(tags, dict):
+                tags = {}
+            t_raw = str(it.get("time") or "").strip()
+            try:
+                dt = _parse_iso_datetime(t_raw)
+            except Exception:
+                continue
+            old_val = it.get("old_value")
+            if old_val is None:
+                continue
+
+            p = Point(measurement)
+            for tk, tv in tags.items():
+                if tk and tv is not None:
+                    p = p.tag(str(tk), str(tv))
+            p = p.field(field, old_val).time(dt, WritePrecision.NS)
+            wapi.write(bucket=cfg["bucket"], org=cfg["org"], record=p)
+
+            _history_append({
+                "kind": "rollback",
+                "ref_id": it.get("id"),
+                "series": {
+                    "measurement": measurement,
+                    "field": field,
+                    "entity_id": s.get("entity_id"),
+                    "friendly_name": s.get("friendly_name"),
+                    "tags": tags,
+                },
+                "time": t_raw,
+                "action": "rollback",
+                "old_value": it.get("new_value"),
+                "new_value": old_val,
+                "reason": "Rollback",
+                "ip": _req_ip(),
+                "ua": _req_ua(),
+            })
+
+            applied += 1
+
+    return jsonify({"ok": True, "applied": applied, "message": f"Rollback applied: {applied}"})
 
 @app.post("/api/delete")
 def delete():

@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.11.88
+
+### Features
+
+- Dashboard: Bearbeitungsliste refactor mit Spalten `Aktion` + `Neuwert` (staging) und Toolbar-Aktionen (Details/Bearbeiten/Multi).
+- Dashboard: Details-Panel ist separat scrollbar; `Uebernehmen` setzt den selektierten Detailwert als Neuwert.
+- Dashboard: optionaler Bearbeitungs-Graph rechts (DB-Punkte im Zeitfenster min/max +/- Puffer; markiert Bearbeitungspunkte; Split-Resizer).
+- Dashboard: Daten bleiben beim Seitenwechsel erhalten (sessionStorage Cache).
+- History: neuer Menuepunkt mit Filter + Rollback (selektiert oder Zeitraum-Preset; mit Sicherheitsphrase).
+
+### Fixes
+
+- UI: Raw Daten Tabelle nutzt Monospace-Font fuer stabilere Zahlendarstellung.
+- Status: Ausreisser-Meta wird in das Sidebar-Statuspanel gespiegelt.
+
+### Maintenance
+
+- API: neue Endpoints `POST /api/apply_changes`, `POST /api/window_points`, `GET /api/history_list`, `POST /api/history_rollback`.
+- Tested with Home Assistant Core: unknown
+
 ## 1.11.87
 
 ### Features
