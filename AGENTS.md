@@ -249,4 +249,7 @@ from flask import Flask, jsonify, request
 - After completing a unit of work where you either (a) expect an answer from the user to continue, or (b) you are fully done and ready for a new input, play a macOS completion sound:
   - Ready/awaiting input: `afplay /System/Library/Sounds/Glass.aiff`
   - Blocked/failed: `afplay /System/Library/Sounds/Basso.aiff`
+- When you ask the user for confirmation/decision to continue (a blocking question), also:
+  - play a completion sound: `afplay /System/Library/Sounds/Glass.aiff`
+  - speak a short prompt via macOS `say` (German), e.g. `say "Bitte bestaetigen"`
 - Only speak the "Generierung erfolgt..." message when a new add-on version was produced (version bump in `influxbro/config.yaml`).

@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.11.84
+
+### Features
+
+- Dashboard: kein automatisches Neuladen beim Oeffnen; Daten werden nur per `Aktualisieren` geladen.
+- Dashboard: Status unter `Aktualisieren` bleibt sichtbar und wird in das Sidebar-Statuspanel gespiegelt.
+- Bearbeitungsliste: bleibt leer bis `Fehlersuche Ausreisser` ausgefuehrt wird.
+
+### Fixes
+
+- UI: Dashboard-Content ist wieder scrollbar (Desktop).
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.11.83
 
 ### Features

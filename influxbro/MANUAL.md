@@ -44,7 +44,7 @@ Aktuelle UI (Beispiele):
 
 Links findest du die Bereiche:
 
-- Dashboard: Messwerte auswaehlen, Graph/Tabelle ansehen, Ausreisser finden und Werte direkt in der Punktliste bearbeiten.
+- Dashboard: Messwerte auswaehlen, Graph/Tabelle ansehen, Ausreisser finden und Werte direkt in der Bearbeitungsliste bearbeiten.
 - Statistik: Gesamtstatistik ueber viele Serien anzeigen.
 - Backup: Backups fuer einen einzelnen Messwert erstellen und verwalten.
 - Restore: Ein vorhandenes Backup fuer einen Messwert wiederherstellen.
@@ -91,7 +91,7 @@ Im Sidebar-Kopf wird ausserdem die aktuell laufende Add-on Version angezeigt.
 Weitere Elemente:
 
 - `Erweitert: Measurement / Field`: zeigt die intern aufgeloesten Werte `_measurement` und `_field`.
-- `Aktualisieren`: laedt Graph, Fehler-/Filtertabelle und Statistik fuer den aktuellen Zeitraum.
+- `Aktualisieren`: laedt Graph und Statistik fuer den aktuellen Zeitraum.
 - `Donate`/`PayPal`: Link zur freiwilligen Unterstuetzung.
 - Zusaetzlich gibt es einen "Buy me a coffee" Spendenlink.
 
@@ -104,7 +104,8 @@ Tipp: Wenn du mit der Maus ueber einem Feld bleibst, zeigt der Tooltip den inter
 
 ### 3) Aktualisieren
 
-- Erst mit `Aktualisieren` werden Graph, Punktliste und Statistik geladen.
+- Erst mit `Aktualisieren` werden Graph und Statistik geladen.
+- Die Bearbeitungsliste bleibt dabei leer und wird erst durch `Fehlersuche Ausreisser` gefuellt.
 
 ## Graph
 
@@ -112,7 +113,7 @@ Tipp: Wenn du mit der Maus ueber einem Feld bleibst, zeigt der Tooltip den inter
 - Option `Messpunkte markieren`: schaltet runde Marker ein/aus.
 - Ziehen der Groesse: Unter dem Plot gibt es einen horizontalen Griff. Ziehen nach oben/unten aendert die Plot-Hoehe.
 
-## Punktliste (Tabelle)
+## Bearbeitungsliste (Ausreisser)
 
 - Linke Checkbox: Zeilen selektieren (Mehrfachauswahl moeglich).
 - `Zeit gefuehrt durch Graph`:
@@ -121,7 +122,7 @@ Tipp: Wenn du mit der Maus ueber einem Feld bleibst, zeigt der Tooltip den inter
 - `Filter aktiv`: schaltet den Werte-Filter (Links/Verb/Rechts) an/aus.
 - `Links`/`Verb.`/`Rechts`: einfache Regel um Werte als Fehler zu markieren (z.B. kleiner als 0 oder groesser als 999999).
 
-Bearbeitung in der Punktliste:
+Bearbeitung in der Bearbeitungsliste:
 
 - Pro Zeile in der Spalte `Aktion`: `Bearbeiten` aktiviert den Bearbeitungsmodus fuer diesen Punkt.
 - Sobald mindestens ein Punkt in Bearbeitung ist, werden zusaetzliche Spalten eingeblendet: `Alt`, `Neu`, `aelter`, `juenger`, `eigener Wert`.
@@ -131,7 +132,7 @@ Bearbeitung in der Punktliste:
 
 Ueberschreiben-History:
 
-- Nach dem Ueberschreiben wird der Wert in der Punktliste sofort aktualisiert.
+- Nach dem Ueberschreiben wird der Wert in der Bearbeitungsliste sofort aktualisiert.
 - Unter der Zeile erscheint eine eingerueckte History (letzte 3 Ueberschreibungen) mit Datum, Altwert, Neuwert und Button `restore`.
 
 Ausreisser-Fehlersuche:
