@@ -35,31 +35,31 @@
       <div class="muted">Protokolliert ueberschreiben/loeschen und Rollbacks. Rollback ist ebenfalls protokolliert.</div>
 
       <div class="card">
-        <div class="row" data-ui="history.filters" title="history.filters">
-          <div style="min-width: 220px; flex:1;">
+        <div class="row" data-ui="history.filters" title="history.filters" style="align-items:end;">
+          <div style="min-width: 240px; flex: 1 1 360px;">
             <label>Suche (Volltext)</label>
-            <input id="q" placeholder="reason, measurement, entity_id..." />
+            <input id="q" placeholder="Grund, friendly_name, entity_id, _measurement..." style="width:100%;" />
           </div>
-          <div style="min-width: 160px;">
+          <div style="min-width: 160px; flex: 0 0 auto;">
             <label>Aktion</label>
-            <select id="action">
+            <select id="action" style="width:100%;">
               <option value="">alle</option>
               <option value="overwrite">ueberschreiben</option>
               <option value="delete">loeschen</option>
               <option value="rollback">rollback</option>
             </select>
           </div>
-          <div style="min-width: 220px;">
-            <label>_measurement</label>
-            <input id="measurement" placeholder="optional" />
+          <div style="min-width: 220px; flex: 0 0 auto;">
+            <label>Einheit (_measurement)</label>
+            <input id="measurement" placeholder="optional" style="width:100%;" />
           </div>
-          <div style="min-width: 220px;">
-            <label>entity_id</label>
-            <input id="entity_id" placeholder="optional" />
+          <div style="min-width: 220px; flex: 0 0 auto;">
+            <label>Entity ID (entity_id)</label>
+            <input id="entity_id" placeholder="optional" style="width:100%;" />
           </div>
-          <div style="min-width: 220px;">
+          <div style="min-width: 220px; flex: 0 0 auto;">
             <label>Grund (contains)</label>
-            <input id="reason" placeholder="optional" />
+            <input id="reason" placeholder="optional" style="width:100%;" />
           </div>
         </div>
 
@@ -99,8 +99,11 @@
               <tr>
                 <th style="width: 34px;"><input type="checkbox" id="sel_all"/></th>
                 <th style="width: 170px;">Datum</th>
-                <th style="width: 90px;">Aktion</th>
-                <th style="width: 220px;">Serie</th>
+                <th style="width: 100px;">Aktion</th>
+                <th style="width: 240px;">Messwertname (friendly_name)</th>
+                <th style="width: 220px;">Entity ID (entity_id)</th>
+                <th style="width: 220px;">Einheit (_measurement)</th>
+                <th style="width: 160px;">Feld (_field)</th>
                 <th style="width: 190px;">Zeitpunkt</th>
                 <th style="width: 120px;">Alt</th>
                 <th style="width: 120px;">Neu</th>
@@ -170,9 +173,15 @@
         tdAt.textContent = fmtTs(it.at);
         const tdA = document.createElement('td');
         tdA.textContent = String(it.action || '');
-        const tdS = document.createElement('td');
         const s = it.series || {};
-        tdS.textContent = String((s.measurement||'') + '/' + (s.field||''));
+        const tdFn = document.createElement('td');
+        tdFn.textContent = String(s.friendly_name || '');
+        const tdE = document.createElement('td');
+        tdE.textContent = String(s.entity_id || '');
+        const tdM = document.createElement('td');
+        tdM.textContent = String(s.measurement || '');
+        const tdF = document.createElement('td');
+        tdF.textContent = String(s.field || '');
         const tdT = document.createElement('td');
         tdT.textContent = fmtTs(it.time);
         const tdO = document.createElement('td');
@@ -184,7 +193,10 @@
         tr.appendChild(tdSel);
         tr.appendChild(tdAt);
         tr.appendChild(tdA);
-        tr.appendChild(tdS);
+        tr.appendChild(tdFn);
+        tr.appendChild(tdE);
+        tr.appendChild(tdM);
+        tr.appendChild(tdF);
         tr.appendChild(tdT);
         tr.appendChild(tdO);
         tr.appendChild(tdN);

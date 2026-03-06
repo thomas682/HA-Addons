@@ -1,5 +1,18 @@
 <nav class="sidebar" aria-label="Navigation">
   <style>
+    /* Standard sidebar look (shared across all pages). */
+    .shell { display:grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
+    @media (max-width: 980px){ .shell { grid-template-columns: 1fr; } }
+    nav.sidebar { padding: 14px; border-right: 1px solid #eee; }
+    @media (max-width: 980px){ nav.sidebar { border-right: 0; border-bottom: 1px solid #eee; } }
+    .brand { margin-bottom: 10px; }
+    .brand_title { font-weight: 900; font-size: 22px; letter-spacing: 0.2px; }
+    .brand_meta { opacity: 0.7; font-size: 12px; margin-top: 2px; }
+    .nav_item { display:flex; align-items:center; gap: 10px; padding: 10px 10px; border-radius: 12px; text-decoration:none; color: inherit; font-size: 16px; }
+    .nav_item:hover { background: #f6f6f6; }
+    .nav_item.active { background: #0b0b0c; color: #fff; }
+    .ico { width: 22px; height: 22px; display:inline-flex; align-items:center; justify-content:center; font-weight: 800; }
+
     /* Desktop: keep sidebar fixed; scroll only content area. */
     @media (min-width: 981px){
       html, body { height: 100%; }
@@ -22,19 +35,19 @@
     #influxbro_status_panel .row { display:flex; align-items:center; gap: 8px; }
     #influxbro_status_panel .spin { width: 12px; height: 12px; border-radius: 50%; border: 2px solid rgba(0,0,0,0.16); border-top-color: rgba(0,0,0,0.7); animation: influxbro_spin 0.9s linear infinite; }
     #influxbro_status_panel .muted { font-size: 12px; opacity: 0.75; }
-    #influxbro_status_panel .list { margin-top: 8px; max-height: 180px; overflow: auto; }
+    #influxbro_status_panel .list { margin-top: 8px; max-height: 180px; overflow: auto; overflow-x: auto; }
     #influxbro_status_panel .item { display:flex; align-items:baseline; justify-content:space-between; gap: 10px; padding: 4px 0; border-bottom: 1px dashed rgba(0,0,0,0.08); }
     #influxbro_status_panel .item:last-child { border-bottom: 0; }
     #influxbro_status_panel .k { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 11px; opacity: 0.7; }
-    #influxbro_status_panel .t { font-size: 12px; }
+    #influxbro_status_panel .t { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     #influxbro_status_panel .tm { font-size: 11px; opacity: 0.75; white-space: nowrap; }
-    #influxbro_status_panel .last { margin-top: 10px; font-size: 12px; }
+    #influxbro_status_panel .last { margin-top: 10px; font-size: 12px; overflow: auto; max-height: 84px; }
     @keyframes influxbro_spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
   </style>
   <div class="brand">
-    <div class="brand_title" style="font-weight:900; font-size: 22px; letter-spacing: 0.2px;">InfluxBro</div>
+    <div class="brand_title">InfluxBro</div>
     <div class="brand_meta" style="margin-top: 4px;">by Thomas Schatz</div>
-    <div class="brand_meta" style="margin-top: 2px;">Version: {{ addon_version }}</div>
+    <div class="brand_meta">Version: {{ addon_version }}</div>
 
     {% set _pp_url = (cfg.get('ui_paypal_donate_url') or 'https://www.paypal.com/donate/?hosted_button_id=ZWZE3WM4NBUW6') %}
     <div class="brand_meta" style="margin-top: 8px;" data-ui="nav.donate" title="nav.donate">

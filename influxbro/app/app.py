@@ -552,6 +552,8 @@ DEFAULT_CFG = {
     "ui_edit_details_visible_rows": 12,
     "ui_edit_graph_buffer_minutes": 30,
     "ui_edit_graph_max_points": 50000,
+    "ui_query_max_points": 5000,
+    "ui_raw_max_points": 20000,
     "ui_decimals": 3,
 
     "ui_font_size_px": 14,
@@ -3344,6 +3346,8 @@ def api_set_config():
     _clamp_int("ui_edit_details_visible_rows", 12, 4, 80)
     _clamp_int("ui_edit_graph_buffer_minutes", 30, 0, 24 * 60)
     _clamp_int("ui_edit_graph_max_points", 50000, 1000, 200000)
+    _clamp_int("ui_query_max_points", 5000, 500, 200000)
+    _clamp_int("ui_raw_max_points", 20000, 1000, 200000)
     _clamp_float("ui_checkbox_scale", 0.85, 0.5, 1.6)
     _clamp_int("ui_filter_label_width_px", 170, 80, 360)
     _clamp_int("ui_filter_control_width_px", 320, 180, 900)
@@ -3836,8 +3840,13 @@ from(bucket: "{cfg["bucket"]}")
                         if isinstance(ts, datetime):
                             ts = ts.astimezone(timezone.utc).isoformat()
                         rows.append({"time": ts, "value": val})
-                if len(rows) > 5000:
-                    step = math.ceil(len(rows) / 5000)
+                max_points = int(cfg.get("ui_query_max_points", 5000) or 5000)
+                if max_points < 500:
+                    max_points = 500
+                if max_points > 200000:
+                    max_points = 200000
+                if len(rows) > max_points:
+                    step = math.ceil(len(rows) / max_points)
                     rows = rows[::step]
                 return jsonify({"ok": True, "rows": rows, "query": q.strip()})
         else:
@@ -3853,8 +3862,13 @@ from(bucket: "{cfg["bucket"]}")
             for _, points in res.items():
                 for p in points:
                     rows.append({"time": p.get("time"), "value": p.get(field)})
-            if len(rows) > 5000:
-                step = math.ceil(len(rows) / 5000)
+            max_points = int(cfg.get("ui_query_max_points", 5000) or 5000)
+            if max_points < 500:
+                max_points = 500
+            if max_points > 200000:
+                max_points = 200000
+            if len(rows) > max_points:
+                step = math.ceil(len(rows) / max_points)
                 rows = rows[::step]
             return jsonify({"ok": True, "rows": rows, "query": q.strip()})
     except Exception as e:
@@ -3886,14 +3900,20 @@ def api_raw_points():
     if not start_dt or not stop_dt:
         return jsonify({"ok": False, "error": "start and stop required"}), 400
 
+    raw_max = int(cfg.get("ui_raw_max_points", 20000) or 20000)
+    if raw_max < 1000:
+        raw_max = 1000
+    if raw_max > 200000:
+        raw_max = 200000
+
     try:
-        limit = int(body.get("limit", 20000))
+        limit = int(body.get("limit", raw_max))
     except Exception:
-        limit = 20000
+        limit = raw_max
     if limit < 1:
         limit = 1
-    if limit > 20000:
-        limit = 20000
+    if limit > raw_max:
+        limit = raw_max
 
     try:
         offset = int(body.get("offset", 0))

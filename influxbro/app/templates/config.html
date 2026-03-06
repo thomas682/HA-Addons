@@ -145,6 +145,18 @@
           <input id="ui_decimals" type="number" min="0" max="10" />
           <div class="muted">Rundung fuer Zahlen in Statistik/Tabelle (nur Anzeige).</div>
         </div>
+
+        <div>
+          <label>Query max. Punkte (Dashboard Graph)</label>
+          <input id="ui_query_max_points" type="number" min="500" max="200000" />
+          <div class="muted">Limit/Downsampling fuer den Dashboard-Graph (Default: 5000).</div>
+        </div>
+
+        <div>
+          <label>Raw max. Punkte</label>
+          <input id="ui_raw_max_points" type="number" min="1000" max="200000" />
+          <div class="muted">Maximale Zeilen/Points pro Raw-DB-Abfrage (Default: 20000).</div>
+        </div>
       </div>
       </div>
     </details>
@@ -397,6 +409,7 @@ const ids = [
   "org","bucket","token",
   "database","username","password",
   "ui_table_visible_rows","ui_table_row_height_px","ui_edit_neighbors_n","ui_edit_details_visible_rows","ui_edit_graph_buffer_minutes","ui_edit_graph_max_points","ui_decimals",
+  "ui_query_max_points","ui_raw_max_points",
   "ui_font_size_px","ui_font_small_px","ui_checkbox_scale",
   "ui_filter_label_width_px","ui_filter_control_width_px","ui_filter_search_width_px"
   ,"ui_repo_url"
@@ -452,6 +465,8 @@ function setForm(cfg){
   el.ui_edit_details_visible_rows.value = cfg.ui_edit_details_visible_rows ?? 12;
   el.ui_edit_graph_buffer_minutes.value = cfg.ui_edit_graph_buffer_minutes ?? 30;
   el.ui_edit_graph_max_points.value = cfg.ui_edit_graph_max_points ?? 50000;
+  el.ui_query_max_points.value = cfg.ui_query_max_points ?? 5000;
+  el.ui_raw_max_points.value = cfg.ui_raw_max_points ?? 20000;
   el.ui_decimals.value = cfg.ui_decimals ?? 3;
 
   el.ui_font_size_px.value = cfg.ui_font_size_px ?? 14;
@@ -516,6 +531,8 @@ function getForm(){
     ui_edit_details_visible_rows: parseInt(el.ui_edit_details_visible_rows.value, 10),
     ui_edit_graph_buffer_minutes: parseInt(el.ui_edit_graph_buffer_minutes.value, 10),
     ui_edit_graph_max_points: parseInt(el.ui_edit_graph_max_points.value, 10),
+    ui_query_max_points: parseInt(el.ui_query_max_points.value, 10),
+    ui_raw_max_points: parseInt(el.ui_raw_max_points.value, 10),
     ui_decimals: parseInt(el.ui_decimals.value, 10),
 
     ui_font_size_px: parseInt(el.ui_font_size_px.value, 10),

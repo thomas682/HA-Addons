@@ -115,6 +115,11 @@ Hinweis: Zeitstempel werden im gesamten UI inklusive Millisekunden angezeigt.
 - Option `Messpunkte markieren`: schaltet runde Marker ein/aus.
 - Ziehen der Groesse: Unter dem Plot gibt es einen horizontalen Griff. Ziehen nach oben/unten aendert die Plot-Hoehe.
 
+Graph Query:
+
+- Bereich `Graph Query`: zeigt den zuletzt genutzten Influx Query-String (aus Dashboard-Abfragen).
+- Button `Query kopieren`: kopiert den Query in die Zwischenablage (z.B. fuer den Influx Explorer).
+
 Raw Daten (DB):
 
 - Optional kannst du per Checkbox steuern, ob Raw Daten dem Zoom-Bereich im Graph folgen (oder dem Zeitraum aus der Zeitraum-Auswahl).
@@ -217,8 +222,9 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 
 - Zeigt ein Protokoll ueber `ueberschreiben`/`loeschen` sowie Rollbacks.
 - Filter:
-  - Volltextsuche
+  - Volltextsuche (z.B. Grund, friendly_name, entity_id, _measurement)
   - Aktion / Messwert / entity_id / Grund
+- Tabelle: zeigt friendly_name, entity_id, _measurement und _field in separaten Spalten.
 - Rollback:
   - selektierte Eintraege
   - oder Zeitraum-Presets (z.B. letzte 15 Minuten)
@@ -238,6 +244,8 @@ UI:
 
 - `Tabellenzeilen (sichtbar)`: Hoehe der Tabellenboxen.
 - `Dezimalstellen (Anzeige)`: Rundung in der UI.
+- `Query max. Punkte (Dashboard Graph)`: Downsampling-Limit fuer den Dashboard-Graph (Default: 5000).
+- `Raw max. Punkte`: Maximale Zeilen/Points pro Raw-DB-Abfrage (Default: 20000).
 - `Basis/Kleine Schriftgroesse`: UI Typografie.
 - `Checkbox Groesse (Scale)`: Checkbox-Scaling fuer bessere Bedienbarkeit.
 - `Filter ... Breite`: steuert die Layout-Breiten im Dashboard.

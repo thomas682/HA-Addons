@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.11.89
+
+### Features
+
+- Dashboard: neue Box "Graph Query" inkl. Button `Query kopieren`.
+- Einstellungen: neue Limits `Query max. Punkte (Dashboard Graph)` und `Raw max. Punkte` (Downsampling/Limit) fuer grosse Abfragen.
+- History: Tabelle zeigt friendly_name/entity_id/_measurement/_field in separaten Spalten.
+
+### Fixes
+
+- Sidebar Statuspanel: lange Eintraege umbrechen/scrollen sauberer (kein Layoutbruch).
+
+### Maintenance
+
+- API: Query/Raw Limits sind jetzt konfigurierbar (statt hardcoded 5000/20000).
+- Tested with Home Assistant Core: unknown
+
 ## 1.11.88
 
 ### Features

@@ -270,6 +270,13 @@
       <div class="tbl_actions" data-ui="graph_actions">
         <label><input type="checkbox" id="graph_markers" class="row_sel" data-ui="graph_markers"/>Messpunkte markieren</label>
       </div>
+      <details id="graph_query_section" style="margin-top: 8px;" data-ui="graph.query_section" title="graph.query_section">
+        <summary>Graph Query</summary>
+        <div class="tbl_actions" style="justify-content:flex-start; margin-top: 8px;">
+          <button class="btn_sm" id="graph_copy_query" data-ui="graph.copy_query" title="graph.copy_query">Query kopieren</button>
+        </div>
+        <pre id="graph_query" style="margin:6px 0 0 0; padding:10px 12px; border:1px solid #eee; border-radius:12px; background:#fafafa; white-space:pre; overflow:auto; max-height: 220px;"></pre>
+      </details>
       <div class="muted" data-ui="tip.graph" title="tip.graph">Zoomen/Pan im Plot. Doppelklick setzt Zoom zurueck. Griff unten zieht die Hoehe.</div>
       <div class="graph_frame" data-ui="graph.frame" title="graph.frame">
         <div id="chart_plotly"></div>
@@ -656,6 +663,10 @@ const $rawMore = document.getElementById('raw_more');
 const $rawQuerySection = document.getElementById('raw_query_section');
 const $rawQuery = document.getElementById('raw_query');
 
+const $graphQuerySection = document.getElementById('graph_query_section');
+const $graphCopyQuery = document.getElementById('graph_copy_query');
+const $graphQuery = document.getElementById('graph_query');
+
 const $rawTimeFromGraph = document.getElementById('raw_time_from_graph');
 
 const $rawStatus = document.getElementById('raw_status');
@@ -873,6 +884,7 @@ function saveState(){
 }
 
 const SS_CACHE_PREFIX = 'influxbro_dash_cache_v1:';
+const SS_CACHE_LAST = SS_CACHE_PREFIX + 'last';
 let _CACHE_SAVE_T = null;
 
 function _cacheKeyForCurrent(){
@@ -915,13 +927,15 @@ function cacheSaveNow(){
       staged: Array.from(EDIT_LIST.values ? EDIT_LIST.values() : []),
     };
     sessionStorage.setItem(key, JSON.stringify(payload));
+    try{ sessionStorage.setItem(SS_CACHE_LAST, JSON.stringify(payload)); }catch(e){}
   }catch(e){}
 }
 
 function cacheRestoreIfAvailable(){
   try{
     const key = _cacheKeyForCurrent();
-    const raw = sessionStorage.getItem(key);
+    let raw = sessionStorage.getItem(key);
+    if(!raw) raw = sessionStorage.getItem(SS_CACHE_LAST);
     if(!raw) return false;
     const j = JSON.parse(raw);
     if(!j || typeof j !== 'object') return false;
@@ -1855,6 +1869,12 @@ function setLastQuery(q, triggeredAtIso){
     }
     $queryPre.textContent = s;
     $queryDetails.style.display = 'block';
+
+    // Mirror into the graph query panel.
+    try{
+      if($graphQuery) $graphQuery.textContent = s;
+      if($graphQuerySection) $graphQuerySection.style.display = s ? 'block' : 'none';
+    }catch(e){}
   }catch(e){}
 }
 
@@ -2745,6 +2765,16 @@ try{
       }catch(e){}
     });
   }
+}catch(e){}
+
+try{
+  if($graphCopyQuery) $graphCopyQuery.addEventListener('click', async (ev)=>{
+    _stop(ev);
+    const txt = $graphQuery ? String($graphQuery.textContent || '') : '';
+    const okCopy = await copyTextToClipboard(txt);
+    if(okCopy) ok('Query kopiert.');
+    else err('Copy failed (Clipboard blockiert). Bitte im Browser Clipboard erlauben.');
+  });
 }catch(e){}
 
 function initRawAutoMore(){
