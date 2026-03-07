@@ -3946,6 +3946,28 @@ def query():
     except Exception as e:
         return jsonify({"ok": False, "error": f"invalid start/stop: {e}"}), 400
 
+    def _count_points_v2(qapi, range_clause: str, extra: str) -> int | None:
+        try:
+            qcnt = f'''
+from(bucket: "{cfg["bucket"]}")
+  {range_clause}
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
+  |> keep(columns: ["_value"])
+  |> count(column: "_value")
+'''
+            for rec in qapi.query_stream(qcnt, org=cfg["org"]):
+                try:
+                    v = rec.get_value()
+                    if isinstance(v, bool):
+                        continue
+                    if isinstance(v, (int, float)):
+                        return int(v)
+                except Exception:
+                    continue
+        except Exception:
+            return None
+        return None
+
     if not measurement or not field:
         return jsonify({"ok": False, "error": "measurement and field required"}), 400
 
@@ -3973,6 +3995,7 @@ def query():
                 qapi = c.query_api()
 
                 range_clause = _flux_range_clause(range_key, start_dt, stop_dt)
+                total_points = _count_points_v2(qapi, range_clause, extra)
                 base = f'''
 from(bucket: "{cfg["bucket"]}")
   {range_clause}
@@ -4014,6 +4037,7 @@ from(bucket: "{cfg["bucket"]}")
                             "max_points": max_points,
                             "returned": len(rows),
                             "unit": unit,
+                            "total_points": total_points,
                         },
                     })
 
@@ -4209,6 +4233,7 @@ from(bucket: "{cfg["bucket"]}")
                         "jump_padding_intervals": pad_n,
                         "jump_spans": jump_spans,
                         "unit": unit,
+                        "total_points": total_points,
                     },
                 })
         else:
@@ -4224,6 +4249,21 @@ from(bucket: "{cfg["bucket"]}")
             for _, points in res.items():
                 for p in points:
                     rows.append({"time": p.get("time"), "value": p.get(field)})
+
+            total_points = None
+            try:
+                qcnt = f'SELECT COUNT("{field}") AS c FROM "{measurement}" WHERE {time_where}{tag_where}'
+                res2 = c.query(qcnt)
+                for _, pts in res2.items():
+                    for p in pts:
+                        v = p.get("c")
+                        if isinstance(v, (int, float)):
+                            total_points = int(v)
+                            break
+                    if total_points is not None:
+                        break
+            except Exception:
+                total_points = None
 
             if detail_mode == "manual":
                 try:
@@ -4247,6 +4287,7 @@ from(bucket: "{cfg["bucket"]}")
                         "max_points": max_points,
                         "returned": len(rows),
                         "unit": unit,
+                        "total_points": total_points,
                     },
                 })
 
@@ -4267,6 +4308,7 @@ from(bucket: "{cfg["bucket"]}")
                     "target_points": max_points,
                     "returned": len(rows),
                     "unit": unit,
+                    "total_points": total_points,
                 },
             })
     except Exception as e:

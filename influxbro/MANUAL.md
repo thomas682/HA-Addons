@@ -127,6 +127,7 @@ Details (Sampling) + Ableitung:
 - `Details: Manuell`: Punktdichte 1..100% (100% zeigt alle geladenen Punkte bis zum Sicherheitslimit).
 - `Ableitung: Hintergrund` / `Ableitung: Farbleiste`: faerbt nach Staerke der ersten Ableitung (gruen=0, rot=max), unabhaengig vom Vorzeichen.
 - `Ableitungs-Graph`: zeigt die Ableitung zusaetzlich als Graph; umschaltbar `absolut/signiert`.
+- `Ableitung Outlier`: Slider-Schwelle; Punkte ueber der Schwelle werden im Ableitungs-Graph rot markiert.
 
 Raw Daten (DB):
 

@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.11.93
+
+### Features
+
+- Dashboard Graph: Anzeige der verwendeten Punkte (Sichtbereich/Anzeige/Gesamt im Filterbereich).
+- Ableitungs-Graph: Outlier-Markierung (rote Punkte) mit einstellbarer Schwelle (Slider).
+
+### Fixes
+
+- Ableitung-UI: Hintergrund und Farbleiste sind jetzt gegenseitig exklusiv (keine Doppelaktivierung).
+- Zoom: Ableitung/Farbleiste folgen dem Hauptgraph, sind aber nicht mehr separat zoombar.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.11.92
 
 ### Features

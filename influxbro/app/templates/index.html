@@ -291,6 +291,12 @@
         <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_graph" class="row_sel" />Ableitungs-Graph</label>
         <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_abs" class="row_sel" checked/>absolut</label>
         <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_signed" class="row_sel" />signiert</label>
+
+        <label id="deriv_outlier_wrap" style="display:none; align-items:center; gap: 8px;">
+          <span class="muted">Ableitung Outlier</span>
+          <input id="deriv_outlier_thr" type="range" min="0" max="100" value="90" style="width: 160px;" />
+          <span class="muted" id="deriv_outlier_lbl">90%</span>
+        </label>
       </div>
        <details id="graph_query_section" style="margin-top: 8px;" data-ui="graph.query_section" title="graph.query_section">
          <summary>Graph Query</summary>
@@ -304,8 +310,9 @@
          <div class="muted" id="graph_query_label" style="margin-top: 6px;"></div>
          <pre id="graph_query" style="margin:6px 0 0 0; padding:10px 12px; border:1px solid #eee; border-radius:12px; background:#fafafa; white-space:pre; overflow:auto; max-height: 220px;"></pre>
        </details>
-      <div class="muted" data-ui="tip.graph" title="tip.graph">Zoomen/Pan im Plot. Doppelklick setzt Zoom zurueck. Griff unten zieht die Hoehe.</div>
-      <div class="graph_frame" data-ui="graph.frame" title="graph.frame">
+       <div class="muted" data-ui="tip.graph" title="tip.graph">Zoomen/Pan im Plot. Doppelklick setzt Zoom zurueck. Griff unten zieht die Hoehe.</div>
+       <div class="muted" id="graph_points_info" style="margin-top: 6px;"></div>
+       <div class="graph_frame" data-ui="graph.frame" title="graph.frame">
         <div id="chart_plotly"></div>
         <canvas id="chart" width="800" height="200"></canvas>
         <div id="deriv_strip_plot" style="display:none; width: 100%; height: 60px; margin-top: 8px;"></div>
@@ -711,6 +718,12 @@ const $derivSigned = document.getElementById('deriv_signed');
 const $derivStripPlot = document.getElementById('deriv_strip_plot');
 const $derivGraphPlot = document.getElementById('deriv_graph_plot');
 
+const $derivOutlierWrap = document.getElementById('deriv_outlier_wrap');
+const $derivOutlierThr = document.getElementById('deriv_outlier_thr');
+const $derivOutlierLbl = document.getElementById('deriv_outlier_lbl');
+
+const $graphPointsInfo = document.getElementById('graph_points_info');
+
 const $rawTimeFromGraph = document.getElementById('raw_time_from_graph');
 
 const $rawStatus = document.getElementById('raw_status');
@@ -901,11 +914,59 @@ function _updateGraphDetailUi(){
     const mode = $graphDetailMode ? String($graphDetailMode.value || 'dynamic') : 'dynamic';
     if($graphManualDensityWrap) $graphManualDensityWrap.style.display = (mode === 'manual') ? 'inline-flex' : 'none';
     if($graphManualDensityLbl && $graphManualDensity) $graphManualDensityLbl.textContent = String($graphManualDensity.value || 100) + '%';
+    if($derivOutlierWrap) $derivOutlierWrap.style.display = ($derivGraph && $derivGraph.checked) ? 'inline-flex' : 'none';
+    if($derivOutlierLbl && $derivOutlierThr) $derivOutlierLbl.textContent = String($derivOutlierThr.value || 90) + '%';
+  }catch(e){}
+}
+
+function _normalizeDerivToggles(changedEl){
+  try{
+    if($derivBg && $derivStrip){
+      if(changedEl === $derivBg && $derivBg.checked) $derivStrip.checked = false;
+      if(changedEl === $derivStrip && $derivStrip.checked) $derivBg.checked = false;
+      // if both ended up checked (old state), prefer background
+      if($derivBg.checked && $derivStrip.checked) $derivStrip.checked = false;
+    }
+    if($derivAbs && $derivSigned){
+      if(changedEl === $derivAbs && $derivAbs.checked) $derivSigned.checked = false;
+      if(changedEl === $derivSigned && $derivSigned.checked) $derivAbs.checked = false;
+      if($derivAbs.checked && $derivSigned.checked) $derivSigned.checked = false;
+      // default to abs if neither is selected
+      if(!$derivAbs.checked && !$derivSigned.checked) $derivAbs.checked = true;
+    }
   }catch(e){}
 }
 
 let LAST_ROWS_RAW = null;
 let LAST_JUMP_SPANS = [];
+let LAST_TOTAL_POINTS = null;
+
+function _updateGraphPointsInfo(){
+  try{
+    if(!$graphPointsInfo) return;
+    const rows = Array.isArray(LAST_ROWS) ? LAST_ROWS : [];
+    const a = TABLE_TIME.graph_start_ms;
+    const b = TABLE_TIME.graph_stop_ms;
+    let inView = null;
+    if(isFinite(a) && isFinite(b)){
+      const lo = Math.min(a,b);
+      const hi = Math.max(a,b);
+      inView = rows.filter(r=>{
+        const t = Date.parse(r && r.time ? String(r.time) : "");
+        if(!(isFinite(t) && t >= lo && t <= hi)) return false;
+        return toFiniteNumber(r && r.value) !== null;
+      }).length;
+    }
+    const total = (LAST_TOTAL_POINTS !== null && LAST_TOTAL_POINTS !== undefined) ? Number(LAST_TOTAL_POINTS) : null;
+    const used = rows.length;
+
+    const parts = [];
+    if(inView !== null) parts.push(`Sichtbereich: ${inView}`);
+    parts.push(`Anzeige: ${used}`);
+    if(total !== null && isFinite(total)) parts.push(`Gesamt (Filter): ${Math.round(total)}`);
+    $graphPointsInfo.textContent = parts.join(' | ');
+  }catch(e){}
+}
 
 function _thinRows(rows, densityPct){
   const xs = Array.isArray(rows) ? rows : [];
@@ -963,22 +1024,6 @@ function _applyOverlays(){
     if(!(window.Plotly && $plotly)) return;
     const rows = (LAST_ROWS || []);
     const d = _computeDerivatives(rows);
-
-    const useBg = !!($derivBg && $derivBg.checked);
-    const useStrip = !!($derivStrip && $derivStrip.checked);
-    const useGraph = !!($derivGraph && $derivGraph.checked);
-    const signed = !!($derivSigned && $derivSigned.checked);
-    const absMode = !!($derivAbs && $derivAbs.checked);
-
-    // enforce exclusivity
-    if(useBg && useStrip){
-      if(document.activeElement === $derivStrip) $derivBg.checked = false;
-      else $derivStrip.checked = false;
-    }
-    if(absMode && signed){
-      if(document.activeElement === $derivSigned) $derivAbs.checked = false;
-      else $derivSigned.checked = false;
-    }
 
     const wantBg = !!($derivBg && $derivBg.checked);
     const wantStrip = !!($derivStrip && $derivStrip.checked);
@@ -1042,6 +1087,10 @@ function _applyOverlays(){
 
     try{ window.Plotly.relayout($plotly, {shapes}); }catch(e){}
 
+    const hasWin = isFinite(TABLE_TIME.graph_start_ms) && isFinite(TABLE_TIME.graph_stop_ms);
+    const winLo = hasWin ? Math.min(TABLE_TIME.graph_start_ms, TABLE_TIME.graph_stop_ms) : null;
+    const winHi = hasWin ? Math.max(TABLE_TIME.graph_start_ms, TABLE_TIME.graph_stop_ms) : null;
+
     // Strip plot
     if($derivStripPlot){
       $derivStripPlot.style.display = (wantStrip ? 'block' : 'none');
@@ -1076,10 +1125,18 @@ function _applyOverlays(){
           const layout = {
             margin: {l: 52, r: 10, t: 2, b: 18},
             height: 60,
-            xaxis: {type:'date', matches: 'x', showgrid:false, zeroline:false, showticklabels:false},
+            xaxis: {
+              type:'date',
+              showgrid:false,
+              zeroline:false,
+              showticklabels:false,
+              fixedrange: true,
+              autorange: !(winLo !== null && winHi !== null),
+              range: (winLo !== null && winHi !== null) ? [new Date(winLo), new Date(winHi)] : undefined,
+            },
             yaxis: {showticklabels:false, showgrid:false, zeroline:false},
           };
-          try{ window.Plotly.react($derivStripPlot, data, layout, {displayModeBar:false, responsive:true}); }catch(e){}
+          try{ window.Plotly.react($derivStripPlot, data, layout, {displayModeBar:false, responsive:true, staticPlot:true}); }catch(e){}
         }
       }
     }
@@ -1092,6 +1149,25 @@ function _applyOverlays(){
       }else{
         const ys = d.segments.map(s => (wantSigned ? s.d : s.abs));
         const x = d.segments.map(s => new Date(s.mid));
+
+        let thrPct = 90;
+        try{ thrPct = $derivOutlierThr ? Number($derivOutlierThr.value || 90) : 90; }catch(e){ thrPct = 90; }
+        if(!isFinite(thrPct)) thrPct = 90;
+        if(thrPct < 0) thrPct = 0;
+        if(thrPct > 100) thrPct = 100;
+        const thrAbs = (d.maxAbs > 0) ? (d.maxAbs * (thrPct / 100.0)) : 0;
+
+        const outX = [];
+        const outY = [];
+        try{
+          d.segments.forEach(s=>{
+            if(!(s && (s.abs !== null) && isFinite(s.abs))) return;
+            if(s.abs < thrAbs) return;
+            outX.push(new Date(s.mid));
+            outY.push(wantSigned ? s.d : s.abs);
+          });
+        }catch(e){}
+
         const data = [{
           type: 'scatter',
           mode: 'lines',
@@ -1100,13 +1176,28 @@ function _applyOverlays(){
           line: {color: '#444', width: 1.2},
           hovertemplate: '%{x}<br>d/dt=%{y}<extra></extra>',
         }];
+        if(outX.length){
+          data.push({
+            type: 'scatter',
+            mode: 'markers',
+            x: outX,
+            y: outY,
+            marker: {size: 7, color: '#c62828', symbol: 'circle'},
+            hovertemplate: '%{x}<br>Outlier d/dt=%{y}<extra></extra>',
+          });
+        }
         const layout = {
           margin: {l: 52, r: 10, t: 6, b: 30},
           height: 140,
-          xaxis: {type:'date', matches: 'x'},
-          yaxis: {automargin:true, title: (wantSigned ? 'd/dt' : 'abs(d/dt)')},
+          xaxis: {
+            type:'date',
+            fixedrange: true,
+            autorange: !(winLo !== null && winHi !== null),
+            range: (winLo !== null && winHi !== null) ? [new Date(winLo), new Date(winHi)] : undefined,
+          },
+          yaxis: {automargin:true, title: (wantSigned ? 'd/dt' : 'abs(d/dt)'), fixedrange: true},
         };
-        try{ window.Plotly.react($derivGraphPlot, data, layout, {displayModeBar:false, responsive:true}); }catch(e){}
+        try{ window.Plotly.react($derivGraphPlot, data, layout, {displayModeBar:false, responsive:true, staticPlot:true}); }catch(e){}
       }
     }
 
@@ -1143,6 +1234,7 @@ function saveState(){
       deriv_graph: !!($derivGraph && $derivGraph.checked),
       deriv_abs: !!($derivAbs && $derivAbs.checked),
       deriv_signed: !!($derivSigned && $derivSigned.checked),
+      deriv_outlier_thr: $derivOutlierThr ? Number($derivOutlierThr.value || 90) : 90,
       graph_window_start_ms: TABLE_TIME.graph_start_ms,
       graph_window_stop_ms: TABLE_TIME.graph_stop_ms,
       raw_time_from_graph: RAW_TIME_FROM_GRAPH,
@@ -1194,6 +1286,7 @@ function cacheSaveNow(){
       deriv_graph: !!($derivGraph && $derivGraph.checked),
       deriv_abs: !!($derivAbs && $derivAbs.checked),
       deriv_signed: !!($derivSigned && $derivSigned.checked),
+      deriv_outlier_thr: $derivOutlierThr ? Number($derivOutlierThr.value || 90) : 90,
       last_rows: LAST_ROWS || [],
       last_query: ($queryPre ? String($queryPre.textContent || '') : ''),
       outlier_active: !!OUTLIER_ACTIVE,
@@ -1248,6 +1341,8 @@ function cacheRestoreIfAvailable(){
       if($derivGraph) $derivGraph.checked = !!j.deriv_graph;
       if($derivAbs) $derivAbs.checked = (j.deriv_abs !== undefined) ? !!j.deriv_abs : true;
       if($derivSigned) $derivSigned.checked = !!j.deriv_signed;
+      if($derivOutlierThr) $derivOutlierThr.value = (j.deriv_outlier_thr !== undefined) ? String(j.deriv_outlier_thr) : "90";
+      try{ _normalizeDerivToggles(null); }catch(e){}
     }catch(e){}
     OUTLIER_ACTIVE = !!j.outlier_active;
     if(Array.isArray(j.outlier_rows)) OUTLIER_ROWS = j.outlier_rows;
@@ -1271,7 +1366,7 @@ function cacheRestoreIfAvailable(){
     if(LAST_ROWS && LAST_ROWS.length){
       draw(LAST_ROWS);
       autoScaleYFromWindow();
-      try{ _updateGraphDetailUi(); _applyOverlays(); }catch(e){}
+      try{ _updateGraphDetailUi(); _applyOverlays(); _updateGraphPointsInfo(); }catch(e){}
       scheduleRawReload(true);
       loadStats().catch(()=>{});
     }
@@ -1983,6 +2078,7 @@ function drawPlotly(rows){
           scheduleStatsCurrentReload();
           scheduleRawReload(true);
           try{ _applyOverlays(); }catch(e){}
+          try{ _updateGraphPointsInfo(); }catch(e){}
           return;
         }
 
@@ -2001,6 +2097,7 @@ function drawPlotly(rows){
             scheduleStatsCurrentReload();
             scheduleRawReload(true);
             try{ _applyOverlays(); }catch(e){}
+            try{ _updateGraphPointsInfo(); }catch(e){}
           }
         }
       }catch(e){}
@@ -2020,6 +2117,7 @@ function drawPlotly(rows){
       renderTable();
       try{ window.Plotly.relayout($plotly, {"yaxis.autorange": true}); }catch(e){}
       try{ _applyOverlays(); }catch(e){}
+      try{ _updateGraphPointsInfo(); }catch(e){}
       scheduleStatsCurrentReload();
       scheduleRawReload(true);
     });
@@ -3132,11 +3230,15 @@ try{
   const st = loadState();
   if($graphDetailMode && st.graph_detail_mode) $graphDetailMode.value = String(st.graph_detail_mode);
   if($graphManualDensity && st.graph_manual_density) $graphManualDensity.value = String(st.graph_manual_density);
-  if($derivBg) $derivBg.checked = !!st.deriv_bg;
-  if($derivStrip) $derivStrip.checked = !!st.deriv_strip;
-  if($derivGraph) $derivGraph.checked = !!st.deriv_graph;
+  const hasAnyDeriv = (st.deriv_bg !== undefined) || (st.deriv_strip !== undefined) || (st.deriv_graph !== undefined);
+  if($derivBg) $derivBg.checked = hasAnyDeriv ? !!st.deriv_bg : false;
+  if($derivStrip) $derivStrip.checked = hasAnyDeriv ? !!st.deriv_strip : false;
+  if($derivGraph) $derivGraph.checked = hasAnyDeriv ? !!st.deriv_graph : false;
   if($derivAbs) $derivAbs.checked = (st.deriv_abs !== undefined) ? !!st.deriv_abs : true;
   if($derivSigned) $derivSigned.checked = !!st.deriv_signed;
+  if($derivOutlierThr) $derivOutlierThr.value = (st.deriv_outlier_thr !== undefined) ? String(st.deriv_outlier_thr) : "90";
+  try{ _normalizeDerivToggles(null); }catch(e){}
+  try{ saveState(); }catch(e){}
 }catch(e){}
 
 try{
@@ -3157,17 +3259,28 @@ try{
       renderTable();
       draw(rows);
       autoScaleYFromWindow();
+      try{ _updateGraphPointsInfo(); }catch(e){}
     }
   });
 
   const onOverlayToggle = ()=>{
+    try{ _normalizeDerivToggles(document.activeElement); }catch(e){}
     _updateGraphDetailUi();
     saveState();
     try{ _applyOverlays(); }catch(e){}
+    try{ _updateGraphPointsInfo(); }catch(e){}
   };
   [$derivBg,$derivStrip,$derivGraph,$derivAbs,$derivSigned].forEach(el=>{
-    try{ if(el) el.addEventListener('change', onOverlayToggle); }catch(e){}
+    try{ if(el) el.addEventListener('change', ()=>{ _normalizeDerivToggles(el); onOverlayToggle(); }); }catch(e){}
   });
+
+  try{
+    if($derivOutlierThr) $derivOutlierThr.addEventListener('input', ()=>{
+      _updateGraphDetailUi();
+      saveState();
+      try{ _applyOverlays(); }catch(e){}
+    });
+  }catch(e){}
 }catch(e){}
 
 function initRawAutoMore(){
@@ -4157,6 +4270,7 @@ async function loadData(){
   if(STATUS_COUNT > 0) _setLoadStatus("Query fertig – Graph wird aktualisiert...");
   const rows0 = j.rows || [];
   try{ LAST_JUMP_SPANS = (j && j.meta && Array.isArray(j.meta.jump_spans)) ? j.meta.jump_spans : []; }catch(e){ LAST_JUMP_SPANS = []; }
+  try{ LAST_TOTAL_POINTS = (j && j.meta && j.meta.total_points !== undefined) ? Number(j.meta.total_points) : null; }catch(e){ LAST_TOTAL_POINTS = null; }
 
   // Manual density thinning is client-side (fast redraw without DB fetch)
   const mode = (j && j.meta && j.meta.mode) ? String(j.meta.mode) : '';
@@ -4194,7 +4308,7 @@ async function loadData(){
   renderTable();
   draw(rows);
   autoScaleYFromWindow();
-  try{ _updateGraphDetailUi(); _applyOverlays(); }catch(e){}
+  try{ _updateGraphDetailUi(); _applyOverlays(); _updateGraphPointsInfo(); }catch(e){}
   await loadStats();
   scheduleRawReload(true);
 }
