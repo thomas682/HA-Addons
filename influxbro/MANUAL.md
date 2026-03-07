@@ -119,6 +119,7 @@ Graph Query:
 
 - Bereich `Graph Query`: zeigt den zuletzt genutzten Influx Query-String (aus Dashboard-Abfragen).
 - Button `Query kopieren`: kopiert den Query in die Zwischenablage (z.B. fuer den Influx Explorer).
+- Auswahl `Dashboard / Bearbeitungsgraph`: schaltet die angezeigte Query-Quelle um (Hauptgraph vs. rechter Bearbeitungsgraph).
 
 Raw Daten (DB):
 
@@ -220,6 +221,22 @@ Tipp: In der Toolbar gibt es Mehrfachaktionen (z.B. Werte davor uebernehmen oder
 
 Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore/Abfragen) und die letzte Meldung anzeigt.
 
+## Export
+
+- Seite `Export`: Auswahl wie im Dashboard; Measurement/Field wird best-effort aus friendly_name/entity_id aufgeloest.
+- Formate: Text (Delimiter, Default `;`) oder Excel (`.xlsx`).
+- Zeitstempel im Export sind im lokalen Browser-Format (wie in der UI angezeigt).
+
+## Import
+
+- Seite `Import`: Datei via Browser-Upload.
+- Button `Analysieren`: zeigt Zeilenanzahl und Zeitraum.
+- Zielauswahl: wie Dashboard (Measurement/Field + optionale Tags).
+- Optionen:
+  - `Vor Import Backup erstellen` (Default an): erstellt ein Range-Backup im Import-Zeitraum fuer die Zielserie.
+  - `Vorher loeschen` (optional): loescht Zielserie im Import-Zeitraum (nur mit Confirm Phrase).
+- Import schreibt einen Eintrag in `History` (Grund: Import).
+
 ## History
 
 - Zeigt ein Protokoll ueber `ueberschreiben`/`loeschen` sowie Rollbacks.
@@ -248,6 +265,7 @@ UI:
 - `Dezimalstellen (Anzeige)`: Rundung in der UI.
 - `Query max. Punkte (Dashboard Graph)`: Downsampling-Limit fuer den Dashboard-Graph (Default: 5000).
 - `Raw max. Punkte`: Maximale Zeilen/Points pro Raw-DB-Abfrage (Default: 20000).
+- `Tabellenzeilen Hoehe (px, Backup)`: Zeilenhoehe der Backup-Tabelle.
 - `Basis/Kleine Schriftgroesse`: UI Typografie.
 - `Checkbox Groesse (Scale)`: Checkbox-Scaling fuer bessere Bedienbarkeit.
 - `Filter ... Breite`: steuert die Layout-Breiten im Dashboard.

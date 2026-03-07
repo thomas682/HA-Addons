@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.11.91
+
+### Features
+
+- Dashboard: Graph Query kann zwischen Dashboard und Bearbeitungsgraph umgeschaltet und kopiert werden.
+- Export: neue Seite "Export" (Text/Excel) inkl. Download; Zeitstempel im lokalen Browser-Format.
+- Import: neue Seite "Import" (Browser-Upload) inkl. Analyse, optional Range-Backup vor Import und optional Delete-im-Zeitraum (mit Confirm Phrase).
+- Settings: neues UI-Setting `Tabellenzeilen Hoehe (px, Backup)`; UI-Bereich ist pro Seite (Dashboard/Statistik/Backup/...) gruppiert.
+
+### Fixes
+
+- Sidebar Statuspanel: besseres horizontales Scrollen fuer lange Statuszeilen; Head zeigt jetzt ein Sanduhr-Icon.
+- Statistik: "Statistik laden" spiegelt Start/Progress/Done/Fail in der Sidebar-Statusbox.
+
+### Maintenance
+
+- Docker: `tzdata` installiert fuer client-lokale Zeitformatierung (Export/Import).
+- Tested with Home Assistant Core: unknown
+
 ## 1.11.90
 
 ### Fixes

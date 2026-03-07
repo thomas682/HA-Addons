@@ -33,16 +33,17 @@
     #influxbro_status_panel .title { font-weight: 700; font-size: 12px; opacity: 0.8; }
     #influxbro_status_panel .box { margin-top: 6px; border: 1px solid #eee; border-radius: 12px; padding: 10px 10px; background: #fafafa; }
     #influxbro_status_panel .row { display:flex; align-items:center; gap: 8px; }
-    #influxbro_status_panel .spin { width: 12px; height: 12px; border-radius: 50%; border: 2px solid rgba(0,0,0,0.16); border-top-color: rgba(0,0,0,0.7); animation: influxbro_spin 0.9s linear infinite; }
+    #influxbro_status_panel .hg { width: 14px; height: 14px; display:inline-flex; align-items:center; justify-content:center; }
+    #influxbro_status_panel .hg svg { width: 14px; height: 14px; opacity: 0.75; }
     #influxbro_status_panel .muted { font-size: 12px; opacity: 0.75; }
-    #influxbro_status_panel .list { margin-top: 8px; max-height: 180px; overflow: auto; overflow-x: auto; }
+    #influxbro_status_panel .list { margin-top: 8px; max-height: 180px; overflow-y: auto; overflow-x: auto; }
     #influxbro_status_panel .item { display:flex; align-items:baseline; justify-content:space-between; gap: 10px; padding: 4px 0; border-bottom: 1px dashed rgba(0,0,0,0.08); }
     #influxbro_status_panel .item:last-child { border-bottom: 0; }
     #influxbro_status_panel .k { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 11px; opacity: 0.7; }
-    #influxbro_status_panel .t { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #influxbro_status_panel .t { font-size: 12px; white-space: nowrap; overflow: visible; text-overflow: clip; }
     #influxbro_status_panel .tm { font-size: 11px; opacity: 0.75; white-space: nowrap; }
-    #influxbro_status_panel .last { margin-top: 10px; font-size: 12px; overflow: auto; max-height: 84px; }
-    @keyframes influxbro_spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    #influxbro_status_panel .item { white-space: nowrap; min-width: max-content; }
+     #influxbro_status_panel .last { margin-top: 10px; font-size: 12px; overflow: auto; max-height: 84px; }
   </style>
   <div class="brand">
     <div class="brand_title">InfluxBro</div>
@@ -84,6 +85,16 @@
     <span>Restore</span>
   </a>
 
+  <a class="nav_item {{ 'active' if nav == 'export' else '' }}" href="./export" data-ui="nav.export" title="nav.export">
+    <span class="ico" aria-hidden="true">X</span>
+    <span>Export</span>
+  </a>
+
+  <a class="nav_item {{ 'active' if nav == 'import' else '' }}" href="./import" data-ui="nav.import" title="nav.import">
+    <span class="ico" aria-hidden="true">M</span>
+    <span>Import</span>
+  </a>
+
   <a class="nav_item {{ 'active' if nav == 'logs' else '' }}" href="./logs" data-ui="nav.logs" title="nav.logs">
     <span class="ico" aria-hidden="true">L</span>
     <span>Logs</span>
@@ -118,7 +129,13 @@
     <div class="title">Status</div>
     <div class="box">
       <div class="row" id="influxbro_status_head" style="display:none;">
-        <span class="spin" aria-hidden="true"></span>
+        <span class="hg" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M7 3h10M7 21h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M8 3c0 5 4 5 4 9s-4 4-4 9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M16 3c0 5-4 5-4 9s4 4 4 9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </span>
         <span class="t" id="influxbro_status_head_txt">Aktion laeuft...</span>
         <span class="tm" id="influxbro_status_head_time"></span>
       </div>

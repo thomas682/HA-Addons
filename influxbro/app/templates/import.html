@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>InfluxBro – Import</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; }
+    .shell { display:grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
+    @media (max-width: 980px){ .shell { grid-template-columns: 1fr; } }
+    .content { padding: 16px; max-width: 980px; }
+    h2 { margin: 0; }
+    .muted { opacity: 0.7; font-size: 12px; }
+    .row { display:flex; gap: 10px; flex-wrap:wrap; align-items:end; margin-top: 10px; justify-content:flex-start; }
+    .grid { display:grid; grid-template-columns: repeat(2, minmax(260px, 1fr)); gap: 12px; align-items:end; margin-top: 12px; }
+    @media (max-width: 860px){ .grid { grid-template-columns: 1fr; } }
+    label { display:block; font-size:12px; opacity:0.8; }
+    input, select, button, textarea { padding:10px 12px; height: 40px; box-sizing: border-box; }
+    input, select, textarea { width: 100%; }
+    button { cursor:pointer; }
+    textarea { font: inherit; resize: vertical; min-height: 40px; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .card { border: 1px solid #ddd; border-radius: 12px; padding: 12px; margin-top: 12px; }
+    details.card { padding: 0; }
+    details.card > summary { list-style:none; cursor:pointer; padding: 12px; font-weight: 700; }
+    details.card > summary::-webkit-details-marker { display:none; }
+    details.card > .card_body { padding: 0 12px 12px 12px; }
+    .err { color: #b00020; margin-top: 8px; white-space: pre-wrap; }
+    .ok { color: #0a7a28; margin-top: 8px; white-space: pre-wrap; }
+    .status { border: 1px dashed #ddd; border-radius: 12px; padding: 10px 12px; background: #fafafa; font-size: 12px; white-space: pre-wrap; margin-top: 8px; }
+    code { background:#f6f6f6; padding:2px 6px; border-radius:6px; }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    {% include "_nav.html" %}
+    <main class="content" data-ui="import.page" title="import.page">
+      <h2>Import</h2>
+      <div class="muted">Importiert Text-Exporte (Zeitstempel im lokalen UI-Format). Optional: vorher Backup und/oder Loeschen im Zeitraum.</div>
+
+      <details class="card" open data-ui="import.source" title="import.source">
+        <summary>Datei</summary>
+        <div class="card_body">
+          <div class="grid">
+            <div>
+              <label>Datei (Upload)</label>
+              <input id="file" type="file" accept=".csv,.txt" data-ui="import.file" title="import.file" />
+              <div class="muted">Erwartete Spalten: <code>time,value,entity_id,friendly_name,_measurement,_field</code></div>
+            </div>
+            <div>
+              <label>Delimiter (optional)</label>
+              <input id="delimiter" value=";" maxlength="1" data-ui="import.delimiter" title="import.delimiter" />
+              <div class="muted">Wenn leer/ungueltig, wird best-effort erkannt.</div>
+            </div>
+          </div>
+          <div class="row">
+            <div style="min-width: 220px;"><button id="analyze" data-ui="import.analyze" title="import.analyze">Analysieren</button></div>
+            <div class="muted" id="analyze_hint" style="padding-top: 10px;"></div>
+          </div>
+          <div class="status" id="analysis" style="display:none;" data-ui="import.analysis" title="import.analysis"></div>
+        </div>
+      </details>
+
+      <details class="card" open data-ui="import.target" title="import.target">
+        <summary>Ziel</summary>
+        <div class="card_body">
+          <div class="grid">
+            <div>
+              <label>Einheit (_measurement)</label>
+              <input id="measurement_filter" list="measurement_list" placeholder="optional" />
+              <datalist id="measurement_list"></datalist>
+            </div>
+            <div>
+              <label>Messwert (friendly_name)</label>
+              <input id="friendly_name" list="friendly_list" placeholder="optional" />
+              <datalist id="friendly_list"></datalist>
+            </div>
+            <div>
+              <label>Entity ID (entity_id)</label>
+              <input id="entity_id" list="entity_list" placeholder="optional" />
+              <datalist id="entity_list"></datalist>
+            </div>
+          </div>
+
+          <details class="card" style="margin-top: 10px;">
+            <summary>Erweitert: Measurement / Field</summary>
+            <div class="card_body">
+              <div class="grid" style="margin-top: 0;">
+                <div>
+                  <label>Measurement (intern)</label>
+                  <select id="measurement"></select>
+                </div>
+                <div>
+                  <label>Field (intern)</label>
+                  <select id="field"></select>
+                </div>
+              </div>
+              <div class="muted" style="margin-top: 6px;">Wird best-effort anhand friendly_name/entity_id ermittelt.</div>
+            </div>
+          </details>
+
+          <div class="grid" style="margin-top: 12px;">
+            <div>
+              <label><input type="checkbox" id="backup_before" checked /> Vor Import Backup erstellen</label>
+              <div class="muted">Erstellt ein Range-Backup im Import-Zeitraum (Zielserie).</div>
+            </div>
+            <div>
+              <label><input type="checkbox" id="delete_first" /> Vorher loeschen (im Import-Zeitraum)</label>
+              <div class="muted">Erfordert die Bestaetigungsphrase.</div>
+            </div>
+            <div id="confirm_box" style="display:none;">
+              <label>Confirm Phrase</label>
+              <input id="confirm" placeholder="{{ delete_phrase }}" />
+              <div class="muted">Genau eintippen: <code>{{ delete_phrase }}</code></div>
+            </div>
+          </div>
+
+        </div>
+      </details>
+
+      <div class="card" data-ui="import.actions" title="import.actions">
+        <div class="row" style="margin-top:0;">
+          <div style="min-width: 220px;"><button id="run" data-ui="import.run" title="import.run">Import starten</button></div>
+          <div class="muted" id="run_hint" style="padding-top: 10px;"></div>
+        </div>
+        <div id="err" class="err"></div>
+        <div id="ok" class="ok"></div>
+      </div>
+
+      <script>
+      const LS_KEY = "influxbro_ui_state_v1";
+      const $file = document.getElementById('file');
+      const $delimiter = document.getElementById('delimiter');
+      const $analyze = document.getElementById('analyze');
+      const $analysis = document.getElementById('analysis');
+      const $analyzeHint = document.getElementById('analyze_hint');
+
+      const $mf = document.getElementById('measurement_filter');
+      const $mfList = document.getElementById('measurement_list');
+      const $n = document.getElementById('friendly_name');
+      const $friendlyList = document.getElementById('friendly_list');
+      const $e = document.getElementById('entity_id');
+      const $entityList = document.getElementById('entity_list');
+      const $m = document.getElementById('measurement');
+      const $f = document.getElementById('field');
+
+      const $backupBefore = document.getElementById('backup_before');
+      const $deleteFirst = document.getElementById('delete_first');
+      const $confirmBox = document.getElementById('confirm_box');
+      const $confirm = document.getElementById('confirm');
+
+      const $run = document.getElementById('run');
+      const $runHint = document.getElementById('run_hint');
+      const $err = document.getElementById('err');
+      const $ok = document.getElementById('ok');
+
+      let IMPORT_FILE_ID = null;
+      let IMPORT_DELIM = ';';
+      let IMPORT_RANGE = { oldest_utc: null, newest_utc: null, oldest_local: null, newest_local: null, count: null };
+
+      const err = (s)=>{ $err.textContent = String(s||""); $ok.textContent=""; if(s){ try{ if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error(String(s)); else alert(String(s)); }catch(e){} } };
+      const ok = (s)=>{ $ok.textContent = String(s||""); $err.textContent=""; };
+
+      async function api(url, opts){
+        let r;
+        try{ r = await fetch(url, opts); }catch(e){
+          try{ window.InfluxBroClientLog && window.InfluxBroClientLog.fetchError && window.InfluxBroClientLog.fetchError(url, opts, e); }catch(x){}
+          throw new Error('Failed to fetch');
+        }
+        const j = await r.json().catch(()=>({ok:false,error:'Invalid JSON'}));
+        if(!r.ok || !j.ok) throw new Error(j.error || ('HTTP '+r.status));
+        return j;
+      }
+
+      function setDatalistOptions(listEl, items){
+        try{
+          const xs = (items||[]).map(x=>String(x)).filter(Boolean);
+          listEl.innerHTML = xs.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"></option>`).join('');
+        }catch(e){}
+      }
+
+      async function loadMeasurements(){
+        const j = await api('./api/measurements');
+        const ms = (j.measurements||[]).map(String);
+        setDatalistOptions($mfList, ms);
+        $m.innerHTML = '';
+        ms.forEach(x=>{ const o=document.createElement('option'); o.value=x; o.textContent=x; $m.appendChild(o); });
+      }
+
+      async function loadFields(){
+        $f.innerHTML = '';
+        if(!$m.value) return;
+        const j = await api('./api/fields?measurement=' + encodeURIComponent($m.value));
+        (j.fields||[]).forEach(x=>{ const o=document.createElement('option'); o.value=String(x); o.textContent=String(x); $f.appendChild(o); });
+      }
+
+      function loadState(){ try{ return JSON.parse(localStorage.getItem(LS_KEY) || "{}") || {}; }catch(e){ return {}; } }
+
+      function clientTz(){
+        let name = '';
+        try{ name = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; }catch(e){}
+        let off = null;
+        try{ off = -new Date().getTimezoneOffset(); }catch(e){ off = null; }
+        return { tz_name: name || null, tz_offset_minutes: (off === null ? null : Number(off)) };
+      }
+
+      async function resolveSignal(){
+        const fn = String($n.value||'').trim();
+        const eid = String($e.value||'').trim();
+        if(!fn && !eid) return;
+        // For resolve, use a generous window (last 30d) to find the series.
+        const now = new Date();
+        const s = new Date(now.getTime() - 30*24*60*60*1000);
+        const j = await api('./api/resolve_signal', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ friendly_name: fn||null, entity_id: eid||null, measurement_filter: $mf.value||null, start: s.toISOString(), stop: now.toISOString(), range: '30d' })
+        });
+        if(j.measurement) $m.value = j.measurement;
+        await loadFields();
+        if(j.field) $f.value = j.field;
+      }
+
+      async function loadFriendlyEntity(){
+        // Best-effort suggestions
+        try{
+          let url = './api/tag_values?tag=friendly_name';
+          if($mf.value) url += '&measurement=' + encodeURIComponent($mf.value);
+          const j = await api(url);
+          setDatalistOptions($friendlyList, (j.values||[]).map(String));
+        }catch(e){}
+        try{
+          let url = './api/tag_values?tag=entity_id';
+          if($mf.value) url += '&measurement=' + encodeURIComponent($mf.value);
+          const j = await api(url);
+          setDatalistOptions($entityList, (j.values||[]).map(String));
+        }catch(e){}
+      }
+
+      async function analyze(){
+        err(''); ok('');
+        IMPORT_FILE_ID = null;
+        if(!$file.files || !$file.files.length) throw new Error('Bitte Datei waehlen.');
+        const fd = new FormData();
+        fd.append('file', $file.files[0]);
+        const d = String($delimiter.value||'').trim();
+        if(d && d.length === 1) fd.append('delimiter', d);
+        const tz = clientTz();
+        if(tz.tz_name) fd.append('tz_name', tz.tz_name);
+        if(tz.tz_offset_minutes !== null && tz.tz_offset_minutes !== undefined) fd.append('tz_offset_minutes', String(tz.tz_offset_minutes));
+        try{ window.InfluxBroStatus && window.InfluxBroStatus.start && window.InfluxBroStatus.start('import.run', 'Analyse laeuft...'); }catch(e){}
+        const j = await api('./api/import_analyze', { method:'POST', body: fd });
+        IMPORT_FILE_ID = j.file_id;
+        IMPORT_DELIM = j.delimiter || (d && d.length===1 ? d : ';');
+        IMPORT_RANGE = { oldest_utc: j.oldest_utc, newest_utc: j.newest_utc, oldest_local: j.oldest_local, newest_local: j.newest_local, count: j.count };
+        $analysis.style.display = 'block';
+        $analysis.textContent = `Datei: ${IMPORT_FILE_ID}\nDelimiter: ${IMPORT_DELIM}\nZeilen (valid): ${j.count}\nZeitraum: ${j.oldest_local || '-'} bis ${j.newest_local || '-'}\nTimezone: ${j.timezone && j.timezone.name ? j.timezone.name : ''}`;
+        $analyzeHint.textContent = `Valid: ${j.count} | ${j.oldest_local || ''} .. ${j.newest_local || ''}`;
+        ok('Analyse fertig.');
+        try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done('import.run', 'Analyse fertig.'); }catch(e){}
+      }
+
+      async function runImport(){
+        err(''); ok('');
+        if(!IMPORT_FILE_ID) throw new Error('Bitte zuerst Analysieren.');
+        await resolveSignal();
+        await loadFields();
+        const tz = clientTz();
+        const payload = {
+          file_id: IMPORT_FILE_ID,
+          delimiter: IMPORT_DELIM,
+          measurement: String($m.value||'').trim(),
+          field: String($f.value||'').trim(),
+          entity_id: String($e.value||'').trim() || null,
+          friendly_name: String($n.value||'').trim() || null,
+          backup_before: !!$backupBefore.checked,
+          delete_first: !!$deleteFirst.checked,
+          confirm: String($confirm.value||'').trim(),
+          tz_name: tz.tz_name,
+          tz_offset_minutes: tz.tz_offset_minutes,
+        };
+        if(!payload.measurement || !payload.field) throw new Error('measurement/field fehlt.');
+        if(payload.backup_before && !(payload.entity_id || payload.friendly_name)) throw new Error('Fuer Backup bitte entity_id oder friendly_name setzen.');
+        if(payload.delete_first && !payload.confirm) throw new Error('Confirm Phrase fehlt.');
+        try{ window.InfluxBroStatus && window.InfluxBroStatus.start && window.InfluxBroStatus.start('import.run', 'Import laeuft...'); }catch(e){}
+        try{
+          const j = await api('./api/import_start', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+          $runHint.textContent = `Importiert: ${j.imported}`;
+          ok(j.message || 'Import fertig.');
+          try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done('import.run', j.message || 'Import fertig.'); }catch(e){}
+        }catch(e){
+          const s = String(e && e.message ? e.message : e);
+          try{ window.InfluxBroStatus && window.InfluxBroStatus.fail && window.InfluxBroStatus.fail('import.run', s); }catch(ex){}
+          throw e;
+        }
+      }
+
+      (async function(){
+        try{
+          const st = loadState();
+          if(st.measurement_filter) $mf.value = st.measurement_filter;
+          if(st.friendly_name) $n.value = st.friendly_name;
+          if(st.entity_id) $e.value = st.entity_id;
+          await loadMeasurements();
+          await loadFields();
+          await loadFriendlyEntity();
+          $deleteFirst.addEventListener('change', ()=>{ $confirmBox.style.display = $deleteFirst.checked ? 'block' : 'none'; });
+          $confirmBox.style.display = $deleteFirst.checked ? 'block' : 'none';
+          $analyze.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); }catch(e){}; analyze().catch(e=>err(e && e.message ? e.message : e)); });
+          $run.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); }catch(e){}; runImport().catch(e=>err(e && e.message ? e.message : e)); });
+        }catch(e){ err(e && e.message ? e.message : e); }
+      })();
+      </script>
+
+    </main>
+  </div>
+</body>
+</html>

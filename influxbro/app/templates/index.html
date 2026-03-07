@@ -152,7 +152,7 @@
 
   <div class="grid" id="filters" data-ui="dashboard.filters" title="dashboard.filters">
     <div class="control control_lr" id="c_measurement_filter" data-ui="filter_measurement">
-      <label class="label_row"><span>_measurement (Filter)</span><span id="cnt_measurement_filter" class="muted"></span></label>
+      <label class="label_row"><span>Einheit (_measurement)</span><span id="cnt_measurement_filter" class="muted"></span></label>
       <div class="stack">
         <input id="measurement_filter" list="measurement_filter_list" placeholder="optional" data-ui="filter_measurement_input" />
         <datalist id="measurement_filter_list"></datalist>
@@ -183,7 +183,7 @@
       </select>
     </div>
     <div class="control control_lr" id="c_entity" data-ui="filter_entity">
-      <label class="label_row"><span>entity_id (optional)</span><span id="cnt_entity_id" class="muted"></span></label>
+      <label class="label_row"><span>Entity ID (entity_id)</span><span id="cnt_entity_id" class="muted"></span></label>
       <div class="stack">
         <input id="entity_id" list="entity_list" placeholder="optional" data-ui="filter_entity_input" />
         <datalist id="entity_list"></datalist>
@@ -270,13 +270,18 @@
       <div class="tbl_actions" data-ui="graph_actions">
         <label><input type="checkbox" id="graph_markers" class="row_sel" data-ui="graph_markers"/>Messpunkte markieren</label>
       </div>
-      <details id="graph_query_section" style="margin-top: 8px;" data-ui="graph.query_section" title="graph.query_section">
-        <summary>Graph Query</summary>
-        <div class="tbl_actions" style="justify-content:flex-start; margin-top: 8px;">
-          <button class="btn_sm" id="graph_copy_query" data-ui="graph.copy_query" title="graph.copy_query">Query kopieren</button>
-        </div>
-        <pre id="graph_query" style="margin:6px 0 0 0; padding:10px 12px; border:1px solid #eee; border-radius:12px; background:#fafafa; white-space:pre; overflow:auto; max-height: 220px;"></pre>
-      </details>
+       <details id="graph_query_section" style="margin-top: 8px;" data-ui="graph.query_section" title="graph.query_section">
+         <summary>Graph Query</summary>
+         <div class="tbl_actions" style="justify-content:flex-start; margin-top: 8px;">
+           <button class="btn_sm" id="graph_copy_query" data-ui="graph.copy_query" title="graph.copy_query">Query kopieren</button>
+           <select class="btn_sm" id="graph_query_source" data-ui="graph.query_source" title="graph.query_source" style="height:34px; padding: 6px 10px;">
+             <option value="dashboard" selected>Dashboard</option>
+             <option value="edit_graph">Bearbeitungsgraph</option>
+           </select>
+         </div>
+         <div class="muted" id="graph_query_label" style="margin-top: 6px;"></div>
+         <pre id="graph_query" style="margin:6px 0 0 0; padding:10px 12px; border:1px solid #eee; border-radius:12px; background:#fafafa; white-space:pre; overflow:auto; max-height: 220px;"></pre>
+       </details>
       <div class="muted" data-ui="tip.graph" title="tip.graph">Zoomen/Pan im Plot. Doppelklick setzt Zoom zurueck. Griff unten zieht die Hoehe.</div>
       <div class="graph_frame" data-ui="graph.frame" title="graph.frame">
         <div id="chart_plotly"></div>
@@ -351,7 +356,7 @@
                 <label><input type="checkbox" id="tbl_enabled" class="row_sel" data-ui="filterlist_filter_enabled"/> Filter aktiv</label>
               </div>
 
-              <div class="muted" data-ui="tip.filterlist" title="tip.filterlist">Filter (DB-Scan) steuert, welche Punkte als "Ausreisser" markiert werden.</div>
+              <div class="muted" data-ui="tip.filterlist" title="tip.filterlist" style="margin-top: 8px;">Filter (DB-Scan) steuert, welche Punkte als "Ausreisser" markiert werden.</div>
 
             <div class="row" style="margin-top:0;" data-ui="filterlist_scan_row" title="filterlist_scan_row">
               <div style="min-width: 260px;">
@@ -665,6 +670,8 @@ const $rawQuery = document.getElementById('raw_query');
 
 const $graphQuerySection = document.getElementById('graph_query_section');
 const $graphCopyQuery = document.getElementById('graph_copy_query');
+const $graphQuerySource = document.getElementById('graph_query_source');
+const $graphQueryLabel = document.getElementById('graph_query_label');
 const $graphQuery = document.getElementById('graph_query');
 
 const $rawTimeFromGraph = document.getElementById('raw_time_from_graph');
@@ -1901,11 +1908,22 @@ function setLastQuery(q, triggeredAtIso){
     $queryPre.textContent = s;
     $queryDetails.style.display = 'block';
 
-    // Mirror into the graph query panel.
-    try{
-      if($graphQuery) $graphQuery.textContent = s;
-      if($graphQuerySection) $graphQuerySection.style.display = s ? 'block' : 'none';
-    }catch(e){}
+    // Mirror into the graph query panel (Dashboard source).
+    try{ GRAPH_QUERY_DASH = s; _renderGraphQueryPanel(); }catch(e){}
+  }catch(e){}
+}
+
+let GRAPH_QUERY_DASH = "";
+let GRAPH_QUERY_EDIT = "";
+
+function _renderGraphQueryPanel(){
+  try{
+    const src = $graphQuerySource ? String($graphQuerySource.value || 'dashboard') : 'dashboard';
+    const s = (src === 'edit_graph') ? String(GRAPH_QUERY_EDIT || '') : String(GRAPH_QUERY_DASH || '');
+    const label = (src === 'edit_graph') ? 'Quelle: Bearbeitungsgraph (/api/window_points)' : 'Quelle: Dashboard Graph (/api/query)';
+    if($graphQueryLabel) $graphQueryLabel.textContent = s ? label : '';
+    if($graphQuery) $graphQuery.textContent = s;
+    if($graphQuerySection) $graphQuerySection.style.display = s ? 'block' : 'none';
   }catch(e){}
 }
 
@@ -2808,6 +2826,21 @@ try{
   });
 }catch(e){}
 
+try{
+  if($graphQuerySource){
+    // Restore last selected source
+    try{
+      const raw = localStorage.getItem('influxbro_graph_query_source_v1');
+      if(raw === 'dashboard' || raw === 'edit_graph') $graphQuerySource.value = raw;
+    }catch(e){}
+
+    $graphQuerySource.addEventListener('change', ()=>{
+      try{ localStorage.setItem('influxbro_graph_query_source_v1', String($graphQuerySource.value || 'dashboard')); }catch(e){}
+      _renderGraphQueryPanel();
+    });
+  }
+}catch(e){}
+
 function initRawAutoMore(){
   if(!$rawBox) return;
   try{
@@ -3480,6 +3513,10 @@ async function refreshEditGraph(){
   };
 
   const j = await api('./api/window_points', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)}, { key: 'edit_graph', status: 'Graph laeuft...', silent: true });
+  try{
+    GRAPH_QUERY_EDIT = (j && j.meta && j.meta.query) ? String(j.meta.query || '') : '';
+    _renderGraphQueryPanel();
+  }catch(e){}
   const pts = j.rows || [];
   const xsAll = pts.map(p=>p.time);
   const ysAll = pts.map(p=>p.value);
@@ -4438,6 +4475,9 @@ try{
     // Restore cached data so the dashboard keeps results across page switches.
     const restored = cacheRestoreIfAvailable();
     if(!restored) renderTable();
+
+    // Ensure graph query panel reflects persisted selection.
+    try{ _renderGraphQueryPanel(); }catch(e){}
 
     // Do not auto-load data on page open (manual via button).
   } catch(e){ displayError(e); }

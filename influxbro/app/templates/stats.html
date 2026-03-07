@@ -93,7 +93,7 @@
             </div>
 
             <div style="min-width: 180px;">
-              <label class="label_row"><span>_measurement Filter</span><span id="cnt_measurement_filter" class="muted"></span></label>
+              <label class="label_row"><span>Einheit (_measurement)</span><span id="cnt_measurement_filter" class="muted"></span></label>
               <input id="measurement_filter" list="measurement_list" placeholder="optional" data-ui="stats.measurement_filter" title="stats.measurement_filter" />
               <datalist id="measurement_list"></datalist>
               <div class="muted help" data-ui="stats.measurement_filter_help" title="stats.measurement_filter_help">Filtert Serien nach _measurement (optional).</div>
@@ -107,7 +107,7 @@
             </div>
 
             <div style="min-width: 220px;">
-              <label class="label_row"><span>entity_id Filter</span><span id="cnt_entity_id" class="muted"></span></label>
+              <label class="label_row"><span>Entity ID (entity_id)</span><span id="cnt_entity_id" class="muted"></span></label>
               <input id="entity_filter" list="entity_list" placeholder="optional" data-ui="stats.entity_filter" title="stats.entity_filter" />
               <datalist id="entity_list"></datalist>
               <div class="muted help" data-ui="stats.entity_filter_help" title="stats.entity_filter_help">Filtert Serien nach entity_id (optional).</div>
@@ -720,9 +720,11 @@
 
         try{
           setStatus(['Starte Hintergrundabfrage...', ROWS && ROWS.length ? 'Hinweis: Tabelle zeigt letztes Ergebnis waehrend der neuen Berechnung.' : '']);
+          try{ window.InfluxBroStatus && window.InfluxBroStatus.start && window.InfluxBroStatus.start('stats.load', 'Statistik laeuft...'); }catch(e){}
           await startJob();
           beginPolling();
         }catch(e){
+          try{ window.InfluxBroStatus && window.InfluxBroStatus.fail && window.InfluxBroStatus.fail('stats.load', String(e && e.message ? e.message : e)); }catch(ex){}
           err(String(e && e.message ? e.message : e));
           setJobId(null);
           RUNNING = false;
@@ -756,14 +758,21 @@
               prog,
             ]);
 
+            try{
+              const pr = msg ? (msg + (prog ? (' | ' + prog) : '')) : (prog || (`Status: ${state}`));
+              if(pr) window.InfluxBroStatus && window.InfluxBroStatus.progress && window.InfluxBroStatus.progress('stats.load', String(pr));
+            }catch(e){}
+
             if(st.ready){
               stopPolling();
               fetchAllResults().then(()=>{
                 setStatus([`Fertig. Zeilen: ${(ROWS||[]).length}`, '']);
+                try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done('stats.load', `Statistik fertig. Zeilen: ${(ROWS||[]).length}`); }catch(e){}
                 if(!JOB_MERGE) setLastJobId(JOB_ID);
                 setJobId(null);
                 RUNNING = false;
               }).catch(e=>{
+                try{ window.InfluxBroStatus && window.InfluxBroStatus.fail && window.InfluxBroStatus.fail('stats.load', String(e && e.message ? e.message : e)); }catch(ex){}
                 err(String(e && e.message ? e.message : e));
                 setJobId(null);
                 RUNNING = false;
@@ -772,12 +781,14 @@
             if(state === 'error'){
               stopPolling();
               err(String(st.error || 'Fehler'));
+              try{ window.InfluxBroStatus && window.InfluxBroStatus.fail && window.InfluxBroStatus.fail('stats.load', String(st.error || 'Fehler')); }catch(e){}
               setJobId(null);
               RUNNING = false;
             }
             if(state === 'cancelled'){
               stopPolling();
               setStatus(['Abgebrochen.', '']);
+              try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done('stats.load', 'Abgebrochen.'); }catch(e){}
               setJobId(null);
               RUNNING = false;
             }
@@ -785,6 +796,7 @@
             stopPolling();
             err(String(e && e.message ? e.message : e));
             setStatus(['Job nicht gefunden oder Fehler beim Status-Update.', '']);
+            try{ window.InfluxBroStatus && window.InfluxBroStatus.fail && window.InfluxBroStatus.fail('stats.load', String(e && e.message ? e.message : e)); }catch(ex){}
             setJobId(null);
             RUNNING = false;
           });
@@ -794,6 +806,7 @@
           stopPolling();
           err(String(e && e.message ? e.message : e));
           setStatus(['Job nicht gefunden oder Fehler beim Starten.', '']);
+          try{ window.InfluxBroStatus && window.InfluxBroStatus.fail && window.InfluxBroStatus.fail('stats.load', String(e && e.message ? e.message : e)); }catch(ex){}
           setJobId(null);
           RUNNING = false;
         });
@@ -821,6 +834,7 @@
 
       async function cancelRun(){
         RUN_CANCELLED = true;
+        try{ window.InfluxBroStatus && window.InfluxBroStatus.progress && window.InfluxBroStatus.progress('stats.load', 'Abbruch angefordert...'); }catch(e){}
         if(JOB_ID){
           try{
             await api('./api/global_stats_job/cancel', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({job_id: JOB_ID})});

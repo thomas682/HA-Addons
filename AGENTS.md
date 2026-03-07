@@ -270,3 +270,12 @@ from flask import Flask, jsonify, request
   - play a completion sound: `afplay /System/Library/Sounds/Glass.aiff`
   - speak a short prompt via macOS `say` (German), e.g. `say "Bitte bestaetigen"`
 - Only speak the "Generierung erfolgt..." message when a new add-on version was produced (version bump in `influxbro/config.yaml`).
+
+## Interactive Prompts (Audio)
+
+- If you need any input/decision from the user to continue (blocking question), you MUST:
+  - play a sound: `afplay /System/Library/Sounds/Glass.aiff`
+  - speak (German): `say "Entscheidung erforderlich"`
+- If you are done implementing the requested work and are ready for the next instruction, you MUST:
+  - play a sound: `afplay /System/Library/Sounds/Glass.aiff`
+  - speak (German): `say "Fertig mit der Umsetzung"`

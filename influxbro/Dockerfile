@@ -1,5 +1,5 @@
 FROM python:3.12-alpine
-RUN apk add --no-cache bash curl jq
+RUN apk add --no-cache bash curl jq tzdata
 WORKDIR /app
 COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt

@@ -2,3 +2,4 @@ flask>=2.3,<4
 influxdb-client>=1.40,<2
 influxdb>=5.3,<6
 PyYAML>=6,<7
+openpyxl>=3.1,<4

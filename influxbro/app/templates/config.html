@@ -126,168 +126,226 @@
     <summary>UI</summary>
     <div class="card_body">
 
-    <details class="card" id="ui_table" open data-ui="settings.ui.table" title="settings.ui.table">
-      <summary>Tabellen</summary>
+    <details class="card" id="ui_page_dashboard" open data-ui="settings.ui.page_dashboard" title="settings.ui.page_dashboard">
+      <summary>Dashboard</summary>
       <div class="card_body">
-      <div class="grid">
-        <div>
-          <label>Tabellenzeilen (sichtbar)</label>
-          <input id="ui_table_visible_rows" type="number" min="5" max="500" />
-          <div class="muted">Hoehe der Tabelle in Zeilen (Scroll zeigt trotzdem alle Messwerte).</div>
-        </div>
-        <div>
-          <label>Tabellenzeilen Hoehe (px)</label>
-          <input id="ui_table_row_height_px" type="number" min="9" max="60" />
-          <div class="muted">Effektive Zeilenhoehe ist max. +20% ueber kleiner Schriftgroesse.</div>
-        </div>
-        <div>
-          <label>Dezimalstellen (Anzeige)</label>
-          <input id="ui_decimals" type="number" min="0" max="10" />
-          <div class="muted">Rundung fuer Zahlen in Statistik/Tabelle (nur Anzeige).</div>
-        </div>
 
-        <div>
-          <label>Query max. Punkte (Dashboard Graph)</label>
-          <input id="ui_query_max_points" type="number" min="500" max="200000" />
-          <div class="muted">Limit/Downsampling fuer den Dashboard-Graph (Default: 5000).</div>
-        </div>
+        <details class="card" id="ui_table" open data-ui="settings.ui.table" title="settings.ui.table">
+          <summary>Tabellen</summary>
+          <div class="card_body">
+          <div class="grid">
+            <div>
+              <label>Tabellenzeilen (sichtbar)</label>
+              <input id="ui_table_visible_rows" type="number" min="5" max="500" />
+              <div class="muted">Hoehe der Tabelle in Zeilen (Scroll zeigt trotzdem alle Messwerte).</div>
+            </div>
+            <div>
+              <label>Tabellenzeilen Hoehe (px)</label>
+              <input id="ui_table_row_height_px" type="number" min="9" max="60" />
+              <div class="muted">Effektive Zeilenhoehe ist max. +20% ueber kleiner Schriftgroesse.</div>
+            </div>
+            <div>
+              <label>Dezimalstellen (Anzeige)</label>
+              <input id="ui_decimals" type="number" min="0" max="10" />
+              <div class="muted">Rundung fuer Zahlen in Statistik/Tabelle (nur Anzeige).</div>
+            </div>
 
-        <div>
-          <label>Raw max. Punkte</label>
-          <input id="ui_raw_max_points" type="number" min="1000" max="200000" />
-          <div class="muted">Maximale Zeilen/Points pro Raw-DB-Abfrage (Default: 20000).</div>
-        </div>
-      </div>
+            <div>
+              <label>Query max. Punkte (Dashboard Graph)</label>
+              <input id="ui_query_max_points" type="number" min="500" max="200000" />
+              <div class="muted">Limit/Downsampling fuer den Dashboard-Graph (Default: 5000).</div>
+            </div>
+
+            <div>
+              <label>Raw max. Punkte</label>
+              <input id="ui_raw_max_points" type="number" min="1000" max="200000" />
+              <div class="muted">Maximale Zeilen/Points pro Raw-DB-Abfrage (Default: 20000).</div>
+            </div>
+          </div>
+          </div>
+        </details>
+
+        <details class="card" id="ui_edit" open data-ui="settings.ui.edit" title="settings.ui.edit">
+          <summary>Bearbeitungsliste</summary>
+          <div class="card_body">
+          <div class="grid">
+            <div>
+              <label>Nachbarwerte (n)</label>
+              <input id="ui_edit_neighbors_n" type="number" min="1" max="50" />
+              <div class="muted">Zeigt n Werte davor und n Werte danach unterhalb der Bearbeitungsliste.</div>
+            </div>
+            <div>
+              <label>Detailsliste (sichtbare Zeilen)</label>
+              <input id="ui_edit_details_visible_rows" type="number" min="4" max="80" />
+              <div class="muted">Hoehe der Detailsliste unterhalb der Bearbeitungsliste.</div>
+            </div>
+            <div>
+              <label>Graph Puffer (Minuten)</label>
+              <input id="ui_edit_graph_buffer_minutes" type="number" min="0" max="1440" />
+              <div class="muted">Zeitfenster fuer den Graph: min/max der Bearbeitungsliste +/- Puffer.</div>
+            </div>
+            <div>
+              <label>Graph max. Punkte</label>
+              <input id="ui_edit_graph_max_points" type="number" min="1000" max="200000" />
+              <div class="muted">Limit fuer DB-Punkte im Bearbeitungs-Graph (Downsampling erfolgt automatisch).</div>
+            </div>
+          </div>
+          </div>
+        </details>
+
+        <details class="card" id="ui_layout" open data-ui="settings.ui.layout" title="settings.ui.layout">
+          <summary>Darstellung</summary>
+          <div class="card_body">
+          <div class="grid">
+            <div>
+              <label>Basis Schriftgroesse (px)</label>
+              <input id="ui_font_size_px" type="number" min="10" max="22" />
+              <div class="muted">Standard: 14.</div>
+            </div>
+            <div>
+              <label>Kleine Schriftgroesse (px)</label>
+              <input id="ui_font_small_px" type="number" min="9" max="18" />
+              <div class="muted">z.B. fuer Statistik/Infotexte.</div>
+            </div>
+            <div>
+              <label>Checkbox Groesse (Scale)</label>
+              <input id="ui_checkbox_scale" type="number" min="0.5" max="1.6" step="0.05" />
+              <div class="muted">0.85 = kleiner, 1.0 = normal.</div>
+            </div>
+            <div>
+              <label>Filter Label Breite (px)</label>
+              <input id="ui_filter_label_width_px" type="number" min="80" max="360" />
+              <div class="muted">Label links neben dem Auswahlfeld.</div>
+            </div>
+            <div>
+              <label>Filter Feld Breite (px)</label>
+              <input id="ui_filter_control_width_px" type="number" min="180" max="900" />
+              <div class="muted">Breite fuer Suche+Auswahl (Desktop).</div>
+            </div>
+            <div>
+              <label>Filter Suche Breite (px)</label>
+              <input id="ui_filter_search_width_px" type="number" min="80" max="420" />
+              <div class="muted">Breite fuer das Suchfeld links neben der Auswahl.</div>
+            </div>
+          </div>
+          </div>
+        </details>
+
+        <details class="card" id="ui_sections" data-ui="settings.ui.sections" title="settings.ui.sections">
+          <summary>Standardmaessig geoeffnete Bereiche</summary>
+          <div class="card_body">
+          <div class="grid">
+            <div class="span2 muted">Standard ist "zu" (nicht geoeffnet).</div>
+            <div><label><input type="checkbox" id="ui_open_selection" /> Auswahl</label></div>
+            <div><label><input type="checkbox" id="ui_open_graph" /> Graph</label></div>
+            <div><label><input type="checkbox" id="ui_open_filterlist" /> Fehler-/Filtertabelle</label></div>
+            <div><label><input type="checkbox" id="ui_open_editlist" /> Bearbeitungsliste</label></div>
+            <div><label><input type="checkbox" id="ui_open_stats_total" /> Gesamtstatistik (Alles)</label></div>
+            <div><label><input type="checkbox" id="ui_open_stats_current" /> Statistik Zeitraum (Graph)</label></div>
+            <div>
+              <label><input type="checkbox" id="ui_tooltips_enabled" /> Tooltips anzeigen</label>
+              <div class="muted">Wenn deaktiviert, werden keine Tooltips erzeugt/angezeigt.</div>
+            </div>
+          </div>
+          </div>
+        </details>
+
+        <details class="card" id="ui_links" data-ui="settings.ui.links" title="settings.ui.links">
+          <summary>Links</summary>
+          <div class="card_body">
+          <div class="grid">
+            <div class="span2">
+              <label>Repository URL (Info Seite)</label>
+              <input id="ui_repo_url" />
+              <div class="muted">Wird in der Info-Seite als Link angezeigt.</div>
+            </div>
+            <div class="span2">
+              <label>PayPal Donate URL (Sidebar)</label>
+              <input id="ui_paypal_donate_url" />
+              <div class="muted">Wird vom PayPal Spendenbutton im Sidebar verwendet (z.B. hosted_button_id URL).</div>
+            </div>
+          </div>
+          </div>
+        </details>
+
       </div>
     </details>
 
-    <details class="card" id="ui_edit" open data-ui="settings.ui.edit" title="settings.ui.edit">
-      <summary>Bearbeitungsliste</summary>
+    <details class="card" id="ui_page_stats" data-ui="settings.ui.page_stats" title="settings.ui.page_stats">
+      <summary>Statistik</summary>
       <div class="card_body">
-      <div class="grid">
-        <div>
-          <label>Nachbarwerte (n)</label>
-          <input id="ui_edit_neighbors_n" type="number" min="1" max="50" />
-          <div class="muted">Zeigt n Werte davor und n Werte danach unterhalb der Bearbeitungsliste.</div>
-        </div>
-        <div>
-          <label>Detailsliste (sichtbare Zeilen)</label>
-          <input id="ui_edit_details_visible_rows" type="number" min="4" max="80" />
-          <div class="muted">Hoehe der Detailsliste unterhalb der Bearbeitungsliste.</div>
-        </div>
-        <div>
-          <label>Graph Puffer (Minuten)</label>
-          <input id="ui_edit_graph_buffer_minutes" type="number" min="0" max="1440" />
-          <div class="muted">Zeitfenster fuer den Graph: min/max der Bearbeitungsliste +/- Puffer.</div>
-        </div>
-        <div>
-          <label>Graph max. Punkte</label>
-          <input id="ui_edit_graph_max_points" type="number" min="1000" max="200000" />
-          <div class="muted">Limit fuer DB-Punkte im Bearbeitungs-Graph (Downsampling erfolgt automatisch).</div>
-        </div>
-      </div>
+        <div class="muted">Derzeit keine zusaetzlichen UI-Settings fuer diese Seite.</div>
       </div>
     </details>
 
-    <details class="card" id="ui_layout" open data-ui="settings.ui.layout" title="settings.ui.layout">
-      <summary>Darstellung</summary>
+    <details class="card" id="ui_page_backup" open data-ui="settings.ui.page_backup" title="settings.ui.page_backup">
+      <summary>Backup</summary>
       <div class="card_body">
-      <div class="grid">
-        <div>
-          <label>Basis Schriftgroesse (px)</label>
-          <input id="ui_font_size_px" type="number" min="10" max="22" />
-          <div class="muted">Standard: 14.</div>
-        </div>
-        <div>
-          <label>Kleine Schriftgroesse (px)</label>
-          <input id="ui_font_small_px" type="number" min="9" max="18" />
-          <div class="muted">z.B. fuer Statistik/Infotexte.</div>
-        </div>
-        <div>
-          <label>Checkbox Groesse (Scale)</label>
-          <input id="ui_checkbox_scale" type="number" min="0.5" max="1.6" step="0.05" />
-          <div class="muted">0.85 = kleiner, 1.0 = normal.</div>
-        </div>
-        <div>
-          <label>Filter Label Breite (px)</label>
-          <input id="ui_filter_label_width_px" type="number" min="80" max="360" />
-          <div class="muted">Label links neben dem Auswahlfeld.</div>
-        </div>
-        <div>
-          <label>Filter Feld Breite (px)</label>
-          <input id="ui_filter_control_width_px" type="number" min="180" max="900" />
-          <div class="muted">Breite fuer Suche+Auswahl (Desktop).</div>
-        </div>
-        <div>
-          <label>Filter Suche Breite (px)</label>
-          <input id="ui_filter_search_width_px" type="number" min="80" max="420" />
-          <div class="muted">Breite fuer das Suchfeld links neben der Auswahl.</div>
-        </div>
-      </div>
+
+        <details class="card" id="ui_backups" open data-ui="settings.ui.backups" title="settings.ui.backups">
+          <summary>Backups</summary>
+          <div class="card_body">
+          <div class="grid">
+            <div class="span2">
+              <label>Backup Verzeichnis (unter <code>/config</code> oder <code>/data</code>)</label>
+              <input id="backup_dir" />
+              <div class="muted">Default: <code>/config/influxbro/backup</code> (im HA Filebrowser sichtbar). Relative Pfade werden unter <code>/config</code> abgelegt. Aus Sicherheitsgruenden sind nur Pfade unter <code>/config</code> oder <code>/data</code> erlaubt.</div>
+            </div>
+            <div>
+              <label>Tabellenzeilen Hoehe (px, Backup)</label>
+              <input id="ui_backup_table_row_height_px" type="number" min="9" max="60" />
+              <div class="muted">Wirkt nur auf die Backup-Tabelle.</div>
+            </div>
+          </div>
+          </div>
+        </details>
+
       </div>
     </details>
 
-    <details class="card" id="ui_sections" data-ui="settings.ui.sections" title="settings.ui.sections">
-      <summary>Standardmaessig geoeffnete Bereiche</summary>
-      <div class="card_body">
-      <div class="grid">
-        <div class="span2 muted">Standard ist "zu" (nicht geoeffnet).</div>
-        <div><label><input type="checkbox" id="ui_open_selection" /> Auswahl</label></div>
-        <div><label><input type="checkbox" id="ui_open_graph" /> Graph</label></div>
-        <div><label><input type="checkbox" id="ui_open_filterlist" /> Fehler-/Filtertabelle</label></div>
-        <div><label><input type="checkbox" id="ui_open_editlist" /> Bearbeitungsliste</label></div>
-        <div><label><input type="checkbox" id="ui_open_stats_total" /> Gesamtstatistik (Alles)</label></div>
-        <div><label><input type="checkbox" id="ui_open_stats_current" /> Statistik Zeitraum (Graph)</label></div>
-        <div>
-          <label><input type="checkbox" id="ui_tooltips_enabled" /> Tooltips anzeigen</label>
-          <div class="muted">Wenn deaktiviert, werden keine Tooltips erzeugt/angezeigt.</div>
-        </div>
-      </div>
-      </div>
-    </details>
-
-    <details class="card" id="ui_links" data-ui="settings.ui.links" title="settings.ui.links">
-      <summary>Links</summary>
-      <div class="card_body">
-      <div class="grid">
-        <div class="span2">
-          <label>Repository URL (Info Seite)</label>
-          <input id="ui_repo_url" />
-          <div class="muted">Wird in der Info-Seite als Link angezeigt.</div>
-        </div>
-        <div class="span2">
-          <label>PayPal Donate URL (Sidebar)</label>
-          <input id="ui_paypal_donate_url" />
-          <div class="muted">Wird vom PayPal Spendenbutton im Sidebar verwendet (z.B. hosted_button_id URL).</div>
-        </div>
-      </div>
-      </div>
-    </details>
-
-    <details class="card" id="ui_backups" open data-ui="settings.ui.backups" title="settings.ui.backups">
-      <summary>Backups</summary>
-      <div class="card_body">
-      <div class="grid">
-        <div class="span2">
-          <label>Backup Verzeichnis (unter <code>/config</code> oder <code>/data</code>)</label>
-          <input id="backup_dir" />
-          <div class="muted">Default: <code>/config/influxbro/backup</code> (im HA Filebrowser sichtbar). Relative Pfade werden unter <code>/config</code> abgelegt. Aus Sicherheitsgruenden sind nur Pfade unter <code>/config</code> oder <code>/data</code> erlaubt.</div>
-        </div>
-      </div>
-      </div>
-    </details>
-
-    <details class="card" id="ui_restore" open data-ui="settings.ui.restore" title="settings.ui.restore">
+    <details class="card" id="ui_page_restore" open data-ui="settings.ui.page_restore" title="settings.ui.page_restore">
       <summary>Restore</summary>
       <div class="card_body">
-      <div class="grid">
-        <div>
-          <label>Vorschauzeilen (Restore)</label>
-          <input id="restore_preview_lines" type="number" min="0" max="200" />
-          <div class="muted">Anzahl der ersten umgeschriebenen Line-Protocol Zeilen, die nach "Restore ausfuehren" angezeigt werden. Default: 5.</div>
-        </div>
+
+        <details class="card" id="ui_restore" open data-ui="settings.ui.restore" title="settings.ui.restore">
+          <summary>Restore</summary>
+          <div class="card_body">
+          <div class="grid">
+            <div>
+              <label>Vorschauzeilen (Restore)</label>
+              <input id="restore_preview_lines" type="number" min="0" max="200" />
+              <div class="muted">Anzahl der ersten umgeschriebenen Line-Protocol Zeilen, die nach "Restore ausfuehren" angezeigt werden. Default: 5.</div>
+            </div>
+          </div>
+          </div>
+        </details>
+
       </div>
-      </div>
+    </details>
+
+    <details class="card" id="ui_page_jobs" data-ui="settings.ui.page_jobs" title="settings.ui.page_jobs">
+      <summary>Jobs</summary>
+      <div class="card_body"><div class="muted">Derzeit keine zusaetzlichen UI-Settings fuer diese Seite.</div></div>
+    </details>
+
+    <details class="card" id="ui_page_logs" data-ui="settings.ui.page_logs" title="settings.ui.page_logs">
+      <summary>Logs</summary>
+      <div class="card_body"><div class="muted">Hinweis: Logging-Settings findest du weiter unten im Bereich "Logs".</div></div>
+    </details>
+
+    <details class="card" id="ui_page_history" data-ui="settings.ui.page_history" title="settings.ui.page_history">
+      <summary>History</summary>
+      <div class="card_body"><div class="muted">Derzeit keine zusaetzlichen UI-Settings fuer diese Seite.</div></div>
+    </details>
+
+    <details class="card" id="ui_page_export" data-ui="settings.ui.page_export" title="settings.ui.page_export">
+      <summary>Export</summary>
+      <div class="card_body"><div class="muted">Derzeit keine zusaetzlichen UI-Settings fuer diese Seite.</div></div>
+    </details>
+
+    <details class="card" id="ui_page_import" data-ui="settings.ui.page_import" title="settings.ui.page_import">
+      <summary>Import</summary>
+      <div class="card_body"><div class="muted">Derzeit keine zusaetzlichen UI-Settings fuer diese Seite.</div></div>
     </details>
 
     </div>
@@ -409,6 +467,7 @@ const ids = [
   "org","bucket","token",
   "database","username","password",
   "ui_table_visible_rows","ui_table_row_height_px","ui_edit_neighbors_n","ui_edit_details_visible_rows","ui_edit_graph_buffer_minutes","ui_edit_graph_max_points","ui_decimals",
+  "ui_backup_table_row_height_px",
   "ui_query_max_points","ui_raw_max_points",
   "ui_font_size_px","ui_font_small_px","ui_checkbox_scale",
   "ui_filter_label_width_px","ui_filter_control_width_px","ui_filter_search_width_px"
@@ -461,6 +520,7 @@ function setForm(cfg){
 
   el.ui_table_visible_rows.value = cfg.ui_table_visible_rows ?? 20;
   el.ui_table_row_height_px.value = cfg.ui_table_row_height_px ?? 16;
+  el.ui_backup_table_row_height_px.value = cfg.ui_backup_table_row_height_px ?? (cfg.ui_table_row_height_px ?? 16);
   el.ui_edit_neighbors_n.value = cfg.ui_edit_neighbors_n ?? 5;
   el.ui_edit_details_visible_rows.value = cfg.ui_edit_details_visible_rows ?? 12;
   el.ui_edit_graph_buffer_minutes.value = cfg.ui_edit_graph_buffer_minutes ?? 30;
@@ -527,6 +587,7 @@ function getForm(){
 
     ui_table_visible_rows: parseInt(el.ui_table_visible_rows.value, 10),
     ui_table_row_height_px: parseInt(el.ui_table_row_height_px.value, 10),
+    ui_backup_table_row_height_px: parseInt(el.ui_backup_table_row_height_px.value, 10),
     ui_edit_neighbors_n: parseInt(el.ui_edit_neighbors_n.value, 10),
     ui_edit_details_visible_rows: parseInt(el.ui_edit_details_visible_rows.value, 10),
     ui_edit_graph_buffer_minutes: parseInt(el.ui_edit_graph_buffer_minutes.value, 10),

@@ -1,3 +1,5 @@
+import csv
+import io
 import json
 import logging
 import logging.handlers
@@ -18,8 +20,9 @@ from datetime import datetime, timedelta, timezone
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, render_template, request, send_file
 from influxdb_client import InfluxDBClient
 from influxdb_client import Point
 from influxdb_client import WritePrecision
@@ -43,6 +46,9 @@ GLOBAL_STATS_LOCK = threading.RLock()
 
 HISTORY_LOCK = threading.RLock()
 HISTORY_PATH = DATA_DIR / "influxbro_history.jsonl"
+
+EXPORT_DIR = DATA_DIR / "exports"
+IMPORT_DIR = DATA_DIR / "imports"
 
 RESTORE_COPY_JOBS: dict[str, dict[str, Any]] = {}
 RESTORE_COPY_LOCK = threading.RLock()
@@ -548,6 +554,7 @@ DEFAULT_CFG = {
     # UI defaults
     "ui_table_visible_rows": 20,
     "ui_table_row_height_px": 13,
+    "ui_backup_table_row_height_px": 13,
     "ui_edit_neighbors_n": 5,
     "ui_edit_details_visible_rows": 12,
     "ui_edit_graph_buffer_minutes": 30,
@@ -919,6 +926,55 @@ def _dt_to_rfc3339_utc_ms(dt: datetime) -> str:
     return s.replace("+00:00", "Z")
 
 
+_UI_LOCAL_TS_RE = re.compile(r"^(\d{2})\.(\d{2})\.(\d{4})\s+(\d{2}):(\d{2}):(\d{2})\.(\d{3})$")
+
+
+def _tz_from_client(tz_name: str | None, tz_offset_minutes: int | None):
+    """Return a tzinfo based on client timezone.
+
+    Prefers an IANA timezone name. Falls back to a fixed offset.
+    """
+
+    name = (tz_name or "").strip()
+    if name:
+        try:
+            return ZoneInfo(name)
+        except Exception:
+            pass
+    try:
+        if tz_offset_minutes is not None:
+            return timezone(timedelta(minutes=int(tz_offset_minutes)))
+    except Exception:
+        pass
+    return timezone.utc
+
+
+def _parse_ui_local_ts(s: str, tz_name: str | None, tz_offset_minutes: int | None) -> datetime:
+    """Parse UI local timestamp (dd.mm.yyyy HH:MM:SS.mmm) into UTC datetime."""
+
+    v = (s or "").strip()
+    m = _UI_LOCAL_TS_RE.match(v)
+    if not m:
+        raise ValueError("invalid local timestamp format")
+    dd, mm, yyyy, hh, mi, ss, ms = (int(x) for x in m.groups())
+    tz = _tz_from_client(tz_name, tz_offset_minutes)
+    dt = datetime(yyyy, mm, dd, hh, mi, ss, ms * 1000, tzinfo=tz)
+    return dt.astimezone(timezone.utc)
+
+
+def _fmt_ui_local_ts(dt_utc: datetime, tz_name: str | None, tz_offset_minutes: int | None) -> str:
+    """Format UTC datetime into UI local timestamp (dd.mm.yyyy HH:MM:SS.mmm)."""
+
+    if dt_utc.tzinfo is None:
+        dt_utc = dt_utc.replace(tzinfo=timezone.utc)
+    tz = _tz_from_client(tz_name, tz_offset_minutes)
+    d = dt_utc.astimezone(tz)
+    return (
+        f"{d.day:02d}.{d.month:02d}.{d.year:04d} "
+        f"{d.hour:02d}:{d.minute:02d}:{d.second:02d}.{int(d.microsecond/1000):03d}"
+    )
+
+
 def _flux_range_clause(range_key: str, start: datetime | None, stop: datetime | None) -> str:
     if start and stop:
         s = _dt_to_rfc3339_utc(start)
@@ -1111,6 +1167,24 @@ def restore_page():
         allow_delete=writes_enabled(cfg),
         delete_phrase=DELETE_CONFIRM_PHRASE,
         nav="restore",
+    )
+
+
+@app.get("/export")
+def export_page():
+    cfg = load_cfg()
+    return render_template("export.html", cfg=cfg, allow_delete=writes_enabled(cfg), nav="export")
+
+
+@app.get("/import")
+def import_page():
+    cfg = load_cfg()
+    return render_template(
+        "import.html",
+        cfg=cfg,
+        allow_delete=writes_enabled(cfg),
+        delete_phrase=DELETE_CONFIRM_PHRASE,
+        nav="import",
     )
 
 
@@ -3342,6 +3416,7 @@ def api_set_config():
     _clamp_int("ui_font_size_px", 14, 10, 22)
     _clamp_int("ui_font_small_px", 11, 9, 18)
     _clamp_int("ui_table_row_height_px", 13, 9, 60)
+    _clamp_int("ui_backup_table_row_height_px", 13, 9, 60)
     _clamp_int("ui_edit_neighbors_n", 5, 1, 50)
     _clamp_int("ui_edit_details_visible_rows", 12, 4, 80)
     _clamp_int("ui_edit_graph_buffer_minutes", 30, 0, 24 * 60)
@@ -4142,7 +4217,17 @@ from(bucket: "{cfg["bucket"]}")
                     val = r.get_value()
                     if isinstance(ts, datetime):
                         rows.append({"time": _dt_to_rfc3339_utc_ms(ts), "value": val})
-        return jsonify({"ok": True, "rows": rows, "meta": {"mode": mode, "every_ms": every_ms, "max_points": max_points}})
+        return jsonify({
+            "ok": True,
+            "rows": rows,
+            "meta": {
+                "mode": mode,
+                "every_ms": every_ms,
+                "max_points": max_points,
+                "query_language": "flux",
+                "query": q,
+            },
+        })
     except Exception as e:
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
 
@@ -6667,6 +6752,480 @@ def api_history_rollback():
             applied += 1
 
     return jsonify({"ok": True, "applied": applied, "message": f"Rollback applied: {applied}"})
+
+
+def _safe_data_file(root: Path, name: str) -> Path:
+    """Resolve a user-provided filename safely within a root directory."""
+
+    n = (name or "").strip()
+    if not n or "/" in n or "\\" in n or ".." in n:
+        raise ValueError("invalid file name")
+    p = (root / n).resolve()
+    rr = root.resolve()
+    if rr not in p.parents and p != rr:
+        raise ValueError("path traversal")
+    return p
+
+
+@app.post("/api/export")
+def api_export():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    body = request.get_json(force=True) or {}
+
+    fmt = str(body.get("format") or "text").strip().lower()
+    if fmt not in ("text", "xlsx"):
+        return jsonify({"ok": False, "error": "format must be text or xlsx"}), 400
+
+    delim = str(body.get("delimiter") or ";")
+    if len(delim) != 1:
+        delim = ";"
+
+    measurement = str(body.get("measurement") or "").strip()
+    field = str(body.get("field") or "").strip()
+    entity_id = str(body.get("entity_id") or "").strip() or None
+    friendly_name = str(body.get("friendly_name") or "").strip() or None
+    if not measurement or not field:
+        return jsonify({"ok": False, "error": "measurement and field required"}), 400
+
+    tz_name = str(body.get("tz_name") or "").strip() or None
+    try:
+        tz_off = body.get("tz_offset_minutes")
+        tz_offset_minutes = int(tz_off) if tz_off is not None and str(tz_off).strip() != "" else None
+    except Exception:
+        tz_offset_minutes = None
+
+    # Export window: prefer explicit start/stop.
+    try:
+        start_dt, stop_dt = _get_start_stop_from_payload(body)
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"invalid start/stop: {e}"}), 400
+    if not start_dt or not stop_dt:
+        return jsonify({"ok": False, "error": "start and stop required"}), 400
+
+    try:
+        max_points = int(body.get("max_points") or cfg.get("ui_raw_max_points") or 20000)
+    except Exception:
+        max_points = int(cfg.get("ui_raw_max_points") or 20000)
+    if max_points < 1:
+        max_points = 1
+    if max_points > 2000000:
+        max_points = 2000000
+
+    if int(cfg.get("influx_version", 2)) != 2:
+        return jsonify({"ok": False, "error": "export currently supports InfluxDB v2 only"}), 400
+    if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+        return jsonify({
+            "ok": False,
+            "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
+        }), 400
+
+    extra = flux_tag_filter(entity_id, friendly_name)
+    start = _dt_to_rfc3339_utc(start_dt)
+    stop = _dt_to_rfc3339_utc(stop_dt)
+    q = f'''
+from(bucket: "{cfg["bucket"]}")
+  |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
+  |> keep(columns: ["_time","_value","_measurement","_field","entity_id","friendly_name"])
+  |> sort(columns: ["_time"], desc: false)
+  |> limit(n: {max_points})
+'''
+
+    EXPORT_DIR.mkdir(parents=True, exist_ok=True)
+    file_id = uuid.uuid4().hex
+    ext = "xlsx" if fmt == "xlsx" else "csv"
+    filename = f"export__{file_id}.{ext}"
+    out_path = (EXPORT_DIR / filename)
+
+    try:
+        rows: list[tuple[str, object, str, str, str, str]] = []
+        with v2_client(cfg) as c:
+            for rec in c.query_api().query_stream(q, org=cfg["org"]):
+                try:
+                    t = rec.get_time()
+                    v = rec.get_value()
+                    if v is None or not isinstance(t, datetime):
+                        continue
+                    tv = t.astimezone(timezone.utc)
+                    t_local = _fmt_ui_local_ts(tv, tz_name, tz_offset_minutes)
+                    m = str(rec.values.get("_measurement") or measurement)
+                    f = str(rec.values.get("_field") or field)
+                    eid = str(rec.values.get("entity_id") or "")
+                    fn = str(rec.values.get("friendly_name") or "")
+                    rows.append((t_local, v, eid, fn, m, f))
+                except Exception:
+                    continue
+
+        if fmt == "xlsx":
+            try:
+                import openpyxl  # type: ignore
+            except Exception:
+                return jsonify({"ok": False, "error": "openpyxl not available"}), 500
+
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "export"
+            ws.append(["time", "value", "entity_id", "friendly_name", "_measurement", "_field"])
+            for r in rows:
+                ws.append(list(r))
+            wb.save(out_path)
+        else:
+            with out_path.open("w", encoding="utf-8", newline="") as f:
+                f.write(f"# timezone={tz_name or ''}\n")
+                f.write(f"# tz_offset_minutes={tz_offset_minutes if tz_offset_minutes is not None else ''}\n")
+                w = csv.writer(f, delimiter=delim)
+                w.writerow(["time", "value", "entity_id", "friendly_name", "_measurement", "_field"])
+                for r in rows:
+                    w.writerow(list(r))
+
+        return jsonify({
+            "ok": True,
+            "download_url": f"./api/export_download?file={filename}",
+            "meta": {"rows": len(rows), "max_points": max_points, "format": fmt, "delimiter": delim},
+        })
+    except Exception as e:
+        try:
+            if out_path.exists():
+                out_path.unlink()
+        except Exception:
+            pass
+        return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
+
+
+@app.get("/api/export_download")
+def api_export_download():
+    name = (request.args.get("file") or "").strip()
+    try:
+        p = _safe_data_file(EXPORT_DIR, name)
+    except Exception:
+        return jsonify({"ok": False, "error": "invalid file"}), 400
+    if not p.exists() or not p.is_file():
+        return jsonify({"ok": False, "error": "file not found"}), 404
+    return send_file(p, as_attachment=True, download_name=p.name)
+
+
+def _detect_delimiter(sample: str) -> str:
+    s = sample or ""
+    # Prefer ; for HA-ish exports.
+    cands = [";", ",", "\t"]
+    best = ";"
+    best_n = -1
+    for d in cands:
+        n = s.count(d)
+        if n > best_n:
+            best_n = n
+            best = d
+    return best
+
+
+@app.post("/api/import_analyze")
+def api_import_analyze():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    if not writes_enabled(cfg):
+        return jsonify({"ok": False, "error": "Writes are disabled. Enable writes in Settings."}), 403
+
+    f = request.files.get("file")
+    if not f:
+        return jsonify({"ok": False, "error": "file required"}), 400
+
+    tz_name = str(request.form.get("tz_name") or "").strip() or None
+    try:
+        tz_offset_minutes = int(request.form.get("tz_offset_minutes")) if request.form.get("tz_offset_minutes") else None
+    except Exception:
+        tz_offset_minutes = None
+
+    IMPORT_DIR.mkdir(parents=True, exist_ok=True)
+    file_id = uuid.uuid4().hex
+    filename = f"import__{file_id}.csv"
+    path = (IMPORT_DIR / filename)
+    try:
+        f.save(path)
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"save failed: {e}"}), 500
+
+    try:
+        raw = path.read_text(encoding="utf-8", errors="replace")
+        lines = [ln for ln in (raw or "").splitlines() if ln.strip()]
+        data_lines = [ln for ln in lines if not ln.lstrip().startswith("#")]
+        if not data_lines:
+            return jsonify({"ok": False, "error": "empty file"}), 400
+        # delimiter: explicit form value or detect from header line
+        delim = str(request.form.get("delimiter") or "").strip()
+        if len(delim) != 1:
+            delim = _detect_delimiter(data_lines[0])
+
+        reader = csv.DictReader(data_lines, delimiter=delim)
+        cols = reader.fieldnames or []
+        need = ["time", "value", "entity_id", "friendly_name", "_measurement", "_field"]
+        for k in need:
+            if k not in cols:
+                return jsonify({"ok": False, "error": f"missing column: {k}"}), 400
+
+        count = 0
+        oldest_utc: datetime | None = None
+        newest_utc: datetime | None = None
+        sample: list[dict[str, Any]] = []
+        for row in reader:
+            try:
+                t_local = str(row.get("time") or "").strip()
+                dt_utc = _parse_ui_local_ts(t_local, tz_name, tz_offset_minutes)
+                if oldest_utc is None or dt_utc < oldest_utc:
+                    oldest_utc = dt_utc
+                if newest_utc is None or dt_utc > newest_utc:
+                    newest_utc = dt_utc
+                count += 1
+                if len(sample) < 3:
+                    sample.append({
+                        "time": t_local,
+                        "value": row.get("value"),
+                        "entity_id": row.get("entity_id"),
+                        "friendly_name": row.get("friendly_name"),
+                        "_measurement": row.get("_measurement"),
+                        "_field": row.get("_field"),
+                    })
+            except Exception:
+                continue
+
+        return jsonify({
+            "ok": True,
+            "file_id": filename,
+            "delimiter": delim,
+            "timezone": {"name": tz_name, "offset_minutes": tz_offset_minutes},
+            "count": count,
+            "oldest_utc": _dt_to_rfc3339_utc_ms(oldest_utc) if oldest_utc else None,
+            "newest_utc": _dt_to_rfc3339_utc_ms(newest_utc) if newest_utc else None,
+            "oldest_local": _fmt_ui_local_ts(oldest_utc, tz_name, tz_offset_minutes) if oldest_utc else None,
+            "newest_local": _fmt_ui_local_ts(newest_utc, tz_name, tz_offset_minutes) if newest_utc else None,
+            "columns": cols,
+            "sample": sample,
+        })
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+
+
+@app.post("/api/import_start")
+def api_import_start():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    if not writes_enabled(cfg):
+        return jsonify({"ok": False, "error": "Writes are disabled. Enable writes in Settings."}), 403
+
+    if int(cfg.get("influx_version", 2)) != 2:
+        return jsonify({"ok": False, "error": "import currently supports InfluxDB v2 only"}), 400
+    if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+        return jsonify({
+            "ok": False,
+            "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
+        }), 400
+
+    body = request.get_json(force=True) or {}
+    file_id = str(body.get("file_id") or "").strip()
+    if not file_id:
+        return jsonify({"ok": False, "error": "file_id required"}), 400
+    try:
+        path = _safe_data_file(IMPORT_DIR, file_id)
+    except Exception:
+        return jsonify({"ok": False, "error": "invalid file_id"}), 400
+    if not path.exists() or not path.is_file():
+        return jsonify({"ok": False, "error": "file not found"}), 404
+
+    measurement = str(body.get("measurement") or "").strip()
+    field = str(body.get("field") or "").strip()
+    if not measurement or not field:
+        return jsonify({"ok": False, "error": "measurement and field required"}), 400
+
+    entity_id = str(body.get("entity_id") or "").strip() or None
+    friendly_name = str(body.get("friendly_name") or "").strip() or None
+
+    delete_first = bool(body.get("delete_first", False))
+    backup_before = bool(body.get("backup_before", True))
+    confirm = str(body.get("confirm") or "").strip()
+
+    tz_name = str(body.get("tz_name") or "").strip() or None
+    try:
+        tz_offset_minutes = int(body.get("tz_offset_minutes")) if body.get("tz_offset_minutes") is not None and str(body.get("tz_offset_minutes")).strip() != "" else None
+    except Exception:
+        tz_offset_minutes = None
+
+    delim = str(body.get("delimiter") or ";")
+    if len(delim) != 1:
+        delim = ";"
+
+    raw = path.read_text(encoding="utf-8", errors="replace")
+    lines = [ln for ln in (raw or "").splitlines() if ln.strip()]
+    data_lines = [ln for ln in lines if not ln.lstrip().startswith("#")]
+    if not data_lines:
+        return jsonify({"ok": False, "error": "empty file"}), 400
+
+    reader = csv.DictReader(data_lines, delimiter=delim)
+    cols = reader.fieldnames or []
+    need = ["time", "value", "entity_id", "friendly_name", "_measurement", "_field"]
+    for k in need:
+        if k not in cols:
+            return jsonify({"ok": False, "error": f"missing column: {k}"}), 400
+
+    points: list[Point] = []
+    oldest_utc: datetime | None = None
+    newest_utc: datetime | None = None
+    for row in reader:
+        t_local = str(row.get("time") or "").strip()
+        if not t_local:
+            continue
+        dt_utc = _parse_ui_local_ts(t_local, tz_name, tz_offset_minutes)
+        if oldest_utc is None or dt_utc < oldest_utc:
+            oldest_utc = dt_utc
+        if newest_utc is None or dt_utc > newest_utc:
+            newest_utc = dt_utc
+
+        val_raw = row.get("value")
+        try:
+            v = float(val_raw)
+        except Exception:
+            continue
+
+        p = Point(str(measurement))
+        eid_row = str(row.get("entity_id") or "").strip()
+        fn_row = str(row.get("friendly_name") or "").strip()
+        if entity_id or eid_row:
+            p = p.tag("entity_id", str(entity_id or eid_row))
+        if friendly_name or fn_row:
+            p = p.tag("friendly_name", str(friendly_name or fn_row))
+        p = p.field(str(field), v)
+        p = p.time(dt_utc, WritePrecision.NS)
+        points.append(p)
+
+    if not points:
+        return jsonify({"ok": False, "error": "no valid rows"}), 400
+
+    if delete_first:
+        if confirm != DELETE_CONFIRM_PHRASE:
+            return jsonify({"ok": False, "error": f"Confirmation phrase mismatch. Type exactly: {DELETE_CONFIRM_PHRASE}"}), 400
+        if not (oldest_utc and newest_utc):
+            return jsonify({"ok": False, "error": "cannot derive time range for delete"}), 400
+
+    backup_meta = None
+    if backup_before:
+        # Create a range backup for the target series in the import time window.
+        if not (entity_id or friendly_name):
+            return jsonify({"ok": False, "error": "backup_before requires entity_id or friendly_name"}), 400
+        if not (oldest_utc and newest_utc):
+            return jsonify({"ok": False, "error": "cannot derive time range for backup"}), 400
+        try:
+            # Reuse the backup_create_range logic (inline).
+            bdir = backup_dir(cfg)
+            bdir.mkdir(parents=True, exist_ok=True)
+            display = friendly_name or entity_id or f"{measurement}_{field}"
+            ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+            backup_kind = "range"
+            backup_id = _backup_safe(display) + "__" + backup_kind + "__" + ts
+            meta_path, lp_path = _backup_files(bdir, backup_id)
+            extra = flux_tag_filter(entity_id, friendly_name)
+            start = _dt_to_rfc3339_utc(oldest_utc)
+            stop = _dt_to_rfc3339_utc(newest_utc)
+            q = f'''
+from(bucket: "{cfg["bucket"]}")
+  |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
+  |> sort(columns: ["_time"])
+'''
+            count = 0
+            with v2_client(cfg) as c:
+                qapi = c.query_api()
+                with lp_path.open("w", encoding="utf-8") as f:
+                    for rec in qapi.query_stream(q, org=cfg["org"]):
+                        try:
+                            t = rec.get_time()
+                            v = rec.get_value()
+                            if v is None:
+                                continue
+                            m = rec.values.get("_measurement") or measurement
+                            fld = rec.values.get("_field") or field
+                            p = Point(str(m))
+                            for k, tv in (rec.values or {}).items():
+                                if k in ("result", "table"):
+                                    continue
+                                if str(k).startswith("_"):
+                                    continue
+                                if tv is None:
+                                    continue
+                                p = p.tag(str(k), str(tv))
+                            p = p.field(str(fld), v)
+                            if isinstance(t, datetime):
+                                p = p.time(t, WritePrecision.NS)
+                            lp = p.to_line_protocol()
+                            if lp:
+                                f.write(lp)
+                                f.write("\n")
+                                count += 1
+                        except Exception:
+                            continue
+            bytes_size = int(lp_path.stat().st_size) if lp_path.exists() else 0
+            backup_meta = {
+                "id": backup_id,
+                "created_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+                "kind": backup_kind,
+                "display_name": display,
+                "measurement": measurement,
+                "field": field,
+                "entity_id": entity_id,
+                "friendly_name": friendly_name,
+                "start": start,
+                "stop": stop,
+                "point_count": count,
+                "bytes": bytes_size,
+            }
+            meta_path.write_text(json.dumps(backup_meta, indent=2, sort_keys=True), encoding="utf-8")
+        except Exception as e:
+            return jsonify({"ok": False, "error": f"backup_before failed: {_short_influx_error(e)}"}), 500
+
+    try:
+        with v2_client(cfg) as c:
+            if delete_first:
+                predicate = f"_measurement={_flux_str(measurement)} AND _field={_flux_str(field)}"
+                if entity_id:
+                    predicate += f" AND entity_id={_flux_str(entity_id)}"
+                if friendly_name:
+                    predicate += f" AND friendly_name={_flux_str(friendly_name)}"
+                c.delete_api().delete(start=oldest_utc, stop=newest_utc, predicate=predicate, bucket=cfg["bucket"], org=cfg["org"])
+
+            wapi = c.write_api(write_options=SYNCHRONOUS)
+            batch: list[Point] = []
+            imported = 0
+            for p in points:
+                batch.append(p)
+                if len(batch) >= 500:
+                    wapi.write(bucket=cfg["bucket"], org=cfg["org"], record=batch, write_precision=WritePrecision.NS)
+                    imported += len(batch)
+                    batch = []
+            if batch:
+                wapi.write(bucket=cfg["bucket"], org=cfg["org"], record=batch, write_precision=WritePrecision.NS)
+                imported += len(batch)
+
+        _history_append({
+            "kind": "import",
+            "series": {
+                "measurement": measurement,
+                "field": field,
+                "entity_id": entity_id,
+                "friendly_name": friendly_name,
+            },
+            "count": imported,
+            "delete_first": delete_first,
+            "backup_before": backup_before,
+            "backup_id": (backup_meta or {}).get("id") if backup_meta else None,
+            "reason": "Import",
+            "ip": _req_ip(),
+            "ua": _req_ua(),
+        })
+
+        return jsonify({
+            "ok": True,
+            "imported": imported,
+            "deleted_first": delete_first,
+            "backup": backup_meta,
+            "message": f"Import fertig. Zeilen: {imported}",
+        })
+    except Exception as e:
+        return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
 
 @app.post("/api/delete")
 def delete():
