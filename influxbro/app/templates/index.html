@@ -270,6 +270,28 @@
       <div class="tbl_actions" data-ui="graph_actions">
         <label><input type="checkbox" id="graph_markers" class="row_sel" data-ui="graph_markers"/>Messpunkte markieren</label>
       </div>
+
+      <div class="tbl_actions" style="justify-content:flex-start; margin-top: 8px; gap: 10px; flex-wrap:wrap;" data-ui="graph.detail" title="graph.detail">
+        <label style="display:flex; align-items:center; gap: 8px;">
+          <span class="muted" style="min-width: 76px;">Details</span>
+          <select id="graph_detail_mode" class="btn_sm" style="height:34px; padding: 6px 10px;">
+            <option value="dynamic" selected>Dynamisch</option>
+            <option value="manual">Manuell</option>
+          </select>
+        </label>
+
+        <label id="graph_manual_density_wrap" style="display:none; align-items:center; gap: 8px;">
+          <span class="muted">Punktdichte</span>
+          <input id="graph_manual_density" type="range" min="1" max="100" value="100" style="width: 180px;" />
+          <span class="muted" id="graph_manual_density_lbl">100%</span>
+        </label>
+
+        <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_bg" class="row_sel" />Ableitung: Hintergrund</label>
+        <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_strip" class="row_sel" />Ableitung: Farbleiste</label>
+        <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_graph" class="row_sel" />Ableitungs-Graph</label>
+        <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_abs" class="row_sel" checked/>absolut</label>
+        <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_signed" class="row_sel" />signiert</label>
+      </div>
        <details id="graph_query_section" style="margin-top: 8px;" data-ui="graph.query_section" title="graph.query_section">
          <summary>Graph Query</summary>
          <div class="tbl_actions" style="justify-content:flex-start; margin-top: 8px;">
@@ -286,6 +308,8 @@
       <div class="graph_frame" data-ui="graph.frame" title="graph.frame">
         <div id="chart_plotly"></div>
         <canvas id="chart" width="800" height="200"></canvas>
+        <div id="deriv_strip_plot" style="display:none; width: 100%; height: 60px; margin-top: 8px;"></div>
+        <div id="deriv_graph_plot" style="display:none; width: 100%; height: 140px; margin-top: 8px;"></div>
         <div id="graph_resize" data-ui="graph.resize" title="graph.resize" style="height: 12px; cursor: ns-resize; margin-top: 8px; border-radius: 999px; background: linear-gradient(90deg, #eee, #f8f8f8);"></div>
       </div>
 
@@ -674,6 +698,19 @@ const $graphQuerySource = document.getElementById('graph_query_source');
 const $graphQueryLabel = document.getElementById('graph_query_label');
 const $graphQuery = document.getElementById('graph_query');
 
+const $graphDetailMode = document.getElementById('graph_detail_mode');
+const $graphManualDensityWrap = document.getElementById('graph_manual_density_wrap');
+const $graphManualDensity = document.getElementById('graph_manual_density');
+const $graphManualDensityLbl = document.getElementById('graph_manual_density_lbl');
+
+const $derivBg = document.getElementById('deriv_bg');
+const $derivStrip = document.getElementById('deriv_strip');
+const $derivGraph = document.getElementById('deriv_graph');
+const $derivAbs = document.getElementById('deriv_abs');
+const $derivSigned = document.getElementById('deriv_signed');
+const $derivStripPlot = document.getElementById('deriv_strip_plot');
+const $derivGraphPlot = document.getElementById('deriv_graph_plot');
+
 const $rawTimeFromGraph = document.getElementById('raw_time_from_graph');
 
 const $rawStatus = document.getElementById('raw_status');
@@ -859,6 +896,223 @@ function loadState(){
   }
 }
 
+function _updateGraphDetailUi(){
+  try{
+    const mode = $graphDetailMode ? String($graphDetailMode.value || 'dynamic') : 'dynamic';
+    if($graphManualDensityWrap) $graphManualDensityWrap.style.display = (mode === 'manual') ? 'inline-flex' : 'none';
+    if($graphManualDensityLbl && $graphManualDensity) $graphManualDensityLbl.textContent = String($graphManualDensity.value || 100) + '%';
+  }catch(e){}
+}
+
+let LAST_ROWS_RAW = null;
+let LAST_JUMP_SPANS = [];
+
+function _thinRows(rows, densityPct){
+  const xs = Array.isArray(rows) ? rows : [];
+  let p = Number(densityPct);
+  if(!isFinite(p)) p = 100;
+  if(p < 1) p = 1;
+  if(p > 100) p = 100;
+  if(p >= 100) return xs;
+  const step = Math.max(1, Math.round(100 / p));
+  if(step <= 1) return xs;
+  const out = [];
+  for(let i=0;i<xs.length;i+=step) out.push(xs[i]);
+  return out;
+}
+
+function _lerp(a,b,t){ return a + (b-a)*t; }
+function _clamp01(t){ return t<0?0:(t>1?1:t); }
+function _gradGreenRed(t, alpha){
+  const u = _clamp01(t);
+  const r0=46,g0=125,b0=50; // green
+  const r1=198,g1=40,b1=40; // red
+  const r=Math.round(_lerp(r0,r1,u));
+  const g=Math.round(_lerp(g0,g1,u));
+  const b=Math.round(_lerp(b0,b1,u));
+  const a=(alpha===undefined||alpha===null)?0.22:Number(alpha);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+function _computeDerivatives(rows){
+  const pts = (rows||[]).map(r=>{
+    const t = Date.parse(r && r.time ? String(r.time) : "");
+    const v = toFiniteNumber(r && r.value);
+    return {t, v};
+  }).filter(p=>isFinite(p.t) && p.v !== null);
+  if(pts.length < 2) return {segments: [], maxAbs: 0};
+  pts.sort((a,b)=>a.t-b.t);
+  const segs = [];
+  let maxAbs = 0;
+  for(let i=1;i<pts.length;i++){
+    const a = pts[i-1];
+    const b = pts[i];
+    const dt = (b.t - a.t) / 1000.0;
+    if(!(dt>0)) continue;
+    const dv = (b.v - a.v);
+    const d = dv / dt;
+    const ad = Math.abs(d);
+    if(ad > maxAbs) maxAbs = ad;
+    segs.push({t0:a.t, t1:b.t, mid: (a.t+b.t)/2, d, abs: ad});
+  }
+  return {segments: segs, maxAbs};
+}
+
+function _applyOverlays(){
+  try{
+    if(!(window.Plotly && $plotly)) return;
+    const rows = (LAST_ROWS || []);
+    const d = _computeDerivatives(rows);
+
+    const useBg = !!($derivBg && $derivBg.checked);
+    const useStrip = !!($derivStrip && $derivStrip.checked);
+    const useGraph = !!($derivGraph && $derivGraph.checked);
+    const signed = !!($derivSigned && $derivSigned.checked);
+    const absMode = !!($derivAbs && $derivAbs.checked);
+
+    // enforce exclusivity
+    if(useBg && useStrip){
+      if(document.activeElement === $derivStrip) $derivBg.checked = false;
+      else $derivStrip.checked = false;
+    }
+    if(absMode && signed){
+      if(document.activeElement === $derivSigned) $derivAbs.checked = false;
+      else $derivSigned.checked = false;
+    }
+
+    const wantBg = !!($derivBg && $derivBg.checked);
+    const wantStrip = !!($derivStrip && $derivStrip.checked);
+    const wantGraph = !!($derivGraph && $derivGraph.checked);
+    const wantSigned = !!($derivSigned && $derivSigned.checked);
+
+    // Main plot: shapes (jump spans + optional derivative bins)
+    let shapes = [];
+
+    // Jump spans shading (always shown when available)
+    try{
+      const spans = Array.isArray(LAST_JUMP_SPANS) ? LAST_JUMP_SPANS : [];
+      spans.slice(0, 300).forEach(sp=>{
+        const a = Date.parse(String(sp.start||""));
+        const b = Date.parse(String(sp.stop||""));
+        if(!(isFinite(a) && isFinite(b) && b>a)) return;
+        shapes.push({
+          type: 'rect',
+          xref: 'x', yref: 'paper',
+          x0: new Date(a), x1: new Date(b),
+          y0: 0, y1: 1,
+          fillcolor: 'rgba(255,193,7,0.12)',
+          line: {width: 0},
+          layer: 'below',
+        });
+      });
+    }catch(e){}
+
+    if(wantBg && d.segments.length && d.maxAbs > 0){
+      // Bin by time for background shading
+      const xs = (rows||[]).map(r=>Date.parse(r && r.time ? String(r.time) : "")).filter(t=>isFinite(t));
+      const minX = xs.length ? Math.min(...xs) : null;
+      const maxX = xs.length ? Math.max(...xs) : null;
+      if(minX !== null && maxX !== null && maxX > minX){
+        const binN = 220;
+        const span = maxX - minX;
+        const binW = span / binN;
+        const bins = new Array(binN).fill(0);
+        d.segments.forEach(s=>{
+          const idx = Math.max(0, Math.min(binN-1, Math.floor((s.mid - minX)/binW)));
+          if(s.abs > bins[idx]) bins[idx] = s.abs;
+        });
+        for(let i=0;i<binN;i++){
+          const v = bins[i];
+          if(!(v>0)) continue;
+          const t = v / d.maxAbs;
+          const x0 = minX + i*binW;
+          const x1 = minX + (i+1)*binW;
+          shapes.push({
+            type: 'rect',
+            xref: 'x', yref: 'paper',
+            x0: new Date(x0), x1: new Date(x1),
+            y0: 0, y1: 1,
+            fillcolor: _gradGreenRed(t, 0.10),
+            line: {width: 0},
+            layer: 'below',
+          });
+        }
+      }
+    }
+
+    try{ window.Plotly.relayout($plotly, {shapes}); }catch(e){}
+
+    // Strip plot
+    if($derivStripPlot){
+      $derivStripPlot.style.display = (wantStrip ? 'block' : 'none');
+      if(!wantStrip){
+        try{ if(window.Plotly) window.Plotly.purge($derivStripPlot); }catch(e){}
+      }else{
+        const xs = (rows||[]).map(r=>Date.parse(r && r.time ? String(r.time) : "")).filter(t=>isFinite(t));
+        if(xs.length && d.maxAbs > 0){
+          const minX = Math.min(...xs);
+          const maxX = Math.max(...xs);
+          const binN = 220;
+          const span = Math.max(1, maxX-minX);
+          const binW = span / binN;
+          const z = [new Array(binN).fill(0)];
+          const x = [];
+          for(let i=0;i<binN;i++) x.push(new Date(minX + (i+0.5)*binW));
+          d.segments.forEach(s=>{
+            const idx = Math.max(0, Math.min(binN-1, Math.floor((s.mid - minX)/binW)));
+            if(s.abs > z[0][idx]) z[0][idx] = s.abs;
+          });
+          const data = [{
+            type: 'heatmap',
+            x,
+            y: ['d'],
+            z,
+            zmin: 0,
+            zmax: d.maxAbs,
+            colorscale: [[0,'rgb(46,125,50)'],[1,'rgb(198,40,40)']],
+            showscale: false,
+            hovertemplate: '%{x}<br>abs(d/dt)=%{z}<extra></extra>',
+          }];
+          const layout = {
+            margin: {l: 52, r: 10, t: 2, b: 18},
+            height: 60,
+            xaxis: {type:'date', matches: 'x', showgrid:false, zeroline:false, showticklabels:false},
+            yaxis: {showticklabels:false, showgrid:false, zeroline:false},
+          };
+          try{ window.Plotly.react($derivStripPlot, data, layout, {displayModeBar:false, responsive:true}); }catch(e){}
+        }
+      }
+    }
+
+    // Derivative graph
+    if($derivGraphPlot){
+      $derivGraphPlot.style.display = (wantGraph ? 'block' : 'none');
+      if(!wantGraph){
+        try{ if(window.Plotly) window.Plotly.purge($derivGraphPlot); }catch(e){}
+      }else{
+        const ys = d.segments.map(s => (wantSigned ? s.d : s.abs));
+        const x = d.segments.map(s => new Date(s.mid));
+        const data = [{
+          type: 'scatter',
+          mode: 'lines',
+          x,
+          y: ys,
+          line: {color: '#444', width: 1.2},
+          hovertemplate: '%{x}<br>d/dt=%{y}<extra></extra>',
+        }];
+        const layout = {
+          margin: {l: 52, r: 10, t: 6, b: 30},
+          height: 140,
+          xaxis: {type:'date', matches: 'x'},
+          yaxis: {automargin:true, title: (wantSigned ? 'd/dt' : 'abs(d/dt)')},
+        };
+        try{ window.Plotly.react($derivGraphPlot, data, layout, {displayModeBar:false, responsive:true}); }catch(e){}
+      }
+    }
+
+  }catch(e){}
+}
+
 function saveState(){
   try{
     const j = {
@@ -882,6 +1136,13 @@ function saveState(){
       sort_dir: TABLE_SORT.dir,
       tbl_time_from_graph: TABLE_TIME.from_graph,
       graph_markers: GRAPH_MARKERS,
+      graph_detail_mode: $graphDetailMode ? String($graphDetailMode.value || 'dynamic') : 'dynamic',
+      graph_manual_density: $graphManualDensity ? Number($graphManualDensity.value || 100) : 100,
+      deriv_bg: !!($derivBg && $derivBg.checked),
+      deriv_strip: !!($derivStrip && $derivStrip.checked),
+      deriv_graph: !!($derivGraph && $derivGraph.checked),
+      deriv_abs: !!($derivAbs && $derivAbs.checked),
+      deriv_signed: !!($derivSigned && $derivSigned.checked),
       graph_window_start_ms: TABLE_TIME.graph_start_ms,
       graph_window_stop_ms: TABLE_TIME.graph_stop_ms,
       raw_time_from_graph: RAW_TIME_FROM_GRAPH,
@@ -926,6 +1187,13 @@ function cacheSaveNow(){
       stop_local: $stop ? String($stop.value || '') : '',
       graph_window_start_ms: TABLE_TIME.graph_start_ms,
       graph_window_stop_ms: TABLE_TIME.graph_stop_ms,
+      graph_detail_mode: $graphDetailMode ? String($graphDetailMode.value || 'dynamic') : 'dynamic',
+      graph_manual_density: $graphManualDensity ? Number($graphManualDensity.value || 100) : 100,
+      deriv_bg: !!($derivBg && $derivBg.checked),
+      deriv_strip: !!($derivStrip && $derivStrip.checked),
+      deriv_graph: !!($derivGraph && $derivGraph.checked),
+      deriv_abs: !!($derivAbs && $derivAbs.checked),
+      deriv_signed: !!($derivSigned && $derivSigned.checked),
       last_rows: LAST_ROWS || [],
       last_query: ($queryPre ? String($queryPre.textContent || '') : ''),
       outlier_active: !!OUTLIER_ACTIVE,
@@ -971,6 +1239,16 @@ function cacheRestoreIfAvailable(){
 
     if(Array.isArray(j.last_rows)) LAST_ROWS = j.last_rows;
     if(typeof j.last_query === 'string') setLastQuery(j.last_query);
+
+    try{
+      if($graphDetailMode && j.graph_detail_mode) $graphDetailMode.value = String(j.graph_detail_mode);
+      if($graphManualDensity && j.graph_manual_density) $graphManualDensity.value = String(j.graph_manual_density);
+      if($derivBg) $derivBg.checked = !!j.deriv_bg;
+      if($derivStrip) $derivStrip.checked = !!j.deriv_strip;
+      if($derivGraph) $derivGraph.checked = !!j.deriv_graph;
+      if($derivAbs) $derivAbs.checked = (j.deriv_abs !== undefined) ? !!j.deriv_abs : true;
+      if($derivSigned) $derivSigned.checked = !!j.deriv_signed;
+    }catch(e){}
     OUTLIER_ACTIVE = !!j.outlier_active;
     if(Array.isArray(j.outlier_rows)) OUTLIER_ROWS = j.outlier_rows;
     FILTER_TABLE_CLEARED = false;
@@ -993,6 +1271,7 @@ function cacheRestoreIfAvailable(){
     if(LAST_ROWS && LAST_ROWS.length){
       draw(LAST_ROWS);
       autoScaleYFromWindow();
+      try{ _updateGraphDetailUi(); _applyOverlays(); }catch(e){}
       scheduleRawReload(true);
       loadStats().catch(()=>{});
     }
@@ -1703,6 +1982,7 @@ function drawPlotly(rows){
           autoScaleYFromWindow();
           scheduleStatsCurrentReload();
           scheduleRawReload(true);
+          try{ _applyOverlays(); }catch(e){}
           return;
         }
 
@@ -1720,6 +2000,7 @@ function drawPlotly(rows){
             autoScaleYFromWindow();
             scheduleStatsCurrentReload();
             scheduleRawReload(true);
+            try{ _applyOverlays(); }catch(e){}
           }
         }
       }catch(e){}
@@ -1738,6 +2019,7 @@ function drawPlotly(rows){
       saveState();
       renderTable();
       try{ window.Plotly.relayout($plotly, {"yaxis.autorange": true}); }catch(e){}
+      try{ _applyOverlays(); }catch(e){}
       scheduleStatsCurrentReload();
       scheduleRawReload(true);
     });
@@ -1796,6 +2078,7 @@ function draw(rows){
         // Resize to max width after layout.
         requestAnimationFrame(()=>{ try{ window.Plotly.Plots.resize($plotly); }catch(e){} });
       }catch(e){}
+      try{ _applyOverlays(); }catch(e){}
       return;
     }
     $plotly.style.display = "none";
@@ -2367,6 +2650,9 @@ function currentFilters(){
     ...currentTimeFilter(),
     entity_id: $e.value || null,
     friendly_name: $n.value || null,
+    unit: (HA_ENTITY_INFO && HA_ENTITY_INFO.entity && HA_ENTITY_INFO.entity.unit_of_measurement) ? String(HA_ENTITY_INFO.entity.unit_of_measurement) : "",
+    detail_mode: $graphDetailMode ? String($graphDetailMode.value || 'dynamic') : 'dynamic',
+    manual_density_pct: $graphManualDensity ? Number($graphManualDensity.value || 100) : 100,
   };
 }
 
@@ -2839,6 +3125,49 @@ try{
       _renderGraphQueryPanel();
     });
   }
+}catch(e){}
+
+// Graph detail controls
+try{
+  const st = loadState();
+  if($graphDetailMode && st.graph_detail_mode) $graphDetailMode.value = String(st.graph_detail_mode);
+  if($graphManualDensity && st.graph_manual_density) $graphManualDensity.value = String(st.graph_manual_density);
+  if($derivBg) $derivBg.checked = !!st.deriv_bg;
+  if($derivStrip) $derivStrip.checked = !!st.deriv_strip;
+  if($derivGraph) $derivGraph.checked = !!st.deriv_graph;
+  if($derivAbs) $derivAbs.checked = (st.deriv_abs !== undefined) ? !!st.deriv_abs : true;
+  if($derivSigned) $derivSigned.checked = !!st.deriv_signed;
+}catch(e){}
+
+try{
+  if($graphDetailMode) $graphDetailMode.addEventListener('change', ()=>{
+    _updateGraphDetailUi();
+    saveState();
+    // mode switch requires refetch
+    if(LAST_ROWS && LAST_ROWS.length){
+      loadData().catch(e=>displayError(e));
+    }
+  });
+  if($graphManualDensity) $graphManualDensity.addEventListener('input', ()=>{
+    _updateGraphDetailUi();
+    saveState();
+    if(LAST_ROWS_RAW && ($graphDetailMode && String($graphDetailMode.value||'')==='manual')){
+      const rows = _thinRows(LAST_ROWS_RAW, Number($graphManualDensity.value||100));
+      LAST_ROWS = rows;
+      renderTable();
+      draw(rows);
+      autoScaleYFromWindow();
+    }
+  });
+
+  const onOverlayToggle = ()=>{
+    _updateGraphDetailUi();
+    saveState();
+    try{ _applyOverlays(); }catch(e){}
+  };
+  [$derivBg,$derivStrip,$derivGraph,$derivAbs,$derivSigned].forEach(el=>{
+    try{ if(el) el.addEventListener('change', onOverlayToggle); }catch(e){}
+  });
 }catch(e){}
 
 function initRawAutoMore(){
@@ -3826,7 +4155,17 @@ async function loadData(){
   setLastQuery(j.query || "");
   LOAD_QUERY_MS = performance.now() - q0;
   if(STATUS_COUNT > 0) _setLoadStatus("Query fertig – Graph wird aktualisiert...");
-  const rows = j.rows || [];
+  const rows0 = j.rows || [];
+  try{ LAST_JUMP_SPANS = (j && j.meta && Array.isArray(j.meta.jump_spans)) ? j.meta.jump_spans : []; }catch(e){ LAST_JUMP_SPANS = []; }
+
+  // Manual density thinning is client-side (fast redraw without DB fetch)
+  const mode = (j && j.meta && j.meta.mode) ? String(j.meta.mode) : '';
+  if(mode === 'manual'){
+    LAST_ROWS_RAW = rows0;
+  }else{
+    LAST_ROWS_RAW = null;
+  }
+  const rows = (mode === 'manual') ? _thinRows(rows0, ($graphManualDensity ? Number($graphManualDensity.value||100) : 100)) : rows0;
   FILTER_TABLE_CLEARED = false;
   LAST_ROWS = rows;
   OUTLIER_ACTIVE = false;
@@ -3855,6 +4194,7 @@ async function loadData(){
   renderTable();
   draw(rows);
   autoScaleYFromWindow();
+  try{ _updateGraphDetailUi(); _applyOverlays(); }catch(e){}
   await loadStats();
   scheduleRawReload(true);
 }
@@ -4478,6 +4818,8 @@ try{
 
     // Ensure graph query panel reflects persisted selection.
     try{ _renderGraphQueryPanel(); }catch(e){}
+
+    try{ _updateGraphDetailUi(); }catch(e){}
 
     // Do not auto-load data on page open (manual via button).
   } catch(e){ displayError(e); }

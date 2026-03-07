@@ -121,6 +121,13 @@ Graph Query:
 - Button `Query kopieren`: kopiert den Query in die Zwischenablage (z.B. fuer den Influx Explorer).
 - Auswahl `Dashboard / Bearbeitungsgraph`: schaltet die angezeigte Query-Quelle um (Hauptgraph vs. rechter Bearbeitungsgraph).
 
+Details (Sampling) + Ableitung:
+
+- `Details: Dynamisch`: Graph zeigt weniger Punkte, laedt aber um grosse Spruenge herum automatisch mehr Detail nach (Schwellwert kommt aus den Ausreisser-Settings fuer die Einheit).
+- `Details: Manuell`: Punktdichte 1..100% (100% zeigt alle geladenen Punkte bis zum Sicherheitslimit).
+- `Ableitung: Hintergrund` / `Ableitung: Farbleiste`: faerbt nach Staerke der ersten Ableitung (gruen=0, rot=max), unabhaengig vom Vorzeichen.
+- `Ableitungs-Graph`: zeigt die Ableitung zusaetzlich als Graph; umschaltbar `absolut/signiert`.
+
 Raw Daten (DB):
 
 - Optional kannst du per Checkbox steuern, ob Raw Daten dem Zoom-Bereich im Graph folgen (oder dem Zeitraum aus der Zeitraum-Auswahl).
@@ -265,6 +272,8 @@ UI:
 - `Dezimalstellen (Anzeige)`: Rundung in der UI.
 - `Query max. Punkte (Dashboard Graph)`: Downsampling-Limit fuer den Dashboard-Graph (Default: 5000).
 - `Raw max. Punkte`: Maximale Zeilen/Points pro Raw-DB-Abfrage (Default: 20000).
+- `Manual max. Punkte (Dashboard Graph)`: Sicherheitslimit fuer `Details: Manuell` (100%).
+- `Sprung-Polster (Intervalle)`: +/- N Downsample-Intervalle fuer Sprung-Markierung/Detail-Nachladen.
 - `Tabellenzeilen Hoehe (px, Backup)`: Zeilenhoehe der Backup-Tabelle.
 - `Basis/Kleine Schriftgroesse`: UI Typografie.
 - `Checkbox Groesse (Scale)`: Checkbox-Scaling fuer bessere Bedienbarkeit.
@@ -275,6 +284,7 @@ UI:
 Ausreisser:
 
 - `W/kW/Wh/kWh (max step)`: Standard-Grenzen fuer Counter-Ausreisser (Spruenge) in der Fehler-/Filtertabelle.
+- `Weitere Einheiten (unit=max step)`: zusaetzliche Sprung-Grenzen fuer andere Einheiten (z.B. `°C=2`).
 
 ## Info
 

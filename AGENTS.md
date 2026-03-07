@@ -273,7 +273,7 @@ from flask import Flask, jsonify, request
 
 ## Interactive Prompts (Audio)
 
-- If you need any input/decision from the user to continue (blocking question), you MUST:
+- If you need any input/decision from the user to continue (any question that blocks progress or requires a choice), you MUST:
   - play a sound: `afplay /System/Library/Sounds/Glass.aiff`
   - speak (German): `say "Entscheidung erforderlich"`
 - If you are done implementing the requested work and are ready for the next instruction, you MUST:

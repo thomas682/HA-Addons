@@ -561,7 +561,11 @@ DEFAULT_CFG = {
     "ui_edit_graph_max_points": 50000,
     "ui_query_max_points": 5000,
     "ui_raw_max_points": 20000,
+    "ui_query_manual_max_points": 200000,
     "ui_decimals": 3,
+
+    # Dashboard graph: highlight around detected jumps (in coarse intervals)
+    "ui_graph_jump_padding_intervals": 1,
 
     "ui_font_size_px": 14,
     "ui_font_small_px": 11,
@@ -600,6 +604,12 @@ DEFAULT_CFG = {
     # Energy deltas depend on sampling interval; defaults assume coarse (hour-ish) steps.
     "outlier_max_step_wh": 30000,
     "outlier_max_step_kwh": 30,
+
+    # Additional unit thresholds (one per line): unit=max_step
+    # Example: 
+    #   °C=2
+    #   bar=0.3
+    "outlier_max_step_units": "",
 
     # Logging (stdout + optional /data log file)
     "log_to_file": True,
@@ -1787,8 +1797,49 @@ def _norm_unit(u: str) -> str:
     return (u or "").strip().lower().replace(" ", "")
 
 
+def _parse_unit_step_map(raw: str) -> dict[str, float]:
+    out: dict[str, float] = {}
+    txt = raw or ""
+    for ln in txt.splitlines():
+        s = (ln or "").strip()
+        if not s:
+            continue
+        if s.startswith("#"):
+            continue
+        # allow inline comments
+        if "#" in s:
+            s = s.split("#", 1)[0].strip()
+        if not s:
+            continue
+        if "=" in s:
+            a, b = s.split("=", 1)
+        elif ":" in s:
+            a, b = s.split(":", 1)
+        else:
+            # fallback: split on whitespace
+            parts = s.split()
+            if len(parts) < 2:
+                continue
+            a, b = parts[0], parts[1]
+        unit = _norm_unit(a)
+        if not unit:
+            continue
+        try:
+            v = float(str(b).strip())
+        except Exception:
+            continue
+        out[unit] = v
+    return out
+
+
 def _outlier_max_step(cfg: dict[str, Any], unit: str) -> float:
     u = _norm_unit(unit)
+    try:
+        custom = _parse_unit_step_map(str(cfg.get("outlier_max_step_units") or ""))
+        if u and u in custom:
+            return float(custom[u])
+    except Exception:
+        pass
     if u in ("w", "watt"):
         return float(cfg.get("outlier_max_step_w", 30000))
     if u in ("kw", "kilowatt"):
@@ -3417,6 +3468,8 @@ def api_set_config():
     _clamp_int("ui_font_small_px", 11, 9, 18)
     _clamp_int("ui_table_row_height_px", 13, 9, 60)
     _clamp_int("ui_backup_table_row_height_px", 13, 9, 60)
+    _clamp_int("ui_query_manual_max_points", 200000, 1000, 2000000)
+    _clamp_int("ui_graph_jump_padding_intervals", 1, 0, 50)
     _clamp_int("ui_edit_neighbors_n", 5, 1, 50)
     _clamp_int("ui_edit_details_visible_rows", 12, 4, 80)
     _clamp_int("ui_edit_graph_buffer_minutes", 30, 0, 24 * 60)
@@ -3503,6 +3556,13 @@ def api_set_config():
     _clamp_num("outlier_max_step_kw", 30, 0.5, 200)
     _clamp_num("outlier_max_step_wh", 30000, 100, 10000000)
     _clamp_num("outlier_max_step_kwh", 30, 0.01, 100000)
+
+    try:
+        cfg["outlier_max_step_units"] = str(cfg.get("outlier_max_step_units") or "")
+    except Exception:
+        cfg["outlier_max_step_units"] = ""
+    if len(cfg["outlier_max_step_units"]) > 8000:
+        cfg["outlier_max_step_units"] = cfg["outlier_max_step_units"][:8000]
 
     save_cfg(cfg)
     try:
@@ -3867,6 +3927,19 @@ def query():
     range_key = body.get("range", "24h")
     entity_id = body.get("entity_id") or None
     friendly_name = body.get("friendly_name") or None
+    unit = str(body.get("unit") or "").strip()
+
+    detail_mode = str(body.get("detail_mode") or "dynamic").strip().lower()
+    if detail_mode not in ("dynamic", "manual"):
+        detail_mode = "dynamic"
+    try:
+        manual_density_pct = int(body.get("manual_density_pct") or 100)
+    except Exception:
+        manual_density_pct = 100
+    if manual_density_pct < 1:
+        manual_density_pct = 1
+    if manual_density_pct > 100:
+        manual_density_pct = 100
 
     try:
         start_dt, stop_dt = _get_start_stop_from_payload(body)
@@ -3897,33 +3970,247 @@ def query():
                 }), 400
             extra = flux_tag_filter(entity_id, friendly_name)
             with v2_client(cfg) as c:
+                qapi = c.query_api()
+
                 range_clause = _flux_range_clause(range_key, start_dt, stop_dt)
-                q = f'''
+                base = f'''
 from(bucket: "{cfg["bucket"]}")
   {range_clause}
   |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
   |> keep(columns: ["_time","_value"])
   |> sort(columns: ["_time"])
 '''
-                log_query("api.query (flux)", q)
-                tables = c.query_api().query(q, org=cfg["org"])
-                rows = []
-                for t in tables:
-                    for r in t.records:
-                        ts = r.get_time()
-                        val = r.get_value()
-                        if isinstance(ts, datetime):
-                            ts = ts.astimezone(timezone.utc).isoformat()
-                        rows.append({"time": ts, "value": val})
-                max_points = int(cfg.get("ui_query_max_points", 5000) or 5000)
-                if max_points < 500:
-                    max_points = 500
-                if max_points > 200000:
-                    max_points = 200000
-                if len(rows) > max_points:
-                    step = math.ceil(len(rows) / max_points)
-                    rows = rows[::step]
-                return jsonify({"ok": True, "rows": rows, "query": q.strip()})
+
+                if detail_mode == "manual":
+                    try:
+                        max_points = int(cfg.get("ui_query_manual_max_points", 200000) or 200000)
+                    except Exception:
+                        max_points = 200000
+                    if max_points < 1000:
+                        max_points = 1000
+                    if max_points > 2000000:
+                        max_points = 2000000
+
+                    q = base + f"  |> limit(n: {max_points})\n"
+                    log_query("api.query manual (flux)", q)
+
+                    rows: list[dict[str, Any]] = []
+                    for rec in qapi.query_stream(q, org=cfg["org"]):
+                        try:
+                            ts = rec.get_time()
+                            val = rec.get_value()
+                            if not isinstance(ts, datetime):
+                                continue
+                            rows.append({"time": ts.astimezone(timezone.utc).isoformat(), "value": val})
+                        except Exception:
+                            continue
+                    return jsonify({
+                        "ok": True,
+                        "rows": rows,
+                        "query": q.strip(),
+                        "meta": {
+                            "mode": "manual",
+                            "manual_density_pct": manual_density_pct,
+                            "max_points": max_points,
+                            "returned": len(rows),
+                            "unit": unit,
+                        },
+                    })
+
+                # dynamic
+                try:
+                    target_points = int(cfg.get("ui_query_max_points", 5000) or 5000)
+                except Exception:
+                    target_points = 5000
+                if target_points < 500:
+                    target_points = 500
+                if target_points > 200000:
+                    target_points = 200000
+
+                # Coarse interval
+                span_ms = None
+                try:
+                    if start_dt and stop_dt:
+                        span_ms = int((stop_dt - start_dt).total_seconds() * 1000.0)
+                except Exception:
+                    span_ms = None
+                every_ms = 0
+                if span_ms is not None and span_ms > 0:
+                    every_ms = int(math.ceil(span_ms / float(target_points)))
+                if every_ms < 1000:
+                    every_ms = 0
+
+                q = base
+                mode = "raw"
+                if every_ms:
+                    mode = "downsample"
+                    # use last() to preserve steps (better jump detection)
+                    q = f'''
+from(bucket: "{cfg["bucket"]}")
+  {range_clause}
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
+  |> aggregateWindow(every: {every_ms}ms, fn: last, createEmpty: false)
+  |> keep(columns: ["_time","_value"])
+  |> sort(columns: ["_time"])
+'''
+                log_query("api.query dynamic (flux)", q)
+
+                coarse: list[tuple[datetime, float]] = []
+                for rec in qapi.query_stream(q, org=cfg["org"]):
+                    try:
+                        ts = rec.get_time()
+                        val = rec.get_value()
+                        if not isinstance(ts, datetime):
+                            continue
+                        if isinstance(val, bool) or not isinstance(val, (int, float)):
+                            continue
+                        coarse.append((ts.astimezone(timezone.utc), float(val)))
+                    except Exception:
+                        continue
+                coarse.sort(key=lambda x: x[0])
+
+                # Detect jumps on coarse series
+                try:
+                    step_th = float(_outlier_max_step(cfg, unit))
+                except Exception:
+                    step_th = 0.0
+                if step_th < 0:
+                    step_th = 0.0
+
+                try:
+                    pad_n = int(cfg.get("ui_graph_jump_padding_intervals", 1) or 1)
+                except Exception:
+                    pad_n = 1
+                if pad_n < 0:
+                    pad_n = 0
+                if pad_n > 50:
+                    pad_n = 50
+                pad_ms = int(every_ms * pad_n) if every_ms else 0
+
+                jump_spans: list[dict[str, Any]] = []
+                if step_th and len(coarse) >= 2:
+                    for i in range(1, len(coarse)):
+                        t0, v0 = coarse[i - 1]
+                        t1, v1 = coarse[i]
+                        d = abs(v1 - v0)
+                        if d <= step_th:
+                            continue
+                        a = min(t0, t1)
+                        b = max(t0, t1)
+                        if pad_ms:
+                            a = a - timedelta(milliseconds=pad_ms)
+                            b = b + timedelta(milliseconds=pad_ms)
+                        jump_spans.append({
+                            "start": _dt_to_rfc3339_utc_ms(a),
+                            "stop": _dt_to_rfc3339_utc_ms(b),
+                            "delta": d,
+                        })
+
+                # Merge overlapping spans
+                merged: list[tuple[datetime, datetime]] = []
+                if jump_spans:
+                    tmp = []
+                    for sp in jump_spans:
+                        try:
+                            a = _parse_iso_datetime(str(sp.get("start") or ""))
+                            b = _parse_iso_datetime(str(sp.get("stop") or ""))
+                            if b <= a:
+                                continue
+                            tmp.append((a, b))
+                        except Exception:
+                            continue
+                    tmp.sort(key=lambda x: x[0])
+                    for a, b in tmp:
+                        if not merged:
+                            merged.append((a, b))
+                            continue
+                        la, lb = merged[-1]
+                        if a <= lb:
+                            merged[-1] = (la, max(lb, b))
+                        else:
+                            merged.append((a, b))
+
+                # Refine: fetch raw points within jump windows
+                refine_points: dict[str, float] = {}
+                total_refine = 0
+                per_span_limit = 5000
+                total_cap = 50000
+                if merged:
+                    for a, b in merged:
+                        if total_refine >= total_cap:
+                            break
+                        lim = min(per_span_limit, total_cap - total_refine)
+                        s = _dt_to_rfc3339_utc(a)
+                        e = _dt_to_rfc3339_utc(b)
+                        q2 = f'''
+from(bucket: "{cfg["bucket"]}")
+  |> range(start: time(v: "{s}"), stop: time(v: "{e}"))
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
+  |> keep(columns: ["_time","_value"])
+  |> sort(columns: ["_time"])
+  |> limit(n: {lim})
+'''
+                        log_query("api.query refine (flux)", q2)
+                        for rec in qapi.query_stream(q2, org=cfg["org"]):
+                            try:
+                                ts = rec.get_time()
+                                val = rec.get_value()
+                                if not isinstance(ts, datetime):
+                                    continue
+                                if isinstance(val, bool) or not isinstance(val, (int, float)):
+                                    continue
+                                refine_points[_dt_to_rfc3339_utc_ms(ts)] = float(val)
+                                total_refine += 1
+                                if total_refine >= total_cap:
+                                    break
+                            except Exception:
+                                continue
+
+                # Merge coarse + refine
+                merged_map: dict[str, float] = {}
+                for ts, v in coarse:
+                    merged_map[_dt_to_rfc3339_utc_ms(ts)] = float(v)
+                for k, v in refine_points.items():
+                    merged_map[str(k)] = float(v)
+                times = sorted(merged_map.keys())
+                rows_all = [{"time": t, "value": merged_map[t]} for t in times]
+
+                # Cap returned points, prefer keeping refined points
+                max_return = int(target_points + total_cap)
+                if max_return < 1000:
+                    max_return = 1000
+                if len(rows_all) > max_return:
+                    keep = set(refine_points.keys())
+                    keep_rows = [r for r in rows_all if str(r.get("time")) in keep]
+                    rest_rows = [r for r in rows_all if str(r.get("time")) not in keep]
+                    remain = max_return - len(keep_rows)
+                    if remain <= 0:
+                        # still too many refined points
+                        step = math.ceil(len(keep_rows) / max_return)
+                        rows_all = keep_rows[::step]
+                    else:
+                        if len(rest_rows) > remain:
+                            step = math.ceil(len(rest_rows) / remain)
+                            rest_rows = rest_rows[::step]
+                        rows_all = sorted(keep_rows + rest_rows, key=lambda r: str(r.get("time") or ""))
+
+                return jsonify({
+                    "ok": True,
+                    "rows": rows_all,
+                    "query": q.strip(),
+                    "meta": {
+                        "mode": "dynamic",
+                        "coarse_mode": mode,
+                        "every_ms": every_ms,
+                        "target_points": target_points,
+                        "returned": len(rows_all),
+                        "refined": len(refine_points),
+                        "jump_threshold": step_th,
+                        "jump_padding_intervals": pad_n,
+                        "jump_spans": jump_spans,
+                        "unit": unit,
+                    },
+                })
         else:
             if not cfg.get("database"):
                 return jsonify({"ok": False, "error": "InfluxDB v1 requires database. Bitte konfigurieren."}), 400
@@ -3937,6 +4224,32 @@ from(bucket: "{cfg["bucket"]}")
             for _, points in res.items():
                 for p in points:
                     rows.append({"time": p.get("time"), "value": p.get(field)})
+
+            if detail_mode == "manual":
+                try:
+                    max_points = int(cfg.get("ui_query_manual_max_points", 200000) or 200000)
+                except Exception:
+                    max_points = 200000
+                if max_points < 1000:
+                    max_points = 1000
+                if max_points > 2000000:
+                    max_points = 2000000
+                if len(rows) > max_points:
+                    step = math.ceil(len(rows) / max_points)
+                    rows = rows[::step]
+                return jsonify({
+                    "ok": True,
+                    "rows": rows,
+                    "query": q.strip(),
+                    "meta": {
+                        "mode": "manual",
+                        "manual_density_pct": manual_density_pct,
+                        "max_points": max_points,
+                        "returned": len(rows),
+                        "unit": unit,
+                    },
+                })
+
             max_points = int(cfg.get("ui_query_max_points", 5000) or 5000)
             if max_points < 500:
                 max_points = 500
@@ -3945,7 +4258,17 @@ from(bucket: "{cfg["bucket"]}")
             if len(rows) > max_points:
                 step = math.ceil(len(rows) / max_points)
                 rows = rows[::step]
-            return jsonify({"ok": True, "rows": rows, "query": q.strip()})
+            return jsonify({
+                "ok": True,
+                "rows": rows,
+                "query": q.strip(),
+                "meta": {
+                    "mode": "dynamic",
+                    "target_points": max_points,
+                    "returned": len(rows),
+                    "unit": unit,
+                },
+            })
     except Exception as e:
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
 

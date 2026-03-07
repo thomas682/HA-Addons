@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.11.92
+
+### Features
+
+- Dashboard Graph: Details-Modus `Dynamisch/Manuell` (Manuell mit Punktdichte 1..100% und schnellem Redraw ohne neue Query).
+- Dashboard Graph: Ableitung-Visualisierung per Checkbox:
+  - Hintergrundfaerbung (gruen->rot nach Staerke)
+  - Farbleiste unter dem Graph
+  - zusaetzlicher Ableitungs-Graph (absolut oder signiert)
+- Dynamisches Sampling: erkennt grosse Spruenge (Schwellwert aus den Ausreisser-Settings je Einheit) und laedt um Spruenge herum mehr Rohpunkte nach; Sprungbereiche werden markiert.
+- Settings: zusaetzliche Einheiten fuer Sprungschwellen (unit=max step) + `Sprung-Polster (Intervalle)` + `Manual max. Punkte (Dashboard Graph)`.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.11.91
 
 ### Features

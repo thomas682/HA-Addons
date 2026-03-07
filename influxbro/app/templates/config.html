@@ -156,14 +156,26 @@
               <div class="muted">Limit/Downsampling fuer den Dashboard-Graph (Default: 5000).</div>
             </div>
 
-            <div>
-              <label>Raw max. Punkte</label>
-              <input id="ui_raw_max_points" type="number" min="1000" max="200000" />
-              <div class="muted">Maximale Zeilen/Points pro Raw-DB-Abfrage (Default: 20000).</div>
-            </div>
-          </div>
-          </div>
-        </details>
+        <div>
+          <label>Raw max. Punkte</label>
+          <input id="ui_raw_max_points" type="number" min="1000" max="200000" />
+          <div class="muted">Maximale Zeilen/Points pro Raw-DB-Abfrage (Default: 20000).</div>
+        </div>
+
+        <div>
+          <label>Manual max. Punkte (Dashboard Graph)</label>
+          <input id="ui_query_manual_max_points" type="number" min="1000" max="2000000" />
+          <div class="muted">Sicherheitslimit fuer Manuell=100% (Default: 200000).</div>
+        </div>
+
+        <div>
+          <label>Sprung-Polster (Intervalle)</label>
+          <input id="ui_graph_jump_padding_intervals" type="number" min="0" max="50" />
+          <div class="muted">Markierung/Refine um Spruenge: +/- N Downsample-Intervalle.</div>
+        </div>
+      </div>
+      </div>
+    </details>
 
         <details class="card" id="ui_edit" open data-ui="settings.ui.edit" title="settings.ui.edit">
           <summary>Bearbeitungsliste</summary>
@@ -434,6 +446,12 @@
         <input id="outlier_max_step_kwh" type="number" min="0.01" max="100000" step="0.1" />
         <div class="muted">Achtung: abhaengig vom Messintervall.</div>
       </div>
+
+      <div class="span2">
+        <label>Weitere Einheiten (unit=max step)</label>
+        <textarea id="outlier_max_step_units" rows="5" style="height:auto; min-height: 110px;" placeholder="z.B.\n°C=2\nbar=0.3\n# Kommentare mit #"></textarea>
+        <div class="muted">Wird fuer Counter-Ausreisser und dynamisches Graph-Sampling genutzt.</div>
+      </div>
     </div>
     </div>
   </details>
@@ -469,6 +487,7 @@ const ids = [
   "ui_table_visible_rows","ui_table_row_height_px","ui_edit_neighbors_n","ui_edit_details_visible_rows","ui_edit_graph_buffer_minutes","ui_edit_graph_max_points","ui_decimals",
   "ui_backup_table_row_height_px",
   "ui_query_max_points","ui_raw_max_points",
+  "ui_query_manual_max_points","ui_graph_jump_padding_intervals",
   "ui_font_size_px","ui_font_small_px","ui_checkbox_scale",
   "ui_filter_label_width_px","ui_filter_control_width_px","ui_filter_search_width_px"
   ,"ui_repo_url"
@@ -478,6 +497,7 @@ const ids = [
   ,"ui_tooltips_enabled"
   ,"restore_preview_lines"
   ,"outlier_max_step_w","outlier_max_step_kw","outlier_max_step_wh","outlier_max_step_kwh"
+  ,"outlier_max_step_units"
   ,"log_to_file","log_profile","log_max_mb","log_backup_count","log_max_age_days","log_http_requests"
   ,"log_influx_queries"
   ,"writes_enabled"
@@ -521,6 +541,8 @@ function setForm(cfg){
   el.ui_table_visible_rows.value = cfg.ui_table_visible_rows ?? 20;
   el.ui_table_row_height_px.value = cfg.ui_table_row_height_px ?? 16;
   el.ui_backup_table_row_height_px.value = cfg.ui_backup_table_row_height_px ?? (cfg.ui_table_row_height_px ?? 16);
+  el.ui_query_manual_max_points.value = cfg.ui_query_manual_max_points ?? 200000;
+  el.ui_graph_jump_padding_intervals.value = cfg.ui_graph_jump_padding_intervals ?? 1;
   el.ui_edit_neighbors_n.value = cfg.ui_edit_neighbors_n ?? 5;
   el.ui_edit_details_visible_rows.value = cfg.ui_edit_details_visible_rows ?? 12;
   el.ui_edit_graph_buffer_minutes.value = cfg.ui_edit_graph_buffer_minutes ?? 30;
@@ -554,6 +576,7 @@ function setForm(cfg){
   el.outlier_max_step_kw.value = cfg.outlier_max_step_kw ?? 30;
   el.outlier_max_step_wh.value = cfg.outlier_max_step_wh ?? 30000;
   el.outlier_max_step_kwh.value = cfg.outlier_max_step_kwh ?? 30;
+  el.outlier_max_step_units.value = cfg.outlier_max_step_units ?? "";
 
   el.log_to_file.checked = (cfg.log_to_file !== false);
   el.log_profile.value = String(cfg.log_profile ?? "debug");
@@ -594,6 +617,8 @@ function getForm(){
     ui_edit_graph_max_points: parseInt(el.ui_edit_graph_max_points.value, 10),
     ui_query_max_points: parseInt(el.ui_query_max_points.value, 10),
     ui_raw_max_points: parseInt(el.ui_raw_max_points.value, 10),
+    ui_query_manual_max_points: parseInt(el.ui_query_manual_max_points.value, 10),
+    ui_graph_jump_padding_intervals: parseInt(el.ui_graph_jump_padding_intervals.value, 10),
     ui_decimals: parseInt(el.ui_decimals.value, 10),
 
     ui_font_size_px: parseInt(el.ui_font_size_px.value, 10),
@@ -622,6 +647,7 @@ function getForm(){
     outlier_max_step_kw: parseFloat(el.outlier_max_step_kw.value),
     outlier_max_step_wh: parseFloat(el.outlier_max_step_wh.value),
     outlier_max_step_kwh: parseFloat(el.outlier_max_step_kwh.value),
+    outlier_max_step_units: String(el.outlier_max_step_units.value || ""),
 
     log_to_file: !!el.log_to_file.checked,
     log_profile: String(el.log_profile.value || "debug"),
