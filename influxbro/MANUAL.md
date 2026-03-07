@@ -156,6 +156,8 @@ Ausreisser-Fehlersuche:
 - `Fehlersuche Ausreisser`: fuehrt den Scan im aktuellen Graph-Fenster aus.
 - `Zuruecksetzen`: entfernt Ausreisser-Markierungen.
 
+Hinweis: Wenn Daten nach einem Seitenwechsel automatisch wiederhergestellt wurden, kann die Fehlersuche trotzdem direkt gestartet werden (Measurement/Field wird best-effort wiederhergestellt).
+
 Hinweis: Werte in Bearbeitung werden gelb markiert. Geaenderte (dirty) Zeilen werden gruen markiert.
 
 ### In Datenbank uebernehmen

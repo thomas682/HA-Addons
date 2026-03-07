@@ -939,6 +939,29 @@ function cacheRestoreIfAvailable(){
     if(!raw) return false;
     const j = JSON.parse(raw);
     if(!j || typeof j !== 'object') return false;
+
+    // Restore resolved measurement/field first so follow-up actions (outlier scan, raw, etc.)
+    // still have the required context even if the user didn't press "Aktualisieren".
+    const cf = (j.filters && typeof j.filters === "object") ? j.filters : null;
+    const ensureSelectOption = (sel, val) => {
+      try{
+        if(!sel) return;
+        const s = String(val || "").trim();
+        if(!s) return;
+        const has = Array.from(sel.options || []).some(o => String(o.value) === s);
+        if(!has){
+          const o = document.createElement("option");
+          o.value = s;
+          o.textContent = s;
+          sel.appendChild(o);
+        }
+      }catch(e){}
+    };
+    try{
+      if(cf && cf.measurement){ ensureSelectOption($m, cf.measurement); $m.value = String(cf.measurement); }
+      if(cf && cf.field){ ensureSelectOption($f, cf.field); $f.value = String(cf.field); }
+    }catch(e){}
+
     if(Array.isArray(j.last_rows)) LAST_ROWS = j.last_rows;
     if(typeof j.last_query === 'string') setLastQuery(j.last_query);
     OUTLIER_ACTIVE = !!j.outlier_active;
@@ -966,6 +989,14 @@ function cacheRestoreIfAvailable(){
       scheduleRawReload(true);
       loadStats().catch(()=>{});
     }
+
+    // Best-effort: load the field list for the restored measurement so the dropdown is valid.
+    try{
+      if(cf && cf.measurement){
+        loadFields().then(()=>{ try{ if(cf.field) $f.value = String(cf.field); }catch(e){}; }).catch(()=>{});
+      }
+    }catch(e){}
+
     try{ refreshEditGraph().catch(()=>{}); }catch(e){}
     return true;
   }catch(e){
@@ -4099,7 +4130,17 @@ if($tblSelAll) $tblSelAll.addEventListener("change", ()=>{
 async function runOutlierScan(){
   err(""); ok("");
   if(!LAST_ROWS || !LAST_ROWS.length){ err("Bitte zuerst Daten laden (Aktualisieren). "); return; }
-  const base = currentFilters();
+  let base = currentFilters();
+
+  // Cache restore can bring back chart/table without having measurement/field resolved in the selects.
+  if((!base.measurement || !base.field) && ($n.value || $e.value)){
+    try{ await resolveSignal(); }catch(e){}
+    base = currentFilters();
+  }
+  if(!base.measurement || !base.field){
+    err("Measurement/Field fehlt. Bitte einmal 'Aktualisieren' oder Auswahl neu setzen.");
+    return;
+  }
 
   const startMs = TABLE_TIME.graph_start_ms;
   const stopMs = TABLE_TIME.graph_stop_ms;

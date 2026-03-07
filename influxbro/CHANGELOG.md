@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.11.90
+
+### Fixes
+
+- Dashboard: Fehlersuche Ausreisser funktioniert jetzt auch nach Seitenreload/Cache-Restore (Measurement/Field werden wiederhergestellt bzw. neu aufgeloest).
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.11.89
 
 ### Features
