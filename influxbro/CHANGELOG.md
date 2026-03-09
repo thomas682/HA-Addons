@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.11.95
+
+### Features
+
+- Ausreisserliste: neue Spalte `Klasse` (primaer/sekundaer) inkl. Filter; `counter decrease` ist primaer und Rueckspruenge werden als sekundaer markiert.
+- Ausreisserliste: Details (Davor/Danach) werden beim Scan automatisch geladen und pro Eintrag als eingeklappter Block angezeigt.
+- Ausreisserliste: Buttons fuer Spaltenbreite/Liste/Staging sind jetzt oberhalb der Tabelle; `Aenderungen ... uebernehmen` steht unterhalb.
+- Dashboard Ableitungsgraph: Legende unter dem Plot.
+
+### Fixes
+
+- Bearbeitungsgraph: Zeitangaben sind konsistent zur Bearbeitungsliste (lokale Client-Zeit, keine 1h Verschiebung).
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.11.94
 
 ### Features

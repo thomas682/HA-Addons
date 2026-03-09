@@ -146,7 +146,14 @@ Raw Daten (DB):
   - EIN: Zoombereich im Graph bestimmt die Zeit-Einschraenkung der Tabelle.
   - AUS: Tabelle zeigt wieder den Zeitraum aus der Zeitraum-Auswahl.
 - `Filter aktiv`: schaltet den Werte-Filter (Links/Verb/Rechts) an/aus.
+- `Grund Filter`: filtert die Ausreisserliste nach Text in der Spalte `Grund`.
+- `Klasse`: filtert nach `primaer`/`sekundaer`.
 - `Links`/`Verb.`/`Rechts`: einfache Regel um Werte als Fehler zu markieren (z.B. kleiner als 0 oder groesser als 999999).
+
+Details pro Ausreisser:
+
+- Nach `Fehlersuche Ausreisser` werden pro Eintrag automatisch Details (Davor/Ziel/Danach) geladen.
+- Die Details sind pro Zeile als eingeklappter Block unterhalb der Zeile sichtbar (standardmaessig zugeklappt).
 
 Bearbeitung in der Bearbeitungsliste:
 
@@ -154,7 +161,7 @@ Bearbeitung in der Bearbeitungsliste:
 - Sobald mindestens ein Punkt in Bearbeitung ist, werden zusaetzliche Spalten eingeblendet: `Alt`, `Neu`, `aelter`, `juenger`, `eigener Wert`.
 - `Bearbeitung aus`: beendet den Bearbeitungsmodus fuer die Zeile. Bei ungespeicherten Aenderungen kommt eine Bestaetigung.
 - `Undo`: stellt den Wert auf den Originalwert zurueck (vor der Bearbeitung).
-- `Details` (nur bei selektierter Zeile): zeigt Davor/Danach-Werte direkt unter der Zeile.
+- `Aenderungen in Datenbank uebernehmen`: steht unterhalb der Liste und schreibt/loescht die vorgemerkten Aenderungen.
 
 Ueberschreiben-History:
 

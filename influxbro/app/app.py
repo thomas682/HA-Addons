@@ -6269,12 +6269,21 @@ def api_outliers():
     prev_val: float | None = None
     last_time_iso: str | None = None
 
+    counter_base_val: float | None = None
+
     try:
         pv = body.get("prev_value")
         if pv is not None and str(pv).strip() != "":
             prev_val = float(pv)
     except Exception:
         prev_val = None
+
+    try:
+        cbv = body.get("counter_base_value")
+        if cbv is not None and str(cbv).strip() != "":
+            counter_base_val = float(cbv)
+    except Exception:
+        counter_base_val = None
 
     def _cmp(op: str, v: float, ref: float) -> bool:
         if op == ">":
@@ -6323,6 +6332,7 @@ def api_outliers():
         nonlocal scanned
         nonlocal rows
         nonlocal last_time_iso
+        nonlocal counter_base_val
 
         if len(rows) >= MAX_OUT:
             return prev
@@ -6389,11 +6399,32 @@ from(bucket: "{cfg["bucket"]}")
                 d = fv - prev
                 if counter_decrease and d < 0:
                     reasons.append("counter decrease")
+                    # Remember the value before the drop as a reference for follow-up recovery jumps.
+                    # This value is persisted across chunks via counter_base_value.
+                    counter_base_val = float(prev)
                 if counter_max_step and max_step is not None and d > float(max_step):
                     reasons.append(f"step > {max_step} {unit or ''}".strip())
 
             if reasons:
-                rows.append({"time": iso, "value": fv, "reason": ", ".join(reasons)})
+                cls = "primary"
+                # A large positive step after a counter decrease can be a follow-up jump back towards
+                # the pre-drop level. Mark these as secondary if the current value is close enough
+                # to the saved counter_base_val.
+                try:
+                    if (
+                        counter_base_val is not None
+                        and any(r.startswith("step >") for r in reasons)
+                        and max_step is not None
+                        and abs(fv - float(counter_base_val)) <= float(max_step)
+                        and not any(r == "counter decrease" for r in reasons)
+                    ):
+                        cls = "secondary"
+                        # Once we're back near the base, clear the reference.
+                        counter_base_val = None
+                except Exception:
+                    cls = "primary"
+
+                rows.append({"time": iso, "value": fv, "reason": ", ".join(reasons), "class": cls})
                 if len(rows) >= MAX_OUT:
                     return fv
 
@@ -6434,6 +6465,7 @@ from(bucket: "{cfg["bucket"]}")
             "chunked": True,
             "last_time": last_time_iso,
             "last_value": prev_val,
+            "counter_base_value": counter_base_val,
         })
     except Exception as e:
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500

@@ -473,21 +473,38 @@
            </div>
          </div>
        </div>
-        <div class="tbl_actions" id="edit_toolbar" style="justify-content:flex-start; margin-top: 10px; align-items:flex-start;" data-ui="editlist.toolbar" title="editlist.toolbar">
-          <button class="btn_sm" id="edit_btn_details" disabled data-ui="editlist.details" title="editlist.details">Details</button>
-          <button class="btn_sm" id="edit_btn_edit" disabled data-ui="editlist.edit" title="editlist.edit">Bearbeiten</button>
-          <button class="btn_sm" id="edit_btn_take_before" disabled data-ui="editlist.take_before" title="editlist.take_before">Werte davor uebernehmen</button>
-          <button class="btn_sm" id="edit_btn_take_avg" disabled data-ui="editlist.take_avg" title="editlist.take_avg">Durchschnitt davor+danach</button>
-          <button class="btn_sm" id="edit_btn_stage_delete" disabled data-ui="editlist.stage_delete" title="editlist.stage_delete">Werte loeschen</button>
-          <label style="display:flex; align-items:center; gap: 6px; font-size: 12px; opacity: 0.85; padding-top: 2px;"><input type="checkbox" id="edit_show_graph" class="row_sel" data-ui="editlist.show_graph" title="editlist.show_graph"/>Graph</label>
-          <span class="muted" id="edit_toolbar_info" style="padding-top: 6px;"></span>
-          <span style="flex:1;"></span>
-          <button class="btn_sm" id="edit_apply" data-ui="editlist_apply">Aenderungen in Datenbank uebernehmen</button>
-        </div>
-        <div class="err" id="edit_apply_err" data-ui="editlist_apply_err" title="editlist_apply_err"></div>
+         <div class="tbl_actions" id="edit_toolbar" style="justify-content:flex-start; margin-top: 10px; align-items:flex-start;" data-ui="editlist.toolbar" title="editlist.toolbar">
+           <button class="btn_sm" id="edit_btn_edit" disabled data-ui="editlist.edit" title="editlist.edit">Bearbeiten</button>
+           <button class="btn_sm" id="edit_btn_take_before" disabled data-ui="editlist.take_before" title="editlist.take_before">Werte davor uebernehmen</button>
+           <button class="btn_sm" id="edit_btn_take_avg" disabled data-ui="editlist.take_avg" title="editlist.take_avg">Durchschnitt davor+danach</button>
+           <button class="btn_sm" id="edit_btn_stage_delete" disabled data-ui="editlist.stage_delete" title="editlist.stage_delete">Werte loeschen</button>
+           <label style="display:flex; align-items:center; gap: 6px; font-size: 12px; opacity: 0.85; padding-top: 2px;"><input type="checkbox" id="edit_show_graph" class="row_sel" data-ui="editlist.show_graph" title="editlist.show_graph"/>Graph</label>
+           <span class="muted" id="edit_toolbar_info" style="padding-top: 6px;"></span>
+           <span style="flex:1;"></span>
+         </div>
+         <div class="err" id="edit_apply_err" data-ui="editlist_apply_err" title="editlist_apply_err"></div>
 
         <div id="edit_split" style="display:flex; gap: 0; align-items:stretch; margin-top: 10px;" data-ui="editlist.split" title="editlist.split">
           <div id="edit_left" style="flex: 1 1 auto; min-width: 0;">
+
+        <div class="tbl_actions" style="justify-content:flex-start; margin-top: 10px; gap: 10px; flex-wrap:wrap; align-items:flex-end;">
+          <button class="btn_sm" id="tbl_autowidth" data-ui="filterlist.autowidth" title="filterlist.autowidth">Spaltenbreite automatisch</button>
+          <button class="btn_sm" id="tbl_clear" data-ui="filterlist.clear" title="filterlist.clear">Liste leeren</button>
+          <button class="btn_sm" id="edit_clear_staged" data-ui="editlist.clear_staged" title="editlist.clear_staged">Staging leeren</button>
+
+          <div style="min-width: 220px;">
+            <label style="display:block; font-size:12px; opacity:0.8;">Grund Filter</label>
+            <input id="reason_filter" placeholder="enthaelt..." style="height: 34px;" />
+          </div>
+          <div style="min-width: 180px;">
+            <label style="display:block; font-size:12px; opacity:0.8;">Klasse</label>
+            <select id="class_filter" style="height: 34px;">
+              <option value="all" selected>alle</option>
+              <option value="primary">primaer</option>
+              <option value="secondary">sekundaer</option>
+            </select>
+          </div>
+        </div>
 
         <div class="table_box" id="table_box" style="margin-top: 10px;">
           <table id="tbl" class="list_tbl" data-ui="editlist.table" title="editlist.table">
@@ -497,6 +514,7 @@
                 <th id="th_time" data-key="time" data-ui="editlist.col_time">Zeit</th>
                 <th id="th_value" data-key="value" data-ui="editlist.col_old">Altwert</th>
                 <th data-ui="editlist.col_reason">Grund</th>
+                <th data-ui="editlist.col_class">Klasse</th>
                 <th style="width:140px;" data-ui="editlist.col_action">Aktion</th>
                 <th style="width:220px;" data-ui="editlist.col_new">Neuwert</th>
               </tr>
@@ -505,29 +523,8 @@
           </table>
         </div>
 
-        <div class="card" id="details_panel" style="display:none; margin-top: 10px;" data-ui="editlist.details_panel" title="editlist.details_panel">
-          <div style="display:flex; gap: 10px; align-items:baseline; justify-content:space-between;">
-            <div style="font-weight:800;">Details (Davor / Danach)</div>
-            <div class="tbl_actions" style="justify-content:flex-end; margin-top: 0;">
-              <button class="btn_sm" id="details_take" disabled data-ui="editlist.details_take" title="editlist.details_take">Uebernehmen</button>
-              <button class="btn_sm" id="details_close" data-ui="editlist.details_close" title="editlist.details_close">Schliessen</button>
-            </div>
-          </div>
-          <div class="muted" id="details_info" style="margin-top: 6px;"></div>
-          <div class="table_box" id="details_box" style="margin-top: 8px;">
-            <table id="details_tbl" class="list_tbl" data-ui="editlist.details_table" title="editlist.details_table">
-              <thead>
-                <tr><th style="width: 90px;">Typ</th><th style="width: 170px;">Zeit</th><th>Wert</th></tr>
-              </thead>
-              <tbody id="details_rows"></tbody>
-            </table>
-          </div>
-        </div>
-
-        <div class="tbl_actions" style="justify-content:flex-start; margin-top: 10px;">
-          <button class="btn_sm" id="tbl_autowidth" data-ui="filterlist.autowidth" title="filterlist.autowidth">Spaltenbreite automatisch</button>
-          <button class="btn_sm" id="tbl_clear" data-ui="filterlist.clear" title="filterlist.clear">Liste leeren</button>
-          <button class="btn_sm" id="edit_clear_staged" data-ui="editlist.clear_staged" title="editlist.clear_staged">Staging leeren</button>
+        <div class="tbl_actions" style="justify-content:flex-end; margin-top: 10px;">
+          <button class="btn_sm" id="edit_apply" data-ui="editlist_apply">Aenderungen in Datenbank uebernehmen</button>
         </div>
 
         <div class="muted" data-ui="tip.pointlist" title="tip.pointlist">Aktionen werden zuerst in der Tabelle vorgemerkt (<code>Aktion</code>/<code>Neuwert</code>). Erst mit <code>Aenderungen in Datenbank uebernehmen</code> wird geschrieben/geloescht.</div>
@@ -752,6 +749,9 @@ const $btnEditStageDelete = document.getElementById('edit_btn_stage_delete');
 const $btnEditClearStaged = document.getElementById('edit_clear_staged');
 const $btnEditApply = document.getElementById('edit_apply');
 const $editApplyErr = document.getElementById('edit_apply_err');
+
+const $reasonFilter = document.getElementById('reason_filter');
+const $classFilter = document.getElementById('class_filter');
 
 const $detailsPanel = document.getElementById('details_panel');
 const $detailsInfo = document.getElementById('details_info');
@@ -1248,6 +1248,7 @@ function _applyOverlays(){
           mode: 'lines',
           x,
           y: ys,
+          name: wantSigned ? 'd/dt' : 'abs(d/dt)',
           line: {color: '#444', width: 1.2},
           hovertemplate: '%{x}<br>d/dt=%{y}<extra></extra>',
         }];
@@ -1257,12 +1258,13 @@ function _applyOverlays(){
             mode: 'markers',
             x: outX,
             y: outY,
+            name: 'Outlier',
             marker: {size: 7, color: '#c62828', symbol: 'circle'},
             hovertemplate: '%{x}<br>Outlier d/dt=%{y}<extra></extra>',
           });
         }
         const layout = {
-          margin: {l: 52, r: 10, t: 6, b: 30},
+          margin: {l: 52, r: 10, t: 6, b: 64},
           height: 140,
           xaxis: {
             type:'date',
@@ -1271,6 +1273,8 @@ function _applyOverlays(){
             range: (winLo !== null && winHi !== null) ? [new Date(winLo), new Date(winHi)] : undefined,
           },
           yaxis: {automargin:true, title: (wantSigned ? 'd/dt' : 'abs(d/dt)'), fixedrange: true},
+          showlegend: true,
+          legend: {orientation: 'h', x: 0, xanchor: 'left', y: -0.35, yanchor: 'top', font: {size: 11}},
         };
         try{ window.Plotly.react($derivGraphPlot, data, layout, {displayModeBar:false, responsive:true, staticPlot:true}); }catch(e){}
       }
@@ -1292,6 +1296,8 @@ function saveState(){
       out_min: $outMin ? $outMin.value : "",
       out_max: $outMax ? $outMax.value : "",
       out_max_step: $outMaxStep ? $outMaxStep.value : "",
+      reason_filter: $reasonFilter ? String($reasonFilter.value || "") : "",
+      class_filter: $classFilter ? String($classFilter.value || "all") : "all",
       tbl_filter_enabled: TABLE_FILTER.enabled,
       tbl_mode: TABLE_FILTER.mode,
       tbl_a_op: TABLE_FILTER.a_op,
@@ -1362,6 +1368,8 @@ function cacheSaveNow(){
       deriv_abs: !!($derivAbs && $derivAbs.checked),
       deriv_signed: !!($derivSigned && $derivSigned.checked),
       deriv_outlier_thr: $derivOutlierThr ? Number($derivOutlierThr.value || 90) : 90,
+      reason_filter: $reasonFilter ? String($reasonFilter.value || "") : "",
+      class_filter: $classFilter ? String($classFilter.value || "all") : "all",
       last_rows: LAST_ROWS || [],
       last_query: ($queryPre ? String($queryPre.textContent || '') : ''),
       outlier_active: !!OUTLIER_ACTIVE,
@@ -1417,10 +1425,14 @@ function cacheRestoreIfAvailable(){
       if($derivAbs) $derivAbs.checked = (j.deriv_abs !== undefined) ? !!j.deriv_abs : true;
       if($derivSigned) $derivSigned.checked = !!j.deriv_signed;
       if($derivOutlierThr) $derivOutlierThr.value = (j.deriv_outlier_thr !== undefined) ? String(j.deriv_outlier_thr) : "90";
+      if($reasonFilter) $reasonFilter.value = (j.reason_filter !== undefined) ? String(j.reason_filter || "") : "";
+      if($classFilter) $classFilter.value = (j.class_filter !== undefined) ? String(j.class_filter || "all") : "all";
       try{ _normalizeDerivToggles(null); }catch(e){}
     }catch(e){}
     OUTLIER_ACTIVE = !!j.outlier_active;
     if(Array.isArray(j.outlier_rows)) OUTLIER_ROWS = j.outlier_rows;
+    try{ TABLE_REASON_FILTER = $reasonFilter ? String($reasonFilter.value || "") : (j.reason_filter ? String(j.reason_filter) : ""); }catch(e){ TABLE_REASON_FILTER = ""; }
+    try{ TABLE_CLASS_FILTER = $classFilter ? String($classFilter.value || "all") : (j.class_filter ? String(j.class_filter) : "all"); }catch(e){ TABLE_CLASS_FILTER = "all"; }
     FILTER_TABLE_CLEARED = false;
     try{ FILTER_SELECTED = new Set(Array.isArray(j.selected_keys) ? j.selected_keys : []); }catch(e){ FILTER_SELECTED = new Set(); }
     try{
@@ -1797,6 +1809,27 @@ async function loadRowNeighbors(key){
   }finally{
     _NEIGHBOR_INFLIGHT = false;
   }
+}
+
+async function preloadOutlierDetails(maxTotal, awaitFirst){
+  const total = Math.max(0, Number(maxTotal || 0));
+  const first = Math.max(0, Number(awaitFirst || 0));
+  const keys = (OUTLIER_ROWS || []).map(r => rowKey(r)).filter(Boolean);
+  const uniq = Array.from(new Set(keys));
+  const list = uniq.slice(0, total || 0);
+  if(!list.length) return;
+
+  // Load first N synchronously so details are available immediately.
+  for(let i=0;i<list.length && i<first;i++){
+    try{ await loadRowNeighbors(list[i]); }catch(e){}
+  }
+
+  // Load remaining in background.
+  setTimeout(async ()=>{
+    for(let i=first;i<list.length;i++){
+      try{ await loadRowNeighbors(list[i]); }catch(e){}
+    }
+  }, 0);
 }
 
 function rowKey(row){
@@ -3026,6 +3059,25 @@ let TABLE_FILTER = {
   b_val: "999999",
 };
 
+let TABLE_REASON_FILTER = "";
+let TABLE_CLASS_FILTER = "all"; // all|primary|secondary
+
+function applyMetaFilters(rows){
+  const term = String(TABLE_REASON_FILTER || "").trim().toLowerCase();
+  const cls = String(TABLE_CLASS_FILTER || "all").trim().toLowerCase();
+  return (rows || []).filter(r => {
+    if(term){
+      const rr = String((r && r.reason) ? r.reason : "").toLowerCase();
+      if(!rr.includes(term)) return false;
+    }
+    if(cls && cls !== "all"){
+      const rc = String((r && r.class) ? r.class : (r && r.cls ? r.cls : "primary")).toLowerCase();
+      if(rc !== cls) return false;
+    }
+    return true;
+  });
+}
+
 function tableKbLoaded(){
   try{
     const b = new Blob([JSON.stringify(LAST_ROWS || [])]);
@@ -3324,6 +3376,10 @@ try{
   if($derivAbs) $derivAbs.checked = (st.deriv_abs !== undefined) ? !!st.deriv_abs : true;
   if($derivSigned) $derivSigned.checked = !!st.deriv_signed;
   if($derivOutlierThr) $derivOutlierThr.value = (st.deriv_outlier_thr !== undefined) ? String(st.deriv_outlier_thr) : "90";
+  if($reasonFilter) $reasonFilter.value = (st.reason_filter !== undefined) ? String(st.reason_filter || "") : "";
+  if($classFilter) $classFilter.value = (st.class_filter !== undefined) ? String(st.class_filter || "all") : "all";
+  try{ TABLE_REASON_FILTER = $reasonFilter ? String($reasonFilter.value || "") : ""; }catch(e){ TABLE_REASON_FILTER = ""; }
+  try{ TABLE_CLASS_FILTER = $classFilter ? String($classFilter.value || "all") : "all"; }catch(e){ TABLE_CLASS_FILTER = "all"; }
   try{ _normalizeDerivToggles(null); }catch(e){}
   try{ saveState(); }catch(e){}
 }catch(e){}
@@ -3366,6 +3422,19 @@ try{
       _updateGraphDetailUi();
       saveState();
       try{ _applyOverlays(); }catch(e){}
+    });
+  }catch(e){}
+
+  try{
+    if($reasonFilter) $reasonFilter.addEventListener('input', ()=>{
+      TABLE_REASON_FILTER = String($reasonFilter.value || '');
+      saveState();
+      renderTable();
+    });
+    if($classFilter) $classFilter.addEventListener('change', ()=>{
+      TABLE_CLASS_FILTER = String($classFilter.value || 'all');
+      saveState();
+      renderTable();
     });
   }catch(e){}
 }catch(e){}
@@ -3537,6 +3606,7 @@ function _renderSelAll(checkboxEl, keysInView, selectedSet){
 function renderTable(){
   let base = (FILTER_TABLE_CLEARED ? [] : _rowsForFilterTable().slice());
   base = _tableTimeFilteredRows(base);
+  base = applyMetaFilters(base);
   const filtered = applyValueFilter(base);
   const rows = sortRowsForTable(filtered);
   LAST_TABLE_ROWS = rows.slice();
@@ -3577,6 +3647,10 @@ function renderTable(){
     const tdR = document.createElement("td");
     tdR.textContent = row && row.reason ? String(row.reason) : "";
 
+    const tdC = document.createElement("td");
+    const rc = String((row && (row.class || row.cls)) ? (row.class || row.cls) : "primary");
+    tdC.textContent = (rc === "secondary") ? "sekundaer" : "primaer";
+
     const tdAction = document.createElement('td');
     const sel = document.createElement('select');
     sel.className = 'inline';
@@ -3614,6 +3688,7 @@ function renderTable(){
     tr.appendChild(tdT);
     tr.appendChild(tdV);
     tr.appendChild(tdR);
+    tr.appendChild(tdC);
     tr.appendChild(tdAction);
     tr.appendChild(tdNew);
 
@@ -3629,6 +3704,84 @@ function renderTable(){
     });
 
     $tbl.appendChild(tr);
+
+    // Inline details under each outlier row (preloaded on scan)
+    if(OUTLIER_ACTIVE){
+      try{
+        const trD = document.createElement('tr');
+        trD.className = 'row_details';
+        const td = document.createElement('td');
+        td.colSpan = 7;
+        td.style.padding = '6px 8px 10px 8px';
+
+        const det = document.createElement('details');
+        det.open = ROW_DETAILS_OPEN.has(key);
+        det.addEventListener('toggle', ()=>{
+          try{ if(det.open) ROW_DETAILS_OPEN.add(key); else ROW_DETAILS_OPEN.delete(key); }catch(e){}
+        });
+
+        const sum = document.createElement('summary');
+        sum.textContent = 'Details (Davor / Danach)';
+        sum.style.cursor = 'pointer';
+        det.appendChild(sum);
+
+        const box = document.createElement('div');
+        box.style.marginTop = '6px';
+        box.style.border = '1px solid rgba(0,0,0,0.08)';
+        box.style.borderRadius = '12px';
+        box.style.padding = '8px 10px';
+        box.style.background = '#fafafa';
+
+        const n = _neighborsCacheGet(key);
+        const meta = document.createElement('div');
+        meta.className = 'muted';
+        meta.style.whiteSpace = 'pre-wrap';
+        if(!n){
+          meta.textContent = 'Lade Details...';
+        }else if(n.loading){
+          meta.textContent = 'Lade Details...';
+        }else if(n.error){
+          meta.textContent = String(n.error);
+        }else{
+          meta.textContent = String(n.meta || '');
+        }
+        box.appendChild(meta);
+
+        const tbl = document.createElement('table');
+        tbl.style.width = '100%';
+        tbl.style.marginTop = '6px';
+        tbl.style.borderCollapse = 'collapse';
+        const thead = document.createElement('thead');
+        thead.innerHTML = '<tr><th style="text-align:left; width: 90px; font-size: 12px; opacity: 0.75;">Typ</th><th style="text-align:left; width: 170px; font-size: 12px; opacity: 0.75;">Zeit</th><th style="text-align:left; font-size: 12px; opacity: 0.75;">Wert</th></tr>';
+        tbl.appendChild(thead);
+        const tbody = document.createElement('tbody');
+
+        const add = (typ, ts, val)=>{
+          const tr = document.createElement('tr');
+          const td1 = document.createElement('td'); td1.textContent = typ;
+          const td2 = document.createElement('td'); td2.textContent = fmtTs(String(ts||''));
+          const td3 = document.createElement('td'); td3.textContent = (val===null||val===undefined)?'':fmtNum(val);
+          td1.style.padding = '2px 6px 2px 0';
+          td2.style.padding = '2px 6px 2px 0';
+          td3.style.padding = '2px 0';
+          tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3);
+          tbody.appendChild(tr);
+        };
+
+        if(n && n.ok && !n.loading && !n.error){
+          (n.older || []).forEach(r => add('davor', r.time, r.value));
+          add('ziel', row.time, row.value);
+          (n.newer || []).forEach(r => add('danach', r.time, r.value));
+        }
+
+        tbl.appendChild(tbody);
+        box.appendChild(tbl);
+        det.appendChild(box);
+        td.appendChild(det);
+        trD.appendChild(td);
+        $tbl.appendChild(trD);
+      }catch(e){}
+    }
   });
 
   _renderSelAll($tblSelAll, keysInView, FILTER_SELECTED);
@@ -4048,34 +4201,80 @@ async function refreshEditGraph(){
   }catch(e){}
   const pts = j.rows || [];
   try{ EDIT_GRAPH_PTS = pts; }catch(e){ EDIT_GRAPH_PTS = null; }
-  const xsAll = pts.map(p=>p.time);
-  const ysAll = pts.map(p=>p.value);
+  const xsAll = [];
+  const xsAllTxt = [];
+  const ysAll = [];
+  pts.forEach(p=>{
+    const iso = String(p && p.time ? p.time : '');
+    const ms = Date.parse(iso);
+    if(!isFinite(ms)) return;
+    xsAll.push(new Date(ms));
+    xsAllTxt.push(fmtTs(iso));
+    ysAll.push(p.value);
+  });
+  const xsAllMs = xsAll.map(d=>d.getTime());
 
-  const xsMark = rows.slice(0, 5000).map(r=>r.time);
-  const ysMark = rows.slice(0, 5000).map(r=>r.value);
+  const xsMark = [];
+  const xsMarkTxt = [];
+  const ysMark = [];
+  rows.slice(0, 5000).forEach(r=>{
+    const iso = String(r && r.time ? r.time : '');
+    const ms = Date.parse(iso);
+    if(!isFinite(ms)) return;
+    xsMark.push(new Date(ms));
+    xsMarkTxt.push(fmtTs(iso));
+    ysMark.push(r && r.value);
+  });
 
   const traces = [
     {
       x: xsAll,
       y: ysAll,
+      text: xsAllTxt,
       mode: 'lines',
       name: 'DB',
       line: {width: 1, color: 'rgba(0,0,0,0.55)'},
-      hovertemplate: '%{x|%d.%m.%Y %H:%M:%S.%L}<br>%{y}<extra></extra>',
+      hovertemplate: '%{text}<br>%{y}<extra></extra>',
     },
     {
       x: xsMark,
       y: ysMark,
+      text: xsMarkTxt,
       mode: 'markers',
       name: 'Bearbeitung',
       marker: {size: 8, color: '#d11f1f', line: {width: 1, color: '#fff'} },
-      hovertemplate: '%{x|%d.%m.%Y %H:%M:%S.%L}<br>%{y}<extra></extra>',
+      hovertemplate: '%{text}<br>%{y}<extra></extra>',
     },
   ];
+
+  // Force client-local tick labels (avoid UTC formatting differences).
+  let tickvals = null;
+  let ticktext = null;
+  try{
+    const ms = xsAllMs.filter(t=>isFinite(t));
+    if(ms.length){
+      const a = Math.min(...ms);
+      const b = Math.max(...ms);
+      const n = 6;
+      tickvals = [];
+      ticktext = [];
+      for(let i=0;i<n;i++){
+        const t = a + (i/(n-1))*Math.max(1,(b-a));
+        tickvals.push(new Date(t));
+        ticktext.push(fmtTs(new Date(t).toISOString()));
+      }
+    }
+  }catch(e){}
   const layout = {
     margin: {l: 48, r: 12, t: 10, b: 36},
     height: 320,
-    xaxis: {title: '', type: 'date', tickformat: '%d.%m %H:%M', hoverformat: '%d.%m.%Y %H:%M:%S.%L'},
+    xaxis: {
+      title: '',
+      type: 'date',
+      tickmode: (tickvals && ticktext) ? 'array' : 'auto',
+      tickvals: tickvals || undefined,
+      ticktext: ticktext || undefined,
+    },
     yaxis: {title: ''},
     showlegend: true,
     legend: {orientation: 'h'},
@@ -4837,6 +5036,7 @@ async function runOutlierScan(){
     try{ OUTLIER_SCANNED_TOTAL = 0; OUTLIER_FOUND_TOTAL = 0; _updateAnalysisInfo(); }catch(e){}
     let prevValue = null;
     let lastIso = null;
+    let counterBase = null;
 
     for(let i=0; i<chunks.length; i++){
       const [aIso, bIso] = chunks[i];
@@ -4855,6 +5055,7 @@ async function runOutlierScan(){
             start: aIso,
             stop: bIso,
             prev_value: prevValue,
+            counter_base_value: counterBase,
           }),
         },
         { key: "outliers_scan", status: "Fehlersuche Ausreisser...", silent: true },
@@ -4863,8 +5064,9 @@ async function runOutlierScan(){
       scannedTotal += Number(pj.scanned || 0);
       lastIso = pj.last_time || lastIso;
       prevValue = (pj.last_value !== undefined && pj.last_value !== null) ? pj.last_value : prevValue;
+      counterBase = (pj.counter_base_value !== undefined && pj.counter_base_value !== null && String(pj.counter_base_value).trim() !== "") ? pj.counter_base_value : counterBase;
 
-      const got = (pj.rows || []).map(r => ({ time: r.time, value: r.value, reason: r.reason || "" }));
+      const got = (pj.rows || []).map(r => ({ time: r.time, value: r.value, reason: r.reason || "", class: r.class || "primary" }));
       OUTLIER_ROWS = OUTLIER_ROWS.concat(got);
       try{ OUTLIER_SCANNED_TOTAL = scannedTotal; OUTLIER_FOUND_TOTAL = (OUTLIER_ROWS||[]).length; _updateAnalysisInfo(); }catch(e){}
       if(OUTLIER_ROWS.length >= 5000){
@@ -4882,6 +5084,7 @@ async function runOutlierScan(){
 
     renderTableRange();
     renderTable();
+    try{ preloadOutlierDetails(200, 20).catch(()=>{}); }catch(e){}
     try{ refreshEditGraph().catch(()=>{}); }catch(e){}
     try{ OUTLIER_SCANNED_TOTAL = scannedTotal; OUTLIER_FOUND_TOTAL = (OUTLIER_ROWS||[]).length; _updateAnalysisInfo(); }catch(e){}
     if(!document.getElementById('ok').textContent){
@@ -4992,6 +5195,16 @@ try{
     if($tblAVal) $tblAVal.value = TABLE_FILTER.a_val;
     if($tblBOp) $tblBOp.value = TABLE_FILTER.b_op;
     if($tblBVal) $tblBVal.value = TABLE_FILTER.b_val;
+
+    try{
+      TABLE_REASON_FILTER = (st.reason_filter !== undefined) ? String(st.reason_filter || "") : "";
+      TABLE_CLASS_FILTER = (st.class_filter !== undefined) ? String(st.class_filter || "all") : "all";
+      if($reasonFilter) $reasonFilter.value = TABLE_REASON_FILTER;
+      if($classFilter) $classFilter.value = TABLE_CLASS_FILTER;
+    }catch(e){
+      TABLE_REASON_FILTER = "";
+      TABLE_CLASS_FILTER = "all";
+    }
 
     if($scanPreset && st.scan_preset) $scanPreset.value = String(st.scan_preset);
     if($outMin && st.out_min !== undefined) $outMin.value = String(st.out_min || "");
