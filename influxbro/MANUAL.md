@@ -245,6 +245,8 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 ## Export
 
 - Seite `Export`: Auswahl wie im Dashboard; Measurement/Field wird best-effort aus friendly_name/entity_id aufgeloest.
+- Feld `Auswahl (aufgeloest)`: zeigt die aktuell aufgeloeste Serie (measurement/field + tags) und den Zeitraum.
+- Export-Erzeugung laeuft als Hintergrund-Job und kann mit `Abbrechen` gestoppt werden; der Download wird erst nach Fertigstellung angeboten.
 - Formate: Text (Delimiter, Default `;`) oder Excel (`.xlsx`).
 - Zeitstempel im Export sind im lokalen Browser-Format (wie in der UI angezeigt).
 

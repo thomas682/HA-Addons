@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.11.96
+
+### Features
+
+- Export: Export-Erzeugung laeuft als Hintergrund-Job und kann abgebrochen werden; Download erscheint erst nach Fertigstellung.
+- Export: Anzeige `Auswahl (aufgeloest)` + schnelle Serien-Info (best-effort) fuer den gewaehlten Zeitraum.
+
+### Fixes
+
+- Bearbeitungsliste: Button `Aenderungen in Datenbank uebernehmen` ist linksbuendig unter der Tabelle.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.11.95
 
 ### Features

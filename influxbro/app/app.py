@@ -54,7 +54,9 @@ RESTORE_COPY_JOBS: dict[str, dict[str, Any]] = {}
 RESTORE_COPY_LOCK = threading.RLock()
 
 BACKUP_JOBS: dict[str, dict[str, Any]] = {}
+EXPORT_JOBS: dict[str, dict[str, Any]] = {}
 BACKUP_LOCK = threading.RLock()
+EXPORT_LOCK = threading.RLock()
 
 
 def _req_ip() -> str:
@@ -7287,6 +7289,373 @@ from(bucket: "{cfg["bucket"]}")
         except Exception:
             pass
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
+
+
+def _export_job_public(job: dict[str, Any]) -> dict[str, Any]:
+    written = int(job.get("rows_written") or 0)
+    return {
+        "id": job.get("id"),
+        "state": job.get("state"),
+        "message": job.get("message"),
+        "started_at": job.get("started_at"),
+        "elapsed": _hms(time.monotonic() - float(job.get("started_mono") or time.monotonic())),
+        "rows_written": written,
+        "format": job.get("format"),
+        "file": job.get("file"),
+        "download_url": job.get("download_url"),
+        "query": job.get("query") or "",
+        "cancelled": bool(job.get("cancelled")),
+        "error": job.get("error"),
+        "ready": job.get("state") in ("done", "error", "cancelled"),
+    }
+
+
+def _export_job_thread(
+    job_id: str,
+    cfg: dict[str, Any],
+    fmt: str,
+    delim: str,
+    measurement: str,
+    field: str,
+    entity_id: str | None,
+    friendly_name: str | None,
+    start_dt: datetime,
+    stop_dt: datetime,
+    max_points: int,
+    tz_name: str | None,
+    tz_offset_minutes: int | None,
+) -> None:
+    with EXPORT_LOCK:
+        job = EXPORT_JOBS.get(job_id)
+    if not job:
+        return
+
+    def set_state(state: str, msg: str) -> None:
+        with EXPORT_LOCK:
+            if job_id in EXPORT_JOBS:
+                EXPORT_JOBS[job_id]["state"] = state
+                EXPORT_JOBS[job_id]["message"] = msg
+
+    def set_error(msg: str) -> None:
+        with EXPORT_LOCK:
+            if job_id in EXPORT_JOBS:
+                EXPORT_JOBS[job_id]["error"] = msg
+
+    def set_progress(**kw: Any) -> None:
+        with EXPORT_LOCK:
+            j = EXPORT_JOBS.get(job_id)
+            if not j:
+                return
+            for k, v in kw.items():
+                j[k] = v
+
+    def is_cancelled() -> bool:
+        with EXPORT_LOCK:
+            j = EXPORT_JOBS.get(job_id) or {}
+            return bool(j.get("cancelled"))
+
+    EXPORT_DIR.mkdir(parents=True, exist_ok=True)
+    ext = "xlsx" if fmt == "xlsx" else "csv"
+    filename = f"export_job__{job_id}.{ext}"
+    part = f"{filename}.part"
+    out_path = (EXPORT_DIR / filename)
+    part_path = (EXPORT_DIR / part)
+
+    extra = flux_tag_filter(entity_id, friendly_name)
+    start = _dt_to_rfc3339_utc(start_dt)
+    stop = _dt_to_rfc3339_utc(stop_dt)
+    q = f'''
+from(bucket: "{cfg["bucket"]}")
+  |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
+  |> keep(columns: ["_time","_value","_measurement","_field","entity_id","friendly_name"])
+  |> sort(columns: ["_time"], desc: false)
+  |> limit(n: {max_points})
+'''
+
+    set_state("running", "Export laeuft...")
+    set_progress(query=q.strip(), rows_written=0, file=None, download_url=None)
+
+    count = 0
+    last_tick = time.monotonic()
+
+    try:
+        with v2_client(cfg) as c:
+            qapi = c.query_api()
+
+            if fmt == "xlsx":
+                try:
+                    import openpyxl  # type: ignore
+                except Exception as e:
+                    raise RuntimeError("openpyxl not available") from e
+
+                wb = openpyxl.Workbook()
+                ws = wb.active
+                ws.title = "export"
+                ws.append(["time", "value", "entity_id", "friendly_name", "_measurement", "_field"])
+
+                for rec in qapi.query_stream(q, org=cfg["org"]):
+                    if is_cancelled():
+                        set_state("cancelled", "Abgebrochen")
+                        raise RuntimeError("cancelled")
+                    try:
+                        t = rec.get_time()
+                        v = rec.get_value()
+                        if v is None or not isinstance(t, datetime):
+                            continue
+                        tv = t.astimezone(timezone.utc)
+                        t_local = _fmt_ui_local_ts(tv, tz_name, tz_offset_minutes)
+                        m = str(rec.values.get("_measurement") or measurement)
+                        f = str(rec.values.get("_field") or field)
+                        eid = str(rec.values.get("entity_id") or "")
+                        fn = str(rec.values.get("friendly_name") or "")
+                        ws.append([t_local, v, eid, fn, m, f])
+                        count += 1
+                    except Exception:
+                        continue
+                    now = time.monotonic()
+                    if (now - last_tick) >= 0.25:
+                        set_progress(rows_written=count)
+                        last_tick = now
+
+                if is_cancelled():
+                    set_state("cancelled", "Abgebrochen")
+                    raise RuntimeError("cancelled")
+                wb.save(part_path)
+            else:
+                with part_path.open("w", encoding="utf-8", newline="") as f:
+                    f.write(f"# timezone={tz_name or ''}\n")
+                    f.write(f"# tz_offset_minutes={tz_offset_minutes if tz_offset_minutes is not None else ''}\n")
+                    w = csv.writer(f, delimiter=delim)
+                    w.writerow(["time", "value", "entity_id", "friendly_name", "_measurement", "_field"])
+                    for rec in qapi.query_stream(q, org=cfg["org"]):
+                        if is_cancelled():
+                            set_state("cancelled", "Abgebrochen")
+                            raise RuntimeError("cancelled")
+                        try:
+                            t = rec.get_time()
+                            v = rec.get_value()
+                            if v is None or not isinstance(t, datetime):
+                                continue
+                            tv = t.astimezone(timezone.utc)
+                            t_local = _fmt_ui_local_ts(tv, tz_name, tz_offset_minutes)
+                            m = str(rec.values.get("_measurement") or measurement)
+                            fld = str(rec.values.get("_field") or field)
+                            eid = str(rec.values.get("entity_id") or "")
+                            fn = str(rec.values.get("friendly_name") or "")
+                            w.writerow([t_local, v, eid, fn, m, fld])
+                            count += 1
+                        except Exception:
+                            continue
+
+                        now = time.monotonic()
+                        if (now - last_tick) >= 0.25:
+                            set_progress(rows_written=count)
+                            last_tick = now
+
+        if is_cancelled():
+            set_state("cancelled", "Abgebrochen")
+            raise RuntimeError("cancelled")
+
+        try:
+            if out_path.exists():
+                out_path.unlink()
+        except Exception:
+            pass
+        part_path.replace(out_path)
+
+        dl = f"./api/export_job/download?job_id={job_id}"
+        set_progress(rows_written=count, file=filename, download_url=dl)
+        set_state("done", f"Export fertig. Zeilen: {count}")
+        return
+    except Exception as e:
+        msg = str(e)
+        if "cancelled" in msg:
+            try:
+                if part_path.exists():
+                    part_path.unlink()
+            except Exception:
+                pass
+            try:
+                if out_path.exists():
+                    out_path.unlink()
+            except Exception:
+                pass
+            return
+
+        set_state("error", "Fehler")
+        set_error(_short_influx_error(e))
+        try:
+            if part_path.exists():
+                part_path.unlink()
+        except Exception:
+            pass
+        try:
+            if out_path.exists():
+                out_path.unlink()
+        except Exception:
+            pass
+        return
+
+
+@app.post("/api/export_job/start")
+def api_export_job_start():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    body = request.get_json(force=True) or {}
+
+    fmt = str(body.get("format") or "text").strip().lower()
+    if fmt not in ("text", "xlsx"):
+        return jsonify({"ok": False, "error": "format must be text or xlsx"}), 400
+
+    delim = str(body.get("delimiter") or ";")
+    if len(delim) != 1:
+        delim = ";"
+
+    measurement = str(body.get("measurement") or "").strip()
+    field = str(body.get("field") or "").strip()
+    entity_id = str(body.get("entity_id") or "").strip() or None
+    friendly_name = str(body.get("friendly_name") or "").strip() or None
+    if not measurement or not field:
+        return jsonify({"ok": False, "error": "measurement and field required"}), 400
+
+    tz_name = str(body.get("tz_name") or "").strip() or None
+    try:
+        tz_off = body.get("tz_offset_minutes")
+        tz_offset_minutes = int(tz_off) if tz_off is not None and str(tz_off).strip() != "" else None
+    except Exception:
+        tz_offset_minutes = None
+
+    try:
+        start_dt, stop_dt = _get_start_stop_from_payload(body)
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"invalid start/stop: {e}"}), 400
+    if not start_dt or not stop_dt:
+        return jsonify({"ok": False, "error": "start and stop required"}), 400
+
+    try:
+        max_points = int(body.get("max_points") or cfg.get("ui_raw_max_points") or 20000)
+    except Exception:
+        max_points = int(cfg.get("ui_raw_max_points") or 20000)
+    if max_points < 1:
+        max_points = 1
+    if max_points > 2000000:
+        max_points = 2000000
+
+    if int(cfg.get("influx_version", 2)) != 2:
+        return jsonify({"ok": False, "error": "export currently supports InfluxDB v2 only"}), 400
+    if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+        return jsonify({
+            "ok": False,
+            "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
+        }), 400
+
+    job_id = uuid.uuid4().hex
+    job = {
+        "id": job_id,
+        "state": "queued",
+        "message": "Warte...",
+        "started_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+        "started_mono": time.monotonic(),
+        "cancelled": False,
+        "error": None,
+        "rows_written": 0,
+        "format": fmt,
+        "file": None,
+        "download_url": None,
+        "query": "",
+    }
+
+    with EXPORT_LOCK:
+        EXPORT_JOBS[job_id] = job
+        cutoff = time.monotonic() - (6 * 60 * 60)
+        old = [k for k, v in EXPORT_JOBS.items() if float(v.get("started_mono") or 0) < cutoff]
+        for k in old:
+            if k != job_id:
+                EXPORT_JOBS.pop(k, None)
+
+    LOG.info(
+        "job_start type=export job_id=%s ip=%s ua=%s fmt=%s measurement=%s field=%s entity_id=%s friendly_name=%s",
+        job_id,
+        _req_ip(),
+        _req_ua(),
+        fmt,
+        measurement,
+        field,
+        entity_id or "",
+        friendly_name or "",
+    )
+
+    t = threading.Thread(
+        daemon=True,
+        target=_export_job_thread,
+        args=(
+            job_id,
+            cfg,
+            fmt,
+            delim,
+            measurement,
+            field,
+            entity_id,
+            friendly_name,
+            start_dt,
+            stop_dt,
+            max_points,
+            tz_name,
+            tz_offset_minutes,
+        ),
+    )
+    t.start()
+    return jsonify({"ok": True, "job_id": job_id})
+
+
+@app.get("/api/export_job/status")
+def api_export_job_status():
+    job_id = (request.args.get("job_id") or "").strip()
+    if not job_id:
+        return jsonify({"ok": False, "error": "job_id required"}), 400
+    with EXPORT_LOCK:
+        job = EXPORT_JOBS.get(job_id)
+    if not job:
+        return jsonify({"ok": False, "error": "job not found"}), 404
+    return jsonify({"ok": True, "status": _export_job_public(job)})
+
+
+@app.post("/api/export_job/cancel")
+def api_export_job_cancel():
+    body = request.get_json(force=True) or {}
+    job_id = (body.get("job_id") or "").strip()
+    if not job_id:
+        return jsonify({"ok": False, "error": "job_id required"}), 400
+    with EXPORT_LOCK:
+        job = EXPORT_JOBS.get(job_id)
+        if not job:
+            return jsonify({"ok": False, "error": "job not found"}), 404
+        job["cancelled"] = True
+    LOG.info("job_cancel type=export job_id=%s ip=%s ua=%s", job_id, _req_ip(), _req_ua())
+    return jsonify({"ok": True})
+
+
+@app.get("/api/export_job/download")
+def api_export_job_download():
+    job_id = (request.args.get("job_id") or "").strip()
+    if not job_id:
+        return jsonify({"ok": False, "error": "job_id required"}), 400
+    with EXPORT_LOCK:
+        job = EXPORT_JOBS.get(job_id)
+    if not job:
+        return jsonify({"ok": False, "error": "job not found"}), 404
+    if str(job.get("state") or "") != "done":
+        return jsonify({"ok": False, "error": "job not ready"}), 409
+    name = str(job.get("file") or "").strip()
+    if not name:
+        return jsonify({"ok": False, "error": "file missing"}), 500
+    try:
+        p = _safe_data_file(EXPORT_DIR, name)
+    except Exception:
+        return jsonify({"ok": False, "error": "invalid file"}), 400
+    if not p.exists() or not p.is_file():
+        return jsonify({"ok": False, "error": "file not found"}), 404
+    return send_file(p, as_attachment=True, download_name=p.name)
 
 
 @app.get("/api/export_download")

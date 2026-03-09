@@ -100,6 +100,14 @@
               <div class="muted" style="margin-top: 6px;">Wird best-effort anhand friendly_name/entity_id ermittelt.</div>
             </div>
           </details>
+
+          <div class="row" data-ui="export.selection_row" title="export.selection_row">
+            <div style="min-width: 320px; flex:1;">
+              <label>Auswahl (aufgeloest)</label>
+              <textarea id="sel" readonly data-ui="export.selection" title="export.selection" style="height:auto; min-height: 70px;"></textarea>
+              <div class="muted" id="series_info" data-ui="export.series_info" title="export.series_info"></div>
+            </div>
+          </div>
         </div>
       </details>
 
@@ -125,9 +133,12 @@
 
       <div class="card" data-ui="export.actions" title="export.actions">
         <div class="row" style="margin-top:0;">
-          <div style="min-width: 220px;"><button id="run" data-ui="export.run" title="export.run">Download</button></div>
+          <div style="min-width: 220px;"><button id="run" data-ui="export.run" title="export.run">Export starten</button></div>
+          <div style="min-width: 140px;"><button id="cancel" class="btn_sm" data-ui="export.cancel" title="export.cancel" disabled>Abbrechen</button></div>
+          <div style="min-width: 220px;"><button id="download" class="btn_sm" data-ui="export.download" title="export.download" style="display:none;">Download</button></div>
           <div class="muted" id="hint" style="padding-top: 10px;"></div>
         </div>
+        <div class="muted" id="status" style="margin-top: 6px;"></div>
         <div id="err" class="err"></div>
         <div id="ok" class="ok"></div>
       </div>
@@ -150,12 +161,38 @@
       const $format = document.getElementById('format');
       const $delimiter = document.getElementById('delimiter');
       const $run = document.getElementById('run');
+      const $cancel = document.getElementById('cancel');
+      const $download = document.getElementById('download');
       const $err = document.getElementById('err');
       const $ok = document.getElementById('ok');
       const $hint = document.getElementById('hint');
+      const $status = document.getElementById('status');
+
+      const $sel = document.getElementById('sel');
+      const $seriesInfo = document.getElementById('series_info');
 
       const err = (s)=>{ $err.textContent = String(s||""); $ok.textContent=""; if(s){ try{ if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error(String(s)); else alert(String(s)); }catch(e){} } };
       const ok = (s)=>{ $ok.textContent = String(s||""); $err.textContent=""; };
+
+      let JOB_ID = null;
+      let POLL_T = null;
+      let LAST_DOWNLOAD_URL = null;
+
+      function setStatus(s){ try{ if($status) $status.textContent = String(s||""); }catch(e){} }
+      function setResolvedSelection(txt){ try{ if($sel) $sel.value = String(txt||""); }catch(e){} }
+      function setSeriesInfo(txt){ try{ if($seriesInfo) $seriesInfo.textContent = String(txt||""); }catch(e){} }
+
+      function stopPolling(){ try{ if(POLL_T) clearInterval(POLL_T); }catch(e){}; POLL_T = null; }
+
+      function cleanTagSelection(){
+        // Avoid accidental AND-filter (entity_id + friendly_name) if one field is empty/old.
+        const fn = String($n.value||'').trim();
+        const eid = String($e.value||'').trim();
+        if(fn && eid){
+          // prefer entity_id if both set
+          try{ $n.value = ''; }catch(e){}
+        }
+      }
 
       function pad2(n){ return String(n).padStart(2,'0'); }
       function toLocalDatetimeValue(d){ return d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate())+"T"+pad2(d.getHours())+":"+pad2(d.getMinutes()); }
@@ -277,6 +314,50 @@
         if(j.field) $f.value = j.field;
       }
 
+      async function refreshResolved(){
+        try{
+          cleanTagSelection();
+          await resolveSignal();
+        }catch(e){}
+        try{
+          await loadFields();
+        }catch(e){}
+        const tf = timeFilter();
+        const fn = String($n.value||'').trim();
+        const eid = String($e.value||'').trim();
+        const txt = [
+          `entity_id: ${eid || '-'}`,
+          `friendly_name: ${fn || '-'}`,
+          `measurement: ${String($m.value||'') || '-'}`,
+          `field: ${String($f.value||'') || '-'}`,
+          `range: ${String($r.value||'') || '-'}`,
+          `start: ${tf.start || '-'}`,
+          `stop: ${tf.stop || '-'}`,
+        ].join('\n');
+        setResolvedSelection(txt);
+
+        // Quick info (best-effort)
+        try{
+          const m = String($m.value||'').trim();
+          const f = String($f.value||'').trim();
+          if(!m || !f){ setSeriesInfo(''); return; }
+          const j = await api('./api/stats', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({
+            measurement: m,
+            field: f,
+            entity_id: eid || null,
+            friendly_name: fn || null,
+            stats_scope: 'range',
+            range: tf.range,
+            start: tf.start,
+            stop: tf.stop,
+          })});
+          const s = j.stats || {};
+          setSeriesInfo(`Anzahl Werte: ${s.count || 0} | Aeltester: ${s.oldest_time || '-'} | Neuster: ${s.newest_time || '-'}`);
+        }catch(e){
+          setSeriesInfo('Info nicht verfuegbar (best-effort).');
+        }
+      }
+
       function clientTz(){
         let name = '';
         try{ name = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; }catch(e){}
@@ -289,33 +370,100 @@
         err(''); ok('');
         try{ window.InfluxBroStatus && window.InfluxBroStatus.start && window.InfluxBroStatus.start('export.run', 'Export laeuft...'); }catch(e){}
         try{
-          await resolveSignal();
-          await loadFields();
+          await refreshResolved();
           const tf = timeFilter();
           const tz = clientTz();
+          cleanTagSelection();
+          const fn = String($n.value||'').trim();
+          const eid = String($e.value||'').trim();
           const payload = {
             format: String($format.value||'text'),
             delimiter: String($delimiter.value||';').slice(0,1) || ';',
             measurement: String($m.value||'').trim(),
             field: String($f.value||'').trim(),
-            entity_id: String($e.value||'').trim() || null,
-            friendly_name: String($n.value||'').trim() || null,
+            entity_id: eid || null,
+            friendly_name: fn || null,
             start: tf.start,
             stop: tf.stop,
             tz_name: tz.tz_name,
             tz_offset_minutes: tz.tz_offset_minutes,
           };
           if(!payload.measurement || !payload.field) throw new Error('measurement/field fehlt. Bitte Auswahl setzen.');
-          const j = await api('./api/export', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
-          if($hint) $hint.textContent = `Zeilen: ${j.meta && j.meta.rows ? j.meta.rows : 0} (max: ${j.meta && j.meta.max_points ? j.meta.max_points : ''})`;
-          ok('Download wird gestartet...');
-          try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done('export.run', 'Export fertig.'); }catch(e){}
-          if(j.download_url) location.href = String(j.download_url);
+          setStatus('Starte Export Job...');
+          if($run) $run.disabled = true;
+          if($cancel) $cancel.disabled = false;
+          if($download) $download.style.display = 'none';
+          LAST_DOWNLOAD_URL = null;
+
+          const j = await api('./api/export_job/start', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+          JOB_ID = String(j.job_id || '');
+          if(!JOB_ID) throw new Error('job_id missing');
+
+          stopPolling();
+          POLL_T = setInterval(()=>{ pollOnce().catch(()=>{}); }, 800);
+          await pollOnce();
         }catch(e){
           const s = String(e && e.message ? e.message : e);
           try{ window.InfluxBroStatus && window.InfluxBroStatus.fail && window.InfluxBroStatus.fail('export.run', s); }catch(ex){}
           err(s);
+          try{ if($run) $run.disabled = false; }catch(x){}
+          try{ if($cancel) $cancel.disabled = true; }catch(x){}
+          try{ if($download) $download.style.display = 'none'; }catch(x){}
+          setStatus('');
         }
+      }
+
+      async function pollOnce(){
+        if(!JOB_ID) return;
+        const j = await api('./api/export_job/status?job_id=' + encodeURIComponent(JOB_ID));
+        const st = j.status || {};
+        const state = String(st.state || '');
+        const msg = String(st.message || '');
+        const rows = Number(st.rows_written || 0);
+        setStatus(`Status: ${state} | ${msg} | Zeilen: ${rows}`);
+        if($hint) $hint.textContent = rows ? (`Zeilen: ${rows}`) : '';
+        try{ window.InfluxBroStatus && window.InfluxBroStatus.progress && window.InfluxBroStatus.progress('export.run', `Status: ${state} | Zeilen: ${rows}`); }catch(e){}
+
+        if(st.download_url){
+          LAST_DOWNLOAD_URL = String(st.download_url);
+        }
+        if(state === 'done'){
+          stopPolling();
+          ok('Export fertig.');
+          try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done('export.run', `Export fertig. Zeilen: ${rows}`); }catch(e){}
+          if($cancel) $cancel.disabled = true;
+          if($run) $run.disabled = false;
+          if($download){
+            $download.style.display = 'inline-block';
+            $download.disabled = !LAST_DOWNLOAD_URL;
+          }
+        }
+        if(state === 'error'){
+          stopPolling();
+          const ee = String(st.error || 'Fehler');
+          err(ee);
+          try{ window.InfluxBroStatus && window.InfluxBroStatus.fail && window.InfluxBroStatus.fail('export.run', ee); }catch(e){}
+          if($cancel) $cancel.disabled = true;
+          if($run) $run.disabled = false;
+          if($download) $download.style.display = 'none';
+        }
+        if(state === 'cancelled'){
+          stopPolling();
+          ok('Abgebrochen.');
+          try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done('export.run', 'Abgebrochen.'); }catch(e){}
+          if($cancel) $cancel.disabled = true;
+          if($run) $run.disabled = false;
+          if($download) $download.style.display = 'none';
+        }
+      }
+
+      async function cancelJob(){
+        if(!JOB_ID) return;
+        try{ window.InfluxBroStatus && window.InfluxBroStatus.progress && window.InfluxBroStatus.progress('export.run', 'Abbruch angefordert...'); }catch(e){}
+        try{
+          await api('./api/export_job/cancel', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({job_id: JOB_ID})});
+          setStatus('Abbruch angefordert...');
+        }catch(e){}
       }
 
       (async function(){
@@ -335,9 +483,20 @@
           try{ await loadFriendly(); }catch(e){}
           try{ await loadEntity(); }catch(e){}
 
+          try{ await refreshResolved(); }catch(e){}
+
           $custom.style.display = ($r.value === 'custom') ? 'block' : 'none';
           $r.addEventListener('change', ()=>{ $custom.style.display = ($r.value === 'custom') ? 'block' : 'none'; });
           $run.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); }catch(e){}; runExport(); });
+          if($cancel) $cancel.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); }catch(e){}; cancelJob(); });
+          if($download) $download.addEventListener('click', (ev)=>{
+            try{ ev.preventDefault(); }catch(e){}
+            if(LAST_DOWNLOAD_URL) location.href = String(LAST_DOWNLOAD_URL);
+          });
+
+          const deb = (fn, ms)=>{ let t=null; return ()=>{ try{ if(t) clearTimeout(t); }catch(e){}; t=setTimeout(()=>{ fn().catch(()=>{}); }, ms||250); }; };
+          const upd = deb(refreshResolved, 220);
+          [$mf,$n,$e,$r,$start,$stop,$m,$f].forEach(el=>{ try{ if(el) el.addEventListener('change', upd); }catch(e){}; try{ if(el && el.tagName==='INPUT') el.addEventListener('input', upd); }catch(e){} });
         }catch(e){ err(e); }
       })();
       </script>
