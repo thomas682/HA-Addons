@@ -125,9 +125,15 @@ Details (Sampling) + Ableitung:
 
 - `Details: Dynamisch`: Graph zeigt weniger Punkte, laedt aber um grosse Spruenge herum automatisch mehr Detail nach (Schwellwert kommt aus den Ausreisser-Settings fuer die Einheit).
 - `Details: Manuell`: Punktdichte 1..100% (100% zeigt alle geladenen Punkte bis zum Sicherheitslimit).
-- `Ableitung: Hintergrund` / `Ableitung: Farbleiste`: faerbt nach Staerke der ersten Ableitung (gruen=0, rot=max), unabhaengig vom Vorzeichen.
+- `Ableitung: Hintergrund` und `Ableitung: Farbleiste` koennen gleichzeitig aktiv sein; beide faerben nach Staerke der ersten Ableitung (gruen=0, rot=max), unabhaengig vom Vorzeichen.
 - `Ableitungs-Graph`: zeigt die Ableitung zusaetzlich als Graph; umschaltbar `absolut/signiert`.
 - `Ableitung Outlier`: Slider-Schwelle; Punkte ueber der Schwelle werden im Ableitungs-Graph rot markiert.
+
+Bearbeitungsliste + Bearbeitungsgraph:
+
+- Bearbeitungsliste: nach der Ausreisser-Analyse wird angezeigt, wie viele Punkte geprueft wurden und wie viele Ausreisser gefunden wurden.
+- Bearbeitungsgraph: zeigt `DB Punkte` und `Ausreisser` jeweils im Format `gesamt / Bereich` (Bereich = aktueller X-Zoom).
+- Klick auf einen Punkt im Graph zeigt einen roten Tooltip (Zeit + Wert) im lokalen Client-Format.
 
 Raw Daten (DB):
 

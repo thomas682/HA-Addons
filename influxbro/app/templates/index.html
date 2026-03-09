@@ -312,11 +312,12 @@
        </details>
        <div class="muted" data-ui="tip.graph" title="tip.graph">Zoomen/Pan im Plot. Doppelklick setzt Zoom zurueck. Griff unten zieht die Hoehe.</div>
        <div class="muted" id="graph_points_info" style="margin-top: 6px;"></div>
-       <div class="graph_frame" data-ui="graph.frame" title="graph.frame">
+       <div class="graph_frame" data-ui="graph.frame" title="graph.frame" style="position:relative;">
+        <div id="graph_pick_tip" style="display:none; position:absolute; left: 10px; top: 10px; z-index: 50; background: #d11f1f; color:#fff; border-radius: 12px; padding: 8px 10px; font-size: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.24); max-width: calc(100% - 20px);"></div>
         <div id="chart_plotly"></div>
         <canvas id="chart" width="800" height="200"></canvas>
-        <div id="deriv_strip_plot" style="display:none; width: 100%; height: 60px; margin-top: 8px;"></div>
-        <div id="deriv_graph_plot" style="display:none; width: 100%; height: 140px; margin-top: 8px;"></div>
+        <div id="deriv_strip_plot" style="display:none; width: 100%; height: 60px; margin-top: 8px; pointer-events:none;"></div>
+        <div id="deriv_graph_plot" style="display:none; width: 100%; height: 140px; margin-top: 8px; pointer-events:none;"></div>
         <div id="graph_resize" data-ui="graph.resize" title="graph.resize" style="height: 12px; cursor: ns-resize; margin-top: 8px; border-radius: 999px; background: linear-gradient(90deg, #eee, #f8f8f8);"></div>
       </div>
 
@@ -381,6 +382,7 @@
               <div class="muted" id="table_range"></div>
               <div class="muted" id="table_info"></div>
               <div class="muted" id="edit_info"></div>
+              <div class="muted" id="analysis_info"></div>
 
               <div class="tbl_actions">
                 <label><input type="checkbox" id="tbl_time_from_graph" class="row_sel" data-ui="filterlist_time_from_graph"/>Zeit gefuehrt durch Graph</label>
@@ -544,7 +546,11 @@
                 <button class="btn_sm" id="edit_graph_refresh" data-ui="editlist.graph_refresh" title="editlist.graph_refresh">Refresh</button>
               </div>
               <div class="muted" id="edit_graph_info" style="margin-top: 6px;"></div>
-              <div id="edit_graph_plot" style="width: 100%; height: 320px; margin-top: 8px;"></div>
+              <div class="muted" id="edit_graph_counts" style="margin-top: 4px;"></div>
+              <div style="position:relative; margin-top: 8px;">
+                <div id="edit_graph_pick_tip" style="display:none; position:absolute; left: 10px; top: 10px; z-index: 50; background: #d11f1f; color:#fff; border-radius: 12px; padding: 8px 10px; font-size: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.24); max-width: calc(100% - 20px);"></div>
+                <div id="edit_graph_plot" style="width: 100%; height: 320px;"></div>
+              </div>
             </div>
           </div>
         </div>
@@ -723,6 +729,10 @@ const $derivOutlierThr = document.getElementById('deriv_outlier_thr');
 const $derivOutlierLbl = document.getElementById('deriv_outlier_lbl');
 
 const $graphPointsInfo = document.getElementById('graph_points_info');
+const $analysisInfo = document.getElementById('analysis_info');
+const $editGraphCounts = document.getElementById('edit_graph_counts');
+const $graphPickTip = document.getElementById('graph_pick_tip');
+const $editGraphPickTip = document.getElementById('edit_graph_pick_tip');
 
 const $rawTimeFromGraph = document.getElementById('raw_time_from_graph');
 
@@ -921,12 +931,6 @@ function _updateGraphDetailUi(){
 
 function _normalizeDerivToggles(changedEl){
   try{
-    if($derivBg && $derivStrip){
-      if(changedEl === $derivBg && $derivBg.checked) $derivStrip.checked = false;
-      if(changedEl === $derivStrip && $derivStrip.checked) $derivBg.checked = false;
-      // if both ended up checked (old state), prefer background
-      if($derivBg.checked && $derivStrip.checked) $derivStrip.checked = false;
-    }
     if($derivAbs && $derivSigned){
       if(changedEl === $derivAbs && $derivAbs.checked) $derivSigned.checked = false;
       if(changedEl === $derivSigned && $derivSigned.checked) $derivAbs.checked = false;
@@ -940,6 +944,77 @@ function _normalizeDerivToggles(changedEl){
 let LAST_ROWS_RAW = null;
 let LAST_JUMP_SPANS = [];
 let LAST_TOTAL_POINTS = null;
+
+let OUTLIER_SCANNED_TOTAL = null;
+let OUTLIER_FOUND_TOTAL = null;
+
+let EDIT_GRAPH_PTS = null;
+
+function _updateAnalysisInfo(){
+  try{
+    if(!$analysisInfo) return;
+    if(OUTLIER_SCANNED_TOTAL === null && OUTLIER_FOUND_TOTAL === null){
+      $analysisInfo.textContent = '';
+      return;
+    }
+    const a = (OUTLIER_SCANNED_TOTAL === null || OUTLIER_SCANNED_TOTAL === undefined) ? '-' : String(Math.max(0, Math.round(Number(OUTLIER_SCANNED_TOTAL)||0)));
+    const b = (OUTLIER_FOUND_TOTAL === null || OUTLIER_FOUND_TOTAL === undefined) ? '-' : String(Math.max(0, Math.round(Number(OUTLIER_FOUND_TOTAL)||0)));
+    $analysisInfo.textContent = `Analyse geprueft: ${a} | Ausreisser: ${b}`;
+  }catch(e){}
+}
+
+function _updateEditGraphCounts(xRange){
+  try{
+    if(!$editGraphCounts) return;
+    const pts = Array.isArray(EDIT_GRAPH_PTS) ? EDIT_GRAPH_PTS : [];
+    const out = Array.isArray(OUTLIER_ROWS) ? OUTLIER_ROWS : [];
+
+    const totalPts = pts.length;
+    const totalOut = out.length;
+
+    let visiblePts = totalPts;
+    let visibleOut = totalOut;
+
+    let lo = null;
+    let hi = null;
+    if(xRange && xRange[0] && xRange[1]){
+      const a = Date.parse(String(xRange[0]));
+      const b = Date.parse(String(xRange[1]));
+      if(isFinite(a) && isFinite(b)){
+        lo = Math.min(a,b);
+        hi = Math.max(a,b);
+      }
+    }
+    if(lo !== null && hi !== null){
+      visiblePts = pts.filter(p=>{
+        const t = Date.parse(String(p && p.time ? p.time : ''));
+        return isFinite(t) && t >= lo && t <= hi;
+      }).length;
+      visibleOut = out.filter(r=>{
+        const t = Date.parse(String(r && r.time ? r.time : ''));
+        return isFinite(t) && t >= lo && t <= hi;
+      }).length;
+    }
+
+    $editGraphCounts.textContent = `DB Punkte: ${totalPts} / ${visiblePts} | Ausreisser: ${totalOut} / ${visibleOut}`;
+  }catch(e){}
+}
+
+function _showPickTip(el, isoOrMs, val){
+  try{
+    if(!el) return;
+    const ms = (typeof isoOrMs === 'number') ? isoOrMs : Date.parse(String(isoOrMs||''));
+    const iso = isFinite(ms) ? new Date(ms).toISOString() : String(isoOrMs||'');
+    const t = fmtTs(iso);
+    const v = fmtNum(val);
+    el.textContent = t ? (t + ' | ' + v) : v;
+    el.style.display = 'block';
+  }catch(e){}
+}
+
+function _hidePickTip(el){
+  try{ if(el){ el.style.display = 'none'; el.textContent = ''; } }catch(e){}
+}
 
 function _updateGraphPointsInfo(){
   try{
@@ -2104,6 +2179,7 @@ function drawPlotly(rows){
     });
 
     $plotly.on("plotly_doubleclick", () => {
+      try{ _hidePickTip($graphPickTip); }catch(e){}
       const xs = (LAST_ROWS || []).map(r => Date.parse(r && r.time ? r.time : "")).filter(t => isFinite(t));
       if(xs.length){
         TABLE_TIME.graph_start_ms = Math.min(...xs);
@@ -2120,6 +2196,17 @@ function drawPlotly(rows){
       try{ _updateGraphPointsInfo(); }catch(e){}
       scheduleStatsCurrentReload();
       scheduleRawReload(true);
+    });
+
+    $plotly.on("plotly_click", (ev) => {
+      try{
+        const p = ev && ev.points && ev.points[0] ? ev.points[0] : null;
+        if(!p) return;
+        const x = p.x;
+        const y = p.y;
+        const ms = (x instanceof Date) ? x.getTime() : Date.parse(String(x||''));
+        _showPickTip($graphPickTip, ms, y);
+      }catch(e){}
     });
   }
   return true;
@@ -3960,6 +4047,7 @@ async function refreshEditGraph(){
     _renderGraphQueryPanel();
   }catch(e){}
   const pts = j.rows || [];
+  try{ EDIT_GRAPH_PTS = pts; }catch(e){ EDIT_GRAPH_PTS = null; }
   const xsAll = pts.map(p=>p.time);
   const ysAll = pts.map(p=>p.value);
 
@@ -3967,13 +4055,27 @@ async function refreshEditGraph(){
   const ysMark = rows.slice(0, 5000).map(r=>r.value);
 
   const traces = [
-    { x: xsAll, y: ysAll, mode: 'lines', name: 'DB', line: {width: 1, color: 'rgba(0,0,0,0.55)'} },
-    { x: xsMark, y: ysMark, mode: 'markers', name: 'Bearbeitung', marker: {size: 8, color: '#d11f1f', line: {width: 1, color: '#fff'} } },
+    {
+      x: xsAll,
+      y: ysAll,
+      mode: 'lines',
+      name: 'DB',
+      line: {width: 1, color: 'rgba(0,0,0,0.55)'},
+      hovertemplate: '%{x|%d.%m.%Y %H:%M:%S.%L}<br>%{y}<extra></extra>',
+    },
+    {
+      x: xsMark,
+      y: ysMark,
+      mode: 'markers',
+      name: 'Bearbeitung',
+      marker: {size: 8, color: '#d11f1f', line: {width: 1, color: '#fff'} },
+      hovertemplate: '%{x|%d.%m.%Y %H:%M:%S.%L}<br>%{y}<extra></extra>',
+    },
   ];
   const layout = {
     margin: {l: 48, r: 12, t: 10, b: 36},
     height: 320,
-    xaxis: {title: '', type: 'date'},
+    xaxis: {title: '', type: 'date', tickformat: '%d.%m %H:%M', hoverformat: '%d.%m.%Y %H:%M:%S.%L'},
     yaxis: {title: ''},
     showlegend: true,
     legend: {orientation: 'h'},
@@ -3981,6 +4083,39 @@ async function refreshEditGraph(){
   try{
     if(window.Plotly && $editGraphPlot){
       await window.Plotly.newPlot($editGraphPlot, traces, layout, {displayModeBar: false, responsive: true});
+      try{ _updateEditGraphCounts(null); }catch(e){}
+
+      if(!$editGraphPlot.__influxbro_bound){
+        $editGraphPlot.__influxbro_bound = true;
+        try{
+          $editGraphPlot.on('plotly_relayout', (ev)=>{
+            try{
+              if(!ev) return;
+              if(_isTruthy(ev['xaxis.autorange'])){ _updateEditGraphCounts(null); return; }
+              const r0 = ev['xaxis.range[0]'] || ev['xaxis.rangeslider.range[0]'];
+              const r1 = ev['xaxis.range[1]'] || ev['xaxis.rangeslider.range[1]'];
+              if(r0 && r1) _updateEditGraphCounts([r0, r1]);
+            }catch(e){}
+          });
+        }catch(e){}
+
+        try{
+          $editGraphPlot.on('plotly_doubleclick', ()=>{ try{ _hidePickTip($editGraphPickTip); }catch(e){}; try{ _updateEditGraphCounts(null); }catch(e){}; });
+        }catch(e){}
+
+        try{
+          $editGraphPlot.on('plotly_click', (ev)=>{
+            try{
+              const p = ev && ev.points && ev.points[0] ? ev.points[0] : null;
+              if(!p) return;
+              const x = p.x;
+              const y = p.y;
+              const ms = (x instanceof Date) ? x.getTime() : Date.parse(String(x||''));
+              _showPickTip($editGraphPickTip, ms, y);
+            }catch(e){}
+          });
+        }catch(e){}
+      }
     }
   }catch(e){}
 }
@@ -4699,6 +4834,7 @@ async function runOutlierScan(){
     OUTLIER_ROWS = [];
     FILTER_SELECTED = new Set();
     let scannedTotal = 0;
+    try{ OUTLIER_SCANNED_TOTAL = 0; OUTLIER_FOUND_TOTAL = 0; _updateAnalysisInfo(); }catch(e){}
     let prevValue = null;
     let lastIso = null;
 
@@ -4730,6 +4866,7 @@ async function runOutlierScan(){
 
       const got = (pj.rows || []).map(r => ({ time: r.time, value: r.value, reason: r.reason || "" }));
       OUTLIER_ROWS = OUTLIER_ROWS.concat(got);
+      try{ OUTLIER_SCANNED_TOTAL = scannedTotal; OUTLIER_FOUND_TOTAL = (OUTLIER_ROWS||[]).length; _updateAnalysisInfo(); }catch(e){}
       if(OUTLIER_ROWS.length >= 5000){
         OUTLIER_ROWS = OUTLIER_ROWS.slice(0, 5000);
         ok(`Ausreisser gefunden: ${OUTLIER_ROWS.length} (Limit 5000 erreicht) | geprueft: ${scannedTotal}`);
@@ -4746,6 +4883,7 @@ async function runOutlierScan(){
     renderTableRange();
     renderTable();
     try{ refreshEditGraph().catch(()=>{}); }catch(e){}
+    try{ OUTLIER_SCANNED_TOTAL = scannedTotal; OUTLIER_FOUND_TOTAL = (OUTLIER_ROWS||[]).length; _updateAnalysisInfo(); }catch(e){}
     if(!document.getElementById('ok').textContent){
       ok(`Ausreisser gefunden: ${(OUTLIER_ROWS||[]).length} | geprueft: ${scannedTotal}`);
     }

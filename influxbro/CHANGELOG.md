@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.11.94
+
+### Features
+
+- Bearbeitungsliste: Anzeige der geprueften Punkte (Analyse) + Ausreisseranzahl.
+- Bearbeitungsgraph: Anzeige `DB Punkte gesamt/bereich` und `Ausreisser gesamt/bereich`.
+- Graph: Klick auf einen Punkt zeigt einen roten Tooltip (Zeit + Wert) im lokalen Format.
+
+### Fixes
+
+- Bearbeitungsgraph: Hover/Axis Zeitformat ist konsistent zur Tabellenanzeige (lokale Client-Zeit).
+- Ableitung: Hintergrund + Farbleiste koennen gleichzeitig aktiv sein.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.11.93
 
 ### Features
