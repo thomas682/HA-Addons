@@ -218,7 +218,8 @@ Tipp: In der Toolbar gibt es Mehrfachaktionen (z.B. Werte davor uebernehmen oder
   - Follow/Refresh fuer Live-Ansicht
   - Suche/Filter um Fehler schneller zu finden
   - Copy/Download fuer Support oder Analyse
-- Export: erstellt ein Debug-Bundle (inkl. Client-Fehler wie "Failed to fetch").
+- Export: erstellt ein Debug-Bundle (JSON, inkl. Client-Fehler wie "Failed to fetch").
+- Debug report: erstellt einen GitHub-freundlichen Report als Markdown-Datei (empfohlen fuer Issue/Kommentar).
 
 ## Jobs
 

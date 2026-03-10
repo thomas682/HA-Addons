@@ -334,6 +334,11 @@
         bSave.onclick = (ev)=>{
           try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
           const ok = saveDetailsState(main);
+          try{
+            if(window.InfluxBroLayout && typeof window.InfluxBroLayout.save === 'function'){
+              window.InfluxBroLayout.save();
+            }
+          }catch(e){}
           // lightweight feedback via title
           bSave.setAttribute('title', ok ? 'Gespeichert.' : 'Speichern fehlgeschlagen.');
         };
@@ -389,9 +394,67 @@
         const $list = document.getElementById('influxbro_status_list');
         const $last = document.getElementById('influxbro_status_last');
 
+        const LS_STATUS = 'influxbro_status_bus_v1';
+        const STATUS_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
         const items = new Map();
         let last = null;
         let timer = null;
+
+        function loadPersisted(){
+          try{
+            const raw = localStorage.getItem(LS_STATUS);
+            if(!raw) return;
+            const j = JSON.parse(raw);
+            if(!j || typeof j !== 'object') return;
+            const at = Number(j.at_ms || 0);
+            if(!(isFinite(at) && at > 0)) return;
+            if(Date.now() - at > STATUS_MAX_AGE_MS) return;
+
+            const xs = Array.isArray(j.items) ? j.items : [];
+            xs.forEach(x => {
+              try{
+                if(!x || typeof x !== 'object') return;
+                const k = String(x.key || '');
+                if(!k) return;
+                const started = Number(x.started_at_ms || 0);
+                if(!(isFinite(started) && started > 0)) return;
+                items.set(k, {
+                  key: k,
+                  text: String(x.text || ''),
+                  state: String(x.state || ''),
+                  started_at_ms: started,
+                  done_ms: (x.done_ms !== null && x.done_ms !== undefined) ? Number(x.done_ms) : null,
+                });
+              }catch(e){}
+            });
+            if(j.last && typeof j.last === 'object'){
+              const t = String(j.last.text || '');
+              last = t ? { text: t } : null;
+            }
+          }catch(e){}
+        }
+
+        let _PERSIST_T = null;
+        function persistNow(){
+          try{
+            const xs = Array.from(items.values()).slice(0, 40).map(x => ({
+              key: String(x.key || ''),
+              text: String(x.text || ''),
+              state: String(x.state || ''),
+              started_at_ms: Number(x.started_at_ms || 0),
+              done_ms: (x.done_ms !== null && x.done_ms !== undefined) ? Number(x.done_ms) : null,
+            }));
+            const j = { at_ms: Date.now(), items: xs, last: (last && last.text) ? {text: String(last.text)} : null };
+            localStorage.setItem(LS_STATUS, JSON.stringify(j));
+          }catch(e){}
+        }
+        function persistDebounced(){
+          try{
+            if(_PERSIST_T) clearTimeout(_PERSIST_T);
+            _PERSIST_T = setTimeout(persistNow, 120);
+          }catch(e){}
+        }
 
         function fmtMs(ms){
           try{
@@ -410,10 +473,10 @@
             const running = Array.from(items.values()).filter(x => x.state === 'running');
             if($head) $head.style.display = running.length ? 'flex' : 'none';
             if($headTxt) $headTxt.textContent = running.length ? String(running[0].text || 'Aktion laeuft...') : '';
-            if($headTime) $headTime.textContent = running.length ? fmtMs(performance.now() - running[0].t0) : '';
+            if($headTime) $headTime.textContent = running.length ? fmtMs(Date.now() - Number(running[0].started_at_ms || Date.now())) : '';
 
             if($list){
-              const xs = Array.from(items.values()).slice().sort((a,b)=>a.t0 - b.t0);
+              const xs = Array.from(items.values()).slice().sort((a,b)=>Number(a.started_at_ms||0) - Number(b.started_at_ms||0));
               $list.innerHTML = '';
               xs.forEach(x => {
                 const div = document.createElement('div');
@@ -429,7 +492,9 @@
                 left.appendChild(k);
                 const tm = document.createElement('div');
                 tm.className = 'tm';
-                tm.textContent = (x.state === 'running') ? fmtMs(performance.now() - x.t0) : (x.done_ms ? fmtMs(x.done_ms) : '');
+                tm.textContent = (x.state === 'running')
+                  ? fmtMs(Date.now() - Number(x.started_at_ms || Date.now()))
+                  : ((x.done_ms !== null && x.done_ms !== undefined) ? fmtMs(Number(x.done_ms||0)) : '');
                 div.appendChild(left);
                 div.appendChild(tm);
                 $list.appendChild(div);
@@ -463,7 +528,8 @@
           start: (key, text)=>{
             const k = String(key || '');
             if(!k) return;
-            items.set(k, { key: k, text: String(text || ''), t0: performance.now(), state: 'running' });
+            items.set(k, { key: k, text: String(text || ''), started_at_ms: Date.now(), state: 'running', done_ms: null });
+            persistDebounced();
             ensureTimer();
             render();
           },
@@ -473,6 +539,7 @@
             if(!it) return;
             it.text = String(text || it.text || '');
             items.set(k, it);
+            persistDebounced();
             render();
           },
           done: (key, text)=>{
@@ -480,11 +547,12 @@
             const it = items.get(k);
             if(it){
               it.state = 'done';
-              it.done_ms = performance.now() - it.t0;
+              it.done_ms = Date.now() - Number(it.started_at_ms || Date.now());
               it.text = String(text || it.text || '');
               items.set(k, it);
             }
             last = { text: String(text || '') };
+            persistDebounced();
             render();
             stopTimerIfIdle();
           },
@@ -493,11 +561,12 @@
             const it = items.get(k);
             if(it){
               it.state = 'fail';
-              it.done_ms = performance.now() - it.t0;
+              it.done_ms = Date.now() - Number(it.started_at_ms || Date.now());
               it.text = String(text || it.text || '');
               items.set(k, it);
             }
             last = { text: String(text || '') };
+            persistDebounced();
             render();
             stopTimerIfIdle();
           },
@@ -505,10 +574,18 @@
             const k = String(key || '');
             if(!k) return;
             items.delete(k);
+            persistDebounced();
             render();
             stopTimerIfIdle();
           },
         };
+
+        // Restore persisted items so status survives page navigation.
+        loadPersisted();
+        render();
+        try{
+          if(Array.from(items.values()).some(x => String(x.state||'') === 'running')) ensureTimer();
+        }catch(e){}
       }catch(e){}
     }
 

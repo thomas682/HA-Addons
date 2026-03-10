@@ -312,10 +312,9 @@
        </details>
        <div class="muted" data-ui="tip.graph" title="tip.graph">Zoomen/Pan im Plot. Doppelklick setzt Zoom zurueck. Griff unten zieht die Hoehe.</div>
        <div class="muted" id="graph_points_info" style="margin-top: 6px;"></div>
-       <div class="graph_frame" data-ui="graph.frame" title="graph.frame" style="position:relative;">
-        <div id="graph_pick_tip" style="display:none; position:absolute; left: 10px; top: 10px; z-index: 50; background: #d11f1f; color:#fff; border-radius: 12px; padding: 8px 10px; font-size: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.24); max-width: calc(100% - 20px);"></div>
-        <div id="chart_plotly"></div>
-        <canvas id="chart" width="800" height="200"></canvas>
+        <div class="graph_frame" data-ui="graph.frame" title="graph.frame" style="position:relative;">
+         <div id="chart_plotly"></div>
+         <canvas id="chart" width="800" height="200"></canvas>
         <div id="deriv_strip_plot" style="display:none; width: 100%; height: 60px; margin-top: 8px; pointer-events:none;"></div>
         <div id="deriv_graph_plot" style="display:none; width: 100%; height: 140px; margin-top: 8px; pointer-events:none;"></div>
         <div id="graph_resize" data-ui="graph.resize" title="graph.resize" style="height: 12px; cursor: ns-resize; margin-top: 8px; border-radius: 999px; background: linear-gradient(90deg, #eee, #f8f8f8);"></div>
@@ -545,7 +544,6 @@
               <div class="muted" id="edit_graph_info" style="margin-top: 6px;"></div>
               <div class="muted" id="edit_graph_counts" style="margin-top: 4px;"></div>
               <div style="position:relative; margin-top: 8px;">
-                <div id="edit_graph_pick_tip" style="display:none; position:absolute; left: 10px; top: 10px; z-index: 50; background: #d11f1f; color:#fff; border-radius: 12px; padding: 8px 10px; font-size: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.24); max-width: calc(100% - 20px);"></div>
                 <div id="edit_graph_plot" style="width: 100%; height: 320px;"></div>
               </div>
             </div>
@@ -728,9 +726,6 @@ const $derivOutlierLbl = document.getElementById('deriv_outlier_lbl');
 const $graphPointsInfo = document.getElementById('graph_points_info');
 const $analysisInfo = document.getElementById('analysis_info');
 const $editGraphCounts = document.getElementById('edit_graph_counts');
-const $graphPickTip = document.getElementById('graph_pick_tip');
-const $editGraphPickTip = document.getElementById('edit_graph_pick_tip');
-
 const $rawTimeFromGraph = document.getElementById('raw_time_from_graph');
 
 const $rawStatus = document.getElementById('raw_status');
@@ -907,6 +902,22 @@ function setSelectOptions(selectEl, items, placeholder){
 }
 
 const LS_KEY = "influxbro_ui_state_v1";
+const LS_LAYOUT_SAVED = "influxbro_dash_layout_saved_v1";
+
+function dashLayoutSaved(){
+  try{ return localStorage.getItem(LS_LAYOUT_SAVED) === '1'; }catch(e){ return false; }
+}
+
+// Hook for the shared "Darstellung speichern" button (sidebar).
+try{
+  window.InfluxBroLayout = {
+    save: ()=>{
+      try{ localStorage.setItem(LS_LAYOUT_SAVED, '1'); }catch(e){}
+      try{ saveState(); }catch(e){}
+      try{ cacheSaveNow(); }catch(e){}
+    },
+  };
+}catch(e){}
 
 function loadState(){
   try{
@@ -998,22 +1009,6 @@ function _updateEditGraphCounts(xRange){
 
     $editGraphCounts.textContent = `DB Punkte: ${totalPts} / ${visiblePts} | Ausreisser: ${totalOut} / ${visibleOut}`;
   }catch(e){}
-}
-
-function _showPickTip(el, isoOrMs, val){
-  try{
-    if(!el) return;
-    const ms = (typeof isoOrMs === 'number') ? isoOrMs : Date.parse(String(isoOrMs||''));
-    const iso = isFinite(ms) ? new Date(ms).toISOString() : String(isoOrMs||'');
-    const t = fmtTs(iso);
-    const v = fmtNum(val);
-    el.textContent = t ? (t + ' | ' + v) : v;
-    el.style.display = 'block';
-  }catch(e){}
-}
-
-function _hidePickTip(el){
-  try{ if(el){ el.style.display = 'none'; el.textContent = ''; } }catch(e){}
 }
 
 function _updateGraphPointsInfo(){
@@ -1286,6 +1281,8 @@ function _applyOverlays(){
 function saveState(){
   try{
     const j = {
+      measurement: $m ? String($m.value || "") : "",
+      field: $f ? String($f.value || "") : "",
       measurement_filter: $mf ? $mf.value : "",
       friendly_name: $n ? $n.value : "",
       entity_id: $e ? $e.value : "",
@@ -2284,7 +2281,6 @@ function drawPlotly(rows){
     });
 
     $plotly.on("plotly_doubleclick", () => {
-      try{ _hidePickTip($graphPickTip); }catch(e){}
       const xs = (LAST_ROWS || []).map(r => Date.parse(r && r.time ? r.time : "")).filter(t => isFinite(t));
       if(xs.length){
         TABLE_TIME.graph_start_ms = Math.min(...xs);
@@ -2301,17 +2297,6 @@ function drawPlotly(rows){
       try{ _updateGraphPointsInfo(); }catch(e){}
       scheduleStatsCurrentReload();
       scheduleRawReload(true);
-    });
-
-    $plotly.on("plotly_click", (ev) => {
-      try{
-        const p = ev && ev.points && ev.points[0] ? ev.points[0] : null;
-        if(!p) return;
-        const x = p.x;
-        const y = p.y;
-        const ms = (x instanceof Date) ? x.getTime() : Date.parse(String(x||''));
-        _showPickTip($graphPickTip, ms, y);
-      }catch(e){}
     });
   }
   return true;
@@ -3439,14 +3424,27 @@ try{
 // Graph detail controls
 try{
   const st = loadState();
-  if($graphDetailMode && st.graph_detail_mode) $graphDetailMode.value = String(st.graph_detail_mode);
-  if($graphManualDensity && st.graph_manual_density) $graphManualDensity.value = String(st.graph_manual_density);
-  if($derivBg) $derivBg.checked = (st.deriv_bg !== undefined) ? !!st.deriv_bg : true;
-  if($derivStrip) $derivStrip.checked = (st.deriv_strip !== undefined) ? !!st.deriv_strip : true;
-  if($derivGraph) $derivGraph.checked = (st.deriv_graph !== undefined) ? !!st.deriv_graph : true;
-  if($derivSigned) $derivSigned.checked = (st.deriv_signed !== undefined) ? !!st.deriv_signed : false;
-  if($derivAbs) $derivAbs.checked = (st.deriv_abs !== undefined) ? !!st.deriv_abs : ($derivSigned && $derivSigned.checked ? false : true);
-  if($derivOutlierThr) $derivOutlierThr.value = (st.deriv_outlier_thr !== undefined) ? String(st.deriv_outlier_thr) : "90";
+  const layoutSaved = dashLayoutSaved();
+  if(layoutSaved){
+    if($graphDetailMode && st.graph_detail_mode) $graphDetailMode.value = String(st.graph_detail_mode);
+    if($graphManualDensity && st.graph_manual_density) $graphManualDensity.value = String(st.graph_manual_density);
+    if($derivBg) $derivBg.checked = (st.deriv_bg !== undefined) ? !!st.deriv_bg : true;
+    if($derivStrip) $derivStrip.checked = (st.deriv_strip !== undefined) ? !!st.deriv_strip : true;
+    if($derivGraph) $derivGraph.checked = (st.deriv_graph !== undefined) ? !!st.deriv_graph : true;
+    if($derivSigned) $derivSigned.checked = (st.deriv_signed !== undefined) ? !!st.deriv_signed : false;
+    if($derivAbs) $derivAbs.checked = (st.deriv_abs !== undefined) ? !!st.deriv_abs : ($derivSigned && $derivSigned.checked ? false : true);
+    if($derivOutlierThr) $derivOutlierThr.value = (st.deriv_outlier_thr !== undefined) ? String(st.deriv_outlier_thr) : "90";
+  }else{
+    // Defaults on every dashboard open until the user explicitly saves the layout.
+    if($graphDetailMode) $graphDetailMode.value = 'dynamic';
+    if($graphManualDensity) $graphManualDensity.value = '100';
+    if($derivBg) $derivBg.checked = true;
+    if($derivStrip) $derivStrip.checked = true;
+    if($derivGraph) $derivGraph.checked = true;
+    if($derivSigned) $derivSigned.checked = false;
+    if($derivAbs) $derivAbs.checked = true;
+    if($derivOutlierThr) $derivOutlierThr.value = "90";
+  }
   if($reasonFilter) $reasonFilter.value = (st.reason_filter !== undefined) ? String(st.reason_filter || "") : "";
   if($classFilter) $classFilter.value = (st.class_filter !== undefined) ? String(st.class_filter || "all") : "all";
   try{ TABLE_REASON_FILTER = $reasonFilter ? String($reasonFilter.value || "") : ""; }catch(e){ TABLE_REASON_FILTER = ""; }
@@ -4370,20 +4368,7 @@ async function refreshEditGraph(){
         }catch(e){}
 
         try{
-          $editGraphPlot.on('plotly_doubleclick', ()=>{ try{ _hidePickTip($editGraphPickTip); }catch(e){}; try{ _updateEditGraphCounts(null); }catch(e){}; });
-        }catch(e){}
-
-        try{
-          $editGraphPlot.on('plotly_click', (ev)=>{
-            try{
-              const p = ev && ev.points && ev.points[0] ? ev.points[0] : null;
-              if(!p) return;
-              const x = p.x;
-              const y = p.y;
-              const ms = (x instanceof Date) ? x.getTime() : Date.parse(String(x||''));
-              _showPickTip($editGraphPickTip, ms, y);
-            }catch(e){}
-          });
+          $editGraphPlot.on('plotly_doubleclick', ()=>{ try{ _updateEditGraphCounts(null); }catch(e){}; });
         }catch(e){}
       }
     }
@@ -5320,6 +5305,36 @@ try{
     await loadMeasurements();
     if(st.measurement_filter) $mf.value = st.measurement_filter;
     renderMeasurements();
+
+    // Restore measurement/field selection (important for cache restore + showing last data).
+    const ensureSelectOption = (sel, val) => {
+      try{
+        if(!sel) return;
+        const s = String(val || "").trim();
+        if(!s) return;
+        const has = Array.from(sel.options || []).some(o => String(o.value) === s);
+        if(!has){
+          const o = document.createElement("option");
+          o.value = s;
+          o.textContent = s;
+          sel.appendChild(o);
+        }
+      }catch(e){}
+    };
+    try{
+      if(st.measurement){
+        ensureSelectOption($m, st.measurement);
+        $m.value = String(st.measurement);
+        await loadFields();
+        if(st.field){
+          ensureSelectOption($f, st.field);
+          $f.value = String(st.field);
+        }
+      }else{
+        // Ensure field list is present at least once.
+        await loadFields().catch(()=>{});
+      }
+    }catch(e){}
 
     // Restore stored selection early so list loads can narrow correctly.
     if(st.friendly_name) $n.value = st.friendly_name;

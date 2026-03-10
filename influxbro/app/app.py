@@ -24,7 +24,7 @@ from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
-from flask import Flask, jsonify, render_template, request, send_file
+from flask import Flask, jsonify, make_response, render_template, request, send_file
 from influxdb_client import InfluxDBClient
 from influxdb_client import Point
 from influxdb_client import WritePrecision
@@ -2576,6 +2576,209 @@ def api_logs_diag():
         "self_info": {"status": st_info, "slug": slug, "body": _snip(info_txt)},
         "checks": checks,
     })
+
+
+def _json_best_effort(txt: str) -> dict[str, Any] | None:
+    try:
+        data = json.loads(txt) if txt else None
+    except Exception:
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _md_code_block(lang: str, s: str) -> str:
+    # Avoid breaking markdown fences.
+    t = (s or "").replace("```", "` ` `")
+    return f"```{lang}\n{t}\n```\n"
+
+
+@app.post("/api/debug_report")
+def api_debug_report():
+    """Export a GitHub-friendly debug report as Markdown.
+
+    This is intended for user bug reports. It must not include secrets.
+    """
+
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    body = request.get_json(force=True) or {}
+
+    try:
+        tail = int(body.get("tail") or 2000)
+    except Exception:
+        tail = 2000
+    tail = min(20000, max(0, tail))
+
+    # Client-provided context (best-effort)
+    client = body.get("client") if isinstance(body.get("client"), dict) else {}
+    issue = body.get("issue") if isinstance(body.get("issue"), dict) else {}
+
+    def _safe_obj(x: Any, max_len: int = 20000) -> str:
+        try:
+            s = json.dumps(x, indent=2, sort_keys=True, ensure_ascii=True)
+        except Exception:
+            s = str(x)
+        s = _redact_secrets(s)
+        if len(s) > max_len:
+            s = s[:max_len] + "\n... (truncated)"
+        return s
+
+    def _cfg_redacted(c: dict[str, Any]) -> dict[str, Any]:
+        r = dict(c)
+        if r.get("token"):
+            r["token"] = "********"
+        if r.get("password"):
+            r["password"] = "********"
+        return r
+
+    def _tail_file(path: Path, want: int) -> str:
+        try:
+            if not path.exists():
+                return ""
+            txt = path.read_text(encoding="utf-8", errors="replace")
+        except Exception as e:
+            return f"ERROR reading {path}: {e}"
+        lines = (txt or "").splitlines()
+        if want and len(lines) > want:
+            lines = lines[-want:]
+        return _redact_secrets("\n".join(lines))
+
+    def _snip_text(s: str, n: int = 200) -> str:
+        try:
+            t = (s or "").replace("\r", "").strip()
+            t = t.replace("\n", " ")
+            return (t[:n] + "...") if len(t) > n else t
+        except Exception:
+            return (s or "")[:n]
+
+    # Home Assistant versions (Supervisor API)
+    ha_core = {"ok": False}
+    ha_supervisor = {"ok": False}
+    ha_os = {"ok": False}
+    try:
+        st, txt = _supervisor_get("/core/api/config", timeout_s=8)
+        j = _json_best_effort(txt)
+        if st == 200 and j:
+            ha_core = {"ok": True, "status": st, "version": j.get("version"), "time_zone": j.get("time_zone")}
+        else:
+            ha_core = {"ok": False, "status": st, "error": _snip_text(txt)}
+    except Exception as e:
+        ha_core = {"ok": False, "error": str(e) or e.__class__.__name__}
+
+    try:
+        st, txt = _supervisor_get("/supervisor/info", timeout_s=8)
+        j = _json_best_effort(txt)
+        d = (j.get("data") if isinstance(j, dict) else None) if j else None
+        if st == 200 and isinstance(d, dict):
+            ha_supervisor = {"ok": True, "status": st, "version": d.get("version"), "healthy": d.get("healthy")}
+        else:
+            ha_supervisor = {"ok": False, "status": st}
+    except Exception as e:
+        ha_supervisor = {"ok": False, "error": str(e) or e.__class__.__name__}
+
+    try:
+        st, txt = _supervisor_get("/os/info", timeout_s=8)
+        j = _json_best_effort(txt)
+        d = (j.get("data") if isinstance(j, dict) else None) if j else None
+        if st == 200 and isinstance(d, dict):
+            ha_os = {"ok": True, "status": st, "version": d.get("version"), "board": d.get("board")}
+        else:
+            ha_os = {"ok": False, "status": st}
+    except Exception as e:
+        ha_os = {"ok": False, "error": str(e) or e.__class__.__name__}
+
+    # Server-side diagnostics (reuse existing endpoints best-effort)
+    try:
+        ha_debug = api_ha_debug().get_json()  # type: ignore[attr-defined]
+    except Exception:
+        ha_debug = None
+    try:
+        influx_info = api_influx_info().get_json()  # type: ignore[attr-defined]
+    except Exception:
+        influx_info = None
+    try:
+        logs_diag = api_logs_diag().get_json()  # type: ignore[attr-defined]
+    except Exception:
+        logs_diag = None
+    try:
+        jobs = api_jobs().get_json()  # type: ignore[attr-defined]
+    except Exception:
+        jobs = None
+    try:
+        caches = api_cache_list().get_json()  # type: ignore[attr-defined]
+    except Exception:
+        caches = None
+
+    logfile_txt = _tail_file(LOG_FILE, tail)
+
+    sup_txt = ""
+    try:
+        st, txt = _supervisor_get(f"/addons/self/logs?lines={tail}", timeout_s=12)
+        if st == 200:
+            # Try unwrap similar to api_logs
+            sup_txt = txt
+            try:
+                j = _json_best_effort(txt)
+                if j and isinstance(j.get("data"), str):
+                    sup_txt = str(j.get("data") or "")
+            except Exception:
+                sup_txt = txt
+            sup_txt = _redact_secrets(sup_txt)
+        else:
+            sup_txt = f"HTTP {st}: {txt}"
+    except Exception as e:
+        sup_txt = f"ERROR: {e}"
+
+    exported_at = _utc_now_iso_ms()
+    addon_ver = ADDON_VERSION
+
+    # Build Markdown
+    lines: list[str] = []
+    lines.append(f"# InfluxBro Debug Report\n")
+    lines.append(f"Exported at: `{exported_at}`\n")
+    lines.append(f"Add-on version: `{addon_ver}`\n")
+
+    title = str(issue.get("title") or "").strip()
+    desc = str(issue.get("description") or "").strip()
+    steps = str(issue.get("steps") or "").strip()
+    if title or desc or steps:
+        lines.append("## User Report\n")
+        if title:
+            lines.append(f"- Title: {title}\n")
+        if desc:
+            lines.append("\n**Description**\n\n" + desc + "\n")
+        if steps:
+            lines.append("\n**Steps to reproduce**\n\n" + steps + "\n")
+
+    lines.append("## Versions\n")
+    lines.append(_md_code_block("json", _safe_obj({"ha_core": ha_core, "ha_supervisor": ha_supervisor, "ha_os": ha_os})))
+
+    lines.append("## Client Context\n")
+    lines.append(_md_code_block("json", _safe_obj(client)))
+
+    lines.append("## Add-on Config (redacted)\n")
+    lines.append(_md_code_block("json", _safe_obj(_cfg_redacted(cfg))))
+
+    lines.append("## Diagnostics\n")
+    lines.append(_md_code_block("json", _safe_obj({"ha_debug": ha_debug, "logs_diag": logs_diag, "influx_info": influx_info})))
+
+    lines.append("## Jobs\n")
+    lines.append(_md_code_block("json", _safe_obj(jobs)))
+
+    lines.append("## Dashboard Cache\n")
+    lines.append(_md_code_block("json", _safe_obj(caches)))
+
+    lines.append("## Logfile (tail)\n")
+    lines.append(_md_code_block("text", logfile_txt))
+
+    lines.append("## Supervisor Logs (tail)\n")
+    lines.append(_md_code_block("text", sup_txt))
+
+    md = "\n".join(lines)
+    fn = f"influxbro_debug_report_{addon_ver}_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}.md"
+    resp = make_response(md)
+    resp.headers["Content-Type"] = "text/markdown; charset=utf-8"
+    resp.headers["Content-Disposition"] = f"attachment; filename=\"{fn}\""
+    return resp
 
 
 def _backup_safe(s: str) -> str:

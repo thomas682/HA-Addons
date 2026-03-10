@@ -102,6 +102,10 @@
         </div>
         <div>
           <label>&nbsp;</label>
+          <button id="debug_report" type="button" data-ui="logs.debug_report" title="logs.debug_report">Debug report</button>
+        </div>
+        <div>
+          <label>&nbsp;</label>
           <button id="clear" data-ui="logs.clear" title="logs.clear">Clear view</button>
         </div>
         <div>
@@ -134,6 +138,7 @@
       const $download = document.getElementById('download');
       const $clear = document.getElementById('clear');
       const $export = document.getElementById('export');
+      const $debugReport = document.getElementById('debug_report');
       const $wrap = document.getElementById('wrap');
       const $q = document.getElementById('q');
       const $err = document.getElementById('err');
@@ -375,6 +380,73 @@
         }, 0);
       }
 
+      function _filenameFromContentDisposition(cd){
+        try{
+          const s = String(cd || '');
+          const m = s.match(/filename\*=UTF-8''([^;]+)|filename="([^"]+)"|filename=([^;]+)/i);
+          const raw = m ? (m[1] || m[2] || m[3]) : '';
+          const fn = raw ? decodeURIComponent(raw.trim()) : '';
+          return fn || '';
+        }catch(e){
+          return '';
+        }
+      }
+
+      async function debugReport(){
+        err('');
+        const tail = Number($tail.value || 2000);
+        const payload = {
+          tail,
+          issue: {
+            title: '',
+            description: '',
+            steps: '',
+          },
+          client: {
+            exported_at: new Date().toISOString(),
+            page: 'logs',
+            href: String(location && location.href ? location.href : ''),
+            user_agent: String(navigator && navigator.userAgent ? navigator.userAgent : ''),
+            ui: {
+              source: String($source && $source.value ? $source.value : ''),
+              view_profile: String($viewProfile && $viewProfile.value ? $viewProfile.value : ''),
+              server_profile: String($serverProfile && $serverProfile.value ? $serverProfile.value : ''),
+              server_influx_queries: !!($serverInfluxQueries && $serverInfluxQueries.checked),
+              tail: tail,
+              wrap: !!($wrap && $wrap.checked),
+              search: String($q && $q.value ? $q.value : ''),
+            },
+            client_errors: (window.InfluxBroClientLog && window.InfluxBroClientLog.getBuffer) ? window.InfluxBroClientLog.getBuffer() : [],
+            local_storage: snapshotLocalStorage(),
+            visible_log_text: String($logpre && $logpre.textContent ? $logpre.textContent : ''),
+          },
+        };
+
+        let r;
+        try{
+          r = await fetch('./api/debug_report', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+        }catch(e){
+          try{ window.InfluxBroClientLog && window.InfluxBroClientLog.fetchError && window.InfluxBroClientLog.fetchError('./api/debug_report', payload, e); }catch(x){}
+          throw new Error('Failed to fetch');
+        }
+        if(!r.ok){
+          const t = await r.text().catch(()=> '');
+          throw new Error(t || ('HTTP ' + r.status));
+        }
+        const blob = await r.blob();
+        const cd = r.headers.get('content-disposition');
+        const fn = _filenameFromContentDisposition(cd) || 'influxbro_debug_report.md';
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = fn;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(()=>{
+          try{ URL.revokeObjectURL(a.href); }catch(e){}
+          try{ a.remove(); }catch(e){}
+        }, 0);
+      }
+
       function setFollow(v){
         FOLLOW = !!v;
         $follow.textContent = FOLLOW ? "Follow: ein" : "Follow: aus";
@@ -406,6 +478,8 @@
       });
 
       if($export) $export.addEventListener('click', ()=>exportBundle().catch(e=>err(String(e && e.message ? e.message : e))));
+
+      if($debugReport) $debugReport.addEventListener('click', ()=>debugReport().catch(e=>err(String(e && e.message ? e.message : e))));
 
       applyWrap();
       loadViewProfile();

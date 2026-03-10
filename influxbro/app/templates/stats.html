@@ -163,22 +163,6 @@
             </div>
           </div>
 
-          <details class="card" id="cols_section" style="margin-top: 10px;" data-ui="stats.columns" title="stats.columns">
-            <summary>Spalten laden/berechnen</summary>
-            <div class="card_body">
-              <div class="grid">
-                <div><label><input type="checkbox" id="col_last_value" /> last_value</label></div>
-                <div><label><input type="checkbox" id="col_newest_time" /> newest_time</label></div>
-                <div><label><input type="checkbox" id="col_oldest_time" /> oldest_time</label></div>
-                <div><label><input type="checkbox" id="col_count" /> count</label></div>
-                <div><label><input type="checkbox" id="col_min" /> min</label></div>
-                <div><label><input type="checkbox" id="col_max" /> max</label></div>
-                <div><label><input type="checkbox" id="col_mean" /> mean</label></div>
-                <div class="span2 muted">Hinweis: count/min/max/mean/oldest sind teuer und koennen bei grossen Zeitraeumen lange dauern.</div>
-              </div>
-            </div>
-          </details>
-
           <details class="card" id="influxdb_section" style="margin-top: 10px;" data-ui="stats.influxdb" title="stats.influxdb">
             <summary>Statistik Influx Datenbank</summary>
             <div class="card_body">
@@ -547,15 +531,8 @@
       }
 
       function selectedColumns(){
-        const out = [];
-        if($colLast && $colLast.checked) out.push('last_value');
-        if($colNewest && $colNewest.checked) out.push('newest_time');
-        if($colOldest && $colOldest.checked) out.push('oldest_time');
-        if($colCount && $colCount.checked) out.push('count');
-        if($colMin && $colMin.checked) out.push('min');
-        if($colMax && $colMax.checked) out.push('max');
-        if($colMean && $colMean.checked) out.push('mean');
-        return out;
+        // Always load the essential columns. Additional columns are handled via caching/night jobs.
+        return ['last_value', 'newest_time'];
       }
 
       function saveWantedColumns(){
@@ -1136,13 +1113,6 @@
 
       loadUiCfg().then(()=>{});
 
-      // Columns wanted (persisted)
-      loadWantedColumns();
-      [$colLast,$colNewest,$colOldest,$colCount,$colMin,$colMax,$colMean].forEach(el=>{
-        if(!el) return;
-        el.addEventListener('change', ()=>{ saveWantedColumns(); });
-      });
-
       applySavedColWidths();
       initColResize();
 
@@ -1168,18 +1138,6 @@
         renderRangeTxt();
       });
       if($start) $start.addEventListener('change', renderRangeTxt);
-      if($stop) $stop.addEventListener('change', renderRangeTxt);
-      renderRangeTxt();
-
-      </script>
-
-      {% include "_table_cols.html" %}
-      {% include "_tooltips.html" %}
-    </main>
-  </div>
-</body>
-</html>
-f($start) $start.addEventListener('change', renderRangeTxt);
       if($stop) $stop.addEventListener('change', renderRangeTxt);
       renderRangeTxt();
 

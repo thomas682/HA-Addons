@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.12.1
+
+### Fixes
+
+- Dashboard: Auswahl (Measurement/Field) bleibt beim Seitenwechsel erhalten; zuletzt geladene Daten bleiben sichtbar.
+- Dashboard: rote Klick-Info im Graph entfernt; Hover-Info kommt direkt am Messpunkt.
+- Sidebar Status: Statusanzeige bleibt bei Seitenwechsel erhalten.
+
+### Features
+
+- Logs: neuer Button `Debug report` exportiert einen GitHub-freundlichen Support-Report als Markdown.
+- Statistik: Spalten-Auswahl per Checkbox entfernt; es werden immer `last_value` und `newest_time` geladen.
+
+### Maintenance
+
+- Tested with Home Assistant Core: 2026.3.1
+
 ## 1.12.0
 
 ### Features
