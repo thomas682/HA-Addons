@@ -24,6 +24,14 @@ When plan mode is active:
 - Mark items `completed` as soon as they are done.
 - Ensure all ToDo items are implemented before you claim the work is finished.
 
+### Persist Plan Changes (VSCode/code-server restarts)
+
+- Mirror the current ToDo/plan state to a workspace file on every meaningful change so it survives editor/server restarts.
+  - File: `./.opencode/plan_state.md`
+  - Contents: current ToDo list (incl. status), open decisions/questions, and any agreed plan changes.
+- At the start of a new session, if `./.opencode/plan_state.md` exists, load it first and restore the pending items before proceeding.
+- Keep this file local (do not commit); it is session state, not project source.
+
 ## Repo Layout (important for HA)
 
 - `repository.yaml`: must stay in repo root for Home Assistant add-on repositories.

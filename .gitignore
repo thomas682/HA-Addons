@@ -210,3 +210,5 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
+# OpenCode session state
+.opencode/
