@@ -10,7 +10,7 @@
 
 ### Maintenance
 
-- Tested with Home Assistant Core: unknown
+- Tested with Home Assistant Core: 2026.3.1
 
 ## 1.11.98
 
