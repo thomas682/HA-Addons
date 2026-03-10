@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.11.97
+
+### Fixes
+
+- Dashboard: Sections-Toolbar (Alle oeffnen/schliessen/speichern) sitzt jetzt unterhalb der Kopfzeile und ist sauber linksbuendig.
+- Dashboard: Graph/Ableitung Defaults werden beim ersten Start gesetzt (Hintergrund + Farbleiste + Ableitungs-Graph + absolut).
+- Dashboard: State wird beim Verlassen der Seite sofort gespeichert (pagehide/visibilitychange), damit Graph/Tabelle beim Zurueckkehren schneller wieder da sind.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.11.96
 
 ### Features

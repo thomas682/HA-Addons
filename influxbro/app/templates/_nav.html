@@ -342,11 +342,21 @@
         bar.appendChild(bClose);
         bar.appendChild(bSave);
 
-        // Insert after h2
-        if(h2.nextSibling){
-          h2.parentNode.insertBefore(bar, h2.nextSibling);
+        // Insert below the header row (not inside it).
+        const headerRow = h2.parentElement;
+        if(headerRow && headerRow.parentElement === main){
+          if(headerRow.nextSibling){
+            main.insertBefore(bar, headerRow.nextSibling);
+          }else{
+            main.appendChild(bar);
+          }
         }else{
-          h2.parentNode.appendChild(bar);
+          // Fallback: insert after h2
+          if(h2.nextSibling){
+            h2.parentNode.insertBefore(bar, h2.nextSibling);
+          }else{
+            h2.parentNode.appendChild(bar);
+          }
         }
 
         // Restore persisted state (after bar exists)

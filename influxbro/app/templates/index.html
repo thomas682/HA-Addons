@@ -3367,6 +3367,21 @@ try{
 // Graph detail controls
 try{
   const st = loadState();
+  // First-run defaults for derivative controls on the dashboard.
+  try{
+    const flag = localStorage.getItem('influxbro_dash_deriv_defaults_v1');
+    const hasAnyDeriv = (st.deriv_bg !== undefined) || (st.deriv_strip !== undefined) || (st.deriv_graph !== undefined);
+    if(!flag && !hasAnyDeriv){
+      st.deriv_bg = true;
+      st.deriv_strip = true;
+      st.deriv_graph = true;
+      st.deriv_abs = true;
+      st.deriv_signed = false;
+      localStorage.setItem('influxbro_dash_deriv_defaults_v1', '1');
+      try{ localStorage.setItem(LS_KEY, JSON.stringify(st)); }catch(e){}
+    }
+  }catch(e){}
+
   if($graphDetailMode && st.graph_detail_mode) $graphDetailMode.value = String(st.graph_detail_mode);
   if($graphManualDensity && st.graph_manual_density) $graphManualDensity.value = String(st.graph_manual_density);
   const hasAnyDeriv = (st.deriv_bg !== undefined) || (st.deriv_strip !== undefined) || (st.deriv_graph !== undefined);
@@ -5154,10 +5169,10 @@ try{
   });
 }catch(e){}
 
-(async ()=>{
-  try{
-    await loadUiConfig();
-    loadVersion().catch(()=>{});
+  (async ()=>{
+    try{
+      await loadUiConfig();
+      loadVersion().catch(()=>{});
     loadGraphHeight();
     initGraphResize();
     loadRawRows();
@@ -5289,6 +5304,13 @@ try{
     // Do not auto-load data on page open (manual via button).
   } catch(e){ displayError(e); }
 })();
+
+// Persist dashboard state on navigation.
+try{
+  const persistNow = ()=>{ try{ saveState(); }catch(e){}; try{ cacheSaveNow(); }catch(e){}; };
+  window.addEventListener('pagehide', persistNow);
+  document.addEventListener('visibilitychange', ()=>{ try{ if(document.visibilityState === 'hidden') persistNow(); }catch(e){}; });
+}catch(e){}
 
 </script>
 

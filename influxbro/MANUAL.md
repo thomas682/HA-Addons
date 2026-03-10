@@ -129,6 +129,10 @@ Details (Sampling) + Ableitung:
 - `Ableitungs-Graph`: zeigt die Ableitung zusaetzlich als Graph; umschaltbar `absolut/signiert`.
 - `Ableitung Outlier`: Slider-Schwelle; Punkte ueber der Schwelle werden im Ableitungs-Graph rot markiert.
 
+Hinweis (Defaults/Persistenz):
+
+- Beim ersten Start sind die Ableitungs-Checkboxen standardmaessig aktiviert (Hintergrund + Farbleiste + Ableitungs-Graph + absolut).
+
 Bearbeitungsliste + Bearbeitungsgraph:
 
 - Bearbeitungsliste: nach der Ausreisser-Analyse wird angezeigt, wie viele Punkte geprueft wurden und wie viele Ausreisser gefunden wurden.

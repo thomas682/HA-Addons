@@ -250,6 +250,14 @@ from flask import Flask, jsonify, request
 ## Agent Command Convention
 
 - If the user writes `go` (or `GO`), treat that as: stage relevant changes, create a git commit with an appropriate message, and push to the tracked remote branch.
+
+### GO Must Complete Planned Work
+
+- When the user issues `go`/`GO`, you MUST ensure all currently planned items for this request are implemented before committing/pushing.
+- If implementing everything in one batch is not sensible (too risky/too large), you MUST:
+  - explicitly state you are splitting into multiple smaller packages,
+  - commit/push only the first package,
+  - and immediately list the remaining planned items still pending.
 - After a successful `go` workflow (commit + push), play a macOS completion sound:
   - `afplay /System/Library/Sounds/Glass.aiff`
   - If the workflow fails, play an error sound:
