@@ -1,0 +1,48 @@
+name: Enhancement request
+description: Suggest an improvement or new capability
+title: "[Enhancement]: "
+labels:
+  - "type/enhancement"
+  - "status/open"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the suggestion.
+
+  - type: textarea
+    id: requirement
+    attributes:
+      label: Request (as written)
+      description: Please paste the request/wish in your own words.
+      placeholder: "I want ..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: Why is this useful?
+      description: What problem does it solve / what is the benefit?
+    validations:
+      required: true
+
+  - type: textarea
+    id: dod
+    attributes:
+      label: Definition of done
+      description: What needs to be true for this to be considered complete?
+      placeholder: |
+        - [ ] ...
+        - [ ] ...
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - low
+        - medium
+        - high
+    validations:
+      required: true

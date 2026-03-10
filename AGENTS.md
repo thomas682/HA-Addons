@@ -24,9 +24,19 @@ When plan mode is active:
 - Mark items `completed` as soon as they are done.
 - Ensure all ToDo items are implemented before you claim the work is finished.
 
-### Requirements Log (committed)
+### Requirements Tracking (preferred: GitHub Issues)
 
-- Record every user requirement/request (as written) in `./REQUESTS_LOG.md` with date + status.
+- Track requirements primarily as GitHub Issues so others can create/report items externally.
+- Use the issue templates to distinguish between:
+  - Bug reports (not working): label with `type/bug`
+  - Enhancements (feature requests): label with `type/enhancement`
+- Use exactly one status label per issue: `status/open`, `status/in_progress`, `status/done`, `status/cancelled`.
+- Ensure the label set exists in GitHub (create once in the GitHub UI); the issue templates assume these labels are available.
+- When implementing, link PRs to issues and close them via `Fixes #<id>`.
+
+### Requirements Log (committed, fallback)
+
+- If GitHub Issues are not available, record user requirements/requests (as written) in `./REQUESTS_LOG.md` with date + status.
 - Status values: `open`, `in_progress`, `done`, `cancelled`.
 - Update the status when work starts/completes/cancels; optionally include the commit hash/PR link in the entry.
 
