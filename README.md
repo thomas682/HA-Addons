@@ -15,7 +15,7 @@ InfluxBro ist ein Home Assistant Ingress Add-on, mit dem du InfluxDB (v1/v2) Dat
 
 ## Screenshots
 
-![Uebersicht](<influxbro/images/Übersicht.png>)
+![Uebersicht](influxbro/images/Übersicht.png)
 
 ![Einstellungen](influxbro/images/Einstellungen.png)
 
