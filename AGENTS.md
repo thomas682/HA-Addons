@@ -24,6 +24,12 @@ When plan mode is active:
 - Mark items `completed` as soon as they are done.
 - Ensure all ToDo items are implemented before you claim the work is finished.
 
+### Requirements Log (committed)
+
+- Record every user requirement/request (as written) in `./REQUESTS_LOG.md` with date + status.
+- Status values: `open`, `in_progress`, `done`, `cancelled`.
+- Update the status when work starts/completes/cancels; optionally include the commit hash/PR link in the entry.
+
 ### Persist Plan Changes (VSCode/code-server restarts)
 
 - Mirror the current ToDo/plan state to a workspace file on every meaningful change so it survives editor/server restarts.
