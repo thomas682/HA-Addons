@@ -1,4 +1,6 @@
 import csv
+import gzip
+import hashlib
 import io
 import json
 import logging
@@ -49,6 +51,13 @@ HISTORY_PATH = DATA_DIR / "influxbro_history.jsonl"
 
 EXPORT_DIR = DATA_DIR / "exports"
 IMPORT_DIR = DATA_DIR / "imports"
+
+# Dashboard query cache (server-side, persisted under /data)
+DASH_CACHE_DIR = DATA_DIR / "dash_cache"
+DASH_CACHE_LOCK = threading.RLock()
+
+DASH_CACHE_JOBS: dict[str, dict[str, Any]] = {}
+DASH_CACHE_JOBS_LOCK = threading.RLock()
 
 RESTORE_COPY_JOBS: dict[str, dict[str, Any]] = {}
 RESTORE_COPY_LOCK = threading.RLock()
@@ -625,6 +634,21 @@ DEFAULT_CFG = {
     "log_http_requests": False,
     "log_influx_queries": False,
 
+    # Dashboard query cache (server-side, persisted under /data)
+    "dash_cache_enabled": True,
+    "dash_cache_auto_update": True,
+    # Refresh schedule:
+    # - mode=hours: refresh entries after N hours
+    # - mode=daily: refresh once per day at dash_cache_refresh_daily_at (local time)
+    "dash_cache_refresh_mode": "hours",
+    "dash_cache_refresh_hours": 6,
+    "dash_cache_refresh_daily_at": "00:00:00",
+    # Cache size limits (best-effort eviction)
+    "dash_cache_max_items": 40,
+    "dash_cache_max_mb": 50,
+    # If enabled, Dashboard may enqueue background updates when serving stale cache.
+    "dash_cache_update_on_use_if_stale": True,
+
     # Safety: allow writes/deletes from UI
     "writes_enabled": True,
 }
@@ -835,6 +859,776 @@ except Exception:
 def save_cfg(cfg: dict) -> None:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     RUNTIME_CFG_FILE.write_text(json.dumps(cfg, indent=2, sort_keys=True), encoding="utf-8")
+
+
+def _utc_now_iso_ms() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+
+
+def _dash_cache_meta_path(cache_id: str) -> Path:
+    return DASH_CACHE_DIR / f"{cache_id}.meta.json"
+
+
+def _dash_cache_data_path(cache_id: str) -> Path:
+    return DASH_CACHE_DIR / f"{cache_id}.data.json.gz"
+
+
+def _dash_cache_cfg_fp(cfg: dict[str, Any]) -> str:
+    """A stable fingerprint for the active Influx connection + query-relevant settings.
+
+    Must not include secrets.
+    """
+
+    try:
+        influx_v = int(cfg.get("influx_version", 2) or 2)
+    except Exception:
+        influx_v = 2
+    base = {
+        "influx_version": influx_v,
+        "scheme": str(cfg.get("scheme") or ""),
+        "host": str(cfg.get("host") or ""),
+        "port": int(cfg.get("port") or 0),
+        "org": str(cfg.get("org") or "") if influx_v == 2 else "",
+        "bucket": str(cfg.get("bucket") or "") if influx_v == 2 else "",
+        "database": str(cfg.get("database") or "") if influx_v != 2 else "",
+        "ui_query_max_points": int(cfg.get("ui_query_max_points", 5000) or 5000),
+        "ui_query_manual_max_points": int(cfg.get("ui_query_manual_max_points", 200000) or 200000),
+    }
+    raw = json.dumps(base, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+    return hashlib.sha1(raw.encode("utf-8")).hexdigest()
+
+
+def _dash_cache_key(
+    cfg: dict[str, Any],
+    body: dict[str, Any],
+    measurement: str,
+    field: str,
+    range_key: str,
+    entity_id: str | None,
+    friendly_name: str | None,
+    unit: str,
+    detail_mode: str,
+    manual_density_pct: int,
+    start_dt: datetime | None,
+    stop_dt: datetime | None,
+) -> dict[str, Any]:
+    # Keep the key stable for relative ranges (e.g. 24h, 7d) so it can be refreshed in-place.
+    start_iso = _dt_to_rfc3339_utc(start_dt) if (start_dt and stop_dt) else None
+    stop_iso = _dt_to_rfc3339_utc(stop_dt) if (start_dt and stop_dt) else None
+    return {
+        "v": 1,
+        "kind": "dashboard_query",
+        "cfg_fp": _dash_cache_cfg_fp(cfg),
+        "measurement": str(measurement or ""),
+        "field": str(field or ""),
+        "entity_id": str(entity_id) if entity_id else None,
+        "friendly_name": str(friendly_name) if friendly_name else None,
+        "range": str(range_key or ""),
+        "start": start_iso,
+        "stop": stop_iso,
+        "detail_mode": str(detail_mode or "dynamic"),
+        "manual_density_pct": int(manual_density_pct or 100),
+        "unit": str(unit or ""),
+        # Include a few knobs that influence the response shape.
+        "ui_query_max_points": int(cfg.get("ui_query_max_points", 5000) or 5000),
+        "ui_query_manual_max_points": int(cfg.get("ui_query_manual_max_points", 200000) or 200000),
+        # Keep original payload markers for reproducibility (best-effort)
+        "payload_start": body.get("start") or body.get("start_time"),
+        "payload_stop": body.get("stop") or body.get("end") or body.get("stop_time"),
+    }
+
+
+def _dash_cache_id(key: dict[str, Any]) -> str:
+    raw = json.dumps(key, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+    return hashlib.sha1(raw.encode("utf-8")).hexdigest()
+
+
+def _dash_cache_load_meta(cache_id: str) -> dict[str, Any] | None:
+    try:
+        p = _dash_cache_meta_path(cache_id)
+        if not p.exists():
+            return None
+        with DASH_CACHE_LOCK:
+            j = json.loads(p.read_text(encoding="utf-8"))
+        return j if isinstance(j, dict) else None
+    except Exception:
+        return None
+
+
+def _dash_cache_write_meta(meta: dict[str, Any]) -> None:
+    try:
+        DASH_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        cache_id = str(meta.get("id") or "").strip()
+        if not cache_id:
+            return
+        p = _dash_cache_meta_path(cache_id)
+        raw = json.dumps(meta, indent=2, sort_keys=True, ensure_ascii=True)
+        with DASH_CACHE_LOCK:
+            p.write_text(raw, encoding="utf-8")
+    except Exception:
+        return
+
+
+def _dash_cache_load_payload(cache_id: str) -> dict[str, Any] | None:
+    try:
+        p = _dash_cache_data_path(cache_id)
+        if not p.exists():
+            return None
+        with DASH_CACHE_LOCK:
+            with gzip.open(p, "rt", encoding="utf-8", errors="replace") as f:
+                j = json.loads(f.read() or "{}")
+        return j if isinstance(j, dict) else None
+    except Exception:
+        return None
+
+
+def _dash_cache_write_payload(cache_id: str, payload: dict[str, Any]) -> int:
+    try:
+        DASH_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        p = _dash_cache_data_path(cache_id)
+        raw = json.dumps(payload, separators=(",", ":"), ensure_ascii=True)
+        with DASH_CACHE_LOCK:
+            with gzip.open(p, "wt", encoding="utf-8") as f:
+                f.write(raw)
+        try:
+            return int(p.stat().st_size)
+        except Exception:
+            return 0
+    except Exception:
+        return 0
+
+
+def _dash_cache_list_meta() -> list[dict[str, Any]]:
+    try:
+        if not DASH_CACHE_DIR.exists():
+            return []
+        out: list[dict[str, Any]] = []
+        for p in sorted(DASH_CACHE_DIR.glob("*.meta.json")):
+            try:
+                j = json.loads(p.read_text(encoding="utf-8"))
+                if isinstance(j, dict):
+                    out.append(j)
+            except Exception:
+                continue
+        return out
+    except Exception:
+        return []
+
+
+def _dash_cache_ts(meta: dict[str, Any], key: str) -> float:
+    try:
+        v = str(meta.get(key) or "").strip()
+        if not v:
+            return 0.0
+        return datetime.fromisoformat(v.replace("Z", "+00:00")).timestamp()
+    except Exception:
+        return 0.0
+
+
+def _dash_cache_enforce_limits(cfg: dict[str, Any]) -> None:
+    """Best-effort eviction by LRU (last_used_at) then updated_at."""
+
+    try:
+        max_items = int(cfg.get("dash_cache_max_items", 40) or 40)
+    except Exception:
+        max_items = 40
+    if max_items < 0:
+        max_items = 0
+    try:
+        max_mb = int(cfg.get("dash_cache_max_mb", 50) or 50)
+    except Exception:
+        max_mb = 50
+    if max_mb < 0:
+        max_mb = 0
+    max_bytes = max_mb * 1024 * 1024
+
+    items = _dash_cache_list_meta()
+    if not items:
+        return
+
+    # Compute total bytes (meta.bytes is best-effort).
+    total = 0
+    for m in items:
+        try:
+            total += int(m.get("bytes") or 0)
+        except Exception:
+            continue
+
+    def sort_key(m: dict[str, Any]) -> tuple[float, float]:
+        # older first
+        return (_dash_cache_ts(m, "last_used_at") or _dash_cache_ts(m, "updated_at"), _dash_cache_ts(m, "updated_at"))
+
+    items.sort(key=sort_key)
+
+    def delete_one(cache_id: str) -> None:
+        try:
+            _dash_cache_meta_path(cache_id).unlink(missing_ok=True)
+        except Exception:
+            pass
+        try:
+            _dash_cache_data_path(cache_id).unlink(missing_ok=True)
+        except Exception:
+            pass
+
+    # Enforce item count
+    if max_items == 0:
+        for m in items:
+            cid = str(m.get("id") or "").strip()
+            if cid:
+                delete_one(cid)
+        return
+
+    while len(items) > max_items:
+        m = items.pop(0)
+        cid = str(m.get("id") or "").strip()
+        if cid:
+            delete_one(cid)
+
+    # Enforce bytes
+    if max_bytes <= 0:
+        return
+    if total <= max_bytes:
+        return
+    for m in list(items):
+        if total <= max_bytes:
+            break
+        cid = str(m.get("id") or "").strip()
+        if not cid:
+            continue
+        try:
+            total -= int(m.get("bytes") or 0)
+        except Exception:
+            pass
+        delete_one(cid)
+    return
+
+
+def _dash_cache_mark_dirty_series(
+    measurement: str,
+    field: str,
+    entity_id: str | None,
+    friendly_name: str | None,
+    reason: str,
+) -> int:
+    """Mark matching cache entries as dirty (best-effort). Returns number marked."""
+
+    want_m = str(measurement or "").strip()
+    want_f = str(field or "").strip()
+    want_e = str(entity_id or "").strip() if entity_id else ""
+    want_n = str(friendly_name or "").strip() if friendly_name else ""
+    if not want_m or not want_f:
+        return 0
+
+    marked = 0
+    for meta in _dash_cache_list_meta():
+        try:
+            key = meta.get("key") if isinstance(meta.get("key"), dict) else {}
+            if str(key.get("measurement") or "") != want_m:
+                continue
+            if str(key.get("field") or "") != want_f:
+                continue
+            if want_e and str(key.get("entity_id") or "") != want_e:
+                continue
+            if want_n and str(key.get("friendly_name") or "") != want_n:
+                continue
+            if bool(meta.get("dirty")):
+                continue
+            meta["dirty"] = True
+            meta["dirty_reason"] = str(reason or "").strip() or "changed"
+            meta["dirty_at"] = _utc_now_iso_ms()
+            _dash_cache_write_meta(meta)
+            marked += 1
+        except Exception:
+            continue
+    return marked
+
+
+def _dash_cache_mark_dirty_id(cache_id: str, reason: str) -> bool:
+    try:
+        cid = str(cache_id or "").strip()
+        if not cid:
+            return False
+        meta = _dash_cache_load_meta(cid)
+        if not meta:
+            return False
+        meta["dirty"] = True
+        meta["dirty_reason"] = str(reason or "").strip() or "changed"
+        meta["dirty_at"] = _utc_now_iso_ms()
+        _dash_cache_write_meta(meta)
+        return True
+    except Exception:
+        return False
+
+
+def _dash_cache_store(cache_id: str, key: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any] | None:
+    """Persist payload and write/update meta. Returns meta."""
+
+    try:
+        now = _utc_now_iso_ms()
+        rows = payload.get("rows") if isinstance(payload.get("rows"), list) else []
+        row_count = len(rows)
+        first_time = None
+        last_time = None
+        try:
+            if row_count:
+                first_time = str(rows[0].get("time") or "") if isinstance(rows[0], dict) else None
+                last_time = str(rows[-1].get("time") or "") if isinstance(rows[-1], dict) else None
+        except Exception:
+            first_time = None
+            last_time = None
+
+        bytes_written = _dash_cache_write_payload(cache_id, payload)
+        meta = _dash_cache_load_meta(cache_id) or {}
+        created = str(meta.get("created_at") or "").strip() or now
+
+        # Keep a stable small meta file for list views.
+        out = {
+            "v": 1,
+            "id": cache_id,
+            "key": key,
+            "created_at": created,
+            "updated_at": now,
+            "last_used_at": now,
+            "row_count": row_count,
+            "first_time": first_time,
+            "last_time": last_time,
+            "total_points": None,
+            "bytes": bytes_written,
+            "dirty": False,
+            "dirty_reason": None,
+            "dirty_at": None,
+            "mismatch": False,
+            "last_check_at": meta.get("last_check_at"),
+            "last_check_ok": meta.get("last_check_ok"),
+            "last_check_note": meta.get("last_check_note"),
+            "last_update_at": now,
+            "last_update_note": meta.get("last_update_note"),
+        }
+        try:
+            m = payload.get("meta") if isinstance(payload.get("meta"), dict) else {}
+            tp = m.get("total_points") if isinstance(m, dict) else None
+            if isinstance(tp, (int, float)):
+                out["total_points"] = int(tp)
+        except Exception:
+            pass
+
+        _dash_cache_write_meta(out)
+        try:
+            _dash_cache_enforce_limits(load_cfg())
+        except Exception:
+            pass
+        return out
+    except Exception:
+        return None
+
+
+def _dash_cache_touch_used(cache_id: str) -> None:
+    try:
+        meta = _dash_cache_load_meta(cache_id)
+        if not meta:
+            return
+        meta["last_used_at"] = _utc_now_iso_ms()
+        _dash_cache_write_meta(meta)
+    except Exception:
+        return
+
+
+def _dash_cache_is_stale(cfg: dict[str, Any], meta: dict[str, Any]) -> bool:
+    try:
+        mode = str(cfg.get("dash_cache_refresh_mode") or "hours").strip().lower()
+        if mode not in ("hours", "daily"):
+            mode = "hours"
+
+        updated_ts = _dash_cache_ts(meta, "updated_at")
+        if updated_ts <= 0:
+            return True
+
+        now_ts = datetime.now(timezone.utc).timestamp()
+
+        if mode == "hours":
+            try:
+                h = int(cfg.get("dash_cache_refresh_hours", 6) or 6)
+            except Exception:
+                h = 6
+            if h <= 0:
+                return False
+            return (now_ts - updated_ts) >= float(h * 3600)
+
+        # daily
+        at = str(cfg.get("dash_cache_refresh_daily_at") or "00:00:00").strip() or "00:00:00"
+        hh, mm, ss = 0, 0, 0
+        try:
+            parts = at.split(":")
+            hh = int(parts[0]) if len(parts) > 0 else 0
+            mm = int(parts[1]) if len(parts) > 1 else 0
+            ss = int(parts[2]) if len(parts) > 2 else 0
+        except Exception:
+            hh, mm, ss = 0, 0, 0
+        hh = min(23, max(0, hh))
+        mm = min(59, max(0, mm))
+        ss = min(59, max(0, ss))
+
+        # Evaluate in local time.
+        now_local = datetime.now().astimezone()
+        last_local = datetime.fromtimestamp(updated_ts, tz=timezone.utc).astimezone(now_local.tzinfo)
+        today_run = now_local.replace(hour=hh, minute=mm, second=ss, microsecond=0)
+        if now_local < today_run:
+            # Not yet today's run; stale if last update is before yesterday's run
+            prev_run = today_run - timedelta(days=1)
+            return last_local < prev_run
+        # After today's run time; stale if last update before today's run
+        return last_local < today_run
+    except Exception:
+        return False
+
+
+def _dash_cache_key_to_params(key: dict[str, Any]) -> tuple[
+    str,
+    str,
+    str,
+    str | None,
+    str | None,
+    str,
+    str,
+    int,
+    datetime | None,
+    datetime | None,
+]:
+    measurement = str(key.get("measurement") or "").strip()
+    field = str(key.get("field") or "").strip()
+    range_key = str(key.get("range") or "24h")
+    entity_id = str(key.get("entity_id") or "").strip() or None
+    friendly_name = str(key.get("friendly_name") or "").strip() or None
+    unit = str(key.get("unit") or "").strip()
+    detail_mode = str(key.get("detail_mode") or "dynamic").strip().lower()
+    if detail_mode not in ("dynamic", "manual"):
+        detail_mode = "dynamic"
+    try:
+        manual_density_pct = int(key.get("manual_density_pct") or 100)
+    except Exception:
+        manual_density_pct = 100
+    manual_density_pct = min(100, max(1, manual_density_pct))
+
+    start_dt = None
+    stop_dt = None
+    try:
+        s = str(key.get("start") or "").strip()
+        e = str(key.get("stop") or "").strip()
+        if s and e:
+            start_dt = _parse_iso_datetime(s)
+            stop_dt = _parse_iso_datetime(e)
+    except Exception:
+        start_dt = None
+        stop_dt = None
+
+    return (
+        measurement,
+        field,
+        range_key,
+        entity_id,
+        friendly_name,
+        unit,
+        detail_mode,
+        manual_density_pct,
+        start_dt,
+        stop_dt,
+    )
+
+
+def _dash_cache_db_signature(cfg: dict[str, Any], key: dict[str, Any]) -> dict[str, Any]:
+    """Best-effort signature for DB state in the cache's time window.
+
+    Returns: {total_points, first_time, last_time}
+    """
+
+    (
+        measurement,
+        field,
+        range_key,
+        entity_id,
+        friendly_name,
+        _,
+        _,
+        _,
+        start_dt,
+        stop_dt,
+    ) = _dash_cache_key_to_params(key)
+
+    if not measurement or not field:
+        return {"total_points": None, "first_time": None, "last_time": None}
+
+    if int(cfg.get("influx_version", 2)) == 2:
+        if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+            return {"total_points": None, "first_time": None, "last_time": None}
+
+        extra = flux_tag_filter(entity_id, friendly_name)
+        range_clause = _flux_range_clause(range_key, start_dt, stop_dt)
+        base = f'''
+from(bucket: "{cfg["bucket"]}")
+  {range_clause}
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
+  |> keep(columns: ["_time","_value"])
+  |> sort(columns: ["_time"])
+'''
+
+        def _count(qapi) -> int | None:
+            try:
+                qcnt = f'''
+from(bucket: "{cfg["bucket"]}")
+  {range_clause}
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
+  |> keep(columns: ["_value"])
+  |> count(column: "_value")
+'''
+                for rec in qapi.query_stream(qcnt, org=cfg["org"]):
+                    v = rec.get_value()
+                    if isinstance(v, (int, float)):
+                        return int(v)
+            except Exception:
+                return None
+            return None
+
+        def _first_last(qapi, which: str) -> str | None:
+            try:
+                suffix = "first" if which == "first" else "last"
+                q = base + f"  |> {suffix}()\n"
+                for rec in qapi.query_stream(q, org=cfg["org"]):
+                    ts = rec.get_time()
+                    if isinstance(ts, datetime):
+                        return _dt_to_rfc3339_utc_ms(ts)
+                    break
+            except Exception:
+                return None
+            return None
+
+        with v2_client(cfg, timeout_seconds_override=min(8, int(cfg.get("timeout_seconds") or 10))) as c:
+            qapi = c.query_api()
+            total = _count(qapi)
+            first_time = _first_last(qapi, "first")
+            last_time = _first_last(qapi, "last")
+            return {"total_points": total, "first_time": first_time, "last_time": last_time}
+
+    # v1
+    if not cfg.get("database"):
+        return {"total_points": None, "first_time": None, "last_time": None}
+    try:
+        c = v1_client(cfg)
+        tag_where = influxql_tag_filter(entity_id, friendly_name)
+        time_where = _influxql_time_where(range_key, start_dt, stop_dt)
+
+        total = None
+        try:
+            qcnt = f'SELECT COUNT("{field}") AS c FROM "{measurement}" WHERE {time_where}{tag_where}'
+            res = c.query(qcnt)
+            for _, pts in res.items():
+                for p in pts:
+                    v = p.get("c")
+                    if isinstance(v, (int, float)):
+                        total = int(v)
+                        break
+                if total is not None:
+                    break
+        except Exception:
+            total = None
+
+        def _one(which: str) -> str | None:
+            try:
+                fn = "FIRST" if which == "first" else "LAST"
+                q = f'SELECT {fn}("{field}") AS v FROM "{measurement}" WHERE {time_where}{tag_where}'
+                res = c.query(q)
+                for _, pts in res.items():
+                    for p in pts:
+                        ts = p.get("time")
+                        if ts:
+                            return str(ts)
+            except Exception:
+                return None
+            return None
+
+        return {"total_points": total, "first_time": _one("first"), "last_time": _one("last")}
+    except Exception:
+        return {"total_points": None, "first_time": None, "last_time": None}
+
+
+def _dash_cache_job_public(job: dict[str, Any]) -> dict[str, Any]:
+    return _job_public(job)
+
+
+def _dash_cache_job_thread(job_id: str, action: str, cache_id: str) -> None:
+    def set_state(state: str, msg: str) -> None:
+        with DASH_CACHE_JOBS_LOCK:
+            if job_id in DASH_CACHE_JOBS:
+                DASH_CACHE_JOBS[job_id]["state"] = state
+                DASH_CACHE_JOBS[job_id]["message"] = msg
+
+    def set_error(msg: str) -> None:
+        with DASH_CACHE_JOBS_LOCK:
+            if job_id in DASH_CACHE_JOBS:
+                DASH_CACHE_JOBS[job_id]["error"] = msg
+
+    try:
+        with DASH_CACHE_JOBS_LOCK:
+            j = DASH_CACHE_JOBS.get(job_id) or {}
+            if bool(j.get("cancelled")):
+                set_state("cancelled", "Abgebrochen")
+                return
+
+        cfg = _overlay_from_yaml_if_enabled(load_cfg())
+        meta = _dash_cache_load_meta(cache_id)
+        if not meta:
+            set_state("error", "Cache nicht gefunden")
+            set_error("cache not found")
+            return
+        key = meta.get("key") if isinstance(meta.get("key"), dict) else None
+        if not key:
+            set_state("error", "Cache-Key fehlt")
+            set_error("cache key missing")
+            return
+
+        now = _utc_now_iso_ms()
+
+        with DASH_CACHE_JOBS_LOCK:
+            j = DASH_CACHE_JOBS.get(job_id) or {}
+            if bool(j.get("cancelled")):
+                set_state("cancelled", "Abgebrochen")
+                return
+
+        if action == "delete":
+            try:
+                _dash_cache_meta_path(cache_id).unlink(missing_ok=True)
+            except Exception:
+                pass
+            try:
+                _dash_cache_data_path(cache_id).unlink(missing_ok=True)
+            except Exception:
+                pass
+            set_state("done", "Cache geloescht")
+            return
+
+        if action == "check":
+            set_state("running", "Pruefe Cache...")
+            sig = _dash_cache_db_signature(cfg, key)
+            mismatch = False
+            note = []
+            try:
+                if meta.get("total_points") is not None and sig.get("total_points") is not None:
+                    if int(meta.get("total_points") or 0) != int(sig.get("total_points") or 0):
+                        mismatch = True
+                        note.append("count")
+            except Exception:
+                pass
+            try:
+                if meta.get("first_time") and sig.get("first_time") and str(meta.get("first_time")) != str(sig.get("first_time")):
+                    mismatch = True
+                    note.append("first")
+            except Exception:
+                pass
+            try:
+                if meta.get("last_time") and sig.get("last_time") and str(meta.get("last_time")) != str(sig.get("last_time")):
+                    mismatch = True
+                    note.append("last")
+            except Exception:
+                pass
+
+            meta["last_check_at"] = now
+            meta["last_check_ok"] = (not mismatch)
+            meta["last_check_note"] = ("ok" if not mismatch else ("changed: " + ",".join(note)))
+            meta["mismatch"] = bool(mismatch)
+            _dash_cache_write_meta(meta)
+            set_state("done", "Pruefung fertig")
+            return
+
+        # update
+        set_state("running", "Aktualisiere Cache...")
+        (
+            measurement,
+            field,
+            range_key,
+            entity_id,
+            friendly_name,
+            unit,
+            detail_mode,
+            manual_density_pct,
+            start_dt,
+            stop_dt,
+        ) = _dash_cache_key_to_params(key)
+        payload = _query_payload(
+            cfg,
+            measurement,
+            field,
+            range_key,
+            entity_id,
+            friendly_name,
+            unit,
+            detail_mode,
+            manual_density_pct,
+            start_dt,
+            stop_dt,
+        )
+        _dash_cache_store(cache_id, key, payload)
+        meta2 = _dash_cache_load_meta(cache_id) or meta
+        meta2["last_update_at"] = now
+        meta2["last_update_note"] = "updated"
+        meta2["dirty"] = False
+        meta2["dirty_reason"] = None
+        meta2["dirty_at"] = None
+        meta2["mismatch"] = False
+        _dash_cache_write_meta(meta2)
+        set_state("done", "Cache aktualisiert")
+    except _ApiError as e:
+        try:
+            meta = _dash_cache_load_meta(cache_id) or {}
+            meta["last_update_at"] = _utc_now_iso_ms()
+            meta["last_update_note"] = f"error: {e.message}"
+            _dash_cache_write_meta(meta)
+        except Exception:
+            pass
+        set_error(str(e.message))
+        set_state("error", "Fehler")
+    except Exception as e:
+        msg = _short_influx_error(e)
+        try:
+            meta = _dash_cache_load_meta(cache_id) or {}
+            meta["last_update_at"] = _utc_now_iso_ms()
+            meta["last_update_note"] = f"error: {msg}"
+            _dash_cache_write_meta(meta)
+        except Exception:
+            pass
+        set_error(msg)
+        set_state("error", "Fehler")
+
+
+def _dash_cache_start_job(action: str, cache_id: str, trigger_page: str | None = None) -> str:
+    job_id = uuid.uuid4().hex
+    ip = _req_ip()
+    ua = _req_ua()
+    job = {
+        "id": job_id,
+        "state": "queued",
+        "message": "Start...",
+        "started_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+        "started_mono": time.monotonic(),
+        "trigger_page": trigger_page,
+        "trigger_ip": ip,
+        "trigger_ua": ua,
+        "cache_id": cache_id,
+        "action": action,
+    }
+    with DASH_CACHE_JOBS_LOCK:
+        DASH_CACHE_JOBS[job_id] = job
+        # Cleanup old jobs
+        cutoff = time.monotonic() - 6 * 3600
+        old = [k for k, v in DASH_CACHE_JOBS.items() if float(v.get("started_mono") or 0) < cutoff]
+        for k in old:
+            if k != job_id:
+                DASH_CACHE_JOBS.pop(k, None)
+    try:
+        LOG.info("job_start type=dash_cache job_id=%s action=%s cache_id=%s ip=%s ua=%s", job_id, action, cache_id, ip, ua)
+    except Exception:
+        pass
+    t = threading.Thread(target=_dash_cache_job_thread, args=(job_id, action, cache_id), daemon=True)
+    t.start()
+    return job_id
 
 
 def _parse_range_key(range_key: str) -> tuple[int, str]:
@@ -3043,6 +3837,7 @@ def _restore_copy_job_thread(
         return f"{new_mt} {new_fieldset} {ts_raw}"
 
     applied = 0
+    dirty_series: set[tuple[str, str, str | None, str | None]] = set()
     skipped = 0
     read_bytes = 0
     batch: list[str] = []
@@ -3139,6 +3934,11 @@ def _restore_copy_job_thread(
                     "preview_limit": preview_limit,
                     "preview_lines": preview_lines,
                 }
+        try:
+            if applied > 0:
+                _dash_cache_mark_dirty_series(target_measurement, target_field, target_entity_id, target_friendly_name, "restore_copy")
+        except Exception:
+            pass
         set_state("done", f"Copied points: {applied}")
     except Exception as e:
         set_error(_short_influx_error(e))
@@ -3355,6 +4155,18 @@ def api_jobs():
         pub["trigger_ua"] = j.get("trigger_ua")
         out.append(pub)
 
+    with DASH_CACHE_JOBS_LOCK:
+        c_items = list(DASH_CACHE_JOBS.items())
+    for _, j in c_items:
+        pub = _dash_cache_job_public(j)
+        pub["type"] = "dash_cache"
+        pub["trigger_page"] = j.get("trigger_page")
+        pub["trigger_ip"] = j.get("trigger_ip")
+        pub["trigger_ua"] = j.get("trigger_ua")
+        pub["cache_id"] = j.get("cache_id")
+        pub["action"] = j.get("action")
+        out.append(pub)
+
     def _sort_key(x: dict[str, Any]) -> float:
         try:
             # Prefer started_mono if available via elapsed? Not exposed, so sort by started_at.
@@ -3402,7 +4214,166 @@ def api_jobs_cancel():
                 pass
             return jsonify({"ok": True})
 
+    with DASH_CACHE_JOBS_LOCK:
+        if job_id in DASH_CACHE_JOBS:
+            DASH_CACHE_JOBS[job_id]["cancelled"] = True
+            try:
+                LOG.info("job_cancel type=dash_cache job_id=%s ip=%s ua=%s", job_id, _req_ip(), _req_ua())
+            except Exception:
+                pass
+            return jsonify({"ok": True})
+
     return jsonify({"ok": False, "error": "job not found"}), 404
+
+
+@app.get("/api/cache/list")
+def api_cache_list():
+    cfg = load_cfg()
+    enabled = bool(cfg.get("dash_cache_enabled", True))
+    items = _dash_cache_list_meta() if enabled else []
+
+    def _sort_key(m: dict[str, Any]) -> tuple[float, float]:
+        return (_dash_cache_ts(m, "last_used_at") or _dash_cache_ts(m, "updated_at"), _dash_cache_ts(m, "updated_at"))
+
+    items.sort(key=_sort_key, reverse=True)
+    now_ts = datetime.now(timezone.utc).timestamp()
+    out = []
+    for m in items:
+        try:
+            mm = dict(m)
+            upd = _dash_cache_ts(mm, "updated_at")
+            mm["age_seconds"] = int(max(0, now_ts - upd)) if upd else None
+            mm["stale"] = _dash_cache_is_stale(cfg, mm)
+            out.append(mm)
+        except Exception:
+            continue
+    return jsonify({
+        "ok": True,
+        "enabled": enabled,
+        "caches": out,
+        "settings": {
+            "refresh_mode": cfg.get("dash_cache_refresh_mode"),
+            "refresh_hours": cfg.get("dash_cache_refresh_hours"),
+            "refresh_daily_at": cfg.get("dash_cache_refresh_daily_at"),
+            "max_items": cfg.get("dash_cache_max_items"),
+            "max_mb": cfg.get("dash_cache_max_mb"),
+            "auto_update": cfg.get("dash_cache_auto_update"),
+        },
+    })
+
+
+@app.post("/api/cache/peek")
+def api_cache_peek():
+    """Return cached dashboard query result if present (cache-only; no DB query)."""
+
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    body = request.get_json(force=True) or {}
+    measurement = str(body.get("measurement") or "").strip()
+    field = str(body.get("field") or "").strip()
+    range_key = str(body.get("range") or "24h")
+    entity_id = str(body.get("entity_id") or "").strip() or None
+    friendly_name = str(body.get("friendly_name") or "").strip() or None
+    unit = str(body.get("unit") or "").strip()
+    detail_mode = str(body.get("detail_mode") or "dynamic").strip().lower()
+    if detail_mode not in ("dynamic", "manual"):
+        detail_mode = "dynamic"
+    try:
+        manual_density_pct = int(body.get("manual_density_pct") or 100)
+    except Exception:
+        manual_density_pct = 100
+    manual_density_pct = min(100, max(1, manual_density_pct))
+
+    try:
+        start_dt, stop_dt = _get_start_stop_from_payload(body)
+    except Exception:
+        start_dt, stop_dt = None, None
+
+    if not measurement or not field:
+        return jsonify({"ok": False, "error": "measurement and field required"}), 400
+
+    if not bool(cfg.get("dash_cache_enabled", True)):
+        return jsonify({"ok": False, "error": "cache disabled"}), 404
+
+    key = _dash_cache_key(
+        cfg,
+        body,
+        measurement,
+        field,
+        range_key,
+        entity_id,
+        friendly_name,
+        unit,
+        detail_mode,
+        manual_density_pct,
+        start_dt,
+        stop_dt,
+    )
+    cache_id = _dash_cache_id(key)
+    meta = _dash_cache_load_meta(cache_id)
+    payload = _dash_cache_load_payload(cache_id)
+    if not meta or not payload or not bool(payload.get("ok")):
+        return jsonify({"ok": False, "error": "cache miss"}), 404
+
+    _dash_cache_touch_used(cache_id)
+    out = dict(payload)
+    out["cached"] = True
+    out["cache"] = {
+        "id": cache_id,
+        "updated_at": meta.get("updated_at"),
+        "dirty": bool(meta.get("dirty")),
+        "mismatch": bool(meta.get("mismatch")),
+    }
+    return jsonify(out)
+
+
+@app.post("/api/cache/delete")
+def api_cache_delete():
+    body = request.get_json(force=True) or {}
+    cache_id = str(body.get("cache_id") or "").strip()
+    delete_all = bool(body.get("all"))
+
+    try:
+        if delete_all:
+            if DASH_CACHE_DIR.exists():
+                for p in DASH_CACHE_DIR.glob("*"):
+                    try:
+                        if p.is_file():
+                            p.unlink(missing_ok=True)
+                    except Exception:
+                        continue
+            return jsonify({"ok": True, "deleted": "all"})
+
+        if not cache_id:
+            return jsonify({"ok": False, "error": "cache_id required"}), 400
+        _dash_cache_meta_path(cache_id).unlink(missing_ok=True)
+        _dash_cache_data_path(cache_id).unlink(missing_ok=True)
+        return jsonify({"ok": True, "deleted": cache_id})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 500
+
+
+@app.post("/api/cache/check")
+def api_cache_check():
+    body = request.get_json(force=True) or {}
+    cache_id = str(body.get("cache_id") or "").strip()
+    if not cache_id:
+        return jsonify({"ok": False, "error": "cache_id required"}), 400
+    if not _dash_cache_load_meta(cache_id):
+        return jsonify({"ok": False, "error": "cache not found"}), 404
+    job_id = _dash_cache_start_job("check", cache_id, trigger_page="jobs")
+    return jsonify({"ok": True, "job_id": job_id})
+
+
+@app.post("/api/cache/update")
+def api_cache_update():
+    body = request.get_json(force=True) or {}
+    cache_id = str(body.get("cache_id") or "").strip()
+    if not cache_id:
+        return jsonify({"ok": False, "error": "cache_id required"}), 400
+    if not _dash_cache_load_meta(cache_id):
+        return jsonify({"ok": False, "error": "cache not found"}), 404
+    job_id = _dash_cache_start_job("update", cache_id, trigger_page="jobs")
+    return jsonify({"ok": True, "job_id": job_id})
 
 @app.post("/api/config")
 def api_set_config():
@@ -3521,6 +4492,28 @@ def api_set_config():
 
     # Safety
     _bool("writes_enabled", True)
+
+    # Dashboard cache
+    _bool("dash_cache_enabled", True)
+    _bool("dash_cache_auto_update", True)
+    _bool("dash_cache_update_on_use_if_stale", True)
+    _clamp_int("dash_cache_refresh_hours", 6, 1, 168)
+    _clamp_int("dash_cache_max_items", 40, 0, 500)
+    _clamp_int("dash_cache_max_mb", 50, 0, 2048)
+    try:
+        mode = str(cfg.get("dash_cache_refresh_mode") or "hours").strip().lower()
+    except Exception:
+        mode = "hours"
+    if mode not in ("hours", "daily"):
+        mode = "hours"
+    cfg["dash_cache_refresh_mode"] = mode
+    try:
+        s = str(cfg.get("dash_cache_refresh_daily_at") or "00:00:00").strip() or "00:00:00"
+    except Exception:
+        s = "00:00:00"
+    if not re.match(r"^\d{2}:\d{2}:\d{2}$", s):
+        s = "00:00:00"
+    cfg["dash_cache_refresh_daily_at"] = s
 
     # Logging
     _bool("log_to_file", True)
@@ -3920,33 +4913,28 @@ base
     except Exception as e:
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
 
-@app.post("/api/query")
-def query():
-    cfg = _overlay_from_yaml_if_enabled(load_cfg())
-    body = request.get_json(force=True) or {}
-    measurement = body.get("measurement", "")
-    field = body.get("field", "")
-    range_key = body.get("range", "24h")
-    entity_id = body.get("entity_id") or None
-    friendly_name = body.get("friendly_name") or None
-    unit = str(body.get("unit") or "").strip()
+class _ApiError(Exception):
+    def __init__(self, message: str, status: int = 400):
+        super().__init__(message)
+        self.message = message
+        self.status = status
 
-    detail_mode = str(body.get("detail_mode") or "dynamic").strip().lower()
-    if detail_mode not in ("dynamic", "manual"):
-        detail_mode = "dynamic"
-    try:
-        manual_density_pct = int(body.get("manual_density_pct") or 100)
-    except Exception:
-        manual_density_pct = 100
-    if manual_density_pct < 1:
-        manual_density_pct = 1
-    if manual_density_pct > 100:
-        manual_density_pct = 100
 
-    try:
-        start_dt, stop_dt = _get_start_stop_from_payload(body)
-    except Exception as e:
-        return jsonify({"ok": False, "error": f"invalid start/stop: {e}"}), 400
+def _query_payload(
+    cfg: dict[str, Any],
+    measurement: str,
+    field: str,
+    range_key: str,
+    entity_id: str | None,
+    friendly_name: str | None,
+    unit: str,
+    detail_mode: str,
+    manual_density_pct: int,
+    start_dt: datetime | None,
+    stop_dt: datetime | None,
+) -> dict[str, Any]:
+    if not measurement or not field:
+        raise _ApiError("measurement and field required", status=400)
 
     def _count_points_v2(qapi, range_clause: str, extra: str) -> int | None:
         try:
@@ -3970,28 +4958,14 @@ from(bucket: "{cfg["bucket"]}")
             return None
         return None
 
-    if not measurement or not field:
-        return jsonify({"ok": False, "error": "measurement and field required"}), 400
-
     try:
-        LOG.debug(
-            "api.query measurement=%s field=%s range=%s entity_id=%s friendly_name=%s",
-            measurement,
-            field,
-            range_key,
-            bool(entity_id),
-            bool(friendly_name),
-        )
-    except Exception:
-        pass
-
-    try:
-        if int(cfg.get("influx_version",2)) == 2:
+        if int(cfg.get("influx_version", 2)) == 2:
             if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
-                return jsonify({
-                    "ok": False,
-                    "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
-                }), 400
+                raise _ApiError(
+                    "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
+                    status=400,
+                )
+
             extra = flux_tag_filter(entity_id, friendly_name)
             with v2_client(cfg) as c:
                 qapi = c.query_api()
@@ -4011,10 +4985,7 @@ from(bucket: "{cfg["bucket"]}")
                         max_points = int(cfg.get("ui_query_manual_max_points", 200000) or 200000)
                     except Exception:
                         max_points = 200000
-                    if max_points < 1000:
-                        max_points = 1000
-                    if max_points > 2000000:
-                        max_points = 2000000
+                    max_points = min(2000000, max(1000, max_points))
 
                     q = base + f"  |> limit(n: {max_points})\n"
                     log_query("api.query manual (flux)", q)
@@ -4029,7 +5000,8 @@ from(bucket: "{cfg["bucket"]}")
                             rows.append({"time": ts.astimezone(timezone.utc).isoformat(), "value": val})
                         except Exception:
                             continue
-                    return jsonify({
+
+                    return {
                         "ok": True,
                         "rows": rows,
                         "query": q.strip(),
@@ -4041,19 +5013,15 @@ from(bucket: "{cfg["bucket"]}")
                             "unit": unit,
                             "total_points": total_points,
                         },
-                    })
+                    }
 
                 # dynamic
                 try:
                     target_points = int(cfg.get("ui_query_max_points", 5000) or 5000)
                 except Exception:
                     target_points = 5000
-                if target_points < 500:
-                    target_points = 500
-                if target_points > 200000:
-                    target_points = 200000
+                target_points = min(200000, max(500, target_points))
 
-                # Coarse interval
                 span_ms = None
                 try:
                     if start_dt and stop_dt:
@@ -4070,7 +5038,6 @@ from(bucket: "{cfg["bucket"]}")
                 mode = "raw"
                 if every_ms:
                     mode = "downsample"
-                    # use last() to preserve steps (better jump detection)
                     q = f'''
 from(bucket: "{cfg["bucket"]}")
   {range_clause}
@@ -4095,7 +5062,6 @@ from(bucket: "{cfg["bucket"]}")
                         continue
                 coarse.sort(key=lambda x: x[0])
 
-                # Detect jumps on coarse series
                 try:
                     step_th = float(_outlier_max_step(cfg, unit))
                 except Exception:
@@ -4107,10 +5073,7 @@ from(bucket: "{cfg["bucket"]}")
                     pad_n = int(cfg.get("ui_graph_jump_padding_intervals", 1) or 1)
                 except Exception:
                     pad_n = 1
-                if pad_n < 0:
-                    pad_n = 0
-                if pad_n > 50:
-                    pad_n = 50
+                pad_n = min(50, max(0, pad_n))
                 pad_ms = int(every_ms * pad_n) if every_ms else 0
 
                 jump_spans: list[dict[str, Any]] = []
@@ -4132,7 +5095,6 @@ from(bucket: "{cfg["bucket"]}")
                             "delta": d,
                         })
 
-                # Merge overlapping spans
                 merged: list[tuple[datetime, datetime]] = []
                 if jump_spans:
                     tmp = []
@@ -4156,7 +5118,6 @@ from(bucket: "{cfg["bucket"]}")
                         else:
                             merged.append((a, b))
 
-                # Refine: fetch raw points within jump windows
                 refine_points: dict[str, float] = {}
                 total_refine = 0
                 per_span_limit = 5000
@@ -4192,7 +5153,6 @@ from(bucket: "{cfg["bucket"]}")
                             except Exception:
                                 continue
 
-                # Merge coarse + refine
                 merged_map: dict[str, float] = {}
                 for ts, v in coarse:
                     merged_map[_dt_to_rfc3339_utc_ms(ts)] = float(v)
@@ -4201,7 +5161,6 @@ from(bucket: "{cfg["bucket"]}")
                 times = sorted(merged_map.keys())
                 rows_all = [{"time": t, "value": merged_map[t]} for t in times]
 
-                # Cap returned points, prefer keeping refined points
                 max_return = int(target_points + total_cap)
                 if max_return < 1000:
                     max_return = 1000
@@ -4211,16 +5170,15 @@ from(bucket: "{cfg["bucket"]}")
                     rest_rows = [r for r in rows_all if str(r.get("time")) not in keep]
                     remain = max_return - len(keep_rows)
                     if remain <= 0:
-                        # still too many refined points
-                        step = math.ceil(len(keep_rows) / max_return)
+                        step = max(1, math.ceil(len(keep_rows) / max_return))
                         rows_all = keep_rows[::step]
                     else:
                         if len(rest_rows) > remain:
-                            step = math.ceil(len(rest_rows) / remain)
+                            step = max(1, math.ceil(len(rest_rows) / remain))
                             rest_rows = rest_rows[::step]
                         rows_all = sorted(keep_rows + rest_rows, key=lambda r: str(r.get("time") or ""))
 
-                return jsonify({
+                return {
                     "ok": True,
                     "rows": rows_all,
                     "query": q.strip(),
@@ -4237,82 +5195,184 @@ from(bucket: "{cfg["bucket"]}")
                         "unit": unit,
                         "total_points": total_points,
                     },
-                })
-        else:
-            if not cfg.get("database"):
-                return jsonify({"ok": False, "error": "InfluxDB v1 requires database. Bitte konfigurieren."}), 400
-            c = v1_client(cfg)
-            tag_where = influxql_tag_filter(entity_id, friendly_name)
-            time_where = _influxql_time_where(range_key, start_dt, stop_dt)
-            q = f'SELECT "{field}" FROM "{measurement}" WHERE {time_where}{tag_where} ORDER BY time ASC'
-            log_query("api.query (influxql)", q)
-            res = c.query(q)
-            rows = []
-            for _, points in res.items():
-                for p in points:
-                    rows.append({"time": p.get("time"), "value": p.get(field)})
+                }
 
-            total_points = None
-            try:
-                qcnt = f'SELECT COUNT("{field}") AS c FROM "{measurement}" WHERE {time_where}{tag_where}'
-                res2 = c.query(qcnt)
-                for _, pts in res2.items():
-                    for p in pts:
-                        v = p.get("c")
-                        if isinstance(v, (int, float)):
-                            total_points = int(v)
-                            break
-                    if total_points is not None:
+        # v1
+        if not cfg.get("database"):
+            raise _ApiError("InfluxDB v1 requires database. Bitte konfigurieren.", status=400)
+        c = v1_client(cfg)
+        tag_where = influxql_tag_filter(entity_id, friendly_name)
+        time_where = _influxql_time_where(range_key, start_dt, stop_dt)
+        q = f'SELECT "{field}" FROM "{measurement}" WHERE {time_where}{tag_where} ORDER BY time ASC'
+        log_query("api.query (influxql)", q)
+        res = c.query(q)
+        rows: list[dict[str, Any]] = []
+        for _, points in res.items():
+            for p in points:
+                rows.append({"time": p.get("time"), "value": p.get(field)})
+
+        total_points = None
+        try:
+            qcnt = f'SELECT COUNT("{field}") AS c FROM "{measurement}" WHERE {time_where}{tag_where}'
+            res2 = c.query(qcnt)
+            for _, pts in res2.items():
+                for p in pts:
+                    v = p.get("c")
+                    if isinstance(v, (int, float)):
+                        total_points = int(v)
                         break
+                if total_points is not None:
+                    break
+        except Exception:
+            total_points = None
+
+        if detail_mode == "manual":
+            try:
+                max_points = int(cfg.get("ui_query_manual_max_points", 200000) or 200000)
             except Exception:
-                total_points = None
-
-            if detail_mode == "manual":
-                try:
-                    max_points = int(cfg.get("ui_query_manual_max_points", 200000) or 200000)
-                except Exception:
-                    max_points = 200000
-                if max_points < 1000:
-                    max_points = 1000
-                if max_points > 2000000:
-                    max_points = 2000000
-                if len(rows) > max_points:
-                    step = math.ceil(len(rows) / max_points)
-                    rows = rows[::step]
-                return jsonify({
-                    "ok": True,
-                    "rows": rows,
-                    "query": q.strip(),
-                    "meta": {
-                        "mode": "manual",
-                        "manual_density_pct": manual_density_pct,
-                        "max_points": max_points,
-                        "returned": len(rows),
-                        "unit": unit,
-                        "total_points": total_points,
-                    },
-                })
-
-            max_points = int(cfg.get("ui_query_max_points", 5000) or 5000)
-            if max_points < 500:
-                max_points = 500
-            if max_points > 200000:
                 max_points = 200000
+            max_points = min(2000000, max(1000, max_points))
             if len(rows) > max_points:
-                step = math.ceil(len(rows) / max_points)
+                step = max(1, math.ceil(len(rows) / max_points))
                 rows = rows[::step]
-            return jsonify({
+            return {
                 "ok": True,
                 "rows": rows,
                 "query": q.strip(),
                 "meta": {
-                    "mode": "dynamic",
-                    "target_points": max_points,
+                    "mode": "manual",
+                    "manual_density_pct": manual_density_pct,
+                    "max_points": max_points,
                     "returned": len(rows),
                     "unit": unit,
                     "total_points": total_points,
                 },
-            })
+            }
+
+        max_points = int(cfg.get("ui_query_max_points", 5000) or 5000)
+        max_points = min(200000, max(500, max_points))
+        if len(rows) > max_points:
+            step = max(1, math.ceil(len(rows) / max_points))
+            rows = rows[::step]
+        return {
+            "ok": True,
+            "rows": rows,
+            "query": q.strip(),
+            "meta": {
+                "mode": "dynamic",
+                "target_points": max_points,
+                "returned": len(rows),
+                "unit": unit,
+                "total_points": total_points,
+            },
+        }
+    except _ApiError:
+        raise
+    except Exception as e:
+        raise e
+
+
+@app.post("/api/query")
+def query():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    body = request.get_json(force=True) or {}
+    measurement = str(body.get("measurement") or "").strip()
+    field = str(body.get("field") or "").strip()
+    range_key = str(body.get("range") or "24h")
+    entity_id = (body.get("entity_id") or None)
+    friendly_name = (body.get("friendly_name") or None)
+    unit = str(body.get("unit") or "").strip()
+
+    detail_mode = str(body.get("detail_mode") or "dynamic").strip().lower()
+    if detail_mode not in ("dynamic", "manual"):
+        detail_mode = "dynamic"
+    try:
+        manual_density_pct = int(body.get("manual_density_pct") or 100)
+    except Exception:
+        manual_density_pct = 100
+    manual_density_pct = min(100, max(1, manual_density_pct))
+
+    try:
+        start_dt, stop_dt = _get_start_stop_from_payload(body)
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"invalid start/stop: {e}"}), 400
+
+    if not measurement or not field:
+        return jsonify({"ok": False, "error": "measurement and field required"}), 400
+
+    try:
+        LOG.debug(
+            "api.query measurement=%s field=%s range=%s entity_id=%s friendly_name=%s",
+            measurement,
+            field,
+            range_key,
+            bool(entity_id),
+            bool(friendly_name),
+        )
+    except Exception:
+        pass
+
+    cache_id = None
+    key = None
+    try:
+        if bool(cfg.get("dash_cache_enabled", True)):
+            key = _dash_cache_key(
+                cfg,
+                body,
+                measurement,
+                field,
+                range_key,
+                str(entity_id) if entity_id else None,
+                str(friendly_name) if friendly_name else None,
+                unit,
+                detail_mode,
+                manual_density_pct,
+                start_dt,
+                stop_dt,
+            )
+            cache_id = _dash_cache_id(key)
+            meta = _dash_cache_load_meta(cache_id)
+            if meta and not bool(meta.get("dirty")):
+                cached = _dash_cache_load_payload(cache_id)
+                if cached and bool(cached.get("ok")):
+                    _dash_cache_touch_used(cache_id)
+                    out = dict(cached)
+                    out["cached"] = True
+                    out["cache"] = {"id": cache_id, "updated_at": meta.get("updated_at")}
+                    # Enqueue background refresh if stale (best-effort)
+                    try:
+                        if bool(cfg.get("dash_cache_update_on_use_if_stale", True)) and _dash_cache_is_stale(cfg, meta):
+                            _dash_cache_mark_dirty_id(cache_id, "stale")
+                    except Exception:
+                        pass
+                    return jsonify(out)
+    except Exception:
+        # Cache is best-effort. Ignore and fall back to DB query.
+        cache_id = None
+        key = None
+
+    try:
+        payload = _query_payload(
+            cfg,
+            measurement,
+            field,
+            range_key,
+            str(entity_id) if entity_id else None,
+            str(friendly_name) if friendly_name else None,
+            unit,
+            detail_mode,
+            manual_density_pct,
+            start_dt,
+            stop_dt,
+        )
+        if cache_id and key and bool(cfg.get("dash_cache_enabled", True)):
+            _dash_cache_store(cache_id, key, payload)
+            payload = dict(payload)
+            payload["cached"] = False
+            payload["cache"] = {"id": cache_id, "updated_at": _utc_now_iso_ms()}
+        return jsonify(payload)
+    except _ApiError as e:
+        return jsonify({"ok": False, "error": e.message}), int(e.status)
     except Exception as e:
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
 
@@ -6785,6 +7845,11 @@ from(bucket: "{cfg["bucket"]}")
                 wapi.write(bucket=cfg["bucket"], org=cfg["org"], record=p)
                 applied += 1
 
+            try:
+                if applied > 0:
+                    _dash_cache_mark_dirty_series(measurement, field, entity_id, friendly_name, "apply_edits")
+            except Exception:
+                pass
             return jsonify({"ok": True, "message": f"Applied edits: {applied}", "applied": applied})
     except Exception as ex:
         return jsonify({"ok": False, "error": _short_influx_error(ex)}), 500
@@ -6983,6 +8048,11 @@ from(bucket: "{cfg["bucket"]}")
 
             applied += 1
 
+    try:
+        if applied > 0:
+            _dash_cache_mark_dirty_series(measurement, field, entity_id, friendly_name, "apply_changes")
+    except Exception:
+        pass
     return jsonify({"ok": True, "applied": applied, "message": f"Applied changes: {applied}"})
 
 
@@ -7149,6 +8219,17 @@ def api_history_rollback():
             })
 
             applied += 1
+
+            try:
+                dirty_series.add((measurement, field, str(s.get("entity_id") or "").strip() or None, str(s.get("friendly_name") or "").strip() or None))
+            except Exception:
+                pass
+
+    try:
+        for m, f, eid, fn in dirty_series:
+            _dash_cache_mark_dirty_series(m, f, eid, fn, "history_rollback")
+    except Exception:
+        pass
 
     return jsonify({"ok": True, "applied": applied, "message": f"Rollback applied: {applied}"})
 
@@ -7983,6 +9064,12 @@ from(bucket: "{cfg["bucket"]}")
             "ua": _req_ua(),
         })
 
+        try:
+            if imported > 0 or delete_first:
+                _dash_cache_mark_dirty_series(measurement, field, entity_id, friendly_name, "import")
+        except Exception:
+            pass
+
         return jsonify({
             "ok": True,
             "imported": imported,
@@ -8039,6 +9126,10 @@ def delete():
                 predicate += f" AND friendly_name={_flux_str(friendly_name)}"
             with v2_client(cfg) as c:
                 c.delete_api().delete(start=start, stop=stop, predicate=predicate, bucket=cfg["bucket"], org=cfg["org"])
+            try:
+                _dash_cache_mark_dirty_series(measurement, field, str(entity_id) if entity_id else None, str(friendly_name) if friendly_name else None, "delete")
+            except Exception:
+                pass
             return jsonify({"ok": True, "message": f"Deleted v2: {predicate} in {cfg['bucket']} from {start.isoformat()} to {stop.isoformat()}"})
         else:
             if not cfg.get("database"):
@@ -8048,9 +9139,99 @@ def delete():
             tag_where = influxql_tag_filter(entity_id, friendly_name)
             q = f'DELETE FROM "{measurement}" WHERE time > now() - {dur}{tag_where}'
             c.query(q)
+            try:
+                _dash_cache_mark_dirty_series(measurement, field, str(entity_id) if entity_id else None, str(friendly_name) if friendly_name else None, "delete")
+            except Exception:
+                pass
             return jsonify({"ok": True, "message": f"Deleted v1: measurement={measurement}, last {dur}{' with tag filters' if tag_where else ''}."})
     except Exception as e:
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
+
+
+_DASH_CACHE_SCHED_STARTED = False
+
+
+def _dash_cache_scheduler_loop() -> None:
+    """Background refresh loop for dashboard caches (best-effort)."""
+
+    while True:
+        try:
+            cfg = _overlay_from_yaml_if_enabled(load_cfg())
+            if not bool(cfg.get("dash_cache_enabled", True)) or not bool(cfg.get("dash_cache_auto_update", True)):
+                time.sleep(60)
+                continue
+
+            metas = _dash_cache_list_meta()
+            if not metas:
+                time.sleep(60)
+                continue
+
+            def inflight(cache_id: str) -> bool:
+                with DASH_CACHE_JOBS_LOCK:
+                    for j in DASH_CACHE_JOBS.values():
+                        try:
+                            if str(j.get("cache_id") or "") != cache_id:
+                                continue
+                            st = str(j.get("state") or "")
+                            if st and st not in ("done", "error", "cancelled"):
+                                return True
+                        except Exception:
+                            continue
+                return False
+
+            # Pick one due cache per tick (rate limit).
+            pick = None
+            pick_prio = 999
+            for m in metas:
+                try:
+                    cid = str(m.get("id") or "").strip()
+                    if not cid:
+                        continue
+                    if inflight(cid):
+                        continue
+                    if bool(m.get("dirty")):
+                        prio = 0
+                    elif bool(m.get("mismatch")):
+                        prio = 1
+                    elif _dash_cache_is_stale(cfg, m):
+                        prio = 5
+                    else:
+                        continue
+                    if prio < pick_prio:
+                        pick = cid
+                        pick_prio = prio
+                except Exception:
+                    continue
+
+            if pick:
+                try:
+                    _dash_cache_start_job("update", pick, trigger_page="scheduler")
+                except Exception:
+                    pass
+        except Exception:
+            # Never crash the loop
+            pass
+
+        time.sleep(60)
+
+
+def _dash_cache_scheduler_start() -> None:
+    global _DASH_CACHE_SCHED_STARTED
+    if _DASH_CACHE_SCHED_STARTED:
+        return
+    _DASH_CACHE_SCHED_STARTED = True
+    t = threading.Thread(target=_dash_cache_scheduler_loop, daemon=True)
+    t.start()
+    try:
+        LOG.info("dash_cache scheduler started")
+    except Exception:
+        pass
+
+
+try:
+    _dash_cache_scheduler_start()
+except Exception:
+    pass
 
 _VERSION_RE = re.compile(r"^[0-9A-Za-z][0-9A-Za-z._-]*$")
 

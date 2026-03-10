@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.12.0
+
+### Features
+
+- Dashboard: serverseitiger Cache unter `/data/dash_cache` (Graph/Tabelle bleiben beim Zurueckkehren erhalten; deutlich schneller).
+- Jobs: zweite Tabelle "Dashboard Cache" mit Aktionen `Pruefen` (best-effort), `Aktualisieren`, `Loeschen`.
+- Einstellungen: Cache Intervall (alle X Stunden oder taeglich HH:MM:SS) + Limits (Max Eintraege/MB).
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
+## 1.11.98
+
+### Fixes
+
+- Dashboard: Ableitung-Checkboxen sind per Default aktiv (Hintergrund + Farbleiste + Ableitungs-Graph).
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.11.97
 
 ### Fixes

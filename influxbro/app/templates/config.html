@@ -177,6 +177,56 @@
       </div>
     </details>
 
+        <details class="card" id="ui_cache" open data-ui="settings.ui.cache" title="settings.ui.cache">
+          <summary>Dashboard Cache</summary>
+          <div class="card_body">
+          <div class="grid">
+            <div>
+              <label><input type="checkbox" id="dash_cache_enabled" /> Cache aktiv</label>
+              <div class="muted">Speichert Dashboard Query-Ergebnisse unter <code>/data/dash_cache</code> und nutzt sie beim naechsten Aufruf.</div>
+            </div>
+            <div>
+              <label><input type="checkbox" id="dash_cache_auto_update" /> Automatisch aktualisieren</label>
+              <div class="muted">Background-Job haelt Caches aktuell (siehe Jobs-Seite).</div>
+            </div>
+
+            <div>
+              <label>Intervall-Modus</label>
+              <select id="dash_cache_refresh_mode">
+                <option value="hours">alle X Stunden</option>
+                <option value="daily">taeglich</option>
+              </select>
+              <div class="muted">Steuert, wann ein Cache als "stale" gilt.</div>
+            </div>
+            <div>
+              <label>X Stunden</label>
+              <input id="dash_cache_refresh_hours" type="number" min="1" max="168" />
+              <div class="muted">Gilt nur fuer Modus "alle X Stunden".</div>
+            </div>
+            <div>
+              <label>Taeglich um (HH:MM:SS)</label>
+              <input id="dash_cache_refresh_daily_at" placeholder="00:00:00" />
+              <div class="muted">Gilt nur fuer Modus "taeglich" (lokale Zeit im Add-on).</div>
+            </div>
+
+            <div>
+              <label>Max Cache Eintraege</label>
+              <input id="dash_cache_max_items" type="number" min="0" max="500" />
+              <div class="muted">0 = Cache ist effektiv aus (Eintraege werden sofort evicted).</div>
+            </div>
+            <div>
+              <label>Max Cache Groesse (MB)</label>
+              <input id="dash_cache_max_mb" type="number" min="0" max="2048" />
+              <div class="muted">Best-effort Eviction nach LRU.</div>
+            </div>
+            <div>
+              <label><input type="checkbox" id="dash_cache_update_on_use_if_stale" /> Bei Nutzung stale markieren</label>
+              <div class="muted">Wenn ein alter Cache genutzt wird, wird er als dirty markiert und vom Background-Job bevorzugt aktualisiert.</div>
+            </div>
+          </div>
+          </div>
+        </details>
+
         <details class="card" id="ui_edit" open data-ui="settings.ui.edit" title="settings.ui.edit">
           <summary>Bearbeitungsliste</summary>
           <div class="card_body">
@@ -502,6 +552,8 @@ const ids = [
   ,"log_influx_queries"
   ,"writes_enabled"
   ,"backup_dir"
+  ,"dash_cache_enabled","dash_cache_auto_update","dash_cache_refresh_mode","dash_cache_refresh_hours","dash_cache_refresh_daily_at"
+  ,"dash_cache_max_items","dash_cache_max_mb","dash_cache_update_on_use_if_stale"
 ];
 
 const el = {};
@@ -587,6 +639,15 @@ function setForm(cfg){
   el.log_influx_queries.checked = !!cfg.log_influx_queries;
 
   el.writes_enabled.checked = (cfg.writes_enabled !== false);
+
+  el.dash_cache_enabled.checked = (cfg.dash_cache_enabled !== false);
+  el.dash_cache_auto_update.checked = (cfg.dash_cache_auto_update !== false);
+  el.dash_cache_refresh_mode.value = String(cfg.dash_cache_refresh_mode ?? 'hours');
+  el.dash_cache_refresh_hours.value = cfg.dash_cache_refresh_hours ?? 6;
+  el.dash_cache_refresh_daily_at.value = cfg.dash_cache_refresh_daily_at ?? '00:00:00';
+  el.dash_cache_max_items.value = cfg.dash_cache_max_items ?? 40;
+  el.dash_cache_max_mb.value = cfg.dash_cache_max_mb ?? 50;
+  el.dash_cache_update_on_use_if_stale.checked = (cfg.dash_cache_update_on_use_if_stale !== false);
 }
 
 function getForm(){
@@ -658,6 +719,15 @@ function getForm(){
     log_influx_queries: !!el.log_influx_queries.checked,
 
     writes_enabled: !!el.writes_enabled.checked,
+
+    dash_cache_enabled: !!el.dash_cache_enabled.checked,
+    dash_cache_auto_update: !!el.dash_cache_auto_update.checked,
+    dash_cache_refresh_mode: String(el.dash_cache_refresh_mode.value || 'hours'),
+    dash_cache_refresh_hours: parseInt(el.dash_cache_refresh_hours.value, 10),
+    dash_cache_refresh_daily_at: String(el.dash_cache_refresh_daily_at.value || '00:00:00').trim(),
+    dash_cache_max_items: parseInt(el.dash_cache_max_items.value, 10),
+    dash_cache_max_mb: parseInt(el.dash_cache_max_mb.value, 10),
+    dash_cache_update_on_use_if_stale: !!el.dash_cache_update_on_use_if_stale.checked,
   };
 }
 

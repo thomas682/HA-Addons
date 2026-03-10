@@ -59,6 +59,8 @@
               <option value="">alle</option>
               <option value="global_stats">global_stats</option>
               <option value="restore_copy">restore_copy</option>
+              <option value="backup">backup</option>
+              <option value="dash_cache">dash_cache</option>
             </select>
           </div>
           <div style="flex:1; min-width: 260px;">
@@ -94,6 +96,54 @@
         </div>
       </div>
 
+      <div class="card" data-ui="cache.card" title="cache.card">
+        <div style="display:flex; align-items:baseline; justify-content:space-between; gap: 10px; flex-wrap:wrap;">
+          <div>
+            <div style="font-weight:800;">Dashboard Cache</div>
+            <div class="muted">Server-Cache unter <code>/data/dash_cache</code>. Beschleunigt Dashboard (Graph/Tabelle) ueber Seitenwechsel hinweg.</div>
+          </div>
+        </div>
+
+        <div class="row" style="margin-top: 10px;" data-ui="cache.controls" title="cache.controls">
+          <div style="flex:1; min-width: 260px;">
+            <label class="muted" style="display:block; font-size: 12px;">Suche</label>
+            <input id="cache_q" placeholder="measurement/field/entity_id..." data-ui="cache.search" title="cache.search" />
+          </div>
+          <div>
+            <label class="muted" style="display:block; font-size: 12px;">&nbsp;</label>
+            <button id="cache_refresh" data-ui="cache.refresh" title="cache.refresh">Aktualisieren</button>
+          </div>
+          <div>
+            <label class="muted" style="display:block; font-size: 12px;">&nbsp;</label>
+            <button id="cache_delete_all" data-ui="cache.delete_all" title="cache.delete_all">Cache loeschen (alles)</button>
+          </div>
+        </div>
+
+        <div class="status" id="cache_info" data-ui="cache.info" title="cache.info"></div>
+        <div id="cache_err" class="err"></div>
+
+        <div class="table_box">
+          <table id="cache_tbl" data-ui="cache.table" title="cache.table">
+            <thead>
+              <tr>
+                <th style="width: 46px;">ok</th>
+                <th style="width: 160px;">updated</th>
+                <th style="width: 90px;">age</th>
+                <th style="width: 260px;">series</th>
+                <th style="width: 260px;">tags</th>
+                <th style="width: 90px;">range</th>
+                <th style="width: 70px;">rows</th>
+                <th style="width: 90px;">size</th>
+                <th style="width: 140px;">check</th>
+                <th style="width: 120px;">flags</th>
+                <th style="width: 220px;">actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
       <script>
       const $auto = document.getElementById('auto');
       const $type = document.getElementById('type');
@@ -103,11 +153,29 @@
       const $err = document.getElementById('err');
       const $tblBody = document.querySelector('#tbl tbody');
 
+      const $cacheQ = document.getElementById('cache_q');
+      const $cacheRefresh = document.getElementById('cache_refresh');
+      const $cacheDeleteAll = document.getElementById('cache_delete_all');
+      const $cacheInfo = document.getElementById('cache_info');
+      const $cacheErr = document.getElementById('cache_err');
+      const $cacheBody = document.querySelector('#cache_tbl tbody');
+
       let POLL = null;
 
       function err(s){
         const msg = s || '';
         $err.textContent = msg;
+        if(msg){
+          try{
+            if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error(msg);
+            else alert(msg);
+          }catch(e){}
+        }
+      }
+
+      function cacheErr(s){
+        const msg = s || '';
+        $cacheErr.textContent = msg;
         if(msg){
           try{
             if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error(msg);
@@ -152,6 +220,129 @@
       }
 
       function wantsAuto(){ return ($auto.value || 'on') === 'on'; }
+
+      function fmtAge(sec){
+        const n = Number(sec);
+        if(!isFinite(n) || n < 0) return '';
+        const s = Math.round(n);
+        if(s < 60) return s + 's';
+        const m = Math.round(s/60);
+        if(m < 60) return m + 'm';
+        const h = Math.round(m/60);
+        if(h < 48) return h + 'h';
+        const d = Math.round(h/24);
+        return d + 'd';
+      }
+
+      function fmtSize(bytes){
+        const n = Number(bytes||0);
+        if(!isFinite(n) || n <= 0) return '';
+        if(n < 1024) return n + ' B';
+        if(n < 1024*1024) return (n/1024).toFixed(1) + ' kB';
+        return (n/1024/1024).toFixed(1) + ' MB';
+      }
+
+      const ICON_OK = '<svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="9" fill="#e8f7ec" stroke="#2e7d32" stroke-width="1.5"/><path d="M5.2 10.3l3.0 3.2 6.6-7.0" fill="none" stroke="#2e7d32" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      const ICON_CHANGED = '<svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="9" fill="#fff0f0" stroke="#b00020" stroke-width="1.5"/><path d="M10 4.1a5.9 5.9 0 1 1-4.1 1.7" fill="none" stroke="#b00020" stroke-width="2" stroke-linecap="round"/><path d="M4.3 3.6h4.1v4.1" fill="none" stroke="#b00020" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+      function cacheBlob(m){
+        try{
+          const k = (m && m.key) ? m.key : {};
+          return [k.measurement,k.field,k.entity_id,k.friendly_name,k.range,m.id].map(x=>String(x||'')).join(' ').toLowerCase();
+        }catch(e){
+          return '';
+        }
+      }
+
+      function filterCaches(items){
+        const q = String($cacheQ.value || '').trim().toLowerCase();
+        if(!q) return items || [];
+        return (items||[]).filter(m => cacheBlob(m).includes(q));
+      }
+
+      function renderCaches(items){
+        $cacheBody.textContent = '';
+        const rows = filterCaches(items || []);
+        for(const m of rows){
+          const k = m.key || {};
+          const tr = document.createElement('tr');
+
+          const okIcon = (m.last_check_at)
+            ? (m.last_check_ok ? ICON_OK : ICON_CHANGED)
+            : ((m.dirty || m.mismatch) ? ICON_CHANGED : '');
+
+          const series = `${String(k.measurement||'')}/${String(k.field||'')}`;
+          const tags = [k.entity_id ? ('entity_id=' + k.entity_id) : '', k.friendly_name ? ('friendly_name=' + k.friendly_name) : ''].filter(Boolean).join(' ');
+          const flags = [m.dirty ? 'dirty' : '', m.mismatch ? 'changed' : '', m.stale ? 'stale' : ''].filter(Boolean).join(' ');
+          const check = m.last_check_at ? (fmtTs(m.last_check_at) + (m.last_check_ok ? ' OK' : ' CHANGED')) : '';
+
+          tr.innerHTML = [
+            `<td style="text-align:center;">${okIcon}</td>`,
+            `<td>${fmtTs(m.updated_at)}</td>`,
+            `<td class="mono">${fmtAge(m.age_seconds)}</td>`,
+            `<td class="mono" title="${series.replace(/"/g,'&quot;')}">${series}</td>`,
+            `<td class="mono" title="${tags.replace(/"/g,'&quot;')}">${tags}</td>`,
+            `<td class="mono">${String(k.range||'')}</td>`,
+            `<td class="mono" style="text-align:right;">${String(m.row_count||0)}</td>`,
+            `<td class="mono" style="text-align:right;">${fmtSize(m.bytes)}</td>`,
+            `<td class="mono">${check}</td>`,
+            `<td class="mono">${flags}</td>`,
+            `<td></td>`,
+          ].join('');
+
+          const tdAct = tr.lastChild;
+          const cid = String(m.id || '');
+
+          const bCheck = document.createElement('button');
+          bCheck.className = 'btn_xs';
+          bCheck.textContent = 'Pruefen';
+          bCheck.onclick = async ()=>{
+            try{
+              cacheErr('');
+              await api('./api/cache/check', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({cache_id: cid})});
+              await loadAll();
+            }catch(e){
+              cacheErr(e && e.message ? e.message : String(e));
+            }
+          };
+          tdAct.appendChild(bCheck);
+
+          const bUpd = document.createElement('button');
+          bUpd.className = 'btn_xs';
+          bUpd.style.marginLeft = '6px';
+          bUpd.textContent = 'Aktualisieren';
+          bUpd.onclick = async ()=>{
+            try{
+              cacheErr('');
+              await api('./api/cache/update', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({cache_id: cid})});
+              await loadAll();
+            }catch(e){
+              cacheErr(e && e.message ? e.message : String(e));
+            }
+          };
+          tdAct.appendChild(bUpd);
+
+          const bDel = document.createElement('button');
+          bDel.className = 'btn_xs';
+          bDel.style.marginLeft = '6px';
+          bDel.textContent = 'Loeschen';
+          bDel.onclick = async ()=>{
+            try{
+              if(!confirm('Cache loeschen?\n\n' + cid)) return;
+              cacheErr('');
+              await api('./api/cache/delete', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({cache_id: cid})});
+              await loadAll();
+            }catch(e){
+              cacheErr(e && e.message ? e.message : String(e));
+            }
+          };
+          tdAct.appendChild(bDel);
+
+          $cacheBody.appendChild(tr);
+        }
+
+        $cacheInfo.textContent = `Cache Eintraege: ${rows.length}`;
+      }
 
       function filterJobs(jobs){
         const t = String($type.value || '').trim();
@@ -237,25 +428,50 @@
         $info.textContent = `Jobs: ${rows.length}`;
       }
 
-      async function load(){
+      async function loadJobs(){
         err('');
         const j = await api('./api/jobs?limit=200', {});
         render(j.jobs || []);
         const anyActive = (j.jobs || []).some(isActive);
         if(wantsAuto() && anyActive){
-          if(!POLL) POLL = setInterval(()=>{ load().catch(()=>{}); }, 2000);
+          if(!POLL) POLL = setInterval(()=>{ loadAll().catch(()=>{}); }, 2000);
         }else{
           if(POLL) clearInterval(POLL);
           POLL = null;
         }
       }
 
-      $refresh.onclick = ()=>{ load().catch(e => err(e && e.message ? e.message : String(e))); };
-      $auto.onchange = ()=>{ load().catch(()=>{}); };
-      $type.onchange = ()=>{ load().catch(()=>{}); };
-      $q.oninput = ()=>{ load().catch(()=>{}); };
+      let LAST_CACHES = [];
+      async function loadCaches(){
+        cacheErr('');
+        const j = await api('./api/cache/list', {});
+        LAST_CACHES = j.caches || [];
+        renderCaches(LAST_CACHES);
+      }
 
-      load().catch(e => err(e && e.message ? e.message : String(e)));
+      async function loadAll(){
+        await loadJobs();
+        await loadCaches();
+      }
+
+      $refresh.onclick = ()=>{ loadAll().catch(e => err(e && e.message ? e.message : String(e))); };
+      $auto.onchange = ()=>{ loadAll().catch(()=>{}); };
+      $type.onchange = ()=>{ loadAll().catch(()=>{}); };
+      $q.oninput = ()=>{ loadAll().catch(()=>{}); };
+
+      $cacheRefresh.onclick = ()=>{ loadAll().catch(()=>{}); };
+      $cacheQ.oninput = ()=>{ renderCaches(LAST_CACHES); };
+      $cacheDeleteAll.onclick = async ()=>{
+        try{
+          if(!confirm('Cache komplett loeschen?\n\nDas loescht nur Cache-Dateien unter /data, nicht die Datenbank.')) return;
+          await api('./api/cache/delete', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({all: true})});
+          await loadAll();
+        }catch(e){
+          cacheErr(e && e.message ? e.message : String(e));
+        }
+      };
+
+      loadAll().catch(e => err(e && e.message ? e.message : String(e)));
       </script>
 
       {% include "_tooltips.html" %}

@@ -108,6 +108,7 @@ Hinweis: Zeitstempel werden im gesamten UI inklusive Millisekunden angezeigt.
 
 - Erst mit `Aktualisieren` werden Graph und Statistik geladen.
 - Die Bearbeitungsliste bleibt dabei leer und wird erst durch `Fehlersuche Ausreisser` gefuellt.
+- Sobald einmal geladen wurde, werden die Ergebnisse serverseitig gecacht (unter `/data/dash_cache`) und beim naechsten Aufruf des Dashboards wiederhergestellt (auch nach Seitenwechsel in InfluxBro / Home Assistant).
 
 ## Graph
 
@@ -131,7 +132,7 @@ Details (Sampling) + Ableitung:
 
 Hinweis (Defaults/Persistenz):
 
-- Beim ersten Start sind die Ableitungs-Checkboxen standardmaessig aktiviert (Hintergrund + Farbleiste + Ableitungs-Graph + absolut).
+- Wenn kein UI-State gespeichert ist (neue Installation oder Browser-Storage geloescht), sind die Ableitungs-Checkboxen standardmaessig aktiviert (Hintergrund + Farbleiste + Ableitungs-Graph + absolut).
 
 Bearbeitungsliste + Bearbeitungsgraph:
 
@@ -224,6 +225,16 @@ Tipp: In der Toolbar gibt es Mehrfachaktionen (z.B. Werte davor uebernehmen oder
 - Zeigt laufende Background-Jobs (z.B. Statistik laden, Restore/Copy).
 - Button `Cancel`: bricht den Job ab (bestaetigen).
 - Tipp: `Open Statistik` setzt die Job-ID fuer die Statistik-Seite und wechselt dorthin.
+
+Dashboard Cache:
+
+- Zusaetzliche Tabelle `Dashboard Cache`: zeigt, welche Dashboard-Daten gecacht sind und wie alt sie sind.
+- Aktionen:
+  - `Pruefen`: best-effort Vergleich mit der Datenbank (gruener Haken = ok; rotes Symbol = Daten haben sich geaendert).
+  - `Aktualisieren`: laedt die Cache-Daten neu.
+  - `Loeschen`: entfernt den Cache-Eintrag (nur Cache, nicht die Datenbank).
+  - `Cache loeschen (alles)`: loescht alle Cache-Dateien unter `/data`.
+- Das automatische Cache-Update ist in `Einstellungen -> UI -> Dashboard Cache` konfigurierbar (alle X Stunden oder taeglich um HH:MM:SS).
 
 ## Backup (ein Messwert, alle Werte)
 

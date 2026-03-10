@@ -286,9 +286,9 @@
           <span class="muted" id="graph_manual_density_lbl">100%</span>
         </label>
 
-        <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_bg" class="row_sel" />Ableitung: Hintergrund</label>
-        <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_strip" class="row_sel" />Ableitung: Farbleiste</label>
-        <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_graph" class="row_sel" />Ableitungs-Graph</label>
+        <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_bg" class="row_sel" checked/>Ableitung: Hintergrund</label>
+        <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_strip" class="row_sel" checked/>Ableitung: Farbleiste</label>
+        <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_graph" class="row_sel" checked/>Ableitungs-Graph</label>
         <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_abs" class="row_sel" checked/>absolut</label>
         <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_signed" class="row_sel" />signiert</label>
 
@@ -1465,6 +1465,78 @@ function cacheRestoreIfAvailable(){
       }
     }catch(e){}
 
+    try{ refreshEditGraph().catch(()=>{}); }catch(e){}
+    return true;
+  }catch(e){
+    return false;
+  }
+}
+
+async function cachePeekServerIfAvailable(){
+  // Cache-only restore from backend (/data). Does NOT hit InfluxDB.
+  try{
+    const filters = currentFilters();
+    if(!filters || !filters.measurement || !filters.field) return false;
+    // Only meaningful when a concrete entity_id is selected.
+    if(!($e && String($e.value || '').trim())) return false;
+
+    const payload = {
+      ...filters,
+      detail_mode: $graphDetailMode ? String($graphDetailMode.value || 'dynamic') : 'dynamic',
+      manual_density_pct: $graphManualDensity ? Number($graphManualDensity.value || 100) : 100,
+    };
+
+    let r;
+    try{
+      r = await fetch('./api/cache/peek', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+    }catch(e){
+      try{ window.InfluxBroClientLog && window.InfluxBroClientLog.fetchError && window.InfluxBroClientLog.fetchError('./api/cache/peek', payload, e); }catch(x){}
+      return false;
+    }
+    if(!r || !r.ok) return false;
+    const j = await r.json().catch(()=>null);
+    if(!j || !j.ok) return false;
+
+    // Apply result similarly to loadData(), but without triggering a DB fetch.
+    const rows0 = Array.isArray(j.rows) ? j.rows : [];
+    try{ LAST_JUMP_SPANS = (j && j.meta && Array.isArray(j.meta.jump_spans)) ? j.meta.jump_spans : []; }catch(e){ LAST_JUMP_SPANS = []; }
+    try{ LAST_TOTAL_POINTS = (j && j.meta && j.meta.total_points !== undefined) ? Number(j.meta.total_points) : null; }catch(e){ LAST_TOTAL_POINTS = null; }
+
+    FILTER_TABLE_CLEARED = false;
+    LAST_ROWS = rows0;
+    LAST_ROWS_RAW = null;
+    OUTLIER_ACTIVE = false;
+    OUTLIER_ROWS = [];
+
+    try{ setLastQuery(j.query || ''); }catch(e){}
+
+    // Sync graph window bounds to the restored data.
+    try{
+      const xs = rows0.map(r => Date.parse(r && r.time ? r.time : '')).filter(t => isFinite(t));
+      if(xs.length){
+        const mn = Math.min(...xs);
+        const mx = Math.max(...xs);
+        FULL_GRAPH_BOUNDS = {min: mn, max: mx};
+        const hasWin = isFinite(TABLE_TIME.graph_start_ms) && isFinite(TABLE_TIME.graph_stop_ms);
+        const lo = hasWin ? Math.min(TABLE_TIME.graph_start_ms, TABLE_TIME.graph_stop_ms) : null;
+        const hi = hasWin ? Math.max(TABLE_TIME.graph_start_ms, TABLE_TIME.graph_stop_ms) : null;
+        const okWin = hasWin && lo !== null && hi !== null && lo >= mn && hi <= mx && hi > lo;
+        if(!okWin){
+          TABLE_TIME.graph_start_ms = mn;
+          TABLE_TIME.graph_stop_ms = mx;
+        }
+        saveState();
+      }
+    }catch(e){}
+
+    renderTable();
+    if(LAST_ROWS && LAST_ROWS.length){
+      draw(LAST_ROWS);
+      autoScaleYFromWindow();
+      try{ _updateGraphDetailUi(); _applyOverlays(); _updateGraphPointsInfo(); }catch(e){}
+      scheduleRawReload(true);
+      loadStats().catch(()=>{});
+    }
     try{ refreshEditGraph().catch(()=>{}); }catch(e){}
     return true;
   }catch(e){
@@ -3367,29 +3439,13 @@ try{
 // Graph detail controls
 try{
   const st = loadState();
-  // First-run defaults for derivative controls on the dashboard.
-  try{
-    const flag = localStorage.getItem('influxbro_dash_deriv_defaults_v1');
-    const hasAnyDeriv = (st.deriv_bg !== undefined) || (st.deriv_strip !== undefined) || (st.deriv_graph !== undefined);
-    if(!flag && !hasAnyDeriv){
-      st.deriv_bg = true;
-      st.deriv_strip = true;
-      st.deriv_graph = true;
-      st.deriv_abs = true;
-      st.deriv_signed = false;
-      localStorage.setItem('influxbro_dash_deriv_defaults_v1', '1');
-      try{ localStorage.setItem(LS_KEY, JSON.stringify(st)); }catch(e){}
-    }
-  }catch(e){}
-
   if($graphDetailMode && st.graph_detail_mode) $graphDetailMode.value = String(st.graph_detail_mode);
   if($graphManualDensity && st.graph_manual_density) $graphManualDensity.value = String(st.graph_manual_density);
-  const hasAnyDeriv = (st.deriv_bg !== undefined) || (st.deriv_strip !== undefined) || (st.deriv_graph !== undefined);
-  if($derivBg) $derivBg.checked = hasAnyDeriv ? !!st.deriv_bg : false;
-  if($derivStrip) $derivStrip.checked = hasAnyDeriv ? !!st.deriv_strip : false;
-  if($derivGraph) $derivGraph.checked = hasAnyDeriv ? !!st.deriv_graph : false;
-  if($derivAbs) $derivAbs.checked = (st.deriv_abs !== undefined) ? !!st.deriv_abs : true;
-  if($derivSigned) $derivSigned.checked = !!st.deriv_signed;
+  if($derivBg) $derivBg.checked = (st.deriv_bg !== undefined) ? !!st.deriv_bg : true;
+  if($derivStrip) $derivStrip.checked = (st.deriv_strip !== undefined) ? !!st.deriv_strip : true;
+  if($derivGraph) $derivGraph.checked = (st.deriv_graph !== undefined) ? !!st.deriv_graph : true;
+  if($derivSigned) $derivSigned.checked = (st.deriv_signed !== undefined) ? !!st.deriv_signed : false;
+  if($derivAbs) $derivAbs.checked = (st.deriv_abs !== undefined) ? !!st.deriv_abs : ($derivSigned && $derivSigned.checked ? false : true);
   if($derivOutlierThr) $derivOutlierThr.value = (st.deriv_outlier_thr !== undefined) ? String(st.deriv_outlier_thr) : "90";
   if($reasonFilter) $reasonFilter.value = (st.reason_filter !== undefined) ? String(st.reason_filter || "") : "";
   if($classFilter) $classFilter.value = (st.class_filter !== undefined) ? String(st.class_filter || "all") : "all";
@@ -5294,7 +5350,10 @@ try{
 
     // Restore cached data so the dashboard keeps results across page switches.
     const restored = cacheRestoreIfAvailable();
-    if(!restored) renderTable();
+    if(!restored){
+      const serverRestored = await cachePeekServerIfAvailable();
+      if(!serverRestored) renderTable();
+    }
 
     // Ensure graph query panel reflects persisted selection.
     try{ _renderGraphQueryPanel(); }catch(e){}
