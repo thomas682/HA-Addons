@@ -47,6 +47,10 @@
     #create_spinner { width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(0,0,0,0.18); border-top-color: rgba(0,0,0,0.75); animation: spin 0.9s linear infinite; }
     #create_status_time { opacity: 0.85; white-space: nowrap; }
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+    .table_box { overflow:auto; border: 1px solid #eee; border-radius: 12px; margin-top: 10px; max-height: calc(var(--backup_visible_rows, 24) * var(--backup_row_h) + 48px); }
+    .space_box { border: 1px dashed #ddd; border-radius: 12px; padding: 10px 12px; background: #fafafa; font-size: 12px; margin-top: 10px; }
+    .warn { color: #b26a00; }
   </style>
 </head>
 <body>
@@ -56,7 +60,7 @@
       <h2>Backup</h2>
       <div class="muted">Backups fuer einen einzelnen Messwert (immer alle Werte dieses Messwertes).</div>
 
-      <div class="card">
+      <div class="card" style="--backup_visible_rows: {{ (cfg.get('ui_backup_visible_rows') or 24) | int }};">
         <details id="selection_details" open data-ui="section.selection" title="section.selection">
           <summary>Auswahl</summary>
 
@@ -142,6 +146,7 @@
           <div><label>&nbsp;</label><button id="cancel" class="btn_sm" data-ui="backup.cancel" title="backup.cancel" disabled>Abbruch</button></div>
           <div><label>&nbsp;</label><button id="backup_autowidth" class="btn_sm" data-ui="backup.autowidth" title="backup.autowidth">Spaltenbreite automatisch</button></div>
           <div><label>&nbsp;</label><button id="del" data-ui="backup.delete" title="backup.delete">Backup loeschen</button></div>
+          <div><label>&nbsp;</label><button id="download" class="btn_sm" data-ui="backup.download" title="backup.download" style="display:none;">Download</button></div>
         </div>
         <div id="err" class="err"></div>
         <div id="ok" class="ok"></div>
@@ -160,6 +165,7 @@
         </details>
 
         <div class="muted" id="loc" data-ui="backup.location" title="backup.location" style="margin-top:10px;"></div>
+        <div class="space_box" id="space" data-ui="backup.space" title="backup.space" style="display:none;"></div>
 
         <div class="row" style="margin-top: 10px;" data-ui="backup.search_row" title="backup.search_row">
           <div style="min-width: 320px; flex:1;">
@@ -173,7 +179,8 @@
           </div>
         </div>
 
-        <table data-ui="backup.table" title="backup.table" id="backup_tbl">
+         <div class="table_box" id="backup_box" data-ui="backup.table_box" title="backup.table_box">
+         <table data-ui="backup.table" title="backup.table" id="backup_tbl">
           <thead>
             <tr>
               <th style="width:20px;"><input type="checkbox" id="sel_all" data-ui="backup.select_all" title="backup.select_all"/></th>
@@ -191,7 +198,8 @@
             </tr>
           </thead>
           <tbody id="rows"></tbody>
-        </table>
+         </table>
+         </div>
       </div>
 
       <script>
@@ -214,6 +222,7 @@
       const $cancel = document.getElementById('cancel');
       const $backupAutoWidth = document.getElementById('backup_autowidth');
       const $del = document.getElementById('del');
+      const $download = document.getElementById('download');
       const $selAll = document.getElementById('sel_all');
 
       const $qBackupAll = document.getElementById('q_backup_all');
@@ -231,6 +240,8 @@
       const $createStatusTime = document.getElementById('create_status_time');
       const $backupQueryDetails = document.getElementById('backup_query_details');
       const $backupQueryPre = document.getElementById('backup_query_pre');
+
+      const $space = document.getElementById('space');
 
       const $qBackup = document.getElementById('q_backup');
       const $listInfo = document.getElementById('list_info');
@@ -714,6 +725,15 @@
         ids.forEach(id=>{ if(SELECTED_IDS.has(id)) sel++; });
         $selAll.checked = sel === ids.length;
         $selAll.indeterminate = sel > 0 && sel < ids.length;
+
+        // Download button: only if exactly one selected id.
+        try{
+          const one = (SELECTED_IDS && SELECTED_IDS.size === 1) ? Array.from(SELECTED_IDS)[0] : '';
+          if($download){
+            $download.style.display = one ? 'inline-block' : 'none';
+            $download.disabled = !one;
+          }
+        }catch(e){}
       }
 
       function filt(list, term){
@@ -735,6 +755,24 @@
           if($loc){
             $loc.textContent = `Speicherort (Add-on): ${jLoc.container_path || "/data/backups"}`;
           }
+
+          try{
+            const du = jLoc.disk_usage || null;
+            const minMb = Number(jLoc.min_free_mb || 0);
+            if($space && du && du.free !== null && du.free !== undefined){
+              const freeMb = Math.floor(Number(du.free) / 1024 / 1024);
+              const totalMb = Math.floor(Number(du.total || 0) / 1024 / 1024);
+              const warn = (minMb > 0 && freeMb < minMb);
+              $space.style.display = 'block';
+              $space.classList.toggle('warn', warn);
+              $space.textContent = `Freier Speicher: ${freeMb} MB / ${totalMb} MB` + (minMb > 0 ? (` | Warnschwelle: ${minMb} MB`) : '');
+              if(warn){
+                $space.textContent += ' | WARN: Backup wird abgelehnt, solange zu wenig frei ist.';
+              }
+            }else if($space){
+              $space.style.display = 'none';
+            }
+          }catch(e){}
         }catch(e){
           if($loc) $loc.textContent = "Speicherort (Add-on): /config/influxbro/backup";
         }
@@ -983,6 +1021,14 @@
       $createRangeSel.addEventListener('click', ()=>createRangeBackupSel().catch(e=>err(String(e && e.message ? e.message : e))));
       if($cancel) $cancel.addEventListener('click', ()=>cancelCreate());
       $del.addEventListener('click', ()=>deleteBackup().catch(e=>err(String(e && e.message ? e.message : e))));
+      if($download) $download.addEventListener('click', (ev)=>{
+        try{ ev.preventDefault(); }catch(e){}
+        try{
+          const one = (SELECTED_IDS && SELECTED_IDS.size === 1) ? Array.from(SELECTED_IDS)[0] : '';
+          if(!one) return;
+          location.href = `./api/backup_download?id=${encodeURIComponent(String(one))}`;
+        }catch(e){}
+      });
 
       function debounce(fn, ms){
         let t=null;

@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.9
+
+### Features
+
+- Backup: Download-Button fuer selektiertes Backup (ZIP: Meta + Line Protocol).
+- Backup: Anzeige freier Speicher am Backup-Speicherort; optionaler Mindestwert (MB), unter dem Backups abgelehnt werden.
+- Backup/Restore: Einstellung fuer "sichtbare Zeilen" der Listen (scrollt bei mehr Eintraegen).
+
+### Maintenance
+
+- Tested with Home Assistant Core: 2026.3.1
+
 ## 1.12.8
 
 ### Features

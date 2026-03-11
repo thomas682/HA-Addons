@@ -18,6 +18,7 @@ import uuid
 import urllib.error
 import urllib.request
 import urllib.parse
+import zipfile
 from datetime import datetime, timedelta, timezone
 from contextlib import contextmanager
 from pathlib import Path
@@ -570,6 +571,8 @@ DEFAULT_CFG = {
     "ui_table_visible_rows": 20,
     "ui_table_row_height_px": 13,
     "ui_backup_table_row_height_px": 13,
+    "ui_backup_visible_rows": 24,
+    "ui_restore_visible_rows": 24,
     "ui_edit_neighbors_n": 5,
     "ui_edit_details_visible_rows": 12,
     "ui_edit_graph_buffer_minutes": 30,
@@ -601,6 +604,8 @@ DEFAULT_CFG = {
 
     # Backups (must live under /config or /data)
     "backup_dir": str(DEFAULT_BACKUP_DIR),
+    # Refuse creating a backup if free space is below this threshold (0 = disabled)
+    "backup_min_free_mb": 0,
     # One-time migration marker when moving from the old default (/data/backups)
     "backup_migrated_to_config": False,
 
@@ -863,6 +868,38 @@ def backup_dir(cfg: dict[str, Any] | None = None) -> Path:
     except Exception:
         pass
     return target
+
+
+def _backup_disk_usage_bytes(cfg: dict[str, Any]) -> dict[str, int] | None:
+    """Return disk usage for the backup directory (best-effort)."""
+
+    try:
+        bdir = backup_dir(cfg)
+        bdir.mkdir(parents=True, exist_ok=True)
+        du = shutil.disk_usage(str(bdir))
+        return {"total": int(du.total), "used": int(du.used), "free": int(du.free)}
+    except Exception:
+        return None
+
+
+def _backup_require_free_space(cfg: dict[str, Any]) -> tuple[bool, str | None]:
+    """Return (ok, error_message) according to backup_min_free_mb."""
+
+    try:
+        min_mb = int(cfg.get("backup_min_free_mb", 0) or 0)
+    except Exception:
+        min_mb = 0
+    if min_mb <= 0:
+        return True, None
+
+    du = _backup_disk_usage_bytes(cfg)
+    if not du:
+        return True, None
+    free = int(du.get("free") or 0)
+    if free >= min_mb * 1024 * 1024:
+        return True, None
+    free_mb = int(free / 1024 / 1024)
+    return False, f"Nicht genug freier Speicher fuer Backup. Frei: {free_mb} MB; erforderlich: {min_mb} MB"
 
 
 # Configure logging early from persisted config.
@@ -3533,6 +3570,9 @@ def api_backups_all():
 def api_backup_create():
     cfg = _overlay_from_yaml_if_enabled(load_cfg())
     bdir = backup_dir(cfg)
+    ok_free, msg = _backup_require_free_space(cfg)
+    if not ok_free:
+        return jsonify({"ok": False, "error": msg}), 507
     body = request.get_json(force=True) or {}
     measurement = (body.get("measurement") or "").strip()
     field = (body.get("field") or "").strip()
@@ -3658,13 +3698,45 @@ from(bucket: "{cfg["bucket"]}")
 def api_backup_location():
     cfg = load_cfg()
     bdir = backup_dir(cfg)
-    return jsonify({"ok": True, "container_path": str(bdir), "slug": "influxbro"})
+    du = _backup_disk_usage_bytes(cfg)
+    return jsonify({"ok": True, "container_path": str(bdir), "slug": "influxbro", "disk_usage": du, "min_free_mb": cfg.get("backup_min_free_mb", 0)})
+
+
+@app.get("/api/backup_download")
+def api_backup_download():
+    cfg = load_cfg()
+    bdir = backup_dir(cfg)
+    backup_id = str(request.args.get("id") or "").strip()
+    if not backup_id:
+        return jsonify({"ok": False, "error": "id required"}), 400
+    if _backup_safe(backup_id) != backup_id:
+        return jsonify({"ok": False, "error": "invalid id"}), 400
+
+    meta_path, lp_path = _backup_files(bdir, backup_id)
+    if not meta_path.exists() or not lp_path.exists():
+        return jsonify({"ok": False, "error": "backup not found"}), 404
+
+    # Zip both files for a single download.
+    try:
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, mode="w", compression=zipfile.ZIP_DEFLATED) as z:
+            z.write(meta_path, arcname=meta_path.name)
+            z.write(lp_path, arcname=lp_path.name)
+        buf.seek(0)
+        fn = f"{backup_id}.zip"
+        return send_file(buf, as_attachment=True, download_name=fn, mimetype="application/zip")
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 500
 
 
 @app.post("/api/backup_job/start")
 def api_backup_job_start():
     cfg = _overlay_from_yaml_if_enabled(load_cfg())
     body = request.get_json(force=True) or {}
+
+    ok_free, msg = _backup_require_free_space(cfg)
+    if not ok_free:
+        return jsonify({"ok": False, "error": msg}), 507
 
     kind = str(body.get("kind") or "full").strip().lower()
     if kind not in ("full", "range"):
@@ -3797,6 +3869,9 @@ def api_backup_job_cancel():
 def api_backup_create_range():
     cfg = _overlay_from_yaml_if_enabled(load_cfg())
     bdir = backup_dir(cfg)
+    ok_free, msg = _backup_require_free_space(cfg)
+    if not ok_free:
+        return jsonify({"ok": False, "error": msg}), 507
     body = request.get_json(force=True) or {}
     measurement = (body.get("measurement") or "").strip()
     field = (body.get("field") or "").strip()
@@ -5544,6 +5619,8 @@ def api_set_config():
     _clamp_int("ui_font_small_px", 11, 9, 18)
     _clamp_int("ui_table_row_height_px", 13, 9, 60)
     _clamp_int("ui_backup_table_row_height_px", 13, 9, 60)
+    _clamp_int("ui_backup_visible_rows", 24, 5, 200)
+    _clamp_int("ui_restore_visible_rows", 24, 5, 200)
     _clamp_int("ui_query_manual_max_points", 200000, 1000, 2000000)
     _clamp_int("ui_graph_jump_padding_intervals", 1, 0, 50)
     _clamp_int("ui_edit_neighbors_n", 5, 1, 50)
@@ -5576,6 +5653,8 @@ def api_set_config():
     except Exception:
         cfg["backup_dir"] = str(DEFAULT_CFG.get("backup_dir") or "/data/backups")
     cfg["backup_dir"] = str(backup_dir(cfg))
+
+    _clamp_int("backup_min_free_mb", 0, 0, 500000)
 
     def _bool(key: str, default: bool = False) -> None:
         v = cfg.get(key, default)

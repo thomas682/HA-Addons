@@ -429,6 +429,16 @@
               <input id="ui_backup_table_row_height_px" type="number" min="9" max="60" />
               <div class="muted">Wirkt nur auf die Backup-Tabelle.</div>
             </div>
+            <div>
+              <label>Sichtbare Zeilen (Backup-Liste)</label>
+              <input id="ui_backup_visible_rows" type="number" min="5" max="200" data-ui="settings.ui_backup_visible_rows" title="settings.ui_backup_visible_rows" />
+              <div class="muted">Hoehe der Backup-Tabelle in Zeilen (scrollt bei mehr Eintraegen).</div>
+            </div>
+            <div>
+              <label>Min. freier Speicher (MB)</label>
+              <input id="backup_min_free_mb" type="number" min="0" max="500000" data-ui="settings.backup_min_free_mb" title="settings.backup_min_free_mb" />
+              <div class="muted">Wenn kleiner als diese Schwelle, wird das Erstellen eines Backups abgelehnt (0 = deaktiviert).</div>
+            </div>
           </div>
           </div>
         </details>
@@ -448,6 +458,11 @@
               <label>Vorschauzeilen (Restore)</label>
               <input id="restore_preview_lines" type="number" min="0" max="200" />
               <div class="muted">Anzahl der ersten umgeschriebenen Line-Protocol Zeilen, die nach "Restore ausfuehren" angezeigt werden. Default: 5.</div>
+            </div>
+            <div>
+              <label>Sichtbare Zeilen (Restore-Liste)</label>
+              <input id="ui_restore_visible_rows" type="number" min="5" max="200" data-ui="settings.ui_restore_visible_rows" title="settings.ui_restore_visible_rows" />
+              <div class="muted">Hoehe der Restore-Backup-Liste in Zeilen (scrollt bei mehr Eintraegen).</div>
             </div>
           </div>
           </div>
@@ -602,7 +617,7 @@ const ids = [
   "org","bucket","token",
   "database","username","password",
   "ui_table_visible_rows","ui_table_row_height_px","ui_edit_neighbors_n","ui_edit_details_visible_rows","ui_edit_graph_buffer_minutes","ui_edit_graph_max_points","ui_decimals",
-  "ui_backup_table_row_height_px",
+  "ui_backup_table_row_height_px","ui_backup_visible_rows","ui_restore_visible_rows",
   "ui_query_max_points","ui_raw_max_points",
   "ui_query_manual_max_points","ui_graph_jump_padding_intervals",
   "ui_font_size_px","ui_font_small_px","ui_checkbox_scale",
@@ -616,7 +631,7 @@ const ids = [
   ,"log_to_file","log_profile","log_max_mb","log_backup_count","log_max_age_days","log_http_requests"
   ,"log_influx_queries"
   ,"writes_enabled"
-  ,"backup_dir"
+  ,"backup_dir","backup_min_free_mb"
   ,"dash_cache_enabled","dash_cache_auto_update","dash_cache_refresh_mode","dash_cache_refresh_hours","dash_cache_refresh_daily_at"
   ,"dash_cache_max_items","dash_cache_max_mb","dash_cache_update_on_use_if_stale"
   ,"stats_cache_enabled","stats_cache_auto_update","stats_cache_refresh_mode","stats_cache_refresh_hours","stats_cache_refresh_daily_at"
@@ -993,6 +1008,8 @@ function setForm(cfg){
   el.ui_table_visible_rows.value = cfg.ui_table_visible_rows ?? 20;
   el.ui_table_row_height_px.value = cfg.ui_table_row_height_px ?? 16;
   el.ui_backup_table_row_height_px.value = cfg.ui_backup_table_row_height_px ?? (cfg.ui_table_row_height_px ?? 16);
+  el.ui_backup_visible_rows.value = cfg.ui_backup_visible_rows ?? 24;
+  el.ui_restore_visible_rows.value = cfg.ui_restore_visible_rows ?? 24;
   el.ui_query_manual_max_points.value = cfg.ui_query_manual_max_points ?? 200000;
   el.ui_graph_jump_padding_intervals.value = cfg.ui_graph_jump_padding_intervals ?? 1;
   el.ui_edit_neighbors_n.value = cfg.ui_edit_neighbors_n ?? 5;
@@ -1013,6 +1030,7 @@ function setForm(cfg){
   el.ui_paypal_donate_url.value = cfg.ui_paypal_donate_url ?? "";
 
   el.backup_dir.value = cfg.backup_dir ?? "/config/influxbro/backup";
+  el.backup_min_free_mb.value = cfg.backup_min_free_mb ?? 0;
 
   el.ui_open_selection.checked = !!cfg.ui_open_selection;
   el.ui_open_graph.checked = !!cfg.ui_open_graph;
@@ -1077,6 +1095,8 @@ function getForm(){
     ui_table_visible_rows: parseInt(el.ui_table_visible_rows.value, 10),
     ui_table_row_height_px: parseInt(el.ui_table_row_height_px.value, 10),
     ui_backup_table_row_height_px: parseInt(el.ui_backup_table_row_height_px.value, 10),
+    ui_backup_visible_rows: parseInt(el.ui_backup_visible_rows.value, 10),
+    ui_restore_visible_rows: parseInt(el.ui_restore_visible_rows.value, 10),
     ui_edit_neighbors_n: parseInt(el.ui_edit_neighbors_n.value, 10),
     ui_edit_details_visible_rows: parseInt(el.ui_edit_details_visible_rows.value, 10),
     ui_edit_graph_buffer_minutes: parseInt(el.ui_edit_graph_buffer_minutes.value, 10),
@@ -1098,6 +1118,7 @@ function getForm(){
     ui_paypal_donate_url: (el.ui_paypal_donate_url.value || "").trim(),
 
     backup_dir: (el.backup_dir.value || "").trim(),
+    backup_min_free_mb: parseInt(el.backup_min_free_mb.value, 10),
 
     ui_open_selection: !!el.ui_open_selection.checked,
     ui_open_graph: !!el.ui_open_graph.checked,

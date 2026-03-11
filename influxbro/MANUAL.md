@@ -255,6 +255,9 @@ Timer Jobs:
   - Zeitpunkt des Backups
   - Anzahl Werte
   - Dateigroesse
+- Wenn genau ein Backup selektiert ist, erscheint `Download` und laedt eine ZIP-Datei (enthaelt `.json` + `.lp`).
+- Unterhalb des Speicherorts wird der freie Speicher angezeigt; optional kann ein Mindestwert (MB) konfiguriert werden, unter dem Backups abgelehnt werden.
+- Die Hoehe der Backup-Liste ist per Einstellung "Sichtbare Zeilen (Backup-Liste)" konfigurierbar.
 - Backups koennen geloescht werden (nur die Sicherung, nicht die Datenbank).
 - Tipp: In der Volltextsuche gibt es Buttons `Alle` (leeren) und `aus Dashboardauswahl`.
 
@@ -264,6 +267,7 @@ Timer Jobs:
 - Restore schreibt die Werte zurueck, ohne doppelte Messpunkte zu erzeugen (idempotent, weil gleiche Zeitpunkte/Tags/Field ueberschrieben werden).
 - Restore ist ebenfalls an `Schreiben/Loeschen erlauben` (Einstellungen) + `delete_confirm_phrase` gekoppelt.
 - Tipp: In der Volltextsuche gibt es Buttons `Alle` (leeren) und `aus Dashboardauswahl`.
+- Die Hoehe der Restore-Backup-Liste ist per Einstellung "Sichtbare Zeilen (Restore-Liste)" konfigurierbar.
 
 Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore/Abfragen) und die letzte Meldung anzeigt.
 
@@ -318,6 +322,9 @@ UI:
 - `Manual max. Punkte (Dashboard Graph)`: Sicherheitslimit fuer `Details: Manuell` (100%).
 - `Sprung-Polster (Intervalle)`: +/- N Downsample-Intervalle fuer Sprung-Markierung/Detail-Nachladen.
 - `Tabellenzeilen Hoehe (px, Backup)`: Zeilenhoehe der Backup-Tabelle.
+- `Sichtbare Zeilen (Backup-Liste)`: Hoehe der Backup-Liste in Zeilen (scrollt bei mehr Eintraegen).
+- `Sichtbare Zeilen (Restore-Liste)`: Hoehe der Restore-Backup-Liste in Zeilen (scrollt bei mehr Eintraegen).
+- `Min. freier Speicher (MB)`: wenn kleiner als diese Schwelle, wird das Erstellen eines Backups abgelehnt (0 = deaktiviert).
 - `Basis/Kleine Schriftgroesse`: UI Typografie.
 - `Checkbox Groesse (Scale)`: Checkbox-Scaling fuer bessere Bedienbarkeit.
 - `Filter ... Breite`: steuert die Layout-Breiten im Dashboard.

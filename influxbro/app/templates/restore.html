@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>InfluxBro – Restore</title>
   <style>
+    :root { --restore_row_h: {{ (cfg.get('ui_table_row_height_px') or 13) | int }}px; }
     body { font-family: system-ui, sans-serif; margin: 0; }
     .shell { display:grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
     @media (max-width: 980px){ .shell { grid-template-columns: 1fr; } }
@@ -37,9 +38,9 @@
     @keyframes spin { to { transform: rotate(360deg); } }
 
     table { border-collapse: collapse; width: 100%; margin-top: 10px; }
-    th, td { border: 1px solid #eee; padding: 0 6px; font-size: 12px; line-height: 1.2; vertical-align: middle; }
+    th, td { border: 1px solid #eee; padding: 0 6px; font-size: 12px; line-height: 1.2; vertical-align: middle; height: var(--restore_row_h); }
     th { background: #f6f6f6; text-align:left; position: sticky; top: 0; }
-    .table_box { max-height: 55vh; overflow:auto; border: 1px solid #eee; border-radius: 12px; margin-top: 10px; }
+    .table_box { max-height: calc(var(--restore_visible_rows, 24) * var(--restore_row_h) + 48px); overflow:auto; border: 1px solid #eee; border-radius: 12px; margin-top: 10px; }
     tr.selected { background: #e8f1ff; }
     .grid { display:grid; grid-template-columns: repeat(2, minmax(260px, 1fr)); gap: 12px; margin-top: 12px; align-items:end; }
     @media (max-width: 980px){ .grid { grid-template-columns: 1fr; } }
@@ -56,8 +57,8 @@
        <h2>Restore</h2>
        <div class="muted">Quelle: Backup auswaehlen. Ziel: Messwert auswaehlen. Restore schreibt Daten (Schreiben muss erlaubt sein).</div>
 
-       <div class="card" data-ui="restore.source" title="restore.source">
-          <div style="font-weight:700;">Quelle (Backup)</div>
+        <div class="card" data-ui="restore.source" title="restore.source" style="--restore_visible_rows: {{ (cfg.get('ui_restore_visible_rows') or 24) | int }};">
+           <div style="font-weight:700;">Quelle (Backup)</div>
           <div class="row">
             <div style="min-width: 320px; flex:1;">
               <label>Volltextsuche</label>
@@ -77,8 +78,8 @@
             </div>
           </div>
 
-         <div class="table_box">
-             <table id="restore_tbl" class="list_tbl" data-ui="restore.backup_table" title="restore.backup_table">
+          <div class="table_box" id="restore_box" data-ui="restore.table_box" title="restore.table_box">
+              <table id="restore_tbl" class="list_tbl" data-ui="restore.backup_table" title="restore.backup_table">
               <thead>
                 <tr>
                   <th style="width: 34px;">Ausw.</th>
