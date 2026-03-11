@@ -50,7 +50,8 @@ Links findest du die Bereiche:
 - Restore: Ein vorhandenes Backup fuer einen Messwert wiederherstellen.
 - Logs: Add-on Logs von InfluxBro ansehen (Menuepunkt ist unter Restore einsortiert).
 - Jobs: Laufende Background-Jobs ansehen (Statistik/Restore) und abbrechen.
-- Info: Release Notes + Repository-Link.
+- Info: Influx Datenbank Diagnose (best-effort).
+- Changelog: Release Notes.
 - Handbuch: Diese Dokumentation.
 - Einstellungen: Influx-Verbindung und UI-Parameter konfigurieren.
 
@@ -143,6 +144,7 @@ Bearbeitungsliste + Bearbeitungsgraph:
 Raw Daten (DB):
 
 - Optional kannst du per Checkbox steuern, ob Raw Daten dem Zoom-Bereich im Graph folgen (oder dem Zeitraum aus der Zeitraum-Auswahl).
+- Klick auf einen Messpunkt im Graph markiert den Punkt und springt in der Raw-Tabelle zum passenden Zeitstempel (Zeile wird hervorgehoben).
 
 ## Bearbeitungsliste (Ausreisser)
 
@@ -181,7 +183,7 @@ Ausreisser-Fehlersuche:
 - `Grenzen` + `Min/Max`: markiert Werte ausserhalb eines Bereichs.
 - `Counter-Ausreisser (Spruenge)` + `Max Sprung`: erkennt Spruenge in Counter-Serien (Grenzen kommen aus den Einstellungen).
 - `Fehlersuche Ausreisser`: fuehrt den Scan im aktuellen Graph-Fenster aus.
-- `Zuruecksetzen`: entfernt Ausreisser-Markierungen.
+- `Abbruch`: bricht nur den laufenden Scan ab (Treffer bleiben stehen).
 
 Hinweis: Wenn Daten nach einem Seitenwechsel automatisch wiederhergestellt wurden, kann die Fehlersuche trotzdem direkt gestartet werden (Measurement/Field wird best-effort wiederhergestellt).
 
@@ -207,7 +209,7 @@ Tipp: In der Toolbar gibt es Mehrfachaktionen (z.B. Werte davor uebernehmen oder
 - Reihenfolge:
   - Gesamtstatistik (Alles)
   - Statistik Zeitraum (Graph/Tabelle)
-- Zusaetzlich gibt es den Bereich `Statistik Influx Datenbank` (Health/Version/IP/Buckets; best-effort) mit Button `Refresh`.
+- Influx Datenbank Diagnose (Health/Version/IP/Buckets; best-effort) ist im Menuepunkt `Info`.
 - HA-Infos:
   - device_class, state_class, unit_of_measurement werden (wenn moeglich) aus Home Assistant geladen.
 
@@ -227,22 +229,14 @@ Tipp: In der Toolbar gibt es Mehrfachaktionen (z.B. Werte davor uebernehmen oder
 - Button `Cancel`: bricht den Job ab (bestaetigen).
 - Tipp: `Open Statistik` setzt die Job-ID fuer die Statistik-Seite und wechselt dorthin.
 
-Dashboard Cache:
+Cache:
 
-- Zusaetzliche Tabelle `Dashboard Cache`: zeigt, welche Dashboard-Daten gecacht sind und wie alt sie sind.
+- Tabelle `Cache`: zeigt alle Caches (Dashboard + Statistik) inkl. Bereich/Ausloeser/next update/Modus.
 - Aktionen:
-  - `Pruefen`: best-effort Vergleich mit der Datenbank (gruener Haken = ok; rotes Symbol = Daten haben sich geaendert).
-  - `Aktualisieren`: laedt die Cache-Daten neu.
-  - `Loeschen`: entfernt den Cache-Eintrag (nur Cache, nicht die Datenbank).
-  - `Cache loeschen (alles)`: loescht alle Cache-Dateien unter `/data`.
-- Das automatische Cache-Update ist in `Einstellungen -> UI -> Dashboard Cache` konfigurierbar (alle X Stunden oder taeglich um HH:MM:SS).
-
-Statistik Cache:
-
-- Server-Cache fuer Statistik-Ergebnisse unter `/data/stats_cache`.
-- Auf der Jobs-Seite gibt es eine Statuszeile (enabled/auto_update/caches/due/next) und einen Button `Jetzt ein Update starten`.
-- `Cache loeschen (alles)`: loescht nur Cache-Dateien unter `/data`, nicht die Datenbank.
-- Konfiguration unter `Einstellungen -> UI -> Statistik Cache` (taeglich/nightly oder alle X Stunden + Limits).
+  - Dashboard: `Pruefen`/`Aktualisieren`/`Loeschen`.
+  - Statistik: `Aktualisieren`/`Loeschen`.
+  - `Cache loeschen (alles)`: loescht Cache-Dateien unter `/data` (nur Cache, nicht die Datenbank).
+- Automatisches Cache-Update ist in `Einstellungen -> UI -> Dashboard Cache` bzw. `Einstellungen -> UI -> Statistik Cache` konfigurierbar.
 
 ## Backup (ein Messwert, alle Werte)
 
@@ -298,6 +292,7 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 ## Einstellungen
 
 - Bereiche sind einklappbar.
+- Oben gibt es ein Suchfeld, das Einstellungen findet und per Klick zum passenden Feld springt (Bereiche werden automatisch aufgeklappt).
 
 Verbindung:
 
@@ -322,10 +317,9 @@ UI:
 
 Ausreisser:
 
-- `W/kW/Wh/kWh (max step)`: Standard-Grenzen fuer Counter-Ausreisser (Spruenge) in der Fehler-/Filtertabelle.
-- `Weitere Einheiten (unit=max step)`: zusaetzliche Sprung-Grenzen fuer andere Einheiten (z.B. `°C=2`).
+ - Tabelle `_measurement / max_step`: Grenzen fuer Counter-Ausreisser (Spruenge) in der Fehler-/Filtertabelle.
 
-## Info
+## Info / Changelog
 
-- Zeigt Release Notes (Changelog).
-- Zeigt einen Link zum Repository (GitHub).
+- `Info`: Influx Datenbank Diagnose (best-effort).
+- `Changelog`: Release Notes + Repository-Link.

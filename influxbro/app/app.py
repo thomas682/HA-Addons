@@ -1177,7 +1177,12 @@ def _dash_cache_mark_dirty_id(cache_id: str, reason: str) -> bool:
         return False
 
 
-def _dash_cache_store(cache_id: str, key: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any] | None:
+def _dash_cache_store(
+    cache_id: str,
+    key: dict[str, Any],
+    payload: dict[str, Any],
+    trigger_page: str | None = None,
+) -> dict[str, Any] | None:
     """Persist payload and write/update meta. Returns meta."""
 
     try:
@@ -1197,6 +1202,7 @@ def _dash_cache_store(cache_id: str, key: dict[str, Any], payload: dict[str, Any
         bytes_written = _dash_cache_write_payload(cache_id, payload)
         meta = _dash_cache_load_meta(cache_id) or {}
         created = str(meta.get("created_at") or "").strip() or now
+        created_trigger = str(meta.get("trigger_page") or "").strip() or str(trigger_page or "").strip() or "dashboard"
 
         # Keep a stable small meta file for list views.
         out = {
@@ -1204,6 +1210,7 @@ def _dash_cache_store(cache_id: str, key: dict[str, Any], payload: dict[str, Any
             "id": cache_id,
             "key": key,
             "created_at": created,
+            "trigger_page": created_trigger,
             "updated_at": now,
             "last_used_at": now,
             "row_count": row_count,
@@ -1484,8 +1491,10 @@ def _dash_cache_job_thread(job_id: str, action: str, cache_id: str) -> None:
                 DASH_CACHE_JOBS[job_id]["error"] = msg
 
     try:
+        trigger_page = None
         with DASH_CACHE_JOBS_LOCK:
             j = DASH_CACHE_JOBS.get(job_id) or {}
+            trigger_page = j.get("trigger_page")
             if bool(j.get("cancelled")):
                 set_state("cancelled", "Abgebrochen")
                 return
@@ -1582,7 +1591,7 @@ def _dash_cache_job_thread(job_id: str, action: str, cache_id: str) -> None:
             start_dt,
             stop_dt,
         )
-        _dash_cache_store(cache_id, key, payload)
+        _dash_cache_store(cache_id, key, payload, trigger_page=str(trigger_page or "").strip() or None)
         meta2 = _dash_cache_load_meta(cache_id) or meta
         meta2["last_update_at"] = now
         meta2["last_update_note"] = "updated"
@@ -2376,9 +2385,22 @@ def info_page():
         "info.html",
         cfg=cfg,
         allow_delete=writes_enabled(cfg),
-        nav="info",
+        nav="changelog",
         repo_url=repo_url,
         changelog_text=changelog,
+    )
+
+
+@app.get("/dbinfo")
+def dbinfo_page():
+    cfg = load_cfg()
+    repo_url = (cfg.get("ui_repo_url") or "").strip()
+    return render_template(
+        "dbinfo.html",
+        cfg=cfg,
+        allow_delete=writes_enabled(cfg),
+        nav="dbinfo",
+        repo_url=repo_url,
     )
 
 
@@ -4697,6 +4719,9 @@ def api_jobs():
         limit = 500
 
     out: list[dict[str, Any]] = []
+    cfg = load_cfg()
+    dash_mode = _cache_mode_str(cfg, "dash_cache")
+    stats_mode = _cache_mode_str(cfg, "stats_cache")
 
     with GLOBAL_STATS_LOCK:
         g_items = list(GLOBAL_STATS_JOBS.items())
@@ -4706,6 +4731,9 @@ def api_jobs():
         pub["trigger_page"] = j.get("trigger_page")
         pub["trigger_ip"] = j.get("trigger_ip")
         pub["trigger_ua"] = j.get("trigger_ua")
+        if j.get("cache_id"):
+            pub["cache_kind"] = "stats"
+            pub["mode"] = stats_mode
         out.append(pub)
 
     with RESTORE_COPY_LOCK:
@@ -4738,6 +4766,8 @@ def api_jobs():
         pub["trigger_ua"] = j.get("trigger_ua")
         pub["cache_id"] = j.get("cache_id")
         pub["action"] = j.get("action")
+        pub["cache_kind"] = "dash"
+        pub["mode"] = dash_mode
         out.append(pub)
 
     def _sort_key(x: dict[str, Any]) -> float:
@@ -4831,6 +4861,160 @@ def api_cache_list():
             "max_items": cfg.get("dash_cache_max_items"),
             "max_mb": cfg.get("dash_cache_max_mb"),
             "auto_update": cfg.get("dash_cache_auto_update"),
+        },
+    })
+
+
+def _cache_mode_str(cfg: dict[str, Any], base: str) -> str:
+    """Human-readable cache refresh mode string."""
+
+    try:
+        mode = str(cfg.get(f"{base}_refresh_mode") or "").strip().lower()
+    except Exception:
+        mode = ""
+    if mode not in ("hours", "daily"):
+        mode = "hours" if base == "dash_cache" else "daily"
+
+    daily_at = str(cfg.get(f"{base}_refresh_daily_at") or ("00:00:00" if base == "dash_cache" else "03:00:00")).strip()
+    try:
+        hours = int(cfg.get(f"{base}_refresh_hours") or (6 if base == "dash_cache" else 24))
+    except Exception:
+        hours = 6 if base == "dash_cache" else 24
+
+    return f"{mode} | daily_at: {daily_at} | hours: {hours}"
+
+
+def _cache_next_update_iso_from(cfg: dict[str, Any], base: str, updated_at_iso: str | None) -> str | None:
+    """Best-effort next update time based on settings + last updated time."""
+
+    try:
+        if not updated_at_iso:
+            return None
+        updated_dt = _parse_iso_datetime(str(updated_at_iso))
+        if not updated_dt:
+            return None
+
+        mode = str(cfg.get(f"{base}_refresh_mode") or "").strip().lower()
+        if mode not in ("hours", "daily"):
+            mode = "hours" if base == "dash_cache" else "daily"
+
+        if mode == "hours":
+            try:
+                h = int(cfg.get(f"{base}_refresh_hours") or (6 if base == "dash_cache" else 24))
+            except Exception:
+                h = 6 if base == "dash_cache" else 24
+            if h <= 0:
+                return None
+            nxt = updated_dt + timedelta(hours=h)
+            return nxt.astimezone(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+
+        # daily (local time)
+        at = str(cfg.get(f"{base}_refresh_daily_at") or ("00:00:00" if base == "dash_cache" else "03:00:00")).strip() or "00:00:00"
+        hh, mm, ss = 0, 0, 0
+        try:
+            parts = at.split(":")
+            hh = int(parts[0]) if len(parts) > 0 else 0
+            mm = int(parts[1]) if len(parts) > 1 else 0
+            ss = int(parts[2]) if len(parts) > 2 else 0
+        except Exception:
+            hh, mm, ss = 0, 0, 0
+        hh = min(23, max(0, hh))
+        mm = min(59, max(0, mm))
+        ss = min(59, max(0, ss))
+
+        upd_local = updated_dt.astimezone()
+        run = upd_local.replace(hour=hh, minute=mm, second=ss, microsecond=0)
+        if run <= upd_local:
+            run = run + timedelta(days=1)
+        return run.astimezone(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+    except Exception:
+        return None
+
+
+@app.get("/api/cache/all")
+def api_cache_all():
+    cfg = load_cfg()
+    now_ts = datetime.now(timezone.utc).timestamp()
+
+    out: list[dict[str, Any]] = []
+
+    # Dashboard cache
+    dash_enabled = bool(cfg.get("dash_cache_enabled", True))
+    dash_items = _dash_cache_list_meta() if dash_enabled else []
+    dash_mode = _cache_mode_str(cfg, "dash_cache")
+    dash_auto = bool(cfg.get("dash_cache_auto_update", True))
+    for m in dash_items:
+        try:
+            mm = dict(m)
+            upd = _dash_cache_ts(mm, "updated_at")
+            mm["age_seconds"] = int(max(0, now_ts - upd)) if upd else None
+            mm["stale"] = _dash_cache_is_stale(cfg, mm)
+            mm["bereich"] = "Dashboard"
+            mm["ausloeser"] = str(mm.get("trigger_page") or "dashboard")
+            mm["modus"] = dash_mode
+            mm["next_update_at"] = _cache_next_update_iso_from(cfg, "dash_cache", str(mm.get("updated_at") or "")) if dash_auto else None
+            mm["cache_kind"] = "dash"
+            out.append(mm)
+        except Exception:
+            continue
+
+    # Statistik cache
+    stats_enabled = bool(cfg.get("stats_cache_enabled", True))
+    stats_items = _stats_cache_list_meta() if stats_enabled else []
+    stats_mode = _cache_mode_str(cfg, "stats_cache")
+    stats_auto = bool(cfg.get("stats_cache_auto_update", True))
+    for m in stats_items:
+        try:
+            mm = dict(m)
+            upd = _stats_cache_ts(mm, "updated_at")
+            mm["age_seconds"] = int(max(0, now_ts - upd)) if upd else None
+            mm["stale"] = _stats_cache_is_stale(cfg, mm)
+            mm["bereich"] = "Statistik"
+            mm["ausloeser"] = str(mm.get("trigger_page") or "stats")
+            mm["modus"] = stats_mode
+            mm["next_update_at"] = _cache_next_update_iso_from(cfg, "stats_cache", str(mm.get("updated_at") or "")) if stats_auto else None
+            mm["cache_kind"] = "stats"
+            out.append(mm)
+        except Exception:
+            continue
+
+    def _sort_key(x: dict[str, Any]) -> tuple[float, float]:
+        try:
+            a = 0.0
+            try:
+                a = float(_parse_iso_datetime(str(x.get("last_used_at") or "") or "").timestamp())
+            except Exception:
+                a = 0.0
+            b = 0.0
+            try:
+                b = float(_parse_iso_datetime(str(x.get("updated_at") or "") or "").timestamp())
+            except Exception:
+                b = 0.0
+            return (a, b)
+        except Exception:
+            return (0.0, 0.0)
+
+    out.sort(key=_sort_key, reverse=True)
+    return jsonify({
+        "ok": True,
+        "caches": out,
+        "settings": {
+            "dash": {
+                "enabled": dash_enabled,
+                "auto_update": dash_auto,
+                "mode": dash_mode,
+                "refresh_mode": cfg.get("dash_cache_refresh_mode"),
+                "refresh_hours": cfg.get("dash_cache_refresh_hours"),
+                "refresh_daily_at": cfg.get("dash_cache_refresh_daily_at"),
+            },
+            "stats": {
+                "enabled": stats_enabled,
+                "auto_update": stats_auto,
+                "mode": stats_mode,
+                "refresh_mode": cfg.get("stats_cache_refresh_mode"),
+                "refresh_hours": cfg.get("stats_cache_refresh_hours"),
+                "refresh_daily_at": cfg.get("stats_cache_refresh_daily_at"),
+            },
         },
     })
 
@@ -6222,7 +6406,7 @@ def query():
             stop_dt,
         )
         if cache_id and key and bool(cfg.get("dash_cache_enabled", True)):
-            _dash_cache_store(cache_id, key, payload)
+            _dash_cache_store(cache_id, key, payload, trigger_page="dashboard")
             payload = dict(payload)
             payload["cached"] = False
             payload["cache"] = {"id": cache_id, "updated_at": _utc_now_iso_ms()}
@@ -7559,6 +7743,10 @@ from(bucket: "{cfg_local["bucket"]}")
                     }
                     bytes_written = _stats_cache_write_payload(cache_id, payload)
                     meta = _stats_cache_load_meta(cache_id) or {"id": cache_id, "key": cache_key}
+                    try:
+                        meta.setdefault("trigger_page", (GLOBAL_STATS_JOBS.get(job_id) or {}).get("trigger_page") or "stats")
+                    except Exception:
+                        meta.setdefault("trigger_page", "stats")
                     meta["updated_at"] = payload["generated_at"]
                     meta["last_used_at"] = payload["generated_at"]
                     meta["row_count"] = len(rows)
@@ -7772,6 +7960,7 @@ def api_global_stats_job_start():
             cache_id = _stats_cache_id(cache_key)
             meta = _stats_cache_load_meta(cache_id) or {"id": cache_id, "key": cache_key}
             meta.setdefault("created_at", _utc_now_iso_ms())
+            meta.setdefault("trigger_page", "stats")
             meta["last_used_at"] = _utc_now_iso_ms()
             meta["dirty"] = True
             meta["dirty_reason"] = "job_start"

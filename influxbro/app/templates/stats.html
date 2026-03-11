@@ -163,18 +163,7 @@
             </div>
           </div>
 
-          <details class="card" id="influxdb_section" style="margin-top: 10px;" data-ui="stats.influxdb" title="stats.influxdb">
-            <summary>Statistik Influx Datenbank</summary>
-            <div class="card_body">
-              <div class="row" style="margin-top: 0;">
-                <div>
-                  <button id="influxdb_refresh" class="btn_xs" data-ui="stats.influxdb.refresh" title="stats.influxdb.refresh">Refresh</button>
-                </div>
-                <div class="muted" id="influxdb_hint" style="padding-top: 6px;"></div>
-              </div>
-              <div class="status" id="influxdb_info" style="margin-top: 8px; white-space: pre-wrap;"></div>
-            </div>
-          </details>
+          <div class="muted" style="margin-top: 10px;">Influx Datenbank Info: siehe Menuepunkt <code>Info</code>.</div>
 
           <div class="muted" id="range_txt" data-ui="stats.range_txt" title="stats.range_txt"></div>
         </details>
@@ -263,10 +252,6 @@
       const $colMax = document.getElementById('col_max');
       const $colMean = document.getElementById('col_mean');
 
-      const $influxDbRefresh = document.getElementById('influxdb_refresh');
-      const $influxDbHint = document.getElementById('influxdb_hint');
-      const $influxDbInfo = document.getElementById('influxdb_info');
-
       let UI_DECIMALS = 3;
       let ROWS = [];
       let SORT = { key: 'newest_time', dir: 'desc' };
@@ -349,40 +334,6 @@
         ta.select();
         try{ document.execCommand('copy'); }catch(e){}
         try{ document.body.removeChild(ta); }catch(e){}
-      }
-
-      function renderInfluxDbInfo(info){
-        try{
-          const i = info || {};
-          const lines = [];
-          const add = (k, v)=>{ if(v === null || v === undefined || String(v).trim() === '') return; lines.push(String(k) + ': ' + String(v)); };
-
-          add('URL', i.url);
-          add('Host', i.host);
-          add('IP', i.ip);
-          add('Influx Version', i.influx_version);
-          add('Health', i.health);
-          add('Buckets', i.bucket_count);
-          add('Databases', i.database_count);
-          add('HA DB Name', i.ha_database);
-          add('Hinweis', i.note);
-
-          if($influxDbInfo) $influxDbInfo.textContent = lines.join('\n');
-        }catch(e){
-          if($influxDbInfo) $influxDbInfo.textContent = 'Fehler beim Rendern.';
-        }
-      }
-
-      async function refreshInfluxDbInfo(){
-        try{
-          if($influxDbHint) $influxDbHint.textContent = 'Lade...';
-          const j = await api('./api/influx_info');
-          renderInfluxDbInfo(j.info || {});
-          if($influxDbHint) $influxDbHint.textContent = 'Aktualisiert: ' + fmtTs(new Date().toISOString());
-        }catch(e){
-          if($influxDbHint) $influxDbHint.textContent = '';
-          err(String(e && e.message ? e.message : e));
-        }
       }
 
       function setCount(el, n, showIfOne){
@@ -1116,7 +1067,7 @@
 
       if($influxDbRefresh) $influxDbRefresh.addEventListener('click', (ev)=>{
         try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
-        refreshInfluxDbInfo().catch(e=>err(String(e && e.message ? e.message : e)));
+        // Influx DB info moved to Info page.
       });
 
       if($queryCopy) $queryCopy.addEventListener('click', (ev)=>{

@@ -99,25 +99,25 @@
       <div class="card" data-ui="cache.card" title="cache.card">
         <div style="display:flex; align-items:baseline; justify-content:space-between; gap: 10px; flex-wrap:wrap;">
           <div>
-            <div style="font-weight:800;">Dashboard Cache</div>
-            <div class="muted">Server-Cache unter <code>/data/dash_cache</code>. Beschleunigt Dashboard (Graph/Tabelle) ueber Seitenwechsel hinweg.</div>
+            <div style="font-weight:800;">Cache</div>
+            <div class="muted">Server-Caches unter <code>/data/dash_cache</code> (Dashboard) und <code>/data/stats_cache</code> (Statistik).</div>
           </div>
         </div>
 
         <div class="row" style="margin-top: 10px;" data-ui="cache.controls" title="cache.controls">
           <div style="flex:1; min-width: 260px;">
             <label class="muted" style="display:block; font-size: 12px;">Suche</label>
-            <input id="cache_q" placeholder="measurement/field/entity_id..." data-ui="cache.search" title="cache.search" />
-          </div>
+             <input id="cache_q" placeholder="dashboard/stats/measurement/field/..." data-ui="cache.search" title="cache.search" />
+           </div>
           <div>
             <label class="muted" style="display:block; font-size: 12px;">&nbsp;</label>
             <button id="cache_refresh" data-ui="cache.refresh" title="cache.refresh">Aktualisieren</button>
           </div>
           <div>
             <label class="muted" style="display:block; font-size: 12px;">&nbsp;</label>
-            <button id="cache_delete_all" data-ui="cache.delete_all" title="cache.delete_all">Cache loeschen (alles)</button>
-          </div>
-        </div>
+             <button id="cache_delete_all" data-ui="cache.delete_all" title="cache.delete_all">Cache loeschen (alles)</button>
+           </div>
+         </div>
 
         <div class="status" id="cache_info" data-ui="cache.info" title="cache.info"></div>
         <div id="cache_err" class="err"></div>
@@ -127,8 +127,12 @@
             <thead>
               <tr>
                 <th style="width: 46px;">ok</th>
+                <th style="width: 100px;">Bereich</th>
+                <th style="width: 110px;">Ausloeser</th>
                 <th style="width: 160px;">updated</th>
+                <th style="width: 160px;">next update</th>
                 <th style="width: 90px;">age</th>
+                <th style="width: 240px;">Modus</th>
                 <th style="width: 260px;">series</th>
                 <th style="width: 260px;">tags</th>
                 <th style="width: 90px;">range</th>
@@ -142,37 +146,6 @@
             <tbody></tbody>
           </table>
         </div>
-      </div>
-
-      <div class="card" data-ui="stats_cache.card" title="stats_cache.card">
-        <div style="display:flex; align-items:baseline; justify-content:space-between; gap: 10px; flex-wrap:wrap;">
-          <div>
-            <div style="font-weight:800;">Statistik Cache</div>
-            <div class="muted">Server-Cache unter <code>/data/stats_cache</code>. Nightly/inkrementell ueber Background-Jobs.</div>
-          </div>
-        </div>
-
-        <div class="row" style="margin-top: 10px;" data-ui="stats_cache.controls" title="stats_cache.controls">
-          <div style="flex:1; min-width: 260px;">
-            <label class="muted" style="display:block; font-size: 12px;">Schedule</label>
-            <div class="mono" id="stats_cache_sched"></div>
-          </div>
-          <div>
-            <label class="muted" style="display:block; font-size: 12px;">&nbsp;</label>
-            <button id="stats_cache_refresh" data-ui="stats_cache.refresh" title="stats_cache.refresh">Aktualisieren (Status)</button>
-          </div>
-          <div>
-            <label class="muted" style="display:block; font-size: 12px;">&nbsp;</label>
-            <button id="stats_cache_run_now" data-ui="stats_cache.run_now" title="stats_cache.run_now">Jetzt ein Update starten</button>
-          </div>
-          <div>
-            <label class="muted" style="display:block; font-size: 12px;">&nbsp;</label>
-            <button id="stats_cache_delete_all" data-ui="stats_cache.delete_all" title="stats_cache.delete_all">Cache loeschen (alles)</button>
-          </div>
-        </div>
-
-        <div class="status" id="stats_cache_info"></div>
-        <div id="stats_cache_err" class="err"></div>
       </div>
 
       <script>
@@ -191,13 +164,6 @@
       const $cacheErr = document.getElementById('cache_err');
       const $cacheBody = document.querySelector('#cache_tbl tbody');
 
-      const $statsCacheSched = document.getElementById('stats_cache_sched');
-      const $statsCacheRefresh = document.getElementById('stats_cache_refresh');
-      const $statsCacheRunNow = document.getElementById('stats_cache_run_now');
-      const $statsCacheDeleteAll = document.getElementById('stats_cache_delete_all');
-      const $statsCacheInfo = document.getElementById('stats_cache_info');
-      const $statsCacheErr = document.getElementById('stats_cache_err');
-
       let POLL = null;
 
       function err(s){
@@ -214,17 +180,6 @@
       function cacheErr(s){
         const msg = s || '';
         $cacheErr.textContent = msg;
-        if(msg){
-          try{
-            if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error(msg);
-            else alert(msg);
-          }catch(e){}
-        }
-      }
-
-      function statsCacheErr(s){
-        const msg = s || '';
-        if($statsCacheErr) $statsCacheErr.textContent = msg;
         if(msg){
           try{
             if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error(msg);
@@ -297,7 +252,7 @@
       function cacheBlob(m){
         try{
           const k = (m && m.key) ? m.key : {};
-          return [k.measurement,k.field,k.entity_id,k.friendly_name,k.range,m.id].map(x=>String(x||'')).join(' ').toLowerCase();
+          return [m.cache_kind,m.bereich,m.ausloeser,m.modus,k.measurement,k.field,k.entity_id,k.friendly_name,k.field_filter,k.range,m.id].map(x=>String(x||'')).join(' ').toLowerCase();
         }catch(e){
           return '';
         }
@@ -318,17 +273,24 @@
 
           const okIcon = (m.last_check_at)
             ? (m.last_check_ok ? ICON_OK : ICON_CHANGED)
-            : ((m.dirty || m.mismatch) ? ICON_CHANGED : '');
+            : ((m.dirty || m.mismatch || m.stale) ? ICON_CHANGED : '');
 
-          const series = `${String(k.measurement||'')}/${String(k.field||'')}`;
-          const tags = [k.entity_id ? ('entity_id=' + k.entity_id) : '', k.friendly_name ? ('friendly_name=' + k.friendly_name) : ''].filter(Boolean).join(' ');
+          const isDash = String(m.cache_kind||'') === 'dash';
+          const series = isDash ? `${String(k.measurement||'')}/${String(k.field||'')}` : 'global_stats';
+          const tags = isDash
+            ? [k.entity_id ? ('entity_id=' + k.entity_id) : '', k.friendly_name ? ('friendly_name=' + k.friendly_name) : ''].filter(Boolean).join(' ')
+            : [k.field_filter ? ('field=' + k.field_filter) : '', k.measurement ? ('measurement=' + k.measurement) : '', k.entity_id ? ('entity_id=' + k.entity_id) : '', k.friendly_name ? ('friendly_name=' + k.friendly_name) : ''].filter(Boolean).join(' ');
           const flags = [m.dirty ? 'dirty' : '', m.mismatch ? 'changed' : '', m.stale ? 'stale' : ''].filter(Boolean).join(' ');
           const check = m.last_check_at ? (fmtTs(m.last_check_at) + (m.last_check_ok ? ' OK' : ' CHANGED')) : '';
 
           tr.innerHTML = [
             `<td style="text-align:center;">${okIcon}</td>`,
+            `<td class="mono">${String(m.bereich||'')}</td>`,
+            `<td class="mono">${String(m.ausloeser||'')}</td>`,
             `<td>${fmtTs(m.updated_at)}</td>`,
+            `<td>${fmtTs(m.next_update_at)}</td>`,
             `<td class="mono">${fmtAge(m.age_seconds)}</td>`,
+            `<td class="mono">${String(m.modus||'')}</td>`,
             `<td class="mono" title="${series.replace(/"/g,'&quot;')}">${series}</td>`,
             `<td class="mono" title="${tags.replace(/"/g,'&quot;')}">${tags}</td>`,
             `<td class="mono">${String(k.range||'')}</td>`,
@@ -342,28 +304,31 @@
           const tdAct = tr.lastChild;
           const cid = String(m.id || '');
 
-          const bCheck = document.createElement('button');
-          bCheck.className = 'btn_xs';
-          bCheck.textContent = 'Pruefen';
-          bCheck.onclick = async ()=>{
-            try{
-              cacheErr('');
-              await api('./api/cache/check', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({cache_id: cid})});
-              await loadAll();
-            }catch(e){
-              cacheErr(e && e.message ? e.message : String(e));
-            }
-          };
-          tdAct.appendChild(bCheck);
+          if(isDash){
+            const bCheck = document.createElement('button');
+            bCheck.className = 'btn_xs';
+            bCheck.textContent = 'Pruefen';
+            bCheck.onclick = async ()=>{
+              try{
+                cacheErr('');
+                await api('./api/cache/check', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({cache_id: cid})});
+                await loadAll();
+              }catch(e){
+                cacheErr(e && e.message ? e.message : String(e));
+              }
+            };
+            tdAct.appendChild(bCheck);
+          }
 
           const bUpd = document.createElement('button');
           bUpd.className = 'btn_xs';
-          bUpd.style.marginLeft = '6px';
+          bUpd.style.marginLeft = isDash ? '6px' : '0';
           bUpd.textContent = 'Aktualisieren';
           bUpd.onclick = async ()=>{
             try{
               cacheErr('');
-              await api('./api/cache/update', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({cache_id: cid})});
+              if(isDash) await api('./api/cache/update', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({cache_id: cid})});
+              else await api('./api/stats_cache/update', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({cache_id: cid})});
               await loadAll();
             }catch(e){
               cacheErr(e && e.message ? e.message : String(e));
@@ -379,7 +344,8 @@
             try{
               if(!confirm('Cache loeschen?\n\n' + cid)) return;
               cacheErr('');
-              await api('./api/cache/delete', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({cache_id: cid})});
+              if(isDash) await api('./api/cache/delete', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({cache_id: cid})});
+              else await api('./api/stats_cache/delete', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({cache_id: cid})});
               await loadAll();
             }catch(e){
               cacheErr(e && e.message ? e.message : String(e));
@@ -415,13 +381,16 @@
           const msg = String(j.message || '');
           const er = String(j.error || '');
 
+          const mode = String(j && j.mode ? j.mode : '');
+          const msgHtml = mode ? (`<div>${msg}</div><div class="muted">Modus: ${mode}</div>`) : msg;
+
           tr.innerHTML = [
             `<td>${fmtTs(j.started_at)}</td>`,
             `<td class="mono">${String(j.elapsed||'')}</td>`,
             `<td class="mono">${String(j.type||'')}</td>`,
             `<td><span class="${pillForState(j.state)}">${String(j.state||'')}</span></td>`,
             `<td class="mono" style="text-align:right;">${pct}</td>`,
-            `<td>${msg}</td>`,
+            `<td>${msgHtml}</td>`,
             `<td title="${cur.replace(/\"/g,'&quot;')}">${cur}</td>`,
             `<td title="${er.replace(/\"/g,'&quot;')}">${er}</td>`,
             `<td></td>`,
@@ -493,27 +462,14 @@
       let LAST_CACHES = [];
       async function loadCaches(){
         cacheErr('');
-        const j = await api('./api/cache/list', {});
+        const j = await api('./api/cache/all', {});
         LAST_CACHES = j.caches || [];
         renderCaches(LAST_CACHES);
-      }
-
-      async function loadStatsCacheSchedule(){
-        statsCacheErr('');
-        const j = await api('./api/stats_cache/schedule', {});
-        const en = (j.enabled === true);
-        const au = (j.auto_update === true);
-        const nxt = j.next_run_at ? fmtTs(j.next_run_at) : '';
-        const due = (j.due !== null && j.due !== undefined) ? String(j.due) : '?';
-        const cnt = (j.caches !== null && j.caches !== undefined) ? String(j.caches) : '?';
-        if($statsCacheSched) $statsCacheSched.textContent = `enabled=${en} auto_update=${au} caches=${cnt} due=${due}` + (nxt ? (` next=${nxt}`) : '');
-        if($statsCacheInfo) $statsCacheInfo.textContent = `Modus: ${String(j.settings && j.settings.refresh_mode ? j.settings.refresh_mode : '')} | daily_at: ${String(j.settings && j.settings.refresh_daily_at ? j.settings.refresh_daily_at : '')} | hours: ${String(j.settings && j.settings.refresh_hours ? j.settings.refresh_hours : '')}`;
       }
 
       async function loadAll(){
         await loadJobs();
         await loadCaches();
-        await loadStatsCacheSchedule();
       }
 
       $refresh.onclick = ()=>{ loadAll().catch(e => err(e && e.message ? e.message : String(e))); };
@@ -527,32 +483,10 @@
         try{
           if(!confirm('Cache komplett loeschen?\n\nDas loescht nur Cache-Dateien unter /data, nicht die Datenbank.')) return;
           await api('./api/cache/delete', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({all: true})});
-          await loadAll();
-        }catch(e){
-          cacheErr(e && e.message ? e.message : String(e));
-        }
-      };
-
-      if($statsCacheRefresh) $statsCacheRefresh.onclick = ()=>{ loadStatsCacheSchedule().catch(e => statsCacheErr(e && e.message ? e.message : String(e))); };
-      if($statsCacheRunNow) $statsCacheRunNow.onclick = async ()=>{
-        try{
-          statsCacheErr('');
-          const j = await api('./api/stats_cache/run_now', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({})});
-          if(j.started) $statsCacheInfo.textContent = `Update gestartet: job_id=${String(j.job_id||'')} cache_id=${String(j.cache_id||'')}`;
-          else $statsCacheInfo.textContent = 'Kein Cache ist faellig.';
-          await loadAll();
-        }catch(e){
-          statsCacheErr(e && e.message ? e.message : String(e));
-        }
-      };
-      if($statsCacheDeleteAll) $statsCacheDeleteAll.onclick = async ()=>{
-        try{
-          if(!confirm('Cache komplett loeschen?\n\nDas loescht nur Cache-Dateien unter /data, nicht die Datenbank.')) return;
-          statsCacheErr('');
           await api('./api/stats_cache/delete', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({all: true})});
           await loadAll();
         }catch(e){
-          statsCacheErr(e && e.message ? e.message : String(e));
+          cacheErr(e && e.message ? e.message : String(e));
         }
       };
 

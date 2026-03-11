@@ -40,6 +40,16 @@
     a { color: inherit; }
     .btn_stack { display:flex; flex-direction:column; gap: 12px; }
     .span2 { grid-column: 1 / -1; }
+    .jump_hl { outline: 3px solid rgba(255, 153, 0, 0.55); outline-offset: 2px; border-radius: 10px; }
+    .search_hit_btn { width: 100%; text-align: left; border: 1px solid #ddd; background: #fff; border-radius: 12px; padding: 10px 12px; cursor: pointer; }
+    .search_hit_btn:hover { background: #f6f6f6; }
+    .search_hits { display: grid; gap: 8px; max-height: 260px; overflow: auto; padding-right: 4px; }
+
+    table.cfg_tbl { width: 100%; border-collapse: collapse; }
+    table.cfg_tbl th, table.cfg_tbl td { border: 1px solid #eee; padding: 8px; vertical-align: middle; }
+    table.cfg_tbl th { background: #fafafa; font-size: 12px; opacity: 0.85; text-align: left; }
+    table.cfg_tbl tr.selected { background: #fff3d6; }
+    table.cfg_tbl input { height: 34px; padding: 6px 10px; }
   </style>
 </head>
 <body>
@@ -62,6 +72,20 @@
     </div>
   </div>
 
+  <div class="card" data-ui="settings.search.card" title="settings.search.card">
+    <div class="muted" style="margin-bottom: 6px;">Suche (zeigt, wo eine Einstellung ist)</div>
+    <div class="row" style="align-items: stretch;">
+      <div style="flex:1; min-width: 260px;">
+        <input id="settings_search" data-ui="settings.search" title="settings.search" placeholder="z.B. token, cache, outlier, tooltips, verify_ssl ..." />
+      </div>
+      <div style="min-width: 120px;">
+        <button id="settings_search_clear" type="button" data-ui="settings.search.clear" title="settings.search.clear">Leeren</button>
+      </div>
+    </div>
+    <div id="settings_search_hint" class="muted" style="margin-top: 8px;"></div>
+    <div id="settings_search_results" style="margin-top: 10px;"></div>
+  </div>
+
   <details class="card" open data-ui="settings.section.yaml" title="settings.section.yaml">
     <summary>Parametrierung aus Home Assistant YAML</summary>
     <div class="card_body">
@@ -75,6 +99,7 @@
         <div class="btn_stack">
           <button id="find_yaml" data-ui="settings.find_yaml" title="settings.find_yaml">influx.yaml suchen</button>
           <button id="read_yaml" data-ui="settings.read_yaml" title="settings.read_yaml">yaml Daten einlesen</button>
+          <button id="test" data-ui="settings.test" title="settings.test">Influx Verbindung testen</button>
         </div>
       </div>
       <div class="muted span2">Beispiel: <code>homeassistant/influx.yaml</code> (entspricht <code>/config/homeassistant/influx.yaml</code>)</div>
@@ -522,30 +547,27 @@
       <div class="span2">
         <div class="muted">Werte gelten als "unsinnig", wenn ein Sprung groesser als diese Grenze ist (nur Counter-Regel).</div>
       </div>
-      <div>
-        <label>W (max step)</label>
-        <input id="outlier_max_step_w" type="number" min="1000" max="200000" step="100" />
-        <div class="muted">Default: 30000 W (ca. 3x35A Hausanschluss).</div>
-      </div>
-      <div>
-        <label>kW (max step)</label>
-        <input id="outlier_max_step_kw" type="number" min="0.5" max="200" step="0.5" />
-        <div class="muted">Default: 30 kW.</div>
-      </div>
-      <div>
-        <label>Wh (max step)</label>
-        <input id="outlier_max_step_wh" type="number" min="100" max="10000000" step="100" />
-        <div class="muted">Achtung: abhaengig vom Messintervall.</div>
-      </div>
-      <div>
-        <label>kWh (max step)</label>
-        <input id="outlier_max_step_kwh" type="number" min="0.01" max="100000" step="0.1" />
-        <div class="muted">Achtung: abhaengig vom Messintervall.</div>
+
+      <div class="span2">
+        <div class="row" style="align-items: stretch;">
+          <div style="min-width: 160px;"><button id="outliers_add" type="button" data-ui="settings.outliers.add" title="settings.outliers.add">Zeile hinzufuegen</button></div>
+          <div style="min-width: 160px;"><button id="outliers_del" type="button" data-ui="settings.outliers.delete" title="settings.outliers.delete">Zeile loeschen</button></div>
+          <div style="min-width: 160px;"><button id="outliers_autowidth" type="button" data-ui="settings.outliers.autofit" title="settings.outliers.autofit">Auto-Fit</button></div>
+          <div class="muted" style="flex:1; min-width: 240px;">Speichern uebernimmt die Tabelle in die Konfiguration (Default: W/kW/Wh/kWh sind vorbelegt).</div>
+        </div>
       </div>
 
       <div class="span2">
-        <label>Weitere Einheiten (unit=max step)</label>
-        <textarea id="outlier_max_step_units" rows="5" style="height:auto; min-height: 110px;" placeholder="z.B.\n°C=2\nbar=0.3\n# Kommentare mit #"></textarea>
+        <label>Ausreisser Tabelle (_measurement / max_step)</label>
+        <table id="outliers_tbl" class="cfg_tbl" data-ui="settings.outliers.table" title="settings.outliers.table">
+          <thead>
+            <tr>
+              <th data-key="measurement">_measurement</th>
+              <th data-key="max_step">max_step</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
         <div class="muted">Wird fuer Counter-Ausreisser und dynamisches Graph-Sampling genutzt.</div>
       </div>
     </div>
@@ -555,7 +577,6 @@
   <div class="card">
     <div class="grid">
       <div><button id="save" data-ui="settings.save" title="settings.save">Speichern</button></div>
-      <div><button id="test" data-ui="settings.test" title="settings.test">Influx Verbindung testen</button></div>
     </div>
     <div id="err" class="err"></div>
     <div id="ok" class="ok"></div>
@@ -592,8 +613,6 @@ const ids = [
   ,"ui_open_stats_total","ui_open_stats_current"
   ,"ui_tooltips_enabled"
   ,"restore_preview_lines"
-  ,"outlier_max_step_w","outlier_max_step_kw","outlier_max_step_wh","outlier_max_step_kwh"
-  ,"outlier_max_step_units"
   ,"log_to_file","log_profile","log_max_mb","log_backup_count","log_max_age_days","log_http_requests"
   ,"log_influx_queries"
   ,"writes_enabled"
@@ -606,6 +625,339 @@ const ids = [
 
 const el = {};
 ids.forEach(id => el[id] = document.getElementById(id));
+
+const $settingsSearch = document.getElementById('settings_search');
+const $settingsSearchClear = document.getElementById('settings_search_clear');
+const $settingsSearchHint = document.getElementById('settings_search_hint');
+const $settingsSearchResults = document.getElementById('settings_search_results');
+
+const $outliersTbl = document.getElementById('outliers_tbl');
+const $outliersAdd = document.getElementById('outliers_add');
+const $outliersDel = document.getElementById('outliers_del');
+const $outliersAuto = document.getElementById('outliers_autowidth');
+let _OUTLIERS_SEL_IDX = -1;
+
+function _norm(s){ return String(s || '').trim(); }
+function _lc(s){ return _norm(s).toLowerCase(); }
+
+function _sectionPathFor(el){
+  try{
+    const parts = [];
+    let cur = el;
+    while(cur){
+      const d = cur.closest && cur.closest('details');
+      if(!d) break;
+      const sum = d.querySelector('summary');
+      const t = _norm(sum ? sum.textContent : '');
+      if(t) parts.unshift(t);
+      cur = d.parentElement;
+      if(!cur) break;
+      // continue searching up
+      const up = cur.closest && cur.closest('details');
+      if(!up) break;
+      cur = up;
+    }
+    return parts;
+  }catch(e){
+    return [];
+  }
+}
+
+function _labelForControl(ctrl){
+  try{
+    const tag = String(ctrl.tagName || '').toLowerCase();
+    if(tag === 'input'){
+      const t = String(ctrl.getAttribute('type') || '').toLowerCase();
+      if(t === 'checkbox'){
+        const lab = ctrl.closest('label');
+        const txt = _norm(lab ? lab.textContent : '');
+        return txt;
+      }
+    }
+
+    const wrap = ctrl.parentElement;
+    if(wrap){
+      const lab = wrap.querySelector('label');
+      const txt = _norm(lab ? lab.textContent : '');
+      if(txt) return txt;
+    }
+  }catch(e){}
+  return _norm(ctrl.getAttribute('id') || ctrl.getAttribute('data-ui') || '');
+}
+
+function _descForControl(ctrl){
+  try{
+    // Prefer tooltip map (title contains our explanation + (key)).
+    const ttl = _norm(ctrl.getAttribute('title'));
+    if(ttl) return ttl;
+    const wrap = ctrl.parentElement;
+    if(wrap){
+      const m = wrap.querySelector('.muted');
+      const txt = _norm(m ? m.textContent : '');
+      if(txt) return txt;
+    }
+  }catch(e){}
+  return '';
+}
+
+let _SETTINGS_INDEX = null;
+function _buildSettingsIndex(){
+  try{
+    if(_SETTINGS_INDEX) return _SETTINGS_INDEX;
+    const main = document.querySelector('main.content');
+    if(!main) return [];
+    const sel = 'button[id], select[id], input[id], textarea[id]';
+    const nodes = Array.from(main.querySelectorAll(sel));
+    const out = [];
+    nodes.forEach(ctrl => {
+      try{
+        const id = _norm(ctrl.getAttribute('id'));
+        if(!id) return;
+        if(id === 'settings_search' || id === 'settings_search_clear') return;
+        const ui = _norm(ctrl.getAttribute('data-ui'));
+        const key = ui || ('#' + id);
+        const label = _labelForControl(ctrl);
+        const desc = _descForControl(ctrl);
+        const sect = _sectionPathFor(ctrl);
+        const hay = [label, key, desc, sect.join(' / ')].map(_lc).join(' | ');
+        out.push({ key, label, desc, sect, hay, ctrl });
+      }catch(e){}
+    });
+    _SETTINGS_INDEX = out;
+    return out;
+  }catch(e){
+    _SETTINGS_INDEX = [];
+    return [];
+  }
+}
+
+function _openDetailsParents(ctrl){
+  try{
+    let cur = ctrl;
+    const seen = new Set();
+    while(cur){
+      const d = cur.closest && cur.closest('details');
+      if(!d) break;
+      const id = _norm(d.getAttribute('id'));
+      if(id && seen.has(id)) break;
+      if(id) seen.add(id);
+      d.open = true;
+      cur = d.parentElement;
+      if(!cur) break;
+    }
+  }catch(e){}
+}
+
+function _flash(ctrl){
+  try{
+    ctrl.classList.add('jump_hl');
+    setTimeout(()=>{ try{ ctrl.classList.remove('jump_hl'); }catch(e){} }, 1200);
+  }catch(e){}
+}
+
+function _jumpTo(ctrl){
+  try{
+    if(!ctrl) return;
+    _openDetailsParents(ctrl);
+    try{ ctrl.scrollIntoView({block:'center', behavior:'smooth'}); }catch(e){ try{ ctrl.scrollIntoView(); }catch(ex){} }
+    try{ ctrl.focus({preventScroll:true}); }catch(e){ try{ ctrl.focus(); }catch(ex){} }
+    _flash(ctrl);
+  }catch(e){}
+}
+
+function _renderSearch(q){
+  const query = _lc(q);
+  const idx = _buildSettingsIndex();
+  if(!$settingsSearchResults || !$settingsSearchHint) return;
+  if(!query){
+    $settingsSearchHint.textContent = 'Tippe, um Einstellungen nach Name/Key/Tooltip zu finden.';
+    $settingsSearchResults.innerHTML = '';
+    return;
+  }
+  const hits = idx.filter(x => x.hay.includes(query)).slice(0, 30);
+  $settingsSearchHint.textContent = hits.length ? (`Treffer: ${hits.length} (max 30)`) : 'Keine Treffer.';
+
+  const box = document.createElement('div');
+  box.className = 'search_hits';
+  hits.forEach(h => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'search_hit_btn';
+    const sect = (h.sect && h.sect.length) ? ('[' + h.sect.join(' / ') + '] ') : '';
+    const d = h.desc ? (' - ' + h.desc) : '';
+    b.textContent = `${sect}${h.label}${d} (${h.key})`;
+    b.onclick = ()=>_jumpTo(h.ctrl);
+    box.appendChild(b);
+  });
+  $settingsSearchResults.innerHTML = '';
+  $settingsSearchResults.appendChild(box);
+}
+
+function _parseUnitMapText(raw){
+  const out = {};
+  try{
+    const lines = String(raw || '').split(/\r?\n/);
+    lines.forEach(ln => {
+      const s0 = String(ln || '').trim();
+      if(!s0) return;
+      if(s0.startsWith('#')) return;
+      let a = null;
+      let b = null;
+      if(s0.includes('=')){
+        const p = s0.split('=', 2);
+        a = p[0];
+        b = p[1];
+      }else if(s0.includes(':')){
+        const p = s0.split(':', 2);
+        a = p[0];
+        b = p[1];
+      }else{
+        const parts = s0.split(/\s+/);
+        if(parts.length < 2) return;
+        a = parts[0];
+        b = parts[1];
+      }
+      const k = String(a || '').trim();
+      if(!k) return;
+      const v = parseFloat(String(b || '').trim());
+      if(!isFinite(v)) return;
+      out[k] = v;
+    });
+  }catch(e){}
+  return out;
+}
+
+function _unitMapToText(map){
+  try{
+    const keys = Object.keys(map || {});
+    keys.sort((a,b)=>String(a).localeCompare(String(b)));
+    return keys.map(k => `${k}=${map[k]}`).join('\n');
+  }catch(e){
+    return '';
+  }
+}
+
+function _outlierRowsFromCfg(cfg){
+  const base = [
+    {m:'W', v: (cfg.outlier_max_step_w ?? 30000)},
+    {m:'kW', v: (cfg.outlier_max_step_kw ?? 30)},
+    {m:'Wh', v: (cfg.outlier_max_step_wh ?? 30000)},
+    {m:'kWh', v: (cfg.outlier_max_step_kwh ?? 30)},
+  ];
+  const extra = _parseUnitMapText(cfg.outlier_max_step_units || '');
+  const seen = new Set(base.map(x=>String(x.m).toLowerCase()));
+  Object.keys(extra).forEach(k => {
+    const kk = String(k).trim();
+    if(!kk) return;
+    if(seen.has(kk.toLowerCase())) return;
+    base.push({m: kk, v: extra[k]});
+  });
+  return base;
+}
+
+function _outliersClearSelection(){
+  _OUTLIERS_SEL_IDX = -1;
+  try{
+    if(!$outliersTbl) return;
+    $outliersTbl.querySelectorAll('tbody tr').forEach(tr => tr.classList.remove('selected'));
+  }catch(e){}
+}
+
+function _outliersSelectRow(idx){
+  _OUTLIERS_SEL_IDX = idx;
+  try{
+    if(!$outliersTbl) return;
+    const trs = Array.from($outliersTbl.querySelectorAll('tbody tr'));
+    trs.forEach((tr, i) => {
+      if(i === idx) tr.classList.add('selected');
+      else tr.classList.remove('selected');
+    });
+  }catch(e){}
+}
+
+function _renderOutliersTable(rows){
+  try{
+    if(!$outliersTbl) return;
+    const tb = $outliersTbl.querySelector('tbody');
+    if(!tb) return;
+    tb.innerHTML = '';
+    (rows || []).forEach((r, idx) => {
+      const tr = document.createElement('tr');
+      tr.addEventListener('click', ()=>_outliersSelectRow(idx));
+
+      const tdM = document.createElement('td');
+      const iM = document.createElement('input');
+      iM.value = String(r && r.m ? r.m : '');
+      iM.placeholder = 'z.B. W';
+      iM.addEventListener('click', (ev)=>{ try{ ev.stopPropagation(); }catch(e){}; _outliersSelectRow(idx); });
+      tdM.appendChild(iM);
+
+      const tdV = document.createElement('td');
+      const iV = document.createElement('input');
+      iV.type = 'number';
+      iV.step = 'any';
+      iV.value = (r && r.v !== null && r.v !== undefined) ? String(r.v) : '';
+      iV.placeholder = 'z.B. 30';
+      iV.addEventListener('click', (ev)=>{ try{ ev.stopPropagation(); }catch(e){}; _outliersSelectRow(idx); });
+      tdV.appendChild(iV);
+
+      tr.appendChild(tdM);
+      tr.appendChild(tdV);
+      tb.appendChild(tr);
+    });
+    _outliersClearSelection();
+    try{
+      if(window.InfluxBroTableCols){
+        window.InfluxBroTableCols.init('#outliers_tbl');
+      }
+    }catch(e){}
+  }catch(e){}
+}
+
+function _readOutliersTable(){
+  const out = [];
+  try{
+    if(!$outliersTbl) return out;
+    const trs = Array.from($outliersTbl.querySelectorAll('tbody tr'));
+    trs.forEach(tr => {
+      try{
+        const tds = Array.from(tr.querySelectorAll('td'));
+        if(tds.length < 2) return;
+        const m = _norm(tds[0].querySelector('input') ? tds[0].querySelector('input').value : '');
+        if(!m) return;
+        const v = parseFloat(String(tds[1].querySelector('input') ? tds[1].querySelector('input').value : ''));
+        if(!isFinite(v)) return;
+        out.push({m, v});
+      }catch(e){}
+    });
+  }catch(e){}
+  return out;
+}
+
+function _outlierCfgFromRows(rows){
+  // Persist in legacy config keys: W/kW/Wh/kWh + free-form map.
+  const cfg = {
+    outlier_max_step_w: 30000,
+    outlier_max_step_kw: 30,
+    outlier_max_step_wh: 30000,
+    outlier_max_step_kwh: 30,
+    outlier_max_step_units: '',
+  };
+  const extras = {};
+  (rows || []).forEach(r => {
+    const k = String(r.m || '').trim();
+    const v = Number(r.v);
+    if(!k || !isFinite(v)) return;
+    const kl = k.toLowerCase();
+    if(kl === 'w' || kl === 'watt') cfg.outlier_max_step_w = v;
+    else if(kl === 'kw' || kl === 'kilowatt') cfg.outlier_max_step_kw = v;
+    else if(kl === 'wh' || kl === 'watth' || kl === 'watthour' || kl === 'watt-hour') cfg.outlier_max_step_wh = v;
+    else if(kl === 'kwh' || kl === 'kilowatth' || kl === 'kilowatthour' || kl === 'kilowatt-hour') cfg.outlier_max_step_kwh = v;
+    else extras[k] = v;
+  });
+  cfg.outlier_max_step_units = _unitMapToText(extras);
+  return cfg;
+}
 
 async function api(url, opts){
   let r;
@@ -672,11 +1024,7 @@ function setForm(cfg){
 
   el.restore_preview_lines.value = (cfg.restore_preview_lines !== null && cfg.restore_preview_lines !== undefined) ? String(cfg.restore_preview_lines) : '5';
 
-  el.outlier_max_step_w.value = cfg.outlier_max_step_w ?? 30000;
-  el.outlier_max_step_kw.value = cfg.outlier_max_step_kw ?? 30;
-  el.outlier_max_step_wh.value = cfg.outlier_max_step_wh ?? 30000;
-  el.outlier_max_step_kwh.value = cfg.outlier_max_step_kwh ?? 30;
-  el.outlier_max_step_units.value = cfg.outlier_max_step_units ?? "";
+  _renderOutliersTable(_outlierRowsFromCfg(cfg || {}));
 
   el.log_to_file.checked = (cfg.log_to_file !== false);
   el.log_profile.value = String(cfg.log_profile ?? "debug");
@@ -707,6 +1055,7 @@ function setForm(cfg){
 }
 
 function getForm(){
+  const outlierCfg = _outlierCfgFromRows(_readOutliersTable());
   return {
     influx_yaml_path: (el.influx_yaml_path.value || "").trim(),
 
@@ -760,11 +1109,11 @@ function getForm(){
 
     restore_preview_lines: Number(el.restore_preview_lines.value || 5),
 
-    outlier_max_step_w: parseFloat(el.outlier_max_step_w.value),
-    outlier_max_step_kw: parseFloat(el.outlier_max_step_kw.value),
-    outlier_max_step_wh: parseFloat(el.outlier_max_step_wh.value),
-    outlier_max_step_kwh: parseFloat(el.outlier_max_step_kwh.value),
-    outlier_max_step_units: String(el.outlier_max_step_units.value || ""),
+    outlier_max_step_w: Number(outlierCfg.outlier_max_step_w),
+    outlier_max_step_kw: Number(outlierCfg.outlier_max_step_kw),
+    outlier_max_step_wh: Number(outlierCfg.outlier_max_step_wh),
+    outlier_max_step_kwh: Number(outlierCfg.outlier_max_step_kwh),
+    outlier_max_step_units: String(outlierCfg.outlier_max_step_units || ""),
 
     log_to_file: !!el.log_to_file.checked,
     log_profile: String(el.log_profile.value || "debug"),
@@ -864,6 +1213,32 @@ document.getElementById("read_yaml").addEventListener("click", ()=>loadYaml().ca
 document.getElementById("save").addEventListener("click", ()=>save().catch(e=>err(String(e))));
 document.getElementById("test").addEventListener("click", ()=>testConn().catch(e=>err(String(e))));
 
+try{
+  if($outliersAdd) $outliersAdd.addEventListener('click', ()=>{
+    const cur = _readOutliersTable();
+    cur.push({m:'', v:''});
+    _renderOutliersTable(cur);
+    _outliersSelectRow(cur.length - 1);
+  });
+  if($outliersDel) $outliersDel.addEventListener('click', ()=>{
+    const cur = _readOutliersTable();
+    if(!cur.length) return;
+    const idx = (_OUTLIERS_SEL_IDX >= 0 && _OUTLIERS_SEL_IDX < cur.length) ? _OUTLIERS_SEL_IDX : -1;
+    if(idx < 0) return;
+    cur.splice(idx, 1);
+    _renderOutliersTable(cur);
+  });
+  if($outliersAuto) $outliersAuto.addEventListener('click', ()=>{
+    try{ if(window.InfluxBroTableCols) window.InfluxBroTableCols.autoFit('#outliers_tbl', {maxRows: 200}); }catch(e){}
+  });
+}catch(e){}
+
+try{
+  if($settingsSearch) $settingsSearch.addEventListener('input', ()=>_renderSearch($settingsSearch.value || ''));
+  if($settingsSearchClear) $settingsSearchClear.addEventListener('click', ()=>{ try{ $settingsSearch.value = ''; }catch(e){}; _renderSearch(''); });
+  _renderSearch('');
+}catch(e){}
+
 load().catch(e=>err(String(e)));
 </script>
 
@@ -879,6 +1254,7 @@ load().catch(e=>err(String(e)));
 })();
 </script>
 
+{% include "_table_cols.html" %}
 {% include "_tooltips.html" %}
 
     </main>

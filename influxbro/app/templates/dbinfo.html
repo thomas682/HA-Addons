@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>InfluxBro – Info</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; }
+    .shell { display:grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
+    @media (max-width: 980px){ .shell { grid-template-columns: 1fr; } }
+    .content { padding: 16px; }
+    .muted { opacity: 0.7; font-size: 12px; }
+    .card { border: 1px solid #ddd; border-radius: 12px; padding: 12px; margin-top: 12px; }
+    .row { display:flex; gap: 10px; flex-wrap:wrap; align-items:end; }
+    input, select, button { padding: 10px 12px; height: 40px; box-sizing: border-box; }
+    button { cursor:pointer; }
+    .btn_xs { padding: 6px 10px; height: 30px; font-size: 12px; }
+    .status { border: 1px dashed #ddd; border-radius: 12px; padding: 10px 12px; margin-top: 10px; background: #fafafa; font-size: 12px; white-space: pre-wrap; }
+    .err { color: #b00020; margin-top: 8px; white-space: pre-wrap; }
+    a { color: inherit; }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    {% include "_nav.html" %}
+    <main class="content" data-ui="dbinfo.page" title="dbinfo.page">
+      <h2>Info</h2>
+      <div class="muted">
+        Repository: {% if repo_url %}<a href="{{ repo_url }}" target="_blank" rel="noreferrer">{{ repo_url }}</a>{% else %}<span>(nicht konfiguriert)</span>{% endif %}
+      </div>
+
+      <div class="card" data-ui="dbinfo.influx.card" title="dbinfo.influx.card">
+        <div style="display:flex; align-items:baseline; justify-content:space-between; gap: 10px; flex-wrap:wrap;">
+          <div>
+            <div style="font-weight:800;">Influx Datenbank</div>
+            <div class="muted">Best-effort Diagnose ueber <code>/api/influx_info</code>.</div>
+          </div>
+        </div>
+
+        <div class="row" style="margin-top: 10px;" data-ui="dbinfo.influx.controls" title="dbinfo.influx.controls">
+          <div>
+            <label class="muted" style="display:block; font-size: 12px;">&nbsp;</label>
+            <button id="refresh" data-ui="dbinfo.influx.refresh" title="dbinfo.influx.refresh">Aktualisieren</button>
+          </div>
+          <div class="muted" id="hint" style="padding-top: 10px;"></div>
+        </div>
+
+        <div class="status" id="info" data-ui="dbinfo.influx.info" title="dbinfo.influx.info"></div>
+        <div id="err" class="err"></div>
+      </div>
+
+      <script>
+      const $info = document.getElementById('info');
+      const $hint = document.getElementById('hint');
+      const $err = document.getElementById('err');
+      const $refresh = document.getElementById('refresh');
+
+      function err(msg){
+        const s = String(msg || '');
+        $err.textContent = s;
+        if(s){
+          try{
+            if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error(s);
+            else alert(s);
+          }catch(e){}
+        }
+      }
+
+      function fmtTs(iso){
+        if(!iso) return '';
+        const d = new Date(String(iso));
+        if(!isFinite(d.getTime())) return String(iso);
+        const pad = (n) => String(n).padStart(2,'0');
+        const pad3 = (n) => String(n).padStart(3,'0');
+        return pad(d.getDate()) + '.' + pad(d.getMonth()+1) + '.' + d.getFullYear() + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()) + '.' + pad3(d.getMilliseconds());
+      }
+
+      function renderInfluxDbInfo(info){
+        try{
+          const i = info || {};
+          const lines = [];
+          const add = (k, v)=>{ if(v === null || v === undefined || String(v).trim() === '') return; lines.push(String(k) + ': ' + String(v)); };
+          add('URL', i.url);
+          add('Host', i.host);
+          add('IP', i.ip);
+          add('Influx Version', i.influx_version);
+          add('Health', i.health);
+          add('Buckets', i.bucket_count);
+          add('Databases', i.database_count);
+          add('HA DB Name', i.ha_database);
+          add('Hinweis', i.note);
+          $info.textContent = lines.join('\n');
+        }catch(e){
+          $info.textContent = 'Fehler beim Rendern.';
+        }
+      }
+
+      async function refresh(){
+        err('');
+        try{ if($hint) $hint.textContent = 'Lade...'; }catch(e){}
+        const r = await fetch('./api/influx_info');
+        const j = await r.json().catch(()=>({ok:false,error:'Invalid JSON'}));
+        if(!r.ok || !j.ok) throw new Error(j.error || ('HTTP ' + r.status));
+        renderInfluxDbInfo(j.info || {});
+        try{ if($hint) $hint.textContent = 'Aktualisiert: ' + fmtTs(new Date().toISOString()); }catch(e){}
+      }
+
+      $refresh.onclick = ()=>{ refresh().catch(e => err(e && e.message ? e.message : String(e))); };
+      refresh().catch(()=>{});
+      </script>
+
+      {% include "_tooltips.html" %}
+    </main>
+  </div>
+</body>
+</html>

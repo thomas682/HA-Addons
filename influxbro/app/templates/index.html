@@ -103,6 +103,7 @@
 
     /* Raw table: monospace for stable digit widths. */
     #raw_tbl, #raw_tbl th, #raw_tbl td { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    #raw_tbl tr.raw_hl td { background: rgba(255, 153, 0, 0.18); }
 
     /* Edit columns are hidden until at least one row is in edit mode. */
     .col_edit { display: none; }
@@ -460,7 +461,7 @@
 
            <div class="tbl_actions" style="justify-content:flex-start; margin-top: 10px;" data-ui="filterlist_outlier_actions" title="filterlist_outlier_actions">
              <button class="btn_sm" id="outlier_scan" data-ui="filterlist_outlier_scan">Fehlersuche Ausreisser</button>
-             <button class="btn_sm" id="outlier_reset" data-ui="filterlist_outlier_reset">Zuruecksetzen</button>
+             <button class="btn_sm" id="outlier_reset" data-ui="filterlist_outlier_reset">Abbruch</button>
            </div>
 
            <div id="outlier_status" data-ui="filterlist_outlier_status" title="filterlist_outlier_status">
@@ -665,6 +666,8 @@ const $loadSpinner = document.getElementById('load_spinner');
 const $loadStatusTxt = document.getElementById('load_status_txt');
 const $loadStatusTime = document.getElementById('load_status_time');
 const $btnReset = document.getElementById('reset_filters');
+
+try{ if($btnOutlierReset) $btnOutlierReset.disabled = true; }catch(e){}
 
 const $queryDetails = document.getElementById('query_details');
 const $queryPre = document.getElementById('query_pre');
@@ -1684,6 +1687,7 @@ function startOutlierUi(metaText){
     OUTLIER_T0 = performance.now();
     OUTLIER_META_TEXT = "";
     if($btnOutlierScan) $btnOutlierScan.disabled = true;
+    if($btnOutlierReset) $btnOutlierReset.disabled = false;
     if($outlierStatus) $outlierStatus.style.display = "flex";
     if($outlierSpinner) $outlierSpinner.style.display = "inline-block";
     if($outlierStatusTxt) $outlierStatusTxt.textContent = "Fehlersuche laeuft...";
@@ -1711,6 +1715,7 @@ function stopOutlierUi(okDone, errText){
       else $outlierStatusTxt.textContent = errText ? ("Fehler: " + String(errText)) : "Fehler.";
     }
     if($btnOutlierScan) $btnOutlierScan.disabled = false;
+    if($btnOutlierReset) $btnOutlierReset.disabled = true;
   }catch(e){}
   OUTLIER_INFLIGHT = false;
   try{
@@ -1760,6 +1765,10 @@ let OUTLIER_META_TEXT = "";
 
 let _PLOTLY_EVENTS_BOUND = false;
 let _IN_Y_RELAYOUT = false;
+
+let GRAPH_SELECTED_MS = null;
+let GRAPH_SELECTED_Y = null;
+let RAW_SELECTED_MS = null;
 
 let FILTER_SELECTED = new Set();
 let EDIT_SELECTED = new Set();
@@ -2184,6 +2193,16 @@ function drawPlotly(rows){
     line: { color: "#1f77b4", width: 1.5, simplify: false, shape: "linear" },
     marker: { size: 6, symbol: "circle", color: "#1f77b4" },
     hovertemplate: "%{x}<br>%{y}<extra></extra>",
+  },
+  {
+    x: (isFinite(Number(GRAPH_SELECTED_MS)) && GRAPH_SELECTED_Y !== null && GRAPH_SELECTED_Y !== undefined) ? [new Date(Number(GRAPH_SELECTED_MS))] : [],
+    y: (isFinite(Number(GRAPH_SELECTED_MS)) && GRAPH_SELECTED_Y !== null && GRAPH_SELECTED_Y !== undefined) ? [Number(GRAPH_SELECTED_Y)] : [],
+    type: "scatter",
+    mode: "markers",
+    marker: { size: 10, symbol: "circle", color: "#ff9900", line: { width: 2, color: "#fff" } },
+    hoverinfo: "skip",
+    showlegend: false,
+    name: "selected",
   }];
 
   const layout = {
@@ -2299,7 +2318,24 @@ function drawPlotly(rows){
       scheduleStatsCurrentReload();
       scheduleRawReload(true);
     });
+
+    try{
+      $plotly.on('plotly_click', (ev)=>{
+        try{
+          const pts = ev && ev.points ? ev.points : [];
+          if(!pts.length) return;
+          const p = pts[0];
+          const x = (p && p.x !== undefined) ? p.x : null;
+          const y = (p && p.y !== undefined) ? p.y : null;
+          const ms = (x instanceof Date) ? x.getTime() : Date.parse(String(x||''));
+          if(!(isFinite(ms) && ms > 0)) return;
+          _setGraphSelection(ms, y);
+          _jumpToRawByMs(ms).catch(()=>{});
+        }catch(e){}
+      });
+    }catch(e){}
   }
+  try{ _updateGraphSelectionTrace(); }catch(e){}
   return true;
 }
 
@@ -2507,6 +2543,95 @@ function abortAllRequests(reason){
     if(inflight && inflight.keyed){
       inflight.keyed.forEach((c)=>{ try{ c.abort(); }catch(e){} });
       inflight.keyed.clear();
+    }
+  }catch(e){}
+}
+
+function abortKeyRequest(key){
+  try{
+    const k = String(key || '').trim();
+    if(!k) return;
+    const inflight = window.__INFLUXBRO_INFLIGHT;
+    if(inflight && inflight.keyed){
+      const c = inflight.keyed.get(k);
+      if(c && c.abort) c.abort();
+    }
+  }catch(e){}
+}
+
+function _setGraphSelection(ms, y){
+  try{
+    const t = Number(ms);
+    if(!(isFinite(t) && t > 0)){
+      GRAPH_SELECTED_MS = null;
+      GRAPH_SELECTED_Y = null;
+    }else{
+      GRAPH_SELECTED_MS = t;
+      GRAPH_SELECTED_Y = (y !== null && y !== undefined && isFinite(Number(y))) ? Number(y) : null;
+    }
+  }catch(e){
+    GRAPH_SELECTED_MS = null;
+    GRAPH_SELECTED_Y = null;
+  }
+
+  try{ _updateGraphSelectionTrace(); }catch(e){}
+}
+
+function _updateGraphSelectionTrace(){
+  try{
+    if(!$plotly || !window.Plotly) return;
+    // trace index 1 is reserved for selection marker (see drawPlotly)
+    if(!(isFinite(Number(GRAPH_SELECTED_MS)) && GRAPH_SELECTED_Y !== null && GRAPH_SELECTED_Y !== undefined)){
+      window.Plotly.restyle($plotly, {x: [[]], y: [[]]}, [1]);
+      return;
+    }
+    const d = new Date(Number(GRAPH_SELECTED_MS));
+    if(!isFinite(d.getTime())){
+      window.Plotly.restyle($plotly, {x: [[]], y: [[]]}, [1]);
+      return;
+    }
+    window.Plotly.restyle($plotly, {x: [[d]], y: [[Number(GRAPH_SELECTED_Y)]]}, [1]);
+  }catch(e){}
+}
+
+async function _jumpToRawByMs(ms){
+  try{
+    const t = Number(ms);
+    if(!(isFinite(t) && t > 0)) return;
+    RAW_SELECTED_MS = t;
+
+    if($rawSection){
+      $rawSection.open = true;
+      try{ $rawSection.scrollIntoView({block:'nearest'}); }catch(e){}
+    }
+
+    // ensure raw data exists
+    try{ await loadRawFromGraph(true); }catch(e){}
+    for(let i=0;i<25;i++){
+      if(!_RAW_INFLIGHT && (RAW_ROWS || []).length) break;
+      await new Promise(r=>setTimeout(r, 120));
+    }
+
+    try{ renderRawTable(); }catch(e){}
+
+    // find exact match by timestamp (ms) or nearest within 1000ms
+    let best = null;
+    let bestDiff = 9999999;
+    const trs = Array.from(document.querySelectorAll('#raw_tbl tbody tr'));
+    for(const tr of trs){
+      const v = Number(tr.getAttribute('data-ts-ms') || '');
+      if(!isFinite(v)) continue;
+      const d = Math.abs(v - t);
+      if(d < bestDiff){
+        bestDiff = d;
+        best = tr;
+      }
+    }
+    if(best && bestDiff <= 1000){
+      trs.forEach(x => x.classList.remove('raw_hl'));
+      best.classList.add('raw_hl');
+      try{ best.scrollIntoView({block:'center', behavior:'smooth'}); }catch(e){ try{ best.scrollIntoView(); }catch(ex){} }
+      setTimeout(()=>{ try{ best.classList.remove('raw_hl'); }catch(e){} }, 2200);
     }
   }catch(e){}
 }
@@ -3268,6 +3393,13 @@ function renderRawTable(){
 
   (RAW_ROWS || []).forEach(r => {
     const tr = document.createElement('tr');
+    try{
+      const ms = Date.parse(String(r.time || ''));
+      if(isFinite(ms)) tr.setAttribute('data-ts-ms', String(ms));
+      if(RAW_SELECTED_MS !== null && RAW_SELECTED_MS !== undefined && isFinite(Number(RAW_SELECTED_MS)) && isFinite(ms) && Math.abs(ms - Number(RAW_SELECTED_MS)) <= 0){
+        tr.classList.add('raw_hl');
+      }
+    }catch(e){}
     const tdT = document.createElement('td');
     tdT.textContent = fmtTs(r.time);
     const tdV = document.createElement('td');
@@ -5182,7 +5314,12 @@ function clearFilterTable(){
 }
 
 if($btnOutlierScan) $btnOutlierScan.addEventListener("click", (ev)=>{ _stop(ev); runOutlierScan().catch(displayError); });
-if($btnOutlierReset) $btnOutlierReset.addEventListener("click", (ev)=>{ _stop(ev); resetOutliers(); });
+if($btnOutlierReset) $btnOutlierReset.addEventListener("click", (ev)=>{
+  _stop(ev);
+  if(!OUTLIER_INFLIGHT) return;
+  try{ abortKeyRequest('outliers_scan'); }catch(e){}
+  try{ ok('Abbruch angefordert...'); }catch(e){}
+});
 if($btnTblClear) $btnTblClear.addEventListener("click", (ev)=>{ _stop(ev); clearFilterTable(); });
 if($btnEditApply) $btnEditApply.addEventListener("click", (ev)=>{ _stop(ev); applyAllEdits(); });
 

@@ -32,7 +32,7 @@
     'dashboard.measurement': 'Waehlt den intern genutzten _measurement (wird best-effort automatisch ermittelt).',
     'dashboard.field': 'Waehlt den intern genutzten _field (wird best-effort automatisch ermittelt).',
     'filterlist_outlier_scan': 'Startet Fehlersuche (DB-Scan) im aktuellen Graph-Zeitraum.',
-    'filterlist_outlier_reset': 'Beendet Ausreisser-Modus und zeigt wieder normale Tabelle.',
+    'filterlist_outlier_reset': 'Bricht eine laufende Fehlersuche ab (gefundenen Treffer bleiben stehen).',
     'filterlist_to_edit': 'Uebernimmt markierte Tabellenzeilen in die Bearbeitungsliste.',
     'editlist_apply': 'Schreibt alle geaenderten Werte aus der Bearbeitungsliste in die Datenbank (mit Bestaetigung).',
     'raw.autowidth': 'Passt die Spaltenbreiten so an, dass der Text voll sichtbar ist (Auto-Fit).',
@@ -136,11 +136,22 @@
     'settings.scheme': 'Waehlt http/https fuer die InfluxDB URL.',
     'settings.verify_ssl': 'SSL Zertifikatspruefung (nur relevant bei https).',
 
+    // Settings: Outliers
+    'settings.outliers.add': 'Fuegt eine Zeile zur Ausreisser-Tabelle hinzu.',
+    'settings.outliers.delete': 'Loescht die aktuell ausgewaehlte Zeile aus der Ausreisser-Tabelle.',
+    'settings.outliers.autofit': 'Passt die Spaltenbreiten der Ausreisser-Tabelle automatisch an.',
+    'settings.outliers.table': 'Ausreisser Grenzwerte pro _measurement (counter max_step).',
+
     // Settings: Connection / Save
     'settings.find_yaml': 'Sucht nach einer influx.yaml unter /config (best-effort).',
     'settings.read_yaml': 'Liest influx.yaml ein und uebernimmt Werte in die Maske (ohne Speichern).',
     'settings.save': 'Speichert die Einstellungen (nach /data).',
     'settings.test': 'Testet die InfluxDB Verbindung mit den aktuellen Einstellungen.',
+
+    // Settings: Search
+    'settings.search.card': 'Suche nach Einstellungen (zeigt Abschnitt + UI-Key und springt bei Klick zum Feld).',
+    'settings.search': 'Sucht nach Einstellungen (Name, Tooltip, UI-Key). Klick auf Treffer springt zum Element.',
+    'settings.search.clear': 'Leert die Suche und Trefferliste.',
 
     // Import
     'import.backup_before': 'Erstellt vor dem Import ein Backup des Zielzeitraums (empfohlen).',
