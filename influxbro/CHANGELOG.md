@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.11
+
+### Features
+
+- Restore: Zwei-Spalten Layout (Quelle/Ziel) auf Desktop; mobil bleibt es untereinander.
+- Restore: Boxen sind resizable; Hoehen werden ueber "Darstellung speichern" gemerkt.
+
+### Maintenance
+
+- Tested with Home Assistant Core: 2026.3.1
+
 ## 1.12.10
 
 ### Changes

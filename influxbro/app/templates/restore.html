@@ -40,7 +40,7 @@
     table { border-collapse: collapse; width: 100%; margin-top: 10px; }
     th, td { border: 1px solid #eee; padding: 0 6px; font-size: 12px; line-height: 1.2; vertical-align: middle; height: var(--restore_row_h); }
     th { background: #f6f6f6; text-align:left; position: sticky; top: 0; }
-    .table_box { max-height: calc(var(--restore_visible_rows, 24) * var(--restore_row_h) + 48px); overflow:auto; border: 1px solid #eee; border-radius: 12px; margin-top: 10px; }
+    .table_box { height: calc(var(--restore_visible_rows, 24) * var(--restore_row_h) + 48px); max-height: 80vh; overflow:auto; border: 1px solid #eee; border-radius: 12px; margin-top: 10px; resize: vertical; min-height: 180px; }
     tr.selected { background: #e8f1ff; }
     .grid { display:grid; grid-template-columns: repeat(2, minmax(260px, 1fr)); gap: 12px; margin-top: 12px; align-items:end; }
     @media (max-width: 980px){ .grid { grid-template-columns: 1fr; } }
@@ -48,6 +48,12 @@
     .filter_pair input.search { height: 34px; padding: 8px 10px; width: 200px; }
     .filter_pair select { flex: 1; min-width: 0; }
     table.list_tbl th, table.list_tbl td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .page_grid { display:grid; grid-template-columns: minmax(320px, 1.15fr) minmax(320px, 0.85fr); gap: 12px; align-items:start; }
+    @media (max-width: 980px){ .page_grid { grid-template-columns: 1fr; } }
+
+    /* Resizable blocks */
+    #plan_query, #run_details_pre, #run_preview_pre { resize: vertical; overflow:auto; }
   </style>
 </head>
 <body>
@@ -55,9 +61,11 @@
     {% include "_nav.html" %}
     <main class="content" data-ui="restore.page" title="restore.page">
        <h2>Restore</h2>
-       <div class="muted">Quelle: Backup auswaehlen. Ziel: Messwert auswaehlen. Restore schreibt Daten (Schreiben muss erlaubt sein).</div>
+       <div class="muted">Quelle: Backup auswaehlen. Ziel: Messwert auswaehlen. Restore schreibt Daten (vorhandene Punkte koennen ueberschrieben werden).</div>
 
-        <div class="card" data-ui="restore.source" title="restore.source" style="--restore_visible_rows: {{ (cfg.get('ui_restore_visible_rows') or 24) | int }};">
+       <div class="page_grid">
+
+         <div class="card" data-ui="restore.source" title="restore.source" style="--restore_visible_rows: {{ (cfg.get('ui_restore_visible_rows') or 24) | int }};">
            <div style="font-weight:700;">Quelle (Backup)</div>
           <div class="row">
             <div style="min-width: 320px; flex:1;">
@@ -112,7 +120,7 @@
                <span class="muted" style="opacity:0.85;">Query anzeigen</span>
              </label>
            </div>
-           <pre id="plan_query" style="display:none; margin:6px 0 0 0; padding:10px 12px; border:1px solid #eee; border-radius:12px; background:#fafafa; white-space:pre; overflow:auto; max-height: 220px;" data-ui="restore.query" title="restore.query"></pre>
+           <pre id="plan_query" style="display:none; margin:6px 0 0 0; padding:10px 12px; border:1px solid #eee; border-radius:12px; background:#fafafa; white-space:pre; overflow:auto; max-height: 80vh; min-height: 90px;" data-ui="restore.query" title="restore.query"></pre>
 
            <div class="row" style="margin-top: 8px; justify-content:flex-start;" data-ui="restore.copy_source" title="restore.copy_source">
              <button id="source_to_target" data-ui="restore.source_to_target" title="restore.source_to_target">Uebertrage Quellenamen auf Zielnamen</button>
@@ -164,7 +172,7 @@
               <div>
                 <button id="run" data-ui="restore.run" title="restore.run">Restore ausfuehren</button>
               </div>
-              <div class="muted" style="min-width: 320px; flex:1; padding-top: 6px;" data-ui="restore.write_hint" title="restore.write_hint">Hinweis: Schreiben ist nur moeglich, wenn es in Einstellungen erlaubt ist.</div>
+              <div class="muted" style="min-width: 320px; flex:1; padding-top: 6px;" data-ui="restore.write_hint" title="restore.write_hint">Hinweis: Restore schreibt Daten (vorhandene Punkte koennen ueberschrieben werden).</div>
             </div>
 
             <div id="run_status" data-ui="restore.run_status" title="restore.run_status">
@@ -177,18 +185,21 @@
               <summary>Restore Details</summary>
               <div class="card_body">
                 <div class="muted" id="run_details_meta" style="margin-top:6px;"></div>
-                <pre id="run_details_pre" style="margin:6px 0 0 0; padding:10px 12px; border:1px solid #eee; border-radius:12px; background:#fafafa; white-space:pre; overflow:auto; max-height: 220px;"></pre>
+                <pre id="run_details_pre" style="margin:6px 0 0 0; padding:10px 12px; border:1px solid #eee; border-radius:12px; background:#fafafa; white-space:pre; overflow:auto; max-height: 80vh; min-height: 90px;"></pre>
                 <div class="muted" style="margin-top:8px;">Write Preview (Line Protocol)</div>
-                <pre id="run_preview_pre" style="margin:6px 0 0 0; padding:10px 12px; border:1px solid #eee; border-radius:12px; background:#fafafa; white-space:pre; overflow:auto; max-height: 220px;"></pre>
+                <pre id="run_preview_pre" style="margin:6px 0 0 0; padding:10px 12px; border:1px solid #eee; border-radius:12px; background:#fafafa; white-space:pre; overflow:auto; max-height: 80vh; min-height: 90px;"></pre>
               </div>
             </details>
 
          <div id="err" class="err"></div>
          <div id="ok" class="ok"></div>
+        </div>
+
        </div>
 
       <script>
       const LS_KEY = "influxbro_ui_state_v1";
+      const $restoreBox = document.getElementById('restore_box');
       const $sel = document.getElementById('sel');
       const $rows = document.getElementById('rows');
        const $qBackup = document.getElementById('q_backup');
@@ -373,10 +384,79 @@
       function autoGrow(el){
         try{
           if(!el) return;
+          const st = loadState();
+          if(st && st.restore_sel_h) return;
           el.style.height = 'auto';
           el.style.height = Math.min(260, Math.max(40, el.scrollHeight)) + 'px';
         }catch(e){}
       }
+
+      function _setHeightFromState(el, st, key, minPx, maxPx){
+        try{
+          if(!el || !st) return;
+          const h = Number(st[key]);
+          if(!isFinite(h) || h <= 0) return;
+          const hh = Math.max(minPx, Math.min(maxPx, Math.round(h)));
+          el.style.height = hh + 'px';
+        }catch(e){}
+      }
+
+      function applyLayoutFromState(){
+        try{
+          const st = loadState();
+          _setHeightFromState($restoreBox, st, 'restore_box_h', 180, 1400);
+          _setHeightFromState($sel, st, 'restore_sel_h', 40, 600);
+          _setHeightFromState($planQuery, st, 'restore_plan_query_h', 90, 900);
+          _setHeightFromState($runDetailsPre, st, 'restore_run_details_h', 90, 900);
+          _setHeightFromState($runPreviewPre, st, 'restore_run_preview_h', 90, 900);
+        }catch(e){}
+      }
+
+      function saveLayoutToState(){
+        try{
+          const st = loadState();
+          try{
+            if($restoreBox){
+              const h = Math.round($restoreBox.getBoundingClientRect().height || 0);
+              if(h >= 180) st.restore_box_h = h;
+            }
+          }catch(e){}
+          try{
+            if($sel){
+              const h = Math.round($sel.getBoundingClientRect().height || 0);
+              if(h >= 60) st.restore_sel_h = h;
+            }
+          }catch(e){}
+          try{
+            if($planQuery){
+              const h = Math.round($planQuery.getBoundingClientRect().height || 0);
+              if(h >= 90) st.restore_plan_query_h = h;
+            }
+          }catch(e){}
+          try{
+            if($runDetailsPre){
+              const h = Math.round($runDetailsPre.getBoundingClientRect().height || 0);
+              if(h >= 90) st.restore_run_details_h = h;
+            }
+          }catch(e){}
+          try{
+            if($runPreviewPre){
+              const h = Math.round($runPreviewPre.getBoundingClientRect().height || 0);
+              if(h >= 90) st.restore_run_preview_h = h;
+            }
+          }catch(e){}
+          localStorage.setItem(LS_KEY, JSON.stringify(st));
+        }catch(e){}
+      }
+
+      // Hook for the shared "Darstellung speichern" button (sidebar).
+      try{
+        window.InfluxBroLayout = {
+          save: ()=>{
+            try{ saveLayoutToState(); }catch(e){}
+          },
+        };
+      }catch(e){}
 
       async function api(url, opts){
         let r;
@@ -855,6 +935,7 @@
       if($stop) $stop.addEventListener('change', ()=>renderPlan());
       if($showQuery) $showQuery.addEventListener('change', ()=>renderPlan());
 
+      applyLayoutFromState();
       loadCfg().catch(()=>{});
 
       // Prefill backup search from dashboard selection (if empty)

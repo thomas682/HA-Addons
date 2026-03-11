@@ -268,6 +268,7 @@ Timer Jobs:
 - Restore fragt per Browser-Dialog nach Bestaetigung; `delete_confirm_phrase` wird nur fuer Bulk-Loeschungen verwendet.
 - Tipp: In der Volltextsuche gibt es Buttons `Alle` (leeren) und `aus Dashboardauswahl`.
 - Die Hoehe der Restore-Backup-Liste ist per Einstellung "Sichtbare Zeilen (Restore-Liste)" konfigurierbar.
+- Restore: Backup-Liste, Query und Detail-Boxen sind resizable; mit `Darstellung speichern` werden Hoehen gemerkt.
 
 Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore/Abfragen) und die letzte Meldung anzeigt.
 
