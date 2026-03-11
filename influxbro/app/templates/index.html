@@ -2126,7 +2126,7 @@ async function restoreFromHistory(key, idx){
     if(!want) return;
 
     const payload = {
-      confirm: DELETE_PHRASE,
+      confirm: true,
       measurement: it.measurement,
       field: it.field,
       entity_id: it.entity_id,
@@ -2973,17 +2973,8 @@ async function loadUiConfig(){
     const cfg = j.config || {};
     if(j && j.delete_confirm_phrase) DELETE_PHRASE = String(j.delete_confirm_phrase);
 
-    // Writes are controlled via Settings (runtime config).
-    try{
-      if(cfg && (cfg.writes_enabled === false || cfg.writes_enabled === true)){
-        ALLOW_WRITES = (cfg.writes_enabled !== false);
-      }else if(j && (j.writes_enabled === false || j.writes_enabled === true)){
-        ALLOW_WRITES = (j.writes_enabled !== false);
-      }else if(j && (j.allow_delete === false || j.allow_delete === true)){
-        // backward compat
-        ALLOW_WRITES = (j.allow_delete !== false);
-      }
-    }catch(e){}
+    // Writes are always enabled (the old Settings toggle was removed).
+    ALLOW_WRITES = true;
     const d = Number(cfg.ui_decimals);
     if(isFinite(d) && d >= 0 && d <= 10) UI_DECIMALS = Math.trunc(d);
     const r = Number(cfg.ui_table_visible_rows);
@@ -4807,7 +4798,7 @@ async function applyAllEdits(){
 
     const base = currentFilters();
     const payload = {
-      confirm: DELETE_PHRASE,
+      confirm: true,
       measurement: base.measurement,
       field: base.field,
       entity_id: base.entity_id,

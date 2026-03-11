@@ -542,8 +542,7 @@ def env_bool(key: str, default: bool) -> bool:
     v = os.environ.get(key, str(default)).lower()
     return v in ("1", "true", "yes", "on")
 
-# Writing/editing/deleting is controlled via runtime config (UI settings).
-# Keep env var unused for backward compatibility (do not rely on it).
+# Kept for backward compatibility; do not rely on this env var.
 _ALLOW_DELETE_ENV = env_bool("ALLOW_DELETE", False)
 DELETE_CONFIRM_PHRASE = os.environ.get("DELETE_CONFIRM_PHRASE", "DELETE")
 
@@ -671,20 +670,17 @@ DEFAULT_CFG = {
     "stats_cache_max_items": 10,
     "stats_cache_max_mb": 50,
 
-    # Safety: allow writes/deletes from UI
-    "writes_enabled": True,
 }
 
 
 def writes_enabled(cfg: dict[str, Any]) -> bool:
-    try:
-        v = cfg.get("writes_enabled", True)
-        if isinstance(v, bool):
-            return v
-        s = str(v).strip().lower()
-        return s in ("1", "true", "yes", "on")
-    except Exception:
-        return True
+    """Backward-compat only.
+
+    Historically, writes/deletes were gated by a Settings toggle. This toggle is
+    removed; we keep this helper to avoid breaking older clients.
+    """
+
+    return True
 
 
 def _history_append(entry: dict[str, Any]) -> None:
@@ -2337,7 +2333,7 @@ def index():
     return render_template(
         "index.html",
         cfg=cfg,
-        allow_delete=writes_enabled(cfg),
+        allow_delete=True,
         delete_phrase=DELETE_CONFIRM_PHRASE,
         nav="dashboard",
     )
@@ -2346,19 +2342,19 @@ def index():
 @app.get("/stats")
 def stats_page():
     cfg = load_cfg()
-    return render_template("stats.html", cfg=cfg, allow_delete=writes_enabled(cfg), nav="stats")
+    return render_template("stats.html", cfg=cfg, allow_delete=True, nav="stats")
 
 
 @app.get("/logs")
 def logs_page():
     cfg = load_cfg()
-    return render_template("logs.html", cfg=cfg, allow_delete=writes_enabled(cfg), nav="logs")
+    return render_template("logs.html", cfg=cfg, allow_delete=True, nav="logs")
 
 
 @app.get("/jobs")
 def jobs_page():
     cfg = load_cfg()
-    return render_template("jobs.html", cfg=cfg, allow_delete=writes_enabled(cfg), nav="jobs")
+    return render_template("jobs.html", cfg=cfg, allow_delete=True, nav="jobs")
 
 
 @app.get("/history")
@@ -2367,7 +2363,7 @@ def history_page():
     return render_template(
         "history.html",
         cfg=cfg,
-        allow_delete=writes_enabled(cfg),
+        allow_delete=True,
         delete_phrase=DELETE_CONFIRM_PHRASE,
         nav="history",
     )
@@ -2376,7 +2372,7 @@ def history_page():
 @app.get("/backup")
 def backup_page():
     cfg = load_cfg()
-    return render_template("backup.html", cfg=cfg, allow_delete=writes_enabled(cfg), nav="backup")
+    return render_template("backup.html", cfg=cfg, allow_delete=True, nav="backup")
 
 
 @app.get("/restore")
@@ -2385,7 +2381,7 @@ def restore_page():
     return render_template(
         "restore.html",
         cfg=cfg,
-        allow_delete=writes_enabled(cfg),
+        allow_delete=True,
         delete_phrase=DELETE_CONFIRM_PHRASE,
         nav="restore",
     )
@@ -2394,7 +2390,7 @@ def restore_page():
 @app.get("/export")
 def export_page():
     cfg = load_cfg()
-    return render_template("export.html", cfg=cfg, allow_delete=writes_enabled(cfg), nav="export")
+    return render_template("export.html", cfg=cfg, allow_delete=True, nav="export")
 
 
 @app.get("/import")
@@ -2403,7 +2399,7 @@ def import_page():
     return render_template(
         "import.html",
         cfg=cfg,
-        allow_delete=writes_enabled(cfg),
+        allow_delete=True,
         delete_phrase=DELETE_CONFIRM_PHRASE,
         nav="import",
     )
@@ -2421,7 +2417,7 @@ def info_page():
     return render_template(
         "info.html",
         cfg=cfg,
-        allow_delete=writes_enabled(cfg),
+        allow_delete=True,
         nav="changelog",
         repo_url=repo_url,
         changelog_text=changelog,
@@ -2435,7 +2431,7 @@ def dbinfo_page():
     return render_template(
         "dbinfo.html",
         cfg=cfg,
-        allow_delete=writes_enabled(cfg),
+        allow_delete=True,
         nav="dbinfo",
         repo_url=repo_url,
     )
@@ -2452,7 +2448,7 @@ def manual_page():
     return render_template(
         "manual.html",
         cfg=cfg,
-        allow_delete=writes_enabled(cfg),
+        allow_delete=True,
         nav="manual",
         manual_text=manual,
     )
@@ -2463,7 +2459,7 @@ def config_page():
     return render_template(
         "config.html",
         cfg=cfg,
-        allow_delete=writes_enabled(cfg),
+        allow_delete=True,
         delete_phrase=DELETE_CONFIRM_PHRASE,
         autodetect_source=LAST_AUTODETECT_SOURCE,
         nav="settings",
@@ -2520,9 +2516,9 @@ def api_get_config():
     return jsonify({
         "ok": True,
         "config": redacted,
-        # Backward-compat key; now reflects writes_enabled from config.
-        "allow_delete": writes_enabled(cfg),
-        "writes_enabled": writes_enabled(cfg),
+        # Backward-compat keys; writes are always enabled.
+        "allow_delete": True,
+        "writes_enabled": True,
         "delete_confirm_phrase": DELETE_CONFIRM_PHRASE,
         "autodetect_source": LAST_AUTODETECT_SOURCE,
     })
@@ -4017,9 +4013,6 @@ def api_backup_delete():
 @app.post("/api/backup_restore")
 def api_backup_restore():
     cfg = _overlay_from_yaml_if_enabled(load_cfg())
-    if not writes_enabled(cfg):
-        return jsonify({"ok": False, "error": "Writes are disabled. Enable writes in Settings."}), 403
-
     body = request.get_json(force=True) or {}
     confirm = body.get("confirm", False)
     ok_confirm = confirm is True or str(confirm).strip().lower() in ("1", "true", "yes", "on")
@@ -4076,9 +4069,6 @@ def api_backup_copy():
     """
 
     cfg = _overlay_from_yaml_if_enabled(load_cfg())
-    if not writes_enabled(cfg):
-        return jsonify({"ok": False, "error": "Writes are disabled. Enable writes in Settings."}), 403
-
     body = request.get_json(force=True) or {}
     confirm = body.get("confirm", False)
     ok_confirm = confirm is True or str(confirm).strip().lower() in ("1", "true", "yes", "on")
@@ -4618,9 +4608,6 @@ def _restore_copy_job_thread(
 @app.post("/api/restore_job/start")
 def api_restore_job_start():
     cfg = _overlay_from_yaml_if_enabled(load_cfg())
-    if not writes_enabled(cfg):
-        return jsonify({"ok": False, "error": "Writes are disabled. Enable writes in Settings."}), 403
-
     body = request.get_json(force=True) or {}
     confirm = body.get("confirm", False)
     ok_confirm = confirm is True or str(confirm).strip().lower() in ("1", "true", "yes", "on")
@@ -5672,8 +5659,7 @@ def api_set_config():
 
     _bool("ui_tooltips_enabled", True)
 
-    # Safety
-    _bool("writes_enabled", True)
+    # Note: writes_enabled removed; keep any existing key untouched.
 
     # Dashboard cache
     _bool("dash_cache_enabled", True)
@@ -8954,24 +8940,15 @@ def _count_decimals(s: str) -> int:
 def apply_edits():
     """Apply point edits by writing new values at the same timestamp.
 
-    Safety: gated behind allow_delete + delete_confirm_phrase.
+    Safety: requires explicit UI confirmation.
     """
 
     cfg = _overlay_from_yaml_if_enabled(load_cfg())
-    if not writes_enabled(cfg):
-        try:
-            LOG.error("apply_edits blocked: writes disabled")
-        except Exception:
-            pass
-        return jsonify({"ok": False, "error": "Writes are disabled. Enable writes in Settings."}), 403
-
     body = request.get_json(force=True) or {}
-    confirm = body.get("confirm", "")
-    if confirm != DELETE_CONFIRM_PHRASE:
-        return (
-            jsonify({"ok": False, "error": f"Confirmation phrase mismatch. Type exactly: {DELETE_CONFIRM_PHRASE}"}),
-            400,
-        )
+    confirm = body.get("confirm", False)
+    ok_confirm = confirm is True or str(confirm).strip().lower() in ("1", "true", "yes", "on")
+    if not ok_confirm:
+        return jsonify({"ok": False, "error": "Confirmation required"}), 400
 
     measurement = (body.get("measurement") or "").strip()
     field = (body.get("field") or "").strip()
@@ -9146,20 +9123,15 @@ def apply_changes():
     - overwrite: write new value at timestamp (preserve tags)
     - delete: delete the point at timestamp (narrow window + tag predicate)
 
-    Safety: gated behind writes_enabled + delete_confirm_phrase.
+    Safety: requires explicit UI confirmation.
     """
 
     cfg = _overlay_from_yaml_if_enabled(load_cfg())
-    if not writes_enabled(cfg):
-        return jsonify({"ok": False, "error": "Writes are disabled. Enable writes in Settings."}), 403
-
     body = request.get_json(force=True) or {}
-    confirm = body.get("confirm", "")
-    if confirm != DELETE_CONFIRM_PHRASE:
-        return (
-            jsonify({"ok": False, "error": f"Confirmation phrase mismatch. Type exactly: {DELETE_CONFIRM_PHRASE}"}),
-            400,
-        )
+    confirm = body.get("confirm", False)
+    ok_confirm = confirm is True or str(confirm).strip().lower() in ("1", "true", "yes", "on")
+    if not ok_confirm:
+        return jsonify({"ok": False, "error": "Confirmation required"}), 400
 
     measurement = (body.get("measurement") or "").strip()
     field = (body.get("field") or "").strip()
@@ -9398,9 +9370,6 @@ def api_history_list():
 @app.post("/api/history_rollback")
 def api_history_rollback():
     cfg = _overlay_from_yaml_if_enabled(load_cfg())
-    if not writes_enabled(cfg):
-        return jsonify({"ok": False, "error": "Writes are disabled. Enable writes in Settings."}), 403
-
     body = request.get_json(force=True) or {}
     confirm = body.get("confirm", "")
     if confirm != DELETE_CONFIRM_PHRASE:
@@ -10064,9 +10033,6 @@ def _canon_col(s: str) -> str:
 @app.post("/api/import_analyze")
 def api_import_analyze():
     cfg = _overlay_from_yaml_if_enabled(load_cfg())
-    if not writes_enabled(cfg):
-        return jsonify({"ok": False, "error": "Writes are disabled. Enable writes in Settings."}), 403
-
     f = request.files.get("file")
     if not f:
         return jsonify({"ok": False, "error": "file required"}), 400
@@ -10214,9 +10180,6 @@ def api_import_analyze():
 @app.post("/api/import_start")
 def api_import_start():
     cfg = _overlay_from_yaml_if_enabled(load_cfg())
-    if not writes_enabled(cfg):
-        return jsonify({"ok": False, "error": "Writes are disabled. Enable writes in Settings."}), 403
-
     if int(cfg.get("influx_version", 2)) != 2:
         return jsonify({"ok": False, "error": "import currently supports InfluxDB v2 only"}), 400
     if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
@@ -10445,9 +10408,6 @@ from(bucket: "{cfg["bucket"]}")
 @app.post("/api/delete")
 def delete():
     cfg = _overlay_from_yaml_if_enabled(load_cfg())
-    if not writes_enabled(cfg):
-        return jsonify({"ok": False, "error": "Writes are disabled. Enable writes in Settings."}), 403
-
     body = request.get_json(force=True) or {}
     measurement = body.get("measurement", "")
     field = body.get("field", "")

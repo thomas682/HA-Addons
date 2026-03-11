@@ -315,6 +315,8 @@ from flask import Flask, jsonify, request
 
 - If the user writes `go` (or `GO`), treat that as: stage relevant changes, create a git commit with an appropriate message, and push to the tracked remote branch.
 
+- After each implementation package is committed (and pushed, if applicable), show the user the current open GitHub issues (grouped by Bugs vs Enhancements) so they can immediately see what remains.
+
 ### GO Must Complete Planned Work
 
 - When the user issues `go`/`GO`, you MUST ensure all open/pending planned work is implemented before committing/pushing.

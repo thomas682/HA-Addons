@@ -58,7 +58,7 @@
     <main class="content" data-ui="settings.page" title="settings.page">
 
   <h2>Einstellungen</h2>
-  <div class="muted">Schreiben: {{ "yes" if allow_delete else "no" }}</div>
+  <div class="muted">Schreiben: yes</div>
   <div style="position:absolute;top:10px;right:20px;font-size:12px;color:#888;" id="version_box"></div>
 
   <div class="card" id="loadyaml_card" style="display:none;">
@@ -543,18 +543,6 @@
     </div>
   </details>
 
-  <details class="card" open data-ui="settings.section.writes" title="settings.section.writes">
-    <summary>Schreiben</summary>
-    <div class="card_body">
-    <div class="grid">
-      <div>
-        <label><input type="checkbox" id="writes_enabled" data-ui="settings.writes_enabled" title="settings.writes_enabled" /> Schreiben/Loeschen erlauben</label>
-        <div class="muted">Default: erlaubt. Blockiert Bearbeitungsliste/Loeschen/Backup-Restore.</div>
-      </div>
-    </div>
-    </div>
-  </details>
-
   <details class="card" open data-ui="settings.section.outliers" title="settings.section.outliers">
     <summary>Ausreisser</summary>
     <div class="card_body">
@@ -630,7 +618,7 @@ const ids = [
   ,"restore_preview_lines"
   ,"log_to_file","log_profile","log_max_mb","log_backup_count","log_max_age_days","log_http_requests"
   ,"log_influx_queries"
-  ,"writes_enabled"
+  // writes_enabled removed
   ,"backup_dir","backup_min_free_mb"
   ,"dash_cache_enabled","dash_cache_auto_update","dash_cache_refresh_mode","dash_cache_refresh_hours","dash_cache_refresh_daily_at"
   ,"dash_cache_max_items","dash_cache_max_mb","dash_cache_update_on_use_if_stale"
@@ -1052,7 +1040,6 @@ function setForm(cfg){
   el.log_http_requests.checked = !!cfg.log_http_requests;
   el.log_influx_queries.checked = !!cfg.log_influx_queries;
 
-  el.writes_enabled.checked = (cfg.writes_enabled !== false);
 
   el.dash_cache_enabled.checked = (cfg.dash_cache_enabled !== false);
   el.dash_cache_auto_update.checked = (cfg.dash_cache_auto_update !== false);
@@ -1144,7 +1131,6 @@ function getForm(){
     log_http_requests: !!el.log_http_requests.checked,
     log_influx_queries: !!el.log_influx_queries.checked,
 
-    writes_enabled: !!el.writes_enabled.checked,
 
     dash_cache_enabled: !!el.dash_cache_enabled.checked,
     dash_cache_auto_update: !!el.dash_cache_auto_update.checked,

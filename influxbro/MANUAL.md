@@ -199,8 +199,8 @@ Hinweis: Werte in Bearbeitung werden gelb markiert. Geaenderte (dirty) Zeilen we
   - Spalte `Neuwert`: neuer Zahlenwert (nur bei `ueberschreiben`)
 - Button: `Aenderungen in Datenbank uebernehmen` (ueber der Bearbeitungsliste)
 - Sicherheitsmechanismus:
-  - Schreiben/Loeschen ist nur aktiv, wenn in den Einstellungen `Schreiben/Loeschen erlauben` aktiviert ist.
-  - Zusaetzlich musst du das exakte `delete_confirm_phrase` eintippen (Add-on Option).
+  - Aenderungen muessen im Dialog bestaetigt werden.
+  - `delete_confirm_phrase` wird nur fuer Bulk-Loeschungen verwendet (z.B. Zeitraum loeschen, History Rollback, Import: Vorher loeschen).
 
 Wichtig: Die Aenderungen bleiben markiert, bis du sie wirklich uebernimmst.
 
@@ -265,7 +265,7 @@ Timer Jobs:
 
 - Waehle ein Backup aus der Liste fuer den Messwert.
 - Restore schreibt die Werte zurueck, ohne doppelte Messpunkte zu erzeugen (idempotent, weil gleiche Zeitpunkte/Tags/Field ueberschrieben werden).
-- Restore ist ebenfalls an `Schreiben/Loeschen erlauben` (Einstellungen) + `delete_confirm_phrase` gekoppelt.
+- Restore fragt per Browser-Dialog nach Bestaetigung; `delete_confirm_phrase` wird nur fuer Bulk-Loeschungen verwendet.
 - Tipp: In der Volltextsuche gibt es Buttons `Alle` (leeren) und `aus Dashboardauswahl`.
 - Die Hoehe der Restore-Backup-Liste ist per Einstellung "Sichtbare Zeilen (Restore-Liste)" konfigurierbar.
 
