@@ -34,10 +34,35 @@ When plan mode is active:
 - Ensure the label set exists in GitHub (create once in the GitHub UI); the issue templates assume these labels are available.
 - When implementing, link PRs to issues and close them via `Fixes #<id>`.
 
-### Requirements Log (committed, fallback)
+#### GitHub Issues: Check, Select, Sync
 
-- If GitHub Issues are not available, record user requirements/requests (as written) in `./REQUESTS_LOG.md` with date + status.
+- Always check for open GitHub Issues when starting work on new items (unless the user explicitly points to a specific issue).
+  - Commands:
+    - `gh issue list --repo <owner>/<repo> --state open --limit 200`
+    - `gh issue list --repo <owner>/<repo> --state open --label type/bug --limit 200`
+    - `gh issue list --repo <owner>/<repo> --state open --label type/enhancement --limit 200`
+- Present open items grouped by **Bugs** (`type/bug`) vs **Enhancements** (`type/enhancement`).
+- The user must be able to decide per issue:
+  - implement now
+  - defer (backlog)
+  - decline
+- Reflect the user's decision back to GitHub:
+  - implement now: set `status/in_progress` and (optionally) add a short comment "picked for implementation"
+  - defer: keep `status/open` and add a short comment "deferred"
+  - decline: set `status/cancelled`, add a short comment with reason (if provided), and close the issue
+- When implementation is finished:
+  - set `status/done`
+  - add a comment with the PR URL and/or commit hash
+  - close the issue
+- Sync selected issues into the local open-points list:
+  - add chosen "implement now" issues to the in-chat ToDo list and to `./.opencode/plan_state.md` (with `#<id>` + title)
+  - when the issue is completed/declined/deferred, update `./.opencode/plan_state.md` accordingly
+
+### Requirements Log (local, fallback)
+
+- If GitHub Issues are not available, record user requirements/requests (as written) in `./.opencode/requests_log.md` with date + status.
 - Status values: `open`, `in_progress`, `done`, `cancelled`.
+- Keep this file local (do not commit); it is not synced to GitHub.
 - Update the status when work starts/completes/cancels; optionally include the commit hash/PR link in the entry.
 
 ### Persist Plan Changes (VSCode/code-server restarts)
