@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.12.8
+
+### Features
+
+- Export: Auswahl-Infofeld ist groesser und resizable; Groesse wird ueber "Darstellung speichern" gesichert.
+- Export: Format/Delimiter sind ausgerichtet; kurze Erklaerung unter dem Format.
+- Export: "Export starten" loest nach Fertigstellung automatisch den Download aus (Download-Button entfernt).
+- Logs: Buttons zum Sprung zum aeltesten/neusten Eintrag.
+
+### Maintenance
+
+- Tested with Home Assistant Core: 2026.3.1
+
 ## 1.12.7
 
 ### Features

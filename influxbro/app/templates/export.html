@@ -26,6 +26,8 @@
     .err { color: #b00020; margin-top: 8px; white-space: pre-wrap; }
     .ok { color: #0a7a28; margin-top: 8px; white-space: pre-wrap; }
     code { background:#f6f6f6; padding:2px 6px; border-radius:6px; }
+
+    textarea.resizable { resize: vertical; min-height: 140px; }
   </style>
 </head>
 <body>
@@ -101,26 +103,27 @@
             </div>
           </details>
 
-          <div class="row" data-ui="export.selection_row" title="export.selection_row">
-            <div style="min-width: 320px; flex:1;">
-              <label>Auswahl (aufgeloest)</label>
-              <textarea id="sel" readonly data-ui="export.selection" title="export.selection" style="height:auto; min-height: 70px;"></textarea>
-              <div class="muted" id="series_info" data-ui="export.series_info" title="export.series_info"></div>
-            </div>
-          </div>
+           <div class="row" data-ui="export.selection_row" title="export.selection_row">
+             <div style="min-width: 320px; flex:1;">
+               <label>Auswahl (aufgeloest)</label>
+               <textarea id="sel" class="resizable" readonly data-ui="export.selection" title="export.selection"></textarea>
+               <div class="muted" id="series_info" data-ui="export.series_info" title="export.series_info"></div>
+             </div>
+           </div>
         </div>
       </details>
 
       <details class="card" open data-ui="export.format" title="export.format">
         <summary>Format</summary>
         <div class="card_body">
-          <div class="grid">
+          <div class="grid" style="align-items:start;">
             <div>
               <label>Format</label>
               <select id="format" data-ui="export.format_select" title="export.format_select">
                 <option value="text" selected>Text (CSV/Delimiter)</option>
                 <option value="xlsx">Excel (.xlsx)</option>
               </select>
+              <div class="muted">Legt das Ausgabeformat fest (Text = CSV/Delimiter; Excel = .xlsx).</div>
             </div>
             <div>
               <label>Delimiter (nur Text)</label>
@@ -132,10 +135,10 @@
       </details>
 
       <div class="card" data-ui="export.actions" title="export.actions">
+        <div style="font-weight:700;">Aktion</div>
         <div class="row" style="margin-top:0;">
           <div style="min-width: 220px;"><button id="run" data-ui="export.run" title="export.run">Export starten</button></div>
           <div style="min-width: 140px;"><button id="cancel" class="btn_sm" data-ui="export.cancel" title="export.cancel" disabled>Abbrechen</button></div>
-          <div style="min-width: 220px;"><button id="download" class="btn_sm" data-ui="export.download" title="export.download" style="display:none;">Download</button></div>
           <div class="muted" id="hint" style="padding-top: 10px;"></div>
         </div>
         <div class="muted" id="status" style="margin-top: 6px;"></div>
@@ -162,7 +165,6 @@
       const $delimiter = document.getElementById('delimiter');
       const $run = document.getElementById('run');
       const $cancel = document.getElementById('cancel');
-      const $download = document.getElementById('download');
       const $err = document.getElementById('err');
       const $ok = document.getElementById('ok');
       const $hint = document.getElementById('hint');
@@ -177,12 +179,49 @@
       let JOB_ID = null;
       let POLL_T = null;
       let LAST_DOWNLOAD_URL = null;
+      let AUTO_DL_DONE = false;
+
+      // Hook for the shared "Darstellung speichern" button (sidebar).
+      try{
+        window.InfluxBroLayout = {
+          save: ()=>{
+            try{ saveState(); }catch(e){}
+          },
+        };
+      }catch(e){}
 
       function setStatus(s){ try{ if($status) $status.textContent = String(s||""); }catch(e){} }
-      function setResolvedSelection(txt){ try{ if($sel) $sel.value = String(txt||""); }catch(e){} }
+      function setResolvedSelection(txt){
+        try{ if($sel) $sel.value = String(txt||""); }catch(e){}
+        // If user didn't resize/persist a height, keep it readable by auto-sizing.
+        try{
+          const st = loadState();
+          if(st && st.export_sel_h) return;
+          if(!$sel) return;
+          $sel.style.height = 'auto';
+          const want = Math.min(320, Math.max(140, ($sel.scrollHeight || 0) + 2));
+          $sel.style.height = want + 'px';
+        }catch(e){}
+      }
       function setSeriesInfo(txt){ try{ if($seriesInfo) $seriesInfo.textContent = String(txt||""); }catch(e){} }
 
       function stopPolling(){ try{ if(POLL_T) clearInterval(POLL_T); }catch(e){}; POLL_T = null; }
+
+      function saveState(){
+        try{
+          const st = loadState();
+          st.measurement_filter = String($mf.value||'');
+          st.friendly_name = String($n.value||'');
+          st.entity_id = String($e.value||'');
+          try{
+            if($sel){
+              const h = Math.round($sel.getBoundingClientRect().height || 0);
+              if(h >= 60) st.export_sel_h = h;
+            }
+          }catch(e){}
+          localStorage.setItem(LS_KEY, JSON.stringify(st));
+        }catch(e){}
+      }
 
       function cleanTagSelection(){
         // Avoid accidental AND-filter (entity_id + friendly_name) if one field is empty/old.
@@ -392,8 +431,8 @@
           setStatus('Starte Export Job...');
           if($run) $run.disabled = true;
           if($cancel) $cancel.disabled = false;
-          if($download) $download.style.display = 'none';
           LAST_DOWNLOAD_URL = null;
+          AUTO_DL_DONE = false;
 
           const j = await api('./api/export_job/start', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
           JOB_ID = String(j.job_id || '');
@@ -433,9 +472,10 @@
           try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done('export.run', `Export fertig. Zeilen: ${rows}`); }catch(e){}
           if($cancel) $cancel.disabled = true;
           if($run) $run.disabled = false;
-          if($download){
-            $download.style.display = 'inline-block';
-            $download.disabled = !LAST_DOWNLOAD_URL;
+          if(LAST_DOWNLOAD_URL && !AUTO_DL_DONE){
+            AUTO_DL_DONE = true;
+            try{ location.href = String(LAST_DOWNLOAD_URL); }catch(e){}
+            try{ if($hint) $hint.textContent = 'Download gestartet.'; }catch(e){}
           }
         }
         if(state === 'error'){
@@ -445,7 +485,6 @@
           try{ window.InfluxBroStatus && window.InfluxBroStatus.fail && window.InfluxBroStatus.fail('export.run', ee); }catch(e){}
           if($cancel) $cancel.disabled = true;
           if($run) $run.disabled = false;
-          if($download) $download.style.display = 'none';
         }
         if(state === 'cancelled'){
           stopPolling();
@@ -453,7 +492,6 @@
           try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done('export.run', 'Abgebrochen.'); }catch(e){}
           if($cancel) $cancel.disabled = true;
           if($run) $run.disabled = false;
-          if($download) $download.style.display = 'none';
         }
       }
 
@@ -472,6 +510,7 @@
           if(st.measurement_filter) $mf.value = st.measurement_filter;
           if(st.friendly_name) $n.value = st.friendly_name;
           if(st.entity_id) $e.value = st.entity_id;
+          try{ if(st.export_sel_h && $sel) $sel.style.height = String(st.export_sel_h) + 'px'; }catch(e){}
 
           const now = new Date();
           const start = new Date(now.getTime() - 24*60*60*1000);
@@ -489,14 +528,12 @@
           $r.addEventListener('change', ()=>{ $custom.style.display = ($r.value === 'custom') ? 'block' : 'none'; });
           $run.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); }catch(e){}; runExport(); });
           if($cancel) $cancel.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); }catch(e){}; cancelJob(); });
-          if($download) $download.addEventListener('click', (ev)=>{
-            try{ ev.preventDefault(); }catch(e){}
-            if(LAST_DOWNLOAD_URL) location.href = String(LAST_DOWNLOAD_URL);
-          });
+          try{ if($sel) $sel.addEventListener('mouseup', ()=>{ /* size captured on save */ }); }catch(e){}
 
           const deb = (fn, ms)=>{ let t=null; return ()=>{ try{ if(t) clearTimeout(t); }catch(e){}; t=setTimeout(()=>{ fn().catch(()=>{}); }, ms||250); }; };
           const upd = deb(refreshResolved, 220);
           [$mf,$n,$e,$r,$start,$stop,$m,$f].forEach(el=>{ try{ if(el) el.addEventListener('change', upd); }catch(e){}; try{ if(el && el.tagName==='INPUT') el.addEventListener('input', upd); }catch(e){} });
+          [$mf,$n,$e,$r,$start,$stop,$m,$f,$format,$delimiter].forEach(el=>{ try{ if(el) el.addEventListener('change', ()=>saveState()); }catch(e){}; });
         }catch(e){ err(e); }
       })();
       </script>
