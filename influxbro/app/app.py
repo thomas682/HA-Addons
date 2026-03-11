@@ -3255,10 +3255,13 @@ def _parse_unit_step_map(raw: str) -> dict[str, float]:
     return out
 
 
-def _outlier_max_step(cfg: dict[str, Any], unit: str) -> float:
+def _outlier_max_step(cfg: dict[str, Any], measurement: str, unit: str) -> float:
+    m = _norm_unit(measurement)
     u = _norm_unit(unit)
     try:
         custom = _parse_unit_step_map(str(cfg.get("outlier_max_step_units") or ""))
+        if m and m in custom:
+            return float(custom[m])
         if u and u in custom:
             return float(custom[u])
     except Exception:
@@ -6231,7 +6234,7 @@ from(bucket: "{cfg["bucket"]}")
                 coarse.sort(key=lambda x: x[0])
 
                 try:
-                    step_th = float(_outlier_max_step(cfg, unit))
+                    step_th = float(_outlier_max_step(cfg, measurement, unit))
                 except Exception:
                     step_th = 0.0
                 if step_th < 0:
@@ -8576,7 +8579,7 @@ def api_outliers():
     if bounds_enabled and min_num is None and max_num is None:
         bounds_enabled = False
 
-    max_step = _outlier_max_step(cfg, unit)
+    max_step = _outlier_max_step(cfg, measurement, unit)
     try:
         if "max_step" in body and body.get("max_step") is not None and str(body.get("max_step")).strip() != "":
             max_step = float(body.get("max_step"))

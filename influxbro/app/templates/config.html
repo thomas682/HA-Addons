@@ -858,6 +858,28 @@ function _outlierRowsFromCfg(cfg){
   return base;
 }
 
+async function prefillOutlierMeasurements(cfg){
+  try{
+    const j = await api('./api/measurements');
+    const ms = (j && j.measurements) ? j.measurements : [];
+    const meas = (ms || []).map(x=>String(x)).map(s=>s.trim()).filter(Boolean);
+    if(!meas.length) return;
+
+    const rows = _outlierRowsFromCfg(cfg || {});
+    const seen = new Set(rows.map(r => _lc(r && r.m ? r.m : '')));
+    meas.forEach(m => {
+      const k = String(m || '').trim();
+      if(!k) return;
+      const kk = _lc(k);
+      if(seen.has(kk)) return;
+      rows.push({m: k, v: null});
+      seen.add(kk);
+    });
+
+    _renderOutliersTable(rows);
+  }catch(e){}
+}
+
 function _outliersClearSelection(){
   _OUTLIERS_SEL_IDX = -1;
   try{
@@ -1031,6 +1053,7 @@ function setForm(cfg){
   el.restore_preview_lines.value = (cfg.restore_preview_lines !== null && cfg.restore_preview_lines !== undefined) ? String(cfg.restore_preview_lines) : '5';
 
   _renderOutliersTable(_outlierRowsFromCfg(cfg || {}));
+  prefillOutlierMeasurements(cfg || {}).catch(()=>{});
 
   el.log_to_file.checked = (cfg.log_to_file !== false);
   el.log_profile.value = String(cfg.log_profile ?? "debug");
