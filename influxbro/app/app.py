@@ -9908,6 +9908,17 @@ def _detect_delimiter(sample: str) -> str:
     return best
 
 
+def _strip_utf8_bom(s: str) -> str:
+    # Best-effort BOM removal for CSV headers.
+    if not s:
+        return s
+    return s[1:] if s.startswith("\ufeff") else s
+
+
+def _canon_col(s: str) -> str:
+    return re.sub(r"[^a-z0-9_]+", "", (s or "").strip().lower())
+
+
 @app.post("/api/import_analyze")
 def api_import_analyze():
     cfg = _overlay_from_yaml_if_enabled(load_cfg())
@@ -9942,23 +9953,71 @@ def api_import_analyze():
         # delimiter: explicit form value or detect from header line
         delim = str(request.form.get("delimiter") or "").strip()
         if len(delim) != 1:
-            delim = _detect_delimiter(data_lines[0])
+            delim = _detect_delimiter(_strip_utf8_bom(data_lines[0]))
+
+        # Normalize header and map common variants.
+        header_raw = _strip_utf8_bom(data_lines[0])
+        tmp = csv.reader([header_raw], delimiter=delim)
+        header = next(tmp, [])
+        canon = {_canon_col(c): c for c in header if c is not None}
+        alias = {
+            "timestamp": "time",
+            "datetime": "time",
+            "date": "time",
+            "value": "value",
+            "val": "value",
+            "state": "value",
+            "measurement": "_measurement",
+            "_measurement": "_measurement",
+            "field": "_field",
+            "_field": "_field",
+            "entityid": "entity_id",
+            "entity_id": "entity_id",
+            "friendlyname": "friendly_name",
+            "friendly_name": "friendly_name",
+        }
+        need = ["time", "value", "entity_id", "friendly_name", "_measurement", "_field"]
+        col_map: dict[str, str] = {}
+        for want in need:
+            # direct
+            if want in canon:
+                col_map[want] = canon[want]
+                continue
+            # alias
+            for k, w in alias.items():
+                if w != want:
+                    continue
+                if k in canon:
+                    col_map[want] = canon[k]
+                    break
+
+        missing = [k for k in need if k not in col_map]
+        if missing:
+            return jsonify({
+                "ok": False,
+                "error": "missing column(s): " + ", ".join(missing),
+                "delimiter": delim,
+                "columns": header,
+            }), 400
 
         reader = csv.DictReader(data_lines, delimiter=delim)
         cols = reader.fieldnames or []
-        need = ["time", "value", "entity_id", "friendly_name", "_measurement", "_field"]
-        for k in need:
-            if k not in cols:
-                return jsonify({"ok": False, "error": f"missing column: {k}"}), 400
 
         count = 0
         oldest_utc: datetime | None = None
         newest_utc: datetime | None = None
         sample: list[dict[str, Any]] = []
+        errors: dict[str, int] = {}
+        error_samples: list[dict[str, Any]] = []
         for row in reader:
             try:
-                t_local = str(row.get("time") or "").strip()
+                t_local = str(row.get(col_map["time"]) or "").strip()
                 dt_utc = _parse_ui_local_ts(t_local, tz_name, tz_offset_minutes)
+                val_raw = row.get(col_map["value"])
+                try:
+                    float(val_raw)
+                except Exception:
+                    raise ValueError("value")
                 if oldest_utc is None or dt_utc < oldest_utc:
                     oldest_utc = dt_utc
                 if newest_utc is None or dt_utc > newest_utc:
@@ -9967,13 +10026,27 @@ def api_import_analyze():
                 if len(sample) < 3:
                     sample.append({
                         "time": t_local,
-                        "value": row.get("value"),
-                        "entity_id": row.get("entity_id"),
-                        "friendly_name": row.get("friendly_name"),
-                        "_measurement": row.get("_measurement"),
-                        "_field": row.get("_field"),
+                        "value": val_raw,
+                        "entity_id": row.get(col_map["entity_id"]),
+                        "friendly_name": row.get(col_map["friendly_name"]),
+                        "_measurement": row.get(col_map["_measurement"]),
+                        "_field": row.get(col_map["_field"]),
                     })
-            except Exception:
+            except Exception as e:
+                key = "row"
+                msg = str(e)
+                if "time" in msg:
+                    key = "time"
+                elif "value" in msg:
+                    key = "value"
+                errors[key] = int(errors.get(key, 0) or 0) + 1
+                if len(error_samples) < 3:
+                    error_samples.append({
+                        "reason": key,
+                        "time": str(row.get(col_map["time"]) or "").strip(),
+                        "value": str(row.get(col_map["value"]) or "").strip(),
+                        "raw": {k: row.get(k) for k in list(row.keys())[:10]},
+                    })
                 continue
 
         return jsonify({
@@ -9987,7 +10060,10 @@ def api_import_analyze():
             "oldest_local": _fmt_ui_local_ts(oldest_utc, tz_name, tz_offset_minutes) if oldest_utc else None,
             "newest_local": _fmt_ui_local_ts(newest_utc, tz_name, tz_offset_minutes) if newest_utc else None,
             "columns": cols,
+            "column_map": col_map,
             "sample": sample,
+            "errors": errors,
+            "error_samples": error_samples,
         })
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 400

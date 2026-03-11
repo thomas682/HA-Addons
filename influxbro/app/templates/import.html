@@ -253,8 +253,18 @@
         IMPORT_DELIM = j.delimiter || (d && d.length===1 ? d : ';');
         IMPORT_RANGE = { oldest_utc: j.oldest_utc, newest_utc: j.newest_utc, oldest_local: j.oldest_local, newest_local: j.newest_local, count: j.count };
         $analysis.style.display = 'block';
-        $analysis.textContent = `Datei: ${IMPORT_FILE_ID}\nDelimiter: ${IMPORT_DELIM}\nZeilen (valid): ${j.count}\nZeitraum: ${j.oldest_local || '-'} bis ${j.newest_local || '-'}\nTimezone: ${j.timezone && j.timezone.name ? j.timezone.name : ''}`;
-        $analyzeHint.textContent = `Valid: ${j.count} | ${j.oldest_local || ''} .. ${j.newest_local || ''}`;
+        const errs = j.errors || {};
+        const errTxt = Object.keys(errs).length ? ('\nFehler (count): ' + Object.keys(errs).map(k => `${k}=${errs[k]}`).join(' ')) : '';
+        const ex = (j.error_samples || []).map(x => {
+          const r = x && x.reason ? String(x.reason) : 'row';
+          const t = x && x.time ? String(x.time) : '';
+          const v = x && x.value ? String(x.value) : '';
+          return `- ${r}: time=${t} value=${v}`;
+        }).join('\n');
+        const exTxt = ex ? ('\nBeispiele:\n' + ex) : '';
+
+        $analysis.textContent = `Datei: ${IMPORT_FILE_ID}\nDelimiter: ${IMPORT_DELIM}\nZeilen (valid): ${j.count}\nZeitraum: ${j.oldest_local || '-'} bis ${j.newest_local || '-'}\nTimezone: ${j.timezone && j.timezone.name ? j.timezone.name : ''}${errTxt}${exTxt}`;
+        $analyzeHint.textContent = `Valid: ${j.count} | ${j.oldest_local || ''} .. ${j.newest_local || ''}` + (Object.keys(errs).length ? (' | Fehler: ' + Object.keys(errs).map(k => `${k}=${errs[k]}`).join(' ')) : '');
         ok('Analyse fertig.');
         try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done('import.run', 'Analyse fertig.'); }catch(e){}
       }

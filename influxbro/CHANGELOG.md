@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.12.6
+
+### Fixes
+
+- Import: Analyse robuster (BOM/Header-Varianten, value/time Checks) und zeigt bei `valid=0` konkrete Diagnose + Beispielzeilen.
+
+### Maintenance
+
+- Tested with Home Assistant Core: 2026.3.1
+
 ## 1.12.5
 
 ### Fixes

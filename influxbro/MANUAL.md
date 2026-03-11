@@ -273,7 +273,7 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 ## Import
 
 - Seite `Import`: Datei via Browser-Upload.
-- Button `Analysieren`: zeigt Zeilenanzahl und Zeitraum.
+- Button `Analysieren`: zeigt Zeilenanzahl und Zeitraum; bei Problemen zusaetzlich eine kurze Diagnose + Beispielzeilen.
 - Zielauswahl: wie Dashboard (Measurement/Field + optionale Tags).
 - Optionen:
   - `Vor Import Backup erstellen` (Default an): erstellt ein Range-Backup im Import-Zeitraum fuer die Zielserie.
