@@ -95,7 +95,7 @@ Weitere Elemente:
 - `Donate`/`PayPal`: Link zur freiwilligen Unterstuetzung.
 - Zusaetzlich gibt es einen "Buy me a coffee" Spendenlink.
 
-Tipp: Wenn du mit der Maus ueber einem Feld bleibst, zeigt der Tooltip den internen Feldnamen (z.B. `filter.friendly.select`). Damit kannst du mir exakt sagen, welches Feld du meinst.
+Tipp: Wenn du mit der Maus ueber einem Button/Checkbox/Auswahlfeld bleibst, zeigt der Tooltip eine kurze Erklaerung plus den internen UI-Key in Klammern (z.B. `Dieser Button aktualisiert die Liste (dashboard.load)`). Damit kannst du mir exakt sagen, welches Element du meinst.
 
 Hinweis: Zeitstempel werden im gesamten UI inklusive Millisekunden angezeigt.
 
@@ -138,7 +138,7 @@ Bearbeitungsliste + Bearbeitungsgraph:
 
 - Bearbeitungsliste: nach der Ausreisser-Analyse wird angezeigt, wie viele Punkte geprueft wurden und wie viele Ausreisser gefunden wurden.
 - Bearbeitungsgraph: zeigt `DB Punkte` und `Ausreisser` jeweils im Format `gesamt / Bereich` (Bereich = aktueller X-Zoom).
-- Klick auf einen Punkt im Graph zeigt einen roten Tooltip (Zeit + Wert) im lokalen Client-Format.
+- Hover ueber einem Messpunkt zeigt Zeit + Wert direkt am Messpunkt (lokales Client-Format).
 
 Raw Daten (DB):
 

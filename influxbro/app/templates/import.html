@@ -87,11 +87,11 @@
               <div class="grid" style="margin-top: 0;">
                 <div>
                   <label>Measurement (intern)</label>
-                  <select id="measurement"></select>
+                  <select id="measurement" data-ui="import.measurement" title="import.measurement"></select>
                 </div>
                 <div>
                   <label>Field (intern)</label>
-                  <select id="field"></select>
+                  <select id="field" data-ui="import.field" title="import.field"></select>
                 </div>
               </div>
               <div class="muted" style="margin-top: 6px;">Wird best-effort anhand friendly_name/entity_id ermittelt.</div>
@@ -100,11 +100,11 @@
 
           <div class="grid" style="margin-top: 12px;">
             <div>
-              <label><input type="checkbox" id="backup_before" checked /> Vor Import Backup erstellen</label>
+              <label><input type="checkbox" id="backup_before" checked data-ui="import.backup_before" title="import.backup_before" /> Vor Import Backup erstellen</label>
               <div class="muted">Erstellt ein Range-Backup im Import-Zeitraum (Zielserie).</div>
             </div>
             <div>
-              <label><input type="checkbox" id="delete_first" /> Vorher loeschen (im Import-Zeitraum)</label>
+              <label><input type="checkbox" id="delete_first" data-ui="import.delete_first" title="import.delete_first" /> Vorher loeschen (im Import-Zeitraum)</label>
               <div class="muted">Erfordert die Bestaetigungsphrase.</div>
             </div>
             <div id="confirm_box" style="display:none;">

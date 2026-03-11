@@ -250,8 +250,8 @@
   <details>
     <summary>Erweitert: Measurement / Field</summary>
     <div class="grid" style="margin-top:12px;">
-      <div class="control"><label>Measurement (intern)</label><select id="measurement"></select></div>
-      <div class="control"><label>Field (intern)</label><select id="field"></select></div>
+      <div class="control"><label>Measurement (intern)</label><select id="measurement" data-ui="dashboard.measurement" title="dashboard.measurement"></select></div>
+      <div class="control"><label>Field (intern)</label><select id="field" data-ui="dashboard.field" title="dashboard.field"></select></div>
       <div class="control span2"><div class="muted">Wird automatisch anhand des Klartextnamens ermittelt (wenn moeglich).</div></div>
     </div>
   </details>
@@ -274,7 +274,7 @@
       <div class="tbl_actions" style="justify-content:flex-start; margin-top: 8px; gap: 10px; flex-wrap:wrap;" data-ui="graph.detail" title="graph.detail">
         <label style="display:flex; align-items:center; gap: 8px;">
           <span class="muted" style="min-width: 76px;">Details</span>
-          <select id="graph_detail_mode" class="btn_sm" style="height:34px; padding: 6px 10px;">
+          <select id="graph_detail_mode" class="btn_sm" data-ui="graph.detail_mode" title="graph.detail_mode" style="height:34px; padding: 6px 10px;">
             <option value="dynamic" selected>Dynamisch</option>
             <option value="manual">Manuell</option>
           </select>
@@ -286,11 +286,11 @@
           <span class="muted" id="graph_manual_density_lbl">100%</span>
         </label>
 
-        <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_bg" class="row_sel" checked/>Ableitung: Hintergrund</label>
-        <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_strip" class="row_sel" checked/>Ableitung: Farbleiste</label>
-        <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_graph" class="row_sel" checked/>Ableitungs-Graph</label>
-        <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_abs" class="row_sel" checked/>absolut</label>
-        <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_signed" class="row_sel" />signiert</label>
+        <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_bg" class="row_sel" checked data-ui="graph.deriv_bg" title="graph.deriv_bg"/>Ableitung: Hintergrund</label>
+        <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_strip" class="row_sel" checked data-ui="graph.deriv_strip" title="graph.deriv_strip"/>Ableitung: Farbleiste</label>
+        <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_graph" class="row_sel" checked data-ui="graph.deriv_graph" title="graph.deriv_graph"/>Ableitungs-Graph</label>
+        <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_abs" class="row_sel" checked data-ui="graph.deriv_abs" title="graph.deriv_abs"/>absolut</label>
+        <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_signed" class="row_sel" data-ui="graph.deriv_signed" title="graph.deriv_signed"/>signiert</label>
 
         <label id="deriv_outlier_wrap" style="display:none; align-items:center; gap: 8px;">
           <span class="muted">Ableitung Outlier</span>
@@ -497,7 +497,7 @@
           </div>
           <div style="min-width: 180px;">
             <label style="display:block; font-size:12px; opacity:0.8;">Klasse</label>
-            <select id="class_filter" style="height: 34px;">
+            <select id="class_filter" data-ui="editlist.class_filter" title="editlist.class_filter" style="height: 34px;">
               <option value="all" selected>alle</option>
               <option value="primary">primaer</option>
               <option value="secondary">sekundaer</option>

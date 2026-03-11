@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.12.3
+
+### Features
+
+- UI: Tooltips zeigen jetzt bei Buttons/Checkboxen/Auswahlfeldern eine kurze Erklaerung plus den stabilen UI-Key (z.B. `... (dashboard.load)`), damit Aenderungswuensche eindeutig referenziert werden koennen.
+
+### Maintenance
+
+- Tested with Home Assistant Core: 2026.3.1
+
 ## 1.12.2
 
 ### Fixes

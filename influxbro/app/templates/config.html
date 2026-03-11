@@ -73,8 +73,8 @@
       <div>
         <label>&nbsp;</label>
         <div class="btn_stack">
-          <button id="find_yaml">influx.yaml suchen</button>
-          <button id="read_yaml">yaml Daten einlesen</button>
+          <button id="find_yaml" data-ui="settings.find_yaml" title="settings.find_yaml">influx.yaml suchen</button>
+          <button id="read_yaml" data-ui="settings.read_yaml" title="settings.read_yaml">yaml Daten einlesen</button>
         </div>
       </div>
       <div class="muted span2">Beispiel: <code>homeassistant/influx.yaml</code> (entspricht <code>/config/homeassistant/influx.yaml</code>)</div>
@@ -87,11 +87,11 @@
     <summary>Verbindung</summary>
     <div class="card_body">
     <div class="grid">
-      <div><label>Influx Version</label><select id="influx_version"><option value="2">2 (Flux)</option><option value="1">1 (InfluxQL)</option></select></div>
-      <div><label>Scheme</label><select id="scheme"><option value="http">http</option><option value="https">https</option></select></div>
+      <div><label>Influx Version</label><select id="influx_version" data-ui="settings.influx_version" title="settings.influx_version"><option value="2">2 (Flux)</option><option value="1">1 (InfluxQL)</option></select></div>
+      <div><label>Scheme</label><select id="scheme" data-ui="settings.scheme" title="settings.scheme"><option value="http">http</option><option value="https">https</option></select></div>
       <div><label>Host</label><input id="host" /><div class="muted">DNS-Name oder IP der InfluxDB (z.B. <code>localhost</code> oder HA Add-on Hostname).</div></div>
       <div><label>Port</label><input id="port" type="number" /><div class="muted">Standard: <code>8086</code>.</div></div>
-      <div><label>verify_ssl</label><select id="verify_ssl"><option value="true">true</option><option value="false">false</option></select></div>
+      <div><label>verify_ssl</label><select id="verify_ssl" data-ui="settings.verify_ssl" title="settings.verify_ssl"><option value="true">true</option><option value="false">false</option></select></div>
       <div><label>timeout_seconds</label><input id="timeout_seconds" type="number" /><div class="muted">Timeout fuer API Calls (Sekunden).</div></div>
     </div>
     <div class="muted">Hinweis: Diese Werte werden in <code>/data/influx_browser_config.json</code> gespeichert (persistent).</div>
@@ -182,17 +182,17 @@
           <div class="card_body">
           <div class="grid">
             <div>
-              <label><input type="checkbox" id="dash_cache_enabled" /> Cache aktiv</label>
+              <label><input type="checkbox" id="dash_cache_enabled" data-ui="settings.dash_cache_enabled" title="settings.dash_cache_enabled" /> Cache aktiv</label>
               <div class="muted">Speichert Dashboard Query-Ergebnisse unter <code>/data/dash_cache</code> und nutzt sie beim naechsten Aufruf.</div>
             </div>
             <div>
-              <label><input type="checkbox" id="dash_cache_auto_update" /> Automatisch aktualisieren</label>
+              <label><input type="checkbox" id="dash_cache_auto_update" data-ui="settings.dash_cache_auto_update" title="settings.dash_cache_auto_update" /> Automatisch aktualisieren</label>
               <div class="muted">Background-Job haelt Caches aktuell (siehe Jobs-Seite).</div>
             </div>
 
             <div>
               <label>Intervall-Modus</label>
-              <select id="dash_cache_refresh_mode">
+              <select id="dash_cache_refresh_mode" data-ui="settings.dash_cache_refresh_mode" title="settings.dash_cache_refresh_mode">
                 <option value="hours">alle X Stunden</option>
                 <option value="daily">taeglich</option>
               </select>
@@ -200,27 +200,27 @@
             </div>
             <div>
               <label>X Stunden</label>
-              <input id="dash_cache_refresh_hours" type="number" min="1" max="168" />
+              <input id="dash_cache_refresh_hours" type="number" min="1" max="168" data-ui="settings.dash_cache_refresh_hours" title="settings.dash_cache_refresh_hours" />
               <div class="muted">Gilt nur fuer Modus "alle X Stunden".</div>
             </div>
             <div>
               <label>Taeglich um (HH:MM:SS)</label>
-              <input id="dash_cache_refresh_daily_at" placeholder="00:00:00" />
+              <input id="dash_cache_refresh_daily_at" placeholder="00:00:00" data-ui="settings.dash_cache_refresh_daily_at" title="settings.dash_cache_refresh_daily_at" />
               <div class="muted">Gilt nur fuer Modus "taeglich" (lokale Zeit im Add-on).</div>
             </div>
 
             <div>
               <label>Max Cache Eintraege</label>
-              <input id="dash_cache_max_items" type="number" min="0" max="500" />
+              <input id="dash_cache_max_items" type="number" min="0" max="500" data-ui="settings.dash_cache_max_items" title="settings.dash_cache_max_items" />
               <div class="muted">0 = Cache ist effektiv aus (Eintraege werden sofort evicted).</div>
             </div>
             <div>
               <label>Max Cache Groesse (MB)</label>
-              <input id="dash_cache_max_mb" type="number" min="0" max="2048" />
+              <input id="dash_cache_max_mb" type="number" min="0" max="2048" data-ui="settings.dash_cache_max_mb" title="settings.dash_cache_max_mb" />
               <div class="muted">Best-effort Eviction nach LRU.</div>
             </div>
             <div>
-              <label><input type="checkbox" id="dash_cache_update_on_use_if_stale" /> Bei Nutzung stale markieren</label>
+              <label><input type="checkbox" id="dash_cache_update_on_use_if_stale" data-ui="settings.dash_cache_update_on_use_if_stale" title="settings.dash_cache_update_on_use_if_stale" /> Bei Nutzung stale markieren</label>
               <div class="muted">Wenn ein alter Cache genutzt wird, wird er als dirty markiert und vom Background-Job bevorzugt aktualisiert.</div>
             </div>
           </div>
@@ -232,17 +232,17 @@
           <div class="card_body">
           <div class="grid">
             <div>
-              <label><input type="checkbox" id="stats_cache_enabled" /> Cache aktiv</label>
+              <label><input type="checkbox" id="stats_cache_enabled" data-ui="settings.stats_cache_enabled" title="settings.stats_cache_enabled" /> Cache aktiv</label>
               <div class="muted">Speichert Statistik-Ergebnisse unter <code>/data/stats_cache</code> und kann diese nach Seitenwechsel/Restart wiederverwenden.</div>
             </div>
             <div>
-              <label><input type="checkbox" id="stats_cache_auto_update" /> Automatisch aktualisieren</label>
+              <label><input type="checkbox" id="stats_cache_auto_update" data-ui="settings.stats_cache_auto_update" title="settings.stats_cache_auto_update" /> Automatisch aktualisieren</label>
               <div class="muted">Nightly/inkrementell ueber Background-Jobs (siehe Jobs-Seite).</div>
             </div>
 
             <div>
               <label>Intervall-Modus</label>
-              <select id="stats_cache_refresh_mode">
+              <select id="stats_cache_refresh_mode" data-ui="settings.stats_cache_refresh_mode" title="settings.stats_cache_refresh_mode">
                 <option value="hours">alle X Stunden</option>
                 <option value="daily">taeglich (nightly)</option>
               </select>
@@ -250,23 +250,23 @@
             </div>
             <div>
               <label>X Stunden</label>
-              <input id="stats_cache_refresh_hours" type="number" min="1" max="720" />
+              <input id="stats_cache_refresh_hours" type="number" min="1" max="720" data-ui="settings.stats_cache_refresh_hours" title="settings.stats_cache_refresh_hours" />
               <div class="muted">Gilt nur fuer Modus "alle X Stunden".</div>
             </div>
             <div>
               <label>Taeglich um (HH:MM:SS)</label>
-              <input id="stats_cache_refresh_daily_at" placeholder="03:00:00" />
+              <input id="stats_cache_refresh_daily_at" placeholder="03:00:00" data-ui="settings.stats_cache_refresh_daily_at" title="settings.stats_cache_refresh_daily_at" />
               <div class="muted">Gilt nur fuer Modus "taeglich" (lokale Zeit im Add-on).</div>
             </div>
 
             <div>
               <label>Max Cache Eintraege</label>
-              <input id="stats_cache_max_items" type="number" min="0" max="200" />
+              <input id="stats_cache_max_items" type="number" min="0" max="200" data-ui="settings.stats_cache_max_items" title="settings.stats_cache_max_items" />
               <div class="muted">0 = Cache ist effektiv aus (Eintraege werden sofort evicted).</div>
             </div>
             <div>
               <label>Max Cache Groesse (MB)</label>
-              <input id="stats_cache_max_mb" type="number" min="0" max="2048" />
+              <input id="stats_cache_max_mb" type="number" min="0" max="2048" data-ui="settings.stats_cache_max_mb" title="settings.stats_cache_max_mb" />
               <div class="muted">Best-effort Eviction nach LRU.</div>
             </div>
           </div>
@@ -344,14 +344,14 @@
           <div class="card_body">
           <div class="grid">
             <div class="span2 muted">Standard ist "zu" (nicht geoeffnet).</div>
-            <div><label><input type="checkbox" id="ui_open_selection" /> Auswahl</label></div>
-            <div><label><input type="checkbox" id="ui_open_graph" /> Graph</label></div>
-            <div><label><input type="checkbox" id="ui_open_filterlist" /> Fehler-/Filtertabelle</label></div>
-            <div><label><input type="checkbox" id="ui_open_editlist" /> Bearbeitungsliste</label></div>
-            <div><label><input type="checkbox" id="ui_open_stats_total" /> Gesamtstatistik (Alles)</label></div>
-            <div><label><input type="checkbox" id="ui_open_stats_current" /> Statistik Zeitraum (Graph)</label></div>
+            <div><label><input type="checkbox" id="ui_open_selection" data-ui="settings.ui_open_selection" title="settings.ui_open_selection" /> Auswahl</label></div>
+            <div><label><input type="checkbox" id="ui_open_graph" data-ui="settings.ui_open_graph" title="settings.ui_open_graph" /> Graph</label></div>
+            <div><label><input type="checkbox" id="ui_open_filterlist" data-ui="settings.ui_open_filterlist" title="settings.ui_open_filterlist" /> Fehler-/Filtertabelle</label></div>
+            <div><label><input type="checkbox" id="ui_open_editlist" data-ui="settings.ui_open_editlist" title="settings.ui_open_editlist" /> Bearbeitungsliste</label></div>
+            <div><label><input type="checkbox" id="ui_open_stats_total" data-ui="settings.ui_open_stats_total" title="settings.ui_open_stats_total" /> Gesamtstatistik (Alles)</label></div>
+            <div><label><input type="checkbox" id="ui_open_stats_current" data-ui="settings.ui_open_stats_current" title="settings.ui_open_stats_current" /> Statistik Zeitraum (Graph)</label></div>
             <div>
-              <label><input type="checkbox" id="ui_tooltips_enabled" /> Tooltips anzeigen</label>
+              <label><input type="checkbox" id="ui_tooltips_enabled" data-ui="settings.ui_tooltips_enabled" title="settings.ui_tooltips_enabled" /> Tooltips anzeigen</label>
               <div class="muted">Wenn deaktiviert, werden keine Tooltips erzeugt/angezeigt.</div>
             </div>
           </div>
@@ -464,12 +464,12 @@
     <div class="card_body">
     <div class="grid">
       <div>
-        <label><input type="checkbox" id="log_to_file" /> Logfile aktiv</label>
+        <label><input type="checkbox" id="log_to_file" data-ui="settings.log_to_file" title="settings.log_to_file" /> Logfile aktiv</label>
         <div class="muted">Schreibt zusaetzlich nach <code>/data/influxbro.log</code> (Rotation).</div>
       </div>
       <div>
         <label>Log Stufe</label>
-        <select id="log_profile">
+        <select id="log_profile" data-ui="settings.log_profile" title="settings.log_profile">
           <option value="error">ERROR (nur Fehler)</option>
           <option value="debug" selected>DEBUG</option>
           <option value="trace">TRACE (Details)</option>
@@ -492,11 +492,11 @@
         <div class="muted">0 = deaktiviert.</div>
       </div>
       <div>
-        <label><input type="checkbox" id="log_http_requests" /> HTTP Request Logs</label>
+        <label><input type="checkbox" id="log_http_requests" data-ui="settings.log_http_requests" title="settings.log_http_requests" /> HTTP Request Logs</label>
         <div class="muted">Default: aus (sehr viele Zeilen).</div>
       </div>
       <div>
-        <label><input type="checkbox" id="log_influx_queries" /> Influx Query protokollieren</label>
+        <label><input type="checkbox" id="log_influx_queries" data-ui="settings.log_influx_queries" title="settings.log_influx_queries" /> Influx Query protokollieren</label>
         <div class="muted">Schreibt Query-Strings ins Log (nur wenn Log Stufe TRACE aktiv ist).</div>
       </div>
     </div>
@@ -508,7 +508,7 @@
     <div class="card_body">
     <div class="grid">
       <div>
-        <label><input type="checkbox" id="writes_enabled" /> Schreiben/Loeschen erlauben</label>
+        <label><input type="checkbox" id="writes_enabled" data-ui="settings.writes_enabled" title="settings.writes_enabled" /> Schreiben/Loeschen erlauben</label>
         <div class="muted">Default: erlaubt. Blockiert Bearbeitungsliste/Loeschen/Backup-Restore.</div>
       </div>
     </div>
@@ -554,8 +554,8 @@
 
   <div class="card">
     <div class="grid">
-      <div><button id="save">Speichern</button></div>
-      <div><button id="test">Influx Verbindung testen</button></div>
+      <div><button id="save" data-ui="settings.save" title="settings.save">Speichern</button></div>
+      <div><button id="test" data-ui="settings.test" title="settings.test">Influx Verbindung testen</button></div>
     </div>
     <div id="err" class="err"></div>
     <div id="ok" class="ok"></div>

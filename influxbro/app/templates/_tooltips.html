@@ -29,6 +29,8 @@
     'dashboard.cancel': 'Bricht laufende Abfragen sofort ab (Query/Listen/Scan).',
     'dashboard.reset': 'Bricht laufende Abfragen ab und setzt Auswahlfelder zurueck (Zeitraum bleibt erhalten).',
     'dashboard.query_details': 'Zeigt den zuletzt verwendeten Influx Query-String der Aktualisierung.',
+    'dashboard.measurement': 'Waehlt den intern genutzten _measurement (wird best-effort automatisch ermittelt).',
+    'dashboard.field': 'Waehlt den intern genutzten _field (wird best-effort automatisch ermittelt).',
     'filterlist_outlier_scan': 'Startet Fehlersuche (DB-Scan) im aktuellen Graph-Zeitraum.',
     'filterlist_outlier_reset': 'Beendet Ausreisser-Modus und zeigt wieder normale Tabelle.',
     'filterlist_to_edit': 'Uebernimmt markierte Tabellenzeilen in die Bearbeitungsliste.',
@@ -37,6 +39,15 @@
     'filterlist.autowidth': 'Passt die Spaltenbreiten der Filtertabelle automatisch an.',
     'filterlist.clear': 'Leert die Anzeige der Fehler-/Filtertabelle (ohne Daten in der DB zu loeschen).',
     'editlist.autowidth': 'Passt die Spaltenbreiten der Bearbeitungsliste automatisch an.',
+    'editlist.class_filter': 'Filtert die Bearbeitungsliste nach Klasse (primaer/sekundaer).',
+
+    // Graph: Ableitung
+    'graph.detail_mode': 'Schaltet zwischen dynamischem Downsampling und manueller Punktdichte um.',
+    'graph.deriv_bg': 'Schaltet den Ableitungs-Hintergrund ein/aus.',
+    'graph.deriv_strip': 'Schaltet die Ableitungs-Farbleiste ein/aus.',
+    'graph.deriv_graph': 'Schaltet den Ableitungs-Graph ein/aus.',
+    'graph.deriv_abs': 'Zeigt die Ableitung als Absolutwert.',
+    'graph.deriv_signed': 'Zeigt die Ableitung mit Vorzeichen (signiert).',
 
     // Backup
     'backup.take_dashboard': 'Uebernimmt measurement/field/entity_id/friendly_name aus dem Dashboard (aus Browser-Speicher).',
@@ -79,6 +90,67 @@
     'stats.clear_mark': 'Loescht die aktuelle Markierung.',
     'stats.reload_marked': 'Berechnet/Laedt fehlende Spalten nur fuer markierte Zeilen nach.',
     'stats.reload_filtered': 'Berechnet/Laedt fehlende Spalten fuer alle Zeilen im aktuellen Filter nach.',
+
+    // Jobs: Statistik Cache
+    'stats_cache.refresh': 'Laedt den Statistik-Cache Status (enabled/auto_update/caches/due/next) neu.',
+    'stats_cache.run_now': 'Startet ein Cache-Update (priorisiert dirty/mismatch/stale; best-effort).',
+    'stats_cache.delete_all': 'Loescht alle Statistik-Cache Dateien unter /data (nur Cache, nicht die Datenbank).',
+
+    // Settings: Statistik Cache
+    'settings.stats_cache_enabled': 'Aktiviert den serverseitigen Statistik-Cache unter /data/stats_cache.',
+    'settings.stats_cache_auto_update': 'Aktiviert automatische Updates des Statistik-Caches im Hintergrund.',
+    'settings.stats_cache_refresh_mode': 'Legt fest, wann ein Statistik-Cache als stale gilt (hours/daily).',
+    'settings.stats_cache_refresh_hours': 'Intervall in Stunden fuer stale-Check (nur bei mode=hours).',
+    'settings.stats_cache_refresh_daily_at': 'Uhrzeit fuer stale-Check (nur bei mode=daily; lokale Zeit).',
+    'settings.stats_cache_max_items': 'Max Anzahl Cache-Eintraege (0 = effektiv aus).',
+    'settings.stats_cache_max_mb': 'Max Cache-Groesse (MB). Best-effort LRU Eviction.',
+
+    // Settings: Dashboard Cache
+    'settings.dash_cache_enabled': 'Aktiviert den serverseitigen Dashboard-Cache unter /data/dash_cache.',
+    'settings.dash_cache_auto_update': 'Aktiviert automatische Updates des Dashboard-Caches im Hintergrund.',
+    'settings.dash_cache_refresh_mode': 'Legt fest, wann ein Dashboard-Cache als stale gilt (hours/daily).',
+    'settings.dash_cache_refresh_hours': 'Intervall in Stunden fuer stale-Check (nur bei mode=hours).',
+    'settings.dash_cache_refresh_daily_at': 'Uhrzeit fuer stale-Check (nur bei mode=daily; lokale Zeit).',
+    'settings.dash_cache_max_items': 'Max Anzahl Cache-Eintraege (0 = effektiv aus).',
+    'settings.dash_cache_max_mb': 'Max Cache-Groesse (MB). Best-effort LRU Eviction.',
+    'settings.dash_cache_update_on_use_if_stale': 'Markiert stale beim Nutzen als dirty, damit Background-Jobs bevorzugt aktualisieren.',
+
+    // Settings: UI defaults
+    'settings.ui_open_selection': 'Oeffnet den Bereich "Auswahl" beim Laden des Dashboards.',
+    'settings.ui_open_graph': 'Oeffnet den Bereich "Graph" beim Laden des Dashboards.',
+    'settings.ui_open_filterlist': 'Oeffnet den Bereich "Fehler-/Filtertabelle" beim Laden des Dashboards.',
+    'settings.ui_open_editlist': 'Oeffnet den Bereich "Bearbeitungsliste" beim Laden des Dashboards.',
+    'settings.ui_open_stats_total': 'Oeffnet "Gesamtstatistik" beim Laden des Dashboards.',
+    'settings.ui_open_stats_current': 'Oeffnet "Statistik Zeitraum" beim Laden des Dashboards.',
+    'settings.ui_tooltips_enabled': 'Schaltet Tooltips global ein/aus.',
+
+    // Settings: Logging / Writes
+    'settings.log_to_file': 'Schreibt Logs zusaetzlich nach /data/influxbro.log (Rotation).',
+    'settings.log_profile': 'Setzt die Log-Stufe (ERROR/DEBUG/TRACE).',
+    'settings.log_http_requests': 'Protokolliert HTTP Requests (sehr viele Zeilen).',
+    'settings.log_influx_queries': 'Protokolliert Influx Query-Strings (nur sinnvoll mit TRACE).',
+    'settings.writes_enabled': 'Erlaubt/verbietet Schreiben und Loeschen ueber die UI.',
+
+    // Settings: Connection basics
+    'settings.influx_version': 'Waehlt InfluxDB v2 (Flux) oder v1 (InfluxQL).',
+    'settings.scheme': 'Waehlt http/https fuer die InfluxDB URL.',
+    'settings.verify_ssl': 'SSL Zertifikatspruefung (nur relevant bei https).',
+
+    // Settings: Connection / Save
+    'settings.find_yaml': 'Sucht nach einer influx.yaml unter /config (best-effort).',
+    'settings.read_yaml': 'Liest influx.yaml ein und uebernimmt Werte in die Maske (ohne Speichern).',
+    'settings.save': 'Speichert die Einstellungen (nach /data).',
+    'settings.test': 'Testet die InfluxDB Verbindung mit den aktuellen Einstellungen.',
+
+    // Import
+    'import.backup_before': 'Erstellt vor dem Import ein Backup des Zielzeitraums (empfohlen).',
+    'import.delete_first': 'Loescht Zielwerte im Import-Zeitraum vor dem Schreiben (nur mit Confirm Phrase).',
+    'import.measurement': 'Waehlt den intern genutzten _measurement fuer den Import (wird best-effort ermittelt).',
+    'import.field': 'Waehlt den intern genutzten _field fuer den Import (wird best-effort ermittelt).',
+
+    // Export
+    'export.measurement': 'Waehlt den intern genutzten _measurement fuer den Export (wird best-effort ermittelt).',
+    'export.field': 'Waehlt den intern genutzten _field fuer den Export (wird best-effort ermittelt).',
   };
 
   function _norm(s){
@@ -131,6 +203,57 @@
     if(!x) return '';
     const m = Number(n) || 180;
     return x.length > m ? (x.slice(0, m) + '...') : x;
+  }
+
+  function _decap(s){
+    const x = _norm(s);
+    if(!x) return '';
+    const c0 = x[0];
+    if(c0 >= 'A' && c0 <= 'Z') return c0.toLowerCase() + x.slice(1);
+    return x;
+  }
+
+  function _uiKind(el){
+    try{
+      const tag = String(el && el.tagName ? el.tagName : '').toLowerCase();
+      if(tag === 'button') return 'button';
+      if(tag === 'select') return 'select';
+      if(tag === 'input'){
+        const t = String(el.getAttribute('type') || '').toLowerCase();
+        if(t === 'checkbox') return 'checkbox';
+        return 'input';
+      }
+      return tag;
+    }catch(e){
+      return '';
+    }
+  }
+
+  function _formatDescForKind(kind, desc, el){
+    const d0 = _norm(desc);
+    if(!kind) return d0;
+
+    if(kind === 'button'){
+      if(d0) return 'Dieser Button ' + _decap(d0);
+      const t = _norm(el && el.textContent ? el.textContent : '');
+      return t ? ('Dieser Button fuehrt aus: ' + t) : 'Dieser Button';
+    }
+
+    if(kind === 'checkbox'){
+      if(d0) return 'Diese Checkbox ' + _decap(d0);
+      const auto = _autoTitleFromContext(el) || '';
+      const lbl = _norm(auto.split(':')[0] || auto);
+      return lbl ? ('Diese Checkbox aktiviert/deaktiviert: ' + lbl) : 'Diese Checkbox';
+    }
+
+    if(kind === 'select'){
+      if(d0) return 'Dieses Auswahlfeld ' + _decap(d0);
+      const auto = _autoTitleFromContext(el) || '';
+      const lbl = _norm(auto.split(':')[0] || auto);
+      return lbl ? ('Dieses Auswahlfeld waehlt: ' + lbl) : 'Dieses Auswahlfeld';
+    }
+
+    return d0;
   }
 
   function _autoTitleFromContext(el){
@@ -195,7 +318,8 @@
   function _setTooltip(el, desc, key){
     try{
       const k = _norm(key);
-      const d = _norm(desc);
+      const kind = _uiKind(el);
+      const d = _formatDescForKind(kind, desc, el);
       const existing = _norm(el.getAttribute('title'));
       let base = existing;
 
@@ -210,9 +334,17 @@
         base = _short(txt, 220);
       }
 
-      // Always append the element key in parentheses.
-      base = _ensureKeySuffix(base, k);
-      if(base) el.setAttribute('title', base);
+       // Always append the element key in parentheses.
+       base = _ensureKeySuffix(base, k);
+       if(base) el.setAttribute('title', base);
+
+       // For checkbox inputs inside a label, mirror title onto the label.
+       if(kind === 'checkbox'){
+         try{
+           const lab = el.closest('label');
+           if(lab && !lab.getAttribute('title')) lab.setAttribute('title', base);
+         }catch(e){}
+       }
     }catch(e){}
   }
 
@@ -239,7 +371,15 @@
   function apply(){
     try{
       const root = document.querySelector('main.content') || document.body;
-      const nodes = Array.from(root.querySelectorAll('*'));
+      const sel = [
+        'button',
+        'select',
+        'input[type="checkbox"]',
+        // Keep a few explicit help blocks.
+        '.muted.help',
+        '[data-ui^="tip."]'
+      ].join(',');
+      const nodes = Array.from(root.querySelectorAll(sel));
       nodes.forEach(el => {
         const tag = String(el.tagName||'').toLowerCase();
         if(!tag) return;

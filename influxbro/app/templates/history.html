@@ -42,7 +42,7 @@
           </div>
           <div style="min-width: 160px; flex: 0 0 auto;">
             <label>Aktion</label>
-            <select id="action" style="width:100%;">
+            <select id="action" data-ui="history.action" title="history.action" style="width:100%;">
               <option value="">alle</option>
               <option value="overwrite">ueberschreiben</option>
               <option value="delete">loeschen</option>
@@ -66,11 +66,11 @@
         <div class="row" data-ui="history.actions" title="history.actions">
           <div>
             <label>&nbsp;</label>
-            <button id="refresh">Refresh</button>
+            <button id="refresh" data-ui="history.refresh" title="history.refresh">Refresh</button>
           </div>
           <div>
             <label>Rollback Zeitraum</label>
-            <select id="preset">
+            <select id="preset" data-ui="history.preset" title="history.preset">
               <option value="">-</option>
               <option value="300">letzte 5 Minuten</option>
               <option value="900">letzte 15 Minuten</option>
@@ -81,11 +81,11 @@
           </div>
           <div>
             <label>&nbsp;</label>
-            <button id="rollback_preset" class="btn_sm">Rollback Zeitraum</button>
+            <button id="rollback_preset" class="btn_sm" data-ui="history.rollback_preset" title="history.rollback_preset">Rollback Zeitraum</button>
           </div>
           <div>
             <label>&nbsp;</label>
-            <button id="rollback_selected" class="btn_sm">Rollback selektierte</button>
+            <button id="rollback_selected" class="btn_sm" data-ui="history.rollback_selected" title="history.rollback_selected">Rollback selektierte</button>
           </div>
           <div class="muted" style="min-width: 320px; flex:1; padding-top: 6px;">Sicherheit: Rollback erfordert die Phrase <code>{{ delete_phrase }}</code>.</div>
         </div>
@@ -97,7 +97,7 @@
           <table id="tbl" data-ui="history.table" title="history.table">
             <thead>
               <tr>
-                <th style="width: 34px;"><input type="checkbox" id="sel_all"/></th>
+                <th style="width: 34px;"><input type="checkbox" id="sel_all" data-ui="history.select_all" title="history.select_all"/></th>
                 <th style="width: 170px;">Datum</th>
                 <th style="width: 100px;">Aktion</th>
                 <th style="width: 240px;">Messwertname (friendly_name)</th>
