@@ -237,6 +237,13 @@ Dashboard Cache:
   - `Cache loeschen (alles)`: loescht alle Cache-Dateien unter `/data`.
 - Das automatische Cache-Update ist in `Einstellungen -> UI -> Dashboard Cache` konfigurierbar (alle X Stunden oder taeglich um HH:MM:SS).
 
+Statistik Cache:
+
+- Server-Cache fuer Statistik-Ergebnisse unter `/data/stats_cache`.
+- Auf der Jobs-Seite gibt es eine Statuszeile (enabled/auto_update/caches/due/next) und einen Button `Jetzt ein Update starten`.
+- `Cache loeschen (alles)`: loescht nur Cache-Dateien unter `/data`, nicht die Datenbank.
+- Konfiguration unter `Einstellungen -> UI -> Statistik Cache` (taeglich/nightly oder alle X Stunden + Limits).
+
 ## Backup (ein Messwert, alle Werte)
 
 - Backups werden fuer den aktuell ausgewaehlten Messwert erstellt und enthalten alle Werte dieses Messwertes.

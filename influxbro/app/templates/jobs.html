@@ -144,6 +144,37 @@
         </div>
       </div>
 
+      <div class="card" data-ui="stats_cache.card" title="stats_cache.card">
+        <div style="display:flex; align-items:baseline; justify-content:space-between; gap: 10px; flex-wrap:wrap;">
+          <div>
+            <div style="font-weight:800;">Statistik Cache</div>
+            <div class="muted">Server-Cache unter <code>/data/stats_cache</code>. Nightly/inkrementell ueber Background-Jobs.</div>
+          </div>
+        </div>
+
+        <div class="row" style="margin-top: 10px;" data-ui="stats_cache.controls" title="stats_cache.controls">
+          <div style="flex:1; min-width: 260px;">
+            <label class="muted" style="display:block; font-size: 12px;">Schedule</label>
+            <div class="mono" id="stats_cache_sched"></div>
+          </div>
+          <div>
+            <label class="muted" style="display:block; font-size: 12px;">&nbsp;</label>
+            <button id="stats_cache_refresh">Aktualisieren (Status)</button>
+          </div>
+          <div>
+            <label class="muted" style="display:block; font-size: 12px;">&nbsp;</label>
+            <button id="stats_cache_run_now">Jetzt ein Update starten</button>
+          </div>
+          <div>
+            <label class="muted" style="display:block; font-size: 12px;">&nbsp;</label>
+            <button id="stats_cache_delete_all">Cache loeschen (alles)</button>
+          </div>
+        </div>
+
+        <div class="status" id="stats_cache_info"></div>
+        <div id="stats_cache_err" class="err"></div>
+      </div>
+
       <script>
       const $auto = document.getElementById('auto');
       const $type = document.getElementById('type');
@@ -159,6 +190,13 @@
       const $cacheInfo = document.getElementById('cache_info');
       const $cacheErr = document.getElementById('cache_err');
       const $cacheBody = document.querySelector('#cache_tbl tbody');
+
+      const $statsCacheSched = document.getElementById('stats_cache_sched');
+      const $statsCacheRefresh = document.getElementById('stats_cache_refresh');
+      const $statsCacheRunNow = document.getElementById('stats_cache_run_now');
+      const $statsCacheDeleteAll = document.getElementById('stats_cache_delete_all');
+      const $statsCacheInfo = document.getElementById('stats_cache_info');
+      const $statsCacheErr = document.getElementById('stats_cache_err');
 
       let POLL = null;
 
@@ -176,6 +214,17 @@
       function cacheErr(s){
         const msg = s || '';
         $cacheErr.textContent = msg;
+        if(msg){
+          try{
+            if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error(msg);
+            else alert(msg);
+          }catch(e){}
+        }
+      }
+
+      function statsCacheErr(s){
+        const msg = s || '';
+        if($statsCacheErr) $statsCacheErr.textContent = msg;
         if(msg){
           try{
             if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error(msg);
@@ -449,9 +498,22 @@
         renderCaches(LAST_CACHES);
       }
 
+      async function loadStatsCacheSchedule(){
+        statsCacheErr('');
+        const j = await api('./api/stats_cache/schedule', {});
+        const en = (j.enabled === true);
+        const au = (j.auto_update === true);
+        const nxt = j.next_run_at ? fmtTs(j.next_run_at) : '';
+        const due = (j.due !== null && j.due !== undefined) ? String(j.due) : '?';
+        const cnt = (j.caches !== null && j.caches !== undefined) ? String(j.caches) : '?';
+        if($statsCacheSched) $statsCacheSched.textContent = `enabled=${en} auto_update=${au} caches=${cnt} due=${due}` + (nxt ? (` next=${nxt}`) : '');
+        if($statsCacheInfo) $statsCacheInfo.textContent = `Modus: ${String(j.settings && j.settings.refresh_mode ? j.settings.refresh_mode : '')} | daily_at: ${String(j.settings && j.settings.refresh_daily_at ? j.settings.refresh_daily_at : '')} | hours: ${String(j.settings && j.settings.refresh_hours ? j.settings.refresh_hours : '')}`;
+      }
+
       async function loadAll(){
         await loadJobs();
         await loadCaches();
+        await loadStatsCacheSchedule();
       }
 
       $refresh.onclick = ()=>{ loadAll().catch(e => err(e && e.message ? e.message : String(e))); };
@@ -468,6 +530,29 @@
           await loadAll();
         }catch(e){
           cacheErr(e && e.message ? e.message : String(e));
+        }
+      };
+
+      if($statsCacheRefresh) $statsCacheRefresh.onclick = ()=>{ loadStatsCacheSchedule().catch(e => statsCacheErr(e && e.message ? e.message : String(e))); };
+      if($statsCacheRunNow) $statsCacheRunNow.onclick = async ()=>{
+        try{
+          statsCacheErr('');
+          const j = await api('./api/stats_cache/run_now', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({})});
+          if(j.started) $statsCacheInfo.textContent = `Update gestartet: job_id=${String(j.job_id||'')} cache_id=${String(j.cache_id||'')}`;
+          else $statsCacheInfo.textContent = 'Kein Cache ist faellig.';
+          await loadAll();
+        }catch(e){
+          statsCacheErr(e && e.message ? e.message : String(e));
+        }
+      };
+      if($statsCacheDeleteAll) $statsCacheDeleteAll.onclick = async ()=>{
+        try{
+          if(!confirm('Cache komplett loeschen?\n\nDas loescht nur Cache-Dateien unter /data, nicht die Datenbank.')) return;
+          statsCacheErr('');
+          await api('./api/stats_cache/delete', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({all: true})});
+          await loadAll();
+        }catch(e){
+          statsCacheErr(e && e.message ? e.message : String(e));
         }
       };
 

@@ -1244,7 +1244,7 @@ function _applyOverlays(){
           x,
           y: ys,
           name: wantSigned ? 'd/dt' : 'abs(d/dt)',
-          line: {color: '#444', width: 1.2},
+          line: {color: '#444', width: 1.2, simplify: false, shape: 'linear'},
           hovertemplate: '%{x}<br>d/dt=%{y}<extra></extra>',
         }];
         if(outX.length){
@@ -2180,7 +2180,8 @@ function drawPlotly(rows){
     y,
     type: "scatter",
     mode: GRAPH_MARKERS ? "lines+markers" : "lines",
-    line: { color: "#1f77b4", width: 1.5 },
+    // Disable Plotly line simplification (keeps sharp spikes / outliers visible).
+    line: { color: "#1f77b4", width: 1.5, simplify: false, shape: "linear" },
     marker: { size: 6, symbol: "circle", color: "#1f77b4" },
     hovertemplate: "%{x}<br>%{y}<extra></extra>",
   }];
@@ -4302,7 +4303,7 @@ async function refreshEditGraph(){
       text: xsAllTxt,
       mode: 'lines',
       name: 'DB',
-      line: {width: 1, color: 'rgba(0,0,0,0.55)'},
+      line: {width: 1, color: 'rgba(0,0,0,0.55)', simplify: false, shape: 'linear'},
       hovertemplate: '%{text}<br>%{y}<extra></extra>',
     },
     {

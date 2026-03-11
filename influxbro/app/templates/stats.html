@@ -285,6 +285,7 @@
 
       const LS_JOB = 'influxbro_global_stats_job_id_v1';
       const LS_LAST = 'influxbro_global_stats_last_job_id_v1';
+      const LS_CACHE = 'influxbro_global_stats_last_cache_id_v1';
       const LS_COLS = 'influxbro_stats_col_widths_v1';
       const LS_WANTCOLS = 'influxbro_stats_want_columns_v1';
 
@@ -411,6 +412,17 @@
       }
       function getLastJobId(){
         try{ return localStorage.getItem(LS_LAST) || null; }catch(e){ return null; }
+      }
+
+      function setLastCacheId(id){
+        try{
+          const v = id ? String(id) : '';
+          if(v) localStorage.setItem(LS_CACHE, v);
+          else localStorage.removeItem(LS_CACHE);
+        }catch(e){}
+      }
+      function getLastCacheId(){
+        try{ return localStorage.getItem(LS_CACHE) || null; }catch(e){ return null; }
       }
 
       function stopPolling(){
@@ -596,6 +608,7 @@
           body: JSON.stringify({
             start: tf.start,
             stop: tf.stop,
+            range: tf.range,
             field_filter: fieldFilter || null,
             measurement: mf || null,
             friendly_name: fn || null,
@@ -605,6 +618,7 @@
           })
         });
         setJobId(j.job_id);
+        setLastCacheId(j.cache_id || null);
         syncLoadedCols(cols);
         JOB_MERGE = false;
         JOB_ADD_COLS = [];
@@ -673,17 +687,38 @@
 
       async function loadLastResults(){
         const last = getLastJobId();
-        if(!last) return;
+        const cid0 = getLastCacheId();
+        if(!last && !cid0) return;
         try{
-          const j = await api(`./api/global_stats_job/result?job_id=${encodeURIComponent(last)}&limit=20000&offset=0`);
-          if(!j.ready) return;
-          const rows = j.rows || [];
-          if(!rows.length) return;
-          ROWS = rows;
-          render();
-          setStatus([`Letztes Ergebnis geladen. Zeilen: ${ROWS.length}`, '']);
+          if(last){
+            const j = await api(`./api/global_stats_job/result?job_id=${encodeURIComponent(last)}&limit=20000&offset=0`);
+            if(j.ready){
+              const rows = j.rows || [];
+              if(rows.length){
+                ROWS = rows;
+                render();
+                setStatus([`Letztes Ergebnis geladen. Zeilen: ${ROWS.length}`, '']);
+                return;
+              }
+            }
+          }
+          throw new Error('fallback');
         }catch(e){
-          // ignore if job expired
+          // If the job expired, try server-side cache.
+          try{
+            const cid = cid0 || getLastCacheId();
+            if(!cid) return;
+            const j = await api(`./api/stats_cache/get?cache_id=${encodeURIComponent(cid)}&limit=20000&offset=0`);
+            if(!j.ready) return;
+            const rows = j.rows || [];
+            if(!rows.length) return;
+            ROWS = rows;
+            render();
+            const ts = (j.cache && j.cache.updated_at) ? fmtTs(j.cache.updated_at) : '';
+            setStatus([`Cache geladen. Zeilen: ${ROWS.length}` + (ts ? (' | updated: ' + ts) : ''), '']);
+          }catch(ex){
+            // ignore
+          }
         }
       }
 

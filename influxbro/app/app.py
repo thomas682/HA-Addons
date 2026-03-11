@@ -59,6 +59,10 @@ DASH_CACHE_LOCK = threading.RLock()
 DASH_CACHE_JOBS: dict[str, dict[str, Any]] = {}
 DASH_CACHE_JOBS_LOCK = threading.RLock()
 
+# Statistik cache (server-side, persisted under /data)
+STATS_CACHE_DIR = DATA_DIR / "stats_cache"
+STATS_CACHE_LOCK = threading.RLock()
+
 RESTORE_COPY_JOBS: dict[str, dict[str, Any]] = {}
 RESTORE_COPY_LOCK = threading.RLock()
 
@@ -648,6 +652,19 @@ DEFAULT_CFG = {
     "dash_cache_max_mb": 50,
     # If enabled, Dashboard may enqueue background updates when serving stale cache.
     "dash_cache_update_on_use_if_stale": True,
+
+    # Statistik cache (server-side, persisted under /data)
+    "stats_cache_enabled": True,
+    "stats_cache_auto_update": True,
+    # Refresh schedule:
+    # - mode=hours: refresh entries after N hours
+    # - mode=daily: refresh once per day at stats_cache_refresh_daily_at (local time)
+    "stats_cache_refresh_mode": "daily",
+    "stats_cache_refresh_hours": 24,
+    "stats_cache_refresh_daily_at": "03:00:00",
+    # Cache size limits (best-effort eviction)
+    "stats_cache_max_items": 10,
+    "stats_cache_max_mb": 50,
 
     # Safety: allow writes/deletes from UI
     "writes_enabled": True,
@@ -1629,6 +1646,358 @@ def _dash_cache_start_job(action: str, cache_id: str, trigger_page: str | None =
     t = threading.Thread(target=_dash_cache_job_thread, args=(job_id, action, cache_id), daemon=True)
     t.start()
     return job_id
+
+
+def _stats_cache_meta_path(cache_id: str) -> Path:
+    return STATS_CACHE_DIR / f"{cache_id}.meta.json"
+
+
+def _stats_cache_data_path(cache_id: str) -> Path:
+    return STATS_CACHE_DIR / f"{cache_id}.data.json.gz"
+
+
+def _stats_cache_cfg_fp(cfg: dict[str, Any]) -> str:
+    """Stable fingerprint for the active Influx connection (no secrets)."""
+
+    try:
+        influx_v = int(cfg.get("influx_version", 2) or 2)
+    except Exception:
+        influx_v = 2
+    base = {
+        "influx_version": influx_v,
+        "scheme": str(cfg.get("scheme") or ""),
+        "host": str(cfg.get("host") or ""),
+        "port": int(cfg.get("port") or 0),
+        "org": str(cfg.get("org") or "") if influx_v == 2 else "",
+        "bucket": str(cfg.get("bucket") or "") if influx_v == 2 else "",
+        "database": str(cfg.get("database") or "") if influx_v != 2 else "",
+        "verify_ssl": bool(cfg.get("verify_ssl", True)),
+        "timeout_seconds": int(cfg.get("timeout_seconds", 10) or 10),
+    }
+    raw = json.dumps(base, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+    return hashlib.sha1(raw.encode("utf-8")).hexdigest()
+
+
+def _stats_cache_key(
+    cfg: dict[str, Any],
+    body: dict[str, Any],
+    start_dt: datetime,
+    stop_dt: datetime,
+    field_filter: str | None,
+    measurement_filter: str | None,
+    entity_id_filter: str | None,
+    friendly_name_filter: str | None,
+    columns: list[str] | None,
+    page_limit: int,
+) -> dict[str, Any]:
+    range_key = str(body.get("range") or "").strip().lower()
+    if not range_key:
+        range_key = "custom"
+    if range_key not in ("custom", "all", "this_year", "12mo", "24mo"):
+        # allow 24h/30d/... as-is
+        range_key = range_key
+
+    cols = [str(x) for x in (columns or []) if x]
+    cols = sorted(set(cols))
+
+    # Keep key stable for relative ranges.
+    start_iso = _dt_to_rfc3339_utc(start_dt) if range_key == "custom" else None
+    stop_iso = _dt_to_rfc3339_utc(stop_dt) if range_key == "custom" else None
+
+    return {
+        "v": 1,
+        "kind": "global_stats",
+        "cfg_fp": _stats_cache_cfg_fp(cfg),
+        "range": range_key,
+        "start": start_iso,
+        "stop": stop_iso,
+        "field_filter": str(field_filter or "") or None,
+        "measurement": str(measurement_filter or "") or None,
+        "entity_id": str(entity_id_filter or "") or None,
+        "friendly_name": str(friendly_name_filter or "") or None,
+        "columns": cols,
+        "page_limit": int(page_limit or 200),
+        # keep original payload markers for debugging
+        "payload_start": body.get("start") or body.get("start_time"),
+        "payload_stop": body.get("stop") or body.get("end") or body.get("stop_time"),
+    }
+
+
+def _stats_cache_id(key: dict[str, Any]) -> str:
+    raw = json.dumps(key, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+    return hashlib.sha1(raw.encode("utf-8")).hexdigest()
+
+
+def _stats_cache_load_meta(cache_id: str) -> dict[str, Any] | None:
+    try:
+        p = _stats_cache_meta_path(cache_id)
+        if not p.exists():
+            return None
+        with STATS_CACHE_LOCK:
+            j = json.loads(p.read_text(encoding="utf-8"))
+        return j if isinstance(j, dict) else None
+    except Exception:
+        return None
+
+
+def _stats_cache_write_meta(meta: dict[str, Any]) -> None:
+    try:
+        STATS_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    except Exception:
+        pass
+    try:
+        cache_id = str(meta.get("id") or "").strip()
+        if not cache_id:
+            return
+        p = _stats_cache_meta_path(cache_id)
+        raw = json.dumps(meta, indent=2, sort_keys=True, ensure_ascii=True)
+        with STATS_CACHE_LOCK:
+            p.write_text(raw, encoding="utf-8")
+    except Exception:
+        return
+
+
+def _stats_cache_load_payload(cache_id: str) -> dict[str, Any] | None:
+    try:
+        p = _stats_cache_data_path(cache_id)
+        if not p.exists():
+            return None
+        with STATS_CACHE_LOCK:
+            raw = gzip.decompress(p.read_bytes()).decode("utf-8", errors="replace")
+        j = json.loads(raw)
+        return j if isinstance(j, dict) else None
+    except Exception:
+        return None
+
+
+def _stats_cache_write_payload(cache_id: str, payload: dict[str, Any]) -> int:
+    try:
+        STATS_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    except Exception:
+        pass
+    try:
+        p = _stats_cache_data_path(cache_id)
+        raw = json.dumps(payload, sort_keys=False, separators=(",", ":"), ensure_ascii=True).encode("utf-8")
+        comp = gzip.compress(raw)
+        with STATS_CACHE_LOCK:
+            p.write_bytes(comp)
+        return len(comp)
+    except Exception:
+        return 0
+
+
+def _stats_cache_list_meta() -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    try:
+        if not STATS_CACHE_DIR.exists():
+            return []
+        for p in sorted(STATS_CACHE_DIR.glob("*.meta.json")):
+            try:
+                j = json.loads(p.read_text(encoding="utf-8"))
+                if isinstance(j, dict):
+                    out.append(j)
+            except Exception:
+                continue
+    except Exception:
+        return []
+    return out
+
+
+def _stats_cache_ts(meta: dict[str, Any], key: str) -> float:
+    try:
+        s = str(meta.get(key) or "").strip()
+        if not s:
+            return 0.0
+        dt = _parse_iso_datetime(s)
+        if not dt:
+            return 0.0
+        return dt.timestamp()
+    except Exception:
+        return 0.0
+
+
+def _stats_cache_is_stale(cfg: dict[str, Any], meta: dict[str, Any]) -> bool:
+    try:
+        mode = str(cfg.get("stats_cache_refresh_mode") or "daily").strip().lower()
+        if mode not in ("hours", "daily"):
+            mode = "daily"
+
+        updated_ts = _stats_cache_ts(meta, "updated_at")
+        if updated_ts <= 0:
+            return True
+
+        now_ts = datetime.now(timezone.utc).timestamp()
+        if mode == "hours":
+            try:
+                h = int(cfg.get("stats_cache_refresh_hours", 24) or 24)
+            except Exception:
+                h = 24
+            if h <= 0:
+                return False
+            return (now_ts - updated_ts) >= float(h * 3600)
+
+        # daily
+        at = str(cfg.get("stats_cache_refresh_daily_at") or "03:00:00").strip() or "03:00:00"
+        hh, mm, ss = 3, 0, 0
+        try:
+            parts = at.split(":")
+            hh = int(parts[0]) if len(parts) > 0 else 3
+            mm = int(parts[1]) if len(parts) > 1 else 0
+            ss = int(parts[2]) if len(parts) > 2 else 0
+        except Exception:
+            hh, mm, ss = 3, 0, 0
+        hh = min(23, max(0, hh))
+        mm = min(59, max(0, mm))
+        ss = min(59, max(0, ss))
+
+        now_local = datetime.now().astimezone()
+        last_local = datetime.fromtimestamp(updated_ts, tz=timezone.utc).astimezone(now_local.tzinfo)
+        today_run = now_local.replace(hour=hh, minute=mm, second=ss, microsecond=0)
+        if now_local < today_run:
+            prev_run = today_run - timedelta(days=1)
+            return last_local < prev_run
+        return last_local < today_run
+    except Exception:
+        return False
+
+
+def _stats_cache_touch_used(cache_id: str) -> None:
+    try:
+        meta = _stats_cache_load_meta(cache_id)
+        if not meta:
+            return
+        meta["last_used_at"] = _utc_now_iso_ms()
+        _stats_cache_write_meta(meta)
+    except Exception:
+        return
+
+
+def _stats_cache_enforce_limits(cfg: dict[str, Any]) -> None:
+    try:
+        try:
+            max_items = int(cfg.get("stats_cache_max_items", 10) or 10)
+        except Exception:
+            max_items = 10
+        if max_items < 0:
+            max_items = 0
+
+        try:
+            max_mb = int(cfg.get("stats_cache_max_mb", 50) or 50)
+        except Exception:
+            max_mb = 50
+        if max_mb < 0:
+            max_mb = 0
+        max_bytes = max_mb * 1024 * 1024
+
+        items = _stats_cache_list_meta()
+        if not items:
+            return
+
+        def score(m: dict[str, Any]) -> tuple[float, float]:
+            return (_stats_cache_ts(m, "last_used_at") or _stats_cache_ts(m, "updated_at"), _stats_cache_ts(m, "updated_at"))
+
+        items.sort(key=score)
+        total = 0
+        for m in items:
+            try:
+                total += int(m.get("bytes") or 0)
+            except Exception:
+                pass
+
+        # Evict LRU until limits satisfied.
+        while items and ((max_items > 0 and len(items) > max_items) or (max_bytes > 0 and total > max_bytes) or (max_items == 0) or (max_bytes == 0)):
+            m = items.pop(0)
+            cid = str(m.get("id") or "").strip()
+            if not cid:
+                continue
+            try:
+                total -= int(m.get("bytes") or 0)
+            except Exception:
+                pass
+            try:
+                _stats_cache_meta_path(cid).unlink(missing_ok=True)
+            except Exception:
+                pass
+            try:
+                _stats_cache_data_path(cid).unlink(missing_ok=True)
+            except Exception:
+                pass
+    except Exception:
+        return
+
+
+def _stats_cache_mark_dirty_series(
+    measurement: str | None,
+    field: str | None,
+    entity_id: str | None,
+    friendly_name: str | None,
+    reason: str,
+) -> None:
+    try:
+        for meta in _stats_cache_list_meta():
+            try:
+                k = meta.get("key") or {}
+                if not isinstance(k, dict) or str(k.get("kind") or "") != "global_stats":
+                    continue
+
+                mf = str(k.get("measurement") or "").strip()
+                if mf and measurement and mf != str(measurement):
+                    continue
+                ff = str(k.get("field_filter") or "").strip()
+                if ff and field and ff != str(field):
+                    continue
+                eidf = str(k.get("entity_id") or "").strip()
+                if eidf and entity_id and eidf != str(entity_id):
+                    continue
+                fnf = str(k.get("friendly_name") or "").strip()
+                if fnf and friendly_name and fnf != str(friendly_name):
+                    continue
+
+                meta["dirty"] = True
+                meta["dirty_reason"] = str(reason or "")[:80]
+                meta["dirty_at"] = _utc_now_iso_ms()
+                _stats_cache_write_meta(meta)
+            except Exception:
+                continue
+    except Exception:
+        return
+
+
+def _stats_cache_range_to_datetimes(range_key: str) -> tuple[datetime, datetime]:
+    """Match stats.html timeFilter() behavior (best-effort)."""
+
+    now_utc = datetime.now(timezone.utc)
+    rk = (range_key or "").strip().lower()
+    if not rk:
+        rk = "30d"
+    if rk == "all":
+        return datetime(1970, 1, 1, tzinfo=timezone.utc), now_utc
+    if rk == "this_year":
+        now_local = datetime.now().astimezone()
+        start_local = now_local.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+        return start_local.astimezone(timezone.utc), now_utc
+    if rk == "12mo":
+        return now_utc - timedelta(days=365), now_utc
+    if rk == "24mo":
+        return now_utc - timedelta(days=730), now_utc
+
+    m = re.match(r"^(\d+)([hd])$", rk)
+    if m:
+        n = int(m.group(1))
+        unit = m.group(2)
+        delta = timedelta(days=n) if unit == "d" else timedelta(hours=n)
+        return now_utc - delta, now_utc
+
+    md = re.match(r"^(\d+)d$", rk)
+    if md:
+        n = int(md.group(1))
+        return now_utc - timedelta(days=n), now_utc
+
+    # fallback: support existing parse_range_to_datetimes for h/d
+    try:
+        return parse_range_to_datetimes(rk)
+    except Exception:
+        return now_utc - timedelta(days=30), now_utc
 
 
 def _parse_range_key(range_key: str) -> tuple[int, str]:
@@ -4140,6 +4509,7 @@ def _restore_copy_job_thread(
         try:
             if applied > 0:
                 _dash_cache_mark_dirty_series(target_measurement, target_field, target_entity_id, target_friendly_name, "restore_copy")
+                _stats_cache_mark_dirty_series(target_measurement, target_field, target_entity_id, target_friendly_name, "restore_copy")
         except Exception:
             pass
         set_state("done", f"Copied points: {applied}")
@@ -4577,6 +4947,289 @@ def api_cache_update():
         return jsonify({"ok": False, "error": "cache not found"}), 404
     job_id = _dash_cache_start_job("update", cache_id, trigger_page="jobs")
     return jsonify({"ok": True, "job_id": job_id})
+
+
+def _stats_cache_start_update_job(cache_id: str, trigger_page: str) -> str:
+    meta = _stats_cache_load_meta(cache_id)
+    if not meta:
+        raise _ApiError("cache not found", 404)
+    key = meta.get("key") or {}
+    if not isinstance(key, dict) or str(key.get("kind") or "") != "global_stats":
+        raise _ApiError("invalid cache key", 400)
+
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    if not bool(cfg.get("stats_cache_enabled", True)):
+        raise _ApiError("cache disabled", 400)
+
+    rk = str(key.get("range") or "custom").strip().lower() or "custom"
+    if rk == "custom":
+        s = str(key.get("start") or "").strip()
+        e = str(key.get("stop") or "").strip()
+        if not (s and e):
+            raise _ApiError("custom cache requires start/stop", 400)
+        start_dt = _parse_iso_datetime(s)
+        stop_dt = _parse_iso_datetime(e)
+        if not start_dt or not stop_dt:
+            raise _ApiError("invalid start/stop", 400)
+    else:
+        start_dt, stop_dt = _stats_cache_range_to_datetimes(rk)
+
+    field_filter = str(key.get("field_filter") or "").strip() or None
+    measurement_filter = str(key.get("measurement") or "").strip() or None
+    entity_id_filter = str(key.get("entity_id") or "").strip() or None
+    friendly_name_filter = str(key.get("friendly_name") or "").strip() or None
+    cols_raw = key.get("columns")
+    columns = [str(x) for x in cols_raw] if isinstance(cols_raw, list) else None
+    try:
+        page_limit = int(key.get("page_limit") or 200)
+    except Exception:
+        page_limit = 200
+    page_limit = min(200, max(10, page_limit))
+
+    # mark dirty (best-effort) until job writes a fresh payload
+    try:
+        meta["dirty"] = True
+        meta["dirty_reason"] = "update_requested"
+        meta["dirty_at"] = _utc_now_iso_ms()
+        _stats_cache_write_meta(meta)
+    except Exception:
+        pass
+
+    return _global_stats_start_job(
+        cfg,
+        start_dt,
+        stop_dt,
+        field_filter,
+        measurement_filter,
+        entity_id_filter,
+        friendly_name_filter,
+        None,
+        columns,
+        page_limit,
+        trigger_page=trigger_page,
+        cache_id=cache_id,
+        cache_key=key,
+    )
+
+
+@app.get("/api/stats_cache/list")
+def api_stats_cache_list():
+    cfg = load_cfg()
+    enabled = bool(cfg.get("stats_cache_enabled", True))
+    items = _stats_cache_list_meta() if enabled else []
+
+    def _sort_key(m: dict[str, Any]) -> tuple[float, float]:
+        return (_stats_cache_ts(m, "last_used_at") or _stats_cache_ts(m, "updated_at"), _stats_cache_ts(m, "updated_at"))
+
+    items.sort(key=_sort_key, reverse=True)
+    now_ts = datetime.now(timezone.utc).timestamp()
+    out = []
+    for m in items:
+        try:
+            mm = dict(m)
+            upd = _stats_cache_ts(mm, "updated_at")
+            mm["age_seconds"] = int(max(0, now_ts - upd)) if upd else None
+            mm["stale"] = _stats_cache_is_stale(cfg, mm)
+            out.append(mm)
+        except Exception:
+            continue
+    return jsonify({
+        "ok": True,
+        "enabled": enabled,
+        "caches": out,
+        "settings": {
+            "refresh_mode": cfg.get("stats_cache_refresh_mode"),
+            "refresh_hours": cfg.get("stats_cache_refresh_hours"),
+            "refresh_daily_at": cfg.get("stats_cache_refresh_daily_at"),
+            "max_items": cfg.get("stats_cache_max_items"),
+            "max_mb": cfg.get("stats_cache_max_mb"),
+            "auto_update": cfg.get("stats_cache_auto_update"),
+        },
+    })
+
+
+@app.get("/api/stats_cache/get")
+def api_stats_cache_get():
+    cache_id = str(request.args.get("cache_id") or "").strip()
+    if not cache_id:
+        return jsonify({"ok": False, "error": "cache_id required"}), 400
+    meta = _stats_cache_load_meta(cache_id)
+    payload = _stats_cache_load_payload(cache_id)
+    if not meta or not payload:
+        return jsonify({"ok": False, "error": "cache miss"}), 404
+
+    try:
+        limit = int(request.args.get("limit", "5000"))
+    except Exception:
+        limit = 5000
+    limit = min(20000, max(1, limit))
+    try:
+        offset = int(request.args.get("offset", "0"))
+    except Exception:
+        offset = 0
+    offset = max(0, offset)
+
+    rows = payload.get("rows") if isinstance(payload, dict) else None
+    if not isinstance(rows, list):
+        rows = []
+
+    _stats_cache_touch_used(cache_id)
+    return jsonify({
+        "ok": True,
+        "ready": True,
+        "rows": rows[offset : offset + limit],
+        "total": len(rows),
+        "cache": {
+            "id": cache_id,
+            "updated_at": meta.get("updated_at"),
+            "dirty": bool(meta.get("dirty")),
+            "mismatch": bool(meta.get("mismatch")),
+        },
+    })
+
+
+@app.post("/api/stats_cache/delete")
+def api_stats_cache_delete():
+    body = request.get_json(force=True) or {}
+    cache_id = str(body.get("cache_id") or "").strip()
+    delete_all = bool(body.get("all"))
+
+    try:
+        if delete_all:
+            if STATS_CACHE_DIR.exists():
+                for p in STATS_CACHE_DIR.glob("*"):
+                    try:
+                        if p.is_file():
+                            p.unlink(missing_ok=True)
+                    except Exception:
+                        continue
+            return jsonify({"ok": True, "deleted": "all"})
+
+        if not cache_id:
+            return jsonify({"ok": False, "error": "cache_id required"}), 400
+        _stats_cache_meta_path(cache_id).unlink(missing_ok=True)
+        _stats_cache_data_path(cache_id).unlink(missing_ok=True)
+        return jsonify({"ok": True, "deleted": cache_id})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 500
+
+
+@app.post("/api/stats_cache/update")
+def api_stats_cache_update():
+    body = request.get_json(force=True) or {}
+    cache_id = str(body.get("cache_id") or "").strip()
+    if not cache_id:
+        return jsonify({"ok": False, "error": "cache_id required"}), 400
+    try:
+        job_id = _stats_cache_start_update_job(cache_id, trigger_page="jobs")
+        return jsonify({"ok": True, "job_id": job_id})
+    except _ApiError as e:
+        return jsonify({"ok": False, "error": e.message}), e.status
+    except Exception as e:
+        return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
+
+
+def _stats_cache_next_run_iso(cfg: dict[str, Any]) -> str | None:
+    try:
+        mode = str(cfg.get("stats_cache_refresh_mode") or "daily").strip().lower()
+        if mode not in ("hours", "daily"):
+            mode = "daily"
+        now_local = datetime.now().astimezone()
+        if mode == "hours":
+            try:
+                h = int(cfg.get("stats_cache_refresh_hours", 24) or 24)
+            except Exception:
+                h = 24
+            if h <= 0:
+                return None
+            nxt = now_local + timedelta(hours=h)
+            return nxt.astimezone(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+
+        at = str(cfg.get("stats_cache_refresh_daily_at") or "03:00:00").strip() or "03:00:00"
+        hh, mm, ss = 3, 0, 0
+        try:
+            parts = at.split(":")
+            hh = int(parts[0]) if len(parts) > 0 else 3
+            mm = int(parts[1]) if len(parts) > 1 else 0
+            ss = int(parts[2]) if len(parts) > 2 else 0
+        except Exception:
+            hh, mm, ss = 3, 0, 0
+        hh = min(23, max(0, hh))
+        mm = min(59, max(0, mm))
+        ss = min(59, max(0, ss))
+        run = now_local.replace(hour=hh, minute=mm, second=ss, microsecond=0)
+        if run <= now_local:
+            run = run + timedelta(days=1)
+        return run.astimezone(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+    except Exception:
+        return None
+
+
+@app.get("/api/stats_cache/schedule")
+def api_stats_cache_schedule():
+    cfg = load_cfg()
+    enabled = bool(cfg.get("stats_cache_enabled", True))
+    auto = bool(cfg.get("stats_cache_auto_update", True))
+    items = _stats_cache_list_meta() if enabled else []
+    due = 0
+    try:
+        for m in items:
+            if bool(m.get("dirty")) or bool(m.get("mismatch")) or _stats_cache_is_stale(cfg, m):
+                due += 1
+    except Exception:
+        due = 0
+    return jsonify({
+        "ok": True,
+        "enabled": enabled,
+        "auto_update": auto,
+        "caches": len(items),
+        "due": due,
+        "next_run_at": _stats_cache_next_run_iso(cfg),
+        "settings": {
+            "refresh_mode": cfg.get("stats_cache_refresh_mode"),
+            "refresh_hours": cfg.get("stats_cache_refresh_hours"),
+            "refresh_daily_at": cfg.get("stats_cache_refresh_daily_at"),
+        },
+    })
+
+
+@app.post("/api/stats_cache/run_now")
+def api_stats_cache_run_now():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    if not bool(cfg.get("stats_cache_enabled", True)):
+        return jsonify({"ok": False, "error": "cache disabled"}), 400
+
+    pick = None
+    pick_prio = 999
+    for m in _stats_cache_list_meta():
+        try:
+            cid = str(m.get("id") or "").strip()
+            if not cid:
+                continue
+            if bool(m.get("dirty")):
+                prio = 0
+            elif bool(m.get("mismatch")):
+                prio = 1
+            elif _stats_cache_is_stale(cfg, m):
+                prio = 5
+            else:
+                continue
+            if prio < pick_prio:
+                pick = cid
+                pick_prio = prio
+        except Exception:
+            continue
+
+    if not pick:
+        return jsonify({"ok": True, "started": False})
+
+    try:
+        job_id = _stats_cache_start_update_job(pick, trigger_page="jobs")
+        return jsonify({"ok": True, "started": True, "job_id": job_id, "cache_id": pick})
+    except _ApiError as e:
+        return jsonify({"ok": False, "error": e.message}), e.status
+    except Exception as e:
+        return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
 
 @app.post("/api/config")
 def api_set_config():
@@ -6886,6 +7539,39 @@ from(bucket: "{cfg_local["bucket"]}")
                 GLOBAL_STATS_JOBS[job_id]["scanned_points"] = scanned_points
                 GLOBAL_STATS_JOBS[job_id]["groups_count"] = len(rows)
 
+        # Persist stats cache (best-effort)
+        try:
+            cache_id = ""
+            cache_key = None
+            with GLOBAL_STATS_LOCK:
+                j = GLOBAL_STATS_JOBS.get(job_id) or {}
+                cache_id = str(j.get("cache_id") or "").strip()
+                ck = j.get("cache_key")
+                cache_key = ck if isinstance(ck, dict) else None
+
+            if cache_id and cache_key:
+                cfg_now = _overlay_from_yaml_if_enabled(load_cfg())
+                if bool(cfg_now.get("stats_cache_enabled", True)) and int(cfg_now.get("stats_cache_max_items", 10) or 10) > 0:
+                    payload = {
+                        "generated_at": _utc_now_iso_ms(),
+                        "key": cache_key,
+                        "rows": rows,
+                    }
+                    bytes_written = _stats_cache_write_payload(cache_id, payload)
+                    meta = _stats_cache_load_meta(cache_id) or {"id": cache_id, "key": cache_key}
+                    meta["updated_at"] = payload["generated_at"]
+                    meta["last_used_at"] = payload["generated_at"]
+                    meta["row_count"] = len(rows)
+                    meta["bytes"] = int(bytes_written or 0)
+                    meta["dirty"] = False
+                    meta["dirty_reason"] = None
+                    meta["dirty_at"] = None
+                    meta["mismatch"] = (str(cache_key.get("cfg_fp") or "") != _stats_cache_cfg_fp(cfg_now))
+                    _stats_cache_write_meta(meta)
+                    _stats_cache_enforce_limits(cfg_now)
+        except Exception:
+            pass
+
         set_state("done", f"Fertig. Zeilen: {len(rows)}")
     except RuntimeError as e:
         if str(e) == "cancelled":
@@ -6918,6 +7604,98 @@ from(bucket: "{cfg_local["bucket"]}")
         else:
             LOG.exception("global_stats_job failed (job_id=%s, last_query_label=%s)", job_id, last_label)
         set_state("error", "Fehler")
+
+
+def _global_stats_start_job(
+    cfg: dict[str, Any],
+    start_dt: datetime,
+    stop_dt: datetime,
+    field_filter: str | None,
+    measurement_filter: str | None,
+    entity_id_filter: str | None,
+    friendly_name_filter: str | None,
+    series_list: list[dict[str, str]] | None,
+    columns: list[str] | None,
+    page_limit: int,
+    trigger_page: str,
+    cache_id: str | None = None,
+    cache_key: dict[str, Any] | None = None,
+) -> str:
+    job_id = uuid.uuid4().hex
+    ip = _req_ip()
+    ua = _req_ua()
+    job = {
+        "id": job_id,
+        "state": "queued",
+        "message": "Start...",
+        "started_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+        "started_mono": time.monotonic(),
+        "trigger_page": trigger_page,
+        "trigger_ip": ip,
+        "trigger_ua": ua,
+        "total_points": None,
+        "scanned_points": 0,
+        "total_series": None,
+        "groups_count": 0,
+        "current": "",
+        "last_query_label": "",
+        "last_query": "",
+        "rows": [],
+        "cancelled": False,
+        "error": None,
+        "cache_id": cache_id,
+        "cache_key": cache_key,
+        "field_filter": field_filter,
+        "measurement": measurement_filter,
+        "entity_id": entity_id_filter,
+        "friendly_name": friendly_name_filter,
+        "columns": columns or [],
+    }
+
+    try:
+        LOG.info(
+            "job_start type=global_stats job_id=%s ip=%s ua=%s start=%s stop=%s field_filter=%s measurement=%s entity_id=%s friendly_name=%s cols=%s",
+            job_id,
+            ip,
+            ua,
+            _dt_to_rfc3339_utc(start_dt),
+            _dt_to_rfc3339_utc(stop_dt),
+            (field_filter or "") if field_filter else "",
+            measurement_filter or "",
+            entity_id_filter or "",
+            friendly_name_filter or "",
+            ",".join(columns or []),
+        )
+    except Exception:
+        pass
+
+    with GLOBAL_STATS_LOCK:
+        GLOBAL_STATS_JOBS[job_id] = job
+        cutoff = time.monotonic() - 3600
+        old = [k for k, v in GLOBAL_STATS_JOBS.items() if float(v.get("started_mono") or 0) < cutoff]
+        for k in old:
+            if k != job_id:
+                GLOBAL_STATS_JOBS.pop(k, None)
+
+    t = threading.Thread(
+        target=_global_stats_job_thread,
+        args=(
+            job_id,
+            cfg,
+            start_dt,
+            stop_dt,
+            field_filter,
+            measurement_filter,
+            entity_id_filter,
+            friendly_name_filter,
+            series_list,
+            columns,
+            page_limit,
+        ),
+        daemon=True,
+    )
+    t.start()
+    return job_id
 
 
 @app.post("/api/global_stats_job/start")
@@ -6975,80 +7753,50 @@ def api_global_stats_job_start():
     if page_limit > 200:
         page_limit = 200
 
-    job_id = uuid.uuid4().hex
-    ip = _req_ip()
-    ua = _req_ua()
-    job = {
-        "id": job_id,
-        "state": "queued",
-        "message": "Start...",
-        "started_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
-        "started_mono": time.monotonic(),
-        "trigger_page": "stats",
-        "trigger_ip": ip,
-        "trigger_ua": ua,
-        "total_points": None,
-        "scanned_points": 0,
-        "total_series": None,
-        "groups_count": 0,
-        "current": "",
-        "last_query_label": "",
-        "last_query": "",
-        "rows": [],
-        "cancelled": False,
-        "error": None,
-        "field_filter": ff,
-        "measurement": measurement_filter,
-        "entity_id": entity_id_filter,
-        "friendly_name": friendly_name_filter,
-        "columns": columns or [],
-    }
-
+    cache_id = None
+    cache_key = None
     try:
-        LOG.info(
-            "job_start type=global_stats job_id=%s ip=%s ua=%s start=%s stop=%s field_filter=%s measurement=%s entity_id=%s friendly_name=%s cols=%s",
-            job_id,
-            ip,
-            ua,
-            _dt_to_rfc3339_utc(start_dt),
-            _dt_to_rfc3339_utc(stop_dt),
-            ff or "",
-            measurement_filter or "",
-            entity_id_filter or "",
-            friendly_name_filter or "",
-            ",".join(columns or []),
-        )
+        if bool(cfg.get("stats_cache_enabled", True)) and int(cfg.get("stats_cache_max_items", 10) or 10) > 0:
+            cache_key = _stats_cache_key(
+                cfg,
+                body,
+                start_dt,
+                stop_dt,
+                ff,
+                measurement_filter,
+                entity_id_filter,
+                friendly_name_filter,
+                columns,
+                page_limit,
+            )
+            cache_id = _stats_cache_id(cache_key)
+            meta = _stats_cache_load_meta(cache_id) or {"id": cache_id, "key": cache_key}
+            meta.setdefault("created_at", _utc_now_iso_ms())
+            meta["last_used_at"] = _utc_now_iso_ms()
+            meta["dirty"] = True
+            meta["dirty_reason"] = "job_start"
+            meta["dirty_at"] = _utc_now_iso_ms()
+            _stats_cache_write_meta(meta)
     except Exception:
-        pass
+        cache_id = None
+        cache_key = None
 
-    # Cleanup old jobs
-    with GLOBAL_STATS_LOCK:
-        GLOBAL_STATS_JOBS[job_id] = job
-        cutoff = time.monotonic() - 3600
-        old = [k for k, v in GLOBAL_STATS_JOBS.items() if float(v.get("started_mono") or 0) < cutoff]
-        for k in old:
-            if k != job_id:
-                GLOBAL_STATS_JOBS.pop(k, None)
-
-    t = threading.Thread(
-        target=_global_stats_job_thread,
-        args=(
-            job_id,
-            cfg,
-            start_dt,
-            stop_dt,
-            ff,
-            measurement_filter,
-            entity_id_filter,
-            friendly_name_filter,
-            series_list,
-            columns,
-            page_limit,
-        ),
-        daemon=True,
+    job_id = _global_stats_start_job(
+        cfg,
+        start_dt,
+        stop_dt,
+        ff,
+        measurement_filter,
+        entity_id_filter,
+        friendly_name_filter,
+        series_list,
+        columns,
+        page_limit,
+        trigger_page="stats",
+        cache_id=cache_id,
+        cache_key=cache_key,
     )
-    t.start()
-    return jsonify({"ok": True, "job_id": job_id})
+    return jsonify({"ok": True, "job_id": job_id, "cache_id": cache_id})
 
 
 @app.get("/api/global_stats_job/status")
@@ -8051,6 +8799,7 @@ from(bucket: "{cfg["bucket"]}")
             try:
                 if applied > 0:
                     _dash_cache_mark_dirty_series(measurement, field, entity_id, friendly_name, "apply_edits")
+                    _stats_cache_mark_dirty_series(measurement, field, entity_id, friendly_name, "apply_edits")
             except Exception:
                 pass
             return jsonify({"ok": True, "message": f"Applied edits: {applied}", "applied": applied})
@@ -8254,6 +9003,7 @@ from(bucket: "{cfg["bucket"]}")
     try:
         if applied > 0:
             _dash_cache_mark_dirty_series(measurement, field, entity_id, friendly_name, "apply_changes")
+            _stats_cache_mark_dirty_series(measurement, field, entity_id, friendly_name, "apply_changes")
     except Exception:
         pass
     return jsonify({"ok": True, "applied": applied, "message": f"Applied changes: {applied}"})
@@ -8431,6 +9181,7 @@ def api_history_rollback():
     try:
         for m, f, eid, fn in dirty_series:
             _dash_cache_mark_dirty_series(m, f, eid, fn, "history_rollback")
+            _stats_cache_mark_dirty_series(m, f, eid, fn, "history_rollback")
     except Exception:
         pass
 
@@ -9270,6 +10021,7 @@ from(bucket: "{cfg["bucket"]}")
         try:
             if imported > 0 or delete_first:
                 _dash_cache_mark_dirty_series(measurement, field, entity_id, friendly_name, "import")
+                _stats_cache_mark_dirty_series(measurement, field, entity_id, friendly_name, "import")
         except Exception:
             pass
 
@@ -9331,6 +10083,7 @@ def delete():
                 c.delete_api().delete(start=start, stop=stop, predicate=predicate, bucket=cfg["bucket"], org=cfg["org"])
             try:
                 _dash_cache_mark_dirty_series(measurement, field, str(entity_id) if entity_id else None, str(friendly_name) if friendly_name else None, "delete")
+                _stats_cache_mark_dirty_series(measurement, field, str(entity_id) if entity_id else None, str(friendly_name) if friendly_name else None, "delete")
             except Exception:
                 pass
             return jsonify({"ok": True, "message": f"Deleted v2: {predicate} in {cfg['bucket']} from {start.isoformat()} to {stop.isoformat()}"})
@@ -9344,11 +10097,96 @@ def delete():
             c.query(q)
             try:
                 _dash_cache_mark_dirty_series(measurement, field, str(entity_id) if entity_id else None, str(friendly_name) if friendly_name else None, "delete")
+                _stats_cache_mark_dirty_series(measurement, field, str(entity_id) if entity_id else None, str(friendly_name) if friendly_name else None, "delete")
             except Exception:
                 pass
             return jsonify({"ok": True, "message": f"Deleted v1: measurement={measurement}, last {dur}{' with tag filters' if tag_where else ''}."})
     except Exception as e:
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
+
+
+_STATS_CACHE_SCHED_STARTED = False
+
+
+def _stats_cache_scheduler_loop() -> None:
+    """Nightly/incremental refresh loop for stats caches (best-effort)."""
+
+    while True:
+        try:
+            cfg = _overlay_from_yaml_if_enabled(load_cfg())
+            if not bool(cfg.get("stats_cache_enabled", True)) or not bool(cfg.get("stats_cache_auto_update", True)):
+                time.sleep(60)
+                continue
+
+            metas = _stats_cache_list_meta()
+            if not metas:
+                time.sleep(60)
+                continue
+
+            def inflight(cache_id: str) -> bool:
+                with GLOBAL_STATS_LOCK:
+                    for j in GLOBAL_STATS_JOBS.values():
+                        try:
+                            if str(j.get("cache_id") or "") != cache_id:
+                                continue
+                            st = str(j.get("state") or "")
+                            if st and st not in ("done", "error", "cancelled"):
+                                return True
+                        except Exception:
+                            continue
+                return False
+
+            pick = None
+            pick_prio = 999
+            for m in metas:
+                try:
+                    cid = str(m.get("id") or "").strip()
+                    if not cid:
+                        continue
+                    if inflight(cid):
+                        continue
+                    if bool(m.get("dirty")):
+                        prio = 0
+                    elif bool(m.get("mismatch")):
+                        prio = 1
+                    elif _stats_cache_is_stale(cfg, m):
+                        prio = 5
+                    else:
+                        continue
+                    if prio < pick_prio:
+                        pick = cid
+                        pick_prio = prio
+                except Exception:
+                    continue
+
+            if pick:
+                try:
+                    _stats_cache_start_update_job(pick, trigger_page="scheduler")
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+        time.sleep(60)
+
+
+def _stats_cache_scheduler_start() -> None:
+    global _STATS_CACHE_SCHED_STARTED
+    if _STATS_CACHE_SCHED_STARTED:
+        return
+    _STATS_CACHE_SCHED_STARTED = True
+    t = threading.Thread(target=_stats_cache_scheduler_loop, daemon=True)
+    t.start()
+    try:
+        LOG.info("stats_cache scheduler started")
+    except Exception:
+        pass
+
+
+try:
+    _stats_cache_scheduler_start()
+except Exception:
+    pass
 
 
 _DASH_CACHE_SCHED_STARTED = False

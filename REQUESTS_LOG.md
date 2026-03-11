@@ -13,3 +13,4 @@ Status values: `open`, `in_progress`, `done`, `cancelled`.
 | 2026-03-10 | "Frage: macht es vielleicht sinn die Anforderungen und den Umsetzungsstatus eher in Github zu pflegen (eventuell ueber GitHub eigene Workflows z.B. Issues etc.) ?" | done | Proposed GitHub Issues + labels + templates workflow. |
 | 2026-03-10 | "unterscheide wenn moeglich zwischen Fehler und Erweiterungen z.B. schreibe ich dir hier ja ob etwas nicht funktioniert und zusaetzlich auch Erweiterungswuensche die die Funktion erweitern" | done | Added separate GitHub issue templates: bug vs enhancement. |
 | 2026-03-10 | "es reicht mir issues+labels+templates" | done | Planned without Projects/automation. |
+| 2026-03-11 | "Merke in Agents.md wenn ich GO sage, dann werden auch alle offenen Punkte umgesetzt (egal ob aktuell oder in plan_state.md)" | done | Updated `AGENTS.md` GO semantics to include open items from `./.opencode/plan_state.md`. |

@@ -277,7 +277,10 @@ from flask import Flask, jsonify, request
 
 ### GO Must Complete Planned Work
 
-- When the user issues `go`/`GO`, you MUST ensure all currently planned items for this request are implemented before committing/pushing.
+- When the user issues `go`/`GO`, you MUST ensure all open/pending planned work is implemented before committing/pushing.
+- "Planned work" includes both:
+  - the current request's ToDo list (in-chat)
+  - any remaining open items recorded in `./.opencode/plan_state.md` (if the file exists)
 - If implementing everything in one batch is not sensible (too risky/too large), you MUST:
   - explicitly state you are splitting into multiple smaller packages,
   - commit/push only the first package,

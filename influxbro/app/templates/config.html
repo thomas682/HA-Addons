@@ -227,6 +227,52 @@
           </div>
         </details>
 
+        <details class="card" id="ui_stats_cache" open data-ui="settings.ui.stats_cache" title="settings.ui.stats_cache">
+          <summary>Statistik Cache</summary>
+          <div class="card_body">
+          <div class="grid">
+            <div>
+              <label><input type="checkbox" id="stats_cache_enabled" /> Cache aktiv</label>
+              <div class="muted">Speichert Statistik-Ergebnisse unter <code>/data/stats_cache</code> und kann diese nach Seitenwechsel/Restart wiederverwenden.</div>
+            </div>
+            <div>
+              <label><input type="checkbox" id="stats_cache_auto_update" /> Automatisch aktualisieren</label>
+              <div class="muted">Nightly/inkrementell ueber Background-Jobs (siehe Jobs-Seite).</div>
+            </div>
+
+            <div>
+              <label>Intervall-Modus</label>
+              <select id="stats_cache_refresh_mode">
+                <option value="hours">alle X Stunden</option>
+                <option value="daily">taeglich (nightly)</option>
+              </select>
+              <div class="muted">Steuert, wann ein Cache als "stale" gilt.</div>
+            </div>
+            <div>
+              <label>X Stunden</label>
+              <input id="stats_cache_refresh_hours" type="number" min="1" max="720" />
+              <div class="muted">Gilt nur fuer Modus "alle X Stunden".</div>
+            </div>
+            <div>
+              <label>Taeglich um (HH:MM:SS)</label>
+              <input id="stats_cache_refresh_daily_at" placeholder="03:00:00" />
+              <div class="muted">Gilt nur fuer Modus "taeglich" (lokale Zeit im Add-on).</div>
+            </div>
+
+            <div>
+              <label>Max Cache Eintraege</label>
+              <input id="stats_cache_max_items" type="number" min="0" max="200" />
+              <div class="muted">0 = Cache ist effektiv aus (Eintraege werden sofort evicted).</div>
+            </div>
+            <div>
+              <label>Max Cache Groesse (MB)</label>
+              <input id="stats_cache_max_mb" type="number" min="0" max="2048" />
+              <div class="muted">Best-effort Eviction nach LRU.</div>
+            </div>
+          </div>
+          </div>
+        </details>
+
         <details class="card" id="ui_edit" open data-ui="settings.ui.edit" title="settings.ui.edit">
           <summary>Bearbeitungsliste</summary>
           <div class="card_body">
@@ -554,6 +600,8 @@ const ids = [
   ,"backup_dir"
   ,"dash_cache_enabled","dash_cache_auto_update","dash_cache_refresh_mode","dash_cache_refresh_hours","dash_cache_refresh_daily_at"
   ,"dash_cache_max_items","dash_cache_max_mb","dash_cache_update_on_use_if_stale"
+  ,"stats_cache_enabled","stats_cache_auto_update","stats_cache_refresh_mode","stats_cache_refresh_hours","stats_cache_refresh_daily_at"
+  ,"stats_cache_max_items","stats_cache_max_mb"
 ];
 
 const el = {};
@@ -648,6 +696,14 @@ function setForm(cfg){
   el.dash_cache_max_items.value = cfg.dash_cache_max_items ?? 40;
   el.dash_cache_max_mb.value = cfg.dash_cache_max_mb ?? 50;
   el.dash_cache_update_on_use_if_stale.checked = (cfg.dash_cache_update_on_use_if_stale !== false);
+
+  el.stats_cache_enabled.checked = (cfg.stats_cache_enabled !== false);
+  el.stats_cache_auto_update.checked = (cfg.stats_cache_auto_update !== false);
+  el.stats_cache_refresh_mode.value = String(cfg.stats_cache_refresh_mode ?? 'daily');
+  el.stats_cache_refresh_hours.value = cfg.stats_cache_refresh_hours ?? 24;
+  el.stats_cache_refresh_daily_at.value = cfg.stats_cache_refresh_daily_at ?? '03:00:00';
+  el.stats_cache_max_items.value = cfg.stats_cache_max_items ?? 10;
+  el.stats_cache_max_mb.value = cfg.stats_cache_max_mb ?? 50;
 }
 
 function getForm(){
@@ -728,6 +784,14 @@ function getForm(){
     dash_cache_max_items: parseInt(el.dash_cache_max_items.value, 10),
     dash_cache_max_mb: parseInt(el.dash_cache_max_mb.value, 10),
     dash_cache_update_on_use_if_stale: !!el.dash_cache_update_on_use_if_stale.checked,
+
+    stats_cache_enabled: !!el.stats_cache_enabled.checked,
+    stats_cache_auto_update: !!el.stats_cache_auto_update.checked,
+    stats_cache_refresh_mode: String(el.stats_cache_refresh_mode.value || 'daily'),
+    stats_cache_refresh_hours: parseInt(el.stats_cache_refresh_hours.value, 10),
+    stats_cache_refresh_daily_at: String(el.stats_cache_refresh_daily_at.value || '03:00:00').trim(),
+    stats_cache_max_items: parseInt(el.stats_cache_max_items.value, 10),
+    stats_cache_max_mb: parseInt(el.stats_cache_max_mb.value, 10),
   };
 }
 
