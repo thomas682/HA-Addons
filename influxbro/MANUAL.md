@@ -32,7 +32,7 @@ Aktuelle UI (Beispiele):
 
 ![Logs](images/LOG.png)
 
-### Jobs
+### Jobs & Cache
 
 ![Jobs](images/Jobs.png)
 
@@ -49,7 +49,7 @@ Links findest du die Bereiche:
 - Backup: Backups fuer einen einzelnen Messwert erstellen und verwalten.
 - Restore: Ein vorhandenes Backup fuer einen Messwert wiederherstellen.
 - Logs: Add-on Logs von InfluxBro ansehen (Menuepunkt ist unter Restore einsortiert).
-- Jobs: Laufende Background-Jobs ansehen (Statistik/Restore) und abbrechen.
+- Jobs & Cache: Laufende Background-Jobs ansehen (Statistik/Restore/Cache) und abbrechen.
 - Info: Influx Datenbank Diagnose (best-effort).
 - Changelog: Release Notes.
 - Handbuch: Diese Dokumentation.
@@ -226,7 +226,7 @@ Tipp: In der Toolbar gibt es Mehrfachaktionen (z.B. Werte davor uebernehmen oder
 - Export: erstellt ein Debug-Bundle (JSON, inkl. Client-Fehler wie "Failed to fetch").
 - Debug report: erstellt einen GitHub-freundlichen Report als Markdown-Datei (empfohlen fuer Issue/Kommentar).
 
-## Jobs
+## Jobs & Cache
 
 - Zeigt laufende Background-Jobs (z.B. Statistik laden, Restore/Copy).
 - Button `Cancel`: bricht den Job ab (bestaetigen).
@@ -240,6 +240,10 @@ Cache:
   - Statistik: `Aktualisieren`/`Loeschen`.
   - `Cache loeschen (alles)`: loescht Cache-Dateien unter `/data` (nur Cache, nicht die Datenbank).
 - Automatisches Cache-Update ist in `Einstellungen -> UI -> Dashboard Cache` bzw. `Einstellungen -> UI -> Statistik Cache` konfigurierbar.
+
+Timer Jobs:
+
+- Tabelle `Timer Jobs`: zeigt Intervall-/Nightly-Jobs mit naechstem Lauf (aus Einstellungen abgeleitet) und kurzer Erklaerung.
 
 ## Backup (ein Messwert, alle Werte)
 

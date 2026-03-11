@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.7
+
+### Features
+
+- Navigation: Menuepunkt heisst jetzt "Jobs & Cache".
+- Jobs & Cache: Cache-Tabelle zeigt zusaetzlich "last used".
+- Jobs & Cache: neue Tabelle "Timer Jobs" (naechster Lauf + Kommentar) fuer Intervall-/Nightly-Jobs.
+
+### Maintenance
+
+- Tested with Home Assistant Core: 2026.3.1
+
 ## 1.12.6
 
 ### Fixes

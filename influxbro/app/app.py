@@ -5349,6 +5349,69 @@ def _stats_cache_next_run_iso(cfg: dict[str, Any]) -> str | None:
         return None
 
 
+def _cache_schedule_next_run_iso(cfg: dict[str, Any], base: str) -> str | None:
+    """Compute next run for a cache scheduler (best-effort, local time)."""
+
+    try:
+        mode = str(cfg.get(f"{base}_refresh_mode") or "daily").strip().lower()
+        if mode not in ("hours", "daily"):
+            mode = "daily"
+
+        now_local = datetime.now().astimezone()
+        if mode == "hours":
+            try:
+                h = int(cfg.get(f"{base}_refresh_hours", 24) or 24)
+            except Exception:
+                h = 24
+            if h <= 0:
+                return None
+            nxt = now_local + timedelta(hours=h)
+            return nxt.astimezone(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+
+        at = str(cfg.get(f"{base}_refresh_daily_at") or "03:00:00").strip() or "03:00:00"
+        hh, mm, ss = 3, 0, 0
+        try:
+            parts = at.split(":")
+            hh = int(parts[0]) if len(parts) > 0 else 3
+            mm = int(parts[1]) if len(parts) > 1 else 0
+            ss = int(parts[2]) if len(parts) > 2 else 0
+        except Exception:
+            hh, mm, ss = 3, 0, 0
+        hh = min(23, max(0, hh))
+        mm = min(59, max(0, mm))
+        ss = min(59, max(0, ss))
+        run = now_local.replace(hour=hh, minute=mm, second=ss, microsecond=0)
+        if run <= now_local:
+            run = run + timedelta(days=1)
+        return run.astimezone(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+    except Exception:
+        return None
+
+
+@app.get("/api/timers")
+def api_timers():
+    cfg = load_cfg()
+    timers = [
+        {
+            "id": "dash_cache",
+            "enabled": bool(cfg.get("dash_cache_enabled", True)),
+            "auto_update": bool(cfg.get("dash_cache_auto_update", True)),
+            "mode": _cache_mode_str(cfg, "dash_cache"),
+            "next_run_at": _cache_schedule_next_run_iso(cfg, "dash_cache"),
+            "comment": "Aktualisiert faellige Dashboard Cache Eintraege im Hintergrund (dirty/mismatch/stale).",
+        },
+        {
+            "id": "stats_cache",
+            "enabled": bool(cfg.get("stats_cache_enabled", True)),
+            "auto_update": bool(cfg.get("stats_cache_auto_update", True)),
+            "mode": _cache_mode_str(cfg, "stats_cache"),
+            "next_run_at": _cache_schedule_next_run_iso(cfg, "stats_cache"),
+            "comment": "Aktualisiert faellige Statistik Cache Eintraege im Hintergrund (dirty/mismatch/stale).",
+        },
+    ]
+    return jsonify({"ok": True, "timers": timers})
+
+
 @app.get("/api/stats_cache/schedule")
 def api_stats_cache_schedule():
     cfg = load_cfg()

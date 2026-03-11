@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>InfluxBro – Jobs</title>
+  <title>InfluxBro – Jobs &amp; Cache</title>
   <style>
     body { font-family: system-ui, sans-serif; margin: 0; }
     .shell { display:grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
@@ -41,7 +41,7 @@
   <div class="shell">
     {% include "_nav.html" %}
     <main class="content" data-ui="jobs.page" title="jobs.page">
-      <h2>Jobs</h2>
+      <h2>Jobs &amp; Cache</h2>
       <div class="muted">Background-Jobs (Statistik, Restore/Copy). Hier kannst du laufende Jobs sehen und abbrechen.</div>
 
       <div class="card">
@@ -130,6 +130,7 @@
                 <th style="width: 100px;">Bereich</th>
                 <th style="width: 110px;">Ausloeser</th>
                 <th style="width: 160px;">updated</th>
+                <th style="width: 160px;">last used</th>
                 <th style="width: 160px;">next update</th>
                 <th style="width: 90px;">age</th>
                 <th style="width: 240px;">Modus</th>
@@ -141,6 +142,33 @@
                 <th style="width: 140px;">check</th>
                 <th style="width: 120px;">flags</th>
                 <th style="width: 220px;">actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" data-ui="timers.card" title="timers.card">
+        <div style="display:flex; align-items:baseline; justify-content:space-between; gap: 10px; flex-wrap:wrap;">
+          <div>
+            <div style="font-weight:800;">Timer Jobs</div>
+            <div class="muted">Intervall-/Nightly-Jobs (naechster Lauf wird aus den Einstellungen abgeleitet).</div>
+          </div>
+        </div>
+
+        <div class="status" id="timers_info" data-ui="timers.info" title="timers.info"></div>
+        <div id="timers_err" class="err"></div>
+
+        <div class="table_box">
+          <table id="timers_tbl" data-ui="timers.table" title="timers.table">
+            <thead>
+              <tr>
+                <th style="width: 140px;">id</th>
+                <th style="width: 140px;">enabled</th>
+                <th style="width: 260px;">Modus</th>
+                <th style="width: 180px;">next run</th>
+                <th>Kommentar</th>
               </tr>
             </thead>
             <tbody></tbody>
@@ -164,6 +192,10 @@
       const $cacheErr = document.getElementById('cache_err');
       const $cacheBody = document.querySelector('#cache_tbl tbody');
 
+      const $timersInfo = document.getElementById('timers_info');
+      const $timersErr = document.getElementById('timers_err');
+      const $timersBody = document.querySelector('#timers_tbl tbody');
+
       let POLL = null;
 
       function err(s){
@@ -180,6 +212,17 @@
       function cacheErr(s){
         const msg = s || '';
         $cacheErr.textContent = msg;
+        if(msg){
+          try{
+            if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error(msg);
+            else alert(msg);
+          }catch(e){}
+        }
+      }
+
+      function timersErr(s){
+        const msg = s || '';
+        if($timersErr) $timersErr.textContent = msg;
         if(msg){
           try{
             if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error(msg);
@@ -288,6 +331,7 @@
             `<td class="mono">${String(m.bereich||'')}</td>`,
             `<td class="mono">${String(m.ausloeser||'')}</td>`,
             `<td>${fmtTs(m.updated_at)}</td>`,
+            `<td>${fmtTs(m.last_used_at)}</td>`,
             `<td>${fmtTs(m.next_update_at)}</td>`,
             `<td class="mono">${fmtAge(m.age_seconds)}</td>`,
             `<td class="mono">${String(m.modus||'')}</td>`,
@@ -467,9 +511,30 @@
         renderCaches(LAST_CACHES);
       }
 
+      async function loadTimers(){
+        timersErr('');
+        if($timersInfo) $timersInfo.textContent = 'Lade...';
+        const j = await api('./api/timers', {});
+        const xs = j.timers || [];
+        if($timersBody) $timersBody.textContent = '';
+        for(const t of xs){
+          const tr = document.createElement('tr');
+          tr.innerHTML = [
+            `<td class="mono">${String(t.id||'')}</td>`,
+            `<td class="mono">${String((t.enabled ? 'true' : 'false'))} / auto=${String((t.auto_update ? 'true' : 'false'))}</td>`,
+            `<td class="mono">${String(t.mode||'')}</td>`,
+            `<td>${fmtTs(t.next_run_at)}</td>`,
+            `<td>${String(t.comment||'')}</td>`,
+          ].join('');
+          $timersBody.appendChild(tr);
+        }
+        if($timersInfo) $timersInfo.textContent = `Timer Jobs: ${xs.length}`;
+      }
+
       async function loadAll(){
         await loadJobs();
         await loadCaches();
+        await loadTimers();
       }
 
       $refresh.onclick = ()=>{ loadAll().catch(e => err(e && e.message ? e.message : String(e))); };
