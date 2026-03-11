@@ -19,8 +19,13 @@
     .ico { width: 22px; height: 22px; display:inline-flex; align-items:center; justify-content:center; font-weight: 800; }
     .content { padding: 16px; max-width: 980px; }
     .row { display:flex; gap:12px; flex-wrap:wrap; align-items:end; }
-    .grid { display:grid; grid-template-columns: repeat(2, minmax(260px, 1fr)); gap: 12px; align-items:start; }
-    @media (max-width: 860px){ .grid { grid-template-columns: 1fr; } }
+    /* Parameterliste: 1 Spalte (Titel/Control/Description pro Block) */
+    .grid { display:block; }
+    .grid > div { border: 1px solid #eee; border-radius: 12px; padding: 10px 12px; background: #fff; }
+    .grid > div + div { margin-top: 10px; }
+    .grid > div > .muted { margin-top: 6px; }
+    /* Notes inside a section (no box) */
+    .grid > .muted { border: 0; padding: 0; background: transparent; }
     label { display:block; font-size:12px; opacity:0.8; }
     input, select, button { padding:10px 12px; height: 40px; box-sizing: border-box; }
     input, select { width: 100%; }
@@ -39,7 +44,7 @@
     code { background:#f6f6f6; padding:2px 6px; border-radius:6px; }
     a { color: inherit; }
     .btn_stack { display:flex; flex-direction:column; gap: 12px; }
-    .span2 { grid-column: 1 / -1; }
+    .span2 { width: 100%; }
     .jump_hl { outline: 3px solid rgba(255, 153, 0, 0.55); outline-offset: 2px; border-radius: 10px; }
     .search_hit_btn { width: 100%; text-align: left; border: 1px solid #ddd; background: #fff; border-radius: 12px; padding: 10px 12px; cursor: pointer; }
     .search_hit_btn:hover { background: #f6f6f6; }

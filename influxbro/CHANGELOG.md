@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.12.14
+
+### Features
+
+- Einstellungen: Layout pro Abschnitt als 1-spaltige Parameterliste (Titel + Beschreibung + Control), mobil/desktop einheitlich.
+
+### Maintenance
+
+- Tested with Home Assistant Core: 2026.3.1
+
 ## 1.12.13
 
 ### Features
