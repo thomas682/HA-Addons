@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.12.5
+
+### Fixes
+
+- Dashboard: Klick auf Messpunkt zentriert die passende Raw-Zeile in der Tabelle (mit Kontextzeilen) und markiert sie.
+
+### Features
+
+- Dashboard: Anzeige des selektierten Messpunkts (Zeit/Wert/Serie) ueber dem Graph.
+- Raw: Tagesnavigation-Buttons (aeltester/juengster Tag, +/-1d, +/-7d; lokale Browserzeit).
+- Graph: Hover zeigt Zeitstempel im Format `tt.mm.yy hh:mm:ss.msec`.
+
+### Maintenance
+
+- Tested with Home Assistant Core: 2026.3.1
+
 ## 1.12.4
 
 ### Features
