@@ -58,6 +58,21 @@ When plan mode is active:
   - add chosen "implement now" issues to the in-chat ToDo list and to `./.opencode/plan_state.md` (with `#<id>` + title)
   - when the issue is completed/declined/deferred, update `./.opencode/plan_state.md` accordingly
 
+#### GitHub Issues: Proactive Prompting
+
+- In plan mode, after presenting the plan for the user's request, ALWAYS ask whether the user wants to triage GitHub Issues now.
+- After finishing implementation of the user's selected points (i.e. when the ToDo list is completed), ALSO ask whether the user wants to triage GitHub Issues next.
+
+Triage flow:
+- List open issues grouped by Bugs (`type/bug`) vs Enhancements (`type/enhancement`).
+- Let the user pick issues to:
+  - implement now
+  - defer
+  - decline
+- Before implementation, allow the user to add/clarify requirements per selected issue (short additions to title/body/acceptance criteria).
+  Apply these clarifications to the GitHub issue as a comment (or by editing the issue body) so the context is preserved.
+- Only issues explicitly chosen as "implement now" are synced into the in-chat ToDo list and mirrored into `./.opencode/plan_state.md`.
+
 ### Requirements Log (local, fallback)
 
 - If GitHub Issues are not available, record user requirements/requests (as written) in `./.opencode/requests_log.md` with date + status.
