@@ -197,6 +197,8 @@ Hinweis: Werte in Bearbeitung werden gelb markiert. Geaenderte (dirty) Zeilen we
 - Bearbeitung passiert als Staging in der Tabelle:
   - Spalte `Aktion`: `ueberschreiben` oder `loeschen`
   - Spalte `Neuwert`: neuer Zahlenwert (nur bei `ueberschreiben`)
+- Klick auf eine Zeile zeigt rechts das Detailpanel (Davor/Ziel/Danach) und fokussiert den Edit-Graph.
+- Im Detailpanel kann ein Wert selektiert und per `Uebernehmen als neuer Wert` als Neuwert vorgemerkt werden.
 - Button: `Aenderungen in Datenbank uebernehmen` (ueber der Bearbeitungsliste)
 - Sicherheitsmechanismus:
   - Aenderungen muessen im Dialog bestaetigt werden.

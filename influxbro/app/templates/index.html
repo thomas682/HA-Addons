@@ -483,15 +483,11 @@
            </div>
          </div>
        </div>
-         <div class="tbl_actions" id="edit_toolbar" style="justify-content:flex-start; margin-top: 10px; align-items:flex-start;" data-ui="editlist.toolbar" title="editlist.toolbar">
-           <button class="btn_sm" id="edit_btn_edit" disabled data-ui="editlist.edit" title="editlist.edit">Bearbeiten</button>
-           <button class="btn_sm" id="edit_btn_take_before" disabled data-ui="editlist.take_before" title="editlist.take_before">Werte davor uebernehmen</button>
-           <button class="btn_sm" id="edit_btn_take_avg" disabled data-ui="editlist.take_avg" title="editlist.take_avg">Durchschnitt davor+danach</button>
-           <button class="btn_sm" id="edit_btn_stage_delete" disabled data-ui="editlist.stage_delete" title="editlist.stage_delete">Werte loeschen</button>
-           <label style="display:flex; align-items:center; gap: 6px; font-size: 12px; opacity: 0.85; padding-top: 2px;"><input type="checkbox" id="edit_show_graph" class="row_sel" data-ui="editlist.show_graph" title="editlist.show_graph"/>Graph</label>
-           <span class="muted" id="edit_toolbar_info" style="padding-top: 6px;"></span>
-           <span style="flex:1;"></span>
-         </div>
+          <div class="tbl_actions" id="edit_toolbar" style="justify-content:flex-start; margin-top: 10px; align-items:flex-start;" data-ui="editlist.toolbar" title="editlist.toolbar">
+            <label style="display:flex; align-items:center; gap: 6px; font-size: 12px; opacity: 0.85; padding-top: 2px;"><input type="checkbox" id="edit_show_graph" class="row_sel" data-ui="editlist.show_graph" title="editlist.show_graph"/>Graph</label>
+            <span class="muted" id="edit_toolbar_info" style="padding-top: 6px;"></span>
+            <span style="flex:1;"></span>
+          </div>
          <div class="err" id="edit_apply_err" data-ui="editlist_apply_err" title="editlist_apply_err"></div>
 
         <div id="edit_split" style="display:flex; gap: 0; align-items:stretch; margin-top: 10px;" data-ui="editlist.split" title="editlist.split">
@@ -546,19 +542,43 @@
             <div style="position:absolute; left: 4px; top: 10px; bottom: 10px; width: 2px; background: rgba(0,0,0,0.12);"></div>
           </div>
 
-          <div id="edit_right" style="display:none; flex: 0 0 45%; min-width: 240px; padding-left: 12px; box-sizing: border-box;" data-ui="editlist.right" title="editlist.right">
-            <div class="card" style="margin-top: 0;" data-ui="editlist.right_graph" title="editlist.right_graph">
-              <div style="display:flex; align-items:baseline; justify-content:space-between; gap: 10px;">
-                <div style="font-weight:800;">Graph (Bearbeitungsliste)</div>
-                <button class="btn_sm" id="edit_graph_refresh" data-ui="editlist.graph_refresh" title="editlist.graph_refresh">Refresh</button>
-              </div>
-              <div class="muted" id="edit_graph_info" style="margin-top: 6px;"></div>
-              <div class="muted" id="edit_graph_counts" style="margin-top: 4px;"></div>
-              <div style="position:relative; margin-top: 8px;">
-                <div id="edit_graph_plot" style="width: 100%; height: 320px;"></div>
-              </div>
-            </div>
-          </div>
+           <div id="edit_right" style="display:none; flex: 0 0 45%; min-width: 240px; padding-left: 12px; box-sizing: border-box;" data-ui="editlist.right" title="editlist.right">
+             <div class="card" id="details_panel" style="margin-top: 0; display:none;" data-ui="editdetails.panel" title="editdetails.panel">
+               <div style="display:flex; align-items:baseline; justify-content:space-between; gap: 10px;">
+                 <div style="font-weight:800;">Details</div>
+                 <button class="btn_sm" id="details_close" data-ui="editdetails.close" title="editdetails.close">Schliessen</button>
+               </div>
+
+               <div class="tbl_actions" style="justify-content:flex-start; margin-top: 8px; gap: 8px; flex-wrap:wrap; align-items:flex-end;">
+                 <button class="btn_sm" id="edit_btn_edit" disabled data-ui="editlist.edit" title="editlist.edit">Bearbeiten</button>
+                 <button class="btn_sm" id="edit_btn_take_before" disabled data-ui="editlist.take_before" title="editlist.take_before">Wert davor</button>
+                 <button class="btn_sm" id="edit_btn_take_avg" disabled data-ui="editlist.take_avg" title="editlist.take_avg">Avg davor+danach</button>
+                 <button class="btn_sm" id="edit_btn_stage_delete" disabled data-ui="editlist.stage_delete" title="editlist.stage_delete">Wert loeschen</button>
+                 <button class="btn_sm" id="details_take" disabled data-ui="editdetails.take" title="editdetails.take">Uebernehmen als neuer Wert</button>
+               </div>
+
+               <pre id="details_info" style="margin:8px 0 0 0; padding:10px 12px; border:1px solid #eee; border-radius:12px; background:#fafafa; white-space:pre-wrap; overflow:auto; max-height: 140px; font-size: 12px;"></pre>
+
+               <div class="table_box" id="details_box" style="margin-top: 10px; --max-rows: 10; max-height: 55vh;">
+                 <table class="list_tbl" data-ui="editdetails.table" title="editdetails.table">
+                   <thead><tr><th style="width: 74px;">Typ</th><th style="min-width: 170px;">Zeit</th><th>Wert</th></tr></thead>
+                   <tbody id="details_rows"></tbody>
+                 </table>
+               </div>
+             </div>
+
+             <div class="card" id="edit_graph_card" style="margin-top: 12px;" data-ui="editlist.right_graph" title="editlist.right_graph">
+               <div style="display:flex; align-items:baseline; justify-content:space-between; gap: 10px;">
+                 <div style="font-weight:800;">Graph (Bearbeitungsliste)</div>
+                 <button class="btn_sm" id="edit_graph_refresh" data-ui="editlist.graph_refresh" title="editlist.graph_refresh">Refresh</button>
+               </div>
+               <div class="muted" id="edit_graph_info" style="margin-top: 6px;"></div>
+               <div class="muted" id="edit_graph_counts" style="margin-top: 4px;"></div>
+               <div style="position:relative; margin-top: 8px;">
+                 <div id="edit_graph_plot" style="width: 100%; height: 320px;"></div>
+               </div>
+             </div>
+           </div>
         </div>
 
 
@@ -780,6 +800,7 @@ const $editShowGraph = document.getElementById('edit_show_graph');
 const $editSplit = document.getElementById('edit_split');
 const $editLeft = document.getElementById('edit_left');
 const $editRight = document.getElementById('edit_right');
+const $editGraphCard = document.getElementById('edit_graph_card');
 const $editSplitHandle = document.getElementById('edit_split_handle');
 const $editGraphRefresh = document.getElementById('edit_graph_refresh');
 const $editGraphInfo = document.getElementById('edit_graph_info');
@@ -1961,15 +1982,9 @@ async function loadRowNeighbors(key){
   const k = String(key || "");
   if(!k) return;
   if(_NEIGHBOR_INFLIGHT) return;
-  if(!LAST_ROWS || !LAST_ROWS.length){
+  if((!LAST_ROWS || !LAST_ROWS.length) && !(OUTLIER_ACTIVE && OUTLIER_ROWS && OUTLIER_ROWS.length)){
     ROW_NEIGHBORS.set(k, { ok: false, error: "Bitte zuerst Daten laden (Aktualisieren).", older: [], newer: [], meta: "" });
-    renderTable();
-    return;
-  }
-  const win = _graphWindowForNeighbors();
-  if(!win){
-    ROW_NEIGHBORS.set(k, { ok: false, error: "Bitte im Graph einen Bereich waehlen (Zoom/Range-Slider).", older: [], newer: [], meta: "" });
-    renderTable();
+    try{ if(DETAILS_FOR_KEY === k) renderDetailsPanel(k); }catch(e){}
     return;
   }
 
@@ -1978,7 +1993,25 @@ async function loadRowNeighbors(key){
   if(!row && OUTLIER_ACTIVE) row = (OUTLIER_ROWS || []).find(r => rowKey(r) === k);
   if(!row){
     ROW_NEIGHBORS.set(k, { ok: false, error: "Zeile nicht gefunden.", older: [], newer: [], meta: "" });
-    renderTable();
+    try{ if(DETAILS_FOR_KEY === k) renderDetailsPanel(k); }catch(e){}
+    return;
+  }
+
+  // Detail- und Graph-Zeitfenster: konfigurierbar (Settings: ui_edit_graph_buffer_minutes).
+  let start = null;
+  let stop = null;
+  try{
+    const centerMs = Date.parse(String(row.time || ''));
+    const bufMin = Math.max(1, Number(UI_EDIT_GRAPH_BUFFER_MINUTES) || 0);
+    const buf = bufMin * 60 * 1000;
+    if(isFinite(centerMs)){
+      start = new Date(centerMs - buf).toISOString();
+      stop = new Date(centerMs + buf).toISOString();
+    }
+  }catch(e){}
+  if(!(start && stop)){
+    ROW_NEIGHBORS.set(k, { ok: false, error: "Ungueltiger Zeitpunkt.", older: [], newer: [], meta: "" });
+    try{ if(DETAILS_FOR_KEY === k) renderDetailsPanel(k); }catch(e){}
     return;
   }
 
@@ -1986,7 +2019,7 @@ async function loadRowNeighbors(key){
   _NEIGHBOR_INFLIGHT = true;
   try{
     ROW_NEIGHBORS.set(k, { ok: true, loading: true, error: null, older: [], newer: [], meta: "" });
-    renderTable();
+    try{ if(DETAILS_FOR_KEY === k) renderDetailsPanel(k); }catch(e){}
 
     const payload = {
       measurement: base.measurement,
@@ -1994,14 +2027,14 @@ async function loadRowNeighbors(key){
       entity_id: base.entity_id,
       friendly_name: base.friendly_name,
       center_time: row.time,
-      start: win.start,
-      stop: win.stop,
+      start,
+      stop,
       n: UI_EDIT_NEIGHBORS_N,
     };
     const j = await api("./api/point_neighbors", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)}, { key: "neighbors", silent: true });
     const older = j.older || [];
     const newer = j.newer || [];
-    const meta = `Zeitraum (Graph): ${fmtTs(win.start)} bis ${fmtTs(win.stop)}`;
+    const meta = `Zeitfenster: ${fmtTs(start)} bis ${fmtTs(stop)} (Puffer: ${UI_EDIT_GRAPH_BUFFER_MINUTES}min)`;
 
     ROW_NEIGHBORS.set(k, { ok: true, loading: false, error: null, older, newer, meta });
 
@@ -2019,10 +2052,10 @@ async function loadRowNeighbors(key){
       }
     }catch(e){}
 
-    renderTable();
+    try{ if(DETAILS_FOR_KEY === k) renderDetailsPanel(k); }catch(e){}
   }catch(ex){
     ROW_NEIGHBORS.set(k, { ok: false, loading: false, error: String(ex && ex.message ? ex.message : ex), older: [], newer: [], meta: "" });
-    renderTable();
+    try{ if(DETAILS_FOR_KEY === k) renderDetailsPanel(k); }catch(e){}
   }finally{
     _NEIGHBOR_INFLIGHT = false;
   }
@@ -4017,25 +4050,58 @@ function renderTable(){
     tdC.textContent = (rc === "secondary") ? "sekundaer" : "primaer";
 
     const tdAction = document.createElement('td');
-    const sel = document.createElement('select');
-    sel.className = 'inline';
-    sel.style.height = '30px';
-    sel.style.padding = '6px 8px';
-    sel.innerHTML = '<option value="">-</option><option value="overwrite">ueberschreiben</option><option value="delete">loeschen</option>';
-    sel.value = e ? String(e.action || '') : '';
-    sel.disabled = !FILTER_SELECTED.has(key) && !e;
-    sel.addEventListener('click', (ev)=>_stop(ev));
-    sel.addEventListener('change', ()=>{
-      ensureStagedByKey(key);
-      const cur = EDIT_LIST.get(key);
-      if(!cur) return;
-      cur.action = String(sel.value || '');
-      if(cur.action === 'delete') cur.new_value_str = '';
-      cur.reason = cur.reason || 'manuell';
-      cur.dirty = !!cur.action;
-      renderTable();
-    });
-    tdAction.appendChild(sel);
+    if(OUTLIER_ACTIVE){
+      const box = document.createElement('div');
+      box.style.display = 'flex';
+      box.style.gap = '6px';
+      box.style.alignItems = 'center';
+
+      const bDel = document.createElement('button');
+      bDel.className = 'btn_sm';
+      bDel.textContent = 'loeschen';
+      bDel.addEventListener('click', (ev)=>{
+        _stop(ev);
+        try{ FILTER_SELECTED.add(key); }catch(e){}
+        setAction(key, 'delete', 'Button: Wert loeschen');
+        renderTable();
+        showDetailsForKey(key);
+      });
+
+      const bOv = document.createElement('button');
+      bOv.className = 'btn_sm';
+      bOv.textContent = 'ueberschreiben';
+      bOv.addEventListener('click', (ev)=>{
+        _stop(ev);
+        try{ FILTER_SELECTED.add(key); }catch(e){}
+        setAction(key, 'overwrite', 'Button: ueberschreiben');
+        renderTable();
+        showDetailsForKey(key);
+      });
+
+      box.appendChild(bDel);
+      box.appendChild(bOv);
+      tdAction.appendChild(box);
+    }else{
+      const sel = document.createElement('select');
+      sel.className = 'inline';
+      sel.style.height = '30px';
+      sel.style.padding = '6px 8px';
+      sel.innerHTML = '<option value="">-</option><option value="overwrite">ueberschreiben</option><option value="delete">loeschen</option>';
+      sel.value = e ? String(e.action || '') : '';
+      sel.disabled = !FILTER_SELECTED.has(key) && !e;
+      sel.addEventListener('click', (ev)=>_stop(ev));
+      sel.addEventListener('change', ()=>{
+        ensureStagedByKey(key);
+        const cur = EDIT_LIST.get(key);
+        if(!cur) return;
+        cur.action = String(sel.value || '');
+        if(cur.action === 'delete') cur.new_value_str = '';
+        cur.reason = cur.reason || 'manuell';
+        cur.dirty = (cur.action === 'delete') || (cur.action === 'overwrite' && String(cur.new_value_str || '').trim() !== '');
+        renderTable();
+      });
+      tdAction.appendChild(sel);
+    }
 
     const tdNew = document.createElement('td');
     const inp = document.createElement('input');
@@ -4066,87 +4132,10 @@ function renderTable(){
       if(FILTER_SELECTED.has(key)) FILTER_SELECTED.delete(key); else FILTER_SELECTED.add(key);
       saveState();
       renderTable();
+      showDetailsForKey(key);
     });
 
     $tbl.appendChild(tr);
-
-    // Inline details under each outlier row (preloaded on scan)
-    if(OUTLIER_ACTIVE){
-      try{
-        const trD = document.createElement('tr');
-        trD.className = 'row_details';
-        const td = document.createElement('td');
-        td.colSpan = 7;
-        td.style.padding = '6px 8px 10px 8px';
-
-        const det = document.createElement('details');
-        det.open = ROW_DETAILS_OPEN.has(key);
-        det.addEventListener('toggle', ()=>{
-          try{ if(det.open) ROW_DETAILS_OPEN.add(key); else ROW_DETAILS_OPEN.delete(key); }catch(e){}
-        });
-
-        const sum = document.createElement('summary');
-        sum.textContent = 'Details (Davor / Danach)';
-        sum.style.cursor = 'pointer';
-        det.appendChild(sum);
-
-        const box = document.createElement('div');
-        box.style.marginTop = '6px';
-        box.style.border = '1px solid rgba(0,0,0,0.08)';
-        box.style.borderRadius = '12px';
-        box.style.padding = '8px 10px';
-        box.style.background = '#fafafa';
-
-        const n = _neighborsCacheGet(key);
-        const meta = document.createElement('div');
-        meta.className = 'muted';
-        meta.style.whiteSpace = 'pre-wrap';
-        if(!n){
-          meta.textContent = 'Lade Details...';
-        }else if(n.loading){
-          meta.textContent = 'Lade Details...';
-        }else if(n.error){
-          meta.textContent = String(n.error);
-        }else{
-          meta.textContent = String(n.meta || '');
-        }
-        box.appendChild(meta);
-
-        const tbl = document.createElement('table');
-        tbl.style.width = '100%';
-        tbl.style.marginTop = '6px';
-        tbl.style.borderCollapse = 'collapse';
-        const thead = document.createElement('thead');
-        thead.innerHTML = '<tr><th style="text-align:left; width: 90px; font-size: 12px; opacity: 0.75;">Typ</th><th style="text-align:left; width: 170px; font-size: 12px; opacity: 0.75;">Zeit</th><th style="text-align:left; font-size: 12px; opacity: 0.75;">Wert</th></tr>';
-        tbl.appendChild(thead);
-        const tbody = document.createElement('tbody');
-
-        const add = (typ, ts, val)=>{
-          const tr = document.createElement('tr');
-          const td1 = document.createElement('td'); td1.textContent = typ;
-          const td2 = document.createElement('td'); td2.textContent = fmtTs(String(ts||''));
-          const td3 = document.createElement('td'); td3.textContent = (val===null||val===undefined)?'':fmtNum(val);
-          td1.style.padding = '2px 6px 2px 0';
-          td2.style.padding = '2px 6px 2px 0';
-          td3.style.padding = '2px 0';
-          tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3);
-          tbody.appendChild(tr);
-        };
-
-        if(n && n.ok && !n.loading && !n.error){
-          (n.older || []).forEach(r => add('davor', r.time, r.value));
-          add('ziel', row.time, row.value);
-          (n.newer || []).forEach(r => add('danach', r.time, r.value));
-        }
-
-        tbl.appendChild(tbody);
-        box.appendChild(tbl);
-        det.appendChild(box);
-        td.appendChild(det);
-        trD.appendChild(td);
-        $tbl.appendChild(trD);
-      }catch(e){}
-    }
   });
 
   _renderSelAll($tblSelAll, keysInView, FILTER_SELECTED);
@@ -4210,7 +4199,7 @@ function setAction(key, action, reason){
   e.action = String(action || "");
   if(e.action === 'delete') e.new_value_str = '';
   e.reason = String(reason || e.reason || 'manuell');
-  e.dirty = !!e.action;
+  e.dirty = (e.action === 'delete') || (e.action === 'overwrite' && String(e.new_value_str || '').trim() !== '');
 }
 
 function setNewValue(key, raw, reason){
@@ -4425,6 +4414,34 @@ function renderDetailsPanel(key){
   }catch(e){}
 }
 
+function showDetailsForKey(key){
+  try{
+    const k = String(key || '');
+    if(!k) return;
+
+    // In outlier mode, show the graph by default (fast switching / visual verification).
+    let wantGraph = false;
+    try{
+      const cur = !!($editShowGraph && $editShowGraph.checked);
+      wantGraph = cur || !!OUTLIER_ACTIVE;
+    }catch(e){ wantGraph = true; }
+    try{ _setEditGraphVisible(wantGraph); }catch(e){}
+
+    // Ensure the right panel is visible (details live there).
+    try{
+      if($editRight) $editRight.style.display = 'block';
+      if($editSplitHandle) $editSplitHandle.style.display = 'block';
+      const p = Number(localStorage.getItem(EDIT_SPLIT_LEFT_PCT_KEY) || '55');
+      _applySplitPct(p);
+    }catch(e){}
+
+    renderDetailsPanel(k);
+    scheduleEditNeighborsLoad(k);
+
+    try{ if(wantGraph) refreshEditGraph().catch(()=>{}); }catch(e){}
+  }catch(e){}
+}
+
 async function openDetailsForSelection(){
   const keys = _selectedKeysSorted();
   const k = keys.length ? keys[0] : '';
@@ -4459,8 +4476,10 @@ const EDIT_SPLIT_LEFT_PCT_KEY = 'influxbro_edit_split_left_pct_v1';
 function _setEditGraphVisible(on){
   const v = !!on;
   try{ if($editShowGraph) $editShowGraph.checked = v; }catch(e){}
-  try{ if($editRight) $editRight.style.display = v ? 'block' : 'none'; }catch(e){}
-  try{ if($editSplitHandle) $editSplitHandle.style.display = v ? 'block' : 'none'; }catch(e){}
+  const wantRight = v || !!OUTLIER_ACTIVE;
+  try{ if($editRight) $editRight.style.display = wantRight ? 'block' : 'none'; }catch(e){}
+  try{ if($editSplitHandle) $editSplitHandle.style.display = wantRight ? 'block' : 'none'; }catch(e){}
+  try{ if($editGraphCard) $editGraphCard.style.display = v ? 'block' : 'none'; }catch(e){}
   try{ localStorage.setItem(EDIT_GRAPH_SHOW_KEY, v ? '1' : '0'); }catch(e){}
 }
 
@@ -4540,14 +4559,37 @@ async function refreshEditGraph(){
   }
   const xs = rows.map(r=>Date.parse(String(r && r.time ? r.time : ''))).filter(t=>isFinite(t));
   if(!xs.length) return;
-  const mn = Math.min(...xs);
-  const mx = Math.max(...xs);
   const buf = Math.max(0, Number(UI_EDIT_GRAPH_BUFFER_MINUTES)) * 60 * 1000;
-  const start = new Date(mn - buf).toISOString();
-  const stop = new Date(mx + buf).toISOString();
+
+  // Focus window around the active details row (fast switching).
+  let focusKey = String(DETAILS_FOR_KEY || '').trim();
+  let focusRow = null;
+  let focusMs = null;
+  try{
+    if(focusKey){
+      focusRow = rows.find(r => rowKey(r) === focusKey) || null;
+      const ms = focusRow ? Date.parse(String(focusRow.time || '')) : NaN;
+      if(isFinite(ms)) focusMs = ms;
+    }
+  }catch(e){ focusMs = null; focusRow = null; }
+
+  let start = null;
+  let stop = null;
+  if(focusMs !== null && isFinite(focusMs)){
+    start = new Date(focusMs - buf).toISOString();
+    stop = new Date(focusMs + buf).toISOString();
+  }else{
+    const mn = Math.min(...xs);
+    const mx = Math.max(...xs);
+    start = new Date(mn - buf).toISOString();
+    stop = new Date(mx + buf).toISOString();
+  }
   const base = currentFilters();
 
-  if($editGraphInfo) $editGraphInfo.textContent = `Zeitfenster: ${fmtTs(start)} bis ${fmtTs(stop)} (Puffer: ${UI_EDIT_GRAPH_BUFFER_MINUTES}min)`;
+  if($editGraphInfo){
+    const f = (focusRow && focusRow.time) ? (` | Fokus: ${fmtTs(String(focusRow.time))}`) : '';
+    $editGraphInfo.textContent = `Zeitfenster: ${fmtTs(start)} bis ${fmtTs(stop)} (Puffer: ${UI_EDIT_GRAPH_BUFFER_MINUTES}min)` + f;
+  }
 
   const payload = {
     measurement: base.measurement,
@@ -4611,6 +4653,21 @@ async function refreshEditGraph(){
       hovertemplate: '%{text}<br>%{y}<extra></extra>',
     },
   ];
+
+  // Highlight the focused row.
+  try{
+    if(focusRow && focusMs !== null && isFinite(focusMs)){
+      traces.push({
+        x: [new Date(focusMs)],
+        y: [focusRow.value],
+        text: [fmtTs(String(focusRow.time || ''))],
+        mode: 'markers',
+        name: 'Fokus',
+        marker: {size: 12, color: '#2463eb', line: {width: 2, color: '#fff'} },
+        hovertemplate: '%{text}<br>%{y}<extra></extra>',
+      });
+    }
+  }catch(e){}
 
   // Force client-local tick labels (avoid UTC formatting differences).
   let tickvals = null;
@@ -5482,6 +5539,7 @@ function clearFilterTable(){
     OUTLIER_ROWS = [];
     saveState();
   }catch(e){}
+  try{ _setEditGraphVisible(!!($editShowGraph && $editShowGraph.checked)); }catch(e){}
   renderTable();
 }
 
