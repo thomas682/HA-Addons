@@ -28,6 +28,13 @@
     code { background:#f6f6f6; padding:2px 6px; border-radius:6px; }
 
     textarea.resizable { resize: vertical; min-height: 140px; }
+
+    /* Simple modal (no dependencies) */
+    .modal { display:none; position:fixed; inset:0; z-index: 10040; background: rgba(0,0,0,0.45); padding: 6vh 12px 12px 12px; box-sizing:border-box; overflow:auto; }
+    .modal .card { max-width: 760px; margin: 0 auto; background:#fff; border-radius: 16px; box-shadow: 0 12px 60px rgba(0,0,0,0.28); padding: 14px 14px 12px 14px; }
+    .modal .head { display:flex; align-items:baseline; justify-content:space-between; gap:12px; }
+    .modal .title { font-weight: 800; font-size: 16px; }
+    .modal .actions { display:flex; justify-content:flex-end; gap: 10px; margin-top: 10px; flex-wrap:wrap; }
   </style>
 </head>
 <body>
@@ -146,6 +153,27 @@
         <div id="ok" class="ok"></div>
       </div>
 
+      <div id="target_modal" class="modal" aria-hidden="true" data-ui="export.target.modal" title="export.target.modal">
+        <div class="card">
+          <div class="head">
+            <div class="title">Export Ziel</div>
+            <button id="target_close" type="button">Schliessen</button>
+          </div>
+          <div class="muted" style="margin-top: 8px;">Zielordner fuer die Export-Datei. Relative Pfade werden unter <code>/data</code> abgelegt (z.B. <code>exports</code>).</div>
+          <div class="grid" style="margin-top: 12px;">
+            <div>
+              <label>Zielordner (relativ zu /data oder absolut unter /data|/config)</label>
+              <input id="target_dir" placeholder="exports" />
+              <div class="muted">Beispiel: <code>exports</code> oder <code>/config/influxbro/exports</code>.</div>
+            </div>
+          </div>
+          <div class="actions">
+            <button id="target_cancel" type="button">Abbrechen</button>
+            <button id="target_ok" type="button">OK</button>
+          </div>
+        </div>
+      </div>
+
       <script>
       const LS_KEY = "influxbro_ui_state_v1";
       const $mf = document.getElementById('measurement_filter');
@@ -170,6 +198,12 @@
       const $hint = document.getElementById('hint');
       const $status = document.getElementById('status');
 
+      const $targetModal = document.getElementById('target_modal');
+      const $targetDir = document.getElementById('target_dir');
+      const $targetOk = document.getElementById('target_ok');
+      const $targetCancel = document.getElementById('target_cancel');
+      const $targetClose = document.getElementById('target_close');
+
       const $sel = document.getElementById('sel');
       const $seriesInfo = document.getElementById('series_info');
 
@@ -180,6 +214,40 @@
       let POLL_T = null;
       let LAST_DOWNLOAD_URL = null;
       let AUTO_DL_DONE = false;
+
+      const LS_TARGET = 'influxbro_export_target_dir_v1';
+
+      function showTargetModal(){
+        return new Promise((resolve)=>{
+          try{
+            if(!$targetModal) return resolve(null);
+            const prev = (localStorage.getItem(LS_TARGET) || '').trim();
+            if($targetDir && !$targetDir.value) $targetDir.value = prev || 'exports';
+            $targetModal.style.display = 'block';
+            $targetModal.setAttribute('aria-hidden','false');
+
+            const done = (val)=>{
+              try{ $targetModal.style.display = 'none'; }catch(e){}
+              try{ $targetModal.setAttribute('aria-hidden','true'); }catch(e){}
+              resolve(val);
+            };
+
+            const onOk = (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}; const v = String($targetDir && $targetDir.value ? $targetDir.value : '').trim(); try{ localStorage.setItem(LS_TARGET, v); }catch(e){}; done(v || 'exports'); };
+            const onCancel = (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}; done(null); };
+            const onBackdrop = (ev)=>{ if(ev && ev.target === $targetModal) onCancel(ev); };
+            const onKey = (ev)=>{ try{ if(ev && ev.key === 'Escape') onCancel(ev); }catch(e){} };
+
+            $targetOk.onclick = onOk;
+            $targetCancel.onclick = onCancel;
+            $targetClose.onclick = onCancel;
+            $targetModal.addEventListener('click', onBackdrop, { once: true });
+            document.addEventListener('keydown', onKey, { once: true });
+            try{ if($targetDir) $targetDir.focus(); }catch(e){}
+          }catch(e){
+            resolve(null);
+          }
+        });
+      }
 
       // Hook for the shared "Darstellung speichern" button (sidebar).
       try{
@@ -409,6 +477,12 @@
         err(''); ok('');
         try{ window.InfluxBroStatus && window.InfluxBroStatus.start && window.InfluxBroStatus.start('export.run', 'Export laeuft...'); }catch(e){}
         try{
+          const target = await showTargetModal();
+          if(target === null){
+            setStatus('Abgebrochen.');
+            try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done('export.run', 'Abgebrochen.'); }catch(e){}
+            return;
+          }
           await refreshResolved();
           const tf = timeFilter();
           const tz = clientTz();
@@ -426,6 +500,7 @@
             stop: tf.stop,
             tz_name: tz.tz_name,
             tz_offset_minutes: tz.tz_offset_minutes,
+            target_dir: String(target || 'exports'),
           };
           if(!payload.measurement || !payload.field) throw new Error('measurement/field fehlt. Bitte Auswahl setzen.');
           setStatus('Starte Export Job...');

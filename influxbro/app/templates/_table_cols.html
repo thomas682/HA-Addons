@@ -190,3 +190,114 @@
   };
 })();
 </script>
+
+<script>
+// Shared helper: show table column explanations (best-effort)
+(function(){
+  if(window.InfluxBroTableInfo) return;
+
+  function _norm(s){
+    return String(s || '').replace(/\s+/g, ' ').trim();
+  }
+
+  function _getTable(table){
+    if(!table) return null;
+    if(typeof table === 'string') return document.querySelector(table);
+    return table;
+  }
+
+  function _stripKeySuffix(title){
+    const t = _norm(title);
+    // Tooltips append (key) at the end; remove for readability.
+    return t.replace(/\s*\([^\)]+\)\s*$/g, '').trim();
+  }
+
+  function describeTable(tbl){
+    const ths = Array.from(tbl.querySelectorAll('thead th'));
+    const lines = [];
+    ths.forEach((th, idx)=>{
+      const name = _norm(th.textContent);
+      const ttl = _stripKeySuffix(th.getAttribute('title'));
+      const desc = ttl && ttl !== name ? ttl : '';
+      lines.push(`${idx+1}. ${name}${desc ? (' - ' + desc) : ''}`);
+    });
+    return lines.join('\n');
+  }
+
+  function show(table){
+    const tbl = _getTable(table);
+    if(!tbl) return;
+    const id = _norm(tbl.getAttribute('id'));
+    const title = id ? ('Tabelleninfo: ' + id) : 'Tabelleninfo';
+    const msg = describeTable(tbl);
+    try{
+      if(window.InfluxBroPopup && window.InfluxBroPopup.show) window.InfluxBroPopup.show(title, msg);
+      else alert(msg);
+    }catch(e){
+      try{ alert(msg); }catch(x){}
+    }
+  }
+
+  function _ensureButtonForTable(tbl){
+    try{
+      if(!tbl || !tbl.getAttribute) return;
+      const tid = _norm(tbl.getAttribute('id'));
+      if(!tid) return;
+
+      // Prefer adding the button to a nearby .table_head.
+      const wrap = tbl.closest('.table_wrap');
+      const head = wrap ? wrap.querySelector('.table_head') : null;
+      const host = head || (wrap || tbl.parentElement);
+      if(!host) return;
+
+      const existing = host.querySelector && host.querySelector(`button[data-table-info="${tid}"]`);
+      if(existing) return;
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = '(i)';
+      btn.setAttribute('data-table-info', tid);
+      btn.style.cursor = 'pointer';
+      btn.style.height = '30px';
+      btn.style.padding = '6px 10px';
+      btn.style.marginLeft = '8px';
+      btn.style.opacity = '0.85';
+      btn.addEventListener('click', (ev)=>{
+        try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+        show(tbl);
+      });
+
+      if(head){
+        // Place on the right side if possible.
+        try{ head.style.alignItems = 'center'; }catch(e){}
+        host.appendChild(btn);
+      }else{
+        host.insertBefore(btn, host.firstChild);
+      }
+    }catch(e){}
+  }
+
+  function inject(){
+    try{
+      document.querySelectorAll('table[id]').forEach(tbl=>_ensureButtonForTable(tbl));
+    }catch(e){}
+  }
+
+  window.InfluxBroTableInfo = { show, inject };
+
+  try{
+    if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', inject);
+    else inject();
+  }catch(e){}
+
+  // Keep it in sync with dynamic DOM updates.
+  try{
+    let t = null;
+    const obs = new MutationObserver(()=>{
+      if(t) return;
+      t = setTimeout(()=>{ t = null; inject(); }, 120);
+    });
+    obs.observe(document.body, { childList:true, subtree:true });
+  }catch(e){}
+})();
+</script>

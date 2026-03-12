@@ -53,6 +53,27 @@ HISTORY_PATH = DATA_DIR / "influxbro_history.jsonl"
 EXPORT_DIR = DATA_DIR / "exports"
 IMPORT_DIR = DATA_DIR / "imports"
 
+
+def export_dir_from_target(target: str | None) -> Path:
+    """Resolve an export target directory (constrained under /data or /config)."""
+
+    raw = str(target or "").strip()
+    if not raw:
+        return EXPORT_DIR
+    try:
+        p = Path(raw)
+        if not p.is_absolute():
+            # Relative paths live under /data.
+            p = DATA_DIR / raw
+        p = p.resolve()
+        cfg_root = CONFIG_DIR.resolve()
+        data_root = DATA_DIR.resolve()
+        if _path_is_within(cfg_root, p) or _path_is_within(data_root, p):
+            return p
+    except Exception:
+        pass
+    return EXPORT_DIR
+
 # Dashboard query cache (server-side, persisted under /data)
 DASH_CACHE_DIR = DATA_DIR / "dash_cache"
 DASH_CACHE_LOCK = threading.RLock()
@@ -586,10 +607,20 @@ DEFAULT_CFG = {
 
     "ui_font_size_px": 14,
     "ui_font_small_px": 11,
+    "ui_status_font_px": 12,
     "ui_checkbox_scale": 0.85,
     "ui_filter_label_width_px": 170,
     "ui_filter_control_width_px": 320,
     "ui_filter_search_width_px": 160,
+
+    # Jobs UI colors (used by Jobs & Cache table)
+    "ui_job_color_running": "#eef3ff",
+    "ui_job_color_done": "#eefaf1",
+    "ui_job_color_error": "#fff0f0",
+    "ui_job_color_cancelled": "#f6f6f6",
+
+    # Safety: auto-cancel jobs after N seconds (0 = disabled)
+    "jobs_max_runtime_seconds": 0,
 
     # Restore
     "restore_preview_lines": 5,
@@ -878,6 +909,26 @@ def _backup_disk_usage_bytes(cfg: dict[str, Any]) -> dict[str, int] | None:
         return None
 
 
+def _addon_data_usage_bytes() -> int | None:
+    """Return total bytes used under /data for this add-on (best-effort)."""
+
+    try:
+        total = 0
+        root = DATA_DIR
+        if not root.exists():
+            return 0
+        for base, _, files in os.walk(str(root)):
+            for fn in files:
+                try:
+                    p = os.path.join(base, fn)
+                    total += int(os.path.getsize(p) or 0)
+                except Exception:
+                    continue
+        return int(total)
+    except Exception:
+        return None
+
+
 def _backup_require_free_space(cfg: dict[str, Any]) -> tuple[bool, str | None]:
     """Return (ok, error_message) according to backup_min_free_mb."""
 
@@ -913,6 +964,26 @@ def save_cfg(cfg: dict) -> None:
 
 def _utc_now_iso_ms() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+
+
+def _meta_add_event(meta: dict[str, Any], kind: str, note: str | None = None, at: str | None = None) -> None:
+    """Append a small timestamped event to a cache/job meta dict (best-effort)."""
+
+    try:
+        xs = meta.get("events")
+        events: list[dict[str, Any]] = xs if isinstance(xs, list) else []
+        events = [e for e in events if isinstance(e, dict)]
+        events.append({
+            "at": str(at or _utc_now_iso_ms()),
+            "kind": str(kind or "event"),
+            "note": (str(note)[:400] if note else ""),
+        })
+        # Keep meta small.
+        if len(events) > 60:
+            events = events[-60:]
+        meta["events"] = events
+    except Exception:
+        return
 
 
 def _dash_cache_meta_path(cache_id: str) -> Path:
@@ -1186,6 +1257,7 @@ def _dash_cache_mark_dirty_series(
             meta["dirty"] = True
             meta["dirty_reason"] = str(reason or "").strip() or "changed"
             meta["dirty_at"] = _utc_now_iso_ms()
+            _meta_add_event(meta, "dirty", str(meta.get("dirty_reason") or ""), at=str(meta.get("dirty_at") or ""))
             _dash_cache_write_meta(meta)
             marked += 1
         except Exception:
@@ -1204,6 +1276,7 @@ def _dash_cache_mark_dirty_id(cache_id: str, reason: str) -> bool:
         meta["dirty"] = True
         meta["dirty_reason"] = str(reason or "").strip() or "changed"
         meta["dirty_at"] = _utc_now_iso_ms()
+        _meta_add_event(meta, "dirty", str(meta.get("dirty_reason") or ""), at=str(meta.get("dirty_at") or ""))
         _dash_cache_write_meta(meta)
         return True
     except Exception:
@@ -1260,12 +1333,18 @@ def _dash_cache_store(
             "last_check_note": meta.get("last_check_note"),
             "last_update_at": now,
             "last_update_note": meta.get("last_update_note"),
+            "events": meta.get("events") if isinstance(meta.get("events"), list) else [],
         }
         try:
             m = payload.get("meta") if isinstance(payload.get("meta"), dict) else {}
             tp = m.get("total_points") if isinstance(m, dict) else None
             if isinstance(tp, (int, float)):
                 out["total_points"] = int(tp)
+        except Exception:
+            pass
+
+        try:
+            _meta_add_event(out, "store", f"rows={row_count} trigger={created_trigger}", at=now)
         except Exception:
             pass
 
@@ -1284,7 +1363,9 @@ def _dash_cache_touch_used(cache_id: str) -> None:
         meta = _dash_cache_load_meta(cache_id)
         if not meta:
             return
-        meta["last_used_at"] = _utc_now_iso_ms()
+        now = _utc_now_iso_ms()
+        meta["last_used_at"] = now
+        _meta_add_event(meta, "used", None, at=now)
         _dash_cache_write_meta(meta)
     except Exception:
         return
@@ -1533,6 +1614,30 @@ def _dash_cache_job_thread(job_id: str, action: str, cache_id: str) -> None:
                 return
 
         cfg = _overlay_from_yaml_if_enabled(load_cfg())
+
+        def is_cancelled() -> bool:
+            with DASH_CACHE_JOBS_LOCK:
+                j2 = DASH_CACHE_JOBS.get(job_id) or {}
+                if bool(j2.get("cancelled")):
+                    return True
+                try:
+                    max_s = int(cfg.get("jobs_max_runtime_seconds", 0) or 0)
+                except Exception:
+                    max_s = 0
+                if max_s <= 0:
+                    return False
+                try:
+                    started_mono = float(j2.get("started_mono") or 0.0)
+                except Exception:
+                    started_mono = 0.0
+                if started_mono > 0 and (time.monotonic() - started_mono) >= float(max_s):
+                    DASH_CACHE_JOBS[job_id]["cancelled"] = True
+                    try:
+                        LOG.warning("job_auto_cancel type=dash_cache job_id=%s reason=max_runtime_seconds exceeded (%s)", job_id, max_s)
+                    except Exception:
+                        pass
+                    return True
+                return False
         meta = _dash_cache_load_meta(cache_id)
         if not meta:
             set_state("error", "Cache nicht gefunden")
@@ -1546,11 +1651,9 @@ def _dash_cache_job_thread(job_id: str, action: str, cache_id: str) -> None:
 
         now = _utc_now_iso_ms()
 
-        with DASH_CACHE_JOBS_LOCK:
-            j = DASH_CACHE_JOBS.get(job_id) or {}
-            if bool(j.get("cancelled")):
-                set_state("cancelled", "Abgebrochen")
-                return
+        if is_cancelled():
+            set_state("cancelled", "Abgebrochen")
+            return
 
         if action == "delete":
             try:
@@ -1593,6 +1696,7 @@ def _dash_cache_job_thread(job_id: str, action: str, cache_id: str) -> None:
             meta["last_check_ok"] = (not mismatch)
             meta["last_check_note"] = ("ok" if not mismatch else ("changed: " + ",".join(note)))
             meta["mismatch"] = bool(mismatch)
+            _meta_add_event(meta, "check", str(meta.get("last_check_note") or ""), at=now)
             _dash_cache_write_meta(meta)
             set_state("done", "Pruefung fertig")
             return
@@ -1632,6 +1736,7 @@ def _dash_cache_job_thread(job_id: str, action: str, cache_id: str) -> None:
         meta2["dirty_reason"] = None
         meta2["dirty_at"] = None
         meta2["mismatch"] = False
+        _meta_add_event(meta2, "update", "updated", at=now)
         _dash_cache_write_meta(meta2)
         set_state("done", "Cache aktualisiert")
     except _ApiError as e:
@@ -1908,7 +2013,9 @@ def _stats_cache_touch_used(cache_id: str) -> None:
         meta = _stats_cache_load_meta(cache_id)
         if not meta:
             return
-        meta["last_used_at"] = _utc_now_iso_ms()
+        now = _utc_now_iso_ms()
+        meta["last_used_at"] = now
+        _meta_add_event(meta, "used", None, at=now)
         _stats_cache_write_meta(meta)
     except Exception:
         return
@@ -1998,6 +2105,7 @@ def _stats_cache_mark_dirty_series(
                 meta["dirty"] = True
                 meta["dirty_reason"] = str(reason or "")[:80]
                 meta["dirty_at"] = _utc_now_iso_ms()
+                _meta_add_event(meta, "dirty", str(meta.get("dirty_reason") or ""), at=str(meta.get("dirty_at") or ""))
                 _stats_cache_write_meta(meta)
             except Exception:
                 continue
@@ -3379,7 +3487,27 @@ def _backup_job_thread(
     def is_cancelled() -> bool:
         with BACKUP_LOCK:
             j = BACKUP_JOBS.get(job_id) or {}
-            return bool(j.get("cancelled"))
+            if bool(j.get("cancelled")):
+                return True
+
+            try:
+                max_s = int(cfg.get("jobs_max_runtime_seconds", 0) or 0)
+            except Exception:
+                max_s = 0
+            if max_s <= 0:
+                return False
+            try:
+                started_mono = float(j.get("started_mono") or 0.0)
+            except Exception:
+                started_mono = 0.0
+            if started_mono > 0 and (time.monotonic() - started_mono) >= float(max_s):
+                BACKUP_JOBS[job_id]["cancelled"] = True
+                try:
+                    LOG.warning("job_auto_cancel type=backup job_id=%s reason=max_runtime_seconds exceeded (%s)", job_id, max_s)
+                except Exception:
+                    pass
+                return True
+            return False
 
     bdir = backup_dir(cfg)
     bdir.mkdir(parents=True, exist_ok=True)
@@ -3698,7 +3826,15 @@ def api_backup_location():
     cfg = load_cfg()
     bdir = backup_dir(cfg)
     du = _backup_disk_usage_bytes(cfg)
-    return jsonify({"ok": True, "container_path": str(bdir), "slug": "influxbro", "disk_usage": du, "min_free_mb": cfg.get("backup_min_free_mb", 0)})
+    addon_used = _addon_data_usage_bytes()
+    return jsonify({
+        "ok": True,
+        "container_path": str(bdir),
+        "slug": "influxbro",
+        "disk_usage": du,
+        "addon_used_bytes": addon_used,
+        "min_free_mb": cfg.get("backup_min_free_mb", 0),
+    })
 
 
 @app.get("/api/backup_download")
@@ -5473,8 +5609,129 @@ def api_timers():
             "next_run_at": _cache_schedule_next_run_iso(cfg, "stats_cache"),
             "comment": "Aktualisiert faellige Statistik Cache Eintraege im Hintergrund (dirty/mismatch/stale).",
         },
+        {
+            "id": "stats_full",
+            "enabled": True,
+            "auto_update": False,
+            "mode": "manual",
+            "next_run_at": None,
+            "comment": "Manueller Job: laedt Statistik komplett (inkl. Details wie count/min/max/mean) fuer alle Serien.",
+        },
     ]
     return jsonify({"ok": True, "timers": timers})
+
+
+@app.post("/api/timers/start")
+def api_timers_start():
+    body = request.get_json(force=True) or {}
+    tid = str(body.get("id") or "").strip()
+    if tid not in ("dash_cache", "stats_cache", "stats_full"):
+        return jsonify({"ok": False, "error": "invalid timer id"}), 400
+
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+
+    if tid == "dash_cache":
+        if not bool(cfg.get("dash_cache_enabled", True)):
+            return jsonify({"ok": False, "error": "dash cache disabled"}), 400
+
+        pick = None
+        pick_prio = 999
+        for m in _dash_cache_list_meta():
+            try:
+                cid = str(m.get("id") or "").strip()
+                if not cid:
+                    continue
+                if bool(m.get("dirty")):
+                    prio = 0
+                elif bool(m.get("mismatch")):
+                    prio = 1
+                elif _dash_cache_is_stale(cfg, m):
+                    prio = 5
+                else:
+                    continue
+                if prio < pick_prio:
+                    pick = cid
+                    pick_prio = prio
+            except Exception:
+                continue
+
+        if not pick:
+            return jsonify({"ok": True, "started": False})
+        try:
+            job_id = _dash_cache_start_job("update", pick, trigger_page="timers")
+            return jsonify({"ok": True, "started": True, "job_id": job_id, "cache_id": pick})
+        except Exception as e:
+            return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
+
+    if tid == "stats_cache":
+        # Reuse the run_now behavior (picks one due entry).
+        try:
+            j = api_stats_cache_run_now()
+            return j
+        except Exception as e:
+            return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
+
+    # stats_full
+    try:
+        start_dt = datetime(1970, 1, 1, tzinfo=timezone.utc)
+        stop_dt = datetime.now(timezone.utc)
+        cols = ["last_value", "oldest_time", "newest_time", "count", "min", "max", "mean"]
+        job_id = _global_stats_start_job(
+            cfg=cfg,
+            start_dt=start_dt,
+            stop_dt=stop_dt,
+            field_filter=None,
+            measurement_filter=None,
+            entity_id_filter=None,
+            friendly_name_filter=None,
+            series_list=None,
+            columns=cols,
+            page_limit=200,
+            trigger_page="timers",
+            cache_id=None,
+            cache_key=None,
+        )
+        return jsonify({"ok": True, "started": True, "job_id": job_id})
+    except Exception as e:
+        return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
+
+
+@app.post("/api/timers/cancel")
+def api_timers_cancel():
+    body = request.get_json(force=True) or {}
+    tid = str(body.get("id") or "").strip()
+    if tid not in ("dash_cache", "stats_cache", "stats_full"):
+        return jsonify({"ok": False, "error": "invalid timer id"}), 400
+
+    cancelled = 0
+    if tid == "dash_cache":
+        with DASH_CACHE_JOBS_LOCK:
+            for jid, j in list(DASH_CACHE_JOBS.items()):
+                try:
+                    st = str(j.get("state") or "")
+                    if st and st not in ("done", "error", "cancelled"):
+                        DASH_CACHE_JOBS[jid]["cancelled"] = True
+                        cancelled += 1
+                except Exception:
+                    continue
+        return jsonify({"ok": True, "cancelled": cancelled})
+
+    # stats_cache and stats_full both run as global_stats jobs
+    with GLOBAL_STATS_LOCK:
+        for jid, j in list(GLOBAL_STATS_JOBS.items()):
+            try:
+                st = str(j.get("state") or "")
+                if not st or st in ("done", "error", "cancelled"):
+                    continue
+                if tid == "stats_cache" and not str(j.get("cache_id") or "").strip():
+                    continue
+                if tid == "stats_full" and str(j.get("trigger_page") or "") != "timers":
+                    continue
+                GLOBAL_STATS_JOBS[jid]["cancelled"] = True
+                cancelled += 1
+            except Exception:
+                continue
+    return jsonify({"ok": True, "cancelled": cancelled})
 
 
 @app.get("/api/stats_cache/schedule")
@@ -5607,6 +5864,7 @@ def api_set_config():
 
     _clamp_int("ui_font_size_px", 14, 10, 22)
     _clamp_int("ui_font_small_px", 11, 9, 18)
+    _clamp_int("ui_status_font_px", 12, 9, 18)
     _clamp_int("ui_table_row_height_px", 13, 9, 60)
     _clamp_int("ui_backup_table_row_height_px", 13, 9, 60)
     _clamp_int("ui_backup_visible_rows", 24, 5, 200)
@@ -5623,6 +5881,22 @@ def api_set_config():
     _clamp_int("ui_filter_label_width_px", 170, 80, 360)
     _clamp_int("ui_filter_control_width_px", 320, 180, 900)
     _clamp_int("ui_filter_search_width_px", 160, 80, 420)
+
+    _clamp_int("jobs_max_runtime_seconds", 0, 0, 7 * 24 * 60 * 60)
+
+    def _clamp_color(key: str, default: str) -> None:
+        try:
+            s = str(cfg.get(key, default) or "").strip()
+        except Exception:
+            s = default
+        if not re.match(r"^#[0-9a-fA-F]{6}$", s):
+            s = default
+        cfg[key] = s
+
+    _clamp_color("ui_job_color_running", "#eef3ff")
+    _clamp_color("ui_job_color_done", "#eefaf1")
+    _clamp_color("ui_job_color_error", "#fff0f0")
+    _clamp_color("ui_job_color_cancelled", "#f6f6f6")
 
     # Optional link
     try:
@@ -7378,8 +7652,32 @@ def _global_stats_job_thread(
 
     def should_cancel() -> bool:
         with GLOBAL_STATS_LOCK:
-            j = GLOBAL_STATS_JOBS.get(job_id)
-            return bool(j and j.get("cancelled"))
+            j = GLOBAL_STATS_JOBS.get(job_id) or {}
+            if bool(j.get("cancelled")):
+                return True
+
+            try:
+                max_s = int(cfg.get("jobs_max_runtime_seconds", 0) or 0)
+            except Exception:
+                max_s = 0
+            if max_s <= 0:
+                return False
+
+            try:
+                started_mono = float(j.get("started_mono") or 0.0)
+            except Exception:
+                started_mono = 0.0
+            if started_mono <= 0:
+                return False
+
+            if (time.monotonic() - started_mono) >= float(max_s):
+                GLOBAL_STATS_JOBS[job_id]["cancelled"] = True
+                try:
+                    LOG.warning("job_auto_cancel type=global_stats job_id=%s reason=max_runtime_seconds exceeded (%s)", job_id, max_s)
+                except Exception:
+                    pass
+                return True
+            return False
 
     def set_query(label: str, q: str) -> None:
         with GLOBAL_STATS_LOCK:
@@ -7886,6 +8184,9 @@ from(bucket: "{cfg_local["bucket"]}")
                     meta["dirty_reason"] = None
                     meta["dirty_at"] = None
                     meta["mismatch"] = (str(cache_key.get("cfg_fp") or "") != _stats_cache_cfg_fp(cfg_now))
+                    if "events" not in meta and isinstance((_stats_cache_load_meta(cache_id) or {}).get("events"), list):
+                        meta["events"] = (_stats_cache_load_meta(cache_id) or {}).get("events")
+                    _meta_add_event(meta, "store", f"rows={len(rows)}", at=str(payload["generated_at"] or ""))
                     _stats_cache_write_meta(meta)
                     _stats_cache_enforce_limits(cfg_now)
         except Exception:
@@ -9662,6 +9963,7 @@ def _export_job_thread(
     max_points: int,
     tz_name: str | None,
     tz_offset_minutes: int | None,
+    out_dir: str | None,
 ) -> None:
     with EXPORT_LOCK:
         job = EXPORT_JOBS.get(job_id)
@@ -9690,14 +9992,35 @@ def _export_job_thread(
     def is_cancelled() -> bool:
         with EXPORT_LOCK:
             j = EXPORT_JOBS.get(job_id) or {}
-            return bool(j.get("cancelled"))
+            if bool(j.get("cancelled")):
+                return True
 
-    EXPORT_DIR.mkdir(parents=True, exist_ok=True)
+            try:
+                max_s = int(cfg.get("jobs_max_runtime_seconds", 0) or 0)
+            except Exception:
+                max_s = 0
+            if max_s <= 0:
+                return False
+            try:
+                started_mono = float(j.get("started_mono") or 0.0)
+            except Exception:
+                started_mono = 0.0
+            if started_mono > 0 and (time.monotonic() - started_mono) >= float(max_s):
+                EXPORT_JOBS[job_id]["cancelled"] = True
+                try:
+                    LOG.warning("job_auto_cancel type=export job_id=%s reason=max_runtime_seconds exceeded (%s)", job_id, max_s)
+                except Exception:
+                    pass
+                return True
+            return False
+
+    out_root = export_dir_from_target(out_dir)
+    out_root.mkdir(parents=True, exist_ok=True)
     ext = "xlsx" if fmt == "xlsx" else "csv"
     filename = f"export_job__{job_id}.{ext}"
     part = f"{filename}.part"
-    out_path = (EXPORT_DIR / filename)
-    part_path = (EXPORT_DIR / part)
+    out_path = (out_root / filename)
+    part_path = (out_root / part)
 
     extra = flux_tag_filter(entity_id, friendly_name)
     start = _dt_to_rfc3339_utc(start_dt)
@@ -9841,6 +10164,8 @@ def api_export_job_start():
     cfg = _overlay_from_yaml_if_enabled(load_cfg())
     body = request.get_json(force=True) or {}
 
+    target_dir = export_dir_from_target(body.get("target_dir"))
+
     fmt = str(body.get("format") or "text").strip().lower()
     if fmt not in ("text", "xlsx"):
         return jsonify({"ok": False, "error": "format must be text or xlsx"}), 400
@@ -9901,6 +10226,7 @@ def api_export_job_start():
         "file": None,
         "download_url": None,
         "query": "",
+        "out_dir": str(target_dir),
     }
 
     with EXPORT_LOCK:
@@ -9912,7 +10238,7 @@ def api_export_job_start():
                 EXPORT_JOBS.pop(k, None)
 
     LOG.info(
-        "job_start type=export job_id=%s ip=%s ua=%s fmt=%s measurement=%s field=%s entity_id=%s friendly_name=%s",
+        "job_start type=export job_id=%s ip=%s ua=%s fmt=%s measurement=%s field=%s entity_id=%s friendly_name=%s out_dir=%s",
         job_id,
         _req_ip(),
         _req_ua(),
@@ -9921,6 +10247,7 @@ def api_export_job_start():
         field,
         entity_id or "",
         friendly_name or "",
+        str(target_dir),
     )
 
     t = threading.Thread(
@@ -9940,6 +10267,7 @@ def api_export_job_start():
             max_points,
             tz_name,
             tz_offset_minutes,
+            str(target_dir),
         ),
     )
     t.start()
@@ -9988,7 +10316,8 @@ def api_export_job_download():
     if not name:
         return jsonify({"ok": False, "error": "file missing"}), 500
     try:
-        p = _safe_data_file(EXPORT_DIR, name)
+        root = export_dir_from_target(job.get("out_dir"))
+        p = _safe_data_file(root, name)
     except Exception:
         return jsonify({"ok": False, "error": "invalid file"}), 400
     if not p.exists() or not p.is_file():

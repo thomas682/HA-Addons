@@ -41,6 +41,7 @@
     details.card[open] > summary:after { content: "▴"; }
     details.card > .card_body { padding: 0 12px 12px 12px; }
     .muted { opacity: 0.7; font-size: 12px; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
     code { background:#f6f6f6; padding:2px 6px; border-radius:6px; }
     a { color: inherit; }
     .btn_stack { display:flex; flex-direction:column; gap: 12px; }
@@ -346,6 +347,11 @@
               <div class="muted">z.B. fuer Statistik/Infotexte.</div>
             </div>
             <div>
+              <label>Status Schriftgroesse (px)</label>
+              <input id="ui_status_font_px" type="number" min="9" max="18" />
+              <div class="muted">Sidebar Status Panel (Refresh/Eintraege).</div>
+            </div>
+            <div>
               <label>Checkbox Groesse (Scale)</label>
               <input id="ui_checkbox_scale" type="number" min="0.5" max="1.6" step="0.05" />
               <div class="muted">0.85 = kleiner, 1.0 = normal.</div>
@@ -364,6 +370,36 @@
               <label>Filter Suche Breite (px)</label>
               <input id="ui_filter_search_width_px" type="number" min="80" max="420" />
               <div class="muted">Breite fuer das Suchfeld links neben der Auswahl.</div>
+            </div>
+          </div>
+          </div>
+        </details>
+
+        <details class="card" id="ui_jobs" open data-ui="settings.ui.jobs" title="settings.ui.jobs">
+          <summary>Jobs &amp; Cache</summary>
+          <div class="card_body">
+          <div class="grid">
+            <div>
+              <label>Max Job Laufzeit (Sekunden)</label>
+              <input id="jobs_max_runtime_seconds" type="number" min="0" max="604800" />
+              <div class="muted">0 = deaktiviert. Laeuft ein Job laenger, wird er automatisch abgebrochen (Logeintrag).</div>
+            </div>
+            <div>
+              <label>Job Farbe: running</label>
+              <input id="ui_job_color_running" type="color" />
+              <div class="muted">Hintergrundfarbe in Jobs Tabelle.</div>
+            </div>
+            <div>
+              <label>Job Farbe: done</label>
+              <input id="ui_job_color_done" type="color" />
+            </div>
+            <div>
+              <label>Job Farbe: error</label>
+              <input id="ui_job_color_error" type="color" />
+            </div>
+            <div>
+              <label>Job Farbe: cancelled</label>
+              <input id="ui_job_color_cancelled" type="color" />
             </div>
           </div>
           </div>
@@ -558,10 +594,8 @@
 
       <div class="span2">
         <div class="row" style="align-items: stretch;">
-          <div style="min-width: 160px;"><button id="outliers_add" type="button" data-ui="settings.outliers.add" title="settings.outliers.add">Zeile hinzufuegen</button></div>
-          <div style="min-width: 160px;"><button id="outliers_del" type="button" data-ui="settings.outliers.delete" title="settings.outliers.delete">Zeile loeschen</button></div>
           <div style="min-width: 160px;"><button id="outliers_autowidth" type="button" data-ui="settings.outliers.autofit" title="settings.outliers.autofit">Auto-Fit</button></div>
-          <div class="muted" style="flex:1; min-width: 240px;">Speichern uebernimmt die Tabelle in die Konfiguration (Default: W/kW/Wh/kWh sind vorbelegt).</div>
+          <div class="muted" style="flex:1; min-width: 240px;">_measurement ist nicht editierbar. Speichern uebernimmt die Tabelle in die Konfiguration.</div>
         </div>
       </div>
 
@@ -614,7 +648,9 @@ const ids = [
   "ui_query_max_points","ui_raw_max_points",
   "ui_query_manual_max_points","ui_graph_jump_padding_intervals",
   "ui_font_size_px","ui_font_small_px","ui_checkbox_scale",
+  "ui_status_font_px",
   "ui_filter_label_width_px","ui_filter_control_width_px","ui_filter_search_width_px"
+  ,"jobs_max_runtime_seconds","ui_job_color_running","ui_job_color_done","ui_job_color_error","ui_job_color_cancelled"
   ,"ui_repo_url"
   ,"ui_paypal_donate_url"
   ,"ui_open_selection","ui_open_graph","ui_open_filterlist","ui_open_editlist"
@@ -640,8 +676,6 @@ const $settingsSearchHint = document.getElementById('settings_search_hint');
 const $settingsSearchResults = document.getElementById('settings_search_results');
 
 const $outliersTbl = document.getElementById('outliers_tbl');
-const $outliersAdd = document.getElementById('outliers_add');
-const $outliersDel = document.getElementById('outliers_del');
 const $outliersAuto = document.getElementById('outliers_autowidth');
 let _OUTLIERS_SEL_IDX = -1;
 
@@ -916,11 +950,8 @@ function _renderOutliersTable(rows){
       tr.addEventListener('click', ()=>_outliersSelectRow(idx));
 
       const tdM = document.createElement('td');
-      const iM = document.createElement('input');
-      iM.value = String(r && r.m ? r.m : '');
-      iM.placeholder = 'z.B. W';
-      iM.addEventListener('click', (ev)=>{ try{ ev.stopPropagation(); }catch(e){}; _outliersSelectRow(idx); });
-      tdM.appendChild(iM);
+      tdM.textContent = String(r && r.m ? r.m : '');
+      tdM.className = 'mono';
 
       const tdV = document.createElement('td');
       const iV = document.createElement('input');
@@ -953,7 +984,7 @@ function _readOutliersTable(){
       try{
         const tds = Array.from(tr.querySelectorAll('td'));
         if(tds.length < 2) return;
-        const m = _norm(tds[0].querySelector('input') ? tds[0].querySelector('input').value : '');
+        const m = _norm(tds[0].textContent || '');
         if(!m) return;
         const v = parseFloat(String(tds[1].querySelector('input') ? tds[1].querySelector('input').value : ''));
         if(!isFinite(v)) return;
@@ -1037,10 +1068,17 @@ function setForm(cfg){
 
   el.ui_font_size_px.value = cfg.ui_font_size_px ?? 14;
   el.ui_font_small_px.value = cfg.ui_font_small_px ?? 11;
+  el.ui_status_font_px.value = cfg.ui_status_font_px ?? 12;
   el.ui_checkbox_scale.value = cfg.ui_checkbox_scale ?? 0.85;
   el.ui_filter_label_width_px.value = cfg.ui_filter_label_width_px ?? 170;
   el.ui_filter_control_width_px.value = cfg.ui_filter_control_width_px ?? 320;
   el.ui_filter_search_width_px.value = cfg.ui_filter_search_width_px ?? 160;
+
+  el.jobs_max_runtime_seconds.value = cfg.jobs_max_runtime_seconds ?? 0;
+  el.ui_job_color_running.value = cfg.ui_job_color_running ?? '#eef3ff';
+  el.ui_job_color_done.value = cfg.ui_job_color_done ?? '#eefaf1';
+  el.ui_job_color_error.value = cfg.ui_job_color_error ?? '#fff0f0';
+  el.ui_job_color_cancelled.value = cfg.ui_job_color_cancelled ?? '#f6f6f6';
   el.ui_repo_url.value = cfg.ui_repo_url ?? "";
   el.ui_paypal_donate_url.value = cfg.ui_paypal_donate_url ?? "";
 
@@ -1124,10 +1162,17 @@ function getForm(){
 
     ui_font_size_px: parseInt(el.ui_font_size_px.value, 10),
     ui_font_small_px: parseInt(el.ui_font_small_px.value, 10),
+    ui_status_font_px: parseInt(el.ui_status_font_px.value, 10),
     ui_checkbox_scale: parseFloat(el.ui_checkbox_scale.value),
     ui_filter_label_width_px: parseInt(el.ui_filter_label_width_px.value, 10),
     ui_filter_control_width_px: parseInt(el.ui_filter_control_width_px.value, 10),
     ui_filter_search_width_px: parseInt(el.ui_filter_search_width_px.value, 10),
+
+    jobs_max_runtime_seconds: parseInt(el.jobs_max_runtime_seconds.value, 10),
+    ui_job_color_running: String(el.ui_job_color_running.value || '').trim(),
+    ui_job_color_done: String(el.ui_job_color_done.value || '').trim(),
+    ui_job_color_error: String(el.ui_job_color_error.value || '').trim(),
+    ui_job_color_cancelled: String(el.ui_job_color_cancelled.value || '').trim(),
 
     ui_repo_url: (el.ui_repo_url.value || "").trim(),
     ui_paypal_donate_url: (el.ui_paypal_donate_url.value || "").trim(),
@@ -1249,20 +1294,6 @@ document.getElementById("save").addEventListener("click", ()=>save().catch(e=>er
 document.getElementById("test").addEventListener("click", ()=>testConn().catch(e=>err(String(e))));
 
 try{
-  if($outliersAdd) $outliersAdd.addEventListener('click', ()=>{
-    const cur = _readOutliersTable();
-    cur.push({m:'', v:''});
-    _renderOutliersTable(cur);
-    _outliersSelectRow(cur.length - 1);
-  });
-  if($outliersDel) $outliersDel.addEventListener('click', ()=>{
-    const cur = _readOutliersTable();
-    if(!cur.length) return;
-    const idx = (_OUTLIERS_SEL_IDX >= 0 && _OUTLIERS_SEL_IDX < cur.length) ? _OUTLIERS_SEL_IDX : -1;
-    if(idx < 0) return;
-    cur.splice(idx, 1);
-    _renderOutliersTable(cur);
-  });
   if($outliersAuto) $outliersAuto.addEventListener('click', ()=>{
     try{ if(window.InfluxBroTableCols) window.InfluxBroTableCols.autoFit('#outliers_tbl', {maxRows: 200}); }catch(e){}
   });

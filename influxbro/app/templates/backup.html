@@ -5,7 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>InfluxBro – Backup</title>
   <style>
-    :root { --backup_row_h: {{ (cfg.get('ui_backup_table_row_height_px') or cfg.get('ui_table_row_height_px') or 13) | int }}px; }
+    :root {
+      --backup_row_h: {{ (cfg.get('ui_backup_table_row_height_px') or cfg.get('ui_table_row_height_px') or 13) | int }}px;
+      --ui-cb-scale: {{ (cfg.get('ui_checkbox_scale') or 0.85) }};
+    }
     body { font-family: system-ui, sans-serif; margin: 0; }
     .shell { display:grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
     @media (max-width: 980px){ .shell { grid-template-columns: 1fr; } }
@@ -32,6 +35,7 @@
     .span4 { grid-column: 1 / -1; }
     label { display:block; font-size: 12px; opacity: 0.8; }
     input, select, button, textarea { padding: 10px 12px; height: 40px; box-sizing: border-box; }
+    input[type="checkbox"] { transform: scale(var(--ui-cb-scale)); transform-origin: left center; }
     textarea { font: inherit; resize: vertical; min-height: 40px; width: 100%; white-space: pre-wrap; overflow-wrap: anywhere; }
     button { cursor:pointer; }
     .card { border: 1px solid #ddd; border-radius: 12px; padding: 12px; margin-top: 12px; }
@@ -39,7 +43,7 @@
     .ok { color: #0a7a28; margin-top: 8px; white-space: pre-wrap; }
     table { border-collapse: collapse; width: 100%; margin-top: 10px; }
     th, td { border: 1px solid #eee; padding: 0 6px; font-size: 12px; line-height: 1.2; vertical-align: middle; height: var(--backup_row_h); }
-    th { background: #f6f6f6; text-align:left; }
+    th { background: #f6f6f6; text-align:left; position: sticky; top: 0; z-index: 1; }
     tr.selected { background: #e8f1ff; }
     table.list_tbl th, table.list_tbl td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
@@ -762,10 +766,12 @@
             if($space && du && du.free !== null && du.free !== undefined){
               const freeMb = Math.floor(Number(du.free) / 1024 / 1024);
               const totalMb = Math.floor(Number(du.total || 0) / 1024 / 1024);
+              const addonUsed = Number(jLoc.addon_used_bytes || 0);
+              const addonMb = (isFinite(addonUsed) && addonUsed >= 0) ? Math.floor(addonUsed / 1024 / 1024) : null;
               const warn = (minMb > 0 && freeMb < minMb);
               $space.style.display = 'block';
               $space.classList.toggle('warn', warn);
-              $space.textContent = `Freier Speicher: ${freeMb} MB / ${totalMb} MB` + (minMb > 0 ? (` | Warnschwelle: ${minMb} MB`) : '');
+              $space.textContent = `Freier Speicher: ${freeMb} MB / ${totalMb} MB` + (addonMb !== null ? (` | Addon Speicher: ${addonMb} MB`) : '') + (minMb > 0 ? (` | Warnschwelle: ${minMb} MB`) : '');
               if(warn){
                 $space.textContent += ' | WARN: Backup wird abgelehnt, solange zu wenig frei ist.';
               }

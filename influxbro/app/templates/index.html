@@ -518,7 +518,7 @@
               <tr>
                 <th style="width:20px;"><input type="checkbox" id="tbl_sel_all" class="row_sel" data-ui="editlist.select_all"/></th>
                 <th id="th_time" data-key="time" data-ui="editlist.col_time">Zeit</th>
-                <th id="th_value" data-key="value" data-ui="editlist.col_old">Altwert</th>
+                <th id="th_value" data-key="value" data-ui="editlist.col_old">Aktuell</th>
                 <th data-ui="editlist.col_reason">Grund</th>
                 <th data-ui="editlist.col_class">Klasse</th>
                 <th style="width:140px;" data-ui="editlist.col_action">Aktion</th>
@@ -2669,8 +2669,10 @@ function setLastQuery(q, triggeredAtIso){
       return;
     }
     const at = String(triggeredAtIso || '').trim();
+    const end = new Date().toISOString();
     if($queryMeta){
-      $queryMeta.textContent = at ? (`Ausgeloest: ${fmtTs(at)}`) : '';
+      const startTxt = at ? fmtTs(at) : fmtTs(end);
+      $queryMeta.textContent = `Start: ${startTxt} | Ende: ${fmtTs(end)}`;
     }
     $queryPre.textContent = s;
     $queryDetails.style.display = 'block';
@@ -4041,7 +4043,9 @@ function renderTable(){
     const tdT = document.createElement("td");
     tdT.textContent = fmtTs(row.time);
     const tdV = document.createElement("td");
-    tdV.textContent = (row.value===null||row.value===undefined)?"":fmtNum(row.value);
+    const curTxt = (row.value===null||row.value===undefined)?"":fmtNum(row.value);
+    const newTxt = (e && String(e.action||'') === 'overwrite' && String(e.new_value_str||'').trim() !== '') ? String(e.new_value_str||'').trim() : '';
+    tdV.textContent = newTxt ? (curTxt + ' -> ' + newTxt) : curTxt;
     const tdR = document.createElement("td");
     tdR.textContent = row && row.reason ? String(row.reason) : "";
 
@@ -4055,6 +4059,7 @@ function renderTable(){
       box.style.display = 'flex';
       box.style.gap = '6px';
       box.style.alignItems = 'center';
+      box.style.flexWrap = 'wrap';
 
       const bDel = document.createElement('button');
       bDel.className = 'btn_sm';
@@ -4080,6 +4085,23 @@ function renderTable(){
 
       box.appendChild(bDel);
       box.appendChild(bOv);
+
+      const canApply = !!(e && (String(e.action||'') === 'overwrite' || String(e.action||'') === 'delete') && e.dirty);
+
+      const bApply = document.createElement('button');
+      bApply.className = 'btn_sm';
+      bApply.textContent = 'uebernehmen';
+      bApply.disabled = !canApply;
+      bApply.addEventListener('click', (ev)=>{ _stop(ev); applyChangeForKey(key).catch(displayError); });
+      box.appendChild(bApply);
+
+      const bUndo = document.createElement('button');
+      bUndo.className = 'btn_sm';
+      bUndo.textContent = 'undo';
+      bUndo.disabled = !(e && e.applied && (e.last_applied_old_value !== null && e.last_applied_old_value !== undefined));
+      bUndo.addEventListener('click', (ev)=>{ _stop(ev); undoChangeForKey(key).catch(displayError); });
+      box.appendChild(bUndo);
+
       tdAction.appendChild(box);
     }else{
       const sel = document.createElement('select');
@@ -4241,6 +4263,91 @@ function setNewValue(key, raw, reason){
   e.new_value_str = out;
   e.reason = String(reason || e.reason || 'manuell');
   e.dirty = true;
+  renderTable();
+}
+
+async function applyChangeForKey(key){
+  const k = String(key || '');
+  const e = EDIT_LIST.get(k);
+  if(!e || !e.dirty || !e.action) throw new Error('Keine Aenderung vorgemerkt.');
+  if(!confirm('Aenderung sofort in die Datenbank schreiben?\n\n' + k)) return;
+
+  const action = String(e.action || '');
+  const change = {
+    time: String(e.time || ''),
+    action,
+    decimals: Number(e.decimals || 0),
+    reason: String(e.reason || 'manuell'),
+  };
+  if(action === 'overwrite') change.new_value = String(e.new_value_str || '').trim();
+
+  const payload = {
+    confirm: true,
+    measurement: String(e.measurement || ''),
+    field: String(e.field || ''),
+    entity_id: e.entity_id || null,
+    friendly_name: e.friendly_name || null,
+    changes: [change],
+  };
+
+  const statusKey = 'edit.apply.one';
+  try{ window.InfluxBroStatus && window.InfluxBroStatus.start && window.InfluxBroStatus.start(statusKey, 'Schreibe Aenderung...'); }catch(x){}
+  await api('./api/apply_changes', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+
+  // Remember for undo (best-effort)
+  try{
+    e.applied = true;
+    e.last_applied_old_value = e.orig_value;
+    if(action === 'overwrite'){
+      const pp = _normalizeNumericInput(String(e.new_value_str||''));
+      e.last_applied_new_value = pp && pp.ok ? pp.n : null;
+    }else{
+      e.last_applied_new_value = null;
+    }
+    e.dirty = false;
+    EDIT_LIST.set(k, e);
+  }catch(x){}
+
+  try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done(statusKey, 'Geschrieben.'); }catch(x){}
+
+  // Refresh graph + raw table
+  try{ await refreshAllWithStatus(); }catch(x){}
+  renderTable();
+}
+
+async function undoChangeForKey(key){
+  const k = String(key || '');
+  const e = EDIT_LIST.get(k);
+  if(!e || !e.applied) throw new Error('Undo nicht verfuegbar.');
+  if(!confirm('Undo: Ursprungswert wiederherstellen?\n\n' + k)) return;
+
+  const oldVal = (e.last_applied_old_value !== null && e.last_applied_old_value !== undefined) ? Number(e.last_applied_old_value) : null;
+  if(!(oldVal !== null && isFinite(oldVal))) throw new Error('Ursprungswert fehlt (best-effort).');
+
+  const d = Number(e.decimals);
+  const oldStr = (isFinite(d) && d >= 0) ? fmtNumNoRound(oldVal, d) : String(oldVal);
+  const payload = {
+    confirm: true,
+    measurement: String(e.measurement || ''),
+    field: String(e.field || ''),
+    entity_id: e.entity_id || null,
+    friendly_name: e.friendly_name || null,
+    changes: [{
+      time: String(e.time || ''),
+      action: 'overwrite',
+      new_value: oldStr,
+      decimals: Number(e.decimals || 0),
+      reason: 'undo',
+    }],
+  };
+
+  const statusKey = 'edit.undo.one';
+  try{ window.InfluxBroStatus && window.InfluxBroStatus.start && window.InfluxBroStatus.start(statusKey, 'Undo laeuft...'); }catch(x){}
+  await api('./api/apply_changes', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+
+  try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done(statusKey, 'Undo geschrieben.'); }catch(x){}
+
+  try{ await refreshAllWithStatus(); }catch(x){}
   renderTable();
 }
 

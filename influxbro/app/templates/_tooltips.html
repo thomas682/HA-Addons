@@ -101,6 +101,9 @@
     'timers.card': 'Liste der Intervall-/Nightly-Jobs (naechster Lauf wird aus Einstellungen abgeleitet).',
     'timers.table': 'Timer Jobs Tabelle (id/enabled/Modus/next run/Kommentar).',
 
+    // Nav / Status
+    'nav.status.refresh': 'Aktualisiert die Anzeige und loescht abgeschlossene Status-Eintraege.',
+
     // Stats page
     'stats.load': 'Startet die Gesamtstatistik (Hintergrundjob) fuer alle Serien im Filter.',
     'stats.cancel': 'Bricht den laufenden Statistik-Job ab.',
@@ -164,10 +167,8 @@
     'settings.backup_min_free_mb': 'Min. freier Speicher (MB) am Backup-Speicherort (0 = deaktiviert).',
 
     // Settings: Outliers
-    'settings.outliers.add': 'Fuegt eine Zeile zur Ausreisser-Tabelle hinzu.',
-    'settings.outliers.delete': 'Loescht die aktuell ausgewaehlte Zeile aus der Ausreisser-Tabelle.',
     'settings.outliers.autofit': 'Passt die Spaltenbreiten der Ausreisser-Tabelle automatisch an.',
-    'settings.outliers.table': 'Ausreisser Grenzwerte pro _measurement (counter max_step).',
+    'settings.outliers.table': 'Ausreisser Grenzwerte pro _measurement (counter max_step). _measurement ist nicht editierbar.',
 
     // Settings: Connection / Save
     'settings.find_yaml': 'Sucht nach einer influx.yaml unter /config (best-effort).',
@@ -568,16 +569,21 @@
     root.style.display = 'block';
   }
 
-window.InfluxBroPopup = {
-    error: (msg) => {
-      const s = String(msg || '').trim();
-      if(!s) return;
-      const now = Date.now();
-      if(LAST.msg === s && (now - LAST.at) < 800) return;
-      LAST = { msg: s, at: now };
-      _show('Fehler', s);
-    }
-  };
+ window.InfluxBroPopup = {
+     show: (title, msg) => {
+       const t = String(title || 'Hinweis').trim() || 'Hinweis';
+       const s = String(msg || '').trim();
+       _show(t, s);
+     },
+     error: (msg) => {
+       const s = String(msg || '').trim();
+       if(!s) return;
+       const now = Date.now();
+       if(LAST.msg === s && (now - LAST.at) < 800) return;
+       LAST = { msg: s, at: now };
+       _show('Fehler', s);
+     }
+   };
 })();
 </script>
 

@@ -206,6 +206,11 @@ Hinweis: Werte in Bearbeitung werden gelb markiert. Geaenderte (dirty) Zeilen we
 
 Wichtig: Die Aenderungen bleiben markiert, bis du sie wirklich uebernimmst.
 
+Neu (Ausreisser-Modus):
+
+- In der Spalte `Aktion` gibt es zusaetzlich den Direktbutton `uebernehmen` (schreibt sofort in die DB, mit Bestaetigung).
+- Nach erfolgreichem Schreiben erscheint `undo` (stellt den Ursprungswert wieder her; best-effort).
+
 Tipp: In der Toolbar gibt es Mehrfachaktionen (z.B. Werte davor uebernehmen oder Durchschnitt davor+danach), die automatisch `Aktion/Neuwert` fuellen.
 
 ## Statistik
@@ -232,13 +237,15 @@ Tipp: In der Toolbar gibt es Mehrfachaktionen (z.B. Werte davor uebernehmen oder
 ## Jobs & Cache
 
 - Zeigt laufende Background-Jobs (z.B. Statistik laden, Restore/Copy).
-- Button `Cancel`: bricht den Job ab (bestaetigen).
+- Button `Abbruch`: bricht den Job ab (bestaetigen). Der Button ist immer sichtbar.
+- Button `Details`: zeigt, was der Job gerade macht (Message/Current/Trigger-Infos).
 - Tipp: `Open Statistik` setzt die Job-ID fuer die Statistik-Seite und wechselt dorthin.
 
 Cache:
 
 - Tabelle `Cache`: zeigt alle Caches (Dashboard + Statistik) inkl. Bereich/Ausloeser/next update/Modus.
 - Aktionen:
+  - `Info`: zeigt Details (inkl. Events wie Verwendung/Check/Update; best-effort).
   - Dashboard: `Pruefen`/`Aktualisieren`/`Loeschen`.
   - Statistik: `Aktualisieren`/`Loeschen`.
   - `Cache loeschen (alles)`: loescht Cache-Dateien unter `/data` (nur Cache, nicht die Datenbank).
@@ -247,6 +254,8 @@ Cache:
 Timer Jobs:
 
 - Tabelle `Timer Jobs`: zeigt Intervall-/Nightly-Jobs mit naechstem Lauf (aus Einstellungen abgeleitet) und kurzer Erklaerung.
+- Action: `Start` (manuell) und `Abbruch`.
+- Zusaetzlich: `stats_full` laedt Statistik komplett (inkl. Details wie count/min/max/mean) fuer alle Serien.
 
 ## Backup (ein Messwert, alle Werte)
 
@@ -257,6 +266,7 @@ Timer Jobs:
   - Zeitpunkt des Backups
   - Anzahl Werte
   - Dateigroesse
+ - Anzeige: `Freier Speicher` zeigt freien/gesamten Speicher am Backup-Speicherort; `Addon Speicher` zeigt belegten Platz unter `/data`.
 - Wenn genau ein Backup selektiert ist, erscheint `Download` und laedt eine ZIP-Datei (enthaelt `.json` + `.lp`).
 - Unterhalb des Speicherorts wird der freie Speicher angezeigt; optional kann ein Mindestwert (MB) konfiguriert werden, unter dem Backups abgelehnt werden.
 - Die Hoehe der Backup-Liste ist per Einstellung "Sichtbare Zeilen (Backup-Liste)" konfigurierbar.
@@ -279,6 +289,7 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Seite `Export`: Auswahl wie im Dashboard; Measurement/Field wird best-effort aus friendly_name/entity_id aufgeloest.
 - Feld `Auswahl (aufgeloest)`: zeigt die aktuell aufgeloeste Serie (measurement/field + tags) und den Zeitraum.
 - Export-Erzeugung laeuft als Hintergrund-Job und kann mit `Abbrechen` gestoppt werden; nach Fertigstellung startet der Download automatisch.
+- Vor dem Start erscheint ein Dialog zur Auswahl des Zielordners (relativ unter `/data` oder absolut unter `/data`/`/config`).
 - Das Feld `Auswahl (aufgeloest)` ist resizable; mit `Darstellung speichern` wird die Groesse gemerkt.
 - Formate: Text (Delimiter, Default `;`) oder Excel (`.xlsx`).
 - Zeitstempel im Export sind im lokalen Browser-Format (wie in der UI angezeigt).
@@ -310,6 +321,12 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Bereiche sind einklappbar.
 - Oben gibt es ein Suchfeld, das Einstellungen findet und per Klick zum passenden Feld springt (Bereiche werden automatisch aufgeklappt).
 - Layout: pro Abschnitt als 1-spaltige Parameterliste (ein Parameter pro Block mit Beschreibung).
+
+Neu:
+
+- Status Schriftgroesse (Sidebar) ist konfigurierbar; Refresh loescht abgeschlossene Status-Eintraege.
+- Jobs: Max Job Laufzeit (Sekunden) fuer Auto-Abbruch; Job-Farben (running/done/error/cancelled).
+- Ausreisser Tabelle: `_measurement` ist nicht editierbar; Zeilen werden automatisch aus bekannten Measurements vorbefuellt.
 
 Verbindung:
 

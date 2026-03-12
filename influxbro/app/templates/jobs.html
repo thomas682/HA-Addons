@@ -5,6 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>InfluxBro – Jobs &amp; Cache</title>
   <style>
+    :root {
+      --ui-row-h: {{ (cfg.get('ui_table_row_height_px') or 13) | int }}px;
+      --ui-visible-rows: {{ (cfg.get('ui_table_visible_rows') or 8) | int }};
+      --ui-job-run: {{ (cfg.get('ui_job_color_running') or '#eef3ff') }};
+      --ui-job-done: {{ (cfg.get('ui_job_color_done') or '#eefaf1') }};
+      --ui-job-err: {{ (cfg.get('ui_job_color_error') or '#fff0f0') }};
+      --ui-job-cancel: {{ (cfg.get('ui_job_color_cancelled') or '#f6f6f6') }};
+    }
     body { font-family: system-ui, sans-serif; margin: 0; }
     .shell { display:grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
     @media (max-width: 980px){ .shell { grid-template-columns: 1fr; } }
@@ -27,14 +35,19 @@
     .status { border: 1px dashed #ddd; border-radius: 12px; padding: 10px 12px; margin-top: 10px; background: #fafafa; font-size: 12px; white-space: pre-wrap; }
 
     table { border-collapse: collapse; width: 100%; margin-top: 10px; table-layout: fixed; }
-    th, td { border: 1px solid #eee; padding: 6px; font-size: 11px; line-height: 1.25; vertical-align: top; }
+    th, td { border: 1px solid #eee; padding: 0 6px; font-size: 11px; line-height: 1.25; vertical-align: top; height: var(--ui-row-h); }
     th { background: #f6f6f6; text-align:left; position: sticky; top: 0; z-index: 1; }
-    .table_box { max-height: 72vh; overflow:auto; border: 1px solid #eee; border-radius: 12px; }
+    .table_box { overflow:auto; border: 1px solid #eee; border-radius: 12px; max-height: calc(var(--ui-visible-rows) * var(--ui-row-h) + 54px); }
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
     .pill { display:inline-block; padding: 2px 8px; border-radius: 999px; border: 1px solid #ddd; font-size: 11px; background: #fff; }
     .pill.ok { border-color: #b6e2c0; background: #eefaf1; }
     .pill.err { border-color: #f2b0b0; background: #fff0f0; color: #b00020; }
     .pill.run { border-color: #c7d7ff; background: #f0f5ff; }
+
+    tr.job_state_running td { background: var(--ui-job-run); }
+    tr.job_state_done td { background: var(--ui-job-done); }
+    tr.job_state_error td { background: var(--ui-job-err); }
+    tr.job_state_cancelled td { background: var(--ui-job-cancel); }
   </style>
 </head>
 <body>
@@ -161,18 +174,19 @@
         <div id="timers_err" class="err"></div>
 
         <div class="table_box">
-          <table id="timers_tbl" data-ui="timers.table" title="timers.table">
-            <thead>
-              <tr>
-                <th style="width: 140px;">id</th>
-                <th style="width: 140px;">enabled</th>
-                <th style="width: 260px;">Modus</th>
-                <th style="width: 180px;">next run</th>
-                <th>Kommentar</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
+           <table id="timers_tbl" data-ui="timers.table" title="timers.table">
+             <thead>
+               <tr>
+                 <th style="width: 140px;">id</th>
+                 <th style="width: 140px;">enabled</th>
+                 <th style="width: 260px;">Modus</th>
+                 <th style="width: 180px;">next run</th>
+                 <th>Kommentar</th>
+                 <th style="width: 160px;">action</th>
+               </tr>
+             </thead>
+             <tbody></tbody>
+           </table>
         </div>
       </div>
 
@@ -310,7 +324,9 @@
       function renderCaches(items){
         $cacheBody.textContent = '';
         const rows = filterCaches(items || []);
+        let totalBytes = 0;
         for(const m of rows){
+          try{ totalBytes += Number(m.bytes || 0); }catch(e){}
           const k = m.key || {};
           const tr = document.createElement('tr');
 
@@ -348,9 +364,39 @@
           const tdAct = tr.lastChild;
           const cid = String(m.id || '');
 
+          const bInfo = document.createElement('button');
+          bInfo.className = 'btn_xs';
+          bInfo.textContent = 'Info';
+          bInfo.onclick = ()=>{
+            try{
+              const evs = Array.isArray(m.events) ? m.events : [];
+              const lines = [];
+              lines.push('id: ' + cid);
+              lines.push('bereich: ' + String(m.bereich||''));
+              lines.push('updated: ' + fmtTs(m.updated_at));
+              lines.push('last used: ' + fmtTs(m.last_used_at));
+              lines.push('rows: ' + String(m.row_count||0));
+              lines.push('size: ' + fmtSize(m.bytes));
+              lines.push('flags: ' + String([m.dirty ? 'dirty' : '', m.mismatch ? 'changed' : '', m.stale ? 'stale' : ''].filter(Boolean).join(' ')));
+              lines.push('');
+              lines.push('events:');
+              if(!evs.length){
+                lines.push('(keine)');
+              }else{
+                evs.slice(-30).forEach(e=>{
+                  try{ lines.push(`${fmtTs(e.at)} | ${String(e.kind||'')} | ${String(e.note||'')}`.trim()); }catch(x){}
+                });
+              }
+              if(window.InfluxBroPopup && window.InfluxBroPopup.show) window.InfluxBroPopup.show('Cache Info', lines.join('\n'));
+              else alert(lines.join('\n'));
+            }catch(e){}
+          };
+          tdAct.appendChild(bInfo);
+
           if(isDash){
             const bCheck = document.createElement('button');
             bCheck.className = 'btn_xs';
+            bCheck.style.marginLeft = '6px';
             bCheck.textContent = 'Pruefen';
             bCheck.onclick = async ()=>{
               try{
@@ -366,7 +412,7 @@
 
           const bUpd = document.createElement('button');
           bUpd.className = 'btn_xs';
-          bUpd.style.marginLeft = isDash ? '6px' : '0';
+          bUpd.style.marginLeft = '6px';
           bUpd.textContent = 'Aktualisieren';
           bUpd.onclick = async ()=>{
             try{
@@ -400,7 +446,7 @@
           $cacheBody.appendChild(tr);
         }
 
-        $cacheInfo.textContent = `Cache Eintraege: ${rows.length}`;
+        $cacheInfo.textContent = `Cache Eintraege: ${rows.length} | Gesamtgroesse: ${fmtSize(totalBytes)}`;
       }
 
       function filterJobs(jobs){
@@ -419,6 +465,11 @@
         const rows = filterJobs(jobs);
         for(const j of rows){
           const tr = document.createElement('tr');
+
+          try{
+            const stc = String(j.state||'');
+            if(stc) tr.classList.add('job_state_' + stc);
+          }catch(e){}
 
           const pct = (typeof j.percent === 'number' && isFinite(j.percent)) ? String(Math.round(j.percent)) : '';
           const cur = String(j.current || '');
@@ -443,8 +494,33 @@
           const tdAct = tr.lastChild;
           const id = String(j.id || '');
 
+          const bInfo = document.createElement('button');
+          bInfo.className = 'btn_xs';
+          bInfo.textContent = 'Details';
+          bInfo.onclick = ()=>{
+            try{
+              const lines = [];
+              lines.push('id: ' + id);
+              lines.push('type: ' + String(j.type||''));
+              lines.push('state: ' + String(j.state||''));
+              lines.push('started: ' + fmtTs(j.started_at));
+              lines.push('elapsed: ' + String(j.elapsed||''));
+              if(j.mode) lines.push('mode: ' + String(j.mode||''));
+              if(j.message) lines.push('message: ' + String(j.message||''));
+              if(j.current) lines.push('current: ' + String(j.current||''));
+              if(j.error) lines.push('error: ' + String(j.error||''));
+              if(j.trigger_page) lines.push('trigger_page: ' + String(j.trigger_page||''));
+              if(j.trigger_ip) lines.push('trigger_ip: ' + String(j.trigger_ip||''));
+              if(j.trigger_ua) lines.push('trigger_ua: ' + String(j.trigger_ua||''));
+              if(window.InfluxBroPopup && window.InfluxBroPopup.show) window.InfluxBroPopup.show('Job Details', lines.join('\n'));
+              else alert(lines.join('\n'));
+            }catch(e){}
+          };
+          tdAct.appendChild(bInfo);
+
           const bCopy = document.createElement('button');
           bCopy.className = 'btn_xs';
+          bCopy.style.marginLeft = '6px';
           bCopy.textContent = 'Copy ID';
           bCopy.onclick = async ()=>{
             try{ await navigator.clipboard.writeText(id); }catch(e){}
@@ -463,12 +539,11 @@
             tdAct.appendChild(bOpen);
           }
 
-          const canCancel = isActive(j) && id;
-          if(canCancel){
+          if(id){
             const bCancel = document.createElement('button');
             bCancel.className = 'btn_xs';
             bCancel.style.marginLeft = '6px';
-            bCancel.textContent = 'Cancel';
+            bCancel.textContent = 'Abbruch';
             bCancel.onclick = async ()=>{
               try{
                 if(!confirm('Job abbrechen?\n\n' + id)) return;
@@ -525,7 +600,45 @@
             `<td class="mono">${String(t.mode||'')}</td>`,
             `<td>${fmtTs(t.next_run_at)}</td>`,
             `<td>${String(t.comment||'')}</td>`,
+            `<td></td>`,
           ].join('');
+
+          const tdAct = tr.lastChild;
+          const id = String(t.id || '');
+          const bStart = document.createElement('button');
+          bStart.className = 'btn_xs';
+          bStart.textContent = 'Start';
+          bStart.onclick = async ()=>{
+            try{
+              timersErr('');
+              const r = await api('./api/timers/start', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id})});
+              const jid = r && r.job_id ? String(r.job_id) : '';
+              if(jid){
+                try{ if(window.InfluxBroPopup && window.InfluxBroPopup.show) window.InfluxBroPopup.show('Timer gestartet', `id: ${id}\njob_id: ${jid}`); }catch(e){}
+              }
+              await loadAll();
+            }catch(e){
+              timersErr(e && e.message ? e.message : String(e));
+            }
+          };
+          tdAct.appendChild(bStart);
+
+          const bAbort = document.createElement('button');
+          bAbort.className = 'btn_xs';
+          bAbort.style.marginLeft = '6px';
+          bAbort.textContent = 'Abbruch';
+          bAbort.onclick = async ()=>{
+            try{
+              if(!confirm('Timer Job abbrechen?\n\n' + id)) return;
+              timersErr('');
+              await api('./api/timers/cancel', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id})});
+              await loadAll();
+            }catch(e){
+              timersErr(e && e.message ? e.message : String(e));
+            }
+          };
+          tdAct.appendChild(bAbort);
+
           $timersBody.appendChild(tr);
         }
         if($timersInfo) $timersInfo.textContent = `Timer Jobs: ${xs.length}`;
@@ -558,6 +671,7 @@
       loadAll().catch(e => err(e && e.message ? e.message : String(e)));
       </script>
 
+      {% include "_table_cols.html" %}
       {% include "_tooltips.html" %}
     </main>
   </div>

@@ -29,7 +29,7 @@
       .shell > main.content { height: auto; overflow: visible; }
     }
 
-    #influxbro_status_panel { margin-top: 12px; padding-top: 10px; border-top: 1px solid #eee; }
+    #influxbro_status_panel { margin-top: 12px; padding-top: 10px; border-top: 1px solid #eee; --ui-status-font: {{ (cfg.get('ui_status_font_px') or 12) | int }}px; }
     #influxbro_status_panel .title { font-weight: 700; font-size: 12px; opacity: 0.8; }
     #influxbro_status_panel .box { margin-top: 6px; border: 1px solid #eee; border-radius: 12px; padding: 10px 10px; background: #fafafa; }
     #influxbro_status_panel .row { display:flex; align-items:center; gap: 8px; }
@@ -39,11 +39,11 @@
     #influxbro_status_panel .list { margin-top: 8px; max-height: 180px; overflow-y: auto; overflow-x: auto; }
     #influxbro_status_panel .item { display:flex; align-items:baseline; justify-content:space-between; gap: 10px; padding: 4px 0; border-bottom: 1px dashed rgba(0,0,0,0.08); }
     #influxbro_status_panel .item:last-child { border-bottom: 0; }
-    #influxbro_status_panel .k { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 11px; opacity: 0.7; }
-    #influxbro_status_panel .t { font-size: 12px; white-space: nowrap; overflow: visible; text-overflow: clip; }
-    #influxbro_status_panel .tm { font-size: 11px; opacity: 0.75; white-space: nowrap; }
+    #influxbro_status_panel .k { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: var(--ui-status-font); opacity: 0.7; }
+    #influxbro_status_panel .t { font-size: var(--ui-status-font); white-space: nowrap; overflow: visible; text-overflow: clip; }
+    #influxbro_status_panel .tm { font-size: var(--ui-status-font); opacity: 0.75; white-space: nowrap; }
     #influxbro_status_panel .item { white-space: nowrap; min-width: max-content; }
-     #influxbro_status_panel .last { margin-top: 10px; font-size: 12px; overflow: auto; max-height: 84px; }
+    #influxbro_status_panel .last { margin-top: 10px; font-size: var(--ui-status-font); overflow: auto; max-height: 84px; }
   </style>
   <div class="brand">
     <div class="brand_title">InfluxBro</div>
@@ -132,6 +132,10 @@
 
   <div id="influxbro_status_panel" data-ui="nav.status" title="nav.status">
     <div class="title">Status</div>
+    <div class="row" style="margin-top: 8px; justify-content:flex-start; gap: 8px;">
+      <button id="influxbro_status_refresh" type="button" style="cursor:pointer; padding: 8px 10px; height: 32px;" data-ui="nav.status.refresh" title="nav.status.refresh">Refresh</button>
+      <div class="muted" style="font-size: var(--ui-status-font); opacity: 0.75;">Loescht abgeschlossene Eintraege.</div>
+    </div>
     <div class="box">
       <div class="row" id="influxbro_status_head" style="display:none;">
         <span class="hg" aria-hidden="true">
@@ -398,6 +402,7 @@
         const $headTime = document.getElementById('influxbro_status_head_time');
         const $list = document.getElementById('influxbro_status_list');
         const $last = document.getElementById('influxbro_status_last');
+        const $refresh = document.getElementById('influxbro_status_refresh');
 
         const LS_STATUS = 'influxbro_status_bus_v1';
         const STATUS_MAX_AGE_MS = 24 * 60 * 60 * 1000;
@@ -529,6 +534,20 @@
           if(timer){ clearInterval(timer); timer = null; }
         }
 
+        function clearCompleted(){
+          try{
+            Array.from(items.values()).forEach(x => {
+              try{
+                const st = String(x.state || '');
+                if(st && st !== 'running') items.delete(String(x.key || ''));
+              }catch(e){}
+            });
+          }catch(e){}
+          persistDebounced();
+          render();
+          stopTimerIfIdle();
+        }
+
         window.InfluxBroStatus = {
           start: (key, text)=>{
             const k = String(key || '');
@@ -583,7 +602,18 @@
             render();
             stopTimerIfIdle();
           },
+          clearCompleted,
         };
+
+        try{
+          if($refresh && !$refresh.__influxbro_bound){
+            $refresh.__influxbro_bound = true;
+            $refresh.addEventListener('click', (ev)=>{
+              try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+              clearCompleted();
+            });
+          }
+        }catch(e){}
 
         // Restore persisted items so status survives page navigation.
         loadPersisted();
