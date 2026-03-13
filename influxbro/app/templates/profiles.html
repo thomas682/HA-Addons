@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>InfluxBro – Profilverwaltung</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; }
+    .content { padding: 16px; }
+    h2 { margin: 0; }
+    .muted { opacity: 0.7; font-size: 12px; }
+    .row { display:flex; gap: 10px; flex-wrap:wrap; align-items:end; justify-content:flex-start; margin-top: 10px; }
+    label { display:block; font-size: 12px; opacity: 0.8; }
+    input, select, button { padding: 10px 12px; height: 40px; box-sizing: border-box; }
+    button { cursor:pointer; }
+    .btn_sm { height: 34px; padding: 6px 10px; }
+    .btn_xs { height: 30px; padding: 6px 10px; font-size: 12px; }
+    .card { border: 1px solid #ddd; border-radius: 12px; padding: 12px; margin-top: 12px; }
+    .err { color: #b00020; margin-top: 8px; white-space: pre-wrap; }
+    .ok { color: #0a7a28; margin-top: 8px; white-space: pre-wrap; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+
+    table { border-collapse: collapse; width: 100%; margin-top: 10px; table-layout: fixed; }
+    th, td { border: 1px solid #eee; padding: 0 6px; font-size: 12px; line-height: 1.2; vertical-align: middle; }
+    th { background: #f6f6f6; text-align:left; }
+    tr.active td { background: rgba(255, 153, 0, 0.12); }
+
+    .table_wrap { border: 1px solid #eee; border-radius: 12px; padding: 10px; margin-top: 10px; }
+    .table_title { font-weight: 800; font-size: 14px; margin-bottom: 6px; }
+    .table_head { display:flex; justify-content:space-between; gap: 12px; align-items:flex-end; flex-wrap:wrap; }
+    .tbl_actions { display:flex; gap: 10px; align-items:center; flex-wrap:wrap; }
+    .table_box { overflow:auto; border: 1px solid #eee; border-radius: 12px; margin-top: 10px; max-height: 70vh; }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    {% include "_nav.html" %}
+    <main class="content" data-ui="profiles.page" title="profiles.page">
+      <h2>Profilverwaltung</h2>
+      <div class="muted">Profile speichern GUI-Voreinstellungen filebasiert unter <code>/data/ui_profiles</code>. Aktives Profil ist global (gilt fuer alle Clients).</div>
+
+      <div class="card">
+        <div class="row" data-ui="profiles.actions" title="profiles.actions">
+          <div>
+            <label>&nbsp;</label>
+            <button id="reload" data-ui="profiles.reload" title="profiles.reload">Aktualisieren</button>
+          </div>
+          <div>
+            <label>&nbsp;</label>
+            <button id="create" data-ui="profiles.create" title="profiles.create">Profil anlegen</button>
+          </div>
+          <div style="flex:1; min-width: 260px;">
+            <label>Suche</label>
+            <input id="q" placeholder="id/label..." data-ui="profiles.search" title="profiles.search" />
+          </div>
+        </div>
+        <div id="err" class="err"></div>
+        <div id="ok" class="ok"></div>
+
+        <div class="table_wrap" data-ui="profiles.table.wrap" title="profiles.table.wrap">
+          <div class="table_title">Profile</div>
+          <div class="table_head" data-ui="profiles.table.head" title="profiles.table.head">
+            <div class="tbl_actions" data-ui="profiles.table.actions" title="profiles.table.actions">
+              <button id="autowidth" class="btn_xs" data-ui="profiles.table.autowidth" title="profiles.table.autowidth">Spaltenbreite automatisch</button>
+              <button id="windowwidth" class="btn_xs" data-ui="profiles.table.windowwidth" title="profiles.table.windowwidth">Fensterbreite</button>
+            </div>
+            <div class="muted" id="info" data-ui="profiles.table.info" title="profiles.table.info"></div>
+          </div>
+          <div class="table_box" id="box" data-ui="profiles.table.box" title="profiles.table.box">
+            <table id="profiles_tbl" class="ib_tbl" data-ui="profiles.table" title="profiles.table">
+              <thead>
+                <tr>
+                  <th style="width: 80px;">active</th>
+                  <th style="width: 160px;">id</th>
+                  <th style="width: 240px;">name</th>
+                  <th style="width: 220px;">updated</th>
+                  <th style="width: 120px;">keys</th>
+                  <th>actions</th>
+                </tr>
+              </thead>
+              <tbody id="rows"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <script>
+        const $rows = document.getElementById('rows');
+        const $q = document.getElementById('q');
+        const $err = document.getElementById('err');
+        const $ok = document.getElementById('ok');
+        const $reload = document.getElementById('reload');
+        const $create = document.getElementById('create');
+        const $info = document.getElementById('info');
+        const $auto = document.getElementById('autowidth');
+        const $win = document.getElementById('windowwidth');
+
+        let ACTIVE = null;
+        let PROFILES = [];
+
+        function err(s){ $err.textContent = String(s||''); $ok.textContent=''; }
+        function ok(s){ $ok.textContent = String(s||''); $err.textContent=''; }
+
+        async function api(url, opts){
+          let r;
+          try{ r = await fetch(url, opts); }catch(e){ throw new Error('Failed to fetch'); }
+          const j = await r.json().catch(()=>({ok:false,error:'Invalid JSON'}));
+          if(!r.ok || !j.ok) throw new Error(j.error || ('HTTP ' + r.status));
+          return j;
+        }
+
+        function fmtTs(iso){
+          if(!iso) return '';
+          const d = new Date(String(iso));
+          if(!isFinite(d.getTime())) return String(iso);
+          const pad2 = (n)=>String(n).padStart(2,'0');
+          const pad3 = (n)=>String(n).padStart(3,'0');
+          return pad2(d.getDate()) + '.' + pad2(d.getMonth()+1) + '.' + d.getFullYear() + ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds()) + '.' + pad3(d.getMilliseconds());
+        }
+
+        function matches(p, term){
+          const t = String(term||'').trim().toLowerCase();
+          if(!t) return true;
+          return (String(p.id||'') + ' ' + String(p.label||'')).toLowerCase().includes(t);
+        }
+
+        function showInfoDialog(title, items){
+          // Reuse the modal created by nav if present
+          try{
+            if(window && window.document){
+              const fn = window.showProfileInfo;
+              if(typeof fn === 'function') return fn(title, items);
+            }
+          }catch(e){}
+          // Fallback: simple alert
+          try{ alert(title + "\n\n" + JSON.stringify(items||{}, null, 2)); }catch(e){}
+        }
+
+        async function load(){
+          err('');
+          const j = await api('./api/ui_profiles', {});
+          ACTIVE = j.active || null;
+          PROFILES = Array.isArray(j.profiles) ? j.profiles : [];
+          render();
+        }
+
+        function render(){
+          const term = $q ? $q.value : '';
+          const rows = (PROFILES||[]).filter(p=>matches(p, term));
+          $rows.innerHTML = '';
+          rows.forEach(p=>{
+            const tr = document.createElement('tr');
+            const isActive = ACTIVE && String(ACTIVE) === String(p.id||'');
+            if(isActive) tr.classList.add('active');
+
+            const tdAct = document.createElement('td');
+            const bApply = document.createElement('button');
+            bApply.className = 'btn_xs';
+            bApply.textContent = 'Anwenden';
+            bApply.onclick = async (ev)=>{
+              try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+              if(!confirm('Profil anwenden? Dies ueberschreibt die global gespeicherten GUI-Einstellungen.')) return;
+              await api('./api/ui_profiles/apply', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id: p.id})});
+              ok('Profil angewendet: ' + String(p.label||p.id));
+              await load();
+            };
+
+            const bSave = document.createElement('button');
+            bSave.className = 'btn_xs';
+            bSave.style.marginLeft = '6px';
+            bSave.textContent = 'Speichern';
+            bSave.onclick = async (ev)=>{
+              try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+              if(!confirm('Aktuellen Stand in dieses Profil speichern?')) return;
+              await api('./api/ui_profiles/save', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id: p.id})});
+              ok('Profil gespeichert: ' + String(p.label||p.id));
+              await load();
+            };
+
+            const bInfo = document.createElement('button');
+            bInfo.className = 'btn_xs';
+            bInfo.style.marginLeft = '6px';
+            bInfo.textContent = 'Info';
+            bInfo.onclick = async (ev)=>{
+              try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+              const g = await api('./api/ui_profiles/get?id=' + encodeURIComponent(String(p.id||'')), {});
+              const pr = g.profile || {};
+              showInfoDialog(String(pr.label||pr.id||p.id), pr.items || {});
+            };
+
+            const bRen = document.createElement('button');
+            bRen.className = 'btn_xs';
+            bRen.style.marginLeft = '6px';
+            bRen.textContent = 'Umbenennen';
+            bRen.onclick = async (ev)=>{
+              try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+              const cur = String(p.label || p.id || '');
+              const n = prompt('Neuer Name:', cur);
+              if(n === null) return;
+              const nn = String(n||'').trim();
+              if(!nn) return;
+              await api('./api/ui_profiles/rename', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id: p.id, label: nn})});
+              ok('Profil umbenannt.');
+              await load();
+            };
+
+            const bDel = document.createElement('button');
+            bDel.className = 'btn_xs';
+            bDel.style.marginLeft = '6px';
+            bDel.textContent = 'Loeschen';
+            bDel.onclick = async (ev)=>{
+              try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+              if(!confirm('Profil loeschen?')) return;
+              await api('./api/ui_profiles/delete', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id: p.id})});
+              ok('Profil geloescht.');
+              await load();
+            };
+
+            tdAct.appendChild(bApply);
+            tdAct.appendChild(bSave);
+            tdAct.appendChild(bInfo);
+            tdAct.appendChild(bRen);
+            tdAct.appendChild(bDel);
+
+            tr.innerHTML = [
+              `<td class="mono">${isActive ? 'yes' : ''}</td>`,
+              `<td class="mono">${String(p.id||'')}</td>`,
+              `<td>${String(p.label||'')}</td>`,
+              `<td class="mono">${fmtTs(p.updated_at)}</td>`,
+              `<td class="mono" style="text-align:right;">${String(p.count||0)}</td>`,
+              `<td></td>`,
+            ].join('');
+            tr.lastChild.replaceWith(tdAct);
+            $rows.appendChild(tr);
+          });
+          if($info) $info.textContent = `Profile: ${rows.length} / ${(PROFILES||[]).length}` + (ACTIVE ? (' | active: ' + String(ACTIVE)) : '');
+        }
+
+        $reload.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} load().catch(e=>err(String(e.message||e))); });
+        $create.addEventListener('click', async (ev)=>{
+          try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+          const n = prompt('Profilname (z.B. PC oder MOBIL):', '');
+          if(n === null) return;
+          const nn = String(n||'').trim();
+          if(!nn) return;
+          await api('./api/ui_profiles/create', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({label: nn})});
+          ok('Profil angelegt.');
+          await load();
+        });
+        $q.addEventListener('input', ()=>render());
+
+        load().catch(e=>err(String(e.message||e)));
+      </script>
+
+      {% include "_table_cols.html" %}
+      {% include "_tooltips.html" %}
+
+      <script>
+        // Table helpers
+        try{ if(window.InfluxBroTableCols) window.InfluxBroTableCols.init('#profiles_tbl'); }catch(e){}
+        try{ if(window.InfluxBroTableHeight) window.InfluxBroTableHeight.attach(document.getElementById('box'), 'profiles_tbl', {minPx: 220}); }catch(e){}
+
+        // Table info spec
+        try{
+          const pkey = String(location && location.pathname ? location.pathname : '/').replace(/\/api\/hassio_ingress\/[0-9a-fA-F]+/g, '').replace(/\/+$/g, '') || '/';
+          window.InfluxBroTableInfoSpec = window.InfluxBroTableInfoSpec || {};
+          window.InfluxBroTableInfoSpec[pkey + ':profiles_tbl'] = {
+            purpose: 'Verwaltet UI-Profile (filebasiert) und schaltet das aktive Profil global um. Ein Profil ist ein Snapshot der GUI-Voreinstellungen.',
+            columns: {
+              'active': 'Markiert das aktuell global aktive Profil.',
+              'id': 'Interne Profil-ID (file-safe).',
+              'name': 'Anzeigename des Profils.',
+              'updated': 'Letzte Aenderung am Profil.',
+              'keys': 'Anzahl gespeicherter Keys in diesem Profil.',
+              'actions': 'Anwenden/Speichern/Info/Umbenennen/Loeschen.',
+            },
+            actions: [
+              'Anwenden: setzt das Profil als global aktiv und schreibt dessen UI-State in die globale UI-State Datei.',
+              'Speichern: schreibt den aktuellen globalen UI-State in dieses Profil.',
+              'Info: zeigt alle gespeicherten Keys+Werte, inkl. Volltextsuche.',
+              'Umbenennen/Loeschen: verwaltet Profile.',
+            ],
+          };
+        }catch(e){}
+      </script>
+    </main>
+  </div>
+</body>
+</html>

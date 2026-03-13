@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.12.19
+
+### Features
+
+- UI Profile (global): Profile werden filebasiert unter `/data/ui_profiles` gespeichert (Default: PC/MOBIL). Profil kann global angewendet werden; Profilverwaltung inkl. Anlegen/Loeschen/Umbenennen/Info mit Volltextsuche.
+
+### Fixes
+
+- UI Persistenz: "Darstellung speichern" ist entfernt; GUI-Aenderungen werden automatisch gespeichert und nicht mehr durch Dashboard-Defaults ueberschrieben.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.18
 
 ### Fixes

@@ -65,6 +65,11 @@ TIMERS_STATE_PATH = DATA_DIR / "influxbro_timers_state.json"
 UI_STATE_LOCK = threading.RLock()
 UI_STATE_PATH = DATA_DIR / "influxbro_ui_state.json"
 
+# UI profiles (file-based; global active profile)
+UI_PROFILES_LOCK = threading.RLock()
+UI_PROFILES_DIR = DATA_DIR / "ui_profiles"
+UI_PROFILE_ACTIVE_PATH = DATA_DIR / "ui_profile_active.json"
+
 # toggled via config (configure_logging)
 CACHE_USAGE_LOGGING = False
 
@@ -956,6 +961,187 @@ def _ui_state_val_ok(val: str) -> bool:
     except Exception:
         return False
     return len(v) <= 10000
+
+
+def _profile_id_from_label(label: str) -> str:
+    raw = str(label or "").strip()
+    if not raw:
+        return ""
+    # ASCII-only, file-safe id
+    out = re.sub(r"[^a-zA-Z0-9_-]+", "_", raw).strip("_")
+    return out[:48]
+
+
+def _profile_id_ok(pid: str) -> bool:
+    p = str(pid or "").strip()
+    if not p or len(p) > 48:
+        return False
+    return bool(re.match(r"^[a-zA-Z0-9_-]+$", p))
+
+
+def _ui_items_snapshot(prefix: str = "influxbro") -> dict[str, str]:
+    st = _ui_state_load()
+    out: dict[str, str] = {}
+    pref = str(prefix or "")
+    for k, v in st.items():
+        try:
+            if not isinstance(k, str) or not isinstance(v, str):
+                continue
+            if pref and not k.startswith(pref):
+                continue
+            lk = k.lower()
+            if "token" in lk or "password" in lk or "delete_confirm" in lk or "confirm_phrase" in lk:
+                continue
+            out[k] = v
+        except Exception:
+            continue
+    return out
+
+
+def _profiles_ensure_defaults() -> None:
+    try:
+        with UI_PROFILES_LOCK:
+            UI_PROFILES_DIR.mkdir(parents=True, exist_ok=True)
+            existing = [p for p in UI_PROFILES_DIR.iterdir() if p.is_file() and p.suffix == ".json"]
+            if existing:
+                if not UI_PROFILE_ACTIVE_PATH.exists():
+                    # pick first existing
+                    try:
+                        pid = existing[0].stem
+                        UI_PROFILE_ACTIVE_PATH.write_text(
+                            json.dumps({"active": pid, "updated_at": _utc_now_iso_ms()}, indent=2, sort_keys=True),
+                            encoding="utf-8",
+                        )
+                    except Exception:
+                        pass
+                return
+
+            # Create defaults from current state (best-effort)
+            items = _ui_items_snapshot(prefix="influxbro")
+            for lbl in ("PC", "MOBIL"):
+                pid = _profile_id_from_label(lbl)
+                if not pid:
+                    continue
+                path = UI_PROFILES_DIR / f"{pid}.json"
+                payload = {
+                    "id": pid,
+                    "label": lbl,
+                    "updated_at": _utc_now_iso_ms(),
+                    "items": items,
+                }
+                try:
+                    path.write_text(json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=True), encoding="utf-8")
+                except Exception:
+                    continue
+
+            if not UI_PROFILE_ACTIVE_PATH.exists():
+                try:
+                    UI_PROFILE_ACTIVE_PATH.write_text(
+                        json.dumps({"active": "PC", "updated_at": _utc_now_iso_ms()}, indent=2, sort_keys=True),
+                        encoding="utf-8",
+                    )
+                except Exception:
+                    pass
+    except Exception:
+        return
+
+
+def _profile_path(pid: str) -> Path:
+    return UI_PROFILES_DIR / f"{pid}.json"
+
+
+def _profile_load(pid: str) -> dict[str, Any] | None:
+    try:
+        if not _profile_id_ok(pid):
+            return None
+        path = _profile_path(pid)
+        if not path.exists():
+            return None
+        raw = path.read_text(encoding="utf-8", errors="replace")
+        j = json.loads(raw) if raw else None
+        return j if isinstance(j, dict) else None
+    except Exception:
+        return None
+
+
+def _profile_save(pid: str, label: str, items: dict[str, str]) -> None:
+    try:
+        if not _profile_id_ok(pid):
+            return
+        UI_PROFILES_DIR.mkdir(parents=True, exist_ok=True)
+        safe_items: dict[str, str] = {}
+        for k, v in (items or {}).items():
+            if not isinstance(k, str) or not isinstance(v, str):
+                continue
+            if not _ui_state_key_ok(k) or not _ui_state_val_ok(v):
+                continue
+            lk = k.lower()
+            if "token" in lk or "password" in lk or "delete_confirm" in lk or "confirm_phrase" in lk:
+                continue
+            safe_items[k] = v
+        payload = {
+            "id": pid,
+            "label": str(label or pid).strip() or pid,
+            "updated_at": _utc_now_iso_ms(),
+            "items": safe_items,
+        }
+        _profile_path(pid).write_text(
+            json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=True),
+            encoding="utf-8",
+        )
+    except Exception:
+        return
+
+
+def _profile_list() -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    try:
+        UI_PROFILES_DIR.mkdir(parents=True, exist_ok=True)
+        files = sorted([p for p in UI_PROFILES_DIR.iterdir() if p.is_file() and p.suffix == ".json"], key=lambda p: p.name)
+        for p in files:
+            try:
+                pid = p.stem
+                j = _profile_load(pid) or {}
+                label = str(j.get("label") or pid)
+                updated_at = j.get("updated_at")
+                items = j.get("items") if isinstance(j.get("items"), dict) else {}
+                out.append({
+                    "id": pid,
+                    "label": label,
+                    "updated_at": updated_at,
+                    "count": len(items),
+                })
+            except Exception:
+                continue
+    except Exception:
+        return []
+    return out
+
+
+def _active_profile_get() -> str | None:
+    try:
+        if not UI_PROFILE_ACTIVE_PATH.exists():
+            return None
+        raw = UI_PROFILE_ACTIVE_PATH.read_text(encoding="utf-8", errors="replace")
+        j = json.loads(raw) if raw else {}
+        if not isinstance(j, dict):
+            return None
+        pid = str(j.get("active") or "").strip()
+        return pid if _profile_id_ok(pid) else None
+    except Exception:
+        return None
+
+
+def _active_profile_set(pid: str) -> None:
+    try:
+        if not _profile_id_ok(pid):
+            return
+        UI_PROFILE_ACTIVE_PATH.write_text(
+            json.dumps({"active": pid, "updated_at": _utc_now_iso_ms()}, indent=2, sort_keys=True, ensure_ascii=True),
+            encoding="utf-8",
+        )
+    except Exception:
+        return
 
 def load_cfg():
     # NOTE: No automatic autodetect at startup.
@@ -2890,6 +3076,12 @@ def manual_page():
         nav="manual",
         manual_text=manual,
     )
+
+
+@app.get("/profiles")
+def profiles_page():
+    cfg = load_cfg()
+    return render_template("profiles.html", cfg=cfg, allow_delete=True, nav="profiles")
 
 @app.get("/config")
 def config_page():
@@ -9179,6 +9371,151 @@ def api_ui_state_prune():
     if to_del:
         _ui_state_save(st)
     return jsonify({"ok": True, "deleted": len(to_del), "prefix": prefix})
+
+
+@app.get("/api/ui_profiles")
+def api_ui_profiles_list():
+    _profiles_ensure_defaults()
+    active = _active_profile_get()
+    return jsonify({"ok": True, "active": active, "profiles": _profile_list()})
+
+
+@app.get("/api/ui_profiles/get")
+def api_ui_profiles_get():
+    _profiles_ensure_defaults()
+    pid = str(request.args.get("id") or "").strip()
+    if not _profile_id_ok(pid):
+        return jsonify({"ok": False, "error": "invalid profile id"}), 400
+    prof = _profile_load(pid)
+    if not prof:
+        return jsonify({"ok": False, "error": "profile not found"}), 404
+    items = prof.get("items") if isinstance(prof.get("items"), dict) else {}
+    # return only strings
+    out_items: dict[str, str] = {}
+    for k, v in items.items():
+        if isinstance(k, str) and isinstance(v, str):
+            out_items[k] = v
+    return jsonify({"ok": True, "profile": {
+        "id": str(prof.get("id") or pid),
+        "label": str(prof.get("label") or pid),
+        "updated_at": prof.get("updated_at"),
+        "items": out_items,
+        "count": len(out_items),
+    }})
+
+
+@app.post("/api/ui_profiles/create")
+def api_ui_profiles_create():
+    _profiles_ensure_defaults()
+    body = request.get_json(force=True) or {}
+    label = str(body.get("label") or "").strip()
+    if not label:
+        return jsonify({"ok": False, "error": "label required"}), 400
+    pid = _profile_id_from_label(label)
+    if not _profile_id_ok(pid):
+        return jsonify({"ok": False, "error": "invalid profile id"}), 400
+    path = _profile_path(pid)
+    if path.exists():
+        return jsonify({"ok": False, "error": "profile already exists"}), 400
+    items = _ui_items_snapshot(prefix="influxbro")
+    _profile_save(pid, label, items)
+    return jsonify({"ok": True, "id": pid})
+
+
+@app.post("/api/ui_profiles/rename")
+def api_ui_profiles_rename():
+    _profiles_ensure_defaults()
+    body = request.get_json(force=True) or {}
+    pid = str(body.get("id") or "").strip()
+    label = str(body.get("label") or "").strip()
+    if not _profile_id_ok(pid):
+        return jsonify({"ok": False, "error": "invalid profile id"}), 400
+    if not label:
+        return jsonify({"ok": False, "error": "label required"}), 400
+    prof = _profile_load(pid)
+    if not prof:
+        return jsonify({"ok": False, "error": "profile not found"}), 404
+    items = prof.get("items") if isinstance(prof.get("items"), dict) else {}
+    out_items: dict[str, str] = {}
+    for k, v in items.items():
+        if isinstance(k, str) and isinstance(v, str):
+            out_items[k] = v
+    _profile_save(pid, label, out_items)
+    return jsonify({"ok": True})
+
+
+@app.post("/api/ui_profiles/delete")
+def api_ui_profiles_delete():
+    _profiles_ensure_defaults()
+    body = request.get_json(force=True) or {}
+    pid = str(body.get("id") or "").strip()
+    if not _profile_id_ok(pid):
+        return jsonify({"ok": False, "error": "invalid profile id"}), 400
+    path = _profile_path(pid)
+    if not path.exists():
+        return jsonify({"ok": False, "error": "profile not found"}), 404
+    try:
+        path.unlink(missing_ok=True)
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 500
+
+    # adjust active if needed
+    if _active_profile_get() == pid:
+        xs = _profile_list()
+        new_active = xs[0]["id"] if xs else None
+        if new_active:
+            _active_profile_set(str(new_active))
+        else:
+            try:
+                UI_PROFILE_ACTIVE_PATH.unlink(missing_ok=True)
+            except Exception:
+                pass
+    return jsonify({"ok": True})
+
+
+@app.post("/api/ui_profiles/save")
+def api_ui_profiles_save():
+    _profiles_ensure_defaults()
+    body = request.get_json(force=True) or {}
+    pid = str(body.get("id") or "").strip()
+    if not _profile_id_ok(pid):
+        return jsonify({"ok": False, "error": "invalid profile id"}), 400
+    prof = _profile_load(pid)
+    if not prof:
+        return jsonify({"ok": False, "error": "profile not found"}), 404
+    label = str(prof.get("label") or pid)
+    items = _ui_items_snapshot(prefix="influxbro")
+    _profile_save(pid, label, items)
+    return jsonify({"ok": True})
+
+
+@app.post("/api/ui_profiles/apply")
+def api_ui_profiles_apply():
+    _profiles_ensure_defaults()
+    body = request.get_json(force=True) or {}
+    pid = str(body.get("id") or "").strip()
+    if not _profile_id_ok(pid):
+        return jsonify({"ok": False, "error": "invalid profile id"}), 400
+    prof = _profile_load(pid)
+    if not prof:
+        return jsonify({"ok": False, "error": "profile not found"}), 404
+    items = prof.get("items") if isinstance(prof.get("items"), dict) else {}
+
+    # Replace all influxbro* keys in the global UI state with the profile content.
+    st = _ui_state_load()
+    for k in list(st.keys()):
+        try:
+            if isinstance(k, str) and k.startswith("influxbro"):
+                st.pop(k, None)
+        except Exception:
+            continue
+    for k, v in items.items():
+        if isinstance(k, str) and isinstance(v, str) and _ui_state_key_ok(k) and _ui_state_val_ok(v):
+            st[k] = v
+    _ui_state_save(st)
+
+    _active_profile_set(pid)
+    return jsonify({"ok": True, "active": pid})
 
 
 @app.get("/api/cache_usage")

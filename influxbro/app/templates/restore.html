@@ -468,13 +468,19 @@
         }catch(e){}
       }
 
-      // Hook for the shared "Darstellung speichern" button (sidebar).
+      // Auto-persist layout changes (resizable blocks) without explicit save.
       try{
-        window.InfluxBroLayout = {
-          save: ()=>{
-            try{ saveLayoutToState(); }catch(e){}
-          },
+        let _T = null;
+        const run = ()=>{ try{ saveLayoutToState(); }catch(e){} };
+        const schedule = ()=>{
+          try{ if(_T) clearTimeout(_T); }catch(e){}
+          _T = setTimeout(()=>{ _T = null; run(); }, 140);
         };
+        const els = [$restoreBox, $sel, $planQuery, $runDetailsPre, $runPreviewPre].filter(Boolean);
+        if(window.ResizeObserver && els.length){
+          const ro = new ResizeObserver(()=>schedule());
+          els.forEach(el=>{ try{ ro.observe(el); }catch(e){} });
+        }
       }catch(e){}
 
       async function api(url, opts){

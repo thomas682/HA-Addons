@@ -961,22 +961,7 @@ function setSelectOptions(selectEl, items, placeholder){
 }
 
 const LS_KEY = "influxbro_ui_state_v1";
-const LS_LAYOUT_SAVED = "influxbro_dash_layout_saved_v1";
-
-function dashLayoutSaved(){
-  try{ return localStorage.getItem(LS_LAYOUT_SAVED) === '1'; }catch(e){ return false; }
-}
-
-// Hook for the shared "Darstellung speichern" button (sidebar).
-try{
-  window.InfluxBroLayout = {
-    save: ()=>{
-      try{ localStorage.setItem(LS_LAYOUT_SAVED, '1'); }catch(e){}
-      try{ saveState(); }catch(e){}
-      try{ cacheSaveNow(); }catch(e){}
-    },
-  };
-}catch(e){}
+// UI state is auto-persisted; no explicit "Darstellung speichern".
 
 function loadState(){
   try{
@@ -3831,33 +3816,23 @@ try{
 // Graph detail controls
 try{
   const st = loadState();
-  const layoutSaved = dashLayoutSaved();
-  if(layoutSaved){
-    if($graphDetailMode && st.graph_detail_mode) $graphDetailMode.value = String(st.graph_detail_mode);
-    if($graphManualDensity && st.graph_manual_density) $graphManualDensity.value = String(st.graph_manual_density);
-    if($derivBg) $derivBg.checked = (st.deriv_bg !== undefined) ? !!st.deriv_bg : true;
-    if($derivStrip) $derivStrip.checked = (st.deriv_strip !== undefined) ? !!st.deriv_strip : true;
-    if($derivGraph) $derivGraph.checked = (st.deriv_graph !== undefined) ? !!st.deriv_graph : true;
-    if($derivSigned) $derivSigned.checked = (st.deriv_signed !== undefined) ? !!st.deriv_signed : false;
-    if($derivAbs) $derivAbs.checked = (st.deriv_abs !== undefined) ? !!st.deriv_abs : ($derivSigned && $derivSigned.checked ? false : true);
-    if($derivOutlierThr) $derivOutlierThr.value = (st.deriv_outlier_thr !== undefined) ? String(st.deriv_outlier_thr) : "90";
-  }else{
-    // Defaults on every dashboard open until the user explicitly saves the layout.
-    if($graphDetailMode) $graphDetailMode.value = 'dynamic';
-    if($graphManualDensity) $graphManualDensity.value = '100';
-    if($derivBg) $derivBg.checked = true;
-    if($derivStrip) $derivStrip.checked = true;
-    if($derivGraph) $derivGraph.checked = true;
-    if($derivSigned) $derivSigned.checked = false;
-    if($derivAbs) $derivAbs.checked = true;
-    if($derivOutlierThr) $derivOutlierThr.value = "90";
-  }
+
+  // Always restore persisted state when present; otherwise use defaults.
+  if($graphDetailMode) $graphDetailMode.value = (st.graph_detail_mode !== undefined) ? String(st.graph_detail_mode || 'dynamic') : 'dynamic';
+  if($graphManualDensity) $graphManualDensity.value = (st.graph_manual_density !== undefined) ? String(st.graph_manual_density || '100') : '100';
+
+  if($derivBg) $derivBg.checked = (st.deriv_bg !== undefined) ? !!st.deriv_bg : true;
+  if($derivStrip) $derivStrip.checked = (st.deriv_strip !== undefined) ? !!st.deriv_strip : true;
+  if($derivGraph) $derivGraph.checked = (st.deriv_graph !== undefined) ? !!st.deriv_graph : true;
+  if($derivSigned) $derivSigned.checked = (st.deriv_signed !== undefined) ? !!st.deriv_signed : false;
+  if($derivAbs) $derivAbs.checked = (st.deriv_abs !== undefined) ? !!st.deriv_abs : (!$derivSigned || !$derivSigned.checked);
+  if($derivOutlierThr) $derivOutlierThr.value = (st.deriv_outlier_thr !== undefined) ? String(st.deriv_outlier_thr) : '90';
   if($reasonFilter) $reasonFilter.value = (st.reason_filter !== undefined) ? String(st.reason_filter || "") : "";
   if($classFilter) $classFilter.value = (st.class_filter !== undefined) ? String(st.class_filter || "all") : "all";
   try{ TABLE_REASON_FILTER = $reasonFilter ? String($reasonFilter.value || "") : ""; }catch(e){ TABLE_REASON_FILTER = ""; }
   try{ TABLE_CLASS_FILTER = $classFilter ? String($classFilter.value || "all") : "all"; }catch(e){ TABLE_CLASS_FILTER = "all"; }
   try{ _normalizeDerivToggles(null); }catch(e){}
-  try{ saveState(); }catch(e){}
+  try{ _updateGraphDetailUi(); }catch(e){}
 }catch(e){}
 
 try{

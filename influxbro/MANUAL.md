@@ -107,6 +107,17 @@ Hinweis: Zeitstempel werden im gesamten UI inklusive Millisekunden angezeigt.
 - Spalten koennen ueber den Spalten-Button (neben dem Info-Icon) ein-/ausgeblendet werden (wird gespeichert).
 - Das Info-Icon (Buch) erklaert je Tabelle Sinn/Zweck, Spalten und Aktionen.
 
+## UI-Profile
+
+- In der Sidebar kannst du ein Profil auswaehlen (Default: `PC`, `MOBIL`).
+- Profile werden filebasiert unter `/data/ui_profiles` gespeichert.
+- Das aktive Profil ist global (gilt fuer alle Clients/Browsers).
+- In `Profilverwaltung` kannst du Profile anlegen, umbenennen, loeschen, anwenden und den gespeicherten Inhalt per Volltextsuche einsehen.
+
+## Automatisches Speichern
+
+- GUI-Aenderungen werden automatisch gespeichert (Checkboxen/Selects/Inputs sowie resizable Hoehen).
+
 ### 2) Zeitraum setzen
 
 - `Zeitraum (Graph/Tabelle)`: z.B. 24h, 7d, oder `Alle`.
@@ -307,7 +318,7 @@ Timer Jobs:
 - Restore fragt per Browser-Dialog nach Bestaetigung; `delete_confirm_phrase` wird nur fuer Bulk-Loeschungen verwendet.
 - Tipp: In der Volltextsuche gibt es Buttons `Alle` (leeren) und `aus Dashboardauswahl`.
 - Die Hoehe der Restore-Backup-Liste ist per Einstellung "Sichtbare Zeilen (Restore-Liste)" konfigurierbar.
-- Restore: Backup-Liste, Query und Detail-Boxen sind resizable; mit `Darstellung speichern` werden Hoehen gemerkt.
+- Restore: Backup-Liste, Query und Detail-Boxen sind resizable; Hoehen werden automatisch gemerkt.
 
 Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore/Abfragen) und die letzte Meldung anzeigt.
 
@@ -317,7 +328,7 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Feld `Auswahl (aufgeloest)`: zeigt die aktuell aufgeloeste Serie (measurement/field + tags) und den Zeitraum.
 - Export-Erzeugung laeuft als Hintergrund-Job und kann mit `Abbrechen` gestoppt werden; nach Fertigstellung startet der Download automatisch.
 - Vor dem Start erscheint ein Dialog zur Auswahl des Zielordners (relativ unter `/data` oder absolut unter `/data`/`/config`).
-- Das Feld `Auswahl (aufgeloest)` ist resizable; mit `Darstellung speichern` wird die Groesse gemerkt.
+- Das Feld `Auswahl (aufgeloest)` ist resizable; die Groesse wird automatisch gemerkt.
 - Formate: Text (Delimiter, Default `;`) oder Excel (`.xlsx`).
 - Zeitstempel im Export sind im lokalen Browser-Format (wie in der UI angezeigt).
 

@@ -249,13 +249,18 @@
         });
       }
 
-      // Hook for the shared "Darstellung speichern" button (sidebar).
+      // Auto-persist layout changes (resizable blocks) without explicit save.
       try{
-        window.InfluxBroLayout = {
-          save: ()=>{
-            try{ saveState(); }catch(e){}
-          },
+        let _T = null;
+        const schedule = ()=>{
+          try{ if(_T) clearTimeout(_T); }catch(e){}
+          _T = setTimeout(()=>{ _T = null; try{ saveState(); }catch(e){} }, 140);
         };
+        const els = [$sel].filter(Boolean);
+        if(window.ResizeObserver && els.length){
+          const ro = new ResizeObserver(()=>schedule());
+          els.forEach(el=>{ try{ ro.observe(el); }catch(e){} });
+        }
       }catch(e){}
 
       function setStatus(s){ try{ if($status) $status.textContent = String(s||""); }catch(e){} }

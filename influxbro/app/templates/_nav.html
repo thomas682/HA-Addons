@@ -48,7 +48,15 @@
   <div class="brand">
     <div class="brand_title">InfluxBro</div>
     <div class="brand_meta" style="margin-top: 4px;">by Thomas Schatz</div>
-    <div class="brand_meta">Version: {{ addon_version }}</div>
+    <div class="brand_meta" data-ui="nav.profile" title="nav.profile" style="margin-top: 8px;">
+      <div style="display:flex; gap: 8px; align-items:center; flex-wrap:wrap;">
+        <select id="ui_profile_sel" style="height: 32px; padding: 6px 10px; max-width: 220px;"></select>
+        <button id="ui_profile_apply" type="button" style="cursor:pointer; padding: 6px 10px; height: 32px;">Anwenden</button>
+        <button id="ui_profile_save" type="button" style="cursor:pointer; padding: 6px 10px; height: 32px;">Speichern</button>
+        <button id="ui_profile_info" type="button" style="cursor:pointer; padding: 6px 10px; height: 32px;">Info</button>
+      </div>
+      <div class="brand_meta" id="ui_profile_hint" style="margin-top: 6px;">Version: {{ addon_version }}</div>
+    </div>
 
     {% set _pp_url = (cfg.get('ui_paypal_donate_url') or 'https://www.paypal.com/donate/?hosted_button_id=ZWZE3WM4NBUW6') %}
     <div class="brand_meta" style="margin-top: 8px;" data-ui="nav.donate" title="nav.donate">
@@ -123,6 +131,11 @@
   <a class="nav_item {{ 'active' if nav == 'manual' else '' }}" href="./manual" data-ui="nav.manual" title="nav.manual">
     <span class="ico" aria-hidden="true">?</span>
     <span>Handbuch</span>
+  </a>
+
+  <a class="nav_item {{ 'active' if nav == 'profiles' else '' }}" href="./profiles" data-ui="nav.profiles" title="nav.profiles">
+    <span class="ico" aria-hidden="true">P</span>
+    <span>Profilverwaltung</span>
   </a>
 
   <a class="nav_item {{ 'active' if nav == 'settings' else '' }}" href="./config" data-ui="nav.settings" title="nav.settings">
@@ -404,25 +417,8 @@
           setAllDetailsOpen(main, false);
         };
 
-        const bSave = mkBtn('Darstellung speichern');
-        bSave.setAttribute('data-ui', 'sections.save');
-        bSave.style.fontSize = '12px';
-        bSave.style.opacity = '0.85';
-        bSave.onclick = (ev)=>{
-          try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
-          const ok = saveDetailsState(main);
-          try{
-            if(window.InfluxBroLayout && typeof window.InfluxBroLayout.save === 'function'){
-              window.InfluxBroLayout.save();
-            }
-          }catch(e){}
-          // lightweight feedback via title
-          bSave.setAttribute('title', ok ? 'Gespeichert.' : 'Speichern fehlgeschlagen.');
-        };
-
         bar.appendChild(bOpen);
         bar.appendChild(bClose);
-        bar.appendChild(bSave);
 
         // Insert below the header row (not inside it).
         const headerRow = h2.parentElement;
@@ -727,6 +723,254 @@
       }catch(e){}
     }
 
+    // UI Profiles (global)
+    async function loadProfiles(){
+      try{
+        const r = await fetch('./api/ui_profiles');
+        const j = await r.json().catch(()=>({ok:false}));
+        if(!r.ok || !j || !j.ok) return null;
+        return j;
+      }catch(e){
+        return null;
+      }
+    }
+
+    function _modalEnsure(){
+      let root = document.getElementById('influxbro_profile_modal');
+      if(root) return root;
+      root = document.createElement('div');
+      root.id = 'influxbro_profile_modal';
+      root.style.position = 'fixed';
+      root.style.inset = '0';
+      root.style.zIndex = '10060';
+      root.style.display = 'none';
+      root.style.background = 'rgba(0,0,0,0.45)';
+      root.style.padding = '6vh 12px 12px 12px';
+      root.style.boxSizing = 'border-box';
+      root.style.overflow = 'auto';
+
+      const card = document.createElement('div');
+      card.style.maxWidth = '920px';
+      card.style.margin = '0 auto';
+      card.style.background = '#fff';
+      card.style.borderRadius = '16px';
+      card.style.boxShadow = '0 12px 60px rgba(0,0,0,0.28)';
+      card.style.padding = '14px';
+      card.style.boxSizing = 'border-box';
+
+      const head = document.createElement('div');
+      head.style.display = 'flex';
+      head.style.alignItems = 'center';
+      head.style.justifyContent = 'space-between';
+      head.style.gap = '10px';
+
+      const title = document.createElement('div');
+      title.id = 'influxbro_profile_modal_title';
+      title.style.fontWeight = '900';
+      title.style.fontSize = '16px';
+      title.textContent = 'Profil Info';
+
+      const close = document.createElement('button');
+      close.textContent = 'Schliessen';
+      close.style.cursor = 'pointer';
+      close.style.padding = '8px 10px';
+      close.style.height = '34px';
+
+      head.appendChild(title);
+      head.appendChild(close);
+
+      const tools = document.createElement('div');
+      tools.style.display = 'flex';
+      tools.style.gap = '8px';
+      tools.style.alignItems = 'center';
+      tools.style.flexWrap = 'wrap';
+      tools.style.marginTop = '10px';
+
+      const q = document.createElement('input');
+      q.id = 'influxbro_profile_modal_q';
+      q.placeholder = 'Volltextsuche...';
+      q.style.flex = '1';
+      q.style.minWidth = '220px';
+      q.style.height = '34px';
+      q.style.padding = '8px 10px';
+
+      const cnt = document.createElement('span');
+      cnt.id = 'influxbro_profile_modal_cnt';
+      cnt.style.fontSize = '12px';
+      cnt.style.opacity = '0.75';
+
+      const prev = document.createElement('button');
+      prev.id = 'influxbro_profile_modal_prev';
+      prev.textContent = 'Zurueck';
+      prev.style.cursor = 'pointer';
+      prev.style.height = '34px';
+
+      const next = document.createElement('button');
+      next.id = 'influxbro_profile_modal_next';
+      next.textContent = 'Weiter';
+      next.style.cursor = 'pointer';
+      next.style.height = '34px';
+
+      tools.appendChild(q);
+      tools.appendChild(cnt);
+      tools.appendChild(prev);
+      tools.appendChild(next);
+
+      const pre = document.createElement('pre');
+      pre.id = 'influxbro_profile_modal_pre';
+      pre.style.marginTop = '10px';
+      pre.style.padding = '10px 12px';
+      pre.style.border = '1px solid #eee';
+      pre.style.borderRadius = '12px';
+      pre.style.background = '#fafafa';
+      pre.style.whiteSpace = 'pre-wrap';
+      pre.style.overflowWrap = 'anywhere';
+      pre.style.maxHeight = '60vh';
+      pre.style.overflow = 'auto';
+
+      card.appendChild(head);
+      card.appendChild(tools);
+      card.appendChild(pre);
+      root.appendChild(card);
+      document.body.appendChild(root);
+
+      const hide = ()=>{ try{ root.style.display = 'none'; }catch(e){} };
+      close.onclick = (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} hide(); };
+      root.addEventListener('click', (ev)=>{ if(ev && ev.target === root) hide(); });
+      document.addEventListener('keydown', (ev)=>{ try{ if(ev && ev.key === 'Escape' && root.style.display !== 'none') hide(); }catch(e){} });
+      return root;
+    }
+
+    function showProfileInfo(label, items){
+      const root = _modalEnsure();
+      const $t = document.getElementById('influxbro_profile_modal_title');
+      const $q = document.getElementById('influxbro_profile_modal_q');
+      const $cnt = document.getElementById('influxbro_profile_modal_cnt');
+      const $pre = document.getElementById('influxbro_profile_modal_pre');
+      const $prev = document.getElementById('influxbro_profile_modal_prev');
+      const $next = document.getElementById('influxbro_profile_modal_next');
+      if($t) $t.textContent = 'Profil: ' + String(label || '');
+
+      const lines = [];
+      const keys = Object.keys(items || {}).sort();
+      keys.forEach(k=>{ lines.push(String(k) + ' = ' + String(items[k])); });
+      const raw = lines.join('\n');
+
+      let marks = [];
+      let idx = -1;
+
+      function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+      function render(){
+        const term = String($q && $q.value ? $q.value : '').toLowerCase();
+        if(!term){
+          $pre.innerHTML = esc(raw);
+          marks = [];
+          idx = -1;
+          if($cnt) $cnt.textContent = '0 Treffer';
+          return;
+        }
+        const parts = raw.split(/\n/);
+        const out = [];
+        const re = new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'ig');
+        parts.forEach(line=>{
+          const h = esc(line).replace(re, (m)=>'<mark>' + esc(m) + '</mark>');
+          out.push(h);
+        });
+        $pre.innerHTML = out.join('\n');
+        marks = Array.from($pre.querySelectorAll('mark'));
+        if($cnt) $cnt.textContent = String(marks.length) + ' Treffer';
+        idx = marks.length ? 0 : -1;
+        jump(0);
+      }
+      function jump(delta){
+        if(!marks.length) return;
+        idx = (idx + delta + marks.length) % marks.length;
+        marks.forEach(m=>m.classList.remove('active'));
+        const m = marks[idx];
+        try{ m.classList.add('active'); }catch(e){}
+        try{ m.scrollIntoView({block:'center', behavior:'smooth'}); }catch(e){}
+      }
+      if($prev) $prev.onclick = (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}; jump(-1); };
+      if($next) $next.onclick = (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}; jump(1); };
+      if($q) $q.oninput = ()=>render();
+
+      if($q) $q.value = '';
+      $pre.textContent = raw;
+      if($cnt) $cnt.textContent = '0 Treffer';
+
+      root.style.display = 'block';
+      try{ if($q) $q.focus(); }catch(e){}
+    }
+
+    try{ window.showProfileInfo = showProfileInfo; }catch(e){}
+
+    async function initProfilesUi(){
+      const $sel = document.getElementById('ui_profile_sel');
+      const $apply = document.getElementById('ui_profile_apply');
+      const $save = document.getElementById('ui_profile_save');
+      const $info = document.getElementById('ui_profile_info');
+      const $hint = document.getElementById('ui_profile_hint');
+      if(!$sel || !$apply || !$save || !$info) return;
+
+      const j = await loadProfiles();
+      if(!j) return;
+      const xs = Array.isArray(j.profiles) ? j.profiles : [];
+      $sel.innerHTML = '';
+      xs.forEach(p=>{
+        const o = document.createElement('option');
+        o.value = String(p.id || '');
+        o.textContent = String(p.label || p.id || '');
+        $sel.appendChild(o);
+      });
+      if(j.active) $sel.value = String(j.active);
+      if($hint){
+        const cur = xs.find(p=>String(p.id||'')===String($sel.value||''));
+        const lbl = cur ? String(cur.label||cur.id||'') : '';
+        $hint.textContent = 'Aktiv: ' + (lbl || '-') + ' | Version: {{ addon_version }}';
+      }
+
+      $sel.onchange = ()=>{
+        try{
+          const cur = xs.find(p=>String(p.id||'')===String($sel.value||''));
+          const lbl = cur ? String(cur.label||cur.id||'') : '';
+          if($hint) $hint.textContent = 'Aktiv: ' + (String(j.active||'')===String($sel.value||'') ? (lbl||'-') : (String(j.active||'-'))) + ' | Auswahl: ' + (lbl||'-') + ' | Version: {{ addon_version }}';
+        }catch(e){}
+      };
+
+      $apply.onclick = async (ev)=>{
+        try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+        const id = String($sel.value||'').trim();
+        if(!id) return;
+        if(!confirm('Profil anwenden? Dies ueberschreibt die global gespeicherten GUI-Einstellungen.')) return;
+        await fetch('./api/ui_profiles/apply', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id})}).then(r=>r.json()).catch(()=>null);
+        location.reload();
+      };
+      $save.onclick = async (ev)=>{
+        try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+        const id = String($sel.value||'').trim();
+        if(!id) return;
+        if(!confirm('Aktuellen Stand in dieses Profil speichern?')) return;
+        await fetch('./api/ui_profiles/save', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id})}).then(r=>r.json()).catch(()=>null);
+        const j2 = await loadProfiles();
+        if(j2 && $hint){
+          const xs2 = Array.isArray(j2.profiles) ? j2.profiles : [];
+          const cur = xs2.find(p=>String(p.id||'')===String(id));
+          const lbl = cur ? String(cur.label||cur.id||'') : id;
+          $hint.textContent = 'Aktiv: ' + (lbl || '-') + ' | Version: {{ addon_version }}';
+        }
+      };
+      $info.onclick = async (ev)=>{
+        try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+        const id = String($sel.value||'').trim();
+        if(!id) return;
+        const r = await fetch('./api/ui_profiles/get?id=' + encodeURIComponent(id));
+        const g = await r.json().catch(()=>({ok:false}));
+        if(!r.ok || !g || !g.ok) return;
+        const p = g.profile || {};
+        showProfileInfo(p.label || p.id || id, p.items || {});
+      };
+    }
+
     function watchEl(el){
       try{
         if(!el || !el.getAttribute) return;
@@ -745,7 +989,6 @@
     const HELP = {
       'sections.open_all': 'Oeffnet alle einklappbaren Bereiche auf dieser Seite.',
       'sections.close_all': 'Schliesst alle einklappbaren Bereiche auf dieser Seite.',
-      'sections.save': 'Speichert den aktuellen Auf/Zu-Zustand der Bereiche fuer diese Seite.',
       'logs.server_profile': 'Setzt die Log-Stufe im Backend (wirkt sofort).',
       'logs.server_influx_queries': 'Wenn aktiv, werden Influx Query-Strings in TRACE geloggt.',
       'restore.source_to_target': 'Uebernimmt Measurement/Field/Tags aus dem Backup ins Ziel.',
@@ -881,6 +1124,7 @@
     try{
      // Start early so values restore before page scripts use them.
      ensureStatusBus();
+     try{ initProfilesUi(); }catch(e){}
      if(TOOLTIP_ENABLED) applyTooltips();
      else clearTitles();
      // Restore from server (best-effort) then apply to DOM.
