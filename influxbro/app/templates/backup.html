@@ -149,6 +149,9 @@
           <div><label>&nbsp;</label><button id="reload" data-ui="backup.reload" title="backup.reload">Liste aktualisieren</button></div>
           <div><label>&nbsp;</label><button id="cancel" class="btn_sm" data-ui="backup.cancel" title="backup.cancel" disabled>Abbruch</button></div>
           <div><label>&nbsp;</label><button id="backup_autowidth" class="btn_sm" data-ui="backup.autowidth" title="backup.autowidth">Spaltenbreite automatisch</button></div>
+          <div><label>&nbsp;</label><button id="backup_windowwidth" class="btn_sm" data-ui="backup.windowwidth" title="backup.windowwidth">Fensterbreite</button></div>
+          <div><label>&nbsp;</label><label style="display:flex; align-items:center; gap: 6px; padding-top: 6px;"><input type="checkbox" id="backup_wrap" data-ui="backup.wrap" title="backup.wrap"/>Umbruch</label></div>
+          <div><label>&nbsp;</label><label style="display:flex; align-items:center; gap: 6px; padding-top: 6px;"><input type="checkbox" id="backup_colfilter" data-ui="backup.colfilter" title="backup.colfilter"/>Spaltenfilter</label></div>
           <div><label>&nbsp;</label><button id="del" data-ui="backup.delete" title="backup.delete">Backup loeschen</button></div>
           <div><label>&nbsp;</label><button id="download" class="btn_sm" data-ui="backup.download" title="backup.download" style="display:none;">Download</button></div>
         </div>
@@ -184,7 +187,7 @@
         </div>
 
          <div class="table_box" id="backup_box" data-ui="backup.table_box" title="backup.table_box">
-         <table data-ui="backup.table" title="backup.table" id="backup_tbl">
+         <table data-ui="backup.table" title="backup.table" id="backup_tbl" class="ib_tbl">
           <thead>
             <tr>
               <th style="width:20px;"><input type="checkbox" id="sel_all" data-ui="backup.select_all" title="backup.select_all"/></th>
@@ -225,6 +228,9 @@
       const $reload = document.getElementById('reload');
       const $cancel = document.getElementById('cancel');
       const $backupAutoWidth = document.getElementById('backup_autowidth');
+      const $backupWindowWidth = document.getElementById('backup_windowwidth');
+      const $backupWrap = document.getElementById('backup_wrap');
+      const $backupColFilter = document.getElementById('backup_colfilter');
       const $del = document.getElementById('del');
       const $download = document.getElementById('download');
       const $selAll = document.getElementById('sel_all');
@@ -1199,21 +1205,56 @@
           .then(()=>resolveAndLoad())
           .catch(e=>err(String(e && e.message ? e.message : e)));
 
-        try{
-          if(window.InfluxBroTableCols) window.InfluxBroTableCols.init('#backup_tbl');
-        }catch(e){}
-
-        try{
-          if($backupAutoWidth) $backupAutoWidth.addEventListener('click', (ev)=>{
-            ev.preventDefault(); ev.stopPropagation();
-            try{ window.InfluxBroTableCols && window.InfluxBroTableCols.autoFit('#backup_tbl', {maxRows: 200}); }catch(e){}
-          });
-        }catch(e){}
+        // table UI helpers are wired after shared helpers are loaded (see bottom script)
         </script>
 
         {% include "_table_cols.html" %}
         {% include "_tooltips.html" %}
+
+        <script>
+        // Wire table helpers after shared helpers exist.
+        (function(){
+          try{ if(window.InfluxBroTableCols) window.InfluxBroTableCols.init('#backup_tbl'); }catch(e){}
+          try{ if(window.InfluxBroTableHeight) window.InfluxBroTableHeight.attach(document.getElementById('backup_box'), 'backup_tbl', {minPx: 180}); }catch(e){}
+
+          const pk = (window.location && window.location.pathname) ? String(window.location.pathname) : '';
+          const kWrap = 'influxbro.ui.wrap.v1.' + pk + '.backup_tbl';
+          const kFilt = 'influxbro.ui.colfilter.v1.' + pk + '.backup_tbl';
+
+          try{
+            if($backupAutoWidth) $backupAutoWidth.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} try{ window.InfluxBroTableCols && window.InfluxBroTableCols.autoFit('#backup_tbl', {maxRows: 200}); }catch(e){} });
+          }catch(e){}
+
+          try{
+            if($backupWindowWidth) $backupWindowWidth.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} try{ window.InfluxBroTableCols && window.InfluxBroTableCols.windowFit('#backup_tbl', {minW: 90}); }catch(e){} });
+          }catch(e){}
+
+          try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.init('#backup_tbl', {startHidden: true}); }catch(e){}
+
+          try{
+            if($backupWrap){
+              try{ $backupWrap.checked = (localStorage.getItem(kWrap) || '') === '1'; }catch(e){}
+              try{ window.InfluxBroTableWrap && window.InfluxBroTableWrap.setWrap('#backup_tbl', $backupWrap.checked); }catch(e){}
+              $backupWrap.addEventListener('change', ()=>{
+                try{ localStorage.setItem(kWrap, $backupWrap.checked ? '1' : '0'); }catch(e){}
+                try{ window.InfluxBroTableWrap && window.InfluxBroTableWrap.setWrap('#backup_tbl', $backupWrap.checked); }catch(e){}
+              });
+            }
+          }catch(e){}
+
+          try{
+            if($backupColFilter){
+              try{ $backupColFilter.checked = (localStorage.getItem(kFilt) || '') === '1'; }catch(e){}
+              try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.setVisible('#backup_tbl', $backupColFilter.checked); }catch(e){}
+              $backupColFilter.addEventListener('change', ()=>{
+                try{ localStorage.setItem(kFilt, $backupColFilter.checked ? '1' : '0'); }catch(e){}
+                try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.setVisible('#backup_tbl', $backupColFilter.checked); }catch(e){}
+              });
+            }
+          }catch(e){}
+        })();
+        </script>
       </main>
    </div>
  </body>
-  </html>
+   </html>

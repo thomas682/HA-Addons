@@ -72,6 +72,13 @@
           </label>
         </div>
         <div>
+          <label>Caching</label>
+          <label style="display:flex; align-items:center; gap:8px; height:40px; padding:0 4px;">
+            <input id="server_cache_usage" type="checkbox" data-ui="logs.server_cache_usage" title="logs.server_cache_usage" />
+            <span class="muted" style="opacity:0.85;">logge Caching</span>
+          </label>
+        </div>
+        <div>
           <label>Tail</label>
           <select id="tail" data-ui="logs.tail" title="logs.tail">
             <option value="200">200</option>
@@ -139,6 +146,7 @@
       const $viewProfile = document.getElementById('view_profile');
       const $serverProfile = document.getElementById('server_profile');
       const $serverInfluxQueries = document.getElementById('server_influx_queries');
+      const $serverCacheUsage = document.getElementById('server_cache_usage');
       const $tail = document.getElementById('tail');
       const $refresh = document.getElementById('refresh');
       const $jumpOldest = document.getElementById('jump_oldest');
@@ -250,12 +258,32 @@
           const p = String(cfg.log_profile || "debug");
           if(["error","debug","trace"].includes(p)) $serverProfile.value = p;
           if($serverInfluxQueries) $serverInfluxQueries.checked = !!cfg.log_influx_queries;
+          if($serverCacheUsage) $serverCacheUsage.checked = !!cfg.log_cache_usage;
         }catch(e){}
       }
 
       async function setServerInfluxQueries(on){
         try{
           const payload = { log_influx_queries: !!on };
+          let r;
+          try{
+            r = await fetch("./api/config", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)});
+          }catch(e){
+            try{ window.InfluxBroClientLog && window.InfluxBroClientLog.fetchError && window.InfluxBroClientLog.fetchError('./api/config', {method:'POST'}, e); }catch(x){}
+            throw new Error('Failed to fetch');
+          }
+          const j = await r.json().catch(()=>({ok:false,error:"Invalid JSON"}));
+          if(!r.ok || !j.ok) throw new Error(j.error || ("HTTP " + r.status));
+          return true;
+        }catch(e){
+          err(String(e && e.message ? e.message : e));
+          return false;
+        }
+      }
+
+      async function setServerCacheUsage(on){
+        try{
+          const payload = { log_cache_usage: !!on };
           let r;
           try{
             r = await fetch("./api/config", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)});
@@ -480,6 +508,7 @@
       if($viewProfile) $viewProfile.addEventListener('change', ()=>{ saveViewProfile(); applySearch(); });
       if($serverProfile) $serverProfile.addEventListener('change', ()=>{ setServerProfile($serverProfile.value).then(()=>loadLogs().catch(()=>{})); });
       if($serverInfluxQueries) $serverInfluxQueries.addEventListener('change', ()=>{ setServerInfluxQueries($serverInfluxQueries.checked).then(()=>loadLogs().catch(()=>{})); });
+      if($serverCacheUsage) $serverCacheUsage.addEventListener('change', ()=>{ setServerCacheUsage($serverCacheUsage.checked).then(()=>loadLogs().catch(()=>{})); });
       $follow.addEventListener('click', ()=>setFollow(!FOLLOW));
       $wrap.addEventListener('change', ()=>{ applyWrap(); });
       $q.addEventListener('input', ()=>applySearch());

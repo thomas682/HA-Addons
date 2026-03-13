@@ -17,7 +17,7 @@
     .nav_item:hover { background: #f6f6f6; }
     .nav_item.active { background: #0b0b0c; color: #fff; }
     .ico { width: 22px; height: 22px; display:inline-flex; align-items:center; justify-content:center; font-weight: 800; }
-    .content { padding: 16px; max-width: 980px; }
+    .content { padding: 16px; }
     .row { display:flex; gap:12px; flex-wrap:wrap; align-items:end; }
     /* Parameterliste: 1 Spalte (Titel/Control/Description pro Block) */
     .grid { display:block; }
@@ -352,6 +352,10 @@
               <div class="muted">Sidebar Status Panel (Refresh/Eintraege).</div>
             </div>
             <div>
+              <label><input type="checkbox" id="ui_status_show_sysinfo" data-ui="settings.ui.status_sysinfo" title="settings.ui.status_sysinfo" /> Info in Titelzeile einblenden</label>
+              <div class="muted">Zeigt zusaetzlich Memory/CPU/Disk im Statusbereich (unter dem Menue).</div>
+            </div>
+            <div>
               <label>Checkbox Groesse (Scale)</label>
               <input id="ui_checkbox_scale" type="number" min="0.5" max="1.6" step="0.05" />
               <div class="muted">0.85 = kleiner, 1.0 = normal.</div>
@@ -382,7 +386,7 @@
             <div>
               <label>Max Job Laufzeit (Sekunden)</label>
               <input id="jobs_max_runtime_seconds" type="number" min="0" max="604800" />
-              <div class="muted">0 = deaktiviert. Laeuft ein Job laenger, wird er automatisch abgebrochen (Logeintrag).</div>
+              <div class="muted">0 = deaktiviert. Default: 3600 (1h). Laeuft ein Job laenger, wird er automatisch abgebrochen (Logeintrag).</div>
             </div>
             <div>
               <label>Job Farbe: running</label>
@@ -580,6 +584,10 @@
         <label><input type="checkbox" id="log_influx_queries" data-ui="settings.log_influx_queries" title="settings.log_influx_queries" /> Influx Query protokollieren</label>
         <div class="muted">Schreibt Query-Strings ins Log (nur wenn Log Stufe TRACE aktiv ist).</div>
       </div>
+      <div>
+        <label><input type="checkbox" id="log_cache_usage" data-ui="settings.log_cache_usage" title="settings.log_cache_usage" /> logge Caching</label>
+        <div class="muted">Schreibt Cache-Nutzung (Jobs&Cache) ins Logfile (zusaetzlich zur Usage-Tabelle).</div>
+      </div>
     </div>
     </div>
   </details>
@@ -592,26 +600,31 @@
         <div class="muted">Werte gelten als "unsinnig", wenn ein Sprung groesser als diese Grenze ist (nur Counter-Regel).</div>
       </div>
 
-      <div class="span2">
-        <div class="row" style="align-items: stretch;">
-          <div style="min-width: 160px;"><button id="outliers_autowidth" type="button" data-ui="settings.outliers.autofit" title="settings.outliers.autofit">Auto-Fit</button></div>
-          <div class="muted" style="flex:1; min-width: 240px;">_measurement ist nicht editierbar. Speichern uebernimmt die Tabelle in die Konfiguration.</div>
-        </div>
-      </div>
+       <div class="span2">
+         <div class="row" style="align-items: stretch;">
+           <div style="min-width: 160px;"><button id="outliers_autowidth" type="button" data-ui="settings.outliers.autofit" title="settings.outliers.autofit">Auto-Fit</button></div>
+           <div style="min-width: 160px;"><button id="outliers_windowwidth" type="button" data-ui="settings.outliers.windowfit" title="settings.outliers.windowfit">Fensterbreite</button></div>
+           <label style="display:flex; align-items:center; gap: 6px; padding: 0 4px;"><input type="checkbox" id="outliers_wrap" data-ui="settings.outliers.wrap" title="settings.outliers.wrap"/>Umbruch</label>
+           <label style="display:flex; align-items:center; gap: 6px; padding: 0 4px;"><input type="checkbox" id="outliers_colfilter" data-ui="settings.outliers.colfilter" title="settings.outliers.colfilter"/>Spaltenfilter</label>
+           <div class="muted" style="flex:1; min-width: 240px;">_measurement ist nicht editierbar. Speichern uebernimmt die Tabelle in die Konfiguration.</div>
+         </div>
+       </div>
 
-      <div class="span2">
-        <label>Ausreisser Tabelle (_measurement / max_step)</label>
-        <table id="outliers_tbl" class="cfg_tbl" data-ui="settings.outliers.table" title="settings.outliers.table">
-          <thead>
-            <tr>
-              <th data-key="measurement">_measurement</th>
-              <th data-key="max_step">max_step</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-        <div class="muted">Wird fuer Counter-Ausreisser und dynamisches Graph-Sampling genutzt.</div>
-      </div>
+       <div class="span2">
+         <label>Ausreisser Tabelle (_measurement / max_step)</label>
+         <div class="table_box" id="outliers_box" style="max-height: 45vh; overflow:auto; border: 1px solid #eee; border-radius: 12px; margin-top: 8px;">
+           <table id="outliers_tbl" class="cfg_tbl ib_tbl" data-ui="settings.outliers.table" title="settings.outliers.table">
+             <thead>
+               <tr>
+                 <th data-key="measurement">_measurement</th>
+                 <th data-key="max_step">max_step</th>
+               </tr>
+             </thead>
+             <tbody></tbody>
+           </table>
+         </div>
+         <div class="muted">Wird fuer Counter-Ausreisser und dynamisches Graph-Sampling genutzt.</div>
+       </div>
     </div>
     </div>
   </details>
@@ -649,6 +662,7 @@ const ids = [
   "ui_query_manual_max_points","ui_graph_jump_padding_intervals",
   "ui_font_size_px","ui_font_small_px","ui_checkbox_scale",
   "ui_status_font_px",
+  "ui_status_show_sysinfo",
   "ui_filter_label_width_px","ui_filter_control_width_px","ui_filter_search_width_px"
   ,"jobs_max_runtime_seconds","ui_job_color_running","ui_job_color_done","ui_job_color_error","ui_job_color_cancelled"
   ,"ui_repo_url"
@@ -659,6 +673,7 @@ const ids = [
   ,"restore_preview_lines"
   ,"log_to_file","log_profile","log_max_mb","log_backup_count","log_max_age_days","log_http_requests"
   ,"log_influx_queries"
+  ,"log_cache_usage"
   // writes_enabled removed
   ,"backup_dir","backup_min_free_mb"
   ,"dash_cache_enabled","dash_cache_auto_update","dash_cache_refresh_mode","dash_cache_refresh_hours","dash_cache_refresh_daily_at"
@@ -677,6 +692,10 @@ const $settingsSearchResults = document.getElementById('settings_search_results'
 
 const $outliersTbl = document.getElementById('outliers_tbl');
 const $outliersAuto = document.getElementById('outliers_autowidth');
+const $outliersBox = document.getElementById('outliers_box');
+const $outliersWin = document.getElementById('outliers_windowwidth');
+const $outliersWrap = document.getElementById('outliers_wrap');
+const $outliersColFilter = document.getElementById('outliers_colfilter');
 let _OUTLIERS_SEL_IDX = -1;
 
 function _norm(s){ return String(s || '').trim(); }
@@ -967,11 +986,7 @@ function _renderOutliersTable(rows){
       tb.appendChild(tr);
     });
     _outliersClearSelection();
-    try{
-      if(window.InfluxBroTableCols){
-        window.InfluxBroTableCols.init('#outliers_tbl');
-      }
-    }catch(e){}
+    // table helpers are initialized after shared helpers are loaded
   }catch(e){}
 }
 
@@ -1069,12 +1084,13 @@ function setForm(cfg){
   el.ui_font_size_px.value = cfg.ui_font_size_px ?? 14;
   el.ui_font_small_px.value = cfg.ui_font_small_px ?? 11;
   el.ui_status_font_px.value = cfg.ui_status_font_px ?? 12;
+  el.ui_status_show_sysinfo.checked = !!cfg.ui_status_show_sysinfo;
   el.ui_checkbox_scale.value = cfg.ui_checkbox_scale ?? 0.85;
   el.ui_filter_label_width_px.value = cfg.ui_filter_label_width_px ?? 170;
   el.ui_filter_control_width_px.value = cfg.ui_filter_control_width_px ?? 320;
   el.ui_filter_search_width_px.value = cfg.ui_filter_search_width_px ?? 160;
 
-  el.jobs_max_runtime_seconds.value = cfg.jobs_max_runtime_seconds ?? 0;
+  el.jobs_max_runtime_seconds.value = cfg.jobs_max_runtime_seconds ?? 3600;
   el.ui_job_color_running.value = cfg.ui_job_color_running ?? '#eef3ff';
   el.ui_job_color_done.value = cfg.ui_job_color_done ?? '#eefaf1';
   el.ui_job_color_error.value = cfg.ui_job_color_error ?? '#fff0f0';
@@ -1105,6 +1121,7 @@ function setForm(cfg){
   el.log_max_age_days.value = cfg.log_max_age_days ?? 14;
   el.log_http_requests.checked = !!cfg.log_http_requests;
   el.log_influx_queries.checked = !!cfg.log_influx_queries;
+  el.log_cache_usage.checked = !!cfg.log_cache_usage;
 
 
   el.dash_cache_enabled.checked = (cfg.dash_cache_enabled !== false);
@@ -1163,6 +1180,7 @@ function getForm(){
     ui_font_size_px: parseInt(el.ui_font_size_px.value, 10),
     ui_font_small_px: parseInt(el.ui_font_small_px.value, 10),
     ui_status_font_px: parseInt(el.ui_status_font_px.value, 10),
+    ui_status_show_sysinfo: !!el.ui_status_show_sysinfo.checked,
     ui_checkbox_scale: parseFloat(el.ui_checkbox_scale.value),
     ui_filter_label_width_px: parseInt(el.ui_filter_label_width_px.value, 10),
     ui_filter_control_width_px: parseInt(el.ui_filter_control_width_px.value, 10),
@@ -1203,6 +1221,7 @@ function getForm(){
     log_max_age_days: parseInt(el.log_max_age_days.value, 10),
     log_http_requests: !!el.log_http_requests.checked,
     log_influx_queries: !!el.log_influx_queries.checked,
+    log_cache_usage: !!el.log_cache_usage.checked,
 
 
     dash_cache_enabled: !!el.dash_cache_enabled.checked,
@@ -1322,6 +1341,43 @@ load().catch(e=>err(String(e)));
 
 {% include "_table_cols.html" %}
 {% include "_tooltips.html" %}
+
+<script>
+(function(){
+  try{ if(window.InfluxBroTableCols) window.InfluxBroTableCols.init('#outliers_tbl'); }catch(e){}
+  try{ if(window.InfluxBroTableHeight) window.InfluxBroTableHeight.attach($outliersBox, 'settings_outliers_tbl', {minPx: 140}); }catch(e){}
+
+  try{ if($outliersWin) $outliersWin.addEventListener('click', ()=>{ try{ window.InfluxBroTableCols && window.InfluxBroTableCols.windowFit('#outliers_tbl', {minW: 120}); }catch(e){} }); }catch(e){}
+
+  const pk = (window.location && window.location.pathname) ? String(window.location.pathname) : '';
+  const kWrap = 'influxbro.ui.wrap.v1.' + pk + '.settings_outliers_tbl';
+  const kFilt = 'influxbro.ui.colfilter.v1.' + pk + '.settings_outliers_tbl';
+
+  try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.init('#outliers_tbl', {startHidden: true}); }catch(e){}
+
+  try{
+    if($outliersWrap){
+      try{ $outliersWrap.checked = (localStorage.getItem(kWrap) || '') === '1'; }catch(e){}
+      try{ window.InfluxBroTableWrap && window.InfluxBroTableWrap.setWrap('#outliers_tbl', $outliersWrap.checked); }catch(e){}
+      $outliersWrap.addEventListener('change', ()=>{
+        try{ localStorage.setItem(kWrap, $outliersWrap.checked ? '1' : '0'); }catch(e){}
+        try{ window.InfluxBroTableWrap && window.InfluxBroTableWrap.setWrap('#outliers_tbl', $outliersWrap.checked); }catch(e){}
+      });
+    }
+  }catch(e){}
+
+  try{
+    if($outliersColFilter){
+      try{ $outliersColFilter.checked = (localStorage.getItem(kFilt) || '') === '1'; }catch(e){}
+      try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.setVisible('#outliers_tbl', $outliersColFilter.checked); }catch(e){}
+      $outliersColFilter.addEventListener('change', ()=>{
+        try{ localStorage.setItem(kFilt, $outliersColFilter.checked ? '1' : '0'); }catch(e){}
+        try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.setVisible('#outliers_tbl', $outliersColFilter.checked); }catch(e){}
+      });
+    }
+  }catch(e){}
+})();
+</script>
 
     </main>
   </div>

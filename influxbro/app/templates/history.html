@@ -23,6 +23,9 @@
     th, td { border: 1px solid #eee; padding: 0 6px; font-size: 12px; line-height: 1.2; vertical-align: middle; }
     th { background: #f6f6f6; text-align:left; position: sticky; top: 0; }
     .table_box { max-height: 70vh; overflow:auto; border: 1px solid #eee; border-radius: 12px; margin-top: 10px; }
+    .tbl_actions { display:flex; gap: 10px; align-items:center; flex-wrap:wrap; margin-top: 10px; }
+    .tbl_actions label { display:flex; gap: 6px; align-items:center; font-size: 12px; opacity: 0.85; }
+    .tbl_actions input[type="checkbox"] { width:auto; height:auto; padding:0; margin:0; }
     tr.selected { background: #e8f1ff; }
     code { background:#f6f6f6; padding:2px 6px; border-radius:6px; }
   </style>
@@ -90,11 +93,18 @@
           <div class="muted" style="min-width: 320px; flex:1; padding-top: 6px;">Sicherheit: Rollback erfordert die Phrase <code>{{ delete_phrase }}</code>.</div>
         </div>
 
+        <div class="tbl_actions" data-ui="history.table.actions" title="history.table.actions">
+          <button id="hist_autowidth" class="btn_sm" data-ui="history.table.autowidth" title="history.table.autowidth">Spaltenbreite automatisch</button>
+          <button id="hist_windowwidth" class="btn_sm" data-ui="history.table.windowwidth" title="history.table.windowwidth">Fensterbreite</button>
+          <label><input type="checkbox" id="hist_wrap" data-ui="history.table.wrap" title="history.table.wrap"/>Umbruch</label>
+          <label><input type="checkbox" id="hist_colfilter" data-ui="history.table.colfilter" title="history.table.colfilter"/>Spaltenfilter</label>
+        </div>
+
         <div id="err" class="err"></div>
         <div id="ok" class="ok"></div>
 
-        <div class="table_box">
-          <table id="tbl" data-ui="history.table" title="history.table">
+        <div class="table_box" id="hist_box">
+          <table id="tbl" class="ib_tbl" data-ui="history.table" title="history.table">
             <thead>
               <tr>
                 <th style="width: 34px;"><input type="checkbox" id="sel_all" data-ui="history.select_all" title="history.select_all"/></th>
@@ -133,6 +143,12 @@
     const $preset = document.getElementById('preset');
     const $rollbackPreset = document.getElementById('rollback_preset');
     const $rollbackSelected = document.getElementById('rollback_selected');
+
+    const $histBox = document.getElementById('hist_box');
+    const $histAutoWidth = document.getElementById('hist_autowidth');
+    const $histWindowWidth = document.getElementById('hist_windowwidth');
+    const $histWrap = document.getElementById('hist_wrap');
+    const $histColFilter = document.getElementById('hist_colfilter');
 
     let LIST = [];
     const SELECTED = new Set();
@@ -277,6 +293,43 @@
     load().catch(()=>{});
   </script>
 
+  {% include "_table_cols.html" %}
   {% include "_tooltips.html" %}
+
+  <script>
+  (function(){
+    try{ if(window.InfluxBroTableCols) window.InfluxBroTableCols.init('#tbl'); }catch(e){}
+    try{ if(window.InfluxBroTableHeight) window.InfluxBroTableHeight.attach($histBox, 'history_tbl', {minPx: 180}); }catch(e){}
+    try{ if($histAutoWidth) $histAutoWidth.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} try{ window.InfluxBroTableCols && window.InfluxBroTableCols.autoFit('#tbl', {maxRows: 200}); }catch(e){} }); }catch(e){}
+    try{ if($histWindowWidth) $histWindowWidth.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} try{ window.InfluxBroTableCols && window.InfluxBroTableCols.windowFit('#tbl', {minW: 80}); }catch(e){} }); }catch(e){}
+
+    const pk = (window.location && window.location.pathname) ? String(window.location.pathname) : '';
+    const kWrap = 'influxbro.ui.wrap.v1.' + pk + '.history_tbl';
+    const kFilt = 'influxbro.ui.colfilter.v1.' + pk + '.history_tbl';
+
+    try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.init('#tbl', {startHidden: true}); }catch(e){}
+    try{
+      if($histWrap){
+        try{ $histWrap.checked = (localStorage.getItem(kWrap) || '') === '1'; }catch(e){}
+        try{ window.InfluxBroTableWrap && window.InfluxBroTableWrap.setWrap('#tbl', $histWrap.checked); }catch(e){}
+        $histWrap.addEventListener('change', ()=>{
+          try{ localStorage.setItem(kWrap, $histWrap.checked ? '1' : '0'); }catch(e){}
+          try{ window.InfluxBroTableWrap && window.InfluxBroTableWrap.setWrap('#tbl', $histWrap.checked); }catch(e){}
+        });
+      }
+    }catch(e){}
+
+    try{
+      if($histColFilter){
+        try{ $histColFilter.checked = (localStorage.getItem(kFilt) || '') === '1'; }catch(e){}
+        try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.setVisible('#tbl', $histColFilter.checked); }catch(e){}
+        $histColFilter.addEventListener('change', ()=>{
+          try{ localStorage.setItem(kFilt, $histColFilter.checked ? '1' : '0'); }catch(e){}
+          try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.setVisible('#tbl', $histColFilter.checked); }catch(e){}
+        });
+      }
+    }catch(e){}
+  })();
+  </script>
 </body>
 </html>

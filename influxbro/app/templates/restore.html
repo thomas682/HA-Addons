@@ -80,18 +80,34 @@
                 <button id="q_backup_from_dash" class="btn_sm" data-ui="restore.search_from_dash" title="restore.search_from_dash" style="height:34px; padding:8px 10px;">aus Dashboardauswahl</button>
               </div>
             </div>
-            <div>
-              <label>&nbsp;</label>
-              <button id="reload" data-ui="restore.reload" title="restore.reload">Liste aktualisieren</button>
-            </div>
-            <div>
-              <label>&nbsp;</label>
-              <button id="restore_autowidth" class="btn_sm" data-ui="restore.autowidth" title="restore.autowidth">Spaltenbreite automatisch</button>
-            </div>
-          </div>
+             <div>
+               <label>&nbsp;</label>
+               <button id="reload" data-ui="restore.reload" title="restore.reload">Liste aktualisieren</button>
+             </div>
+             <div>
+               <label>&nbsp;</label>
+               <button id="backup_download" class="btn_sm" data-ui="restore.backup_download" title="restore.backup_download">Download</button>
+             </div>
+              <div>
+                <label>&nbsp;</label>
+                <button id="restore_autowidth" class="btn_sm" data-ui="restore.autowidth" title="restore.autowidth">Spaltenbreite automatisch</button>
+              </div>
+             <div>
+               <label>&nbsp;</label>
+               <button id="restore_windowwidth" class="btn_sm" data-ui="restore.windowwidth" title="restore.windowwidth">Fensterbreite</button>
+             </div>
+             <div>
+               <label>&nbsp;</label>
+               <label style="display:flex; align-items:center; gap: 6px; padding-top: 6px;"><input type="checkbox" id="restore_wrap" data-ui="restore.wrap" title="restore.wrap"/>Umbruch</label>
+             </div>
+             <div>
+               <label>&nbsp;</label>
+               <label style="display:flex; align-items:center; gap: 6px; padding-top: 6px;"><input type="checkbox" id="restore_colfilter" data-ui="restore.colfilter" title="restore.colfilter"/>Spaltenfilter</label>
+             </div>
+           </div>
 
           <div class="table_box" id="restore_box" data-ui="restore.table_box" title="restore.table_box">
-              <table id="restore_tbl" class="list_tbl" data-ui="restore.backup_table" title="restore.backup_table">
+              <table id="restore_tbl" class="list_tbl ib_tbl" data-ui="restore.backup_table" title="restore.backup_table">
               <thead>
                 <tr>
                   <th style="width: 34px;">Ausw.</th>
@@ -215,7 +231,11 @@
        const $run = document.getElementById('run');
         const $srcToTarget = document.getElementById('source_to_target');
        const $reload = document.getElementById('reload');
-       const $restoreAutoWidth = document.getElementById('restore_autowidth');
+       const $backupDownload = document.getElementById('backup_download');
+        const $restoreAutoWidth = document.getElementById('restore_autowidth');
+        const $restoreWindowWidth = document.getElementById('restore_windowwidth');
+        const $restoreWrap = document.getElementById('restore_wrap');
+        const $restoreColFilter = document.getElementById('restore_colfilter');
 
        const $runStatus = document.getElementById('run_status');
        const $runStatusTxt = document.getElementById('run_status_txt');
@@ -245,9 +265,10 @@
       const $showQuery = document.getElementById('show_query');
       const $planQuery = document.getElementById('plan_query');
 
-      let BACKUPS = [];
-      let SELECTED_ID = '';
-       let LAST_TARGET = null;
+       let BACKUPS = [];
+       let SELECTED_ID = '';
+       let BACKUP_LOC_TXT = '';
+        let LAST_TARGET = null;
 
        let CFG = { influx_version: 2, bucket: '' };
 
@@ -588,9 +609,25 @@
         return (list||[]).filter(b => JSON.stringify(b||{}).toLowerCase().includes(t));
       }
 
+      async function loadBackupLocation(){
+        try{
+          const j = await api('./api/backup_location');
+          const p = j && j.container_path ? String(j.container_path) : '';
+          BACKUP_LOC_TXT = p ? (' | dir: ' + p) : '';
+        }catch(e){
+          BACKUP_LOC_TXT = '';
+        }
+      }
+
       function renderList(){
         const rows = filt(BACKUPS, $qBackup ? $qBackup.value : '');
-        if($srcInfo) $srcInfo.textContent = `Backups: ${rows.length} / ${(BACKUPS||[]).length}`;
+        if($srcInfo) $srcInfo.textContent = `Backups: ${rows.length} / ${(BACKUPS||[]).length}` + (BACKUP_LOC_TXT || '');
+        try{
+          if($backupDownload){
+            const one = String(SELECTED_ID || '').trim();
+            $backupDownload.disabled = !one;
+          }
+        }catch(e){}
         if(!$rows) return;
         $rows.innerHTML = '';
         rows.forEach(b=>{
@@ -637,6 +674,7 @@
       async function loadBackups(){
         const j = await api('./api/backups_all');
         BACKUPS = j.backups || [];
+        await loadBackupLocation();
         if(!SELECTED_ID && BACKUPS.length) SELECTED_ID = String(BACKUPS[0].id||'');
         renderList();
       }
@@ -917,6 +955,12 @@
       }
 
       $reload.addEventListener('click', ()=>loadBackups().catch(e=>err(String(e && e.message ? e.message : e))));
+      if($backupDownload) $backupDownload.addEventListener('click', (ev)=>{
+        try{ if(ev) { ev.preventDefault(); ev.stopPropagation(); } }catch(e){}
+        const id = String(SELECTED_ID || '').trim();
+        if(!id) return;
+        try{ location.href = `./api/backup_download?id=${encodeURIComponent(id)}`; }catch(e){}
+      });
       if($srcToTarget) $srcToTarget.addEventListener('click', ()=>copySourceToTarget());
       $run.addEventListener('click', ()=>runCopy().catch(e=>err(String(e && e.message ? e.message : e))));
 
@@ -981,19 +1025,54 @@
       loadBackups().catch(e=>err(String(e && e.message ? e.message : e)));
       loadTargetLists().then(()=>{ renderPlan(); }).catch(()=>{});
 
-      try{
-        if(window.InfluxBroTableCols) window.InfluxBroTableCols.init('#restore_tbl');
-      }catch(e){}
-      try{
-        if($restoreAutoWidth) $restoreAutoWidth.addEventListener('click', (ev)=>{
-          ev.preventDefault(); ev.stopPropagation();
-          try{ window.InfluxBroTableCols && window.InfluxBroTableCols.autoFit('#restore_tbl', {maxRows: 200}); }catch(e){}
-        });
-      }catch(e){}
+      // table UI helpers are wired after shared helpers are loaded (see bottom script)
        </script>
 
       {% include "_table_cols.html" %}
       {% include "_tooltips.html" %}
+
+      <script>
+      (function(){
+        try{ if(window.InfluxBroTableCols) window.InfluxBroTableCols.init('#restore_tbl'); }catch(e){}
+        try{ if(window.InfluxBroTableHeight) window.InfluxBroTableHeight.attach(document.getElementById('restore_box'), 'restore_tbl', {minPx: 180}); }catch(e){}
+
+        const pk = (window.location && window.location.pathname) ? String(window.location.pathname) : '';
+        const kWrap = 'influxbro.ui.wrap.v1.' + pk + '.restore_tbl';
+        const kFilt = 'influxbro.ui.colfilter.v1.' + pk + '.restore_tbl';
+
+        try{
+          if($restoreAutoWidth) $restoreAutoWidth.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} try{ window.InfluxBroTableCols && window.InfluxBroTableCols.autoFit('#restore_tbl', {maxRows: 200}); }catch(e){} });
+        }catch(e){}
+
+        try{
+          if($restoreWindowWidth) $restoreWindowWidth.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} try{ window.InfluxBroTableCols && window.InfluxBroTableCols.windowFit('#restore_tbl', {minW: 90}); }catch(e){} });
+        }catch(e){}
+
+        try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.init('#restore_tbl', {startHidden: true}); }catch(e){}
+
+        try{
+          if($restoreWrap){
+            try{ $restoreWrap.checked = (localStorage.getItem(kWrap) || '') === '1'; }catch(e){}
+            try{ window.InfluxBroTableWrap && window.InfluxBroTableWrap.setWrap('#restore_tbl', $restoreWrap.checked); }catch(e){}
+            $restoreWrap.addEventListener('change', ()=>{
+              try{ localStorage.setItem(kWrap, $restoreWrap.checked ? '1' : '0'); }catch(e){}
+              try{ window.InfluxBroTableWrap && window.InfluxBroTableWrap.setWrap('#restore_tbl', $restoreWrap.checked); }catch(e){}
+            });
+          }
+        }catch(e){}
+
+        try{
+          if($restoreColFilter){
+            try{ $restoreColFilter.checked = (localStorage.getItem(kFilt) || '') === '1'; }catch(e){}
+            try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.setVisible('#restore_tbl', $restoreColFilter.checked); }catch(e){}
+            $restoreColFilter.addEventListener('change', ()=>{
+              try{ localStorage.setItem(kFilt, $restoreColFilter.checked ? '1' : '0'); }catch(e){}
+              try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.setVisible('#restore_tbl', $restoreColFilter.checked); }catch(e){}
+            });
+          }
+        }catch(e){}
+      })();
+      </script>
     </main>
   </div>
 </body>

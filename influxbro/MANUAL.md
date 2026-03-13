@@ -149,6 +149,14 @@ Raw Daten (DB):
 - Der Sprung zentriert die Zeile in der Tabelle, damit vorherige und nachfolgende Werte sichtbar bleiben.
 - Ueber der Raw-Tabelle gibt es Buttons zur Tagesnavigation (aeltester/juengster Tag, +/-1d, +/-7d; lokale Browserzeit).
 
+Konzept fuer sehr grosse Tabellen (z.B. ~2 Mio Zeilen):
+
+- Immer *serverseitig* begrenzen: Raw-API arbeitet mit `start/stop` + `limit/offset` und liefert nie "alles" auf einmal.
+- Sofortige Anzeige: erst eine kleine erste Seite laden (z.B. 300-1000 Zeilen) und direkt rendern.
+- Progressive Nachladung: Button `Mehr laden` (append) oder Paging; optional im Hintergrund vorladen.
+- Zeitbasierte Navigation statt Seitenzahlen: in der Praxis ist "Tag/Zeitraum" fuer Zeitreihen schneller zu bedienen und stabiler.
+- Fuer einen schnellen Ueberblick: alternativ (oder zusaetzlich) eine "Preview" mit Downsampling/Reduktion anbieten (Graph ist bereits so optimiert).
+
 ## Bearbeitungsliste (Ausreisser)
 
 - Linke Checkbox: Zeilen selektieren (Mehrfachauswahl moeglich).
@@ -216,6 +224,7 @@ Tipp: In der Toolbar gibt es Mehrfachaktionen (z.B. Werte davor uebernehmen oder
 ## Statistik
 
 - Per Checkbox `Statistik anzeigen` ein/ausblendbar.
+- Letztes Ergebnis + Auswahl (Zeitraum/Filter/Spalten) werden im Browser gespeichert und beim Seitenwechsel best-effort wiederhergestellt.
 - Reihenfolge:
   - Gesamtstatistik (Alles)
   - Statistik Zeitraum (Graph/Tabelle)
@@ -237,6 +246,7 @@ Tipp: In der Toolbar gibt es Mehrfachaktionen (z.B. Werte davor uebernehmen oder
 ## Jobs & Cache
 
 - Zeigt laufende Background-Jobs (z.B. Statistik laden, Restore/Copy).
+- Hinweis: Export-Jobs werden hier ebenfalls als Job angezeigt und koennen abgebrochen werden.
 - Button `Abbruch`: bricht den Job ab (bestaetigen). Der Button ist immer sichtbar.
 - Button `Details`: zeigt, was der Job gerade macht (Message/Current/Trigger-Infos).
 - Tipp: `Open Statistik` setzt die Job-ID fuer die Statistik-Seite und wechselt dorthin.
@@ -255,6 +265,8 @@ Timer Jobs:
 
 - Tabelle `Timer Jobs`: zeigt Intervall-/Nightly-Jobs mit naechstem Lauf (aus Einstellungen abgeleitet) und kurzer Erklaerung.
 - Action: `Start` (manuell) und `Abbruch`.
+- `last run`: zeigt den letzten Laufzeitpunkt (persistent).
+- `Modus`: erlaubt das Aendern der Scheduler-Parameter (hours/daily, hours/daily_at).
 - Zusaetzlich: `stats_full` laedt Statistik komplett (inkl. Details wie count/min/max/mean) fuer alle Serien.
 
 ## Backup (ein Messwert, alle Werte)
@@ -276,6 +288,7 @@ Timer Jobs:
 ## Restore
 
 - Waehle ein Backup aus der Liste fuer den Messwert.
+- Download: `Download` laedt das selektierte Backup als ZIP herunter (Meta + Line Protocol).
 - Restore schreibt die Werte zurueck, ohne doppelte Messpunkte zu erzeugen (idempotent, weil gleiche Zeitpunkte/Tags/Field ueberschrieben werden).
 - Restore fragt per Browser-Dialog nach Bestaetigung; `delete_confirm_phrase` wird nur fuer Bulk-Loeschungen verwendet.
 - Tipp: In der Volltextsuche gibt es Buttons `Alle` (leeren) und `aus Dashboardauswahl`.

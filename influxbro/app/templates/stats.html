@@ -135,11 +135,11 @@
             </div>
           </div>
 
-          <div class="row" data-ui="stats.actions" title="stats.actions">
-            <div>
-              <label>&nbsp;</label>
-              <button id="load" data-ui="stats.load" title="stats.load">Statistik laden</button>
-            </div>
+           <div class="row" data-ui="stats.actions" title="stats.actions">
+             <div>
+               <label>&nbsp;</label>
+               <button id="load" data-ui="stats.load" title="stats.load">Statistik laden</button>
+             </div>
             <div>
               <label>&nbsp;</label>
               <button id="cancel" data-ui="stats.cancel" title="stats.cancel">Abbrechen</button>
@@ -148,14 +148,26 @@
               <label>&nbsp;</label>
               <button id="delete_rows" data-ui="stats.delete_rows" title="stats.delete_rows">Loeschen</button>
             </div>
-            <div>
-              <label>&nbsp;</label>
-              <button id="auto_cols" data-ui="stats.auto_cols" title="stats.auto_cols">Spaltenbreite automatisch</button>
-            </div>
-            <div>
-              <label>&nbsp;</label>
-              <button id="mark_all" data-ui="stats.mark_all" title="stats.mark_all">Alle im Filter markieren</button>
-            </div>
+             <div>
+               <label>&nbsp;</label>
+               <button id="auto_cols" data-ui="stats.auto_cols" title="stats.auto_cols">Spaltenbreite automatisch</button>
+             </div>
+             <div>
+               <label>&nbsp;</label>
+               <button id="win_cols" data-ui="stats.win_cols" title="stats.win_cols">Fensterbreite</button>
+             </div>
+             <div>
+               <label>&nbsp;</label>
+               <label style="display:flex; align-items:center; gap: 6px; padding-top: 6px;"><input type="checkbox" id="tbl_wrap" data-ui="stats.tbl_wrap" title="stats.tbl_wrap"/>Umbruch</label>
+             </div>
+             <div>
+               <label>&nbsp;</label>
+               <label style="display:flex; align-items:center; gap: 6px; padding-top: 6px;"><input type="checkbox" id="tbl_colfilter" data-ui="stats.tbl_colfilter" title="stats.tbl_colfilter"/>Spaltenfilter</label>
+             </div>
+             <div>
+               <label>&nbsp;</label>
+               <button id="mark_all" data-ui="stats.mark_all" title="stats.mark_all">Alle im Filter markieren</button>
+             </div>
             <div>
               <label>&nbsp;</label>
               <button id="clear_mark" data-ui="stats.clear_mark" title="stats.clear_mark">Markierung loeschen</button>
@@ -188,8 +200,8 @@
 
         <div class="muted" id="count" data-ui="stats.count" title="stats.count" style="margin-top: 10px;"></div>
 
-        <div class="table_box" id="tbl_box" data-ui="stats.table.box" title="stats.table.box">
-          <table id="tbl" class="list_tbl" data-ui="stats.table" title="stats.table">
+         <div class="table_box" id="tbl_box" data-ui="stats.table.box" title="stats.table.box">
+           <table id="tbl" class="list_tbl ib_tbl" data-ui="stats.table" title="stats.table">
             <thead>
               <tr>
                 <th data-key="_sel" style="width: 46px;">sel</th>
@@ -236,6 +248,9 @@
       const $cancel = document.getElementById('cancel');
       const $deleteRows = document.getElementById('delete_rows');
       const $autoCols = document.getElementById('auto_cols');
+      const $winCols = document.getElementById('win_cols');
+      const $tblWrap = document.getElementById('tbl_wrap');
+      const $tblColFilter = document.getElementById('tbl_colfilter');
       const $markAll = document.getElementById('mark_all');
       const $clearMark = document.getElementById('clear_mark');
       const $reloadMarked = document.getElementById('reload_marked');
@@ -284,6 +299,8 @@
       const LS_CACHE = 'influxbro_global_stats_last_cache_id_v1';
       const LS_COLS = 'influxbro_stats_col_widths_v1';
       const LS_WANTCOLS = 'influxbro_stats_want_columns_v1';
+      const LS_UI = 'influxbro_stats_ui_state_v1';
+      const LS_SNAP = 'influxbro_stats_last_rows_v1';
 
       const SELECTED = new Set();
       const LOADED_COLS = new Set();
@@ -505,8 +522,15 @@
       }
 
       function selectedColumns(){
-        // Always load the essential columns. Additional columns are handled via caching/night jobs.
-        return ['last_value', 'newest_time'];
+        // Always load the essential columns. Additional columns depend on user selection.
+        const out = ['last_value', 'newest_time'];
+        const add = (k, want) => { if(want && !out.includes(k)) out.push(k); };
+        add('oldest_time', !!($colOldest && $colOldest.checked));
+        add('count', !!($colCount && $colCount.checked));
+        add('min', !!($colMin && $colMin.checked));
+        add('max', !!($colMax && $colMax.checked));
+        add('mean', !!($colMean && $colMean.checked));
+        return out;
       }
 
       function saveWantedColumns(){
@@ -525,6 +549,78 @@
         if($colMin) $colMin.checked = (cols ? has('min') : false);
         if($colMax) $colMax.checked = (cols ? has('max') : false);
         if($colMean) $colMean.checked = (cols ? has('mean') : false);
+      }
+
+      function _uiStateObj(){
+        return {
+          range: $range ? String($range.value || '') : '',
+          start: $start ? String($start.value || '') : '',
+          stop: $stop ? String($stop.value || '') : '',
+          field_filter: $fieldFilter ? String($fieldFilter.value || '') : '',
+          measurement_filter: $measurementFilter ? String($measurementFilter.value || '') : '',
+          friendly_filter: $friendlyFilter ? String($friendlyFilter.value || '') : '',
+          entity_filter: $entityFilter ? String($entityFilter.value || '') : '',
+          q: $q ? String($q.value || '') : '',
+          sort: SORT,
+          want_cols: selectedColumns(),
+        };
+      }
+
+      function saveUiState(){
+        try{ localStorage.setItem(LS_UI, JSON.stringify(_uiStateObj())); }catch(e){}
+      }
+
+      function loadUiState(){
+        let st = null;
+        try{ st = JSON.parse(localStorage.getItem(LS_UI) || 'null'); }catch(e){ st = null; }
+        if(!st || typeof st !== 'object') return;
+        try{
+          if($range && st.range){
+            $range.value = String(st.range);
+            if($custom) $custom.style.display = ($range.value === 'custom') ? 'block' : 'none';
+          }
+          if($start && st.start) $start.value = String(st.start);
+          if($stop && st.stop) $stop.value = String(st.stop);
+
+          if($fieldFilter && st.field_filter) $fieldFilter.value = String(st.field_filter);
+          if($measurementFilter && st.measurement_filter) $measurementFilter.value = String(st.measurement_filter);
+          if($friendlyFilter && st.friendly_filter) $friendlyFilter.value = String(st.friendly_filter);
+          if($entityFilter && st.entity_filter) $entityFilter.value = String(st.entity_filter);
+          if($q && st.q) $q.value = String(st.q);
+
+          if(st.sort && typeof st.sort === 'object' && st.sort.key && st.sort.dir){
+            SORT = { key: String(st.sort.key), dir: String(st.sort.dir) };
+          }
+        }catch(e){}
+      }
+
+      function saveSnapshot(note){
+        try{
+          const rows = (ROWS || []).slice(0, 5000);
+          const snap = {
+            at: new Date().toISOString(),
+            note: String(note || ''),
+            rows,
+            columns: Array.from(LOADED_COLS),
+            ui: _uiStateObj(),
+          };
+          localStorage.setItem(LS_SNAP, JSON.stringify(snap));
+        }catch(e){}
+      }
+
+      function loadSnapshot(){
+        let snap = null;
+        try{ snap = JSON.parse(localStorage.getItem(LS_SNAP) || 'null'); }catch(e){ snap = null; }
+        if(!snap || typeof snap !== 'object') return false;
+        const rows = Array.isArray(snap.rows) ? snap.rows : [];
+        if(!rows.length) return false;
+        ROWS = rows;
+        if(Array.isArray(snap.columns)) syncLoadedCols(snap.columns);
+        render();
+        try{ rebuildDatalists(); }catch(e){}
+        const ts = snap.at ? fmtTs(snap.at) : '';
+        setStatus([`Lokales Ergebnis geladen. Zeilen: ${ROWS.length}` + (ts ? (' | at: ' + ts) : ''), '']);
+        return true;
       }
 
       function syncLoadedCols(cols){
@@ -564,6 +660,8 @@
         const fn = String(($friendlyFilter && $friendlyFilter.value) ? $friendlyFilter.value : '').trim();
         const eid = String(($entityFilter && $entityFilter.value) ? $entityFilter.value : '').trim();
         const cols = selectedColumns();
+        try{ saveWantedColumns(); }catch(e){}
+        try{ saveUiState(); }catch(e){}
         const j = await api('./api/global_stats_job/start', {
           method:'POST',
           headers:{'Content-Type':'application/json'},
@@ -580,7 +678,7 @@
           })
         });
         setJobId(j.job_id);
-        setLastCacheId(j.cache_id || null);
+        if(j.cache_id) setLastCacheId(j.cache_id);
         syncLoadedCols(cols);
         JOB_MERGE = false;
         JOB_ADD_COLS = [];
@@ -614,11 +712,15 @@
         if(JOB_MERGE){
           mergeRows(all);
           (JOB_ADD_COLS || []).forEach(c => { if(c) LOADED_COLS.add(String(c)); });
+          try{ saveSnapshot('merge'); }catch(e){}
+          try{ saveUiState(); }catch(e){}
         }else{
           ROWS = all;
           render();
           // refresh datalist options
           try{ rebuildDatalists(); }catch(e){}
+          try{ saveSnapshot('full'); }catch(e){}
+          try{ saveUiState(); }catch(e){}
         }
       }
 
@@ -655,10 +757,14 @@
           if(last){
             const j = await api(`./api/global_stats_job/result?job_id=${encodeURIComponent(last)}&limit=20000&offset=0`);
             if(j.ready){
+              try{ if(j.cache_id) setLastCacheId(j.cache_id); }catch(e){}
+              try{ syncLoadedCols(j.columns || selectedColumns()); }catch(e){}
               const rows = j.rows || [];
               if(rows.length){
                 ROWS = rows;
                 render();
+                try{ rebuildDatalists(); }catch(e){}
+                try{ saveSnapshot('last_job'); }catch(e){}
                 setStatus([`Letztes Ergebnis geladen. Zeilen: ${ROWS.length}`, '']);
                 return;
               }
@@ -672,10 +778,13 @@
             if(!cid) return;
             const j = await api(`./api/stats_cache/get?cache_id=${encodeURIComponent(cid)}&limit=20000&offset=0`);
             if(!j.ready) return;
+            try{ syncLoadedCols(j.columns || selectedColumns()); }catch(e){}
             const rows = j.rows || [];
             if(!rows.length) return;
             ROWS = rows;
             render();
+            try{ rebuildDatalists(); }catch(e){}
+            try{ saveSnapshot('cache'); }catch(e){}
             const ts = (j.cache && j.cache.updated_at) ? fmtTs(j.cache.updated_at) : '';
             setStatus([`Cache geladen. Zeilen: ${ROWS.length}` + (ts ? (' | updated: ' + ts) : ''), '']);
           }catch(ex){
@@ -863,6 +972,7 @@
         };
         const j = await api('./api/global_stats_job/start', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
         setJobId(j.job_id);
+        if(j.cache_id) setLastCacheId(j.cache_id);
         JOB_MERGE = true;
         JOB_ADD_COLS = miss;
         beginPolling();
@@ -1043,13 +1153,63 @@
         return ()=>{ if(t) clearTimeout(t); t=setTimeout(fn, ms); };
       }
 
-      $load.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} load().catch(e=>err(String(e && e.message ? e.message : e))); });
+      $load.addEventListener('click', (ev)=>{
+        try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+        try{
+          fetch('./api/cache_usage/ui_event', {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({
+              kind: 'ui_stats_load',
+              page: 'stats',
+              ui: 'stats.load',
+              note: 'Statistik laden geklickt',
+            })
+          }).catch(()=>{});
+        }catch(e){}
+        load().catch(e=>err(String(e && e.message ? e.message : e)));
+      });
       $cancel.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} cancelRun(); });
       if($autoCols) $autoCols.addEventListener('click', (ev)=>{
         ev.preventDefault(); ev.stopPropagation();
         try{ window.InfluxBroTableCols && window.InfluxBroTableCols.autoFit('#tbl', {maxRows: 200}); }catch(e){}
         try{ saveColWidths(); }catch(e){}
       });
+
+      function initTableStd(){
+        try{
+          // window-fit columns
+          if($winCols) $winCols.addEventListener('click', (ev)=>{
+            try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+            try{ window.InfluxBroTableCols && window.InfluxBroTableCols.windowFit('#tbl', {minW: 80}); }catch(e){}
+            try{ saveColWidths(); }catch(e){}
+          });
+
+          // wrap toggle
+          const pk = (window.location && window.location.pathname) ? String(window.location.pathname) : '';
+          const kWrap = 'influxbro.ui.wrap.v1.' + pk + '.stats_tbl';
+          const kFilt = 'influxbro.ui.colfilter.v1.' + pk + '.stats_tbl';
+          if($tblWrap){
+            try{ $tblWrap.checked = (localStorage.getItem(kWrap) || '') === '1'; }catch(e){}
+            try{ window.InfluxBroTableWrap && window.InfluxBroTableWrap.setWrap('#tbl', $tblWrap.checked); }catch(e){}
+            $tblWrap.addEventListener('change', ()=>{
+              try{ localStorage.setItem(kWrap, $tblWrap.checked ? '1' : '0'); }catch(e){}
+              try{ window.InfluxBroTableWrap && window.InfluxBroTableWrap.setWrap('#tbl', $tblWrap.checked); }catch(e){}
+            });
+          }
+
+          // column filter row
+          try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.init('#tbl', {startHidden: true}); }catch(e){}
+          if($tblColFilter){
+            try{ $tblColFilter.checked = (localStorage.getItem(kFilt) || '') === '1'; }catch(e){}
+            try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.setVisible('#tbl', $tblColFilter.checked); }catch(e){}
+            $tblColFilter.addEventListener('change', ()=>{
+              try{ localStorage.setItem(kFilt, $tblColFilter.checked ? '1' : '0'); }catch(e){}
+              try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.setVisible('#tbl', $tblColFilter.checked); }catch(e){}
+            });
+          }
+        }catch(e){}
+      }
       if($markAll) $markAll.addEventListener('click', (ev)=>{
         ev.preventDefault(); ev.stopPropagation();
         visibleRows().forEach(r => { SELECTED.add(rowKey(r)); });
@@ -1090,10 +1250,10 @@
           err(String(e && e.message ? e.message : e));
         }
       });
-      $q.addEventListener('input', debounce(()=>render(), 120));
-      if($measurementFilter) $measurementFilter.addEventListener('input', debounce(()=>render(), 120));
-      if($friendlyFilter) $friendlyFilter.addEventListener('input', debounce(()=>render(), 120));
-      if($entityFilter) $entityFilter.addEventListener('input', debounce(()=>render(), 120));
+      $q.addEventListener('input', debounce(()=>{ render(); saveUiState(); }, 120));
+      if($measurementFilter) $measurementFilter.addEventListener('input', debounce(()=>{ render(); saveUiState(); }, 120));
+      if($friendlyFilter) $friendlyFilter.addEventListener('input', debounce(()=>{ render(); saveUiState(); }, 120));
+      if($entityFilter) $entityFilter.addEventListener('input', debounce(()=>{ render(); saveUiState(); }, 120));
       $thead.addEventListener('click', (ev)=>{
         const th = ev && ev.target ? ev.target.closest('th') : null;
         if(!th) return;
@@ -1106,12 +1266,27 @@
           SORT.dir = (key === 'friendly_name' || key === 'entity_id' || key === 'measurement' || key === 'field') ? 'asc' : 'desc';
         }
         render();
+        saveUiState();
       });
 
       loadUiCfg().then(()=>{});
 
       applySavedColWidths();
       initColResize();
+
+      // Restore persisted UI/columns (best-effort)
+      try{ loadUiState(); }catch(e){}
+      try{ loadWantedColumns(); }catch(e){}
+      try{
+        [$colLast,$colNewest,$colOldest,$colCount,$colMin,$colMax,$colMean].forEach(el => {
+          if(!el) return;
+          el.addEventListener('change', ()=>{ try{ saveWantedColumns(); saveUiState(); }catch(e){}; });
+        });
+      }catch(e){}
+      try{ if($fieldFilter) $fieldFilter.addEventListener('input', debounce(()=>{ saveUiState(); }, 200)); }catch(e){}
+
+      // If we have a local snapshot, show it immediately.
+      try{ loadSnapshot(); }catch(e){}
 
       // Table height resize handle (persisted)
       try{
@@ -1175,15 +1350,20 @@
       if($range) $range.addEventListener('change', ()=>{
         $custom.style.display = ($range.value === 'custom') ? 'block' : 'none';
         renderRangeTxt();
+        saveUiState();
       });
-      if($start) $start.addEventListener('change', renderRangeTxt);
-      if($stop) $stop.addEventListener('change', renderRangeTxt);
+      if($start) $start.addEventListener('change', ()=>{ renderRangeTxt(); saveUiState(); });
+      if($stop) $stop.addEventListener('change', ()=>{ renderRangeTxt(); saveUiState(); });
       renderRangeTxt();
 
       </script>
 
       {% include "_table_cols.html" %}
       {% include "_tooltips.html" %}
+
+      <script>
+      try{ initTableStd(); }catch(e){}
+      </script>
     </main>
   </div>
 </body>

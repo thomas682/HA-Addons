@@ -49,11 +49,35 @@
         <div id="err" class="err"></div>
       </div>
 
+      <div class="card" data-ui="dbinfo.addon.card" title="dbinfo.addon.card">
+        <div style="display:flex; align-items:baseline; justify-content:space-between; gap: 10px; flex-wrap:wrap;">
+          <div>
+            <div style="font-weight:800;">Add-on Status</div>
+            <div class="muted">Memory/CPU/Disk (best-effort) ueber <code>/api/sysinfo</code>.</div>
+          </div>
+        </div>
+
+        <div class="row" style="margin-top: 10px;" data-ui="dbinfo.addon.controls" title="dbinfo.addon.controls">
+          <div>
+            <label class="muted" style="display:block; font-size: 12px;">&nbsp;</label>
+            <button id="sys_refresh" class="btn_xs" data-ui="dbinfo.addon.refresh" title="dbinfo.addon.refresh">Aktualisieren</button>
+          </div>
+          <div class="muted" id="sys_hint" style="padding-top: 10px;"></div>
+        </div>
+
+        <div class="status" id="sys_info" data-ui="dbinfo.addon.info" title="dbinfo.addon.info"></div>
+        <div id="sys_err" class="err"></div>
+      </div>
+
       <script>
       const $info = document.getElementById('info');
       const $hint = document.getElementById('hint');
       const $err = document.getElementById('err');
       const $refresh = document.getElementById('refresh');
+      const $sysInfo = document.getElementById('sys_info');
+      const $sysHint = document.getElementById('sys_hint');
+      const $sysErr = document.getElementById('sys_err');
+      const $sysRefresh = document.getElementById('sys_refresh');
 
       function err(msg){
         const s = String(msg || '');
@@ -105,8 +129,48 @@
         try{ if($hint) $hint.textContent = 'Aktualisiert: ' + fmtTs(new Date().toISOString()); }catch(e){}
       }
 
+      function sysErr(msg){
+        const s = String(msg || '');
+        if($sysErr) $sysErr.textContent = s;
+        if(s){
+          try{
+            if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error(s);
+            else alert(s);
+          }catch(e){}
+        }
+      }
+
+      function renderSysInfo(sys){
+        try{
+          const i = sys || {};
+          const lines = [];
+          const add = (k, v)=>{ if(v === null || v === undefined || String(v).trim() === '') return; lines.push(String(k) + ': ' + String(v)); };
+          add('RSS', i.rss);
+          add('Addon Daten (/data)', i.addon_data);
+          add('Disk frei', i.disk_free);
+          add('Disk gesamt', i.disk_total);
+          if(i.loadavg_1 !== null && i.loadavg_1 !== undefined) add('Loadavg', `${i.loadavg_1} / ${i.loadavg_5} / ${i.loadavg_15}`);
+          add('CPU Cores', i.cpu_count);
+          if($sysInfo) $sysInfo.textContent = lines.join('\n');
+        }catch(e){
+          if($sysInfo) $sysInfo.textContent = 'Fehler beim Rendern.';
+        }
+      }
+
+      async function refreshSys(){
+        sysErr('');
+        try{ if($sysHint) $sysHint.textContent = 'Lade...'; }catch(e){}
+        const r = await fetch('./api/sysinfo');
+        const j = await r.json().catch(()=>({ok:false,error:'Invalid JSON'}));
+        if(!r.ok || !j.ok) throw new Error(j.error || ('HTTP ' + r.status));
+        renderSysInfo(j.sys || {});
+        try{ if($sysHint) $sysHint.textContent = 'Aktualisiert: ' + fmtTs(new Date().toISOString()); }catch(e){}
+      }
+
       $refresh.onclick = ()=>{ refresh().catch(e => err(e && e.message ? e.message : String(e))); };
+      if($sysRefresh) $sysRefresh.onclick = ()=>{ refreshSys().catch(e => sysErr(e && e.message ? e.message : String(e))); };
       refresh().catch(()=>{});
+      refreshSys().catch(()=>{});
       </script>
 
       {% include "_tooltips.html" %}

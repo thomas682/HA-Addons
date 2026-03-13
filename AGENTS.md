@@ -2,6 +2,10 @@
 
 This repository contains a Home Assistant add-on (Ingress UI) for browsing/cleaning InfluxDB data.
 
+UI design standard
+- Before adding/changing any GUI element (tables, buttons, checkboxes, selects, etc.), consult `influxbro/Template.md`.
+- Keep pages aligned with the master table template (toolbar above table, column resize, auto-fit/window-fit, wrap toggle, per-column filters, height resize, info icon).
+
 No Cursor/Copilot instruction files were found at:
 - `.cursor/rules/`
 - `.cursorrules`

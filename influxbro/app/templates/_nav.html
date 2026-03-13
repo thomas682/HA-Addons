@@ -137,6 +137,9 @@
       <div class="muted" style="font-size: var(--ui-status-font); opacity: 0.75;">Loescht abgeschlossene Eintraege.</div>
     </div>
     <div class="box">
+      <div class="row" id="influxbro_sysinfo" style="display:none; margin-bottom: 8px;" data-ui="nav.sysinfo" title="nav.sysinfo">
+        <span class="t" id="influxbro_sysinfo_txt" style="font-size: var(--ui-status-font); opacity: 0.85; white-space: normal;"></span>
+      </div>
       <div class="row" id="influxbro_status_head" style="display:none;">
         <span class="hg" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -397,12 +400,15 @@
     function ensureStatusBus(){
       try{
         if(window.InfluxBroStatus) return;
+        const SYSINFO_ENABLED = {{ 'true' if (cfg and cfg.get('ui_status_show_sysinfo', false)) else 'false' }};
         const $head = document.getElementById('influxbro_status_head');
         const $headTxt = document.getElementById('influxbro_status_head_txt');
         const $headTime = document.getElementById('influxbro_status_head_time');
         const $list = document.getElementById('influxbro_status_list');
         const $last = document.getElementById('influxbro_status_last');
         const $refresh = document.getElementById('influxbro_status_refresh');
+        const $sys = document.getElementById('influxbro_sysinfo');
+        const $sysTxt = document.getElementById('influxbro_sysinfo_txt');
 
         const LS_STATUS = 'influxbro_status_bus_v1';
         const STATUS_MAX_AGE_MS = 24 * 60 * 60 * 1000;
@@ -528,6 +534,30 @@
           timer = setInterval(render, 180);
         }
 
+        let _SYS_T = null;
+        async function refreshSysinfo(){
+          if(!SYSINFO_ENABLED) return;
+          try{
+            const r = await fetch('./api/sysinfo');
+            const j = await r.json().catch(()=>({ok:false}));
+            if(!r.ok || !j.ok) return;
+            const s = j.sys || {};
+            const mem = s.rss || '';
+            const data = s.addon_data || '';
+            const df = s.disk_free || '';
+            const dt = s.disk_total || '';
+            const l1 = (s.loadavg_1 !== null && s.loadavg_1 !== undefined) ? String(s.loadavg_1) : '';
+            const cpu = s.cpu_count ? String(s.cpu_count) : '';
+            const parts = [];
+            if(mem) parts.push('Mem: ' + mem);
+            if(data) parts.push('Data: ' + data);
+            if(df || dt) parts.push('Disk: ' + (df || '?') + ' / ' + (dt || '?'));
+            if(l1) parts.push('Load1: ' + l1 + (cpu ? (' (CPU ' + cpu + ')') : ''));
+            if($sysTxt) $sysTxt.textContent = parts.join(' | ');
+            if($sys) $sys.style.display = parts.length ? 'flex' : 'none';
+          }catch(e){}
+        }
+
         function stopTimerIfIdle(){
           const running = Array.from(items.values()).some(x => x.state === 'running');
           if(running) return;
@@ -604,6 +634,14 @@
           },
           clearCompleted,
         };
+
+        // Optional sysinfo poll
+        try{
+          if(SYSINFO_ENABLED){
+            refreshSysinfo().catch(()=>{});
+            _SYS_T = setInterval(()=>{ refreshSysinfo().catch(()=>{}); }, 5000);
+          }
+        }catch(e){}
 
         try{
           if($refresh && !$refresh.__influxbro_bound){

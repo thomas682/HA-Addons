@@ -44,6 +44,12 @@
     .pill.err { border-color: #f2b0b0; background: #fff0f0; color: #b00020; }
     .pill.run { border-color: #c7d7ff; background: #f0f5ff; }
 
+    .table_wrap { border: 1px solid #eee; border-radius: 12px; padding: 10px; margin-top: 10px; }
+    .table_head { display:flex; justify-content:space-between; gap: 12px; align-items:flex-end; flex-wrap:wrap; }
+    .tbl_actions { display:flex; gap: 10px; align-items:center; flex-wrap:wrap; }
+    .tbl_actions label { display:flex; gap: 6px; align-items:center; font-size: 12px; opacity: 0.85; }
+    .tbl_actions input[type="checkbox"] { width:auto; height:auto; padding:0; margin:0; }
+
     tr.job_state_running td { background: var(--ui-job-run); }
     tr.job_state_done td { background: var(--ui-job-done); }
     tr.job_state_error td { background: var(--ui-job-err); }
@@ -89,23 +95,35 @@
         <div class="status" id="info" data-ui="jobs.info" title="jobs.info"></div>
         <div id="err" class="err"></div>
 
-        <div class="table_box">
-          <table id="tbl" data-ui="jobs.table" title="jobs.table">
-            <thead>
-              <tr>
-                <th style="width: 160px;">started</th>
-                <th style="width: 90px;">elapsed</th>
-                <th style="width: 120px;">type</th>
-                <th style="width: 110px;">state</th>
-                <th style="width: 70px;">%</th>
-                <th style="width: 220px;">message</th>
-                <th style="width: 240px;">current</th>
-                <th style="width: 260px;">error</th>
-                <th style="width: 180px;">actions</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
+        <div class="table_wrap" data-ui="jobs.table.wrap" title="jobs.table.wrap">
+          <div class="table_head" data-ui="jobs.table.head" title="jobs.table.head">
+            <div class="tbl_actions" data-ui="jobs.table.actions" title="jobs.table.actions">
+              <button class="btn_xs" id="jobs_autowidth" data-ui="jobs.table.autowidth" title="jobs.table.autowidth">Spaltenbreite automatisch</button>
+              <button class="btn_xs" id="jobs_windowwidth" data-ui="jobs.table.windowwidth" title="jobs.table.windowwidth">Fensterbreite</button>
+              <label><input type="checkbox" id="jobs_wrap" data-ui="jobs.table.wrap_toggle" title="jobs.table.wrap_toggle"/>Umbruch</label>
+              <label><input type="checkbox" id="jobs_colfilter" data-ui="jobs.table.colfilter" title="jobs.table.colfilter"/>Spaltenfilter</label>
+            </div>
+            <div class="muted">Tipp: Spaltenbreite per Ziehen am Header.</div>
+          </div>
+
+          <div class="table_box" id="jobs_box">
+            <table id="tbl" class="ib_tbl" data-ui="jobs.table" title="jobs.table">
+              <thead>
+                <tr>
+                  <th style="width: 160px;">started</th>
+                  <th style="width: 90px;">elapsed</th>
+                  <th style="width: 120px;">type</th>
+                  <th style="width: 110px;">state</th>
+                  <th style="width: 70px;">%</th>
+                  <th style="width: 220px;">message</th>
+                  <th style="width: 240px;">current</th>
+                  <th style="width: 260px;">error</th>
+                  <th style="width: 180px;">actions</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -135,8 +153,19 @@
         <div class="status" id="cache_info" data-ui="cache.info" title="cache.info"></div>
         <div id="cache_err" class="err"></div>
 
-        <div class="table_box">
-          <table id="cache_tbl" data-ui="cache.table" title="cache.table">
+        <div class="table_wrap" data-ui="cache.table.wrap" title="cache.table.wrap">
+          <div class="table_head" data-ui="cache.table.head" title="cache.table.head">
+            <div class="tbl_actions" data-ui="cache.table.actions" title="cache.table.actions">
+              <button class="btn_xs" id="cache_autowidth" data-ui="cache.table.autowidth" title="cache.table.autowidth">Spaltenbreite automatisch</button>
+              <button class="btn_xs" id="cache_windowwidth" data-ui="cache.table.windowwidth" title="cache.table.windowwidth">Fensterbreite</button>
+              <label><input type="checkbox" id="cache_wrap" data-ui="cache.table.wrap_toggle" title="cache.table.wrap_toggle"/>Umbruch</label>
+              <label><input type="checkbox" id="cache_colfilter" data-ui="cache.table.colfilter" title="cache.table.colfilter"/>Spaltenfilter</label>
+            </div>
+            <div class="muted">Cache-Tabelle ist clientseitig filterbar (Suche + Spaltenfilter).</div>
+          </div>
+
+          <div class="table_box" id="cache_box">
+            <table id="cache_tbl" class="ib_tbl" data-ui="cache.table" title="cache.table">
             <thead>
               <tr>
                 <th style="width: 46px;">ok</th>
@@ -159,6 +188,7 @@
             </thead>
             <tbody></tbody>
           </table>
+          </div>
         </div>
       </div>
 
@@ -173,20 +203,99 @@
         <div class="status" id="timers_info" data-ui="timers.info" title="timers.info"></div>
         <div id="timers_err" class="err"></div>
 
-        <div class="table_box">
-           <table id="timers_tbl" data-ui="timers.table" title="timers.table">
+        <div class="table_wrap" data-ui="timers.table.wrap" title="timers.table.wrap">
+          <div class="table_head" data-ui="timers.table.head" title="timers.table.head">
+            <div class="tbl_actions" data-ui="timers.table.actions" title="timers.table.actions">
+              <button class="btn_xs" id="timers_autowidth" data-ui="timers.table.autowidth" title="timers.table.autowidth">Spaltenbreite automatisch</button>
+              <button class="btn_xs" id="timers_windowwidth" data-ui="timers.table.windowwidth" title="timers.table.windowwidth">Fensterbreite</button>
+              <label><input type="checkbox" id="timers_wrap" data-ui="timers.table.wrap_toggle" title="timers.table.wrap_toggle"/>Umbruch</label>
+              <label><input type="checkbox" id="timers_colfilter" data-ui="timers.table.colfilter" title="timers.table.colfilter"/>Spaltenfilter</label>
+            </div>
+            <div class="muted">Timer-Jobs sind sortierbar (Headerklick) und in der Hoehe anpassbar.</div>
+          </div>
+
+          <div class="table_box" id="timers_box">
+           <table id="timers_tbl" class="ib_tbl" data-ui="timers.table" title="timers.table">
              <thead>
-               <tr>
-                 <th style="width: 140px;">id</th>
-                 <th style="width: 140px;">enabled</th>
-                 <th style="width: 260px;">Modus</th>
-                 <th style="width: 180px;">next run</th>
-                 <th>Kommentar</th>
-                 <th style="width: 160px;">action</th>
-               </tr>
+                <tr>
+                  <th style="width: 140px;">id</th>
+                  <th style="width: 140px;">enabled</th>
+                  <th style="width: 260px;">Modus</th>
+                  <th style="width: 180px;">last run</th>
+                  <th style="width: 180px;">next run</th>
+                  <th>Kommentar</th>
+                  <th style="width: 160px;">action</th>
+                </tr>
              </thead>
              <tbody></tbody>
-           </table>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" data-ui="usage.card" title="usage.card">
+        <div style="display:flex; align-items:baseline; justify-content:space-between; gap: 10px; flex-wrap:wrap;">
+          <div>
+            <div style="font-weight:800;">Cache Nutzung</div>
+            <div class="muted">Zeitstempel-Log der Cache-Verwendung (Dashboard/Statistik). Optional ins Logfile schreiben ("logge Caching").</div>
+          </div>
+        </div>
+
+        <div class="row" style="margin-top: 10px;" data-ui="usage.controls" title="usage.controls">
+          <div style="flex:1; min-width: 260px;">
+            <label class="muted" style="display:block; font-size: 12px;">Suche</label>
+            <input id="usage_q" placeholder="kind/page/cache_id/run_id/note..." data-ui="usage.search" title="usage.search" />
+          </div>
+          <div>
+            <label class="muted" style="display:block; font-size: 12px;">&nbsp;</label>
+            <button id="usage_refresh" data-ui="usage.refresh" title="usage.refresh">Aktualisieren</button>
+          </div>
+          <div>
+            <label class="muted" style="display:block; font-size: 12px;">&nbsp;</label>
+            <button id="usage_clear" data-ui="usage.clear" title="usage.clear">Log leeren</button>
+          </div>
+          <div>
+            <label class="muted" style="display:block; font-size: 12px;">Caching</label>
+            <label style="display:flex; align-items:center; gap:8px; height:40px; padding:0 4px;">
+              <input id="usage_log_to_file" type="checkbox" data-ui="usage.log_to_file" title="usage.log_to_file" />
+              <span class="muted" style="opacity:0.85;">logge Caching</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="status" id="usage_info" data-ui="usage.info" title="usage.info"></div>
+        <div id="usage_err" class="err"></div>
+
+        <div class="table_wrap" data-ui="usage.table.wrap" title="usage.table.wrap">
+          <div class="table_head" data-ui="usage.table.head" title="usage.table.head">
+            <div class="tbl_actions" data-ui="usage.table.actions" title="usage.table.actions">
+              <button class="btn_xs" id="usage_autowidth" data-ui="usage.table.autowidth" title="usage.table.autowidth">Spaltenbreite automatisch</button>
+              <button class="btn_xs" id="usage_windowwidth" data-ui="usage.table.windowwidth" title="usage.table.windowwidth">Fensterbreite</button>
+              <label><input type="checkbox" id="usage_wrap" data-ui="usage.table.wrap_toggle" title="usage.table.wrap_toggle"/>Umbruch</label>
+              <label><input type="checkbox" id="usage_colfilter" data-ui="usage.table.colfilter" title="usage.table.colfilter"/>Spaltenfilter</label>
+            </div>
+            <div class="muted">Tipp: Filter/Sortierung im Header + Volltextsuche.</div>
+          </div>
+
+          <div class="table_box" id="usage_box">
+            <table id="usage_tbl" class="ib_tbl" data-ui="usage.table" title="usage.table">
+              <thead>
+                <tr>
+                  <th style="width: 170px;">at</th>
+                  <th style="width: 160px;">kind</th>
+                  <th style="width: 120px;">page</th>
+                  <th style="width: 260px;">run_id</th>
+                  <th style="width: 260px;">cache_id</th>
+                  <th style="width: 160px;">step</th>
+                  <th style="width: 90px;">dur_ms</th>
+                  <th style="width: 90px;">rows</th>
+                  <th style="width: 90px;">bytes</th>
+                  <th>note</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -199,6 +308,12 @@
       const $err = document.getElementById('err');
       const $tblBody = document.querySelector('#tbl tbody');
 
+      const $jobsBox = document.getElementById('jobs_box');
+      const $jobsAutoWidth = document.getElementById('jobs_autowidth');
+      const $jobsWindowWidth = document.getElementById('jobs_windowwidth');
+      const $jobsWrap = document.getElementById('jobs_wrap');
+      const $jobsColFilter = document.getElementById('jobs_colfilter');
+
       const $cacheQ = document.getElementById('cache_q');
       const $cacheRefresh = document.getElementById('cache_refresh');
       const $cacheDeleteAll = document.getElementById('cache_delete_all');
@@ -206,11 +321,64 @@
       const $cacheErr = document.getElementById('cache_err');
       const $cacheBody = document.querySelector('#cache_tbl tbody');
 
+      const $cacheBox = document.getElementById('cache_box');
+      const $cacheAutoWidth = document.getElementById('cache_autowidth');
+      const $cacheWindowWidth = document.getElementById('cache_windowwidth');
+      const $cacheWrap = document.getElementById('cache_wrap');
+      const $cacheColFilter = document.getElementById('cache_colfilter');
+
       const $timersInfo = document.getElementById('timers_info');
       const $timersErr = document.getElementById('timers_err');
       const $timersBody = document.querySelector('#timers_tbl tbody');
 
+      const $timersBox = document.getElementById('timers_box');
+      const $timersAutoWidth = document.getElementById('timers_autowidth');
+      const $timersWindowWidth = document.getElementById('timers_windowwidth');
+      const $timersWrap = document.getElementById('timers_wrap');
+      const $timersColFilter = document.getElementById('timers_colfilter');
+
+      const $usageQ = document.getElementById('usage_q');
+      const $usageRefresh = document.getElementById('usage_refresh');
+      const $usageClear = document.getElementById('usage_clear');
+      const $usageLogToFile = document.getElementById('usage_log_to_file');
+      const $usageInfo = document.getElementById('usage_info');
+      const $usageErr = document.getElementById('usage_err');
+
+      const $usageBox = document.getElementById('usage_box');
+      const $usageAutoWidth = document.getElementById('usage_autowidth');
+      const $usageWindowWidth = document.getElementById('usage_windowwidth');
+      const $usageWrap = document.getElementById('usage_wrap');
+      const $usageColFilter = document.getElementById('usage_colfilter');
+      const $usageBody = document.querySelector('#usage_tbl tbody');
+
       let POLL = null;
+
+      function pageKey(){
+        try{
+          const p = (window.location && window.location.pathname) ? String(window.location.pathname) : '';
+          return p.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'root';
+        }catch(e){
+          return 'root';
+        }
+      }
+
+      function lsKey(kind, id){
+        return `influxbro.ui.v1.${pageKey()}.${String(kind||'')}.${String(id||'')}`;
+      }
+
+      function loadBool(key, def){
+        try{
+          const v = localStorage.getItem(key);
+          if(v === null || v === undefined) return !!def;
+          return String(v) === '1' || String(v).toLowerCase() === 'true';
+        }catch(e){
+          return !!def;
+        }
+      }
+
+      function saveBool(key, v){
+        try{ localStorage.setItem(key, v ? '1' : '0'); }catch(e){}
+      }
 
       function err(s){
         const msg = s || '';
@@ -273,6 +441,152 @@
         const j = await r.json().catch(()=>({ok:false,error:'Invalid JSON'}));
         if(!r.ok || !j.ok) throw new Error(j.error || ('HTTP ' + r.status));
         return j;
+      }
+
+      function usageErr(s){
+        const msg = s || '';
+        if($usageErr) $usageErr.textContent = msg;
+        if(msg){
+          try{
+            if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error(msg);
+            else alert(msg);
+          }catch(e){}
+        }
+      }
+
+      function usageBlob(e){
+        try{
+          return [e.at,e.kind,e.page,e.run_id,e.cache_id,e.step,e.dur_ms,e.rows,e.bytes,e.note].map(x=>String(x||'')).join(' ').toLowerCase();
+        }catch(x){
+          return '';
+        }
+      }
+
+      let LAST_USAGE = [];
+      function renderUsage(items){
+        if(!$usageBody) return;
+        $usageBody.textContent = '';
+        const q = String($usageQ && $usageQ.value ? $usageQ.value : '').trim().toLowerCase();
+        const rows = (items || []).filter(e => !q || usageBlob(e).includes(q));
+        for(const e of rows){
+          const tr = document.createElement('tr');
+          tr.innerHTML = [
+            `<td>${fmtTs(e.at)}</td>`,
+            `<td class="mono">${String(e.kind||'')}</td>`,
+            `<td class="mono">${String(e.page||'')}</td>`,
+            `<td class="mono" title="${String(e.run_id||'').replace(/"/g,'&quot;')}">${String(e.run_id||'')}</td>`,
+            `<td class="mono" title="${String(e.cache_id||'').replace(/"/g,'&quot;')}">${String(e.cache_id||'')}</td>`,
+            `<td class="mono">${String(e.step||'')}</td>`,
+            `<td class="mono" style="text-align:right;">${(e.dur_ms===null||e.dur_ms===undefined)?'':String(e.dur_ms)}</td>`,
+            `<td class="mono" style="text-align:right;">${(e.rows===null||e.rows===undefined)?'':String(e.rows)}</td>`,
+            `<td class="mono" style="text-align:right;">${(e.bytes===null||e.bytes===undefined)?'':String(e.bytes)}</td>`,
+            `<td title="${String(e.note||'').replace(/"/g,'&quot;')}">${String(e.note||'')}</td>`,
+          ].join('');
+          $usageBody.appendChild(tr);
+        }
+        if($usageInfo) $usageInfo.textContent = `Eintraege: ${rows.length}`;
+        try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.apply && window.InfluxBroTableFilter.apply('#usage_tbl'); }catch(e){}
+      }
+
+      async function loadUsage(){
+        usageErr('');
+        if($usageInfo) $usageInfo.textContent = 'Lade...';
+        const j = await api('./api/cache_usage?limit=1000', {});
+        LAST_USAGE = j.rows || [];
+        renderUsage(LAST_USAGE);
+      }
+
+      async function setCacheLogging(on){
+        try{
+          const payload = { log_cache_usage: !!on };
+          await api('./api/config', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+        }catch(e){
+          usageErr(e && e.message ? e.message : String(e));
+        }
+      }
+
+      function initTableUi(){
+        // Column resize persistence
+        try{ window.InfluxBroTableCols && window.InfluxBroTableCols.init('#tbl'); }catch(e){}
+        try{ window.InfluxBroTableCols && window.InfluxBroTableCols.init('#cache_tbl'); }catch(e){}
+        try{ window.InfluxBroTableCols && window.InfluxBroTableCols.init('#timers_tbl'); }catch(e){}
+        try{ window.InfluxBroTableCols && window.InfluxBroTableCols.init('#usage_tbl'); }catch(e){}
+
+        // Default height: ~10 rows (persisted in TableHeight)
+        try{ window.InfluxBroTableHeight && window.InfluxBroTableHeight.attach($jobsBox, 'jobs_tbl', {minPx: 160}); }catch(e){}
+        try{ window.InfluxBroTableHeight && window.InfluxBroTableHeight.attach($cacheBox, 'cache_tbl', {minPx: 180}); }catch(e){}
+        try{ window.InfluxBroTableHeight && window.InfluxBroTableHeight.attach($timersBox, 'timers_tbl', {minPx: 160}); }catch(e){}
+        try{ window.InfluxBroTableHeight && window.InfluxBroTableHeight.attach($usageBox, 'usage_tbl', {minPx: 180}); }catch(e){}
+
+        // Wrap toggle
+        const wJobsK = lsKey('wrap', 'jobs_tbl');
+        const wCacheK = lsKey('wrap', 'cache_tbl');
+        const wTimersK = lsKey('wrap', 'timers_tbl');
+        const wUsageK = lsKey('wrap', 'usage_tbl');
+        if($jobsWrap){
+          $jobsWrap.checked = loadBool(wJobsK, false);
+          try{ window.InfluxBroTableWrap && window.InfluxBroTableWrap.setWrap('#tbl', $jobsWrap.checked); }catch(e){}
+          $jobsWrap.addEventListener('change', ()=>{
+            saveBool(wJobsK, $jobsWrap.checked);
+            try{ window.InfluxBroTableWrap && window.InfluxBroTableWrap.setWrap('#tbl', $jobsWrap.checked); }catch(e){}
+          });
+        }
+        if($cacheWrap){
+          $cacheWrap.checked = loadBool(wCacheK, false);
+          try{ window.InfluxBroTableWrap && window.InfluxBroTableWrap.setWrap('#cache_tbl', $cacheWrap.checked); }catch(e){}
+          $cacheWrap.addEventListener('change', ()=>{
+            saveBool(wCacheK, $cacheWrap.checked);
+            try{ window.InfluxBroTableWrap && window.InfluxBroTableWrap.setWrap('#cache_tbl', $cacheWrap.checked); }catch(e){}
+          });
+        }
+        if($timersWrap){
+          $timersWrap.checked = loadBool(wTimersK, false);
+          try{ window.InfluxBroTableWrap && window.InfluxBroTableWrap.setWrap('#timers_tbl', $timersWrap.checked); }catch(e){}
+          $timersWrap.addEventListener('change', ()=>{
+            saveBool(wTimersK, $timersWrap.checked);
+            try{ window.InfluxBroTableWrap && window.InfluxBroTableWrap.setWrap('#timers_tbl', $timersWrap.checked); }catch(e){}
+          });
+        }
+        if($usageWrap){
+          $usageWrap.checked = loadBool(wUsageK, false);
+          try{ window.InfluxBroTableWrap && window.InfluxBroTableWrap.setWrap('#usage_tbl', $usageWrap.checked); }catch(e){}
+          $usageWrap.addEventListener('change', ()=>{
+            saveBool(wUsageK, $usageWrap.checked);
+            try{ window.InfluxBroTableWrap && window.InfluxBroTableWrap.setWrap('#usage_tbl', $usageWrap.checked); }catch(e){}
+          });
+        }
+
+        // Column filter row
+        try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.init('#tbl', {startHidden: true}); }catch(e){}
+        try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.init('#cache_tbl', {startHidden: true}); }catch(e){}
+        try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.init('#timers_tbl', {startHidden: true}); }catch(e){}
+        try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.init('#usage_tbl', {startHidden: true}); }catch(e){}
+
+        function bindColFilter(cb, sel){
+          if(!cb) return;
+          const k = lsKey('colfilter', sel);
+          cb.checked = loadBool(k, false);
+          try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.setVisible('#' + sel, cb.checked); }catch(e){}
+          cb.addEventListener('change', ()=>{
+            saveBool(k, cb.checked);
+            try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.setVisible('#' + sel, cb.checked); }catch(e){}
+          });
+        }
+        bindColFilter($jobsColFilter, 'tbl');
+        bindColFilter($cacheColFilter, 'cache_tbl');
+        bindColFilter($timersColFilter, 'timers_tbl');
+        bindColFilter($usageColFilter, 'usage_tbl');
+
+        // Auto width / window width
+        if($jobsAutoWidth) $jobsAutoWidth.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} try{ window.InfluxBroTableCols && window.InfluxBroTableCols.autoFit('#tbl', {maxRows: 200}); }catch(e){} });
+        if($cacheAutoWidth) $cacheAutoWidth.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} try{ window.InfluxBroTableCols && window.InfluxBroTableCols.autoFit('#cache_tbl', {maxRows: 200}); }catch(e){} });
+        if($timersAutoWidth) $timersAutoWidth.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} try{ window.InfluxBroTableCols && window.InfluxBroTableCols.autoFit('#timers_tbl', {maxRows: 200}); }catch(e){} });
+        if($usageAutoWidth) $usageAutoWidth.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} try{ window.InfluxBroTableCols && window.InfluxBroTableCols.autoFit('#usage_tbl', {maxRows: 200}); }catch(e){} });
+
+        if($jobsWindowWidth) $jobsWindowWidth.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} try{ window.InfluxBroTableCols && window.InfluxBroTableCols.windowFit('#tbl', {minW: 60}); }catch(e){} });
+        if($cacheWindowWidth) $cacheWindowWidth.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} try{ window.InfluxBroTableCols && window.InfluxBroTableCols.windowFit('#cache_tbl', {minW: 70}); }catch(e){} });
+        if($timersWindowWidth) $timersWindowWidth.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} try{ window.InfluxBroTableCols && window.InfluxBroTableCols.windowFit('#timers_tbl', {minW: 80}); }catch(e){} });
+        if($usageWindowWidth) $usageWindowWidth.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} try{ window.InfluxBroTableCols && window.InfluxBroTableCols.windowFit('#usage_tbl', {minW: 80}); }catch(e){} });
       }
 
       function isActive(j){
@@ -598,6 +912,7 @@
             `<td class="mono">${String(t.id||'')}</td>`,
             `<td class="mono">${String((t.enabled ? 'true' : 'false'))} / auto=${String((t.auto_update ? 'true' : 'false'))}</td>`,
             `<td class="mono">${String(t.mode||'')}</td>`,
+            `<td>${fmtTs(t.last_run_at)}${t.last_state ? (' / ' + String(t.last_state)) : ''}</td>`,
             `<td>${fmtTs(t.next_run_at)}</td>`,
             `<td>${String(t.comment||'')}</td>`,
             `<td></td>`,
@@ -605,8 +920,44 @@
 
           const tdAct = tr.lastChild;
           const id = String(t.id || '');
+
+          if(id === 'dash_cache' || id === 'stats_cache'){
+            const bMode = document.createElement('button');
+            bMode.className = 'btn_xs';
+            bMode.textContent = 'Modus';
+            bMode.onclick = async ()=>{
+              try{
+                timersErr('');
+                const curMode = String((t.refresh_mode || '')).trim() || 'hours';
+                const mRaw = prompt('Refresh Modus (hours/daily):', curMode);
+                if(mRaw === null) return;
+                const m = String(mRaw || '').trim().toLowerCase();
+                const payload = {id, refresh_mode: m};
+                if(m === 'hours'){
+                  const curH = (t.refresh_hours != null ? String(t.refresh_hours) : '24');
+                  const hRaw = prompt('Refresh alle N Stunden:', curH);
+                  if(hRaw === null) return;
+                  payload.refresh_hours = parseInt(String(hRaw||'').trim() || '24', 10);
+                }else if(m === 'daily'){
+                  const curAt = String((t.refresh_daily_at || '')).trim() || '03:00:00';
+                  const atRaw = prompt('Refresh taeglich um (HH:MM:SS):', curAt);
+                  if(atRaw === null) return;
+                  payload.refresh_daily_at = String(atRaw||'').trim();
+                }else{
+                  throw new Error('Ungueltiger Modus (hours|daily)');
+                }
+                await api('./api/timers/schedule', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+                await loadTimers();
+              }catch(e){
+                timersErr(e && e.message ? e.message : String(e));
+              }
+            };
+            tdAct.appendChild(bMode);
+          }
+
           const bStart = document.createElement('button');
           bStart.className = 'btn_xs';
+          bStart.style.marginLeft = (tdAct.childNodes && tdAct.childNodes.length) ? '6px' : '0';
           bStart.textContent = 'Start';
           bStart.onclick = async ()=>{
             try{
@@ -648,6 +999,7 @@
         await loadJobs();
         await loadCaches();
         await loadTimers();
+        await loadUsage();
       }
 
       $refresh.onclick = ()=>{ loadAll().catch(e => err(e && e.message ? e.message : String(e))); };
@@ -668,11 +1020,39 @@
         }
       };
 
+      // Cache usage controls
+      if($usageRefresh) $usageRefresh.onclick = ()=>{ loadUsage().catch(e=>usageErr(e && e.message ? e.message : String(e))); };
+      if($usageQ) $usageQ.oninput = ()=>{ renderUsage(LAST_USAGE); };
+      if($usageClear) $usageClear.onclick = async ()=>{
+        try{
+          if(!confirm('Cache Usage Log wirklich loeschen?')) return;
+          await api('./api/cache_usage/clear', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({})});
+          await loadUsage();
+        }catch(e){
+          usageErr(e && e.message ? e.message : String(e));
+        }
+      };
+      if($usageLogToFile) $usageLogToFile.onchange = ()=>{ setCacheLogging($usageLogToFile.checked); };
+
+      // Sync cache logging toggle from config
+      (async ()=>{
+        try{
+          const c = await api('./api/config', {});
+          const cfg = c.config || {};
+          if($usageLogToFile) $usageLogToFile.checked = !!cfg.log_cache_usage;
+        }catch(e){}
+      })();
+
       loadAll().catch(e => err(e && e.message ? e.message : String(e)));
       </script>
 
       {% include "_table_cols.html" %}
       {% include "_tooltips.html" %}
+
+      <script>
+      // Run after shared helpers are loaded.
+      try{ initTableUi(); }catch(e){}
+      </script>
     </main>
   </div>
 </body>

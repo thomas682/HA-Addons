@@ -1,6 +1,16 @@
+<style>
+/* Shared table standard helpers (opt-in via .ib_tbl) */
+table.ib_tbl th, table.ib_tbl td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+table.ib_tbl.ib_wrap th, table.ib_tbl.ib_wrap td { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
+
+/* Filter row inside thead */
+thead tr.ib_filter_row th { background: #fcfcfc; position: sticky; top: 0; z-index: 2; }
+thead tr.ib_filter_row input, thead tr.ib_filter_row select { width: 100%; height: 26px; padding: 2px 6px; box-sizing: border-box; font-size: 11px; }
+</style>
+
 <script>
-// Shared helper for resizable table columns + auto-fit widths.
-// Uses localStorage per table id.
+// Shared helper for resizable table columns + auto-fit/window-fit widths.
+// Uses localStorage per table id + page path.
 (function(){
   if(window.InfluxBroTableCols) return;
 
@@ -8,7 +18,21 @@
     return String(s || '').trim();
   }
 
-  function _lsKey(tableId){
+  function _pageKey(){
+    try{
+      const p = (window.location && window.location.pathname) ? String(window.location.pathname) : '';
+      return p.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'root';
+    }catch(e){
+      return 'root';
+    }
+  }
+
+  function _lsKeyV2(tableId){
+    const id = _norm(tableId || '');
+    return id ? (`influxbro.cols.v2.${_pageKey()}.${id}`) : `influxbro.cols.v2.${_pageKey()}.unknown`;
+  }
+
+  function _lsKeyV1(tableId){
     const id = _norm(tableId || '');
     return id ? (`influxbro.cols.${id}`) : 'influxbro.cols.unknown';
   }
@@ -34,10 +58,16 @@
     try{
       const id = _getTableId(tbl);
       if(!id) return null;
-      const raw = localStorage.getItem(_lsKey(id));
-      if(!raw) return null;
-      const j = JSON.parse(raw);
-      return (j && typeof j === 'object') ? j : null;
+      // Prefer v2 (page-scoped). Fallback to v1 (legacy) for migration.
+      const raw2 = localStorage.getItem(_lsKeyV2(id));
+      if(raw2){
+        const j2 = JSON.parse(raw2);
+        if(j2 && typeof j2 === 'object') return j2;
+      }
+      const raw1 = localStorage.getItem(_lsKeyV1(id));
+      if(!raw1) return null;
+      const j1 = JSON.parse(raw1);
+      return (j1 && typeof j1 === 'object') ? j1 : null;
     }catch(e){
       return null;
     }
@@ -54,7 +84,7 @@
         const w = Math.round(th.getBoundingClientRect().width);
         out[k] = w;
       });
-      localStorage.setItem(_lsKey(id), JSON.stringify(out));
+      localStorage.setItem(_lsKeyV2(id), JSON.stringify(out));
     }catch(e){}
   }
 
@@ -139,6 +169,33 @@
     });
   }
 
+  function windowFit(table, opts){
+    const tbl = _getTable(table);
+    if(!tbl) return;
+    try{
+      const box = tbl.closest('.table_box') || tbl.parentElement;
+      const maxW = box ? Math.round(box.getBoundingClientRect().width) : Math.round(tbl.getBoundingClientRect().width);
+      const ths = Array.from(tbl.querySelectorAll('thead th'));
+      if(!ths.length || !isFinite(maxW) || maxW <= 0) return;
+
+      const minW = (opts && isFinite(Number(opts.minW))) ? Math.max(40, Math.trunc(Number(opts.minW))) : 60;
+      const pad = (opts && isFinite(Number(opts.pad))) ? Math.max(0, Math.trunc(Number(opts.pad))) : 2;
+
+      const cur = ths.map(th => Math.round(th.getBoundingClientRect().width || 0));
+      const sum = cur.reduce((a,b)=>a+(isFinite(b)?b:0), 0) || ths.length;
+      const target = Math.max(minW * ths.length, maxW - 4);
+
+      ths.forEach((th, i)=>{
+        let w = Math.round((cur[i] / sum) * target);
+        if(!isFinite(w) || w <= 0) w = Math.round(target / ths.length);
+        if(w < minW) w = minW;
+        if(w > 1600) w = 1600;
+        th.style.width = (w + pad) + 'px';
+      });
+      _writeWidths(tbl);
+    }catch(e){}
+  }
+
   function autoFit(table, opts){
     const tbl = _getTable(table);
     if(!tbl) return;
@@ -186,8 +243,294 @@
   window.InfluxBroTableCols = {
     init,
     autoFit,
+    windowFit,
     applySavedWidths,
   };
+})();
+</script>
+
+<script>
+// Shared helper: wrap vs. truncate for tables (opt-in)
+(function(){
+  if(window.InfluxBroTableWrap) return;
+
+  function _getTable(table){
+    if(!table) return null;
+    if(typeof table === 'string') return document.querySelector(table);
+    return table;
+  }
+
+  function setWrap(table, on){
+    const tbl = _getTable(table);
+    if(!tbl) return;
+    try{
+      tbl.classList.add('ib_tbl');
+      if(on) tbl.classList.add('ib_wrap');
+      else tbl.classList.remove('ib_wrap');
+    }catch(e){}
+  }
+
+  window.InfluxBroTableWrap = { setWrap };
+})();
+</script>
+
+<script>
+// Shared helper: per-column filter row (client-side; best-effort)
+(function(){
+  if(window.InfluxBroTableFilter) return;
+
+  function _norm(s){
+    return String(s || '').trim();
+  }
+
+  function _getTable(table){
+    if(!table) return null;
+    if(typeof table === 'string') return document.querySelector(table);
+    return table;
+  }
+
+  function _getKey(tbl){
+    try{
+      const id = _norm(tbl.getAttribute('id')) || 'unknown';
+      const p = (window.location && window.location.pathname) ? String(window.location.pathname) : '';
+      const pk = p.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'root';
+      return `influxbro.filters.v1.${pk}.${id}`;
+    }catch(e){
+      return 'influxbro.filters.v1.unknown';
+    }
+  }
+
+  function _cellText(td){
+    try{ return _norm(td && td.textContent ? td.textContent : ''); }catch(e){ return ''; }
+  }
+
+  function _readSaved(tbl){
+    try{
+      const raw = localStorage.getItem(_getKey(tbl));
+      if(!raw) return null;
+      const j = JSON.parse(raw);
+      return (j && typeof j === 'object') ? j : null;
+    }catch(e){
+      return null;
+    }
+  }
+
+  function _writeSaved(tbl, obj){
+    try{ localStorage.setItem(_getKey(tbl), JSON.stringify(obj || {})); }catch(e){}
+  }
+
+  function _ensureFilterRow(tbl){
+    const thead = tbl.querySelector('thead');
+    if(!thead) return null;
+    const existing = thead.querySelector('tr.ib_filter_row');
+    if(existing) return existing;
+
+    const hdr = thead.querySelector('tr');
+    if(!hdr) return null;
+
+    const ths = Array.from(hdr.children || []);
+    const fr = document.createElement('tr');
+    fr.className = 'ib_filter_row';
+    ths.forEach((th, idx)=>{
+      const c = document.createElement('th');
+      c.setAttribute('data-col-idx', String(idx));
+      const inp = document.createElement('input');
+      inp.type = 'text';
+      inp.placeholder = 'filter';
+      inp.setAttribute('data-col-idx', String(idx));
+      c.appendChild(inp);
+      fr.appendChild(c);
+    });
+    thead.appendChild(fr);
+    return fr;
+  }
+
+  function apply(tbl){
+    const tbody = tbl.querySelector('tbody');
+    const thead = tbl.querySelector('thead');
+    if(!tbody || !thead) return;
+    const fr = thead.querySelector('tr.ib_filter_row');
+    if(!fr) return;
+    const inputs = Array.from(fr.querySelectorAll('input[data-col-idx], select[data-col-idx]'));
+    const want = {};
+    inputs.forEach(inp=>{
+      const idx = Number(inp.getAttribute('data-col-idx'));
+      const v = _norm(inp.value).toLowerCase();
+      if(v) want[idx] = v;
+    });
+
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    rows.forEach(tr=>{
+      let ok = true;
+      const cells = Array.from(tr.children || []);
+      Object.keys(want).forEach(k=>{
+        const idx = Number(k);
+        const v = want[idx];
+        const t = _cellText(cells[idx]).toLowerCase();
+        if(v && !t.includes(v)) ok = false;
+      });
+      tr.style.display = ok ? '' : 'none';
+    });
+  }
+
+  function init(table, opts){
+    const tbl = _getTable(table);
+    if(!tbl) return;
+    const fr = _ensureFilterRow(tbl);
+    if(!fr) return;
+
+    // Keep filter row visible under the header row (sticky offset)
+    try{
+      const thead = tbl.querySelector('thead');
+      const hdr = thead ? thead.querySelector('tr') : null;
+      const h = hdr ? Math.round(hdr.getBoundingClientRect().height || 0) : 0;
+      if(h > 0){
+        Array.from(fr.querySelectorAll('th')).forEach(th=>{ th.style.top = h + 'px'; });
+      }
+    }catch(e){}
+
+    // Restore saved filter values
+    const saved = _readSaved(tbl) || {};
+    try{
+      Array.from(fr.querySelectorAll('input[data-col-idx]')).forEach(inp=>{
+        const idx = inp.getAttribute('data-col-idx');
+        if(idx in saved) inp.value = String(saved[idx] || '');
+      });
+    }catch(e){}
+
+    const onChange = ()=>{
+      try{
+        const out = {};
+        Array.from(fr.querySelectorAll('input[data-col-idx]')).forEach(inp=>{
+          const idx = inp.getAttribute('data-col-idx');
+          const v = _norm(inp.value);
+          if(v) out[idx] = v;
+        });
+        _writeSaved(tbl, out);
+      }catch(e){}
+      apply(tbl);
+    };
+
+    Array.from(fr.querySelectorAll('input')).forEach(inp=>{
+      inp.addEventListener('input', ()=>{ onChange(); });
+    });
+
+    // Optionally start hidden
+    const startHidden = !!(opts && opts.startHidden);
+    if(startHidden) fr.style.display = 'none';
+    apply(tbl);
+  }
+
+  function setVisible(table, on){
+    const tbl = _getTable(table);
+    if(!tbl) return;
+    try{
+      const fr = tbl.querySelector('thead tr.ib_filter_row');
+      if(!fr) return;
+      fr.style.display = on ? '' : 'none';
+      if(!on) apply(tbl);
+      else apply(tbl);
+    }catch(e){}
+  }
+
+  window.InfluxBroTableFilter = { init, apply, setVisible };
+})();
+</script>
+
+<script>
+// Shared helper: table box height resize handle (persisted, per page+table)
+(function(){
+  if(window.InfluxBroTableHeight) return;
+
+  function _norm(s){ return String(s || '').trim(); }
+
+  function _keyFor(tableId){
+    try{
+      const id = _norm(tableId) || 'unknown';
+      const p = (window.location && window.location.pathname) ? String(window.location.pathname) : '';
+      const pk = p.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'root';
+      return `influxbro.table_h_px.v1.${pk}.${id}`;
+    }catch(e){
+      return 'influxbro.table_h_px.v1.unknown';
+    }
+  }
+
+  function attach(boxEl, tableId, opts){
+    if(!boxEl) return;
+    const tid = _norm(tableId) || _norm(boxEl.getAttribute('data-table-id')) || '';
+    const key = _keyFor(tid || 'unknown');
+
+    const minPx = (opts && isFinite(Number(opts.minPx))) ? Math.max(120, Math.trunc(Number(opts.minPx))) : 160;
+    const maxPx = (opts && isFinite(Number(opts.maxPx))) ? Math.max(minPx, Math.trunc(Number(opts.maxPx))) : Math.round(window.innerHeight * 0.9);
+
+    try{
+      const saved = Number(localStorage.getItem(key) || 0);
+      if(isFinite(saved) && saved >= minPx) boxEl.style.height = Math.round(saved) + 'px';
+    }catch(e){}
+
+    // Create handle after the box (if not present)
+    let handle = null;
+    try{
+      handle = boxEl.parentElement ? boxEl.parentElement.querySelector(`.ib_tbl_resize[data-for="${tid}"]`) : null;
+    }catch(e){ handle = null; }
+    if(!handle){
+      handle = document.createElement('div');
+      handle.className = 'ib_tbl_resize';
+      handle.setAttribute('data-for', tid);
+      handle.style.height = '12px';
+      handle.style.cursor = 'ns-resize';
+      handle.style.marginTop = '8px';
+      handle.style.borderRadius = '999px';
+      handle.style.background = 'linear-gradient(90deg, #eee, #f8f8f8)';
+      try{ boxEl.insertAdjacentElement('afterend', handle); }catch(e){ boxEl.parentElement && boxEl.parentElement.appendChild(handle); }
+    }
+
+    let startY = 0;
+    let startH = 0;
+    let dragging = false;
+
+    function onMove(ev){
+      if(!dragging) return;
+      const y = (ev && (ev.touches && ev.touches[0] ? ev.touches[0].clientY : ev.clientY)) || 0;
+      const dy = y - startY;
+      let h = startH + dy;
+      if(h < minPx) h = minPx;
+      if(h > maxPx) h = maxPx;
+      boxEl.style.height = Math.round(h) + 'px';
+      try{ ev.preventDefault(); }catch(e){}
+    }
+
+    function onUp(){
+      if(!dragging) return;
+      dragging = false;
+      document.body.style.userSelect = '';
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      window.removeEventListener('touchmove', onMove);
+      window.removeEventListener('touchend', onUp);
+      try{
+        const h = Math.round(boxEl.getBoundingClientRect().height || 0);
+        if(h >= minPx) localStorage.setItem(key, String(h));
+      }catch(e){}
+    }
+
+    function onDown(ev){
+      try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+      dragging = true;
+      startY = (ev && (ev.touches && ev.touches[0] ? ev.touches[0].clientY : ev.clientY)) || 0;
+      startH = boxEl.getBoundingClientRect().height;
+      document.body.style.userSelect = 'none';
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+      window.addEventListener('touchmove', onMove, {passive:false});
+      window.addEventListener('touchend', onUp);
+    }
+
+    handle.addEventListener('mousedown', onDown);
+    handle.addEventListener('touchstart', onDown, {passive:false});
+  }
+
+  window.InfluxBroTableHeight = { attach };
 })();
 </script>
 
@@ -215,6 +558,16 @@
   function describeTable(tbl){
     const ths = Array.from(tbl.querySelectorAll('thead th'));
     const lines = [];
+
+    lines.push('Funktion / Bedienung');
+    lines.push('- Spaltenbreite: per Ziehen am Spaltenrand (Header).');
+    lines.push('- Sortierung: (falls aktiv) per Klick auf Spaltenkopf.');
+    lines.push('- Volltextsuche/Filter: oberhalb der Tabelle.');
+    lines.push('- Anzeige: Umbruch vs. Abschneiden (Checkbox, falls vorhanden).');
+    lines.push('- Hoehe: unter der Tabelle per Balken (falls vorhanden).');
+    lines.push('');
+    lines.push('Spalten');
+
     ths.forEach((th, idx)=>{
       const name = _norm(th.textContent);
       const ttl = _stripKeySuffix(th.getAttribute('title'));
@@ -238,6 +591,8 @@
     }
   }
 
+  const ICON_BOOK = '<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M6 4c-1.1 0-2 .9-2 2v13.5c0 .83.67 1.5 1.5 1.5H11v-2H6V6h5V4H6zm7 0v2h5v13h-5v2h5.5c.83 0 1.5-.67 1.5-1.5V6c0-1.1-.9-2-2-2h-5z"/><path fill="currentColor" d="M12 4h1v17h-1z"/></svg>';
+
   function _ensureButtonForTable(tbl){
     try{
       if(!tbl || !tbl.getAttribute) return;
@@ -255,13 +610,14 @@
 
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.textContent = '(i)';
+      btn.innerHTML = ICON_BOOK;
       btn.setAttribute('data-table-info', tid);
       btn.style.cursor = 'pointer';
       btn.style.height = '30px';
       btn.style.padding = '6px 10px';
       btn.style.marginLeft = '8px';
       btn.style.opacity = '0.85';
+      btn.title = 'Tabelleninfo';
       btn.addEventListener('click', (ev)=>{
         try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
         show(tbl);

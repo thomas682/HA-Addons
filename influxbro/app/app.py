@@ -1,4 +1,5 @@
 import csv
+from collections import deque
 import gzip
 import hashlib
 import io
@@ -49,6 +50,19 @@ GLOBAL_STATS_LOCK = threading.RLock()
 
 HISTORY_LOCK = threading.RLock()
 HISTORY_PATH = DATA_DIR / "influxbro_history.jsonl"
+
+# Cache usage log (for UI + optional server log)
+CACHE_USAGE_LOCK = threading.RLock()
+CACHE_USAGE_MAX_MEM = 2000
+CACHE_USAGE_MEM: "deque[dict[str, Any]]" = deque(maxlen=CACHE_USAGE_MAX_MEM)
+CACHE_USAGE_PATH = DATA_DIR / "influxbro_cache_usage.jsonl"
+
+# Timers state (last run timestamps, persisted under /data)
+TIMERS_STATE_LOCK = threading.RLock()
+TIMERS_STATE_PATH = DATA_DIR / "influxbro_timers_state.json"
+
+# toggled via config (configure_logging)
+CACHE_USAGE_LOGGING = False
 
 EXPORT_DIR = DATA_DIR / "exports"
 IMPORT_DIR = DATA_DIR / "imports"
@@ -433,6 +447,7 @@ def configure_logging(cfg: dict[str, Any]) -> None:
 
     global DETAILS_ENABLED
     global INFLUX_QUERY_LOGGING
+    global CACHE_USAGE_LOGGING
 
     try:
         profile = str(cfg.get("log_profile") or "").strip().lower()
@@ -487,6 +502,7 @@ def configure_logging(cfg: dict[str, Any]) -> None:
 
     log_http_requests = bool(cfg.get("log_http_requests", False))
     INFLUX_QUERY_LOGGING = bool(cfg.get("log_influx_queries", False))
+    CACHE_USAGE_LOGGING = bool(cfg.get("log_cache_usage", False))
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     if log_to_file:
@@ -608,6 +624,7 @@ DEFAULT_CFG = {
     "ui_font_size_px": 14,
     "ui_font_small_px": 11,
     "ui_status_font_px": 12,
+    "ui_status_show_sysinfo": False,
     "ui_checkbox_scale": 0.85,
     "ui_filter_label_width_px": 170,
     "ui_filter_control_width_px": 320,
@@ -620,7 +637,7 @@ DEFAULT_CFG = {
     "ui_job_color_cancelled": "#f6f6f6",
 
     # Safety: auto-cancel jobs after N seconds (0 = disabled)
-    "jobs_max_runtime_seconds": 0,
+    "jobs_max_runtime_seconds": 3600,
 
     # Restore
     "restore_preview_lines": 5,
@@ -672,6 +689,7 @@ DEFAULT_CFG = {
     "log_max_age_days": 14,
     "log_http_requests": False,
     "log_influx_queries": False,
+    "log_cache_usage": False,
 
     # Dashboard query cache (server-side, persisted under /data)
     "dash_cache_enabled": True,
@@ -702,6 +720,54 @@ DEFAULT_CFG = {
     "stats_cache_max_mb": 50,
 
 }
+
+
+def _process_rss_bytes() -> int | None:
+    """Best-effort current process RSS (bytes)."""
+
+    # Linux: /proc
+    try:
+        p = Path("/proc/self/status")
+        if p.exists():
+            for ln in p.read_text(encoding="utf-8", errors="replace").splitlines():
+                if ln.startswith("VmRSS:"):
+                    # VmRSS:   12345 kB
+                    parts = ln.split()
+                    if len(parts) >= 2 and parts[1].isdigit():
+                        return int(parts[1]) * 1024
+    except Exception:
+        pass
+
+    # Fallback: resource (max RSS, platform-dependent units)
+    try:
+        import resource
+
+        ru = resource.getrusage(resource.RUSAGE_SELF)
+        v = int(getattr(ru, "ru_maxrss", 0) or 0)
+        if v <= 0:
+            return None
+        # Linux: KB; macOS: bytes
+        if sys.platform == "darwin":
+            return v
+        return v * 1024
+    except Exception:
+        return None
+
+
+def _fmt_bytes(n: int | None) -> str | None:
+    if n is None:
+        return None
+    try:
+        x = float(n)
+    except Exception:
+        return None
+    if x < 0:
+        x = 0
+    for unit in ("B", "KB", "MB", "GB", "TB"):
+        if x < 1024 or unit == "TB":
+            return f"{x:.1f} {unit}" if unit != "B" else f"{int(x)} B"
+        x /= 1024
+    return None
 
 
 def writes_enabled(cfg: dict[str, Any]) -> bool:
@@ -754,6 +820,78 @@ def _history_read_all() -> list[dict[str, Any]]:
         return out
     except Exception:
         return []
+
+
+def _timers_state_load() -> dict[str, Any]:
+    try:
+        if not TIMERS_STATE_PATH.exists():
+            return {}
+        with TIMERS_STATE_LOCK:
+            raw = TIMERS_STATE_PATH.read_text(encoding="utf-8", errors="replace")
+        j = json.loads(raw) if raw else {}
+        return j if isinstance(j, dict) else {}
+    except Exception:
+        return {}
+
+
+def _timers_state_save(state: dict[str, Any]) -> None:
+    try:
+        with TIMERS_STATE_LOCK:
+            try:
+                TIMERS_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+            except Exception:
+                pass
+            TIMERS_STATE_PATH.write_text(json.dumps(state or {}, indent=2, sort_keys=True), encoding="utf-8")
+    except Exception:
+        return
+
+
+def _timers_state_get(timer_id: str) -> dict[str, Any]:
+    try:
+        tid = str(timer_id or "").strip()
+        if not tid:
+            return {}
+        st = _timers_state_load()
+        v = st.get(tid)
+        return v if isinstance(v, dict) else {}
+    except Exception:
+        return {}
+
+
+def _timer_mark_started(timer_id: str, job_id: str | None = None) -> None:
+    try:
+        tid = str(timer_id or "").strip()
+        if not tid:
+            return
+        st = _timers_state_load()
+        cur = st.get(tid)
+        cur = cur if isinstance(cur, dict) else {}
+        cur["last_started_at"] = _utc_now_iso_ms()
+        cur["last_job_id"] = str(job_id or "").strip() or None
+        cur["last_state"] = "running"
+        st[tid] = cur
+        _timers_state_save(st)
+    except Exception:
+        return
+
+
+def _timer_mark_finished(timer_id: str, state: str) -> None:
+    try:
+        tid = str(timer_id or "").strip()
+        if not tid:
+            return
+        st_s = str(state or "").strip().lower()
+        if st_s not in ("done", "error", "cancelled"):
+            st_s = "done"
+        st = _timers_state_load()
+        cur = st.get(tid)
+        cur = cur if isinstance(cur, dict) else {}
+        cur["last_run_at"] = _utc_now_iso_ms()
+        cur["last_state"] = st_s
+        st[tid] = cur
+        _timers_state_save(st)
+    except Exception:
+        return
 
 def load_cfg():
     # NOTE: No automatic autodetect at startup.
@@ -982,6 +1120,90 @@ def _meta_add_event(meta: dict[str, Any], kind: str, note: str | None = None, at
         if len(events) > 60:
             events = events[-60:]
         meta["events"] = events
+    except Exception:
+        return
+
+
+def _cache_usage_append(cfg: dict[str, Any] | None, entry: dict[str, Any]) -> None:
+    """Append a cache usage entry for the UI and (optionally) the server log."""
+
+    try:
+        e = dict(entry or {})
+        e.setdefault("at", _utc_now_iso_ms())
+        e.setdefault("id", uuid.uuid4().hex)
+        # keep small and safe
+        for k in list(e.keys()):
+            if k.startswith("token") or k.startswith("password"):
+                e.pop(k, None)
+        # cap large strings
+        for k in ("kind", "page", "step", "cache_id", "run_id", "note"):
+            if k in e and e[k] is not None:
+                e[k] = str(e[k])[:400]
+        with CACHE_USAGE_LOCK:
+            CACHE_USAGE_MEM.append(e)
+        try:
+            DATA_DIR.mkdir(parents=True, exist_ok=True)
+            with CACHE_USAGE_PATH.open("a", encoding="utf-8") as f:
+                f.write(json.dumps(e, ensure_ascii=True) + "\n")
+        except Exception:
+            pass
+
+        try:
+            if CACHE_USAGE_LOGGING and bool(cfg or {}):
+                # Keep log line compact.
+                LOG.info(
+                    "cache_usage kind=%s page=%s run_id=%s cache_id=%s step=%s dur_ms=%s note=%s",
+                    e.get("kind"),
+                    e.get("page"),
+                    e.get("run_id"),
+                    e.get("cache_id"),
+                    e.get("step"),
+                    e.get("dur_ms"),
+                    (str(e.get("note") or "")[:200]),
+                )
+        except Exception:
+            pass
+    except Exception:
+        return
+
+
+def _cache_usage_tail(limit: int = 500) -> list[dict[str, Any]]:
+    try:
+        lim = int(limit or 500)
+    except Exception:
+        lim = 500
+    lim = min(5000, max(1, lim))
+    with CACHE_USAGE_LOCK:
+        xs = list(CACHE_USAGE_MEM)
+    if xs:
+        return xs[-lim:]
+    # Cold start: best-effort tail from file.
+    try:
+        if CACHE_USAGE_PATH.exists():
+            lines = CACHE_USAGE_PATH.read_text(encoding="utf-8").splitlines()
+            out: list[dict[str, Any]] = []
+            for ln in lines[-lim:]:
+                try:
+                    j = json.loads(ln)
+                    if isinstance(j, dict):
+                        out.append(j)
+                except Exception:
+                    continue
+            return out
+    except Exception:
+        pass
+    return []
+
+
+def _cache_usage_clear() -> None:
+    try:
+        with CACHE_USAGE_LOCK:
+            CACHE_USAGE_MEM.clear()
+        try:
+            if CACHE_USAGE_PATH.exists():
+                CACHE_USAGE_PATH.unlink()
+        except Exception:
+            pass
     except Exception:
         return
 
@@ -1367,6 +1589,18 @@ def _dash_cache_touch_used(cache_id: str) -> None:
         meta["last_used_at"] = now
         _meta_add_event(meta, "used", None, at=now)
         _dash_cache_write_meta(meta)
+        try:
+            cfg = load_cfg()
+            _cache_usage_append(cfg, {
+                "kind": "dash_cache_used",
+                "page": str(meta.get("trigger_page") or "dashboard"),
+                "cache_id": str(cache_id),
+                "step": "touch_used",
+                "rows": meta.get("row_count"),
+                "bytes": meta.get("bytes"),
+            })
+        except Exception:
+            pass
     except Exception:
         return
 
@@ -1594,10 +1828,16 @@ def _dash_cache_job_public(job: dict[str, Any]) -> dict[str, Any]:
 
 def _dash_cache_job_thread(job_id: str, action: str, cache_id: str) -> None:
     def set_state(state: str, msg: str) -> None:
+        timer_id = None
         with DASH_CACHE_JOBS_LOCK:
             if job_id in DASH_CACHE_JOBS:
                 DASH_CACHE_JOBS[job_id]["state"] = state
                 DASH_CACHE_JOBS[job_id]["message"] = msg
+                if state in ("done", "error", "cancelled"):
+                    _job_set_finished(DASH_CACHE_JOBS[job_id])
+                    timer_id = DASH_CACHE_JOBS[job_id].get("timer_id")
+        if timer_id and state in ("done", "error", "cancelled"):
+            _timer_mark_finished(str(timer_id), state)
 
     def set_error(msg: str) -> None:
         with DASH_CACHE_JOBS_LOCK:
@@ -1762,7 +2002,12 @@ def _dash_cache_job_thread(job_id: str, action: str, cache_id: str) -> None:
         set_state("error", "Fehler")
 
 
-def _dash_cache_start_job(action: str, cache_id: str, trigger_page: str | None = None) -> str:
+def _dash_cache_start_job(
+    action: str,
+    cache_id: str,
+    trigger_page: str | None = None,
+    timer_id: str | None = None,
+) -> str:
     job_id = uuid.uuid4().hex
     ip = _req_ip()
     ua = _req_ua()
@@ -1775,6 +2020,7 @@ def _dash_cache_start_job(action: str, cache_id: str, trigger_page: str | None =
         "trigger_page": trigger_page,
         "trigger_ip": ip,
         "trigger_ua": ua,
+        "timer_id": str(timer_id or "").strip() or None,
         "cache_id": cache_id,
         "action": action,
     }
@@ -1787,7 +2033,15 @@ def _dash_cache_start_job(action: str, cache_id: str, trigger_page: str | None =
             if k != job_id:
                 DASH_CACHE_JOBS.pop(k, None)
     try:
-        LOG.info("job_start type=dash_cache job_id=%s action=%s cache_id=%s ip=%s ua=%s", job_id, action, cache_id, ip, ua)
+        LOG.info(
+            "job_start type=dash_cache job_id=%s action=%s cache_id=%s timer_id=%s ip=%s ua=%s",
+            job_id,
+            action,
+            cache_id,
+            str(timer_id or "") if timer_id else "",
+            ip,
+            ua,
+        )
     except Exception:
         pass
     t = threading.Thread(target=_dash_cache_job_thread, args=(job_id, action, cache_id), daemon=True)
@@ -2017,6 +2271,18 @@ def _stats_cache_touch_used(cache_id: str) -> None:
         meta["last_used_at"] = now
         _meta_add_event(meta, "used", None, at=now)
         _stats_cache_write_meta(meta)
+        try:
+            cfg = load_cfg()
+            _cache_usage_append(cfg, {
+                "kind": "stats_cache_used",
+                "page": str(meta.get("trigger_page") or "stats"),
+                "cache_id": str(cache_id),
+                "step": "touch_used",
+                "rows": meta.get("row_count"),
+                "bytes": meta.get("bytes"),
+            })
+        except Exception:
+            pass
     except Exception:
         return
 
@@ -3435,7 +3701,7 @@ def _backup_job_public(job: dict[str, Any]) -> dict[str, Any]:
         "state": job.get("state"),
         "message": job.get("message"),
         "started_at": job.get("started_at"),
-        "elapsed": _hms(time.monotonic() - float(job.get("started_mono") or time.monotonic())),
+        "elapsed": _job_elapsed_hms(job),
         "written_bytes": written_b,
         "written_human": _fmt_bytes(written_b),
         "point_count": int(job.get("point_count") or 0),
@@ -3470,6 +3736,8 @@ def _backup_job_thread(
             if job_id in BACKUP_JOBS:
                 BACKUP_JOBS[job_id]["state"] = state
                 BACKUP_JOBS[job_id]["message"] = msg
+                if state in ("done", "error", "cancelled"):
+                    _job_set_finished(BACKUP_JOBS[job_id])
 
     def set_error(msg: str) -> None:
         with BACKUP_LOCK:
@@ -4434,7 +4702,7 @@ def _restore_copy_job_public(job: dict[str, Any]) -> dict[str, Any]:
         "state": job.get("state"),
         "message": job.get("message"),
         "started_at": job.get("started_at"),
-        "elapsed": _hms(time.monotonic() - float(job.get("started_mono") or time.monotonic())),
+        "elapsed": _job_elapsed_hms(job),
         "applied": int(job.get("applied") or 0),
         "skipped": int(job.get("skipped") or 0),
         "read_bytes": read_b,
@@ -4469,6 +4737,8 @@ def _restore_copy_job_thread(
             if job_id in RESTORE_COPY_JOBS:
                 RESTORE_COPY_JOBS[job_id]["state"] = state
                 RESTORE_COPY_JOBS[job_id]["message"] = msg
+                if state in ("done", "error", "cancelled"):
+                    _job_set_finished(RESTORE_COPY_JOBS[job_id])
 
     def set_error(msg: str) -> None:
         with RESTORE_COPY_LOCK:
@@ -4971,6 +5241,16 @@ def api_jobs():
         pub["mode"] = dash_mode
         out.append(pub)
 
+    with EXPORT_LOCK:
+        e_items = list(EXPORT_JOBS.items())
+    for _, j in e_items:
+        pub = _export_job_public(j)
+        pub["type"] = "export"
+        pub["trigger_page"] = j.get("trigger_page")
+        pub["trigger_ip"] = j.get("trigger_ip")
+        pub["trigger_ua"] = j.get("trigger_ua")
+        out.append(pub)
+
     def _sort_key(x: dict[str, Any]) -> float:
         try:
             # Prefer started_mono if available via elapsed? Not exposed, so sort by started_at.
@@ -5023,6 +5303,15 @@ def api_jobs_cancel():
             DASH_CACHE_JOBS[job_id]["cancelled"] = True
             try:
                 LOG.info("job_cancel type=dash_cache job_id=%s ip=%s ua=%s", job_id, _req_ip(), _req_ua())
+            except Exception:
+                pass
+            return jsonify({"ok": True})
+
+    with EXPORT_LOCK:
+        if job_id in EXPORT_JOBS:
+            EXPORT_JOBS[job_id]["cancelled"] = True
+            try:
+                LOG.info("job_cancel type=export job_id=%s ip=%s ua=%s", job_id, _req_ip(), _req_ua())
             except Exception:
                 pass
             return jsonify({"ok": True})
@@ -5334,7 +5623,7 @@ def api_cache_update():
     return jsonify({"ok": True, "job_id": job_id})
 
 
-def _stats_cache_start_update_job(cache_id: str, trigger_page: str) -> str:
+def _stats_cache_start_update_job(cache_id: str, trigger_page: str, timer_id: str | None = None) -> str:
     meta = _stats_cache_load_meta(cache_id)
     if not meta:
         raise _ApiError("cache not found", 404)
@@ -5392,6 +5681,7 @@ def _stats_cache_start_update_job(cache_id: str, trigger_page: str) -> str:
         columns,
         page_limit,
         trigger_page=trigger_page,
+        timer_id=timer_id,
         cache_id=cache_id,
         cache_key=key,
     )
@@ -5458,12 +5748,21 @@ def api_stats_cache_get():
     if not isinstance(rows, list):
         rows = []
 
+    key = payload.get("key") if isinstance(payload, dict) else None
+    if not isinstance(key, dict):
+        key = meta.get("key") if isinstance(meta, dict) else None
+    if not isinstance(key, dict):
+        key = {}
+    cols = key.get("columns") if isinstance(key.get("columns"), list) else []
+
     _stats_cache_touch_used(cache_id)
     return jsonify({
         "ok": True,
         "ready": True,
         "rows": rows[offset : offset + limit],
         "total": len(rows),
+        "columns": cols,
+        "key": key,
         "cache": {
             "id": cache_id,
             "updated_at": meta.get("updated_at"),
@@ -5592,21 +5891,36 @@ def _cache_schedule_next_run_iso(cfg: dict[str, Any], base: str) -> str | None:
 @app.get("/api/timers")
 def api_timers():
     cfg = load_cfg()
+    st_dash = _timers_state_get("dash_cache")
+    st_stats = _timers_state_get("stats_cache")
+    st_full = _timers_state_get("stats_full")
     timers = [
         {
             "id": "dash_cache",
             "enabled": bool(cfg.get("dash_cache_enabled", True)),
             "auto_update": bool(cfg.get("dash_cache_auto_update", True)),
+            "refresh_mode": str(cfg.get("dash_cache_refresh_mode") or "hours").strip().lower(),
+            "refresh_hours": int(cfg.get("dash_cache_refresh_hours") or 6),
+            "refresh_daily_at": str(cfg.get("dash_cache_refresh_daily_at") or "00:00:00"),
             "mode": _cache_mode_str(cfg, "dash_cache"),
             "next_run_at": _cache_schedule_next_run_iso(cfg, "dash_cache"),
+            "last_started_at": st_dash.get("last_started_at"),
+            "last_run_at": st_dash.get("last_run_at"),
+            "last_state": st_dash.get("last_state"),
             "comment": "Aktualisiert faellige Dashboard Cache Eintraege im Hintergrund (dirty/mismatch/stale).",
         },
         {
             "id": "stats_cache",
             "enabled": bool(cfg.get("stats_cache_enabled", True)),
             "auto_update": bool(cfg.get("stats_cache_auto_update", True)),
+            "refresh_mode": str(cfg.get("stats_cache_refresh_mode") or "daily").strip().lower(),
+            "refresh_hours": int(cfg.get("stats_cache_refresh_hours") or 24),
+            "refresh_daily_at": str(cfg.get("stats_cache_refresh_daily_at") or "03:00:00"),
             "mode": _cache_mode_str(cfg, "stats_cache"),
             "next_run_at": _cache_schedule_next_run_iso(cfg, "stats_cache"),
+            "last_started_at": st_stats.get("last_started_at"),
+            "last_run_at": st_stats.get("last_run_at"),
+            "last_state": st_stats.get("last_state"),
             "comment": "Aktualisiert faellige Statistik Cache Eintraege im Hintergrund (dirty/mismatch/stale).",
         },
         {
@@ -5615,10 +5929,56 @@ def api_timers():
             "auto_update": False,
             "mode": "manual",
             "next_run_at": None,
+            "last_started_at": st_full.get("last_started_at"),
+            "last_run_at": st_full.get("last_run_at"),
+            "last_state": st_full.get("last_state"),
             "comment": "Manueller Job: laedt Statistik komplett (inkl. Details wie count/min/max/mean) fuer alle Serien.",
         },
     ]
     return jsonify({"ok": True, "timers": timers})
+
+
+@app.post("/api/timers/schedule")
+def api_timers_schedule():
+    body = request.get_json(force=True) or {}
+    tid = str(body.get("id") or "").strip()
+    if tid not in ("dash_cache", "stats_cache"):
+        return jsonify({"ok": False, "error": "invalid timer id"}), 400
+
+    mode = str(body.get("refresh_mode") or "").strip().lower()
+    if mode not in ("hours", "daily"):
+        return jsonify({"ok": False, "error": "refresh_mode must be hours|daily"}), 400
+
+    cfg = load_cfg()
+    cfg[f"{tid}_refresh_mode"] = mode
+
+    if mode == "hours":
+        try:
+            h = int(body.get("refresh_hours") or cfg.get(f"{tid}_refresh_hours") or (6 if tid == "dash_cache" else 24))
+        except Exception:
+            h = 6 if tid == "dash_cache" else 24
+        if h < 1:
+            h = 1
+        if h > 8760:
+            h = 8760
+        cfg[f"{tid}_refresh_hours"] = h
+    else:
+        s = str(body.get("refresh_daily_at") or cfg.get(f"{tid}_refresh_daily_at") or ("00:00:00" if tid == "dash_cache" else "03:00:00")).strip()
+        if not re.match(r"^\d{2}:\d{2}:\d{2}$", s):
+            return jsonify({"ok": False, "error": "refresh_daily_at must be HH:MM:SS"}), 400
+        try:
+            hh, mm, ss = [int(x) for x in s.split(":")]
+        except Exception:
+            return jsonify({"ok": False, "error": "invalid refresh_daily_at"}), 400
+        if not (0 <= hh <= 23 and 0 <= mm <= 59 and 0 <= ss <= 59):
+            return jsonify({"ok": False, "error": "refresh_daily_at out of range"}), 400
+        cfg[f"{tid}_refresh_daily_at"] = s
+
+    try:
+        save_cfg(cfg)
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 500
+    return api_timers()
 
 
 @app.post("/api/timers/start")
@@ -5658,16 +6018,43 @@ def api_timers_start():
         if not pick:
             return jsonify({"ok": True, "started": False})
         try:
-            job_id = _dash_cache_start_job("update", pick, trigger_page="timers")
+            job_id = _dash_cache_start_job("update", pick, trigger_page="timers", timer_id=tid)
+            _timer_mark_started(tid, job_id=job_id)
             return jsonify({"ok": True, "started": True, "job_id": job_id, "cache_id": pick})
         except Exception as e:
             return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
 
     if tid == "stats_cache":
-        # Reuse the run_now behavior (picks one due entry).
         try:
-            j = api_stats_cache_run_now()
-            return j
+            pick = None
+            pick_prio = 999
+            for m in _stats_cache_list_meta():
+                try:
+                    cid = str(m.get("id") or "").strip()
+                    if not cid:
+                        continue
+                    if bool(m.get("dirty")):
+                        prio = 0
+                    elif bool(m.get("mismatch")):
+                        prio = 1
+                    elif _stats_cache_is_stale(cfg, m):
+                        prio = 5
+                    else:
+                        continue
+                    if prio < pick_prio:
+                        pick = cid
+                        pick_prio = prio
+                except Exception:
+                    continue
+
+            if not pick:
+                return jsonify({"ok": True, "started": False})
+
+            job_id = _stats_cache_start_update_job(pick, trigger_page="timers", timer_id=tid)
+            _timer_mark_started(tid, job_id=job_id)
+            return jsonify({"ok": True, "started": True, "job_id": job_id, "cache_id": pick})
+        except _ApiError as e:
+            return jsonify({"ok": False, "error": e.message}), e.status
         except Exception as e:
             return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
 
@@ -5688,9 +6075,11 @@ def api_timers_start():
             columns=cols,
             page_limit=200,
             trigger_page="timers",
+            timer_id=tid,
             cache_id=None,
             cache_key=None,
         )
+        _timer_mark_started(tid, job_id=job_id)
         return jsonify({"ok": True, "started": True, "job_id": job_id})
     except Exception as e:
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
@@ -5934,6 +6323,8 @@ def api_set_config():
     _bool("ui_open_editlist", False)
     _bool("ui_open_stats", False)
 
+    _bool("ui_status_show_sysinfo", False)
+
     _bool("ui_tooltips_enabled", True)
 
     # Note: writes_enabled removed; keep any existing key untouched.
@@ -5964,6 +6355,7 @@ def api_set_config():
     _bool("log_to_file", True)
     _bool("log_http_requests", False)
     _bool("log_influx_queries", False)
+    _bool("log_cache_usage", False)
     try:
         prof = str(cfg.get("log_profile") or "debug").strip().lower()
     except Exception:
@@ -6745,6 +7137,9 @@ def query():
     if not measurement or not field:
         return jsonify({"ok": False, "error": "measurement and field required"}), 400
 
+    # Correlation id for cache usage logging
+    run_id = uuid.uuid4().hex
+
     try:
         LOG.debug(
             "api.query measurement=%s field=%s range=%s entity_id=%s friendly_name=%s",
@@ -6778,8 +7173,24 @@ def query():
             cache_id = _dash_cache_id(key)
             meta = _dash_cache_load_meta(cache_id)
             if meta and not bool(meta.get("dirty")):
+                t0 = time.perf_counter()
                 cached = _dash_cache_load_payload(cache_id)
+                dur_ms = int((time.perf_counter() - t0) * 1000)
                 if cached and bool(cached.get("ok")):
+                    try:
+                        _cache_usage_append(cfg, {
+                            "kind": "dash_cache_hit",
+                            "page": "dashboard",
+                            "run_id": run_id,
+                            "cache_id": cache_id,
+                            "step": "read_payload",
+                            "dur_ms": dur_ms,
+                            "rows": len(cached.get("rows") or []) if isinstance(cached.get("rows"), list) else None,
+                            "bytes": meta.get("bytes"),
+                            "note": f"range={range_key} detail={detail_mode}",
+                        })
+                    except Exception:
+                        pass
                     _dash_cache_touch_used(cache_id)
                     out = dict(cached)
                     out["cached"] = True
@@ -6788,15 +7199,52 @@ def query():
                     try:
                         if bool(cfg.get("dash_cache_update_on_use_if_stale", True)) and _dash_cache_is_stale(cfg, meta):
                             _dash_cache_mark_dirty_id(cache_id, "stale")
+                            try:
+                                _cache_usage_append(cfg, {
+                                    "kind": "dash_cache_mark_dirty",
+                                    "page": "dashboard",
+                                    "run_id": run_id,
+                                    "cache_id": cache_id,
+                                    "step": "stale",
+                                    "note": "marked dirty (stale)",
+                                })
+                            except Exception:
+                                pass
                     except Exception:
                         pass
                     return jsonify(out)
+                else:
+                    try:
+                        _cache_usage_append(cfg, {
+                            "kind": "dash_cache_miss",
+                            "page": "dashboard",
+                            "run_id": run_id,
+                            "cache_id": cache_id,
+                            "step": "read_payload",
+                            "dur_ms": dur_ms,
+                            "note": "payload missing/invalid",
+                        })
+                    except Exception:
+                        pass
+            else:
+                try:
+                    _cache_usage_append(cfg, {
+                        "kind": "dash_cache_miss",
+                        "page": "dashboard",
+                        "run_id": run_id,
+                        "cache_id": cache_id,
+                        "step": "meta",
+                        "note": ("dirty" if (meta and bool(meta.get("dirty"))) else "no_meta"),
+                    })
+                except Exception:
+                    pass
     except Exception:
         # Cache is best-effort. Ignore and fall back to DB query.
         cache_id = None
         key = None
 
     try:
+        t_db0 = time.perf_counter()
         payload = _query_payload(
             cfg,
             measurement,
@@ -6810,8 +7258,38 @@ def query():
             start_dt,
             stop_dt,
         )
+        db_ms = int((time.perf_counter() - t_db0) * 1000)
+        try:
+            _cache_usage_append(cfg, {
+                "kind": "dash_db_query",
+                "page": "dashboard",
+                "run_id": run_id,
+                "cache_id": cache_id,
+                "step": "_query_payload",
+                "dur_ms": db_ms,
+                "rows": len(payload.get("rows") or []) if isinstance(payload.get("rows"), list) else None,
+                "note": f"range={range_key} detail={detail_mode}",
+            })
+        except Exception:
+            pass
         if cache_id and key and bool(cfg.get("dash_cache_enabled", True)):
-            _dash_cache_store(cache_id, key, payload, trigger_page="dashboard")
+            t_s0 = time.perf_counter()
+            stored_meta = _dash_cache_store(cache_id, key, payload, trigger_page="dashboard")
+            s_ms = int((time.perf_counter() - t_s0) * 1000)
+            try:
+                _cache_usage_append(cfg, {
+                    "kind": "dash_cache_store",
+                    "page": "dashboard",
+                    "run_id": run_id,
+                    "cache_id": cache_id,
+                    "step": "store",
+                    "dur_ms": s_ms,
+                    "rows": stored_meta.get("row_count") if isinstance(stored_meta, dict) else None,
+                    "bytes": stored_meta.get("bytes") if isinstance(stored_meta, dict) else None,
+                    "note": f"range={range_key}",
+                })
+            except Exception:
+                pass
             payload = dict(payload)
             payload["cached"] = False
             payload["cache"] = {"id": cache_id, "updated_at": _utc_now_iso_ms()}
@@ -7553,6 +8031,39 @@ def _hms(seconds: float | int) -> str:
     return f"{h:02d}:{m:02d}:{sec:02d}"
 
 
+def _job_elapsed_hms(job: dict[str, Any]) -> str:
+    """Compute elapsed time; stop when job is finished."""
+
+    try:
+        started = float(job.get("started_mono") or 0.0)
+    except Exception:
+        started = 0.0
+    if started <= 0:
+        started = time.monotonic()
+
+    try:
+        finished = float(job.get("finished_mono") or 0.0)
+    except Exception:
+        finished = 0.0
+
+    st = str(job.get("state") or "")
+    if st in ("done", "error", "cancelled") and finished > 0:
+        return _hms(max(0.0, finished - started))
+    return _hms(max(0.0, time.monotonic() - started))
+
+
+def _job_set_finished(meta: dict[str, Any]) -> None:
+    """Mark a job as finished once (best-effort)."""
+
+    try:
+        if meta.get("finished_at") and meta.get("finished_mono"):
+            return
+        meta["finished_at"] = meta.get("finished_at") or _utc_now_iso_ms()
+        meta["finished_mono"] = meta.get("finished_mono") or time.monotonic()
+    except Exception:
+        return
+
+
 def _job_get(job_id: str) -> dict[str, Any] | None:
     with GLOBAL_STATS_LOCK:
         return GLOBAL_STATS_JOBS.get(job_id)
@@ -7574,7 +8085,7 @@ def _job_public(job: dict[str, Any]) -> dict[str, Any]:
         "state": job.get("state"),
         "message": job.get("message"),
         "started_at": job.get("started_at"),
-        "elapsed": _hms(time.monotonic() - float(job.get("started_mono") or time.monotonic())),
+        "elapsed": _job_elapsed_hms(job),
         "total_points": total,
         "scanned_points": scanned,
         "percent": pct,
@@ -7585,7 +8096,7 @@ def _job_public(job: dict[str, Any]) -> dict[str, Any]:
         "last_query": job.get("last_query") or "",
         "cancelled": bool(job.get("cancelled")),
         "error": job.get("error"),
-        "ready": job.get("state") == "done",
+        "ready": job.get("state") in ("done", "error", "cancelled"),
     }
 
 
@@ -7645,10 +8156,16 @@ def _global_stats_job_thread(
                 GLOBAL_STATS_JOBS[job_id]["total_series"] = total_series
 
     def set_state(state: str, msg: str) -> None:
+        timer_id = None
         with GLOBAL_STATS_LOCK:
             if job_id in GLOBAL_STATS_JOBS:
                 GLOBAL_STATS_JOBS[job_id]["state"] = state
                 GLOBAL_STATS_JOBS[job_id]["message"] = msg
+                if state in ("done", "error", "cancelled"):
+                    _job_set_finished(GLOBAL_STATS_JOBS[job_id])
+                    timer_id = GLOBAL_STATS_JOBS[job_id].get("timer_id")
+        if timer_id and state in ("done", "error", "cancelled"):
+            _timer_mark_finished(str(timer_id), state)
 
     def should_cancel() -> bool:
         with GLOBAL_STATS_LOCK:
@@ -7728,6 +8245,7 @@ def _global_stats_job_thread(
 data = from(bucket: "{bucket}")
   |> range(start: time(v: "{s_iso}"), stop: time(v: "{e_iso}"))
   |> filter(fn: (r) => {pred})
+  |> filter(fn: (r) => typeOf(v: r._value) == "float" or typeOf(v: r._value) == "int" or typeOf(v: r._value) == "uint")
   |> keep(columns: ["_measurement","_field","entity_id","friendly_name","_time","_value"])
   |> group(columns: ["_measurement","_field","entity_id","friendly_name"])
 
@@ -8238,6 +8756,7 @@ def _global_stats_start_job(
     columns: list[str] | None,
     page_limit: int,
     trigger_page: str,
+    timer_id: str | None = None,
     cache_id: str | None = None,
     cache_key: dict[str, Any] | None = None,
 ) -> str:
@@ -8253,6 +8772,7 @@ def _global_stats_start_job(
         "trigger_page": trigger_page,
         "trigger_ip": ip,
         "trigger_ua": ua,
+        "timer_id": str(timer_id or "").strip() or None,
         "total_points": None,
         "scanned_points": 0,
         "total_series": None,
@@ -8274,8 +8794,9 @@ def _global_stats_start_job(
 
     try:
         LOG.info(
-            "job_start type=global_stats job_id=%s ip=%s ua=%s start=%s stop=%s field_filter=%s measurement=%s entity_id=%s friendly_name=%s cols=%s",
+            "job_start type=global_stats job_id=%s timer_id=%s ip=%s ua=%s start=%s stop=%s field_filter=%s measurement=%s entity_id=%s friendly_name=%s cols=%s",
             job_id,
+            str(timer_id or "") if timer_id else "",
             ip,
             ua,
             _dt_to_rfc3339_utc(start_dt),
@@ -8459,7 +8980,16 @@ def api_global_stats_job_result():
         offset = 0
 
     rows = job.get("rows") or []
-    return jsonify({"ok": True, "ready": True, "rows": rows[offset : offset + limit], "total": len(rows)})
+    cols = job.get("columns") if isinstance(job.get("columns"), list) else []
+    cache_id = str(job.get("cache_id") or "").strip() or None
+    return jsonify({
+        "ok": True,
+        "ready": True,
+        "rows": rows[offset : offset + limit],
+        "total": len(rows),
+        "columns": cols,
+        "cache_id": cache_id,
+    })
 
 
 @app.post("/api/ui_event")
@@ -8487,6 +9017,55 @@ def api_ui_event():
         ip = request.headers.get("X-Forwarded-For") or request.remote_addr or ""
         ua = request.headers.get("User-Agent") or ""
         LOG.debug("ui_event page=%s ui=%s text=%s ip=%s ua=%s extra=%s", page, ui, text, ip, ua[:80], extra_s)
+    except Exception:
+        pass
+
+    return jsonify({"ok": True})
+
+
+@app.get("/api/cache_usage")
+def api_cache_usage():
+    try:
+        limit = int(request.args.get("limit", "500"))
+    except Exception:
+        limit = 500
+    rows = _cache_usage_tail(limit)
+    return jsonify({"ok": True, "rows": rows, "total": len(rows)})
+
+
+@app.post("/api/cache_usage/clear")
+def api_cache_usage_clear():
+    _cache_usage_clear()
+    return jsonify({"ok": True, "message": "Cache usage log cleared."})
+
+
+@app.post("/api/cache_usage/ui_event")
+def api_cache_usage_ui_event():
+    """Record a UI-level cache usage event (e.g., button clicks) for the usage table."""
+
+    try:
+        body = request.get_json(force=True) or {}
+    except Exception:
+        body = {}
+    try:
+        cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    except Exception:
+        cfg = load_cfg()
+
+    try:
+        kind = str(body.get("kind") or "ui_event").strip()[:80]
+        page = str(body.get("page") or "").strip()[:40]
+        ui = str(body.get("ui") or "").strip()[:120]
+        note = str(body.get("note") or body.get("text") or "").strip()[:400]
+        run_id = str(body.get("run_id") or "").strip()[:80] or None
+        _cache_usage_append(cfg, {
+            "kind": kind,
+            "page": page,
+            "step": ui,
+            "run_id": run_id,
+            "note": note,
+            "ip": _req_ip(),
+        })
     except Exception:
         pass
 
@@ -9937,7 +10516,7 @@ def _export_job_public(job: dict[str, Any]) -> dict[str, Any]:
         "state": job.get("state"),
         "message": job.get("message"),
         "started_at": job.get("started_at"),
-        "elapsed": _hms(time.monotonic() - float(job.get("started_mono") or time.monotonic())),
+        "elapsed": _job_elapsed_hms(job),
         "rows_written": written,
         "format": job.get("format"),
         "file": job.get("file"),
@@ -9975,6 +10554,8 @@ def _export_job_thread(
             if job_id in EXPORT_JOBS:
                 EXPORT_JOBS[job_id]["state"] = state
                 EXPORT_JOBS[job_id]["message"] = msg
+                if state in ("done", "error", "cancelled"):
+                    _job_set_finished(EXPORT_JOBS[job_id])
 
     def set_error(msg: str) -> None:
         with EXPORT_LOCK:
@@ -10860,7 +11441,8 @@ def _stats_cache_scheduler_loop() -> None:
 
             if pick:
                 try:
-                    _stats_cache_start_update_job(pick, trigger_page="scheduler")
+                    job_id = _stats_cache_start_update_job(pick, trigger_page="scheduler", timer_id="stats_cache")
+                    _timer_mark_started("stats_cache", job_id=job_id)
                 except Exception:
                     pass
         except Exception:
@@ -10945,7 +11527,8 @@ def _dash_cache_scheduler_loop() -> None:
 
             if pick:
                 try:
-                    _dash_cache_start_job("update", pick, trigger_page="scheduler")
+                    job_id = _dash_cache_start_job("update", pick, trigger_page="scheduler", timer_id="dash_cache")
+                    _timer_mark_started("dash_cache", job_id=job_id)
                 except Exception:
                     pass
         except Exception:
@@ -11007,6 +11590,50 @@ def _inject_globals():
 @app.get("/api/info")
 def api_info():
     return jsonify({"ok": True, "version": ADDON_VERSION})
+
+
+@app.get("/api/sysinfo")
+def api_sysinfo():
+    cfg = load_cfg()
+    rss = _process_rss_bytes()
+    data_bytes = _addon_data_usage_bytes()
+
+    disk_total = None
+    disk_free = None
+    try:
+        du = shutil.disk_usage(str(DATA_DIR))
+        disk_total = int(du.total)
+        disk_free = int(du.free)
+    except Exception:
+        pass
+
+    load1 = None
+    load5 = None
+    load15 = None
+    try:
+        a, b, c = os.getloadavg()
+        load1, load5, load15 = float(a), float(b), float(c)
+    except Exception:
+        pass
+
+    return jsonify({
+        "ok": True,
+        "sys": {
+            "rss_bytes": rss,
+            "rss": _fmt_bytes(rss),
+            "addon_data_bytes": data_bytes,
+            "addon_data": _fmt_bytes(data_bytes),
+            "disk_total_bytes": disk_total,
+            "disk_free_bytes": disk_free,
+            "disk_total": _fmt_bytes(disk_total),
+            "disk_free": _fmt_bytes(disk_free),
+            "cpu_count": os.cpu_count(),
+            "loadavg_1": load1,
+            "loadavg_5": load5,
+            "loadavg_15": load15,
+            "ui_status_show_sysinfo": bool(cfg.get("ui_status_show_sysinfo", False)),
+        }
+    })
 
 
 if __name__ == "__main__":

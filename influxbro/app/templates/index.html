@@ -135,6 +135,11 @@
     .stats_tbl td.k { width: 220px; opacity: 0.75; }
     .stats_tbl td.v { font-weight: 600; overflow-wrap:anywhere; }
     .stats_box { display:none; margin-top: 8px; }
+
+    /* Outlier mode: details + graph below the table (not right side) */
+    #edit_split.outlier_stack { flex-direction: column; }
+    #edit_split.outlier_stack #edit_split_handle { display:none !important; }
+    #edit_split.outlier_stack #edit_right { display:block !important; flex: 0 0 auto !important; padding-left: 0 !important; margin-top: 12px; }
   </style>
 </head>
 <body>
@@ -338,6 +343,9 @@
 
             <div class="tbl_actions" style="justify-content:flex-start; margin-top: 8px;" data-ui="raw.actions" title="raw.actions">
               <button class="btn_sm" id="raw_autowidth" data-ui="raw.autowidth" title="raw.autowidth">Spaltenbreite automatisch</button>
+              <button class="btn_sm" id="raw_windowwidth" data-ui="raw.windowwidth" title="raw.windowwidth">Fensterbreite</button>
+              <label><input type="checkbox" id="raw_wrap" class="row_sel" data-ui="raw.wrap" title="raw.wrap"/>Umbruch</label>
+              <label><input type="checkbox" id="raw_colfilter" class="row_sel" data-ui="raw.colfilter" title="raw.colfilter"/>Spaltenfilter</label>
               <button class="btn_sm" id="raw_copy" data-ui="raw.copy" title="raw.copy">Kopieren</button>
               <button class="btn_sm" id="raw_copy_query" data-ui="raw.copy_query" title="raw.copy_query">Query kopieren</button>
               <button class="btn_sm" id="raw_more" data-ui="raw.more" title="raw.more" style="display:none;">Mehr laden</button>
@@ -365,7 +373,7 @@
           </details>
 
             <div class="table_box" id="raw_box" style="--max-rows: 10;">
-            <table id="raw_tbl" class="list_tbl" data-ui="raw.table" title="raw.table">
+            <table id="raw_tbl" class="list_tbl ib_tbl" data-ui="raw.table" title="raw.table">
               <thead><tr><th style="min-width: 170px;">Zeit</th><th>Wert</th></tr></thead>
               <tbody id="raw_body"></tbody>
             </table>
@@ -483,20 +491,25 @@
            </div>
          </div>
        </div>
-          <div class="tbl_actions" id="edit_toolbar" style="justify-content:flex-start; margin-top: 10px; align-items:flex-start;" data-ui="editlist.toolbar" title="editlist.toolbar">
-            <label style="display:flex; align-items:center; gap: 6px; font-size: 12px; opacity: 0.85; padding-top: 2px;"><input type="checkbox" id="edit_show_graph" class="row_sel" data-ui="editlist.show_graph" title="editlist.show_graph"/>Graph</label>
-            <span class="muted" id="edit_toolbar_info" style="padding-top: 6px;"></span>
-            <span style="flex:1;"></span>
-          </div>
+           <div class="tbl_actions" id="edit_toolbar" style="justify-content:flex-start; margin-top: 10px; align-items:flex-start;" data-ui="editlist.toolbar" title="editlist.toolbar">
+             <label style="display:flex; align-items:center; gap: 6px; font-size: 12px; opacity: 0.85; padding-top: 2px;"><input type="checkbox" id="edit_show_graph" class="row_sel" data-ui="editlist.show_graph" title="editlist.show_graph"/>Graph</label>
+             <label style="display:flex; align-items:center; gap: 6px; font-size: 12px; opacity: 0.85; padding-top: 2px;"><input type="checkbox" id="tbl_multiselect" class="row_sel" data-ui="editlist.multiselect" title="editlist.multiselect"/>Multiselekt</label>
+             <span class="muted" id="edit_toolbar_info" style="padding-top: 6px;"></span>
+             <span style="flex:1;"></span>
+           </div>
          <div class="err" id="edit_apply_err" data-ui="editlist_apply_err" title="editlist_apply_err"></div>
 
         <div id="edit_split" style="display:flex; gap: 0; align-items:stretch; margin-top: 10px;" data-ui="editlist.split" title="editlist.split">
           <div id="edit_left" style="flex: 1 1 auto; min-width: 0;">
 
-        <div class="tbl_actions" style="justify-content:flex-start; margin-top: 10px; gap: 10px; flex-wrap:wrap; align-items:flex-end;">
-          <button class="btn_sm" id="tbl_autowidth" data-ui="filterlist.autowidth" title="filterlist.autowidth">Spaltenbreite automatisch</button>
-          <button class="btn_sm" id="tbl_clear" data-ui="filterlist.clear" title="filterlist.clear">Liste leeren</button>
-          <button class="btn_sm" id="edit_clear_staged" data-ui="editlist.clear_staged" title="editlist.clear_staged">Staging leeren</button>
+           <div class="tbl_actions" style="justify-content:flex-start; margin-top: 10px; gap: 10px; flex-wrap:wrap; align-items:flex-end;">
+             <button class="btn_sm" id="tbl_autowidth" data-ui="filterlist.autowidth" title="filterlist.autowidth">Spaltenbreite automatisch</button>
+             <button class="btn_sm" id="tbl_windowwidth" data-ui="filterlist.windowwidth" title="filterlist.windowwidth">Fensterbreite</button>
+             <button class="btn_sm" id="tbl_clear" data-ui="filterlist.clear" title="filterlist.clear">Liste leeren</button>
+             <button class="btn_sm" id="edit_clear_staged" data-ui="editlist.clear_staged" title="editlist.clear_staged">Staging leeren</button>
+
+             <label><input type="checkbox" id="tbl_wrap" class="row_sel" data-ui="filterlist.wrap" title="filterlist.wrap"/>Umbruch</label>
+             <label><input type="checkbox" id="tbl_colfilter" class="row_sel" data-ui="filterlist.colfilter" title="filterlist.colfilter"/>Spaltenfilter</label>
 
           <div style="min-width: 220px;">
             <label style="display:block; font-size:12px; opacity:0.8;">Grund Filter</label>
@@ -513,7 +526,7 @@
         </div>
 
         <div class="table_box" id="table_box" style="margin-top: 10px;">
-          <table id="tbl" class="list_tbl" data-ui="editlist.table" title="editlist.table">
+          <table id="tbl" class="list_tbl ib_tbl" data-ui="editlist.table" title="editlist.table">
             <thead>
               <tr>
                 <th style="width:20px;"><input type="checkbox" id="tbl_sel_all" class="row_sel" data-ui="editlist.select_all"/></th>
@@ -727,6 +740,9 @@ const $rawBox = document.getElementById('raw_box');
 const $rawBody = document.getElementById('raw_body');
 const $rawResize = document.getElementById('raw_resize');
 const $rawAutoWidth = document.getElementById('raw_autowidth');
+const $rawWindowWidth = document.getElementById('raw_windowwidth');
+const $rawWrap = document.getElementById('raw_wrap');
+const $rawColFilter = document.getElementById('raw_colfilter');
 const $rawCopy = document.getElementById('raw_copy');
 const $rawCopyQuery = document.getElementById('raw_copy_query');
 const $rawMore = document.getElementById('raw_more');
@@ -797,6 +813,7 @@ const $detailsTake = document.getElementById('details_take');
 const $detailsClose = document.getElementById('details_close');
 
 const $editShowGraph = document.getElementById('edit_show_graph');
+const $tblMultiSelect = document.getElementById('tbl_multiselect');
 const $editSplit = document.getElementById('edit_split');
 const $editLeft = document.getElementById('edit_left');
 const $editRight = document.getElementById('edit_right');
@@ -4034,9 +4051,15 @@ function renderTable(){
     cb.checked = FILTER_SELECTED.has(key);
     cb.addEventListener("click", (ev)=>_stop(ev));
     cb.addEventListener("change", ()=>{
-      if(cb.checked) FILTER_SELECTED.add(key); else FILTER_SELECTED.delete(key);
+      if(!_multiEnabled()){
+        try{ FILTER_SELECTED.clear(); }catch(e){ FILTER_SELECTED = new Set(); }
+        if(cb.checked) FILTER_SELECTED.add(key);
+      }else{
+        if(cb.checked) FILTER_SELECTED.add(key); else FILTER_SELECTED.delete(key);
+      }
       saveState();
       renderTable();
+      if(cb.checked) showDetailsForKey(key);
     });
     tdSel.appendChild(cb);
 
@@ -4064,24 +4087,24 @@ function renderTable(){
       const bDel = document.createElement('button');
       bDel.className = 'btn_sm';
       bDel.textContent = 'loeschen';
-      bDel.addEventListener('click', (ev)=>{
-        _stop(ev);
-        try{ FILTER_SELECTED.add(key); }catch(e){}
-        setAction(key, 'delete', 'Button: Wert loeschen');
-        renderTable();
-        showDetailsForKey(key);
-      });
+       bDel.addEventListener('click', (ev)=>{
+         _stop(ev);
+         try{ _selectKey(key); }catch(e){}
+         setAction(key, 'delete', 'Button: Wert loeschen');
+         renderTable();
+         showDetailsForKey(key);
+       });
 
       const bOv = document.createElement('button');
       bOv.className = 'btn_sm';
       bOv.textContent = 'ueberschreiben';
-      bOv.addEventListener('click', (ev)=>{
-        _stop(ev);
-        try{ FILTER_SELECTED.add(key); }catch(e){}
-        setAction(key, 'overwrite', 'Button: ueberschreiben');
-        renderTable();
-        showDetailsForKey(key);
-      });
+       bOv.addEventListener('click', (ev)=>{
+         _stop(ev);
+         try{ _selectKey(key); }catch(e){}
+         setAction(key, 'overwrite', 'Button: ueberschreiben');
+         renderTable();
+         showDetailsForKey(key);
+       });
 
       box.appendChild(bDel);
       box.appendChild(bOv);
@@ -4130,7 +4153,12 @@ function renderTable(){
     inp.className = 'inline';
     inp.placeholder = e ? String(e.orig_fmt || '') : '';
     inp.value = e && e.new_value_str ? String(e.new_value_str) : '';
-    inp.disabled = !(e && e.action === 'overwrite');
+    if(OUTLIER_ACTIVE){
+      // Manual entry should be possible by selecting a single row.
+      inp.disabled = !(FILTER_SELECTED.has(key) || (e && e.action === 'overwrite'));
+    }else{
+      inp.disabled = !(e && e.action === 'overwrite');
+    }
     inp.addEventListener('click', (ev)=>_stop(ev));
     inp.addEventListener('change', ()=>{
       setNewValue(key, inp.value, 'manuell');
@@ -4151,7 +4179,13 @@ function renderTable(){
         const tag = String(target.tagName).toLowerCase();
         if(tag === "input" || tag === "button" || tag === 'select') return;
       }
-      if(FILTER_SELECTED.has(key)) FILTER_SELECTED.delete(key); else FILTER_SELECTED.add(key);
+      if(!_multiEnabled()){
+        const isSel = FILTER_SELECTED.has(key);
+        try{ FILTER_SELECTED.clear(); }catch(e){ FILTER_SELECTED = new Set(); }
+        if(!isSel) FILTER_SELECTED.add(key);
+      }else{
+        if(FILTER_SELECTED.has(key)) FILTER_SELECTED.delete(key); else FILTER_SELECTED.add(key);
+      }
       saveState();
       renderTable();
       showDetailsForKey(key);
@@ -4161,6 +4195,7 @@ function renderTable(){
   });
 
   _renderSelAll($tblSelAll, keysInView, FILTER_SELECTED);
+  try{ if($tblSelAll) $tblSelAll.disabled = !_multiEnabled(); }catch(e){}
   LAST_FILTER_KEYS_IN_VIEW = keysInView.slice();
 
   try{ updateEditToolbarState(); }catch(e){}
@@ -4579,6 +4614,49 @@ try{
 
 const EDIT_GRAPH_SHOW_KEY = 'influxbro_edit_show_graph_v1';
 const EDIT_SPLIT_LEFT_PCT_KEY = 'influxbro_edit_split_left_pct_v1';
+const EDIT_MULTISELECT_KEY = 'influxbro_edit_multiselect_v1';
+
+function _multiEnabled(){
+  try{ return !!($tblMultiSelect && $tblMultiSelect.checked); }catch(e){ return false; }
+}
+
+function _selectKey(key){
+  const k = String(key || '');
+  if(!k) return;
+  try{
+    if(!_multiEnabled()){
+      FILTER_SELECTED = new Set();
+      FILTER_SELECTED.add(k);
+    }else{
+      FILTER_SELECTED.add(k);
+    }
+  }catch(e){}
+}
+
+function initMultiSelect(){
+  try{
+    const saved = (localStorage.getItem(EDIT_MULTISELECT_KEY) || '0') === '1';
+    if($tblMultiSelect) $tblMultiSelect.checked = saved;
+  }catch(e){}
+
+  try{
+    if($tblMultiSelect) $tblMultiSelect.addEventListener('change', ()=>{
+      try{ localStorage.setItem(EDIT_MULTISELECT_KEY, $tblMultiSelect.checked ? '1' : '0'); }catch(e){}
+      // When disabling multiselect, keep at most one selection.
+      try{
+        if(!$tblMultiSelect.checked){
+          const keys = Array.from(FILTER_SELECTED || []);
+          FILTER_SELECTED = new Set(keys.length ? [keys[0]] : []);
+        }
+      }catch(e){}
+      renderTable();
+    });
+  }catch(e){}
+}
+
+function applyOutlierLayout(){
+  try{ if($editSplit) $editSplit.classList.toggle('outlier_stack', !!OUTLIER_ACTIVE); }catch(e){}
+}
 
 function _setEditGraphVisible(on){
   const v = !!on;
@@ -4587,6 +4665,7 @@ function _setEditGraphVisible(on){
   try{ if($editRight) $editRight.style.display = wantRight ? 'block' : 'none'; }catch(e){}
   try{ if($editSplitHandle) $editSplitHandle.style.display = wantRight ? 'block' : 'none'; }catch(e){}
   try{ if($editGraphCard) $editGraphCard.style.display = v ? 'block' : 'none'; }catch(e){}
+  try{ applyOutlierLayout(); }catch(e){}
   try{ localStorage.setItem(EDIT_GRAPH_SHOW_KEY, v ? '1' : '0'); }catch(e){}
 }
 
@@ -4594,6 +4673,7 @@ function _applySplitPct(pct){
   const p = Math.max(15, Math.min(85, Number(pct)));
   try{
     if(!$editSplit || !$editLeft || !$editRight) return;
+    if(OUTLIER_ACTIVE) return;
     $editLeft.style.flex = `0 0 ${p.toFixed(1)}%`;
     $editRight.style.flex = `0 0 ${(100 - p).toFixed(1)}%`;
     localStorage.setItem(EDIT_SPLIT_LEFT_PCT_KEY, String(p));
@@ -5466,6 +5546,10 @@ if($btnTblAllValues) $btnTblAllValues.addEventListener("click", (ev)=>{
 
 // Select all (filter list)
 if($tblSelAll) $tblSelAll.addEventListener("change", ()=>{
+  if(!_multiEnabled()){
+    try{ $tblSelAll.checked = false; $tblSelAll.indeterminate = false; }catch(e){}
+    return;
+  }
   const want = !!$tblSelAll.checked;
   const keys = LAST_FILTER_KEYS_IN_VIEW || [];
   if(want){
@@ -5555,6 +5639,7 @@ async function runOutlierScan(){
     }
 
     OUTLIER_ACTIVE = true;
+    try{ _setEditGraphVisible(!!($editShowGraph && $editShowGraph.checked)); }catch(e){}
     OUTLIER_ROWS = [];
     FILTER_SELECTED = new Set();
     let scannedTotal = 0;
@@ -5635,6 +5720,7 @@ function resetOutliers(){
   OUTLIER_ROWS = [];
   FILTER_SELECTED = new Set();
   try{ stopOutlierUi(true); }catch(e){}
+  try{ _setEditGraphVisible(!!($editShowGraph && $editShowGraph.checked)); }catch(e){}
   renderTable();
 }
 
@@ -5667,14 +5753,34 @@ if($btnEditTakeBefore) $btnEditTakeBefore.addEventListener('click', (ev)=>{ _sto
 if($btnEditTakeAvg) $btnEditTakeAvg.addEventListener('click', (ev)=>{ _stop(ev); takeAvgForSelection().catch(displayError); });
 if($btnEditStageDelete) $btnEditStageDelete.addEventListener('click', (ev)=>{ _stop(ev); stageDeleteForSelection('Toolbar: Loeschen'); });
 
-if($btnLoad) $btnLoad.addEventListener("click", (ev)=>{ _stop(ev); refreshAllWithStatus().catch(displayError); });
+if($btnLoad) $btnLoad.addEventListener("click", (ev)=>{
+  _stop(ev);
+  try{
+    fetch('./api/cache_usage/ui_event', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        kind: 'ui_dashboard_refresh',
+        page: 'dashboard',
+        ui: 'dashboard.refresh',
+        note: 'Dashboard Button Aktualisieren betaetigt',
+      })
+    }).catch(()=>{});
+  }catch(e){}
+  refreshAllWithStatus().catch(displayError);
+});
 if($btnCancelLoad) $btnCancelLoad.addEventListener("click", (ev)=>{ _stop(ev); cancelLoadNow(); });
 
 try{
   const $tblAuto = document.getElementById('tbl_autowidth');
+  const $tblWin = document.getElementById('tbl_windowwidth');
   if($tblAuto) $tblAuto.addEventListener('click', (ev)=>{
     _stop(ev);
     try{ window.InfluxBroTableCols && window.InfluxBroTableCols.autoFit('#tbl', {maxRows: 200}); }catch(e){}
+  });
+  if($tblWin) $tblWin.addEventListener('click', (ev)=>{
+    _stop(ev);
+    try{ window.InfluxBroTableCols && window.InfluxBroTableCols.windowFit('#tbl', {minW: 80}); }catch(e){}
   });
 }catch(e){}
 
@@ -5682,6 +5788,11 @@ try{
   if($rawAutoWidth) $rawAutoWidth.addEventListener('click', (ev)=>{
     _stop(ev);
     try{ window.InfluxBroTableCols && window.InfluxBroTableCols.autoFit('#raw_tbl', {maxRows: 80}); }catch(e){}
+  });
+  const $rawWin = document.getElementById('raw_windowwidth');
+  if($rawWin) $rawWin.addEventListener('click', (ev)=>{
+    _stop(ev);
+    try{ window.InfluxBroTableCols && window.InfluxBroTableCols.windowFit('#raw_tbl', {minW: 120}); }catch(e){}
   });
 }catch(e){}
 
@@ -5695,6 +5806,7 @@ try{
     initRawResize();
     initRawAutoMore();
     initEditSplit();
+    initMultiSelect();
 
     if(!ALLOW_WRITES){
       if($btnEditApply) $btnEditApply.disabled = true;
@@ -5821,14 +5933,7 @@ try{
     await loadEntityIds();
     renderEntity();
 
-    // Init list table column resizing (best-effort)
-    try{
-      if(window.InfluxBroTableCols){
-        window.InfluxBroTableCols.init('#tbl');
-        window.InfluxBroTableCols.init('#raw_tbl');
-        // row details tables are inline
-      }
-    }catch(e){}
+    // Table helpers are initialized after shared helpers are loaded.
 
     // Cancel button disabled unless a load is in progress.
     try{ if($btnCancelLoad) $btnCancelLoad.disabled = true; }catch(e){}
@@ -5865,6 +5970,66 @@ try{
 
 {% include "_table_cols.html" %}
 {% include "_tooltips.html" %}
+
+<script>
+// Init list table column resizing (best-effort)
+try{
+  if(window.InfluxBroTableCols){
+    window.InfluxBroTableCols.init('#tbl');
+    window.InfluxBroTableCols.init('#raw_tbl');
+  }
+}catch(e){}
+
+try{
+  const pk = (window.location && window.location.pathname) ? String(window.location.pathname) : '';
+  const kWrapTbl = 'influxbro.ui.wrap.v1.' + pk + '.dash_tbl';
+  const kWrapRaw = 'influxbro.ui.wrap.v1.' + pk + '.dash_raw_tbl';
+  const kFiltTbl = 'influxbro.ui.colfilter.v1.' + pk + '.dash_tbl';
+  const kFiltRaw = 'influxbro.ui.colfilter.v1.' + pk + '.dash_raw_tbl';
+
+  const $tblWrap = document.getElementById('tbl_wrap');
+  const $rawWrap = document.getElementById('raw_wrap');
+  const $tblColFilter = document.getElementById('tbl_colfilter');
+  const $rawColFilter = document.getElementById('raw_colfilter');
+
+  try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.init('#tbl', {startHidden: true}); }catch(e){}
+  try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.init('#raw_tbl', {startHidden: true}); }catch(e){}
+
+  if($tblWrap){
+    try{ $tblWrap.checked = (localStorage.getItem(kWrapTbl) || '') === '1'; }catch(e){}
+    try{ window.InfluxBroTableWrap && window.InfluxBroTableWrap.setWrap('#tbl', $tblWrap.checked); }catch(e){}
+    $tblWrap.addEventListener('change', ()=>{
+      try{ localStorage.setItem(kWrapTbl, $tblWrap.checked ? '1' : '0'); }catch(e){}
+      try{ window.InfluxBroTableWrap && window.InfluxBroTableWrap.setWrap('#tbl', $tblWrap.checked); }catch(e){}
+    });
+  }
+  if($rawWrap){
+    try{ $rawWrap.checked = (localStorage.getItem(kWrapRaw) || '') === '1'; }catch(e){}
+    try{ window.InfluxBroTableWrap && window.InfluxBroTableWrap.setWrap('#raw_tbl', $rawWrap.checked); }catch(e){}
+    $rawWrap.addEventListener('change', ()=>{
+      try{ localStorage.setItem(kWrapRaw, $rawWrap.checked ? '1' : '0'); }catch(e){}
+      try{ window.InfluxBroTableWrap && window.InfluxBroTableWrap.setWrap('#raw_tbl', $rawWrap.checked); }catch(e){}
+    });
+  }
+
+  if($tblColFilter){
+    try{ $tblColFilter.checked = (localStorage.getItem(kFiltTbl) || '') === '1'; }catch(e){}
+    try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.setVisible('#tbl', $tblColFilter.checked); }catch(e){}
+    $tblColFilter.addEventListener('change', ()=>{
+      try{ localStorage.setItem(kFiltTbl, $tblColFilter.checked ? '1' : '0'); }catch(e){}
+      try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.setVisible('#tbl', $tblColFilter.checked); }catch(e){}
+    });
+  }
+  if($rawColFilter){
+    try{ $rawColFilter.checked = (localStorage.getItem(kFiltRaw) || '') === '1'; }catch(e){}
+    try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.setVisible('#raw_tbl', $rawColFilter.checked); }catch(e){}
+    $rawColFilter.addEventListener('change', ()=>{
+      try{ localStorage.setItem(kFiltRaw, $rawColFilter.checked ? '1' : '0'); }catch(e){}
+      try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.setVisible('#raw_tbl', $rawColFilter.checked); }catch(e){}
+    });
+  }
+}catch(e){}
+</script>
 
     </main>
   </div>

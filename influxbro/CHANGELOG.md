@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.12.16
+
+### Fixes
+
+- Timer Jobs: `last run` wird persistent gespeichert; Jobs stoppt die Laufzeit-Anzeige nach Abschluss (u.a. Restore/Export).
+- Statistik: Letztes Ergebnis + UI-Auswahl werden im Browser gespeichert; Nachladen (Spalten) bleibt konsistent nach Seitenwechsel.
+
+### Features
+
+- Timer Jobs: Button `Modus` zum Aendern der Scheduler-Parameter (hours/daily, hours/daily_at).
+- Restore: Download-Button fuer das selektierte Backup (ZIP: Meta + Line Protocol).
+- Jobs: Export-Jobs werden in `Jobs & Cache` mit angezeigt und sind abbrechbar.
+- Einstellungen: Breitenlimit entfernt; Default `Max Job Laufzeit` = 3600s (1h).
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.15
 
 ### Features
