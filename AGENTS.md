@@ -6,6 +6,17 @@ UI design standard
 - Before adding/changing any GUI element (tables, buttons, checkboxes, selects, etc.), consult `influxbro/Template.md`.
 - Keep pages aligned with the master table template (toolbar above table, column resize, auto-fit/window-fit, wrap toggle, per-column filters, height resize, info icon).
 
+New Requests: Issue or Immediate Implementation
+- When the user asks for new requirements/bugs/changes, ask first whether the item should be recorded as a GitHub Issue (to be implemented later via the issue backlog) or implemented immediately.
+- Only start implementation after the user chooses one of these two paths.
+
+Questions: Numeric Choices
+- If you need user input and the answer is a selection (A/B, yes/no, option set), write the question so the user can reply with a single number.
+  - Example: "Soll ich (1) das speichern oder (2) nicht speichern? Antworte nur mit 1 oder 2." 
+
+GitHub Issues: Language
+- When creating GitHub Issues for the user, write the title and body in German.
+
 No Cursor/Copilot instruction files were found at:
 - `.cursor/rules/`
 - `.cursorrules`

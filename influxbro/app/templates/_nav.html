@@ -185,6 +185,71 @@
       return 'influxbro_ui:' + stablePath() + ':' + String(id || '');
     }
 
+    // File-based persistence: mirror localStorage writes to the backend (/data/influxbro_ui_state.json).
+    // Keep localStorage as a fast cache so existing page scripts keep working.
+    const _LS_SET = (window.localStorage && window.localStorage.setItem) ? window.localStorage.setItem.bind(window.localStorage) : null;
+    const _LS_REM = (window.localStorage && window.localStorage.removeItem) ? window.localStorage.removeItem.bind(window.localStorage) : null;
+    let _UIBUF = null;
+    let _UIT = null;
+    let _DISABLE_HOOK = false;
+
+    function _queueUiState(k, v){
+      try{
+        if(_DISABLE_HOOK) return;
+        const key = String(k || '');
+        if(!key.startsWith('influxbro')) return;
+        if(!_UIBUF) _UIBUF = {};
+        _UIBUF[key] = (v === null) ? null : String(v);
+        if(_UIT) clearTimeout(_UIT);
+        _UIT = setTimeout(_flushUiState, 220);
+      }catch(e){}
+    }
+
+    async function _flushUiState(){
+      try{
+        if(!_UIBUF) return;
+        const items = _UIBUF;
+        _UIBUF = null;
+        _UIT = null;
+        await fetch('./api/ui_state/set', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({items}),
+        }).catch(()=>{});
+      }catch(e){}
+    }
+
+    try{
+      if(window.localStorage && !window.localStorage.__influxbro_hooked && _LS_SET && _LS_REM){
+        window.localStorage.__influxbro_hooked = true;
+        const origSet = window.localStorage.setItem.bind(window.localStorage);
+        const origRem = window.localStorage.removeItem.bind(window.localStorage);
+        window.localStorage.setItem = (k, v)=>{ origSet(k, v); _queueUiState(k, v); };
+        window.localStorage.removeItem = (k)=>{ origRem(k); _queueUiState(k, null); };
+      }
+    }catch(e){}
+
+    async function _restoreUiStateFromServer(){
+      try{
+        const r = await fetch('./api/ui_state?prefix=' + encodeURIComponent('influxbro'));
+        const j = await r.json().catch(()=>({ok:false}));
+        if(!r.ok || !j || !j.ok) return;
+        const items = (j.items && typeof j.items === 'object') ? j.items : {};
+        _DISABLE_HOOK = true;
+        Object.keys(items).forEach(k=>{
+          try{
+            const v = items[k];
+            if(v === null || v === undefined){
+              if(_LS_REM) _LS_REM(String(k));
+              return;
+            }
+            if(_LS_SET) _LS_SET(String(k), String(v));
+          }catch(e){}
+        });
+      }catch(e){}
+      finally{ _DISABLE_HOOK = false; }
+    }
+
     function isSensitive(el){
       try{
         const id = (el.getAttribute('id') || '').trim();
@@ -735,6 +800,43 @@
       });
     }
 
+    async function pruneInvalidUiKeys(){
+      try{
+        const p = stablePath();
+        const prefix = 'influxbro_ui:' + p + ':';
+        const keep = [];
+        document.querySelectorAll('input[id], select[id], textarea[id]').forEach(el => {
+          const id = (el.getAttribute('id') || '').trim();
+          if(!id) return;
+          if(isSensitive(el)) return;
+          keep.push(prefix + id);
+        });
+        // details state key only valid if there are details on the page
+        const hasDetails = !!document.querySelector('details[id]');
+        if(!hasDetails){
+          try{ localStorage.removeItem('influxbro_details:' + p); }catch(e){}
+          _queueUiState('influxbro_details:' + p, null);
+        }
+        await fetch('./api/ui_state/prune', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({prefix, keep}),
+        }).catch(()=>{});
+
+        // Also prune local cache for this prefix
+        try{
+          const ks = new Set(keep);
+          for(let i=0;i<localStorage.length;i++){
+            const k = localStorage.key(i);
+            if(!k) continue;
+            if(k.startsWith(prefix) && !ks.has(k)){
+              localStorage.removeItem(k);
+            }
+          }
+        }catch(e){}
+      }catch(e){}
+    }
+
     // UI event logging (buttons) - best-effort, debounced
     function logUiClick(el){
       try{
@@ -777,12 +879,19 @@
       }, true);
     }catch(e){}
     try{
-      // Start early so values restore before page scripts use them.
-    ensureStatusBus();
-    if(TOOLTIP_ENABLED) applyTooltips();
-    else clearTitles();
-    scanPersistence();
-    ensureSectionToolbar();
+     // Start early so values restore before page scripts use them.
+     ensureStatusBus();
+     if(TOOLTIP_ENABLED) applyTooltips();
+     else clearTitles();
+     // Restore from server (best-effort) then apply to DOM.
+     _restoreUiStateFromServer().then(()=>{
+       try{ scanPersistence(); }catch(e){}
+       try{ ensureSectionToolbar(); }catch(e){}
+       try{ pruneInvalidUiKeys(); }catch(e){}
+     }).catch(()=>{});
+     // Initial pass (local cache)
+     scanPersistence();
+     ensureSectionToolbar();
     const obs = new MutationObserver((mut)=>{
       if(TOOLTIP_ENABLED) applyTooltips();
       try{

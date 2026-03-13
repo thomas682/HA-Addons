@@ -44,6 +44,9 @@
     .pill.err { border-color: #f2b0b0; background: #fff0f0; color: #b00020; }
     .pill.run { border-color: #c7d7ff; background: #f0f5ff; }
 
+    .cache_id_link { color: inherit; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+    tr.cache_hl td { background: rgba(255, 153, 0, 0.18); }
+  
     .table_wrap { border: 1px solid #eee; border-radius: 12px; padding: 10px; margin-top: 10px; }
     .table_head { display:flex; justify-content:space-between; gap: 12px; align-items:flex-end; flex-wrap:wrap; }
     .tbl_actions { display:flex; gap: 10px; align-items:center; flex-wrap:wrap; }
@@ -63,34 +66,34 @@
       <h2>Jobs &amp; Cache</h2>
       <div class="muted">Background-Jobs (Statistik, Restore/Copy). Hier kannst du laufende Jobs sehen und abbrechen.</div>
 
-      <div class="card">
-        <div class="row" data-ui="jobs.controls" title="jobs.controls">
-          <div>
-            <label class="muted" style="display:block; font-size: 12px;">Auto-Refresh</label>
-            <select id="auto" data-ui="jobs.auto" title="jobs.auto">
+        <div class="card">
+          <div class="row" data-ui="jobs.controls" title="jobs.controls">
+            <div>
+              <label class="muted" style="display:block; font-size: 12px;">Auto-Refresh</label>
+              <select id="auto" data-ui="jobs.auto" title="jobs.auto">
               <option value="on" selected>an (2s)</option>
               <option value="off">aus</option>
             </select>
           </div>
-          <div>
-            <label class="muted" style="display:block; font-size: 12px;">Typ</label>
-            <select id="type" data-ui="jobs.type" title="jobs.type">
+            <div>
+              <label class="muted" style="display:block; font-size: 12px;">Typ</label>
+              <select id="type" data-ui="jobs.type" title="jobs.type">
               <option value="">alle</option>
               <option value="global_stats">global_stats</option>
               <option value="restore_copy">restore_copy</option>
               <option value="backup">backup</option>
               <option value="dash_cache">dash_cache</option>
             </select>
+            </div>
+            <div>
+              <label class="muted" style="display:block; font-size: 12px;">&nbsp;</label>
+              <button id="refresh" data-ui="jobs.refresh" title="jobs.refresh">Aktualisieren</button>
+            </div>
+            <div style="flex:1; min-width: 260px;">
+              <label class="muted" style="display:block; font-size: 12px;">Suche</label>
+              <input id="q" placeholder="job_id/state/message..." data-ui="jobs.search" title="jobs.search" />
+            </div>
           </div>
-          <div style="flex:1; min-width: 260px;">
-            <label class="muted" style="display:block; font-size: 12px;">Suche</label>
-            <input id="q" placeholder="job_id/state/message..." data-ui="jobs.search" title="jobs.search" />
-          </div>
-          <div>
-            <label class="muted" style="display:block; font-size: 12px;">&nbsp;</label>
-            <button id="refresh" data-ui="jobs.refresh" title="jobs.refresh">Aktualisieren</button>
-          </div>
-        </div>
 
         <div class="status" id="info" data-ui="jobs.info" title="jobs.info"></div>
         <div id="err" class="err"></div>
@@ -136,10 +139,6 @@
         </div>
 
         <div class="row" style="margin-top: 10px;" data-ui="cache.controls" title="cache.controls">
-          <div style="flex:1; min-width: 260px;">
-            <label class="muted" style="display:block; font-size: 12px;">Suche</label>
-             <input id="cache_q" placeholder="dashboard/stats/measurement/field/..." data-ui="cache.search" title="cache.search" />
-           </div>
           <div>
             <label class="muted" style="display:block; font-size: 12px;">&nbsp;</label>
             <button id="cache_refresh" data-ui="cache.refresh" title="cache.refresh">Aktualisieren</button>
@@ -148,7 +147,11 @@
             <label class="muted" style="display:block; font-size: 12px;">&nbsp;</label>
              <button id="cache_delete_all" data-ui="cache.delete_all" title="cache.delete_all">Cache loeschen (alles)</button>
            </div>
-         </div>
+          <div style="flex:1; min-width: 260px;">
+            <label class="muted" style="display:block; font-size: 12px;">Suche</label>
+             <input id="cache_q" placeholder="dashboard/stats/measurement/field/..." data-ui="cache.search" title="cache.search" />
+           </div>
+          </div>
 
         <div class="status" id="cache_info" data-ui="cache.info" title="cache.info"></div>
         <div id="cache_err" class="err"></div>
@@ -169,6 +172,7 @@
             <thead>
               <tr>
                 <th style="width: 46px;">ok</th>
+                <th style="width: 170px;">id</th>
                 <th style="width: 100px;">Bereich</th>
                 <th style="width: 110px;">Ausloeser</th>
                 <th style="width: 160px;">updated</th>
@@ -470,18 +474,30 @@
         const rows = (items || []).filter(e => !q || usageBlob(e).includes(q));
         for(const e of rows){
           const tr = document.createElement('tr');
+          const cid = String(e.cache_id || '');
           tr.innerHTML = [
             `<td>${fmtTs(e.at)}</td>`,
             `<td class="mono">${String(e.kind||'')}</td>`,
             `<td class="mono">${String(e.page||'')}</td>`,
             `<td class="mono" title="${String(e.run_id||'').replace(/"/g,'&quot;')}">${String(e.run_id||'')}</td>`,
-            `<td class="mono" title="${String(e.cache_id||'').replace(/"/g,'&quot;')}">${String(e.cache_id||'')}</td>`,
+            `<td class="mono" title="${cid.replace(/"/g,'&quot;')}">${cid ? ('<a href="#" class="cache_id_link" data-cache-id="' + cid.replace(/"/g,'&quot;') + '">' + cid + '</a>') : ''}</td>`,
             `<td class="mono">${String(e.step||'')}</td>`,
             `<td class="mono" style="text-align:right;">${(e.dur_ms===null||e.dur_ms===undefined)?'':String(e.dur_ms)}</td>`,
             `<td class="mono" style="text-align:right;">${(e.rows===null||e.rows===undefined)?'':String(e.rows)}</td>`,
             `<td class="mono" style="text-align:right;">${(e.bytes===null||e.bytes===undefined)?'':String(e.bytes)}</td>`,
             `<td title="${String(e.note||'').replace(/"/g,'&quot;')}">${String(e.note||'')}</td>`,
           ].join('');
+
+          try{
+            const a = tr.querySelector('a[data-cache-id]');
+            if(a){
+              a.addEventListener('click', (ev)=>{
+                try{ ev.preventDefault(); ev.stopPropagation(); }catch(x){}
+                const cid = String(a.getAttribute('data-cache-id') || '').trim();
+                if(cid) showCacheById(cid);
+              });
+            }
+          }catch(x){}
           $usageBody.appendChild(tr);
         }
         if($usageInfo) $usageInfo.textContent = `Eintraege: ${rows.length}`;
@@ -656,8 +672,11 @@
           const flags = [m.dirty ? 'dirty' : '', m.mismatch ? 'changed' : '', m.stale ? 'stale' : ''].filter(Boolean).join(' ');
           const check = m.last_check_at ? (fmtTs(m.last_check_at) + (m.last_check_ok ? ' OK' : ' CHANGED')) : '';
 
+          const cid = String(m.id || '');
+
           tr.innerHTML = [
             `<td style="text-align:center;">${okIcon}</td>`,
+            `<td class="mono" title="${cid.replace(/"/g,'&quot;')}"><a href="#" class="cache_id_link" data-cache-id="${cid.replace(/"/g,'&quot;')}">${cid}</a></td>`,
             `<td class="mono">${String(m.bereich||'')}</td>`,
             `<td class="mono">${String(m.ausloeser||'')}</td>`,
             `<td>${fmtTs(m.updated_at)}</td>`,
@@ -675,8 +694,24 @@
             `<td></td>`,
           ].join('');
 
+          try{ tr.setAttribute('data-cache-id', cid); }catch(e){}
+
+          try{
+            const a = tr.querySelector('a[data-cache-id]');
+            if(a){
+              a.addEventListener('click', (ev)=>{
+                try{ ev.preventDefault(); ev.stopPropagation(); }catch(x){}
+                const id0 = String(a.getAttribute('data-cache-id') || '').trim();
+                if(id0){
+                  try{ navigator.clipboard && navigator.clipboard.writeText && navigator.clipboard.writeText(id0); }catch(x){}
+                  showCacheById(id0);
+                }
+              });
+            }
+          }catch(e){}
+
           const tdAct = tr.lastChild;
-          const cid = String(m.id || '');
+          // cid already computed above
 
           const bInfo = document.createElement('button');
           bInfo.className = 'btn_xs';
@@ -761,6 +796,39 @@
         }
 
         $cacheInfo.textContent = `Cache Eintraege: ${rows.length} | Gesamtgroesse: ${fmtSize(totalBytes)}`;
+      }
+
+      function showCacheById(cacheId){
+        const cid = String(cacheId || '').trim();
+        if(!cid) return;
+        try{
+          if($cacheQ){
+            $cacheQ.value = cid;
+          }
+          renderCaches(LAST_CACHES);
+        }catch(e){}
+
+        try{
+          const el = document.getElementById('cache_tbl');
+          if(el && el.scrollIntoView) el.scrollIntoView({behavior:'smooth', block:'start'});
+        }catch(e){}
+
+        setTimeout(()=>{
+          try{
+            const trs = Array.from(document.querySelectorAll('#cache_tbl tbody tr'));
+            let best = null;
+            for(const tr of trs){
+              const v = String(tr.getAttribute('data-cache-id') || '').trim();
+              if(v === cid){ best = tr; break; }
+            }
+            if(!best) return;
+
+            trs.forEach(x => x.classList.remove('cache_hl'));
+            best.classList.add('cache_hl');
+            if(best.scrollIntoView) best.scrollIntoView({behavior:'smooth', block:'center'});
+            setTimeout(()=>{ try{ best.classList.remove('cache_hl'); }catch(e){} }, 2600);
+          }catch(e){}
+        }, 90);
       }
 
       function filterJobs(jobs){

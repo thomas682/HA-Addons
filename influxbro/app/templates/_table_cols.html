@@ -3,6 +3,9 @@
 table.ib_tbl th, table.ib_tbl td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 table.ib_tbl.ib_wrap th, table.ib_tbl.ib_wrap td { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
 
+/* Sticky header (applies when table scrolls inside a box) */
+table.ib_tbl thead th { position: sticky; top: 0; z-index: 1; background: #f6f6f6; }
+
 /* Filter row inside thead */
 thead tr.ib_filter_row th { background: #fcfcfc; position: sticky; top: 0; z-index: 2; }
 thead tr.ib_filter_row input, thead tr.ib_filter_row select { width: 100%; height: 26px; padding: 2px 6px; box-sizing: border-box; font-size: 11px; }
@@ -173,24 +176,65 @@ thead tr.ib_filter_row input, thead tr.ib_filter_row select { width: 100%; heigh
     const tbl = _getTable(table);
     if(!tbl) return;
     try{
+      const ths = Array.from(tbl.querySelectorAll('thead th'));
+      if(!ths.length) return;
+
+      // Step 1: start from a content-fit baseline (full cell content visible).
+      try{
+        const maxRows = (opts && isFinite(Number(opts.autoFitMaxRows))) ? Math.max(0, Math.trunc(Number(opts.autoFitMaxRows))) : 200;
+        const pad0 = (opts && isFinite(Number(opts.autoFitPad))) ? Math.max(0, Math.trunc(Number(opts.autoFitPad))) : 24;
+        autoFit(tbl, {maxRows: maxRows, pad: pad0});
+      }catch(e){}
+
+      // Step 2: compute target width of the visible area (no horizontal scrollbar).
       const box = tbl.closest('.table_box') || tbl.parentElement;
       const maxW = box ? Math.round(box.getBoundingClientRect().width) : Math.round(tbl.getBoundingClientRect().width);
-      const ths = Array.from(tbl.querySelectorAll('thead th'));
-      if(!ths.length || !isFinite(maxW) || maxW <= 0) return;
+      if(!isFinite(maxW) || maxW <= 0) return;
+      const target = Math.max(0, maxW - 4);
 
+      // Step 3: shrink columns proportionally until we fit the target width.
       const minW = (opts && isFinite(Number(opts.minW))) ? Math.max(40, Math.trunc(Number(opts.minW))) : 60;
       const pad = (opts && isFinite(Number(opts.pad))) ? Math.max(0, Math.trunc(Number(opts.pad))) : 2;
 
-      const cur = ths.map(th => Math.round(th.getBoundingClientRect().width || 0));
-      const sum = cur.reduce((a,b)=>a+(isFinite(b)?b:0), 0) || ths.length;
-      const target = Math.max(minW * ths.length, maxW - 4);
+      const cur = ths.map(th => Math.round(th.getBoundingClientRect().width || 0)).map(w => (isFinite(w) && w > 0) ? w : minW);
+      const sum0 = cur.reduce((a,b)=>a+(isFinite(b)?b:0), 0) || (minW * ths.length);
+      if(sum0 <= 0) return;
+
+      // Start with a simple scale factor.
+      let w = cur.map(x => Math.max(minW, Math.round((x / sum0) * target)));
+
+      // If we still exceed target due to minW clamping, reduce again in a few passes.
+      for(let pass=0; pass<6; pass++){
+        const sum = w.reduce((a,b)=>a+b, 0);
+        if(sum <= target) break;
+        const reducible = w.reduce((a,wi)=>a+Math.max(0, wi - minW), 0);
+        if(reducible <= 0) break;
+        const need = sum - target;
+        let reduced = 0;
+        w = w.map((wi)=>{
+          const can = Math.max(0, wi - minW);
+          if(can <= 0) return wi;
+          const take = Math.min(can, Math.round(need * (can / reducible)));
+          reduced += take;
+          return wi - take;
+        });
+        // If rounding made no progress, force 1px reductions.
+        if(reduced <= 0){
+          for(let i=0; i<w.length; i++){
+            if(w[i] > minW){
+              w[i] -= 1;
+              reduced += 1;
+              if((w.reduce((a,b)=>a+b,0)) <= target) break;
+            }
+          }
+        }
+      }
 
       ths.forEach((th, i)=>{
-        let w = Math.round((cur[i] / sum) * target);
-        if(!isFinite(w) || w <= 0) w = Math.round(target / ths.length);
-        if(w < minW) w = minW;
-        if(w > 1600) w = 1600;
-        th.style.width = (w + pad) + 'px';
+        let wi = w[i] || minW;
+        if(wi < minW) wi = minW;
+        if(wi > 1600) wi = 1600;
+        th.style.width = (wi + pad) + 'px';
       });
       _writeWidths(tbl);
     }catch(e){}
@@ -535,6 +579,499 @@ thead tr.ib_filter_row input, thead tr.ib_filter_row select { width: 100%; heigh
 </script>
 
 <script>
+// Shared helper: generic column sorting (client-side; persisted per page+table)
+(function(){
+  if(window.InfluxBroTableSort) return;
+
+  function _norm(s){ return String(s || '').trim(); }
+  function _getTable(table){
+    if(!table) return null;
+    if(typeof table === 'string') return document.querySelector(table);
+    return table;
+  }
+  function _pageKey(){
+    try{
+      const p = (window.location && window.location.pathname) ? String(window.location.pathname) : '';
+      return p.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'root';
+    }catch(e){
+      return 'root';
+    }
+  }
+  function _keyFor(tbl){
+    const id = _norm(tbl.getAttribute('id')) || 'unknown';
+    return `influxbro.sort.v1.${_pageKey()}.${id}`;
+  }
+  function _read(tbl){
+    try{ return JSON.parse(localStorage.getItem(_keyFor(tbl)) || 'null'); }catch(e){ return null; }
+  }
+  function _write(tbl, st){
+    try{ localStorage.setItem(_keyFor(tbl), JSON.stringify(st || {})); }catch(e){}
+  }
+
+  function _parseVal(s){
+    const t = _norm(s);
+    if(!t) return {t:'s', v:''};
+
+    // ISO / RFC-ish dates
+    const ms = Date.parse(t);
+    if(isFinite(ms) && ms > 0) return {t:'d', v: ms};
+
+    // number (best-effort; allow 1,23)
+    const m = t.match(/^[-+]?\d+(?:[\.,]\d+)?$/);
+    if(m){
+      const x = parseFloat(t.replace(',', '.'));
+      if(isFinite(x)) return {t:'n', v:x};
+    }
+
+    return {t:'s', v: t.toLowerCase()};
+  }
+
+  function apply(tbl, st){
+    const tbody = tbl.querySelector('tbody');
+    if(!tbody) return;
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    if(!rows.length) return;
+
+    const idx = Number(st && st.idx);
+    if(!isFinite(idx) || idx < 0) return;
+    const dir = (st && String(st.dir || 'asc').toLowerCase() === 'desc') ? 'desc' : 'asc';
+
+    const withKey = rows.map((tr, i)=>{
+      const td = (tr.children && tr.children[idx]) ? tr.children[idx] : null;
+      const txt = td ? (td.getAttribute && td.getAttribute('data-sort') ? td.getAttribute('data-sort') : (td.textContent || '')) : '';
+      const pv = _parseVal(txt);
+      return {tr, i, pv};
+    });
+
+    withKey.sort((a,b)=>{
+      const aa = a.pv; const bb = b.pv;
+      // keep type order stable: numbers/dates before strings
+      const order = (x)=> (x.t === 'n' ? 0 : (x.t === 'd' ? 1 : 2));
+      const oa = order(aa); const ob = order(bb);
+      if(oa !== ob) return oa - ob;
+      let c = 0;
+      if(aa.v < bb.v) c = -1;
+      else if(aa.v > bb.v) c = 1;
+      if(dir === 'desc') c = -c;
+      return c !== 0 ? c : (a.i - b.i);
+    });
+
+    // Apply ordering
+    const frag = document.createDocumentFragment();
+    withKey.forEach(x=>frag.appendChild(x.tr));
+    tbody.appendChild(frag);
+
+    // Mark header
+    try{
+      const ths = Array.from(tbl.querySelectorAll('thead tr:first-child th'));
+      ths.forEach((th, i)=>{
+        th.removeAttribute('aria-sort');
+        th.removeAttribute('data-ib-sort');
+        if(i === idx){
+          th.setAttribute('aria-sort', dir === 'asc' ? 'ascending' : 'descending');
+          th.setAttribute('data-ib-sort', dir);
+        }
+      });
+    }catch(e){}
+  }
+
+  function init(table, opts){
+    const tbl = _getTable(table);
+    if(!tbl) return;
+    if(!tbl.getAttribute('id')) return;
+
+    const ths = Array.from(tbl.querySelectorAll('thead tr:first-child th'));
+    if(!ths.length) return;
+
+    // Click handler
+    ths.forEach((th, idx)=>{
+      if(th.getAttribute('data-nosort') === '1') return;
+      try{ if(th.querySelector && th.querySelector('input,select,button')) return; }catch(e){}
+      th.style.cursor = th.style.cursor || 'pointer';
+      th.addEventListener('click', (ev)=>{
+        try{
+          // ignore clicks on inputs inside header
+          const t = ev && ev.target ? ev.target : null;
+          if(t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.closest('input,select,button'))) return;
+        }catch(e){}
+
+        const cur = _read(tbl) || {};
+        let dir = 'asc';
+        if(Number(cur.idx) === idx){
+          dir = (String(cur.dir||'asc').toLowerCase() === 'asc') ? 'desc' : 'asc';
+        }else{
+          dir = 'asc';
+        }
+        const st = {idx: idx, dir: dir};
+        _write(tbl, st);
+        apply(tbl, st);
+      });
+    });
+
+    // Restore sort
+    const st = _read(tbl);
+    if(st && isFinite(Number(st.idx))) apply(tbl, st);
+  }
+
+  function inject(){
+    try{
+      document.querySelectorAll('table[id]').forEach((tbl)=>{
+        if(tbl.__ib_sort_init) return;
+        tbl.__ib_sort_init = true;
+        init(tbl);
+      });
+    }catch(e){}
+  }
+
+  window.InfluxBroTableSort = { init, apply, inject };
+
+  try{
+    if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', inject);
+    else inject();
+  }catch(e){}
+
+  try{
+    let t = null;
+    const obs = new MutationObserver(()=>{
+      if(t) return;
+      t = setTimeout(()=>{ t = null; inject(); }, 120);
+    });
+    obs.observe(document.body, { childList:true, subtree:true });
+  }catch(e){}
+})();
+</script>
+
+<script>
+// Shared helper: column visibility picker (persisted per page+table)
+(function(){
+  if(window.InfluxBroTableColVis) return;
+
+  function _norm(s){ return String(s || '').trim(); }
+  function _pageKey(){
+    try{
+      const p = (window.location && window.location.pathname) ? String(window.location.pathname) : '';
+      return p.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'root';
+    }catch(e){ return 'root'; }
+  }
+  function _keyFor(tid){
+    const id = _norm(tid) || 'unknown';
+    return `influxbro.colvis.v1.${_pageKey()}.${id}`;
+  }
+  function _getTable(table){
+    if(!table) return null;
+    if(typeof table === 'string') return document.querySelector(table);
+    return table;
+  }
+  function _read(tid){
+    try{
+      const j = JSON.parse(localStorage.getItem(_keyFor(tid)) || 'null');
+      if(!j || typeof j !== 'object') return {hidden: []};
+      const h = Array.isArray(j.hidden) ? j.hidden.map(x=>Number(x)).filter(x=>isFinite(x) && x >= 0) : [];
+      return {hidden: h};
+    }catch(e){
+      return {hidden: []};
+    }
+  }
+  function _write(tid, st){
+    try{ localStorage.setItem(_keyFor(tid), JSON.stringify(st || {hidden: []})); }catch(e){}
+  }
+
+  function _apply(tbl, hiddenIdx){
+    const hid = new Set((hiddenIdx || []).map(x=>Number(x)).filter(x=>isFinite(x) && x >= 0));
+    const rows = Array.from(tbl.querySelectorAll('tr'));
+    rows.forEach(tr=>{
+      const cells = Array.from(tr.children || []);
+      cells.forEach((c, idx)=>{
+        if(hid.has(idx)) c.style.display = 'none';
+        else c.style.display = '';
+      });
+    });
+  }
+
+  function apply(tbl){
+    if(!tbl) return;
+    const tid = _norm(tbl.getAttribute('id'));
+    if(!tid) return;
+    const st = _read(tid);
+    _apply(tbl, st.hidden || []);
+  }
+
+  function _ensureModal(){
+    let root = document.getElementById('influxbro_colvis_root');
+    if(root) return root;
+
+    root = document.createElement('div');
+    root.id = 'influxbro_colvis_root';
+    root.style.position = 'fixed';
+    root.style.inset = '0';
+    root.style.zIndex = '10045';
+    root.style.display = 'none';
+    root.style.background = 'rgba(0,0,0,0.45)';
+    root.style.padding = '6vh 12px 12px 12px';
+    root.style.boxSizing = 'border-box';
+    root.style.overflow = 'auto';
+
+    const card = document.createElement('div');
+    card.style.maxWidth = '760px';
+    card.style.margin = '0 auto';
+    card.style.background = '#fff';
+    card.style.borderRadius = '16px';
+    card.style.boxShadow = '0 12px 60px rgba(0,0,0,0.28)';
+    card.style.padding = '14px 14px 12px 14px';
+    card.style.boxSizing = 'border-box';
+
+    const head = document.createElement('div');
+    head.style.display = 'flex';
+    head.style.alignItems = 'baseline';
+    head.style.justifyContent = 'space-between';
+    head.style.gap = '12px';
+
+    const title = document.createElement('div');
+    title.id = 'influxbro_colvis_title';
+    title.textContent = 'Spalten';
+    title.style.fontWeight = '800';
+    title.style.fontSize = '16px';
+
+    const close = document.createElement('button');
+    close.id = 'influxbro_colvis_close';
+    close.textContent = 'Schliessen';
+    close.style.cursor = 'pointer';
+    close.style.padding = '10px 12px';
+
+    head.appendChild(title);
+    head.appendChild(close);
+
+    const body = document.createElement('div');
+    body.id = 'influxbro_colvis_body';
+    body.style.marginTop = '10px';
+
+    const actions = document.createElement('div');
+    actions.style.display = 'flex';
+    actions.style.gap = '10px';
+    actions.style.flexWrap = 'wrap';
+    actions.style.marginTop = '10px';
+
+    const allBtn = document.createElement('button');
+    allBtn.id = 'influxbro_colvis_all';
+    allBtn.textContent = 'Alle';
+    allBtn.style.cursor = 'pointer';
+
+    const noneBtn = document.createElement('button');
+    noneBtn.id = 'influxbro_colvis_none';
+    noneBtn.textContent = 'Keine';
+    noneBtn.style.cursor = 'pointer';
+
+    actions.appendChild(allBtn);
+    actions.appendChild(noneBtn);
+
+    card.appendChild(head);
+    card.appendChild(body);
+    card.appendChild(actions);
+    root.appendChild(card);
+    document.body.appendChild(root);
+
+    function hide(){ try{ root.style.display = 'none'; }catch(e){} }
+    close.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} hide(); });
+    root.addEventListener('click', (ev)=>{ if(ev && ev.target === root) hide(); });
+    document.addEventListener('keydown', (ev)=>{ try{ if(ev && ev.key === 'Escape' && root.style.display !== 'none') hide(); }catch(e){} });
+    return root;
+  }
+
+  function showForTable(tbl){
+    const tid = _norm(tbl.getAttribute('id'));
+    if(!tid) return;
+    const root = _ensureModal();
+    const $title = document.getElementById('influxbro_colvis_title');
+    const $body = document.getElementById('influxbro_colvis_body');
+    const $all = document.getElementById('influxbro_colvis_all');
+    const $none = document.getElementById('influxbro_colvis_none');
+    if(!$body) return;
+
+    const ths = Array.from(tbl.querySelectorAll('thead tr:first-child th'));
+    const st = _read(tid);
+    const hid = new Set(st.hidden || []);
+
+    if($title) $title.textContent = 'Spalten: ' + tid;
+    $body.innerHTML = '';
+
+    ths.forEach((th, idx)=>{
+      const label = _norm(th.textContent) || ('col ' + (idx+1));
+      const row = document.createElement('label');
+      row.style.display = 'flex';
+      row.style.alignItems = 'center';
+      row.style.gap = '10px';
+      row.style.padding = '6px 2px';
+      row.style.fontSize = '12px';
+
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = !hid.has(idx);
+      cb.addEventListener('change', ()=>{
+        const cur = _read(tid);
+        const h = new Set(cur.hidden || []);
+        if(cb.checked) h.delete(idx);
+        else h.add(idx);
+        const next = {hidden: Array.from(h.values()).sort((a,b)=>a-b)};
+        _write(tid, next);
+        _apply(tbl, next.hidden);
+      });
+
+      const span = document.createElement('span');
+      span.textContent = label;
+      row.appendChild(cb);
+      row.appendChild(span);
+      $body.appendChild(row);
+    });
+
+    if($all) $all.onclick = (ev)=>{
+      try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+      _write(tid, {hidden: []});
+      _apply(tbl, []);
+      showForTable(tbl);
+    };
+    if($none) $none.onclick = (ev)=>{
+      try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+      const allHidden = ths.map((_,i)=>i);
+      _write(tid, {hidden: allHidden});
+      _apply(tbl, allHidden);
+      showForTable(tbl);
+    };
+
+    root.style.display = 'block';
+  }
+
+  const ICON_COLS = '<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 4h16v16H4V4zm2 2v12h3V6H6zm5 0v12h2V6h-2zm4 0v12h3V6h-3z"/></svg>';
+
+  function inject(){
+    try{
+      document.querySelectorAll('table[id]').forEach((tbl)=>{
+        const tid = _norm(tbl.getAttribute('id'));
+        if(!tid) return;
+
+        // Apply saved visibility
+        try{ apply(tbl); }catch(e){}
+
+        // Prefer adding the button to a nearby .table_head.
+        const wrap = tbl.closest('.table_wrap');
+        const head = wrap ? wrap.querySelector('.table_head') : null;
+        if(!head) return;
+        const host = head;
+
+        const existing = host.querySelector && host.querySelector(`button[data-table-colvis="${tid}"]`);
+        if(existing) return;
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.innerHTML = ICON_COLS;
+        btn.setAttribute('data-table-colvis', tid);
+        btn.style.cursor = 'pointer';
+        btn.style.height = '30px';
+        btn.style.padding = '6px 10px';
+        btn.style.marginLeft = '8px';
+        btn.style.opacity = '0.85';
+        btn.title = 'Spalten ein-/ausblenden';
+        btn.addEventListener('click', (ev)=>{
+          try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+          showForTable(tbl);
+        });
+        host.appendChild(btn);
+      });
+    }catch(e){}
+  }
+
+  window.InfluxBroTableColVis = { apply, show: showForTable, inject };
+
+  try{
+    if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', inject);
+    else inject();
+  }catch(e){}
+
+  try{
+    let t = null;
+    const obs = new MutationObserver(()=>{
+      if(t) return;
+      t = setTimeout(()=>{ t = null; inject(); }, 120);
+    });
+    obs.observe(document.body, { childList:true, subtree:true });
+  }catch(e){}
+})();
+</script>
+
+<script>
+// Shared helper: show row counts (filtered/total) in .table_head (best-effort)
+(function(){
+  if(window.InfluxBroTableCounts) return;
+
+  function _norm(s){ return String(s || '').trim(); }
+  function _countRows(tbl){
+    const tbody = tbl.querySelector('tbody');
+    if(!tbody) return {vis:0, total:0};
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    const total = rows.length;
+    let vis = 0;
+    rows.forEach(tr=>{
+      const disp = (tr.style && tr.style.display) ? String(tr.style.display) : '';
+      if(disp !== 'none') vis += 1;
+    });
+    return {vis, total};
+  }
+
+  function _ensureHost(tbl){
+    const wrap = tbl.closest('.table_wrap');
+    const head = wrap ? wrap.querySelector('.table_head') : null;
+    if(!head) return null;
+    let muted = head.querySelector('.muted');
+    if(!muted){
+      muted = document.createElement('div');
+      muted.className = 'muted';
+      head.appendChild(muted);
+    }
+    if(!muted.getAttribute('data-ib-base-text')) muted.setAttribute('data-ib-base-text', String(muted.textContent || ''));
+    return muted;
+  }
+
+  function update(tbl){
+    try{
+      const tid = _norm(tbl.getAttribute('id'));
+      if(!tid) return;
+      const host = _ensureHost(tbl);
+      if(!host) return;
+      const base = host.getAttribute('data-ib-base-text') || '';
+      const c = _countRows(tbl);
+      const suffix = `Rows: ${c.vis} / ${c.total}`;
+      host.textContent = base ? (base + ' | ' + suffix) : suffix;
+    }catch(e){}
+  }
+
+  function attach(tbl){
+    const tbody = tbl.querySelector('tbody');
+    if(!tbody) return;
+    update(tbl);
+    try{
+      const obs = new MutationObserver(()=>{ update(tbl); });
+      obs.observe(tbody, { childList:true, subtree:true, attributes:true, attributeFilter:['style'] });
+    }catch(e){}
+  }
+
+  function inject(){
+    try{
+      document.querySelectorAll('table[id]').forEach((tbl)=>{
+        if(tbl.__ib_counts_attached) return;
+        tbl.__ib_counts_attached = true;
+        attach(tbl);
+      });
+    }catch(e){}
+  }
+
+  window.InfluxBroTableCounts = { update, inject };
+  try{
+    if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', inject);
+    else inject();
+  }catch(e){}
+})();
+</script>
+
+<script>
 // Shared helper: show table column explanations (best-effort)
 (function(){
   if(window.InfluxBroTableInfo) return;
@@ -555,13 +1092,54 @@ thead tr.ib_filter_row input, thead tr.ib_filter_row select { width: 100%; heigh
     return t.replace(/\s*\([^\)]+\)\s*$/g, '').trim();
   }
 
+  function _specFor(tbl){
+    try{
+      const tid = _norm(tbl.getAttribute('id'));
+      if(!tid) return null;
+      const root = window.InfluxBroTableInfoSpec;
+      if(root && typeof root === 'object'){
+        const spec = root[tid];
+        return (spec && typeof spec === 'object') ? spec : null;
+      }
+    }catch(e){}
+    return null;
+  }
+
+  function _specColDesc(spec, colName){
+    if(!spec) return '';
+    const name = _norm(colName);
+    if(!name) return '';
+    try{
+      if(spec.columns && typeof spec.columns === 'object'){
+        // dict form
+        if(!Array.isArray(spec.columns)){
+          const d = spec.columns[name];
+          if(d) return _norm(d);
+          // fallback: case-insensitive match
+          const k = Object.keys(spec.columns || {}).find(x => _norm(x).toLowerCase() === name.toLowerCase());
+          if(k && spec.columns[k]) return _norm(spec.columns[k]);
+        }
+      }
+    }catch(e){}
+    return '';
+  }
+
   function describeTable(tbl){
-    const ths = Array.from(tbl.querySelectorAll('thead th'));
+    const ths = Array.from(tbl.querySelectorAll('thead tr:first-child th'));
     const lines = [];
+
+    const spec = _specFor(tbl);
+
+    if(spec && spec.purpose){
+      lines.push('Sinn und Zweck');
+      lines.push(String(spec.purpose || '').trim());
+      lines.push('');
+    }
 
     lines.push('Funktion / Bedienung');
     lines.push('- Spaltenbreite: per Ziehen am Spaltenrand (Header).');
-    lines.push('- Sortierung: (falls aktiv) per Klick auf Spaltenkopf.');
+    lines.push('- Sortierung: per Klick auf Spaltenkopf (pro Spalte).');
+    lines.push('- Spalten ein-/ausblenden: ueber Spalten-Button (falls vorhanden).');
     lines.push('- Volltextsuche/Filter: oberhalb der Tabelle.');
     lines.push('- Anzeige: Umbruch vs. Abschneiden (Checkbox, falls vorhanden).');
     lines.push('- Hoehe: unter der Tabelle per Balken (falls vorhanden).');
@@ -572,8 +1150,19 @@ thead tr.ib_filter_row input, thead tr.ib_filter_row select { width: 100%; heigh
       const name = _norm(th.textContent);
       const ttl = _stripKeySuffix(th.getAttribute('title'));
       const desc = ttl && ttl !== name ? ttl : '';
-      lines.push(`${idx+1}. ${name}${desc ? (' - ' + desc) : ''}`);
+      const specDesc = _specColDesc(spec, name);
+      const best = specDesc || desc;
+      lines.push(`${idx+1}. ${name}${best ? (' - ' + best) : ''}`);
     });
+
+    try{
+      if(spec && Array.isArray(spec.actions) && spec.actions.length){
+        lines.push('');
+        lines.push('Aktionen');
+        spec.actions.forEach(a=>{ lines.push('- ' + _norm(a)); });
+      }
+    }catch(e){}
+
     return lines.join('\n');
   }
 

@@ -61,6 +61,10 @@ CACHE_USAGE_PATH = DATA_DIR / "influxbro_cache_usage.jsonl"
 TIMERS_STATE_LOCK = threading.RLock()
 TIMERS_STATE_PATH = DATA_DIR / "influxbro_timers_state.json"
 
+# UI state store (file-based; used to persist GUI selections across add-on restarts)
+UI_STATE_LOCK = threading.RLock()
+UI_STATE_PATH = DATA_DIR / "influxbro_ui_state.json"
+
 # toggled via config (configure_logging)
 CACHE_USAGE_LOGGING = False
 
@@ -892,6 +896,66 @@ def _timer_mark_finished(timer_id: str, state: str) -> None:
         _timers_state_save(st)
     except Exception:
         return
+
+
+def _ui_state_load() -> dict[str, str]:
+    try:
+        if not UI_STATE_PATH.exists():
+            return {}
+        with UI_STATE_LOCK:
+            raw = UI_STATE_PATH.read_text(encoding="utf-8", errors="replace")
+        j = json.loads(raw) if raw else {}
+        if not isinstance(j, dict):
+            return {}
+        out: dict[str, str] = {}
+        for k, v in j.items():
+            if not isinstance(k, str):
+                continue
+            if isinstance(v, str):
+                out[k] = v
+            elif v is None:
+                continue
+            else:
+                # keep as JSON string
+                try:
+                    out[k] = json.dumps(v, ensure_ascii=True)
+                except Exception:
+                    continue
+        return out
+    except Exception:
+        return {}
+
+
+def _ui_state_save(state: dict[str, str]) -> None:
+    try:
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        with UI_STATE_LOCK:
+            UI_STATE_PATH.write_text(
+                json.dumps(state or {}, indent=2, sort_keys=True, ensure_ascii=True),
+                encoding="utf-8",
+            )
+    except Exception:
+        return
+
+
+def _ui_state_key_ok(key: str) -> bool:
+    # keep keys bounded; do not allow very large / binary keys
+    try:
+        k = str(key or "")
+    except Exception:
+        return False
+    if not k or len(k) > 240:
+        return False
+    # allow common chars used in existing localStorage keys
+    return bool(re.match(r"^[a-zA-Z0-9_\-:\./]+$", k))
+
+
+def _ui_state_val_ok(val: str) -> bool:
+    try:
+        v = str(val or "")
+    except Exception:
+        return False
+    return len(v) <= 10000
 
 def load_cfg():
     # NOTE: No automatic autodetect at startup.
@@ -9021,6 +9085,100 @@ def api_ui_event():
         pass
 
     return jsonify({"ok": True})
+
+
+@app.get("/api/ui_state")
+def api_ui_state_get():
+    prefix = str(request.args.get("prefix") or "").strip()
+    st = _ui_state_load()
+    if prefix:
+        out = {k: v for k, v in st.items() if isinstance(k, str) and k.startswith(prefix)}
+    else:
+        out = dict(st)
+
+    # Safety cap
+    if len(out) > 5000:
+        keys = sorted(out.keys())[:5000]
+        out = {k: out[k] for k in keys}
+    return jsonify({"ok": True, "items": out, "total": len(out)})
+
+
+@app.post("/api/ui_state/set")
+def api_ui_state_set():
+    body = request.get_json(force=True) or {}
+
+    items = body.get("items") if isinstance(body, dict) else None
+    if items is None:
+        # also allow single key/value
+        k = body.get("key") if isinstance(body, dict) else None
+        v = body.get("value") if isinstance(body, dict) else None
+        items = {k: v} if k else {}
+
+    if not isinstance(items, dict):
+        return jsonify({"ok": False, "error": "items must be an object"}), 400
+
+    st = _ui_state_load()
+    changed = 0
+    deleted = 0
+
+    for k0, v0 in items.items():
+        k = str(k0 or "").strip()
+        if not _ui_state_key_ok(k):
+            continue
+
+        if v0 is None:
+            if k in st:
+                st.pop(k, None)
+                deleted += 1
+            continue
+
+        # store as string (raw); caller can store JSON string if needed
+        v = v0 if isinstance(v0, str) else json.dumps(v0, ensure_ascii=True)
+        if not _ui_state_val_ok(v):
+            continue
+        if st.get(k) != v:
+            st[k] = v
+            changed += 1
+
+    if changed or deleted:
+        _ui_state_save(st)
+
+    return jsonify({"ok": True, "changed": changed, "deleted": deleted, "total": len(st)})
+
+
+@app.post("/api/ui_state/prune")
+def api_ui_state_prune():
+    body = request.get_json(force=True) or {}
+    prefix = str(body.get("prefix") or "").strip()
+    keep = body.get("keep")
+    if not prefix:
+        return jsonify({"ok": False, "error": "prefix required"}), 400
+    if not _ui_state_key_ok(prefix):
+        return jsonify({"ok": False, "error": "invalid prefix"}), 400
+    if keep is None:
+        keep = []
+    if not isinstance(keep, list):
+        return jsonify({"ok": False, "error": "keep must be a list"}), 400
+
+    keep_set: set[str] = set()
+    for k0 in keep:
+        try:
+            k = str(k0 or "").strip()
+        except Exception:
+            continue
+        if not _ui_state_key_ok(k):
+            continue
+        if not k.startswith(prefix):
+            continue
+        keep_set.add(k)
+
+    st = _ui_state_load()
+    to_del = [k for k in st.keys() if isinstance(k, str) and k.startswith(prefix) and k not in keep_set]
+    for k in to_del:
+        st.pop(k, None)
+    if to_del:
+        _ui_state_save(st)
+    return jsonify({"ok": True, "deleted": len(to_del), "prefix": prefix})
 
 
 @app.get("/api/cache_usage")

@@ -148,6 +148,7 @@ Raw Daten (DB):
 - Klick auf einen Messpunkt im Graph markiert den Punkt und springt in der Raw-Tabelle zum passenden Zeitstempel (Zeile wird hervorgehoben).
 - Der Sprung zentriert die Zeile in der Tabelle, damit vorherige und nachfolgende Werte sichtbar bleiben.
 - Ueber der Raw-Tabelle gibt es Buttons zur Tagesnavigation (aeltester/juengster Tag, +/-1d, +/-7d; lokale Browserzeit).
+- Wenn du per Tagesnavigation zu einem Zeitpunkt springst, der noch nicht in der Tabelle geladen ist, wird automatisch nachgeladen, bis der Ziel-Tag erreicht ist (oder bis keine weiteren Daten verfuegbar sind).
 
 Konzept fuer sehr grosse Tabellen (z.B. ~2 Mio Zeilen):
 
@@ -254,10 +255,16 @@ Tipp: In der Toolbar gibt es Mehrfachaktionen (z.B. Werte davor uebernehmen oder
 Cache:
 
 - Tabelle `Cache`: zeigt alle Caches (Dashboard + Statistik) inkl. Bereich/Ausloeser/next update/Modus.
+- Spalte `id`: eindeutige Cache-ID.
 - Aktionen:
   - `Info`: zeigt Details (inkl. Events wie Verwendung/Check/Update; best-effort).
   - Dashboard: `Pruefen`/`Aktualisieren`/`Loeschen`.
   - Statistik: `Aktualisieren`/`Loeschen`.
+
+Cache Nutzung:
+
+- Tabelle `Cache Nutzung`: Zeitstempel-Log der Cache-Verwendung (Dashboard/Statistik).
+- Cache-ID ist klickbar und springt zur passenden Cache-Zeile in der Cache-Tabelle (Highlight).
   - `Cache loeschen (alles)`: loescht Cache-Dateien unter `/data` (nur Cache, nicht die Datenbank).
 - Automatisches Cache-Update ist in `Einstellungen -> UI -> Dashboard Cache` bzw. `Einstellungen -> UI -> Statistik Cache` konfigurierbar.
 

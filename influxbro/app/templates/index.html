@@ -1918,12 +1918,57 @@ function _rawScrollToDayAsTop(dayKey){
   }
 }
 
-function _rawNav(deltaDays, toEdge){
+async function _rawLoadMoreOnce(){
+  try{
+    const before = (RAW_ROWS || []).length;
+    await loadRawFromGraph(false);
+    const after = (RAW_ROWS || []).length;
+    return isFinite(after) && after > before;
+  }catch(e){
+    return false;
+  }
+}
+
+async function _rawLoadUntilDayKey(dayKey){
+  const want = String(dayKey || '').trim();
+  if(!want) return false;
+
+  // Guard against runaway loops.
+  const MAX_LOADS = 40;
+  let loads = 0;
+
+  while(loads < MAX_LOADS){
+    const b = _rawRowsDayBounds();
+    if(b && b.max && want <= b.max) return true;
+    if(!_rawCanMore()) return false;
+
+    ok(`Raw Daten: lade nach... (target: ${want})`);
+    const progressed = await _rawLoadMoreOnce();
+    loads += 1;
+    if(!progressed) return false;
+  }
+  return false;
+}
+
+async function _rawLoadUntilEnd(){
+  const MAX_LOADS = 60;
+  let loads = 0;
+  while(loads < MAX_LOADS){
+    if(!_rawCanMore()) return true;
+    ok('Raw Daten: lade bis zum Ende...');
+    const progressed = await _rawLoadMoreOnce();
+    loads += 1;
+    if(!progressed) return false;
+  }
+  return false;
+}
+
+async function _rawNav(deltaDays, toEdge){
   try{
     const rows = RAW_ROWS || [];
     if(!rows.length){ ok('Raw Daten: keine Zeilen geladen.'); return; }
 
-    const b = _rawRowsDayBounds();
+    let b = _rawRowsDayBounds();
     if(!b.min || !b.max){ ok('Raw Daten: keine gueltigen Zeitstempel.'); return; }
 
     let base = '';
@@ -1936,6 +1981,20 @@ function _rawNav(deltaDays, toEdge){
     let want = base;
     if(deltaDays) want = _dayKeyLocalAdd(base, deltaDays);
     if(!want) return;
+
+    // If user navigates forward and the target day is not loaded yet, load more until we reach it.
+    if((toEdge === 'max') || (Number(deltaDays || 0) > 0 && want > b.max)){
+      if(toEdge === 'max'){
+        await _rawLoadUntilEnd();
+      }else{
+        await _rawLoadUntilDayKey(want);
+      }
+      b = _rawRowsDayBounds();
+      if(toEdge === 'max') want = b.max;
+      if(toEdge === 'min') want = b.min;
+    }
+
+    // Clamp to what we actually have.
     if(want < b.min) want = b.min;
     if(want > b.max) want = b.max;
 
@@ -1943,7 +2002,7 @@ function _rawNav(deltaDays, toEdge){
       ok(`Raw Daten: Tag nicht in geladenen Zeilen: ${want}`);
       return;
     }
-    ok(`Raw Daten: ${want} (lokal)`);
+    ok(`Raw Daten: ${want}`);
   }catch(e){}
 }
 
