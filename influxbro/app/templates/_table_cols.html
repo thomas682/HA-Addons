@@ -6,6 +6,12 @@ table.ib_tbl.ib_wrap th, table.ib_tbl.ib_wrap td { white-space: normal; overflow
 /* Sticky header (applies when table scrolls inside a box) */
 table.ib_tbl thead th { position: sticky; top: 0; z-index: 1; background: #f6f6f6; }
 
+/* Sort indicators (generic + aria-sort) */
+table.ib_tbl thead th[aria-sort="ascending"]::after { content: " \25B2"; opacity: 0.65; font-size: 11px; }
+table.ib_tbl thead th[aria-sort="descending"]::after { content: " \25BC"; opacity: 0.65; font-size: 11px; }
+table.ib_tbl thead th[data-ib-sort="asc"]::after { content: " \25B2"; opacity: 0.65; font-size: 11px; }
+table.ib_tbl thead th[data-ib-sort="desc"]::after { content: " \25BC"; opacity: 0.65; font-size: 11px; }
+
 /* Filter row inside thead */
 thead tr.ib_filter_row th { background: #fcfcfc; position: sticky; top: 0; z-index: 2; }
 thead tr.ib_filter_row input, thead tr.ib_filter_row select { width: 100%; height: 26px; padding: 2px 6px; box-sizing: border-box; font-size: 11px; }
@@ -679,6 +685,7 @@ thead tr.ib_filter_row input, thead tr.ib_filter_row select { width: 100%; heigh
     const tbl = _getTable(table);
     if(!tbl) return;
     if(!tbl.getAttribute('id')) return;
+    if(tbl.getAttribute('data-sort-custom') === '1') return;
 
     const ths = Array.from(tbl.querySelectorAll('thead tr:first-child th'));
     if(!ths.length) return;

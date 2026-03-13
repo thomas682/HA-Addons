@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.20
+
+### Fixes
+
+- Statistik: Spaltenauswahl-Checkboxen fuer Nachladen wieder vorhanden; Nachladen (markiert/alle im Filter) funktioniert wieder.
+- Tabellen: Sortier-Richtung wird in der Tabellen-Kopfzeile angezeigt (Pfeil), aufwaerts/abwaerts toggelbar.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.19
 
 ### Features

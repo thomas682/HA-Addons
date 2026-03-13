@@ -244,6 +244,7 @@ Tipp: In der Toolbar gibt es Mehrfachaktionen (z.B. Werte davor uebernehmen oder
 
 - Per Checkbox `Statistik anzeigen` ein/ausblendbar.
 - Letztes Ergebnis + Auswahl (Zeitraum/Filter/Spalten) werden im Browser gespeichert und beim Seitenwechsel best-effort wiederhergestellt.
+- Spaltenauswahl: ueber Checkboxen (oldest/count/min/max/mean). Fehlende Spalten koennen mit `Nachladen (markiert)` oder `Nachladen (alle im Filter)` berechnet werden.
 - Reihenfolge:
   - Gesamtstatistik (Alles)
   - Statistik Zeitraum (Graph/Tabelle)

@@ -45,7 +45,7 @@
 
     table { border-collapse: collapse; width: 100%; margin-top: 10px; table-layout: fixed; }
     th, td { border: 1px solid #eee; padding: 0 6px; font-size: 11px; line-height: 1.2; vertical-align: middle; height: var(--stats_row_h); }
-    th { background: #f6f6f6; text-align:left; cursor:pointer; position: sticky; top: 0; z-index: 1; }
+    th { background: #f6f6f6; text-align:left; position: sticky; top: 0; z-index: 1; }
     #tbl.list_tbl th, #tbl.list_tbl td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .table_box { height: calc(var(--stats_visible_rows) * var(--stats_row_h) + 54px); max-height: 80vh; overflow:auto; border: 1px solid #eee; border-radius: 12px; }
     #tbl_resize { height: 12px; cursor: ns-resize; margin-top: 8px; border-radius: 999px; background: linear-gradient(90deg, #eee, #f8f8f8); }
@@ -145,6 +145,22 @@
           <div class="muted" style="margin-top: 10px;">Influx Datenbank Info: siehe Menuepunkt <code>Info</code>.</div>
 
           <div class="muted" id="range_txt" data-ui="stats.range_txt" title="stats.range_txt"></div>
+
+          <div class="row" data-ui="stats.columns" title="stats.columns" style="margin-top: 10px;">
+            <div style="min-width: 260px; flex: 1;">
+              <div class="muted help">Spaltenauswahl (fuer Nachladen):</div>
+              <div class="row" style="margin-top: 6px; gap: 12px;">
+                <label style="display:flex; align-items:center; gap: 6px;"><input type="checkbox" id="col_last_value" checked data-ui="stats.col.last" title="stats.col.last"/>last_value</label>
+                <label style="display:flex; align-items:center; gap: 6px;"><input type="checkbox" id="col_newest_time" checked data-ui="stats.col.newest" title="stats.col.newest"/>newest_time</label>
+                <label style="display:flex; align-items:center; gap: 6px;"><input type="checkbox" id="col_oldest_time" data-ui="stats.col.oldest" title="stats.col.oldest"/>oldest_time</label>
+                <label style="display:flex; align-items:center; gap: 6px;"><input type="checkbox" id="col_count" data-ui="stats.col.count" title="stats.col.count"/>count</label>
+                <label style="display:flex; align-items:center; gap: 6px;"><input type="checkbox" id="col_min" data-ui="stats.col.min" title="stats.col.min"/>min</label>
+                <label style="display:flex; align-items:center; gap: 6px;"><input type="checkbox" id="col_max" data-ui="stats.col.max" title="stats.col.max"/>max</label>
+                <label style="display:flex; align-items:center; gap: 6px;"><input type="checkbox" id="col_mean" data-ui="stats.col.mean" title="stats.col.mean"/>mean</label>
+              </div>
+              <div class="muted help" style="margin-top: 6px;">Nachladen berechnet nur Spalten, die ausgewaehlt sind und noch nicht geladen wurden.</div>
+            </div>
+          </div>
         </details>
         <div class="status" id="info" data-ui="stats.info" title="stats.info"></div>
         <div class="progress" aria-hidden="true" style="display:none;"><div id="bar"></div></div>
@@ -178,7 +194,7 @@
           </div>
 
           <div class="table_box" id="tbl_box" data-ui="stats.table.box" title="stats.table.box">
-            <table id="tbl" class="list_tbl ib_tbl" data-ui="stats.table" title="stats.table">
+            <table id="tbl" class="list_tbl ib_tbl" data-sort-custom="1" data-ui="stats.table" title="stats.table">
               <thead>
                 <tr>
                   <th data-key="_sel" style="width: 46px;">sel</th>
@@ -1072,12 +1088,26 @@
         return out;
       }
 
+      function applySortHeader(){
+        try{
+          document.querySelectorAll('#tbl thead tr:first-child th').forEach(th=>{
+            try{ th.removeAttribute('aria-sort'); }catch(e){}
+          });
+          const th = document.querySelector(`#tbl thead tr:first-child th[data-key="${String(SORT.key||'')}"]`);
+          if(!th) return;
+          const dir = (SORT.dir === 'desc') ? 'descending' : 'ascending';
+          th.setAttribute('aria-sort', dir);
+        }catch(e){}
+      }
+
       function render(){
         const q = String($q.value||'').trim().toLowerCase();
         let rows = (ROWS || []).filter(r => !DELETED.has(rowKey(r)));
         rows = rows.filter(r => filterMatches(r));
         if(q) rows = rows.filter(r=>txtRow(r).includes(q));
         rows = sortRows(rows);
+
+        applySortHeader();
 
         LAST_VISIBLE_KEYS = rows.map(r => rowKey(r));
 
