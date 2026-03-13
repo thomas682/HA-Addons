@@ -157,7 +157,50 @@ Buttons
 - Keep consistent sizing (e.g. `.btn_sm` / `.btn_xs`) and spacing.
 - Place primary actions first, destructive actions last.
 
+Graphs
+
+- Graph state and the last graph data should survive page navigation.
+- Preferred approach: store a server-side pointer under `/data` that references an existing cache payload (no DB query on restore).
+  - Dashboard example: write `/data/influxbro_dashboard_last.json` containing `cache_id` + selection metadata.
+  - Restore policy: auto-restore only when the user has no active selection (e.g. entity_id/friendly_name empty) to avoid overwriting inputs.
+  - On restore: load the cached payload from `/data` (e.g. `dash_cache/<cache_id>.data.json.gz`) and redraw the graph.
+  - The UI still persists non-sensitive controls (checkboxes/selects) via the UI state store.
+
 Checkboxes/selects/inputs
 
 - Align vertically in toolbars.
 - Prefer a label text that matches what the user expects (German UI).
+
+### Auswahlfeld (Input + Datalist)
+
+Use this pattern for selection fields where the user should be able to type freely, but still gets guided suggestions.
+This is the standard used for `Einheit (_measurement)` (Dashboard).
+
+Format (markup)
+
+```html
+<div class="control control_lr" id="c_<name>">
+  <label class="label_row">
+    <span><Label text></span>
+    <span id="cnt_<name>" class="muted"></span>
+  </label>
+  <div class="stack">
+    <input id="<name>" list="<name>_list" placeholder="optional" />
+    <datalist id="<name>_list"></datalist>
+  </div>
+</div>
+```
+
+Behavior
+
+- Source of suggestions: load items from an API endpoint and fill the `<datalist>`.
+- Counter: show the number of available suggestions in `cnt_<name>` (e.g. `(123)`).
+- Persistence: the input value is persisted and restored automatically via the UI state store.
+- Dependency refresh: on user input, dependent suggestion lists should be reloaded best-effort (debounced).
+  - Example: `measurement_filter` narrows `friendly_name` / `entity_id` suggestions.
+- Accessibility: the field must work without selecting from the list (free typing).
+
+Responsive layout
+
+- Use `control_lr` (label left, input right) and allow the control to expand to full width when needed.
+- Optional: apply an auto-span behavior for long values (e.g. add `span2` to the container when text is wider than the control).

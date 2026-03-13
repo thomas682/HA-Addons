@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.12.21
+
+### Features
+
+- Dashboard: Letzter Graph wird serverseitig unter `/data` referenziert und beim Oeffnen wiederhergestellt (ohne DB-Query), wenn keine Auswahl gesetzt ist.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.20
 
 ### Fixes

@@ -93,6 +93,10 @@ Weitere Elemente:
 
 - `Erweitert: Measurement / Field`: zeigt die intern aufgeloesten Werte `_measurement` und `_field`.
 - `Aktualisieren`: laedt Graph und Statistik fuer den aktuellen Zeitraum.
+
+Hinweis:
+
+- Wenn du das Dashboard oeffnest und noch keine Auswahl (friendly_name/entity_id) gesetzt ist, wird der letzte Graph best-effort aus dem serverseitigen Cache unter `/data` wiederhergestellt.
 - `Donate`/`PayPal`: Link zur freiwilligen Unterstuetzung.
 - Zusaetzlich gibt es einen "Buy me a coffee" Spendenlink.
 

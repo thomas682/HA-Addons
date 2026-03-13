@@ -70,6 +70,10 @@ UI_PROFILES_LOCK = threading.RLock()
 UI_PROFILES_DIR = DATA_DIR / "ui_profiles"
 UI_PROFILE_ACTIVE_PATH = DATA_DIR / "ui_profile_active.json"
 
+# Dashboard last graph pointer (file-based; restore across browser sessions)
+DASH_LAST_LOCK = threading.RLock()
+DASH_LAST_PATH = DATA_DIR / "influxbro_dashboard_last.json"
+
 # toggled via config (configure_logging)
 CACHE_USAGE_LOGGING = False
 
@@ -1140,6 +1144,65 @@ def _active_profile_set(pid: str) -> None:
             json.dumps({"active": pid, "updated_at": _utc_now_iso_ms()}, indent=2, sort_keys=True, ensure_ascii=True),
             encoding="utf-8",
         )
+    except Exception:
+        return
+
+
+def _dash_last_save(payload: dict[str, Any]) -> None:
+    try:
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        with DASH_LAST_LOCK:
+            DASH_LAST_PATH.write_text(
+                json.dumps(payload or {}, indent=2, sort_keys=True, ensure_ascii=True),
+                encoding="utf-8",
+            )
+    except Exception:
+        return
+
+
+def _dash_last_load() -> dict[str, Any] | None:
+    try:
+        if not DASH_LAST_PATH.exists():
+            return None
+        with DASH_LAST_LOCK:
+            raw = DASH_LAST_PATH.read_text(encoding="utf-8", errors="replace")
+        j = json.loads(raw) if raw else None
+        return j if isinstance(j, dict) else None
+    except Exception:
+        return None
+
+
+def _dash_last_set_from_query(
+    body: dict[str, Any],
+    cache_id: str,
+    key: dict[str, Any] | None,
+) -> None:
+    try:
+        if not cache_id:
+            return
+        measurement = str(body.get("measurement") or "").strip()
+        field = str(body.get("field") or "").strip()
+        if not measurement or not field:
+            return
+        payload = {
+            "v": 1,
+            "at": _utc_now_iso_ms(),
+            "cache_id": str(cache_id),
+            "key": key if isinstance(key, dict) else None,
+            "selection": {
+                "measurement": measurement,
+                "field": field,
+                "entity_id": str(body.get("entity_id") or "").strip() or None,
+                "friendly_name": str(body.get("friendly_name") or "").strip() or None,
+                "range": str(body.get("range") or "").strip() or None,
+                "start": str(body.get("start") or "").strip() or None,
+                "stop": str(body.get("stop") or "").strip() or None,
+                "unit": str(body.get("unit") or "").strip() or None,
+                "detail_mode": str(body.get("detail_mode") or "").strip() or None,
+                "manual_density_pct": body.get("manual_density_pct"),
+            },
+        }
+        _dash_last_save(payload)
     except Exception:
         return
 
@@ -7448,6 +7511,10 @@ def query():
                     except Exception:
                         pass
                     _dash_cache_touch_used(cache_id)
+                    try:
+                        _dash_last_set_from_query(body, cache_id, key)
+                    except Exception:
+                        pass
                     out = dict(cached)
                     out["cached"] = True
                     out["cache"] = {"id": cache_id, "updated_at": meta.get("updated_at")}
@@ -7549,6 +7616,12 @@ def query():
             payload = dict(payload)
             payload["cached"] = False
             payload["cache"] = {"id": cache_id, "updated_at": _utc_now_iso_ms()}
+
+        try:
+            if cache_id:
+                _dash_last_set_from_query(body, cache_id, key)
+        except Exception:
+            pass
         return jsonify(payload)
     except _ApiError as e:
         return jsonify({"ok": False, "error": e.message}), int(e.status)
@@ -9516,6 +9589,43 @@ def api_ui_profiles_apply():
 
     _active_profile_set(pid)
     return jsonify({"ok": True, "active": pid})
+
+
+@app.get("/api/dashboard_last")
+def api_dashboard_last():
+    """Return last dashboard graph result from /data (cache-only; no DB query)."""
+
+    _profiles_ensure_defaults()
+    j = _dash_last_load() or {}
+    cache_id = str(j.get("cache_id") or "").strip()
+    if not cache_id:
+        return jsonify({"ok": True, "found": False})
+
+    meta = _dash_cache_load_meta(cache_id)
+    payload = _dash_cache_load_payload(cache_id)
+    if not meta or not payload or not bool(payload.get("ok")):
+        return jsonify({"ok": True, "found": False, "cache_id": cache_id})
+
+    try:
+        _dash_cache_touch_used(cache_id)
+    except Exception:
+        pass
+
+    sel = j.get("selection") if isinstance(j.get("selection"), dict) else {}
+    return jsonify({
+        "ok": True,
+        "found": True,
+        "cache_id": cache_id,
+        "updated_at": meta.get("updated_at"),
+        "selection": sel,
+        "payload": payload,
+        "cache": {
+            "id": cache_id,
+            "updated_at": meta.get("updated_at"),
+            "dirty": bool(meta.get("dirty")),
+            "mismatch": bool(meta.get("mismatch")),
+        },
+    })
 
 
 @app.get("/api/cache_usage")

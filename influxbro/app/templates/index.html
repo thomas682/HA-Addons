@@ -1585,6 +1585,94 @@ async function cachePeekServerIfAvailable(){
   }
 }
 
+async function cacheRestoreLastDashboardIfAvailable(){
+  // Restore last dashboard graph from backend (/data). Only used when the user has no selection.
+  try{
+    if(($e && String($e.value||'').trim()) || ($n && String($n.value||'').trim())) return false;
+
+    let r;
+    try{ r = await fetch('./api/dashboard_last'); }catch(e){ return false; }
+    if(!r || !r.ok) return false;
+    const j = await r.json().catch(()=>null);
+    if(!j || !j.ok || !j.found) return false;
+    const sel = (j.selection && typeof j.selection === 'object') ? j.selection : {};
+    const payload = (j.payload && typeof j.payload === 'object') ? j.payload : null;
+    if(!payload || !Array.isArray(payload.rows) || !payload.rows.length) return false;
+
+    const ensureSelectOption = (selEl, val) => {
+      try{
+        if(!selEl) return;
+        const s = String(val || '').trim();
+        if(!s) return;
+        const has = Array.from(selEl.options || []).some(o => String(o.value) === s);
+        if(!has){
+          const o = document.createElement('option');
+          o.value = s;
+          o.textContent = s;
+          selEl.appendChild(o);
+        }
+      }catch(e){}
+    };
+
+    try{
+      if(sel.measurement){ ensureSelectOption($m, sel.measurement); $m.value = String(sel.measurement); }
+      await loadFields().catch(()=>{});
+      if(sel.field){ ensureSelectOption($f, sel.field); $f.value = String(sel.field); }
+    }catch(e){}
+
+    try{
+      if($r && sel.range){ $r.value = String(sel.range); }
+      if(String(sel.range||'') === 'custom'){
+        try{ if($start && sel.start) $start.value = toLocalDatetimeValue(new Date(String(sel.start))); }catch(e){}
+        try{ if($stop && sel.stop) $stop.value = toLocalDatetimeValue(new Date(String(sel.stop))); }catch(e){}
+      }
+    }catch(e){}
+
+    try{ if(sel.friendly_name) $n.value = String(sel.friendly_name); }catch(e){}
+    try{ if(sel.entity_id) $e.value = String(sel.entity_id); }catch(e){}
+
+    // restore graph options
+    try{ if($graphDetailMode && sel.detail_mode) $graphDetailMode.value = String(sel.detail_mode); }catch(e){}
+    try{ if($graphManualDensity && sel.manual_density_pct !== undefined && sel.manual_density_pct !== null) $graphManualDensity.value = String(sel.manual_density_pct); }catch(e){}
+    try{ _normalizeDerivToggles(null); }catch(e){}
+    try{ _updateGraphDetailUi(); }catch(e){}
+
+    // Apply data
+    FILTER_TABLE_CLEARED = false;
+    LAST_ROWS = payload.rows;
+    try{ setLastQuery(payload.query || ''); }catch(e){}
+
+    // Sync graph window bounds
+    try{
+      const xs = (LAST_ROWS || []).map(r => Date.parse(r && r.time ? r.time : '')).filter(t => isFinite(t));
+      if(xs.length){
+        const mn = Math.min(...xs);
+        const mx = Math.max(...xs);
+        FULL_GRAPH_BOUNDS = {min: mn, max: mx};
+        TABLE_TIME.graph_start_ms = mn;
+        TABLE_TIME.graph_stop_ms = mx;
+      }
+    }catch(e){}
+
+    renderTable();
+    draw(LAST_ROWS);
+    autoScaleYFromWindow();
+    try{ _applyOverlays(); }catch(e){}
+    try{ _updateGraphPointsInfo(); }catch(e){}
+
+    try{ await loadStats(); }catch(e){}
+    scheduleRawReload(true);
+    try{ cacheSaveDebounced(); }catch(e){}
+    try{ saveState(); }catch(e){}
+    try{ autoSpanAll(); }catch(e){}
+
+    ok('Dashboard wiederhergestellt (Server Cache).');
+    return true;
+  }catch(e){
+    return false;
+  }
+}
+
 function _fmtDur(ms){
   const n = Number(ms);
   if(!isFinite(n) || n < 0) return "-";
@@ -5981,7 +6069,10 @@ try{
     const restored = cacheRestoreIfAvailable();
     if(!restored){
       const serverRestored = await cachePeekServerIfAvailable();
-      if(!serverRestored) renderTable();
+      if(!serverRestored){
+        const lastRestored = await cacheRestoreLastDashboardIfAvailable();
+        if(!lastRestored) renderTable();
+      }
     }
 
     // Ensure graph query panel reflects persisted selection.
