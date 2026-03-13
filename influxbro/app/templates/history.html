@@ -26,6 +26,9 @@
     .tbl_actions { display:flex; gap: 10px; align-items:center; flex-wrap:wrap; margin-top: 10px; }
     .tbl_actions label { display:flex; gap: 6px; align-items:center; font-size: 12px; opacity: 0.85; }
     .tbl_actions input[type="checkbox"] { width:auto; height:auto; padding:0; margin:0; }
+    .table_wrap { border: 1px solid #eee; border-radius: 12px; padding: 10px; margin-top: 10px; }
+    .table_title { font-weight: 800; font-size: 14px; margin-bottom: 6px; }
+    .table_head { display:flex; justify-content:space-between; gap: 12px; align-items:flex-end; flex-wrap:wrap; }
     tr.selected { background: #e8f1ff; }
     code { background:#f6f6f6; padding:2px 6px; border-radius:6px; }
   </style>
@@ -93,37 +96,42 @@
           <div class="muted" style="min-width: 320px; flex:1; padding-top: 6px;">Sicherheit: Rollback erfordert die Phrase <code>{{ delete_phrase }}</code>.</div>
         </div>
 
-        <div class="tbl_actions" data-ui="history.table.actions" title="history.table.actions">
-          <button id="hist_autowidth" class="btn_sm" data-ui="history.table.autowidth" title="history.table.autowidth">Spaltenbreite automatisch</button>
-          <button id="hist_windowwidth" class="btn_sm" data-ui="history.table.windowwidth" title="history.table.windowwidth">Fensterbreite</button>
-          <label><input type="checkbox" id="hist_wrap" data-ui="history.table.wrap" title="history.table.wrap"/>Umbruch</label>
-          <label><input type="checkbox" id="hist_colfilter" data-ui="history.table.colfilter" title="history.table.colfilter"/>Spaltenfilter</label>
-        </div>
+        <div class="table_wrap" data-ui="history.table.wrap" title="history.table.wrap">
+          <div class="table_title">History Liste</div>
+          <div class="table_head" data-ui="history.table.head" title="history.table.head">
+            <div class="tbl_actions" data-ui="history.table.actions" title="history.table.actions">
+              <button id="hist_autowidth" class="btn_sm" data-ui="history.table.autowidth" title="history.table.autowidth">Spaltenbreite automatisch</button>
+              <button id="hist_windowwidth" class="btn_sm" data-ui="history.table.windowwidth" title="history.table.windowwidth">Fensterbreite</button>
+              <label><input type="checkbox" id="hist_wrap" data-ui="history.table.wrap" title="history.table.wrap"/>Umbruch</label>
+              <label><input type="checkbox" id="hist_colfilter" data-ui="history.table.colfilter" title="history.table.colfilter"/>Spaltenfilter</label>
+            </div>
+            <div class="muted" id="info" data-ui="history.table.info" title="history.table.info"></div>
+          </div>
 
-        <div id="err" class="err"></div>
-        <div id="ok" class="ok"></div>
+          <div id="err" class="err"></div>
+          <div id="ok" class="ok"></div>
 
-        <div class="table_box" id="hist_box">
-          <table id="tbl" class="ib_tbl" data-ui="history.table" title="history.table">
-            <thead>
-              <tr>
-                <th style="width: 34px;"><input type="checkbox" id="sel_all" data-ui="history.select_all" title="history.select_all"/></th>
-                <th style="width: 170px;">Datum</th>
-                <th style="width: 100px;">Aktion</th>
-                <th style="width: 240px;">Messwertname (friendly_name)</th>
-                <th style="width: 220px;">Entity ID (entity_id)</th>
-                <th style="width: 220px;">Einheit (_measurement)</th>
-                <th style="width: 160px;">Feld (_field)</th>
-                <th style="width: 190px;">Zeitpunkt</th>
-                <th style="width: 120px;">Alt</th>
-                <th style="width: 120px;">Neu</th>
-                <th>Grund</th>
-              </tr>
-            </thead>
-            <tbody id="rows"></tbody>
-          </table>
+          <div class="table_box" id="hist_box">
+            <table id="tbl" class="ib_tbl" data-ui="history.table" title="history.table">
+              <thead>
+                <tr>
+                  <th style="width: 34px;"><input type="checkbox" id="sel_all" data-ui="history.select_all" title="history.select_all"/></th>
+                  <th style="width: 170px;">Datum</th>
+                  <th style="width: 100px;">Aktion</th>
+                  <th style="width: 240px;">Messwertname (friendly_name)</th>
+                  <th style="width: 220px;">Entity ID (entity_id)</th>
+                  <th style="width: 220px;">Einheit (_measurement)</th>
+                  <th style="width: 160px;">Feld (_field)</th>
+                  <th style="width: 190px;">Zeitpunkt</th>
+                  <th style="width: 120px;">Alt</th>
+                  <th style="width: 120px;">Neu</th>
+                  <th>Grund</th>
+                </tr>
+              </thead>
+              <tbody id="rows"></tbody>
+            </table>
+          </div>
         </div>
-        <div class="muted" id="info" style="margin-top: 10px;"></div>
       </div>
     </main>
   </div>
@@ -328,6 +336,33 @@
           try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.setVisible('#tbl', $histColFilter.checked); }catch(e){}
         });
       }
+    }catch(e){}
+
+    // Table info (purpose/columns/actions)
+    try{
+      const pkey = String(location && location.pathname ? location.pathname : '/').replace(/\/api\/hassio_ingress\/[0-9a-fA-F]+/g, '').replace(/\/+$/g, '') || '/';
+      window.InfluxBroTableInfoSpec = window.InfluxBroTableInfoSpec || {};
+      window.InfluxBroTableInfoSpec[pkey + ':tbl'] = {
+        purpose: 'Protokolliert Aktionen wie ueberschreiben/loeschen sowie Rollbacks. Dient als Audit-Log und fuer gezielte Rollback-Operationen.',
+        columns: {
+          'Datum': 'Zeitpunkt des Logeintrags (lokal angezeigt).',
+          'Aktion': 'Art der Aktion: ueberschreiben/loeschen/rollback.',
+          'Messwertname (friendly_name)': 'Klartextname (Home Assistant friendly_name).',
+          'Entity ID (entity_id)': 'Entity-ID der Serie (falls vorhanden).',
+          'Einheit (_measurement)': 'Influx Measurement (_measurement).',
+          'Feld (_field)': 'Influx Field (_field).',
+          'Zeitpunkt': 'Zeitstempel des betroffenen Datenpunkts.',
+          'Alt': 'Wert vor der Aktion.',
+          'Neu': 'Wert nach der Aktion (bei delete ggf. leer).',
+          'Grund': 'Beschreibung/Grund der Aenderung.',
+        },
+        actions: [
+          'Rollback selektierte: Fuehrt Rollback fuer die markierten Logeintraege aus (erfordert Phrase).',
+          'Rollback Zeitraum: Fuehrt Rollback fuer einen vordefinierten Zeitraum aus (erfordert Phrase).',
+          'Spaltenbreite automatisch / Fensterbreite: passt Spaltenbreiten an.',
+          'Umbruch/Spaltenfilter: Darstellung und Filterzeile toggeln.',
+        ],
+      };
     }catch(e){}
   })();
   </script>

@@ -56,6 +56,13 @@
     .page_grid { display:grid; grid-template-columns: minmax(320px, 1.15fr) minmax(320px, 0.85fr); gap: 12px; align-items:start; }
     @media (max-width: 980px){ .page_grid { grid-template-columns: 1fr; } }
 
+    .table_wrap { border: 1px solid #eee; border-radius: 12px; padding: 10px; margin-top: 10px; }
+    .table_title { font-weight: 800; font-size: 14px; margin-bottom: 6px; }
+    .table_head { display:flex; justify-content:space-between; gap: 12px; align-items:flex-end; flex-wrap:wrap; }
+    .tbl_actions { display:flex; gap: 10px; align-items:flex-end; flex-wrap:wrap; }
+    .tbl_actions label { display:flex; gap: 6px; align-items:center; font-size: 12px; opacity: 0.85; }
+    .tbl_actions input[type="checkbox"] { width:auto; height:auto; padding:0; margin:0; }
+
     /* Resizable blocks */
     #plan_query, #run_details_pre, #run_preview_pre { resize: vertical; overflow:auto; }
   </style>
@@ -69,66 +76,53 @@
 
        <div class="page_grid">
 
-         <div class="card" data-ui="restore.source" title="restore.source" style="--restore_visible_rows: {{ (cfg.get('ui_restore_visible_rows') or 24) | int }};">
-           <div style="font-weight:700;">Quelle (Backup)</div>
-          <div class="row">
-            <div style="min-width: 320px; flex:1;">
-              <label>Volltextsuche</label>
-              <div class="row" style="margin-top:0; align-items:center; gap: 8px;">
-                <input id="q_backup" placeholder="created_at, name, measurement, field..." data-ui="restore.backup_search" title="restore.backup_search" style="flex:1; min-width: 220px;" />
-                <button id="q_backup_all" class="btn_sm" data-ui="restore.search_all" title="restore.search_all" style="height:34px; padding:8px 10px;">Alle</button>
-                <button id="q_backup_from_dash" class="btn_sm" data-ui="restore.search_from_dash" title="restore.search_from_dash" style="height:34px; padding:8px 10px;">aus Dashboardauswahl</button>
+          <div class="card" data-ui="restore.source" title="restore.source" style="--restore_visible_rows: {{ (cfg.get('ui_restore_visible_rows') or 24) | int }};">
+            <div style="font-weight:700;">Quelle (Backup)</div>
+            <div class="table_wrap" data-ui="restore.table.wrap" title="restore.table.wrap">
+              <div class="table_title">Backups (Quelle)</div>
+              <div class="table_head" data-ui="restore.table.head" title="restore.table.head">
+                <div class="tbl_actions" data-ui="restore.table.actions" title="restore.table.actions">
+                  <div style="min-width: 320px; flex:1;">
+                    <label>Volltextsuche</label>
+                    <div class="row" style="margin-top:0; align-items:center; gap: 8px;">
+                      <input id="q_backup" placeholder="created_at, name, measurement, field..." data-ui="restore.backup_search" title="restore.backup_search" style="flex:1; min-width: 220px;" />
+                      <button id="q_backup_all" class="btn_sm" data-ui="restore.search_all" title="restore.search_all" style="height:34px; padding:8px 10px;">Alle</button>
+                      <button id="q_backup_from_dash" class="btn_sm" data-ui="restore.search_from_dash" title="restore.search_from_dash" style="height:34px; padding:8px 10px;">aus Dashboardauswahl</button>
+                    </div>
+                  </div>
+                  <button id="reload" data-ui="restore.reload" title="restore.reload">Liste aktualisieren</button>
+                  <button id="backup_download" class="btn_sm" data-ui="restore.backup_download" title="restore.backup_download" style="height:34px; padding:8px 10px;">Download</button>
+                  <button id="restore_autowidth" class="btn_sm" data-ui="restore.autowidth" title="restore.autowidth" style="height:34px; padding:8px 10px;">Spaltenbreite automatisch</button>
+                  <button id="restore_windowwidth" class="btn_sm" data-ui="restore.windowwidth" title="restore.windowwidth" style="height:34px; padding:8px 10px;">Fensterbreite</button>
+                  <label style="display:flex; align-items:center; gap: 6px; padding-top: 6px;"><input type="checkbox" id="restore_wrap" data-ui="restore.wrap" title="restore.wrap"/>Umbruch</label>
+                  <label style="display:flex; align-items:center; gap: 6px; padding-top: 6px;"><input type="checkbox" id="restore_colfilter" data-ui="restore.colfilter" title="restore.colfilter"/>Spaltenfilter</label>
+                </div>
+                <div class="muted" id="src_info" data-ui="restore.src_info" title="restore.src_info"></div>
+              </div>
+
+              <div class="table_box" id="restore_box" data-ui="restore.table_box" title="restore.table_box">
+                <table id="restore_tbl" class="list_tbl ib_tbl" data-ui="restore.backup_table" title="restore.backup_table">
+                  <thead>
+                    <tr>
+                      <th style="width: 34px;">Ausw.</th>
+                      <th>Backup Datum</th>
+                      <th>Zeitraum</th>
+                      <th>Name</th>
+                      <th>kind</th>
+                      <th>_measurement</th>
+                      <th>_field</th>
+                      <th>entity_id</th>
+                      <th>friendly_name</th>
+                      <th>Werte</th>
+                      <th>Groesse</th>
+                      <th>Datei</th>
+                    </tr>
+                  </thead>
+                  <tbody id="rows"></tbody>
+                </table>
               </div>
             </div>
-             <div>
-               <label>&nbsp;</label>
-               <button id="reload" data-ui="restore.reload" title="restore.reload">Liste aktualisieren</button>
-             </div>
-             <div>
-               <label>&nbsp;</label>
-               <button id="backup_download" class="btn_sm" data-ui="restore.backup_download" title="restore.backup_download">Download</button>
-             </div>
-              <div>
-                <label>&nbsp;</label>
-                <button id="restore_autowidth" class="btn_sm" data-ui="restore.autowidth" title="restore.autowidth">Spaltenbreite automatisch</button>
-              </div>
-             <div>
-               <label>&nbsp;</label>
-               <button id="restore_windowwidth" class="btn_sm" data-ui="restore.windowwidth" title="restore.windowwidth">Fensterbreite</button>
-             </div>
-             <div>
-               <label>&nbsp;</label>
-               <label style="display:flex; align-items:center; gap: 6px; padding-top: 6px;"><input type="checkbox" id="restore_wrap" data-ui="restore.wrap" title="restore.wrap"/>Umbruch</label>
-             </div>
-             <div>
-               <label>&nbsp;</label>
-               <label style="display:flex; align-items:center; gap: 6px; padding-top: 6px;"><input type="checkbox" id="restore_colfilter" data-ui="restore.colfilter" title="restore.colfilter"/>Spaltenfilter</label>
-             </div>
-           </div>
-
-          <div class="table_box" id="restore_box" data-ui="restore.table_box" title="restore.table_box">
-              <table id="restore_tbl" class="list_tbl ib_tbl" data-ui="restore.backup_table" title="restore.backup_table">
-              <thead>
-                <tr>
-                  <th style="width: 34px;">Ausw.</th>
-                  <th>Backup Datum</th>
-                  <th>Zeitraum</th>
-                  <th>Name</th>
-                  <th>kind</th>
-                  <th>_measurement</th>
-                  <th>_field</th>
-                  <th>entity_id</th>
-                  <th>friendly_name</th>
-                  <th>Werte</th>
-                  <th>Groesse</th>
-                  <th>Datei</th>
-                </tr>
-              </thead>
-             <tbody id="rows"></tbody>
-           </table>
-         </div>
-         <div class="muted" id="src_info" data-ui="restore.src_info" title="restore.src_info"></div>
-       </div>
+        </div>
 
        <div class="card" data-ui="restore.target" title="restore.target">
           <div style="font-weight:700;">Ziel (Messwert)</div>
@@ -1070,6 +1064,35 @@
               try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.setVisible('#restore_tbl', $restoreColFilter.checked); }catch(e){}
             });
           }
+        }catch(e){}
+
+        // Table info (purpose/columns/actions)
+        try{
+          const pkey = String(location && location.pathname ? location.pathname : '/').replace(/\/api\/hassio_ingress\/[0-9a-fA-F]+/g, '').replace(/\/+$/g, '') || '/';
+          window.InfluxBroTableInfoSpec = window.InfluxBroTableInfoSpec || {};
+          window.InfluxBroTableInfoSpec[pkey + ':restore_tbl'] = {
+            purpose: 'Quelle-Liste aller Backups. Du waehst hier das Backup aus, das als Grundlage fuer den Restore in den Ziel-Messwert dient.',
+            columns: {
+              'Ausw.': 'Radio-Button: genau ein Backup als Quelle auswaehlen.',
+              'Backup Datum': 'Zeitpunkt der Backup-Erstellung.',
+              'Zeitraum': 'Start/Stop des gesicherten Zeitbereichs.',
+              'Name': 'Anzeigename des Backups (aus Metadaten).',
+              'kind': 'Art des Backups (full/range).',
+              '_measurement': 'Influx Measurement der gesicherten Serie.',
+              '_field': 'Influx Field der gesicherten Serie.',
+              'entity_id': 'Tag entity_id (falls vorhanden).',
+              'friendly_name': 'Tag friendly_name (falls vorhanden).',
+              'Werte': 'Anzahl gesicherter Punkte.',
+              'Groesse': 'Dateigroesse (ZIP).',
+              'Datei': 'ZIP-Dateiname im Backup-Verzeichnis.',
+            },
+            actions: [
+              'Liste aktualisieren: laedt die Backup-Liste neu.',
+              'Download: laedt das selektierte Backup als ZIP (Meta + Line Protocol).',
+              'Spaltenbreite automatisch / Fensterbreite: passt Spaltenbreiten an.',
+              'Umbruch/Spaltenfilter: Darstellung und Filterzeile toggeln.',
+            ],
+          };
         }catch(e){}
       })();
       </script>

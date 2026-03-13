@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.12.18
+
+### Fixes
+
+- Tabellen: Struktur gem. `Template.md` vereinheitlicht (Rahmen + Tabellenueberschrift pro Tabelle), so dass Zeilenzaehler und Spalten-Auswahl ueberall konsistent funktionieren.
+
+### Features
+
+- Tabellen: Info-Icon (Buch) ist pro Tabelle mit Zweck/Spalten/Aktionen ausfuehrlich befuellt.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.17
 
 ### Fixes

@@ -99,6 +99,7 @@
         <div id="err" class="err"></div>
 
         <div class="table_wrap" data-ui="jobs.table.wrap" title="jobs.table.wrap">
+          <div class="table_title">Jobs</div>
           <div class="table_head" data-ui="jobs.table.head" title="jobs.table.head">
             <div class="tbl_actions" data-ui="jobs.table.actions" title="jobs.table.actions">
               <button class="btn_xs" id="jobs_autowidth" data-ui="jobs.table.autowidth" title="jobs.table.autowidth">Spaltenbreite automatisch</button>
@@ -157,6 +158,7 @@
         <div id="cache_err" class="err"></div>
 
         <div class="table_wrap" data-ui="cache.table.wrap" title="cache.table.wrap">
+          <div class="table_title">Cache</div>
           <div class="table_head" data-ui="cache.table.head" title="cache.table.head">
             <div class="tbl_actions" data-ui="cache.table.actions" title="cache.table.actions">
               <button class="btn_xs" id="cache_autowidth" data-ui="cache.table.autowidth" title="cache.table.autowidth">Spaltenbreite automatisch</button>
@@ -208,6 +210,7 @@
         <div id="timers_err" class="err"></div>
 
         <div class="table_wrap" data-ui="timers.table.wrap" title="timers.table.wrap">
+          <div class="table_title">Timer Jobs</div>
           <div class="table_head" data-ui="timers.table.head" title="timers.table.head">
             <div class="tbl_actions" data-ui="timers.table.actions" title="timers.table.actions">
               <button class="btn_xs" id="timers_autowidth" data-ui="timers.table.autowidth" title="timers.table.autowidth">Spaltenbreite automatisch</button>
@@ -271,6 +274,7 @@
         <div id="usage_err" class="err"></div>
 
         <div class="table_wrap" data-ui="usage.table.wrap" title="usage.table.wrap">
+          <div class="table_title">Cache Nutzung</div>
           <div class="table_head" data-ui="usage.table.head" title="usage.table.head">
             <div class="tbl_actions" data-ui="usage.table.actions" title="usage.table.actions">
               <button class="btn_xs" id="usage_autowidth" data-ui="usage.table.autowidth" title="usage.table.autowidth">Spaltenbreite automatisch</button>
@@ -1118,6 +1122,96 @@
       {% include "_tooltips.html" %}
 
       <script>
+      // Table info (purpose/columns/actions)
+      try{
+        const pkey = String(location && location.pathname ? location.pathname : '/').replace(/\/api\/hassio_ingress\/[0-9a-fA-F]+/g, '').replace(/\/+$/g, '') || '/';
+        window.InfluxBroTableInfoSpec = window.InfluxBroTableInfoSpec || {};
+        window.InfluxBroTableInfoSpec[pkey + ':tbl'] = {
+          purpose: 'Zeigt laufende und abgeschlossene Background-Jobs (z.B. Statistik, Restore/Copy, Cache-Updates). Dient zur Kontrolle und zum Abbrechen.',
+          columns: {
+            'started': 'Startzeitpunkt des Jobs.',
+            'elapsed': 'Laufzeit (stoppt nach Abschluss).',
+            'type': 'Job-Typ (global_stats, restore_copy, backup, dash_cache, export, ...).',
+            'state': 'Status (running/done/error/cancelled).',
+            '%': 'Fortschritt (best-effort).',
+            'message': 'Kurzbeschreibung des aktuellen Schritts.',
+            'current': 'Aktuelles Element/Parameter (best-effort).',
+            'error': 'Fehlermeldung (falls vorhanden).',
+            'actions': 'Buttons fuer Details/Copy/Open/Abbruch.',
+          },
+          actions: [
+            'Details: zeigt alle Felder des Jobs (inkl. Trigger-Infos).',
+            'Copy ID: kopiert die job_id in die Zwischenablage.',
+            'Open Statistik: oeffnet die Statistik-Seite fuer global_stats Jobs.',
+            'Abbruch: bricht den Job ab (best-effort).',
+          ],
+        };
+        window.InfluxBroTableInfoSpec[pkey + ':cache_tbl'] = {
+          purpose: 'Zeigt alle serverseitigen Cache-Eintraege (Dashboard + Statistik) unter /data. Dient zur Diagnose, Pruefung und Pflege.',
+          columns: {
+            'ok': 'Letztes Check-Ergebnis (Icon): OK/CHANGED/dirty/mismatch/stale.',
+            'id': 'Eindeutige Cache-ID (klickbar; kopiert und markiert die Zeile).',
+            'Bereich': 'Cache-Bereich (Dashboard/Statistik).',
+            'Ausloeser': 'Wodurch der Cache erzeugt/aktualisiert wurde.',
+            'updated': 'Letztes Update des Cache-Payloads.',
+            'last used': 'Letzte Verwendung (read) im UI/Backend.',
+            'next update': 'Naechstes geplantes Update (Scheduler).',
+            'age': 'Alter seit letztem Update.',
+            'Modus': 'Refresh-Modus (hours/daily) und Parameter.',
+            'series': 'Zuordnung zur Serie (measurement/field oder global_stats).',
+            'tags': 'Tags (entity_id/friendly_name oder Filter).',
+            'range': 'Zeitraum-Schluessel des Cache.',
+            'rows': 'Zeilenanzahl im Cache.',
+            'size': 'Speicherbedarf (Bytes/MB).',
+            'check': 'Letzter Check-Zeitpunkt + Ergebnis.',
+            'flags': 'dirty/changed/stale Flags.',
+            'actions': 'Info/Pruefen/Aktualisieren/Loeschen.',
+          },
+          actions: [
+            'Info: zeigt Cache-Details inkl. letzter Events.',
+            'Pruefen (Dashboard): vergleicht Cache gegen DB (best-effort).',
+            'Aktualisieren: erzeugt Cache neu (best-effort).',
+            'Loeschen: entfernt Cache-Dateien (nur /data Cache).',
+          ],
+        };
+        window.InfluxBroTableInfoSpec[pkey + ':timers_tbl'] = {
+          purpose: 'Zeigt Timer Jobs (Scheduler) fuer Cache/Statistik. Dient zum manuellen Start/Abbruch und zur Anzeige von last/next run.',
+          columns: {
+            'id': 'Stabile Timer-ID.',
+            'enabled': 'Aktiv/Auto-Update Status.',
+            'Modus': 'Aktueller Refresh-Modus (hours/daily) und Parameter.',
+            'last run': 'Zeitpunkt des letzten abgeschlossenen Laufs (persistent).',
+            'next run': 'Naechster geplanter Lauf.',
+            'Kommentar': 'Kurzbeschreibung des Timers.',
+            'action': 'Modus/Start/Abbruch.',
+          },
+          actions: [
+            'Modus: aendert Refresh-Modus und Parameter.',
+            'Start: startet einen faelligen Job sofort (best-effort).',
+            'Abbruch: bricht den laufenden Timer-Job ab (best-effort).',
+          ],
+        };
+        window.InfluxBroTableInfoSpec[pkey + ':usage_tbl'] = {
+          purpose: 'Zeitstempel-Log der Cache-Nutzung (Hit/Miss/Read/Write). Dient zur Diagnose und Performance-Analyse.',
+          columns: {
+            'at': 'Zeitpunkt des Events.',
+            'kind': 'Event-Art (hit/miss/read/write/ui_event/...).',
+            'page': 'Quelle (UI-Seite/Endpoint).',
+            'run_id': 'Korrelation einer Query/Job-Run Sequenz.',
+            'cache_id': 'Cache-ID (klickbar; springt zur Cache-Zeile).',
+            'step': 'Teil-Schritt (z.B. load/query/store).',
+            'dur_ms': 'Dauer in Millisekunden.',
+            'rows': 'Zeilenanzahl (falls relevant).',
+            'bytes': 'Payload-Groesse (falls relevant).',
+            'note': 'Zusatzinfo/Kommentar.',
+          },
+          actions: [
+            'Log leeren: entfernt Usage-Log (in-memory + /data jsonl).',
+            'logge Caching: schreibt Usage zusaetzlich ins Add-on Logfile.',
+          ],
+        };
+      }catch(e){}
+
       // Run after shared helpers are loaded.
       try{ initTableUi(); }catch(e){}
       </script>

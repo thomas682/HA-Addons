@@ -55,6 +55,13 @@
     .table_box { overflow:auto; border: 1px solid #eee; border-radius: 12px; margin-top: 10px; max-height: calc(var(--backup_visible_rows, 24) * var(--backup_row_h) + 48px); }
     .space_box { border: 1px dashed #ddd; border-radius: 12px; padding: 10px 12px; background: #fafafa; font-size: 12px; margin-top: 10px; }
     .warn { color: #b26a00; }
+
+    .table_wrap { border: 1px solid #eee; border-radius: 12px; padding: 10px; margin-top: 10px; }
+    .table_title { font-weight: 800; font-size: 14px; margin-bottom: 6px; }
+    .table_head { display:flex; justify-content:space-between; gap: 12px; align-items:flex-end; flex-wrap:wrap; }
+    .tbl_actions { display:flex; gap: 10px; align-items:flex-end; flex-wrap:wrap; }
+    .tbl_actions label { display:flex; gap: 6px; align-items:center; font-size: 12px; opacity: 0.85; }
+    .tbl_actions input[type="checkbox"] { width:auto; height:auto; padding:0; margin:0; }
   </style>
 </head>
 <body>
@@ -148,10 +155,7 @@
           </div>
           <div><label>&nbsp;</label><button id="reload" data-ui="backup.reload" title="backup.reload">Liste aktualisieren</button></div>
           <div><label>&nbsp;</label><button id="cancel" class="btn_sm" data-ui="backup.cancel" title="backup.cancel" disabled>Abbruch</button></div>
-          <div><label>&nbsp;</label><button id="backup_autowidth" class="btn_sm" data-ui="backup.autowidth" title="backup.autowidth">Spaltenbreite automatisch</button></div>
-          <div><label>&nbsp;</label><button id="backup_windowwidth" class="btn_sm" data-ui="backup.windowwidth" title="backup.windowwidth">Fensterbreite</button></div>
-          <div><label>&nbsp;</label><label style="display:flex; align-items:center; gap: 6px; padding-top: 6px;"><input type="checkbox" id="backup_wrap" data-ui="backup.wrap" title="backup.wrap"/>Umbruch</label></div>
-          <div><label>&nbsp;</label><label style="display:flex; align-items:center; gap: 6px; padding-top: 6px;"><input type="checkbox" id="backup_colfilter" data-ui="backup.colfilter" title="backup.colfilter"/>Spaltenfilter</label></div>
+          <!-- table controls are placed in the table header frame -->
           <div><label>&nbsp;</label><button id="del" data-ui="backup.delete" title="backup.delete">Backup loeschen</button></div>
           <div><label>&nbsp;</label><button id="download" class="btn_sm" data-ui="backup.download" title="backup.download" style="display:none;">Download</button></div>
         </div>
@@ -174,39 +178,49 @@
         <div class="muted" id="loc" data-ui="backup.location" title="backup.location" style="margin-top:10px;"></div>
         <div class="space_box" id="space" data-ui="backup.space" title="backup.space" style="display:none;"></div>
 
-        <div class="row" style="margin-top: 10px;" data-ui="backup.search_row" title="backup.search_row">
-          <div style="min-width: 320px; flex:1;">
-            <label>Volltextsuche (Backups)</label>
-            <div class="row" style="margin-top:0; align-items:center; gap: 8px;">
-              <input id="q_backup" placeholder="created_at, name, measurement, field, entity_id..." data-ui="backup.search" title="backup.search" style="flex:1; min-width: 220px;" />
-              <button id="q_backup_all" class="btn_sm" data-ui="backup.search_all" title="backup.search_all" style="height:34px; padding:8px 10px;">Alle</button>
-              <button id="q_backup_from_dash" class="btn_sm" data-ui="backup.search_from_dash" title="backup.search_from_dash" style="height:34px; padding:8px 10px;">aus Dashboardauswahl</button>
+        <div class="table_wrap" data-ui="backup.table.wrap" title="backup.table.wrap">
+          <div class="table_title">Backups</div>
+          <div class="table_head" data-ui="backup.table.head" title="backup.table.head">
+            <div class="tbl_actions" data-ui="backup.table.actions" title="backup.table.actions">
+              <div style="min-width: 320px; flex:1;">
+                <label>Volltextsuche (Backups)</label>
+                <div class="row" style="margin-top:0; align-items:center; gap: 8px;">
+                  <input id="q_backup" placeholder="created_at, name, measurement, field, entity_id..." data-ui="backup.search" title="backup.search" style="flex:1; min-width: 220px;" />
+                  <button id="q_backup_all" class="btn_sm" data-ui="backup.search_all" title="backup.search_all" style="height:34px; padding:8px 10px;">Alle</button>
+                  <button id="q_backup_from_dash" class="btn_sm" data-ui="backup.search_from_dash" title="backup.search_from_dash" style="height:34px; padding:8px 10px;">aus Dashboardauswahl</button>
+                </div>
+              </div>
+
+              <button id="backup_autowidth" class="btn_sm" data-ui="backup.autowidth" title="backup.autowidth" style="height:34px; padding:8px 10px;">Spaltenbreite automatisch</button>
+              <button id="backup_windowwidth" class="btn_sm" data-ui="backup.windowwidth" title="backup.windowwidth" style="height:34px; padding:8px 10px;">Fensterbreite</button>
+              <label style="display:flex; align-items:center; gap: 6px; padding-top: 6px;"><input type="checkbox" id="backup_wrap" data-ui="backup.wrap" title="backup.wrap"/>Umbruch</label>
+              <label style="display:flex; align-items:center; gap: 6px; padding-top: 6px;"><input type="checkbox" id="backup_colfilter" data-ui="backup.colfilter" title="backup.colfilter"/>Spaltenfilter</label>
             </div>
             <div class="muted" id="list_info" data-ui="backup.list_info" title="backup.list_info"></div>
           </div>
-        </div>
 
-         <div class="table_box" id="backup_box" data-ui="backup.table_box" title="backup.table_box">
-         <table data-ui="backup.table" title="backup.table" id="backup_tbl" class="ib_tbl">
-          <thead>
-            <tr>
-              <th style="width:20px;"><input type="checkbox" id="sel_all" data-ui="backup.select_all" title="backup.select_all"/></th>
-              <th>Backup Datum</th>
-              <th>Zeitraum</th>
-              <th>Name</th>
-              <th>kind</th>
-              <th>_measurement</th>
-              <th>_field</th>
-              <th>entity_id</th>
-              <th>friendly_name</th>
-              <th>Anzahl Werte</th>
-              <th>Groesse</th>
-              <th>Datei</th>
-            </tr>
-          </thead>
-          <tbody id="rows"></tbody>
-         </table>
-         </div>
+          <div class="table_box" id="backup_box" data-ui="backup.table_box" title="backup.table_box">
+            <table data-ui="backup.table" title="backup.table" id="backup_tbl" class="ib_tbl">
+              <thead>
+                <tr>
+                  <th style="width:20px;"><input type="checkbox" id="sel_all" data-ui="backup.select_all" title="backup.select_all"/></th>
+                  <th>Backup Datum</th>
+                  <th>Zeitraum</th>
+                  <th>Name</th>
+                  <th>kind</th>
+                  <th>_measurement</th>
+                  <th>_field</th>
+                  <th>entity_id</th>
+                  <th>friendly_name</th>
+                  <th>Anzahl Werte</th>
+                  <th>Groesse</th>
+                  <th>Datei</th>
+                </tr>
+              </thead>
+              <tbody id="rows"></tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
       <script>
@@ -1251,6 +1265,35 @@
                 try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.setVisible('#backup_tbl', $backupColFilter.checked); }catch(e){}
               });
             }
+          }catch(e){}
+
+          // Table info (purpose/columns/actions)
+          try{
+            const pkey = String(location && location.pathname ? location.pathname : '/').replace(/\/api\/hassio_ingress\/[0-9a-fA-F]+/g, '').replace(/\/+$/g, '') || '/';
+            window.InfluxBroTableInfoSpec = window.InfluxBroTableInfoSpec || {};
+            window.InfluxBroTableInfoSpec[pkey + ':backup_tbl'] = {
+              purpose: 'Zeigt alle vorhandenen Backups fuer den aktuell ausgewaehlten Messwert und ermoeglicht Download/Loeschen sowie das Erstellen neuer Backups.',
+              columns: {
+                'Backup Datum': 'Zeitpunkt der Backup-Erstellung.',
+                'Zeitraum': 'Start/Stop des gesicherten Zeitbereichs.',
+                'Name': 'Anzeigename des Backups (aus Metadaten).',
+                'kind': 'Art des Backups (full/range).',
+                '_measurement': 'Influx Measurement der gesicherten Serie.',
+                '_field': 'Influx Field der gesicherten Serie.',
+                'entity_id': 'Tag entity_id (falls vorhanden).',
+                'friendly_name': 'Tag friendly_name (falls vorhanden).',
+                'Anzahl Werte': 'Anzahl der gesicherten Punkte.',
+                'Groesse': 'Dateigroesse (ZIP).',
+                'Datei': 'ZIP-Dateiname im Backup-Verzeichnis.',
+              },
+              actions: [
+                'Fullbackup: erstellt ein Backup fuer alle Werte des Messwerts.',
+                'Zeitbereich Backup (Zoom/Auswahl): erstellt ein Backup fuer den gewaehlten Zeitraum.',
+                'Liste aktualisieren: laedt die Backup-Liste neu.',
+                'Backup loeschen: loescht das selektierte Backup (nur Dateien unter /data).',
+                'Download: laedt das selektierte Backup als ZIP (Meta + Line Protocol).',
+              ],
+            };
           }catch(e){}
         })();
         </script>

@@ -56,6 +56,13 @@
     table.cfg_tbl th { background: #fafafa; font-size: 12px; opacity: 0.85; text-align: left; }
     table.cfg_tbl tr.selected { background: #fff3d6; }
     table.cfg_tbl input { height: 34px; padding: 6px 10px; }
+
+    .table_wrap { border: 1px solid #eee; border-radius: 12px; padding: 10px; margin-top: 10px; }
+    .table_title { font-weight: 800; font-size: 14px; margin-bottom: 6px; }
+    .table_head { display:flex; justify-content:space-between; gap: 12px; align-items:flex-end; flex-wrap:wrap; }
+    .tbl_actions { display:flex; gap: 10px; align-items:center; flex-wrap:wrap; }
+    .tbl_actions label { display:flex; gap: 6px; align-items:center; font-size: 12px; opacity: 0.85; }
+    .tbl_actions input[type="checkbox"] { width:auto; height:auto; padding:0; margin:0; }
   </style>
 </head>
 <body>
@@ -601,32 +608,33 @@
       </div>
 
        <div class="span2">
-         <div class="row" style="align-items: stretch;">
-           <div style="min-width: 160px;"><button id="outliers_autowidth" type="button" data-ui="settings.outliers.autofit" title="settings.outliers.autofit">Auto-Fit</button></div>
-           <div style="min-width: 160px;"><button id="outliers_windowwidth" type="button" data-ui="settings.outliers.windowfit" title="settings.outliers.windowfit">Fensterbreite</button></div>
-           <label style="display:flex; align-items:center; gap: 6px; padding: 0 4px;"><input type="checkbox" id="outliers_wrap" data-ui="settings.outliers.wrap" title="settings.outliers.wrap"/>Umbruch</label>
-           <label style="display:flex; align-items:center; gap: 6px; padding: 0 4px;"><input type="checkbox" id="outliers_colfilter" data-ui="settings.outliers.colfilter" title="settings.outliers.colfilter"/>Spaltenfilter</label>
-           <div class="muted" style="flex:1; min-width: 240px;">_measurement ist nicht editierbar. Speichern uebernimmt die Tabelle in die Konfiguration.</div>
-         </div>
-       </div>
+         <div class="table_wrap" data-ui="settings.outliers.table.wrap" title="settings.outliers.table.wrap">
+           <div class="table_title">Ausreisser Tabelle (_measurement / max_step)</div>
+           <div class="table_head" data-ui="settings.outliers.table.head" title="settings.outliers.table.head">
+             <div class="tbl_actions" data-ui="settings.outliers.table.actions" title="settings.outliers.table.actions">
+               <button id="outliers_autowidth" type="button" data-ui="settings.outliers.autofit" title="settings.outliers.autofit" style="width:auto;">Auto-Fit</button>
+               <button id="outliers_windowwidth" type="button" data-ui="settings.outliers.windowfit" title="settings.outliers.windowfit" style="width:auto;">Fensterbreite</button>
+               <label style="display:flex; align-items:center; gap: 6px; padding: 0 4px;"><input type="checkbox" id="outliers_wrap" data-ui="settings.outliers.wrap" title="settings.outliers.wrap"/>Umbruch</label>
+               <label style="display:flex; align-items:center; gap: 6px; padding: 0 4px;"><input type="checkbox" id="outliers_colfilter" data-ui="settings.outliers.colfilter" title="settings.outliers.colfilter"/>Spaltenfilter</label>
+             </div>
+             <div class="muted" data-ui="settings.outliers.table.hint" title="settings.outliers.table.hint">_measurement ist nicht editierbar. Speichern uebernimmt die Tabelle in die Konfiguration. Wird fuer Counter-Ausreisser und dynamisches Graph-Sampling genutzt.</div>
+           </div>
 
-       <div class="span2">
-         <label>Ausreisser Tabelle (_measurement / max_step)</label>
-         <div class="table_box" id="outliers_box" style="max-height: 45vh; overflow:auto; border: 1px solid #eee; border-radius: 12px; margin-top: 8px;">
-           <table id="outliers_tbl" class="cfg_tbl ib_tbl" data-ui="settings.outliers.table" title="settings.outliers.table">
-             <thead>
-               <tr>
-                 <th data-key="measurement">_measurement</th>
-                 <th data-key="max_step">max_step</th>
-               </tr>
-             </thead>
-             <tbody></tbody>
-           </table>
+           <div class="table_box" id="outliers_box" style="max-height: 45vh; overflow:auto; border: 1px solid #eee; border-radius: 12px; margin-top: 8px;">
+             <table id="outliers_tbl" class="cfg_tbl ib_tbl" data-ui="settings.outliers.table" title="settings.outliers.table">
+               <thead>
+                 <tr>
+                   <th data-key="measurement">_measurement</th>
+                   <th data-key="max_step">max_step</th>
+                 </tr>
+               </thead>
+               <tbody></tbody>
+             </table>
+           </div>
          </div>
-         <div class="muted">Wird fuer Counter-Ausreisser und dynamisches Graph-Sampling genutzt.</div>
        </div>
-    </div>
-    </div>
+     </div>
+     </div>
   </details>
 
   <div class="card">
@@ -1375,6 +1383,24 @@ load().catch(e=>err(String(e)));
         try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.setVisible('#outliers_tbl', $outliersColFilter.checked); }catch(e){}
       });
     }
+  }catch(e){}
+
+  // Table info (purpose/columns/actions)
+  try{
+    const pkey = String(location && location.pathname ? location.pathname : '/').replace(/\/api\/hassio_ingress\/[0-9a-fA-F]+/g, '').replace(/\/+$/g, '') || '/';
+    window.InfluxBroTableInfoSpec = window.InfluxBroTableInfoSpec || {};
+    window.InfluxBroTableInfoSpec[pkey + ':outliers_tbl'] = {
+      purpose: 'Konfigurationsliste fuer Ausreisser-Regeln: pro _measurement kann eine max_step Grenze hinterlegt werden. Diese wird fuer Counter-Ausreisser und dynamisches Graph-Sampling verwendet.',
+      columns: {
+        '_measurement': 'Influx Measurement (nicht editierbar).',
+        'max_step': 'Maximaler Sprung fuer Counter-Ausreisser (Zahlenwert).',
+      },
+      actions: [
+        'Auto-Fit / Fensterbreite: passt Spaltenbreiten an.',
+        'Umbruch/Spaltenfilter: Darstellung und Filterzeile toggeln.',
+        'Speichern (unten): uebernimmt die Tabelle in die Add-on Konfiguration.',
+      ],
+    };
   }catch(e){}
 })();
 </script>

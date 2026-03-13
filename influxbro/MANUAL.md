@@ -100,6 +100,13 @@ Tipp: Wenn du mit der Maus ueber einem Button/Checkbox/Auswahlfeld bleibst, zeig
 
 Hinweis: Zeitstempel werden im gesamten UI inklusive Millisekunden angezeigt.
 
+## Tabellen (Allgemein)
+
+- Jede Tabelle ist als eigener Block mit Rahmen und eindeutiger Tabellenueberschrift dargestellt.
+- Ueber jeder Tabelle werden Zeilen angezeigt als `gefiltert / gesamt` (Rows).
+- Spalten koennen ueber den Spalten-Button (neben dem Info-Icon) ein-/ausgeblendet werden (wird gespeichert).
+- Das Info-Icon (Buch) erklaert je Tabelle Sinn/Zweck, Spalten und Aktionen.
+
 ### 2) Zeitraum setzen
 
 - `Zeitraum (Graph/Tabelle)`: z.B. 24h, 7d, oder `Alle`.

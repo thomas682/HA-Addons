@@ -1020,14 +1020,24 @@ thead tr.ib_filter_row input, thead tr.ib_filter_row select { width: 100%; heigh
     const wrap = tbl.closest('.table_wrap');
     const head = wrap ? wrap.querySelector('.table_head') : null;
     if(!head) return null;
+    let host = head.querySelector('[data-ib-rowcounts]');
+    if(host) return host;
+
+    // Prefer reusing an existing muted element as container.
     let muted = head.querySelector('.muted');
     if(!muted){
       muted = document.createElement('div');
       muted.className = 'muted';
       head.appendChild(muted);
     }
-    if(!muted.getAttribute('data-ib-base-text')) muted.setAttribute('data-ib-base-text', String(muted.textContent || ''));
-    return muted;
+
+    // Append a dedicated span so we do not overwrite other dynamic info.
+    host = document.createElement('span');
+    host.setAttribute('data-ib-rowcounts', '1');
+    host.style.marginLeft = '10px';
+    host.style.whiteSpace = 'nowrap';
+    muted.appendChild(host);
+    return host;
   }
 
   function update(tbl){
@@ -1036,10 +1046,8 @@ thead tr.ib_filter_row input, thead tr.ib_filter_row select { width: 100%; heigh
       if(!tid) return;
       const host = _ensureHost(tbl);
       if(!host) return;
-      const base = host.getAttribute('data-ib-base-text') || '';
       const c = _countRows(tbl);
-      const suffix = `Rows: ${c.vis} / ${c.total}`;
-      host.textContent = base ? (base + ' | ' + suffix) : suffix;
+      host.textContent = `Rows: ${c.vis} / ${c.total}`;
     }catch(e){}
   }
 
@@ -1092,13 +1100,24 @@ thead tr.ib_filter_row input, thead tr.ib_filter_row select { width: 100%; heigh
     return t.replace(/\s*\([^\)]+\)\s*$/g, '').trim();
   }
 
+  function _stablePath(){
+    try{
+      const p = String(location && location.pathname ? location.pathname : '/');
+      // Home Assistant ingress adds a volatile token segment.
+      return p.replace(/\/api\/hassio_ingress\/[0-9a-fA-F]+/g, '').replace(/\/+$/g, '') || '/';
+    }catch(e){
+      return '/';
+    }
+  }
+
   function _specFor(tbl){
     try{
       const tid = _norm(tbl.getAttribute('id'));
       if(!tid) return null;
       const root = window.InfluxBroTableInfoSpec;
       if(root && typeof root === 'object'){
-        const spec = root[tid];
+        const pkey = _stablePath();
+        const spec = root[pkey + ':' + tid] || root[tid];
         return (spec && typeof spec === 'object') ? spec : null;
       }
     }catch(e){}

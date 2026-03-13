@@ -49,6 +49,13 @@
     #tbl.list_tbl th, #tbl.list_tbl td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .table_box { height: calc(var(--stats_visible_rows) * var(--stats_row_h) + 54px); max-height: 80vh; overflow:auto; border: 1px solid #eee; border-radius: 12px; }
     #tbl_resize { height: 12px; cursor: ns-resize; margin-top: 8px; border-radius: 999px; background: linear-gradient(90deg, #eee, #f8f8f8); }
+
+    .table_wrap { border: 1px solid #eee; border-radius: 12px; padding: 10px; margin-top: 10px; }
+    .table_title { font-weight: 800; font-size: 14px; margin-bottom: 6px; }
+    .table_head { display:flex; justify-content:space-between; gap: 12px; align-items:flex-end; flex-wrap:wrap; }
+    .tbl_actions { display:flex; gap: 10px; align-items:flex-end; flex-wrap:wrap; }
+    .tbl_actions label { display:flex; gap: 6px; align-items:center; font-size: 12px; opacity: 0.85; }
+    .tbl_actions input[type="checkbox"] { width:auto; height:auto; padding:0; margin:0; }
     .col_time { min-width: 170px; }
     .col_num { min-width: 80px; text-align: right; }
     .col_act { min-width: 110px; }
@@ -135,53 +142,6 @@
             </div>
           </div>
 
-           <div class="row" data-ui="stats.actions" title="stats.actions">
-             <div>
-               <label>&nbsp;</label>
-               <button id="load" data-ui="stats.load" title="stats.load">Statistik laden</button>
-             </div>
-            <div>
-              <label>&nbsp;</label>
-              <button id="cancel" data-ui="stats.cancel" title="stats.cancel">Abbrechen</button>
-            </div>
-            <div>
-              <label>&nbsp;</label>
-              <button id="delete_rows" data-ui="stats.delete_rows" title="stats.delete_rows">Loeschen</button>
-            </div>
-             <div>
-               <label>&nbsp;</label>
-               <button id="auto_cols" data-ui="stats.auto_cols" title="stats.auto_cols">Spaltenbreite automatisch</button>
-             </div>
-             <div>
-               <label>&nbsp;</label>
-               <button id="win_cols" data-ui="stats.win_cols" title="stats.win_cols">Fensterbreite</button>
-             </div>
-             <div>
-               <label>&nbsp;</label>
-               <label style="display:flex; align-items:center; gap: 6px; padding-top: 6px;"><input type="checkbox" id="tbl_wrap" data-ui="stats.tbl_wrap" title="stats.tbl_wrap"/>Umbruch</label>
-             </div>
-             <div>
-               <label>&nbsp;</label>
-               <label style="display:flex; align-items:center; gap: 6px; padding-top: 6px;"><input type="checkbox" id="tbl_colfilter" data-ui="stats.tbl_colfilter" title="stats.tbl_colfilter"/>Spaltenfilter</label>
-             </div>
-             <div>
-               <label>&nbsp;</label>
-               <button id="mark_all" data-ui="stats.mark_all" title="stats.mark_all">Alle im Filter markieren</button>
-             </div>
-            <div>
-              <label>&nbsp;</label>
-              <button id="clear_mark" data-ui="stats.clear_mark" title="stats.clear_mark">Markierung loeschen</button>
-            </div>
-            <div>
-              <label>&nbsp;</label>
-              <button id="reload_marked" data-ui="stats.reload_marked" title="stats.reload_marked">Nachladen (markiert)</button>
-            </div>
-            <div>
-              <label>&nbsp;</label>
-              <button id="reload_filtered" data-ui="stats.reload_filtered" title="stats.reload_filtered">Nachladen (alle im Filter)</button>
-            </div>
-          </div>
-
           <div class="muted" style="margin-top: 10px;">Influx Datenbank Info: siehe Menuepunkt <code>Info</code>.</div>
 
           <div class="muted" id="range_txt" data-ui="stats.range_txt" title="stats.range_txt"></div>
@@ -198,30 +158,48 @@
         </details>
         <div id="err" class="err"></div>
 
-        <div class="muted" id="count" data-ui="stats.count" title="stats.count" style="margin-top: 10px;"></div>
+        <div class="table_wrap" data-ui="stats.table.wrap" title="stats.table.wrap">
+          <div class="table_title">Statistik Tabelle</div>
+          <div class="table_head" data-ui="stats.table.head" title="stats.table.head">
+            <div class="tbl_actions" data-ui="stats.actions" title="stats.actions">
+              <button id="load" data-ui="stats.load" title="stats.load">Statistik laden</button>
+              <button id="cancel" data-ui="stats.cancel" title="stats.cancel">Abbrechen</button>
+              <button id="delete_rows" data-ui="stats.delete_rows" title="stats.delete_rows">Loeschen</button>
+              <button id="auto_cols" data-ui="stats.auto_cols" title="stats.auto_cols">Spaltenbreite automatisch</button>
+              <button id="win_cols" data-ui="stats.win_cols" title="stats.win_cols">Fensterbreite</button>
+              <label><input type="checkbox" id="tbl_wrap" data-ui="stats.tbl_wrap" title="stats.tbl_wrap"/>Umbruch</label>
+              <label><input type="checkbox" id="tbl_colfilter" data-ui="stats.tbl_colfilter" title="stats.tbl_colfilter"/>Spaltenfilter</label>
+              <button id="mark_all" data-ui="stats.mark_all" title="stats.mark_all">Alle im Filter markieren</button>
+              <button id="clear_mark" data-ui="stats.clear_mark" title="stats.clear_mark">Markierung loeschen</button>
+              <button id="reload_marked" data-ui="stats.reload_marked" title="stats.reload_marked">Nachladen (markiert)</button>
+              <button id="reload_filtered" data-ui="stats.reload_filtered" title="stats.reload_filtered">Nachladen (alle im Filter)</button>
+            </div>
+            <div class="muted" id="count" data-ui="stats.count" title="stats.count"></div>
+          </div>
 
-         <div class="table_box" id="tbl_box" data-ui="stats.table.box" title="stats.table.box">
-           <table id="tbl" class="list_tbl ib_tbl" data-ui="stats.table" title="stats.table">
-            <thead>
-              <tr>
-                <th data-key="_sel" style="width: 46px;">sel</th>
-                <th data-key="friendly_name" class="col_fn">friendly_name</th>
-                <th data-key="entity_id" class="col_eid">entity_id</th>
-                <th data-key="measurement" class="col_meas">_measurement</th>
-                <th data-key="field" class="col_field">_field</th>
-                <th data-key="last_value" class="col_last">last_value</th>
-                <th data-key="oldest_time" class="col_time">oldest</th>
-                <th data-key="newest_time" class="col_time">newest</th>
-                <th data-key="count" class="col_num">count</th>
-                <th data-key="min" class="col_num">min</th>
-                <th data-key="max" class="col_num">max</th>
-                <th data-key="mean" class="col_num">mean</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
+          <div class="table_box" id="tbl_box" data-ui="stats.table.box" title="stats.table.box">
+            <table id="tbl" class="list_tbl ib_tbl" data-ui="stats.table" title="stats.table">
+              <thead>
+                <tr>
+                  <th data-key="_sel" style="width: 46px;">sel</th>
+                  <th data-key="friendly_name" class="col_fn">friendly_name</th>
+                  <th data-key="entity_id" class="col_eid">entity_id</th>
+                  <th data-key="measurement" class="col_meas">_measurement</th>
+                  <th data-key="field" class="col_field">_field</th>
+                  <th data-key="last_value" class="col_last">last_value</th>
+                  <th data-key="oldest_time" class="col_time">oldest</th>
+                  <th data-key="newest_time" class="col_time">newest</th>
+                  <th data-key="count" class="col_num">count</th>
+                  <th data-key="min" class="col_num">min</th>
+                  <th data-key="max" class="col_num">max</th>
+                  <th data-key="mean" class="col_num">mean</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div id="tbl_resize" data-ui="stats.table.resize" title="stats.table.resize"></div>
         </div>
-        <div id="tbl_resize" data-ui="stats.table.resize" title="stats.table.resize"></div>
       </div>
 
       <script>
@@ -1271,8 +1249,10 @@
 
       loadUiCfg().then(()=>{});
 
+      // Backward compatibility: apply legacy per-column widths (keyed by data-key)
       applySavedColWidths();
-      initColResize();
+      // Standard column resize + persistence (per page + table id)
+      try{ window.InfluxBroTableCols && window.InfluxBroTableCols.init('#tbl'); }catch(e){}
 
       // Restore persisted UI/columns (best-effort)
       try{ loadUiState(); }catch(e){}
@@ -1362,6 +1342,35 @@
       {% include "_tooltips.html" %}
 
       <script>
+      // Table info (purpose/columns/actions)
+      try{
+        const pkey = String(location && location.pathname ? location.pathname : '/').replace(/\/api\/hassio_ingress\/[0-9a-fA-F]+/g, '').replace(/\/+$/g, '') || '/';
+        window.InfluxBroTableInfoSpec = window.InfluxBroTableInfoSpec || {};
+        window.InfluxBroTableInfoSpec[pkey + ':tbl'] = {
+          purpose: 'Gesamtstatistik ueber viele Serien (eine Zeile pro Serie). Dient zum Ueberblick und zum gezielten Nachladen weiterer Spalten (count/min/max/mean).',
+          columns: {
+            'sel': 'Checkbox zur Markierung (fuer Nachladen/Loeschen).',
+            'friendly_name': 'Klartextname der Serie (Home Assistant).',
+            'entity_id': 'Entity-ID der Serie (falls vorhanden).',
+            '_measurement': 'Influx Measurement.',
+            '_field': 'Influx Field.',
+            'last_value': 'Letzter Wert (ggf. mit Zeitstempel).',
+            'oldest': 'Aeltester gefundener Zeitpunkt der Serie (optional).',
+            'newest': 'Neuster gefundener Zeitpunkt der Serie.',
+            'count': 'Anzahl Punkte im Zeitraum (optional).',
+            'min': 'Minimalwert (optional).',
+            'max': 'Maximalwert (optional).',
+            'mean': 'Mittelwert (optional).',
+          },
+          actions: [
+            'Statistik laden: startet die Statistik-Abfrage als Background-Job.',
+            'Nachladen: laedt fehlende Spalten nach (markiert oder alle im Filter).',
+            'Loeschen: loescht markierte Serien/Zeilen (falls Loeschfunktion aktiv ist).',
+            'Umbruch/Spaltenfilter: Darstellung und Filterzeile toggeln.',
+          ],
+        };
+      }catch(e){}
+
       try{ initTableStd(); }catch(e){}
       </script>
     </main>
