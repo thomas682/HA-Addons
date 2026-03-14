@@ -1993,6 +1993,23 @@ function _rawRowsDayBounds(){
   return {min, max};
 }
 
+function _rawRowsBoundsMs(){
+  try{
+    const rows = RAW_ROWS || [];
+    let min = null;
+    let max = null;
+    for(const r of rows){
+      const ms = Date.parse(String((r && r.time) ? r.time : ''));
+      if(!isFinite(ms)) continue;
+      if(min === null || ms < min) min = ms;
+      if(max === null || ms > max) max = ms;
+    }
+    return {min, max};
+  }catch(e){
+    return {min: null, max: null};
+  }
+}
+
 function _rawTopVisibleDayKey(){
   try{
     if(!$rawBox) return '';
@@ -3001,16 +3018,48 @@ async function _jumpToRawByMs(ms){
       try{ $rawSection.scrollIntoView({block:'nearest'}); }catch(e){}
     }
 
-    // ensure raw data exists
+    // Ensure a graph-derived window exists when Raw is graph-driven.
+    // (Without it, raw loading is a no-op and the list cannot jump.)
+    try{
+      if(RAW_TIME_FROM_GRAPH){
+        const w = _graphWindowIso();
+        if(!w){
+          const xs = (LAST_ROWS || []).map(r => Date.parse(r && r.time ? String(r.time) : '')).filter(t => isFinite(t));
+          if(xs.length){
+            TABLE_TIME.graph_start_ms = Math.min(...xs);
+            TABLE_TIME.graph_stop_ms = Math.max(...xs);
+            try{ saveState(); }catch(e){}
+          }
+        }
+      }
+    }catch(e){}
+
+    // ensure raw data exists (first page)
     try{ await loadRawFromGraph(true); }catch(e){}
     for(let i=0;i<25;i++){
       if(!_RAW_INFLIGHT && (RAW_ROWS || []).length) break;
       await new Promise(r=>setTimeout(r, 120));
     }
 
+    // If the selected timestamp is not in the currently loaded page, load more until it is.
+    // Note: raw paging is by offset (time ASC). Clicking a point near the end of the graph window
+    // often requires multiple pages.
+    try{
+      const MAX_LOADS = 30;
+      let loads = 0;
+      while(loads < MAX_LOADS){
+        const b = _rawRowsBoundsMs();
+        if(b && b.max !== null && isFinite(b.max) && t <= b.max) break;
+        if(!_rawCanMore()) break;
+        const progressed = await _rawLoadMoreOnce();
+        loads += 1;
+        if(!progressed) break;
+      }
+    }catch(e){}
+
     try{ renderRawTable(); }catch(e){}
 
-    // find exact match by timestamp (ms) or nearest within 1000ms
+    // find nearest match by timestamp (ms)
     let best = null;
     let bestDiff = 9999999;
     const trs = Array.from(document.querySelectorAll('#raw_tbl tbody tr'));
@@ -3023,7 +3072,7 @@ async function _jumpToRawByMs(ms){
         best = tr;
       }
     }
-    if(best && bestDiff <= 1000){
+    if(best){
       trs.forEach(x => x.classList.remove('raw_hl'));
       best.classList.add('raw_hl');
       try{
@@ -3040,6 +3089,14 @@ async function _jumpToRawByMs(ms){
       }catch(e){
         try{ best.scrollIntoView(); }catch(ex){}
       }
+
+      try{
+        if(bestDiff > 1000){
+          const v = Number(best.getAttribute('data-ts-ms') || '');
+          if(isFinite(v)) ok(`Raw: naechster Punkt: ${fmtTs(new Date(v).toISOString())} (Delta: ${_fmtDur(bestDiff)})`);
+        }
+      }catch(e){}
+
       setTimeout(()=>{ try{ best.classList.remove('raw_hl'); }catch(e){} }, 2200);
     }
   }catch(e){}

@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.12.24
+
+### Fixes
+
+- Dashboard Raw: Klick auf Graph-Punkt laedt jetzt automatisch Raw-Daten nach, wenn der Zeitpunkt nicht in der aktuell geladenen Raw-Liste enthalten ist (damit der Sprung immer funktioniert).
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.23
 
 ### Fixes

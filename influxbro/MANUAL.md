@@ -176,6 +176,7 @@ Raw Daten (DB):
 
 - Optional kannst du per Checkbox steuern, ob Raw Daten dem Zoom-Bereich im Graph folgen (oder dem Zeitraum aus der Zeitraum-Auswahl).
 - Klick auf einen Messpunkt im Graph markiert den Punkt und springt in der Raw-Tabelle zum passenden Zeitstempel (Zeile wird hervorgehoben).
+- Wenn der Zeitstempel in den aktuell geladenen Raw-Zeilen noch nicht enthalten ist, werden automatisch weitere Raw-Seiten nachgeladen und dann zur passenden (naechsten) Zeile gescrollt.
 - Der Sprung zentriert die Zeile in der Tabelle, damit vorherige und nachfolgende Werte sichtbar bleiben.
 - Ueber der Raw-Tabelle gibt es Buttons zur Tagesnavigation (aeltester/juengster Tag, +/-1d, +/-7d; lokale Browserzeit).
 - Wenn du per Tagesnavigation zu einem Zeitpunkt springst, der noch nicht in der Tabelle geladen ist, wird automatisch nachgeladen, bis der Ziel-Tag erreicht ist (oder bis keine weiteren Daten verfuegbar sind).
