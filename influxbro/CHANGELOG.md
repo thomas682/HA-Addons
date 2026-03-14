@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.12.23
+
+### Fixes
+
+- Ausreisser: Dialog bei Einzel-"uebernehmen" zeigt jetzt detailliert Messwert/Alt/Neu in der Apply-Vorschau.
+- History/Rollback: Rollback erfordert keine Delete-Confirm-Phrase mehr (nur normale Sicherheitsabfrage).
+
+### Features
+
+- Jobs & Cache: Cache-Info zeigt deutlich mehr Details (Key/Inhalt/Flags/Events).
+- UI: fixe Top-Leiste mit Profil-Auswahl (Anwenden/Speichern/Info, Version) und globalem Zoom +/- (persistiert im Browser).
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.22
 
 ### Features

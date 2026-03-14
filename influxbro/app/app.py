@@ -11832,12 +11832,14 @@ def api_history_list():
 def api_history_rollback():
     cfg = _overlay_from_yaml_if_enabled(load_cfg())
     body = request.get_json(force=True) or {}
-    confirm = body.get("confirm", "")
-    if confirm != DELETE_CONFIRM_PHRASE:
-        return (
-            jsonify({"ok": False, "error": f"Confirmation phrase mismatch. Type exactly: {DELETE_CONFIRM_PHRASE}"}),
-            400,
-        )
+    confirm = body.get("confirm", False)
+    ok_confirm = (
+        confirm == DELETE_CONFIRM_PHRASE
+        or confirm is True
+        or str(confirm).strip().lower() in ("1", "true", "yes", "on")
+    )
+    if not ok_confirm:
+        return jsonify({"ok": False, "error": "Confirmation required"}), 400
 
     ids = body.get("ids")
     since_seconds = body.get("since_seconds")

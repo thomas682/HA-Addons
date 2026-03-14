@@ -175,6 +175,7 @@
   </style>
 </head>
 <body>
+  {% include "_topbar.html" %}
   <div class="shell">
     {% include "_nav.html" %}
     <main class="content" data-ui="dashboard.page" title="dashboard.page">
@@ -4607,7 +4608,14 @@ async function applyChangeForKey(key){
   const k = String(key || '');
   const e = EDIT_LIST.get(k);
   if(!e || !e.dirty || !e.action) throw new Error('Keine Aenderung vorgemerkt.');
-  if(!confirm('Aenderung sofort in die Datenbank schreiben?\n\n' + k)) return;
+
+  // Use the detailed apply dialog (shows series + old/new) instead of a minimal confirm.
+  try{
+    const want = await openApplyDialog([e]);
+    if(!want) return;
+  }catch(x){
+    if(!confirm('Aenderung sofort in die Datenbank schreiben?\n\n' + k)) return;
+  }
 
   const action = String(e.action || '');
   const change = {

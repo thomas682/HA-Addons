@@ -34,6 +34,7 @@
   </style>
 </head>
 <body>
+  {% include "_topbar.html" %}
   <div class="shell">
     {% include "_nav.html" %}
     <main class="content" data-ui="history.page" title="history.page">
@@ -263,13 +264,9 @@
 
     async function rollbackIds(ids){
       if(!ids.length){ err('Keine Eintraege selektiert.'); return; }
-      if(!confirm('Rollback wirklich ausfuehren?')) return;
-      const phrase = prompt('Bitte bestaetigen: {{ delete_phrase }}');
-      if(phrase !== '{{ delete_phrase }}'){
-        err('Bestaetigung fehlgeschlagen.');
-        return;
-      }
-      const j = await api('./api/history_rollback', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({confirm: phrase, ids})});
+      const msg = `Rollback stellt Altwerte wieder her (kein Loeschen).\n\nAnzahl Eintraege: ${ids.length}\n\nRollback wirklich ausfuehren?`;
+      if(!confirm(msg)) return;
+      const j = await api('./api/history_rollback', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({confirm: true, ids})});
       ok(j.message || 'Rollback ausgefuehrt.');
       await load();
     }
@@ -277,13 +274,11 @@
     async function rollbackPreset(seconds){
       const s = Number(seconds);
       if(!isFinite(s) || s <= 0){ err('Bitte Zeitraum waehlen.'); return; }
-      if(!confirm('Rollback fuer den Zeitraum wirklich ausfuehren?')) return;
-      const phrase = prompt('Bitte bestaetigen: {{ delete_phrase }}');
-      if(phrase !== '{{ delete_phrase }}'){
-        err('Bestaetigung fehlgeschlagen.');
-        return;
-      }
-      const j = await api('./api/history_rollback', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({confirm: phrase, since_seconds: s})});
+      const mins = Math.round(s / 60);
+      const txt = mins >= 1 ? (String(mins) + ' Minuten') : (String(s) + ' Sekunden');
+      const msg = `Rollback stellt Altwerte wieder her (kein Loeschen).\n\nZeitraum: letzte ${txt}\n\nRollback wirklich ausfuehren?`;
+      if(!confirm(msg)) return;
+      const j = await api('./api/history_rollback', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({confirm: true, since_seconds: s})});
       ok(j.message || 'Rollback ausgefuehrt.');
       await load();
     }

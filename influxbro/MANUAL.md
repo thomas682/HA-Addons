@@ -57,6 +57,14 @@ Links findest du die Bereiche:
 
 Im Sidebar-Kopf wird ausserdem die aktuell laufende Add-on Version angezeigt.
 
+Neu: Top-Leiste (Profil + Zoom)
+
+- Ganz oben gibt es eine fixe Leiste (scrollt nicht mit), die immer sichtbar bleibt.
+- Enthalten:
+  - Profil-Auswahl inkl. `Anwenden`, `Speichern`, `Info` und die aktuelle Version.
+  - Zoom-Steuerung: `-` / `+` und die aktuelle Zoomstufe in `%`.
+- Zoom wird im Browser gespeichert (pro Browser/Client).
+
 ## Installation in Home Assistant
 
 1) Add-on Repository hinzufuegen
@@ -377,7 +385,11 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Rollback:
   - selektierte Eintraege
   - oder Zeitraum-Presets (z.B. letzte 15 Minuten)
-- Sicherheit: Rollback erfordert eine Bestaetigung und die exakte Phrase `delete_confirm_phrase`.
+- Sicherheit: Rollback erfordert eine normale Sicherheitsabfrage im Browser.
+
+Hinweis (neu)
+
+- Rollback erfordert nur noch eine normale Sicherheitsabfrage (kein Tippen der Delete-Phrase), da kein Loeschen ausgefuehrt wird.
 
 ## Einstellungen
 

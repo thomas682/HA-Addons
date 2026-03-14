@@ -60,6 +60,7 @@
   </style>
 </head>
 <body>
+  {% include "_topbar.html" %}
   <div class="shell">
     {% include "_nav.html" %}
     <main class="content" data-ui="jobs.page" title="jobs.page">
@@ -726,17 +727,62 @@
               const lines = [];
               lines.push('id: ' + cid);
               lines.push('bereich: ' + String(m.bereich||''));
+              try{ if(m.cache_kind) lines.push('kind: ' + String(m.cache_kind||'')); }catch(e){}
+              try{ if(m.ausloeser) lines.push('ausloeser: ' + String(m.ausloeser||'')); }catch(e){}
+              try{ if(m.modus) lines.push('modus: ' + String(m.modus||'')); }catch(e){}
+              try{ if(m.trigger_page) lines.push('trigger_page: ' + String(m.trigger_page||'')); }catch(e){}
+              try{ if(m.created_at) lines.push('created: ' + fmtTs(m.created_at)); }catch(e){}
               lines.push('updated: ' + fmtTs(m.updated_at));
               lines.push('last used: ' + fmtTs(m.last_used_at));
+              try{ if(m.age_seconds !== null && m.age_seconds !== undefined) lines.push('age_seconds: ' + String(m.age_seconds)); }catch(e){}
+              try{ if(m.next_update_at) lines.push('next_update: ' + fmtTs(m.next_update_at)); }catch(e){}
               lines.push('rows: ' + String(m.row_count||0));
+              try{ if(m.total_points !== null && m.total_points !== undefined) lines.push('total_points: ' + String(m.total_points)); }catch(e){}
               lines.push('size: ' + fmtSize(m.bytes));
               lines.push('flags: ' + String([m.dirty ? 'dirty' : '', m.mismatch ? 'changed' : '', m.stale ? 'stale' : ''].filter(Boolean).join(' ')));
+
+              try{
+                const rc = Number(m.row_count||0);
+                const tp = (m.total_points !== null && m.total_points !== undefined) ? Number(m.total_points) : null;
+                if(tp !== null && isFinite(tp) && tp > 0){
+                  const full = (rc >= tp);
+                  lines.push('vollstaendig: ' + (full ? 'ja' : ('nein (downsampling/limit: ' + rc + '/' + tp + ')')));
+                }else{
+                  lines.push('vollstaendig: unbekannt');
+                }
+              }catch(e){}
+
+              try{ if(m.first_time) lines.push('first_time: ' + fmtTs(m.first_time)); }catch(e){}
+              try{ if(m.last_time) lines.push('last_time: ' + fmtTs(m.last_time)); }catch(e){}
+
+              try{
+                if(m.dirty_reason) lines.push('dirty_reason: ' + String(m.dirty_reason||''));
+                if(m.dirty_at) lines.push('dirty_at: ' + fmtTs(m.dirty_at));
+              }catch(e){}
+              try{
+                if(m.last_check_at) lines.push('last_check_at: ' + fmtTs(m.last_check_at));
+                if(m.last_check_ok !== null && m.last_check_ok !== undefined) lines.push('last_check_ok: ' + String(!!m.last_check_ok));
+                if(m.last_check_note) lines.push('last_check_note: ' + String(m.last_check_note||''));
+              }catch(e){}
+              try{
+                if(m.last_update_at) lines.push('last_update_at: ' + fmtTs(m.last_update_at));
+                if(m.last_update_note) lines.push('last_update_note: ' + String(m.last_update_note||''));
+              }catch(e){}
+
+              try{
+                if(m.key && typeof m.key === 'object'){
+                  lines.push('');
+                  lines.push('key:');
+                  lines.push(JSON.stringify(m.key, null, 2));
+                }
+              }catch(e){}
+
               lines.push('');
               lines.push('events:');
               if(!evs.length){
                 lines.push('(keine)');
               }else{
-                evs.slice(-30).forEach(e=>{
+                evs.slice(-60).forEach(e=>{
                   try{ lines.push(`${fmtTs(e.at)} | ${String(e.kind||'')} | ${String(e.note||'')}`.trim()); }catch(x){}
                 });
               }
