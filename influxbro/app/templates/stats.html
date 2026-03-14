@@ -9,6 +9,11 @@
       --stats_row_h: {{ (cfg.get('ui_table_row_height_px') or 13) | int }}px;
       --stats_visible_rows: {{ (cfg.get('ui_table_visible_rows') or 8) | int }};
       --ui-cb-scale: {{ (cfg.get('ui_checkbox_scale') or 0.85) }};
+
+      --ib-sel-font: {{ (cfg.get('ui_sel_field_font_px') or 13) | int }}px;
+      --ib-sel-label-font: {{ (cfg.get('ui_sel_label_font_px') or 12) | int }}px;
+      --ib-sel-desc-font: {{ (cfg.get('ui_sel_desc_font_px') or 11) | int }}px;
+      --ib-sel-manual-w: {{ (cfg.get('ui_sel_width_px') or 260) | int }}px;
     }
     body { font-family: system-ui, sans-serif; margin: 0; }
     .shell { display:grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
@@ -65,6 +70,33 @@
     .col_meas { min-width: 200px; }
     .col_field { min-width: 140px; }
     .col_last { min-width: 120px; text-align: right; }
+
+    /* Selection fields (master template) */
+    .ib_sel_label { font-size: var(--ib-sel-label-font); opacity: 0.9; }
+    .ib_sel_stack { display:flex; flex-direction:column; gap: 6px; align-items:flex-start; }
+    .ib_sel_stack input, .ib_sel_stack select {
+      font-size: var(--ib-sel-font);
+      height: auto;
+      padding: 6px 10px;
+      width: var(--ib-sel-manual-w);
+      max-width: 100%;
+    }
+    .ib_sel_desc { display:flex; gap: 8px; align-items:flex-start; font-size: var(--ib-sel-desc-font); }
+    .ib_sel_help {
+      width: 20px; height: 20px;
+      padding: 0;
+      border-radius: 999px;
+      border: 1px solid #ddd;
+      background: #fff;
+      cursor: pointer;
+      font-weight: 800;
+      line-height: 18px;
+      flex: 0 0 auto;
+    }
+    .ib_sel_help:hover { background: #f6f6f6; }
+    @media (max-width: 980px){
+      .ib_sel_stack input, .ib_sel_stack select { width: 100% !important; }
+    }
   </style>
 </head>
 <body>
@@ -79,52 +111,77 @@
           <summary>Auswahl</summary>
 
           <div class="row" data-ui="stats.controls" title="stats.controls">
-            <div style="min-width: 220px;">
-              <label>Zeitraum</label>
-              <select id="range" data-ui="stats.range" title="stats.range">
-                <option value="1h">Letzte 1h</option>
-                <option value="6h">Letzte 6h</option>
-                <option value="12h">Letzte 12h</option>
-                <option value="24h">Letzte 24h</option>
-                <option value="7d">Letzte 7 Tage</option>
-                <option value="30d" selected>Letzte 30 Tage</option>
-                <option value="90d">Letzte 90 Tage</option>
-                <option value="365d">Letztes Jahr</option>
-                <option value="this_year">Dieses Jahr</option>
-                <option value="12mo">Letzte 12 Monate</option>
-                <option value="24mo">Letzte 24 Monate</option>
-                <option value="all">Alle</option>
-                <option value="custom">Benutzerdefiniert…</option>
-              </select>
-              <div class="muted help" data-ui="stats.range_help" title="stats.range_help"></div>
+            <div class="ib_sel ib_sel_time" style="min-width: 220px;">
+              <label class="label_row ib_sel_label"><span>Zeitraum</span><span id="stats_range_bounds" class="muted"></span></label>
+              <div class="ib_sel_stack">
+                <select id="range" data-ui="stats.range" title="stats.range">
+                  <option value="1h">Letzte 1h</option>
+                  <option value="6h">Letzte 6h</option>
+                  <option value="12h">Letzte 12h</option>
+                  <option value="24h">Letzte 24h</option>
+                  <option value="7d">Letzte 7 Tage</option>
+                  <option value="30d" selected>Letzte 30 Tage</option>
+                  <option value="90d">Letzte 90 Tage</option>
+                  <option value="365d">Letztes Jahr</option>
+                  <option value="this_year">Dieses Jahr</option>
+                  <option value="12mo">Letzte 12 Monate</option>
+                  <option value="24mo">Letzte 24 Monate</option>
+                  <option value="all">Alle</option>
+                  <option value="custom">Benutzerdefiniert…</option>
+                </select>
+                <div class="ib_sel_desc">
+                  <button type="button" class="ib_sel_help" data-title="Zeitraum" data-help="Zeitfilter fuer Statistik. Bei Benutzerdefiniert kannst du Start/Stop setzen. Zeiten werden als lokale Zeit interpretiert und als UTC an die API gesendet.">?</button>
+                  <div class="muted">Zeitfilter fuer Statistik (bestimmt, welche Daten in die Berechnung fliessen).</div>
+                </div>
+              </div>
             </div>
 
-            <div style="min-width: 180px;">
-              <label class="label_row"><span>_field Filter</span><span id="cnt_field_filter" class="muted"></span></label>
-              <input id="field_filter" value="value" list="field_list" data-ui="stats.field_filter" title="stats.field_filter" />
-              <datalist id="field_list"></datalist>
-              <div class="muted help" data-ui="stats.field_filter_help" title="stats.field_filter_help">Legt fest, welche Serien/Zeilen geladen werden (Default: <code>value</code>).</div>
+            <div class="ib_sel" style="min-width: 180px;">
+              <label class="label_row ib_sel_label"><span>_field Filter</span><span id="cnt_field_filter" class="muted"></span></label>
+              <div class="ib_sel_stack">
+                <input id="field_filter" value="value" list="field_list" data-ui="stats.field_filter" title="stats.field_filter" />
+                <datalist id="field_list"></datalist>
+                <div class="ib_sel_desc">
+                  <button type="button" class="ib_sel_help" data-title="_field Filter" data-help="Legt fest, welche Serien/Zeilen geladen werden. Default ist _field=value (Home Assistant Standard).">?</button>
+                  <div class="muted">Legt fest, welche Serien/Zeilen geladen werden (Default: <code>value</code>).</div>
+                </div>
+              </div>
             </div>
 
-            <div style="min-width: 180px;">
-              <label class="label_row"><span>Einheit (_measurement)</span><span id="cnt_measurement_filter" class="muted"></span></label>
-              <input id="measurement_filter" list="measurement_list" placeholder="optional" data-ui="stats.measurement_filter" title="stats.measurement_filter" />
-              <datalist id="measurement_list"></datalist>
-              <div class="muted help" data-ui="stats.measurement_filter_help" title="stats.measurement_filter_help">Filtert Serien nach _measurement (optional).</div>
+            <div class="ib_sel" style="min-width: 180px;">
+              <label class="label_row ib_sel_label"><span>Einheit (_measurement)</span><span id="cnt_measurement_filter" class="muted"></span></label>
+              <div class="ib_sel_stack">
+                <input id="measurement_filter" list="measurement_list" placeholder="optional" data-ui="stats.measurement_filter" title="stats.measurement_filter" />
+                <datalist id="measurement_list"></datalist>
+                <div class="ib_sel_desc">
+                  <button type="button" class="ib_sel_help" data-title="Einheit (_measurement)" data-help="Optionaler Filter. Filtert Statistik-Serien nach _measurement.">?</button>
+                  <div class="muted">Optionaler Filter fuer Serien nach _measurement.</div>
+                </div>
+              </div>
             </div>
 
-            <div style="min-width: 220px;">
-              <label class="label_row"><span>friendly_name Filter</span><span id="cnt_friendly_name" class="muted"></span></label>
-              <input id="friendly_filter" list="friendly_list" placeholder="optional" data-ui="stats.friendly_filter" title="stats.friendly_filter" />
-              <datalist id="friendly_list"></datalist>
-              <div class="muted help" data-ui="stats.friendly_filter_help" title="stats.friendly_filter_help">Filtert Serien nach friendly_name (optional).</div>
+            <div class="ib_sel" style="min-width: 220px;">
+              <label class="label_row ib_sel_label"><span>friendly_name Filter</span><span id="cnt_friendly_name" class="muted"></span></label>
+              <div class="ib_sel_stack">
+                <input id="friendly_filter" list="friendly_list" placeholder="optional" data-ui="stats.friendly_filter" title="stats.friendly_filter" />
+                <datalist id="friendly_list"></datalist>
+                <div class="ib_sel_desc">
+                  <button type="button" class="ib_sel_help" data-title="friendly_name Filter" data-help="Optionaler Filter. Filtert Serien nach friendly_name.">?</button>
+                  <div class="muted">Optionaler Filter fuer Serien nach friendly_name.</div>
+                </div>
+              </div>
             </div>
 
-            <div style="min-width: 220px;">
-              <label class="label_row"><span>Entity ID (entity_id)</span><span id="cnt_entity_id" class="muted"></span></label>
-              <input id="entity_filter" list="entity_list" placeholder="optional" data-ui="stats.entity_filter" title="stats.entity_filter" />
-              <datalist id="entity_list"></datalist>
-              <div class="muted help" data-ui="stats.entity_filter_help" title="stats.entity_filter_help">Filtert Serien nach entity_id (optional).</div>
+            <div class="ib_sel" style="min-width: 220px;">
+              <label class="label_row ib_sel_label"><span>Entity ID (entity_id)</span><span id="cnt_entity_id" class="muted"></span></label>
+              <div class="ib_sel_stack">
+                <input id="entity_filter" list="entity_list" placeholder="optional" data-ui="stats.entity_filter" title="stats.entity_filter" />
+                <datalist id="entity_list"></datalist>
+                <div class="ib_sel_desc">
+                  <button type="button" class="ib_sel_help" data-title="Entity ID" data-help="Optionaler Filter. Filtert Serien nach entity_id.">?</button>
+                  <div class="muted">Optionaler Filter fuer Serien nach entity_id.</div>
+                </div>
+              </div>
             </div>
 
             <div id="custom" style="min-width: 320px; display:none;">
@@ -143,8 +200,6 @@
           </div>
 
           <div class="muted" style="margin-top: 10px;">Influx Datenbank Info: siehe Menuepunkt <code>Info</code>.</div>
-
-          <div class="muted" id="range_txt" data-ui="stats.range_txt" title="stats.range_txt"></div>
 
           <div class="row" data-ui="stats.columns" title="stats.columns" style="margin-top: 10px;">
             <div style="min-width: 260px; flex: 1;">
@@ -219,8 +274,12 @@
       </div>
 
       <script>
+      const UI_SEL_AUTO_WIDTH = {{ 'true' if (cfg and cfg.get('ui_sel_auto_width', true)) else 'false' }};
+      const UI_SEL_MANUAL_W = {{ (cfg.get('ui_sel_width_px') or 260) | int }};
+      const UI_SEL_LAST_W_KEY = 'influxbro.ui.sel_auto_width_last_px';
+
       const $range = document.getElementById('range');
-      const $rangeTxt = document.getElementById('range_txt');
+      const $rangeBounds = document.getElementById('stats_range_bounds');
       const $custom = document.getElementById('custom');
       const $start = document.getElementById('start');
       const $stop = document.getElementById('stop');
@@ -298,6 +357,100 @@
 
       const SELECTED = new Set();
       const LOADED_COLS = new Set();
+
+      function _selInitHelpButtons(){
+        try{
+          document.querySelectorAll('.ib_sel_help').forEach(btn => {
+            btn.addEventListener('click', (ev)=>{
+              try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+              const t = String(btn.getAttribute('data-title') || 'Info');
+              const h = String(btn.getAttribute('data-help') || '');
+              try{
+                if(window.InfluxBroPopup && window.InfluxBroPopup.show) window.InfluxBroPopup.show(t, h);
+                else alert(t + "\n\n" + h);
+              }catch(e){
+                try{ alert(t + "\n\n" + h); }catch(x){}
+              }
+            });
+          });
+        }catch(e){}
+      }
+
+      function _selCanvas(){
+        try{
+          if(window.__ib_sel_canvas) return window.__ib_sel_canvas;
+          const c = document.createElement('canvas');
+          window.__ib_sel_canvas = c;
+          return c;
+        }catch(e){
+          return null;
+        }
+      }
+
+      function _selAvgTextWidthPx(texts, font){
+        try{
+          const xs = (texts||[]).map(x=>String(x||'')).filter(Boolean);
+          if(!xs.length) return null;
+          const c = _selCanvas();
+          if(!c) return null;
+          const ctx = c.getContext('2d');
+          if(!ctx) return null;
+          ctx.font = font || '13px system-ui, sans-serif';
+          let sum = 0;
+          xs.forEach(s=>{ try{ sum += (ctx.measureText(s).width || 0); }catch(e){} });
+          const avg = sum / xs.length;
+          if(!isFinite(avg) || avg <= 0) return null;
+          return avg;
+        }catch(e){
+          return null;
+        }
+      }
+
+      function _selApplyWidth(el, px){
+        try{
+          if(!el) return;
+          const w = Math.round(Number(px) || 0);
+          if(!isFinite(w) || w <= 0) return;
+          el.style.width = w + 'px';
+        }catch(e){}
+      }
+
+      function _selManualWidth(){
+        return Math.max(140, Math.min(800, Number(UI_SEL_MANUAL_W || 260)));
+      }
+
+      function _selApplyDefaultWidths(){
+        try{
+          const last = Number(localStorage.getItem(UI_SEL_LAST_W_KEY) || 0);
+          const w = (UI_SEL_AUTO_WIDTH && isFinite(last) && last > 0) ? last : _selManualWidth();
+          [$fieldFilter,$measurementFilter,$friendlyFilter,$entityFilter,$range].forEach(el=>{ try{ _selApplyWidth(el, w); }catch(e){} });
+        }catch(e){}
+      }
+
+      function _selMaybeAutoWidth(inputEl, listEl){
+        try{
+          if(!inputEl) return;
+          if(!UI_SEL_AUTO_WIDTH){
+            _selApplyWidth(inputEl, _selManualWidth());
+            return;
+          }
+          const opts = [];
+          try{ if(listEl && listEl.tagName === 'DATALIST') listEl.querySelectorAll('option').forEach(o=>opts.push(String(o.value||''))); }catch(e){}
+          try{ if(!opts.length && listEl && listEl.tagName === 'SELECT') listEl.querySelectorAll('option').forEach(o=>opts.push(String(o.textContent||o.value||''))); }catch(e){}
+          const font = (window.getComputedStyle && window.getComputedStyle(inputEl)) ? window.getComputedStyle(inputEl).font : null;
+          const avg = _selAvgTextWidthPx(opts.slice(0, 300), font);
+          if(avg === null){
+            const last = Number(localStorage.getItem(UI_SEL_LAST_W_KEY) || 0);
+            if(isFinite(last) && last > 0) _selApplyWidth(inputEl, last);
+            else _selApplyWidth(inputEl, _selManualWidth());
+            return;
+          }
+          const padding = 34;
+          const w = Math.max(160, Math.min(720, Math.round(avg + padding)));
+          _selApplyWidth(inputEl, w);
+          try{ localStorage.setItem(UI_SEL_LAST_W_KEY, String(w)); }catch(e){}
+        }catch(e){}
+      }
 
       function err(s){
         const msg = s || "";
@@ -479,12 +632,13 @@
         return { start: new Date(now.getTime() - 30*24*60*60*1000).toISOString(), stop: now.toISOString(), range: '30d' };
       }
 
-      function renderRangeTxt(){
+      function renderRangeBounds(){
         try{
           const tf = timeFilter();
-          $rangeTxt.textContent = fmtTs(tf.start) + " bis " + fmtTs(tf.stop);
+          if(!$rangeBounds) return;
+          $rangeBounds.textContent = '(' + fmtTs(tf.start) + ' – ' + fmtTs(tf.stop) + ')';
         }catch(e){
-          $rangeTxt.textContent = "";
+          try{ if($rangeBounds) $rangeBounds.textContent = ''; }catch(x){}
         }
       }
 
@@ -724,21 +878,25 @@
             const xs = Array.from(new Set((ROWS||[]).map(r=>String(r.field||'')).filter(Boolean))).sort();
             $fieldList.innerHTML = xs.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"></option>`).join('');
             setCount($cntField, xs.length, true);
+            try{ _selMaybeAutoWidth($fieldFilter, $fieldList); }catch(e){}
           }
           if($measurementList){
             const ms = Array.from(new Set((ROWS||[]).map(r=>String(r.measurement||'')).filter(Boolean))).sort();
             $measurementList.innerHTML = ms.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"></option>`).join('');
             setCount($cntMeas, ms.length, true);
+            try{ _selMaybeAutoWidth($measurementFilter, $measurementList); }catch(e){}
           }
           if($friendlyList){
             const xs = Array.from(new Set((ROWS||[]).map(r=>String(r.friendly_name||'')).filter(Boolean))).sort();
             $friendlyList.innerHTML = xs.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"></option>`).join('');
             setCount($cntFn, xs.length, true);
+            try{ _selMaybeAutoWidth($friendlyFilter, $friendlyList); }catch(e){}
           }
           if($entityList){
             const xs = Array.from(new Set((ROWS||[]).map(r=>String(r.entity_id||'')).filter(Boolean))).sort();
             $entityList.innerHTML = xs.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"></option>`).join('');
             setCount($cntEid, xs.length, false);
+            try{ _selMaybeAutoWidth($entityFilter, $entityList); }catch(e){}
           }
         }catch(e){}
       }
@@ -1357,14 +1515,20 @@
       const s = new Date(now.getTime() - 30*24*60*60*1000);
       if($start && !$start.value) $start.value = toLocalDatetimeValue(s);
       if($stop && !$stop.value) $stop.value = toLocalDatetimeValue(now);
+
+      try{ _selInitHelpButtons(); }catch(e){}
+      try{ _selApplyDefaultWidths(); }catch(e){}
+      try{ _selMaybeAutoWidth($range, $range); }catch(e){}
+
       if($range) $range.addEventListener('change', ()=>{
         $custom.style.display = ($range.value === 'custom') ? 'block' : 'none';
-        renderRangeTxt();
+        renderRangeBounds();
+        try{ _selMaybeAutoWidth($range, $range); }catch(e){}
         saveUiState();
       });
-      if($start) $start.addEventListener('change', ()=>{ renderRangeTxt(); saveUiState(); });
-      if($stop) $stop.addEventListener('change', ()=>{ renderRangeTxt(); saveUiState(); });
-      renderRangeTxt();
+      if($start) $start.addEventListener('change', ()=>{ renderRangeBounds(); saveUiState(); });
+      if($stop) $stop.addEventListener('change', ()=>{ renderRangeBounds(); saveUiState(); });
+      renderRangeBounds();
 
       </script>
 

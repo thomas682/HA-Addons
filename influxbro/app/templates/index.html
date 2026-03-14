@@ -12,6 +12,10 @@
       --ui-label-w: 170px;
       --ui-ctrl-w: 320px;
       --ui-search-w: 160px;
+      --ib-sel-font: 13px;
+      --ib-sel-label-font: 12px;
+      --ib-sel-desc-font: 11px;
+      --ib-sel-manual-w: 260px;
       /* Table density: effective row height is at most +20% above font size. */
       --ui-table-line-height: 1.2;
     }
@@ -45,6 +49,34 @@
     input[type="datetime-local"] { width: 100%; }
     input.search { height: 34px; padding: 8px 10px; }
     .stack { display:flex; flex-direction:column; gap:6px; }
+
+    /* Selection fields (master template) */
+    .ib_sel { min-width: 0; }
+    .ib_sel_label { font-size: var(--ib-sel-label-font); opacity: 0.9; }
+    .ib_sel_stack { display:flex; flex-direction:column; gap: 6px; align-items:flex-start; }
+    .ib_sel_stack input, .ib_sel_stack select {
+      font-size: var(--ib-sel-font);
+      height: auto;
+      padding: 6px 10px;
+      width: var(--ib-sel-manual-w);
+      max-width: 100%;
+    }
+    .ib_sel_desc { display:flex; gap: 8px; align-items:flex-start; font-size: var(--ib-sel-desc-font); }
+    .ib_sel_help {
+      width: 20px; height: 20px;
+      padding: 0;
+      border-radius: 999px;
+      border: 1px solid #ddd;
+      background: #fff;
+      cursor: pointer;
+      font-weight: 800;
+      line-height: 18px;
+      flex: 0 0 auto;
+    }
+    .ib_sel_help:hover { background: #f6f6f6; }
+    @media (max-width: 860px){
+      .ib_sel_stack input, .ib_sel_stack select { width: 100% !important; }
+    }
     table { border-collapse: collapse; width: 100%; margin-top: 12px; }
     th, td { border: 1px solid #ddd; padding: 0 6px; font-size: 12px; line-height: 1.2; vertical-align: middle; }
     th { background:#f4f4f4; text-align:left; }
@@ -157,21 +189,31 @@
     <summary>Auswahl</summary>
 
   <div class="grid" id="filters" data-ui="dashboard.filters" title="dashboard.filters">
-    <div class="control control_lr" id="c_measurement_filter" data-ui="filter_measurement">
-      <label class="label_row"><span>Einheit (_measurement)</span><span id="cnt_measurement_filter" class="muted"></span></label>
-      <div class="stack">
+    <div class="control ib_sel" id="c_measurement_filter" data-ui="filter_measurement">
+      <label class="label_row ib_sel_label"><span>Einheit (_measurement)</span><span id="cnt_measurement_filter" class="muted"></span></label>
+      <div class="ib_sel_stack">
         <input id="measurement_filter" list="measurement_filter_list" placeholder="optional" data-ui="filter_measurement_input" />
         <datalist id="measurement_filter_list"></datalist>
+        <div class="ib_sel_desc">
+          <button type="button" class="ib_sel_help" data-title="Einheit (_measurement)" data-help="Filtert die Vorschlaege fuer friendly_name/entity_id auf dieses Measurement. Du kannst frei tippen oder aus der Liste waehlen.">?</button>
+          <div class="muted">Filtert die Vorschlaege nach Measurement.</div>
+        </div>
       </div>
     </div>
-    <div class="control control_lr" id="c_friendly" data-ui="filter_friendly">
-      <label class="label_row"><span>Messwert (Klartext / friendly_name)</span><span id="cnt_friendly_name" class="muted"></span></label>
-      <div class="stack">
+    <div class="control ib_sel" id="c_friendly" data-ui="filter_friendly">
+      <label class="label_row ib_sel_label"><span>Messwert (Klartext / friendly_name)</span><span id="cnt_friendly_name" class="muted"></span></label>
+      <div class="ib_sel_stack">
         <input id="friendly_name" list="friendly_list" placeholder="optional" data-ui="filter_friendly_input" />
         <datalist id="friendly_list"></datalist>
+        <div class="ib_sel_desc">
+          <button type="button" class="ib_sel_help" data-title="Messwert (friendly_name)" data-help="Waehle den Klartext-Namen des Messwerts. Falls mehrere Entity-IDs denselben Namen haben, nutze zusaetzlich den entity_id Filter.">?</button>
+          <div class="muted">Klartext-Auswahl (datalist) fuer den Messwert.</div>
+        </div>
       </div>
     </div>
-    <div class="control" id="c_range" data-ui="filter_range"><label class="label_row"><span>Zeitraum (Graph/Tabelle)</span><span id="range_from_to" data-ui="filter_range_bounds"></span></label>
+    <div class="control ib_sel ib_sel_time span2" id="c_range" data-ui="filter_range">
+      <label class="label_row ib_sel_label"><span>Zeitraum (Graph/Tabelle)</span><span><span id="cnt_range" class="muted"></span> <span id="range_from_to" class="muted" data-ui="filter_range_bounds"></span></span></label>
+      <div class="ib_sel_stack">
       <select id="range" data-ui="filter_range_select">
         <option value="1h">Letzte 1h</option>
         <option value="6h">Letzte 6h</option>
@@ -187,12 +229,21 @@
         <option value="all">Alle</option>
         <option value="custom">Benutzerdefiniert…</option>
       </select>
+      <div class="ib_sel_desc">
+        <button type="button" class="ib_sel_help" data-title="Zeitraum" data-help="Steuert den Zeitbereich fuer Graph und Tabelle. Bei Benutzerdefiniert kannst du Start/Stop setzen. Der angezeigte Bereich wird als lokale Zeit interpretiert und als UTC an die API gesendet.">?</button>
+        <div class="muted">Zeitintervall fuer Graph/Tabelle.</div>
+      </div>
+      </div>
     </div>
-    <div class="control control_lr" id="c_entity" data-ui="filter_entity">
-      <label class="label_row"><span>Entity ID (entity_id)</span><span id="cnt_entity_id" class="muted"></span></label>
-      <div class="stack">
+    <div class="control ib_sel" id="c_entity" data-ui="filter_entity">
+      <label class="label_row ib_sel_label"><span>Entity ID (entity_id)</span><span id="cnt_entity_id" class="muted"></span></label>
+      <div class="ib_sel_stack">
         <input id="entity_id" list="entity_list" placeholder="optional" data-ui="filter_entity_input" />
         <datalist id="entity_list"></datalist>
+        <div class="ib_sel_desc">
+          <button type="button" class="ib_sel_help" data-title="Entity ID" data-help="Optionaler Filter, um Messwerte zu unterscheiden, wenn mehrere Entity-IDs denselben friendly_name teilen.">?</button>
+          <div class="muted">Optionaler Filter bei identischem Klartextnamen.</div>
+        </div>
       </div>
     </div>
     <div class="control span2" id="custom_range" style="display:none;">
@@ -687,6 +738,7 @@ const $tblBOp = document.getElementById('tbl_b_op');
 const $tblBVal = document.getElementById('tbl_b_val');
 const $tableBox = document.getElementById('table_box');
 const $rangeFromTo = document.getElementById('range_from_to');
+const $cntRange = document.getElementById('cnt_range');
 
 const $cntMf = document.getElementById('cnt_measurement_filter');
 const $cntFn = document.getElementById('cnt_friendly_name');
@@ -3210,6 +3262,16 @@ async function loadUiConfig(){
 
     const sw = Number(cfg.ui_filter_search_width_px);
     if(isFinite(sw) && sw >= 80 && sw <= 420) document.documentElement.style.setProperty("--ui-search-w", sw + "px");
+
+    const sff = Number(cfg.ui_sel_field_font_px);
+    if(isFinite(sff) && sff >= 9 && sff <= 22) document.documentElement.style.setProperty('--ib-sel-font', sff + 'px');
+    const slf = Number(cfg.ui_sel_label_font_px);
+    if(isFinite(slf) && slf >= 9 && slf <= 22) document.documentElement.style.setProperty('--ib-sel-label-font', slf + 'px');
+    const sdf = Number(cfg.ui_sel_desc_font_px);
+    if(isFinite(sdf) && sdf >= 9 && sdf <= 22) document.documentElement.style.setProperty('--ib-sel-desc-font', sdf + 'px');
+    const smw = Number(cfg.ui_sel_width_px);
+    if(isFinite(smw) && smw >= 120 && smw <= 900) document.documentElement.style.setProperty('--ib-sel-manual-w', Math.round(smw) + 'px');
+    _SEL_AUTO_WIDTH = !!cfg.ui_sel_auto_width;
   }catch(e){
     // ignore; fallback to defaults
   }
@@ -3479,6 +3541,10 @@ let LAST_TOTAL_BOUNDS = { oldest_time: null, newest_time: null };
 function renderRangeFromTo(){
   if(!$rangeFromTo) return;
 
+  try{
+    if($cntRange && $r && $r.options) $cntRange.textContent = $r.options.length ? `(${Number($r.options.length)})` : '';
+  }catch(e){}
+
   const r = rangeToStartStop();
   if(r && r.all){
     if(LAST_TOTAL_BOUNDS.oldest_time && LAST_TOTAL_BOUNDS.newest_time){
@@ -3486,12 +3552,15 @@ function renderRangeFromTo(){
     }else{
       $rangeFromTo.textContent = "alle";
     }
+    _selApplyWidthForTimeSelect($r);
     return;
   }
 
   const s = r && r.start ? fmtTs(r.start.toISOString()) : "";
   const e = r && r.stop ? fmtTs(r.stop.toISOString()) : "";
   $rangeFromTo.textContent = (s && e) ? (`${s} bis ${e}`) : "";
+
+  _selApplyWidthForTimeSelect($r);
 }
 
 let ALL_MEASUREMENTS = [];
@@ -3506,20 +3575,131 @@ function setDatalistOptions(listEl, items){
   }catch(e){}
 }
 
+let _SEL_AUTO_WIDTH = true;
+let _SEL_LAST_REPORTED_W = 0;
+
+function _selMeasureAvgPx(items, font){
+  try{
+    const xs = (items || []).map(x=>String(x||'')).filter(Boolean);
+    if(!xs.length) return 0;
+    const canvas = _selMeasureAvgPx._c || (_selMeasureAvgPx._c = document.createElement('canvas'));
+    const ctx = canvas.getContext('2d');
+    if(!ctx) return 0;
+    ctx.font = font || '13px system-ui';
+    const n = Math.min(xs.length, 200);
+    let sum = 0;
+    for(let i=0;i<n;i++) sum += (ctx.measureText(xs[i]).width || 0);
+    return n ? (sum / n) : 0;
+  }catch(e){
+    return 0;
+  }
+}
+
+function _selMeasureTextPx(txt, font){
+  try{
+    const canvas = _selMeasureTextPx._c || (_selMeasureTextPx._c = document.createElement('canvas'));
+    const ctx = canvas.getContext('2d');
+    if(!ctx) return 0;
+    ctx.font = font || '12px system-ui';
+    return (ctx.measureText(String(txt||'')).width || 0);
+  }catch(e){
+    return 0;
+  }
+}
+
+async function _selReportComputedWidth(px){
+  try{
+    const v = Math.round(Number(px) || 0);
+    if(!isFinite(v) || v <= 0) return;
+    if(v <= _SEL_LAST_REPORTED_W + 2) return;
+    _SEL_LAST_REPORTED_W = v;
+    await fetch('./api/ui_state/set', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: 'influxbro.ui.sel_auto_width_last_px', value: String(v) })
+    }).catch(()=>{});
+  }catch(e){}
+}
+
+function _selApplyWidthForInput(inputEl, items){
+  try{
+    if(!inputEl) return;
+    if(!_SEL_AUTO_WIDTH) return; // manual width via CSS var
+    const font = getComputedStyle(inputEl).font;
+    const avg = _selMeasureAvgPx(items || [], font);
+    if(!isFinite(avg) || avg <= 0) return;
+    // Add padding+caret; keep narrow but usable.
+    let px = Math.ceil(avg + 26);
+    px = Math.max(140, Math.min(420, px));
+    inputEl.style.width = px + 'px';
+    _selReportComputedWidth(px);
+  }catch(e){}
+}
+
+function _selApplyWidthForTimeSelect(selEl){
+  try{
+    if(!selEl) return;
+    if(!_SEL_AUTO_WIDTH) return;
+    const optTxt = Array.from(selEl.options || []).map(o=>String(o && o.textContent ? o.textContent : '')).filter(Boolean);
+    const font = getComputedStyle(selEl).font;
+    const avgOpt = _selMeasureAvgPx(optTxt, font);
+
+    // Label row width: "Name (n) range"
+    const name = 'Zeitraum (Graph/Tabelle)';
+    const cnt = ($cntRange && $cntRange.textContent) ? String($cntRange.textContent) : '';
+    const rng = ($rangeFromTo && $rangeFromTo.textContent) ? String($rangeFromTo.textContent) : '';
+    const labelFont = (()=>{
+      try{
+        const lab = document.querySelector('#c_range label');
+        return lab ? getComputedStyle(lab).font : getComputedStyle(selEl).font;
+      }catch(e){
+        return getComputedStyle(selEl).font;
+      }
+    })();
+    const labelW = _selMeasureTextPx([name, cnt, rng].filter(Boolean).join(' '), labelFont);
+
+    let px = Math.ceil(Math.max(avgOpt + 30, labelW + 12));
+    px = Math.max(420, Math.min(980, px));
+    selEl.style.width = px + 'px';
+    _selReportComputedWidth(px);
+  }catch(e){}
+}
+
+function _selInitHelpButtons(){
+  try{
+    document.querySelectorAll('.ib_sel_help').forEach(btn => {
+      btn.addEventListener('click', (ev)=>{
+        try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+        const t = String(btn.getAttribute('data-title') || 'Info');
+        const h = String(btn.getAttribute('data-help') || '');
+        try{
+          if(window.InfluxBroPopup && window.InfluxBroPopup.show) window.InfluxBroPopup.show(t, h);
+          else alert(t + '\n\n' + h);
+        }catch(e){
+          try{ alert(t + '\n\n' + h); }catch(ex){}
+        }
+      });
+    });
+  }catch(e){}
+}
+
 function renderMeasurements(){
   setDatalistOptions($mfList, ALL_MEASUREMENTS);
   setSelectOptions($m, ALL_MEASUREMENTS, null);
   if($cntMf) $cntMf.textContent = ALL_MEASUREMENTS.length ? `(${ALL_MEASUREMENTS.length})` : "";
+  _selApplyWidthForInput($mf, ALL_MEASUREMENTS);
 }
 
 function renderFriendly(){
   setDatalistOptions($friendlyList, ALL_FRIENDLY);
   if($cntFn) $cntFn.textContent = ALL_FRIENDLY.length ? `(${ALL_FRIENDLY.length})` : "";
+  _selApplyWidthForInput($n, ALL_FRIENDLY);
 }
 
 function renderEntity(){
   setDatalistOptions($entityList, ALL_ENTITY);
   if($cntEid) $cntEid.textContent = ALL_ENTITY.length > 1 ? `(${ALL_ENTITY.length})` : "";
+  _selApplyWidthForInput($e, ALL_ENTITY);
 }
 
 async function loadMeasurements(){
@@ -5921,6 +6101,7 @@ try{
   (async ()=>{
     try{
       await loadUiConfig();
+      try{ _selInitHelpButtons(); }catch(e){}
       loadVersion().catch(()=>{});
     loadGraphHeight();
     initGraphResize();

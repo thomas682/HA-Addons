@@ -5,6 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>InfluxBro – Export</title>
   <style>
+    :root {
+      --ib-sel-font: {{ (cfg.get('ui_sel_field_font_px') or 13) | int }}px;
+      --ib-sel-label-font: {{ (cfg.get('ui_sel_label_font_px') or 12) | int }}px;
+      --ib-sel-desc-font: {{ (cfg.get('ui_sel_desc_font_px') or 11) | int }}px;
+      --ib-sel-manual-w: {{ (cfg.get('ui_sel_width_px') or 260) | int }}px;
+    }
     body { font-family: system-ui, sans-serif; margin: 0; }
     .shell { display:grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
     @media (max-width: 980px){ .shell { grid-template-columns: 1fr; } }
@@ -29,6 +35,33 @@
 
     textarea.resizable { resize: vertical; min-height: 140px; }
 
+    /* Selection fields (master template) */
+    .ib_sel_label { font-size: var(--ib-sel-label-font); opacity: 0.9; }
+    .ib_sel_stack { display:flex; flex-direction:column; gap: 6px; align-items:flex-start; }
+    .ib_sel_stack input, .ib_sel_stack select {
+      font-size: var(--ib-sel-font);
+      height: auto;
+      padding: 6px 10px;
+      width: var(--ib-sel-manual-w);
+      max-width: 100%;
+    }
+    .ib_sel_desc { display:flex; gap: 8px; align-items:flex-start; font-size: var(--ib-sel-desc-font); }
+    .ib_sel_help {
+      width: 20px; height: 20px;
+      padding: 0;
+      border-radius: 999px;
+      border: 1px solid #ddd;
+      background: #fff;
+      cursor: pointer;
+      font-weight: 800;
+      line-height: 18px;
+      flex: 0 0 auto;
+    }
+    .ib_sel_help:hover { background: #f6f6f6; }
+    @media (max-width: 860px){
+      .ib_sel_stack input, .ib_sel_stack select { width: 100% !important; }
+    }
+
     /* Simple modal (no dependencies) */
     .modal { display:none; position:fixed; inset:0; z-index: 10040; background: rgba(0,0,0,0.45); padding: 6vh 12px 12px 12px; box-sizing:border-box; overflow:auto; }
     .modal .card { max-width: 760px; margin: 0 auto; background:#fff; border-radius: 16px; box-shadow: 0 12px 60px rgba(0,0,0,0.28); padding: 14px 14px 12px 14px; }
@@ -48,39 +81,61 @@
         <summary>Auswahl</summary>
         <div class="card_body">
           <div class="grid">
-            <div>
-              <label>Einheit (_measurement)</label>
-              <input id="measurement_filter" list="measurement_list" placeholder="optional" data-ui="export.measurement_filter" title="export.measurement_filter" />
-              <datalist id="measurement_list"></datalist>
-              <div class="muted">Optionaler Filter fuer Vorschlaege.</div>
+            <div class="ib_sel" id="c_measurement_filter">
+              <label class="label_row ib_sel_label"><span>Einheit (_measurement)</span><span id="cnt_measurement_filter" class="muted"></span></label>
+              <div class="ib_sel_stack">
+                <input id="measurement_filter" list="measurement_list" placeholder="optional" data-ui="export.measurement_filter" title="export.measurement_filter" />
+                <datalist id="measurement_list"></datalist>
+                <div class="ib_sel_desc">
+                  <button type="button" class="ib_sel_help" data-title="Einheit (_measurement)" data-help="Optionaler Filter fuer Vorschlaege. Filtert friendly_name/entity_id Vorschlaege auf dieses Measurement.">?</button>
+                  <div class="muted">Optionaler Filter fuer Vorschlaege.</div>
+                </div>
+              </div>
             </div>
-            <div>
-              <label>Messwert (friendly_name)</label>
-              <input id="friendly_name" list="friendly_list" placeholder="optional" data-ui="export.friendly" title="export.friendly" />
-              <datalist id="friendly_list"></datalist>
+            <div class="ib_sel" id="c_friendly_name">
+              <label class="label_row ib_sel_label"><span>Messwert (friendly_name)</span><span id="cnt_friendly_name" class="muted"></span></label>
+              <div class="ib_sel_stack">
+                <input id="friendly_name" list="friendly_list" placeholder="optional" data-ui="export.friendly" title="export.friendly" />
+                <datalist id="friendly_list"></datalist>
+                <div class="ib_sel_desc">
+                  <button type="button" class="ib_sel_help" data-title="Messwert (friendly_name)" data-help="Waehle den Klartext-Namen des Messwerts. Optional kannst du entity_id zusaetzlich setzen.">?</button>
+                  <div class="muted">Optionaler Filter. Du kannst frei tippen oder aus der Liste waehlen.</div>
+                </div>
+              </div>
             </div>
-            <div>
-              <label>Entity ID (entity_id)</label>
-              <input id="entity_id" list="entity_list" placeholder="optional" data-ui="export.entity" title="export.entity" />
-              <datalist id="entity_list"></datalist>
+            <div class="ib_sel" id="c_entity_id">
+              <label class="label_row ib_sel_label"><span>Entity ID (entity_id)</span><span id="cnt_entity_id" class="muted"></span></label>
+              <div class="ib_sel_stack">
+                <input id="entity_id" list="entity_list" placeholder="optional" data-ui="export.entity" title="export.entity" />
+                <datalist id="entity_list"></datalist>
+                <div class="ib_sel_desc">
+                  <button type="button" class="ib_sel_help" data-title="Entity ID" data-help="Optionaler Filter, um Messwerte zu unterscheiden, wenn mehrere Entity-IDs denselben friendly_name teilen.">?</button>
+                  <div class="muted">Optionaler Filter (Alternative/Ergaenzung zu friendly_name).</div>
+                </div>
+              </div>
             </div>
-            <div>
-              <label>Zeitraum</label>
-              <select id="range" data-ui="export.range" title="export.range">
-                <option value="1h">Letzte 1h</option>
-                <option value="6h">Letzte 6h</option>
-                <option value="12h">Letzte 12h</option>
-                <option value="24h" selected>Letzte 24h</option>
-                <option value="7d">Letzte 7 Tage</option>
-                <option value="30d">Letzte 30 Tage</option>
-                <option value="90d">Letzte 90 Tage</option>
-                <option value="365d">Letztes Jahr</option>
-                <option value="this_year">Dieses Jahr</option>
-                <option value="12mo">Letzte 12 Monate</option>
-                <option value="24mo">Letzte 24 Monate</option>
-                <option value="custom">Benutzerdefiniert…</option>
-              </select>
-              <div class="muted" id="range_txt"></div>
+            <div class="ib_sel ib_sel_time" id="c_range">
+              <label class="label_row ib_sel_label"><span>Zeitraum</span><span id="export_range_bounds" class="muted"></span></label>
+              <div class="ib_sel_stack">
+                <select id="range" data-ui="export.range" title="export.range">
+                  <option value="1h">Letzte 1h</option>
+                  <option value="6h">Letzte 6h</option>
+                  <option value="12h">Letzte 12h</option>
+                  <option value="24h" selected>Letzte 24h</option>
+                  <option value="7d">Letzte 7 Tage</option>
+                  <option value="30d">Letzte 30 Tage</option>
+                  <option value="90d">Letzte 90 Tage</option>
+                  <option value="365d">Letztes Jahr</option>
+                  <option value="this_year">Dieses Jahr</option>
+                  <option value="12mo">Letzte 12 Monate</option>
+                  <option value="24mo">Letzte 24 Monate</option>
+                  <option value="custom">Benutzerdefiniert…</option>
+                </select>
+                <div class="ib_sel_desc">
+                  <button type="button" class="ib_sel_help" data-title="Zeitraum" data-help="Steuert den Zeitbereich fuer den Export. Bei Benutzerdefiniert kannst du Start/Stop setzen. Zeiten werden als lokale Zeit interpretiert und als UTC an die API gesendet.">?</button>
+                  <div class="muted">Zeitfilter fuer den Export.</div>
+                </div>
+              </div>
             </div>
             <div id="custom" style="display:none;" class="row">
               <div style="min-width: 320px; flex:1;">
@@ -175,18 +230,25 @@
       </div>
 
       <script>
+      const UI_SEL_AUTO_WIDTH = {{ 'true' if (cfg and cfg.get('ui_sel_auto_width', true)) else 'false' }};
+      const UI_SEL_MANUAL_W = {{ (cfg.get('ui_sel_width_px') or 260) | int }};
+      const UI_SEL_LAST_W_KEY = 'influxbro.ui.sel_auto_width_last_px';
+
       const LS_KEY = "influxbro_ui_state_v1";
       const $mf = document.getElementById('measurement_filter');
       const $mfList = document.getElementById('measurement_list');
+      const $cntMf = document.getElementById('cnt_measurement_filter');
       const $n = document.getElementById('friendly_name');
       const $friendlyList = document.getElementById('friendly_list');
+      const $cntFriendly = document.getElementById('cnt_friendly_name');
       const $e = document.getElementById('entity_id');
       const $entityList = document.getElementById('entity_list');
+      const $cntEntity = document.getElementById('cnt_entity_id');
       const $r = document.getElementById('range');
       const $custom = document.getElementById('custom');
       const $start = document.getElementById('start');
       const $stop = document.getElementById('stop');
-      const $rangeTxt = document.getElementById('range_txt');
+      const $rangeBounds = document.getElementById('export_range_bounds');
       const $m = document.getElementById('measurement');
       const $f = document.getElementById('field');
       const $format = document.getElementById('format');
@@ -216,6 +278,119 @@
       let AUTO_DL_DONE = false;
 
       const LS_TARGET = 'influxbro_export_target_dir_v1';
+
+      function _selInitHelpButtons(){
+        try{
+          document.querySelectorAll('.ib_sel_help').forEach(btn => {
+            btn.addEventListener('click', (ev)=>{
+              try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+              const t = String(btn.getAttribute('data-title') || 'Info');
+              const h = String(btn.getAttribute('data-help') || '');
+              try{
+                if(window.InfluxBroPopup && window.InfluxBroPopup.show) window.InfluxBroPopup.show(t, h);
+                else alert(t + "\n\n" + h);
+              }catch(e){
+                try{ alert(t + "\n\n" + h); }catch(x){}
+              }
+            });
+          });
+        }catch(e){}
+      }
+
+      function _selCanvas(){
+        try{
+          if(window.__ib_sel_canvas) return window.__ib_sel_canvas;
+          const c = document.createElement('canvas');
+          window.__ib_sel_canvas = c;
+          return c;
+        }catch(e){
+          return null;
+        }
+      }
+
+      function _selAvgTextWidthPx(texts, font){
+        try{
+          const xs = (texts||[]).map(x=>String(x||'')).filter(Boolean);
+          if(!xs.length) return null;
+          const c = _selCanvas();
+          if(!c) return null;
+          const ctx = c.getContext('2d');
+          if(!ctx) return null;
+          ctx.font = font || '13px system-ui, sans-serif';
+          let sum = 0;
+          xs.forEach(s=>{ try{ sum += (ctx.measureText(s).width || 0); }catch(e){} });
+          const avg = sum / xs.length;
+          if(!isFinite(avg) || avg <= 0) return null;
+          return avg;
+        }catch(e){
+          return null;
+        }
+      }
+
+      function _selApplyWidth(el, px){
+        try{
+          if(!el) return;
+          const w = Math.round(Number(px) || 0);
+          if(!isFinite(w) || w <= 0) return;
+          el.style.width = w + 'px';
+        }catch(e){}
+      }
+
+      function _selManualWidth(){
+        return Math.max(140, Math.min(800, Number(UI_SEL_MANUAL_W || 260)));
+      }
+
+      function _selApplyDefaultWidths(){
+        try{
+          const last = Number(localStorage.getItem(UI_SEL_LAST_W_KEY) || 0);
+          const w = (UI_SEL_AUTO_WIDTH && isFinite(last) && last > 0) ? last : _selManualWidth();
+          [$mf,$n,$e,$r].forEach(el=>{ try{ _selApplyWidth(el, w); }catch(e){} });
+        }catch(e){}
+      }
+
+      function _selMaybeAutoWidth(inputEl, listEl){
+        try{
+          if(!inputEl) return;
+          if(!UI_SEL_AUTO_WIDTH){
+            _selApplyWidth(inputEl, _selManualWidth());
+            return;
+          }
+          const opts = [];
+          try{ if(listEl) listEl.querySelectorAll('option').forEach(o=>opts.push(String(o.value||''))); }catch(e){}
+          // For <select>, listEl is the select element.
+          try{ if(!opts.length && listEl && listEl.tagName === 'SELECT') listEl.querySelectorAll('option').forEach(o=>opts.push(String(o.textContent||o.value||''))); }catch(e){}
+          const font = (window.getComputedStyle && window.getComputedStyle(inputEl)) ? window.getComputedStyle(inputEl).font : null;
+          const avg = _selAvgTextWidthPx(opts.slice(0, 300), font);
+          if(avg === null){
+            const last = Number(localStorage.getItem(UI_SEL_LAST_W_KEY) || 0);
+            if(isFinite(last) && last > 0) _selApplyWidth(inputEl, last);
+            else _selApplyWidth(inputEl, _selManualWidth());
+            return;
+          }
+          const padding = 34; // input paddings + dropdown affordance
+          const w = Math.max(160, Math.min(720, Math.round(avg + padding)));
+          _selApplyWidth(inputEl, w);
+          try{ localStorage.setItem(UI_SEL_LAST_W_KEY, String(w)); }catch(e){}
+        }catch(e){}
+      }
+
+      function _updateRangeBounds(){
+        try{
+          const tf = timeFilter();
+          if(!$rangeBounds) return;
+          if(tf && tf.start && tf.stop){
+            const s = new Date(tf.start);
+            const e = new Date(tf.stop);
+            if(isFinite(s.getTime()) && isFinite(e.getTime())){
+              $rangeBounds.textContent = '(' + s.toLocaleString() + ' – ' + e.toLocaleString() + ')';
+              return;
+            }
+          }
+          $rangeBounds.textContent = '';
+        }catch(e){
+          try{ if($rangeBounds) $rangeBounds.textContent = ''; }catch(x){}
+        }
+      }
 
       function showTargetModal(){
         return new Promise((resolve)=>{
@@ -340,6 +515,8 @@
       async function loadMeasurements(){
         const j = await api('./api/measurements');
         setDatalistOptions($mfList, (j.measurements||[]).map(String));
+        try{ if($cntMf) $cntMf.textContent = '(' + String((j.measurements||[]).length || 0) + ')'; }catch(e){}
+        try{ _selMaybeAutoWidth($mf, $mfList); }catch(e){}
         // also populate select
         $m.innerHTML = '';
         (j.measurements||[]).forEach(x=>{ const o=document.createElement('option'); o.value=String(x); o.textContent=String(x); $m.appendChild(o); });
@@ -397,6 +574,8 @@
         if(q.length) url += '&' + q.join('&');
         const j = await api(url);
         setDatalistOptions($friendlyList, (j.values||[]).map(String));
+        try{ if($cntFriendly) $cntFriendly.textContent = '(' + String((j.values||[]).length || 0) + ')'; }catch(e){}
+        try{ _selMaybeAutoWidth($n, $friendlyList); }catch(e){}
       }
 
       async function loadEntity(){
@@ -409,6 +588,8 @@
         if(q.length) url += '&' + q.join('&');
         const j = await api(url);
         setDatalistOptions($entityList, (j.values||[]).map(String));
+        try{ if($cntEntity) $cntEntity.textContent = '(' + String((j.values||[]).length || 0) + ')'; }catch(e){}
+        try{ _selMaybeAutoWidth($e, $entityList); }catch(e){}
       }
 
       async function resolveSignal(){
@@ -602,10 +783,21 @@
           try{ await loadFriendly(); }catch(e){}
           try{ await loadEntity(); }catch(e){}
 
+          try{ _selInitHelpButtons(); }catch(e){}
+          try{ _selApplyDefaultWidths(); }catch(e){}
+          try{ _selMaybeAutoWidth($r, $r); }catch(e){}
+          try{ _updateRangeBounds(); }catch(e){}
+
           try{ await refreshResolved(); }catch(e){}
 
           $custom.style.display = ($r.value === 'custom') ? 'block' : 'none';
-          $r.addEventListener('change', ()=>{ $custom.style.display = ($r.value === 'custom') ? 'block' : 'none'; });
+          $r.addEventListener('change', ()=>{
+            $custom.style.display = ($r.value === 'custom') ? 'block' : 'none';
+            try{ _updateRangeBounds(); }catch(e){}
+            try{ _selMaybeAutoWidth($r, $r); }catch(e){}
+          });
+          try{ if($start) $start.addEventListener('change', ()=>{ try{ _updateRangeBounds(); }catch(e){}; }); }catch(e){}
+          try{ if($stop) $stop.addEventListener('change', ()=>{ try{ _updateRangeBounds(); }catch(e){}; }); }catch(e){}
           $run.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); }catch(e){}; runExport(); });
           if($cancel) $cancel.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); }catch(e){}; cancelJob(); });
           try{ if($sel) $sel.addEventListener('mouseup', ()=>{ /* size captured on save */ }); }catch(e){}
@@ -617,6 +809,8 @@
         }catch(e){ err(e); }
       })();
       </script>
+
+      {% include "_tooltips.html" %}
 
     </main>
   </div>

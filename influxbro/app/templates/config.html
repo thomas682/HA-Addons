@@ -382,6 +382,35 @@
               <input id="ui_filter_search_width_px" type="number" min="80" max="420" />
               <div class="muted">Breite fuer das Suchfeld links neben der Auswahl.</div>
             </div>
+
+            <div class="span2">
+              <div class="muted" style="margin-top: 6px;">Auswahlfelder (Filter/Zeiten)</div>
+            </div>
+
+            <div>
+              <label>Textgroesse im Feld (px)</label>
+              <input id="ui_sel_field_font_px" type="number" min="9" max="22" />
+              <div class="muted">Schriftgroesse in Auswahlfeldern (Input/Select).</div>
+            </div>
+            <div>
+              <label>Textgroesse Name + Anzahl (px)</label>
+              <input id="ui_sel_label_font_px" type="number" min="9" max="22" />
+              <div class="muted">Label oberhalb des Felds.</div>
+            </div>
+            <div>
+              <label>Textgroesse Kurzbeschreibung (px)</label>
+              <input id="ui_sel_desc_font_px" type="number" min="9" max="22" />
+              <div class="muted">Kurztext unterhalb des Felds.</div>
+            </div>
+            <div>
+              <label><input type="checkbox" id="ui_sel_auto_width" data-ui="settings.ui_sel_auto_width" title="settings.ui_sel_auto_width" /> Breite automatisch</label>
+              <div class="muted">Wenn aktiv, wird die Breite aus der durchschnittlichen Textbreite der Vorschlaege berechnet.</div>
+            </div>
+            <div>
+              <label>Breite (px)</label>
+              <input id="ui_sel_width_px" type="number" min="120" max="900" />
+              <div class="muted">Manuelle Breite wenn Auto aus. Wenn Auto an: zeigt die zuletzt berechnete Breite.</div>
+            </div>
           </div>
           </div>
         </details>
@@ -672,6 +701,7 @@ const ids = [
   "ui_status_font_px",
   "ui_status_show_sysinfo",
   "ui_filter_label_width_px","ui_filter_control_width_px","ui_filter_search_width_px"
+  ,"ui_sel_field_font_px","ui_sel_label_font_px","ui_sel_desc_font_px","ui_sel_auto_width","ui_sel_width_px"
   ,"jobs_max_runtime_seconds","ui_job_color_running","ui_job_color_done","ui_job_color_error","ui_job_color_cancelled"
   ,"ui_repo_url"
   ,"ui_paypal_donate_url"
@@ -1098,6 +1128,12 @@ function setForm(cfg){
   el.ui_filter_control_width_px.value = cfg.ui_filter_control_width_px ?? 320;
   el.ui_filter_search_width_px.value = cfg.ui_filter_search_width_px ?? 160;
 
+  el.ui_sel_field_font_px.value = cfg.ui_sel_field_font_px ?? 13;
+  el.ui_sel_label_font_px.value = cfg.ui_sel_label_font_px ?? 12;
+  el.ui_sel_desc_font_px.value = cfg.ui_sel_desc_font_px ?? 11;
+  el.ui_sel_auto_width.checked = !!cfg.ui_sel_auto_width;
+  el.ui_sel_width_px.value = cfg.ui_sel_width_px ?? 260;
+
   el.jobs_max_runtime_seconds.value = cfg.jobs_max_runtime_seconds ?? 3600;
   el.ui_job_color_running.value = cfg.ui_job_color_running ?? '#eef3ff';
   el.ui_job_color_done.value = cfg.ui_job_color_done ?? '#eefaf1';
@@ -1194,6 +1230,12 @@ function getForm(){
     ui_filter_control_width_px: parseInt(el.ui_filter_control_width_px.value, 10),
     ui_filter_search_width_px: parseInt(el.ui_filter_search_width_px.value, 10),
 
+    ui_sel_field_font_px: parseInt(el.ui_sel_field_font_px.value, 10),
+    ui_sel_label_font_px: parseInt(el.ui_sel_label_font_px.value, 10),
+    ui_sel_desc_font_px: parseInt(el.ui_sel_desc_font_px.value, 10),
+    ui_sel_auto_width: !!el.ui_sel_auto_width.checked,
+    ui_sel_width_px: parseInt(el.ui_sel_width_px.value, 10),
+
     jobs_max_runtime_seconds: parseInt(el.jobs_max_runtime_seconds.value, 10),
     ui_job_color_running: String(el.ui_job_color_running.value || '').trim(),
     ui_job_color_done: String(el.ui_job_color_done.value || '').trim(),
@@ -1256,8 +1298,31 @@ async function load(){
   const j = await api("./api/config");
   setForm(j.config);
 
+  try{ applySelAutoUi(); }catch(e){}
+  try{ await loadSelComputedWidth(); }catch(e){}
+
   const card = document.getElementById("loadyaml_card");
   if(card) card.style.display = "none";
+}
+
+function applySelAutoUi(){
+  try{
+    const on = !!(el.ui_sel_auto_width && el.ui_sel_auto_width.checked);
+    if(el.ui_sel_width_px) el.ui_sel_width_px.disabled = on ? true : false;
+  }catch(e){}
+}
+
+async function loadSelComputedWidth(){
+  try{
+    if(!el.ui_sel_width_px || !el.ui_sel_auto_width) return;
+    if(!el.ui_sel_auto_width.checked) return;
+    const j = await api('./api/ui_state?prefix=' + encodeURIComponent('influxbro.ui.sel_'));
+    const items = (j && j.items) ? j.items : {};
+    const v = Number(items['influxbro.ui.sel_auto_width_last_px'] || 0);
+    if(isFinite(v) && v > 0){
+      el.ui_sel_width_px.value = String(Math.round(v));
+    }
+  }catch(e){}
 }
 
 async function loadYaml(){
@@ -1319,6 +1384,13 @@ document.getElementById("find_yaml").addEventListener("click", ()=>findYaml().ca
 document.getElementById("read_yaml").addEventListener("click", ()=>loadYaml().catch(e=>err(String(e))));
 document.getElementById("save").addEventListener("click", ()=>save().catch(e=>err(String(e))));
 document.getElementById("test").addEventListener("click", ()=>testConn().catch(e=>err(String(e))));
+
+try{
+  if(el.ui_sel_auto_width) el.ui_sel_auto_width.addEventListener('change', ()=>{
+    try{ applySelAutoUi(); }catch(e){}
+    try{ loadSelComputedWidth(); }catch(e){}
+  });
+}catch(e){}
 
 try{
   if($outliersAuto) $outliersAuto.addEventListener('click', ()=>{

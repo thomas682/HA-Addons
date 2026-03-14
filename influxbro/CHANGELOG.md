@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.12.22
+
+### Features
+
+- Backup/Restore: Full InfluxDB Backup/Restore als eigene Sektionen (FullBackup/FullRestore) mit separaten Listen, Download/Loeschen/Restore und Job-Status.
+- InfluxDB: FullBackup/FullRestore unterstuetzt v1 und v2; v3 wird mit klarer Fehlermeldung abgelehnt.
+- Einstellungen/UI: neue Settings fuer Auswahlfelder (Fontgroessen, Auto-Breite, manuelle Breite) und Auswahlfelder auf mehreren Seiten an das Master-Template angepasst.
+
+### Fixes
+
+- Backup/Restore: FullBackups (kind=db_full) werden nicht mehr in der normalen Signal-Backup-Liste angezeigt; normale Backup-Endpunkte blockieren FullBackups.
+- FullBackup Download: id-Validierung korrigiert.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.21
 
 ### Features

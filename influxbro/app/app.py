@@ -120,6 +120,12 @@ EXPORT_JOBS: dict[str, dict[str, Any]] = {}
 BACKUP_LOCK = threading.RLock()
 EXPORT_LOCK = threading.RLock()
 
+FULLBACKUP_JOBS: dict[str, dict[str, Any]] = {}
+FULLBACKUP_LOCK = threading.RLock()
+
+FULLRESTORE_JOBS: dict[str, dict[str, Any]] = {}
+FULLRESTORE_LOCK = threading.RLock()
+
 
 def _req_ip() -> str:
     try:
@@ -642,6 +648,13 @@ DEFAULT_CFG = {
     "ui_filter_label_width_px": 170,
     "ui_filter_control_width_px": 320,
     "ui_filter_search_width_px": 160,
+
+    # Selection fields (master template for filter/time selection)
+    "ui_sel_field_font_px": 13,
+    "ui_sel_label_font_px": 12,
+    "ui_sel_desc_font_px": 11,
+    "ui_sel_auto_width": True,
+    "ui_sel_width_px": 260,
 
     # Jobs UI colors (used by Jobs & Cache table)
     "ui_job_color_running": "#eef3ff",
@@ -3909,6 +3922,12 @@ def _backup_files(dir_path: Path, backup_id: str) -> tuple[Path, Path]:
     return dir_path / f"{stem}.json", dir_path / f"{stem}.lp"
 
 
+def _fullbackup_files(dir_path: Path, backup_id: str) -> tuple[Path, Path]:
+    # Stored in the same directory as normal backups, but distinguished by meta.kind == 'db_full'.
+    stem = _backup_safe(backup_id)
+    return dir_path / f"{stem}.json", dir_path / f"{stem}.lp"
+
+
 def _norm_unit(u: str) -> str:
     return (u or "").strip().lower().replace(" ", "")
 
@@ -3971,7 +3990,7 @@ def _outlier_max_step(cfg: dict[str, Any], measurement: str, unit: str) -> float
     return float(cfg.get("outlier_max_step_w", 30000))
 
 
-def _list_backups(dir_path: Path) -> list[dict[str, Any]]:
+def _list_backups(dir_path: Path, include_db_full: bool = False) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     if not dir_path.exists():
         return out
@@ -3979,6 +3998,8 @@ def _list_backups(dir_path: Path) -> list[dict[str, Any]]:
         try:
             meta = json.loads(p.read_text(encoding="utf-8"))
             if not isinstance(meta, dict):
+                continue
+            if not include_db_full and str(meta.get("kind") or "") == "db_full":
                 continue
             backup_id = str(meta.get("id") or p.stem)
             lp = dir_path / (p.stem + ".lp")
@@ -3993,6 +4014,25 @@ def _list_backups(dir_path: Path) -> list[dict[str, Any]]:
     # newest first
     out.sort(key=lambda x: str(x.get("created_at") or ""), reverse=True)
     return out
+
+
+def _read_backup_meta(dir_path: Path, backup_id: str) -> dict[str, Any] | None:
+    """Read backup meta JSON from the backup directory (safe-id only)."""
+    bid = str(backup_id or "").strip()
+    if not bid:
+        return None
+    if _backup_safe(bid) != bid:
+        return None
+    meta_path, _lp_path = _backup_files(dir_path, bid)
+    if not meta_path.exists():
+        return None
+    try:
+        meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    if not isinstance(meta, dict):
+        return None
+    return meta
 
 
 def _fmt_bytes(n: int | None) -> str:
@@ -4229,6 +4269,573 @@ from(bucket: "{cfg["bucket"]}")
         return
 
 
+def _fullbackup_job_public(job: dict[str, Any]) -> dict[str, Any]:
+    written_b = int(job.get("written_bytes") or 0)
+    return {
+        "id": job.get("id"),
+        "state": job.get("state"),
+        "message": job.get("message"),
+        "started_at": job.get("started_at"),
+        "elapsed": _job_elapsed_hms(job),
+        "written_bytes": written_b,
+        "written_human": _fmt_bytes(written_b),
+        "point_count": int(job.get("point_count") or 0),
+        "backup_id": job.get("backup_id"),
+        "query": job.get("query") or "",
+        "cancelled": bool(job.get("cancelled")),
+        "error": job.get("error"),
+        "ready": job.get("state") in ("done", "error", "cancelled"),
+    }
+
+
+def _fullbackup_job_thread(job_id: str, cfg: dict[str, Any], backup_id: str) -> None:
+    with FULLBACKUP_LOCK:
+        job = FULLBACKUP_JOBS.get(job_id)
+    if not job:
+        return
+
+    def set_state(state: str, msg: str) -> None:
+        with FULLBACKUP_LOCK:
+            if job_id in FULLBACKUP_JOBS:
+                FULLBACKUP_JOBS[job_id]["state"] = state
+                FULLBACKUP_JOBS[job_id]["message"] = msg
+                if state in ("done", "error", "cancelled"):
+                    _job_set_finished(FULLBACKUP_JOBS[job_id])
+
+    def set_error(msg: str) -> None:
+        with FULLBACKUP_LOCK:
+            if job_id in FULLBACKUP_JOBS:
+                FULLBACKUP_JOBS[job_id]["error"] = msg
+
+    def set_progress(**kw: Any) -> None:
+        with FULLBACKUP_LOCK:
+            j = FULLBACKUP_JOBS.get(job_id)
+            if not j:
+                return
+            for k, v in kw.items():
+                j[k] = v
+
+    def is_cancelled() -> bool:
+        with FULLBACKUP_LOCK:
+            j = FULLBACKUP_JOBS.get(job_id) or {}
+            if bool(j.get("cancelled")):
+                return True
+
+            try:
+                max_s = int(cfg.get("jobs_max_runtime_seconds", 0) or 0)
+            except Exception:
+                max_s = 0
+            if max_s <= 0:
+                return False
+            try:
+                started_mono = float(j.get("started_mono") or 0.0)
+            except Exception:
+                started_mono = 0.0
+            if started_mono > 0 and (time.monotonic() - started_mono) >= float(max_s):
+                FULLBACKUP_JOBS[job_id]["cancelled"] = True
+                try:
+                    LOG.warning(
+                        "job_auto_cancel type=fullbackup job_id=%s reason=max_runtime_seconds exceeded (%s)",
+                        job_id,
+                        max_s,
+                    )
+                except Exception:
+                    pass
+                return True
+            return False
+
+    bdir = backup_dir(cfg)
+    bdir.mkdir(parents=True, exist_ok=True)
+    meta_path, lp_path = _fullbackup_files(bdir, backup_id)
+
+    set_state("running", "FullBackup laeuft...")
+
+    influx_v = int(cfg.get("influx_version", 2) or 2)
+    if influx_v == 3:
+        set_state("error", "Nicht unterstuetzt")
+        set_error("FullBackup wird aktuell nicht fuer InfluxDB v3 unterstuetzt.")
+        return
+
+    count = 0
+    written_b = 0
+    last_tick = time.monotonic()
+    oldest: datetime | None = None
+    newest: datetime | None = None
+
+    try:
+        if influx_v == 2:
+            if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+                set_state("error", "Konfiguration fehlt")
+                set_error("InfluxDB v2 erfordert token/org/bucket. Bitte in Einstellungen speichern.")
+                return
+
+            q = f'''\
+from(bucket: "{cfg["bucket"]}")
+  |> range(start: time(v: "1970-01-01T00:00:00Z"))
+  |> sort(columns: ["_time"])
+'''
+            set_progress(query=q.strip(), written_bytes=0, point_count=0)
+
+            with v2_client(cfg) as c:
+                qapi = c.query_api()
+                with lp_path.open("w", encoding="utf-8") as f:
+                    for rec in qapi.query_stream(q, org=cfg["org"]):
+                        if is_cancelled():
+                            set_state("cancelled", "Abgebrochen")
+                            raise RuntimeError("cancelled")
+                        try:
+                            t = rec.get_time()
+                            v = rec.get_value()
+                            m = rec.values.get("_measurement")
+                            fld = rec.values.get("_field")
+                            if v is None or not m or not fld:
+                                continue
+
+                            p = Point(str(m))
+                            for k, tv in (rec.values or {}).items():
+                                if k in ("result", "table"):
+                                    continue
+                                if str(k).startswith("_"):
+                                    continue
+                                if tv is None:
+                                    continue
+                                p = p.tag(str(k), str(tv))
+
+                            p = p.field(str(fld), v)
+                            if isinstance(t, datetime):
+                                p = p.time(t, WritePrecision.NS)
+                            lp = p.to_line_protocol()
+                            if lp:
+                                f.write(lp)
+                                f.write("\n")
+                                written_b += len(lp) + 1
+                                count += 1
+                                if isinstance(t, datetime):
+                                    if oldest is None or t < oldest:
+                                        oldest = t
+                                    if newest is None or t > newest:
+                                        newest = t
+                        except Exception:
+                            continue
+
+                        now = time.monotonic()
+                        if (now - last_tick) >= 0.25:
+                            set_progress(written_bytes=written_b, point_count=count)
+                            last_tick = now
+
+            meta = {
+                "id": backup_id,
+                "display_name": f"FullBackup (v2) {backup_id}",
+                "created_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+                "kind": "db_full",
+                "influx_version": 2,
+                "org": cfg.get("org"),
+                "bucket": cfg.get("bucket"),
+                "point_count": count,
+                "bytes": 0,
+                "oldest_time": _dt_to_rfc3339_utc(oldest) if oldest else None,
+                "newest_time": _dt_to_rfc3339_utc(newest) if newest else None,
+                "start": _dt_to_rfc3339_utc(oldest) if oldest else None,
+                "stop": _dt_to_rfc3339_utc(newest) if newest else None,
+            }
+        elif influx_v == 1:
+            if not cfg.get("database"):
+                set_state("error", "Konfiguration fehlt")
+                set_error("InfluxDB v1 erfordert database. Bitte in Einstellungen speichern.")
+                return
+
+            q = "SHOW MEASUREMENTS"
+            set_progress(query=q, written_bytes=0, point_count=0)
+            c = v1_client(cfg)
+            try:
+                try:
+                    c.switch_database(cfg.get("database"))
+                except Exception:
+                    pass
+
+                def _v1_items(res_obj: Any, key: str) -> list[str]:
+                    items: list[str] = []
+                    try:
+                        for _, pts in (res_obj or {}).items():
+                            for p in pts:
+                                v = p.get(key)
+                                if v:
+                                    items.append(str(v))
+                    except Exception:
+                        return []
+                    return items
+
+                mres = c.query("SHOW MEASUREMENTS")
+                measurements = sorted(set(_v1_items(mres, "name")))
+
+                with lp_path.open("w", encoding="utf-8") as f:
+                    for m in measurements:
+                        if is_cancelled():
+                            set_state("cancelled", "Abgebrochen")
+                            raise RuntimeError("cancelled")
+
+                        # Determine tag keys / field types for correct line protocol formatting.
+                        tag_keys = sorted(set(_v1_items(c.query(f'SHOW TAG KEYS FROM "{m}"'), "tagKey")))
+                        ftypes: dict[str, str] = {}
+                        try:
+                            fres = c.query(f'SHOW FIELD KEYS FROM "{m}"')
+                            for _, pts in (fres or {}).items():
+                                for p in pts:
+                                    fk = p.get("fieldKey")
+                                    ft = p.get("fieldType")
+                                    if fk and ft:
+                                        ftypes[str(fk)] = str(ft)
+                        except Exception:
+                            ftypes = {}
+
+                        # Stream all points for this measurement (may be large).
+                        try:
+                            rs = c.query(f'SELECT * FROM "{m}"', epoch="ns", chunked=True, chunk_size=5000)
+                        except TypeError:
+                            rs = c.query(f'SELECT * FROM "{m}"', epoch="ns")
+
+                        gp = getattr(rs, "get_points", None)
+                        if not gp:
+                            continue
+                        for pt in gp():
+                            if is_cancelled():
+                                set_state("cancelled", "Abgebrochen")
+                                raise RuntimeError("cancelled")
+                            try:
+                                ts = pt.get("time")
+                                if ts is None:
+                                    continue
+                                if isinstance(ts, (int, float)):
+                                    t_ns = int(ts)
+                                    t_dt = datetime.fromtimestamp(t_ns / 1_000_000_000.0, tz=timezone.utc)
+                                else:
+                                    t_dt = datetime.fromisoformat(str(ts).replace("Z", "+00:00")).astimezone(timezone.utc)
+                                    t_ns = int(t_dt.timestamp() * 1_000_000_000)
+
+                                tags: dict[str, str] = {}
+                                for k in tag_keys:
+                                    tv = pt.get(k)
+                                    if tv is None:
+                                        continue
+                                    s = str(tv)
+                                    if not s:
+                                        continue
+                                    tags[k] = s
+
+                                fields: dict[str, str] = {}
+                                for k in sorted(pt.keys()):
+                                    if k == "time":
+                                        continue
+                                    if k in tag_keys:
+                                        continue
+                                    v = pt.get(k)
+                                    if v is None:
+                                        continue
+                                    fv = _lp_format_field_value(v, ftypes.get(k))
+                                    if fv is None:
+                                        continue
+                                    fields[k] = fv
+                                if not fields:
+                                    continue
+
+                                # Build line protocol: measurement[,tags] fields timestamp
+                                meas = _lp_escape_key(str(m))
+                                tag_str = ""
+                                if tags:
+                                    parts = [f"{_lp_escape_key(tk)}={_lp_escape_tag_value(tv)}" for tk, tv in sorted(tags.items())]
+                                    tag_str = "," + ",".join(parts)
+                                field_str = ",".join([f"{_lp_escape_key(fk)}={fields[fk]}" for fk in sorted(fields.keys())])
+                                line = f"{meas}{tag_str} {field_str} {t_ns}"
+                                f.write(line)
+                                f.write("\n")
+                                written_b += len(line) + 1
+                                count += 1
+                                if oldest is None or t_dt < oldest:
+                                    oldest = t_dt
+                                if newest is None or t_dt > newest:
+                                    newest = t_dt
+                            except Exception:
+                                continue
+
+                            now = time.monotonic()
+                            if (now - last_tick) >= 0.25:
+                                set_progress(written_bytes=written_b, point_count=count)
+                                last_tick = now
+            finally:
+                try:
+                    c.close()
+                except Exception:
+                    pass
+
+            meta = {
+                "id": backup_id,
+                "display_name": f"FullBackup (v1) {backup_id}",
+                "created_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+                "kind": "db_full",
+                "influx_version": 1,
+                "database": cfg.get("database"),
+                "point_count": count,
+                "bytes": 0,
+                "oldest_time": _dt_to_rfc3339_utc(oldest) if oldest else None,
+                "newest_time": _dt_to_rfc3339_utc(newest) if newest else None,
+                "start": _dt_to_rfc3339_utc(oldest) if oldest else None,
+                "stop": _dt_to_rfc3339_utc(newest) if newest else None,
+            }
+        else:
+            set_state("error", "Nicht unterstuetzt")
+            set_error(f"FullBackup wird fuer influx_version={influx_v} nicht unterstuetzt.")
+            return
+
+        bytes_size = written_b
+        if bytes_size <= 0:
+            try:
+                bytes_size = int(lp_path.stat().st_size)
+            except Exception:
+                bytes_size = written_b
+
+        meta["bytes"] = bytes_size
+        meta_path.write_text(json.dumps(meta, indent=2, sort_keys=True), encoding="utf-8")
+        set_progress(written_bytes=bytes_size, point_count=count)
+        set_state("done", f"FullBackup created: {backup_id}")
+        return
+    except Exception as e:
+        msg = str(e)
+        if "cancelled" in msg:
+            try:
+                if meta_path.exists():
+                    meta_path.unlink()
+            except Exception:
+                pass
+            try:
+                if lp_path.exists():
+                    lp_path.unlink()
+            except Exception:
+                pass
+            return
+
+        set_state("error", "Fehler")
+        set_error(_short_influx_error(e))
+        try:
+            if meta_path.exists():
+                meta_path.unlink()
+        except Exception:
+            pass
+        try:
+            if lp_path.exists():
+                lp_path.unlink()
+        except Exception:
+            pass
+        return
+
+
+def _fullrestore_job_public(job: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": job.get("id"),
+        "state": job.get("state"),
+        "message": job.get("message"),
+        "started_at": job.get("started_at"),
+        "elapsed": _job_elapsed_hms(job),
+        "applied": int(job.get("applied") or 0),
+        "read_lines": int(job.get("read_lines") or 0),
+        "backup_id": job.get("backup_id"),
+        "cancelled": bool(job.get("cancelled")),
+        "error": job.get("error"),
+        "ready": job.get("state") in ("done", "error", "cancelled"),
+    }
+
+
+def _fullrestore_job_thread(job_id: str, cfg: dict[str, Any], backup_id: str) -> None:
+    with FULLRESTORE_LOCK:
+        job = FULLRESTORE_JOBS.get(job_id)
+    if not job:
+        return
+
+    def set_state(state: str, msg: str) -> None:
+        with FULLRESTORE_LOCK:
+            if job_id in FULLRESTORE_JOBS:
+                FULLRESTORE_JOBS[job_id]["state"] = state
+                FULLRESTORE_JOBS[job_id]["message"] = msg
+                if state in ("done", "error", "cancelled"):
+                    _job_set_finished(FULLRESTORE_JOBS[job_id])
+
+    def set_error(msg: str) -> None:
+        with FULLRESTORE_LOCK:
+            if job_id in FULLRESTORE_JOBS:
+                FULLRESTORE_JOBS[job_id]["error"] = msg
+
+    def set_progress(**kw: Any) -> None:
+        with FULLRESTORE_LOCK:
+            j = FULLRESTORE_JOBS.get(job_id)
+            if not j:
+                return
+            for k, v in kw.items():
+                j[k] = v
+
+    def is_cancelled() -> bool:
+        with FULLRESTORE_LOCK:
+            j = FULLRESTORE_JOBS.get(job_id) or {}
+            if bool(j.get("cancelled")):
+                return True
+
+            try:
+                max_s = int(cfg.get("jobs_max_runtime_seconds", 0) or 0)
+            except Exception:
+                max_s = 0
+            if max_s <= 0:
+                return False
+            try:
+                started_mono = float(j.get("started_mono") or 0.0)
+            except Exception:
+                started_mono = 0.0
+            if started_mono > 0 and (time.monotonic() - started_mono) >= float(max_s):
+                FULLRESTORE_JOBS[job_id]["cancelled"] = True
+                try:
+                    LOG.warning(
+                        "job_auto_cancel type=fullrestore job_id=%s reason=max_runtime_seconds exceeded (%s)",
+                        job_id,
+                        max_s,
+                    )
+                except Exception:
+                    pass
+                return True
+            return False
+
+    influx_v = int(cfg.get("influx_version", 2) or 2)
+    if influx_v == 3:
+        set_state("error", "Nicht unterstuetzt")
+        set_error("FullRestore wird aktuell nicht fuer InfluxDB v3 unterstuetzt.")
+        return
+    if influx_v == 2:
+        if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+            set_state("error", "Konfiguration fehlt")
+            set_error("InfluxDB v2 erfordert token/org/bucket. Bitte in Einstellungen speichern.")
+            return
+    elif influx_v == 1:
+        if not cfg.get("database"):
+            set_state("error", "Konfiguration fehlt")
+            set_error("InfluxDB v1 erfordert database. Bitte in Einstellungen speichern.")
+            return
+    else:
+        set_state("error", "Nicht unterstuetzt")
+        set_error(f"FullRestore wird fuer influx_version={influx_v} nicht unterstuetzt.")
+        return
+
+    bdir = backup_dir(cfg)
+    meta = _read_backup_meta(bdir, backup_id) or {}
+    if str(meta.get("kind") or "") != "db_full":
+        set_state("error", "Backup ungueltig")
+        set_error("Kein FullBackup (kind!=db_full).")
+        return
+
+    meta_path, lp_path = _fullbackup_files(bdir, backup_id)
+    if not lp_path.exists():
+        set_state("error", "Backup nicht gefunden")
+        set_error("FullBackup Datei nicht gefunden.")
+        return
+
+    set_state("running", "Restore laeuft...")
+    read_lines = 0
+    applied = 0
+    last_tick = time.monotonic()
+
+    try:
+        if influx_v == 2:
+            with v2_client(cfg) as c:
+                wapi = c.write_api(write_options=SYNCHRONOUS)
+                batch: list[str] = []
+                with lp_path.open("r", encoding="utf-8") as f:
+                    for line in f:
+                        if is_cancelled():
+                            set_state("cancelled", "Abgebrochen")
+                            raise RuntimeError("cancelled")
+                        s = line.strip("\n")
+                        if not s.strip():
+                            continue
+                        read_lines += 1
+                        batch.append(s)
+                        if len(batch) >= 2000:
+                            wapi.write(
+                                bucket=cfg["bucket"],
+                                org=cfg["org"],
+                                record=batch,
+                                write_precision=WritePrecision.NS,
+                            )
+                            applied += len(batch)
+                            batch = []
+
+                        now = time.monotonic()
+                        if (now - last_tick) >= 0.25:
+                            set_progress(read_lines=read_lines, applied=applied)
+                            last_tick = now
+
+                    if batch:
+                        wapi.write(
+                            bucket=cfg["bucket"],
+                            org=cfg["org"],
+                            record=batch,
+                            write_precision=WritePrecision.NS,
+                        )
+                        applied += len(batch)
+        elif influx_v == 1:
+            c = v1_client(cfg)
+            try:
+                try:
+                    c.switch_database(cfg.get("database"))
+                except Exception:
+                    pass
+
+                batch: list[str] = []
+                with lp_path.open("r", encoding="utf-8") as f:
+                    for line in f:
+                        if is_cancelled():
+                            set_state("cancelled", "Abgebrochen")
+                            raise RuntimeError("cancelled")
+                        s = line.strip("\n")
+                        if not s.strip():
+                            continue
+                        read_lines += 1
+                        batch.append(s)
+                        if len(batch) >= 2000:
+                            c.write_points(
+                                batch,
+                                database=cfg.get("database"),
+                                protocol="line",
+                                time_precision="n",
+                            )
+                            applied += len(batch)
+                            batch = []
+
+                        now = time.monotonic()
+                        if (now - last_tick) >= 0.25:
+                            set_progress(read_lines=read_lines, applied=applied)
+                            last_tick = now
+
+                    if batch:
+                        c.write_points(
+                            batch,
+                            database=cfg.get("database"),
+                            protocol="line",
+                            time_precision="n",
+                        )
+                        applied += len(batch)
+            finally:
+                try:
+                    c.close()
+                except Exception:
+                    pass
+
+        set_progress(read_lines=read_lines, applied=applied)
+        set_state("done", f"Restored points: {applied}")
+        return
+    except Exception as e:
+        msg = str(e)
+        if "cancelled" in msg:
+            return
+        set_state("error", "Fehler")
+        set_error(_short_influx_error(e))
+        return
+
+
 def _lp_escape_key(v: str) -> str:
     # For measurement, tag keys, and field keys.
     return (v or "").replace("\\", "\\\\").replace(" ", "\\ ").replace(",", "\\,").replace("=", "\\=")
@@ -4236,6 +4843,49 @@ def _lp_escape_key(v: str) -> str:
 
 def _lp_escape_tag_value(v: str) -> str:
     return (v or "").replace("\\", "\\\\").replace(" ", "\\ ").replace(",", "\\,").replace("=", "\\=")
+
+
+def _lp_escape_field_string(v: str) -> str:
+    # String field values must be double-quoted; escape backslashes and quotes.
+    s = str(v or "")
+    s = s.replace("\\", "\\\\").replace('"', '\\"')
+    return f'"{s}"'
+
+
+def _lp_format_field_value(v: Any, field_type: str | None) -> str | None:
+    """Format a Python value into line protocol field value.
+
+    field_type is InfluxDB v1 SHOW FIELD KEYS type string (e.g. integer, float, boolean, string).
+    """
+    if v is None:
+        return None
+    ft = str(field_type or "").strip().lower()
+
+    # Prefer the declared field type when available.
+    try:
+        if ft == "integer":
+            return f"{int(v)}i"
+        if ft == "float":
+            return str(float(v))
+        if ft == "boolean":
+            return "true" if bool(v) else "false"
+        if ft == "string":
+            return _lp_escape_field_string(str(v))
+    except Exception:
+        pass
+
+    # Fallback: infer from Python type.
+    if isinstance(v, bool):
+        return "true" if v else "false"
+    if isinstance(v, int) and not isinstance(v, bool):
+        return f"{v}i"
+    if isinstance(v, float):
+        if not math.isfinite(v):
+            return None
+        return str(v)
+    if isinstance(v, (bytes, bytearray)):
+        return _lp_escape_field_string(v.decode("utf-8", errors="replace"))
+    return _lp_escape_field_string(str(v))
 
 
 def _dt_to_ns(dt: datetime) -> int:
@@ -4278,6 +4928,298 @@ def api_backups_all():
     bdir = backup_dir(cfg)
     backups = _list_backups(bdir)
     return jsonify({"ok": True, "backups": backups})
+
+
+@app.get("/api/fullbackups_all")
+def api_fullbackups_all():
+    cfg = load_cfg()
+    bdir = backup_dir(cfg)
+    backups = [b for b in _list_backups(bdir, include_db_full=True) if str(b.get("kind") or "") == "db_full"]
+    return jsonify({"ok": True, "backups": backups})
+
+
+@app.post("/api/fullbackup_job/start")
+def api_fullbackup_job_start():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    ok_free, msg = _backup_require_free_space(cfg)
+    if not ok_free:
+        return jsonify({"ok": False, "error": msg}), 507
+
+    influx_v = int(cfg.get("influx_version", 2) or 2)
+    if influx_v == 3:
+        return jsonify({"ok": False, "error": "fullbackup currently does not support InfluxDB v3"}), 400
+    if influx_v == 2:
+        if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+            return jsonify({
+                "ok": False,
+                "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
+            }), 400
+    elif influx_v == 1:
+        if not cfg.get("database"):
+            return jsonify({
+                "ok": False,
+                "error": "InfluxDB v1 requires database. Bitte in Einstellungen konfigurieren.",
+            }), 400
+    else:
+        return jsonify({"ok": False, "error": f"unsupported influx_version: {influx_v}"}), 400
+
+    job_id = uuid.uuid4().hex
+    ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    backup_id = f"fullbackup__db_full__v{influx_v}__{ts}"
+
+    bdir = backup_dir(cfg)
+    bdir.mkdir(parents=True, exist_ok=True)
+    meta_path, lp_path = _fullbackup_files(bdir, backup_id)
+    if meta_path.exists() or lp_path.exists():
+        return jsonify({"ok": False, "error": "backup id collision"}), 409
+
+    ip = _req_ip()
+    ua = _req_ua()
+    job = {
+        "id": job_id,
+        "state": "queued",
+        "message": "Start...",
+        "started_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+        "started_mono": time.monotonic(),
+        "trigger_page": "backup",
+        "trigger_ip": ip,
+        "trigger_ua": ua,
+        "backup_id": backup_id,
+        "influx_version": influx_v,
+        "written_bytes": 0,
+        "point_count": 0,
+        "cancelled": False,
+        "error": None,
+    }
+
+    with FULLBACKUP_LOCK:
+        FULLBACKUP_JOBS[job_id] = job
+        cutoff = time.monotonic() - 24 * 3600
+        old = [k for k, v in FULLBACKUP_JOBS.items() if float(v.get("started_mono") or 0) < cutoff]
+        for k in old:
+            FULLBACKUP_JOBS.pop(k, None)
+
+    try:
+        LOG.info(
+            "job_start type=fullbackup job_id=%s ip=%s ua=%s backup_id=%s",
+            job_id,
+            ip,
+            ua,
+            backup_id,
+        )
+    except Exception:
+        pass
+
+    t = threading.Thread(target=_fullbackup_job_thread, args=(job_id, cfg, backup_id), daemon=True)
+    t.start()
+    return jsonify({"ok": True, "job_id": job_id, "backup_id": backup_id})
+
+
+@app.get("/api/fullbackup_job/status")
+def api_fullbackup_job_status():
+    job_id = (request.args.get("job_id") or "").strip()
+    if not job_id:
+        return jsonify({"ok": False, "error": "job_id required"}), 400
+    with FULLBACKUP_LOCK:
+        job = FULLBACKUP_JOBS.get(job_id)
+    if not job:
+        return jsonify({"ok": False, "error": "job not found"}), 404
+    return jsonify({"ok": True, "status": _fullbackup_job_public(job)})
+
+
+@app.post("/api/fullbackup_job/cancel")
+def api_fullbackup_job_cancel():
+    body = request.get_json(force=True) or {}
+    job_id = (body.get("job_id") or "").strip()
+    if not job_id:
+        return jsonify({"ok": False, "error": "job_id required"}), 400
+    with FULLBACKUP_LOCK:
+        job = FULLBACKUP_JOBS.get(job_id)
+        if not job:
+            return jsonify({"ok": False, "error": "job not found"}), 404
+        job["cancelled"] = True
+    try:
+        LOG.info("job_cancel type=fullbackup job_id=%s ip=%s ua=%s", job_id, _req_ip(), _req_ua())
+    except Exception:
+        pass
+    return jsonify({"ok": True})
+
+
+@app.get("/api/fullbackup_download")
+def api_fullbackup_download():
+    cfg = load_cfg()
+    bdir = backup_dir(cfg)
+    backup_id = str(request.args.get("id") or "").strip()
+    if not backup_id:
+        return jsonify({"ok": False, "error": "id required"}), 400
+    if _backup_safe(backup_id) != backup_id:
+        return jsonify({"ok": False, "error": "invalid id"}), 400
+
+    meta = _read_backup_meta(bdir, backup_id) or {}
+    if str(meta.get("kind") or "") != "db_full":
+        return jsonify({"ok": False, "error": "not a fullbackup (kind!=db_full)"}), 400
+
+    meta_path, lp_path = _fullbackup_files(bdir, backup_id)
+    if not meta_path.exists() or not lp_path.exists():
+        return jsonify({"ok": False, "error": "backup not found"}), 404
+
+    try:
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, mode="w", compression=zipfile.ZIP_DEFLATED) as z:
+            z.write(meta_path, arcname=meta_path.name)
+            z.write(lp_path, arcname=lp_path.name)
+        buf.seek(0)
+        fn = f"{backup_id}.zip"
+        return send_file(buf, as_attachment=True, download_name=fn, mimetype="application/zip")
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 500
+
+
+@app.post("/api/fullbackup_delete")
+def api_fullbackup_delete():
+    body = request.get_json(force=True) or {}
+    backup_id = (body.get("id") or "").strip()
+    if not backup_id:
+        return jsonify({"ok": False, "error": "id required"}), 400
+    if _backup_safe(backup_id) != backup_id:
+        return jsonify({"ok": False, "error": "invalid id"}), 400
+    cfg = load_cfg()
+    bdir = backup_dir(cfg)
+    bdir.mkdir(parents=True, exist_ok=True)
+
+    meta = _read_backup_meta(bdir, backup_id) or {}
+    if str(meta.get("kind") or "") != "db_full":
+        return jsonify({"ok": False, "error": "not a fullbackup (kind!=db_full)"}), 400
+    meta_path, lp_path = _fullbackup_files(bdir, backup_id)
+    removed = 0
+    for p in (meta_path, lp_path):
+        try:
+            if p.exists():
+                p.unlink()
+                removed += 1
+        except Exception:
+            pass
+    if removed == 0:
+        return jsonify({"ok": False, "error": "backup not found"}), 404
+    return jsonify({"ok": True, "message": f"Deleted: {backup_id}"})
+
+
+@app.post("/api/fullrestore_job/start")
+def api_fullrestore_job_start():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    body = request.get_json(force=True) or {}
+    confirm = body.get("confirm", False)
+    ok_confirm = confirm is True or str(confirm).strip().lower() in ("1", "true", "yes", "on")
+    if not ok_confirm:
+        return jsonify({"ok": False, "error": "Confirmation required"}), 400
+
+    backup_id = str(body.get("id") or "").strip()
+    if not backup_id:
+        return jsonify({"ok": False, "error": "id required"}), 400
+
+    influx_v = int(cfg.get("influx_version", 2) or 2)
+    if influx_v == 3:
+        return jsonify({"ok": False, "error": "fullrestore currently does not support InfluxDB v3"}), 400
+    if influx_v == 2:
+        if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+            return jsonify({
+                "ok": False,
+                "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
+            }), 400
+    elif influx_v == 1:
+        if not cfg.get("database"):
+            return jsonify({
+                "ok": False,
+                "error": "InfluxDB v1 requires database. Bitte in Einstellungen konfigurieren.",
+            }), 400
+    else:
+        return jsonify({"ok": False, "error": f"unsupported influx_version: {influx_v}"}), 400
+
+    bdir = backup_dir(cfg)
+    meta = _read_backup_meta(bdir, backup_id)
+    if not meta:
+        return jsonify({"ok": False, "error": "backup not found"}), 404
+    if str(meta.get("kind") or "") != "db_full":
+        return jsonify({"ok": False, "error": "not a fullbackup (kind!=db_full)"}), 400
+    try:
+        meta_v = int(meta.get("influx_version") or 0)
+    except Exception:
+        meta_v = 0
+    if meta_v and meta_v != influx_v:
+        return jsonify({"ok": False, "error": f"backup influx_version mismatch: backup={meta_v} cfg={influx_v}"}), 400
+    if influx_v == 2:
+        if meta.get("bucket") and str(meta.get("bucket")) != str(cfg.get("bucket") or ""):
+            return jsonify({"ok": False, "error": "backup bucket mismatch (configure same bucket for restore)"}), 400
+        if meta.get("org") and str(meta.get("org")) != str(cfg.get("org") or ""):
+            return jsonify({"ok": False, "error": "backup org mismatch (configure same org for restore)"}), 400
+    if influx_v == 1:
+        if meta.get("database") and str(meta.get("database")) != str(cfg.get("database") or ""):
+            return jsonify({"ok": False, "error": "backup database mismatch (configure same database for restore)"}), 400
+
+    job_id = uuid.uuid4().hex
+    ip = _req_ip()
+    ua = _req_ua()
+    job = {
+        "id": job_id,
+        "state": "queued",
+        "message": "Start...",
+        "started_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+        "started_mono": time.monotonic(),
+        "trigger_page": "restore",
+        "trigger_ip": ip,
+        "trigger_ua": ua,
+        "backup_id": backup_id,
+        "influx_version": influx_v,
+        "read_lines": 0,
+        "applied": 0,
+        "cancelled": False,
+        "error": None,
+    }
+    with FULLRESTORE_LOCK:
+        FULLRESTORE_JOBS[job_id] = job
+        cutoff = time.monotonic() - 24 * 3600
+        old = [k for k, v in FULLRESTORE_JOBS.items() if float(v.get("started_mono") or 0) < cutoff]
+        for k in old:
+            FULLRESTORE_JOBS.pop(k, None)
+
+    try:
+        LOG.info("job_start type=fullrestore job_id=%s ip=%s ua=%s backup_id=%s", job_id, ip, ua, backup_id)
+    except Exception:
+        pass
+
+    t = threading.Thread(target=_fullrestore_job_thread, args=(job_id, cfg, backup_id), daemon=True)
+    t.start()
+    return jsonify({"ok": True, "job_id": job_id})
+
+
+@app.get("/api/fullrestore_job/status")
+def api_fullrestore_job_status():
+    job_id = (request.args.get("job_id") or "").strip()
+    if not job_id:
+        return jsonify({"ok": False, "error": "job_id required"}), 400
+    with FULLRESTORE_LOCK:
+        job = FULLRESTORE_JOBS.get(job_id)
+    if not job:
+        return jsonify({"ok": False, "error": "job not found"}), 404
+    return jsonify({"ok": True, "status": _fullrestore_job_public(job)})
+
+
+@app.post("/api/fullrestore_job/cancel")
+def api_fullrestore_job_cancel():
+    body = request.get_json(force=True) or {}
+    job_id = (body.get("job_id") or "").strip()
+    if not job_id:
+        return jsonify({"ok": False, "error": "job_id required"}), 400
+    with FULLRESTORE_LOCK:
+        job = FULLRESTORE_JOBS.get(job_id)
+        if not job:
+            return jsonify({"ok": False, "error": "job not found"}), 404
+        job["cancelled"] = True
+    try:
+        LOG.info("job_cancel type=fullrestore job_id=%s ip=%s ua=%s", job_id, _req_ip(), _req_ua())
+    except Exception:
+        pass
+    return jsonify({"ok": True})
 
 
 @app.post("/api/backup_create")
@@ -4433,6 +5375,10 @@ def api_backup_download():
         return jsonify({"ok": False, "error": "id required"}), 400
     if _backup_safe(backup_id) != backup_id:
         return jsonify({"ok": False, "error": "invalid id"}), 400
+
+    meta = _read_backup_meta(bdir, backup_id) or {}
+    if str(meta.get("kind") or "") == "db_full":
+        return jsonify({"ok": False, "error": "this is a fullbackup; use /api/fullbackup_download"}), 400
 
     meta_path, lp_path = _backup_files(bdir, backup_id)
     if not meta_path.exists() or not lp_path.exists():
@@ -4719,9 +5665,16 @@ def api_backup_delete():
     backup_id = (body.get("id") or "").strip()
     if not backup_id:
         return jsonify({"ok": False, "error": "id required"}), 400
+    if _backup_safe(backup_id) != backup_id:
+        return jsonify({"ok": False, "error": "invalid id"}), 400
     cfg = load_cfg()
     bdir = backup_dir(cfg)
     bdir.mkdir(parents=True, exist_ok=True)
+
+    meta = _read_backup_meta(bdir, backup_id) or {}
+    if str(meta.get("kind") or "") == "db_full":
+        return jsonify({"ok": False, "error": "this is a fullbackup; use /api/fullbackup_delete"}), 400
+
     meta_path, lp_path = _backup_files(bdir, backup_id)
     removed = 0
     for p in (meta_path, lp_path):
@@ -4748,6 +5701,8 @@ def api_backup_restore():
     backup_id = (body.get("id") or "").strip()
     if not backup_id:
         return jsonify({"ok": False, "error": "id required"}), 400
+    if _backup_safe(backup_id) != backup_id:
+        return jsonify({"ok": False, "error": "invalid id"}), 400
 
     if int(cfg.get("influx_version", 2)) != 2:
         return jsonify({"ok": False, "error": "restore currently supports InfluxDB v2 only"}), 400
@@ -4758,6 +5713,9 @@ def api_backup_restore():
         }), 400
 
     bdir = backup_dir(cfg)
+    meta = _read_backup_meta(bdir, backup_id) or {}
+    if str(meta.get("kind") or "") == "db_full":
+        return jsonify({"ok": False, "error": "this is a fullbackup; use /api/fullrestore_job/start"}), 400
     meta_path, lp_path = _backup_files(bdir, backup_id)
     if not lp_path.exists():
         return jsonify({"ok": False, "error": "backup not found"}), 404
@@ -5345,6 +6303,13 @@ def api_restore_job_start():
     backup_id = (body.get("id") or "").strip()
     if not backup_id:
         return jsonify({"ok": False, "error": "id required"}), 400
+    if _backup_safe(backup_id) != backup_id:
+        return jsonify({"ok": False, "error": "invalid id"}), 400
+
+    bdir = backup_dir(cfg)
+    meta = _read_backup_meta(bdir, backup_id) or {}
+    if str(meta.get("kind") or "") == "db_full":
+        return jsonify({"ok": False, "error": "selected backup is a fullbackup; use FullRestore"}), 400
 
     target_measurement = (body.get("target_measurement") or "").strip()
     target_field = (body.get("target_field") or "").strip()
@@ -6590,6 +7555,12 @@ def api_set_config():
     _clamp_int("ui_filter_control_width_px", 320, 180, 900)
     _clamp_int("ui_filter_search_width_px", 160, 80, 420)
 
+    # Selection fields (master template)
+    _clamp_int("ui_sel_field_font_px", 13, 9, 22)
+    _clamp_int("ui_sel_label_font_px", 12, 9, 22)
+    _clamp_int("ui_sel_desc_font_px", 11, 9, 22)
+    _clamp_int("ui_sel_width_px", 260, 120, 900)
+
     _clamp_int("jobs_max_runtime_seconds", 0, 0, 7 * 24 * 60 * 60)
 
     def _clamp_color(key: str, default: str) -> None:
@@ -6645,6 +7616,8 @@ def api_set_config():
     _bool("ui_status_show_sysinfo", False)
 
     _bool("ui_tooltips_enabled", True)
+
+    _bool("ui_sel_auto_width", True)
 
     # Note: writes_enabled removed; keep any existing key untouched.
 

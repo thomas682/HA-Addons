@@ -39,6 +39,15 @@ When plan mode is active:
 - Mark items `completed` as soon as they are done.
 - Ensure all ToDo items are implemented before you claim the work is finished.
 
+## End-of-Implementation Verification (Required)
+
+- At the end of every implementation, explicitly verify that all requirements and all ToDo items were actually implemented.
+- If any planned item could not be implemented (or remains only partially implemented), explicitly call it out with:
+  - what is missing
+  - why it is missing
+  - what would be needed to complete it
+- Perform a final checklist-style confirmation before declaring the work finished.
+
 ### Requirements Tracking (preferred: GitHub Issues)
 
 - Track requirements primarily as GitHub Issues so others can create/report items externally.

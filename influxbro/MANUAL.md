@@ -315,6 +315,18 @@ Timer Jobs:
 - Backups koennen geloescht werden (nur die Sicherung, nicht die Datenbank).
 - Tipp: In der Volltextsuche gibt es Buttons `Alle` (leeren) und `aus Dashboardauswahl`.
 
+Neu: FullBackup (InfluxDB komplett)
+
+- Zusaetzlich gibt es eine eigene Sektion `FullBackup (InfluxDB komplett)`.
+- FullBackup sichert nicht nur einen einzelnen Messwert, sondern exportiert (best-effort) die komplette InfluxDB (v1: alle Measurements; v2: kompletter Bucket).
+- FullBackups werden in einer separaten Liste angezeigt (unabhaengig von den normalen Signal-Backups).
+- Aktionen: `FullBackup starten`, `Abbruch`, `Liste aktualisieren`, `Download` (ZIP: Meta + Line Protocol), `Loeschen`.
+- Kompatibilitaet:
+  - InfluxDB v2: unterstuetzt.
+  - InfluxDB v1: unterstuetzt (best-effort; kann je nach Datenmenge sehr lange dauern).
+  - InfluxDB v3: aktuell nicht unterstuetzt (klare Fehlermeldung).
+- Hinweis: FullBackup kann sehr gross werden. Achte auf freien Speicher (siehe Anzeige in der Backup-Seite und Option `Min. freier Speicher (MB)`).
+
 ## Restore
 
 - Waehle ein Backup aus der Liste fuer den Messwert.
@@ -324,6 +336,14 @@ Timer Jobs:
 - Tipp: In der Volltextsuche gibt es Buttons `Alle` (leeren) und `aus Dashboardauswahl`.
 - Die Hoehe der Restore-Backup-Liste ist per Einstellung "Sichtbare Zeilen (Restore-Liste)" konfigurierbar.
 - Restore: Backup-Liste, Query und Detail-Boxen sind resizable; Hoehen werden automatisch gemerkt.
+
+Neu: FullRestore (InfluxDB komplett)
+
+- Zusaetzlich gibt es eine eigene Sektion `FullRestore (InfluxDB komplett)`.
+- FullRestore stellt ein selektiertes FullBackup wieder her (schreibt Line Protocol in die konfigurierte InfluxDB).
+- FullBackups erscheinen in einer separaten Liste; normale Restore-Funktionen akzeptieren keine FullBackups.
+- Aktionen: `Liste aktualisieren`, `Download`, `FullBackup loeschen`, `FullRestore ausfuehren`, `Abbruch`.
+- Sicherheit: FullRestore erfordert eine Bestaetigung im UI (Browser-Dialog).
 
 Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore/Abfragen) und die letzte Meldung anzeigt.
 
@@ -393,6 +413,10 @@ UI:
 - `Checkbox Groesse (Scale)`: Checkbox-Scaling fuer bessere Bedienbarkeit.
 - `Filter ... Breite`: steuert die Layout-Breiten im Dashboard.
 - `Bereiche standardmaessig geoeffnet`: welche <details>-Sektionen beim Start offen sind.
+- Auswahlfelder (Filter/Zeiten):
+  - Fontgroessen (Label / Feld / Beschreibung)
+  - Auto-Breite (Default) oder manuelle Breite (px)
+  - Wenn Auto aktiv ist, wird die zuletzt berechnete Breite als Vorschlagswert angezeigt.
 - `PayPal Donate URL (Sidebar)`: Linkziel des PayPal-Spendenbuttons im Sidebar.
 
 Ausreisser:

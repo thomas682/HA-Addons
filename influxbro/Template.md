@@ -171,36 +171,53 @@ Checkboxes/selects/inputs
 - Align vertically in toolbars.
 - Prefer a label text that matches what the user expects (German UI).
 
-### Auswahlfeld (Input + Datalist)
+### Auswahlfeld (Master: Filter)
 
-Use this pattern for selection fields where the user should be able to type freely, but still gets guided suggestions.
-This is the standard used for `Einheit (_measurement)` (Dashboard).
+Use this pattern for filter/selection fields where the user can type freely, but still gets guided suggestions.
 
-Format (markup)
+Required behavior
+
+- Width
+  - Auto width (default): as narrow as possible, but not wider than the average text width of the suggestion items.
+  - Manual width: if auto width is disabled, use a fixed width from settings.
+- Label row: above the field, left-aligned with the control, show `Name` and the item count `(n)`.
+- Field height: just enough to display one line of text (no oversized 40px inputs).
+- Short description: show a short, one-line explanation under the field.
+- Detailed help: show a small `?` button before the short description. Clicking opens a popup with a detailed explanation.
+- Persistence: the input value is persisted and restored via the UI state store.
+
+Global settings (Einstellungen)
+
+- `ui_sel_field_font_px`: font size inside the field
+- `ui_sel_label_font_px`: font size of the label row (name + count)
+- `ui_sel_desc_font_px`: font size of the short description
+- `ui_sel_auto_width`: checkbox "Auto" (default true)
+- `ui_sel_width_px`: manual width in px (used when Auto is off)
+- When Auto is on: show the last computed width as the default value in the width input.
+
+Preferred markup
 
 ```html
-<div class="control control_lr" id="c_<name>">
-  <label class="label_row">
+<div class="ib_sel" id="c_<name>">
+  <label class="ib_sel_label">
     <span><Label text></span>
     <span id="cnt_<name>" class="muted"></span>
   </label>
-  <div class="stack">
+  <div class="ib_sel_stack">
     <input id="<name>" list="<name>_list" placeholder="optional" />
     <datalist id="<name>_list"></datalist>
+    <div class="ib_sel_desc">
+      <button type="button" class="ib_sel_help" data-title="..." data-help="...">?</button>
+      <div class="muted">Kurzer Text zur Erklaerung.</div>
+    </div>
   </div>
 </div>
 ```
 
-Behavior
+### Auswahlfeld (Child: Zeiten)
 
-- Source of suggestions: load items from an API endpoint and fill the `<datalist>`.
-- Counter: show the number of available suggestions in `cnt_<name>` (e.g. `(123)`).
-- Persistence: the input value is persisted and restored automatically via the UI state store.
-- Dependency refresh: on user input, dependent suggestion lists should be reloaded best-effort (debounced).
-  - Example: `measurement_filter` narrows `friendly_name` / `entity_id` suggestions.
-- Accessibility: the field must work without selecting from the list (free typing).
+This is a child of the filter selection field (inherits everything above) plus:
 
-Responsive layout
-
-- Use `control_lr` (label left, input right) and allow the control to expand to full width when needed.
-- Optional: apply an auto-span behavior for long values (e.g. add `span2` to the container when text is wider than the control).
+- The select provides the same interval options as used in Dashboard/Backup selection.
+- If a range is selected, show the resolved start/stop timestamps in the label row (same line) after `(n)`.
+- Width must be large enough so that `Name + (n) + range` fits in one line.

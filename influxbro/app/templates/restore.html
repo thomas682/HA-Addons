@@ -8,6 +8,10 @@
     :root {
       --restore_row_h: {{ (cfg.get('ui_table_row_height_px') or 13) | int }}px;
       --ui-cb-scale: {{ (cfg.get('ui_checkbox_scale') or 0.85) }};
+      --ib-sel-font: {{ (cfg.get('ui_sel_field_font_px') or 13) | int }}px;
+      --ib-sel-label-font: {{ (cfg.get('ui_sel_label_font_px') or 12) | int }}px;
+      --ib-sel-desc-font: {{ (cfg.get('ui_sel_desc_font_px') or 11) | int }}px;
+      --ib-sel-manual-w: {{ (cfg.get('ui_sel_width_px') or 260) | int }}px;
     }
     body { font-family: system-ui, sans-serif; margin: 0; }
     .shell { display:grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
@@ -27,6 +31,33 @@
     .muted { opacity: 0.7; font-size: 12px; }
     .row { display:flex; gap: 10px; flex-wrap:wrap; align-items:end; margin-top: 10px; justify-content:flex-start; }
     .label_row { display:flex; justify-content:space-between; gap: 10px; align-items:baseline; }
+
+    /* Selection fields (master template) */
+    .ib_sel_label { font-size: var(--ib-sel-label-font); opacity: 0.9; }
+    .ib_sel_stack { display:flex; flex-direction:column; gap: 6px; align-items:flex-start; }
+    .ib_sel_stack input, .ib_sel_stack select {
+      font-size: var(--ib-sel-font);
+      height: auto;
+      padding: 6px 10px;
+      width: var(--ib-sel-manual-w);
+      max-width: 100%;
+    }
+    .ib_sel_desc { display:flex; gap: 8px; align-items:flex-start; font-size: var(--ib-sel-desc-font); }
+    .ib_sel_help {
+      width: 20px; height: 20px;
+      padding: 0;
+      border-radius: 999px;
+      border: 1px solid #ddd;
+      background: #fff;
+      cursor: pointer;
+      font-weight: 800;
+      line-height: 18px;
+      flex: 0 0 auto;
+    }
+    .ib_sel_help:hover { background: #f6f6f6; }
+    @media (max-width: 980px){
+      .ib_sel_stack input, .ib_sel_stack select { width: 100% !important; }
+    }
     label { display:block; font-size: 12px; opacity: 0.8; }
     input, select, button, textarea { padding: 10px 12px; height: 40px; box-sizing: border-box; }
     input[type="checkbox"] { transform: scale(var(--ui-cb-scale)); transform-origin: left center; }
@@ -39,6 +70,10 @@
     #run_status { display:none; margin-top: 8px; font-size: 12px; opacity: 0.88; align-items:center; gap: 8px; flex-wrap: wrap; }
     #run_spinner { width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(0,0,0,0.18); border-top-color: rgba(0,0,0,0.75); animation: spin 0.9s linear infinite; }
     #run_status_time { opacity: 0.85; white-space: nowrap; }
+
+    #fullrestore_status { display:none; margin-top: 8px; font-size: 12px; opacity: 0.88; align-items:center; gap: 8px; flex-wrap: wrap; }
+    #fullrestore_spinner { width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(0,0,0,0.18); border-top-color: rgba(0,0,0,0.75); animation: spin 0.9s linear infinite; }
+    #fullrestore_status_time { opacity: 0.85; white-space: nowrap; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
     table { border-collapse: collapse; width: 100%; margin-top: 10px; }
@@ -142,21 +177,39 @@
           <details id="selection_details" open data-ui="section.selection" title="section.selection" style="margin-top: 10px;">
             <summary>Auswahl</summary>
 
-            <div class="grid">
+           <div class="grid">
               <div>
-                 <label class="label_row"><span>Einheit (_measurement)</span><span id="cnt_measurement_filter" class="muted"></span></label>
-                <input id="measurement_filter" list="measurement_list" placeholder="optional" data-ui="restore.measurement_filter" title="restore.measurement_filter" />
-                <datalist id="measurement_list"></datalist>
+                 <label class="label_row ib_sel_label"><span>Einheit (_measurement)</span><span id="cnt_measurement_filter" class="muted"></span></label>
+                 <div class="ib_sel_stack">
+                   <input id="measurement_filter" list="measurement_list" placeholder="optional" data-ui="restore.measurement_filter" title="restore.measurement_filter" />
+                   <datalist id="measurement_list"></datalist>
+                   <div class="ib_sel_desc">
+                     <button type="button" class="ib_sel_help" data-title="Einheit (_measurement)" data-help="Filtert die Vorschlaege fuer friendly_name/entity_id auf dieses Measurement.">?</button>
+                     <div class="muted">Filtert die Vorschlaege nach Measurement.</div>
+                   </div>
+                 </div>
               </div>
               <div>
-                <label class="label_row"><span>Messwert (Klartext / friendly_name)</span><span id="cnt_friendly_name" class="muted"></span></label>
-                <input id="friendly_name" list="friendly_list" placeholder="optional" data-ui="restore.friendly_name" title="restore.friendly_name" />
-                <datalist id="friendly_list"></datalist>
+                <label class="label_row ib_sel_label"><span>Messwert (Klartext / friendly_name)</span><span id="cnt_friendly_name" class="muted"></span></label>
+                <div class="ib_sel_stack">
+                  <input id="friendly_name" list="friendly_list" placeholder="optional" data-ui="restore.friendly_name" title="restore.friendly_name" />
+                  <datalist id="friendly_list"></datalist>
+                  <div class="ib_sel_desc">
+                    <button type="button" class="ib_sel_help" data-title="Messwert (friendly_name)" data-help="Waehle den Klartext-Namen des Messwerts. Optional kannst du entity_id zusaetzlich setzen.">?</button>
+                    <div class="muted">Klartext-Auswahl (datalist) fuer den Messwert.</div>
+                  </div>
+                </div>
               </div>
               <div>
-                 <label class="label_row"><span>Entity ID (entity_id)</span><span id="cnt_entity_id" class="muted"></span></label>
-                <input id="entity_id" list="entity_list" placeholder="optional" data-ui="restore.entity_id" title="restore.entity_id" />
-                <datalist id="entity_list"></datalist>
+                 <label class="label_row ib_sel_label"><span>Entity ID (entity_id)</span><span id="cnt_entity_id" class="muted"></span></label>
+                 <div class="ib_sel_stack">
+                   <input id="entity_id" list="entity_list" placeholder="optional" data-ui="restore.entity_id" title="restore.entity_id" />
+                   <datalist id="entity_list"></datalist>
+                   <div class="ib_sel_desc">
+                     <button type="button" class="ib_sel_help" data-title="Entity ID" data-help="Optionaler Filter, um Messwerte zu unterscheiden, wenn mehrere Entity-IDs denselben friendly_name teilen.">?</button>
+                     <div class="muted">Optionaler Filter bei identischem Klartextnamen.</div>
+                   </div>
+                 </div>
               </div>
               <div>
                 <label>Ziel (aufgeloest)</label>
@@ -165,12 +218,18 @@
             </div>
 
             <div class="row" data-ui="restore.time" title="restore.time">
-              <div style="min-width: 220px;">
-                <label>Zeitfilter</label>
-                <select id="range" data-ui="restore.range" title="restore.range">
-                  <option value="all" selected>Alle Werte</option>
-                  <option value="custom">Benutzerdefiniert…</option>
-                </select>
+              <div style="min-width: 220px; flex:1;">
+                <label class="label_row ib_sel_label"><span>Zeitfilter</span><span><span id="cnt_restore_range" class="muted"></span> <span id="restore_range_bounds" class="muted"></span></span></label>
+                <div class="ib_sel_stack">
+                  <select id="range" data-ui="restore.range" title="restore.range">
+                    <option value="all" selected>Alle Werte</option>
+                    <option value="custom">Benutzerdefiniert…</option>
+                  </select>
+                  <div class="ib_sel_desc">
+                    <button type="button" class="ib_sel_help" data-title="Zeitfilter" data-help="Optionaler Zeitfilter fuer den Restore. Standard ist 'Alle Werte'. Bei Benutzerdefiniert kannst du Start/Stop setzen.">?</button>
+                    <div class="muted">Begrenzt den Restore auf einen Zeitbereich.</div>
+                  </div>
+                </div>
               </div>
               <div id="custom" style="min-width: 320px; display:none;">
                 <label>Von/Bis (lokal)</label>
@@ -211,8 +270,65 @@
 
        </div>
 
-      <script>
+       <div class="card" data-ui="restore.fullrestore.card" title="restore.fullrestore.card" style="--restore_visible_rows: {{ (cfg.get('ui_restore_visible_rows') or 24) | int }};">
+         <details id="fullrestore_details" data-ui="restore.fullrestore.details" title="restore.fullrestore.details">
+           <summary>FullRestore (InfluxDB komplett)</summary>
+           <div class="muted" style="margin-top: 6px;">Stellt ein FullBackup wieder her (v1: database, v2: bucket). Achtung: ueberschreibt Daten.</div>
+
+           <div class="row" style="align-items:flex-start;" data-ui="restore.fullrestore.actions" title="restore.fullrestore.actions">
+             <div><label>&nbsp;</label><button id="fullrestore_reload" data-ui="restore.fullrestore.reload" title="restore.fullrestore.reload">Liste aktualisieren</button></div>
+             <div><label>&nbsp;</label><button id="fullrestore_download" class="btn_sm" data-ui="restore.fullrestore.download" title="restore.fullrestore.download">Download</button></div>
+             <div><label>&nbsp;</label><button id="fullrestore_delete" data-ui="restore.fullrestore.delete" title="restore.fullrestore.delete">FullBackup loeschen</button></div>
+             <div><label>&nbsp;</label><button id="fullrestore_run" data-ui="restore.fullrestore.run" title="restore.fullrestore.run">FullRestore ausfuehren</button></div>
+             <div><label>&nbsp;</label><button id="fullrestore_cancel" class="btn_sm" data-ui="restore.fullrestore.cancel" title="restore.fullrestore.cancel" disabled>Abbruch</button></div>
+           </div>
+
+           <div id="fullrestore_status" data-ui="restore.fullrestore.status" title="restore.fullrestore.status">
+             <span id="fullrestore_spinner" aria-hidden="true"></span>
+             <span id="fullrestore_status_txt">FullRestore laeuft...</span>
+             <span id="fullrestore_status_time"></span>
+           </div>
+
+           <div class="table_wrap" data-ui="restore.fullrestore.table.wrap" title="restore.fullrestore.table.wrap">
+             <div class="table_title">FullBackups (Quelle)</div>
+             <div class="table_head" data-ui="restore.fullrestore.table.head" title="restore.fullrestore.table.head">
+               <div class="tbl_actions" data-ui="restore.fullrestore.table.actions" title="restore.fullrestore.table.actions">
+                 <button id="fullrestore_autowidth" class="btn_sm" data-ui="restore.fullrestore.autowidth" title="restore.fullrestore.autowidth" style="height:34px; padding:8px 10px;">Spaltenbreite automatisch</button>
+                 <button id="fullrestore_windowwidth" class="btn_sm" data-ui="restore.fullrestore.windowwidth" title="restore.fullrestore.windowwidth" style="height:34px; padding:8px 10px;">Fensterbreite</button>
+                 <label style="display:flex; align-items:center; gap: 6px; padding-top: 6px;"><input type="checkbox" id="fullrestore_wrap" data-ui="restore.fullrestore.wrap" title="restore.fullrestore.wrap"/>Umbruch</label>
+                 <label style="display:flex; align-items:center; gap: 6px; padding-top: 6px;"><input type="checkbox" id="fullrestore_colfilter" data-ui="restore.fullrestore.colfilter" title="restore.fullrestore.colfilter"/>Spaltenfilter</label>
+               </div>
+               <div class="muted" id="fullrestore_info" data-ui="restore.fullrestore.info" title="restore.fullrestore.info"></div>
+             </div>
+
+             <div class="table_box" id="fullrestore_box" data-ui="restore.fullrestore.table_box" title="restore.fullrestore.table_box">
+               <table id="fullrestore_tbl" class="list_tbl ib_tbl" data-ui="restore.fullrestore.table" title="restore.fullrestore.table">
+                 <thead>
+                   <tr>
+                     <th style="width: 34px;">Ausw.</th>
+                     <th>Backup Datum</th>
+                     <th>kind</th>
+                     <th>influx_version</th>
+                     <th>org</th>
+                     <th>bucket</th>
+                     <th>database</th>
+                     <th>Werte</th>
+                     <th>Groesse</th>
+                     <th>Start</th>
+                     <th>Stop</th>
+                     <th>Datei</th>
+                   </tr>
+                 </thead>
+                 <tbody id="fullrestore_rows"></tbody>
+               </table>
+             </div>
+           </div>
+         </details>
+       </div>
+
+       <script>
       const LS_KEY = "influxbro_ui_state_v1";
+      const SEL_AUTO_WIDTH = {{ 'true' if cfg.get('ui_sel_auto_width') else 'false' }};
       const $restoreBox = document.getElementById('restore_box');
       const $sel = document.getElementById('sel');
       const $rows = document.getElementById('rows');
@@ -229,7 +345,26 @@
         const $restoreAutoWidth = document.getElementById('restore_autowidth');
         const $restoreWindowWidth = document.getElementById('restore_windowwidth');
         const $restoreWrap = document.getElementById('restore_wrap');
-        const $restoreColFilter = document.getElementById('restore_colfilter');
+         const $restoreColFilter = document.getElementById('restore_colfilter');
+
+         // FullRestore (DB full)
+         const $fullRestoreReload = document.getElementById('fullrestore_reload');
+         const $fullRestoreDownload = document.getElementById('fullrestore_download');
+         const $fullRestoreDelete = document.getElementById('fullrestore_delete');
+         const $fullRestoreRun = document.getElementById('fullrestore_run');
+         const $fullRestoreCancel = document.getElementById('fullrestore_cancel');
+         const $fullRestoreRows = document.getElementById('fullrestore_rows');
+         const $fullRestoreInfo = document.getElementById('fullrestore_info');
+
+         const $fullRestoreStatus = document.getElementById('fullrestore_status');
+         const $fullRestoreSpinner = document.getElementById('fullrestore_spinner');
+         const $fullRestoreStatusTxt = document.getElementById('fullrestore_status_txt');
+         const $fullRestoreStatusTime = document.getElementById('fullrestore_status_time');
+
+         const $fullRestoreAutoWidth = document.getElementById('fullrestore_autowidth');
+         const $fullRestoreWindowWidth = document.getElementById('fullrestore_windowwidth');
+         const $fullRestoreWrap = document.getElementById('fullrestore_wrap');
+         const $fullRestoreColFilter = document.getElementById('fullrestore_colfilter');
 
        const $runStatus = document.getElementById('run_status');
        const $runStatusTxt = document.getElementById('run_status_txt');
@@ -250,6 +385,8 @@
        const $cntMf = document.getElementById('cnt_measurement_filter');
        const $cntFn = document.getElementById('cnt_friendly_name');
        const $cntEid = document.getElementById('cnt_entity_id');
+       const $cntRestoreRange = document.getElementById('cnt_restore_range');
+       const $restoreRangeBounds = document.getElementById('restore_range_bounds');
        const $range = document.getElementById('range');
       const $custom = document.getElementById('custom');
       const $start = document.getElementById('start');
@@ -259,10 +396,16 @@
       const $showQuery = document.getElementById('show_query');
       const $planQuery = document.getElementById('plan_query');
 
-       let BACKUPS = [];
-       let SELECTED_ID = '';
-       let BACKUP_LOC_TXT = '';
-        let LAST_TARGET = null;
+        let BACKUPS = [];
+        let SELECTED_ID = '';
+        let BACKUP_LOC_TXT = '';
+         let LAST_TARGET = null;
+
+        let FULLBACKUPS = [];
+        let FULL_SELECTED_ID = '';
+        let FULLRESTORE_JOB_ID = '';
+        let FULLRESTORE_T0 = null;
+        let FULLRESTORE_TIMER = null;
 
        let CFG = { influx_version: 2, bucket: '' };
 
@@ -543,6 +686,190 @@
          return (b/1024/1024/1024).toFixed(2) + ' GB';
        }
 
+       function selFullBackup(){
+         const id = String(FULL_SELECTED_ID || '').trim();
+         return (FULLBACKUPS || []).find(b => String(b.id||'') === id) || null;
+       }
+
+       function startFullRestoreUi(msg){
+         try{
+           if($fullRestoreStatus) $fullRestoreStatus.style.display = 'flex';
+           if($fullRestoreSpinner) $fullRestoreSpinner.style.display = 'inline-block';
+           if($fullRestoreStatusTxt) $fullRestoreStatusTxt.textContent = String(msg || 'FullRestore laeuft...');
+           if($fullRestoreRun) $fullRestoreRun.disabled = true;
+           if($fullRestoreReload) $fullRestoreReload.disabled = true;
+           if($fullRestoreCancel) $fullRestoreCancel.disabled = false;
+           if($fullRestoreDownload) $fullRestoreDownload.disabled = true;
+           if($fullRestoreDelete) $fullRestoreDelete.disabled = true;
+         }catch(e){}
+         FULLRESTORE_T0 = Date.now();
+         try{ if(FULLRESTORE_TIMER) clearInterval(FULLRESTORE_TIMER); }catch(e){}
+         FULLRESTORE_TIMER = setInterval(()=>{
+           try{
+             if(!$fullRestoreStatusTime || !FULLRESTORE_T0) return;
+             $fullRestoreStatusTime.textContent = fmtRuntime(Date.now() - FULLRESTORE_T0);
+           }catch(e){}
+         }, 250);
+       }
+
+       function stopFullRestoreUi(success, msg){
+         try{ if(FULLRESTORE_TIMER) clearInterval(FULLRESTORE_TIMER); }catch(e){}
+         FULLRESTORE_TIMER = null;
+         const dur = FULLRESTORE_T0 ? (Date.now() - FULLRESTORE_T0) : null;
+         FULLRESTORE_T0 = null;
+         FULLRESTORE_JOB_ID = '';
+
+         try{
+           if($fullRestoreStatusTxt && msg) $fullRestoreStatusTxt.textContent = String(msg);
+           if($fullRestoreSpinner) $fullRestoreSpinner.style.display = 'none';
+           if($fullRestoreStatusTime && dur !== null) $fullRestoreStatusTime.textContent = fmtRuntime(dur);
+         }catch(e){}
+         try{
+           if($fullRestoreRun) $fullRestoreRun.disabled = false;
+           if($fullRestoreReload) $fullRestoreReload.disabled = false;
+           if($fullRestoreCancel) $fullRestoreCancel.disabled = true;
+           if($fullRestoreDownload) $fullRestoreDownload.disabled = !String(FULL_SELECTED_ID||'').trim();
+           if($fullRestoreDelete) $fullRestoreDelete.disabled = !String(FULL_SELECTED_ID||'').trim();
+         }catch(e){}
+       }
+
+       function renderFullBackups(){
+         if(!$fullRestoreRows) return;
+         $fullRestoreRows.innerHTML = '';
+         const rows = (FULLBACKUPS || []).slice();
+         try{ if($fullRestoreInfo) $fullRestoreInfo.textContent = `FullBackups: ${rows.length}`; }catch(e){}
+         rows.forEach(b=>{
+           const id = String(b.id||'');
+           const tr = document.createElement('tr');
+           tr.classList.toggle('selected', id === FULL_SELECTED_ID);
+           const tdSel = document.createElement('td');
+           const rb = document.createElement('input');
+           rb.type = 'radio';
+           rb.name = 'fullbackup_sel';
+           rb.checked = (id === FULL_SELECTED_ID);
+           rb.addEventListener('change', ()=>{ FULL_SELECTED_ID = id; renderFullBackups(); });
+           tdSel.appendChild(rb);
+
+           const tdDt = document.createElement('td'); tdDt.textContent = fmtTs(b.created_at || '');
+           const tdKind = document.createElement('td'); tdKind.textContent = b.kind || '';
+           const tdV = document.createElement('td'); tdV.textContent = String(b.influx_version || '');
+           const tdOrg = document.createElement('td'); tdOrg.textContent = b.org || '';
+           const tdBuck = document.createElement('td'); tdBuck.textContent = b.bucket || '';
+           const tdDb = document.createElement('td'); tdDb.textContent = b.database || '';
+           const tdCnt = document.createElement('td'); tdCnt.textContent = (b.point_count ?? '') + '';
+           const tdSz = document.createElement('td'); tdSz.textContent = fmtBytes(b.bytes);
+           const tdS = document.createElement('td'); tdS.textContent = fmtTs(b.start || b.oldest_time || '');
+           const tdE = document.createElement('td'); tdE.textContent = fmtTs(b.stop || b.newest_time || '');
+           const tdFile = document.createElement('td'); tdFile.textContent = b.file || b.id || '';
+
+           tr.appendChild(tdSel);
+           tr.appendChild(tdDt);
+           tr.appendChild(tdKind);
+           tr.appendChild(tdV);
+           tr.appendChild(tdOrg);
+           tr.appendChild(tdBuck);
+           tr.appendChild(tdDb);
+           tr.appendChild(tdCnt);
+           tr.appendChild(tdSz);
+           tr.appendChild(tdS);
+           tr.appendChild(tdE);
+           tr.appendChild(tdFile);
+           tr.addEventListener('click', ()=>{ FULL_SELECTED_ID = id; renderFullBackups(); });
+           $fullRestoreRows.appendChild(tr);
+         });
+
+         try{
+           const one = String(FULL_SELECTED_ID || '').trim();
+           if($fullRestoreDownload) $fullRestoreDownload.disabled = !one;
+           if($fullRestoreDelete) $fullRestoreDelete.disabled = !one;
+         }catch(e){}
+       }
+
+       async function loadFullBackups(){
+         const j = await api('./api/fullbackups_all');
+         FULLBACKUPS = j.backups || [];
+         if(!FULL_SELECTED_ID && FULLBACKUPS.length) FULL_SELECTED_ID = String(FULLBACKUPS[0].id||'');
+         renderFullBackups();
+       }
+
+       async function runFullRestore(){
+         err(''); ok('');
+         const b = selFullBackup();
+         if(!b) throw new Error('Bitte ein FullBackup auswaehlen.');
+         const id = String(b.id || '').trim();
+         if(!id) throw new Error('FullBackup id fehlt.');
+         const msg = `FullRestore wirklich ausfuehren? Das kann alle Daten ueberschreiben.\n\nBackup: ${id}`;
+         if(!confirm(msg)) return;
+
+         startFullRestoreUi('FullRestore wird gestartet...');
+         try{
+           const started = await api('./api/fullrestore_job/start', {
+             method:'POST',
+             headers:{'Content-Type':'application/json'},
+             body: JSON.stringify({ id, confirm: true })
+           });
+           FULLRESTORE_JOB_ID = String(started.job_id || '');
+           if(!FULLRESTORE_JOB_ID) throw new Error('fullrestore job_id missing');
+
+           while(true){
+             const j = await api('./api/fullrestore_job/status?job_id=' + encodeURIComponent(FULLRESTORE_JOB_ID));
+             const st = j.status || {};
+             const msg = String(st.message || 'FullRestore laeuft...');
+             const applied = Number(st.applied || 0);
+             const read = Number(st.read_lines || 0);
+             const detail = [msg, (read ? ('Zeilen: ' + read) : ''), (applied ? ('applied: ' + applied) : '')].filter(Boolean).join(' | ');
+             try{ if($fullRestoreStatusTxt) $fullRestoreStatusTxt.textContent = detail; }catch(e){}
+
+             const state = String(st.state || '');
+             if(state === 'done'){
+               ok('FullRestore fertig. applied=' + String(st.applied || 0));
+               stopFullRestoreUi(true, 'Fertig.');
+               return;
+             }
+             if(state === 'cancelled'){
+               ok('Abgebrochen.');
+               stopFullRestoreUi(true, 'Abgebrochen.');
+               return;
+             }
+             if(state === 'error'){
+               const em = String(st.error || st.message || 'Fehler');
+               err(em);
+               stopFullRestoreUi(false, 'Fehler.');
+               throw new Error(em);
+             }
+
+             await new Promise(r=>setTimeout(r, 650));
+           }
+         }catch(e){
+           stopFullRestoreUi(false, 'Fehler.');
+           throw e;
+         }
+       }
+
+       async function cancelFullRestore(){
+         try{
+           if(!FULLRESTORE_JOB_ID) return;
+           await api('./api/fullrestore_job/cancel', {
+             method:'POST',
+             headers:{'Content-Type':'application/json'},
+             body: JSON.stringify({ job_id: FULLRESTORE_JOB_ID })
+           });
+         }catch(e){
+           err(String(e && e.message ? e.message : e));
+         }
+       }
+
+       async function deleteFullBackup(){
+         err(''); ok('');
+         const id = String(FULL_SELECTED_ID || '').trim();
+         if(!id) throw new Error('Bitte ein FullBackup auswaehlen.');
+         if(!confirm('FullBackup wirklich loeschen?\n\n' + id)) return;
+         await api('./api/fullbackup_delete', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id })});
+         ok('FullBackup geloescht: ' + id);
+         FULL_SELECTED_ID = '';
+         await loadFullBackups();
+       }
+
       function buildVerifyQuery(){
         try{
           const b = selBackup();
@@ -705,9 +1032,87 @@
          }catch(e){}
        }
 
+       function _selMeasureAvgPx(items, font){
+         try{
+           const xs = (items || []).map(x=>String(x||'')).filter(Boolean);
+           if(!xs.length) return 0;
+           const canvas = _selMeasureAvgPx._c || (_selMeasureAvgPx._c = document.createElement('canvas'));
+           const ctx = canvas.getContext('2d');
+           if(!ctx) return 0;
+           ctx.font = font || '13px system-ui';
+           const n = Math.min(xs.length, 200);
+           let sum = 0;
+           for(let i=0;i<n;i++) sum += (ctx.measureText(xs[i]).width || 0);
+           return n ? (sum / n) : 0;
+         }catch(e){
+           return 0;
+         }
+       }
+
+       async function _selReportComputedWidth(px){
+         try{
+           const v = Math.round(Number(px) || 0);
+           if(!isFinite(v) || v <= 0) return;
+           await fetch('./api/ui_state/set', {
+             method: 'POST',
+             headers: { 'Content-Type': 'application/json' },
+             body: JSON.stringify({ key: 'influxbro.ui.sel_auto_width_last_px', value: String(v) })
+           }).catch(()=>{});
+         }catch(e){}
+       }
+
+       function _selApplyWidthForInput(inputEl, items){
+         try{
+           if(!inputEl) return;
+           if(!SEL_AUTO_WIDTH) return;
+           const font = getComputedStyle(inputEl).font;
+           const avg = _selMeasureAvgPx(items || [], font);
+           if(!isFinite(avg) || avg <= 0) return;
+           let px = Math.ceil(avg + 26);
+           px = Math.max(140, Math.min(420, px));
+           inputEl.style.width = px + 'px';
+           _selReportComputedWidth(px);
+         }catch(e){}
+       }
+
+       function _selInitHelpButtons(){
+         try{
+           document.querySelectorAll('.ib_sel_help').forEach(btn => {
+             btn.addEventListener('click', (ev)=>{
+               try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+               const t = String(btn.getAttribute('data-title') || 'Info');
+               const h = String(btn.getAttribute('data-help') || '');
+               try{
+                 if(window.InfluxBroPopup && window.InfluxBroPopup.show) window.InfluxBroPopup.show(t, h);
+                 else alert(t + '\n\n' + h);
+               }catch(e){
+                 try{ alert(t + '\n\n' + h); }catch(ex){}
+               }
+             });
+           });
+         }catch(e){}
+       }
+
+       function _renderRestoreRangeBounds(){
+         try{
+           if($cntRestoreRange && $range && $range.options) $cntRestoreRange.textContent = $range.options.length ? `(${Number($range.options.length)})` : '';
+         }catch(e){}
+         try{
+           if(!$restoreRangeBounds) return;
+           if(!$range || $range.value !== 'custom') { $restoreRangeBounds.textContent = ''; return; }
+           const s = String($start && $start.value ? $start.value : '').trim();
+           const e = String($stop && $stop.value ? $stop.value : '').trim();
+           if(!s || !e) { $restoreRangeBounds.textContent = ''; return; }
+           const sd = new Date(s);
+           const ed = new Date(e);
+           if(!isFinite(sd.getTime()) || !isFinite(ed.getTime())) { $restoreRangeBounds.textContent = ''; return; }
+           $restoreRangeBounds.textContent = fmtTs(sd.toISOString()) + ' bis ' + fmtTs(ed.toISOString());
+         }catch(e){}
+       }
+
        let ALL_MF = []; let ALL_FN = []; let ALL_EID = [];
 
-       async function loadTargetLists(){
+        async function loadTargetLists(){
          // Measurements list for filter
          try{
            const jm = await api('./api/measurements');
@@ -716,16 +1121,22 @@
          // friendly/entity values are global (same as dashboard)
          try{ ALL_FN = await loadTagValues('friendly_name', ''); }catch(e){ ALL_FN = []; }
          try{ ALL_EID = await loadTagValues('entity_id', ''); }catch(e){ ALL_EID = []; }
-         setDatalistOptions($mfList, ALL_MF);
-         setDatalistOptions($fnList, ALL_FN);
-         setDatalistOptions($eidList, ALL_EID);
+          setDatalistOptions($mfList, ALL_MF);
+          setDatalistOptions($fnList, ALL_FN);
+          setDatalistOptions($eidList, ALL_EID);
 
-         setCount($cntMf, ALL_MF.length, true);
-         setCount($cntFn, ALL_FN.length, true);
-         setCount($cntEid, ALL_EID.length, false);
-       }
+          setCount($cntMf, ALL_MF.length, true);
+          setCount($cntFn, ALL_FN.length, true);
+          setCount($cntEid, ALL_EID.length, false);
 
-       async function refreshEntityIdsForFriendly(){
+          _selApplyWidthForInput($mf, ALL_MF);
+          _selApplyWidthForInput($n, ALL_FN);
+          _selApplyWidthForInput($e, ALL_EID);
+
+          _renderRestoreRangeBounds();
+        }
+
+        async function refreshEntityIdsForFriendly(){
          try{
            const fn = String($n && $n.value ? $n.value : '').trim();
            if(!fn){
@@ -736,15 +1147,16 @@
            const qs = new URLSearchParams({tag:'entity_id', friendly_name: fn, range:'30d'});
            const j = await api('./api/tag_values?' + qs.toString());
            const vals = (j.values || []).map(x=>String(x)).filter(Boolean);
-           setDatalistOptions($eidList, vals);
-           setCount($cntEid, vals.length, false);
+            setDatalistOptions($eidList, vals);
+            setCount($cntEid, vals.length, false);
+            _selApplyWidthForInput($e, vals);
 
            const cur = String($e && $e.value ? $e.value : '').trim();
            if(vals.length >= 1 && (!cur || !vals.includes(cur))){
              $e.value = vals[0];
            }
-         }catch(e){}
-       }
+          }catch(e){}
+        }
 
       async function resolveTarget(){
         const friendly_name = ($n.value||'').trim();
@@ -964,6 +1376,18 @@
       if($srcToTarget) $srcToTarget.addEventListener('click', ()=>copySourceToTarget());
       $run.addEventListener('click', ()=>runCopy().catch(e=>err(String(e && e.message ? e.message : e))));
 
+      // FullRestore actions
+      try{ if($fullRestoreReload) $fullRestoreReload.addEventListener('click', ()=>loadFullBackups().catch(e=>err(String(e && e.message ? e.message : e)))); }catch(e){}
+      try{ if($fullRestoreDownload) $fullRestoreDownload.addEventListener('click', (ev)=>{
+        try{ if(ev) { ev.preventDefault(); ev.stopPropagation(); } }catch(e){}
+        const id = String(FULL_SELECTED_ID || '').trim();
+        if(!id) return;
+        try{ location.href = `./api/fullbackup_download?id=${encodeURIComponent(id)}`; }catch(e){}
+      }); }catch(e){}
+      try{ if($fullRestoreDelete) $fullRestoreDelete.addEventListener('click', ()=>deleteFullBackup().catch(e=>err(String(e && e.message ? e.message : e)))); }catch(e){}
+      try{ if($fullRestoreRun) $fullRestoreRun.addEventListener('click', ()=>runFullRestore().catch(e=>err(String(e && e.message ? e.message : e)))); }catch(e){}
+      try{ if($fullRestoreCancel) $fullRestoreCancel.addEventListener('click', ()=>cancelFullRestore()); }catch(e){}
+
       if($qBackup) $qBackup.addEventListener('input', ()=>renderList());
 
       function debounce(fn, ms){
@@ -978,9 +1402,9 @@
       if($mf) $mf.addEventListener('input', onTargetChanged);
       if($n) $n.addEventListener('input', ()=>{ refreshEntityIdsForFriendly().then(()=>autoPickEntityId().then(()=>onTargetChanged())); });
       if($e) $e.addEventListener('input', onTargetChanged);
-      if($range) $range.addEventListener('change', ()=>{ $custom.style.display = ($range.value === 'custom') ? 'block' : 'none'; });
-      if($start) $start.addEventListener('change', ()=>renderPlan());
-      if($stop) $stop.addEventListener('change', ()=>renderPlan());
+      if($range) $range.addEventListener('change', ()=>{ $custom.style.display = ($range.value === 'custom') ? 'block' : 'none'; _renderRestoreRangeBounds(); renderPlan(); });
+      if($start) $start.addEventListener('change', ()=>{ _renderRestoreRangeBounds(); renderPlan(); });
+      if($stop) $stop.addEventListener('change', ()=>{ _renderRestoreRangeBounds(); renderPlan(); });
       if($showQuery) $showQuery.addEventListener('change', ()=>renderPlan());
 
       applyLayoutFromState();
@@ -1023,6 +1447,7 @@
       }catch(e){}
 
       loadBackups().catch(e=>err(String(e && e.message ? e.message : e)));
+      loadFullBackups().catch(()=>{});
       loadTargetLists().then(()=>{ renderPlan(); }).catch(()=>{});
 
       // table UI helpers are wired after shared helpers are loaded (see bottom script)
@@ -1033,22 +1458,38 @@
 
       <script>
       (function(){
+        try{ _selInitHelpButtons(); }catch(e){}
         try{ if(window.InfluxBroTableCols) window.InfluxBroTableCols.init('#restore_tbl'); }catch(e){}
         try{ if(window.InfluxBroTableHeight) window.InfluxBroTableHeight.attach(document.getElementById('restore_box'), 'restore_tbl', {minPx: 180}); }catch(e){}
+
+        try{ if(window.InfluxBroTableCols) window.InfluxBroTableCols.init('#fullrestore_tbl'); }catch(e){}
+        try{ if(window.InfluxBroTableHeight) window.InfluxBroTableHeight.attach(document.getElementById('fullrestore_box'), 'fullrestore_tbl', {minPx: 180}); }catch(e){}
 
         const pk = (window.location && window.location.pathname) ? String(window.location.pathname) : '';
         const kWrap = 'influxbro.ui.wrap.v1.' + pk + '.restore_tbl';
         const kFilt = 'influxbro.ui.colfilter.v1.' + pk + '.restore_tbl';
+
+        const kWrapFull = 'influxbro.ui.wrap.v1.' + pk + '.fullrestore_tbl';
+        const kFiltFull = 'influxbro.ui.colfilter.v1.' + pk + '.fullrestore_tbl';
 
         try{
           if($restoreAutoWidth) $restoreAutoWidth.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} try{ window.InfluxBroTableCols && window.InfluxBroTableCols.autoFit('#restore_tbl', {maxRows: 200}); }catch(e){} });
         }catch(e){}
 
         try{
+          if($fullRestoreAutoWidth) $fullRestoreAutoWidth.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} try{ window.InfluxBroTableCols && window.InfluxBroTableCols.autoFit('#fullrestore_tbl', {maxRows: 200}); }catch(e){} });
+        }catch(e){}
+
+        try{
           if($restoreWindowWidth) $restoreWindowWidth.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} try{ window.InfluxBroTableCols && window.InfluxBroTableCols.windowFit('#restore_tbl', {minW: 90}); }catch(e){} });
         }catch(e){}
 
+        try{
+          if($fullRestoreWindowWidth) $fullRestoreWindowWidth.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} try{ window.InfluxBroTableCols && window.InfluxBroTableCols.windowFit('#fullrestore_tbl', {minW: 90}); }catch(e){} });
+        }catch(e){}
+
         try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.init('#restore_tbl', {startHidden: true}); }catch(e){}
+        try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.init('#fullrestore_tbl', {startHidden: true}); }catch(e){}
 
         try{
           if($restoreWrap){
@@ -1062,12 +1503,34 @@
         }catch(e){}
 
         try{
+          if($fullRestoreWrap){
+            try{ $fullRestoreWrap.checked = (localStorage.getItem(kWrapFull) || '') === '1'; }catch(e){}
+            try{ window.InfluxBroTableWrap && window.InfluxBroTableWrap.setWrap('#fullrestore_tbl', $fullRestoreWrap.checked); }catch(e){}
+            $fullRestoreWrap.addEventListener('change', ()=>{
+              try{ localStorage.setItem(kWrapFull, $fullRestoreWrap.checked ? '1' : '0'); }catch(e){}
+              try{ window.InfluxBroTableWrap && window.InfluxBroTableWrap.setWrap('#fullrestore_tbl', $fullRestoreWrap.checked); }catch(e){}
+            });
+          }
+        }catch(e){}
+
+        try{
           if($restoreColFilter){
             try{ $restoreColFilter.checked = (localStorage.getItem(kFilt) || '') === '1'; }catch(e){}
             try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.setVisible('#restore_tbl', $restoreColFilter.checked); }catch(e){}
             $restoreColFilter.addEventListener('change', ()=>{
               try{ localStorage.setItem(kFilt, $restoreColFilter.checked ? '1' : '0'); }catch(e){}
               try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.setVisible('#restore_tbl', $restoreColFilter.checked); }catch(e){}
+            });
+          }
+        }catch(e){}
+
+        try{
+          if($fullRestoreColFilter){
+            try{ $fullRestoreColFilter.checked = (localStorage.getItem(kFiltFull) || '') === '1'; }catch(e){}
+            try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.setVisible('#fullrestore_tbl', $fullRestoreColFilter.checked); }catch(e){}
+            $fullRestoreColFilter.addEventListener('change', ()=>{
+              try{ localStorage.setItem(kFiltFull, $fullRestoreColFilter.checked ? '1' : '0'); }catch(e){}
+              try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.setVisible('#fullrestore_tbl', $fullRestoreColFilter.checked); }catch(e){}
             });
           }
         }catch(e){}
@@ -1097,6 +1560,31 @@
               'Download: laedt das selektierte Backup als ZIP (Meta + Line Protocol).',
               'Spaltenbreite automatisch / Fensterbreite: passt Spaltenbreiten an.',
               'Umbruch/Spaltenfilter: Darstellung und Filterzeile toggeln.',
+            ],
+          };
+
+          window.InfluxBroTableInfoSpec[pkey + ':fullrestore_tbl'] = {
+            purpose: 'Quelle-Liste aller FullBackups (komplette InfluxDB Sicherungen) fuer FullRestore.',
+            columns: {
+              'Ausw.': 'Radio-Button: genau ein FullBackup als Quelle auswaehlen.',
+              'Backup Datum': 'Zeitpunkt der FullBackup-Erstellung.',
+              'kind': 'Art des Backups (db_full).',
+              'influx_version': 'Influx Version (v1/v2).',
+              'org': 'InfluxDB v2: Organisation.',
+              'bucket': 'InfluxDB v2: Bucket.',
+              'database': 'InfluxDB v1: Database.',
+              'Werte': 'Anzahl gesicherter Punkte (best-effort).',
+              'Groesse': 'Dateigroesse (ZIP).',
+              'Start': 'Aeltester Zeitpunkt im Backup (best-effort).',
+              'Stop': 'Neuester Zeitpunkt im Backup (best-effort).',
+              'Datei': 'ZIP-Dateiname im Backup-Verzeichnis.',
+            },
+            actions: [
+              'Liste aktualisieren: laedt die FullBackup-Liste neu.',
+              'Download: laedt das selektierte FullBackup als ZIP (Meta + Line Protocol).',
+              'FullBackup loeschen: loescht das selektierte FullBackup (Meta + Line Protocol).',
+              'FullRestore ausfuehren: stellt das selektierte FullBackup in die konfigurierte InfluxDB wieder her.',
+              'Abbruch: bricht den laufenden FullRestore-Job ab (best-effort).',
             ],
           };
         }catch(e){}
