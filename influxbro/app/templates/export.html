@@ -660,16 +660,46 @@
         return { tz_name: name || null, tz_offset_minutes: (off === null ? null : Number(off)) };
       }
 
-      async function runExport(){
-        err(''); ok('');
-        try{ window.InfluxBroStatus && window.InfluxBroStatus.start && window.InfluxBroStatus.start('export.run', 'Export laeuft...'); }catch(e){}
-        try{
-          const target = await showTargetModal();
-          if(target === null){
-            setStatus('Abgebrochen.');
-            try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done('export.run', 'Abgebrochen.'); }catch(e){}
-            return;
-          }
+       let SAVE_HANDLE = null;
+
+       async function _pickSaveHandle(suggestedName, fmt){
+         try{
+           if(!window.showSaveFilePicker) return null;
+           const name = String(suggestedName || '').trim() || ('export.' + (fmt === 'xlsx' ? 'xlsx' : 'csv'));
+           const types = (fmt === 'xlsx')
+             ? [{ description: 'Excel', accept: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'] } }]
+             : [{ description: 'CSV', accept: { 'text/csv': ['.csv'] } }];
+           return await window.showSaveFilePicker({ suggestedName: name, types });
+         }catch(e){
+           // AbortError when user cancels
+           return null;
+         }
+       }
+
+       async function _writeHandle(handle, blob){
+         if(!handle) return false;
+         try{
+           const w = await handle.createWritable();
+           await w.write(blob);
+           await w.close();
+           return true;
+         }catch(e){
+           return false;
+         }
+       }
+
+       async function runExport(){
+         err(''); ok('');
+         try{ window.InfluxBroStatus && window.InfluxBroStatus.start && window.InfluxBroStatus.start('export.run', 'Export laeuft...'); }catch(e){}
+         try{
+          // Prefer client-side Save-As (if supported). Fallback is browser download.
+          const fmt0 = String($format.value||'text');
+          const tf0 = timeFilter();
+          const nm0 = String($n.value||'').trim() || String($e.value||'').trim() || 'export';
+          const ext0 = (fmt0 === 'xlsx') ? 'xlsx' : 'csv';
+          const sugg = (nm0.replace(/[^a-zA-Z0-9_.-]+/g,'_').slice(0, 80) || 'export') + '__' + String(tf0 && tf0.range ? tf0.range : 'range') + '.' + ext0;
+          SAVE_HANDLE = await _pickSaveHandle(sugg, fmt0);
+
           await refreshResolved();
           const tf = timeFilter();
           const tz = clientTz();
@@ -687,7 +717,8 @@
             stop: tf.stop,
             tz_name: tz.tz_name,
             tz_offset_minutes: tz.tz_offset_minutes,
-            target_dir: String(target || 'exports'),
+            // Always write the server-side export to a stable location; client receives it via download.
+            target_dir: 'exports',
           };
           if(!payload.measurement || !payload.field) throw new Error('measurement/field fehlt. Bitte Auswahl setzen.');
           setStatus('Starte Export Job...');
@@ -728,18 +759,35 @@
         if(st.download_url){
           LAST_DOWNLOAD_URL = String(st.download_url);
         }
-        if(state === 'done'){
-          stopPolling();
-          ok('Export fertig.');
-          try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done('export.run', `Export fertig. Zeilen: ${rows}`); }catch(e){}
-          if($cancel) $cancel.disabled = true;
-          if($run) $run.disabled = false;
-          if(LAST_DOWNLOAD_URL && !AUTO_DL_DONE){
-            AUTO_DL_DONE = true;
-            try{ location.href = String(LAST_DOWNLOAD_URL); }catch(e){}
-            try{ if($hint) $hint.textContent = 'Download gestartet.'; }catch(e){}
-          }
-        }
+         if(state === 'done'){
+           stopPolling();
+           ok('Export fertig.');
+           try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done('export.run', `Export fertig. Zeilen: ${rows}`); }catch(e){}
+           if($cancel) $cancel.disabled = true;
+           if($run) $run.disabled = false;
+           if(LAST_DOWNLOAD_URL && !AUTO_DL_DONE){
+             AUTO_DL_DONE = true;
+             try{
+               if(SAVE_HANDLE){
+                 const resp = await fetch(String(LAST_DOWNLOAD_URL));
+                 const blob = await resp.blob();
+                 const okSave = await _writeHandle(SAVE_HANDLE, blob);
+                 SAVE_HANDLE = null;
+                 if(okSave){
+                   try{ if($hint) $hint.textContent = 'Datei gespeichert.'; }catch(e){}
+                 }else{
+                   try{ location.href = String(LAST_DOWNLOAD_URL); }catch(e){}
+                   try{ if($hint) $hint.textContent = 'Download gestartet.'; }catch(e){}
+                 }
+               }else{
+                 try{ location.href = String(LAST_DOWNLOAD_URL); }catch(e){}
+                 try{ if($hint) $hint.textContent = 'Download gestartet.'; }catch(e){}
+               }
+             }catch(e){
+               try{ location.href = String(LAST_DOWNLOAD_URL); }catch(x){}
+             }
+           }
+         }
         if(state === 'error'){
           stopPolling();
           const ee = String(st.error || 'Fehler');

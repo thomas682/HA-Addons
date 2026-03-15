@@ -329,7 +329,11 @@ Neu: FullBackup (InfluxDB komplett)
 - Zusaetzlich gibt es eine eigene Sektion `FullBackup (InfluxDB komplett)`.
 - FullBackup sichert nicht nur einen einzelnen Messwert, sondern exportiert (best-effort) die komplette InfluxDB (v1: alle Measurements; v2: kompletter Bucket).
 - FullBackups werden in einer separaten Liste angezeigt (unabhaengig von den normalen Signal-Backups).
-- Aktionen: `FullBackup starten`, `Abbruch`, `Liste aktualisieren`, `Download` (ZIP: Meta + Line Protocol), `Loeschen`.
+- Aktionen: `FullBackup starten`, `Abbruch`, `Liste aktualisieren`, `Download` (ZIP), `Loeschen`.
+- Modus:
+  - `Line Protocol (kompatibel)`: exportiert best-effort als Line Protocol (wie bisher).
+  - `Native v2 (influx backup)`: nutzt die Influx CLI und erzeugt ein natives Backup (ZIP enthaelt Meta + native Payload unter `native/`).
+  - In der FullBackupliste zeigt die Spalte `format`, ob es `lp` oder `native_v2` ist.
 - Kompatibilitaet:
   - InfluxDB v2: unterstuetzt.
   - InfluxDB v1: unterstuetzt (best-effort; kann je nach Datenmenge sehr lange dauern).
@@ -349,7 +353,13 @@ Neu: FullBackup (InfluxDB komplett)
 Neu: FullRestore (InfluxDB komplett)
 
 - Zusaetzlich gibt es eine eigene Sektion `FullRestore (InfluxDB komplett)`.
-- FullRestore stellt ein selektiertes FullBackup wieder her (schreibt Line Protocol in die konfigurierte InfluxDB).
+- FullRestore stellt ein selektiertes FullBackup wieder her.
+  - `format=lp`: schreibt Line Protocol in die konfigurierte InfluxDB (wie bisher).
+  - `format=native_v2`: nutzt `influx restore`.
+- Native v2 Restore:
+  - Zielbucket kann gesetzt werden (leer = wie Quelle). Wenn Ziel != Quelle, wird `--new-bucket` verwendet.
+  - `Ueberschreiben (Bucket loeschen)` loescht den Zielbucket vor Restore (erfordert Confirm-Phrase `DELETE`).
+  - Hinweis: `influx restore` kann nicht in existierende Buckets schreiben (ohne vorheriges Loeschen).
 - FullBackups erscheinen in einer separaten Liste; normale Restore-Funktionen akzeptieren keine FullBackups.
 - Aktionen: `Liste aktualisieren`, `Download`, `FullBackup loeschen`, `FullRestore ausfuehren`, `Abbruch`.
 - Sicherheit: FullRestore erfordert eine Bestaetigung im UI (Browser-Dialog).
@@ -407,7 +417,8 @@ Neu:
 Verbindung:
 
 - `Influx Version`, `Scheme`, `Host`, `Port`, `verify_ssl`, `timeout_seconds`: steuern die Verbindung zur InfluxDB.
-- `InfluxDB v2` (`org`, `bucket`, `token`): v2 Zugangsdaten.
+- `InfluxDB v2` (`org`, `bucket`, `token`, `admin_token`): v2 Zugangsdaten.
+  - `admin_token` wird nur fuer `Native Backup/Restore (v2)` benoetigt (FullBackup/FullRestore Modus "Native v2").
 - `InfluxDB v1` (`database`, `username`, `password`): v1 Zugangsdaten.
 
 UI:

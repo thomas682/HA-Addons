@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.12.25
+
+### Features
+
+- FullBackup (InfluxDB v2): neuer Modus `Native v2 (influx backup)` (CLI-basierter Backup-Export), gespeichert als ZIP (Meta + native Payload) und in der Liste per Spalte `format` erkennbar.
+- FullRestore (InfluxDB v2, native): Zielbucket kann frei gewaehlt werden (`--new-bucket`), optional `Ueberschreiben` (loescht Zielbucket vor Restore; erfordert Confirm-Phrase).
+- Einstellungen: neues Feld `admin_token` (maskiert) fuer Native Backup/Restore (v2).
+
+### Maintenance
+
+- Docker: `influx` CLI wird im Add-on Image installiert (Multi-Arch), um Native v2 Backup/Restore auszufuehren.
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.24
 
 ### Fixes

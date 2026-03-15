@@ -1,0 +1,515 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>InfluxBro – Kombinieren</title>
+  <style>
+    :root {
+      --ui-cb-scale: {{ (cfg.get('ui_checkbox_scale') or 0.85) }};
+      --ib-sel-font: {{ (cfg.get('ui_sel_field_font_px') or 13) | int }}px;
+      --ib-sel-label-font: {{ (cfg.get('ui_sel_label_font_px') or 12) | int }}px;
+      --ib-sel-desc-font: {{ (cfg.get('ui_sel_desc_font_px') or 11) | int }}px;
+      --ib-sel-manual-w: {{ (cfg.get('ui_sel_width_px') or 260) | int }}px;
+    }
+    body { font-family: system-ui, sans-serif; margin: 0; }
+    .content { padding: 16px; }
+    .muted { opacity: 0.7; font-size: 12px; }
+    .err { color: #b00020; margin-top: 10px; white-space: pre-wrap; }
+    .ok { color: #0a7a28; margin-top: 10px; white-space: pre-wrap; }
+
+    .card { border: 1px solid #ddd; border-radius: 12px; padding: 12px; margin-top: 12px; }
+    details > summary { cursor: pointer; font-weight: 650; }
+    .row { display:flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; margin-top: 10px; }
+    .grid2 { display:grid; grid-template-columns: repeat(2, minmax(260px, 1fr)); gap: 12px; margin-top: 10px; }
+    @media (max-width: 860px){ .grid2 { grid-template-columns: 1fr; } }
+
+    button { cursor: pointer; }
+    input, select, button { padding: 10px 12px; height: 40px; box-sizing: border-box; }
+    .btn_sm { height: 34px; padding: 6px 10px; }
+    input[type="checkbox"] { transform: scale(var(--ui-cb-scale)); transform-origin: left center; }
+
+    .status { border: 1px dashed #ddd; border-radius: 12px; padding: 10px 12px; margin-top: 10px; background: #fafafa; font-size: 12px; white-space: pre-wrap; }
+
+    table { border-collapse: collapse; width: 100%; margin-top: 10px; }
+    th, td { border: 1px solid #eee; padding: 6px 8px; font-size: 12px; }
+    th { background: #f6f6f6; text-align: left; }
+
+    /* Selection fields (master template) */
+    .ib_sel { min-width: 0; }
+    .ib_sel_label { font-size: var(--ib-sel-label-font); opacity: 0.9; }
+    .ib_sel_stack { display:flex; flex-direction:column; gap: 6px; align-items:flex-start; }
+    .ib_sel_stack input, .ib_sel_stack select {
+      font-size: var(--ib-sel-font);
+      height: auto;
+      padding: 6px 10px;
+      width: var(--ib-sel-manual-w);
+      max-width: 100%;
+    }
+    .ib_sel_desc { display:flex; gap: 8px; align-items:flex-start; font-size: var(--ib-sel-desc-font); }
+    .ib_sel_help {
+      width: 20px; height: 20px;
+      padding: 0;
+      border-radius: 999px;
+      border: 1px solid #ddd;
+      background: #fff;
+      cursor: pointer;
+      font-weight: 800;
+      line-height: 18px;
+      flex: 0 0 auto;
+    }
+    .ib_sel_help:hover { background: #f6f6f6; }
+    @media (max-width: 860px){
+      .ib_sel_stack input, .ib_sel_stack select { width: 100% !important; }
+    }
+  </style>
+</head>
+<body>
+  {% include "_topbar.html" %}
+  <div class="shell">
+    {% include "_nav.html" %}
+    <main class="content" data-ui="combine.page" title="combine.page">
+      <h2 style="margin:0;">Kombinieren</h2>
+      <div class="muted" style="margin-top: 6px;">MVP: Kopiert Datenpunkte aus einer Quelle in ein Ziel (z.B. bei Entity-ID Umbenennung). Details (Timeline/Graph) folgen spaeter.</div>
+
+      <div class="card">
+        <details open data-ui="combine.section.selection" title="combine.section.selection">
+          <summary>Auswahl</summary>
+
+          <div class="row" style="margin-top: 10px;">
+            <button class="btn_sm" id="swap" data-ui="combine.swap" title="combine.swap">Quelle/Ziel tauschen</button>
+            <button class="btn_sm" id="load_stats" data-ui="combine.stats" title="combine.stats">Statistik laden</button>
+          </div>
+
+          <div class="grid2" data-ui="combine.grid" title="combine.grid">
+            <div class="card" style="margin-top: 0;">
+              <div style="font-weight: 800;">Quelle</div>
+              <div class="row">
+                <div class="ib_sel" style="min-width: 220px;">
+                  <label class="ib_sel_label">_measurement</label>
+                  <div class="ib_sel_stack">
+                    <input id="src_measurement" list="measurement_list" placeholder="optional" data-ui="combine.src.measurement" title="combine.src.measurement"/>
+                    <datalist id="measurement_list"></datalist>
+                    <div class="ib_sel_desc">
+                      <button type="button" class="ib_sel_help" data-title="Quelle _measurement" data-help="Measurement der Quelle. Wenn leer, muss friendly_name/entity_id eindeutig sein.">?</button>
+                      <div class="muted">Optional, aber empfohlen.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="ib_sel" style="min-width: 220px;">
+                  <label class="ib_sel_label">_field</label>
+                  <div class="ib_sel_stack">
+                    <input id="src_field" list="src_field_list" placeholder="value" data-ui="combine.src.field" title="combine.src.field"/>
+                    <datalist id="src_field_list"></datalist>
+                    <div class="ib_sel_desc">
+                      <button type="button" class="ib_sel_help" data-title="Quelle _field" data-help="Field der Quelle. Default: value.">?</button>
+                      <div class="muted">Default ist <code>value</code>.</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="ib_sel" style="min-width: 240px;">
+                  <label class="ib_sel_label">entity_id</label>
+                  <div class="ib_sel_stack">
+                    <input id="src_entity_id" placeholder="optional" data-ui="combine.src.entity_id" title="combine.src.entity_id"/>
+                    <div class="ib_sel_desc">
+                      <button type="button" class="ib_sel_help" data-title="Quelle entity_id" data-help="Optionaler Tag-Filter.">?</button>
+                      <div class="muted">Optionaler Filter.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="ib_sel" style="min-width: 240px;">
+                  <label class="ib_sel_label">friendly_name</label>
+                  <div class="ib_sel_stack">
+                    <input id="src_friendly_name" placeholder="optional" data-ui="combine.src.friendly" title="combine.src.friendly"/>
+                    <div class="ib_sel_desc">
+                      <button type="button" class="ib_sel_help" data-title="Quelle friendly_name" data-help="Optionaler Tag-Filter.">?</button>
+                      <div class="muted">Optionaler Filter.</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card" style="margin-top: 0;">
+              <div style="font-weight: 800;">Ziel</div>
+              <div class="row">
+                <div class="ib_sel" style="min-width: 220px;">
+                  <label class="ib_sel_label">_measurement</label>
+                  <div class="ib_sel_stack">
+                    <input id="tgt_measurement" list="measurement_list" placeholder="required" data-ui="combine.tgt.measurement" title="combine.tgt.measurement"/>
+                    <div class="ib_sel_desc">
+                      <button type="button" class="ib_sel_help" data-title="Ziel _measurement" data-help="Measurement des Ziels.">?</button>
+                      <div class="muted">Pflichtfeld.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="ib_sel" style="min-width: 220px;">
+                  <label class="ib_sel_label">_field</label>
+                  <div class="ib_sel_stack">
+                    <input id="tgt_field" list="tgt_field_list" placeholder="value" data-ui="combine.tgt.field" title="combine.tgt.field"/>
+                    <datalist id="tgt_field_list"></datalist>
+                    <div class="ib_sel_desc">
+                      <button type="button" class="ib_sel_help" data-title="Ziel _field" data-help="Field des Ziels. Default: value.">?</button>
+                      <div class="muted">Default ist <code>value</code>.</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="ib_sel" style="min-width: 240px;">
+                  <label class="ib_sel_label">entity_id</label>
+                  <div class="ib_sel_stack">
+                    <input id="tgt_entity_id" placeholder="optional" data-ui="combine.tgt.entity_id" title="combine.tgt.entity_id"/>
+                    <div class="ib_sel_desc">
+                      <button type="button" class="ib_sel_help" data-title="Ziel entity_id" data-help="Optionaler Ziel-Tag. Wenn leer, wird entity_id nicht gesetzt.">?</button>
+                      <div class="muted">Optional.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="ib_sel" style="min-width: 240px;">
+                  <label class="ib_sel_label">friendly_name</label>
+                  <div class="ib_sel_stack">
+                    <input id="tgt_friendly_name" placeholder="optional" data-ui="combine.tgt.friendly" title="combine.tgt.friendly"/>
+                    <div class="ib_sel_desc">
+                      <button type="button" class="ib_sel_help" data-title="Ziel friendly_name" data-help="Optionaler Ziel-Tag. Wenn leer, wird friendly_name nicht gesetzt.">?</button>
+                      <div class="muted">Optional.</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top: 12px;">
+            <div style="font-weight: 800;">Zeitraum</div>
+            <div class="row" style="margin-top: 8px;">
+              <div style="min-width: 260px;">
+                <label>Von (lokal)</label>
+                <input id="start" type="datetime-local" data-ui="combine.start" title="combine.start"/>
+              </div>
+              <div style="min-width: 260px;">
+                <label>Bis (lokal)</label>
+                <input id="stop" type="datetime-local" data-ui="combine.stop" title="combine.stop"/>
+              </div>
+              <div style="min-width: 260px;">
+                <label>&nbsp;</label>
+                <button id="use_src_range" data-ui="combine.use_src_range" title="combine.use_src_range">Von/Bis aus Quelle</button>
+              </div>
+            </div>
+            <div class="muted" style="margin-top: 6px;">Zeitangaben werden als lokale Zeit interpretiert und als UTC an die API gesendet.</div>
+          </div>
+        </details>
+
+        <div class="row" style="margin-top: 12px;">
+          <button id="start_copy" data-ui="combine.start_copy" title="combine.start_copy">Kopieren starten</button>
+          <button id="cancel_job" data-ui="combine.cancel" title="combine.cancel">Job abbrechen</button>
+        </div>
+
+        <div class="status" id="info" data-ui="combine.info" title="combine.info"></div>
+        <div id="msg_ok" class="ok"></div>
+        <div id="err" class="err"></div>
+
+        <div class="card" style="margin-top: 12px;">
+          <div style="font-weight: 800;">Statistik (Quelle/Ziel)</div>
+          <table aria-label="Statistik">
+            <thead>
+              <tr><th></th><th>Anzahl</th><th>Aeltester</th><th>Neuster</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Quelle</td><td id="src_cnt"></td><td id="src_old"></td><td id="src_new"></td></tr>
+              <tr><td>Ziel</td><td id="tgt_cnt"></td><td id="tgt_old"></td><td id="tgt_new"></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {% include "_tooltips.html" %}
+
+      <script>
+      const $srcM = document.getElementById('src_measurement');
+      const $srcF = document.getElementById('src_field');
+      const $srcE = document.getElementById('src_entity_id');
+      const $srcN = document.getElementById('src_friendly_name');
+
+      const $tgtM = document.getElementById('tgt_measurement');
+      const $tgtF = document.getElementById('tgt_field');
+      const $tgtE = document.getElementById('tgt_entity_id');
+      const $tgtN = document.getElementById('tgt_friendly_name');
+
+      const $measList = document.getElementById('measurement_list');
+      const $srcFieldList = document.getElementById('src_field_list');
+      const $tgtFieldList = document.getElementById('tgt_field_list');
+
+      const $start = document.getElementById('start');
+      const $stop = document.getElementById('stop');
+
+      const $swap = document.getElementById('swap');
+      const $loadStats = document.getElementById('load_stats');
+      const $useSrcRange = document.getElementById('use_src_range');
+      const $startCopy = document.getElementById('start_copy');
+      const $cancelJob = document.getElementById('cancel_job');
+
+      const $info = document.getElementById('info');
+      const $ok = document.getElementById('msg_ok');
+      const $err = document.getElementById('err');
+
+      const $srcCnt = document.getElementById('src_cnt');
+      const $srcOld = document.getElementById('src_old');
+      const $srcNew = document.getElementById('src_new');
+      const $tgtCnt = document.getElementById('tgt_cnt');
+      const $tgtOld = document.getElementById('tgt_old');
+      const $tgtNew = document.getElementById('tgt_new');
+
+      let JOB_ID = null;
+      let POLL = null;
+
+      function pad2(n){ return String(n).padStart(2,'0'); }
+      function toLocalDatetimeValue(d){
+        return d.getFullYear() + '-' + pad2(d.getMonth()+1) + '-' + pad2(d.getDate()) + 'T' + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+      }
+      function localToIsoUtc(v){
+        if(!v) return '';
+        const m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/);
+        if(!m) return '';
+        const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4]), Number(m[5]), 0, 0);
+        if(!isFinite(d.getTime())) return '';
+        return d.toISOString();
+      }
+
+      function fmtTs(iso){
+        try{
+          if(!iso) return '';
+          const d = new Date(String(iso));
+          if(!isFinite(d.getTime())) return String(iso);
+          return pad2(d.getDate()) + '.' + pad2(d.getMonth()+1) + '.' + d.getFullYear() + ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds());
+        }catch(e){
+          return String(iso||'');
+        }
+      }
+
+      function setErr(s){ $err.textContent = String(s||''); }
+      function setOk(s){ $ok.textContent = String(s||''); }
+      function setInfo(lines){ $info.textContent = (lines||[]).filter(Boolean).join('\n'); }
+
+      async function api(url, opts){
+        let r;
+        try{ r = await fetch(url, opts); }
+        catch(e){ try{ window.InfluxBroClientLog && window.InfluxBroClientLog.fetchError && window.InfluxBroClientLog.fetchError(url, opts, e); }catch(x){}; throw new Error('Failed to fetch'); }
+        const j = await r.json().catch(()=>({ok:false,error:'Invalid JSON'}));
+        if(!r.ok || !j.ok) throw new Error(j.error || ('HTTP ' + r.status));
+        return j;
+      }
+
+      function src(){
+        return {
+          measurement: String($srcM.value||'').trim(),
+          field: String($srcF.value||'value').trim() || 'value',
+          entity_id: String($srcE.value||'').trim() || null,
+          friendly_name: String($srcN.value||'').trim() || null,
+        };
+      }
+      function tgt(){
+        return {
+          measurement: String($tgtM.value||'').trim(),
+          field: String($tgtF.value||'value').trim() || 'value',
+          entity_id: String($tgtE.value||'').trim() || null,
+          friendly_name: String($tgtN.value||'').trim() || null,
+        };
+      }
+      function timeRange(){
+        const s = localToIsoUtc($start.value);
+        const e = localToIsoUtc($stop.value);
+        if(!s || !e) throw new Error('Bitte Von/Bis setzen.');
+        return { start: s, stop: e };
+      }
+
+      async function loadMeasurements(){
+        try{
+          const j = await api('./api/measurements');
+          const xs = (j.measurements||[]).map(x=>String(x||'')).filter(Boolean);
+          if($measList) $measList.innerHTML = xs.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"></option>`).join('');
+        }catch(e){
+          // ignore
+        }
+      }
+      async function loadFields(measurement, listEl){
+        try{
+          const m = String(measurement||'').trim();
+          if(!m){ if(listEl) listEl.innerHTML = ''; return; }
+          const j = await api('./api/fields?measurement=' + encodeURIComponent(m));
+          const xs = (j.fields||[]).map(x=>String(x||'')).filter(Boolean);
+          if(listEl) listEl.innerHTML = xs.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"></option>`).join('');
+        }catch(e){
+          if(listEl) listEl.innerHTML = '';
+        }
+      }
+
+      async function loadStats(){
+        setErr('');
+        setOk('');
+        const tr = timeRange();
+        const s = src();
+        const t = tgt();
+        const one = async (x)=>{
+          if(!x.measurement || !x.field) return null;
+          return await api('./api/stats', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({
+            measurement: x.measurement,
+            field: x.field,
+            entity_id: x.entity_id,
+            friendly_name: x.friendly_name,
+            stats_scope: 'range',
+            start: tr.start,
+            stop: tr.stop,
+          })});
+        };
+        const a = await one(s);
+        const b = await one(t);
+        const as = (a && a.stats) ? a.stats : {};
+        const bs = (b && b.stats) ? b.stats : {};
+        if($srcCnt) $srcCnt.textContent = (as.count !== undefined && as.count !== null) ? String(as.count) : '';
+        if($srcOld) $srcOld.textContent = fmtTs(as.oldest_time);
+        if($srcNew) $srcNew.textContent = fmtTs(as.newest_time);
+        if($tgtCnt) $tgtCnt.textContent = (bs.count !== undefined && bs.count !== null) ? String(bs.count) : '';
+        if($tgtOld) $tgtOld.textContent = fmtTs(bs.oldest_time);
+        if($tgtNew) $tgtNew.textContent = fmtTs(bs.newest_time);
+        return {src: as, tgt: bs};
+      }
+
+      async function useSrcRange(){
+        const s = src();
+        if(!s.measurement || !s.field){ setErr('Quelle: measurement/field fehlt.'); return; }
+        const j = await api('./api/stats', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({
+          measurement: s.measurement,
+          field: s.field,
+          entity_id: s.entity_id,
+          friendly_name: s.friendly_name,
+          stats_scope: 'current',
+          range: 'all',
+        })});
+        const st = j.stats || {};
+        const a = st.oldest_time ? new Date(String(st.oldest_time)) : null;
+        const b = st.newest_time ? new Date(String(st.newest_time)) : null;
+        if(a && b && isFinite(a.getTime()) && isFinite(b.getTime())){
+          $start.value = toLocalDatetimeValue(a);
+          $stop.value = toLocalDatetimeValue(b);
+          setOk('Von/Bis aus Quelle gesetzt.');
+        }
+      }
+
+      function stopPoll(){
+        if(POLL) clearInterval(POLL);
+        POLL = null;
+      }
+
+      async function startCopy(){
+        setErr('');
+        setOk('');
+        const s = src();
+        const t = tgt();
+        if(!s.measurement || !s.field) throw new Error('Quelle: measurement und field erforderlich.');
+        if(!t.measurement || !t.field) throw new Error('Ziel: measurement und field erforderlich.');
+        const tr = timeRange();
+
+        const phrase = prompt('Bestaetigung: tippe COPY um das Kopieren zu starten.');
+        if(String(phrase||'').trim() !== 'COPY') return;
+
+        const j = await api('./api/combine_job/start', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({
+          confirm: true,
+          source: s,
+          target: t,
+          start: tr.start,
+          stop: tr.stop,
+        })});
+        JOB_ID = String(j.job_id || '');
+        setInfo(['Job gestartet: ' + JOB_ID, '']);
+        beginPoll();
+      }
+
+      async function cancelJob(){
+        if(!JOB_ID) return;
+        try{ await api('./api/jobs/cancel', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({job_id: JOB_ID})}); }catch(e){}
+      }
+
+      function beginPoll(){
+        stopPoll();
+        if(!JOB_ID) return;
+        POLL = setInterval(()=>{
+          api('./api/combine_job/status?job_id=' + encodeURIComponent(JOB_ID)).then(j=>{
+            const st = j.status || {};
+            const state = String(st.state || '');
+            const msg = String(st.message || '');
+            const el = String(st.elapsed || '');
+            const applied = (st.written !== null && st.written !== undefined) ? String(st.written) : '';
+            const skipped = (st.skipped !== null && st.skipped !== undefined) ? String(st.skipped) : '';
+            setInfo([
+              `Status: ${state} | Laufzeit: ${el}`,
+              msg ? ('Aktion: ' + msg) : '',
+              applied ? ('geschrieben: ' + applied) : '',
+              skipped ? ('skipped: ' + skipped) : '',
+            ]);
+            if(st.ready){
+              stopPoll();
+              if(state === 'done') setOk('Fertig.');
+              else if(state === 'cancelled') setErr('Abgebrochen.');
+              else setErr(String(st.error || 'Fehler'));
+              JOB_ID = null;
+            }
+          }).catch(e=>{
+            stopPoll();
+            setErr(String(e && e.message ? e.message : e));
+            JOB_ID = null;
+          });
+        }, 900);
+      }
+
+      function swap(){
+        const a = {m:$srcM.value,f:$srcF.value,e:$srcE.value,n:$srcN.value};
+        $srcM.value = $tgtM.value; $srcF.value = $tgtF.value; $srcE.value = $tgtE.value; $srcN.value = $tgtN.value;
+        $tgtM.value = a.m; $tgtF.value = a.f; $tgtE.value = a.e; $tgtN.value = a.n;
+        try{ loadFields($srcM.value, $srcFieldList); }catch(e){}
+        try{ loadFields($tgtM.value, $tgtFieldList); }catch(e){}
+      }
+
+      try{ loadMeasurements(); }catch(e){}
+      try{ loadFields($srcM.value, $srcFieldList); }catch(e){}
+      try{ loadFields($tgtM.value, $tgtFieldList); }catch(e){}
+
+      try{
+        const now = new Date();
+        const s = new Date(now.getTime() - 24*60*60*1000);
+        if($start && !$start.value) $start.value = toLocalDatetimeValue(s);
+        if($stop && !$stop.value) $stop.value = toLocalDatetimeValue(now);
+      }catch(e){}
+
+      try{
+        if($srcM) $srcM.addEventListener('input', ()=>{ loadFields($srcM.value, $srcFieldList); });
+        if($tgtM) $tgtM.addEventListener('input', ()=>{ loadFields($tgtM.value, $tgtFieldList); });
+      }catch(e){}
+
+      try{ if($swap) $swap.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} swap(); }); }catch(e){}
+      try{ if($loadStats) $loadStats.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} loadStats().catch(e=>setErr(String(e&&e.message?e.message:e))); }); }catch(e){}
+      try{ if($useSrcRange) $useSrcRange.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} useSrcRange().catch(e=>setErr(String(e&&e.message?e.message:e))); }); }catch(e){}
+      try{ if($startCopy) $startCopy.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} startCopy().catch(e=>setErr(String(e&&e.message?e.message:e))); }); }catch(e){}
+      try{ if($cancelJob) $cancelJob.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} cancelJob().catch(()=>{}); }); }catch(e){}
+
+      // Help buttons
+      try{
+        document.querySelectorAll('.ib_sel_help').forEach(btn => {
+          btn.addEventListener('click', (ev)=>{
+            try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+            const t = String(btn.getAttribute('data-title') || 'Info');
+            const h = String(btn.getAttribute('data-help') || '');
+            try{
+              if(window.InfluxBroPopup && window.InfluxBroPopup.show) window.InfluxBroPopup.show(t, h);
+              else alert(t + "\n\n" + h);
+            }catch(e){ try{ alert(t + "\n\n" + h); }catch(x){} }
+          });
+        });
+      }catch(e){}
+      </script>
+    </main>
+  </div>
+</body>
+</html>

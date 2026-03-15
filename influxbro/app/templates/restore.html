@@ -88,8 +88,8 @@
     .filter_pair select { flex: 1; min-width: 0; }
     table.list_tbl th, table.list_tbl td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-    .page_grid { display:grid; grid-template-columns: minmax(320px, 1.15fr) minmax(320px, 0.85fr); gap: 12px; align-items:start; }
-    @media (max-width: 980px){ .page_grid { grid-template-columns: 1fr; } }
+    /* Source above Target (always stacked) */
+    .page_grid { display:grid; grid-template-columns: 1fr; gap: 12px; align-items:start; }
 
     .table_wrap { border: 1px solid #eee; border-radius: 12px; padding: 10px; margin-top: 10px; }
     .table_title { font-weight: 800; font-size: 14px; margin-bottom: 6px; }
@@ -115,7 +115,7 @@
           <div class="card" data-ui="restore.source" title="restore.source" style="--restore_visible_rows: {{ (cfg.get('ui_restore_visible_rows') or 24) | int }};">
             <div style="font-weight:700;">Quelle (Backup)</div>
             <div class="table_wrap" data-ui="restore.table.wrap" title="restore.table.wrap">
-              <div class="table_title">Backups (Quelle)</div>
+               <div class="table_title">Backupliste (Quelle)</div>
               <div class="table_head" data-ui="restore.table.head" title="restore.table.head">
                 <div class="tbl_actions" data-ui="restore.table.actions" title="restore.table.actions">
                   <div style="min-width: 320px; flex:1;">
@@ -151,6 +151,7 @@
                       <th>friendly_name</th>
                       <th>Werte</th>
                       <th>Groesse</th>
+                      <th>ZIP Groesse</th>
                       <th>Datei</th>
                     </tr>
                   </thead>
@@ -172,9 +173,13 @@
            </div>
            <pre id="plan_query" style="display:none; margin:6px 0 0 0; padding:10px 12px; border:1px solid #eee; border-radius:12px; background:#fafafa; white-space:pre; overflow:auto; max-height: 80vh; min-height: 90px;" data-ui="restore.query" title="restore.query"></pre>
 
-           <div class="row" style="margin-top: 8px; justify-content:flex-start;" data-ui="restore.copy_source" title="restore.copy_source">
-             <button id="source_to_target" data-ui="restore.source_to_target" title="restore.source_to_target">Uebertrage Quellenamen auf Zielnamen</button>
-           </div>
+            <div class="row" style="margin-top: 8px; justify-content:flex-start; align-items:center;" data-ui="restore.copy_source" title="restore.copy_source">
+              <label style="display:flex; gap: 8px; align-items:center; height:40px; padding:0 4px;">
+                <input id="tgt_same_as_src" type="checkbox" checked />
+                <span class="muted" style="opacity:0.9;">Zieldaten = Quelldaten</span>
+              </label>
+              <button id="source_to_target" data-ui="restore.source_to_target" title="restore.source_to_target" class="btn_sm" style="height:34px; padding:8px 10px;">Quelle -> Ziel</button>
+            </div>
           <details id="selection_details" open data-ui="section.selection" title="section.selection" style="margin-top: 10px;">
             <summary>Auswahl</summary>
 
@@ -273,8 +278,28 @@
 
        <div class="card" data-ui="restore.fullrestore.card" title="restore.fullrestore.card" style="--restore_visible_rows: {{ (cfg.get('ui_restore_visible_rows') or 24) | int }};">
          <details id="fullrestore_details" data-ui="restore.fullrestore.details" title="restore.fullrestore.details">
-           <summary>FullRestore (InfluxDB komplett)</summary>
-           <div class="muted" style="margin-top: 6px;">Stellt ein FullBackup wieder her (v1: database, v2: bucket). Achtung: ueberschreibt Daten.</div>
+            <summary>FullRestore (InfluxDB komplett)</summary>
+            <div class="muted" style="margin-top: 6px;">Stellt ein FullBackup wieder her (v1: database, v2: bucket). Achtung: ueberschreibt Daten.</div>
+
+            <div class="row" style="align-items:flex-start;" data-ui="restore.fullrestore.native" title="restore.fullrestore.native">
+              <div style="min-width: 320px; flex:1;">
+                <label>Zielbucket (nur Native v2)</label>
+                <input id="native_target_bucket" list="native_bucket_list" placeholder="leer = wie Quelle" data-ui="restore.fullrestore.target_bucket" title="restore.fullrestore.target_bucket" />
+                <datalist id="native_bucket_list"></datalist>
+                <div class="muted" style="margin-top:4px;">Hinweis: <code>influx restore</code> kann nicht in existierende Buckets schreiben. Nutze neues Ziel oder aktiviere <code>Ueberschreiben</code> (loescht Zielbucket vorher).</div>
+              </div>
+              <div style="min-width: 220px;">
+                <label style="display:flex; gap: 8px; align-items:center; height:40px; padding:0 4px;">
+                  <input id="native_overwrite" type="checkbox" />
+                  <span class="muted" style="opacity:0.9;">Ueberschreiben (Bucket loeschen)</span>
+                </label>
+                <div class="muted">Erfordert Phrase unten (nur wenn aktiv).</div>
+              </div>
+              <div style="min-width: 220px;">
+                <label>Bestaetigung (DELETE)</label>
+                <input id="native_confirm_phrase" placeholder="DELETE" data-ui="restore.fullrestore.confirm_phrase" title="restore.fullrestore.confirm_phrase" />
+              </div>
+            </div>
 
            <div class="row" style="align-items:flex-start;" data-ui="restore.fullrestore.actions" title="restore.fullrestore.actions">
              <div><label>&nbsp;</label><button id="fullrestore_reload" data-ui="restore.fullrestore.reload" title="restore.fullrestore.reload">Liste aktualisieren</button></div>
@@ -291,7 +316,7 @@
            </div>
 
            <div class="table_wrap" data-ui="restore.fullrestore.table.wrap" title="restore.fullrestore.table.wrap">
-             <div class="table_title">FullBackups (Quelle)</div>
+              <div class="table_title">FullBackupliste (Quelle)</div>
              <div class="table_head" data-ui="restore.fullrestore.table.head" title="restore.fullrestore.table.head">
                <div class="tbl_actions" data-ui="restore.fullrestore.table.actions" title="restore.fullrestore.table.actions">
                  <button id="fullrestore_autowidth" class="btn_sm" data-ui="restore.fullrestore.autowidth" title="restore.fullrestore.autowidth" style="height:34px; padding:8px 10px;">Spaltenbreite automatisch</button>
@@ -307,18 +332,20 @@
                  <thead>
                    <tr>
                      <th style="width: 34px;">Ausw.</th>
-                     <th>Backup Datum</th>
-                     <th>kind</th>
-                     <th>influx_version</th>
+                      <th>Backup Datum</th>
+                      <th>kind</th>
+                      <th>format</th>
+                      <th>influx_version</th>
                      <th>org</th>
                      <th>bucket</th>
                      <th>database</th>
-                     <th>Werte</th>
-                     <th>Groesse</th>
-                     <th>Start</th>
-                     <th>Stop</th>
-                     <th>Datei</th>
-                   </tr>
+                      <th>Werte</th>
+                      <th>Groesse</th>
+                      <th>ZIP Groesse</th>
+                      <th>Start</th>
+                      <th>Stop</th>
+                      <th>Datei</th>
+                    </tr>
                  </thead>
                  <tbody id="fullrestore_rows"></tbody>
                </table>
@@ -340,8 +367,9 @@
       const $err = document.getElementById('err');
       const $ok = document.getElementById('ok');
        const $run = document.getElementById('run');
-        const $srcToTarget = document.getElementById('source_to_target');
-       const $reload = document.getElementById('reload');
+         const $srcToTarget = document.getElementById('source_to_target');
+       const $tgtSame = document.getElementById('tgt_same_as_src');
+        const $reload = document.getElementById('reload');
        const $backupDownload = document.getElementById('backup_download');
         const $restoreAutoWidth = document.getElementById('restore_autowidth');
         const $restoreWindowWidth = document.getElementById('restore_windowwidth');
@@ -352,10 +380,15 @@
          const $fullRestoreReload = document.getElementById('fullrestore_reload');
          const $fullRestoreDownload = document.getElementById('fullrestore_download');
          const $fullRestoreDelete = document.getElementById('fullrestore_delete');
-         const $fullRestoreRun = document.getElementById('fullrestore_run');
-         const $fullRestoreCancel = document.getElementById('fullrestore_cancel');
-         const $fullRestoreRows = document.getElementById('fullrestore_rows');
-         const $fullRestoreInfo = document.getElementById('fullrestore_info');
+          const $fullRestoreRun = document.getElementById('fullrestore_run');
+          const $fullRestoreCancel = document.getElementById('fullrestore_cancel');
+          const $fullRestoreRows = document.getElementById('fullrestore_rows');
+          const $fullRestoreInfo = document.getElementById('fullrestore_info');
+
+          const $nativeTargetBucket = document.getElementById('native_target_bucket');
+          const $nativeBucketList = document.getElementById('native_bucket_list');
+          const $nativeOverwrite = document.getElementById('native_overwrite');
+          const $nativeConfirmPhrase = document.getElementById('native_confirm_phrase');
 
          const $fullRestoreStatus = document.getElementById('fullrestore_status');
          const $fullRestoreSpinner = document.getElementById('fullrestore_spinner');
@@ -654,6 +687,17 @@
         }
       }
 
+      async function loadNativeBucketList(){
+        try{
+          if(!$nativeBucketList) return;
+          const j = await api('./api/v2/buckets');
+          const xs = (j.buckets || []).map(x=>String(x)).filter(Boolean);
+          $nativeBucketList.innerHTML = xs.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"></option>`).join('');
+        }catch(e){
+          try{ if($nativeBucketList) $nativeBucketList.innerHTML = ''; }catch(x){}
+        }
+      }
+
       function selBackup(){
         const id = String(SELECTED_ID || '').trim();
         return (BACKUPS || []).find(b => String(b.id||'') === id) || null;
@@ -738,7 +782,11 @@
          if(!$fullRestoreRows) return;
          $fullRestoreRows.innerHTML = '';
          const rows = (FULLBACKUPS || []).slice();
-         try{ if($fullRestoreInfo) $fullRestoreInfo.textContent = `FullBackups: ${rows.length}`; }catch(e){}
+          try{
+            const rawSum = (rows || []).reduce((a,b)=>a + Number((b && b.bytes) ? b.bytes : 0), 0);
+            const zipSum = (rows || []).reduce((a,b)=>a + Number((b && b.zip_bytes) ? b.zip_bytes : 0), 0);
+            if($fullRestoreInfo) $fullRestoreInfo.textContent = `FullBackupliste: ${rows.length} | ZIP: ${fmtBytes(zipSum)} | raw: ${fmtBytes(rawSum)}`;
+          }catch(e){ try{ if($fullRestoreInfo) $fullRestoreInfo.textContent = `FullBackupliste: ${rows.length}`; }catch(x){} }
          rows.forEach(b=>{
            const id = String(b.id||'');
            const tr = document.createElement('tr');
@@ -751,30 +799,34 @@
            rb.addEventListener('change', ()=>{ FULL_SELECTED_ID = id; renderFullBackups(); });
            tdSel.appendChild(rb);
 
-           const tdDt = document.createElement('td'); tdDt.textContent = fmtTs(b.created_at || '');
-           const tdKind = document.createElement('td'); tdKind.textContent = b.kind || '';
-           const tdV = document.createElement('td'); tdV.textContent = String(b.influx_version || '');
-           const tdOrg = document.createElement('td'); tdOrg.textContent = b.org || '';
-           const tdBuck = document.createElement('td'); tdBuck.textContent = b.bucket || '';
-           const tdDb = document.createElement('td'); tdDb.textContent = b.database || '';
+            const tdDt = document.createElement('td'); tdDt.textContent = fmtTs(b.created_at || '');
+            const tdKind = document.createElement('td'); tdKind.textContent = b.kind || '';
+            const tdFmt = document.createElement('td'); tdFmt.textContent = b.format || '';
+            const tdV = document.createElement('td'); tdV.textContent = String(b.influx_version || '');
+            const tdOrg = document.createElement('td'); tdOrg.textContent = b.org || '';
+            const tdBuck = document.createElement('td'); tdBuck.textContent = b.bucket || '';
+            const tdDb = document.createElement('td'); tdDb.textContent = b.database || '';
            const tdCnt = document.createElement('td'); tdCnt.textContent = (b.point_count ?? '') + '';
-           const tdSz = document.createElement('td'); tdSz.textContent = fmtBytes(b.bytes);
-           const tdS = document.createElement('td'); tdS.textContent = fmtTs(b.start || b.oldest_time || '');
-           const tdE = document.createElement('td'); tdE.textContent = fmtTs(b.stop || b.newest_time || '');
-           const tdFile = document.createElement('td'); tdFile.textContent = b.file || b.id || '';
+            const tdSz = document.createElement('td'); tdSz.textContent = fmtBytes(b.bytes);
+            const tdZip = document.createElement('td'); tdZip.textContent = fmtBytes(b.zip_bytes || 0);
+            const tdS = document.createElement('td'); tdS.textContent = fmtTs(b.start || b.oldest_time || '');
+            const tdE = document.createElement('td'); tdE.textContent = fmtTs(b.stop || b.newest_time || '');
+            const tdFile = document.createElement('td'); tdFile.textContent = b.zip_file || b.file || b.id || '';
 
-           tr.appendChild(tdSel);
-           tr.appendChild(tdDt);
-           tr.appendChild(tdKind);
-           tr.appendChild(tdV);
-           tr.appendChild(tdOrg);
-           tr.appendChild(tdBuck);
-           tr.appendChild(tdDb);
-           tr.appendChild(tdCnt);
-           tr.appendChild(tdSz);
-           tr.appendChild(tdS);
-           tr.appendChild(tdE);
-           tr.appendChild(tdFile);
+            tr.appendChild(tdSel);
+            tr.appendChild(tdDt);
+            tr.appendChild(tdKind);
+            tr.appendChild(tdFmt);
+            tr.appendChild(tdV);
+            tr.appendChild(tdOrg);
+             tr.appendChild(tdBuck);
+             tr.appendChild(tdDb);
+            tr.appendChild(tdCnt);
+            tr.appendChild(tdSz);
+            tr.appendChild(tdZip);
+            tr.appendChild(tdS);
+            tr.appendChild(tdE);
+            tr.appendChild(tdFile);
            tr.addEventListener('click', ()=>{ FULL_SELECTED_ID = id; renderFullBackups(); });
            $fullRestoreRows.appendChild(tr);
          });
@@ -804,11 +856,17 @@
 
          startFullRestoreUi('FullRestore wird gestartet...');
          try{
-           const started = await api('./api/fullrestore_job/start', {
-             method:'POST',
-             headers:{'Content-Type':'application/json'},
-             body: JSON.stringify({ id, confirm: true })
-           });
+            const started = await api('./api/fullrestore_job/start', {
+              method:'POST',
+              headers:{'Content-Type':'application/json'},
+              body: JSON.stringify({
+                id,
+                confirm: true,
+                target_bucket: ($nativeTargetBucket ? String($nativeTargetBucket.value || '').trim() : ''),
+                overwrite: !!($nativeOverwrite && $nativeOverwrite.checked),
+                confirm_phrase: ($nativeConfirmPhrase ? String($nativeConfirmPhrase.value || '').trim() : '')
+              })
+            });
            FULLRESTORE_JOB_ID = String(started.job_id || '');
            if(!FULLRESTORE_JOB_ID) throw new Error('fullrestore job_id missing');
 
@@ -947,9 +1005,34 @@
         }
       }
 
+      function _applySameMode(){
+        try{
+          const on = !!($tgtSame && $tgtSame.checked);
+          if($mf) $mf.disabled = on;
+          if($n) $n.disabled = on;
+          if($e) $e.disabled = on;
+          if($srcToTarget) $srcToTarget.disabled = on;
+        }catch(e){}
+      }
+
+      async function _onSourceSelected(){
+        try{
+          renderPlan();
+          if($tgtSame && $tgtSame.checked){
+            await copySourceToTarget();
+          }
+        }catch(e){}
+      }
+
       function renderList(){
         const rows = filt(BACKUPS, $qBackup ? $qBackup.value : '');
-        if($srcInfo) $srcInfo.textContent = `Backups: ${rows.length} / ${(BACKUPS||[]).length}` + (BACKUP_LOC_TXT || '');
+         try{
+           const rawSum = (rows || []).reduce((a,b)=>a + Number((b && b.bytes) ? b.bytes : 0), 0);
+           const zipSum = (rows || []).reduce((a,b)=>a + Number((b && b.zip_bytes) ? b.zip_bytes : 0), 0);
+           if($srcInfo) $srcInfo.textContent = `Backupliste: ${rows.length} / ${(BACKUPS||[]).length} | ZIP: ${fmtBytes(zipSum)} | raw: ${fmtBytes(rawSum)}` + (BACKUP_LOC_TXT || '');
+         }catch(e){
+           if($srcInfo) $srcInfo.textContent = `Backupliste: ${rows.length} / ${(BACKUPS||[]).length}` + (BACKUP_LOC_TXT || '');
+         }
         try{
           if($backupDownload){
             const one = String(SELECTED_ID || '').trim();
@@ -967,7 +1050,7 @@
           rb.type = 'radio';
           rb.name = 'backup_sel';
           rb.checked = (id === SELECTED_ID);
-          rb.addEventListener('change', ()=>{ SELECTED_ID = id; renderList(); renderPlan(); });
+          rb.addEventListener('change', ()=>{ SELECTED_ID = id; renderList(); _onSourceSelected(); });
           tdSel.appendChild(rb);
           const tdDt = document.createElement('td'); tdDt.textContent = fmtTs(b.created_at || '');
           const s = b.start || b.oldest_time || '';
@@ -981,7 +1064,8 @@
           const tdFn = document.createElement('td'); tdFn.textContent = b.friendly_name || '';
           const tdCnt = document.createElement('td'); tdCnt.textContent = (b.point_count ?? '') + '';
           const tdSize = document.createElement('td'); tdSize.textContent = fmtBytes(b.bytes);
-          const tdFile = document.createElement('td'); tdFile.textContent = b.file || b.id || '';
+          const tdZip = document.createElement('td'); tdZip.textContent = fmtBytes(b.zip_bytes || 0);
+          const tdFile = document.createElement('td'); tdFile.textContent = b.zip_file || b.file || b.id || '';
           tr.appendChild(tdSel);
           tr.appendChild(tdDt);
           tr.appendChild(tdSpan);
@@ -993,8 +1077,9 @@
           tr.appendChild(tdFn);
           tr.appendChild(tdCnt);
           tr.appendChild(tdSize);
+          tr.appendChild(tdZip);
           tr.appendChild(tdFile);
-          tr.addEventListener('click', ()=>{ SELECTED_ID = id; renderList(); renderPlan(); });
+          tr.addEventListener('click', ()=>{ SELECTED_ID = id; renderList(); _onSourceSelected(); });
           $rows.appendChild(tr);
         });
       }
@@ -1375,6 +1460,9 @@
         try{ location.href = `./api/backup_download?id=${encodeURIComponent(id)}`; }catch(e){}
       });
       if($srcToTarget) $srcToTarget.addEventListener('click', ()=>copySourceToTarget());
+      try{
+        if($tgtSame) $tgtSame.addEventListener('change', ()=>{ _applySameMode(); _onSourceSelected(); });
+      }catch(e){}
       $run.addEventListener('click', ()=>runCopy().catch(e=>err(String(e && e.message ? e.message : e))));
 
       // FullRestore actions
@@ -1409,7 +1497,9 @@
       if($showQuery) $showQuery.addEventListener('change', ()=>renderPlan());
 
       applyLayoutFromState();
+      _applySameMode();
       loadCfg().catch(()=>{});
+      loadNativeBucketList().catch(()=>{});
 
       // Prefill backup search from dashboard selection (if empty)
       try{

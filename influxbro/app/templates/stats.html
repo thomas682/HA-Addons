@@ -202,21 +202,6 @@
 
           <div class="muted" style="margin-top: 10px;">Influx Datenbank Info: siehe Menuepunkt <code>Info</code>.</div>
 
-          <div class="row" data-ui="stats.columns" title="stats.columns" style="margin-top: 10px;">
-            <div style="min-width: 260px; flex: 1;">
-              <div class="muted help">Spaltenauswahl (fuer Nachladen):</div>
-              <div class="row" style="margin-top: 6px; gap: 12px;">
-                <label style="display:flex; align-items:center; gap: 6px;"><input type="checkbox" id="col_last_value" checked data-ui="stats.col.last" title="stats.col.last"/>last_value</label>
-                <label style="display:flex; align-items:center; gap: 6px;"><input type="checkbox" id="col_newest_time" checked data-ui="stats.col.newest" title="stats.col.newest"/>newest_time</label>
-                <label style="display:flex; align-items:center; gap: 6px;"><input type="checkbox" id="col_oldest_time" data-ui="stats.col.oldest" title="stats.col.oldest"/>oldest_time</label>
-                <label style="display:flex; align-items:center; gap: 6px;"><input type="checkbox" id="col_count" data-ui="stats.col.count" title="stats.col.count"/>count</label>
-                <label style="display:flex; align-items:center; gap: 6px;"><input type="checkbox" id="col_min" data-ui="stats.col.min" title="stats.col.min"/>min</label>
-                <label style="display:flex; align-items:center; gap: 6px;"><input type="checkbox" id="col_max" data-ui="stats.col.max" title="stats.col.max"/>max</label>
-                <label style="display:flex; align-items:center; gap: 6px;"><input type="checkbox" id="col_mean" data-ui="stats.col.mean" title="stats.col.mean"/>mean</label>
-              </div>
-              <div class="muted help" style="margin-top: 6px;">Nachladen berechnet nur Spalten, die ausgewaehlt sind und noch nicht geladen wurden.</div>
-            </div>
-          </div>
         </details>
         <div class="status" id="info" data-ui="stats.info" title="stats.info"></div>
         <div class="progress" aria-hidden="true" style="display:none;"><div id="bar"></div></div>
@@ -324,14 +309,6 @@
       const $queryPre = document.getElementById('query_pre');
       const $queryCopy = document.getElementById('query_copy');
 
-      const $colLast = document.getElementById('col_last_value');
-      const $colNewest = document.getElementById('col_newest_time');
-      const $colOldest = document.getElementById('col_oldest_time');
-      const $colCount = document.getElementById('col_count');
-      const $colMin = document.getElementById('col_min');
-      const $colMax = document.getElementById('col_max');
-      const $colMean = document.getElementById('col_mean');
-
       let UI_DECIMALS = 3;
       let ROWS = [];
       let SORT = { key: 'newest_time', dir: 'desc' };
@@ -348,16 +325,22 @@
       let JOB_MERGE = false;
       let JOB_ADD_COLS = [];
 
+      let MERGE_OFFSET = 0;
+      let MERGE_FETCHING = false;
+
       const LS_JOB = 'influxbro_global_stats_job_id_v1';
       const LS_LAST = 'influxbro_global_stats_last_job_id_v1';
       const LS_CACHE = 'influxbro_global_stats_last_cache_id_v1';
       const LS_COLS = 'influxbro_stats_col_widths_v1';
-      const LS_WANTCOLS = 'influxbro_stats_want_columns_v1';
       const LS_UI = 'influxbro_stats_ui_state_v1';
       const LS_SNAP = 'influxbro_stats_last_rows_v1';
 
       const SELECTED = new Set();
       const LOADED_COLS = new Set();
+
+      // Columns: keep initial load fast and allow details as a separate job.
+      const BASE_COLS = ['last_value', 'oldest_time', 'newest_time'];
+      const DETAIL_COLS = ['last_value', 'oldest_time', 'newest_time', 'count', 'min', 'max', 'mean'];
 
       function _selInitHelpButtons(){
         try{
@@ -670,34 +653,11 @@
         return [r.measurement||'', r.field||'', r.entity_id||'', r.friendly_name||''].join('|');
       }
 
-      function selectedColumns(){
-        // Always load the essential columns. Additional columns depend on user selection.
-        const out = ['last_value', 'newest_time'];
-        const add = (k, want) => { if(want && !out.includes(k)) out.push(k); };
-        add('oldest_time', !!($colOldest && $colOldest.checked));
-        add('count', !!($colCount && $colCount.checked));
-        add('min', !!($colMin && $colMin.checked));
-        add('max', !!($colMax && $colMax.checked));
-        add('mean', !!($colMean && $colMean.checked));
-        return out;
-      }
-
-      function saveWantedColumns(){
-        try{ localStorage.setItem(LS_WANTCOLS, JSON.stringify(selectedColumns())); }catch(e){}
-      }
-
-      function loadWantedColumns(){
-        let cols = null;
-        try{ cols = JSON.parse(localStorage.getItem(LS_WANTCOLS) || 'null'); }catch(e){ cols = null; }
-        const has = (x)=>Array.isArray(cols) && cols.includes(x);
-        // Defaults: fast
-        if($colLast) $colLast.checked = (cols ? has('last_value') : true);
-        if($colNewest) $colNewest.checked = (cols ? has('newest_time') : true);
-        if($colOldest) $colOldest.checked = (cols ? has('oldest_time') : false);
-        if($colCount) $colCount.checked = (cols ? has('count') : false);
-        if($colMin) $colMin.checked = (cols ? has('min') : false);
-        if($colMax) $colMax.checked = (cols ? has('max') : false);
-        if($colMean) $colMean.checked = (cols ? has('mean') : false);
+      function missingDetailCols(){
+        const miss = [];
+        DETAIL_COLS.forEach(c => { if(!LOADED_COLS.has(c)) miss.push(c); });
+        // For the "Nachladen" job we care about the expensive columns.
+        return miss.filter(c => ['count','min','max','mean'].includes(c));
       }
 
       function _uiStateObj(){
@@ -711,7 +671,6 @@
           entity_filter: $entityFilter ? String($entityFilter.value || '') : '',
           q: $q ? String($q.value || '') : '',
           sort: SORT,
-          want_cols: selectedColumns(),
         };
       }
 
@@ -778,10 +737,7 @@
       }
 
       function missingCols(){
-        const want = new Set(selectedColumns());
-        const miss = [];
-        want.forEach(c => { if(!LOADED_COLS.has(c)) miss.push(c); });
-        return miss;
+        return missingDetailCols();
       }
 
       function filterMatches(r){
@@ -808,8 +764,7 @@
         const mf = String(($measurementFilter && $measurementFilter.value) ? $measurementFilter.value : '').trim();
         const fn = String(($friendlyFilter && $friendlyFilter.value) ? $friendlyFilter.value : '').trim();
         const eid = String(($entityFilter && $entityFilter.value) ? $entityFilter.value : '').trim();
-        const cols = selectedColumns();
-        try{ saveWantedColumns(); }catch(e){}
+        const cols = BASE_COLS.slice();
         try{ saveUiState(); }catch(e){}
         const j = await api('./api/global_stats_job/start', {
           method:'POST',
@@ -831,6 +786,7 @@
         syncLoadedCols(cols);
         JOB_MERGE = false;
         JOB_ADD_COLS = [];
+        MERGE_OFFSET = 0;
         return j.job_id;
       }
 
@@ -911,7 +867,7 @@
             const j = await api(`./api/global_stats_job/result?job_id=${encodeURIComponent(last)}&limit=20000&offset=0`);
             if(j.ready){
               try{ if(j.cache_id) setLastCacheId(j.cache_id); }catch(e){}
-              try{ syncLoadedCols(j.columns || selectedColumns()); }catch(e){}
+              try{ syncLoadedCols(j.columns || BASE_COLS); }catch(e){}
               const rows = j.rows || [];
               if(rows.length){
                 ROWS = rows;
@@ -931,7 +887,7 @@
             if(!cid) return;
             const j = await api(`./api/stats_cache/get?cache_id=${encodeURIComponent(cid)}&limit=20000&offset=0`);
             if(!j.ready) return;
-            try{ syncLoadedCols(j.columns || selectedColumns()); }catch(e){}
+            try{ syncLoadedCols(j.columns || BASE_COLS); }catch(e){}
             const rows = j.rows || [];
             if(!rows.length) return;
             ROWS = rows;
@@ -971,7 +927,7 @@
         stopPolling();
         setStatus(['Hintergrundabfrage laeuft...', '']);
         POLL = setInterval(()=>{
-          fetchStatus().then(st => {
+           fetchStatus().then(st => {
             if(!st) return;
             const state = String(st.state || '');
             const msg = String(st.message || '');
@@ -987,21 +943,30 @@
               ? (`Fortschritt: ${g}/${ts}` + (pct !== null && isFinite(pct) ? (` (${Math.round(pct)}%)`) : ''))
               : '';
 
-            setStatus([
-              `Status: ${state} | Laufzeit: ${elapsed}`,
-              msg ? ('Aktion: ' + msg) : '',
-              cur ? (`Aktuell: ${cur}`) : '',
-              prog,
-            ]);
+             setStatus([
+               `Status: ${state} | Laufzeit: ${elapsed}`,
+               msg ? ('Aktion: ' + msg) : '',
+               cur ? (`Aktuell: ${cur}`) : '',
+               prog,
+             ]);
+
+              // Incremental merge (details job): fetch partial results and merge continuously.
+              if(JOB_MERGE && !st.ready){
+                fetchPartialMerge().catch(()=>{});
+              }
 
             try{
               const pr = msg ? (msg + (prog ? (' | ' + prog) : '')) : (prog || (`Status: ${state}`));
               if(pr) window.InfluxBroStatus && window.InfluxBroStatus.progress && window.InfluxBroStatus.progress('stats.load', String(pr));
             }catch(e){}
 
-            if(st.ready){
-              stopPolling();
-              fetchAllResults().then(()=>{
+             if(st.ready){
+               stopPolling();
+               // One last merge attempt while the job is still present.
+               if(JOB_MERGE){
+                 try{ fetchPartialMerge().catch(()=>{}); }catch(e){}
+               }
+               fetchAllResults().then(()=>{
                 setStatus([`Fertig. Zeilen: ${(ROWS||[]).length}`, '']);
                 try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done('stats.load', `Statistik fertig. Zeilen: ${(ROWS||[]).length}`); }catch(e){}
                 if(!JOB_MERGE) setLastJobId(JOB_ID);
@@ -1028,7 +993,7 @@
               setJobId(null);
               RUNNING = false;
             }
-          }).catch((e)=>{
+           }).catch((e)=>{
             stopPolling();
             err(String(e && e.message ? e.message : e));
             setStatus(['Job nicht gefunden oder Fehler beim Status-Update.', '']);
@@ -1046,6 +1011,24 @@
           setJobId(null);
           RUNNING = false;
         });
+      }
+
+      async function fetchPartialMerge(){
+        if(!JOB_ID) return;
+        if(!JOB_MERGE) return;
+        if(MERGE_FETCHING) return;
+        MERGE_FETCHING = true;
+        try{
+          const limit = 2000;
+          const j = await api(`./api/global_stats_job/result?job_id=${encodeURIComponent(JOB_ID)}&partial=1&limit=${limit}&offset=${MERGE_OFFSET}`);
+          const rows = j.rows || [];
+          if(rows.length){
+            MERGE_OFFSET += rows.length;
+            mergeRows(rows);
+          }
+        }finally{
+          MERGE_FETCHING = false;
+        }
       }
 
       async function resumeJob(){
@@ -1108,9 +1091,9 @@
       }
 
       async function reloadForSeries(rows){
-        const miss = missingCols();
+        const miss = missingDetailCols();
         if(!miss.length){
-          setStatus(['Keine neuen Spalten zum Nachladen.', '']);
+          setStatus(['Details bereits geladen.', '']);
           return;
         }
         const tf = timeFilter();
@@ -1119,7 +1102,7 @@
           start: tf.start,
           stop: tf.stop,
           field_filter: fieldFilter || null,
-          columns: miss,
+          columns: DETAIL_COLS,
           series: seriesPayloadFromRows(rows),
           page_limit: 200,
         };
@@ -1128,6 +1111,7 @@
         if(j.cache_id) setLastCacheId(j.cache_id);
         JOB_MERGE = true;
         JOB_ADD_COLS = miss;
+        MERGE_OFFSET = 0;
         beginPolling();
       }
 
@@ -1445,13 +1429,6 @@
 
       // Restore persisted UI/columns (best-effort)
       try{ loadUiState(); }catch(e){}
-      try{ loadWantedColumns(); }catch(e){}
-      try{
-        [$colLast,$colNewest,$colOldest,$colCount,$colMin,$colMax,$colMean].forEach(el => {
-          if(!el) return;
-          el.addEventListener('change', ()=>{ try{ saveWantedColumns(); saveUiState(); }catch(e){}; });
-        });
-      }catch(e){}
       try{ if($fieldFilter) $fieldFilter.addEventListener('input', debounce(()=>{ saveUiState(); }, 200)); }catch(e){}
 
       // If we have a local snapshot, show it immediately.

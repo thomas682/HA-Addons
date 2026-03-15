@@ -109,7 +109,7 @@
 
       <div class="card" style="--backup_visible_rows: {{ (cfg.get('ui_backup_visible_rows') or 24) | int }};">
         <details id="selection_details" open data-ui="section.selection" title="section.selection">
-          <summary>Auswahl</summary>
+          <summary>Einzelbackup</summary>
 
           <div class="muted">Auswahl wird initial aus dem Dashboard uebernommen (Browser-Speicher) und kann hier angepasst werden.</div>
           <div class="row" style="margin-top: 8px;" data-ui="backup.take_from_dashboard" title="backup.take_from_dashboard">
@@ -194,18 +194,11 @@
               <textarea id="sel" readonly data-ui="backup.selection" title="backup.selection"></textarea>
             </div>
           </div>
-        </details>
-
         <div class="row" data-ui="backup.actions" title="backup.actions" style="align-items:flex-start;">
           <div>
             <label>&nbsp;</label>
-            <button id="create_full" data-ui="backup.create_full" title="backup.create_full">Signal-Backup (alle)</button>
+            <button id="create_full" data-ui="backup.create_full" title="backup.create_full">Messwert-Backup</button>
             <div class="muted" id="hint_full" data-ui="backup.hint_full" title="backup.hint_full" style="margin-top:4px; max-width: 260px;"></div>
-          </div>
-          <div>
-            <label>&nbsp;</label>
-            <button id="create_range" data-ui="backup.create_range_zoom" title="backup.create_range_zoom">Zeitbereich Backup (Zoom)</button>
-            <div class="muted" id="hint_zoom" data-ui="backup.hint_zoom" title="backup.hint_zoom" style="margin-top:4px; max-width: 260px;"></div>
           </div>
           <div>
             <label>&nbsp;</label>
@@ -238,11 +231,11 @@
         <div class="space_box" id="space" data-ui="backup.space" title="backup.space" style="display:none;"></div>
 
         <div class="table_wrap" data-ui="backup.table.wrap" title="backup.table.wrap">
-          <div class="table_title">Backups</div>
+          <div class="table_title">Backupliste</div>
           <div class="table_head" data-ui="backup.table.head" title="backup.table.head">
             <div class="tbl_actions" data-ui="backup.table.actions" title="backup.table.actions">
               <div style="min-width: 320px; flex:1;">
-                <label>Volltextsuche (Backups)</label>
+                <label>Volltextsuche (Backupliste)</label>
                 <div class="row" style="margin-top:0; align-items:center; gap: 8px;">
                   <input id="q_backup" placeholder="created_at, name, measurement, field, entity_id..." data-ui="backup.search" title="backup.search" style="flex:1; min-width: 220px;" />
                   <button id="q_backup_all" class="btn_sm" data-ui="backup.search_all" title="backup.search_all" style="height:34px; padding:8px 10px;">Alle</button>
@@ -252,6 +245,10 @@
 
               <button id="backup_autowidth" class="btn_sm" data-ui="backup.autowidth" title="backup.autowidth" style="height:34px; padding:8px 10px;">Spaltenbreite automatisch</button>
               <button id="backup_windowwidth" class="btn_sm" data-ui="backup.windowwidth" title="backup.windowwidth" style="height:34px; padding:8px 10px;">Fensterbreite</button>
+              <div style="display:flex; flex-direction:column; gap: 6px; padding-top: 2px;" data-ui="backup.row_height" title="backup.row_height">
+                <label>Zeilenhoehe (px)</label>
+                <input id="backup_row_h" type="number" min="9" max="60" step="1" value="{{ (cfg.get('ui_backup_table_row_height_px') or cfg.get('ui_table_row_height_px') or 13) | int }}" style="height:34px; padding:8px 10px; width: 120px; border: 1px solid #bfc7d5; border-radius: 4px; font-size: 14px;" />
+              </div>
               <label style="display:flex; align-items:center; gap: 6px; padding-top: 6px;"><input type="checkbox" id="backup_wrap" data-ui="backup.wrap" title="backup.wrap"/>Umbruch</label>
               <label style="display:flex; align-items:center; gap: 6px; padding-top: 6px;"><input type="checkbox" id="backup_colfilter" data-ui="backup.colfilter" title="backup.colfilter"/>Spaltenfilter</label>
             </div>
@@ -273,6 +270,7 @@
                   <th>friendly_name</th>
                   <th>Anzahl Werte</th>
                   <th>Groesse</th>
+                  <th>ZIP Groesse</th>
                   <th>Datei</th>
                 </tr>
               </thead>
@@ -280,6 +278,7 @@
             </table>
           </div>
         </div>
+        </details>
       </div>
 
       <div class="card" style="--backup_visible_rows: {{ (cfg.get('ui_backup_visible_rows') or 24) | int }};" data-ui="backup.fullbackup.card" title="backup.fullbackup.card">
@@ -288,6 +287,14 @@
           <div class="muted" style="margin-top: 6px;">Sichert die komplette InfluxDB Datenbank (v1: database, v2: bucket). Separater Bereich mit eigener Liste.</div>
 
           <div class="row" style="align-items:flex-start;" data-ui="backup.fullbackup.actions" title="backup.fullbackup.actions">
+            <div style="min-width: 320px; flex:1;">
+              <label>Modus</label>
+              <select id="fullbackup_mode" data-ui="backup.fullbackup.mode" title="backup.fullbackup.mode">
+                <option value="lp">Line Protocol (kompatibel)</option>
+                <option value="native_v2">Native v2 (influx backup)</option>
+              </select>
+              <div class="muted" style="margin-top:4px;">Native v2 erfordert <code>admin_token</code> (Einstellungen) und kann beim Restore Zielbucket waehlen/ueberschreiben.</div>
+            </div>
             <div><label>&nbsp;</label><button id="fullbackup_start" data-ui="backup.fullbackup.start" title="backup.fullbackup.start">FullBackup starten</button></div>
             <div><label>&nbsp;</label><button id="fullbackup_reload" data-ui="backup.fullbackup.reload" title="backup.fullbackup.reload">Liste aktualisieren</button></div>
             <div><label>&nbsp;</label><button id="fullbackup_cancel" class="btn_sm" data-ui="backup.fullbackup.cancel" title="backup.fullbackup.cancel" disabled>Abbruch</button></div>
@@ -301,8 +308,17 @@
             <span id="fullbackup_status_time"></span>
           </div>
 
+          <details id="fullbackup_query_details" class="card" style="display:none; margin-top: 10px;" data-ui="backup.fullbackup.query_details" title="backup.fullbackup.query_details">
+            <summary>Aktion anzeigen</summary>
+            <div class="card_body">
+              <pre id="fullbackup_query_pre" style="margin:6px 0 0 0; padding:10px 12px; border:1px solid #eee; border-radius:12px; background:#fafafa; white-space:pre; overflow:auto; max-height: 260px;"></pre>
+            </div>
+          </details>
+
+          <div class="muted" id="fullbackup_loc" data-ui="backup.fullbackup.location" title="backup.fullbackup.location" style="margin-top:10px;"></div>
+
           <div class="table_wrap" data-ui="backup.fullbackup.table.wrap" title="backup.fullbackup.table.wrap">
-            <div class="table_title">FullBackups</div>
+            <div class="table_title">FullBackupliste</div>
             <div class="table_head" data-ui="backup.fullbackup.table.head" title="backup.fullbackup.table.head">
               <div class="tbl_actions" data-ui="backup.fullbackup.table.actions" title="backup.fullbackup.table.actions">
                 <button id="fullbackup_autowidth" class="btn_sm" data-ui="backup.fullbackup.autowidth" title="backup.fullbackup.autowidth" style="height:34px; padding:8px 10px;">Spaltenbreite automatisch</button>
@@ -320,12 +336,14 @@
                     <th style="width:20px;"><input type="checkbox" id="fullbackup_sel_all" data-ui="backup.fullbackup.select_all" title="backup.fullbackup.select_all"/></th>
                     <th>Backup Datum</th>
                     <th>kind</th>
+                    <th>format</th>
                     <th>influx_version</th>
                     <th>org</th>
                     <th>bucket</th>
                     <th>database</th>
                     <th>Anzahl Werte</th>
                     <th>Groesse</th>
+                    <th>ZIP Groesse</th>
                     <th>Start</th>
                     <th>Stop</th>
                     <th>Datei</th>
@@ -359,6 +377,7 @@
       const $cancel = document.getElementById('cancel');
       const $backupAutoWidth = document.getElementById('backup_autowidth');
       const $backupWindowWidth = document.getElementById('backup_windowwidth');
+      const $backupRowH = document.getElementById('backup_row_h');
       const $backupWrap = document.getElementById('backup_wrap');
       const $backupColFilter = document.getElementById('backup_colfilter');
       const $del = document.getElementById('del');
@@ -367,11 +386,15 @@
 
       // FullBackup (DB full)
       const $fullBackupStart = document.getElementById('fullbackup_start');
+      const $fullBackupMode = document.getElementById('fullbackup_mode');
       const $fullBackupReload = document.getElementById('fullbackup_reload');
       const $fullBackupCancel = document.getElementById('fullbackup_cancel');
       const $fullBackupDelete = document.getElementById('fullbackup_delete');
       const $fullBackupDownload = document.getElementById('fullbackup_download');
       const $fullBackupRows = document.getElementById('fullbackup_rows');
+      const $fullBackupQueryDetails = document.getElementById('fullbackup_query_details');
+      const $fullBackupQueryPre = document.getElementById('fullbackup_query_pre');
+      const $fullBackupLoc = document.getElementById('fullbackup_loc');
       const $fullBackupSelAll = document.getElementById('fullbackup_sel_all');
       const $fullBackupListInfo = document.getElementById('fullbackup_list_info');
 
@@ -623,25 +646,29 @@
 
           const td1 = document.createElement('td'); td1.textContent = fmtTs(b.created_at || '');
           const tdKind = document.createElement('td'); tdKind.textContent = b.kind || '';
+          const tdFmt = document.createElement('td'); tdFmt.textContent = b.format || '';
           const tdV = document.createElement('td'); tdV.textContent = String(b.influx_version || '');
           const tdOrg = document.createElement('td'); tdOrg.textContent = b.org || '';
           const tdBuck = document.createElement('td'); tdBuck.textContent = b.bucket || '';
           const tdDb = document.createElement('td'); tdDb.textContent = b.database || '';
           const tdCnt = document.createElement('td'); tdCnt.textContent = (b.point_count ?? '') + '';
           const tdSz = document.createElement('td'); tdSz.textContent = _fmtBytes2(b.bytes);
+          const tdZip = document.createElement('td'); tdZip.textContent = _fmtBytes2(b.zip_bytes || 0);
           const tdS = document.createElement('td'); tdS.textContent = fmtTs(b.start || b.oldest_time || '');
           const tdE = document.createElement('td'); tdE.textContent = fmtTs(b.stop || b.newest_time || '');
-          const tdFile = document.createElement('td'); tdFile.textContent = b.file || '';
+          const tdFile = document.createElement('td'); tdFile.textContent = (b.zip_file || b.file || '');
 
           tr.appendChild(td0);
           tr.appendChild(td1);
           tr.appendChild(tdKind);
+          tr.appendChild(tdFmt);
           tr.appendChild(tdV);
           tr.appendChild(tdOrg);
           tr.appendChild(tdBuck);
           tr.appendChild(tdDb);
           tr.appendChild(tdCnt);
           tr.appendChild(tdSz);
+          tr.appendChild(tdZip);
           tr.appendChild(tdS);
           tr.appendChild(tdE);
           tr.appendChild(tdFile);
@@ -659,7 +686,9 @@
 
         _renderFullBackupSelectAll(shown);
         try{
-          if($fullBackupListInfo) $fullBackupListInfo.textContent = `FullBackups: ${shown.length} / ${(FULLBACKUPS||[]).length}`;
+          const rawSum = (shown || []).reduce((a,b)=>a + Number((b && b.bytes) ? b.bytes : 0), 0);
+          const zipSum = (shown || []).reduce((a,b)=>a + Number((b && b.zip_bytes) ? b.zip_bytes : 0), 0);
+          if($fullBackupListInfo) $fullBackupListInfo.textContent = `FullBackupliste: ${shown.length} / ${(FULLBACKUPS||[]).length} | ZIP: ${_fmtBytes2(zipSum)} | raw: ${_fmtBytes2(rawSum)}`;
         }catch(e){}
       }
 
@@ -679,17 +708,34 @@
         err(''); ok('');
         _startFullBackupUi('FullBackup laeuft...');
         try{
+          try{
+            if($fullBackupQueryDetails) $fullBackupQueryDetails.style.display = 'block';
+            if($fullBackupQueryPre) $fullBackupQueryPre.textContent = '';
+          }catch(e){}
+
           const started = await api('./api/fullbackup_job/start', {
             method:'POST',
             headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({})
+            body: JSON.stringify({ format: ($fullBackupMode ? String($fullBackupMode.value || 'lp') : 'lp') })
           });
           FULL_JOB_ID = String(started.job_id || '');
           if(!FULL_JOB_ID) throw new Error('fullbackup job_id missing');
 
+          try{
+            const jLoc = await api('./api/backup_location');
+            const dir = String(jLoc.container_path || '/data/backups');
+            const bid = String(started.backup_id || '');
+            const fn = bid ? (bid + '.zip') : '';
+            if($fullBackupLoc) $fullBackupLoc.textContent = `Speicherort (Add-on): ${dir}${fn ? (' | Datei: ' + fn) : ''}`;
+          }catch(e){}
+
           while(true){
             const j = await api('./api/fullbackup_job/status?job_id=' + encodeURIComponent(FULL_JOB_ID));
             const st = j.status || {};
+            try{
+              const q = String(st.query || '');
+              if($fullBackupQueryPre && q) $fullBackupQueryPre.textContent = q;
+            }catch(e){}
             const msg = String(st.message || 'FullBackup laeuft...');
             const pc = Number(st.point_count || 0);
             const sz = String(st.written_human || '');
@@ -1182,7 +1228,8 @@
           const tdFn = document.createElement('td'); tdFn.textContent = b.friendly_name || "";
           const td2 = document.createElement('td'); td2.textContent = (b.point_count === null || b.point_count === undefined) ? "" : String(b.point_count);
           const td3 = document.createElement('td'); td3.textContent = fmtBytes(b.bytes);
-          const td4 = document.createElement('td'); td4.textContent = b.file || "";
+          const tdZip = document.createElement('td'); tdZip.textContent = fmtBytes(b.zip_bytes || 0);
+          const td4 = document.createElement('td'); td4.textContent = (b.zip_file || b.file || "");
           tr.appendChild(td0);
           tr.appendChild(td1);
           tr.appendChild(tdSpan);
@@ -1194,6 +1241,7 @@
           tr.appendChild(tdFn);
           tr.appendChild(td2);
           tr.appendChild(td3);
+          tr.appendChild(tdZip);
           tr.appendChild(td4);
 
           tr.addEventListener('click', ()=>{
@@ -1242,7 +1290,13 @@
 
       function renderList(){
         const shown = filt(BACKUPS, $qBackup ? $qBackup.value : '');
-        if($listInfo) $listInfo.textContent = `Backups: ${shown.length} / ${(BACKUPS||[]).length}`;
+        try{
+          const rawSum = (shown || []).reduce((a,b)=>a + Number((b && b.bytes) ? b.bytes : 0), 0);
+          const zipSum = (shown || []).reduce((a,b)=>a + Number((b && b.zip_bytes) ? b.zip_bytes : 0), 0);
+          if($listInfo) $listInfo.textContent = `Backupliste: ${shown.length} / ${(BACKUPS||[]).length} | ZIP: ${fmtBytes(zipSum)} | raw: ${fmtBytes(rawSum)}`;
+        }catch(e){
+          if($listInfo) $listInfo.textContent = `Backupliste: ${shown.length} / ${(BACKUPS||[]).length}`;
+        }
         render(shown);
       }
 
@@ -1497,7 +1551,7 @@
           const b = BACKUP_META.get(id) || {};
           const dt = b.created_at || '';
           const name = b.display_name || '';
-          const file = b.file || id;
+          const file = b.zip_file || b.file || id;
           return [dt, name, file].filter(Boolean).join(' | ') || id;
         });
         const msg = ids.length === 1
@@ -1517,7 +1571,7 @@
 
       $reload.addEventListener('click', ()=>resolveTarget().then(()=>loadList()).catch(e=>err(String(e && e.message ? e.message : e))));
       $createFull.addEventListener('click', ()=>createBackup().catch(e=>err(String(e && e.message ? e.message : e))));
-      $createRange.addEventListener('click', ()=>createRangeBackup().catch(e=>err(String(e && e.message ? e.message : e))));
+      try{ if($createRange) $createRange.addEventListener('click', ()=>createRangeBackup().catch(e=>err(String(e && e.message ? e.message : e)))); }catch(e){}
       $createRangeSel.addEventListener('click', ()=>createRangeBackupSel().catch(e=>err(String(e && e.message ? e.message : e))));
       if($cancel) $cancel.addEventListener('click', ()=>cancelCreate());
       $del.addEventListener('click', ()=>deleteBackup().catch(e=>err(String(e && e.message ? e.message : e))));
@@ -1553,6 +1607,33 @@
         let t=null;
         return ()=>{ if(t) clearTimeout(t); t=setTimeout(fn, ms); };
       }
+
+      async function _applyBackupRowHeight(save){
+        try{
+          if(!$backupRowH) return;
+          let v = Number($backupRowH.value);
+          if(!isFinite(v)) return;
+          v = Math.max(9, Math.min(60, Math.trunc(v)));
+          $backupRowH.value = String(v);
+          try{ document.documentElement.style.setProperty('--backup_row_h', v + 'px'); }catch(e){}
+          if(!save) return;
+          await api('./api/config', {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ ui_backup_table_row_height_px: v })
+          });
+        }catch(e){
+          err(String(e && e.message ? e.message : e));
+        }
+      }
+
+      try{
+        if($backupRowH){
+          const live = debounce(()=>_applyBackupRowHeight(false), 80);
+          $backupRowH.addEventListener('input', live);
+          $backupRowH.addEventListener('change', ()=>_applyBackupRowHeight(true));
+        }
+      }catch(e){}
 
       async function resolveAndLoad(){
         err("");

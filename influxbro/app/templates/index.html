@@ -401,6 +401,7 @@
               <button class="btn_sm" id="raw_copy" data-ui="raw.copy" title="raw.copy">Kopieren</button>
               <button class="btn_sm" id="raw_copy_query" data-ui="raw.copy_query" title="raw.copy_query">Query kopieren</button>
               <button class="btn_sm" id="raw_more" data-ui="raw.more" title="raw.more" style="display:none;">Mehr laden</button>
+              <button class="btn_sm" id="raw_tune" data-ui="raw.tune" title="raw.tune">Auto-Tuning</button>
             </div>
 
             <div class="tbl_actions" style="justify-content:flex-start; margin-top: 8px; gap: 10px; flex-wrap:wrap;" data-ui="raw.nav" title="raw.nav">
@@ -799,6 +800,7 @@ const $rawColFilter = document.getElementById('raw_colfilter');
 const $rawCopy = document.getElementById('raw_copy');
 const $rawCopyQuery = document.getElementById('raw_copy_query');
 const $rawMore = document.getElementById('raw_more');
+const $rawTune = document.getElementById('raw_tune');
 const $rawQuerySection = document.getElementById('raw_query_section');
 const $rawQuery = document.getElementById('raw_query');
 
@@ -892,6 +894,7 @@ let UI_EDIT_NEIGHBORS_N = 5;
 let UI_EDIT_DETAILS_VISIBLE_ROWS = 12;
 let UI_EDIT_GRAPH_BUFFER_MINUTES = 30;
 let UI_EDIT_GRAPH_MAX_POINTS = 50000;
+let UI_RAW_MAX_POINTS = 20000;
 let UI_FONT_SMALL_FALLBACK = 11;
 
 let CFG_BUCKET = "";
@@ -3041,22 +3044,6 @@ async function _jumpToRawByMs(ms){
       await new Promise(r=>setTimeout(r, 120));
     }
 
-    // If the selected timestamp is not in the currently loaded page, load more until it is.
-    // Note: raw paging is by offset (time ASC). Clicking a point near the end of the graph window
-    // often requires multiple pages.
-    try{
-      const MAX_LOADS = 30;
-      let loads = 0;
-      while(loads < MAX_LOADS){
-        const b = _rawRowsBoundsMs();
-        if(b && b.max !== null && isFinite(b.max) && t <= b.max) break;
-        if(!_rawCanMore()) break;
-        const progressed = await _rawLoadMoreOnce();
-        loads += 1;
-        if(!progressed) break;
-      }
-    }catch(e){}
-
     try{ renderRawTable(); }catch(e){}
 
     // find nearest match by timestamp (ms)
@@ -3140,7 +3127,7 @@ async function resetFiltersKeepRange(){
     try{ if($backupBadge) $backupBadge.textContent = ""; }catch(e){}
 
     // Clear raw caches (avoid reloads with stale graph window).
-    try{ RAW_ROWS = []; RAW_META = null; RAW_OFFSET = 0; RAW_LAST_KEY = ""; }catch(e){}
+    try{ RAW_ROWS = []; RAW_META = null; RAW_OFFSET = 0; RAW_BEFORE_OFFSET = 0; RAW_AFTER_OFFSET = 0; RAW_ANCHOR_ISO = null; RAW_LAST_KEY = ""; }catch(e){}
     try{ renderRawTable(); }catch(e){}
 
     try{ FILTER_SELECTED = new Set(); EDIT_SELECTED = new Set(); EDIT_LIST = new Map(); EDIT_ACTIVE_KEY = ""; renderTable(); }catch(e){}
@@ -3288,6 +3275,9 @@ async function loadUiConfig(){
 
     const mp = Number(cfg.ui_edit_graph_max_points);
     if(isFinite(mp) && mp >= 1000 && mp <= 200000) UI_EDIT_GRAPH_MAX_POINTS = Math.trunc(mp);
+
+    const rp = Number(cfg.ui_raw_max_points);
+    if(isFinite(rp) && rp >= 1000 && rp <= 200000) UI_RAW_MAX_POINTS = Math.trunc(rp);
 
     const fs = Number(cfg.ui_font_size_px);
     if(isFinite(fs) && fs >= 10 && fs <= 22) document.documentElement.style.setProperty("--ui-font", fs + "px");
@@ -3874,6 +3864,9 @@ let RAW_META = null;
 let _RAW_TIMER = null;
 let _RAW_INFLIGHT = false;
 let RAW_OFFSET = 0;
+let RAW_BEFORE_OFFSET = 0;
+let RAW_AFTER_OFFSET = 0;
+let RAW_ANCHOR_ISO = null;
 const RAW_LIMIT = 5000;
 let RAW_LAST_KEY = "";
 let _RAW_STATUS_T0 = 0;
@@ -3956,8 +3949,8 @@ function scheduleStatsCurrentReload(){
   _STATS_CURR_TIMER = setTimeout(()=>{ loadStatsCurrentFromGraph().catch(()=>{}); }, 650);
 }
 
-function _rawKey(base, win){
-  const k = [base.measurement, base.field, base.entity_id || "", base.friendly_name || "", win ? win.start : "", win ? win.stop : ""].join("|");
+function _rawKey(base, win, anchorIso){
+  const k = [base.measurement, base.field, base.entity_id || "", base.friendly_name || "", win ? win.start : "", win ? win.stop : "", anchorIso || ""].join("|");
   return k;
 }
 
@@ -3974,6 +3967,7 @@ function renderRawTable(){
   let info = "";
   if(isFinite(total)) info += `Eintraege: ${loaded} / ${total}`; else info += `Eintraege: ${loaded}`;
   if(sTxt && eTxt) info += ` | Zeitraum: ${sTxt} bis ${eTxt}`;
+  if(UI_RAW_MAX_POINTS) info += ` | max_points: ${UI_RAW_MAX_POINTS}`;
   $rawInfo.textContent = info;
 
   (RAW_ROWS || []).forEach(r => {
@@ -3996,8 +3990,7 @@ function renderRawTable(){
 
   // More button
   if($rawMore){
-    const canMore = (RAW_META && isFinite(Number(RAW_META.total_count)) && loaded < Number(RAW_META.total_count)) ||
-      (RAW_META && RAW_META.returned === RAW_LIMIT);
+    const canMore = _rawCanMore();
     $rawMore.style.display = canMore ? "inline-block" : "none";
   }
 
@@ -4006,6 +3999,9 @@ function renderRawTable(){
 
 function _rawCanMore(){
   try{
+    if(RAW_META && String(RAW_META.mode || '') === 'center'){
+      return !!RAW_META.has_more_before || !!RAW_META.has_more_after;
+    }
     const loaded = (RAW_ROWS || []).length;
     const total = RAW_META && (RAW_META.total_count !== null && RAW_META.total_count !== undefined) ? Number(RAW_META.total_count) : null;
     return (isFinite(total) && loaded < total) || (RAW_META && RAW_META.returned === RAW_LIMIT);
@@ -4053,11 +4049,28 @@ async function loadRawFromGraph(reset){
   if(!win) return;
   if(_RAW_INFLIGHT) return;
 
-  const key = _rawKey(base, win);
+  let anchorIso = null;
+  try{
+    if(RAW_SELECTED_MS !== null && RAW_SELECTED_MS !== undefined && isFinite(Number(RAW_SELECTED_MS))){
+      const t = Number(RAW_SELECTED_MS);
+      const s = Date.parse(String(win.start || ''));
+      const e = Date.parse(String(win.stop || ''));
+      if(isFinite(s) && isFinite(e) && t >= Math.min(s,e) && t <= Math.max(s,e)){
+        const d = new Date(t);
+        if(isFinite(d.getTime())) anchorIso = d.toISOString();
+      }
+    }
+  }catch(e){ anchorIso = null; }
+
+  const useCenter = !!anchorIso;
+  const key = _rawKey(base, win, useCenter ? anchorIso : '');
   if(reset || key !== RAW_LAST_KEY){
     RAW_OFFSET = 0;
     RAW_ROWS = [];
     RAW_META = null;
+    RAW_BEFORE_OFFSET = 0;
+    RAW_AFTER_OFFSET = 0;
+    RAW_ANCHOR_ISO = anchorIso;
     RAW_LAST_KEY = key;
     renderRawQuery();
   }
@@ -4073,17 +4086,45 @@ async function loadRawFromGraph(reset){
       friendly_name: base.friendly_name,
       start: win.start,
       stop: win.stop,
-      limit: RAW_LIMIT,
-      offset: RAW_OFFSET,
-      include_total: true,
     };
+
+    if(useCenter){
+      const beforeLimit = Math.max(1, Math.floor(RAW_LIMIT / 2));
+      const afterLimit = Math.max(1, RAW_LIMIT - beforeLimit);
+      payload.mode = 'center';
+      payload.anchor_time = anchorIso;
+      payload.before_limit = beforeLimit;
+      payload.after_limit = afterLimit;
+      payload.before_offset = RAW_BEFORE_OFFSET;
+      payload.after_offset = RAW_AFTER_OFFSET;
+      payload.include_total = false;
+    }else{
+      payload.limit = RAW_LIMIT;
+      payload.offset = RAW_OFFSET;
+      payload.include_total = true;
+    }
     const j = await api("./api/raw_points", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)});
     const rows = j.rows || [];
     const meta = j.meta || null;
     RAW_META = meta;
-    if(RAW_OFFSET === 0) RAW_ROWS = rows;
-    else RAW_ROWS = (RAW_ROWS || []).concat(rows);
-    RAW_OFFSET = (RAW_ROWS || []).length;
+
+    if(useCenter){
+      const bN = meta ? Number(meta.before_returned || 0) : 0;
+      const bn = (isFinite(bN) ? Math.max(0, Math.trunc(bN)) : 0);
+      const bRows = rows.slice(0, bn);
+      const aRows = rows.slice(bn);
+
+      if(RAW_BEFORE_OFFSET === 0 && RAW_AFTER_OFFSET === 0) RAW_ROWS = rows;
+      else RAW_ROWS = bRows.concat(RAW_ROWS || []).concat(aRows);
+
+      RAW_BEFORE_OFFSET += bRows.length;
+      RAW_AFTER_OFFSET += aRows.length;
+      RAW_OFFSET = (RAW_ROWS || []).length;
+    }else{
+      if(RAW_OFFSET === 0) RAW_ROWS = rows;
+      else RAW_ROWS = (RAW_ROWS || []).concat(rows);
+      RAW_OFFSET = (RAW_ROWS || []).length;
+    }
     renderRawTable();
     try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done('dashboard.raw', `Raw: ${RAW_OFFSET}`); }catch(e){}
     _rawStatusEnd(true);
@@ -4091,6 +4132,89 @@ async function loadRawFromGraph(reset){
     // keep previous
     try{ window.InfluxBroStatus && window.InfluxBroStatus.fail && window.InfluxBroStatus.fail('dashboard.raw', String(e && e.message ? e.message : e)); }catch(ex){}
     _rawStatusEnd(false, (e && e.message) ? e.message : String(e));
+  }finally{
+    _RAW_INFLIGHT = false;
+  }
+}
+
+async function rawAutoTuneMaxPoints(){
+  if(_RAW_INFLIGHT) return;
+  const base = currentFilters();
+  if(!base || !base.entity_id || !base.measurement || !base.field) { err('Auto-Tuning: bitte zuerst Messwert/Entity waehlen.'); return; }
+  const win = _rawWindowIso();
+  if(!win) { err('Auto-Tuning: kein Zeitraum verfuegbar (Graph oder Range).'); return; }
+
+  const targetMs = 1500;
+  const step = 1000;
+  const minPts = 1000;
+  const maxPts = 200000;
+
+  const orig = UI_RAW_MAX_POINTS;
+
+  function _roundStep(n){
+    const x = Math.trunc(Number(n) || 0);
+    return Math.max(minPts, Math.min(maxPts, Math.round(x / step) * step));
+  }
+
+  async function _setCfg(n){
+    const v = _roundStep(n);
+    await api('./api/config', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ui_raw_max_points: v})});
+    UI_RAW_MAX_POINTS = v;
+    return v;
+  }
+
+  async function _bench(n){
+    const v = _roundStep(n);
+    const payload = {
+      mode: 'window',
+      measurement: base.measurement,
+      field: base.field,
+      entity_id: base.entity_id,
+      friendly_name: base.friendly_name,
+      start: win.start,
+      stop: win.stop,
+      limit: v,
+      offset: 0,
+      include_total: false,
+    };
+    const t0 = performance.now();
+    await api('./api/raw_points', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+    return performance.now() - t0;
+  }
+
+  _RAW_INFLIGHT = true;
+  _rawStatusStart('Auto-Tuning laeuft...');
+  try{
+    let lo = minPts;
+    let hi = maxPts;
+    let best = minPts;
+    let iter = 0;
+
+    while(lo <= hi && iter < 9){
+      const mid = _roundStep((lo + hi) / 2);
+      if($rawStatusTxt) $rawStatusTxt.textContent = `Auto-Tuning: teste ${mid} Punkte (Ziel: ${targetMs}ms)...`;
+      await _setCfg(mid);
+      const ms = await _bench(mid);
+      if($rawStatusTxt) $rawStatusTxt.textContent = `Auto-Tuning: ${mid} Punkte -> ${Math.round(ms)}ms`;
+
+      if(ms <= targetMs){
+        best = mid;
+        lo = mid + step;
+      }else{
+        hi = mid - step;
+      }
+      iter += 1;
+      await new Promise(r=>setTimeout(r, 120));
+    }
+
+    await _setCfg(best);
+    ok(`Auto-Tuning: ui_raw_max_points gesetzt auf ${best} (Ziel: ${targetMs}ms).`);
+    _rawStatusEnd(true);
+    try{ scheduleRawReload(true); }catch(e){}
+  }catch(e){
+    try{ await api('./api/config', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ui_raw_max_points: orig})}); UI_RAW_MAX_POINTS = orig; }catch(ex){}
+    _rawStatusEnd(false, (e && e.message) ? e.message : String(e));
+    err('Auto-Tuning fehlgeschlagen: ' + String(e && e.message ? e.message : e));
   }finally{
     _RAW_INFLIGHT = false;
   }
@@ -5845,6 +5969,7 @@ if($rawSection) $rawSection.addEventListener("toggle", ()=>{
   if($rawSection.open) scheduleRawReload(true);
 });
 if($rawMore) $rawMore.addEventListener("click", (ev)=>{ _stop(ev); loadRawFromGraph(false).catch(()=>{}); });
+if($rawTune) $rawTune.addEventListener("click", (ev)=>{ _stop(ev); rawAutoTuneMaxPoints().catch(()=>{}); });
 
 try{
   if($rawDayOldest) $rawDayOldest.addEventListener('click', (ev)=>{ _stop(ev); _rawNav(0, 'min'); });

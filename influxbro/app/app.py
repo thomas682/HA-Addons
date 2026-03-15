@@ -11,8 +11,11 @@ import os
 import re
 import shutil
 import socket
+import select
 import ssl
 import sys
+import subprocess
+import tempfile
 import threading
 import time
 import uuid
@@ -114,6 +117,9 @@ STATS_CACHE_LOCK = threading.RLock()
 
 RESTORE_COPY_JOBS: dict[str, dict[str, Any]] = {}
 RESTORE_COPY_LOCK = threading.RLock()
+
+COMBINE_JOBS: dict[str, dict[str, Any]] = {}
+COMBINE_LOCK = threading.RLock()
 
 BACKUP_JOBS: dict[str, dict[str, Any]] = {}
 EXPORT_JOBS: dict[str, dict[str, Any]] = {}
@@ -328,6 +334,7 @@ def load_influx_yaml(influx_yaml_path: str):
         if api_version == 2:
             detected.update({
                 "token": cfg_block.get("token", ""),
+                "admin_token": cfg_block.get("admin_token", cfg_block.get("adminToken", "")) or "",
                 "org": cfg_block.get("organization", cfg_block.get("org", "")),
                 "bucket": cfg_block.get("bucket", ""),
             })
@@ -615,6 +622,8 @@ DEFAULT_CFG = {
     "influx_yaml_path": DEFAULT_INFLUX_YAML_PATH,
     # v2
     "token": "",
+    # v2 admin token (native backup/restore); never exposed
+    "admin_token": "",
     "org": "",
     "bucket": "",
     # v1
@@ -1459,7 +1468,8 @@ def _cache_usage_append(cfg: dict[str, Any] | None, entry: dict[str, Any]) -> No
         e.setdefault("id", uuid.uuid4().hex)
         # keep small and safe
         for k in list(e.keys()):
-            if k.startswith("token") or k.startswith("password"):
+            lk = str(k).lower()
+            if "token" in lk or "password" in lk or "confirm_phrase" in lk:
                 e.pop(k, None)
         # cap large strings
         for k in ("kind", "page", "step", "cache_id", "run_id", "note"):
@@ -2986,10 +2996,44 @@ def influxql_tag_filter(entity_id: str | None, friendly_name: str | None) -> str
     return out
 
 
+def _influx_url(cfg: dict) -> str:
+    return cfg.get("url") or f'{cfg.get("scheme","http")}://{cfg.get("host","localhost")}:{int(cfg.get("port",8086))}'
+
+
+def _influx_cli_env(cfg: dict, *, token: str) -> dict[str, str]:
+    env = dict(os.environ)
+    env["INFLUX_HOST"] = _influx_url(cfg)
+    env["INFLUX_ORG"] = str(cfg.get("org") or "")
+    env["INFLUX_TOKEN"] = str(token or "")
+    if not bool(cfg.get("verify_ssl", True)):
+        env["INFLUX_SKIP_VERIFY"] = "true"
+    return env
+
+
+@contextmanager
+def v2_admin_client(cfg: dict, timeout_seconds_override: int | None = None):
+    """Context-managed InfluxDB v2 client using admin_token (if present)."""
+
+    token = str(cfg.get("admin_token") or "").strip() or str(cfg.get("token") or "").strip()
+    url = _influx_url(cfg)
+    org = cfg.get("org")
+    ts = timeout_seconds_override if timeout_seconds_override is not None else int(cfg.get("timeout_seconds", 10))
+    timeout_ms = int(ts) * 1000
+    verify_ssl = bool(cfg.get("verify_ssl", True))
+    client = InfluxDBClient(url=url, token=token, org=org, timeout=timeout_ms, verify_ssl=verify_ssl)
+    try:
+        yield client
+    finally:
+        try:
+            client.close()
+        except Exception:
+            pass
+
+
 @contextmanager
 def v2_client(cfg: dict, timeout_seconds_override: int | None = None):
     """Context-managed InfluxDB v2 client."""
-    url = cfg.get("url") or f'{cfg.get("scheme","http")}://{cfg.get("host","localhost")}:{int(cfg.get("port",8086))}'
+    url = _influx_url(cfg)
     token = cfg.get("token")
     org = cfg.get("org")
     ts = timeout_seconds_override if timeout_seconds_override is not None else int(cfg.get("timeout_seconds", 10))
@@ -3085,6 +3129,12 @@ def restore_page():
         delete_phrase=DELETE_CONFIRM_PHRASE,
         nav="restore",
     )
+
+
+@app.get("/combine")
+def combine_page():
+    cfg = load_cfg()
+    return render_template("combine.html", cfg=cfg, allow_delete=True, nav="combine")
 
 
 @app.get("/export")
@@ -3217,6 +3267,8 @@ def api_get_config():
     redacted = dict(cfg)
     if redacted.get("token"):
         redacted["token"] = "********"
+    if redacted.get("admin_token"):
+        redacted["admin_token"] = "********"
     if redacted.get("password"):
         redacted["password"] = "********"
     return jsonify({
@@ -3339,6 +3391,44 @@ def api_influx_info():
         info["database_count"] = None
 
     return jsonify({"ok": True, "info": info})
+
+
+@app.get("/api/v2/buckets")
+def api_v2_buckets():
+    """Return bucket names for InfluxDB v2 (best-effort)."""
+
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    try:
+        influx_v = int(cfg.get("influx_version", 2) or 2)
+    except Exception:
+        influx_v = 2
+    if influx_v != 2:
+        return jsonify({"ok": False, "error": "influx_version must be 2"}), 400
+
+    org = str(cfg.get("org") or "").strip()
+    if not org:
+        return jsonify({"ok": False, "error": "org required"}), 400
+
+    token = str(cfg.get("admin_token") or cfg.get("token") or "").strip()
+    if not token:
+        return jsonify({"ok": False, "error": "token required"}), 400
+
+    try:
+        with v2_admin_client(cfg, timeout_seconds_override=min(10, int(cfg.get("timeout_seconds") or 10))) as c:
+            b = c.buckets_api().find_buckets(org=org)
+            buckets = getattr(b, "buckets", None) or []
+            names = []
+            for buck in buckets:
+                try:
+                    n = str(getattr(buck, "name", "") or "").strip()
+                    if n:
+                        names.append(n)
+                except Exception:
+                    continue
+            names = sorted(set(names))
+            return jsonify({"ok": True, "buckets": names})
+    except Exception as e:
+        return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
 
 
 _ENTITY_ID_RE = re.compile(r"^[A-Za-z0-9_]+\.[A-Za-z0-9_]+$")
@@ -3756,6 +3846,8 @@ def api_debug_report():
         r = dict(c)
         if r.get("token"):
             r["token"] = "********"
+        if r.get("admin_token"):
+            r["admin_token"] = "********"
         if r.get("password"):
             r["password"] = "********"
         return r
@@ -3922,6 +4014,116 @@ def _backup_files(dir_path: Path, backup_id: str) -> tuple[Path, Path]:
     return dir_path / f"{stem}.json", dir_path / f"{stem}.lp"
 
 
+def _backup_zip_path(dir_path: Path, backup_id: str) -> Path:
+    stem = _backup_safe(backup_id)
+    return dir_path / f"{stem}.zip"
+
+
+def _backup_pack_zip(dir_path: Path, backup_id: str, meta_path: Path, lp_path: Path) -> Path:
+    """Pack meta+lp into a zip next to them (best-effort).
+
+    Creates `<stem>.zip` and then removes the original files.
+    Keeps legacy files only if zipping fails.
+    """
+
+    zpath = _backup_zip_path(dir_path, backup_id)
+    tmp = zpath.with_suffix(zpath.suffix + ".tmp")
+    try:
+        if tmp.exists():
+            tmp.unlink()
+    except Exception:
+        pass
+
+    with zipfile.ZipFile(tmp, mode="w", compression=zipfile.ZIP_DEFLATED) as z:
+        if meta_path.exists():
+            z.write(meta_path, arcname=meta_path.name)
+        if lp_path.exists():
+            z.write(lp_path, arcname=lp_path.name)
+
+    try:
+        tmp.replace(zpath)
+    except Exception:
+        # Fallback: try unlink then rename
+        try:
+            if zpath.exists():
+                zpath.unlink()
+        except Exception:
+            pass
+        tmp.replace(zpath)
+
+    # Remove originals after the zip is in place.
+    for p in (meta_path, lp_path):
+        try:
+            if p.exists():
+                p.unlink()
+        except Exception:
+            pass
+    return zpath
+
+
+def _backup_pack_zip_tree(
+    dir_path: Path,
+    backup_id: str,
+    *,
+    meta_path: Path,
+    payload_dir: Path,
+    payload_arc_prefix: str,
+) -> Path:
+    """Pack meta JSON + a payload directory into a zip next to them (best-effort).
+
+    Creates `<stem>.zip` and then removes the original meta file + payload directory.
+    """
+
+    zpath = _backup_zip_path(dir_path, backup_id)
+    tmp = zpath.with_suffix(zpath.suffix + ".tmp")
+    try:
+        if tmp.exists():
+            tmp.unlink()
+    except Exception:
+        pass
+
+    with zipfile.ZipFile(tmp, mode="w", compression=zipfile.ZIP_DEFLATED) as z:
+        if meta_path.exists():
+            z.write(meta_path, arcname=meta_path.name)
+
+        pref = (payload_arc_prefix or "payload").strip("/")
+        root = payload_dir
+        if root.exists() and root.is_dir():
+            for base, _dirs, files in os.walk(str(root)):
+                for fn in files:
+                    try:
+                        p = Path(base) / fn
+                        if not p.is_file():
+                            continue
+                        rel = str(p.relative_to(root)).replace("\\", "/")
+                        arc = f"{pref}/{rel}" if rel else pref
+                        z.write(p, arcname=arc)
+                    except Exception:
+                        continue
+
+    try:
+        tmp.replace(zpath)
+    except Exception:
+        try:
+            if zpath.exists():
+                zpath.unlink()
+        except Exception:
+            pass
+        tmp.replace(zpath)
+
+    try:
+        if meta_path.exists():
+            meta_path.unlink()
+    except Exception:
+        pass
+    try:
+        if payload_dir.exists() and payload_dir.is_dir():
+            shutil.rmtree(payload_dir, ignore_errors=True)
+    except Exception:
+        pass
+    return zpath
+
+
 def _fullbackup_files(dir_path: Path, backup_id: str) -> tuple[Path, Path]:
     # Stored in the same directory as normal backups, but distinguished by meta.kind == 'db_full'.
     stem = _backup_safe(backup_id)
@@ -3994,8 +4196,45 @@ def _list_backups(dir_path: Path, include_db_full: bool = False) -> list[dict[st
     out: list[dict[str, Any]] = []
     if not dir_path.exists():
         return out
+
+    # Prefer packed ZIP backups (meta+lp inside) to save disk space.
+    seen_stems: set[str] = set()
+    for p in sorted(dir_path.glob("*.zip")):
+        try:
+            stem = str(p.stem)
+            if not stem:
+                continue
+            with zipfile.ZipFile(p, mode="r") as z:
+                meta_name = stem + ".json"
+                if meta_name not in z.namelist():
+                    # best-effort: pick the first json
+                    cands = [n for n in z.namelist() if n.lower().endswith(".json")]
+                    if not cands:
+                        continue
+                    meta_name = cands[0]
+                meta = json.loads(z.read(meta_name).decode("utf-8", errors="replace"))
+            if not isinstance(meta, dict):
+                continue
+            if not include_db_full and str(meta.get("kind") or "") == "db_full":
+                continue
+            backup_id = str(meta.get("id") or stem)
+            out.append({
+                **meta,
+                "id": backup_id,
+                "file": stem,
+                "zip_file": p.name,
+                "zip_bytes": int(p.stat().st_size) if p.exists() else 0,
+                "bytes": int(meta.get("bytes") or 0),
+            })
+            seen_stems.add(stem)
+        except Exception:
+            continue
+
+    # Legacy: meta json next to raw lp
     for p in sorted(dir_path.glob("*.json")):
         try:
+            if str(p.stem) in seen_stems:
+                continue
             meta = json.loads(p.read_text(encoding="utf-8"))
             if not isinstance(meta, dict):
                 continue
@@ -4007,6 +4246,8 @@ def _list_backups(dir_path: Path, include_db_full: bool = False) -> list[dict[st
                 **meta,
                 "id": backup_id,
                 "file": p.stem,
+                "zip_file": None,
+                "zip_bytes": 0,
                 "bytes": int(lp.stat().st_size) if lp.exists() else int(meta.get("bytes") or 0),
             })
         except Exception:
@@ -4023,16 +4264,88 @@ def _read_backup_meta(dir_path: Path, backup_id: str) -> dict[str, Any] | None:
         return None
     if _backup_safe(bid) != bid:
         return None
-    meta_path, _lp_path = _backup_files(dir_path, bid)
-    if not meta_path.exists():
-        return None
-    try:
-        meta = json.loads(meta_path.read_text(encoding="utf-8"))
-    except Exception:
-        return None
+
+    # Prefer packed zip.
+    zpath = _backup_zip_path(dir_path, bid)
+    if zpath.exists():
+        try:
+            stem = str(zpath.stem)
+            with zipfile.ZipFile(zpath, mode="r") as z:
+                name = stem + ".json"
+                if name not in z.namelist():
+                    cands = [n for n in z.namelist() if n.lower().endswith(".json")]
+                    if not cands:
+                        return None
+                    name = cands[0]
+                meta = json.loads(z.read(name).decode("utf-8", errors="replace"))
+        except Exception:
+            return None
+    else:
+        meta_path, _lp_path = _backup_files(dir_path, bid)
+        if not meta_path.exists():
+            return None
+        try:
+            meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        except Exception:
+            return None
     if not isinstance(meta, dict):
         return None
     return meta
+
+
+@contextmanager
+def _open_backup_lp_text(dir_path: Path, backup_id: str, *, is_fullbackup: bool = False):
+    """Open the line protocol payload as text (supports packed .zip and legacy .lp).
+
+    Yields a text file object (iterable by line).
+    """
+
+    bid = str(backup_id or "").strip()
+    if not bid or _backup_safe(bid) != bid:
+        raise FileNotFoundError("invalid backup id")
+
+    zpath = _backup_zip_path(dir_path, bid)
+    if zpath.exists():
+        stem = str(zpath.stem)
+        z = zipfile.ZipFile(zpath, mode="r")
+        try:
+            lp_name = stem + ".lp"
+            if lp_name not in z.namelist():
+                cands = [n for n in z.namelist() if n.lower().endswith(".lp")]
+                if not cands:
+                    raise FileNotFoundError("lp payload missing in zip")
+                lp_name = cands[0]
+            raw = z.open(lp_name, mode="r")
+            try:
+                txt = io.TextIOWrapper(raw, encoding="utf-8", errors="replace", newline="")
+                try:
+                    yield txt
+                finally:
+                    try:
+                        txt.close()
+                    except Exception:
+                        pass
+            finally:
+                try:
+                    raw.close()
+                except Exception:
+                    pass
+        finally:
+            try:
+                z.close()
+            except Exception:
+                pass
+        return
+
+    # Legacy files
+    if is_fullbackup:
+        _meta_path, lp_path = _fullbackup_files(dir_path, bid)
+    else:
+        _meta_path, lp_path = _backup_files(dir_path, bid)
+    if not lp_path.exists():
+        raise FileNotFoundError("lp payload missing")
+    with lp_path.open("r", encoding="utf-8", errors="replace") as f:
+        yield f
 
 
 def _fmt_bytes(n: int | None) -> str:
@@ -4235,6 +4548,10 @@ from(bucket: "{cfg["bucket"]}")
             "stop": stop_iso or (_dt_to_rfc3339_utc(newest) if newest else None),
         }
         meta_path.write_text(json.dumps(meta, indent=2, sort_keys=True), encoding="utf-8")
+        try:
+            _backup_pack_zip(bdir, backup_id, meta_path, lp_path)
+        except Exception:
+            pass
         set_progress(written_bytes=bytes_size, point_count=count)
         set_state("done", f"Backup created: {backup_id}")
         return
@@ -4252,6 +4569,12 @@ from(bucket: "{cfg["bucket"]}")
                     lp_path.unlink()
             except Exception:
                 pass
+            try:
+                zpath = _backup_zip_path(bdir, backup_id)
+                if zpath.exists():
+                    zpath.unlink()
+            except Exception:
+                pass
             return
 
         set_state("error", "Fehler")
@@ -4266,6 +4589,12 @@ from(bucket: "{cfg["bucket"]}")
                 lp_path.unlink()
         except Exception:
             pass
+        try:
+            zpath = _backup_zip_path(bdir, backup_id)
+            if zpath.exists():
+                zpath.unlink()
+        except Exception:
+            pass
         return
 
 
@@ -4277,6 +4606,7 @@ def _fullbackup_job_public(job: dict[str, Any]) -> dict[str, Any]:
         "message": job.get("message"),
         "started_at": job.get("started_at"),
         "elapsed": _job_elapsed_hms(job),
+        "format": str(job.get("format") or "lp"),
         "written_bytes": written_b,
         "written_human": _fmt_bytes(written_b),
         "point_count": int(job.get("point_count") or 0),
@@ -4356,6 +4686,180 @@ def _fullbackup_job_thread(job_id: str, cfg: dict[str, Any], backup_id: str) -> 
         set_error("FullBackup wird aktuell nicht fuer InfluxDB v3 unterstuetzt.")
         return
 
+    fmt = str(job.get("format") or "lp").strip() or "lp"
+    if influx_v == 2 and fmt == "native_v2":
+        if not (cfg.get("org") and cfg.get("bucket")):
+            set_state("error", "Konfiguration fehlt")
+            set_error("Native v2 Backup erfordert org/bucket. Bitte in Einstellungen speichern.")
+            return
+
+        admin_token = str(cfg.get("admin_token") or "").strip()
+        if not admin_token:
+            set_state("error", "Konfiguration fehlt")
+            set_error("Native v2 Backup erfordert admin_token. Bitte in Einstellungen speichern.")
+            return
+
+        # Run `influx backup` into a directory, then zip the directory for storage/download.
+        payload_dir = bdir / (str(_backup_safe(backup_id)) + ".native")
+        try:
+            if payload_dir.exists():
+                shutil.rmtree(payload_dir, ignore_errors=True)
+        except Exception:
+            pass
+        payload_dir.mkdir(parents=True, exist_ok=True)
+
+        cmd = ["influx", "backup", "--bucket", str(cfg.get("bucket")), str(payload_dir)]
+        cmd_redacted = (
+            f"influx backup --host {json.dumps(_influx_url(cfg))} --org {json.dumps(str(cfg.get('org') or ''))} "
+            f"--bucket {json.dumps(str(cfg.get('bucket') or ''))} {json.dumps(str(payload_dir))}"
+        )
+        set_progress(query=cmd_redacted, written_bytes=0, point_count=0)
+
+        tail: list[str] = []
+        p: subprocess.Popen[str] | None = None
+        try:
+            env = _influx_cli_env(cfg, token=admin_token)
+            p = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                env=env,
+            )
+            out = p.stdout
+            last_tick_sz = 0.0
+            while True:
+                if is_cancelled():
+                    try:
+                        p.terminate()
+                    except Exception:
+                        pass
+                    set_state("cancelled", "Abgebrochen")
+                    raise RuntimeError("cancelled")
+
+                # Read stdout without blocking cancellation.
+                if out is not None:
+                    try:
+                        r, _w, _x = select.select([out], [], [], 0.25)
+                    except Exception:
+                        r = []
+                    if r:
+                        try:
+                            ln = out.readline()
+                        except Exception:
+                            ln = ""
+                        s = (ln or "").rstrip("\n")
+                        if s:
+                            tail.append(s)
+                            if len(tail) > 30:
+                                tail = tail[-30:]
+                            set_state("running", s[:240])
+
+                now = time.monotonic()
+                if (now - last_tick_sz) >= 1.0:
+                    # best-effort size progress of the payload directory
+                    try:
+                        cur_b = 0
+                        for base, _dirs, files in os.walk(str(payload_dir)):
+                            for fn in files:
+                                try:
+                                    cur_b += int(os.path.getsize(os.path.join(base, fn)) or 0)
+                                except Exception:
+                                    continue
+                        set_progress(written_bytes=int(cur_b), point_count=0)
+                    except Exception:
+                        pass
+                    last_tick_sz = now
+
+                if p.poll() is not None:
+                    break
+
+            rc = p.wait() if p is not None else 1
+            if rc != 0:
+                msg = "Native Backup fehlgeschlagen"
+                if tail:
+                    msg = msg + ": " + tail[-1]
+                raise RuntimeError(msg)
+
+            # Determine raw size (best-effort)
+            raw_bytes = 0
+            try:
+                for base, _dirs, files in os.walk(str(payload_dir)):
+                    for fn in files:
+                        try:
+                            raw_bytes += int(os.path.getsize(os.path.join(base, fn)) or 0)
+                        except Exception:
+                            continue
+            except Exception:
+                raw_bytes = 0
+
+            meta = {
+                "id": backup_id,
+                "display_name": f"FullBackup (v2 native) {backup_id}",
+                "created_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+                "kind": "db_full",
+                "format": "native_v2",
+                "influx_version": 2,
+                "org": cfg.get("org"),
+                "bucket": cfg.get("bucket"),
+                "point_count": 0,
+                "bytes": int(raw_bytes),
+            }
+            meta_path.write_text(json.dumps(meta, indent=2, sort_keys=True), encoding="utf-8")
+            zpath = _backup_pack_zip_tree(
+                bdir,
+                backup_id,
+                meta_path=meta_path,
+                payload_dir=payload_dir,
+                payload_arc_prefix="native",
+            )
+            try:
+                set_progress(written_bytes=int(zpath.stat().st_size), point_count=0)
+            except Exception:
+                set_progress(written_bytes=0, point_count=0)
+            set_state("done", f"FullBackup created: {backup_id}")
+            return
+        except Exception as e:
+            msg = str(e)
+            if "cancelled" in msg:
+                try:
+                    if meta_path.exists():
+                        meta_path.unlink()
+                except Exception:
+                    pass
+                try:
+                    if payload_dir.exists():
+                        shutil.rmtree(payload_dir, ignore_errors=True)
+                except Exception:
+                    pass
+                try:
+                    zpath = _backup_zip_path(bdir, backup_id)
+                    if zpath.exists():
+                        zpath.unlink()
+                except Exception:
+                    pass
+                return
+
+            set_state("error", "Fehler")
+            set_error(_short_influx_error(e if isinstance(e, Exception) else Exception(str(e))))
+            try:
+                if meta_path.exists():
+                    meta_path.unlink()
+            except Exception:
+                pass
+            try:
+                if payload_dir.exists():
+                    shutil.rmtree(payload_dir, ignore_errors=True)
+            except Exception:
+                pass
+            try:
+                zpath = _backup_zip_path(bdir, backup_id)
+                if zpath.exists():
+                    zpath.unlink()
+            except Exception:
+                pass
+            return
+
     count = 0
     written_b = 0
     last_tick = time.monotonic()
@@ -4428,6 +4932,7 @@ from(bucket: "{cfg["bucket"]}")
                 "display_name": f"FullBackup (v2) {backup_id}",
                 "created_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
                 "kind": "db_full",
+                "format": "lp",
                 "influx_version": 2,
                 "org": cfg.get("org"),
                 "bucket": cfg.get("bucket"),
@@ -4572,6 +5077,7 @@ from(bucket: "{cfg["bucket"]}")
                 "display_name": f"FullBackup (v1) {backup_id}",
                 "created_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
                 "kind": "db_full",
+                "format": "lp",
                 "influx_version": 1,
                 "database": cfg.get("database"),
                 "point_count": count,
@@ -4595,6 +5101,10 @@ from(bucket: "{cfg["bucket"]}")
 
         meta["bytes"] = bytes_size
         meta_path.write_text(json.dumps(meta, indent=2, sort_keys=True), encoding="utf-8")
+        try:
+            _backup_pack_zip(bdir, backup_id, meta_path, lp_path)
+        except Exception:
+            pass
         set_progress(written_bytes=bytes_size, point_count=count)
         set_state("done", f"FullBackup created: {backup_id}")
         return
@@ -4611,6 +5121,12 @@ from(bucket: "{cfg["bucket"]}")
                     lp_path.unlink()
             except Exception:
                 pass
+            try:
+                zpath = _backup_zip_path(bdir, backup_id)
+                if zpath.exists():
+                    zpath.unlink()
+            except Exception:
+                pass
             return
 
         set_state("error", "Fehler")
@@ -4625,6 +5141,12 @@ from(bucket: "{cfg["bucket"]}")
                 lp_path.unlink()
         except Exception:
             pass
+        try:
+            zpath = _backup_zip_path(bdir, backup_id)
+            if zpath.exists():
+                zpath.unlink()
+        except Exception:
+            pass
         return
 
 
@@ -4635,6 +5157,9 @@ def _fullrestore_job_public(job: dict[str, Any]) -> dict[str, Any]:
         "message": job.get("message"),
         "started_at": job.get("started_at"),
         "elapsed": _job_elapsed_hms(job),
+        "format": str(job.get("format") or "lp"),
+        "target_bucket": job.get("target_bucket"),
+        "overwrite": bool(job.get("overwrite")),
         "applied": int(job.get("applied") or 0),
         "read_lines": int(job.get("read_lines") or 0),
         "backup_id": job.get("backup_id"),
@@ -4706,9 +5231,9 @@ def _fullrestore_job_thread(job_id: str, cfg: dict[str, Any], backup_id: str) ->
         set_error("FullRestore wird aktuell nicht fuer InfluxDB v3 unterstuetzt.")
         return
     if influx_v == 2:
-        if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+        if not str(cfg.get("org") or "").strip():
             set_state("error", "Konfiguration fehlt")
-            set_error("InfluxDB v2 erfordert token/org/bucket. Bitte in Einstellungen speichern.")
+            set_error("InfluxDB v2 erfordert org. Bitte in Einstellungen speichern.")
             return
     elif influx_v == 1:
         if not cfg.get("database"):
@@ -4727,10 +5252,194 @@ def _fullrestore_job_thread(job_id: str, cfg: dict[str, Any], backup_id: str) ->
         set_error("Kein FullBackup (kind!=db_full).")
         return
 
-    meta_path, lp_path = _fullbackup_files(bdir, backup_id)
-    if not lp_path.exists():
-        set_state("error", "Backup nicht gefunden")
-        set_error("FullBackup Datei nicht gefunden.")
+    fmt = str(meta.get("format") or job.get("format") or "lp").strip() or "lp"
+    if fmt != "native_v2":
+        try:
+            # Ensure payload exists (zip or legacy)
+            with _open_backup_lp_text(bdir, backup_id, is_fullbackup=True):
+                pass
+        except Exception:
+            set_state("error", "Backup nicht gefunden")
+            set_error("FullBackup Datei nicht gefunden.")
+            return
+    if fmt == "native_v2":
+        if influx_v != 2:
+            set_state("error", "Nicht unterstuetzt")
+            set_error("Native FullRestore wird nur fuer InfluxDB v2 unterstuetzt.")
+            return
+
+        admin_token = str(cfg.get("admin_token") or "").strip()
+        if not admin_token:
+            set_state("error", "Konfiguration fehlt")
+            set_error("Native FullRestore erfordert admin_token. Bitte in Einstellungen speichern.")
+            return
+
+        src_bucket = str(meta.get("bucket") or "").strip()
+        if not src_bucket:
+            set_state("error", "Backup ungueltig")
+            set_error("Native FullBackup meta.bucket fehlt.")
+            return
+
+        tgt_bucket = str(job.get("target_bucket") or "").strip() or src_bucket
+        overwrite = bool(job.get("overwrite"))
+
+        # Native backups require the packed zip file.
+        zpath = _backup_zip_path(bdir, backup_id)
+        if not zpath.exists():
+            set_state("error", "Backup nicht gefunden")
+            set_error("Native FullBackup ZIP Datei nicht gefunden.")
+            return
+
+        set_state("running", "Native Restore laeuft...")
+        out_lines = 0
+
+        def _bucket_exists(name: str) -> bool:
+            try:
+                with v2_admin_client(cfg, timeout_seconds_override=min(20, int(cfg.get("timeout_seconds") or 10))) as c:
+                    b = c.buckets_api().find_buckets(org=str(cfg.get("org") or ""))
+                    buckets = getattr(b, "buckets", None) or []
+                    for buck in buckets:
+                        try:
+                            if str(getattr(buck, "name", "") or "") == name:
+                                return True
+                        except Exception:
+                            continue
+            except Exception:
+                return False
+            return False
+
+        def _delete_bucket(name: str) -> None:
+            with v2_admin_client(cfg, timeout_seconds_override=min(60, int(cfg.get("timeout_seconds") or 10))) as c:
+                bapi = c.buckets_api()
+                b = bapi.find_buckets(org=str(cfg.get("org") or ""))
+                buckets = getattr(b, "buckets", None) or []
+                for buck in buckets:
+                    try:
+                        if str(getattr(buck, "name", "") or "") == name:
+                            bapi.delete_bucket(buck)
+                            return
+                    except Exception:
+                        continue
+
+        # Enforce the CLI rule: cannot restore into an existing bucket.
+        try:
+            if _bucket_exists(tgt_bucket):
+                if not overwrite:
+                    set_state("error", "Bucket existiert")
+                    set_error(
+                        "influx restore kann nicht in existierende Buckets schreiben. "
+                        "Nutze ein neues Ziel (new-bucket) oder aktiviere 'Ueberschreiben' (loescht Zielbucket vorher)."
+                    )
+                    return
+                _delete_bucket(tgt_bucket)
+                # Give the server a short moment to finalize the delete.
+                t0 = time.monotonic()
+                while time.monotonic() - t0 < 10.0:
+                    if not _bucket_exists(tgt_bucket):
+                        break
+                    time.sleep(0.5)
+        except Exception as e:
+            set_state("error", "Fehler")
+            set_error(_short_influx_error(e))
+            return
+
+        # Extract zip to temp dir and run `influx restore`.
+        cmd: list[str] = ["influx", "restore", "--bucket", src_bucket]
+        if tgt_bucket != src_bucket:
+            cmd.extend(["--new-bucket", tgt_bucket])
+
+        cmd_redacted = (
+            f"influx restore --host {json.dumps(_influx_url(cfg))} --org {json.dumps(str(cfg.get('org') or ''))} "
+            f"--bucket {json.dumps(src_bucket)}"
+            + (f" --new-bucket {json.dumps(tgt_bucket)}" if tgt_bucket != src_bucket else "")
+            + " <backup_dir>"
+        )
+        set_progress(read_lines=0, applied=0, target_bucket=tgt_bucket, overwrite=overwrite)
+        try:
+            set_progress(message=None, query=cmd_redacted)
+        except Exception:
+            pass
+
+        tail: list[str] = []
+        p: subprocess.Popen[str] | None = None
+        try:
+            with tempfile.TemporaryDirectory(prefix="influxbro_native_restore_") as tmpdir:
+                tmp = Path(tmpdir)
+                with zipfile.ZipFile(zpath, mode="r") as z:
+                    # safe extraction (zip is user-controlled via upload/download)
+                    for name in z.namelist():
+                        n = str(name or "")
+                        if not n or n.startswith("/") or ".." in n.replace("\\", "/").split("/"):
+                            raise RuntimeError("invalid zip entry")
+                    z.extractall(tmp)
+
+                payload = tmp / "native"
+                if not payload.exists():
+                    payload = tmp
+
+                cmd2 = cmd + [str(payload)]
+                env = _influx_cli_env(cfg, token=admin_token)
+                p = subprocess.Popen(
+                    cmd2,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    env=env,
+                )
+                out = p.stdout
+                last_tick = time.monotonic()
+                while True:
+                    if is_cancelled():
+                        try:
+                            p.terminate()
+                        except Exception:
+                            pass
+                        set_state("cancelled", "Abgebrochen")
+                        raise RuntimeError("cancelled")
+
+                    if out is not None:
+                        try:
+                            r, _w, _x = select.select([out], [], [], 0.25)
+                        except Exception:
+                            r = []
+                        if r:
+                            try:
+                                ln = out.readline()
+                            except Exception:
+                                ln = ""
+                            s = (ln or "").rstrip("\n")
+                            if s:
+                                out_lines += 1
+                                tail.append(s)
+                                if len(tail) > 30:
+                                    tail = tail[-30:]
+                                set_state("running", s[:240])
+
+                    now = time.monotonic()
+                    if (now - last_tick) >= 0.5:
+                        set_progress(read_lines=out_lines, applied=0)
+                        last_tick = now
+
+                    if p.poll() is not None:
+                        break
+
+                rc = p.wait() if p is not None else 1
+                if rc != 0:
+                    msg = "Native Restore fehlgeschlagen"
+                    if tail:
+                        msg = msg + ": " + tail[-1]
+                    raise RuntimeError(msg)
+
+        except Exception as e:
+            msg = str(e)
+            if "cancelled" in msg:
+                return
+            set_state("error", "Fehler")
+            set_error(_short_influx_error(e if isinstance(e, Exception) else Exception(str(e))))
+            return
+
+        set_progress(read_lines=out_lines, applied=0)
+        set_state("done", "Native Restore done")
         return
 
     set_state("running", "Restore laeuft...")
@@ -4743,7 +5452,7 @@ def _fullrestore_job_thread(job_id: str, cfg: dict[str, Any], backup_id: str) ->
             with v2_client(cfg) as c:
                 wapi = c.write_api(write_options=SYNCHRONOUS)
                 batch: list[str] = []
-                with lp_path.open("r", encoding="utf-8") as f:
+                with _open_backup_lp_text(bdir, backup_id, is_fullbackup=True) as f:
                     for line in f:
                         if is_cancelled():
                             set_state("cancelled", "Abgebrochen")
@@ -4785,7 +5494,7 @@ def _fullrestore_job_thread(job_id: str, cfg: dict[str, Any], backup_id: str) ->
                     pass
 
                 batch: list[str] = []
-                with lp_path.open("r", encoding="utf-8") as f:
+                with _open_backup_lp_text(bdir, backup_id, is_fullbackup=True) as f:
                     for line in f:
                         if is_cancelled():
                             set_state("cancelled", "Abgebrochen")
@@ -4941,6 +5650,7 @@ def api_fullbackups_all():
 @app.post("/api/fullbackup_job/start")
 def api_fullbackup_job_start():
     cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    body = request.get_json(force=True) or {}
     ok_free, msg = _backup_require_free_space(cfg)
     if not ok_free:
         return jsonify({"ok": False, "error": msg}), 507
@@ -4949,12 +5659,27 @@ def api_fullbackup_job_start():
     if influx_v == 3:
         return jsonify({"ok": False, "error": "fullbackup currently does not support InfluxDB v3"}), 400
     if influx_v == 2:
-        if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
-            return jsonify({
-                "ok": False,
-                "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
-            }), 400
+        fmt = str(body.get("format") or body.get("mode") or "").strip() or "lp"
+        if fmt == "native_v2":
+            if not (cfg.get("org") and cfg.get("bucket")):
+                return jsonify({
+                    "ok": False,
+                    "error": "Native v2 FullBackup requires org and bucket. Bitte in Einstellungen speichern.",
+                }), 400
+            if not str(cfg.get("admin_token") or "").strip():
+                return jsonify({
+                    "ok": False,
+                    "error": "Native v2 FullBackup requires admin_token (Einstellungen).",
+                }), 400
+        else:
+            fmt = "lp"
+            if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+                return jsonify({
+                    "ok": False,
+                    "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
+                }), 400
     elif influx_v == 1:
+        fmt = "lp"
         if not cfg.get("database"):
             return jsonify({
                 "ok": False,
@@ -4965,12 +5690,15 @@ def api_fullbackup_job_start():
 
     job_id = uuid.uuid4().hex
     ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    backup_id = f"fullbackup__db_full__v{influx_v}__{ts}"
+    if influx_v == 2 and fmt == "native_v2":
+        backup_id = f"fullbackup__db_full__native_v2__{ts}"
+    else:
+        backup_id = f"fullbackup__db_full__v{influx_v}__{ts}"
 
     bdir = backup_dir(cfg)
     bdir.mkdir(parents=True, exist_ok=True)
     meta_path, lp_path = _fullbackup_files(bdir, backup_id)
-    if meta_path.exists() or lp_path.exists():
+    if _backup_zip_path(bdir, backup_id).exists() or meta_path.exists() or lp_path.exists():
         return jsonify({"ok": False, "error": "backup id collision"}), 409
 
     ip = _req_ip()
@@ -4986,6 +5714,7 @@ def api_fullbackup_job_start():
         "trigger_ua": ua,
         "backup_id": backup_id,
         "influx_version": influx_v,
+        "format": fmt,
         "written_bytes": 0,
         "point_count": 0,
         "cancelled": False,
@@ -5059,6 +5788,12 @@ def api_fullbackup_download():
     if str(meta.get("kind") or "") != "db_full":
         return jsonify({"ok": False, "error": "not a fullbackup (kind!=db_full)"}), 400
 
+    # Prefer packed zip on disk
+    zpath = _backup_zip_path(bdir, backup_id)
+    if zpath.exists() and zpath.is_file():
+        return send_file(zpath, as_attachment=True, download_name=zpath.name, mimetype="application/zip")
+
+    # Legacy: zip meta+lp on the fly
     meta_path, lp_path = _fullbackup_files(bdir, backup_id)
     if not meta_path.exists() or not lp_path.exists():
         return jsonify({"ok": False, "error": "backup not found"}), 404
@@ -5090,9 +5825,10 @@ def api_fullbackup_delete():
     meta = _read_backup_meta(bdir, backup_id) or {}
     if str(meta.get("kind") or "") != "db_full":
         return jsonify({"ok": False, "error": "not a fullbackup (kind!=db_full)"}), 400
+    zpath = _backup_zip_path(bdir, backup_id)
     meta_path, lp_path = _fullbackup_files(bdir, backup_id)
     removed = 0
-    for p in (meta_path, lp_path):
+    for p in (zpath, meta_path, lp_path):
         try:
             if p.exists():
                 p.unlink()
@@ -5121,10 +5857,10 @@ def api_fullrestore_job_start():
     if influx_v == 3:
         return jsonify({"ok": False, "error": "fullrestore currently does not support InfluxDB v3"}), 400
     if influx_v == 2:
-        if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+        if not str(cfg.get("org") or "").strip():
             return jsonify({
                 "ok": False,
-                "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
+                "error": "InfluxDB v2 requires org. Bitte in /config YAML einlesen und speichern.",
             }), 400
     elif influx_v == 1:
         if not cfg.get("database"):
@@ -5147,7 +5883,19 @@ def api_fullrestore_job_start():
         meta_v = 0
     if meta_v and meta_v != influx_v:
         return jsonify({"ok": False, "error": f"backup influx_version mismatch: backup={meta_v} cfg={influx_v}"}), 400
-    if influx_v == 2:
+    fmt = str(meta.get("format") or "lp").strip() or "lp"
+    if influx_v == 2 and fmt == "native_v2":
+        # Native restore uses the Influx CLI and requires an admin token.
+        if not str(cfg.get("admin_token") or "").strip():
+            return jsonify({"ok": False, "error": "Native restore requires admin_token (Einstellungen)"}), 400
+        if meta.get("org") and str(meta.get("org")) != str(cfg.get("org") or ""):
+            return jsonify({"ok": False, "error": "backup org mismatch (configure same org for restore)"}), 400
+    elif influx_v == 2:
+        if not (cfg.get("token") and cfg.get("bucket")):
+            return jsonify({
+                "ok": False,
+                "error": "InfluxDB v2 (Line Protocol) requires token and bucket. Bitte in /config YAML einlesen und speichern.",
+            }), 400
         if meta.get("bucket") and str(meta.get("bucket")) != str(cfg.get("bucket") or ""):
             return jsonify({"ok": False, "error": "backup bucket mismatch (configure same bucket for restore)"}), 400
         if meta.get("org") and str(meta.get("org")) != str(cfg.get("org") or ""):
@@ -5155,6 +5903,14 @@ def api_fullrestore_job_start():
     if influx_v == 1:
         if meta.get("database") and str(meta.get("database")) != str(cfg.get("database") or ""):
             return jsonify({"ok": False, "error": "backup database mismatch (configure same database for restore)"}), 400
+
+    target_bucket = str(body.get("target_bucket") or "").strip() or None
+    overwrite = body.get("overwrite", False)
+    overwrite_on = overwrite is True or str(overwrite).strip().lower() in ("1", "true", "yes", "on")
+    if influx_v == 2 and fmt == "native_v2" and overwrite_on:
+        phrase = str(body.get("confirm_phrase") or "").strip()
+        if phrase != DELETE_CONFIRM_PHRASE:
+            return jsonify({"ok": False, "error": "Confirmation phrase required (DELETE_CONFIRM_PHRASE)"}), 400
 
     job_id = uuid.uuid4().hex
     ip = _req_ip()
@@ -5170,6 +5926,9 @@ def api_fullrestore_job_start():
         "trigger_ua": ua,
         "backup_id": backup_id,
         "influx_version": influx_v,
+        "format": fmt,
+        "target_bucket": target_bucket,
+        "overwrite": bool(overwrite_on),
         "read_lines": 0,
         "applied": 0,
         "cancelled": False,
@@ -5256,7 +6015,7 @@ def api_backup_create():
     backup_kind = "full"
     backup_id = _backup_safe(display) + "__" + backup_kind + "__" + ts
     meta_path, lp_path = _backup_files(bdir, backup_id)
-    if meta_path.exists() or lp_path.exists():
+    if _backup_zip_path(bdir, backup_id).exists() or meta_path.exists() or lp_path.exists():
         return jsonify({"ok": False, "error": "backup id collision"}), 409
 
     # Export all points for this single signal
@@ -5334,6 +6093,11 @@ from(bucket: "{cfg["bucket"]}")
             "stop": _dt_to_rfc3339_utc(newest) if newest else None,
         }
         meta_path.write_text(json.dumps(meta, indent=2, sort_keys=True), encoding="utf-8")
+        try:
+            _backup_pack_zip(bdir, backup_id, meta_path, lp_path)
+        except Exception:
+            # If packing fails, keep legacy files.
+            pass
         return jsonify({"ok": True, "message": f"Backup created: {backup_id}", "backup": meta, "query": q.strip()})
     except Exception as e:
         # Cleanup partial files
@@ -5345,6 +6109,12 @@ from(bucket: "{cfg["bucket"]}")
         try:
             if lp_path.exists():
                 lp_path.unlink()
+        except Exception:
+            pass
+        try:
+            zpath = _backup_zip_path(bdir, backup_id)
+            if zpath.exists():
+                zpath.unlink()
         except Exception:
             pass
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
@@ -5380,11 +6150,16 @@ def api_backup_download():
     if str(meta.get("kind") or "") == "db_full":
         return jsonify({"ok": False, "error": "this is a fullbackup; use /api/fullbackup_download"}), 400
 
+    # Prefer packed zip on disk
+    zpath = _backup_zip_path(bdir, backup_id)
+    if zpath.exists() and zpath.is_file():
+        return send_file(zpath, as_attachment=True, download_name=zpath.name, mimetype="application/zip")
+
     meta_path, lp_path = _backup_files(bdir, backup_id)
     if not meta_path.exists() or not lp_path.exists():
         return jsonify({"ok": False, "error": "backup not found"}), 404
 
-    # Zip both files for a single download.
+    # Legacy: zip both files for a single download.
     try:
         buf = io.BytesIO()
         with zipfile.ZipFile(buf, mode="w", compression=zipfile.ZIP_DEFLATED) as z:
@@ -5443,7 +6218,7 @@ def api_backup_job_start():
     bdir = backup_dir(cfg)
     bdir.mkdir(parents=True, exist_ok=True)
     meta_path, lp_path = _backup_files(bdir, backup_id)
-    if meta_path.exists() or lp_path.exists():
+    if _backup_zip_path(bdir, backup_id).exists() or meta_path.exists() or lp_path.exists():
         return jsonify({"ok": False, "error": "backup id collision"}), 409
 
     ip = _req_ip()
@@ -5571,7 +6346,7 @@ def api_backup_create_range():
     backup_kind = "range"
     backup_id = _backup_safe(display) + "__" + backup_kind + "__" + ts
     meta_path, lp_path = _backup_files(bdir, backup_id)
-    if meta_path.exists() or lp_path.exists():
+    if _backup_zip_path(bdir, backup_id).exists() or meta_path.exists() or lp_path.exists():
         return jsonify({"ok": False, "error": "backup id collision"}), 409
 
     extra = flux_tag_filter(entity_id, friendly_name)
@@ -5644,6 +6419,10 @@ from(bucket: "{cfg["bucket"]}")
             "newest_time": _dt_to_rfc3339_utc(newest) if newest else None,
         }
         meta_path.write_text(json.dumps(meta, indent=2, sort_keys=True), encoding="utf-8")
+        try:
+            _backup_pack_zip(bdir, backup_id, meta_path, lp_path)
+        except Exception:
+            pass
         return jsonify({"ok": True, "message": f"Backup created: {backup_id}", "backup": meta, "query": q.strip()})
     except Exception as e:
         try:
@@ -5654,6 +6433,12 @@ from(bucket: "{cfg["bucket"]}")
         try:
             if lp_path.exists():
                 lp_path.unlink()
+        except Exception:
+            pass
+        try:
+            zpath = _backup_zip_path(bdir, backup_id)
+            if zpath.exists():
+                zpath.unlink()
         except Exception:
             pass
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
@@ -5675,9 +6460,10 @@ def api_backup_delete():
     if str(meta.get("kind") or "") == "db_full":
         return jsonify({"ok": False, "error": "this is a fullbackup; use /api/fullbackup_delete"}), 400
 
+    zpath = _backup_zip_path(bdir, backup_id)
     meta_path, lp_path = _backup_files(bdir, backup_id)
     removed = 0
-    for p in (meta_path, lp_path):
+    for p in (zpath, meta_path, lp_path):
         try:
             if p.exists():
                 p.unlink()
@@ -5716,8 +6502,12 @@ def api_backup_restore():
     meta = _read_backup_meta(bdir, backup_id) or {}
     if str(meta.get("kind") or "") == "db_full":
         return jsonify({"ok": False, "error": "this is a fullbackup; use /api/fullrestore_job/start"}), 400
-    meta_path, lp_path = _backup_files(bdir, backup_id)
-    if not lp_path.exists():
+
+    try:
+        # Ensure the payload exists (zip or legacy)
+        with _open_backup_lp_text(bdir, backup_id, is_fullbackup=False):
+            pass
+    except Exception:
         return jsonify({"ok": False, "error": "backup not found"}), 404
 
     try:
@@ -5725,7 +6515,7 @@ def api_backup_restore():
             wapi = c.write_api(write_options=SYNCHRONOUS)
             batch: list[str] = []
             applied = 0
-            with lp_path.open("r", encoding="utf-8") as f:
+            with _open_backup_lp_text(bdir, backup_id, is_fullbackup=False) as f:
                 for line in f:
                     line = line.strip("\n")
                     if not line.strip():
@@ -5794,8 +6584,11 @@ def api_backup_copy():
         }), 400
 
     bdir = backup_dir(cfg)
-    meta_path, lp_path = _backup_files(bdir, backup_id)
-    if not lp_path.exists():
+    try:
+        # Ensure the payload exists (zip or legacy)
+        with _open_backup_lp_text(bdir, backup_id, is_fullbackup=False):
+            pass
+    except Exception:
         return jsonify({"ok": False, "error": "backup not found"}), 404
 
     tgt_meas = _lp_escape_key(target_measurement)
@@ -5939,7 +6732,7 @@ def api_backup_copy():
             batch: list[str] = []
             applied = 0
             skipped = 0
-            with lp_path.open("r", encoding="utf-8") as f:
+            with _open_backup_lp_text(bdir, backup_id, is_fullbackup=False) as f:
                 for raw in f:
                     out = _rewrite_line(raw)
                     if not out:
@@ -6460,6 +7253,276 @@ def api_restore_job_cancel():
     return jsonify({"ok": True})
 
 
+def _combine_job_public(job: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": job.get("id"),
+        "state": job.get("state"),
+        "message": job.get("message"),
+        "started_at": job.get("started_at"),
+        "elapsed": _job_elapsed_hms(job),
+        "read": int(job.get("read") or 0),
+        "written": int(job.get("written") or 0),
+        "skipped": int(job.get("skipped") or 0),
+        "current_time_ms": job.get("current_time_ms"),
+        "last_written_time_ms": job.get("last_written_time_ms"),
+        "cancelled": bool(job.get("cancelled")),
+        "error": job.get("error"),
+        "ready": job.get("state") in ("done", "error", "cancelled"),
+    }
+
+
+def _combine_job_thread(
+    job_id: str,
+    cfg: dict[str, Any],
+    source: dict[str, Any],
+    target: dict[str, Any],
+    start_dt: datetime,
+    stop_dt: datetime,
+) -> None:
+    with COMBINE_LOCK:
+        job = COMBINE_JOBS.get(job_id)
+    if not job:
+        return
+
+    def set_state(state: str, msg: str) -> None:
+        with COMBINE_LOCK:
+            if job_id in COMBINE_JOBS:
+                COMBINE_JOBS[job_id]["state"] = state
+                COMBINE_JOBS[job_id]["message"] = msg
+                if state in ("done", "error", "cancelled"):
+                    _job_set_finished(COMBINE_JOBS[job_id])
+
+    def set_error(msg: str) -> None:
+        with COMBINE_LOCK:
+            if job_id in COMBINE_JOBS:
+                COMBINE_JOBS[job_id]["error"] = msg
+
+    def set_progress(**kw: Any) -> None:
+        with COMBINE_LOCK:
+            j = COMBINE_JOBS.get(job_id)
+            if not j:
+                return
+            for k, v in kw.items():
+                j[k] = v
+
+    def is_cancelled() -> bool:
+        with COMBINE_LOCK:
+            j = COMBINE_JOBS.get(job_id) or {}
+            return bool(j.get("cancelled"))
+
+    set_state("running", "Starte...")
+
+    src_m = str(source.get("measurement") or "").strip()
+    src_f = str(source.get("field") or "").strip()
+    src_eid = str(source.get("entity_id") or "").strip() or None
+    src_fn = str(source.get("friendly_name") or "").strip() or None
+
+    tgt_m = str(target.get("measurement") or "").strip()
+    tgt_f = str(target.get("field") or "").strip()
+    tgt_eid = str(target.get("entity_id") or "").strip() or None
+    tgt_fn = str(target.get("friendly_name") or "").strip() or None
+
+    if not (src_m and src_f and tgt_m and tgt_f):
+        set_error("missing measurement/field")
+        set_state("error", "Fehler")
+        return
+
+    try:
+        max_points = int(cfg.get("ui_query_manual_max_points", 200000) or 200000)
+    except Exception:
+        max_points = 200000
+    if max_points < 1000:
+        max_points = 1000
+    if max_points > 2000000:
+        max_points = 2000000
+
+    start = _dt_to_rfc3339_utc(start_dt)
+    stop = _dt_to_rfc3339_utc(stop_dt)
+    extra = flux_tag_filter(src_eid, src_fn)
+
+    q = f'''
+from(bucket: "{cfg["bucket"]}")
+  |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
+  |> filter(fn: (r) => r._measurement == {_flux_str(src_m)} and r._field == {_flux_str(src_f)}{extra})
+  |> keep(columns: ["_time","_value"])
+  |> sort(columns: ["_time"], desc: false)
+  |> limit(n: {max_points})
+'''
+
+    log_query("combine.copy (flux)", q)
+
+    read = 0
+    written = 0
+    skipped = 0
+    last_written_time_ms = None
+    set_state("running", "Lese Punkte...")
+
+    try:
+        with v2_client(cfg) as c:
+            qapi = c.query_api()
+            wapi = c.write_api(write_options=SYNCHRONOUS)
+
+            batch: list[Point] = []
+            for rec in qapi.query_stream(q, org=cfg["org"]):
+                if is_cancelled():
+                    set_state("cancelled", "Abgebrochen")
+                    return
+                read += 1
+                try:
+                    ts = rec.get_time()
+                    val = rec.get_value()
+                    if not isinstance(ts, datetime):
+                        skipped += 1
+                        continue
+                    if isinstance(val, bool) or not isinstance(val, (int, float)):
+                        skipped += 1
+                        continue
+
+                    p = Point(tgt_m)
+                    if tgt_eid:
+                        p = p.tag("entity_id", tgt_eid)
+                    if tgt_fn:
+                        p = p.tag("friendly_name", tgt_fn)
+                    p = p.field(tgt_f, val).time(ts, WritePrecision.NS)
+                    batch.append(p)
+                    if len(batch) >= 2000:
+                        wapi.write(bucket=cfg["bucket"], org=cfg["org"], record=batch)
+                        written += len(batch)
+                        last_written_time_ms = int(ts.timestamp() * 1000)
+                        batch = []
+                except Exception:
+                    skipped += 1
+                    continue
+
+                if read % 1000 == 0:
+                    cur_ms = None
+                    try:
+                        if isinstance(ts, datetime):
+                            cur_ms = int(ts.timestamp() * 1000)
+                    except Exception:
+                        cur_ms = None
+                    set_progress(read=read, written=written, skipped=skipped, current_time_ms=cur_ms, last_written_time_ms=last_written_time_ms)
+                    set_state("running", f"Kopiere... {read}")
+
+            if batch:
+                try:
+                    wapi.write(bucket=cfg["bucket"], org=cfg["org"], record=batch)
+                    written += len(batch)
+                except Exception:
+                    pass
+
+        set_progress(read=read, written=written, skipped=skipped, last_written_time_ms=last_written_time_ms)
+
+        try:
+            _history_append({
+                "kind": "combine",
+                "action": "copy",
+                "source": {"measurement": src_m, "field": src_f, "entity_id": src_eid, "friendly_name": src_fn},
+                "target": {"measurement": tgt_m, "field": tgt_f, "entity_id": tgt_eid, "friendly_name": tgt_fn},
+                "start": start,
+                "stop": stop,
+                "read": read,
+                "written": written,
+                "skipped": skipped,
+                "ip": _req_ip(),
+                "ua": _req_ua(),
+            })
+        except Exception:
+            pass
+
+        try:
+            _dash_cache_mark_dirty_series(tgt_m, tgt_f, tgt_eid, tgt_fn, "combine")
+            _stats_cache_mark_dirty_series(tgt_m, tgt_f, tgt_eid, tgt_fn, "combine")
+        except Exception:
+            pass
+
+        set_state("done", f"Fertig. geschrieben: {written}")
+    except Exception as e:
+        set_error(_short_influx_error(e))
+        set_state("error", "Fehler")
+
+
+@app.post("/api/combine_job/start")
+def api_combine_job_start():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    body = request.get_json(force=True) or {}
+
+    confirm = body.get("confirm", False)
+    ok_confirm = confirm is True or str(confirm).strip().lower() in ("1", "true", "yes", "on")
+    if not ok_confirm:
+        return jsonify({"ok": False, "error": "Confirmation required"}), 400
+
+    if int(cfg.get("influx_version", 2)) != 2:
+        return jsonify({"ok": False, "error": "combine currently supports InfluxDB v2 only"}), 400
+    if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+        return jsonify({
+            "ok": False,
+            "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
+        }), 400
+
+    src = body.get("source")
+    tgt = body.get("target")
+    if not isinstance(src, dict) or not isinstance(tgt, dict):
+        return jsonify({"ok": False, "error": "source and target required"}), 400
+
+    try:
+        start_dt, stop_dt = _get_start_stop_from_payload(body)
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"invalid start/stop: {e}"}), 400
+    if not start_dt or not stop_dt:
+        return jsonify({"ok": False, "error": "start and stop required"}), 400
+
+    job_id = uuid.uuid4().hex
+    ip = _req_ip()
+    ua = _req_ua()
+    job = {
+        "id": job_id,
+        "state": "queued",
+        "message": "Start...",
+        "started_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+        "started_mono": time.monotonic(),
+        "trigger_page": "combine",
+        "trigger_ip": ip,
+        "trigger_ua": ua,
+        "read": 0,
+        "written": 0,
+        "skipped": 0,
+        "current_time_ms": None,
+        "last_written_time_ms": None,
+        "cancelled": False,
+        "error": None,
+    }
+
+    try:
+        LOG.info("job_start type=combine job_id=%s ip=%s ua=%s", job_id, ip, ua)
+    except Exception:
+        pass
+
+    with COMBINE_LOCK:
+        COMBINE_JOBS[job_id] = job
+        cutoff = time.monotonic() - 6 * 3600
+        old = [k for k, v in COMBINE_JOBS.items() if float(v.get("started_mono") or 0) < cutoff]
+        for k in old:
+            if k != job_id:
+                COMBINE_JOBS.pop(k, None)
+
+    t = threading.Thread(target=_combine_job_thread, args=(job_id, cfg, src, tgt, start_dt, stop_dt), daemon=True)
+    t.start()
+    return jsonify({"ok": True, "job_id": job_id})
+
+
+@app.get("/api/combine_job/status")
+def api_combine_job_status():
+    job_id = (request.args.get("job_id") or "").strip()
+    if not job_id:
+        return jsonify({"ok": False, "error": "job_id required"}), 400
+    with COMBINE_LOCK:
+        job = COMBINE_JOBS.get(job_id)
+    if not job:
+        return jsonify({"ok": False, "error": "job not found"}), 404
+    return jsonify({"ok": True, "status": _combine_job_public(job)})
+
+
 @app.get("/api/jobs")
 def api_jobs():
     """List background jobs across subsystems."""
@@ -6501,11 +7564,41 @@ def api_jobs():
         pub["trigger_ua"] = j.get("trigger_ua")
         out.append(pub)
 
+    with COMBINE_LOCK:
+        x_items = list(COMBINE_JOBS.items())
+    for _, j in x_items:
+        pub = _combine_job_public(j)
+        pub["type"] = "combine"
+        pub["trigger_page"] = j.get("trigger_page")
+        pub["trigger_ip"] = j.get("trigger_ip")
+        pub["trigger_ua"] = j.get("trigger_ua")
+        out.append(pub)
+
     with BACKUP_LOCK:
         b_items = list(BACKUP_JOBS.items())
     for _, j in b_items:
         pub = _backup_job_public(j)
         pub["type"] = "backup"
+        pub["trigger_page"] = j.get("trigger_page")
+        pub["trigger_ip"] = j.get("trigger_ip")
+        pub["trigger_ua"] = j.get("trigger_ua")
+        out.append(pub)
+
+    with FULLBACKUP_LOCK:
+        fb_items = list(FULLBACKUP_JOBS.items())
+    for _, j in fb_items:
+        pub = _fullbackup_job_public(j)
+        pub["type"] = "fullbackup"
+        pub["trigger_page"] = j.get("trigger_page")
+        pub["trigger_ip"] = j.get("trigger_ip")
+        pub["trigger_ua"] = j.get("trigger_ua")
+        out.append(pub)
+
+    with FULLRESTORE_LOCK:
+        fr_items = list(FULLRESTORE_JOBS.items())
+    for _, j in fr_items:
+        pub = _fullrestore_job_public(j)
+        pub["type"] = "fullrestore"
         pub["trigger_page"] = j.get("trigger_page")
         pub["trigger_ip"] = j.get("trigger_ip")
         pub["trigger_ua"] = j.get("trigger_ua")
@@ -6573,11 +7666,38 @@ def api_jobs_cancel():
                 pass
             return jsonify({"ok": True})
 
+    with COMBINE_LOCK:
+        if job_id in COMBINE_JOBS:
+            COMBINE_JOBS[job_id]["cancelled"] = True
+            try:
+                LOG.info("job_cancel type=combine job_id=%s ip=%s ua=%s", job_id, _req_ip(), _req_ua())
+            except Exception:
+                pass
+            return jsonify({"ok": True})
+
     with BACKUP_LOCK:
         if job_id in BACKUP_JOBS:
             BACKUP_JOBS[job_id]["cancelled"] = True
             try:
                 LOG.info("job_cancel type=backup job_id=%s ip=%s ua=%s", job_id, _req_ip(), _req_ua())
+            except Exception:
+                pass
+            return jsonify({"ok": True})
+
+    with FULLBACKUP_LOCK:
+        if job_id in FULLBACKUP_JOBS:
+            FULLBACKUP_JOBS[job_id]["cancelled"] = True
+            try:
+                LOG.info("job_cancel type=fullbackup job_id=%s ip=%s ua=%s", job_id, _req_ip(), _req_ua())
+            except Exception:
+                pass
+            return jsonify({"ok": True})
+
+    with FULLRESTORE_LOCK:
+        if job_id in FULLRESTORE_JOBS:
+            FULLRESTORE_JOBS[job_id]["cancelled"] = True
+            try:
+                LOG.info("job_cancel type=fullrestore job_id=%s ip=%s ua=%s", job_id, _req_ip(), _req_ua())
             except Exception:
                 pass
             return jsonify({"ok": True})
@@ -7481,7 +8601,7 @@ def api_set_config():
     for k, v in body.items():
         if k not in allowed:
             continue
-        if k in ("token","password") and v == "********":
+        if k in ("token", "admin_token", "password") and v == "********":
             continue
         cfg[k] = v
 
@@ -8651,15 +9771,79 @@ def api_raw_points():
 
     include_total = bool(body.get("include_total", True))
 
+    mode = str(body.get("mode") or "").strip().lower() or "window"
+    center_raw = str(body.get("anchor_time") or body.get("center_time") or "").strip() or None
+    center_dt: datetime | None = None
+    if center_raw:
+        try:
+            center_dt = _parse_iso_datetime(center_raw)
+        except Exception:
+            center_dt = None
+
+    # Centered mode uses two-sided paging around a selected timestamp.
+    if center_dt and start_dt and stop_dt:
+        if center_dt < start_dt:
+            center_dt = start_dt
+        if center_dt > stop_dt:
+            center_dt = stop_dt
+        mode = "center"
+    else:
+        center_dt = None
+        mode = "window"
+
+    before_limit = None
+    after_limit = None
+    before_offset = 0
+    after_offset = 0
+    if mode == "center":
+        try:
+            before_limit = int(body.get("before_limit") or 0)
+        except Exception:
+            before_limit = 0
+        try:
+            after_limit = int(body.get("after_limit") or 0)
+        except Exception:
+            after_limit = 0
+        try:
+            before_offset = int(body.get("before_offset") or 0)
+        except Exception:
+            before_offset = 0
+        try:
+            after_offset = int(body.get("after_offset") or 0)
+        except Exception:
+            after_offset = 0
+
+        if before_offset < 0:
+            before_offset = 0
+        if after_offset < 0:
+            after_offset = 0
+
+        total_want = limit
+        if before_limit <= 0 and after_limit <= 0:
+            before_limit = max(1, total_want // 2)
+            after_limit = max(1, total_want - before_limit)
+        if before_limit <= 0:
+            before_limit = 1
+        if after_limit <= 0:
+            after_limit = 1
+        if (before_limit + after_limit) > raw_max:
+            # Keep the split roughly balanced.
+            half = max(1, raw_max // 2)
+            before_limit = min(before_limit, half)
+            after_limit = max(1, raw_max - before_limit)
+
     try:
         LOG.debug(
-            "api.raw_points measurement=%s field=%s entity_id=%s friendly_name=%s limit=%s offset=%s",
+            "api.raw_points mode=%s measurement=%s field=%s entity_id=%s friendly_name=%s limit=%s offset=%s before_off=%s after_off=%s",
+            mode,
             measurement,
             field,
             bool(entity_id),
             bool(friendly_name),
             limit,
             offset,
+            before_offset,
+            after_offset,
         )
     except Exception:
         pass
@@ -8676,7 +9860,33 @@ def api_raw_points():
             stop = _dt_to_rfc3339_utc(stop_dt)
             extra = flux_tag_filter(entity_id, friendly_name)
 
-            q = f'''
+            q = ""
+            q2 = ""
+            q_count = ""
+            if mode == "center" and center_dt is not None and before_limit is not None and after_limit is not None:
+                center = _dt_to_rfc3339_utc(center_dt)
+                q_older = f'''
+from(bucket: "{cfg["bucket"]}")
+  |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
+  |> filter(fn: (r) => r._time <= time(v: "{center}"))
+  |> keep(columns: ["_time","_value"])
+  |> sort(columns: ["_time"], desc: true)
+  |> limit(n: {before_limit}, offset: {before_offset})
+'''
+                q_newer = f'''
+from(bucket: "{cfg["bucket"]}")
+  |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
+  |> filter(fn: (r) => r._time > time(v: "{center}"))
+  |> keep(columns: ["_time","_value"])
+  |> sort(columns: ["_time"], desc: false)
+  |> limit(n: {after_limit}, offset: {after_offset})
+'''
+                q = (q_older.strip() + "\n\n-- newer --\n\n" + q_newer.strip()).strip()
+                q2 = q_newer.strip()
+            else:
+                q = f'''
 from(bucket: "{cfg["bucket"]}")
   |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
   |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
@@ -8703,13 +9913,59 @@ from(bucket: "{cfg["bucket"]}")
             total_count: int | None = None
             with v2_client(cfg) as c:
                 qapi = c.query_api()
-                tables = qapi.query(q, org=cfg["org"])
-                for t in tables or []:
-                    for r in getattr(t, "records", []) or []:
-                        ts = r.get_time()
-                        val = r.get_value()
-                        if isinstance(ts, datetime):
-                            rows.append({"time": _dt_to_rfc3339_utc_ms(ts), "value": val})
+                before_returned = 0
+                after_returned = 0
+                if mode == "center" and center_dt is not None and before_limit is not None and after_limit is not None:
+                    center = _dt_to_rfc3339_utc(center_dt)
+                    extra2 = extra
+                    q_older = f'''
+from(bucket: "{cfg["bucket"]}")
+  |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra2})
+  |> filter(fn: (r) => r._time <= time(v: "{center}"))
+  |> keep(columns: ["_time","_value"])
+  |> sort(columns: ["_time"], desc: true)
+  |> limit(n: {before_limit}, offset: {before_offset})
+'''
+                    q_newer = f'''
+from(bucket: "{cfg["bucket"]}")
+  |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra2})
+  |> filter(fn: (r) => r._time > time(v: "{center}"))
+  |> keep(columns: ["_time","_value"])
+  |> sort(columns: ["_time"], desc: false)
+  |> limit(n: {after_limit}, offset: {after_offset})
+'''
+                    older: list[dict[str, Any]] = []
+                    newer: list[dict[str, Any]] = []
+                    log_query("api.raw_points (flux older)", q_older)
+                    log_query("api.raw_points (flux newer)", q_newer)
+                    tables = qapi.query(q_older, org=cfg["org"])
+                    for t in tables or []:
+                        for r in getattr(t, "records", []) or []:
+                            ts = r.get_time()
+                            val = r.get_value()
+                            if isinstance(ts, datetime):
+                                older.append({"time": _dt_to_rfc3339_utc_ms(ts), "value": val})
+                    tables = qapi.query(q_newer, org=cfg["org"])
+                    for t in tables or []:
+                        for r in getattr(t, "records", []) or []:
+                            ts = r.get_time()
+                            val = r.get_value()
+                            if isinstance(ts, datetime):
+                                newer.append({"time": _dt_to_rfc3339_utc_ms(ts), "value": val})
+                    older.reverse()  # ascending
+                    before_returned = len(older)
+                    after_returned = len(newer)
+                    rows = older + newer
+                else:
+                    tables = qapi.query(q, org=cfg["org"])
+                    for t in tables or []:
+                        for r in getattr(t, "records", []) or []:
+                            ts = r.get_time()
+                            val = r.get_value()
+                            if isinstance(ts, datetime):
+                                rows.append({"time": _dt_to_rfc3339_utc_ms(ts), "value": val})
 
                 if include_total:
                     try:
@@ -8725,21 +9981,31 @@ from(bucket: "{cfg["bucket"]}")
                     except Exception:
                         total_count = None
 
-            return jsonify({
-                "ok": True,
-                "rows": rows,
-                "meta": {
-                    "start": start,
-                    "stop": stop,
-                    "limit": limit,
-                    "offset": offset,
-                    "returned": len(rows),
-                    "total_count": total_count,
-                    "query_language": "flux",
-                    "query": q.strip(),
-                    "query_count": q_count.strip() if include_total else None,
-                },
-            })
+            meta: dict[str, Any] = {
+                "mode": mode,
+                "start": start,
+                "stop": stop,
+                "limit": limit,
+                "offset": offset,
+                "returned": len(rows),
+                "total_count": total_count,
+                "query_language": "flux",
+                "query": q.strip(),
+                "query_count": q_count.strip() if include_total else None,
+            }
+            if mode == "center" and center_dt is not None and before_limit is not None and after_limit is not None:
+                meta.update({
+                    "anchor_time": _dt_to_rfc3339_utc(center_dt),
+                    "before_limit": before_limit,
+                    "after_limit": after_limit,
+                    "before_offset": before_offset,
+                    "after_offset": after_offset,
+                    "before_returned": before_returned,
+                    "after_returned": after_returned,
+                    "has_more_before": (before_returned == before_limit),
+                    "has_more_after": (after_returned == after_limit),
+                })
+            return jsonify({"ok": True, "rows": rows, "meta": meta})
 
         # v1
         if not cfg.get("database"):
@@ -8750,13 +10016,38 @@ from(bucket: "{cfg["bucket"]}")
         stop = _dt_to_rfc3339_utc(stop_dt)
         tag_where = influxql_tag_filter(entity_id, friendly_name)
         time_where = f"time >= '{start}' AND time <= '{stop}'"
-        q = f'SELECT "{field}" FROM "{measurement}" WHERE {time_where}{tag_where} ORDER BY time ASC LIMIT {limit} OFFSET {offset}'
-        log_query("api.raw_points (influxql)", q)
-        res = c.query(q)
         rows: list[dict[str, Any]] = []
-        for _, points in res.items():
-            for p in points:
-                rows.append({"time": p.get("time"), "value": p.get(field)})
+        before_returned = 0
+        after_returned = 0
+        q = ""
+        if mode == "center" and center_dt is not None and before_limit is not None and after_limit is not None:
+            center = _dt_to_rfc3339_utc(center_dt)
+            q_older = f'SELECT "{field}" FROM "{measurement}" WHERE {time_where}{tag_where} AND time <= \'{center}\' ORDER BY time DESC LIMIT {before_limit} OFFSET {before_offset}'
+            q_newer = f'SELECT "{field}" FROM "{measurement}" WHERE {time_where}{tag_where} AND time > \'{center}\' ORDER BY time ASC LIMIT {after_limit} OFFSET {after_offset}'
+            q = (q_older + "\n\n-- newer --\n\n" + q_newer).strip()
+            log_query("api.raw_points (influxql older)", q_older)
+            log_query("api.raw_points (influxql newer)", q_newer)
+            res_o = c.query(q_older)
+            older: list[dict[str, Any]] = []
+            for _, points in res_o.items():
+                for p in points:
+                    older.append({"time": p.get("time"), "value": p.get(field)})
+            res_n = c.query(q_newer)
+            newer: list[dict[str, Any]] = []
+            for _, points in res_n.items():
+                for p in points:
+                    newer.append({"time": p.get("time"), "value": p.get(field)})
+            older.reverse()
+            before_returned = len(older)
+            after_returned = len(newer)
+            rows = older + newer
+        else:
+            q = f'SELECT "{field}" FROM "{measurement}" WHERE {time_where}{tag_where} ORDER BY time ASC LIMIT {limit} OFFSET {offset}'
+            log_query("api.raw_points (influxql)", q)
+            res = c.query(q)
+            for _, points in res.items():
+                for p in points:
+                    rows.append({"time": p.get("time"), "value": p.get(field)})
 
         total_count: int | None = None
         if include_total:
@@ -8775,21 +10066,31 @@ from(bucket: "{cfg["bucket"]}")
             except Exception:
                 total_count = None
 
-        return jsonify({
-            "ok": True,
-            "rows": rows,
-            "meta": {
-                "start": start,
-                "stop": stop,
-                "limit": limit,
-                "offset": offset,
-                "returned": len(rows),
-                "total_count": total_count,
-                "query_language": "influxql",
-                "query": q,
-                "query_count": q2 if include_total else None,
-            },
-        })
+        meta = {
+            "mode": mode,
+            "start": start,
+            "stop": stop,
+            "limit": limit,
+            "offset": offset,
+            "returned": len(rows),
+            "total_count": total_count,
+            "query_language": "influxql",
+            "query": q,
+            "query_count": q2 if include_total else None,
+        }
+        if mode == "center" and center_dt is not None and before_limit is not None and after_limit is not None:
+            meta.update({
+                "anchor_time": _dt_to_rfc3339_utc(center_dt),
+                "before_limit": before_limit,
+                "after_limit": after_limit,
+                "before_offset": before_offset,
+                "after_offset": after_offset,
+                "before_returned": before_returned,
+                "after_returned": after_returned,
+                "has_more_before": (before_returned == before_limit),
+                "has_more_after": (after_returned == after_limit),
+            })
+        return jsonify({"ok": True, "rows": rows, "meta": meta})
 
     except Exception as e:
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
@@ -9436,10 +10737,13 @@ def _global_stats_job_thread(
 
     want_cols = [str(c).strip() for c in (columns or []) if str(c).strip()]
     if not want_cols:
-        want_cols = ["last_value", "newest_time", "count", "min", "max", "mean", "oldest_time"]
+        # Default: keep initial load fast.
+        want_cols = ["last_value", "oldest_time", "newest_time"]
     want_set = set(want_cols)
 
-    want_details = any(c in want_set for c in ("count", "min", "max", "mean", "oldest_time"))
+    # Details (reduce) are expensive; keep "oldest_time" lightweight.
+    want_details = any(c in want_set for c in ("count", "min", "max", "mean"))
+    want_oldest = ("oldest_time" in want_set)
     want_last = ("last_value" in want_set) or ("newest_time" in want_set)
 
     def _is_timeout_error(e: Exception) -> bool:
@@ -9759,6 +11063,32 @@ from(bucket: "{bucket}")
             "last_value": last_v,
         }
 
+    def _series_first(qapi: Any, bucket: str, m: str, f: str, eid: str, fn: str) -> dict[str, Any]:
+        conds = [f"r._measurement == {_flux_str(m)}", f"r._field == {_flux_str(f)}"]
+        if eid:
+            conds.append(f"r.entity_id == {_flux_str(eid)}")
+        if fn:
+            conds.append(f"r.friendly_name == {_flux_str(fn)}")
+        pred = " and ".join(conds)
+        q = f'''
+from(bucket: "{bucket}")
+  |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
+  |> filter(fn: (r) => {pred})
+  |> keep(columns: ["_time"])
+  |> sort(columns: ["_time"], desc: false)
+  |> limit(n: 1)
+'''
+        set_query(f"First {m}/{f}", q)
+        tables = qapi.query(q, org=cfg_local["org"])
+        oldest = None
+        for t in tables or []:
+            for rec in getattr(t, "records", []) or []:
+                oldest = rec.get_time()
+                break
+            if oldest is not None:
+                break
+        return {"oldest_time": _as_rfc3339(oldest)}
+
     try:
         # Skip expensive pre-counting. This keeps the job responsive and starts work immediately.
         with GLOBAL_STATS_LOCK:
@@ -9775,6 +11105,12 @@ from(bucket: "{bucket}")
         rows: list[dict[str, Any]] = []
         scanned_points = 0
 
+        # Expose a live view for incremental UI polling (best-effort).
+        # The list reference is replaced with a final sorted list when the job finishes.
+        with GLOBAL_STATS_LOCK:
+            if job_id in GLOBAL_STATS_JOBS:
+                GLOBAL_STATS_JOBS[job_id]["rows"] = rows
+
         def add_row(m: str, f: str, eid: str, fn: str, base_last: dict[str, Any] | None = None, det: dict[str, Any] | None = None) -> None:
             r: dict[str, Any] = {
                 "measurement": m,
@@ -9783,6 +11119,8 @@ from(bucket: "{bucket}")
                 "friendly_name": fn,
             }
             if base_last:
+                if "oldest_time" in base_last:
+                    r["oldest_time"] = base_last.get("oldest_time")
                 if "newest_time" in base_last:
                     r["newest_time"] = base_last.get("newest_time")
                 if "last_value" in base_last:
@@ -9822,10 +11160,14 @@ from(bucket: "{bucket}")
                         cnum = int(det.get("count") or 0)
                         scanned_points += max(0, cnum)
                         add_row(m, f, eid, fn, None, det)
-                    elif want_last:
-                        set_state("query", f"Letzter Wert {idx+1}: {fn or eid or (m + '/' + f)}")
-                        base_last = _series_last(qapi, cfg_local["bucket"], m, f, eid, fn)
-                        add_row(m, f, eid, fn, base_last, None)
+                    elif want_last or want_oldest:
+                        set_state("query", f"Basis {idx+1}: {fn or eid or (m + '/' + f)}")
+                        base = {}
+                        if want_last:
+                            base.update(_series_last(qapi, cfg_local["bucket"], m, f, eid, fn))
+                        if want_oldest:
+                            base.update(_series_first(qapi, cfg_local["bucket"], m, f, eid, fn))
+                        add_row(m, f, eid, fn, base if base else None, None)
                     else:
                         add_row(m, f, eid, fn, None, None)
 
@@ -9877,6 +11219,34 @@ from(bucket: "{cfg_local["bucket"]}")
                         })
                     return out
 
+                def _series_first_span(a: datetime, b: datetime) -> list[dict[str, Any]]:
+                    s_iso = _dt_to_rfc3339_utc(a)
+                    e_iso = _dt_to_rfc3339_utc(b)
+                    q_first = f'''
+from(bucket: "{cfg_local["bucket"]}")
+  |> range(start: time(v: "{s_iso}"), stop: time(v: "{e_iso}"))
+  |> filter(fn: (r) => exists r._measurement and exists r._field)
+  {mf_clause}
+  {ff_clause}
+  {tag_clause.strip()}
+  |> keep(columns: ["_measurement","_field","entity_id","friendly_name","_time"])
+  |> group(columns: ["_measurement","_field","entity_id","friendly_name"])
+  |> first()
+'''
+                    set_query("Series span (first)", q_first)
+                    out: list[dict[str, Any]] = []
+                    for rec in qapi.query_stream(q_first, org=cfg_local["org"]):
+                        vals = getattr(rec, "values", {}) or {}
+                        oldest = rec.get_time() or vals.get("_time")
+                        out.append({
+                            "measurement": str(vals.get("_measurement") or ""),
+                            "field": str(vals.get("_field") or ""),
+                            "entity_id": str(vals.get("entity_id") or ""),
+                            "friendly_name": str(vals.get("friendly_name") or ""),
+                            "oldest_time": _as_rfc3339(oldest),
+                        })
+                    return out
+
                 def _series_last_span_split(a: datetime, b: datetime) -> list[dict[str, Any]]:
                     if should_cancel():
                         raise RuntimeError("cancelled")
@@ -9888,6 +11258,20 @@ from(bucket: "{cfg_local["bucket"]}")
                             mid = a + timedelta(seconds=(span_s / 2.0))
                             left = _series_last_span_split(a, mid)
                             right = _series_last_span_split(mid, b)
+                            return left + right
+                        raise
+
+                def _series_first_span_split(a: datetime, b: datetime) -> list[dict[str, Any]]:
+                    if should_cancel():
+                        raise RuntimeError("cancelled")
+                    span_s = max(0.0, (b - a).total_seconds())
+                    try:
+                        return _series_first_span(a, b)
+                    except Exception as e:
+                        if _is_timeout_error(e) and span_s > min_chunk_seconds:
+                            mid = a + timedelta(seconds=(span_s / 2.0))
+                            left = _series_first_span_split(a, mid)
+                            right = _series_first_span_split(mid, b)
                             return left + right
                         raise
 
@@ -9919,6 +11303,41 @@ from(bucket: "{cfg_local["bucket"]}")
                         except Exception:
                             series_map[k] = srow
 
+                if want_oldest and not want_details:
+                    set_state("query", "Lade Serienliste (oldest)...")
+                    first_map: dict[tuple[str, str, str, str], str] = {}
+                    first_rows = _series_first_span_split(start_dt, stop_dt)
+                    for frow in first_rows:
+                        if should_cancel():
+                            set_state("cancelled", "Abgebrochen.")
+                            return
+                        m = str(frow.get("measurement") or "")
+                        f = str(frow.get("field") or "")
+                        eid = str(frow.get("entity_id") or "")
+                        fn = str(frow.get("friendly_name") or "")
+                        k = (m, f, eid, fn)
+                        ot = str(frow.get("oldest_time") or "")
+                        if not ot:
+                            continue
+                        cur_ot = first_map.get(k)
+                        if not cur_ot:
+                            first_map[k] = ot
+                            continue
+                        try:
+                            at = _parse_ts(cur_ot or None)
+                            bt = _parse_ts(ot or None)
+                            if bt and (not at or bt < at):
+                                first_map[k] = ot
+                        except Exception:
+                            first_map[k] = ot
+
+                    for k, ot in first_map.items():
+                        if k in series_map:
+                            try:
+                                series_map[k]["oldest_time"] = ot
+                            except Exception:
+                                pass
+
                 series_list_full = list(series_map.values())
                 with GLOBAL_STATS_LOCK:
                     if job_id in GLOBAL_STATS_JOBS:
@@ -9948,7 +11367,11 @@ from(bucket: "{cfg_local["bucket"]}")
                         if job_id in GLOBAL_STATS_JOBS:
                             GLOBAL_STATS_JOBS[job_id]["current"] = display
 
-                    base_last = {"newest_time": srow.get("newest_time"), "last_value": srow.get("last_value")}
+                    base_last = {
+                        "oldest_time": srow.get("oldest_time"),
+                        "newest_time": srow.get("newest_time"),
+                        "last_value": srow.get("last_value"),
+                    }
                     if want_details:
                         pos = len(rows) + 1
                         tot_s = str(total_series) if isinstance(total_series, int) else "?"
@@ -9965,12 +11388,14 @@ from(bucket: "{cfg_local["bucket"]}")
                             GLOBAL_STATS_JOBS[job_id]["scanned_points"] = scanned_points
                             GLOBAL_STATS_JOBS[job_id]["groups_count"] = len(rows)
 
-        rows.sort(key=lambda r: int(r.get("count") or 0), reverse=True)
+        final_rows = sorted(rows, key=lambda r: int(r.get("count") or 0), reverse=True)
         with GLOBAL_STATS_LOCK:
             if job_id in GLOBAL_STATS_JOBS:
-                GLOBAL_STATS_JOBS[job_id]["rows"] = rows
+                GLOBAL_STATS_JOBS[job_id]["rows"] = final_rows
                 GLOBAL_STATS_JOBS[job_id]["scanned_points"] = scanned_points
-                GLOBAL_STATS_JOBS[job_id]["groups_count"] = len(rows)
+                GLOBAL_STATS_JOBS[job_id]["groups_count"] = len(final_rows)
+
+        rows = final_rows
 
         # Persist stats cache (best-effort)
         try:
@@ -10259,11 +11684,20 @@ def api_global_stats_job_result():
     job_id = (request.args.get("job_id") or "").strip()
     if not job_id:
         return jsonify({"ok": False, "error": "job_id required"}), 400
-    job = _job_get(job_id)
-    if not job:
-        return jsonify({"ok": False, "error": "job not found"}), 404
-    if job.get("state") != "done":
-        return jsonify({"ok": True, "ready": False, "rows": []})
+
+    partial = str(request.args.get("partial") or "").strip().lower() in ("1", "true", "yes")
+
+    with GLOBAL_STATS_LOCK:
+        job = GLOBAL_STATS_JOBS.get(job_id)
+        if not job:
+            return jsonify({"ok": False, "error": "job not found"}), 404
+        state = str(job.get("state") or "")
+        rows_all = list(job.get("rows") or [])
+        cols = list(job.get("columns") or []) if isinstance(job.get("columns"), list) else []
+        cache_id = str(job.get("cache_id") or "").strip() or None
+
+    if state != "done" and not partial:
+        return jsonify({"ok": True, "ready": False, "rows": [], "state": state, "columns": cols, "cache_id": cache_id})
 
     try:
         limit = int(request.args.get("limit", "5000"))
@@ -10281,14 +11715,12 @@ def api_global_stats_job_result():
     if offset < 0:
         offset = 0
 
-    rows = job.get("rows") or []
-    cols = job.get("columns") if isinstance(job.get("columns"), list) else []
-    cache_id = str(job.get("cache_id") or "").strip() or None
     return jsonify({
         "ok": True,
-        "ready": True,
-        "rows": rows[offset : offset + limit],
-        "total": len(rows),
+        "ready": (state == "done"),
+        "state": state,
+        "rows": rows_all[offset : offset + limit],
+        "total": len(rows_all),
         "columns": cols,
         "cache_id": cache_id,
     })

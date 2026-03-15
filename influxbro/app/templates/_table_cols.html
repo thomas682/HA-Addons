@@ -1206,7 +1206,7 @@ thead tr.ib_filter_row input, thead tr.ib_filter_row select { width: 100%; heigh
     }
   }
 
-  const ICON_BOOK = '<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M6 4c-1.1 0-2 .9-2 2v13.5c0 .83.67 1.5 1.5 1.5H11v-2H6V6h5V4H6zm7 0v2h5v13h-5v2h5.5c.83 0 1.5-.67 1.5-1.5V6c0-1.1-.9-2-2-2h-5z"/><path fill="currentColor" d="M12 4h1v17h-1z"/></svg>';
+  const ICON_INFO = '<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 10.8v6.2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="7.5" r="1.3" fill="currentColor"/></svg>';
 
   function _ensureButtonForTable(tbl){
     try{
@@ -1225,14 +1225,14 @@ thead tr.ib_filter_row input, thead tr.ib_filter_row select { width: 100%; heigh
 
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.innerHTML = ICON_BOOK;
-      btn.setAttribute('data-table-info', tid);
-      btn.style.cursor = 'pointer';
-      btn.style.height = '30px';
-      btn.style.padding = '6px 10px';
-      btn.style.marginLeft = '8px';
-      btn.style.opacity = '0.85';
-      btn.title = 'Tabelleninfo';
+       btn.innerHTML = ICON_INFO;
+        btn.setAttribute('data-table-info', tid);
+        btn.style.cursor = 'pointer';
+        btn.style.height = '30px';
+        btn.style.padding = '6px 10px';
+        btn.style.marginLeft = '8px';
+        btn.style.opacity = '0.85';
+        btn.title = 'Tabelleninfo';
       btn.addEventListener('click', (ev)=>{
         try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
         show(tbl);

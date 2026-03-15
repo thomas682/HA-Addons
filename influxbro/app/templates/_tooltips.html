@@ -502,13 +502,21 @@
 
     const card = document.createElement('div');
     card.id = 'influxbro_popup_card';
-    card.style.maxWidth = '760px';
+    card.style.maxWidth = '980px';
     card.style.margin = '0 auto';
     card.style.background = '#fff';
     card.style.borderRadius = '16px';
     card.style.boxShadow = '0 12px 60px rgba(0,0,0,0.28)';
     card.style.padding = '14px 14px 12px 14px';
     card.style.boxSizing = 'border-box';
+    card.style.display = 'flex';
+    card.style.flexDirection = 'column';
+    card.style.gap = '10px';
+    // Resizable info window
+    card.style.resize = 'both';
+    card.style.overflow = 'auto';
+    card.style.width = 'min(980px, calc(100vw - 24px))';
+    card.style.height = 'min(72vh, 720px)';
 
     const head = document.createElement('div');
     head.style.display = 'flex';
@@ -531,20 +539,123 @@
     head.appendChild(title);
     head.appendChild(btn);
 
+    const controls = document.createElement('div');
+    controls.id = 'influxbro_popup_controls';
+    controls.style.display = 'flex';
+    controls.style.alignItems = 'center';
+    controls.style.justifyContent = 'space-between';
+    controls.style.gap = '10px';
+    controls.style.flexWrap = 'wrap';
+
+    const left = document.createElement('div');
+    left.style.display = 'flex';
+    left.style.alignItems = 'center';
+    left.style.gap = '10px';
+    left.style.flexWrap = 'wrap';
+
+    const wrapLbl = document.createElement('label');
+    wrapLbl.style.display = 'flex';
+    wrapLbl.style.alignItems = 'center';
+    wrapLbl.style.gap = '8px';
+    wrapLbl.style.fontSize = '12px';
+    wrapLbl.style.opacity = '0.85';
+
+    const wrapCb = document.createElement('input');
+    wrapCb.id = 'influxbro_popup_wrap';
+    wrapCb.type = 'checkbox';
+    wrapCb.style.transform = 'scale(0.95)';
+    wrapCb.style.transformOrigin = 'left center';
+
+    const wrapTxt = document.createElement('span');
+    wrapTxt.textContent = 'Umbruch';
+    wrapLbl.appendChild(wrapCb);
+    wrapLbl.appendChild(wrapTxt);
+
+    const copyBtn = document.createElement('button');
+    copyBtn.id = 'influxbro_popup_copy';
+    copyBtn.type = 'button';
+    copyBtn.textContent = 'Copy';
+    copyBtn.style.cursor = 'pointer';
+    copyBtn.style.padding = '8px 10px';
+    copyBtn.style.height = '34px';
+
+    const copyHint = document.createElement('span');
+    copyHint.id = 'influxbro_popup_copy_hint';
+    copyHint.textContent = '';
+    copyHint.style.fontSize = '12px';
+    copyHint.style.opacity = '0.75';
+    copyHint.style.whiteSpace = 'nowrap';
+
+    left.appendChild(wrapLbl);
+    left.appendChild(copyBtn);
+    left.appendChild(copyHint);
+    controls.appendChild(left);
+
     const pre = document.createElement('pre');
     pre.id = 'influxbro_popup_pre';
-    pre.style.margin = '10px 0 0 0';
+    pre.style.margin = '0';
     pre.style.padding = '10px 12px';
     pre.style.border = '1px solid #eee';
     pre.style.borderRadius = '12px';
     pre.style.background = '#fafafa';
-    pre.style.whiteSpace = 'pre-wrap';
+    pre.style.whiteSpace = 'pre';
     pre.style.overflowWrap = 'anywhere';
+    pre.style.overflow = 'auto';
+    pre.style.flex = '1 1 auto';
+    pre.style.minHeight = '120px';
 
     card.appendChild(head);
+    card.appendChild(controls);
     card.appendChild(pre);
     root.appendChild(card);
     document.body.appendChild(root);
+
+    // Wrap preference
+    const WRAP_KEY = 'influxbro.popup.wrap.v1';
+    function applyWrap(on){
+      try{ pre.style.whiteSpace = on ? 'pre-wrap' : 'pre'; }catch(e){}
+    }
+    try{
+      const saved = localStorage.getItem(WRAP_KEY);
+      const on = String(saved || '').trim() === '1';
+      wrapCb.checked = on;
+      applyWrap(on);
+    }catch(e){
+      wrapCb.checked = false;
+      applyWrap(false);
+    }
+    wrapCb.addEventListener('change', ()=>{
+      const on = !!wrapCb.checked;
+      applyWrap(on);
+      try{ localStorage.setItem(WRAP_KEY, on ? '1' : '0'); }catch(e){}
+    });
+
+    async function doCopy(){
+      try{ copyHint.textContent = ''; }catch(e){}
+      const txt = String(pre.textContent || '');
+      if(!txt) return;
+      try{
+        if(navigator && navigator.clipboard && navigator.clipboard.writeText){
+          await navigator.clipboard.writeText(txt);
+        }else{
+          const ta = document.createElement('textarea');
+          ta.value = txt;
+          ta.style.position = 'fixed';
+          ta.style.left = '-9999px';
+          ta.style.top = '0';
+          document.body.appendChild(ta);
+          ta.focus();
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+        }
+        try{ copyHint.textContent = 'kopiert'; }catch(e){}
+        setTimeout(()=>{ try{ copyHint.textContent = ''; }catch(e){} }, 900);
+      }catch(e){
+        try{ copyHint.textContent = 'copy fehlgeschlagen'; }catch(x){}
+      }
+    }
+    copyBtn.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} doCopy(); });
 
     function close(){
       try{ root.style.display = 'none'; }catch(e){}

@@ -144,6 +144,7 @@
       <div><label>org</label><input id="org" /><div class="muted">Organisation (InfluxDB v2).</div></div>
       <div><label>bucket</label><input id="bucket" /><div class="muted">Bucket-Name (InfluxDB v2).</div></div>
       <div><label>token</label><input id="token" /><div class="muted">In der UI wird Token als <code>********</code> maskiert.</div></div>
+      <div><label>admin_token</label><input id="admin_token" /><div class="muted">Nur fuer <code>Native Backup/Restore (v2)</code>. Wird als <code>********</code> maskiert.</div></div>
     </div>
     <div class="muted">Token: lass <code>********</code> stehen, wenn du es nicht ändern willst.</div>
     </div>
@@ -692,7 +693,7 @@ const ok = (msg) => { document.getElementById('ok').textContent = msg || ""; };
 const ids = [
   "influx_yaml_path",
   "influx_version","scheme","host","port","verify_ssl","timeout_seconds",
-  "org","bucket","token",
+  "org","bucket","token","admin_token",
   "database","username","password",
   "ui_table_visible_rows","ui_table_row_height_px","ui_edit_neighbors_n","ui_edit_details_visible_rows","ui_edit_graph_buffer_minutes","ui_edit_graph_max_points","ui_decimals",
   "ui_backup_table_row_height_px","ui_backup_visible_rows","ui_restore_visible_rows",
@@ -1100,6 +1101,7 @@ function setForm(cfg){
   el.org.value = cfg.org ?? "";
   el.bucket.value = cfg.bucket ?? "";
   el.token.value = cfg.token ?? "";
+  el.admin_token.value = cfg.admin_token ?? "";
 
   el.database.value = cfg.database ?? "";
   el.username.value = cfg.username ?? "";
@@ -1202,6 +1204,7 @@ function getForm(){
     org: (el.org.value || "").trim(),
     bucket: (el.bucket.value || "").trim(),
     token: (el.token.value || "").trim(),
+    admin_token: (el.admin_token.value || "").trim(),
 
     database: (el.database.value || "").trim(),
     username: (el.username.value || "").trim(),
