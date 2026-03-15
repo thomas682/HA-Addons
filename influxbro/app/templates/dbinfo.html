@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>InfluxBro – Info</title>
+  <title>InfluxBro – Diagnose</title>
   <style>
     body { font-family: system-ui, sans-serif; margin: 0; }
     .shell { display:grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
@@ -18,6 +18,34 @@
     .status { border: 1px dashed #ddd; border-radius: 12px; padding: 10px 12px; margin-top: 10px; background: #fafafa; font-size: 12px; white-space: pre-wrap; }
     .err { color: #b00020; margin-top: 8px; white-space: pre-wrap; }
     a { color: inherit; }
+
+    .headrow { display:flex; align-items:flex-start; justify-content:space-between; gap: 12px; flex-wrap:wrap; }
+    .headrow .title { font-weight: 900; font-size: 18px; }
+
+    .meta { display:grid; grid-template-columns: auto auto; gap: 6px 12px; font-size: 12px; }
+    .meta .k { opacity: 0.7; }
+    .meta .v { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+
+    .grid4 { display:grid; grid-template-columns: repeat(4, minmax(160px, 1fr)); gap: 10px; margin-top: 10px; }
+    @media (max-width: 980px){ .grid4 { grid-template-columns: repeat(2, minmax(160px, 1fr)); } }
+    @media (max-width: 520px){ .grid4 { grid-template-columns: 1fr; } }
+
+    .kpi { border: 1px solid #eee; border-radius: 12px; padding: 10px 10px; background: #fafafa; }
+    .kpi .k { font-size: 12px; opacity: 0.75; }
+    .kpi .v { margin-top: 6px; font-weight: 900; font-size: 18px; letter-spacing: 0.2px; }
+    .pill { display:inline-flex; align-items:center; gap: 8px; }
+    .dot { width: 10px; height: 10px; border-radius: 999px; background: #bbb; display:inline-block; }
+    .dot.ok { background: #17a34a; }
+    .dot.warn { background: #f59e0b; }
+    .dot.bad { background: #dc2626; }
+    .dot.neutral { background: #6b7280; }
+
+    .grid2 { display:grid; grid-template-columns: repeat(2, minmax(260px, 1fr)); gap: 10px; margin-top: 10px; }
+    @media (max-width: 980px){ .grid2 { grid-template-columns: 1fr; } }
+
+    .kv { display:grid; grid-template-columns: 1fr auto; gap: 6px 12px; margin-top: 8px; font-size: 12px; }
+    .kv .k { opacity: 0.75; }
+    .kv .v { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
   </style>
 </head>
 <body>
@@ -25,64 +53,123 @@
   <div class="shell">
     {% include "_nav.html" %}
     <main class="content" data-ui="dbinfo.page" title="dbinfo.page">
-      <h2>Info</h2>
+      <h2>InfluxDB Diagnose</h2>
       <div class="muted">
         Repository: {% if repo_url %}<a href="{{ repo_url }}" target="_blank" rel="noreferrer">{{ repo_url }}</a>{% else %}<span>(nicht konfiguriert)</span>{% endif %}
       </div>
 
-      <div class="card" data-ui="dbinfo.influx.card" title="dbinfo.influx.card">
-        <div style="display:flex; align-items:baseline; justify-content:space-between; gap: 10px; flex-wrap:wrap;">
+      <div class="card" data-ui="dbinfo.summary.card" title="dbinfo.summary.card">
+        <div class="headrow">
           <div>
-            <div style="font-weight:800;">Influx Datenbank</div>
-            <div class="muted">Best-effort Diagnose ueber <code>/api/influx_info</code>.</div>
+            <div class="title">InfluxBro – Diagnose</div>
+            <div class="muted">Best-effort Status + KPIs (Add-on + InfluxDB). Je nach Influx-Konfiguration sind nicht alle Werte verfuegbar.</div>
+          </div>
+          <div class="meta" data-ui="dbinfo.summary.meta" title="dbinfo.summary.meta">
+            <div class="k">Version</div><div class="v" id="meta_version">-</div>
+            <div class="k">Build</div><div class="v" id="meta_build">-</div>
+            <div class="k">Architektur</div><div class="v" id="meta_arch">-</div>
+            <div class="k">Startzeit</div><div class="v" id="meta_started">-</div>
+            <div class="k">Uptime</div><div class="v" id="meta_uptime">-</div>
           </div>
         </div>
 
-        <div class="row" style="margin-top: 10px;" data-ui="dbinfo.influx.controls" title="dbinfo.influx.controls">
+        <div class="row" style="margin-top: 10px;" data-ui="dbinfo.summary.controls" title="dbinfo.summary.controls">
           <div>
-            <label class="muted" style="display:block; font-size: 12px;">&nbsp;</label>
-            <button id="refresh" data-ui="dbinfo.influx.refresh" title="dbinfo.influx.refresh">Aktualisieren</button>
+            <button id="refresh" data-ui="dbinfo.refresh" title="dbinfo.refresh">Aktualisieren</button>
           </div>
           <div class="muted" id="hint" style="padding-top: 10px;"></div>
         </div>
 
-        <div class="status" id="info" data-ui="dbinfo.influx.info" title="dbinfo.influx.info"></div>
+        <div class="grid4" data-ui="dbinfo.summary.kpis" title="dbinfo.summary.kpis">
+          <div class="kpi"><div class="k">Addon Status</div><div class="v"><span class="pill"><span class="dot" id="st_addon_dot"></span><span id="st_addon">-</span></span></div></div>
+          <div class="kpi"><div class="k">Influx Verbindung</div><div class="v"><span class="pill"><span class="dot" id="st_influx_dot"></span><span id="st_influx">-</span></span></div></div>
+          <div class="kpi"><div class="k">Letzter Cleanup-Lauf</div><div class="v"><span class="pill"><span class="dot neutral" id="st_cleanup_dot"></span><span id="st_cleanup">noch nie</span></span></div></div>
+          <div class="kpi"><div class="k">Systemlast</div><div class="v"><span class="pill"><span class="dot" id="st_load_dot"></span><span id="st_load">-</span></span></div></div>
+        </div>
+
         <div id="err" class="err"></div>
       </div>
 
-      <div class="card" data-ui="dbinfo.addon.card" title="dbinfo.addon.card">
-        <div style="display:flex; align-items:baseline; justify-content:space-between; gap: 10px; flex-wrap:wrap;">
-          <div>
-            <div style="font-weight:800;">Add-on Status</div>
-            <div class="muted">Memory/CPU/Disk (best-effort) ueber <code>/api/sysinfo</code>.</div>
+      <div class="card" data-ui="dbinfo.health.card" title="dbinfo.health.card">
+        <div style="font-weight:800;">Health Summary</div>
+        <div class="muted" style="margin-top: 4px;">InfluxDB-/Go-Metriken sind nur verfuegbar, wenn <code>/metrics</code> erreichbar ist. Bei InfluxDB v1 kann die erweiterte Diagnose eingeschraenkt sein.</div>
+
+        <div class="grid2" data-ui="dbinfo.health.grid" title="dbinfo.health.grid">
+          <div class="kpi" data-ui="dbinfo.health.ram" title="dbinfo.health.ram">
+            <div class="k">RAM</div>
+            <div class="kv">
+              <div class="k">RAM aktuell</div><div class="v" id="ram_alloc">-</div>
+              <div class="k">Heap in use</div><div class="v" id="ram_inuse">-</div>
+              <div class="k">Heap idle</div><div class="v" id="ram_idle">-</div>
+              <div class="k">Next GC Target</div><div class="v" id="ram_nextgc">-</div>
+            </div>
+          </div>
+
+          <div class="kpi" data-ui="dbinfo.health.goro" title="dbinfo.health.goro">
+            <div class="k">Goroutines</div>
+            <div class="kv">
+              <div class="k">Goroutines</div><div class="v" id="goro">-</div>
+              <div class="k">Ampel</div><div class="v" id="goro_ampel">-</div>
+              <div class="k">Warnschwelle</div><div class="v">5000</div>
+            </div>
+          </div>
+
+          <div class="kpi" data-ui="dbinfo.health.gc" title="dbinfo.health.gc">
+            <div class="k">Garbage Collector</div>
+            <div class="kv">
+              <div class="k">GC Pause avg</div><div class="v" id="gc_avg">-</div>
+              <div class="k">GC Pause p99</div><div class="v" id="gc_p99">-</div>
+              <div class="k">GC Runs</div><div class="v" id="gc_runs">-</div>
+            </div>
+          </div>
+
+          <div class="kpi" data-ui="dbinfo.health.req" title="dbinfo.health.req">
+            <div class="k">Influx Request Health</div>
+            <div class="kv">
+              <div class="k">HTTP Requests total</div><div class="v" id="http_total">-</div>
+              <div class="k">Influx Version</div><div class="v" id="influx_ver">-</div>
+              <div class="k">Health</div><div class="v" id="influx_health">-</div>
+            </div>
           </div>
         </div>
-
-        <div class="row" style="margin-top: 10px;" data-ui="dbinfo.addon.controls" title="dbinfo.addon.controls">
-          <div>
-            <label class="muted" style="display:block; font-size: 12px;">&nbsp;</label>
-            <button id="sys_refresh" class="btn_xs" data-ui="dbinfo.addon.refresh" title="dbinfo.addon.refresh">Aktualisieren</button>
-          </div>
-          <div class="muted" id="sys_hint" style="padding-top: 10px;"></div>
-        </div>
-
-        <div class="status" id="sys_info" data-ui="dbinfo.addon.info" title="dbinfo.addon.info"></div>
-        <div id="sys_err" class="err"></div>
       </div>
 
       <script>
-      const $info = document.getElementById('info');
       const $hint = document.getElementById('hint');
       const $err = document.getElementById('err');
       const $refresh = document.getElementById('refresh');
-      const $sysInfo = document.getElementById('sys_info');
-      const $sysHint = document.getElementById('sys_hint');
-      const $sysErr = document.getElementById('sys_err');
-      const $sysRefresh = document.getElementById('sys_refresh');
+
+      const $metaVersion = document.getElementById('meta_version');
+      const $metaBuild = document.getElementById('meta_build');
+      const $metaArch = document.getElementById('meta_arch');
+      const $metaStarted = document.getElementById('meta_started');
+      const $metaUptime = document.getElementById('meta_uptime');
+
+      const $stAddon = document.getElementById('st_addon');
+      const $stAddonDot = document.getElementById('st_addon_dot');
+      const $stInflux = document.getElementById('st_influx');
+      const $stInfluxDot = document.getElementById('st_influx_dot');
+      const $stCleanup = document.getElementById('st_cleanup');
+      const $stCleanupDot = document.getElementById('st_cleanup_dot');
+      const $stLoad = document.getElementById('st_load');
+      const $stLoadDot = document.getElementById('st_load_dot');
+
+      const $ramAlloc = document.getElementById('ram_alloc');
+      const $ramInuse = document.getElementById('ram_inuse');
+      const $ramIdle = document.getElementById('ram_idle');
+      const $ramNextGc = document.getElementById('ram_nextgc');
+      const $goro = document.getElementById('goro');
+      const $goroAmpel = document.getElementById('goro_ampel');
+      const $gcAvg = document.getElementById('gc_avg');
+      const $gcP99 = document.getElementById('gc_p99');
+      const $gcRuns = document.getElementById('gc_runs');
+      const $httpTotal = document.getElementById('http_total');
+      const $influxVer = document.getElementById('influx_ver');
+      const $influxHealth = document.getElementById('influx_health');
 
       function err(msg){
         const s = String(msg || '');
-        $err.textContent = s;
+        if($err) $err.textContent = s;
         if(s){
           try{
             if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error(s);
@@ -91,87 +178,155 @@
         }
       }
 
+      function pad2(n){ return String(n).padStart(2,'0'); }
       function fmtTs(iso){
         if(!iso) return '';
         const d = new Date(String(iso));
         if(!isFinite(d.getTime())) return String(iso);
-        const pad = (n) => String(n).padStart(2,'0');
         const pad3 = (n) => String(n).padStart(3,'0');
-        return pad(d.getDate()) + '.' + pad(d.getMonth()+1) + '.' + d.getFullYear() + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()) + '.' + pad3(d.getMilliseconds());
+        return pad2(d.getDate()) + '.' + pad2(d.getMonth()+1) + '.' + d.getFullYear() + ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds()) + '.' + pad3(d.getMilliseconds());
       }
 
-      function renderInfluxDbInfo(info){
+      function fmtBytes(n){
+        const b = Number(n);
+        if(!isFinite(b) || b < 0) return '-';
+        if(b < 1024) return b.toFixed(0) + ' B';
+        if(b < 1024*1024) return (b/1024).toFixed(1) + ' kB';
+        if(b < 1024*1024*1024) return (b/1024/1024).toFixed(1) + ' MB';
+        return (b/1024/1024/1024).toFixed(2) + ' GB';
+      }
+
+      function setDot(el, kind){
         try{
-          const i = info || {};
-          const lines = [];
-          const add = (k, v)=>{ if(v === null || v === undefined || String(v).trim() === '') return; lines.push(String(k) + ': ' + String(v)); };
-          add('URL', i.url);
-          add('Host', i.host);
-          add('IP', i.ip);
-          add('Influx Version', i.influx_version);
-          add('Health', i.health);
-          add('Buckets', i.bucket_count);
-          add('Databases', i.database_count);
-          add('HA DB Name', i.ha_database);
-          add('Hinweis', i.note);
-          $info.textContent = lines.join('\n');
+          if(!el) return;
+          el.classList.remove('ok','warn','bad','neutral');
+          if(kind) el.classList.add(kind);
+        }catch(e){}
+      }
+
+      async function jget(url){
+        const r = await fetch(url);
+        const j = await r.json().catch(()=>({ok:false,error:'Invalid JSON'}));
+        if(!r.ok || !j.ok) throw new Error(j.error || ('HTTP ' + r.status));
+        return j;
+      }
+
+      function classifyLoad(sys){
+        try{
+          const load1 = Number(sys && sys.loadavg_1);
+          const cpu = Number(sys && sys.cpu_count);
+          if(!isFinite(load1) || !isFinite(cpu) || cpu <= 0) return {txt:'-', dot:'neutral'};
+          const n = load1 / cpu;
+          if(n < 0.7) return {txt:'NORMAL', dot:'ok'};
+          if(n < 1.2) return {txt:'HOCH', dot:'warn'};
+          return {txt:'KRITISCH', dot:'bad'};
         }catch(e){
-          $info.textContent = 'Fehler beim Rendern.';
+          return {txt:'-', dot:'neutral'};
         }
       }
 
-      async function refresh(){
+      function classifyInflux(info){
+        try{
+          const h = String((info && info.health) ? info.health : '').toLowerCase();
+          const he = String((info && info.health_error) ? info.health_error : '').toLowerCase();
+          if(h === 'pass' || h === 'ok') return {txt:'CONNECTED', dot:'ok'};
+          if(he.includes('401') || he.includes('403') || h.includes('401') || h.includes('403')) return {txt:'AUTH ERROR', dot:'bad'};
+          if(he.includes('timed out') || he.includes('timeout') || he.includes('refused') || he.includes('unreachable')) return {txt:'TIMEOUT', dot:'bad'};
+          if(h){
+            const s = String(info.health || '');
+            return {txt:s.toUpperCase(), dot:'warn'};
+          }
+          return {txt:'UNKNOWN', dot:'neutral'};
+        }catch(e){
+          return {txt:'UNKNOWN', dot:'neutral'};
+        }
+      }
+
+      function classifyAddon(influxStatus, loadStatus){
+        try{
+          const inflOk = influxStatus && influxStatus.dot === 'ok';
+          const loadBad = loadStatus && (loadStatus.dot === 'bad');
+          if(inflOk && !loadBad) return {txt:'RUNNING', dot:'ok'};
+          if(loadBad) return {txt:'DEGRADED', dot:'warn'};
+          return {txt:'DEGRADED', dot:'warn'};
+        }catch(e){
+          return {txt:'RUNNING', dot:'neutral'};
+        }
+      }
+
+      function renderHealth(kpi, influxInfo){
+        try{
+          if($influxVer) $influxVer.textContent = String((influxInfo && influxInfo.influx_version) ? influxInfo.influx_version : '-') || '-';
+          if($influxHealth) $influxHealth.textContent = String((influxInfo && influxInfo.health) ? influxInfo.health : '-') || '-';
+        }catch(e){}
+
+        try{ if($ramAlloc) $ramAlloc.textContent = fmtBytes(kpi && kpi.ram_alloc_bytes); }catch(e){}
+        try{ if($ramInuse) $ramInuse.textContent = fmtBytes(kpi && kpi.heap_inuse_bytes); }catch(e){}
+        try{ if($ramIdle) $ramIdle.textContent = fmtBytes(kpi && kpi.heap_idle_bytes); }catch(e){}
+        try{ if($ramNextGc) $ramNextGc.textContent = fmtBytes(kpi && kpi.next_gc_bytes); }catch(e){}
+
+        try{
+          const g = (kpi && kpi.goroutines !== null && kpi.goroutines !== undefined) ? Number(kpi.goroutines) : null;
+          if($goro) $goro.textContent = (g !== null && isFinite(g)) ? String(Math.trunc(g)) : '-';
+          if($goroAmpel){
+            if(g === null || !isFinite(g)) $goroAmpel.textContent = '-';
+            else if(g < 2000) $goroAmpel.textContent = 'gruen';
+            else if(g < 5000) $goroAmpel.textContent = 'gelb';
+            else $goroAmpel.textContent = 'rot';
+          }
+        }catch(e){}
+
+        try{
+          const a = (kpi && kpi.gc_pause_avg_ms !== null && kpi.gc_pause_avg_ms !== undefined) ? Number(kpi.gc_pause_avg_ms) : null;
+          const p = (kpi && kpi.gc_pause_p99_ms !== null && kpi.gc_pause_p99_ms !== undefined) ? Number(kpi.gc_pause_p99_ms) : null;
+          if($gcAvg) $gcAvg.textContent = (a !== null && isFinite(a)) ? (a.toFixed(3) + ' ms') : '-';
+          if($gcP99) $gcP99.textContent = (p !== null && isFinite(p)) ? (p.toFixed(3) + ' ms') : '-';
+          if($gcRuns) $gcRuns.textContent = (kpi && kpi.gc_runs !== null && kpi.gc_runs !== undefined) ? String(kpi.gc_runs) : '-';
+        }catch(e){}
+
+        try{
+          if($httpTotal) $httpTotal.textContent = (kpi && kpi.http_requests_total !== null && kpi.http_requests_total !== undefined) ? String(kpi.http_requests_total) : '-';
+        }catch(e){}
+      }
+
+      async function refreshAll(){
         err('');
         try{ if($hint) $hint.textContent = 'Lade...'; }catch(e){}
-        const r = await fetch('./api/influx_info');
-        const j = await r.json().catch(()=>({ok:false,error:'Invalid JSON'}));
-        if(!r.ok || !j.ok) throw new Error(j.error || ('HTTP ' + r.status));
-        renderInfluxDbInfo(j.info || {});
+
+        const jInfo = await jget('./api/info');
+        const jSys = await jget('./api/sysinfo');
+        const jInflux = await jget('./api/influx_info');
+
+        let jMetrics = null;
+        try{ jMetrics = await jget('./api/influx_metrics'); }catch(e){ jMetrics = null; }
+
+        const haPlat = String(jInfo.ha_platform || '-') || '-';
+        const ver = String(jInfo.version || '-') || '-';
+        const startedAt = (jSys && jSys.sys) ? String(jSys.sys.started_at || '') : '';
+        const uptime = (jSys && jSys.sys) ? String(jSys.sys.uptime || '') : '';
+
+        try{ if($metaVersion) $metaVersion.textContent = ver; }catch(e){}
+        try{ if($metaBuild) $metaBuild.textContent = ver; }catch(e){}
+        try{ if($metaArch) $metaArch.textContent = haPlat; }catch(e){}
+        try{ if($metaStarted) $metaStarted.textContent = startedAt ? fmtTs(startedAt) : '-'; }catch(e){}
+        try{ if($metaUptime) $metaUptime.textContent = uptime || '-'; }catch(e){}
+
+        const loadSt = classifyLoad(jSys.sys || {});
+        const inflSt = classifyInflux((jInflux && jInflux.info) ? jInflux.info : {});
+        const addonSt = classifyAddon(inflSt, loadSt);
+
+        try{ if($stLoad) $stLoad.textContent = loadSt.txt; setDot($stLoadDot, loadSt.dot); }catch(e){}
+        try{ if($stInflux) $stInflux.textContent = inflSt.txt; setDot($stInfluxDot, inflSt.dot); }catch(e){}
+        try{ if($stAddon) $stAddon.textContent = addonSt.txt; setDot($stAddonDot, addonSt.dot); }catch(e){}
+        try{ if($stCleanup) $stCleanup.textContent = 'noch nie'; setDot($stCleanupDot, 'neutral'); }catch(e){}
+
+        try{ renderHealth(jMetrics ? (jMetrics.kpi || {}) : {}, (jInflux && jInflux.info) ? jInflux.info : {}); }catch(e){}
+
         try{ if($hint) $hint.textContent = 'Aktualisiert: ' + fmtTs(new Date().toISOString()); }catch(e){}
       }
 
-      function sysErr(msg){
-        const s = String(msg || '');
-        if($sysErr) $sysErr.textContent = s;
-        if(s){
-          try{
-            if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error(s);
-            else alert(s);
-          }catch(e){}
-        }
-      }
-
-      function renderSysInfo(sys){
-        try{
-          const i = sys || {};
-          const lines = [];
-          const add = (k, v)=>{ if(v === null || v === undefined || String(v).trim() === '') return; lines.push(String(k) + ': ' + String(v)); };
-          add('RSS', i.rss);
-          add('Addon Daten (/data)', i.addon_data);
-          add('Disk frei', i.disk_free);
-          add('Disk gesamt', i.disk_total);
-          if(i.loadavg_1 !== null && i.loadavg_1 !== undefined) add('Loadavg', `${i.loadavg_1} / ${i.loadavg_5} / ${i.loadavg_15}`);
-          add('CPU Cores', i.cpu_count);
-          if($sysInfo) $sysInfo.textContent = lines.join('\n');
-        }catch(e){
-          if($sysInfo) $sysInfo.textContent = 'Fehler beim Rendern.';
-        }
-      }
-
-      async function refreshSys(){
-        sysErr('');
-        try{ if($sysHint) $sysHint.textContent = 'Lade...'; }catch(e){}
-        const r = await fetch('./api/sysinfo');
-        const j = await r.json().catch(()=>({ok:false,error:'Invalid JSON'}));
-        if(!r.ok || !j.ok) throw new Error(j.error || ('HTTP ' + r.status));
-        renderSysInfo(j.sys || {});
-        try{ if($sysHint) $sysHint.textContent = 'Aktualisiert: ' + fmtTs(new Date().toISOString()); }catch(e){}
-      }
-
-      $refresh.onclick = ()=>{ refresh().catch(e => err(e && e.message ? e.message : String(e))); };
-      if($sysRefresh) $sysRefresh.onclick = ()=>{ refreshSys().catch(e => sysErr(e && e.message ? e.message : String(e))); };
-      refresh().catch(()=>{});
-      refreshSys().catch(()=>{});
+      $refresh.onclick = ()=>{ refreshAll().catch(e => err(e && e.message ? e.message : String(e))); };
+      refreshAll().catch(()=>{});
       </script>
 
       {% include "_tooltips.html" %}

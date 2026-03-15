@@ -41,6 +41,9 @@ import yaml # pyright: ignore[reportMissingModuleSource]
 CONFIG_DIR = Path(os.environ.get("CONFIG_DIR", "/config"))
 DATA_DIR = Path(os.environ.get("DATA_DIR", "/data"))
 
+PROCESS_STARTED_AT = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+PROCESS_STARTED_MONO = time.monotonic()
+
 APP_DIR = Path(__file__).resolve().parent
 DEFAULT_BACKUP_DIR = CONFIG_DIR / "influxbro" / "backup"
 OLD_DEFAULT_BACKUP_DIR = DATA_DIR / "backups"
@@ -3345,6 +3348,35 @@ def _http_get_json(url: str, verify_ssl: bool, timeout_s: int) -> tuple[int, dic
         return 0, None, str(e) or e.__class__.__name__
 
 
+def _http_get_text(url: str, verify_ssl: bool, timeout_s: int) -> tuple[int, str | None, str | None]:
+    """Best-effort text GET; returns (status, text, error)."""
+
+    req = urllib.request.Request(url, method="GET")
+    ctx = None
+    try:
+        if url.lower().startswith("https://") and not verify_ssl:
+            ctx = ssl.create_default_context()
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+    except Exception:
+        ctx = None
+
+    try:
+        with urllib.request.urlopen(req, timeout=timeout_s, context=ctx) as resp:
+            raw = resp.read().decode("utf-8", errors="replace")
+            status = int(getattr(resp, "status", 200))
+            return status, raw, None
+    except urllib.error.HTTPError as e:
+        body = ""
+        try:
+            body = e.read().decode("utf-8", errors="replace")
+        except Exception:
+            body = ""
+        return int(getattr(e, "code", 0) or 0), None, body or (str(e) or "HTTPError")
+    except Exception as e:
+        return 0, None, str(e) or e.__class__.__name__
+
+
 @app.get("/api/influx_info")
 def api_influx_info():
     """Return best-effort diagnostics about the configured InfluxDB."""
@@ -3365,6 +3397,8 @@ def api_influx_info():
         "timeout_seconds": timeout_s,
         "influx_version": None,
         "health": None,
+        "health_http_status": None,
+        "health_error": None,
         "bucket_count": None,
         "database_count": None,
         "ha_database": (cfg.get("bucket") if int(cfg.get("influx_version", 2)) == 2 else cfg.get("database")) or None,
@@ -3374,11 +3408,13 @@ def api_influx_info():
     # Health endpoint (v2 + some v1 builds)
     try:
         st, js, err = _http_get_json(base_url.rstrip("/") + "/health", verify_ssl=verify_ssl, timeout_s=min(8, timeout_s))
+        info["health_http_status"] = int(st) if st else None
         if js:
             info["health"] = str(js.get("status") or "") or (f"HTTP {st}" if st else None)
             info["influx_version"] = str(js.get("version") or js.get("build") or "") or None
         elif err:
             info["health"] = (f"HTTP {st}" if st else None) or ""
+            info["health_error"] = str(err)
     except Exception:
         pass
 
@@ -3411,6 +3447,105 @@ def api_influx_info():
         info["database_count"] = None
 
     return jsonify({"ok": True, "info": info})
+
+
+@app.get("/api/influx_metrics")
+def api_influx_metrics():
+    """Best-effort Prometheus metrics from InfluxDB (/metrics).
+
+    This endpoint intentionally returns only a small KPI subset.
+    """
+
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    scheme = str(cfg.get("scheme") or "http").strip() or "http"
+    host = str(cfg.get("host") or "").strip()
+    port = int(cfg.get("port") or 8086)
+    verify_ssl = bool(cfg.get("verify_ssl", True))
+    timeout_s = int(cfg.get("timeout_seconds") or 10)
+    base_url = str(cfg.get("url") or f"{scheme}://{host}:{port}").strip()
+    url = base_url.rstrip("/") + "/metrics"
+
+    st, raw, err = _http_get_text(url, verify_ssl=verify_ssl, timeout_s=min(8, timeout_s))
+    if not raw:
+        return jsonify({
+            "ok": False,
+            "error": (str(err) if err else (f"HTTP {st}" if st else "unavailable")),
+            "status": int(st) if st else None,
+        }), 502
+
+    # Parse a few known Go/Influx metrics.
+    want_scalar = {
+        "go_goroutines",
+        "go_memstats_alloc_bytes",
+        "go_memstats_heap_inuse_bytes",
+        "go_memstats_heap_idle_bytes",
+        "go_memstats_next_gc_bytes",
+        "go_gc_duration_seconds_sum",
+        "go_gc_duration_seconds_count",
+    }
+    scalars: dict[str, float] = {}
+    gc_p99_s = None
+
+    # best-effort request counters
+    req_total = 0.0
+    req_seen = False
+
+    line_re = re.compile(r"^([a-zA-Z_:][a-zA-Z0-9_:]*)(\{[^}]*\})?\s+([-+0-9.eE]+)")
+    for ln in (raw or "").splitlines():
+        s = (ln or "").strip()
+        if not s or s.startswith("#"):
+            continue
+        m = line_re.match(s)
+        if not m:
+            continue
+        name = m.group(1)
+        labels = m.group(2) or ""
+        v_raw = m.group(3)
+        try:
+            val = float(v_raw)
+        except Exception:
+            continue
+
+        if name in want_scalar and not labels:
+            scalars[name] = val
+            continue
+
+        # go_gc_duration_seconds{quantile="0.99"}
+        if name == "go_gc_duration_seconds" and "quantile=\"0.99\"" in labels:
+            gc_p99_s = val
+            continue
+
+        # InfluxDB request counters are not stable across versions; sum a few common names.
+        if name in ("influxdb_http_api_requests_total", "http_requests_total"):
+            req_total += val
+            req_seen = True
+
+    # Derived KPIs
+    gc_avg_ms = None
+    try:
+        ssum = float(scalars.get("go_gc_duration_seconds_sum") or 0.0)
+        cnt = float(scalars.get("go_gc_duration_seconds_count") or 0.0)
+        if cnt > 0:
+            gc_avg_ms = (ssum / cnt) * 1000.0
+    except Exception:
+        gc_avg_ms = None
+
+    out = {
+        "ok": True,
+        "status": int(st) if st else None,
+        "kpi": {
+            "goroutines": int(scalars.get("go_goroutines")) if "go_goroutines" in scalars else None,
+            "ram_alloc_bytes": int(scalars.get("go_memstats_alloc_bytes")) if "go_memstats_alloc_bytes" in scalars else None,
+            "heap_inuse_bytes": int(scalars.get("go_memstats_heap_inuse_bytes")) if "go_memstats_heap_inuse_bytes" in scalars else None,
+            "heap_idle_bytes": int(scalars.get("go_memstats_heap_idle_bytes")) if "go_memstats_heap_idle_bytes" in scalars else None,
+            "next_gc_bytes": int(scalars.get("go_memstats_next_gc_bytes")) if "go_memstats_next_gc_bytes" in scalars else None,
+            "gc_pause_avg_ms": gc_avg_ms,
+            "gc_pause_p99_ms": (float(gc_p99_s) * 1000.0) if gc_p99_s is not None else None,
+            "gc_runs": int(scalars.get("go_gc_duration_seconds_count")) if "go_gc_duration_seconds_count" in scalars else None,
+            "http_requests_total": int(req_total) if req_seen else None,
+        },
+    }
+    return jsonify(out)
 
 
 @app.get("/api/v2/buckets")
@@ -15446,6 +15581,13 @@ def api_sysinfo():
     rss = _process_rss_bytes()
     data_bytes = _addon_data_usage_bytes()
 
+    # Add-on process uptime (best-effort)
+    uptime_s = None
+    try:
+        uptime_s = int(max(0.0, time.monotonic() - float(PROCESS_STARTED_MONO)))
+    except Exception:
+        uptime_s = None
+
     disk_total = None
     disk_free = None
     try:
@@ -15467,6 +15609,9 @@ def api_sysinfo():
     return jsonify({
         "ok": True,
         "sys": {
+            "started_at": PROCESS_STARTED_AT,
+            "uptime_seconds": uptime_s,
+            "uptime": _hms(uptime_s) if isinstance(uptime_s, int) else None,
             "rss_bytes": rss,
             "rss": _fmt_bytes(rss),
             "addon_data_bytes": data_bytes,

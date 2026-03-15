@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.12.31
+
+### Features
+
+- Diagnose: Menu "Diagnose" ausgebaut (Status-Kacheln + Health Summary), inkl. Best-effort InfluxDB Prometheus KPIs ueber `/metrics`.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.30
 
 ### Fixes
