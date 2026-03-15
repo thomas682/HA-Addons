@@ -294,6 +294,7 @@
                 <option value="native_v2">Native v2 (influx backup)</option>
               </select>
               <div class="muted" style="margin-top:4px;">Native v2 erfordert <code>admin_token</code> (Einstellungen) und kann beim Restore Zielbucket waehlen/ueberschreiben.</div>
+              <div class="muted" id="fullbackup_native_support" data-ui="backup.fullbackup.native_support" title="backup.fullbackup.native_support" style="margin-top:4px;"></div>
             </div>
             <div><label>&nbsp;</label><button id="fullbackup_start" data-ui="backup.fullbackup.start" title="backup.fullbackup.start">FullBackup starten</button></div>
             <div><label>&nbsp;</label><button id="fullbackup_reload" data-ui="backup.fullbackup.reload" title="backup.fullbackup.reload">Liste aktualisieren</button></div>
@@ -387,6 +388,7 @@
       // FullBackup (DB full)
       const $fullBackupStart = document.getElementById('fullbackup_start');
       const $fullBackupMode = document.getElementById('fullbackup_mode');
+      const $fullBackupNativeSupport = document.getElementById('fullbackup_native_support');
       const $fullBackupReload = document.getElementById('fullbackup_reload');
       const $fullBackupCancel = document.getElementById('fullbackup_cancel');
       const $fullBackupDelete = document.getElementById('fullbackup_delete');
@@ -457,6 +459,9 @@
       let FULL_T0 = 0;
       let FULL_TIMER = null;
 
+      let HA_PLATFORM = 'unknown';
+      let HAS_INFLUX_CLI = false;
+
       let ALL_MF = [];
       let ALL_FN = [];
       let ALL_EID = [];
@@ -486,6 +491,43 @@
         }
       }
       function ok(s){ $ok.textContent = s || ""; }
+
+      function _renderFullBackupNativeSupport(){
+        try{
+          if(!$fullBackupNativeSupport) return;
+          const plat = String(HA_PLATFORM || 'unknown');
+          if(HAS_INFLUX_CLI){
+            $fullBackupNativeSupport.textContent = `Native v2 (influx CLI): verfuegbar (HA Plattform: ${plat}).`;
+          }else{
+            $fullBackupNativeSupport.textContent = `Native v2 (influx CLI): nicht verfuegbar (HA Plattform: ${plat}). Line Protocol funktioniert weiterhin.`;
+          }
+        }catch(e){}
+      }
+
+      async function loadCliSupport(){
+        try{
+          const j = await api('./api/info');
+          HA_PLATFORM = String(j.ha_platform || '').trim() || 'unknown';
+          HAS_INFLUX_CLI = !!j.influx_cli_available;
+        }catch(e){
+          HA_PLATFORM = HA_PLATFORM || 'unknown';
+          HAS_INFLUX_CLI = false;
+        }
+
+        _renderFullBackupNativeSupport();
+
+        // Disable Native v2 mode if CLI is not present in the image.
+        try{
+          if($fullBackupMode){
+            const opts = Array.from($fullBackupMode.options || []);
+            const nativeOpt = opts.find(o => String(o && o.value ? o.value : '') === 'native_v2');
+            if(nativeOpt) nativeOpt.disabled = !HAS_INFLUX_CLI;
+            if(!HAS_INFLUX_CLI && String($fullBackupMode.value || '') === 'native_v2'){
+              $fullBackupMode.value = 'lp';
+            }
+          }
+        }catch(e){}
+      }
 
       function _fmtDur(ms){
         const n = Number(ms);
@@ -1797,20 +1839,22 @@
       renderZoomTxt();
       renderActionHints();
 
-       // Apply initial values before list load (so friendly/entity lists can be narrowed by measurement).
-       try{
-         const init = window.__INFLUXBRO_BACKUP_INIT || {};
-         if($mf && !$mf.value && init.mf) $mf.value = String(init.mf);
-         if($n && !$n.value && init.fn) $n.value = String(init.fn);
-         if($e && !$e.value && init.eid) $e.value = String(init.eid);
-       }catch(e){}
+        // Apply initial values before list load (so friendly/entity lists can be narrowed by measurement).
+        try{
+          const init = window.__INFLUXBRO_BACKUP_INIT || {};
+          if($mf && !$mf.value && init.mf) $mf.value = String(init.mf);
+          if($n && !$n.value && init.fn) $n.value = String(init.fn);
+          if($e && !$e.value && init.eid) $e.value = String(init.eid);
+        }catch(e){}
 
-        loadTargetLists()
-           .then(()=>refreshEntityIdsForFriendly())
-           .then(()=>autoPickEntityId())
-           .then(()=>resolveAndLoad())
-           .then(()=>loadFullBackupList().catch(()=>{}))
-           .catch(e=>err(String(e && e.message ? e.message : e)));
+        loadCliSupport().catch(()=>{});
+
+         loadTargetLists()
+            .then(()=>refreshEntityIdsForFriendly())
+            .then(()=>autoPickEntityId())
+            .then(()=>resolveAndLoad())
+            .then(()=>loadFullBackupList().catch(()=>{}))
+            .catch(e=>err(String(e && e.message ? e.message : e)));
 
         // table UI helpers are wired after shared helpers are loaded (see bottom script)
         </script>

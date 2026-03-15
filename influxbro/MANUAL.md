@@ -340,6 +340,7 @@ Neu: FullBackup (InfluxDB komplett)
 - Modus:
   - `Line Protocol (kompatibel)`: exportiert best-effort als Line Protocol (wie bisher).
   - `Native v2 (influx backup)`: nutzt die Influx CLI und erzeugt ein natives Backup (ZIP enthaelt Meta + native Payload unter `native/`).
+  - Native v2 ist nur auf `amd64`/`aarch64` verfuegbar (Influx CLI). Auf anderen Plattformen ist der Modus deaktiviert; die UI zeigt die erkannte `HA Plattform`.
   - In der FullBackupliste zeigt die Spalte `format`, ob es `lp` oder `native_v2` ist.
 - Kompatibilitaet:
   - InfluxDB v2: unterstuetzt.
@@ -363,6 +364,7 @@ Neu: FullRestore (InfluxDB komplett)
 - FullRestore stellt ein selektiertes FullBackup wieder her.
   - `format=lp`: schreibt Line Protocol in die konfigurierte InfluxDB (wie bisher).
   - `format=native_v2`: nutzt `influx restore`.
+  - Native v2 Restore ist nur auf `amd64`/`aarch64` verfuegbar (Influx CLI). Auf anderen Plattformen ist es gesperrt; die UI zeigt die erkannte `HA Plattform`.
 - Native v2 Restore:
   - Zielbucket kann gesetzt werden (leer = wie Quelle). Wenn Ziel != Quelle, wird `--new-bucket` verwendet.
   - `Ueberschreiben (Bucket loeschen)` loescht den Zielbucket vor Restore (erfordert Confirm-Phrase `DELETE`).

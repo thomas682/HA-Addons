@@ -277,9 +277,10 @@
        </div>
 
        <div class="card" data-ui="restore.fullrestore.card" title="restore.fullrestore.card" style="--restore_visible_rows: {{ (cfg.get('ui_restore_visible_rows') or 24) | int }};">
-         <details id="fullrestore_details" data-ui="restore.fullrestore.details" title="restore.fullrestore.details">
-             <summary><span class="ib_summary_row"><span>FullRestore (InfluxDB komplett)</span><button type="button" class="ib_info_icon" data-info-title="Restore: FullRestore" data-info-body="Stellt ein FullBackup wieder her (InfluxDB komplett).\n\nformat=lp:\n- Schreibt Line Protocol in die konfigurierte InfluxDB (kompatibel).\n\nformat=native_v2:\n- Nutzt influx restore.\n- Zielbucket optional (new-bucket).\n- Ueberschreiben loescht Zielbucket vorher (DELETE erforderlich)." >i</button></span></summary>
-            <div class="muted" style="margin-top: 6px;">Stellt ein FullBackup wieder her (v1: database, v2: bucket). Achtung: ueberschreibt Daten.</div>
+          <details id="fullrestore_details" data-ui="restore.fullrestore.details" title="restore.fullrestore.details">
+              <summary><span class="ib_summary_row"><span>FullRestore (InfluxDB komplett)</span><button type="button" class="ib_info_icon" data-info-title="Restore: FullRestore" data-info-body="Stellt ein FullBackup wieder her (InfluxDB komplett).\n\nformat=lp:\n- Schreibt Line Protocol in die konfigurierte InfluxDB (kompatibel).\n\nformat=native_v2:\n- Nutzt influx restore.\n- Zielbucket optional (new-bucket).\n- Ueberschreiben loescht Zielbucket vorher (DELETE erforderlich)." >i</button></span></summary>
+             <div class="muted" style="margin-top: 6px;">Stellt ein FullBackup wieder her (v1: database, v2: bucket). Achtung: ueberschreibt Daten.</div>
+             <div class="muted" id="fullrestore_native_support" data-ui="restore.fullrestore.native_support" title="restore.fullrestore.native_support" style="margin-top:4px;"></div>
 
             <div class="row" style="align-items:flex-start;" data-ui="restore.fullrestore.native" title="restore.fullrestore.native">
               <div style="min-width: 320px; flex:1;">
@@ -379,16 +380,17 @@
          // FullRestore (DB full)
          const $fullRestoreReload = document.getElementById('fullrestore_reload');
          const $fullRestoreDownload = document.getElementById('fullrestore_download');
-         const $fullRestoreDelete = document.getElementById('fullrestore_delete');
-          const $fullRestoreRun = document.getElementById('fullrestore_run');
-          const $fullRestoreCancel = document.getElementById('fullrestore_cancel');
-          const $fullRestoreRows = document.getElementById('fullrestore_rows');
-          const $fullRestoreInfo = document.getElementById('fullrestore_info');
+           const $fullRestoreDelete = document.getElementById('fullrestore_delete');
+           const $fullRestoreRun = document.getElementById('fullrestore_run');
+           const $fullRestoreCancel = document.getElementById('fullrestore_cancel');
+           const $fullRestoreRows = document.getElementById('fullrestore_rows');
+           const $fullRestoreInfo = document.getElementById('fullrestore_info');
+           const $fullRestoreNativeSupport = document.getElementById('fullrestore_native_support');
 
-          const $nativeTargetBucket = document.getElementById('native_target_bucket');
-          const $nativeBucketList = document.getElementById('native_bucket_list');
-          const $nativeOverwrite = document.getElementById('native_overwrite');
-          const $nativeConfirmPhrase = document.getElementById('native_confirm_phrase');
+           const $nativeTargetBucket = document.getElementById('native_target_bucket');
+           const $nativeBucketList = document.getElementById('native_bucket_list');
+           const $nativeOverwrite = document.getElementById('native_overwrite');
+           const $nativeConfirmPhrase = document.getElementById('native_confirm_phrase');
 
          const $fullRestoreStatus = document.getElementById('fullrestore_status');
          const $fullRestoreSpinner = document.getElementById('fullrestore_spinner');
@@ -437,11 +439,14 @@
 
         let FULLBACKUPS = [];
         let FULL_SELECTED_ID = '';
-        let FULLRESTORE_JOB_ID = '';
-        let FULLRESTORE_T0 = null;
-        let FULLRESTORE_TIMER = null;
+         let FULLRESTORE_JOB_ID = '';
+         let FULLRESTORE_T0 = null;
+         let FULLRESTORE_TIMER = null;
 
-       let CFG = { influx_version: 2, bucket: '' };
+         let HA_PLATFORM = 'unknown';
+         let HAS_INFLUX_CLI = false;
+
+        let CFG = { influx_version: 2, bucket: '' };
 
        let RUN_T0 = null;
        let RUN_TIMER = null;
@@ -573,6 +578,55 @@
         }
       }
       function ok(s){ $ok.textContent = s || ""; }
+
+      function _renderFullRestoreNativeSupport(){
+        try{
+          if(!$fullRestoreNativeSupport) return;
+          const plat = String(HA_PLATFORM || 'unknown');
+          if(HAS_INFLUX_CLI){
+            $fullRestoreNativeSupport.textContent = `Native v2 (influx CLI): verfuegbar (HA Plattform: ${plat}).`;
+          }else{
+            $fullRestoreNativeSupport.textContent = `Native v2 (influx CLI): nicht verfuegbar (HA Plattform: ${plat}). Native FullRestore (format=native_v2) ist gesperrt.`;
+          }
+        }catch(e){}
+      }
+
+      function _applyFullRestoreNativeLock(){
+        try{
+          const b = selFullBackup();
+          const fmt = b ? String(b.format || '') : '';
+          const needsCli = (fmt === 'native_v2');
+          const blocked = needsCli && !HAS_INFLUX_CLI;
+          const running = !!String(FULLRESTORE_JOB_ID || '').trim();
+
+          // Native-only controls
+          try{ if($nativeTargetBucket) $nativeTargetBucket.disabled = !needsCli || blocked; }catch(e){}
+          try{ if($nativeOverwrite) $nativeOverwrite.disabled = !needsCli || blocked; }catch(e){}
+          try{ if($nativeConfirmPhrase) $nativeConfirmPhrase.disabled = !needsCli || blocked; }catch(e){}
+
+          // Run button: never enable while running; block native restore if CLI is missing.
+          try{
+            if($fullRestoreRun){
+              if(blocked) $fullRestoreRun.disabled = true;
+              else if(!running) $fullRestoreRun.disabled = false;
+            }
+          }catch(e){}
+        }catch(e){}
+      }
+
+      async function loadCliSupport(){
+        try{
+          const j = await api('./api/info');
+          HA_PLATFORM = String(j.ha_platform || '').trim() || 'unknown';
+          HAS_INFLUX_CLI = !!j.influx_cli_available;
+        }catch(e){
+          HA_PLATFORM = HA_PLATFORM || 'unknown';
+          HAS_INFLUX_CLI = false;
+        }
+        _renderFullRestoreNativeSupport();
+        _applyFullRestoreNativeLock();
+      }
+
       function loadState(){
         try{ return JSON.parse(localStorage.getItem(LS_KEY) || "{}") || {}; }catch(e){ return {}; }
       }
@@ -769,14 +823,16 @@
            if($fullRestoreSpinner) $fullRestoreSpinner.style.display = 'none';
            if($fullRestoreStatusTime && dur !== null) $fullRestoreStatusTime.textContent = fmtRuntime(dur);
          }catch(e){}
-         try{
-           if($fullRestoreRun) $fullRestoreRun.disabled = false;
-           if($fullRestoreReload) $fullRestoreReload.disabled = false;
-           if($fullRestoreCancel) $fullRestoreCancel.disabled = true;
-           if($fullRestoreDownload) $fullRestoreDownload.disabled = !String(FULL_SELECTED_ID||'').trim();
-           if($fullRestoreDelete) $fullRestoreDelete.disabled = !String(FULL_SELECTED_ID||'').trim();
-         }catch(e){}
-       }
+          try{
+            if($fullRestoreRun) $fullRestoreRun.disabled = false;
+            if($fullRestoreReload) $fullRestoreReload.disabled = false;
+            if($fullRestoreCancel) $fullRestoreCancel.disabled = true;
+            if($fullRestoreDownload) $fullRestoreDownload.disabled = !String(FULL_SELECTED_ID||'').trim();
+            if($fullRestoreDelete) $fullRestoreDelete.disabled = !String(FULL_SELECTED_ID||'').trim();
+          }catch(e){}
+
+          _applyFullRestoreNativeLock();
+        }
 
        function renderFullBackups(){
          if(!$fullRestoreRows) return;
@@ -831,12 +887,14 @@
            $fullRestoreRows.appendChild(tr);
          });
 
-         try{
-           const one = String(FULL_SELECTED_ID || '').trim();
-           if($fullRestoreDownload) $fullRestoreDownload.disabled = !one;
-           if($fullRestoreDelete) $fullRestoreDelete.disabled = !one;
-         }catch(e){}
-       }
+          try{
+            const one = String(FULL_SELECTED_ID || '').trim();
+            if($fullRestoreDownload) $fullRestoreDownload.disabled = !one;
+            if($fullRestoreDelete) $fullRestoreDelete.disabled = !one;
+          }catch(e){}
+
+          _applyFullRestoreNativeLock();
+        }
 
        async function loadFullBackups(){
          const j = await api('./api/fullbackups_all');
@@ -845,14 +903,19 @@
          renderFullBackups();
        }
 
-       async function runFullRestore(){
-         err(''); ok('');
-         const b = selFullBackup();
-         if(!b) throw new Error('Bitte ein FullBackup auswaehlen.');
-         const id = String(b.id || '').trim();
-         if(!id) throw new Error('FullBackup id fehlt.');
-         const msg = `FullRestore wirklich ausfuehren? Das kann alle Daten ueberschreiben.\n\nBackup: ${id}`;
-         if(!confirm(msg)) return;
+        async function runFullRestore(){
+          err(''); ok('');
+          const b = selFullBackup();
+          if(!b) throw new Error('Bitte ein FullBackup auswaehlen.');
+          const fmt = String(b.format || '');
+          if(fmt === 'native_v2' && !HAS_INFLUX_CLI){
+            const plat = String(HA_PLATFORM || 'unknown');
+            throw new Error(`Native FullRestore ist auf dieser Plattform nicht verfuegbar (Influx CLI fehlt). HA Plattform: ${plat}.`);
+          }
+          const id = String(b.id || '').trim();
+          if(!id) throw new Error('FullBackup id fehlt.');
+          const msg = `FullRestore wirklich ausfuehren? Das kann alle Daten ueberschreiben.\n\nBackup: ${id}`;
+          if(!confirm(msg)) return;
 
          startFullRestoreUi('FullRestore wird gestartet...');
          try{
@@ -1496,10 +1559,11 @@
       if($stop) $stop.addEventListener('change', ()=>{ _renderRestoreRangeBounds(); renderPlan(); });
       if($showQuery) $showQuery.addEventListener('change', ()=>renderPlan());
 
-      applyLayoutFromState();
-      _applySameMode();
-      loadCfg().catch(()=>{});
-      loadNativeBucketList().catch(()=>{});
+       applyLayoutFromState();
+       _applySameMode();
+       loadCfg().catch(()=>{});
+       loadNativeBucketList().catch(()=>{});
+       loadCliSupport().catch(()=>{});
 
       // Prefill backup search from dashboard selection (if empty)
       try{

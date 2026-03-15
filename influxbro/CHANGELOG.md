@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.29
+
+### Fixes
+
+- Docker/HA: Influx CLI Installation repariert (Tarball enthaelt `./influx`) und wird nur noch auf `amd64`/`aarch64` installiert (Upstream-Arch-Support). Andere Plattformen bauen wieder; Native v2 FullBackup/FullRestore ist dort gesperrt.
+- UI/Backup/Restore: Hinweistext zeigt `HA Plattform` und ob Native v2 (influx CLI) verfuegbar ist.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.28
 
 ### Features

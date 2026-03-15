@@ -3004,6 +3004,27 @@ def _influx_cli_env(cfg: dict, *, token: str) -> dict[str, str]:
     return env
 
 
+def _ha_platform() -> str:
+    """Return the Home Assistant build platform (BUILD_ARCH) if available."""
+
+    v = str(os.environ.get("INFLUXBRO_BUILD_ARCH") or os.environ.get("BUILD_ARCH") or "").strip()
+    if v:
+        return v
+
+    # Fallback (container runtime arch, best-effort).
+    try:
+        return str(getattr(os.uname(), "machine", "") or "").strip() or "unknown"
+    except Exception:
+        return "unknown"
+
+
+def _influx_cli_available() -> bool:
+    try:
+        return shutil.which("influx") is not None
+    except Exception:
+        return False
+
+
 @contextmanager
 def v2_admin_client(cfg: dict, timeout_seconds_override: int | None = None):
     """Context-managed InfluxDB v2 client using admin_token (if present)."""
@@ -4800,6 +4821,18 @@ def _fullbackup_job_thread(job_id: str, cfg: dict[str, Any], backup_id: str) -> 
 
     fmt = str(job.get("format") or "lp").strip() or "lp"
     if influx_v == 2 and fmt == "native_v2":
+        if not _influx_cli_available():
+            plat = _ha_platform()
+            set_state("error", "Nicht unterstuetzt")
+            set_error(
+                "Native v2 FullBackup ist auf dieser Plattform nicht verfuegbar (Influx CLI fehlt). "
+                f"HA Plattform: {plat}."
+            )
+            try:
+                LOG.warning("native_cli_missing type=fullbackup platform=%s job_id=%s", plat, job_id)
+            except Exception:
+                pass
+            return
         if not (cfg.get("org") and cfg.get("bucket")):
             set_state("error", "Konfiguration fehlt")
             set_error("Native v2 Backup erfordert org/bucket. Bitte in Einstellungen speichern.")
@@ -5375,6 +5408,18 @@ def _fullrestore_job_thread(job_id: str, cfg: dict[str, Any], backup_id: str) ->
             set_error("FullBackup Datei nicht gefunden.")
             return
     if fmt == "native_v2":
+        if not _influx_cli_available():
+            plat = _ha_platform()
+            set_state("error", "Nicht unterstuetzt")
+            set_error(
+                "Native FullRestore ist auf dieser Plattform nicht verfuegbar (Influx CLI fehlt). "
+                f"HA Plattform: {plat}."
+            )
+            try:
+                LOG.warning("native_cli_missing type=fullrestore platform=%s job_id=%s", plat, job_id)
+            except Exception:
+                pass
+            return
         if influx_v != 2:
             set_state("error", "Nicht unterstuetzt")
             set_error("Native FullRestore wird nur fuer InfluxDB v2 unterstuetzt.")
@@ -5773,6 +5818,19 @@ def api_fullbackup_job_start():
     if influx_v == 2:
         fmt = str(body.get("format") or body.get("mode") or "").strip() or "lp"
         if fmt == "native_v2":
+            if not _influx_cli_available():
+                plat = _ha_platform()
+                try:
+                    LOG.warning("native_cli_missing type=fullbackup platform=%s", plat)
+                except Exception:
+                    pass
+                return jsonify({
+                    "ok": False,
+                    "error": (
+                        "Native v2 FullBackup ist auf dieser Plattform nicht verfuegbar (Influx CLI fehlt). "
+                        f"HA Plattform: {plat}."
+                    ),
+                }), 400
             if not (cfg.get("org") and cfg.get("bucket")):
                 return jsonify({
                     "ok": False,
@@ -5997,6 +6055,19 @@ def api_fullrestore_job_start():
         return jsonify({"ok": False, "error": f"backup influx_version mismatch: backup={meta_v} cfg={influx_v}"}), 400
     fmt = str(meta.get("format") or "lp").strip() or "lp"
     if influx_v == 2 and fmt == "native_v2":
+        if not _influx_cli_available():
+            plat = _ha_platform()
+            try:
+                LOG.warning("native_cli_missing type=fullrestore platform=%s backup_id=%s", plat, backup_id)
+            except Exception:
+                pass
+            return jsonify({
+                "ok": False,
+                "error": (
+                    "Native FullRestore ist auf dieser Plattform nicht verfuegbar (Influx CLI fehlt). "
+                    f"HA Plattform: {plat}."
+                ),
+            }), 400
         # Native restore uses the Influx CLI and requires an admin token.
         if not str(cfg.get("admin_token") or "").strip():
             return jsonify({"ok": False, "error": "Native restore requires admin_token (Einstellungen)"}), 400
@@ -15353,7 +15424,12 @@ def _inject_globals():
 
 @app.get("/api/info")
 def api_info():
-    return jsonify({"ok": True, "version": ADDON_VERSION})
+    return jsonify({
+        "ok": True,
+        "version": ADDON_VERSION,
+        "ha_platform": _ha_platform(),
+        "influx_cli_available": _influx_cli_available(),
+    })
 
 
 @app.get("/api/sysinfo")
