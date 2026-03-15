@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.12.32
+
+### UI
+
+- Farben: Bereichstitel (Details/Sektionen) sind global konfigurierbar (Hintergrund + Textfarbe).
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.31
 
 ### Features

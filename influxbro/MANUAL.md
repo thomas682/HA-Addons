@@ -472,6 +472,7 @@ UI:
 - `Min. freier Speicher (MB)`: wenn kleiner als diese Schwelle, wird das Erstellen eines Backups abgelehnt (0 = deaktiviert).
 - `Basis/Kleine Schriftgroesse`: UI Typografie.
 - `Checkbox Groesse (Scale)`: Checkbox-Scaling fuer bessere Bedienbarkeit.
+- `Bereich-Titel (Details): Hintergrund/Textfarbe`: Farben der einklappbaren Bereichstitel (Details/Sektionen). Leer = Standard; erlaubt: `transparent`/`inherit` oder `#RRGGBB`.
 - `Filter ... Breite`: steuert die Layout-Breiten im Dashboard.
 - `Bereiche standardmaessig geoeffnet`: welche <details>-Sektionen beim Start offen sind.
 - Auswahlfelder (Filter/Zeiten):

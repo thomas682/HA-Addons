@@ -1,6 +1,10 @@
 <header class="ib_topbar" aria-label="Topbar">
   <style>
-    :root { --ib-topbar-h: 52px; }
+    :root {
+      --ib-topbar-h: 52px;
+      --ib-section-title-bg: {{ (cfg.get('ui_section_title_bg') or 'transparent') if cfg else 'transparent' }};
+      --ib-section-title-fg: {{ (cfg.get('ui_section_title_fg') or 'inherit') if cfg else 'inherit' }};
+    }
     .ib_topbar {
       position: fixed;
       top: 0;
@@ -42,7 +46,19 @@
     }
 
     /* Shared UI: section info icon next to titles */
-    .ib_summary_row { display:flex; align-items:center; justify-content:space-between; gap: 10px; width: 100%; }
+    .ib_summary_row {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+      width: 100%;
+      padding: 4px 8px;
+      border-radius: 10px;
+      background: var(--ib-section-title-bg);
+      color: var(--ib-section-title-fg);
+      box-sizing: border-box;
+    }
+    .ib_summary_row * { color: inherit; }
     .ib_info_icon {
       width: 22px;
       height: 22px;

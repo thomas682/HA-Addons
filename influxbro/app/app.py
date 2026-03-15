@@ -657,6 +657,10 @@ DEFAULT_CFG = {
     "ui_status_font_px": 12,
     "ui_status_show_sysinfo": False,
     "ui_checkbox_scale": 0.85,
+    # Section title row (details > summary): optional overrides
+    # Allowed: "" (default), "transparent"/"inherit", or "#RRGGBB"
+    "ui_section_title_bg": "",
+    "ui_section_title_fg": "",
     "ui_filter_label_width_px": 170,
     "ui_filter_control_width_px": 320,
     "ui_filter_search_width_px": 160,
@@ -9406,10 +9410,36 @@ def api_set_config():
             s = default
         cfg[key] = s
 
+    def _clamp_color_opt(key: str, allow_words: tuple[str, ...] = ()) -> None:
+        """Clamp a color-ish string to a safe subset.
+
+        Allowed values:
+        - "" (meaning: use default)
+        - any word from allow_words (e.g. "transparent", "inherit")
+        - "#RRGGBB"
+        """
+        try:
+            s = str(cfg.get(key, "") or "").strip()
+        except Exception:
+            s = ""
+        if not s:
+            cfg[key] = ""
+            return
+        if s in allow_words:
+            cfg[key] = s
+            return
+        if re.match(r"^#[0-9a-fA-F]{6}$", s):
+            cfg[key] = s
+            return
+        cfg[key] = ""
+
     _clamp_color("ui_job_color_running", "#eef3ff")
     _clamp_color("ui_job_color_done", "#eefaf1")
     _clamp_color("ui_job_color_error", "#fff0f0")
     _clamp_color("ui_job_color_cancelled", "#f6f6f6")
+
+    _clamp_color_opt("ui_section_title_bg", allow_words=("transparent",))
+    _clamp_color_opt("ui_section_title_fg", allow_words=("inherit",))
 
     # Optional link
     try:
