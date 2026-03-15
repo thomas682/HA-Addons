@@ -323,6 +323,7 @@ Timer Jobs:
   - Dateigroesse
  - Anzeige: `Freier Speicher` zeigt freien/gesamten Speicher am Backup-Speicherort; `Addon Speicher` zeigt belegten Platz unter `/data`.
 - Wenn genau ein Backup selektiert ist, erscheint `Download` und laedt eine ZIP-Datei (enthaelt `.json` + `.lp`).
+- `Alles` (Checkbox in der Kopfzeile) selektiert/deselektiert nur die aktuell sichtbaren Zeilen (z.B. nach Volltextsuche), ohne andere Selektionen zu verlieren.
 - Unterhalb des Speicherorts wird der freie Speicher angezeigt; optional kann ein Mindestwert (MB) konfiguriert werden, unter dem Backups abgelehnt werden.
 - Die Hoehe der Backup-Liste ist per Einstellung "Sichtbare Zeilen (Backup-Liste)" konfigurierbar.
 - Backups koennen geloescht werden (nur die Sicherung, nicht die Datenbank).

@@ -604,6 +604,12 @@
           if(!ids.length){
             $fullBackupSelAll.checked = false;
             $fullBackupSelAll.indeterminate = false;
+            try{
+              if($fullBackupDownload){
+                $fullBackupDownload.style.display = 'none';
+                $fullBackupDownload.disabled = true;
+              }
+            }catch(e){}
             return;
           }
           let sel = 0;
@@ -1265,6 +1271,12 @@
         if(!ids.length){
           $selAll.checked = false;
           $selAll.indeterminate = false;
+          try{
+            if($download){
+              $download.style.display = 'none';
+              $download.disabled = true;
+            }
+          }catch(e){}
           return;
         }
         let sel = 0;
@@ -1598,6 +1610,7 @@
       try{ if($fullBackupSelAll) $fullBackupSelAll.addEventListener('change', ()=>{
         const on = !!$fullBackupSelAll.checked;
         const ids = (FULLBACKUPS || []).map(b=>String(b.id||'')).filter(Boolean);
+        try{ if(!(FULL_SELECTED_IDS instanceof Set)) FULL_SELECTED_IDS = new Set(); }catch(e){ FULL_SELECTED_IDS = new Set(); }
         if(on){ ids.forEach(id=>FULL_SELECTED_IDS.add(id)); }
         else { ids.forEach(id=>FULL_SELECTED_IDS.delete(id)); }
         renderFullBackups(FULLBACKUPS);
@@ -1679,7 +1692,12 @@
           const want = !!$selAll.checked;
           const ids = Array.from(document.querySelectorAll('#rows tr')).map(tr=>String(tr.dataset.id||""))
             .filter(Boolean);
-          SELECTED_IDS = new Set(want ? ids : []);
+          // Apply to currently visible rows only; keep selections outside the current filter.
+          try{
+            if(!(SELECTED_IDS instanceof Set)) SELECTED_IDS = new Set();
+          }catch(e){ SELECTED_IDS = new Set(); }
+          if(want){ ids.forEach(id=>SELECTED_IDS.add(id)); }
+          else { ids.forEach(id=>SELECTED_IDS.delete(id)); }
           try{
             document.querySelectorAll('#rows tr').forEach(tr=>{
               const id = String(tr.dataset.id||'');

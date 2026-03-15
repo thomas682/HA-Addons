@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.12.27
+
+### Fixes
+
+- Backup/FullBackup Listen: Auswahl per `Alles` wirkt jetzt nur auf die aktuell sichtbaren Zeilen (Filter), ohne andere Selektionen zu verlieren; Download-Button wird auch bei leerer Liste korrekt ausgeblendet.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.26
 
 ### Features
