@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.26
+
+### Features
+
+- Jobs & Cache: Timer Jobs `Modus` unterstuetzt jetzt `hours/daily/weekly/manual` (inkl. Wochentag + Uhrzeit) fuer `dash_cache`, `stats_cache` und `stats_full`.
+- stats_full: kann jetzt zeitgesteuert laufen (Scheduler) statt nur manuell.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.25
 
 ### Features

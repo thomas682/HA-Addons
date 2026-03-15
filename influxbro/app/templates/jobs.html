@@ -82,8 +82,12 @@
               <option value="">alle</option>
               <option value="global_stats">global_stats</option>
               <option value="restore_copy">restore_copy</option>
+              <option value="combine">combine</option>
               <option value="backup">backup</option>
+              <option value="fullbackup">fullbackup</option>
+              <option value="fullrestore">fullrestore</option>
               <option value="dash_cache">dash_cache</option>
+              <option value="export">export</option>
             </select>
             </div>
             <div>
@@ -1039,20 +1043,24 @@
           const tdAct = tr.lastChild;
           const id = String(t.id || '');
 
-          if(id === 'dash_cache' || id === 'stats_cache'){
+          if(id === 'dash_cache' || id === 'stats_cache' || id === 'stats_full'){
             const bMode = document.createElement('button');
             bMode.className = 'btn_xs';
             bMode.textContent = 'Modus';
             bMode.onclick = async ()=>{
               try{
                 timersErr('');
-                const curMode = String((t.refresh_mode || '')).trim() || 'hours';
-                const mRaw = prompt('Refresh Modus (hours/daily):', curMode);
+                const curMode = String((t.refresh_mode || '')).trim() || (id === 'dash_cache' ? 'hours' : (id === 'stats_cache' ? 'daily' : 'manual'));
+                const mRaw = prompt('Refresh Modus (hours/daily/weekly/manual):', curMode);
                 if(mRaw === null) return;
-                const m = String(mRaw || '').trim().toLowerCase();
+                let m = String(mRaw || '').trim().toLowerCase();
+                if(m === 'stuendlich' || m === 'stündlich' || m === 'hourly') m = 'hours';
+                if(m === 'taeglich' || m === 'täglich' || m === 'daily') m = 'daily';
+                if(m === 'woechentlich' || m === 'wöchentlich' || m === 'weekly') m = 'weekly';
+                if(m === 'manuell' || m === 'manual') m = 'manual';
                 const payload = {id, refresh_mode: m};
                 if(m === 'hours'){
-                  const curH = (t.refresh_hours != null ? String(t.refresh_hours) : '24');
+                  const curH = (t.refresh_hours != null ? String(t.refresh_hours) : (id === 'dash_cache' ? '6' : '24'));
                   const hRaw = prompt('Refresh alle N Stunden:', curH);
                   if(hRaw === null) return;
                   payload.refresh_hours = parseInt(String(hRaw||'').trim() || '24', 10);
@@ -1061,8 +1069,19 @@
                   const atRaw = prompt('Refresh taeglich um (HH:MM:SS):', curAt);
                   if(atRaw === null) return;
                   payload.refresh_daily_at = String(atRaw||'').trim();
+                }else if(m === 'weekly'){
+                  const curWd = (t.refresh_weekday != null ? String(t.refresh_weekday) : '0');
+                  const wdRaw = prompt('Wochentag (0=Mo .. 6=So):', curWd);
+                  if(wdRaw === null) return;
+                  payload.refresh_weekday = parseInt(String(wdRaw||'').trim() || '0', 10);
+                  const curAt = String((t.refresh_daily_at || '')).trim() || '03:00:00';
+                  const atRaw = prompt('Refresh wochenlich um (HH:MM:SS):', curAt);
+                  if(atRaw === null) return;
+                  payload.refresh_daily_at = String(atRaw||'').trim();
+                }else if(m === 'manual'){
+                  // no extra fields
                 }else{
-                  throw new Error('Ungueltiger Modus (hours|daily)');
+                  throw new Error('Ungueltiger Modus (hours|daily|weekly|manual)');
                 }
                 await api('./api/timers/schedule', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
                 await loadTimers();

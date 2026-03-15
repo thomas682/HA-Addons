@@ -732,9 +732,12 @@ DEFAULT_CFG = {
     # Refresh schedule:
     # - mode=hours: refresh entries after N hours
     # - mode=daily: refresh once per day at dash_cache_refresh_daily_at (local time)
+    # - mode=weekly: refresh once per week at dash_cache_refresh_weekday + dash_cache_refresh_daily_at
+    # - mode=manual: never becomes stale by schedule (still may be updated when dirty/mismatch)
     "dash_cache_refresh_mode": "hours",
     "dash_cache_refresh_hours": 6,
     "dash_cache_refresh_daily_at": "00:00:00",
+    "dash_cache_refresh_weekday": 0,
     # Cache size limits (best-effort eviction)
     "dash_cache_max_items": 40,
     "dash_cache_max_mb": 50,
@@ -747,12 +750,21 @@ DEFAULT_CFG = {
     # Refresh schedule:
     # - mode=hours: refresh entries after N hours
     # - mode=daily: refresh once per day at stats_cache_refresh_daily_at (local time)
+    # - mode=weekly: refresh once per week at stats_cache_refresh_weekday + stats_cache_refresh_daily_at
+    # - mode=manual: never becomes stale by schedule (still may be updated when dirty/mismatch)
     "stats_cache_refresh_mode": "daily",
     "stats_cache_refresh_hours": 24,
     "stats_cache_refresh_daily_at": "03:00:00",
+    "stats_cache_refresh_weekday": 0,
     # Cache size limits (best-effort eviction)
     "stats_cache_max_items": 10,
     "stats_cache_max_mb": 50,
+
+    # Timer Job: stats_full (global statistics full load)
+    "stats_full_refresh_mode": "manual",
+    "stats_full_refresh_hours": 24,
+    "stats_full_refresh_daily_at": "03:00:00",
+    "stats_full_refresh_weekday": 0,
 
 }
 
@@ -1944,12 +1956,15 @@ def _dash_cache_touch_used(cache_id: str) -> None:
 def _dash_cache_is_stale(cfg: dict[str, Any], meta: dict[str, Any]) -> bool:
     try:
         mode = str(cfg.get("dash_cache_refresh_mode") or "hours").strip().lower()
-        if mode not in ("hours", "daily"):
+        if mode not in ("hours", "daily", "weekly", "manual"):
             mode = "hours"
 
         updated_ts = _dash_cache_ts(meta, "updated_at")
         if updated_ts <= 0:
             return True
+
+        if mode == "manual":
+            return False
 
         now_ts = datetime.now(timezone.utc).timestamp()
 
@@ -1962,30 +1977,17 @@ def _dash_cache_is_stale(cfg: dict[str, Any], meta: dict[str, Any]) -> bool:
                 return False
             return (now_ts - updated_ts) >= float(h * 3600)
 
-        # daily
+        # daily/weekly
         at = str(cfg.get("dash_cache_refresh_daily_at") or "00:00:00").strip() or "00:00:00"
-        hh, mm, ss = 0, 0, 0
-        try:
-            parts = at.split(":")
-            hh = int(parts[0]) if len(parts) > 0 else 0
-            mm = int(parts[1]) if len(parts) > 1 else 0
-            ss = int(parts[2]) if len(parts) > 2 else 0
-        except Exception:
-            hh, mm, ss = 0, 0, 0
-        hh = min(23, max(0, hh))
-        mm = min(59, max(0, mm))
-        ss = min(59, max(0, ss))
+        hh, mm, ss = _timer_parse_hms(at, (0, 0, 0))
+        wd = _timer_parse_weekday(cfg.get("dash_cache_refresh_weekday"), default=0)
 
-        # Evaluate in local time.
         now_local = datetime.now().astimezone()
         last_local = datetime.fromtimestamp(updated_ts, tz=timezone.utc).astimezone(now_local.tzinfo)
-        today_run = now_local.replace(hour=hh, minute=mm, second=ss, microsecond=0)
-        if now_local < today_run:
-            # Not yet today's run; stale if last update is before yesterday's run
-            prev_run = today_run - timedelta(days=1)
-            return last_local < prev_run
-        # After today's run time; stale if last update before today's run
-        return last_local < today_run
+        boundary = _timer_last_boundary_local(now_local, mode=mode, hh=hh, mm=mm, ss=ss, weekday=wd)
+        if not boundary:
+            return False
+        return last_local < boundary
     except Exception:
         return False
 
@@ -2556,12 +2558,15 @@ def _stats_cache_ts(meta: dict[str, Any], key: str) -> float:
 def _stats_cache_is_stale(cfg: dict[str, Any], meta: dict[str, Any]) -> bool:
     try:
         mode = str(cfg.get("stats_cache_refresh_mode") or "daily").strip().lower()
-        if mode not in ("hours", "daily"):
+        if mode not in ("hours", "daily", "weekly", "manual"):
             mode = "daily"
 
         updated_ts = _stats_cache_ts(meta, "updated_at")
         if updated_ts <= 0:
             return True
+
+        if mode == "manual":
+            return False
 
         now_ts = datetime.now(timezone.utc).timestamp()
         if mode == "hours":
@@ -2573,27 +2578,16 @@ def _stats_cache_is_stale(cfg: dict[str, Any], meta: dict[str, Any]) -> bool:
                 return False
             return (now_ts - updated_ts) >= float(h * 3600)
 
-        # daily
         at = str(cfg.get("stats_cache_refresh_daily_at") or "03:00:00").strip() or "03:00:00"
-        hh, mm, ss = 3, 0, 0
-        try:
-            parts = at.split(":")
-            hh = int(parts[0]) if len(parts) > 0 else 3
-            mm = int(parts[1]) if len(parts) > 1 else 0
-            ss = int(parts[2]) if len(parts) > 2 else 0
-        except Exception:
-            hh, mm, ss = 3, 0, 0
-        hh = min(23, max(0, hh))
-        mm = min(59, max(0, mm))
-        ss = min(59, max(0, ss))
+        hh, mm, ss = _timer_parse_hms(at, (3, 0, 0))
+        wd = _timer_parse_weekday(cfg.get("stats_cache_refresh_weekday"), default=0)
 
         now_local = datetime.now().astimezone()
         last_local = datetime.fromtimestamp(updated_ts, tz=timezone.utc).astimezone(now_local.tzinfo)
-        today_run = now_local.replace(hour=hh, minute=mm, second=ss, microsecond=0)
-        if now_local < today_run:
-            prev_run = today_run - timedelta(days=1)
-            return last_local < prev_run
-        return last_local < today_run
+        boundary = _timer_last_boundary_local(now_local, mode=mode, hh=hh, mm=mm, ss=ss, weekday=wd)
+        if not boundary:
+            return False
+        return last_local < boundary
     except Exception:
         return False
 
@@ -7759,23 +7753,131 @@ def api_cache_list():
     })
 
 
+def _timer_parse_hms(s: str, default: tuple[int, int, int]) -> tuple[int, int, int]:
+    try:
+        raw = str(s or "").strip()
+        if not re.match(r"^\d{2}:\d{2}:\d{2}$", raw):
+            return default
+        parts = raw.split(":")
+        hh, mm, ss = int(parts[0]), int(parts[1]), int(parts[2])
+        if not (0 <= hh <= 23 and 0 <= mm <= 59 and 0 <= ss <= 59):
+            return default
+        return (hh, mm, ss)
+    except Exception:
+        return default
+
+
+def _timer_parse_weekday(v: Any, default: int = 0) -> int:
+    """Parse weekday to Python's 0=Mon..6=Sun."""
+
+    try:
+        if isinstance(v, int):
+            d = v
+        else:
+            s = str(v or "").strip().lower()
+            if s.isdigit():
+                d = int(s)
+            else:
+                m = {
+                    "mon": 0,
+                    "monday": 0,
+                    "di": 1,
+                    "tue": 1,
+                    "tuesday": 1,
+                    "mi": 2,
+                    "wed": 2,
+                    "wednesday": 2,
+                    "do": 3,
+                    "thu": 3,
+                    "thursday": 3,
+                    "fr": 4,
+                    "fri": 4,
+                    "friday": 4,
+                    "sa": 5,
+                    "sat": 5,
+                    "saturday": 5,
+                    "so": 6,
+                    "sun": 6,
+                    "sunday": 6,
+                }
+                d = m.get(s[:3], default)
+        if d < 0:
+            d = 0
+        if d > 6:
+            d = 6
+        return int(d)
+    except Exception:
+        return int(default)
+
+
+def _timer_last_boundary_local(
+    now_local: datetime,
+    *,
+    mode: str,
+    hh: int,
+    mm: int,
+    ss: int,
+    weekday: int,
+) -> datetime | None:
+    """Return the most recent scheduled run time (local tz) that is <= now."""
+
+    try:
+        run = now_local.replace(hour=hh, minute=mm, second=ss, microsecond=0)
+        if mode == "daily":
+            if now_local < run:
+                run = run - timedelta(days=1)
+            return run
+
+        if mode == "weekly":
+            wd = int(weekday)
+            delta = (now_local.weekday() - wd) % 7
+            run = run - timedelta(days=delta)
+            if now_local < run:
+                run = run - timedelta(days=7)
+            return run
+
+        return None
+    except Exception:
+        return None
+
+
 def _cache_mode_str(cfg: dict[str, Any], base: str) -> str:
     """Human-readable cache refresh mode string."""
+
+    def _mode_defaults() -> tuple[str, int, str, int]:
+        if base == "dash_cache":
+            return ("hours", 6, "00:00:00", 0)
+        if base == "stats_cache":
+            return ("daily", 24, "03:00:00", 0)
+        if base == "stats_full":
+            return ("manual", 24, "03:00:00", 0)
+        return ("daily", 24, "03:00:00", 0)
 
     try:
         mode = str(cfg.get(f"{base}_refresh_mode") or "").strip().lower()
     except Exception:
         mode = ""
-    if mode not in ("hours", "daily"):
-        mode = "hours" if base == "dash_cache" else "daily"
+    def_mode, def_h, def_at, def_wd = _mode_defaults()
+    if mode not in ("hours", "daily", "weekly", "manual"):
+        mode = def_mode
 
-    daily_at = str(cfg.get(f"{base}_refresh_daily_at") or ("00:00:00" if base == "dash_cache" else "03:00:00")).strip()
+    daily_at = str(cfg.get(f"{base}_refresh_daily_at") or def_at).strip() or def_at
     try:
-        hours = int(cfg.get(f"{base}_refresh_hours") or (6 if base == "dash_cache" else 24))
+        hours = int(cfg.get(f"{base}_refresh_hours") or def_h)
     except Exception:
-        hours = 6 if base == "dash_cache" else 24
+        hours = def_h
 
-    return f"{mode} | daily_at: {daily_at} | hours: {hours}"
+    wd = _timer_parse_weekday(cfg.get(f"{base}_refresh_weekday"), default=def_wd)
+    hh, mm, ss = _timer_parse_hms(daily_at, (3, 0, 0))
+    daily_at = f"{hh:02d}:{mm:02d}:{ss:02d}"
+
+    if mode == "hours":
+        return f"hours | hours: {hours}"
+    if mode == "daily":
+        return f"daily | at: {daily_at}"
+    if mode == "weekly":
+        return f"weekly | weekday: {wd} | at: {daily_at}"
+    return "manual"
 
 
 def _cache_next_update_iso_from(cfg: dict[str, Any], base: str, updated_at_iso: str | None) -> str | None:
@@ -7789,8 +7891,11 @@ def _cache_next_update_iso_from(cfg: dict[str, Any], base: str, updated_at_iso: 
             return None
 
         mode = str(cfg.get(f"{base}_refresh_mode") or "").strip().lower()
-        if mode not in ("hours", "daily"):
+        if mode not in ("hours", "daily", "weekly", "manual"):
             mode = "hours" if base == "dash_cache" else "daily"
+
+        if mode == "manual":
+            return None
 
         if mode == "hours":
             try:
@@ -7802,24 +7907,24 @@ def _cache_next_update_iso_from(cfg: dict[str, Any], base: str, updated_at_iso: 
             nxt = updated_dt + timedelta(hours=h)
             return nxt.astimezone(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
 
-        # daily (local time)
         at = str(cfg.get(f"{base}_refresh_daily_at") or ("00:00:00" if base == "dash_cache" else "03:00:00")).strip() or "00:00:00"
-        hh, mm, ss = 0, 0, 0
-        try:
-            parts = at.split(":")
-            hh = int(parts[0]) if len(parts) > 0 else 0
-            mm = int(parts[1]) if len(parts) > 1 else 0
-            ss = int(parts[2]) if len(parts) > 2 else 0
-        except Exception:
-            hh, mm, ss = 0, 0, 0
-        hh = min(23, max(0, hh))
-        mm = min(59, max(0, mm))
-        ss = min(59, max(0, ss))
+        hh, mm, ss = _timer_parse_hms(at, (0, 0, 0))
 
         upd_local = updated_dt.astimezone()
+
+        if mode == "daily":
+            run = upd_local.replace(hour=hh, minute=mm, second=ss, microsecond=0)
+            if run <= upd_local:
+                run = run + timedelta(days=1)
+            return run.astimezone(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+
+        # weekly
+        wd = _timer_parse_weekday(cfg.get(f"{base}_refresh_weekday"), default=0)
         run = upd_local.replace(hour=hh, minute=mm, second=ss, microsecond=0)
+        delta = (wd - run.weekday()) % 7
+        run = run + timedelta(days=delta)
         if run <= upd_local:
-            run = run + timedelta(days=1)
+            run = run + timedelta(days=7)
         return run.astimezone(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
     except Exception:
         return None
@@ -8220,8 +8325,10 @@ def api_stats_cache_update():
 def _stats_cache_next_run_iso(cfg: dict[str, Any]) -> str | None:
     try:
         mode = str(cfg.get("stats_cache_refresh_mode") or "daily").strip().lower()
-        if mode not in ("hours", "daily"):
+        if mode not in ("hours", "daily", "weekly", "manual"):
             mode = "daily"
+        if mode == "manual":
+            return None
         now_local = datetime.now().astimezone()
         if mode == "hours":
             try:
@@ -8234,20 +8341,20 @@ def _stats_cache_next_run_iso(cfg: dict[str, Any]) -> str | None:
             return nxt.astimezone(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
 
         at = str(cfg.get("stats_cache_refresh_daily_at") or "03:00:00").strip() or "03:00:00"
-        hh, mm, ss = 3, 0, 0
-        try:
-            parts = at.split(":")
-            hh = int(parts[0]) if len(parts) > 0 else 3
-            mm = int(parts[1]) if len(parts) > 1 else 0
-            ss = int(parts[2]) if len(parts) > 2 else 0
-        except Exception:
-            hh, mm, ss = 3, 0, 0
-        hh = min(23, max(0, hh))
-        mm = min(59, max(0, mm))
-        ss = min(59, max(0, ss))
+        hh, mm, ss = _timer_parse_hms(at, (3, 0, 0))
+        wd = _timer_parse_weekday(cfg.get("stats_cache_refresh_weekday"), default=0)
+
         run = now_local.replace(hour=hh, minute=mm, second=ss, microsecond=0)
-        if run <= now_local:
-            run = run + timedelta(days=1)
+        if mode == "daily":
+            if run <= now_local:
+                run = run + timedelta(days=1)
+        else:
+            # weekly
+            delta = (wd - run.weekday()) % 7
+            run = run + timedelta(days=delta)
+            if run <= now_local:
+                run = run + timedelta(days=7)
+
         return run.astimezone(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
     except Exception:
         return None
@@ -8258,8 +8365,10 @@ def _cache_schedule_next_run_iso(cfg: dict[str, Any], base: str) -> str | None:
 
     try:
         mode = str(cfg.get(f"{base}_refresh_mode") or "daily").strip().lower()
-        if mode not in ("hours", "daily"):
+        if mode not in ("hours", "daily", "weekly", "manual"):
             mode = "daily"
+        if mode == "manual":
+            return None
 
         now_local = datetime.now().astimezone()
         if mode == "hours":
@@ -8273,20 +8382,19 @@ def _cache_schedule_next_run_iso(cfg: dict[str, Any], base: str) -> str | None:
             return nxt.astimezone(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
 
         at = str(cfg.get(f"{base}_refresh_daily_at") or "03:00:00").strip() or "03:00:00"
-        hh, mm, ss = 3, 0, 0
-        try:
-            parts = at.split(":")
-            hh = int(parts[0]) if len(parts) > 0 else 3
-            mm = int(parts[1]) if len(parts) > 1 else 0
-            ss = int(parts[2]) if len(parts) > 2 else 0
-        except Exception:
-            hh, mm, ss = 3, 0, 0
-        hh = min(23, max(0, hh))
-        mm = min(59, max(0, mm))
-        ss = min(59, max(0, ss))
+        hh, mm, ss = _timer_parse_hms(at, (3, 0, 0))
+        wd = _timer_parse_weekday(cfg.get(f"{base}_refresh_weekday"), default=0)
+
         run = now_local.replace(hour=hh, minute=mm, second=ss, microsecond=0)
-        if run <= now_local:
-            run = run + timedelta(days=1)
+        if mode == "daily":
+            if run <= now_local:
+                run = run + timedelta(days=1)
+        else:
+            delta = (wd - run.weekday()) % 7
+            run = run + timedelta(days=delta)
+            if run <= now_local:
+                run = run + timedelta(days=7)
+
         return run.astimezone(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
     except Exception:
         return None
@@ -8306,6 +8414,7 @@ def api_timers():
             "refresh_mode": str(cfg.get("dash_cache_refresh_mode") or "hours").strip().lower(),
             "refresh_hours": int(cfg.get("dash_cache_refresh_hours") or 6),
             "refresh_daily_at": str(cfg.get("dash_cache_refresh_daily_at") or "00:00:00"),
+            "refresh_weekday": int(cfg.get("dash_cache_refresh_weekday") or 0),
             "mode": _cache_mode_str(cfg, "dash_cache"),
             "next_run_at": _cache_schedule_next_run_iso(cfg, "dash_cache"),
             "last_started_at": st_dash.get("last_started_at"),
@@ -8320,6 +8429,7 @@ def api_timers():
             "refresh_mode": str(cfg.get("stats_cache_refresh_mode") or "daily").strip().lower(),
             "refresh_hours": int(cfg.get("stats_cache_refresh_hours") or 24),
             "refresh_daily_at": str(cfg.get("stats_cache_refresh_daily_at") or "03:00:00"),
+            "refresh_weekday": int(cfg.get("stats_cache_refresh_weekday") or 0),
             "mode": _cache_mode_str(cfg, "stats_cache"),
             "next_run_at": _cache_schedule_next_run_iso(cfg, "stats_cache"),
             "last_started_at": st_stats.get("last_started_at"),
@@ -8330,9 +8440,13 @@ def api_timers():
         {
             "id": "stats_full",
             "enabled": True,
-            "auto_update": False,
-            "mode": "manual",
-            "next_run_at": None,
+            "refresh_mode": str(cfg.get("stats_full_refresh_mode") or "manual").strip().lower(),
+            "refresh_hours": int(cfg.get("stats_full_refresh_hours") or 24),
+            "refresh_daily_at": str(cfg.get("stats_full_refresh_daily_at") or "03:00:00"),
+            "refresh_weekday": int(cfg.get("stats_full_refresh_weekday") or 0),
+            "auto_update": str(cfg.get("stats_full_refresh_mode") or "manual").strip().lower() != "manual",
+            "mode": _cache_mode_str(cfg, "stats_full"),
+            "next_run_at": _cache_schedule_next_run_iso(cfg, "stats_full"),
             "last_started_at": st_full.get("last_started_at"),
             "last_run_at": st_full.get("last_run_at"),
             "last_state": st_full.get("last_state"),
@@ -8346,15 +8460,22 @@ def api_timers():
 def api_timers_schedule():
     body = request.get_json(force=True) or {}
     tid = str(body.get("id") or "").strip()
-    if tid not in ("dash_cache", "stats_cache"):
+    if tid not in ("dash_cache", "stats_cache", "stats_full"):
         return jsonify({"ok": False, "error": "invalid timer id"}), 400
 
     mode = str(body.get("refresh_mode") or "").strip().lower()
-    if mode not in ("hours", "daily"):
-        return jsonify({"ok": False, "error": "refresh_mode must be hours|daily"}), 400
+    if mode not in ("hours", "daily", "weekly", "manual"):
+        return jsonify({"ok": False, "error": "refresh_mode must be hours|daily|weekly|manual"}), 400
 
     cfg = load_cfg()
     cfg[f"{tid}_refresh_mode"] = mode
+
+    if mode == "manual":
+        try:
+            save_cfg(cfg)
+        except Exception as e:
+            return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 500
+        return api_timers()
 
     if mode == "hours":
         try:
@@ -8366,7 +8487,9 @@ def api_timers_schedule():
         if h > 8760:
             h = 8760
         cfg[f"{tid}_refresh_hours"] = h
+
     else:
+        # daily/weekly time
         s = str(body.get("refresh_daily_at") or cfg.get(f"{tid}_refresh_daily_at") or ("00:00:00" if tid == "dash_cache" else "03:00:00")).strip()
         if not re.match(r"^\d{2}:\d{2}:\d{2}$", s):
             return jsonify({"ok": False, "error": "refresh_daily_at must be HH:MM:SS"}), 400
@@ -8377,6 +8500,11 @@ def api_timers_schedule():
         if not (0 <= hh <= 23 and 0 <= mm <= 59 and 0 <= ss <= 59):
             return jsonify({"ok": False, "error": "refresh_daily_at out of range"}), 400
         cfg[f"{tid}_refresh_daily_at"] = s
+
+        if mode == "weekly":
+            wd = body.get("refresh_weekday")
+            w = _timer_parse_weekday(wd, default=int(cfg.get(f"{tid}_refresh_weekday") or 0))
+            cfg[f"{tid}_refresh_weekday"] = int(w)
 
     try:
         save_cfg(cfg)
@@ -8518,7 +8646,7 @@ def api_timers_cancel():
                     continue
                 if tid == "stats_cache" and not str(j.get("cache_id") or "").strip():
                     continue
-                if tid == "stats_full" and str(j.get("trigger_page") or "") != "timers":
+                if tid == "stats_full" and str(j.get("timer_id") or "").strip() != "stats_full":
                     continue
                 GLOBAL_STATS_JOBS[jid]["cancelled"] = True
                 cancelled += 1
@@ -8745,14 +8873,14 @@ def api_set_config():
     _bool("dash_cache_enabled", True)
     _bool("dash_cache_auto_update", True)
     _bool("dash_cache_update_on_use_if_stale", True)
-    _clamp_int("dash_cache_refresh_hours", 6, 1, 168)
+    _clamp_int("dash_cache_refresh_hours", 6, 1, 8760)
     _clamp_int("dash_cache_max_items", 40, 0, 500)
     _clamp_int("dash_cache_max_mb", 50, 0, 2048)
     try:
         mode = str(cfg.get("dash_cache_refresh_mode") or "hours").strip().lower()
     except Exception:
         mode = "hours"
-    if mode not in ("hours", "daily"):
+    if mode not in ("hours", "daily", "weekly", "manual"):
         mode = "hours"
     cfg["dash_cache_refresh_mode"] = mode
     try:
@@ -8762,6 +8890,47 @@ def api_set_config():
     if not re.match(r"^\d{2}:\d{2}:\d{2}$", s):
         s = "00:00:00"
     cfg["dash_cache_refresh_daily_at"] = s
+    _clamp_int("dash_cache_refresh_weekday", 0, 0, 6)
+
+    # Statistik cache
+    _bool("stats_cache_enabled", True)
+    _bool("stats_cache_auto_update", True)
+    _clamp_int("stats_cache_refresh_hours", 24, 1, 8760)
+    _clamp_int("stats_cache_max_items", 10, 0, 500)
+    _clamp_int("stats_cache_max_mb", 50, 0, 2048)
+    try:
+        mode2 = str(cfg.get("stats_cache_refresh_mode") or "daily").strip().lower()
+    except Exception:
+        mode2 = "daily"
+    if mode2 not in ("hours", "daily", "weekly", "manual"):
+        mode2 = "daily"
+    cfg["stats_cache_refresh_mode"] = mode2
+    try:
+        s2 = str(cfg.get("stats_cache_refresh_daily_at") or "03:00:00").strip() or "03:00:00"
+    except Exception:
+        s2 = "03:00:00"
+    if not re.match(r"^\d{2}:\d{2}:\d{2}$", s2):
+        s2 = "03:00:00"
+    cfg["stats_cache_refresh_daily_at"] = s2
+    _clamp_int("stats_cache_refresh_weekday", 0, 0, 6)
+
+    # Timer job: stats_full
+    _clamp_int("stats_full_refresh_hours", 24, 1, 8760)
+    try:
+        mode3 = str(cfg.get("stats_full_refresh_mode") or "manual").strip().lower()
+    except Exception:
+        mode3 = "manual"
+    if mode3 not in ("hours", "daily", "weekly", "manual"):
+        mode3 = "manual"
+    cfg["stats_full_refresh_mode"] = mode3
+    try:
+        s3 = str(cfg.get("stats_full_refresh_daily_at") or "03:00:00").strip() or "03:00:00"
+    except Exception:
+        s3 = "03:00:00"
+    if not re.match(r"^\d{2}:\d{2}:\d{2}$", s3):
+        s3 = "03:00:00"
+    cfg["stats_full_refresh_daily_at"] = s3
+    _clamp_int("stats_full_refresh_weekday", 0, 0, 6)
 
     # Logging
     _bool("log_to_file", True)
@@ -14565,6 +14734,125 @@ def _dash_cache_scheduler_start() -> None:
 
 try:
     _dash_cache_scheduler_start()
+except Exception:
+    pass
+
+
+_STATS_FULL_SCHED_STARTED = False
+
+
+def _stats_full_due_now(cfg: dict[str, Any]) -> bool:
+    try:
+        mode = str(cfg.get("stats_full_refresh_mode") or "manual").strip().lower()
+        if mode not in ("hours", "daily", "weekly", "manual"):
+            mode = "manual"
+        if mode == "manual":
+            return False
+
+        st = _timers_state_get("stats_full")
+        last_run = _parse_iso_datetime(str(st.get("last_run_at") or "").strip())
+        last_ts = last_run.timestamp() if last_run else 0.0
+
+        if mode == "hours":
+            try:
+                h = int(cfg.get("stats_full_refresh_hours") or 24)
+            except Exception:
+                h = 24
+            if h <= 0:
+                return False
+            if last_ts <= 0:
+                return True
+            return (datetime.now(timezone.utc).timestamp() - last_ts) >= float(h * 3600)
+
+        at = str(cfg.get("stats_full_refresh_daily_at") or "03:00:00").strip() or "03:00:00"
+        hh, mm, ss = _timer_parse_hms(at, (3, 0, 0))
+        wd = _timer_parse_weekday(cfg.get("stats_full_refresh_weekday"), default=0)
+
+        now_local = datetime.now().astimezone()
+        boundary = _timer_last_boundary_local(now_local, mode=mode, hh=hh, mm=mm, ss=ss, weekday=wd)
+        if not boundary:
+            return False
+
+        if last_ts <= 0:
+            return True
+        last_local = datetime.fromtimestamp(last_ts, tz=timezone.utc).astimezone(now_local.tzinfo)
+        return last_local < boundary
+    except Exception:
+        return False
+
+
+def _stats_full_inflight() -> bool:
+    try:
+        with GLOBAL_STATS_LOCK:
+            for j in GLOBAL_STATS_JOBS.values():
+                try:
+                    if str(j.get("timer_id") or "").strip() != "stats_full":
+                        continue
+                    st = str(j.get("state") or "")
+                    if st and st not in ("done", "error", "cancelled"):
+                        return True
+                except Exception:
+                    continue
+    except Exception:
+        return False
+    return False
+
+
+def _stats_full_scheduler_loop() -> None:
+    """Scheduled trigger for stats_full global stats job (best-effort)."""
+
+    while True:
+        try:
+            cfg = _overlay_from_yaml_if_enabled(load_cfg())
+            if not _stats_full_due_now(cfg):
+                time.sleep(30)
+                continue
+            if _stats_full_inflight():
+                time.sleep(30)
+                continue
+
+            # Start the full global stats job.
+            start_dt = datetime(1970, 1, 1, tzinfo=timezone.utc)
+            stop_dt = datetime.now(timezone.utc)
+            cols = ["last_value", "oldest_time", "newest_time", "count", "min", "max", "mean"]
+            job_id = _global_stats_start_job(
+                cfg=cfg,
+                start_dt=start_dt,
+                stop_dt=stop_dt,
+                field_filter=None,
+                measurement_filter=None,
+                entity_id_filter=None,
+                friendly_name_filter=None,
+                series_list=None,
+                columns=cols,
+                page_limit=200,
+                trigger_page="scheduler",
+                timer_id="stats_full",
+                cache_id=None,
+                cache_key=None,
+            )
+            _timer_mark_started("stats_full", job_id=job_id)
+        except Exception:
+            pass
+
+        time.sleep(30)
+
+
+def _stats_full_scheduler_start() -> None:
+    global _STATS_FULL_SCHED_STARTED
+    if _STATS_FULL_SCHED_STARTED:
+        return
+    _STATS_FULL_SCHED_STARTED = True
+    t = threading.Thread(target=_stats_full_scheduler_loop, daemon=True)
+    t.start()
+    try:
+        LOG.info("stats_full scheduler started")
+    except Exception:
+        pass
+
+
+try:
+    _stats_full_scheduler_start()
 except Exception:
     pass
 

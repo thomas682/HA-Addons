@@ -305,7 +305,11 @@ Timer Jobs:
 - Tabelle `Timer Jobs`: zeigt Intervall-/Nightly-Jobs mit naechstem Lauf (aus Einstellungen abgeleitet) und kurzer Erklaerung.
 - Action: `Start` (manuell) und `Abbruch`.
 - `last run`: zeigt den letzten Laufzeitpunkt (persistent).
-- `Modus`: erlaubt das Aendern der Scheduler-Parameter (hours/daily, hours/daily_at).
+- `Modus`: erlaubt das Aendern der Scheduler-Parameter:
+  - `hours`: alle N Stunden
+  - `daily`: taeglich um HH:MM:SS
+  - `weekly`: woechentlich (Wochentag 0=Mo..6=So) um HH:MM:SS
+  - `manual`: nur manuell per `Start`
 - Zusaetzlich: `stats_full` laedt Statistik komplett (inkl. Details wie count/min/max/mean) fuer alle Serien.
 
 ## Backup (ein Messwert, alle Werte)
