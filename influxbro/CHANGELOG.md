@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.12.30
+
+### Fixes
+
+- Dashboard: Klick auf Graph-Punkt springt robust in die Raw-Daten (keine Zeitverschiebung durch Plotly-X-Parsing); markierter Punkt bleibt in der Raw-Liste dauerhaft hervorgehoben.
+- Statistik: Serienlisten-Scan robuster, wenn Tags wie `entity_id`/`friendly_name` fehlen; Fehlermeldungen werden korrekt angezeigt (keine abgeschnittenen "no column ..." Messages).
+
+### UI
+
+- Dashboard: Plotly-Legende ist unter dem Graph angeordnet.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.29
 
 ### Fixes

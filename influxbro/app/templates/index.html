@@ -2557,18 +2557,16 @@ function drawCanvas(rows){
 function drawPlotly(rows){
   if(!$plotly || !window.Plotly) return false;
   const pts = (rows || []).map(r => {
-    const t = (r && r.time) ? String(r.time) : "";
-    const ms = Date.parse(t);
+    const iso = (r && r.time) ? String(r.time) : "";
+    const ms = Date.parse(iso);
     const v = toFiniteNumber(r && r.value);
-    return {
-      x: isFinite(ms) ? new Date(ms) : null,
-      y: v,
-    };
-  }).filter(p => p.x && p.y !== null);
+    return { iso, ms, v };
+  }).filter(p => isFinite(p.ms) && p.ms > 0 && p.v !== null);
   if(pts.length < 2) return false;
 
-  const x = pts.map(p => p.x);
-  const y = pts.map(p => p.y);
+  const x = pts.map(p => new Date(p.ms));
+  const y = pts.map(p => p.v);
+  const customdata = pts.map(p => p.iso);
 
   // Track full dataset bounds (do not overwrite current zoom window).
   try{
@@ -2587,6 +2585,8 @@ function drawPlotly(rows){
     line: { color: "#1f77b4", width: 1.5, simplify: false, shape: "linear" },
     marker: { size: 6, symbol: "circle", color: "#1f77b4" },
     hovertemplate: "%{x|%d.%m.%y %H:%M:%S.%L}<br>%{y}<extra></extra>",
+    customdata,
+    name: "Wert",
   },
   {
     x: (isFinite(Number(GRAPH_SELECTED_MS)) && GRAPH_SELECTED_Y !== null && GRAPH_SELECTED_Y !== undefined) ? [new Date(Number(GRAPH_SELECTED_MS))] : [],
@@ -2600,7 +2600,7 @@ function drawPlotly(rows){
   }];
 
   const layout = {
-    margin: { l: 52, r: 10, t: 10, b: 40 },
+    margin: { l: 52, r: 10, t: 10, b: 64 },
     height: (GRAPH_H_PX && isFinite(GRAPH_H_PX)) ? Math.round(GRAPH_H_PX) : 220,
     autosize: true,
     xaxis: {
@@ -2608,6 +2608,8 @@ function drawPlotly(rows){
       rangeslider: { visible: true, thickness: 0.12 },
     },
     yaxis: { automargin: true },
+    showlegend: true,
+    legend: {orientation: 'h', x: 0, xanchor: 'left', y: -0.35, yanchor: 'top', font: {size: 11}},
   };
 
   // Apply stored/current x-window.
@@ -2721,7 +2723,14 @@ function drawPlotly(rows){
           const p = pts[0];
           const x = (p && p.x !== undefined) ? p.x : null;
           const y = (p && p.y !== undefined) ? p.y : null;
-          const ms = (x instanceof Date) ? x.getTime() : Date.parse(String(x||''));
+          let ms = null;
+          try{
+            if(p && p.customdata){
+              ms = Date.parse(String(p.customdata || ''));
+            }else{
+              ms = (x instanceof Date) ? x.getTime() : Date.parse(String(x||''));
+            }
+          }catch(e){ ms = null; }
           if(!(isFinite(ms) && ms > 0)) return;
           _setGraphSelection(ms, y);
           _jumpToRawByMs(ms).catch(()=>{});
@@ -3084,7 +3093,6 @@ async function _jumpToRawByMs(ms){
         }
       }catch(e){}
 
-      setTimeout(()=>{ try{ best.classList.remove('raw_hl'); }catch(e){} }, 2200);
     }
   }catch(e){}
 }
@@ -3970,12 +3978,26 @@ function renderRawTable(){
   if(UI_RAW_MAX_POINTS) info += ` | max_points: ${UI_RAW_MAX_POINTS}`;
   $rawInfo.textContent = info;
 
+  const selMs = (RAW_SELECTED_MS !== null && RAW_SELECTED_MS !== undefined && isFinite(Number(RAW_SELECTED_MS))) ? Number(RAW_SELECTED_MS) : null;
+  let bestMs = null;
+  let bestDiff = null;
+  try{
+    if(selMs !== null){
+      (RAW_ROWS || []).forEach(r => {
+        const ms = Date.parse(String(r.time || ''));
+        if(!isFinite(ms)) return;
+        const d = Math.abs(ms - selMs);
+        if(bestDiff === null || d < bestDiff){ bestDiff = d; bestMs = ms; }
+      });
+    }
+  }catch(e){}
+
   (RAW_ROWS || []).forEach(r => {
     const tr = document.createElement('tr');
     try{
       const ms = Date.parse(String(r.time || ''));
       if(isFinite(ms)) tr.setAttribute('data-ts-ms', String(ms));
-      if(RAW_SELECTED_MS !== null && RAW_SELECTED_MS !== undefined && isFinite(Number(RAW_SELECTED_MS)) && isFinite(ms) && Math.abs(ms - Number(RAW_SELECTED_MS)) <= 0){
+      if(bestMs !== null && isFinite(ms) && ms === bestMs){
         tr.classList.add('raw_hl');
       }
     }catch(e){}

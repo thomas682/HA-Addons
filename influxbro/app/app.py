@@ -2962,9 +2962,14 @@ def _flux_str(v: str) -> str:
 def _short_influx_error(e: Exception) -> str:
     s = str(e) or e.__class__.__name__
     # Try to extract the JSON {"message":"..."} part from influxdb-client exception strings.
-    m = re.search(r'"message"\s*:\s*"([^"]+)"', s)
+    m = re.search(r'"message"\s*:\s*"((?:\\.|[^"])*)"', s)
     if m:
-        return m.group(1)
+        raw = m.group(1)
+        try:
+            # Unescape JSON string content (handles embedded \" quotes correctly).
+            return json.loads('"' + raw + '"')
+        except Exception:
+            return raw
     return s
 
 
@@ -11467,6 +11472,7 @@ data = from(bucket: "{bucket}")
   |> range(start: time(v: "{s_iso}"), stop: time(v: "{e_iso}"))
   |> filter(fn: (r) => {pred})
   |> filter(fn: (r) => typeOf(v: r._value) == "float" or typeOf(v: r._value) == "int" or typeOf(v: r._value) == "uint")
+  |> map(fn: (r) => ({{ r with entity_id: if exists r.entity_id then string(v: r.entity_id) else "", friendly_name: if exists r.friendly_name then string(v: r.friendly_name) else "" }}))
   |> keep(columns: ["_measurement","_field","entity_id","friendly_name","_time","_value"])
   |> group(columns: ["_measurement","_field","entity_id","friendly_name"])
 
@@ -11815,6 +11821,7 @@ from(bucket: "{cfg_local["bucket"]}")
   {mf_clause}
   {ff_clause}
   {tag_clause.strip()}
+  |> map(fn: (r) => ({{ r with entity_id: if exists r.entity_id then string(v: r.entity_id) else "", friendly_name: if exists r.friendly_name then string(v: r.friendly_name) else "" }}))
   |> keep(columns: ["_measurement","_field","entity_id","friendly_name","_time","_value"])
   |> group(columns: ["_measurement","_field","entity_id","friendly_name"])
   |> last()
@@ -11844,6 +11851,7 @@ from(bucket: "{cfg_local["bucket"]}")
   {mf_clause}
   {ff_clause}
   {tag_clause.strip()}
+  |> map(fn: (r) => ({{ r with entity_id: if exists r.entity_id then string(v: r.entity_id) else "", friendly_name: if exists r.friendly_name then string(v: r.friendly_name) else "" }}))
   |> keep(columns: ["_measurement","_field","entity_id","friendly_name","_time"])
   |> group(columns: ["_measurement","_field","entity_id","friendly_name"])
   |> first()
