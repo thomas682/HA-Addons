@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.12.28
+
+### Features
+
+- Kombinieren: Vorschau mit Timeline (Maus-Selektion) und Mini-Graph fuer Quelle/Ziel; Richtung Quelle<->Ziel direkt umschaltbar.
+- Kombinieren: Rollback-sicher durch optionales Ziel-Range-Backup vor dem Schreiben; optionales Loeschen des Zielbereichs vor dem Kopieren (DELETE erforderlich).
+- UI/Template: Info-Icon neben Bereichstiteln (Details/Sektionen) oeffnet resizable Info-Popup mit Copy/Umbruch.
+
+### Fixes
+
+- Einstellungen: Checkboxen sind linksbuendig ausgerichtet und in der Hoehe konsistenter.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.27
 
 ### Fixes

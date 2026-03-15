@@ -109,7 +109,7 @@
 
       <div class="card">
         <details id="selection_details" open data-ui="section.selection" title="section.selection">
-          <summary>Auswahl</summary>
+          <summary><span class="ib_summary_row"><span>Auswahl</span><button type="button" class="ib_info_icon" data-info-title="Statistik: Auswahl" data-info-body="Filtert, welche Serien in der Gesamtstatistik auftauchen (measurement/field/entity_id/friendly_name).\n\nPerformance:\n- Initial werden nur schnelle Basis-Spalten geladen (last/oldest/newest).\n- Details (count/min/max/mean) werden per Nachladen-Job berechnet und inkrementell gemerged." >i</button></span></summary>
 
           <div class="row" data-ui="stats.controls" title="stats.controls">
             <div class="ib_sel ib_sel_time" style="min-width: 220px;">
@@ -207,7 +207,7 @@
         <div class="progress" aria-hidden="true" style="display:none;"><div id="bar"></div></div>
 
         <details class="card" id="query_details" style="display:none; margin-top: 10px;" data-ui="stats.query_details" title="stats.query_details">
-          <summary>Query Details</summary>
+          <summary><span class="ib_summary_row"><span>Query Details</span><button type="button" class="ib_info_icon" data-info-title="Statistik: Query Details" data-info-body="Zeigt die zuletzt verwendeten Queries/Labels des Statistik-Jobs (best-effort).\n\nNutzen:\n- Debugging bei Timeouts\n- Support" >i</button></span></summary>
           <div class="card_body">
             <div class="muted" id="query_label"></div>
             <pre id="query_pre" style="margin:6px 0 0 0; padding:10px 12px; border:1px solid #eee; border-radius:12px; background:#fafafa; white-space:pre; overflow:auto; max-height: 260px;"></pre>

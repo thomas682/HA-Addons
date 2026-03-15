@@ -475,6 +475,52 @@
     obs.observe(document.body, { childList:true, subtree:true });
   }catch(e){}
 })();
+
+// Section info icons: open the global popup with detailed help.
+(function(){
+  function _norm(s){
+    return String(s || '').replace(/\s+/g, ' ').trim();
+  }
+
+  function _getTitle(btn){
+    const t = _norm(btn.getAttribute('data-info-title'));
+    if(t) return t;
+    const a = _norm(btn.getAttribute('aria-label'));
+    if(a) return a;
+    return 'Info';
+  }
+
+  function _getBody(btn){
+    const b = String(btn.getAttribute('data-info-body') || '');
+    return b;
+  }
+
+  function _show(btn){
+    const title = _getTitle(btn);
+    const body = _getBody(btn);
+    try{
+      if(window.InfluxBroPopup && window.InfluxBroPopup.show) window.InfluxBroPopup.show(title, body);
+      else alert(title + "\n\n" + body);
+    }catch(e){
+      try{ alert(title + "\n\n" + body); }catch(x){}
+    }
+  }
+
+  function onClick(ev){
+    try{
+      const t = ev && ev.target ? ev.target : null;
+      const btn = t && t.closest ? t.closest('button.ib_info_icon') : null;
+      if(!btn) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      _show(btn);
+    }catch(e){}
+  }
+
+  try{
+    document.addEventListener('click', onClick, true);
+  }catch(e){}
+})();
 </script>
 
 <script>

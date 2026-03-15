@@ -109,7 +109,7 @@
 
       <div class="card" style="--backup_visible_rows: {{ (cfg.get('ui_backup_visible_rows') or 24) | int }};">
         <details id="selection_details" open data-ui="section.selection" title="section.selection">
-          <summary>Einzelbackup</summary>
+          <summary><span class="ib_summary_row"><span>Einzelbackup</span><button type="button" class="ib_info_icon" data-info-title="Backup: Einzelbackup" data-info-body="In diesem Bereich erstellst du Backups fuer genau einen Messwert (eine Serie) und verwaltest die Backupliste.\n\nAblauf:\n1) Auswahl setzen (measurement optional, entity_id/friendly_name fuer eindeutige Serie).\n2) Backup starten (Messwert-Backup oder Zeitbereich-Backup).\n3) Job-Status beobachten (Laufzeit/Groesse/Query).\n4) In der Backupliste selektieren, Download (nur bei genau 1 Auswahl) oder Loeschen (mehrfach).\n\nHinweise:\n- Backups werden als ZIP gespeichert (Meta JSON + Line Protocol).\n- Die Tabelle unterstuetzt Umbruch, Spaltenfilter, Auto-Fit/Window-Fit und Zeilenhoehe." >i</button></span></summary>
 
           <div class="muted">Auswahl wird initial aus dem Dashboard uebernommen (Browser-Speicher) und kann hier angepasst werden.</div>
           <div class="row" style="margin-top: 8px;" data-ui="backup.take_from_dashboard" title="backup.take_from_dashboard">
@@ -221,7 +221,7 @@
         </div>
 
         <details id="backup_query_details" class="card" style="display:none; margin-top: 10px;" data-ui="backup.query_details" title="backup.query_details">
-          <summary>Query anzeigen</summary>
+          <summary><span class="ib_summary_row"><span>Query anzeigen</span><button type="button" class="ib_info_icon" data-info-title="Backup: Query" data-info-body="Zeigt den zuletzt verwendeten Query-String der Backup-Erstellung.\n\nNutzen:\n- Debugging (welcher Zeitraum/Filter wurde wirklich verwendet?).\n- Support (Query in Logs vergleichen)." >i</button></span></summary>
           <div class="card_body">
             <pre id="backup_query_pre" style="margin:6px 0 0 0; padding:10px 12px; border:1px solid #eee; border-radius:12px; background:#fafafa; white-space:pre; overflow:auto; max-height: 260px;"></pre>
           </div>
@@ -283,7 +283,7 @@
 
       <div class="card" style="--backup_visible_rows: {{ (cfg.get('ui_backup_visible_rows') or 24) | int }};" data-ui="backup.fullbackup.card" title="backup.fullbackup.card">
         <details id="fullbackup_details" data-ui="backup.fullbackup.details" title="backup.fullbackup.details">
-          <summary>FullBackup (InfluxDB komplett)</summary>
+          <summary><span class="ib_summary_row"><span>FullBackup (InfluxDB komplett)</span><button type="button" class="ib_info_icon" data-info-title="Backup: FullBackup" data-info-body="FullBackup sichert die komplette InfluxDB (v1: database, v2: bucket) in einem separaten Job und einer separaten Liste.\n\nModi:\n- Line Protocol: kompatibel, best-effort Export als LP.\n- Native v2: nutzt influx CLI und speichert natives Backup in ZIP (payload unter native/).\n\nAktionen:\n- Start/Abbruch/Reload/Download/Loeschen (Mehrfachauswahl moeglich).\n- Download erscheint nur bei genau 1 selektiertem Eintrag." >i</button></span></summary>
           <div class="muted" style="margin-top: 6px;">Sichert die komplette InfluxDB Datenbank (v1: database, v2: bucket). Separater Bereich mit eigener Liste.</div>
 
           <div class="row" style="align-items:flex-start;" data-ui="backup.fullbackup.actions" title="backup.fullbackup.actions">
@@ -309,7 +309,7 @@
           </div>
 
           <details id="fullbackup_query_details" class="card" style="display:none; margin-top: 10px;" data-ui="backup.fullbackup.query_details" title="backup.fullbackup.query_details">
-            <summary>Aktion anzeigen</summary>
+            <summary><span class="ib_summary_row"><span>Aktion anzeigen</span><button type="button" class="ib_info_icon" data-info-title="FullBackup: Aktion" data-info-body="Zeigt die aktuell ausgefuehrte Aktion des FullBackup-Jobs (z.B. CLI Command/Query).\n\nHinweis:\n- Tokens werden redacted und nicht angezeigt." >i</button></span></summary>
             <div class="card_body">
               <pre id="fullbackup_query_pre" style="margin:6px 0 0 0; padding:10px 12px; border:1px solid #eee; border-radius:12px; background:#fafafa; white-space:pre; overflow:auto; max-height: 260px;"></pre>
             </div>

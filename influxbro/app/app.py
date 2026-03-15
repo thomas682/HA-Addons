@@ -4118,6 +4118,124 @@ def _backup_pack_zip_tree(
     return zpath
 
 
+def _backup_create_range(
+    cfg: dict[str, Any],
+    *,
+    measurement: str,
+    field: str,
+    entity_id: str | None,
+    friendly_name: str | None,
+    start_dt: datetime,
+    stop_dt: datetime,
+    display_name: str,
+) -> str:
+    """Create a range backup ZIP for a specific series; returns backup_id.
+
+    Best-effort helper used by combine for rollback safety.
+    """
+
+    ok_free, msg = _backup_require_free_space(cfg)
+    if not ok_free:
+        raise RuntimeError(msg)
+
+    measurement = str(measurement or "").strip()
+    field = str(field or "").strip()
+    entity_id = str(entity_id or "").strip() or None
+    friendly_name = str(friendly_name or "").strip() or None
+    if not measurement or not field:
+        raise ValueError("measurement and field required")
+    if not entity_id and not friendly_name:
+        raise ValueError("entity_id or friendly_name required")
+    if not (start_dt and stop_dt):
+        raise ValueError("start_dt and stop_dt required")
+
+    if int(cfg.get("influx_version", 2)) != 2:
+        raise RuntimeError("range backup supports InfluxDB v2 only")
+    if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+        raise RuntimeError("InfluxDB v2 requires token, org, bucket")
+
+    bdir = backup_dir(cfg)
+    bdir.mkdir(parents=True, exist_ok=True)
+
+    ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    backup_kind = "range"
+    display = str(display_name or friendly_name or entity_id or f"{measurement}_{field}")
+    backup_id = _backup_safe(display) + "__" + backup_kind + "__" + ts
+    meta_path, lp_path = _backup_files(bdir, backup_id)
+    if _backup_zip_path(bdir, backup_id).exists() or meta_path.exists() or lp_path.exists():
+        raise RuntimeError("backup id collision")
+
+    extra = flux_tag_filter(entity_id, friendly_name)
+    start = _dt_to_rfc3339_utc(start_dt)
+    stop = _dt_to_rfc3339_utc(stop_dt)
+    q = f'''
+from(bucket: "{cfg["bucket"]}")
+  |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
+  |> sort(columns: ["_time"])
+'''
+
+    count = 0
+    oldest: datetime | None = None
+    newest: datetime | None = None
+    with v2_client(cfg) as c:
+        qapi = c.query_api()
+        with lp_path.open("w", encoding="utf-8") as f:
+            for rec in qapi.query_stream(q, org=cfg["org"]):
+                try:
+                    t = rec.get_time()
+                    v = rec.get_value()
+                    m = rec.values.get("_measurement") or measurement
+                    fld = rec.values.get("_field") or field
+                    if v is None:
+                        continue
+                    p = Point(str(m))
+                    for k, tv in (rec.values or {}).items():
+                        if k in ("result", "table"):
+                            continue
+                        if str(k).startswith("_"):
+                            continue
+                        if tv is None:
+                            continue
+                        p = p.tag(str(k), str(tv))
+                    p = p.field(str(fld), v)
+                    if isinstance(t, datetime):
+                        p = p.time(t, WritePrecision.NS)
+                    lp = p.to_line_protocol()
+                    if lp:
+                        f.write(lp)
+                        f.write("\n")
+                        count += 1
+                        if isinstance(t, datetime):
+                            if oldest is None or t < oldest:
+                                oldest = t
+                            if newest is None or t > newest:
+                                newest = t
+                except Exception:
+                    continue
+
+    bytes_size = int(lp_path.stat().st_size) if lp_path.exists() else 0
+    meta = {
+        "id": backup_id,
+        "created_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+        "kind": backup_kind,
+        "display_name": display,
+        "measurement": measurement,
+        "field": field,
+        "entity_id": entity_id,
+        "friendly_name": friendly_name,
+        "start": start,
+        "stop": stop,
+        "point_count": count,
+        "bytes": bytes_size,
+        "oldest_time": _dt_to_rfc3339_utc(oldest) if oldest else None,
+        "newest_time": _dt_to_rfc3339_utc(newest) if newest else None,
+    }
+    meta_path.write_text(json.dumps(meta, indent=2, sort_keys=True), encoding="utf-8")
+    _backup_pack_zip(bdir, backup_id, meta_path, lp_path)
+    return backup_id
+
+
 def _fullbackup_files(dir_path: Path, backup_id: str) -> tuple[Path, Path]:
     # Stored in the same directory as normal backups, but distinguished by meta.kind == 'db_full'.
     stem = _backup_safe(backup_id)
@@ -7257,6 +7375,9 @@ def _combine_job_public(job: dict[str, Any]) -> dict[str, Any]:
         "read": int(job.get("read") or 0),
         "written": int(job.get("written") or 0),
         "skipped": int(job.get("skipped") or 0),
+        "backup_id": job.get("backup_id"),
+        "backup_before": bool(job.get("backup_before", True)),
+        "delete_target_first": bool(job.get("delete_target_first", False)),
         "current_time_ms": job.get("current_time_ms"),
         "last_written_time_ms": job.get("last_written_time_ms"),
         "cancelled": bool(job.get("cancelled")),
@@ -7316,8 +7437,21 @@ def _combine_job_thread(
     tgt_eid = str(target.get("entity_id") or "").strip() or None
     tgt_fn = str(target.get("friendly_name") or "").strip() or None
 
+    backup_before = bool(job.get("backup_before", True))
+    delete_target_first = bool(job.get("delete_target_first", False))
+
     if not (src_m and src_f and tgt_m and tgt_f):
         set_error("missing measurement/field")
+        set_state("error", "Fehler")
+        return
+
+    # For safety/rollback, require at least one identifying tag on both sides.
+    if not (src_eid or src_fn):
+        set_error("source requires entity_id or friendly_name")
+        set_state("error", "Fehler")
+        return
+    if not (tgt_eid or tgt_fn):
+        set_error("target requires entity_id or friendly_name")
         set_state("error", "Fehler")
         return
 
@@ -7338,7 +7472,6 @@ def _combine_job_thread(
 from(bucket: "{cfg["bucket"]}")
   |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
   |> filter(fn: (r) => r._measurement == {_flux_str(src_m)} and r._field == {_flux_str(src_f)}{extra})
-  |> keep(columns: ["_time","_value"])
   |> sort(columns: ["_time"], desc: false)
   |> limit(n: {max_points})
 '''
@@ -7350,6 +7483,44 @@ from(bucket: "{cfg["bucket"]}")
     skipped = 0
     last_written_time_ms = None
     set_state("running", "Lese Punkte...")
+
+    # Optional: create a rollback-safe backup of the target series in the same time window.
+    backup_id = None
+    try:
+        if backup_before:
+            set_state("running", "Backup Zielbereich...")
+            disp = f"combine_target__{tgt_fn or tgt_eid or tgt_m}"
+            backup_id = _backup_create_range(
+                cfg,
+                measurement=tgt_m,
+                field=tgt_f,
+                entity_id=tgt_eid,
+                friendly_name=tgt_fn,
+                start_dt=start_dt,
+                stop_dt=stop_dt,
+                display_name=disp,
+            )
+            set_progress(backup_id=backup_id)
+    except Exception as e:
+        set_error(f"backup_before failed: {_short_influx_error(e)}")
+        set_state("error", "Fehler")
+        return
+
+    # Optional: delete target range first (destructive).
+    try:
+        if delete_target_first:
+            set_state("running", "Loesche Zielbereich...")
+            predicate = f"_measurement={_flux_str(tgt_m)} AND _field={_flux_str(tgt_f)}"
+            if tgt_eid:
+                predicate += f" AND entity_id={_flux_str(tgt_eid)}"
+            if tgt_fn:
+                predicate += f" AND friendly_name={_flux_str(tgt_fn)}"
+            with v2_client(cfg) as c:
+                c.delete_api().delete(start=start_dt, stop=stop_dt, predicate=predicate, bucket=cfg["bucket"], org=cfg["org"])
+    except Exception as e:
+        set_error(f"delete_target_first failed: {_short_influx_error(e)}")
+        set_state("error", "Fehler")
+        return
 
     try:
         with v2_client(cfg) as c:
@@ -7373,10 +7544,26 @@ from(bucket: "{cfg["bucket"]}")
                         continue
 
                     p = Point(tgt_m)
+
+                    # Preserve tags from source row (best-effort), then override entity_id/friendly_name.
+                    try:
+                        for k, tv in (rec.values or {}).items():
+                            if k in ("result", "table"):
+                                continue
+                            if str(k).startswith("_"):
+                                continue
+                            if tv is None:
+                                continue
+                            # keep as tag
+                            p = p.tag(str(k), str(tv))
+                    except Exception:
+                        pass
+
                     if tgt_eid:
                         p = p.tag("entity_id", tgt_eid)
                     if tgt_fn:
                         p = p.tag("friendly_name", tgt_fn)
+
                     p = p.field(tgt_f, val).time(ts, WritePrecision.NS)
                     batch.append(p)
                     if len(batch) >= 2000:
@@ -7410,11 +7597,21 @@ from(bucket: "{cfg["bucket"]}")
         try:
             _history_append({
                 "kind": "combine",
-                "action": "copy",
+                "action": "combine_copy",
                 "source": {"measurement": src_m, "field": src_f, "entity_id": src_eid, "friendly_name": src_fn},
                 "target": {"measurement": tgt_m, "field": tgt_f, "entity_id": tgt_eid, "friendly_name": tgt_fn},
+                "series": {
+                    "measurement": tgt_m,
+                    "field": tgt_f,
+                    "entity_id": tgt_eid,
+                    "friendly_name": tgt_fn,
+                    "tags": {"entity_id": tgt_eid, "friendly_name": tgt_fn},
+                },
                 "start": start,
                 "stop": stop,
+                "backup_id": backup_id,
+                "backup_before": bool(backup_before),
+                "delete_target_first": bool(delete_target_first),
                 "read": read,
                 "written": written,
                 "skipped": skipped,
@@ -7459,6 +7656,22 @@ def api_combine_job_start():
     if not isinstance(src, dict) or not isinstance(tgt, dict):
         return jsonify({"ok": False, "error": "source and target required"}), 400
 
+    direction = str(body.get("direction") or "src_to_tgt").strip().lower()
+    if direction not in ("src_to_tgt", "tgt_to_src"):
+        return jsonify({"ok": False, "error": "direction must be src_to_tgt or tgt_to_src"}), 400
+    if direction == "tgt_to_src":
+        src, tgt = tgt, src
+
+    backup_before = body.get("backup_before", True)
+    backup_before_on = backup_before is True or str(backup_before).strip().lower() in ("1", "true", "yes", "on")
+
+    delete_first = body.get("delete_target_first", False)
+    delete_first_on = delete_first is True or str(delete_first).strip().lower() in ("1", "true", "yes", "on")
+    if delete_first_on:
+        phrase = str(body.get("confirm_phrase") or "").strip()
+        if phrase != DELETE_CONFIRM_PHRASE:
+            return jsonify({"ok": False, "error": f"Confirmation phrase mismatch. Type exactly: {DELETE_CONFIRM_PHRASE}"}), 400
+
     try:
         start_dt, stop_dt = _get_start_stop_from_payload(body)
     except Exception as e:
@@ -7485,6 +7698,8 @@ def api_combine_job_start():
         "last_written_time_ms": None,
         "cancelled": False,
         "error": None,
+        "backup_before": bool(backup_before_on),
+        "delete_target_first": bool(delete_first_on),
     }
 
     try:
@@ -7503,6 +7718,166 @@ def api_combine_job_start():
     t = threading.Thread(target=_combine_job_thread, args=(job_id, cfg, src, tgt, start_dt, stop_dt), daemon=True)
     t.start()
     return jsonify({"ok": True, "job_id": job_id})
+
+
+def _combine_series_payload(x: dict[str, Any]) -> tuple[str, str, str | None, str | None]:
+    m = str(x.get("measurement") or "").strip()
+    f = str(x.get("field") or "value").strip() or "value"
+    eid = str(x.get("entity_id") or "").strip() or None
+    fn = str(x.get("friendly_name") or "").strip() or None
+    if not m or not f:
+        raise ValueError("measurement and field required")
+    if not eid and not fn:
+        raise ValueError("entity_id or friendly_name required")
+    return m, f, eid, fn
+
+
+def _combine_window_seconds(start_dt: datetime, stop_dt: datetime, bins: int) -> int:
+    try:
+        s = float((stop_dt - start_dt).total_seconds())
+    except Exception:
+        s = 0.0
+    if s <= 0:
+        return 1
+    b = int(bins)
+    if b < 50:
+        b = 50
+    if b > 600:
+        b = 600
+    every = int(max(1.0, s / float(b)))
+    if every > 86400:
+        every = 86400
+    return every
+
+
+@app.post("/api/combine_timeline")
+def api_combine_timeline():
+    """Return bucketed counts for a series in a time window (for timeline UI)."""
+
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    if int(cfg.get("influx_version", 2)) != 2:
+        return jsonify({"ok": False, "error": "combine timeline supports InfluxDB v2 only"}), 400
+    if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+        return jsonify({"ok": False, "error": "InfluxDB v2 requires token, org, bucket"}), 400
+
+    body = request.get_json(force=True) or {}
+    series = body.get("series")
+    if not isinstance(series, dict):
+        return jsonify({"ok": False, "error": "series required"}), 400
+    try:
+        start_dt, stop_dt = _get_start_stop_from_payload(body)
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"invalid start/stop: {e}"}), 400
+    if not start_dt or not stop_dt:
+        return jsonify({"ok": False, "error": "start and stop required"}), 400
+
+    try:
+        bins = int(body.get("bins") or 220)
+    except Exception:
+        bins = 220
+    bins = min(600, max(50, bins))
+
+    try:
+        m, f, eid, fn = _combine_series_payload(series)
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+
+    every_s = _combine_window_seconds(start_dt, stop_dt, bins)
+    start = _dt_to_rfc3339_utc(start_dt)
+    stop = _dt_to_rfc3339_utc(stop_dt)
+    extra = flux_tag_filter(eid, fn)
+    q = f'''
+from(bucket: "{cfg["bucket"]}")
+  |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
+  |> filter(fn: (r) => r._measurement == {_flux_str(m)} and r._field == {_flux_str(f)}{extra})
+  |> aggregateWindow(every: {every_s}s, fn: count, createEmpty: false)
+  |> keep(columns: ["_time", "_value"])
+  |> sort(columns: ["_time"], desc: false)
+'''
+
+    pts: list[dict[str, Any]] = []
+    try:
+        with v2_client(cfg, timeout_seconds_override=min(30, int(cfg.get("timeout_seconds") or 10))) as c:
+            qapi = c.query_api()
+            for rec in qapi.query_stream(q, org=cfg["org"]):
+                try:
+                    t = rec.get_time()
+                    v = rec.get_value()
+                    if not isinstance(t, datetime):
+                        continue
+                    if v is None:
+                        continue
+                    pts.append({"t_ms": int(t.timestamp() * 1000), "v": int(v)})
+                except Exception:
+                    continue
+        return jsonify({"ok": True, "every_seconds": every_s, "points": pts})
+    except Exception as e:
+        return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
+
+
+@app.post("/api/combine_preview")
+def api_combine_preview():
+    """Return downsampled numeric values for a series in a time window (for mini-graph UI)."""
+
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    if int(cfg.get("influx_version", 2)) != 2:
+        return jsonify({"ok": False, "error": "combine preview supports InfluxDB v2 only"}), 400
+    if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+        return jsonify({"ok": False, "error": "InfluxDB v2 requires token, org, bucket"}), 400
+
+    body = request.get_json(force=True) or {}
+    series = body.get("series")
+    if not isinstance(series, dict):
+        return jsonify({"ok": False, "error": "series required"}), 400
+    try:
+        start_dt, stop_dt = _get_start_stop_from_payload(body)
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"invalid start/stop: {e}"}), 400
+    if not start_dt or not stop_dt:
+        return jsonify({"ok": False, "error": "start and stop required"}), 400
+
+    try:
+        points = int(body.get("points") or 260)
+    except Exception:
+        points = 260
+    points = min(800, max(60, points))
+
+    try:
+        m, f, eid, fn = _combine_series_payload(series)
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+
+    every_s = _combine_window_seconds(start_dt, stop_dt, points)
+    start = _dt_to_rfc3339_utc(start_dt)
+    stop = _dt_to_rfc3339_utc(stop_dt)
+    extra = flux_tag_filter(eid, fn)
+    q = f'''
+from(bucket: "{cfg["bucket"]}")
+  |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
+  |> filter(fn: (r) => r._measurement == {_flux_str(m)} and r._field == {_flux_str(f)}{extra})
+  |> aggregateWindow(every: {every_s}s, fn: mean, createEmpty: false)
+  |> keep(columns: ["_time", "_value"])
+  |> sort(columns: ["_time"], desc: false)
+'''
+
+    pts: list[dict[str, Any]] = []
+    try:
+        with v2_client(cfg, timeout_seconds_override=min(30, int(cfg.get("timeout_seconds") or 10))) as c:
+            qapi = c.query_api()
+            for rec in qapi.query_stream(q, org=cfg["org"]):
+                try:
+                    t = rec.get_time()
+                    v = rec.get_value()
+                    if not isinstance(t, datetime):
+                        continue
+                    if v is None or isinstance(v, bool) or not isinstance(v, (int, float)):
+                        continue
+                    pts.append({"t_ms": int(t.timestamp() * 1000), "v": float(v)})
+                except Exception:
+                    continue
+        return jsonify({"ok": True, "every_seconds": every_s, "points": pts})
+    except Exception as e:
+        return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
 
 
 @app.get("/api/combine_job/status")
@@ -13485,12 +13860,101 @@ def api_history_rollback():
             "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
         }), 400
 
+    def _restore_backup_into_client(c: InfluxDBClient, backup_id: str) -> int:
+        bdir = backup_dir(cfg)
+        try:
+            with _open_backup_lp_text(bdir, backup_id, is_fullbackup=False):
+                pass
+        except Exception:
+            raise RuntimeError("backup not found")
+
+        wapi = c.write_api(write_options=SYNCHRONOUS)
+        batch: list[str] = []
+        applied_local = 0
+        with _open_backup_lp_text(bdir, backup_id, is_fullbackup=False) as f:
+            for line in f:
+                line = line.strip("\n")
+                if not line.strip():
+                    continue
+                batch.append(line)
+                if len(batch) >= 2000:
+                    wapi.write(bucket=cfg["bucket"], org=cfg["org"], record=batch, write_precision=WritePrecision.NS)
+                    applied_local += len(batch)
+                    batch = []
+            if batch:
+                wapi.write(bucket=cfg["bucket"], org=cfg["org"], record=batch, write_precision=WritePrecision.NS)
+                applied_local += len(batch)
+        return applied_local
+
     applied = 0
     with v2_client(cfg) as c:
         wapi = c.write_api(write_options=SYNCHRONOUS)
 
         for it in wanted:
             action = str(it.get("action") or "").strip().lower()
+
+            if action == "combine_copy":
+                # Roll back by deleting the affected target range and restoring a range-backup.
+                try:
+                    s = it.get("series") or {}
+                    measurement = str(s.get("measurement") or "").strip()
+                    field = str(s.get("field") or "").strip()
+                    entity_id = str(s.get("entity_id") or "").strip() or None
+                    friendly_name = str(s.get("friendly_name") or "").strip() or None
+                    if not measurement or not field:
+                        continue
+                    if not entity_id and not friendly_name:
+                        continue
+
+                    start_s = str(it.get("start") or "").strip()
+                    stop_s = str(it.get("stop") or "").strip()
+                    start_dt = _parse_iso_datetime(start_s)
+                    stop_dt = _parse_iso_datetime(stop_s)
+                    if not start_dt or not stop_dt:
+                        continue
+
+                    backup_id = str(it.get("backup_id") or "").strip()
+                    if not backup_id:
+                        continue
+
+                    predicate = f"_measurement={_flux_str(measurement)} AND _field={_flux_str(field)}"
+                    if entity_id:
+                        predicate += f" AND entity_id={_flux_str(entity_id)}"
+                    if friendly_name:
+                        predicate += f" AND friendly_name={_flux_str(friendly_name)}"
+                    c.delete_api().delete(start=start_dt, stop=stop_dt, predicate=predicate, bucket=cfg["bucket"], org=cfg["org"])
+
+                    restored = _restore_backup_into_client(c, backup_id)
+
+                    _history_append({
+                        "kind": "rollback",
+                        "ref_id": it.get("id"),
+                        "series": {
+                            "measurement": measurement,
+                            "field": field,
+                            "entity_id": entity_id,
+                            "friendly_name": friendly_name,
+                            "tags": {"entity_id": entity_id, "friendly_name": friendly_name},
+                        },
+                        "start": start_s,
+                        "stop": stop_s,
+                        "action": "rollback",
+                        "reason": "Rollback combine_copy",
+                        "backup_id": backup_id,
+                        "restored": restored,
+                        "ip": _req_ip(),
+                        "ua": _req_ua(),
+                    })
+
+                    applied += restored
+                    try:
+                        dirty_series.add((measurement, field, entity_id, friendly_name))
+                    except Exception:
+                        pass
+                except Exception:
+                    continue
+                continue
+
             if action not in ("overwrite", "delete"):
                 # Ignore other entries (e.g., rollbacks)
                 continue

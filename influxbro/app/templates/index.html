@@ -187,7 +187,7 @@
   <div class="muted" id="backup_badge" data-ui="dashboard.backup_badge" title="dashboard.backup_badge"></div>
 
   <details id="selection_details" {{ 'open' if cfg.get('ui_open_selection') else '' }} data-ui="section.selection" title="section.selection">
-    <summary>Auswahl</summary>
+    <summary><span class="ib_summary_row"><span>Auswahl</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Auswahl" data-info-body="Auswahl bestimmt, welche Serie geladen wird (measurement/field/entity_id/friendly_name) und welcher Zeitraum fuer Graph/Tabellen gilt.\n\nTypisch:\n1) friendly_name/entity_id waehlen (Measurement optional als Filter).\n2) Zeitraum setzen (Preset oder Custom).\n3) Laden startet Query und fuellt Graph, Raw und Tabellen.\n\nHinweis:\n- Auswahl wird im Browser gespeichert und fuer Backup/Restore/Export wiederverwendet." >i</button></span></summary>
 
   <div class="grid" id="filters" data-ui="dashboard.filters" title="dashboard.filters">
     <div class="control ib_sel" id="c_measurement_filter" data-ui="filter_measurement">
@@ -267,7 +267,7 @@
       </div>
 
       <details id="query_details" class="card" style="display:none; margin-top: 10px;" data-ui="dashboard.query_details" title="dashboard.query_details">
-        <summary>Query anzeigen</summary>
+        <summary><span class="ib_summary_row"><span>Query anzeigen</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Query" data-info-body="Zeigt den zuletzt verwendeten Influx Query-String der aktuellen Aktualisierung.\n\nNutzen:\n- Nachvollziehen von Filtern/Zeitraum\n- Support/Debug" >i</button></span></summary>
         <div class="card_body">
           <div class="muted" id="query_meta" data-ui="dashboard.query_meta" title="dashboard.query_meta" style="margin-top:6px;"></div>
           <pre id="query_pre" style="margin:6px 0 0 0; padding:10px 12px; border:1px solid #eee; border-radius:12px; background:#fafafa; white-space:pre; overflow:auto; max-height: 260px;"></pre>
@@ -306,7 +306,7 @@
   </details>
 
   <details>
-    <summary>Erweitert: Measurement / Field</summary>
+    <summary><span class="ib_summary_row"><span>Erweitert: Measurement / Field</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Erweitert" data-info-body="Erweiterte Auswahl, wenn friendly_name/entity_id nicht eindeutig ist oder du direkt Measurement/Field setzen willst.\n\nHinweis:\n- Measurement/Field beeinflussen alle nachfolgenden Queries (Graph/Raw/Stats)." >i</button></span></summary>
     <div class="grid" style="margin-top:12px;">
       <div class="control"><label>Measurement (intern)</label><select id="measurement" data-ui="dashboard.measurement" title="dashboard.measurement"></select></div>
       <div class="control"><label>Field (intern)</label><select id="field" data-ui="dashboard.field" title="dashboard.field"></select></div>
@@ -357,7 +357,7 @@
         </label>
       </div>
        <details id="graph_query_section" style="margin-top: 8px;" data-ui="graph.query_section" title="graph.query_section">
-         <summary>Graph Query</summary>
+         <summary><span class="ib_summary_row"><span>Graph Query</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Graph Query" data-info-body="Query-Details fuer den Graph (Downsampling, Ableitung, Density/Manual).\n\nHinweis:\n- Je nach Modus werden Daten aggregiert oder punktgenau geladen." >i</button></span></summary>
          <div class="tbl_actions" style="justify-content:flex-start; margin-top: 8px;">
            <button class="btn_sm" id="graph_copy_query" data-ui="graph.copy_query" title="graph.copy_query">Query kopieren</button>
            <select class="btn_sm" id="graph_query_source" data-ui="graph.query_source" title="graph.query_source" style="height:34px; padding: 6px 10px;">
@@ -380,7 +380,7 @@
       </div>
 
           <details id="raw_section" style="margin-top: 10px;" data-ui="section.raw" title="section.raw">
-            <summary>Raw Daten (DB)</summary>
+            <summary><span class="ib_summary_row"><span>Raw Daten (DB)</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Raw Daten" data-info-body="Raw-Tabelle zeigt echte Datenpunkte aus der DB (Zeit + Wert + Tags).\n\nFeatures:\n- Zentriertes Nachladen um selektierten Graph-Punkt\n- Navigation Tagweise\n- Auto-Tuning fuer ui_raw_max_points" >i</button></span></summary>
             <div class="table_wrap" style="margin-top: 10px;">
               <div class="table_title">Raw Daten</div>
               <div class="table_head">
@@ -420,7 +420,7 @@
             </div>
 
           <details id="raw_query_section" style="margin-top: 8px;" data-ui="raw.query_section" title="raw.query_section">
-            <summary>Influx Query</summary>
+            <summary><span class="ib_summary_row"><span>Influx Query</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Influx Query" data-info-body="Zeigt den aktuellen/letzten Query-String fuer Raw/Graph/Stats (je nach Kontext).\n\nNutzen:\n- Debugging\n- Support" >i</button></span></summary>
             <div class="muted" style="margin-top: 6px;">Query (genau wie von InfluxBro genutzt):</div>
             <pre id="raw_query" data-ui="raw.query" title="raw.query" style="margin:6px 0 0 0; padding:10px 12px; border:1px solid #eee; border-radius:12px; background:#fafafa; white-space:pre; overflow:auto; max-height: 220px;"></pre>
           </details>
@@ -661,7 +661,7 @@
         <div class="muted" id="apply_modal_info" style="margin-top: 6px;"></div>
 
         <details id="apply_modal_query_section" style="margin-top: 10px;" data-ui="editlist_apply_modal_query" title="editlist_apply_modal_query">
-          <summary>Influx Query (zum Pruefen)</summary>
+          <summary><span class="ib_summary_row"><span>Influx Query (zum Pruefen)</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Query (Pruefen)" data-info-body="Query-Ausgabe, die speziell fuer Pruefen/Cache/Vergleiche genutzt wird.\n\nHinweis:\n- Inhalt ist best-effort und kann sich je nach Modus unterscheiden." >i</button></span></summary>
           <div class="tbl_actions" style="justify-content:flex-start; margin-top: 8px;">
             <button class="btn_sm" id="apply_modal_copy_query" data-ui="editlist_apply_modal_copy_query" title="editlist_apply_modal_copy_query">Query kopieren</button>
           </div>

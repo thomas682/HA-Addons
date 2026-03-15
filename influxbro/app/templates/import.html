@@ -72,7 +72,7 @@
       <div class="muted">Importiert Text-Exporte (Zeitstempel im lokalen UI-Format). Optional: vorher Backup und/oder Loeschen im Zeitraum.</div>
 
       <details class="card" open data-ui="import.source" title="import.source">
-        <summary>Datei</summary>
+        <summary><span class="ib_summary_row"><span>Datei</span><button type="button" class="ib_info_icon" data-info-title="Import: Datei" data-info-body="Waehle eine Importdatei (z.B. zuvor exportierte/erzeugte Daten).\n\nHinweis:\n- Import schreibt nach InfluxDB v2.\n- Fuer grosse Dateien empfiehlt sich vorher Backup/Plan anzeigen." >i</button></span></summary>
         <div class="card_body">
           <div class="grid">
             <div>
@@ -95,7 +95,7 @@
       </details>
 
       <details class="card" open data-ui="import.target" title="import.target">
-        <summary>Ziel</summary>
+        <summary><span class="ib_summary_row"><span>Ziel</span><button type="button" class="ib_info_icon" data-info-title="Import: Ziel" data-info-body="Definiert Zielserie (measurement/field/entity_id/friendly_name) und Sicherheitsoptionen.\n\nOptionen:\n- Backup vorher (empfohlen)\n- Delete first (destruktiv, DELETE erforderlich)" >i</button></span></summary>
         <div class="card_body">
           <div class="grid">
             <div class="ib_sel" id="c_measurement_filter">
@@ -134,7 +134,7 @@
           </div>
 
           <details class="card" style="margin-top: 10px;">
-            <summary>Erweitert: Measurement / Field</summary>
+            <summary><span class="ib_summary_row"><span>Erweitert: Measurement / Field</span><button type="button" class="ib_info_icon" data-info-title="Import: Erweitert" data-info-body="Erweiterte Auswahl, wenn du Measurement/Field direkt setzen oder ueberschreiben willst." >i</button></span></summary>
             <div class="card_body">
               <div class="grid" style="margin-top: 0;">
                 <div>

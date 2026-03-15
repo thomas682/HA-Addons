@@ -8,6 +8,37 @@ Goal
 - Keep tables and controls consistent across pages.
 - Make global UI adjustments possible from one place ("master"), with explicit per-page overrides ("child").
 
+## Section Titles (Info Icon)
+
+Applies to all pages/sections that have a visible title (e.g. `details > summary`, cards, panels).
+
+Required pattern
+
+- Each section title gets an info icon next to it.
+- Clicking the icon opens the global info popup (resizable, scrollbars, wrap toggle, copy).
+- Text must be in German and should be detailed (describe purpose + controls + pitfalls).
+
+Preferred markup
+
+```html
+<details open>
+  <summary>
+    <span class="ib_summary_row">
+      <span>Auswahl</span>
+      <button type="button" class="ib_info_icon"
+        data-info-title="Auswahl"
+        data-info-body="...sehr ausfuehrlicher Text...">i</button>
+    </span>
+  </summary>
+  ...
+</details>
+```
+
+Notes
+
+- Use `type="button"` so it never submits forms.
+- The click handler is global (see `_tooltips.html`) and stops propagation so the `details` does not toggle.
+
 ## Tables (Standard)
 
 Applies to all list tables (Jobs, Cache, Timer Jobs, Backup, Restore, History, Dashboard lists).

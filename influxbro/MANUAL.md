@@ -48,6 +48,7 @@ Links findest du die Bereiche:
 - Statistik: Gesamtstatistik ueber viele Serien anzeigen.
 - Backup: Backups fuer einen einzelnen Messwert erstellen und verwalten.
 - Restore: Ein vorhandenes Backup fuer einen Messwert wiederherstellen.
+- Kombinieren: Datenpunkte zwischen zwei Messwerten kopieren (z.B. bei Entity-ID Umbenennung) inkl. Vorschau.
 - Logs: Add-on Logs von InfluxBro ansehen (Menuepunkt ist unter Restore einsortiert).
 - Jobs & Cache: Laufende Background-Jobs ansehen (Statistik/Restore/Cache) und abbrechen.
 - Info: Influx Datenbank Diagnose (best-effort).
@@ -117,7 +118,8 @@ Hinweis: Zeitstempel werden im gesamten UI inklusive Millisekunden angezeigt.
 - Jede Tabelle ist als eigener Block mit Rahmen und eindeutiger Tabellenueberschrift dargestellt.
 - Ueber jeder Tabelle werden Zeilen angezeigt als `gefiltert / gesamt` (Rows).
 - Spalten koennen ueber den Spalten-Button (neben dem Info-Icon) ein-/ausgeblendet werden (wird gespeichert).
-- Das Info-Icon (Buch) erklaert je Tabelle Sinn/Zweck, Spalten und Aktionen.
+- Das Info-Icon (i) erklaert je Tabelle Sinn/Zweck, Spalten und Aktionen.
+- Zusaetzlich haben viele Bereiche neben dem Bereichstitel ein Info-Icon, das die komplette Sektion ausfuehrlich erklaert (Popup ist resizable, hat Umbruch + Copy).
 
 ## UI-Profile
 
@@ -370,6 +372,24 @@ Neu: FullRestore (InfluxDB komplett)
 - Sicherheit: FullRestore erfordert eine Bestaetigung im UI (Browser-Dialog).
 
 Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore/Abfragen) und die letzte Meldung anzeigt.
+
+## Kombinieren
+
+- Seite `Kombinieren`: kopiert Datenpunkte zwischen zwei Messwerten (z.B. bei Entity-ID Umbenennung).
+- Auswahl:
+  - Quelle und Ziel jeweils per `_measurement`, `_field`, `entity_id` und/oder `friendly_name` setzen.
+  - Wichtig: Mindestens `entity_id` oder `friendly_name` muss pro Seite gesetzt sein (damit die Serie eindeutig ist).
+  - `Richtung` bestimmt, welche Seite als Quelle gilt (Quelle->Ziel oder Ziel->Quelle).
+- Vorschau:
+  - `Timeline`: zeigt die Verteilung der Punkte im Von/Bis Fenster; mit Maus ziehen markierst du den exakten Kopierbereich.
+  - `Mini-Graph`: downsampled Linie als schnelle Orientierung.
+  - Buttons `Ganz/Aeltester/Juengster` helfen beim Setzen der Markierung.
+- Sicherheit / Rollback:
+  - Default: `Zielbereich vorher als Backup sichern` erstellt ein Range-Backup (ZIP) fuer den Zielbereich.
+  - Optional: `Zielbereich vor dem Kopieren loeschen` (destruktiv) erfordert `DELETE`.
+  - Rollback erfolgt ueber die Seite `History` (Eintrag vom Typ `combine_copy`).
+- Virtuell/YAML:
+  - Button `Virtuell/YAML` zeigt ein Beispiel fuer einen Home Assistant Template-Sensor, falls du einen virtuellen Messwert anlegen willst.
 
 ## Export
 

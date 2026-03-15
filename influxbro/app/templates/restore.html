@@ -181,7 +181,7 @@
               <button id="source_to_target" data-ui="restore.source_to_target" title="restore.source_to_target" class="btn_sm" style="height:34px; padding:8px 10px;">Quelle -> Ziel</button>
             </div>
           <details id="selection_details" open data-ui="section.selection" title="section.selection" style="margin-top: 10px;">
-            <summary>Auswahl</summary>
+            <summary><span class="ib_summary_row"><span>Auswahl</span><button type="button" class="ib_info_icon" data-info-title="Restore: Auswahl" data-info-body="Hier waehlst du das Backup (Quelle) und die Zielserie fuer den Restore.\n\nQuelle:\n- Backupliste: selektiere genau 1 Backup (ZIP).\n- Volltextsuche hilft beim Finden; 'aus Dashboardauswahl' setzt den Filter.\n\nZiel:\n- Checkbox 'Zieldaten = Quelldaten' (default) uebernimmt Quelle -> Ziel automatisch.\n- Wenn deaktiviert, kannst du Zielmeasurement/field/entity_id/friendly_name frei setzen.\n\nRestore:\n- Plant/zeigt Query und schreibt Line Protocol in die Zielserie (Upsert)." >i</button></span></summary>
 
            <div class="grid">
               <div>
@@ -261,7 +261,7 @@
             </div>
 
             <details id="run_details" class="card" style="display:none; margin-top: 10px;" data-ui="restore.run_details" title="restore.run_details">
-              <summary>Restore Details</summary>
+              <summary><span class="ib_summary_row"><span>Restore Details</span><button type="button" class="ib_info_icon" data-info-title="Restore: Details" data-info-body="Zeigt Details des laufenden/letzten Restore-Jobs.\n\nEnthaelt:\n- Meta-Infos (Quelle/Ziel/Zeitraum).\n- Query/Write-Aktion (best-effort).\n- Vorschau der geschriebenen Line-Protocol Zeilen." >i</button></span></summary>
               <div class="card_body">
                 <div class="muted" id="run_details_meta" style="margin-top:6px;"></div>
                 <pre id="run_details_pre" style="margin:6px 0 0 0; padding:10px 12px; border:1px solid #eee; border-radius:12px; background:#fafafa; white-space:pre; overflow:auto; max-height: 80vh; min-height: 90px;"></pre>
@@ -278,7 +278,7 @@
 
        <div class="card" data-ui="restore.fullrestore.card" title="restore.fullrestore.card" style="--restore_visible_rows: {{ (cfg.get('ui_restore_visible_rows') or 24) | int }};">
          <details id="fullrestore_details" data-ui="restore.fullrestore.details" title="restore.fullrestore.details">
-            <summary>FullRestore (InfluxDB komplett)</summary>
+             <summary><span class="ib_summary_row"><span>FullRestore (InfluxDB komplett)</span><button type="button" class="ib_info_icon" data-info-title="Restore: FullRestore" data-info-body="Stellt ein FullBackup wieder her (InfluxDB komplett).\n\nformat=lp:\n- Schreibt Line Protocol in die konfigurierte InfluxDB (kompatibel).\n\nformat=native_v2:\n- Nutzt influx restore.\n- Zielbucket optional (new-bucket).\n- Ueberschreiben loescht Zielbucket vorher (DELETE erforderlich)." >i</button></span></summary>
             <div class="muted" style="margin-top: 6px;">Stellt ein FullBackup wieder her (v1: database, v2: bucket). Achtung: ueberschreibt Daten.</div>
 
             <div class="row" style="align-items:flex-start;" data-ui="restore.fullrestore.native" title="restore.fullrestore.native">

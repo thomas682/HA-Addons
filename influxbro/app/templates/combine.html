@@ -35,6 +35,18 @@
     th, td { border: 1px solid #eee; padding: 6px 8px; font-size: 12px; }
     th { background: #f6f6f6; text-align: left; }
 
+    .viz_grid { display:grid; grid-template-columns: repeat(2, minmax(280px, 1fr)); gap: 12px; margin-top: 12px; }
+    @media (max-width: 980px){ .viz_grid { grid-template-columns: 1fr; } }
+    .viz_card { border: 1px solid #eee; border-radius: 12px; padding: 12px; background: #fff; }
+    .viz_title { font-weight: 800; display:flex; justify-content:space-between; gap: 10px; align-items:baseline; }
+    .viz_sub { margin-top: 4px; font-size: 12px; opacity: 0.75; white-space: pre-wrap; }
+    .canvas_box { border: 1px solid #eee; border-radius: 12px; background: #fafafa; padding: 8px; margin-top: 8px; }
+    canvas { width: 100%; height: 86px; display:block; }
+    .mini_canvas { height: 120px; }
+    .pill_row { display:flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+    .pill_row button { height: 34px; padding: 6px 10px; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+
     /* Selection fields (master template) */
     .ib_sel { min-width: 0; }
     .ib_sel_label { font-size: var(--ib-sel-label-font); opacity: 0.9; }
@@ -70,15 +82,22 @@
     {% include "_nav.html" %}
     <main class="content" data-ui="combine.page" title="combine.page">
       <h2 style="margin:0;">Kombinieren</h2>
-      <div class="muted" style="margin-top: 6px;">MVP: Kopiert Datenpunkte aus einer Quelle in ein Ziel (z.B. bei Entity-ID Umbenennung). Details (Timeline/Graph) folgen spaeter.</div>
+      <div class="muted" style="margin-top: 6px;">Kopiert Datenpunkte zwischen zwei Messwerten (z.B. bei Entity-ID Umbenennung) inkl. Vorschau (Timeline/Graph) und rollback-sicherem Ziel-Backup.</div>
 
       <div class="card">
         <details open data-ui="combine.section.selection" title="combine.section.selection">
-          <summary>Auswahl</summary>
+          <summary><span class="ib_summary_row"><span>Auswahl</span><button type="button" class="ib_info_icon" data-info-title="Kombinieren: Auswahl" data-info-body="In diesem Bereich definierst du Quelle und Ziel fuer das Kopieren.\n\nWichtig: Mindestens eines der beiden Tags muss pro Seite gesetzt sein: entity_id ODER friendly_name. Das ist erforderlich, damit die Serie eindeutig ist (Rollback/Loeschen/Backup).\n\nFelder:\n- _measurement / _field: bestimmen, welche Influx-Serie gelesen/geschrieben wird.\n- entity_id / friendly_name: Tag-Filter (Quelle) bzw. Ziel-Tags (Ziel).\n- Richtung: legt fest, welche Seite als Quelle gilt (Quelle->Ziel oder Ziel->Quelle).\n\nZeitraum:\n- Von/Bis definiert das Vorschau-Fenster.\n- Der tatsaechliche Kopierbereich kommt aus der Timeline-Selektion (siehe Vorschau).\n\nSicherheit/Rollback:\n- Zielbereich vorher als Backup sichern: erstellt ein Range-Backup (ZIP unter /data/backups), damit Rollback moeglich ist.\n- Zielbereich loeschen: loescht die Zielserie im Kopierzeitraum vor dem Schreiben (destruktiv) und erfordert DELETE." >i</button></span></summary>
 
           <div class="row" style="margin-top: 10px;">
             <button class="btn_sm" id="swap" data-ui="combine.swap" title="combine.swap">Quelle/Ziel tauschen</button>
             <button class="btn_sm" id="load_stats" data-ui="combine.stats" title="combine.stats">Statistik laden</button>
+            <div style="min-width: 280px;">
+              <label>Richtung</label>
+              <select id="direction" data-ui="combine.direction" title="combine.direction">
+                <option value="src_to_tgt">Quelle -&gt; Ziel</option>
+                <option value="tgt_to_src">Ziel -&gt; Quelle</option>
+              </select>
+            </div>
           </div>
 
           <div class="grid2" data-ui="combine.grid" title="combine.grid">
@@ -114,8 +133,8 @@
                   <div class="ib_sel_stack">
                     <input id="src_entity_id" placeholder="optional" data-ui="combine.src.entity_id" title="combine.src.entity_id"/>
                     <div class="ib_sel_desc">
-                      <button type="button" class="ib_sel_help" data-title="Quelle entity_id" data-help="Optionaler Tag-Filter.">?</button>
-                      <div class="muted">Optionaler Filter.</div>
+                      <button type="button" class="ib_sel_help" data-title="Quelle entity_id" data-help="Tag-Filter fuer die Quelle. Mindestens entity_id ODER friendly_name muss gesetzt sein.">?</button>
+                      <div class="muted">Mindestens eins erforderlich.</div>
                     </div>
                   </div>
                 </div>
@@ -124,8 +143,8 @@
                   <div class="ib_sel_stack">
                     <input id="src_friendly_name" placeholder="optional" data-ui="combine.src.friendly" title="combine.src.friendly"/>
                     <div class="ib_sel_desc">
-                      <button type="button" class="ib_sel_help" data-title="Quelle friendly_name" data-help="Optionaler Tag-Filter.">?</button>
-                      <div class="muted">Optionaler Filter.</div>
+                      <button type="button" class="ib_sel_help" data-title="Quelle friendly_name" data-help="Tag-Filter fuer die Quelle. Mindestens entity_id ODER friendly_name muss gesetzt sein.">?</button>
+                      <div class="muted">Mindestens eins erforderlich.</div>
                     </div>
                   </div>
                 </div>
@@ -163,8 +182,8 @@
                   <div class="ib_sel_stack">
                     <input id="tgt_entity_id" placeholder="optional" data-ui="combine.tgt.entity_id" title="combine.tgt.entity_id"/>
                     <div class="ib_sel_desc">
-                      <button type="button" class="ib_sel_help" data-title="Ziel entity_id" data-help="Optionaler Ziel-Tag. Wenn leer, wird entity_id nicht gesetzt.">?</button>
-                      <div class="muted">Optional.</div>
+                      <button type="button" class="ib_sel_help" data-title="Ziel entity_id" data-help="Ziel-Tag. Mindestens entity_id ODER friendly_name muss gesetzt sein (Rollback/Loeschen braucht eindeutige Serie).">?</button>
+                      <div class="muted">Mindestens eins erforderlich.</div>
                     </div>
                   </div>
                 </div>
@@ -173,8 +192,8 @@
                   <div class="ib_sel_stack">
                     <input id="tgt_friendly_name" placeholder="optional" data-ui="combine.tgt.friendly" title="combine.tgt.friendly"/>
                     <div class="ib_sel_desc">
-                      <button type="button" class="ib_sel_help" data-title="Ziel friendly_name" data-help="Optionaler Ziel-Tag. Wenn leer, wird friendly_name nicht gesetzt.">?</button>
-                      <div class="muted">Optional.</div>
+                      <button type="button" class="ib_sel_help" data-title="Ziel friendly_name" data-help="Ziel-Tag. Mindestens entity_id ODER friendly_name muss gesetzt sein (Rollback/Loeschen braucht eindeutige Serie).">?</button>
+                      <div class="muted">Mindestens eins erforderlich.</div>
                     </div>
                   </div>
                 </div>
@@ -199,6 +218,70 @@
               </div>
             </div>
             <div class="muted" style="margin-top: 6px;">Zeitangaben werden als lokale Zeit interpretiert und als UTC an die API gesendet.</div>
+          </div>
+
+          <div class="card" style="margin-top: 12px;">
+            <div style="font-weight: 800;">Sicherheit / Rollback</div>
+            <div class="row" style="margin-top: 8px; align-items:flex-start;">
+              <label style="display:flex; gap: 8px; align-items:center; height:40px; padding:0 4px;">
+                <input id="backup_before" type="checkbox" checked />
+                <span class="muted" style="opacity:0.9;">Zielbereich vorher als Backup sichern (Rollback)</span>
+              </label>
+              <label style="display:flex; gap: 8px; align-items:center; height:40px; padding:0 4px;">
+                <input id="delete_target_first" type="checkbox" />
+                <span class="muted" style="opacity:0.9;">Zielbereich vor dem Kopieren loeschen (destruktiv)</span>
+              </label>
+              <div style="min-width: 220px;">
+                <label>Bestaetigung (DELETE)</label>
+                <input id="confirm_phrase" placeholder="DELETE" data-ui="combine.confirm_phrase" title="combine.confirm_phrase" />
+                <div class="muted" style="margin-top:4px;">Nur erforderlich, wenn Loeschen aktiv ist.</div>
+              </div>
+            </div>
+            <div class="muted" style="margin-top: 6px;">Hinweis: fuer Rollback wird ein Range-Backup des Ziel-Messwerts im ausgewaehlten Zeitfenster erstellt (ZIP unter /data/backups). Rollback erfolgt ueber die History.</div>
+          </div>
+        </details>
+
+        <details open class="card" style="margin-top: 12px;" data-ui="combine.section.preview" title="combine.section.preview">
+          <summary><span class="ib_summary_row"><span>Vorschau (Timeline / Mini-Graph)</span><button type="button" class="ib_info_icon" data-info-title="Kombinieren: Vorschau" data-info-body="Timeline:\n- Zeigt die Verteilung/Verfuegbarkeit der Datenpunkte im aktuellen Von/Bis Fenster.\n- Mit Maus ziehen: du markierst den exakten Kopierbereich.\n- Oben rechts siehst du Von/Bis der aktuellen Markierung.\n\nMini-Graph:\n- Zeigt eine downsampled Linie (mean) als grobe Orientierung.\n- Der Graph ist nur eine Vorschau und kann glaetten/auslassen, wenn sehr viele Punkte vorhanden sind.\n\nButtons:\n- Ganz: setzt die Markierung auf das komplette Von/Bis Fenster.\n- Aeltester/Juengster: setzt Start/Stop auf die aeltesten/juengsten Zeiten der jeweiligen Serie (aus DB).\n\nHinweis Kopieren:\n- Beim Start wird der Bereich der Seite kopiert, die durch Richtung als Quelle aktiv ist." >i</button></span></summary>
+          <div class="muted" style="margin-top:6px;">Ziehe mit der Maus im Timeline-Balken den Bereich, der kopiert werden soll. Der Kopierbereich kommt aus der Seite, die als Quelle gewaehlt ist (Richtung).</div>
+
+          <div class="viz_grid">
+            <div class="viz_card" data-ui="combine.preview.source" title="combine.preview.source">
+              <div class="viz_title"><span>Quelle</span><span class="muted mono" id="src_sel_txt"></span></div>
+              <div class="viz_sub" id="src_meta"></div>
+              <div class="pill_row">
+                <button class="btn_sm" id="src_pick_all">Ganz</button>
+                <button class="btn_sm" id="src_pick_oldest">Aeltester</button>
+                <button class="btn_sm" id="src_pick_newest">Juengster</button>
+              </div>
+              <div class="canvas_box">
+                <div class="muted" style="margin-bottom:6px;">Timeline</div>
+                <canvas id="src_timeline" width="900" height="86"></canvas>
+              </div>
+              <div class="canvas_box" style="margin-top:8px;">
+                <div class="muted" style="margin-bottom:6px;">Mini-Graph</div>
+                <canvas id="src_graph" class="mini_canvas" width="900" height="120"></canvas>
+              </div>
+            </div>
+
+            <div class="viz_card" data-ui="combine.preview.target" title="combine.preview.target">
+              <div class="viz_title"><span>Ziel</span><span class="muted mono" id="tgt_sel_txt"></span></div>
+              <div class="viz_sub" id="tgt_meta"></div>
+              <div class="pill_row">
+                <button class="btn_sm" id="tgt_pick_all">Ganz</button>
+                <button class="btn_sm" id="tgt_pick_oldest">Aeltester</button>
+                <button class="btn_sm" id="tgt_pick_newest">Juengster</button>
+                <button class="btn_sm" id="show_yaml">Virtuell/YAML</button>
+              </div>
+              <div class="canvas_box">
+                <div class="muted" style="margin-bottom:6px;">Timeline</div>
+                <canvas id="tgt_timeline" width="900" height="86"></canvas>
+              </div>
+              <div class="canvas_box" style="margin-top:8px;">
+                <div class="muted" style="margin-bottom:6px;">Mini-Graph</div>
+                <canvas id="tgt_graph" class="mini_canvas" width="900" height="120"></canvas>
+              </div>
+            </div>
           </div>
         </details>
 
@@ -251,6 +334,28 @@
       const $startCopy = document.getElementById('start_copy');
       const $cancelJob = document.getElementById('cancel_job');
 
+      const $direction = document.getElementById('direction');
+      const $backupBefore = document.getElementById('backup_before');
+      const $deleteFirst = document.getElementById('delete_target_first');
+      const $confirmPhrase = document.getElementById('confirm_phrase');
+
+      const $srcTimeline = document.getElementById('src_timeline');
+      const $tgtTimeline = document.getElementById('tgt_timeline');
+      const $srcGraph = document.getElementById('src_graph');
+      const $tgtGraph = document.getElementById('tgt_graph');
+      const $srcSelTxt = document.getElementById('src_sel_txt');
+      const $tgtSelTxt = document.getElementById('tgt_sel_txt');
+      const $srcMeta = document.getElementById('src_meta');
+      const $tgtMeta = document.getElementById('tgt_meta');
+
+      const $srcPickAll = document.getElementById('src_pick_all');
+      const $srcPickOldest = document.getElementById('src_pick_oldest');
+      const $srcPickNewest = document.getElementById('src_pick_newest');
+      const $tgtPickAll = document.getElementById('tgt_pick_all');
+      const $tgtPickOldest = document.getElementById('tgt_pick_oldest');
+      const $tgtPickNewest = document.getElementById('tgt_pick_newest');
+      const $showYaml = document.getElementById('show_yaml');
+
       const $info = document.getElementById('info');
       const $ok = document.getElementById('msg_ok');
       const $err = document.getElementById('err');
@@ -264,6 +369,11 @@
 
       let JOB_ID = null;
       let POLL = null;
+
+      let SEL = {
+        src: {start_ms: null, stop_ms: null},
+        tgt: {start_ms: null, stop_ms: null},
+      };
 
       function pad2(n){ return String(n).padStart(2,'0'); }
       function toLocalDatetimeValue(d){
@@ -325,6 +435,184 @@
         return { start: s, stop: e };
       }
 
+      function _isoToMs(iso){
+        try{ const d = new Date(String(iso||'')); const ms = d.getTime(); return isFinite(ms) ? ms : null; }catch(e){ return null; }
+      }
+      function _msToIsoUtc(ms){
+        try{ const d = new Date(Number(ms||0)); if(!isFinite(d.getTime())) return ''; return d.toISOString(); }catch(e){ return ''; }
+      }
+      function _clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
+
+      function _initSelectionsFromInputs(){
+        try{
+          const tr = timeRange();
+          const a = _isoToMs(tr.start);
+          const b = _isoToMs(tr.stop);
+          if(a && b && b > a){
+            if(SEL.src.start_ms == null || SEL.src.stop_ms == null){ SEL.src.start_ms = a; SEL.src.stop_ms = b; }
+            if(SEL.tgt.start_ms == null || SEL.tgt.stop_ms == null){ SEL.tgt.start_ms = a; SEL.tgt.stop_ms = b; }
+          }
+        }catch(e){}
+      }
+
+      function _selLabel(side){
+        try{
+          const s = SEL[side] || {};
+          if(s.start_ms == null || s.stop_ms == null) return '';
+          return fmtTs(new Date(s.start_ms).toISOString()) + ' bis ' + fmtTs(new Date(s.stop_ms).toISOString());
+        }catch(e){
+          return '';
+        }
+      }
+
+      function _renderSelTexts(){
+        try{ if($srcSelTxt) $srcSelTxt.textContent = _selLabel('src'); }catch(e){}
+        try{ if($tgtSelTxt) $tgtSelTxt.textContent = _selLabel('tgt'); }catch(e){}
+      }
+
+      function _drawTimeline(side, pts, winStartMs, winStopMs){
+        const c = (side === 'src') ? $srcTimeline : $tgtTimeline;
+        if(!c) return;
+        const ctx = c.getContext('2d');
+        if(!ctx) return;
+        const w = c.width, h = c.height;
+        ctx.clearRect(0,0,w,h);
+        ctx.fillStyle = '#fafafa';
+        ctx.fillRect(0,0,w,h);
+
+        const xs = (pts||[]).map(p=>({t:Number(p.t_ms||0), v:Number(p.v||0)})).filter(p=>isFinite(p.t)&&isFinite(p.v));
+        let vmax = 0;
+        xs.forEach(p=>{ if(p.v>vmax) vmax=p.v; });
+        vmax = vmax || 1;
+        const dur = Math.max(1, (winStopMs||0) - (winStartMs||0));
+        const barW = Math.max(1, Math.floor(w / Math.max(1, xs.length)));
+        ctx.fillStyle = (side==='src') ? 'rgba(10,122,40,0.45)' : 'rgba(20,80,170,0.45)';
+        for(let i=0;i<xs.length;i++){
+          const p = xs[i];
+          const x = Math.floor(((p.t - winStartMs) / dur) * w);
+          const bh = Math.max(1, Math.floor((p.v / vmax) * (h-14)));
+          ctx.fillRect(x, h-bh, Math.max(1, barW), bh);
+        }
+
+        const sel = SEL[side] || {};
+        if(sel.start_ms!=null && sel.stop_ms!=null && winStartMs!=null && winStopMs!=null){
+          const a = _clamp((sel.start_ms - winStartMs)/dur, 0, 1);
+          const b = _clamp((sel.stop_ms - winStartMs)/dur, 0, 1);
+          const x1 = Math.floor(a*w);
+          const x2 = Math.floor(b*w);
+          ctx.fillStyle = 'rgba(0,0,0,0.10)';
+          ctx.fillRect(0,0,x1,h);
+          ctx.fillRect(x2,0,w-x2,h);
+          ctx.strokeStyle = 'rgba(0,0,0,0.45)';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(x1+1,1, Math.max(1,(x2-x1)-2), h-2);
+        }
+      }
+
+      function _drawGraph(side, pts, winStartMs, winStopMs){
+        const c = (side === 'src') ? $srcGraph : $tgtGraph;
+        if(!c) return;
+        const ctx = c.getContext('2d');
+        if(!ctx) return;
+        const w = c.width, h = c.height;
+        ctx.clearRect(0,0,w,h);
+        ctx.fillStyle = '#fafafa';
+        ctx.fillRect(0,0,w,h);
+
+        const xs = (pts||[]).map(p=>({t:Number(p.t_ms||0), v:Number(p.v)})).filter(p=>isFinite(p.t)&&isFinite(p.v));
+        if(!xs.length) return;
+        let vmin=xs[0].v, vmax=xs[0].v;
+        xs.forEach(p=>{ if(p.v<vmin) vmin=p.v; if(p.v>vmax) vmax=p.v; });
+        if(vmin===vmax){ vmin = vmin - 1; vmax = vmax + 1; }
+
+        const dur = Math.max(1, (winStopMs||0) - (winStartMs||0));
+        const pad = 8;
+        const xOf = (t)=> pad + ((t-winStartMs)/dur) * (w-2*pad);
+        const yOf = (v)=> pad + (1 - ((v - vmin)/(vmax - vmin))) * (h-2*pad);
+        ctx.strokeStyle = (side==='src') ? 'rgba(10,122,40,0.90)' : 'rgba(20,80,170,0.90)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        for(let i=0;i<xs.length;i++){
+          const p = xs[i];
+          const x = xOf(p.t);
+          const y = yOf(p.v);
+          if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+        }
+        ctx.stroke();
+      }
+
+      function _bindTimelineSelection(side){
+        const c = (side === 'src') ? $srcTimeline : $tgtTimeline;
+        if(!c) return;
+        let drag = null;
+        const pos = (ev)=>{
+          const r = c.getBoundingClientRect();
+          const x = (ev.clientX - r.left) * (c.width / Math.max(1,r.width));
+          return _clamp(x, 0, c.width);
+        };
+        const toMs = (x)=>{
+          try{
+            const tr = timeRange();
+            const a = _isoToMs(tr.start);
+            const b = _isoToMs(tr.stop);
+            if(a==null || b==null || b<=a) return null;
+            return Math.round(a + (x / c.width) * (b - a));
+          }catch(e){
+            return null;
+          }
+        };
+        c.addEventListener('mousedown', (ev)=>{
+          try{ ev.preventDefault(); }catch(e){}
+          drag = {x0: pos(ev)};
+          const t0 = toMs(drag.x0);
+          if(t0!=null){ SEL[side].start_ms = t0; SEL[side].stop_ms = t0; _renderSelTexts(); }
+        });
+        window.addEventListener('mousemove', (ev)=>{
+          if(!drag) return;
+          const x1 = pos(ev);
+          const t0 = toMs(drag.x0);
+          const t1 = toMs(x1);
+          if(t0==null || t1==null) return;
+          SEL[side].start_ms = Math.min(t0,t1);
+          SEL[side].stop_ms = Math.max(t0,t1);
+          _renderSelTexts();
+        });
+        window.addEventListener('mouseup', ()=>{ drag = null; });
+      }
+
+      async function _loadTimelineAndGraph(side){
+        const tr = timeRange();
+        const series = (side === 'src') ? src() : tgt();
+        const [tl, gr, st] = await Promise.all([
+          api('./api/combine_timeline', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({series, start: tr.start, stop: tr.stop, bins: 220})}),
+          api('./api/combine_preview', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({series, start: tr.start, stop: tr.stop, points: 260})}),
+          api('./api/stats', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({
+            measurement: series.measurement,
+            field: series.field,
+            entity_id: series.entity_id,
+            friendly_name: series.friendly_name,
+            stats_scope: 'range',
+            start: tr.start,
+            stop: tr.stop,
+          })}),
+        ]);
+        const stats = (st && st.stats) ? st.stats : {};
+        const metaTxt = `count: ${stats.count ?? ''} | oldest: ${fmtTs(stats.oldest_time)} | newest: ${fmtTs(stats.newest_time)}`;
+        if(side === 'src'){ if($srcMeta) $srcMeta.textContent = metaTxt; }
+        else { if($tgtMeta) $tgtMeta.textContent = metaTxt; }
+        const a = _isoToMs(tr.start);
+        const b = _isoToMs(tr.stop);
+        _drawTimeline(side, tl.points || [], a, b);
+        _drawGraph(side, gr.points || [], a, b);
+      }
+
+      async function loadPreviewAll(){
+        _initSelectionsFromInputs();
+        _renderSelTexts();
+        await _loadTimelineAndGraph('src');
+        await _loadTimelineAndGraph('tgt');
+      }
+
       async function loadMeasurements(){
         try{
           const j = await api('./api/measurements');
@@ -374,6 +662,7 @@
         if($tgtCnt) $tgtCnt.textContent = (bs.count !== undefined && bs.count !== null) ? String(bs.count) : '';
         if($tgtOld) $tgtOld.textContent = fmtTs(bs.oldest_time);
         if($tgtNew) $tgtNew.textContent = fmtTs(bs.newest_time);
+        try{ await loadPreviewAll(); }catch(e){}
         return {src: as, tgt: bs};
       }
 
@@ -410,17 +699,31 @@
         const t = tgt();
         if(!s.measurement || !s.field) throw new Error('Quelle: measurement und field erforderlich.');
         if(!t.measurement || !t.field) throw new Error('Ziel: measurement und field erforderlich.');
-        const tr = timeRange();
+        const dir = $direction ? String($direction.value || 'src_to_tgt') : 'src_to_tgt';
+        const sel = (dir === 'tgt_to_src') ? (SEL.tgt || {}) : (SEL.src || {});
+        const startIso = (sel.start_ms!=null) ? _msToIsoUtc(sel.start_ms) : '';
+        const stopIso = (sel.stop_ms!=null) ? _msToIsoUtc(sel.stop_ms) : '';
+        if(!startIso || !stopIso) throw new Error('Bitte in der Timeline einen Bereich auswaehlen.');
 
         const phrase = prompt('Bestaetigung: tippe COPY um das Kopieren zu starten.');
         if(String(phrase||'').trim() !== 'COPY') return;
 
+        const delOn = !!($deleteFirst && $deleteFirst.checked);
+        const confirmPhrase = $confirmPhrase ? String($confirmPhrase.value||'').trim() : '';
+        if(delOn && confirmPhrase !== 'DELETE'){
+          throw new Error('Loeschen aktiv: bitte DELETE in das Bestaetigungsfeld eintragen.');
+        }
+
         const j = await api('./api/combine_job/start', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({
           confirm: true,
+          direction: dir,
+          backup_before: !!($backupBefore && $backupBefore.checked),
+          delete_target_first: delOn,
+          confirm_phrase: confirmPhrase,
           source: s,
           target: t,
-          start: tr.start,
-          stop: tr.stop,
+          start: startIso,
+          stop: stopIso,
         })});
         JOB_ID = String(j.job_id || '');
         setInfo(['Job gestartet: ' + JOB_ID, '']);
@@ -483,6 +786,11 @@
         if($stop && !$stop.value) $stop.value = toLocalDatetimeValue(now);
       }catch(e){}
 
+      _initSelectionsFromInputs();
+      _renderSelTexts();
+      _bindTimelineSelection('src');
+      _bindTimelineSelection('tgt');
+
       try{
         if($srcM) $srcM.addEventListener('input', ()=>{ loadFields($srcM.value, $srcFieldList); });
         if($tgtM) $tgtM.addEventListener('input', ()=>{ loadFields($tgtM.value, $tgtFieldList); });
@@ -493,6 +801,77 @@
       try{ if($useSrcRange) $useSrcRange.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} useSrcRange().catch(e=>setErr(String(e&&e.message?e.message:e))); }); }catch(e){}
       try{ if($startCopy) $startCopy.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} startCopy().catch(e=>setErr(String(e&&e.message?e.message:e))); }); }catch(e){}
       try{ if($cancelJob) $cancelJob.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} cancelJob().catch(()=>{}); }); }catch(e){}
+
+      try{
+        const pickAll = (side)=>{
+          try{
+            const tr = timeRange();
+            const a = _isoToMs(tr.start);
+            const b = _isoToMs(tr.stop);
+            if(a!=null && b!=null && b>a){
+              SEL[side].start_ms = a;
+              SEL[side].stop_ms = b;
+              _renderSelTexts();
+              loadPreviewAll().catch(()=>{});
+            }
+          }catch(e){}
+        };
+        if($srcPickAll) $srcPickAll.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); }catch(e){} pickAll('src'); });
+        if($tgtPickAll) $tgtPickAll.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); }catch(e){} pickAll('tgt'); });
+
+        const pickEdge = async (side, which)=>{
+          const series = (side==='src') ? src() : tgt();
+          const j = await api('./api/stats', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({
+            measurement: series.measurement,
+            field: series.field,
+            entity_id: series.entity_id,
+            friendly_name: series.friendly_name,
+            stats_scope: 'current',
+            range: 'all',
+          })});
+          const st = j.stats || {};
+          const ms = _isoToMs(which==='oldest' ? st.oldest_time : st.newest_time);
+          if(ms==null) return;
+          if(which==='oldest') SEL[side].start_ms = ms; else SEL[side].stop_ms = ms;
+          if(SEL[side].start_ms!=null && SEL[side].stop_ms!=null && SEL[side].stop_ms < SEL[side].start_ms){
+            const tmp = SEL[side].start_ms; SEL[side].start_ms = SEL[side].stop_ms; SEL[side].stop_ms = tmp;
+          }
+          _renderSelTexts();
+          await loadPreviewAll().catch(()=>{});
+        };
+        if($srcPickOldest) $srcPickOldest.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); }catch(e){} pickEdge('src','oldest').catch(e=>setErr(String(e&&e.message?e.message:e))); });
+        if($srcPickNewest) $srcPickNewest.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); }catch(e){} pickEdge('src','newest').catch(e=>setErr(String(e&&e.message?e.message:e))); });
+        if($tgtPickOldest) $tgtPickOldest.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); }catch(e){} pickEdge('tgt','oldest').catch(e=>setErr(String(e&&e.message?e.message:e))); });
+        if($tgtPickNewest) $tgtPickNewest.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); }catch(e){} pickEdge('tgt','newest').catch(e=>setErr(String(e&&e.message?e.message:e))); });
+      }catch(e){}
+
+      try{ if($showYaml) $showYaml.addEventListener('click', (ev)=>{
+        try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+        const t = tgt();
+        const eid = String(t.entity_id||'').trim();
+        const fn = String(t.friendly_name||'').trim();
+        const stateSensor = (eid || 'sensor.source');
+        const stateSensorEsc = stateSensor.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        const y = (
+`template:\n`+
+`  - sensor:\n`+
+`      - name: ${JSON.stringify(fn || 'Virtueller Sensor')}\n`+
+`        unique_id: ${JSON.stringify(eid || 'influxbro_virtual')}\n`+
+`        state: "{{ states('${stateSensorEsc}') }}"\n`+
+`        # unit_of_measurement: "..."\n`+
+`        # device_class: "..."\n`
+        );
+        const help = (
+`Virtueller Messwert (HA Template Sensor)\n\n`+
+`- Dieses YAML ist ein Beispiel, falls du in Home Assistant einen Template-Sensor anlegen willst.\n`+
+`- Danach kann Home Assistant diesen Sensor ebenfalls nach InfluxDB schreiben (je nach Influx-Integration).\n\n`+
+`YAML:\n` + y
+        );
+        try{
+          if(window.InfluxBroPopup && window.InfluxBroPopup.show) window.InfluxBroPopup.show('Virtuell/YAML', help);
+          else alert(help);
+        }catch(e){ try{ alert(help); }catch(x){} }
+      }); }catch(e){}
 
       // Help buttons
       try{
