@@ -68,13 +68,6 @@ body:
       description: Paste the Flux query or command that triggered the issue
       render: shell
 
-  - type: textarea
-    id: addon-config
-    attributes:
-      label: Add-on configuration
-      description: Paste your add-on configuration
-      render: yaml
-
   - type: input
     id: addon-version
     attributes:
