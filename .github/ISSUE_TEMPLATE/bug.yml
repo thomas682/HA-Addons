@@ -10,107 +10,102 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for reporting a bug.
-        Please fill out as much information as possible so we can reproduce the issue.
+        Thank you for reporting a bug.
 
-  - type: dropdown
-    id: feature
-    attributes:
-      label: Feature / Function
-      description: Which part of the add-on were you using?
-      options:
-        - Global statistics
-        - Full backup
-        - Restore
-        - Export
-        - Scheduler
-        - Web UI
-        - Configuration
-        - Other
-    validations:
-      required: true
+        Please provide as much information as possible so the issue can be reproduced.
+        Include logs and steps to reproduce the problem.
 
   - type: textarea
     id: steps
     attributes:
-      label: Steps to reproduce
-      description: How can the issue be reproduced?
+      label: Fehlerbeschreibung
+      description: Welches Problem trat auf, bitte genau beschreiben?
       placeholder: |
-        1. Open add-on UI
-        2. Click ...
-        3. Run ...
-        4. Error appears
+        1. Open the add-on UI
+        2. Click on Statusleiste/Fehlerdiagnose/Bugreport ...
+        3. Erstellt Issue in GitHub
+        4. Füge ein bugreport.md vom Download
+        5. Beschreibe den Fehler
     validations:
       required: true
 
-  - type: textarea
-    id: expected
+  - type: dropdown
+    id: feature
     attributes:
-      label: Expected behaviour
-      placeholder: What did you expect to happen?
-
-  - type: textarea
-    id: actual
-    attributes:
-      label: Actual behaviour
-      placeholder: What actually happened?
-
+      label: Feature / Function used
+      description: Which part of the add-on were you using?
+      options:
+        - Dashbaord Statistik
+        - Statistik
+        - Backup
+        - Restore
+        - Kombinieren
+        - Export
+        - Import
+        - Logs
+        - Jobs & Cache
+        - History
+        - Diagnose
+        - Changelog
+        - Handbuch
+        - Profilverwaltung
+        - Einstellungen
+        - sonstiges
+    validations:
+      required: true
+      
   - type: textarea
     id: logs
     attributes:
-      label: Logs / Screenshots
-      description: Paste relevant logs or screenshots
+      label: Add-on logs
+      description: Paste relevant logs from the add-on
       render: shell
 
   - type: textarea
-    id: addon-config
+    id: query
     attributes:
-      label: Add-on configuration
-      description: Paste your add-on configuration if relevant
-      render: yaml
+      label: Query / operation that caused the error (if applicable)
+      description: Paste the Flux query or command that triggered the issue
+      render: shell
 
   - type: input
     id: addon-version
     attributes:
       label: Add-on version
       placeholder: e.g. 1.12.29
-    validations:
-      required: true
 
   - type: input
     id: ha-version
     attributes:
       label: Home Assistant version
+      description: Version nur notwendig, wenn nicht Bugerport.md eingefügt wurde
       placeholder: e.g. 2026.3.0
-    validations:
-      required: true
 
   - type: input
     id: supervisor-version
     attributes:
       label: Supervisor version
+      description: Version nur notwendig, wenn nicht Bugerport.md eingefügt wurde
       placeholder: e.g. 2026.02.0
 
-  - type: input
-    id: ha-os
+  - type: dropdown
+    id: installation-type
     attributes:
-      label: Home Assistant OS / Installation type
-      placeholder: e.g. HAOS / Docker / Supervised
-
-  - type: input
-    id: architecture
-    attributes:
-      label: Architecture
-      placeholder: e.g. amd64 / aarch64 / armv7
+      label: Installation type
+      description: Version nur notwendig, wenn nicht Bugerport.md eingefügt wurde
+      options:
+        - Home Assistant OS
+        - Home Assistant Supervised
+        - Home Assistant Container
+        - Home Assistant Core
 
   - type: dropdown
-    id: severity
+    id: architecture
     attributes:
-      label: Severity
+      label: System architecture
       options:
-        - low
-        - medium
-        - high
-        - critical
-    validations:
-      required: true
+        - amd64
+        - aarch64
+        - armv7
+        - i386
+        - sonstige
