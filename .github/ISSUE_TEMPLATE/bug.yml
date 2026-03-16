@@ -20,32 +20,6 @@ body:
       required: true
 
   - type: textarea
-    id: repro
-    attributes:
-      label: Steps to reproduce
-      description: Minimal, repeatable steps.
-      placeholder: |
-        1. Go to ...
-        2. Click ...
-        3. See error ...
-    validations:
-      required: true
-
-  - type: textarea
-    id: expected
-    attributes:
-      label: Expected behavior
-    validations:
-      required: true
-
-  - type: textarea
-    id: actual
-    attributes:
-      label: Actual behavior
-    validations:
-      required: true
-
-  - type: textarea
     id: logs
     attributes:
       label: Logs / screenshots
