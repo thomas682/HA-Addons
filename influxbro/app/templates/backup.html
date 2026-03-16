@@ -223,6 +223,10 @@
         <details id="backup_query_details" class="card" style="display:none; margin-top: 10px;" data-ui="backup.query_details" title="backup.query_details">
           <summary><span class="ib_summary_row"><span>Query anzeigen</span><button type="button" class="ib_info_icon" data-info-title="Backup: Query" data-info-body="Zeigt den zuletzt verwendeten Query-String der Backup-Erstellung.\n\nNutzen:\n- Debugging (welcher Zeitraum/Filter wurde wirklich verwendet?).\n- Support (Query in Logs vergleichen)." >i</button></span></summary>
           <div class="card_body">
+            <div class="row" style="align-items:center; margin-top:6px;">
+              <div class="muted" id="backup_query_meta" style="flex:1;"></div>
+              <button id="backup_query_history" type="button" class="btn_sm" style="width:auto; white-space:nowrap;">History</button>
+            </div>
             <pre id="backup_query_pre" style="margin:6px 0 0 0; padding:10px 12px; border:1px solid #eee; border-radius:12px; background:#fafafa; white-space:pre; overflow:auto; max-height: 260px;"></pre>
           </div>
         </details>
@@ -312,6 +316,10 @@
           <details id="fullbackup_query_details" class="card" style="display:none; margin-top: 10px;" data-ui="backup.fullbackup.query_details" title="backup.fullbackup.query_details">
             <summary><span class="ib_summary_row"><span>Aktion anzeigen</span><button type="button" class="ib_info_icon" data-info-title="FullBackup: Aktion" data-info-body="Zeigt die aktuell ausgefuehrte Aktion des FullBackup-Jobs (z.B. CLI Command/Query).\n\nHinweis:\n- Tokens werden redacted und nicht angezeigt." >i</button></span></summary>
             <div class="card_body">
+              <div class="row" style="align-items:center; margin-top:6px;">
+                <div class="muted" id="fullbackup_query_meta" style="flex:1;"></div>
+                <button id="fullbackup_query_history" type="button" class="btn_sm" style="width:auto; white-space:nowrap;">History</button>
+              </div>
               <pre id="fullbackup_query_pre" style="margin:6px 0 0 0; padding:10px 12px; border:1px solid #eee; border-radius:12px; background:#fafafa; white-space:pre; overflow:auto; max-height: 260px;"></pre>
             </div>
           </details>
@@ -396,6 +404,8 @@
       const $fullBackupRows = document.getElementById('fullbackup_rows');
       const $fullBackupQueryDetails = document.getElementById('fullbackup_query_details');
       const $fullBackupQueryPre = document.getElementById('fullbackup_query_pre');
+      const $fullBackupQueryMeta = document.getElementById('fullbackup_query_meta');
+      const $fullBackupQueryHistory = document.getElementById('fullbackup_query_history');
       const $fullBackupLoc = document.getElementById('fullbackup_loc');
       const $fullBackupSelAll = document.getElementById('fullbackup_sel_all');
       const $fullBackupListInfo = document.getElementById('fullbackup_list_info');
@@ -425,6 +435,8 @@
       const $createStatusTime = document.getElementById('create_status_time');
       const $backupQueryDetails = document.getElementById('backup_query_details');
       const $backupQueryPre = document.getElementById('backup_query_pre');
+      const $backupQueryMeta = document.getElementById('backup_query_meta');
+      const $backupQueryHistory = document.getElementById('backup_query_history');
 
       const $space = document.getElementById('space');
 
@@ -759,6 +771,7 @@
           try{
             if($fullBackupQueryDetails) $fullBackupQueryDetails.style.display = 'block';
             if($fullBackupQueryPre) $fullBackupQueryPre.textContent = '';
+            if($fullBackupQueryMeta) $fullBackupQueryMeta.textContent = '';
           }catch(e){}
 
           const started = await api('./api/fullbackup_job/start', {
@@ -780,10 +793,7 @@
           while(true){
             const j = await api('./api/fullbackup_job/status?job_id=' + encodeURIComponent(FULL_JOB_ID));
             const st = j.status || {};
-            try{
-              const q = String(st.query || '');
-              if($fullBackupQueryPre && q) $fullBackupQueryPre.textContent = q;
-            }catch(e){}
+            try{ setFullBackupAction(st.query || '', st.started_at || '', [String(st.state||''), String(st.message||'')].filter(Boolean).join(' | ')); }catch(e){}
             const msg = String(st.message || 'FullBackup laeuft...');
             const pc = Number(st.point_count || 0);
             const sz = String(st.written_human || '');
@@ -855,19 +865,69 @@
         await loadFullBackupList();
       }
 
-      function setBackupQuery(q){
+      let LAST_BACKUP_QUERY = '';
+      function setBackupQuery(q, startedAtIso, responseHint){
         try{
           const s = String(q || '').trim();
           if(!$backupQueryDetails || !$backupQueryPre) return;
           if(!s){
             $backupQueryDetails.style.display = 'none';
             $backupQueryPre.textContent = '';
+            if($backupQueryMeta) $backupQueryMeta.textContent = '';
             return;
           }
           $backupQueryPre.textContent = s;
           $backupQueryDetails.style.display = 'block';
+          if($backupQueryMeta){
+            const at = String(startedAtIso || '').trim();
+            $backupQueryMeta.textContent = at ? ('Start: ' + fmtTs(at)) : '';
+          }
+
+          try{
+            if(s !== LAST_BACKUP_QUERY){
+              LAST_BACKUP_QUERY = s;
+              const resp = String(responseHint || '').trim();
+              if(window.InfluxBroQueryHistory && window.InfluxBroQueryHistory.add){
+                window.InfluxBroQueryHistory.add('backup', 'Backup Job', s, resp, String(startedAtIso||''));
+              }
+            }
+          }catch(e){}
         }catch(e){}
       }
+
+      try{ if($backupQueryHistory) $backupQueryHistory.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}; try{ window.InfluxBroQueryHistory && window.InfluxBroQueryHistory.show && window.InfluxBroQueryHistory.show('backup'); }catch(e){}; }); }catch(e){}
+
+      let LAST_FULLBACKUP_ACTION = '';
+      function setFullBackupAction(q, startedAtIso, responseHint){
+        try{
+          const s = String(q || '').trim();
+          if(!$fullBackupQueryDetails || !$fullBackupQueryPre) return;
+          if(!s){
+            $fullBackupQueryDetails.style.display = 'none';
+            $fullBackupQueryPre.textContent = '';
+            if($fullBackupQueryMeta) $fullBackupQueryMeta.textContent = '';
+            return;
+          }
+          $fullBackupQueryPre.textContent = s;
+          $fullBackupQueryDetails.style.display = 'block';
+          if($fullBackupQueryMeta){
+            const at = String(startedAtIso || '').trim();
+            $fullBackupQueryMeta.textContent = at ? ('Start: ' + fmtTs(at)) : '';
+          }
+
+          try{
+            if(s !== LAST_FULLBACKUP_ACTION){
+              LAST_FULLBACKUP_ACTION = s;
+              const resp = String(responseHint || '').trim();
+              if(window.InfluxBroQueryHistory && window.InfluxBroQueryHistory.add){
+                window.InfluxBroQueryHistory.add('fullbackup', 'FullBackup', s, resp, String(startedAtIso||''));
+              }
+            }
+          }catch(e){}
+        }catch(e){}
+      }
+
+      try{ if($fullBackupQueryHistory) $fullBackupQueryHistory.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}; try{ window.InfluxBroQueryHistory && window.InfluxBroQueryHistory.show && window.InfluxBroQueryHistory.show('fullbackup'); }catch(e){}; }); }catch(e){}
 
       function loadState(){
         try{ return JSON.parse(localStorage.getItem(LS_KEY) || "{}") || {}; }catch(e){ return {}; }
@@ -1415,7 +1475,7 @@
               CREATE_BYTES_HUMAN = String(st.written_human || '');
               renderCreateTime();
             }catch(e){}
-            try{ setBackupQuery(st.query || ''); }catch(e){}
+            try{ setBackupQuery(st.query || '', st.started_at || '', [String(st.state||''), String(st.message||'')].filter(Boolean).join(' | ')); }catch(e){}
 
             const msg = String(st.message || 'Backup laeuft...');
             const pc = Number(st.point_count || 0);
@@ -1481,7 +1541,7 @@
               CREATE_BYTES_HUMAN = String(st.written_human || '');
               renderCreateTime();
             }catch(e){}
-            try{ setBackupQuery(st.query || ''); }catch(e){}
+            try{ setBackupQuery(st.query || '', st.started_at || '', [String(st.state||''), String(st.message||'')].filter(Boolean).join(' | ')); }catch(e){}
             const msg = String(st.message || 'Backup laeuft...');
             const pc = Number(st.point_count || 0);
             const sz = String(st.written_human || '');
@@ -1543,7 +1603,7 @@
               CREATE_BYTES_HUMAN = String(st.written_human || '');
               renderCreateTime();
             }catch(e){}
-            try{ setBackupQuery(st.query || ''); }catch(e){}
+            try{ setBackupQuery(st.query || '', st.started_at || '', [String(st.state||''), String(st.message||'')].filter(Boolean).join(' | ')); }catch(e){}
             const msg = String(st.message || 'Backup laeuft...');
             const pc = Number(st.point_count || 0);
             const sz = String(st.written_human || '');

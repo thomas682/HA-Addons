@@ -914,6 +914,36 @@ def _timers_state_get(timer_id: str) -> dict[str, Any]:
         return {}
 
 
+def _timer_event_append(timer_id: str, kind: str, extra: dict[str, Any] | None = None) -> None:
+    """Append a small per-timer history ring buffer under /data (best-effort)."""
+
+    try:
+        tid = str(timer_id or "").strip()
+        if not tid:
+            return
+        k = str(kind or "").strip() or "event"
+        st = _timers_state_load()
+        cur = st.get(tid)
+        cur = cur if isinstance(cur, dict) else {}
+        xs = cur.get("events")
+        xs = xs if isinstance(xs, list) else []
+        ent: dict[str, Any] = {
+            "at": _utc_now_iso_ms(),
+            "kind": k,
+        }
+        if extra and isinstance(extra, dict):
+            for kk, vv in extra.items():
+                ent[str(kk)] = vv
+        xs.append(ent)
+        if len(xs) > 80:
+            xs = xs[-80:]
+        cur["events"] = xs
+        st[tid] = cur
+        _timers_state_save(st)
+    except Exception:
+        return
+
+
 def _timer_mark_started(timer_id: str, job_id: str | None = None) -> None:
     try:
         tid = str(timer_id or "").strip()
@@ -927,6 +957,7 @@ def _timer_mark_started(timer_id: str, job_id: str | None = None) -> None:
         cur["last_state"] = "running"
         st[tid] = cur
         _timers_state_save(st)
+        _timer_event_append(tid, "started", {"job_id": cur.get("last_job_id")})
     except Exception:
         return
 
@@ -946,6 +977,7 @@ def _timer_mark_finished(timer_id: str, state: str) -> None:
         cur["last_state"] = st_s
         st[tid] = cur
         _timers_state_save(st)
+        _timer_event_append(tid, "finished", {"state": st_s, "job_id": cur.get("last_job_id")})
     except Exception:
         return
 
@@ -3904,6 +3936,76 @@ def api_logfile():
     return jsonify({"ok": True, "text": "\n".join(lines)})
 
 
+@app.get("/api/log_excerpt")
+def api_log_excerpt():
+    """Return a best-effort excerpt of recent log lines.
+
+    This is used by the UI error popup to show a quick context snippet.
+    """
+
+    try:
+        minutes = int(request.args.get("minutes", "5"))
+    except Exception:
+        minutes = 5
+    minutes = min(120, max(1, minutes))
+
+    # Read a bounded tail; RotatingFileHandler caps file size anyway.
+    try:
+        tail = int(request.args.get("tail", "8000"))
+    except Exception:
+        tail = 8000
+    tail = min(20000, max(200, tail))
+
+    try:
+        if not LOG_FILE.exists():
+            return jsonify({"ok": True, "text": ""})
+        txt = LOG_FILE.read_text(encoding="utf-8", errors="replace")
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 500
+
+    lines = (txt or "").splitlines()
+    if tail and len(lines) > tail:
+        lines = lines[-tail:]
+
+    cutoff = datetime.now() - timedelta(minutes=minutes)
+
+    # logging.Formatter default asctime: "YYYY-MM-DD HH:MM:SS,mmm"
+    ts_re = re.compile(r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})(?:,(\d{3}))?\s")
+
+    def _parse_dt(line: str) -> datetime | None:
+        m = ts_re.match(line or "")
+        if not m:
+            return None
+        base = m.group(1)
+        ms = m.group(2)
+        try:
+            dt = datetime.strptime(base, "%Y-%m-%d %H:%M:%S")
+            if ms and ms.isdigit():
+                dt = dt.replace(microsecond=int(ms) * 1000)
+            return dt
+        except Exception:
+            return None
+
+    # Walk from bottom to find the earliest included timestamped line.
+    start_idx = 0
+    found = False
+    for i in range(len(lines) - 1, -1, -1):
+        dt = _parse_dt(lines[i])
+        if dt is None:
+            continue
+        if dt >= cutoff:
+            start_idx = i
+            found = True
+            continue
+        # first older timestamp => stop
+        if found:
+            start_idx = i + 1
+        break
+
+    out = lines[start_idx:] if lines else []
+    return jsonify({"ok": True, "text": "\n".join(out), "minutes": minutes})
+
+
 @app.get("/api/logs_diag")
 def api_logs_diag():
     """Diagnostics for Supervisor logs access.
@@ -4040,12 +4142,15 @@ def api_bugreport_meta():
     cfg = _overlay_from_yaml_if_enabled(load_cfg())
     repo_cfg = str(cfg.get("ui_repo_url") or "").strip()
     repo_base = _github_repo_base(repo_cfg)
-    new_issue_url = (repo_base + "/issues/new?template=bug.yml") if repo_base else ""
+    # Prefer the advanced bugreport template if present.
+    new_issue_url = (repo_base + "/issues/new?template=profi.yml") if repo_base else ""
 
     # Home Assistant versions (Supervisor API; best-effort)
     ha_core_ver = None
     ha_supervisor_ver = None
     ha_os_ver = None
+    ha_arch = None
+    ha_installation_type = None
     try:
         st, txt = _supervisor_get("/core/api/config", timeout_s=6)
         j = _json_best_effort(txt)
@@ -4059,6 +4164,8 @@ def api_bugreport_meta():
         d = (j.get("data") if isinstance(j, dict) else None) if j else None
         if st == 200 and isinstance(d, dict):
             ha_supervisor_ver = d.get("version")
+            ha_arch = d.get("arch") or d.get("architecture")
+            ha_installation_type = d.get("installation_type")
     except Exception:
         pass
     try:
@@ -4088,6 +4195,9 @@ def api_bugreport_meta():
             "core": ha_core_ver,
             "supervisor": ha_supervisor_ver,
             "os": ha_os_ver,
+            "arch": ha_arch,
+            "installation_type": ha_installation_type,
+            "platform": _ha_platform(),
         },
         "influx": {
             "version": influx_ver,
@@ -9176,6 +9286,26 @@ def api_timers():
     return jsonify({"ok": True, "timers": timers})
 
 
+@app.get("/api/timers/history")
+def api_timers_history():
+    tid = str(request.args.get("id") or "").strip()
+    if tid not in ("dash_cache", "stats_cache", "stats_full"):
+        return jsonify({"ok": False, "error": "invalid timer id"}), 400
+
+    try:
+        limit = int(request.args.get("limit") or 50)
+    except Exception:
+        limit = 50
+    limit = min(200, max(1, limit))
+
+    st = _timers_state_get(tid)
+    xs = st.get("events") if isinstance(st, dict) else None
+    xs = xs if isinstance(xs, list) else []
+    xs2 = [it for it in xs if isinstance(it, dict)]
+    xs2 = xs2[-limit:]
+    return jsonify({"ok": True, "id": tid, "events": xs2, "state": st})
+
+
 @app.post("/api/timers/schedule")
 def api_timers_schedule():
     body = request.get_json(force=True) or {}
@@ -9195,6 +9325,10 @@ def api_timers_schedule():
             save_cfg(cfg)
         except Exception as e:
             return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 500
+        try:
+            _timer_event_append(tid, "schedule", {"mode": mode})
+        except Exception:
+            pass
         return api_timers()
 
     if mode == "hours":
@@ -9230,6 +9364,16 @@ def api_timers_schedule():
         save_cfg(cfg)
     except Exception as e:
         return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 500
+
+    try:
+        _timer_event_append(tid, "schedule", {
+            "mode": mode,
+            "refresh_hours": cfg.get(f"{tid}_refresh_hours"),
+            "refresh_daily_at": cfg.get(f"{tid}_refresh_daily_at"),
+            "refresh_weekday": cfg.get(f"{tid}_refresh_weekday"),
+        })
+    except Exception:
+        pass
     return api_timers()
 
 
@@ -9271,6 +9415,10 @@ def api_timers_start():
             return jsonify({"ok": True, "started": False})
         try:
             job_id = _dash_cache_start_job("update", pick, trigger_page="timers", timer_id=tid)
+            try:
+                _timer_event_append(tid, "manual_start", {"job_id": job_id, "cache_id": pick})
+            except Exception:
+                pass
             _timer_mark_started(tid, job_id=job_id)
             return jsonify({"ok": True, "started": True, "job_id": job_id, "cache_id": pick})
         except Exception as e:
@@ -9303,6 +9451,10 @@ def api_timers_start():
                 return jsonify({"ok": True, "started": False})
 
             job_id = _stats_cache_start_update_job(pick, trigger_page="timers", timer_id=tid)
+            try:
+                _timer_event_append(tid, "manual_start", {"job_id": job_id, "cache_id": pick})
+            except Exception:
+                pass
             _timer_mark_started(tid, job_id=job_id)
             return jsonify({"ok": True, "started": True, "job_id": job_id, "cache_id": pick})
         except _ApiError as e:
@@ -9312,8 +9464,13 @@ def api_timers_start():
 
     # stats_full
     try:
-        start_dt = datetime(1970, 1, 1, tzinfo=timezone.utc)
         stop_dt = datetime.now(timezone.utc)
+        try:
+            max_days = int(cfg.get("stats_full_max_days") or 3650)
+        except Exception:
+            max_days = 3650
+        max_days = min(36500, max(1, max_days))
+        start_dt = stop_dt - timedelta(days=max_days)
         cols = ["last_value", "oldest_time", "newest_time", "count", "min", "max", "mean"]
         job_id = _global_stats_start_job(
             cfg=cfg,
@@ -9331,6 +9488,10 @@ def api_timers_start():
             cache_id=None,
             cache_key=None,
         )
+        try:
+            _timer_event_append(tid, "manual_start", {"job_id": job_id, "max_days": max_days})
+        except Exception:
+            pass
         _timer_mark_started(tid, job_id=job_id)
         return jsonify({"ok": True, "started": True, "job_id": job_id})
     except Exception as e:
@@ -9345,6 +9506,10 @@ def api_timers_cancel():
         return jsonify({"ok": False, "error": "invalid timer id"}), 400
 
     cancelled = 0
+    try:
+        _timer_event_append(tid, "cancel_request", {"ip": _req_ip(), "ua": _req_ua()})
+    except Exception:
+        pass
     if tid == "dash_cache":
         with DASH_CACHE_JOBS_LOCK:
             for jid, j in list(DASH_CACHE_JOBS.items()):
@@ -12169,7 +12334,8 @@ from(bucket: "{cfg_local["bucket"]}")
   |> map(fn: (r) => ({{ r with entity_id: if exists r.entity_id then string(v: r.entity_id) else "", friendly_name: if exists r.friendly_name then string(v: r.friendly_name) else "" }}))
   |> keep(columns: ["_measurement","_field","entity_id","friendly_name","_time"])
   |> group(columns: ["_measurement","_field","entity_id","friendly_name"])
-  |> first()
+  |> sort(columns: ["_time"], desc: false)
+  |> limit(n: 1)
 '''
                     set_query("Series span (first)", q_first)
                     out: list[dict[str, Any]] = []

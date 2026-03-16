@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.12.36
+
+### Fixes
+
+- Statistik: "no column _value exists" behoben (Series-span oldest Query).
+
+### UI
+
+- Query Details: Start-Zeitstempel + History (Dashboard/Backup/Statistik).
+- Fehlerfenster: Buttons "Logs (5min)" und "Jump Logs".
+- Statusleiste unten: auf allen Seiten sichtbar, inkl. Button "Git Bugreport" (profi Template).
+- Timer Jobs: Button "History" zeigt die letzten Timer-Aktivitaeten.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.35
 
 ### UI

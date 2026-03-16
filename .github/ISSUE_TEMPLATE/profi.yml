@@ -1,41 +1,59 @@
-name: Bug report profi
-description: Report a problem with the add-on
+name: Profi Bugreport
+description: Bugreport mit System- und Add-on-Details
 title: "[Bug]: "
 labels:
-  - type/bug
-  - status/open
+  - "type/bug"
+  - "status/open"
 
 body:
-
   - type: markdown
     attributes:
       value: |
-        Thank you for reporting a bug.
+        Bitte beschreibe das Problem moeglichst genau.
 
-        Please provide as much information as possible so the issue can be reproduced.
-        Include logs and steps to reproduce the problem.
+        Tipp: In der InfluxBro GUI kann ein Debug report erzeugt werden (Git Bugreport / Bugreport Button).
+        Bitte die Datei `influxbro_debug_report_*.md` als Anhang hochladen.
 
   - type: textarea
-    id: steps
+    id: ausloeser
     attributes:
-      label: Fehlerbeschreibung
-      description: Welches Problem trat auf, bitte genau beschreiben?
-      placeholder: |
-        1. Open the add-on UI
-        2. Click on Statusleiste/Fehlerdiagnose/Bugreport ...
-        3. Erstellt Issue in GitHub
-        4. Füge ein bugreport.md vom Download
-        5. Beschreibe den Fehler
+      label: Ausloeser / Aktion
+      description: Was hast du gemacht, was ist passiert?
+      placeholder: "Dashboard -> Aktualisieren ..."
     validations:
       required: true
+
+  - type: textarea
+    id: beobachtet
+    attributes:
+      label: Beobachtetes Verhalten / Fehlermeldung
+      placeholder: "Fehlermeldung ..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: erwartet
+    attributes:
+      label: Erwartetes Verhalten
+      placeholder: "Ich erwarte ..."
+
+  - type: textarea
+    id: schritte
+    attributes:
+      label: Schritte zum Reproduzieren
+      description: Optional, aber hilfreich.
+      placeholder: |
+        1.
+        2.
+        3.
 
   - type: dropdown
     id: feature
     attributes:
-      label: Feature / Function used
-      description: Which part of the add-on were you using?
+      label: Feature / Bereich
+      description: Welcher Bereich war betroffen?
       options:
-        - Dashbaord Statistik
+        - Dashboard
         - Statistik
         - Backup
         - Restore
@@ -50,63 +68,63 @@ body:
         - Handbuch
         - Profilverwaltung
         - Einstellungen
-        - sonstiges
+        - Sonstiges
     validations:
       required: true
-      
+
   - type: textarea
     id: logs
     attributes:
-      label: Add-on logs
-      description: Paste relevant logs from the add-on
+      label: Add-on Logs
+      description: Relevante Log-Ausgabe (falls vorhanden)
       render: shell
 
   - type: textarea
     id: query
     attributes:
-      label: Query / operation that caused the error (if applicable)
-      description: Paste the Flux query or command that triggered the issue
+      label: Query / Operation (optional)
+      description: Flux Query oder Aktion/Command (falls zutreffend)
       render: shell
 
   - type: input
-    id: addon-version
-    attributes:
-      label: Add-on version
-      placeholder: e.g. 1.12.29
-
-  - type: input
-    id: ha-version
-    attributes:
-      label: Home Assistant version
-      description: Version nur notwendig, wenn nicht Bugerport.md eingefügt wurde
-      placeholder: e.g. 2026.3.0
-
-  - type: input
-    id: supervisor-version
-    attributes:
-      label: Supervisor version
-      description: Version nur notwendig, wenn nicht Bugerport.md eingefügt wurde
-      placeholder: e.g. 2026.02.0
-
-  - type: dropdown
-    id: installation-type
-    attributes:
-      label: Installation type
-      description: Version nur notwendig, wenn nicht Bugerport.md eingefügt wurde
-      options:
-        - Home Assistant OS
-        - Home Assistant Supervised
-        - Home Assistant Container
-        - Home Assistant Core
-
-  - type: dropdown
     id: architecture
     attributes:
-      label: System architecture
-      options:
-        - amd64
-        - aarch64
-        - armv7
-        - i386
-        - sonstige
+      label: Architektur (HA)
+      placeholder: "amd64 / aarch64 / armv7 / ..."
 
+  - type: input
+    id: installation_type
+    attributes:
+      label: Installationstyp
+      placeholder: "Home Assistant OS / Supervised / Container / Core"
+
+  - type: input
+    id: supervisor_version
+    attributes:
+      label: Supervisor Version
+      placeholder: "z.B. 2026.03.0"
+
+  - type: input
+    id: ha_version
+    attributes:
+      label: Home Assistant Core Version
+      placeholder: "z.B. 2026.3.1"
+
+  - type: input
+    id: addon_version
+    attributes:
+      label: Add-on Version
+      placeholder: "z.B. 1.12.36"
+
+  - type: input
+    id: influx_version
+    attributes:
+      label: InfluxDB Version
+      placeholder: "z.B. v2.7.10"
+
+  - type: textarea
+    id: debug_report
+    attributes:
+      label: Debug report Anhang
+      description: Bitte die Debug report Datei (`influxbro_debug_report_*.md`) als Anhang hochladen.
+      placeholder: "Anhang hochgeladen: ja/nein"

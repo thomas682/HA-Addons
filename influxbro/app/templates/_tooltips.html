@@ -658,8 +658,26 @@
     bugHint.style.opacity = '0.75';
     bugHint.style.whiteSpace = 'nowrap';
 
+    const logsBtn = document.createElement('button');
+    logsBtn.id = 'influxbro_popup_logs';
+    logsBtn.type = 'button';
+    logsBtn.textContent = 'Logs (5min)';
+    logsBtn.style.cursor = 'pointer';
+    logsBtn.style.padding = '8px 10px';
+    logsBtn.style.height = '34px';
+
+    const jumpLogsBtn = document.createElement('button');
+    jumpLogsBtn.id = 'influxbro_popup_jump_logs';
+    jumpLogsBtn.type = 'button';
+    jumpLogsBtn.textContent = 'Jump Logs';
+    jumpLogsBtn.style.cursor = 'pointer';
+    jumpLogsBtn.style.padding = '8px 10px';
+    jumpLogsBtn.style.height = '34px';
+
     right.appendChild(bugBtn);
     right.appendChild(bugHint);
+    right.appendChild(logsBtn);
+    right.appendChild(jumpLogsBtn);
     controls.appendChild(right);
 
     const pre = document.createElement('pre');
@@ -821,11 +839,11 @@
       return fn;
     }
 
-    async function _bugreportClick(){
+    async function _bugreportRun(msgOverride){
       try{ bugHint.textContent = ''; }catch(e){}
 
       const preEl = document.getElementById('influxbro_popup_pre');
-      const msg = String(preEl && preEl.textContent ? preEl.textContent : '').trim();
+      const msg = String((msgOverride !== undefined && msgOverride !== null) ? msgOverride : (preEl && preEl.textContent ? preEl.textContent : '')).trim();
       if(!msg){
         try{ bugHint.textContent = 'keine Fehlermeldung'; }catch(e){}
         return;
@@ -856,16 +874,22 @@
       const newIssueBase = meta && meta.github_new_issue_url ? String(meta.github_new_issue_url) : '';
 
       let body = '';
-      body += '### Was ist passiert?\n\n';
+      body += '### Ausloeser / Aktion\n\n';
       body += _clip(msg, 1200) + '\n\n';
-      body += '### Versionen\n\n';
-      if(addonV) body += '- Add-on version: ' + addonV + '\n';
-      if(haCore) body += '- Home Assistant Core: ' + haCore + '\n';
-      if(haSup) body += '- Home Assistant Supervisor: ' + haSup + '\n';
-      if(haOs) body += '- Home Assistant OS: ' + haOs + '\n';
-      if(influxV) body += '- InfluxDB: ' + influxV + '\n';
+      body += '### System / Versionen\n\n';
+      const haArch = meta && meta.ha && meta.ha.arch ? String(meta.ha.arch) : '';
+      const haInst = meta && meta.ha && meta.ha.installation_type ? String(meta.ha.installation_type) : '';
+      const haPlat = meta && meta.ha && meta.ha.platform ? String(meta.ha.platform) : '';
+      if(haArch) body += '- architecture: ' + haArch + '\n';
+      if(haInst) body += '- installation-type: ' + haInst + '\n';
+      if(haPlat) body += '- platform: ' + haPlat + '\n';
+      if(haSup) body += '- supervisor-version: ' + haSup + '\n';
+      if(haCore) body += '- ha-version: ' + haCore + '\n';
+      if(addonV) body += '- addon-version: ' + addonV + '\n';
+      if(haOs) body += '- ha-os: ' + haOs + '\n';
+      if(influxV) body += '- influx-version: ' + influxV + '\n';
       body += '\n';
-      body += '### Anhang\n\n';
+      body += '### Debug report Anhang\n\n';
       body += '- Bitte die heruntergeladene Datei `influxbro_debug_report_*.md` anhaengen.\n';
 
       if(!newIssueBase){
@@ -894,7 +918,36 @@
       try{ if(fn) bugHint.textContent = 'Bitte Debug report anhaengen'; }catch(e){}
     }
 
-    bugBtn.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} _bugreportClick().catch(()=>{}); });
+    bugBtn.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} _bugreportRun(null).catch(()=>{}); });
+
+    try{
+      logsBtn.addEventListener('click', async (ev)=>{
+        try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+        try{
+          const r = await fetch('./api/log_excerpt?minutes=5');
+          const j = await r.json().catch(()=>null);
+          if(!j || !j.ok){
+            const m = j && j.error ? String(j.error) : ('HTTP ' + r.status);
+            if(window.InfluxBroPopup && window.InfluxBroPopup.show) window.InfluxBroPopup.show('Logs (5min)', m);
+            return;
+          }
+          const t = String(j.text || '').trim();
+          if(window.InfluxBroPopup && window.InfluxBroPopup.show) window.InfluxBroPopup.show('Logs (5min)', t || '(leer)');
+        }catch(e){
+          try{ window.InfluxBroClientLog && window.InfluxBroClientLog.fetchError && window.InfluxBroClientLog.fetchError('./api/log_excerpt?minutes=5', {}, e); }catch(x){}
+        }
+      });
+    }catch(e){}
+
+    try{
+      jumpLogsBtn.addEventListener('click', (ev)=>{
+        try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+        try{ location.href = './logs'; }catch(e){}
+      });
+    }catch(e){}
+
+    // Expose the bugreport action for other UI elements (e.g. bottom status bar)
+    try{ window.InfluxBroBugreport = { run: (msg)=>_bugreportRun(msg) }; }catch(e){}
 
     function close(){
       try{ root.style.display = 'none'; }catch(e){}
@@ -921,7 +974,7 @@
      root.style.display = 'block';
    }
 
- window.InfluxBroPopup = {
+  window.InfluxBroPopup = {
       show: (title, msg) => {
         const t = String(title || 'Hinweis').trim() || 'Hinweis';
         const s = String(msg || '').trim();
@@ -937,6 +990,23 @@
         _show('Fehler', s);
       }
     };
+
+   // Global helper for "Git Bugreport" button (works even before the popup was opened).
+   try{
+     window.InfluxBroBugreport = {
+       run: (msg)=>{
+         try{ _ensureUi(); }catch(e){}
+         try{
+           const pre = document.getElementById('influxbro_popup_pre');
+           if(pre && msg) pre.textContent = String(msg || '');
+         }catch(e){}
+         try{
+           const b = document.getElementById('influxbro_popup_bugreport');
+           if(b && b.click) b.click();
+         }catch(e){}
+       }
+     };
+   }catch(e){}
  })();
  </script>
 
@@ -1044,6 +1114,88 @@
     showLast,
     showDialog,
   };
+})();
+</script>
+
+<script>
+// Simple query history (client-side) for "Query Details" panels
+(function(){
+  if(window.InfluxBroQueryHistory) return;
+
+  const MAX = 30;
+  const PREFIX = 'influxbro_query_history_v1:';
+
+  function _key(scope){
+    const s = String(scope || '').trim() || 'global';
+    return PREFIX + s;
+  }
+  function _load(scope){
+    try{
+      const raw = localStorage.getItem(_key(scope));
+      const j = raw ? JSON.parse(raw) : [];
+      return Array.isArray(j) ? j : [];
+    }catch(e){
+      return [];
+    }
+  }
+  function _save(scope, xs){
+    try{ localStorage.setItem(_key(scope), JSON.stringify(xs || [])); }catch(e){}
+  }
+  function _clipLines(txt, n){
+    const s = String(txt || '').trim();
+    if(!s) return '';
+    const xs = s.split(/\r?\n/);
+    const k = Math.max(1, Number(n) || 5);
+    const out = xs.slice(0, k).join('\n');
+    return xs.length > k ? (out + '\n...') : out;
+  }
+
+  function add(scope, label, query, response, startedAtIso){
+    const q = String(query || '').trim();
+    if(!q) return;
+    const ent = {
+      at: String(startedAtIso || new Date().toISOString()),
+      label: String(label || ''),
+      query: q.slice(0, 20000),
+      response: String(response || '').slice(0, 20000),
+    };
+    const xs = _load(scope);
+    xs.push(ent);
+    while(xs.length > MAX) xs.shift();
+    _save(scope, xs);
+  }
+
+  function show(scope){
+    const xs = _load(scope);
+    const lines = [];
+    lines.push('Query History: ' + String(scope || 'global'));
+    lines.push('');
+    if(!xs.length){
+      lines.push('(keine Eintraege)');
+    }else{
+      for(const it of xs.slice().reverse()){
+        const at = String(it && it.at ? it.at : '');
+        const lab = String(it && it.label ? it.label : '').trim();
+        lines.push('- ' + (at ? at : '') + (lab ? (' | ' + lab) : ''));
+        const q = _clipLines(it && it.query ? it.query : '', 5);
+        if(q){
+          lines.push('  query:');
+          lines.push('  ' + q.replace(/\n/g, '\n  '));
+        }
+        const r = _clipLines(it && it.response ? it.response : '', 5);
+        if(r){
+          lines.push('  response:');
+          lines.push('  ' + r.replace(/\n/g, '\n  '));
+        }
+      }
+    }
+    try{
+      if(window.InfluxBroPopup && window.InfluxBroPopup.show) window.InfluxBroPopup.show('Query History', lines.join('\n'));
+      else alert(lines.join('\n'));
+    }catch(e){}
+  }
+
+  window.InfluxBroQueryHistory = { add, show };
 })();
 </script>
 

@@ -270,7 +270,10 @@
       <details id="query_details" class="card" style="display:none; margin-top: 10px;" data-ui="dashboard.query_details" title="dashboard.query_details">
         <summary><span class="ib_summary_row"><span>Query anzeigen</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Query" data-info-body="Zeigt den zuletzt verwendeten Influx Query-String der aktuellen Aktualisierung.\n\nNutzen:\n- Nachvollziehen von Filtern/Zeitraum\n- Support/Debug" >i</button></span></summary>
         <div class="card_body">
-          <div class="muted" id="query_meta" data-ui="dashboard.query_meta" title="dashboard.query_meta" style="margin-top:6px;"></div>
+          <div class="row" style="align-items:center; margin-top:6px;">
+            <div class="muted" id="query_meta" data-ui="dashboard.query_meta" title="dashboard.query_meta" style="flex:1;"></div>
+            <button id="query_history" type="button" class="btn_sm" style="width:auto; white-space:nowrap;" data-ui="dashboard.query_history" title="dashboard.query_history">History</button>
+          </div>
           <pre id="query_pre" style="margin:6px 0 0 0; padding:10px 12px; border:1px solid #eee; border-radius:12px; background:#fafafa; white-space:pre; overflow:auto; max-height: 260px;"></pre>
         </div>
       </details>
@@ -773,6 +776,7 @@ try{ if($btnLastError) $btnLastError.addEventListener('click', (ev)=>{ _stop(ev)
 const $queryDetails = document.getElementById('query_details');
 const $queryPre = document.getElementById('query_pre');
 const $queryMeta = document.getElementById('query_meta');
+const $queryHistory = document.getElementById('query_history');
 
 const $outlierStatus = document.getElementById('outlier_status');
 const $outlierSpinner = document.getElementById('outlier_spinner');
@@ -2916,6 +2920,8 @@ function setLastQuery(q, triggeredAtIso){
     try{ GRAPH_QUERY_DASH = s; _renderGraphQueryPanel(); }catch(e){}
   }catch(e){}
 }
+
+try{ if($queryHistory) $queryHistory.addEventListener('click', (ev)=>{ _stop(ev); try{ window.InfluxBroQueryHistory && window.InfluxBroQueryHistory.show && window.InfluxBroQueryHistory.show('dashboard'); }catch(e){}; }); }catch(e){}
 
 let GRAPH_QUERY_DASH = "";
 let GRAPH_QUERY_EDIT = "";
@@ -5707,12 +5713,19 @@ async function loadData(){
   LAST_SERIES_KEY = seriesKey;
 
   const q0 = performance.now();
+  const startedAtIso = new Date().toISOString();
   const j = await api(
     "./api/query",
     {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(filters)},
     { key: "query", status: "Query laeuft..." },
   );
-  setLastQuery(j.query || "");
+  setLastQuery(j.query || "", startedAtIso);
+  try{
+    const cnt = Array.isArray(j.rows) ? j.rows.length : 0;
+    const totalPts = (j && j.meta && j.meta.total_points !== undefined) ? String(j.meta.total_points) : '';
+    const resp = `ok=${String(!!j.ok)} rows=${cnt}${totalPts?` total_points=${totalPts}`:''}`;
+    if(window.InfluxBroQueryHistory && window.InfluxBroQueryHistory.add) window.InfluxBroQueryHistory.add('dashboard', 'Aktualisieren', String(j.query||''), resp, startedAtIso);
+  }catch(e){}
   LOAD_QUERY_MS = performance.now() - q0;
   if(STATUS_COUNT > 0) _setLoadStatus("Query fertig – Graph wird aktualisiert...");
   const rows0 = j.rows || [];

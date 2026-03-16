@@ -1114,6 +1114,44 @@
               }
             };
             tdAct.appendChild(bMode);
+
+            const bHist = document.createElement('button');
+            bHist.className = 'btn_xs';
+            bHist.style.marginLeft = '6px';
+            bHist.textContent = 'History';
+            bHist.onclick = async ()=>{
+              try{
+                timersErr('');
+                const jh = await api(`./api/timers/history?id=${encodeURIComponent(id)}&limit=80`, {});
+                if(!jh || !jh.ok){
+                  timersErr(jh && jh.error ? jh.error : 'History nicht verfuegbar');
+                  return;
+                }
+                const xs = Array.isArray(jh.events) ? jh.events : [];
+                const lines = [];
+                lines.push('Timer History: ' + id);
+                lines.push('');
+                if(!xs.length){
+                  lines.push('(keine Eintraege)');
+                }else{
+                  for(const e of xs.slice().reverse()){
+                    const at = fmtTs(e && e.at ? e.at : '');
+                    const kind = String(e && e.kind ? e.kind : '');
+                    const rest = Object.assign({}, e);
+                    try{ delete rest.at; delete rest.kind; }catch(x){}
+                    let extra = '';
+                    try{ extra = JSON.stringify(rest); }catch(x){ extra = ''; }
+                    if(extra === '{}' || extra === 'null') extra = '';
+                    lines.push('- ' + at + (kind ? (' | ' + kind) : '') + (extra ? (' | ' + extra) : ''));
+                  }
+                }
+                if(window.InfluxBroPopup && window.InfluxBroPopup.show) window.InfluxBroPopup.show('Timer History', lines.join('\n'));
+                else alert(lines.join('\n'));
+              }catch(e){
+                timersErr(e && e.message ? e.message : String(e));
+              }
+            };
+            tdAct.appendChild(bHist);
           }
 
           const bStart = document.createElement('button');

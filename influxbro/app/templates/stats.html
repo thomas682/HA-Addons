@@ -209,7 +209,10 @@
         <details class="card" id="query_details" style="display:none; margin-top: 10px;" data-ui="stats.query_details" title="stats.query_details">
           <summary><span class="ib_summary_row"><span>Query Details</span><button type="button" class="ib_info_icon" data-info-title="Statistik: Query Details" data-info-body="Zeigt die zuletzt verwendeten Queries/Labels des Statistik-Jobs (best-effort).\n\nNutzen:\n- Debugging bei Timeouts\n- Support" >i</button></span></summary>
           <div class="card_body">
-            <div class="muted" id="query_label"></div>
+            <div class="row" style="align-items:center;">
+              <div class="muted" id="query_label" style="flex:1;"></div>
+              <button id="query_history" type="button" class="btn_sm" style="width:auto; white-space:nowrap;" data-ui="stats.query_history" title="stats.query_history">History</button>
+            </div>
             <pre id="query_pre" style="margin:6px 0 0 0; padding:10px 12px; border:1px solid #eee; border-radius:12px; background:#fafafa; white-space:pre; overflow:auto; max-height: 260px;"></pre>
           </div>
         </details>
@@ -307,6 +310,7 @@
       const $queryDetails = document.getElementById('query_details');
       const $queryLabel = document.getElementById('query_label');
       const $queryPre = document.getElementById('query_pre');
+      const $queryHistory = document.getElementById('query_history');
       const $queryCopy = document.getElementById('query_copy');
 
       let UI_DECIMALS = 3;
@@ -636,7 +640,9 @@
         $info.textContent = (lines || []).filter(Boolean).join("\n");
       }
 
-      function setQueryDetails(label, query){
+      let LAST_QUERY_HISTORY = [];
+      let LAST_QUERY_SIG = '';
+      function setQueryDetails(label, query, startedAt, queries, error){
         if(!$queryDetails || !$queryPre) return;
         const q = String(query || '').trim();
         const l = String(label || '').trim();
@@ -645,9 +651,56 @@
           return;
         }
         $queryDetails.style.display = 'block';
-        if($queryLabel) $queryLabel.textContent = l;
+        const stAt = String(startedAt || '').trim();
+        const stTxt = stAt ? ('Start: ' + fmtTs(stAt) + ' | ') : '';
+        if($queryLabel) $queryLabel.textContent = stTxt + l;
         $queryPre.textContent = q;
+        LAST_QUERY_HISTORY = Array.isArray(queries) ? queries : [];
+        try{ if(error) LAST_QUERY_HISTORY = LAST_QUERY_HISTORY.concat([{at: new Date().toISOString(), label:'error', query:String(error)}]); }catch(e){}
+
+        try{
+          const sig = [stAt, l, q].join('|');
+          if(sig !== LAST_QUERY_SIG){
+            LAST_QUERY_SIG = sig;
+            const resp = error ? String(error) : '';
+            if(window.InfluxBroQueryHistory && window.InfluxBroQueryHistory.add){
+              window.InfluxBroQueryHistory.add('stats', l || 'stats', q, resp, stAt || new Date().toISOString());
+            }
+          }
+        }catch(e){}
       }
+
+      try{
+        if($queryHistory) $queryHistory.addEventListener('click', (ev)=>{
+          try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+          try{
+            const xs = Array.isArray(LAST_QUERY_HISTORY) ? LAST_QUERY_HISTORY : [];
+            const lines = [];
+            lines.push('Query History (Statistik Job)');
+            lines.push('');
+            if(!xs.length){
+              lines.push('(keine Eintraege)');
+            }else{
+              const tail = xs.slice(Math.max(0, xs.length - 20));
+              for(const it of tail){
+                const at = fmtTs(it && it.at ? it.at : '');
+                const lab = String(it && (it.label || it.last_query_label) ? (it.label || it.last_query_label) : '').trim();
+                const qq = String(it && (it.query || it.last_query) ? (it.query || it.last_query) : '').trim();
+                lines.push('- ' + at + (lab ? (' | ' + lab) : ''));
+                if(qq){
+                  const maxLines = 5;
+                  const qLines = qq.split(/\r?\n/);
+                  const clipped = qLines.slice(0, maxLines).join('\n');
+                  lines.push('  ' + clipped.replace(/\n/g, '\n  '));
+                  if(qLines.length > maxLines) lines.push('  ...');
+                }
+              }
+            }
+            if(window.InfluxBroPopup && window.InfluxBroPopup.show) window.InfluxBroPopup.show('Query History', lines.join('\n'));
+            else alert(lines.join('\n'));
+          }catch(e){}
+        });
+      }catch(e){}
 
       function rowKey(r){
         return [r.measurement||'', r.field||'', r.entity_id||'', r.friendly_name||''].join('|');
@@ -907,7 +960,7 @@
         RUNNING = true;
         RUN_CANCELLED = false;
         err('');
-        setQueryDetails('', '');
+        setQueryDetails('', '', '', [], '');
         // Keep existing table visible while the new job runs.
 
         try{
@@ -934,7 +987,7 @@
             const elapsed = String(st.elapsed || '');
             const cur = String(st.current || '');
 
-            setQueryDetails(st.last_query_label, st.last_query);
+            setQueryDetails(st.last_query_label, st.last_query, st.started_at, st.queries, st.error);
 
             const g = (st.groups !== null && st.groups !== undefined) ? Number(st.groups) : null;
             const ts = (st.total_series !== null && st.total_series !== undefined) ? Number(st.total_series) : null;

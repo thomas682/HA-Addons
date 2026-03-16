@@ -152,6 +152,7 @@ Hinweis: Zeitstempel werden im gesamten UI inklusive Millisekunden angezeigt.
 Graph Query:
 
 - Bereich `Graph Query`: zeigt den zuletzt genutzten Influx Query-String (aus Dashboard-Abfragen).
+  - Neu: Query Details zeigt Start-Zeitstempel und hat eine History.
 - Button `Query kopieren`: kopiert den Query in die Zwischenablage (z.B. fuer den Influx Explorer).
 - Auswahl `Dashboard / Bearbeitungsgraph`: schaltet die angezeigte Query-Quelle um (Hauptgraph vs. rechter Bearbeitungsgraph).
 
@@ -487,6 +488,16 @@ Fehleranzeige:
 - Unten wird der letzte Fehler als Statuszeile angezeigt (Zeitstempel + Kurztext).
 - Button `Fehlerdialog`: zeigt den aktuellen Fehler plus Verlauf (mit Zeitstempeln).
 - Dashboard Button `Letzter Fehler`: oeffnet den letzten Fehlerdialog erneut.
+- Button `Git Bugreport`: erzeugt einen GitHub Bugreport (Template profi) und laedt einen Debug report zum Anhaengen.
+
+Fehlerfenster (Popup):
+
+- Button `Logs (5min)`: zeigt einen best-effort Log-Auszug der letzten 5 Minuten.
+- Button `Jump Logs`: springt zur Logs-Seite des Add-ons.
+
+Jobs / Timer Jobs:
+
+- In der Seite `Jobs` gibt es in der Tabelle `Timer Jobs` einen Button `History` pro Timer.
 
 Statistik:
 
