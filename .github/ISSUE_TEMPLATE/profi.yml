@@ -15,48 +15,45 @@ body:
         Please provide as much information as possible so the issue can be reproduced.
         Include logs and steps to reproduce the problem.
 
+  - type: textarea
+    id: steps
+    attributes:
+      label: Fehlerbeschreibung
+      description: Welches Problem trat auf, bitte genau beschreiben?
+      placeholder: |
+        1. Open the add-on UI
+        2. Click on Statusleiste/Fehlerdiagnose/Bugreport ...
+        3. Erstellt Issue in GitHub
+        4. Füge ein bugreport.md vom Download
+        5. Beschreibe den Fehler
+    validations:
+      required: true
+
   - type: dropdown
     id: feature
     attributes:
       label: Feature / Function used
       description: Which part of the add-on were you using?
       options:
-        - Global statistics
+        - Dashbaord Statistik
+        - Statistik
         - Backup
         - Restore
+        - Kombinieren
         - Export
-        - Scheduler
-        - Web UI
-        - Configuration
-        - Other
+        - Import
+        - Logs
+        - Jobs & Cache
+        - History
+        - Diagnose
+        - Changelog
+        - Handbuch
+        - Profilverwaltung
+        - Einstellungen
+        - sonstiges
     validations:
       required: true
-
-  - type: textarea
-    id: steps
-    attributes:
-      label: Steps to reproduce
-      description: How can we reproduce the issue?
-      placeholder: |
-        1. Open the add-on UI
-        2. Click on ...
-        3. Run ...
-        4. Error appears
-    validations:
-      required: true
-
-  - type: textarea
-    id: expected
-    attributes:
-      label: Expected behaviour
-      description: What should have happened?
-
-  - type: textarea
-    id: actual
-    attributes:
-      label: Actual behaviour
-      description: What actually happened?
-
+      
   - type: textarea
     id: logs
     attributes:
