@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.12.42
+
+### Fixes
+
+- Kombinieren: Seite laedt wieder korrekt; HA Template-Snippet (`{{ states(...) }}`) wird nicht mehr von Jinja ausgewertet.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.41
 
 ### Fixes

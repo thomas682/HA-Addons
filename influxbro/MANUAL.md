@@ -407,6 +407,7 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
   - Rollback erfolgt ueber die Seite `History` (Eintrag vom Typ `combine_copy`).
 - Virtuell/YAML:
   - Button `Virtuell/YAML` zeigt ein Beispiel fuer einen Home Assistant Template-Sensor, falls du einen virtuellen Messwert anlegen willst.
+  - Hinweis: Das YAML enthaelt Home Assistant Template-Ausdruecke wie `{{ states('sensor.xyz') }}`.
 
 ## Export
 

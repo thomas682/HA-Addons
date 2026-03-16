@@ -883,10 +883,10 @@
 `  - sensor:\n`+
 `      - name: ${JSON.stringify(fn || 'Virtueller Sensor')}\n`+
 `        unique_id: ${JSON.stringify(eid || 'influxbro_virtual')}\n`+
-`        state: "{{ states('${stateSensorEsc}') }}"\n`+
+`        state: "{{ '{{' }} states('${stateSensorEsc}') {{ '}}' }}"\n`+
 `        # unit_of_measurement: "..."\n`+
 `        # device_class: "..."\n`
-        );
+         );
         const help = (
 `Virtueller Messwert (HA Template Sensor)\n\n`+
 `- Dieses YAML ist ein Beispiel, falls du in Home Assistant einen Template-Sensor anlegen willst.\n`+
