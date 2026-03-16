@@ -129,9 +129,23 @@
     .ib_info_icon:hover { background: #f6f6f6; }
     .ib_info_icon:active { transform: translateY(1px); }
 
-    /* Details marker: keep the toggle arrow left of the title (not above). */
-    main.content details > summary { list-style-position: inside; }
-    main.content details > summary::-webkit-details-marker { margin-right: 6px; }
+    /* Details marker: always show a left-side arrow (consistent). */
+    main.content details > summary {
+      list-style: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    main.content details > summary::-webkit-details-marker { display: none; }
+    main.content details > summary::before {
+      content: "\25B8"; /* small right-pointing triangle */
+      display: inline-block;
+      width: 14px;
+      opacity: 0.85;
+      transform: rotate(0deg);
+      transition: transform 120ms ease;
+    }
+    main.content details[open] > summary::before { transform: rotate(90deg); }
   </style>
 
   <div class="left" data-ui="topbar.profile" title="topbar.profile">

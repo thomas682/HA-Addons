@@ -278,6 +278,7 @@ Tipp: In der Toolbar gibt es Mehrfachaktionen (z.B. Werte davor uebernehmen oder
   - Copy/Download fuer Support oder Analyse
 - Export: erstellt ein Debug-Bundle (JSON, inkl. Client-Fehler wie "Failed to fetch").
 - Debug report: erstellt einen GitHub-freundlichen Report als Markdown-Datei (empfohlen fuer Issue/Kommentar).
+- Default: `neuster` + `Follow: ein`.
 
 ## Jobs & Cache
 
@@ -411,9 +412,12 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 
 - Seite `Export`: Auswahl wie im Dashboard; Measurement/Field wird best-effort aus friendly_name/entity_id aufgeloest.
 - Feld `Auswahl (aufgeloest)`: zeigt die aktuell aufgeloeste Serie (measurement/field + tags) und den Zeitraum.
-- Export-Erzeugung laeuft als Hintergrund-Job und kann mit `Abbrechen` gestoppt werden; nach Fertigstellung startet der Download automatisch.
-- Vor dem Start erscheint ein Dialog zur Auswahl des Zielordners (relativ unter `/data` oder absolut unter `/data`/`/config`).
+- Export-Erzeugung laeuft als Hintergrund-Job und kann mit `Abbrechen` gestoppt werden.
+- Buttons:
+  - `Download`: startet den Export-Job und laedt die Datei herunter.
+  - `Export`: Save-As Dialog (best-effort, je nach Browser) und speichert die Datei lokal.
 - Das Feld `Auswahl (aufgeloest)` ist resizable; die Groesse wird automatisch gemerkt.
+- Das Textfeld nutzt die volle Breite des Export-Bereichs.
 - Formate: Text (Delimiter, Default `;`) oder Excel (`.xlsx`).
 - Zeitstempel im Export sind im lokalen Browser-Format (wie in der UI angezeigt).
 
@@ -454,6 +458,7 @@ Neu:
 
 - Status Schriftgroesse (Sidebar) ist konfigurierbar; Refresh loescht abgeschlossene Status-Eintraege.
 - Jobs: Max Job Laufzeit (Sekunden) fuer Auto-Abbruch; Job-Farben (running/done/error/cancelled).
+- Job-Farben koennen per Colorpicker oder per Hex (`#RRGGBB`) gesetzt werden.
 - Ausreisser Tabelle: `_measurement` ist nicht editierbar; Zeilen werden automatisch aus bekannten Measurements vorbefuellt.
 
 Verbindung:

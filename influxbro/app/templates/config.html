@@ -458,20 +458,32 @@
             </div>
             <div>
               <label>Job Farbe: running</label>
-              <input id="ui_job_color_running" type="color" />
+              <div style="display:flex; gap: 8px; align-items:center;">
+                <input id="ui_job_color_running_color" type="color" value="#EEF3FF" style="width:44px; height:34px; padding:0;" />
+                <input id="ui_job_color_running" placeholder="#RRGGBB" style="flex:1;" />
+              </div>
               <div class="muted">Hintergrundfarbe in Jobs Tabelle.</div>
             </div>
             <div>
               <label>Job Farbe: done</label>
-              <input id="ui_job_color_done" type="color" />
+              <div style="display:flex; gap: 8px; align-items:center;">
+                <input id="ui_job_color_done_color" type="color" value="#EEFAF1" style="width:44px; height:34px; padding:0;" />
+                <input id="ui_job_color_done" placeholder="#RRGGBB" style="flex:1;" />
+              </div>
             </div>
             <div>
               <label>Job Farbe: error</label>
-              <input id="ui_job_color_error" type="color" />
+              <div style="display:flex; gap: 8px; align-items:center;">
+                <input id="ui_job_color_error_color" type="color" value="#FFF0F0" style="width:44px; height:34px; padding:0;" />
+                <input id="ui_job_color_error" placeholder="#RRGGBB" style="flex:1;" />
+              </div>
             </div>
             <div>
               <label>Job Farbe: cancelled</label>
-              <input id="ui_job_color_cancelled" type="color" />
+              <div style="display:flex; gap: 8px; align-items:center;">
+                <input id="ui_job_color_cancelled_color" type="color" value="#F6F6F6" style="width:44px; height:34px; padding:0;" />
+                <input id="ui_job_color_cancelled" placeholder="#RRGGBB" style="flex:1;" />
+              </div>
             </div>
           </div>
           </div>
@@ -832,6 +844,12 @@ let _OUTLIERS_SEL_IDX = -1;
 const $sectionBgColor = document.getElementById('ui_section_title_bg_color');
 const $sectionFgColor = document.getElementById('ui_section_title_fg_color');
 
+// Job state colors (sync color picker + text)
+const $jobRunColor = document.getElementById('ui_job_color_running_color');
+const $jobDoneColor = document.getElementById('ui_job_color_done_color');
+const $jobErrColor = document.getElementById('ui_job_color_error_color');
+const $jobCancelColor = document.getElementById('ui_job_color_cancelled_color');
+
 function _isHexColor(s){
   const x = String(s || '').trim();
   return /^#[0-9a-fA-F]{6}$/.test(x);
@@ -852,6 +870,23 @@ try{ if($sectionBgColor && el.ui_section_title_bg) $sectionBgColor.addEventListe
 try{ if($sectionFgColor && el.ui_section_title_fg) $sectionFgColor.addEventListener('input', ()=>{ try{ el.ui_section_title_fg.value = String($sectionFgColor.value || '').toUpperCase(); }catch(e){}; _syncSectionColorPickersFromText(); }); }catch(e){}
 try{ if(el.ui_section_title_bg) el.ui_section_title_bg.addEventListener('input', ()=>_syncSectionColorPickersFromText()); }catch(e){}
 try{ if(el.ui_section_title_fg) el.ui_section_title_fg.addEventListener('input', ()=>_syncSectionColorPickersFromText()); }catch(e){}
+
+function _syncJobColorPickersFromText(){
+  try{ const v = el.ui_job_color_running ? String(el.ui_job_color_running.value || '').trim() : ''; if($jobRunColor && _isHexColor(v)) $jobRunColor.value = v; }catch(e){}
+  try{ const v = el.ui_job_color_done ? String(el.ui_job_color_done.value || '').trim() : ''; if($jobDoneColor && _isHexColor(v)) $jobDoneColor.value = v; }catch(e){}
+  try{ const v = el.ui_job_color_error ? String(el.ui_job_color_error.value || '').trim() : ''; if($jobErrColor && _isHexColor(v)) $jobErrColor.value = v; }catch(e){}
+  try{ const v = el.ui_job_color_cancelled ? String(el.ui_job_color_cancelled.value || '').trim() : ''; if($jobCancelColor && _isHexColor(v)) $jobCancelColor.value = v; }catch(e){}
+}
+
+try{ if($jobRunColor && el.ui_job_color_running) $jobRunColor.addEventListener('input', ()=>{ try{ el.ui_job_color_running.value = String($jobRunColor.value || '').toUpperCase(); }catch(e){}; _syncJobColorPickersFromText(); }); }catch(e){}
+try{ if($jobDoneColor && el.ui_job_color_done) $jobDoneColor.addEventListener('input', ()=>{ try{ el.ui_job_color_done.value = String($jobDoneColor.value || '').toUpperCase(); }catch(e){}; _syncJobColorPickersFromText(); }); }catch(e){}
+try{ if($jobErrColor && el.ui_job_color_error) $jobErrColor.addEventListener('input', ()=>{ try{ el.ui_job_color_error.value = String($jobErrColor.value || '').toUpperCase(); }catch(e){}; _syncJobColorPickersFromText(); }); }catch(e){}
+try{ if($jobCancelColor && el.ui_job_color_cancelled) $jobCancelColor.addEventListener('input', ()=>{ try{ el.ui_job_color_cancelled.value = String($jobCancelColor.value || '').toUpperCase(); }catch(e){}; _syncJobColorPickersFromText(); }); }catch(e){}
+
+try{ if(el.ui_job_color_running) el.ui_job_color_running.addEventListener('input', ()=>_syncJobColorPickersFromText()); }catch(e){}
+try{ if(el.ui_job_color_done) el.ui_job_color_done.addEventListener('input', ()=>_syncJobColorPickersFromText()); }catch(e){}
+try{ if(el.ui_job_color_error) el.ui_job_color_error.addEventListener('input', ()=>_syncJobColorPickersFromText()); }catch(e){}
+try{ if(el.ui_job_color_cancelled) el.ui_job_color_cancelled.addEventListener('input', ()=>_syncJobColorPickersFromText()); }catch(e){}
 
 function _norm(s){ return String(s || '').trim(); }
 function _lc(s){ return _norm(s).toLowerCase(); }
@@ -1260,6 +1295,7 @@ function setForm(cfg){
   el.ui_job_color_done.value = cfg.ui_job_color_done ?? '#eefaf1';
   el.ui_job_color_error.value = cfg.ui_job_color_error ?? '#fff0f0';
   el.ui_job_color_cancelled.value = cfg.ui_job_color_cancelled ?? '#f6f6f6';
+  _syncJobColorPickersFromText();
   el.ui_repo_url.value = cfg.ui_repo_url ?? "";
   el.ui_paypal_donate_url.value = cfg.ui_paypal_donate_url ?? "";
 

@@ -205,7 +205,7 @@
             <button id="create_range_sel" data-ui="backup.create_range_sel" title="backup.create_range_sel">Zeitbereich Backup (Auswahl)</button>
             <div class="muted" id="hint_sel" data-ui="backup.hint_sel" title="backup.hint_sel" style="margin-top:4px; max-width: 260px;"></div>
           </div>
-          <div><label>&nbsp;</label><button id="reload" data-ui="backup.reload" title="backup.reload">Liste aktualisieren</button></div>
+            <div><label>&nbsp;</label><button id="reload" data-ui="backup.reload" title="backup.reload" aria-label="Liste aktualisieren"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 12a8 8 0 1 1-2.34-5.66" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M20 4v6h-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
           <div><label>&nbsp;</label><button id="cancel" class="btn_sm" data-ui="backup.cancel" title="backup.cancel" disabled>Abbruch</button></div>
           <!-- table controls are placed in the table header frame -->
           <div><label>&nbsp;</label><button id="del" data-ui="backup.delete" title="backup.delete">Backup loeschen</button></div>
@@ -344,7 +344,7 @@
              <div class="table_title">FullBackupliste</div>
              <div class="table_head" data-ui="backup.fullbackup.table.head" title="backup.fullbackup.table.head">
                <div class="tbl_actions" data-ui="backup.fullbackup.table.actions" title="backup.fullbackup.table.actions">
-                 <button id="fullbackup_reload" data-ui="backup.fullbackup.reload" title="backup.fullbackup.reload" class="btn_sm" style="height:34px; padding:8px 10px;">Liste aktualisieren</button>
+                 <button id="fullbackup_reload" data-ui="backup.fullbackup.reload" title="backup.fullbackup.reload" aria-label="Liste aktualisieren" class="btn_sm" style="height:34px; padding:8px 10px;"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 12a8 8 0 1 1-2.34-5.66" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M20 4v6h-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
                  <button id="fullbackup_autowidth" class="btn_sm" data-ui="backup.fullbackup.autowidth" title="backup.fullbackup.autowidth" aria-label="Spaltenbreite automatisch" style="height:34px; padding:8px 10px;">
                    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                      <path d="M5 5v14M19 5v14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>

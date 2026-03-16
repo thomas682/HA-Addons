@@ -33,6 +33,7 @@
     .ok { color: #0a7a28; margin-top: 8px; white-space: pre-wrap; }
     code { background:#f6f6f6; padding:2px 6px; border-radius:6px; }
 
+    textarea { width: 100%; box-sizing: border-box; padding: 10px 12px; font: inherit; }
     textarea.resizable { resize: vertical; min-height: 140px; }
 
     /* Selection fields (master template) */
@@ -199,11 +200,14 @@
 
       <div class="card" data-ui="export.actions" title="export.actions">
         <div style="font-weight:700;">Aktion</div>
-        <div class="row" style="margin-top:0;">
-          <div style="min-width: 220px;"><button id="run" data-ui="export.run" title="export.run">Export starten</button></div>
-          <div style="min-width: 140px;"><button id="cancel" class="btn_sm" data-ui="export.cancel" title="export.cancel" disabled>Abbrechen</button></div>
-          <div class="muted" id="hint" style="padding-top: 10px;"></div>
-        </div>
+          <div class="row" style="margin-top:0;">
+            <div style="min-width: 220px; display:flex; gap: 10px; flex-wrap:wrap;">
+              <button id="run" data-ui="export.run" title="export.run">Download</button>
+              <button id="export_save" type="button" data-ui="export.save" title="export.save">Export</button>
+            </div>
+            <div style="min-width: 140px;"><button id="cancel" class="btn_sm" data-ui="export.cancel" title="export.cancel" disabled>Abbrechen</button></div>
+            <div class="muted" id="hint" style="padding-top: 10px;"></div>
+          </div>
         <div class="muted" id="status" style="margin-top: 6px;"></div>
         <div id="err" class="err"></div>
         <div id="ok" class="ok"></div>
@@ -255,6 +259,7 @@
       const $format = document.getElementById('format');
       const $delimiter = document.getElementById('delimiter');
       const $run = document.getElementById('run');
+      const $exportSave = document.getElementById('export_save');
       const $cancel = document.getElementById('cancel');
       const $err = document.getElementById('err');
       const $ok = document.getElementById('ok');
@@ -688,17 +693,21 @@
          }
        }
 
-       async function runExport(){
-         err(''); ok('');
-         try{ window.InfluxBroStatus && window.InfluxBroStatus.start && window.InfluxBroStatus.start('export.run', 'Export laeuft...'); }catch(e){}
-         try{
-          // Prefer client-side Save-As (if supported). Fallback is browser download.
-          const fmt0 = String($format.value||'text');
-          const tf0 = timeFilter();
-          const nm0 = String($n.value||'').trim() || String($e.value||'').trim() || 'export';
-          const ext0 = (fmt0 === 'xlsx') ? 'xlsx' : 'csv';
-          const sugg = (nm0.replace(/[^a-zA-Z0-9_.-]+/g,'_').slice(0, 80) || 'export') + '__' + String(tf0 && tf0.range ? tf0.range : 'range') + '.' + ext0;
-          SAVE_HANDLE = await _pickSaveHandle(sugg, fmt0);
+       async function runExport(wantSaveAs){
+          err(''); ok('');
+          try{ window.InfluxBroStatus && window.InfluxBroStatus.start && window.InfluxBroStatus.start('export.run', 'Export laeuft...'); }catch(e){}
+          try{
+           SAVE_HANDLE = null;
+           const want = !!wantSaveAs;
+           if(want){
+             // Client-side Save-As (if supported). Fallback is browser download.
+             const fmt0 = String($format.value||'text');
+             const tf0 = timeFilter();
+             const nm0 = String($n.value||'').trim() || String($e.value||'').trim() || 'export';
+             const ext0 = (fmt0 === 'xlsx') ? 'xlsx' : 'csv';
+             const sugg = (nm0.replace(/[^a-zA-Z0-9_.-]+/g,'_').slice(0, 80) || 'export') + '__' + String(tf0 && tf0.range ? tf0.range : 'range') + '.' + ext0;
+             SAVE_HANDLE = await _pickSaveHandle(sugg, fmt0);
+           }
 
           await refreshResolved();
           const tf = timeFilter();
@@ -722,8 +731,9 @@
           };
           if(!payload.measurement || !payload.field) throw new Error('measurement/field fehlt. Bitte Auswahl setzen.');
           setStatus('Starte Export Job...');
-          if($run) $run.disabled = true;
-          if($cancel) $cancel.disabled = false;
+           if($run) $run.disabled = true;
+           try{ if($exportSave) $exportSave.disabled = true; }catch(e){}
+           if($cancel) $cancel.disabled = false;
           LAST_DOWNLOAD_URL = null;
           AUTO_DL_DONE = false;
 
@@ -738,8 +748,9 @@
           const s = String(e && e.message ? e.message : e);
           try{ window.InfluxBroStatus && window.InfluxBroStatus.fail && window.InfluxBroStatus.fail('export.run', s); }catch(ex){}
           err(s);
-          try{ if($run) $run.disabled = false; }catch(x){}
-          try{ if($cancel) $cancel.disabled = true; }catch(x){}
+           try{ if($run) $run.disabled = false; }catch(x){}
+           try{ if($exportSave) $exportSave.disabled = false; }catch(x){}
+           try{ if($cancel) $cancel.disabled = true; }catch(x){}
           try{ if($download) $download.style.display = 'none'; }catch(x){}
           setStatus('');
         }
@@ -763,8 +774,9 @@
            stopPolling();
            ok('Export fertig.');
            try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done('export.run', `Export fertig. Zeilen: ${rows}`); }catch(e){}
-           if($cancel) $cancel.disabled = true;
-           if($run) $run.disabled = false;
+            if($cancel) $cancel.disabled = true;
+            if($run) $run.disabled = false;
+            try{ if($exportSave) $exportSave.disabled = false; }catch(e){}
            if(LAST_DOWNLOAD_URL && !AUTO_DL_DONE){
              AUTO_DL_DONE = true;
              try{
@@ -793,15 +805,17 @@
           const ee = String(st.error || 'Fehler');
           err(ee);
           try{ window.InfluxBroStatus && window.InfluxBroStatus.fail && window.InfluxBroStatus.fail('export.run', ee); }catch(e){}
-          if($cancel) $cancel.disabled = true;
-          if($run) $run.disabled = false;
+           if($cancel) $cancel.disabled = true;
+           if($run) $run.disabled = false;
+           try{ if($exportSave) $exportSave.disabled = false; }catch(e){}
         }
         if(state === 'cancelled'){
           stopPolling();
           ok('Abgebrochen.');
           try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done('export.run', 'Abgebrochen.'); }catch(e){}
-          if($cancel) $cancel.disabled = true;
-          if($run) $run.disabled = false;
+           if($cancel) $cancel.disabled = true;
+           if($run) $run.disabled = false;
+           try{ if($exportSave) $exportSave.disabled = false; }catch(e){}
         }
       }
 
@@ -847,7 +861,8 @@
           });
           try{ if($start) $start.addEventListener('change', ()=>{ try{ _updateRangeBounds(); }catch(e){}; }); }catch(e){}
           try{ if($stop) $stop.addEventListener('change', ()=>{ try{ _updateRangeBounds(); }catch(e){}; }); }catch(e){}
-          $run.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); }catch(e){}; runExport(); });
+           $run.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); }catch(e){}; runExport(false); });
+           try{ if($exportSave) $exportSave.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); }catch(e){}; runExport(true); }); }catch(e){}
           if($cancel) $cancel.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); }catch(e){}; cancelJob(); });
           try{ if($sel) $sel.addEventListener('mouseup', ()=>{ /* size captured on save */ }); }catch(e){}
 

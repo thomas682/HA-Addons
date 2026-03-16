@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.12.40
+
+### Fixes
+
+- Export: Auswahl-Textfeld nutzt jetzt die volle Breite des Bereichs.
+- Export: Button "Download" + zusaetzlicher Button "Export" (Save-As, wenn verfuegbar).
+- Logs: Default ist "neuster" + Follow ein; Buttons sind Icons.
+- Dashboard: Versionsbox rechts neben Titel entfernt.
+- Details: "Alle oeffnen" / "Alle schliessen" sind Icons.
+- Dashboard: alle einklappbaren Bereichstitel sind farblich hervorgehoben (wie Raw).
+- Einstellungen: Job-Farben haben Colorpicker + Texteingabe.
+- Tabellen: "Liste aktualisieren" Buttons sind Icons.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.38
 
 ### UI

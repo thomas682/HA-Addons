@@ -182,7 +182,6 @@
 
   <div style="display:flex; justify-content:space-between; gap: 12px; align-items:baseline; flex-wrap:wrap;">
     <h2 style="margin:0;">Dashboard</h2>
-    <div class="muted" id="version_box" data-ui="dashboard.version" title="dashboard.version"></div>
   </div>
   <div class="muted" id="backup_badge" data-ui="dashboard.backup_badge" title="dashboard.backup_badge"></div>
 
@@ -302,7 +301,7 @@
   </details>
 
   <details id="stats_total_section" class="section" {{ 'open' if cfg.get('ui_open_stats_total') else '' }} data-ui="section.stats_total" title="section.stats_total">
-    <summary class="section_title">Gesamtstatistik (Alles)</summary>
+    <summary><span class="ib_summary_row"><span class="section_title" style="margin:0;">Gesamtstatistik (Alles)</span></span></summary>
     <div class="table_wrap">
       <div class="muted" data-ui="tip.stats_total" title="tip.stats_total">Zeigt Kennzahlen ueber alle Werte (kann je nach Datenmenge laenger dauern).</div>
       <table class="stats_tbl"><tbody id="stats_tot_body"></tbody></table>
@@ -328,7 +327,7 @@
   <div class="main">
 
     <details id="graph_section" class="section" {{ 'open' if cfg.get('ui_open_graph') else '' }} data-ui="section.graph" title="section.graph">
-      <summary class="section_title">Graph</summary>
+      <summary><span class="ib_summary_row"><span class="section_title" style="margin:0;">Graph</span></span></summary>
       <div class="tbl_actions" data-ui="graph_actions">
         <label><input type="checkbox" id="graph_markers" class="row_sel" data-ui="graph_markers"/>Messpunkte markieren</label>
       </div>
@@ -456,7 +455,7 @@
     </details>
 
     <details id="stats_curr_section" class="section" {{ 'open' if cfg.get('ui_open_stats_current', true) else '' }} data-ui="section.stats_current" title="section.stats_current">
-      <summary class="section_title">Statistik Zeitraum (Graph/Tabelle)</summary>
+      <summary><span class="ib_summary_row"><span class="section_title" style="margin:0;">Statistik Zeitraum (Graph/Tabelle)</span></span></summary>
       <div class="table_wrap">
         <div class="muted" data-ui="tip.stats_current" title="tip.stats_current">Folgt dem aktuellen Zoom/Range-Slider im Graph.</div>
         <table class="stats_tbl"><tbody id="stats_curr_body"></tbody></table>
@@ -464,7 +463,7 @@
     </details>
 
     <details id="filterlist_section" class="section" {{ 'open' if cfg.get('ui_open_filterlist') else '' }} data-ui="section.filterlist" title="section.filterlist">
-      <summary class="section_title">Bearbeitungsliste</summary>
+      <summary><span class="ib_summary_row"><span class="section_title" style="margin:0;">Bearbeitungsliste</span></span></summary>
       <div class="table_wrap">
         <div class="table_title">Bearbeitungsliste</div>
         <div class="table_head">
@@ -785,8 +784,6 @@ const $graphMarkers = document.getElementById('graph_markers');
 
 const $statsTotBody = document.getElementById('stats_tot_body');
 const $statsCurrBody = document.getElementById('stats_curr_body');
-
-const $versionBox = document.getElementById('version_box');
 
 const $btnTblAllValues = document.getElementById('tbl_all_values');
 
