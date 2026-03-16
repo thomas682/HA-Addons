@@ -3010,6 +3010,19 @@ def _short_influx_error(e: Exception) -> str:
     s = str(e) or e.__class__.__name__
     s_l = s.lower()
 
+    # Special-case missing permissions for native v2 backup/restore.
+    # Influx CLI needs to read metadata (incl. authorizations) -> requires an all-access token.
+    try:
+        if ("unauthorized" in s_l or "401" in s_l) and ("read:authorizations" in s_l or "authorizations" in s_l):
+            return (
+                "401 Unauthorized: Token hat nicht genug Rechte fuer Native v2 FullBackup/FullRestore (metadata).\n"
+                "Loesung: In InfluxDB einen All-Access Token fuer die Org erstellen und in InfluxBro unter "
+                "Einstellungen -> InfluxDB v2 -> admin_token speichern.\n\n"
+                f"Original: {s}"
+            )
+    except Exception:
+        pass
+
     def _is_timeout(x: object) -> bool:
         try:
             if isinstance(x, TimeoutError):
@@ -6229,6 +6242,25 @@ def api_fullbackup_job_start():
                 return jsonify({
                     "ok": False,
                     "error": "Native v2 FullBackup requires admin_token (Einstellungen).",
+                }), 400
+
+            # Preflight: ensure the admin token has permissions for metadata backup.
+            # Influx CLI needs to read authorizations -> requires an all-access token.
+            try:
+                with v2_admin_client(cfg, timeout_seconds_override=min(8, int(cfg.get("timeout_seconds") or 10))) as c:
+                    try:
+                        # best-effort: will fail with 401 if token is not all-access
+                        c.authorizations_api().find_authorizations(limit=1)  # type: ignore[attr-defined]
+                    except Exception as e:
+                        raise e
+            except Exception as e:
+                try:
+                    LOG.warning("fullbackup_preflight_failed err=%s", _short_influx_error(e))
+                except Exception:
+                    pass
+                return jsonify({
+                    "ok": False,
+                    "error": _short_influx_error(e),
                 }), 400
         else:
             fmt = "lp"

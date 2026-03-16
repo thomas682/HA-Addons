@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.12.41
+
+### Fixes
+
+- FullBackup (native v2): Vorab-Check fuer admin_token Rechte (All-Access) mit klarer 401 Fehlermeldung.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.40
 
 ### Fixes

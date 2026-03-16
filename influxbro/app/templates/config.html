@@ -151,13 +151,13 @@
   </details>
 
   <details class="card" open data-ui="settings.section.v2" title="settings.section.v2">
-    <summary><span class="ib_summary_row"><span>InfluxDB v2</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: InfluxDB v2" data-info-body="Zugangsdaten fuer InfluxDB v2 (Flux).\n\nPflichtfelder fuer v2 Funktionen:\n- org, bucket, token\n\nOptional:\n- admin_token: nur fuer Native v2 Backup/Restore (FullBackup/FullRestore native).\n\nSicherheit:\n- Token-Felder sind maskiert (********). Lass ******** stehen, wenn du den Wert nicht aendern willst." >i</button></span></summary>
+          <summary><span class="ib_summary_row"><span>InfluxDB v2</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: InfluxDB v2" data-info-body="Zugangsdaten fuer InfluxDB v2 (Flux).\n\nPflichtfelder fuer v2 Funktionen:\n- org, bucket, token\n\nOptional:\n- admin_token: nur fuer Native v2 FullBackup/FullRestore (Influx CLI). Muss ein All-Access Token sein (sonst 401 Unauthorized: read:authorizations).\n\nSicherheit:\n- Token-Felder sind maskiert (********). Lass ******** stehen, wenn du den Wert nicht aendern willst." >i</button></span></summary>
     <div class="card_body">
     <div class="grid">
       <div><label>org</label><input id="org" /><div class="muted">Organisation (InfluxDB v2).</div></div>
       <div><label>bucket</label><input id="bucket" /><div class="muted">Bucket-Name (InfluxDB v2).</div></div>
       <div><label>token</label><input id="token" /><div class="muted">In der UI wird Token als <code>********</code> maskiert.</div></div>
-      <div><label>admin_token</label><input id="admin_token" /><div class="muted">Nur fuer <code>Native Backup/Restore (v2)</code>. Wird als <code>********</code> maskiert.</div></div>
+      <div><label>admin_token</label><input id="admin_token" /><div class="muted">Nur fuer <code>Native FullBackup/FullRestore (v2)</code>. Muss ein <b>All-Access Token</b> sein (sonst 401 Unauthorized: read:authorizations). Wird als <code>********</code> maskiert.</div></div>
     </div>
     <div class="muted">Token: lass <code>********</code> stehen, wenn du es nicht ändern willst.</div>
     </div>
