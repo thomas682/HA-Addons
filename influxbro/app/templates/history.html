@@ -101,8 +101,23 @@
           <div class="table_title">History Liste</div>
           <div class="table_head" data-ui="history.table.head" title="history.table.head">
             <div class="tbl_actions" data-ui="history.table.actions" title="history.table.actions">
-              <button id="hist_autowidth" class="btn_sm" data-ui="history.table.autowidth" title="history.table.autowidth">Spaltenbreite automatisch</button>
-              <button id="hist_windowwidth" class="btn_sm" data-ui="history.table.windowwidth" title="history.table.windowwidth">Fensterbreite</button>
+              <button id="hist_autowidth" class="btn_sm" data-ui="history.table.autowidth" title="history.table.autowidth" aria-label="Spaltenbreite automatisch">
+                <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path d="M5 5v14M19 5v14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                  <path d="M8 12h8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                  <path d="M10 10l-2 2 2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M14 10l2 2-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
+              <button id="hist_windowwidth" class="btn_sm" data-ui="history.table.windowwidth" title="history.table.windowwidth" aria-label="Fensterbreite">
+                <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <rect x="4" y="6" width="16" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
+                  <path d="M12 12H6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                  <path d="M6 12l2-2M6 12l2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M12 12h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                  <path d="M18 12l-2-2M18 12l-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
               <label><input type="checkbox" id="hist_wrap" data-ui="history.table.wrap" title="history.table.wrap"/>Umbruch</label>
               <label><input type="checkbox" id="hist_colfilter" data-ui="history.table.colfilter" title="history.table.colfilter"/>Spaltenfilter</label>
             </div>

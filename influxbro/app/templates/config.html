@@ -385,12 +385,18 @@
 
             <div>
               <label>Bereich-Titel (Details): Hintergrund</label>
-              <input id="ui_section_title_bg" placeholder="transparent oder #RRGGBB" />
+              <div style="display:flex; gap: 8px; align-items:center;">
+                <input id="ui_section_title_bg_color" type="color" value="#3287a8" style="width:44px; height:34px; padding:0;" />
+                <input id="ui_section_title_bg" placeholder="transparent oder #RRGGBB" style="flex:1;" />
+              </div>
               <div class="muted">Leer = Standard. Erlaubt: <code>transparent</code> oder <code>#RRGGBB</code>.</div>
             </div>
             <div>
               <label>Bereich-Titel (Details): Textfarbe</label>
-              <input id="ui_section_title_fg" placeholder="inherit oder #RRGGBB" />
+              <div style="display:flex; gap: 8px; align-items:center;">
+                <input id="ui_section_title_fg_color" type="color" value="#ffffff" style="width:44px; height:34px; padding:0;" />
+                <input id="ui_section_title_fg" placeholder="inherit oder #RRGGBB" style="flex:1;" />
+              </div>
               <div class="muted">Leer = Standard. Erlaubt: <code>inherit</code> oder <code>#RRGGBB</code>.</div>
             </div>
             <div>
@@ -710,8 +716,23 @@
            <div class="table_title">Ausreisser Tabelle (_measurement / max_step)</div>
            <div class="table_head" data-ui="settings.outliers.table.head" title="settings.outliers.table.head">
              <div class="tbl_actions" data-ui="settings.outliers.table.actions" title="settings.outliers.table.actions">
-               <button id="outliers_autowidth" type="button" data-ui="settings.outliers.autofit" title="settings.outliers.autofit" style="width:auto;">Auto-Fit</button>
-               <button id="outliers_windowwidth" type="button" data-ui="settings.outliers.windowfit" title="settings.outliers.windowfit" style="width:auto;">Fensterbreite</button>
+               <button id="outliers_autowidth" type="button" data-ui="settings.outliers.autofit" title="settings.outliers.autofit" aria-label="Auto-Fit" style="width:auto;">
+                 <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                   <path d="M5 5v14M19 5v14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                   <path d="M8 12h8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                   <path d="M10 10l-2 2 2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                   <path d="M14 10l2 2-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                 </svg>
+               </button>
+               <button id="outliers_windowwidth" type="button" data-ui="settings.outliers.windowfit" title="settings.outliers.windowfit" aria-label="Fensterbreite" style="width:auto;">
+                 <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                   <rect x="4" y="6" width="16" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
+                   <path d="M12 12H6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                   <path d="M6 12l2-2M6 12l2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                   <path d="M12 12h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                   <path d="M18 12l-2-2M18 12l-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                 </svg>
+               </button>
                <label style="display:flex; align-items:center; gap: 6px; padding: 0 4px;"><input type="checkbox" id="outliers_wrap" data-ui="settings.outliers.wrap" title="settings.outliers.wrap"/>Umbruch</label>
                <label style="display:flex; align-items:center; gap: 6px; padding: 0 4px;"><input type="checkbox" id="outliers_colfilter" data-ui="settings.outliers.colfilter" title="settings.outliers.colfilter"/>Spaltenfilter</label>
              </div>
@@ -806,6 +827,31 @@ const $outliersWin = document.getElementById('outliers_windowwidth');
 const $outliersWrap = document.getElementById('outliers_wrap');
 const $outliersColFilter = document.getElementById('outliers_colfilter');
 let _OUTLIERS_SEL_IDX = -1;
+
+// Section title color pickers (sync with text inputs; text inputs also allow words)
+const $sectionBgColor = document.getElementById('ui_section_title_bg_color');
+const $sectionFgColor = document.getElementById('ui_section_title_fg_color');
+
+function _isHexColor(s){
+  const x = String(s || '').trim();
+  return /^#[0-9a-fA-F]{6}$/.test(x);
+}
+
+function _syncSectionColorPickersFromText(){
+  try{
+    const bg = el.ui_section_title_bg ? String(el.ui_section_title_bg.value || '').trim() : '';
+    if($sectionBgColor && _isHexColor(bg)) $sectionBgColor.value = bg;
+  }catch(e){}
+  try{
+    const fg = el.ui_section_title_fg ? String(el.ui_section_title_fg.value || '').trim() : '';
+    if($sectionFgColor && _isHexColor(fg)) $sectionFgColor.value = fg;
+  }catch(e){}
+}
+
+try{ if($sectionBgColor && el.ui_section_title_bg) $sectionBgColor.addEventListener('input', ()=>{ try{ el.ui_section_title_bg.value = String($sectionBgColor.value || '').toUpperCase(); }catch(e){}; _syncSectionColorPickersFromText(); }); }catch(e){}
+try{ if($sectionFgColor && el.ui_section_title_fg) $sectionFgColor.addEventListener('input', ()=>{ try{ el.ui_section_title_fg.value = String($sectionFgColor.value || '').toUpperCase(); }catch(e){}; _syncSectionColorPickersFromText(); }); }catch(e){}
+try{ if(el.ui_section_title_bg) el.ui_section_title_bg.addEventListener('input', ()=>_syncSectionColorPickersFromText()); }catch(e){}
+try{ if(el.ui_section_title_fg) el.ui_section_title_fg.addEventListener('input', ()=>_syncSectionColorPickersFromText()); }catch(e){}
 
 function _norm(s){ return String(s || '').trim(); }
 function _lc(s){ return _norm(s).toLowerCase(); }
@@ -1196,8 +1242,9 @@ function setForm(cfg){
   el.ui_status_font_px.value = cfg.ui_status_font_px ?? 12;
   el.ui_status_show_sysinfo.checked = !!cfg.ui_status_show_sysinfo;
   el.ui_checkbox_scale.value = cfg.ui_checkbox_scale ?? 0.85;
-  el.ui_section_title_bg.value = cfg.ui_section_title_bg ?? '';
-  el.ui_section_title_fg.value = cfg.ui_section_title_fg ?? '';
+  el.ui_section_title_bg.value = cfg.ui_section_title_bg ?? '#3287A8';
+  el.ui_section_title_fg.value = cfg.ui_section_title_fg ?? '#FFFFFF';
+  _syncSectionColorPickersFromText();
   el.ui_filter_label_width_px.value = cfg.ui_filter_label_width_px ?? 170;
   el.ui_filter_control_width_px.value = cfg.ui_filter_control_width_px ?? 320;
   el.ui_filter_search_width_px.value = cfg.ui_filter_search_width_px ?? 160;

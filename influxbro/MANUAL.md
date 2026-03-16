@@ -339,7 +339,9 @@ Neu: FullBackup (InfluxDB komplett)
 - FullBackup sichert nicht nur einen einzelnen Messwert, sondern exportiert (best-effort) die komplette InfluxDB (v1: alle Measurements; v2: kompletter Bucket).
 - FullBackups werden in einer separaten Liste angezeigt (unabhaengig von den normalen Signal-Backups).
 - Aktionen: `FullBackup starten`, `Abbruch`, `Liste aktualisieren`, `Download` (ZIP), `Loeschen`.
+- Hinweis: `Liste aktualisieren` steht direkt ueber der FullBackupliste.
 - Modus:
+  - In der UI heisst das Feld `Backupmodus`.
   - `Line Protocol (kompatibel)`: exportiert best-effort als Line Protocol (wie bisher).
   - `Native v2 (influx backup)`: nutzt die Influx CLI und erzeugt ein natives Backup (ZIP enthaelt Meta + native Payload unter `native/`).
   - Native v2 ist nur auf `amd64`/`aarch64` verfuegbar (Influx CLI). Auf anderen Plattformen ist der Modus deaktiviert; die UI zeigt die erkannte `HA Plattform`.
@@ -476,6 +478,7 @@ UI:
 - `Basis/Kleine Schriftgroesse`: UI Typografie.
 - `Checkbox Groesse (Scale)`: Checkbox-Scaling fuer bessere Bedienbarkeit.
 - `Bereich-Titel (Details): Hintergrund/Textfarbe`: Farben der einklappbaren Bereichstitel (Details/Sektionen). Leer = Standard; erlaubt: `transparent`/`inherit` oder `#RRGGBB`.
+  - Default: Hintergrund `#3287A8`, Text `#FFFFFF`. In den Einstellungen gibt es zusaetzlich Colorpicker.
 - `Filter ... Breite`: steuert die Layout-Breiten im Dashboard.
 - `Bereiche standardmaessig geoeffnet`: welche <details>-Sektionen beim Start offen sind.
 - Auswahlfelder (Filter/Zeiten):

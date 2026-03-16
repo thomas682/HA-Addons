@@ -69,6 +69,7 @@ Preferred markup:
 Notes
 
 - Controls belong above the table and should be left-aligned.
+- Prefer a dedicated `Liste aktualisieren` (reload) button in the table toolbar (above the list), not mixed into unrelated page action blocks.
 - Use relative URLs (Ingress-friendly).
 - Every table has a unique table title (Tabellenueberschrift) rendered above the table.
   - The title text must be unique within the page.

@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.12.38
+
+### UI
+
+- Backup: FullBackup (LP) Toolbar linksbuendig; "Modus" heisst jetzt "Backupmodus"; "Liste aktualisieren" steht ueber der FullBackupliste.
+- Tabellen-Toolbar: Buttons "Spaltenbreite automatisch" und "Fensterbreite" sind jetzt Icons.
+- Details: "Alle oeffnen" / "Alle schliessen" stehen neben dem Seitentitel (wie Dashboard).
+- Details: Default-Farben fuer Bereichstitel (Hintergrund/Text) sind jetzt gesetzt; Einstellungen bieten Colorpicker.
+- UI Logging: Select/Checkbox Aenderungen werden best-effort in den Add-on Logs erfasst (debug).
+
+### Fixes
+
+- Kombinieren: API ist robuster gegen unerwartete Fehler (liefert JSON statt HTML 500; zusaetzliches Logging).
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.37
 
 ### Fixes

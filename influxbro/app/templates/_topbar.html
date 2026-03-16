@@ -128,6 +128,10 @@
     }
     .ib_info_icon:hover { background: #f6f6f6; }
     .ib_info_icon:active { transform: translateY(1px); }
+
+    /* Details marker: keep the toggle arrow left of the title (not above). */
+    main.content details > summary { list-style-position: inside; }
+    main.content details > summary::-webkit-details-marker { margin-right: 6px; }
   </style>
 
   <div class="left" data-ui="topbar.profile" title="topbar.profile">

@@ -247,8 +247,23 @@
                 </div>
               </div>
 
-              <button id="backup_autowidth" class="btn_sm" data-ui="backup.autowidth" title="backup.autowidth" style="height:34px; padding:8px 10px;">Spaltenbreite automatisch</button>
-              <button id="backup_windowwidth" class="btn_sm" data-ui="backup.windowwidth" title="backup.windowwidth" style="height:34px; padding:8px 10px;">Fensterbreite</button>
+              <button id="backup_autowidth" class="btn_sm" data-ui="backup.autowidth" title="backup.autowidth" aria-label="Spaltenbreite automatisch" style="height:34px; padding:8px 10px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path d="M5 5v14M19 5v14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                  <path d="M8 12h8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                  <path d="M10 10l-2 2 2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M14 10l2 2-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
+              <button id="backup_windowwidth" class="btn_sm" data-ui="backup.windowwidth" title="backup.windowwidth" aria-label="Fensterbreite" style="height:34px; padding:8px 10px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <rect x="4" y="6" width="16" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
+                  <path d="M12 12H6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                  <path d="M6 12l2-2M6 12l2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M12 12h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                  <path d="M18 12l-2-2M18 12l-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
               <div style="display:flex; flex-direction:column; gap: 6px; padding-top: 2px;" data-ui="backup.row_height" title="backup.row_height">
                 <label>Zeilenhoehe (px)</label>
                 <input id="backup_row_h" type="number" min="9" max="60" step="1" value="{{ (cfg.get('ui_backup_table_row_height_px') or cfg.get('ui_table_row_height_px') or 13) | int }}" style="height:34px; padding:8px 10px; width: 120px; border: 1px solid #bfc7d5; border-radius: 4px; font-size: 14px;" />
@@ -290,22 +305,21 @@
           <summary><span class="ib_summary_row"><span>FullBackup (InfluxDB komplett)</span><button type="button" class="ib_info_icon" data-info-title="Backup: FullBackup" data-info-body="FullBackup sichert die komplette InfluxDB (v1: database, v2: bucket) in einem separaten Job und einer separaten Liste.\n\nModi:\n- Line Protocol: kompatibel, best-effort Export als LP.\n- Native v2: nutzt influx CLI und speichert natives Backup in ZIP (payload unter native/).\n\nAktionen:\n- Start/Abbruch/Reload/Download/Loeschen (Mehrfachauswahl moeglich).\n- Download erscheint nur bei genau 1 selektiertem Eintrag." >i</button></span></summary>
           <div class="muted" style="margin-top: 6px;">Sichert die komplette InfluxDB Datenbank (v1: database, v2: bucket). Separater Bereich mit eigener Liste.</div>
 
-          <div class="row" style="align-items:flex-start;" data-ui="backup.fullbackup.actions" title="backup.fullbackup.actions">
-            <div style="min-width: 320px; flex:1;">
-              <label>Modus</label>
-              <select id="fullbackup_mode" data-ui="backup.fullbackup.mode" title="backup.fullbackup.mode">
-                <option value="lp">Line Protocol (kompatibel)</option>
-                <option value="native_v2">Native v2 (influx backup)</option>
-              </select>
+           <div class="row" style="align-items:flex-start;" data-ui="backup.fullbackup.actions" title="backup.fullbackup.actions">
+             <div style="min-width: 320px;">
+               <label>Backupmodus</label>
+               <select id="fullbackup_mode" data-ui="backup.fullbackup.mode" title="backup.fullbackup.mode">
+                 <option value="lp">Line Protocol (kompatibel)</option>
+                 <option value="native_v2">Native v2 (influx backup)</option>
+               </select>
               <div class="muted" style="margin-top:4px;">Native v2 erfordert <code>admin_token</code> (Einstellungen) und kann beim Restore Zielbucket waehlen/ueberschreiben.</div>
               <div class="muted" id="fullbackup_native_support" data-ui="backup.fullbackup.native_support" title="backup.fullbackup.native_support" style="margin-top:4px;"></div>
-            </div>
-            <div><label>&nbsp;</label><button id="fullbackup_start" data-ui="backup.fullbackup.start" title="backup.fullbackup.start">FullBackup starten</button></div>
-            <div><label>&nbsp;</label><button id="fullbackup_reload" data-ui="backup.fullbackup.reload" title="backup.fullbackup.reload">Liste aktualisieren</button></div>
-            <div><label>&nbsp;</label><button id="fullbackup_cancel" class="btn_sm" data-ui="backup.fullbackup.cancel" title="backup.fullbackup.cancel" disabled>Abbruch</button></div>
-            <div><label>&nbsp;</label><button id="fullbackup_delete" data-ui="backup.fullbackup.delete" title="backup.fullbackup.delete">FullBackup loeschen</button></div>
-            <div><label>&nbsp;</label><button id="fullbackup_download" class="btn_sm" data-ui="backup.fullbackup.download" title="backup.fullbackup.download" style="display:none;">Download</button></div>
-          </div>
+             </div>
+             <div><label>&nbsp;</label><button id="fullbackup_start" data-ui="backup.fullbackup.start" title="backup.fullbackup.start">FullBackup starten</button></div>
+             <div><label>&nbsp;</label><button id="fullbackup_cancel" class="btn_sm" data-ui="backup.fullbackup.cancel" title="backup.fullbackup.cancel" disabled>Abbruch</button></div>
+             <div><label>&nbsp;</label><button id="fullbackup_delete" data-ui="backup.fullbackup.delete" title="backup.fullbackup.delete">FullBackup loeschen</button></div>
+             <div><label>&nbsp;</label><button id="fullbackup_download" class="btn_sm" data-ui="backup.fullbackup.download" title="backup.fullbackup.download" style="display:none;">Download</button></div>
+           </div>
 
           <div id="fullbackup_status" data-ui="backup.fullbackup.status" title="backup.fullbackup.status">
             <span id="fullbackup_spinner" aria-hidden="true"></span>
@@ -326,15 +340,31 @@
 
           <div class="muted" id="fullbackup_loc" data-ui="backup.fullbackup.location" title="backup.fullbackup.location" style="margin-top:10px;"></div>
 
-          <div class="table_wrap" data-ui="backup.fullbackup.table.wrap" title="backup.fullbackup.table.wrap">
-            <div class="table_title">FullBackupliste</div>
-            <div class="table_head" data-ui="backup.fullbackup.table.head" title="backup.fullbackup.table.head">
-              <div class="tbl_actions" data-ui="backup.fullbackup.table.actions" title="backup.fullbackup.table.actions">
-                <button id="fullbackup_autowidth" class="btn_sm" data-ui="backup.fullbackup.autowidth" title="backup.fullbackup.autowidth" style="height:34px; padding:8px 10px;">Spaltenbreite automatisch</button>
-                <button id="fullbackup_windowwidth" class="btn_sm" data-ui="backup.fullbackup.windowwidth" title="backup.fullbackup.windowwidth" style="height:34px; padding:8px 10px;">Fensterbreite</button>
-                <label style="display:flex; align-items:center; gap: 6px; padding-top: 6px;"><input type="checkbox" id="fullbackup_wrap" data-ui="backup.fullbackup.wrap" title="backup.fullbackup.wrap"/>Umbruch</label>
-                <label style="display:flex; align-items:center; gap: 6px; padding-top: 6px;"><input type="checkbox" id="fullbackup_colfilter" data-ui="backup.fullbackup.colfilter" title="backup.fullbackup.colfilter"/>Spaltenfilter</label>
-              </div>
+           <div class="table_wrap" data-ui="backup.fullbackup.table.wrap" title="backup.fullbackup.table.wrap">
+             <div class="table_title">FullBackupliste</div>
+             <div class="table_head" data-ui="backup.fullbackup.table.head" title="backup.fullbackup.table.head">
+               <div class="tbl_actions" data-ui="backup.fullbackup.table.actions" title="backup.fullbackup.table.actions">
+                 <button id="fullbackup_reload" data-ui="backup.fullbackup.reload" title="backup.fullbackup.reload" class="btn_sm" style="height:34px; padding:8px 10px;">Liste aktualisieren</button>
+                 <button id="fullbackup_autowidth" class="btn_sm" data-ui="backup.fullbackup.autowidth" title="backup.fullbackup.autowidth" aria-label="Spaltenbreite automatisch" style="height:34px; padding:8px 10px;">
+                   <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                     <path d="M5 5v14M19 5v14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                     <path d="M8 12h8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                     <path d="M10 10l-2 2 2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                     <path d="M14 10l2 2-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                   </svg>
+                 </button>
+                 <button id="fullbackup_windowwidth" class="btn_sm" data-ui="backup.fullbackup.windowwidth" title="backup.fullbackup.windowwidth" aria-label="Fensterbreite" style="height:34px; padding:8px 10px;">
+                   <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                     <rect x="4" y="6" width="16" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
+                     <path d="M12 12H6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                     <path d="M6 12l2-2M6 12l2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                     <path d="M12 12h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                     <path d="M18 12l-2-2M18 12l-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                   </svg>
+                 </button>
+                 <label style="display:flex; align-items:center; gap: 6px; padding-top: 6px;"><input type="checkbox" id="fullbackup_wrap" data-ui="backup.fullbackup.wrap" title="backup.fullbackup.wrap"/>Umbruch</label>
+                 <label style="display:flex; align-items:center; gap: 6px; padding-top: 6px;"><input type="checkbox" id="fullbackup_colfilter" data-ui="backup.fullbackup.colfilter" title="backup.fullbackup.colfilter"/>Spaltenfilter</label>
+               </div>
               <div class="muted" id="fullbackup_list_info" data-ui="backup.fullbackup.list_info" title="backup.fullbackup.list_info"></div>
             </div>
 

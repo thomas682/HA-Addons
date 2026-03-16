@@ -663,8 +663,9 @@ DEFAULT_CFG = {
     "ui_checkbox_scale": 0.85,
     # Section title row (details > summary): optional overrides
     # Allowed: "" (default), "transparent"/"inherit", or "#RRGGBB"
-    "ui_section_title_bg": "",
-    "ui_section_title_fg": "",
+    # Defaults chosen for better readability.
+    "ui_section_title_bg": "#3287a8",
+    "ui_section_title_fg": "#FFFFFF",
     "ui_filter_label_width_px": 170,
     "ui_filter_control_width_px": 320,
     "ui_filter_search_width_px": 160,
@@ -8094,98 +8095,108 @@ from(bucket: "{cfg["bucket"]}")
 
 @app.post("/api/combine_job/start")
 def api_combine_job_start():
-    cfg = _overlay_from_yaml_if_enabled(load_cfg())
-    body = request.get_json(force=True) or {}
-
-    confirm = body.get("confirm", False)
-    ok_confirm = confirm is True or str(confirm).strip().lower() in ("1", "true", "yes", "on")
-    if not ok_confirm:
-        return jsonify({"ok": False, "error": "Confirmation required"}), 400
-
-    if int(cfg.get("influx_version", 2)) != 2:
-        return jsonify({"ok": False, "error": "combine currently supports InfluxDB v2 only"}), 400
-    if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
-        return jsonify({
-            "ok": False,
-            "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
-        }), 400
-
-    src = body.get("source")
-    tgt = body.get("target")
-    if not isinstance(src, dict) or not isinstance(tgt, dict):
-        return jsonify({"ok": False, "error": "source and target required"}), 400
-
-    direction = str(body.get("direction") or "src_to_tgt").strip().lower()
-    if direction not in ("src_to_tgt", "tgt_to_src"):
-        return jsonify({"ok": False, "error": "direction must be src_to_tgt or tgt_to_src"}), 400
-    if direction == "tgt_to_src":
-        src, tgt = tgt, src
-
-    # Validate payload early so the user sees a clear API error (instead of a background job failure).
     try:
-        _combine_series_payload(src)
-        _combine_series_payload(tgt)
+        cfg = _overlay_from_yaml_if_enabled(load_cfg())
+        body = request.get_json(force=True) or {}
+
+        confirm = body.get("confirm", False)
+        ok_confirm = confirm is True or str(confirm).strip().lower() in ("1", "true", "yes", "on")
+        if not ok_confirm:
+            return jsonify({"ok": False, "error": "Confirmation required"}), 400
+
+        if int(cfg.get("influx_version", 2)) != 2:
+            return jsonify({"ok": False, "error": "combine currently supports InfluxDB v2 only"}), 400
+        if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+            return jsonify({
+                "ok": False,
+                "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
+            }), 400
+
+        src = body.get("source")
+        tgt = body.get("target")
+        if not isinstance(src, dict) or not isinstance(tgt, dict):
+            return jsonify({"ok": False, "error": "source and target required"}), 400
+
+        direction = str(body.get("direction") or "src_to_tgt").strip().lower()
+        if direction not in ("src_to_tgt", "tgt_to_src"):
+            return jsonify({"ok": False, "error": "direction must be src_to_tgt or tgt_to_src"}), 400
+        if direction == "tgt_to_src":
+            src, tgt = tgt, src
+
+        # Validate payload early so the user sees a clear API error (instead of a background job failure).
+        try:
+            _combine_series_payload(src)
+            _combine_series_payload(tgt)
+        except Exception as e:
+            return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 400
+
+        backup_before = body.get("backup_before", True)
+        backup_before_on = backup_before is True or str(backup_before).strip().lower() in ("1", "true", "yes", "on")
+
+        delete_first = body.get("delete_target_first", False)
+        delete_first_on = delete_first is True or str(delete_first).strip().lower() in ("1", "true", "yes", "on")
+        if delete_first_on:
+            if not ALLOW_DELETE:
+                return jsonify({"ok": False, "error": "Delete is disabled (ALLOW_DELETE=false)"}), 400
+            phrase = str(body.get("confirm_phrase") or "").strip()
+            if phrase != DELETE_CONFIRM_PHRASE:
+                return jsonify({
+                    "ok": False,
+                    "error": f"Confirmation phrase mismatch. Type exactly: {DELETE_CONFIRM_PHRASE}",
+                }), 400
+
+        try:
+            start_dt, stop_dt = _get_start_stop_from_payload(body)
+        except Exception as e:
+            return jsonify({"ok": False, "error": f"invalid start/stop: {e}"}), 400
+        if not start_dt or not stop_dt:
+            return jsonify({"ok": False, "error": "start and stop required"}), 400
+
+        job_id = uuid.uuid4().hex
+        ip = _req_ip()
+        ua = _req_ua()
+        job = {
+            "id": job_id,
+            "state": "queued",
+            "message": "Start...",
+            "started_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+            "started_mono": time.monotonic(),
+            "trigger_page": "combine",
+            "trigger_ip": ip,
+            "trigger_ua": ua,
+            "read": 0,
+            "written": 0,
+            "skipped": 0,
+            "current_time_ms": None,
+            "last_written_time_ms": None,
+            "cancelled": False,
+            "error": None,
+            "backup_before": bool(backup_before_on),
+            "delete_target_first": bool(delete_first_on),
+        }
+
+        try:
+            LOG.info("job_start type=combine job_id=%s ip=%s ua=%s", job_id, ip, ua)
+        except Exception:
+            pass
+
+        with COMBINE_LOCK:
+            COMBINE_JOBS[job_id] = job
+            cutoff = time.monotonic() - 6 * 3600
+            old = [k for k, v in COMBINE_JOBS.items() if float(v.get("started_mono") or 0) < cutoff]
+            for k in old:
+                if k != job_id:
+                    COMBINE_JOBS.pop(k, None)
+
+        t = threading.Thread(target=_combine_job_thread, args=(job_id, cfg, src, tgt, start_dt, stop_dt), daemon=True)
+        t.start()
+        return jsonify({"ok": True, "job_id": job_id})
     except Exception as e:
-        return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 400
-
-    backup_before = body.get("backup_before", True)
-    backup_before_on = backup_before is True or str(backup_before).strip().lower() in ("1", "true", "yes", "on")
-
-    delete_first = body.get("delete_target_first", False)
-    delete_first_on = delete_first is True or str(delete_first).strip().lower() in ("1", "true", "yes", "on")
-    if delete_first_on:
-        if not ALLOW_DELETE:
-            return jsonify({"ok": False, "error": "Delete is disabled (ALLOW_DELETE=false)"}), 400
-        phrase = str(body.get("confirm_phrase") or "").strip()
-        if phrase != DELETE_CONFIRM_PHRASE:
-            return jsonify({"ok": False, "error": f"Confirmation phrase mismatch. Type exactly: {DELETE_CONFIRM_PHRASE}"}), 400
-
-    try:
-        start_dt, stop_dt = _get_start_stop_from_payload(body)
-    except Exception as e:
-        return jsonify({"ok": False, "error": f"invalid start/stop: {e}"}), 400
-    if not start_dt or not stop_dt:
-        return jsonify({"ok": False, "error": "start and stop required"}), 400
-
-    job_id = uuid.uuid4().hex
-    ip = _req_ip()
-    ua = _req_ua()
-    job = {
-        "id": job_id,
-        "state": "queued",
-        "message": "Start...",
-        "started_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
-        "started_mono": time.monotonic(),
-        "trigger_page": "combine",
-        "trigger_ip": ip,
-        "trigger_ua": ua,
-        "read": 0,
-        "written": 0,
-        "skipped": 0,
-        "current_time_ms": None,
-        "last_written_time_ms": None,
-        "cancelled": False,
-        "error": None,
-        "backup_before": bool(backup_before_on),
-        "delete_target_first": bool(delete_first_on),
-    }
-
-    try:
-        LOG.info("job_start type=combine job_id=%s ip=%s ua=%s", job_id, ip, ua)
-    except Exception:
-        pass
-
-    with COMBINE_LOCK:
-        COMBINE_JOBS[job_id] = job
-        cutoff = time.monotonic() - 6 * 3600
-        old = [k for k, v in COMBINE_JOBS.items() if float(v.get("started_mono") or 0) < cutoff]
-        for k in old:
-            if k != job_id:
-                COMBINE_JOBS.pop(k, None)
-
-    t = threading.Thread(target=_combine_job_thread, args=(job_id, cfg, src, tgt, start_dt, stop_dt), daemon=True)
-    t.start()
-    return jsonify({"ok": True, "job_id": job_id})
+        try:
+            LOG.exception("api_combine_job_start failed")
+        except Exception:
+            pass
+        return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
 
 
 def _combine_series_payload(x: dict[str, Any]) -> tuple[str, str, str | None, str | None]:

@@ -385,7 +385,7 @@
         bar.style.flexWrap = 'wrap';
         bar.style.gap = '8px';
         bar.style.alignItems = 'center';
-        bar.style.margin = '8px 0 10px 0';
+        bar.style.margin = '0';
 
         const mkBtn = (txt) => {
           const b = document.createElement('button');
@@ -416,22 +416,32 @@
         bar.appendChild(bOpen);
         bar.appendChild(bClose);
 
-        // Insert below the header row (not inside it).
-        const headerRow = h2.parentElement;
-        if(headerRow && headerRow.parentElement === main){
-          if(headerRow.nextSibling){
-            main.insertBefore(bar, headerRow.nextSibling);
-          }else{
-            main.appendChild(bar);
-          }
-        }else{
-          // Fallback: insert after h2
-          if(h2.nextSibling){
-            h2.parentNode.insertBefore(bar, h2.nextSibling);
-          }else{
-            h2.parentNode.appendChild(bar);
-          }
+        // Place the buttons next to the page title (same row), like the Dashboard header.
+        let headerRow = h2.parentElement;
+        if(!headerRow) headerRow = main;
+
+        // If the page does not have a dedicated header row yet, create one.
+        if(headerRow === main){
+          const wrap = document.createElement('div');
+          wrap.style.display = 'flex';
+          wrap.style.justifyContent = 'space-between';
+          wrap.style.gap = '12px';
+          wrap.style.alignItems = 'baseline';
+          wrap.style.flexWrap = 'wrap';
+          // Insert wrapper where the h2 currently is.
+          main.insertBefore(wrap, h2);
+          wrap.appendChild(h2);
+          headerRow = wrap;
         }
+
+        // Align buttons to the right side of the header row.
+        const right = document.createElement('div');
+        right.style.display = 'flex';
+        right.style.gap = '8px';
+        right.style.flexWrap = 'wrap';
+        right.style.alignItems = 'center';
+        right.appendChild(bar);
+        headerRow.appendChild(right);
 
         // Restore persisted state (after bar exists)
         restoreDetailsState(main);
@@ -1107,6 +1117,47 @@
       }catch(e){}
     }
 
+    // UI event logging (select/checkbox changes) - best-effort, throttled
+    function logUiChange(el){
+      try{
+        if(!el || !el.getAttribute) return;
+        const tag = String(el.tagName || '').toLowerCase();
+        if(tag !== 'select' && tag !== 'input') return;
+        const t = tag === 'input' ? String(el.getAttribute('type') || '').toLowerCase() : '';
+        if(tag === 'input' && t && !['checkbox','datetime-local','number','text'].includes(t)) return;
+        if(tag === 'input' && t === 'text'){
+          // avoid logging free-text inputs (too noisy / potential sensitive)
+          return;
+        }
+
+        const ui = (el.getAttribute('data-ui') || el.getAttribute('id') || '').trim();
+        if(!ui) return;
+
+        const page = '{{ nav }}';
+        const now = Date.now();
+        const key = 'chg|' + page + '|' + ui;
+        if(!window.__INFLUXBRO_UI_LOG) window.__INFLUXBRO_UI_LOG = { last: new Map() };
+        const m = window.__INFLUXBRO_UI_LOG.last;
+        const prev = m.get(key) || 0;
+        if(now - prev < 800) return;
+        m.set(key, now);
+
+        let v = '';
+        try{
+          if(tag === 'select') v = String(el.value || '');
+          else if(t === 'checkbox') v = el.checked ? '1' : '0';
+          else v = String(el.value || '');
+        }catch(e){ v = ''; }
+        v = String(v).slice(0, 120);
+
+        fetch('./api/ui_event', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ page, ui, text: '', extra: { kind: 'change', value: v } }),
+        }).catch(()=>{});
+      }catch(e){}
+    }
+
     try{
       document.addEventListener('click', (ev)=>{
         try{
@@ -1114,6 +1165,33 @@
           if(!t) return;
           const b = t.closest ? t.closest('button') : null;
           if(b) return logUiClick(b);
+
+          const a = t.closest ? t.closest('a.nav_item') : null;
+          if(a){
+            try{
+              const ui = (a.getAttribute('data-ui') || a.getAttribute('href') || '').trim();
+              const txt = (a.textContent || '').trim().slice(0, 120);
+              const page = '{{ nav }}';
+              if(ui){
+                fetch('./api/ui_event', {
+                  method: 'POST',
+                  headers: {'Content-Type': 'application/json'},
+                  body: JSON.stringify({ page, ui, text: txt, extra: { kind: 'nav' } }),
+                }).catch(()=>{});
+              }
+            }catch(e){}
+          }
+        }catch(e){}
+      }, true);
+    }catch(e){}
+
+    try{
+      document.addEventListener('change', (ev)=>{
+        try{
+          const t = ev && ev.target ? ev.target : null;
+          if(!t) return;
+          if(t.closest && t.closest('button')) return;
+          logUiChange(t);
         }catch(e){}
       }, true);
     }catch(e){}
