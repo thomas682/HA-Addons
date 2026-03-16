@@ -15,19 +15,19 @@ InfluxBro ist ein Home Assistant Ingress Add-on, mit dem du InfluxDB (v1/v2) Dat
 
 ## Screenshots
 
-![Uebersicht](images/uebersicht.png)
+![Uebersicht](https://raw.githubusercontent.com/thomas682/HA-Addons/refs/heads/main/influxbro/images/uebersicht.png)
 
-![Einstellungen](images/Einstellungen.png)
+![Einstellungen](https://raw.githubusercontent.com/thomas682/HA-Addons/refs/heads/main/influxbro/images/Einstellungen.png)
 
-![Backup](images/Backup.png)
+![Backup](https://raw.githubusercontent.com/thomas682/HA-Addons/refs/heads/main/influxbro/images/Backup.png)
 
-![Restore](images/Restore.png)
+![Restore](https://raw.githubusercontent.com/thomas682/HA-Addons/refs/heads/main/influxbro/images/Restore.png)
 
-![Logs](images/LOG.png)
+![Logs](https://raw.githubusercontent.com/thomas682/HA-Addons/refs/heads/main/influxbro/images/LOG.png)
 
-![Jobs](images/Jobs.png)
+![Jobs](https://raw.githubusercontent.com/thomas682/HA-Addons/refs/heads/main/influxbro/images/Jobs.png)
 
-![Statistik](images/Statistik.png)
+![Statistik](https://raw.githubusercontent.com/thomas682/HA-Addons/refs/heads/main/influxbro/images/Statistik.png)
 
 ## Installation in Home Assistant
 

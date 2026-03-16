@@ -481,6 +481,11 @@ UI:
   - Wenn Auto aktiv ist, wird die zuletzt berechnete Breite als Vorschlagswert angezeigt.
 - `PayPal Donate URL (Sidebar)`: Linkziel des PayPal-Spendenbuttons im Sidebar.
 
+Statistik:
+
+- `Vollscan Refresh Modus`: geplant/aus (manual/hours/daily/weekly) fuer den Background-Vollscan (stats_full).
+- `Vollscan max. Zeitraum (Tage)`: Sicherheitslimit fuer den geplanten Vollscan (startet nicht vor "now - N Tage").
+
 ## Bugreport / Debug report
 
 - Bei einer Fehlermeldung im Popup kannst du auf `Bugreport` klicken.

@@ -504,7 +504,50 @@
     <details class="card" id="ui_page_stats" data-ui="settings.ui.page_stats" title="settings.ui.page_stats">
       <summary><span class="ib_summary_row"><span>Statistik</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Statistik" data-info-body="Einstellungen fuer die Statistik-Seite (Job-Verhalten, Defaults, Performance)." >i</button></span></summary>
       <div class="card_body">
-        <div class="muted">Derzeit keine zusaetzlichen UI-Settings fuer diese Seite.</div>
+        <div class="grid">
+          <div class="span2">
+            <div class="muted">
+              Hinweis: "Vollscan" ist ein geplanter Background-Job (stats_full), der die Gesamtstatistik fuer alle Serien aktualisiert.
+              Fuer grosse Datenmengen muss der Zeitraum begrenzt werden, um Timeouts/InfluxDB-Fehler zu vermeiden.
+            </div>
+          </div>
+          <div>
+            <label>Vollscan Refresh Modus</label>
+            <select id="stats_full_refresh_mode">
+              <option value="manual">manual (aus)</option>
+              <option value="hours">alle X Stunden</option>
+              <option value="daily">taeglich</option>
+              <option value="weekly">woechentlich</option>
+            </select>
+          </div>
+          <div>
+            <label>X Stunden</label>
+            <input id="stats_full_refresh_hours" type="number" min="1" max="8760" />
+            <div class="muted">Gilt nur fuer Modus "alle X Stunden".</div>
+          </div>
+          <div>
+            <label>Taeglich um (HH:MM:SS)</label>
+            <input id="stats_full_refresh_daily_at" placeholder="03:00:00" />
+            <div class="muted">Gilt fuer daily/weekly (lokale Zeit im Add-on).</div>
+          </div>
+          <div>
+            <label>Wochentag (weekly)</label>
+            <select id="stats_full_refresh_weekday">
+              <option value="0">Mo</option>
+              <option value="1">Di</option>
+              <option value="2">Mi</option>
+              <option value="3">Do</option>
+              <option value="4">Fr</option>
+              <option value="5">Sa</option>
+              <option value="6">So</option>
+            </select>
+          </div>
+          <div>
+            <label>Vollscan max. Zeitraum (Tage)</label>
+            <input id="stats_full_max_days" type="number" min="1" max="36500" />
+            <div class="muted">Sicherheitslimit: Vollscan startet nicht vor "now - N Tage" (Default: 3650).</div>
+          </div>
+        </div>
       </div>
     </details>
 
@@ -735,6 +778,7 @@ const ids = [
   ,"dash_cache_max_items","dash_cache_max_mb","dash_cache_update_on_use_if_stale"
   ,"stats_cache_enabled","stats_cache_auto_update","stats_cache_refresh_mode","stats_cache_refresh_hours","stats_cache_refresh_daily_at"
   ,"stats_cache_max_items","stats_cache_max_mb"
+  ,"stats_full_refresh_mode","stats_full_refresh_hours","stats_full_refresh_daily_at","stats_full_refresh_weekday","stats_full_max_days"
 ];
 
 const el = {};
@@ -1204,6 +1248,12 @@ function setForm(cfg){
   el.stats_cache_refresh_daily_at.value = cfg.stats_cache_refresh_daily_at ?? '03:00:00';
   el.stats_cache_max_items.value = cfg.stats_cache_max_items ?? 10;
   el.stats_cache_max_mb.value = cfg.stats_cache_max_mb ?? 50;
+
+  el.stats_full_refresh_mode.value = String(cfg.stats_full_refresh_mode ?? 'manual');
+  el.stats_full_refresh_hours.value = cfg.stats_full_refresh_hours ?? 24;
+  el.stats_full_refresh_daily_at.value = cfg.stats_full_refresh_daily_at ?? '03:00:00';
+  el.stats_full_refresh_weekday.value = String((cfg.stats_full_refresh_weekday !== null && cfg.stats_full_refresh_weekday !== undefined) ? cfg.stats_full_refresh_weekday : 0);
+  el.stats_full_max_days.value = cfg.stats_full_max_days ?? 3650;
 }
 
 function getForm(){
@@ -1313,6 +1363,12 @@ function getForm(){
     stats_cache_refresh_daily_at: String(el.stats_cache_refresh_daily_at.value || '03:00:00').trim(),
     stats_cache_max_items: parseInt(el.stats_cache_max_items.value, 10),
     stats_cache_max_mb: parseInt(el.stats_cache_max_mb.value, 10),
+
+    stats_full_refresh_mode: String(el.stats_full_refresh_mode.value || 'manual'),
+    stats_full_refresh_hours: parseInt(el.stats_full_refresh_hours.value, 10),
+    stats_full_refresh_daily_at: String(el.stats_full_refresh_daily_at.value || '03:00:00').trim(),
+    stats_full_refresh_weekday: parseInt(el.stats_full_refresh_weekday.value, 10),
+    stats_full_max_days: parseInt(el.stats_full_max_days.value, 10),
   };
 }
 

@@ -772,6 +772,8 @@ DEFAULT_CFG = {
     "stats_full_refresh_hours": 24,
     "stats_full_refresh_daily_at": "03:00:00",
     "stats_full_refresh_weekday": 0,
+    # Safety cap for scheduled full stats scans (prevents querying from epoch / huge ranges)
+    "stats_full_max_days": 3650,
 
 }
 
@@ -2968,6 +2970,50 @@ def _flux_str(v: str) -> str:
 
 def _short_influx_error(e: Exception) -> str:
     s = str(e) or e.__class__.__name__
+    s_l = s.lower()
+
+    def _is_timeout(x: object) -> bool:
+        try:
+            if isinstance(x, TimeoutError):
+                return True
+        except Exception:
+            pass
+        try:
+            msg = (str(x) or "").lower()
+        except Exception:
+            msg = ""
+        return ("read timed out" in msg) or ("timed out" in msg) or ("timeout" in msg)
+
+    # Special-case timeouts with a helpful hint.
+    try:
+        if _is_timeout(e) or _is_timeout(getattr(e, "__cause__", None)) or _is_timeout(getattr(e, "__context__", None)):
+            try:
+                cfg = _overlay_from_yaml_if_enabled(load_cfg())
+                host = str(cfg.get("host") or "").strip()
+                port = int(cfg.get("port") or 8086)
+                timeout_s = int(cfg.get("timeout_seconds") or 10)
+                target = (f"{host}:{port}" if host else "InfluxDB")
+                return (
+                    f"Timeout beim Zugriff auf {target} nach {timeout_s}s. "
+                    "Tipp: Einstellungen -> Verbindung -> timeout_seconds erhoehen (z.B. 30/60) "
+                    "oder Zeitraum reduzieren.\n\n"
+                    f"Original: {s}"
+                )
+            except Exception:
+                return (
+                    "Timeout beim Zugriff auf InfluxDB. Tipp: timeout_seconds erhoehen oder Zeitraum reduzieren.\n\n"
+                    f"Original: {s}"
+                )
+    except Exception:
+        pass
+
+    # Special-case server panic strings (InfluxDB internal error).
+    try:
+        if "panic:" in s_l:
+            return "InfluxDB interner Fehler (panic). Bitte InfluxDB Logs pruefen.\n\n" + s
+    except Exception:
+        pass
+
     # Try to extract the JSON {"message":"..."} part from influxdb-client exception strings.
     m = re.search(r'"message"\s*:\s*"((?:\\.|[^"])*)"', s)
     if m:
@@ -9615,6 +9661,7 @@ def api_set_config():
 
     # Timer job: stats_full
     _clamp_int("stats_full_refresh_hours", 24, 1, 8760)
+    _clamp_int("stats_full_max_days", 3650, 1, 36500)
     try:
         mode3 = str(cfg.get("stats_full_refresh_mode") or "manual").strip().lower()
     except Exception:
@@ -15603,8 +15650,13 @@ def _stats_full_scheduler_loop() -> None:
                 continue
 
             # Start the full global stats job.
-            start_dt = datetime(1970, 1, 1, tzinfo=timezone.utc)
             stop_dt = datetime.now(timezone.utc)
+            try:
+                max_days = int(cfg.get("stats_full_max_days") or 3650)
+            except Exception:
+                max_days = 3650
+            max_days = min(36500, max(1, max_days))
+            start_dt = stop_dt - timedelta(days=max_days)
             cols = ["last_value", "oldest_time", "newest_time", "count", "min", "max", "mean"]
             job_id = _global_stats_start_job(
                 cfg=cfg,

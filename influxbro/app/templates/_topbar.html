@@ -4,7 +4,14 @@
       --ib-topbar-h: 52px;
       --ib-section-title-bg: {{ (cfg.get('ui_section_title_bg') or 'transparent') if cfg else 'transparent' }};
       --ib-section-title-fg: {{ (cfg.get('ui_section_title_fg') or 'inherit') if cfg else 'inherit' }};
+      --ib-zoom-scale: 1;
+      --ui-font-zoomed: var(--ui-font, 14px);
+      --ui-font-small-zoomed: var(--ui-font-small, 11px);
     }
+
+    /* Global zoom (font-based) - avoids breaking Plotly click hit-testing */
+    body { font-size: var(--ui-font-zoomed); }
+    .muted { font-size: var(--ui-font-small-zoomed); }
     .ib_topbar {
       position: fixed;
       top: 0;
@@ -119,8 +126,26 @@
     function setZoom(pct){
       const z = clamp(pct);
       try{ localStorage.setItem(LS_ZOOM, String(z)); }catch(e){}
-      try{ document.documentElement.style.zoom = (z/100); }catch(e){}
+      const scale = z / 100;
+      try{ document.documentElement.style.setProperty('--ib-zoom-scale', String(scale)); }catch(e){}
+
+      // Compute zoomed font sizes from the configured CSS vars.
+      try{
+        const cs = getComputedStyle(document.documentElement);
+        const uiFont = String(cs.getPropertyValue('--ui-font') || '14px').trim();
+        const uiSmall = String(cs.getPropertyValue('--ui-font-small') || '11px').trim();
+        const n1 = parseFloat(uiFont.replace('px',''));
+        const n2 = parseFloat(uiSmall.replace('px',''));
+        const f1 = (isFinite(n1) ? n1 : 14) * scale;
+        const f2 = (isFinite(n2) ? n2 : 11) * scale;
+        document.documentElement.style.setProperty('--ui-font-zoomed', f1.toFixed(3) + 'px');
+        document.documentElement.style.setProperty('--ui-font-small-zoomed', f2.toFixed(3) + 'px');
+      }catch(e){}
+
       try{ if($out) $out.textContent = String(z) + '%'; }catch(e){}
+
+      // Let responsive components (e.g. Plotly) recompute sizes.
+      try{ window.dispatchEvent(new Event('resize')); }catch(e){}
     }
 
     function inc(d){

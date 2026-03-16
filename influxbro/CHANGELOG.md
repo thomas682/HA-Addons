@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.12.34
+
+### Fixes
+
+- Dashboard: Timeout-Fehler bei "Aktualisieren" zeigen jetzt eine klare Hinweis-Meldung (timeout_seconds/Zeitraum) statt nur dem Raw-HTTP Fehler.
+- Zoom: Zoom wirkt nicht mehr auf Plotly via CSS-zoom (verhindert versetztes Klick-Selecting); Zoom skaliert stattdessen Schrift (und triggert Resize).
+- Statistik Vollscan (Scheduler): Sicherheitslimit fuer Zeitraum (max Tage) verhindert zu grosse Scans, die Timeouts/InfluxDB-Fehler ausloesen koennen.
+
+### Docs
+
+- Screenshots in `influxbro/README.md` verwenden raw.githubusercontent URLs.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.33
 
 ### Fixes
