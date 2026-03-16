@@ -19,23 +19,6 @@ body:
     validations:
       required: true
 
-  - type: textarea
-    id: why
-    attributes:
-      label: Why is this useful?
-      description: What problem does it solve / what is the benefit?
-    validations:
-      required: true
-
-  - type: textarea
-    id: dod
-    attributes:
-      label: Definition of done
-      description: What needs to be true for this to be considered complete?
-      placeholder: |
-        - [ ] ...
-        - [ ] ...
-
   - type: dropdown
     id: priority
     attributes:
