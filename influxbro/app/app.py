@@ -67,6 +67,10 @@ CACHE_USAGE_PATH = DATA_DIR / "influxbro_cache_usage.jsonl"
 TIMERS_STATE_LOCK = threading.RLock()
 TIMERS_STATE_PATH = DATA_DIR / "influxbro_timers_state.json"
 
+# Influx connectivity status (best-effort, cached)
+INFLUX_PING_LOCK = threading.RLock()
+INFLUX_PING_CACHE: dict[str, Any] = {}
+
 # UI state store (file-based; used to persist GUI selections across add-on restarts)
 UI_STATE_LOCK = threading.RLock()
 UI_STATE_PATH = DATA_DIR / "influxbro_ui_state.json"
@@ -8117,12 +8121,21 @@ def api_combine_job_start():
     if direction == "tgt_to_src":
         src, tgt = tgt, src
 
+    # Validate payload early so the user sees a clear API error (instead of a background job failure).
+    try:
+        _combine_series_payload(src)
+        _combine_series_payload(tgt)
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 400
+
     backup_before = body.get("backup_before", True)
     backup_before_on = backup_before is True or str(backup_before).strip().lower() in ("1", "true", "yes", "on")
 
     delete_first = body.get("delete_target_first", False)
     delete_first_on = delete_first is True or str(delete_first).strip().lower() in ("1", "true", "yes", "on")
     if delete_first_on:
+        if not ALLOW_DELETE:
+            return jsonify({"ok": False, "error": "Delete is disabled (ALLOW_DELETE=false)"}), 400
         phrase = str(body.get("confirm_phrase") or "").strip()
         if phrase != DELETE_CONFIRM_PHRASE:
             return jsonify({"ok": False, "error": f"Confirmation phrase mismatch. Type exactly: {DELETE_CONFIRM_PHRASE}"}), 400
@@ -8364,6 +8377,7 @@ def api_jobs():
     cfg = load_cfg()
     dash_mode = _cache_mode_str(cfg, "dash_cache")
     stats_mode = _cache_mode_str(cfg, "stats_cache")
+    stats_full_mode = _cache_mode_str(cfg, "stats_full")
 
     with GLOBAL_STATS_LOCK:
         g_items = list(GLOBAL_STATS_JOBS.items())
@@ -8373,9 +8387,12 @@ def api_jobs():
         pub["trigger_page"] = j.get("trigger_page")
         pub["trigger_ip"] = j.get("trigger_ip")
         pub["trigger_ua"] = j.get("trigger_ua")
+        pub["timer_id"] = j.get("timer_id")
         if j.get("cache_id"):
             pub["cache_kind"] = "stats"
             pub["mode"] = stats_mode
+        elif str(j.get("timer_id") or "").strip() == "stats_full":
+            pub["mode"] = stats_full_mode
         out.append(pub)
 
     with RESTORE_COPY_LOCK:
@@ -9973,6 +9990,60 @@ def api_test():
             return jsonify({"ok": True, "message": "Connection OK (v1)."})
     except Exception as e:
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
+
+
+@app.get("/api/influx_ping")
+def api_influx_ping():
+    """Best-effort connection check using the saved configuration.
+
+    Intended for the bottom status bar.
+    """
+
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    fp = _stats_cache_cfg_fp(cfg)
+    now_mono = time.monotonic()
+
+    with INFLUX_PING_LOCK:
+        last = dict(INFLUX_PING_CACHE or {})
+        if last.get("fp") == fp and (now_mono - float(last.get("at_mono") or 0.0)) < 25.0:
+            return jsonify(last.get("payload") or {"ok": True, "connected": None, "message": "cached"})
+
+    out: dict[str, Any] = {
+        "ok": True,
+        "connected": None,
+        "message": "unknown",
+        "checked_at": _utc_now_iso_ms(),
+        "influx_version": int(cfg.get("influx_version", 2) or 2),
+    }
+
+    try:
+        if int(cfg.get("influx_version", 2) or 2) == 2:
+            if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+                out["connected"] = False
+                out["message"] = "v2: token/org/bucket missing"
+            else:
+                with v2_client(cfg, timeout_seconds_override=3) as c:
+                    q = f'import "influxdata/influxdb/schema"\nschema.measurements(bucket: "{cfg["bucket"]}") |> limit(n:1)'
+                    c.query_api().query(q, org=cfg["org"])
+                out["connected"] = True
+                out["message"] = "ok"
+        else:
+            if not cfg.get("database"):
+                out["connected"] = False
+                out["message"] = "v1: database missing"
+            else:
+                c = v1_client(cfg)
+                c.ping()
+                out["connected"] = True
+                out["message"] = "ok"
+    except Exception as e:
+        out["connected"] = False
+        out["message"] = _short_influx_error(e)
+
+    with INFLUX_PING_LOCK:
+        INFLUX_PING_CACHE.clear()
+        INFLUX_PING_CACHE.update({"fp": fp, "at_mono": now_mono, "payload": out})
+    return jsonify(out)
 @app.get("/api/measurements")
 def measurements():
     cfg = _overlay_from_yaml_if_enabled(load_cfg())

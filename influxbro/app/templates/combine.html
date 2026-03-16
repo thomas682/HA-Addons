@@ -107,11 +107,11 @@
                 <div class="ib_sel" style="min-width: 220px;">
                   <label class="ib_sel_label">_measurement</label>
                   <div class="ib_sel_stack">
-                    <input id="src_measurement" list="measurement_list" placeholder="optional" data-ui="combine.src.measurement" title="combine.src.measurement"/>
+                    <input id="src_measurement" list="measurement_list" placeholder="required" data-ui="combine.src.measurement" title="combine.src.measurement"/>
                     <datalist id="measurement_list"></datalist>
                     <div class="ib_sel_desc">
-                      <button type="button" class="ib_sel_help" data-title="Quelle _measurement" data-help="Measurement der Quelle. Wenn leer, muss friendly_name/entity_id eindeutig sein.">?</button>
-                      <div class="muted">Optional, aber empfohlen.</div>
+                      <button type="button" class="ib_sel_help" data-title="Quelle _measurement" data-help="Measurement der Quelle. Aktuell ist _measurement erforderlich (Preview + Copy benoetigen eine eindeutige Serie).">?</button>
+                      <div class="muted">Pflichtfeld.</div>
                     </div>
                   </div>
                 </div>
@@ -580,12 +580,31 @@
         window.addEventListener('mouseup', ()=>{ drag = null; });
       }
 
-      async function _loadTimelineAndGraph(side){
-        const tr = timeRange();
-        const series = (side === 'src') ? src() : tgt();
-        const [tl, gr, st] = await Promise.all([
-          api('./api/combine_timeline', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({series, start: tr.start, stop: tr.stop, bins: 220})}),
-          api('./api/combine_preview', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({series, start: tr.start, stop: tr.stop, points: 260})}),
+       async function _loadTimelineAndGraph(side){
+         const tr = timeRange();
+         const series = (side === 'src') ? src() : tgt();
+
+         // Avoid noisy API errors: require a fully identified series.
+         if(!series.measurement || !series.field){
+           const metaTxt = 'Bitte measurement/field setzen.';
+           if(side === 'src'){ try{ if($srcMeta) $srcMeta.textContent = metaTxt; }catch(e){} }
+           else { try{ if($tgtMeta) $tgtMeta.textContent = metaTxt; }catch(e){} }
+           try{ _drawTimeline(side, [], 0, 1); }catch(e){}
+           try{ _drawGraph(side, [], 0, 1); }catch(e){}
+           return;
+         }
+         if(!series.entity_id && !series.friendly_name){
+           const metaTxt = 'Bitte entity_id oder friendly_name setzen.';
+           if(side === 'src'){ try{ if($srcMeta) $srcMeta.textContent = metaTxt; }catch(e){} }
+           else { try{ if($tgtMeta) $tgtMeta.textContent = metaTxt; }catch(e){} }
+           try{ _drawTimeline(side, [], 0, 1); }catch(e){}
+           try{ _drawGraph(side, [], 0, 1); }catch(e){}
+           return;
+         }
+
+         const [tl, gr, st] = await Promise.all([
+           api('./api/combine_timeline', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({series, start: tr.start, stop: tr.stop, bins: 220})}),
+           api('./api/combine_preview', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({series, start: tr.start, stop: tr.stop, points: 260})}),
           api('./api/stats', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({
             measurement: series.measurement,
             field: series.field,
@@ -662,7 +681,11 @@
         if($tgtCnt) $tgtCnt.textContent = (bs.count !== undefined && bs.count !== null) ? String(bs.count) : '';
         if($tgtOld) $tgtOld.textContent = fmtTs(bs.oldest_time);
         if($tgtNew) $tgtNew.textContent = fmtTs(bs.newest_time);
-        try{ await loadPreviewAll(); }catch(e){}
+        try{
+          if(s.measurement && s.field && (s.entity_id || s.friendly_name) && t.measurement && t.field && (t.entity_id || t.friendly_name)){
+            await loadPreviewAll();
+          }
+        }catch(e){}
         return {src: as, tgt: bs};
       }
 
@@ -699,6 +722,8 @@
         const t = tgt();
         if(!s.measurement || !s.field) throw new Error('Quelle: measurement und field erforderlich.');
         if(!t.measurement || !t.field) throw new Error('Ziel: measurement und field erforderlich.');
+        if(!s.entity_id && !s.friendly_name) throw new Error('Quelle: entity_id oder friendly_name erforderlich.');
+        if(!t.entity_id && !t.friendly_name) throw new Error('Ziel: entity_id oder friendly_name erforderlich.');
         const dir = $direction ? String($direction.value || 'src_to_tgt') : 'src_to_tgt';
         const sel = (dir === 'tgt_to_src') ? (SEL.tgt || {}) : (SEL.src || {});
         const startIso = (sel.start_ms!=null) ? _msToIsoUtc(sel.start_ms) : '';
@@ -821,6 +846,7 @@
 
         const pickEdge = async (side, which)=>{
           const series = (side==='src') ? src() : tgt();
+          if(!series.measurement || !series.field){ throw new Error('Bitte measurement/field setzen.'); }
           const j = await api('./api/stats', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({
             measurement: series.measurement,
             field: series.field,

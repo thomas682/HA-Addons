@@ -122,6 +122,7 @@
                   <th style="width: 160px;">started</th>
                   <th style="width: 90px;">elapsed</th>
                   <th style="width: 120px;">type</th>
+                  <th style="width: 150px;">Ausloeser</th>
                   <th style="width: 110px;">state</th>
                   <th style="width: 70px;">%</th>
                   <th style="width: 220px;">message</th>
@@ -891,7 +892,7 @@
         return (jobs||[]).filter(j => {
           if(t && String(j.type||'') !== t) return false;
           if(!q) return true;
-          const blob = [j.id, j.type, j.state, j.message, j.current, j.error].map(x => String(x||'')).join(' ').toLowerCase();
+          const blob = [j.id, j.type, j.timer_id, j.trigger_page, j.state, j.message, j.current, j.error].map(x => String(x||'')).join(' ').toLowerCase();
           return blob.includes(q);
         });
       }
@@ -912,6 +913,11 @@
           const msg = String(j.message || '');
           const er = String(j.error || '');
 
+          const trigPage = String(j && j.trigger_page ? j.trigger_page : '');
+          const timerId = String(j && j.timer_id ? j.timer_id : '');
+          let trig = trigPage;
+          if(timerId) trig = trig ? (trig + ' | ' + timerId) : timerId;
+
           const mode = String(j && j.mode ? j.mode : '');
           const msgHtml = mode ? (`<div>${msg}</div><div class="muted">Modus: ${mode}</div>`) : msg;
 
@@ -919,6 +925,7 @@
             `<td>${fmtTs(j.started_at)}</td>`,
             `<td class="mono">${String(j.elapsed||'')}</td>`,
             `<td class="mono">${String(j.type||'')}</td>`,
+            `<td class="mono">${trig}</td>`,
             `<td><span class="${pillForState(j.state)}">${String(j.state||'')}</span></td>`,
             `<td class="mono" style="text-align:right;">${pct}</td>`,
             `<td>${msgHtml}</td>`,
@@ -936,20 +943,21 @@
            bInfo.onclick = ()=>{
              try{
                const lines = [];
-               lines.push('id: ' + id);
-               lines.push('type: ' + String(j.type||''));
-               lines.push('state: ' + String(j.state||''));
-               lines.push('started_at: ' + fmtTs(j.started_at));
-               if(j.updated_at) lines.push('updated_at: ' + fmtTs(j.updated_at));
-               if(j.finished_at) lines.push('finished_at: ' + fmtTs(j.finished_at));
-               lines.push('elapsed: ' + String(j.elapsed||''));
-               if(j.mode) lines.push('mode: ' + String(j.mode||''));
-               if(j.message) lines.push('message: ' + String(j.message||''));
-               if(j.current) lines.push('current: ' + String(j.current||''));
-               if(j.error) lines.push('error: ' + String(j.error||''));
-               if(j.trigger_page) lines.push('trigger_page: ' + String(j.trigger_page||''));
-               if(j.trigger_ip) lines.push('trigger_ip: ' + String(j.trigger_ip||''));
-               if(j.trigger_ua) lines.push('trigger_ua: ' + String(j.trigger_ua||''));
+                lines.push('id: ' + id);
+                lines.push('type: ' + String(j.type||''));
+                lines.push('state: ' + String(j.state||''));
+                lines.push('started_at: ' + fmtTs(j.started_at));
+                if(j.updated_at) lines.push('updated_at: ' + fmtTs(j.updated_at));
+                if(j.finished_at) lines.push('finished_at: ' + fmtTs(j.finished_at));
+                lines.push('elapsed: ' + String(j.elapsed||''));
+                if(j.mode) lines.push('mode: ' + String(j.mode||''));
+                if(j.message) lines.push('message: ' + String(j.message||''));
+                if(j.current) lines.push('current: ' + String(j.current||''));
+                if(j.error) lines.push('error: ' + String(j.error||''));
+                if(j.trigger_page) lines.push('trigger_page: ' + String(j.trigger_page||''));
+                if(j.timer_id) lines.push('timer_id: ' + String(j.timer_id||''));
+                if(j.trigger_ip) lines.push('trigger_ip: ' + String(j.trigger_ip||''));
+                if(j.trigger_ua) lines.push('trigger_ua: ' + String(j.trigger_ua||''));
 
                if(j.last_query_label || j.last_query){
                  lines.push('');
@@ -1259,6 +1267,7 @@
             'started': 'Startzeitpunkt des Jobs.',
             'elapsed': 'Laufzeit (stoppt nach Abschluss).',
             'type': 'Job-Typ (global_stats, restore_copy, backup, dash_cache, export, ...).',
+            'Ausloeser': 'Trigger des Jobs (trigger_page + optional timer_id). Hilfreich um Scheduler/Timer-Updates zu erkennen.',
             'state': 'Status (running/done/error/cancelled).',
             '%': 'Fortschritt (best-effort).',
             'message': 'Kurzbeschreibung des aktuellen Schritts.',

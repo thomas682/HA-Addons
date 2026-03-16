@@ -38,6 +38,21 @@
     .ib_bottombar .time { font-variant-numeric: tabular-nums; opacity: 0.85; white-space: nowrap; }
     .ib_bottombar .msg { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .ib_bottombar button { height: 28px; padding: 4px 10px; }
+    .ib_bottombar .chip {
+      display: inline-flex;
+      align-items: center;
+      height: 24px;
+      padding: 0 10px;
+      border-radius: 999px;
+      border: 1px solid #ddd;
+      background: #fff;
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+    .ib_bottombar .chip.ok { border-color: #b6e2c0; background: #eefaf1; color: #0a7a28; }
+    .ib_bottombar .chip.err { border-color: #f2b0b0; background: #fff0f0; color: #b00020; }
+    .ib_bottombar .chip.unk { border-color: #ddd; background: #fafafa; color: rgba(0,0,0,0.72); }
     @media (max-width: 980px){
       :root { --ib-bottombar-h: 46px; }
       .ib_bottombar { flex-wrap: wrap; height: var(--ib-bottombar-h); align-items: flex-start; }
@@ -195,6 +210,8 @@
   <span class="lbl">Letzter Fehler:</span>
   <span class="time" id="ib_error_time"></span>
   <span class="msg" id="ib_error_msg"></span>
+  <span class="lbl">Influx:</span>
+  <span class="chip unk" id="ib_influx_chip" title="Influx Verbindung: unbekannt">?</span>
   <button id="ib_error_last" type="button" data-ui="errors.last" title="errors.last" style="width:auto;">Letzter Fehler</button>
   <button id="ib_error_dialog" type="button" data-ui="errors.dialog" title="errors.dialog" style="width:auto;">Fehlerdialog</button>
   <button id="ib_error_git" type="button" data-ui="errors.git_bugreport" title="errors.git_bugreport" style="width:auto;">Git Bugreport</button>
@@ -205,6 +222,7 @@
   const $bar = document.getElementById('ib_error_bar');
   const $t = document.getElementById('ib_error_time');
   const $m = document.getElementById('ib_error_msg');
+  const $influx = document.getElementById('ib_influx_chip');
   const $bLast = document.getElementById('ib_error_last');
   const $bDlg = document.getElementById('ib_error_dialog');
   const $bGit = document.getElementById('ib_error_git');
@@ -250,5 +268,46 @@
 
   try{ window.addEventListener('influxbro:error', ()=>{ render(); }); }catch(e){}
   setTimeout(()=>{ try{ render(); }catch(e){} }, 0);
+
+  async function pollInflux(){
+    if(!$influx) return;
+    try{
+      const r = await fetch('./api/influx_ping');
+      const j = await r.json().catch(()=>null);
+      if(!j || !j.ok){
+        const msg = (j && j.message) ? String(j.message) : ('HTTP ' + r.status);
+        $influx.className = 'chip err';
+        $influx.textContent = 'ERR';
+        $influx.title = 'Influx Verbindung: Fehler: ' + msg;
+        return;
+      }
+      const c = (j.connected === true) ? true : ((j.connected === false) ? false : null);
+      if(c === true){
+        $influx.className = 'chip ok';
+        $influx.textContent = 'OK';
+        $influx.title = 'Influx Verbindung: OK';
+      }else if(c === false){
+        const msg = String(j.message || 'Fehler');
+        $influx.className = 'chip err';
+        $influx.textContent = 'ERR';
+        $influx.title = 'Influx Verbindung: ' + msg;
+      }else{
+        const msg = String(j.message || 'unbekannt');
+        $influx.className = 'chip unk';
+        $influx.textContent = '?';
+        $influx.title = 'Influx Verbindung: ' + msg;
+      }
+    }catch(e){
+      try{ window.InfluxBroClientLog && window.InfluxBroClientLog.fetchError && window.InfluxBroClientLog.fetchError('./api/influx_ping', {}, e); }catch(x){}
+      try{
+        $influx.className = 'chip err';
+        $influx.textContent = 'ERR';
+        $influx.title = 'Influx Verbindung: Failed to fetch';
+      }catch(x){}
+    }
+  }
+
+  try{ setTimeout(()=>{ pollInflux().catch(()=>{}); }, 200); }catch(e){}
+  try{ setInterval(()=>{ pollInflux().catch(()=>{}); }, 30000); }catch(e){}
 })();
 </script>

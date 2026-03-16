@@ -285,6 +285,7 @@ Tipp: In der Toolbar gibt es Mehrfachaktionen (z.B. Werte davor uebernehmen oder
 - Hinweis: Export-Jobs werden hier ebenfalls als Job angezeigt und koennen abgebrochen werden.
 - Button `Abbruch`: bricht den Job ab (bestaetigen). Der Button ist immer sichtbar.
 - Button `Details`: zeigt, was der Job gerade macht (Message/Current/Trigger-Infos).
+- Spalte `Ausloeser`: zeigt den Trigger (trigger_page + optional timer_id), z.B. `scheduler | stats_cache`.
 - Tipp: `Open Statistik` setzt die Job-ID fuer die Statistik-Seite und wechselt dorthin.
 
 Cache:
@@ -390,7 +391,7 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 
 - Seite `Kombinieren`: kopiert Datenpunkte zwischen zwei Messwerten (z.B. bei Entity-ID Umbenennung).
 - Auswahl:
-  - Quelle und Ziel jeweils per `_measurement`, `_field`, `entity_id` und/oder `friendly_name` setzen.
+  - Quelle und Ziel jeweils per `_measurement` (Pflicht), `_field`, `entity_id` und/oder `friendly_name` setzen.
   - Wichtig: Mindestens `entity_id` oder `friendly_name` muss pro Seite gesetzt sein (damit die Serie eindeutig ist).
   - `Richtung` bestimmt, welche Seite als Quelle gilt (Quelle->Ziel oder Ziel->Quelle).
 - Vorschau:
@@ -486,6 +487,7 @@ UI:
 Fehleranzeige:
 
 - Unten wird der letzte Fehler als Statuszeile angezeigt (Zeitstempel + Kurztext).
+- Zusaetzlich wird in der Statusleiste die Influx Verbindung angezeigt (OK/ERR; best-effort).
 - Button `Fehlerdialog`: zeigt den aktuellen Fehler plus Verlauf (mit Zeitstempeln).
 - Dashboard Button `Letzter Fehler`: oeffnet den letzten Fehlerdialog erneut.
 - Button `Git Bugreport`: erzeugt einen GitHub Bugreport (Template profi) und laedt einen Debug report zum Anhaengen.

@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.12.37
+
+### Fixes
+
+- Kombinieren: fruehe Validierung (measurement/field + Tags) und Delete-Guard (ALLOW_DELETE).
+
+### UI
+
+- Jobs: neue Spalte "Ausloeser" zeigt trigger_page + timer_id (Scheduler/Timer besser erkennbar).
+- Statusleiste unten: Influx Verbindung (OK/ERR) wird angezeigt (best-effort, cached).
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.36
 
 ### Fixes
