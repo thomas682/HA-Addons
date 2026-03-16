@@ -110,7 +110,7 @@ body:
     id: architecture
     attributes:
       label: System architecture
-      option:
+      options:
         - amd64
         - aarch64
         - armv7
