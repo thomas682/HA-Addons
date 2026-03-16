@@ -1,42 +1,107 @@
 name: Bug report
-description: Report something that is not working
+description: Report a problem with the add-on
 title: "[Bug]: "
 labels:
-  - "type/bug"
-  - "status/open"
+  - type/bug
+  - status/open
+
 body:
+
   - type: markdown
     attributes:
       value: |
-        Thanks for taking the time to report a bug.
+        Thanks for reporting a bug.
+        Please fill out as much information as possible so we can reproduce the issue.
 
-  - type: textarea
-    id: what-happened
+  - type: dropdown
+    id: feature
     attributes:
-      label: What happened?
-      description: What did you do and what went wrong?
-      placeholder: "When I click ..., I expected ..., but ..."
+      label: Feature / Function
+      description: Which part of the add-on were you using?
+      options:
+        - Global statistics
+        - Full backup
+        - Restore
+        - Export
+        - Scheduler
+        - Web UI
+        - Configuration
+        - Other
     validations:
       required: true
 
   - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: How can the issue be reproduced?
+      placeholder: |
+        1. Open add-on UI
+        2. Click ...
+        3. Run ...
+        4. Error appears
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+      placeholder: What did you expect to happen?
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+      placeholder: What actually happened?
+
+  - type: textarea
     id: logs
     attributes:
-      label: Logs / screenshots
-      description: Paste relevant logs (add-on logs, browser console) or attach screenshots.
+      label: Logs / Screenshots
+      description: Paste relevant logs or screenshots
       render: shell
+
+  - type: textarea
+    id: addon-config
+    attributes:
+      label: Add-on configuration
+      description: Paste your add-on configuration if relevant
+      render: yaml
 
   - type: input
     id: addon-version
     attributes:
       label: Add-on version
-      placeholder: "e.g. 1.11.97"
+      placeholder: e.g. 1.12.29
+    validations:
+      required: true
 
   - type: input
     id: ha-version
     attributes:
       label: Home Assistant version
-      placeholder: "e.g. 2026.3.0"
+      placeholder: e.g. 2026.3.0
+    validations:
+      required: true
+
+  - type: input
+    id: supervisor-version
+    attributes:
+      label: Supervisor version
+      placeholder: e.g. 2026.02.0
+
+  - type: input
+    id: ha-os
+    attributes:
+      label: Home Assistant OS / Installation type
+      placeholder: e.g. HAOS / Docker / Supervised
+
+  - type: input
+    id: architecture
+    attributes:
+      label: Architecture
+      placeholder: e.g. amd64 / aarch64 / armv7
 
   - type: dropdown
     id: severity
@@ -46,5 +111,6 @@ body:
         - low
         - medium
         - high
+        - critical
     validations:
       required: true
