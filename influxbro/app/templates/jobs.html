@@ -933,25 +933,49 @@
           const bInfo = document.createElement('button');
           bInfo.className = 'btn_xs';
           bInfo.textContent = 'Details';
-          bInfo.onclick = ()=>{
-            try{
-              const lines = [];
-              lines.push('id: ' + id);
-              lines.push('type: ' + String(j.type||''));
-              lines.push('state: ' + String(j.state||''));
-              lines.push('started: ' + fmtTs(j.started_at));
-              lines.push('elapsed: ' + String(j.elapsed||''));
-              if(j.mode) lines.push('mode: ' + String(j.mode||''));
-              if(j.message) lines.push('message: ' + String(j.message||''));
-              if(j.current) lines.push('current: ' + String(j.current||''));
-              if(j.error) lines.push('error: ' + String(j.error||''));
-              if(j.trigger_page) lines.push('trigger_page: ' + String(j.trigger_page||''));
-              if(j.trigger_ip) lines.push('trigger_ip: ' + String(j.trigger_ip||''));
-              if(j.trigger_ua) lines.push('trigger_ua: ' + String(j.trigger_ua||''));
-              if(window.InfluxBroPopup && window.InfluxBroPopup.show) window.InfluxBroPopup.show('Job Details', lines.join('\n'));
-              else alert(lines.join('\n'));
-            }catch(e){}
-          };
+           bInfo.onclick = ()=>{
+             try{
+               const lines = [];
+               lines.push('id: ' + id);
+               lines.push('type: ' + String(j.type||''));
+               lines.push('state: ' + String(j.state||''));
+               lines.push('started_at: ' + fmtTs(j.started_at));
+               if(j.updated_at) lines.push('updated_at: ' + fmtTs(j.updated_at));
+               if(j.finished_at) lines.push('finished_at: ' + fmtTs(j.finished_at));
+               lines.push('elapsed: ' + String(j.elapsed||''));
+               if(j.mode) lines.push('mode: ' + String(j.mode||''));
+               if(j.message) lines.push('message: ' + String(j.message||''));
+               if(j.current) lines.push('current: ' + String(j.current||''));
+               if(j.error) lines.push('error: ' + String(j.error||''));
+               if(j.trigger_page) lines.push('trigger_page: ' + String(j.trigger_page||''));
+               if(j.trigger_ip) lines.push('trigger_ip: ' + String(j.trigger_ip||''));
+               if(j.trigger_ua) lines.push('trigger_ua: ' + String(j.trigger_ua||''));
+
+               if(j.last_query_label || j.last_query){
+                 lines.push('');
+                 lines.push('last_query_label: ' + String(j.last_query_label||''));
+                 lines.push('last_query:');
+                 lines.push(String(j.last_query||''));
+               }
+
+               const qs = Array.isArray(j.queries) ? j.queries : [];
+               if(qs.length){
+                 lines.push('');
+                 lines.push('queries (latest last):');
+                 const tail = qs.slice(Math.max(0, qs.length - 12));
+                 for(const it of tail){
+                   const at = fmtTs(it && it.at ? it.at : '');
+                   const lab = String(it && it.label ? it.label : '').trim();
+                   const q = String(it && it.query ? it.query : '').trim();
+                   lines.push('- ' + at + (lab ? (' | ' + lab) : ''));
+                   if(q) lines.push('  ' + q.replace(/\n/g, '\n  '));
+                 }
+               }
+
+               if(window.InfluxBroPopup && window.InfluxBroPopup.show) window.InfluxBroPopup.show('Job Details', lines.join('\n'));
+               else alert(lines.join('\n'));
+             }catch(e){}
+           };
           tdAct.appendChild(bInfo);
 
           const bCopy = document.createElement('button');

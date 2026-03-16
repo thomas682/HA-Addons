@@ -443,6 +443,7 @@ Hinweis (neu)
 
 - Bereiche sind einklappbar.
 - Oben gibt es ein Suchfeld, das Einstellungen findet und per Klick zum passenden Feld springt (Bereiche werden automatisch aufgeklappt).
+- Das Suchfeld bleibt beim Scrollen sichtbar.
 - Layout: pro Abschnitt als 1-spaltige Parameterliste (ein Parameter pro Block mit Beschreibung).
 
 Neu:
@@ -480,6 +481,12 @@ UI:
   - Auto-Breite (Default) oder manuelle Breite (px)
   - Wenn Auto aktiv ist, wird die zuletzt berechnete Breite als Vorschlagswert angezeigt.
 - `PayPal Donate URL (Sidebar)`: Linkziel des PayPal-Spendenbuttons im Sidebar.
+
+Fehleranzeige:
+
+- Unten wird der letzte Fehler als Statuszeile angezeigt (Zeitstempel + Kurztext).
+- Button `Fehlerdialog`: zeigt den aktuellen Fehler plus Verlauf (mit Zeitstempeln).
+- Dashboard Button `Letzter Fehler`: oeffnet den letzten Fehlerdialog erneut.
 
 Statistik:
 

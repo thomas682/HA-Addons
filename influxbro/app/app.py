@@ -2363,6 +2363,7 @@ def _dash_cache_start_job(
         "state": "queued",
         "message": "Start...",
         "started_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+        "updated_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
         "started_mono": time.monotonic(),
         "trigger_page": trigger_page,
         "trigger_ip": ip,
@@ -11603,6 +11604,8 @@ def _job_public(job: dict[str, Any]) -> dict[str, Any]:
         "state": job.get("state"),
         "message": job.get("message"),
         "started_at": job.get("started_at"),
+        "updated_at": job.get("updated_at"),
+        "finished_at": job.get("finished_at"),
         "elapsed": _job_elapsed_hms(job),
         "total_points": total,
         "scanned_points": scanned,
@@ -11612,6 +11615,7 @@ def _job_public(job: dict[str, Any]) -> dict[str, Any]:
         "current": job.get("current") or "",
         "last_query_label": job.get("last_query_label") or "",
         "last_query": job.get("last_query") or "",
+        "queries": job.get("queries") if isinstance(job.get("queries"), list) else [],
         "cancelled": bool(job.get("cancelled")),
         "error": job.get("error"),
         "ready": job.get("state") in ("done", "error", "cancelled"),
@@ -11682,6 +11686,7 @@ def _global_stats_job_thread(
             if job_id in GLOBAL_STATS_JOBS:
                 GLOBAL_STATS_JOBS[job_id]["state"] = state
                 GLOBAL_STATS_JOBS[job_id]["message"] = msg
+                GLOBAL_STATS_JOBS[job_id]["updated_at"] = _utc_now_iso_ms()
                 if state in ("done", "error", "cancelled"):
                     _job_set_finished(GLOBAL_STATS_JOBS[job_id])
                     timer_id = GLOBAL_STATS_JOBS[job_id].get("timer_id")
@@ -11722,6 +11727,21 @@ def _global_stats_job_thread(
             if job_id in GLOBAL_STATS_JOBS:
                 GLOBAL_STATS_JOBS[job_id]["last_query_label"] = label
                 GLOBAL_STATS_JOBS[job_id]["last_query"] = (q or "").strip()
+                GLOBAL_STATS_JOBS[job_id]["updated_at"] = _utc_now_iso_ms()
+                try:
+                    xs = GLOBAL_STATS_JOBS[job_id].get("queries")
+                    if not isinstance(xs, list):
+                        xs = []
+                    xs.append({
+                        "at": _utc_now_iso_ms(),
+                        "label": str(label or "").strip(),
+                        "query": (q or "").strip(),
+                    })
+                    if len(xs) > 40:
+                        xs = xs[-40:]
+                    GLOBAL_STATS_JOBS[job_id]["queries"] = xs
+                except Exception:
+                    pass
 
     def _parse_ts(s: str | None) -> datetime | None:
         if not s:
@@ -12425,6 +12445,7 @@ def _global_stats_start_job(
         "current": "",
         "last_query_label": "",
         "last_query": "",
+        "queries": [],
         "rows": [],
         "cancelled": False,
         "error": None,

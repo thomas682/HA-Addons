@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.12.35
+
+### UI
+
+- Einstellungen: Suchfeld bleibt beim Scrollen sichtbar.
+- Fehleranzeige: globale Statuszeile am unteren Rand zeigt den letzten Fehler inkl. Zeitstempel; "Fehlerdialog" zeigt Verlauf.
+- Dashboard: Button "Letzter Fehler" zeigt den letzten Fehlerdialog erneut.
+
+### Jobs
+
+- Job Details: Dialog zeigt laufende/letzte Queries inkl. Zeitstempel (global_stats).
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.34
 
 ### Fixes

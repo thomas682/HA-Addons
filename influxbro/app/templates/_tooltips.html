@@ -922,20 +922,128 @@
    }
 
  window.InfluxBroPopup = {
-     show: (title, msg) => {
-       const t = String(title || 'Hinweis').trim() || 'Hinweis';
-       const s = String(msg || '').trim();
-       _show(t, s);
-     },
-     error: (msg) => {
-       const s = String(msg || '').trim();
-       if(!s) return;
-       const now = Date.now();
-       if(LAST.msg === s && (now - LAST.at) < 800) return;
-       LAST = { msg: s, at: now };
-       _show('Fehler', s);
-     }
-   };
+      show: (title, msg) => {
+        const t = String(title || 'Hinweis').trim() || 'Hinweis';
+        const s = String(msg || '').trim();
+        _show(t, s);
+      },
+      error: (msg) => {
+        const s = String(msg || '').trim();
+        if(!s) return;
+        const now = Date.now();
+        if(LAST.msg === s && (now - LAST.at) < 800) return;
+        LAST = { msg: s, at: now };
+        try{ window.InfluxBroErrors && window.InfluxBroErrors.add && window.InfluxBroErrors.add(s, { kind:'popup' }); }catch(e){}
+        _show('Fehler', s);
+      }
+    };
+ })();
+ </script>
+
+<script>
+// Persistent UI error history (for query/GUI errors)
+(function(){
+  if(window.InfluxBroErrors) return;
+
+  const LS_KEY = 'influxbro_ui_errors_v1';
+  const MAX = 30;
+
+  function _nowIso(){
+    try{ return new Date().toISOString(); }catch(e){ return ''; }
+  }
+  function _page(){
+    try{ return (document && document.querySelector('main[data-ui]') && document.querySelector('main[data-ui]').getAttribute('data-ui')) || ''; }catch(e){ return ''; }
+  }
+
+  function _load(){
+    try{
+      const raw = localStorage.getItem(LS_KEY);
+      const j = raw ? JSON.parse(raw) : [];
+      return Array.isArray(j) ? j : [];
+    }catch(e){
+      return [];
+    }
+  }
+  function _save(xs){
+    try{ localStorage.setItem(LS_KEY, JSON.stringify(xs)); }catch(e){}
+  }
+
+  function add(message, meta){
+    const msg = String(message || '').trim();
+    if(!msg) return;
+    const entry = {
+      at: _nowIso(),
+      page: _page(),
+      message: msg.slice(0, 8000),
+      meta: meta || null,
+    };
+    const xs = _load();
+    xs.push(entry);
+    while(xs.length > MAX) xs.shift();
+    _save(xs);
+    try{ window.dispatchEvent(new CustomEvent('influxbro:error', { detail: entry })); }catch(e){}
+  }
+
+  function all(){
+    return _load();
+  }
+
+  function last(){
+    const xs = _load();
+    return xs.length ? xs[xs.length - 1] : null;
+  }
+
+  function clear(){
+    _save([]);
+    try{ window.dispatchEvent(new CustomEvent('influxbro:error', { detail: null })); }catch(e){}
+  }
+
+  function _fmtEntry(e){
+    if(!e) return '';
+    const at = String(e.at || '');
+    const page = String(e.page || '');
+    const msg = String(e.message || '');
+    return (at ? (at + ' ') : '') + (page ? ('[' + page + '] ') : '') + msg;
+  }
+
+  function showLast(){
+    const e = last();
+    if(!e){
+      try{ if(window.InfluxBroPopup && window.InfluxBroPopup.show) window.InfluxBroPopup.show('Letzter Fehler', 'Kein Fehler gespeichert.'); }catch(x){}
+      return;
+    }
+    const txt = _fmtEntry(e);
+    try{ if(window.InfluxBroPopup && window.InfluxBroPopup.show) window.InfluxBroPopup.show('Letzter Fehler', txt); }catch(x){}
+  }
+
+  function showDialog(){
+    const xs = _load();
+    if(!xs.length){
+      try{ if(window.InfluxBroPopup && window.InfluxBroPopup.show) window.InfluxBroPopup.show('Fehlerdialog', 'Keine Fehler gespeichert.'); }catch(x){}
+      return;
+    }
+    const lines = [];
+    const cur = xs[xs.length - 1];
+    lines.push('Aktueller Fehler:');
+    lines.push(_fmtEntry(cur));
+    lines.push('');
+    lines.push('Letzte Fehler:');
+    for(const e of xs.slice().reverse()){
+      lines.push('- ' + _fmtEntry(e));
+    }
+    lines.push('');
+    lines.push('Hinweis: Der Verlauf wird im Browser (localStorage) gespeichert.');
+    try{ if(window.InfluxBroPopup && window.InfluxBroPopup.show) window.InfluxBroPopup.show('Fehlerdialog', lines.join('\n')); }catch(x){}
+  }
+
+  window.InfluxBroErrors = {
+    add,
+    all,
+    last,
+    clear,
+    showLast,
+    showDialog,
+  };
 })();
 </script>
 

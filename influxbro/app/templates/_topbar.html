@@ -2,6 +2,7 @@
   <style>
     :root {
       --ib-topbar-h: 52px;
+      --ib-bottombar-h: 38px;
       --ib-section-title-bg: {{ (cfg.get('ui_section_title_bg') or 'transparent') if cfg else 'transparent' }};
       --ib-section-title-fg: {{ (cfg.get('ui_section_title_fg') or 'inherit') if cfg else 'inherit' }};
       --ib-zoom-scale: 1;
@@ -10,8 +11,38 @@
     }
 
     /* Global zoom (font-based) - avoids breaking Plotly click hit-testing */
-    body { font-size: var(--ui-font-zoomed); }
+    body {
+      font-size: var(--ui-font-zoomed);
+      padding-bottom: calc(var(--ib-bottombar-h) + env(safe-area-inset-bottom, 0px));
+    }
     .muted { font-size: var(--ui-font-small-zoomed); }
+
+    /* Bottom error status bar */
+    .ib_bottombar {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 9999;
+      height: var(--ib-bottombar-h);
+      display: none;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 12px;
+      box-sizing: border-box;
+      background: rgba(255,255,255,0.96);
+      backdrop-filter: blur(8px);
+      border-top: 1px solid #eee;
+    }
+    .ib_bottombar .lbl { font-weight: 800; white-space: nowrap; }
+    .ib_bottombar .time { font-variant-numeric: tabular-nums; opacity: 0.85; white-space: nowrap; }
+    .ib_bottombar .msg { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ib_bottombar button { height: 28px; padding: 4px 10px; }
+    @media (max-width: 980px){
+      :root { --ib-bottombar-h: 46px; }
+      .ib_bottombar { flex-wrap: wrap; height: var(--ib-bottombar-h); align-items: flex-start; }
+      .ib_bottombar .msg { width: 100%; }
+    }
     .ib_topbar {
       position: fixed;
       top: 0;
@@ -159,3 +190,52 @@
   })();
   </script>
 </header>
+
+<div class="ib_bottombar" id="ib_error_bar" data-ui="errors.statusbar" title="errors.statusbar">
+  <span class="lbl">Letzter Fehler:</span>
+  <span class="time" id="ib_error_time"></span>
+  <span class="msg" id="ib_error_msg"></span>
+  <button id="ib_error_last" type="button" data-ui="errors.last" title="errors.last" style="width:auto;">Letzter Fehler</button>
+  <button id="ib_error_dialog" type="button" data-ui="errors.dialog" title="errors.dialog" style="width:auto;">Fehlerdialog</button>
+</div>
+
+<script>
+(function(){
+  const $bar = document.getElementById('ib_error_bar');
+  const $t = document.getElementById('ib_error_time');
+  const $m = document.getElementById('ib_error_msg');
+  const $bLast = document.getElementById('ib_error_last');
+  const $bDlg = document.getElementById('ib_error_dialog');
+
+  function _fmtTs(iso){
+    try{
+      if(!iso) return '';
+      const d = new Date(String(iso));
+      if(!isFinite(d.getTime())) return String(iso);
+      return d.toLocaleString();
+    }catch(e){
+      return String(iso || '');
+    }
+  }
+
+  function render(){
+    try{
+      if(!window.InfluxBroErrors || !window.InfluxBroErrors.last) return;
+      const e = window.InfluxBroErrors.last();
+      if(!e){
+        if($bar) $bar.style.display = 'none';
+        return;
+      }
+      if($t) $t.textContent = _fmtTs(e.at || '');
+      if($m) $m.textContent = String(e.message || '').replace(/\s+/g,' ').trim();
+      if($bar) $bar.style.display = 'flex';
+    }catch(e){}
+  }
+
+  try{ if($bLast) $bLast.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}; try{ window.InfluxBroErrors && window.InfluxBroErrors.showLast && window.InfluxBroErrors.showLast(); }catch(x){}; }); }catch(e){}
+  try{ if($bDlg) $bDlg.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}; try{ window.InfluxBroErrors && window.InfluxBroErrors.showDialog && window.InfluxBroErrors.showDialog(); }catch(x){}; }); }catch(e){}
+
+  try{ window.addEventListener('influxbro:error', ()=>{ render(); }); }catch(e){}
+  setTimeout(()=>{ try{ render(); }catch(e){} }, 0);
+})();
+</script>

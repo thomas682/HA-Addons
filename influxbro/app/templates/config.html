@@ -43,6 +43,16 @@
     details.card > summary:after { content: "▾"; float: right; opacity: 0.6; }
     details.card[open] > summary:after { content: "▴"; }
     details.card > .card_body { padding: 0 12px 12px 12px; }
+
+    /* Keep settings search visible while scrolling */
+    #settings_search_card {
+      position: sticky;
+      top: calc(var(--ib-topbar-h) + 10px);
+      z-index: 50;
+      background: rgba(255,255,255,0.98);
+      backdrop-filter: blur(6px);
+      box-shadow: 0 8px 18px rgba(0,0,0,0.04);
+    }
     .muted { opacity: 0.7; font-size: 12px; }
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
     code { background:#f6f6f6; padding:2px 6px; border-radius:6px; }
@@ -89,7 +99,7 @@
     </div>
   </div>
 
-  <div class="card" data-ui="settings.search.card" title="settings.search.card">
+  <div class="card" id="settings_search_card" data-ui="settings.search.card" title="settings.search.card">
     <div class="muted" style="margin-bottom: 6px;">Suche (zeigt, wo eine Einstellung ist)</div>
     <div class="row" style="align-items: stretch;">
       <div style="flex:1; min-width: 260px;">
