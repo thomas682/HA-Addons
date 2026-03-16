@@ -637,6 +637,31 @@
     left.appendChild(copyHint);
     controls.appendChild(left);
 
+    const right = document.createElement('div');
+    right.style.display = 'flex';
+    right.style.alignItems = 'center';
+    right.style.gap = '10px';
+    right.style.flexWrap = 'wrap';
+
+    const bugBtn = document.createElement('button');
+    bugBtn.id = 'influxbro_popup_bugreport';
+    bugBtn.type = 'button';
+    bugBtn.textContent = 'Bugreport';
+    bugBtn.style.cursor = 'pointer';
+    bugBtn.style.padding = '8px 10px';
+    bugBtn.style.height = '34px';
+
+    const bugHint = document.createElement('span');
+    bugHint.id = 'influxbro_popup_bug_hint';
+    bugHint.textContent = '';
+    bugHint.style.fontSize = '12px';
+    bugHint.style.opacity = '0.75';
+    bugHint.style.whiteSpace = 'nowrap';
+
+    right.appendChild(bugBtn);
+    right.appendChild(bugHint);
+    controls.appendChild(right);
+
     const pre = document.createElement('pre');
     pre.id = 'influxbro_popup_pre';
     pre.style.margin = '0';
@@ -703,6 +728,174 @@
     }
     copyBtn.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} doCopy(); });
 
+    function _filenameFromContentDisposition(cd){
+      try{
+        const s = String(cd || '');
+        const m = s.match(/filename\*=UTF-8''([^;]+)|filename="([^"]+)"|filename=([^;]+)/i);
+        const raw = m ? (m[1] || m[2] || m[3]) : '';
+        const fn = raw ? decodeURIComponent(raw.trim()) : '';
+        return fn || '';
+      }catch(e){
+        return '';
+      }
+    }
+
+    function _clip(s, n){
+      const t = String(s || '');
+      const m = Number(n) || 6000;
+      return t.length > m ? (t.slice(0, m) + '\n... (truncated)') : t;
+    }
+
+    function _safeTitleFromMsg(msg){
+      try{
+        const s = String(msg || '').replace(/\s+/g, ' ').trim();
+        if(!s) return 'Bugreport';
+        const short = s.length > 80 ? (s.slice(0, 77) + '...') : s;
+        return short;
+      }catch(e){
+        return 'Bugreport';
+      }
+    }
+
+    function _snapshotLocalStorage(){
+      try{
+        const out = {};
+        if(!window.localStorage) return out;
+        for(let i=0; i<localStorage.length; i++){
+          const k = localStorage.key(i);
+          if(!k) continue;
+          // Avoid storing huge values.
+          const v = String(localStorage.getItem(k) || '');
+          out[k] = v.length > 2000 ? (v.slice(0, 2000) + '...') : v;
+        }
+        return out;
+      }catch(e){
+        return {};
+      }
+    }
+
+    async function _downloadDebugReport(issueTitle, msg){
+      const payload = {
+        tail: 0,
+        issue: {
+          title: String(issueTitle || ''),
+          description: String(msg || ''),
+          steps: '',
+        },
+        client: {
+          exported_at: new Date().toISOString(),
+          page: 'popup',
+          href: String(location && location.href ? location.href : ''),
+          user_agent: String(navigator && navigator.userAgent ? navigator.userAgent : ''),
+          popup: {
+            title: String(document.getElementById('influxbro_popup_title') ? document.getElementById('influxbro_popup_title').textContent : ''),
+          },
+          client_errors: (window.InfluxBroClientLog && window.InfluxBroClientLog.getBuffer) ? window.InfluxBroClientLog.getBuffer() : [],
+          local_storage: _snapshotLocalStorage(),
+        }
+      };
+
+      let r;
+      try{
+        r = await fetch('./api/debug_report', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+      }catch(e){
+        try{ window.InfluxBroClientLog && window.InfluxBroClientLog.fetchError && window.InfluxBroClientLog.fetchError('./api/debug_report', payload, e); }catch(x){}
+        throw new Error('Failed to fetch');
+      }
+      if(!r.ok){
+        const t = await r.text().catch(()=> '');
+        throw new Error(t || ('HTTP ' + r.status));
+      }
+      const blob = await r.blob();
+      const cd = r.headers.get('content-disposition');
+      const fn = _filenameFromContentDisposition(cd) || 'influxbro_debug_report.md';
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = fn;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(()=>{
+        try{ URL.revokeObjectURL(a.href); }catch(e){}
+        try{ a.remove(); }catch(e){}
+      }, 0);
+      return fn;
+    }
+
+    async function _bugreportClick(){
+      try{ bugHint.textContent = ''; }catch(e){}
+
+      const preEl = document.getElementById('influxbro_popup_pre');
+      const msg = String(preEl && preEl.textContent ? preEl.textContent : '').trim();
+      if(!msg){
+        try{ bugHint.textContent = 'keine Fehlermeldung'; }catch(e){}
+        return;
+      }
+
+      // Try to open a tab early (avoids popup blockers)
+      let win = null;
+      try{ win = window.open('about:blank', '_blank'); }catch(e){ win = null; }
+
+      const issueTitle = _safeTitleFromMsg(msg);
+      try{ bugHint.textContent = 'Debug report...'; }catch(e){}
+
+      let meta = null;
+      try{
+        const r = await fetch('./api/bugreport_meta');
+        meta = await r.json().catch(()=>null);
+      }catch(e){
+        try{ window.InfluxBroClientLog && window.InfluxBroClientLog.fetchError && window.InfluxBroClientLog.fetchError('./api/bugreport_meta', {}, e); }catch(x){}
+        meta = null;
+      }
+
+      // Build a short pre-filled issue body (URL length constraints!)
+      const addonV = meta && meta.addon_version ? String(meta.addon_version) : '';
+      const haCore = meta && meta.ha && meta.ha.core ? String(meta.ha.core) : '';
+      const haSup = meta && meta.ha && meta.ha.supervisor ? String(meta.ha.supervisor) : '';
+      const haOs = meta && meta.ha && meta.ha.os ? String(meta.ha.os) : '';
+      const influxV = meta && meta.influx && meta.influx.version ? String(meta.influx.version) : '';
+      const newIssueBase = meta && meta.github_new_issue_url ? String(meta.github_new_issue_url) : '';
+
+      let body = '';
+      body += '### Was ist passiert?\n\n';
+      body += _clip(msg, 1200) + '\n\n';
+      body += '### Versionen\n\n';
+      if(addonV) body += '- Add-on version: ' + addonV + '\n';
+      if(haCore) body += '- Home Assistant Core: ' + haCore + '\n';
+      if(haSup) body += '- Home Assistant Supervisor: ' + haSup + '\n';
+      if(haOs) body += '- Home Assistant OS: ' + haOs + '\n';
+      if(influxV) body += '- InfluxDB: ' + influxV + '\n';
+      body += '\n';
+      body += '### Anhang\n\n';
+      body += '- Bitte die heruntergeladene Datei `influxbro_debug_report_*.md` anhaengen.\n';
+
+      if(!newIssueBase){
+        try{ bugHint.textContent = 'Repo URL fehlt (Einstellungen -> Links)'; }catch(e){}
+      }
+      const url = newIssueBase ? (newIssueBase + '&title=' + encodeURIComponent('[Bug]: ' + issueTitle) + '&body=' + encodeURIComponent(body)) : '';
+
+      // Kick off the download; keep going even if it fails.
+      let fn = '';
+      try{
+        fn = await _downloadDebugReport(issueTitle, msg);
+        try{ bugHint.textContent = 'Debug report: ' + fn; }catch(e){}
+      }catch(e){
+        try{ bugHint.textContent = 'Debug report fehlgeschlagen'; }catch(x){}
+        try{ window.InfluxBroClientLog && window.InfluxBroClientLog.reportError && window.InfluxBroClientLog.reportError('Bugreport: debug_report failed', { err: String(e && e.message ? e.message : e) }, (e && e.stack) ? String(e.stack) : ''); }catch(x){}
+      }
+
+      // Navigate the opened tab to the issue page.
+      try{
+        if(url){
+          if(win) win.location.href = url;
+          else window.open(url, '_blank');
+        }
+      }catch(e){}
+
+      try{ if(fn) bugHint.textContent = 'Bitte Debug report anhaengen'; }catch(e){}
+    }
+
+    bugBtn.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} _bugreportClick().catch(()=>{}); });
+
     function close(){
       try{ root.style.display = 'none'; }catch(e){}
     }
@@ -718,14 +911,15 @@
     return root;
   }
 
-  function _show(title, msg){
-    const root = _ensureUi();
-    const t = document.getElementById('influxbro_popup_title');
-    const pre = document.getElementById('influxbro_popup_pre');
-    if(t) t.textContent = title || 'Hinweis';
-    if(pre) pre.textContent = String(msg || '');
-    root.style.display = 'block';
-  }
+   function _show(title, msg){
+     const root = _ensureUi();
+     const t = document.getElementById('influxbro_popup_title');
+     const pre = document.getElementById('influxbro_popup_pre');
+     if(t) t.textContent = title || 'Hinweis';
+     if(pre) pre.textContent = String(msg || '');
+     try{ window.__InfluxBroPopupLast = { title: String(title || ''), msg: String(msg || '') }; }catch(e){}
+     root.style.display = 'block';
+   }
 
  window.InfluxBroPopup = {
      show: (title, msg) => {

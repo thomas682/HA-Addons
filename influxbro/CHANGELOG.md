@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.33
+
+### Fixes
+
+- UI/Fehlermeldung: Error-Popup enthaelt einen Bugreport-Button (Debug report Download + GitHub Issue vorbefuellt mit HA/Influx-Versionen).
+
+### Maintenance
+
+- Repo: `README.md` und `LICENSE.md` nach `influxbro/` verlegt (License-Datei heisst dort `license`); Root-README zeigt auf die Add-on Doku.
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.32
 
 ### UI

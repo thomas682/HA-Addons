@@ -481,6 +481,12 @@ UI:
   - Wenn Auto aktiv ist, wird die zuletzt berechnete Breite als Vorschlagswert angezeigt.
 - `PayPal Donate URL (Sidebar)`: Linkziel des PayPal-Spendenbuttons im Sidebar.
 
+## Bugreport / Debug report
+
+- Bei einer Fehlermeldung im Popup kannst du auf `Bugreport` klicken.
+- Dabei wird automatisch ein Debug report heruntergeladen (`influxbro_debug_report_*.md`) und eine GitHub Issue Seite geoeffnet (vorbefuellt mit HA/Influx Versionen).
+- Wichtig: Debug report Datei in GitHub als Anhang hochladen (enth. Konfig redacted + Logs).
+
 Ausreisser:
 
  - Tabelle `_measurement / max_step`: Grenzen fuer Counter-Ausreisser (Spruenge) in der Fehler-/Filtertabelle.

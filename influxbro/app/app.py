@@ -3965,6 +3965,89 @@ def _json_best_effort(txt: str) -> dict[str, Any] | None:
     return data if isinstance(data, dict) else None
 
 
+def _github_repo_base(url: str) -> str:
+    """Return https://github.com/<owner>/<repo> from a configured URL (best-effort)."""
+
+    raw = (url or "").strip()
+    if not raw:
+        return ""
+    # Accept URLs like:
+    # - https://github.com/owner/repo
+    # - https://github.com/owner/repo/tree/main/influxbro
+    m = re.search(r"github\.com/([^/]+)/([^/]+)", raw)
+    if not m:
+        return ""
+    owner = (m.group(1) or "").strip()
+    repo = (m.group(2) or "").strip()
+    # Strip suffixes like .git
+    repo = repo[:-4] if repo.lower().endswith(".git") else repo
+    if not owner or not repo:
+        return ""
+    return f"https://github.com/{owner}/{repo}"
+
+
+@app.get("/api/bugreport_meta")
+def api_bugreport_meta():
+    """Small metadata for pre-filling a GitHub bug report (no secrets)."""
+
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    repo_cfg = str(cfg.get("ui_repo_url") or "").strip()
+    repo_base = _github_repo_base(repo_cfg)
+    new_issue_url = (repo_base + "/issues/new?template=bug.yml") if repo_base else ""
+
+    # Home Assistant versions (Supervisor API; best-effort)
+    ha_core_ver = None
+    ha_supervisor_ver = None
+    ha_os_ver = None
+    try:
+        st, txt = _supervisor_get("/core/api/config", timeout_s=6)
+        j = _json_best_effort(txt)
+        if st == 200 and j:
+            ha_core_ver = j.get("version")
+    except Exception:
+        pass
+    try:
+        st, txt = _supervisor_get("/supervisor/info", timeout_s=6)
+        j = _json_best_effort(txt)
+        d = (j.get("data") if isinstance(j, dict) else None) if j else None
+        if st == 200 and isinstance(d, dict):
+            ha_supervisor_ver = d.get("version")
+    except Exception:
+        pass
+    try:
+        st, txt = _supervisor_get("/os/info", timeout_s=6)
+        j = _json_best_effort(txt)
+        d = (j.get("data") if isinstance(j, dict) else None) if j else None
+        if st == 200 and isinstance(d, dict):
+            ha_os_ver = d.get("version")
+    except Exception:
+        pass
+
+    influx_ver = None
+    try:
+        j = api_influx_info().get_json()  # type: ignore[attr-defined]
+        info = (j.get("info") if isinstance(j, dict) else None) if j else None
+        if isinstance(info, dict):
+            influx_ver = info.get("influx_version")
+    except Exception:
+        pass
+
+    return jsonify({
+        "ok": True,
+        "addon_version": ADDON_VERSION,
+        "repo_url": repo_base or repo_cfg,
+        "github_new_issue_url": new_issue_url,
+        "ha": {
+            "core": ha_core_ver,
+            "supervisor": ha_supervisor_ver,
+            "os": ha_os_ver,
+        },
+        "influx": {
+            "version": influx_ver,
+        },
+    })
+
+
 def _md_code_block(lang: str, s: str) -> str:
     # Avoid breaking markdown fences.
     t = (s or "").replace("```", "` ` `")
