@@ -1,0 +1,123 @@
+name: Bug report
+description: Report a problem with the add-on
+title: "[Bug]: "
+labels:
+  - type/bug
+  - status/open
+
+body:
+
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting a bug.
+
+        Please provide as much information as possible so the issue can be reproduced.
+        Include logs and steps to reproduce the problem.
+
+  - type: dropdown
+    id: feature
+    attributes:
+      label: Feature / Function used
+      description: Which part of the add-on were you using?
+      options:
+        - Global statistics
+        - Backup
+        - Restore
+        - Export
+        - Scheduler
+        - Web UI
+        - Configuration
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: How can we reproduce the issue?
+      placeholder: |
+        1. Open the add-on UI
+        2. Click on ...
+        3. Run ...
+        4. Error appears
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+      description: What should have happened?
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+      description: What actually happened?
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Add-on logs
+      description: Paste relevant logs from the add-on
+      render: shell
+
+  - type: textarea
+    id: query
+    attributes:
+      label: Query / operation that caused the error (if applicable)
+      description: Paste the Flux query or command that triggered the issue
+      render: shell
+
+  - type: textarea
+    id: addon-config
+    attributes:
+      label: Add-on configuration
+      description: Paste your add-on configuration
+      render: yaml
+
+  - type: input
+    id: addon-version
+    attributes:
+      label: Add-on version
+      placeholder: e.g. 1.12.29
+    validations:
+      required: true
+
+  - type: input
+    id: ha-version
+    attributes:
+      label: Home Assistant version
+      placeholder: e.g. 2026.3.0
+    validations:
+      required: true
+
+  - type: input
+    id: supervisor-version
+    attributes:
+      label: Supervisor version
+      placeholder: e.g. 2026.02.0
+
+  - type: dropdown
+    id: installation-type
+    attributes:
+      label: Installation type
+      options:
+        - Home Assistant OS
+        - Home Assistant Supervised
+        - Home Assistant Container
+        - Home Assistant Core
+
+  - type: input
+    id: architecture
+    attributes:
+      label: System architecture
+      placeholder: e.g. amd64 / aarch64 / armv7
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional information
+      description: Anything else that might help diagnose the issue
