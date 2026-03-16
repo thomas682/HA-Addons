@@ -80,41 +80,40 @@ body:
     attributes:
       label: Add-on version
       placeholder: e.g. 1.12.29
-    validations:
-      required: true
 
   - type: input
     id: ha-version
     attributes:
       label: Home Assistant version
+      description: Version nur notwendig, wenn nicht Bugerport.md eingefügt wurde
       placeholder: e.g. 2026.3.0
-    validations:
-      required: true
 
   - type: input
     id: supervisor-version
     attributes:
       label: Supervisor version
+      description: Version nur notwendig, wenn nicht Bugerport.md eingefügt wurde
       placeholder: e.g. 2026.02.0
 
   - type: dropdown
     id: installation-type
     attributes:
       label: Installation type
+      description: Version nur notwendig, wenn nicht Bugerport.md eingefügt wurde
       options:
         - Home Assistant OS
         - Home Assistant Supervised
         - Home Assistant Container
         - Home Assistant Core
 
-  - type: input
+  - type: dropdown
     id: architecture
     attributes:
       label: System architecture
-      placeholder: e.g. amd64 / aarch64 / armv7
+      option:
+        - amd64
+        - aarch64
+        - armv7
+        - i386
+        - sonstige
 
-  - type: textarea
-    id: additional
-    attributes:
-      label: Additional information
-      description: Anything else that might help diagnose the issue
