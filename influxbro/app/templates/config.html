@@ -132,8 +132,15 @@
       <div class="muted span2">Beispiel: <code>homeassistant/influx.yaml</code> (entspricht <code>/config/homeassistant/influx.yaml</code>)</div>
       <div class="muted span2">Ablauf: erst <code>influx.yaml suchen</code>, Pfad ggf. anpassen, dann <code>yaml Daten einlesen</code> (traegt Werte ein, speichert aber nicht).</div>
     </div>
-    </div>
+  </div>
   </details>
+
+  <script>
+    try{
+      const btn = document.getElementById('ui_raw_autotune_settings');
+      if(btn) btn.addEventListener('click', ()=>{ window.location = './#autotune'; });
+    }catch(e){}
+  </script>
 
   <details class="card" open data-ui="settings.section.conn" title="settings.section.conn">
     <summary><span class="ib_summary_row"><span>Verbindung</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Verbindung" data-info-body="Grundlegende Verbindungseinstellungen fuer InfluxDB.\n\nEnthaelt u.a.:\n- influx_version (v2 Flux oder v1 InfluxQL)\n- scheme/host/port\n- verify_ssl und timeout\n\nHinweis:\n- Nach Aenderungen: 'Test' prueft die Verbindung, 'Speichern' persistiert nach /data." >i</button></span></summary>
@@ -213,6 +220,12 @@
           <label>Raw max. Punkte</label>
           <input id="ui_raw_max_points" type="number" min="1000" max="200000" />
           <div class="muted">Maximale Zeilen/Points pro Raw-DB-Abfrage (Default: 20000).</div>
+        </div>
+
+        <div>
+          <label>Auto-Tuning</label>
+          <button id="ui_raw_autotune_settings" type="button" class="btn_sm">Auto-Tuning (Dashboard)</button>
+          <div class="muted">Der Auto-Tuning Button ist in die Einstellungen verschoben. Klick &quot;Auto-Tuning (Dashboard)&quot; oeffnet das Dashboard und startet Auto-Tuning, falls eine Serie ausgewaehlt ist.</div>
         </div>
 
         <div>

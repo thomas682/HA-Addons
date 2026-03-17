@@ -439,6 +439,17 @@ Triage flow:
   Apply these clarifications to the GitHub issue as a comment (or by editing the issue body) so the context is preserved.
 - Only issues explicitly chosen as "implement now" are synced into the in-chat ToDo list and mirrored into `./.opencode/plan_state.md`.
 
+### Shortcut: "prüfe Issues" Verhalten
+
+- Wenn der Benutzer genau die Phrase `prüfe Issues` eingibt, zeige zuerst eine kurze Auswahlfrage (ohne Issues vorab zu laden):
+  1) `Alle Issues umsetzen` — alle offenen Issues sofort und ohne weitere Nachfragen umsetzen.
+  2) `Auswahl treffen` — zuerst die Liste der offenen Issues anzeigen (gruppiert nach `type/bug` vs `type/enhancement`) und dem Benutzer erlauben, auszuwählen, welche umgesetzt werden sollen.
+- WICHTIG: Die Issue‑Liste darf vor der Auswahl nicht geladen oder angezeigt werden — die erste Frage ist ausschließlich dazu da, den Flow zu bestimmen.
+- Verhalten bei Auswahl:
+  - Wahl 1: Sofort mit der Implementierung aller Issues fortfahren (Änderungen anwenden, Tests/QAs ausführen, `influxbro/config.yaml` version bump, commit und push), ohne weitere per‑Issue Rückfragen.
+  - Wahl 2: Normale Triage: Issues auflisten, Auswahl ermöglichen, dann die ausgewählten Issues implementieren.
+- Diese Verhaltensregel ist eine Agenten‑Policy und wird in dieser Datei dokumentiert, damit sie persistent ist.
+
 ### Requirements Log (local, fallback)
 
 - If GitHub Issues are not available, record user requirements/requests (as written) in `./.opencode/requests_log.md` with date + status.
