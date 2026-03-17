@@ -49,6 +49,7 @@
 
     /* Selection fields (master template) */
     .ib_sel { min-width: 0; }
+    .label_row { display:flex; justify-content:space-between; gap: 10px; align-items:baseline; }
     .ib_sel_label { font-size: var(--ib-sel-label-font); opacity: 0.9; }
     .ib_sel_stack { display:flex; flex-direction:column; gap: 6px; align-items:flex-start; }
     .ib_sel_stack input, .ib_sel_stack select {
@@ -129,22 +130,24 @@
               </div>
               <div class="row">
                 <div class="ib_sel" style="min-width: 240px;">
-                  <label class="ib_sel_label">entity_id</label>
+                  <label class="label_row ib_sel_label"><span>Entity ID (entity_id)</span><span id="cnt_src_entity" class="muted"></span></label>
                   <div class="ib_sel_stack">
-                    <input id="src_entity_id" placeholder="optional" data-ui="combine.src.entity_id" title="combine.src.entity_id"/>
+                    <input id="src_entity_id" list="src_entity_list" placeholder="optional" data-ui="combine.src.entity_id" title="combine.src.entity_id"/>
+                    <datalist id="src_entity_list"></datalist>
                     <div class="ib_sel_desc">
                       <button type="button" class="ib_sel_help" data-title="Quelle entity_id" data-help="Tag-Filter fuer die Quelle. Mindestens entity_id ODER friendly_name muss gesetzt sein.">?</button>
-                      <div class="muted">Mindestens eins erforderlich.</div>
+                      <div class="muted">Mindestens eins erforderlich. Measurement/Field werden bei Bedarf automatisch ermittelt.</div>
                     </div>
                   </div>
                 </div>
                 <div class="ib_sel" style="min-width: 240px;">
-                  <label class="ib_sel_label">friendly_name</label>
+                  <label class="label_row ib_sel_label"><span>Messwert (friendly_name)</span><span id="cnt_src_friendly" class="muted"></span></label>
                   <div class="ib_sel_stack">
-                    <input id="src_friendly_name" placeholder="optional" data-ui="combine.src.friendly" title="combine.src.friendly"/>
+                    <input id="src_friendly_name" list="src_friendly_list" placeholder="optional" data-ui="combine.src.friendly" title="combine.src.friendly"/>
+                    <datalist id="src_friendly_list"></datalist>
                     <div class="ib_sel_desc">
                       <button type="button" class="ib_sel_help" data-title="Quelle friendly_name" data-help="Tag-Filter fuer die Quelle. Mindestens entity_id ODER friendly_name muss gesetzt sein.">?</button>
-                      <div class="muted">Mindestens eins erforderlich.</div>
+                      <div class="muted">Mindestens eins erforderlich. Measurement/Field werden bei Bedarf automatisch ermittelt.</div>
                     </div>
                   </div>
                 </div>
@@ -178,22 +181,24 @@
               </div>
               <div class="row">
                 <div class="ib_sel" style="min-width: 240px;">
-                  <label class="ib_sel_label">entity_id</label>
+                  <label class="label_row ib_sel_label"><span>Entity ID (entity_id)</span><span id="cnt_tgt_entity" class="muted"></span></label>
                   <div class="ib_sel_stack">
-                    <input id="tgt_entity_id" placeholder="optional" data-ui="combine.tgt.entity_id" title="combine.tgt.entity_id"/>
+                    <input id="tgt_entity_id" list="tgt_entity_list" placeholder="optional" data-ui="combine.tgt.entity_id" title="combine.tgt.entity_id"/>
+                    <datalist id="tgt_entity_list"></datalist>
                     <div class="ib_sel_desc">
                       <button type="button" class="ib_sel_help" data-title="Ziel entity_id" data-help="Ziel-Tag. Mindestens entity_id ODER friendly_name muss gesetzt sein (Rollback/Loeschen braucht eindeutige Serie).">?</button>
-                      <div class="muted">Mindestens eins erforderlich.</div>
+                      <div class="muted">Mindestens eins erforderlich. Measurement/Field werden bei Bedarf automatisch ermittelt.</div>
                     </div>
                   </div>
                 </div>
                 <div class="ib_sel" style="min-width: 240px;">
-                  <label class="ib_sel_label">friendly_name</label>
+                  <label class="label_row ib_sel_label"><span>Messwert (friendly_name)</span><span id="cnt_tgt_friendly" class="muted"></span></label>
                   <div class="ib_sel_stack">
-                    <input id="tgt_friendly_name" placeholder="optional" data-ui="combine.tgt.friendly" title="combine.tgt.friendly"/>
+                    <input id="tgt_friendly_name" list="tgt_friendly_list" placeholder="optional" data-ui="combine.tgt.friendly" title="combine.tgt.friendly"/>
+                    <datalist id="tgt_friendly_list"></datalist>
                     <div class="ib_sel_desc">
                       <button type="button" class="ib_sel_help" data-title="Ziel friendly_name" data-help="Ziel-Tag. Mindestens entity_id ODER friendly_name muss gesetzt sein (Rollback/Loeschen braucht eindeutige Serie).">?</button>
-                      <div class="muted">Mindestens eins erforderlich.</div>
+                      <div class="muted">Mindestens eins erforderlich. Measurement/Field werden bei Bedarf automatisch ermittelt.</div>
                     </div>
                   </div>
                 </div>
@@ -316,10 +321,20 @@
       const $srcE = document.getElementById('src_entity_id');
       const $srcN = document.getElementById('src_friendly_name');
 
+      const $srcEntityList = document.getElementById('src_entity_list');
+      const $srcFriendlyList = document.getElementById('src_friendly_list');
+      const $cntSrcEntity = document.getElementById('cnt_src_entity');
+      const $cntSrcFriendly = document.getElementById('cnt_src_friendly');
+
       const $tgtM = document.getElementById('tgt_measurement');
       const $tgtF = document.getElementById('tgt_field');
       const $tgtE = document.getElementById('tgt_entity_id');
       const $tgtN = document.getElementById('tgt_friendly_name');
+
+      const $tgtEntityList = document.getElementById('tgt_entity_list');
+      const $tgtFriendlyList = document.getElementById('tgt_friendly_list');
+      const $cntTgtEntity = document.getElementById('cnt_tgt_entity');
+      const $cntTgtFriendly = document.getElementById('cnt_tgt_friendly');
 
       const $measList = document.getElementById('measurement_list');
       const $srcFieldList = document.getElementById('src_field_list');
@@ -409,6 +424,88 @@
         catch(e){ try{ window.InfluxBroClientLog && window.InfluxBroClientLog.fetchError && window.InfluxBroClientLog.fetchError(url, opts, e); }catch(x){}; throw new Error('Failed to fetch'); }
         const j = await r.json().catch(()=>({ok:false,error:'Invalid JSON'}));
         if(!r.ok || !j.ok) throw new Error(j.error || ('HTTP ' + r.status));
+        return j;
+      }
+
+      function _setCnt(el, n){
+        try{ if(!el) return; el.textContent = (n != null) ? ('(' + String(n) + ')') : ''; }catch(e){}
+      }
+
+      function _debounce(fn, ms){
+        let t = null;
+        return (...args)=>{
+          try{ if(t) clearTimeout(t); }catch(e){}
+          t = setTimeout(()=>{ t = null; try{ fn(...args); }catch(e){} }, ms);
+        };
+      }
+
+      async function loadTagValues(tag, params){
+        let url = './api/tag_values?tag=' + encodeURIComponent(String(tag||''));
+        const qp = new URLSearchParams();
+        Object.entries(params||{}).forEach(([k,v])=>{ if(v !== null && v !== undefined && String(v).trim() !== '') qp.set(k, String(v)); });
+        const qs = qp.toString();
+        if(qs) url += '&' + qs;
+        const j = await api(url);
+        return (j.values || []).map(x=>String(x||'')).filter(Boolean);
+      }
+
+      async function refreshSuggestions(side){
+        const s = (side === 'src') ? src() : tgt();
+        const meas = String(s.measurement || '').trim();
+        const eid = String(s.entity_id || '').trim();
+        const fn = String(s.friendly_name || '').trim();
+        const common = { range: '24h' };
+        if(meas) common.measurement = meas;
+
+        try{
+          if(side === 'src'){
+            const xsE = await loadTagValues('entity_id', {...common, friendly_name: fn || ''});
+            if($srcEntityList) $srcEntityList.innerHTML = xsE.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"></option>`).join('');
+            _setCnt($cntSrcEntity, xsE.length);
+            const xsF = await loadTagValues('friendly_name', {...common, entity_id: eid || ''});
+            if($srcFriendlyList) $srcFriendlyList.innerHTML = xsF.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"></option>`).join('');
+            _setCnt($cntSrcFriendly, xsF.length);
+          }else{
+            const xsE = await loadTagValues('entity_id', {...common, friendly_name: fn || ''});
+            if($tgtEntityList) $tgtEntityList.innerHTML = xsE.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"></option>`).join('');
+            _setCnt($cntTgtEntity, xsE.length);
+            const xsF = await loadTagValues('friendly_name', {...common, entity_id: eid || ''});
+            if($tgtFriendlyList) $tgtFriendlyList.innerHTML = xsF.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"></option>`).join('');
+            _setCnt($cntTgtFriendly, xsF.length);
+          }
+        }catch(e){
+          // ignore (suggestions are best-effort)
+        }
+      }
+
+      async function resolveSide(side){
+        const s0 = (side === 'src') ? src() : tgt();
+        if(!s0.entity_id && !s0.friendly_name) return null;
+
+        let tr = null;
+        try{ tr = timeRange(); }catch(e){ tr = null; }
+
+        const payload = {
+          friendly_name: s0.friendly_name,
+          entity_id: s0.entity_id,
+          measurement_filter: s0.measurement || null,
+        };
+        if(tr){ payload.range = 'custom'; payload.start = tr.start; payload.stop = tr.stop; }
+
+        const j = await api('./api/resolve_signal', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+
+        const m = String(j.measurement || '').trim();
+        const f = String(j.field || '').trim();
+        if(!m) return j;
+        if(side === 'src'){
+          if($srcM && (!$srcM.value || String($srcM.value||'').trim() === '')) $srcM.value = m;
+          await loadFields(m, $srcFieldList);
+          if($srcF && f) $srcF.value = f;
+        }else{
+          if($tgtM && (!$tgtM.value || String($tgtM.value||'').trim() === '')) $tgtM.value = m;
+          await loadFields(m, $tgtFieldList);
+          if($tgtF && f) $tgtF.value = f;
+        }
         return j;
       }
 
@@ -582,11 +679,15 @@
 
        async function _loadTimelineAndGraph(side){
          const tr = timeRange();
-         const series = (side === 'src') ? src() : tgt();
+         let series = (side === 'src') ? src() : tgt();
 
          // Avoid noisy API errors: require a fully identified series.
          if(!series.measurement || !series.field){
-           const metaTxt = 'Bitte measurement/field setzen.';
+           try{ await resolveSide(side); }catch(e){}
+           series = (side === 'src') ? src() : tgt();
+         }
+         if(!series.measurement || !series.field){
+           const metaTxt = 'Bitte measurement/field setzen (oder entity_id/friendly_name waehlen fuer Auto-Resolve).';
            if(side === 'src'){ try{ if($srcMeta) $srcMeta.textContent = metaTxt; }catch(e){} }
            else { try{ if($tgtMeta) $tgtMeta.textContent = metaTxt; }catch(e){} }
            try{ _drawTimeline(side, [], 0, 1); }catch(e){}
@@ -653,13 +754,17 @@
         }
       }
 
-      async function loadStats(){
-        setErr('');
-        setOk('');
-        const tr = timeRange();
-        const s = src();
-        const t = tgt();
-        const one = async (x)=>{
+       async function loadStats(){
+         setErr('');
+         setOk('');
+         const tr = timeRange();
+         const s = src();
+         const t = tgt();
+         const one = async (x)=>{
+          if((!x.measurement || !x.field) && (x.entity_id || x.friendly_name)){
+            try{ await resolveSide((x === s) ? 'src' : 'tgt'); }catch(e){}
+            x = (x === s) ? src() : tgt();
+          }
           if(!x.measurement || !x.field) return null;
           return await api('./api/stats', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({
             measurement: x.measurement,
@@ -715,15 +820,17 @@
         POLL = null;
       }
 
-      async function startCopy(){
-        setErr('');
-        setOk('');
-        const s = src();
-        const t = tgt();
-        if(!s.measurement || !s.field) throw new Error('Quelle: measurement und field erforderlich.');
-        if(!t.measurement || !t.field) throw new Error('Ziel: measurement und field erforderlich.');
-        if(!s.entity_id && !s.friendly_name) throw new Error('Quelle: entity_id oder friendly_name erforderlich.');
-        if(!t.entity_id && !t.friendly_name) throw new Error('Ziel: entity_id oder friendly_name erforderlich.');
+       async function startCopy(){
+         setErr('');
+         setOk('');
+         try{ await resolveSide('src'); }catch(e){}
+         try{ await resolveSide('tgt'); }catch(e){}
+         const s = src();
+         const t = tgt();
+         if(!s.measurement || !s.field) throw new Error('Quelle: measurement und field erforderlich.');
+         if(!t.measurement || !t.field) throw new Error('Ziel: measurement und field erforderlich.');
+         if(!s.entity_id && !s.friendly_name) throw new Error('Quelle: entity_id oder friendly_name erforderlich.');
+         if(!t.entity_id && !t.friendly_name) throw new Error('Ziel: entity_id oder friendly_name erforderlich.');
         const dir = $direction ? String($direction.value || 'src_to_tgt') : 'src_to_tgt';
         const sel = (dir === 'tgt_to_src') ? (SEL.tgt || {}) : (SEL.src || {});
         const startIso = (sel.start_ms!=null) ? _msToIsoUtc(sel.start_ms) : '';
@@ -816,9 +923,38 @@
       _bindTimelineSelection('src');
       _bindTimelineSelection('tgt');
 
+      const _debRefreshSrc = _debounce(()=>{ refreshSuggestions('src').catch(()=>{}); }, 350);
+      const _debRefreshTgt = _debounce(()=>{ refreshSuggestions('tgt').catch(()=>{}); }, 350);
+
+      const _debAutoResolveSrc = _debounce(()=>{
+        try{
+          const s = src();
+          if(!s.measurement && (s.entity_id || s.friendly_name)){
+            resolveSide('src').then(()=>{ _debRefreshSrc(); }).catch(()=>{});
+          }
+        }catch(e){}
+      }, 650);
+      const _debAutoResolveTgt = _debounce(()=>{
+        try{
+          const s = tgt();
+          if(!s.measurement && (s.entity_id || s.friendly_name)){
+            resolveSide('tgt').then(()=>{ _debRefreshTgt(); }).catch(()=>{});
+          }
+        }catch(e){}
+      }, 650);
+
       try{
         if($srcM) $srcM.addEventListener('input', ()=>{ loadFields($srcM.value, $srcFieldList); });
         if($tgtM) $tgtM.addEventListener('input', ()=>{ loadFields($tgtM.value, $tgtFieldList); });
+      }catch(e){}
+
+      try{
+        if($srcM) $srcM.addEventListener('input', ()=>{ _debRefreshSrc(); });
+        if($tgtM) $tgtM.addEventListener('input', ()=>{ _debRefreshTgt(); });
+        if($srcE) $srcE.addEventListener('input', ()=>{ _debRefreshSrc(); _debAutoResolveSrc(); });
+        if($srcN) $srcN.addEventListener('input', ()=>{ _debRefreshSrc(); _debAutoResolveSrc(); });
+        if($tgtE) $tgtE.addEventListener('input', ()=>{ _debRefreshTgt(); _debAutoResolveTgt(); });
+        if($tgtN) $tgtN.addEventListener('input', ()=>{ _debRefreshTgt(); _debAutoResolveTgt(); });
       }catch(e){}
 
       try{ if($swap) $swap.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} swap(); }); }catch(e){}
@@ -913,6 +1049,10 @@
           });
         });
       }catch(e){}
+
+      // initial suggestion lists (best-effort)
+      try{ refreshSuggestions('src').catch(()=>{}); }catch(e){}
+      try{ refreshSuggestions('tgt').catch(()=>{}); }catch(e){}
       </script>
     </main>
   </div>
