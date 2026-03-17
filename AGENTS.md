@@ -1,5 +1,40 @@
 # AGENTS.md
 
+
+
+# 🧠 AI Efficiency, Model Strategy & Cost Optimization (CRITICAL)
+
+## Model Strategy
+
+- Default model: GPT-5 mini (cost-efficient, fast, suitable for most tasks)
+- Escalation model: GPT-5.4 (ONLY when necessary)
+
+Escalate ONLY if:
+- multi-file architecture changes
+- repeated failures (>2 attempts)
+- complex debugging (concurrency, SQL, parsing, security)
+- unclear solution space
+
+Return to GPT-5 mini after solving.
+
+## Context Efficiency
+
+- Read only relevant files
+- Never load full repo unless required
+- Prefer partial reads (functions/sections)
+
+## Output Efficiency
+
+- Prefer diffs over full files
+- Do NOT repeat unchanged code
+- Keep explanations short unless requested
+
+## Cost Behavior
+
+- Avoid unnecessary iterations
+- Prefer small incremental changes
+- Use tools (grep/search) instead of reading many files
+
 This repository contains a Home Assistant add-on (Ingress UI) for browsing/cleaning InfluxDB data.
 
 UI design standard
