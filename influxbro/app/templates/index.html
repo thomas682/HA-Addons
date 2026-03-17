@@ -138,6 +138,8 @@
     #raw_tbl tr.raw_hl td { background: rgba(255, 153, 0, 0.18); }
     /* Selected raw row (for copy/paste actions) */
     #raw_tbl tr.raw_sel td { outline: 2px solid rgba(36,99,235,0.12); }
+    /* Focus highlight for inputs with missing required value */
+    .err_focus { outline: 2px solid rgba(198,40,40,0.92) !important; box-shadow: 0 0 6px rgba(198,40,40,0.18); }
 
     /* Edit columns are hidden until at least one row is in edit mode. */
     .col_edit { display: none; }
@@ -6002,9 +6004,14 @@ async function refreshAll(){
 
 async function refreshAllWithStatus(){
   try{
-    if(LOAD_INFLIGHT) return;
+  if(LOAD_INFLIGHT) return;
     if(!($e && String($e.value || "").trim())){
-      err("Bitte zuerst entity_id auswaehlen.");
+      // Improve guidance when entity_id is missing: show clear message and focus the field so
+      // users understand why "Aktualisieren" didn't start.
+      err("Bitte zuerst Entity ID auswählen (oder Messwert/Field setzen). Klicke in das Feld 'Entity ID' und wähle einen Wert.");
+      try{
+        if($e){ $e.focus(); $e.classList.add('err_focus'); setTimeout(()=>{ try{ $e.classList.remove('err_focus'); }catch(e){} }, 2200); }
+      }catch(e){}
       return;
     }
     startLoadUi();
