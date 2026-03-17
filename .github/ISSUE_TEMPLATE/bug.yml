@@ -15,20 +15,6 @@ body:
         Please provide as much information as possible so the issue can be reproduced.
         Include logs and steps to reproduce the problem.
 
-  - type: textarea
-    id: steps
-    attributes:
-      label: Fehlerbeschreibung
-      description: Welches Problem trat auf, bitte genau beschreiben?
-      placeholder: |
-        1. Open the add-on UI
-        2. Click on Statusleiste/Fehlerdiagnose/Bugreport ...
-        3. Erstellt Issue in GitHub
-        4. Füge ein bugreport.md vom Download
-        5. Beschreibe den Fehler
-    validations:
-      required: true
-
   - type: dropdown
     id: feature
     attributes:
@@ -51,6 +37,20 @@ body:
         - Profilverwaltung
         - Einstellungen
         - sonstiges
+    validations:
+      required: true
+      
+  - type: textarea
+    id: steps
+    attributes:
+      label: Fehlerbeschreibung
+      description: Welches Problem trat auf, bitte genau beschreiben?
+      placeholder: |
+        1. Open the add-on UI
+        2. Click on Statusleiste/Fehlerdiagnose/Bugreport ...
+        3. Erstellt Issue in GitHub
+        4. Füge ein bugreport.md vom Download
+        5. Beschreibe den Fehler
     validations:
       required: true
       
