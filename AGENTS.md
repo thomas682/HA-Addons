@@ -1,5 +1,3 @@
-# AGENTS.md
-
 # 🧠 AI Efficiency, Model Strategy & Cost Optimization (CRITICAL)
 
 ## Model Strategy
@@ -27,7 +25,6 @@ Return to GPT-5 mini after solving.
 - After escalation tasks are completed, MUST return to GPT-5 mini.
 - Do NOT continue using GPT-5.4 for follow-up tasks unless still required.
 - Prefer shortest possible reasoning path when using GPT-5.4.
--
 
 ## Context Efficiency
 
@@ -217,6 +214,23 @@ At the end of the task, explicitly report:
 - why they were skipped
 - final result of each executed check
 
+## QA Depth Strategy
+
+- Perform ONLY minimal sufficient QA by default:
+  - syntax
+  - API smoke tests
+  - basic runtime verification
+
+- Do NOT automatically perform:
+  - full end-to-end tests
+  - UI interaction simulations
+  - heavy integration tests
+
+- Only expand QA depth if:
+  - user explicitly requests it
+  - previous tests failed
+  - change is high-risk
+
 ## QA Completion Policy (NO QUESTIONS)
 
 - After completing all REQUIRED tests, DO NOT ask the user whether additional testing should be performed.
@@ -246,6 +260,7 @@ At the end of the task, explicitly report:
 ### Default Behavior (MANDATORY)
 
 After successful implementation AND completed QA:
+
 - DO NOT ask for confirmation
 - ALWAYS:
   - stage changes
@@ -264,12 +279,12 @@ After successful implementation AND completed QA:
 - Version format:
   - increment last digit (e.g. 1.12.44 → 1.12.45)
 
-
 ### Decision Logic (SIMPLIFIED FOR HA)
 
 #### Case 1: Small / Medium Changes
 
 If the change is:
+
 - bugfix
 - small feature
 - UI change
@@ -277,6 +292,7 @@ If the change is:
 - limited multi-file change
 
 THEN:
+
 - commit
 - bump version
 - push directly to `main`
@@ -284,6 +300,7 @@ THEN:
 #### Case 2: Larger Changes (HA-Test Required)
 
 If the change involves:
+
 - multiple files
 - new features
 - refactoring
@@ -292,6 +309,7 @@ If the change involves:
 AND requires testing inside Home Assistant:
 
 THEN:
+
 - commit
 - bump version
 - push directly to `main`
@@ -299,12 +317,14 @@ THEN:
 #### Case 3: High-Risk Changes
 
 If the change involves:
+
 - security-related logic
 - deletion logic
 - major architecture changes
 - unclear side effects
 
 THEN:
+
 - STILL push to `main` (for HA testing)
 - BUT:
   - clearly label commit message with:
@@ -319,6 +339,7 @@ Branches MAY be used ONLY if:
 - OR user explicitly requests PR workflow
 
 Otherwise:
+
 - ALWAYS use `main`
 
 ### Commit Rules
@@ -361,28 +382,12 @@ After push:
 ### Override Rule
 
 If user explicitly requests:
+
 - branch workflow
 - PR creation
 - no push
 
 → follow user instruction instead of this policy
-
-## QA Depth Strategy
-
-- Perform ONLY minimal sufficient QA by default:
-  - syntax
-  - API smoke tests
-  - basic runtime verification
-
-- Do NOT automatically perform:
-  - full end-to-end tests
-  - UI interaction simulations
-  - heavy integration tests
-
-- Only expand QA depth if:
-  - user explicitly requests it
-  - previous tests failed
-  - change is high-risk
 
 ## Requirements Tracking (preferred: GitHub Issues)
 
@@ -394,7 +399,7 @@ If user explicitly requests:
 - Ensure the label set exists in GitHub (create once in the GitHub UI); the issue templates assume these labels are available.
 - When implementing, link PRs to issues and close them via `Fixes #<id>`.
 
-#### GitHub Issues: Check, Select, Sync
+### GitHub Issues: Check, Select, Sync
 
 - Always check for open GitHub Issues when starting work on new items (unless the user explicitly points to a specific issue).
   - Commands:
@@ -418,7 +423,7 @@ If user explicitly requests:
   - add chosen "implement now" issues to the in-chat ToDo list and to `./.opencode/plan_state.md` (with `#<id>` + title)
   - when the issue is completed/declined/deferred, update `./.opencode/plan_state.md` accordingly
 
-#### GitHub Issues: Proactive Prompting
+### GitHub Issues: Proactive Prompting
 
 - In plan mode, after presenting the plan for the user's request, ALWAYS ask whether the user wants to triage GitHub Issues now.
 - After finishing implementation of the user's selected points (i.e. when the ToDo list is completed), ALSO ask whether the user wants to triage GitHub Issues next.
