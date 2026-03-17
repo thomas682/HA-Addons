@@ -10,6 +10,32 @@ body:
       value: |
         Thanks for the suggestion.
 
+
+  - type: dropdown
+    id: feature
+    attributes:
+      label: Feature / Function used
+      description: Which part of the add-on were you using?
+      options:
+        - Dashbaord Statistik
+        - Statistik
+        - Backup
+        - Restore
+        - Kombinieren
+        - Export
+        - Import
+        - Logs
+        - Jobs & Cache
+        - History
+        - Diagnose
+        - Changelog
+        - Handbuch
+        - Profilverwaltung
+        - Einstellungen
+        - sonstiges
+    validations:
+      required: true
+  
   - type: textarea
     id: requirement
     attributes:
@@ -19,6 +45,7 @@ body:
     validations:
       required: true
 
+     
   - type: dropdown
     id: priority
     attributes:
