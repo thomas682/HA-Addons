@@ -157,7 +157,7 @@
       <div><label>org</label><input id="org" /><div class="muted">Organisation (InfluxDB v2).</div></div>
       <div><label>bucket</label><input id="bucket" /><div class="muted">Bucket-Name (InfluxDB v2).</div></div>
       <div><label>token</label><input id="token" /><div class="muted">In der UI wird Token als <code>********</code> maskiert.</div></div>
-      <div><label>admin_token</label><input id="admin_token" /><div class="muted">Nur fuer <code>Native FullBackup/FullRestore (v2)</code>. Muss ein <b>All-Access Token</b> sein (sonst 401 Unauthorized: read:authorizations). Wird als <code>********</code> maskiert.</div></div>
+      <div><label>admin_token</label><input id="admin_token" /> <button id="admin_token_test" type="button" class="btn_sm">Token testen</button><div class="muted">Nur fuer <code>Native FullBackup/FullRestore (v2)</code>. Muss ein <b>All-Access Token</b> sein (sonst 401 Unauthorized: read:authorizations). Wird als <code>********</code> maskiert.</div></div>
     </div>
     <div class="muted">Token: lass <code>********</code> stehen, wenn du es nicht ändern willst.</div>
     </div>
@@ -1552,10 +1552,16 @@ async function testConn(){
   ok(j.message || "OK");
 }
 
-document.getElementById("find_yaml").addEventListener("click", ()=>findYaml().catch(e=>err(String(e))));
-document.getElementById("read_yaml").addEventListener("click", ()=>loadYaml().catch(e=>err(String(e))));
-document.getElementById("save").addEventListener("click", ()=>save().catch(e=>err(String(e))));
-document.getElementById("test").addEventListener("click", ()=>testConn().catch(e=>err(String(e))));
+  document.getElementById("find_yaml").addEventListener("click", ()=>findYaml().catch(e=>err(String(e))));
+  document.getElementById("read_yaml").addEventListener("click", ()=>loadYaml().catch(e=>err(String(e))));
+  document.getElementById("save").addEventListener("click", ()=>save().catch(e=>err(String(e))));
+  document.getElementById("test").addEventListener("click", ()=>testConn().catch(e=>err(String(e))));
+  try{ if(document.getElementById('admin_token_test')) document.getElementById('admin_token_test').addEventListener('click', (ev)=>{
+    try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+    (async ()=>{
+      try{ ok(''); err(''); const j = await api('./api/influx_admin_test'); if(!j || !j.ok) throw new Error((j && j.error) ? j.error : 'Fehler'); ok('Admin token: OK'); }catch(e){ err(String(e && e.message ? e.message : e)); }
+    })();
+  }); }catch(e){}
 
 try{
   if(el.ui_sel_auto_width) el.ui_sel_auto_width.addEventListener('change', ()=>{
