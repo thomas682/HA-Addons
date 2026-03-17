@@ -837,6 +837,26 @@ const $rawCopyQuery = document.getElementById('raw_copy_query');
 const $rawMore = document.getElementById('raw_more');
 const $rawTune = document.getElementById('raw_tune');
 const $rawTuneLink = document.getElementById('raw_tune_link');
+if($rawTuneLink){
+  $rawTuneLink.addEventListener('click', async (ev)=>{
+    _stop(ev);
+    try{
+      const payload = {
+        measurement: $m ? String($m.value || '') : '',
+        field: $f ? String($f.value || '') : '',
+        entity_id: $e ? String($e.value || '') : null,
+        friendly_name: $n ? String($n.value || '') : null,
+        start: $start ? String($start.value || '') : null,
+        stop: $stop ? String($stop.value || '') : null,
+      };
+      ok('Starte Auto-Tuning (Server)...');
+      const r = await fetch('./api/raw_autotune', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+      const j = await r.json().catch(()=>null);
+      if(!r.ok || !j || !j.ok){ err('Auto-Tuning fehlgeschlagen: ' + (j && j.error ? j.error : ('HTTP ' + r.status))); return; }
+      ok(`Auto-Tuning beendet: ui_raw_max_points=${j.chosen} (ms=${Math.round(j.measured_ms||0)})`);
+    }catch(e){ err('Auto-Tuning fehlgeschlagen: ' + String(e && e.message ? e.message : e)); }
+  });
+}
 const $rawQuerySection = document.getElementById('raw_query_section');
 const $rawQuery = document.getElementById('raw_query');
 
