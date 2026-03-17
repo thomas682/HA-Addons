@@ -1,5 +1,1 @@
-{
-  "allow_delete": false,
-  "delete_confirm_phrase": "DELETE",
-  "version": "dev"
-}
+{ "version": "dev", "allow_delete": false, "delete_confirm_phrase": "DELETE" }
