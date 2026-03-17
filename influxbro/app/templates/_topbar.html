@@ -141,10 +141,13 @@
     main.content details > summary::before {
       content: "\25B8"; /* small right-pointing triangle */
       display: inline-block;
-      width: 14px;
+      width: 20px;
+      font-size: 14px;
       opacity: 0.85;
       transform: rotate(0deg);
       transition: transform 120ms ease;
+      text-align: center;
+      line-height: 1;
     }
     main.content details[open] > summary::before { transform: rotate(90deg); }
   </style>
@@ -221,6 +224,22 @@
     try{ setZoom(getZoom()); }catch(e){}
     try{ if($m) $m.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}; inc(-STEP); }); }catch(e){}
     try{ if($p) $p.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}; inc(STEP); }); }catch(e){}
+  })();
+  </script>
+  <script>
+  // Keep CSS var --ib-topbar-h in sync with actual topbar height (responsive)
+  (function(){
+    function _updateTopbarHeight(){
+      try{
+        const el = document.querySelector('.ib_topbar');
+        if(!el) return;
+        const h = Math.ceil(el.getBoundingClientRect().height);
+        document.documentElement.style.setProperty('--ib-topbar-h', String(h) + 'px');
+        const bb = document.querySelector('.ib_bottombar');
+        if(bb){ const bh = Math.ceil(bb.getBoundingClientRect().height); document.documentElement.style.setProperty('--ib-bottombar-h', String(bh) + 'px'); }
+      }catch(e){}
+    }
+    try{ _updateTopbarHeight(); window.addEventListener('resize', _updateTopbarHeight); new MutationObserver(_updateTopbarHeight).observe(document.body, { childList: true, subtree: true, attributes: true }); }catch(e){}
   })();
   </script>
 </header>

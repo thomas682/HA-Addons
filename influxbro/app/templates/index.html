@@ -3786,11 +3786,12 @@ function _selInitHelpButtons(){
         try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
         const t = String(btn.getAttribute('data-title') || 'Info');
         const h = String(btn.getAttribute('data-help') || '');
+        const settings = btn.getAttribute('data-settings') ? true : false;
         try{
-          if(window.InfluxBroPopup && window.InfluxBroPopup.show) window.InfluxBroPopup.show(t, h);
-          else alert(t + '\n\n' + h);
+          if(window.InfluxBroPopup && window.InfluxBroPopup.show) window.InfluxBroPopup.show(t, h, { settings: settings });
+          else alert(t + '\n\n' + h + (settings ? '\n\nEinstellungen: ./config' : ''));
         }catch(e){
-          try{ alert(t + '\n\n' + h); }catch(ex){}
+          try{ alert(t + '\n\n' + h + (settings ? '\n\nEinstellungen: ./config' : '')); }catch(ex){}
         }
       });
     });

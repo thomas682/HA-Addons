@@ -674,10 +674,20 @@
     jumpLogsBtn.style.padding = '8px 10px';
     jumpLogsBtn.style.height = '34px';
 
+    const settingsBtn = document.createElement('button');
+    settingsBtn.id = 'influxbro_popup_settings';
+    settingsBtn.type = 'button';
+    settingsBtn.textContent = 'Einstellungen';
+    settingsBtn.style.cursor = 'pointer';
+    settingsBtn.style.padding = '8px 10px';
+    settingsBtn.style.height = '34px';
+    settingsBtn.style.display = 'none';
+
     right.appendChild(bugBtn);
     right.appendChild(bugHint);
     right.appendChild(logsBtn);
     right.appendChild(jumpLogsBtn);
+    right.appendChild(settingsBtn);
     controls.appendChild(right);
 
     const pre = document.createElement('pre');
@@ -964,21 +974,33 @@
     return root;
   }
 
-   function _show(title, msg){
-     const root = _ensureUi();
-     const t = document.getElementById('influxbro_popup_title');
-     const pre = document.getElementById('influxbro_popup_pre');
-     if(t) t.textContent = title || 'Hinweis';
-     if(pre) pre.textContent = String(msg || '');
-     try{ window.__InfluxBroPopupLast = { title: String(title || ''), msg: String(msg || '') }; }catch(e){}
-     root.style.display = 'block';
-   }
+    function _show(title, msg, opts){
+      const root = _ensureUi();
+      const t = document.getElementById('influxbro_popup_title');
+      const pre = document.getElementById('influxbro_popup_pre');
+      const settingsBtn = document.getElementById('influxbro_popup_settings');
+      if(t) t.textContent = title || 'Hinweis';
+      if(pre) pre.textContent = String(msg || '');
+      try{ window.__InfluxBroPopupLast = { title: String(title || ''), msg: String(msg || '') }; }catch(e){}
+      try{
+        if(settingsBtn){
+          if(opts && opts.settings){
+            settingsBtn.style.display = 'inline-block';
+            settingsBtn.onclick = ()=>{ try{ location.href = './config'; }catch(e){} };
+          }else{
+            settingsBtn.style.display = 'none';
+            settingsBtn.onclick = null;
+          }
+        }
+      }catch(e){}
+      root.style.display = 'block';
+    }
 
   window.InfluxBroPopup = {
-      show: (title, msg) => {
+      show: (title, msg, opts) => {
         const t = String(title || 'Hinweis').trim() || 'Hinweis';
         const s = String(msg || '').trim();
-        _show(t, s);
+        _show(t, s, opts || {});
       },
       error: (msg) => {
         const s = String(msg || '').trim();
