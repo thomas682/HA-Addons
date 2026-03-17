@@ -1719,12 +1719,41 @@
       $createRangeSel.addEventListener('click', ()=>createRangeBackupSel().catch(e=>err(String(e && e.message ? e.message : e))));
       if($cancel) $cancel.addEventListener('click', ()=>cancelCreate());
       $del.addEventListener('click', ()=>deleteBackup().catch(e=>err(String(e && e.message ? e.message : e))));
+      async function _saveResponseAsFile(resp){
+        try{
+          if(!resp || !resp.ok) throw new Error('Download fehlgeschlagen: HTTP ' + (resp && resp.status));
+          const blob = await resp.blob();
+          let filename = 'download.bin';
+          try{
+            const cd = resp.headers.get('content-disposition') || '';
+            const m = /filename\*=UTF-8''([^;]+)|filename=\"?([^\";]+)\"?/.exec(cd);
+            if(m){ filename = decodeURIComponent(m[1] || m[2] || filename); }
+          }catch(e){}
+
+          if('showSaveFilePicker' in window){
+            try{
+              const handle = await window.showSaveFilePicker({ suggestedName: filename });
+              const writable = await handle.createWritable();
+              await writable.write(blob);
+              await writable.close();
+              return;
+            }catch(e){ /* fallback to anchor download */ }
+          }
+
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+        }catch(e){ err(String(e && e.message ? e.message : e)); }
+      }
+
       if($download) $download.addEventListener('click', (ev)=>{
         try{ ev.preventDefault(); }catch(e){}
         try{
           const one = (SELECTED_IDS && SELECTED_IDS.size === 1) ? Array.from(SELECTED_IDS)[0] : '';
           if(!one) return;
-          location.href = `./api/backup_download?id=${encodeURIComponent(String(one))}`;
+          fetch(`./api/backup_download?id=${encodeURIComponent(String(one))}`, { method: 'GET' })
+            .then(resp => _saveResponseAsFile(resp))
+            .catch(e=>err(String(e && e.message ? e.message : e)));
         }catch(e){}
       });
 
@@ -1737,7 +1766,11 @@
         try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
         const one = (FULL_SELECTED_IDS && FULL_SELECTED_IDS.size === 1) ? Array.from(FULL_SELECTED_IDS)[0] : '';
         if(!one) return;
-        try{ location.href = `./api/fullbackup_download?id=${encodeURIComponent(String(one))}`; }catch(e){}
+        try{
+          fetch(`./api/fullbackup_download?id=${encodeURIComponent(String(one))}`, { method: 'GET' })
+            .then(resp => _saveResponseAsFile(resp))
+            .catch(e=>err(String(e && e.message ? e.message : e)));
+        }catch(e){}
       }); }catch(e){}
       try{ if($fullBackupSelAll) $fullBackupSelAll.addEventListener('change', ()=>{
         const on = !!$fullBackupSelAll.checked;

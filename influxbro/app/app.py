@@ -3406,6 +3406,34 @@ def api_get_config():
     })
 
 
+@app.get("/api/influx_admin_test")
+def api_influx_admin_test():
+    """Best-effort test whether the configured admin_token has sufficient rights.
+
+    Returns ok:true when a minimal authorizations call succeeds, otherwise an error message.
+    """
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    admin_token = str(cfg.get("admin_token") or "").strip()
+    if not admin_token:
+        return jsonify({"ok": False, "error": "admin_token missing in settings"}), 400
+
+    try:
+        with v2_admin_client(cfg, timeout_seconds_override=min(8, int(cfg.get("timeout_seconds") or 10))) as c:
+            try:
+                # Do a minimal authorizations call; avoid passing params for broad compatibility.
+                c.authorizations_api().find_authorizations()  # type: ignore[attr-defined]
+            except Exception as e:
+                try:
+                    LOG.warning("influx_admin_test_failed err=%s", _short_influx_error(e))
+                except Exception:
+                    pass
+                return jsonify({"ok": False, "error": _short_influx_error(e)}), 400
+    except Exception as e:
+        return jsonify({"ok": False, "error": _short_influx_error(e)}), 400
+
+    return jsonify({"ok": True})
+
+
 def _resolve_host_ip(host: str) -> str | None:
     h = (host or "").strip()
     if not h:
@@ -6250,7 +6278,9 @@ def api_fullbackup_job_start():
                 with v2_admin_client(cfg, timeout_seconds_override=min(8, int(cfg.get("timeout_seconds") or 10))) as c:
                     try:
                         # best-effort: will fail with 401 if token is not all-access
-                        c.authorizations_api().find_authorizations(limit=1)  # type: ignore[attr-defined]
+                        # best-effort: will fail with 401 if token is not all-access
+                        # Older/newer client libs may have different signatures; avoid passing params.
+                        c.authorizations_api().find_authorizations()  # type: ignore[attr-defined]
                     except Exception as e:
                         raise e
             except Exception as e:
