@@ -219,7 +219,139 @@ At the end of the task, explicitly report:
 - Default behavior:
   - minimal sufficient QA
   - no interactive confirmation required
- 
+
+## Auto Push & PR Policy (ENFORCED – HA MAIN-FIRST MODE)
+
+### Core Principle
+
+- Home Assistant ONLY detects updates from the `main` branch.
+- Therefore ALL changes MUST be pushed to `main` to enable testing inside Home Assistant.
+- Feature branches and PR-only workflows are NOT the default in this repository.
+
+### Default Behavior (MANDATORY)
+
+After successful implementation AND completed QA:
+- DO NOT ask for confirmation
+- ALWAYS:
+  - stage changes
+  - create commit
+  - bump add-on version
+  - push directly to `main`
+
+### Version Bump (CRITICAL FOR HA)
+
+- Every change that affects runtime, UI, API, or behavior MUST:
+  - increment `version` in `influxbro/config.yaml`
+
+- Without version bump:
+  - Home Assistant will NOT detect an update
+
+- Version format:
+  - increment last digit (e.g. 1.12.44 → 1.12.45)
+
+
+### Decision Logic (SIMPLIFIED FOR HA)
+
+#### Case 1: Small / Medium Changes
+
+If the change is:
+- bugfix
+- small feature
+- UI change
+- API adjustment
+- limited multi-file change
+
+THEN:
+- commit
+- bump version
+- push directly to `main`
+
+#### Case 2: Larger Changes (HA-Test Required)
+
+If the change involves:
+- multiple files
+- new features
+- refactoring
+- logic changes
+
+AND requires testing inside Home Assistant:
+
+THEN:
+- commit
+- bump version
+- push directly to `main`
+
+#### Case 3: High-Risk Changes
+
+If the change involves:
+- security-related logic
+- deletion logic
+- major architecture changes
+- unclear side effects
+
+THEN:
+- STILL push to `main` (for HA testing)
+- BUT:
+  - clearly label commit message with:
+    - `⚠ HIGH-RISK`
+  - ensure stricter QA before push
+
+### Optional Branch Usage (LIMITED)
+
+Branches MAY be used ONLY if:
+
+- change can be tested locally WITHOUT Home Assistant
+- OR user explicitly requests PR workflow
+
+Otherwise:
+- ALWAYS use `main`
+
+### Commit Rules
+
+- Use structured commit messages:
+  - feat: for new features
+  - fix: for bug fixes
+  - refactor: for restructuring
+  - chore: for maintenance
+
+- Include short summary + key changes
+
+- For risky changes:
+  - prefix with: `⚠ HIGH-RISK`
+
+### Safeguards (MANDATORY)
+
+- NEVER push if:
+  - syntax check failed
+  - required QA not executed
+  - blocking errors exist
+
+- ALWAYS ensure:
+  - minimal QA passed
+  - version bump applied
+
+- NEVER force push
+
+### Completion Behavior
+
+After push:
+
+- report:
+  - new version number
+  - commit summary
+  - confirmation that HA update is available
+
+- DO NOT ask for confirmation
+
+### Override Rule
+
+If user explicitly requests:
+- branch workflow
+- PR creation
+- no push
+
+→ follow user instruction instead of this policy
+
 ## QA Depth Strategy
 
 - Perform ONLY minimal sufficient QA by default:
