@@ -735,3 +735,4 @@ from flask import Flask, jsonify, request
 - If you are done implementing the requested work and are ready for the next instruction, you MUST:
   - play a sound: `afplay /System/Library/Sounds/Glass.aiff`
   - speak (German): `say "Fertig mit der Umsetzung"`
+ - Zusätzlich: Bei Fragen nach den nächsten Schritten oder Entscheidungen — sowie unmittelbar nach Abschluss einer Umsetzung — MUSS der Agent einen Signalton abspielen (`afplay /System/Library/Sounds/Glass.aiff`) und eine kurze Sprachausgabe in Deutsch ausgeben (`say "Entscheidung erforderlich"` für Fragen, `say "Fertig mit der Umsetzung"` bei Abschluss). Diese Ergänzung stellt sicher, dass wichtige Entscheidungen und Beendigungen akustisch hervorgehoben werden.

@@ -11321,6 +11321,142 @@ from(bucket: "{cfg["bucket"]}")
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
 
 
+@app.post("/api/raw_autotune")
+def api_raw_autotune():
+    """Server-side Auto-Tuning for UI `ui_raw_max_points`.
+
+    Expects JSON body similar to /api/raw_points: measurement, field, start, stop, entity_id/friendly_name optional.
+    Runs a small benchmark by issuing DB queries with varying limits and selects a `ui_raw_max_points` that keeps query time near a target.
+    """
+
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    body = request.get_json(force=True) or {}
+
+    measurement = str(body.get("measurement") or "").strip()
+    field = str(body.get("field") or "").strip()
+    entity_id = str(body.get("entity_id") or "").strip() or None
+    friendly_name = str(body.get("friendly_name") or "").strip() or None
+
+    if not measurement or not field:
+        return jsonify({"ok": False, "error": "measurement and field required"}), 400
+
+    try:
+        start_dt, stop_dt = _get_start_stop_from_payload(body)
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"invalid start/stop: {e}"}), 400
+    if not start_dt or not stop_dt:
+        return jsonify({"ok": False, "error": "start and stop required"}), 400
+
+    # tuning parameters (allow override)
+    try:
+        target_ms = int(body.get("target_ms", 1500))
+    except Exception:
+        target_ms = 1500
+    try:
+        step = int(body.get("step", 1000))
+    except Exception:
+        step = 1000
+    try:
+        min_pts = int(body.get("min_pts", 1000))
+    except Exception:
+        min_pts = 1000
+    try:
+        max_pts = int(body.get("max_pts", 200000))
+    except Exception:
+        max_pts = 200000
+
+    # clamp sensible bounds
+    min_pts = max(100, min_pts)
+    max_pts = min(2000000, max_pts)
+    step = max(1, abs(step))
+
+    def _bench_v2(limit: int) -> float:
+        # run a Flux query with limit and measure elapsed ms
+        extra = flux_tag_filter(entity_id, friendly_name)
+        start = _dt_to_rfc3339_utc(start_dt)
+        stop = _dt_to_rfc3339_utc(stop_dt)
+        q = f'''
+from(bucket: "{cfg['bucket']}")
+  |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
+  |> keep(columns: ["_time","_value"])
+  |> sort(columns: ["_time"], desc: false)
+  |> limit(n: {limit})
+'''
+        t0 = time.perf_counter()
+        with v2_client(cfg, timeout_seconds_override=max(5, int(cfg.get("timeout_seconds", 10)))) as c:
+            try:
+                # iterate through results to ensure query completes
+                for _ in c.query_api().query_stream(q, org=cfg["org"]):
+                    pass
+            except Exception as e:
+                raise
+        return (time.perf_counter() - t0) * 1000.0
+
+    def _bench_v1(limit: int) -> float:
+        start = _dt_to_rfc3339_utc(start_dt)
+        stop = _dt_to_rfc3339_utc(stop_dt)
+        tag_where = influxql_tag_filter(entity_id, friendly_name)
+        time_where = f"time >= '{start}' AND time <= '{stop}'"
+        q = f'SELECT "{field}" FROM "{measurement}" WHERE {time_where}{tag_where} ORDER BY time ASC LIMIT {limit}'
+        t0 = time.perf_counter()
+        c = v1_client(cfg)
+        try:
+            res = c.query(q)
+            # exhaust results
+            for _, pts in res.items():
+                for _ in pts:
+                    pass
+        finally:
+            try:
+                c.close()
+            except Exception:
+                pass
+        return (time.perf_counter() - t0) * 1000.0
+
+    try:
+        # quick validation of connectivity
+        if int(cfg.get("influx_version", 2)) == 2:
+            if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+                return jsonify({"ok": False, "error": "InfluxDB v2 requires token/org/bucket"}), 400
+            bench = _bench_v2
+        else:
+            if not cfg.get("database"):
+                return jsonify({"ok": False, "error": "InfluxDB v1 requires database"}), 400
+            bench = _bench_v1
+
+        lo = max(min_pts, step * math.floor(min_pts / step))
+        hi = max_pts - (max_pts % step)
+        best = lo
+        iter = 0
+        last_ms = None
+        while lo <= hi and iter < 12:
+            mid = int(round((lo + hi) / (2.0 * step)) * step)
+            mid = max(step, mid)
+            try:
+                ms = bench(mid)
+            except Exception as e:
+                # bench failed for this limit; reduce and continue
+                hi = mid - step
+                iter += 1
+                continue
+            last_ms = ms
+            if ms <= target_ms:
+                best = mid
+                lo = mid + step
+            else:
+                hi = mid - step
+            iter += 1
+
+        # Persist the chosen value in runtime config
+        cfg2 = load_cfg()
+        cfg2["ui_raw_max_points"] = int(best)
+        save_cfg(cfg2)
+        return jsonify({"ok": True, "chosen": int(best), "measured_ms": float(last_ms or 0.0)})
+    except Exception as e:
+        return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
+
+
 @app.post("/api/window_points")
 def api_window_points():
     """Return time/value points for a given window, optionally downsampled."""
