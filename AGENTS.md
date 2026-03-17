@@ -202,6 +202,41 @@ At the end of the task, explicitly report:
 - why they were skipped
 - final result of each executed check
 
+## QA Completion Policy (NO QUESTIONS)
+
+- After completing all REQUIRED tests, DO NOT ask the user whether additional testing should be performed.
+
+- If all required checks passed:
+  - declare QA as completed
+  - provide a short summary of results
+  - proceed to next logical step (e.g. push, PR, or finish)
+
+- Only ask for additional QA if:
+  - explicitly requested by the user
+  - critical functionality could not be tested
+  - test environment is incomplete (e.g. missing InfluxDB)
+
+- Default behavior:
+  - minimal sufficient QA
+  - no interactive confirmation required
+ 
+## QA Depth Strategy
+
+- Perform ONLY minimal sufficient QA by default:
+  - syntax
+  - API smoke tests
+  - basic runtime verification
+
+- Do NOT automatically perform:
+  - full end-to-end tests
+  - UI interaction simulations
+  - heavy integration tests
+
+- Only expand QA depth if:
+  - user explicitly requests it
+  - previous tests failed
+  - change is high-risk
+
 ## Requirements Tracking (preferred: GitHub Issues)
 
 - Track requirements primarily as GitHub Issues so others can create/report items externally.
