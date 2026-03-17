@@ -65,6 +65,10 @@ GitHub Issues: Language
 
 - When creating GitHub Issues for the user, write the title and body in German.
 
+Kommunikation
+
+- Alle Interaktionen im Chat mit dem Benutzer sollen auf Deutsch erfolgen. Wenn du dem Benutzer eine Frage stellst oder eine Entscheidung einforderst, formuliere diese Frage auf Deutsch.
+
 No Cursor/Copilot instruction files were found at:
 
 - `.cursor/rules/`
