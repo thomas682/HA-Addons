@@ -542,3 +542,7 @@ Ausreisser:
 ## Release Notes (1.12.47)
 
 - UI: Raw-Tabelle — Kopieren/Einfügen von Einzelwerten: Du kannst jetzt eine Raw‑Zeile anklicken und mit `Wert kopieren` den numerischen Wert in die Zwischenablage/Client‑Zwischenablage übernehmen. Anschließend eine Zielzeile auswählen und `Einfügen` klicken, um den Wert in die Bearbeitungsliste (Staging) einzufügen. Die bestehenden Staging/Apply‑Workflows werden wiederverwendet (`Aenderungen in Datenbank uebernehmen`).
+
+## Release Notes (1.12.48)
+
+- UI: Verbesserte Benutzerführung wenn Felder fehlen: Bei Aktionen wie `Aktualisieren` oder `Fehlersuche Ausreisser` werden nun klare Hinweise gegeben, wenn `entity_id` bzw. `measurement`/`field` fehlen. Das entsprechende Eingabefeld wird kurz fokussiert und hervorgehoben.

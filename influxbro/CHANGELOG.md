@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.12.48
+
+### UI
+
+- Dashboard: Besseres Feedback wenn erforderliche Felder fehlen — beim Drücken von `Aktualisieren` ohne `entity_id` oder bei Aktionen wie Ausreisser‑Suche ohne `measurement`/`field` wird nun eine klarere Fehlermeldung angezeigt und das fehlende Feld fokussiert/hervorgehoben.
+
 ## 1.12.47
 
 ### UI

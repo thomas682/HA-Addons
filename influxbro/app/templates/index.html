@@ -6325,8 +6325,13 @@ async function runOutlierScan(){
     try{ await resolveSignal(); }catch(e){}
     base = currentFilters();
   }
-  if(!base.measurement || !base.field){
-    err("Measurement/Field fehlt. Bitte einmal 'Aktualisieren' oder Auswahl neu setzen.");
+    if(!base.measurement || !base.field){
+    // Improve guidance: focus the missing control(s) so user immediately sees what to set.
+    err("Measurement oder Field fehlt. Bitte Auswahl (Measurement/Field) setzen und dann 'Aktualisieren' klicken.");
+    try{
+      if(!base.measurement && $m){ $m.focus(); $m.classList.add('err_focus'); setTimeout(()=>{ try{ $m.classList.remove('err_focus'); }catch(e){} }, 2200); }
+      if(!base.field && $f){ $f.focus(); $f.classList.add('err_focus'); setTimeout(()=>{ try{ $f.classList.remove('err_focus'); }catch(e){} }, 2200); }
+    }catch(e){}
     return;
   }
 
