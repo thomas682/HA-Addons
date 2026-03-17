@@ -538,3 +538,7 @@ Ausreisser:
 - Zeitraum: die genaue "von bis" Anzeige wird direkt unterhalb der Zeitraum‑Auswahl angezeigt.
 - Query Details: zeigt Start, Ende und Ausführungsdauer der letzten Abfrage sowie eine History.
 - Help Popup: optionaler "Einstellungen" Button im Hilfe‑Popup, wenn relevant.
+
+## Release Notes (1.12.47)
+
+- UI: Raw-Tabelle — Kopieren/Einfügen von Einzelwerten: Du kannst jetzt eine Raw‑Zeile anklicken und mit `Wert kopieren` den numerischen Wert in die Zwischenablage/Client‑Zwischenablage übernehmen. Anschließend eine Zielzeile auswählen und `Einfügen` klicken, um den Wert in die Bearbeitungsliste (Staging) einzufügen. Die bestehenden Staging/Apply‑Workflows werden wiederverwendet (`Aenderungen in Datenbank uebernehmen`).

@@ -136,6 +136,8 @@
     /* Raw table: monospace for stable digit widths. */
     #raw_tbl, #raw_tbl th, #raw_tbl td { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
     #raw_tbl tr.raw_hl td { background: rgba(255, 153, 0, 0.18); }
+    /* Selected raw row (for copy/paste actions) */
+    #raw_tbl tr.raw_sel td { outline: 2px solid rgba(36,99,235,0.12); }
 
     /* Edit columns are hidden until at least one row is in edit mode. */
     .col_edit { display: none; }
@@ -420,6 +422,9 @@
               <label><input type="checkbox" id="raw_wrap" class="row_sel" data-ui="raw.wrap" title="raw.wrap"/>Umbruch</label>
               <label><input type="checkbox" id="raw_colfilter" class="row_sel" data-ui="raw.colfilter" title="raw.colfilter"/>Spaltenfilter</label>
               <button class="btn_sm" id="raw_copy" data-ui="raw.copy" title="raw.copy">Kopieren</button>
+              <button class="btn_sm" id="raw_copy_value" data-ui="raw.copy_value" title="raw.copy_value">Wert kopieren</button>
+              <button class="btn_sm" id="raw_paste" data-ui="raw.paste" title="raw.paste" disabled>Einfügen</button>
+              <span id="raw_copied_info" class="muted" style="margin-left:6px;"></span>
               <button class="btn_sm" id="raw_copy_query" data-ui="raw.copy_query" title="raw.copy_query">Query kopieren</button>
               <button class="btn_sm" id="raw_more" data-ui="raw.more" title="raw.more" style="display:none;">Mehr laden</button>
               <button class="btn_sm" id="raw_tune_link" data-ui="raw.tune.link" title="raw.tune">Einstellungen: Autotuning</button>
@@ -840,6 +845,9 @@ const $rawCopyQuery = document.getElementById('raw_copy_query');
 const $rawMore = document.getElementById('raw_more');
 const $rawTune = document.getElementById('raw_tune');
 const $rawTuneLink = document.getElementById('raw_tune_link');
+const $rawCopyValue = document.getElementById('raw_copy_value');
+const $rawPaste = document.getElementById('raw_paste');
+const $rawCopiedInfo = document.getElementById('raw_copied_info');
 if($rawTuneLink){
   $rawTuneLink.addEventListener('click', async (ev)=>{
     _stop(ev);
@@ -4060,8 +4068,14 @@ function renderRawTable(){
     try{
       const ms = Date.parse(String(r.time || ''));
       if(isFinite(ms)) tr.setAttribute('data-ts-ms', String(ms));
+      const key = rowKey(r);
+      if(key) tr.dataset.key = key;
       if(bestMs !== null && isFinite(ms) && ms === bestMs){
         tr.classList.add('raw_hl');
+      }
+      // Preserve explicit selection state
+      if(typeof RAW_ROW_SELECTED_KEY !== 'undefined' && RAW_ROW_SELECTED_KEY && String(RAW_ROW_SELECTED_KEY) === String(key)){
+        tr.classList.add('raw_sel');
       }
     }catch(e){}
     const tdT = document.createElement('td');
@@ -4070,6 +4084,30 @@ function renderRawTable(){
     tdV.textContent = fmtNum(r.value);
     tr.appendChild(tdT);
     tr.appendChild(tdV);
+
+    // Row click: select for copy/paste (separate from graph highlight)
+    tr.addEventListener('click', (ev)=>{
+      try{ _stop(ev); }catch(e){}
+      // avoid interfering with other clickable controls
+      const target = ev && ev.target;
+      if(target && target.tagName){ const tag = String(target.tagName).toLowerCase(); if(tag === 'button' || tag === 'input' || tag === 'select') return; }
+      const k = tr.dataset.key || '';
+      try{
+        // toggle selection
+        const prev = RAW_ROW_SELECTED_KEY || '';
+        if(prev && prev === k){
+          RAW_ROW_SELECTED_KEY = null;
+          tr.classList.remove('raw_sel');
+        }else{
+          // clear previous
+          Array.from(document.querySelectorAll('#raw_tbl tbody tr.raw_sel')).forEach(x=>x.classList.remove('raw_sel'));
+          RAW_ROW_SELECTED_KEY = k;
+          tr.classList.add('raw_sel');
+        }
+      }catch(e){}
+      try{ updateRawToolbarState(); }catch(e){}
+    });
+
     $rawBody.appendChild(tr);
   });
 
@@ -4081,6 +4119,69 @@ function renderRawTable(){
 
   renderRawQuery();
 }
+
+// --- Raw copy/paste state + toolbar helpers
+let RAW_ROW_SELECTED_KEY = null;
+let RAW_COPIED = null; // { key, raw_value, value_str, time }
+
+function updateRawToolbarState(){
+  try{
+    if(!$rawPaste || !$rawCopyValue) return;
+    const hasCopied = !!(RAW_COPIED && RAW_COPIED.key !== undefined);
+    const hasTarget = !!(RAW_ROW_SELECTED_KEY && String(RAW_ROW_SELECTED_KEY).trim());
+    $rawPaste.disabled = !(hasCopied && hasTarget && String(RAW_ROW_SELECTED_KEY) !== String(RAW_COPIED && RAW_COPIED.key));
+    // Copy button enabled only if a row is selected or one is highlighted
+    const anySel = hasTarget || !!(document.querySelector('#raw_tbl tbody tr.raw_hl'));
+    $rawCopyValue.disabled = !anySel;
+    if($rawCopiedInfo){
+      $rawCopiedInfo.textContent = hasCopied ? (`kopiert: ${String(RAW_COPIED.value_str || '')}`) : '';
+    }
+  }catch(e){}
+}
+
+try{
+  if($rawCopyValue) $rawCopyValue.addEventListener('click', async (ev)=>{
+    _stop(ev);
+    try{
+      // Determine source row: prefer explicit selection, else highlighted
+      let key = RAW_ROW_SELECTED_KEY;
+      if(!key){
+        const hl = document.querySelector('#raw_tbl tbody tr.raw_hl');
+        if(hl) key = hl.dataset.key || '';
+      }
+      if(!key){ err('Bitte zuerst eine Raw-Zeile waehlen (anklicken).'); return; }
+      const row = (RAW_ROWS || []).find(r => rowKey(r) === key);
+      if(!row){ err('Zeile nicht geladen.'); return; }
+      RAW_COPIED = { key: key, raw_value: row.value, value_str: String(fmtNumNoRound(row.value, UI_DECIMALS)), time: row.time };
+      // Try also to place into system clipboard (best-effort)
+      try{ await copyTextToClipboard(RAW_COPIED.value_str); }catch(e){}
+      ok('Wert kopiert.');
+      updateRawToolbarState();
+    }catch(e){ displayError(e); }
+  });
+}catch(e){}
+
+try{
+  if($rawPaste) $rawPaste.addEventListener('click', (ev)=>{
+    _stop(ev);
+    try{
+      if(!RAW_COPIED){ err('Kein kopierter Wert vorhanden.'); return; }
+      let target = RAW_ROW_SELECTED_KEY;
+      if(!target){ const hl = document.querySelector('#raw_tbl tbody tr.raw_hl'); if(hl) target = hl.dataset.key || ''; }
+      if(!target){ err('Bitte Ziel-Zeile waehlen (anklicken).'); return; }
+      if(String(target) === String(RAW_COPIED.key)){ err('Quell- und Zielzeile sind identisch.'); return; }
+      // Stage as overwrite
+      ensureStagedByKey(target);
+      setNewValue(target, String(RAW_COPIED.raw_value), 'Copy-Paste');
+      ok('Wert in Staging uebernommen.');
+      renderTable();
+      updateRawToolbarState();
+    }catch(e){ displayError(e); }
+  });
+}catch(e){}
+
+// Keep toolbar state in sync when raw table changes
+try{ updateRawToolbarState(); }catch(e){}
 
 function _rawCanMore(){
   try{

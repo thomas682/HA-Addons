@@ -71,6 +71,41 @@ No Cursor/Copilot instruction files were found at:
 - `.cursorrules`
 - `.github/copilot-instructions.md`
 
+## Parallel Execution Strategy (CONTROLLED)
+
+### General Rule
+
+- Parallel execution is allowed ONLY for clearly independent read, search, and validation tasks.
+- If one task can affect the assumptions, design, or implementation of another task, analysis MUST be sequential.
+
+### Allowed Parallel Tasks
+
+The following may run in parallel ONLY if they are independent:
+
+- reading unrelated files
+- searching the codebase
+- reviewing open GitHub issues
+- collecting logs
+- locating relevant tests
+
+### Sequential Analysis Required
+
+Analysis MUST remain sequential if:
+
+- tasks affect the same files or modules
+- one change can alter the design of later changes
+- API, UI, and config behavior are connected
+- there is any uncertainty about dependency order
+
+### Write Operations
+
+- All code changes MUST remain strictly sequential.
+- Version bump, changelog, manual updates, commit, and push MUST remain strictly sequential.
+
+### Safety Rule
+
+- When in doubt, prefer sequential analysis over parallel analysis.
+
 ## Plan Mode Workflow
 
 When plan mode is active:
@@ -87,6 +122,58 @@ When plan mode is active:
 - Keep exactly one item `in_progress` at a time.
 - Mark items `completed` as soon as they are done.
 - Ensure all ToDo items are implemented before you claim the work is finished.
+
+## Autonomous Execution Policy (NO INTERMEDIATE QUESTIONS)
+
+### Core Rule
+
+- If the user explicitly approves implementation (e.g. "implement all issues", "go", or equivalent),
+  the agent MUST execute all tasks end-to-end WITHOUT asking intermediate questions.
+
+### No-Interruption Rule
+
+- DO NOT ask for:
+  - step-by-step confirmation
+  - prioritization choices
+  - “how should I proceed?” questions
+  - numbered selection prompts (1/2/3)
+
+- Once execution is approved:
+  - proceed through ALL ToDo items automatically
+  - only stop if a real blocker exists
+
+### Allowed Interruptions (ONLY THESE)
+
+The agent MAY interrupt execution ONLY if:
+
+- critical information is missing (cannot proceed)
+- external dependency is required (e.g. credentials, API access)
+- multiple valid implementations exist with significant impact
+- a destructive or irreversible action is required
+
+### Default Behavior
+
+- Assume: user wants FULL execution of approved tasks
+- Execute tasks sequentially until:
+  - all ToDo items are completed OR
+  - a real blocker is encountered
+
+### Handling Multi-Issue Execution
+
+If multiple issues are selected:
+
+- process issues sequentially
+- complete one issue fully before starting the next
+- DO NOT ask between issues
+- DO NOT re-confirm execution
+
+### Reporting
+
+- Only report:
+  - after a logical block is completed (e.g. one issue fully implemented), OR
+  - at the very end
+
+- Reporting must NOT include questions unless a blocker exists
 
 ## End-of-Implementation Verification (Required)
 
@@ -732,7 +819,6 @@ from flask import Flask, jsonify, request
 - If you need any input/decision from the user to continue (any question that blocks progress or requires a choice), you MUST:
   - play a sound: `afplay /System/Library/Sounds/Glass.aiff`
   - speak (German): `say "Entscheidung erforderlich"`
-- If you are done implementing the requested work and are ready for the next instruction, you MUST:
+- If you are done implementing the requested work are ready for the next instruction, you MUST:
   - play a sound: `afplay /System/Library/Sounds/Glass.aiff`
   - speak (German): `say "Fertig mit der Umsetzung"`
- - Zusätzlich: Bei Fragen nach den nächsten Schritten oder Entscheidungen — sowie unmittelbar nach Abschluss einer Umsetzung — MUSS der Agent einen Signalton abspielen (`afplay /System/Library/Sounds/Glass.aiff`) und eine kurze Sprachausgabe in Deutsch ausgeben (`say "Entscheidung erforderlich"` für Fragen, `say "Fertig mit der Umsetzung"` bei Abschluss). Diese Ergänzung stellt sicher, dass wichtige Entscheidungen und Beendigungen akustisch hervorgehoben werden.
