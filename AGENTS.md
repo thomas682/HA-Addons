@@ -17,6 +17,18 @@ Escalate ONLY if:
 
 Return to GPT-5 mini after solving.
 
+## Model Selection Priority (ENFORCED)
+
+- ALWAYS start with GPT-5 mini unless the task is clearly complex from the beginning.
+- Escalation to GPT-5.4 MUST be justified by:
+  - task complexity
+  - repeated failure
+  - ambiguity
+
+- After escalation tasks are completed, MUST return to GPT-5 mini.
+- Do NOT continue using GPT-5.4 for follow-up tasks unless still required.
+- Prefer shortest possible reasoning path when using GPT-5.4.
+- 
 ## Context Efficiency
 
 - Read only relevant files
@@ -83,7 +95,110 @@ When plan mode is active:
   - what would be needed to complete it
 - Perform a final checklist-style confirmation before declaring the work finished.
 
-### Requirements Tracking (preferred: GitHub Issues)
+## Mandatory Testing & Cost-Aware Execution (REQUIRED)
+
+After every implementation, testing is REQUIRED, but execution must remain cost-efficient.
+
+### Execution Order
+
+Run checks in this order:
+
+1. Syntax / static sanity check first
+2. Targeted tests second
+3. Runtime / Docker checks only if relevant
+4. Full broader validation only if earlier checks fail or the change is high-risk
+
+### Minimum Required Checks
+
+#### 1. Syntax Check (ALWAYS)
+Run:
+- `python -m py_compile influxbro/app/app.py`
+
+This must pass before declaring the work complete.
+
+#### 2. Targeted Tests (WHEN AVAILABLE)
+If existing tests cover the changed functionality, run the smallest relevant subset first, for example:
+- single test by node id
+- single test file
+- keyword-filtered pytest run
+
+Examples:
+- `pytest tests/test_api_yaml_flow.py -q`
+- `pytest tests/test_api_yaml_flow.py::test_load_influx_yaml_resolves_secret -q`
+- `pytest -k measurements -q`
+
+Do NOT start with full test suites unless necessary.
+
+#### 3. Runtime / API Smoke Test (WHEN RELEVANT)
+If backend routes, request handling, config loading, or UI-triggered API actions were changed, perform at least one relevant smoke test.
+
+Examples:
+- `curl -fsS http://localhost:8099/api/info | jq .`
+- `curl -fsS http://localhost:8099/api/config | jq .`
+
+#### 4. Docker Verification (ONLY WHEN RELEVANT)
+Build and/or run Docker ONLY if changes affect:
+- runtime behavior
+- dependencies
+- container behavior
+- startup scripts
+- add-on packaging
+- config handling
+
+Example:
+- `docker build -t influxbro:dev ./influxbro`
+
+### UI Verification (WHEN RELEVANT)
+
+If templates, JavaScript, or browser interactions were changed:
+- verify the affected page loads
+- verify the changed interaction path only
+- avoid broad manual retesting of unrelated pages
+
+### Cost Optimization Rules
+
+- Prefer the cheapest sufficient model for:
+  - syntax-related fixes
+  - log interpretation
+  - small single-file corrections
+  - narrow follow-up adjustments
+
+- Use the stronger model only for:
+  - multi-file architecture work
+  - repeated failed fixes
+  - complex debugging
+  - ambiguous root-cause analysis
+
+- Prefer targeted reads over full-file rereads.
+- Prefer targeted tests over full test suites.
+- Do not rerun the same failing test repeatedly without making a change.
+- Do not perform Docker/runtime validation if the change is clearly documentation-only or non-runtime-only.
+
+### Failure Handling
+
+If any required check fails:
+- do NOT declare the work complete
+- fix the issue first
+- rerun the smallest relevant validation set
+- escalate validation scope only if needed
+
+### Completion Rule
+
+Implementation is ONLY complete if:
+- syntax check passed
+- relevant targeted tests passed (if applicable)
+- relevant runtime/API checks passed (if applicable)
+- relevant Docker/build checks passed (if applicable)
+
+### Reporting Rule
+
+At the end of the task, explicitly report:
+- which checks were executed
+- which were skipped
+- why they were skipped
+- final result of each executed check
+
+## Requirements Tracking (preferred: GitHub Issues)
 
 - Track requirements primarily as GitHub Issues so others can create/report items externally.
 - Use the issue templates to distinguish between:
