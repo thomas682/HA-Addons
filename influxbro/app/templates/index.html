@@ -212,7 +212,7 @@
       </div>
     </div>
     <div class="control ib_sel ib_sel_time span2" id="c_range" data-ui="filter_range">
-      <label class="label_row ib_sel_label"><span>Zeitraum (Graph/Tabelle)</span><span><span id="cnt_range" class="muted"></span> <span id="range_from_to" class="muted" data-ui="filter_range_bounds"></span></span></label>
+      <label class="label_row ib_sel_label"><span>Zeitraum (Graph/Tabelle)</span><span><span id="cnt_range" class="muted"></span></span></label>
       <div class="ib_sel_stack">
       <select id="range" data-ui="filter_range_select">
         <option value="1h">Letzte 1h</option>
@@ -233,6 +233,9 @@
         <button type="button" class="ib_sel_help" data-title="Zeitraum" data-help="Steuert den Zeitbereich fuer Graph und Tabelle. Bei Benutzerdefiniert kannst du Start/Stop setzen. Der angezeigte Bereich wird als lokale Zeit interpretiert und als UTC an die API gesendet.">?</button>
         <div class="muted">Zeitintervall fuer Graph/Tabelle.</div>
       </div>
+      </div>
+      <div style="margin-top:6px;">
+        <div id="range_from_to" class="muted" data-ui="filter_range_bounds"></div>
       </div>
     </div>
     <div class="control ib_sel" id="c_entity" data-ui="filter_entity">
@@ -2943,7 +2946,7 @@ function displayError(e){
   err(s.length > 600 ? (s.slice(0, 600) + "...") : s);
 }
 
-function setLastQuery(q, triggeredAtIso){
+function setLastQuery(q, triggeredAtIso, durationMs){
   try{
     const s = String(q || '').trim();
     if(!$queryDetails || !$queryPre){
@@ -2959,7 +2962,8 @@ function setLastQuery(q, triggeredAtIso){
     const end = new Date().toISOString();
     if($queryMeta){
       const startTxt = at ? fmtTs(at) : fmtTs(end);
-      $queryMeta.textContent = `Start: ${startTxt} | Ende: ${fmtTs(end)}`;
+      const dur = (durationMs !== undefined && durationMs !== null && isFinite(Number(durationMs))) ? (' | Dauer: ' + _fmtDur(Number(durationMs))) : '';
+      $queryMeta.textContent = `Start: ${startTxt} | Ende: ${fmtTs(end)}${dur}`;
     }
     $queryPre.textContent = s;
     $queryDetails.style.display = 'block';
@@ -5823,19 +5827,21 @@ async function loadData(){
 
   const q0 = performance.now();
   const startedAtIso = new Date().toISOString();
+  const q0 = performance.now();
   const j = await api(
     "./api/query",
     {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(filters)},
     { key: "query", status: "Query laeuft..." },
   );
-  setLastQuery(j.query || "", startedAtIso);
+  const dur = performance.now() - q0;
+  LOAD_QUERY_MS = dur;
+  setLastQuery(j.query || "", startedAtIso, dur);
   try{
     const cnt = Array.isArray(j.rows) ? j.rows.length : 0;
     const totalPts = (j && j.meta && j.meta.total_points !== undefined) ? String(j.meta.total_points) : '';
     const resp = `ok=${String(!!j.ok)} rows=${cnt}${totalPts?` total_points=${totalPts}`:''}`;
     if(window.InfluxBroQueryHistory && window.InfluxBroQueryHistory.add) window.InfluxBroQueryHistory.add('dashboard', 'Aktualisieren', String(j.query||''), resp, startedAtIso);
   }catch(e){}
-  LOAD_QUERY_MS = performance.now() - q0;
   if(STATUS_COUNT > 0) _setLoadStatus("Query fertig – Graph wird aktualisiert...");
   const rows0 = j.rows || [];
   try{ LAST_JUMP_SPANS = (j && j.meta && Array.isArray(j.meta.jump_spans)) ? j.meta.jump_spans : []; }catch(e){ LAST_JUMP_SPANS = []; }

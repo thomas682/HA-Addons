@@ -531,3 +531,10 @@ Ausreisser:
 
 - `Info`: Influx Datenbank Diagnose (best-effort).
 - `Changelog`: Release Notes + Repository-Link.
+
+## Release Notes (1.12.46)
+
+- Harmonisierung: Section Title Bars und Info‑Icons vereinheitlicht; Details‑Pfeil vergrößert.
+- Zeitraum: die genaue "von bis" Anzeige wird direkt unterhalb der Zeitraum‑Auswahl angezeigt.
+- Query Details: zeigt Start, Ende und Ausführungsdauer der letzten Abfrage sowie eine History.
+- Help Popup: optionaler "Einstellungen" Button im Hilfe‑Popup, wenn relevant.
