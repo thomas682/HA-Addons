@@ -12244,7 +12244,9 @@ def _global_stats_job_thread(
 data = from(bucket: "{bucket}")
   |> range(start: time(v: "{s_iso}"), stop: time(v: "{e_iso}"))
   |> filter(fn: (r) => {pred})
-  |> filter(fn: (r) => typeOf(v: r._value) == "float" or typeOf(v: r._value) == "int" or typeOf(v: r._value) == "uint")
+  // NOTE: removed typeOf() check for compatibility with older Influx/Flux versions where typeOf is not available.
+  // Rely on downstream numeric conversion (float(v: r._value)) and error handling. If non-numeric values exist,
+  // they will be ignored by the reduce logic or cause chunking which is handled by retries.
   |> map(fn: (r) => ({{ r with entity_id: if exists r.entity_id then string(v: r.entity_id) else "", friendly_name: if exists r.friendly_name then string(v: r.friendly_name) else "" }}))
   |> keep(columns: ["_measurement","_field","entity_id","friendly_name","_time","_value"])
   |> group(columns: ["_measurement","_field","entity_id","friendly_name"])
