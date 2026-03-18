@@ -550,3 +550,6 @@ Ausreisser:
 ## Release Notes (1.12.49)
 
 - UI: Einstellungen — Der Button `Influx Verbindung testen` zeigt jetzt direkt unterhalb einen sichtbaren Statustext; bei Erfolg erscheint zusätzlich ein kleines Bestätigungs‑Modal. Fehlerbehandlung bleibt unverändert.
+## Release Notes (1.12.50)
+
+- Fix: Testverbindung zeigt nun zuverlässig sichtbaren Status und Erfolg‑Modal an, auch wenn die Settings‑Template an dieser Stelle unterschiedliche HTML‑Versionen liefern (Runtime‑Fallback erzeugt Elemente bei Bedarf). Backend‑Antworten mit `connected:true` werden als Erfolg anerkannt.
