@@ -546,3 +546,7 @@ Ausreisser:
 ## Release Notes (1.12.48)
 
 - UI: Verbesserte Benutzerführung wenn Felder fehlen: Bei Aktionen wie `Aktualisieren` oder `Fehlersuche Ausreisser` werden nun klare Hinweise gegeben, wenn `entity_id` bzw. `measurement`/`field` fehlen. Das entsprechende Eingabefeld wird kurz fokussiert und hervorgehoben.
+
+## Release Notes (1.12.49)
+
+- UI: Einstellungen — Der Button `Influx Verbindung testen` zeigt jetzt direkt unterhalb einen sichtbaren Statustext; bei Erfolg erscheint zusätzlich ein kleines Bestätigungs‑Modal. Fehlerbehandlung bleibt unverändert.

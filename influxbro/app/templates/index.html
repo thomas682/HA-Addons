@@ -192,7 +192,7 @@
   <details id="selection_details" {{ 'open' if cfg.get('ui_open_selection') else '' }} data-ui="section.selection" title="section.selection">
     <summary><span class="ib_summary_row"><span>Auswahl</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Auswahl" data-info-body="Auswahl bestimmt, welche Serie geladen wird (measurement/field/entity_id/friendly_name) und welcher Zeitraum fuer Graph/Tabellen gilt.\n\nTypisch:\n1) friendly_name/entity_id waehlen (Measurement optional als Filter).\n2) Zeitraum setzen (Preset oder Custom).\n3) Laden startet Query und fuellt Graph, Raw und Tabellen.\n\nHinweis:\n- Auswahl wird im Browser gespeichert und fuer Backup/Restore/Export wiederverwendet." >i</button></span></summary>
 
-  <div class="grid" id="filters" data-ui="dashboard.filters" title="dashboard.filters">
+    <div class="grid" id="filters" data-ui="dashboard.filters" title="dashboard.filters">
     <div class="control ib_sel" id="c_measurement_filter" data-ui="filter_measurement">
       <label class="label_row ib_sel_label"><span>Einheit (_measurement)</span><span id="cnt_measurement_filter" class="muted"></span></label>
       <div class="ib_sel_stack">
@@ -201,6 +201,16 @@
         <div class="ib_sel_desc">
           <button type="button" class="ib_sel_help" data-title="Einheit (_measurement)" data-help="Filtert die Vorschlaege fuer friendly_name/entity_id auf dieses Measurement. Du kannst frei tippen oder aus der Liste waehlen.">?</button>
           <div class="muted">Filtert die Vorschlaege nach Measurement.</div>
+        </div>
+      </div>
+    </div>
+    <div class="control ib_sel" id="c_field_select" data-ui="filter_field">
+      <label class="label_row ib_sel_label"><span>Field (intern)</span><span id="cnt_field" class="muted"></span></label>
+      <div class="ib_sel_stack">
+        <select id="field" data-ui="filter_field_select" title="filter_field_select"></select>
+        <div class="ib_sel_desc">
+          <button type="button" class="ib_sel_help" data-title="Field (intern)" data-help="Wahl des internen Field-Namens (Influx field).">?</button>
+          <div class="muted">Internes Field Auswahl (wird bei Measurement-Änderung befüllt).</div>
         </div>
       </div>
     </div>
@@ -319,7 +329,6 @@
     <summary><span class="ib_summary_row"><span>Erweitert: Measurement / Field</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Erweitert" data-info-body="Erweiterte Auswahl, wenn friendly_name/entity_id nicht eindeutig ist oder du direkt Measurement/Field setzen willst.\n\nHinweis:\n- Measurement/Field beeinflussen alle nachfolgenden Queries (Graph/Raw/Stats)." >i</button></span></summary>
     <div class="grid" style="margin-top:12px;">
       <div class="control"><label>Measurement (intern)</label><select id="measurement" data-ui="dashboard.measurement" title="dashboard.measurement"></select></div>
-      <div class="control"><label>Field (intern)</label><select id="field" data-ui="dashboard.field" title="dashboard.field"></select></div>
       <div class="control span2"><div class="muted">Wird automatisch anhand des Klartextnamens ermittelt (wenn moeglich).</div></div>
     </div>
   </details>
@@ -807,6 +816,19 @@ const $loadStatusTime = document.getElementById('load_status_time');
 const $btnReset = document.getElementById('reset_filters');
 
 try{ if($btnOutlierReset) $btnOutlierReset.disabled = true; }catch(e){}
+
+// If measurement select is empty on user click, attempt to (re)load measurements
+try{
+  if($m){
+    $m.addEventListener('click', ()=>{
+      try{
+        const optCount = ($m.options || []).length;
+        // optCount <= 1 means placeholder or empty
+        if(!optCount || optCount <= 1){ loadMeasurements().catch(()=>{}); }
+      }catch(e){}
+    });
+  }
+}catch(e){}
 
 try{ if($btnLastError) $btnLastError.addEventListener('click', (ev)=>{ _stop(ev); try{ window.InfluxBroErrors && window.InfluxBroErrors.showLast && window.InfluxBroErrors.showLast(); }catch(e){}; }); }catch(e){}
 
