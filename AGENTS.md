@@ -56,6 +56,11 @@ New Requests: Issue or Immediate Implementation
 - When the user asks for new requirements/bugs/changes, ask first whether the item should be recorded as a GitHub Issue (to be implemented later via the issue backlog) or implemented immediately.
 - Only start implementation after the user chooses one of these two paths.
 
+Default Test Host & Operational Mode
+
+- Verwende standardmäßig für externe API‑Smoke/Integrationstests die Add‑on IP `http://192.168.2.200:8099` (sofern vom Benutzer nicht anders angegeben). Tests gegen `127.0.0.1:8099` sind nur für lokale Entwicklungsinstanzen gedacht.
+- Betriebsmodus: Wenn der Benutzer den Betriebsmodus auf "build"/"GO" wechselt, darf der Agent Änderungen am Arbeitsbaum vornehmen, Dateien ändern, Tests ausführen und Commits/pushes nach `main` erstellen, gemäß den sonstigen Repo‑Richtlinien. Notiere solche Moduswechsel in `AGENTS.md` und handle danach entsprechend.
+
 Questions: Numeric Choices
 
 - If you need user input and the answer is a selection (A/B, yes/no, option set), write the question so the user can reply with a single number.
