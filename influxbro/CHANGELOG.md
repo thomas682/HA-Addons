@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.12.54
+
+### UI
+
+- Dashboard: Bei Auswahl eines `friendly_name` wird die gefilterte `entity_id`-Liste sofort nachgeladen und automatisch auf den ersten passenden Eintrag gesetzt.
+- Dashboard: `Field (intern)` startet mit der Standardauswahl `value` und bleibt auch bei leerem Measurement verwendbar.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
+## 1.12.53
+
+### UI
+
+- Dashboard: `Field (intern)` ist jetzt nie mehr leer. Das Auswahlfeld enthält standardmäßig `value` und bleibt auch bei leerem oder noch nicht aufgelöstem Measurement benutzbar.
+- Dashboard: Bei Eingabe oder Auswahl eines gültigen Measurements werden die verfügbaren Fields sofort nachgeladen; bei leerem Measurement wird automatisch auf `value` zurückgesetzt.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.52
 
 ### UI

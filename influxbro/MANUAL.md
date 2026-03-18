@@ -562,3 +562,11 @@ Ausreisser:
 
 - Dashboard: Vorschlagslisten für `_measurement`, `friendly_name` und `entity_id` werden robuster geladen und zusätzlich serverseitig in die Seite eingebettet. Dadurch erscheinen die Auswahlwerte auch dann, wenn die clientseitige Initialisierung verspätet startet.
 - Fix: Statistik-Abfragen sind wieder kompatibler mit älteren Flux-Versionen, da die nicht überall verfügbare Funktion `typeOf()` entfernt wurde.
+
+## Release Notes (1.12.53)
+
+- Dashboard: Das Feld `Field (intern)` ist jetzt standardmäßig mit `value` vorbelegt und bleibt auch dann nutzbar, wenn noch kein Measurement ausgewählt oder geladen ist. Sobald ein gültiges Measurement gesetzt wird, werden die passenden Fields automatisch nachgeladen.
+
+## Release Notes (1.12.54)
+
+- Dashboard: Wenn du einen `friendly_name` auswählst, wird die gefilterte `entity_id`-Liste automatisch aktualisiert und direkt der erste passende Eintrag gesetzt. Dadurch ist die Auswahl sofort vollständig vorbelegt.

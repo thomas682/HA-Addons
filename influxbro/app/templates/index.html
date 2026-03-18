@@ -211,7 +211,9 @@
     <div class="control ib_sel" id="c_field_select" data-ui="filter_field">
       <label class="label_row ib_sel_label"><span>Field (intern)</span><span id="cnt_field" class="muted"></span></label>
       <div class="ib_sel_stack">
-        <select id="field" data-ui="filter_field_select" title="filter_field_select"></select>
+        <select id="field" data-ui="filter_field_select" title="filter_field_select">
+          <option value="value" selected>value</option>
+        </select>
         <div class="ib_sel_desc">
           <button type="button" class="ib_sel_help" data-title="Field (intern)" data-help="Wahl des internen Field-Namens (Influx field).">?</button>
           <div class="muted">Internes Field Auswahl (wird bei Measurement-Änderung befüllt).</div>
@@ -3901,13 +3903,37 @@ async function loadMeasurements(){
 }
 
 async function loadFields(){
+  const preferred = String(($f && $f.value) || "value").trim() || "value";
+  const measurement = String(($m && $m.value) || "").trim();
   $f.innerHTML = "";
+
+  const addFieldOption = (x) => {
+    const s = String(x || "").trim();
+    if(!s) return;
+    const has = Array.from($f.options || []).some(o => String(o.value) === s);
+    if(has) return;
+    const o = document.createElement("option");
+    o.value = s;
+    o.textContent = s;
+    $f.appendChild(o);
+  };
+
+  // Always keep a useful default so the field selector is never empty.
+  addFieldOption("value");
+
+  if(!measurement){
+    $f.value = preferred;
+    return;
+  }
+
   const j = await api(
-    "./api/fields?measurement=" + encodeURIComponent($m.value),
+    "./api/fields?measurement=" + encodeURIComponent(measurement),
     null,
     { key: "fields", status: "Lade Fields..." },
   );
-  j.fields.forEach(x=>{ const o=document.createElement("option"); o.value=x; o.textContent=x; $f.appendChild(o); });
+  (j.fields || []).forEach(addFieldOption);
+  addFieldOption(preferred);
+  $f.value = Array.from($f.options || []).some(o => String(o.value) === preferred) ? preferred : "value";
 }
 
 async function loadEntityIds(){
@@ -6177,11 +6203,11 @@ const onFriendlyChanged = debounce(()=>{
           _hideTagChoices();
         }
 
-        // Auto-select entity_id only when there is a single match.
+        // Auto-select the first filtered entity_id so the dashboard always has a concrete target.
         const candidates = (ALL_ENTITY || []).filter(x => x);
         const cur = String($e.value || '').trim();
         const fn = String($n.value || '').trim();
-        if(fn && candidates.length === 1 && (!cur || !candidates.includes(cur))){
+        if(fn && candidates.length > 0 && (!cur || !candidates.includes(cur))){
           $e.value = candidates[0];
           saveState();
           renderEntity();
@@ -6254,6 +6280,24 @@ $start.addEventListener("change", async ()=>{ if($r.value==="custom") { saveStat
 $stop.addEventListener("change", async ()=>{ if($r.value==="custom") { saveState(); autoSpanAll(); renderTableRange(); renderRangeFromTo(); } });
 
 $m.addEventListener("change", async ()=>{ try{ await loadFields(); } catch(e){ err(String(e)); } });
+$m.addEventListener("input", async ()=>{
+  try{
+    const mv = String($m.value || "").trim();
+    if(!mv){
+      if($f){
+        $f.innerHTML = "";
+        const o = document.createElement("option");
+        o.value = "value";
+        o.textContent = "value";
+        o.selected = true;
+        $f.appendChild(o);
+      }
+      return;
+    }
+    const hasMeasurement = Array.isArray(ALL_MEASUREMENTS) && ALL_MEASUREMENTS.includes(mv);
+    if(hasMeasurement) await loadFields();
+  }catch(e){}
+});
 
 // Search inputs (case-insensitive filtering)
 // (search inputs removed; datalist inputs filter automatically)
