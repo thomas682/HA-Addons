@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.12.58
+
+### UI
+
+- Dashboard: `Aktualisieren` funktioniert wieder, auch wenn die Auswahl zunaechst nur ueber `friendly_name` erfolgt. Vor dem Laden wird die `entity_id` bei Bedarf automatisch aus den gefilterten Vorschlaegen uebernommen.
+- Dashboard: Statt einer blockierenden Fehlermeldung nur wegen fehlender `entity_id` prueft die Seite jetzt auf eine vollstaendige Signal-Auswahl (`friendly_name` oder `entity_id` plus Measurement/Field).
+- Dashboard: Beim Klick auf `Aktualisieren` wird jetzt immer sofort ein sichtbarer Status gestartet (`Auswahl wird geprueft...`, `Auswahl wird aufgeloest...`, `Daten werden geladen...`) und bei Validierungsfehlern auch sauber als Fehlerstatus stehen gelassen.
+- Dashboard: Der Bereich `Erweitert: Measurement / Field` ist aus der sichtbaren UI entfernt.
+- Dashboard/Export: `Field` ist nicht mehr blind auf `value` fixiert. Wenn `value` in den verfuegbaren Fields existiert, wird es automatisch vorausgewaehlt; andernfalls bleibt das Feld leer.
+- Export: `friendly_name` bleibt bei automatischer `entity_id`-Uebernahme erhalten und wird nicht mehr direkt wieder geloescht.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.56
 
 ### UI

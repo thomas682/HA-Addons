@@ -582,3 +582,10 @@ Ausreisser:
 - Export: Der Export liefert wieder echte Datenzeilen; ein Testexport gegen die Add-on-Instanz ergab `2840` Zeilen.
 - Logs: `Follow` wurde auf eine Checkbox umgestellt.
 - Jobs: Timer-Modi lassen sich jetzt direkt in der Tabelle über Auswahlboxen und passende Zeitfelder bearbeiten und speichern.
+
+## Release Notes (1.12.58)
+
+- Dashboard: `Aktualisieren` startet jetzt wieder sauber, auch wenn du zuerst nur einen `friendly_name` auswählst. Die Seite ermittelt vor dem Laden automatisch eine passende `entity_id`, statt das Laden wegen einer leeren Entity-ID abzubrechen.
+- Dashboard: Beim Klick auf `Aktualisieren` siehst du jetzt immer sofort einen sichtbaren Status im Ladebereich, auch wenn die Auswahl noch geprüft oder aufgelöst wird.
+- Dashboard/Export: `Field` wird nur dann automatisch auf `value` gesetzt, wenn dieser Eintrag in den verfügbaren Feldern wirklich existiert. Andernfalls bleibt das Feld leer.
+- Export: `friendly_name` bleibt erhalten, wenn automatisch die passende `entity_id` ergänzt wird.

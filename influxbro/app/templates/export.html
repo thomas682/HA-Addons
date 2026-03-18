@@ -496,13 +496,9 @@
       }
 
       function cleanTagSelection(){
-        // Avoid accidental AND-filter (entity_id + friendly_name) if one field is empty/old.
-        const fn = String($n.value||'').trim();
-        const eid = String($e.value||'').trim();
-        if(fn && eid){
-          // prefer entity_id if both set
-          try{ $n.value = ''; }catch(e){}
-        }
+        // Keep both values if they belong together. Only normalize empty values.
+        try{ if($n && !String($n.value || '').trim()) $n.value = ''; }catch(e){}
+        try{ if($e && !String($e.value || '').trim()) $e.value = ''; }catch(e){}
       }
 
       function pad2(n){ return String(n).padStart(2,'0'); }

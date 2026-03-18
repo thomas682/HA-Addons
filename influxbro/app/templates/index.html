@@ -212,7 +212,7 @@
       <label class="label_row ib_sel_label"><span>Field (intern)</span><span id="cnt_field" class="muted"></span></label>
       <div class="ib_sel_stack">
         <select id="field" data-ui="filter_field_select" title="filter_field_select">
-          <option value="value" selected>value</option>
+          <option value=""></option>
         </select>
         <div class="ib_sel_desc">
           <button type="button" class="ib_sel_help" data-title="Field (intern)" data-help="Wahl des internen Field-Namens (Influx field).">?</button>
@@ -340,7 +340,7 @@
     </div>
   </details>
 
-  <details>
+  <details style="display:none;">
     <summary><span class="ib_summary_row"><span>Erweitert: Measurement / Field</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Erweitert" data-info-body="Erweiterte Auswahl, wenn friendly_name/entity_id nicht eindeutig ist oder du direkt Measurement/Field setzen willst.\n\nHinweis:\n- Measurement/Field beeinflussen alle nachfolgenden Queries (Graph/Raw/Stats)." >i</button></span></summary>
     <div class="grid" style="margin-top:12px;">
       <div class="control"><label>Measurement (intern)</label><input id="measurement" list="measurement_list" placeholder="optional" data-ui="dashboard.measurement" title="dashboard.measurement" />
@@ -3903,7 +3903,7 @@ async function loadMeasurements(){
 }
 
 async function loadFields(){
-  const preferred = String(($f && $f.value) || "value").trim() || "value";
+  const preferred = String(($f && $f.value) || "").trim();
   const measurement = String(($m && $m.value) || "").trim();
   $f.innerHTML = "";
 
@@ -3918,11 +3918,13 @@ async function loadFields(){
     $f.appendChild(o);
   };
 
-  // Always keep a useful default so the field selector is never empty.
-  addFieldOption("value");
+  const emptyOpt = document.createElement("option");
+  emptyOpt.value = "";
+  emptyOpt.textContent = "";
+  $f.appendChild(emptyOpt);
 
   if(!measurement){
-    $f.value = preferred;
+    $f.value = preferred || "";
     return;
   }
 
@@ -3932,8 +3934,11 @@ async function loadFields(){
     { key: "fields", status: "Lade Fields..." },
   );
   (j.fields || []).forEach(addFieldOption);
-  addFieldOption(preferred);
-  $f.value = Array.from($f.options || []).some(o => String(o.value) === preferred) ? preferred : "value";
+  const hasPreferred = preferred && Array.from($f.options || []).some(o => String(o.value) === preferred);
+  const hasValue = Array.from($f.options || []).some(o => String(o.value) === "value");
+  if(hasPreferred) $f.value = preferred;
+  else if(hasValue) $f.value = "value";
+  else $f.value = "";
 }
 
 async function loadEntityIds(){
@@ -6012,9 +6017,16 @@ async function loadStats(){
 
 async function loadData(){
   err(""); ok("");
-  // A data query only makes sense with a concrete entity_id selection.
-  if(!($e && String($e.value || "").trim())){
-    err("Bitte zuerst entity_id auswaehlen.");
+  const hasMeasurement = !!($m && String($m.value || "").trim());
+  const hasField = !!($f && String($f.value || "").trim());
+  const hasEntity = !!($e && String($e.value || "").trim());
+  const hasFriendly = !!($n && String($n.value || "").trim());
+  if(!(hasMeasurement && hasField)){
+    err("Bitte zuerst Measurement und Field auswaehlen.");
+    return;
+  }
+  if(!(hasEntity || hasFriendly)){
+    err("Bitte zuerst friendly_name oder entity_id auswaehlen.");
     return;
   }
   renderTableRange();
@@ -6096,9 +6108,21 @@ async function loadData(){
 
 async function refreshAll(){
   try{
-    if(!($e && String($e.value || "").trim())) return;
+    const hasFriendly = !!($n && String($n.value || "").trim());
+    const hasEntity = !!($e && String($e.value || "").trim());
+    if(!(hasFriendly || hasEntity)) return;
     saveState();
+    try{ _setLoadStatus("Auswahl wird aufgeloest..."); }catch(e){}
     try{ await resolveSignal(); } catch(e){ displayError(e); }
+    try{
+      if(!($e && String($e.value || "").trim()) && ($n && String($n.value || "").trim())){
+        try{ _setLoadStatus("Entity-ID wird aus Vorschlaegen uebernommen..."); }catch(e){}
+        await loadEntityIds();
+        const candidates = (ALL_ENTITY || []).filter(x => x);
+        if(candidates.length && $e) $e.value = candidates[0];
+      }
+    }catch(e){ displayError(e); }
+    try{ _setLoadStatus("Daten werden geladen..."); }catch(e){}
     await loadData();
   }catch(e){
     displayError(e);
@@ -6108,16 +6132,22 @@ async function refreshAll(){
 async function refreshAllWithStatus(){
   try{
   if(LOAD_INFLIGHT) return;
-    if(!($e && String($e.value || "").trim())){
-      // Improve guidance when entity_id is missing: show clear message and focus the field so
-      // users understand why "Aktualisieren" didn't start.
-      err("Bitte zuerst Entity ID auswählen (oder Messwert/Field setzen). Klicke in das Feld 'Entity ID' und wähle einen Wert.");
+    startLoadUi();
+    try{ _setLoadStatus("Aktualisieren wurde gestartet – Auswahl wird geprueft..."); }catch(e){}
+    const hasFriendly = !!($n && String($n.value || "").trim());
+    const hasEntity = !!($e && String($e.value || "").trim());
+    const hasMeasurement = !!($m && String($m.value || "").trim());
+    const hasField = !!($f && String($f.value || "").trim());
+    if(!(hasMeasurement && hasField && (hasFriendly || hasEntity))){
+      const msg = "Bitte zuerst friendly_name oder Entity ID sowie Measurement/Field auswaehlen.";
+      err(msg);
       try{
-        if($e){ $e.focus(); $e.classList.add('err_focus'); setTimeout(()=>{ try{ $e.classList.remove('err_focus'); }catch(e){} }, 2200); }
+        if(!hasFriendly && !hasEntity && $n){ $n.focus(); $n.classList.add('err_focus'); setTimeout(()=>{ try{ $n.classList.remove('err_focus'); }catch(e){} }, 2200); }
+        else if((!hasMeasurement || !hasField) && $m){ $m.focus(); $m.classList.add('err_focus'); setTimeout(()=>{ try{ $m.classList.remove('err_focus'); }catch(e){} }, 2200); }
       }catch(e){}
+      stopLoadUi(false, msg);
       return;
     }
-    startLoadUi();
     await refreshAll();
     stopLoadUi(true);
   }catch(e){
@@ -6288,8 +6318,8 @@ $m.addEventListener("input", async ()=>{
       if($f){
         $f.innerHTML = "";
         const o = document.createElement("option");
-        o.value = "value";
-        o.textContent = "value";
+        o.value = "";
+        o.textContent = "";
         o.selected = true;
         $f.appendChild(o);
       }
