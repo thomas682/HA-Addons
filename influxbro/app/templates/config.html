@@ -1608,6 +1608,19 @@ async function testConn(){
       try{ modal.querySelector('.modal_body').textContent = j.message || 'Connection OK'; }catch(e){}
       try{ modal.style.display = 'block'; }catch(e){}
       setTimeout(()=>{ try{ modal.style.display = 'none'; }catch(e){} }, 3500);
+      // If test succeeded and the form contains real connection values, persist them automatically.
+      try{
+        const tokenVal = (el && el.token && String(el.token.value || '').trim()) || '';
+        const orgVal = (el && el.org && String(el.org.value || '').trim()) || '';
+        const bucketVal = (el && el.bucket && String(el.bucket.value || '').trim()) || '';
+        // Do not save if token is the masked placeholder '********'
+        if((tokenVal && tokenVal !== '********') && orgVal && bucketVal){
+          // Save current form (async, best-effort)
+          (async ()=>{
+            try{ await save(); ok('Einstellungen wurden automatisch gespeichert.'); }catch(e){}
+          })();
+        }
+      }catch(e){}
     }
   }catch(e){}
 }

@@ -16,7 +16,14 @@
 
 - Einstellungen: Testverbindung ist jetzt tolerant gegenüber Backend‑Antworten mit `connected:true` und zeigt zuverlässig Status/Modal an, selbst wenn das Template-HTML nicht im DOM vorhanden ist (Runtime-Fallback erzeugt Status/Modal bei Bedarf).
 
-## 1.12.49
+## 1.12.51
+
+### UX
+
+- Einstellungen: Wenn `Influx Verbindung testen` erfolgreich ist und gültige `token`, `org` und `bucket` im Formular stehen, werden diese Werte jetzt automatisch persistent gespeichert (Save), sodass Dashboard‑Auswahllisten direkt befüllt werden.
+
+## 1.12.50
+
 
 ## 1.12.48
 

@@ -553,3 +553,7 @@ Ausreisser:
 ## Release Notes (1.12.50)
 
 - Fix: Testverbindung zeigt nun zuverlässig sichtbaren Status und Erfolg‑Modal an, auch wenn die Settings‑Template an dieser Stelle unterschiedliche HTML‑Versionen liefern (Runtime‑Fallback erzeugt Elemente bei Bedarf). Backend‑Antworten mit `connected:true` werden als Erfolg anerkannt.
+
+## Release Notes (1.12.51)
+
+- UX: Wenn `Influx Verbindung testen` erfolgreich ist und die Felder `token`, `org` und `bucket` korrekt gefüllt sind, werden diese Einstellungen automatisch gespeichert, sodass Dashboard‑Vorschläge (Measurements/Friendly/Entity) sofort verfügbar sind.
