@@ -276,6 +276,7 @@
         <button id="cancel_load" class="btn_sm" style="width:auto; white-space:nowrap;" data-ui="dashboard.cancel">Abbruch</button>
         <button id="last_error" class="btn_sm" style="width:auto; white-space:nowrap;" type="button" data-ui="dashboard.last_error" title="dashboard.last_error">Letzter Fehler</button>
         <button id="reset_filters" class="btn_sm" style="width:auto; white-space:nowrap;" data-ui="dashboard.reset" title="dashboard.reset">Reset</button>
+        <button id="open_settings" class="btn_sm" style="width:auto; white-space:nowrap;" title="Einstellungen prüfen">Einstellungen prüfen</button>
       </div>
       <div id="load_status" data-ui="dashboard.load_status" title="dashboard.load_status">
         <span id="load_spinner" aria-hidden="true"></span>
@@ -6757,6 +6758,14 @@ try{
         if(!lastRestored) renderTable();
       }
     }
+
+    // Ensure suggestion lists are loaded on page open (Backup loads these automatically).
+    // Keep best-effort: failures are handled and will show an actionable error to the user.
+    try{
+      if(!(ALL_MEASUREMENTS && ALL_MEASUREMENTS.length)) loadMeasurements().catch(()=>{});
+      if(!(ALL_FRIENDLY && ALL_FRIENDLY.length)) loadFriendlyNames().catch(()=>{});
+      if(!(ALL_ENTITY && ALL_ENTITY.length)) loadEntityIds().catch(()=>{});
+    }catch(e){}
 
     // Ensure graph query panel reflects persisted selection.
     try{ _renderGraphQueryPanel(); }catch(e){}
