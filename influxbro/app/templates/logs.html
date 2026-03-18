@@ -116,13 +116,8 @@
           </button>
         </div>
         <div>
-          <label>&nbsp;</label>
-          <button id="follow" data-ui="logs.follow" title="logs.follow" aria-label="Follow">
-            <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-              <path d="M12 5v14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-              <path d="M7 14l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
+          <label>Follow</label>
+          <input id="follow" type="checkbox" data-ui="logs.follow" title="logs.follow" aria-label="Follow" checked />
         </div>
         <div>
           <label>&nbsp;</label>
@@ -544,7 +539,7 @@
 
       function setFollow(v){
         FOLLOW = !!v;
-        try{ $follow.setAttribute('aria-pressed', FOLLOW ? 'true' : 'false'); }catch(e){}
+        try{ if($follow) $follow.checked = FOLLOW; }catch(e){}
         try{ $follow.title = FOLLOW ? 'Follow: ein' : 'Follow: aus'; }catch(e){}
         if(TIMER){ clearInterval(TIMER); TIMER = null; }
         if(FOLLOW){
@@ -560,7 +555,7 @@
       if($serverProfile) $serverProfile.addEventListener('change', ()=>{ setServerProfile($serverProfile.value).then(()=>loadLogs().catch(()=>{})); });
       if($serverInfluxQueries) $serverInfluxQueries.addEventListener('change', ()=>{ setServerInfluxQueries($serverInfluxQueries.checked).then(()=>loadLogs().catch(()=>{})); });
       if($serverCacheUsage) $serverCacheUsage.addEventListener('change', ()=>{ setServerCacheUsage($serverCacheUsage.checked).then(()=>loadLogs().catch(()=>{})); });
-      $follow.addEventListener('click', ()=>setFollow(!FOLLOW));
+      $follow.addEventListener('change', ()=>setFollow(!!($follow && $follow.checked)));
       $wrap.addEventListener('change', ()=>{ applyWrap(); });
       $q.addEventListener('input', ()=>applySearch());
       $clear.addEventListener('click', ()=>{ RAW = ""; $logpre.textContent = ""; err(""); });

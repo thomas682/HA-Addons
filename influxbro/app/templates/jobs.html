@@ -1125,55 +1125,104 @@
           tr.innerHTML = [
             `<td class="mono">${String(t.id||'')}</td>`,
             `<td class="mono">${String((t.enabled ? 'true' : 'false'))} / auto=${String((t.auto_update ? 'true' : 'false'))}</td>`,
-            `<td class="mono">${String(t.mode||'')}</td>`,
+            `<td class="mono timer_mode_cell"></td>`,
             `<td>${fmtTs(t.last_run_at)}${t.last_state ? (' / ' + String(t.last_state)) : ''}</td>`,
             `<td>${fmtTs(t.next_run_at)}</td>`,
             `<td>${String(t.comment||'')}</td>`,
             `<td></td>`,
           ].join('');
 
+          const tdMode = tr.children[2];
           const tdAct = tr.lastChild;
           const id = String(t.id || '');
 
           if(id === 'dash_cache' || id === 'stats_cache' || id === 'stats_full'){
-            const bMode = document.createElement('button');
-            bMode.className = 'btn_xs';
-            bMode.textContent = 'Modus';
-            bMode.onclick = async ()=>{
+            const wrap = document.createElement('div');
+            wrap.style.display = 'flex';
+            wrap.style.flexDirection = 'column';
+            wrap.style.gap = '6px';
+
+            const modeSel = document.createElement('select');
+            modeSel.className = 'btn_xs';
+            ['hours','daily','weekly','manual'].forEach(v=>{
+              const o = document.createElement('option');
+              o.value = v;
+              o.textContent = v;
+              modeSel.appendChild(o);
+            });
+            modeSel.value = String((t.refresh_mode || '')).trim() || (id === 'dash_cache' ? 'hours' : (id === 'stats_cache' ? 'daily' : 'manual'));
+            wrap.appendChild(modeSel);
+
+            const detail = document.createElement('div');
+            detail.style.display = 'flex';
+            detail.style.flexWrap = 'wrap';
+            detail.style.gap = '6px';
+            wrap.appendChild(detail);
+
+            const hoursInput = document.createElement('input');
+            hoursInput.type = 'number';
+            hoursInput.min = '1';
+            hoursInput.step = '1';
+            hoursInput.value = String(t.refresh_hours != null ? t.refresh_hours : (id === 'dash_cache' ? 6 : 24));
+            hoursInput.className = 'btn_xs';
+            hoursInput.style.width = '88px';
+
+            const timeInput = document.createElement('input');
+            timeInput.type = 'time';
+            timeInput.step = '1';
+            timeInput.value = String((t.refresh_daily_at || '')).trim() || (id === 'dash_cache' ? '00:00:00' : '03:00:00');
+            timeInput.className = 'btn_xs';
+            timeInput.style.width = '120px';
+
+            const weekdaySel = document.createElement('select');
+            weekdaySel.className = 'btn_xs';
+            ['Mo','Di','Mi','Do','Fr','Sa','So'].forEach((lab, idx)=>{
+              const o = document.createElement('option');
+              o.value = String(idx);
+              o.textContent = lab;
+              weekdaySel.appendChild(o);
+            });
+            weekdaySel.value = String(t.refresh_weekday != null ? t.refresh_weekday : 0);
+
+            const syncModeUi = ()=>{
+              detail.innerHTML = '';
+              const m = String(modeSel.value || 'manual');
+              if(m === 'hours'){
+                detail.appendChild(hoursInput);
+                const hint = document.createElement('span');
+                hint.className = 'muted';
+                hint.textContent = 'alle N Stunden';
+                detail.appendChild(hint);
+              }else if(m === 'daily'){
+                detail.appendChild(timeInput);
+              }else if(m === 'weekly'){
+                detail.appendChild(weekdaySel);
+                detail.appendChild(timeInput);
+              }else{
+                const hint = document.createElement('span');
+                hint.className = 'muted';
+                hint.textContent = 'Manueller Start in der Tabelle';
+                detail.appendChild(hint);
+              }
+            };
+            syncModeUi();
+            modeSel.addEventListener('change', syncModeUi);
+            tdMode.appendChild(wrap);
+
+            const bSave = document.createElement('button');
+            bSave.className = 'btn_xs';
+            bSave.textContent = 'Speichern';
+            bSave.onclick = async ()=>{
               try{
                 timersErr('');
-                const curMode = String((t.refresh_mode || '')).trim() || (id === 'dash_cache' ? 'hours' : (id === 'stats_cache' ? 'daily' : 'manual'));
-                const mRaw = prompt('Refresh Modus (hours/daily/weekly/manual):', curMode);
-                if(mRaw === null) return;
-                let m = String(mRaw || '').trim().toLowerCase();
-                if(m === 'stuendlich' || m === 'stündlich' || m === 'hourly') m = 'hours';
-                if(m === 'taeglich' || m === 'täglich' || m === 'daily') m = 'daily';
-                if(m === 'woechentlich' || m === 'wöchentlich' || m === 'weekly') m = 'weekly';
-                if(m === 'manuell' || m === 'manual') m = 'manual';
-                const payload = {id, refresh_mode: m};
-                if(m === 'hours'){
-                  const curH = (t.refresh_hours != null ? String(t.refresh_hours) : (id === 'dash_cache' ? '6' : '24'));
-                  const hRaw = prompt('Refresh alle N Stunden:', curH);
-                  if(hRaw === null) return;
-                  payload.refresh_hours = parseInt(String(hRaw||'').trim() || '24', 10);
-                }else if(m === 'daily'){
-                  const curAt = String((t.refresh_daily_at || '')).trim() || '03:00:00';
-                  const atRaw = prompt('Refresh taeglich um (HH:MM:SS):', curAt);
-                  if(atRaw === null) return;
-                  payload.refresh_daily_at = String(atRaw||'').trim();
-                }else if(m === 'weekly'){
-                  const curWd = (t.refresh_weekday != null ? String(t.refresh_weekday) : '0');
-                  const wdRaw = prompt('Wochentag (0=Mo .. 6=So):', curWd);
-                  if(wdRaw === null) return;
-                  payload.refresh_weekday = parseInt(String(wdRaw||'').trim() || '0', 10);
-                  const curAt = String((t.refresh_daily_at || '')).trim() || '03:00:00';
-                  const atRaw = prompt('Refresh wochenlich um (HH:MM:SS):', curAt);
-                  if(atRaw === null) return;
-                  payload.refresh_daily_at = String(atRaw||'').trim();
-                }else if(m === 'manual'){
-                  // no extra fields
-                }else{
-                  throw new Error('Ungueltiger Modus (hours|daily|weekly|manual)');
+                const payload = { id, refresh_mode: String(modeSel.value || 'manual') };
+                if(payload.refresh_mode === 'hours'){
+                  payload.refresh_hours = parseInt(String(hoursInput.value || '24').trim() || '24', 10);
+                }else if(payload.refresh_mode === 'daily'){
+                  payload.refresh_daily_at = String(timeInput.value || '03:00:00').trim();
+                }else if(payload.refresh_mode === 'weekly'){
+                  payload.refresh_weekday = parseInt(String(weekdaySel.value || '0').trim() || '0', 10);
+                  payload.refresh_daily_at = String(timeInput.value || '03:00:00').trim();
                 }
                 await api('./api/timers/schedule', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
                 await loadTimers();
@@ -1181,7 +1230,7 @@
                 timersErr(e && e.message ? e.message : String(e));
               }
             };
-            tdAct.appendChild(bMode);
+            tdAct.appendChild(bSave);
 
             const bHist = document.createElement('button');
             bHist.className = 'btn_xs';

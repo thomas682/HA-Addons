@@ -141,7 +141,7 @@
               <label class="label_row ib_sel_label"><span>_field Filter</span><span id="cnt_field_filter" class="muted"></span></label>
               <div class="ib_sel_stack">
                 <input id="field_filter" value="value" list="field_list" data-ui="stats.field_filter" title="stats.field_filter" />
-                <datalist id="field_list"></datalist>
+                <datalist id="field_list"><option value="value"></option></datalist>
                 <div class="ib_sel_desc">
                   <button type="button" class="ib_sel_help" data-title="_field Filter" data-help="Legt fest, welche Serien/Zeilen geladen werden. Default ist _field=value (Home Assistant Standard).">?</button>
                   <div class="muted">Legt fest, welche Serien/Zeilen geladen werden (Default: <code>value</code>).</div>
@@ -153,7 +153,11 @@
               <label class="label_row ib_sel_label"><span>Einheit (_measurement)</span><span id="cnt_measurement_filter" class="muted"></span></label>
               <div class="ib_sel_stack">
                 <input id="measurement_filter" list="measurement_list" placeholder="optional" data-ui="stats.measurement_filter" title="stats.measurement_filter" />
-                <datalist id="measurement_list"></datalist>
+                <datalist id="measurement_list">
+                  {% for it in (suggestions.measurements or []) %}
+                  <option value="{{ it|e }}"></option>
+                  {% endfor %}
+                </datalist>
                 <div class="ib_sel_desc">
                   <button type="button" class="ib_sel_help" data-title="Einheit (_measurement)" data-help="Optionaler Filter. Filtert Statistik-Serien nach _measurement.">?</button>
                   <div class="muted">Optionaler Filter fuer Serien nach _measurement.</div>
@@ -165,7 +169,11 @@
               <label class="label_row ib_sel_label"><span>friendly_name Filter</span><span id="cnt_friendly_name" class="muted"></span></label>
               <div class="ib_sel_stack">
                 <input id="friendly_filter" list="friendly_list" placeholder="optional" data-ui="stats.friendly_filter" title="stats.friendly_filter" />
-                <datalist id="friendly_list"></datalist>
+                <datalist id="friendly_list">
+                  {% for it in (suggestions.friendly_name or []) %}
+                  <option value="{{ it|e }}"></option>
+                  {% endfor %}
+                </datalist>
                 <div class="ib_sel_desc">
                   <button type="button" class="ib_sel_help" data-title="friendly_name Filter" data-help="Optionaler Filter. Filtert Serien nach friendly_name.">?</button>
                   <div class="muted">Optionaler Filter fuer Serien nach friendly_name.</div>
@@ -177,7 +185,11 @@
               <label class="label_row ib_sel_label"><span>Entity ID (entity_id)</span><span id="cnt_entity_id" class="muted"></span></label>
               <div class="ib_sel_stack">
                 <input id="entity_filter" list="entity_list" placeholder="optional" data-ui="stats.entity_filter" title="stats.entity_filter" />
-                <datalist id="entity_list"></datalist>
+                <datalist id="entity_list">
+                  {% for it in (suggestions.entity_id or []) %}
+                  <option value="{{ it|e }}"></option>
+                  {% endfor %}
+                </datalist>
                 <div class="ib_sel_desc">
                   <button type="button" class="ib_sel_help" data-title="Entity ID" data-help="Optionaler Filter. Filtert Serien nach entity_id.">?</button>
                   <div class="muted">Optionaler Filter fuer Serien nach entity_id.</div>
@@ -524,6 +536,51 @@
         }catch(e){}
       }
 
+      function setDatalistOptions(listEl, items){
+        try{
+          const xs = (items || []).map(x => String(x || '').trim()).filter(Boolean);
+          listEl.innerHTML = xs.map(x => `<option value="${x.replace(/"/g,'&quot;')}"></option>`).join('');
+        }catch(e){}
+      }
+
+      async function loadMeasurements(){
+        const j = await api('./api/measurements');
+        const xs = (j.measurements || []).map(String);
+        setDatalistOptions($measurementList, xs);
+        setCount($cntMeas, xs.length, true);
+        try{ _selMaybeAutoWidth($measurementFilter, $measurementList); }catch(e){}
+      }
+
+      async function loadFriendlyNames(){
+        const tf = timeFilter();
+        let url = './api/tag_values?tag=friendly_name';
+        const q = [];
+        if($measurementFilter && $measurementFilter.value) q.push('measurement=' + encodeURIComponent($measurementFilter.value));
+        if($entityFilter && $entityFilter.value) q.push('entity_id=' + encodeURIComponent($entityFilter.value));
+        if(tf.start && tf.stop){ q.push('start=' + encodeURIComponent(tf.start)); q.push('stop=' + encodeURIComponent(tf.stop)); }
+        if(q.length) url += '&' + q.join('&');
+        const j = await api(url);
+        const xs = (j.values || []).map(String);
+        setDatalistOptions($friendlyList, xs);
+        setCount($cntFn, xs.length, true);
+        try{ _selMaybeAutoWidth($friendlyFilter, $friendlyList); }catch(e){}
+      }
+
+      async function loadEntityIds(){
+        const tf = timeFilter();
+        let url = './api/tag_values?tag=entity_id';
+        const q = [];
+        if($measurementFilter && $measurementFilter.value) q.push('measurement=' + encodeURIComponent($measurementFilter.value));
+        if($friendlyFilter && $friendlyFilter.value) q.push('friendly_name=' + encodeURIComponent($friendlyFilter.value));
+        if(tf.start && tf.stop){ q.push('start=' + encodeURIComponent(tf.start)); q.push('stop=' + encodeURIComponent(tf.stop)); }
+        if(q.length) url += '&' + q.join('&');
+        const j = await api(url);
+        const xs = (j.values || []).map(String);
+        setDatalistOptions($entityList, xs);
+        setCount($cntEid, xs.length, false);
+        try{ _selMaybeAutoWidth($entityFilter, $entityList); }catch(e){}
+      }
+
       function setJobId(id){
         JOB_ID = id ? String(id) : null;
         try{ if(JOB_ID) localStorage.setItem(LS_JOB, JOB_ID); else localStorage.removeItem(LS_JOB); }catch(e){}
@@ -818,6 +875,49 @@
         return true;
       }
 
+      const onStatsMeasurementChanged = debounce(()=>{
+        (async ()=>{
+          try{
+            await loadFriendlyNames();
+            await loadEntityIds();
+            saveUiState();
+            render();
+          }catch(e){}
+        })();
+      }, 220);
+
+      const onStatsFriendlyChanged = debounce(()=>{
+        (async ()=>{
+          try{
+            if($entityFilter) $entityFilter.value = '';
+            if(!$friendlyFilter || !String($friendlyFilter.value || '').trim()){
+              await loadEntityIds();
+              saveUiState();
+              render();
+              return;
+            }
+            await loadEntityIds();
+            const options = Array.from(($entityList && $entityList.options) || []).map(o => String(o.value || '')).filter(Boolean);
+            if($entityFilter && options.length) $entityFilter.value = options[0];
+            saveUiState();
+            render();
+          }catch(e){}
+        })();
+      }, 200);
+
+      const onStatsEntityChanged = debounce(()=>{
+        (async ()=>{
+          try{
+            await loadFriendlyNames();
+            const cur = String(($friendlyFilter && $friendlyFilter.value) || '').trim();
+            const options = Array.from(($friendlyList && $friendlyList.options) || []).map(o => String(o.value || '')).filter(Boolean);
+            if(cur && !options.includes(cur) && $friendlyFilter) $friendlyFilter.value = '';
+            saveUiState();
+            render();
+          }catch(e){}
+        })();
+      }, 180);
+
       function seriesInfo(processed){
         const total = (TOTAL_SERIES === null || TOTAL_SERIES === undefined) ? null : Number(TOTAL_SERIES);
         if(total && isFinite(total) && total > 0){
@@ -900,7 +1000,7 @@
       function rebuildDatalists(){
         try{
           if($fieldList){
-            const xs = Array.from(new Set((ROWS||[]).map(r=>String(r.field||'')).filter(Boolean))).sort();
+            const xs = Array.from(new Set(['value'].concat((ROWS||[]).map(r=>String(r.field||'')).filter(Boolean)))).sort();
             $fieldList.innerHTML = xs.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"></option>`).join('');
             setCount($cntField, xs.length, true);
             try{ _selMaybeAutoWidth($fieldFilter, $fieldList); }catch(e){}
@@ -1470,9 +1570,12 @@
         }
       });
       $q.addEventListener('input', debounce(()=>{ render(); saveUiState(); }, 120));
-      if($measurementFilter) $measurementFilter.addEventListener('input', debounce(()=>{ render(); saveUiState(); }, 120));
-      if($friendlyFilter) $friendlyFilter.addEventListener('input', debounce(()=>{ render(); saveUiState(); }, 120));
-      if($entityFilter) $entityFilter.addEventListener('input', debounce(()=>{ render(); saveUiState(); }, 120));
+      if($measurementFilter) $measurementFilter.addEventListener('input', ()=>{ onStatsMeasurementChanged(); });
+      if($measurementFilter) $measurementFilter.addEventListener('change', ()=>{ onStatsMeasurementChanged(); });
+      if($friendlyFilter) $friendlyFilter.addEventListener('input', ()=>{ onStatsFriendlyChanged(); });
+      if($friendlyFilter) $friendlyFilter.addEventListener('change', ()=>{ onStatsFriendlyChanged(); });
+      if($entityFilter) $entityFilter.addEventListener('input', ()=>{ onStatsEntityChanged(); });
+      if($entityFilter) $entityFilter.addEventListener('change', ()=>{ onStatsEntityChanged(); });
       $thead.addEventListener('click', (ev)=>{
         const th = ev && ev.target ? ev.target.closest('th') : null;
         if(!th) return;
@@ -1575,6 +1678,10 @@
       if($start) $start.addEventListener('change', ()=>{ renderRangeBounds(); saveUiState(); });
       if($stop) $stop.addEventListener('change', ()=>{ renderRangeBounds(); saveUiState(); });
       renderRangeBounds();
+
+      try{ loadMeasurements().catch(()=>{}); }catch(e){}
+      try{ loadFriendlyNames().catch(()=>{}); }catch(e){}
+      try{ loadEntityIds().catch(()=>{}); }catch(e){}
 
       </script>
 

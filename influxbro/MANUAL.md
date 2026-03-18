@@ -570,3 +570,15 @@ Ausreisser:
 ## Release Notes (1.12.54)
 
 - Dashboard: Wenn du einen `friendly_name` auswählst, wird die gefilterte `entity_id`-Liste automatisch aktualisiert und direkt der erste passende Eintrag gesetzt. Dadurch ist die Auswahl sofort vollständig vorbelegt.
+
+## Release Notes (1.12.55)
+
+- Dashboard: Die `friendly_name`-Auswahl reagiert jetzt auch auf die tatsächliche Übernahme aus der Datalist (`change`). Dadurch wird die erste passende `entity_id` zuverlässiger automatisch gesetzt, auch wenn die Auswahl per Mausklick aus der Vorschlagsliste erfolgt.
+
+## Release Notes (1.12.56)
+
+- Dashboard/Statistik/Export: Die Auswahlfelder verhalten sich jetzt einheitlicher wie im Dashboard. Vorschläge werden robuster geladen, `friendly_name` filtert `entity_id`, und die erste passende `entity_id` wird automatisch gesetzt.
+- Dashboard/Export: `Field (intern)` bleibt standardmäßig auf `value` vorbelegt.
+- Export: Der Export liefert wieder echte Datenzeilen; ein Testexport gegen die Add-on-Instanz ergab `2840` Zeilen.
+- Logs: `Follow` wurde auf eine Checkbox umgestellt.
+- Jobs: Timer-Modi lassen sich jetzt direkt in der Tabelle über Auswahlboxen und passende Zeitfelder bearbeiten und speichern.

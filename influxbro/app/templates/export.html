@@ -87,7 +87,11 @@
               <label class="label_row ib_sel_label"><span>Einheit (_measurement)</span><span id="cnt_measurement_filter" class="muted"></span></label>
               <div class="ib_sel_stack">
                 <input id="measurement_filter" list="measurement_list" placeholder="optional" data-ui="export.measurement_filter" title="export.measurement_filter" />
-                <datalist id="measurement_list"></datalist>
+                <datalist id="measurement_list">
+                  {% for it in (suggestions.measurements or []) %}
+                  <option value="{{ it|e }}"></option>
+                  {% endfor %}
+                </datalist>
                 <div class="ib_sel_desc">
                   <button type="button" class="ib_sel_help" data-title="Einheit (_measurement)" data-help="Optionaler Filter fuer Vorschlaege. Filtert friendly_name/entity_id Vorschlaege auf dieses Measurement.">?</button>
                   <div class="muted">Optionaler Filter fuer Vorschlaege.</div>
@@ -98,7 +102,11 @@
               <label class="label_row ib_sel_label"><span>Messwert (friendly_name)</span><span id="cnt_friendly_name" class="muted"></span></label>
               <div class="ib_sel_stack">
                 <input id="friendly_name" list="friendly_list" placeholder="optional" data-ui="export.friendly" title="export.friendly" />
-                <datalist id="friendly_list"></datalist>
+                <datalist id="friendly_list">
+                  {% for it in (suggestions.friendly_name or []) %}
+                  <option value="{{ it|e }}"></option>
+                  {% endfor %}
+                </datalist>
                 <div class="ib_sel_desc">
                   <button type="button" class="ib_sel_help" data-title="Messwert (friendly_name)" data-help="Waehle den Klartext-Namen des Messwerts. Optional kannst du entity_id zusaetzlich setzen.">?</button>
                   <div class="muted">Optionaler Filter. Du kannst frei tippen oder aus der Liste waehlen.</div>
@@ -109,7 +117,11 @@
               <label class="label_row ib_sel_label"><span>Entity ID (entity_id)</span><span id="cnt_entity_id" class="muted"></span></label>
               <div class="ib_sel_stack">
                 <input id="entity_id" list="entity_list" placeholder="optional" data-ui="export.entity" title="export.entity" />
-                <datalist id="entity_list"></datalist>
+                <datalist id="entity_list">
+                  {% for it in (suggestions.entity_id or []) %}
+                  <option value="{{ it|e }}"></option>
+                  {% endfor %}
+                </datalist>
                 <div class="ib_sel_desc">
                   <button type="button" class="ib_sel_help" data-title="Entity ID" data-help="Optionaler Filter, um Messwerte zu unterscheiden, wenn mehrere Entity-IDs denselben friendly_name teilen.">?</button>
                   <div class="muted">Optionaler Filter (Alternative/Ergaenzung zu friendly_name).</div>
@@ -156,11 +168,16 @@
               <div class="grid" style="margin-top: 0;">
                 <div>
                   <label>Measurement (intern)</label>
-                  <select id="measurement" data-ui="export.measurement" title="export.measurement"></select>
+                  <input id="measurement" list="measurement_adv_list" placeholder="optional" data-ui="export.measurement" title="export.measurement" />
+                  <datalist id="measurement_adv_list">
+                    {% for it in (suggestions.measurements or []) %}
+                    <option value="{{ it|e }}"></option>
+                    {% endfor %}
+                  </datalist>
                 </div>
                 <div>
                   <label>Field (intern)</label>
-                  <select id="field" data-ui="export.field" title="export.field"></select>
+                  <select id="field" data-ui="export.field" title="export.field"><option value="value" selected>value</option></select>
                 </div>
               </div>
               <div class="muted" style="margin-top: 6px;">Wird best-effort anhand friendly_name/entity_id ermittelt.</div>
@@ -255,6 +272,7 @@
       const $stop = document.getElementById('stop');
       const $rangeBounds = document.getElementById('export_range_bounds');
       const $m = document.getElementById('measurement');
+      const $mAdvList = document.getElementById('measurement_adv_list');
       const $f = document.getElementById('field');
       const $format = document.getElementById('format');
       const $delimiter = document.getElementById('delimiter');
@@ -520,19 +538,30 @@
 
       async function loadMeasurements(){
         const j = await api('./api/measurements');
-        setDatalistOptions($mfList, (j.measurements||[]).map(String));
-        try{ if($cntMf) $cntMf.textContent = '(' + String((j.measurements||[]).length || 0) + ')'; }catch(e){}
+        const xs = (j.measurements||[]).map(String);
+        setDatalistOptions($mfList, xs);
+        try{ if($mAdvList) setDatalistOptions($mAdvList, xs); }catch(e){}
+        try{ if($cntMf) $cntMf.textContent = '(' + String(xs.length || 0) + ')'; }catch(e){}
         try{ _selMaybeAutoWidth($mf, $mfList); }catch(e){}
-        // also populate select
-        $m.innerHTML = '';
-        (j.measurements||[]).forEach(x=>{ const o=document.createElement('option'); o.value=String(x); o.textContent=String(x); $m.appendChild(o); });
+        try{ _selMaybeAutoWidth($m, $mAdvList || $mfList); }catch(e){}
       }
 
       async function loadFields(){
+        const preferred = String(($f && $f.value) || 'value').trim() || 'value';
         $f.innerHTML = '';
-        if(!$m.value) return;
+        const addOpt = (x)=>{
+          const s = String(x || '').trim();
+          if(!s) return;
+          const has = Array.from($f.options || []).some(o => String(o.value) === s);
+          if(has) return;
+          const o=document.createElement('option'); o.value=s; o.textContent=s; $f.appendChild(o);
+        };
+        addOpt('value');
+        if(!$m.value){ $f.value = preferred; return; }
         const j = await api('./api/fields?measurement=' + encodeURIComponent($m.value));
-        (j.fields||[]).forEach(x=>{ const o=document.createElement('option'); o.value=String(x); o.textContent=String(x); $f.appendChild(o); });
+        (j.fields||[]).forEach(addOpt);
+        addOpt(preferred);
+        $f.value = Array.from($f.options || []).some(o => String(o.value) === preferred) ? preferred : 'value';
       }
 
       function timeFilter(){
@@ -656,6 +685,52 @@
           setSeriesInfo('Info nicht verfuegbar (best-effort).');
         }
       }
+
+      function debounceAsync(fn, ms){
+        let t = null;
+        return ()=>{
+          try{ if(t) clearTimeout(t); }catch(e){}
+          t = setTimeout(()=>{ try{ Promise.resolve(fn()).catch(()=>{}); }catch(e){} }, ms || 250);
+        };
+      }
+
+      const onExportMeasurementChanged = debounceAsync(async ()=>{
+        try{
+          await loadFriendly();
+          await loadEntity();
+          saveState();
+        }catch(e){}
+      }, 220);
+
+      const onExportFriendlyChanged = debounceAsync(async ()=>{
+        try{
+          if($e) $e.value = '';
+          if(!$n || !String($n.value || '').trim()){
+            await loadEntity();
+            saveState();
+            await refreshResolved();
+            return;
+          }
+          await resolveSignal().catch(()=>{});
+          await loadEntity();
+          const xs = Array.from(($entityList && $entityList.options) || []).map(o => String(o.value || '')).filter(Boolean);
+          if($e && xs.length) $e.value = xs[0];
+          saveState();
+          await refreshResolved();
+        }catch(e){}
+      }, 200);
+
+      const onExportEntityChanged = debounceAsync(async ()=>{
+        try{
+          await resolveSignal().catch(()=>{});
+          await loadFriendly();
+          const cur = String(($n && $n.value) || '').trim();
+          const xs = Array.from(($friendlyList && $friendlyList.options) || []).map(o => String(o.value || '')).filter(Boolean);
+          if(cur && !xs.includes(cur) && $n) $n.value = '';
+          saveState();
+          await refreshResolved();
+        }catch(e){}
+      }, 180);
 
       function clientTz(){
         let name = '';
@@ -866,9 +941,14 @@
           if($cancel) $cancel.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); }catch(e){}; cancelJob(); });
           try{ if($sel) $sel.addEventListener('mouseup', ()=>{ /* size captured on save */ }); }catch(e){}
 
-          const deb = (fn, ms)=>{ let t=null; return ()=>{ try{ if(t) clearTimeout(t); }catch(e){}; t=setTimeout(()=>{ fn().catch(()=>{}); }, ms||250); }; };
-          const upd = deb(refreshResolved, 220);
-          [$mf,$n,$e,$r,$start,$stop,$m,$f].forEach(el=>{ try{ if(el) el.addEventListener('change', upd); }catch(e){}; try{ if(el && el.tagName==='INPUT') el.addEventListener('input', upd); }catch(e){} });
+          const upd = debounceAsync(refreshResolved, 220);
+          [$r,$start,$stop,$m,$f].forEach(el=>{ try{ if(el) el.addEventListener('change', upd); }catch(e){}; try{ if(el && el.tagName==='INPUT') el.addEventListener('input', upd); }catch(e){} });
+          try{ if($mf) $mf.addEventListener('input', onExportMeasurementChanged); }catch(e){}
+          try{ if($mf) $mf.addEventListener('change', onExportMeasurementChanged); }catch(e){}
+          try{ if($n) $n.addEventListener('input', onExportFriendlyChanged); }catch(e){}
+          try{ if($n) $n.addEventListener('change', onExportFriendlyChanged); }catch(e){}
+          try{ if($e) $e.addEventListener('input', onExportEntityChanged); }catch(e){}
+          try{ if($e) $e.addEventListener('change', onExportEntityChanged); }catch(e){}
           [$mf,$n,$e,$r,$start,$stop,$m,$f,$format,$delimiter].forEach(el=>{ try{ if(el) el.addEventListener('change', ()=>saveState()); }catch(e){}; });
         }catch(e){ err(e); }
       })();

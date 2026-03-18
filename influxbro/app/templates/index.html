@@ -6261,6 +6261,7 @@ const onEntityChanged = debounce(()=>{
 
 $mf.addEventListener("input", ()=>onMeasurementFilterChanged());
 $n.addEventListener("input", ()=>onFriendlyChanged());
+$n.addEventListener("change", ()=>onFriendlyChanged());
 $e.addEventListener("input", ()=>onEntityChanged());
 
 if($btnReset) $btnReset.addEventListener("click", (ev)=>{ _stop(ev); resetFiltersKeepRange().catch(()=>{}); });

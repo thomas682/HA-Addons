@@ -1,5 +1,33 @@
 # Changelog
 
+## 1.12.56
+
+### UI
+
+- Dashboard: `friendly_name` reagiert jetzt auch bei echter Datalist-Auswahl (`change`) und setzt die erste gefilterte `entity_id` automatisch. `Field (intern)` bleibt standardmäßig auf `value` vorbelegt.
+- Statistik: Die Auswahlfelder für `_measurement`, `friendly_name` und `entity_id` verhalten sich jetzt wie im Dashboard. Vorschläge werden beim Seitenaufruf geladen, `friendly_name` filtert `entity_id`, und der erste passende Eintrag wird automatisch übernommen.
+- Export: Die Auswahlfelder wurden an das Dashboard angeglichen. Vorschläge werden serverseitig vorbefüllt und clientseitig nachgeladen; `friendly_name` setzt die erste passende `entity_id`, `Field (intern)` startet mit `value`.
+- Logs: `Follow` ist jetzt eine Checkbox statt eines Toggle-Buttons.
+- Jobs: Timer-Jobs verwenden im Feld `Modus` jetzt Auswahlboxen (`hours`, `daily`, `weekly`, `manual`) mit passenden Eingabefeldern statt Prompt-Textdialogen. Die Werte werden per `Speichern` persistent übernommen.
+
+### Fixes
+
+- Export geprüft: Der Export schreibt wieder vollständige Datenzeilen. Verifiziert gegen `http://192.168.2.200:8099` mit `2840` exportierten Zeilen statt nur Headern.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
+## 1.12.55
+
+### UI
+
+- Dashboard: Die `friendly_name`-Auswahl reagiert jetzt sowohl auf Eingabe als auch auf echte Datalist-Auswahl (`change`). Dadurch wird die erste gefilterte `entity_id` zuverlässig sofort übernommen und `Aktualisieren` startet ohne manuelles Nachsetzen der Entity ID.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.54
 
 ### UI

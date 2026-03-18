@@ -3195,45 +3195,40 @@ def v1_client(cfg: dict):
         timeout=int(cfg.get("timeout_seconds", 10)),
     )
     
+def _initial_suggestions(cfg: dict[str, Any]) -> dict[str, list[str]]:
+    suggestions: dict[str, list[str]] = {"measurements": [], "friendly_name": [], "entity_id": []}
+    try:
+        cfg_eff = _overlay_from_yaml_if_enabled(cfg)
+        if int(cfg_eff.get("influx_version", 2)) != 2:
+            return suggestions
+        if not (cfg_eff.get("token") and cfg_eff.get("org") and cfg_eff.get("bucket")):
+            return suggestions
+        with v2_client(cfg_eff) as c:
+            qapi = c.query_api()
+
+            qm = f'import "influxdata/influxdb/schema"\nschema.measurements(bucket: "{cfg_eff["bucket"]}")'
+            ms = []
+            for t in qapi.query(qm, org=cfg_eff["org"]):
+                for r in t.records:
+                    ms.append(str(r.get_value()))
+            suggestions["measurements"] = sorted(set(ms))
+
+            for tag in ("friendly_name", "entity_id"):
+                q = f'import "influxdata/influxdb/schema"\nschema.tagValues(bucket: "{cfg_eff["bucket"]}", tag: "{tag}", start: -30d)'
+                vals = []
+                for t in qapi.query(q, org=cfg_eff["org"]):
+                    for r in t.records:
+                        vals.append(str(r.get_value()))
+                suggestions[tag] = sorted(set(vals))
+    except Exception:
+        return {"measurements": [], "friendly_name": [], "entity_id": []}
+    return suggestions
+
+
 @app.get("/")
 def index():
     cfg = load_cfg()
-    # Try to prefetch suggestion lists (measurements, friendly_name, entity_id)
-    suggestions = {"measurements": [], "friendly_name": [], "entity_id": []}
-    try:
-        cfg_eff = _overlay_from_yaml_if_enabled(cfg)
-        if int(cfg_eff.get("influx_version", 2)) == 2 and cfg_eff.get("token") and cfg_eff.get("org") and cfg_eff.get("bucket"):
-            try:
-                with v2_client(cfg_eff) as c:
-                    # measurements
-                    qm = f'import "influxdata/influxdb/schema"\nschema.measurements(bucket: "{cfg_eff["bucket"]}")'
-                    tables = c.query_api().query(qm, org=cfg_eff["org"])
-                    ms = []
-                    for t in tables:
-                        for r in t.records:
-                            ms.append(str(r.get_value()))
-                    suggestions["measurements"] = sorted(set(ms))
-                    # friendly_name
-                    qf = f'import "influxdata/influxdb/schema"\nschema.tagValues(bucket: "{cfg_eff["bucket"]}", tag: "friendly_name", start: -30d)'
-                    tables = c.query_api().query(qf, org=cfg_eff["org"])
-                    fn = []
-                    for t in tables:
-                        for r in t.records:
-                            fn.append(str(r.get_value()))
-                    suggestions["friendly_name"] = sorted(set(fn))
-                    # entity_id
-                    qe = f'import "influxdata/influxdb/schema"\nschema.tagValues(bucket: "{cfg_eff["bucket"]}", tag: "entity_id", start: -30d)'
-                    tables = c.query_api().query(qe, org=cfg_eff["org"])
-                    eids = []
-                    for t in tables:
-                        for r in t.records:
-                            eids.append(str(r.get_value()))
-                    suggestions["entity_id"] = sorted(set(eids))
-            except Exception:
-                # best-effort: ignore failures here, the client will still call APIs
-                suggestions = {"measurements": [], "friendly_name": [], "entity_id": []}
-    except Exception:
-        suggestions = {"measurements": [], "friendly_name": [], "entity_id": []}
+    suggestions = _initial_suggestions(cfg)
 
     return render_template(
         "index.html",
@@ -3248,7 +3243,7 @@ def index():
 @app.get("/stats")
 def stats_page():
     cfg = load_cfg()
-    return render_template("stats.html", cfg=cfg, allow_delete=True, nav="stats")
+    return render_template("stats.html", cfg=cfg, allow_delete=True, nav="stats", suggestions=_initial_suggestions(cfg))
 
 
 @app.get("/logs")
@@ -3302,7 +3297,7 @@ def combine_page():
 @app.get("/export")
 def export_page():
     cfg = load_cfg()
-    return render_template("export.html", cfg=cfg, allow_delete=True, nav="export")
+    return render_template("export.html", cfg=cfg, allow_delete=True, nav="export", suggestions=_initial_suggestions(cfg))
 
 
 @app.get("/import")
