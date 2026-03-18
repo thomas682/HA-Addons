@@ -1,20 +1,18 @@
 # Changelog
 
-## 1.12.48
+## 1.12.52
 
 ### UI
 
-- Dashboard: Besseres Feedback wenn erforderliche Felder fehlen — beim Drücken von `Aktualisieren` ohne `entity_id` oder bei Aktionen wie Ausreisser‑Suche ohne `measurement`/`field` wird nun eine klarere Fehlermeldung angezeigt und das fehlende Feld fokussiert/hervorgehoben.
-## 1.12.49
+- Dashboard: Auswahl-Vorschläge für `_measurement`, `friendly_name` und `entity_id` werden nun zusätzlich serverseitig vorgerendert und beim Seitenaufruf aktiv nachgeladen. Dadurch bleiben die Datalists auch dann sichtbar, wenn die clientseitige Initialisierung verzögert ist.
 
-### UI
+### Fixes
 
-- Einstellungen: Bei `Influx Verbindung testen` wird jetzt direkt unter dem Button ein sichtbarer Statustext angezeigt und zusätzlich ein kleines Bestätigungs‑Modal aktiviert, wenn die Verbindung erfolgreich ist. Fehlermeldungen erscheinen wie bisher in rot.
-## 1.12.50
+- Statistik: Flux-Queries verwenden kein `typeOf()` mehr, damit die Abfragen auch mit InfluxDB/Flux-Versionen funktionieren, in denen diese Funktion nicht verfügbar ist.
 
-### Fix
+### Maintenance
 
-- Einstellungen: Testverbindung ist jetzt tolerant gegenüber Backend‑Antworten mit `connected:true` und zeigt zuverlässig Status/Modal an, selbst wenn das Template-HTML nicht im DOM vorhanden ist (Runtime-Fallback erzeugt Status/Modal bei Bedarf).
+- Tested with Home Assistant Core: unknown
 
 ## 1.12.51
 
@@ -24,8 +22,21 @@
 
 ## 1.12.50
 
+### Fix
+
+- Einstellungen: Testverbindung ist jetzt tolerant gegenüber Backend‑Antworten mit `connected:true` und zeigt zuverlässig Status/Modal an, selbst wenn das Template-HTML nicht im DOM vorhanden ist (Runtime-Fallback erzeugt Status/Modal bei Bedarf).
+
+## 1.12.49
+
+### UI
+
+- Einstellungen: Bei `Influx Verbindung testen` wird jetzt direkt unter dem Button ein sichtbarer Statustext angezeigt und zusätzlich ein kleines Bestätigungs‑Modal aktiviert, wenn die Verbindung erfolgreich ist. Fehlermeldungen erscheinen wie bisher in rot.
 
 ## 1.12.48
+
+### UI
+
+- Dashboard: Besseres Feedback wenn erforderliche Felder fehlen — beim Drücken von `Aktualisieren` ohne `entity_id` oder bei Aktionen wie Ausreisser‑Suche ohne `measurement`/`field` wird nun eine klarere Fehlermeldung angezeigt und das fehlende Feld fokussiert/hervorgehoben.
 
 ## 1.12.47
 
@@ -33,18 +44,6 @@
 
 - Raw: Füge Copy/Paste Werkzeuge für einzelne Raw‑Zeilen hinzu (Zeile anklicken → `Wert kopieren` → andere Zeile anklicken → `Einfügen`). Staging verwendet die bestehende Bearbeitungsliste (EDIT_LIST) und respektiert Dezimal‑Limits.
 - Raw: Sichtbare Kopiert‑Info in der Toolbar; Paste deaktiviert bis Quelle + Ziel gesetzt.
-
-## 1.12.45
-
-### UI
-
-- Fehlerdialog: Bugreport Modal implementiert (Copy + Open on GitHub) und Bugreport-Button in Statusleiste nutzt dieses Template.
-- UI: Info-Icon (`i`) Sichtbarkeit verbessert (kontrastreiche Farbe bei verschiedenen Themen).
-- Dashboard: `Auto-Tuning` Button aus Raw-Bereich entfernt; stattdessen in den Einstellungen unter `UI -> Dashboard` als "Auto-Tuning (Dashboard)" verlinkt.
-
-### Fixes
-
-- Kleinere UI-Harmonisierung: Abschnittstitel/Icon-Farben und Responsive-Topbar-Variablen angepasst.
 
 ## 1.12.46
 
@@ -59,16 +58,17 @@
 
 - Server-side Auto-Tuning API: `POST /api/raw_autotune` (benchmarks, persistiert `ui_raw_max_points`). Client UI wired.
 
-
-## 1.12.43
+## 1.12.45
 
 ### UI
 
-- Kombinieren: Auswahl fuer Quelle/Ziel ist an Dashboard angelehnt (entity_id/friendly_name als datalist) und measurement/field werden best-effort automatisch aufgeloest.
+- Fehlerdialog: Bugreport Modal implementiert (Copy + Open on GitHub) und Bugreport-Button in Statusleiste nutzt dieses Template.
+- UI: Info-Icon (`i`) Sichtbarkeit verbessert (kontrastreiche Farbe bei verschiedenen Themen).
+- Dashboard: `Auto-Tuning` Button aus Raw-Bereich entfernt; stattdessen in den Einstellungen unter `UI -> Dashboard` als "Auto-Tuning (Dashboard)" verlinkt.
 
-### Maintenance
+### Fixes
 
-- Tested with Home Assistant Core: unknown
+- Kleinere UI-Harmonisierung: Abschnittstitel/Icon-Farben und Responsive-Topbar-Variablen angepasst.
 
 ## 1.12.44
 
@@ -80,6 +80,16 @@
 ### Fixes
 
 - FullBackup (native v2): Preflight-Check fuer authorizations ruft `find_authorizations()` ohne inkompatible Parameter auf (fix fuer client-API Inkompatibilitaeten).
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
+## 1.12.43
+
+### UI
+
+- Kombinieren: Auswahl fuer Quelle/Ziel ist an Dashboard angelehnt (entity_id/friendly_name als datalist) und measurement/field werden best-effort automatisch aufgeloest.
 
 ### Maintenance
 
@@ -2173,34 +2183,6 @@
 ### Bug Fixes
 
 - Add-on changelog file for Home Assistant install/upgrade dialog.
-
-### Maintenance
-
-- (keine)
-
-## 1.3.0-beta.2
-
-### Features
-
-- (keine)
-
-### Bug Fixes
-
-- Add-on changelog file for Home Assistant install/upgrade dialog.
-
-### Maintenance
-
-- (keine)
-
-## 1.3.0-beta.1
-
-### Features
-
-- Beta: Plotly.js Graph (Zoom/Pan/Range-Slider) statt Canvas.
-
-### Bug Fixes
-
-- (keine)
 
 ### Maintenance
 

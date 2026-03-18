@@ -557,3 +557,8 @@ Ausreisser:
 ## Release Notes (1.12.51)
 
 - UX: Wenn `Influx Verbindung testen` erfolgreich ist und die Felder `token`, `org` und `bucket` korrekt gefüllt sind, werden diese Einstellungen automatisch gespeichert, sodass Dashboard‑Vorschläge (Measurements/Friendly/Entity) sofort verfügbar sind.
+
+## Release Notes (1.12.52)
+
+- Dashboard: Vorschlagslisten für `_measurement`, `friendly_name` und `entity_id` werden robuster geladen und zusätzlich serverseitig in die Seite eingebettet. Dadurch erscheinen die Auswahlwerte auch dann, wenn die clientseitige Initialisierung verspätet startet.
+- Fix: Statistik-Abfragen sind wieder kompatibler mit älteren Flux-Versionen, da die nicht überall verfügbare Funktion `typeOf()` entfernt wurde.
