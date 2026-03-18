@@ -10166,6 +10166,19 @@ def api_influx_ping():
 @app.get("/api/measurements")
 def measurements():
     cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    range_key = request.args.get("range", "24h")
+    field = request.args.get("field", "")
+    entity_id = request.args.get("entity_id", "") or None
+    friendly_name = request.args.get("friendly_name", "") or None
+    start_raw = request.args.get("start")
+    stop_raw = request.args.get("stop")
+    start_dt: datetime | None = None
+    stop_dt: datetime | None = None
+    if start_raw or stop_raw:
+        try:
+            start_dt, stop_dt = _get_start_stop_from_payload({"start": start_raw, "stop": stop_raw})
+        except Exception as e:
+            return jsonify({"ok": False, "error": f"invalid start/stop: {e}"}), 400
     try:
         if int(cfg.get("influx_version",2)) == 2:
             if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
@@ -10174,7 +10187,29 @@ def measurements():
                     "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
                 }), 400
             with v2_client(cfg) as c:
-                q = f'import "influxdata/influxdb/schema"\nschema.measurements(bucket: "{cfg["bucket"]}")'
+                if field or entity_id or friendly_name or start_dt or stop_dt:
+                    range_clause = _flux_range_clause(range_key, start_dt, stop_dt)
+                    predicate_parts = ["exists r._measurement"]
+                    if field:
+                        predicate_parts.append(f"r._field == {_flux_str(field)}")
+                    if entity_id:
+                        predicate_parts.append(f"r.entity_id == {_flux_str(entity_id)}")
+                    if friendly_name:
+                        predicate_parts.append(f"r.friendly_name == {_flux_str(friendly_name)}")
+                    predicate = " and ".join(predicate_parts)
+                    q = f'''
+from(bucket: "{cfg["bucket"]}")
+  {range_clause}
+  |> filter(fn: (r) => {predicate})
+  |> keep(columns: ["_measurement"])
+  |> distinct(column: "_measurement")
+  |> sort(columns: ["_measurement"])
+  |> map(fn: (r) => ({{ _value: r._measurement }}))
+  |> keep(columns: ["_value"])
+  |> limit(n: 5000)
+'''
+                else:
+                    q = f'import "influxdata/influxdb/schema"\nschema.measurements(bucket: "{cfg["bucket"]}")'
                 tables = c.query_api().query(q, org=cfg["org"])
                 items = []
                 for t in tables:
@@ -10198,8 +10233,20 @@ def measurements():
 def fields():
     cfg = _overlay_from_yaml_if_enabled(load_cfg())
     measurement = request.args.get("measurement", "")
-    if not measurement:
-        return jsonify({"ok": False, "error": "measurement required"}), 400
+    range_key = request.args.get("range", "24h")
+    entity_id = request.args.get("entity_id", "") or None
+    friendly_name = request.args.get("friendly_name", "") or None
+    start_raw = request.args.get("start")
+    stop_raw = request.args.get("stop")
+    start_dt: datetime | None = None
+    stop_dt: datetime | None = None
+    if start_raw or stop_raw:
+        try:
+            start_dt, stop_dt = _get_start_stop_from_payload({"start": start_raw, "stop": stop_raw})
+        except Exception as e:
+            return jsonify({"ok": False, "error": f"invalid start/stop: {e}"}), 400
+    if not measurement and not entity_id and not friendly_name:
+        return jsonify({"ok": False, "error": "measurement or tag filter required"}), 400
     try:
         if int(cfg.get("influx_version",2)) == 2:
             if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
@@ -10208,7 +10255,29 @@ def fields():
                     "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
                 }), 400
             with v2_client(cfg) as c:
-                q = f'''
+                if entity_id or friendly_name or start_dt or stop_dt or not measurement:
+                    range_clause = _flux_range_clause(range_key, start_dt, stop_dt)
+                    predicate_parts = ["exists r._field"]
+                    if measurement:
+                        predicate_parts.append(f"r._measurement == {_flux_str(measurement)}")
+                    if entity_id:
+                        predicate_parts.append(f"r.entity_id == {_flux_str(entity_id)}")
+                    if friendly_name:
+                        predicate_parts.append(f"r.friendly_name == {_flux_str(friendly_name)}")
+                    predicate = " and ".join(predicate_parts)
+                    q = f'''
+from(bucket: "{cfg["bucket"]}")
+  {range_clause}
+  |> filter(fn: (r) => {predicate})
+  |> keep(columns: ["_field"])
+  |> distinct(column: "_field")
+  |> sort(columns: ["_field"])
+  |> map(fn: (r) => ({{ _value: r._field }}))
+  |> keep(columns: ["_value"])
+  |> limit(n: 5000)
+'''
+                else:
+                    q = f'''
  import "influxdata/influxdb/schema"
   schema.measurementFieldKeys(bucket: "{cfg["bucket"]}", measurement: "{_flux_escape(measurement)}")
  '''
@@ -10221,6 +10290,8 @@ def fields():
         else:
             if not cfg.get("database"):
                 return jsonify({"ok": False, "error": "InfluxDB v1 requires database. Bitte konfigurieren."}), 400
+            if not measurement:
+                return jsonify({"ok": False, "error": "measurement required for InfluxDB v1"}), 400
             c = v1_client(cfg)
             res = c.query(f'SHOW FIELD KEYS FROM "{measurement}"')
             fs = []
@@ -10236,6 +10307,7 @@ def tag_values():
     cfg = _overlay_from_yaml_if_enabled(load_cfg())
     tag = request.args.get("tag", "")
     measurement = request.args.get("measurement", "")
+    field = request.args.get("field", "")
     range_key = request.args.get("range", "24h")
     entity_id = request.args.get("entity_id", "") or None
     friendly_name = request.args.get("friendly_name", "") or None
@@ -10268,6 +10340,8 @@ def tag_values():
             predicate_parts = []
             if measurement:
                 predicate_parts.append(f"r._measurement == {_flux_str(measurement)}")
+            if field:
+                predicate_parts.append(f"r._field == {_flux_str(field)}")
             if entity_id:
                 predicate_parts.append(f"r.entity_id == {_flux_str(entity_id)}")
             if friendly_name:

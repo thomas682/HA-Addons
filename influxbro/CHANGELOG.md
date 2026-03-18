@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.12.59
+
+### UI
+
+- Dashboard: Die Auswahlfelder filtern sich jetzt gegenseitig. Bereits gesetzte Werte in `_measurement`, `friendly_name`, `entity_id` und `field` schränken die jeweils noch offenen Vorschlagslisten ein.
+- Dashboard: `field` verhält sich wie die anderen Filterfelder. Wenn `value` in den verfügbaren Feldern enthalten ist, wird es automatisch vorausgewählt; andernfalls bleibt das Feld leer.
+- Dashboard: Der ausgeblendete Bereich `Erweitert: Measurement / Field` ist für die Bedienung nicht mehr nötig.
+
+### API
+
+- `GET /api/measurements` unterstützt jetzt zusätzliche Filter über `field`, `friendly_name`, `entity_id`, `range`, `start` und `stop`.
+- `GET /api/fields` unterstützt jetzt neben `measurement` auch eine Einschränkung über `friendly_name`, `entity_id`, `range`, `start` und `stop`.
+- `GET /api/tag_values` kann `friendly_name`/`entity_id` nun zusätzlich über `field` eingrenzen.
+
+### Maintenance
+
+- Direkt gegen HA getestet: `http://192.168.2.200:8099/api/measurements`, `/api/fields`, `/api/tag_values`, `/api/resolve_signal`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.58
 
 ### UI

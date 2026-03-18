@@ -3606,8 +3606,9 @@ function currentTimeFilter(){
 }
 
 function currentFilters(){
+  const measurementValue = String(($mf && $mf.value) || ($m && $m.value) || "").trim();
   return {
-    measurement: $m.value,
+    measurement: measurementValue,
     field: $f.value,
     ...currentTimeFilter(),
     entity_id: $e.value || null,
@@ -3622,6 +3623,7 @@ function tagQueryParams(opts){
   const o = opts || {};
   const q = [];
   if($mf.value) q.push("measurement=" + encodeURIComponent($mf.value));
+  if($f && $f.value) q.push("field=" + encodeURIComponent($f.value));
   if(o.includeFriendly && $n.value) q.push("friendly_name=" + encodeURIComponent($n.value));
   if(o.includeEntity && $e.value) q.push("entity_id=" + encodeURIComponent($e.value));
   const tf = currentTimeFilter();
@@ -3718,6 +3720,7 @@ function renderRangeFromTo(){
 let ALL_MEASUREMENTS = [];
 let ALL_FRIENDLY = [];
 let ALL_ENTITY = [];
+let ALL_FIELDS = [];
 
 function setDatalistOptions(listEl, items){
   try{
@@ -3890,8 +3893,24 @@ function renderEntity(){
 
 async function loadMeasurements(){
   try{
-    const j = await api("./api/measurements", null, { key: "measurements", status: "Lade Measurements..." });
+    const tf = currentTimeFilter();
+    const qs = new URLSearchParams();
+    if($f && $f.value) qs.set("field", String($f.value || ""));
+    if($e && $e.value) qs.set("entity_id", String($e.value || ""));
+    if($n && $n.value) qs.set("friendly_name", String($n.value || ""));
+    if(tf && tf.range) qs.set("range", String(tf.range || ""));
+    if(tf && tf.start && tf.stop){ qs.set("start", String(tf.start)); qs.set("stop", String(tf.stop)); }
+    const url = qs.toString() ? ("./api/measurements?" + qs.toString()) : "./api/measurements";
+    const j = await api(url, null, { key: "measurements", status: "Lade Measurements..." });
     ALL_MEASUREMENTS = (j.measurements || []).map(String);
+    try{
+      const cur = String(($mf && $mf.value) || "").trim();
+      if(cur && !ALL_MEASUREMENTS.includes(cur)) $mf.value = "";
+      if($m){
+        const curM = String($m.value || "").trim();
+        if(curM && !ALL_MEASUREMENTS.includes(curM)) $m.value = "";
+      }
+    }catch(e){}
     renderMeasurements();
   }catch(e){
     // If measurements cannot be loaded (often because Influx config is not saved), show actionable hint
@@ -3904,7 +3923,7 @@ async function loadMeasurements(){
 
 async function loadFields(){
   const preferred = String(($f && $f.value) || "").trim();
-  const measurement = String(($m && $m.value) || "").trim();
+  const measurement = String((($mf && $mf.value) || ($m && $m.value) || "")).trim();
   $f.innerHTML = "";
 
   const addFieldOption = (x) => {
@@ -3924,16 +3943,25 @@ async function loadFields(){
   $f.appendChild(emptyOpt);
 
   if(!measurement){
+    ALL_FIELDS = [];
     $f.value = preferred || "";
     return;
   }
 
+  const tf = currentTimeFilter();
+  const qs = new URLSearchParams();
+  qs.set("measurement", measurement);
+  if($e && $e.value) qs.set("entity_id", String($e.value || ""));
+  if($n && $n.value) qs.set("friendly_name", String($n.value || ""));
+  if(tf && tf.range) qs.set("range", String(tf.range || ""));
+  if(tf && tf.start && tf.stop){ qs.set("start", String(tf.start)); qs.set("stop", String(tf.stop)); }
   const j = await api(
-    "./api/fields?measurement=" + encodeURIComponent(measurement),
+    "./api/fields?" + qs.toString(),
     null,
     { key: "fields", status: "Lade Fields..." },
   );
-  (j.fields || []).forEach(addFieldOption);
+  ALL_FIELDS = (j.fields || []).map(String);
+  ALL_FIELDS.forEach(addFieldOption);
   const hasPreferred = preferred && Array.from($f.options || []).some(o => String(o.value) === preferred);
   const hasValue = Array.from($f.options || []).some(o => String(o.value) === "value");
   if(hasPreferred) $f.value = preferred;
@@ -3948,6 +3976,10 @@ async function loadEntityIds(){
     if(qp) url += "&" + qp;
     const j = await api(url, null, { key: "tag_values_entity_id", status: "Lade entity_id..." });
     ALL_ENTITY = (j.values || []).map(String);
+    try{
+      const cur = String(($e && $e.value) || "").trim();
+      if(cur && !ALL_ENTITY.includes(cur)) $e.value = "";
+    }catch(e){}
     renderEntity();
   }catch(e){
     const msg = String(e && e.message ? e.message : e) || 'Fehler beim Laden der entity_id Vorschlaege.';
@@ -3965,6 +3997,10 @@ async function loadFriendlyNames(){
     if(qp) url += "&" + qp;
     const j = await api(url, null, { key: "tag_values_friendly_name", status: "Lade friendly_name..." });
     ALL_FRIENDLY = (j.values || []).map(String);
+    try{
+      const cur = String(($n && $n.value) || "").trim();
+      if(cur && !ALL_FRIENDLY.includes(cur)) $n.value = "";
+    }catch(e){}
     renderFriendly();
   }catch(e){
     const msg = String(e && e.message ? e.message : e) || 'Fehler beim Laden der friendly_name Vorschlaege.';
@@ -3989,7 +4025,13 @@ async function resolveSignal(){
     {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)},
     { key: "resolve_signal", status: "Ermittle Measurement/Field..." },
   );
-  if(j.measurement) $m.value = j.measurement;
+  if(Array.isArray(j.measurements)) ALL_MEASUREMENTS = (j.measurements || []).map(String);
+  if(j.measurement){
+    if($m) $m.value = j.measurement;
+    if($mf && (!String($mf.value || '').trim() || !ALL_MEASUREMENTS.includes(String($mf.value || '').trim()))) $mf.value = j.measurement;
+  }
+  renderMeasurements();
+  if(Array.isArray(j.fields)) ALL_FIELDS = (j.fields || []).map(String);
   await loadFields();
   if(j.field) $f.value = j.field;
 }
@@ -6197,7 +6239,9 @@ const onMeasurementFilterChanged = debounce(()=>{
       try{
         if(Date.now() < RESET_UNTIL_MS) return;
         _hideTagChoices();
+        if($m) $m.value = String(($mf && $mf.value) || "").trim();
         saveState();
+        await loadFields();
         await loadFriendlyNames();
         await loadEntityIds();
         autoSpanAll();
@@ -6223,6 +6267,8 @@ const onFriendlyChanged = debounce(()=>{
         saveState();
         // Resolve measurement/field first so combo-range query can be precise.
         try{ await resolveSignal(); }catch(e){}
+        try{ await loadMeasurements(); }catch(e){}
+        try{ await loadFields(); }catch(e){}
         await loadEntityIds();
 
         // If multiple entity_ids exist for this friendly_name, show list with ranges.
@@ -6256,12 +6302,16 @@ const onEntityChanged = debounce(()=>{
         saveState();
         if(!$e || !String($e.value||'').trim()){
           _hideTagChoices();
+          await loadMeasurements();
+          await loadFields();
           await loadFriendlyNames();
           autoSpanAll();
           return;
         }
         // Resolve measurement/field first so combo-range query can be precise.
         try{ await resolveSignal(); }catch(e){}
+        try{ await loadMeasurements(); }catch(e){}
+        try{ await loadFields(); }catch(e){}
 
         // Narrow friendly_name to those that match this entity_id
         await loadFriendlyNames();
@@ -6289,6 +6339,21 @@ const onEntityChanged = debounce(()=>{
   });
 }, 150);
 
+const onFieldChanged = debounce(()=>{
+  _asyncNoThrow(()=>{
+    (async ()=>{
+      try{
+        if(Date.now() < RESET_UNTIL_MS) return;
+        saveState();
+        await loadMeasurements();
+        await loadFriendlyNames();
+        await loadEntityIds();
+        autoSpanAll();
+      }catch(e){ displayError(e); }
+    })();
+  });
+}, 180);
+
 $mf.addEventListener("input", ()=>onMeasurementFilterChanged());
 $n.addEventListener("input", ()=>onFriendlyChanged());
 $n.addEventListener("change", ()=>onFriendlyChanged());
@@ -6307,6 +6372,7 @@ $r.addEventListener("change", async ()=>{
 });
 
 $e.addEventListener("change", ()=>onEntityChanged());
+$f.addEventListener("change", ()=>onFieldChanged());
 $start.addEventListener("change", async ()=>{ if($r.value==="custom") { saveState(); autoSpanAll(); renderTableRange(); renderRangeFromTo(); } });
 $stop.addEventListener("change", async ()=>{ if($r.value==="custom") { saveState(); autoSpanAll(); renderTableRange(); renderRangeFromTo(); } });
 
@@ -6856,6 +6922,7 @@ try{
     // Keep best-effort: failures are handled and will show an actionable error to the user.
     try{
       if(!(ALL_MEASUREMENTS && ALL_MEASUREMENTS.length)) loadMeasurements().catch(()=>{});
+      loadFields().catch(()=>{});
       if(!(ALL_FRIENDLY && ALL_FRIENDLY.length)) loadFriendlyNames().catch(()=>{});
       if(!(ALL_ENTITY && ALL_ENTITY.length)) loadEntityIds().catch(()=>{});
     }catch(e){}

@@ -589,3 +589,9 @@ Ausreisser:
 - Dashboard: Beim Klick auf `Aktualisieren` siehst du jetzt immer sofort einen sichtbaren Status im Ladebereich, auch wenn die Auswahl noch geprüft oder aufgelöst wird.
 - Dashboard/Export: `Field` wird nur dann automatisch auf `value` gesetzt, wenn dieser Eintrag in den verfügbaren Feldern wirklich existiert. Andernfalls bleibt das Feld leer.
 - Export: `friendly_name` bleibt erhalten, wenn automatisch die passende `entity_id` ergänzt wird.
+
+## Release Notes (1.12.59)
+
+- Dashboard: Die Auswahlfelder `_measurement`, `friendly_name`, `entity_id` und `field` filtern sich jetzt gegenseitig. Bereits gesetzte Werte schränken die offenen Vorschlagslisten direkt ein.
+- Dashboard: `field` wird nur dann automatisch auf `value` gesetzt, wenn `value` in der gefilterten Field-Liste wirklich vorhanden ist.
+- API: Die Endpunkte für Measurements, Fields und Tag-Values unterstützen zusätzliche Filterparameter, sodass die Dashboard-Auswahl konsistent eingegrenzt wird.
