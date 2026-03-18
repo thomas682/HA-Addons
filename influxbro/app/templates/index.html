@@ -3868,9 +3868,17 @@ function renderEntity(){
 }
 
 async function loadMeasurements(){
-  const j = await api("./api/measurements", null, { key: "measurements", status: "Lade Measurements..." });
-  ALL_MEASUREMENTS = (j.measurements || []).map(String);
-  renderMeasurements();
+  try{
+    const j = await api("./api/measurements", null, { key: "measurements", status: "Lade Measurements..." });
+    ALL_MEASUREMENTS = (j.measurements || []).map(String);
+    renderMeasurements();
+  }catch(e){
+    // If measurements cannot be loaded (often because Influx config is not saved), show actionable hint
+    const msg = String(e && e.message ? e.message : e) || 'Fehler beim Laden der Measurements.';
+    err(msg + ' Bitte Influx Einstellungen pruefen und ggf. unter Einstellungen -> Verbindung speichern (Token/Org/Bucket).');
+    ALL_MEASUREMENTS = [];
+    renderMeasurements();
+  }
 }
 
 async function loadFields(){
@@ -3884,22 +3892,36 @@ async function loadFields(){
 }
 
 async function loadEntityIds(){
-  let url = "./api/tag_values?tag=entity_id";
-  const qp = tagQueryParams({includeFriendly: true, includeEntity: false});
-  if(qp) url += "&" + qp;
-  const j = await api(url, null, { key: "tag_values_entity_id", status: "Lade entity_id..." });
-  ALL_ENTITY = (j.values || []).map(String);
-  renderEntity();
+  try{
+    let url = "./api/tag_values?tag=entity_id";
+    const qp = tagQueryParams({includeFriendly: true, includeEntity: false});
+    if(qp) url += "&" + qp;
+    const j = await api(url, null, { key: "tag_values_entity_id", status: "Lade entity_id..." });
+    ALL_ENTITY = (j.values || []).map(String);
+    renderEntity();
+  }catch(e){
+    const msg = String(e && e.message ? e.message : e) || 'Fehler beim Laden der entity_id Vorschlaege.';
+    err(msg + ' Bitte Influx Einstellungen pruefen (Einstellungen -> Verbindung) und speichern.');
+    ALL_ENTITY = [];
+    renderEntity();
+  }
 }
 
 async function loadFriendlyNames(){
-  let url = "./api/tag_values?tag=friendly_name";
-  // When an entity_id is selected, friendly_name suggestions should be narrowed to that entity.
-  const qp = tagQueryParams({includeFriendly: false, includeEntity: true});
-  if(qp) url += "&" + qp;
-  const j = await api(url, null, { key: "tag_values_friendly_name", status: "Lade friendly_name..." });
-  ALL_FRIENDLY = (j.values || []).map(String);
-  renderFriendly();
+  try{
+    let url = "./api/tag_values?tag=friendly_name";
+    // When an entity_id is selected, friendly_name suggestions should be narrowed to that entity.
+    const qp = tagQueryParams({includeFriendly: false, includeEntity: true});
+    if(qp) url += "&" + qp;
+    const j = await api(url, null, { key: "tag_values_friendly_name", status: "Lade friendly_name..." });
+    ALL_FRIENDLY = (j.values || []).map(String);
+    renderFriendly();
+  }catch(e){
+    const msg = String(e && e.message ? e.message : e) || 'Fehler beim Laden der friendly_name Vorschlaege.';
+    err(msg + ' Bitte Influx Einstellungen pruefen (Einstellungen -> Verbindung) und speichern.');
+    ALL_FRIENDLY = [];
+    renderFriendly();
+  }
 }
 
 async function resolveSignal(){
