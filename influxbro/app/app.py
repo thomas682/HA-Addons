@@ -10016,6 +10016,19 @@ def api_test():
             continue
         cfg[k] = v
 
+    # Log a minimal, redacted trace for incoming test attempts to help debug UI/Ingress issues.
+    try:
+        src_ip = request.remote_addr or 'unknown'
+        hdr_via = request.headers.get('X-Forwarded-For') or request.headers.get('Via') or ''
+        body_keys = sorted(list((body or {}).keys()))
+        has_token = bool((body or {}).get('token')) and (body.get('token') != '********')
+        has_org = bool((body or {}).get('org'))
+        has_bucket = bool((body or {}).get('bucket'))
+        LOG.info('api.test called from=%s via=%s body_keys=%s has_token=%s has_org=%s has_bucket=%s', src_ip, hdr_via, body_keys, has_token, has_org, has_bucket)
+    except Exception:
+        try: LOG.debug('api.test: failed logging incoming request');
+        except Exception: pass
+
     # Normalize types
     try:
         cfg["influx_version"] = int(cfg.get("influx_version", 2))
