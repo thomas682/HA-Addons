@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.73
+
+### UI
+
+- Dashboard: Die sichtbare Quellauswahl folgt jetzt auch in der Eventkette 1:1 der einfachen `Kombinieren`-Logik. `_measurement` triggert nur `loadFields(measurement)` und danach das Nachladen von `entity_id`/`friendly_name`; `entity_id` und `friendly_name` triggern nur das einfache Suggestion-Refresh plus Auto-Resolve, wenn `_measurement` leer ist.
+
+### Maintenance
+
+- Neue HA-Testversion fuer den exakten `Kombinieren`-Abgleich der Dashboard-Quellauswahl
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.72
 
 ### UI

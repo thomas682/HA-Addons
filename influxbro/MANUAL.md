@@ -665,3 +665,7 @@ Ausreisser:
 ## Release Notes (1.12.72)
 
 - Dashboard: Die neue sichtbare Quellauswahl nutzt jetzt wirklich dieselbe einfache Refresh-Logik wie `Kombinieren`: `_measurement` laedt `_field` separat, `entity_id` wird nur mit `_measurement` plus optional `friendly_name` geladen und `friendly_name` nur mit `_measurement` plus optional `entity_id`, jeweils mit festem `range=24h`.
+
+## Release Notes (1.12.73)
+
+- Dashboard: Die neue sichtbare Quellauswahl folgt jetzt auch in der Eventkette dem `Kombinieren`-Vorbild: `_measurement` laedt nur `_field` und die einfachen Suggestion-Listen nach, waehrend `entity_id` und `friendly_name` nur die jeweiligen Vorschlaege aktualisieren und bei leerem `_measurement` eine Auto-Aufloesung ausloesen.

@@ -1680,7 +1680,7 @@ function cacheRestoreIfAvailable(){
     // Best-effort: load the field list for the restored measurement so the dropdown is valid.
     try{
       if(cf && cf.measurement){
-        loadFields().then(()=>{ try{ if(cf.field) $f.value = String(cf.field); }catch(e){}; }).catch(()=>{});
+        loadDashboardFields(String(cf.measurement), {silent:true}).then(()=>{ try{ if(cf.field) $f.value = String(cf.field); }catch(e){}; }).catch(()=>{});
       }
     }catch(e){}
 
@@ -1781,7 +1781,7 @@ async function cacheRestoreLastDashboardIfAvailable(){
 
     try{
       if(sel.measurement){ ensureSelectOption($m, sel.measurement); $m.value = String(sel.measurement); }
-      await loadFields().catch(()=>{});
+      await loadDashboardFields(String(sel.measurement || ''), {silent:true}).catch(()=>{});
       if(sel.field){ ensureSelectOption($f, sel.field); $f.value = String(sel.field); }
     }catch(e){}
 
@@ -3937,56 +3937,6 @@ function renderFields(){
   });
 }
 
-function _syncMeasurementValue(nextValue){
-  const next = String(nextValue || "").trim();
-  let changed = false;
-  if($mf && String($mf.value || "").trim() !== next){
-    $mf.value = next;
-    changed = true;
-  }
-  if($m && String($m.value || "").trim() !== next){
-    $m.value = next;
-    changed = true;
-  }
-  return changed;
-}
-
-function _normalizeMeasurementSelection(){
-  const options = (ALL_MEASUREMENTS || []).map(x => String(x || "").trim()).filter(Boolean);
-  const current = String((($mf && $mf.value) || ($m && $m.value) || "")).trim();
-  let next = current;
-  if(options.length === 1) next = options[0];
-  else if(current && !options.includes(current)) next = "";
-  return _syncMeasurementValue(next);
-}
-
-function _normalizeInputSelection(inputEl, options){
-  if(!inputEl) return false;
-  const values = (options || []).map(x => String(x || "").trim()).filter(Boolean);
-  const current = String(inputEl.value || "").trim();
-  let next = current;
-  if(values.length === 1) next = values[0];
-  else if(current && !values.includes(current)) next = "";
-  if(next === current) return false;
-  inputEl.value = next;
-  return true;
-}
-
-function _normalizeFieldSelection(){
-  return _normalizeInputSelection($f, ALL_FIELDS) || (()=>{
-    if(!$f) return false;
-    const values = (ALL_FIELDS || []).map(x => String(x || "").trim()).filter(Boolean);
-    const current = String($f.value || "").trim();
-    let next = current;
-    if(values.length === 1) next = values[0];
-    else if(!current && values.includes("value")) next = "value";
-    else if(current && !values.includes(current)) next = values.includes("value") ? "value" : "";
-    if(next === current) return false;
-    $f.value = next;
-    return true;
-  })();
-}
-
 function renderFriendly(){
   setDatalistOptions($friendlyList, ALL_FRIENDLY);
   if($cntFn) $cntFn.textContent = ALL_FRIENDLY.length ? `(${ALL_FRIENDLY.length})` : "";
@@ -4055,39 +4005,36 @@ async function loadMeasurements(opts){
     const j = await api("./api/measurements", null, { key: "measurements", status: "Lade Measurements...", silent: !!o.silent });
     ALL_MEASUREMENTS = (j.measurements || []).map(String);
     renderMeasurements();
-    return _normalizeMeasurementSelection();
+    return true;
   }catch(e){
     // If measurements cannot be loaded (often because Influx config is not saved), show actionable hint
     const msg = String(e && e.message ? e.message : e) || 'Fehler beim Laden der Measurements.';
     err(msg + ' Bitte Influx Einstellungen pruefen und ggf. unter Einstellungen -> Verbindung speichern (Token/Org/Bucket).');
     ALL_MEASUREMENTS = [];
     renderMeasurements();
-    _syncMeasurementValue("");
+    if($mf) $mf.value = "";
+    if($m) $m.value = "";
     return true;
   }
 }
 
-async function loadFields(opts){
+async function loadDashboardFields(measurement, opts){
   const o = opts || {};
-  const measurement = String((($mf && $mf.value) || ($m && $m.value) || "")).trim();
-
-  if(!measurement){
+  const m = String(measurement || "").trim();
+  if(!m){
     ALL_FIELDS = [];
     renderFields();
-    $f.value = "";
+    if($f) $f.value = "";
     return true;
   }
-
-  const qs = new URLSearchParams();
-  if(measurement) qs.set("measurement", measurement);
   const j = await api(
-    "./api/fields?" + qs.toString(),
+    "./api/fields?measurement=" + encodeURIComponent(m),
     null,
     { key: "fields", status: "Lade Fields...", silent: !!o.silent },
   );
   ALL_FIELDS = (j.fields || []).map(String).filter(Boolean);
   renderFields();
-  return _normalizeInputSelection($f, ALL_FIELDS);
+  return true;
 }
 
 async function loadTagValuesForSelector(tag, filters, opts){
@@ -4106,37 +4053,39 @@ async function loadTagValuesForSelector(tag, filters, opts){
 
 async function refreshDashboardSuggestions(opts){
   const o = opts || {};
-  const measurement = String(($mf && $mf.value) || '').trim();
-  const friendly = String(($n && $n.value) || '').trim();
-  const entity = String(($e && $e.value) || '').trim();
-  await loadMeasurements({silent: !!o.silent});
-  await loadFields({silent: !!o.silent});
+  const s = dashboardSource();
   ALL_ENTITY = await loadTagValuesForSelector('entity_id', {
-    measurement,
-    friendly_name: friendly || '',
+    measurement: s.measurement,
+    friendly_name: s.friendly_name || '',
   }, {silent: !!o.silent, range: '24h'});
   renderEntity();
-  _normalizeInputSelection($e, ALL_ENTITY);
   ALL_FRIENDLY = await loadTagValuesForSelector('friendly_name', {
-    measurement,
-    entity_id: entity || '',
+    measurement: s.measurement,
+    entity_id: s.entity_id || '',
   }, {silent: !!o.silent, range: '24h'});
   renderFriendly();
-  _normalizeInputSelection($n, ALL_FRIENDLY);
   refreshSelectionInfo();
   autoSpanAll();
   return true;
 }
 
+function dashboardSource(){
+  return {
+    measurement: String(($mf && $mf.value) || '').trim(),
+    field: String(($f && $f.value) || '').trim(),
+    entity_id: String(($e && $e.value) || '').trim() || null,
+    friendly_name: String(($n && $n.value) || '').trim() || null,
+  };
+}
+
 async function resolveDashboardSource(){
-  const fn = $n ? String($n.value || "").trim() : "";
-  const eid = $e ? String($e.value || "").trim() : "";
-  if(!fn && !eid) return;
+  const s = dashboardSource();
+  if(!s.friendly_name && !s.entity_id) return null;
   const tf = currentTimeFilter();
   const payload = {
-    friendly_name: fn || null,
-    entity_id: eid || null,
-    measurement_filter: $mf.value || null,
+    friendly_name: s.friendly_name,
+    entity_id: s.entity_id,
+    measurement_filter: s.measurement || null,
   };
   if(tf && tf.start && tf.stop){ payload.range = 'custom'; payload.start = tf.start; payload.stop = tf.stop; }
   const j = await api(
@@ -4146,9 +4095,12 @@ async function resolveDashboardSource(){
   );
   const measurement = String(j.measurement || '').trim();
   const field = String(j.field || '').trim();
-  if(measurement && !$mf.value) _syncMeasurementValue(measurement);
-  if(measurement) await loadFields({silent: true});
-  if(field && $f && !$f.value) $f.value = field;
+  if(measurement && (!$mf.value || String($mf.value || '').trim() === '')){
+    if($mf) $mf.value = measurement;
+    if($m) $m.value = measurement;
+  }
+  if(measurement) await loadDashboardFields(measurement, {silent: true});
+  if(field && $f) $f.value = field;
   await refreshDashboardSuggestions({silent: true});
   return j;
 }
@@ -6355,115 +6307,50 @@ function _asyncNoThrow(fn){
   try{ fn(); }catch(e){}
 }
 
-const onMeasurementFilterChanged = debounce(()=>{
+const _debRefreshDashboardSrc = debounce(()=>{
+  _asyncNoThrow(()=>{ refreshDashboardSuggestions({silent: true}).catch(()=>{}); });
+}, 350);
+
+const _debAutoResolveDashboardSrc = debounce(()=>{
   _asyncNoThrow(()=>{
-    (async ()=>{
-      try{
-        if(Date.now() < RESET_UNTIL_MS) return;
-        _hideTagChoices();
-        const mv = String(($mf && $mf.value) || '').trim();
-        _syncMeasurementValue(mv);
-        logSelectorAction('measurement_filter', mv);
-        saveState();
-        await loadFields({silent: true});
-        await refreshDashboardSuggestions({silent: true});
-        saveState();
-      }catch(e){ displayError(e); }
-    })();
+    try{
+      const s = dashboardSource();
+      if(!s.measurement && (s.entity_id || s.friendly_name)){
+        resolveDashboardSource().then(()=>{ _debRefreshDashboardSrc(); }).catch(()=>{});
+      }
+    }catch(e){}
   });
-}, 300);
+}, 650);
 
-const onFriendlyChanged = debounce(()=>{
-  _asyncNoThrow(()=>{
-    (async ()=>{
-      try{
-        if(Date.now() < RESET_UNTIL_MS) return;
-        _hideTagChoices();
-        const fn = String(($n && $n.value) || '').trim();
-        logSelectorAction('friendly_name', fn);
-        if(!$n || !fn){
-          saveState();
-          await refreshDashboardSuggestions({silent: true});
-          saveState();
-          return;
-        }
-        saveState();
-        await refreshDashboardSuggestions({silent: true});
-        if(!String(($mf && $mf.value) || '').trim()) await resolveDashboardSource().catch(()=>{});
+$mf.addEventListener("input", ()=>{
+  const mv = String(($mf && $mf.value) || '').trim();
+  if($m) $m.value = mv;
+  logSelectorAction('measurement_filter', mv);
+  saveState();
+  loadDashboardFields(mv, {silent: true}).catch(()=>{});
+  _debRefreshDashboardSrc();
+});
 
-        // If multiple entity_ids exist for this friendly_name, show list with ranges.
-        try{
-          if(String(($mf && $mf.value) || '').trim() && String(($f && $f.value) || '').trim()){
-            const combo = await loadComboRanges('entity_id', { entity_id: null, friendly_name: ($n ? ($n.value || null) : null) });
-            _renderTagChoices('entity_id', combo);
-          }else{
-            _hideTagChoices();
-          }
-        }catch(e){
-          _hideTagChoices();
-        }
-        saveState();
-      }catch(e){ displayError(e); }
-    })();
-  });
-}, 250);
+$n.addEventListener("input", ()=>{
+  logSelectorAction('friendly_name', String(($n && $n.value) || '').trim());
+  saveState();
+  _debRefreshDashboardSrc();
+  _debAutoResolveDashboardSrc();
+});
 
-const onEntityChanged = debounce(()=>{
-  _asyncNoThrow(()=>{
-    (async ()=>{
-      try{
-        if(Date.now() < RESET_UNTIL_MS) return;
-        saveState();
-        _hideTagChoices();
-        const eid = String(($e && $e.value) || '').trim();
-        logSelectorAction('entity_id', eid);
-        if(!$e || !eid){
-          await refreshDashboardSuggestions({silent: true});
-          saveState();
-          return;
-        }
-        await refreshDashboardSuggestions({silent: true});
-        if(!String(($mf && $mf.value) || '').trim()) await resolveDashboardSource().catch(()=>{});
+$e.addEventListener("input", ()=>{
+  logSelectorAction('entity_id', String(($e && $e.value) || '').trim());
+  saveState();
+  _debRefreshDashboardSrc();
+  _debAutoResolveDashboardSrc();
+});
 
-        // If multiple friendly_names exist for this entity_id, show list with ranges.
-        try{
-          if(String(($mf && $mf.value) || '').trim() && String(($f && $f.value) || '').trim()){
-            const combo = await loadComboRanges('friendly_name', { entity_id: ($e ? ($e.value || null) : null), friendly_name: null });
-            _renderTagChoices('friendly_name', combo);
-          }else{
-            _hideTagChoices();
-          }
-        }catch(e){
-          _hideTagChoices();
-        }
-        saveState();
-      }catch(e){}
-    })();
-  });
-}, 150);
-
-const onFieldChanged = debounce(()=>{
-  _asyncNoThrow(()=>{
-    (async ()=>{
-      try{
-        if(Date.now() < RESET_UNTIL_MS) return;
-        saveState();
-        _hideTagChoices();
-        logSelectorAction('field', String(($f && $f.value) || '').trim());
-        refreshSelectionInfo();
-        autoSpanAll();
-        saveState();
-      }catch(e){ displayError(e); }
-    })();
-  });
-}, 180);
-
-$mf.addEventListener("input", ()=>onMeasurementFilterChanged());
-$mf.addEventListener("change", ()=>onMeasurementFilterChanged());
-$n.addEventListener("input", ()=>onFriendlyChanged());
-$n.addEventListener("change", ()=>onFriendlyChanged());
-$e.addEventListener("input", ()=>onEntityChanged());
-$f.addEventListener("input", ()=>onFieldChanged());
+$f.addEventListener("input", ()=>{
+  logSelectorAction('field', String(($f && $f.value) || '').trim());
+  saveState();
+  refreshSelectionInfo();
+  autoSpanAll();
+});
 
 if($btnReset) $btnReset.addEventListener("click", (ev)=>{ _stop(ev); resetFiltersKeepRange().catch(()=>{}); });
 
@@ -6478,17 +6365,13 @@ $r.addEventListener("change", async ()=>{
   }catch(e){ displayError(e); }
 });
 
-$e.addEventListener("change", ()=>onEntityChanged());
-$f.addEventListener("change", ()=>onFieldChanged());
 $start.addEventListener("change", async ()=>{ if($r.value==="custom") { saveState(); autoSpanAll(); renderTableRange(); renderRangeFromTo(); refreshSelectionInfo(); } });
 $stop.addEventListener("change", async ()=>{ if($r.value==="custom") { saveState(); autoSpanAll(); renderTableRange(); renderRangeFromTo(); refreshSelectionInfo(); } });
 
-$m.addEventListener("change", ()=>onMeasurementFilterChanged());
 $m.addEventListener("input", async ()=>{
   try{
     const mv = String($m.value || "").trim();
     if($mf) $mf.value = mv;
-    _syncMeasurementValue(mv);
     logSelectorAction('measurement_internal', mv);
     if(!mv){
       if($f) $f.value = "";
@@ -6501,11 +6384,8 @@ $m.addEventListener("input", async ()=>{
       refreshSelectionInfo();
       return;
     }
-    const hasMeasurement = Array.isArray(ALL_MEASUREMENTS) && ALL_MEASUREMENTS.includes(mv);
-    if(hasMeasurement){
-      await loadFields({silent: true});
-      await refreshDashboardSuggestions({silent: true});
-    }
+    await loadDashboardFields(mv, {silent: true});
+    await refreshDashboardSuggestions({silent: true});
   }catch(e){}
 });
 
@@ -6982,13 +6862,13 @@ try{
     try{ if(Number(st.dashboard_sel_h || 0) >= 60 && $selectionInfo) $selectionInfo.style.height = String(Number(st.dashboard_sel_h || 0)) + 'px'; }catch(e){}
 
     // Restore stored selection early so list loads can narrow correctly.
-    if(st.measurement_filter) _syncMeasurementValue(st.measurement_filter);
-    else if(st.measurement) _syncMeasurementValue(st.measurement);
+    if(st.measurement_filter){ if($mf) $mf.value = String(st.measurement_filter); if($m) $m.value = String(st.measurement_filter); }
+    else if(st.measurement){ if($mf) $mf.value = String(st.measurement); if($m) $m.value = String(st.measurement); }
     if(st.field) ensureOption($f, st.field);
     if(st.field) $f.value = String(st.field);
     if(st.friendly_name) $n.value = st.friendly_name;
     if(st.entity_id) $e.value = st.entity_id;
-    await loadFields({silent: true});
+    await loadDashboardFields(String(($mf && $mf.value) || '').trim(), {silent: true});
     await refreshDashboardSuggestions({silent: true});
     saveState();
 
@@ -7016,7 +6896,7 @@ try{
     // Ensure suggestion lists are loaded on page open (Backup loads these automatically).
     // Keep best-effort: failures are handled and will show an actionable error to the user.
     try{
-      loadFields({silent: true}).then(()=>refreshDashboardSuggestions({silent: true})).catch(()=>{});
+      loadDashboardFields(String(($mf && $mf.value) || '').trim(), {silent: true}).then(()=>refreshDashboardSuggestions({silent: true})).catch(()=>{});
     }catch(e){}
 
     // Ensure graph query panel reflects persisted selection.
