@@ -21,8 +21,13 @@ def test_dashboard_selector_sync_is_no_longer_time_filtered():
     assert 'data-ui="filter_friendly_input"' in body
     assert 'data-ui="filter_field_select"' in body
     assert 'data-ui="filter_entity_input"' in body
+    assert 'id="measurement_filter" list="measurement_filter_list" placeholder="optional" data-ui="filter_measurement_input" autocomplete="off"' in body
+    assert 'id="friendly_name" list="friendly_list" placeholder="optional" data-ui="filter_friendly_input" autocomplete="off"' in body
+    assert 'id="entity_id" list="entity_list" placeholder="optional" data-ui="filter_entity_input" autocomplete="off"' in body
     assert 'measurement_filter: $mf.value || null,\n  };' in body
     assert '$mf.addEventListener("change", ()=>onMeasurementFilterChanged());' in body
+    assert "function logSelectorLoad(name, items, filters)" in body
+    assert "function logSelectorAction(name, value)" in body
     assert 'if(tf && tf.range) q.push("range=" + encodeURIComponent(tf.range));' not in body
     assert 'if(tf && tf.range) qs.set("range", String(tf.range || ""));' not in body
 
@@ -71,6 +76,15 @@ def test_export_uses_browser_directory_or_save_as_flow():
 def test_export_queries_are_no_longer_point_limited():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "app.py").read_text()
     assert "|> limit(n: {max_points})" not in body[body.index('@app.post("/api/export")'):body.index('@app.get("/api/export_job/status")')]
+
+
+def test_selector_debug_logging_is_present_in_backend():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "app.py").read_text()
+    assert 'def _log_selector_debug(kind: str, payload: dict[str, Any]) -> None:' in body
+    assert '_log_selector_debug("measurements"' in body
+    assert '_log_selector_debug("fields"' in body
+    assert '_log_selector_debug("tag_values"' in body
+    assert '_log_selector_debug("resolve_signal"' in body
 
 
 def test_stats_scope_ignores_partial_start_stop(load_app_module, tmp_path):

@@ -2966,6 +2966,17 @@ def _selector_range_key(range_key: str | None, start: datetime | None, stop: dat
     return rk if rk else "all"
 
 
+def _log_selector_debug(kind: str, payload: dict[str, Any]) -> None:
+    try:
+        safe = json.dumps(payload, ensure_ascii=True)
+    except Exception:
+        safe = str(payload)
+    try:
+        LOG.debug("selector_debug kind=%s payload=%s", kind, safe)
+    except Exception:
+        pass
+
+
 def _parse_import_measurement_transforms(cfg: dict[str, Any]) -> dict[tuple[str, str], float]:
     raw = str(cfg.get("import_measurement_transforms") or "")
     out: dict[tuple[str, str], float] = {}
@@ -10502,7 +10513,13 @@ from(bucket: "{cfg["bucket"]}")
                 for t in tables:
                     for r in t.records:
                         items.append(str(r.get_value()))
-                return jsonify({"ok": True, "measurements": sorted(set(items))})
+                result = sorted(set(items))
+                _log_selector_debug("measurements", {
+                    "filters": {"field": field or "", "entity_id": entity_id or "", "friendly_name": friendly_name or "", "range": selector_range},
+                    "count": len(result),
+                    "items": result,
+                })
+                return jsonify({"ok": True, "measurements": result})
         else:
             if not cfg.get("database"):
                 return jsonify({"ok": False, "error": "InfluxDB v1 requires database. Bitte konfigurieren."}), 400
@@ -10512,7 +10529,13 @@ from(bucket: "{cfg["bucket"]}")
             for _, points in res.items():
                 for p in points:
                     items.append(p.get("name"))
-            return jsonify({"ok": True, "measurements": sorted(set(items))})
+            result = sorted(set(items))
+            _log_selector_debug("measurements", {
+                "filters": {"field": field or "", "entity_id": entity_id or "", "friendly_name": friendly_name or "", "range": selector_range},
+                "count": len(result),
+                "items": result,
+            })
+            return jsonify({"ok": True, "measurements": result})
     except Exception as e:
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
 
@@ -10568,7 +10591,13 @@ from(bucket: "{cfg["bucket"]}")
                 for t in tables:
                     for r in t.records:
                         fs.append(str(r.get_value()))
-                return jsonify({"ok": True, "fields": sorted(set(fs))})
+                result = sorted(set(fs))
+                _log_selector_debug("fields", {
+                    "filters": {"measurement": measurement or "", "entity_id": entity_id or "", "friendly_name": friendly_name or "", "range": selector_range},
+                    "count": len(result),
+                    "items": result,
+                })
+                return jsonify({"ok": True, "fields": result})
         else:
             if not cfg.get("database"):
                 return jsonify({"ok": False, "error": "InfluxDB v1 requires database. Bitte konfigurieren."}), 400
@@ -10580,7 +10609,13 @@ from(bucket: "{cfg["bucket"]}")
             for _, points in res.items():
                 for p in points:
                     fs.append(p.get("fieldKey"))
-            return jsonify({"ok": True, "fields": sorted(set(fs))})
+            result = sorted(set(fs))
+            _log_selector_debug("fields", {
+                "filters": {"measurement": measurement or "", "entity_id": entity_id or "", "friendly_name": friendly_name or "", "range": selector_range},
+                "count": len(result),
+                "items": result,
+            })
+            return jsonify({"ok": True, "fields": result})
     except Exception as e:
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
 
@@ -10663,7 +10698,14 @@ schema.tagValues(
                 for t in tables:
                     for r in t.records:
                         vals.append(str(r.get_value()))
-                return jsonify({"ok": True, "values": sorted(set(vals))})
+                result = sorted(set(vals))
+                _log_selector_debug("tag_values", {
+                    "tag": tag,
+                    "filters": {"measurement": measurement or "", "field": field or "", "entity_id": entity_id or "", "friendly_name": friendly_name or "", "range": selector_range},
+                    "count": len(result),
+                    "items": result,
+                })
+                return jsonify({"ok": True, "values": result})
         else:
             if not cfg.get("database"):
                 return jsonify({"ok": False, "error": "InfluxDB v1 requires database. Bitte konfigurieren."}), 400
@@ -10683,7 +10725,14 @@ schema.tagValues(
                     v = p.get("value")
                     if v is not None:
                         vals.append(str(v))
-            return jsonify({"ok": True, "values": sorted(set(vals))})
+            result = sorted(set(vals))
+            _log_selector_debug("tag_values", {
+                "tag": tag,
+                "filters": {"measurement": measurement or "", "field": field or "", "entity_id": entity_id or "", "friendly_name": friendly_name or "", "range": selector_range},
+                "count": len(result),
+                "items": result,
+            })
+            return jsonify({"ok": True, "values": result})
     except Exception as e:
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
 
@@ -14552,6 +14601,13 @@ from(bucket: "{cfg["bucket"]}")
 
             measurements = sorted({m for m, _ in combos})
             fields = sorted({f for m, f in combos if m == preferred[0]})
+            _log_selector_debug("resolve_signal", {
+                "filters": {"measurement_filter": measurement_filter or "", "entity_id": entity_id or "", "friendly_name": friendly_name or "", "range": selector_range},
+                "preferred_measurement": preferred[0],
+                "preferred_field": preferred[1],
+                "measurements": measurements,
+                "fields": fields,
+            })
             return jsonify({
                 "ok": True,
                 "measurement": preferred[0],

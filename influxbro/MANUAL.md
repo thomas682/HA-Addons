@@ -105,6 +105,8 @@ Auch `_measurement`-Werte mit Sonderzeichen wie `°F` werden direkt ueber die ec
 
 Unter den Filtern zeigt `Auswahl (aufgeloest)` den finalen Stand der Auswahl an - analog zur Export-Seite. Dort siehst du direkt, welche Werte fuer `_measurement`, `_field`, `friendly_name`, `entity_id` und Zeitraum aktuell wirksam sind.
 
+Wenn das Log-Profil auf `debug` steht, protokolliert InfluxBro jetzt jede Auswahlaktion in diesen vier Feldern sowie jede neu geladene Vorschlagsliste inklusive aller Eintraege und verwendeter Filter im Logfile.
+
 Weitere Elemente:
 
 - `Erweitert: Measurement / Field`: zeigt die intern aufgeloesten Werte `_measurement` und `_field`.
@@ -634,3 +636,7 @@ Ausreisser:
 - Dashboard: Die Selektorlisten verhalten sich jetzt auch bei Measurements mit Sonderzeichen wie `°F` konsistent und werden wie auf der Backup-Seite direkt aus den vorhandenen Daten aufgebaut.
 - Export: keine Datenpunkt-Begrenzung mehr; `Export` nutzt bevorzugt ein Browser-Zielverzeichnis/Save-As statt nur eines direkten Downloads.
 - Import: Analyse um Quellfelder und Beispielzeilen erweitert; neuer Transformations-Check mit Test-Button und Vorschau; editierbare Measurement-Transformationsliste in den Einstellungen.
+
+## Release Notes (1.12.66)
+
+- Dashboard: Debug-Logging fuer die oberen Auswahlfelder erweitert. Das Logfile enthaelt jetzt sowohl die Benutzeraktionen als auch die komplett geladenen Listen fuer `_measurement`, `_field`, `friendly_name` und `entity_id`.

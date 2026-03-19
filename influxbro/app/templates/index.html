@@ -196,7 +196,7 @@
     <div class="control ib_sel" id="c_measurement_filter" data-ui="filter_measurement">
       <label class="label_row ib_sel_label"><span>Einheit (_measurement)</span><span id="cnt_measurement_filter" class="muted"></span></label>
       <div class="ib_sel_stack">
-        <input id="measurement_filter" list="measurement_filter_list" placeholder="optional" data-ui="filter_measurement_input" />
+        <input id="measurement_filter" list="measurement_filter_list" placeholder="optional" data-ui="filter_measurement_input" autocomplete="off" />
         <datalist id="measurement_filter_list">
           {% for it in (suggestions.measurements or []) %}
           <option value="{{ it|e }}"></option>
@@ -223,7 +223,7 @@
     <div class="control ib_sel" id="c_friendly" data-ui="filter_friendly">
       <label class="label_row ib_sel_label"><span>Messwert (Klartext / friendly_name)</span><span id="cnt_friendly_name" class="muted"></span></label>
       <div class="ib_sel_stack">
-        <input id="friendly_name" list="friendly_list" placeholder="optional" data-ui="filter_friendly_input" />
+        <input id="friendly_name" list="friendly_list" placeholder="optional" data-ui="filter_friendly_input" autocomplete="off" />
         <datalist id="friendly_list">
           {% for it in (suggestions.friendly_name or []) %}
           <option value="{{ it|e }}"></option>
@@ -238,7 +238,7 @@
     <div class="control ib_sel" id="c_entity" data-ui="filter_entity">
       <label class="label_row ib_sel_label"><span>Entity ID (entity_id)</span><span id="cnt_entity_id" class="muted"></span></label>
       <div class="ib_sel_stack">
-        <input id="entity_id" list="entity_list" placeholder="optional" data-ui="filter_entity_input" />
+        <input id="entity_id" list="entity_list" placeholder="optional" data-ui="filter_entity_input" autocomplete="off" />
         <datalist id="entity_list">
           {% for it in (suggestions.entity_id or []) %}
           <option value="{{ it|e }}"></option>
@@ -2973,6 +2973,46 @@ async function api(url, opts){
   }
 }
 
+async function logUiEvent(ui, text, extra){
+  try{
+    await fetch('./api/ui_event', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        page: 'dashboard',
+        ui: String(ui || ''),
+        text: String(text || ''),
+        extra: extra || null,
+      }),
+    });
+  }catch(e){}
+}
+
+function logSelectorLoad(name, items, filters){
+  try{
+    const xs = Array.isArray(items) ? items.map(x => String(x || '')) : [];
+    logUiEvent('dashboard.selector.load', name, {
+      selector: String(name || ''),
+      count: xs.length,
+      items: xs,
+      filters: filters || {},
+    });
+  }catch(e){}
+}
+
+function logSelectorAction(name, value){
+  try{
+    logUiEvent('dashboard.selector.action', name, {
+      selector: String(name || ''),
+      value: String(value || ''),
+      measurement_filter: String(($mf && $mf.value) || ''),
+      field: String(($f && $f.value) || ''),
+      friendly_name: String(($n && $n.value) || ''),
+      entity_id: String(($e && $e.value) || ''),
+    });
+  }catch(e){}
+}
+
 async function loadVersion(){
   if(!$versionBox) return;
   try{
@@ -3880,10 +3920,20 @@ function renderMeasurements(){
   }catch(e){}
   if($cntMf) $cntMf.textContent = ALL_MEASUREMENTS.length ? `(${ALL_MEASUREMENTS.length})` : "";
   _selApplyWidthForInput($mf, ALL_MEASUREMENTS);
+  logSelectorLoad('measurement_filter', ALL_MEASUREMENTS, {
+    field: String(($f && $f.value) || ''),
+    friendly_name: String(($n && $n.value) || ''),
+    entity_id: String(($e && $e.value) || ''),
+  });
 }
 
 function renderFields(){
   if($cntField) $cntField.textContent = ALL_FIELDS.length ? `(${ALL_FIELDS.length})` : "";
+  logSelectorLoad('field', ALL_FIELDS, {
+    measurement_filter: String(($mf && $mf.value) || ''),
+    friendly_name: String(($n && $n.value) || ''),
+    entity_id: String(($e && $e.value) || ''),
+  });
 }
 
 function _syncMeasurementValue(nextValue){
@@ -3938,12 +3988,22 @@ function renderFriendly(){
   setDatalistOptions($friendlyList, ALL_FRIENDLY);
   if($cntFn) $cntFn.textContent = ALL_FRIENDLY.length ? `(${ALL_FRIENDLY.length})` : "";
   _selApplyWidthForInput($n, ALL_FRIENDLY);
+  logSelectorLoad('friendly_name', ALL_FRIENDLY, {
+    measurement_filter: String(($mf && $mf.value) || ''),
+    field: String(($f && $f.value) || ''),
+    entity_id: String(($e && $e.value) || ''),
+  });
 }
 
 function renderEntity(){
   setDatalistOptions($entityList, ALL_ENTITY);
   if($cntEid) $cntEid.textContent = ALL_ENTITY.length > 1 ? `(${ALL_ENTITY.length})` : "";
   _selApplyWidthForInput($e, ALL_ENTITY);
+  logSelectorLoad('entity_id', ALL_ENTITY, {
+    measurement_filter: String(($mf && $mf.value) || ''),
+    field: String(($f && $f.value) || ''),
+    friendly_name: String(($n && $n.value) || ''),
+  });
 }
 
 function setSelectionInfoText(txt){
@@ -6361,6 +6421,7 @@ const onMeasurementFilterChanged = debounce(()=>{
         if(Date.now() < RESET_UNTIL_MS) return;
         _hideTagChoices();
         _syncMeasurementValue(String(($mf && $mf.value) || "").trim());
+        logSelectorAction('measurement_filter', String(($mf && $mf.value) || '').trim());
         saveState();
         await syncSelectionFilters({silent: true});
         saveState();
@@ -6375,6 +6436,7 @@ const onFriendlyChanged = debounce(()=>{
       try{
         if(Date.now() < RESET_UNTIL_MS) return;
         _hideTagChoices();
+        logSelectorAction('friendly_name', String(($n && $n.value) || '').trim());
         if(!$n || !String($n.value||'').trim()){
           saveState();
           await syncSelectionFilters({silent: true});
@@ -6408,6 +6470,7 @@ const onEntityChanged = debounce(()=>{
         if(Date.now() < RESET_UNTIL_MS) return;
         saveState();
         _hideTagChoices();
+        logSelectorAction('entity_id', String(($e && $e.value) || '').trim());
         if(!$e || !String($e.value||'').trim()){
           await syncSelectionFilters({silent: true});
           saveState();
@@ -6439,6 +6502,7 @@ const onFieldChanged = debounce(()=>{
         if(Date.now() < RESET_UNTIL_MS) return;
         saveState();
         _hideTagChoices();
+        logSelectorAction('field', String(($f && $f.value) || '').trim());
         await syncSelectionFilters({silent: true});
         saveState();
       }catch(e){ displayError(e); }
@@ -6475,6 +6539,7 @@ $m.addEventListener("input", async ()=>{
   try{
     const mv = String($m.value || "").trim();
     _syncMeasurementValue(mv);
+    logSelectorAction('measurement_internal', mv);
     if(!mv){
       if($f){
         $f.innerHTML = "";

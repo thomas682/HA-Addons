@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.12.66
+
+### UI
+
+- Dashboard: Alle Auswahlaktionen fuer `_measurement`, `_field`, `friendly_name` und `entity_id` werden jetzt im Debug-Log protokolliert. Zusaetzlich werden bei jedem Nachladen die komplette geladene Eintragsliste und die dazu verwendeten Filter im Logfile mitgeschrieben.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.65
 
 ### UI

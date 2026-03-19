@@ -59,7 +59,7 @@ New Requests: Issue or Immediate Implementation
 Default Test Host & Operational Mode
 
 - Verwende standardmäßig für externe API‑Smoke/Integrationstests die Add‑on IP `http://192.168.2.200:8099` (sofern vom Benutzer nicht anders angegeben). Tests gegen `127.0.0.1:8099` sind nur für lokale Entwicklungsinstanzen gedacht.
-- Benutzerhinweis 2026-03-19: Für Tests gegen die Home-Assistant-Installation ausschließlich `http://192.168.200:8099` verwenden.
+- Benutzerhinweis 2026-03-19: Für Tests gegen die Home-Assistant-Installation ausschließlich `http://192.168.2.200:8099` verwenden.
 - Betriebsmodus: Wenn der Benutzer den Betriebsmodus auf "build"/"GO" wechselt, darf der Agent Änderungen am Arbeitsbaum vornehmen, Dateien ändern, Tests ausführen und Commits/pushes nach `main` erstellen, gemäß den sonstigen Repo‑Richtlinien. Notiere solche Moduswechsel in `AGENTS.md` und handle danach entsprechend.
 
 Questions: Numeric Choices
