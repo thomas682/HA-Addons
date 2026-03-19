@@ -2,6 +2,8 @@
 
 ## Model Strategy
 
+- Moduswechsel 2026-03-19: Betriebsmodus `build` aktiv. Der Agent darf Aenderungen am Arbeitsbaum vornehmen, Tests ausfuehren sowie Commits/Pushes nach `main` erstellen.
+
 - Default model: GPT-5 mini (cost-efficient, fast, suitable for most tasks)
 - Escalation model: GPT-5.4 (ONLY when necessary)
 

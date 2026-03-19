@@ -94,12 +94,12 @@ Neu: Top-Leiste (Profil + Zoom)
 
 ### 1) Messwert auswaehlen
 
-- `_measurement`: interne Messreihe (Influx Measurement) filtern.
-- `_field`: internen Field-Namen waehlen. Wenn mehrere passende Fields gefunden werden und `value` dabei ist, wird `value` automatisch gesetzt.
-- `Messwert (Klartext / friendly_name)`: den sichtbaren Namen aus HA auswaehlen.
-- `Entity ID (entity_id)`: steht direkt rechts neben `Messwert` und hilft bei gleichnamigen HA-Entities.
+- `_measurement`: Auswahl der Datenbankspalte `_measurement`.
+- `_field`: Auswahl der Datenbankspalte `_field`. Wenn mehrere passende Fields gefunden werden und `value` dabei ist, wird `value` automatisch gesetzt.
+- `friendly_name`: Auswahl der Datenbankspalte `friendly_name`.
+- `entity_id`: Auswahl der Datenbankspalte `entity_id`.
 
-Die vier Auswahlfelder `_measurement`, `_field`, `Messwert` und `Entity ID` filtern sich gegenseitig. Wenn durch deine Auswahl nur noch genau ein passender Wert uebrig bleibt, wird dieser direkt uebernommen. Der Zeitraum beeinflusst diese vier Vorschlagslisten nicht; er steuert nur die spaetere Datenabfrage fuer Graph, Tabelle und Statistik. Das gilt auch dann, wenn du `_measurement` direkt aus der Vorschlagsliste anklickst.
+Die vier Auswahlfelder `_measurement`, `_field`, `friendly_name` und `entity_id` verwenden dieselbe Kaskadenlogik wie auf der Backup-Seite. Wenn du eines der Felder aenderst, werden die anderen Listen sofort mit den gefilterten Datenbankwerten neu geladen. Der Zeitraum beeinflusst diese vier Vorschlagslisten nicht; er steuert nur die spaetere Datenabfrage fuer Graph, Tabelle und Statistik.
 
 Auch `_measurement`-Werte mit Sonderzeichen wie `°F` werden direkt ueber die echten Daten gefiltert. Wenn es zu einem Measurement keine passenden Fields, friendly_names oder Entity IDs gibt, bleiben die anderen Listen entsprechend leer.
 
@@ -640,3 +640,7 @@ Ausreisser:
 ## Release Notes (1.12.66)
 
 - Dashboard: Debug-Logging fuer die oberen Auswahlfelder erweitert. Das Logfile enthaelt jetzt sowohl die Benutzeraktionen als auch die komplett geladenen Listen fuer `_measurement`, `_field`, `friendly_name` und `entity_id`.
+
+## Release Notes (1.12.67)
+
+- Dashboard: Der komplette Auswahlblock oberhalb von `Aktualisieren` nutzt jetzt die Backup-Kaskade. `_measurement`, `_field`, `friendly_name` und `entity_id` laden sich gegenseitig aus den gefilterten Datenbankspalten neu und sind konsistent nach den echten DB-Namen beschriftet.

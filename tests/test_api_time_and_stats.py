@@ -8,9 +8,12 @@ from pathlib import Path
 def test_dashboard_selection_labels_and_order():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     assert "<span>_field</span>" in body
+    assert "<span>_measurement</span>" in body
+    assert "<span>friendly_name</span>" in body
+    assert "<span>entity_id</span>" in body
 
-    pos_friendly = body.index("Messwert (Klartext / friendly_name)")
-    pos_entity = body.index("Entity ID (entity_id)")
+    pos_friendly = body.index("<span>friendly_name</span>")
+    pos_entity = body.index("<span>entity_id</span>")
     pos_range = body.index("Zeitraum (Graph/Tabelle)")
     assert pos_friendly < pos_entity < pos_range
 
@@ -22,6 +25,7 @@ def test_dashboard_selector_sync_is_no_longer_time_filtered():
     assert 'data-ui="filter_field_select"' in body
     assert 'data-ui="filter_entity_input"' in body
     assert 'id="measurement_filter" list="measurement_filter_list" placeholder="optional" data-ui="filter_measurement_input" autocomplete="off"' in body
+    assert 'id="field" list="field_list" placeholder="optional" data-ui="filter_field_select" title="filter_field_select" autocomplete="off"' in body
     assert 'id="friendly_name" list="friendly_list" placeholder="optional" data-ui="filter_friendly_input" autocomplete="off"' in body
     assert 'id="entity_id" list="entity_list" placeholder="optional" data-ui="filter_entity_input" autocomplete="off"' in body
     assert 'measurement_filter: $mf.value || null,\n  };' in body

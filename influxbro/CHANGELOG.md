@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.67
+
+### UI
+
+- Dashboard: Der Auswahlblock oberhalb von `Aktualisieren` nutzt jetzt dieselbe Kaskadenlogik wie die Backup-Seite. Die Felder heissen konsistent `_measurement`, `_field`, `friendly_name` und `entity_id` und laden die jeweils anderen Listen bei jeder Auswahl neu aus den gefilterten Datenbankwerten.
+- Dashboard: `_field` ist jetzt ebenfalls ein Datalist-Auswahlfeld wie die anderen Selektoren und wird bei Mehrdeutigkeit bevorzugt auf `value` gesetzt.
+
+### Maintenance
+
+- Live-Selektortests gegen `http://192.168.2.200:8099`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.66
 
 ### UI
