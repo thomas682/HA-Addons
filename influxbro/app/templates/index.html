@@ -853,25 +853,6 @@ const $btnReset = document.getElementById('reset_filters');
 
 try{ if($btnOutlierReset) $btnOutlierReset.disabled = true; }catch(e){}
 
-// If measurement select is empty on user click, attempt to (re)load measurements
-try{
-  if($m){
-    $m.addEventListener('click', ()=>{
-      try{
-        const tag = ($m.tagName || '').toLowerCase();
-        let optCount = 0;
-        if(tag === 'select') optCount = ($m.options || []).length;
-        else {
-          const dlId = ($m.getAttribute && $m.getAttribute('list')) || 'measurement_list';
-          const dl = document.getElementById(dlId);
-          optCount = dl ? (dl.options || []).length : 0;
-        }
-        if(!optCount){ loadMeasurements().catch(()=>{}); }
-      }catch(e){}
-    });
-  }
-}catch(e){}
-
 try{ if($btnLastError) $btnLastError.addEventListener('click', (ev)=>{ _stop(ev); try{ window.InfluxBroErrors && window.InfluxBroErrors.showLast && window.InfluxBroErrors.showLast(); }catch(e){}; }); }catch(e){}
 
 const $queryDetails = document.getElementById('query_details');
@@ -3911,12 +3892,6 @@ function _selInitHelpButtons(){
 
 function renderMeasurements(){
   setDatalistOptions($mfList, ALL_MEASUREMENTS);
-  try{ if($m) ensureOption($m, String($mf && $mf.value ? $mf.value : '')); }catch(e){}
-  try{
-    const dl = document.getElementById('measurement_list');
-    if(dl) setDatalistOptions(dl, ALL_MEASUREMENTS);
-    _selApplyWidthForInput($m, ALL_MEASUREMENTS);
-  }catch(e){}
   if($cntMf) $cntMf.textContent = ALL_MEASUREMENTS.length ? `(${ALL_MEASUREMENTS.length})` : "";
   _selApplyWidthForInput($mf, ALL_MEASUREMENTS);
   logSelectorLoad('measurement_filter', ALL_MEASUREMENTS, {
@@ -3979,7 +3954,7 @@ function refreshSelectionInfo(){
   try{
     const tf = currentTimeFilter();
     const measurementFilter = String(($mf && $mf.value) || "").trim();
-    const measurement = String((($m && $m.value) || measurementFilter || "")).trim();
+    const measurement = measurementFilter;
     const field = String(($f && $f.value) || "").trim();
     const friendly = String(($n && $n.value) || "").trim();
     const entity = String(($e && $e.value) || "").trim();
@@ -4013,7 +3988,6 @@ async function loadMeasurements(opts){
     ALL_MEASUREMENTS = [];
     renderMeasurements();
     if($mf) $mf.value = "";
-    if($m) $m.value = "";
     return true;
   }
 }
@@ -4097,7 +4071,6 @@ async function resolveDashboardSource(){
   const field = String(j.field || '').trim();
   if(measurement && (!$mf.value || String($mf.value || '').trim() === '')){
     if($mf) $mf.value = measurement;
-    if($m) $m.value = measurement;
   }
   if(measurement) await loadDashboardFields(measurement, {silent: true});
   if(field && $f) $f.value = field;
@@ -6324,7 +6297,6 @@ const _debAutoResolveDashboardSrc = debounce(()=>{
 
 $mf.addEventListener("input", ()=>{
   const mv = String(($mf && $mf.value) || '').trim();
-  if($m) $m.value = mv;
   logSelectorAction('measurement_filter', mv);
   saveState();
   loadDashboardFields(mv, {silent: true}).catch(()=>{});
@@ -6345,13 +6317,6 @@ $e.addEventListener("input", ()=>{
   _debAutoResolveDashboardSrc();
 });
 
-$f.addEventListener("input", ()=>{
-  logSelectorAction('field', String(($f && $f.value) || '').trim());
-  saveState();
-  refreshSelectionInfo();
-  autoSpanAll();
-});
-
 if($btnReset) $btnReset.addEventListener("click", (ev)=>{ _stop(ev); resetFiltersKeepRange().catch(()=>{}); });
 
 $r.addEventListener("change", async ()=>{
@@ -6367,27 +6332,6 @@ $r.addEventListener("change", async ()=>{
 
 $start.addEventListener("change", async ()=>{ if($r.value==="custom") { saveState(); autoSpanAll(); renderTableRange(); renderRangeFromTo(); refreshSelectionInfo(); } });
 $stop.addEventListener("change", async ()=>{ if($r.value==="custom") { saveState(); autoSpanAll(); renderTableRange(); renderRangeFromTo(); refreshSelectionInfo(); } });
-
-$m.addEventListener("input", async ()=>{
-  try{
-    const mv = String($m.value || "").trim();
-    if($mf) $mf.value = mv;
-    logSelectorAction('measurement_internal', mv);
-    if(!mv){
-      if($f) $f.value = "";
-      ALL_FIELDS = [];
-      renderFields();
-      ALL_ENTITY = [];
-      renderEntity();
-      ALL_FRIENDLY = [];
-      renderFriendly();
-      refreshSelectionInfo();
-      return;
-    }
-    await loadDashboardFields(mv, {silent: true});
-    await refreshDashboardSuggestions({silent: true});
-  }catch(e){}
-});
 
 // Search inputs (case-insensitive filtering)
 // (search inputs removed; datalist inputs filter automatically)
@@ -6862,8 +6806,8 @@ try{
     try{ if(Number(st.dashboard_sel_h || 0) >= 60 && $selectionInfo) $selectionInfo.style.height = String(Number(st.dashboard_sel_h || 0)) + 'px'; }catch(e){}
 
     // Restore stored selection early so list loads can narrow correctly.
-    if(st.measurement_filter){ if($mf) $mf.value = String(st.measurement_filter); if($m) $m.value = String(st.measurement_filter); }
-    else if(st.measurement){ if($mf) $mf.value = String(st.measurement); if($m) $m.value = String(st.measurement); }
+    if(st.measurement_filter){ if($mf) $mf.value = String(st.measurement_filter); }
+    else if(st.measurement){ if($mf) $mf.value = String(st.measurement); }
     if(st.field) ensureOption($f, st.field);
     if(st.field) $f.value = String(st.field);
     if(st.friendly_name) $n.value = st.friendly_name;

@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.74
+
+### UI
+
+- Dashboard: Letzte Abweichungen zur `Kombinieren`-Quellauswahl entfernt. Die sichtbare Auswahl entkoppelt jetzt auch das versteckte interne Measurement-Feld und nutzt keinen eigenen `_field`-Eingabe-Refresh-Pfad mehr.
+
+### Maintenance
+
+- Finale HA-Testversion fuer den 1:1-Abgleich der Dashboard-Quellauswahl
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.73
 
 ### UI

@@ -669,3 +669,7 @@ Ausreisser:
 ## Release Notes (1.12.73)
 
 - Dashboard: Die neue sichtbare Quellauswahl folgt jetzt auch in der Eventkette dem `Kombinieren`-Vorbild: `_measurement` laedt nur `_field` und die einfachen Suggestion-Listen nach, waehrend `entity_id` und `friendly_name` nur die jeweiligen Vorschlaege aktualisieren und bei leerem `_measurement` eine Auto-Aufloesung ausloesen.
+
+## Release Notes (1.12.74)
+
+- Dashboard: Letzte Abweichungen zur `Kombinieren`-Quellauswahl entfernt. Die sichtbare Dashboard-Auswahl ist fuer den Quellfluss jetzt auch ohne versteckte Measurement-Synchronisierung und ohne eigenen `_field`-Refresh-Pfad aufgebaut.
