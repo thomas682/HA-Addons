@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.12.64
+
+### UI
+
+- Dashboard: Unter der Filterauswahl gibt es jetzt wie im Export ein Infofeld `Auswahl (aufgeloest)`. Es zeigt den finalen Stand von `_measurement`, `_field`, `friendly_name`, `entity_id` sowie den aktiven Zeitraum und die Anzahl der aktuell verfuegbaren Optionen je Filter.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.63
 
 ### UI

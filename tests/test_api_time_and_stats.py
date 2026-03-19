@@ -16,10 +16,24 @@ def test_dashboard_selection_labels_and_order():
 
 def test_dashboard_selector_sync_is_no_longer_time_filtered():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert 'data-ui="filter_measurement_input"' in body
+    assert 'data-ui="filter_friendly_input"' in body
+    assert 'data-ui="filter_field_select"' in body
+    assert 'data-ui="filter_entity_input"' in body
     assert 'measurement_filter: $mf.value || null,\n  };' in body
     assert '$mf.addEventListener("change", ()=>onMeasurementFilterChanged());' in body
     assert 'if(tf && tf.range) q.push("range=" + encodeURIComponent(tf.range));' not in body
     assert 'if(tf && tf.range) qs.set("range", String(tf.range || ""));' not in body
+
+
+def test_dashboard_has_resolved_selection_info_box():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert 'id="selection_info"' in body
+    assert 'data-ui="dashboard.selection"' in body
+    assert 'function refreshSelectionInfo()' in body
+    assert 'measurement_filter: ${measurementFilter || \'-\'}' in body
+    assert 'friendly_name: ${friendly || \'-\'}' in body
+    assert 'entity_id: ${entity || \'-\'}' in body
 
 
 def test_export_field_loader_no_longer_forces_value_without_available_field():

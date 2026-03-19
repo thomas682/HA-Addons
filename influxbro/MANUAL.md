@@ -101,6 +101,8 @@ Neu: Top-Leiste (Profil + Zoom)
 
 Die vier Auswahlfelder `_measurement`, `_field`, `Messwert` und `Entity ID` filtern sich gegenseitig. Wenn durch deine Auswahl nur noch genau ein passender Wert uebrig bleibt, wird dieser direkt uebernommen. Der Zeitraum beeinflusst diese vier Vorschlagslisten nicht; er steuert nur die spaetere Datenabfrage fuer Graph, Tabelle und Statistik. Das gilt auch dann, wenn du `_measurement` direkt aus der Vorschlagsliste anklickst.
 
+Unter den Filtern zeigt `Auswahl (aufgeloest)` den finalen Stand der Auswahl an - analog zur Export-Seite. Dort siehst du direkt, welche Werte fuer `_measurement`, `_field`, `friendly_name`, `entity_id` und Zeitraum aktuell wirksam sind.
+
 Weitere Elemente:
 
 - `Erweitert: Measurement / Field`: zeigt die intern aufgeloesten Werte `_measurement` und `_field`.
@@ -617,3 +619,7 @@ Ausreisser:
 ## Release Notes (1.12.63)
 
 - Dashboard: Die `_measurement`-Auswahl reagiert jetzt wie im Export sowohl auf Tippen als auch auf das direkte Auswaehlen eines Datalist-Eintrags. Dadurch werden `friendly_name` und `entity_id` sofort korrekt nachgezogen.
+
+## Release Notes (1.12.64)
+
+- Dashboard: Neues Infofeld `Auswahl (aufgeloest)` unter den Filtern - analog zum Export. Es zeigt die finale Auswahl und die aktuell verfuegbaren Optionen je Filter direkt im Dashboard an.

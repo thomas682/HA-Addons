@@ -284,6 +284,11 @@
       </div>
       <div class="muted">Zeitangaben werden als lokale Zeit interpretiert und als UTC an die API gesendet.</div>
     </div>
+    <div class="control span2" data-ui="dashboard.selection_row" title="dashboard.selection_row">
+      <label>Auswahl (aufgeloest)</label>
+      <textarea id="selection_info" class="resizable" readonly data-ui="dashboard.selection" title="dashboard.selection"></textarea>
+      <div class="muted" id="selection_info_meta" data-ui="dashboard.selection_meta" title="dashboard.selection_meta"></div>
+    </div>
     <div class="control">
       <div style="display:flex; gap: 8px; align-items: stretch;">
         <button id="load" style="flex:1;" data-ui="dashboard.load">Aktualisieren</button>
@@ -786,6 +791,8 @@ const $entityList = document.getElementById('entity_list');
 const $start = document.getElementById('start');
 const $stop = document.getElementById('stop');
 const $custom = document.getElementById('custom_range');
+const $selectionInfo = document.getElementById('selection_info');
+const $selectionInfoMeta = document.getElementById('selection_info_meta');
 const $tbl = document.querySelector('#tbl tbody');
 const $tblTable = document.getElementById('tbl');
 const $tblHead = document.querySelector('#tbl thead');
@@ -1508,6 +1515,7 @@ function saveState(){
       range: $r ? $r.value : "24h",
       start: $start ? $start.value : "",
       stop: $stop ? $stop.value : "",
+      dashboard_sel_h: $selectionInfo ? Math.round($selectionInfo.getBoundingClientRect().height || 0) : 0,
       scan_preset: $scanPreset ? $scanPreset.value : "counter",
       out_min: $outMin ? $outMin.value : "",
       out_max: $outMax ? $outMax.value : "",
@@ -3938,6 +3946,45 @@ function renderEntity(){
   _selApplyWidthForInput($e, ALL_ENTITY);
 }
 
+function setSelectionInfoText(txt){
+  try{ if($selectionInfo) $selectionInfo.value = String(txt || ""); }catch(e){}
+  try{
+    const st = loadState();
+    if(st && Number(st.dashboard_sel_h || 0) >= 60) return;
+    if(!$selectionInfo) return;
+    $selectionInfo.style.height = "auto";
+    const want = Math.min(320, Math.max(120, ($selectionInfo.scrollHeight || 0) + 2));
+    $selectionInfo.style.height = want + "px";
+  }catch(e){}
+}
+
+function setSelectionInfoMeta(txt){
+  try{ if($selectionInfoMeta) $selectionInfoMeta.textContent = String(txt || ""); }catch(e){}
+}
+
+function refreshSelectionInfo(){
+  try{
+    const tf = currentTimeFilter();
+    const measurementFilter = String(($mf && $mf.value) || "").trim();
+    const measurement = String((($m && $m.value) || measurementFilter || "")).trim();
+    const field = String(($f && $f.value) || "").trim();
+    const friendly = String(($n && $n.value) || "").trim();
+    const entity = String(($e && $e.value) || "").trim();
+    const txt = [
+      `measurement_filter: ${measurementFilter || '-'}`,
+      `measurement: ${measurement || '-'}`,
+      `field: ${field || '-'}`,
+      `friendly_name: ${friendly || '-'}`,
+      `entity_id: ${entity || '-'}`,
+      `range: ${String(($r && $r.value) || '-')}`,
+      `start: ${(tf && tf.start) ? tf.start : '-'}`,
+      `stop: ${(tf && tf.stop) ? tf.stop : '-'}`,
+    ].join("\n");
+    setSelectionInfoText(txt);
+    setSelectionInfoMeta(`Optionen: _measurement ${ALL_MEASUREMENTS.length || 0} | _field ${ALL_FIELDS.length || 0} | friendly_name ${ALL_FRIENDLY.length || 0} | entity_id ${ALL_ENTITY.length || 0}`);
+  }catch(e){}
+}
+
 async function loadMeasurements(opts){
   const o = opts || {};
   try{
@@ -4080,6 +4127,7 @@ async function syncSelectionFilters(opts){
   renderFields();
   renderFriendly();
   renderEntity();
+  refreshSelectionInfo();
   autoSpanAll();
   return changedAny;
 }
@@ -6413,13 +6461,14 @@ $r.addEventListener("change", async ()=>{
     autoSpanAll();
     renderTableRange();
     renderRangeFromTo();
+    refreshSelectionInfo();
   }catch(e){ displayError(e); }
 });
 
 $e.addEventListener("change", ()=>onEntityChanged());
 $f.addEventListener("change", ()=>onFieldChanged());
-$start.addEventListener("change", async ()=>{ if($r.value==="custom") { saveState(); autoSpanAll(); renderTableRange(); renderRangeFromTo(); } });
-$stop.addEventListener("change", async ()=>{ if($r.value==="custom") { saveState(); autoSpanAll(); renderTableRange(); renderRangeFromTo(); } });
+$start.addEventListener("change", async ()=>{ if($r.value==="custom") { saveState(); autoSpanAll(); renderTableRange(); renderRangeFromTo(); refreshSelectionInfo(); } });
+$stop.addEventListener("change", async ()=>{ if($r.value==="custom") { saveState(); autoSpanAll(); renderTableRange(); renderRangeFromTo(); refreshSelectionInfo(); } });
 
 $m.addEventListener("change", async ()=>{ try{ await loadFields(); } catch(e){ err(String(e)); } });
 $m.addEventListener("input", async ()=>{
@@ -6437,6 +6486,7 @@ $m.addEventListener("input", async ()=>{
       }
       ALL_FIELDS = [];
       renderFields();
+      refreshSelectionInfo();
       return;
     }
     const hasMeasurement = Array.isArray(ALL_MEASUREMENTS) && ALL_MEASUREMENTS.includes(mv);
@@ -6914,6 +6964,7 @@ try{
     if(!$start.value) $start.value = toLocalDatetimeValue(start);
     if(!$stop.value) $stop.value = toLocalDatetimeValue(now);
     if(!$r.value) $r.value = "24h";
+    try{ if(Number(st.dashboard_sel_h || 0) >= 60 && $selectionInfo) $selectionInfo.style.height = String(Number(st.dashboard_sel_h || 0)) + 'px'; }catch(e){}
 
     // Restore stored selection early so list loads can narrow correctly.
     if(st.measurement_filter) _syncMeasurementValue(st.measurement_filter);
@@ -6932,6 +6983,7 @@ try{
 
     renderTableRange();
     renderRangeFromTo();
+    refreshSelectionInfo();
     autoSpanAll();
     saveState();
 
