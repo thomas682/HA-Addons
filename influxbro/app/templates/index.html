@@ -209,14 +209,14 @@
       </div>
     </div>
     <div class="control ib_sel" id="c_field_select" data-ui="filter_field">
-      <label class="label_row ib_sel_label"><span>Field (intern)</span><span id="cnt_field" class="muted"></span></label>
+      <label class="label_row ib_sel_label"><span>_field</span><span id="cnt_field" class="muted"></span></label>
       <div class="ib_sel_stack">
         <select id="field" data-ui="filter_field_select" title="filter_field_select">
           <option value=""></option>
         </select>
         <div class="ib_sel_desc">
-          <button type="button" class="ib_sel_help" data-title="Field (intern)" data-help="Wahl des internen Field-Namens (Influx field).">?</button>
-          <div class="muted">Internes Field Auswahl (wird bei Measurement-Änderung befüllt).</div>
+          <button type="button" class="ib_sel_help" data-title="_field" data-help="Wahl des internen Field-Namens (Influx field). Wenn mehrere passende Fields gefunden werden, wird bevorzugt `value` gesetzt.">?</button>
+          <div class="muted">Interner Field-Name; bevorzugt automatisch `value`, wenn vorhanden.</div>
         </div>
       </div>
     </div>
@@ -232,6 +232,21 @@
         <div class="ib_sel_desc">
           <button type="button" class="ib_sel_help" data-title="Messwert (friendly_name)" data-help="Waehle den Klartext-Namen des Messwerts. Falls mehrere Entity-IDs denselben Namen haben, nutze zusaetzlich den entity_id Filter.">?</button>
           <div class="muted">Klartext-Auswahl (datalist) fuer den Messwert.</div>
+        </div>
+      </div>
+    </div>
+    <div class="control ib_sel" id="c_entity" data-ui="filter_entity">
+      <label class="label_row ib_sel_label"><span>Entity ID (entity_id)</span><span id="cnt_entity_id" class="muted"></span></label>
+      <div class="ib_sel_stack">
+        <input id="entity_id" list="entity_list" placeholder="optional" data-ui="filter_entity_input" />
+        <datalist id="entity_list">
+          {% for it in (suggestions.entity_id or []) %}
+          <option value="{{ it|e }}"></option>
+          {% endfor %}
+        </datalist>
+        <div class="ib_sel_desc">
+          <button type="button" class="ib_sel_help" data-title="Entity ID" data-help="Optionaler Filter, um Messwerte zu unterscheiden, wenn mehrere Entity-IDs denselben friendly_name teilen.">?</button>
+          <div class="muted">Optionaler Filter bei identischem Klartextnamen.</div>
         </div>
       </div>
     </div>
@@ -260,21 +275,6 @@
       </div>
       <div style="margin-top:6px;">
         <div id="range_from_to" class="muted" data-ui="filter_range_bounds"></div>
-      </div>
-    </div>
-    <div class="control ib_sel" id="c_entity" data-ui="filter_entity">
-      <label class="label_row ib_sel_label"><span>Entity ID (entity_id)</span><span id="cnt_entity_id" class="muted"></span></label>
-      <div class="ib_sel_stack">
-        <input id="entity_id" list="entity_list" placeholder="optional" data-ui="filter_entity_input" />
-        <datalist id="entity_list">
-          {% for it in (suggestions.entity_id or []) %}
-          <option value="{{ it|e }}"></option>
-          {% endfor %}
-        </datalist>
-        <div class="ib_sel_desc">
-          <button type="button" class="ib_sel_help" data-title="Entity ID" data-help="Optionaler Filter, um Messwerte zu unterscheiden, wenn mehrere Entity-IDs denselben friendly_name teilen.">?</button>
-          <div class="muted">Optionaler Filter bei identischem Klartextnamen.</div>
-        </div>
       </div>
     </div>
     <div class="control span2" id="custom_range" style="display:none;">
@@ -816,6 +816,7 @@ const $rangeFromTo = document.getElementById('range_from_to');
 const $cntRange = document.getElementById('cnt_range');
 
 const $cntMf = document.getElementById('cnt_measurement_filter');
+const $cntField = document.getElementById('cnt_field');
 const $cntFn = document.getElementById('cnt_friendly_name');
 const $cntEid = document.getElementById('cnt_entity_id');
 const $backupBadge = document.getElementById('backup_badge');
@@ -3879,6 +3880,58 @@ function renderMeasurements(){
   _selApplyWidthForInput($mf, ALL_MEASUREMENTS);
 }
 
+function renderFields(){
+  if($cntField) $cntField.textContent = ALL_FIELDS.length ? `(${ALL_FIELDS.length})` : "";
+}
+
+function _syncMeasurementValue(nextValue){
+  const next = String(nextValue || "").trim();
+  let changed = false;
+  if($mf && String($mf.value || "").trim() !== next){
+    $mf.value = next;
+    changed = true;
+  }
+  if($m && String($m.value || "").trim() !== next){
+    $m.value = next;
+    changed = true;
+  }
+  return changed;
+}
+
+function _normalizeMeasurementSelection(){
+  const options = (ALL_MEASUREMENTS || []).map(x => String(x || "").trim()).filter(Boolean);
+  const current = String((($mf && $mf.value) || ($m && $m.value) || "")).trim();
+  let next = current;
+  if(options.length === 1) next = options[0];
+  else if(current && !options.includes(current)) next = "";
+  return _syncMeasurementValue(next);
+}
+
+function _normalizeInputSelection(inputEl, options){
+  if(!inputEl) return false;
+  const values = (options || []).map(x => String(x || "").trim()).filter(Boolean);
+  const current = String(inputEl.value || "").trim();
+  let next = current;
+  if(values.length === 1) next = values[0];
+  else if(current && !values.includes(current)) next = "";
+  if(next === current) return false;
+  inputEl.value = next;
+  return true;
+}
+
+function _normalizeFieldSelection(){
+  if(!$f) return false;
+  const values = (ALL_FIELDS || []).map(x => String(x || "").trim()).filter(Boolean);
+  const current = String($f.value || "").trim();
+  let next = current;
+  if(values.length === 1) next = values[0];
+  else if(values.includes("value")) next = "value";
+  else if(current && !values.includes(current)) next = "";
+  if(next === current) return false;
+  $f.value = next;
+  return true;
+}
+
 function renderFriendly(){
   setDatalistOptions($friendlyList, ALL_FRIENDLY);
   if($cntFn) $cntFn.textContent = ALL_FRIENDLY.length ? `(${ALL_FRIENDLY.length})` : "";
@@ -3891,7 +3944,8 @@ function renderEntity(){
   _selApplyWidthForInput($e, ALL_ENTITY);
 }
 
-async function loadMeasurements(){
+async function loadMeasurements(opts){
+  const o = opts || {};
   try{
     const tf = currentTimeFilter();
     const qs = new URLSearchParams();
@@ -3901,29 +3955,26 @@ async function loadMeasurements(){
     if(tf && tf.range) qs.set("range", String(tf.range || ""));
     if(tf && tf.start && tf.stop){ qs.set("start", String(tf.start)); qs.set("stop", String(tf.stop)); }
     const url = qs.toString() ? ("./api/measurements?" + qs.toString()) : "./api/measurements";
-    const j = await api(url, null, { key: "measurements", status: "Lade Measurements..." });
+    const j = await api(url, null, { key: "measurements", status: "Lade Measurements...", silent: !!o.silent });
     ALL_MEASUREMENTS = (j.measurements || []).map(String);
-    try{
-      const cur = String(($mf && $mf.value) || "").trim();
-      if(cur && !ALL_MEASUREMENTS.includes(cur)) $mf.value = "";
-      if($m){
-        const curM = String($m.value || "").trim();
-        if(curM && !ALL_MEASUREMENTS.includes(curM)) $m.value = "";
-      }
-    }catch(e){}
     renderMeasurements();
+    return _normalizeMeasurementSelection();
   }catch(e){
     // If measurements cannot be loaded (often because Influx config is not saved), show actionable hint
     const msg = String(e && e.message ? e.message : e) || 'Fehler beim Laden der Measurements.';
     err(msg + ' Bitte Influx Einstellungen pruefen und ggf. unter Einstellungen -> Verbindung speichern (Token/Org/Bucket).');
     ALL_MEASUREMENTS = [];
     renderMeasurements();
+    _syncMeasurementValue("");
+    return true;
   }
 }
 
-async function loadFields(){
-  const preferred = String(($f && $f.value) || "").trim();
+async function loadFields(opts){
+  const o = opts || {};
   const measurement = String((($mf && $mf.value) || ($m && $m.value) || "")).trim();
+  const entityId = String(($e && $e.value) || "").trim();
+  const friendlyName = String(($n && $n.value) || "").trim();
   $f.innerHTML = "";
 
   const addFieldOption = (x) => {
@@ -3942,72 +3993,107 @@ async function loadFields(){
   emptyOpt.textContent = "";
   $f.appendChild(emptyOpt);
 
-  if(!measurement){
+  if(!measurement && !entityId && !friendlyName){
     ALL_FIELDS = [];
-    $f.value = preferred || "";
-    return;
+    renderFields();
+    $f.value = "";
+    return true;
   }
 
   const tf = currentTimeFilter();
   const qs = new URLSearchParams();
-  qs.set("measurement", measurement);
-  if($e && $e.value) qs.set("entity_id", String($e.value || ""));
-  if($n && $n.value) qs.set("friendly_name", String($n.value || ""));
+  if(measurement) qs.set("measurement", measurement);
+  if(entityId) qs.set("entity_id", entityId);
+  if(friendlyName) qs.set("friendly_name", friendlyName);
   if(tf && tf.range) qs.set("range", String(tf.range || ""));
   if(tf && tf.start && tf.stop){ qs.set("start", String(tf.start)); qs.set("stop", String(tf.stop)); }
   const j = await api(
     "./api/fields?" + qs.toString(),
     null,
-    { key: "fields", status: "Lade Fields..." },
+    { key: "fields", status: "Lade Fields...", silent: !!o.silent },
   );
   ALL_FIELDS = (j.fields || []).map(String);
   ALL_FIELDS.forEach(addFieldOption);
-  const hasPreferred = preferred && Array.from($f.options || []).some(o => String(o.value) === preferred);
-  const hasValue = Array.from($f.options || []).some(o => String(o.value) === "value");
-  if(hasPreferred) $f.value = preferred;
-  else if(hasValue) $f.value = "value";
-  else $f.value = "";
+  renderFields();
+  return _normalizeFieldSelection();
 }
 
-async function loadEntityIds(){
+async function loadEntityIds(opts){
+  const o = opts || {};
   try{
     let url = "./api/tag_values?tag=entity_id";
     const qp = tagQueryParams({includeFriendly: true, includeEntity: false});
     if(qp) url += "&" + qp;
-    const j = await api(url, null, { key: "tag_values_entity_id", status: "Lade entity_id..." });
+    const j = await api(url, null, { key: "tag_values_entity_id", status: "Lade entity_id...", silent: !!o.silent });
     ALL_ENTITY = (j.values || []).map(String);
-    try{
-      const cur = String(($e && $e.value) || "").trim();
-      if(cur && !ALL_ENTITY.includes(cur)) $e.value = "";
-    }catch(e){}
     renderEntity();
+    return _normalizeInputSelection($e, ALL_ENTITY);
   }catch(e){
     const msg = String(e && e.message ? e.message : e) || 'Fehler beim Laden der entity_id Vorschlaege.';
     err(msg + ' Bitte Influx Einstellungen pruefen (Einstellungen -> Verbindung) und speichern.');
     ALL_ENTITY = [];
     renderEntity();
+    if($e) $e.value = "";
+    return true;
   }
 }
 
-async function loadFriendlyNames(){
+async function loadFriendlyNames(opts){
+  const o = opts || {};
   try{
     let url = "./api/tag_values?tag=friendly_name";
     // When an entity_id is selected, friendly_name suggestions should be narrowed to that entity.
     const qp = tagQueryParams({includeFriendly: false, includeEntity: true});
     if(qp) url += "&" + qp;
-    const j = await api(url, null, { key: "tag_values_friendly_name", status: "Lade friendly_name..." });
+    const j = await api(url, null, { key: "tag_values_friendly_name", status: "Lade friendly_name...", silent: !!o.silent });
     ALL_FRIENDLY = (j.values || []).map(String);
-    try{
-      const cur = String(($n && $n.value) || "").trim();
-      if(cur && !ALL_FRIENDLY.includes(cur)) $n.value = "";
-    }catch(e){}
     renderFriendly();
+    return _normalizeInputSelection($n, ALL_FRIENDLY);
   }catch(e){
     const msg = String(e && e.message ? e.message : e) || 'Fehler beim Laden der friendly_name Vorschlaege.';
     err(msg + ' Bitte Influx Einstellungen pruefen (Einstellungen -> Verbindung) und speichern.');
     ALL_FRIENDLY = [];
     renderFriendly();
+    if($n) $n.value = "";
+    return true;
   }
+}
+
+let SELECTION_SYNC_SEQ = 0;
+
+async function syncSelectionFilters(opts){
+  const o = opts || {};
+  const syncId = ++SELECTION_SYNC_SEQ;
+  let changedAny = false;
+  for(let i = 0; i < 4; i++){
+    const before = JSON.stringify({
+      measurement: String((($mf && $mf.value) || ($m && $m.value) || "")).trim(),
+      field: String(($f && $f.value) || "").trim(),
+      friendly_name: String(($n && $n.value) || "").trim(),
+      entity_id: String(($e && $e.value) || "").trim(),
+    });
+    changedAny = (await loadMeasurements({silent: !!o.silent})) || changedAny;
+    if(syncId !== SELECTION_SYNC_SEQ) return changedAny;
+    changedAny = (await loadFields({silent: !!o.silent})) || changedAny;
+    if(syncId !== SELECTION_SYNC_SEQ) return changedAny;
+    changedAny = (await loadFriendlyNames({silent: !!o.silent})) || changedAny;
+    if(syncId !== SELECTION_SYNC_SEQ) return changedAny;
+    changedAny = (await loadEntityIds({silent: !!o.silent})) || changedAny;
+    if(syncId !== SELECTION_SYNC_SEQ) return changedAny;
+    const after = JSON.stringify({
+      measurement: String((($mf && $mf.value) || ($m && $m.value) || "")).trim(),
+      field: String(($f && $f.value) || "").trim(),
+      friendly_name: String(($n && $n.value) || "").trim(),
+      entity_id: String(($e && $e.value) || "").trim(),
+    });
+    if(before === after) break;
+  }
+  renderMeasurements();
+  renderFields();
+  renderFriendly();
+  renderEntity();
+  autoSpanAll();
+  return changedAny;
 }
 
 async function resolveSignal(){
@@ -6239,12 +6325,10 @@ const onMeasurementFilterChanged = debounce(()=>{
       try{
         if(Date.now() < RESET_UNTIL_MS) return;
         _hideTagChoices();
-        if($m) $m.value = String(($mf && $mf.value) || "").trim();
+        _syncMeasurementValue(String(($mf && $mf.value) || "").trim());
         saveState();
-        await loadFields();
-        await loadFriendlyNames();
-        await loadEntityIds();
-        autoSpanAll();
+        await syncSelectionFilters({silent: true});
+        saveState();
       }catch(e){ displayError(e); }
     })();
   });
@@ -6255,40 +6339,28 @@ const onFriendlyChanged = debounce(()=>{
     (async ()=>{
       try{
         if(Date.now() < RESET_UNTIL_MS) return;
-        // Friendly selection drives entity_id list; clear stale entity_id first.
-        if($e && String($e.value||'').trim()) $e.value = '';
+        _hideTagChoices();
         if(!$n || !String($n.value||'').trim()){
-          _hideTagChoices();
           saveState();
-          await loadEntityIds();
-          autoSpanAll();
+          await syncSelectionFilters({silent: true});
+          saveState();
           return;
         }
         saveState();
-        // Resolve measurement/field first so combo-range query can be precise.
-        try{ await resolveSignal(); }catch(e){}
-        try{ await loadMeasurements(); }catch(e){}
-        try{ await loadFields(); }catch(e){}
-        await loadEntityIds();
+        await syncSelectionFilters({silent: true});
 
         // If multiple entity_ids exist for this friendly_name, show list with ranges.
         try{
-          const combo = await loadComboRanges('entity_id', { entity_id: null, friendly_name: ($n ? ($n.value || null) : null) });
-          _renderTagChoices('entity_id', combo);
+          if(String(($m && $m.value) || '').trim() && String(($f && $f.value) || '').trim()){
+            const combo = await loadComboRanges('entity_id', { entity_id: null, friendly_name: ($n ? ($n.value || null) : null) });
+            _renderTagChoices('entity_id', combo);
+          }else{
+            _hideTagChoices();
+          }
         }catch(e){
           _hideTagChoices();
         }
-
-        // Auto-select the first filtered entity_id so the dashboard always has a concrete target.
-        const candidates = (ALL_ENTITY || []).filter(x => x);
-        const cur = String($e.value || '').trim();
-        const fn = String($n.value || '').trim();
-        if(fn && candidates.length > 0 && (!cur || !candidates.includes(cur))){
-          $e.value = candidates[0];
-          saveState();
-          renderEntity();
-        }
-        autoSpanAll();
+        saveState();
       }catch(e){ displayError(e); }
     })();
   });
@@ -6300,40 +6372,26 @@ const onEntityChanged = debounce(()=>{
       try{
         if(Date.now() < RESET_UNTIL_MS) return;
         saveState();
+        _hideTagChoices();
         if(!$e || !String($e.value||'').trim()){
-          _hideTagChoices();
-          await loadMeasurements();
-          await loadFields();
-          await loadFriendlyNames();
-          autoSpanAll();
+          await syncSelectionFilters({silent: true});
+          saveState();
           return;
         }
-        // Resolve measurement/field first so combo-range query can be precise.
-        try{ await resolveSignal(); }catch(e){}
-        try{ await loadMeasurements(); }catch(e){}
-        try{ await loadFields(); }catch(e){}
-
-        // Narrow friendly_name to those that match this entity_id
-        await loadFriendlyNames();
-
-        // Keep current friendly_name only if still valid.
-        try{
-          const cur = String($n && $n.value ? $n.value : '').trim();
-          if(cur && !(ALL_FRIENDLY || []).includes(cur)){
-            $n.value = '';
-            saveState();
-            renderFriendly();
-          }
-        }catch(e){}
-        autoSpanAll();
+        await syncSelectionFilters({silent: true});
 
         // If multiple friendly_names exist for this entity_id, show list with ranges.
         try{
-          const combo = await loadComboRanges('friendly_name', { entity_id: ($e ? ($e.value || null) : null), friendly_name: null });
-          _renderTagChoices('friendly_name', combo);
+          if(String(($m && $m.value) || '').trim() && String(($f && $f.value) || '').trim()){
+            const combo = await loadComboRanges('friendly_name', { entity_id: ($e ? ($e.value || null) : null), friendly_name: null });
+            _renderTagChoices('friendly_name', combo);
+          }else{
+            _hideTagChoices();
+          }
         }catch(e){
           _hideTagChoices();
         }
+        saveState();
       }catch(e){}
     })();
   });
@@ -6345,10 +6403,9 @@ const onFieldChanged = debounce(()=>{
       try{
         if(Date.now() < RESET_UNTIL_MS) return;
         saveState();
-        await loadMeasurements();
-        await loadFriendlyNames();
-        await loadEntityIds();
-        autoSpanAll();
+        _hideTagChoices();
+        await syncSelectionFilters({silent: true});
+        saveState();
       }catch(e){ displayError(e); }
     })();
   });
@@ -6380,6 +6437,7 @@ $m.addEventListener("change", async ()=>{ try{ await loadFields(); } catch(e){ e
 $m.addEventListener("input", async ()=>{
   try{
     const mv = String($m.value || "").trim();
+    _syncMeasurementValue(mv);
     if(!mv){
       if($f){
         $f.innerHTML = "";
@@ -6389,10 +6447,12 @@ $m.addEventListener("input", async ()=>{
         o.selected = true;
         $f.appendChild(o);
       }
+      ALL_FIELDS = [];
+      renderFields();
       return;
     }
     const hasMeasurement = Array.isArray(ALL_MEASUREMENTS) && ALL_MEASUREMENTS.includes(mv);
-    if(hasMeasurement) await loadFields();
+    if(hasMeasurement) await syncSelectionFilters({silent: true});
   }catch(e){}
 });
 
@@ -6867,36 +6927,15 @@ try{
     if(!$stop.value) $stop.value = toLocalDatetimeValue(now);
     if(!$r.value) $r.value = "24h";
 
-    await loadMeasurements();
-    if(st.measurement_filter) $mf.value = st.measurement_filter;
-    renderMeasurements();
-
-    // Restore measurement/field selection (important for cache restore + showing last data).
-    const ensureSelectOption = (sel, val) => { try{ ensureOption(sel, val); }catch(e){} };
-    try{
-      if(st.measurement){
-        ensureSelectOption($m, st.measurement);
-        $m.value = String(st.measurement);
-        await loadFields();
-        if(st.field){
-          ensureSelectOption($f, st.field);
-          $f.value = String(st.field);
-        }
-      }else{
-        // Ensure field list is present at least once.
-        await loadFields().catch(()=>{});
-      }
-    }catch(e){}
-
     // Restore stored selection early so list loads can narrow correctly.
+    if(st.measurement_filter) _syncMeasurementValue(st.measurement_filter);
+    else if(st.measurement) _syncMeasurementValue(st.measurement);
+    if(st.field) ensureOption($f, st.field);
+    if(st.field) $f.value = String(st.field);
     if(st.friendly_name) $n.value = st.friendly_name;
     if(st.entity_id) $e.value = st.entity_id;
-
-    await loadFriendlyNames();
-    renderFriendly();
-
-    await loadEntityIds();
-    renderEntity();
+    await syncSelectionFilters({silent: true});
+    saveState();
 
     // Table helpers are initialized after shared helpers are loaded.
 
@@ -6921,10 +6960,7 @@ try{
     // Ensure suggestion lists are loaded on page open (Backup loads these automatically).
     // Keep best-effort: failures are handled and will show an actionable error to the user.
     try{
-      if(!(ALL_MEASUREMENTS && ALL_MEASUREMENTS.length)) loadMeasurements().catch(()=>{});
-      loadFields().catch(()=>{});
-      if(!(ALL_FRIENDLY && ALL_FRIENDLY.length)) loadFriendlyNames().catch(()=>{});
-      if(!(ALL_ENTITY && ALL_ENTITY.length)) loadEntityIds().catch(()=>{});
+      syncSelectionFilters({silent: true}).catch(()=>{});
     }catch(e){}
 
     // Ensure graph query panel reflects persisted selection.

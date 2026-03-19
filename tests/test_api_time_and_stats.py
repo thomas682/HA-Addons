@@ -1,6 +1,17 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
+from pathlib import Path
+
+
+def test_dashboard_selection_labels_and_order():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert "<span>_field</span>" in body
+
+    pos_friendly = body.index("Messwert (Klartext / friendly_name)")
+    pos_entity = body.index("Entity ID (entity_id)")
+    pos_range = body.index("Zeitraum (Graph/Tabelle)")
+    assert pos_friendly < pos_entity < pos_range
 
 
 def test_stats_scope_ignores_partial_start_stop(load_app_module, tmp_path):

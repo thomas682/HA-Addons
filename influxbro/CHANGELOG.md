@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.60
+
+### UI
+
+- Dashboard: Die Auswahlfelder `_measurement`, `_field`, `friendly_name` und `entity_id` werden jetzt iterativ zusammen nachgefuehrt. Sobald eine Kombination nur noch einen gueltigen Wert zulaesst, wird dieser direkt uebernommen.
+- Dashboard: `_field` heisst in der sichtbaren Auswahl jetzt konsistent `_field`, bevorzugt automatisch `value`, und `Entity ID` steht direkt rechts neben `Messwert`.
+- Dashboard: Der Zeitraum-Block steht innerhalb des Auswahlrahmens jetzt wieder ganz unten.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.59
 
 ### UI

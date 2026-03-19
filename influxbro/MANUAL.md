@@ -94,9 +94,12 @@ Neu: Top-Leiste (Profil + Zoom)
 
 ### 1) Messwert auswaehlen
 
-- `_measurement (Filter)`: interne Messreihe (Influx Measurement) filtern.
+- `_measurement`: interne Messreihe (Influx Measurement) filtern.
+- `_field`: internen Field-Namen waehlen. Wenn mehrere passende Fields gefunden werden und `value` dabei ist, wird `value` automatisch gesetzt.
 - `Messwert (Klartext / friendly_name)`: den sichtbaren Namen aus HA auswaehlen.
-- `entity_id (optional)`: falls mehrere Entities denselben Namen haben, hier eingrenzen.
+- `Entity ID (entity_id)`: steht direkt rechts neben `Messwert` und hilft bei gleichnamigen HA-Entities.
+
+Die vier Auswahlfelder `_measurement`, `_field`, `Messwert` und `Entity ID` filtern sich gegenseitig. Wenn durch deine Auswahl nur noch genau ein passender Wert uebrig bleibt, wird dieser direkt uebernommen.
 
 Weitere Elemente:
 
@@ -595,3 +598,9 @@ Ausreisser:
 - Dashboard: Die Auswahlfelder `_measurement`, `friendly_name`, `entity_id` und `field` filtern sich jetzt gegenseitig. Bereits gesetzte Werte schränken die offenen Vorschlagslisten direkt ein.
 - Dashboard: `field` wird nur dann automatisch auf `value` gesetzt, wenn `value` in der gefilterten Field-Liste wirklich vorhanden ist.
 - API: Die Endpunkte für Measurements, Fields und Tag-Values unterstützen zusätzliche Filterparameter, sodass die Dashboard-Auswahl konsistent eingegrenzt wird.
+
+## Release Notes (1.12.60)
+
+- Dashboard: `_measurement`, `_field`, `friendly_name` und `entity_id` werden jetzt gemeinsam nachgezogen. Sobald eine Kombination eindeutig ist, wird der passende Wert automatisch gesetzt.
+- Dashboard: `_field` heisst in der sichtbaren Auswahl jetzt konsistent `_field`, `value` bleibt der bevorzugte Standard, und `Entity ID` steht direkt rechts neben `Messwert`.
+- Dashboard: Der Zeitraum-Block steht im Auswahlrahmen jetzt wieder ganz unten.
