@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.71
+
+### Maintenance
+
+- Neue Testversion fuer Home Assistant, damit der aktuelle Dashboard-Stand als Update erkannt und installiert werden kann.
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.70
 
 ### UI
