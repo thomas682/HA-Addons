@@ -416,6 +416,7 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 ## Export
 
 - Seite `Export`: Auswahl wie im Dashboard; Measurement/Field wird best-effort aus friendly_name/entity_id aufgeloest.
+- Die `_field`-Liste wird dabei mit `_measurement`, `friendly_name`, `entity_id` und Zeitraum gemeinsam gefiltert. `value` wird nur noch dann automatisch gesetzt, wenn dieses Field in der gefilterten Auswahl wirklich existiert.
 - Feld `Auswahl (aufgeloest)`: zeigt die aktuell aufgeloeste Serie (measurement/field + tags) und den Zeitraum.
 - Export-Erzeugung laeuft als Hintergrund-Job und kann mit `Abbrechen` gestoppt werden.
 - Buttons:
@@ -604,3 +605,7 @@ Ausreisser:
 - Dashboard: `_measurement`, `_field`, `friendly_name` und `entity_id` werden jetzt gemeinsam nachgezogen. Sobald eine Kombination eindeutig ist, wird der passende Wert automatisch gesetzt.
 - Dashboard: `_field` heisst in der sichtbaren Auswahl jetzt konsistent `_field`, `value` bleibt der bevorzugte Standard, und `Entity ID` steht direkt rechts neben `Messwert`.
 - Dashboard: Der Zeitraum-Block steht im Auswahlrahmen jetzt wieder ganz unten.
+
+## Release Notes (1.12.61)
+
+- Export: `_field` wird jetzt mit allen aktiven Export-Filtern geladen. Ein unpassendes `value` wird nicht mehr erzwungen, dadurch enthalten Exporte wieder Daten statt nur der Kopfzeile.

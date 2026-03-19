@@ -14,6 +14,16 @@ def test_dashboard_selection_labels_and_order():
     assert pos_friendly < pos_entity < pos_range
 
 
+def test_export_field_loader_no_longer_forces_value_without_available_field():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "export.html").read_text()
+    assert "addOpt('value');" not in body
+    assert "if(preferred && xs.includes(preferred)) $f.value = preferred;" in body
+    assert "else if(xs.includes('value')) $f.value = 'value';" in body
+    assert "if(!measurement && !friendly && !entity){ $f.value = ''; return; }" in body
+    assert "if(entity) q.push('entity_id=' + encodeURIComponent(entity));" in body
+    assert "if(friendly) q.push('friendly_name=' + encodeURIComponent(friendly));" in body
+
+
 def test_stats_scope_ignores_partial_start_stop(load_app_module, tmp_path):
     app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
     client = app_mod.app.test_client()

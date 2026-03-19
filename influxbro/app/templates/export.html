@@ -543,7 +543,10 @@
       }
 
       async function loadFields(){
-        const preferred = String(($f && $f.value) || 'value').trim() || 'value';
+        const preferred = String(($f && $f.value) || '').trim();
+        const measurement = String(($m && $m.value) || '').trim();
+        const friendly = String(($n && $n.value) || '').trim();
+        const entity = String(($e && $e.value) || '').trim();
         $f.innerHTML = '';
         const addOpt = (x)=>{
           const s = String(x || '').trim();
@@ -552,12 +555,25 @@
           if(has) return;
           const o=document.createElement('option'); o.value=s; o.textContent=s; $f.appendChild(o);
         };
-        addOpt('value');
-        if(!$m.value){ $f.value = preferred; return; }
-        const j = await api('./api/fields?measurement=' + encodeURIComponent($m.value));
+        const emptyOpt = document.createElement('option');
+        emptyOpt.value = '';
+        emptyOpt.textContent = '';
+        $f.appendChild(emptyOpt);
+        if(!measurement && !friendly && !entity){ $f.value = ''; return; }
+        const tf = timeFilter();
+        const q = [];
+        if(measurement) q.push('measurement=' + encodeURIComponent(measurement));
+        if(entity) q.push('entity_id=' + encodeURIComponent(entity));
+        if(friendly) q.push('friendly_name=' + encodeURIComponent(friendly));
+        if(tf.start && tf.stop){ q.push('start=' + encodeURIComponent(tf.start)); q.push('stop=' + encodeURIComponent(tf.stop)); }
+        if(tf.range) q.push('range=' + encodeURIComponent(tf.range));
+        const j = await api('./api/fields?' + q.join('&'));
         (j.fields||[]).forEach(addOpt);
-        addOpt(preferred);
-        $f.value = Array.from($f.options || []).some(o => String(o.value) === preferred) ? preferred : 'value';
+        const xs = Array.from($f.options || []).map(o => String(o.value || '')).filter(Boolean);
+        if(preferred && xs.includes(preferred)) $f.value = preferred;
+        else if(xs.includes('value')) $f.value = 'value';
+        else if(xs.length === 1) $f.value = xs[0];
+        else $f.value = '';
       }
 
       function timeFilter(){

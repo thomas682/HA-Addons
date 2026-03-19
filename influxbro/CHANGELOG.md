@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.12.61
+
+### UI
+
+- Export: Die `_field`-Auswahl wird jetzt mit denselben Filtern wie die restliche Export-Auswahl geladen (`_measurement`, `friendly_name`, `entity_id`, Zeitraum). Dadurch wird kein unpassendes `value` mehr erzwungen und Exporte liefern wieder Daten statt nur Kopfzeilen.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.60
 
 ### UI
