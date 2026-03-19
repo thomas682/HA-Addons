@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.62
+
+### UI
+
+- Dashboard: Die Filterauswahl fuer `_measurement`, `_field`, `friendly_name` und `entity_id` wird jetzt nicht mehr vom eingestellten Zeitraum eingeschraenkt. Dadurch bleiben die Selektoren gegenseitig konsistent, auch wenn im aktuell gewaehlten Zeitfenster gerade keine Datenpunkte liegen.
+
+### Maintenance
+
+- Direkt gegen HA getestet: Dashboard-HTML + `api/tag_values`, `api/measurements`, `api/fields` auf `http://192.168.2.200:8099`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.61
 
 ### UI

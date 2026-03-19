@@ -3627,12 +3627,6 @@ function tagQueryParams(opts){
   if($f && $f.value) q.push("field=" + encodeURIComponent($f.value));
   if(o.includeFriendly && $n.value) q.push("friendly_name=" + encodeURIComponent($n.value));
   if(o.includeEntity && $e.value) q.push("entity_id=" + encodeURIComponent($e.value));
-  const tf = currentTimeFilter();
-  if(tf && tf.range) q.push("range=" + encodeURIComponent(tf.range));
-  if(tf && tf.start && tf.stop){
-    q.push("start=" + encodeURIComponent(tf.start));
-    q.push("stop=" + encodeURIComponent(tf.stop));
-  }
   return q.join("&");
 }
 
@@ -3947,13 +3941,10 @@ function renderEntity(){
 async function loadMeasurements(opts){
   const o = opts || {};
   try{
-    const tf = currentTimeFilter();
     const qs = new URLSearchParams();
     if($f && $f.value) qs.set("field", String($f.value || ""));
     if($e && $e.value) qs.set("entity_id", String($e.value || ""));
     if($n && $n.value) qs.set("friendly_name", String($n.value || ""));
-    if(tf && tf.range) qs.set("range", String(tf.range || ""));
-    if(tf && tf.start && tf.stop){ qs.set("start", String(tf.start)); qs.set("stop", String(tf.stop)); }
     const url = qs.toString() ? ("./api/measurements?" + qs.toString()) : "./api/measurements";
     const j = await api(url, null, { key: "measurements", status: "Lade Measurements...", silent: !!o.silent });
     ALL_MEASUREMENTS = (j.measurements || []).map(String);
@@ -4000,13 +3991,10 @@ async function loadFields(opts){
     return true;
   }
 
-  const tf = currentTimeFilter();
   const qs = new URLSearchParams();
   if(measurement) qs.set("measurement", measurement);
   if(entityId) qs.set("entity_id", entityId);
   if(friendlyName) qs.set("friendly_name", friendlyName);
-  if(tf && tf.range) qs.set("range", String(tf.range || ""));
-  if(tf && tf.start && tf.stop){ qs.set("start", String(tf.start)); qs.set("stop", String(tf.stop)); }
   const j = await api(
     "./api/fields?" + qs.toString(),
     null,
@@ -4104,7 +4092,6 @@ async function resolveSignal(){
     friendly_name: fn || null,
     entity_id: eid || null,
     measurement_filter: $mf.value || null,
-    ...currentTimeFilter(),
   };
   const j = await api(
     "./api/resolve_signal",

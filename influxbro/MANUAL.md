@@ -99,7 +99,7 @@ Neu: Top-Leiste (Profil + Zoom)
 - `Messwert (Klartext / friendly_name)`: den sichtbaren Namen aus HA auswaehlen.
 - `Entity ID (entity_id)`: steht direkt rechts neben `Messwert` und hilft bei gleichnamigen HA-Entities.
 
-Die vier Auswahlfelder `_measurement`, `_field`, `Messwert` und `Entity ID` filtern sich gegenseitig. Wenn durch deine Auswahl nur noch genau ein passender Wert uebrig bleibt, wird dieser direkt uebernommen.
+Die vier Auswahlfelder `_measurement`, `_field`, `Messwert` und `Entity ID` filtern sich gegenseitig. Wenn durch deine Auswahl nur noch genau ein passender Wert uebrig bleibt, wird dieser direkt uebernommen. Der Zeitraum beeinflusst diese vier Vorschlagslisten nicht; er steuert nur die spaetere Datenabfrage fuer Graph, Tabelle und Statistik.
 
 Weitere Elemente:
 
@@ -609,3 +609,7 @@ Ausreisser:
 ## Release Notes (1.12.61)
 
 - Export: `_field` wird jetzt mit allen aktiven Export-Filtern geladen. Ein unpassendes `value` wird nicht mehr erzwungen, dadurch enthalten Exporte wieder Daten statt nur der Kopfzeile.
+
+## Release Notes (1.12.62)
+
+- Dashboard: Die Selektoren `_measurement`, `_field`, `friendly_name` und `entity_id` filtern sich weiterhin gegenseitig, sind dabei aber nicht mehr vom aktuell gesetzten Zeitraum abhaengig. So bleibt die Auswahl auch bei leeren Zeitfenstern konsistent.

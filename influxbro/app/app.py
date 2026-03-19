@@ -2954,6 +2954,15 @@ def _flux_range_clause(range_key: str, start: datetime | None, stop: datetime | 
     return f"|> range(start: {range_to_flux(range_key)})"
 
 
+def _selector_range_key(range_key: str | None, start: datetime | None, stop: datetime | None) -> str:
+    """Use all-time unless the selector request explicitly carries a time filter."""
+
+    if start and stop:
+        return str(range_key or "24h")
+    rk = str(range_key or "").strip()
+    return rk if rk else "all"
+
+
 def _flux_range_clause_for_scope(
     scope: str,
     range_key: str,
@@ -10166,7 +10175,7 @@ def api_influx_ping():
 @app.get("/api/measurements")
 def measurements():
     cfg = _overlay_from_yaml_if_enabled(load_cfg())
-    range_key = request.args.get("range", "24h")
+    range_key = request.args.get("range")
     field = request.args.get("field", "")
     entity_id = request.args.get("entity_id", "") or None
     friendly_name = request.args.get("friendly_name", "") or None
@@ -10179,6 +10188,7 @@ def measurements():
             start_dt, stop_dt = _get_start_stop_from_payload({"start": start_raw, "stop": stop_raw})
         except Exception as e:
             return jsonify({"ok": False, "error": f"invalid start/stop: {e}"}), 400
+    selector_range = _selector_range_key(range_key, start_dt, stop_dt)
     try:
         if int(cfg.get("influx_version",2)) == 2:
             if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
@@ -10188,7 +10198,7 @@ def measurements():
                 }), 400
             with v2_client(cfg) as c:
                 if field or entity_id or friendly_name or start_dt or stop_dt:
-                    range_clause = _flux_range_clause(range_key, start_dt, stop_dt)
+                    range_clause = _flux_range_clause(selector_range, start_dt, stop_dt)
                     predicate_parts = ["exists r._measurement"]
                     if field:
                         predicate_parts.append(f"r._field == {_flux_str(field)}")
@@ -10233,7 +10243,7 @@ from(bucket: "{cfg["bucket"]}")
 def fields():
     cfg = _overlay_from_yaml_if_enabled(load_cfg())
     measurement = request.args.get("measurement", "")
-    range_key = request.args.get("range", "24h")
+    range_key = request.args.get("range")
     entity_id = request.args.get("entity_id", "") or None
     friendly_name = request.args.get("friendly_name", "") or None
     start_raw = request.args.get("start")
@@ -10245,6 +10255,7 @@ def fields():
             start_dt, stop_dt = _get_start_stop_from_payload({"start": start_raw, "stop": stop_raw})
         except Exception as e:
             return jsonify({"ok": False, "error": f"invalid start/stop: {e}"}), 400
+    selector_range = _selector_range_key(range_key, start_dt, stop_dt)
     if not measurement and not entity_id and not friendly_name:
         return jsonify({"ok": False, "error": "measurement or tag filter required"}), 400
     try:
@@ -10256,7 +10267,7 @@ def fields():
                 }), 400
             with v2_client(cfg) as c:
                 if entity_id or friendly_name or start_dt or stop_dt or not measurement:
-                    range_clause = _flux_range_clause(range_key, start_dt, stop_dt)
+                    range_clause = _flux_range_clause(selector_range, start_dt, stop_dt)
                     predicate_parts = ["exists r._field"]
                     if measurement:
                         predicate_parts.append(f"r._measurement == {_flux_str(measurement)}")
@@ -10308,7 +10319,7 @@ def tag_values():
     tag = request.args.get("tag", "")
     measurement = request.args.get("measurement", "")
     field = request.args.get("field", "")
-    range_key = request.args.get("range", "24h")
+    range_key = request.args.get("range")
     entity_id = request.args.get("entity_id", "") or None
     friendly_name = request.args.get("friendly_name", "") or None
     start_raw = request.args.get("start")
@@ -10329,6 +10340,7 @@ def tag_values():
             start_dt, stop_dt = _get_start_stop_from_payload({"start": start_raw, "stop": stop_raw})
         except Exception as e:
             return jsonify({"ok": False, "error": f"invalid start/stop: {e}"}), 400
+    selector_range = _selector_range_key(range_key, start_dt, stop_dt)
 
     try:
         if int(cfg.get("influx_version",2)) == 2:
@@ -10351,7 +10363,7 @@ def tag_values():
             with v2_client(cfg) as c:
                 # schema.tagValues does not support stop; for custom ranges we use a direct query.
                 if stop_dt and start_dt:
-                    range_clause = _flux_range_clause(range_key, start_dt, stop_dt)
+                    range_clause = _flux_range_clause(selector_range, start_dt, stop_dt)
                     q = f'''
 from(bucket: "{cfg["bucket"]}")
   {range_clause}
@@ -10365,7 +10377,7 @@ from(bucket: "{cfg["bucket"]}")
   |> limit(n: 5000)
 '''
                 else:
-                    start_arg = range_to_flux(range_key)
+                    start_arg = range_to_flux(selector_range)
                     q = f'''
 import "influxdata/influxdb/schema"
 schema.tagValues(
@@ -10385,7 +10397,7 @@ schema.tagValues(
             if not cfg.get("database"):
                 return jsonify({"ok": False, "error": "InfluxDB v1 requires database. Bitte konfigurieren."}), 400
             c = v1_client(cfg)
-            where = f"WHERE {_influxql_time_where(range_key, start_dt, stop_dt)}"
+            where = f"WHERE {_influxql_time_where(selector_range, start_dt, stop_dt)}"
             if entity_id:
                 safe_entity_id = entity_id.replace("'", "\\'")
                 where += f' AND "entity_id"=\'{safe_entity_id}\''
@@ -14209,7 +14221,7 @@ def resolve_signal():
     body = request.get_json(force=True) or {}
     friendly_name = (body.get("friendly_name") or "").strip() or None
     entity_id = (body.get("entity_id") or "").strip() or None
-    range_key = body.get("range", "24h")
+    range_key = body.get("range")
     measurement_filter = (body.get("measurement_filter") or body.get("measurement") or "").strip() or None
 
     if not friendly_name and not entity_id:
@@ -14219,6 +14231,7 @@ def resolve_signal():
         start_dt, stop_dt = _get_start_stop_from_payload(body)
     except Exception as e:
         return jsonify({"ok": False, "error": f"invalid start/stop: {e}"}), 400
+    selector_range = _selector_range_key(range_key, start_dt, stop_dt)
 
     try:
         if int(cfg.get("influx_version", 2)) == 2:
@@ -14229,7 +14242,7 @@ def resolve_signal():
                 }), 400
 
             extra = flux_tag_filter(entity_id, friendly_name)
-            range_clause = _flux_range_clause(range_key, start_dt, stop_dt)
+            range_clause = _flux_range_clause(selector_range, start_dt, stop_dt)
             mfilter = f" and r._measurement == {_flux_str(measurement_filter)}" if measurement_filter else ""
             with v2_client(cfg) as c:
                 q = f'''

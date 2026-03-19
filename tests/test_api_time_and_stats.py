@@ -14,6 +14,13 @@ def test_dashboard_selection_labels_and_order():
     assert pos_friendly < pos_entity < pos_range
 
 
+def test_dashboard_selector_sync_is_no_longer_time_filtered():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert 'measurement_filter: $mf.value || null,\n  };' in body
+    assert 'if(tf && tf.range) q.push("range=" + encodeURIComponent(tf.range));' not in body
+    assert 'if(tf && tf.range) qs.set("range", String(tf.range || ""));' not in body
+
+
 def test_export_field_loader_no_longer_forces_value_without_available_field():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "export.html").read_text()
     assert "addOpt('value');" not in body
@@ -121,6 +128,45 @@ def test_measurements_flux_has_real_newline(load_app_module, tmp_path, monkeypat
     assert "\n" in q
 
 
+def test_measurements_selector_filters_default_to_all_time(load_app_module, tmp_path, monkeypatch):
+    app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
+
+    captured: dict[str, object] = {"q": None}
+
+    class _FakeQueryAPI:
+        def query(self, q: str, org: str | None = None):
+            captured["q"] = q
+            return []
+
+    class _FakeClient:
+        def query_api(self):
+            return _FakeQueryAPI()
+
+        def close(self):
+            return None
+
+    @contextmanager
+    def _fake_v2_client(cfg: dict):
+        yield _FakeClient()
+
+    monkeypatch.setattr(app_mod, "_overlay_from_yaml_if_enabled", lambda cfg: {
+        **cfg,
+        "influx_version": 2,
+        "token": "t",
+        "org": "o",
+        "bucket": "b",
+    })
+    monkeypatch.setattr(app_mod, "v2_client", _fake_v2_client)
+
+    client = app_mod.app.test_client()
+    r = client.get("/api/measurements?friendly_name=X")
+    assert r.status_code == 200
+    q = captured["q"]
+    assert isinstance(q, str)
+    assert '1970-01-01T00:00:00Z' in q
+    assert "-24h" not in q
+
+
 def test_resolve_signal_does_not_require_value_column(load_app_module, tmp_path, monkeypatch):
     app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
     captured: dict[str, object] = {"q": None}
@@ -169,6 +215,52 @@ def test_resolve_signal_does_not_require_value_column(load_app_module, tmp_path,
     q = captured["q"]
     assert isinstance(q, str)
     assert "first()" not in q
+
+
+def test_resolve_signal_defaults_to_all_time_without_explicit_range(load_app_module, tmp_path, monkeypatch):
+    app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
+    captured: dict[str, object] = {"q": None}
+
+    class _FakeRecord:
+        def __init__(self, m: str, f: str):
+            self.values = {"_measurement": m, "_field": f}
+
+    class _FakeTable:
+        def __init__(self, records):
+            self.records = records
+
+    class _FakeQueryAPI:
+        def query(self, q: str, org: str | None = None):
+            captured["q"] = q
+            return [_FakeTable([_FakeRecord("kWh", "value")])]
+
+    class _FakeClient:
+        def query_api(self):
+            return _FakeQueryAPI()
+
+        def close(self):
+            return None
+
+    @contextmanager
+    def _fake_v2_client(cfg: dict):
+        yield _FakeClient()
+
+    monkeypatch.setattr(app_mod, "_overlay_from_yaml_if_enabled", lambda cfg: {
+        **cfg,
+        "influx_version": 2,
+        "token": "t",
+        "org": "o",
+        "bucket": "b",
+    })
+    monkeypatch.setattr(app_mod, "v2_client", _fake_v2_client)
+
+    client = app_mod.app.test_client()
+    r = client.post("/api/resolve_signal", json={"friendly_name": "X"})
+    assert r.status_code == 200
+    q = captured["q"]
+    assert isinstance(q, str)
+    assert '1970-01-01T00:00:00Z' in q
+    assert "-24h" not in q
 
 
 def test_stats_v2_flux_avoids_time_label_literal(load_app_module, tmp_path, monkeypatch):
