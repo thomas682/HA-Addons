@@ -675,7 +675,13 @@
 
     <details class="card" id="ui_page_import" data-ui="settings.ui.page_import" title="settings.ui.page_import">
       <summary><span class="ib_summary_row"><span>Import</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Import" data-info-body="Defaults/Limits fuer Import (Backup vorher, Delete first, Vorschau)." >i</button></span></summary>
-      <div class="card_body"><div class="muted">Derzeit keine zusaetzlichen UI-Settings fuer diese Seite.</div></div>
+      <div class="card_body">
+        <div>
+          <label>Measurement-Transformationen</label>
+          <textarea id="import_measurement_transforms" rows="8"></textarea>
+          <div class="muted">Eine Regel pro Zeile im Format <code>Quelle;Ziel;Faktor</code>, z.B. <code>Wh;kWh;0.001</code>.</div>
+        </div>
+      </div>
     </details>
 
     </div>
@@ -826,6 +832,7 @@ const ids = [
   ,"ui_open_stats_total","ui_open_stats_current"
   ,"ui_tooltips_enabled"
   ,"restore_preview_lines"
+  ,"import_measurement_transforms"
   ,"log_to_file","log_profile","log_max_mb","log_backup_count","log_max_age_days","log_http_requests"
   ,"log_influx_queries"
   ,"log_cache_usage"
@@ -1325,6 +1332,7 @@ function setForm(cfg){
   el.ui_tooltips_enabled.checked = (cfg.ui_tooltips_enabled !== false);
 
   el.restore_preview_lines.value = (cfg.restore_preview_lines !== null && cfg.restore_preview_lines !== undefined) ? String(cfg.restore_preview_lines) : '5';
+  el.import_measurement_transforms.value = cfg.import_measurement_transforms ?? '';
 
   _renderOutliersTable(_outlierRowsFromCfg(cfg || {}));
   prefillOutlierMeasurements(cfg || {}).catch(()=>{});
@@ -1437,6 +1445,7 @@ function getForm(){
     ui_tooltips_enabled: !!el.ui_tooltips_enabled.checked,
 
     restore_preview_lines: Number(el.restore_preview_lines.value || 5),
+    import_measurement_transforms: String(el.import_measurement_transforms.value || ''),
 
     outlier_max_step_w: Number(outlierCfg.outlier_max_step_w),
     outlier_max_step_kw: Number(outlierCfg.outlier_max_step_kw),

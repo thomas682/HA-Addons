@@ -171,6 +171,12 @@
 
       <div class="card" data-ui="import.actions" title="import.actions">
         <div class="row" style="margin-top:0;">
+          <div style="min-width: 220px;"><button id="preview_transform" type="button" data-ui="import.preview_transform" title="import.preview_transform">Transformation testen</button></div>
+          <div class="muted" id="preview_hint" style="padding-top: 10px;"></div>
+        </div>
+        <div class="status" id="transform_status" style="display:none;" data-ui="import.transform_status" title="import.transform_status"></div>
+        <div class="status" id="transform_preview" style="display:none;" data-ui="import.transform_preview" title="import.transform_preview"></div>
+        <div class="row" style="margin-top:0;">
           <div style="min-width: 220px;"><button id="run" data-ui="import.run" title="import.run">Import starten</button></div>
           <div class="muted" id="run_hint" style="padding-top: 10px;"></div>
         </div>
@@ -209,12 +215,17 @@
 
       const $run = document.getElementById('run');
       const $runHint = document.getElementById('run_hint');
+      const $previewTransform = document.getElementById('preview_transform');
+      const $previewHint = document.getElementById('preview_hint');
+      const $transformStatus = document.getElementById('transform_status');
+      const $transformPreview = document.getElementById('transform_preview');
       const $err = document.getElementById('err');
       const $ok = document.getElementById('ok');
 
       let IMPORT_FILE_ID = null;
       let IMPORT_DELIM = ';';
       let IMPORT_RANGE = { oldest_utc: null, newest_utc: null, oldest_local: null, newest_local: null, count: null };
+      let IMPORT_ANALYSIS = null;
 
       function _selInitHelpButtons(){
         try{
@@ -401,6 +412,7 @@
       async function analyze(){
         err(''); ok('');
         IMPORT_FILE_ID = null;
+        IMPORT_ANALYSIS = null;
         if(!$file.files || !$file.files.length) throw new Error('Bitte Datei waehlen.');
         const fd = new FormData();
         fd.append('file', $file.files[0]);
@@ -412,8 +424,12 @@
         try{ window.InfluxBroStatus && window.InfluxBroStatus.start && window.InfluxBroStatus.start('import.run', 'Analyse laeuft...'); }catch(e){}
         const j = await api('./api/import_analyze', { method:'POST', body: fd });
         IMPORT_FILE_ID = j.file_id;
+        IMPORT_ANALYSIS = j;
         IMPORT_DELIM = j.delimiter || (d && d.length===1 ? d : ';');
         IMPORT_RANGE = { oldest_utc: j.oldest_utc, newest_utc: j.newest_utc, oldest_local: j.oldest_local, newest_local: j.newest_local, count: j.count };
+        if($transformStatus) $transformStatus.style.display = 'none';
+        if($transformPreview) $transformPreview.style.display = 'none';
+        if($previewHint) $previewHint.textContent = '';
         $analysis.style.display = 'block';
         const errs = j.errors || {};
         const errTxt = Object.keys(errs).length ? ('\nFehler (count): ' + Object.keys(errs).map(k => `${k}=${errs[k]}`).join(' ')) : '';
@@ -425,10 +441,66 @@
         }).join('\n');
         const exTxt = ex ? ('\nBeispiele:\n' + ex) : '';
 
-        $analysis.textContent = `Datei: ${IMPORT_FILE_ID}\nDelimiter: ${IMPORT_DELIM}\nZeilen (valid): ${j.count}\nZeitraum: ${j.oldest_local || '-'} bis ${j.newest_local || '-'}\nTimezone: ${j.timezone && j.timezone.name ? j.timezone.name : ''}${errTxt}${exTxt}`;
+        const srcMeasurements = (j.source_measurements || []).map(String).filter(Boolean);
+        const srcFields = (j.source_fields || []).map(String).filter(Boolean);
+        const sampleTxt = (j.sample || []).map((row, idx) => {
+          const time = row && row.time ? String(row.time) : '';
+          const value = row && row.value_raw !== undefined ? String(row.value_raw) : String((row && row.value) || '');
+          const eid = row && row.entity_id ? String(row.entity_id) : '-';
+          const fn = row && row.friendly_name ? String(row.friendly_name) : '-';
+          const mf = row && row._measurement ? String(row._measurement) : '-';
+          const fld = row && row._field ? String(row._field) : '-';
+          return `${idx+1}) time=${time} value=${value} entity_id=${eid} friendly_name=${fn} _measurement=${mf} _field=${fld}`;
+        }).join('\n');
+
+        $analysis.textContent = `Datei: ${IMPORT_FILE_ID}\nDelimiter: ${IMPORT_DELIM}\nZeilen (valid): ${j.count}\nZeitraum: ${j.oldest_local || '-'} bis ${j.newest_local || '-'}\nTimezone: ${j.timezone && j.timezone.name ? j.timezone.name : ''}\nQuell-_measurement: ${srcMeasurements.join(', ') || '-'}\nQuell-_field: ${srcFields.join(', ') || '-'}${sampleTxt ? ('\nErste 3 Zeilen:\n' + sampleTxt) : ''}${errTxt}${exTxt}`;
         $analyzeHint.textContent = `Valid: ${j.count} | ${j.oldest_local || ''} .. ${j.newest_local || ''}` + (Object.keys(errs).length ? (' | Fehler: ' + Object.keys(errs).map(k => `${k}=${errs[k]}`).join(' ')) : '');
         ok('Analyse fertig.');
         try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done('import.run', 'Analyse fertig.'); }catch(e){}
+      }
+
+      function _renderTransformChecks(checks){
+        const items = checks || {};
+        const icon = (st) => st === 'ok' ? 'OK' : (st === 'transform' ? 'TRANSFORM' : (st === 'warn' ? 'HINWEIS' : 'NICHT OK'));
+        return ['measurement','field','entity_id','friendly_name','value'].map((key)=>{
+          const it = items[key] || {};
+          return `${key}: ${icon(String(it.status||''))} - ${String(it.message||'')}`;
+        }).join('\n');
+      }
+
+      function _renderPreviewRows(rows){
+        return (rows || []).map((row, idx) => {
+          return `${idx+1}) time=${row.time || '-'} value=${row.value} entity_id=${row.entity_id || '-'} friendly_name=${row.friendly_name || '-'} _measurement=${row._measurement || '-'} _field=${row._field || '-'} factor=${row.factor}`;
+        }).join('\n');
+      }
+
+      async function previewTransform(){
+        err(''); ok('');
+        if(!IMPORT_FILE_ID) throw new Error('Bitte zuerst Analysieren.');
+        await resolveSignal();
+        await loadFields();
+        const tz = clientTz();
+        const payload = {
+          file_id: IMPORT_FILE_ID,
+          delimiter: IMPORT_DELIM,
+          measurement: String($m.value||'').trim(),
+          field: String($f.value||'').trim(),
+          entity_id: String($e.value||'').trim() || null,
+          friendly_name: String($n.value||'').trim() || null,
+          tz_name: tz.tz_name,
+          tz_offset_minutes: tz.tz_offset_minutes,
+        };
+        if(!payload.measurement || !payload.field) throw new Error('measurement/field fehlt.');
+        const j = await api('./api/import_preview_transform', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+        if($transformStatus){
+          $transformStatus.style.display = 'block';
+          $transformStatus.textContent = _renderTransformChecks(j.checks || {});
+        }
+        if($transformPreview){
+          $transformPreview.style.display = 'block';
+          $transformPreview.textContent = 'Vorschau (erste 10 Zeilen nach Transformation):\n' + _renderPreviewRows(j.preview_rows || []);
+        }
+        if($previewHint) $previewHint.textContent = (j.compatible ? 'Transformation pruefbar.' : 'Transformation nicht kompatibel.');
       }
 
       async function runImport(){
@@ -494,6 +566,7 @@
           $deleteFirst.addEventListener('change', ()=>{ $confirmBox.style.display = $deleteFirst.checked ? 'block' : 'none'; });
           $confirmBox.style.display = $deleteFirst.checked ? 'block' : 'none';
           $analyze.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); }catch(e){}; analyze().catch(e=>err(e && e.message ? e.message : e)); });
+          $previewTransform.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); }catch(e){}; previewTransform().catch(e=>err(e && e.message ? e.message : e)); });
           $run.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); }catch(e){}; runImport().catch(e=>err(e && e.message ? e.message : e)); });
         }catch(e){ err(e && e.message ? e.message : e); }
       })();

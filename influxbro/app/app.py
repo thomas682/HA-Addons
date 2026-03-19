@@ -689,6 +689,9 @@ DEFAULT_CFG = {
     # Restore
     "restore_preview_lines": 5,
 
+    # Import transformation rules: one rule per line, format `source;target;factor`
+    "import_measurement_transforms": "W;kW;0.001\nkW;W;1000\nkW;MW;0.001\nMW;kW;1000\nWh;kWh;0.001\nkWh;Wh;1000\nkWh;MWh;0.001\nMWh;kWh;1000",
+
     # Tooltips
     "ui_tooltips_enabled": True,
 
@@ -2961,6 +2964,275 @@ def _selector_range_key(range_key: str | None, start: datetime | None, stop: dat
         return str(range_key or "24h")
     rk = str(range_key or "").strip()
     return rk if rk else "all"
+
+
+def _parse_import_measurement_transforms(cfg: dict[str, Any]) -> dict[tuple[str, str], float]:
+    raw = str(cfg.get("import_measurement_transforms") or "")
+    out: dict[tuple[str, str], float] = {}
+    for ln in raw.splitlines():
+        s = str(ln or "").strip()
+        if not s or s.startswith("#"):
+            continue
+        src = dst = ""
+        factor_txt = ""
+        parts = [p.strip() for p in re.split(r"[;,]", s) if p.strip()]
+        if len(parts) >= 3:
+            src, dst, factor_txt = parts[0], parts[1], parts[2]
+        else:
+            m = re.match(r"^(.*?)\s*(?:=>|->|>)\s*(.*?)\s*=\s*([-+0-9.eE]+)$", s)
+            if m:
+                src, dst, factor_txt = m.group(1).strip(), m.group(2).strip(), m.group(3).strip()
+        if not src or not dst or not factor_txt:
+            continue
+        try:
+            out[(src, dst)] = float(factor_txt)
+        except Exception:
+            continue
+    return out
+
+
+def _import_column_map(header: list[str]) -> dict[str, str]:
+    canon = {_canon_col(c): c for c in header if c is not None}
+    alias = {
+        "timestamp": "time",
+        "datetime": "time",
+        "date": "time",
+        "value": "value",
+        "val": "value",
+        "state": "value",
+        "measurement": "_measurement",
+        "_measurement": "_measurement",
+        "field": "_field",
+        "_field": "_field",
+        "entityid": "entity_id",
+        "entity_id": "entity_id",
+        "friendlyname": "friendly_name",
+        "friendly_name": "friendly_name",
+    }
+    need = ["time", "value", "entity_id", "friendly_name", "_measurement", "_field"]
+    col_map: dict[str, str] = {}
+    for want in need:
+        if want in canon:
+            col_map[want] = canon[want]
+            continue
+        for k, w in alias.items():
+            if w != want:
+                continue
+            if k in canon:
+                col_map[want] = canon[k]
+                break
+    return col_map
+
+
+def _prepare_import_rows(
+    path: Path,
+    delimiter: str | None,
+    tz_name: str | None,
+    tz_offset_minutes: int | None,
+) -> dict[str, Any]:
+    raw = path.read_text(encoding="utf-8", errors="replace")
+    lines = [ln for ln in (raw or "").splitlines() if ln.strip()]
+    data_lines = [ln for ln in lines if not ln.lstrip().startswith("#")]
+    if not data_lines:
+        raise ValueError("empty file")
+
+    delim = str(delimiter or "").strip()
+    if len(delim) != 1:
+        delim = _detect_delimiter(_strip_utf8_bom(data_lines[0]))
+
+    header_raw = _strip_utf8_bom(data_lines[0])
+    header = next(csv.reader([header_raw], delimiter=delim), [])
+    col_map = _import_column_map(header)
+    need = ["time", "value", "entity_id", "friendly_name", "_measurement", "_field"]
+    missing = [k for k in need if k not in col_map]
+    if missing:
+        raise ValueError("missing column(s): " + ", ".join(missing))
+
+    reader = csv.DictReader(data_lines, delimiter=delim)
+    cols = reader.fieldnames or []
+    parsed_rows: list[dict[str, Any]] = []
+    sample_rows: list[dict[str, Any]] = []
+    error_samples: list[dict[str, Any]] = []
+    errors: dict[str, int] = {}
+    source_measurements: list[str] = []
+    source_fields: list[str] = []
+    oldest_utc: datetime | None = None
+    newest_utc: datetime | None = None
+
+    def add_unique(xs: list[str], value: str) -> None:
+        if value and value not in xs:
+            xs.append(value)
+
+    for row in reader:
+        try:
+            t_local = str(row.get(col_map["time"]) or "").strip()
+            dt_utc = _parse_ui_local_ts(t_local, tz_name, tz_offset_minutes)
+            val_raw = row.get(col_map["value"])
+            value = float(val_raw)
+            src_measurement = str(row.get(col_map["_measurement"]) or "").strip()
+            src_field = str(row.get(col_map["_field"]) or "").strip()
+            src_entity = str(row.get(col_map["entity_id"]) or "").strip()
+            src_friendly = str(row.get(col_map["friendly_name"]) or "").strip()
+            parsed = {
+                "time": t_local,
+                "dt_utc": dt_utc,
+                "value": value,
+                "value_raw": str(val_raw or "").strip(),
+                "entity_id": src_entity,
+                "friendly_name": src_friendly,
+                "_measurement": src_measurement,
+                "_field": src_field,
+            }
+            parsed_rows.append(parsed)
+            if len(sample_rows) < 3:
+                sample_rows.append({k: parsed[k] for k in ("time", "value_raw", "entity_id", "friendly_name", "_measurement", "_field")})
+            add_unique(source_measurements, src_measurement)
+            add_unique(source_fields, src_field)
+            if oldest_utc is None or dt_utc < oldest_utc:
+                oldest_utc = dt_utc
+            if newest_utc is None or dt_utc > newest_utc:
+                newest_utc = dt_utc
+        except Exception as e:
+            key = "row"
+            msg = str(e)
+            if "time" in msg:
+                key = "time"
+            elif "value" in msg:
+                key = "value"
+            errors[key] = int(errors.get(key, 0) or 0) + 1
+            if len(error_samples) < 3:
+                error_samples.append({
+                    "reason": key,
+                    "time": str(row.get(col_map.get("time", "")) or "").strip(),
+                    "value": str(row.get(col_map.get("value", "")) or "").strip(),
+                    "raw": {k: row.get(k) for k in list(row.keys())[:10]},
+                })
+
+    return {
+        "delimiter": delim,
+        "columns": cols,
+        "column_map": col_map,
+        "parsed_rows": parsed_rows,
+        "sample": sample_rows,
+        "errors": errors,
+        "error_samples": error_samples,
+        "count": len(parsed_rows),
+        "oldest_utc": oldest_utc,
+        "newest_utc": newest_utc,
+        "source_measurements": source_measurements,
+        "source_fields": source_fields,
+    }
+
+
+def _build_import_transform_plan(
+    cfg: dict[str, Any],
+    parsed_rows: list[dict[str, Any]],
+    target_measurement: str,
+    target_field: str,
+    target_entity_id: str | None,
+    target_friendly_name: str | None,
+) -> dict[str, Any]:
+    transforms = _parse_import_measurement_transforms(cfg)
+    source_measurements: list[str] = []
+    source_fields: list[str] = []
+    source_entities: list[str] = []
+    source_friendly: list[str] = []
+    for row in parsed_rows:
+        for xs, key in (
+            (source_measurements, "_measurement"),
+            (source_fields, "_field"),
+            (source_entities, "entity_id"),
+            (source_friendly, "friendly_name"),
+        ):
+            val = str(row.get(key) or "").strip()
+            if val and val not in xs:
+                xs.append(val)
+
+    measurement_factors: dict[str, float] = {}
+    missing_measurement_rules: list[str] = []
+    for src in source_measurements:
+        if src == target_measurement:
+            measurement_factors[src] = 1.0
+            continue
+        factor = transforms.get((src, target_measurement))
+        if factor is None:
+            missing_measurement_rules.append(src)
+            continue
+        measurement_factors[src] = factor
+
+    measurement_status = "ok"
+    measurement_message = "Quelle und Ziel sind identisch."
+    if missing_measurement_rules:
+        measurement_status = "error"
+        measurement_message = "Keine Transformationsregel fuer: " + ", ".join(missing_measurement_rules)
+    elif any(abs(v - 1.0) > 1e-12 for v in measurement_factors.values()):
+        measurement_status = "transform"
+        measurement_message = "Transformation mit Faktor aus Einstellungen verfuegbar."
+
+    field_status = "ok"
+    field_message = "Quelle und Ziel sind identisch."
+    bad_fields = [src for src in source_fields if src != target_field]
+    if bad_fields:
+        field_status = "error"
+        field_message = "Quelle passt nicht zum Ziel-Feld: " + ", ".join(bad_fields)
+
+    entity_status = "ok" if target_entity_id else "warn"
+    entity_message = "Wird auf Ziel-entity_id gesetzt." if target_entity_id else "Keine Ziel-entity_id gesetzt - Quellwert bleibt erhalten."
+    friendly_status = "ok" if target_friendly_name else "warn"
+    friendly_message = "Wird auf Ziel-friendly_name gesetzt." if target_friendly_name else "Kein Ziel-friendly_name gesetzt - Quellwert bleibt erhalten."
+    value_status = "ok"
+    value_message = "Numerischer Import moeglich."
+    if measurement_status == "transform":
+        value_status = "transform"
+        value_message = "Numerischer Wert wird mit Measurement-Faktor umgerechnet."
+    elif measurement_status == "error":
+        value_status = "error"
+        value_message = "Wert kann ohne Measurement-Transformationsregel nicht sicher umgerechnet werden."
+
+    return {
+        "compatible": measurement_status != "error" and field_status != "error",
+        "measurement_factors": measurement_factors,
+        "source_measurements": source_measurements,
+        "source_fields": source_fields,
+        "source_entity_ids": source_entities,
+        "source_friendly_names": source_friendly,
+        "checks": {
+            "measurement": {"status": measurement_status, "message": measurement_message, "source": source_measurements, "target": target_measurement},
+            "field": {"status": field_status, "message": field_message, "source": source_fields, "target": target_field},
+            "entity_id": {"status": entity_status, "message": entity_message, "source": source_entities[:10], "target": target_entity_id},
+            "friendly_name": {"status": friendly_status, "message": friendly_message, "source": source_friendly[:10], "target": target_friendly_name},
+            "value": {"status": value_status, "message": value_message, "target": target_field},
+        },
+    }
+
+
+def _transform_import_preview_rows(
+    parsed_rows: list[dict[str, Any]],
+    plan: dict[str, Any],
+    target_measurement: str,
+    target_field: str,
+    target_entity_id: str | None,
+    target_friendly_name: str | None,
+    limit: int = 10,
+) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    factors = dict(plan.get("measurement_factors") or {})
+    for row in parsed_rows[: max(0, int(limit))]:
+        src_measurement = str(row.get("_measurement") or "")
+        factor = float(factors.get(src_measurement, 1.0) or 1.0)
+        value = float(row.get("value") or 0.0) * factor
+        out.append({
+            "time": row.get("time"),
+            "value": value,
+            "entity_id": target_entity_id or str(row.get("entity_id") or ""),
+            "friendly_name": target_friendly_name or str(row.get("friendly_name") or ""),
+            "_measurement": target_measurement,
+            "_field": target_field,
+            "source_measurement": src_measurement,
+            "source_field": row.get("_field"),
+            "factor": factor,
+        })
+    return out
 
 
 def _flux_range_clause_for_scope(
@@ -9878,6 +10150,11 @@ def api_set_config():
         cfg["ui_paypal_donate_url"] = str(cfg.get("ui_paypal_donate_url") or "").strip()
     except Exception:
         cfg["ui_paypal_donate_url"] = ""
+
+    try:
+        cfg["import_measurement_transforms"] = str(cfg.get("import_measurement_transforms") or "").strip()
+    except Exception:
+        cfg["import_measurement_transforms"] = ""
     if len(cfg["ui_paypal_donate_url"]) > 600:
         cfg["ui_paypal_donate_url"] = cfg["ui_paypal_donate_url"][:600]
 
@@ -10266,17 +10543,16 @@ def fields():
                     "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
                 }), 400
             with v2_client(cfg) as c:
-                if entity_id or friendly_name or start_dt or stop_dt or not measurement:
-                    range_clause = _flux_range_clause(selector_range, start_dt, stop_dt)
-                    predicate_parts = ["exists r._field"]
-                    if measurement:
-                        predicate_parts.append(f"r._measurement == {_flux_str(measurement)}")
-                    if entity_id:
-                        predicate_parts.append(f"r.entity_id == {_flux_str(entity_id)}")
-                    if friendly_name:
-                        predicate_parts.append(f"r.friendly_name == {_flux_str(friendly_name)}")
-                    predicate = " and ".join(predicate_parts)
-                    q = f'''
+                range_clause = _flux_range_clause(selector_range, start_dt, stop_dt)
+                predicate_parts = ["exists r._field"]
+                if measurement:
+                    predicate_parts.append(f"r._measurement == {_flux_str(measurement)}")
+                if entity_id:
+                    predicate_parts.append(f"r.entity_id == {_flux_str(entity_id)}")
+                if friendly_name:
+                    predicate_parts.append(f"r.friendly_name == {_flux_str(friendly_name)}")
+                predicate = " and ".join(predicate_parts)
+                q = f'''
 from(bucket: "{cfg["bucket"]}")
   {range_clause}
   |> filter(fn: (r) => {predicate})
@@ -10287,11 +10563,6 @@ from(bucket: "{cfg["bucket"]}")
   |> keep(columns: ["_value"])
   |> limit(n: 5000)
 '''
-                else:
-                    q = f'''
- import "influxdata/influxdb/schema"
-  schema.measurementFieldKeys(bucket: "{cfg["bucket"]}", measurement: "{_flux_escape(measurement)}")
- '''
                 tables = c.query_api().query(q, org=cfg["org"])
                 fs = []
                 for t in tables:
@@ -15040,15 +15311,6 @@ def api_export():
     if not start_dt or not stop_dt:
         return jsonify({"ok": False, "error": "start and stop required"}), 400
 
-    try:
-        max_points = int(body.get("max_points") or cfg.get("ui_raw_max_points") or 20000)
-    except Exception:
-        max_points = int(cfg.get("ui_raw_max_points") or 20000)
-    if max_points < 1:
-        max_points = 1
-    if max_points > 2000000:
-        max_points = 2000000
-
     if int(cfg.get("influx_version", 2)) != 2:
         return jsonify({"ok": False, "error": "export currently supports InfluxDB v2 only"}), 400
     if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
@@ -15066,7 +15328,6 @@ from(bucket: "{cfg["bucket"]}")
   |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
   |> keep(columns: ["_time","_value","_measurement","_field","entity_id","friendly_name"])
   |> sort(columns: ["_time"], desc: false)
-  |> limit(n: {max_points})
 '''
 
     EXPORT_DIR.mkdir(parents=True, exist_ok=True)
@@ -15119,7 +15380,7 @@ from(bucket: "{cfg["bucket"]}")
         return jsonify({
             "ok": True,
             "download_url": f"./api/export_download?file={filename}",
-            "meta": {"rows": len(rows), "max_points": max_points, "format": fmt, "delimiter": delim},
+            "meta": {"rows": len(rows), "format": fmt, "delimiter": delim},
         })
     except Exception as e:
         try:
@@ -15160,7 +15421,6 @@ def _export_job_thread(
     friendly_name: str | None,
     start_dt: datetime,
     stop_dt: datetime,
-    max_points: int,
     tz_name: str | None,
     tz_offset_minutes: int | None,
     out_dir: str | None,
@@ -15233,7 +15493,6 @@ from(bucket: "{cfg["bucket"]}")
   |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
   |> keep(columns: ["_time","_value","_measurement","_field","entity_id","friendly_name"])
   |> sort(columns: ["_time"], desc: false)
-  |> limit(n: {max_points})
 '''
 
     set_state("running", "Export laeuft...")
@@ -15397,15 +15656,6 @@ def api_export_job_start():
     if not start_dt or not stop_dt:
         return jsonify({"ok": False, "error": "start and stop required"}), 400
 
-    try:
-        max_points = int(body.get("max_points") or cfg.get("ui_raw_max_points") or 20000)
-    except Exception:
-        max_points = int(cfg.get("ui_raw_max_points") or 20000)
-    if max_points < 1:
-        max_points = 1
-    if max_points > 2000000:
-        max_points = 2000000
-
     if int(cfg.get("influx_version", 2)) != 2:
         return jsonify({"ok": False, "error": "export currently supports InfluxDB v2 only"}), 400
     if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
@@ -15466,7 +15716,6 @@ def api_export_job_start():
             friendly_name,
             start_dt,
             stop_dt,
-            max_points,
             tz_name,
             tz_offset_minutes,
             str(target_dir),
@@ -15566,7 +15815,6 @@ def _canon_col(s: str) -> str:
 
 @app.post("/api/import_analyze")
 def api_import_analyze():
-    cfg = _overlay_from_yaml_if_enabled(load_cfg())
     f = request.files.get("file")
     if not f:
         return jsonify({"ok": False, "error": "file required"}), 400
@@ -15587,125 +15835,68 @@ def api_import_analyze():
         return jsonify({"ok": False, "error": f"save failed: {e}"}), 500
 
     try:
-        raw = path.read_text(encoding="utf-8", errors="replace")
-        lines = [ln for ln in (raw or "").splitlines() if ln.strip()]
-        data_lines = [ln for ln in lines if not ln.lstrip().startswith("#")]
-        if not data_lines:
-            return jsonify({"ok": False, "error": "empty file"}), 400
-        # delimiter: explicit form value or detect from header line
-        delim = str(request.form.get("delimiter") or "").strip()
-        if len(delim) != 1:
-            delim = _detect_delimiter(_strip_utf8_bom(data_lines[0]))
-
-        # Normalize header and map common variants.
-        header_raw = _strip_utf8_bom(data_lines[0])
-        tmp = csv.reader([header_raw], delimiter=delim)
-        header = next(tmp, [])
-        canon = {_canon_col(c): c for c in header if c is not None}
-        alias = {
-            "timestamp": "time",
-            "datetime": "time",
-            "date": "time",
-            "value": "value",
-            "val": "value",
-            "state": "value",
-            "measurement": "_measurement",
-            "_measurement": "_measurement",
-            "field": "_field",
-            "_field": "_field",
-            "entityid": "entity_id",
-            "entity_id": "entity_id",
-            "friendlyname": "friendly_name",
-            "friendly_name": "friendly_name",
-        }
-        need = ["time", "value", "entity_id", "friendly_name", "_measurement", "_field"]
-        col_map: dict[str, str] = {}
-        for want in need:
-            # direct
-            if want in canon:
-                col_map[want] = canon[want]
-                continue
-            # alias
-            for k, w in alias.items():
-                if w != want:
-                    continue
-                if k in canon:
-                    col_map[want] = canon[k]
-                    break
-
-        missing = [k for k in need if k not in col_map]
-        if missing:
-            return jsonify({
-                "ok": False,
-                "error": "missing column(s): " + ", ".join(missing),
-                "delimiter": delim,
-                "columns": header,
-            }), 400
-
-        reader = csv.DictReader(data_lines, delimiter=delim)
-        cols = reader.fieldnames or []
-
-        count = 0
-        oldest_utc: datetime | None = None
-        newest_utc: datetime | None = None
-        sample: list[dict[str, Any]] = []
-        errors: dict[str, int] = {}
-        error_samples: list[dict[str, Any]] = []
-        for row in reader:
-            try:
-                t_local = str(row.get(col_map["time"]) or "").strip()
-                dt_utc = _parse_ui_local_ts(t_local, tz_name, tz_offset_minutes)
-                val_raw = row.get(col_map["value"])
-                try:
-                    float(val_raw)
-                except Exception:
-                    raise ValueError("value")
-                if oldest_utc is None or dt_utc < oldest_utc:
-                    oldest_utc = dt_utc
-                if newest_utc is None or dt_utc > newest_utc:
-                    newest_utc = dt_utc
-                count += 1
-                if len(sample) < 3:
-                    sample.append({
-                        "time": t_local,
-                        "value": val_raw,
-                        "entity_id": row.get(col_map["entity_id"]),
-                        "friendly_name": row.get(col_map["friendly_name"]),
-                        "_measurement": row.get(col_map["_measurement"]),
-                        "_field": row.get(col_map["_field"]),
-                    })
-            except Exception as e:
-                key = "row"
-                msg = str(e)
-                if "time" in msg:
-                    key = "time"
-                elif "value" in msg:
-                    key = "value"
-                errors[key] = int(errors.get(key, 0) or 0) + 1
-                if len(error_samples) < 3:
-                    error_samples.append({
-                        "reason": key,
-                        "time": str(row.get(col_map["time"]) or "").strip(),
-                        "value": str(row.get(col_map["value"]) or "").strip(),
-                        "raw": {k: row.get(k) for k in list(row.keys())[:10]},
-                    })
-                continue
+        prep = _prepare_import_rows(path, str(request.form.get("delimiter") or ""), tz_name, tz_offset_minutes)
 
         return jsonify({
             "ok": True,
             "file_id": filename,
-            "delimiter": delim,
+            "delimiter": prep["delimiter"],
             "timezone": {"name": tz_name, "offset_minutes": tz_offset_minutes},
-            "count": count,
-            "oldest_utc": _dt_to_rfc3339_utc_ms(oldest_utc) if oldest_utc else None,
-            "newest_utc": _dt_to_rfc3339_utc_ms(newest_utc) if newest_utc else None,
-            "oldest_local": _fmt_ui_local_ts(oldest_utc, tz_name, tz_offset_minutes) if oldest_utc else None,
-            "newest_local": _fmt_ui_local_ts(newest_utc, tz_name, tz_offset_minutes) if newest_utc else None,
-            "columns": cols,
-            "column_map": col_map,
-            "sample": sample,
-            "errors": errors,
-            "error_samples": error_samples,
+            "count": prep["count"],
+            "oldest_utc": _dt_to_rfc3339_utc_ms(prep["oldest_utc"]) if prep["oldest_utc"] else None,
+            "newest_utc": _dt_to_rfc3339_utc_ms(prep["newest_utc"]) if prep["newest_utc"] else None,
+            "oldest_local": _fmt_ui_local_ts(prep["oldest_utc"], tz_name, tz_offset_minutes) if prep["oldest_utc"] else None,
+            "newest_local": _fmt_ui_local_ts(prep["newest_utc"], tz_name, tz_offset_minutes) if prep["newest_utc"] else None,
+            "columns": prep["columns"],
+            "column_map": prep["column_map"],
+            "sample": prep["sample"],
+            "errors": prep["errors"],
+            "error_samples": prep["error_samples"],
+            "source_measurements": prep["source_measurements"],
+            "source_fields": prep["source_fields"],
+        })
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+
+
+@app.post("/api/import_preview_transform")
+def api_import_preview_transform():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    body = request.get_json(force=True) or {}
+    file_id = str(body.get("file_id") or "").strip()
+    if not file_id:
+        return jsonify({"ok": False, "error": "file_id required"}), 400
+    try:
+        path = _safe_data_file(IMPORT_DIR, file_id)
+    except Exception:
+        return jsonify({"ok": False, "error": "invalid file_id"}), 400
+    if not path.exists() or not path.is_file():
+        return jsonify({"ok": False, "error": "file not found"}), 404
+
+    measurement = str(body.get("measurement") or "").strip()
+    field = str(body.get("field") or "").strip()
+    if not measurement or not field:
+        return jsonify({"ok": False, "error": "measurement and field required"}), 400
+
+    entity_id = str(body.get("entity_id") or "").strip() or None
+    friendly_name = str(body.get("friendly_name") or "").strip() or None
+    tz_name = str(body.get("tz_name") or "").strip() or None
+    try:
+        tz_offset_minutes = int(body.get("tz_offset_minutes")) if body.get("tz_offset_minutes") is not None and str(body.get("tz_offset_minutes")).strip() != "" else None
+    except Exception:
+        tz_offset_minutes = None
+
+    try:
+        prep = _prepare_import_rows(path, str(body.get("delimiter") or ";"), tz_name, tz_offset_minutes)
+        plan = _build_import_transform_plan(cfg, prep["parsed_rows"], measurement, field, entity_id, friendly_name)
+        preview_rows = _transform_import_preview_rows(prep["parsed_rows"], plan, measurement, field, entity_id, friendly_name, 10)
+        return jsonify({
+            "ok": True,
+            "checks": plan["checks"],
+            "compatible": plan["compatible"],
+            "source_measurements": plan["source_measurements"],
+            "source_fields": plan["source_fields"],
+            "preview_rows": preview_rows,
         })
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 400
@@ -15755,37 +15946,24 @@ def api_import_start():
     if len(delim) != 1:
         delim = ";"
 
-    raw = path.read_text(encoding="utf-8", errors="replace")
-    lines = [ln for ln in (raw or "").splitlines() if ln.strip()]
-    data_lines = [ln for ln in lines if not ln.lstrip().startswith("#")]
-    if not data_lines:
-        return jsonify({"ok": False, "error": "empty file"}), 400
+    try:
+        prep = _prepare_import_rows(path, delim, tz_name, tz_offset_minutes)
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
 
-    reader = csv.DictReader(data_lines, delimiter=delim)
-    cols = reader.fieldnames or []
-    need = ["time", "value", "entity_id", "friendly_name", "_measurement", "_field"]
-    for k in need:
-        if k not in cols:
-            return jsonify({"ok": False, "error": f"missing column: {k}"}), 400
+    plan = _build_import_transform_plan(cfg, prep["parsed_rows"], measurement, field, entity_id, friendly_name)
+    if not plan["compatible"]:
+        return jsonify({"ok": False, "error": "Transformationscheck fehlgeschlagen", "checks": plan["checks"]}), 400
 
     points: list[Point] = []
-    oldest_utc: datetime | None = None
-    newest_utc: datetime | None = None
-    for row in reader:
-        t_local = str(row.get("time") or "").strip()
-        if not t_local:
-            continue
-        dt_utc = _parse_ui_local_ts(t_local, tz_name, tz_offset_minutes)
-        if oldest_utc is None or dt_utc < oldest_utc:
-            oldest_utc = dt_utc
-        if newest_utc is None or dt_utc > newest_utc:
-            newest_utc = dt_utc
-
-        val_raw = row.get("value")
-        try:
-            v = float(val_raw)
-        except Exception:
-            continue
+    oldest_utc = prep["oldest_utc"]
+    newest_utc = prep["newest_utc"]
+    factors = dict(plan.get("measurement_factors") or {})
+    for row in prep["parsed_rows"]:
+        dt_utc = row["dt_utc"]
+        src_measurement = str(row.get("_measurement") or "")
+        factor = float(factors.get(src_measurement, 1.0) or 1.0)
+        v = float(row.get("value") or 0.0) * factor
 
         p = Point(str(measurement))
         eid_row = str(row.get("entity_id") or "").strip()
@@ -15934,6 +16112,7 @@ from(bucket: "{cfg["bucket"]}")
             "imported": imported,
             "deleted_first": delete_first,
             "backup": backup_meta,
+            "checks": plan["checks"],
             "message": f"Import fertig. Zeilen: {imported}",
         })
     except Exception as e:

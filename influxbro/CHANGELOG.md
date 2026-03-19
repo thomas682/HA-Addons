@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.12.65
+
+### UI
+
+- Dashboard: Die `_field`-Liste wird jetzt auch fuer Measurements mit Sonderzeichen wie `°F` direkt aus den vorhandenen Daten aufgebaut. Dadurch filtern `_measurement`, `_field`, `friendly_name` und `entity_id` wieder konsistent gegeneinander - analog zum Verhalten auf der Backup-Seite.
+- Export: Export-Dateien sind nicht mehr auf eine Datenpunktzahl begrenzt. Der Browser fragt fuer `Export` jetzt bevorzugt ein Zielverzeichnis bzw. Save-As-Ziel ab und schreibt die fertige Datei dorthin.
+- Import: Die Analyse zeigt jetzt Quell-Measurements, Quell-Fields und die ersten drei Datenzeilen. Zusaetzlich gibt es einen Transformations-Check mit Test-Button und Vorschau der ersten zehn transformierten Zeilen.
+- Einstellungen: Neue editierbare Transformationsliste fuer Measurement-Umrechnungen beim Import.
+
+### Maintenance
+
+- Hinweis dokumentiert: HA-Tests nur noch gegen `http://192.168.200:8099`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.64
 
 ### UI

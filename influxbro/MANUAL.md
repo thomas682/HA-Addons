@@ -101,6 +101,8 @@ Neu: Top-Leiste (Profil + Zoom)
 
 Die vier Auswahlfelder `_measurement`, `_field`, `Messwert` und `Entity ID` filtern sich gegenseitig. Wenn durch deine Auswahl nur noch genau ein passender Wert uebrig bleibt, wird dieser direkt uebernommen. Der Zeitraum beeinflusst diese vier Vorschlagslisten nicht; er steuert nur die spaetere Datenabfrage fuer Graph, Tabelle und Statistik. Das gilt auch dann, wenn du `_measurement` direkt aus der Vorschlagsliste anklickst.
 
+Auch `_measurement`-Werte mit Sonderzeichen wie `°F` werden direkt ueber die echten Daten gefiltert. Wenn es zu einem Measurement keine passenden Fields, friendly_names oder Entity IDs gibt, bleiben die anderen Listen entsprechend leer.
+
 Unter den Filtern zeigt `Auswahl (aufgeloest)` den finalen Stand der Auswahl an - analog zur Export-Seite. Dort siehst du direkt, welche Werte fuer `_measurement`, `_field`, `friendly_name`, `entity_id` und Zeitraum aktuell wirksam sind.
 
 Weitere Elemente:
@@ -423,7 +425,8 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Export-Erzeugung laeuft als Hintergrund-Job und kann mit `Abbrechen` gestoppt werden.
 - Buttons:
   - `Download`: startet den Export-Job und laedt die Datei herunter.
-  - `Export`: Save-As Dialog (best-effort, je nach Browser) und speichert die Datei lokal.
+  - `Export`: fragt bevorzugt ein Zielverzeichnis oder Save-As-Ziel im Browser ab und speichert die fertige Datei dort.
+- Export begrenzt die Anzahl der Datenpunkte nicht mehr; es werden alle Treffer im gewaehlten Zeitraum geschrieben.
 - Das Feld `Auswahl (aufgeloest)` ist resizable; die Groesse wird automatisch gemerkt.
 - Das Textfeld nutzt die volle Breite des Export-Bereichs.
 - Formate: Text (Delimiter, Default `;`) oder Excel (`.xlsx`).
@@ -432,8 +435,10 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 ## Import
 
 - Seite `Import`: Datei via Browser-Upload.
-- Button `Analysieren`: zeigt Zeilenanzahl und Zeitraum; bei Problemen zusaetzlich eine kurze Diagnose + Beispielzeilen.
+- Button `Analysieren`: zeigt Zeilenanzahl, Zeitraum, Quell-Measurements, Quell-Fields und die ersten drei Datenzeilen; bei Problemen zusaetzlich eine kurze Diagnose + Beispielzeilen.
 - Zielauswahl: wie Dashboard (Measurement/Field + optionale Tags).
+- Button `Transformation testen`: prueft Measurement-/Field-Kompatibilitaet, zeigt Hinweise fuer `entity_id` und `friendly_name` und rendert die ersten zehn transformierten Zeilen, ohne sie zu schreiben.
+- In `Einstellungen -> Import` gibt es eine editierbare Transformationsliste fuer Measurement-Umrechnungen im Format `Quelle;Ziel;Faktor`.
 - Optionen:
   - `Vor Import Backup erstellen` (Default an): erstellt ein Range-Backup im Import-Zeitraum fuer die Zielserie.
   - `Vorher loeschen` (optional): loescht Zielserie im Import-Zeitraum (nur mit Confirm Phrase).
@@ -623,3 +628,9 @@ Ausreisser:
 ## Release Notes (1.12.64)
 
 - Dashboard: Neues Infofeld `Auswahl (aufgeloest)` unter den Filtern - analog zum Export. Es zeigt die finale Auswahl und die aktuell verfuegbaren Optionen je Filter direkt im Dashboard an.
+
+## Release Notes (1.12.65)
+
+- Dashboard: Die Selektorlisten verhalten sich jetzt auch bei Measurements mit Sonderzeichen wie `°F` konsistent und werden wie auf der Backup-Seite direkt aus den vorhandenen Daten aufgebaut.
+- Export: keine Datenpunkt-Begrenzung mehr; `Export` nutzt bevorzugt ein Browser-Zielverzeichnis/Save-As statt nur eines direkten Downloads.
+- Import: Analyse um Quellfelder und Beispielzeilen erweitert; neuer Transformations-Check mit Test-Button und Vorschau; editierbare Measurement-Transformationsliste in den Einstellungen.

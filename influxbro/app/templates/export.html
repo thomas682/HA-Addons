@@ -753,6 +753,24 @@
       }
 
        let SAVE_HANDLE = null;
+       let SAVE_DIR_HANDLE = null;
+
+       function _suggestExportName(fmt){
+         const fmt0 = String(fmt||$format.value||'text');
+         const tf0 = timeFilter();
+         const nm0 = String($n.value||'').trim() || String($e.value||'').trim() || 'export';
+         const ext0 = (fmt0 === 'xlsx') ? 'xlsx' : 'csv';
+         return (nm0.replace(/[^a-zA-Z0-9_.-]+/g,'_').slice(0, 80) || 'export') + '__' + String(tf0 && tf0.range ? tf0.range : 'range') + '.' + ext0;
+       }
+
+       async function _pickDirectoryHandle(){
+         try{
+           if(!window.showDirectoryPicker) return null;
+           return await window.showDirectoryPicker({ mode: 'readwrite' });
+         }catch(e){
+           return null;
+         }
+       }
 
        async function _pickSaveHandle(suggestedName, fmt){
          try{
@@ -768,7 +786,7 @@
          }
        }
 
-       async function _writeHandle(handle, blob){
+        async function _writeHandle(handle, blob){
          if(!handle) return false;
          try{
            const w = await handle.createWritable();
@@ -777,24 +795,32 @@
            return true;
          }catch(e){
            return false;
-         }
-       }
+          }
+        }
+
+        async function _writeDirectoryFile(dirHandle, suggestedName, blob){
+          if(!dirHandle || !suggestedName) return false;
+          try{
+            const fileHandle = await dirHandle.getFileHandle(String(suggestedName), { create: true });
+            return await _writeHandle(fileHandle, blob);
+          }catch(e){
+            return false;
+          }
+        }
 
        async function runExport(wantSaveAs){
           err(''); ok('');
           try{ window.InfluxBroStatus && window.InfluxBroStatus.start && window.InfluxBroStatus.start('export.run', 'Export laeuft...'); }catch(e){}
           try{
            SAVE_HANDLE = null;
-           const want = !!wantSaveAs;
-           if(want){
-             // Client-side Save-As (if supported). Fallback is browser download.
-             const fmt0 = String($format.value||'text');
-             const tf0 = timeFilter();
-             const nm0 = String($n.value||'').trim() || String($e.value||'').trim() || 'export';
-             const ext0 = (fmt0 === 'xlsx') ? 'xlsx' : 'csv';
-             const sugg = (nm0.replace(/[^a-zA-Z0-9_.-]+/g,'_').slice(0, 80) || 'export') + '__' + String(tf0 && tf0.range ? tf0.range : 'range') + '.' + ext0;
-             SAVE_HANDLE = await _pickSaveHandle(sugg, fmt0);
-           }
+           SAVE_DIR_HANDLE = null;
+            const want = !!wantSaveAs;
+            if(want){
+              const fmt0 = String($format.value||'text');
+              const sugg = _suggestExportName(fmt0);
+              SAVE_DIR_HANDLE = await _pickDirectoryHandle();
+              if(!SAVE_DIR_HANDLE) SAVE_HANDLE = await _pickSaveHandle(sugg, fmt0);
+            }
 
           await refreshResolved();
           const tf = timeFilter();
@@ -813,7 +839,6 @@
             stop: tf.stop,
             tz_name: tz.tz_name,
             tz_offset_minutes: tz.tz_offset_minutes,
-            // Always write the server-side export to a stable location; client receives it via download.
             target_dir: 'exports',
           };
           if(!payload.measurement || !payload.field) throw new Error('measurement/field fehlt. Bitte Auswahl setzen.');
@@ -867,16 +892,20 @@
            if(LAST_DOWNLOAD_URL && !AUTO_DL_DONE){
              AUTO_DL_DONE = true;
              try{
-               if(SAVE_HANDLE){
-                 const resp = await fetch(String(LAST_DOWNLOAD_URL));
-                 const blob = await resp.blob();
-                 const okSave = await _writeHandle(SAVE_HANDLE, blob);
-                 SAVE_HANDLE = null;
-                 if(okSave){
-                   try{ if($hint) $hint.textContent = 'Datei gespeichert.'; }catch(e){}
-                 }else{
-                   try{ location.href = String(LAST_DOWNLOAD_URL); }catch(e){}
-                   try{ if($hint) $hint.textContent = 'Download gestartet.'; }catch(e){}
+                const suggestedName = _suggestExportName(String($format.value||'text'));
+                if(SAVE_DIR_HANDLE || SAVE_HANDLE){
+                  const resp = await fetch(String(LAST_DOWNLOAD_URL));
+                  const blob = await resp.blob();
+                  const okSave = SAVE_DIR_HANDLE
+                    ? await _writeDirectoryFile(SAVE_DIR_HANDLE, suggestedName, blob)
+                    : await _writeHandle(SAVE_HANDLE, blob);
+                  SAVE_HANDLE = null;
+                  SAVE_DIR_HANDLE = null;
+                  if(okSave){
+                    try{ if($hint) $hint.textContent = 'Datei gespeichert.'; }catch(e){}
+                  }else{
+                    try{ location.href = String(LAST_DOWNLOAD_URL); }catch(e){}
+                    try{ if($hint) $hint.textContent = 'Download gestartet.'; }catch(e){}
                  }
                }else{
                  try{ location.href = String(LAST_DOWNLOAD_URL); }catch(e){}
