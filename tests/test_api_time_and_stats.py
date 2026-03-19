@@ -26,8 +26,8 @@ def test_dashboard_selector_sync_is_no_longer_time_filtered():
     assert 'id="friendly_name" list="friendly_list" placeholder="optional" data-ui="filter_friendly_input" autocomplete="off"' in body
     assert 'id="entity_id" list="entity_list" placeholder="optional" data-ui="filter_entity_input" autocomplete="off"' in body
     assert 'measurement_filter: $mf.value || null,\n  };' in body
-    assert 'async function refreshDashboardSourceSelection(opts)' in body
-    assert 'await loadFields({silent: !!o.silent});' in body
+    assert 'async function refreshDashboardSuggestions(opts)' in body
+    assert "const range = String((o && o.range) || '24h').trim() || '24h';" in body
     assert 'await loadTagValuesForSelector(\'entity_id\'' in body
     assert 'syncSelectionFilters(' not in body
     assert '$mf.addEventListener("change", ()=>onMeasurementFilterChanged());' in body

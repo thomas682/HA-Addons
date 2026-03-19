@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.72
+
+### UI
+
+- Dashboard: Die sichtbare Quellauswahl ist jetzt 1:1 an die einfache Quell-Refresh-Logik von `Kombinieren` angeglichen. `_measurement` laedt `_field` separat, `entity_id` wird mit `_measurement` plus optional `friendly_name` geladen und `friendly_name` mit `_measurement` plus optional `entity_id`, jeweils fest mit `range=24h` wie in `Kombinieren`.
+
+### Maintenance
+
+- Live-Selektorpruefung gegen `http://192.168.2.200:8099` mit `measurement=EUR`, `friendly_name=sensor Cost`, `entity_id=watermeter_value_cost`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.71
 
 ### Maintenance

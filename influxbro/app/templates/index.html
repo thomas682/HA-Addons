@@ -4085,32 +4085,26 @@ async function loadFields(opts){
     null,
     { key: "fields", status: "Lade Fields...", silent: !!o.silent },
   );
-  const xs = (j.fields || []).map(String).filter(Boolean);
-  ALL_FIELDS = xs.includes("value") ? ["value"] : xs;
+  ALL_FIELDS = (j.fields || []).map(String).filter(Boolean);
   renderFields();
-  return _normalizeFieldSelection();
+  return _normalizeInputSelection($f, ALL_FIELDS);
 }
 
 async function loadTagValuesForSelector(tag, filters, opts){
   const o = opts || {};
   const qs = new URLSearchParams({tag: String(tag || '')});
   const f = filters || {};
-  const tf = currentTimeFilter();
+  const range = String((o && o.range) || '24h').trim() || '24h';
   if(f.measurement) qs.set('measurement', String(f.measurement));
   if(f.field) qs.set('field', String(f.field));
   if(f.friendly_name) qs.set('friendly_name', String(f.friendly_name));
   if(f.entity_id) qs.set('entity_id', String(f.entity_id));
-  if(tf && tf.start && tf.stop){
-    qs.set('start', String(tf.start));
-    qs.set('stop', String(tf.stop));
-  }else if(tf && tf.range){
-    qs.set('range', String(tf.range));
-  }
+  qs.set('range', range);
   const j = await api('./api/tag_values?' + qs.toString(), null, { key: 'tag_values_' + tag, status: 'Lade ' + tag + '...', silent: !!o.silent });
   return (j.values || []).map(String).filter(Boolean);
 }
 
-async function refreshDashboardSourceSelection(opts){
+async function refreshDashboardSuggestions(opts){
   const o = opts || {};
   const measurement = String(($mf && $mf.value) || '').trim();
   const friendly = String(($n && $n.value) || '').trim();
@@ -4120,13 +4114,13 @@ async function refreshDashboardSourceSelection(opts){
   ALL_ENTITY = await loadTagValuesForSelector('entity_id', {
     measurement,
     friendly_name: friendly || '',
-  }, {silent: !!o.silent});
+  }, {silent: !!o.silent, range: '24h'});
   renderEntity();
   _normalizeInputSelection($e, ALL_ENTITY);
   ALL_FRIENDLY = await loadTagValuesForSelector('friendly_name', {
     measurement,
     entity_id: entity || '',
-  }, {silent: !!o.silent});
+  }, {silent: !!o.silent, range: '24h'});
   renderFriendly();
   _normalizeInputSelection($n, ALL_FRIENDLY);
   refreshSelectionInfo();
@@ -4134,27 +4128,33 @@ async function refreshDashboardSourceSelection(opts){
   return true;
 }
 
-async function resolveSignal(){
+async function resolveDashboardSource(){
   const fn = $n ? String($n.value || "").trim() : "";
   const eid = $e ? String($e.value || "").trim() : "";
   if(!fn && !eid) return;
+  const tf = currentTimeFilter();
   const payload = {
     friendly_name: fn || null,
     entity_id: eid || null,
     measurement_filter: $mf.value || null,
   };
+  if(tf && tf.start && tf.stop){ payload.range = 'custom'; payload.start = tf.start; payload.stop = tf.stop; }
   const j = await api(
     "./api/resolve_signal",
     {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)},
     { key: "resolve_signal", status: "Ermittle Measurement/Field..." },
   );
-  if(Array.isArray(j.measurements)) ALL_MEASUREMENTS = (j.measurements || []).map(String);
-  if(j.measurement) _syncMeasurementValue(j.measurement);
-  if(Array.isArray(j.fields)) ALL_FIELDS = (j.fields || []).map(String);
-  renderMeasurements();
-  renderFields();
-  if(j.field) $f.value = j.field;
-  await refreshDashboardSourceSelection({silent: true});
+  const measurement = String(j.measurement || '').trim();
+  const field = String(j.field || '').trim();
+  if(measurement && !$mf.value) _syncMeasurementValue(measurement);
+  if(measurement) await loadFields({silent: true});
+  if(field && $f && !$f.value) $f.value = field;
+  await refreshDashboardSuggestions({silent: true});
+  return j;
+}
+
+async function resolveSignal(){
+  return await resolveDashboardSource();
 }
 
 let LAST_ROWS = [];
@@ -6365,7 +6365,8 @@ const onMeasurementFilterChanged = debounce(()=>{
         _syncMeasurementValue(mv);
         logSelectorAction('measurement_filter', mv);
         saveState();
-        await refreshDashboardSourceSelection({silent: true});
+        await loadFields({silent: true});
+        await refreshDashboardSuggestions({silent: true});
         saveState();
       }catch(e){ displayError(e); }
     })();
@@ -6382,12 +6383,13 @@ const onFriendlyChanged = debounce(()=>{
         logSelectorAction('friendly_name', fn);
         if(!$n || !fn){
           saveState();
-          await refreshDashboardSourceSelection({silent: true});
+          await refreshDashboardSuggestions({silent: true});
           saveState();
           return;
         }
         saveState();
-        await refreshDashboardSourceSelection({silent: true});
+        await refreshDashboardSuggestions({silent: true});
+        if(!String(($mf && $mf.value) || '').trim()) await resolveDashboardSource().catch(()=>{});
 
         // If multiple entity_ids exist for this friendly_name, show list with ranges.
         try{
@@ -6416,11 +6418,12 @@ const onEntityChanged = debounce(()=>{
         const eid = String(($e && $e.value) || '').trim();
         logSelectorAction('entity_id', eid);
         if(!$e || !eid){
-          await refreshDashboardSourceSelection({silent: true});
+          await refreshDashboardSuggestions({silent: true});
           saveState();
           return;
         }
-        await refreshDashboardSourceSelection({silent: true});
+        await refreshDashboardSuggestions({silent: true});
+        if(!String(($mf && $mf.value) || '').trim()) await resolveDashboardSource().catch(()=>{});
 
         // If multiple friendly_names exist for this entity_id, show list with ranges.
         try{
@@ -6447,7 +6450,8 @@ const onFieldChanged = debounce(()=>{
         saveState();
         _hideTagChoices();
         logSelectorAction('field', String(($f && $f.value) || '').trim());
-        await refreshDashboardSourceSelection({silent: true});
+        refreshSelectionInfo();
+        autoSpanAll();
         saveState();
       }catch(e){ displayError(e); }
     })();
@@ -6490,11 +6494,18 @@ $m.addEventListener("input", async ()=>{
       if($f) $f.value = "";
       ALL_FIELDS = [];
       renderFields();
+      ALL_ENTITY = [];
+      renderEntity();
+      ALL_FRIENDLY = [];
+      renderFriendly();
       refreshSelectionInfo();
       return;
     }
     const hasMeasurement = Array.isArray(ALL_MEASUREMENTS) && ALL_MEASUREMENTS.includes(mv);
-    if(hasMeasurement) await refreshDashboardSourceSelection({silent: true});
+    if(hasMeasurement){
+      await loadFields({silent: true});
+      await refreshDashboardSuggestions({silent: true});
+    }
   }catch(e){}
 });
 
@@ -6977,7 +6988,8 @@ try{
     if(st.field) $f.value = String(st.field);
     if(st.friendly_name) $n.value = st.friendly_name;
     if(st.entity_id) $e.value = st.entity_id;
-    await refreshDashboardSourceSelection({silent: true});
+    await loadFields({silent: true});
+    await refreshDashboardSuggestions({silent: true});
     saveState();
 
     // Table helpers are initialized after shared helpers are loaded.
@@ -7004,7 +7016,7 @@ try{
     // Ensure suggestion lists are loaded on page open (Backup loads these automatically).
     // Keep best-effort: failures are handled and will show an actionable error to the user.
     try{
-      refreshDashboardSourceSelection({silent: true}).catch(()=>{});
+      loadFields({silent: true}).then(()=>refreshDashboardSuggestions({silent: true})).catch(()=>{});
     }catch(e){}
 
     // Ensure graph query panel reflects persisted selection.

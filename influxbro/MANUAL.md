@@ -661,3 +661,7 @@ Ausreisser:
 ## Release Notes (1.12.71)
 
 - Home-Assistant-Testversion ohne weitere Funktionsaenderung, damit der aktuelle Dashboard-Stand als neues Add-on-Update angeboten wird.
+
+## Release Notes (1.12.72)
+
+- Dashboard: Die neue sichtbare Quellauswahl nutzt jetzt wirklich dieselbe einfache Refresh-Logik wie `Kombinieren`: `_measurement` laedt `_field` separat, `entity_id` wird nur mit `_measurement` plus optional `friendly_name` geladen und `friendly_name` nur mit `_measurement` plus optional `entity_id`, jeweils mit festem `range=24h`.
