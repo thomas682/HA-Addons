@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.70
+
+### UI
+
+- Dashboard: Die neue Quellauswahl verwendet jetzt die einfache Refresh-Logik von `Kombinieren` statt der alten iterativen Dashboard-Kaskade. `_measurement` laedt `_field` separat und `entity_id`/`friendly_name` werden nur mit `_measurement` plus optional genau einem Gegenfilter nachgeladen.
+- Dashboard: `_field` wird im Quellenblock weiterhin aus der Datenbankspalte `_field` geladen, fuer das Dashboard aber auf `value` fokussiert, wenn dieses Field vorhanden ist.
+
+### Maintenance
+
+- Live-Selektorpruefung gegen `http://192.168.2.200:8099` mit Beispiel `measurement=EUR`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.69
 
 ### UI

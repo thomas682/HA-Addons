@@ -4052,12 +4052,7 @@ function refreshSelectionInfo(){
 async function loadMeasurements(opts){
   const o = opts || {};
   try{
-    const qs = new URLSearchParams();
-    if($f && $f.value) qs.set("field", String($f.value || ""));
-    if($e && $e.value) qs.set("entity_id", String($e.value || ""));
-    if($n && $n.value) qs.set("friendly_name", String($n.value || ""));
-    const url = qs.toString() ? ("./api/measurements?" + qs.toString()) : "./api/measurements";
-    const j = await api(url, null, { key: "measurements", status: "Lade Measurements...", silent: !!o.silent });
+    const j = await api("./api/measurements", null, { key: "measurements", status: "Lade Measurements...", silent: !!o.silent });
     ALL_MEASUREMENTS = (j.measurements || []).map(String);
     renderMeasurements();
     return _normalizeMeasurementSelection();
@@ -4075,10 +4070,8 @@ async function loadMeasurements(opts){
 async function loadFields(opts){
   const o = opts || {};
   const measurement = String((($mf && $mf.value) || ($m && $m.value) || "")).trim();
-  const entityId = String(($e && $e.value) || "").trim();
-  const friendlyName = String(($n && $n.value) || "").trim();
 
-  if(!measurement && !entityId && !friendlyName){
+  if(!measurement){
     ALL_FIELDS = [];
     renderFields();
     $f.value = "";
@@ -4087,14 +4080,13 @@ async function loadFields(opts){
 
   const qs = new URLSearchParams();
   if(measurement) qs.set("measurement", measurement);
-  if(entityId) qs.set("entity_id", entityId);
-  if(friendlyName) qs.set("friendly_name", friendlyName);
   const j = await api(
     "./api/fields?" + qs.toString(),
     null,
     { key: "fields", status: "Lade Fields...", silent: !!o.silent },
   );
-  ALL_FIELDS = (j.fields || []).map(String);
+  const xs = (j.fields || []).map(String).filter(Boolean);
+  ALL_FIELDS = xs.includes("value") ? ["value"] : xs;
   renderFields();
   return _normalizeFieldSelection();
 }
@@ -4103,75 +4095,43 @@ async function loadTagValuesForSelector(tag, filters, opts){
   const o = opts || {};
   const qs = new URLSearchParams({tag: String(tag || '')});
   const f = filters || {};
+  const tf = currentTimeFilter();
   if(f.measurement) qs.set('measurement', String(f.measurement));
   if(f.field) qs.set('field', String(f.field));
   if(f.friendly_name) qs.set('friendly_name', String(f.friendly_name));
   if(f.entity_id) qs.set('entity_id', String(f.entity_id));
+  if(tf && tf.start && tf.stop){
+    qs.set('start', String(tf.start));
+    qs.set('stop', String(tf.stop));
+  }else if(tf && tf.range){
+    qs.set('range', String(tf.range));
+  }
   const j = await api('./api/tag_values?' + qs.toString(), null, { key: 'tag_values_' + tag, status: 'Lade ' + tag + '...', silent: !!o.silent });
   return (j.values || []).map(String).filter(Boolean);
 }
 
-let SELECTION_SYNC_SEQ = 0;
-
-function _selectorState(){
-  return {
-    measurement: String(($mf && $mf.value) || '').trim(),
-    field: String(($f && $f.value) || '').trim(),
-    friendly_name: String(($n && $n.value) || '').trim(),
-    entity_id: String(($e && $e.value) || '').trim(),
-  };
-}
-
-function _normalizeSelectionLists(){
-  let changed = false;
-  changed = _normalizeMeasurementSelection() || changed;
-  changed = _normalizeFieldSelection() || changed;
-  changed = _normalizeInputSelection($n, ALL_FRIENDLY) || changed;
-  changed = _normalizeInputSelection($e, ALL_ENTITY) || changed;
-  return changed;
-}
-
-async function syncSelectionFilters(opts){
+async function refreshDashboardSourceSelection(opts){
   const o = opts || {};
-  const syncId = ++SELECTION_SYNC_SEQ;
-  let changedAny = false;
-  for(let i = 0; i < 4; i++){
-    const state = _selectorState();
-    const before = JSON.stringify(state);
-    changedAny = (await loadMeasurements({silent: !!o.silent})) || changedAny;
-    if(syncId !== SELECTION_SYNC_SEQ) return changedAny;
-    const nextState = _selectorState();
-    changedAny = (await loadFields({silent: !!o.silent})) || changedAny;
-    if(syncId !== SELECTION_SYNC_SEQ) return changedAny;
-    ALL_FRIENDLY = await loadTagValuesForSelector('friendly_name', {
-      measurement: nextState.measurement,
-      field: String(($f && $f.value) || '').trim(),
-      entity_id: nextState.entity_id,
-    }, {silent: !!o.silent});
-    renderFriendly();
-    changedAny = _normalizeInputSelection($n, ALL_FRIENDLY) || changedAny;
-    if(syncId !== SELECTION_SYNC_SEQ) return changedAny;
-    const stateAfterFriendly = _selectorState();
-    ALL_ENTITY = await loadTagValuesForSelector('entity_id', {
-      measurement: stateAfterFriendly.measurement,
-      field: stateAfterFriendly.field,
-      friendly_name: stateAfterFriendly.friendly_name,
-    }, {silent: !!o.silent});
-    renderEntity();
-    changedAny = _normalizeInputSelection($e, ALL_ENTITY) || changedAny;
-    if(syncId !== SELECTION_SYNC_SEQ) return changedAny;
-    const after = JSON.stringify(_selectorState());
-    if(before === after) break;
-  }
-  _syncMeasurementValue(String(($mf && $mf.value) || '').trim());
-  _normalizeSelectionLists();
-  renderMeasurements();
-  renderFields();
-  renderFriendly();
+  const measurement = String(($mf && $mf.value) || '').trim();
+  const friendly = String(($n && $n.value) || '').trim();
+  const entity = String(($e && $e.value) || '').trim();
+  await loadMeasurements({silent: !!o.silent});
+  await loadFields({silent: !!o.silent});
+  ALL_ENTITY = await loadTagValuesForSelector('entity_id', {
+    measurement,
+    friendly_name: friendly || '',
+  }, {silent: !!o.silent});
   renderEntity();
+  _normalizeInputSelection($e, ALL_ENTITY);
+  ALL_FRIENDLY = await loadTagValuesForSelector('friendly_name', {
+    measurement,
+    entity_id: entity || '',
+  }, {silent: !!o.silent});
+  renderFriendly();
+  _normalizeInputSelection($n, ALL_FRIENDLY);
   refreshSelectionInfo();
   autoSpanAll();
-  return changedAny;
+  return true;
 }
 
 async function resolveSignal(){
@@ -4194,7 +4154,7 @@ async function resolveSignal(){
   renderMeasurements();
   renderFields();
   if(j.field) $f.value = j.field;
-  await syncSelectionFilters({silent: true});
+  await refreshDashboardSourceSelection({silent: true});
 }
 
 let LAST_ROWS = [];
@@ -6405,7 +6365,7 @@ const onMeasurementFilterChanged = debounce(()=>{
         _syncMeasurementValue(mv);
         logSelectorAction('measurement_filter', mv);
         saveState();
-        await syncSelectionFilters({silent: true});
+        await refreshDashboardSourceSelection({silent: true});
         saveState();
       }catch(e){ displayError(e); }
     })();
@@ -6422,12 +6382,12 @@ const onFriendlyChanged = debounce(()=>{
         logSelectorAction('friendly_name', fn);
         if(!$n || !fn){
           saveState();
-          await syncSelectionFilters({silent: true});
+          await refreshDashboardSourceSelection({silent: true});
           saveState();
           return;
         }
         saveState();
-        await syncSelectionFilters({silent: true});
+        await refreshDashboardSourceSelection({silent: true});
 
         // If multiple entity_ids exist for this friendly_name, show list with ranges.
         try{
@@ -6456,11 +6416,11 @@ const onEntityChanged = debounce(()=>{
         const eid = String(($e && $e.value) || '').trim();
         logSelectorAction('entity_id', eid);
         if(!$e || !eid){
-          await syncSelectionFilters({silent: true});
+          await refreshDashboardSourceSelection({silent: true});
           saveState();
           return;
         }
-        await syncSelectionFilters({silent: true});
+        await refreshDashboardSourceSelection({silent: true});
 
         // If multiple friendly_names exist for this entity_id, show list with ranges.
         try{
@@ -6487,7 +6447,7 @@ const onFieldChanged = debounce(()=>{
         saveState();
         _hideTagChoices();
         logSelectorAction('field', String(($f && $f.value) || '').trim());
-        await syncSelectionFilters({silent: true});
+        await refreshDashboardSourceSelection({silent: true});
         saveState();
       }catch(e){ displayError(e); }
     })();
@@ -6534,7 +6494,7 @@ $m.addEventListener("input", async ()=>{
       return;
     }
     const hasMeasurement = Array.isArray(ALL_MEASUREMENTS) && ALL_MEASUREMENTS.includes(mv);
-    if(hasMeasurement) await syncSelectionFilters({silent: true});
+    if(hasMeasurement) await refreshDashboardSourceSelection({silent: true});
   }catch(e){}
 });
 
@@ -7017,7 +6977,7 @@ try{
     if(st.field) $f.value = String(st.field);
     if(st.friendly_name) $n.value = st.friendly_name;
     if(st.entity_id) $e.value = st.entity_id;
-    await syncSelectionFilters({silent: true});
+    await refreshDashboardSourceSelection({silent: true});
     saveState();
 
     // Table helpers are initialized after shared helpers are loaded.
@@ -7044,7 +7004,7 @@ try{
     // Ensure suggestion lists are loaded on page open (Backup loads these automatically).
     // Keep best-effort: failures are handled and will show an actionable error to the user.
     try{
-      syncSelectionFilters({silent: true}).catch(()=>{});
+      refreshDashboardSourceSelection({silent: true}).catch(()=>{});
     }catch(e){}
 
     // Ensure graph query panel reflects persisted selection.

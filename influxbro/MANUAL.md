@@ -652,3 +652,8 @@ Ausreisser:
 ## Release Notes (1.12.69)
 
 - Dashboard: Neue sichtbare Quellauswahl auf Basis der `Kombinieren`-Seite eingebaut. Die Felder `_measurement`, `_field`, `entity_id` und `friendly_name` erscheinen wieder als Quellenblock, waehrend `Quelle (aufgeloest)` den daraus resultierenden Stand anzeigt.
+
+## Release Notes (1.12.70)
+
+- Dashboard: Die sichtbare Quellauswahl refresh't jetzt bewusst nach der einfachen `Kombinieren`-Logik. `_measurement` laedt `_field` separat, `entity_id` wird nur mit `_measurement` plus optional `friendly_name` geladen und `friendly_name` nur mit `_measurement` plus optional `entity_id`.
+- Dashboard: Wenn `_field` den Datenbankwert `value` enthaelt, wird dieses Field fuer das Dashboard bevorzugt gesetzt.
