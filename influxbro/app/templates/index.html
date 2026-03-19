@@ -193,62 +193,6 @@
     <summary><span class="ib_summary_row"><span>Auswahl</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Auswahl" data-info-body="Auswahl bestimmt, welche Serie geladen wird (measurement/field/entity_id/friendly_name) und welcher Zeitraum fuer Graph/Tabellen gilt.\n\nTypisch:\n1) friendly_name/entity_id waehlen (Measurement optional als Filter).\n2) Zeitraum setzen (Preset oder Custom).\n3) Laden startet Query und fuellt Graph, Raw und Tabellen.\n\nHinweis:\n- Auswahl wird im Browser gespeichert und fuer Backup/Restore/Export wiederverwendet." >i</button></span></summary>
 
     <div class="grid" id="filters" data-ui="dashboard.filters" title="dashboard.filters">
-    <div class="control ib_sel" id="c_measurement_filter" data-ui="filter_measurement">
-      <label class="label_row ib_sel_label"><span>_measurement</span><span id="cnt_measurement_filter" class="muted"></span></label>
-      <div class="ib_sel_stack">
-        <input id="measurement_filter" list="measurement_filter_list" placeholder="optional" data-ui="filter_measurement_input" autocomplete="off" />
-        <datalist id="measurement_filter_list">
-          {% for it in (suggestions.measurements or []) %}
-          <option value="{{ it|e }}"></option>
-          {% endfor %}
-        </datalist>
-        <div class="ib_sel_desc">
-          <button type="button" class="ib_sel_help" data-title="_measurement" data-help="Filtert die Vorschlaege fuer `_field`, `friendly_name` und `entity_id` auf dieses Measurement. Du kannst frei tippen oder aus der Liste waehlen.">?</button>
-          <div class="muted">Auswahl der Measurement-Spalte aus der Datenbank.</div>
-        </div>
-      </div>
-    </div>
-    <div class="control ib_sel" id="c_field_select" data-ui="filter_field">
-      <label class="label_row ib_sel_label"><span>_field</span><span id="cnt_field" class="muted"></span></label>
-      <div class="ib_sel_stack">
-        <input id="field" list="field_list" placeholder="optional" data-ui="filter_field_select" title="filter_field_select" autocomplete="off" />
-        <datalist id="field_list"></datalist>
-        <div class="ib_sel_desc">
-          <button type="button" class="ib_sel_help" data-title="_field" data-help="Filtert die Vorschlaege fuer `friendly_name` und `entity_id` auf dieses Datenbankfeld. Wenn mehrere passende Fields gefunden werden, wird bevorzugt `value` gesetzt.">?</button>
-          <div class="muted">Auswahl der Field-Spalte aus der Datenbank.</div>
-        </div>
-      </div>
-    </div>
-    <div class="control ib_sel" id="c_friendly" data-ui="filter_friendly">
-      <label class="label_row ib_sel_label"><span>friendly_name</span><span id="cnt_friendly_name" class="muted"></span></label>
-      <div class="ib_sel_stack">
-        <input id="friendly_name" list="friendly_list" placeholder="optional" data-ui="filter_friendly_input" autocomplete="off" />
-        <datalist id="friendly_list">
-          {% for it in (suggestions.friendly_name or []) %}
-          <option value="{{ it|e }}"></option>
-          {% endfor %}
-        </datalist>
-        <div class="ib_sel_desc">
-          <button type="button" class="ib_sel_help" data-title="friendly_name" data-help="Waehle den Wert der Datenbankspalte `friendly_name`. Falls mehrere `entity_id` denselben Namen haben, nutze zusaetzlich den `entity_id` Filter.">?</button>
-          <div class="muted">Auswahl der friendly_name-Spalte aus der Datenbank.</div>
-        </div>
-      </div>
-    </div>
-    <div class="control ib_sel" id="c_entity" data-ui="filter_entity">
-      <label class="label_row ib_sel_label"><span>entity_id</span><span id="cnt_entity_id" class="muted"></span></label>
-      <div class="ib_sel_stack">
-        <input id="entity_id" list="entity_list" placeholder="optional" data-ui="filter_entity_input" autocomplete="off" />
-        <datalist id="entity_list">
-          {% for it in (suggestions.entity_id or []) %}
-          <option value="{{ it|e }}"></option>
-          {% endfor %}
-        </datalist>
-        <div class="ib_sel_desc">
-          <button type="button" class="ib_sel_help" data-title="entity_id" data-help="Waehle den Wert der Datenbankspalte `entity_id`. Falls mehrere Werte denselben `friendly_name` teilen, hilft dieses Feld bei der Eindeutigkeit.">?</button>
-          <div class="muted">Auswahl der entity_id-Spalte aus der Datenbank.</div>
-        </div>
-      </div>
-    </div>
     <div class="control ib_sel ib_sel_time span2" id="c_range" data-ui="filter_range">
       <label class="label_row ib_sel_label"><span>Zeitraum (Graph/Tabelle)</span><span><span id="cnt_range" class="muted"></span></span></label>
       <div class="ib_sel_stack">
@@ -360,6 +304,29 @@
 
   <div class="muted">
     Tipps: Messwert = <code>friendly_name</code>. Falls mehrere Entity-IDs denselben Namen haben, nutze den optionalen <code>entity_id</code>-Filter.
+  </div>
+
+  <div style="display:none;" aria-hidden="true">
+    <input id="measurement_filter" list="measurement_filter_list" placeholder="optional" data-ui="filter_measurement_input" autocomplete="off" />
+    <datalist id="measurement_filter_list">
+      {% for it in (suggestions.measurements or []) %}
+      <option value="{{ it|e }}"></option>
+      {% endfor %}
+    </datalist>
+    <input id="field" list="field_list" placeholder="optional" data-ui="filter_field_select" title="filter_field_select" autocomplete="off" />
+    <datalist id="field_list"></datalist>
+    <input id="friendly_name" list="friendly_list" placeholder="optional" data-ui="filter_friendly_input" autocomplete="off" />
+    <datalist id="friendly_list">
+      {% for it in (suggestions.friendly_name or []) %}
+      <option value="{{ it|e }}"></option>
+      {% endfor %}
+    </datalist>
+    <input id="entity_id" list="entity_list" placeholder="optional" data-ui="filter_entity_input" autocomplete="off" />
+    <datalist id="entity_list">
+      {% for it in (suggestions.entity_id or []) %}
+      <option value="{{ it|e }}"></option>
+      {% endfor %}
+    </datalist>
   </div>
 
   <div id="err" class="err"></div>

@@ -7,15 +7,11 @@ from pathlib import Path
 
 def test_dashboard_selection_labels_and_order():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
-    assert "<span>_field</span>" in body
-    assert "<span>_measurement</span>" in body
-    assert "<span>friendly_name</span>" in body
-    assert "<span>entity_id</span>" in body
-
-    pos_friendly = body.index("<span>friendly_name</span>")
-    pos_entity = body.index("<span>entity_id</span>")
-    pos_range = body.index("Zeitraum (Graph/Tabelle)")
-    assert pos_friendly < pos_entity < pos_range
+    assert "<span>_measurement</span>" not in body
+    assert "<span>_field</span>" not in body
+    assert "<span>friendly_name</span>" not in body
+    assert "<span>entity_id</span>" not in body
+    assert "Zeitraum (Graph/Tabelle)" in body
 
 
 def test_dashboard_selector_sync_is_no_longer_time_filtered():

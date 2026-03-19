@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.68
+
+### UI
+
+- Dashboard: Die vier sichtbaren Auswahlfelder oberhalb von `Aktualisieren` (`_measurement`, `_field`, `friendly_name`, `entity_id`) wurden fuer den Neuaufbau vollstaendig aus der sichtbaren UI entfernt.
+
+### Maintenance
+
+- Zwischenstand fuer Sichtpruefung des Dashboard-Rebuilds
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.67
 
 ### UI

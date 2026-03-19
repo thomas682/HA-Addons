@@ -644,3 +644,7 @@ Ausreisser:
 ## Release Notes (1.12.67)
 
 - Dashboard: Der komplette Auswahlblock oberhalb von `Aktualisieren` nutzt jetzt die Backup-Kaskade. `_measurement`, `_field`, `friendly_name` und `entity_id` laden sich gegenseitig aus den gefilterten Datenbankspalten neu und sind konsistent nach den echten DB-Namen beschriftet.
+
+## Release Notes (1.12.68)
+
+- Dashboard: Die sichtbaren Auswahlfelder oberhalb von `Aktualisieren` wurden fuer einen sauberen Neuaufbau voruebergehend entfernt. Diese Version dient nur der Sichtpruefung, dass der alte Auswahlblock komplett verschwunden ist.
