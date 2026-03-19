@@ -648,3 +648,7 @@ Ausreisser:
 ## Release Notes (1.12.68)
 
 - Dashboard: Die sichtbaren Auswahlfelder oberhalb von `Aktualisieren` wurden fuer einen sauberen Neuaufbau voruebergehend entfernt. Diese Version dient nur der Sichtpruefung, dass der alte Auswahlblock komplett verschwunden ist.
+
+## Release Notes (1.12.69)
+
+- Dashboard: Neue sichtbare Quellauswahl auf Basis der `Kombinieren`-Seite eingebaut. Die Felder `_measurement`, `_field`, `entity_id` und `friendly_name` erscheinen wieder als Quellenblock, waehrend `Quelle (aufgeloest)` den daraus resultierenden Stand anzeigt.

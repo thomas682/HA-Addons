@@ -7,10 +7,11 @@ from pathlib import Path
 
 def test_dashboard_selection_labels_and_order():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
-    assert "<span>_measurement</span>" not in body
-    assert "<span>_field</span>" not in body
-    assert "<span>friendly_name</span>" not in body
-    assert "<span>entity_id</span>" not in body
+    assert "<div style=\"font-weight:800;\">Quelle</div>" in body
+    assert "<label class=\"ib_sel_label\">_measurement</label>" in body
+    assert "<label class=\"ib_sel_label\">_field</label>" in body
+    assert "<span>friendly_name</span>" in body
+    assert "<span>entity_id</span>" in body
     assert "Zeitraum (Graph/Tabelle)" in body
 
 
@@ -37,6 +38,8 @@ def test_dashboard_has_resolved_selection_info_box():
     assert 'id="selection_info"' in body
     assert 'data-ui="dashboard.selection"' in body
     assert 'function refreshSelectionInfo()' in body
+    assert 'Quelle (aufgeloest)' in body
+    assert 'role: source' in body
     assert 'measurement_filter: ${measurementFilter || \'-\'}' in body
     assert 'friendly_name: ${friendly || \'-\'}' in body
     assert 'entity_id: ${entity || \'-\'}' in body

@@ -193,6 +193,69 @@
     <summary><span class="ib_summary_row"><span>Auswahl</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Auswahl" data-info-body="Auswahl bestimmt, welche Serie geladen wird (measurement/field/entity_id/friendly_name) und welcher Zeitraum fuer Graph/Tabellen gilt.\n\nTypisch:\n1) friendly_name/entity_id waehlen (Measurement optional als Filter).\n2) Zeitraum setzen (Preset oder Custom).\n3) Laden startet Query und fuellt Graph, Raw und Tabellen.\n\nHinweis:\n- Auswahl wird im Browser gespeichert und fuer Backup/Restore/Export wiederverwendet." >i</button></span></summary>
 
     <div class="grid" id="filters" data-ui="dashboard.filters" title="dashboard.filters">
+    <div class="control span2" data-ui="dashboard.source_selection" title="dashboard.source_selection">
+      <div class="card" style="margin-top:0;">
+        <div style="font-weight:800;">Quelle</div>
+        <div class="grid" style="margin-top:10px;">
+          <div class="ib_sel" id="c_measurement_filter" data-ui="filter_measurement">
+            <label class="ib_sel_label">_measurement</label>
+            <div class="ib_sel_stack">
+              <input id="measurement_filter" list="measurement_filter_list" placeholder="optional" data-ui="filter_measurement_input" autocomplete="off" />
+              <datalist id="measurement_filter_list">
+                {% for it in (suggestions.measurements or []) %}
+                <option value="{{ it|e }}"></option>
+                {% endfor %}
+              </datalist>
+              <div class="ib_sel_desc">
+                <button type="button" class="ib_sel_help" data-title="Quelle _measurement" data-help="Quell-Measurement fuer das Dashboard. Filtert die anderen Quellfelder auf passende Datenbankwerte.">?</button>
+                <div class="muted">Quellspalte `_measurement`.</div>
+              </div>
+            </div>
+          </div>
+          <div class="ib_sel" id="c_field_select" data-ui="filter_field">
+            <label class="ib_sel_label">_field</label>
+            <div class="ib_sel_stack">
+              <input id="field" list="field_list" placeholder="optional" data-ui="filter_field_select" title="filter_field_select" autocomplete="off" />
+              <datalist id="field_list"></datalist>
+              <div class="ib_sel_desc">
+                <button type="button" class="ib_sel_help" data-title="Quelle _field" data-help="Quell-Field fuer das Dashboard. Default ist `value`, wenn dieses Field verfuegbar ist.">?</button>
+                <div class="muted">Quellspalte `_field`.</div>
+              </div>
+            </div>
+          </div>
+          <div class="ib_sel" id="c_entity" data-ui="filter_entity">
+            <label class="label_row ib_sel_label"><span>entity_id</span><span id="cnt_entity_id" class="muted"></span></label>
+            <div class="ib_sel_stack">
+              <input id="entity_id" list="entity_list" placeholder="optional" data-ui="filter_entity_input" autocomplete="off" />
+              <datalist id="entity_list">
+                {% for it in (suggestions.entity_id or []) %}
+                <option value="{{ it|e }}"></option>
+                {% endfor %}
+              </datalist>
+              <div class="ib_sel_desc">
+                <button type="button" class="ib_sel_help" data-title="Quelle entity_id" data-help="Quell-Tag `entity_id` fuer das Dashboard. Filtert die anderen Quellfelder weiter ein.">?</button>
+                <div class="muted">Quellspalte `entity_id`.</div>
+              </div>
+            </div>
+          </div>
+          <div class="ib_sel" id="c_friendly" data-ui="filter_friendly">
+            <label class="label_row ib_sel_label"><span>friendly_name</span><span id="cnt_friendly_name" class="muted"></span></label>
+            <div class="ib_sel_stack">
+              <input id="friendly_name" list="friendly_list" placeholder="optional" data-ui="filter_friendly_input" autocomplete="off" />
+              <datalist id="friendly_list">
+                {% for it in (suggestions.friendly_name or []) %}
+                <option value="{{ it|e }}"></option>
+                {% endfor %}
+              </datalist>
+              <div class="ib_sel_desc">
+                <button type="button" class="ib_sel_help" data-title="Quelle friendly_name" data-help="Quell-Tag `friendly_name` fuer das Dashboard. Filtert die anderen Quellfelder weiter ein.">?</button>
+                <div class="muted">Quellspalte `friendly_name`.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
     <div class="control ib_sel ib_sel_time span2" id="c_range" data-ui="filter_range">
       <label class="label_row ib_sel_label"><span>Zeitraum (Graph/Tabelle)</span><span><span id="cnt_range" class="muted"></span></span></label>
       <div class="ib_sel_stack">
@@ -228,7 +291,7 @@
       <div class="muted">Zeitangaben werden als lokale Zeit interpretiert und als UTC an die API gesendet.</div>
     </div>
     <div class="control span2" data-ui="dashboard.selection_row" title="dashboard.selection_row">
-      <label>Auswahl (aufgeloest)</label>
+      <label>Quelle (aufgeloest)</label>
       <textarea id="selection_info" class="resizable" readonly data-ui="dashboard.selection" title="dashboard.selection"></textarea>
       <div class="muted" id="selection_info_meta" data-ui="dashboard.selection_meta" title="dashboard.selection_meta"></div>
     </div>
@@ -304,29 +367,6 @@
 
   <div class="muted">
     Tipps: Messwert = <code>friendly_name</code>. Falls mehrere Entity-IDs denselben Namen haben, nutze den optionalen <code>entity_id</code>-Filter.
-  </div>
-
-  <div style="display:none;" aria-hidden="true">
-    <input id="measurement_filter" list="measurement_filter_list" placeholder="optional" data-ui="filter_measurement_input" autocomplete="off" />
-    <datalist id="measurement_filter_list">
-      {% for it in (suggestions.measurements or []) %}
-      <option value="{{ it|e }}"></option>
-      {% endfor %}
-    </datalist>
-    <input id="field" list="field_list" placeholder="optional" data-ui="filter_field_select" title="filter_field_select" autocomplete="off" />
-    <datalist id="field_list"></datalist>
-    <input id="friendly_name" list="friendly_list" placeholder="optional" data-ui="filter_friendly_input" autocomplete="off" />
-    <datalist id="friendly_list">
-      {% for it in (suggestions.friendly_name or []) %}
-      <option value="{{ it|e }}"></option>
-      {% endfor %}
-    </datalist>
-    <input id="entity_id" list="entity_list" placeholder="optional" data-ui="filter_entity_input" autocomplete="off" />
-    <datalist id="entity_list">
-      {% for it in (suggestions.entity_id or []) %}
-      <option value="{{ it|e }}"></option>
-      {% endfor %}
-    </datalist>
   </div>
 
   <div id="err" class="err"></div>
@@ -3994,6 +4034,7 @@ function refreshSelectionInfo(){
     const friendly = String(($n && $n.value) || "").trim();
     const entity = String(($e && $e.value) || "").trim();
     const txt = [
+      `role: source`,
       `measurement_filter: ${measurementFilter || '-'}`,
       `measurement: ${measurement || '-'}`,
       `field: ${field || '-'}`,

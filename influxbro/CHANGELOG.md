@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.69
+
+### UI
+
+- Dashboard: Die Quellauswahl aus `Kombinieren` wurde als neuer sichtbarer Auswahlblock ins Dashboard uebernommen. Sichtbar sind jetzt wieder `_measurement`, `_field`, `entity_id` und `friendly_name` in der Quellenstruktur.
+- Dashboard: Das Infofeld zeigt jetzt die aufgeloeste Quellauswahl (`Quelle (aufgeloest)`) auf Basis dieser neuen Dashboard-Quellauswahl.
+
+### Maintenance
+
+- Zwischenstand fuer Sichtpruefung der neuen Dashboard-Quellauswahl
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.68
 
 ### UI
