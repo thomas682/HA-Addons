@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.12.63
+
+### UI
+
+- Dashboard: Die `_measurement`-Auswahl reagiert jetzt zusaetzlich auf `change` wie im Export. Dadurch greifen die gegenseitigen Filter auch dann sofort, wenn ein Measurement direkt aus der Datalist angeklickt wird.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.62
 
 ### UI

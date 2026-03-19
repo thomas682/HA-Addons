@@ -17,6 +17,7 @@ def test_dashboard_selection_labels_and_order():
 def test_dashboard_selector_sync_is_no_longer_time_filtered():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     assert 'measurement_filter: $mf.value || null,\n  };' in body
+    assert '$mf.addEventListener("change", ()=>onMeasurementFilterChanged());' in body
     assert 'if(tf && tf.range) q.push("range=" + encodeURIComponent(tf.range));' not in body
     assert 'if(tf && tf.range) qs.set("range", String(tf.range || ""));' not in body
 

@@ -6399,6 +6399,7 @@ const onFieldChanged = debounce(()=>{
 }, 180);
 
 $mf.addEventListener("input", ()=>onMeasurementFilterChanged());
+$mf.addEventListener("change", ()=>onMeasurementFilterChanged());
 $n.addEventListener("input", ()=>onFriendlyChanged());
 $n.addEventListener("change", ()=>onFriendlyChanged());
 $e.addEventListener("input", ()=>onEntityChanged());
