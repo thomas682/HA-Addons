@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.77
+
+### UI
+
+- Dashboard: Die sichtbare Quellauswahl reagiert jetzt nicht nur auf `input`, sondern auch auf `change`. Dadurch werden `fields` und `tag_values` auch dann nachgeladen, wenn ein Datalist-Eintrag wie `EUR` direkt mit der Maus ausgewaehlt wird und der Browser dafuer nur ein `change`-Event liefert.
+
+### Maintenance
+
+- Zusätzliche Absicherung fuer Browser-Datalist-Verhalten im Dashboard
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.76
 
 ### UI

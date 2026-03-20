@@ -677,3 +677,11 @@ Ausreisser:
 ## Release Notes (1.12.75)
 
 - Dashboard: Das alte versteckte Measurement-Feld ist jetzt auch aus dem Selektorfluss entfernt. Die sichtbare Dashboard-Quellauswahl verwendet nur noch das sichtbare `_measurement`-Feld und hat keinen zweiten internen Measurement-Pfad mehr.
+
+## Release Notes (1.12.76)
+
+- Dashboard: Die sichtbare Quellauswahl verwendet fuer `entity_id` und `friendly_name` jetzt denselben direkten Datalist-Befuellpfad wie `Kombinieren` und entfernt dabei weitere Dashboard-spezifische Seiteneffekte aus den Input-Handlern.
+
+## Release Notes (1.12.77)
+
+- Dashboard: Die sichtbare Quellauswahl reagiert jetzt sowohl auf `input` als auch auf `change`, damit Browser-Datalist-Auswahlen wie `EUR` per Mausklick sicher dieselben `fields`- und `tag_values`-Requests ausloesen wie bei direkter Eingabe.

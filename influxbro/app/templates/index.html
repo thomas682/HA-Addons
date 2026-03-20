@@ -6295,13 +6295,26 @@ $mf.addEventListener("input", ()=>{
   loadDashboardFields(mv, {silent: true}).catch(()=>{});
   _debRefreshDashboardSrc();
 });
+$mf.addEventListener("change", ()=>{
+  const mv = String(($mf && $mf.value) || '').trim();
+  loadDashboardFields(mv, {silent: true}).catch(()=>{});
+  _debRefreshDashboardSrc();
+});
 
 $n.addEventListener("input", ()=>{
   _debRefreshDashboardSrc();
   _debAutoResolveDashboardSrc();
 });
+$n.addEventListener("change", ()=>{
+  _debRefreshDashboardSrc();
+  _debAutoResolveDashboardSrc();
+});
 
 $e.addEventListener("input", ()=>{
+  _debRefreshDashboardSrc();
+  _debAutoResolveDashboardSrc();
+});
+$e.addEventListener("change", ()=>{
   _debRefreshDashboardSrc();
   _debAutoResolveDashboardSrc();
 });
