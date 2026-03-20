@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.76
+
+### UI
+
+- Dashboard: Die sichtbare Quellauswahl verwendet fuer `entity_id` und `friendly_name` jetzt auch denselben direkten Datalist-Befuellpfad wie `Kombinieren` (`dashboardLoadTagValues` + direktes Schreiben in die Datalist) und entfernt dabei weitere Dashboard-spezifische Seiteneffekte aus den Input-Handlern.
+
+### Maintenance
+
+- Weitere Testversion fuer den JS-Pfadvergleich zwischen Dashboard und `Kombinieren`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.75
 
 ### UI

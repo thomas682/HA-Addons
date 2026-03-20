@@ -31,8 +31,10 @@ def test_dashboard_selector_sync_is_no_longer_time_filtered():
     assert 'async function loadDashboardFields(measurement, opts)' in body
     assert 'async function resolveDashboardSource()' in body
     assert 'const $m = $mf;' in body
-    assert "const range = String((o && o.range) || '24h').trim() || '24h';" in body
-    assert 'await loadTagValuesForSelector(\'entity_id\'' in body
+    assert 'async function dashboardLoadTagValues(tag, params)' in body
+    assert "const common = { range: '24h' };" in body
+    assert "const common = { range: '24h' };" in body
+    assert 'ALL_ENTITY = await dashboardLoadTagValues(\'entity_id\'' in body
     assert 'syncSelectionFilters(' not in body
     assert 'const _debRefreshDashboardSrc = debounce' in body
     assert 'const _debAutoResolveDashboardSrc = debounce' in body

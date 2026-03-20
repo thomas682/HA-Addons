@@ -3887,6 +3887,10 @@ function renderMeasurements(){
   });
 }
 
+function _setSelCount(el, n){
+  try{ if(!el) return; el.textContent = (n != null) ? ('(' + String(n) + ')') : ''; }catch(e){}
+}
+
 function renderFields(){
   if($cntField) $cntField.textContent = ALL_FIELDS.length ? `(${ALL_FIELDS.length})` : "";
   setDatalistOptions($fieldList, ALL_FIELDS);
@@ -3978,52 +3982,57 @@ async function loadMeasurements(opts){
   }
 }
 
+async function dashboardLoadTagValues(tag, params){
+  let url = './api/tag_values?tag=' + encodeURIComponent(String(tag||''));
+  const qp = new URLSearchParams();
+  Object.entries(params||{}).forEach(([k,v])=>{ if(v !== null && v !== undefined && String(v).trim() !== '') qp.set(k, String(v)); });
+  const qs = qp.toString();
+  if(qs) url += '&' + qs;
+  const j = await api(url);
+  return (j.values || []).map(x=>String(x||'')).filter(Boolean);
+}
+
 async function loadDashboardFields(measurement, opts){
   const o = opts || {};
   const m = String(measurement || "").trim();
   if(!m){
     ALL_FIELDS = [];
-    renderFields();
+    if($fieldList) $fieldList.innerHTML = '';
+    _setSelCount($cntField, 0);
+    _selApplyWidthForInput($f, []);
     if($f) $f.value = "";
     return true;
   }
-  const j = await api(
-    "./api/fields?measurement=" + encodeURIComponent(m),
-    null,
-    { key: "fields", status: "Lade Fields...", silent: !!o.silent },
-  );
+  const j = await api("./api/fields?measurement=" + encodeURIComponent(m), null, { key: "fields", status: "Lade Fields...", silent: !!o.silent });
   ALL_FIELDS = (j.fields || []).map(String).filter(Boolean);
-  renderFields();
+  if($fieldList) $fieldList.innerHTML = ALL_FIELDS.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"></option>`).join('');
+  _setSelCount($cntField, ALL_FIELDS.length);
+  _selApplyWidthForInput($f, ALL_FIELDS);
+  logSelectorLoad('field', ALL_FIELDS, { measurement_filter: m, friendly_name: String(($n && $n.value)||''), entity_id: String(($e && $e.value)||'') });
   return true;
 }
 
-async function loadTagValuesForSelector(tag, filters, opts){
-  const o = opts || {};
-  const qs = new URLSearchParams({tag: String(tag || '')});
-  const f = filters || {};
-  const range = String((o && o.range) || '24h').trim() || '24h';
-  if(f.measurement) qs.set('measurement', String(f.measurement));
-  if(f.field) qs.set('field', String(f.field));
-  if(f.friendly_name) qs.set('friendly_name', String(f.friendly_name));
-  if(f.entity_id) qs.set('entity_id', String(f.entity_id));
-  qs.set('range', range);
-  const j = await api('./api/tag_values?' + qs.toString(), null, { key: 'tag_values_' + tag, status: 'Lade ' + tag + '...', silent: !!o.silent });
-  return (j.values || []).map(String).filter(Boolean);
-}
-
 async function refreshDashboardSuggestions(opts){
-  const o = opts || {};
   const s = dashboardSource();
-  ALL_ENTITY = await loadTagValuesForSelector('entity_id', {
-    measurement: s.measurement,
-    friendly_name: s.friendly_name || '',
-  }, {silent: !!o.silent, range: '24h'});
-  renderEntity();
-  ALL_FRIENDLY = await loadTagValuesForSelector('friendly_name', {
-    measurement: s.measurement,
-    entity_id: s.entity_id || '',
-  }, {silent: !!o.silent, range: '24h'});
-  renderFriendly();
+  const meas = String(s.measurement || '').trim();
+  const eid = String(s.entity_id || '').trim();
+  const fn = String(s.friendly_name || '').trim();
+  const common = { range: '24h' };
+  if(meas) common.measurement = meas;
+  try{
+    ALL_ENTITY = await dashboardLoadTagValues('entity_id', {...common, friendly_name: fn || ''});
+    if($entityList) $entityList.innerHTML = ALL_ENTITY.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"></option>`).join('');
+    _setSelCount($cntEid, ALL_ENTITY.length);
+    _selApplyWidthForInput($e, ALL_ENTITY);
+    logSelectorLoad('entity_id', ALL_ENTITY, { measurement_filter: meas, friendly_name: fn });
+    ALL_FRIENDLY = await dashboardLoadTagValues('friendly_name', {...common, entity_id: eid || ''});
+    if($friendlyList) $friendlyList.innerHTML = ALL_FRIENDLY.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"></option>`).join('');
+    _setSelCount($cntFn, ALL_FRIENDLY.length);
+    _selApplyWidthForInput($n, ALL_FRIENDLY);
+    logSelectorLoad('friendly_name', ALL_FRIENDLY, { measurement_filter: meas, entity_id: eid });
+  }catch(e){
+    // ignore (best effort, like combine)
+  }
   refreshSelectionInfo();
   autoSpanAll();
   return true;
@@ -6283,22 +6292,16 @@ const _debAutoResolveDashboardSrc = debounce(()=>{
 
 $mf.addEventListener("input", ()=>{
   const mv = String(($mf && $mf.value) || '').trim();
-  logSelectorAction('measurement_filter', mv);
-  saveState();
   loadDashboardFields(mv, {silent: true}).catch(()=>{});
   _debRefreshDashboardSrc();
 });
 
 $n.addEventListener("input", ()=>{
-  logSelectorAction('friendly_name', String(($n && $n.value) || '').trim());
-  saveState();
   _debRefreshDashboardSrc();
   _debAutoResolveDashboardSrc();
 });
 
 $e.addEventListener("input", ()=>{
-  logSelectorAction('entity_id', String(($e && $e.value) || '').trim());
-  saveState();
   _debRefreshDashboardSrc();
   _debAutoResolveDashboardSrc();
 });
