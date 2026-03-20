@@ -351,20 +351,6 @@
     </div>
   </details>
 
-  <details style="display:none;">
-    <summary><span class="ib_summary_row"><span>Erweitert: Measurement / Field</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Erweitert" data-info-body="Erweiterte Auswahl, wenn friendly_name/entity_id nicht eindeutig ist oder du direkt Measurement/Field setzen willst.\n\nHinweis:\n- Measurement/Field beeinflussen alle nachfolgenden Queries (Graph/Raw/Stats)." >i</button></span></summary>
-    <div class="grid" style="margin-top:12px;">
-      <div class="control"><label>Measurement (intern)</label><input id="measurement" list="measurement_list" placeholder="optional" data-ui="dashboard.measurement" title="dashboard.measurement" />
-        <datalist id="measurement_list">
-          {% for it in (suggestions.measurements or []) %}
-          <option value="{{ it|e }}"></option>
-          {% endfor %}
-        </datalist>
-      </div>
-      <div class="control span2"><div class="muted">Wird automatisch anhand des Klartextnamens ermittelt (wenn moeglich).</div></div>
-    </div>
-  </details>
-
   <div class="muted">
     Tipps: Messwert = <code>friendly_name</code>. Falls mehrere Entity-IDs denselben Namen haben, nutze den optionalen <code>entity_id</code>-Filter.
   </div>
@@ -785,12 +771,12 @@ const err = (msg) => {
 };
 const ok = (msg) => { document.getElementById('ok').textContent = msg || ""; };
 
-const $m = document.getElementById('measurement');
+const $mf = document.getElementById('measurement_filter');
+const $m = $mf;
 const $f = document.getElementById('field');
 const $r = document.getElementById('range');
 const $e = document.getElementById('entity_id');
 const $n = document.getElementById('friendly_name');
-const $mf = document.getElementById('measurement_filter');
 const $mfList = document.getElementById('measurement_filter_list');
 const $fieldList = document.getElementById('field_list');
 const $friendlyList = document.getElementById('friendly_list');
