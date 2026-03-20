@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.12.81
+
+### UI
+
+- Export: Der Button `Export` bietet jetzt einen klickbaren Client-Ordnerbrowser fuer Chromium-basierte Browser. Du waehlt einen lokalen Root-Ordner und kannst danach Unterordner im Dialog mit der Maus ansteuern; die fertige Export-Datei wird direkt clientseitig dorthin geschrieben.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.80
 
 ### UI

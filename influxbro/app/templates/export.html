@@ -236,12 +236,17 @@
             <div class="title">Export Ziel</div>
             <button id="target_close" type="button">Schliessen</button>
           </div>
-          <div class="muted" style="margin-top: 8px;">Zielordner fuer die Export-Datei. Relative Pfade werden unter <code>/data</code> abgelegt (z.B. <code>exports</code>).</div>
+          <div class="muted" style="margin-top: 8px;">Waehle den Client-Ordner, in den die Export-Datei lokal geschrieben werden soll. Diese Funktion nutzt den Browser-Dateisystemzugriff und ist fuer Chromium-basierte Browser gedacht.</div>
           <div class="grid" style="margin-top: 12px;">
-            <div>
-              <label>Zielordner (relativ zu /data oder absolut unter /data|/config)</label>
-              <input id="target_dir" placeholder="exports" />
-              <div class="muted">Beispiel: <code>exports</code> oder <code>/config/influxbro/exports</code>.</div>
+            <div class="span2">
+              <label>Aktueller Client-Ordner</label>
+              <div id="target_dir" class="mono" style="padding:10px 12px; border:1px solid var(--line); border-radius:10px; min-height:42px; background: var(--bg_soft); word-break: break-all;">Nicht gewaehlt</div>
+              <div class="row" style="margin-top:10px; gap:10px; flex-wrap:wrap;">
+                <button id="target_pick_root" type="button">Client-Ordner waehlen</button>
+                <button id="target_up" type="button">Eine Ebene hoch</button>
+              </div>
+              <div class="muted" id="target_hint" style="margin-top:8px;">Du waehlt zuerst einen lokalen Root-Ordner und kannst danach Unterordner mit der Maus anklicken.</div>
+              <div id="target_entries" class="table_box" style="margin-top:10px; max-height:220px; overflow:auto; border:1px solid var(--line); border-radius:10px;"></div>
             </div>
           </div>
           <div class="actions">
@@ -286,6 +291,10 @@
 
       const $targetModal = document.getElementById('target_modal');
       const $targetDir = document.getElementById('target_dir');
+      const $targetEntries = document.getElementById('target_entries');
+      const $targetHint = document.getElementById('target_hint');
+      const $targetPickRoot = document.getElementById('target_pick_root');
+      const $targetUp = document.getElementById('target_up');
       const $targetOk = document.getElementById('target_ok');
       const $targetCancel = document.getElementById('target_cancel');
       const $targetClose = document.getElementById('target_close');
@@ -302,6 +311,9 @@
       let AUTO_DL_DONE = false;
 
       const LS_TARGET = 'influxbro_export_target_dir_v1';
+      let CLIENT_ROOT_HANDLE = null;
+      let CLIENT_TARGET_HANDLE = null;
+      let CLIENT_PATH_SEGMENTS = [];
 
       function _selInitHelpButtons(){
         try{
@@ -420,10 +432,48 @@
         return new Promise((resolve)=>{
           try{
             if(!$targetModal) return resolve(null);
-            const prev = (localStorage.getItem(LS_TARGET) || '').trim();
-            if($targetDir && !$targetDir.value) $targetDir.value = prev || 'exports';
-            $targetModal.style.display = 'block';
-            $targetModal.setAttribute('aria-hidden','false');
+            const updateTargetUi = async ()=>{
+              try{
+                const pathTxt = CLIENT_PATH_SEGMENTS.length ? CLIENT_PATH_SEGMENTS.join('/') : '(Root)';
+                if($targetDir) $targetDir.textContent = CLIENT_ROOT_HANDLE ? pathTxt : 'Nicht gewaehlt';
+                if($targetUp) $targetUp.disabled = !CLIENT_ROOT_HANDLE || !CLIENT_PATH_SEGMENTS.length;
+                if($targetOk) $targetOk.disabled = !CLIENT_ROOT_HANDLE || !CLIENT_TARGET_HANDLE;
+                if($targetHint){
+                  $targetHint.textContent = window.showDirectoryPicker
+                    ? (CLIENT_ROOT_HANDLE ? 'Unterordner anklicken, dann mit OK bestaetigen.' : 'Waehle zuerst einen lokalen Root-Ordner.')
+                    : 'Dieser Browser unterstuetzt keinen klickbaren Client-Ordnerbrowser. Nutze stattdessen den normalen Download/Save-As-Fallback.';
+                }
+                if(!$targetEntries) return;
+                if(!CLIENT_TARGET_HANDLE){
+                  $targetEntries.innerHTML = '<div class="muted" style="padding:10px 12px;">Kein Client-Ordner gewaehlt.</div>';
+                  return;
+                }
+                const rows = [];
+                try{
+                  for await (const entry of CLIENT_TARGET_HANDLE.values()){
+                    if(entry && entry.kind === 'directory') rows.push(String(entry.name || ''));
+                  }
+                }catch(e){}
+                rows.sort((a,b)=>a.localeCompare(b, 'de', {sensitivity:'base'}));
+                if(!rows.length){
+                  $targetEntries.innerHTML = '<div class="muted" style="padding:10px 12px;">Keine Unterordner vorhanden.</div>';
+                  return;
+                }
+                $targetEntries.innerHTML = rows.map(name => `<button type="button" class="btn_sm target_entry" data-name="${name.replace(/"/g,'&quot;')}" style="display:block; width:100%; text-align:left; border:none; border-bottom:1px solid var(--line); border-radius:0; padding:10px 12px; background:transparent;">${name}</button>`).join('');
+                $targetEntries.querySelectorAll('.target_entry').forEach(btn => {
+                  btn.addEventListener('click', async (ev)=>{
+                    try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+                    const name = String(btn.getAttribute('data-name') || '').trim();
+                    if(!name || !CLIENT_TARGET_HANDLE) return;
+                    try{
+                      CLIENT_TARGET_HANDLE = await CLIENT_TARGET_HANDLE.getDirectoryHandle(name, { create: false });
+                      CLIENT_PATH_SEGMENTS.push(name);
+                      await updateTargetUi();
+                    }catch(e){}
+                  });
+                });
+              }catch(e){}
+            };
 
             const done = (val)=>{
               try{ $targetModal.style.display = 'none'; }catch(e){}
@@ -431,17 +481,51 @@
               resolve(val);
             };
 
-            const onOk = (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}; const v = String($targetDir && $targetDir.value ? $targetDir.value : '').trim(); try{ localStorage.setItem(LS_TARGET, v); }catch(e){}; done(v || 'exports'); };
+            const onPickRoot = async (ev)=>{
+              try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+              try{
+                if(!window.showDirectoryPicker) return;
+                CLIENT_ROOT_HANDLE = await window.showDirectoryPicker({ mode: 'readwrite' });
+                CLIENT_TARGET_HANDLE = CLIENT_ROOT_HANDLE;
+                CLIENT_PATH_SEGMENTS = [];
+                await updateTargetUi();
+              }catch(e){}
+            };
+
+            const onUp = async (ev)=>{
+              try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+              if(!CLIENT_ROOT_HANDLE || !CLIENT_PATH_SEGMENTS.length) return;
+              CLIENT_TARGET_HANDLE = CLIENT_ROOT_HANDLE;
+              CLIENT_PATH_SEGMENTS = CLIENT_PATH_SEGMENTS.slice(0, -1);
+              for(const seg of CLIENT_PATH_SEGMENTS){
+                CLIENT_TARGET_HANDLE = await CLIENT_TARGET_HANDLE.getDirectoryHandle(seg, { create: false });
+              }
+              await updateTargetUi();
+            };
+
+            $targetModal.style.display = 'block';
+            $targetModal.setAttribute('aria-hidden','false');
+            updateTargetUi().catch(()=>{});
+
+            const onOk = (ev)=>{
+              try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+              if(!CLIENT_TARGET_HANDLE) return done(null);
+              const v = CLIENT_PATH_SEGMENTS.length ? CLIENT_PATH_SEGMENTS.join('/') : '';
+              try{ localStorage.setItem(LS_TARGET, v); }catch(e){}
+              done({ path: v, handle: CLIENT_TARGET_HANDLE });
+            };
             const onCancel = (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}; done(null); };
             const onBackdrop = (ev)=>{ if(ev && ev.target === $targetModal) onCancel(ev); };
             const onKey = (ev)=>{ try{ if(ev && ev.key === 'Escape') onCancel(ev); }catch(e){} };
 
+            if($targetPickRoot) $targetPickRoot.onclick = onPickRoot;
+            if($targetUp) $targetUp.onclick = onUp;
             $targetOk.onclick = onOk;
             $targetCancel.onclick = onCancel;
             $targetClose.onclick = onCancel;
             $targetModal.addEventListener('click', onBackdrop, { once: true });
             document.addEventListener('keydown', onKey, { once: true });
-            try{ if($targetDir) $targetDir.focus(); }catch(e){}
+            try{ if($targetPickRoot) $targetPickRoot.focus(); }catch(e){}
           }catch(e){
             resolve(null);
           }
@@ -808,23 +892,25 @@
           }
         }
 
-       async function runExport(wantSaveAs){
+        async function runExport(wantSaveAs){
           err(''); ok('');
           try{ window.InfluxBroStatus && window.InfluxBroStatus.start && window.InfluxBroStatus.start('export.run', 'Export laeuft...'); }catch(e){}
           try{
             SAVE_HANDLE = null;
             SAVE_DIR_HANDLE = null;
             let targetDirValue = 'exports';
-            try{ targetDirValue = String(($targetDir && $targetDir.value) || localStorage.getItem(LS_TARGET) || 'exports').trim() || 'exports'; }catch(e){}
+            let chosenClientHandle = null;
+            try{ targetDirValue = String(localStorage.getItem(LS_TARGET) || 'exports').trim() || 'exports'; }catch(e){}
             const want = !!wantSaveAs;
             if(want){
               const chosenTarget = await showTargetModal();
               if(chosenTarget === null) throw new Error('Export abgebrochen.');
-              targetDirValue = String(chosenTarget || 'exports').trim() || 'exports';
-              try{ if($targetDir) $targetDir.value = targetDirValue; }catch(e){}
+              targetDirValue = String((chosenTarget && chosenTarget.path) || 'exports').trim() || 'exports';
+              chosenClientHandle = chosenTarget && chosenTarget.handle ? chosenTarget.handle : null;
+              CLIENT_TARGET_HANDLE = chosenClientHandle;
+              SAVE_DIR_HANDLE = chosenClientHandle;
               const fmt0 = String($format.value||'text');
               const sugg = _suggestExportName(fmt0);
-              SAVE_DIR_HANDLE = await _pickDirectoryHandle();
               if(!SAVE_DIR_HANDLE) SAVE_HANDLE = await _pickSaveHandle(sugg, fmt0);
             }
 
@@ -908,14 +994,14 @@
                   SAVE_HANDLE = null;
                   SAVE_DIR_HANDLE = null;
                   if(okSave){
-                    try{ if($hint) $hint.textContent = 'Datei gespeichert. Server-Ziel: ' + String((st && st.out_dir) || ($targetDir && $targetDir.value) || 'exports'); }catch(e){}
+                    try{ if($hint) $hint.textContent = 'Datei gespeichert. Client-Ziel: ' + String(targetDirValue || '(Root)'); }catch(e){}
                   }else{
                     try{ location.href = String(LAST_DOWNLOAD_URL); }catch(e){}
-                    try{ if($hint) $hint.textContent = 'Download gestartet. Server-Ziel: ' + String((st && st.out_dir) || ($targetDir && $targetDir.value) || 'exports'); }catch(e){}
+                    try{ if($hint) $hint.textContent = 'Download gestartet. Client-Ziel konnte nicht direkt beschrieben werden.'; }catch(e){}
                   }
                 }else{
                   try{ location.href = String(LAST_DOWNLOAD_URL); }catch(e){}
-                  try{ if($hint) $hint.textContent = 'Download gestartet. Server-Ziel: ' + String((st && st.out_dir) || ($targetDir && $targetDir.value) || 'exports'); }catch(e){}
+                  try{ if($hint) $hint.textContent = 'Download gestartet.'; }catch(e){}
                 }
               }catch(e){
                 try{ location.href = String(LAST_DOWNLOAD_URL); }catch(x){}

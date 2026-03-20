@@ -425,7 +425,7 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Die `_field`-Liste wird dabei mit `_measurement`, `friendly_name`, `entity_id` und Zeitraum gemeinsam gefiltert. `value` wird nur noch dann automatisch gesetzt, wenn dieses Field in der gefilterten Auswahl wirklich existiert.
 - Feld `Auswahl (aufgeloest)`: zeigt die aktuell aufgeloeste Serie (measurement/field + tags) und den Zeitraum.
 - Export-Erzeugung laeuft als Hintergrund-Job und kann mit `Abbrechen` gestoppt werden.
-- Der Button `Export` fragt den `Zielordner` ab und uebergibt diesen als `target_dir` an den Export-Job. Relative Ordner landen unter `/data`, z. B. `exports`.
+- Der Button `Export` oeffnet in Chromium-basierten Browsern einen klickbaren Client-Ordnerbrowser. Du waehlt zuerst einen lokalen Root-Ordner und kannst danach Unterordner direkt im Dialog mit der Maus auswaehlen. Die fertige Datei wird clientseitig dorthin geschrieben.
 - Buttons:
   - `Download`: startet den Export-Job und laedt die Datei herunter.
   - `Export`: fragt bevorzugt ein Zielverzeichnis oder Save-As-Ziel im Browser ab und speichert die fertige Datei dort.
@@ -694,6 +694,10 @@ Ausreisser:
 ## Release Notes (1.12.79)
 
 - Dashboard: Ein JavaScript-Syntaxfehler im Query-Pfad wurde behoben. Dadurch wird das Dashboard-Skript wieder vollstaendig geladen und die sichtbare Quellauswahl kann ihre `fields`- und `tag_values`-Requests im Browser wieder ausloesen.
+
+## Release Notes (1.12.81)
+
+- Export: Der Dialog fuer `Export` bietet jetzt einen klickbaren Client-Ordnerbrowser fuer Chromium-basierte Browser. Du kannst einen lokalen Root-Ordner waehlen und danach Unterordner im Dialog anklicken; die Export-Datei wird direkt clientseitig dort gespeichert.
 
 ## Release Notes (1.12.80)
 

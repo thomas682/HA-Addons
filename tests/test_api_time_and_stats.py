@@ -96,6 +96,9 @@ def test_export_uses_browser_directory_or_save_as_flow():
     assert "_writeDirectoryFile" in body
     assert "const chosenTarget = await showTargetModal();" in body
     assert "target_dir: targetDirValue," in body
+    assert 'id="target_entries"' in body
+    assert 'id="target_pick_root"' in body
+    assert 'CLIENT_TARGET_HANDLE = await CLIENT_TARGET_HANDLE.getDirectoryHandle(name, { create: false });' in body
 
 
 def test_export_queries_are_no_longer_point_limited():
