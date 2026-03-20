@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.12.84
+
+### UI
+
+- Allgemein: Filter- und Auswahlfelder erhalten jetzt automatisch einen Loesch-Button direkt neben dem Feld. Der Button leert die aktuelle Eingabe/Auswahl und triggert danach dieselben `input`-/`change`-Events wie eine manuelle Bearbeitung.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.83
 
 ### UI

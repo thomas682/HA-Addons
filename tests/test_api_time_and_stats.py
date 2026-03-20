@@ -92,6 +92,14 @@ def test_download_and_export_buttons_use_updated_icons():
     assert 'button id="ib_error_git" type="button" data-ui="errors.git_bugreport"' in topbar_body
 
 
+def test_global_filter_clear_buttons_are_available():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
+    assert 'window.InfluxBroFieldClear' in body
+    assert 'function eligible(el)' in body
+    assert 'Feld leeren' in body
+    assert 'ib_clear_row' in body
+
+
 def test_export_field_loader_no_longer_forces_value_without_available_field():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "export.html").read_text()
     assert "addOpt('value');" not in body

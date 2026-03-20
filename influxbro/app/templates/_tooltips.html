@@ -524,6 +524,112 @@
 </script>
 
 <script>
+(function(){
+  if(window.InfluxBroFieldClear) return;
+
+  function eligible(el){
+    try{
+      if(!el || !el.tagName || !el.getAttribute) return false;
+      if(el.closest && el.closest('.ib_no_clear')) return false;
+      const tag = String(el.tagName || '').toLowerCase();
+      if(tag !== 'input' && tag !== 'select' && tag !== 'textarea') return false;
+      if(tag === 'input'){
+        const t = String(el.getAttribute('type') || 'text').toLowerCase();
+        if(['checkbox','radio','button','submit','hidden','file'].includes(t)) return false;
+      }
+      const ui = String(el.getAttribute('data-ui') || '').toLowerCase();
+      const inSel = !!(el.closest && el.closest('.ib_sel_stack'));
+      const looksLikeFilter = ui.includes('filter') || ui.includes('search') || ui.includes('measurement') || ui.includes('friendly') || ui.includes('entity') || ui.includes('field') || ui.includes('range');
+      return inSel || looksLikeFilter;
+    }catch(e){ return false; }
+  }
+
+  function hasValue(el){
+    try{
+      if(!el) return false;
+      if(String((el.tagName||'').toLowerCase()) === 'select') return String(el.value || '').trim() !== '';
+      return String(el.value || '').trim() !== '';
+    }catch(e){ return false; }
+  }
+
+  function dispatch(el){
+    try{ el.dispatchEvent(new Event('input', { bubbles:true })); }catch(e){}
+    try{ el.dispatchEvent(new Event('change', { bubbles:true })); }catch(e){}
+  }
+
+  function clearValue(el){
+    try{
+      if(!el) return;
+      const tag = String(el.tagName || '').toLowerCase();
+      if(tag === 'select'){
+        el.value = '';
+        if(String(el.value || '').trim() !== '' && el.options && el.options.length) el.selectedIndex = 0;
+      }else{
+        el.value = '';
+      }
+      dispatch(el);
+      try{ el.focus(); }catch(e){}
+    }catch(e){}
+  }
+
+  function update(btn, el){
+    try{ if(btn) btn.style.visibility = hasValue(el) ? 'visible' : 'hidden'; }catch(e){}
+  }
+
+  function ensureStyle(){
+    try{
+      if(document.getElementById('ib_clear_style')) return;
+      const st = document.createElement('style');
+      st.id = 'ib_clear_style';
+      st.textContent = '.ib_clear_row{display:flex;align-items:center;gap:8px}.ib_clear_row>input,.ib_clear_row>select,.ib_clear_row>textarea{flex:1 1 auto}.ib_clear_btn{width:32px;height:32px;padding:0;display:inline-flex;align-items:center;justify-content:center;border:1px solid #cfd5e2;border-radius:10px;background:#fff;cursor:pointer;flex:0 0 auto}.ib_clear_btn:hover{background:#f6f7fb}.ib_clear_btn svg{width:16px;height:16px;pointer-events:none}';
+      document.head.appendChild(st);
+    }catch(e){}
+  }
+
+  function enhance(el){
+    try{
+      if(!eligible(el) || el.dataset.ibClearReady === '1') return;
+      ensureStyle();
+      const row = document.createElement('div');
+      row.className = 'ib_clear_row';
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'ib_clear_btn';
+      btn.setAttribute('aria-label', 'Feld leeren');
+      btn.setAttribute('title', 'Feld leeren');
+      btn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+      btn.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}; clearValue(el); update(btn, el); });
+      const parent = el.parentNode;
+      if(!parent) return;
+      parent.insertBefore(row, el);
+      row.appendChild(el);
+      row.appendChild(btn);
+      const onUpd = ()=>update(btn, el);
+      el.addEventListener('input', onUpd);
+      el.addEventListener('change', onUpd);
+      update(btn, el);
+      el.dataset.ibClearReady = '1';
+    }catch(e){}
+  }
+
+  function scan(root){
+    try{
+      const scope = root || document;
+      scope.querySelectorAll('input[id], select[id], textarea[id]').forEach(enhance);
+    }catch(e){}
+  }
+
+  try{ scan(document); }catch(e){}
+  try{
+    const mo = new MutationObserver((mut)=>{ try{ (mut||[]).forEach(m=>{ (m.addedNodes||[]).forEach(n=>{ if(n && n.querySelectorAll) scan(n); }); }); }catch(e){}; });
+    mo.observe(document.documentElement, { childList:true, subtree:true });
+  }catch(e){}
+
+  window.InfluxBroFieldClear = { scan };
+})();
+</script>
+
+<script>
 // Global popup helper (all pages)
 // Used by err(...) functions to make errors visible.
 (function(){

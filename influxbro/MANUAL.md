@@ -708,6 +708,10 @@ Ausreisser:
 
 - Allgemein: Persistierte Seiteneinstellungen greifen jetzt auch fuer `Logs -> Follow`, und Export-/Download-/Bugreport-Aktionen verwenden auf den betroffenen Seiten die aktualisierten Icons.
 
+## Release Notes (1.12.84)
+
+- Allgemein: Filter- und Auswahlfelder erhalten jetzt automatisch einen Loesch-Button direkt neben dem Feld. Damit kannst du Eingaben/Auswahlen direkt zuruecksetzen, ohne den Inhalt manuell markieren zu muessen.
+
 ## Release Notes (1.12.80)
 
 - Export: Der Button `Export` verwendet den gewaehlten `Zielordner` jetzt wirklich als `target_dir` fuer den Export-Job. Damit kann die Datei serverseitig gezielt in ein gewuenschtes Verzeichnis geschrieben werden.
