@@ -119,6 +119,14 @@ def test_download_and_export_buttons_use_updated_icons():
     assert 'button id="ib_error_git" type="button" data-ui="errors.git_bugreport"' in topbar_body
 
 
+def test_topbar_has_ui_picker_button_and_hover_inspector():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    assert 'id="ui_picker_toggle"' in body
+    assert "function pickTarget(el)" in body
+    assert "Kopiert: " in body
+    assert "document.addEventListener('mousemove', onMove, true);" in body
+
+
 def test_global_filter_clear_buttons_are_available():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
     assert 'window.InfluxBroFieldClear' in body

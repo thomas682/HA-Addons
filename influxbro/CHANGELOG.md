@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.12.89
+
+### UI
+
+- Allgemein: Neuer Button `Picker` in der Topbar neben `Info`. Der Hover-Inspektor markiert beim Ueberfahren von UI-Elementen deren `data-ui`-Namen und kopiert ihn bei Klick in die Zwischenablage. `Esc` beendet den Modus.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.88
 
 ### UI

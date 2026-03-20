@@ -81,6 +81,7 @@
     .ib_topbar .meta { font-size: 12px; opacity: 0.75; white-space: nowrap; }
     .ib_topbar select { height: 34px; padding: 6px 10px; max-width: 220px; }
     .ib_topbar button { cursor:pointer; padding: 6px 10px; height: 34px; }
+    .ib_topbar button.active { background:#0b0b0c; color:#fff; }
     .ib_topbar .zoom {
       display:flex;
       align-items:center;
@@ -158,6 +159,7 @@
     <button id="ui_profile_apply" type="button" data-ui="nav.profile.apply" title="nav.profile.apply">Anwenden</button>
     <button id="ui_profile_save" type="button" data-ui="nav.profile.save" title="nav.profile.save">Speichern</button>
     <button id="ui_profile_info" type="button" data-ui="nav.profile.info" title="nav.profile.info">Info</button>
+    <button id="ui_picker_toggle" type="button" data-ui="nav.ui_picker" title="nav.ui_picker">Picker</button>
     <span class="meta" id="ui_profile_hint">Version: {{ addon_version }}</span>
   </div>
 
@@ -224,6 +226,148 @@
     try{ setZoom(getZoom()); }catch(e){}
     try{ if($m) $m.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}; inc(-STEP); }); }catch(e){}
     try{ if($p) $p.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}; inc(STEP); }); }catch(e){}
+  })();
+  </script>
+  <script>
+  (function(){
+    const $btn = document.getElementById('ui_picker_toggle');
+    if(!$btn) return;
+
+    let active = false;
+    let currentEl = null;
+    let overlay = null;
+    let badge = null;
+
+    function ensureUi(){
+      if(!overlay){
+        overlay = document.createElement('div');
+        overlay.style.position = 'fixed';
+        overlay.style.zIndex = '100000';
+        overlay.style.pointerEvents = 'none';
+        overlay.style.border = '2px solid #0b0b0c';
+        overlay.style.background = 'rgba(11,11,12,0.06)';
+        overlay.style.borderRadius = '8px';
+        overlay.style.display = 'none';
+        document.body.appendChild(overlay);
+      }
+      if(!badge){
+        badge = document.createElement('div');
+        badge.style.position = 'fixed';
+        badge.style.zIndex = '100001';
+        badge.style.pointerEvents = 'none';
+        badge.style.padding = '6px 8px';
+        badge.style.background = '#0b0b0c';
+        badge.style.color = '#fff';
+        badge.style.fontSize = '12px';
+        badge.style.fontFamily = 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace';
+        badge.style.borderRadius = '8px';
+        badge.style.maxWidth = 'min(70vw, 640px)';
+        badge.style.wordBreak = 'break-word';
+        badge.style.display = 'none';
+        document.body.appendChild(badge);
+      }
+    }
+
+    async function copyText(txt){
+      const s = String(txt || '').trim();
+      if(!s) return false;
+      try{ if(navigator && navigator.clipboard && navigator.clipboard.writeText){ await navigator.clipboard.writeText(s); return true; } }catch(e){}
+      try{
+        const ta = document.createElement('textarea');
+        ta.value = s;
+        ta.setAttribute('readonly','readonly');
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        return true;
+      }catch(e){ return false; }
+    }
+
+    function pickTarget(el){
+      try{
+        if(!el || el === document.body || el === document.documentElement) return null;
+        const withUi = el.closest && el.closest('[data-ui]');
+        return withUi || null;
+      }catch(e){ return null; }
+    }
+
+    function renderTarget(el, ev){
+      ensureUi();
+      if(!el){
+        overlay.style.display = 'none';
+        badge.style.display = 'none';
+        currentEl = null;
+        return;
+      }
+      currentEl = el;
+      const r = el.getBoundingClientRect();
+      overlay.style.display = 'block';
+      overlay.style.left = Math.max(0, r.left - 2) + 'px';
+      overlay.style.top = Math.max(0, r.top - 2) + 'px';
+      overlay.style.width = Math.max(0, r.width + 4) + 'px';
+      overlay.style.height = Math.max(0, r.height + 4) + 'px';
+      const name = String(el.getAttribute('data-ui') || '').trim();
+      badge.textContent = name || '(kein data-ui)';
+      badge.style.display = 'block';
+      const x = ev && typeof ev.clientX === 'number' ? ev.clientX + 12 : (r.left + 12);
+      const y = ev && typeof ev.clientY === 'number' ? ev.clientY + 12 : (r.top + 12);
+      badge.style.left = Math.max(8, Math.min(window.innerWidth - 260, x)) + 'px';
+      badge.style.top = Math.max(8, Math.min(window.innerHeight - 60, y)) + 'px';
+    }
+
+    function stop(){
+      active = false;
+      currentEl = null;
+      try{ if($btn) $btn.classList.remove('active'); }catch(e){}
+      try{ if(overlay) overlay.style.display = 'none'; }catch(e){}
+      try{ if(badge) badge.style.display = 'none'; }catch(e){}
+      document.removeEventListener('mousemove', onMove, true);
+      document.removeEventListener('click', onClick, true);
+      document.removeEventListener('keydown', onKey, true);
+    }
+
+    function start(){
+      active = true;
+      ensureUi();
+      try{ if($btn) $btn.classList.add('active'); }catch(e){}
+      document.addEventListener('mousemove', onMove, true);
+      document.addEventListener('click', onClick, true);
+      document.addEventListener('keydown', onKey, true);
+    }
+
+    function onMove(ev){
+      if(!active) return;
+      const t = pickTarget(ev.target);
+      renderTarget(t, ev);
+    }
+
+    async function onClick(ev){
+      if(!active) return;
+      const t = pickTarget(ev.target);
+      if(!t) return;
+      try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+      const name = String(t.getAttribute('data-ui') || '').trim();
+      const ok = await copyText(name);
+      try{
+        if(window.InfluxBroPopup && window.InfluxBroPopup.show){
+          window.InfluxBroPopup.show('UI Picker', ok ? ('Kopiert: ' + name) : ('Kopieren fehlgeschlagen: ' + name));
+        }
+      }catch(e){}
+      stop();
+    }
+
+    function onKey(ev){
+      try{ if(ev && ev.key === 'Escape') stop(); }catch(e){}
+    }
+
+    $btn.addEventListener('click', (ev)=>{
+      try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+      if(active) stop();
+      else start();
+    });
   })();
   </script>
   <script>

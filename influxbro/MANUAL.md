@@ -728,6 +728,10 @@ Ausreisser:
 
 - Statistik: Die alte Auswahl wurde entfernt. Stattdessen verwendet die Statistik-Seite jetzt 1:1 die Quellauswahl aus `Kombinieren` mit `_measurement`, `_field`, `entity_id` und `friendly_name`.
 
+## Release Notes (1.12.89)
+
+- Allgemein: Neuer Button `Picker` in der Topbar. Damit kannst du den Hover-Inspektor aktivieren, ein UI-Element mit der Maus markieren und dessen `data-ui`-Namen per Klick direkt in die Zwischenablage kopieren.
+
 ## Release Notes (1.12.80)
 
 - Export: Der Button `Export` verwendet den gewaehlten `Zielordner` jetzt wirklich als `target_dir` fuer den Export-Job. Damit kann die Datei serverseitig gezielt in ein gewuenschtes Verzeichnis geschrieben werden.
