@@ -57,6 +57,7 @@ def test_dashboard_has_resolved_selection_info_box():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     assert 'id="selection_info"' in body
     assert 'data-ui="dashboard.selection"' in body
+    assert 'style="width:500px; max-width:100%;"' in body
     assert 'function refreshSelectionInfo()' in body
     assert 'Quelle (aufgeloest)' in body
     assert 'role: source' in body

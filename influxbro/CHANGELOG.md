@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.12.87
+
+### UI
+
+- Dashboard: `dashboard.selection` ist jetzt auf 500px Breite gesetzt (mit `max-width: 100%`), damit die aufgeloeste Auswahl kompakter und konsistent angezeigt wird.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.86
 
 ### UI
