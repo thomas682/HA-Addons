@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.12.86
+
+### UI
+
+- Import: Die alte Zielauswahl wurde entfernt. Stattdessen nutzt die Import-Seite jetzt 1:1 die Quellauswahl aus `Kombinieren` mit `_measurement`, `_field`, `entity_id` und `friendly_name` im identischen Quellfluss.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.85
 
 ### UI

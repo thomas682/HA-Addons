@@ -97,58 +97,57 @@
       <details class="card" open data-ui="import.target" title="import.target">
         <summary><span class="ib_summary_row"><span>Ziel</span><button type="button" class="ib_info_icon" data-info-title="Import: Ziel" data-info-body="Definiert Zielserie (measurement/field/entity_id/friendly_name) und Sicherheitsoptionen.\n\nOptionen:\n- Backup vorher (empfohlen)\n- Delete first (destruktiv, mit Browser-Bestaetigung)" >i</button></span></summary>
         <div class="card_body">
-          <div class="grid">
-            <div class="ib_sel" id="c_measurement_filter">
-              <label class="label_row ib_sel_label"><span>Einheit (_measurement)</span><span id="cnt_measurement_filter" class="muted"></span></label>
-              <div class="ib_sel_stack">
-                <input id="measurement_filter" list="measurement_list" placeholder="optional" />
-                <datalist id="measurement_list"></datalist>
-                <div class="ib_sel_desc">
-                  <button type="button" class="ib_sel_help" data-title="Einheit (_measurement)" data-help="Optionaler Filter fuer Vorschlaege. Filtert friendly_name/entity_id Vorschlaege auf dieses Measurement.">?</button>
-                  <div class="muted">Optionaler Filter fuer Vorschlaege.</div>
+          <div class="card" style="margin-top: 0;">
+            <div style="font-weight: 800;">Quelle</div>
+            <div class="row">
+              <div class="ib_sel" style="min-width: 220px;">
+                <label class="ib_sel_label">_measurement</label>
+                <div class="ib_sel_stack">
+                  <input id="src_measurement" list="measurement_list" placeholder="required" data-ui="combine.src.measurement" title="combine.src.measurement"/>
+                  <datalist id="measurement_list"></datalist>
+                  <div class="ib_sel_desc">
+                    <button type="button" class="ib_sel_help" data-title="Quelle _measurement" data-help="Measurement der Quelle. Aktuell ist _measurement erforderlich (Preview + Copy benoetigen eine eindeutige Serie).">?</button>
+                    <div class="muted">Pflichtfeld.</div>
+                  </div>
+                </div>
+              </div>
+              <div class="ib_sel" style="min-width: 220px;">
+                <label class="ib_sel_label">_field</label>
+                <div class="ib_sel_stack">
+                  <input id="src_field" list="src_field_list" placeholder="value" data-ui="combine.src.field" title="combine.src.field"/>
+                  <datalist id="src_field_list"></datalist>
+                  <div class="ib_sel_desc">
+                    <button type="button" class="ib_sel_help" data-title="Quelle _field" data-help="Field der Quelle. Default: value.">?</button>
+                    <div class="muted">Default ist <code>value</code>.</div>
+                  </div>
                 </div>
               </div>
             </div>
-            <div class="ib_sel" id="c_friendly_name">
-              <label class="label_row ib_sel_label"><span>Messwert (friendly_name)</span><span id="cnt_friendly_name" class="muted"></span></label>
-              <div class="ib_sel_stack">
-                <input id="friendly_name" list="friendly_list" placeholder="optional" />
-                <datalist id="friendly_list"></datalist>
-                <div class="ib_sel_desc">
-                  <button type="button" class="ib_sel_help" data-title="Messwert (friendly_name)" data-help="Waehle den Klartext-Namen des Messwerts. Optional kannst du entity_id zusaetzlich setzen.">?</button>
-                  <div class="muted">Optionaler Filter. Du kannst frei tippen oder aus der Liste waehlen.</div>
+            <div class="row">
+              <div class="ib_sel" style="min-width: 240px;">
+                <label class="label_row ib_sel_label"><span>Entity ID (entity_id)</span><span id="cnt_src_entity" class="muted"></span></label>
+                <div class="ib_sel_stack">
+                  <input id="src_entity_id" list="src_entity_list" placeholder="optional" data-ui="combine.src.entity_id" title="combine.src.entity_id"/>
+                  <datalist id="src_entity_list"></datalist>
+                  <div class="ib_sel_desc">
+                    <button type="button" class="ib_sel_help" data-title="Quelle entity_id" data-help="Tag-Filter fuer die Quelle. Mindestens entity_id ODER friendly_name muss gesetzt sein.">?</button>
+                    <div class="muted">Mindestens eins erforderlich. Measurement/Field werden bei Bedarf automatisch ermittelt.</div>
+                  </div>
                 </div>
               </div>
-            </div>
-            <div class="ib_sel" id="c_entity_id">
-              <label class="label_row ib_sel_label"><span>Entity ID (entity_id)</span><span id="cnt_entity_id" class="muted"></span></label>
-              <div class="ib_sel_stack">
-                <input id="entity_id" list="entity_list" placeholder="optional" />
-                <datalist id="entity_list"></datalist>
-                <div class="ib_sel_desc">
-                  <button type="button" class="ib_sel_help" data-title="Entity ID" data-help="Optionaler Filter, um Messwerte zu unterscheiden, wenn mehrere Entity-IDs denselben friendly_name teilen.">?</button>
-                  <div class="muted">Optionaler Filter (Alternative/Ergaenzung zu friendly_name).</div>
+              <div class="ib_sel" style="min-width: 240px;">
+                <label class="label_row ib_sel_label"><span>Messwert (friendly_name)</span><span id="cnt_src_friendly" class="muted"></span></label>
+                <div class="ib_sel_stack">
+                  <input id="src_friendly_name" list="src_friendly_list" placeholder="optional" data-ui="combine.src.friendly" title="combine.src.friendly"/>
+                  <datalist id="src_friendly_list"></datalist>
+                  <div class="ib_sel_desc">
+                    <button type="button" class="ib_sel_help" data-title="Quelle friendly_name" data-help="Tag-Filter fuer die Quelle. Mindestens entity_id ODER friendly_name muss gesetzt sein.">?</button>
+                    <div class="muted">Mindestens eins erforderlich. Measurement/Field werden bei Bedarf automatisch ermittelt.</div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-
-          <details class="card" style="margin-top: 10px;">
-            <summary><span class="ib_summary_row"><span>Erweitert: Measurement / Field</span><button type="button" class="ib_info_icon" data-info-title="Import: Erweitert" data-info-body="Erweiterte Auswahl, wenn du Measurement/Field direkt setzen oder ueberschreiben willst." >i</button></span></summary>
-            <div class="card_body">
-              <div class="grid" style="margin-top: 0;">
-                <div>
-                  <label>Measurement (intern)</label>
-                  <select id="measurement" data-ui="import.measurement" title="import.measurement"></select>
-                </div>
-                <div>
-                  <label>Field (intern)</label>
-                  <select id="field" data-ui="import.field" title="import.field"></select>
-                </div>
-              </div>
-              <div class="muted" style="margin-top: 6px;">Wird best-effort anhand friendly_name/entity_id ermittelt.</div>
-            </div>
-          </details>
 
           <div class="grid" style="margin-top: 12px;">
             <div>
@@ -191,17 +190,18 @@
       const $analysis = document.getElementById('analysis');
       const $analyzeHint = document.getElementById('analyze_hint');
 
-      const $mf = document.getElementById('measurement_filter');
+      const $mf = document.getElementById('src_measurement');
       const $mfList = document.getElementById('measurement_list');
-      const $cntMf = document.getElementById('cnt_measurement_filter');
-      const $n = document.getElementById('friendly_name');
-      const $friendlyList = document.getElementById('friendly_list');
-      const $cntFriendly = document.getElementById('cnt_friendly_name');
-      const $e = document.getElementById('entity_id');
-      const $entityList = document.getElementById('entity_list');
-      const $cntEntity = document.getElementById('cnt_entity_id');
-      const $m = document.getElementById('measurement');
-      const $f = document.getElementById('field');
+      const $cntMf = null;
+      const $n = document.getElementById('src_friendly_name');
+      const $friendlyList = document.getElementById('src_friendly_list');
+      const $cntFriendly = document.getElementById('cnt_src_friendly');
+      const $e = document.getElementById('src_entity_id');
+      const $entityList = document.getElementById('src_entity_list');
+      const $cntEntity = document.getElementById('cnt_src_entity');
+      const $m = document.getElementById('src_measurement');
+      const $f = document.getElementById('src_field');
+      const $srcFieldList = document.getElementById('src_field_list');
 
       const $backupBefore = document.getElementById('backup_before');
       const $deleteFirst = document.getElementById('delete_first');
@@ -335,44 +335,57 @@
       }
 
       async function loadMeasurements(){
-        const j = await api('./api/measurements');
-        const ms = (j.measurements||[]).map(String);
-        setDatalistOptions($mfList, ms);
-        try{ if($cntMf) $cntMf.textContent = '(' + String(ms.length || 0) + ')'; }catch(e){}
-        try{ _selMaybeAutoWidth($mf, $mfList); }catch(e){}
-        $m.innerHTML = '';
-        ms.forEach(x=>{ const o=document.createElement('option'); o.value=x; o.textContent=x; $m.appendChild(o); });
+        try{
+          const j = await api('./api/measurements');
+          const xs = (j.measurements||[]).map(x=>String(x||'')).filter(Boolean);
+          if($mfList) $mfList.innerHTML = xs.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"></option>`).join('');
+        }catch(e){
+          // ignore
+        }
       }
 
-      async function loadFields(){
-        $f.innerHTML = '';
-        if(!$m.value) return;
-        const j = await api('./api/fields?measurement=' + encodeURIComponent($m.value));
-        (j.fields||[]).forEach(x=>{ const o=document.createElement('option'); o.value=String(x); o.textContent=String(x); $f.appendChild(o); });
+      async function loadFields(measurement, listEl){
+        try{
+          const m = String(measurement||'').trim();
+          if(!m){ if(listEl) listEl.innerHTML = ''; return; }
+          const j = await api('./api/fields?measurement=' + encodeURIComponent(m));
+          const xs = (j.fields||[]).map(x=>String(x||'')).filter(Boolean);
+          if(listEl) listEl.innerHTML = xs.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"></option>`).join('');
+        }catch(e){
+          if(listEl) listEl.innerHTML = '';
+        }
       }
 
-      async function loadFriendly(){
-        let url = './api/tag_values?tag=friendly_name';
-        const q = [];
-        if($mf.value) q.push('measurement=' + encodeURIComponent($mf.value));
-        if($e.value) q.push('entity_id=' + encodeURIComponent($e.value));
-        if(q.length) url += '&' + q.join('&');
+      async function loadTagValues(tag, params){
+        let url = './api/tag_values?tag=' + encodeURIComponent(String(tag||''));
+        const qp = new URLSearchParams();
+        Object.entries(params||{}).forEach(([k,v])=>{ if(v !== null && v !== undefined && String(v).trim() !== '') qp.set(k, String(v)); });
+        const qs = qp.toString();
+        if(qs) url += '&' + qs;
         const j = await api(url);
-        setDatalistOptions($friendlyList, (j.values||[]).map(String));
-        try{ if($cntFriendly) $cntFriendly.textContent = '(' + String((j.values||[]).length || 0) + ')'; }catch(e){}
-        try{ _selMaybeAutoWidth($n, $friendlyList); }catch(e){}
+        return (j.values || []).map(x=>String(x||'')).filter(Boolean);
       }
 
-      async function loadEntity(){
-        let url = './api/tag_values?tag=entity_id';
-        const q = [];
-        if($mf.value) q.push('measurement=' + encodeURIComponent($mf.value));
-        if($n.value) q.push('friendly_name=' + encodeURIComponent($n.value));
-        if(q.length) url += '&' + q.join('&');
-        const j = await api(url);
-        setDatalistOptions($entityList, (j.values||[]).map(String));
-        try{ if($cntEntity) $cntEntity.textContent = '(' + String((j.values||[]).length || 0) + ')'; }catch(e){}
-        try{ _selMaybeAutoWidth($e, $entityList); }catch(e){}
+      async function refreshSuggestions(){
+        const s = src();
+        const meas = String(s.measurement || '').trim();
+        const eid = String(s.entity_id || '').trim();
+        const fn = String(s.friendly_name || '').trim();
+        const common = { range: '24h' };
+        if(meas) common.measurement = meas;
+
+        try{
+          const xsE = await loadTagValues('entity_id', {...common, friendly_name: fn || ''});
+          if($entityList) $entityList.innerHTML = xsE.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"></option>`).join('');
+          if($cntEntity) $cntEntity.textContent = '(' + String(xsE.length || 0) + ')';
+          const xsF = await loadTagValues('friendly_name', {...common, entity_id: eid || ''});
+          if($friendlyList) $friendlyList.innerHTML = xsF.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"></option>`).join('');
+          if($cntFriendly) $cntFriendly.textContent = '(' + String(xsF.length || 0) + ')';
+          try{ _selMaybeAutoWidth($e, $entityList); }catch(e){}
+          try{ _selMaybeAutoWidth($n, $friendlyList); }catch(e){}
+        }catch(e){
+          // ignore (suggestions are best-effort)
+        }
       }
 
       function loadState(){ try{ return JSON.parse(localStorage.getItem(LS_KEY) || "{}") || {}; }catch(e){ return {}; } }
@@ -385,21 +398,39 @@
         return { tz_name: name || null, tz_offset_minutes: (off === null ? null : Number(off)) };
       }
 
+      function src(){
+        return {
+          measurement: String($m.value||'').trim(),
+          field: String($f.value||'value').trim() || 'value',
+          entity_id: String($e.value||'').trim() || null,
+          friendly_name: String($n.value||'').trim() || null,
+        };
+      }
+
       async function resolveSignal(){
-        const fn = String($n.value||'').trim();
-        const eid = String($e.value||'').trim();
-        if(!fn && !eid) return;
-        // For resolve, use a generous window (last 30d) to find the series.
+        const s0 = src();
+        if(!s0.entity_id && !s0.friendly_name) return null;
+        const tz = clientTz();
         const now = new Date();
         const s = new Date(now.getTime() - 30*24*60*60*1000);
-        const j = await api('./api/resolve_signal', {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ friendly_name: fn||null, entity_id: eid||null, measurement_filter: $mf.value||null, start: s.toISOString(), stop: now.toISOString(), range: '30d' })
-        });
-        if(j.measurement) $m.value = j.measurement;
-        await loadFields();
-        if(j.field) $f.value = j.field;
+        const payload = {
+          friendly_name: s0.friendly_name,
+          entity_id: s0.entity_id,
+          measurement_filter: s0.measurement || null,
+          start: s.toISOString(),
+          stop: now.toISOString(),
+          range: 'custom',
+          tz_name: tz.tz_name,
+          tz_offset_minutes: tz.tz_offset_minutes,
+        };
+        const j = await api('./api/resolve_signal', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+        const m = String(j.measurement || '').trim();
+        const f = String(j.field || '').trim();
+        if(!m) return j;
+        if($m && (!$m.value || String($m.value||'').trim() === '')) $m.value = m;
+        await loadFields(m, $srcFieldList);
+        if($f && f) $f.value = f;
+        return j;
       }
 
       async function analyze(){
@@ -533,7 +564,8 @@
       (async function(){
         try{
           const st = loadState();
-          if(st.measurement_filter) $mf.value = st.measurement_filter;
+          if(st.measurement_filter) $m.value = st.measurement_filter;
+          if(st.field) $f.value = st.field;
           if(st.friendly_name) $n.value = st.friendly_name;
           if(st.entity_id) $e.value = st.entity_id;
 
@@ -541,18 +573,22 @@
           try{ _selApplyDefaultWidths(); }catch(e){}
 
           await loadMeasurements();
-          await loadFields();
-
-          try{ await loadFriendly(); }catch(e){}
-          try{ await loadEntity(); }catch(e){}
+          await loadFields($m.value, $srcFieldList);
+          try{ await refreshSuggestions(); }catch(e){}
 
           try{
             const deb = (fn, ms)=>{ let t=null; return ()=>{ try{ if(t) clearTimeout(t); }catch(e){}; t=setTimeout(()=>{ fn().catch(()=>{}); }, ms||220); }; };
-            const updFriendly = deb(loadFriendly, 220);
-            const updEntity = deb(loadEntity, 220);
-            if($mf){ $mf.addEventListener('input', ()=>{ updFriendly(); updEntity(); }); $mf.addEventListener('change', ()=>{ updFriendly(); updEntity(); }); }
-            if($n){ $n.addEventListener('input', ()=>{ updEntity(); }); $n.addEventListener('change', ()=>{ updEntity(); }); }
-            if($e){ $e.addEventListener('input', ()=>{ updFriendly(); }); $e.addEventListener('change', ()=>{ updFriendly(); }); }
+            const updSrc = deb(refreshSuggestions, 220);
+            const autoResolve = deb(async ()=>{
+              const s = src();
+              if(!s.measurement && (s.entity_id || s.friendly_name)){
+                try{ await resolveSignal(); }catch(e){}
+                await updSrc();
+              }
+            }, 380);
+            if($m){ $m.addEventListener('input', ()=>{ loadFields($m.value, $srcFieldList).catch(()=>{}); updSrc(); }); }
+            if($n){ $n.addEventListener('input', ()=>{ updSrc(); autoResolve(); }); }
+            if($e){ $e.addEventListener('input', ()=>{ updSrc(); autoResolve(); }); }
           }catch(e){}
 
           $analyze.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); }catch(e){}; analyze().catch(e=>err(e && e.message ? e.message : e)); });

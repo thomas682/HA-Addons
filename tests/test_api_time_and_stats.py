@@ -79,6 +79,19 @@ def test_config_ui_has_import_transform_settings():
     assert 'import_measurement_transforms' in body
 
 
+def test_import_selection_uses_combine_source_controls():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "import.html").read_text()
+    assert 'id="src_measurement"' in body
+    assert 'id="src_field"' in body
+    assert 'id="src_entity_id"' in body
+    assert 'id="src_friendly_name"' in body
+    assert 'id="measurement_filter"' not in body
+    assert 'id="measurement" data-ui="import.measurement"' not in body
+    assert 'id="field" data-ui="import.field"' not in body
+    assert 'function src(){' in body
+    assert 'async function refreshSuggestions(){' in body
+
+
 def test_logs_follow_uses_restored_checkbox_state():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "logs.html").read_text()
     assert 'setFollow(!!($follow && $follow.checked));' in body
