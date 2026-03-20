@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.83
+
+### UI
+
+- Allgemein: Persistierte Seiteneinstellungen greifen jetzt auch fuer `Logs -> Follow`, weil der Follow-Modus beim Seitenstart den bereits restaurierten Checkbox-Zustand verwendet.
+- Allgemein: Export-, Download- und Bugreport-Aktionen verwenden jetzt konsistent ueber die betroffenen Seiten hinweg die aktualisierten Icons.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.82
 
 ### UI

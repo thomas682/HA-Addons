@@ -288,6 +288,7 @@ Tipp: In der Toolbar gibt es Mehrfachaktionen (z.B. Werte davor uebernehmen oder
 - Export: erstellt ein Debug-Bundle (JSON, inkl. Client-Fehler wie "Failed to fetch").
 - Debug report: erstellt einen GitHub-freundlichen Report als Markdown-Datei (empfohlen fuer Issue/Kommentar).
 - Default: `neuster` + `Follow: ein`.
+- Der `Follow`-Schalter wird beim erneuten Oeffnen der Seite mit seinem zuletzt gespeicherten Zustand wiederhergestellt.
 
 ## Jobs & Cache
 
@@ -702,6 +703,10 @@ Ausreisser:
 ## Release Notes (1.12.82)
 
 - Jobs & Cache: Die Jobs-Liste zeigt jetzt auch die letzten abgeschlossenen Jobs aus einer Historie an. Dadurch bleibt die Liste nachvollziehbar und ist nicht mehr sofort leer, wenn ein Job bereits beendet wurde.
+
+## Release Notes (1.12.83)
+
+- Allgemein: Persistierte Seiteneinstellungen greifen jetzt auch fuer `Logs -> Follow`, und Export-/Download-/Bugreport-Aktionen verwenden auf den betroffenen Seiten die aktualisierten Icons.
 
 ## Release Notes (1.12.80)
 

@@ -79,6 +79,19 @@ def test_config_ui_has_import_transform_settings():
     assert 'import_measurement_transforms' in body
 
 
+def test_logs_follow_uses_restored_checkbox_state():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "logs.html").read_text()
+    assert 'setFollow(!!($follow && $follow.checked));' in body
+
+
+def test_download_and_export_buttons_use_updated_icons():
+    export_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "export.html").read_text()
+    topbar_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    assert 'button id="run" data-ui="export.run"' in export_body
+    assert 'button id="export_save" type="button" data-ui="export.save"' in export_body
+    assert 'button id="ib_error_git" type="button" data-ui="errors.git_bugreport"' in topbar_body
+
+
 def test_export_field_loader_no_longer_forces_value_without_available_field():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "export.html").read_text()
     assert "addOpt('value');" not in body
