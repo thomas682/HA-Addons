@@ -673,3 +673,7 @@ Ausreisser:
 ## Release Notes (1.12.74)
 
 - Dashboard: Letzte Abweichungen zur `Kombinieren`-Quellauswahl entfernt. Die sichtbare Dashboard-Auswahl ist fuer den Quellfluss jetzt auch ohne versteckte Measurement-Synchronisierung und ohne eigenen `_field`-Refresh-Pfad aufgebaut.
+
+## Release Notes (1.12.75)
+
+- Dashboard: Das alte versteckte Measurement-Feld ist jetzt auch aus dem Selektorfluss entfernt. Die sichtbare Dashboard-Quellauswahl verwendet nur noch das sichtbare `_measurement`-Feld und hat keinen zweiten internen Measurement-Pfad mehr.

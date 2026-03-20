@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.75
+
+### UI
+
+- Dashboard: Das alte versteckte Measurement-Feld ist jetzt auch aus dem Selektorfluss entfernt. Die sichtbare Dashboard-Quellauswahl verwendet fuer Measurement nur noch `measurement_filter` und hat damit keinen zweiten parallelen Measurement-Pfad mehr.
+
+### Maintenance
+
+- Finale Nachkorrektur fuer den 1:1-Abgleich der Dashboard-Quellauswahl
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.74
 
 ### UI
