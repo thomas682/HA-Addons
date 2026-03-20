@@ -6128,7 +6128,6 @@ async function loadData(){
 
   const q0 = performance.now();
   const startedAtIso = new Date().toISOString();
-  const q0 = performance.now();
   const j = await api(
     "./api/query",
     {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(filters)},

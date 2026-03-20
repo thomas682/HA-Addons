@@ -689,3 +689,7 @@ Ausreisser:
 ## Release Notes (1.12.78)
 
 - Dashboard: Zusätzliche Browser-Absicherung fuer Datalist-Auswahlen. Die sichtbare Quellauswahl triggert ihre Nachlade-Requests fuer `_measurement`, `friendly_name` und `entity_id` jetzt direkt auf `input`, `change` und `blur`.
+
+## Release Notes (1.12.79)
+
+- Dashboard: Ein JavaScript-Syntaxfehler im Query-Pfad wurde behoben. Dadurch wird das Dashboard-Skript wieder vollstaendig geladen und die sichtbare Quellauswahl kann ihre `fields`- und `tag_values`-Requests im Browser wieder ausloesen.

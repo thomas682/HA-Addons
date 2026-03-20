@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.79
+
+### UI
+
+- Dashboard: Ein JavaScript-Syntaxfehler im Query-Pfad (`q0` doppelt deklariert) wurde behoben. Dadurch wird das Dashboard-Skript wieder vollstaendig geladen und die Selektor-Logik fuer `_measurement`, `_field`, `entity_id` und `friendly_name` kann im Browser wieder korrekt laufen.
+
+### Maintenance
+
+- Fehlerbehebung fuer den Browser-JS-Pfad der Dashboard-Seite
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.78
 
 ### UI
