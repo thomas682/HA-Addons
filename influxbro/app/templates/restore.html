@@ -293,7 +293,7 @@
 
        <div class="card" data-ui="restore.fullrestore.card" title="restore.fullrestore.card" style="--restore_visible_rows: {{ (cfg.get('ui_restore_visible_rows') or 24) | int }};">
           <details id="fullrestore_details" data-ui="restore.fullrestore.details" title="restore.fullrestore.details">
-              <summary><span class="ib_summary_row"><span>FullRestore (InfluxDB komplett)</span><button type="button" class="ib_info_icon" data-info-title="Restore: FullRestore" data-info-body="Stellt ein FullBackup wieder her (InfluxDB komplett).\n\nformat=lp:\n- Schreibt Line Protocol in die konfigurierte InfluxDB (kompatibel).\n\nformat=native_v2:\n- Nutzt influx restore.\n- Zielbucket optional (new-bucket).\n- Ueberschreiben loescht Zielbucket vorher (DELETE erforderlich)." >i</button></span></summary>
+              <summary><span class="ib_summary_row"><span>FullRestore (InfluxDB komplett)</span><button type="button" class="ib_info_icon" data-info-title="Restore: FullRestore" data-info-body="Stellt ein FullBackup wieder her (InfluxDB komplett).\n\nformat=lp:\n- Schreibt Line Protocol in die konfigurierte InfluxDB (kompatibel).\n\nformat=native_v2:\n- Nutzt influx restore.\n- Zielbucket optional (new-bucket).\n- Ueberschreiben loescht Zielbucket vorher und fragt nur noch per Browser-Dialog nach einer Bestaetigung." >i</button></span></summary>
              <div class="muted" style="margin-top: 6px;">Stellt ein FullBackup wieder her (v1: database, v2: bucket). Achtung: ueberschreibt Daten.</div>
              <div class="muted" id="fullrestore_native_support" data-ui="restore.fullrestore.native_support" title="restore.fullrestore.native_support" style="margin-top:4px;"></div>
 
@@ -309,11 +309,11 @@
                   <input id="native_overwrite" type="checkbox" />
                   <span class="muted" style="opacity:0.9;">Ueberschreiben (Bucket loeschen)</span>
                 </label>
-                <div class="muted">Erfordert Phrase unten (nur wenn aktiv).</div>
+                <div class="muted">Erfordert bei Aktivierung nur noch eine Browser-Bestaetigung.</div>
               </div>
               <div style="min-width: 220px;">
-                <label>Bestaetigung (DELETE)</label>
-                <input id="native_confirm_phrase" placeholder="DELETE" data-ui="restore.fullrestore.confirm_phrase" title="restore.fullrestore.confirm_phrase" />
+                <label>Bestaetigung</label>
+                <div class="muted" style="padding-top:10px;">Beim Ueberschreiben wird nur noch per Browser-Dialog bestaetigt.</div>
               </div>
             </div>
 
@@ -420,7 +420,6 @@
            const $nativeTargetBucket = document.getElementById('native_target_bucket');
            const $nativeBucketList = document.getElementById('native_bucket_list');
            const $nativeOverwrite = document.getElementById('native_overwrite');
-           const $nativeConfirmPhrase = document.getElementById('native_confirm_phrase');
 
          const $fullRestoreStatus = document.getElementById('fullrestore_status');
          const $fullRestoreSpinner = document.getElementById('fullrestore_spinner');
@@ -952,14 +951,13 @@
             const started = await api('./api/fullrestore_job/start', {
               method:'POST',
               headers:{'Content-Type':'application/json'},
-              body: JSON.stringify({
-                id,
-                confirm: true,
-                target_bucket: ($nativeTargetBucket ? String($nativeTargetBucket.value || '').trim() : ''),
-                overwrite: !!($nativeOverwrite && $nativeOverwrite.checked),
-                confirm_phrase: ($nativeConfirmPhrase ? String($nativeConfirmPhrase.value || '').trim() : '')
-              })
-            });
+               body: JSON.stringify({
+                 id,
+                 confirm: true,
+                 target_bucket: ($nativeTargetBucket ? String($nativeTargetBucket.value || '').trim() : ''),
+                 overwrite: !!($nativeOverwrite && $nativeOverwrite.checked)
+               })
+             });
            FULLRESTORE_JOB_ID = String(started.job_id || '');
            if(!FULLRESTORE_JOB_ID) throw new Error('fullrestore job_id missing');
 

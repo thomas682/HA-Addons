@@ -56,7 +56,7 @@ InfluxBro ist ein Home Assistant Ingress Add-on, mit dem du InfluxDB (v1/v2) Dat
 ## Sicherheit
 
 - Schreiben/Loeschen ist standardmaessig deaktiviert und muss in den Einstellungen explizit aktiviert werden.
-- Zusaetzlich ist eine manuelle Bestaetigung per `delete_confirm_phrase` erforderlich (Add-on Option).
+- Zusaetzlich ist nur noch eine Browser-Bestaetigung erforderlich.
 
 ## License
 

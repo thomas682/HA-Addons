@@ -95,7 +95,7 @@
       </details>
 
       <details class="card" open data-ui="import.target" title="import.target">
-        <summary><span class="ib_summary_row"><span>Ziel</span><button type="button" class="ib_info_icon" data-info-title="Import: Ziel" data-info-body="Definiert Zielserie (measurement/field/entity_id/friendly_name) und Sicherheitsoptionen.\n\nOptionen:\n- Backup vorher (empfohlen)\n- Delete first (destruktiv, DELETE erforderlich)" >i</button></span></summary>
+        <summary><span class="ib_summary_row"><span>Ziel</span><button type="button" class="ib_info_icon" data-info-title="Import: Ziel" data-info-body="Definiert Zielserie (measurement/field/entity_id/friendly_name) und Sicherheitsoptionen.\n\nOptionen:\n- Backup vorher (empfohlen)\n- Delete first (destruktiv, mit Browser-Bestaetigung)" >i</button></span></summary>
         <div class="card_body">
           <div class="grid">
             <div class="ib_sel" id="c_measurement_filter">
@@ -157,12 +157,7 @@
             </div>
             <div>
               <label><input type="checkbox" id="delete_first" data-ui="import.delete_first" title="import.delete_first" /> Vorher loeschen (im Import-Zeitraum)</label>
-              <div class="muted">Erfordert die Bestaetigungsphrase.</div>
-            </div>
-            <div id="confirm_box" style="display:none;">
-              <label>Confirm Phrase</label>
-              <input id="confirm" placeholder="{{ delete_phrase }}" />
-              <div class="muted">Genau eintippen: <code>{{ delete_phrase }}</code></div>
+              <div class="muted">Vor dem Loeschen wird nur noch per Browser-Dialog bestaetigt.</div>
             </div>
           </div>
 
@@ -210,8 +205,6 @@
 
       const $backupBefore = document.getElementById('backup_before');
       const $deleteFirst = document.getElementById('delete_first');
-      const $confirmBox = document.getElementById('confirm_box');
-      const $confirm = document.getElementById('confirm');
 
       const $run = document.getElementById('run');
       const $runHint = document.getElementById('run_hint');
@@ -518,13 +511,12 @@
           friendly_name: String($n.value||'').trim() || null,
           backup_before: !!$backupBefore.checked,
           delete_first: !!$deleteFirst.checked,
-          confirm: String($confirm.value||'').trim(),
           tz_name: tz.tz_name,
           tz_offset_minutes: tz.tz_offset_minutes,
         };
         if(!payload.measurement || !payload.field) throw new Error('measurement/field fehlt.');
         if(payload.backup_before && !(payload.entity_id || payload.friendly_name)) throw new Error('Fuer Backup bitte entity_id oder friendly_name setzen.');
-        if(payload.delete_first && !payload.confirm) throw new Error('Confirm Phrase fehlt.');
+        if(payload.delete_first && !confirm('Zielbereich vor dem Import wirklich loeschen?')) return;
         try{ window.InfluxBroStatus && window.InfluxBroStatus.start && window.InfluxBroStatus.start('import.run', 'Import laeuft...'); }catch(e){}
         try{
           const j = await api('./api/import_start', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
@@ -563,8 +555,6 @@
             if($e){ $e.addEventListener('input', ()=>{ updFriendly(); }); $e.addEventListener('change', ()=>{ updFriendly(); }); }
           }catch(e){}
 
-          $deleteFirst.addEventListener('change', ()=>{ $confirmBox.style.display = $deleteFirst.checked ? 'block' : 'none'; });
-          $confirmBox.style.display = $deleteFirst.checked ? 'block' : 'none';
           $analyze.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); }catch(e){}; analyze().catch(e=>err(e && e.message ? e.message : e)); });
           $previewTransform.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); }catch(e){}; previewTransform().catch(e=>err(e && e.message ? e.message : e)); });
           $run.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); }catch(e){}; runImport().catch(e=>err(e && e.message ? e.message : e)); });

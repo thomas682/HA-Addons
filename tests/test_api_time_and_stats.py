@@ -100,6 +100,17 @@ def test_global_filter_clear_buttons_are_available():
     assert 'ib_clear_row' in body
 
 
+def test_delete_confirm_phrase_removed_from_runtime_config_and_templates():
+    config_yaml = (Path(__file__).resolve().parents[1] / "influxbro" / "config.yaml").read_text()
+    import_html = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "import.html").read_text()
+    combine_html = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "combine.html").read_text()
+    restore_html = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "restore.html").read_text()
+    assert 'delete_confirm_phrase' not in config_yaml
+    assert 'id="confirm"' not in import_html
+    assert 'id="confirm_phrase"' not in combine_html
+    assert 'id="native_confirm_phrase"' not in restore_html
+
+
 def test_export_field_loader_no_longer_forces_value_without_available_field():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "export.html").read_text()
     assert "addOpt('value');" not in body

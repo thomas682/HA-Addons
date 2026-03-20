@@ -1,6 +1,6 @@
 name: InfluxBro
 description: "Browse InfluxDB (table + mini graph), configure in UI, entity_id/friendly_name filters, and optionally delete ranges"
-version: "1.12.84"
+version: "1.12.85"
 slug: influxbro
 url: "https://github.com/thomas682/HA-Addons/tree/main/influxbro"
 
@@ -29,7 +29,3 @@ panel_icon: "mdi:database-eye"
 panel_title: "InfluxBro"
 map:
   - config:rw
-options:
-  delete_confirm_phrase: "DELETE"
-schema:
-  delete_confirm_phrase: str

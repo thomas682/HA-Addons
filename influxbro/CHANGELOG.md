@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.12.85
+
+### UI
+
+- Allgemein: Die Bestaetigungsphrase wurde aus UI und Laufzeit-Konfiguration entfernt. Destruktive Aktionen arbeiten jetzt nur noch mit einfachen Browser-Bestaetigungsdialogen, ohne dass ein Wort eingetippt werden muss.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.84
 
 ### UI

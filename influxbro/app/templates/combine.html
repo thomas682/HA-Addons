@@ -87,7 +87,7 @@
 
       <div class="card">
         <details open data-ui="combine.section.selection" title="combine.section.selection">
-          <summary><span class="ib_summary_row"><span>Auswahl</span><button type="button" class="ib_info_icon" data-info-title="Kombinieren: Auswahl" data-info-body="In diesem Bereich definierst du Quelle und Ziel fuer das Kopieren.\n\nWichtig: Mindestens eines der beiden Tags muss pro Seite gesetzt sein: entity_id ODER friendly_name. Das ist erforderlich, damit die Serie eindeutig ist (Rollback/Loeschen/Backup).\n\nFelder:\n- _measurement / _field: bestimmen, welche Influx-Serie gelesen/geschrieben wird.\n- entity_id / friendly_name: Tag-Filter (Quelle) bzw. Ziel-Tags (Ziel).\n- Richtung: legt fest, welche Seite als Quelle gilt (Quelle->Ziel oder Ziel->Quelle).\n\nZeitraum:\n- Von/Bis definiert das Vorschau-Fenster.\n- Der tatsaechliche Kopierbereich kommt aus der Timeline-Selektion (siehe Vorschau).\n\nSicherheit/Rollback:\n- Zielbereich vorher als Backup sichern: erstellt ein Range-Backup (ZIP unter /data/backups), damit Rollback moeglich ist.\n- Zielbereich loeschen: loescht die Zielserie im Kopierzeitraum vor dem Schreiben (destruktiv) und erfordert DELETE." >i</button></span></summary>
+          <summary><span class="ib_summary_row"><span>Auswahl</span><button type="button" class="ib_info_icon" data-info-title="Kombinieren: Auswahl" data-info-body="In diesem Bereich definierst du Quelle und Ziel fuer das Kopieren.\n\nWichtig: Mindestens eines der beiden Tags muss pro Seite gesetzt sein: entity_id ODER friendly_name. Das ist erforderlich, damit die Serie eindeutig ist (Rollback/Loeschen/Backup).\n\nFelder:\n- _measurement / _field: bestimmen, welche Influx-Serie gelesen/geschrieben wird.\n- entity_id / friendly_name: Tag-Filter (Quelle) bzw. Ziel-Tags (Ziel).\n- Richtung: legt fest, welche Seite als Quelle gilt (Quelle->Ziel oder Ziel->Quelle).\n\nZeitraum:\n- Von/Bis definiert das Vorschau-Fenster.\n- Der tatsaechliche Kopierbereich kommt aus der Timeline-Selektion (siehe Vorschau).\n\nSicherheit/Rollback:\n- Zielbereich vorher als Backup sichern: erstellt ein Range-Backup (ZIP unter /data/backups), damit Rollback moeglich ist.\n- Zielbereich loeschen: loescht die Zielserie im Kopierzeitraum vor dem Schreiben (destruktiv) und fragt nur noch per Browser-Dialog nach einer Bestaetigung." >i</button></span></summary>
 
           <div class="row" style="margin-top: 10px;">
             <button class="btn_sm" id="swap" data-ui="combine.swap" title="combine.swap">Quelle/Ziel tauschen</button>
@@ -236,11 +236,6 @@
                 <input id="delete_target_first" type="checkbox" />
                 <span class="muted" style="opacity:0.9;">Zielbereich vor dem Kopieren loeschen (destruktiv)</span>
               </label>
-              <div style="min-width: 220px;">
-                <label>Bestaetigung (DELETE)</label>
-                <input id="confirm_phrase" placeholder="DELETE" data-ui="combine.confirm_phrase" title="combine.confirm_phrase" />
-                <div class="muted" style="margin-top:4px;">Nur erforderlich, wenn Loeschen aktiv ist.</div>
-              </div>
             </div>
             <div class="muted" style="margin-top: 6px;">Hinweis: fuer Rollback wird ein Range-Backup des Ziel-Messwerts im ausgewaehlten Zeitfenster erstellt (ZIP unter /data/backups). Rollback erfolgt ueber die History.</div>
           </div>
@@ -352,7 +347,6 @@
       const $direction = document.getElementById('direction');
       const $backupBefore = document.getElementById('backup_before');
       const $deleteFirst = document.getElementById('delete_target_first');
-      const $confirmPhrase = document.getElementById('confirm_phrase');
 
       const $srcTimeline = document.getElementById('src_timeline');
       const $tgtTimeline = document.getElementById('tgt_timeline');
@@ -837,21 +831,16 @@
         const stopIso = (sel.stop_ms!=null) ? _msToIsoUtc(sel.stop_ms) : '';
         if(!startIso || !stopIso) throw new Error('Bitte in der Timeline einen Bereich auswaehlen.');
 
-        const phrase = prompt('Bestaetigung: tippe COPY um das Kopieren zu starten.');
-        if(String(phrase||'').trim() !== 'COPY') return;
+        if(!confirm('Kopieren wirklich starten?')) return;
 
         const delOn = !!($deleteFirst && $deleteFirst.checked);
-        const confirmPhrase = $confirmPhrase ? String($confirmPhrase.value||'').trim() : '';
-        if(delOn && confirmPhrase !== 'DELETE'){
-          throw new Error('Loeschen aktiv: bitte DELETE in das Bestaetigungsfeld eintragen.');
-        }
+        if(delOn && !confirm('Zielbereich vor dem Kopieren wirklich loeschen?')) return;
 
         const j = await api('./api/combine_job/start', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({
           confirm: true,
           direction: dir,
           backup_before: !!($backupBefore && $backupBefore.checked),
           delete_target_first: delOn,
-          confirm_phrase: confirmPhrase,
           source: s,
           target: t,
           start: startIso,

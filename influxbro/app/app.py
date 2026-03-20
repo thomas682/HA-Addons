@@ -615,7 +615,6 @@ def env_bool(key: str, default: bool) -> bool:
 
 # Kept for backward compatibility; do not rely on this env var.
 _ALLOW_DELETE_ENV = env_bool("ALLOW_DELETE", False)
-DELETE_CONFIRM_PHRASE = os.environ.get("DELETE_CONFIRM_PHRASE", "DELETE")
 
 LAST_AUTODETECT_SOURCE = None
 YAML_FALLBACK_ENABLED = False
@@ -3527,7 +3526,6 @@ def index():
         "index.html",
         cfg=cfg,
         allow_delete=True,
-        delete_phrase=DELETE_CONFIRM_PHRASE,
         nav="dashboard",
         suggestions=suggestions,
     )
@@ -3558,7 +3556,6 @@ def history_page():
         "history.html",
         cfg=cfg,
         allow_delete=True,
-        delete_phrase=DELETE_CONFIRM_PHRASE,
         nav="history",
     )
 
@@ -3576,7 +3573,6 @@ def restore_page():
         "restore.html",
         cfg=cfg,
         allow_delete=True,
-        delete_phrase=DELETE_CONFIRM_PHRASE,
         nav="restore",
     )
 
@@ -3600,7 +3596,6 @@ def import_page():
         "import.html",
         cfg=cfg,
         allow_delete=True,
-        delete_phrase=DELETE_CONFIRM_PHRASE,
         nav="import",
     )
 
@@ -3666,7 +3661,6 @@ def config_page():
         "config.html",
         cfg=cfg,
         allow_delete=True,
-        delete_phrase=DELETE_CONFIRM_PHRASE,
         autodetect_source=LAST_AUTODETECT_SOURCE,
         nav="settings",
     )
@@ -3727,7 +3721,6 @@ def api_get_config():
         # Backward-compat keys; writes are always enabled.
         "allow_delete": True,
         "writes_enabled": True,
-        "delete_confirm_phrase": DELETE_CONFIRM_PHRASE,
         "autodetect_source": LAST_AUTODETECT_SOURCE,
     })
 
@@ -6867,10 +6860,6 @@ def api_fullrestore_job_start():
     target_bucket = str(body.get("target_bucket") or "").strip() or None
     overwrite = body.get("overwrite", False)
     overwrite_on = overwrite is True or str(overwrite).strip().lower() in ("1", "true", "yes", "on")
-    if influx_v == 2 and fmt == "native_v2" and overwrite_on:
-        phrase = str(body.get("confirm_phrase") or "").strip()
-        if phrase != DELETE_CONFIRM_PHRASE:
-            return jsonify({"ok": False, "error": "Confirmation phrase required (DELETE_CONFIRM_PHRASE)"}), 400
 
     job_id = uuid.uuid4().hex
     ip = _req_ip()
@@ -8526,12 +8515,6 @@ def api_combine_job_start():
         if delete_first_on:
             if not ALLOW_DELETE:
                 return jsonify({"ok": False, "error": "Delete is disabled (ALLOW_DELETE=false)"}), 400
-            phrase = str(body.get("confirm_phrase") or "").strip()
-            if phrase != DELETE_CONFIRM_PHRASE:
-                return jsonify({
-                    "ok": False,
-                    "error": f"Confirmation phrase mismatch. Type exactly: {DELETE_CONFIRM_PHRASE}",
-                }), 400
 
         try:
             start_dt, stop_dt = _get_start_stop_from_payload(body)
@@ -15173,8 +15156,7 @@ def api_history_rollback():
     body = request.get_json(force=True) or {}
     confirm = body.get("confirm", False)
     ok_confirm = (
-        confirm == DELETE_CONFIRM_PHRASE
-        or confirm is True
+        confirm is True
         or str(confirm).strip().lower() in ("1", "true", "yes", "on")
     )
     if not ok_confirm:
@@ -16096,8 +16078,6 @@ def api_import_start():
         return jsonify({"ok": False, "error": "no valid rows"}), 400
 
     if delete_first:
-        if confirm != DELETE_CONFIRM_PHRASE:
-            return jsonify({"ok": False, "error": f"Confirmation phrase mismatch. Type exactly: {DELETE_CONFIRM_PHRASE}"}), 400
         if not (oldest_utc and newest_utc):
             return jsonify({"ok": False, "error": "cannot derive time range for delete"}), 400
 
@@ -16249,8 +16229,6 @@ def delete():
     if rk in ("all", "alle", "inf", "infinite", "infinity"):
         return jsonify({"ok": False, "error": "Delete not allowed for Zeitraum=Alle. Bitte Benutzerdefiniert waehlen."}), 400
 
-    if confirm != DELETE_CONFIRM_PHRASE:
-        return jsonify({"ok": False, "error": f"Confirmation phrase mismatch. Type exactly: {DELETE_CONFIRM_PHRASE}"}), 400
     if not measurement:
         return jsonify({"ok": False, "error": "measurement required"}), 400
 

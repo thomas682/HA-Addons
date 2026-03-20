@@ -2004,7 +2004,6 @@ let FULL_GRAPH_BOUNDS = null; // {min,max} in ms
 let _IN_X_RELAYOUT = false;
 
 let GRAPH_MARKERS = false;
-let DELETE_PHRASE = "";
 let ALLOW_WRITES = true;
 
 let OUTLIER_ACTIVE = false;
@@ -3379,7 +3378,6 @@ async function loadUiConfig(){
   try{
     const j = await api("./api/config");
     const cfg = j.config || {};
-    if(j && j.delete_confirm_phrase) DELETE_PHRASE = String(j.delete_confirm_phrase);
 
     // Writes are always enabled (the old Settings toggle was removed).
     ALLOW_WRITES = true;

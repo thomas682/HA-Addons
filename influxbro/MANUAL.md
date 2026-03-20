@@ -254,7 +254,7 @@ Hinweis: Werte in Bearbeitung werden gelb markiert. Geaenderte (dirty) Zeilen we
 - Button: `Aenderungen in Datenbank uebernehmen` (ueber der Bearbeitungsliste)
 - Sicherheitsmechanismus:
   - Aenderungen muessen im Dialog bestaetigt werden.
-  - `delete_confirm_phrase` wird nur fuer Bulk-Loeschungen verwendet (z.B. Zeitraum loeschen, History Rollback, Import: Vorher loeschen).
+  - Bulk-Loeschungen werden nur noch ueber Browser-Bestaetigungen abgesichert (z.B. Zeitraum loeschen, History Rollback, Import: Vorher loeschen).
 
 Wichtig: Die Aenderungen bleiben markiert, bis du sie wirklich uebernimmst.
 
@@ -368,7 +368,7 @@ Neu: FullBackup (InfluxDB komplett)
 - Waehle ein Backup aus der Liste fuer den Messwert.
 - Download: `Download` laedt das selektierte Backup als ZIP herunter (Meta + Line Protocol).
 - Restore schreibt die Werte zurueck, ohne doppelte Messpunkte zu erzeugen (idempotent, weil gleiche Zeitpunkte/Tags/Field ueberschrieben werden).
-- Restore fragt per Browser-Dialog nach Bestaetigung; `delete_confirm_phrase` wird nur fuer Bulk-Loeschungen verwendet.
+- Restore fragt bei destruktiven Aktionen nur noch per Browser-Dialog nach Bestaetigung.
 - Tipp: In der Volltextsuche gibt es Buttons `Alle` (leeren) und `aus Dashboardauswahl`.
 - Die Hoehe der Restore-Backup-Liste ist per Einstellung "Sichtbare Zeilen (Restore-Liste)" konfigurierbar.
 - Restore: Backup-Liste, Query und Detail-Boxen sind resizable; Hoehen werden automatisch gemerkt.
@@ -445,7 +445,7 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - In `Einstellungen -> Import` gibt es eine editierbare Transformationsliste fuer Measurement-Umrechnungen im Format `Quelle;Ziel;Faktor`.
 - Optionen:
   - `Vor Import Backup erstellen` (Default an): erstellt ein Range-Backup im Import-Zeitraum fuer die Zielserie.
-  - `Vorher loeschen` (optional): loescht Zielserie im Import-Zeitraum (nur mit Confirm Phrase).
+  - `Vorher loeschen` (optional): loescht Zielserie im Import-Zeitraum (nur mit Browser-Bestaetigung).
 - Import schreibt einen Eintrag in `History` (Grund: Import).
 
 ## History
@@ -711,6 +711,10 @@ Ausreisser:
 ## Release Notes (1.12.84)
 
 - Allgemein: Filter- und Auswahlfelder erhalten jetzt automatisch einen Loesch-Button direkt neben dem Feld. Damit kannst du Eingaben/Auswahlen direkt zuruecksetzen, ohne den Inhalt manuell markieren zu muessen.
+
+## Release Notes (1.12.85)
+
+- Allgemein: Die Bestaetigungsphrase wurde aus UI und Laufzeit-Konfiguration entfernt. Destruktive Aktionen arbeiten jetzt nur noch mit einfachen Browser-Bestaetigungsdialogen.
 
 ## Release Notes (1.12.80)
 

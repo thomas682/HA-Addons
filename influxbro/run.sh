@@ -6,7 +6,6 @@ fi
 set -euo pipefail
 OPTIONS_FILE="/data/options.json"
 read_opt() { local key="$1"; jq -r ".${key} // empty" "$OPTIONS_FILE"; }
-export DELETE_CONFIRM_PHRASE="$(read_opt delete_confirm_phrase)"
 
 # Expose /data/share under Home Assistant config tree so it is visible in the Filebrowser.
 # Target: /config/influxbro
