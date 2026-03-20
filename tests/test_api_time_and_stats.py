@@ -94,6 +94,8 @@ def test_export_uses_browser_directory_or_save_as_flow():
     assert "window.showDirectoryPicker" in body
     assert "SAVE_DIR_HANDLE" in body
     assert "_writeDirectoryFile" in body
+    assert "const chosenTarget = await showTargetModal();" in body
+    assert "target_dir: targetDirValue," in body
 
 
 def test_export_queries_are_no_longer_point_limited():

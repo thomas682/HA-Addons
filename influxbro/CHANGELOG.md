@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.12.80
+
+### UI
+
+- Export: Der Button `Export` verwendet jetzt den im Dialog gewaehlten `Zielordner` wirklich als `target_dir` fuer den Export-Job. Damit kann die Export-Datei serverseitig gezielt unter `/data/...` bzw. unter erlaubten absoluten Pfaden abgelegt werden, zusaetzlich zum lokalen Browser-Speichern.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.79
 
 ### UI

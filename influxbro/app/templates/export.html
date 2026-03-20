@@ -812,10 +812,16 @@
           err(''); ok('');
           try{ window.InfluxBroStatus && window.InfluxBroStatus.start && window.InfluxBroStatus.start('export.run', 'Export laeuft...'); }catch(e){}
           try{
-           SAVE_HANDLE = null;
-           SAVE_DIR_HANDLE = null;
+            SAVE_HANDLE = null;
+            SAVE_DIR_HANDLE = null;
+            let targetDirValue = 'exports';
+            try{ targetDirValue = String(($targetDir && $targetDir.value) || localStorage.getItem(LS_TARGET) || 'exports').trim() || 'exports'; }catch(e){}
             const want = !!wantSaveAs;
             if(want){
+              const chosenTarget = await showTargetModal();
+              if(chosenTarget === null) throw new Error('Export abgebrochen.');
+              targetDirValue = String(chosenTarget || 'exports').trim() || 'exports';
+              try{ if($targetDir) $targetDir.value = targetDirValue; }catch(e){}
               const fmt0 = String($format.value||'text');
               const sugg = _suggestExportName(fmt0);
               SAVE_DIR_HANDLE = await _pickDirectoryHandle();
@@ -839,7 +845,7 @@
             stop: tf.stop,
             tz_name: tz.tz_name,
             tz_offset_minutes: tz.tz_offset_minutes,
-            target_dir: 'exports',
+            target_dir: targetDirValue,
           };
           if(!payload.measurement || !payload.field) throw new Error('measurement/field fehlt. Bitte Auswahl setzen.');
           setStatus('Starte Export Job...');
@@ -889,9 +895,9 @@
             if($cancel) $cancel.disabled = true;
             if($run) $run.disabled = false;
             try{ if($exportSave) $exportSave.disabled = false; }catch(e){}
-           if(LAST_DOWNLOAD_URL && !AUTO_DL_DONE){
-             AUTO_DL_DONE = true;
-             try{
+            if(LAST_DOWNLOAD_URL && !AUTO_DL_DONE){
+              AUTO_DL_DONE = true;
+              try{
                 const suggestedName = _suggestExportName(String($format.value||'text'));
                 if(SAVE_DIR_HANDLE || SAVE_HANDLE){
                   const resp = await fetch(String(LAST_DOWNLOAD_URL));
@@ -902,17 +908,17 @@
                   SAVE_HANDLE = null;
                   SAVE_DIR_HANDLE = null;
                   if(okSave){
-                    try{ if($hint) $hint.textContent = 'Datei gespeichert.'; }catch(e){}
+                    try{ if($hint) $hint.textContent = 'Datei gespeichert. Server-Ziel: ' + String((st && st.out_dir) || ($targetDir && $targetDir.value) || 'exports'); }catch(e){}
                   }else{
                     try{ location.href = String(LAST_DOWNLOAD_URL); }catch(e){}
-                    try{ if($hint) $hint.textContent = 'Download gestartet.'; }catch(e){}
-                 }
-               }else{
-                 try{ location.href = String(LAST_DOWNLOAD_URL); }catch(e){}
-                 try{ if($hint) $hint.textContent = 'Download gestartet.'; }catch(e){}
-               }
-             }catch(e){
-               try{ location.href = String(LAST_DOWNLOAD_URL); }catch(x){}
+                    try{ if($hint) $hint.textContent = 'Download gestartet. Server-Ziel: ' + String((st && st.out_dir) || ($targetDir && $targetDir.value) || 'exports'); }catch(e){}
+                  }
+                }else{
+                  try{ location.href = String(LAST_DOWNLOAD_URL); }catch(e){}
+                  try{ if($hint) $hint.textContent = 'Download gestartet. Server-Ziel: ' + String((st && st.out_dir) || ($targetDir && $targetDir.value) || 'exports'); }catch(e){}
+                }
+              }catch(e){
+                try{ location.href = String(LAST_DOWNLOAD_URL); }catch(x){}
              }
            }
          }
@@ -947,6 +953,7 @@
       (async function(){
         try{
           const st = loadState();
+          try{ if($targetDir) $targetDir.value = String(localStorage.getItem(LS_TARGET) || 'exports'); }catch(e){}
           if(st.measurement_filter) $mf.value = st.measurement_filter;
           if(st.friendly_name) $n.value = st.friendly_name;
           if(st.entity_id) $e.value = st.entity_id;
