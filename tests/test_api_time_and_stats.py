@@ -38,10 +38,15 @@ def test_dashboard_selector_sync_is_no_longer_time_filtered():
     assert 'syncSelectionFilters(' not in body
     assert 'const _debRefreshDashboardSrc = debounce' in body
     assert 'const _debAutoResolveDashboardSrc = debounce' in body
+    assert 'async function triggerDashboardMeasurementRefresh()' in body
+    assert 'async function triggerDashboardTagRefresh()' in body
     assert '$mf.addEventListener("input", ()=>{' in body
     assert '$mf.addEventListener("change", ()=>{' in body
+    assert '$mf.addEventListener("blur", ()=>{ triggerDashboardMeasurementRefresh().catch(()=>{}); });' in body
     assert '$n.addEventListener("change", ()=>{' in body
+    assert '$n.addEventListener("blur", ()=>{ triggerDashboardTagRefresh().catch(()=>{}); });' in body
     assert '$e.addEventListener("change", ()=>{' in body
+    assert '$e.addEventListener("blur", ()=>{ triggerDashboardTagRefresh().catch(()=>{}); });' in body
     assert "function logSelectorLoad(name, items, filters)" in body
     assert "function logSelectorAction(name, value)" in body
     assert 'if(tf && tf.range) q.push("range=" + encodeURIComponent(tf.range));' not in body

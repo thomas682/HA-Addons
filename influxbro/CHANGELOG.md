@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.78
+
+### UI
+
+- Dashboard: Die sichtbare Quellauswahl triggert Nachlade-Requests fuer `_measurement`, `friendly_name` und `entity_id` jetzt zusaetzlich sofort ueber direkte Helper auf `input`, `change` und `blur`. Damit werden `fields` und `tag_values` auch bei browserspezifischem Datalist-Verhalten sicher angefragt.
+
+### Maintenance
+
+- Weitere Browser-Ereignis-Absicherung fuer Dashboard-Selektoren
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.77
 
 ### UI

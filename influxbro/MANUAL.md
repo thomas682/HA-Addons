@@ -685,3 +685,7 @@ Ausreisser:
 ## Release Notes (1.12.77)
 
 - Dashboard: Die sichtbare Quellauswahl reagiert jetzt sowohl auf `input` als auch auf `change`, damit Browser-Datalist-Auswahlen wie `EUR` per Mausklick sicher dieselben `fields`- und `tag_values`-Requests ausloesen wie bei direkter Eingabe.
+
+## Release Notes (1.12.78)
+
+- Dashboard: Zusätzliche Browser-Absicherung fuer Datalist-Auswahlen. Die sichtbare Quellauswahl triggert ihre Nachlade-Requests fuer `_measurement`, `friendly_name` und `entity_id` jetzt direkt auf `input`, `change` und `blur`.

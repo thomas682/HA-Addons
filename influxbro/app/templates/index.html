@@ -6290,34 +6290,43 @@ const _debAutoResolveDashboardSrc = debounce(()=>{
   });
 }, 650);
 
-$mf.addEventListener("input", ()=>{
+async function triggerDashboardMeasurementRefresh(){
   const mv = String(($mf && $mf.value) || '').trim();
-  loadDashboardFields(mv, {silent: true}).catch(()=>{});
+  await loadDashboardFields(mv, {silent: true}).catch(()=>{});
+  await refreshDashboardSuggestions({silent: true}).catch(()=>{});
+}
+
+async function triggerDashboardTagRefresh(){
+  await refreshDashboardSuggestions({silent: true}).catch(()=>{});
+  _debAutoResolveDashboardSrc();
+}
+
+$mf.addEventListener("input", ()=>{
+  triggerDashboardMeasurementRefresh().catch(()=>{});
   _debRefreshDashboardSrc();
 });
 $mf.addEventListener("change", ()=>{
-  const mv = String(($mf && $mf.value) || '').trim();
-  loadDashboardFields(mv, {silent: true}).catch(()=>{});
-  _debRefreshDashboardSrc();
+  triggerDashboardMeasurementRefresh().catch(()=>{});
 });
+$mf.addEventListener("blur", ()=>{ triggerDashboardMeasurementRefresh().catch(()=>{}); });
 
 $n.addEventListener("input", ()=>{
+  triggerDashboardTagRefresh().catch(()=>{});
   _debRefreshDashboardSrc();
-  _debAutoResolveDashboardSrc();
 });
 $n.addEventListener("change", ()=>{
-  _debRefreshDashboardSrc();
-  _debAutoResolveDashboardSrc();
+  triggerDashboardTagRefresh().catch(()=>{});
 });
+$n.addEventListener("blur", ()=>{ triggerDashboardTagRefresh().catch(()=>{}); });
 
 $e.addEventListener("input", ()=>{
+  triggerDashboardTagRefresh().catch(()=>{});
   _debRefreshDashboardSrc();
-  _debAutoResolveDashboardSrc();
 });
 $e.addEventListener("change", ()=>{
-  _debRefreshDashboardSrc();
-  _debAutoResolveDashboardSrc();
+  triggerDashboardTagRefresh().catch(()=>{});
 });
+$e.addEventListener("blur", ()=>{ triggerDashboardTagRefresh().catch(()=>{}); });
 
 if($btnReset) $btnReset.addEventListener("click", (ev)=>{ _stop(ev); resetFiltersKeepRange().catch(()=>{}); });
 
