@@ -62,6 +62,7 @@ CACHE_USAGE_LOCK = threading.RLock()
 CACHE_USAGE_MAX_MEM = 2000
 CACHE_USAGE_MEM: "deque[dict[str, Any]]" = deque(maxlen=CACHE_USAGE_MAX_MEM)
 CACHE_USAGE_PATH = DATA_DIR / "influxbro_cache_usage.jsonl"
+JOBS_HISTORY_PATH = DATA_DIR / "influxbro_jobs_history.json"
 
 # Timers state (last run timestamps, persisted under /data)
 TIMERS_STATE_LOCK = threading.RLock()
@@ -8791,6 +8792,7 @@ def api_jobs():
             pub["mode"] = stats_mode
         elif str(j.get("timer_id") or "").strip() == "stats_full":
             pub["mode"] = stats_full_mode
+        _jobs_history_upsert(pub)
         out.append(pub)
 
     with RESTORE_COPY_LOCK:
@@ -8801,6 +8803,7 @@ def api_jobs():
         pub["trigger_page"] = j.get("trigger_page")
         pub["trigger_ip"] = j.get("trigger_ip")
         pub["trigger_ua"] = j.get("trigger_ua")
+        _jobs_history_upsert(pub)
         out.append(pub)
 
     with COMBINE_LOCK:
@@ -8811,6 +8814,7 @@ def api_jobs():
         pub["trigger_page"] = j.get("trigger_page")
         pub["trigger_ip"] = j.get("trigger_ip")
         pub["trigger_ua"] = j.get("trigger_ua")
+        _jobs_history_upsert(pub)
         out.append(pub)
 
     with BACKUP_LOCK:
@@ -8821,6 +8825,7 @@ def api_jobs():
         pub["trigger_page"] = j.get("trigger_page")
         pub["trigger_ip"] = j.get("trigger_ip")
         pub["trigger_ua"] = j.get("trigger_ua")
+        _jobs_history_upsert(pub)
         out.append(pub)
 
     with FULLBACKUP_LOCK:
@@ -8831,6 +8836,7 @@ def api_jobs():
         pub["trigger_page"] = j.get("trigger_page")
         pub["trigger_ip"] = j.get("trigger_ip")
         pub["trigger_ua"] = j.get("trigger_ua")
+        _jobs_history_upsert(pub)
         out.append(pub)
 
     with FULLRESTORE_LOCK:
@@ -8841,6 +8847,7 @@ def api_jobs():
         pub["trigger_page"] = j.get("trigger_page")
         pub["trigger_ip"] = j.get("trigger_ip")
         pub["trigger_ua"] = j.get("trigger_ua")
+        _jobs_history_upsert(pub)
         out.append(pub)
 
     with DASH_CACHE_JOBS_LOCK:
@@ -8855,6 +8862,7 @@ def api_jobs():
         pub["action"] = j.get("action")
         pub["cache_kind"] = "dash"
         pub["mode"] = dash_mode
+        _jobs_history_upsert(pub)
         out.append(pub)
 
     with EXPORT_LOCK:
@@ -8865,7 +8873,15 @@ def api_jobs():
         pub["trigger_page"] = j.get("trigger_page")
         pub["trigger_ip"] = j.get("trigger_ip")
         pub["trigger_ua"] = j.get("trigger_ua")
+        _jobs_history_upsert(pub)
         out.append(pub)
+
+    active_ids = {str(x.get("id") or "").strip() for x in out if str(x.get("id") or "").strip()}
+    for row in _jobs_history_load():
+        rid = str(row.get("id") or "").strip()
+        if not rid or rid in active_ids:
+            continue
+        out.append(row)
 
     def _sort_key(x: dict[str, Any]) -> float:
         try:
@@ -12476,6 +12492,50 @@ def _job_set_finished(meta: dict[str, Any]) -> None:
             return
         meta["finished_at"] = meta.get("finished_at") or _utc_now_iso_ms()
         meta["finished_mono"] = meta.get("finished_mono") or time.monotonic()
+    except Exception:
+        return
+
+
+def _jobs_history_load() -> list[dict[str, Any]]:
+    try:
+        if not JOBS_HISTORY_PATH.exists():
+            return []
+        raw = JOBS_HISTORY_PATH.read_text(encoding="utf-8", errors="replace")
+        data = json.loads(raw)
+        return data if isinstance(data, list) else []
+    except Exception:
+        return []
+
+
+def _jobs_history_save(rows: list[dict[str, Any]]) -> None:
+    try:
+        JOBS_HISTORY_PATH.parent.mkdir(parents=True, exist_ok=True)
+        JOBS_HISTORY_PATH.write_text(json.dumps(rows, ensure_ascii=True, indent=2), encoding="utf-8")
+    except Exception:
+        return
+
+
+def _jobs_history_upsert(row: dict[str, Any]) -> None:
+    try:
+        rid = str(row.get("id") or "").strip()
+        if not rid:
+            return
+        rows = _jobs_history_load()
+        rows = [r for r in rows if str(r.get("id") or "").strip() != rid]
+        rows.append(row)
+
+        def _ts(x: dict[str, Any]) -> float:
+            for key in ("updated_at", "finished_at", "started_at"):
+                try:
+                    val = str(x.get(key) or "").replace("Z", "+00:00")
+                    if val:
+                        return datetime.fromisoformat(val).timestamp()
+                except Exception:
+                    continue
+            return 0.0
+
+        rows.sort(key=_ts, reverse=True)
+        _jobs_history_save(rows[:200])
     except Exception:
         return
 

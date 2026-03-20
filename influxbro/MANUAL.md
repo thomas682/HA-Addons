@@ -291,7 +291,7 @@ Tipp: In der Toolbar gibt es Mehrfachaktionen (z.B. Werte davor uebernehmen oder
 
 ## Jobs & Cache
 
-- Zeigt laufende Background-Jobs (z.B. Statistik laden, Restore/Copy).
+- Zeigt laufende Background-Jobs (z.B. Statistik laden, Restore/Copy) und die letzten abgeschlossenen Jobs aus der Historie.
 - Hinweis: Export-Jobs werden hier ebenfalls als Job angezeigt und koennen abgebrochen werden.
 - Button `Abbruch`: bricht den Job ab (bestaetigen). Der Button ist immer sichtbar.
 - Button `Details`: zeigt, was der Job gerade macht (Message/Current/Trigger-Infos).
@@ -698,6 +698,10 @@ Ausreisser:
 ## Release Notes (1.12.81)
 
 - Export: Der Dialog fuer `Export` bietet jetzt einen klickbaren Client-Ordnerbrowser fuer Chromium-basierte Browser. Du kannst einen lokalen Root-Ordner waehlen und danach Unterordner im Dialog anklicken; die Export-Datei wird direkt clientseitig dort gespeichert.
+
+## Release Notes (1.12.82)
+
+- Jobs & Cache: Die Jobs-Liste zeigt jetzt auch die letzten abgeschlossenen Jobs aus einer Historie an. Dadurch bleibt die Liste nachvollziehbar und ist nicht mehr sofort leer, wenn ein Job bereits beendet wurde.
 
 ## Release Notes (1.12.80)
 

@@ -527,6 +527,26 @@ def test_import_start_applies_measurement_transform_factor(load_app_module, tmp_
     assert "value=1" in lp
 
 
+def test_api_jobs_includes_recent_history(load_app_module, tmp_path):
+    app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
+    app_mod._jobs_history_upsert({
+        "id": "job-1",
+        "type": "export",
+        "state": "done",
+        "message": "fertig",
+        "started_at": "2026-03-20T10:00:00Z",
+        "updated_at": "2026-03-20T10:05:00Z",
+        "finished_at": "2026-03-20T10:05:00Z",
+    })
+
+    client = app_mod.app.test_client()
+    r = client.get("/api/jobs?limit=20")
+    assert r.status_code == 200
+    j = r.get_json()
+    assert j["ok"] is True
+    assert any(str(x.get("id") or "") == "job-1" for x in j.get("jobs", []))
+
+
 def test_stats_v2_flux_avoids_time_label_literal(load_app_module, tmp_path, monkeypatch):
     app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
     captured: list[str] = []

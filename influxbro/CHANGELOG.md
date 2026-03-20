@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.12.82
+
+### UI
+
+- Jobs & Cache: Die Jobs-Liste zeigt jetzt neben aktuell laufenden Jobs auch die letzten abgeschlossenen Jobs aus einer kleinen Historie an. Damit bleibt die Liste nachvollziehbar und ist nicht mehr leer, sobald ein Job bereits fertig ist.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.81
 
 ### UI
