@@ -137,62 +137,58 @@
               </div>
             </div>
 
-            <div class="ib_sel" style="min-width: 180px;">
-              <label class="label_row ib_sel_label"><span>_field Filter</span><span id="cnt_field_filter" class="muted"></span></label>
-              <div class="ib_sel_stack">
-                <input id="field_filter" value="value" list="field_list" data-ui="stats.field_filter" title="stats.field_filter" />
-                <datalist id="field_list"><option value="value"></option></datalist>
-                <div class="ib_sel_desc">
-                  <button type="button" class="ib_sel_help" data-title="_field Filter" data-help="Legt fest, welche Serien/Zeilen geladen werden. Default ist _field=value (Home Assistant Standard).">?</button>
-                  <div class="muted">Legt fest, welche Serien/Zeilen geladen werden (Default: <code>value</code>).</div>
+            <div class="card" style="margin-top:0; min-width: 720px; flex:1 1 auto;">
+              <div style="font-weight: 800;">Quelle</div>
+              <div class="row">
+                <div class="ib_sel" style="min-width: 220px;">
+                  <label class="ib_sel_label">_measurement</label>
+                  <div class="ib_sel_stack">
+                    <input id="src_measurement" list="measurement_list" placeholder="required" data-ui="combine.src.measurement" title="combine.src.measurement"/>
+                    <datalist id="measurement_list">
+                      {% for it in (suggestions.measurements or []) %}
+                      <option value="{{ it|e }}"></option>
+                      {% endfor %}
+                    </datalist>
+                    <div class="ib_sel_desc">
+                      <button type="button" class="ib_sel_help" data-title="Quelle _measurement" data-help="Measurement der Quelle. Aktuell ist _measurement erforderlich.">?</button>
+                      <div class="muted">Pflichtfeld.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="ib_sel" style="min-width: 220px;">
+                  <label class="ib_sel_label">_field</label>
+                  <div class="ib_sel_stack">
+                    <input id="src_field" list="src_field_list" placeholder="value" data-ui="combine.src.field" title="combine.src.field"/>
+                    <datalist id="src_field_list"></datalist>
+                    <div class="ib_sel_desc">
+                      <button type="button" class="ib_sel_help" data-title="Quelle _field" data-help="Field der Quelle. Default: value.">?</button>
+                      <div class="muted">Default ist <code>value</code>.</div>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-
-            <div class="ib_sel" style="min-width: 180px;">
-              <label class="label_row ib_sel_label"><span>Einheit (_measurement)</span><span id="cnt_measurement_filter" class="muted"></span></label>
-              <div class="ib_sel_stack">
-                <input id="measurement_filter" list="measurement_list" placeholder="optional" data-ui="stats.measurement_filter" title="stats.measurement_filter" />
-                <datalist id="measurement_list">
-                  {% for it in (suggestions.measurements or []) %}
-                  <option value="{{ it|e }}"></option>
-                  {% endfor %}
-                </datalist>
-                <div class="ib_sel_desc">
-                  <button type="button" class="ib_sel_help" data-title="Einheit (_measurement)" data-help="Optionaler Filter. Filtert Statistik-Serien nach _measurement.">?</button>
-                  <div class="muted">Optionaler Filter fuer Serien nach _measurement.</div>
+              <div class="row">
+                <div class="ib_sel" style="min-width: 240px;">
+                  <label class="label_row ib_sel_label"><span>Entity ID (entity_id)</span><span id="cnt_src_entity" class="muted"></span></label>
+                  <div class="ib_sel_stack">
+                    <input id="src_entity_id" list="src_entity_list" placeholder="optional" data-ui="combine.src.entity_id" title="combine.src.entity_id"/>
+                    <datalist id="src_entity_list"></datalist>
+                    <div class="ib_sel_desc">
+                      <button type="button" class="ib_sel_help" data-title="Quelle entity_id" data-help="Tag-Filter fuer die Quelle. Mindestens entity_id ODER friendly_name muss gesetzt sein.">?</button>
+                      <div class="muted">Mindestens eins erforderlich.</div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-
-            <div class="ib_sel" style="min-width: 220px;">
-              <label class="label_row ib_sel_label"><span>friendly_name Filter</span><span id="cnt_friendly_name" class="muted"></span></label>
-              <div class="ib_sel_stack">
-                <input id="friendly_filter" list="friendly_list" placeholder="optional" data-ui="stats.friendly_filter" title="stats.friendly_filter" />
-                <datalist id="friendly_list">
-                  {% for it in (suggestions.friendly_name or []) %}
-                  <option value="{{ it|e }}"></option>
-                  {% endfor %}
-                </datalist>
-                <div class="ib_sel_desc">
-                  <button type="button" class="ib_sel_help" data-title="friendly_name Filter" data-help="Optionaler Filter. Filtert Serien nach friendly_name.">?</button>
-                  <div class="muted">Optionaler Filter fuer Serien nach friendly_name.</div>
-                </div>
-              </div>
-            </div>
-
-            <div class="ib_sel" style="min-width: 220px;">
-              <label class="label_row ib_sel_label"><span>Entity ID (entity_id)</span><span id="cnt_entity_id" class="muted"></span></label>
-              <div class="ib_sel_stack">
-                <input id="entity_filter" list="entity_list" placeholder="optional" data-ui="stats.entity_filter" title="stats.entity_filter" />
-                <datalist id="entity_list">
-                  {% for it in (suggestions.entity_id or []) %}
-                  <option value="{{ it|e }}"></option>
-                  {% endfor %}
-                </datalist>
-                <div class="ib_sel_desc">
-                  <button type="button" class="ib_sel_help" data-title="Entity ID" data-help="Optionaler Filter. Filtert Serien nach entity_id.">?</button>
-                  <div class="muted">Optionaler Filter fuer Serien nach entity_id.</div>
+                <div class="ib_sel" style="min-width: 240px;">
+                  <label class="label_row ib_sel_label"><span>Messwert (friendly_name)</span><span id="cnt_src_friendly" class="muted"></span></label>
+                  <div class="ib_sel_stack">
+                    <input id="src_friendly_name" list="src_friendly_list" placeholder="optional" data-ui="combine.src.friendly" title="combine.src.friendly"/>
+                    <datalist id="src_friendly_list"></datalist>
+                    <div class="ib_sel_desc">
+                      <button type="button" class="ib_sel_help" data-title="Quelle friendly_name" data-help="Tag-Filter fuer die Quelle. Mindestens entity_id ODER friendly_name muss gesetzt sein.">?</button>
+                      <div class="muted">Mindestens eins erforderlich.</div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -299,19 +295,19 @@
       const $custom = document.getElementById('custom');
       const $start = document.getElementById('start');
       const $stop = document.getElementById('stop');
-      const $fieldFilter = document.getElementById('field_filter');
-      const $fieldList = document.getElementById('field_list');
-      const $measurementFilter = document.getElementById('measurement_filter');
-      const $friendlyFilter = document.getElementById('friendly_filter');
-      const $entityFilter = document.getElementById('entity_filter');
+      const $fieldFilter = document.getElementById('src_field');
+      const $fieldList = document.getElementById('src_field_list');
+      const $measurementFilter = document.getElementById('src_measurement');
+      const $friendlyFilter = document.getElementById('src_friendly_name');
+      const $entityFilter = document.getElementById('src_entity_id');
       const $measurementList = document.getElementById('measurement_list');
-      const $friendlyList = document.getElementById('friendly_list');
-      const $entityList = document.getElementById('entity_list');
+      const $friendlyList = document.getElementById('src_friendly_list');
+      const $entityList = document.getElementById('src_entity_list');
 
-      const $cntField = document.getElementById('cnt_field_filter');
-      const $cntMeas = document.getElementById('cnt_measurement_filter');
-      const $cntFn = document.getElementById('cnt_friendly_name');
-      const $cntEid = document.getElementById('cnt_entity_id');
+      const $cntField = null;
+      const $cntMeas = null;
+      const $cntFn = document.getElementById('cnt_src_friendly');
+      const $cntEid = document.getElementById('cnt_src_entity');
       const $q = document.getElementById('q');
       const $load = document.getElementById('load');
       const $cancel = document.getElementById('cancel');
@@ -543,42 +539,62 @@
         }catch(e){}
       }
 
+      async function loadTagValues(tag, params){
+        let url = './api/tag_values?tag=' + encodeURIComponent(String(tag||''));
+        const qp = new URLSearchParams();
+        Object.entries(params||{}).forEach(([k,v])=>{ if(v !== null && v !== undefined && String(v).trim() !== '') qp.set(k, String(v)); });
+        const qs = qp.toString();
+        if(qs) url += '&' + qs;
+        const j = await api(url);
+        return (j.values || []).map(x=>String(x||'')).filter(Boolean);
+      }
+
+      async function loadFields(measurement, listEl){
+        try{
+          const m = String(measurement||'').trim();
+          if(!m){ if(listEl) listEl.innerHTML = ''; return; }
+          const j = await api('./api/fields?measurement=' + encodeURIComponent(m));
+          const xs = (j.fields||[]).map(x=>String(x||'')).filter(Boolean);
+          if(listEl) listEl.innerHTML = xs.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"></option>`).join('');
+        }catch(e){ if(listEl) listEl.innerHTML = ''; }
+      }
+
+      function src(){
+        return {
+          measurement: String($measurementFilter.value||'').trim(),
+          field: String($fieldFilter.value||'value').trim() || 'value',
+          entity_id: String($entityFilter.value||'').trim() || null,
+          friendly_name: String($friendlyFilter.value||'').trim() || null,
+        };
+      }
+
       async function loadMeasurements(){
         const j = await api('./api/measurements');
         const xs = (j.measurements || []).map(String);
         setDatalistOptions($measurementList, xs);
-        setCount($cntMeas, xs.length, true);
         try{ _selMaybeAutoWidth($measurementFilter, $measurementList); }catch(e){}
       }
 
-      async function loadFriendlyNames(){
-        const tf = timeFilter();
-        let url = './api/tag_values?tag=friendly_name';
-        const q = [];
-        if($measurementFilter && $measurementFilter.value) q.push('measurement=' + encodeURIComponent($measurementFilter.value));
-        if($entityFilter && $entityFilter.value) q.push('entity_id=' + encodeURIComponent($entityFilter.value));
-        if(tf.start && tf.stop){ q.push('start=' + encodeURIComponent(tf.start)); q.push('stop=' + encodeURIComponent(tf.stop)); }
-        if(q.length) url += '&' + q.join('&');
-        const j = await api(url);
-        const xs = (j.values || []).map(String);
-        setDatalistOptions($friendlyList, xs);
-        setCount($cntFn, xs.length, true);
-        try{ _selMaybeAutoWidth($friendlyFilter, $friendlyList); }catch(e){}
-      }
+      async function refreshSuggestions(){
+        const s = src();
+        const meas = String(s.measurement || '').trim();
+        const eid = String(s.entity_id || '').trim();
+        const fn = String(s.friendly_name || '').trim();
+        const common = { range: '24h' };
+        if(meas) common.measurement = meas;
 
-      async function loadEntityIds(){
-        const tf = timeFilter();
-        let url = './api/tag_values?tag=entity_id';
-        const q = [];
-        if($measurementFilter && $measurementFilter.value) q.push('measurement=' + encodeURIComponent($measurementFilter.value));
-        if($friendlyFilter && $friendlyFilter.value) q.push('friendly_name=' + encodeURIComponent($friendlyFilter.value));
-        if(tf.start && tf.stop){ q.push('start=' + encodeURIComponent(tf.start)); q.push('stop=' + encodeURIComponent(tf.stop)); }
-        if(q.length) url += '&' + q.join('&');
-        const j = await api(url);
-        const xs = (j.values || []).map(String);
-        setDatalistOptions($entityList, xs);
-        setCount($cntEid, xs.length, false);
-        try{ _selMaybeAutoWidth($entityFilter, $entityList); }catch(e){}
+        try{
+          const xsE = await loadTagValues('entity_id', {...common, friendly_name: fn || ''});
+          if($entityList) $entityList.innerHTML = xsE.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"></option>`).join('');
+          setCount($cntEid, xsE.length, true);
+          const xsF = await loadTagValues('friendly_name', {...common, entity_id: eid || ''});
+          if($friendlyList) $friendlyList.innerHTML = xsF.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"></option>`).join('');
+          setCount($cntFn, xsF.length, true);
+          try{ _selMaybeAutoWidth($friendlyFilter, $friendlyList); }catch(e){}
+          try{ _selMaybeAutoWidth($entityFilter, $entityList); }catch(e){}
+        }catch(e){
+          // ignore (suggestions are best-effort)
+        }
       }
 
       function setJobId(id){
@@ -878,8 +894,8 @@
       const onStatsMeasurementChanged = debounce(()=>{
         (async ()=>{
           try{
-            await loadFriendlyNames();
-            await loadEntityIds();
+            await loadFields($measurementFilter.value, $fieldList);
+            await refreshSuggestions();
             saveUiState();
             render();
           }catch(e){}
@@ -889,16 +905,7 @@
       const onStatsFriendlyChanged = debounce(()=>{
         (async ()=>{
           try{
-            if($entityFilter) $entityFilter.value = '';
-            if(!$friendlyFilter || !String($friendlyFilter.value || '').trim()){
-              await loadEntityIds();
-              saveUiState();
-              render();
-              return;
-            }
-            await loadEntityIds();
-            const options = Array.from(($entityList && $entityList.options) || []).map(o => String(o.value || '')).filter(Boolean);
-            if($entityFilter && options.length) $entityFilter.value = options[0];
+            await refreshSuggestions();
             saveUiState();
             render();
           }catch(e){}
@@ -908,10 +915,7 @@
       const onStatsEntityChanged = debounce(()=>{
         (async ()=>{
           try{
-            await loadFriendlyNames();
-            const cur = String(($friendlyFilter && $friendlyFilter.value) || '').trim();
-            const options = Array.from(($friendlyList && $friendlyList.options) || []).map(o => String(o.value || '')).filter(Boolean);
-            if(cur && !options.includes(cur) && $friendlyFilter) $friendlyFilter.value = '';
+            await refreshSuggestions();
             saveUiState();
             render();
           }catch(e){}

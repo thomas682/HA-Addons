@@ -16,6 +16,19 @@ def test_dashboard_selection_labels_and_order():
     assert "Zeitraum (Graph/Tabelle)" in body
 
 
+def test_stats_selection_uses_combine_source_controls():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "stats.html").read_text()
+    assert 'id="src_measurement"' in body
+    assert 'id="src_field"' in body
+    assert 'id="src_entity_id"' in body
+    assert 'id="src_friendly_name"' in body
+    assert 'id="measurement_filter" data-ui="stats.measurement_filter"' not in body
+    assert 'id="friendly_filter" data-ui="stats.friendly_filter"' not in body
+    assert 'id="entity_filter" data-ui="stats.entity_filter"' not in body
+    assert 'function src(){' in body
+    assert 'async function refreshSuggestions(){' in body
+
+
 def test_dashboard_selector_sync_is_no_longer_time_filtered():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     assert 'data-ui="filter_measurement_input"' in body
