@@ -742,6 +742,11 @@ Ausreisser:
 - History: Die Zusatzfilter `measurement`, `entity_id` und `reason` wurden entfernt.
 - Export: Der alte Bereich `export.advanced` wurde entfernt; die Auswahl nutzt jetzt nur noch den sichtbaren Auswahlbereich.
 
+## Release Notes (1.12.92)
+
+- Titelzeile: `nav.donate` sitzt jetzt neben `InfluxBro`, darunter steht `by Thomas Schatz`. `topbar.profile` und `topbar.zoom` sind in die Titelzeile gewandert. Die bisherigen Buttons `sections.open_all`, `sections.close_all` und `page.search.clear` wurden dort entfernt.
+- Einstellungen: `ui_status_bar_bg` und `ui_status_bar_fg` haben jetzt links einen Color Picker vor dem Farbtext.
+
 ## Release Notes (1.12.80)
 
 - Export: Der Button `Export` verwendet den gewaehlten `Zielordner` jetzt wirklich als `target_dir` fuer den Export-Job. Damit kann die Datei serverseitig gezielt in ein gewuenschtes Verzeichnis geschrieben werden.

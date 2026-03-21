@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.92
+
+### UI
+
+- Titelzeile: Die feste Titelkarte wurde umgebaut. `nav.donate` sitzt jetzt neben `InfluxBro`, darunter steht `by Thomas Schatz`. `topbar.profile` und `topbar.zoom` wurden in die Titelzeile integriert. Die alten Buttons `sections.open_all`, `sections.close_all` und `page.search.clear` sind aus der Titelzeile entfernt; die Seitensuche bleibt als einzelnes Suchfeld erhalten.
+- Einstellungen: `ui_status_bar_bg` und `ui_status_bar_fg` besitzen jetzt links einen Color Picker vor dem Farbtext.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.91
 
 ### UI

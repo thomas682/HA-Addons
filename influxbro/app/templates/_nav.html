@@ -45,25 +45,6 @@
     #influxbro_status_panel .item { white-space: nowrap; min-width: max-content; }
     #influxbro_status_panel .last { margin-top: 10px; font-size: var(--ui-status-font); overflow: auto; max-height: 84px; }
   </style>
-  <div class="brand">
-    <div class="brand_title">InfluxBro</div>
-    <div class="brand_meta" style="margin-top: 4px;">by Thomas Schatz</div>
-
-    {% set _pp_url = (cfg.get('ui_paypal_donate_url') or 'https://www.paypal.com/donate/?hosted_button_id=ZWZE3WM4NBUW6') %}
-    <div class="brand_meta" style="margin-top: 8px;" data-ui="nav.donate" title="nav.donate">
-      <a href="{{ _pp_url }}" target="_blank" rel="noreferrer" style="display:inline-block;">
-        <img
-          alt="Donate with PayPal"
-          src="https://raw.githubusercontent.com/stefan-niedermann/paypal-donate-button/master/paypal-donate-button.png"
-          style="height: 30px;"
-        />
-      </a>
-      <a href="https://buymeacoffee.com/thomasschatz" target="_blank" rel="noreferrer" style="display:inline-block; margin-left: 8px;">
-        <img alt="Buy me a coffee" src="https://img.shields.io/badge/Donate-Buy%20Me%20a%20Coffee-yellow.svg"/>
-      </a>
-    </div>
-  </div>
-
   <a class="nav_item {{ 'active' if nav == 'dashboard' else '' }}" href="./" data-ui="nav.dashboard" title="nav.dashboard">
     <span class="ico" aria-hidden="true">D</span>
     <span>Dashboard</span>

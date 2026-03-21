@@ -124,6 +124,9 @@ def test_topbar_has_ui_picker_button_and_hover_inspector():
     assert 'id="ui_picker_toggle"' in body
     assert 'id="ib_pagecard"' in body
     assert 'id="ib_page_search"' in body
+    assert 'data-ui="topbar.profile"' in body
+    assert 'data-ui="topbar.zoom"' in body
+    assert 'data-ui="nav.donate"' in body
     assert "function pickTarget(el)" in body
     assert "function currentPageLabel()" in body
     assert "const text = currentPageLabel() + ': ' + name;" in body
@@ -144,6 +147,13 @@ def test_history_extra_filters_removed():
     assert 'id="measurement"' not in body
     assert 'id="entity_id"' not in body
     assert 'id="reason"' not in body
+
+
+def test_config_has_status_bar_color_pickers():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "config.html").read_text()
+    assert 'id="ui_status_bar_bg_color"' in body
+    assert 'id="ui_status_bar_fg_color"' in body
+    assert 'function _syncStatusBarColorPickersFromText()' in body
 
 
 def test_global_filter_clear_buttons_are_available():

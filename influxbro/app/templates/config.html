@@ -420,12 +420,18 @@
             </div>
             <div>
               <label>Statusleiste: Hintergrund</label>
-              <input id="ui_status_bar_bg" placeholder="#FFFFFF" style="flex:1;" />
+              <div style="display:flex; gap: 8px; align-items:center;">
+                <input id="ui_status_bar_bg_color" type="color" value="#ffffff" style="width:44px; height:34px; padding:0;" />
+                <input id="ui_status_bar_bg" placeholder="#FFFFFF" style="flex:1;" />
+              </div>
               <div class="muted">Farbe der unteren festen Statusleiste.</div>
             </div>
             <div>
               <label>Statusleiste: Textfarbe</label>
-              <input id="ui_status_bar_fg" placeholder="#111111" style="flex:1;" />
+              <div style="display:flex; gap: 8px; align-items:center;">
+                <input id="ui_status_bar_fg_color" type="color" value="#111111" style="width:44px; height:34px; padding:0;" />
+                <input id="ui_status_bar_fg" placeholder="#111111" style="flex:1;" />
+              </div>
               <div class="muted">Text-/Buttonfarbe der unteren festen Statusleiste.</div>
             </div>
             <div>
@@ -879,6 +885,8 @@ let _OUTLIERS_SEL_IDX = -1;
 // Section title color pickers (sync with text inputs; text inputs also allow words)
 const $sectionBgColor = document.getElementById('ui_section_title_bg_color');
 const $sectionFgColor = document.getElementById('ui_section_title_fg_color');
+const $statusBarBgColor = document.getElementById('ui_status_bar_bg_color');
+const $statusBarFgColor = document.getElementById('ui_status_bar_fg_color');
 
 // Job state colors (sync color picker + text)
 const $jobRunColor = document.getElementById('ui_job_color_running_color');
@@ -902,10 +910,25 @@ function _syncSectionColorPickersFromText(){
   }catch(e){}
 }
 
+function _syncStatusBarColorPickersFromText(){
+  try{
+    const bg = el.ui_status_bar_bg ? String(el.ui_status_bar_bg.value || '').trim() : '';
+    if($statusBarBgColor && _isHexColor(bg)) $statusBarBgColor.value = bg;
+  }catch(e){}
+  try{
+    const fg = el.ui_status_bar_fg ? String(el.ui_status_bar_fg.value || '').trim() : '';
+    if($statusBarFgColor && _isHexColor(fg)) $statusBarFgColor.value = fg;
+  }catch(e){}
+}
+
 try{ if($sectionBgColor && el.ui_section_title_bg) $sectionBgColor.addEventListener('input', ()=>{ try{ el.ui_section_title_bg.value = String($sectionBgColor.value || '').toUpperCase(); }catch(e){}; _syncSectionColorPickersFromText(); }); }catch(e){}
 try{ if($sectionFgColor && el.ui_section_title_fg) $sectionFgColor.addEventListener('input', ()=>{ try{ el.ui_section_title_fg.value = String($sectionFgColor.value || '').toUpperCase(); }catch(e){}; _syncSectionColorPickersFromText(); }); }catch(e){}
 try{ if(el.ui_section_title_bg) el.ui_section_title_bg.addEventListener('input', ()=>_syncSectionColorPickersFromText()); }catch(e){}
 try{ if(el.ui_section_title_fg) el.ui_section_title_fg.addEventListener('input', ()=>_syncSectionColorPickersFromText()); }catch(e){}
+try{ if($statusBarBgColor && el.ui_status_bar_bg) $statusBarBgColor.addEventListener('input', ()=>{ try{ el.ui_status_bar_bg.value = String($statusBarBgColor.value || '').toUpperCase(); }catch(e){}; _syncStatusBarColorPickersFromText(); }); }catch(e){}
+try{ if($statusBarFgColor && el.ui_status_bar_fg) $statusBarFgColor.addEventListener('input', ()=>{ try{ el.ui_status_bar_fg.value = String($statusBarFgColor.value || '').toUpperCase(); }catch(e){}; _syncStatusBarColorPickersFromText(); }); }catch(e){}
+try{ if(el.ui_status_bar_bg) el.ui_status_bar_bg.addEventListener('input', ()=>_syncStatusBarColorPickersFromText()); }catch(e){}
+try{ if(el.ui_status_bar_fg) el.ui_status_bar_fg.addEventListener('input', ()=>_syncStatusBarColorPickersFromText()); }catch(e){}
 
 function _syncJobColorPickersFromText(){
   try{ const v = el.ui_job_color_running ? String(el.ui_job_color_running.value || '').trim() : ''; if($jobRunColor && _isHexColor(v)) $jobRunColor.value = v; }catch(e){}
@@ -1319,6 +1342,7 @@ function setForm(cfg){
   el.ui_status_bar_bg.value = cfg.ui_status_bar_bg ?? '#FFFFFF';
   el.ui_status_bar_fg.value = cfg.ui_status_bar_fg ?? '#111111';
   _syncSectionColorPickersFromText();
+  _syncStatusBarColorPickersFromText();
   el.ui_filter_label_width_px.value = cfg.ui_filter_label_width_px ?? 170;
   el.ui_filter_control_width_px.value = cfg.ui_filter_control_width_px ?? 320;
   el.ui_filter_search_width_px.value = cfg.ui_filter_search_width_px ?? 160;
