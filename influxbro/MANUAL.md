@@ -736,6 +736,12 @@ Ausreisser:
 
 - Allgemein: Der Picker kopiert jetzt das Format `Menüname: data-ui`, z. B. `Import: import.analyze`.
 
+## Release Notes (1.12.91)
+
+- Allgemein: Neue feste Titelkarte auf allen Seiten mit Seitentitel, Open/Close-All und globaler Seitensuche. Die untere Statusleiste ist jetzt dauerhaft sichtbar und in Höhe/Farben konfigurierbar.
+- History: Die Zusatzfilter `measurement`, `entity_id` und `reason` wurden entfernt.
+- Export: Der alte Bereich `export.advanced` wurde entfernt; die Auswahl nutzt jetzt nur noch den sichtbaren Auswahlbereich.
+
 ## Release Notes (1.12.80)
 
 - Export: Der Button `Export` verwendet den gewaehlten `Zielordner` jetzt wirklich als `target_dir` fuer den Export-Job. Damit kann die Datei serverseitig gezielt in ein gewuenschtes Verzeichnis geschrieben werden.

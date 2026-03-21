@@ -388,6 +388,11 @@
               <div class="muted">Sidebar Status Panel (Refresh/Eintraege).</div>
             </div>
             <div>
+              <label>Untere Statusleiste Hoehe (px)</label>
+              <input id="ui_status_bar_height_px" type="number" min="28" max="90" />
+              <div class="muted">Feste Hoehe der unteren Statusleiste auf allen Seiten.</div>
+            </div>
+            <div>
               <label class="ib_chk_row"><input type="checkbox" id="ui_status_show_sysinfo" data-ui="settings.ui.status_sysinfo" title="settings.ui.status_sysinfo" /><span>Info in Titelzeile einblenden</span></label>
               <div class="muted">Zeigt zusaetzlich Memory/CPU/Disk im Statusbereich (unter dem Menue).</div>
             </div>
@@ -412,6 +417,16 @@
                 <input id="ui_section_title_fg" placeholder="inherit oder #RRGGBB" style="flex:1;" />
               </div>
               <div class="muted">Leer = Standard. Erlaubt: <code>inherit</code> oder <code>#RRGGBB</code>.</div>
+            </div>
+            <div>
+              <label>Statusleiste: Hintergrund</label>
+              <input id="ui_status_bar_bg" placeholder="#FFFFFF" style="flex:1;" />
+              <div class="muted">Farbe der unteren festen Statusleiste.</div>
+            </div>
+            <div>
+              <label>Statusleiste: Textfarbe</label>
+              <input id="ui_status_bar_fg" placeholder="#111111" style="flex:1;" />
+              <div class="muted">Text-/Buttonfarbe der unteren festen Statusleiste.</div>
             </div>
             <div>
               <label>Filter Label Breite (px)</label>
@@ -821,7 +836,7 @@ const ids = [
   "ui_query_manual_max_points","ui_graph_jump_padding_intervals",
   "ui_font_size_px","ui_font_small_px","ui_checkbox_scale",
   "ui_section_title_bg","ui_section_title_fg",
-  "ui_status_font_px",
+  "ui_status_font_px","ui_status_bar_height_px","ui_status_bar_bg","ui_status_bar_fg",
   "ui_status_show_sysinfo",
   "ui_filter_label_width_px","ui_filter_control_width_px","ui_filter_search_width_px"
   ,"ui_sel_field_font_px","ui_sel_label_font_px","ui_sel_desc_font_px","ui_sel_auto_width","ui_sel_width_px"
@@ -1296,10 +1311,13 @@ function setForm(cfg){
   el.ui_font_size_px.value = cfg.ui_font_size_px ?? 14;
   el.ui_font_small_px.value = cfg.ui_font_small_px ?? 11;
   el.ui_status_font_px.value = cfg.ui_status_font_px ?? 12;
+  el.ui_status_bar_height_px.value = cfg.ui_status_bar_height_px ?? 38;
   el.ui_status_show_sysinfo.checked = !!cfg.ui_status_show_sysinfo;
   el.ui_checkbox_scale.value = cfg.ui_checkbox_scale ?? 0.85;
   el.ui_section_title_bg.value = cfg.ui_section_title_bg ?? '#3287A8';
   el.ui_section_title_fg.value = cfg.ui_section_title_fg ?? '#FFFFFF';
+  el.ui_status_bar_bg.value = cfg.ui_status_bar_bg ?? '#FFFFFF';
+  el.ui_status_bar_fg.value = cfg.ui_status_bar_fg ?? '#111111';
   _syncSectionColorPickersFromText();
   el.ui_filter_label_width_px.value = cfg.ui_filter_label_width_px ?? 170;
   el.ui_filter_control_width_px.value = cfg.ui_filter_control_width_px ?? 320;
@@ -1410,10 +1428,13 @@ function getForm(){
     ui_font_size_px: parseInt(el.ui_font_size_px.value, 10),
     ui_font_small_px: parseInt(el.ui_font_small_px.value, 10),
     ui_status_font_px: parseInt(el.ui_status_font_px.value, 10),
+    ui_status_bar_height_px: parseInt(el.ui_status_bar_height_px.value, 10),
     ui_status_show_sysinfo: !!el.ui_status_show_sysinfo.checked,
     ui_checkbox_scale: parseFloat(el.ui_checkbox_scale.value),
     ui_section_title_bg: String(el.ui_section_title_bg.value || '').trim(),
     ui_section_title_fg: String(el.ui_section_title_fg.value || '').trim(),
+    ui_status_bar_bg: String(el.ui_status_bar_bg.value || '').trim(),
+    ui_status_bar_fg: String(el.ui_status_bar_fg.value || '').trim(),
     ui_filter_label_width_px: parseInt(el.ui_filter_label_width_px.value, 10),
     ui_filter_control_width_px: parseInt(el.ui_filter_control_width_px.value, 10),
     ui_filter_search_width_px: parseInt(el.ui_filter_search_width_px.value, 10),

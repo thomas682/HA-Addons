@@ -122,11 +122,28 @@ def test_download_and_export_buttons_use_updated_icons():
 def test_topbar_has_ui_picker_button_and_hover_inspector():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
     assert 'id="ui_picker_toggle"' in body
+    assert 'id="ib_pagecard"' in body
+    assert 'id="ib_page_search"' in body
     assert "function pickTarget(el)" in body
     assert "function currentPageLabel()" in body
     assert "const text = currentPageLabel() + ': ' + name;" in body
     assert "Kopiert: " in body
     assert "document.addEventListener('mousemove', onMove, true);" in body
+
+
+def test_export_advanced_measurement_field_removed():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "export.html").read_text()
+    assert 'data-ui="export.advanced"' not in body
+    assert 'data-ui="export.measurement"' not in body
+    assert 'measurement_adv_list' not in body
+    assert '<span>_field</span>' in body
+
+
+def test_history_extra_filters_removed():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "history.html").read_text()
+    assert 'id="measurement"' not in body
+    assert 'id="entity_id"' not in body
+    assert 'id="reason"' not in body
 
 
 def test_global_filter_clear_buttons_are_available():
@@ -153,7 +170,7 @@ def test_export_field_loader_no_longer_forces_value_without_available_field():
     assert "addOpt('value');" not in body
     assert "if(preferred && xs.includes(preferred)) $f.value = preferred;" in body
     assert "else if(xs.includes('value')) $f.value = 'value';" in body
-    assert "if(!measurement && !friendly && !entity){ $f.value = ''; return; }" in body
+    assert "if(!measurement && !friendly && !entity){ if($f) $f.value = ''; return; }" in body
     assert "if(entity) q.push('entity_id=' + encodeURIComponent(entity));" in body
     assert "if(friendly) q.push('friendly_name=' + encodeURIComponent(friendly));" in body
 

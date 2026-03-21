@@ -660,6 +660,9 @@ DEFAULT_CFG = {
     "ui_font_small_px": 11,
     "ui_status_font_px": 12,
     "ui_status_show_sysinfo": False,
+    "ui_status_bar_height_px": 38,
+    "ui_status_bar_bg": "#FFFFFF",
+    "ui_status_bar_fg": "#111111",
     "ui_checkbox_scale": 0.85,
     # Section title row (details > summary): optional overrides
     # Allowed: "" (default), "transparent"/"inherit", or "#RRGGBB"
@@ -10085,6 +10088,7 @@ def api_set_config():
     _clamp_int("ui_font_size_px", 14, 10, 22)
     _clamp_int("ui_font_small_px", 11, 9, 18)
     _clamp_int("ui_status_font_px", 12, 9, 18)
+    _clamp_int("ui_status_bar_height_px", 38, 28, 90)
     _clamp_int("ui_table_row_height_px", 13, 9, 60)
     _clamp_int("ui_backup_table_row_height_px", 13, 9, 60)
     _clamp_int("ui_backup_visible_rows", 24, 5, 200)
@@ -10149,6 +10153,8 @@ def api_set_config():
 
     _clamp_color_opt("ui_section_title_bg", allow_words=("transparent",))
     _clamp_color_opt("ui_section_title_fg", allow_words=("inherit",))
+    _clamp_color("ui_status_bar_bg", "#FFFFFF")
+    _clamp_color("ui_status_bar_fg", "#111111")
 
     # Optional link
     try:

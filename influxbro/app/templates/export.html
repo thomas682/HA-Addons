@@ -84,7 +84,7 @@
         <div class="card_body">
           <div class="grid">
             <div class="ib_sel" id="c_measurement_filter">
-              <label class="label_row ib_sel_label"><span>Einheit (_measurement)</span><span id="cnt_measurement_filter" class="muted"></span></label>
+              <label class="label_row ib_sel_label"><span>_measurement</span><span id="cnt_measurement_filter" class="muted"></span></label>
               <div class="ib_sel_stack">
                 <input id="measurement_filter" list="measurement_list" placeholder="optional" data-ui="export.measurement_filter" title="export.measurement_filter" />
                 <datalist id="measurement_list">
@@ -98,8 +98,19 @@
                 </div>
               </div>
             </div>
+            <div class="ib_sel" id="c_field">
+              <label class="label_row ib_sel_label"><span>_field</span></label>
+              <div class="ib_sel_stack">
+                <input id="field" list="field_list" placeholder="value" data-ui="export.field" title="export.field" />
+                <datalist id="field_list"></datalist>
+                <div class="ib_sel_desc">
+                  <button type="button" class="ib_sel_help" data-title="_field" data-help="Wahl des internen Field-Namens. Default ist value, wenn vorhanden.">?</button>
+                  <div class="muted">Auswahl der Field-Spalte aus der Datenbank.</div>
+                </div>
+              </div>
+            </div>
             <div class="ib_sel" id="c_friendly_name">
-              <label class="label_row ib_sel_label"><span>Messwert (friendly_name)</span><span id="cnt_friendly_name" class="muted"></span></label>
+              <label class="label_row ib_sel_label"><span>friendly_name</span><span id="cnt_friendly_name" class="muted"></span></label>
               <div class="ib_sel_stack">
                 <input id="friendly_name" list="friendly_list" placeholder="optional" data-ui="export.friendly" title="export.friendly" />
                 <datalist id="friendly_list">
@@ -108,13 +119,13 @@
                   {% endfor %}
                 </datalist>
                 <div class="ib_sel_desc">
-                  <button type="button" class="ib_sel_help" data-title="Messwert (friendly_name)" data-help="Waehle den Klartext-Namen des Messwerts. Optional kannst du entity_id zusaetzlich setzen.">?</button>
+                    <button type="button" class="ib_sel_help" data-title="friendly_name" data-help="Waehle den Klartext-Namen des Messwerts. Optional kannst du entity_id zusaetzlich setzen.">?</button>
                   <div class="muted">Optionaler Filter. Du kannst frei tippen oder aus der Liste waehlen.</div>
                 </div>
               </div>
             </div>
             <div class="ib_sel" id="c_entity_id">
-              <label class="label_row ib_sel_label"><span>Entity ID (entity_id)</span><span id="cnt_entity_id" class="muted"></span></label>
+              <label class="label_row ib_sel_label"><span>entity_id</span><span id="cnt_entity_id" class="muted"></span></label>
               <div class="ib_sel_stack">
                 <input id="entity_id" list="entity_list" placeholder="optional" data-ui="export.entity" title="export.entity" />
                 <datalist id="entity_list">
@@ -162,29 +173,7 @@
             </div>
           </div>
 
-          <details class="card" style="margin-top: 10px;" data-ui="export.advanced" title="export.advanced">
-            <summary><span class="ib_summary_row"><span>Erweitert: Measurement / Field</span><button type="button" class="ib_info_icon" data-info-title="Export: Erweitert" data-info-body="Erweiterte Auswahl fuer Measurement/Field, falls friendly_name/entity_id nicht eindeutig ist." >i</button></span></summary>
-            <div class="card_body">
-              <div class="grid" style="margin-top: 0;">
-                <div>
-                  <label>Measurement (intern)</label>
-                  <input id="measurement" list="measurement_adv_list" placeholder="optional" data-ui="export.measurement" title="export.measurement" />
-                  <datalist id="measurement_adv_list">
-                    {% for it in (suggestions.measurements or []) %}
-                    <option value="{{ it|e }}"></option>
-                    {% endfor %}
-                  </datalist>
-                </div>
-                <div>
-                  <label>Field (intern)</label>
-                  <select id="field" data-ui="export.field" title="export.field"><option value="value" selected>value</option></select>
-                </div>
-              </div>
-              <div class="muted" style="margin-top: 6px;">Wird best-effort anhand friendly_name/entity_id ermittelt.</div>
-            </div>
-          </details>
-
-           <div class="row" data-ui="export.selection_row" title="export.selection_row">
+            <div class="row" data-ui="export.selection_row" title="export.selection_row">
              <div style="min-width: 320px; flex:1;">
                <label>Auswahl (aufgeloest)</label>
                <textarea id="sel" class="resizable" readonly data-ui="export.selection" title="export.selection"></textarea>
@@ -276,9 +265,10 @@
       const $start = document.getElementById('start');
       const $stop = document.getElementById('stop');
       const $rangeBounds = document.getElementById('export_range_bounds');
-      const $m = document.getElementById('measurement');
-      const $mAdvList = document.getElementById('measurement_adv_list');
+      const $m = $mf;
+      const $mAdvList = null;
       const $f = document.getElementById('field');
+      const $fieldList = document.getElementById('field_list');
       const $format = document.getElementById('format');
       const $delimiter = document.getElementById('delimiter');
       const $run = document.getElementById('run');
@@ -631,19 +621,8 @@
         const measurement = String(($m && $m.value) || '').trim();
         const friendly = String(($n && $n.value) || '').trim();
         const entity = String(($e && $e.value) || '').trim();
-        $f.innerHTML = '';
-        const addOpt = (x)=>{
-          const s = String(x || '').trim();
-          if(!s) return;
-          const has = Array.from($f.options || []).some(o => String(o.value) === s);
-          if(has) return;
-          const o=document.createElement('option'); o.value=s; o.textContent=s; $f.appendChild(o);
-        };
-        const emptyOpt = document.createElement('option');
-        emptyOpt.value = '';
-        emptyOpt.textContent = '';
-        $f.appendChild(emptyOpt);
-        if(!measurement && !friendly && !entity){ $f.value = ''; return; }
+        if($fieldList) $fieldList.innerHTML = '';
+        if(!measurement && !friendly && !entity){ if($f) $f.value = ''; return; }
         const tf = timeFilter();
         const q = [];
         if(measurement) q.push('measurement=' + encodeURIComponent(measurement));
@@ -652,12 +631,13 @@
         if(tf.start && tf.stop){ q.push('start=' + encodeURIComponent(tf.start)); q.push('stop=' + encodeURIComponent(tf.stop)); }
         if(tf.range) q.push('range=' + encodeURIComponent(tf.range));
         const j = await api('./api/fields?' + q.join('&'));
-        (j.fields||[]).forEach(addOpt);
-        const xs = Array.from($f.options || []).map(o => String(o.value || '')).filter(Boolean);
+        const xs = (j.fields||[]).map(x => String(x || '').trim()).filter(Boolean);
+        if($fieldList) $fieldList.innerHTML = xs.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"></option>`).join('');
         if(preferred && xs.includes(preferred)) $f.value = preferred;
         else if(xs.includes('value')) $f.value = 'value';
         else if(xs.length === 1) $f.value = xs[0];
         else $f.value = '';
+        try{ _selMaybeAutoWidth($f, $fieldList); }catch(e){}
       }
 
       function timeFilter(){

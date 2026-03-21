@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.91
+
+### UI
+
+- Allgemein: Neue feste Titelkarte auf allen Seiten mit Seitentitel, `sections.open_all`, `sections.close_all` und globaler Seitensuche. Die untere Statusleiste ist jetzt dauerhaft sichtbar und in Höhe/Farben konfigurierbar.
+- History: Die Zusatzfilter `measurement`, `entity_id` und `reason` wurden entfernt.
+- Export: Der alte Bereich `export.advanced` wurde entfernt; die Auswahl nutzt jetzt nur noch `_measurement`, `_field`, `entity_id` und `friendly_name` im sichtbaren Bereich.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.90
 
 ### UI

@@ -56,18 +56,6 @@
               <option value="rollback">rollback</option>
             </select>
           </div>
-          <div style="min-width: 220px; flex: 0 0 auto;">
-            <label>Einheit (_measurement)</label>
-            <input id="measurement" placeholder="optional" style="width:100%;" />
-          </div>
-          <div style="min-width: 220px; flex: 0 0 auto;">
-            <label>Entity ID (entity_id)</label>
-            <input id="entity_id" placeholder="optional" style="width:100%;" />
-          </div>
-          <div style="min-width: 220px; flex: 0 0 auto;">
-            <label>Grund (contains)</label>
-            <input id="reason" placeholder="optional" style="width:100%;" />
-          </div>
         </div>
 
         <div class="row" data-ui="history.actions" title="history.actions">
@@ -157,9 +145,6 @@
     const $ok = document.getElementById('ok');
     const $q = document.getElementById('q');
     const $action = document.getElementById('action');
-    const $measurement = document.getElementById('measurement');
-    const $entityId = document.getElementById('entity_id');
-    const $reason = document.getElementById('reason');
     const $refresh = document.getElementById('refresh');
     const $rows = document.getElementById('rows');
     const $info = document.getElementById('info');
@@ -266,9 +251,6 @@
       const qs = new URLSearchParams({
         q: ($q.value||'').trim(),
         action: ($action.value||'').trim(),
-        measurement: ($measurement.value||'').trim(),
-        entity_id: ($entityId.value||'').trim(),
-        reason: ($reason.value||'').trim(),
         limit: '500',
       });
       const j = await api('./api/history_list?' + qs.toString());
@@ -299,7 +281,7 @@
     }
 
     $refresh.addEventListener('click', (ev)=>{ ev.preventDefault(); ev.stopPropagation(); load().catch(e=>err(String(e.message||e))); });
-    [$q,$action,$measurement,$entityId,$reason].forEach(el=>{ el.addEventListener('change', ()=>load().catch(()=>{})); });
+    [$q,$action].forEach(el=>{ el.addEventListener('change', ()=>load().catch(()=>{})); });
     $selAll.addEventListener('change', ()=>{
       const ids = (LIST || []).map(x=>String(x.id||'')).filter(Boolean);
       if($selAll.checked) ids.forEach(id=>SELECTED.add(id)); else ids.forEach(id=>SELECTED.delete(id));
