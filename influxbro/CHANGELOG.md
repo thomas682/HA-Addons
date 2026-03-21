@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.12.90
+
+### UI
+
+- Allgemein: Der Picker kopiert jetzt nicht mehr nur den `data-ui`-Namen, sondern das Format `Menüname: data-ui`, z. B. `Import: import.analyze`.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.89
 
 ### UI

@@ -294,6 +294,23 @@
       }catch(e){ return null; }
     }
 
+    function currentPageLabel(){
+      try{
+        const active = document.querySelector('.nav_item.active');
+        if(active){
+          const spans = active.querySelectorAll('span');
+          const txt = String((spans && spans.length ? spans[spans.length - 1].textContent : active.textContent) || '').trim();
+          if(txt) return txt;
+        }
+      }catch(e){}
+      try{
+        const p = String(location && location.pathname ? location.pathname : '').replace(/\/+$/,'');
+        const seg = p.split('/').filter(Boolean).pop() || 'Dashboard';
+        return seg === '6ce7c04c_influxbro' ? 'Dashboard' : seg;
+      }catch(e){}
+      return 'Seite';
+    }
+
     function renderTarget(el, ev){
       ensureUi();
       if(!el){
@@ -350,10 +367,11 @@
       if(!t) return;
       try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
       const name = String(t.getAttribute('data-ui') || '').trim();
-      const ok = await copyText(name);
+      const text = currentPageLabel() + ': ' + name;
+      const ok = await copyText(text);
       try{
         if(window.InfluxBroPopup && window.InfluxBroPopup.show){
-          window.InfluxBroPopup.show('UI Picker', ok ? ('Kopiert: ' + name) : ('Kopieren fehlgeschlagen: ' + name));
+          window.InfluxBroPopup.show('UI Picker', ok ? ('Kopiert: ' + text) : ('Kopieren fehlgeschlagen: ' + text));
         }
       }catch(e){}
       stop();

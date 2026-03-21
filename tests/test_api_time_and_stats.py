@@ -123,6 +123,8 @@ def test_topbar_has_ui_picker_button_and_hover_inspector():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
     assert 'id="ui_picker_toggle"' in body
     assert "function pickTarget(el)" in body
+    assert "function currentPageLabel()" in body
+    assert "const text = currentPageLabel() + ': ' + name;" in body
     assert "Kopiert: " in body
     assert "document.addEventListener('mousemove', onMove, true);" in body
 
