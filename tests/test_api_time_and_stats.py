@@ -131,6 +131,10 @@ def test_topbar_has_ui_picker_button_and_hover_inspector():
     assert 'id="ib_close_all"' in body
     assert 'id="ib_page_search_clear"' not in body
     assert '#ui_profile_sel { width: 80px; min-width: 80px; max-width: 80px;' in body
+    assert 'class="iconbtn" type="button" data-ui="sections.open_all"' in body
+    assert 'class="iconbtn" type="button" data-ui="sections.close_all"' in body
+    assert "function initPageCard(){" in body
+    assert "$card.dataset.ibPagecardReady = '1';" in body
     assert 'class="meta hintline" id="ui_profile_hint"' in body
     assert 'class="branddonate" data-ui="nav.donate"' in body
     assert "function pickTarget(el)" in body

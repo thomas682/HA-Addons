@@ -120,6 +120,8 @@
     .ib_pagecard .actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
     .ib_pagecard .actions input { height:34px; padding:6px 10px; min-width:240px; }
     .ib_pagecard .actions button { height:34px; padding:6px 10px; }
+    .ib_pagecard .actions .iconbtn { width:34px; padding:0; display:inline-flex; align-items:center; justify-content:center; }
+    .ib_pagecard .actions .iconbtn svg { width:18px; height:18px; }
     .ib_pagecard_results { position:fixed; z-index:9997; top: calc(var(--ib-pagecard-h)); right:12px; width:min(560px, calc(100vw - 24px)); max-height:320px; overflow:auto; background:#fff; color:#111; border:1px solid #ddd; border-radius:12px; box-shadow:0 12px 40px rgba(0,0,0,0.18); display:none; }
     .ib_pagecard_results button { display:block; width:100%; text-align:left; border:0; border-bottom:1px solid #eee; background:#fff; padding:10px 12px; cursor:pointer; }
     .ib_pagecard_results button:hover { background:#f6f6f6; }
@@ -246,41 +248,43 @@
   </script>
   <script>
   (function(){
-    const $card = document.getElementById('ib_pagecard');
-    const $title = document.getElementById('ib_pagecard_title');
-    const $search = document.getElementById('ib_page_search');
-    const $open = document.getElementById('ib_open_all');
-    const $close = document.getElementById('ib_close_all');
-    const $results = document.getElementById('ib_pagecard_results');
-    if(!$card || !$title) return;
+    function initPageCard(){
+      const $card = document.getElementById('ib_pagecard');
+      const $title = document.getElementById('ib_pagecard_title');
+      const $search = document.getElementById('ib_page_search');
+      const $open = document.getElementById('ib_open_all');
+      const $close = document.getElementById('ib_close_all');
+      const $results = document.getElementById('ib_pagecard_results');
+      if(!$card || !$title || $card.dataset.ibPagecardReady === '1') return;
+      $card.dataset.ibPagecardReady = '1';
 
-    const main = document.querySelector('main.content');
-    const h2 = main ? main.querySelector('h2') : null;
-    $title.textContent = String((h2 && h2.textContent) || document.title || 'Seite').replace(/^InfluxBro\s*[–-]\s*/, '').trim();
+      const main = document.querySelector('main.content');
+      const h2 = main ? main.querySelector('h2') : null;
+      $title.textContent = String((h2 && h2.textContent) || document.title || 'Seite').replace(/^InfluxBro\s*[–-]\s*/, '').trim();
 
-    function setAllDetailsOpen(root, wantOpen){
-      try{
-        if(!root) return;
-        root.querySelectorAll('details').forEach(d=>{ d.open = !!wantOpen; });
-      }catch(e){}
-    }
-    try{ if($open) $open.addEventListener('click', ()=>setAllDetailsOpen(main, true)); }catch(e){}
-    try{ if($close) $close.addEventListener('click', ()=>setAllDetailsOpen(main, false)); }catch(e){}
+      function setAllDetailsOpen(root, wantOpen){
+        try{
+          if(!root) return;
+          root.querySelectorAll('details').forEach(d=>{ d.open = !!wantOpen; });
+        }catch(e){}
+      }
+      try{ if($open) $open.addEventListener('click', ()=>setAllDetailsOpen(main, true)); }catch(e){}
+      try{ if($close) $close.addEventListener('click', ()=>setAllDetailsOpen(main, false)); }catch(e){}
 
-    function renderResults(xs){
-      if(!$results) return;
-      if(!xs.length){ $results.style.display = 'none'; $results.innerHTML = ''; return; }
-      $results.innerHTML = xs.map((x,i)=>`<button type="button" data-idx="${i}"><div><strong>${x.ui || '(ohne data-ui)'}</strong></div><div style="font-size:12px; opacity:.75;">${x.txt || ''}</div></button>`).join('');
-      $results.style.display = 'block';
-      $results.querySelectorAll('button').forEach(btn=>btn.addEventListener('click', ()=>{
-        const idx = Number(btn.getAttribute('data-idx') || -1);
-        const hit = xs[idx];
-        if(!hit || !hit.el) return;
-        try{ hit.el.scrollIntoView({behavior:'smooth', block:'center'}); }catch(e){}
-        try{ hit.el.classList.add('jump_hl'); setTimeout(()=>{ try{ hit.el.classList.remove('jump_hl'); }catch(e){} }, 1400); }catch(e){}
-        $results.style.display = 'none';
-      }));
-    }
+      function renderResults(xs){
+        if(!$results) return;
+        if(!xs.length){ $results.style.display = 'none'; $results.innerHTML = ''; return; }
+        $results.innerHTML = xs.map((x,i)=>`<button type="button" data-idx="${i}"><div><strong>${x.ui || '(ohne data-ui)'}</strong></div><div style="font-size:12px; opacity:.75;">${x.txt || ''}</div></button>`).join('');
+        $results.style.display = 'block';
+        $results.querySelectorAll('button').forEach(btn=>btn.addEventListener('click', ()=>{
+          const idx = Number(btn.getAttribute('data-idx') || -1);
+          const hit = xs[idx];
+          if(!hit || !hit.el) return;
+          try{ hit.el.scrollIntoView({behavior:'smooth', block:'center'}); }catch(e){}
+          try{ hit.el.classList.add('jump_hl'); setTimeout(()=>{ try{ hit.el.classList.remove('jump_hl'); }catch(e){} }, 1400); }catch(e){}
+          $results.style.display = 'none';
+        }));
+      }
 
     function _norm(s){ return String(s || '').trim(); }
     function _lc(s){ return _norm(s).toLowerCase(); }
@@ -363,6 +367,10 @@
 
       try{ if($search) $search.addEventListener('input', runSearch); }catch(e){}
       try{ document.addEventListener('click', (ev)=>{ if(!$results || !$results.style || $results.style.display === 'none') return; if(ev.target === $search || $results.contains(ev.target)) return; $results.style.display='none'; }, true); }catch(e){}
+    }
+
+    if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initPageCard, { once: true });
+    else initPageCard();
   })();
   </script>
   <script>
@@ -582,8 +590,8 @@
       <button id="ib_zoom_in" type="button" aria-label="Zoom in" data-ui="topbar.zoom.in" title="topbar.zoom.in">+</button>
     </div>
     <input id="ib_page_search" type="text" data-ui="page.search" title="page.search" placeholder="Elemente auf dieser Seite suchen..." />
-    <button id="ib_open_all" type="button" data-ui="sections.open_all" title="sections.open_all">Alle oeffnen</button>
-    <button id="ib_close_all" type="button" data-ui="sections.close_all" title="sections.close_all">Alle schliessen</button>
+    <button id="ib_open_all" class="iconbtn" type="button" data-ui="sections.open_all" title="sections.open_all" aria-label="Alle oeffnen"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 5h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.6"/></svg></button>
+    <button id="ib_close_all" class="iconbtn" type="button" data-ui="sections.close_all" title="sections.close_all" aria-label="Alle schliessen"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M18 15l-6-6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 19h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.6"/></svg></button>
   </div>
 </div>
 <div class="ib_pagecard_results" id="ib_pagecard_results"></div>
