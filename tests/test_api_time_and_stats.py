@@ -127,6 +127,10 @@ def test_topbar_has_ui_picker_button_and_hover_inspector():
     assert 'data-ui="topbar.profile"' in body
     assert 'data-ui="topbar.zoom"' in body
     assert 'data-ui="nav.donate"' in body
+    assert 'id="ib_open_all"' not in body
+    assert 'id="ib_close_all"' not in body
+    assert 'id="ib_page_search_clear"' not in body
+    assert '#ui_profile_sel { width: 40px; min-width: 40px; max-width: 40px;' in body
     assert "function pickTarget(el)" in body
     assert "function currentPageLabel()" in body
     assert "const text = currentPageLabel() + ': ' + name;" in body
@@ -154,6 +158,12 @@ def test_config_has_status_bar_color_pickers():
     assert 'id="ui_status_bar_bg_color"' in body
     assert 'id="ui_status_bar_fg_color"' in body
     assert 'function _syncStatusBarColorPickersFromText()' in body
+
+
+def test_sidebar_starts_below_pagecard():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_nav.html").read_text()
+    assert 'padding-top: calc(var(--ib-pagecard-h, 0px) + 8px);' in body
+    assert 'top: calc(var(--ib-pagecard-h, 0px) + 8px);' in body
 
 
 def test_global_filter_clear_buttons_are_available():

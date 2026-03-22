@@ -747,6 +747,11 @@ Ausreisser:
 - Titelzeile: `nav.donate` sitzt jetzt neben `InfluxBro`, darunter steht `by Thomas Schatz`. `topbar.profile` und `topbar.zoom` sind in die Titelzeile gewandert. Die bisherigen Buttons `sections.open_all`, `sections.close_all` und `page.search.clear` wurden dort entfernt.
 - Einstellungen: `ui_status_bar_bg` und `ui_status_bar_fg` haben jetzt links einen Color Picker vor dem Farbtext.
 
+## Release Notes (1.12.93)
+
+- Titelzeile: `nav.profile.select` ist jetzt auf 40px fixiert, `nav.donate` sitzt in der Titelzeile neben `InfluxBro`, und das Menü startet mit etwas Abstand unterhalb von `ib_pagecard`.
+- Seitensuche: `page.search` bleibt als einzelnes Suchfeld in der Titelzeile und durchsucht nur die aktuell geöffnete Seite.
+
 ## Release Notes (1.12.80)
 
 - Export: Der Button `Export` verwendet den gewaehlten `Zielordner` jetzt wirklich als `target_dir` fuer den Export-Job. Damit kann die Datei serverseitig gezielt in ein gewuenschtes Verzeichnis geschrieben werden.

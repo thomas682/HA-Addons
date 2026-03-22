@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.93
+
+### UI
+
+- Titelzeile: Nachbesserung zu `#95`. `nav.profile.select` ist jetzt auf 40px fixiert, `nav.donate` sitzt in der Titelzeile neben `InfluxBro`, und das Menü startet mit Abstand unterhalb von `ib_pagecard`.
+- Seitensuche: `page.search` bleibt als einzelnes Suchfeld in der Titelzeile und durchsucht weiterhin nur die aktuell geöffnete Seite.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.92
 
 ### UI

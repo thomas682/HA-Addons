@@ -81,6 +81,7 @@
     }
     .ib_topbar .meta { font-size: 12px; opacity: 0.75; white-space: nowrap; }
     .ib_topbar select { height: 34px; padding: 6px 10px; max-width: 220px; }
+    #ui_profile_sel { width: 40px; min-width: 40px; max-width: 40px; padding: 6px 4px; }
     .ib_topbar button { cursor:pointer; padding: 6px 10px; height: 34px; }
     .ib_topbar button.active { background:#0b0b0c; color:#fff; }
     .ib_topbar .zoom {
@@ -252,14 +253,6 @@
     const h2 = main ? main.querySelector('h2') : null;
     $title.textContent = String((h2 && h2.textContent) || document.title || 'Seite').replace(/^InfluxBro\s*[–-]\s*/, '').trim();
 
-    function labelFor(el){
-      try{
-        const ui = String(el.getAttribute('data-ui') || '').trim();
-        const txt = String((el.textContent || el.getAttribute('placeholder') || el.getAttribute('title') || '')).replace(/\s+/g,' ').trim();
-        return { ui, txt };
-      }catch(e){ return { ui:'', txt:'' }; }
-    }
-
     function renderResults(xs){
       if(!$results) return;
       if(!xs.length){ $results.style.display = 'none'; $results.innerHTML = ''; return; }
@@ -275,21 +268,87 @@
       }));
     }
 
-    function runSearch(){
-      try{
-        const q = String(($search && $search.value) || '').trim().toLowerCase();
-        if(!q){ renderResults([]); return; }
-        const xs = [];
-        (main || document).querySelectorAll('[data-ui]').forEach(el=>{
-          const info = labelFor(el);
-          const hay = (info.ui + ' ' + info.txt).toLowerCase();
-          if(hay.includes(q)) xs.push({ el, ui: info.ui, txt: info.txt });
-        });
-        renderResults(xs.slice(0, 50));
-      }catch(e){ renderResults([]); }
-    }
-    try{ if($search) $search.addEventListener('input', runSearch); }catch(e){}
-    try{ document.addEventListener('click', (ev)=>{ if(!$results || !$results.style || $results.style.display === 'none') return; if(ev.target === $search || $results.contains(ev.target)) return; $results.style.display='none'; }, true); }catch(e){}
+    function _norm(s){ return String(s || '').trim(); }
+    function _lc(s){ return _norm(s).toLowerCase(); }
+    function _sectionPathFor(el){
+        try{
+          const parts = [];
+          let cur = el;
+          while(cur){
+            const d = cur.closest && cur.closest('details');
+            if(!d) break;
+            const sum = d.querySelector('summary');
+            const t = _norm(sum ? sum.textContent : '');
+            if(t) parts.unshift(t);
+            cur = d.parentElement;
+            if(!cur) break;
+            const up = cur.closest && cur.closest('details');
+            if(!up) break;
+            cur = up;
+          }
+          return parts;
+        }catch(e){ return []; }
+      }
+      function _labelFor(el){
+        try{
+          const tag = String(el.tagName || '').toLowerCase();
+          if(tag === 'input'){
+            const t = String(el.getAttribute('type') || '').toLowerCase();
+            if(t === 'checkbox'){
+              const lab = el.closest('label');
+              const txt = _norm(lab ? lab.textContent : '');
+              if(txt) return txt;
+            }
+          }
+          const p = el.parentElement;
+          if(p){
+            const lab = p.querySelector('label');
+            const txt = _norm(lab ? lab.textContent : '');
+            if(txt) return txt;
+          }
+        }catch(e){}
+        return _norm(el.getAttribute('title') || el.getAttribute('placeholder') || el.textContent || '');
+      }
+
+      function buildIndex(){
+        try{
+          const sel = 'button[id], select[id], input[id], textarea[id], [data-ui]';
+          const seen = new Set();
+          const out = [];
+          (main || document).querySelectorAll(sel).forEach(el=>{
+            try{
+              const ui = _norm(el.getAttribute('data-ui'));
+              const id = _norm(el.getAttribute('id'));
+              const key = ui || ('#' + id);
+              if(!key || seen.has(key)) return;
+              if(id === 'ib_page_search') return;
+              seen.add(key);
+              const label = _labelFor(el);
+              const sect = _sectionPathFor(el);
+              const txt = _norm(el.textContent || el.getAttribute('placeholder') || el.getAttribute('title') || '');
+              const hay = [key, label, txt, sect.join(' / ')].map(_lc).join(' | ');
+              out.push({el, ui:key, txt: label || txt, sect, hay});
+            }catch(e){}
+          });
+          return out;
+        }catch(e){ return []; }
+      }
+
+      function runSearch(){
+        try{
+          const q = _lc(($search && $search.value) || '');
+          if(!q){ renderResults([]); return; }
+          const xs = buildIndex().filter(x => x.hay.includes(q)).slice(0, 50);
+          renderResults(xs.map(x=>({
+            el: x.el,
+            ui: x.ui,
+            txt: ((x.sect && x.sect.length) ? ('[' + x.sect.join(' / ') + '] ') : '') + (x.txt || ''),
+          })));
+        }catch(e){ renderResults([]); }
+      }
+
+      try{ if($search) $search.addEventListener('input', runSearch); }catch(e){}
+      try{ document.addEventListener('click', (ev)=>{ if(!$results || !$results.style || $results.style.display === 'none') return; if(ev.target === $search || $results.contains(ev.target)) return; $results.style.display='none'; }, true); }catch(e){}
   })();
   </script>
   <script>
