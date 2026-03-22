@@ -768,6 +768,10 @@ Ausreisser:
 
 - Titelzeile: `sections.open_all` und `sections.close_all` sitzen jetzt wieder in `page.title.card` direkt rechts neben `page.search`. Die alte Einblendung dieser Buttons im Seiteninhalt wurde entfernt.
 
+## Release Notes (1.12.98)
+
+- Einstellungen: Letzte alte Layout-/Such-Stile der früheren Settings-Sonderkarte entfernt, damit die Seite vollständig auf die gemeinsame `page.title.card`-Darstellung zurückgeführt ist.
+
 ## Release Notes (1.12.80)
 
 - Export: Der Button `Export` verwendet den gewaehlten `Zielordner` jetzt wirklich als `target_dir` fuer den Export-Job. Damit kann die Datei serverseitig gezielt in ein gewuenschtes Verzeichnis geschrieben werden.

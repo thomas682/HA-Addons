@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.12.98
+
+### UI
+
+- Einstellungen: Letzte alte Layout-/Such-Stile der früheren Settings-Sonderkarte entfernt, damit die Seite vollständig auf die gemeinsame `page.title.card`-Darstellung zurückgeführt ist.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.97
 
 ### UI
