@@ -780,6 +780,11 @@ Ausreisser:
 
 - Titelzeile: `sections.open_all` und `sections.close_all` sitzen jetzt wieder als Icon-Buttons direkt rechts neben `page.search`. Die Seitensuche initialisiert sich erst, wenn die gemeinsame `page.title.card` im DOM vorhanden ist, damit sie auf allen Seiten zuverlässig arbeitet.
 
+## Release Notes (1.12.101)
+
+- Einstellungen: Die Info-Buttons behalten jetzt auch auf der Einstellungsseite wieder ihre feste 22x22-Darstellung und werden nicht mehr von der seitenlokalen Button-Breitenregel aufgezogen.
+- Navigation: Die Sidebar startet jetzt global mit 20px Abstand unterhalb von `page.title.card`.
+
 ## Release Notes (1.12.80)
 
 - Export: Der Button `Export` verwendet den gewaehlten `Zielordner` jetzt wirklich als `target_dir` fuer den Export-Job. Damit kann die Datei serverseitig gezielt in ein gewuenschtes Verzeichnis geschrieben werden.

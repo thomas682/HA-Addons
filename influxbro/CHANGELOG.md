@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.101
+
+### UI
+
+- Einstellungen: `main.content button` greift jetzt nicht mehr auf `.ib_info_icon` durch. Die Info-Buttons behalten damit auch auf der Einstellungsseite wieder die feste 22x22-Darstellung wie auf den anderen Seiten.
+- Navigation: `nav.dashboard` und die gesamte Sidebar starten jetzt global mit 20px Abstand unterhalb von `page.title.card`.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.100
 
 ### UI
