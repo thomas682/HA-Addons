@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.12.96
+
+### UI
+
+- Einstellungen: Die separate Settings-Suchkarte und der doppelte Seitentitel wurden entfernt. Die Einstellungen-Seite nutzt jetzt 1:1 dieselbe `page.title.card`-Darstellung wie das Dashboard.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.95
 
 ### UI

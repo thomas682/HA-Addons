@@ -44,15 +44,6 @@
     details.card[open] > summary:after { content: "▴"; }
     details.card > .card_body { padding: 0 12px 12px 12px; }
 
-    /* Keep settings search visible while scrolling */
-    #settings_search_card {
-      position: sticky;
-      top: calc(var(--ib-topbar-h) + 10px);
-      z-index: 50;
-      background: rgba(255,255,255,0.98);
-      backdrop-filter: blur(6px);
-      box-shadow: 0 8px 18px rgba(0,0,0,0.04);
-    }
     .muted { opacity: 0.7; font-size: 12px; }
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
     code { background:#f6f6f6; padding:2px 6px; border-radius:6px; }
@@ -84,10 +75,6 @@
     {% include "_nav.html" %}
     <main class="content" data-ui="settings.page" title="settings.page">
 
-  <h2>Einstellungen</h2>
-  <div class="muted">Schreiben: yes</div>
-  <div style="position:absolute;top:10px;right:20px;font-size:12px;color:#888;" id="version_box"></div>
-
   <div class="card" id="loadyaml_card" style="display:none;">
     <div class="muted" id="loadyaml_txt"></div>
   </div>
@@ -97,20 +84,6 @@
       Einstellungen werden in <code>/data/influx_browser_config.json</code> gespeichert (persistent).
       Token/Passwort erscheinen als <code>********</code>.
     </div>
-  </div>
-
-  <div class="card" id="settings_search_card" data-ui="settings.search.card" title="settings.search.card">
-    <div class="muted" style="margin-bottom: 6px;">Suche (zeigt, wo eine Einstellung ist)</div>
-    <div class="row" style="align-items: stretch;">
-      <div style="flex:1; min-width: 260px;">
-        <input id="settings_search" data-ui="settings.search" title="settings.search" placeholder="z.B. token, cache, outlier, tooltips, verify_ssl ..." />
-      </div>
-      <div style="min-width: 120px;">
-        <button id="settings_search_clear" type="button" data-ui="settings.search.clear" title="settings.search.clear">Leeren</button>
-      </div>
-    </div>
-    <div id="settings_search_hint" class="muted" style="margin-top: 8px;"></div>
-    <div id="settings_search_results" style="margin-top: 10px;"></div>
   </div>
 
   <details class="card" open data-ui="settings.section.yaml" title="settings.section.yaml">
@@ -869,11 +842,6 @@ const ids = [
 const el = {};
 ids.forEach(id => el[id] = document.getElementById(id));
 
-const $settingsSearch = document.getElementById('settings_search');
-const $settingsSearchClear = document.getElementById('settings_search_clear');
-const $settingsSearchHint = document.getElementById('settings_search_hint');
-const $settingsSearchResults = document.getElementById('settings_search_results');
-
 const $outliersTbl = document.getElementById('outliers_tbl');
 const $outliersAuto = document.getElementById('outliers_autowidth');
 const $outliersBox = document.getElementById('outliers_box');
@@ -946,162 +914,6 @@ try{ if(el.ui_job_color_running) el.ui_job_color_running.addEventListener('input
 try{ if(el.ui_job_color_done) el.ui_job_color_done.addEventListener('input', ()=>_syncJobColorPickersFromText()); }catch(e){}
 try{ if(el.ui_job_color_error) el.ui_job_color_error.addEventListener('input', ()=>_syncJobColorPickersFromText()); }catch(e){}
 try{ if(el.ui_job_color_cancelled) el.ui_job_color_cancelled.addEventListener('input', ()=>_syncJobColorPickersFromText()); }catch(e){}
-
-function _norm(s){ return String(s || '').trim(); }
-function _lc(s){ return _norm(s).toLowerCase(); }
-
-function _sectionPathFor(el){
-  try{
-    const parts = [];
-    let cur = el;
-    while(cur){
-      const d = cur.closest && cur.closest('details');
-      if(!d) break;
-      const sum = d.querySelector('summary');
-      const t = _norm(sum ? sum.textContent : '');
-      if(t) parts.unshift(t);
-      cur = d.parentElement;
-      if(!cur) break;
-      // continue searching up
-      const up = cur.closest && cur.closest('details');
-      if(!up) break;
-      cur = up;
-    }
-    return parts;
-  }catch(e){
-    return [];
-  }
-}
-
-function _labelForControl(ctrl){
-  try{
-    const tag = String(ctrl.tagName || '').toLowerCase();
-    if(tag === 'input'){
-      const t = String(ctrl.getAttribute('type') || '').toLowerCase();
-      if(t === 'checkbox'){
-        const lab = ctrl.closest('label');
-        const txt = _norm(lab ? lab.textContent : '');
-        return txt;
-      }
-    }
-
-    const wrap = ctrl.parentElement;
-    if(wrap){
-      const lab = wrap.querySelector('label');
-      const txt = _norm(lab ? lab.textContent : '');
-      if(txt) return txt;
-    }
-  }catch(e){}
-  return _norm(ctrl.getAttribute('id') || ctrl.getAttribute('data-ui') || '');
-}
-
-function _descForControl(ctrl){
-  try{
-    // Prefer tooltip map (title contains our explanation + (key)).
-    const ttl = _norm(ctrl.getAttribute('title'));
-    if(ttl) return ttl;
-    const wrap = ctrl.parentElement;
-    if(wrap){
-      const m = wrap.querySelector('.muted');
-      const txt = _norm(m ? m.textContent : '');
-      if(txt) return txt;
-    }
-  }catch(e){}
-  return '';
-}
-
-let _SETTINGS_INDEX = null;
-function _buildSettingsIndex(){
-  try{
-    if(_SETTINGS_INDEX) return _SETTINGS_INDEX;
-    const main = document.querySelector('main.content');
-    if(!main) return [];
-    const sel = 'button[id], select[id], input[id], textarea[id]';
-    const nodes = Array.from(main.querySelectorAll(sel));
-    const out = [];
-    nodes.forEach(ctrl => {
-      try{
-        const id = _norm(ctrl.getAttribute('id'));
-        if(!id) return;
-        if(id === 'settings_search' || id === 'settings_search_clear') return;
-        const ui = _norm(ctrl.getAttribute('data-ui'));
-        const key = ui || ('#' + id);
-        const label = _labelForControl(ctrl);
-        const desc = _descForControl(ctrl);
-        const sect = _sectionPathFor(ctrl);
-        const hay = [label, key, desc, sect.join(' / ')].map(_lc).join(' | ');
-        out.push({ key, label, desc, sect, hay, ctrl });
-      }catch(e){}
-    });
-    _SETTINGS_INDEX = out;
-    return out;
-  }catch(e){
-    _SETTINGS_INDEX = [];
-    return [];
-  }
-}
-
-function _openDetailsParents(ctrl){
-  try{
-    let cur = ctrl;
-    const seen = new Set();
-    while(cur){
-      const d = cur.closest && cur.closest('details');
-      if(!d) break;
-      const id = _norm(d.getAttribute('id'));
-      if(id && seen.has(id)) break;
-      if(id) seen.add(id);
-      d.open = true;
-      cur = d.parentElement;
-      if(!cur) break;
-    }
-  }catch(e){}
-}
-
-function _flash(ctrl){
-  try{
-    ctrl.classList.add('jump_hl');
-    setTimeout(()=>{ try{ ctrl.classList.remove('jump_hl'); }catch(e){} }, 1200);
-  }catch(e){}
-}
-
-function _jumpTo(ctrl){
-  try{
-    if(!ctrl) return;
-    _openDetailsParents(ctrl);
-    try{ ctrl.scrollIntoView({block:'center', behavior:'smooth'}); }catch(e){ try{ ctrl.scrollIntoView(); }catch(ex){} }
-    try{ ctrl.focus({preventScroll:true}); }catch(e){ try{ ctrl.focus(); }catch(ex){} }
-    _flash(ctrl);
-  }catch(e){}
-}
-
-function _renderSearch(q){
-  const query = _lc(q);
-  const idx = _buildSettingsIndex();
-  if(!$settingsSearchResults || !$settingsSearchHint) return;
-  if(!query){
-    $settingsSearchHint.textContent = 'Tippe, um Einstellungen nach Name/Key/Tooltip zu finden.';
-    $settingsSearchResults.innerHTML = '';
-    return;
-  }
-  const hits = idx.filter(x => x.hay.includes(query)).slice(0, 30);
-  $settingsSearchHint.textContent = hits.length ? (`Treffer: ${hits.length} (max 30)`) : 'Keine Treffer.';
-
-  const box = document.createElement('div');
-  box.className = 'search_hits';
-  hits.forEach(h => {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.className = 'search_hit_btn';
-    const sect = (h.sect && h.sect.length) ? ('[' + h.sect.join(' / ') + '] ') : '';
-    const d = h.desc ? (' - ' + h.desc) : '';
-    b.textContent = `${sect}${h.label}${d} (${h.key})`;
-    b.onclick = ()=>_jumpTo(h.ctrl);
-    box.appendChild(b);
-  });
-  $settingsSearchResults.innerHTML = '';
-  $settingsSearchResults.appendChild(box);
-}
 
 function _parseUnitMapText(raw){
   const out = {};
@@ -1703,25 +1515,7 @@ try{
   });
 }catch(e){}
 
-try{
-  if($settingsSearch) $settingsSearch.addEventListener('input', ()=>_renderSearch($settingsSearch.value || ''));
-  if($settingsSearchClear) $settingsSearchClear.addEventListener('click', ()=>{ try{ $settingsSearch.value = ''; }catch(e){}; _renderSearch(''); });
-  _renderSearch('');
-}catch(e){}
-
 load().catch(e=>err(String(e)));
-</script>
-
-<script>
-(async () => {
-  try{
-    const r = await fetch("./api/info");
-    const j = await r.json();
-    if(j && j.ok){
-      document.getElementById("version_box").innerText = "Version: " + j.version;
-    }
-  }catch(e){}
-})();
 </script>
 
 {% include "_table_cols.html" %}
