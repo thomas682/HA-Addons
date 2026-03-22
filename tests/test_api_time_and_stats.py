@@ -135,6 +135,8 @@ def test_topbar_has_ui_picker_button_and_hover_inspector():
     assert 'class="branddonate" data-ui="nav.donate"' in body
     assert "function pickTarget(el)" in body
     assert "function currentPageLabel()" in body
+    assert "function initPicker(){" in body
+    assert "$btn.dataset.ibPickerReady = '1';" in body
     assert "const text = currentPageLabel() + ': ' + name;" in body
     assert "Kopiert: " in body
     assert "document.addEventListener('mousemove', onMove, true);" in body

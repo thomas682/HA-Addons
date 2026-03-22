@@ -356,13 +356,15 @@
   </script>
   <script>
   (function(){
-    const $btn = document.getElementById('ui_picker_toggle');
-    if(!$btn) return;
+    function initPicker(){
+      const $btn = document.getElementById('ui_picker_toggle');
+      if(!$btn || $btn.dataset.ibPickerReady === '1') return;
+      $btn.dataset.ibPickerReady = '1';
 
-    let active = false;
-    let currentEl = null;
-    let overlay = null;
-    let badge = null;
+      let active = false;
+      let currentEl = null;
+      let overlay = null;
+      let badge = null;
 
     function ensureUi(){
       if(!overlay){
@@ -507,11 +509,15 @@
       try{ if(ev && ev.key === 'Escape') stop(); }catch(e){}
     }
 
-    $btn.addEventListener('click', (ev)=>{
-      try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
-      if(active) stop();
-      else start();
-    });
+      $btn.addEventListener('click', (ev)=>{
+        try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+        if(active) stop();
+        else start();
+      });
+    }
+
+    if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initPicker, { once: true });
+    else initPicker();
   })();
   </script>
   <script>

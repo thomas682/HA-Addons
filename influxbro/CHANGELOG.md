@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.12.95
+
+### UI
+
+- Titelzeile: Der Picker initialisiert sich jetzt erst, nachdem `ui_picker_toggle` wirklich im DOM vorhanden ist. Dadurch reagiert der Button wieder zuverlässig auf allen Seiten.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.94
 
 ### UI
