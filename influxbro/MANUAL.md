@@ -752,6 +752,10 @@ Ausreisser:
 - Titelzeile: `nav.profile.select` ist jetzt auf 40px fixiert, `nav.donate` sitzt in der Titelzeile neben `InfluxBro`, und das Menü startet mit etwas Abstand unterhalb von `ib_pagecard`.
 - Seitensuche: `page.search` bleibt als einzelnes Suchfeld in der Titelzeile und durchsucht nur die aktuell geöffnete Seite.
 
+## Release Notes (1.12.94)
+
+- Titelzeile: `ui_profile_hint` steht jetzt unter `by Thomas Schatz` in 12px. `ui_profile_sel` ist 80px breit und 34px hoch. `Buy me a coffee` steht unter dem PayPal-Button, beide linksbuendig untereinander.
+
 ## Release Notes (1.12.80)
 
 - Export: Der Button `Export` verwendet den gewaehlten `Zielordner` jetzt wirklich als `target_dir` fuer den Export-Job. Damit kann die Datei serverseitig gezielt in ein gewuenschtes Verzeichnis geschrieben werden.

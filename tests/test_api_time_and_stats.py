@@ -130,7 +130,9 @@ def test_topbar_has_ui_picker_button_and_hover_inspector():
     assert 'id="ib_open_all"' not in body
     assert 'id="ib_close_all"' not in body
     assert 'id="ib_page_search_clear"' not in body
-    assert '#ui_profile_sel { width: 40px; min-width: 40px; max-width: 40px;' in body
+    assert '#ui_profile_sel { width: 80px; min-width: 80px; max-width: 80px;' in body
+    assert 'class="meta hintline" id="ui_profile_hint"' in body
+    assert 'class="branddonate" data-ui="nav.donate"' in body
     assert "function pickTarget(el)" in body
     assert "function currentPageLabel()" in body
     assert "const text = currentPageLabel() + ': ' + name;" in body

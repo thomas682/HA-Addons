@@ -81,7 +81,7 @@
     }
     .ib_topbar .meta { font-size: 12px; opacity: 0.75; white-space: nowrap; }
     .ib_topbar select { height: 34px; padding: 6px 10px; max-width: 220px; }
-    #ui_profile_sel { width: 40px; min-width: 40px; max-width: 40px; padding: 6px 4px; }
+    #ui_profile_sel { width: 80px; min-width: 80px; max-width: 80px; height: 34px; padding: 6px 4px; }
     .ib_topbar button { cursor:pointer; padding: 6px 10px; height: 34px; }
     .ib_topbar button.active { background:#0b0b0c; color:#fff; }
     .ib_topbar .zoom {
@@ -111,9 +111,11 @@
       border-bottom: 1px solid rgba(0,0,0,0.08);
     }
     .ib_pagecard .brandwrap { display:flex; align-items:center; gap:12px; flex-wrap:wrap; min-width:0; }
-    .ib_pagecard .brandbox { display:flex; flex-direction:column; min-width:0; }
-    .ib_pagecard .brand { font-weight:900; letter-spacing:.2px; font-size:22px; line-height:1.05; }
-    .ib_pagecard .byline { font-size:12px; opacity:.8; margin-top:2px; }
+    .ib_pagecard .brandbox { display:flex; flex-direction:column; min-width:0; gap:0; }
+    .ib_pagecard .brand { font-weight:900; letter-spacing:.2px; font-size:22px; line-height:1; margin:0; }
+    .ib_pagecard .byline { font-size:12px; opacity:.8; margin-top:0; line-height:1; }
+    .ib_pagecard .hintline { font-size:12px; opacity:.75; line-height:1; margin-top:2px; }
+    .ib_pagecard .branddonate { display:flex; flex-direction:column; align-items:flex-start; gap:6px; }
     .ib_pagecard .title { font-weight: 800; font-size: 18px; min-width:120px; }
     .ib_pagecard .actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
     .ib_pagecard .actions input { height:34px; padding:6px 10px; min-width:240px; }
@@ -127,6 +129,7 @@
       .ib_pagecard .actions { width:100%; justify-content:flex-start; }
       .ib_pagecard .actions input { min-width:0; width:100%; }
       .ib_pagecard .title { width:100%; }
+      .ib_pagecard .branddonate { width:100%; }
     }
 
     /* Shared UI: section info icon next to titles */
@@ -535,12 +538,13 @@
     <div class="brandbox">
       <div class="brand">InfluxBro</div>
       <div class="byline">by Thomas Schatz</div>
+      <span class="meta hintline" id="ui_profile_hint">Version: {{ addon_version }}</span>
     </div>
     <div class="branddonate" data-ui="nav.donate" title="nav.donate">
       <a href="{{ _pp_url }}" target="_blank" rel="noreferrer" style="display:inline-block; vertical-align:middle;">
         <img alt="Donate with PayPal" src="https://raw.githubusercontent.com/stefan-niedermann/paypal-donate-button/master/paypal-donate-button.png" style="height: 30px;" />
       </a>
-      <a href="https://buymeacoffee.com/thomasschatz" target="_blank" rel="noreferrer" style="display:inline-block; margin-left: 8px; vertical-align:middle;">
+      <a href="https://buymeacoffee.com/thomasschatz" target="_blank" rel="noreferrer" style="display:inline-block; vertical-align:middle;">
         <img alt="Buy me a coffee" src="https://img.shields.io/badge/Donate-Buy%20Me%20a%20Coffee-yellow.svg"/>
       </a>
     </div>
@@ -553,7 +557,6 @@
       <button id="ui_profile_save" type="button" data-ui="nav.profile.save" title="nav.profile.save">Speichern</button>
       <button id="ui_profile_info" type="button" data-ui="nav.profile.info" title="nav.profile.info">Info</button>
       <button id="ui_picker_toggle" type="button" data-ui="nav.ui_picker" title="nav.ui_picker">Picker</button>
-      <span class="meta" id="ui_profile_hint">Version: {{ addon_version }}</span>
     </div>
     <div class="zoom" data-ui="topbar.zoom" title="topbar.zoom">
       <span class="meta">Zoom</span>

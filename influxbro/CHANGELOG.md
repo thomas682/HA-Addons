@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.94
+
+### UI
+
+- Titelzeile: `ui_profile_hint` steht jetzt unter `by Thomas Schatz` in 12px. `ui_profile_sel` hat jetzt 80px Breite und 34px Höhe. `Buy me a coffee` steht unter dem PayPal-Button, beide linksbuendig untereinander.
+- Layout: `ib_pagecard` bleibt fuer alle Seiten zentral identisch, und das Seitenmenue startet weiter mit kleinem Abstand darunter.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.93
 
 ### UI
