@@ -78,6 +78,8 @@ Kommunikation
 - Alle Interaktionen im Chat mit dem Benutzer sollen auf Deutsch erfolgen. Wenn du dem Benutzer eine Frage stellst oder eine Entscheidung einforderst, formuliere diese Frage auf Deutsch.
 - Wenn Elemente aus dem Programm geloescht oder entfernt werden, muessen alle damit verbundenen Verweise, Funktionen, UI-Elemente, Listener und Datenpfade geprueft und so umgebaut werden, dass der Code auch ohne dieses Element fehlerfrei funktioniert.
 - Wenn der Benutzer sagt "uebernehme die Funktion", muss vor der Umsetzung geklaert werden, ob der Code 1:1 wortgleich uebernommen werden soll oder ob nur funktionale Anpassungen gewuenscht sind. Bei echter Codeuebernahme duerfen alte Elemente nicht weiterverwendet werden; diese sind zu entfernen und der uebernommene Code ist anschliessend nur noch fuer die neue Zielumgebung anzupassen.
+- Vergleiche UI-Komponenten niemals nur auf Containerebene. Pruefe immer die vollstaendige Komponentenstruktur einschliesslich: direkter und indirekter Child-Elemente, sichtbarkeits- und zustandsabhaengiger Renderlogik, Properties, Klassen, Styles und Layout-Regeln, Event-Handlern und Interaktionen, Datenquellen, Bindings und Seiteneffekten.
+- Zwei Elemente gelten nur dann als gleich, wenn nicht nur der Container, sondern auch alle damit zusammenhaengenden funktionalen und visuellen Unterelemente gleich arbeiten.
 
 No Cursor/Copilot instruction files were found at:
 

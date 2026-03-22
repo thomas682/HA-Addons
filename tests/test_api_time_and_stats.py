@@ -168,8 +168,8 @@ def test_settings_page_uses_only_shared_title_card():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "config.html").read_text()
     assert 'settings_search' not in body
     assert 'version_box' not in body
-    assert '.nav_item {' not in body
-    assert '.brand_meta {' not in body
+    assert 'main.content button { width: 100%; }' in body
+    assert '\n    button { width: 100%; }' not in body
 
 
 def test_sidebar_starts_below_pagecard():

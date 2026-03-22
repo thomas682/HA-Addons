@@ -15,43 +15,43 @@
     .grid > div > .muted { margin-top: 6px; }
     /* Notes inside a section (no box) */
     .grid > .muted { border: 0; padding: 0; background: transparent; }
-    label { display:block; font-size:12px; opacity:0.8; }
-    label.ib_chk_row { display:flex; align-items:center; gap: 10px; height: 40px; padding: 0 4px; margin: 0; opacity: 0.85; }
-    label.ib_chk_row input[type="checkbox"] { width: 18px; height: 18px; margin: 0; flex: 0 0 auto; }
-    label.ib_chk_row span { display:block; line-height: 1.2; }
-    input, select, button { padding:10px 12px; height: 40px; box-sizing: border-box; }
-    input, select { width: 100%; }
-    input[type="number"]{ width: 100%; }
-    button { width: 100%; }
-    .err { color: #b00020; margin-top: 8px; white-space: pre-wrap; }
-    .ok { color: #0a7a28; margin-top: 8px; white-space: pre-wrap; }
-    .card { border: 1px solid #ddd; border-radius: 10px; padding: 12px; margin-top: 12px; }
-    details.card { padding: 0; }
-    details.card > summary { list-style: none; cursor: pointer; padding: 12px; font-weight: 700; }
-    details.card > summary::-webkit-details-marker { display: none; }
-    details.card > summary:after { content: "▾"; float: right; opacity: 0.6; }
-    details.card[open] > summary:after { content: "▴"; }
-    details.card > .card_body { padding: 0 12px 12px 12px; }
+    main.content label { display:block; font-size:12px; opacity:0.8; }
+    main.content label.ib_chk_row { display:flex; align-items:center; gap: 10px; height: 40px; padding: 0 4px; margin: 0; opacity: 0.85; }
+    main.content label.ib_chk_row input[type="checkbox"] { width: 18px; height: 18px; margin: 0; flex: 0 0 auto; }
+    main.content label.ib_chk_row span { display:block; line-height: 1.2; }
+    main.content input, main.content select, main.content button { padding:10px 12px; height: 40px; box-sizing: border-box; }
+    main.content input, main.content select { width: 100%; }
+    main.content input[type="number"]{ width: 100%; }
+    main.content button { width: 100%; }
+    main.content .err { color: #b00020; margin-top: 8px; white-space: pre-wrap; }
+    main.content .ok { color: #0a7a28; margin-top: 8px; white-space: pre-wrap; }
+    main.content .card { border: 1px solid #ddd; border-radius: 10px; padding: 12px; margin-top: 12px; }
+    main.content details.card { padding: 0; }
+    main.content details.card > summary { list-style: none; cursor: pointer; padding: 12px; font-weight: 700; }
+    main.content details.card > summary::-webkit-details-marker { display: none; }
+    main.content details.card > summary:after { content: "▾"; float: right; opacity: 0.6; }
+    main.content details.card[open] > summary:after { content: "▴"; }
+    main.content details.card > .card_body { padding: 0 12px 12px 12px; }
 
-    .muted { opacity: 0.7; font-size: 12px; }
-    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-    code { background:#f6f6f6; padding:2px 6px; border-radius:6px; }
-    a { color: inherit; }
-    .btn_stack { display:flex; flex-direction:column; gap: 12px; }
-    .span2 { width: 100%; }
-    .jump_hl { outline: 3px solid rgba(255, 153, 0, 0.55); outline-offset: 2px; border-radius: 10px; }
-    table.cfg_tbl { width: 100%; border-collapse: collapse; }
-    table.cfg_tbl th, table.cfg_tbl td { border: 1px solid #eee; padding: 8px; vertical-align: middle; }
-    table.cfg_tbl th { background: #fafafa; font-size: 12px; opacity: 0.85; text-align: left; }
-    table.cfg_tbl tr.selected { background: #fff3d6; }
-    table.cfg_tbl input { height: 34px; padding: 6px 10px; }
+    main.content .muted { opacity: 0.7; font-size: 12px; }
+    main.content .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    main.content code { background:#f6f6f6; padding:2px 6px; border-radius:6px; }
+    main.content a { color: inherit; }
+    main.content .btn_stack { display:flex; flex-direction:column; gap: 12px; }
+    main.content .span2 { width: 100%; }
+    main.content .jump_hl { outline: 3px solid rgba(255, 153, 0, 0.55); outline-offset: 2px; border-radius: 10px; }
+    main.content table.cfg_tbl { width: 100%; border-collapse: collapse; }
+    main.content table.cfg_tbl th, main.content table.cfg_tbl td { border: 1px solid #eee; padding: 8px; vertical-align: middle; }
+    main.content table.cfg_tbl th { background: #fafafa; font-size: 12px; opacity: 0.85; text-align: left; }
+    main.content table.cfg_tbl tr.selected { background: #fff3d6; }
+    main.content table.cfg_tbl input { height: 34px; padding: 6px 10px; }
 
-    .table_wrap { border: 1px solid #eee; border-radius: 12px; padding: 10px; margin-top: 10px; }
-    .table_title { font-weight: 800; font-size: 14px; margin-bottom: 6px; }
-    .table_head { display:flex; justify-content:space-between; gap: 12px; align-items:flex-end; flex-wrap:wrap; }
-    .tbl_actions { display:flex; gap: 10px; align-items:center; flex-wrap:wrap; }
-    .tbl_actions label { display:flex; gap: 6px; align-items:center; font-size: 12px; opacity: 0.85; }
-    .tbl_actions input[type="checkbox"] { width:auto; height:auto; padding:0; margin:0; }
+    main.content .table_wrap { border: 1px solid #eee; border-radius: 12px; padding: 10px; margin-top: 10px; }
+    main.content .table_title { font-weight: 800; font-size: 14px; margin-bottom: 6px; }
+    main.content .table_head { display:flex; justify-content:space-between; gap: 12px; align-items:flex-end; flex-wrap:wrap; }
+    main.content .tbl_actions { display:flex; gap: 10px; align-items:center; flex-wrap:wrap; }
+    main.content .tbl_actions label { display:flex; gap: 6px; align-items:center; font-size: 12px; opacity: 0.85; }
+    main.content .tbl_actions input[type="checkbox"] { width:auto; height:auto; padding:0; margin:0; }
   </style>
 </head>
 <body>

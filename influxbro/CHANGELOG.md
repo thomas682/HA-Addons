@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.12.99
+
+### UI
+
+- Einstellungen: Die verbleibenden seitenlokalen Global-CSS-Regeln wurden auf `main.content` begrenzt. Dadurch wirkt die gemeinsame `page.title.card` auf der Einstellungsseite jetzt visuell gleich wie auf dem Dashboard und bekommt keine abweichenden Button-/Input-Breiten mehr von der Seite selbst.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.98
 
 ### UI

@@ -772,6 +772,10 @@ Ausreisser:
 
 - Einstellungen: Letzte alte Layout-/Such-Stile der früheren Settings-Sonderkarte entfernt, damit die Seite vollständig auf die gemeinsame `page.title.card`-Darstellung zurückgeführt ist.
 
+## Release Notes (1.12.99)
+
+- Einstellungen: Die verbleibenden seitenlokalen Global-CSS-Regeln wurden auf `main.content` begrenzt. Dadurch erhält die gemeinsame `page.title.card` auf der Einstellungsseite keine abweichenden Button-/Input-Breiten mehr.
+
 ## Release Notes (1.12.80)
 
 - Export: Der Button `Export` verwendet den gewaehlten `Zielordner` jetzt wirklich als `target_dir` fuer den Export-Job. Damit kann die Datei serverseitig gezielt in ein gewuenschtes Verzeichnis geschrieben werden.
