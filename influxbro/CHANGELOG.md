@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.12.102
+
+### UI
+
+- Titelzeile: `topbar.zoom.out` und `topbar.zoom.in` initialisieren sich jetzt erst, wenn die Buttons wirklich im DOM vorhanden sind. Dadurch reagieren die Zoom-Buttons wieder zuverlässig auf allen Seiten.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.101
 
 ### UI

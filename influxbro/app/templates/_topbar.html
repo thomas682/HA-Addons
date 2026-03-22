@@ -197,10 +197,6 @@
     const MAX = 160;
     const STEP = 5;
 
-    const $out = document.getElementById('ib_zoom_pct');
-    const $m = document.getElementById('ib_zoom_out');
-    const $p = document.getElementById('ib_zoom_in');
-
     function clamp(v){
       const n = Math.round(Number(v) || 100);
       if(!isFinite(n)) return 100;
@@ -216,8 +212,6 @@
       try{ localStorage.setItem(LS_ZOOM, String(z)); }catch(e){}
       const scale = z / 100;
       try{ document.documentElement.style.setProperty('--ib-zoom-scale', String(scale)); }catch(e){}
-
-      // Compute zoomed font sizes from the configured CSS vars.
       try{
         const cs = getComputedStyle(document.documentElement);
         const uiFont = String(cs.getPropertyValue('--ui-font') || '14px').trim();
@@ -229,21 +223,30 @@
         document.documentElement.style.setProperty('--ui-font-zoomed', f1.toFixed(3) + 'px');
         document.documentElement.style.setProperty('--ui-font-small-zoomed', f2.toFixed(3) + 'px');
       }catch(e){}
-
-      try{ if($out) $out.textContent = String(z) + '%'; }catch(e){}
-
-      // Let responsive components (e.g. Plotly) recompute sizes.
+      try{
+        const $out = document.getElementById('ib_zoom_pct');
+        if($out) $out.textContent = String(z) + '%';
+      }catch(e){}
       try{ window.dispatchEvent(new Event('resize')); }catch(e){}
     }
 
-    function inc(d){
-      const cur = getZoom();
-      setZoom(cur + d);
+    function initZoom(){
+      const $m = document.getElementById('ib_zoom_out');
+      const $p = document.getElementById('ib_zoom_in');
+      if((!$m && !$p) || (($m && $m.dataset.ibZoomReady === '1') && ($p && $p.dataset.ibZoomReady === '1'))) return;
+      try{ setZoom(getZoom()); }catch(e){}
+      if($m && $m.dataset.ibZoomReady !== '1'){
+        $m.dataset.ibZoomReady = '1';
+        $m.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}; setZoom(getZoom() - STEP); });
+      }
+      if($p && $p.dataset.ibZoomReady !== '1'){
+        $p.dataset.ibZoomReady = '1';
+        $p.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}; setZoom(getZoom() + STEP); });
+      }
     }
 
-    try{ setZoom(getZoom()); }catch(e){}
-    try{ if($m) $m.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}; inc(-STEP); }); }catch(e){}
-    try{ if($p) $p.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}; inc(STEP); }); }catch(e){}
+    if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initZoom, { once: true });
+    else initZoom();
   })();
   </script>
   <script>

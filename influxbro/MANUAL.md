@@ -785,6 +785,10 @@ Ausreisser:
 - Einstellungen: Die Info-Buttons behalten jetzt auch auf der Einstellungsseite wieder ihre feste 22x22-Darstellung und werden nicht mehr von der seitenlokalen Button-Breitenregel aufgezogen.
 - Navigation: Die Sidebar startet jetzt global mit 20px Abstand unterhalb von `page.title.card`.
 
+## Release Notes (1.12.102)
+
+- Titelzeile: `topbar.zoom.out` und `topbar.zoom.in` initialisieren sich jetzt erst, wenn ihre Buttons im DOM vorhanden sind. Dadurch reagieren die Zoom-Buttons wieder zuverlässig auf allen Seiten.
+
 ## Release Notes (1.12.80)
 
 - Export: Der Button `Export` verwendet den gewaehlten `Zielordner` jetzt wirklich als `target_dir` fuer den Export-Job. Damit kann die Datei serverseitig gezielt in ein gewuenschtes Verzeichnis geschrieben werden.
