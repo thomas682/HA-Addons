@@ -127,8 +127,8 @@ def test_topbar_has_ui_picker_button_and_hover_inspector():
     assert 'data-ui="topbar.profile"' in body
     assert 'data-ui="topbar.zoom"' in body
     assert 'data-ui="nav.donate"' in body
-    assert 'id="ib_open_all"' not in body
-    assert 'id="ib_close_all"' not in body
+    assert 'id="ib_open_all"' in body
+    assert 'id="ib_close_all"' in body
     assert 'id="ib_page_search_clear"' not in body
     assert '#ui_profile_sel { width: 80px; min-width: 80px; max-width: 80px;' in body
     assert 'class="meta hintline" id="ui_profile_hint"' in body
@@ -164,10 +164,19 @@ def test_config_has_status_bar_color_pickers():
     assert 'function _syncStatusBarColorPickersFromText()' in body
 
 
+def test_settings_page_uses_only_shared_title_card():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "config.html").read_text()
+    assert 'settings_search' not in body
+    assert 'version_box' not in body
+    assert '.nav_item {' not in body
+    assert '.brand_meta {' not in body
+
+
 def test_sidebar_starts_below_pagecard():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_nav.html").read_text()
     assert 'padding-top: calc(var(--ib-pagecard-h, 0px) + 8px);' in body
     assert 'top: calc(var(--ib-pagecard-h, 0px) + 8px);' in body
+    assert 'id = \'influxbro_sections_bar\'' not in body
 
 
 def test_global_filter_clear_buttons_are_available():

@@ -764,6 +764,10 @@ Ausreisser:
 
 - Einstellungen: Die separate Settings-Suchkarte und der doppelte Seitentitel wurden entfernt. Die Einstellungen-Seite nutzt jetzt 1:1 dieselbe `page.title.card`-Darstellung wie das Dashboard.
 
+## Release Notes (1.12.97)
+
+- Titelzeile: `sections.open_all` und `sections.close_all` sitzen jetzt wieder in `page.title.card` direkt rechts neben `page.search`. Die alte Einblendung dieser Buttons im Seiteninhalt wurde entfernt.
+
 ## Release Notes (1.12.80)
 
 - Export: Der Button `Export` verwendet den gewaehlten `Zielordner` jetzt wirklich als `target_dir` fuer den Export-Job. Damit kann die Datei serverseitig gezielt in ein gewuenschtes Verzeichnis geschrieben werden.

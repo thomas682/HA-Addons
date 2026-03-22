@@ -249,12 +249,23 @@
     const $card = document.getElementById('ib_pagecard');
     const $title = document.getElementById('ib_pagecard_title');
     const $search = document.getElementById('ib_page_search');
+    const $open = document.getElementById('ib_open_all');
+    const $close = document.getElementById('ib_close_all');
     const $results = document.getElementById('ib_pagecard_results');
     if(!$card || !$title) return;
 
     const main = document.querySelector('main.content');
     const h2 = main ? main.querySelector('h2') : null;
     $title.textContent = String((h2 && h2.textContent) || document.title || 'Seite').replace(/^InfluxBro\s*[–-]\s*/, '').trim();
+
+    function setAllDetailsOpen(root, wantOpen){
+      try{
+        if(!root) return;
+        root.querySelectorAll('details').forEach(d=>{ d.open = !!wantOpen; });
+      }catch(e){}
+    }
+    try{ if($open) $open.addEventListener('click', ()=>setAllDetailsOpen(main, true)); }catch(e){}
+    try{ if($close) $close.addEventListener('click', ()=>setAllDetailsOpen(main, false)); }catch(e){}
 
     function renderResults(xs){
       if(!$results) return;
@@ -571,6 +582,8 @@
       <button id="ib_zoom_in" type="button" aria-label="Zoom in" data-ui="topbar.zoom.in" title="topbar.zoom.in">+</button>
     </div>
     <input id="ib_page_search" type="text" data-ui="page.search" title="page.search" placeholder="Elemente auf dieser Seite suchen..." />
+    <button id="ib_open_all" type="button" data-ui="sections.open_all" title="sections.open_all">Alle oeffnen</button>
+    <button id="ib_close_all" type="button" data-ui="sections.close_all" title="sections.close_all">Alle schliessen</button>
   </div>
 </div>
 <div class="ib_pagecard_results" id="ib_pagecard_results"></div>

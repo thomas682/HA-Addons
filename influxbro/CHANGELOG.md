@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.12.97
+
+### UI
+
+- Titelzeile: `sections.open_all` und `sections.close_all` sind jetzt wieder in `page.title.card` integriert und sitzen rechts neben `page.search`. Die alte Einblendung dieser Buttons im Seiteninhalt wurde entfernt.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.96
 
 ### UI
