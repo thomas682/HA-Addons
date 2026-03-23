@@ -343,7 +343,7 @@
   </details>
 
   <details id="stats_total_section" class="section" {{ 'open' if cfg.get('ui_open_stats_total') else '' }} data-ui="section.stats_total" title="section.stats_total">
-    <summary><span class="ib_summary_row"><span class="section_title" style="margin:0;">Gesamtstatistik (Alles)</span></span></summary>
+    <summary><span class="ib_summary_row"><span class="section_title" style="margin:0;">Gesamtstatistik (Alles)</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Gesamtstatistik (Alles)" data-info-body="Dieser Bereich zeigt die Gesamtstatistik fuer die aktuell gewaehlte Serie ueber den gesamten verfuegbaren Datenbestand.\n\nEnthaelt:\n- Tabelle mit Kennzahlen wie Anzahl, Minimum, Maximum, Mittelwert und Zeitgrenzen\n- den Bereich wird beim Aktualisieren neu berechnet\n\nNutzen:\n- Vergleich des aktuellen Graph-Zeitraums mit dem Gesamtdatenbestand\n- schnelle Plausibilitaetspruefung fuer Ausreisser und fehlende Werte" >i</button></span></summary>
     <div class="table_wrap">
       <div class="muted" data-ui="tip.stats_total" title="tip.stats_total">Zeigt Kennzahlen ueber alle Werte (kann je nach Datenmenge laenger dauern).</div>
       <table class="stats_tbl"><tbody id="stats_tot_body"></tbody></table>
@@ -360,7 +360,7 @@
   <div class="main">
 
     <details id="graph_section" class="section" {{ 'open' if cfg.get('ui_open_graph') else '' }} data-ui="section.graph" title="section.graph">
-      <summary><span class="ib_summary_row"><span class="section_title" style="margin:0;">Graph</span></span></summary>
+      <summary><span class="ib_summary_row"><span class="section_title" style="margin:0;">Graph</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Graph" data-info-body="Der Graph ist die zentrale Visualisierung der aktuell gewaehlten Serie.\n\nEnthaelt:\n- Zeitreihen-Plot mit Zoom und Auswahl\n- Marker fuer selektierte Punkte\n- Detail-Modi, Ableitungen und Zusatzinfos unter dem Plot\n- Raw-Synchronisation: ein Klick auf einen Punkt steuert die Raw-Tabelle\n\nNutzen:\n- zeitliche Analyse\n- Auswahl eines Ankerpunkts fuer Raw-Daten und Bearbeitung" >i</button></span></summary>
       <div class="tbl_actions" data-ui="graph_actions">
         <label><input type="checkbox" id="graph_markers" class="row_sel" data-ui="graph_markers"/>Messpunkte markieren</label>
       </div>
@@ -505,7 +505,7 @@
     </details>
 
     <details id="stats_curr_section" class="section" {{ 'open' if cfg.get('ui_open_stats_current', true) else '' }} data-ui="section.stats_current" title="section.stats_current">
-      <summary><span class="ib_summary_row"><span class="section_title" style="margin:0;">Statistik Zeitraum (Graph/Tabelle)</span></span></summary>
+      <summary><span class="ib_summary_row"><span class="section_title" style="margin:0;">Statistik Zeitraum (Graph/Tabelle)</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Statistik Zeitraum" data-info-body="Dieser Bereich berechnet Kennzahlen nur fuer den aktuell sichtbaren Zeitraum aus Graph oder Tabelle.\n\nEnthaelt:\n- Kennzahlen fuer den aktuellen Ausschnitt\n- direkte Kopplung an Zoom, Range-Slider und Zeitfenster\n\nNutzen:\n- Vergleich des momentanen Ausschnitts mit der Gesamtstatistik\n- schnelle Bewertung eines selektierten Zeitfensters" >i</button></span></summary>
       <div class="table_wrap">
         <div class="muted" data-ui="tip.stats_current" title="tip.stats_current">Folgt dem aktuellen Zoom/Range-Slider im Graph.</div>
         <table class="stats_tbl"><tbody id="stats_curr_body"></tbody></table>
@@ -513,7 +513,7 @@
     </details>
 
     <details id="filterlist_section" class="section" {{ 'open' if cfg.get('ui_open_filterlist') else '' }} data-ui="section.filterlist" title="section.filterlist">
-      <summary><span class="ib_summary_row"><span class="section_title" style="margin:0;">Bearbeitungsliste</span></span></summary>
+      <summary><span class="ib_summary_row"><span class="section_title" style="margin:0;">Bearbeitungsliste</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Bearbeitungsliste" data-info-body="Die Bearbeitungsliste sammelt vorgemerkte Aenderungen fuer Datenpunkte, bevor sie geschrieben werden.\n\nEnthaelt:\n- markierte Zeilen mit altem und neuem Wert\n- Aktionen zum Uebernehmen, Verwerfen, Mitteln oder Loeschen\n- Vorschau-Query fuer die spaetere Schreibaktion\n\nNutzen:\n- sichere Sammelbearbeitung mehrerer Punkte\n- Kontrolle vor dem eigentlichen Schreiben in InfluxDB" >i</button></span></summary>
       <div class="table_wrap">
         <div class="table_title">Bearbeitungsliste</div>
         <div class="table_head">

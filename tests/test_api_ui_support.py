@@ -124,3 +124,11 @@ def test_dashboard_raw_buttons_show_feedback_and_last_error_button_removed():
     assert "showRawActionFeedback('Raw Wert kopiert'" in body
     assert 'id="last_error"' not in body
     assert "dashboard.last_error" not in body
+
+
+def test_dashboard_collapsible_sections_have_info_icons():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert 'data-info-title="Dashboard: Gesamtstatistik (Alles)"' in body
+    assert 'data-info-title="Dashboard: Graph"' in body
+    assert 'data-info-title="Dashboard: Statistik Zeitraum"' in body
+    assert 'data-info-title="Dashboard: Bearbeitungsliste"' in body
