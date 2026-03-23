@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.115
+
+### Fix
+
+- Dashboard-Auswahlelemente setzen jetzt keine Inline-`width` mehr per JavaScript. Dadurch greift die gewuenschte `max-width: 60%` wieder korrekt auch nach dynamischen Nachladevorgaengen.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`, `pytest tests/test_api_ui_support.py tests/test_api_debug_report.py tests/test_api_raw_points_center.py tests/test_api_monitoring.py tests/test_api_yaml_flow.py -q`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.114
 
 ### Enhancement

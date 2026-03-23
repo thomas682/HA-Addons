@@ -211,6 +211,10 @@ def test_dashboard_selection_labels_and_widths_are_updated():
     assert '<span>Name</span>' in body
     assert 'width: auto;' in body
     assert 'max-width: 60%;' in body
+    assert "inputEl.style.width = '';" in body
+    assert "selEl.style.width = '';" in body
+    assert "inputEl.style.width = px + 'px';" not in body
+    assert "selEl.style.width = px + 'px';" not in body
 
 
 def test_popup_remains_mouse_resizable():

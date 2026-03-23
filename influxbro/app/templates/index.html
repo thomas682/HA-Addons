@@ -3881,14 +3881,13 @@ async function _selReportComputedWidth(px){
 function _selApplyWidthForInput(inputEl, items){
   try{
     if(!inputEl) return;
-    if(!_SEL_AUTO_WIDTH) return; // manual width via CSS var
+    inputEl.style.width = '';
+    if(!_SEL_AUTO_WIDTH) return;
     const font = getComputedStyle(inputEl).font;
     const avg = _selMeasureAvgPx(items || [], font);
     if(!isFinite(avg) || avg <= 0) return;
-    // Add padding+caret; keep narrow but usable.
     let px = Math.ceil(avg + 26);
     px = Math.max(140, Math.min(420, px));
-    inputEl.style.width = px + 'px';
     _selReportComputedWidth(px);
   }catch(e){}
 }
@@ -3896,6 +3895,7 @@ function _selApplyWidthForInput(inputEl, items){
 function _selApplyWidthForTimeSelect(selEl){
   try{
     if(!selEl) return;
+    selEl.style.width = '';
     if(!_SEL_AUTO_WIDTH) return;
     const optTxt = Array.from(selEl.options || []).map(o=>String(o && o.textContent ? o.textContent : '')).filter(Boolean);
     const font = getComputedStyle(selEl).font;
@@ -3917,7 +3917,6 @@ function _selApplyWidthForTimeSelect(selEl){
 
     let px = Math.ceil(Math.max(avgOpt + 30, labelW + 12));
     px = Math.max(420, Math.min(980, px));
-    selEl.style.width = px + 'px';
     _selReportComputedWidth(px);
   }catch(e){}
 }
