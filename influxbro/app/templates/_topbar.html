@@ -9,6 +9,7 @@
       --ib-statusbar-bg: {{ (cfg.get('ui_status_bar_bg') or '#FFFFFF') if cfg else '#FFFFFF' }};
       --ib-statusbar-fg: {{ (cfg.get('ui_status_bar_fg') or '#111111') if cfg else '#111111' }};
       --ib-bottombar-h: {{ (cfg.get('ui_status_bar_height_px') or 38) | int }}px;
+      --ib-pagecard-title-size: {{ (cfg.get('ui_pagecard_title_px') or 30) | int }}px;
       --ib-zoom-scale: 1;
       --ui-font-zoomed: var(--ui-font, 14px);
       --ui-font-small-zoomed: var(--ui-font-small, 11px);
@@ -116,7 +117,7 @@
     .ib_pagecard .byline { font-size:12px; opacity:.8; margin-top:0; line-height:1; }
     .ib_pagecard .hintline { font-size:12px; opacity:.75; line-height:1; margin-top:2px; }
     .ib_pagecard .branddonate { display:flex; flex-direction:column; align-items:flex-start; gap:6px; }
-    .ib_pagecard .title { font-weight: 800; font-size: 18px; min-width:120px; }
+    .ib_pagecard .title { font-weight: 800; font-size: var(--ib-pagecard-title-size); min-width:120px; line-height: 1.1; }
     .ib_pagecard .actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
     .ib_pagecard .actions input { height:34px; padding:6px 10px; min-width:240px; }
     .ib_pagecard .actions button { height:34px; padding:6px 10px; }

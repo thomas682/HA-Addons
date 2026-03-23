@@ -62,6 +62,10 @@ CACHE_USAGE_LOCK = threading.RLock()
 CACHE_USAGE_MAX_MEM = 2000
 CACHE_USAGE_MEM: "deque[dict[str, Any]]" = deque(maxlen=CACHE_USAGE_MAX_MEM)
 CACHE_USAGE_PATH = DATA_DIR / "influxbro_cache_usage.jsonl"
+UI_ACTIONS_LOCK = threading.RLock()
+UI_ACTIONS_MAX_MEM = 200
+UI_ACTIONS_MEM: "deque[dict[str, Any]]" = deque(maxlen=UI_ACTIONS_MAX_MEM)
+UI_ACTIONS_PATH = DATA_DIR / "influxbro_ui_actions.jsonl"
 JOBS_HISTORY_PATH = DATA_DIR / "influxbro_jobs_history.json"
 
 # Timers state (last run timestamps, persisted under /data)
@@ -650,6 +654,8 @@ DEFAULT_CFG = {
     "ui_edit_graph_max_points": 50000,
     "ui_query_max_points": 5000,
     "ui_raw_max_points": 20000,
+    "ui_raw_center_max_points": 2000,
+    "ui_raw_center_range_default": 100,
     "ui_query_manual_max_points": 200000,
     "ui_decimals": 3,
 
@@ -658,6 +664,7 @@ DEFAULT_CFG = {
 
     "ui_font_size_px": 14,
     "ui_font_small_px": 11,
+    "ui_pagecard_title_px": 30,
     "ui_status_font_px": 12,
     "ui_status_show_sysinfo": False,
     "ui_status_bar_height_px": 38,
@@ -1581,6 +1588,83 @@ def _cache_usage_tail(limit: int = 500) -> list[dict[str, Any]]:
     try:
         if CACHE_USAGE_PATH.exists():
             lines = CACHE_USAGE_PATH.read_text(encoding="utf-8").splitlines()
+            out: list[dict[str, Any]] = []
+            for ln in lines[-lim:]:
+                try:
+                    j = json.loads(ln)
+                    if isinstance(j, dict):
+                        out.append(j)
+                except Exception:
+                    continue
+            return out
+    except Exception:
+        pass
+    return []
+
+
+def _ui_action_append(entry: dict[str, Any]) -> None:
+    """Append a compact UI action record for support and bug reports."""
+
+    try:
+        e = dict(entry or {})
+        e.setdefault("at", _utc_now_iso_ms())
+        e.setdefault("id", uuid.uuid4().hex)
+        for k in list(e.keys()):
+            lk = str(k).lower()
+            if "token" in lk or "password" in lk or "confirm_phrase" in lk:
+                e.pop(k, None)
+        for k in ("page", "ui", "text"):
+            if k in e and e[k] is not None:
+                e[k] = str(e[k])[:200]
+        extra = e.get("extra")
+        if isinstance(extra, dict):
+            safe_extra: dict[str, str] = {}
+            for k, v in list(extra.items())[:10]:
+                safe_extra[str(k)[:40]] = str(v)[:120]
+            e["extra"] = safe_extra
+        elif extra is not None:
+            e["extra"] = str(extra)[:200]
+
+        with UI_ACTIONS_LOCK:
+            UI_ACTIONS_MEM.append(e)
+        try:
+            DATA_DIR.mkdir(parents=True, exist_ok=True)
+            with UI_ACTIONS_PATH.open("a", encoding="utf-8") as f:
+                f.write(json.dumps(e, ensure_ascii=True) + "\n")
+        except Exception:
+            pass
+
+        try:
+            extra_s = json.dumps(e.get("extra"), ensure_ascii=True)[:300] if e.get("extra") is not None else ""
+        except Exception:
+            extra_s = str(e.get("extra") or "")[:300]
+        try:
+            LOG.info(
+                "ui_action at=%s page=%s ui=%s text=%s extra=%s",
+                e.get("at"),
+                e.get("page"),
+                e.get("ui"),
+                e.get("text"),
+                extra_s,
+            )
+        except Exception:
+            pass
+    except Exception:
+        return
+
+
+def _ui_action_tail(limit: int = 5) -> list[dict[str, Any]]:
+    try:
+        lim = min(100, max(1, int(limit or 5)))
+    except Exception:
+        lim = 5
+    with UI_ACTIONS_LOCK:
+        xs = list(UI_ACTIONS_MEM)
+    if xs:
+        return xs[-lim:]
+    try:
+        if UI_ACTIONS_PATH.exists():
+            lines = UI_ACTIONS_PATH.read_text(encoding="utf-8").splitlines()
             out: list[dict[str, Any]] = []
             for ln in lines[-lim:]:
                 try:
@@ -4570,6 +4654,7 @@ def api_bugreport_meta():
         "influx": {
             "version": influx_ver,
         },
+        "recent_actions": _ui_action_tail(5),
     })
 
 
@@ -4743,6 +4828,9 @@ def api_debug_report():
 
     lines.append("## Client Context\n")
     lines.append(_md_code_block("json", _safe_obj(client)))
+
+    lines.append("## Recent UI Actions\n")
+    lines.append(_md_code_block("json", _safe_obj(_ui_action_tail(20))))
 
     lines.append("## Add-on Config (redacted)\n")
     lines.append(_md_code_block("json", _safe_obj(_cfg_redacted(cfg))))
@@ -10087,6 +10175,7 @@ def api_set_config():
 
     _clamp_int("ui_font_size_px", 14, 10, 22)
     _clamp_int("ui_font_small_px", 11, 9, 18)
+    _clamp_int("ui_pagecard_title_px", 30, 18, 48)
     _clamp_int("ui_status_font_px", 12, 9, 18)
     _clamp_int("ui_status_bar_height_px", 38, 28, 90)
     _clamp_int("ui_table_row_height_px", 13, 9, 60)
@@ -10101,6 +10190,8 @@ def api_set_config():
     _clamp_int("ui_edit_graph_max_points", 50000, 1000, 200000)
     _clamp_int("ui_query_max_points", 5000, 500, 200000)
     _clamp_int("ui_raw_max_points", 20000, 1000, 200000)
+    _clamp_int("ui_raw_center_max_points", 2000, 1, 200000)
+    _clamp_int("ui_raw_center_range_default", 100, 0, 200000)
     _clamp_float("ui_checkbox_scale", 0.85, 0.5, 1.6)
     _clamp_int("ui_filter_label_width_px", 170, 80, 360)
     _clamp_int("ui_filter_control_width_px", 320, 180, 900)
@@ -13636,9 +13727,15 @@ def api_ui_event():
         elif extra is not None:
             extra_s = str(extra)[:200]
 
-        ip = request.headers.get("X-Forwarded-For") or request.remote_addr or ""
-        ua = request.headers.get("User-Agent") or ""
-        LOG.debug("ui_event page=%s ui=%s text=%s ip=%s ua=%s extra=%s", page, ui, text, ip, ua[:80], extra_s)
+        _ui_action_append({
+            "page": page,
+            "ui": ui,
+            "text": text,
+            "extra": extra,
+            "ip": request.headers.get("X-Forwarded-For") or request.remote_addr or "",
+            "ua": (request.headers.get("User-Agent") or "")[:80],
+        })
+        LOG.debug("ui_event page=%s ui=%s text=%s extra=%s", page, ui, text, extra_s)
     except Exception:
         pass
 

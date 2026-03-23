@@ -53,8 +53,11 @@
     'graph.deriv_abs': 'Zeigt die Ableitung als Absolutwert.',
     'graph.deriv_signed': 'Zeigt die Ableitung mit Vorzeichen (signiert).',
     'graph.selected': 'Zeigt den aktuell im Graph ausgewaehlten Messpunkt (Zeit/Wert/Serie).',
+    'graph.query_history': 'Zeigt die zuletzt verwendeten Graph-Queries fuer Dashboard und Bearbeitungsgraph.',
 
     // Raw navigation
+    'raw.center_range': 'Legt fest, wie viele Raw-Punkte um den selektierten Messwert herum nachgeladen werden.',
+    'raw.query_history': 'Zeigt die zuletzt verwendeten Raw-Queries des Dashboards.',
     'raw.nav': 'Navigation innerhalb der Raw-Tabelle (Tag basiert auf lokaler Browserzeit).',
     'raw.nav.oldest': 'Scrollt in Raw zum aeltesten geladenen Tag (erste Zeile).',
     'raw.nav.m1': 'Scrollt in Raw um 1 Tag zurueck (Basis: selektierter Punkt oder aktuelle Scrollposition).',
@@ -155,6 +158,9 @@
     'settings.ui_open_stats_total': 'Oeffnet "Gesamtstatistik" beim Laden des Dashboards.',
     'settings.ui_open_stats_current': 'Oeffnet "Statistik Zeitraum" beim Laden des Dashboards.',
     'settings.ui_tooltips_enabled': 'Schaltet Tooltips global ein/aus.',
+    'settings.ui_pagecard_title_px': 'Steuert die Schriftgroesse des Seitentitels in der festen Titelkarte.',
+    'settings.ui_raw_center_max_points': 'Maximaler Wert fuer den Dashboard-Regler Bereich +-.',
+    'settings.ui_raw_center_range_default': 'Vorbelegung fuer den Dashboard-Regler Bereich +-.',
 
     // Settings: Logging
     'settings.log_to_file': 'Schreibt Logs zusaetzlich nach /data/influxbro.log (Rotation).',
@@ -1008,6 +1014,28 @@
       if(addonV) body += '- addon-version: ' + addonV + '\n';
       if(haOs) body += '- ha-os: ' + haOs + '\n';
       if(influxV) body += '- influx-version: ' + influxV + '\n';
+      body += '\n';
+      body += '### Aktionsliste\n\n';
+      const recentActions = Array.isArray(meta && meta.recent_actions) ? meta.recent_actions : [];
+      if(recentActions.length){
+        recentActions.slice(-5).forEach((it) => {
+          const at = it && it.at ? String(it.at) : '';
+          const ui = it && it.ui ? String(it.ui) : '';
+          const page = it && it.page ? String(it.page) : '';
+          const text = it && it.text ? String(it.text) : '';
+          let extraTxt = '';
+          try{
+            const extra = it && it.extra;
+            if(extra && typeof extra === 'object'){
+              const pairs = Object.entries(extra).slice(0, 3).map(([k, v]) => `${k}=${v}`);
+              if(pairs.length) extraTxt = ' | ' + pairs.join(', ');
+            }
+          }catch(e){}
+          body += '- ' + [at, page, ui, text].filter(Boolean).join(' | ') + extraTxt + '\n';
+        });
+      }else{
+        body += '- keine aufgezeichneten Bedieneraktionen vorhanden\n';
+      }
       body += '\n';
       body += '### Debug report Anhang\n\n';
       body += '- Bitte die heruntergeladene Datei `influxbro_debug_report_*.md` anhaengen.\n';

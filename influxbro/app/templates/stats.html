@@ -214,7 +214,7 @@
         <div class="status" id="info" data-ui="stats.info" title="stats.info"></div>
         <div class="progress" aria-hidden="true" style="display:none;"><div id="bar"></div></div>
 
-        <details class="card" id="query_details" style="display:none; margin-top: 10px;" data-ui="stats.query_details" title="stats.query_details">
+        <details class="card" id="query_details" style="margin-top: 10px;" data-ui="stats.query_details" title="stats.query_details">
           <summary><span class="ib_summary_row"><span>Query Details</span><button type="button" class="ib_info_icon" data-info-title="Statistik: Query Details" data-info-body="Zeigt die zuletzt verwendeten Queries/Labels des Statistik-Jobs (best-effort).\n\nNutzen:\n- Debugging bei Timeouts\n- Support" >i</button></span></summary>
           <div class="card_body">
             <div class="row" style="align-items:center;">
@@ -734,15 +734,13 @@
         if(!$queryDetails || !$queryPre) return;
         const q = String(query || '').trim();
         const l = String(label || '').trim();
-        if(!q){
-          $queryDetails.style.display = 'none';
-          return;
-        }
         $queryDetails.style.display = 'block';
         const stAt = String(startedAt || '').trim();
-        const stTxt = stAt ? ('Start: ' + fmtTs(stAt) + ' | ') : '';
-        if($queryLabel) $queryLabel.textContent = stTxt + l;
-        $queryPre.textContent = q;
+        const meta = [];
+        if(stAt) meta.push('Start: ' + fmtTs(stAt));
+        if(l) meta.push(l);
+        if($queryLabel) $queryLabel.textContent = meta.join(' | ');
+        $queryPre.textContent = q || 'Noch keine Query vorhanden.';
         LAST_QUERY_HISTORY = Array.isArray(queries) ? queries : [];
         try{ if(error) LAST_QUERY_HISTORY = LAST_QUERY_HISTORY.concat([{at: new Date().toISOString(), label:'error', query:String(error)}]); }catch(e){}
 

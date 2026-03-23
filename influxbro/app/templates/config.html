@@ -197,6 +197,18 @@
         </div>
 
         <div>
+          <label>Raw max. Bereich +-</label>
+          <input id="ui_raw_center_max_points" type="number" min="1" max="200000" />
+          <div class="muted">Obergrenze fuer den Dashboard-Wert <code>Bereich +-</code> ueber der Raw-Tabelle (Default: 2000).</div>
+        </div>
+
+        <div>
+          <label>Raw Bereich +- Standard</label>
+          <input id="ui_raw_center_range_default" type="number" min="0" max="200000" />
+          <div class="muted">Vorbelegung fuer Punkte um den selektierten Messwert herum (Default: 100).</div>
+        </div>
+
+        <div>
           <label>Auto-Tuning</label>
           <button id="ui_raw_autotune_settings" type="button" class="btn_sm">Auto-Tuning (Dashboard)</button>
           <div class="muted">Der Auto-Tuning Button ist in die Einstellungen verschoben. Klick &quot;Auto-Tuning (Dashboard)&quot; oeffnet das Dashboard und startet Auto-Tuning, falls eine Serie ausgewaehlt ist.</div>
@@ -354,6 +366,11 @@
               <label>Kleine Schriftgroesse (px)</label>
               <input id="ui_font_small_px" type="number" min="9" max="18" />
               <div class="muted">z.B. fuer Statistik/Infotexte.</div>
+            </div>
+            <div>
+              <label>Seitentitel Schriftgroesse (px)</label>
+              <input id="ui_pagecard_title_px" type="number" min="18" max="48" />
+              <div class="muted">Groesse des Seitentitels in der festen Titelkarte.</div>
             </div>
             <div>
               <label>Status Schriftgroesse (px)</label>
@@ -811,9 +828,9 @@ const ids = [
   "database","username","password",
   "ui_table_visible_rows","ui_table_row_height_px","ui_edit_neighbors_n","ui_edit_details_visible_rows","ui_edit_graph_buffer_minutes","ui_edit_graph_max_points","ui_decimals",
   "ui_backup_table_row_height_px","ui_backup_visible_rows","ui_restore_visible_rows",
-  "ui_query_max_points","ui_raw_max_points",
+  "ui_query_max_points","ui_raw_max_points","ui_raw_center_max_points","ui_raw_center_range_default",
   "ui_query_manual_max_points","ui_graph_jump_padding_intervals",
-  "ui_font_size_px","ui_font_small_px","ui_checkbox_scale",
+  "ui_font_size_px","ui_font_small_px","ui_pagecard_title_px","ui_checkbox_scale",
   "ui_section_title_bg","ui_section_title_fg",
   "ui_status_font_px","ui_status_bar_height_px","ui_status_bar_bg","ui_status_bar_fg",
   "ui_status_show_sysinfo",
@@ -1141,10 +1158,13 @@ function setForm(cfg){
   el.ui_edit_graph_max_points.value = cfg.ui_edit_graph_max_points ?? 50000;
   el.ui_query_max_points.value = cfg.ui_query_max_points ?? 5000;
   el.ui_raw_max_points.value = cfg.ui_raw_max_points ?? 20000;
+  el.ui_raw_center_max_points.value = cfg.ui_raw_center_max_points ?? 2000;
+  el.ui_raw_center_range_default.value = cfg.ui_raw_center_range_default ?? 100;
   el.ui_decimals.value = cfg.ui_decimals ?? 3;
 
   el.ui_font_size_px.value = cfg.ui_font_size_px ?? 14;
   el.ui_font_small_px.value = cfg.ui_font_small_px ?? 11;
+  el.ui_pagecard_title_px.value = cfg.ui_pagecard_title_px ?? 30;
   el.ui_status_font_px.value = cfg.ui_status_font_px ?? 12;
   el.ui_status_bar_height_px.value = cfg.ui_status_bar_height_px ?? 38;
   el.ui_status_show_sysinfo.checked = !!cfg.ui_status_show_sysinfo;
@@ -1257,12 +1277,15 @@ function getForm(){
     ui_edit_graph_max_points: parseInt(el.ui_edit_graph_max_points.value, 10),
     ui_query_max_points: parseInt(el.ui_query_max_points.value, 10),
     ui_raw_max_points: parseInt(el.ui_raw_max_points.value, 10),
+    ui_raw_center_max_points: parseInt(el.ui_raw_center_max_points.value, 10),
+    ui_raw_center_range_default: parseInt(el.ui_raw_center_range_default.value, 10),
     ui_query_manual_max_points: parseInt(el.ui_query_manual_max_points.value, 10),
     ui_graph_jump_padding_intervals: parseInt(el.ui_graph_jump_padding_intervals.value, 10),
     ui_decimals: parseInt(el.ui_decimals.value, 10),
 
     ui_font_size_px: parseInt(el.ui_font_size_px.value, 10),
     ui_font_small_px: parseInt(el.ui_font_small_px.value, 10),
+    ui_pagecard_title_px: parseInt(el.ui_pagecard_title_px.value, 10),
     ui_status_font_px: parseInt(el.ui_status_font_px.value, 10),
     ui_status_bar_height_px: parseInt(el.ui_status_bar_height_px.value, 10),
     ui_status_show_sysinfo: !!el.ui_status_show_sysinfo.checked,

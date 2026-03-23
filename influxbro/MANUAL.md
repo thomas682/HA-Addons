@@ -161,7 +161,8 @@ Hinweis: Zeitstempel werden im gesamten UI inklusive Millisekunden angezeigt.
 Graph Query:
 
 - Bereich `Graph Query`: zeigt den zuletzt genutzten Influx Query-String (aus Dashboard-Abfragen).
-  - Neu: Query Details zeigt Start-Zeitstempel und hat eine History.
+  - Die Query-Box bleibt immer sichtbar, auch bevor schon eine Abfrage gelaufen ist.
+  - Neu: Query Details zeigt Zeitstempel und hat eine History.
 - Button `Query kopieren`: kopiert den Query in die Zwischenablage (z.B. fuer den Influx Explorer).
 - Auswahl `Dashboard / Bearbeitungsgraph`: schaltet die angezeigte Query-Quelle um (Hauptgraph vs. rechter Bearbeitungsgraph).
 
@@ -187,11 +188,14 @@ Bearbeitungsliste + Bearbeitungsgraph:
 Raw Daten (DB):
 
 - Optional kannst du per Checkbox steuern, ob Raw Daten dem Zoom-Bereich im Graph folgen (oder dem Zeitraum aus der Zeitraum-Auswahl).
+- Feld `Bereich +-`: legt fest, wie viele Punkte um den selektierten Messwert herum geladen werden. Der Wert wird im Browser gespeichert; die Obergrenze und Vorbelegung kommen aus den Einstellungen.
 - Klick auf einen Messpunkt im Graph markiert den Punkt und springt in der Raw-Tabelle zum passenden Zeitstempel (Zeile wird hervorgehoben).
 - Wenn der Zeitstempel in den aktuell geladenen Raw-Zeilen noch nicht enthalten ist, werden automatisch weitere Raw-Seiten nachgeladen und dann zur passenden (naechsten) Zeile gescrollt.
 - Der Sprung zentriert die Zeile in der Tabelle, damit vorherige und nachfolgende Werte sichtbar bleiben.
 - Ueber der Raw-Tabelle gibt es Buttons zur Tagesnavigation (aeltester/juengster Tag, +/-1d, +/-7d; lokale Browserzeit).
 - Wenn du per Tagesnavigation zu einem Zeitpunkt springst, der noch nicht in der Tabelle geladen ist, wird automatisch nachgeladen, bis der Ziel-Tag erreicht ist (oder bis keine weiteren Daten verfuegbar sind).
+- `Einfügen` uebernimmt den kopierten Wert jetzt sichtbar in die Bearbeitungsliste, oeffnet den Bereich automatisch und zeigt Quelle/Ziel als Popup an.
+- Die Raw-Query bleibt sichtbar, zeigt einen Zeitstempel und hat ebenfalls eine History.
 
 Konzept fuer sehr grosse Tabellen (z.B. ~2 Mio Zeilen):
 
@@ -491,6 +495,8 @@ UI:
 - `Dezimalstellen (Anzeige)`: Rundung in der UI.
 - `Query max. Punkte (Dashboard Graph)`: Downsampling-Limit fuer den Dashboard-Graph (Default: 5000).
 - `Raw max. Punkte`: Maximale Zeilen/Points pro Raw-DB-Abfrage (Default: 20000).
+- `Raw max. Bereich +-`: Obergrenze fuer den Dashboard-Wert `Bereich +-` ueber der Raw-Tabelle.
+- `Raw Bereich +- Standard`: Vorbelegung fuer den Dashboard-Wert `Bereich +-`.
 - `Manual max. Punkte (Dashboard Graph)`: Sicherheitslimit fuer `Details: Manuell` (100%).
 - `Sprung-Polster (Intervalle)`: +/- N Downsample-Intervalle fuer Sprung-Markierung/Detail-Nachladen.
 - `Tabellenzeilen Hoehe (px, Backup)`: Zeilenhoehe der Backup-Tabelle.
@@ -498,6 +504,7 @@ UI:
 - `Sichtbare Zeilen (Restore-Liste)`: Hoehe der Restore-Backup-Liste in Zeilen (scrollt bei mehr Eintraegen).
 - `Min. freier Speicher (MB)`: wenn kleiner als diese Schwelle, wird das Erstellen eines Backups abgelehnt (0 = deaktiviert).
 - `Basis/Kleine Schriftgroesse`: UI Typografie.
+- `Seitentitel Schriftgroesse (px)`: Groesse des Titels in der festen Titelkarte.
 - `Checkbox Groesse (Scale)`: Checkbox-Scaling fuer bessere Bedienbarkeit.
 - `Bereich-Titel (Details): Hintergrund/Textfarbe`: Farben der einklappbaren Bereichstitel (Details/Sektionen). Leer = Standard; erlaubt: `transparent`/`inherit` oder `#RRGGBB`.
   - Default: Hintergrund `#3287A8`, Text `#FFFFFF`. In den Einstellungen gibt es zusaetzlich Colorpicker.
@@ -516,6 +523,7 @@ Fehleranzeige:
 - Button `Fehlerdialog`: zeigt den aktuellen Fehler plus Verlauf (mit Zeitstempeln).
 - Dashboard Button `Letzter Fehler`: oeffnet den letzten Fehlerdialog erneut.
 - Button `Git Bugreport`: erzeugt einen GitHub Bugreport (Template profi) und laedt einen Debug report zum Anhaengen.
+- Der Bugreport enthaelt jetzt zusaetzlich eine `Aktionsliste` mit den letzten 5 serverseitig protokollierten Bedieneraktionen.
 
 Fehlerfenster (Popup):
 
@@ -535,6 +543,7 @@ Statistik:
 
 - Bei einer Fehlermeldung im Popup kannst du auf `Bugreport` klicken.
 - Dabei wird automatisch ein Debug report heruntergeladen (`influxbro_debug_report_*.md`) und eine GitHub Issue Seite geoeffnet (vorbefuellt mit HA/Influx Versionen).
+- Die GitHub-Vorbelegung enthaelt zusaetzlich eine `Aktionsliste` mit den letzten 5 Bedieneraktionen.
 - Wichtig: Debug report Datei in GitHub als Anhang hochladen (enth. Konfig redacted + Logs).
 
 Ausreisser:

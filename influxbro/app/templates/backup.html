@@ -220,7 +220,7 @@
           <span id="create_status_time"></span>
         </div>
 
-        <details id="backup_query_details" class="card" style="display:none; margin-top: 10px;" data-ui="backup.query_details" title="backup.query_details">
+        <details id="backup_query_details" class="card" style="margin-top: 10px;" data-ui="backup.query_details" title="backup.query_details">
           <summary><span class="ib_summary_row"><span>Query anzeigen</span><button type="button" class="ib_info_icon" data-info-title="Backup: Query" data-info-body="Zeigt den zuletzt verwendeten Query-String der Backup-Erstellung.\n\nNutzen:\n- Debugging (welcher Zeitraum/Filter wurde wirklich verwendet?).\n- Support (Query in Logs vergleichen)." >i</button></span></summary>
           <div class="card_body">
             <div class="row" style="align-items:center; margin-top:6px;">
@@ -327,7 +327,7 @@
             <span id="fullbackup_status_time"></span>
           </div>
 
-          <details id="fullbackup_query_details" class="card" style="display:none; margin-top: 10px;" data-ui="backup.fullbackup.query_details" title="backup.fullbackup.query_details">
+          <details id="fullbackup_query_details" class="card" style="margin-top: 10px;" data-ui="backup.fullbackup.query_details" title="backup.fullbackup.query_details">
             <summary><span class="ib_summary_row"><span>Aktion anzeigen</span><button type="button" class="ib_info_icon" data-info-title="FullBackup: Aktion" data-info-body="Zeigt die aktuell ausgefuehrte Aktion des FullBackup-Jobs (z.B. CLI Command/Query).\n\nHinweis:\n- Tokens werden redacted und nicht angezeigt." >i</button></span></summary>
             <div class="card_body">
               <div class="row" style="align-items:center; margin-top:6px;">
@@ -900,14 +900,8 @@
         try{
           const s = String(q || '').trim();
           if(!$backupQueryDetails || !$backupQueryPre) return;
-          if(!s){
-            $backupQueryDetails.style.display = 'none';
-            $backupQueryPre.textContent = '';
-            if($backupQueryMeta) $backupQueryMeta.textContent = '';
-            return;
-          }
-          $backupQueryPre.textContent = s;
           $backupQueryDetails.style.display = 'block';
+          $backupQueryPre.textContent = s || 'Noch keine Query vorhanden.';
           if($backupQueryMeta){
             const at = String(startedAtIso || '').trim();
             $backupQueryMeta.textContent = at ? ('Start: ' + fmtTs(at)) : '';
@@ -932,14 +926,8 @@
         try{
           const s = String(q || '').trim();
           if(!$fullBackupQueryDetails || !$fullBackupQueryPre) return;
-          if(!s){
-            $fullBackupQueryDetails.style.display = 'none';
-            $fullBackupQueryPre.textContent = '';
-            if($fullBackupQueryMeta) $fullBackupQueryMeta.textContent = '';
-            return;
-          }
-          $fullBackupQueryPre.textContent = s;
           $fullBackupQueryDetails.style.display = 'block';
+          $fullBackupQueryPre.textContent = s || 'Noch keine Aktion vorhanden.';
           if($fullBackupQueryMeta){
             const at = String(startedAtIso || '').trim();
             $fullBackupQueryMeta.textContent = at ? ('Start: ' + fmtTs(at)) : '';

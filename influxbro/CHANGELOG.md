@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.12.103
+
+### UI
+
+- Dashboard/Raw: `raw.paste` gibt jetzt wieder sichtbares Feedback, oeffnet die Bearbeitungsliste und zeigt die vorgemerkte Uebernahme per Popup an. Zusaetzlich gibt es ueber der Raw-Tabelle den persistenten Regler `Bereich +-` samt konfigurierbarer Obergrenze/Standardwert in den Einstellungen.
+- Query-Anzeigen bleiben jetzt auf Dashboard, Statistik und Backup dauerhaft sichtbar. Raw-, Graph- und Apply-Preview-Queries zeigen zusaetzlich Zeitstempel und History-Buttons.
+- Titelkarte: Der Seitentitel ist standardmaessig groesser und seine Schriftgroesse ist jetzt in den Einstellungen parametrierbar. Der Abstand zwischen Titelkarte und Navigation/Inhalt ist auf 20px korrigiert.
+
+### Support
+
+- Bugreport: Bedieneraktionen werden serverseitig protokolliert und als `Aktionsliste` mit den letzten 5 Aktionen in den vorbefuellten GitHub-Bugreport sowie in den Debug-Report uebernommen.
+
+### Maintenance
+
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.102
 
 ### UI
