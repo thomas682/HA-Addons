@@ -94,6 +94,7 @@ Neu: Top-Leiste (Profil + Zoom)
 ## Monitor
 
 - Die Seite `Monitor` ist fuer laufende Ausreisser-Ueberwachung gedacht. Sie arbeitet mit frei definierbaren Messwert-Keys und einer persistierten Fault-Phase (`normal`, `fault_active`, `recovering`).
+- Die Seitensuche im Titelbereich verwendet dieselbe Breite wie auf den anderen Seiten und wird nicht mehr vom Formularbereich der Monitor-Seite ueberdehnt.
 - Bereich `Monitoring Konfiguration`:
   - Pro Zeile definierst du `Key`, `Label`, `Min`, `Max`, maximalen `Anstieg`, maximalen `Abfall`, ob `0` als ungueltig gilt, den Korrekturmodus (`pending` oder `auto`) und die Recovery-Regeln.
   - Zusaetzlich kannst du pro Ausreissergrund eigene Korrekturaktionen setzen (`last_valid`, `delete`, `clamp`, `none`).

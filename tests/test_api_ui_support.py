@@ -160,3 +160,9 @@ def test_settings_include_bugreport_log_history_hours():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "config.html").read_text()
     assert 'id="bugreport_log_history_hours"' in body
     assert 'bugreport_log_history_hours' in body
+
+
+def test_monitor_page_does_not_force_topbar_search_to_full_width():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "monitor.html").read_text()
+    assert 'main.content input, main.content select, main.content textarea { width:100%; }' in body
+    assert 'input, select, textarea { width:100%; }' not in body
