@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.116
+
+### Enhancement
+
+- `Import: Analysieren` zeigt jetzt nach erfolgreicher Analyse ein Popup mit Datei, gueltigen Zeilen, Zeitraum und Fehlerzaehlern. Bei Fehlern wird zusaetzlich ein Fehler-Popup mit dem Rueckgabetext angezeigt.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`, `pytest tests/test_api_ui_support.py -q`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.115
 
 ### Fix

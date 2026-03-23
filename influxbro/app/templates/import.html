@@ -480,6 +480,17 @@
         $analysis.textContent = `Datei: ${IMPORT_FILE_ID}\nDelimiter: ${IMPORT_DELIM}\nZeilen (valid): ${j.count}\nZeitraum: ${j.oldest_local || '-'} bis ${j.newest_local || '-'}\nTimezone: ${j.timezone && j.timezone.name ? j.timezone.name : ''}\nQuell-_measurement: ${srcMeasurements.join(', ') || '-'}\nQuell-_field: ${srcFields.join(', ') || '-'}${sampleTxt ? ('\nErste 3 Zeilen:\n' + sampleTxt) : ''}${errTxt}${exTxt}`;
         $analyzeHint.textContent = `Valid: ${j.count} | ${j.oldest_local || ''} .. ${j.newest_local || ''}` + (Object.keys(errs).length ? (' | Fehler: ' + Object.keys(errs).map(k => `${k}=${errs[k]}`).join(' ')) : '');
         ok('Analyse fertig.');
+        try{
+          if(window.InfluxBroPopup && window.InfluxBroPopup.show){
+            const msg = [
+              `Datei: ${IMPORT_FILE_ID}`,
+              `Valid: ${j.count}`,
+              `Zeitraum: ${j.oldest_local || '-'} bis ${j.newest_local || '-'}`,
+              Object.keys(errs).length ? (`Fehler: ` + Object.keys(errs).map(k => `${k}=${errs[k]}`).join(' ')) : 'Fehler: keine',
+            ].join('\n');
+            window.InfluxBroPopup.show('Import Analyse erfolgreich', msg);
+          }
+        }catch(e){}
         try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done('import.run', 'Analyse fertig.'); }catch(e){}
       }
 
@@ -591,7 +602,16 @@
             if($e){ $e.addEventListener('input', ()=>{ updSrc(); autoResolve(); }); }
           }catch(e){}
 
-          $analyze.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); }catch(e){}; analyze().catch(e=>err(e && e.message ? e.message : e)); });
+          $analyze.addEventListener('click', (ev)=>{
+            try{ ev.preventDefault(); }catch(e){}
+            analyze().catch(e=>{
+              const msg = e && e.message ? e.message : String(e || 'Unbekannter Fehler');
+              err(msg);
+              try{
+                if(window.InfluxBroPopup && window.InfluxBroPopup.show) window.InfluxBroPopup.show('Import Analyse Fehler', msg);
+              }catch(x){}
+            });
+          });
           $previewTransform.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); }catch(e){}; previewTransform().catch(e=>err(e && e.message ? e.message : e)); });
           $run.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); }catch(e){}; runImport().catch(e=>err(e && e.message ? e.message : e)); });
         }catch(e){ err(e && e.message ? e.message : e); }

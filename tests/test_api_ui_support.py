@@ -222,6 +222,12 @@ def test_popup_remains_mouse_resizable():
     assert "card.style.resize = 'both';" in body
 
 
+def test_import_analyze_shows_success_and_error_popups():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "import.html").read_text()
+    assert "window.InfluxBroPopup.show('Import Analyse erfolgreich', msg);" in body
+    assert "window.InfluxBroPopup.show('Import Analyse Fehler', msg);" in body
+
+
 def test_config_tooltips_include_page_search_highlight_settings():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
     assert "settings.ui_page_search_highlight_color" in body
