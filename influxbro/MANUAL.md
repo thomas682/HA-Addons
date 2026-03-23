@@ -142,6 +142,8 @@ Hinweis:
 
 Tipp: Wenn du mit der Maus ueber einem Button/Checkbox/Auswahlfeld bleibst, zeigt der Tooltip eine kurze Erklaerung plus den internen UI-Key in Klammern (z.B. `Dieser Button aktualisiert die Liste (dashboard.load)`). Damit kannst du mir exakt sagen, welches Element du meinst.
 
+Die Seitensuche in der Titelzeile (`page.search`) springt jetzt wieder mit sichtbarem Trefferrahmen zum gewaehlten Element. Farbe, Rahmenbreite und Sichtdauer kannst du in den Einstellungen anpassen.
+
 Hinweis: Zeitstempel werden im gesamten UI inklusive Millisekunden angezeigt.
 
 ## Tabellen (Allgemein)
@@ -531,6 +533,9 @@ UI:
 - `Min. freier Speicher (MB)`: wenn kleiner als diese Schwelle, wird das Erstellen eines Backups abgelehnt (0 = deaktiviert).
 - `Basis/Kleine Schriftgroesse`: UI Typografie.
 - `Seitentitel Schriftgroesse (px)`: Groesse des Titels in der festen Titelkarte.
+- `Seitensuche Highlight Farbe`: Rahmenfarbe fuer Treffer aus `page.search`.
+- `Seitensuche Highlight Breite (px)`: Rahmenbreite fuer Treffer aus `page.search`.
+- `Seitensuche Highlight Dauer (ms)`: Sichtdauer des Trefferrahmens nach dem Sprung.
 - Die Felder `ui_filter_label_width_px`, `ui_filter_control_width_px`, `ui_filter_search_width_px` und `ui_sel_field_font_px` verwenden eine breitere numerische Darstellung, damit Werte auch beim Hoch-/Runterzaehlen sichtbar bleiben.
 - `Checkbox Groesse (Scale)`: Checkbox-Scaling fuer bessere Bedienbarkeit.
 - `Bereich-Titel (Details): Hintergrund/Textfarbe`: Farben der einklappbaren Bereichstitel (Details/Sektionen). Leer = Standard; erlaubt: `transparent`/`inherit` oder `#RRGGBB`.

@@ -178,3 +178,24 @@ def test_topbar_updates_pagecard_height_css_var():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
     assert "const pc = document.getElementById('ib_pagecard');" in body
     assert "document.documentElement.style.setProperty('--ib-pagecard-h', String(ph) + 'px');" in body
+
+
+def test_page_search_highlight_is_global_and_configurable():
+    topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    config = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "config.html").read_text()
+    app_py = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "app.py").read_text()
+    assert '.jump_hl {' in topbar
+    assert '--ib-page-search-hl-color:' in topbar
+    assert '--ib-page-search-hl-width:' in topbar
+    assert '--ib-page-search-hl-duration-ms:' in topbar
+    assert 'ui_page_search_highlight_color' in config
+    assert 'ui_page_search_highlight_width_px' in config
+    assert 'ui_page_search_highlight_duration_ms' in config
+    assert '"ui_page_search_highlight_color": "#FF9900"' in app_py
+
+
+def test_config_tooltips_include_page_search_highlight_settings():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
+    assert "settings.ui_page_search_highlight_color" in body
+    assert "settings.ui_page_search_highlight_width_px" in body
+    assert "settings.ui_page_search_highlight_duration_ms" in body

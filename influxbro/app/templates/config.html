@@ -379,6 +379,21 @@
               <div class="muted">Groesse des Seitentitels in der festen Titelkarte.</div>
             </div>
             <div>
+              <label>Seitensuche Highlight Farbe</label>
+              <input id="ui_page_search_highlight_color" type="color" />
+              <div class="muted">Rahmenfarbe fuer Treffer aus `page.search`.</div>
+            </div>
+            <div>
+              <label>Seitensuche Highlight Breite (px)</label>
+              <input id="ui_page_search_highlight_width_px" type="number" min="1" max="12" />
+              <div class="muted">Rahmenbreite fuer Treffer aus `page.search`.</div>
+            </div>
+            <div>
+              <label>Seitensuche Highlight Dauer (ms)</label>
+              <input id="ui_page_search_highlight_duration_ms" type="number" min="200" max="10000" />
+              <div class="muted">Wie lange der Trefferrahmen sichtbar bleibt.</div>
+            </div>
+            <div>
               <label>Status Schriftgroesse (px)</label>
               <input id="ui_status_font_px" type="number" min="9" max="18" />
               <div class="muted">Sidebar Status Panel (Refresh/Eintraege).</div>
@@ -841,7 +856,7 @@ const ids = [
   "ui_backup_table_row_height_px","ui_backup_visible_rows","ui_restore_visible_rows",
   "ui_query_max_points","ui_raw_max_points","ui_raw_center_max_points","ui_raw_center_range_default",
   "ui_query_manual_max_points","ui_graph_jump_padding_intervals",
-  "ui_font_size_px","ui_font_small_px","ui_pagecard_title_px","ui_checkbox_scale",
+  "ui_font_size_px","ui_font_small_px","ui_pagecard_title_px","ui_page_search_highlight_color","ui_page_search_highlight_width_px","ui_page_search_highlight_duration_ms","ui_checkbox_scale",
   "ui_section_title_bg","ui_section_title_fg",
   "ui_status_font_px","ui_status_bar_height_px","ui_status_bar_bg","ui_status_bar_fg",
   "ui_status_show_sysinfo",
@@ -1176,6 +1191,9 @@ function setForm(cfg){
   el.ui_font_size_px.value = cfg.ui_font_size_px ?? 14;
   el.ui_font_small_px.value = cfg.ui_font_small_px ?? 11;
   el.ui_pagecard_title_px.value = cfg.ui_pagecard_title_px ?? 30;
+  el.ui_page_search_highlight_color.value = cfg.ui_page_search_highlight_color ?? '#FF9900';
+  el.ui_page_search_highlight_width_px.value = cfg.ui_page_search_highlight_width_px ?? 3;
+  el.ui_page_search_highlight_duration_ms.value = cfg.ui_page_search_highlight_duration_ms ?? 1400;
   el.ui_status_font_px.value = cfg.ui_status_font_px ?? 12;
   el.ui_status_bar_height_px.value = cfg.ui_status_bar_height_px ?? 38;
   el.ui_status_show_sysinfo.checked = !!cfg.ui_status_show_sysinfo;
@@ -1298,6 +1316,9 @@ function getForm(){
     ui_font_size_px: parseInt(el.ui_font_size_px.value, 10),
     ui_font_small_px: parseInt(el.ui_font_small_px.value, 10),
     ui_pagecard_title_px: parseInt(el.ui_pagecard_title_px.value, 10),
+    ui_page_search_highlight_color: String(el.ui_page_search_highlight_color.value || '').trim(),
+    ui_page_search_highlight_width_px: parseInt(el.ui_page_search_highlight_width_px.value, 10),
+    ui_page_search_highlight_duration_ms: parseInt(el.ui_page_search_highlight_duration_ms.value, 10),
     ui_status_font_px: parseInt(el.ui_status_font_px.value, 10),
     ui_status_bar_height_px: parseInt(el.ui_status_bar_height_px.value, 10),
     ui_status_show_sysinfo: !!el.ui_status_show_sysinfo.checked,
