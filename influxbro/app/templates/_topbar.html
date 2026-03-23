@@ -552,6 +552,11 @@
         if(!el) return;
         const h = Math.ceil(el.getBoundingClientRect().height);
         document.documentElement.style.setProperty('--ib-topbar-h', String(h) + 'px');
+        const pc = document.getElementById('ib_pagecard');
+        if(pc){
+          const ph = Math.ceil(pc.getBoundingClientRect().height);
+          document.documentElement.style.setProperty('--ib-pagecard-h', String(ph) + 'px');
+        }
         const bb = document.querySelector('.ib_bottombar');
         if(bb){ const bh = Math.ceil(bb.getBoundingClientRect().height); document.documentElement.style.setProperty('--ib-bottombar-h', String(bh) + 'px'); }
       }catch(e){}

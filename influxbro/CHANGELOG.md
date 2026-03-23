@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.112
+
+### Fix
+
+- Die Desktop-Navigation und der Inhaltsbereich beruecksichtigen jetzt die tatsaechliche Hoehe von `page.title.card`. Dadurch ueberlappt die Seitenleiste bei schmaleren Breiten nicht mehr mit der Titelkarte.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`, `pytest tests/test_api_ui_support.py tests/test_api_debug_report.py tests/test_api_raw_points_center.py tests/test_api_monitoring.py tests/test_api_yaml_flow.py -q`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.111
 
 ### Fix

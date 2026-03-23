@@ -166,3 +166,15 @@ def test_monitor_page_does_not_force_topbar_search_to_full_width():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "monitor.html").read_text()
     assert 'main.content input, main.content select, main.content textarea { width:100%; }' in body
     assert 'input, select, textarea { width:100%; }' not in body
+
+
+def test_nav_uses_dynamic_pagecard_height_for_desktop_layout():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_nav.html").read_text()
+    assert 'top: calc(var(--ib-topbar-h, 0px) + var(--ib-pagecard-h, 0px) + 20px);' in body
+    assert 'height: calc(100vh - (var(--ib-topbar-h, 0px) + var(--ib-pagecard-h, 0px) + 20px));' in body
+
+
+def test_topbar_updates_pagecard_height_css_var():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    assert "const pc = document.getElementById('ib_pagecard');" in body
+    assert "document.documentElement.style.setProperty('--ib-pagecard-h', String(ph) + 'px');" in body
