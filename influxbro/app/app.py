@@ -5079,7 +5079,7 @@ def api_bugreport_meta():
     repo_cfg = str(cfg.get("ui_repo_url") or "").strip()
     repo_base = _github_repo_base(repo_cfg)
     # Prefer the advanced bugreport template if present.
-    new_issue_url = (repo_base + "/issues/new?template=profi.yml") if repo_base else ""
+    new_issue_url = (repo_base + "/issues/new") if repo_base else ""
 
     # Home Assistant versions (Supervisor API; best-effort)
     ha_core_ver = None
@@ -5126,6 +5126,7 @@ def api_bugreport_meta():
         "ok": True,
         "addon_version": ADDON_VERSION,
         "repo_url": repo_base or repo_cfg,
+        "github_repo_base": repo_base,
         "github_new_issue_url": new_issue_url,
         "ha": {
             "core": ha_core_ver,

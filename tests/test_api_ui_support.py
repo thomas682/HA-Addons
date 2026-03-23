@@ -29,6 +29,7 @@ def test_bugreport_meta_includes_recent_ui_actions(load_app_module, tmp_path):
     assert j["ok"] is True
     assert isinstance(j["recent_actions"], list)
     assert j["recent_actions"][-1]["ui"] == "raw.paste"
+    assert "github_repo_base" in j
 
 
 def test_debug_report_contains_recent_ui_actions(load_app_module, tmp_path):
@@ -94,3 +95,13 @@ def test_info_popup_decodes_escaped_linebreaks():
     assert "function _decodeEscapedInfoText(text){" in body
     assert ".replace(/\\\\n/g, '\\n')" in body
     assert "const normalizedMsg = _decodeEscapedInfoText(String(msg || ''));" in body
+
+
+def test_bugreport_flow_offers_bug_or_enhancement_with_labels():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
+    assert 'id="influxbro_issue_kind"' in body
+    assert '<option value="bug">Bug</option>' in body
+    assert '<option value="enhancement">Erweiterung</option>' in body
+    assert "const labels = (kind === 'enhancement') ? 'type/enhancement' : 'type/bug';" in body
+    assert "if(kind === 'bug'){" in body
+    assert "defaultBugText = 'siehe automatisch angehaengtes Logging / Bei Bedarf hier eigene Fehlerbeschreibung einfuegen....'" in body

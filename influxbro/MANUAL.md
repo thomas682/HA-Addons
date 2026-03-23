@@ -547,6 +547,8 @@ Fehleranzeige:
 - Dashboard Button `Letzter Fehler`: oeffnet den letzten Fehlerdialog erneut.
 - Button `Git Bugreport`: erzeugt einen GitHub Bugreport (Template profi) und laedt einen Debug report zum Anhaengen.
 - Der Bugreport enthaelt jetzt zusaetzlich eine `Aktionsliste` mit den letzten 5 serverseitig protokollierten Bedieneraktionen.
+- Vor dem Anlegen waehlt der Dialog jetzt zwischen `Bug` und `Erweiterung`. Dabei wird automatisch das passende GitHub-Label gesetzt (`type/bug` oder `type/enhancement`).
+- Bei `Bug` ist die Beschreibung vorbelegt und es wird weiterhin ein Debug-Report heruntergeladen; bei `Erweiterung` ist eine freie, nicht-leere Beschreibung Pflicht.
 
 Fehlerfenster (Popup):
 
@@ -567,6 +569,7 @@ Statistik:
 - Bei einer Fehlermeldung im Popup kannst du auf `Bugreport` klicken.
 - Dabei wird automatisch ein Debug report heruntergeladen (`influxbro_debug_report_*.md`) und eine GitHub Issue Seite geoeffnet (vorbefuellt mit HA/Influx Versionen).
 - Die GitHub-Vorbelegung enthaelt zusaetzlich eine `Aktionsliste` mit den letzten 5 Bedieneraktionen.
+- Der Issue-Composer oeffnet danach direkt die GitHub-Issue-Seite mit passendem Label und vorausgefuelltem Text.
 - Wichtig: Debug report Datei in GitHub als Anhang hochladen (enth. Konfig redacted + Logs).
 
 Ausreisser:

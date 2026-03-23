@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.106
+
+### Fix
+
+- Bugreport-Flow fragt jetzt vor dem Anlegen eines GitHub-Issues nach `Bug` oder `Erweiterung`, verlangt einen ausfuellbaren Beschreibungstext und setzt automatisch das passende GitHub-Label (`type/bug` oder `type/enhancement`).
+- Bugreports bleiben mit Debug-Report-Anhang verknuepft; Erweiterungen oeffnen denselben Composer ohne Log-Zwang.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`, `pytest tests/test_api_ui_support.py tests/test_api_monitoring.py tests/test_api_yaml_flow.py -q`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.105
 
 ### Fix

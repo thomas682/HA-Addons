@@ -840,6 +840,58 @@
     card.appendChild(controls);
     card.appendChild(pre);
     root.appendChild(card);
+
+    const composer = document.createElement('div');
+    composer.id = 'influxbro_issue_composer';
+    composer.style.position = 'fixed';
+    composer.style.inset = '0';
+    composer.style.zIndex = '10060';
+    composer.style.display = 'none';
+    composer.style.background = 'rgba(0,0,0,0.50)';
+    composer.style.padding = '8vh 12px 12px 12px';
+    composer.style.boxSizing = 'border-box';
+
+    const composerCard = document.createElement('div');
+    composerCard.style.maxWidth = '860px';
+    composerCard.style.margin = '0 auto';
+    composerCard.style.background = '#fff';
+    composerCard.style.borderRadius = '16px';
+    composerCard.style.boxShadow = '0 12px 60px rgba(0,0,0,0.28)';
+    composerCard.style.padding = '14px';
+    composerCard.style.display = 'flex';
+    composerCard.style.flexDirection = 'column';
+    composerCard.style.gap = '12px';
+
+    composerCard.innerHTML = `
+      <div style="display:flex; justify-content:space-between; gap:12px; align-items:center; flex-wrap:wrap;">
+        <div style="font-weight:800; font-size:16px;">Issue anlegen</div>
+        <button type="button" id="influxbro_issue_cancel" style="cursor:pointer; padding:10px 12px;">Schliessen</button>
+      </div>
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:12px; align-items:end;">
+        <div>
+          <label for="influxbro_issue_kind" style="display:block; font-size:12px; opacity:0.85; margin-bottom:4px;">Typ</label>
+          <select id="influxbro_issue_kind" style="width:100%; height:40px; padding:10px 12px; box-sizing:border-box;">
+            <option value="bug">Bug</option>
+            <option value="enhancement">Erweiterung</option>
+          </select>
+        </div>
+        <div>
+          <label for="influxbro_issue_title" style="display:block; font-size:12px; opacity:0.85; margin-bottom:4px;">Kurztitel</label>
+          <input id="influxbro_issue_title" type="text" style="width:100%; height:40px; padding:10px 12px; box-sizing:border-box;" />
+        </div>
+      </div>
+      <div>
+        <label for="influxbro_issue_text" id="influxbro_issue_text_label" style="display:block; font-size:12px; opacity:0.85; margin-bottom:4px;">Beschreibung</label>
+        <textarea id="influxbro_issue_text" style="width:100%; min-height:220px; padding:10px 12px; box-sizing:border-box; border:1px solid #ddd; border-radius:12px; font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;"></textarea>
+        <div id="influxbro_issue_hint" style="margin-top:6px; font-size:12px; opacity:0.75;"></div>
+      </div>
+      <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <button type="button" id="influxbro_issue_submit" style="cursor:pointer; padding:10px 12px;">Absenden / Issue anlegen</button>
+        <span id="influxbro_issue_status" style="font-size:12px; opacity:0.75;"></span>
+      </div>
+    `;
+    composer.appendChild(composerCard);
+    document.body.appendChild(composer);
     document.body.appendChild(root);
 
     // Wrap preference
@@ -982,6 +1034,142 @@
       return fn;
     }
 
+    function _buildIssueBody(kind, userText, msg, meta, debugFilename){
+      const addonV = meta && meta.addon_version ? String(meta.addon_version) : '';
+      const haCore = meta && meta.ha && meta.ha.core ? String(meta.ha.core) : '';
+      const haSup = meta && meta.ha && meta.ha.supervisor ? String(meta.ha.supervisor) : '';
+      const haOs = meta && meta.ha && meta.ha.os ? String(meta.ha.os) : '';
+      const influxV = meta && meta.influx && meta.influx.version ? String(meta.influx.version) : '';
+      const haArch = meta && meta.ha && meta.ha.arch ? String(meta.ha.arch) : '';
+      const haInst = meta && meta.ha && meta.ha.installation_type ? String(meta.ha.installation_type) : '';
+      const haPlat = meta && meta.ha && meta.ha.platform ? String(meta.ha.platform) : '';
+      const recentActions = Array.isArray(meta && meta.recent_actions) ? meta.recent_actions : [];
+
+      let body = '';
+      if(kind === 'enhancement'){
+        body += '### Gewuenschte Erweiterung\n\n';
+        body += _clip(userText, 4000) + '\n\n';
+        body += '### Kontext / Ausloeser\n\n';
+        body += _clip(msg || 'Kein Popup-Text vorhanden.', 1200) + '\n\n';
+      }else{
+        body += '### Fehlerbeschreibung\n\n';
+        body += _clip(userText, 4000) + '\n\n';
+        body += '### Ausloeser / Aktion\n\n';
+        body += _clip(msg, 1200) + '\n\n';
+      }
+
+      body += '### System / Versionen\n\n';
+      if(haArch) body += '- architecture: ' + haArch + '\n';
+      if(haInst) body += '- installation-type: ' + haInst + '\n';
+      if(haPlat) body += '- platform: ' + haPlat + '\n';
+      if(haSup) body += '- supervisor-version: ' + haSup + '\n';
+      if(haCore) body += '- ha-version: ' + haCore + '\n';
+      if(addonV) body += '- addon-version: ' + addonV + '\n';
+      if(haOs) body += '- ha-os: ' + haOs + '\n';
+      if(influxV) body += '- influx-version: ' + influxV + '\n';
+      body += '\n';
+
+      body += '### Aktionsliste\n\n';
+      if(recentActions.length){
+        recentActions.slice(-5).forEach((it) => {
+          const at = it && it.at ? String(it.at) : '';
+          const ui = it && it.ui ? String(it.ui) : '';
+          const page = it && it.page ? String(it.page) : '';
+          const text = it && it.text ? String(it.text) : '';
+          body += '- ' + [at, page, ui, text].filter(Boolean).join(' | ') + '\n';
+        });
+      }else{
+        body += '- keine aufgezeichneten Bedieneraktionen vorhanden\n';
+      }
+      body += '\n';
+
+      if(kind === 'bug'){
+        body += '### Debug report Anhang\n\n';
+        body += '- Bitte die heruntergeladene Datei `influxbro_debug_report_*.md` anhaengen.\n';
+        if(debugFilename) body += '- Bereits erzeugter Dateiname: `' + String(debugFilename) + '`\n';
+      }
+      return body;
+    }
+
+    function _openIssueComposer(opts){
+      const composer = document.getElementById('influxbro_issue_composer');
+      const kindEl = document.getElementById('influxbro_issue_kind');
+      const titleEl = document.getElementById('influxbro_issue_title');
+      const textEl = document.getElementById('influxbro_issue_text');
+      const labelEl = document.getElementById('influxbro_issue_text_label');
+      const hintEl = document.getElementById('influxbro_issue_hint');
+      const statusEl = document.getElementById('influxbro_issue_status');
+      const cancelEl = document.getElementById('influxbro_issue_cancel');
+      const submitEl = document.getElementById('influxbro_issue_submit');
+      if(!composer || !kindEl || !titleEl || !textEl || !labelEl || !hintEl || !statusEl || !cancelEl || !submitEl) return;
+
+      const msg = String(opts && opts.msg ? opts.msg : '').trim();
+      const meta = opts && opts.meta ? opts.meta : null;
+      const baseUrl = meta && meta.github_new_issue_url ? String(meta.github_new_issue_url) : '';
+      const defaultBugText = 'siehe automatisch angehaengtes Logging / Bei Bedarf hier eigene Fehlerbeschreibung einfuegen....';
+
+      function close(){ composer.style.display = 'none'; statusEl.textContent = ''; }
+      function sync(){
+        const kind = String(kindEl.value || 'bug');
+        const titlePrefix = (kind === 'enhancement') ? '[Enhancement]: ' : '[Bug]: ';
+        const fallbackTitle = (kind === 'enhancement') ? 'Neue Erweiterung' : _safeTitleFromMsg(msg);
+        if(!String(titleEl.value || '').trim() || titleEl.dataset.autofill === '1'){
+          titleEl.value = titlePrefix + fallbackTitle;
+          titleEl.dataset.autofill = '1';
+        }
+        if(kind === 'enhancement'){
+          labelEl.textContent = 'Erweiterung beschreiben';
+          hintEl.textContent = 'Bitte die gewuenschte Erweiterung kurz beschreiben. Das Feld darf nicht leer bleiben.';
+          if(!String(textEl.value || '').trim() || textEl.dataset.mode !== 'enhancement') textEl.value = '';
+        }else{
+          labelEl.textContent = 'Fehlerbeschreibung';
+          hintEl.textContent = 'Bug erstellt ein Issue mit Label type/bug und laedt zusaetzlich einen Debug report herunter.';
+          if(!String(textEl.value || '').trim() || textEl.dataset.mode !== 'bug') textEl.value = defaultBugText;
+        }
+        textEl.dataset.mode = kind;
+      }
+
+      kindEl.value = 'bug';
+      titleEl.dataset.autofill = '1';
+      titleEl.oninput = ()=>{ titleEl.dataset.autofill = '0'; };
+      kindEl.onchange = sync;
+      cancelEl.onclick = close;
+      sync();
+      composer.style.display = 'block';
+      setTimeout(()=>{ try{ textEl.focus(); textEl.select(); }catch(e){} }, 0);
+
+      submitEl.onclick = async ()=>{
+        const kind = String(kindEl.value || 'bug');
+        const title = String(titleEl.value || '').trim();
+        const userText = String(textEl.value || '').trim();
+        if(!title){ statusEl.textContent = 'Kurztitel fehlt.'; return; }
+        if(!userText){ statusEl.textContent = kind === 'bug' ? 'Bitte Fehlerbeschreibung eingeben.' : 'Bitte Erweiterung beschreiben.'; return; }
+        if(!baseUrl){ statusEl.textContent = 'Repo URL fehlt (Einstellungen -> Links).'; return; }
+
+        let win = null;
+        try{ win = window.open('about:blank', '_blank'); }catch(e){ win = null; }
+        statusEl.textContent = (kind === 'bug') ? 'Debug report...' : 'Issue wird vorbereitet...';
+
+        let fn = '';
+        if(kind === 'bug'){
+          try{ fn = await _downloadDebugReport(title.replace(/^\[Bug\]:\s*/, ''), msg); }catch(e){ try{ window.InfluxBroClientLog && window.InfluxBroClientLog.reportError && window.InfluxBroClientLog.reportError('Bugreport: debug_report failed', { err: String(e && e.message ? e.message : e) }, (e && e.stack) ? String(e.stack) : ''); }catch(x){} }
+        }
+
+        const labels = (kind === 'enhancement') ? 'type/enhancement' : 'type/bug';
+        const body = _buildIssueBody(kind, userText, msg, meta, fn);
+        const url = baseUrl + '?labels=' + encodeURIComponent(labels) + '&title=' + encodeURIComponent(title) + '&body=' + encodeURIComponent(body);
+        try{
+          if(win) win.location.href = url;
+          else window.open(url, '_blank');
+          statusEl.textContent = (kind === 'bug') ? 'Issue geoeffnet, Debug report bitte anhaengen.' : 'Issue geoeffnet.';
+          try{ bugHint.textContent = (kind === 'bug') ? 'Bitte Debug report anhaengen' : 'Issue geoeffnet'; }catch(e){}
+          close();
+        }catch(e){
+          statusEl.textContent = 'Issue konnte nicht geoeffnet werden.';
+        }
+      };
+    }
+
     async function _bugreportRun(msgOverride){
       try{ bugHint.textContent = ''; }catch(e){}
 
@@ -992,13 +1180,6 @@
         return;
       }
 
-      // Try to open a tab early (avoids popup blockers)
-      let win = null;
-      try{ win = window.open('about:blank', '_blank'); }catch(e){ win = null; }
-
-      const issueTitle = _safeTitleFromMsg(msg);
-      try{ bugHint.textContent = 'Debug report...'; }catch(e){}
-
       let meta = null;
       try{
         const r = await fetch('./api/bugreport_meta');
@@ -1008,79 +1189,7 @@
         meta = null;
       }
 
-      // Build a short pre-filled issue body (URL length constraints!)
-      const addonV = meta && meta.addon_version ? String(meta.addon_version) : '';
-      const haCore = meta && meta.ha && meta.ha.core ? String(meta.ha.core) : '';
-      const haSup = meta && meta.ha && meta.ha.supervisor ? String(meta.ha.supervisor) : '';
-      const haOs = meta && meta.ha && meta.ha.os ? String(meta.ha.os) : '';
-      const influxV = meta && meta.influx && meta.influx.version ? String(meta.influx.version) : '';
-      const newIssueBase = meta && meta.github_new_issue_url ? String(meta.github_new_issue_url) : '';
-
-      let body = '';
-      body += '### Ausloeser / Aktion\n\n';
-      body += _clip(msg, 1200) + '\n\n';
-      body += '### System / Versionen\n\n';
-      const haArch = meta && meta.ha && meta.ha.arch ? String(meta.ha.arch) : '';
-      const haInst = meta && meta.ha && meta.ha.installation_type ? String(meta.ha.installation_type) : '';
-      const haPlat = meta && meta.ha && meta.ha.platform ? String(meta.ha.platform) : '';
-      if(haArch) body += '- architecture: ' + haArch + '\n';
-      if(haInst) body += '- installation-type: ' + haInst + '\n';
-      if(haPlat) body += '- platform: ' + haPlat + '\n';
-      if(haSup) body += '- supervisor-version: ' + haSup + '\n';
-      if(haCore) body += '- ha-version: ' + haCore + '\n';
-      if(addonV) body += '- addon-version: ' + addonV + '\n';
-      if(haOs) body += '- ha-os: ' + haOs + '\n';
-      if(influxV) body += '- influx-version: ' + influxV + '\n';
-      body += '\n';
-      body += '### Aktionsliste\n\n';
-      const recentActions = Array.isArray(meta && meta.recent_actions) ? meta.recent_actions : [];
-      if(recentActions.length){
-        recentActions.slice(-5).forEach((it) => {
-          const at = it && it.at ? String(it.at) : '';
-          const ui = it && it.ui ? String(it.ui) : '';
-          const page = it && it.page ? String(it.page) : '';
-          const text = it && it.text ? String(it.text) : '';
-          let extraTxt = '';
-          try{
-            const extra = it && it.extra;
-            if(extra && typeof extra === 'object'){
-              const pairs = Object.entries(extra).slice(0, 3).map(([k, v]) => `${k}=${v}`);
-              if(pairs.length) extraTxt = ' | ' + pairs.join(', ');
-            }
-          }catch(e){}
-          body += '- ' + [at, page, ui, text].filter(Boolean).join(' | ') + extraTxt + '\n';
-        });
-      }else{
-        body += '- keine aufgezeichneten Bedieneraktionen vorhanden\n';
-      }
-      body += '\n';
-      body += '### Debug report Anhang\n\n';
-      body += '- Bitte die heruntergeladene Datei `influxbro_debug_report_*.md` anhaengen.\n';
-
-      if(!newIssueBase){
-        try{ bugHint.textContent = 'Repo URL fehlt (Einstellungen -> Links)'; }catch(e){}
-      }
-      const url = newIssueBase ? (newIssueBase + '&title=' + encodeURIComponent('[Bug]: ' + issueTitle) + '&body=' + encodeURIComponent(body)) : '';
-
-      // Kick off the download; keep going even if it fails.
-      let fn = '';
-      try{
-        fn = await _downloadDebugReport(issueTitle, msg);
-        try{ bugHint.textContent = 'Debug report: ' + fn; }catch(e){}
-      }catch(e){
-        try{ bugHint.textContent = 'Debug report fehlgeschlagen'; }catch(x){}
-        try{ window.InfluxBroClientLog && window.InfluxBroClientLog.reportError && window.InfluxBroClientLog.reportError('Bugreport: debug_report failed', { err: String(e && e.message ? e.message : e) }, (e && e.stack) ? String(e.stack) : ''); }catch(x){}
-      }
-
-      // Navigate the opened tab to the issue page.
-      try{
-        if(url){
-          if(win) win.location.href = url;
-          else window.open(url, '_blank');
-        }
-      }catch(e){}
-
-      try{ if(fn) bugHint.textContent = 'Bitte Debug report anhaengen'; }catch(e){}
+      _openIssueComposer({ msg, meta });
     }
 
     bugBtn.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} _bugreportRun(null).catch(()=>{}); });
