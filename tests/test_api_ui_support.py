@@ -114,3 +114,13 @@ def test_raw_center_range_uses_minutes_in_ui():
     assert 'Bereich +- (Minuten)' in body
     assert 'payload.center_minutes = centerMinutes;' in body
     assert 'Zeitfenster um den selektierten Messwert herum in Minuten.' in body
+
+
+def test_dashboard_raw_buttons_show_feedback_and_last_error_button_removed():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert 'function showRawActionFeedback(title, text)' in body
+    assert "showRawActionFeedback('Raw Daten kopiert'" in body
+    assert "showRawActionFeedback('Raw Query'" in body
+    assert "showRawActionFeedback('Raw Wert kopiert'" in body
+    assert 'id="last_error"' not in body
+    assert "dashboard.last_error" not in body

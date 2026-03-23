@@ -299,7 +299,6 @@
       <div style="display:flex; gap: 8px; align-items: stretch;">
         <button id="load" style="flex:1;" data-ui="dashboard.load">Aktualisieren</button>
         <button id="cancel_load" class="btn_sm" style="width:auto; white-space:nowrap;" data-ui="dashboard.cancel">Abbruch</button>
-        <button id="last_error" class="btn_sm" style="width:auto; white-space:nowrap;" type="button" data-ui="dashboard.last_error" title="dashboard.last_error">Letzter Fehler</button>
         <button id="reset_filters" class="btn_sm" style="width:auto; white-space:nowrap;" data-ui="dashboard.reset" title="dashboard.reset">Reset</button>
         <button id="open_settings" class="btn_sm" style="width:auto; white-space:nowrap;" title="Einstellungen prüfen">Einstellungen prüfen</button>
       </div>
@@ -846,7 +845,6 @@ const $btnTblAllValues = document.getElementById('tbl_all_values');
 
 const $btnLoad = document.getElementById('load');
 const $btnCancelLoad = document.getElementById('cancel_load');
-const $btnLastError = document.getElementById('last_error');
 const $loadStatus = document.getElementById('load_status');
 const $loadSpinner = document.getElementById('load_spinner');
 const $loadStatusTxt = document.getElementById('load_status_txt');
@@ -854,8 +852,6 @@ const $loadStatusTime = document.getElementById('load_status_time');
 const $btnReset = document.getElementById('reset_filters');
 
 try{ if($btnOutlierReset) $btnOutlierReset.disabled = true; }catch(e){}
-
-try{ if($btnLastError) $btnLastError.addEventListener('click', (ev)=>{ _stop(ev); try{ window.InfluxBroErrors && window.InfluxBroErrors.showLast && window.InfluxBroErrors.showLast(); }catch(e){}; }); }catch(e){}
 
 const $queryDetails = document.getElementById('query_details');
 const $queryPre = document.getElementById('query_pre');
@@ -4399,6 +4395,12 @@ function updateRawToolbarState(){
   }catch(e){}
 }
 
+function showRawActionFeedback(title, text){
+  try{
+    if(window.InfluxBroPopup && window.InfluxBroPopup.show) window.InfluxBroPopup.show(title, text);
+  }catch(e){}
+}
+
 try{
   if($rawCopyValue) $rawCopyValue.addEventListener('click', async (ev)=>{
     _stop(ev);
@@ -4416,6 +4418,7 @@ try{
       // Try also to place into system clipboard (best-effort)
       try{ await copyTextToClipboard(RAW_COPIED.value_str); }catch(e){}
       ok('Wert kopiert.');
+      showRawActionFeedback('Raw Wert kopiert', `Zeit: ${fmtTs(row.time)}\nWert: ${String(RAW_COPIED.value_str || '')}`);
       updateRawToolbarState();
     }catch(e){ displayError(e); }
   });
@@ -6521,7 +6524,10 @@ if($rawCopy) $rawCopy.addEventListener("click", async (ev)=>{
     const lines = ["Zeit\tWert"];
     rows.forEach(r => { lines.push(fmtTs(r.time) + "\t" + fmtNum(r.value)); });
     const okCopy = await copyTextToClipboard(lines.join("\n"));
-    if(okCopy) ok(`Raw Daten kopiert: ${rows.length} Zeilen.`);
+    if(okCopy){
+      ok(`Raw Daten kopiert: ${rows.length} Zeilen.`);
+      showRawActionFeedback('Raw Daten kopiert', `Zeilen: ${rows.length}\nFormat: Zeit<TAB>Wert`);
+    }
     else err("Copy failed (Clipboard blockiert). Bitte im Browser Clipboard erlauben.");
   }catch(e){
     err("Copy failed: " + String(e && e.message ? e.message : e));
@@ -6532,7 +6538,10 @@ if($rawCopyQuery) $rawCopyQuery.addEventListener("click", async (ev)=>{
   try{
     const q = (RAW_META && RAW_META.query) ? String(RAW_META.query) : "";
     const okCopy = await copyTextToClipboard(q);
-    if(okCopy) ok(q ? "Query kopiert." : "Query ist leer.");
+    if(okCopy){
+      ok(q ? "Query kopiert." : "Query ist leer.");
+      showRawActionFeedback('Raw Query', q ? 'Die aktuelle Query wurde in die Zwischenablage kopiert.' : 'Es war keine Query vorhanden.');
+    }
     else err("Copy failed (Clipboard blockiert). Bitte im Browser Clipboard erlauben.");
   }catch(e){
     err("Copy failed: " + String(e && e.message ? e.message : e));

@@ -217,6 +217,7 @@ Raw Daten (DB):
 - Wenn du per Tagesnavigation zu einem Zeitpunkt springst, der noch nicht in der Tabelle geladen ist, wird automatisch nachgeladen, bis der Ziel-Tag erreicht ist (oder bis keine weiteren Daten verfuegbar sind).
 - `Einfügen` uebernimmt den kopierten Wert jetzt sichtbar in die Bearbeitungsliste, oeffnet den Bereich automatisch und zeigt Quelle/Ziel als Popup an.
 - Die Raw-Query bleibt sichtbar, zeigt einen Zeitstempel und hat ebenfalls eine History.
+- Die Buttons `Kopieren`, `Wert kopieren`, `Einfügen` und `Query kopieren` zeigen zusaetzlich eine direkte Rueckmeldung im Popup.
 
 Konzept fuer sehr grosse Tabellen (z.B. ~2 Mio Zeilen):
 
@@ -572,6 +573,10 @@ Statistik:
 - Die GitHub-Vorbelegung enthaelt zusaetzlich eine `Aktionsliste` mit den letzten 5 Bedieneraktionen.
 - Der Issue-Composer oeffnet danach direkt die GitHub-Issue-Seite mit passendem Label und vorausgefuelltem Text.
 - Wichtig: Debug report Datei in GitHub als Anhang hochladen (enth. Konfig redacted + Logs).
+
+Hinweis Dashboard:
+
+- Der fruehere Button `Letzter Fehler` in der Dashboard-Aktionsleiste wurde entfernt. Die Fehleranzeige bleibt zentral ueber die untere Statusleiste (`Letzter Fehler`, `Fehlerdialog`, `Git Bugreport`) verfuegbar.
 
 Ausreisser:
 

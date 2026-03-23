@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.108
+
+### Enhancement
+
+- Dashboard-Raw-Aktionen `Kopieren`, `Wert kopieren`, `Einfügen` und `Query kopieren` zeigen jetzt zusaetzlich sichtbare Rueckmeldungen im Popup.
+- Der Button `Dashboard: Letzter Fehler` wurde aus der Dashboard-Aktionsleiste entfernt; die Fehleranzeige bleibt ueber die globale Statusleiste unten verfuegbar.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`, `pytest tests/test_api_ui_support.py tests/test_api_raw_points_center.py tests/test_api_monitoring.py tests/test_api_yaml_flow.py -q`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.107
 
 ### Enhancement
