@@ -194,6 +194,30 @@ def test_page_search_highlight_is_global_and_configurable():
     assert '"ui_page_search_highlight_color": "#FF9900"' in app_py
 
 
+def test_summary_rows_use_full_summary_bar_style():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    assert 'main.content details > summary {' in body
+    assert 'border: 1px solid #cfd5e2;' in body
+    assert 'border-radius: 10px;' in body
+    assert 'background: var(--ib-section-title-bg);' in body
+    assert 'width: 20px;' in body
+
+
+def test_dashboard_selection_labels_and_widths_are_updated():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert '<label class="ib_sel_label">Einheit</label>' in body
+    assert '<label class="ib_sel_label">Feld</label>' in body
+    assert '<span>Entity</span>' in body
+    assert '<span>Name</span>' in body
+    assert 'width: auto;' in body
+    assert 'max-width: 60%;' in body
+
+
+def test_popup_remains_mouse_resizable():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
+    assert "card.style.resize = 'both';" in body
+
+
 def test_config_tooltips_include_page_search_highlight_settings():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
     assert "settings.ui_page_search_highlight_color" in body

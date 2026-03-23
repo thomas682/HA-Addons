@@ -121,6 +121,15 @@ Neu: Top-Leiste (Profil + Zoom)
 - `friendly_name`: Auswahl der Datenbankspalte `friendly_name`.
 - `entity_id`: Auswahl der Datenbankspalte `entity_id`.
 
+Sichtbare Feldnamen im Dashboard:
+
+- `_measurement` -> `Einheit`
+- `_field` -> `Feld`
+- `entity_id` -> `Entity`
+- `friendly_name` -> `Name`
+
+Die Auswahlelemente sind auf maximal 60% Breite begrenzt; Labels und Hinweistexte darunter orientieren sich an derselben Breite.
+
 Die vier Auswahlfelder `_measurement`, `_field`, `friendly_name` und `entity_id` verwenden dieselbe Kaskadenlogik wie auf der Backup-Seite. Wenn du eines der Felder aenderst, werden die anderen Listen sofort mit den gefilterten Datenbankwerten neu geladen. Der Zeitraum beeinflusst diese vier Vorschlagslisten nicht; er steuert nur die spaetere Datenabfrage fuer Graph, Tabelle und Statistik.
 
 Auch `_measurement`-Werte mit Sonderzeichen wie `°F` werden direkt ueber die echten Daten gefiltert. Wenn es zu einem Measurement keine passenden Fields, friendly_names oder Entity IDs gibt, bleiben die anderen Listen entsprechend leer.
@@ -153,6 +162,7 @@ Hinweis: Zeitstempel werden im gesamten UI inklusive Millisekunden angezeigt.
 - Spalten koennen ueber den Spalten-Button (neben dem Info-Icon) ein-/ausgeblendet werden (wird gespeichert).
 - Das Info-Icon (i) erklaert je Tabelle Sinn/Zweck, Spalten und Aktionen.
 - Zusaetzlich haben viele Bereiche neben dem Bereichstitel ein Info-Icon, das die komplette Sektion ausfuehrlich erklaert (Popup ist resizable, hat Umbruch + Copy).
+- Die Summary-Balken fuer einklappbare Bereiche laufen jetzt ueber die komplette Summary-Zeile inklusive Auf-/Zuklappsymbol und verwenden ein einheitliches Balken-Layout.
 
 ## UI-Profile
 
@@ -589,6 +599,7 @@ Hinweis Dashboard:
 - Der fruehere Button `Letzter Fehler` in der Dashboard-Aktionsleiste wurde entfernt. Die Fehleranzeige bleibt zentral ueber die untere Statusleiste (`Letzter Fehler`, `Fehlerdialog`, `Git Bugreport`) verfuegbar.
 - Alle zentralen einklappbaren Dashboard-Bereiche besitzen jetzt einen Info-Button mit einer Kurzbeschreibung des jeweiligen Inhalts und der enthaltenen Bedienelemente.
 - Die Groesse des Info-Popups wird pro Dialogtitel lokal gespeichert und beim erneuten Oeffnen wiederhergestellt.
+- Der Info-/Bugreport-Dialog bleibt weiterhin per Maus in der Groesse veraenderbar.
 - Navigation und Inhaltsbereich beruecksichtigen die tatsaechliche Hoehe der Titelkarte jetzt auch bei schmaleren Breiten, damit es keine Ueberlappung mit der Menueleiste gibt.
 
 Ausreisser:

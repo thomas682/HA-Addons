@@ -152,9 +152,9 @@
       justify-content:space-between;
       gap: 10px;
       width: 100%;
-      padding: 4px 8px;
-      border-radius: 10px;
-      background: var(--ib-section-title-bg);
+      padding: 0;
+      border-radius: 0;
+      background: transparent;
       color: var(--ib-section-title-fg);
       box-sizing: border-box;
     }
@@ -183,6 +183,11 @@
       display: flex;
       align-items: center;
       gap: 8px;
+      padding: 8px 10px;
+      border: 1px solid #cfd5e2;
+      border-radius: 10px;
+      background: var(--ib-section-title-bg);
+      color: var(--ib-section-title-fg);
     }
     main.content details > summary::-webkit-details-marker { display: none; }
     main.content details > summary::before {

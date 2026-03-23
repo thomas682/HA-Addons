@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.114
+
+### Enhancement
+
+- Alle Summary-Balken (`ib_summary_row`) laufen jetzt ueber die komplette Summary-Zeile inklusive Auf-/Zuklappsymbol und verwenden ein einheitliches Balken-Layout mit Rand und Radius.
+- Die Dashboard-Auswahlelemente nutzen jetzt schmalere Breiten (`max-width: 60%`), angepasste Feldnamen (`Einheit`, `Feld`, `Entity`, `Name`) sowie gleich breite Labels/Hinweiszeilen.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`, `pytest tests/test_api_ui_support.py tests/test_api_debug_report.py tests/test_api_raw_points_center.py tests/test_api_monitoring.py tests/test_api_yaml_flow.py -q`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.113
 
 ### Fix
