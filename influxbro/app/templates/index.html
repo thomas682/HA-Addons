@@ -4435,6 +4435,7 @@ try{
       if(String(target) === String(RAW_COPIED.key)){ err('Quell- und Zielzeile sind identisch.'); return; }
       // Stage as overwrite
       ensureStagedByKey(target);
+      if(!EDIT_LIST.has(String(target))){ err('Ziel-Zeile konnte nicht fuer die Bearbeitungsliste vorgemerkt werden.'); return; }
       setNewValue(target, String(RAW_COPIED.raw_value), 'Copy-Paste');
       try{
         const sec = document.getElementById('filterlist_section');
@@ -5239,6 +5240,7 @@ function ensureStagedByKey(key){
   if(EDIT_LIST.has(key)) return;
   let row = (OUTLIER_ROWS || []).find(r => rowKey(r) === key);
   if(!row) row = (LAST_ROWS || []).find(r => rowKey(r) === key);
+  if(!row) row = (RAW_ROWS || []).find(r => rowKey(r) === key);
   if(!row) return;
 
   const origV = (typeof row.value === "number") ? row.value : Number(row.value);

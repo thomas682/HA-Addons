@@ -737,6 +737,11 @@
         <div class="muted">0 = deaktiviert.</div>
       </div>
       <div>
+        <label>Bugreport Log-Historie (Stunden)</label>
+        <input id="bugreport_log_history_hours" type="number" min="1" max="168" />
+        <div class="muted">Begrenzt den Log-Ausschnitt im Debug-Report. Default: 1 Stunde.</div>
+      </div>
+      <div>
         <label class="ib_chk_row"><input type="checkbox" id="log_http_requests" data-ui="settings.log_http_requests" title="settings.log_http_requests" /><span>HTTP Request Logs</span></label>
         <div class="muted">Default: aus (sehr viele Zeilen).</div>
       </div>
@@ -850,7 +855,7 @@ const ids = [
   ,"ui_tooltips_enabled"
   ,"restore_preview_lines"
   ,"import_measurement_transforms"
-  ,"log_to_file","log_profile","log_max_mb","log_backup_count","log_max_age_days","log_http_requests"
+  ,"log_to_file","log_profile","log_max_mb","log_backup_count","log_max_age_days","bugreport_log_history_hours","log_http_requests"
   ,"log_influx_queries"
   ,"log_cache_usage"
   // writes_enabled removed
@@ -1222,6 +1227,7 @@ function setForm(cfg){
   el.log_max_mb.value = cfg.log_max_mb ?? 5;
   el.log_backup_count.value = cfg.log_backup_count ?? 5;
   el.log_max_age_days.value = cfg.log_max_age_days ?? 14;
+  el.bugreport_log_history_hours.value = cfg.bugreport_log_history_hours ?? 1;
   el.log_http_requests.checked = !!cfg.log_http_requests;
   el.log_influx_queries.checked = !!cfg.log_influx_queries;
   el.log_cache_usage.checked = !!cfg.log_cache_usage;
@@ -1344,6 +1350,7 @@ function getForm(){
     log_max_mb: parseInt(el.log_max_mb.value, 10),
     log_backup_count: parseInt(el.log_backup_count.value, 10),
     log_max_age_days: parseInt(el.log_max_age_days.value, 10),
+    bugreport_log_history_hours: parseInt(el.bugreport_log_history_hours.value, 10),
     log_http_requests: !!el.log_http_requests.checked,
     log_influx_queries: !!el.log_influx_queries.checked,
     log_cache_usage: !!el.log_cache_usage.checked,

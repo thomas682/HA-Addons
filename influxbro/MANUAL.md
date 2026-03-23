@@ -218,6 +218,7 @@ Raw Daten (DB):
 - `Einfügen` uebernimmt den kopierten Wert jetzt sichtbar in die Bearbeitungsliste, oeffnet den Bereich automatisch und zeigt Quelle/Ziel als Popup an.
 - Die Raw-Query bleibt sichtbar, zeigt einen Zeitstempel und hat ebenfalls eine History.
 - Die Buttons `Kopieren`, `Wert kopieren`, `Einfügen` und `Query kopieren` zeigen zusaetzlich eine direkte Rueckmeldung im Popup.
+- `Einfügen` funktioniert jetzt auch dann korrekt, wenn die Zielzeile direkt in der Raw-Tabelle markiert wurde.
 
 Konzept fuer sehr grosse Tabellen (z.B. ~2 Mio Zeilen):
 
@@ -519,6 +520,7 @@ UI:
 - `Raw max. Punkte`: Maximale Zeilen/Points pro Raw-DB-Abfrage (Default: 20000).
 - `Raw max. Bereich +-`: Obergrenze in Minuten fuer den Dashboard-Wert `Bereich +-` ueber der Raw-Tabelle.
 - `Raw Bereich +- Standard`: Vorbelegung in Minuten fuer den Dashboard-Wert `Bereich +-`.
+- `Bugreport Log-Historie (Stunden)`: begrenzt die Log-Historie im Debug-Report auf die letzten X Stunden.
 - Dashboard-Autotuning nutzt fuer benutzerdefinierte Zeitraeume jetzt immer UTC-Zeitstempel mit Zeitzone, damit die Server-Pruefung stabil funktioniert.
 - `Manual max. Punkte (Dashboard Graph)`: Sicherheitslimit fuer `Details: Manuell` (100%).
 - `Sprung-Polster (Intervalle)`: +/- N Downsample-Intervalle fuer Sprung-Markierung/Detail-Nachladen.
@@ -545,12 +547,13 @@ Fehleranzeige:
 - Unten wird der letzte Fehler als Statuszeile angezeigt (Zeitstempel + Kurztext).
 - Zusaetzlich wird in der Statusleiste die Influx Verbindung angezeigt (OK/ERR; best-effort).
 - Button `Fehlerdialog`: zeigt den aktuellen Fehler plus Verlauf (mit Zeitstempeln).
-- Dashboard Button `Letzter Fehler`: oeffnet den letzten Fehlerdialog erneut.
 - Button `Git Bugreport`: erzeugt einen GitHub Bugreport (Template profi) und laedt einen Debug report zum Anhaengen.
 - Der Bugreport enthaelt jetzt zusaetzlich eine `Aktionsliste` mit den letzten 5 serverseitig protokollierten Bedieneraktionen.
 - Vor dem Anlegen waehlt der Dialog jetzt zwischen `Bug` und `Erweiterung`. Dabei wird automatisch das passende GitHub-Label gesetzt (`type/bug` oder `type/enhancement`).
 - Bei `Bug` ist die Beschreibung vorbelegt und es wird weiterhin ein Debug-Report heruntergeladen; bei `Erweiterung` ist eine freie, nicht-leere Beschreibung Pflicht.
 - Im Bugreport-Composer wird zusaetzlich sichtbar darauf hingewiesen, dass das Logfile/der Debug-Report in GitHub manuell ueber `Add files` angehaengt werden muss; dazu wird ein Beispielbild angezeigt.
+- Vor dem Absenden muss zusaetzlich die betroffene Funktion bzw. der Menueeintrag ausgewaehlt werden.
+- Beim Umschalten zwischen `Bug` und `Erweiterung` bleibt bereits eingegebener Beschreibungstext erhalten.
 
 Fehlerfenster (Popup):
 
@@ -572,12 +575,14 @@ Statistik:
 - Dabei wird automatisch ein Debug report heruntergeladen (`influxbro_debug_report_*.md`) und eine GitHub Issue Seite geoeffnet (vorbefuellt mit HA/Influx Versionen).
 - Die GitHub-Vorbelegung enthaelt zusaetzlich eine `Aktionsliste` mit den letzten 5 Bedieneraktionen.
 - Der Issue-Composer oeffnet danach direkt die GitHub-Issue-Seite mit passendem Label und vorausgefuelltem Text.
+- Der Debug-Report enthaelt nur noch die letzten konfigurierten Stunden aus Add-on- und Supervisor-Logs (Standard: 1 Stunde).
 - Wichtig: Debug report Datei in GitHub als Anhang hochladen (enth. Konfig redacted + Logs).
 
 Hinweis Dashboard:
 
 - Der fruehere Button `Letzter Fehler` in der Dashboard-Aktionsleiste wurde entfernt. Die Fehleranzeige bleibt zentral ueber die untere Statusleiste (`Letzter Fehler`, `Fehlerdialog`, `Git Bugreport`) verfuegbar.
 - Alle zentralen einklappbaren Dashboard-Bereiche besitzen jetzt einen Info-Button mit einer Kurzbeschreibung des jeweiligen Inhalts und der enthaltenen Bedienelemente.
+- Die Groesse des Info-Popups wird pro Dialogtitel lokal gespeichert und beim erneuten Oeffnen wiederhergestellt.
 
 Ausreisser:
 

@@ -752,6 +752,7 @@ DEFAULT_CFG = {
     "log_max_mb": 5,
     "log_backup_count": 5,
     "log_max_age_days": 14,
+    "bugreport_log_history_hours": 1,
     "log_http_requests": False,
     "log_influx_queries": False,
     "log_cache_usage": False,
@@ -5158,6 +5159,8 @@ def api_debug_report():
 
     cfg = _overlay_from_yaml_if_enabled(load_cfg())
     body = request.get_json(force=True) or {}
+    bugreport_log_hours = int(cfg.get("bugreport_log_history_hours", 1) or 1)
+    bugreport_log_hours = max(1, min(168, bugreport_log_hours))
 
     try:
         tail = int(body.get("tail") or 2000)
@@ -5200,6 +5203,45 @@ def api_debug_report():
         if want and len(lines) > want:
             lines = lines[-want:]
         return _redact_secrets("\n".join(lines))
+
+    def _parse_log_dt(raw: str) -> datetime | None:
+        s = str(raw or "").strip()
+        if not s:
+            return None
+        patterns = [
+            r"^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?)",
+            r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:,\d{3,6})?)",
+        ]
+        for pat in patterns:
+            m = re.match(pat, s)
+            if not m:
+                continue
+            token = str(m.group(1) or "").replace(",", ".")
+            if token.endswith("Z"):
+                token = token[:-1] + "+00:00"
+            try:
+                dt = datetime.fromisoformat(token)
+            except Exception:
+                continue
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            return dt.astimezone(timezone.utc)
+        return None
+
+    def _filter_log_text_since(txt: str, hours: int) -> str:
+        lines = (txt or "").splitlines()
+        if not lines:
+            return ""
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=max(1, int(hours or 1)))
+        out: list[str] = []
+        keep = False
+        for line in lines:
+            dt = _parse_log_dt(line)
+            if dt is not None:
+                keep = dt >= cutoff
+            if keep:
+                out.append(line)
+        return _redact_secrets("\n".join(out))
 
     def _snip_text(s: str, n: int = 200) -> str:
         try:
@@ -5267,7 +5309,7 @@ def api_debug_report():
     except Exception:
         caches = None
 
-    logfile_txt = _tail_file(LOG_FILE, tail)
+    logfile_txt = _filter_log_text_since(_tail_file(LOG_FILE, tail), bugreport_log_hours)
 
     sup_txt = ""
     try:
@@ -5281,7 +5323,7 @@ def api_debug_report():
                     sup_txt = str(j.get("data") or "")
             except Exception:
                 sup_txt = txt
-            sup_txt = _redact_secrets(sup_txt)
+            sup_txt = _filter_log_text_since(sup_txt, bugreport_log_hours)
         else:
             sup_txt = f"HTTP {st}: {txt}"
     except Exception as e:
@@ -5299,10 +5341,13 @@ def api_debug_report():
     title = str(issue.get("title") or "").strip()
     desc = str(issue.get("description") or "").strip()
     steps = str(issue.get("steps") or "").strip()
-    if title or desc or steps:
+    func_name = str(issue.get("function") or "").strip()
+    if title or desc or steps or func_name:
         lines.append("## User Report\n")
         if title:
             lines.append(f"- Title: {title}\n")
+        if func_name:
+            lines.append(f"- Function: {func_name}\n")
         if desc:
             lines.append("\n**Description**\n\n" + desc + "\n")
         if steps:
@@ -5329,10 +5374,10 @@ def api_debug_report():
     lines.append("## Dashboard Cache\n")
     lines.append(_md_code_block("json", _safe_obj(caches)))
 
-    lines.append("## Logfile (tail)\n")
+    lines.append(f"## Logfile (letzte {bugreport_log_hours}h)\n")
     lines.append(_md_code_block("text", logfile_txt))
 
-    lines.append("## Supervisor Logs (tail)\n")
+    lines.append(f"## Supervisor Logs (letzte {bugreport_log_hours}h)\n")
     lines.append(_md_code_block("text", sup_txt))
 
     md = "\n".join(lines)
@@ -10867,6 +10912,7 @@ def api_set_config():
     _clamp_int("log_max_mb", 5, 1, 200)
     _clamp_int("log_backup_count", 5, 1, 50)
     _clamp_int("log_max_age_days", 14, 0, 365)
+    _clamp_int("bugreport_log_history_hours", 1, 1, 168)
 
     def _clamp_num(key: str, default: float, lo: float, hi: float) -> None:
         try:

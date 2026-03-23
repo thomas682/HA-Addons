@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.12.110
+
+### Fix
+
+- `raw.paste` kann Zielzeilen jetzt auch direkt aus der Raw-Tabelle in die Bearbeitungsliste uebernehmen. Falls eine Zielzeile trotzdem nicht vorgemerkt werden kann, erscheint eine klare Fehlermeldung statt eines stillen No-Op.
+
+### Enhancement
+
+- Bugreport/Issue-Composer: Die Log-Historie im Debug-Report ist jetzt auf die letzten konfigurierbaren Stunden begrenzt (Default 1h). Zusaetzlich muss der Bediener vor dem Anlegen eine Funktion bzw. einen Menueeintrag auswaehlen.
+- Info-Popup: Die Groesse wird jetzt pro Dialogtitel lokal gespeichert und beim erneuten Oeffnen wiederhergestellt. Beim Umschalten des Issue-Typs bleibt der bereits eingegebene Beschreibungstext erhalten.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`, `pytest tests/test_api_ui_support.py tests/test_api_debug_report.py tests/test_api_raw_points_center.py tests/test_api_monitoring.py tests/test_api_yaml_flow.py -q`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.109
 
 ### Fix

@@ -172,6 +172,7 @@
     // Settings: Logging
     'settings.log_to_file': 'Schreibt Logs zusaetzlich nach /data/influxbro.log (Rotation).',
     'settings.log_profile': 'Setzt die Log-Stufe (ERROR/DEBUG/TRACE).',
+    'settings.bugreport_log_history_hours': 'Begrenzt die Log-Historie im Debug-Report auf die letzten X Stunden.',
     'settings.log_http_requests': 'Protokolliert HTTP Requests (sehr viele Zeilen).',
     'settings.log_influx_queries': 'Protokolliert Influx Query-Strings (nur sinnvoll mit TRACE).',
     // Settings: Connection basics
@@ -663,6 +664,17 @@
   if(window.InfluxBroPopup && window.InfluxBroPopup.error) return;
 
   let LAST = { msg: '', at: 0 };
+  let CURRENT_POPUP_SIZE_KEY = 'default';
+  const POPUP_SIZE_PREFIX = 'influxbro.popup.size.v1.';
+
+  function _popupSizeKey(title){
+    const raw = String(title || 'Hinweis').trim().toLowerCase();
+    return (raw || 'hinweis').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 80) || 'hinweis';
+  }
+
+  function _popupSizeStorageKey(title){
+    return POPUP_SIZE_PREFIX + _popupSizeKey(title);
+  }
 
   function _ensureUi(){
     let root = document.getElementById('influxbro_popup_root');
@@ -696,6 +708,8 @@
     card.style.overflow = 'auto';
     card.style.width = 'min(980px, calc(100vw - 24px))';
     card.style.height = 'min(72vh, 720px)';
+    card.style.minWidth = '320px';
+    card.style.minHeight = '200px';
 
     const head = document.createElement('div');
     head.style.display = 'flex';
@@ -879,6 +893,24 @@
           <label for="influxbro_issue_title" style="display:block; font-size:12px; opacity:0.85; margin-bottom:4px;">Kurztitel</label>
           <input id="influxbro_issue_title" type="text" style="width:100%; height:40px; padding:10px 12px; box-sizing:border-box;" />
         </div>
+        <div>
+          <label for="influxbro_issue_function" style="display:block; font-size:12px; opacity:0.85; margin-bottom:4px;">Funktion / Menueeintrag</label>
+          <select id="influxbro_issue_function" style="width:100%; height:40px; padding:10px 12px; box-sizing:border-box;">
+            <option value="">Bitte auswaehlen</option>
+            <option value="Dashboard">Dashboard</option>
+            <option value="Statistik">Statistik</option>
+            <option value="Monitor">Monitor</option>
+            <option value="Backup">Backup</option>
+            <option value="Restore">Restore</option>
+            <option value="Export">Export</option>
+            <option value="Import">Import</option>
+            <option value="Kombinieren">Kombinieren</option>
+            <option value="Jobs">Jobs</option>
+            <option value="Logs">Logs</option>
+            <option value="History">History</option>
+            <option value="Einstellungen">Einstellungen</option>
+          </select>
+        </div>
       </div>
       <div>
         <label for="influxbro_issue_text" id="influxbro_issue_text_label" style="display:block; font-size:12px; opacity:0.85; margin-bottom:4px;">Beschreibung</label>
@@ -898,6 +930,32 @@
     composer.appendChild(composerCard);
     document.body.appendChild(composer);
     document.body.appendChild(root);
+
+    function _applyPopupSize(title){
+      try{
+        CURRENT_POPUP_SIZE_KEY = _popupSizeStorageKey(title);
+        const raw = localStorage.getItem(CURRENT_POPUP_SIZE_KEY);
+        if(!raw) return;
+        const data = JSON.parse(raw);
+        const w = Number(data && data.w);
+        const h = Number(data && data.h);
+        if(isFinite(w) && w >= 320) card.style.width = Math.round(w) + 'px';
+        if(isFinite(h) && h >= 200) card.style.height = Math.round(h) + 'px';
+      }catch(e){}
+    }
+
+    function _savePopupSize(){
+      try{
+        const rect = card.getBoundingClientRect();
+        const payload = { w: Math.round(rect.width), h: Math.round(rect.height) };
+        localStorage.setItem(CURRENT_POPUP_SIZE_KEY, JSON.stringify(payload));
+      }catch(e){}
+    }
+
+    try{
+      const ro = new ResizeObserver(()=>{ _savePopupSize(); });
+      ro.observe(card);
+    }catch(e){}
 
     // Wrap preference
     const WRAP_KEY = 'influxbro.popup.wrap.v1';
@@ -992,12 +1050,13 @@
       }
     }
 
-    async function _downloadDebugReport(issueTitle, msg){
+    async function _downloadDebugReport(issueTitle, msg, functionName){
       const payload = {
         tail: 0,
         issue: {
           title: String(issueTitle || ''),
           description: String(msg || ''),
+          function: String(functionName || ''),
           steps: '',
         },
         client: {
@@ -1039,7 +1098,7 @@
       return fn;
     }
 
-    function _buildIssueBody(kind, userText, msg, meta, debugFilename){
+    function _buildIssueBody(kind, userText, msg, meta, debugFilename, functionName){
       const addonV = meta && meta.addon_version ? String(meta.addon_version) : '';
       const haCore = meta && meta.ha && meta.ha.core ? String(meta.ha.core) : '';
       const haSup = meta && meta.ha && meta.ha.supervisor ? String(meta.ha.supervisor) : '';
@@ -1054,11 +1113,13 @@
       if(kind === 'enhancement'){
         body += '### Gewuenschte Erweiterung\n\n';
         body += _clip(userText, 4000) + '\n\n';
+        if(functionName) body += '### Funktion / Menueeintrag\n\n' + _clip(functionName, 200) + '\n\n';
         body += '### Kontext / Ausloeser\n\n';
         body += _clip(msg || 'Kein Popup-Text vorhanden.', 1200) + '\n\n';
       }else{
         body += '### Fehlerbeschreibung\n\n';
         body += _clip(userText, 4000) + '\n\n';
+        if(functionName) body += '### Funktion / Menueeintrag\n\n' + _clip(functionName, 200) + '\n\n';
         body += '### Ausloeser / Aktion\n\n';
         body += _clip(msg, 1200) + '\n\n';
       }
@@ -1102,17 +1163,19 @@
       const titleEl = document.getElementById('influxbro_issue_title');
       const textEl = document.getElementById('influxbro_issue_text');
       const labelEl = document.getElementById('influxbro_issue_text_label');
+      const functionEl = document.getElementById('influxbro_issue_function');
       const hintEl = document.getElementById('influxbro_issue_hint');
       const attachHelpEl = document.getElementById('influxbro_issue_attach_help');
       const statusEl = document.getElementById('influxbro_issue_status');
       const cancelEl = document.getElementById('influxbro_issue_cancel');
       const submitEl = document.getElementById('influxbro_issue_submit');
-      if(!composer || !kindEl || !titleEl || !textEl || !labelEl || !hintEl || !statusEl || !cancelEl || !submitEl) return;
+      if(!composer || !kindEl || !titleEl || !textEl || !labelEl || !functionEl || !hintEl || !statusEl || !cancelEl || !submitEl) return;
 
       const msg = String(opts && opts.msg ? opts.msg : '').trim();
       const meta = opts && opts.meta ? opts.meta : null;
       const baseUrl = meta && meta.github_new_issue_url ? String(meta.github_new_issue_url) : '';
       const defaultBugText = 'siehe automatisch angehaengtes Logging / Bei Bedarf hier eigene Fehlerbeschreibung einfuegen....';
+      const textState = { bug: '', enhancement: '' };
 
       function close(){ composer.style.display = 'none'; statusEl.textContent = ''; }
       function sync(){
@@ -1127,20 +1190,29 @@
           labelEl.textContent = 'Erweiterung beschreiben';
           hintEl.textContent = 'Bitte die gewuenschte Erweiterung kurz beschreiben. Das Feld darf nicht leer bleiben.';
           if(attachHelpEl) attachHelpEl.style.display = 'none';
-          if(!String(textEl.value || '').trim() || textEl.dataset.mode !== 'enhancement') textEl.value = '';
+          textEl.value = textState.enhancement || '';
         }else{
           labelEl.textContent = 'Fehlerbeschreibung';
           hintEl.textContent = 'Bug erstellt ein Issue mit Label type/bug und laedt zusaetzlich einen Debug report herunter.';
           if(attachHelpEl) attachHelpEl.style.display = 'block';
-          if(!String(textEl.value || '').trim() || textEl.dataset.mode !== 'bug') textEl.value = defaultBugText;
+          textEl.value = textState.bug || defaultBugText;
         }
         textEl.dataset.mode = kind;
       }
 
       kindEl.value = 'bug';
+      functionEl.value = '';
       titleEl.dataset.autofill = '1';
       titleEl.oninput = ()=>{ titleEl.dataset.autofill = '0'; };
-      kindEl.onchange = sync;
+      kindEl.onchange = ()=>{
+        const prevMode = String(textEl.dataset.mode || 'bug');
+        textState[prevMode] = String(textEl.value || '');
+        sync();
+      };
+      textEl.oninput = ()=>{
+        const mode = String(textEl.dataset.mode || 'bug');
+        textState[mode] = String(textEl.value || '');
+      };
       cancelEl.onclick = close;
       sync();
       composer.style.display = 'block';
@@ -1149,8 +1221,10 @@
       submitEl.onclick = async ()=>{
         const kind = String(kindEl.value || 'bug');
         const title = String(titleEl.value || '').trim();
+        const functionName = String(functionEl.value || '').trim();
         const userText = String(textEl.value || '').trim();
         if(!title){ statusEl.textContent = 'Kurztitel fehlt.'; return; }
+        if(!functionName){ statusEl.textContent = 'Bitte Funktion / Menueeintrag auswaehlen.'; return; }
         if(!userText){ statusEl.textContent = kind === 'bug' ? 'Bitte Fehlerbeschreibung eingeben.' : 'Bitte Erweiterung beschreiben.'; return; }
         if(!baseUrl){ statusEl.textContent = 'Repo URL fehlt (Einstellungen -> Links).'; return; }
 
@@ -1160,11 +1234,11 @@
 
         let fn = '';
         if(kind === 'bug'){
-          try{ fn = await _downloadDebugReport(title.replace(/^\[Bug\]:\s*/, ''), msg); }catch(e){ try{ window.InfluxBroClientLog && window.InfluxBroClientLog.reportError && window.InfluxBroClientLog.reportError('Bugreport: debug_report failed', { err: String(e && e.message ? e.message : e) }, (e && e.stack) ? String(e.stack) : ''); }catch(x){} }
+          try{ fn = await _downloadDebugReport(title.replace(/^\[Bug\]:\s*/, ''), msg, functionName); }catch(e){ try{ window.InfluxBroClientLog && window.InfluxBroClientLog.reportError && window.InfluxBroClientLog.reportError('Bugreport: debug_report failed', { err: String(e && e.message ? e.message : e) }, (e && e.stack) ? String(e.stack) : ''); }catch(x){} }
         }
 
         const labels = (kind === 'enhancement') ? 'type/enhancement' : 'type/bug';
-        const body = _buildIssueBody(kind, userText, msg, meta, fn);
+        const body = _buildIssueBody(kind, userText, msg, meta, fn, functionName);
         const url = baseUrl + '?labels=' + encodeURIComponent(labels) + '&title=' + encodeURIComponent(title) + '&body=' + encodeURIComponent(body);
         try{
           if(win) win.location.href = url;
@@ -1254,6 +1328,7 @@
       if(t) t.textContent = title || 'Hinweis';
       const normalizedMsg = _decodeEscapedInfoText(String(msg || ''));
       if(pre) pre.textContent = normalizedMsg;
+      try{ _applyPopupSize(title || 'Hinweis'); }catch(e){}
       try{ window.__InfluxBroPopupLast = { title: String(title || ''), msg: normalizedMsg }; }catch(e){}
       try{
         if(settingsBtn){

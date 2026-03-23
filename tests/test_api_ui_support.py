@@ -132,3 +132,31 @@ def test_dashboard_collapsible_sections_have_info_icons():
     assert 'data-info-title="Dashboard: Graph"' in body
     assert 'data-info-title="Dashboard: Statistik Zeitraum"' in body
     assert 'data-info-title="Dashboard: Bearbeitungsliste"' in body
+
+
+def test_raw_paste_can_stage_rows_from_raw_table():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert "if(!row) row = (RAW_ROWS || []).find(r => rowKey(r) === key);" in body
+    assert "if(!EDIT_LIST.has(String(target))){ err('Ziel-Zeile konnte nicht fuer die Bearbeitungsliste vorgemerkt werden.'); return; }" in body
+
+
+def test_issue_composer_requires_function_and_keeps_text_on_type_change():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
+    assert 'id="influxbro_issue_function"' in body
+    assert "Bitte Funktion / Menueeintrag auswaehlen." in body
+    assert "const textState = { bug: '', enhancement: '' };" in body
+    assert "textState[prevMode] = String(textEl.value || '');" in body
+
+
+def test_info_popup_persists_size_per_dialog():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
+    assert "const POPUP_SIZE_PREFIX = 'influxbro.popup.size.v1.';" in body
+    assert "function _popupSizeStorageKey(title)" in body
+    assert "const ro = new ResizeObserver(()=>{ _savePopupSize(); });" in body
+    assert "_applyPopupSize(title || 'Hinweis');" in body
+
+
+def test_settings_include_bugreport_log_history_hours():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "config.html").read_text()
+    assert 'id="bugreport_log_history_hours"' in body
+    assert 'bugreport_log_history_hours' in body
