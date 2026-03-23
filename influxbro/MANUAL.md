@@ -410,6 +410,7 @@ Neu: FullBackup (InfluxDB komplett)
 - Download: `Download` laedt das selektierte Backup als ZIP herunter (Meta + Line Protocol).
 - Restore schreibt die Werte zurueck, ohne doppelte Messpunkte zu erzeugen (idempotent, weil gleiche Zeitpunkte/Tags/Field ueberschrieben werden).
 - Restore fragt bei destruktiven Aktionen nur noch per Browser-Dialog nach Bestaetigung.
+- Die Bereiche `Quelle (Backup)` und `Ziel (Messwert)` sind jetzt einklappbar.
 - Tipp: In der Volltextsuche gibt es Buttons `Alle` (leeren) und `aus Dashboardauswahl`.
 - Die Hoehe der Restore-Backup-Liste ist per Einstellung "Sichtbare Zeilen (Restore-Liste)" konfigurierbar.
 - Restore: Backup-Liste, Query und Detail-Boxen sind resizable; Hoehen werden automatisch gemerkt.
@@ -481,8 +482,11 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 
 - Seite `Import`: Datei via Browser-Upload.
 - Button `Analysieren`: zeigt Zeilenanzahl, Zeitraum, Quell-Measurements, Quell-Fields und die ersten drei Datenzeilen; bei Problemen zusaetzlich eine kurze Diagnose + Beispielzeilen. Nach erfolgreicher Analyse erscheint zusaetzlich ein Popup mit Kurzfassung; bei Fehlern wird ein Fehler-Popup angezeigt.
+- Die Analyse listet jetzt auch Quellwerte und Leerzaehler fuer `entity_id` und `friendly_name` auf.
+- Bei eindeutiger Analyse werden `_measurement`, `_field`, `entity_id` und `friendly_name` automatisch in die Zielauswahl uebernommen.
 - Zielauswahl: wie Dashboard (Measurement/Field + optionale Tags).
 - Button `Transformation testen`: prueft Measurement-/Field-Kompatibilitaet, zeigt Hinweise fuer `entity_id` und `friendly_name` und rendert die ersten zehn transformierten Zeilen, ohne sie zu schreiben.
+- `Transformation testen` und `Import starten` bleiben deaktiviert, bis Analyse und Zielkombination gueltig sind.
 - In `Einstellungen -> Import` gibt es eine editierbare Transformationsliste fuer Measurement-Umrechnungen im Format `Quelle;Ziel;Faktor`.
 - Optionen:
   - `Vor Import Backup erstellen` (Default an): erstellt ein Range-Backup im Import-Zeitraum fuer die Zielserie.
@@ -491,6 +495,7 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 
 ## History
 
+- Der Hauptbereich `History` ist jetzt einklappbar.
 - Zeigt ein Protokoll ueber `ueberschreiben`/`loeschen` sowie Rollbacks.
 - Filter:
   - Volltextsuche (z.B. Grund, friendly_name, entity_id, _measurement)
@@ -602,6 +607,14 @@ Hinweis Dashboard:
 - Die Groesse des Info-Popups wird pro Dialogtitel lokal gespeichert und beim erneuten Oeffnen wiederhergestellt.
 - Der Info-/Bugreport-Dialog bleibt weiterhin per Maus in der Groesse veraenderbar.
 - Navigation und Inhaltsbereich beruecksichtigen die tatsaechliche Hoehe der Titelkarte jetzt auch bei schmaleren Breiten, damit es keine Ueberlappung mit der Menueleiste gibt.
+- Summary-Titel mit Info-Button bekommen zusaetzlich ein Zahnrad-Icon als Direktlink zu den Einstellungen.
+- Tabellen-/Spaltenpersistenz ignoriert jetzt volatile Home-Assistant-Ingress-Tokens, damit gespeicherte Spaltenbreiten stabil erhalten bleiben.
+- Unterhalb der unteren Statusleiste bleibt auf allen Seiten zusaetzlicher Scrollraum, damit Inhalte nicht verdeckt werden.
+
+## Logs
+
+- Der Bereich `Logs` ist jetzt einklappbar.
+- Die wichtigsten Aktionen tragen zusaetzlich kurze Textlabels direkt auf dem Button.
 
 Ausreisser:
 

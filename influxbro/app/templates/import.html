@@ -61,6 +61,9 @@
     @media (max-width: 860px){
       .ib_sel_stack input, .ib_sel_stack select { width: 100% !important; }
     }
+    .ib_chk_col { display:flex; flex-direction:column; gap: 6px; align-items:flex-start; }
+    .ib_chk_row { display:flex; align-items:center; gap:8px; min-height:40px; padding:0 4px; }
+    .ib_chk_row input[type="checkbox"] { transform: scale(0.85); transform-origin: left center; }
   </style>
 </head>
 <body>
@@ -101,7 +104,7 @@
             <div style="font-weight: 800;">Quelle</div>
             <div class="row">
               <div class="ib_sel" style="min-width: 220px;">
-                <label class="ib_sel_label">_measurement</label>
+                <label class="label_row ib_sel_label"><span>_measurement</span><span id="cnt_src_measurement" class="muted"></span></label>
                 <div class="ib_sel_stack">
                   <input id="src_measurement" list="measurement_list" placeholder="required" data-ui="combine.src.measurement" title="combine.src.measurement"/>
                   <datalist id="measurement_list"></datalist>
@@ -112,7 +115,7 @@
                 </div>
               </div>
               <div class="ib_sel" style="min-width: 220px;">
-                <label class="ib_sel_label">_field</label>
+                <label class="label_row ib_sel_label"><span>_field</span><span id="cnt_src_field" class="muted"></span></label>
                 <div class="ib_sel_stack">
                   <input id="src_field" list="src_field_list" placeholder="value" data-ui="combine.src.field" title="combine.src.field"/>
                   <datalist id="src_field_list"></datalist>
@@ -150,12 +153,12 @@
           </div>
 
           <div class="grid" style="margin-top: 12px;">
-            <div>
-              <label><input type="checkbox" id="backup_before" checked data-ui="import.backup_before" title="import.backup_before" /> Vor Import Backup erstellen</label>
+            <div class="ib_chk_col">
+              <label class="ib_chk_row"><input type="checkbox" id="backup_before" checked data-ui="import.backup_before" title="import.backup_before" /><span>Vor Import Backup erstellen</span></label>
               <div class="muted">Erstellt ein Range-Backup im Import-Zeitraum (Zielserie).</div>
             </div>
-            <div>
-              <label><input type="checkbox" id="delete_first" data-ui="import.delete_first" title="import.delete_first" /> Vorher loeschen (im Import-Zeitraum)</label>
+            <div class="ib_chk_col">
+              <label class="ib_chk_row"><input type="checkbox" id="delete_first" data-ui="import.delete_first" title="import.delete_first" /><span>Vorher loeschen (im Import-Zeitraum)</span></label>
               <div class="muted">Vor dem Loeschen wird nur noch per Browser-Dialog bestaetigt.</div>
             </div>
           </div>
@@ -192,7 +195,7 @@
 
       const $mf = document.getElementById('src_measurement');
       const $mfList = document.getElementById('measurement_list');
-      const $cntMf = null;
+      const $cntMf = document.getElementById('cnt_src_measurement');
       const $n = document.getElementById('src_friendly_name');
       const $friendlyList = document.getElementById('src_friendly_list');
       const $cntFriendly = document.getElementById('cnt_src_friendly');
@@ -202,6 +205,7 @@
       const $m = document.getElementById('src_measurement');
       const $f = document.getElementById('src_field');
       const $srcFieldList = document.getElementById('src_field_list');
+      const $cntField = document.getElementById('cnt_src_field');
 
       const $backupBefore = document.getElementById('backup_before');
       const $deleteFirst = document.getElementById('delete_first');
@@ -219,6 +223,16 @@
       let IMPORT_DELIM = ';';
       let IMPORT_RANGE = { oldest_utc: null, newest_utc: null, oldest_local: null, newest_local: null, count: null };
       let IMPORT_ANALYSIS = null;
+
+      function updateImportActionState(){
+        try{
+          const s = src();
+          const targetOk = !!(s.measurement && s.field && (s.entity_id || s.friendly_name));
+          const analysisOk = !!(IMPORT_ANALYSIS && IMPORT_FILE_ID);
+          if($previewTransform) $previewTransform.disabled = !(analysisOk && targetOk);
+          if($run) $run.disabled = !(analysisOk && targetOk);
+        }catch(e){}
+      }
 
       function _selInitHelpButtons(){
         try{
@@ -339,6 +353,7 @@
           const j = await api('./api/measurements');
           const xs = (j.measurements||[]).map(x=>String(x||'')).filter(Boolean);
           if($mfList) $mfList.innerHTML = xs.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"></option>`).join('');
+          if($cntMf) $cntMf.textContent = xs.length ? `(${xs.length})` : '';
         }catch(e){
           // ignore
         }
@@ -351,8 +366,10 @@
           const j = await api('./api/fields?measurement=' + encodeURIComponent(m));
           const xs = (j.fields||[]).map(x=>String(x||'')).filter(Boolean);
           if(listEl) listEl.innerHTML = xs.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"></option>`).join('');
+          if(listEl === $srcFieldList && $cntField) $cntField.textContent = xs.length ? `(${xs.length})` : '';
         }catch(e){
           if(listEl) listEl.innerHTML = '';
+          if(listEl === $srcFieldList && $cntField) $cntField.textContent = '';
         }
       }
 
@@ -467,6 +484,15 @@
 
         const srcMeasurements = (j.source_measurements || []).map(String).filter(Boolean);
         const srcFields = (j.source_fields || []).map(String).filter(Boolean);
+        const srcEntities = (j.source_entity_ids || []).map(String).filter(Boolean);
+        const srcFriendly = (j.source_friendly_names || []).map(String).filter(Boolean);
+        const issueCounts = j.issue_counts || {};
+        if($m) $m.value = srcMeasurements.length === 1 ? srcMeasurements[0] : '';
+        await loadFields($m ? $m.value : '', $srcFieldList);
+        if($f) $f.value = srcFields.length === 1 ? srcFields[0] : '';
+        if($e) $e.value = srcEntities.length === 1 ? srcEntities[0] : '';
+        if($n) $n.value = srcFriendly.length === 1 ? srcFriendly[0] : '';
+        await refreshSuggestions();
         const sampleTxt = (j.sample || []).map((row, idx) => {
           const time = row && row.time ? String(row.time) : '';
           const value = row && row.value_raw !== undefined ? String(row.value_raw) : String((row && row.value) || '');
@@ -477,9 +503,11 @@
           return `${idx+1}) time=${time} value=${value} entity_id=${eid} friendly_name=${fn} _measurement=${mf} _field=${fld}`;
         }).join('\n');
 
-        $analysis.textContent = `Datei: ${IMPORT_FILE_ID}\nDelimiter: ${IMPORT_DELIM}\nZeilen (valid): ${j.count}\nZeitraum: ${j.oldest_local || '-'} bis ${j.newest_local || '-'}\nTimezone: ${j.timezone && j.timezone.name ? j.timezone.name : ''}\nQuell-_measurement: ${srcMeasurements.join(', ') || '-'}\nQuell-_field: ${srcFields.join(', ') || '-'}${sampleTxt ? ('\nErste 3 Zeilen:\n' + sampleTxt) : ''}${errTxt}${exTxt}`;
-        $analyzeHint.textContent = `Valid: ${j.count} | ${j.oldest_local || ''} .. ${j.newest_local || ''}` + (Object.keys(errs).length ? (' | Fehler: ' + Object.keys(errs).map(k => `${k}=${errs[k]}`).join(' ')) : '');
+        const issueTxt = `entity_id=${issueCounts.entity_id || 0} friendly_name=${issueCounts.friendly_name || 0}`;
+        $analysis.textContent = `Datei: ${IMPORT_FILE_ID}\nDelimiter: ${IMPORT_DELIM}\nZeilen (valid): ${j.count}\nZeitraum: ${j.oldest_local || '-'} bis ${j.newest_local || '-'}\nTimezone: ${j.timezone && j.timezone.name ? j.timezone.name : ''}\nQuell-_measurement: ${srcMeasurements.join(', ') || '-'}\nQuell-_field: ${srcFields.join(', ') || '-'}\nQuell-entity_id: ${srcEntities.join(', ') || '-'}\nQuell-friendly_name: ${srcFriendly.join(', ') || '-'}\nLeerwerte: ${issueTxt}${sampleTxt ? ('\nErste 3 Zeilen:\n' + sampleTxt) : ''}${errTxt}${exTxt}`;
+        $analyzeHint.textContent = `Valid: ${j.count} | ${j.oldest_local || ''} .. ${j.newest_local || ''}` + (Object.keys(errs).length ? (' | Fehler: ' + Object.keys(errs).map(k => `${k}=${errs[k]}`).join(' ')) : '') + ` | Leer: ${issueTxt}`;
         ok('Analyse fertig.');
+        updateImportActionState();
         try{
           if(window.InfluxBroPopup && window.InfluxBroPopup.show){
             const msg = [
@@ -536,6 +564,7 @@
           $transformPreview.textContent = 'Vorschau (erste 10 Zeilen nach Transformation):\n' + _renderPreviewRows(j.preview_rows || []);
         }
         if($previewHint) $previewHint.textContent = (j.compatible ? 'Transformation pruefbar.' : 'Transformation nicht kompatibel.');
+        updateImportActionState();
       }
 
       async function runImport(){
@@ -579,6 +608,7 @@
           if(st.field) $f.value = st.field;
           if(st.friendly_name) $n.value = st.friendly_name;
           if(st.entity_id) $e.value = st.entity_id;
+          updateImportActionState();
 
           try{ _selInitHelpButtons(); }catch(e){}
           try{ _selApplyDefaultWidths(); }catch(e){}
@@ -597,15 +627,23 @@
                 await updSrc();
               }
             }, 380);
-            if($m){ $m.addEventListener('input', ()=>{ loadFields($m.value, $srcFieldList).catch(()=>{}); updSrc(); }); }
-            if($n){ $n.addEventListener('input', ()=>{ updSrc(); autoResolve(); }); }
-            if($e){ $e.addEventListener('input', ()=>{ updSrc(); autoResolve(); }); }
+            if($m){ $m.addEventListener('input', ()=>{ loadFields($m.value, $srcFieldList).catch(()=>{}); updSrc(); updateImportActionState(); }); }
+            if($f){ $f.addEventListener('input', ()=>{ updateImportActionState(); }); }
+            if($n){ $n.addEventListener('input', ()=>{ updSrc(); autoResolve(); updateImportActionState(); }); }
+            if($e){ $e.addEventListener('input', ()=>{ updSrc(); autoResolve(); updateImportActionState(); }); }
           }catch(e){}
 
           $analyze.addEventListener('click', (ev)=>{
             try{ ev.preventDefault(); }catch(e){}
             analyze().catch(e=>{
               const msg = e && e.message ? e.message : String(e || 'Unbekannter Fehler');
+              IMPORT_FILE_ID = null;
+              IMPORT_ANALYSIS = null;
+              if($m) $m.value = '';
+              if($f) $f.value = '';
+              if($e) $e.value = '';
+              if($n) $n.value = '';
+              updateImportActionState();
               err(msg);
               try{
                 if(window.InfluxBroPopup && window.InfluxBroPopup.show) window.InfluxBroPopup.show('Import Analyse Fehler', msg);

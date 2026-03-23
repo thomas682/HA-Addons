@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.12.117
+
+### Enhancement
+
+- Import: Analyse zeigt jetzt Quellwerte fuer `entity_id` und `friendly_name`, fuellt Ziel-Felder bei eindeutiger Analyse automatisch vor und aktiviert `Transformation testen` / `Import starten` nur noch bei gueltiger Zielkombination.
+- Logs: Der Logbereich ist jetzt einklappbar; die Aktionsbuttons zeigen zusaetzlich kurze Textlabels.
+- Restore/History: Zentrale Bereiche sind jetzt einklappbar. Summary-Titel erhalten automatisch ein Zahnrad-Icon, das direkt zu den Einstellungen springt.
+
+### Fix
+
+- Timer Jobs: In `timers.table` steht in der Modus-Spalte nur noch der aktuelle Modus als Text; die Umstellung erfolgt ueber den neuen Button `Modus` in der Action-Spalte.
+- Tabellen-/Spaltenpersistenz verwendet jetzt stabile seitenbezogene Storage-Keys ohne HA-Ingress-Token, damit Spalteneinstellungen seitenuebergreifend erhalten bleiben.
+- Alle Seiten lassen unterhalb der unteren Statusleiste jetzt genug Scrollraum; verdeckte Inhalte am Seitenende sind beseitigt.
+- Backup: `backup.space` sitzt direkt unter der Einleitung, und die Action-Zeile des Einzelbackups ist sauberer ausgerichtet.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`, `pytest tests/test_api_ui_support.py tests/test_api_yaml_flow.py tests/test_api_monitoring.py tests/test_api_raw_points_center.py tests/test_api_debug_report.py -q`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.116
 
 ### Enhancement

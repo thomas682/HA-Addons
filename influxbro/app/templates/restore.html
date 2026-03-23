@@ -64,6 +64,10 @@
     textarea { font: inherit; resize: vertical; min-height: 40px; width: 100%; white-space: pre-wrap; overflow-wrap: anywhere; }
     button { cursor:pointer; }
     .card { border: 1px solid #ddd; border-radius: 12px; padding: 12px; margin-top: 12px; }
+    details.card { padding: 0; }
+    details.card > summary { list-style:none; cursor:pointer; padding: 12px; font-weight:700; }
+    details.card > summary::-webkit-details-marker { display:none; }
+    details.card > .card_body { padding: 0 12px 12px 12px; }
     .err { color: #b00020; margin-top: 8px; white-space: pre-wrap; }
     .ok { color: #0a7a28; margin-top: 8px; white-space: pre-wrap; }
 
@@ -112,8 +116,9 @@
 
        <div class="page_grid">
 
-          <div class="card" data-ui="restore.source" title="restore.source" style="--restore_visible_rows: {{ (cfg.get('ui_restore_visible_rows') or 24) | int }};">
-            <div style="font-weight:700;">Quelle (Backup)</div>
+          <details class="card" open data-ui="restore.source" title="restore.source" style="--restore_visible_rows: {{ (cfg.get('ui_restore_visible_rows') or 24) | int }};">
+            <summary><span class="ib_summary_row"><span>Quelle (Backup)</span><button type="button" class="ib_info_icon" data-info-title="Restore: Quelle" data-info-body="Waehle genau ein Backup als Quelle fuer den Restore aus." >i</button></span></summary>
+            <div class="card_body">
             <div class="table_wrap" data-ui="restore.table.wrap" title="restore.table.wrap">
                <div class="table_title">Backupliste (Quelle)</div>
               <div class="table_head" data-ui="restore.table.head" title="restore.table.head">
@@ -174,10 +179,12 @@
                 </table>
               </div>
             </div>
-        </div>
+            </div>
+        </details>
 
-       <div class="card" data-ui="restore.target" title="restore.target">
-          <div style="font-weight:700;">Ziel (Messwert)</div>
+       <details class="card" open data-ui="restore.target" title="restore.target">
+          <summary><span class="ib_summary_row"><span>Ziel (Messwert)</span><button type="button" class="ib_info_icon" data-info-title="Restore: Ziel" data-info-body="Hier waehlst du die Zielserie fuer den Restore und startest die Rueckschreibung." >i</button></span></summary>
+          <div class="card_body">
           <div class="status" id="plan_info" data-ui="restore.plan" title="restore.plan" style="margin-top:8px; border: 1px dashed #ddd; border-radius: 12px; padding: 10px 12px; background: #fafafa; font-size: 12px; white-space: pre-wrap;"></div>
 
            <div class="row" style="margin-top: 8px;" data-ui="restore.plan_query" title="restore.plan_query">
@@ -287,9 +294,10 @@
 
          <div id="err" class="err"></div>
          <div id="ok" class="ok"></div>
-        </div>
+             </div>
 
-       </div>
+          </div>
+       </details>
 
        <div class="card" data-ui="restore.fullrestore.card" title="restore.fullrestore.card" style="--restore_visible_rows: {{ (cfg.get('ui_restore_visible_rows') or 24) | int }};">
           <details id="fullrestore_details" data-ui="restore.fullrestore.details" title="restore.fullrestore.details">

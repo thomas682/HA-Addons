@@ -27,6 +27,10 @@
     button { cursor:pointer; }
     input[type="checkbox"] { height:auto; }
     .card { border: 1px solid #ddd; border-radius: 12px; padding: 12px; margin-top: 12px; }
+    details.card { padding: 0; }
+    details.card > summary { list-style:none; cursor:pointer; padding: 12px; font-weight:700; }
+    details.card > summary::-webkit-details-marker { display:none; }
+    details.card > .card_body { padding: 0 12px 12px 12px; }
     .logbox { border: 1px solid #eee; border-radius: 12px; padding: 12px; height: 65vh; overflow:auto; background: #0b0b0c; color: #f3f3f3; }
     pre { margin: 0; font-size: 12px; line-height: 1.35; white-space: pre; }
     .wrap pre { white-space: pre-wrap; word-break: break-word; }
@@ -41,6 +45,9 @@
       <h2>Logs</h2>
       <div class="muted">InfluxBro Add-on Logs (Supervisor)</div>
 
+      <details class="card" open data-ui="logs.page.card" title="logs.page">
+        <summary><span class="ib_summary_row"><span>Logs</span><button type="button" class="ib_info_icon" data-info-title="Logs: Logs" data-info-body="Dieser Bereich zeigt Add-on- oder Supervisor-Logs, bietet Schnellfilter, Download/Export und Debug-Report-Funktionen." >i</button></span></summary>
+        <div class="card_body">
       <div class="row">
         <div>
           <label>Quelle</label>
@@ -95,7 +102,7 @@
               <path d="M20 12a8 8 0 1 1-2.34-5.66" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
               <path d="M20 4v6h-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
-          </button>
+            <span style="margin-left:6px;">Neu</span></button>
         </div>
         <div>
           <label>&nbsp;</label>
@@ -104,7 +111,7 @@
               <path d="M7 7v10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
               <path d="M17 17l-5-5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
-          </button>
+            <span style="margin-left:6px;">Alt</span></button>
         </div>
         <div>
           <label>&nbsp;</label>
@@ -113,7 +120,7 @@
               <path d="M17 7v10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
               <path d="M7 7l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
-          </button>
+            <span style="margin-left:6px;">Ende</span></button>
         </div>
         <div>
           <label>Follow</label>
@@ -126,7 +133,7 @@
               <rect x="9" y="9" width="10" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
               <rect x="5" y="5" width="10" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="2" opacity="0.6"/>
             </svg>
-          </button>
+            <span style="margin-left:6px;">Copy</span></button>
         </div>
         <div>
           <label>&nbsp;</label>
@@ -137,7 +144,7 @@
               <path d="M4 18.5h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
               <path d="M6.5 15.5v3M17.5 15.5v3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
             </svg>
-          </button>
+            <span style="margin-left:6px;">Download</span></button>
         </div>
         <div>
           <label>&nbsp;</label>
@@ -148,7 +155,7 @@
               <path d="M5 5.5h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
               <rect x="5" y="15.5" width="14" height="4" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/>
             </svg>
-          </button>
+            <span style="margin-left:6px;">Export</span></button>
         </div>
         <div>
           <label>&nbsp;</label>
@@ -158,7 +165,7 @@
               <circle cx="12" cy="10" r="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/>
               <path d="M12 13v3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
             </svg>
-          </button>
+            <span style="margin-left:6px;">Report</span></button>
         </div>
         <div>
           <label>&nbsp;</label>
@@ -168,7 +175,7 @@
               <path d="M8 6V4h8v2" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
               <path d="M19 6l-1 16H6L5 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
             </svg>
-          </button>
+            <span style="margin-left:6px;">Leer</span></button>
         </div>
         <div>
           <label>Wrap</label>
@@ -187,6 +194,8 @@
           <pre id="logpre" data-ui="logs.text" title="logs.text"></pre>
         </div>
       </div>
+        </div>
+      </details>
 
       <script>
       const $source = document.getElementById('source');

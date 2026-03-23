@@ -226,6 +226,38 @@ def test_import_analyze_shows_success_and_error_popups():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "import.html").read_text()
     assert "window.InfluxBroPopup.show('Import Analyse erfolgreich', msg);" in body
     assert "window.InfluxBroPopup.show('Import Analyse Fehler', msg);" in body
+    assert 'id="cnt_src_measurement"' in body
+    assert 'id="cnt_src_field"' in body
+    assert 'function updateImportActionState()' in body
+
+
+def test_logs_page_has_collapsible_title_and_short_button_texts():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "logs.html").read_text()
+    assert 'data-ui="logs.page.card"' in body
+    assert '<span style="margin-left:6px;">Neu</span>' in body
+    assert '<span style="margin-left:6px;">Report</span>' in body
+
+
+def test_timer_table_uses_mode_button_in_action_column():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "jobs.html").read_text()
+    assert "bMode.textContent = 'Modus';" in body
+    assert "tdMode.textContent = currentModeText();" in body
+
+
+def test_table_helpers_strip_ingress_token_from_storage_keys():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_table_cols.html").read_text()
+    assert "replace(/\\/api\\/hassio_ingress\\/[0-9a-fA-F]+/g, '')" in body
+
+
+def test_history_and_restore_sections_are_collapsible():
+    history = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "history.html").read_text()
+    restore = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "restore.html").read_text()
+    backup = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "backup.html").read_text()
+    tooltips = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
+    assert 'data-ui="history.page.card"' in history
+    assert 'data-ui="restore.source"' in restore and 'data-ui="restore.target"' in restore
+    assert 'id="space" data-ui="backup.space"' in backup
+    assert 'function _ensureSummarySettingsButtons()' in tooltips
 
 
 def test_config_tooltips_include_page_search_highlight_settings():

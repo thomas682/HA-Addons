@@ -30,7 +30,8 @@ thead tr.ib_filter_row input, thead tr.ib_filter_row select { width: 100%; heigh
   function _pageKey(){
     try{
       const p = (window.location && window.location.pathname) ? String(window.location.pathname) : '';
-      return p.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'root';
+      const clean = p.replace(/\/api\/hassio_ingress\/[0-9a-fA-F]+/g, '');
+      return clean.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'root';
     }catch(e){
       return 'root';
     }
@@ -343,7 +344,8 @@ thead tr.ib_filter_row input, thead tr.ib_filter_row select { width: 100%; heigh
     try{
       const id = _norm(tbl.getAttribute('id')) || 'unknown';
       const p = (window.location && window.location.pathname) ? String(window.location.pathname) : '';
-      const pk = p.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'root';
+      const clean = p.replace(/\/api\/hassio_ingress\/[0-9a-fA-F]+/g, '');
+      const pk = clean.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'root';
       return `influxbro.filters.v1.${pk}.${id}`;
     }catch(e){
       return 'influxbro.filters.v1.unknown';
@@ -498,7 +500,8 @@ thead tr.ib_filter_row input, thead tr.ib_filter_row select { width: 100%; heigh
     try{
       const id = _norm(tableId) || 'unknown';
       const p = (window.location && window.location.pathname) ? String(window.location.pathname) : '';
-      const pk = p.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'root';
+      const clean = p.replace(/\/api\/hassio_ingress\/[0-9a-fA-F]+/g, '');
+      const pk = clean.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'root';
       return `influxbro.table_h_px.v1.${pk}.${id}`;
     }catch(e){
       return 'influxbro.table_h_px.v1.unknown';
@@ -598,7 +601,8 @@ thead tr.ib_filter_row input, thead tr.ib_filter_row select { width: 100%; heigh
   function _pageKey(){
     try{
       const p = (window.location && window.location.pathname) ? String(window.location.pathname) : '';
-      return p.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'root';
+      const clean = p.replace(/\/api\/hassio_ingress\/[0-9a-fA-F]+/g, '');
+      return clean.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'root';
     }catch(e){
       return 'root';
     }
@@ -757,7 +761,8 @@ thead tr.ib_filter_row input, thead tr.ib_filter_row select { width: 100%; heigh
   function _pageKey(){
     try{
       const p = (window.location && window.location.pathname) ? String(window.location.pathname) : '';
-      return p.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'root';
+      const clean = p.replace(/\/api\/hassio_ingress\/[0-9a-fA-F]+/g, '');
+      return clean.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'root';
     }catch(e){ return 'root'; }
   }
   function _keyFor(tid){

@@ -19,14 +19,14 @@
       body { overflow: hidden; }
       .shell { height: 100vh; min-height: 100vh; }
       .shell > nav.sidebar { position: sticky; top: calc(var(--ib-topbar-h, 0px) + var(--ib-pagecard-h, 0px) + 20px); height: calc(100vh - (var(--ib-topbar-h, 0px) + var(--ib-pagecard-h, 0px) + 20px)); overflow: auto; }
-      .shell > main.content { height: calc(100vh - (var(--ib-topbar-h, 0px) + var(--ib-pagecard-h, 0px) + 20px)); overflow: auto; }
+      .shell > main.content { height: calc(100vh - (var(--ib-topbar-h, 0px) + var(--ib-pagecard-h, 0px) + 20px)); overflow: auto; padding-bottom: calc(var(--ib-bottombar-h, 0px) + 18px); box-sizing: border-box; }
     }
     /* Mobile: normal page scrolling. */
     @media (max-width: 980px){
       body { overflow: auto; }
       .shell { height: auto; }
       .shell > nav.sidebar { position: static; height: auto; overflow: visible; }
-      .shell > main.content { height: auto; overflow: visible; }
+      .shell > main.content { height: auto; overflow: visible; padding-bottom: calc(var(--ib-bottombar-h, 0px) + 18px); box-sizing: border-box; }
     }
 
     #influxbro_status_panel { margin-top: 12px; padding-top: 10px; border-top: 1px solid #eee; --ui-status-font: {{ (cfg.get('ui_status_font_px') or 12) | int }}px; }

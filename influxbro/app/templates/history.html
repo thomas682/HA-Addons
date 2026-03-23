@@ -17,6 +17,10 @@
     button { cursor:pointer; }
     .btn_sm { height: 34px; padding: 6px 10px; }
     .card { border: 1px solid #ddd; border-radius: 12px; padding: 12px; margin-top: 12px; }
+    details.card { padding: 0; }
+    details.card > summary { list-style:none; cursor:pointer; padding: 12px; font-weight:700; }
+    details.card > summary::-webkit-details-marker { display:none; }
+    details.card > .card_body { padding: 0 12px 12px 12px; }
     .err { color: #b00020; margin-top: 8px; white-space: pre-wrap; }
     .ok { color: #0a7a28; margin-top: 8px; white-space: pre-wrap; }
     table { border-collapse: collapse; width: 100%; margin-top: 10px; }
@@ -41,7 +45,9 @@
       <h2>History</h2>
       <div class="muted">Protokolliert ueberschreiben/loeschen und Rollbacks. Rollback ist ebenfalls protokolliert.</div>
 
-      <div class="card">
+      <details class="card" open data-ui="history.page.card" title="history.page">
+        <summary><span class="ib_summary_row"><span>History</span><button type="button" class="ib_info_icon" data-info-title="History: Liste" data-info-body="Dieser Bereich zeigt History-Eintraege, Filter und Rollback-Aktionen." >i</button></span></summary>
+        <div class="card_body">
         <div class="row" data-ui="history.filters" title="history.filters" style="align-items:end;">
           <div style="min-width: 240px; flex: 1 1 360px;">
             <label>Suche (Volltext)</label>
@@ -136,7 +142,8 @@
             </table>
           </div>
         </div>
-      </div>
+        </div>
+      </details>
     </main>
   </div>
 
@@ -303,7 +310,7 @@
     try{ if($histAutoWidth) $histAutoWidth.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} try{ window.InfluxBroTableCols && window.InfluxBroTableCols.autoFit('#tbl', {maxRows: 200}); }catch(e){} }); }catch(e){}
     try{ if($histWindowWidth) $histWindowWidth.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} try{ window.InfluxBroTableCols && window.InfluxBroTableCols.windowFit('#tbl', {minW: 80}); }catch(e){} }); }catch(e){}
 
-    const pk = (window.location && window.location.pathname) ? String(window.location.pathname) : '';
+    const pk = ((window.location && window.location.pathname) ? String(window.location.pathname) : '').replace(/\/api\/hassio_ingress\/[0-9a-fA-F]+/g, '');
     const kWrap = 'influxbro.ui.wrap.v1.' + pk + '.history_tbl';
     const kFilt = 'influxbro.ui.colfilter.v1.' + pk + '.history_tbl';
 

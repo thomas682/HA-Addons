@@ -106,6 +106,7 @@
     <main class="content" data-ui="backup.page" title="backup.page">
       <h2>Backup</h2>
       <div class="muted">Backups fuer einen einzelnen Messwert (immer alle Werte dieses Messwertes).</div>
+      <div class="space_box" id="space" data-ui="backup.space" title="backup.space" style="display:none; margin-top:8px;"></div>
 
       <div class="card" style="--backup_visible_rows: {{ (cfg.get('ui_backup_visible_rows') or 24) | int }};">
         <details id="selection_details" open data-ui="section.selection" title="section.selection">
@@ -194,7 +195,7 @@
               <textarea id="sel" readonly data-ui="backup.selection" title="backup.selection"></textarea>
             </div>
           </div>
-        <div class="row" data-ui="backup.actions" title="backup.actions" style="align-items:flex-start;">
+        <div class="row" data-ui="backup.actions" title="backup.actions" style="align-items:flex-end;">
           <div>
             <label>&nbsp;</label>
             <button id="create_full" data-ui="backup.create_full" title="backup.create_full">Messwert-Backup</button>
@@ -232,7 +233,6 @@
         </details>
 
         <div class="muted" id="loc" data-ui="backup.location" title="backup.location" style="margin-top:10px;"></div>
-        <div class="space_box" id="space" data-ui="backup.space" title="backup.space" style="display:none;"></div>
 
         <div class="table_wrap" data-ui="backup.table.wrap" title="backup.table.wrap">
           <div class="table_title">Backupliste</div>

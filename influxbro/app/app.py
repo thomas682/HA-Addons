@@ -3631,6 +3631,9 @@ def _prepare_import_rows(
     errors: dict[str, int] = {}
     source_measurements: list[str] = []
     source_fields: list[str] = []
+    source_entity_ids: list[str] = []
+    source_friendly_names: list[str] = []
+    issue_counts = {"entity_id": 0, "friendly_name": 0}
     oldest_utc: datetime | None = None
     newest_utc: datetime | None = None
 
@@ -3663,6 +3666,12 @@ def _prepare_import_rows(
                 sample_rows.append({k: parsed[k] for k in ("time", "value_raw", "entity_id", "friendly_name", "_measurement", "_field")})
             add_unique(source_measurements, src_measurement)
             add_unique(source_fields, src_field)
+            add_unique(source_entity_ids, src_entity)
+            add_unique(source_friendly_names, src_friendly)
+            if not src_entity:
+                issue_counts["entity_id"] = int(issue_counts.get("entity_id", 0) or 0) + 1
+            if not src_friendly:
+                issue_counts["friendly_name"] = int(issue_counts.get("friendly_name", 0) or 0) + 1
             if oldest_utc is None or dt_utc < oldest_utc:
                 oldest_utc = dt_utc
             if newest_utc is None or dt_utc > newest_utc:
@@ -3696,6 +3705,9 @@ def _prepare_import_rows(
         "newest_utc": newest_utc,
         "source_measurements": source_measurements,
         "source_fields": source_fields,
+        "source_entity_ids": source_entity_ids,
+        "source_friendly_names": source_friendly_names,
+        "issue_counts": issue_counts,
     }
 
 
@@ -16815,6 +16827,9 @@ def api_import_analyze():
             "error_samples": prep["error_samples"],
             "source_measurements": prep["source_measurements"],
             "source_fields": prep["source_fields"],
+            "source_entity_ids": prep["source_entity_ids"],
+            "source_friendly_names": prep["source_friendly_names"],
+            "issue_counts": prep["issue_counts"],
         })
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 400
