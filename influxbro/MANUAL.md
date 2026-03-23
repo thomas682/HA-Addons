@@ -153,6 +153,8 @@ Hinweis:
 Tipp: Wenn du mit der Maus ueber einem Button/Checkbox/Auswahlfeld bleibst, zeigt der Tooltip eine kurze Erklaerung plus den internen UI-Key in Klammern (z.B. `Dieser Button aktualisiert die Liste (dashboard.load)`). Damit kannst du mir exakt sagen, welches Element du meinst.
 
 Die Seitensuche in der Titelzeile (`page.search`) springt jetzt wieder mit sichtbarem Trefferrahmen zum gewaehlten Element. Farbe, Rahmenbreite und Sichtdauer kannst du in den Einstellungen anpassen.
+- Neben dem Suchfeld gibt es jetzt `Zurueck`/`Weiter` fuer Treffer-Navigation sowie ein Such-Zahnrad mit Filterdialog.
+- Der Suchdialog kann die Quellen `Label`, `sichtbarer Text`, `data-ui / id`, `Bereichspfad` und `Tooltiptexte` einzeln ein-/ausschalten; die Auswahl wird gespeichert.
 
 Hinweis: Zeitstempel werden im gesamten UI inklusive Millisekunden angezeigt.
 

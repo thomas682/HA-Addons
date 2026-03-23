@@ -260,6 +260,16 @@ def test_history_and_restore_sections_are_collapsible():
     assert 'function _ensureSummarySettingsButtons()' in tooltips
 
 
+def test_page_search_has_navigation_and_filter_dialog():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    assert 'id="ib_page_search_prev"' in body
+    assert 'id="ib_page_search_next"' in body
+    assert 'id="ib_page_search_settings"' in body
+    assert 'const SEARCH_CFG_KEY = ' in body
+    assert 'function renderSearchSettings()' in body
+    assert 'Tooltiptexte' in body
+
+
 def test_config_tooltips_include_page_search_highlight_settings():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
     assert "settings.ui_page_search_highlight_color" in body

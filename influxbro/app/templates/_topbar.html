@@ -136,6 +136,7 @@
     .ib_pagecard_results { position:fixed; z-index:9997; top: calc(var(--ib-pagecard-h)); right:12px; width:min(560px, calc(100vw - 24px)); max-height:320px; overflow:auto; background:#fff; color:#111; border:1px solid #ddd; border-radius:12px; box-shadow:0 12px 40px rgba(0,0,0,0.18); display:none; }
     .ib_pagecard_results button { display:block; width:100%; text-align:left; border:0; border-bottom:1px solid #eee; background:#fff; padding:10px 12px; cursor:pointer; }
     .ib_pagecard_results button:hover { background:#f6f6f6; }
+    .ib_page_search_btn.active { border-color:#ff9900; box-shadow:0 0 0 2px rgba(255,153,0,0.18); }
     @media (max-width: 980px){
       :root { --ib-pagecard-h: 118px; }
       .ib_pagecard { flex-wrap:wrap; align-items:flex-start; }
@@ -289,9 +290,13 @@
       const $card = document.getElementById('ib_pagecard');
       const $title = document.getElementById('ib_pagecard_title');
       const $search = document.getElementById('ib_page_search');
+      const $prev = document.getElementById('ib_page_search_prev');
+      const $next = document.getElementById('ib_page_search_next');
+      const $settings = document.getElementById('ib_page_search_settings');
       const $open = document.getElementById('ib_open_all');
       const $close = document.getElementById('ib_close_all');
       const $results = document.getElementById('ib_pagecard_results');
+      const $searchModal = document.getElementById('ib_page_search_modal');
       if(!$card || !$title || $card.dataset.ibPagecardReady === '1') return;
       $card.dataset.ibPagecardReady = '1';
 
@@ -308,21 +313,43 @@
       try{ if($open) $open.addEventListener('click', ()=>setAllDetailsOpen(main, true)); }catch(e){}
       try{ if($close) $close.addEventListener('click', ()=>setAllDetailsOpen(main, false)); }catch(e){}
 
+      const SEARCH_CFG_KEY = 'influxbro.page.search.cfg.v1';
+      let LAST_RESULTS = [];
+      let LAST_CURSOR = -1;
+      function readSearchCfg(){
+        try{
+          const raw = localStorage.getItem(SEARCH_CFG_KEY);
+          const cfg = raw ? JSON.parse(raw) : {};
+          return {
+            label: cfg && cfg.label !== false,
+            visible_text: cfg && cfg.visible_text !== false,
+            key: cfg && cfg.key !== false,
+            sections: cfg && cfg.sections !== false,
+            tooltip: cfg && cfg.tooltip !== false,
+          };
+        }catch(e){
+          return {label:true, visible_text:true, key:true, sections:true, tooltip:true};
+        }
+      }
+      function saveSearchCfg(cfg){ try{ localStorage.setItem(SEARCH_CFG_KEY, JSON.stringify(cfg || {})); }catch(e){} }
+      function activeSearchCfg(){ return readSearchCfg(); }
+      function applySearchCfgUi(){
+        try{
+          const cfg = activeSearchCfg();
+          const allOn = cfg.label && cfg.visible_text && cfg.key && cfg.sections && cfg.tooltip;
+          if($settings) $settings.classList.toggle('active', !allOn);
+        }catch(e){}
+      }
       function renderResults(xs){
         if(!$results) return;
+        LAST_RESULTS = xs.slice();
+        LAST_CURSOR = xs.length ? 0 : -1;
         if(!xs.length){ $results.style.display = 'none'; $results.innerHTML = ''; return; }
         $results.innerHTML = xs.map((x,i)=>`<button type="button" data-idx="${i}"><div><strong>${x.ui || '(ohne data-ui)'}</strong></div><div style="font-size:12px; opacity:.75;">${x.txt || ''}</div></button>`).join('');
         $results.style.display = 'block';
         $results.querySelectorAll('button').forEach(btn=>btn.addEventListener('click', ()=>{
           const idx = Number(btn.getAttribute('data-idx') || -1);
-          const hit = xs[idx];
-          if(!hit || !hit.el) return;
-          try{ hit.el.scrollIntoView({behavior:'smooth', block:'center'}); }catch(e){}
-          try{
-            const dur = Math.max(200, Number(getComputedStyle(document.documentElement).getPropertyValue('--ib-page-search-hl-duration-ms').replace('ms','').trim() || '1400'));
-            hit.el.classList.add('jump_hl');
-            setTimeout(()=>{ try{ hit.el.classList.remove('jump_hl'); }catch(e){} }, dur);
-          }catch(e){}
+          jumpToResult(idx);
           $results.style.display = 'none';
         }));
       }
@@ -368,9 +395,15 @@
         }catch(e){}
         return _norm(el.getAttribute('title') || el.getAttribute('placeholder') || el.textContent || '');
       }
+      function _tooltipTextFor(el){
+        try{
+          return _norm(el.getAttribute('data-help') || el.getAttribute('data-info-body') || el.getAttribute('data-title') || '');
+        }catch(e){ return ''; }
+      }
 
       function buildIndex(){
         try{
+          const cfg = activeSearchCfg();
           const sel = 'button[id], select[id], input[id], textarea[id], [data-ui]';
           const seen = new Set();
           const out = [];
@@ -385,7 +418,14 @@
               const label = _labelFor(el);
               const sect = _sectionPathFor(el);
               const txt = _norm(el.textContent || el.getAttribute('placeholder') || el.getAttribute('title') || '');
-              const hay = [key, label, txt, sect.join(' / ')].map(_lc).join(' | ');
+              const tooltip = _tooltipTextFor(el);
+              const parts = [];
+              if(cfg.key) parts.push(key);
+              if(cfg.label) parts.push(label);
+              if(cfg.visible_text) parts.push(txt);
+              if(cfg.sections) parts.push(sect.join(' / '));
+              if(cfg.tooltip) parts.push(tooltip);
+              const hay = parts.map(_lc).join(' | ');
               out.push({el, ui:key, txt: label || txt, sect, hay});
             }catch(e){}
           });
@@ -393,8 +433,47 @@
         }catch(e){ return []; }
       }
 
+      function jumpToResult(idx){
+        const hit = LAST_RESULTS[idx];
+        if(!hit || !hit.el) return;
+        LAST_CURSOR = idx;
+        try{ hit.el.scrollIntoView({behavior:'smooth', block:'center'}); }catch(e){}
+        try{
+          const dur = Math.max(200, Number(getComputedStyle(document.documentElement).getPropertyValue('--ib-page-search-hl-duration-ms').replace('ms','').trim() || '1400'));
+          hit.el.classList.add('jump_hl');
+          setTimeout(()=>{ try{ hit.el.classList.remove('jump_hl'); }catch(e){} }, dur);
+        }catch(e){}
+      }
+
+      function stepResult(dir){
+        if(!LAST_RESULTS.length) return;
+        const nextIdx = (LAST_CURSOR < 0) ? 0 : ((LAST_CURSOR + dir + LAST_RESULTS.length) % LAST_RESULTS.length);
+        jumpToResult(nextIdx);
+      }
+
+      function renderSearchSettings(){
+        if(!$searchModal) return;
+        const cfg = activeSearchCfg();
+        const preview = buildIndex().slice(0, 40);
+        $searchModal.innerHTML = `<div style="max-width:860px; margin:0 auto; background:#fff; border-radius:16px; box-shadow:0 12px 60px rgba(0,0,0,0.28); padding:14px; display:flex; flex-direction:column; gap:12px;"><div style="display:flex; justify-content:space-between; gap:12px; align-items:center; flex-wrap:wrap;"><div style="font-weight:800; font-size:16px;">Seitensuche</div><button type="button" id="ib_page_search_modal_close" style="cursor:pointer; padding:10px 12px;">Schliessen</button></div><div class="muted">Die Liste zeigt Beispieltreffer mit den aktuell aktiven Suchquellen.</div><div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;"><label style="display:flex; gap:8px; align-items:center;"><input type="checkbox" data-k="label" ${cfg.label ? 'checked' : ''}/>Label</label><label style="display:flex; gap:8px; align-items:center;"><input type="checkbox" data-k="visible_text" ${cfg.visible_text ? 'checked' : ''}/>Sichtbarer Text</label><label style="display:flex; gap:8px; align-items:center;"><input type="checkbox" data-k="key" ${cfg.key ? 'checked' : ''}/>data-ui / id</label><label style="display:flex; gap:8px; align-items:center;"><input type="checkbox" data-k="sections" ${cfg.sections ? 'checked' : ''}/>Bereichspfad</label><label style="display:flex; gap:8px; align-items:center;"><input type="checkbox" data-k="tooltip" ${cfg.tooltip ? 'checked' : ''}/>Tooltiptexte</label></div><div style="border:1px solid #eee; border-radius:12px; max-height:50vh; overflow:auto;"><div id="ib_page_search_preview">${preview.map(x=>`<div style="padding:10px 12px; border-bottom:1px solid #eee;"><strong>${x.ui}</strong><div style="font-size:12px; opacity:.75;">${((x.sect && x.sect.length) ? ('[' + x.sect.join(' / ') + '] ') : '') + (x.txt || '')}</div></div>`).join('') || '<div style="padding:10px 12px;" class="muted">Keine Treffer mit aktueller Filterung.</div>'}</div></div></div>`;
+        $searchModal.style.display = 'block';
+        const closeBtn = document.getElementById('ib_page_search_modal_close');
+        if(closeBtn) closeBtn.onclick = ()=>{ $searchModal.style.display = 'none'; };
+        $searchModal.onclick = (ev)=>{ if(ev.target === $searchModal) $searchModal.style.display = 'none'; };
+        $searchModal.querySelectorAll('input[data-k]').forEach(cb=>cb.addEventListener('change', ()=>{
+          const next = activeSearchCfg();
+          const k = String(cb.getAttribute('data-k') || '');
+          next[k] = !!cb.checked;
+          saveSearchCfg(next);
+          applySearchCfgUi();
+          renderSearchSettings();
+          runSearch();
+        }));
+      }
+
       function runSearch(){
         try{
+          applySearchCfgUi();
           const q = _lc(($search && $search.value) || '');
           if(!q){ renderResults([]); return; }
           const xs = buildIndex().filter(x => x.hay.includes(q)).slice(0, 50);
@@ -407,7 +486,11 @@
       }
 
       try{ if($search) $search.addEventListener('input', runSearch); }catch(e){}
+      try{ if($prev) $prev.addEventListener('click', ()=>stepResult(-1)); }catch(e){}
+      try{ if($next) $next.addEventListener('click', ()=>stepResult(1)); }catch(e){}
+      try{ if($settings) $settings.addEventListener('click', ()=>renderSearchSettings()); }catch(e){}
       try{ document.addEventListener('click', (ev)=>{ if(!$results || !$results.style || $results.style.display === 'none') return; if(ev.target === $search || $results.contains(ev.target)) return; $results.style.display='none'; }, true); }catch(e){}
+      try{ applySearchCfgUi(); }catch(e){}
     }
 
     if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initPageCard, { once: true });
@@ -636,11 +719,17 @@
       <button id="ib_zoom_in" type="button" aria-label="Zoom in" data-ui="topbar.zoom.in" title="topbar.zoom.in">+</button>
     </div>
     <input id="ib_page_search" type="text" data-ui="page.search" title="page.search" placeholder="Elemente auf dieser Seite suchen..." />
+    <button id="ib_page_search_prev" class="iconbtn ib_page_search_btn" type="button" data-ui="page.search.prev" title="page.search.prev" aria-label="Vorheriger Treffer">&lt;</button>
+    <button id="ib_page_search_next" class="iconbtn ib_page_search_btn" type="button" data-ui="page.search.next" title="page.search.next" aria-label="Naechster Treffer">&gt;</button>
+    <button id="ib_page_search_settings" class="iconbtn ib_page_search_btn" type="button" data-ui="page.search.settings" title="page.search.settings" aria-label="Sucheinstellungen">
+      <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 8.8A3.2 3.2 0 1 0 12 15.2 3.2 3.2 0 1 0 12 8.8" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a1.2 1.2 0 0 1 0 1.7l-1.6 1.6a1.2 1.2 0 0 1-1.7 0l-.1-.1a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.9V21a1.2 1.2 0 0 1-1.2 1.2h-2.2A1.2 1.2 0 0 1 10 21v-.2a1 1 0 0 0-.6-.9 1 1 0 0 0-1.1.2l-.1.1a1.2 1.2 0 0 1-1.7 0l-1.6-1.6a1.2 1.2 0 0 1 0-1.7l.1-.1a1 1 0 0 0 .2-1.1 1 1 0 0 0-.9-.6H3A1.2 1.2 0 0 1 1.8 13v-2.2A1.2 1.2 0 0 1 3 9.6h.2a1 1 0 0 0 .9-.6 1 1 0 0 0-.2-1.1l-.1-.1a1.2 1.2 0 0 1 0-1.7l1.6-1.6a1.2 1.2 0 0 1 1.7 0l.1.1a1 1 0 0 0 1.1.2 1 1 0 0 0 .6-.9V3A1.2 1.2 0 0 1 10 1.8h2.2A1.2 1.2 0 0 1 13.4 3v.2a1 1 0 0 0 .6.9 1 1 0 0 0 1.1-.2l.1-.1a1.2 1.2 0 0 1 1.7 0l1.6 1.6a1.2 1.2 0 0 1 0 1.7l-.1.1a1 1 0 0 0-.2 1.1 1 1 0 0 0 .9.6h.2A1.2 1.2 0 0 1 22.2 10v2.2a1.2 1.2 0 0 1-1.2 1.2h-.2a1 1 0 0 0-.9.6Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
+    </button>
     <button id="ib_open_all" class="iconbtn" type="button" data-ui="sections.open_all" title="sections.open_all" aria-label="Alle oeffnen"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 5h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.6"/></svg></button>
     <button id="ib_close_all" class="iconbtn" type="button" data-ui="sections.close_all" title="sections.close_all" aria-label="Alle schliessen"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M18 15l-6-6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 19h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.6"/></svg></button>
   </div>
 </div>
 <div class="ib_pagecard_results" id="ib_pagecard_results"></div>
+<div id="ib_page_search_modal" style="display:none; position:fixed; inset:0; z-index:9998; background:rgba(0,0,0,0.45); padding:8vh 12px 12px 12px; box-sizing:border-box; overflow:auto;"></div>
 
 <div class="ib_bottombar" id="ib_error_bar" data-ui="errors.statusbar" title="errors.statusbar">
   <span class="lbl">Letzter Fehler:</span>

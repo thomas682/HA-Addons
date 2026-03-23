@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.118
+
+### Enhancement
+
+- `page.search` hat jetzt `Zurueck`/`Weiter`-Buttons fuer Treffer-Navigation, ein Einstellungsdialog mit Suchquellen-Filtern (inkl. Tooltiptexte) sowie eine gespeicherte Filterkonfiguration fuer alle Seiten.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`, `pytest tests/test_api_ui_support.py tests/test_api_yaml_flow.py tests/test_api_monitoring.py tests/test_api_raw_points_center.py tests/test_api_debug_report.py -q`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.117
 
 ### Enhancement
