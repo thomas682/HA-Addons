@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.12.105
+
+### Fix
+
+- Dashboard Auto-Tuning sendet benutzerdefinierte `start`/`stop` Werte jetzt immer als UTC-Zeitstempel mit Zeitzone, damit `/api/raw_autotune` nicht mehr mit `datetime must include timezone` fehlschlaegt.
+- Einstellungen: Die betroffenen Zahlenfelder fuer Filterbreiten und Auswahl-Schriftgroesse sind jetzt als breitere Mono-Inputs ausgefuehrt, damit Werte beim Hoch-/Runterzaehlen sichtbar bleiben.
+- Info-Dialoge dekodieren jetzt literal gespeicherte Escapes wie `\n\n`, damit Beschreibungen mit Umbruechen sauber dargestellt werden.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`, `pytest tests/test_api_ui_support.py tests/test_api_monitoring.py tests/test_api_yaml_flow.py -q`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.104
 
 ### Feature

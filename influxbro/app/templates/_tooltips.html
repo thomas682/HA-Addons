@@ -509,7 +509,17 @@
 
   function _getBody(btn){
     const b = String(btn.getAttribute('data-info-body') || '');
-    return b;
+    return _decodeEscapedInfoText(b);
+  }
+
+  function _decodeEscapedInfoText(text){
+    const s = String(text || '');
+    return s
+      .replace(/\\r\\n/g, '\n')
+      .replace(/\\n/g, '\n')
+      .replace(/\\t/g, '\t')
+      .replace(/\\"/g, '"')
+      .replace(/\\'/g, "'");
   }
 
   function _show(btn){
@@ -1125,8 +1135,9 @@
       const pre = document.getElementById('influxbro_popup_pre');
       const settingsBtn = document.getElementById('influxbro_popup_settings');
       if(t) t.textContent = title || 'Hinweis';
-      if(pre) pre.textContent = String(msg || '');
-      try{ window.__InfluxBroPopupLast = { title: String(title || ''), msg: String(msg || '') }; }catch(e){}
+      const normalizedMsg = _decodeEscapedInfoText(String(msg || ''));
+      if(pre) pre.textContent = normalizedMsg;
+      try{ window.__InfluxBroPopupLast = { title: String(title || ''), msg: normalizedMsg }; }catch(e){}
       try{
         if(settingsBtn){
           if(opts && opts.settings){

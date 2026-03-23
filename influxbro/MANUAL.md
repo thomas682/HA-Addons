@@ -518,6 +518,7 @@ UI:
 - `Raw max. Punkte`: Maximale Zeilen/Points pro Raw-DB-Abfrage (Default: 20000).
 - `Raw max. Bereich +-`: Obergrenze fuer den Dashboard-Wert `Bereich +-` ueber der Raw-Tabelle.
 - `Raw Bereich +- Standard`: Vorbelegung fuer den Dashboard-Wert `Bereich +-`.
+- Dashboard-Autotuning nutzt fuer benutzerdefinierte Zeitraeume jetzt immer UTC-Zeitstempel mit Zeitzone, damit die Server-Pruefung stabil funktioniert.
 - `Manual max. Punkte (Dashboard Graph)`: Sicherheitslimit fuer `Details: Manuell` (100%).
 - `Sprung-Polster (Intervalle)`: +/- N Downsample-Intervalle fuer Sprung-Markierung/Detail-Nachladen.
 - `Tabellenzeilen Hoehe (px, Backup)`: Zeilenhoehe der Backup-Tabelle.
@@ -526,6 +527,7 @@ UI:
 - `Min. freier Speicher (MB)`: wenn kleiner als diese Schwelle, wird das Erstellen eines Backups abgelehnt (0 = deaktiviert).
 - `Basis/Kleine Schriftgroesse`: UI Typografie.
 - `Seitentitel Schriftgroesse (px)`: Groesse des Titels in der festen Titelkarte.
+- Die Felder `ui_filter_label_width_px`, `ui_filter_control_width_px`, `ui_filter_search_width_px` und `ui_sel_field_font_px` verwenden eine breitere numerische Darstellung, damit Werte auch beim Hoch-/Runterzaehlen sichtbar bleiben.
 - `Checkbox Groesse (Scale)`: Checkbox-Scaling fuer bessere Bedienbarkeit.
 - `Bereich-Titel (Details): Hintergrund/Textfarbe`: Farben der einklappbaren Bereichstitel (Details/Sektionen). Leer = Standard; erlaubt: `transparent`/`inherit` oder `#RRGGBB`.
   - Default: Hintergrund `#3287A8`, Text `#FFFFFF`. In den Einstellungen gibt es zusaetzlich Colorpicker.
@@ -583,6 +585,7 @@ Ausreisser:
 - Zeitraum: die genaue "von bis" Anzeige wird direkt unterhalb der Zeitraum‑Auswahl angezeigt.
 - Query Details: zeigt Start, Ende und Ausführungsdauer der letzten Abfrage sowie eine History.
 - Help Popup: optionaler "Einstellungen" Button im Hilfe‑Popup, wenn relevant.
+- Wenn Hilfetexte aus Konfiguration oder Issue-Texten literal mit `\n` gespeichert wurden, stellt der Info-Dialog diese Escapes automatisch als echte Zeilenumbrueche dar.
 
 ## Release Notes (1.12.47)
 

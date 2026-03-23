@@ -22,6 +22,12 @@
     main.content input, main.content select, main.content button { padding:10px 12px; height: 40px; box-sizing: border-box; }
     main.content input, main.content select { width: 100%; }
     main.content input[type="number"]{ width: 100%; }
+    main.content input.cfg_num_wide[type="number"]{
+      min-width: 12ch;
+      padding-right: 40px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-variant-numeric: tabular-nums;
+    }
     main.content button:not(.ib_info_icon) { width: 100%; }
     main.content .ib_info_icon {
       width: 22px;
@@ -426,17 +432,17 @@
             </div>
             <div>
               <label>Filter Label Breite (px)</label>
-              <input id="ui_filter_label_width_px" type="number" min="80" max="360" />
+              <input id="ui_filter_label_width_px" class="cfg_num_wide" type="number" min="80" max="360" />
               <div class="muted">Label links neben dem Auswahlfeld.</div>
             </div>
             <div>
               <label>Filter Feld Breite (px)</label>
-              <input id="ui_filter_control_width_px" type="number" min="180" max="900" />
+              <input id="ui_filter_control_width_px" class="cfg_num_wide" type="number" min="180" max="900" />
               <div class="muted">Breite fuer Suche+Auswahl (Desktop).</div>
             </div>
             <div>
               <label>Filter Suche Breite (px)</label>
-              <input id="ui_filter_search_width_px" type="number" min="80" max="420" />
+              <input id="ui_filter_search_width_px" class="cfg_num_wide" type="number" min="80" max="420" />
               <div class="muted">Breite fuer das Suchfeld links neben der Auswahl.</div>
             </div>
 
@@ -446,7 +452,7 @@
 
             <div>
               <label>Textgroesse im Feld (px)</label>
-              <input id="ui_sel_field_font_px" type="number" min="9" max="22" />
+              <input id="ui_sel_field_font_px" class="cfg_num_wide" type="number" min="9" max="22" />
               <div class="muted">Schriftgroesse in Auswahlfeldern (Input/Select).</div>
             </div>
             <div>

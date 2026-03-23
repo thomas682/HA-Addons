@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 
 def test_bugreport_meta_includes_recent_ui_actions(load_app_module, tmp_path):
     cfg_root = tmp_path / "config"
@@ -68,3 +70,27 @@ def test_config_clamps_new_ui_fields(load_app_module, tmp_path):
     assert cfg["ui_pagecard_title_px"] == 48
     assert cfg["ui_raw_center_max_points"] == 1
     assert cfg["ui_raw_center_range_default"] == 0
+
+
+def test_raw_autotune_link_uses_timezone_aware_custom_range_payload():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert "const startIso = $start && $start.value ? localToIsoUtc($start.value) : null;" in body
+    assert "const stopIso = $stop && $stop.value ? localToIsoUtc($stop.value) : null;" in body
+    assert "start: startIso," in body
+    assert "stop: stopIso," in body
+
+
+def test_settings_numeric_fields_keep_values_visible():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "config.html").read_text()
+    assert 'main.content input.cfg_num_wide[type="number"]{' in body
+    assert 'id="ui_filter_label_width_px" class="cfg_num_wide"' in body
+    assert 'id="ui_filter_control_width_px" class="cfg_num_wide"' in body
+    assert 'id="ui_filter_search_width_px" class="cfg_num_wide"' in body
+    assert 'id="ui_sel_field_font_px" class="cfg_num_wide"' in body
+
+
+def test_info_popup_decodes_escaped_linebreaks():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
+    assert "function _decodeEscapedInfoText(text){" in body
+    assert ".replace(/\\\\n/g, '\\n')" in body
+    assert "const normalizedMsg = _decodeEscapedInfoText(String(msg || ''));" in body

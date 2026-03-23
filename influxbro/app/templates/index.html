@@ -903,13 +903,15 @@ if($rawTuneLink){
   $rawTuneLink.addEventListener('click', async (ev)=>{
     _stop(ev);
     try{
+      const startIso = $start && $start.value ? localToIsoUtc($start.value) : null;
+      const stopIso = $stop && $stop.value ? localToIsoUtc($stop.value) : null;
       const payload = {
         measurement: $m ? String($m.value || '') : '',
         field: $f ? String($f.value || '') : '',
         entity_id: $e ? String($e.value || '') : null,
         friendly_name: $n ? String($n.value || '') : null,
-        start: $start ? String($start.value || '') : null,
-        stop: $stop ? String($stop.value || '') : null,
+        start: startIso,
+        stop: stopIso,
       };
       ok('Starte Auto-Tuning (Server)...');
       const r = await fetch('./api/raw_autotune', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
