@@ -56,7 +56,7 @@
     'graph.query_history': 'Zeigt die zuletzt verwendeten Graph-Queries fuer Dashboard und Bearbeitungsgraph.',
 
     // Raw navigation
-    'raw.center_range': 'Legt fest, wie viele Raw-Punkte um den selektierten Messwert herum nachgeladen werden.',
+    'raw.center_range': 'Legt fest, wie viele Minuten vor und nach dem selektierten Messwert geladen werden.',
     'raw.query_history': 'Zeigt die zuletzt verwendeten Raw-Queries des Dashboards.',
     'raw.nav': 'Navigation innerhalb der Raw-Tabelle (Tag basiert auf lokaler Browserzeit).',
     'raw.nav.oldest': 'Scrollt in Raw zum aeltesten geladenen Tag (erste Zeile).',
@@ -160,8 +160,8 @@
     'settings.ui_open_stats_current': 'Oeffnet "Statistik Zeitraum" beim Laden des Dashboards.',
     'settings.ui_tooltips_enabled': 'Schaltet Tooltips global ein/aus.',
     'settings.ui_pagecard_title_px': 'Steuert die Schriftgroesse des Seitentitels in der festen Titelkarte.',
-    'settings.ui_raw_center_max_points': 'Maximaler Wert fuer den Dashboard-Regler Bereich +-.',
-    'settings.ui_raw_center_range_default': 'Vorbelegung fuer den Dashboard-Regler Bereich +-.',
+    'settings.ui_raw_center_max_points': 'Maximaler Wert fuer den Dashboard-Regler Bereich +- in Minuten.',
+    'settings.ui_raw_center_range_default': 'Vorbelegung fuer den Dashboard-Regler Bereich +- in Minuten.',
 
     // Monitoring
     'monitor.reload': 'Laedt Monitoring-Konfiguration, Status, Pending-Liste und Event-Log neu.',
@@ -885,6 +885,11 @@
         <textarea id="influxbro_issue_text" style="width:100%; min-height:220px; padding:10px 12px; box-sizing:border-box; border:1px solid #ddd; border-radius:12px; font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;"></textarea>
         <div id="influxbro_issue_hint" style="margin-top:6px; font-size:12px; opacity:0.75;"></div>
       </div>
+      <div id="influxbro_issue_attach_help" style="display:none; border:1px solid #eee; border-radius:12px; padding:12px; background:#fafafa;">
+        <div style="font-weight:700; margin-bottom:6px;">Logfile manuell anhaengen</div>
+        <div style="font-size:12px; opacity:0.85; margin-bottom:8px;">Bitte haenge das heruntergeladene Logfile bzw. den Debug-Report in GitHub manuell ueber <code>Add files</code> an.</div>
+        <img id="influxbro_issue_attach_img" alt="GitHub Add files Hinweis" style="display:block; max-width:100%; border:1px solid #ddd; border-radius:10px;" src="https://raw.githubusercontent.com/thomas682/HA-Addons/main/influxbro/images/issue_addFile.png" />
+      </div>
       <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
         <button type="button" id="influxbro_issue_submit" style="cursor:pointer; padding:10px 12px;">Absenden / Issue anlegen</button>
         <span id="influxbro_issue_status" style="font-size:12px; opacity:0.75;"></span>
@@ -1098,6 +1103,7 @@
       const textEl = document.getElementById('influxbro_issue_text');
       const labelEl = document.getElementById('influxbro_issue_text_label');
       const hintEl = document.getElementById('influxbro_issue_hint');
+      const attachHelpEl = document.getElementById('influxbro_issue_attach_help');
       const statusEl = document.getElementById('influxbro_issue_status');
       const cancelEl = document.getElementById('influxbro_issue_cancel');
       const submitEl = document.getElementById('influxbro_issue_submit');
@@ -1120,10 +1126,12 @@
         if(kind === 'enhancement'){
           labelEl.textContent = 'Erweiterung beschreiben';
           hintEl.textContent = 'Bitte die gewuenschte Erweiterung kurz beschreiben. Das Feld darf nicht leer bleiben.';
+          if(attachHelpEl) attachHelpEl.style.display = 'none';
           if(!String(textEl.value || '').trim() || textEl.dataset.mode !== 'enhancement') textEl.value = '';
         }else{
           labelEl.textContent = 'Fehlerbeschreibung';
           hintEl.textContent = 'Bug erstellt ein Issue mit Label type/bug und laedt zusaetzlich einen Debug report herunter.';
+          if(attachHelpEl) attachHelpEl.style.display = 'block';
           if(!String(textEl.value || '').trim() || textEl.dataset.mode !== 'bug') textEl.value = defaultBugText;
         }
         textEl.dataset.mode = kind;

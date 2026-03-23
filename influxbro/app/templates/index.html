@@ -463,10 +463,10 @@
 
             <div class="tbl_actions" style="justify-content:flex-start; margin-top: 8px; gap: 12px; flex-wrap:wrap;" data-ui="raw.center_range" title="raw.center_range">
               <div style="display:flex; flex-direction:column; gap: 4px; min-width: 170px;">
-                <label for="raw_center_range">Bereich +-</label>
+                <label for="raw_center_range">Bereich +- (Minuten)</label>
                 <input id="raw_center_range" type="number" min="0" max="2000" step="1" value="100" style="height:34px; padding: 6px 10px; width: 140px;" />
               </div>
-              <div class="muted" id="raw_center_range_hint">Punkte um den selektierten Messwert herum. Speicherung erfolgt automatisch im Browser.</div>
+              <div class="muted" id="raw_center_range_hint">Zeitfenster um den selektierten Messwert herum in Minuten. Speicherung erfolgt automatisch im Browser.</div>
             </div>
 
             <div class="tbl_actions" style="justify-content:flex-start; margin-top: 8px; gap: 10px; flex-wrap:wrap;" data-ui="raw.nav" title="raw.nav">
@@ -1032,6 +1032,10 @@ function clampRawCenterRange(v){
   if(n < 0) n = 0;
   if(n > UI_RAW_CENTER_MAX_POINTS) n = UI_RAW_CENTER_MAX_POINTS;
   return n;
+}
+
+function currentRawCenterExpansion(){
+  return Math.max(0, Math.trunc(Math.max(Number(RAW_BEFORE_OFFSET || 0), Number(RAW_AFTER_OFFSET || 0))));
 }
 
 let CFG_BUCKET = "";
@@ -3454,7 +3458,7 @@ async function loadUiConfig(){
       $rawCenterRange.max = String(UI_RAW_CENTER_MAX_POINTS);
       $rawCenterRange.value = String(clampRawCenterRange(RAW_CENTER_RANGE));
     }
-    if($rawCenterRangeHint) $rawCenterRangeHint.textContent = `Punkte um den selektierten Messwert herum. Speicherung erfolgt automatisch im Browser. Max: ${UI_RAW_CENTER_MAX_POINTS}.`;
+    if($rawCenterRangeHint) $rawCenterRangeHint.textContent = `Zeitfenster um den selektierten Messwert herum in Minuten. Speicherung erfolgt automatisch im Browser. Max: ${UI_RAW_CENTER_MAX_POINTS} min.`;
 
     const fs = Number(cfg.ui_font_size_px);
     if(isFinite(fs) && fs >= 10 && fs <= 22) document.documentElement.style.setProperty("--ui-font", fs + "px");
@@ -4300,7 +4304,9 @@ function renderRawTable(){
   if(isFinite(total)) info += `Eintraege: ${loaded} / ${total}`; else info += `Eintraege: ${loaded}`;
   if(sTxt && eTxt) info += ` | Zeitraum: ${sTxt} bis ${eTxt}`;
   if(UI_RAW_MAX_POINTS) info += ` | max_points: ${UI_RAW_MAX_POINTS}`;
-  info += ` | Bereich +-: ${RAW_CENTER_RANGE}`;
+  const expansion = currentRawCenterExpansion();
+  const effectiveMinutes = Math.max(0, clampRawCenterRange(RAW_CENTER_RANGE)) * (expansion + 1);
+  info += ` | Bereich +-: ${effectiveMinutes} min`;
   $rawInfo.textContent = info;
 
   const selMs = (RAW_SELECTED_MS !== null && RAW_SELECTED_MS !== undefined && isFinite(Number(RAW_SELECTED_MS))) ? Number(RAW_SELECTED_MS) : null;
@@ -4516,6 +4522,7 @@ async function loadRawFromGraph(reset){
 
   const useCenter = !!anchorIso;
   const key = _rawKey(base, win, useCenter ? anchorIso : '');
+  const hadSameKey = (key === RAW_LAST_KEY);
   if(reset || key !== RAW_LAST_KEY){
     RAW_OFFSET = 0;
     RAW_ROWS = [];
@@ -4541,15 +4548,11 @@ async function loadRawFromGraph(reset){
     };
 
     if(useCenter){
-      const rangeLimit = Math.max(1, clampRawCenterRange(RAW_CENTER_RANGE));
-      const beforeLimit = Math.max(1, Math.floor(rangeLimit / 2));
-      const afterLimit = Math.max(1, rangeLimit - beforeLimit);
+      const expansion = (!reset && hadSameKey) ? (currentRawCenterExpansion() + 1) : 0;
+      const centerMinutes = Math.max(0, clampRawCenterRange(RAW_CENTER_RANGE)) * (expansion + 1);
       payload.mode = 'center';
       payload.anchor_time = anchorIso;
-      payload.before_limit = beforeLimit;
-      payload.after_limit = afterLimit;
-      payload.before_offset = RAW_BEFORE_OFFSET;
-      payload.after_offset = RAW_AFTER_OFFSET;
+      payload.center_minutes = centerMinutes;
       payload.include_total = false;
     }else{
       payload.limit = RAW_WINDOW_LIMIT;
@@ -4568,16 +4571,11 @@ async function loadRawFromGraph(reset){
     }catch(e){}
 
     if(useCenter){
-      const bN = meta ? Number(meta.before_returned || 0) : 0;
-      const bn = (isFinite(bN) ? Math.max(0, Math.trunc(bN)) : 0);
-      const bRows = rows.slice(0, bn);
-      const aRows = rows.slice(bn);
-
-      if(RAW_BEFORE_OFFSET === 0 && RAW_AFTER_OFFSET === 0) RAW_ROWS = rows;
-      else RAW_ROWS = bRows.concat(RAW_ROWS || []).concat(aRows);
-
-      RAW_BEFORE_OFFSET += bRows.length;
-      RAW_AFTER_OFFSET += aRows.length;
+      RAW_ROWS = rows;
+      const spanLevel = meta ? Number(meta.center_window_multiplier || 1) : 1;
+      const level = isFinite(spanLevel) ? Math.max(1, Math.trunc(spanLevel)) : 1;
+      RAW_BEFORE_OFFSET = level - 1;
+      RAW_AFTER_OFFSET = level - 1;
       RAW_OFFSET = (RAW_ROWS || []).length;
     }else{
       if(RAW_OFFSET === 0) RAW_ROWS = rows;

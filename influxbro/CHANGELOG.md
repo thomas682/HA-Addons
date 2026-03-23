@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.107
+
+### Enhancement
+
+- Raw-Daten um den selektierten Messpunkt nutzen jetzt ein Zeitfenster `+- Minuten` statt einer Punktezahl. Das Dashboard erweitert beim Nachladen das Zeitfenster schrittweise und die Query arbeitet direkt mit Minuten um den Ankerzeitpunkt.
+- Bugreport-Composer zeigt jetzt zusaetzlich einen sichtbaren Hinweis, dass das Logfile bzw. der Debug-Report manuell in GitHub angehaengt werden muss, inklusive Vorschaubild fuer `Add files`.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`, `pytest tests/test_api_ui_support.py tests/test_api_raw_points_center.py tests/test_api_monitoring.py tests/test_api_yaml_flow.py -q`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.106
 
 ### Fix

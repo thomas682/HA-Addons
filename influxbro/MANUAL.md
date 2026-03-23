@@ -209,7 +209,7 @@ Bearbeitungsliste + Bearbeitungsgraph:
 Raw Daten (DB):
 
 - Optional kannst du per Checkbox steuern, ob Raw Daten dem Zoom-Bereich im Graph folgen (oder dem Zeitraum aus der Zeitraum-Auswahl).
-- Feld `Bereich +-`: legt fest, wie viele Punkte um den selektierten Messwert herum geladen werden. Der Wert wird im Browser gespeichert; die Obergrenze und Vorbelegung kommen aus den Einstellungen.
+- Feld `Bereich +-`: legt fest, wie viele Minuten vor und nach dem selektierten Messwert geladen werden. Der Wert wird im Browser gespeichert; die Obergrenze und Vorbelegung kommen aus den Einstellungen.
 - Klick auf einen Messpunkt im Graph markiert den Punkt und springt in der Raw-Tabelle zum passenden Zeitstempel (Zeile wird hervorgehoben).
 - Wenn der Zeitstempel in den aktuell geladenen Raw-Zeilen noch nicht enthalten ist, werden automatisch weitere Raw-Seiten nachgeladen und dann zur passenden (naechsten) Zeile gescrollt.
 - Der Sprung zentriert die Zeile in der Tabelle, damit vorherige und nachfolgende Werte sichtbar bleiben.
@@ -516,8 +516,8 @@ UI:
 - `Dezimalstellen (Anzeige)`: Rundung in der UI.
 - `Query max. Punkte (Dashboard Graph)`: Downsampling-Limit fuer den Dashboard-Graph (Default: 5000).
 - `Raw max. Punkte`: Maximale Zeilen/Points pro Raw-DB-Abfrage (Default: 20000).
-- `Raw max. Bereich +-`: Obergrenze fuer den Dashboard-Wert `Bereich +-` ueber der Raw-Tabelle.
-- `Raw Bereich +- Standard`: Vorbelegung fuer den Dashboard-Wert `Bereich +-`.
+- `Raw max. Bereich +-`: Obergrenze in Minuten fuer den Dashboard-Wert `Bereich +-` ueber der Raw-Tabelle.
+- `Raw Bereich +- Standard`: Vorbelegung in Minuten fuer den Dashboard-Wert `Bereich +-`.
 - Dashboard-Autotuning nutzt fuer benutzerdefinierte Zeitraeume jetzt immer UTC-Zeitstempel mit Zeitzone, damit die Server-Pruefung stabil funktioniert.
 - `Manual max. Punkte (Dashboard Graph)`: Sicherheitslimit fuer `Details: Manuell` (100%).
 - `Sprung-Polster (Intervalle)`: +/- N Downsample-Intervalle fuer Sprung-Markierung/Detail-Nachladen.
@@ -549,6 +549,7 @@ Fehleranzeige:
 - Der Bugreport enthaelt jetzt zusaetzlich eine `Aktionsliste` mit den letzten 5 serverseitig protokollierten Bedieneraktionen.
 - Vor dem Anlegen waehlt der Dialog jetzt zwischen `Bug` und `Erweiterung`. Dabei wird automatisch das passende GitHub-Label gesetzt (`type/bug` oder `type/enhancement`).
 - Bei `Bug` ist die Beschreibung vorbelegt und es wird weiterhin ein Debug-Report heruntergeladen; bei `Erweiterung` ist eine freie, nicht-leere Beschreibung Pflicht.
+- Im Bugreport-Composer wird zusaetzlich sichtbar darauf hingewiesen, dass das Logfile/der Debug-Report in GitHub manuell ueber `Add files` angehaengt werden muss; dazu wird ein Beispielbild angezeigt.
 
 Fehlerfenster (Popup):
 

@@ -105,3 +105,12 @@ def test_bugreport_flow_offers_bug_or_enhancement_with_labels():
     assert "const labels = (kind === 'enhancement') ? 'type/enhancement' : 'type/bug';" in body
     assert "if(kind === 'bug'){" in body
     assert "defaultBugText = 'siehe automatisch angehaengtes Logging / Bei Bedarf hier eigene Fehlerbeschreibung einfuegen....'" in body
+    assert 'id="influxbro_issue_attach_help"' in body
+    assert 'issue_addFile.png' in body
+
+
+def test_raw_center_range_uses_minutes_in_ui():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert 'Bereich +- (Minuten)' in body
+    assert 'payload.center_minutes = centerMinutes;' in body
+    assert 'Zeitfenster um den selektierten Messwert herum in Minuten.' in body

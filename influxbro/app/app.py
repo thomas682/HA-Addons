@@ -12209,7 +12209,13 @@ def api_raw_points():
     after_limit = None
     before_offset = 0
     after_offset = 0
+    center_minutes = None
+    center_window_multiplier = 1
     if mode == "center":
+        try:
+            center_minutes = int(body.get("center_minutes") or 0)
+        except Exception:
+            center_minutes = 0
         try:
             before_limit = int(body.get("before_limit") or 0)
         except Exception:
@@ -12232,19 +12238,23 @@ def api_raw_points():
         if after_offset < 0:
             after_offset = 0
 
-        total_want = limit
-        if before_limit <= 0 and after_limit <= 0:
-            before_limit = max(1, total_want // 2)
-            after_limit = max(1, total_want - before_limit)
-        if before_limit <= 0:
-            before_limit = 1
-        if after_limit <= 0:
-            after_limit = 1
-        if (before_limit + after_limit) > raw_max:
-            # Keep the split roughly balanced.
-            half = max(1, raw_max // 2)
-            before_limit = min(before_limit, half)
-            after_limit = max(1, raw_max - before_limit)
+        if center_minutes and center_minutes > 0:
+            center_window_multiplier = max(1, int(math.ceil(float(center_minutes) / max(1.0, float(cfg.get("ui_raw_center_range_default", 100) or 100)))))
+            before_limit = None
+            after_limit = None
+        else:
+            total_want = limit
+            if before_limit <= 0 and after_limit <= 0:
+                before_limit = max(1, total_want // 2)
+                after_limit = max(1, total_want - before_limit)
+            if before_limit <= 0:
+                before_limit = 1
+            if after_limit <= 0:
+                after_limit = 1
+            if (before_limit + after_limit) > raw_max:
+                half = max(1, raw_max // 2)
+                before_limit = min(before_limit, half)
+                after_limit = max(1, raw_max - before_limit)
 
     try:
         LOG.debug(
@@ -12277,7 +12287,20 @@ def api_raw_points():
             q = ""
             q2 = ""
             q_count = ""
-            if mode == "center" and center_dt is not None and before_limit is not None and after_limit is not None:
+            if mode == "center" and center_dt is not None and center_minutes and center_minutes > 0:
+                q_start_dt = max(start_dt, center_dt - timedelta(minutes=center_minutes))
+                q_stop_dt = min(stop_dt, center_dt + timedelta(minutes=center_minutes))
+                q_start = _dt_to_rfc3339_utc(q_start_dt)
+                q_stop = _dt_to_rfc3339_utc(q_stop_dt)
+                q = f'''
+from(bucket: "{cfg["bucket"]}")
+  |> range(start: time(v: "{q_start}"), stop: time(v: "{q_stop}"))
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
+  |> keep(columns: ["_time","_value"])
+  |> sort(columns: ["_time"], desc: false)
+'''
+                q2 = ""
+            elif mode == "center" and center_dt is not None and before_limit is not None and after_limit is not None:
                 center = _dt_to_rfc3339_utc(center_dt)
                 q_older = f'''
 from(bucket: "{cfg["bucket"]}")
@@ -12329,7 +12352,22 @@ from(bucket: "{cfg["bucket"]}")
                 qapi = c.query_api()
                 before_returned = 0
                 after_returned = 0
-                if mode == "center" and center_dt is not None and before_limit is not None and after_limit is not None:
+                if mode == "center" and center_dt is not None and center_minutes and center_minutes > 0:
+                    q_start_dt = max(start_dt, center_dt - timedelta(minutes=center_minutes))
+                    q_stop_dt = min(stop_dt, center_dt + timedelta(minutes=center_minutes))
+                    q_start = _dt_to_rfc3339_utc(q_start_dt)
+                    q_stop = _dt_to_rfc3339_utc(q_stop_dt)
+                    log_query("api.raw_points (flux center_minutes)", q)
+                    tables = qapi.query(q, org=cfg["org"])
+                    for t in tables or []:
+                        for r in getattr(t, "records", []) or []:
+                            ts = r.get_time()
+                            val = r.get_value()
+                            if isinstance(ts, datetime):
+                                rows.append({"time": _dt_to_rfc3339_utc_ms(ts), "value": val})
+                    before_returned = len([r for r in rows if str(r.get("time") or "") <= _dt_to_rfc3339_utc_ms(center_dt)])
+                    after_returned = max(0, len(rows) - before_returned)
+                elif mode == "center" and center_dt is not None and before_limit is not None and after_limit is not None:
                     center = _dt_to_rfc3339_utc(center_dt)
                     extra2 = extra
                     q_older = f'''
@@ -12407,7 +12445,15 @@ from(bucket: "{cfg["bucket"]}")
                 "query": q.strip(),
                 "query_count": q_count.strip() if include_total else None,
             }
-            if mode == "center" and center_dt is not None and before_limit is not None and after_limit is not None:
+            if mode == "center" and center_dt is not None and center_minutes and center_minutes > 0:
+                meta.update({
+                    "anchor_time": _dt_to_rfc3339_utc(center_dt),
+                    "center_minutes": center_minutes,
+                    "center_window_multiplier": center_window_multiplier,
+                    "has_more_before": (center_dt - timedelta(minutes=center_minutes)) > start_dt,
+                    "has_more_after": (center_dt + timedelta(minutes=center_minutes)) < stop_dt,
+                })
+            elif mode == "center" and center_dt is not None and before_limit is not None and after_limit is not None:
                 meta.update({
                     "anchor_time": _dt_to_rfc3339_utc(center_dt),
                     "before_limit": before_limit,
@@ -12434,7 +12480,20 @@ from(bucket: "{cfg["bucket"]}")
         before_returned = 0
         after_returned = 0
         q = ""
-        if mode == "center" and center_dt is not None and before_limit is not None and after_limit is not None:
+        if mode == "center" and center_dt is not None and center_minutes and center_minutes > 0:
+            q_start_dt = max(start_dt, center_dt - timedelta(minutes=center_minutes))
+            q_stop_dt = min(stop_dt, center_dt + timedelta(minutes=center_minutes))
+            q_start = _dt_to_rfc3339_utc(q_start_dt)
+            q_stop = _dt_to_rfc3339_utc(q_stop_dt)
+            q = f'SELECT "{field}" FROM "{measurement}" WHERE time >= \'{q_start}\' AND time <= \'{q_stop}\'{tag_where} ORDER BY time ASC'
+            log_query("api.raw_points (influxql center_minutes)", q)
+            res = c.query(q)
+            for _, points in res.items():
+                for p in points:
+                    rows.append({"time": p.get("time"), "value": p.get(field)})
+            before_returned = len([r for r in rows if str(r.get("time") or "") <= _dt_to_rfc3339_utc(center_dt)])
+            after_returned = max(0, len(rows) - before_returned)
+        elif mode == "center" and center_dt is not None and before_limit is not None and after_limit is not None:
             center = _dt_to_rfc3339_utc(center_dt)
             q_older = f'SELECT "{field}" FROM "{measurement}" WHERE {time_where}{tag_where} AND time <= \'{center}\' ORDER BY time DESC LIMIT {before_limit} OFFSET {before_offset}'
             q_newer = f'SELECT "{field}" FROM "{measurement}" WHERE {time_where}{tag_where} AND time > \'{center}\' ORDER BY time ASC LIMIT {after_limit} OFFSET {after_offset}'
@@ -12492,7 +12551,15 @@ from(bucket: "{cfg["bucket"]}")
             "query": q,
             "query_count": q2 if include_total else None,
         }
-        if mode == "center" and center_dt is not None and before_limit is not None and after_limit is not None:
+        if mode == "center" and center_dt is not None and center_minutes and center_minutes > 0:
+            meta.update({
+                "anchor_time": _dt_to_rfc3339_utc(center_dt),
+                "center_minutes": center_minutes,
+                "center_window_multiplier": center_window_multiplier,
+                "has_more_before": (center_dt - timedelta(minutes=center_minutes)) > start_dt,
+                "has_more_after": (center_dt + timedelta(minutes=center_minutes)) < stop_dt,
+            })
+        elif mode == "center" and center_dt is not None and before_limit is not None and after_limit is not None:
             meta.update({
                 "anchor_time": _dt_to_rfc3339_utc(center_dt),
                 "before_limit": before_limit,
