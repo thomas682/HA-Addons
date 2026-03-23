@@ -66,6 +66,11 @@ UI_ACTIONS_LOCK = threading.RLock()
 UI_ACTIONS_MAX_MEM = 200
 UI_ACTIONS_MEM: "deque[dict[str, Any]]" = deque(maxlen=UI_ACTIONS_MAX_MEM)
 UI_ACTIONS_PATH = DATA_DIR / "influxbro_ui_actions.jsonl"
+MONITOR_LOCK = threading.RLock()
+MONITOR_CFG_PATH = DATA_DIR / "influxbro_monitoring_config.json"
+MONITOR_STATE_PATH = DATA_DIR / "influxbro_monitoring_state.json"
+MONITOR_PENDING_PATH = DATA_DIR / "influxbro_monitoring_pending.json"
+MONITOR_EVENTS_PATH = DATA_DIR / "influxbro_monitoring_events.jsonl"
 JOBS_HISTORY_PATH = DATA_DIR / "influxbro_jobs_history.json"
 
 # Timers state (last run timestamps, persisted under /data)
@@ -403,7 +408,7 @@ def _overlay_from_yaml_if_enabled(cfg_in: dict) -> dict:
     return merged
 
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder=str(APP_DIR / "templates"))
 RUNTIME_CFG_FILE = DATA_DIR / "influx_browser_config.json"
 
 LOG_FILE = DATA_DIR / "influxbro.log"
@@ -1677,6 +1682,474 @@ def _ui_action_tail(limit: int = 5) -> list[dict[str, Any]]:
     except Exception:
         pass
     return []
+
+
+MONITOR_REASON_LABELS = {
+    "steigt_zu_stark": "steigt zu stark",
+    "faellt_zu_stark": "faellt zu stark",
+    "ausserhalb_min_max": "ausserhalb Min/Max",
+    "ungueltiger_wert": "ungueltiger Wert",
+    "fault_active": "fault_active",
+}
+
+
+def _monitor_default_config() -> dict[str, Any]:
+    return {
+        "global": {
+            "critical_repeat_threshold": 3,
+            "default_recovery_valid_streak": 2,
+        },
+        "monitors": [],
+    }
+
+
+def _monitor_normalize_item(item: dict[str, Any], cfg_global: dict[str, Any] | None = None) -> dict[str, Any]:
+    g = cfg_global if isinstance(cfg_global, dict) else {}
+    key = str(item.get("key") or item.get("id") or "").strip()
+    if not key:
+        raise ValueError("key required")
+
+    def _flt(name: str) -> float | None:
+        val = item.get(name)
+        if val in (None, ""):
+            return None
+        try:
+            out = float(val)
+        except Exception:
+            return None
+        return out if math.isfinite(out) else None
+
+    def _int(name: str, default: int) -> int:
+        try:
+            return max(0, int(item.get(name, default)))
+        except Exception:
+            return default
+
+    def _bool(name: str, default: bool = False) -> bool:
+        raw = item.get(name, default)
+        if isinstance(raw, bool):
+            return raw
+        return str(raw).strip().lower() in ("1", "true", "yes", "on")
+
+    correction = item.get("correction_map") if isinstance(item.get("correction_map"), dict) else {}
+    out = {
+        "key": key,
+        "label": str(item.get("label") or key).strip(),
+        "enabled": _bool("enabled", True),
+        "min_value": _flt("min_value"),
+        "max_value": _flt("max_value"),
+        "max_rise": _flt("max_rise"),
+        "max_fall": _flt("max_fall"),
+        "invalid_zero": _bool("invalid_zero", True),
+        "mode": str(item.get("mode") or "pending").strip().lower() or "pending",
+        "recovery_mode": str(item.get("recovery_mode") or "range").strip().lower() or "range",
+        "recovery_band_abs": _flt("recovery_band_abs"),
+        "recovery_valid_streak": _int("recovery_valid_streak", int(g.get("default_recovery_valid_streak") or 2)),
+        "critical_repeat_threshold": _int("critical_repeat_threshold", int(g.get("critical_repeat_threshold") or 3)),
+        "correction_map": {},
+    }
+    if out["mode"] not in ("auto", "pending"):
+        out["mode"] = "pending"
+    if out["recovery_mode"] not in ("range", "last_valid_band"):
+        out["recovery_mode"] = "range"
+    for reason in MONITOR_REASON_LABELS:
+        action = str(correction.get(reason) or item.get(f"correction_{reason}") or "last_valid").strip().lower() or "last_valid"
+        if action not in ("last_valid", "delete", "clamp", "none"):
+            action = "last_valid"
+        out["correction_map"][reason] = action
+    return out
+
+
+def _monitor_load_config() -> dict[str, Any]:
+    base = _monitor_default_config()
+    try:
+        if not MONITOR_CFG_PATH.exists():
+            return base
+        raw = MONITOR_CFG_PATH.read_text(encoding="utf-8", errors="replace")
+        data = json.loads(raw) if raw else {}
+        if not isinstance(data, dict):
+            return base
+        g = data.get("global") if isinstance(data.get("global"), dict) else {}
+        monitors_raw = data.get("monitors") if isinstance(data.get("monitors"), list) else []
+        monitors = []
+        for item in monitors_raw:
+            if not isinstance(item, dict):
+                continue
+            try:
+                monitors.append(_monitor_normalize_item(item, g))
+            except Exception:
+                continue
+        base["global"].update(g)
+        base["monitors"] = monitors
+        return base
+    except Exception:
+        return base
+
+
+def _monitor_save_config(data: dict[str, Any]) -> dict[str, Any]:
+    cfg = _monitor_default_config()
+    g = data.get("global") if isinstance(data.get("global"), dict) else {}
+    cfg["global"]["critical_repeat_threshold"] = max(1, int(g.get("critical_repeat_threshold") or 3))
+    cfg["global"]["default_recovery_valid_streak"] = max(1, int(g.get("default_recovery_valid_streak") or 2))
+    monitors_raw = data.get("monitors") if isinstance(data.get("monitors"), list) else []
+    seen: set[str] = set()
+    monitors = []
+    for item in monitors_raw:
+        if not isinstance(item, dict):
+            continue
+        mon = _monitor_normalize_item(item, cfg["global"])
+        if mon["key"] in seen:
+            continue
+        seen.add(mon["key"])
+        monitors.append(mon)
+    cfg["monitors"] = monitors
+    with MONITOR_LOCK:
+        MONITOR_CFG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        MONITOR_CFG_PATH.write_text(json.dumps(cfg, indent=2, sort_keys=True, ensure_ascii=True), encoding="utf-8")
+    return cfg
+
+
+def _monitor_load_json(path: Path, default: Any) -> Any:
+    try:
+        if not path.exists():
+            return default
+        raw = path.read_text(encoding="utf-8", errors="replace")
+        data = json.loads(raw) if raw else default
+        return data if isinstance(data, type(default)) else default
+    except Exception:
+        return default
+
+
+def _monitor_save_json(path: Path, data: Any) -> None:
+    with MONITOR_LOCK:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(data, indent=2, sort_keys=True, ensure_ascii=True), encoding="utf-8")
+
+
+def _monitor_load_state() -> dict[str, Any]:
+    return _monitor_load_json(MONITOR_STATE_PATH, {})
+
+
+def _monitor_save_state(state: dict[str, Any]) -> None:
+    _monitor_save_json(MONITOR_STATE_PATH, state)
+
+
+def _monitor_load_pending() -> list[dict[str, Any]]:
+    return _monitor_load_json(MONITOR_PENDING_PATH, [])
+
+
+def _monitor_save_pending(rows: list[dict[str, Any]]) -> None:
+    _monitor_save_json(MONITOR_PENDING_PATH, rows)
+
+
+def _monitor_event_append(entry: dict[str, Any]) -> None:
+    try:
+        e = dict(entry or {})
+        e.setdefault("id", uuid.uuid4().hex)
+        e.setdefault("at", _utc_now_iso_ms())
+        with MONITOR_LOCK:
+            MONITOR_EVENTS_PATH.parent.mkdir(parents=True, exist_ok=True)
+            with MONITOR_EVENTS_PATH.open("a", encoding="utf-8") as f:
+                f.write(json.dumps(e, ensure_ascii=True) + "\n")
+    except Exception:
+        return
+
+
+def _monitor_events_read(limit: int = 500) -> list[dict[str, Any]]:
+    try:
+        lim = min(5000, max(1, int(limit or 500)))
+    except Exception:
+        lim = 500
+    try:
+        if not MONITOR_EVENTS_PATH.exists():
+            return []
+        lines = MONITOR_EVENTS_PATH.read_text(encoding="utf-8", errors="replace").splitlines()
+        out: list[dict[str, Any]] = []
+        for ln in lines[-lim:]:
+            try:
+                j = json.loads(ln)
+            except Exception:
+                continue
+            if isinstance(j, dict):
+                out.append(j)
+        return out
+    except Exception:
+        return []
+
+
+def _monitor_get_item(cfg: dict[str, Any], key: str) -> dict[str, Any] | None:
+    want = str(key or "").strip()
+    for item in cfg.get("monitors", []):
+        if isinstance(item, dict) and str(item.get("key") or "").strip() == want:
+            return item
+    return None
+
+
+def _monitor_detect_reason(item: dict[str, Any], last_valid: float | None, value: float | None) -> str:
+    if value is None or not math.isfinite(value):
+        return "ungueltiger_wert"
+    if bool(item.get("invalid_zero", True)) and value == 0:
+        return "ungueltiger_wert"
+    min_value = item.get("min_value")
+    max_value = item.get("max_value")
+    if min_value is not None and value < float(min_value):
+        return "ausserhalb_min_max"
+    if max_value is not None and value > float(max_value):
+        return "ausserhalb_min_max"
+    if last_valid is not None:
+        max_rise = item.get("max_rise")
+        max_fall = item.get("max_fall")
+        if max_rise is not None and (value - last_valid) > float(max_rise):
+            return "steigt_zu_stark"
+        if max_fall is not None and (last_valid - value) > float(max_fall):
+            return "faellt_zu_stark"
+    return ""
+
+
+def _monitor_recovery_ok(item: dict[str, Any], state: dict[str, Any], value: float | None) -> bool:
+    if value is None or not math.isfinite(value):
+        return False
+    if _monitor_detect_reason(item, state.get("last_valid_value"), value):
+        return False
+    mode = str(item.get("recovery_mode") or "range")
+    if mode == "last_valid_band":
+        last_valid = state.get("last_valid_value")
+        band = item.get("recovery_band_abs")
+        if last_valid is None or band is None:
+            return False
+        try:
+            return abs(float(value) - float(last_valid)) <= abs(float(band))
+        except Exception:
+            return False
+    return True
+
+
+def _monitor_suggest_value(item: dict[str, Any], state: dict[str, Any], value: float | None, reason: str) -> tuple[str, float | None]:
+    action = str((item.get("correction_map") or {}).get(reason) or "last_valid")
+    if action == "delete":
+        return action, None
+    if action == "clamp" and value is not None and math.isfinite(value):
+        lo = item.get("min_value")
+        hi = item.get("max_value")
+        out = float(value)
+        if lo is not None:
+            out = max(out, float(lo))
+        if hi is not None:
+            out = min(out, float(hi))
+        return action, out
+    if action == "none":
+        return action, value
+    last_valid = state.get("last_valid_value")
+    try:
+        return "last_valid", None if last_valid is None else float(last_valid)
+    except Exception:
+        return "last_valid", None
+
+
+def _monitor_recount_pending(state: dict[str, Any], key: str) -> None:
+    pending = _monitor_load_pending()
+    open_count = len([p for p in pending if isinstance(p, dict) and str(p.get("key") or "") == key and str(p.get("status") or "open") == "open"])
+    cur = state.get(key) if isinstance(state.get(key), dict) else {}
+    cur["pending_count"] = open_count
+    state[key] = cur
+
+
+def _monitor_evaluate(payload: dict[str, Any]) -> dict[str, Any]:
+    cfg = _monitor_load_config()
+    key = str(payload.get("key") or "").strip()
+    if not key:
+        raise ValueError("key required")
+    item = _monitor_get_item(cfg, key)
+    if not item or not bool(item.get("enabled", True)):
+        raise ValueError("monitor not found")
+
+    at = str(payload.get("at") or _utc_now_iso_ms()).strip() or _utc_now_iso_ms()
+    raw_in = payload.get("raw_value")
+    try:
+        value = float(raw_in)
+        if not math.isfinite(value):
+            value = None
+    except Exception:
+        value = None
+
+    state_all = _monitor_load_state()
+    state = state_all.get(key) if isinstance(state_all.get(key), dict) else {}
+    status = str(state.get("status") or "normal")
+    last_valid = state.get("last_valid_value")
+    try:
+        last_valid_num = None if last_valid is None else float(last_valid)
+    except Exception:
+        last_valid_num = None
+
+    detected_reason = _monitor_detect_reason(item, last_valid_num, value)
+    reason = detected_reason
+    outlier = False
+    recovered = False
+
+    if status in ("fault_active", "recovering"):
+        if _monitor_recovery_ok(item, state, value):
+            streak = int(state.get("recovery_streak") or 0) + 1
+            need = max(1, int(item.get("recovery_valid_streak") or 1))
+            if streak >= need:
+                status = "normal"
+                recovered = True
+                reason = ""
+                state["fault_ended_at"] = at
+                state["recovery_streak"] = 0
+            else:
+                status = "recovering"
+                state["recovery_streak"] = streak
+                reason = "fault_active"
+                outlier = True
+        else:
+            status = "fault_active"
+            state["recovery_streak"] = 0
+            reason = detected_reason or "fault_active"
+            outlier = True
+    elif detected_reason:
+        status = "fault_active"
+        state["fault_started_at"] = at
+        state["recovery_streak"] = 0
+        reason = detected_reason
+        outlier = True
+
+    correction_action = "none"
+    corrected_value = value
+    correction_status = "none"
+    pending_entry = None
+
+    if outlier:
+        state["fault_count"] = int(state.get("fault_count") or 0) + 1
+        state["total_outliers"] = int(state.get("total_outliers") or 0) + 1
+        correction_action, corrected_value = _monitor_suggest_value(item, state, value, reason)
+        if str(item.get("mode") or "pending") == "auto":
+            correction_status = "auto_applied"
+        else:
+            correction_status = "pending"
+            pending = _monitor_load_pending()
+            pending_entry = {
+                "id": uuid.uuid4().hex,
+                "key": key,
+                "label": item.get("label") or key,
+                "at": at,
+                "reason": reason,
+                "reason_label": MONITOR_REASON_LABELS.get(reason, reason),
+                "raw_value": raw_in,
+                "suggested_action": correction_action,
+                "suggested_value": corrected_value,
+                "status": "open",
+            }
+            pending.append(pending_entry)
+            _monitor_save_pending(pending)
+    else:
+        state["fault_count"] = 0
+
+    threshold = max(1, int(item.get("critical_repeat_threshold") or 3))
+    critical = int(state.get("fault_count") or 0) >= threshold
+    state.update({
+        "status": status,
+        "fault_active": status != "normal",
+        "critical": critical,
+        "last_reason": reason,
+        "last_reason_label": MONITOR_REASON_LABELS.get(reason, reason),
+        "last_raw_value": raw_in,
+        "last_corrected_value": corrected_value,
+        "last_event_at": at,
+        "correction_action": correction_action,
+        "correction_status": correction_status,
+    })
+    if not outlier and value is not None:
+        state["last_valid_value"] = value
+        state["last_valid_at"] = at
+        state["last_corrected_value"] = value
+    state_all[key] = state
+    _monitor_recount_pending(state_all, key)
+    _monitor_save_state(state_all)
+
+    if outlier:
+        _monitor_event_append({
+            "kind": "outlier",
+            "key": key,
+            "label": item.get("label") or key,
+            "at": at,
+            "reason": reason,
+            "reason_label": MONITOR_REASON_LABELS.get(reason, reason),
+            "raw_value": raw_in,
+            "corrected_value": corrected_value,
+            "correction_action": correction_action,
+            "correction_status": correction_status,
+            "fault_active": bool(state.get("fault_active")),
+            "critical": critical,
+        })
+    elif recovered:
+        _monitor_event_append({
+            "kind": "recovery",
+            "key": key,
+            "label": item.get("label") or key,
+            "at": at,
+            "raw_value": raw_in,
+            "corrected_value": value,
+            "fault_active": False,
+            "critical": critical,
+        })
+
+    return {
+        "key": key,
+        "label": item.get("label") or key,
+        "at": at,
+        "status": status,
+        "outlier": outlier,
+        "recovered": recovered,
+        "reason": reason,
+        "reason_label": MONITOR_REASON_LABELS.get(reason, reason),
+        "correction_action": correction_action,
+        "corrected_value": corrected_value,
+        "correction_status": correction_status,
+        "critical": critical,
+        "pending": pending_entry,
+        "state": state_all.get(key),
+    }
+
+
+def _monitor_template_snapshot() -> dict[str, Any]:
+    cfg = _monitor_load_config()
+    state_all = _monitor_load_state()
+    pending = _monitor_load_pending()
+    items = []
+    for mon in cfg.get("monitors", []):
+        if not isinstance(mon, dict):
+            continue
+        key = str(mon.get("key") or "").strip()
+        st = state_all.get(key) if isinstance(state_all.get(key), dict) else {}
+        pend = len([p for p in pending if isinstance(p, dict) and str(p.get("key") or "") == key and str(p.get("status") or "open") == "open"])
+        items.append({
+            "key": key,
+            "label": mon.get("label") or key,
+            "raw_value": st.get("last_raw_value"),
+            "corrected_value": st.get("last_corrected_value"),
+            "last_valid_value": st.get("last_valid_value"),
+            "last_reason": st.get("last_reason"),
+            "last_reason_label": st.get("last_reason_label"),
+            "outlier_flag": bool(st.get("last_reason")),
+            "critical_flag": bool(st.get("critical")),
+            "pending_count": pend,
+            "fault_active_flag": bool(st.get("fault_active")),
+            "status": st.get("status") or "normal",
+            "event_count": int(st.get("total_outliers") or 0),
+            "last_event_at": st.get("last_event_at"),
+        })
+    critical_items = [it for it in items if it.get("critical_flag")]
+    open_pending = [p for p in pending if isinstance(p, dict) and str(p.get("status") or "open") == "open"]
+    return {
+        "items": items,
+        "global": {
+            "outlier_count": len(_monitor_events_read(5000)),
+            "pending_count": len(open_pending),
+            "critical_count": len(critical_items),
+        },
+        "critical": critical_items,
+        "pending": open_pending,
+    }
 
 
 def _cache_usage_clear() -> None:
@@ -3644,6 +4117,17 @@ def history_page():
         cfg=cfg,
         allow_delete=True,
         nav="history",
+    )
+
+
+@app.get("/monitor")
+def monitor_page():
+    cfg = load_cfg()
+    return render_template(
+        "monitor.html",
+        cfg=cfg,
+        allow_delete=True,
+        nav="monitor",
     )
 
 
@@ -11493,6 +11977,162 @@ def query():
         return jsonify({"ok": False, "error": e.message}), int(e.status)
     except Exception as e:
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
+
+
+@app.get("/api/monitoring/config")
+def api_monitoring_config_get():
+    return jsonify({"ok": True, "config": _monitor_load_config()})
+
+
+@app.post("/api/monitoring/config")
+def api_monitoring_config_set():
+    body = request.get_json(force=True) or {}
+    try:
+        cfg = _monitor_save_config(body if isinstance(body, dict) else {})
+        return jsonify({"ok": True, "config": cfg})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 400
+
+
+@app.post("/api/monitoring/evaluate")
+def api_monitoring_evaluate():
+    body = request.get_json(force=True) or {}
+    try:
+        result = _monitor_evaluate(body if isinstance(body, dict) else {})
+        return jsonify({"ok": True, "result": result})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 400
+
+
+@app.get("/api/monitoring/events")
+def api_monitoring_events():
+    q = str(request.args.get("q") or "").strip().lower()
+    only = str(request.args.get("kind") or "").strip().lower()
+    rows = _monitor_events_read(int(request.args.get("limit", "500")))
+    out = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        if only and str(row.get("kind") or "").strip().lower() != only:
+            continue
+        txt = json.dumps(row, ensure_ascii=True).lower()
+        if q and q not in txt:
+            continue
+        out.append(row)
+    return jsonify({"ok": True, "rows": out, "total": len(out)})
+
+
+@app.get("/api/monitoring/pending")
+def api_monitoring_pending():
+    q = str(request.args.get("q") or "").strip().lower()
+    rows = [r for r in _monitor_load_pending() if isinstance(r, dict)]
+    out = []
+    for row in rows:
+        if str(row.get("status") or "open") != "open":
+            continue
+        txt = json.dumps(row, ensure_ascii=True).lower()
+        if q and q not in txt:
+            continue
+        out.append(row)
+    return jsonify({"ok": True, "rows": out, "total": len(out)})
+
+
+def _monitor_pending_apply_common(pending_id: str, action: str, manual_value: Any = None) -> dict[str, Any]:
+    rows = _monitor_load_pending()
+    hit = None
+    for row in rows:
+        if isinstance(row, dict) and str(row.get("id") or "") == pending_id:
+            hit = row
+            break
+    if not hit:
+        raise ValueError("pending item not found")
+    if str(hit.get("status") or "open") != "open":
+        raise ValueError("pending item already closed")
+
+    key = str(hit.get("key") or "").strip()
+    state_all = _monitor_load_state()
+    state = state_all.get(key) if isinstance(state_all.get(key), dict) else {}
+
+    if action == "manual":
+        try:
+            manual_num = float(manual_value)
+        except Exception:
+            raise ValueError("manual value invalid")
+        if not math.isfinite(manual_num):
+            raise ValueError("manual value invalid")
+        state["last_corrected_value"] = manual_num
+        hit["applied_value"] = manual_num
+    elif action == "apply":
+        state["last_corrected_value"] = hit.get("suggested_value")
+        hit["applied_value"] = hit.get("suggested_value")
+    elif action == "reject":
+        hit["applied_value"] = None
+    else:
+        raise ValueError("invalid action")
+
+    hit["status"] = "rejected" if action == "reject" else "applied"
+    hit["closed_at"] = _utc_now_iso_ms()
+    hit["closed_action"] = action
+    state_all[key] = state
+    _monitor_recount_pending(state_all, key)
+    _monitor_save_state(state_all)
+    _monitor_save_pending(rows)
+    _monitor_event_append({
+        "kind": "pending_" + action,
+        "key": key,
+        "label": hit.get("label") or key,
+        "at": hit.get("closed_at"),
+        "reason": hit.get("reason"),
+        "reason_label": hit.get("reason_label"),
+        "raw_value": hit.get("raw_value"),
+        "corrected_value": hit.get("applied_value"),
+        "correction_action": hit.get("suggested_action"),
+        "correction_status": hit.get("status"),
+    })
+    return hit
+
+
+@app.post("/api/monitoring/pending/apply")
+def api_monitoring_pending_apply():
+    body = request.get_json(force=True) or {}
+    pending_id = str(body.get("id") or "").strip()
+    manual = body.get("manual_value")
+    action = "manual" if manual not in (None, "") else "apply"
+    try:
+        row = _monitor_pending_apply_common(pending_id, action, manual)
+        return jsonify({"ok": True, "row": row})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 400
+
+
+@app.post("/api/monitoring/pending/reject")
+def api_monitoring_pending_reject():
+    body = request.get_json(force=True) or {}
+    pending_id = str(body.get("id") or "").strip()
+    try:
+        row = _monitor_pending_apply_common(pending_id, "reject")
+        return jsonify({"ok": True, "row": row})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 400
+
+
+@app.get("/api/monitoring/critical")
+def api_monitoring_critical():
+    snap = _monitor_template_snapshot()
+    q = str(request.args.get("q") or "").strip().lower()
+    rows = []
+    for row in snap.get("critical", []):
+        txt = json.dumps(row, ensure_ascii=True).lower()
+        if q and q not in txt:
+            continue
+        rows.append(row)
+    return jsonify({"ok": True, "rows": rows, "total": len(rows)})
+
+
+@app.get("/api/monitoring/templates")
+def api_monitoring_templates():
+    snap = _monitor_template_snapshot()
+    return jsonify({"ok": True, **snap})
 
 
 @app.post("/api/raw_points")

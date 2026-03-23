@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>InfluxBro - Monitor</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; }
+    .content { padding: 16px; }
+    h2 { margin: 0; }
+    .muted { opacity: 0.75; font-size: 12px; }
+    .row { display:flex; gap:10px; flex-wrap:wrap; align-items:end; margin-top:10px; }
+    .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:12px; }
+    label { display:block; font-size:12px; opacity:.8; }
+    input, select, button, textarea { padding:10px 12px; box-sizing:border-box; }
+    input, select, textarea { width:100%; }
+    button { cursor:pointer; }
+    .btn_sm { height:34px; padding:6px 10px; }
+    .card { border:1px solid #ddd; border-radius:12px; padding:12px; margin-top:12px; }
+    .err { color:#b00020; margin-top:8px; white-space:pre-wrap; }
+    .ok { color:#0a7a28; margin-top:8px; white-space:pre-wrap; }
+    .table_wrap { border:1px solid #eee; border-radius:12px; padding:10px; margin-top:10px; }
+    .table_title { font-weight:800; font-size:14px; margin-bottom:6px; }
+    .table_head { display:flex; justify-content:space-between; gap:12px; align-items:flex-end; flex-wrap:wrap; }
+    .tbl_actions { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:10px; }
+    .tbl_actions label { display:flex; gap:6px; align-items:center; font-size:12px; opacity:.85; }
+    .table_box { max-height:42vh; overflow:auto; border:1px solid #eee; border-radius:12px; margin-top:10px; }
+    table { border-collapse:collapse; width:100%; margin-top:0; }
+    th, td { border:1px solid #eee; padding:6px; font-size:12px; text-align:left; vertical-align:top; }
+    th { background:#f6f6f6; position:sticky; top:0; z-index:1; }
+    pre { margin:0; white-space:pre-wrap; word-break:break-word; }
+    .chip { display:inline-flex; align-items:center; padding:2px 8px; border-radius:999px; border:1px solid #ddd; font-size:12px; }
+    .chip.ok { background:#eefaf1; border-color:#b6e2c0; color:#0a7a28; }
+    .chip.warn { background:#fff6e8; border-color:#f2d199; color:#9a5b00; }
+    .chip.err { background:#fff0f0; border-color:#f2b0b0; color:#b00020; }
+    details > summary { cursor:pointer; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+  </style>
+</head>
+<body>
+  {% include "_topbar.html" %}
+  <div class="shell">
+    {% include "_nav.html" %}
+    <main class="content" data-ui="monitor.page" title="monitor.page">
+      <h2>Monitor</h2>
+      <div class="muted">Eigenstaendige Monitoring-Seite fuer Ausreisser, offene Korrekturen, kritische Messwerte und Template-Daten.</div>
+
+      <div id="err" class="err"></div>
+      <div id="ok" class="ok"></div>
+
+      <details class="card" open data-ui="monitor.section.config" title="monitor.section.config">
+        <summary><span class="ib_summary_row"><span>Monitoring Konfiguration</span><button type="button" class="ib_info_icon" data-info-title="Monitoring: Konfiguration" data-info-body="Hier definierst du die ueberwachten Messwerte, Grenzwerte, Recovery-Regeln und Korrekturmodi.\n\nJede Zeile repraesentiert einen ueberwachten Messwert-Key." >i</button></span></summary>
+        <div class="card_body">
+          <div class="grid">
+            <div>
+              <label>Global: kritisch ab Fehlern</label>
+              <input id="global_critical_threshold" type="number" min="1" max="999" value="3" />
+            </div>
+            <div>
+              <label>Global: Recovery gueltige Werte</label>
+              <input id="global_recovery_streak" type="number" min="1" max="50" value="2" />
+            </div>
+          </div>
+          <div class="tbl_actions">
+            <button id="cfg_add" class="btn_sm" data-ui="monitor.config.add" title="monitor.config.add">Zeile hinzufuegen</button>
+            <button id="cfg_save" class="btn_sm" data-ui="monitor.config.save" title="monitor.config.save">Konfiguration speichern</button>
+            <span class="muted">Korrekturmodus: <code>auto</code> wendet den Vorschlag sofort intern an, <code>pending</code> legt eine offene Korrektur an.</span>
+          </div>
+          <div class="table_wrap" data-ui="monitor.config.table.wrap" title="monitor.config.table.wrap">
+            <div class="table_title">Ueberwachte Messwerte</div>
+            <div class="table_box">
+              <table id="cfg_tbl" class="ib_tbl" data-ui="monitor.config.table" title="monitor.config.table">
+                <thead>
+                  <tr>
+                    <th>Key</th>
+                    <th>Label</th>
+                    <th>Min</th>
+                    <th>Max</th>
+                    <th>Anstieg</th>
+                    <th>Abfall</th>
+                    <th>0 ungueltig</th>
+                    <th>Korr. invalid</th>
+                    <th>Korr. Min/Max</th>
+                    <th>Korr. Anstieg</th>
+                    <th>Korr. Abfall</th>
+                    <th>Modus</th>
+                    <th>Recovery</th>
+                    <th>Band</th>
+                    <th>Streak</th>
+                    <th>Kritisch ab</th>
+                  </tr>
+                </thead>
+                <tbody id="cfg_rows"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <details class="card" open data-ui="monitor.section.evaluate" title="monitor.section.evaluate">
+        <summary><span class="ib_summary_row"><span>Wert pruefen / einspeisen</span><button type="button" class="ib_info_icon" data-info-title="Monitoring: Wert pruefen" data-info-body="Mit diesem Formular kannst du neue Rohwerte gegen die Monitoring-Regeln pruefen. Das ist zugleich der API-Einstieg fuer externe Uebergaben nach /api/monitoring/evaluate." >i</button></span></summary>
+        <div class="card_body">
+          <div class="grid">
+            <div>
+              <label>Messwert-Key</label>
+              <input id="eval_key" placeholder="z.B. waermepumpe.vorlauf" />
+            </div>
+            <div>
+              <label>Rohwert</label>
+              <input id="eval_value" placeholder="z.B. 42.5" />
+            </div>
+            <div>
+              <label>Zeitstempel (optional)</label>
+              <input id="eval_at" placeholder="ISO Zeit oder leer" />
+            </div>
+          </div>
+          <div class="tbl_actions">
+            <button id="eval_run" class="btn_sm" data-ui="monitor.evaluate.run" title="monitor.evaluate.run">Pruefen</button>
+            <span class="muted">Ergebnis wird in Ausreisser-/Pending-/Critical-Listen und im Template-Status sichtbar.</span>
+          </div>
+          <div class="card" style="margin-top:10px;">
+            <div class="table_title">Letztes Ergebnis</div>
+            <pre id="eval_result" class="mono">Noch keine Pruefung.</pre>
+          </div>
+        </div>
+      </details>
+
+      <div class="table_wrap" data-ui="monitor.summary.wrap" title="monitor.summary.wrap">
+        <div class="table_title">Template-Status</div>
+        <div class="table_head">
+          <div class="tbl_actions">
+            <button id="reload_all" class="btn_sm" data-ui="monitor.reload" title="monitor.reload">Refresh</button>
+          </div>
+          <div class="muted" id="summary_info"></div>
+        </div>
+        <div class="table_box">
+          <table id="summary_tbl" class="ib_tbl" data-ui="monitor.summary.table" title="monitor.summary.table">
+            <thead>
+              <tr><th>Key</th><th>Status</th><th>Raw</th><th>Korrigiert</th><th>Letzter gueltiger Wert</th><th>Grund</th><th>Pending</th><th>Kritisch</th><th>Fault</th><th>Letztes Event</th></tr>
+            </thead>
+            <tbody id="summary_rows"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="table_wrap" data-ui="monitor.pending.wrap" title="monitor.pending.wrap">
+        <div class="table_title">Offene Korrekturen</div>
+        <div class="table_head">
+          <div class="tbl_actions">
+            <input id="pending_q" placeholder="Suche..." style="min-width:220px;" />
+          </div>
+          <div class="muted" id="pending_info"></div>
+        </div>
+        <div class="table_box">
+          <table id="pending_tbl" class="ib_tbl" data-ui="monitor.pending.table" title="monitor.pending.table">
+            <thead>
+              <tr><th>Zeit</th><th>Key</th><th>Grund</th><th>Rohwert</th><th>Vorschlag</th><th>Aktionen</th></tr>
+            </thead>
+            <tbody id="pending_rows"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="table_wrap" data-ui="monitor.critical.wrap" title="monitor.critical.wrap">
+        <div class="table_title">Kritische Werte</div>
+        <div class="table_head">
+          <div class="tbl_actions"><input id="critical_q" placeholder="Suche..." style="min-width:220px;" /></div>
+          <div class="muted" id="critical_info"></div>
+        </div>
+        <div class="table_box">
+          <table id="critical_tbl" class="ib_tbl" data-ui="monitor.critical.table" title="monitor.critical.table">
+            <thead>
+              <tr><th>Key</th><th>Status</th><th>Grund</th><th>Pending</th><th>Fault aktiv</th><th>Event-Anzahl</th><th>Letztes Event</th></tr>
+            </thead>
+            <tbody id="critical_rows"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="table_wrap" data-ui="monitor.events.wrap" title="monitor.events.wrap">
+        <div class="table_title">Alle Ausreisser / Monitoring-Events</div>
+        <div class="table_head">
+          <div class="tbl_actions">
+            <input id="events_q" placeholder="Suche..." style="min-width:220px;" />
+            <select id="events_kind"><option value="">alle</option><option value="outlier">outlier</option><option value="recovery">recovery</option><option value="pending_apply">pending_apply</option><option value="pending_manual">pending_manual</option><option value="pending_reject">pending_reject</option></select>
+          </div>
+          <div class="muted" id="events_info"></div>
+        </div>
+        <div class="table_box">
+          <table id="events_tbl" class="ib_tbl" data-ui="monitor.events.table" title="monitor.events.table">
+            <thead>
+              <tr><th>Zeit</th><th>Kind</th><th>Key</th><th>Grund</th><th>Rohwert</th><th>Korrigiert</th><th>Status</th><th>Fault</th><th>Kritisch</th></tr>
+            </thead>
+            <tbody id="events_rows"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <details class="card" data-ui="monitor.section.json" title="monitor.section.json">
+        <summary><span class="ib_summary_row"><span>Template JSON</span><button type="button" class="ib_info_icon" data-info-title="Monitoring: Template JSON" data-info-body="Diese JSON-Daten koennen fuer Visu, Automationen oder Weiterverarbeitung abgefragt werden. Sie entsprechen /api/monitoring/templates." >i</button></span></summary>
+        <div class="card_body">
+          <pre id="template_json" class="mono">{}</pre>
+        </div>
+      </details>
+    </main>
+  </div>
+
+  <script>
+    const $err = document.getElementById('err');
+    const $ok = document.getElementById('ok');
+    const $cfgRows = document.getElementById('cfg_rows');
+    const $cfgAdd = document.getElementById('cfg_add');
+    const $cfgSave = document.getElementById('cfg_save');
+    const $globalCriticalThreshold = document.getElementById('global_critical_threshold');
+    const $globalRecoveryStreak = document.getElementById('global_recovery_streak');
+    const $evalKey = document.getElementById('eval_key');
+    const $evalValue = document.getElementById('eval_value');
+    const $evalAt = document.getElementById('eval_at');
+    const $evalRun = document.getElementById('eval_run');
+    const $evalResult = document.getElementById('eval_result');
+    const $reloadAll = document.getElementById('reload_all');
+    const $summaryRows = document.getElementById('summary_rows');
+    const $summaryInfo = document.getElementById('summary_info');
+    const $pendingRows = document.getElementById('pending_rows');
+    const $pendingQ = document.getElementById('pending_q');
+    const $pendingInfo = document.getElementById('pending_info');
+    const $criticalRows = document.getElementById('critical_rows');
+    const $criticalQ = document.getElementById('critical_q');
+    const $criticalInfo = document.getElementById('critical_info');
+    const $eventsRows = document.getElementById('events_rows');
+    const $eventsQ = document.getElementById('events_q');
+    const $eventsKind = document.getElementById('events_kind');
+    const $eventsInfo = document.getElementById('events_info');
+    const $templateJson = document.getElementById('template_json');
+
+    let CFG = { global: { critical_repeat_threshold: 3, default_recovery_valid_streak: 2 }, monitors: [] };
+
+    function err(msg){ $err.textContent = msg || ''; }
+    function ok(msg){ $ok.textContent = msg || ''; }
+    function fmt(v){ return (v === null || v === undefined || v === '') ? '' : String(v); }
+    function fmtTs(iso){ try{ if(!iso) return ''; const d = new Date(String(iso)); return isFinite(d.getTime()) ? d.toLocaleString() : String(iso); }catch(e){ return String(iso || ''); } }
+    function chip(txt, cls){ return `<span class="chip ${cls||''}">${txt}</span>`; }
+    async function api(url, opts){ const r = await fetch(url, opts); const j = await r.json().catch(()=>({ok:false,error:'Invalid JSON'})); if(!r.ok || !j.ok) throw new Error(j.error || ('HTTP ' + r.status)); return j; }
+
+    function monitorRow(mon){
+      const tr = document.createElement('tr');
+      const cells = [
+        ['key', mon.key || ''], ['label', mon.label || ''], ['min_value', fmt(mon.min_value)], ['max_value', fmt(mon.max_value)],
+        ['max_rise', fmt(mon.max_rise)], ['max_fall', fmt(mon.max_fall)]
+      ];
+      cells.forEach(([name, val]) => {
+        const td = document.createElement('td');
+        const inp = document.createElement('input');
+        inp.value = val;
+        inp.dataset.name = name;
+        td.appendChild(inp);
+        tr.appendChild(td);
+      });
+      const tdZero = document.createElement('td');
+      tdZero.innerHTML = '<label><input type="checkbox" data-name="invalid_zero" ' + (mon.invalid_zero !== false ? 'checked' : '') + ' /></label>';
+      tr.appendChild(tdZero);
+      const corrNames = [
+        ['correction_ungueltiger_wert', mon.correction_map && mon.correction_map.ungueltiger_wert ? mon.correction_map.ungueltiger_wert : 'last_valid'],
+        ['correction_ausserhalb_min_max', mon.correction_map && mon.correction_map.ausserhalb_min_max ? mon.correction_map.ausserhalb_min_max : 'clamp'],
+        ['correction_steigt_zu_stark', mon.correction_map && mon.correction_map.steigt_zu_stark ? mon.correction_map.steigt_zu_stark : 'last_valid'],
+        ['correction_faellt_zu_stark', mon.correction_map && mon.correction_map.faellt_zu_stark ? mon.correction_map.faellt_zu_stark : 'last_valid'],
+      ];
+      corrNames.forEach(([name, val]) => {
+        const td = document.createElement('td');
+        td.innerHTML = '<select data-name="' + name + '"><option value="last_valid">last_valid</option><option value="delete">delete</option><option value="clamp">clamp</option><option value="none">none</option></select>';
+        td.querySelector('select').value = val;
+        tr.appendChild(td);
+      });
+      const tdMode = document.createElement('td');
+      tdMode.innerHTML = '<select data-name="mode"><option value="pending">pending</option><option value="auto">auto</option></select>';
+      tdMode.querySelector('select').value = mon.mode || 'pending';
+      tr.appendChild(tdMode);
+      const tdRecovery = document.createElement('td');
+      tdRecovery.innerHTML = '<select data-name="recovery_mode"><option value="range">range</option><option value="last_valid_band">last_valid_band</option></select>';
+      tdRecovery.querySelector('select').value = mon.recovery_mode || 'range';
+      tr.appendChild(tdRecovery);
+      const tdBand = document.createElement('td'); tdBand.innerHTML = '<input data-name="recovery_band_abs" value="' + fmt(mon.recovery_band_abs) + '" />'; tr.appendChild(tdBand);
+      const tdStreak = document.createElement('td'); tdStreak.innerHTML = '<input data-name="recovery_valid_streak" type="number" min="1" value="' + fmt(mon.recovery_valid_streak || 2) + '" />'; tr.appendChild(tdStreak);
+      const tdCrit = document.createElement('td'); tdCrit.innerHTML = '<input data-name="critical_repeat_threshold" type="number" min="1" value="' + fmt(mon.critical_repeat_threshold || 3) + '" />'; tr.appendChild(tdCrit);
+      $cfgRows.appendChild(tr);
+    }
+
+    function collectConfig(){
+      const monitors = [];
+      Array.from($cfgRows.querySelectorAll('tr')).forEach(tr => {
+        const mon = {};
+        tr.querySelectorAll('[data-name]').forEach(el => {
+          const name = el.dataset.name;
+          mon[name] = (el.type === 'checkbox') ? !!el.checked : String(el.value || '').trim();
+        });
+        if(mon.key) monitors.push(mon);
+      });
+      return {
+        global: {
+          critical_repeat_threshold: Number($globalCriticalThreshold.value || 3),
+          default_recovery_valid_streak: Number($globalRecoveryStreak.value || 2),
+        },
+        monitors,
+      };
+    }
+
+    async function loadConfig(){
+      const j = await api('./api/monitoring/config');
+      CFG = j.config || CFG;
+      $cfgRows.innerHTML = '';
+      $globalCriticalThreshold.value = CFG.global && CFG.global.critical_repeat_threshold ? CFG.global.critical_repeat_threshold : 3;
+      $globalRecoveryStreak.value = CFG.global && CFG.global.default_recovery_valid_streak ? CFG.global.default_recovery_valid_streak : 2;
+      (CFG.monitors || []).forEach(m => monitorRow(m));
+      if(!(CFG.monitors || []).length) monitorRow({ key:'', label:'', invalid_zero:true, mode:'pending', recovery_mode:'range', recovery_valid_streak:2, critical_repeat_threshold:3 });
+    }
+
+    async function saveConfig(){
+      const payload = collectConfig();
+      const j = await api('./api/monitoring/config', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+      CFG = j.config || payload;
+      ok('Monitoring-Konfiguration gespeichert.');
+      await loadAll();
+    }
+
+    async function runEvaluate(){
+      const payload = { key: String($evalKey.value || '').trim(), raw_value: String($evalValue.value || '').trim(), at: String($evalAt.value || '').trim() || null };
+      const j = await api('./api/monitoring/evaluate', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+      $evalResult.textContent = JSON.stringify(j.result || {}, null, 2);
+      ok('Wert geprueft.');
+      await loadAll();
+    }
+
+    async function loadSummary(){
+      const j = await api('./api/monitoring/templates');
+      const rows = j.items || [];
+      $summaryRows.innerHTML = rows.map(r => `<tr><td>${fmt(r.key)}</td><td>${fmt(r.status)}</td><td>${fmt(r.raw_value)}</td><td>${fmt(r.corrected_value)}</td><td>${fmt(r.last_valid_value)}</td><td>${fmt(r.last_reason_label || r.last_reason)}</td><td>${fmt(r.pending_count)}</td><td>${r.critical_flag ? chip('ja','err') : chip('nein','ok')}</td><td>${r.fault_active_flag ? chip('aktiv','warn') : chip('normal','ok')}</td><td>${fmtTs(r.last_event_at)}</td></tr>`).join('');
+      $summaryInfo.textContent = `Ausreisser: ${fmt(j.global && j.global.outlier_count)} | Pending: ${fmt(j.global && j.global.pending_count)} | Kritisch: ${fmt(j.global && j.global.critical_count)}`;
+      $templateJson.textContent = JSON.stringify(j, null, 2);
+    }
+
+    async function loadPending(){
+      const j = await api('./api/monitoring/pending?q=' + encodeURIComponent(String($pendingQ.value || '')));
+      const rows = j.rows || [];
+      $pendingRows.innerHTML = '';
+      rows.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${fmtTs(r.at)}</td><td>${fmt(r.key)}</td><td>${fmt(r.reason_label || r.reason)}</td><td>${fmt(r.raw_value)}</td><td>${fmt(r.suggested_action)} / ${fmt(r.suggested_value)}</td><td></td>`;
+        const td = tr.lastElementChild;
+        const bApply = document.createElement('button'); bApply.className = 'btn_sm'; bApply.textContent = 'Vorschlag';
+        bApply.onclick = async ()=>{ await api('./api/monitoring/pending/apply', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id:r.id})}); await loadAll(); };
+        const bReject = document.createElement('button'); bReject.className = 'btn_sm'; bReject.textContent = 'Verwerfen';
+        bReject.onclick = async ()=>{ await api('./api/monitoring/pending/reject', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id:r.id})}); await loadAll(); };
+        const bManual = document.createElement('button'); bManual.className = 'btn_sm'; bManual.textContent = 'Manuell';
+        bManual.onclick = async ()=>{ const v = prompt('Manuellen Ersatzwert eingeben', fmt(r.suggested_value)); if(v === null) return; await api('./api/monitoring/pending/apply', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id:r.id, manual_value:v})}); await loadAll(); };
+        td.appendChild(bApply); td.appendChild(bReject); td.appendChild(bManual);
+        $pendingRows.appendChild(tr);
+      });
+      $pendingInfo.textContent = `Offene Korrekturen: ${rows.length}`;
+    }
+
+    async function loadCritical(){
+      const j = await api('./api/monitoring/critical?q=' + encodeURIComponent(String($criticalQ.value || '')));
+      const rows = j.rows || [];
+      $criticalRows.innerHTML = rows.map(r => `<tr><td>${fmt(r.key)}</td><td>${fmt(r.status)}</td><td>${fmt(r.last_reason_label || r.last_reason)}</td><td>${fmt(r.pending_count)}</td><td>${r.fault_active_flag ? chip('aktiv','warn') : chip('normal','ok')}</td><td>${fmt(r.event_count)}</td><td>${fmtTs(r.last_event_at)}</td></tr>`).join('');
+      $criticalInfo.textContent = `Kritische Werte: ${rows.length}`;
+    }
+
+    async function loadEvents(){
+      const url = './api/monitoring/events?limit=500&q=' + encodeURIComponent(String($eventsQ.value || '')) + '&kind=' + encodeURIComponent(String($eventsKind.value || ''));
+      const j = await api(url);
+      const rows = j.rows || [];
+      $eventsRows.innerHTML = rows.slice().reverse().map(r => `<tr><td>${fmtTs(r.at)}</td><td>${fmt(r.kind)}</td><td>${fmt(r.key)}</td><td>${fmt(r.reason_label || r.reason)}</td><td>${fmt(r.raw_value)}</td><td>${fmt(r.corrected_value)}</td><td>${fmt(r.correction_status)}</td><td>${r.fault_active ? chip('aktiv','warn') : chip('nein','ok')}</td><td>${r.critical ? chip('ja','err') : chip('nein','ok')}</td></tr>`).join('');
+      $eventsInfo.textContent = `Events: ${rows.length}`;
+    }
+
+    async function loadAll(){
+      err('');
+      await Promise.all([loadConfig(), loadSummary(), loadPending(), loadCritical(), loadEvents()]);
+    }
+
+    $cfgAdd.addEventListener('click', ()=>monitorRow({ key:'', label:'', invalid_zero:true, mode:'pending', recovery_mode:'range', recovery_valid_streak:2, critical_repeat_threshold:3 }));
+    $cfgSave.addEventListener('click', ()=>saveConfig().catch(e=>err(String(e.message || e))));
+    $evalRun.addEventListener('click', ()=>runEvaluate().catch(e=>err(String(e.message || e))));
+    $reloadAll.addEventListener('click', ()=>loadAll().catch(e=>err(String(e.message || e))));
+    [$pendingQ,$criticalQ,$eventsQ].forEach(el => el.addEventListener('input', ()=>loadAll().catch(e=>err(String(e.message || e)))));
+    $eventsKind.addEventListener('change', ()=>loadAll().catch(e=>err(String(e.message || e))));
+
+    loadAll().catch(e=>err(String(e.message || e)));
+  </script>
+</body>
+</html>

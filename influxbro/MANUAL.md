@@ -46,6 +46,7 @@ Links findest du die Bereiche:
 
 - Dashboard: Messwerte auswaehlen, Graph/Tabelle ansehen, Ausreisser finden und Werte direkt in der Bearbeitungsliste bearbeiten.
 - Statistik: Gesamtstatistik ueber viele Serien anzeigen.
+- Monitor: Ueberwachte Messwert-Keys pruefen, Fault-Phasen verfolgen, offene Korrekturen verwalten und Template-Status abrufen.
 - Backup: Backups fuer einen einzelnen Messwert erstellen und verwalten.
 - Restore: Ein vorhandenes Backup fuer einen Messwert wiederherstellen.
 - Kombinieren: Datenpunkte zwischen zwei Messwerten kopieren (z.B. bei Entity-ID Umbenennung) inkl. Vorschau.
@@ -89,6 +90,26 @@ Neu: Top-Leiste (Profil + Zoom)
 - In der InfluxBro UI: `Einstellungen`
 - Optional: YAML Import (Abschnitt "Parametrierung aus Home Assistant YAML")
 - `Influx Verbindung testen` -> `Speichern`
+
+## Monitor
+
+- Die Seite `Monitor` ist fuer laufende Ausreisser-Ueberwachung gedacht. Sie arbeitet mit frei definierbaren Messwert-Keys und einer persistierten Fault-Phase (`normal`, `fault_active`, `recovering`).
+- Bereich `Monitoring Konfiguration`:
+  - Pro Zeile definierst du `Key`, `Label`, `Min`, `Max`, maximalen `Anstieg`, maximalen `Abfall`, ob `0` als ungueltig gilt, den Korrekturmodus (`pending` oder `auto`) und die Recovery-Regeln.
+  - Zusaetzlich kannst du pro Ausreissergrund eigene Korrekturaktionen setzen (`last_valid`, `delete`, `clamp`, `none`).
+- Bereich `Wert pruefen / einspeisen`:
+  - Sendet einen Rohwert an `/api/monitoring/evaluate`.
+  - Wenn ein Messwert in eine Stoerung kippt, bleibt `fault_active` bestehen, bis die konfigurierte Recovery-Regel erfuellt ist.
+- Listen auf der Seite:
+  - `Template-Status`: aktueller Rohwert, korrigierter Wert, letzter gueltiger Wert, letzter Grund, Pending-Anzahl, Kritisch-Flag und Fault-Flag.
+  - `Offene Korrekturen`: vorgeschlagene Korrekturen koennen uebernommen, verworfen oder mit manuellem Ersatzwert abgeschlossen werden.
+  - `Kritische Werte`: Messwerte, die die konfigurierte Wiederholschwelle fuer Fehler erreicht haben.
+  - `Alle Ausreisser / Monitoring-Events`: technisches Log fuer Ausreisser, Recovery und Pending-Aktionen.
+- API/Weiterverarbeitung:
+  - `/api/monitoring/config`: Monitoring-Konfiguration laden/speichern.
+  - `/api/monitoring/evaluate`: Rohwert pruefen und Status fortschreiben.
+  - `/api/monitoring/events`, `/api/monitoring/pending`, `/api/monitoring/critical`: Listen fuer UI, Visu und Support.
+  - `/api/monitoring/templates`: strukturierte JSON-Daten fuer globale Zaehler und pro Messwert den aktuellen Monitoring-Zustand.
 
 ## Dashboard (typischer Ablauf)
 

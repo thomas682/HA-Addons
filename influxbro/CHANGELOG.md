@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.12.104
+
+### Feature
+
+- Neue Seite `Monitor`: Konfiguration ueberwachter Messwert-Keys, persistente Fault-Phase mit Recovery-Regeln, Listen fuer Ausreisser/kritische Werte/offene Korrekturen sowie Template-JSON fuer Weiterverarbeitung.
+- Monitoring-API: `/api/monitoring/evaluate` erkennt jetzt u. a. `steigt zu stark`, `faellt zu stark`, `ausserhalb Min/Max` und `ungueltiger Wert`, startet eine persistente Stoerphase und kann Korrekturen sofort intern anwenden oder als offene Korrektur ablegen.
+
+### Support
+
+- Monitoring-Status ist jetzt ueber dedizierte Endpunkte (`/api/monitoring/config`, `/api/monitoring/events`, `/api/monitoring/pending`, `/api/monitoring/critical`, `/api/monitoring/templates`) strukturiert abrufbar.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`, `pytest tests/test_api_monitoring.py -q`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.103
 
 ### UI
