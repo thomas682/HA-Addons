@@ -268,6 +268,8 @@ def test_page_search_has_navigation_and_filter_dialog():
     assert 'const SEARCH_CFG_KEY = ' in body
     assert 'function renderSearchSettings()' in body
     assert 'Tooltiptexte' in body
+    assert 'function previewSearchIndex()' in body
+    assert '$searchModal.onclick = null;' in body
 
 
 def test_config_tooltips_include_page_search_highlight_settings():

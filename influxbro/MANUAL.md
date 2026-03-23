@@ -155,6 +155,8 @@ Tipp: Wenn du mit der Maus ueber einem Button/Checkbox/Auswahlfeld bleibst, zeig
 Die Seitensuche in der Titelzeile (`page.search`) springt jetzt wieder mit sichtbarem Trefferrahmen zum gewaehlten Element. Farbe, Rahmenbreite und Sichtdauer kannst du in den Einstellungen anpassen.
 - Neben dem Suchfeld gibt es jetzt `Zurueck`/`Weiter` fuer Treffer-Navigation sowie ein Such-Zahnrad mit Filterdialog.
 - Der Suchdialog kann die Quellen `Label`, `sichtbarer Text`, `data-ui / id`, `Bereichspfad` und `Tooltiptexte` einzeln ein-/ausschalten; die Auswahl wird gespeichert.
+- Die Vorschau im Suchdialog reagiert sofort auf jede Checkbox-Aenderung und beruecksichtigt dabei den aktuell eingegebenen Suchtext.
+- Der Suchdialog schliesst nur noch ueber den Button `Schliessen`.
 
 Hinweis: Zeitstempel werden im gesamten UI inklusive Millisekunden angezeigt.
 

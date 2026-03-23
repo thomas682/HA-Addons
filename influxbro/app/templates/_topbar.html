@@ -426,10 +426,19 @@
               if(cfg.sections) parts.push(sect.join(' / '));
               if(cfg.tooltip) parts.push(tooltip);
               const hay = parts.map(_lc).join(' | ');
-              out.push({el, ui:key, txt: label || txt, sect, hay});
+              out.push({el, ui:key, txt: label || txt, sect, hay, parts:{key, label, txt, sections: sect.join(' / '), tooltip}});
             }catch(e){}
           });
           return out;
+        }catch(e){ return []; }
+      }
+
+      function previewSearchIndex(){
+        try{
+          const q = _lc(($search && $search.value) || '');
+          let xs = buildIndex();
+          if(q) xs = xs.filter(x => x.hay.includes(q));
+          return xs.slice(0, 40);
         }catch(e){ return []; }
       }
 
@@ -454,12 +463,12 @@
       function renderSearchSettings(){
         if(!$searchModal) return;
         const cfg = activeSearchCfg();
-        const preview = buildIndex().slice(0, 40);
-        $searchModal.innerHTML = `<div style="max-width:860px; margin:0 auto; background:#fff; border-radius:16px; box-shadow:0 12px 60px rgba(0,0,0,0.28); padding:14px; display:flex; flex-direction:column; gap:12px;"><div style="display:flex; justify-content:space-between; gap:12px; align-items:center; flex-wrap:wrap;"><div style="font-weight:800; font-size:16px;">Seitensuche</div><button type="button" id="ib_page_search_modal_close" style="cursor:pointer; padding:10px 12px;">Schliessen</button></div><div class="muted">Die Liste zeigt Beispieltreffer mit den aktuell aktiven Suchquellen.</div><div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;"><label style="display:flex; gap:8px; align-items:center;"><input type="checkbox" data-k="label" ${cfg.label ? 'checked' : ''}/>Label</label><label style="display:flex; gap:8px; align-items:center;"><input type="checkbox" data-k="visible_text" ${cfg.visible_text ? 'checked' : ''}/>Sichtbarer Text</label><label style="display:flex; gap:8px; align-items:center;"><input type="checkbox" data-k="key" ${cfg.key ? 'checked' : ''}/>data-ui / id</label><label style="display:flex; gap:8px; align-items:center;"><input type="checkbox" data-k="sections" ${cfg.sections ? 'checked' : ''}/>Bereichspfad</label><label style="display:flex; gap:8px; align-items:center;"><input type="checkbox" data-k="tooltip" ${cfg.tooltip ? 'checked' : ''}/>Tooltiptexte</label></div><div style="border:1px solid #eee; border-radius:12px; max-height:50vh; overflow:auto;"><div id="ib_page_search_preview">${preview.map(x=>`<div style="padding:10px 12px; border-bottom:1px solid #eee;"><strong>${x.ui}</strong><div style="font-size:12px; opacity:.75;">${((x.sect && x.sect.length) ? ('[' + x.sect.join(' / ') + '] ') : '') + (x.txt || '')}</div></div>`).join('') || '<div style="padding:10px 12px;" class="muted">Keine Treffer mit aktueller Filterung.</div>'}</div></div></div>`;
+        const preview = previewSearchIndex();
+        $searchModal.innerHTML = `<div style="max-width:860px; margin:0 auto; background:#fff; border-radius:16px; box-shadow:0 12px 60px rgba(0,0,0,0.28); padding:14px; display:flex; flex-direction:column; gap:12px;"><div style="display:flex; justify-content:space-between; gap:12px; align-items:center; flex-wrap:wrap;"><div style="font-weight:800; font-size:16px;">Seitensuche</div><button type="button" id="ib_page_search_modal_close" style="cursor:pointer; padding:10px 12px;">Schliessen</button></div><div class="muted">Die Liste zeigt Beispieltreffer mit den aktuell aktiven Suchquellen und dem aktuellen Suchtext.</div><div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;"><label style="display:flex; gap:8px; align-items:center;"><input type="checkbox" data-k="label" ${cfg.label ? 'checked' : ''}/>Label</label><label style="display:flex; gap:8px; align-items:center;"><input type="checkbox" data-k="visible_text" ${cfg.visible_text ? 'checked' : ''}/>Sichtbarer Text</label><label style="display:flex; gap:8px; align-items:center;"><input type="checkbox" data-k="key" ${cfg.key ? 'checked' : ''}/>data-ui / id</label><label style="display:flex; gap:8px; align-items:center;"><input type="checkbox" data-k="sections" ${cfg.sections ? 'checked' : ''}/>Bereichspfad</label><label style="display:flex; gap:8px; align-items:center;"><input type="checkbox" data-k="tooltip" ${cfg.tooltip ? 'checked' : ''}/>Tooltiptexte</label></div><div style="border:1px solid #eee; border-radius:12px; max-height:50vh; overflow:auto;"><div id="ib_page_search_preview">${preview.map(x=>`<div style="padding:10px 12px; border-bottom:1px solid #eee;"><strong>${x.ui}</strong><div style="font-size:12px; opacity:.75;">${((x.sect && x.sect.length) ? ('[' + x.sect.join(' / ') + '] ') : '') + (x.txt || '')}</div><div style="font-size:11px; opacity:.6; margin-top:4px;">${Object.entries(x.parts || {}).filter(([k,v])=>{ if(k === 'txt') return false; return String(v || '').trim(); }).map(([k,v])=>`${k}: ${String(v)}`).join(' | ')}</div></div>`).join('') || '<div style="padding:10px 12px;" class="muted">Keine Treffer mit aktueller Filterung.</div>'}</div></div></div>`;
         $searchModal.style.display = 'block';
         const closeBtn = document.getElementById('ib_page_search_modal_close');
         if(closeBtn) closeBtn.onclick = ()=>{ $searchModal.style.display = 'none'; };
-        $searchModal.onclick = (ev)=>{ if(ev.target === $searchModal) $searchModal.style.display = 'none'; };
+        $searchModal.onclick = null;
         $searchModal.querySelectorAll('input[data-k]').forEach(cb=>cb.addEventListener('change', ()=>{
           const next = activeSearchCfg();
           const k = String(cb.getAttribute('data-k') || '');
