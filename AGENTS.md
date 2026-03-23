@@ -458,6 +458,25 @@ Otherwise:
 - For risky changes:
   - prefix with: `⚠ HIGH-RISK`
 
+### Issue-, Commit- und Pull-Request-Workflow
+
+- Vor jeder Umsetzung muss die Aenderung eingeordnet werden:
+  - klein, eindeutig, risikoarm -> direkter Commit
+  - komplex, mehrdeutig, mehrere Dateien oder potenziell riskant -> strengere Analyse, erweiterte QA und nur bei ausdruecklichem Benutzerwunsch Branch/PR-Workflow
+- In diesem Repository gilt weiterhin die HA-Main-First-Regel:
+  - Standard ist direkter Commit nach `main`
+  - PR/Branch nur wenn der Benutzer dies ausdruecklich verlangt oder wenn die bestehende Repo-Policy explizit dafuer geaendert wird
+- Auch wenn eine Issue existiert, ist nicht automatisch ein PR erforderlich; entscheidend sind Komplexitaet, Risiko und Repo-Policy.
+- Vor jeder Umsetzung ist verbindlich zu klaeren:
+  - betroffene Dateien/Logikbereiche
+  - Ursache des Problems
+  - ob die Loesung klein und eindeutig ist oder interpretative/risikoreiche Annahmen enthaelt
+- Wenn eine Umsetzung fehlschlaegt:
+  - denselben Ansatz nicht blind wiederholen
+  - aktuellen Datei-Iststand neu lesen
+  - Ursache analysieren
+  - Loesung auf Basis des realen Zustands neu ableiten
+
 ### Safeguards (MANDATORY)
 
 - NEVER push if:
@@ -522,6 +541,17 @@ If user explicitly requests:
   - set `status/done`
   - add a comment with the PR URL and/or commit hash
   - close the issue
+- Wenn du angewiesen wirst, offene Issues zu bearbeiten oder abzuarbeiten, musst du vor jeder Umsetzung den gesamten Issue-Text, alle Kommentare und insbesondere die neuesten Kommentare/Fehlermeldungen lesen und beruecksichtigen.
+- Die neueste Information im Issue hat Vorrang vor aelteren Annahmen; keine Umsetzung auf Basis veralteter Informationen.
+- Vor jeder Aenderung muss der aktuelle Ist-Zustand der betroffenen Datei(en) gelesen werden; nicht auf erwartete oder fruehere Versionen verlassen.
+- Bei `apply_patch verification failed` ist verpflichtend:
+  1. betroffene Datei erneut lesen
+  2. Zielstelle auf Basis des echten Inhalts neu identifizieren
+  3. Patch robust mit Ankern/Kontext statt unveraenderten Erwartungszeilen neu erstellen
+- Nach jeder Issue-Umsetzung muss der Issue-Kommentar mindestens enthalten:
+  - Ursache des Problems
+  - gewaehlte Loesung
+  - Commit-Hash und/oder PR-Link
 - Sync selected issues into the local open-points list:
   - add chosen "implement now" issues to the in-chat ToDo list and to `./.opencode/plan_state.md` (with `#<id>` + title)
   - when the issue is completed/declined/deferred, update `./.opencode/plan_state.md` accordingly
