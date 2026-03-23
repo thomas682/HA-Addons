@@ -18,7 +18,7 @@
     .nav_item.active { background: #0b0b0c; color: #fff; }
     .ico { width: 22px; height: 22px; display:inline-flex; align-items:center; justify-content:center; font-weight: 800; }
 
-    .content { padding: 16px; }
+    .content { padding: 16px; padding-top: calc(var(--ib-topbar-h, 0px) + var(--ib-pagecard-h, 0px) + 20px); box-sizing:border-box; }
     .muted { opacity: 0.7; font-size: 12px; }
     .card { border: 1px solid #ddd; border-radius: 12px; padding: 12px; margin-top: 12px; }
     h2 { margin: 0; }
@@ -45,6 +45,12 @@
     .md pre code { background: transparent; padding: 0; }
     .md a { color: inherit; }
     .md img { max-width: 100%; height: auto; border-radius: 12px; border: 1px solid #eee; }
+    .searchbar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:12px; }
+    .searchbar input { min-width:260px; flex:1; padding:8px 10px; }
+    .searchbar button { padding:8px 10px; cursor:pointer; }
+    .search_meta { font-size:12px; opacity:.8; min-width:72px; text-align:center; }
+    mark.ib_search_hit { background:#ffe08a; color:inherit; padding:0 1px; border-radius:3px; }
+    mark.ib_search_hit.active { background:#ff9900; color:#111; box-shadow:0 0 0 2px rgba(255,153,0,0.18); }
   </style>
 </head>
 <body>
@@ -54,6 +60,13 @@
     <main class="content" data-ui="manual.page" title="manual.page">
       <h2>Handbuch</h2>
       <div class="muted">Quelle: <code>influxbro/MANUAL.md</code></div>
+
+      <div class="searchbar" data-ui="manual.searchbar" title="manual.searchbar">
+        <input id="manual_search" type="text" placeholder="Handbuch durchsuchen..." data-ui="manual.search" title="manual.search" />
+        <div class="search_meta"><span id="manual_search_idx">0</span>/<span id="manual_search_cnt">0</span></div>
+        <button id="manual_search_prev" type="button" data-ui="manual.search.prev" title="manual.search.prev">Zurueck</button>
+        <button id="manual_search_next" type="button" data-ui="manual.search.next" title="manual.search.next">Vor</button>
+      </div>
 
       <div class="manual_layout" data-ui="manual.layout" title="manual.layout">
         <aside class="toc" data-ui="manual.toc" title="manual.toc">
@@ -68,6 +81,8 @@
 
       <script>
       const RAW = {{ (manual_text or "") | tojson }};
+      let MANUAL_HITS = [];
+      let MANUAL_CURSOR = -1;
 
       function esc(s){
         return String(s||"")
@@ -195,6 +210,85 @@
           $toc.appendChild(a);
         });
       }
+
+      function clearHits(){
+        MANUAL_HITS.forEach((hit)=>{
+          try{
+            const parent = hit.parentNode;
+            if(!parent) return;
+            parent.replaceChild(document.createTextNode(hit.textContent || ''), hit);
+            parent.normalize();
+          }catch(e){}
+        });
+        MANUAL_HITS = [];
+        MANUAL_CURSOR = -1;
+      }
+
+      function collectHits(root, needle){
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+          acceptNode(node){
+            if(!node || !node.nodeValue || !node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+            const p = node.parentElement;
+            if(!p) return NodeFilter.FILTER_REJECT;
+            if(['SCRIPT','STYLE','MARK'].includes(String(p.tagName || '').toUpperCase())) return NodeFilter.FILTER_REJECT;
+            return NodeFilter.FILTER_ACCEPT;
+          }
+        });
+        const nodes = [];
+        while(walker.nextNode()) nodes.push(walker.currentNode);
+        nodes.forEach((node)=>{
+          const txt = String(node.nodeValue || '');
+          const low = txt.toLowerCase();
+          let pos = 0;
+          let idx = low.indexOf(needle, pos);
+          if(idx < 0) return;
+          const frag = document.createDocumentFragment();
+          while(idx >= 0){
+            if(idx > pos) frag.appendChild(document.createTextNode(txt.slice(pos, idx)));
+            const mark = document.createElement('mark');
+            mark.className = 'ib_search_hit';
+            mark.textContent = txt.slice(idx, idx + needle.length);
+            frag.appendChild(mark);
+            MANUAL_HITS.push(mark);
+            pos = idx + needle.length;
+            idx = low.indexOf(needle, pos);
+          }
+          if(pos < txt.length) frag.appendChild(document.createTextNode(txt.slice(pos)));
+          if(node.parentNode) node.parentNode.replaceChild(frag, node);
+        });
+      }
+
+      function updateSearchMeta(){
+        const $idx = document.getElementById('manual_search_idx');
+        const $cnt = document.getElementById('manual_search_cnt');
+        if($idx) $idx.textContent = MANUAL_HITS.length ? String(MANUAL_CURSOR + 1) : '0';
+        if($cnt) $cnt.textContent = String(MANUAL_HITS.length);
+      }
+
+      function activateHit(i){
+        if(!MANUAL_HITS.length){ MANUAL_CURSOR = -1; updateSearchMeta(); return; }
+        MANUAL_CURSOR = ((i % MANUAL_HITS.length) + MANUAL_HITS.length) % MANUAL_HITS.length;
+        MANUAL_HITS.forEach((el, idx)=>el.classList.toggle('active', idx === MANUAL_CURSOR));
+        try{ MANUAL_HITS[MANUAL_CURSOR].scrollIntoView({behavior:'smooth', block:'center'}); }catch(e){}
+        updateSearchMeta();
+      }
+
+      function runManualSearch(){
+        if(!$html) return;
+        clearHits();
+        const $input = document.getElementById('manual_search');
+        const q = String($input && $input.value || '').trim().toLowerCase();
+        if(!q){ updateSearchMeta(); return; }
+        collectHits($html, q);
+        activateHit(0);
+      }
+
+      const $manualSearch = document.getElementById('manual_search');
+      const $manualPrev = document.getElementById('manual_search_prev');
+      const $manualNext = document.getElementById('manual_search_next');
+      if($manualSearch) $manualSearch.addEventListener('input', runManualSearch);
+      if($manualPrev) $manualPrev.addEventListener('click', ()=>activateHit(MANUAL_CURSOR - 1));
+      if($manualNext) $manualNext.addEventListener('click', ()=>activateHit(MANUAL_CURSOR + 1));
       </script>
 
       {% include "_tooltips.html" %}

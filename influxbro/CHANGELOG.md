@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.120
+
+### Enhancement
+
+- `Changelog` und `Handbuch` beruecksichtigen jetzt den festen Topbar-/Title-Card-Abstand korrekt und besitzen jeweils eine eigene Volltextsuche mit Trefferanzahl, aktueller Trefferposition sowie `Vor`/`Zurueck`-Navigation inkl. Wrap-around.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`, `pytest tests/test_api_ui_support.py tests/test_api_yaml_flow.py tests/test_api_monitoring.py tests/test_api_raw_points_center.py tests/test_api_debug_report.py -q`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.119
 
 ### Fix

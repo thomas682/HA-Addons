@@ -272,6 +272,19 @@ def test_page_search_has_navigation_and_filter_dialog():
     assert '$searchModal.onclick = null;' in body
 
 
+def test_info_and_manual_pages_have_local_search_controls():
+    info = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "info.html").read_text()
+    manual = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "manual.html").read_text()
+    assert 'id="info_search"' in info
+    assert 'id="info_search_prev"' in info
+    assert 'id="info_search_next"' in info
+    assert 'mark.ib_search_hit.active' in info
+    assert 'id="manual_search"' in manual
+    assert 'id="manual_search_prev"' in manual
+    assert 'id="manual_search_next"' in manual
+    assert 'function runManualSearch()' in manual
+
+
 def test_config_tooltips_include_page_search_highlight_settings():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
     assert "settings.ui_page_search_highlight_color" in body

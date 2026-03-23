@@ -629,6 +629,7 @@ Ausreisser:
 
 - `Info`: Influx Datenbank Diagnose (best-effort).
 - `Changelog`: Release Notes + Repository-Link.
+- Changelog und Handbuch haben jetzt jeweils eine eigene Volltextsuche mit Trefferzaehler sowie `Vor`/`Zurueck` fuer die Navigation durch alle Treffer.
 
 ## Release Notes (1.12.46)
 

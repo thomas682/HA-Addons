@@ -18,12 +18,18 @@
     .nav_item.active { background: #0b0b0c; color: #fff; }
     .ico { width: 22px; height: 22px; display:inline-flex; align-items:center; justify-content:center; font-weight: 800; }
 
-    .content { padding: 16px; }
+    .content { padding: 16px; padding-top: calc(var(--ib-topbar-h, 0px) + var(--ib-pagecard-h, 0px) + 20px); box-sizing:border-box; }
     .muted { opacity: 0.7; font-size: 12px; }
     .card { border: 1px solid #ddd; border-radius: 12px; padding: 12px; margin-top: 12px; }
     pre { white-space: pre-wrap; word-break: break-word; margin: 0; font-size: 13px; line-height: 1.45; }
     h2 { margin: 0; }
     a { color: inherit; }
+    .searchbar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:12px; }
+    .searchbar input { min-width: 260px; flex:1; padding:8px 10px; }
+    .searchbar button { padding:8px 10px; cursor:pointer; }
+    .search_meta { font-size:12px; opacity:.8; min-width: 72px; text-align:center; }
+    mark.ib_search_hit { background:#ffe08a; color:inherit; padding:0 1px; border-radius:3px; }
+    mark.ib_search_hit.active { background:#ff9900; color:#111; box-shadow:0 0 0 2px rgba(255,153,0,0.18); }
   </style>
 </head>
 <body>
@@ -36,10 +42,66 @@
         Repository: {% if repo_url %}<a href="{{ repo_url }}" target="_blank" rel="noreferrer">{{ repo_url }}</a>{% else %}<span>(nicht konfiguriert)</span>{% endif %}
       </div>
 
+      <div class="searchbar" data-ui="info.searchbar" title="info.searchbar">
+        <input id="info_search" type="text" placeholder="Changelog durchsuchen..." data-ui="info.search" title="info.search" />
+        <div class="search_meta"><span id="info_search_idx">0</span>/<span id="info_search_cnt">0</span></div>
+        <button id="info_search_prev" type="button" data-ui="info.search.prev" title="info.search.prev">Zurueck</button>
+        <button id="info_search_next" type="button" data-ui="info.search.next" title="info.search.next">Vor</button>
+      </div>
+
       <div class="card">
         <div class="muted">Release Notes (Changelog)</div>
-        <pre data-ui="info.changelog" title="info.changelog">{{ changelog_text }}</pre>
+        <pre id="info_changelog" data-ui="info.changelog" title="info.changelog">{{ changelog_text }}</pre>
       </div>
+
+      <script>
+      (function(){
+        const $input = document.getElementById('info_search');
+        const $prev = document.getElementById('info_search_prev');
+        const $next = document.getElementById('info_search_next');
+        const $idx = document.getElementById('info_search_idx');
+        const $cnt = document.getElementById('info_search_cnt');
+        const $pre = document.getElementById('info_changelog');
+        if(!$input || !$prev || !$next || !$idx || !$cnt || !$pre) return;
+
+        const RAW = $pre.textContent || '';
+        let hits = [];
+        let cursor = -1;
+
+        function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+        function updateMeta(){ $idx.textContent = hits.length ? String(cursor + 1) : '0'; $cnt.textContent = String(hits.length); }
+        function activate(i){
+          if(!hits.length) { cursor = -1; updateMeta(); return; }
+          cursor = ((i % hits.length) + hits.length) % hits.length;
+          hits.forEach((el, idx)=>el.classList.toggle('active', idx === cursor));
+          try{ hits[cursor].scrollIntoView({behavior:'smooth', block:'center'}); }catch(e){}
+          updateMeta();
+        }
+        function render(){
+          const q = String($input.value || '').trim();
+          if(!q){ $pre.innerHTML = esc(RAW); hits = []; cursor = -1; updateMeta(); return; }
+          const low = RAW.toLowerCase();
+          const needle = q.toLowerCase();
+          let pos = 0;
+          let html = '';
+          let found = 0;
+          while(pos < RAW.length){
+            const idx = low.indexOf(needle, pos);
+            if(idx < 0){ html += esc(RAW.slice(pos)); break; }
+            html += esc(RAW.slice(pos, idx));
+            html += `<mark class="ib_search_hit" data-hit="${found}">${esc(RAW.slice(idx, idx + needle.length))}</mark>`;
+            found += 1;
+            pos = idx + needle.length;
+          }
+          $pre.innerHTML = html;
+          hits = Array.from($pre.querySelectorAll('mark.ib_search_hit'));
+          activate(0);
+        }
+        $input.addEventListener('input', render);
+        $next.addEventListener('click', ()=>activate(cursor + 1));
+        $prev.addEventListener('click', ()=>activate(cursor - 1));
+      })();
+      </script>
 
       {% include "_tooltips.html" %}
     </main>
