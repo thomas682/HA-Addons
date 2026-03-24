@@ -17,8 +17,10 @@ body:
       label: Feature / Function used
       description: Which part of the add-on were you using?
       options:
-        - Dashbaord Statistik
+        - sonstiges
+        - Dashboard Statistik
         - Statistik
+        - Monitor
         - Backup
         - Restore
         - Kombinieren
@@ -32,7 +34,6 @@ body:
         - Handbuch
         - Profilverwaltung
         - Einstellungen
-        - sonstiges
     validations:
       required: true
   
