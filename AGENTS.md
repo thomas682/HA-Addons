@@ -183,6 +183,8 @@ If multiple issues are selected:
 - DO NOT ask between issues
 - DO NOT re-confirm execution
 - Wenn der Benutzer verlangt, dass offene Issues abgearbeitet werden, dann gilt dies fuer ALLE von ihm ausgewaehlten Issues, bis diese vollstaendig umgesetzt sind.
+- Formulierungen wie `arbeite alle Issues ab` oder `arbeite alle Issues ausser #134 ab` sind als vollstaendige Arbeitsanweisung zu verstehen; sie benoetigen keine zusaetzliche Bestaetigung, kein weiteres `GO` und keine Rueckfrage zur Paketbildung.
+- Wenn der Benutzer einzelne Issues explizit ausschliesst, dann sind alle uebrigen offenen Issues automatisch zur Umsetzung ausgewaehlt.
 - Wenn mehrere kleinere Umsetzungspakete sinnvoll sind, duerfen diese Pakete nacheinander erstellt werden, aber:
   - die restlichen vom Benutzer angeforderten Issues bleiben verpflichtend offen im Plan
   - sie muessen danach automatisch weiter bearbeitet werden
@@ -849,6 +851,7 @@ from flask import Flask, jsonify, request
   - and immediately list the remaining planned items still pending.
 - Diese verbleibenden geplanten Items muessen danach automatisch weiter umgesetzt werden, bis alle vom Benutzer angeforderten Issues abgearbeitet sind oder ein echter Blocker vorliegt.
 - Dasselbe gilt ausdruecklich fuer ausgewaehlte/offene GitHub-Issues: sie muessen selbststaendig automatisch weiter bearbeitet und abgeschlossen werden, bis keine zur Umsetzung vorgesehenen Issues mehr offen sind.
+- Auch bei Befehlen wie `arbeite alle Issues ausser #134 ab` muessen die verbleibenden offenen Issues automatisch ohne Rueckfrage bis zum Abschluss abgearbeitet werden.
 - After a successful `go` workflow (commit + push), play a macOS completion sound:
   - `afplay /System/Library/Sounds/Glass.aiff`
   - If the workflow fails, play an error sound:
