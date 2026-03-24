@@ -217,16 +217,11 @@
         <div class="status" id="info" data-ui="stats.info" title="stats.info"></div>
         <div class="progress" aria-hidden="true" style="display:none;"><div id="bar"></div></div>
 
-        <details class="card" id="query_details" style="margin-top: 10px;" data-ui="stats.query_details" title="stats.query_details">
-          <summary><span class="ib_summary_row"><span>Query Details</span><button type="button" class="ib_info_icon" data-info-title="Statistik: Query Details" data-info-body="Zeigt die zuletzt verwendeten Queries/Labels des Statistik-Jobs (best-effort).\n\nNutzen:\n- Debugging bei Timeouts\n- Support" >i</button></span></summary>
-          <div class="card_body">
-            <div class="row" style="align-items:center;">
-              <div class="muted" id="query_label" style="flex:1;"></div>
-              <button id="query_history" type="button" class="btn_sm" style="width:auto; white-space:nowrap;" data-ui="stats.query_history" title="stats.query_history">History</button>
-            </div>
-            <pre id="query_pre" style="margin:6px 0 0 0; padding:10px 12px; border:1px solid #eee; border-radius:12px; background:#fafafa; white-space:pre; overflow:auto; max-height: 260px;"></pre>
-          </div>
-        </details>
+        <div id="query_details" style="display:none;" data-ui="stats.query_details" title="stats.query_details">
+          <div id="query_label"></div>
+          <button id="query_history" type="button" data-ui="stats.query_history" title="stats.query_history"></button>
+          <pre id="query_pre"></pre>
+        </div>
         <div id="err" class="err"></div>
 
         <div class="table_wrap" data-ui="stats.table.wrap" title="stats.table.wrap">
@@ -236,6 +231,7 @@
               <button id="load" data-ui="stats.load" title="stats.load">Statistik laden</button>
               <button id="cancel" data-ui="stats.cancel" title="stats.cancel">Abbrechen</button>
               <button id="delete_rows" data-ui="stats.delete_rows" title="stats.delete_rows">Loeschen</button>
+              <button id="query_open" type="button" class="btn_sm" data-ui="stats.query_details" title="stats.query_details" aria-label="Statistik Query anzeigen"><svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="11" cy="15.5" r="1.5"></circle><path d="M12,12H10V8h2a2,2,0,0,0,0-4H10A2.0023,2.0023,0,0,0,8,6v.5H6V6a4.0045,4.0045,0,0,1,4-4h2a4,4,0,0,1,0,8Z"></path><path d="M22.4479,21.0337A10.971,10.971,0,0,0,19.9211,4.7446l-.999,1.73A8.9967,8.9967,0,1,1,5,14H3a10.9916,10.9916,0,0,0,18.0338,8.4478L28.5859,30,30,28.5859Z"></path></svg></button>
               <button id="auto_cols" data-ui="stats.auto_cols" title="stats.auto_cols" aria-label="Spaltenbreite automatisch">
                 <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                   <path d="M5 5v14M19 5v14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -337,7 +333,8 @@
       const $queryLabel = document.getElementById('query_label');
       const $queryPre = document.getElementById('query_pre');
       const $queryHistory = document.getElementById('query_history');
-      const $queryCopy = document.getElementById('query_copy');
+      const $queryOpen = document.getElementById('query_open');
+      const $queryCopy = null;
 
       let UI_DECIMALS = 3;
       let ROWS = [];
@@ -590,9 +587,11 @@
           const xsE = await loadTagValues('entity_id', {...common, friendly_name: fn || ''});
           if($entityList) $entityList.innerHTML = xsE.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"></option>`).join('');
           setCount($cntEid, xsE.length, true);
+          try{ window.InfluxBroCascade && window.InfluxBroCascade.syncInput && window.InfluxBroCascade.syncInput($entityFilter, xsE, { requireSource: [$friendlyFilter, $measurementFilter, $fieldFilter] }); }catch(e){}
           const xsF = await loadTagValues('friendly_name', {...common, entity_id: eid || ''});
           if($friendlyList) $friendlyList.innerHTML = xsF.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"></option>`).join('');
           setCount($cntFn, xsF.length, true);
+          try{ window.InfluxBroCascade && window.InfluxBroCascade.syncInput && window.InfluxBroCascade.syncInput($friendlyFilter, xsF, { requireSource: [$entityFilter, $measurementFilter, $fieldFilter] }); }catch(e){}
           try{ _selMaybeAutoWidth($friendlyFilter, $friendlyList); }catch(e){}
           try{ _selMaybeAutoWidth($entityFilter, $entityList); }catch(e){}
         }catch(e){
@@ -739,11 +738,23 @@
 
       let LAST_QUERY_HISTORY = [];
       let LAST_QUERY_SIG = '';
+      function openStatsQueryDialog(){
+        try{
+          if(window.InfluxBroDialogs && window.InfluxBroDialogs.openQuery){
+            window.InfluxBroDialogs.openQuery({
+              title: 'Statistik Query',
+              text: $queryPre ? String($queryPre.textContent || '') : '',
+              meta: $queryLabel ? String($queryLabel.textContent || '') : '',
+              scope: 'stats',
+            });
+          }
+        }catch(e){}
+      }
+
       function setQueryDetails(label, query, startedAt, queries, error){
         if(!$queryDetails || !$queryPre) return;
         const q = String(query || '').trim();
         const l = String(label || '').trim();
-        $queryDetails.style.display = 'block';
         const stAt = String(startedAt || '').trim();
         const meta = [];
         if(stAt) meta.push('Start: ' + fmtTs(stAt));
@@ -766,6 +777,10 @@
       }
 
       try{
+        if($queryOpen) $queryOpen.addEventListener('click', (ev)=>{
+          try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+          openStatsQueryDialog();
+        });
         if($queryHistory) $queryHistory.addEventListener('click', (ev)=>{
           try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
           try{

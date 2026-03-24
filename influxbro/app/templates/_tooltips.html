@@ -56,15 +56,8 @@
     'graph.query_history': 'Zeigt die zuletzt verwendeten Graph-Queries fuer Dashboard und Bearbeitungsgraph.',
 
     // Raw navigation
-    'raw.center_range': 'Legt fest, wie viele Minuten vor und nach dem selektierten Messwert geladen werden.',
+    'raw.center_range': 'Legt fest, wie viele Minuten vor und nach dem selektierten Messwert geladen werden. Bei zu wenigen Punkten je Seite erweitert InfluxBro automatisch in 100-Minuten-Schritten.',
     'raw.query_history': 'Zeigt die zuletzt verwendeten Raw-Queries des Dashboards.',
-    'raw.nav': 'Navigation innerhalb der Raw-Tabelle (Tag basiert auf lokaler Browserzeit).',
-    'raw.nav.oldest': 'Scrollt in Raw zum aeltesten geladenen Tag (erste Zeile).',
-    'raw.nav.m1': 'Scrollt in Raw um 1 Tag zurueck (Basis: selektierter Punkt oder aktuelle Scrollposition).',
-    'raw.nav.m7': 'Scrollt in Raw um 7 Tage zurueck (Basis: selektierter Punkt oder aktuelle Scrollposition).',
-    'raw.nav.p1': 'Scrollt in Raw um 1 Tag vorwaerts (Basis: selektierter Punkt oder aktuelle Scrollposition).',
-    'raw.nav.p7': 'Scrollt in Raw um 7 Tage vorwaerts (Basis: selektierter Punkt oder aktuelle Scrollposition).',
-    'raw.nav.youngest': 'Scrollt in Raw zum juengsten geladenen Tag (erste Zeile).',
 
     // Backup
     'backup.take_dashboard': 'Uebernimmt measurement/field/entity_id/friendly_name aus dem Dashboard (aus Browser-Speicher).',
@@ -165,6 +158,7 @@
     'settings.ui_page_search_highlight_duration_ms': 'Dauer, wie lange der Trefferrahmen nach dem Sprung sichtbar bleibt.',
     'settings.ui_raw_center_max_points': 'Maximaler Wert fuer den Dashboard-Regler Bereich +- in Minuten.',
     'settings.ui_raw_center_range_default': 'Vorbelegung fuer den Dashboard-Regler Bereich +- in Minuten.',
+    'settings.ui_raw_center_min_points': 'Mindestanzahl geladener Raw-Datenpunkte pro Seite um den selektierten Messpunkt. Bei weniger erweitert InfluxBro automatisch in 100-Minuten-Schritten.',
 
     // Monitoring
     'monitor.reload': 'Laedt Monitoring-Konfiguration, Status, Pending-Liste und Event-Log neu.',
@@ -661,6 +655,40 @@
 </script>
 
 <script>
+(function(){
+  if(window.InfluxBroCascade) return;
+
+  function _values(items){
+    return (items || []).map(x => String(x || '').trim()).filter(Boolean);
+  }
+
+  function syncInput(input, items, opts){
+    try{
+      if(!input) return false;
+      const o = opts || {};
+      const xs = _values(items);
+      const cur = String(input.value || '').trim();
+      const valid = cur && xs.includes(cur);
+      if(cur && !valid && o.clearInvalid !== false) input.value = '';
+      if(xs.length !== 1) return cur && !valid;
+      if(o.requireSource){
+        const sources = Array.isArray(o.requireSource) ? o.requireSource : [o.requireSource];
+        const ok = sources.some(el => String(el && el.value || '').trim());
+        if(!ok) return cur && !valid;
+      }
+      if(valid) return false;
+      input.value = xs[0];
+      return true;
+    }catch(e){
+      return false;
+    }
+  }
+
+  window.InfluxBroCascade = { syncInput };
+})();
+</script>
+
+<script>
 // Global popup helper (all pages)
 // Used by err(...) functions to make errors visible.
 (function(){
@@ -690,13 +718,13 @@
     root.style.zIndex = '10050';
     root.style.display = 'none';
     root.style.background = 'rgba(0,0,0,0.45)';
-    root.style.padding = '6vh 12px 12px 12px';
+    root.style.padding = '8vh 12px 12px 12px';
     root.style.boxSizing = 'border-box';
     root.style.overflow = 'auto';
 
     const card = document.createElement('div');
     card.id = 'influxbro_popup_card';
-    card.style.maxWidth = '980px';
+    card.style.maxWidth = '860px';
     card.style.margin = '0 auto';
     card.style.background = '#fff';
     card.style.borderRadius = '16px';
@@ -709,7 +737,7 @@
     // Resizable info window
     card.style.resize = 'both';
     card.style.overflow = 'auto';
-    card.style.width = 'min(980px, calc(100vw - 24px))';
+    card.style.width = 'min(860px, calc(100vw - 24px))';
     card.style.height = 'min(72vh, 720px)';
     card.style.minWidth = '320px';
     card.style.minHeight = '200px';
@@ -749,6 +777,13 @@
     left.style.gap = '10px';
     left.style.flexWrap = 'wrap';
 
+    const actionsWrap = document.createElement('div');
+    actionsWrap.id = 'influxbro_popup_actions';
+    actionsWrap.style.display = 'none';
+    actionsWrap.style.alignItems = 'center';
+    actionsWrap.style.gap = '8px';
+    actionsWrap.style.flexWrap = 'wrap';
+
     const wrapLbl = document.createElement('label');
     wrapLbl.style.display = 'flex';
     wrapLbl.style.alignItems = 'center';
@@ -770,10 +805,12 @@
     const copyBtn = document.createElement('button');
     copyBtn.id = 'influxbro_popup_copy';
     copyBtn.type = 'button';
-    copyBtn.textContent = 'Copy';
+    copyBtn.innerHTML = '<svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><path d="M28.706,23.746c0.01-0.048,0.03-0.093,0.03-0.144c-0.01-1.43,0.02-2.86-0.057-4.291 c-0.085-1.582-0.201-3.161-0.262-4.745c-0.063-1.625-0.047-3.251-0.079-4.878c-0.016-0.816-0.012-1.637-0.01-2.455 c0.004-0.92,0.065-1.845,0.096-2.768c0.012-0.354-0.23-0.659-0.547-0.784c-0.037-0.066-0.071-0.134-0.125-0.188 c-0.142-0.142-0.374-0.259-0.58-0.24c-0.096,0.008-0.193,0.018-0.289,0.025c-0.096,0.008-0.216,0.012-0.303,0.036 c-0.048,0.013-0.09,0.03-0.13,0.049c-0.68,0.025-1.362-0.004-2.04-0.02c-0.775-0.018-1.548-0.036-2.323-0.043 c-1.607-0.018-3.218,0.01-4.823-0.1c-1.216-0.084-2.433-0.144-3.653-0.153c-0.643-0.006-1.285,0-1.928-0.008 C10.924,3.029,10.166,3.008,9.409,3C9.407,3,9.404,3,9.402,3C8.951,3,8.577,3.384,8.577,3.832l0.001,0.006 C8.334,4,8.166,4.266,8.156,4.577C8.133,5.343,8.128,6.108,8.125,6.873c-0.004,0-0.008-0.002-0.012-0.002 c-0.232-0.002-0.462,0-0.692,0.002C7.084,6.875,6.75,6.879,6.414,6.867C5.668,6.845,4.923,6.814,4.177,6.786 c-0.01,0-0.019,0-0.029,0c-0.485,0-0.884,0.439-0.884,0.914c0,0.19,0.071,0.354,0.169,0.497c-0.051,0.879-0.079,1.76-0.092,2.642 c-0.006,0.433-0.014,0.866-0.028,1.298c-0.014,0.44-0.063,0.881-0.091,1.322c-0.049,0.797-0.067,1.598-0.063,2.396 c0.004,0.832,0,1.665,0.004,2.497c0.004,0.828-0.006,1.656,0.02,2.484c0.026,0.807,0.043,1.615,0.055,2.424 c0.024,1.459,0.077,2.923,0.016,4.383c-0.008,0.189,0.004,0.381-0.014,0.57c-0.035,0.344,0.266,0.675,0.578,0.761 c0.205,0.055,0.427,0.026,0.61-0.081c0.069-0.04,0.112-0.093,0.159-0.145c0.081,0.025,0.161,0.05,0.249,0.047 c0.875-0.025,1.759-0.086,2.636-0.049c0.834,0.035,1.668,0.043,2.504,0.045c1.745,0.004,3.492,0.004,5.237-0.006 c1.426-0.006,2.848,0.029,4.273,0.065c0.726,0.018,1.45,0.027,2.176,0.034c0.673,0.006,1.347,0.035,2.018,0.029 c0.354-0.003,0.654-0.233,0.77-0.551c0.206-0.161,0.346-0.403,0.356-0.683c0.036-0.894,0.035-1.792,0.036-2.688 c0.354,0.008,0.708,0.016,1.062,0.021c0.321,0.006,0.643,0.006,0.966,0.006c0.372,0,0.744,0,1.115,0.008 c0.464,0.01,0.854-0.396,0.854-0.854C28.84,24.015,28.784,23.874,28.706,23.746z"></path></svg>';
     copyBtn.style.cursor = 'pointer';
     copyBtn.style.padding = '8px 10px';
     copyBtn.style.height = '34px';
+    copyBtn.setAttribute('aria-label', 'Zwischenablage');
+    copyBtn.setAttribute('title', 'Zwischenablage');
 
     const copyHint = document.createElement('span');
     copyHint.id = 'influxbro_popup_copy_hint';
@@ -782,10 +819,17 @@
     copyHint.style.opacity = '0.75';
     copyHint.style.whiteSpace = 'nowrap';
 
+    left.appendChild(actionsWrap);
     left.appendChild(wrapLbl);
     left.appendChild(copyBtn);
     left.appendChild(copyHint);
     controls.appendChild(left);
+
+    const meta = document.createElement('div');
+    meta.id = 'influxbro_popup_meta';
+    meta.style.fontSize = '12px';
+    meta.style.opacity = '0.8';
+    meta.style.display = 'none';
 
     const right = document.createElement('div');
     right.style.display = 'flex';
@@ -855,6 +899,7 @@
 
     card.appendChild(head);
     card.appendChild(controls);
+    card.appendChild(meta);
     card.appendChild(pre);
     root.appendChild(card);
 
@@ -980,9 +1025,39 @@
       try{ localStorage.setItem(WRAP_KEY, on ? '1' : '0'); }catch(e){}
     });
 
+    let CURRENT_COPY_TEXT = '';
+    let CURRENT_ACTIONS = [];
+
+    function _setActionButtons(actions){
+      try{
+        CURRENT_ACTIONS = Array.isArray(actions) ? actions.slice() : [];
+        actionsWrap.innerHTML = '';
+        actionsWrap.style.display = CURRENT_ACTIONS.length ? 'flex' : 'none';
+        CURRENT_ACTIONS.forEach((it, idx)=>{
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.style.cursor = 'pointer';
+          btn.style.padding = '8px 10px';
+          btn.style.height = '34px';
+          btn.style.display = 'inline-flex';
+          btn.style.alignItems = 'center';
+          btn.style.justifyContent = 'center';
+          btn.style.gap = '6px';
+          btn.setAttribute('aria-label', String(it && it.label ? it.label : ('Aktion ' + (idx + 1))));
+          btn.setAttribute('title', String(it && it.title ? it.title : it && it.label ? it.label : 'Aktion'));
+          btn.innerHTML = String(it && it.icon ? it.icon : (it && it.label ? it.label : '...'));
+          btn.addEventListener('click', (ev)=>{
+            try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+            try{ if(it && typeof it.onClick === 'function') it.onClick(); }catch(e){}
+          });
+          actionsWrap.appendChild(btn);
+        });
+      }catch(e){}
+    }
+
     async function doCopy(){
       try{ copyHint.textContent = ''; }catch(e){}
-      const txt = String(pre.textContent || '');
+      const txt = String(CURRENT_COPY_TEXT || pre.textContent || '');
       if(!txt) return;
       try{
         if(navigator && navigator.clipboard && navigator.clipboard.writeText){
@@ -1345,10 +1420,20 @@
       const root = _ensureUi();
       const t = document.getElementById('influxbro_popup_title');
       const pre = document.getElementById('influxbro_popup_pre');
+      const meta = document.getElementById('influxbro_popup_meta');
       const settingsBtn = document.getElementById('influxbro_popup_settings');
       if(t) t.textContent = title || 'Hinweis';
       const normalizedMsg = _decodeEscapedInfoText(String(msg || ''));
       if(pre) pre.textContent = normalizedMsg;
+      CURRENT_COPY_TEXT = String(opts && opts.copyText !== undefined ? opts.copyText : normalizedMsg || '');
+      copyBtn.setAttribute('title', String(opts && opts.copyTitle ? opts.copyTitle : 'Zwischenablage'));
+      copyBtn.setAttribute('aria-label', String(opts && opts.copyTitle ? opts.copyTitle : 'Zwischenablage'));
+      if(meta){
+        const metaTxt = _decodeEscapedInfoText(String(opts && opts.meta ? opts.meta : ''));
+        meta.textContent = metaTxt;
+        meta.style.display = metaTxt ? 'block' : 'none';
+      }
+      _setActionButtons(opts && opts.actions ? opts.actions : []);
       try{ _applyPopupSize(title || 'Hinweis'); }catch(e){}
       try{ window.__InfluxBroPopupLast = { title: String(title || ''), msg: normalizedMsg }; }catch(e){}
       try{
@@ -1381,6 +1466,48 @@
         _show('Fehler', s);
       }
     };
+
+   try{
+     const QUERY_ICON = '<svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="11" cy="15.5" r="1.5"></circle><path d="M12,12H10V8h2a2,2,0,0,0,0-4H10A2.0023,2.0023,0,0,0,8,6v.5H6V6a4.0045,4.0045,0,0,1,4-4h2a4,4,0,0,1,0,8Z"></path><path d="M22.4479,21.0337A10.971,10.971,0,0,0,19.9211,4.7446l-.999,1.73A8.9967,8.9967,0,1,1,5,14H3a10.9916,10.9916,0,0,0,18.0338,8.4478L28.5859,30,30,28.5859Z"></path></svg>';
+     const HISTORY_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M12 8V12L14.5 14.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M5.60423 5.60423L5.0739 5.0739V5.0739L5.60423 5.60423ZM4.33785 6.87061L3.58786 6.87438C3.58992 7.28564 3.92281 7.61853 4.33408 7.6206L4.33785 6.87061ZM6.87963 7.63339C7.29384 7.63547 7.63131 7.30138 7.63339 6.88717C7.63547 6.47296 7.30138 6.13549 6.88717 6.13341L6.87963 7.63339ZM5.07505 4.32129C5.07296 3.90708 4.7355 3.57298 4.32129 3.57506C3.90708 3.57715 3.57298 3.91462 3.57507 4.32882L5.07505 4.32129ZM3.75 12C3.75 11.5858 3.41421 11.25 3 11.25C2.58579 11.25 2.25 11.5858 2.25 12H3.75ZM16.8755 20.4452C17.2341 20.2378 17.3566 19.779 17.1492 19.4204C16.9418 19.0619 16.483 18.9393 16.1245 19.1468L16.8755 20.4452ZM19.1468 16.1245C18.9393 16.483 19.0619 16.9418 19.4204 17.1492C19.779 17.3566 20.2378 17.2341 20.4452 16.8755L19.1468 16.1245ZM5.14033 5.07126C4.84598 5.36269 4.84361 5.83756 5.13505 6.13191C5.42648 6.42626 5.90134 6.42862 6.19569 6.13719L5.14033 5.07126ZM18.8623 5.13786C15.0421 1.31766 8.86882 1.27898 5.0739 5.0739L6.13456 6.13456C9.33366 2.93545 14.5572 2.95404 17.8017 6.19852L18.8623 5.13786ZM5.0739 5.0739L3.80752 6.34028L4.86818 7.40094L6.13456 6.13456L5.0739 5.0739ZM4.33408 7.6206L6.87963 7.63339L6.88717 6.13341L4.34162 6.12062L4.33408 7.6206ZM5.08784 6.86684L5.07505 4.32129L3.57507 4.32882L3.58786 6.87438L5.08784 6.86684ZM12 3.75C16.5563 3.75 20.25 7.44365 20.25 12H21.75C21.75 6.61522 17.3848 2.25 12 2.25V3.75ZM12 20.25C7.44365 20.25 3.75 16.5563 3.75 12H2.25C2.25 17.3848 6.61522 21.75 12 21.75V20.25ZM16.1245 19.1468C14.9118 19.8483 13.5039 20.25 12 20.25V21.75C13.7747 21.75 15.4407 21.2752 16.8755 20.4452L16.1245 19.1468ZM20.25 12C20.25 13.5039 19.8483 14.9118 19.1468 16.1245L20.4452 16.8755C21.2752 15.4407 21.75 13.7747 21.75 12H20.25ZM6.19569 6.13719C7.68707 4.66059 9.73646 3.75 12 3.75V2.25C9.32542 2.25 6.90113 3.32791 5.14033 5.07126L6.19569 6.13719Z"></path></svg>';
+     window.InfluxBroDialogs = {
+       queryIcon: QUERY_ICON,
+       historyIcon: HISTORY_ICON,
+       openQuery: (opts)=>{
+         const o = opts || {};
+         const parts = [];
+         if(o.meta) parts.push(String(o.meta));
+         if(o.label) parts.push(String(o.label));
+         const actions = [];
+         if(o.scope){
+           actions.push({
+             label: 'History',
+             title: 'History',
+             icon: HISTORY_ICON,
+             onClick: ()=>{ try{ window.InfluxBroQueryHistory && window.InfluxBroQueryHistory.show && window.InfluxBroQueryHistory.show(String(o.scope)); }catch(e){} },
+           });
+         }
+         if(window.InfluxBroPopup && window.InfluxBroPopup.show){
+           window.InfluxBroPopup.show(String(o.title || 'Query'), String(o.text || 'Noch keine Query vorhanden.'), {
+             meta: parts.join(' | '),
+             copyText: String(o.copyText !== undefined ? o.copyText : (o.text || '')),
+             copyTitle: String(o.copyTitle || 'Zwischenablage'),
+             actions,
+           });
+         }
+       },
+       openText: (opts)=>{
+         const o = opts || {};
+         if(window.InfluxBroPopup && window.InfluxBroPopup.show){
+           window.InfluxBroPopup.show(String(o.title || 'Hinweis'), String(o.text || ''), {
+             meta: String(o.meta || ''),
+             copyText: String(o.copyText !== undefined ? o.copyText : (o.text || '')),
+             copyTitle: String(o.copyTitle || 'Zwischenablage'),
+           });
+         }
+       },
+     };
+   }catch(e){}
 
    // Global helper for "Git Bugreport" button (works even before the popup was opened).
    try{
@@ -1551,6 +1678,8 @@
       response: String(response || '').slice(0, 20000),
     };
     const xs = _load(scope);
+    const prev = xs.length ? xs[xs.length - 1] : null;
+    if(prev && String(prev.query || '') === ent.query && String(prev.label || '') === ent.label && String(prev.at || '') === ent.at) return;
     xs.push(ent);
     while(xs.length > MAX) xs.shift();
     _save(scope, xs);

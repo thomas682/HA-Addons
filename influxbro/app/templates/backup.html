@@ -207,6 +207,7 @@
             <div class="muted" id="hint_sel" data-ui="backup.hint_sel" title="backup.hint_sel" style="margin-top:4px; max-width: 260px;"></div>
           </div>
             <div><label>&nbsp;</label><button id="reload" data-ui="backup.reload" title="backup.reload" aria-label="Liste aktualisieren"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 12a8 8 0 1 1-2.34-5.66" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M20 4v6h-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+            <div><label>&nbsp;</label><button id="backup_query_open" class="btn_sm" type="button" data-ui="backup.query_details" title="backup.query_details" aria-label="Backup Query anzeigen"><svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="11" cy="15.5" r="1.5"></circle><path d="M12,12H10V8h2a2,2,0,0,0,0-4H10A2.0023,2.0023,0,0,0,8,6v.5H6V6a4.0045,4.0045,0,0,1,4-4h2a4,4,0,0,1,0,8Z"></path><path d="M22.4479,21.0337A10.971,10.971,0,0,0,19.9211,4.7446l-.999,1.73A8.9967,8.9967,0,1,1,5,14H3a10.9916,10.9916,0,0,0,18.0338,8.4478L28.5859,30,30,28.5859Z"></path></svg></button></div>
           <div><label>&nbsp;</label><button id="cancel" class="btn_sm" data-ui="backup.cancel" title="backup.cancel" disabled>Abbruch</button></div>
           <!-- table controls are placed in the table header frame -->
           <div><label>&nbsp;</label><button id="del" data-ui="backup.delete" title="backup.delete">Backup loeschen</button></div>
@@ -221,16 +222,11 @@
           <span id="create_status_time"></span>
         </div>
 
-        <details id="backup_query_details" class="card" style="margin-top: 10px;" data-ui="backup.query_details" title="backup.query_details">
-          <summary><span class="ib_summary_row"><span>Query anzeigen</span><button type="button" class="ib_info_icon" data-info-title="Backup: Query" data-info-body="Zeigt den zuletzt verwendeten Query-String der Backup-Erstellung.\n\nNutzen:\n- Debugging (welcher Zeitraum/Filter wurde wirklich verwendet?).\n- Support (Query in Logs vergleichen)." >i</button></span></summary>
-          <div class="card_body">
-            <div class="row" style="align-items:center; margin-top:6px;">
-              <div class="muted" id="backup_query_meta" style="flex:1;"></div>
-              <button id="backup_query_history" type="button" class="btn_sm" style="width:auto; white-space:nowrap;">History</button>
-            </div>
-            <pre id="backup_query_pre" style="margin:6px 0 0 0; padding:10px 12px; border:1px solid #eee; border-radius:12px; background:#fafafa; white-space:pre; overflow:auto; max-height: 260px;"></pre>
-          </div>
-        </details>
+        <div id="backup_query_details" style="display:none;" data-ui="backup.query_details" title="backup.query_details">
+          <div id="backup_query_meta"></div>
+          <button id="backup_query_history" type="button"></button>
+          <pre id="backup_query_pre"></pre>
+        </div>
 
         <div class="muted" id="loc" data-ui="backup.location" title="backup.location" style="margin-top:10px;"></div>
 
@@ -316,6 +312,7 @@
               <div class="muted" id="fullbackup_native_support" data-ui="backup.fullbackup.native_support" title="backup.fullbackup.native_support" style="margin-top:4px;"></div>
              </div>
              <div><label>&nbsp;</label><button id="fullbackup_start" data-ui="backup.fullbackup.start" title="backup.fullbackup.start">FullBackup starten</button></div>
+             <div><label>&nbsp;</label><button id="fullbackup_query_open" class="btn_sm" type="button" data-ui="backup.fullbackup.query_details" title="backup.fullbackup.query_details" aria-label="FullBackup Aktion anzeigen"><svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="11" cy="15.5" r="1.5"></circle><path d="M12,12H10V8h2a2,2,0,0,0,0-4H10A2.0023,2.0023,0,0,0,8,6v.5H6V6a4.0045,4.0045,0,0,1,4-4h2a4,4,0,0,1,0,8Z"></path><path d="M22.4479,21.0337A10.971,10.971,0,0,0,19.9211,4.7446l-.999,1.73A8.9967,8.9967,0,1,1,5,14H3a10.9916,10.9916,0,0,0,18.0338,8.4478L28.5859,30,30,28.5859Z"></path></svg></button></div>
              <div><label>&nbsp;</label><button id="fullbackup_cancel" class="btn_sm" data-ui="backup.fullbackup.cancel" title="backup.fullbackup.cancel" disabled>Abbruch</button></div>
              <div><label>&nbsp;</label><button id="fullbackup_delete" data-ui="backup.fullbackup.delete" title="backup.fullbackup.delete">FullBackup loeschen</button></div>
              <div><label>&nbsp;</label><button id="fullbackup_download" class="btn_sm" data-ui="backup.fullbackup.download" title="backup.fullbackup.download" style="display:none;"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="vertical-align:middle; margin-right:6px;"><path d="M12 3v11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M8.5 10.5 12 14l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 18.5h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M6.5 15.5v3M17.5 15.5v3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Download</button></div>
@@ -327,16 +324,11 @@
             <span id="fullbackup_status_time"></span>
           </div>
 
-          <details id="fullbackup_query_details" class="card" style="margin-top: 10px;" data-ui="backup.fullbackup.query_details" title="backup.fullbackup.query_details">
-            <summary><span class="ib_summary_row"><span>Aktion anzeigen</span><button type="button" class="ib_info_icon" data-info-title="FullBackup: Aktion" data-info-body="Zeigt die aktuell ausgefuehrte Aktion des FullBackup-Jobs (z.B. CLI Command/Query).\n\nHinweis:\n- Tokens werden redacted und nicht angezeigt." >i</button></span></summary>
-            <div class="card_body">
-              <div class="row" style="align-items:center; margin-top:6px;">
-                <div class="muted" id="fullbackup_query_meta" style="flex:1;"></div>
-                <button id="fullbackup_query_history" type="button" class="btn_sm" style="width:auto; white-space:nowrap;">History</button>
-              </div>
-              <pre id="fullbackup_query_pre" style="margin:6px 0 0 0; padding:10px 12px; border:1px solid #eee; border-radius:12px; background:#fafafa; white-space:pre; overflow:auto; max-height: 260px;"></pre>
-            </div>
-          </details>
+          <div id="fullbackup_query_details" style="display:none;" data-ui="backup.fullbackup.query_details" title="backup.fullbackup.query_details">
+            <div id="fullbackup_query_meta"></div>
+            <button id="fullbackup_query_history" type="button"></button>
+            <pre id="fullbackup_query_pre"></pre>
+          </div>
 
           <div class="muted" id="fullbackup_loc" data-ui="backup.fullbackup.location" title="backup.fullbackup.location" style="margin-top:10px;"></div>
 
@@ -436,6 +428,7 @@
       const $fullBackupQueryPre = document.getElementById('fullbackup_query_pre');
       const $fullBackupQueryMeta = document.getElementById('fullbackup_query_meta');
       const $fullBackupQueryHistory = document.getElementById('fullbackup_query_history');
+      const $fullBackupQueryOpen = document.getElementById('fullbackup_query_open');
       const $fullBackupLoc = document.getElementById('fullbackup_loc');
       const $fullBackupSelAll = document.getElementById('fullbackup_sel_all');
       const $fullBackupListInfo = document.getElementById('fullbackup_list_info');
@@ -467,6 +460,7 @@
       const $backupQueryPre = document.getElementById('backup_query_pre');
       const $backupQueryMeta = document.getElementById('backup_query_meta');
       const $backupQueryHistory = document.getElementById('backup_query_history');
+      const $backupQueryOpen = document.getElementById('backup_query_open');
 
       const $space = document.getElementById('space');
 
@@ -799,7 +793,6 @@
         _startFullBackupUi('FullBackup laeuft...');
         try{
           try{
-            if($fullBackupQueryDetails) $fullBackupQueryDetails.style.display = 'block';
             if($fullBackupQueryPre) $fullBackupQueryPre.textContent = '';
             if($fullBackupQueryMeta) $fullBackupQueryMeta.textContent = '';
           }catch(e){}
@@ -896,11 +889,23 @@
       }
 
       let LAST_BACKUP_QUERY = '';
+      function openBackupQueryDialog(){
+        try{
+          if(window.InfluxBroDialogs && window.InfluxBroDialogs.openQuery){
+            window.InfluxBroDialogs.openQuery({
+              title: 'Backup Query',
+              text: $backupQueryPre ? String($backupQueryPre.textContent || '') : '',
+              meta: $backupQueryMeta ? String($backupQueryMeta.textContent || '') : '',
+              scope: 'backup',
+            });
+          }
+        }catch(e){}
+      }
+
       function setBackupQuery(q, startedAtIso, responseHint){
         try{
           const s = String(q || '').trim();
           if(!$backupQueryDetails || !$backupQueryPre) return;
-          $backupQueryDetails.style.display = 'block';
           $backupQueryPre.textContent = s || 'Noch keine Query vorhanden.';
           if($backupQueryMeta){
             const at = String(startedAtIso || '').trim();
@@ -919,14 +924,27 @@
         }catch(e){}
       }
 
+      try{ if($backupQueryOpen) $backupQueryOpen.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}; openBackupQueryDialog(); }); }catch(e){}
       try{ if($backupQueryHistory) $backupQueryHistory.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}; try{ window.InfluxBroQueryHistory && window.InfluxBroQueryHistory.show && window.InfluxBroQueryHistory.show('backup'); }catch(e){}; }); }catch(e){}
 
       let LAST_FULLBACKUP_ACTION = '';
+      function openFullBackupQueryDialog(){
+        try{
+          if(window.InfluxBroDialogs && window.InfluxBroDialogs.openQuery){
+            window.InfluxBroDialogs.openQuery({
+              title: 'FullBackup Aktion',
+              text: $fullBackupQueryPre ? String($fullBackupQueryPre.textContent || '') : '',
+              meta: $fullBackupQueryMeta ? String($fullBackupQueryMeta.textContent || '') : '',
+              scope: 'fullbackup',
+            });
+          }
+        }catch(e){}
+      }
+
       function setFullBackupAction(q, startedAtIso, responseHint){
         try{
           const s = String(q || '').trim();
           if(!$fullBackupQueryDetails || !$fullBackupQueryPre) return;
-          $fullBackupQueryDetails.style.display = 'block';
           $fullBackupQueryPre.textContent = s || 'Noch keine Aktion vorhanden.';
           if($fullBackupQueryMeta){
             const at = String(startedAtIso || '').trim();
@@ -945,6 +963,7 @@
         }catch(e){}
       }
 
+      try{ if($fullBackupQueryOpen) $fullBackupQueryOpen.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}; openFullBackupQueryDialog(); }); }catch(e){}
       try{ if($fullBackupQueryHistory) $fullBackupQueryHistory.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}; try{ window.InfluxBroQueryHistory && window.InfluxBroQueryHistory.show && window.InfluxBroQueryHistory.show('fullbackup'); }catch(e){}; }); }catch(e){}
 
       function loadState(){
@@ -1209,10 +1228,12 @@
           setDatalistOptions($fnList, ALL_FN);
           setCount($cntFn, ALL_FN.length, true);
           _selApplyWidthForInput($n, ALL_FN);
+          try{ window.InfluxBroCascade && window.InfluxBroCascade.syncInput && window.InfluxBroCascade.syncInput($n, ALL_FN, { requireSource: [$mf, $e] }); }catch(e){}
 
           setDatalistOptions($eidList, ALL_EID);
           setCount($cntEid, ALL_EID.length, false);
           _selApplyWidthForInput($e, ALL_EID);
+          try{ window.InfluxBroCascade && window.InfluxBroCascade.syncInput && window.InfluxBroCascade.syncInput($e, ALL_EID, { requireSource: [$mf, $n] }); }catch(e){}
 
           // Keep existing values only if still valid.
           const curFn = String($n && $n.value ? $n.value : '').trim();
@@ -1241,11 +1262,33 @@
           const vals = (j.values || []).map(x=>String(x)).filter(Boolean);
           setDatalistOptions($eidList, vals);
           setCount($cntEid, vals.length, false);
+          try{ window.InfluxBroCascade && window.InfluxBroCascade.syncInput && window.InfluxBroCascade.syncInput($e, vals, { requireSource: [$n, $mf] }); }catch(e){}
 
           const cur = String($e && $e.value ? $e.value : '').trim();
           if(vals.length >= 1 && (!cur || !vals.includes(cur))){
             $e.value = vals[0];
           }
+        }catch(e){}
+      }
+
+      async function refreshFriendlyNamesForEntity(){
+        try{
+          const eid = String($e && $e.value ? $e.value : '').trim();
+          const mf = String($mf && $mf.value ? $mf.value : '').trim();
+          if(!eid){
+            setDatalistOptions($fnList, ALL_FN);
+            setCount($cntFn, ALL_FN.length, true);
+            return;
+          }
+          const qs = new URLSearchParams({tag:'friendly_name', entity_id: eid, range:'30d'});
+          if(mf) qs.set('measurement', mf);
+          const j = await api('./api/tag_values?' + qs.toString());
+          const vals = (j.values || []).map(x=>String(x)).filter(Boolean);
+          setDatalistOptions($fnList, vals);
+          setCount($cntFn, vals.length, true);
+          try{ window.InfluxBroCascade && window.InfluxBroCascade.syncInput && window.InfluxBroCascade.syncInput($n, vals, { requireSource: [$e, $mf] }); }catch(e){}
+          const cur = String($n && $n.value ? $n.value : '').trim();
+          if(vals.length >= 1 && (!cur || !vals.includes(cur)) && $n) $n.value = vals[0];
         }catch(e){}
       }
 
@@ -1832,7 +1875,9 @@
       }, 250);
 
       const onEntityChanged = debounce(()=>{
-        scheduleResolveAndLoad();
+        refreshFriendlyNamesForEntity()
+          .then(()=>scheduleResolveAndLoad())
+          .catch(e=>err(String(e && e.message ? e.message : e)));
       }, 250);
 
       if($mf) $mf.addEventListener('input', onMeasurementChanged);

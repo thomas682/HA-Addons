@@ -151,8 +151,10 @@
     /* Raw table: monospace for stable digit widths. */
     #raw_tbl, #raw_tbl th, #raw_tbl td { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
     #raw_tbl tr.raw_hl td { background: rgba(255, 153, 0, 0.18); }
+    #raw_tbl tr.raw_src td { background: rgba(16, 185, 129, 0.16); }
     /* Selected raw row (for copy/paste actions) */
-    #raw_tbl tr.raw_sel td { outline: 2px solid rgba(36,99,235,0.12); }
+    #raw_tbl tr.raw_sel td { outline: 2px solid rgba(36,99,235,0.35); outline-offset: -2px; }
+    #raw_tbl tr.raw_drop_target td { box-shadow: inset 0 0 0 2px rgba(14, 116, 144, 0.35); }
     /* Focus highlight for inputs with missing required value */
     .err_focus { outline: 2px solid rgba(198,40,40,0.92) !important; box-shadow: 0 0 6px rgba(198,40,40,0.18); }
 
@@ -312,9 +314,10 @@
     </div>
     <div class="control">
       <div style="display:flex; gap: 8px; align-items: stretch;">
-        <button id="load" style="flex:1;" data-ui="dashboard.load">Aktualisieren</button>
+        <button id="load" class="btn_sm" style="flex:1; height:34px; padding:8px 10px;" data-ui="dashboard.load">Aktualisieren</button>
         <button id="cancel_load" class="btn_sm" style="width:auto; white-space:nowrap;" data-ui="dashboard.cancel">Abbruch</button>
         <button id="reset_filters" class="btn_sm" style="width:auto; white-space:nowrap;" data-ui="dashboard.reset" title="dashboard.reset">Reset</button>
+        <button id="dashboard_query_open" type="button" class="btn_sm" style="width:auto; min-width:34px; padding:6px 8px;" data-ui="dashboard.query_details" title="dashboard.query_details" aria-label="Dashboard Query anzeigen"><svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="11" cy="15.5" r="1.5"></circle><path d="M12,12H10V8h2a2,2,0,0,0,0-4H10A2.0023,2.0023,0,0,0,8,6v.5H6V6a4.0045,4.0045,0,0,1,4-4h2a4,4,0,0,1,0,8Z"></path><path d="M22.4479,21.0337A10.971,10.971,0,0,0,19.9211,4.7446l-.999,1.73A8.9967,8.9967,0,1,1,5,14H3a10.9916,10.9916,0,0,0,18.0338,8.4478L28.5859,30,30,28.5859Z"></path></svg></button>
       </div>
       <div id="load_status" data-ui="dashboard.load_status" title="dashboard.load_status">
         <span id="load_spinner" aria-hidden="true"></span>
@@ -322,16 +325,11 @@
         <span id="load_status_time"></span>
       </div>
 
-      <details id="query_details" class="card" style="margin-top: 10px;" data-ui="dashboard.query_details" title="dashboard.query_details">
-        <summary><span class="ib_summary_row"><span>Query anzeigen</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Query" data-info-body="Zeigt den zuletzt verwendeten Influx Query-String der aktuellen Aktualisierung.\n\nNutzen:\n- Nachvollziehen von Filtern/Zeitraum\n- Support/Debug" >i</button></span></summary>
-        <div class="card_body">
-          <div class="row" style="align-items:center; margin-top:6px;">
-            <div class="muted" id="query_meta" data-ui="dashboard.query_meta" title="dashboard.query_meta" style="flex:1;"></div>
-            <button id="query_history" type="button" class="btn_sm" style="width:auto; white-space:nowrap;" data-ui="dashboard.query_history" title="dashboard.query_history">History</button>
-          </div>
-          <pre id="query_pre" style="margin:6px 0 0 0; padding:10px 12px; border:1px solid #eee; border-radius:12px; background:#fafafa; white-space:pre; overflow:auto; max-height: 260px;">Noch keine Query vorhanden.</pre>
-        </div>
-      </details>
+      <div id="query_details" style="display:none;" data-ui="dashboard.query_details" title="dashboard.query_details">
+        <div id="query_meta" data-ui="dashboard.query_meta" title="dashboard.query_meta"></div>
+        <button id="query_history" type="button" data-ui="dashboard.query_history" title="dashboard.query_history"></button>
+        <pre id="query_pre">Noch keine Query vorhanden.</pre>
+      </div>
     </div>
   </div>
 
@@ -356,13 +354,15 @@
 
   </details>
 
-  <details id="stats_total_section" class="section" {{ 'open' if cfg.get('ui_open_stats_total') else '' }} data-ui="section.stats_total" title="section.stats_total">
-    <summary><span class="ib_summary_row"><span class="section_title" style="margin:0;">Gesamtstatistik (Alles)</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Gesamtstatistik (Alles)" data-info-body="Dieser Bereich zeigt die Gesamtstatistik fuer die aktuell gewaehlte Serie ueber den gesamten verfuegbaren Datenbestand.\n\nEnthaelt:\n- Tabelle mit Kennzahlen wie Anzahl, Minimum, Maximum, Mittelwert und Zeitgrenzen\n- den Bereich wird beim Aktualisieren neu berechnet\n\nNutzen:\n- Vergleich des aktuellen Graph-Zeitraums mit dem Gesamtdatenbestand\n- schnelle Plausibilitaetspruefung fuer Ausreisser und fehlende Werte" >i</button></span></summary>
-    <div class="table_wrap">
-      <div class="muted" data-ui="tip.stats_total" title="tip.stats_total">Zeigt Kennzahlen ueber alle Werte (kann je nach Datenmenge laenger dauern).</div>
-      <table class="stats_tbl"><tbody id="stats_tot_body"></tbody></table>
+  <div id="stats_total_section" class="section" data-ui="section.stats_total" title="section.stats_total">
+    <div class="ib_summary_row">
+      <span class="section_title" style="margin:0;">Gesamtstatistik (Alles)</span>
+      <button id="stats_total_open" type="button" class="btn_sm" style="width:auto; min-width:34px; padding:6px 8px;" data-ui="section.stats_total" title="section.stats_total" aria-label="Gesamtstatistik anzeigen"><svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><path d="M5,9h18v1H5V9z M5,13h8v9H5V13z M6,21h6v-7H6V21z M16,14h7v-1h-7V14z M16,16h7v-1h-7V16z M16,20h7v-1 h-7V20z M16,18h7v-1h-7V18z M16,22h7v-1h-7V22z M32,7v17c0,2.206-1.794,4-4,4H4c-2.206,0-4-1.794-4-4V5c0-0.552,0.448-1,1-1h26 c0.552,0,1,0.448,1,1v1h3C31.552,6,32,6.448,32,7z M30,8h-3v14h-1V7V6H2v18c0,1.103,0.897,2,2,2h24c1.103,0,2-0.897,2-2V8z"></path></svg></button>
+      <button type="button" class="ib_info_icon" data-info-title="Dashboard: Gesamtstatistik (Alles)" data-info-body="Dieser Bereich zeigt die Gesamtstatistik fuer die aktuell gewaehlte Serie ueber den gesamten verfuegbaren Datenbestand.\n\nEnthaelt:\n- Tabelle mit Kennzahlen wie Anzahl, Minimum, Maximum, Mittelwert und Zeitgrenzen\n- den Bereich wird beim Aktualisieren neu berechnet\n\nNutzen:\n- Vergleich des aktuellen Graph-Zeitraums mit dem Gesamtdatenbestand\n- schnelle Plausibilitaetspruefung fuer Ausreisser und fehlende Werte" >i</button>
     </div>
-  </details>
+    <div class="muted" data-ui="tip.stats_total" title="tip.stats_total">Zeigt Kennzahlen ueber alle Werte (kann je nach Datenmenge laenger dauern).</div>
+    <div id="stats_total_store" style="display:none;"><table class="stats_tbl"><tbody id="stats_tot_body"></tbody></table></div>
+  </div>
 
   <div class="muted">
     Tipps: Messwert = <code>friendly_name</code>. Falls mehrere Entity-IDs denselben Namen haben, nutze den optionalen <code>entity_id</code>-Filter.
@@ -377,6 +377,8 @@
       <summary><span class="ib_summary_row"><span class="section_title" style="margin:0;">Graph</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Graph" data-info-body="Der Graph ist die zentrale Visualisierung der aktuell gewaehlten Serie.\n\nEnthaelt:\n- Zeitreihen-Plot mit Zoom und Auswahl\n- Marker fuer selektierte Punkte\n- Detail-Modi, Ableitungen und Zusatzinfos unter dem Plot\n- Raw-Synchronisation: ein Klick auf einen Punkt steuert die Raw-Tabelle\n\nNutzen:\n- zeitliche Analyse\n- Auswahl eines Ankerpunkts fuer Raw-Daten und Bearbeitung" >i</button></span></summary>
       <div class="tbl_actions" data-ui="graph_actions">
         <label><input type="checkbox" id="graph_markers" class="row_sel" data-ui="graph_markers"/>Messpunkte markieren</label>
+        <button class="btn_sm" id="graph_refresh" type="button" data-ui="graph.refresh" title="graph.refresh" aria-label="Graph neu zeichnen"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M18.6091 5.89092L15.5 9H21.5V3L18.6091 5.89092ZM18.6091 5.89092C16.965 4.1131 14.6125 3 12 3C7.36745 3 3.55237 6.50005 3.05493 11M5.39092 18.1091L2.5 21V15H8.5L5.39092 18.1091ZM5.39092 18.1091C7.03504 19.8869 9.38753 21 12 21C16.6326 21 20.4476 17.5 20.9451 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
+        <button class="btn_sm" id="graph_query_open" type="button" data-ui="graph.query_section" title="graph.query_section" aria-label="Graph Query anzeigen"><svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="11" cy="15.5" r="1.5"></circle><path d="M12,12H10V8h2a2,2,0,0,0,0-4H10A2.0023,2.0023,0,0,0,8,6v.5H6V6a4.0045,4.0045,0,0,1,4-4h2a4,4,0,0,1,0,8Z"></path><path d="M22.4479,21.0337A10.971,10.971,0,0,0,19.9211,4.7446l-.999,1.73A8.9967,8.9967,0,1,1,5,14H3a10.9916,10.9916,0,0,0,18.0338,8.4478L28.5859,30,30,28.5859Z"></path></svg></button>
       </div>
 
       <div class="tbl_actions" style="justify-content:flex-start; margin-top: 8px; gap: 10px; flex-wrap:wrap;" data-ui="graph.detail" title="graph.detail">
@@ -406,20 +408,17 @@
           <span class="muted" id="deriv_outlier_lbl">90%</span>
         </label>
       </div>
-       <details id="graph_query_section" style="margin-top: 8px;" data-ui="graph.query_section" title="graph.query_section">
-         <summary><span class="ib_summary_row"><span>Graph Query</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Graph Query" data-info-body="Query-Details fuer den Graph (Downsampling, Ableitung, Density/Manual).\n\nHinweis:\n- Je nach Modus werden Daten aggregiert oder punktgenau geladen." >i</button></span></summary>
-         <div class="tbl_actions" style="justify-content:flex-start; margin-top: 8px;">
-           <button class="btn_sm" id="graph_copy_query" data-ui="graph.copy_query" title="graph.copy_query">Query kopieren</button>
-           <select class="btn_sm" id="graph_query_source" data-ui="graph.query_source" title="graph.query_source" style="height:34px; padding: 6px 10px;">
-             <option value="dashboard" selected>Dashboard</option>
-             <option value="edit_graph">Bearbeitungsgraph</option>
-           </select>
-           <button class="btn_sm" id="graph_query_history" type="button" data-ui="graph.query_history" title="graph.query_history">History</button>
-         </div>
-         <div class="muted" id="graph_query_meta" style="margin-top: 6px;"></div>
-          <div class="muted" id="graph_query_label" style="margin-top: 6px;"></div>
-          <pre id="graph_query" style="margin:6px 0 0 0; padding:10px 12px; border:1px solid #eee; border-radius:12px; background:#fafafa; white-space:pre; overflow:auto; max-height: 220px;">Noch keine Query vorhanden.</pre>
-        </details>
+       <div id="graph_query_section" style="display:none;" data-ui="graph.query_section" title="graph.query_section">
+         <button class="btn_sm" id="graph_copy_query" data-ui="graph.copy_query" title="graph.copy_query"></button>
+         <select class="btn_sm" id="graph_query_source" data-ui="graph.query_source" title="graph.query_source" style="height:34px; padding: 6px 10px;">
+           <option value="dashboard" selected>Dashboard</option>
+           <option value="edit_graph">Bearbeitungsgraph</option>
+         </select>
+         <button class="btn_sm" id="graph_query_history" type="button" data-ui="graph.query_history" title="graph.query_history"></button>
+         <div id="graph_query_meta"></div>
+         <div id="graph_query_label"></div>
+         <pre id="graph_query">Noch keine Query vorhanden.</pre>
+       </div>
         <div class="muted" data-ui="tip.graph" title="tip.graph">Zoomen/Pan im Plot. Doppelklick setzt Zoom zurueck. Griff unten zieht die Hoehe.</div>
         <div class="muted" id="graph_points_info" style="margin-top: 6px;"></div>
         <div class="muted" id="graph_selected_info" style="margin-top: 6px; font-weight: 650;" data-ui="graph.selected" title="graph.selected"></div>
@@ -432,7 +431,7 @@
       </div>
 
           <details id="raw_section" style="margin-top: 10px;" data-ui="section.raw" title="section.raw">
-            <summary><span class="ib_summary_row"><span>Raw Daten (DB)</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Raw Daten" data-info-body="Raw-Tabelle zeigt echte Datenpunkte aus der DB (Zeit + Wert + Tags).\n\nFeatures:\n- Zentriertes Nachladen um selektierten Graph-Punkt\n- Navigation Tagweise\n- Auto-Tuning fuer ui_raw_max_points" >i</button></span></summary>
+            <summary><span class="ib_summary_row"><span>Raw Daten (DB)</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Raw Daten" data-info-body="Raw-Tabelle zeigt echte Datenpunkte aus der DB rund um den im Graph selektierten Messpunkt.\n\nFeatures:\n- symmetrisches Laden um den selektierten Punkt\n- automatische Erweiterung bei zu wenigen Datenpunkten je Seite\n- direkte Wertuebernahme per Quelle/Ziel oder Drag-and-Drop" >i</button></span></summary>
             <div class="table_wrap" style="margin-top: 10px;">
               <div class="table_title">Raw Daten</div>
               <div class="table_head">
@@ -444,6 +443,26 @@
             <div class="tbl_actions" style="justify-content:flex-start; margin-top: 6px;" data-ui="raw.opts" title="raw.opts">
               <label><input type="checkbox" id="raw_time_from_graph" class="row_sel" data-ui="raw.time_from_graph" checked/>Zeit gefuehrt durch Graph</label>
             </div>
+
+            <div class="tbl_actions" style="justify-content:flex-start; margin-top: 8px; gap: 12px; flex-wrap:wrap;" data-ui="raw.center_range" title="raw.center_range">
+              <div style="display:flex; flex-direction:column; gap: 4px; min-width: 170px;">
+                <label for="raw_center_range">Bereich +- (Minuten)</label>
+                <input id="raw_center_range" type="number" min="0" max="2000" step="1" value="100" style="height:34px; padding: 6px 10px; width: 140px;" />
+              </div>
+              <div class="muted" id="raw_center_range_hint">Zeitfenster um den selektierten Messwert herum in Minuten. Speicherung erfolgt automatisch im Browser.</div>
+            </div>
+
+            <div id="raw_status" style="display:none; margin-top: 6px; font-size: 12px; opacity: 0.85; align-items:center; gap: 8px;" data-ui="raw.status" title="raw.status">
+              <span id="raw_spinner" aria-hidden="true" style="width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(0,0,0,0.18); border-top-color: rgba(0,0,0,0.75); animation: spin 0.9s linear infinite;"></span>
+              <span id="raw_status_txt">Raw laeuft...</span>
+              <span id="raw_status_time" style="opacity:0.85; white-space: nowrap;"></span>
+            </div>
+
+          <div id="raw_query_section" style="display:none;" data-ui="raw.query_section" title="raw.query_section">
+            <div id="raw_query_meta" data-ui="raw.query_meta" title="raw.query_meta"></div>
+            <button id="raw_query_history" type="button" data-ui="raw.query_history" title="raw.query_history"></button>
+            <pre id="raw_query" data-ui="raw.query" title="raw.query">Noch keine Query vorhanden.</pre>
+          </div>
 
             <div class="tbl_actions" style="justify-content:flex-start; margin-top: 8px;" data-ui="raw.actions" title="raw.actions">
               <button class="btn_sm" id="raw_autowidth" data-ui="raw.autowidth" title="raw.autowidth" aria-label="Spaltenbreite automatisch">
@@ -469,43 +488,8 @@
               <button class="btn_sm" id="raw_copy_value" data-ui="raw.copy_value" title="raw.copy_value">Wert kopieren</button>
               <button class="btn_sm" id="raw_paste" data-ui="raw.paste" title="raw.paste" disabled>Einfügen</button>
               <span id="raw_copied_info" class="muted" style="margin-left:6px;"></span>
-              <button class="btn_sm" id="raw_copy_query" data-ui="raw.copy_query" title="raw.copy_query">Query kopieren</button>
-              <button class="btn_sm" id="raw_more" data-ui="raw.more" title="raw.more" style="display:none;">Mehr laden</button>
-              <button class="btn_sm" id="raw_tune_link" data-ui="raw.tune.link" title="raw.tune">Einstellungen: Autotuning</button>
+              <button class="btn_sm" id="raw_query_open" type="button" data-ui="raw.query_section" title="raw.query_section" aria-label="Raw Query anzeigen"><svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="11" cy="15.5" r="1.5"></circle><path d="M12,12H10V8h2a2,2,0,0,0,0-4H10A2.0023,2.0023,0,0,0,8,6v.5H6V6a4.0045,4.0045,0,0,1,4-4h2a4,4,0,0,1,0,8Z"></path><path d="M22.4479,21.0337A10.971,10.971,0,0,0,19.9211,4.7446l-.999,1.73A8.9967,8.9967,0,1,1,5,14H3a10.9916,10.9916,0,0,0,18.0338,8.4478L28.5859,30,30,28.5859Z"></path></svg></button>
             </div>
-
-            <div class="tbl_actions" style="justify-content:flex-start; margin-top: 8px; gap: 12px; flex-wrap:wrap;" data-ui="raw.center_range" title="raw.center_range">
-              <div style="display:flex; flex-direction:column; gap: 4px; min-width: 170px;">
-                <label for="raw_center_range">Bereich +- (Minuten)</label>
-                <input id="raw_center_range" type="number" min="0" max="2000" step="1" value="100" style="height:34px; padding: 6px 10px; width: 140px;" />
-              </div>
-              <div class="muted" id="raw_center_range_hint">Zeitfenster um den selektierten Messwert herum in Minuten. Speicherung erfolgt automatisch im Browser.</div>
-            </div>
-
-            <div class="tbl_actions" style="justify-content:flex-start; margin-top: 8px; gap: 10px; flex-wrap:wrap;" data-ui="raw.nav" title="raw.nav">
-              <button class="btn_sm" id="raw_day_oldest" data-ui="raw.nav.oldest" title="raw.nav.oldest">aeltester Tag</button>
-              <button class="btn_sm" id="raw_day_m1" data-ui="raw.nav.m1" title="raw.nav.m1">-1 Tag</button>
-              <button class="btn_sm" id="raw_day_m7" data-ui="raw.nav.m7" title="raw.nav.m7">-7 Tage</button>
-              <button class="btn_sm" id="raw_day_p1" data-ui="raw.nav.p1" title="raw.nav.p1">+1 Tag</button>
-              <button class="btn_sm" id="raw_day_p7" data-ui="raw.nav.p7" title="raw.nav.p7">+7 Tage</button>
-              <button class="btn_sm" id="raw_day_youngest" data-ui="raw.nav.youngest" title="raw.nav.youngest">juengster Tag</button>
-            </div>
-
-            <div id="raw_status" style="display:none; margin-top: 6px; font-size: 12px; opacity: 0.85; align-items:center; gap: 8px;" data-ui="raw.status" title="raw.status">
-              <span id="raw_spinner" aria-hidden="true" style="width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(0,0,0,0.18); border-top-color: rgba(0,0,0,0.75); animation: spin 0.9s linear infinite;"></span>
-              <span id="raw_status_txt">Raw laeuft...</span>
-              <span id="raw_status_time" style="opacity:0.85; white-space: nowrap;"></span>
-            </div>
-
-          <details id="raw_query_section" style="margin-top: 8px;" data-ui="raw.query_section" title="raw.query_section">
-            <summary><span class="ib_summary_row"><span>Influx Query</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Influx Query" data-info-body="Zeigt den aktuellen/letzten Query-String fuer Raw/Graph/Stats (je nach Kontext).\n\nNutzen:\n- Debugging\n- Support" >i</button></span></summary>
-            <div class="row" style="align-items:center; margin-top:6px;">
-              <div class="muted" id="raw_query_meta" data-ui="raw.query_meta" title="raw.query_meta" style="flex:1;"></div>
-              <button id="raw_query_history" type="button" class="btn_sm" style="width:auto; white-space:nowrap;" data-ui="raw.query_history" title="raw.query_history">History</button>
-            </div>
-            <div class="muted" style="margin-top: 6px;">Query (genau wie von InfluxBro genutzt):</div>
-            <pre id="raw_query" data-ui="raw.query" title="raw.query" style="margin:6px 0 0 0; padding:10px 12px; border:1px solid #eee; border-radius:12px; background:#fafafa; white-space:pre; overflow:auto; max-height: 220px;">Noch keine Query vorhanden.</pre>
-          </details>
 
             <div class="table_box" id="raw_box" style="--max-rows: 10;">
             <table id="raw_tbl" class="list_tbl ib_tbl" data-ui="raw.table" title="raw.table">
@@ -753,19 +737,19 @@
       <div style="max-width: 980px; margin: 6vh auto; background: #fff; border-radius: 16px; padding: 14px 14px 12px 14px; box-shadow: 0 12px 60px rgba(0,0,0,0.28);">
         <div style="display:flex; justify-content:space-between; align-items:baseline; gap:12px;">
           <div style="font-weight:800; font-size: 16px;">Schreiben bestaetigen</div>
-          <button class="btn_sm" id="apply_modal_close" data-ui="editlist_apply_modal_close" title="editlist_apply_modal_close">Schliessen</button>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <button class="btn_sm" id="apply_modal_query_open" type="button" data-ui="editlist_apply_modal_query" title="editlist_apply_modal_query" aria-label="Pruef-Query anzeigen"><svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="11" cy="15.5" r="1.5"></circle><path d="M12,12H10V8h2a2,2,0,0,0,0-4H10A2.0023,2.0023,0,0,0,8,6v.5H6V6a4.0045,4.0045,0,0,1,4-4h2a4,4,0,0,1,0,8Z"></path><path d="M22.4479,21.0337A10.971,10.971,0,0,0,19.9211,4.7446l-.999,1.73A8.9967,8.9967,0,1,1,5,14H3a10.9916,10.9916,0,0,0,18.0338,8.4478L28.5859,30,30,28.5859Z"></path></svg></button>
+            <button class="btn_sm" id="apply_modal_close" data-ui="editlist_apply_modal_close" title="editlist_apply_modal_close">Schliessen</button>
+          </div>
         </div>
         <div class="muted" id="apply_modal_info" style="margin-top: 6px;"></div>
 
-        <details id="apply_modal_query_section" style="margin-top: 10px;" data-ui="editlist_apply_modal_query" title="editlist_apply_modal_query">
-          <summary><span class="ib_summary_row"><span>Influx Query (zum Pruefen)</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Query (Pruefen)" data-info-body="Query-Ausgabe, die speziell fuer Pruefen/Cache/Vergleiche genutzt wird.\n\nHinweis:\n- Inhalt ist best-effort und kann sich je nach Modus unterscheiden." >i</button></span></summary>
-          <div class="tbl_actions" style="justify-content:flex-start; margin-top: 8px;">
-            <button class="btn_sm" id="apply_modal_copy_query" data-ui="editlist_apply_modal_copy_query" title="editlist_apply_modal_copy_query">Query kopieren</button>
-            <button class="btn_sm" id="apply_modal_query_history" type="button" data-ui="editlist_apply_modal_query_history" title="editlist_apply_modal_query_history">History</button>
-          </div>
-          <div class="muted" id="apply_modal_query_meta" style="margin-top: 6px;"></div>
-          <pre id="apply_modal_query" style="margin:6px 0 0 0; padding:10px 12px; border:1px solid #eee; border-radius:12px; background:#fafafa; white-space:pre; overflow:auto; max-height: 220px;">Noch keine Query vorhanden.</pre>
-        </details>
+        <div id="apply_modal_query_section" style="display:none;" data-ui="editlist_apply_modal_query" title="editlist_apply_modal_query">
+          <button class="btn_sm" id="apply_modal_copy_query" data-ui="editlist_apply_modal_copy_query" title="editlist_apply_modal_copy_query"></button>
+          <button class="btn_sm" id="apply_modal_query_history" type="button" data-ui="editlist_apply_modal_query_history" title="editlist_apply_modal_query_history"></button>
+          <div id="apply_modal_query_meta"></div>
+          <pre id="apply_modal_query">Noch keine Query vorhanden.</pre>
+        </div>
 
           <div class="table_box" style="margin-top: 10px; max-height: 45vh;" data-ui="editlist_apply_modal_table" title="editlist_apply_modal_table">
             <table>
@@ -864,6 +848,7 @@ const $loadSpinner = document.getElementById('load_spinner');
 const $loadStatusTxt = document.getElementById('load_status_txt');
 const $loadStatusTime = document.getElementById('load_status_time');
 const $btnReset = document.getElementById('reset_filters');
+const $dashboardQueryOpen = document.getElementById('dashboard_query_open');
 
 try{ if($btnOutlierReset) $btnOutlierReset.disabled = true; }catch(e){}
 
@@ -889,6 +874,8 @@ const canvas = document.getElementById('chart');
 const ctx = canvas.getContext('2d');
 const $plotly = document.getElementById('chart_plotly');
 const $graphResize = document.getElementById('graph_resize');
+const $graphRefresh = document.getElementById('graph_refresh');
+const $graphQueryOpen = document.getElementById('graph_query_open');
 
 const $rawSection = document.getElementById('raw_section');
 const $rawInfo = document.getElementById('raw_info');
@@ -900,48 +887,16 @@ const $rawWindowWidth = document.getElementById('raw_windowwidth');
 const $rawWrap = document.getElementById('raw_wrap');
 const $rawColFilter = document.getElementById('raw_colfilter');
 const $rawCopy = document.getElementById('raw_copy');
-const $rawCopyQuery = document.getElementById('raw_copy_query');
-const $rawMore = document.getElementById('raw_more');
-const $rawTune = document.getElementById('raw_tune');
-const $rawTuneLink = document.getElementById('raw_tune_link');
 const $rawCenterRange = document.getElementById('raw_center_range');
 const $rawCenterRangeHint = document.getElementById('raw_center_range_hint');
 const $rawCopyValue = document.getElementById('raw_copy_value');
 const $rawPaste = document.getElementById('raw_paste');
 const $rawCopiedInfo = document.getElementById('raw_copied_info');
-if($rawTuneLink){
-  $rawTuneLink.addEventListener('click', async (ev)=>{
-    _stop(ev);
-    try{
-      const startIso = $start && $start.value ? localToIsoUtc($start.value) : null;
-      const stopIso = $stop && $stop.value ? localToIsoUtc($stop.value) : null;
-      const payload = {
-        measurement: $m ? String($m.value || '') : '',
-        field: $f ? String($f.value || '') : '',
-        entity_id: $e ? String($e.value || '') : null,
-        friendly_name: $n ? String($n.value || '') : null,
-        start: startIso,
-        stop: stopIso,
-      };
-      ok('Starte Auto-Tuning (Server)...');
-      const r = await fetch('./api/raw_autotune', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
-      const j = await r.json().catch(()=>null);
-      if(!r.ok || !j || !j.ok){ err('Auto-Tuning fehlgeschlagen: ' + (j && j.error ? j.error : ('HTTP ' + r.status))); return; }
-      ok(`Auto-Tuning beendet: ui_raw_max_points=${j.chosen} (ms=${Math.round(j.measured_ms||0)})`);
-    }catch(e){ err('Auto-Tuning fehlgeschlagen: ' + String(e && e.message ? e.message : e)); }
-  });
-}
+const $rawQueryOpen = document.getElementById('raw_query_open');
 const $rawQuerySection = document.getElementById('raw_query_section');
 const $rawQueryMeta = document.getElementById('raw_query_meta');
 const $rawQueryHistory = document.getElementById('raw_query_history');
 const $rawQuery = document.getElementById('raw_query');
-
-const $rawDayOldest = document.getElementById('raw_day_oldest');
-const $rawDayM1 = document.getElementById('raw_day_m1');
-const $rawDayM7 = document.getElementById('raw_day_m7');
-const $rawDayP1 = document.getElementById('raw_day_p1');
-const $rawDayP7 = document.getElementById('raw_day_p7');
-const $rawDayYoungest = document.getElementById('raw_day_youngest');
 
 const $graphQuerySection = document.getElementById('graph_query_section');
 const $graphCopyQuery = document.getElementById('graph_copy_query');
@@ -1011,9 +966,11 @@ const $editSplitHandle = document.getElementById('edit_split_handle');
 const $editGraphRefresh = document.getElementById('edit_graph_refresh');
 const $editGraphInfo = document.getElementById('edit_graph_info');
 const $editGraphPlot = document.getElementById('edit_graph_plot');
+const $statsTotalOpen = document.getElementById('stats_total_open');
 
 const $applyModal = document.getElementById('apply_modal');
 const $applyModalClose = document.getElementById('apply_modal_close');
+const $applyModalQueryOpen = document.getElementById('apply_modal_query_open');
 const $applyModalInfo = document.getElementById('apply_modal_info');
 const $applyModalQuerySection = document.getElementById('apply_modal_query_section');
 const $applyModalQueryMeta = document.getElementById('apply_modal_query_meta');
@@ -1032,6 +989,7 @@ let UI_EDIT_GRAPH_BUFFER_MINUTES = 30;
 let UI_EDIT_GRAPH_MAX_POINTS = 50000;
 let UI_RAW_MAX_POINTS = 20000;
 let UI_RAW_CENTER_MAX_POINTS = 2000;
+let UI_RAW_CENTER_MIN_POINTS = 10;
 let RAW_CENTER_RANGE = 100;
 let UI_FONT_SMALL_FALLBACK = 11;
 
@@ -1042,10 +1000,6 @@ function clampRawCenterRange(v){
   if(n < 0) n = 0;
   if(n > UI_RAW_CENTER_MAX_POINTS) n = UI_RAW_CENTER_MAX_POINTS;
   return n;
-}
-
-function currentRawCenterExpansion(){
-  return Math.max(0, Math.trunc(Math.max(Number(RAW_BEFORE_OFFSET || 0), Number(RAW_AFTER_OFFSET || 0))));
 }
 
 let CFG_BUCKET = "";
@@ -2082,203 +2036,6 @@ let GRAPH_SELECTED_MS = null;
 let GRAPH_SELECTED_Y = null;
 let RAW_SELECTED_MS = null;
 
-function _dayKeyLocalFromMs(ms){
-  try{
-    const d = new Date(Number(ms));
-    if(!isFinite(d.getTime())) return '';
-    const pad = (n)=>String(n).padStart(2,'0');
-    return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
-  }catch(e){
-    return '';
-  }
-}
-
-function _dayKeyLocalAdd(dayKey, deltaDays){
-  try{
-    const m = String(dayKey||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if(!m) return '';
-    const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 0, 0, 0, 0);
-    if(!isFinite(d.getTime())) return '';
-    d.setDate(d.getDate() + Number(deltaDays||0));
-    return _dayKeyLocalFromMs(d.getTime());
-  }catch(e){
-    return '';
-  }
-}
-
-function _rawRowsDayBounds(){
-  const rows = RAW_ROWS || [];
-  let min = '';
-  let max = '';
-  for(const r of rows){
-    try{
-      const ms = Date.parse(String(r.time || ''));
-      if(!isFinite(ms)) continue;
-      const k = _dayKeyLocalFromMs(ms);
-      if(!k) continue;
-      if(!min || k < min) min = k;
-      if(!max || k > max) max = k;
-    }catch(e){}
-  }
-  return {min, max};
-}
-
-function _rawRowsBoundsMs(){
-  try{
-    const rows = RAW_ROWS || [];
-    let min = null;
-    let max = null;
-    for(const r of rows){
-      const ms = Date.parse(String((r && r.time) ? r.time : ''));
-      if(!isFinite(ms)) continue;
-      if(min === null || ms < min) min = ms;
-      if(max === null || ms > max) max = ms;
-    }
-    return {min, max};
-  }catch(e){
-    return {min: null, max: null};
-  }
-}
-
-function _rawTopVisibleDayKey(){
-  try{
-    if(!$rawBox) return '';
-    const boxRect = $rawBox.getBoundingClientRect();
-    const trs = Array.from(document.querySelectorAll('#raw_tbl tbody tr'));
-    let best = null;
-    let bestTop = Infinity;
-    for(const tr of trs){
-      const rr = tr.getBoundingClientRect();
-      if(rr.bottom < boxRect.top) continue;
-      if(rr.top >= boxRect.top && rr.top < bestTop){
-        bestTop = rr.top;
-        best = tr;
-      }
-    }
-    if(!best) return '';
-    const ms = Number(best.getAttribute('data-ts-ms') || '');
-    if(!isFinite(ms)) return '';
-    return _dayKeyLocalFromMs(ms);
-  }catch(e){
-    return '';
-  }
-}
-
-function _rawScrollToDayAsTop(dayKey){
-  try{
-    const dk = String(dayKey||'');
-    if(!dk) return false;
-    if(!$rawBox) return false;
-    const trs = Array.from(document.querySelectorAll('#raw_tbl tbody tr'));
-    let target = null;
-    for(const tr of trs){
-      const ms = Number(tr.getAttribute('data-ts-ms') || '');
-      if(!isFinite(ms)) continue;
-      if(_dayKeyLocalFromMs(ms) === dk){
-        target = tr;
-        break;
-      }
-    }
-    if(!target) return false;
-    const boxRect = $rawBox.getBoundingClientRect();
-    const rowRect = target.getBoundingClientRect();
-    const curTop = $rawBox.scrollTop;
-    const rowTopInBox = (rowRect.top - boxRect.top) + curTop;
-    $rawBox.scrollTop = Math.max(0, rowTopInBox);
-    return true;
-  }catch(e){
-    return false;
-  }
-}
-
-async function _rawLoadMoreOnce(){
-  try{
-    const before = (RAW_ROWS || []).length;
-    await loadRawFromGraph(false);
-    const after = (RAW_ROWS || []).length;
-    return isFinite(after) && after > before;
-  }catch(e){
-    return false;
-  }
-}
-
-async function _rawLoadUntilDayKey(dayKey){
-  const want = String(dayKey || '').trim();
-  if(!want) return false;
-
-  // Guard against runaway loops.
-  const MAX_LOADS = 40;
-  let loads = 0;
-
-  while(loads < MAX_LOADS){
-    const b = _rawRowsDayBounds();
-    if(b && b.max && want <= b.max) return true;
-    if(!_rawCanMore()) return false;
-
-    ok(`Raw Daten: lade nach... (target: ${want})`);
-    const progressed = await _rawLoadMoreOnce();
-    loads += 1;
-    if(!progressed) return false;
-  }
-  return false;
-}
-
-async function _rawLoadUntilEnd(){
-  const MAX_LOADS = 60;
-  let loads = 0;
-  while(loads < MAX_LOADS){
-    if(!_rawCanMore()) return true;
-    ok('Raw Daten: lade bis zum Ende...');
-    const progressed = await _rawLoadMoreOnce();
-    loads += 1;
-    if(!progressed) return false;
-  }
-  return false;
-}
-
-async function _rawNav(deltaDays, toEdge){
-  try{
-    const rows = RAW_ROWS || [];
-    if(!rows.length){ ok('Raw Daten: keine Zeilen geladen.'); return; }
-
-    let b = _rawRowsDayBounds();
-    if(!b.min || !b.max){ ok('Raw Daten: keine gueltigen Zeitstempel.'); return; }
-
-    let base = '';
-    if(toEdge === 'min') base = b.min;
-    else if(toEdge === 'max') base = b.max;
-    else if(RAW_SELECTED_MS && isFinite(Number(RAW_SELECTED_MS))) base = _dayKeyLocalFromMs(Number(RAW_SELECTED_MS));
-    else base = _rawTopVisibleDayKey();
-    if(!base) base = b.min;
-
-    let want = base;
-    if(deltaDays) want = _dayKeyLocalAdd(base, deltaDays);
-    if(!want) return;
-
-    // If user navigates forward and the target day is not loaded yet, load more until we reach it.
-    if((toEdge === 'max') || (Number(deltaDays || 0) > 0 && want > b.max)){
-      if(toEdge === 'max'){
-        await _rawLoadUntilEnd();
-      }else{
-        await _rawLoadUntilDayKey(want);
-      }
-      b = _rawRowsDayBounds();
-      if(toEdge === 'max') want = b.max;
-      if(toEdge === 'min') want = b.min;
-    }
-
-    // Clamp to what we actually have.
-    if(want < b.min) want = b.min;
-    if(want > b.max) want = b.max;
-
-    if(!_rawScrollToDayAsTop(want)){
-      ok(`Raw Daten: Tag nicht in geladenen Zeilen: ${want}`);
-      return;
-    }
-    ok(`Raw Daten: ${want}`);
-  }catch(e){}
-}
-
 let FILTER_SELECTED = new Set();
 let EDIT_SELECTED = new Set();
 
@@ -3072,17 +2829,102 @@ function setLastQuery(q, triggeredAtIso, durationMs){
       $queryMeta.textContent = parts.join(' | ');
     }
     $queryPre.textContent = s || 'Noch keine Query vorhanden.';
-    $queryDetails.style.display = 'block';
+    try{
+      if(s && window.InfluxBroQueryHistory && window.InfluxBroQueryHistory.add){
+        window.InfluxBroQueryHistory.add('dashboard', 'Aktualisieren', s, '', at || new Date().toISOString());
+      }
+    }catch(e){}
 
     // Mirror into the graph query panel (Dashboard source).
     try{ GRAPH_QUERY_DASH = s; GRAPH_QUERY_DASH_AT = end; _renderGraphQueryPanel(); }catch(e){}
   }catch(e){}
 }
 
+function _statsTotalText(){
+  try{
+    if(!$statsTotBody) return 'Noch keine Gesamtstatistik vorhanden.';
+    const rows = Array.from($statsTotBody.querySelectorAll('tr')).map((tr)=>Array.from(tr.children).map(td=>String(td.textContent || '').trim()).filter(Boolean).join(': ')).filter(Boolean);
+    return rows.length ? rows.join('\n') : 'Noch keine Gesamtstatistik vorhanden.';
+  }catch(e){
+    return 'Noch keine Gesamtstatistik vorhanden.';
+  }
+}
+
+function openDashboardQueryDialog(){
+  try{
+    if(window.InfluxBroDialogs && window.InfluxBroDialogs.openQuery){
+      window.InfluxBroDialogs.openQuery({
+        title: 'Dashboard Query',
+        text: $queryPre ? String($queryPre.textContent || '') : '',
+        meta: $queryMeta ? String($queryMeta.textContent || '') : '',
+        scope: 'dashboard',
+      });
+    }
+  }catch(e){}
+}
+
+function openGraphQueryDialog(){
+  try{
+    if(window.InfluxBroDialogs && window.InfluxBroDialogs.openQuery){
+      const label = $graphQueryLabel ? String($graphQueryLabel.textContent || '') : '';
+      window.InfluxBroDialogs.openQuery({
+        title: 'Graph Query',
+        text: $graphQuery ? String($graphQuery.textContent || '') : '',
+        meta: $graphQueryMeta ? String($graphQueryMeta.textContent || '') : '',
+        label,
+        scope: 'dashboard.graph',
+      });
+    }
+  }catch(e){}
+}
+
+function openRawQueryDialog(){
+  try{
+    if(window.InfluxBroDialogs && window.InfluxBroDialogs.openQuery){
+      window.InfluxBroDialogs.openQuery({
+        title: 'Raw Query',
+        text: $rawQuery ? String($rawQuery.textContent || '') : '',
+        meta: $rawQueryMeta ? String($rawQueryMeta.textContent || '') : '',
+        scope: 'dashboard.raw',
+      });
+    }
+  }catch(e){}
+}
+
+function openApplyQueryDialog(){
+  try{
+    if(window.InfluxBroDialogs && window.InfluxBroDialogs.openQuery){
+      window.InfluxBroDialogs.openQuery({
+        title: 'Pruef-Query',
+        text: $applyModalQuery ? String($applyModalQuery.textContent || '') : '',
+        meta: $applyModalQueryMeta ? String($applyModalQueryMeta.textContent || '') : '',
+        scope: 'dashboard.apply_preview',
+      });
+    }
+  }catch(e){}
+}
+
+function openStatsTotalDialog(){
+  try{
+    if(window.InfluxBroDialogs && window.InfluxBroDialogs.openText){
+      window.InfluxBroDialogs.openText({
+        title: 'Gesamtstatistik (Alles)',
+        text: _statsTotalText(),
+        copyTitle: 'Zwischenablage',
+      });
+    }
+  }catch(e){}
+}
+
+try{ if($dashboardQueryOpen) $dashboardQueryOpen.addEventListener('click', (ev)=>{ _stop(ev); openDashboardQueryDialog(); }); }catch(e){}
 try{ if($queryHistory) $queryHistory.addEventListener('click', (ev)=>{ _stop(ev); try{ window.InfluxBroQueryHistory && window.InfluxBroQueryHistory.show && window.InfluxBroQueryHistory.show('dashboard'); }catch(e){}; }); }catch(e){}
+try{ if($graphQueryOpen) $graphQueryOpen.addEventListener('click', (ev)=>{ _stop(ev); openGraphQueryDialog(); }); }catch(e){}
 try{ if($graphQueryHistory) $graphQueryHistory.addEventListener('click', (ev)=>{ _stop(ev); try{ window.InfluxBroQueryHistory && window.InfluxBroQueryHistory.show && window.InfluxBroQueryHistory.show('dashboard.graph'); }catch(e){}; }); }catch(e){}
+try{ if($rawQueryOpen) $rawQueryOpen.addEventListener('click', (ev)=>{ _stop(ev); openRawQueryDialog(); }); }catch(e){}
 try{ if($rawQueryHistory) $rawQueryHistory.addEventListener('click', (ev)=>{ _stop(ev); try{ window.InfluxBroQueryHistory && window.InfluxBroQueryHistory.show && window.InfluxBroQueryHistory.show('dashboard.raw'); }catch(e){}; }); }catch(e){}
+try{ if($applyModalQueryOpen) $applyModalQueryOpen.addEventListener('click', (ev)=>{ _stop(ev); openApplyQueryDialog(); }); }catch(e){}
 try{ if($applyModalQueryHistory) $applyModalQueryHistory.addEventListener('click', (ev)=>{ _stop(ev); try{ window.InfluxBroQueryHistory && window.InfluxBroQueryHistory.show && window.InfluxBroQueryHistory.show('dashboard.apply_preview'); }catch(e){}; }); }catch(e){}
+try{ if($statsTotalOpen) $statsTotalOpen.addEventListener('click', (ev)=>{ _stop(ev); openStatsTotalDialog(); }); }catch(e){}
 
 let GRAPH_QUERY_DASH = "";
 let GRAPH_QUERY_EDIT = "";
@@ -3096,7 +2938,6 @@ function _renderGraphQueryPanel(){
     if($graphQueryMeta) $graphQueryMeta.textContent = at ? ('Zeit: ' + fmtTs(at)) : '';
     if($graphQueryLabel) $graphQueryLabel.textContent = label;
     if($graphQuery) $graphQuery.textContent = s || 'Noch keine Query vorhanden.';
-    if($graphQuerySection) $graphQuerySection.style.display = 'block';
   }catch(e){}
 }
 
@@ -3308,7 +3149,7 @@ async function resetFiltersKeepRange(){
     try{ if($backupBadge) $backupBadge.textContent = ""; }catch(e){}
 
     // Clear raw caches (avoid reloads with stale graph window).
-    try{ RAW_ROWS = []; RAW_META = null; RAW_OFFSET = 0; RAW_BEFORE_OFFSET = 0; RAW_AFTER_OFFSET = 0; RAW_ANCHOR_ISO = null; RAW_LAST_KEY = ""; }catch(e){}
+    try{ RAW_ROWS = []; RAW_META = null; RAW_OFFSET = 0; RAW_ANCHOR_ISO = null; RAW_LAST_KEY = ""; }catch(e){}
     try{ renderRawTable(); }catch(e){}
 
     try{ FILTER_SELECTED = new Set(); EDIT_SELECTED = new Set(); EDIT_LIST = new Map(); EDIT_ACTIVE_KEY = ""; renderTable(); }catch(e){}
@@ -3464,11 +3305,13 @@ async function loadUiConfig(){
     const rcd = Number(cfg.ui_raw_center_range_default);
     if(isFinite(rcd) && rcd >= 0 && rcd <= UI_RAW_CENTER_MAX_POINTS) RAW_CENTER_RANGE = Math.trunc(rcd);
     else RAW_CENTER_RANGE = clampRawCenterRange(RAW_CENTER_RANGE);
+    const rmin = Number(cfg.ui_raw_center_min_points);
+    if(isFinite(rmin) && rmin >= 1 && rmin <= 100000) UI_RAW_CENTER_MIN_POINTS = Math.trunc(rmin);
     if($rawCenterRange) {
       $rawCenterRange.max = String(UI_RAW_CENTER_MAX_POINTS);
       $rawCenterRange.value = String(clampRawCenterRange(RAW_CENTER_RANGE));
     }
-    if($rawCenterRangeHint) $rawCenterRangeHint.textContent = `Zeitfenster um den selektierten Messwert herum in Minuten. Speicherung erfolgt automatisch im Browser. Max: ${UI_RAW_CENTER_MAX_POINTS} min.`;
+    if($rawCenterRangeHint) $rawCenterRangeHint.textContent = `Zeitfenster um den selektierten Messwert herum in Minuten. Bei weniger als ${UI_RAW_CENTER_MIN_POINTS} Punkten pro Seite erweitert InfluxBro automatisch in 100-Minuten-Schritten. Max Eingabe: ${UI_RAW_CENTER_MAX_POINTS} min.`;
 
     const fs = Number(cfg.ui_font_size_px);
     if(isFinite(fs) && fs >= 10 && fs <= 22) document.documentElement.style.setProperty("--ui-font", fs + "px");
@@ -4087,11 +3930,13 @@ async function refreshDashboardSuggestions(opts){
     if($entityList) $entityList.innerHTML = ALL_ENTITY.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"></option>`).join('');
     _setSelCount($cntEid, ALL_ENTITY.length);
     _selApplyWidthForInput($e, ALL_ENTITY);
+    try{ window.InfluxBroCascade && window.InfluxBroCascade.syncInput && window.InfluxBroCascade.syncInput($e, ALL_ENTITY, { requireSource: [$n, $mf, $f] }); }catch(e){}
     logSelectorLoad('entity_id', ALL_ENTITY, { measurement_filter: meas, friendly_name: fn });
     ALL_FRIENDLY = await dashboardLoadTagValues('friendly_name', {...common, entity_id: eid || ''});
     if($friendlyList) $friendlyList.innerHTML = ALL_FRIENDLY.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"></option>`).join('');
     _setSelCount($cntFn, ALL_FRIENDLY.length);
     _selApplyWidthForInput($n, ALL_FRIENDLY);
+    try{ window.InfluxBroCascade && window.InfluxBroCascade.syncInput && window.InfluxBroCascade.syncInput($n, ALL_FRIENDLY, { requireSource: [$e, $mf, $f] }); }catch(e){}
     logSelectorLoad('friendly_name', ALL_FRIENDLY, { measurement_filter: meas, entity_id: eid });
   }catch(e){
     // ignore (best effort, like combine)
@@ -4199,8 +4044,6 @@ let RAW_META = null;
 let _RAW_TIMER = null;
 let _RAW_INFLIGHT = false;
 let RAW_OFFSET = 0;
-let RAW_BEFORE_OFFSET = 0;
-let RAW_AFTER_OFFSET = 0;
 let RAW_ANCHOR_ISO = null;
 const RAW_WINDOW_LIMIT = 5000;
 let RAW_QUERY_LAST_AT = "";
@@ -4210,7 +4053,6 @@ let APPLY_QUERY_LAST_AT = "";
 let RAW_LAST_KEY = "";
 let _RAW_STATUS_T0 = 0;
 let _RAW_STATUS_TIMER = null;
-let _RAW_AUTO_MORE_T = 0;
 let RAW_TIME_FROM_GRAPH = true;
 
 function renderRawQuery(){
@@ -4313,9 +4155,16 @@ function renderRawTable(){
   if(isFinite(total)) info += `Eintraege: ${loaded} / ${total}`; else info += `Eintraege: ${loaded}`;
   if(sTxt && eTxt) info += ` | Zeitraum: ${sTxt} bis ${eTxt}`;
   if(UI_RAW_MAX_POINTS) info += ` | max_points: ${UI_RAW_MAX_POINTS}`;
-  const expansion = currentRawCenterExpansion();
-  const effectiveMinutes = Math.max(0, clampRawCenterRange(RAW_CENTER_RANGE)) * (expansion + 1);
-  info += ` | Bereich +-: ${effectiveMinutes} min`;
+  info += ` | Bereich +-: ${Math.max(0, clampRawCenterRange(RAW_CENTER_RANGE))} min`;
+  info += ` | Mindestdatenpunkte je Seite: ${Math.max(1, Math.trunc(Number(UI_RAW_CENTER_MIN_POINTS || 10)))}`;
+  if(RAW_META && RAW_META.mode === 'center' && RAW_META.center_minutes_loaded){
+    info += ` | tatsaechlich geladen: +- ${Math.max(0, Math.trunc(Number(RAW_META.center_minutes_loaded || 0)))} min`;
+  }
+  if(RAW_META && RAW_META.mode === 'center'){
+    const beforePts = Math.max(0, Math.trunc(Number(RAW_META.before_points || 0)));
+    const afterPts = Math.max(0, Math.trunc(Number(RAW_META.after_points || 0)));
+    info += ` | Vorher/Nachher: ${beforePts}/${afterPts}`;
+  }
   $rawInfo.textContent = info;
 
   const selMs = (RAW_SELECTED_MS !== null && RAW_SELECTED_MS !== undefined && isFinite(Number(RAW_SELECTED_MS))) ? Number(RAW_SELECTED_MS) : null;
@@ -4339,13 +4188,10 @@ function renderRawTable(){
       if(isFinite(ms)) tr.setAttribute('data-ts-ms', String(ms));
       const key = rowKey(r);
       if(key) tr.dataset.key = key;
-      if(bestMs !== null && isFinite(ms) && ms === bestMs){
-        tr.classList.add('raw_hl');
-      }
-      // Preserve explicit selection state
-      if(typeof RAW_ROW_SELECTED_KEY !== 'undefined' && RAW_ROW_SELECTED_KEY && String(RAW_ROW_SELECTED_KEY) === String(key)){
-        tr.classList.add('raw_sel');
-      }
+      if(key) tr.draggable = true;
+      if(bestMs !== null && isFinite(ms) && ms === bestMs) tr.classList.add('raw_hl');
+      if(RAW_ROW_SELECTED_KEY && String(RAW_ROW_SELECTED_KEY) === String(key)) tr.classList.add('raw_sel');
+      if(RAW_COPIED && String(RAW_COPIED.key || '') === String(key)) tr.classList.add('raw_src');
     }catch(e){}
     const tdT = document.createElement('td');
     tdT.textContent = fmtTs(r.time);
@@ -4354,44 +4200,108 @@ function renderRawTable(){
     tr.appendChild(tdT);
     tr.appendChild(tdV);
 
-    // Row click: select for copy/paste (separate from graph highlight)
     tr.addEventListener('click', (ev)=>{
       try{ _stop(ev); }catch(e){}
-      // avoid interfering with other clickable controls
       const target = ev && ev.target;
       if(target && target.tagName){ const tag = String(target.tagName).toLowerCase(); if(tag === 'button' || tag === 'input' || tag === 'select') return; }
-      const k = tr.dataset.key || '';
+      setRawSelectedKey(tr.dataset.key || '');
+    });
+
+    tr.addEventListener('dragstart', (ev)=>{
       try{
-        // toggle selection
-        const prev = RAW_ROW_SELECTED_KEY || '';
-        if(prev && prev === k){
-          RAW_ROW_SELECTED_KEY = null;
-          tr.classList.remove('raw_sel');
-        }else{
-          // clear previous
-          Array.from(document.querySelectorAll('#raw_tbl tbody tr.raw_sel')).forEach(x=>x.classList.remove('raw_sel'));
-          RAW_ROW_SELECTED_KEY = k;
-          tr.classList.add('raw_sel');
+        const key = String(tr.dataset.key || '');
+        if(!key){ ev.preventDefault(); return; }
+        RAW_DRAG_SOURCE_KEY = key;
+        if(ev.dataTransfer){
+          ev.dataTransfer.effectAllowed = 'move';
+          ev.dataTransfer.setData('text/plain', key);
         }
       }catch(e){}
-      try{ updateRawToolbarState(); }catch(e){}
+    });
+    tr.addEventListener('dragend', ()=>{ RAW_DRAG_SOURCE_KEY = null; _setRawDropTarget(null); });
+    tr.addEventListener('dragover', (ev)=>{
+      const src = String(RAW_DRAG_SOURCE_KEY || '');
+      const dst = String(tr.dataset.key || '');
+      if(!src || !dst || src === dst) return;
+      try{ ev.preventDefault(); }catch(e){}
+      if(ev.dataTransfer) ev.dataTransfer.dropEffect = 'move';
+      _setRawDropTarget(dst);
+    });
+    tr.addEventListener('dragleave', ()=>{ if(String(RAW_DROP_TARGET_KEY || '') === String(tr.dataset.key || '')) _setRawDropTarget(null); });
+    tr.addEventListener('drop', async (ev)=>{
+      try{ ev.preventDefault(); }catch(e){}
+      const sourceKey = String(RAW_DRAG_SOURCE_KEY || (ev.dataTransfer ? (ev.dataTransfer.getData('text/plain') || '') : '') || '');
+      const targetKey = String(tr.dataset.key || '');
+      RAW_DRAG_SOURCE_KEY = null;
+      _setRawDropTarget(null);
+      if(!sourceKey || !targetKey || sourceKey === targetKey) return;
+      await triggerRawOverwrite(sourceKey, targetKey, {mode:'dragdrop'});
     });
 
     $rawBody.appendChild(tr);
   });
 
-  // More button
-  if($rawMore){
-    const canMore = _rawCanMore();
-    $rawMore.style.display = canMore ? "inline-block" : "none";
-  }
-
   renderRawQuery();
+  updateRawToolbarState();
 }
 
 // --- Raw copy/paste state + toolbar helpers
 let RAW_ROW_SELECTED_KEY = null;
 let RAW_COPIED = null; // { key, raw_value, value_str, time }
+let RAW_DRAG_SOURCE_KEY = null;
+let RAW_DROP_TARGET_KEY = null;
+
+function findRawRowByKey(key){
+  const want = String(key || '');
+  if(!want) return null;
+  return (RAW_ROWS || []).find(r => rowKey(r) === want) || null;
+}
+
+function rawNumericValueString(v){
+  if(typeof v === 'number' && isFinite(v)) return String(v);
+  const s = String(v === null || v === undefined ? '' : v).trim();
+  if(s && isFinite(Number(s))) return s;
+  return '';
+}
+
+function rawSelectorKey(key){
+  return String(key || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
+function countCenteredRows(rows, anchorIso){
+  const anchorMs = Date.parse(String(anchorIso || ''));
+  let before = 0;
+  let after = 0;
+  let anchor = 0;
+  (rows || []).forEach(r => {
+    const ms = Date.parse(String(r && r.time ? r.time : ''));
+    if(!isFinite(ms) || !isFinite(anchorMs)) return;
+    if(ms < anchorMs) before += 1;
+    else if(ms > anchorMs) after += 1;
+    else anchor += 1;
+  });
+  return { before, after, anchor };
+}
+
+function setRawSelectedKey(key){
+  const next = String(key || '').trim();
+  RAW_ROW_SELECTED_KEY = next || null;
+  Array.from(document.querySelectorAll('#raw_tbl tbody tr.raw_sel')).forEach(x=>x.classList.remove('raw_sel'));
+  if(next){
+    const tr = document.querySelector(`#raw_tbl tbody tr[data-key="${rawSelectorKey(next)}"]`);
+    if(tr) tr.classList.add('raw_sel');
+  }
+  updateRawToolbarState();
+}
+
+function _setRawDropTarget(key){
+  RAW_DROP_TARGET_KEY = key ? String(key) : null;
+  Array.from(document.querySelectorAll('#raw_tbl tbody tr.raw_drop_target')).forEach(x=>x.classList.remove('raw_drop_target'));
+  if(RAW_DROP_TARGET_KEY){
+    const tr = document.querySelector(`#raw_tbl tbody tr[data-key="${rawSelectorKey(RAW_DROP_TARGET_KEY)}"]`);
+    if(tr) tr.classList.add('raw_drop_target');
+  }
+}
 
 function updateRawToolbarState(){
   try{
@@ -4399,11 +4309,9 @@ function updateRawToolbarState(){
     const hasCopied = !!(RAW_COPIED && RAW_COPIED.key !== undefined);
     const hasTarget = !!(RAW_ROW_SELECTED_KEY && String(RAW_ROW_SELECTED_KEY).trim());
     $rawPaste.disabled = !(hasCopied && hasTarget && String(RAW_ROW_SELECTED_KEY) !== String(RAW_COPIED && RAW_COPIED.key));
-    // Copy button enabled only if a row is selected or one is highlighted
-    const anySel = hasTarget || !!(document.querySelector('#raw_tbl tbody tr.raw_hl'));
-    $rawCopyValue.disabled = !anySel;
+    $rawCopyValue.disabled = !hasTarget;
     if($rawCopiedInfo){
-      $rawCopiedInfo.textContent = hasCopied ? (`kopiert: ${String(RAW_COPIED.value_str || '')}`) : '';
+      $rawCopiedInfo.textContent = hasCopied ? (`Quelle: ${fmtTs(RAW_COPIED.time)} | Wert: ${String(RAW_COPIED.value_str || '')}`) : '';
     }
   }catch(e){}
 }
@@ -4414,76 +4322,118 @@ function showRawActionFeedback(title, text){
   }catch(e){}
 }
 
+function buildRawOverwritePrompt(sourceRow, targetRow){
+  return [
+    'Wert kopieren',
+    '',
+    `Quelle: ${fmtTs(sourceRow.time)} | Wert: ${fmtNum(sourceRow.value)}`,
+    `Ziel: ${fmtTs(targetRow.time)} | Wert: ${fmtNum(targetRow.value)}`,
+    '',
+    'Wollen Sie den Zielwert mit dem Quellwert ueberschreiben?'
+  ].join('\n');
+}
+
+async function reloadRawRowByKey(key){
+  const row = findRawRowByKey(key);
+  const base = currentFilters();
+  if(!row || !base || !base.measurement || !base.field) return false;
+  const ms = Date.parse(String(row.time || ''));
+  if(!isFinite(ms)) return false;
+  const start = new Date(ms - 2000).toISOString();
+  const stop = new Date(ms + 2000).toISOString();
+  const j = await api('./api/raw_points', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+      measurement: base.measurement,
+      field: base.field,
+      entity_id: base.entity_id,
+      friendly_name: base.friendly_name,
+      start,
+      stop,
+      include_total: false,
+      limit: 20,
+      offset: 0,
+    })
+  });
+  const rows = j && Array.isArray(j.rows) ? j.rows : [];
+  const fresh = rows.find(r => rowKey(r) === String(key)) || rows.find(r => Math.abs(Date.parse(String(r.time || '')) - ms) <= 1) || null;
+  if(!fresh) return false;
+  RAW_ROWS = (RAW_ROWS || []).map(r => rowKey(r) === String(key) ? fresh : r);
+  return true;
+}
+
+async function triggerRawOverwrite(sourceKey, targetKey, opts){
+  const sourceRow = findRawRowByKey(sourceKey);
+  const targetRow = findRawRowByKey(targetKey);
+  const base = currentFilters();
+  if(!sourceRow){ err('Quell-Zeile nicht geladen.'); return false; }
+  if(!targetRow){ err('Ziel-Zeile nicht geladen.'); return false; }
+  if(String(sourceKey) === String(targetKey)){ err('Quell- und Zielzeile sind identisch.'); return false; }
+  if(!base || !base.measurement || !base.field || !base.entity_id){ err('Bitte zuerst eine gueltige Dashboard-Serie laden.'); return false; }
+  const newValue = rawNumericValueString(sourceRow.value);
+  if(!newValue){ err('Quellwert ist nicht numerisch.'); return false; }
+  if(!confirm(buildRawOverwritePrompt(sourceRow, targetRow))) return false;
+
+  const reason = (opts && opts.mode === 'dragdrop') ? 'Raw Drag-and-Drop overwrite' : 'Raw Copy-Paste overwrite';
+  await api('./api/apply_changes', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+      confirm: true,
+      measurement: base.measurement,
+      field: base.field,
+      entity_id: base.entity_id,
+      friendly_name: base.friendly_name,
+      changes: [{
+        action: 'overwrite',
+        time: String(targetRow.time || ''),
+        new_value: newValue,
+        decimals: Math.max(0, _countDecimals(newValue)),
+        reason,
+      }],
+    })
+  });
+
+  await reloadRawRowByKey(targetKey);
+  setRawSelectedKey(targetKey);
+  renderRawTable();
+  ok('Zielwert wurde direkt in der Datenbank ueberschrieben.');
+  const refreshedTarget = findRawRowByKey(targetKey);
+  const targetValue = refreshedTarget && refreshedTarget.value !== undefined ? refreshedTarget.value : targetRow.value;
+  showRawActionFeedback('Wert kopieren', `Quelle: ${fmtTs(sourceRow.time)} | ${fmtNum(sourceRow.value)}\nZiel: ${fmtTs(targetRow.time)} | ${fmtNum(targetValue)}`);
+  return true;
+}
+
 try{
   if($rawCopyValue) $rawCopyValue.addEventListener('click', async (ev)=>{
     _stop(ev);
     try{
-      // Determine source row: prefer explicit selection, else highlighted
-      let key = RAW_ROW_SELECTED_KEY;
-      if(!key){
-        const hl = document.querySelector('#raw_tbl tbody tr.raw_hl');
-        if(hl) key = hl.dataset.key || '';
-      }
-      if(!key){ err('Bitte zuerst eine Raw-Zeile waehlen (anklicken).'); return; }
-      const row = (RAW_ROWS || []).find(r => rowKey(r) === key);
+      const key = RAW_ROW_SELECTED_KEY;
+      if(!key){ err('Bitte zuerst eine Raw-Zeile als Quelle markieren.'); return; }
+      const row = findRawRowByKey(key);
       if(!row){ err('Zeile nicht geladen.'); return; }
-      RAW_COPIED = { key: key, raw_value: row.value, value_str: String(fmtNumNoRound(row.value, UI_DECIMALS)), time: row.time };
-      // Try also to place into system clipboard (best-effort)
-      try{ await copyTextToClipboard(RAW_COPIED.value_str); }catch(e){}
-      ok('Wert kopiert.');
-      showRawActionFeedback('Raw Wert kopiert', `Zeit: ${fmtTs(row.time)}\nWert: ${String(RAW_COPIED.value_str || '')}`);
-      updateRawToolbarState();
+      RAW_COPIED = { key, raw_value: row.value, value_str: rawNumericValueString(row.value), time: row.time };
+      try{ if(RAW_COPIED.value_str) await copyTextToClipboard(RAW_COPIED.value_str); }catch(e){}
+      ok('Quellwert markiert.');
+      renderRawTable();
+      showRawActionFeedback('Raw Wert kopiert', `Quelle: ${fmtTs(row.time)}\nWert: ${fmtNum(row.value)}`);
     }catch(e){ displayError(e); }
   });
 }catch(e){}
 
 try{
-  if($rawPaste) $rawPaste.addEventListener('click', (ev)=>{
+  if($rawPaste) $rawPaste.addEventListener('click', async (ev)=>{
     _stop(ev);
     try{
-      if(!RAW_COPIED){ err('Kein kopierter Wert vorhanden.'); return; }
-      let target = RAW_ROW_SELECTED_KEY;
-      if(!target){ const hl = document.querySelector('#raw_tbl tbody tr.raw_hl'); if(hl) target = hl.dataset.key || ''; }
-      if(!target){ err('Bitte Ziel-Zeile waehlen (anklicken).'); return; }
-      if(String(target) === String(RAW_COPIED.key)){ err('Quell- und Zielzeile sind identisch.'); return; }
-      // Stage as overwrite
-      ensureStagedByKey(target);
-      if(!EDIT_LIST.has(String(target))){ err('Ziel-Zeile konnte nicht fuer die Bearbeitungsliste vorgemerkt werden.'); return; }
-      setNewValue(target, String(RAW_COPIED.raw_value), 'Copy-Paste');
-      try{
-        const sec = document.getElementById('filterlist_section');
-        if(sec) sec.open = true;
-        EDIT_SELECTED = new Set([target]);
-        EDIT_ACTIVE_KEY = String(target);
-      }catch(e){}
-      ok('Wert in Staging uebernommen. Bearbeitungsliste geoeffnet.');
-      try{
-        if(window.InfluxBroPopup && window.InfluxBroPopup.show){
-          const srcTxt = RAW_COPIED && RAW_COPIED.time ? fmtTs(RAW_COPIED.time) : '';
-          window.InfluxBroPopup.show('Raw Wert uebernommen', `Quelle: ${srcTxt || '-'}\nZiel: ${fmtTs(target)}\nNeuer Wert: ${String(RAW_COPIED.value_str || '')}\n\nDer Wert ist in der Bearbeitungsliste vorgemerkt und kann dort geschrieben werden.`);
-        }
-      }catch(e){}
-      renderTable();
-      updateRawToolbarState();
+      if(!RAW_COPIED){ err('Kein Quellwert markiert.'); return; }
+      if(!RAW_ROW_SELECTED_KEY){ err('Bitte Ziel-Zeile markieren.'); return; }
+      await triggerRawOverwrite(RAW_COPIED.key, RAW_ROW_SELECTED_KEY, {mode:'button'});
     }catch(e){ displayError(e); }
   });
 }catch(e){}
 
-// Keep toolbar state in sync when raw table changes
 try{ updateRawToolbarState(); }catch(e){}
-
-function _rawCanMore(){
-  try{
-    if(RAW_META && String(RAW_META.mode || '') === 'center'){
-      return !!RAW_META.has_more_before || !!RAW_META.has_more_after;
-    }
-    const loaded = (RAW_ROWS || []).length;
-    const total = RAW_META && (RAW_META.total_count !== null && RAW_META.total_count !== undefined) ? Number(RAW_META.total_count) : null;
-    return (isFinite(total) && loaded < total) || (RAW_META && RAW_META.returned === RAW_WINDOW_LIMIT);
-  }catch(e){
-    return false;
-  }
-}
 
 function _rawStatusStart(txt){
   try{
@@ -4539,13 +4489,10 @@ async function loadRawFromGraph(reset){
 
   const useCenter = !!anchorIso;
   const key = _rawKey(base, win, useCenter ? anchorIso : '');
-  const hadSameKey = (key === RAW_LAST_KEY);
   if(reset || key !== RAW_LAST_KEY){
     RAW_OFFSET = 0;
     RAW_ROWS = [];
     RAW_META = null;
-    RAW_BEFORE_OFFSET = 0;
-    RAW_AFTER_OFFSET = 0;
     RAW_ANCHOR_ISO = anchorIso;
     RAW_LAST_KEY = key;
     renderRawQuery();
@@ -4553,8 +4500,8 @@ async function loadRawFromGraph(reset){
 
   _RAW_INFLIGHT = true;
   try{
-    _rawStatusStart(reset ? 'Raw laedt...' : 'Raw laedt mehr...');
-    try{ window.InfluxBroStatus && window.InfluxBroStatus.start && window.InfluxBroStatus.start('dashboard.raw', reset ? 'Raw laedt...' : 'Raw laedt mehr...'); }catch(e){}
+    _rawStatusStart('Raw laedt...');
+    try{ window.InfluxBroStatus && window.InfluxBroStatus.start && window.InfluxBroStatus.start('dashboard.raw', 'Raw laedt...'); }catch(e){}
     const payload = {
       measurement: base.measurement,
       field: base.field,
@@ -4564,19 +4511,39 @@ async function loadRawFromGraph(reset){
       stop: win.stop,
     };
 
+    let j = null;
     if(useCenter){
-      const expansion = (!reset && hadSameKey) ? (currentRawCenterExpansion() + 1) : 0;
-      const centerMinutes = Math.max(0, clampRawCenterRange(RAW_CENTER_RANGE)) * (expansion + 1);
+      const minPoints = Math.max(1, Math.trunc(Number(UI_RAW_CENTER_MIN_POINTS || 10)));
+      let centerMinutes = Math.max(0, clampRawCenterRange(RAW_CENTER_RANGE));
       payload.mode = 'center';
       payload.anchor_time = anchorIso;
-      payload.center_minutes = centerMinutes;
       payload.include_total = false;
+      for(let guard = 0; guard < 2000; guard += 1){
+        payload.center_minutes = centerMinutes;
+        j = await api("./api/raw_points", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)});
+        const rowsNow = j && Array.isArray(j.rows) ? j.rows : [];
+        const metaNow = (j && j.meta) ? j.meta : {};
+        const counts = countCenteredRows(rowsNow, anchorIso);
+        const needBefore = counts.before < minPoints && !!metaNow.has_more_before;
+        const needAfter = counts.after < minPoints && !!metaNow.has_more_after;
+        if(!needBefore && !needAfter){
+          j.meta = Object.assign({}, metaNow, {
+            center_minutes_loaded: centerMinutes,
+            center_min_points: minPoints,
+            before_points: counts.before,
+            after_points: counts.after,
+            anchor_points: counts.anchor,
+          });
+          break;
+        }
+        centerMinutes += 100;
+      }
     }else{
       payload.limit = RAW_WINDOW_LIMIT;
       payload.offset = RAW_OFFSET;
       payload.include_total = true;
+      j = await api("./api/raw_points", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)});
     }
-    const j = await api("./api/raw_points", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)});
     const rows = j.rows || [];
     const meta = j.meta || null;
     RAW_META = meta;
@@ -4589,10 +4556,6 @@ async function loadRawFromGraph(reset){
 
     if(useCenter){
       RAW_ROWS = rows;
-      const spanLevel = meta ? Number(meta.center_window_multiplier || 1) : 1;
-      const level = isFinite(spanLevel) ? Math.max(1, Math.trunc(spanLevel)) : 1;
-      RAW_BEFORE_OFFSET = level - 1;
-      RAW_AFTER_OFFSET = level - 1;
       RAW_OFFSET = (RAW_ROWS || []).length;
     }else{
       if(RAW_OFFSET === 0) RAW_ROWS = rows;
@@ -4606,89 +4569,6 @@ async function loadRawFromGraph(reset){
     // keep previous
     try{ window.InfluxBroStatus && window.InfluxBroStatus.fail && window.InfluxBroStatus.fail('dashboard.raw', String(e && e.message ? e.message : e)); }catch(ex){}
     _rawStatusEnd(false, (e && e.message) ? e.message : String(e));
-  }finally{
-    _RAW_INFLIGHT = false;
-  }
-}
-
-async function rawAutoTuneMaxPoints(){
-  if(_RAW_INFLIGHT) return;
-  const base = currentFilters();
-  if(!base || !base.entity_id || !base.measurement || !base.field) { err('Auto-Tuning: bitte zuerst Messwert/Entity waehlen.'); return; }
-  const win = _rawWindowIso();
-  if(!win) { err('Auto-Tuning: kein Zeitraum verfuegbar (Graph oder Range).'); return; }
-
-  const targetMs = 1500;
-  const step = 1000;
-  const minPts = 1000;
-  const maxPts = 200000;
-
-  const orig = UI_RAW_MAX_POINTS;
-
-  function _roundStep(n){
-    const x = Math.trunc(Number(n) || 0);
-    return Math.max(minPts, Math.min(maxPts, Math.round(x / step) * step));
-  }
-
-  async function _setCfg(n){
-    const v = _roundStep(n);
-    await api('./api/config', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ui_raw_max_points: v})});
-    UI_RAW_MAX_POINTS = v;
-    return v;
-  }
-
-  async function _bench(n){
-    const v = _roundStep(n);
-    const payload = {
-      mode: 'window',
-      measurement: base.measurement,
-      field: base.field,
-      entity_id: base.entity_id,
-      friendly_name: base.friendly_name,
-      start: win.start,
-      stop: win.stop,
-      limit: v,
-      offset: 0,
-      include_total: false,
-    };
-    const t0 = performance.now();
-    await api('./api/raw_points', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
-    return performance.now() - t0;
-  }
-
-  _RAW_INFLIGHT = true;
-  _rawStatusStart('Auto-Tuning laeuft...');
-  try{
-    let lo = minPts;
-    let hi = maxPts;
-    let best = minPts;
-    let iter = 0;
-
-    while(lo <= hi && iter < 9){
-      const mid = _roundStep((lo + hi) / 2);
-      if($rawStatusTxt) $rawStatusTxt.textContent = `Auto-Tuning: teste ${mid} Punkte (Ziel: ${targetMs}ms)...`;
-      await _setCfg(mid);
-      const ms = await _bench(mid);
-      if($rawStatusTxt) $rawStatusTxt.textContent = `Auto-Tuning: ${mid} Punkte -> ${Math.round(ms)}ms`;
-
-      if(ms <= targetMs){
-        best = mid;
-        lo = mid + step;
-      }else{
-        hi = mid - step;
-      }
-      iter += 1;
-      await new Promise(r=>setTimeout(r, 120));
-    }
-
-    await _setCfg(best);
-    ok(`Auto-Tuning: ui_raw_max_points gesetzt auf ${best} (Ziel: ${targetMs}ms).`);
-    _rawStatusEnd(true);
-    try{ scheduleRawReload(true); }catch(e){}
-  }catch(e){
-    try{ await api('./api/config', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ui_raw_max_points: orig})}); UI_RAW_MAX_POINTS = orig; }catch(ex){}
-    _rawStatusEnd(false, (e && e.message) ? e.message : String(e));
-    err('Auto-Tuning fehlgeschlagen: ' + String(e && e.message ? e.message : e));
   }finally{
     _RAW_INFLIGHT = false;
   }
@@ -4883,26 +4763,6 @@ try{
     });
   }catch(e){}
 }catch(e){}
-
-function initRawAutoMore(){
-  if(!$rawBox) return;
-  try{
-    $rawBox.addEventListener('scroll', ()=>{
-      try{
-        if(_RAW_INFLIGHT) return;
-        if(!$rawSection || !$rawSection.open) return;
-        if(!_rawCanMore()) return;
-        const el = $rawBox;
-        const near = (el.scrollTop + el.clientHeight) >= (el.scrollHeight - 40);
-        if(!near) return;
-        const now = Date.now();
-        if(now - _RAW_AUTO_MORE_T < 350) return;
-        _RAW_AUTO_MORE_T = now;
-        loadRawFromGraph(false).catch(()=>{});
-      }catch(e){}
-    }, {passive:true});
-  }catch(e){}
-}
 
 function _setStatsBody(tbody, rows){
   if(!tbody) return;
@@ -5956,6 +5816,7 @@ async function refreshEditGraph(){
 }
 
 try{
+  if($graphRefresh) $graphRefresh.addEventListener('click', (ev)=>{ _stop(ev); if(LAST_ROWS && LAST_ROWS.length) draw(LAST_ROWS); });
   if($editGraphRefresh) $editGraphRefresh.addEventListener('click', (ev)=>{ _stop(ev); refreshEditGraph().catch(displayError); });
 }catch(e){}
 
@@ -6521,17 +6382,6 @@ if($graphMarkers) $graphMarkers.addEventListener("change", ()=>{
 if($rawSection) $rawSection.addEventListener("toggle", ()=>{
   if($rawSection.open) scheduleRawReload(true);
 });
-if($rawMore) $rawMore.addEventListener("click", (ev)=>{ _stop(ev); loadRawFromGraph(false).catch(()=>{}); });
-if($rawTune) $rawTune.addEventListener("click", (ev)=>{ _stop(ev); rawAutoTuneMaxPoints().catch(()=>{}); });
-
-try{
-  if($rawDayOldest) $rawDayOldest.addEventListener('click', (ev)=>{ _stop(ev); _rawNav(0, 'min'); });
-  if($rawDayYoungest) $rawDayYoungest.addEventListener('click', (ev)=>{ _stop(ev); _rawNav(0, 'max'); });
-  if($rawDayM1) $rawDayM1.addEventListener('click', (ev)=>{ _stop(ev); _rawNav(-1, null); });
-  if($rawDayM7) $rawDayM7.addEventListener('click', (ev)=>{ _stop(ev); _rawNav(-7, null); });
-  if($rawDayP1) $rawDayP1.addEventListener('click', (ev)=>{ _stop(ev); _rawNav(1, null); });
-  if($rawDayP7) $rawDayP7.addEventListener('click', (ev)=>{ _stop(ev); _rawNav(7, null); });
-}catch(e){}
 if($rawCopy) $rawCopy.addEventListener("click", async (ev)=>{
   _stop(ev);
   try{
@@ -6542,20 +6392,6 @@ if($rawCopy) $rawCopy.addEventListener("click", async (ev)=>{
     if(okCopy){
       ok(`Raw Daten kopiert: ${rows.length} Zeilen.`);
       showRawActionFeedback('Raw Daten kopiert', `Zeilen: ${rows.length}\nFormat: Zeit<TAB>Wert`);
-    }
-    else err("Copy failed (Clipboard blockiert). Bitte im Browser Clipboard erlauben.");
-  }catch(e){
-    err("Copy failed: " + String(e && e.message ? e.message : e));
-  }
-});
-if($rawCopyQuery) $rawCopyQuery.addEventListener("click", async (ev)=>{
-  _stop(ev);
-  try{
-    const q = (RAW_META && RAW_META.query) ? String(RAW_META.query) : "";
-    const okCopy = await copyTextToClipboard(q);
-    if(okCopy){
-      ok(q ? "Query kopiert." : "Query ist leer.");
-      showRawActionFeedback('Raw Query', q ? 'Die aktuelle Query wurde in die Zwischenablage kopiert.' : 'Es war keine Query vorhanden.');
     }
     else err("Copy failed (Clipboard blockiert). Bitte im Browser Clipboard erlauben.");
   }catch(e){
@@ -6861,7 +6697,6 @@ try{
     initGraphResize();
     loadRawRows();
     initRawResize();
-    initRawAutoMore();
     initEditSplit();
     initMultiSelect();
 

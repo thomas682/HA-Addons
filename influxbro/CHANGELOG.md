@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.12.124
+
+### Enhancement
+
+- Dashboard/Raw laedt zentrierte Rohdaten jetzt symmetrisch um den angeklickten Graph-Punkt und erweitert den Suchbereich bei zu wenigen Datenpunkten je Seite automatisch in 100-Minuten-Schritten.
+- Dashboard/Raw ueberschreibt Zielwerte jetzt direkt nach Bestaetigung per `Wert kopieren`/`Einfügen` oder per Drag-and-Drop zwischen zwei Raw-Zeilen; die Quellzeile bleibt dabei sichtbar markiert.
+
+### Fix
+
+- Veraltete Raw-Navigation sowie `raw.copy_query`, `raw.more` und `raw.tune.link` wurden entfernt, damit die Aktionsleiste direkt ueber der Tabelle bleibt und keine inkonsistente Nachladung mehr ausloest.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`, `pytest tests/test_api_ui_support.py tests/test_api_raw_points_center.py -q`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.123
 
 ### Enhancement

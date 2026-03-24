@@ -230,22 +230,21 @@ Bearbeitungsliste + Bearbeitungsgraph:
 Raw Daten (DB):
 
 - Optional kannst du per Checkbox steuern, ob Raw Daten dem Zoom-Bereich im Graph folgen (oder dem Zeitraum aus der Zeitraum-Auswahl).
-- Feld `Bereich +-`: legt fest, wie viele Minuten vor und nach dem selektierten Messwert geladen werden. Der Wert wird im Browser gespeichert; die Obergrenze und Vorbelegung kommen aus den Einstellungen.
+- Feld `Bereich +-`: legt fest, wie viele Minuten vor und nach dem selektierten Messwert geladen werden. Der Wert wird im Browser gespeichert; die Obergrenze, Vorbelegung und Mindestdatenpunkte kommen aus den Einstellungen.
 - Klick auf einen Messpunkt im Graph markiert den Punkt und springt in der Raw-Tabelle zum passenden Zeitstempel (Zeile wird hervorgehoben).
-- Wenn der Zeitstempel in den aktuell geladenen Raw-Zeilen noch nicht enthalten ist, werden automatisch weitere Raw-Seiten nachgeladen und dann zur passenden (naechsten) Zeile gescrollt.
-- Der Sprung zentriert die Zeile in der Tabelle, damit vorherige und nachfolgende Werte sichtbar bleiben.
-- Ueber der Raw-Tabelle gibt es Buttons zur Tagesnavigation (aeltester/juengster Tag, +/-1d, +/-7d; lokale Browserzeit).
-- Wenn du per Tagesnavigation zu einem Zeitpunkt springst, der noch nicht in der Tabelle geladen ist, wird automatisch nachgeladen, bis der Ziel-Tag erreicht ist (oder bis keine weiteren Daten verfuegbar sind).
-- `Einfügen` uebernimmt den kopierten Wert jetzt sichtbar in die Bearbeitungsliste, oeffnet den Bereich automatisch und zeigt Quelle/Ziel als Popup an.
+- Wenn vor oder nach dem selektierten Messpunkt weniger als die konfigurierte Mindestanzahl von Rohpunkten gefunden wird, erweitert InfluxBro die Suche automatisch in 100-Minuten-Schritten, bis genug Punkte oder eine Zeitgrenze erreicht ist.
+- Der hervorgehobene Ankerpunkt im Raw-Bereich bleibt auch nach der Nachladung sichtbar.
+- `Wert kopieren` erfordert eine selektierte Raw-Zeile. Diese Zeile bleibt als Quelle markiert, bis du eine andere Quelle waehlst.
+- `Einfügen` erfordert ebenfalls eine selektierte Zielzeile, zeigt vor dem Schreiben einen Bestaetigungsdialog mit Quelle und Ziel und ueberschreibt den Zielwert danach sofort in der Datenbank.
+- Alternativ kannst du eine Raw-Zeile per Drag-and-Drop auf eine andere Zeile ziehen; auch dann erscheint vor dem Ueberschreiben derselbe Bestaetigungsdialog.
 - Die Raw-Query bleibt sichtbar, zeigt einen Zeitstempel und hat ebenfalls eine History.
-- Die Buttons `Kopieren`, `Wert kopieren`, `Einfügen` und `Query kopieren` zeigen zusaetzlich eine direkte Rueckmeldung im Popup.
-- `Einfügen` funktioniert jetzt auch dann korrekt, wenn die Zielzeile direkt in der Raw-Tabelle markiert wurde.
+- Die Buttons `Kopieren`, `Wert kopieren` und `Einfügen` zeigen zusaetzlich eine direkte Rueckmeldung im Popup.
 
 Konzept fuer sehr grosse Tabellen (z.B. ~2 Mio Zeilen):
 
 - Immer *serverseitig* begrenzen: Raw-API arbeitet mit `start/stop` + `limit/offset` und liefert nie "alles" auf einmal.
 - Sofortige Anzeige: erst eine kleine erste Seite laden (z.B. 300-1000 Zeilen) und direkt rendern.
-- Progressive Nachladung: Button `Mehr laden` (append) oder Paging; optional im Hintergrund vorladen.
+- Progressive Nachladung: bevorzugt zeitbezogen um einen selektierten Punkt herum statt per manuellem `Mehr laden`-Button.
 - Zeitbasierte Navigation statt Seitenzahlen: in der Praxis ist "Tag/Zeitraum" fuer Zeitreihen schneller zu bedienen und stabiler.
 - Fuer einen schnellen Ueberblick: alternativ (oder zusaetzlich) eine "Preview" mit Downsampling/Reduktion anbieten (Graph ist bereits so optimiert).
 
@@ -449,6 +448,7 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 
 - Klick auf einen Graph-Punkt springt in der Raw-Datenliste zum naechsten passenden Zeitstempel.
 - Der markierte Punkt bleibt in der Raw-Liste farblich hervorgehoben, bis du einen anderen Punkt auswaehlst.
+- Die Raw-Aktionsleiste sitzt direkt ueber der Tabelle und enthaelt nur noch Tabellenfunktionen, `Wert kopieren`, `Einfügen` sowie den Query-Dialog.
 
 ## Diagnose
 
@@ -552,6 +552,7 @@ UI:
 - `Raw max. Punkte`: Maximale Zeilen/Points pro Raw-DB-Abfrage (Default: 20000).
 - `Raw max. Bereich +-`: Obergrenze in Minuten fuer den Dashboard-Wert `Bereich +-` ueber der Raw-Tabelle.
 - `Raw Bereich +- Standard`: Vorbelegung in Minuten fuer den Dashboard-Wert `Bereich +-`.
+- `Raw Mindestdatenpunkte je Seite`: Mindestanzahl an Rohpunkten vor und nach dem selektierten Messpunkt, bevor InfluxBro den Suchbereich automatisch erweitert.
 - `Bugreport Log-Historie (Stunden)`: begrenzt die Log-Historie im Debug-Report auf die letzten X Stunden.
 - Dashboard-Autotuning nutzt fuer benutzerdefinierte Zeitraeume jetzt immer UTC-Zeitstempel mit Zeitzone, damit die Server-Pruefung stabil funktioniert.
 - `Manual max. Punkte (Dashboard Graph)`: Sicherheitslimit fuer `Details: Manuell` (100%).
@@ -651,7 +652,7 @@ Ausreisser:
 
 ## Release Notes (1.12.47)
 
-- UI: Raw-Tabelle — Kopieren/Einfügen von Einzelwerten: Du kannst jetzt eine Raw‑Zeile anklicken und mit `Wert kopieren` den numerischen Wert in die Zwischenablage/Client‑Zwischenablage übernehmen. Anschließend eine Zielzeile auswählen und `Einfügen` klicken, um den Wert in die Bearbeitungsliste (Staging) einzufügen. Die bestehenden Staging/Apply‑Workflows werden wiederverwendet (`Aenderungen in Datenbank uebernehmen`).
+- UI: Raw-Tabelle — Kopieren/Einfügen von Einzelwerten: Du kannst jetzt eine Raw‑Zeile anklicken und mit `Wert kopieren` den numerischen Wert als Quelle markieren. Anschließend eine Zielzeile auswählen und `Einfügen` klicken, um den Wert nach Bestaetigung direkt in der Datenbank zu ueberschreiben.
 
 ## Release Notes (1.12.48)
 

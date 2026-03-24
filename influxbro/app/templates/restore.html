@@ -1317,6 +1317,8 @@
           _selApplyWidthForInput($mf, ALL_MF);
           _selApplyWidthForInput($n, ALL_FN);
           _selApplyWidthForInput($e, ALL_EID);
+          try{ window.InfluxBroCascade && window.InfluxBroCascade.syncInput && window.InfluxBroCascade.syncInput($n, ALL_FN, { requireSource: [$mf, $e] }); }catch(e){}
+          try{ window.InfluxBroCascade && window.InfluxBroCascade.syncInput && window.InfluxBroCascade.syncInput($e, ALL_EID, { requireSource: [$mf, $n] }); }catch(e){}
 
           _renderRestoreRangeBounds();
         }
@@ -1331,16 +1333,37 @@
            }
            const qs = new URLSearchParams({tag:'entity_id', friendly_name: fn, range:'30d'});
            const j = await api('./api/tag_values?' + qs.toString());
-           const vals = (j.values || []).map(x=>String(x)).filter(Boolean);
-            setDatalistOptions($eidList, vals);
-            setCount($cntEid, vals.length, false);
-            _selApplyWidthForInput($e, vals);
+            const vals = (j.values || []).map(x=>String(x)).filter(Boolean);
+             setDatalistOptions($eidList, vals);
+             setCount($cntEid, vals.length, false);
+             _selApplyWidthForInput($e, vals);
+             try{ window.InfluxBroCascade && window.InfluxBroCascade.syncInput && window.InfluxBroCascade.syncInput($e, vals, { requireSource: [$n, $mf] }); }catch(e){}
 
-           const cur = String($e && $e.value ? $e.value : '').trim();
-           if(vals.length >= 1 && (!cur || !vals.includes(cur))){
-             $e.value = vals[0];
-           }
+            const cur = String($e && $e.value ? $e.value : '').trim();
+            if(vals.length >= 1 && (!cur || !vals.includes(cur))){
+              $e.value = vals[0];
+            }
           }catch(e){}
+        }
+
+        async function refreshFriendlyNamesForEntity(){
+         try{
+           const eid = String($e && $e.value ? $e.value : '').trim();
+           if(!eid){
+             setDatalistOptions($fnList, ALL_FN);
+             setCount($cntFn, ALL_FN.length, true);
+             return;
+           }
+           const qs = new URLSearchParams({tag:'friendly_name', entity_id: eid, range:'30d'});
+           const j = await api('./api/tag_values?' + qs.toString());
+           const vals = (j.values || []).map(x=>String(x)).filter(Boolean);
+           setDatalistOptions($fnList, vals);
+           setCount($cntFn, vals.length, true);
+           _selApplyWidthForInput($n, vals);
+           try{ window.InfluxBroCascade && window.InfluxBroCascade.syncInput && window.InfluxBroCascade.syncInput($n, vals, { requireSource: [$e, $mf] }); }catch(e){}
+           const cur = String($n && $n.value ? $n.value : '').trim();
+           if(vals.length >= 1 && (!cur || !vals.includes(cur)) && $n) $n.value = vals[0];
+         }catch(e){}
         }
 
       async function resolveTarget(){
@@ -1589,7 +1612,7 @@
 
       if($mf) $mf.addEventListener('input', onTargetChanged);
       if($n) $n.addEventListener('input', ()=>{ refreshEntityIdsForFriendly().then(()=>autoPickEntityId().then(()=>onTargetChanged())); });
-      if($e) $e.addEventListener('input', onTargetChanged);
+      if($e) $e.addEventListener('input', ()=>{ refreshFriendlyNamesForEntity().then(()=>onTargetChanged()); });
       if($range) $range.addEventListener('change', ()=>{ $custom.style.display = ($range.value === 'custom') ? 'block' : 'none'; _renderRestoreRangeBounds(); renderPlan(); });
       if($start) $start.addEventListener('change', ()=>{ _renderRestoreRangeBounds(); renderPlan(); });
       if($stop) $stop.addEventListener('change', ()=>{ _renderRestoreRangeBounds(); renderPlan(); });

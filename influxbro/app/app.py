@@ -661,6 +661,7 @@ DEFAULT_CFG = {
     "ui_raw_max_points": 20000,
     "ui_raw_center_max_points": 2000,
     "ui_raw_center_range_default": 100,
+    "ui_raw_center_min_points": 10,
     "ui_query_manual_max_points": 200000,
     "ui_decimals": 3,
 
@@ -10739,6 +10740,7 @@ def api_set_config():
     _clamp_int("ui_raw_max_points", 20000, 1000, 200000)
     _clamp_int("ui_raw_center_max_points", 2000, 1, 200000)
     _clamp_int("ui_raw_center_range_default", 100, 0, 200000)
+    _clamp_int("ui_raw_center_min_points", 10, 1, 100000)
     _clamp_float("ui_checkbox_scale", 0.85, 0.5, 1.6)
     _clamp_int("ui_filter_label_width_px", 170, 80, 360)
     _clamp_int("ui_filter_control_width_px", 320, 180, 900)

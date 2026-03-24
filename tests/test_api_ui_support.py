@@ -62,6 +62,7 @@ def test_config_clamps_new_ui_fields(load_app_module, tmp_path):
             "ui_pagecard_title_px": 99,
             "ui_raw_center_max_points": 0,
             "ui_raw_center_range_default": -5,
+            "ui_raw_center_min_points": 0,
         },
     )
     assert r.status_code == 200
@@ -71,14 +72,17 @@ def test_config_clamps_new_ui_fields(load_app_module, tmp_path):
     assert cfg["ui_pagecard_title_px"] == 48
     assert cfg["ui_raw_center_max_points"] == 1
     assert cfg["ui_raw_center_range_default"] == 0
+    assert cfg["ui_raw_center_min_points"] == 1
 
 
-def test_raw_autotune_link_uses_timezone_aware_custom_range_payload():
+def test_dashboard_raw_removed_legacy_buttons_and_added_min_points_setting():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
-    assert "const startIso = $start && $start.value ? localToIsoUtc($start.value) : null;" in body
-    assert "const stopIso = $stop && $stop.value ? localToIsoUtc($stop.value) : null;" in body
-    assert "start: startIso," in body
-    assert "stop: stopIso," in body
+    config = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "config.html").read_text()
+    assert 'id="raw_copy_query"' not in body
+    assert 'id="raw_more"' not in body
+    assert 'id="raw_tune_link"' not in body
+    assert 'rawAutoTuneMaxPoints' not in body
+    assert 'id="ui_raw_center_min_points"' in config
 
 
 def test_settings_numeric_fields_keep_values_visible():
@@ -113,14 +117,14 @@ def test_raw_center_range_uses_minutes_in_ui():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     assert 'Bereich +- (Minuten)' in body
     assert 'payload.center_minutes = centerMinutes;' in body
-    assert 'Zeitfenster um den selektierten Messwert herum in Minuten.' in body
+    assert 'Mindestdatenpunkte je Seite' in body
+    assert 'countCenteredRows(rowsNow, anchorIso)' in body
 
 
 def test_dashboard_raw_buttons_show_feedback_and_last_error_button_removed():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     assert 'function showRawActionFeedback(title, text)' in body
     assert "showRawActionFeedback('Raw Daten kopiert'" in body
-    assert "showRawActionFeedback('Raw Query'" in body
     assert "showRawActionFeedback('Raw Wert kopiert'" in body
     assert 'id="last_error"' not in body
     assert "dashboard.last_error" not in body
@@ -134,10 +138,12 @@ def test_dashboard_collapsible_sections_have_info_icons():
     assert 'data-info-title="Dashboard: Bearbeitungsliste"' in body
 
 
-def test_raw_paste_can_stage_rows_from_raw_table():
+def test_raw_paste_overwrites_directly_with_confirmation_and_dragdrop():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
-    assert "if(!row) row = (RAW_ROWS || []).find(r => rowKey(r) === key);" in body
-    assert "if(!EDIT_LIST.has(String(target))){ err('Ziel-Zeile konnte nicht fuer die Bearbeitungsliste vorgemerkt werden.'); return; }" in body
+    assert "await api('./api/apply_changes'" in body
+    assert "if(!confirm(buildRawOverwritePrompt(sourceRow, targetRow))) return false;" in body
+    assert "tr.addEventListener('drop', async (ev)=>{" in body
+    assert "RAW_COPIED = { key, raw_value: row.value, value_str: rawNumericValueString(row.value), time: row.time };" in body
 
 
 def test_issue_composer_requires_function_and_keeps_text_on_type_change():
