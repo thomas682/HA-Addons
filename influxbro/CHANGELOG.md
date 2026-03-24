@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.121
+
+### Fix
+
+- Der funktionslose Dashboard-Button `Einstellungen pruefen` wurde aus der Aktionsleiste entfernt.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.120
 
 ### Enhancement

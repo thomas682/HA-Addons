@@ -607,6 +607,7 @@ Statistik:
 Hinweis Dashboard:
 
 - Der fruehere Button `Letzter Fehler` in der Dashboard-Aktionsleiste wurde entfernt. Die Fehleranzeige bleibt zentral ueber die untere Statusleiste (`Letzter Fehler`, `Fehlerdialog`, `Git Bugreport`) verfuegbar.
+- Der funktionslose Button `Einstellungen pruefen` wurde ebenfalls aus der Dashboard-Aktionsleiste entfernt.
 - Alle zentralen einklappbaren Dashboard-Bereiche besitzen jetzt einen Info-Button mit einer Kurzbeschreibung des jeweiligen Inhalts und der enthaltenen Bedienelemente.
 - Die Groesse des Info-Popups wird pro Dialogtitel lokal gespeichert und beim erneuten Oeffnen wiederhergestellt.
 - Der Info-/Bugreport-Dialog bleibt weiterhin per Maus in der Groesse veraenderbar.
