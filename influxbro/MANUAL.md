@@ -161,6 +161,14 @@ Die Seitensuche in der Titelzeile (`page.search`) springt jetzt wieder mit sicht
 - Der Suchdialog schliesst nur noch ueber den Button `Schliessen`.
 - Klickst du bei vorhandenem Suchtext erneut in `page.search`, wird die aktuelle Trefferliste wieder eingeblendet.
 
+Weitere Dashboard-Anpassungen:
+
+- `Dashboard Query`, `Gesamtstatistik (Alles)` und `Statistik Zeitraum (Graph/Tabelle)` werden jetzt ueber modale Dialoge geoeffnet.
+- Der Raw-Query-Bereich wird ebenfalls nur noch ueber den zugehoerigen Query-Dialog geoeffnet; die Query-History ist dort direkt verfuegbar.
+- `Graph neu zeichnen` rendert den Graph inklusive Overlays und Punktinfos neu.
+- Die Bearbeitungsliste hat keine Action-Spalte mehr; die Aktionen `Ueberschreiben`, `Loeschen`, `Uebernehmen` und `Undo` sitzen in der Toolbar oberhalb der Tabelle.
+- Raw-Wert-Ueberschreibungen bestaetigst du jetzt ueber einen InfluxBro-eigenen modalen Dialog statt ueber den Browser-Confirm.
+
 Hinweis: Zeitstempel werden im gesamten UI inklusive Millisekunden angezeigt.
 
 ## Tabellen (Allgemein)

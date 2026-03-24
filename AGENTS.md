@@ -55,8 +55,10 @@ UI design standard
 
 New Requests: Issue or Immediate Implementation
 
-- When the user asks for new requirements/bugs/changes, ask first whether the item should be recorded as a GitHub Issue (to be implemented later via the issue backlog) or implemented immediately.
-- Only start implementation after the user chooses one of these two paths.
+- Only ask whether a new request should be recorded as a GitHub Issue or implemented immediately if the user is describing a NEW requirement that is not already tracked in GitHub.
+- If the user explicitly instructs to work on existing open GitHub Issues, do NOT ask this question and start implementation directly according to the selected issue scope.
+- Only start implementation after the user chooses one of these two paths IF the request is a new requirement that is not already tracked in GitHub.
+- If the user explicitly instructs the agent to work on existing open GitHub Issues, implementation must start immediately according to the selected issue scope without asking again.
 
 Default Test Host & Operational Mode
 
@@ -198,7 +200,9 @@ If multiple issues are selected:
   - at the very end
 
 - Reporting must NOT include questions unless a blocker exists
-
+- Reporting after one completed issue is allowed, but reporting must NOT pause or block continued execution when the user explicitly requested that multiple issues be processed automatically.
+- After reporting one completed issue, immediately continue with the next selected issue unless a real blocker exists.
+  
 ## End-of-Implementation Verification (Required)
 
 - At the end of every implementation, explicitly verify that all requirements and all ToDo items were actually implemented.
@@ -541,6 +545,8 @@ If user explicitly requests:
   - implement now
   - defer (backlog)
   - decline
+- This per-issue decision flow applies only during explicit triage mode.
+- If the user explicitly requests implementation of all open issues or a defined subset of open issues, do NOT require per-issue decisions and start processing the selected issues immediately.
 - Reflect the user's decision back to GitHub:
   - implement now: set `status/in_progress` and (optionally) add a short comment "picked for implementation"
   - defer: keep `status/open` and add a short comment "deferred"
@@ -567,7 +573,8 @@ If user explicitly requests:
 ### GitHub Issues: Proactive Prompting
 
 - In plan mode, after presenting the plan for the user's request, ALWAYS ask whether the user wants to triage GitHub Issues now.
-- After finishing implementation of the user's selected points (i.e. when the ToDo list is completed), ALSO ask whether the user wants to triage GitHub Issues next.
+- Ask whether the user wants to triage GitHub Issues next ONLY if no GitHub issue implementation run is already active.
+- If the user has explicitly requested implementation of open issues, do NOT ask again until all selected issues are fully processed or a real blocker exists.
 
 Triage flow:
 
@@ -837,7 +844,7 @@ from flask import Flask, jsonify, request
 
 - If the user writes `go` (or `GO`), treat that as: stage relevant changes, create a git commit with an appropriate message, and push to the tracked remote branch.
 
-- After each implementation package is committed (and pushed, if applicable), show the user the current open GitHub issues (grouped by Bugs vs Enhancements) so they can immediately see what remains.
+- Showing the current open GitHub issues after an implementation package is informational only and MUST NOT stop further automatic execution when additional selected issues remain.
 
 ### GO Must Complete Planned Work
 

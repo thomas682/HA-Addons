@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.12.125
+
+### Fix
+
+- Dashboard: Query-/Statistik-Dialoge reagieren wieder konsistent. `dashboard.query_details`, `section.stats_total`, `section.stats_current`, `graph.refresh` und die Raw-Query-Aktion arbeiten jetzt ueber sichtbare modale Dialoge bzw. einen erweiterten Redraw-Button.
+- Raw-Overwrite nutzt jetzt einen InfluxBro-eigenen modalen Bestaetigungsdialog statt des Browser-Dialogs; dabei wurde der JavaScript-Fehler `_countDecimals is not defined` behoben.
+- Die Dashboard-Bearbeitungsliste hat keine Action-Spalte mehr; die Aktionen `Ueberschreiben`, `Loeschen`, `Uebernehmen` und `Undo` sitzen jetzt oberhalb der Tabelle.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`, `pytest tests/test_api_ui_support.py tests/test_api_raw_points_center.py tests/test_api_yaml_flow.py tests/test_api_monitoring.py tests/test_api_debug_report.py -q`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.124
 
 ### Enhancement

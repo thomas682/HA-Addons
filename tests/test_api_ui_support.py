@@ -141,7 +141,7 @@ def test_dashboard_collapsible_sections_have_info_icons():
 def test_raw_paste_overwrites_directly_with_confirmation_and_dragdrop():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     assert "await api('./api/apply_changes'" in body
-    assert "if(!confirm(buildRawOverwritePrompt(sourceRow, targetRow))) return false;" in body
+    assert "function confirmRawOverwrite(sourceRow, targetRow)" in body
     assert "tr.addEventListener('drop', async (ev)=>{" in body
     assert "RAW_COPIED = { key, raw_value: row.value, value_str: rawNumericValueString(row.value), time: row.time };" in body
 
@@ -297,6 +297,19 @@ def test_page_search_has_navigation_and_filter_dialog():
 def test_dashboard_field_label_has_count_span():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     assert '<span id="cnt_field" class="muted"></span>' in body
+
+
+def test_dashboard_issue137_modal_and_toolbar_updates():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert 'function _countDecimals(s)' in body
+    assert 'function confirmRawOverwrite(sourceRow, targetRow)' in body
+    assert 'id="stats_current_open"' in body
+    assert 'id="edit_toolbar_overwrite"' in body
+    assert 'id="edit_toolbar_apply_one"' in body
+    assert 'id="raw_query_open"' in body
+    assert 'id="err" class="err"' not in body
+    assert 'id="ok" class="ok"' not in body
+    assert 'data-ui="tip.stats_total"' not in body
 
 
 def test_info_and_manual_pages_have_local_search_controls():
