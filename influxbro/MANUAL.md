@@ -292,6 +292,7 @@ Ausreisser-Fehlersuche:
 - `0-Werte`: markiert exakte 0.
 - `Grenzen` + `Min/Max`: markiert Werte ausserhalb eines Bereichs.
 - `Counter-Ausreisser (Spruenge)` + `Max Sprung`: erkennt Spruenge in Counter-Serien (Grenzen kommen aus den Einstellungen).
+- `Stoerphasensuche`: startet nach starkem Sprung oder ungueltigem Zustand eine persistente Stoerphase (`fault_active`), die erst nach einer Recovery-Regel wieder endet.
 - `Fehlersuche Ausreisser`: fuehrt den Scan im aktuellen Graph-Fenster aus.
 - `Abbruch`: bricht nur den laufenden Scan ab (Treffer bleiben stehen).
 

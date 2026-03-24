@@ -532,6 +532,7 @@
                   <option value="counter" selected>Counter Ausreisser</option>
                   <option value="decrease">nicht ansteigende Spruenge</option>
                   <option value="bounds">Grenzen</option>
+                  <option value="fault_phase">Stoerphasensuche</option>
                   <option value="null">NULL Werte</option>
                   <option value="zero">0-Werte</option>
                   <option value="all">alle werte</option>
@@ -1997,8 +1998,8 @@ function applyScanPreset(){
   try{
     const p = $scanPreset ? String($scanPreset.value || "") : "counter";
     if($freeFilterRow) $freeFilterRow.style.display = (p === "free") ? "flex" : "none";
-    if($scanCounter) $scanCounter.style.display = (p === "counter" || p === "decrease") ? "block" : "none";
-    if($scanBounds) $scanBounds.style.display = (p === "bounds") ? "block" : "none";
+    if($scanCounter) $scanCounter.style.display = (p === "counter" || p === "decrease" || p === "fault_phase") ? "block" : "none";
+    if($scanBounds) $scanBounds.style.display = (p === "bounds" || p === "fault_phase") ? "block" : "none";
   }catch(e){}
 }
 
@@ -6484,12 +6485,14 @@ async function runOutlierScan(){
     include_null: (preset === "null" || preset === "all"),
     include_zero: (preset === "zero" || preset === "all"),
     bounds_enabled: preset === "bounds",
+    fault_phase_enabled: preset === "fault_phase",
     min: $outMin ? $outMin.value : "",
     max: $outMax ? $outMax.value : "",
     counter_enabled: (preset === "counter" || preset === "decrease"),
     counter_decrease: (preset === "counter" || preset === "decrease"),
     counter_max_step: (preset === "counter"),
     max_step: $outMaxStep ? $outMaxStep.value : "",
+    recovery_valid_streak: 2,
     value_filter_enabled: preset === "free",
     value_mode: $tblMode ? $tblMode.value : "or",
     value_a_op: $tblAOp ? $tblAOp.value : "<",
@@ -6528,6 +6531,7 @@ async function runOutlierScan(){
     let prevValue = null;
     let lastIso = null;
     let counterBase = null;
+    let scanState = null;
 
     for(let i=0; i<chunks.length; i++){
       const [aIso, bIso] = chunks[i];
@@ -6547,6 +6551,7 @@ async function runOutlierScan(){
             stop: bIso,
             prev_value: prevValue,
             counter_base_value: counterBase,
+            scan_state: scanState,
           }),
         },
         { key: "outliers_scan", status: "Fehlersuche Ausreisser...", silent: true },
@@ -6556,6 +6561,7 @@ async function runOutlierScan(){
       lastIso = pj.last_time || lastIso;
       prevValue = (pj.last_value !== undefined && pj.last_value !== null) ? pj.last_value : prevValue;
       counterBase = (pj.counter_base_value !== undefined && pj.counter_base_value !== null && String(pj.counter_base_value).trim() !== "") ? pj.counter_base_value : counterBase;
+      scanState = (pj.scan_state && typeof pj.scan_state === 'object') ? pj.scan_state : scanState;
 
       const got = (pj.rows || []).map(r => ({ time: r.time, value: r.value, reason: r.reason || "", class: r.class || "primary" }));
       OUTLIER_ROWS = OUTLIER_ROWS.concat(got);

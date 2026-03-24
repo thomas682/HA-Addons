@@ -15202,6 +15202,7 @@ def api_outliers():
     counter_enabled = bool(body.get("counter_enabled", False))
     counter_decrease = bool(body.get("counter_decrease", True))
     counter_max_step = bool(body.get("counter_max_step", True))
+    fault_phase_enabled = bool(body.get("fault_phase_enabled", False))
 
     # Optional value filter mode (e.g. free filter on the dashboard).
     value_filter_enabled = bool(body.get("value_filter_enabled", False))
@@ -15252,6 +15253,27 @@ def api_outliers():
     last_time_iso: str | None = None
 
     counter_base_val: float | None = None
+    scan_state = body.get("scan_state") if isinstance(body.get("scan_state"), dict) else {}
+    fault_state = {
+        "status": str(scan_state.get("status") or "normal"),
+        "last_valid_value": scan_state.get("last_valid_value"),
+        "fault_started_at": str(scan_state.get("fault_started_at") or "") or None,
+        "fault_count": int(scan_state.get("fault_count") or 0),
+        "recovery_streak": int(scan_state.get("recovery_streak") or 0),
+        "last_reason": str(scan_state.get("last_reason") or "") or None,
+        "fault_ended_at": str(scan_state.get("fault_ended_at") or "") or None,
+    }
+    try:
+        if fault_state["last_valid_value"] not in (None, ""):
+            fault_state["last_valid_value"] = float(fault_state["last_valid_value"])
+        else:
+            fault_state["last_valid_value"] = None
+    except Exception:
+        fault_state["last_valid_value"] = None
+    try:
+        recovery_valid_streak = max(1, int(body.get("recovery_valid_streak") or 2))
+    except Exception:
+        recovery_valid_streak = 2
 
     try:
         pv = body.get("prev_value")
@@ -15348,6 +15370,13 @@ from(bucket: "{cfg["bucket"]}")
 
             reasons: list[str] = []
             if v is None:
+                if fault_phase_enabled:
+                    reasons.append("ungueltiger Wert")
+                    fault_state["status"] = "fault_active"
+                    fault_state["fault_started_at"] = fault_state.get("fault_started_at") or iso
+                    fault_state["fault_count"] = int(fault_state.get("fault_count") or 0) + 1
+                    fault_state["recovery_streak"] = 0
+                    fault_state["last_reason"] = "ungueltiger Wert"
                 if return_all or include_null:
                     rows.append({"time": iso, "value": None, "reason": "NULL" if not return_all else ""})
                     if len(rows) >= MAX_OUT:
@@ -15358,6 +15387,7 @@ from(bucket: "{cfg["bucket"]}")
                 continue
 
             fv = float(v)
+            finite = math.isfinite(fv)
 
             if return_all:
                 rows.append({"time": iso, "value": fv, "reason": ""})
@@ -15386,6 +15416,72 @@ from(bucket: "{cfg["bucket"]}")
                     counter_base_val = float(prev)
                 if counter_max_step and max_step is not None and d > float(max_step):
                     reasons.append(f"step > {max_step} {unit or ''}".strip())
+
+            if fault_phase_enabled:
+                phase_reasons: list[str] = []
+                if not finite:
+                    phase_reasons.append("ungueltiger Wert")
+                elif fv == 0.0:
+                    phase_reasons.append("0")
+                if bounds_enabled:
+                    if min_num is not None and finite and fv < min_num:
+                        if "< min ({})".format(min_num) not in phase_reasons:
+                            phase_reasons.append(f"< min ({min_num})")
+                    if max_num is not None and finite and fv > max_num:
+                        if "> max ({})".format(max_num) not in phase_reasons:
+                            phase_reasons.append(f"> max ({max_num})")
+                if prev is not None and finite:
+                    d = fv - prev
+                    if counter_decrease and d < 0:
+                        phase_reasons.append("counter decrease")
+                    if counter_max_step and max_step is not None and d > float(max_step):
+                        phase_reasons.append(f"step > {max_step} {unit or ''}".strip())
+
+                status = str(fault_state.get("status") or "normal")
+                last_valid_value = fault_state.get("last_valid_value")
+                valid_candidate = finite and not phase_reasons
+                plausible_return = valid_candidate
+                if plausible_return and last_valid_value is not None and max_step is not None:
+                    try:
+                        plausible_return = abs(fv - float(last_valid_value)) <= float(max_step)
+                    except Exception:
+                        plausible_return = True
+
+                if status == "normal":
+                    if phase_reasons:
+                        fault_state["status"] = "fault_active"
+                        fault_state["fault_started_at"] = fault_state.get("fault_started_at") or iso
+                        fault_state["fault_count"] = 1
+                        fault_state["recovery_streak"] = 0
+                        fault_state["last_reason"] = ", ".join(phase_reasons)
+                        reasons = list(dict.fromkeys(reasons + phase_reasons))
+                    elif finite:
+                        fault_state["last_valid_value"] = fv
+                        fault_state["fault_ended_at"] = None
+                else:
+                    if phase_reasons:
+                        fault_state["status"] = "fault_active"
+                        fault_state["fault_count"] = int(fault_state.get("fault_count") or 0) + 1
+                        fault_state["recovery_streak"] = 0
+                        fault_state["last_reason"] = ", ".join(phase_reasons)
+                        reasons = list(dict.fromkeys(reasons + phase_reasons + ["fault_active"]))
+                    elif plausible_return:
+                        fault_state["status"] = "recovering"
+                        fault_state["recovery_streak"] = int(fault_state.get("recovery_streak") or 0) + 1
+                        if int(fault_state.get("recovery_streak") or 0) >= recovery_valid_streak:
+                            fault_state["status"] = "normal"
+                            fault_state["fault_ended_at"] = iso
+                            fault_state["last_valid_value"] = fv
+                            fault_state["fault_count"] = 0
+                            fault_state["recovery_streak"] = 0
+                            fault_state["last_reason"] = None
+                        else:
+                            reasons = list(dict.fromkeys(reasons + ["recovering"]))
+                    else:
+                        fault_state["status"] = "fault_active"
+                        fault_state["fault_count"] = int(fault_state.get("fault_count") or 0) + 1
+                        fault_state["recovery_streak"] = 0
+                        reasons = list(dict.fromkeys(reasons + ["fault_active"]))
 
             if reasons:
                 cls = "primary"
@@ -15448,6 +15544,7 @@ from(bucket: "{cfg["bucket"]}")
             "last_time": last_time_iso,
             "last_value": prev_val,
             "counter_base_value": counter_base_val,
+            "scan_state": fault_state if fault_phase_enabled else None,
         })
     except Exception as e:
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
