@@ -240,8 +240,22 @@ def test_logs_page_has_collapsible_title_and_short_button_texts():
 
 def test_timer_table_uses_mode_button_in_action_column():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "jobs.html").read_text()
-    assert "bMode.textContent = 'Modus';" in body
+    assert 'id="timers_mode_btn"' in body
+    assert 'const TIMER_MODE_UI = {};' in body
     assert "tdMode.textContent = currentModeText();" in body
+
+
+def test_jobs_and_cache_tables_use_selection_toolbar_actions():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "jobs.html").read_text()
+    assert 'id="jobs_details_btn"' in body
+    assert 'id="cache_info_btn"' in body
+    assert "SELECTED_JOB_ID" in body
+    assert "SELECTED_CACHE_ID" in body
+    assert "tr.setAttribute('data-job-id', id);" in body
+    assert "tr.setAttribute('data-cache-id', cid);" in body
+    assert 'id="jobs_details_btn"' in body
+    assert 'id="cache_info_btn"' in body
+    assert 'id="timers_mode_btn"' in body
 
 
 def test_table_helpers_strip_ingress_token_from_storage_keys():

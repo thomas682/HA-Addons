@@ -57,6 +57,7 @@
     tr.job_state_done td { background: var(--ui-job-done); }
     tr.job_state_error td { background: var(--ui-job-err); }
     tr.job_state_cancelled td { background: var(--ui-job-cancel); }
+    tr.row_selected td { outline: 2px solid rgba(255,153,0,0.55); outline-offset: -2px; }
   </style>
 </head>
 <body>
@@ -126,6 +127,10 @@
               </button>
               <label><input type="checkbox" id="jobs_wrap" data-ui="jobs.table.wrap_toggle" title="jobs.table.wrap_toggle"/>Umbruch</label>
               <label><input type="checkbox" id="jobs_colfilter" data-ui="jobs.table.colfilter" title="jobs.table.colfilter"/>Spaltenfilter</label>
+              <button class="btn_xs" id="jobs_details_btn" data-ui="jobs.table.details" title="jobs.table.details" disabled>Details</button>
+              <button class="btn_xs" id="jobs_copy_btn" data-ui="jobs.table.copy_id" title="jobs.table.copy_id" disabled>Copy ID</button>
+              <button class="btn_xs" id="jobs_open_btn" data-ui="jobs.table.open_stats" title="jobs.table.open_stats" disabled>Open Statistik</button>
+              <button class="btn_xs" id="jobs_cancel_btn" data-ui="jobs.table.cancel" title="jobs.table.cancel" disabled>Abbruch</button>
             </div>
             <div class="muted">Tipp: Spaltenbreite per Ziehen am Header.</div>
           </div>
@@ -134,16 +139,16 @@
             <table id="tbl" class="ib_tbl" data-ui="jobs.table" title="jobs.table">
               <thead>
                 <tr>
+                  <th style="width: 46px;">sel</th>
+                  <th style="width: 180px;">job_id</th>
                   <th style="width: 160px;">started</th>
                   <th style="width: 90px;">elapsed</th>
                   <th style="width: 120px;">type</th>
                   <th style="width: 150px;">Ausloeser</th>
                   <th style="width: 110px;">state</th>
-                  <th style="width: 70px;">%</th>
                   <th style="width: 220px;">message</th>
                   <th style="width: 240px;">current</th>
                   <th style="width: 260px;">error</th>
-                  <th style="width: 180px;">actions</th>
                 </tr>
               </thead>
               <tbody></tbody>
@@ -201,6 +206,10 @@
               </button>
               <label><input type="checkbox" id="cache_wrap" data-ui="cache.table.wrap_toggle" title="cache.table.wrap_toggle"/>Umbruch</label>
               <label><input type="checkbox" id="cache_colfilter" data-ui="cache.table.colfilter" title="cache.table.colfilter"/>Spaltenfilter</label>
+              <button class="btn_xs" id="cache_info_btn" data-ui="cache.table.info" title="cache.table.info" disabled>Info</button>
+              <button class="btn_xs" id="cache_check_btn" data-ui="cache.table.check" title="cache.table.check" disabled>Pruefen</button>
+              <button class="btn_xs" id="cache_update_btn" data-ui="cache.table.update" title="cache.table.update" disabled>Aktualisieren</button>
+              <button class="btn_xs" id="cache_delete_btn" data-ui="cache.table.delete" title="cache.table.delete" disabled>Loeschen</button>
             </div>
             <div class="muted">Cache-Tabelle ist clientseitig filterbar (Suche + Spaltenfilter).</div>
           </div>
@@ -209,6 +218,7 @@
             <table id="cache_tbl" class="ib_tbl" data-ui="cache.table" title="cache.table">
             <thead>
               <tr>
+                <th style="width: 46px;">sel</th>
                 <th style="width: 46px;">ok</th>
                 <th style="width: 170px;">id</th>
                 <th style="width: 100px;">Bereich</th>
@@ -225,7 +235,6 @@
                 <th style="width: 90px;">size</th>
                 <th style="width: 140px;">check</th>
                 <th style="width: 120px;">flags</th>
-                <th style="width: 220px;">actions</th>
               </tr>
             </thead>
             <tbody></tbody>
@@ -268,6 +277,10 @@
               </button>
               <label><input type="checkbox" id="timers_wrap" data-ui="timers.table.wrap_toggle" title="timers.table.wrap_toggle"/>Umbruch</label>
               <label><input type="checkbox" id="timers_colfilter" data-ui="timers.table.colfilter" title="timers.table.colfilter"/>Spaltenfilter</label>
+              <button class="btn_xs" id="timers_mode_btn" data-ui="timers.table.mode" title="timers.table.mode" disabled>Modus</button>
+              <button class="btn_xs" id="timers_history_btn" data-ui="timers.table.history" title="timers.table.history" disabled>History</button>
+              <button class="btn_xs" id="timers_start_btn" data-ui="timers.table.start" title="timers.table.start" disabled>Start</button>
+              <button class="btn_xs" id="timers_abort_btn" data-ui="timers.table.abort" title="timers.table.abort" disabled>Abbruch</button>
             </div>
             <div class="muted">Timer-Jobs sind sortierbar (Headerklick) und in der Hoehe anpassbar.</div>
           </div>
@@ -276,13 +289,13 @@
            <table id="timers_tbl" class="ib_tbl" data-ui="timers.table" title="timers.table">
              <thead>
                 <tr>
+                  <th style="width: 46px;">sel</th>
                   <th style="width: 140px;">id</th>
                   <th style="width: 140px;">enabled</th>
                   <th style="width: 260px;">Modus</th>
                   <th style="width: 180px;">last run</th>
                   <th style="width: 180px;">next run</th>
                   <th>Kommentar</th>
-                  <th style="width: 160px;">action</th>
                 </tr>
              </thead>
              <tbody></tbody>
@@ -387,6 +400,10 @@
       const $jobsWindowWidth = document.getElementById('jobs_windowwidth');
       const $jobsWrap = document.getElementById('jobs_wrap');
       const $jobsColFilter = document.getElementById('jobs_colfilter');
+      const $jobsDetailsBtn = document.getElementById('jobs_details_btn');
+      const $jobsCopyBtn = document.getElementById('jobs_copy_btn');
+      const $jobsOpenBtn = document.getElementById('jobs_open_btn');
+      const $jobsCancelBtn = document.getElementById('jobs_cancel_btn');
 
       const $cacheQ = document.getElementById('cache_q');
       const $cacheRefresh = document.getElementById('cache_refresh');
@@ -400,6 +417,10 @@
       const $cacheWindowWidth = document.getElementById('cache_windowwidth');
       const $cacheWrap = document.getElementById('cache_wrap');
       const $cacheColFilter = document.getElementById('cache_colfilter');
+      const $cacheInfoBtn = document.getElementById('cache_info_btn');
+      const $cacheCheckBtn = document.getElementById('cache_check_btn');
+      const $cacheUpdateBtn = document.getElementById('cache_update_btn');
+      const $cacheDeleteBtn = document.getElementById('cache_delete_btn');
 
       const $timersInfo = document.getElementById('timers_info');
       const $timersErr = document.getElementById('timers_err');
@@ -410,6 +431,10 @@
       const $timersWindowWidth = document.getElementById('timers_windowwidth');
       const $timersWrap = document.getElementById('timers_wrap');
       const $timersColFilter = document.getElementById('timers_colfilter');
+      const $timersModeBtn = document.getElementById('timers_mode_btn');
+      const $timersHistoryBtn = document.getElementById('timers_history_btn');
+      const $timersStartBtn = document.getElementById('timers_start_btn');
+      const $timersAbortBtn = document.getElementById('timers_abort_btn');
 
       const $usageQ = document.getElementById('usage_q');
       const $usageRefresh = document.getElementById('usage_refresh');
@@ -426,6 +451,11 @@
       const $usageBody = document.querySelector('#usage_tbl tbody');
 
       let POLL = null;
+      let SELECTED_JOB_ID = '';
+      let SELECTED_CACHE_ID = '';
+      let SELECTED_TIMER_ID = '';
+      let LAST_JOBS = [];
+      let LAST_TIMERS = [];
 
       function pageKey(){
         try{
@@ -681,6 +711,38 @@
         return st && !['done','error','cancelled'].includes(st);
       }
 
+      function selectedJob(){ return (LAST_JOBS || []).find(j => String(j.id || '') === String(SELECTED_JOB_ID || '')) || null; }
+      function selectedCache(){ return (LAST_CACHES || []).find(m => String(m.id || '') === String(SELECTED_CACHE_ID || '')) || null; }
+      function selectedTimer(){ return (LAST_TIMERS || []).find(t => String(t.id || '') === String(SELECTED_TIMER_ID || '')) || null; }
+
+      function syncToolbarButtons(){
+        try{
+          const j = selectedJob();
+          if($jobsDetailsBtn) $jobsDetailsBtn.disabled = !j;
+          if($jobsCopyBtn) $jobsCopyBtn.disabled = !j;
+          if($jobsOpenBtn) $jobsOpenBtn.disabled = !(j && String(j.type || '') === 'global_stats');
+          if($jobsCancelBtn) $jobsCancelBtn.disabled = !(j && String(j.id || ''));
+
+          const c = selectedCache();
+          if($cacheInfoBtn) $cacheInfoBtn.disabled = !c;
+          if($cacheCheckBtn) $cacheCheckBtn.disabled = !(c && String(c.cache_kind || '') === 'dash');
+          if($cacheUpdateBtn) $cacheUpdateBtn.disabled = !c;
+          if($cacheDeleteBtn) $cacheDeleteBtn.disabled = !c;
+
+          const t = selectedTimer();
+          if($timersModeBtn) $timersModeBtn.disabled = !t;
+          if($timersHistoryBtn) $timersHistoryBtn.disabled = !t;
+          if($timersStartBtn) $timersStartBtn.disabled = !t;
+          if($timersAbortBtn) $timersAbortBtn.disabled = !t;
+        }catch(e){}
+      }
+
+      function selectRow(tbody, keyAttr, value){
+        try{
+          Array.from(tbody.querySelectorAll('tr')).forEach(tr => tr.classList.toggle('row_selected', String(tr.getAttribute(keyAttr) || '') === String(value || '')));
+        }catch(e){}
+      }
+
       function wantsAuto(){ return ($auto.value || 'on') === 'on'; }
 
       function fmtAge(sec){
@@ -730,11 +792,9 @@
           try{ totalBytes += Number(m.bytes || 0); }catch(e){}
           const k = m.key || {};
           const tr = document.createElement('tr');
-
           const okIcon = (m.last_check_at)
             ? (m.last_check_ok ? ICON_OK : ICON_CHANGED)
             : ((m.dirty || m.mismatch || m.stale) ? ICON_CHANGED : '');
-
           const isDash = String(m.cache_kind||'') === 'dash';
           const series = isDash ? `${String(k.measurement||'')}/${String(k.field||'')}` : 'global_stats';
           const tags = isDash
@@ -742,10 +802,9 @@
             : [k.field_filter ? ('field=' + k.field_filter) : '', k.measurement ? ('measurement=' + k.measurement) : '', k.entity_id ? ('entity_id=' + k.entity_id) : '', k.friendly_name ? ('friendly_name=' + k.friendly_name) : ''].filter(Boolean).join(' ');
           const flags = [m.dirty ? 'dirty' : '', m.mismatch ? 'changed' : '', m.stale ? 'stale' : ''].filter(Boolean).join(' ');
           const check = m.last_check_at ? (fmtTs(m.last_check_at) + (m.last_check_ok ? ' OK' : ' CHANGED')) : '';
-
           const cid = String(m.id || '');
-
           tr.innerHTML = [
+            `<td style="text-align:center;"><input type="radio" name="cache_sel" ${cid===String(SELECTED_CACHE_ID||'')?'checked':''}/></td>`,
             `<td style="text-align:center;">${okIcon}</td>`,
             `<td class="mono" title="${cid.replace(/"/g,'&quot;')}"><a href="#" class="cache_id_link" data-cache-id="${cid.replace(/"/g,'&quot;')}">${cid}</a></td>`,
             `<td class="mono">${String(m.bereich||'')}</td>`,
@@ -761,157 +820,21 @@
             `<td class="mono" style="text-align:right;">${String(m.row_count||0)}</td>`,
             `<td class="mono" style="text-align:right;">${fmtSize(m.bytes)}</td>`,
             `<td class="mono">${check}</td>`,
-            `<td class="mono">${flags}</td>`,
-            `<td></td>`,
+            `<td class="mono">${flags}</td>`
           ].join('');
-
-          try{ tr.setAttribute('data-cache-id', cid); }catch(e){}
-
+          tr.setAttribute('data-cache-id', cid);
+          tr.addEventListener('click', ()=>{ SELECTED_CACHE_ID = cid; selectRow($cacheBody, 'data-cache-id', SELECTED_CACHE_ID); syncToolbarButtons(); });
+          if(cid === String(SELECTED_CACHE_ID||'')) tr.classList.add('row_selected');
           try{
             const a = tr.querySelector('a[data-cache-id]');
             if(a){
-              a.addEventListener('click', (ev)=>{
-                try{ ev.preventDefault(); ev.stopPropagation(); }catch(x){}
-                const id0 = String(a.getAttribute('data-cache-id') || '').trim();
-                if(id0){
-                  try{ navigator.clipboard && navigator.clipboard.writeText && navigator.clipboard.writeText(id0); }catch(x){}
-                  showCacheById(id0);
-                }
-              });
+              a.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(x){}; const id0 = String(a.getAttribute('data-cache-id') || '').trim(); if(id0){ try{ navigator.clipboard && navigator.clipboard.writeText && navigator.clipboard.writeText(id0); }catch(x){} showCacheById(id0); } });
             }
           }catch(e){}
-
-          const tdAct = tr.lastChild;
-          // cid already computed above
-
-          const bInfo = document.createElement('button');
-          bInfo.className = 'btn_xs';
-          bInfo.textContent = 'Info';
-          bInfo.onclick = ()=>{
-            try{
-              const evs = Array.isArray(m.events) ? m.events : [];
-              const lines = [];
-              lines.push('id: ' + cid);
-              lines.push('bereich: ' + String(m.bereich||''));
-              try{ if(m.cache_kind) lines.push('kind: ' + String(m.cache_kind||'')); }catch(e){}
-              try{ if(m.ausloeser) lines.push('ausloeser: ' + String(m.ausloeser||'')); }catch(e){}
-              try{ if(m.modus) lines.push('modus: ' + String(m.modus||'')); }catch(e){}
-              try{ if(m.trigger_page) lines.push('trigger_page: ' + String(m.trigger_page||'')); }catch(e){}
-              try{ if(m.created_at) lines.push('created: ' + fmtTs(m.created_at)); }catch(e){}
-              lines.push('updated: ' + fmtTs(m.updated_at));
-              lines.push('last used: ' + fmtTs(m.last_used_at));
-              try{ if(m.age_seconds !== null && m.age_seconds !== undefined) lines.push('age_seconds: ' + String(m.age_seconds)); }catch(e){}
-              try{ if(m.next_update_at) lines.push('next_update: ' + fmtTs(m.next_update_at)); }catch(e){}
-              lines.push('rows: ' + String(m.row_count||0));
-              try{ if(m.total_points !== null && m.total_points !== undefined) lines.push('total_points: ' + String(m.total_points)); }catch(e){}
-              lines.push('size: ' + fmtSize(m.bytes));
-              lines.push('flags: ' + String([m.dirty ? 'dirty' : '', m.mismatch ? 'changed' : '', m.stale ? 'stale' : ''].filter(Boolean).join(' ')));
-
-              try{
-                const rc = Number(m.row_count||0);
-                const tp = (m.total_points !== null && m.total_points !== undefined) ? Number(m.total_points) : null;
-                if(tp !== null && isFinite(tp) && tp > 0){
-                  const full = (rc >= tp);
-                  lines.push('vollstaendig: ' + (full ? 'ja' : ('nein (downsampling/limit: ' + rc + '/' + tp + ')')));
-                }else{
-                  lines.push('vollstaendig: unbekannt');
-                }
-              }catch(e){}
-
-              try{ if(m.first_time) lines.push('first_time: ' + fmtTs(m.first_time)); }catch(e){}
-              try{ if(m.last_time) lines.push('last_time: ' + fmtTs(m.last_time)); }catch(e){}
-
-              try{
-                if(m.dirty_reason) lines.push('dirty_reason: ' + String(m.dirty_reason||''));
-                if(m.dirty_at) lines.push('dirty_at: ' + fmtTs(m.dirty_at));
-              }catch(e){}
-              try{
-                if(m.last_check_at) lines.push('last_check_at: ' + fmtTs(m.last_check_at));
-                if(m.last_check_ok !== null && m.last_check_ok !== undefined) lines.push('last_check_ok: ' + String(!!m.last_check_ok));
-                if(m.last_check_note) lines.push('last_check_note: ' + String(m.last_check_note||''));
-              }catch(e){}
-              try{
-                if(m.last_update_at) lines.push('last_update_at: ' + fmtTs(m.last_update_at));
-                if(m.last_update_note) lines.push('last_update_note: ' + String(m.last_update_note||''));
-              }catch(e){}
-
-              try{
-                if(m.key && typeof m.key === 'object'){
-                  lines.push('');
-                  lines.push('key:');
-                  lines.push(JSON.stringify(m.key, null, 2));
-                }
-              }catch(e){}
-
-              lines.push('');
-              lines.push('events:');
-              if(!evs.length){
-                lines.push('(keine)');
-              }else{
-                evs.slice(-60).forEach(e=>{
-                  try{ lines.push(`${fmtTs(e.at)} | ${String(e.kind||'')} | ${String(e.note||'')}`.trim()); }catch(x){}
-                });
-              }
-              if(window.InfluxBroPopup && window.InfluxBroPopup.show) window.InfluxBroPopup.show('Cache Info', lines.join('\n'));
-              else alert(lines.join('\n'));
-            }catch(e){}
-          };
-          tdAct.appendChild(bInfo);
-
-          if(isDash){
-            const bCheck = document.createElement('button');
-            bCheck.className = 'btn_xs';
-            bCheck.style.marginLeft = '6px';
-            bCheck.textContent = 'Pruefen';
-            bCheck.onclick = async ()=>{
-              try{
-                cacheErr('');
-                await api('./api/cache/check', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({cache_id: cid})});
-                await loadAll();
-              }catch(e){
-                cacheErr(e && e.message ? e.message : String(e));
-              }
-            };
-            tdAct.appendChild(bCheck);
-          }
-
-          const bUpd = document.createElement('button');
-          bUpd.className = 'btn_xs';
-          bUpd.style.marginLeft = '6px';
-          bUpd.textContent = 'Aktualisieren';
-          bUpd.onclick = async ()=>{
-            try{
-              cacheErr('');
-              if(isDash) await api('./api/cache/update', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({cache_id: cid})});
-              else await api('./api/stats_cache/update', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({cache_id: cid})});
-              await loadAll();
-            }catch(e){
-              cacheErr(e && e.message ? e.message : String(e));
-            }
-          };
-          tdAct.appendChild(bUpd);
-
-          const bDel = document.createElement('button');
-          bDel.className = 'btn_xs';
-          bDel.style.marginLeft = '6px';
-          bDel.textContent = 'Loeschen';
-          bDel.onclick = async ()=>{
-            try{
-              if(!confirm('Cache loeschen?\n\n' + cid)) return;
-              cacheErr('');
-              if(isDash) await api('./api/cache/delete', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({cache_id: cid})});
-              else await api('./api/stats_cache/delete', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({cache_id: cid})});
-              await loadAll();
-            }catch(e){
-              cacheErr(e && e.message ? e.message : String(e));
-            }
-          };
-          tdAct.appendChild(bDel);
-
           $cacheBody.appendChild(tr);
         }
-
         $cacheInfo.textContent = `Cache Eintraege: ${rows.length} | Gesamtgroesse: ${fmtSize(totalBytes)}`;
+        syncToolbarButtons();
       }
 
       function showCacheById(cacheId){
@@ -958,140 +881,175 @@
         });
       }
 
+      function showJobDetails(j){
+        try{
+          const id = String(j.id || '');
+          const lines = [];
+          lines.push('job_id: ' + id);
+          lines.push('type: ' + String(j.type||''));
+          lines.push('state: ' + String(j.state||''));
+          lines.push('started_at: ' + fmtTs(j.started_at));
+          if(j.updated_at) lines.push('updated_at: ' + fmtTs(j.updated_at));
+          if(j.finished_at) lines.push('finished_at: ' + fmtTs(j.finished_at));
+          lines.push('elapsed: ' + String(j.elapsed||''));
+          if(j.mode) lines.push('mode: ' + String(j.mode||''));
+          if(j.message) lines.push('message: ' + String(j.message||''));
+          if(j.current) lines.push('current: ' + String(j.current||''));
+          if(j.error) lines.push('error: ' + String(j.error||''));
+          if(j.trigger_page) lines.push('trigger_page: ' + String(j.trigger_page||''));
+          if(j.timer_id) lines.push('timer_id: ' + String(j.timer_id||''));
+          if(j.trigger_ip) lines.push('trigger_ip: ' + String(j.trigger_ip||''));
+          if(j.trigger_ua) lines.push('trigger_ua: ' + String(j.trigger_ua||''));
+          if(j.last_query_label || j.last_query){
+            lines.push('');
+            lines.push('last_query_label: ' + String(j.last_query_label||''));
+            lines.push('last_query:');
+            lines.push(String(j.last_query||''));
+          }
+          const qs = Array.isArray(j.queries) ? j.queries : [];
+          if(qs.length){
+            lines.push('');
+            lines.push('queries (latest last):');
+            qs.slice(Math.max(0, qs.length - 12)).forEach((it)=>{
+              const at = fmtTs(it && it.at ? it.at : '');
+              const lab = String(it && it.label ? it.label : '').trim();
+              const q = String(it && it.query ? it.query : '').trim();
+              lines.push('- ' + at + (lab ? (' | ' + lab) : ''));
+              if(q) lines.push('  ' + q.replace(/\n/g, '\n  '));
+            });
+          }
+          if(window.InfluxBroPopup && window.InfluxBroPopup.show) window.InfluxBroPopup.show('Job Details', lines.join('\n'));
+          else alert(lines.join('\n'));
+        }catch(e){}
+      }
+
+      async function cancelJobById(id){
+        if(!id) return;
+        if(!confirm('Job abbrechen?\n\n' + id)) return;
+        await api('./api/jobs/cancel', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({job_id: id})});
+        await loadJobs();
+      }
+
+      function showCacheInfo(m){
+        try{
+          const cid = String(m.id || '');
+          const evs = Array.isArray(m.events) ? m.events : [];
+          const lines = [];
+          lines.push('id: ' + cid);
+          lines.push('bereich: ' + String(m.bereich||''));
+          if(m.cache_kind) lines.push('kind: ' + String(m.cache_kind||''));
+          if(m.ausloeser) lines.push('ausloeser: ' + String(m.ausloeser||''));
+          if(m.modus) lines.push('modus: ' + String(m.modus||''));
+          if(m.trigger_page) lines.push('trigger_page: ' + String(m.trigger_page||''));
+          if(m.created_at) lines.push('created: ' + fmtTs(m.created_at));
+          lines.push('updated: ' + fmtTs(m.updated_at));
+          lines.push('last used: ' + fmtTs(m.last_used_at));
+          if(m.age_seconds !== null && m.age_seconds !== undefined) lines.push('age_seconds: ' + String(m.age_seconds));
+          if(m.next_update_at) lines.push('next_update: ' + fmtTs(m.next_update_at));
+          lines.push('rows: ' + String(m.row_count||0));
+          if(m.total_points !== null && m.total_points !== undefined) lines.push('total_points: ' + String(m.total_points));
+          lines.push('size: ' + fmtSize(m.bytes));
+          lines.push('flags: ' + String([m.dirty ? 'dirty' : '', m.mismatch ? 'changed' : '', m.stale ? 'stale' : ''].filter(Boolean).join(' ')));
+          if(m.key && typeof m.key === 'object'){ lines.push(''); lines.push('key:'); lines.push(JSON.stringify(m.key, null, 2)); }
+          lines.push(''); lines.push('events:');
+          if(!evs.length) lines.push('(keine)');
+          else evs.slice(-60).forEach(e=>{ try{ lines.push(`${fmtTs(e.at)} | ${String(e.kind||'')} | ${String(e.note||'')}`.trim()); }catch(x){} });
+          if(window.InfluxBroPopup && window.InfluxBroPopup.show) window.InfluxBroPopup.show('Cache Info', lines.join('\n'));
+          else alert(lines.join('\n'));
+        }catch(e){}
+      }
+
+      async function checkCache(m){
+        const cid = String(m && m.id || '');
+        if(!cid) return;
+        await api('./api/cache/check', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({cache_id: cid})});
+        await loadAll();
+      }
+      async function updateCache(m){
+        const cid = String(m && m.id || '');
+        if(!cid) return;
+        if(String(m.cache_kind||'') === 'dash') await api('./api/cache/update', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({cache_id: cid})});
+        else await api('./api/stats_cache/update', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({cache_id: cid})});
+        await loadAll();
+      }
+      async function deleteCache(m){
+        const cid = String(m && m.id || '');
+        if(!cid || !confirm('Cache loeschen?\n\n' + cid)) return;
+        if(String(m.cache_kind||'') === 'dash') await api('./api/cache/delete', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({cache_id: cid})});
+        else await api('./api/stats_cache/delete', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({cache_id: cid})});
+        await loadAll();
+      }
+
+      async function showTimerHistory(t){
+        const id = String(t && t.id || '');
+        if(!id) return;
+        const jh = await api(`./api/timers/history?id=${encodeURIComponent(id)}&limit=80`, {});
+        const xs = Array.isArray(jh.events) ? jh.events : [];
+        const lines = ['Timer History: ' + id, ''];
+        if(!xs.length) lines.push('(keine Eintraege)');
+        else xs.slice().reverse().forEach((e)=>{
+          const at = fmtTs(e && e.at ? e.at : '');
+          const kind = String(e && e.kind ? e.kind : '');
+          const rest = Object.assign({}, e); try{ delete rest.at; delete rest.kind; }catch(x){}
+          let extra = ''; try{ extra = JSON.stringify(rest); }catch(x){}
+          if(extra === '{}' || extra === 'null') extra = '';
+          lines.push('- ' + at + (kind ? (' | ' + kind) : '') + (extra ? (' | ' + extra) : ''));
+        });
+        if(window.InfluxBroPopup && window.InfluxBroPopup.show) window.InfluxBroPopup.show('Timer History', lines.join('\n'));
+        else alert(lines.join('\n'));
+      }
+      async function startTimer(t){
+        const id = String(t && t.id || '');
+        if(!id) return;
+        const r = await api('./api/timers/start', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id})});
+        const jid = r && r.job_id ? String(r.job_id) : '';
+        if(jid){ try{ if(window.InfluxBroPopup && window.InfluxBroPopup.show) window.InfluxBroPopup.show('Timer gestartet', `id: ${id}\njob_id: ${jid}`); }catch(e){} }
+        await loadAll();
+      }
+      async function abortTimer(t){
+        const id = String(t && t.id || '');
+        if(!id || !confirm('Timer Job abbrechen?\n\n' + id)) return;
+        await api('./api/timers/cancel', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id})});
+        await loadAll();
+      }
+
       function render(jobs){
         $tblBody.textContent = '';
+        LAST_JOBS = jobs || [];
         const rows = filterJobs(jobs);
         for(const j of rows){
           const tr = document.createElement('tr');
-
           try{
             const stc = String(j.state||'');
             if(stc) tr.classList.add('job_state_' + stc);
           }catch(e){}
-
-          const pct = (typeof j.percent === 'number' && isFinite(j.percent)) ? String(Math.round(j.percent)) : '';
           const cur = String(j.current || '');
           const msg = String(j.message || '');
           const er = String(j.error || '');
-
           const trigPage = String(j && j.trigger_page ? j.trigger_page : '');
           const timerId = String(j && j.timer_id ? j.timer_id : '');
           let trig = trigPage;
           if(timerId) trig = trig ? (trig + ' | ' + timerId) : timerId;
-
-          const mode = String(j && j.mode ? j.mode : '');
-          const msgHtml = mode ? (`<div>${msg}</div><div class="muted">Modus: ${mode}</div>`) : msg;
-
+          const id = String(j.id || '');
           tr.innerHTML = [
+            `<td style="text-align:center;"><input type="radio" name="jobs_sel" ${id===String(SELECTED_JOB_ID||'')?'checked':''}/></td>`,
+            `<td class="mono">${id}</td>`,
             `<td>${fmtTs(j.started_at)}</td>`,
             `<td class="mono">${String(j.elapsed||'')}</td>`,
             `<td class="mono">${String(j.type||'')}</td>`,
             `<td class="mono">${trig}</td>`,
             `<td><span class="${pillForState(j.state)}">${String(j.state||'')}</span></td>`,
-            `<td class="mono" style="text-align:right;">${pct}</td>`,
-            `<td>${msgHtml}</td>`,
-            `<td title="${cur.replace(/\"/g,'&quot;')}">${cur}</td>`,
-            `<td title="${er.replace(/\"/g,'&quot;')}">${er}</td>`,
-            `<td></td>`,
+            `<td>${msg}</td>`,
+            `<td title="${cur.replace(/"/g,'&quot;')}">${cur}</td>`,
+            `<td title="${er.replace(/"/g,'&quot;')}">${er}</td>`
           ].join('');
-
-          const tdAct = tr.lastChild;
-          const id = String(j.id || '');
-
-          const bInfo = document.createElement('button');
-          bInfo.className = 'btn_xs';
-          bInfo.textContent = 'Details';
-           bInfo.onclick = ()=>{
-             try{
-               const lines = [];
-                lines.push('id: ' + id);
-                lines.push('type: ' + String(j.type||''));
-                lines.push('state: ' + String(j.state||''));
-                lines.push('started_at: ' + fmtTs(j.started_at));
-                if(j.updated_at) lines.push('updated_at: ' + fmtTs(j.updated_at));
-                if(j.finished_at) lines.push('finished_at: ' + fmtTs(j.finished_at));
-                lines.push('elapsed: ' + String(j.elapsed||''));
-                if(j.mode) lines.push('mode: ' + String(j.mode||''));
-                if(j.message) lines.push('message: ' + String(j.message||''));
-                if(j.current) lines.push('current: ' + String(j.current||''));
-                if(j.error) lines.push('error: ' + String(j.error||''));
-                if(j.trigger_page) lines.push('trigger_page: ' + String(j.trigger_page||''));
-                if(j.timer_id) lines.push('timer_id: ' + String(j.timer_id||''));
-                if(j.trigger_ip) lines.push('trigger_ip: ' + String(j.trigger_ip||''));
-                if(j.trigger_ua) lines.push('trigger_ua: ' + String(j.trigger_ua||''));
-
-               if(j.last_query_label || j.last_query){
-                 lines.push('');
-                 lines.push('last_query_label: ' + String(j.last_query_label||''));
-                 lines.push('last_query:');
-                 lines.push(String(j.last_query||''));
-               }
-
-               const qs = Array.isArray(j.queries) ? j.queries : [];
-               if(qs.length){
-                 lines.push('');
-                 lines.push('queries (latest last):');
-                 const tail = qs.slice(Math.max(0, qs.length - 12));
-                 for(const it of tail){
-                   const at = fmtTs(it && it.at ? it.at : '');
-                   const lab = String(it && it.label ? it.label : '').trim();
-                   const q = String(it && it.query ? it.query : '').trim();
-                   lines.push('- ' + at + (lab ? (' | ' + lab) : ''));
-                   if(q) lines.push('  ' + q.replace(/\n/g, '\n  '));
-                 }
-               }
-
-               if(window.InfluxBroPopup && window.InfluxBroPopup.show) window.InfluxBroPopup.show('Job Details', lines.join('\n'));
-               else alert(lines.join('\n'));
-             }catch(e){}
-           };
-          tdAct.appendChild(bInfo);
-
-          const bCopy = document.createElement('button');
-          bCopy.className = 'btn_xs';
-          bCopy.style.marginLeft = '6px';
-          bCopy.textContent = 'Copy ID';
-          bCopy.onclick = async ()=>{
-            try{ await navigator.clipboard.writeText(id); }catch(e){}
-          };
-          tdAct.appendChild(bCopy);
-
-          if(String(j.type||'') === 'global_stats'){
-            const bOpen = document.createElement('button');
-            bOpen.className = 'btn_xs';
-            bOpen.style.marginLeft = '6px';
-            bOpen.textContent = 'Open Statistik';
-            bOpen.onclick = ()=>{
-              try{ localStorage.setItem('influxbro_global_stats_job_id_v1', id); }catch(e){}
-              location.href = './stats';
-            };
-            tdAct.appendChild(bOpen);
-          }
-
-          if(id){
-            const bCancel = document.createElement('button');
-            bCancel.className = 'btn_xs';
-            bCancel.style.marginLeft = '6px';
-            bCancel.textContent = 'Abbruch';
-            bCancel.onclick = async ()=>{
-              try{
-                if(!confirm('Job abbrechen?\n\n' + id)) return;
-                await api('./api/jobs/cancel', {
-                  method: 'POST',
-                  headers: {'Content-Type':'application/json'},
-                  body: JSON.stringify({job_id: id}),
-                });
-                await load();
-              }catch(e){
-                err(e && e.message ? e.message : String(e));
-              }
-            };
-            tdAct.appendChild(bCancel);
-          }
-
+          tr.setAttribute('data-job-id', id);
+          tr.addEventListener('click', ()=>{ SELECTED_JOB_ID = id; selectRow($tblBody, 'data-job-id', SELECTED_JOB_ID); syncToolbarButtons(); });
+          if(id === String(SELECTED_JOB_ID||'')) tr.classList.add('row_selected');
           $tblBody.appendChild(tr);
         }
         $info.textContent = `Jobs: ${rows.length}`;
+        syncToolbarButtons();
       }
 
       async function loadJobs(){
@@ -1115,218 +1073,68 @@
         renderCaches(LAST_CACHES);
       }
 
+      const TIMER_MODE_UI = {};
       async function loadTimers(){
         timersErr('');
         if($timersInfo) $timersInfo.textContent = 'Lade...';
         const j = await api('./api/timers', {});
         const xs = j.timers || [];
+        LAST_TIMERS = xs;
         if($timersBody) $timersBody.textContent = '';
+        Object.keys(TIMER_MODE_UI).forEach(k=>{ delete TIMER_MODE_UI[k]; });
         for(const t of xs){
           const tr = document.createElement('tr');
+          const id = String(t.id || '');
           tr.innerHTML = [
-            `<td class="mono">${String(t.id||'')}</td>`,
+            `<td style="text-align:center;"><input type="radio" name="timers_sel" ${id===String(SELECTED_TIMER_ID||'')?'checked':''}/></td>`,
+            `<td class="mono">${id}</td>`,
             `<td class="mono">${String((t.enabled ? 'true' : 'false'))} / auto=${String((t.auto_update ? 'true' : 'false'))}</td>`,
             `<td class="mono timer_mode_cell"></td>`,
             `<td>${fmtTs(t.last_run_at)}${t.last_state ? (' / ' + String(t.last_state)) : ''}</td>`,
             `<td>${fmtTs(t.next_run_at)}</td>`,
-            `<td>${String(t.comment||'')}</td>`,
-            `<td></td>`,
+            `<td>${String(t.comment||'')}</td>`
           ].join('');
-
-          const tdMode = tr.children[2];
-          const tdAct = tr.lastChild;
-          const id = String(t.id || '');
-
+          tr.setAttribute('data-timer-id', id);
+          tr.addEventListener('click', ()=>{ SELECTED_TIMER_ID = id; selectRow($timersBody, 'data-timer-id', SELECTED_TIMER_ID); syncToolbarButtons(); });
+          if(id === String(SELECTED_TIMER_ID||'')) tr.classList.add('row_selected');
+          const tdMode = tr.children[3];
           if(id === 'dash_cache' || id === 'stats_cache' || id === 'stats_full'){
             const wrap = document.createElement('div');
-            wrap.style.display = 'flex';
+            wrap.style.display = 'none';
             wrap.style.flexDirection = 'column';
             wrap.style.gap = '6px';
-            wrap.style.display = 'none';
-
             const modeSel = document.createElement('select');
             modeSel.className = 'btn_xs';
-            ['hours','daily','weekly','manual'].forEach(v=>{
-              const o = document.createElement('option');
-              o.value = v;
-              o.textContent = v;
-              modeSel.appendChild(o);
-            });
+            ['hours','daily','weekly','manual'].forEach(v=>{ const o = document.createElement('option'); o.value = v; o.textContent = v; modeSel.appendChild(o); });
             modeSel.value = String((t.refresh_mode || '')).trim() || (id === 'dash_cache' ? 'hours' : (id === 'stats_cache' ? 'daily' : 'manual'));
             wrap.appendChild(modeSel);
-
             const detail = document.createElement('div');
-            detail.style.display = 'flex';
-            detail.style.flexWrap = 'wrap';
-            detail.style.gap = '6px';
-            wrap.appendChild(detail);
-
-            const hoursInput = document.createElement('input');
-            hoursInput.type = 'number';
-            hoursInput.min = '1';
-            hoursInput.step = '1';
-            hoursInput.value = String(t.refresh_hours != null ? t.refresh_hours : (id === 'dash_cache' ? 6 : 24));
-            hoursInput.className = 'btn_xs';
-            hoursInput.style.width = '88px';
-
-            const timeInput = document.createElement('input');
-            timeInput.type = 'time';
-            timeInput.step = '1';
-            timeInput.value = String((t.refresh_daily_at || '')).trim() || (id === 'dash_cache' ? '00:00:00' : '03:00:00');
-            timeInput.className = 'btn_xs';
-            timeInput.style.width = '120px';
-
-            const weekdaySel = document.createElement('select');
-            weekdaySel.className = 'btn_xs';
-            ['Mo','Di','Mi','Do','Fr','Sa','So'].forEach((lab, idx)=>{
-              const o = document.createElement('option');
-              o.value = String(idx);
-              o.textContent = lab;
-              weekdaySel.appendChild(o);
-            });
-            weekdaySel.value = String(t.refresh_weekday != null ? t.refresh_weekday : 0);
-
+            detail.style.display = 'flex'; detail.style.flexWrap = 'wrap'; detail.style.gap = '6px'; wrap.appendChild(detail);
+            const hoursInput = document.createElement('input'); hoursInput.type = 'number'; hoursInput.min = '1'; hoursInput.step = '1'; hoursInput.value = String(t.refresh_hours != null ? t.refresh_hours : (id === 'dash_cache' ? 6 : 24)); hoursInput.className = 'btn_xs'; hoursInput.style.width = '88px';
+            const timeInput = document.createElement('input'); timeInput.type = 'time'; timeInput.step = '1'; timeInput.value = String((t.refresh_daily_at || '')).trim() || (id === 'dash_cache' ? '00:00:00' : '03:00:00'); timeInput.className = 'btn_xs'; timeInput.style.width = '120px';
+            const weekdaySel = document.createElement('select'); weekdaySel.className = 'btn_xs'; ['Mo','Di','Mi','Do','Fr','Sa','So'].forEach((lab, idx)=>{ const o = document.createElement('option'); o.value = String(idx); o.textContent = lab; weekdaySel.appendChild(o); }); weekdaySel.value = String(t.refresh_weekday != null ? t.refresh_weekday : 0);
             const syncModeUi = ()=>{
               detail.innerHTML = '';
               const m = String(modeSel.value || 'manual');
-              if(m === 'hours'){
-                detail.appendChild(hoursInput);
-                const hint = document.createElement('span');
-                hint.className = 'muted';
-                hint.textContent = 'alle N Stunden';
-                detail.appendChild(hint);
-              }else if(m === 'daily'){
-                detail.appendChild(timeInput);
-              }else if(m === 'weekly'){
-                detail.appendChild(weekdaySel);
-                detail.appendChild(timeInput);
-              }else{
-                const hint = document.createElement('span');
-                hint.className = 'muted';
-                hint.textContent = 'Manueller Start in der Tabelle';
-                detail.appendChild(hint);
-              }
+              if(m === 'hours'){ detail.appendChild(hoursInput); const hint = document.createElement('span'); hint.className = 'muted'; hint.textContent = 'alle N Stunden'; detail.appendChild(hint); }
+              else if(m === 'daily'){ detail.appendChild(timeInput); }
+              else if(m === 'weekly'){ detail.appendChild(weekdaySel); detail.appendChild(timeInput); }
+              else { const hint = document.createElement('span'); hint.className = 'muted'; hint.textContent = 'Manueller Start in der Tabelle'; detail.appendChild(hint); }
+              tdMode.textContent = currentModeText();
             };
+            const currentModeText = ()=>{ const m = String(modeSel.value || 'manual'); if(m === 'hours') return `${m} (${String(hoursInput.value || '')}h)`; if(m === 'daily') return `${m} (${String(timeInput.value || '')})`; if(m === 'weekly') return `${m} (${String(weekdaySel.options[weekdaySel.selectedIndex] ? weekdaySel.options[weekdaySel.selectedIndex].textContent : '')} ${String(timeInput.value || '')})`; return 'manual'; };
             syncModeUi();
             modeSel.addEventListener('change', syncModeUi);
-            const currentModeText = ()=>{
-              const m = String(modeSel.value || 'manual');
-              if(m === 'hours') return `${m} (${String(hoursInput.value || '')}h)`;
-              if(m === 'daily') return `${m} (${String(timeInput.value || '')})`;
-              if(m === 'weekly') return `${m} (${String(weekdaySel.options[weekdaySel.selectedIndex] ? weekdaySel.options[weekdaySel.selectedIndex].textContent : '')} ${String(timeInput.value || '')})`;
-              return 'manual';
-            };
-            tdMode.textContent = currentModeText();
-
-            const bSave = document.createElement('button');
-            bSave.className = 'btn_xs';
-            bSave.textContent = 'Speichern';
-            bSave.onclick = async ()=>{
-              try{
-                timersErr('');
-                const payload = { id, refresh_mode: String(modeSel.value || 'manual') };
-                if(payload.refresh_mode === 'hours'){
-                  payload.refresh_hours = parseInt(String(hoursInput.value || '24').trim() || '24', 10);
-                }else if(payload.refresh_mode === 'daily'){
-                  payload.refresh_daily_at = String(timeInput.value || '03:00:00').trim();
-                }else if(payload.refresh_mode === 'weekly'){
-                  payload.refresh_weekday = parseInt(String(weekdaySel.value || '0').trim() || '0', 10);
-                  payload.refresh_daily_at = String(timeInput.value || '03:00:00').trim();
-                }
-                await api('./api/timers/schedule', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
-                await loadTimers();
-              }catch(e){
-                timersErr(e && e.message ? e.message : String(e));
-              }
-            };
-            const bMode = document.createElement('button');
-            bMode.className = 'btn_xs';
-            bMode.textContent = 'Modus';
-            bMode.onclick = ()=>{
-              const open = wrap.style.display !== 'none';
-              wrap.style.display = open ? 'none' : 'flex';
-            };
-            tdAct.appendChild(bMode);
-            tdAct.appendChild(wrap);
-            wrap.appendChild(bSave);
-
-            const bHist = document.createElement('button');
-            bHist.className = 'btn_xs';
-            bHist.style.marginLeft = '6px';
-            bHist.textContent = 'History';
-            bHist.onclick = async ()=>{
-              try{
-                timersErr('');
-                const jh = await api(`./api/timers/history?id=${encodeURIComponent(id)}&limit=80`, {});
-                if(!jh || !jh.ok){
-                  timersErr(jh && jh.error ? jh.error : 'History nicht verfuegbar');
-                  return;
-                }
-                const xs = Array.isArray(jh.events) ? jh.events : [];
-                const lines = [];
-                lines.push('Timer History: ' + id);
-                lines.push('');
-                if(!xs.length){
-                  lines.push('(keine Eintraege)');
-                }else{
-                  for(const e of xs.slice().reverse()){
-                    const at = fmtTs(e && e.at ? e.at : '');
-                    const kind = String(e && e.kind ? e.kind : '');
-                    const rest = Object.assign({}, e);
-                    try{ delete rest.at; delete rest.kind; }catch(x){}
-                    let extra = '';
-                    try{ extra = JSON.stringify(rest); }catch(x){ extra = ''; }
-                    if(extra === '{}' || extra === 'null') extra = '';
-                    lines.push('- ' + at + (kind ? (' | ' + kind) : '') + (extra ? (' | ' + extra) : ''));
-                  }
-                }
-                if(window.InfluxBroPopup && window.InfluxBroPopup.show) window.InfluxBroPopup.show('Timer History', lines.join('\n'));
-                else alert(lines.join('\n'));
-              }catch(e){
-                timersErr(e && e.message ? e.message : String(e));
-              }
-            };
-            tdAct.appendChild(bHist);
+            const save = async ()=>{ const payload = { id, refresh_mode: String(modeSel.value || 'manual') }; if(payload.refresh_mode === 'hours') payload.refresh_hours = parseInt(String(hoursInput.value || '24').trim() || '24', 10); else if(payload.refresh_mode === 'daily') payload.refresh_daily_at = String(timeInput.value || '03:00:00').trim(); else if(payload.refresh_mode === 'weekly'){ payload.refresh_weekday = parseInt(String(weekdaySel.value || '0').trim() || '0', 10); payload.refresh_daily_at = String(timeInput.value || '03:00:00').trim(); } await api('./api/timers/schedule', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)}); await loadTimers(); };
+            TIMER_MODE_UI[id] = { wrap, save };
+            tdMode.appendChild(wrap);
+          }else{
+            tdMode.textContent = 'manual';
           }
-
-          const bStart = document.createElement('button');
-          bStart.className = 'btn_xs';
-          bStart.style.marginLeft = (tdAct.childNodes && tdAct.childNodes.length) ? '6px' : '0';
-          bStart.textContent = 'Start';
-          bStart.onclick = async ()=>{
-            try{
-              timersErr('');
-              const r = await api('./api/timers/start', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id})});
-              const jid = r && r.job_id ? String(r.job_id) : '';
-              if(jid){
-                try{ if(window.InfluxBroPopup && window.InfluxBroPopup.show) window.InfluxBroPopup.show('Timer gestartet', `id: ${id}\njob_id: ${jid}`); }catch(e){}
-              }
-              await loadAll();
-            }catch(e){
-              timersErr(e && e.message ? e.message : String(e));
-            }
-          };
-          tdAct.appendChild(bStart);
-
-          const bAbort = document.createElement('button');
-          bAbort.className = 'btn_xs';
-          bAbort.style.marginLeft = '6px';
-          bAbort.textContent = 'Abbruch';
-          bAbort.onclick = async ()=>{
-            try{
-              if(!confirm('Timer Job abbrechen?\n\n' + id)) return;
-              timersErr('');
-              await api('./api/timers/cancel', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id})});
-              await loadAll();
-            }catch(e){
-              timersErr(e && e.message ? e.message : String(e));
-            }
-          };
-          tdAct.appendChild(bAbort);
-
           $timersBody.appendChild(tr);
         }
         if($timersInfo) $timersInfo.textContent = `Timer Jobs: ${xs.length}`;
+        syncToolbarButtons();
       }
 
       async function loadAll(){
@@ -1335,6 +1143,19 @@
         await loadTimers();
         await loadUsage();
       }
+
+      if($jobsDetailsBtn) $jobsDetailsBtn.onclick = ()=>{ const j = selectedJob(); if(j) showJobDetails(j); };
+      if($jobsCopyBtn) $jobsCopyBtn.onclick = async ()=>{ const j = selectedJob(); if(!j) return; try{ await navigator.clipboard.writeText(String(j.id||'')); }catch(e){} };
+      if($jobsOpenBtn) $jobsOpenBtn.onclick = ()=>{ const j = selectedJob(); if(!j || String(j.type||'') !== 'global_stats') return; try{ localStorage.setItem('influxbro_global_stats_job_id_v1', String(j.id||'')); }catch(e){} location.href = './stats'; };
+      if($jobsCancelBtn) $jobsCancelBtn.onclick = async ()=>{ try{ const j = selectedJob(); if(!j) return; await cancelJobById(String(j.id||'')); }catch(e){ err(e && e.message ? e.message : String(e)); } };
+      if($cacheInfoBtn) $cacheInfoBtn.onclick = ()=>{ const m = selectedCache(); if(m) showCacheInfo(m); };
+      if($cacheCheckBtn) $cacheCheckBtn.onclick = async ()=>{ try{ const m = selectedCache(); if(m) await checkCache(m); }catch(e){ cacheErr(e && e.message ? e.message : String(e)); } };
+      if($cacheUpdateBtn) $cacheUpdateBtn.onclick = async ()=>{ try{ const m = selectedCache(); if(m) await updateCache(m); }catch(e){ cacheErr(e && e.message ? e.message : String(e)); } };
+      if($cacheDeleteBtn) $cacheDeleteBtn.onclick = async ()=>{ try{ const m = selectedCache(); if(m) await deleteCache(m); }catch(e){ cacheErr(e && e.message ? e.message : String(e)); } };
+      if($timersModeBtn) $timersModeBtn.onclick = async ()=>{ try{ const t = selectedTimer(); if(!t) return; const ui = TIMER_MODE_UI[String(t.id||'')]; if(!ui) return; const open = ui.wrap.style.display !== 'none'; ui.wrap.style.display = open ? 'none' : 'flex'; if(!open) return; await ui.save(); }catch(e){ timersErr(e && e.message ? e.message : String(e)); } };
+      if($timersHistoryBtn) $timersHistoryBtn.onclick = async ()=>{ try{ const t = selectedTimer(); if(t) await showTimerHistory(t); }catch(e){ timersErr(e && e.message ? e.message : String(e)); } };
+      if($timersStartBtn) $timersStartBtn.onclick = async ()=>{ try{ const t = selectedTimer(); if(t) await startTimer(t); }catch(e){ timersErr(e && e.message ? e.message : String(e)); } };
+      if($timersAbortBtn) $timersAbortBtn.onclick = async ()=>{ try{ const t = selectedTimer(); if(t) await abortTimer(t); }catch(e){ timersErr(e && e.message ? e.message : String(e)); } };
 
       $refresh.onclick = ()=>{ loadAll().catch(e => err(e && e.message ? e.message : String(e))); };
       $auto.onchange = ()=>{ loadAll().catch(()=>{}); };

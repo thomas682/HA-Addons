@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.12.123
+
+### Enhancement
+
+- Statistik zeigt in `stats.info` jetzt deutlich mehr Laufzeitinformationen je Phase und markiert laufende Berechnungen mit einer Sanduhr.
+- Jobs & Cache: `jobs.table`, `cache.table` und `timers.table` arbeiten jetzt mit Zeilenselektion und Toolbar-Aktionen oberhalb der Tabelle statt mit einer Action-Spalte.
+
+### Fix
+
+- `jobs.table` zeigt jetzt `job_id` als eigene Spalte, blendet `%` aus und zeigt in `message` keinen zusaetzlichen `Modus:`-Text mehr.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`, `pytest tests/test_api_ui_support.py tests/test_api_yaml_flow.py tests/test_api_monitoring.py tests/test_api_raw_points_center.py tests/test_api_debug_report.py -q`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.122
 
 ### Fix

@@ -43,7 +43,10 @@
     .err { color: #b00020; margin-top: 8px; white-space: pre-wrap; }
 
     .status { border: 1px dashed #ddd; border-radius: 12px; padding: 10px 12px; margin-top: 10px; background: #fafafa; font-size: 12px; white-space: pre-wrap; }
+    .status_running { display:flex; gap:10px; align-items:flex-start; }
+    .status_spinner { font-size:18px; line-height:1; animation: stats_spin 1s linear infinite; }
     .nowrap { white-space: nowrap; }
+    @keyframes stats_spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
     .progress { height: 10px; background: #eee; border-radius: 999px; overflow: hidden; margin-top: 10px; }
     .progress > div { height: 100%; background: #0b0b0c; width: 0%; }
@@ -725,7 +728,13 @@
       }
 
       function setStatus(lines){
-        $info.textContent = (lines || []).filter(Boolean).join("\n");
+        const txt = (lines || []).filter(Boolean).join("\n");
+        if(!$info) return;
+        if(RUNNING){
+          $info.innerHTML = `<div class="status_running"><div class="status_spinner">⌛</div><div>${String(txt || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')}</div></div>`;
+        }else{
+          $info.textContent = txt;
+        }
       }
 
       let LAST_QUERY_HISTORY = [];
@@ -1081,7 +1090,7 @@
         // Keep existing table visible while the new job runs.
 
         try{
-          setStatus(['Starte Hintergrundabfrage...', ROWS && ROWS.length ? 'Hinweis: Tabelle zeigt letztes Ergebnis waehrend der neuen Berechnung.' : '']);
+          setStatus(['Starte Hintergrundabfrage...', ROWS && ROWS.length ? 'Hinweis: Tabelle zeigt letztes Ergebnis waehrend der neuen Berechnung.' : '', 'Phase: Job anlegen und in Wartestatus wechseln.']);
           try{ window.InfluxBroStatus && window.InfluxBroStatus.start && window.InfluxBroStatus.start('stats.load', 'Statistik laeuft...'); }catch(e){}
           await startJob();
           beginPolling();
@@ -1095,7 +1104,7 @@
 
       function beginPolling(){
         stopPolling();
-        setStatus(['Hintergrundabfrage laeuft...', '']);
+        setStatus(['Hintergrundabfrage laeuft...', 'Phase: Warte auf Status-Updates und Zwischenergebnisse.']);
         POLL = setInterval(()=>{
            fetchStatus().then(st => {
             if(!st) return;
@@ -1113,12 +1122,13 @@
               ? (`Fortschritt: ${g}/${ts}` + (pct !== null && isFinite(pct) ? (` (${Math.round(pct)}%)`) : ''))
               : '';
 
-             setStatus([
-               `Status: ${state} | Laufzeit: ${elapsed}`,
-               msg ? ('Aktion: ' + msg) : '',
-               cur ? (`Aktuell: ${cur}`) : '',
-               prog,
-             ]);
+              setStatus([
+                `Status: ${state} | Laufzeit: ${elapsed}`,
+                msg ? ('Aktion: ' + msg) : '',
+                cur ? (`Aktuell: ${cur}`) : '',
+                prog,
+                `Phase: ${state === 'running' ? 'Job verarbeitet Serien im Hintergrund.' : 'Status wird abgefragt.'}`,
+              ]);
 
               // Incremental merge (details job): fetch partial results and merge continuously.
               if(JOB_MERGE && !st.ready){

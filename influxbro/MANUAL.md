@@ -324,6 +324,7 @@ Tipp: In der Toolbar gibt es Mehrfachaktionen (z.B. Werte davor uebernehmen oder
 - Influx Datenbank Diagnose (Health/Version/IP/Buckets; best-effort) ist im Menuepunkt `Info`.
 - HA-Infos:
   - device_class, state_class, unit_of_measurement werden (wenn moeglich) aus Home Assistant geladen.
+- `stats.info` zeigt waehrend laufender Berechnungen jetzt detailliertere Phasen- und Fortschrittsinformationen plus Sanduhr an.
 
 ## Logs
 
@@ -342,8 +343,11 @@ Tipp: In der Toolbar gibt es Mehrfachaktionen (z.B. Werte davor uebernehmen oder
 
 - Zeigt laufende Background-Jobs (z.B. Statistik laden, Restore/Copy) und die letzten abgeschlossenen Jobs aus der Historie.
 - Hinweis: Export-Jobs werden hier ebenfalls als Job angezeigt und koennen abgebrochen werden.
-- Button `Abbruch`: bricht den Job ab (bestaetigen). Der Button ist immer sichtbar.
-- Button `Details`: zeigt, was der Job gerade macht (Message/Current/Trigger-Infos).
+- Jobs-Tabelle: Aktionen laufen jetzt ueber die obere Toolbar nach Zeilenselektion.
+- Buttons: `Details`, `Copy ID`, `Open Statistik`, `Abbruch`.
+- `job_id` ist als eigene Spalte sichtbar.
+- Die `%`-Spalte wurde entfernt.
+- In `message` wird kein zusaetzlicher `Modus:`-Text mehr eingeblendet.
 - Spalte `Ausloeser`: zeigt den Trigger (trigger_page + optional timer_id), z.B. `scheduler | stats_cache`.
 - Tipp: `Open Statistik` setzt die Job-ID fuer die Statistik-Seite und wechselt dorthin.
 
@@ -351,6 +355,7 @@ Cache:
 
 - Tabelle `Cache`: zeigt alle Caches (Dashboard + Statistik) inkl. Bereich/Ausloeser/next update/Modus.
 - Spalte `id`: eindeutige Cache-ID.
+- Cache-Tabelle: Aktionen laufen jetzt ueber die obere Toolbar nach Zeilenselektion.
 - Aktionen:
   - `Info`: zeigt Details (inkl. Events wie Verwendung/Check/Update; best-effort).
   - Dashboard: `Pruefen`/`Aktualisieren`/`Loeschen`.
@@ -366,7 +371,8 @@ Cache Nutzung:
 Timer Jobs:
 
 - Tabelle `Timer Jobs`: zeigt Intervall-/Nightly-Jobs mit naechstem Lauf (aus Einstellungen abgeleitet) und kurzer Erklaerung.
-- Action: `Start` (manuell) und `Abbruch`.
+- Timer-Tabelle: Aktionen laufen jetzt ueber die obere Toolbar nach Zeilenselektion.
+- Buttons: `Modus`, `History`, `Start`, `Abbruch`.
 - `last run`: zeigt den letzten Laufzeitpunkt (persistent).
 - `Modus`: erlaubt das Aendern der Scheduler-Parameter:
   - `hours`: alle N Stunden
