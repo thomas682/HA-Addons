@@ -137,6 +137,8 @@
     .ib_pagecard_results button { display:block; width:100%; text-align:left; border:0; border-bottom:1px solid #eee; background:#fff; padding:10px 12px; cursor:pointer; }
     .ib_pagecard_results button:hover { background:#f6f6f6; }
     .ib_page_search_btn.active { border-color:#ff9900; box-shadow:0 0 0 2px rgba(255,153,0,0.18); }
+    .ib_page_search_modal_chk { display:flex; gap:8px; align-items:center; min-height:32px; }
+    .ib_page_search_modal_chk input[type="checkbox"] { width:16px; height:16px; flex:0 0 16px; }
     @media (max-width: 980px){
       :root { --ib-pagecard-h: 118px; }
       .ib_pagecard { flex-wrap:wrap; align-items:flex-start; }
@@ -323,12 +325,13 @@
           return {
             label: cfg && cfg.label !== false,
             visible_text: cfg && cfg.visible_text !== false,
+            direct_text: cfg && cfg.direct_text !== false,
             key: cfg && cfg.key !== false,
             sections: cfg && cfg.sections !== false,
             tooltip: cfg && cfg.tooltip !== false,
           };
         }catch(e){
-          return {label:true, visible_text:true, key:true, sections:true, tooltip:true};
+          return {label:true, visible_text:true, direct_text:true, key:true, sections:true, tooltip:true};
         }
       }
       function saveSearchCfg(cfg){ try{ localStorage.setItem(SEARCH_CFG_KEY, JSON.stringify(cfg || {})); }catch(e){} }
@@ -336,7 +339,7 @@
       function applySearchCfgUi(){
         try{
           const cfg = activeSearchCfg();
-          const allOn = cfg.label && cfg.visible_text && cfg.key && cfg.sections && cfg.tooltip;
+          const allOn = cfg.label && cfg.visible_text && cfg.direct_text && cfg.key && cfg.sections && cfg.tooltip;
           if($settings) $settings.classList.toggle('active', !allOn);
         }catch(e){}
       }
@@ -400,6 +403,11 @@
           return _norm(el.getAttribute('data-help') || el.getAttribute('data-info-body') || el.getAttribute('data-title') || '');
         }catch(e){ return ''; }
       }
+      function _directTextFor(el){
+        try{
+          return Array.from(el.childNodes || []).filter(n => n && n.nodeType === Node.TEXT_NODE).map(n => _norm(n.nodeValue || '')).filter(Boolean).join(' ');
+        }catch(e){ return ''; }
+      }
 
       function buildIndex(){
         try{
@@ -418,15 +426,17 @@
               const label = _labelFor(el);
               const sect = _sectionPathFor(el);
               const txt = _norm(el.textContent || el.getAttribute('placeholder') || el.getAttribute('title') || '');
+              const directTxt = _directTextFor(el);
               const tooltip = _tooltipTextFor(el);
               const parts = [];
               if(cfg.key) parts.push(key);
               if(cfg.label) parts.push(label);
               if(cfg.visible_text) parts.push(txt);
+              if(cfg.direct_text) parts.push(directTxt);
               if(cfg.sections) parts.push(sect.join(' / '));
               if(cfg.tooltip) parts.push(tooltip);
               const hay = parts.map(_lc).join(' | ');
-              out.push({el, ui:key, txt: label || txt, sect, hay, parts:{key, label, txt, sections: sect.join(' / '), tooltip}});
+              out.push({el, ui:key, txt: label || txt, sect, hay, parts:{key, label, txt, direct_text: directTxt, sections: sect.join(' / '), tooltip}});
             }catch(e){}
           });
           return out;
@@ -464,7 +474,7 @@
         if(!$searchModal) return;
         const cfg = activeSearchCfg();
         const preview = previewSearchIndex();
-        $searchModal.innerHTML = `<div style="max-width:860px; margin:0 auto; background:#fff; border-radius:16px; box-shadow:0 12px 60px rgba(0,0,0,0.28); padding:14px; display:flex; flex-direction:column; gap:12px;"><div style="display:flex; justify-content:space-between; gap:12px; align-items:center; flex-wrap:wrap;"><div style="font-weight:800; font-size:16px;">Seitensuche</div><button type="button" id="ib_page_search_modal_close" style="cursor:pointer; padding:10px 12px;">Schliessen</button></div><div class="muted">Die Liste zeigt Beispieltreffer mit den aktuell aktiven Suchquellen und dem aktuellen Suchtext.</div><div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;"><label style="display:flex; gap:8px; align-items:center;"><input type="checkbox" data-k="label" ${cfg.label ? 'checked' : ''}/>Label</label><label style="display:flex; gap:8px; align-items:center;"><input type="checkbox" data-k="visible_text" ${cfg.visible_text ? 'checked' : ''}/>Sichtbarer Text</label><label style="display:flex; gap:8px; align-items:center;"><input type="checkbox" data-k="key" ${cfg.key ? 'checked' : ''}/>data-ui / id</label><label style="display:flex; gap:8px; align-items:center;"><input type="checkbox" data-k="sections" ${cfg.sections ? 'checked' : ''}/>Bereichspfad</label><label style="display:flex; gap:8px; align-items:center;"><input type="checkbox" data-k="tooltip" ${cfg.tooltip ? 'checked' : ''}/>Tooltiptexte</label></div><div style="border:1px solid #eee; border-radius:12px; max-height:50vh; overflow:auto;"><div id="ib_page_search_preview">${preview.map(x=>`<div style="padding:10px 12px; border-bottom:1px solid #eee;"><strong>${x.ui}</strong><div style="font-size:12px; opacity:.75;">${((x.sect && x.sect.length) ? ('[' + x.sect.join(' / ') + '] ') : '') + (x.txt || '')}</div><div style="font-size:11px; opacity:.6; margin-top:4px;">${Object.entries(x.parts || {}).filter(([k,v])=>{ if(k === 'txt') return false; return String(v || '').trim(); }).map(([k,v])=>`${k}: ${String(v)}`).join(' | ')}</div></div>`).join('') || '<div style="padding:10px 12px;" class="muted">Keine Treffer mit aktueller Filterung.</div>'}</div></div></div>`;
+        $searchModal.innerHTML = `<div style="max-width:860px; margin:0 auto; background:#fff; border-radius:16px; box-shadow:0 12px 60px rgba(0,0,0,0.28); padding:14px; display:flex; flex-direction:column; gap:12px;"><div style="display:flex; justify-content:space-between; gap:12px; align-items:center; flex-wrap:wrap;"><div style="font-weight:800; font-size:16px;">Seitensuche</div><button type="button" id="ib_page_search_modal_close" style="cursor:pointer; padding:10px 12px;">Schliessen</button></div><div class="muted">Die Liste zeigt Beispieltreffer mit den aktuell aktiven Suchquellen und dem aktuellen Suchtext.</div><div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;"><label class="ib_page_search_modal_chk"><input type="checkbox" data-k="label" ${cfg.label ? 'checked' : ''}/>Label</label><label class="ib_page_search_modal_chk"><input type="checkbox" data-k="visible_text" ${cfg.visible_text ? 'checked' : ''}/>Sichtbarer Text</label><label class="ib_page_search_modal_chk"><input type="checkbox" data-k="direct_text" ${cfg.direct_text ? 'checked' : ''}/>Direkt Text</label><label class="ib_page_search_modal_chk"><input type="checkbox" data-k="key" ${cfg.key ? 'checked' : ''}/>data-ui / id</label><label class="ib_page_search_modal_chk"><input type="checkbox" data-k="sections" ${cfg.sections ? 'checked' : ''}/>Bereichspfad</label><label class="ib_page_search_modal_chk"><input type="checkbox" data-k="tooltip" ${cfg.tooltip ? 'checked' : ''}/>Tooltiptexte</label></div><div style="border:1px solid #eee; border-radius:12px; max-height:50vh; overflow:auto;"><div id="ib_page_search_preview">${preview.map(x=>`<div style="padding:10px 12px; border-bottom:1px solid #eee;"><strong>${x.ui}</strong><div style="font-size:12px; opacity:.75;">${((x.sect && x.sect.length) ? ('[' + x.sect.join(' / ') + '] ') : '') + (x.txt || '')}</div><div style="font-size:11px; opacity:.6; margin-top:4px;">${Object.entries(x.parts || {}).filter(([k,v])=>{ if(k === 'txt') return false; return String(v || '').trim(); }).map(([k,v])=>`${k}: ${String(v)}`).join(' | ')}</div></div>`).join('') || '<div style="padding:10px 12px;" class="muted">Keine Treffer mit aktueller Filterung.</div>'}</div></div></div>`;
         $searchModal.style.display = 'block';
         const closeBtn = document.getElementById('ib_page_search_modal_close');
         if(closeBtn) closeBtn.onclick = ()=>{ $searchModal.style.display = 'none'; };
@@ -495,6 +505,7 @@
       }
 
       try{ if($search) $search.addEventListener('input', runSearch); }catch(e){}
+      try{ if($search) $search.addEventListener('focus', ()=>{ if(String($search.value || '').trim()) runSearch(); }); }catch(e){}
       try{ if($prev) $prev.addEventListener('click', ()=>stepResult(-1)); }catch(e){}
       try{ if($next) $next.addEventListener('click', ()=>stepResult(1)); }catch(e){}
       try{ if($settings) $settings.addEventListener('click', ()=>renderSearchSettings()); }catch(e){}

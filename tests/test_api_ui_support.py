@@ -206,7 +206,7 @@ def test_summary_rows_use_full_summary_bar_style():
 def test_dashboard_selection_labels_and_widths_are_updated():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     assert '<label class="ib_sel_label">Einheit</label>' in body
-    assert '<label class="ib_sel_label">Feld</label>' in body
+    assert '<span>Feld</span><span id="cnt_field" class="muted"></span>' in body
     assert '<span>Entity</span>' in body
     assert '<span>Name</span>' in body
     assert 'width: auto;' in body
@@ -270,6 +270,13 @@ def test_page_search_has_navigation_and_filter_dialog():
     assert 'Tooltiptexte' in body
     assert 'function previewSearchIndex()' in body
     assert '$searchModal.onclick = null;' in body
+    assert 'direct_text' in body
+    assert "addEventListener('focus', ()=>{ if(String($search.value || '').trim()) runSearch(); });" in body
+
+
+def test_dashboard_field_label_has_count_span():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert '<span id="cnt_field" class="muted"></span>' in body
 
 
 def test_info_and_manual_pages_have_local_search_controls():

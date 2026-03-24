@@ -129,6 +129,7 @@ Sichtbare Feldnamen im Dashboard:
 - `friendly_name` -> `Name`
 
 Die Auswahlelemente sind auf maximal 60% Breite begrenzt; Labels und Hinweistexte darunter orientieren sich an derselben Breite.
+Das Label `Feld` zeigt wieder die aktuelle Anzahl der verfuegbaren Optionen direkt daneben an.
 Auch nach dynamischen Refreshs und Vorschlagslisten-Updates werden keine Inline-Breiten mehr gesetzt, damit diese 60%-Begrenzung stabil wirksam bleibt.
 
 Die vier Auswahlfelder `_measurement`, `_field`, `friendly_name` und `entity_id` verwenden dieselbe Kaskadenlogik wie auf der Backup-Seite. Wenn du eines der Felder aenderst, werden die anderen Listen sofort mit den gefilterten Datenbankwerten neu geladen. Der Zeitraum beeinflusst diese vier Vorschlagslisten nicht; er steuert nur die spaetere Datenabfrage fuer Graph, Tabelle und Statistik.
@@ -155,8 +156,10 @@ Tipp: Wenn du mit der Maus ueber einem Button/Checkbox/Auswahlfeld bleibst, zeig
 Die Seitensuche in der Titelzeile (`page.search`) springt jetzt wieder mit sichtbarem Trefferrahmen zum gewaehlten Element. Farbe, Rahmenbreite und Sichtdauer kannst du in den Einstellungen anpassen.
 - Neben dem Suchfeld gibt es jetzt `Zurueck`/`Weiter` fuer Treffer-Navigation sowie ein Such-Zahnrad mit Filterdialog.
 - Der Suchdialog kann die Quellen `Label`, `sichtbarer Text`, `data-ui / id`, `Bereichspfad` und `Tooltiptexte` einzeln ein-/ausschalten; die Auswahl wird gespeichert.
+- Zusaetzlich gibt es die Suchquelle `Direkt Text`; sie durchsucht nur direkte Textknoten des Elements und nicht rekursiv den gesamten Child-Text.
 - Die Vorschau im Suchdialog reagiert sofort auf jede Checkbox-Aenderung und beruecksichtigt dabei den aktuell eingegebenen Suchtext.
 - Der Suchdialog schliesst nur noch ueber den Button `Schliessen`.
+- Klickst du bei vorhandenem Suchtext erneut in `page.search`, wird die aktuelle Trefferliste wieder eingeblendet.
 
 Hinweis: Zeitstempel werden im gesamten UI inklusive Millisekunden angezeigt.
 
