@@ -59,6 +59,8 @@ New Requests: Issue or Immediate Implementation
 - If the user explicitly instructs to work on existing open GitHub Issues, do NOT ask this question and start implementation directly according to the selected issue scope.
 - Only start implementation after the user chooses one of these two paths IF the request is a new requirement that is not already tracked in GitHub.
 - If the user explicitly instructs the agent to work on existing open GitHub Issues, implementation must start immediately according to the selected issue scope without asking again.
+- Wenn der Benutzer direkt im Chat eine Umsetzung anstoesst, ohne auf GitHub-Issues zu verweisen, dann soll der Agent nicht selbststaendig GitHub-Issues pruefen oder laden.
+- GitHub-Issues werden nur dann selbststaendig geprueft/abgearbeitet, wenn der Benutzer ausdruecklich auf Issues verweist (z. B. `setze Issues um`, `arbeite offene Issues ab`, `pruefe Issues`) oder eine konkrete Issue-Nummer nennt.
 
 Default Test Host & Operational Mode
 
@@ -535,7 +537,7 @@ If user explicitly requests:
 
 ### GitHub Issues: Check, Select, Sync
 
-- Always check for open GitHub Issues when starting work on new items (unless the user explicitly points to a specific issue).
+- Always check for open GitHub Issues when starting work on new items ONLY if the user explicitly wants issue-based work or triage (or explicitly references issues).
   - Commands:
     - `gh issue list --repo <owner>/<repo> --state open --limit 200`
     - `gh issue list --repo <owner>/<repo> --state open --label type/bug --limit 200`
