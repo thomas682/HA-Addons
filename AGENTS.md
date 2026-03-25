@@ -2,17 +2,77 @@
 
 ## Model Strategy
 
-- Moduswechsel: Betriebsmodus `build` aktiv. Der Agent darf Aenderungen am Arbeitsbaum vornehmen, Tests ausfuehren sowie Commits/Pushes nach `main` erstellen.
+- Moduswechsel 2026-03-19: Betriebsmodus `build` aktiv. Der Agent darf Aenderungen am Arbeitsbaum vornehmen, Tests ausfuehren sowie Commits/Pushes nach `main` erstellen.
 
-### Default model
+### Default Model Strategy
 
-- API: gpt-4o-mini (cost-efficient default)
-- Upgrade: gpt-4o (for more complex tasks)
+- API:
+  - PRIMARY: gpt-4o
+  - SECONDARY: gpt-4o-mini
 
-### Escalation model
+- Web:
+  - Use the available GPT-5-class model
+  - Apply the same task selection principles conceptually
 
-- Web: GPT-5.x
-- API: gpt-4o
+## Workspace Requirement (CRITICAL)
+
+- The agent MUST operate from the repository root.
+- Before any search, read, write, git, or test operation, verify that the working directory contains:
+  - `influxbro/`
+  - `AGENTS.md`
+  - `repository.yaml`
+
+- If these are not present:
+  - STOP immediately
+  - report: `Wrong working directory – repository root required`
+
+- The agent MUST NOT assume project structure or continue analysis if the working directory is incorrect.
+
+## Model Usage Policy (STRICT)
+
+### gpt-4o (PRIMARY – REQUIRED for reasoning)
+
+Use for:
+
+- code analysis
+- debugging
+- multi-file changes
+- repository search
+- UI + backend interactions
+- unknown problem investigation
+
+### gpt-4o-mini (SECONDARY – LIMITED USE)
+
+Use ONLY for:
+
+- documentation generation
+- changelog writing
+- commit messages
+- simple text transformations
+- formatting tasks
+
+### HARD RULES
+
+- It is FORBIDDEN to use gpt-4o-mini for:
+  - debugging
+  - unknown code analysis
+  - repository-wide search
+  - multi-file logic changes
+
+## Automatic Model Switching
+
+- If task involves:
+  - reading code
+  - searching files
+  - debugging
+  - multiple files
+→ MUST use gpt-4o
+
+- If task involves ONLY:
+  - writing text
+  - formatting
+  - summarizing
+→ MAY use gpt-4o-mini
 
 ### Escalation rules
 
@@ -26,7 +86,16 @@ Escalate ONLY if:
 
 ### De-escalation
 
-- After solving a complex task, return to the default model (API: gpt-4o-mini).
+- After a successful solution:
+  - return to the default model for the current task class
+  - use gpt-4o for code/debug/search tasks
+  - use gpt-4o-mini only for documentation/text-only tasks
+
+## Token Efficiency Guard
+
+- Prefer fewer high-quality requests over many small ones
+- Avoid repeated retries with the same model
+- If 2 attempts fail → escalate model immediately
 
 ## Automatic Escalation (ERROR-DRIVEN)
 
@@ -95,35 +164,37 @@ When a trigger is detected:
   - including all relevant file types
   - performing at least 2 search passes
   
-  ## Exploration Depth Requirement
+## Exploration Depth Requirement (CRITICAL)
 
 - Minimum exploration:
   - at least 2 search passes
   - at least 2 different file types
-  - at least 3 relevant files inspected
+  - at least 3 relevant files or sections inspected
 
 - If this is not met:
   → trigger escalation
 
 - It is NOT allowed to conclude analysis before minimum exploration is reached.
 
-## Model Selection Priority (ENFORCED)
+- DO NOT read large files sequentially in chunks unless absolutely required.
 
-- ALWAYS start with GPT-5 mini unless the task is clearly complex from the beginning.
-- Escalation to GPT-5.4 MUST be justified by:
-  - task complexity
-  - repeated failure
-  - ambiguity
+- Prefer:
+  - targeted search
+  - symbol search
+  - relevant sections
+  - surrounding context only
 
-- After escalation tasks are completed, MUST return to GPT-5 mini.
-- Do NOT continue using GPT-5.4 for follow-up tasks unless still required.
-- Prefer shortest possible reasoning path when using GPT-5.4.
+- If a file is large:
+  - read only the relevant sections
+  - avoid full sequential reads
 
 ## Context Efficiency
 
 - Read only relevant files
 - Never load full repo unless required
 - Prefer partial reads (functions/sections)
+- Search first, read second
+- For large files, inspect only relevant sections unless a full read is unavoidable
 
 ## Deep Analysis Override (CRITICAL FOR API MODE)
 
@@ -170,8 +241,9 @@ UI design standard
 
 New Requests: Issue or Immediate Implementation
 
-- When the user asks for new requirements/bugs/changes, ask first whether the item should be recorded as a GitHub Issue (to be implemented later via the issue backlog) or implemented immediately.
-- Only start implementation after the user chooses one of these two paths.
+- Only ask whether a request should be recorded as a GitHub Issue or implemented immediately if the user is describing a NEW requirement that is not already tracked in GitHub.
+- If the user explicitly instructs the agent to work on existing open GitHub Issues, do NOT ask this question and start implementation immediately according to the selected issue scope.
+- The requirement to choose between "record as issue" and "implement immediately" applies only to new, not-yet-tracked requests and must NOT block execution of already existing GitHub Issues selected by the user.
 
 Default Test Host & Operational Mode
 
@@ -313,6 +385,8 @@ If multiple issues are selected:
   - at the very end
 
 - Reporting must NOT include questions unless a blocker exists
+- Reporting after one completed issue is allowed, but reporting must NOT pause or block continued execution when the user explicitly requested that multiple issues be processed automatically.
+- After reporting one completed issue, immediately continue with the next selected issue unless a real blocker exists.
 
 ## End-of-Implementation Verification (Required)
 
@@ -656,6 +730,9 @@ If user explicitly requests:
   - implement now
   - defer (backlog)
   - decline
+- This per-issue decision flow applies only during explicit triage mode.
+- If the user explicitly requests implementation of all open issues or a defined subset of open issues, do NOT require per-issue decisions and process the selected issues immediately.
+
 - Reflect the user's decision back to GitHub:
   - implement now: set `status/in_progress` and (optionally) add a short comment "picked for implementation"
   - defer: keep `status/open` and add a short comment "deferred"
@@ -952,7 +1029,15 @@ from flask import Flask, jsonify, request
 
 - If the user writes `go` (or `GO`), treat that as: stage relevant changes, create a git commit with an appropriate message, and push to the tracked remote branch.
 
-- After each implementation package is committed (and pushed, if applicable), show the user the current open GitHub issues (grouped by Bugs vs Enhancements) so they can immediately see what remains.
+- Showing current open GitHub issues (grouped by Bugs vs Enhancements) after an implementation package is OPTIONAL and informational only.
+
+- It MUST NOT:
+  - interrupt execution
+  - trigger questions
+  - pause or delay further processing
+
+- During active multi-issue execution:
+  - this step MUST be skipped entirely unless explicitly requested by the user
 
 ### GO Must Complete Planned Work
 
