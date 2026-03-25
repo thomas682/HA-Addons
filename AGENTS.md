@@ -2,10 +2,19 @@
 
 ## Model Strategy
 
-- Moduswechsel 2026-03-19: Betriebsmodus `build` aktiv. Der Agent darf Aenderungen am Arbeitsbaum vornehmen, Tests ausfuehren sowie Commits/Pushes nach `main` erstellen.
+- Moduswechsel: Betriebsmodus `build` aktiv. Der Agent darf Aenderungen am Arbeitsbaum vornehmen, Tests ausfuehren sowie Commits/Pushes nach `main` erstellen.
 
-- Default model: GPT-5 mini (cost-efficient, fast, suitable for most tasks)
-- Escalation model: GPT-5.4 (ONLY when necessary)
+### Default model
+
+- API: gpt-4o-mini (cost-efficient default)
+- Upgrade: gpt-4o (for more complex tasks)
+
+### Escalation model
+
+- Web: GPT-5.x
+- API: gpt-4o
+
+### Escalation rules
 
 Escalate ONLY if:
 
@@ -13,8 +22,90 @@ Escalate ONLY if:
 - repeated failures (>2 attempts)
 - complex debugging (concurrency, SQL, parsing, security)
 - unclear solution space
+- insufficient exploration detected (too few files searched or early termination)
 
-Return to GPT-5 mini after solving.
+### De-escalation
+
+- After solving a complex task, return to the default model (API: gpt-4o-mini).
+
+## Automatic Escalation (ERROR-DRIVEN)
+
+### Purpose
+
+Ensure robust behavior in API mode by automatically escalating the model when weak or incomplete results are detected.
+
+### Escalation triggers
+
+Escalate to a stronger model (gpt-4o) if ANY of the following occurs:
+
+#### 1. Search failure
+
+- target symbol/function not found
+- only 1–2 files searched
+- search limited to a single file type (e.g. only *.js)
+
+#### 2. Early termination
+
+- analysis stops after first attempt
+- no follow-up search or refinement
+- no expansion of search scope
+
+#### 3. Low-confidence result
+
+- phrases like:
+  - "not found"
+  - "does not exist"
+  - "no results"
+  - "probably"
+- without exhaustive search
+
+#### 4. Repeated failure
+
+- same issue not solved after 1 attempt
+- patch failed or did not apply correctly
+- bug persists after change
+
+#### 5. Incomplete code understanding
+
+- missing relationships between components
+- ignoring templates, backend, or config
+- partial system analysis
+
+### Escalation behavior
+
+When a trigger is detected:
+
+1. Immediately switch to a stronger model (API: gpt-4o)
+2. Restart analysis with:
+   - broader search scope
+   - multiple search passes
+   - inclusion of all file types
+3. Do NOT reuse previous incomplete conclusions
+4. Re-evaluate the problem from scratch if necessary
+
+### De-escalation
+
+- After a successful solution:
+  - return to default model (gpt-4o-mini)
+
+### Hard rule
+
+- It is FORBIDDEN to conclude "not found" without:
+  - searching the full repository
+  - including all relevant file types
+  - performing at least 2 search passes
+  
+  ## Exploration Depth Requirement
+
+- Minimum exploration:
+  - at least 2 search passes
+  - at least 2 different file types
+  - at least 3 relevant files inspected
+
+- If this is not met:
+  → trigger escalation
+
+- It is NOT allowed to conclude analysis before minimum exploration is reached.
 
 ## Model Selection Priority (ENFORCED)
 
@@ -34,6 +125,30 @@ Return to GPT-5 mini after solving.
 - Never load full repo unless required
 - Prefer partial reads (functions/sections)
 
+## Deep Analysis Override (CRITICAL FOR API MODE)
+
+- For code search and debugging tasks:
+  - ALWAYS perform multiple search passes
+  - NEVER stop after first unsuccessful result
+  - EXPAND search scope if nothing is found
+
+- Ignore cost optimization rules when:
+  - searching for functions
+  - analyzing bugs
+  - investigating missing behavior
+
+- Always include:
+  - Python (*.py)
+  - HTML templates (*.html)
+  - inline JavaScript
+  - configuration files
+
+- If a symbol is not found:
+  - assume it may exist in another file type
+  - re-run search with broader scope
+
+- Prefer completeness over cost in analysis phase.
+  
 ## Output Efficiency
 
 - Prefer diffs over full files
@@ -42,7 +157,7 @@ Return to GPT-5 mini after solving.
 
 ## Cost Behavior
 
-- Avoid unnecessary iterations
+- Avoid unnecessary iterations, BUT allow multiple iterations for code analysis and debugging
 - Prefer small incremental changes
 - Use tools (grep/search) instead of reading many files
 
