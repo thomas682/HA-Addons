@@ -1,6 +1,6 @@
 name: InfluxBro
 description: "Browse InfluxDB (table + mini graph), configure in UI, entity_id/friendly_name filters, and optionally delete ranges"
-version: "1.12.130r"
+version: "1.12.130r1"
 slug: influxbro
 url: "https://github.com/thomas682/HA-Addons/tree/main/influxbro"
 
