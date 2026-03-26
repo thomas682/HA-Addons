@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.12.127
+
+### Bug Fix
+
+- Behebt ein Problem im Dashboard, bei dem der `dashboard.query_details` Button nicht den Dialog anzeigte. Hinzugefügt wurde ein JavaScript Event-Handler, um die Sichtbarkeit des Dialogs zu steuern.
+
 ## 1.12.126
 
 ### Enhancement
