@@ -2,6 +2,10 @@
 
 ## Model Strategy
 
+### Chat Queue Handling
+- Anweisungen, die im Chat erteilt werden, werden solange nicht bearbeitet, bis die laufenden Umsetzungen oder Issues beendet sind.
+- Neue Eingaben werden daher zunächst in eine Queue bzw. ToDo-Liste aufgenommen.
+
 - Betriebsmodus `build` aktiv. Der Agent darf Aenderungen am Arbeitsbaum vornehmen, Tests ausfuehren sowie Commits/Pushes nach `main` erstellen.
 
 ### Default Model Strategy
