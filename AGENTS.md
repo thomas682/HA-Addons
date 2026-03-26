@@ -7,12 +7,64 @@
 ### Default Model Strategy
 
 - API:
+
   - PRIMARY: gpt-4o
   - SECONDARY: gpt-4o-mini
 
-- Web:
-  - Use the available GPT-5-class model
-  - Apply the same task selection principles conceptually
+- Web/Auth:
+
+  - PRIMARY: gpt-5.4
+  - SECONDARY: gpt-4o
+
+### Provider Awareness Rule
+
+- The agent MUST always respect the currently active provider:
+  - openai_api → use API model mapping
+  - openai     → use Web/Auth model mapping
+
+- It is FORBIDDEN to mix provider strategies.
+
+- Model selection MUST always be derived from:
+  1. active provider
+  2. task classification (technical vs lightweight)
+
+## Model Usage Policy
+
+### API Models
+
+#### gpt-4o (PRIMARY – REQUIRED for technical work)
+
+Use for:
+
+- code analysis
+- debugging
+- multi-file changes
+- architecture decisions
+- repository search
+- unclear or risky technical tasks
+- fixes after failed attempts
+- anything that requires stronger reasoning
+
+#### gpt-4o-mini (SECONDARY – ONLY for lightweight tasks)
+
+Use ONLY for:
+
+- documentation
+- changelog updates
+- commit messages
+- issue text cleanup
+- small wording changes
+- simple text transformations
+- formatting tasks
+- short non-critical summaries
+
+Do NOT use gpt-4o-mini for:
+
+- debugging
+- root cause analysis
+- multi-file code changes
+- architecture changes
+- tasks with unclear technical impact
 
 ## Workspace Requirement (CRITICAL)
 
@@ -28,55 +80,45 @@
 
 - The agent MUST NOT assume project structure or continue analysis if the working directory is incorrect.
 
-## Model Usage Policy (STRICT)
-
-### gpt-4o (PRIMARY – REQUIRED for reasoning)
-
-Use for:
-
-- code analysis
-- debugging
-- multi-file changes
-- repository search
-- UI + backend interactions
-- unknown problem investigation
-
-### gpt-4o-mini (SECONDARY – LIMITED USE)
-
-Use ONLY for:
-
-- documentation generation
-- changelog writing
-- commit messages
-- simple text transformations
-- formatting tasks
-
-### HARD RULES
-
-- It is FORBIDDEN to use gpt-4o-mini for:
-  - debugging
-  - unknown code analysis
-  - repository-wide search
-  - multi-file logic changes
-
 ## Automatic Model Switching
 
-- If task involves:
-  - reading code
-  - searching files
-  - debugging
-  - multiple files
-→ MUST use gpt-4o
+### Task Classification
 
-- If task involves ONLY:
-  - writing text
-  - formatting
-  - summarizing
-→ MAY use gpt-4o-mini
+#### Substantive / Technical Tasks (HIGH)
+
+If task involves:
+
+- reading code
+- searching files
+- debugging
+- modifying code
+- multiple files
+- architecture or design decisions
+
+→ MUST use the PRIMARY model of the current provider:
+
+- API: gpt-4o
+- Web/Auth: gpt-5.4
+
+#### Lightweight / Text Tasks (LOW)
+
+If task involves ONLY:
+
+- writing text
+- formatting
+- summarizing
+- documentation
+- changelog updates
+- commit messages
+
+→ MAY use the SECONDARY model of the current provider:
+
+- API: gpt-4o-mini
+- Web/Auth: gpt-4o
 
 ### Escalation rules
 
-Escalate ONLY if:
+Escalate to PRIMARY model if:
 
 - multi-file architecture changes
 - repeated failures (>2 attempts)
@@ -86,10 +128,20 @@ Escalate ONLY if:
 
 ### De-escalation
 
-- After a successful solution:
-  - return to the default model for the current task class
-  - use gpt-4o for code/debug/search tasks
-  - use gpt-4o-mini only for documentation/text-only tasks
+After a successful solution:
+
+- return to task-based model selection
+- use PRIMARY model for all technical/code-related tasks
+- use SECONDARY model only for clearly text-only tasks
+
+### HARD RULE
+
+- NEVER use SECONDARY models for:
+  - debugging
+  - code changes
+  - multi-file operations
+  - architecture decisions
+  - unclear or risky tasks
 
 ## Token Efficiency Guard
 
@@ -105,7 +157,12 @@ Ensure robust behavior in API mode by automatically escalating the model when we
 
 ### Escalation triggers
 
-Escalate to a stronger model (gpt-4o) if ANY of the following occurs:
+Escalate to the PRIMARY model of the current provider:
+
+- API: gpt-4o
+- Web/Auth: gpt-5.4
+
+if ANY of the following occurs:
 
 #### 1. Search failure
 
@@ -155,7 +212,9 @@ When a trigger is detected:
 ### De-escalation
 
 - After a successful solution:
-  - return to default model (gpt-4o-mini)
+  - return to the SECONDARY model of the current provider:
+    - API: gpt-4o-mini
+    - Web/Auth: gpt-4o
 
 ### Hard rule
 
