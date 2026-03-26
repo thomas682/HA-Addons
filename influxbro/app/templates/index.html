@@ -6951,13 +6951,10 @@ try{
   <script>
     document.getElementById('dashboard_query_open').addEventListener('click', function() {
       var queryDetails = document.getElementById('query_details');
-      if (queryDetails.style.display === "none") {
-        queryDetails.style.display = "block";
-        console.log("Query dialog angezeigt.");
-      } else {
-        queryDetails.style.display = "none";
-        console.log("Query dialog verborgen.");
-      }
+      queryDetails.style.display = "block";
+    // Optional: Implement a modal dialog box or overlay to better display the content
+    alert('Query Information displayed in a dialog box.');
+    console.log("Query dialog sollte als Modalfenster erscheinen.");
     });
   </script>
 </body>
