@@ -6948,5 +6948,17 @@ try{
     </main>
   </div>
 
+  <script>
+    document.getElementById('dashboard_query_open').addEventListener('click', function() {
+      var queryDetails = document.getElementById('query_details');
+      if (queryDetails.style.display === "none") {
+        queryDetails.style.display = "block";
+        console.log("Query dialog angezeigt.");
+      } else {
+        queryDetails.style.display = "none";
+        console.log("Query dialog verborgen.");
+      }
+    });
+  </script>
 </body>
 </html>
