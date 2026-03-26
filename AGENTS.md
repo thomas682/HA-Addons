@@ -3,6 +3,7 @@
 ## Model Strategy
 
 ### Chat Queue Handling
+
 - Anweisungen, die im Chat erteilt werden, werden solange nicht bearbeitet, bis die laufenden Umsetzungen oder Issues beendet sind.
 - Neue Eingaben werden daher zunächst in eine Queue bzw. ToDo-Liste aufgenommen.
 
