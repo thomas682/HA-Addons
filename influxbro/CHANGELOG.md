@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.12.128
+
+### Fix
+
+- Der Button `dashboard.query_details` zeigt nun wieder einen Dialog anstelle von einfach aufklappbaren Informationen.
+
 ## 1.12.127
 
 ### Bug Fix
