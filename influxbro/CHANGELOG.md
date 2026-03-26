@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.12.129
+
+### Feature
+
+- Implementiertes Query-Dialog-Fenster mit Zeitstempelanzeige und Buttons für History und Kopieren.
+
 ## 1.12.128
 
 ### Fix
