@@ -2,69 +2,30 @@
 
 ## Model Strategy
 
-- Moduswechsel 2026-03-19: Betriebsmodus `build` aktiv. Der Agent darf Aenderungen am Arbeitsbaum vornehmen, Tests ausfuehren sowie Commits/Pushes nach `main` erstellen.
+- Betriebsmodus `build` aktiv. Der Agent darf Aenderungen am Arbeitsbaum vornehmen, Tests ausfuehren sowie Commits/Pushes nach `main` erstellen.
 
 ### Default Model Strategy
 
 - API:
-
   - PRIMARY: gpt-4o
   - SECONDARY: gpt-4o-mini
 
 - Web/Auth:
-
   - PRIMARY: gpt-5.4
   - SECONDARY: gpt-4o
 
 ### Provider Awareness Rule
 
-- The agent MUST always respect the currently active provider:
+- The agent MUST always respect the active provider:
+
   - openai_api → use API model mapping
   - openai     → use Web/Auth model mapping
 
 - It is FORBIDDEN to mix provider strategies.
 
-- Model selection MUST always be derived from:
+- Model selection MUST always follow:
   1. active provider
-  2. task classification (technical vs lightweight)
-
-## Model Usage Policy
-
-### API Models
-
-#### gpt-4o (PRIMARY – REQUIRED for technical work)
-
-Use for:
-
-- code analysis
-- debugging
-- multi-file changes
-- architecture decisions
-- repository search
-- unclear or risky technical tasks
-- fixes after failed attempts
-- anything that requires stronger reasoning
-
-#### gpt-4o-mini (SECONDARY – ONLY for lightweight tasks)
-
-Use ONLY for:
-
-- documentation
-- changelog updates
-- commit messages
-- issue text cleanup
-- small wording changes
-- simple text transformations
-- formatting tasks
-- short non-critical summaries
-
-Do NOT use gpt-4o-mini for:
-
-- debugging
-- root cause analysis
-- multi-file code changes
-- architecture changes
-- tasks with unclear technical impact
+  2. task classification
 
 ## Workspace Requirement (CRITICAL)
 
@@ -80,45 +41,115 @@ Do NOT use gpt-4o-mini for:
 
 - The agent MUST NOT assume project structure or continue analysis if the working directory is incorrect.
 
+## Model Usage Policy (STRICT – HARD ENFORCED)
+
+### API Models
+
+#### gpt-4o (PRIMARY – REQUIRED for ALL technical work)
+
+Use for:
+
+- ANY code-related task
+- reading code
+- debugging
+- searching files
+- repository navigation
+- UI/backend interaction
+- test execution or validation
+- reasoning about behavior
+- architecture or logic decisions
+- ANY task with uncertainty
+
+→ Default model for ALL non-trivial work
+
+#### gpt-4o-mini (SECONDARY – EXTREMELY RESTRICTED)
+
+Use ONLY for:
+
+- documentation text
+- changelog entries
+
+STRICT CONDITIONS:
+
+- MUST NOT read code
+- MUST NOT search files
+- MUST NOT analyze logic
+- MUST NOT interpret code behavior
+- MUST NOT generate or modify code
+- MUST NOT run or evaluate tests
+- MUST NOT perform reasoning about system behavior
+
+→ ONLY allowed for pure text output without ANY technical context
+
+### Secondary Model Gate
+
+- Before using a SECONDARY model, the agent MUST verify:
+
+  - task contains NO code
+  - task requires NO analysis
+  - task involves NO files
+  - task output is purely textual
+
+- If ANY condition is not met:
+  → MUST use PRIMARY model
+
+### Web/Auth Models
+
+#### gpt-5.4 (PRIMARY – REQUIRED for ALL tasks)
+
+Use for:
+
+- ALL tasks (technical + non-technical)
+- code analysis
+- debugging
+- repository search
+- implementation
+- documentation
+- reasoning
+
+→ Default model for ALL Web/Auth usage
+
+#### gpt-4o (SECONDARY – EXTREMELY RESTRICTED)
+
+Use ONLY for:
+
+- documentation text
+- changelog entries
+
+STRICT CONDITIONS:
+
+- MUST NOT read code
+- MUST NOT search files
+- MUST NOT analyze logic
+- MUST NOT interpret system behavior
+- MUST NOT generate or modify code
+- MUST NOT run or evaluate tests
+- MUST NOT perform reasoning about implementation
+
+→ ONLY allowed for pure text output without ANY technical context
+
 ## Automatic Model Switching
 
-### Task Classification
+### Provider-aware selection
 
-#### Substantive / Technical Tasks (HIGH)
+#### If provider = API:
 
-If task involves:
+- Technical tasks → MUST use gpt-4o
+- Documentation / changelog ONLY → MAY use gpt-4o-mini
 
-- reading code
-- searching files
-- debugging
-- modifying code
-- multiple files
-- architecture or design decisions
+#### If provider = Web/Auth:
 
-→ MUST use the PRIMARY model of the current provider:
+- ALL tasks → MUST use gpt-5.4
+- ONLY if task is strictly documentation/changelog → MAY use gpt-4o
 
-- API: gpt-4o
-- Web/Auth: gpt-5.4
+### HARD CONDITION
 
-#### Lightweight / Text Tasks (LOW)
-
-If task involves ONLY:
-
-- writing text
-- formatting
-- summarizing
-- documentation
-- changelog updates
-- commit messages
-
-→ MAY use the SECONDARY model of the current provider:
-
-- API: gpt-4o-mini
-- Web/Auth: gpt-4o
+- If ANY code, file, logic, or uncertainty is involved:
+  → MUST use PRIMARY model
 
 ### Escalation rules
 
-Escalate to PRIMARY model if:
+Escalate ONLY if:
 
 - multi-file architecture changes
 - repeated failures (>2 attempts)
@@ -130,18 +161,13 @@ Escalate to PRIMARY model if:
 
 After a successful solution:
 
-- return to task-based model selection
-- use PRIMARY model for all technical/code-related tasks
-- use SECONDARY model only for clearly text-only tasks
+- API:
+  - gpt-4o-mini ONLY for documentation/changelog
+  - otherwise ALWAYS gpt-4o
 
-### HARD RULE
-
-- NEVER use SECONDARY models for:
-  - debugging
-  - code changes
-  - multi-file operations
-  - architecture decisions
-  - unclear or risky tasks
+- Web/Auth:
+  - gpt-4o ONLY for documentation/changelog
+  - otherwise ALWAYS gpt-5.4
 
 ## Token Efficiency Guard
 
@@ -201,7 +227,9 @@ if ANY of the following occurs:
 
 When a trigger is detected:
 
-1. Immediately switch to a stronger model (API: gpt-4o)
+1. Immediately switch to the PRIMARY model of the current provider:
+   - API: gpt-4o
+   - Web/Auth: gpt-5.4
 2. Restart analysis with:
    - broader search scope
    - multiple search passes
@@ -212,16 +240,30 @@ When a trigger is detected:
 ### De-escalation
 
 - After a successful solution:
-  - return to the SECONDARY model of the current provider:
-    - API: gpt-4o-mini
-    - Web/Auth: gpt-4o
+  - return to task-based model selection
 
-### Hard rule
+- Secondary models may ONLY be used if the next task is strictly:
+  - documentation
+  - changelog
 
-- It is FORBIDDEN to conclude "not found" without:
-  - searching the full repository
-  - including all relevant file types
-  - performing at least 2 search passes
+- Otherwise:
+  → MUST remain on PRIMARY model
+
+### HARD RULE (NON-NEGOTIABLE)
+
+- Secondary models (gpt-4o-mini, gpt-4o) are STRICTLY limited to documentation and changelog.
+
+- It is FORBIDDEN to use secondary models if:
+  - code is visible
+  - files are accessed
+  - system behavior is analyzed
+  - correctness depends on logic
+
+- If ANY technical context is present:
+  → MUST use PRIMARY model
+
+- If there is ANY doubt:
+  → ALWAYS use PRIMARY model
 
 ## Exploration Depth Requirement (CRITICAL)
 
