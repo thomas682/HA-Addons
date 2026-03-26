@@ -326,7 +326,17 @@
         <span id="load_status_time"></span>
       </div>
 
-      <div id="query_details" style="display:none;" data-ui="dashboard.query_details" title="dashboard.query_details">
+      <div id="query_dialog" style="display:none; border:1px solid #ddd; padding:10px; border-radius:10px; background:#fff; position:fixed; top:10%; left:50%; transform:translateX(-50%); z-index:9999;" data-ui="dashboard.query_dialog" title="dashboard.query_dialog">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+    <h4>Aktueller Query Dialog</h4>
+    <button id="close_query_dialog" class="btn_sm">Schließen</button>
+  </div>
+  <pre id="current_query" style="background:#f9f9f9; border:1px solid #eee; padding:8px; border-radius:5px;">Noch keine Query vorhanden.</pre>
+  <div style="display:flex; justify-content:space-between; gap:10px; margin-top:10px;">
+    <button id="copy_query" class="btn_sm">In die Zwischenablage</button>
+    <button id="query_history" class="btn_sm">History anzeigen</button>
+  </div>
+</div>
         <div id="query_meta" data-ui="dashboard.query_meta" title="dashboard.query_meta"></div>
         <button id="query_history" type="button" data-ui="dashboard.query_history" title="dashboard.query_history"></button>
         <pre id="query_pre">Noch keine Query vorhanden.</pre>
@@ -6948,14 +6958,33 @@ try{
     </main>
   </div>
 
-  <script>
+<script>
     document.getElementById('dashboard_query_open').addEventListener('click', function() {
-      var queryDetails = document.getElementById('query_details');
-      queryDetails.style.display = "block";
-    // Optional: Implement a modal dialog box or overlay to better display the content
-    alert('Query Information displayed in a dialog box.');
-    console.log("Query dialog sollte als Modalfenster erscheinen.");
+      var queryDialog = document.getElementById('query_dialog');
+      queryDialog.style.display = "block";
+      // Query und Zeitstempel laden
+      var query = "SELECT * FROM data WHERE time > now() - interval '1 day'"; // Beispiel-Query
+      document.getElementById('current_query').textContent = query + "\nZeit: " + new Date().toISOString();
+    });
+
+    document.getElementById('close_query_dialog').addEventListener('click', function() {
+      document.getElementById('query_dialog').style.display = "none";
+    });
+
+    document.getElementById('copy_query').addEventListener('click', function() {
+      var queryText = document.getElementById('current_query').textContent;
+      navigator.clipboard.writeText(queryText).then(function() {
+        alert('Query in die Zwischenablage kopiert.');
+      }, function(err) {
+        alert('Fehler: ' + err);
+      });
+    });
+
+    // Implementiere Logik für die Historie
+    document.getElementById('query_history').addEventListener('click', function() {
+      alert('Feature in Arbeit: Query-Historie anzeigen.');
     });
   </script>
+
 </body>
 </html>
