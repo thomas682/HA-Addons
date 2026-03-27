@@ -6807,6 +6807,9 @@ try{
       try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.setVisible('#raw_tbl', $rawColFilter.checked); }catch(e){}
     });
   }
+
+  try{ if(window.InfluxBroTableHeight && $tableBox) window.InfluxBroTableHeight.attach($tableBox, 'tbl', {minPx: 180}); }catch(e){}
+  try{ if(window.InfluxBroTableHeight && $detailsBox) window.InfluxBroTableHeight.attach($detailsBox, 'details_box', {minPx: 180}); }catch(e){}
 }catch(e){}
 </script>
 

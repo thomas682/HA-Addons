@@ -357,6 +357,12 @@ def test_dashboard_reloads_graph_and_outliers_after_data_mutation():
     assert 'await refreshAfterDataMutation({ rerunOutliers: true });' in body
 
 
+def test_dashboard_tables_use_shared_height_resizers():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert "window.InfluxBroTableHeight.attach($tableBox, 'tbl', {minPx: 180})" in body
+    assert "window.InfluxBroTableHeight.attach($detailsBox, 'details_box', {minPx: 180})" in body
+
+
 def test_info_and_manual_pages_have_local_search_controls():
     info = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "info.html").read_text()
     manual = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "manual.html").read_text()

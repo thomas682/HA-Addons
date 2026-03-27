@@ -169,6 +169,7 @@ Weitere Dashboard-Anpassungen:
 - `Graph neu zeichnen` laedt die aktuelle Serie erneut aus InfluxDB und behaelt dabei den aktuellen Ausschnitt inklusive Overlays und Punktinfos bei.
 - Die fruehere Box `Quelle (aufgeloest)` wurde entfernt; im Dashboard bleibt nur noch die eigentliche Auswahlleiste.
 - Wenn du Raw-Werte oder vorgemerkte Aenderungen schreibst, werden Graph, Raw-Daten und eine aktive Ausreissersuche danach zusammen neu geladen; der aktuelle Ausschnitt bleibt dabei erhalten.
+- Bearbeitungsliste und Details-Liste haben jetzt ebenfalls einen horizontalen Hoehen-Resizer wie die anderen Tabellenbereiche.
 - Die Bearbeitungsliste hat keine Action-Spalte mehr; die Aktionen `Ueberschreiben`, `Loeschen`, `Uebernehmen` und `Undo` sitzen in der Toolbar oberhalb der Tabelle.
 - Raw-Wert-Ueberschreibungen bestaetigst du jetzt ueber einen InfluxBro-eigenen modalen Dialog statt ueber den Browser-Confirm.
 
