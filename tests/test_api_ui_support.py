@@ -225,7 +225,20 @@ def test_dashboard_selection_labels_and_widths_are_updated():
 
 def test_popup_remains_mouse_resizable():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
+    assert "document.createElement('dialog')" in body
+    assert "root.showModal()" in body
     assert "card.style.resize = 'both';" in body
+
+
+def test_query_logging_covers_selector_and_backup_routes():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "app.py").read_text()
+    assert 'log_query("api.measurements (flux)", q)' in body
+    assert 'log_query("api.fields (flux)", q)' in body
+    assert 'log_query("api.tag_values (flux)", q)' in body
+    assert 'log_query("api.resolve_signal (flux)", q)' in body
+    assert 'log_query("api.backup_create (flux)", q)' in body
+    assert 'log_query("api.backup_create_range (flux)", q)' in body
+    assert 'log_query(f"backup.job {backup_kind} (flux)", q)' in body
 
 
 def test_import_analyze_shows_success_and_error_popups():

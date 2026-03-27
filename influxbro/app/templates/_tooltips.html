@@ -698,6 +698,9 @@
 
   let LAST = { msg: '', at: 0 };
   let CURRENT_POPUP_SIZE_KEY = 'default';
+  let CURRENT_COPY_TEXT = '';
+  let POPUP_REFS = null;
+  let POPUP_SET_ACTIONS = ()=>{};
   const POPUP_SIZE_PREFIX = 'influxbro.popup.size.v1.';
 
   function _popupSizeKey(title){
@@ -711,23 +714,38 @@
 
   function _ensureUi(){
     let root = document.getElementById('influxbro_popup_root');
-    if(root) return root;
+    if(root){
+      if(!POPUP_REFS){
+        POPUP_REFS = {
+          root,
+          title: document.getElementById('influxbro_popup_title'),
+          pre: document.getElementById('influxbro_popup_pre'),
+          meta: document.getElementById('influxbro_popup_meta'),
+          copyBtn: document.getElementById('influxbro_popup_copy'),
+          settingsBtn: document.getElementById('influxbro_popup_settings'),
+        };
+      }
+      return root;
+    }
 
-    root = document.createElement('div');
+    root = document.createElement('dialog');
     root.id = 'influxbro_popup_root';
-    root.style.position = 'fixed';
-    root.style.inset = '0';
     root.style.zIndex = '10050';
     root.style.display = 'none';
-    root.style.background = 'rgba(0,0,0,0.45)';
-    root.style.padding = '8vh 12px 12px 12px';
+    root.style.background = 'transparent';
+    root.style.border = 'none';
+    root.style.padding = '0';
+    root.style.width = '100vw';
+    root.style.maxWidth = '100vw';
+    root.style.height = '100vh';
+    root.style.maxHeight = '100vh';
     root.style.boxSizing = 'border-box';
-    root.style.overflow = 'auto';
+    root.style.overflow = 'hidden';
 
     const card = document.createElement('div');
     card.id = 'influxbro_popup_card';
     card.style.maxWidth = '860px';
-    card.style.margin = '0 auto';
+    card.style.margin = '8vh auto 12px auto';
     card.style.background = '#fff';
     card.style.borderRadius = '16px';
     card.style.boxShadow = '0 12px 60px rgba(0,0,0,0.28)';
@@ -1027,7 +1045,6 @@
       try{ localStorage.setItem(WRAP_KEY, on ? '1' : '0'); }catch(e){}
     });
 
-    let CURRENT_COPY_TEXT = '';
     let CURRENT_ACTIONS = [];
 
     function _setActionButtons(actions){
@@ -1056,6 +1073,7 @@
         });
       }catch(e){}
     }
+    POPUP_SET_ACTIONS = _setActionButtons;
 
     async function doCopy(){
       try{ copyHint.textContent = ''; }catch(e){}
@@ -1385,7 +1403,10 @@
     // Expose the bugreport action for other UI elements (e.g. bottom status bar)
     try{ window.InfluxBroBugreport = { run: (msg)=>_bugreportRun(msg) }; }catch(e){}
 
+    POPUP_REFS = { root, title, pre, meta, copyBtn, settingsBtn };
+
     function close(){
+      try{ if(typeof root.close === 'function' && root.open) root.close(); }catch(e){}
       try{ root.style.display = 'none'; }catch(e){}
     }
 
@@ -1420,22 +1441,26 @@
 
     function _show(title, msg, opts){
       const root = _ensureUi();
-      const t = document.getElementById('influxbro_popup_title');
-      const pre = document.getElementById('influxbro_popup_pre');
-      const meta = document.getElementById('influxbro_popup_meta');
-      const settingsBtn = document.getElementById('influxbro_popup_settings');
+      const refs = POPUP_REFS || {};
+      const t = refs.title || document.getElementById('influxbro_popup_title');
+      const pre = refs.pre || document.getElementById('influxbro_popup_pre');
+      const meta = refs.meta || document.getElementById('influxbro_popup_meta');
+      const settingsBtn = refs.settingsBtn || document.getElementById('influxbro_popup_settings');
+      const copyBtn = refs.copyBtn || document.getElementById('influxbro_popup_copy');
       if(t) t.textContent = title || 'Hinweis';
       const normalizedMsg = _decodeEscapedInfoText(String(msg || ''));
       if(pre) pre.textContent = normalizedMsg;
       CURRENT_COPY_TEXT = String(opts && opts.copyText !== undefined ? opts.copyText : normalizedMsg || '');
-      copyBtn.setAttribute('title', String(opts && opts.copyTitle ? opts.copyTitle : 'Zwischenablage'));
-      copyBtn.setAttribute('aria-label', String(opts && opts.copyTitle ? opts.copyTitle : 'Zwischenablage'));
+      if(copyBtn){
+        copyBtn.setAttribute('title', String(opts && opts.copyTitle ? opts.copyTitle : 'Zwischenablage'));
+        copyBtn.setAttribute('aria-label', String(opts && opts.copyTitle ? opts.copyTitle : 'Zwischenablage'));
+      }
       if(meta){
         const metaTxt = _decodeEscapedInfoText(String(opts && opts.meta ? opts.meta : ''));
         meta.textContent = metaTxt;
         meta.style.display = metaTxt ? 'block' : 'none';
       }
-      _setActionButtons(opts && opts.actions ? opts.actions : []);
+      POPUP_SET_ACTIONS(opts && opts.actions ? opts.actions : []);
       try{ _applyPopupSize(title || 'Hinweis'); }catch(e){}
       try{ window.__InfluxBroPopupLast = { title: String(title || ''), msg: normalizedMsg }; }catch(e){}
       try{
@@ -1449,7 +1474,12 @@
           }
         }
       }catch(e){}
-      root.style.display = 'block';
+      try{
+        root.style.display = 'block';
+        if(typeof root.showModal === 'function' && !root.open) root.showModal();
+      }catch(e){
+        try{ root.style.display = 'block'; }catch(x){}
+      }
     }
 
   window.InfluxBroPopup = {

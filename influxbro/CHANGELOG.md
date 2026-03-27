@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.134
+
+### Fix
+
+- Query-/Text-Dialoge arbeiten wieder als modale Dialoge. Dadurch reagieren `dashboard.query_details`, Statistik-Dialoge sowie Backup-/FullBackup-Query-Buttons wieder sichtbar und konsistent.
+- Query-Logging wurde fuer Selector-, Resolve- und Backup-Abfragen ergaenzt, damit diese Diagnose-Daten bei aktiviertem Detail-/Query-Logging ebenfalls im Logfile erscheinen.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.126
 
 ### Enhancement

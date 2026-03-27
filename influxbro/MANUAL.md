@@ -164,6 +164,7 @@ Die Seitensuche in der Titelzeile (`page.search`) springt jetzt wieder mit sicht
 Weitere Dashboard-Anpassungen:
 
 - `Dashboard Query`, `Gesamtstatistik (Alles)` und `Statistik Zeitraum (Graph/Tabelle)` werden jetzt ueber modale Dialoge geoeffnet.
+- Dieselbe modale Dialoglogik gilt jetzt auch konsistent fuer Statistik-, Backup- und FullBackup-Querys; Copy, History und Logs laufen dort ueber denselben Dialog.
 - Der Raw-Query-Bereich wird ebenfalls nur noch ueber den zugehoerigen Query-Dialog geoeffnet; die Query-History ist dort direkt verfuegbar.
 - `Graph neu zeichnen` rendert den Graph inklusive Overlays und Punktinfos neu.
 - Die Bearbeitungsliste hat keine Action-Spalte mehr; die Aktionen `Ueberschreiben`, `Loeschen`, `Uebernehmen` und `Undo` sitzen in der Toolbar oberhalb der Tabelle.
@@ -656,6 +657,7 @@ Ausreisser:
 - Harmonisierung: Section Title Bars und Info‑Icons vereinheitlicht; Details‑Pfeil vergrößert.
 - Zeitraum: die genaue "von bis" Anzeige wird direkt unterhalb der Zeitraum‑Auswahl angezeigt.
 - Query Details: zeigt Start, Ende und Ausführungsdauer der letzten Abfrage sowie eine History.
+- Wenn in den Einstellungen Detail- und Query-Logging aktiv sind, landen jetzt auch Selector-, Resolve- und Backup-Queries im Logfile.
 - Help Popup: optionaler "Einstellungen" Button im Hilfe‑Popup, wenn relevant.
 - Wenn Hilfetexte aus Konfiguration oder Issue-Texten literal mit `\n` gespeichert wurden, stellt der Info-Dialog diese Escapes automatisch als echte Zeilenumbrueche dar.
 

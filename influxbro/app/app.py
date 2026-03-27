@@ -5988,6 +5988,7 @@ from(bucket: "{cfg["bucket"]}")
   |> sort(columns: ["_time"])
 '''
 
+    log_query(f"backup.job {backup_kind} (flux)", q)
     set_state("running", "Export laeuft...")
     set_progress(query=q.strip(), written_bytes=0, point_count=0)
 
@@ -7614,6 +7615,7 @@ from(bucket: "{cfg["bucket"]}")
   |> sort(columns: ["_time"])
 '''
 
+    log_query("api.backup_create (flux)", q)
     count = 0
     oldest: datetime | None = None
     newest: datetime | None = None
@@ -7946,6 +7948,7 @@ from(bucket: "{cfg["bucket"]}")
   |> sort(columns: ["_time"])
 '''
 
+    log_query("api.backup_create_range (flux)", q)
     count = 0
     oldest: datetime | None = None
     newest: datetime | None = None
@@ -11155,6 +11158,7 @@ from(bucket: "{cfg["bucket"]}")
 '''
                 else:
                     q = f'import "influxdata/influxdb/schema"\nschema.measurements(bucket: "{cfg["bucket"]}")'
+                log_query("api.measurements (flux)", q)
                 tables = c.query_api().query(q, org=cfg["org"])
                 items = []
                 for t in tables:
@@ -11171,7 +11175,9 @@ from(bucket: "{cfg["bucket"]}")
             if not cfg.get("database"):
                 return jsonify({"ok": False, "error": "InfluxDB v1 requires database. Bitte konfigurieren."}), 400
             c = v1_client(cfg)
-            res = c.query("SHOW MEASUREMENTS")
+            q = "SHOW MEASUREMENTS"
+            log_query("api.measurements (influxql)", q)
+            res = c.query(q)
             items = []
             for _, points in res.items():
                 for p in points:
@@ -11233,6 +11239,7 @@ from(bucket: "{cfg["bucket"]}")
   |> keep(columns: ["_value"])
   |> limit(n: 5000)
 '''
+                log_query("api.fields (flux)", q)
                 tables = c.query_api().query(q, org=cfg["org"])
                 fs = []
                 for t in tables:
@@ -11251,7 +11258,9 @@ from(bucket: "{cfg["bucket"]}")
             if not measurement:
                 return jsonify({"ok": False, "error": "measurement required for InfluxDB v1"}), 400
             c = v1_client(cfg)
-            res = c.query(f'SHOW FIELD KEYS FROM "{measurement}"')
+            q = f'SHOW FIELD KEYS FROM "{measurement}"'
+            log_query("api.fields (influxql)", q)
+            res = c.query(q)
             fs = []
             for _, points in res.items():
                 for p in points:
@@ -11340,6 +11349,7 @@ schema.tagValues(
   start: {start_arg}
 )
 '''
+                log_query("api.tag_values (flux)", q)
                 tables = c.query_api().query(q, org=cfg["org"])
                 vals = []
                 for t in tables:
@@ -11365,6 +11375,7 @@ schema.tagValues(
                 safe_name = friendly_name.replace("'", "\\'")
                 where += f' AND "friendly_name"=\'{safe_name}\''
             q = f'SHOW TAG VALUES WITH KEY = "{tag}" {where}'
+            log_query("api.tag_values (influxql)", q)
             res = c.query(q)
             vals = []
             for _, points in res.items():
@@ -15592,6 +15603,7 @@ from(bucket: "{cfg["bucket"]}")
   |> group()
   |> limit(n: 200)
 '''
+                log_query("api.resolve_signal (flux)", q)
                 tables = c.query_api().query(q, org=cfg["org"])
                 combos: set[tuple[str, str]] = set()
                 for t in tables:
@@ -15645,7 +15657,9 @@ from(bucket: "{cfg["bucket"]}")
             where.append(f'"friendly_name"=\'{_influxql_escape(friendly_name)}\'')
         where_clause = ("WHERE " + " AND ".join(where)) if where else ""
 
-        res = c.query(f"SHOW SERIES {where_clause} LIMIT 2000")
+        q_series = f"SHOW SERIES {where_clause} LIMIT 2000"
+        log_query("api.resolve_signal (influxql series)", q_series)
+        res = c.query(q_series)
         ms: set[str] = set()
         for _, points in res.items():
             for p in points:
@@ -15664,7 +15678,9 @@ from(bucket: "{cfg["bucket"]}")
             measurement = measurement_filter
         else:
             measurement = "state" if "state" in ms else sorted(ms)[0]
-        res_f = c.query(f'SHOW FIELD KEYS FROM "{measurement}"')
+        q_fields = f'SHOW FIELD KEYS FROM "{measurement}"'
+        log_query("api.resolve_signal (influxql fields)", q_fields)
+        res_f = c.query(q_fields)
         fs: list[str] = []
         for _, points in res_f.items():
             for p in points:
