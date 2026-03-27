@@ -52,6 +52,7 @@ body:
     attributes:
       label: Priority
       options:
+        - zero
         - low
         - medium
         - high
