@@ -22,6 +22,25 @@
   - Der Agent muss klar zwischen neuen fixbezogenen Fehlern und bereits bestehenden, themenfremden Fehlern unterscheiden.
   - Nur fixbezogene/blockierende Fehler duerfen Version-Bump, Commit und Push verhindern.
 
+## Mandatory Rule Files (HARD REQUIREMENT)
+
+- Die folgenden Regeldateien sind IMMER verpflichtend und duerfen niemals als optional behandelt werden:
+  - `rules/TESTING.md`
+  - `rules/ISSUES.md`
+  - `rules/WORKFLOW.md`
+  - `rules/CODESTYLE.md`
+- Diese vier Dateien sind verbindliche Repo-Policy und muessen bei jeder Aufgabe beachtet werden.
+- Es ist VERBOTEN, eine dieser Dateien als nur situative Empfehlung oder als nachrangige Zusatzinfo zu behandeln.
+- Auch wenn eine Aufgabe primaer nur Analyse, Recherche, Planung, Text, QA, Commit, Push, Styling, UI, Refactoring oder Issue-Arbeit betrifft, bleiben diese vier Regeldateien verpflichtend.
+
+### Enforcement
+
+- Vor Analyse, Umsetzung, Test, Issue-Bearbeitung, Commit, Push oder Abschlussmeldung muessen diese vier Regeldateien als verbindlicher Regelrahmen gelten.
+- Wenn eine Anweisung aus einer dieser Dateien fuer die aktuelle Aufgabe relevant ist, MUSS sie angewendet werden.
+- Wenn mehrere dieser Dateien gleichzeitig Anforderungen an dieselbe Aufgabe stellen, muessen alle zusammen eingehalten werden.
+- Bei Konflikten zwischen allgemeinem Standardverhalten und diesen Repo-Regeln haben diese vier Regeldateien Vorrang.
+- Eine Aufgabe darf NICHT als abgeschlossen gemeldet werden, wenn eine relevante Anforderung aus diesen Regeldateien nicht eingehalten wurde.
+
 ### Default Model Strategy
 
 - API:
