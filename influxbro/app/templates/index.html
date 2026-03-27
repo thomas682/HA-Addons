@@ -4317,9 +4317,8 @@ async function triggerRawOverwrite(sourceKey, targetKey, opts){
     })
   });
 
-  await reloadRawRowByKey(targetKey);
+  await refreshAfterDataMutation({ rerunOutliers: true });
   setRawSelectedKey(targetKey);
-  renderRawTable();
   ok('Zielwert wurde direkt in der Datenbank ueberschrieben.');
   const refreshedTarget = findRawRowByKey(targetKey);
   const targetValue = refreshedTarget && refreshedTarget.value !== undefined ? refreshedTarget.value : targetRow.value;
@@ -5088,8 +5087,8 @@ async function applyChangeForKey(key){
 
   try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done(statusKey, 'Geschrieben.'); }catch(x){}
 
-  // Refresh graph + raw table
-  try{ await refreshAllWithStatus(); }catch(x){}
+  // Refresh graph/raw data and keep outlier results in sync.
+  try{ await refreshAfterDataMutation({ rerunOutliers: true }); }catch(x){}
   renderTable();
 }
 
@@ -5125,7 +5124,7 @@ async function undoChangeForKey(key){
 
   try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done(statusKey, 'Undo geschrieben.'); }catch(x){}
 
-  try{ await refreshAllWithStatus(); }catch(x){}
+  try{ await refreshAfterDataMutation({ rerunOutliers: true }); }catch(x){}
   renderTable();
 }
 
@@ -5842,25 +5841,10 @@ async function applyAllEdits(){
       body: JSON.stringify(payload),
     });
 
-    // Mutate local data for overwrites (best-effort)
-    const byKey = new Map(dirty.filter(e=>e.action==='overwrite').map(e => [e.key, Number(e.new_value_str)]));
-    LAST_ROWS = (LAST_ROWS || []).map(r => {
-      const k = rowKey(r);
-      if(byKey.has(k)) return { ...r, value: byKey.get(k) };
-      return r;
-    });
-    if(OUTLIER_ACTIVE){
-      OUTLIER_ROWS = (OUTLIER_ROWS || []).map(r => {
-        const k = rowKey(r);
-        if(byKey.has(k)) return { ...r, value: byKey.get(k) };
-        return r;
-      });
-    }
-
     dirty.forEach(e => { try{ EDIT_LIST.delete(e.key); }catch(ex){} });
     ok(j.message || `Applied: ${dirty.length}`);
+    try{ await refreshAfterDataMutation({ rerunOutliers: true }); }catch(ex){}
     renderTable();
-    draw(LAST_ROWS);
   }catch(e){
     const msg = String(e && e.message ? e.message : e);
     if(msg.includes("Writes are disabled")){
@@ -6079,6 +6063,25 @@ async function refreshAllWithStatus(){
     stopLoadUi(false, (e && e.message) ? e.message : String(e));
     displayError(e);
   }
+}
+
+async function refreshAfterDataMutation(opts){
+  const o = opts || {};
+  const rerunOutliers = !!o.rerunOutliers;
+  const hadOutliers = rerunOutliers && !!OUTLIER_ACTIVE;
+  const selectedRawKey = RAW_ROW_SELECTED_KEY ? String(RAW_ROW_SELECTED_KEY) : '';
+  const selectedRawMs = (RAW_SELECTED_MS !== null && RAW_SELECTED_MS !== undefined && isFinite(Number(RAW_SELECTED_MS))) ? Number(RAW_SELECTED_MS) : null;
+
+  await refreshAllWithStatus();
+
+  if(hadOutliers){
+    try{ await runOutlierScan(); }catch(e){ displayError(e); }
+  }
+
+  try{
+    if(selectedRawKey && findRawRowByKey(selectedRawKey)) setRawSelectedKey(selectedRawKey);
+    else if(selectedRawMs !== null) _jumpToRawByMs(selectedRawMs).catch(()=>{});
+  }catch(e){}
 }
 
 

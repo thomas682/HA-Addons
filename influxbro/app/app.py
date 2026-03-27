@@ -14331,6 +14331,64 @@ def _global_stats_start_job(
     return job_id
 
 
+def _global_stats_start_cached_job(
+    cache_id: str,
+    cache_key: dict[str, Any],
+    rows: list[dict[str, Any]],
+    columns: list[str] | None,
+    trigger_page: str,
+) -> str:
+    job_id = uuid.uuid4().hex
+    ip = _req_ip()
+    ua = _req_ua()
+    now = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    job = {
+        "id": job_id,
+        "state": "done",
+        "message": f"Cache geladen. Zeilen: {len(rows)}",
+        "started_at": now,
+        "started_mono": time.monotonic(),
+        "finished_at": now,
+        "finished_mono": time.monotonic(),
+        "trigger_page": trigger_page,
+        "trigger_ip": ip,
+        "trigger_ua": ua,
+        "timer_id": None,
+        "total_points": None,
+        "scanned_points": 0,
+        "total_series": len(rows),
+        "groups_count": len(rows),
+        "current": "cache",
+        "last_query_label": "Cache",
+        "last_query": "",
+        "queries": [],
+        "rows": list(rows or []),
+        "cancelled": False,
+        "error": None,
+        "cache_id": cache_id,
+        "cache_key": cache_key,
+        "field_filter": cache_key.get("field_filter"),
+        "measurement": cache_key.get("measurement"),
+        "entity_id": cache_key.get("entity_id"),
+        "friendly_name": cache_key.get("friendly_name"),
+        "columns": list(columns or cache_key.get("columns") or []),
+    }
+    with GLOBAL_STATS_LOCK:
+        GLOBAL_STATS_JOBS[job_id] = job
+    try:
+        LOG.info(
+            "job_start type=global_stats cache_hit=1 job_id=%s cache_id=%s ip=%s ua=%s rows=%s",
+            job_id,
+            cache_id,
+            ip,
+            ua,
+            len(rows),
+        )
+    except Exception:
+        pass
+    return job_id
+
+
 @app.post("/api/global_stats_job/start")
 def api_global_stats_job_start():
     cfg = _overlay_from_yaml_if_enabled(load_cfg())
@@ -14406,7 +14464,20 @@ def api_global_stats_job_start():
             meta = _stats_cache_load_meta(cache_id) or {"id": cache_id, "key": cache_key}
             meta.setdefault("created_at", _utc_now_iso_ms())
             meta.setdefault("trigger_page", "stats")
+            payload = _stats_cache_load_payload(cache_id) if cache_id else None
+            cache_rows = payload.get("rows") if isinstance(payload, dict) and isinstance(payload.get("rows"), list) else None
+            can_use_cache = bool(cache_rows) and not bool(meta.get("dirty")) and not bool(meta.get("mismatch")) and not _stats_cache_is_stale(cfg, meta)
             meta["last_used_at"] = _utc_now_iso_ms()
+            if can_use_cache:
+                _stats_cache_write_meta(meta)
+                job_id = _global_stats_start_cached_job(
+                    cache_id,
+                    cache_key,
+                    list(cache_rows or []),
+                    columns,
+                    trigger_page="stats",
+                )
+                return jsonify({"ok": True, "job_id": job_id, "cache_id": cache_id, "cache_hit": True})
             meta["dirty"] = True
             meta["dirty_reason"] = "job_start"
             meta["dirty_at"] = _utc_now_iso_ms()

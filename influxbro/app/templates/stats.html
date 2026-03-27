@@ -736,6 +736,11 @@
         }
       }
 
+      function finishStatus(lines){
+        RUNNING = false;
+        setStatus(lines || []);
+      }
+
       let LAST_QUERY_HISTORY = [];
       let LAST_QUERY_SIG = '';
       function openStatsQueryDialog(){
@@ -1161,50 +1166,48 @@
                if(JOB_MERGE){
                  try{ fetchPartialMerge().catch(()=>{}); }catch(e){}
                }
-               fetchAllResults().then(()=>{
-                setStatus([`Fertig. Zeilen: ${(ROWS||[]).length}`, '']);
-                try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done('stats.load', `Statistik fertig. Zeilen: ${(ROWS||[]).length}`); }catch(e){}
-                if(!JOB_MERGE) setLastJobId(JOB_ID);
-                setJobId(null);
-                RUNNING = false;
-              }).catch(e=>{
-                try{ window.InfluxBroStatus && window.InfluxBroStatus.fail && window.InfluxBroStatus.fail('stats.load', String(e && e.message ? e.message : e)); }catch(ex){}
-                err(String(e && e.message ? e.message : e));
-                setJobId(null);
-                RUNNING = false;
-              });
-            }
+                fetchAllResults().then(()=>{
+                 finishStatus([`Fertig. Zeilen: ${(ROWS||[]).length}`, '']);
+                 try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done('stats.load', `Statistik fertig. Zeilen: ${(ROWS||[]).length}`); }catch(e){}
+                 if(!JOB_MERGE) setLastJobId(JOB_ID);
+                 setJobId(null);
+               }).catch(e=>{
+                 try{ window.InfluxBroStatus && window.InfluxBroStatus.fail && window.InfluxBroStatus.fail('stats.load', String(e && e.message ? e.message : e)); }catch(ex){}
+                 err(String(e && e.message ? e.message : e));
+                 setJobId(null);
+                 finishStatus(['Fehler beim Ergebnisladen.', '']);
+               });
+             }
             if(state === 'error'){
               stopPolling();
+              RUNNING = false;
               err(String(st.error || 'Fehler'));
               try{ window.InfluxBroStatus && window.InfluxBroStatus.fail && window.InfluxBroStatus.fail('stats.load', String(st.error || 'Fehler')); }catch(e){}
               setJobId(null);
-              RUNNING = false;
             }
             if(state === 'cancelled'){
               stopPolling();
-              setStatus(['Abgebrochen.', '']);
+              finishStatus(['Abgebrochen.', '']);
               try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done('stats.load', 'Abgebrochen.'); }catch(e){}
               setJobId(null);
-              RUNNING = false;
             }
            }).catch((e)=>{
-            stopPolling();
-            err(String(e && e.message ? e.message : e));
-            setStatus(['Job nicht gefunden oder Fehler beim Status-Update.', '']);
-            try{ window.InfluxBroStatus && window.InfluxBroStatus.fail && window.InfluxBroStatus.fail('stats.load', String(e && e.message ? e.message : e)); }catch(ex){}
-            setJobId(null);
-            RUNNING = false;
-          });
+             stopPolling();
+             RUNNING = false;
+             err(String(e && e.message ? e.message : e));
+             setStatus(['Job nicht gefunden oder Fehler beim Status-Update.', '']);
+             try{ window.InfluxBroStatus && window.InfluxBroStatus.fail && window.InfluxBroStatus.fail('stats.load', String(e && e.message ? e.message : e)); }catch(ex){}
+             setJobId(null);
+           });
         }, 800);
 
         fetchStatus().catch((e)=>{
           stopPolling();
+          RUNNING = false;
           err(String(e && e.message ? e.message : e));
           setStatus(['Job nicht gefunden oder Fehler beim Starten.', '']);
           try{ window.InfluxBroStatus && window.InfluxBroStatus.fail && window.InfluxBroStatus.fail('stats.load', String(e && e.message ? e.message : e)); }catch(ex){}
           setJobId(null);
-          RUNNING = false;
         });
       }
 
@@ -1634,44 +1637,11 @@
 
       // Table height resize handle (persisted)
       try{
-        const LS_H = 'influxbro_stats_table_h_v1';
-        const savedH = Number(localStorage.getItem(LS_H) || 0);
-        if($tblBox && isFinite(savedH) && savedH >= 160) $tblBox.style.height = Math.round(savedH) + 'px';
-
-        if($tblResize && $tblBox){
-          let startY = 0;
-          let startH = 0;
-          let dragging = false;
-          function onMove(ev){
-            if(!dragging) return;
-            const y = ev && ev.clientY ? ev.clientY : 0;
-            const dy = y - startY;
-            let h = startH + dy;
-            if(h < 160) h = 160;
-            if(h > window.innerHeight * 0.9) h = window.innerHeight * 0.9;
-            $tblBox.style.height = Math.round(h) + 'px';
-          }
-          function onUp(){
-            if(!dragging) return;
-            dragging = false;
-            document.body.style.userSelect = '';
-            window.removeEventListener('mousemove', onMove);
-            window.removeEventListener('mouseup', onUp);
-            try{
-              const h = Math.round($tblBox.getBoundingClientRect().height || 0);
-              if(h >= 160) localStorage.setItem(LS_H, String(h));
-            }catch(e){}
-          }
-          $tblResize.addEventListener('mousedown', (ev)=>{
-            try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
-            dragging = true;
-            startY = ev.clientY;
-            startH = $tblBox.getBoundingClientRect().height;
-            document.body.style.userSelect = 'none';
-            window.addEventListener('mousemove', onMove);
-            window.addEventListener('mouseup', onUp);
-          });
+        if($tblResize){
+          $tblResize.classList.add('ib_tbl_resize');
+          $tblResize.setAttribute('data-for', 'tbl');
         }
+        try{ if(window.InfluxBroTableHeight && $tblBox) window.InfluxBroTableHeight.attach($tblBox, 'tbl', {minPx: 160}); }catch(e){}
       }catch(e){}
 
       // Resume an in-flight background job (if any)

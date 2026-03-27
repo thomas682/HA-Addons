@@ -168,6 +168,7 @@ Weitere Dashboard-Anpassungen:
 - Der fruehere Raw-Query-Bereich wurde entfernt. Oberhalb der Raw-Tabelle gibt es jetzt einen eigenen Refresh-Button fuer dieselbe sichtbare Raw-Sicht.
 - `Graph neu zeichnen` laedt die aktuelle Serie erneut aus InfluxDB und behaelt dabei den aktuellen Ausschnitt inklusive Overlays und Punktinfos bei.
 - Die fruehere Box `Quelle (aufgeloest)` wurde entfernt; im Dashboard bleibt nur noch die eigentliche Auswahlleiste.
+- Wenn du Raw-Werte oder vorgemerkte Aenderungen schreibst, werden Graph, Raw-Daten und eine aktive Ausreissersuche danach zusammen neu geladen; der aktuelle Ausschnitt bleibt dabei erhalten.
 - Die Bearbeitungsliste hat keine Action-Spalte mehr; die Aktionen `Ueberschreiben`, `Loeschen`, `Uebernehmen` und `Undo` sitzen in der Toolbar oberhalb der Tabelle.
 - Raw-Wert-Ueberschreibungen bestaetigst du jetzt ueber einen InfluxBro-eigenen modalen Dialog statt ueber den Browser-Confirm.
 
@@ -462,6 +463,7 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Der markierte Punkt bleibt in der Raw-Liste farblich hervorgehoben, bis du einen anderen Punkt auswaehlst.
 - Die Raw-Aktionsleiste sitzt direkt ueber der Tabelle und enthaelt nur noch Tabellenfunktionen, `Wert kopieren`, `Einfügen` sowie `Refresh`.
 - Der fruehere Bereich `Statistik Zeitraum (Graph/Tabelle)` wurde entfernt; relevant bleiben die Gesamtstatistik im Dashboard und die Statistik-Seite.
+- Auf der Statistik-Seite nutzt `Statistik laden` zuerst einen passenden frischen Cache. Nur wenn kein passender Cache vorhanden oder dieser veraltet ist, startet ein neuer Hintergrundjob.
 
 ## Diagnose
 

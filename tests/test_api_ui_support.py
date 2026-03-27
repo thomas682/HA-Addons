@@ -241,6 +241,19 @@ def test_query_logging_covers_selector_and_backup_routes():
     assert 'log_query(f"backup.job {backup_kind} (flux)", q)' in body
 
 
+def test_stats_page_uses_finish_status_and_shared_table_height_helper():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "stats.html").read_text()
+    assert 'function finishStatus(lines)' in body
+    assert "$tblResize.classList.add('ib_tbl_resize');" in body
+    assert "window.InfluxBroTableHeight.attach($tblBox, 'tbl', {minPx: 160})" in body
+
+
+def test_stats_backend_can_short_circuit_fresh_cache_hits():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "app.py").read_text()
+    assert 'def _global_stats_start_cached_job(' in body
+    assert 'cache_hit": True' in body
+
+
 def test_import_analyze_shows_success_and_error_popups():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "import.html").read_text()
     assert "window.InfluxBroPopup.show('Import Analyse erfolgreich', msg);" in body
@@ -336,6 +349,12 @@ def test_dashboard_uses_outlier_visible_rows_setting_and_no_stats_current_toggle
     assert 'let UI_OUTLIER_VISIBLE_ROWS = 10;' in index_body
     assert 'function applyFilterTableVisibleRows()' in index_body
     assert '"ui_outlier_visible_rows": 10,' in app_body
+
+
+def test_dashboard_reloads_graph_and_outliers_after_data_mutation():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert 'async function refreshAfterDataMutation(opts)' in body
+    assert 'await refreshAfterDataMutation({ rerunOutliers: true });' in body
 
 
 def test_info_and_manual_pages_have_local_search_controls():
