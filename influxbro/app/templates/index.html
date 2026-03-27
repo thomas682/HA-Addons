@@ -307,11 +307,6 @@
       </div>
       <div class="muted">Zeitangaben werden als lokale Zeit interpretiert und als UTC an die API gesendet.</div>
     </div>
-    <div class="control span2" data-ui="dashboard.selection_row" title="dashboard.selection_row">
-      <label>Quelle (aufgeloest)</label>
-      <textarea id="selection_info" class="resizable" readonly data-ui="dashboard.selection" title="dashboard.selection" style="width:500px; max-width:100%;"></textarea>
-      <div class="muted" id="selection_info_meta" data-ui="dashboard.selection_meta" title="dashboard.selection_meta"></div>
-    </div>
     <div class="control">
       <div style="display:flex; gap: 8px; align-items: stretch;">
         <button id="load" class="btn_sm" style="flex:1; height:34px; padding:8px 10px;" data-ui="dashboard.load">Aktualisieren</button>
@@ -491,13 +486,6 @@
           <div id="raw_resize" data-ui="raw.resize" title="raw.resize" style="height: 12px; cursor: ns-resize; margin-top: 8px; border-radius: 999px; background: linear-gradient(90deg, #eee, #f8f8f8);"></div>
         </div>
       </details>
-    </details>
-
-    <details id="stats_curr_section" class="section" {{ 'open' if cfg.get('ui_open_stats_current', true) else '' }} data-ui="section.stats_current" title="section.stats_current">
-      <summary><span class="ib_summary_row"><span class="section_title" style="margin:0;">Statistik Zeitraum (Graph/Tabelle)</span><button id="stats_current_open" type="button" class="btn_sm" style="width:auto; min-width:34px; padding:6px 8px;" data-ui="section.stats_current" title="section.stats_current" aria-label="Statistik Zeitraum anzeigen"><svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><path d="M5,9h18v1H5V9z M5,13h8v9H5V13z M6,21h6v-7H6V21z M16,14h7v-1h-7V14z M16,16h7v-1h-7V16z M16,20h7v-1 h-7V20z M16,18h7v-1h-7V18z M16,22h7v-1h-7V22z M32,7v17c0,2.206-1.794,4-4,4H4c-2.206,0-4-1.794-4-4V5c0-0.552,0.448-1,1-1h26 c0.552,0,1,0.448,1,1v1h3C31.552,6,32,6.448,32,7z M30,8h-3v14h-1V7V6H2v18c0,1.103,0.897,2,2,2h24c1.103,0,2-0.897,2-2V8z"></path></svg></button><button type="button" class="ib_info_icon" data-info-title="Dashboard: Statistik Zeitraum" data-info-body="Dieser Bereich berechnet Kennzahlen nur fuer den aktuell sichtbaren Zeitraum aus Graph oder Tabelle.\n\nEnthaelt:\n- Kennzahlen fuer den aktuellen Ausschnitt\n- direkte Kopplung an Zoom, Range-Slider und Zeitfenster\n\nNutzen:\n- Vergleich des momentanen Ausschnitts mit der Gesamtstatistik\n- schnelle Bewertung eines selektierten Zeitfensters" >i</button></span></summary>
-      <div class="table_wrap" style="display:none;">
-        <table class="stats_tbl"><tbody id="stats_curr_body"></tbody></table>
-      </div>
     </details>
 
     <details id="filterlist_section" class="section" {{ 'open' if cfg.get('ui_open_filterlist') else '' }} data-ui="section.filterlist" title="section.filterlist">
@@ -789,8 +777,6 @@ const $entityList = document.getElementById('entity_list');
 const $start = document.getElementById('start');
 const $stop = document.getElementById('stop');
 const $custom = document.getElementById('custom_range');
-const $selectionInfo = document.getElementById('selection_info');
-const $selectionInfoMeta = document.getElementById('selection_info_meta');
 const $tbl = document.querySelector('#tbl tbody');
 const $tblTable = document.getElementById('tbl');
 const $tblHead = document.querySelector('#tbl thead');
@@ -829,7 +815,6 @@ const $backupBadge = document.getElementById('backup_badge');
 const $graphMarkers = document.getElementById('graph_markers');
 
 const $statsTotBody = document.getElementById('stats_tot_body');
-const $statsCurrBody = document.getElementById('stats_curr_body');
 
 const $btnTblAllValues = document.getElementById('tbl_all_values');
 
@@ -959,7 +944,6 @@ const $editGraphRefresh = document.getElementById('edit_graph_refresh');
 const $editGraphInfo = document.getElementById('edit_graph_info');
 const $editGraphPlot = document.getElementById('edit_graph_plot');
 const $statsTotalOpen = document.getElementById('stats_total_open');
-const $statsCurrentOpen = document.getElementById('stats_current_open');
 
 const $applyModal = document.getElementById('apply_modal');
 const $applyModalClose = document.getElementById('apply_modal_close');
@@ -976,6 +960,7 @@ const $applyModalConfirm = document.getElementById('apply_modal_confirm');
 
 let UI_DECIMALS = 3;
 let UI_TABLE_VISIBLE_ROWS = 20;
+let UI_OUTLIER_VISIBLE_ROWS = 10;
 let UI_EDIT_NEIGHBORS_N = 5;
 let UI_EDIT_DETAILS_VISIBLE_ROWS = 12;
 let UI_EDIT_GRAPH_BUFFER_MINUTES = 30;
@@ -983,6 +968,16 @@ let UI_EDIT_GRAPH_MAX_POINTS = 50000;
 let UI_RAW_MAX_POINTS = 20000;
 let UI_RAW_CENTER_MAX_POINTS = 2000;
 let UI_RAW_CENTER_MIN_POINTS = 10;
+
+function applyFilterTableVisibleRows(){
+  try{
+    if(!$tableBox) return;
+    const base = Math.max(5, Math.trunc(Number(UI_TABLE_VISIBLE_ROWS || 20)));
+    const outlierRows = Math.max(5, Math.trunc(Number(UI_OUTLIER_VISIBLE_ROWS || 10)));
+    const rows = OUTLIER_ACTIVE ? Math.max(base, outlierRows) : base;
+    $tableBox.style.setProperty('--max-rows', String(rows));
+  }catch(e){}
+}
 let RAW_CENTER_RANGE = 100;
 let UI_FONT_SMALL_FALLBACK = 11;
 
@@ -1487,7 +1482,6 @@ function saveState(){
       range: $r ? $r.value : "24h",
       start: $start ? $start.value : "",
       stop: $stop ? $stop.value : "",
-      dashboard_sel_h: $selectionInfo ? Math.round($selectionInfo.getBoundingClientRect().height || 0) : 0,
       scan_preset: $scanPreset ? $scanPreset.value : "counter",
       out_min: $outMin ? $outMin.value : "",
       out_max: $outMax ? $outMax.value : "",
@@ -2906,18 +2900,6 @@ function _statsCurrentText(){
   }
 }
 
-function openStatsCurrentDialog(){
-  try{
-    if(window.InfluxBroDialogs && window.InfluxBroDialogs.openText){
-      window.InfluxBroDialogs.openText({
-        title: 'Statistik Zeitraum (Graph/Tabelle)',
-        text: _statsCurrentText(),
-        copyTitle: 'Zwischenablage',
-      });
-    }
-  }catch(e){}
-}
-
 try{ if($dashboardQueryOpen) $dashboardQueryOpen.addEventListener('click', (ev)=>{ _stop(ev); openDashboardQueryDialog(); }); }catch(e){}
 try{ if($queryHistory) $queryHistory.addEventListener('click', (ev)=>{ _stop(ev); try{ window.InfluxBroQueryHistory && window.InfluxBroQueryHistory.show && window.InfluxBroQueryHistory.show('dashboard'); }catch(e){}; }); }catch(e){}
 try{ if($graphQueryOpen) $graphQueryOpen.addEventListener('click', (ev)=>{ _stop(ev); openGraphQueryDialog(); }); }catch(e){}
@@ -2925,8 +2907,6 @@ try{ if($graphQueryHistory) $graphQueryHistory.addEventListener('click', (ev)=>{
 try{ if($applyModalQueryOpen) $applyModalQueryOpen.addEventListener('click', (ev)=>{ _stop(ev); openApplyQueryDialog(); }); }catch(e){}
 try{ if($applyModalQueryHistory) $applyModalQueryHistory.addEventListener('click', (ev)=>{ _stop(ev); try{ window.InfluxBroQueryHistory && window.InfluxBroQueryHistory.show && window.InfluxBroQueryHistory.show('dashboard.apply_preview'); }catch(e){}; }); }catch(e){}
 try{ if($statsTotalOpen) $statsTotalOpen.addEventListener('click', (ev)=>{ _stop(ev); openStatsTotalDialog(); }); }catch(e){}
-try{ if($statsCurrentOpen) $statsCurrentOpen.addEventListener('click', (ev)=>{ _stop(ev); openStatsCurrentDialog(); }); }catch(e){}
-
 let GRAPH_QUERY_DASH = "";
 let GRAPH_QUERY_EDIT = "";
 
@@ -3282,7 +3262,9 @@ async function loadUiConfig(){
     if(isFinite(d) && d >= 0 && d <= 10) UI_DECIMALS = Math.trunc(d);
     const r = Number(cfg.ui_table_visible_rows);
     if(isFinite(r) && r > 0) UI_TABLE_VISIBLE_ROWS = Math.trunc(r);
-    if($tableBox) $tableBox.style.setProperty("--max-rows", String(UI_TABLE_VISIBLE_ROWS));
+    const orows = Number(cfg.ui_outlier_visible_rows);
+    if(isFinite(orows) && orows > 0) UI_OUTLIER_VISIBLE_ROWS = Math.trunc(orows);
+    applyFilterTableVisibleRows();
 
     const nn = Number(cfg.ui_edit_neighbors_n);
     if(isFinite(nn) && nn >= 1 && nn <= 50) UI_EDIT_NEIGHBORS_N = Math.trunc(nn);
@@ -3831,46 +3813,6 @@ function renderEntity(){
   });
 }
 
-function setSelectionInfoText(txt){
-  try{ if($selectionInfo) $selectionInfo.value = String(txt || ""); }catch(e){}
-  try{
-    const st = loadState();
-    if(st && Number(st.dashboard_sel_h || 0) >= 60) return;
-    if(!$selectionInfo) return;
-    $selectionInfo.style.height = "auto";
-    const want = Math.min(320, Math.max(120, ($selectionInfo.scrollHeight || 0) + 2));
-    $selectionInfo.style.height = want + "px";
-  }catch(e){}
-}
-
-function setSelectionInfoMeta(txt){
-  try{ if($selectionInfoMeta) $selectionInfoMeta.textContent = String(txt || ""); }catch(e){}
-}
-
-function refreshSelectionInfo(){
-  try{
-    const tf = currentTimeFilter();
-    const measurementFilter = String(($mf && $mf.value) || "").trim();
-    const measurement = measurementFilter;
-    const field = String(($f && $f.value) || "").trim();
-    const friendly = String(($n && $n.value) || "").trim();
-    const entity = String(($e && $e.value) || "").trim();
-    const txt = [
-      `role: source`,
-      `measurement_filter: ${measurementFilter || '-'}`,
-      `measurement: ${measurement || '-'}`,
-      `field: ${field || '-'}`,
-      `friendly_name: ${friendly || '-'}`,
-      `entity_id: ${entity || '-'}`,
-      `range: ${String(($r && $r.value) || '-')}`,
-      `start: ${(tf && tf.start) ? tf.start : '-'}`,
-      `stop: ${(tf && tf.stop) ? tf.stop : '-'}`,
-    ].join("\n");
-    setSelectionInfoText(txt);
-    setSelectionInfoMeta(`Optionen: _measurement ${ALL_MEASUREMENTS.length || 0} | _field ${ALL_FIELDS.length || 0} | friendly_name ${ALL_FRIENDLY.length || 0} | entity_id ${ALL_ENTITY.length || 0}`);
-  }catch(e){}
-}
-
 async function loadMeasurements(opts){
   const o = opts || {};
   try{
@@ -3942,7 +3884,6 @@ async function refreshDashboardSuggestions(opts){
   }catch(e){
     // ignore (best effort, like combine)
   }
-  refreshSelectionInfo();
   autoSpanAll();
   return true;
 }
@@ -4035,10 +3976,8 @@ function fmtLastValue(s){
 
 let HA_ENTITY_INFO = { available: false, entity: null, error: null };
 let LAST_STATS_TOT = null;
-let LAST_STATS_CURR = null;
 
 let _STATS_CURR_TIMER = null;
-let _STATS_CURR_INFLIGHT = false;
 
 let RAW_ROWS = [];
 let RAW_META = null;
@@ -4091,36 +4030,9 @@ function _rawWindowIso(){
   }
 }
 
-async function loadStatsCurrentFromGraph(){
-  const win = _graphWindowIso();
-  if(!win) return;
-  const base = currentFilters();
-  if(!base || !base.entity_id) return;
-  if(_STATS_CURR_INFLIGHT) return;
-  _STATS_CURR_INFLIGHT = true;
-  try{
-    const jCurr = await api("./api/stats", {
-      method: "POST",
-      headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({
-        ...base,
-        stats_scope: "range",
-        start: win.start,
-        stop: win.stop,
-      }),
-    });
-    LAST_STATS_CURR = jCurr.stats || {};
-    renderStats();
-  }catch(e){
-    // keep previous stats
-  }finally{
-    _STATS_CURR_INFLIGHT = false;
-  }
-}
-
 function scheduleStatsCurrentReload(){
   if(_STATS_CURR_TIMER) clearTimeout(_STATS_CURR_TIMER);
-  _STATS_CURR_TIMER = setTimeout(()=>{ loadStatsCurrentFromGraph().catch(()=>{}); }, 650);
+  _STATS_CURR_TIMER = null;
 }
 
 function _rawKey(base, win, anchorIso){
@@ -4831,7 +4743,6 @@ function _statsRowsCurrent(stats){
 
 function renderStats(){
   _setStatsBody($statsTotBody, _statsRowsTotal(LAST_STATS_TOT));
-  _setStatsBody($statsCurrBody, _statsRowsCurrent(LAST_STATS_CURR));
 }
 
 function sortRowsForTable(rows){
@@ -4917,6 +4828,7 @@ function _renderSelAll(checkboxEl, keysInView, selectedSet){
 }
 
 function renderTable(){
+  applyFilterTableVisibleRows();
   let base = (FILTER_TABLE_CLEARED ? [] : _rowsForFilterTable().slice());
   base = _tableTimeFilteredRows(base);
   base = applyMetaFilters(base);
@@ -5989,18 +5901,6 @@ async function loadStats(){
     LAST_STATS_TOT = {};
   }
 
-  // Current range
-  try{
-    const win = _graphWindowIso();
-    const payload = win
-      ? {...base, stats_scope: "range", start: win.start, stop: win.stop}
-      : {...base, stats_scope: "current"};
-    const jCurr = await api("./api/stats", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)});
-    LAST_STATS_CURR = jCurr.stats || {};
-  }catch(e){
-    LAST_STATS_CURR = {};
-  }
-
   renderTableRange();
   renderRangeFromTo();
 
@@ -6274,12 +6174,11 @@ $r.addEventListener("change", async ()=>{
     autoSpanAll();
     renderTableRange();
     renderRangeFromTo();
-    refreshSelectionInfo();
   }catch(e){ displayError(e); }
 });
 
-$start.addEventListener("change", async ()=>{ if($r.value==="custom") { saveState(); autoSpanAll(); renderTableRange(); renderRangeFromTo(); refreshSelectionInfo(); } });
-$stop.addEventListener("change", async ()=>{ if($r.value==="custom") { saveState(); autoSpanAll(); renderTableRange(); renderRangeFromTo(); refreshSelectionInfo(); } });
+$start.addEventListener("change", async ()=>{ if($r.value==="custom") { saveState(); autoSpanAll(); renderTableRange(); renderRangeFromTo(); } });
+$stop.addEventListener("change", async ()=>{ if($r.value==="custom") { saveState(); autoSpanAll(); renderTableRange(); renderRangeFromTo(); } });
 
 // Search inputs (case-insensitive filtering)
 // (search inputs removed; datalist inputs filter automatically)
@@ -6753,7 +6652,6 @@ try{
     if(!$start.value) $start.value = toLocalDatetimeValue(start);
     if(!$stop.value) $stop.value = toLocalDatetimeValue(now);
     if(!$r.value) $r.value = "24h";
-    try{ if(Number(st.dashboard_sel_h || 0) >= 60 && $selectionInfo) $selectionInfo.style.height = String(Number(st.dashboard_sel_h || 0)) + 'px'; }catch(e){}
 
     // Restore stored selection early so list loads can narrow correctly.
     if(st.measurement_filter){ if($mf) $mf.value = String(st.measurement_filter); }
@@ -6773,7 +6671,6 @@ try{
 
     renderTableRange();
     renderRangeFromTo();
-    refreshSelectionInfo();
     autoSpanAll();
     saveState();
 

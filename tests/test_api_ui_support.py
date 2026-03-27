@@ -134,7 +134,7 @@ def test_dashboard_collapsible_sections_have_info_icons():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     assert 'data-info-title="Dashboard: Gesamtstatistik (Alles)"' in body
     assert 'data-info-title="Dashboard: Graph"' in body
-    assert 'data-info-title="Dashboard: Statistik Zeitraum"' in body
+    assert 'data-info-title="Dashboard: Statistik Zeitraum"' not in body
     assert 'data-info-title="Dashboard: Bearbeitungsliste"' in body
 
 
@@ -316,7 +316,7 @@ def test_dashboard_issue137_modal_and_toolbar_updates():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     assert 'function _countDecimals(s)' in body
     assert 'function confirmRawOverwrite(sourceRow, targetRow)' in body
-    assert 'id="stats_current_open"' in body
+    assert 'id="stats_current_open"' not in body
     assert 'id="edit_toolbar_overwrite"' in body
     assert 'id="edit_toolbar_apply_one"' in body
     assert 'id="raw_refresh"' in body
@@ -325,6 +325,17 @@ def test_dashboard_issue137_modal_and_toolbar_updates():
     assert 'id="err" class="err"' not in body
     assert 'id="ok" class="ok"' not in body
     assert 'data-ui="tip.stats_total"' not in body
+
+
+def test_dashboard_uses_outlier_visible_rows_setting_and_no_stats_current_toggle():
+    config_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "config.html").read_text()
+    index_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    app_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "app.py").read_text()
+    assert 'id="ui_outlier_visible_rows"' in config_body
+    assert 'ui_open_stats_current' not in config_body
+    assert 'let UI_OUTLIER_VISIBLE_ROWS = 10;' in index_body
+    assert 'function applyFilterTableVisibleRows()' in index_body
+    assert '"ui_outlier_visible_rows": 10,' in app_body
 
 
 def test_info_and_manual_pages_have_local_search_controls():

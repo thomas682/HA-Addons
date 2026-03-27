@@ -649,6 +649,7 @@ DEFAULT_CFG = {
 
     # UI defaults
     "ui_table_visible_rows": 20,
+    "ui_outlier_visible_rows": 10,
     "ui_table_row_height_px": 13,
     "ui_backup_table_row_height_px": 13,
     "ui_backup_visible_rows": 24,
@@ -731,7 +732,6 @@ DEFAULT_CFG = {
     "ui_open_filterlist": False,
     "ui_open_editlist": False,
     "ui_open_stats_total": False,
-    "ui_open_stats_current": True,
 
     # Outlier scan defaults (max jump per point)
     # Based on a typical household connection: 3-phase 400V, 35A -> ~24.2kW; use 30kW as practical ceiling.
@@ -10733,6 +10733,7 @@ def api_set_config():
     _clamp_int("ui_backup_table_row_height_px", 13, 9, 60)
     _clamp_int("ui_backup_visible_rows", 24, 5, 200)
     _clamp_int("ui_restore_visible_rows", 24, 5, 200)
+    _clamp_int("ui_outlier_visible_rows", 10, 5, 200)
     _clamp_int("ui_query_manual_max_points", 200000, 1000, 2000000)
     _clamp_int("ui_graph_jump_padding_intervals", 1, 0, 50)
     _clamp_int("ui_edit_neighbors_n", 5, 1, 50)

@@ -180,6 +180,11 @@
               <div class="muted">Hoehe der Tabelle in Zeilen (Scroll zeigt trotzdem alle Messwerte).</div>
             </div>
             <div>
+              <label>Ausreisserliste sichtbare Zeilen</label>
+              <input id="ui_outlier_visible_rows" type="number" min="5" max="200" />
+              <div class="muted">Mindesthoehe der Bearbeitungsliste waehrend einer Ausreissersuche.</div>
+            </div>
+            <div>
               <label>Tabellenzeilen Hoehe (px)</label>
               <input id="ui_table_row_height_px" type="number" min="9" max="60" />
               <div class="muted">Effektive Zeilenhoehe ist max. +20% ueber kleiner Schriftgroesse.</div>
@@ -551,7 +556,6 @@
             <div><label class="ib_chk_row"><input type="checkbox" id="ui_open_filterlist" data-ui="settings.ui_open_filterlist" title="settings.ui_open_filterlist" /><span>Fehler-/Filtertabelle</span></label></div>
             <div><label class="ib_chk_row"><input type="checkbox" id="ui_open_editlist" data-ui="settings.ui_open_editlist" title="settings.ui_open_editlist" /><span>Bearbeitungsliste</span></label></div>
             <div><label class="ib_chk_row"><input type="checkbox" id="ui_open_stats_total" data-ui="settings.ui_open_stats_total" title="settings.ui_open_stats_total" /><span>Gesamtstatistik (Alles)</span></label></div>
-            <div><label class="ib_chk_row"><input type="checkbox" id="ui_open_stats_current" data-ui="settings.ui_open_stats_current" title="settings.ui_open_stats_current" /><span>Statistik Zeitraum (Graph)</span></label></div>
             <div>
               <label class="ib_chk_row"><input type="checkbox" id="ui_tooltips_enabled" data-ui="settings.ui_tooltips_enabled" title="settings.ui_tooltips_enabled" /><span>Tooltips anzeigen</span></label>
               <div class="muted">Wenn deaktiviert, werden keine Tooltips erzeugt/angezeigt.</div>
@@ -858,7 +862,7 @@ const ids = [
   "influx_version","scheme","host","port","verify_ssl","timeout_seconds",
   "org","bucket","token","admin_token",
   "database","username","password",
-  "ui_table_visible_rows","ui_table_row_height_px","ui_edit_neighbors_n","ui_edit_details_visible_rows","ui_edit_graph_buffer_minutes","ui_edit_graph_max_points","ui_decimals",
+  "ui_table_visible_rows","ui_outlier_visible_rows","ui_table_row_height_px","ui_edit_neighbors_n","ui_edit_details_visible_rows","ui_edit_graph_buffer_minutes","ui_edit_graph_max_points","ui_decimals",
   "ui_backup_table_row_height_px","ui_backup_visible_rows","ui_restore_visible_rows",
   "ui_query_max_points","ui_raw_max_points","ui_raw_center_max_points","ui_raw_center_range_default","ui_raw_center_min_points",
   "ui_query_manual_max_points","ui_graph_jump_padding_intervals",
@@ -872,7 +876,7 @@ const ids = [
   ,"ui_repo_url"
   ,"ui_paypal_donate_url"
   ,"ui_open_selection","ui_open_graph","ui_open_filterlist","ui_open_editlist"
-  ,"ui_open_stats_total","ui_open_stats_current"
+  ,"ui_open_stats_total"
   ,"ui_tooltips_enabled"
   ,"restore_preview_lines"
   ,"import_measurement_transforms"
@@ -1178,6 +1182,7 @@ function setForm(cfg){
   el.password.value = cfg.password ?? "";
 
   el.ui_table_visible_rows.value = cfg.ui_table_visible_rows ?? 20;
+  el.ui_outlier_visible_rows.value = cfg.ui_outlier_visible_rows ?? 10;
   el.ui_table_row_height_px.value = cfg.ui_table_row_height_px ?? 16;
   el.ui_backup_table_row_height_px.value = cfg.ui_backup_table_row_height_px ?? (cfg.ui_table_row_height_px ?? 16);
   el.ui_backup_visible_rows.value = cfg.ui_backup_visible_rows ?? 24;
@@ -1238,7 +1243,6 @@ function setForm(cfg){
   el.ui_open_filterlist.checked = !!cfg.ui_open_filterlist;
   el.ui_open_editlist.checked = !!cfg.ui_open_editlist;
   el.ui_open_stats_total.checked = !!cfg.ui_open_stats_total;
-  el.ui_open_stats_current.checked = (cfg.ui_open_stats_current !== false);
   el.ui_tooltips_enabled.checked = (cfg.ui_tooltips_enabled !== false);
 
   el.restore_preview_lines.value = (cfg.restore_preview_lines !== null && cfg.restore_preview_lines !== undefined) ? String(cfg.restore_preview_lines) : '5';
@@ -1304,6 +1308,7 @@ function getForm(){
     password: (el.password.value || "").trim(),
 
     ui_table_visible_rows: parseInt(el.ui_table_visible_rows.value, 10),
+    ui_outlier_visible_rows: parseInt(el.ui_outlier_visible_rows.value, 10),
     ui_table_row_height_px: parseInt(el.ui_table_row_height_px.value, 10),
     ui_backup_table_row_height_px: parseInt(el.ui_backup_table_row_height_px.value, 10),
     ui_backup_visible_rows: parseInt(el.ui_backup_visible_rows.value, 10),
@@ -1362,7 +1367,6 @@ function getForm(){
     ui_open_filterlist: !!el.ui_open_filterlist.checked,
     ui_open_editlist: !!el.ui_open_editlist.checked,
     ui_open_stats_total: !!el.ui_open_stats_total.checked,
-    ui_open_stats_current: !!el.ui_open_stats_current.checked,
     ui_tooltips_enabled: !!el.ui_tooltips_enabled.checked,
 
     restore_preview_lines: Number(el.restore_preview_lines.value || 5),
