@@ -3956,13 +3956,13 @@ async function refreshDashboardSuggestions(opts){
     if($entityList) $entityList.innerHTML = ALL_ENTITY.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"></option>`).join('');
     _setSelCount($cntEid, ALL_ENTITY.length);
     _selApplyWidthForInput($e, ALL_ENTITY);
-    try{ window.InfluxBroCascade && window.InfluxBroCascade.syncInput && window.InfluxBroCascade.syncInput($e, ALL_ENTITY, { requireSource: [$n, $mf, $f] }); }catch(e){}
+    try{ window.InfluxBroCascade && window.InfluxBroCascade.syncInput && window.InfluxBroCascade.syncInput($e, ALL_ENTITY, { requireSource: [$n, $mf, $f], preserveWhileFocused: true }); }catch(e){}
     logSelectorLoad('entity_id', ALL_ENTITY, { measurement_filter: meas, friendly_name: fn });
     ALL_FRIENDLY = await dashboardLoadTagValues('friendly_name', {...common, entity_id: eid || ''});
     if($friendlyList) $friendlyList.innerHTML = ALL_FRIENDLY.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"></option>`).join('');
     _setSelCount($cntFn, ALL_FRIENDLY.length);
     _selApplyWidthForInput($n, ALL_FRIENDLY);
-    try{ window.InfluxBroCascade && window.InfluxBroCascade.syncInput && window.InfluxBroCascade.syncInput($n, ALL_FRIENDLY, { requireSource: [$e, $mf, $f] }); }catch(e){}
+    try{ window.InfluxBroCascade && window.InfluxBroCascade.syncInput && window.InfluxBroCascade.syncInput($n, ALL_FRIENDLY, { requireSource: [$e, $mf, $f], preserveWhileFocused: true }); }catch(e){}
     logSelectorLoad('friendly_name', ALL_FRIENDLY, { measurement_filter: meas, entity_id: eid });
   }catch(e){
     // ignore (best effort, like combine)

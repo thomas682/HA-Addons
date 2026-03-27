@@ -587,11 +587,11 @@
           const xsE = await loadTagValues('entity_id', {...common, friendly_name: fn || ''});
           if($entityList) $entityList.innerHTML = xsE.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"></option>`).join('');
           setCount($cntEid, xsE.length, true);
-          try{ window.InfluxBroCascade && window.InfluxBroCascade.syncInput && window.InfluxBroCascade.syncInput($entityFilter, xsE, { requireSource: [$friendlyFilter, $measurementFilter, $fieldFilter] }); }catch(e){}
+          try{ window.InfluxBroCascade && window.InfluxBroCascade.syncInput && window.InfluxBroCascade.syncInput($entityFilter, xsE, { requireSource: [$friendlyFilter, $measurementFilter, $fieldFilter], preserveWhileFocused: true }); }catch(e){}
           const xsF = await loadTagValues('friendly_name', {...common, entity_id: eid || ''});
           if($friendlyList) $friendlyList.innerHTML = xsF.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"></option>`).join('');
           setCount($cntFn, xsF.length, true);
-          try{ window.InfluxBroCascade && window.InfluxBroCascade.syncInput && window.InfluxBroCascade.syncInput($friendlyFilter, xsF, { requireSource: [$entityFilter, $measurementFilter, $fieldFilter] }); }catch(e){}
+          try{ window.InfluxBroCascade && window.InfluxBroCascade.syncInput && window.InfluxBroCascade.syncInput($friendlyFilter, xsF, { requireSource: [$entityFilter, $measurementFilter, $fieldFilter], preserveWhileFocused: true }); }catch(e){}
           try{ _selMaybeAutoWidth($friendlyFilter, $friendlyList); }catch(e){}
           try{ _selMaybeAutoWidth($entityFilter, $entityList); }catch(e){}
         }catch(e){

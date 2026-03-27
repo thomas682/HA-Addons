@@ -1317,8 +1317,8 @@
           _selApplyWidthForInput($mf, ALL_MF);
           _selApplyWidthForInput($n, ALL_FN);
           _selApplyWidthForInput($e, ALL_EID);
-          try{ window.InfluxBroCascade && window.InfluxBroCascade.syncInput && window.InfluxBroCascade.syncInput($n, ALL_FN, { requireSource: [$mf, $e] }); }catch(e){}
-          try{ window.InfluxBroCascade && window.InfluxBroCascade.syncInput && window.InfluxBroCascade.syncInput($e, ALL_EID, { requireSource: [$mf, $n] }); }catch(e){}
+          try{ window.InfluxBroCascade && window.InfluxBroCascade.syncInput && window.InfluxBroCascade.syncInput($n, ALL_FN, { requireSource: [$mf, $e], preserveWhileFocused: true }); }catch(e){}
+          try{ window.InfluxBroCascade && window.InfluxBroCascade.syncInput && window.InfluxBroCascade.syncInput($e, ALL_EID, { requireSource: [$mf, $n], preserveWhileFocused: true }); }catch(e){}
 
           _renderRestoreRangeBounds();
         }
@@ -1337,7 +1337,7 @@
              setDatalistOptions($eidList, vals);
              setCount($cntEid, vals.length, false);
              _selApplyWidthForInput($e, vals);
-             try{ window.InfluxBroCascade && window.InfluxBroCascade.syncInput && window.InfluxBroCascade.syncInput($e, vals, { requireSource: [$n, $mf] }); }catch(e){}
+             try{ window.InfluxBroCascade && window.InfluxBroCascade.syncInput && window.InfluxBroCascade.syncInput($e, vals, { requireSource: [$n, $mf], preserveWhileFocused: true }); }catch(e){}
 
             const cur = String($e && $e.value ? $e.value : '').trim();
             if(vals.length >= 1 && (!cur || !vals.includes(cur))){
@@ -1360,9 +1360,9 @@
            setDatalistOptions($fnList, vals);
            setCount($cntFn, vals.length, true);
            _selApplyWidthForInput($n, vals);
-           try{ window.InfluxBroCascade && window.InfluxBroCascade.syncInput && window.InfluxBroCascade.syncInput($n, vals, { requireSource: [$e, $mf] }); }catch(e){}
+            try{ window.InfluxBroCascade && window.InfluxBroCascade.syncInput && window.InfluxBroCascade.syncInput($n, vals, { requireSource: [$e, $mf], preserveWhileFocused: true }); }catch(e){}
            const cur = String($n && $n.value ? $n.value : '').trim();
-           if(vals.length >= 1 && (!cur || !vals.includes(cur)) && $n) $n.value = vals[0];
+            if(vals.length >= 1 && (!cur || !vals.includes(cur)) && $n && document.activeElement !== $n) $n.value = vals[0];
          }catch(e){}
         }
 

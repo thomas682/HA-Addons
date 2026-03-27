@@ -140,6 +140,34 @@ After successful implementation AND completed QA:
   - bump add-on version
   - push directly to `main`
 
+### Completion Gate (NO SILENT STOP)
+
+- The agent MUST treat the following sequence as mandatory end-of-task behavior for implementation work in build/GO mode:
+  1. run required QA
+  2. classify any failures as either:
+     - fix-related/blocking
+     - pre-existing/unrelated
+  3. if failures are only pre-existing/unrelated, continue mandatory completion flow
+  4. bump `influxbro/config.yaml` version when runtime, UI, API, or behavior changed
+  5. stage changes
+  6. create commit
+  7. push to `main`
+  8. report result clearly in chat
+- It is FORBIDDEN to stop after code changes or after QA only, if the policy in this file requires version bump, commit, and push.
+- It is FORBIDDEN to treat `build` mode as mere permission while skipping mandatory completion steps.
+
+### Final Checklist (REQUIRED BEFORE REPORTING DONE)
+
+- Before declaring implementation complete, explicitly verify:
+  - implementation finished
+  - required QA executed
+  - QA result classified
+  - `influxbro/config.yaml` version bumped if required
+  - changes staged
+  - commit created
+  - push to `main` completed
+- If any item is missing, the task is NOT complete.
+
 ### Version Bump (CRITICAL FOR HA)
 
 - Every change that affects runtime, UI, API, or behavior MUST:
@@ -252,6 +280,10 @@ Otherwise:
   - syntax check failed
   - required QA not executed
   - blocking errors exist
+
+- Pre-existing or unrelated failing tests do NOT automatically count as blocking errors.
+  - The agent MUST explicitly state why they are unrelated.
+  - If the implemented change passed its relevant QA, the mandatory version-bump/commit/push flow still applies.
 
 - ALWAYS ensure:
   - minimal QA passed

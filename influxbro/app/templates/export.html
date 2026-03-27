@@ -687,7 +687,7 @@
         const xs = (j.values||[]).map(String);
         setDatalistOptions($friendlyList, xs);
         try{ if($cntFriendly) $cntFriendly.textContent = '(' + String(xs.length || 0) + ')'; }catch(e){}
-        try{ window.InfluxBroCascade && window.InfluxBroCascade.syncInput && window.InfluxBroCascade.syncInput($n, xs, { requireSource: [$e, $mf, $m] }); }catch(e){}
+        try{ window.InfluxBroCascade && window.InfluxBroCascade.syncInput && window.InfluxBroCascade.syncInput($n, xs, { requireSource: [$e, $mf, $m], preserveWhileFocused: true }); }catch(e){}
         try{ _selMaybeAutoWidth($n, $friendlyList); }catch(e){}
       }
 
@@ -703,7 +703,7 @@
         const xs = (j.values||[]).map(String);
         setDatalistOptions($entityList, xs);
         try{ if($cntEntity) $cntEntity.textContent = '(' + String(xs.length || 0) + ')'; }catch(e){}
-        try{ window.InfluxBroCascade && window.InfluxBroCascade.syncInput && window.InfluxBroCascade.syncInput($e, xs, { requireSource: [$n, $mf, $m] }); }catch(e){}
+        try{ window.InfluxBroCascade && window.InfluxBroCascade.syncInput && window.InfluxBroCascade.syncInput($e, xs, { requireSource: [$n, $mf, $m], preserveWhileFocused: true }); }catch(e){}
         try{ _selMaybeAutoWidth($e, $entityList); }catch(e){}
       }
 
@@ -806,8 +806,8 @@
           await loadFriendly();
           const cur = String(($n && $n.value) || '').trim();
           const xs = Array.from(($friendlyList && $friendlyList.options) || []).map(o => String(o.value || '')).filter(Boolean);
-          if(cur && !xs.includes(cur) && $n) $n.value = '';
-          try{ window.InfluxBroCascade && window.InfluxBroCascade.syncInput && window.InfluxBroCascade.syncInput($n, xs, { requireSource: [$e, $mf, $m] }); }catch(e){}
+          if(cur && !xs.includes(cur) && $n && document.activeElement !== $n) $n.value = '';
+          try{ window.InfluxBroCascade && window.InfluxBroCascade.syncInput && window.InfluxBroCascade.syncInput($n, xs, { requireSource: [$e, $mf, $m], preserveWhileFocused: true }); }catch(e){}
           saveState();
           await refreshResolved();
         }catch(e){}

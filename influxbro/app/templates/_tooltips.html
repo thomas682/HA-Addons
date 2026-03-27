@@ -669,6 +669,8 @@
       const xs = _values(items);
       const cur = String(input.value || '').trim();
       const valid = cur && xs.includes(cur);
+      const preserveFocused = !!(o.preserveWhileFocused && document && document.activeElement === input);
+      if(preserveFocused) return cur && !valid;
       if(cur && !valid && o.clearInvalid !== false) input.value = '';
       if(xs.length !== 1) return cur && !valid;
       if(o.requireSource){

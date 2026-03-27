@@ -1228,20 +1228,20 @@
           setDatalistOptions($fnList, ALL_FN);
           setCount($cntFn, ALL_FN.length, true);
           _selApplyWidthForInput($n, ALL_FN);
-          try{ window.InfluxBroCascade && window.InfluxBroCascade.syncInput && window.InfluxBroCascade.syncInput($n, ALL_FN, { requireSource: [$mf, $e] }); }catch(e){}
+          try{ window.InfluxBroCascade && window.InfluxBroCascade.syncInput && window.InfluxBroCascade.syncInput($n, ALL_FN, { requireSource: [$mf, $e], preserveWhileFocused: true }); }catch(e){}
 
           setDatalistOptions($eidList, ALL_EID);
           setCount($cntEid, ALL_EID.length, false);
           _selApplyWidthForInput($e, ALL_EID);
-          try{ window.InfluxBroCascade && window.InfluxBroCascade.syncInput && window.InfluxBroCascade.syncInput($e, ALL_EID, { requireSource: [$mf, $n] }); }catch(e){}
+          try{ window.InfluxBroCascade && window.InfluxBroCascade.syncInput && window.InfluxBroCascade.syncInput($e, ALL_EID, { requireSource: [$mf, $n], preserveWhileFocused: true }); }catch(e){}
 
           // Keep existing values only if still valid.
           const curFn = String($n && $n.value ? $n.value : '').trim();
-          if(curFn && !ALL_FN.includes(curFn)){
+          if(curFn && !ALL_FN.includes(curFn) && document.activeElement !== $n){
             if($n) $n.value = "";
           }
           const curE = String($e && $e.value ? $e.value : '').trim();
-          if(curE && !ALL_EID.includes(curE)){
+          if(curE && !ALL_EID.includes(curE) && document.activeElement !== $e){
             if($e) $e.value = "";
           }
         }catch(e){}
@@ -1262,7 +1262,7 @@
           const vals = (j.values || []).map(x=>String(x)).filter(Boolean);
           setDatalistOptions($eidList, vals);
           setCount($cntEid, vals.length, false);
-          try{ window.InfluxBroCascade && window.InfluxBroCascade.syncInput && window.InfluxBroCascade.syncInput($e, vals, { requireSource: [$n, $mf] }); }catch(e){}
+          try{ window.InfluxBroCascade && window.InfluxBroCascade.syncInput && window.InfluxBroCascade.syncInput($e, vals, { requireSource: [$n, $mf], preserveWhileFocused: true }); }catch(e){}
 
           const cur = String($e && $e.value ? $e.value : '').trim();
           if(vals.length >= 1 && (!cur || !vals.includes(cur))){
@@ -1286,9 +1286,9 @@
           const vals = (j.values || []).map(x=>String(x)).filter(Boolean);
           setDatalistOptions($fnList, vals);
           setCount($cntFn, vals.length, true);
-          try{ window.InfluxBroCascade && window.InfluxBroCascade.syncInput && window.InfluxBroCascade.syncInput($n, vals, { requireSource: [$e, $mf] }); }catch(e){}
+          try{ window.InfluxBroCascade && window.InfluxBroCascade.syncInput && window.InfluxBroCascade.syncInput($n, vals, { requireSource: [$e, $mf], preserveWhileFocused: true }); }catch(e){}
           const cur = String($n && $n.value ? $n.value : '').trim();
-          if(vals.length >= 1 && (!cur || !vals.includes(cur)) && $n) $n.value = vals[0];
+          if(vals.length >= 1 && (!cur || !vals.includes(cur)) && $n && document.activeElement !== $n) $n.value = vals[0];
         }catch(e){}
       }
 

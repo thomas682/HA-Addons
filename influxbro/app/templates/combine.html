@@ -456,20 +456,20 @@
             const xsE = await loadTagValues('entity_id', {...common, friendly_name: fn || ''});
             if($srcEntityList) $srcEntityList.innerHTML = xsE.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"></option>`).join('');
             _setCnt($cntSrcEntity, xsE.length);
-            try{ window.InfluxBroCascade && window.InfluxBroCascade.syncInput && window.InfluxBroCascade.syncInput($srcE, xsE, { requireSource: [$srcN, $srcM, $srcF] }); }catch(e){}
+            try{ window.InfluxBroCascade && window.InfluxBroCascade.syncInput && window.InfluxBroCascade.syncInput($srcE, xsE, { requireSource: [$srcN, $srcM, $srcF], preserveWhileFocused: true }); }catch(e){}
             const xsF = await loadTagValues('friendly_name', {...common, entity_id: eid || ''});
             if($srcFriendlyList) $srcFriendlyList.innerHTML = xsF.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"></option>`).join('');
             _setCnt($cntSrcFriendly, xsF.length);
-            try{ window.InfluxBroCascade && window.InfluxBroCascade.syncInput && window.InfluxBroCascade.syncInput($srcN, xsF, { requireSource: [$srcE, $srcM, $srcF] }); }catch(e){}
+            try{ window.InfluxBroCascade && window.InfluxBroCascade.syncInput && window.InfluxBroCascade.syncInput($srcN, xsF, { requireSource: [$srcE, $srcM, $srcF], preserveWhileFocused: true }); }catch(e){}
           }else{
             const xsE = await loadTagValues('entity_id', {...common, friendly_name: fn || ''});
             if($tgtEntityList) $tgtEntityList.innerHTML = xsE.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"></option>`).join('');
             _setCnt($cntTgtEntity, xsE.length);
-            try{ window.InfluxBroCascade && window.InfluxBroCascade.syncInput && window.InfluxBroCascade.syncInput($tgtE, xsE, { requireSource: [$tgtN, $tgtM, $tgtF] }); }catch(e){}
+            try{ window.InfluxBroCascade && window.InfluxBroCascade.syncInput && window.InfluxBroCascade.syncInput($tgtE, xsE, { requireSource: [$tgtN, $tgtM, $tgtF], preserveWhileFocused: true }); }catch(e){}
             const xsF = await loadTagValues('friendly_name', {...common, entity_id: eid || ''});
             if($tgtFriendlyList) $tgtFriendlyList.innerHTML = xsF.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"></option>`).join('');
             _setCnt($cntTgtFriendly, xsF.length);
-            try{ window.InfluxBroCascade && window.InfluxBroCascade.syncInput && window.InfluxBroCascade.syncInput($tgtN, xsF, { requireSource: [$tgtE, $tgtM, $tgtF] }); }catch(e){}
+            try{ window.InfluxBroCascade && window.InfluxBroCascade.syncInput && window.InfluxBroCascade.syncInput($tgtN, xsF, { requireSource: [$tgtE, $tgtM, $tgtF], preserveWhileFocused: true }); }catch(e){}
           }
         }catch(e){
           // ignore (suggestions are best-effort)
