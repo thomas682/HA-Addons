@@ -1,0 +1,60 @@
+name: Remember me
+description: Ideas for me to remember if time
+title: "[Enhancement]: "
+labels:
+  - "type/remember"
+  - "status/open"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the suggestion.
+
+
+  - type: dropdown
+    id: feature
+    attributes:
+      label: Feature / Function used
+      description: Which part of the add-on were you using?
+      options:
+        - sonstiges
+        - Dashboard
+        - Statistik
+        - Monitor
+        - Backup
+        - Restore
+        - Kombinieren
+        - Export
+        - Import
+        - Logs
+        - Jobs & Cache
+        - History
+        - Diagnose
+        - Changelog
+        - Handbuch
+        - Profilverwaltung
+        - Einstellungen
+    validations:
+      required: true
+  
+  - type: textarea
+    id: requirement
+    attributes:
+      label: Request (as written)
+      description: Please paste the request/wish in your own words.
+      placeholder: "I want ..."
+    validations:
+      required: true
+
+     
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - zero
+        - low
+        - medium
+        - high
+    validations:
+      required: true
