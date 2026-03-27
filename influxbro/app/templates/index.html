@@ -455,13 +455,8 @@
               <span id="raw_status_time" style="opacity:0.85; white-space: nowrap;"></span>
             </div>
 
-          <div id="raw_query_section" style="display:none;" data-ui="raw.query_section" title="raw.query_section">
-            <div id="raw_query_meta" data-ui="raw.query_meta" title="raw.query_meta"></div>
-            <button id="raw_query_history" type="button" data-ui="raw.query_history" title="raw.query_history"></button>
-            <pre id="raw_query" data-ui="raw.query" title="raw.query">Noch keine Query vorhanden.</pre>
-          </div>
-
             <div class="tbl_actions" style="justify-content:flex-start; margin-top: 8px;" data-ui="raw.actions" title="raw.actions">
+              <button class="btn_sm" id="raw_refresh" type="button" data-ui="raw.refresh" title="raw.refresh" aria-label="Raw Daten aktualisieren"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M18.6091 5.89092L15.5 9H21.5V3L18.6091 5.89092ZM18.6091 5.89092C16.965 4.1131 14.6125 3 12 3C7.36745 3 3.55237 6.50005 3.05493 11M5.39092 18.1091L2.5 21V15H8.5L5.39092 18.1091ZM5.39092 18.1091C7.03504 19.8869 9.38753 21 12 21C16.6326 21 20.4476 17.5 20.9451 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
               <button class="btn_sm" id="raw_autowidth" data-ui="raw.autowidth" title="raw.autowidth" aria-label="Spaltenbreite automatisch">
                 <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                   <path d="M5 5v14M19 5v14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -485,7 +480,6 @@
               <button class="btn_sm" id="raw_copy_value" data-ui="raw.copy_value" title="raw.copy_value">Wert kopieren</button>
               <button class="btn_sm" id="raw_paste" data-ui="raw.paste" title="raw.paste" disabled>Einfügen</button>
               <span id="raw_copied_info" class="muted" style="margin-left:6px;"></span>
-              <button class="btn_sm" id="raw_query_open" type="button" data-ui="raw.query_section" title="raw.query_section" aria-label="Raw Query anzeigen"><svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="11" cy="15.5" r="1.5"></circle><path d="M12,12H10V8h2a2,2,0,0,0,0-4H10A2.0023,2.0023,0,0,0,8,6v.5H6V6a4.0045,4.0045,0,0,1,4-4h2a4,4,0,0,1,0,8Z"></path><path d="M22.4479,21.0337A10.971,10.971,0,0,0,19.9211,4.7446l-.999,1.73A8.9967,8.9967,0,1,1,5,14H3a10.9916,10.9916,0,0,0,18.0338,8.4478L28.5859,30,30,28.5859Z"></path></svg></button>
             </div>
 
             <div class="table_box" id="raw_box" style="--max-rows: 10;">
@@ -884,17 +878,13 @@ const $rawAutoWidth = document.getElementById('raw_autowidth');
 const $rawWindowWidth = document.getElementById('raw_windowwidth');
 const $rawWrap = document.getElementById('raw_wrap');
 const $rawColFilter = document.getElementById('raw_colfilter');
+const $rawRefresh = document.getElementById('raw_refresh');
 const $rawCopy = document.getElementById('raw_copy');
 const $rawCenterRange = document.getElementById('raw_center_range');
 const $rawCenterRangeHint = document.getElementById('raw_center_range_hint');
 const $rawCopyValue = document.getElementById('raw_copy_value');
 const $rawPaste = document.getElementById('raw_paste');
 const $rawCopiedInfo = document.getElementById('raw_copied_info');
-const $rawQueryOpen = document.getElementById('raw_query_open');
-const $rawQuerySection = document.getElementById('raw_query_section');
-const $rawQueryMeta = document.getElementById('raw_query_meta');
-const $rawQueryHistory = document.getElementById('raw_query_history');
-const $rawQuery = document.getElementById('raw_query');
 
 const $graphQuerySection = document.getElementById('graph_query_section');
 const $graphCopyQuery = document.getElementById('graph_copy_query');
@@ -2881,19 +2871,6 @@ function openGraphQueryDialog(){
   }catch(e){}
 }
 
-function openRawQueryDialog(){
-  try{
-    if(window.InfluxBroDialogs && window.InfluxBroDialogs.openQuery){
-      window.InfluxBroDialogs.openQuery({
-        title: 'Raw Query',
-        text: $rawQuery ? String($rawQuery.textContent || '') : '',
-        meta: $rawQueryMeta ? String($rawQueryMeta.textContent || '') : '',
-        scope: 'dashboard.raw',
-      });
-    }
-  }catch(e){}
-}
-
 function openApplyQueryDialog(){
   try{
     if(window.InfluxBroDialogs && window.InfluxBroDialogs.openQuery){
@@ -2945,8 +2922,6 @@ try{ if($dashboardQueryOpen) $dashboardQueryOpen.addEventListener('click', (ev)=
 try{ if($queryHistory) $queryHistory.addEventListener('click', (ev)=>{ _stop(ev); try{ window.InfluxBroQueryHistory && window.InfluxBroQueryHistory.show && window.InfluxBroQueryHistory.show('dashboard'); }catch(e){}; }); }catch(e){}
 try{ if($graphQueryOpen) $graphQueryOpen.addEventListener('click', (ev)=>{ _stop(ev); openGraphQueryDialog(); }); }catch(e){}
 try{ if($graphQueryHistory) $graphQueryHistory.addEventListener('click', (ev)=>{ _stop(ev); try{ window.InfluxBroQueryHistory && window.InfluxBroQueryHistory.show && window.InfluxBroQueryHistory.show('dashboard.graph'); }catch(e){}; }); }catch(e){}
-try{ if($rawQueryOpen) $rawQueryOpen.addEventListener('click', (ev)=>{ _stop(ev); openRawQueryDialog(); }); }catch(e){}
-try{ if($rawQueryHistory) $rawQueryHistory.addEventListener('click', (ev)=>{ _stop(ev); try{ window.InfluxBroQueryHistory && window.InfluxBroQueryHistory.show && window.InfluxBroQueryHistory.show('dashboard.raw'); }catch(e){}; }); }catch(e){}
 try{ if($applyModalQueryOpen) $applyModalQueryOpen.addEventListener('click', (ev)=>{ _stop(ev); openApplyQueryDialog(); }); }catch(e){}
 try{ if($applyModalQueryHistory) $applyModalQueryHistory.addEventListener('click', (ev)=>{ _stop(ev); try{ window.InfluxBroQueryHistory && window.InfluxBroQueryHistory.show && window.InfluxBroQueryHistory.show('dashboard.apply_preview'); }catch(e){}; }); }catch(e){}
 try{ if($statsTotalOpen) $statsTotalOpen.addEventListener('click', (ev)=>{ _stop(ev); openStatsTotalDialog(); }); }catch(e){}
@@ -4072,7 +4047,6 @@ let _RAW_INFLIGHT = false;
 let RAW_OFFSET = 0;
 let RAW_ANCHOR_ISO = null;
 const RAW_WINDOW_LIMIT = 5000;
-let RAW_QUERY_LAST_AT = "";
 let GRAPH_QUERY_DASH_AT = "";
 let GRAPH_QUERY_EDIT_AT = "";
 let APPLY_QUERY_LAST_AT = "";
@@ -4080,19 +4054,6 @@ let RAW_LAST_KEY = "";
 let _RAW_STATUS_T0 = 0;
 let _RAW_STATUS_TIMER = null;
 let RAW_TIME_FROM_GRAPH = true;
-
-function renderRawQuery(){
-  if(!$rawQuery) return;
-  const q = (RAW_META && RAW_META.query) ? String(RAW_META.query) : "";
-  $rawQuery.textContent = q || 'Noch keine Query vorhanden.';
-  if($rawQueryMeta){
-    const parts = [];
-    if(RAW_QUERY_LAST_AT) parts.push('Zeit: ' + fmtTs(RAW_QUERY_LAST_AT));
-    if(RAW_META && RAW_META.mode) parts.push('Modus: ' + String(RAW_META.mode));
-    $rawQueryMeta.textContent = parts.join(' | ');
-  }
-  if($rawQuerySection) $rawQuerySection.style.display = 'block';
-}
 
 function _graphWindowIso(){
   const a = TABLE_TIME.graph_start_ms;
@@ -4267,7 +4228,6 @@ function renderRawTable(){
     $rawBody.appendChild(tr);
   });
 
-  renderRawQuery();
   updateRawToolbarState();
 }
 
@@ -4545,7 +4505,6 @@ async function loadRawFromGraph(reset){
     RAW_META = null;
     RAW_ANCHOR_ISO = anchorIso;
     RAW_LAST_KEY = key;
-    renderRawQuery();
   }
 
   _RAW_INFLIGHT = true;
@@ -4597,10 +4556,9 @@ async function loadRawFromGraph(reset){
     const rows = j.rows || [];
     const meta = j.meta || null;
     RAW_META = meta;
-    RAW_QUERY_LAST_AT = new Date().toISOString();
     try{
       if(meta && meta.query && window.InfluxBroQueryHistory && window.InfluxBroQueryHistory.add){
-        window.InfluxBroQueryHistory.add('dashboard.raw', 'Raw', String(meta.query || ''), '', RAW_QUERY_LAST_AT);
+        window.InfluxBroQueryHistory.add('dashboard.raw', 'Raw', String(meta.query || ''), '', new Date().toISOString());
       }
     }catch(e){}
 
@@ -5806,7 +5764,10 @@ async function refreshEditGraph(){
 }
 
 try{
-  if($graphRefresh) $graphRefresh.addEventListener('click', (ev)=>{ _stop(ev); if(LAST_ROWS && LAST_ROWS.length){ draw(LAST_ROWS); try{ _updateGraphDetailUi(); _applyOverlays(); _updateGraphPointsInfo(); }catch(e){} } });
+  if($graphRefresh) $graphRefresh.addEventListener('click', (ev)=>{
+    _stop(ev);
+    loadData().catch(displayError);
+  });
   if($editGraphRefresh) $editGraphRefresh.addEventListener('click', (ev)=>{ _stop(ev); refreshEditGraph().catch(displayError); });
 }catch(e){}
 
@@ -6371,6 +6332,10 @@ if($graphMarkers) $graphMarkers.addEventListener("change", ()=>{
 // Raw data table
 if($rawSection) $rawSection.addEventListener("toggle", ()=>{
   if($rawSection.open) scheduleRawReload(true);
+});
+if($rawRefresh) $rawRefresh.addEventListener("click", (ev)=>{
+  _stop(ev);
+  loadRawFromGraph(true).catch(displayError);
 });
 if($rawCopy) $rawCopy.addEventListener("click", async (ev)=>{
   _stop(ev);

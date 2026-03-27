@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.135
+
+### Fix
+
+- Dashboard: `graph.refresh` laedt die aktuelle Serie jetzt neu aus der Datenbank statt nur den vorhandenen Plot neu zu zeichnen. Der aktuelle Ausschnitt bleibt dabei erhalten.
+- Dashboard/Raw: Der nicht mehr benoetigte Query-Bereich wurde entfernt. Stattdessen gibt es oberhalb der Raw-Tabelle einen eigenen Refresh-Button, der die aktuelle Raw-Sicht mit demselben Zeitfenster neu laedt.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`, `pytest tests/test_api_ui_support.py -q`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.134
 
 ### Fix

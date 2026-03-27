@@ -319,7 +319,9 @@ def test_dashboard_issue137_modal_and_toolbar_updates():
     assert 'id="stats_current_open"' in body
     assert 'id="edit_toolbar_overwrite"' in body
     assert 'id="edit_toolbar_apply_one"' in body
-    assert 'id="raw_query_open"' in body
+    assert 'id="raw_refresh"' in body
+    assert 'id="raw_query_open"' not in body
+    assert 'id="raw_query_section"' not in body
     assert 'id="err" class="err"' not in body
     assert 'id="ok" class="ok"' not in body
     assert 'data-ui="tip.stats_total"' not in body

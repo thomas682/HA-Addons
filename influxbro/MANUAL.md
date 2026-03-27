@@ -165,8 +165,8 @@ Weitere Dashboard-Anpassungen:
 
 - `Dashboard Query`, `Gesamtstatistik (Alles)` und `Statistik Zeitraum (Graph/Tabelle)` werden jetzt ueber modale Dialoge geoeffnet.
 - Dieselbe modale Dialoglogik gilt jetzt auch konsistent fuer Statistik-, Backup- und FullBackup-Querys; Copy, History und Logs laufen dort ueber denselben Dialog.
-- Der Raw-Query-Bereich wird ebenfalls nur noch ueber den zugehoerigen Query-Dialog geoeffnet; die Query-History ist dort direkt verfuegbar.
-- `Graph neu zeichnen` rendert den Graph inklusive Overlays und Punktinfos neu.
+- Der fruehere Raw-Query-Bereich wurde entfernt. Oberhalb der Raw-Tabelle gibt es jetzt einen eigenen Refresh-Button fuer dieselbe sichtbare Raw-Sicht.
+- `Graph neu zeichnen` laedt die aktuelle Serie erneut aus InfluxDB und behaelt dabei den aktuellen Ausschnitt inklusive Overlays und Punktinfos bei.
 - Die Bearbeitungsliste hat keine Action-Spalte mehr; die Aktionen `Ueberschreiben`, `Loeschen`, `Uebernehmen` und `Undo` sitzen in der Toolbar oberhalb der Tabelle.
 - Raw-Wert-Ueberschreibungen bestaetigst du jetzt ueber einen InfluxBro-eigenen modalen Dialog statt ueber den Browser-Confirm.
 
@@ -246,7 +246,7 @@ Raw Daten (DB):
 - `Wert kopieren` erfordert eine selektierte Raw-Zeile. Diese Zeile bleibt als Quelle markiert, bis du eine andere Quelle waehlst.
 - `Einfügen` erfordert ebenfalls eine selektierte Zielzeile, zeigt vor dem Schreiben einen Bestaetigungsdialog mit Quelle und Ziel und ueberschreibt den Zielwert danach sofort in der Datenbank.
 - Alternativ kannst du eine Raw-Zeile per Drag-and-Drop auf eine andere Zeile ziehen; auch dann erscheint vor dem Ueberschreiben derselbe Bestaetigungsdialog.
-- Die Raw-Query bleibt sichtbar, zeigt einen Zeitstempel und hat ebenfalls eine History.
+- Die Raw-Tabelle hat einen eigenen Refresh-Button und behaelt dabei denselben sichtbaren Zeitraum bzw. denselben graphgefuehrten Ausschnitt bei.
 - Die Buttons `Kopieren`, `Wert kopieren` und `Einfügen` zeigen zusaetzlich eine direkte Rueckmeldung im Popup.
 
 Konzept fuer sehr grosse Tabellen (z.B. ~2 Mio Zeilen):
@@ -458,7 +458,7 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 
 - Klick auf einen Graph-Punkt springt in der Raw-Datenliste zum naechsten passenden Zeitstempel.
 - Der markierte Punkt bleibt in der Raw-Liste farblich hervorgehoben, bis du einen anderen Punkt auswaehlst.
-- Die Raw-Aktionsleiste sitzt direkt ueber der Tabelle und enthaelt nur noch Tabellenfunktionen, `Wert kopieren`, `Einfügen` sowie den Query-Dialog.
+- Die Raw-Aktionsleiste sitzt direkt ueber der Tabelle und enthaelt nur noch Tabellenfunktionen, `Wert kopieren`, `Einfügen` sowie `Refresh`.
 
 ## Diagnose
 
