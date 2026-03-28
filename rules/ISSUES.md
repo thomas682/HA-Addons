@@ -15,6 +15,8 @@
     - `gh issue list --repo <owner>/<repo> --state open --limit 200`
     - `gh issue list --repo <owner>/<repo> --state open --label type/bug --limit 200`
     - `gh issue list --repo <owner>/<repo> --state open --label type/enhancement --limit 200`
+- Issues mit dem Label `rememberme` duerfen bei Issue-Pruefung, Triage oder Sammelumsetzung NICHT bearbeitet, umgesetzt, veraendert, kommentiert, geschlossen oder in Auswahl-/Umsetzungspakete aufgenommen werden.
+- `rememberme`-Issues sind bei jeder Bearbeitung offener Issues strikt zu ueberspringen, auch wenn der Benutzer allgemein nach offenen Issues oder nach "allen Issues" fragt.
 - Present open items grouped by **Bugs** (`type/bug`) vs **Enhancements** (`type/enhancement`).
 - The user must be able to decide per issue:
   - implement now
