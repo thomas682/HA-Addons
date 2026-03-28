@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.150
+
+### Fix
+
+- Der globale Popup-/Dialogpfad verwendet jetzt eine gemeinsame Decode-Hilfsfunktion. Dadurch schlagen `Dashboard: dashboard.query_details`, `Dashboard: section.stats_total` und Test-Popups nicht mehr mit `ReferenceError: _decodeEscapedInfoText is not defined` fehl.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`, `pytest tests/test_api_ui_support.py -q`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.149
 
 ### Fix

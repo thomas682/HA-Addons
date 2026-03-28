@@ -493,6 +493,18 @@
 
 // Section info icons: open the global popup with detailed help.
 (function(){
+  if(!window.InfluxBroDecodeInfoText){
+    window.InfluxBroDecodeInfoText = function(text){
+      const s = String(text || '');
+      return s
+        .replace(/\\r\\n/g, '\n')
+        .replace(/\\n/g, '\n')
+        .replace(/\\t/g, '\t')
+        .replace(/\\"/g, '"')
+        .replace(/\\'/g, "'");
+    };
+  }
+
   function _norm(s){
     return String(s || '').replace(/\s+/g, ' ').trim();
   }
@@ -507,17 +519,7 @@
 
   function _getBody(btn){
     const b = String(btn.getAttribute('data-info-body') || '');
-    return _decodeEscapedInfoText(b);
-  }
-
-  function _decodeEscapedInfoText(text){
-    const s = String(text || '');
-    return s
-      .replace(/\\r\\n/g, '\n')
-      .replace(/\\n/g, '\n')
-      .replace(/\\t/g, '\t')
-      .replace(/\\"/g, '"')
-      .replace(/\\'/g, "'");
+    return window.InfluxBroDecodeInfoText(b);
   }
 
   function _show(btn){
@@ -1448,7 +1450,7 @@
       const settingsBtn = refs.settingsBtn || document.getElementById('influxbro_popup_settings');
       const copyBtn = refs.copyBtn || document.getElementById('influxbro_popup_copy');
       if(t) t.textContent = title || 'Hinweis';
-      const normalizedMsg = _decodeEscapedInfoText(String(msg || ''));
+      const normalizedMsg = (window.InfluxBroDecodeInfoText ? window.InfluxBroDecodeInfoText(String(msg || '')) : String(msg || ''));
       if(pre) pre.textContent = normalizedMsg;
       CURRENT_COPY_TEXT = String(opts && opts.copyText !== undefined ? opts.copyText : normalizedMsg || '');
       if(copyBtn){
@@ -1456,7 +1458,7 @@
         copyBtn.setAttribute('aria-label', String(opts && opts.copyTitle ? opts.copyTitle : 'Zwischenablage'));
       }
       if(meta){
-        const metaTxt = _decodeEscapedInfoText(String(opts && opts.meta ? opts.meta : ''));
+        const metaTxt = (window.InfluxBroDecodeInfoText ? window.InfluxBroDecodeInfoText(String(opts && opts.meta ? opts.meta : '')) : String(opts && opts.meta ? opts.meta : ''));
         meta.textContent = metaTxt;
         meta.style.display = metaTxt ? 'block' : 'none';
       }

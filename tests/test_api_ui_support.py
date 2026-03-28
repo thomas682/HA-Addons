@@ -96,9 +96,9 @@ def test_settings_numeric_fields_keep_values_visible():
 
 def test_info_popup_decodes_escaped_linebreaks():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
-    assert "function _decodeEscapedInfoText(text){" in body
+    assert "window.InfluxBroDecodeInfoText = function(text){" in body
     assert ".replace(/\\\\n/g, '\\n')" in body
-    assert "const normalizedMsg = _decodeEscapedInfoText(String(msg || ''));" in body
+    assert "const normalizedMsg = (window.InfluxBroDecodeInfoText ? window.InfluxBroDecodeInfoText(String(msg || '')) : String(msg || ''));" in body
 
 
 def test_bugreport_flow_offers_bug_or_enhancement_with_labels():
@@ -440,11 +440,18 @@ def test_picker_supports_superpicker_fallback_mode():
 
 def test_global_button_logging_and_button_error_reporting_exist():
     tooltips = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
+    assert 'window.InfluxBroDecodeInfoText' in tooltips
     assert 'if(window.InfluxBroButtons) return;' in tooltips
     assert "document.addEventListener('click', (ev)=>{" in tooltips
     assert "_log('button_press', btn, { pointer: 'click' });" in tooltips
     assert "reportError(err, 'button.click', btn, { async: false });" in tooltips
     assert "window.InfluxBroButtons = { log: _log, reportError };" in tooltips
+
+
+def test_popup_uses_global_decode_helper_for_query_and_meta_texts():
+    tooltips = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
+    assert "window.InfluxBroDecodeInfoText ? window.InfluxBroDecodeInfoText(String(msg || '')) : String(msg || '')" in tooltips
+    assert "window.InfluxBroDecodeInfoText ? window.InfluxBroDecodeInfoText(String(opts && opts.meta ? opts.meta : ''))" in tooltips
 
 
 def test_dashboard_query_and_stats_buttons_report_dialog_errors_instead_of_swallowing():
