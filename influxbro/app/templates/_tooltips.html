@@ -746,7 +746,7 @@
 
     const card = document.createElement('div');
     card.id = 'influxbro_popup_card';
-    card.style.maxWidth = '860px';
+    card.style.maxWidth = 'calc(100vw - 24px)';
     card.style.margin = '8vh auto 12px auto';
     card.style.background = '#fff';
     card.style.borderRadius = '16px';
@@ -906,6 +906,14 @@
     right.appendChild(settingsBtn);
     controls.appendChild(right);
 
+    const contentWrap = document.createElement('div');
+    contentWrap.id = 'influxbro_popup_content';
+    contentWrap.style.display = 'flex';
+    contentWrap.style.flexDirection = 'column';
+    contentWrap.style.gap = '8px';
+    contentWrap.style.flex = '1 1 auto';
+    contentWrap.style.minHeight = '0';
+
     const pre = document.createElement('pre');
     pre.id = 'influxbro_popup_pre';
     pre.style.margin = '0';
@@ -919,10 +927,34 @@
     pre.style.flex = '1 1 auto';
     pre.style.minHeight = '120px';
 
+    const split = document.createElement('div');
+    split.id = 'influxbro_popup_split';
+    split.style.display = 'none';
+    split.style.height = '10px';
+    split.style.cursor = 'row-resize';
+    split.style.borderRadius = '999px';
+    split.style.background = 'linear-gradient(180deg, rgba(0,0,0,0.08), rgba(0,0,0,0.16), rgba(0,0,0,0.08))';
+    split.style.flex = '0 0 auto';
+
+    const historyBox = document.createElement('div');
+    historyBox.id = 'influxbro_popup_history';
+    historyBox.style.display = 'none';
+    historyBox.style.border = '1px solid #eee';
+    historyBox.style.borderRadius = '12px';
+    historyBox.style.background = '#fff';
+    historyBox.style.overflow = 'auto';
+    historyBox.style.minHeight = '96px';
+    historyBox.style.flex = '0 0 180px';
+    historyBox.style.padding = '8px 10px';
+
+    contentWrap.appendChild(pre);
+    contentWrap.appendChild(split);
+    contentWrap.appendChild(historyBox);
+
     card.appendChild(head);
     card.appendChild(controls);
     card.appendChild(meta);
-    card.appendChild(pre);
+    card.appendChild(contentWrap);
     root.appendChild(card);
 
     const composer = document.createElement('div');
@@ -1001,16 +1033,31 @@
     document.body.appendChild(composer);
     document.body.appendChild(root);
 
+    function _clampPopupSize(){
+      try{
+        const maxW = Math.max(320, window.innerWidth - 24);
+        const maxH = Math.max(220, window.innerHeight - 24);
+        const curW = Math.min(maxW, Math.max(320, Math.round(card.getBoundingClientRect().width || 0) || 860));
+        const curH = Math.min(maxH, Math.max(200, Math.round(card.getBoundingClientRect().height || 0) || 520));
+        card.style.maxWidth = maxW + 'px';
+        card.style.maxHeight = maxH + 'px';
+        card.style.width = curW + 'px';
+        card.style.height = curH + 'px';
+      }catch(e){}
+    }
+
     function _applyPopupSize(title){
       try{
         CURRENT_POPUP_SIZE_KEY = _popupSizeStorageKey(title);
         const raw = localStorage.getItem(CURRENT_POPUP_SIZE_KEY);
-        if(!raw) return;
-        const data = JSON.parse(raw);
-        const w = Number(data && data.w);
-        const h = Number(data && data.h);
-        if(isFinite(w) && w >= 320) card.style.width = Math.round(w) + 'px';
-        if(isFinite(h) && h >= 200) card.style.height = Math.round(h) + 'px';
+        if(raw){
+          const data = JSON.parse(raw);
+          const w = Number(data && data.w);
+          const h = Number(data && data.h);
+          if(isFinite(w) && w >= 320) card.style.width = Math.round(w) + 'px';
+          if(isFinite(h) && h >= 200) card.style.height = Math.round(h) + 'px';
+        }
+        _clampPopupSize();
       }catch(e){}
     }
 
@@ -1026,6 +1073,7 @@
       const ro = new ResizeObserver(()=>{ _savePopupSize(); });
       ro.observe(card);
     }catch(e){}
+    try{ window.addEventListener('resize', ()=>{ _clampPopupSize(); _savePopupSize(); }); }catch(e){}
 
     // Wrap preference
     const WRAP_KEY = 'influxbro.popup.wrap.v1';
@@ -1048,6 +1096,96 @@
     });
 
     let CURRENT_ACTIONS = [];
+    let CURRENT_HISTORY_SCOPE = '';
+    let SPLIT_DRAG = null;
+
+    function _historyEntries(scope){
+      try{
+        return (window.InfluxBroQueryHistory && window.InfluxBroQueryHistory.list) ? window.InfluxBroQueryHistory.list(scope) : [];
+      }catch(e){ return []; }
+    }
+
+    function _renderHistory(scope){
+      try{
+        const xs = _historyEntries(scope);
+        historyBox.innerHTML = '';
+        const titleRow = document.createElement('div');
+        titleRow.style.display = 'flex';
+        titleRow.style.alignItems = 'center';
+        titleRow.style.justifyContent = 'space-between';
+        titleRow.style.gap = '10px';
+        titleRow.style.marginBottom = '8px';
+        const titleTxt = document.createElement('div');
+        titleTxt.textContent = 'Query History';
+        titleTxt.style.fontWeight = '700';
+        titleTxt.style.fontSize = '12px';
+        const hint = document.createElement('div');
+        hint.className = 'muted';
+        hint.textContent = xs.length ? (String(xs.length) + ' Eintraege') : 'keine Eintraege';
+        titleRow.appendChild(titleTxt);
+        titleRow.appendChild(hint);
+        historyBox.appendChild(titleRow);
+        if(!xs.length){
+          const empty = document.createElement('div');
+          empty.className = 'muted';
+          empty.textContent = '(keine Eintraege)';
+          historyBox.appendChild(empty);
+          return;
+        }
+        xs.slice().reverse().forEach((it)=>{
+          const row = document.createElement('button');
+          row.type = 'button';
+          row.style.display = 'block';
+          row.style.width = '100%';
+          row.style.textAlign = 'left';
+          row.style.padding = '10px 12px';
+          row.style.marginBottom = '8px';
+          row.style.borderRadius = '12px';
+          row.style.border = '1px solid #e8ebf2';
+          row.style.background = '#f8faff';
+          row.innerHTML = '<div style="font-weight:700; font-size:12px; margin-bottom:4px;">' + String(it.at || '') + (it.label ? (' | ' + String(it.label)) : '') + '</div>' +
+            '<div style="font-size:12px; white-space:pre-wrap; opacity:0.9;">' + String((it.query || '').slice(0, 500)).replace(/</g,'&lt;') + '</div>';
+          row.addEventListener('click', ()=>{
+            try{ pre.textContent = String(it.query || ''); }catch(e){}
+          });
+          historyBox.appendChild(row);
+        });
+      }catch(e){}
+    }
+
+    function _toggleHistory(scope){
+      try{
+        const show = historyBox.style.display === 'none';
+        CURRENT_HISTORY_SCOPE = show ? String(scope || '') : CURRENT_HISTORY_SCOPE;
+        if(show) _renderHistory(CURRENT_HISTORY_SCOPE);
+        historyBox.style.display = show ? 'block' : 'none';
+        split.style.display = show ? 'block' : 'none';
+        if(show && !historyBox.style.flexBasis) historyBox.style.flex = '0 0 180px';
+      }catch(e){}
+    }
+
+    try{
+      split.addEventListener('mousedown', (ev)=>{
+        try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+        if(historyBox.style.display === 'none') return;
+        const total = contentWrap.getBoundingClientRect().height || 0;
+        const histRect = historyBox.getBoundingClientRect();
+        SPLIT_DRAG = { startY: ev.clientY, startH: histRect.height, totalH: total };
+        document.body.style.userSelect = 'none';
+      });
+      window.addEventListener('mousemove', (ev)=>{
+        if(!SPLIT_DRAG) return;
+        const delta = SPLIT_DRAG.startY - ev.clientY;
+        const maxH = Math.max(96, Math.round((SPLIT_DRAG.totalH || 0) - 140));
+        const nextH = Math.max(96, Math.min(maxH, Math.round((SPLIT_DRAG.startH || 180) + delta)));
+        historyBox.style.flex = '0 0 ' + nextH + 'px';
+      });
+      window.addEventListener('mouseup', ()=>{
+        if(!SPLIT_DRAG) return;
+        SPLIT_DRAG = null;
+        document.body.style.userSelect = '';
+      });
+    }catch(e){}
 
     function _setActionButtons(actions){
       try{
@@ -1413,9 +1551,6 @@
     }
 
     btn.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} close(); });
-    root.addEventListener('click', (ev)=>{
-      if(ev && ev.target === root) close();
-    });
     document.addEventListener('keydown', (ev)=>{
       try{ if(ev && ev.key === 'Escape' && root.style.display !== 'none') close(); }catch(e){}
     });
@@ -1462,6 +1597,12 @@
         meta.textContent = metaTxt;
         meta.style.display = metaTxt ? 'block' : 'none';
       }
+      try{
+        CURRENT_HISTORY_SCOPE = String(opts && opts.historyScope ? opts.historyScope : '');
+        historyBox.style.display = 'none';
+        historyBox.innerHTML = '';
+        split.style.display = 'none';
+      }catch(e){}
       POPUP_SET_ACTIONS(opts && opts.actions ? opts.actions : []);
       try{ _applyPopupSize(title || 'Hinweis'); }catch(e){}
       try{ window.__InfluxBroPopupLast = { title: String(title || ''), msg: normalizedMsg }; }catch(e){}
@@ -1514,21 +1655,22 @@
          if(o.label) parts.push(String(o.label));
          const actions = [];
          if(o.scope){
-           actions.push({
-             label: 'History',
-             title: 'History',
-             icon: HISTORY_ICON,
-             onClick: ()=>{ try{ window.InfluxBroQueryHistory && window.InfluxBroQueryHistory.show && window.InfluxBroQueryHistory.show(String(o.scope)); }catch(e){} },
-           });
-         }
-         if(window.InfluxBroPopup && window.InfluxBroPopup.show){
-           window.InfluxBroPopup.show(String(o.title || 'Query'), String(o.text || 'Noch keine Query vorhanden.'), {
-             meta: parts.join(' | '),
-             copyText: String(o.copyText !== undefined ? o.copyText : (o.text || '')),
-             copyTitle: String(o.copyTitle || 'Zwischenablage'),
-             actions,
-           });
-         }
+            actions.push({
+              label: 'History',
+              title: 'History',
+              icon: HISTORY_ICON,
+              onClick: ()=>{ try{ _toggleHistory(String(o.scope)); }catch(e){} },
+            });
+          }
+          if(window.InfluxBroPopup && window.InfluxBroPopup.show){
+            window.InfluxBroPopup.show(String(o.title || 'Query'), String(o.text || 'Noch keine Query vorhanden.'), {
+              meta: parts.join(' | '),
+              copyText: String(o.copyText !== undefined ? o.copyText : (o.text || '')),
+              copyTitle: String(o.copyTitle || 'Zwischenablage'),
+              actions,
+              historyScope: String(o.scope || ''),
+            });
+          }
        },
        openText: (opts)=>{
          const o = opts || {};
@@ -1749,7 +1891,11 @@
     }catch(e){}
   }
 
-  window.InfluxBroQueryHistory = { add, show };
+  function list(scope){
+    return _load(scope);
+  }
+
+  window.InfluxBroQueryHistory = { add, show, list };
 })();
 
 try{ _ensureSummarySettingsButtons(); }catch(e){}

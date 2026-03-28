@@ -190,6 +190,26 @@ Buttons
 - Keep consistent sizing (e.g. `.btn_sm` / `.btn_xs`) and spacing.
 - Place primary actions first, destructive actions last.
 
+Modales Fenster / Query Fenster
+
+- Query-/Info-Fenster muessen echte modale Fenster sein.
+  - Sie duerfen sich nicht automatisch schliessen, nur weil ausserhalb des Fensters geklickt wurde.
+  - Schliessen erfolgt explizit ueber `Schliessen` oder `Escape`.
+- Das Fenster darf frei vergroessert werden.
+  - Der Resize-Griff rechts unten muss die Breite bis nahe an die aktuelle Browserbreite erlauben.
+  - Die Breite darf nur durch Viewport-/Padding-Grenzen begrenzt werden, nicht durch zu kleine fixe Maximalbreiten.
+- Query-Fenster mit History muessen unter dem Hauptbereich `influxbro_popup_pre` einen eigenen History-Bereich besitzen.
+  - Zwischen Query-Bereich und History-Bereich gibt es einen horizontalen Hoehen-Splitter.
+  - Beide Bereiche muessen in der Hoehe anpassbar sein.
+  - Die History darf nicht in einem separaten Popup aufgehen, wenn sie logisch Teil des Query-Fensters ist.
+- Bevorzugte Struktur:
+  - Kopfbereich
+  - Steuer-/Aktionsbereich
+  - Meta-Zeile
+  - Query-Hauptbereich
+  - Splitter
+  - History-Bereich
+
 Top/page title cards
 
 - Dynamic title/page cards (for example `page.title.card`) must always return to the smallest height that still fully shows all currently visible controls.

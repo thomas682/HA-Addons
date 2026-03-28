@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.12.151
+
+### Enhancement
+
+- Query-Dialoge besitzen jetzt einen eingebetteten History-Bereich unterhalb des Haupt-Query-Textes. Zwischen Query und History gibt es einen horizontalen Hoehen-Splitter zum direkten Anpassen beider Bereiche.
+- Das modale Popup-Fenster schliesst sich nicht mehr automatisch bei Aussenklick und kann per Resize-Griff breiter bis an die Browsergrenze gezogen werden.
+
+### Maintenance
+
+- Das GUI-Template dokumentiert jetzt die Regeln fuer `Modales Fenster / Query Fenster`.
+- Tests: `pytest tests/test_api_ui_support.py -q`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.150
 
 ### Fix

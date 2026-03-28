@@ -452,6 +452,11 @@ def test_popup_uses_global_decode_helper_for_query_and_meta_texts():
     tooltips = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
     assert "window.InfluxBroDecodeInfoText ? window.InfluxBroDecodeInfoText(String(msg || '')) : String(msg || '')" in tooltips
     assert "window.InfluxBroDecodeInfoText ? window.InfluxBroDecodeInfoText(String(opts && opts.meta ? opts.meta : ''))" in tooltips
+    assert "historyBox.id = 'influxbro_popup_history';" in tooltips
+    assert "split.id = 'influxbro_popup_split';" in tooltips
+    assert "root.addEventListener('click'" not in tooltips
+    assert "onClick: ()=>{ try{ _toggleHistory(String(o.scope)); }catch(e){} }," in tooltips
+    assert "window.InfluxBroQueryHistory = { add, show, list };" in tooltips
 
 
 def test_dashboard_query_and_stats_buttons_report_dialog_errors_instead_of_swallowing():
@@ -467,6 +472,9 @@ def test_template_requires_standard_checkbox_scale_for_toolbar_checkboxes():
     assert 'Checkbox size must stay consistent across pages and topbars.' in body
     assert 'Preferred pattern: add class `row_sel` to the checkbox' in body
     assert 'must always return to the smallest height that still fully shows all currently visible controls.' in body
+    assert 'Modales Fenster / Query Fenster' in body
+    assert 'Sie duerfen sich nicht automatisch schliessen' in body
+    assert 'horizontalen Hoehen-Splitter' in body
 
 
 def test_info_and_manual_pages_have_local_search_controls():
