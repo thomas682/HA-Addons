@@ -190,6 +190,15 @@ Buttons
 - Keep consistent sizing (e.g. `.btn_sm` / `.btn_xs`) and spacing.
 - Place primary actions first, destructive actions last.
 
+Top/page title cards
+
+- Dynamic title/page cards (for example `page.title.card`) must always return to the smallest height that still fully shows all currently visible controls.
+- Do not feed a measured expanded runtime height back into the card's own persistent `min-height`.
+- Separate:
+  - a static minimum/base height
+  - the live measured layout height used for page padding/offsets
+- If content shrinks again (e.g. fewer wrapped controls, closed results, smaller zoom), the live height must shrink back as well.
+
 Graphs
 
 - Graph state and the last graph data should survive page navigation.

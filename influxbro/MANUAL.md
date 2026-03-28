@@ -473,6 +473,7 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Buttons ueber das gesamte Add-on verwenden jetzt einen konsistenteren, an Material angelehnten Look mit runden Filled-/Tonal-Flaechen.
 - Der UI-Picker hat optional einen `superpicker`-Modus. Mit aktivierter Checkbox kann er auch Layout-Container oder andere Elemente ohne `data-ui` ueber Fallback-Metadaten erfassen.
 - Die Checkbox `superpicker` nutzt dieselbe visuelle Groesse wie die normalen Dashboard-Checkboxen.
+- Die Hoehe der Titel-/Pagecard-Leiste schrumpft nach automatischen Erweiterungen wieder auf die kleinste vollstaendige Hoehe des aktuell sichtbaren Inhalts zurueck.
 
 ## Diagnose
 

@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.147
+
+### Fix
+
+- `Dashboard: page.title.card` trennt jetzt statische Mindesthoehe und live gemessene Layout-Hoehe. Dadurch schrumpft die Kartenhoehe nach automatischen Erweiterungen wieder auf die kleinstmoegliche volle Hoehe zurueck.
+
+### Maintenance
+
+- Das GUI-Template dokumentiert jetzt explizit, dass dynamische Titel-/Pagecards ihre Minimalhoehe wiederherstellen muessen und gemessene Runtime-Hoehen nicht in die Basis-Minimalhoehe zurueckgeschrieben werden duerfen.
+- Tests: `pytest tests/test_api_ui_support.py -q`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.146
 
 ### Fix

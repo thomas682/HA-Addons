@@ -3,7 +3,8 @@
     :root {
       --ib-topbar-h: 52px;
       --ib-bottombar-h: 38px;
-      --ib-pagecard-h: 74px;
+      --ib-pagecard-min-h: 74px;
+      --ib-pagecard-live-h: 74px;
       --ib-section-title-bg: {{ (cfg.get('ui_section_title_bg') or 'transparent') if cfg else 'transparent' }};
       --ib-section-title-fg: {{ (cfg.get('ui_section_title_fg') or 'inherit') if cfg else 'inherit' }};
       --ib-statusbar-bg: {{ (cfg.get('ui_status_bar_bg') or '#FFFFFF') if cfg else '#FFFFFF' }};
@@ -27,7 +28,7 @@
     /* Global zoom (font-based) - avoids breaking Plotly click hit-testing */
     body {
       font-size: var(--ui-font-zoomed);
-      padding-top: calc(var(--ib-topbar-h) + var(--ib-pagecard-h));
+      padding-top: calc(var(--ib-topbar-h) + var(--ib-pagecard-live-h));
       padding-bottom: calc(var(--ib-bottombar-h) + env(safe-area-inset-bottom, 0px));
     }
     .muted { font-size: var(--ui-font-small-zoomed); }
@@ -128,7 +129,7 @@
       left: 0;
       right: 0;
       z-index: 9998;
-      min-height: var(--ib-pagecard-h);
+      min-height: var(--ib-pagecard-min-h);
       display:flex;
       align-items:center;
       justify-content:space-between;
@@ -158,14 +159,14 @@
       transition: outline-color 120ms ease, box-shadow 120ms ease;
       box-shadow: 0 0 0 calc(var(--ib-page-search-hl-width) + 1px) color-mix(in srgb, var(--ib-page-search-hl-color) 18%, transparent);
     }
-    .ib_pagecard_results { position:fixed; z-index:9997; top: calc(var(--ib-pagecard-h)); right:12px; width:min(560px, calc(100vw - 24px)); max-height:320px; overflow:auto; background:#fff; color:#111; border:1px solid #ddd; border-radius:12px; box-shadow:0 12px 40px rgba(0,0,0,0.18); display:none; }
+    .ib_pagecard_results { position:fixed; z-index:9997; top: calc(var(--ib-pagecard-live-h)); right:12px; width:min(560px, calc(100vw - 24px)); max-height:320px; overflow:auto; background:#fff; color:#111; border:1px solid #ddd; border-radius:12px; box-shadow:0 12px 40px rgba(0,0,0,0.18); display:none; }
     .ib_pagecard_results button { display:block; width:100%; text-align:left; border:0; border-bottom:1px solid #eee; background:#fff; padding:10px 12px; cursor:pointer; }
     .ib_pagecard_results button:hover { background:#f6f6f6; }
     .ib_page_search_btn.active { border-color:#ff9900; box-shadow:0 0 0 2px rgba(255,153,0,0.18); }
     .ib_page_search_modal_chk { display:flex; gap:8px; align-items:center; min-height:32px; }
     .ib_page_search_modal_chk input[type="checkbox"] { width:16px; height:16px; flex:0 0 16px; }
     @media (max-width: 980px){
-      :root { --ib-pagecard-h: 118px; }
+      :root { --ib-pagecard-min-h: 118px; --ib-pagecard-live-h: 118px; }
       .ib_pagecard { flex-wrap:wrap; align-items:flex-start; }
       .ib_pagecard .actions { width:100%; justify-content:flex-start; }
       .ib_pagecard .actions input { min-width:0; width:100%; }
@@ -748,6 +749,21 @@
   <script>
   // Keep CSS var --ib-topbar-h in sync with actual topbar height (responsive)
   (function(){
+    let _ibTopbarRaf = 0;
+    function _measurePagecardHeight(pc){
+      try{
+        if(!pc) return 0;
+        const prevMin = pc.style.minHeight;
+        const prevHeight = pc.style.height;
+        pc.style.minHeight = 'var(--ib-pagecard-min-h)';
+        pc.style.height = 'auto';
+        void pc.offsetHeight;
+        const ph = Math.ceil(pc.getBoundingClientRect().height || 0);
+        pc.style.minHeight = prevMin;
+        pc.style.height = prevHeight;
+        return ph;
+      }catch(e){ return 0; }
+    }
     function _updateTopbarHeight(){
       try{
         const el = document.querySelector('.ib_topbar');
@@ -756,14 +772,24 @@
         document.documentElement.style.setProperty('--ib-topbar-h', String(h) + 'px');
         const pc = document.getElementById('ib_pagecard');
         if(pc){
-          const ph = Math.ceil(pc.getBoundingClientRect().height);
-          document.documentElement.style.setProperty('--ib-pagecard-h', String(ph) + 'px');
+          const ph = _measurePagecardHeight(pc);
+          document.documentElement.style.setProperty('--ib-pagecard-live-h', String(Math.max(0, ph)) + 'px');
         }
         const bb = document.querySelector('.ib_bottombar');
         if(bb){ const bh = Math.ceil(bb.getBoundingClientRect().height); document.documentElement.style.setProperty('--ib-bottombar-h', String(bh) + 'px'); }
       }catch(e){}
     }
-    try{ _updateTopbarHeight(); window.addEventListener('resize', _updateTopbarHeight); new MutationObserver(_updateTopbarHeight).observe(document.body, { childList: true, subtree: true, attributes: true }); }catch(e){}
+    function _scheduleTopbarHeightUpdate(){
+      try{
+        if(_ibTopbarRaf) cancelAnimationFrame(_ibTopbarRaf);
+        _ibTopbarRaf = requestAnimationFrame(()=>{
+          _ibTopbarRaf = 0;
+          _updateTopbarHeight();
+        });
+      }catch(e){ _updateTopbarHeight(); }
+    }
+    try{ window.InfluxBroTopbarLayout = { update: _scheduleTopbarHeightUpdate }; }catch(e){}
+    try{ _scheduleTopbarHeightUpdate(); window.addEventListener('resize', _scheduleTopbarHeightUpdate); new MutationObserver(_scheduleTopbarHeightUpdate).observe(document.body, { childList: true, subtree: true, attributes: true }); }catch(e){}
   })();
   </script>
 </header>

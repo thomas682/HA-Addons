@@ -176,14 +176,14 @@ def test_monitor_page_does_not_force_topbar_search_to_full_width():
 
 def test_nav_uses_dynamic_pagecard_height_for_desktop_layout():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_nav.html").read_text()
-    assert 'top: calc(var(--ib-topbar-h, 0px) + var(--ib-pagecard-h, 0px) + 20px);' in body
-    assert 'height: calc(100vh - (var(--ib-topbar-h, 0px) + var(--ib-pagecard-h, 0px) + 20px));' in body
+    assert 'top: calc(var(--ib-topbar-h, 0px) + var(--ib-pagecard-live-h, 0px) + 20px);' in body
+    assert 'height: calc(100vh - (var(--ib-topbar-h, 0px) + var(--ib-pagecard-live-h, 0px) + 20px));' in body
 
 
 def test_topbar_updates_pagecard_height_css_var():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
     assert "const pc = document.getElementById('ib_pagecard');" in body
-    assert "document.documentElement.style.setProperty('--ib-pagecard-h', String(ph) + 'px');" in body
+    assert "document.documentElement.style.setProperty('--ib-pagecard-live-h', String(Math.max(0, ph)) + 'px');" in body
 
 
 def test_page_search_highlight_is_global_and_configurable():
@@ -415,6 +415,17 @@ def test_quality_nav_and_material_button_tokens_exist():
     assert 'border-radius: 999px;' in topbar
 
 
+def test_topbar_uses_separate_pagecard_min_and_live_heights():
+    topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    assert '--ib-pagecard-min-h: 74px;' in topbar
+    assert '--ib-pagecard-live-h: 74px;' in topbar
+    assert 'padding-top: calc(var(--ib-topbar-h) + var(--ib-pagecard-live-h));' in topbar
+    assert 'min-height: var(--ib-pagecard-min-h);' in topbar
+    assert "pc.style.minHeight = 'var(--ib-pagecard-min-h)';" in topbar
+    assert "document.documentElement.style.setProperty('--ib-pagecard-live-h'" in topbar
+    assert 'window.InfluxBroTopbarLayout = { update: _scheduleTopbarHeightUpdate };' in topbar
+
+
 def test_picker_supports_superpicker_fallback_mode():
     topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
     assert "id=\"ui_picker_super\"" in topbar
@@ -428,6 +439,7 @@ def test_template_requires_standard_checkbox_scale_for_toolbar_checkboxes():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "Template.md").read_text()
     assert 'Checkbox size must stay consistent across pages and topbars.' in body
     assert 'Preferred pattern: add class `row_sel` to the checkbox' in body
+    assert 'must always return to the smallest height that still fully shows all currently visible controls.' in body
 
 
 def test_info_and_manual_pages_have_local_search_controls():
