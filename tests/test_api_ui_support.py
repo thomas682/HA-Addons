@@ -257,6 +257,14 @@ def test_stats_backend_can_short_circuit_fresh_cache_hits():
     assert '"covered_start": str(j.get("cache_merge_start") or start),' in body
     assert '"covered_stop": stop,' in body
     assert 'cache_append": True' in body
+    assert 'cache_prefill": bool(stale_prefill)' in body
+
+
+def test_stats_ui_can_show_cache_prefill_while_background_job_runs():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "stats.html").read_text()
+    assert 'async function tryLoadPrefillCache(cacheId)' in body
+    assert "if(job && job.cache_prefill && job.cache_id) await tryLoadPrefillCache(job.cache_id);" in body
+    assert "setStatus([`Cache-Vorabansicht geladen. Zeilen: ${ROWS.length}${spanTxt}`" in body
 
 
 def test_import_analyze_shows_success_and_error_popups():

@@ -466,6 +466,7 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Der fruehere Bereich `Statistik Zeitraum (Graph/Tabelle)` wurde entfernt; relevant bleiben die Gesamtstatistik im Dashboard und die Statistik-Seite.
 - Auf der Statistik-Seite nutzt `Statistik laden` zuerst einen passenden frischen Cache. Nur wenn kein passender Cache vorhanden oder dieser veraltet ist, startet ein neuer Hintergrundjob.
 - Fuer verankerte Zeitraeume wie `all` und `this_year` kann ein veralteter Statistik-Cache jetzt per Append aktualisiert werden: Es wird nur der fehlende rechte Zeitraum seit Cache-Ende nachgeladen und mit dem bestehenden Cache zusammengefuehrt.
+- Fuer gleitende Zeitraeume ohne echten Delta-Append zeigt `Statistik laden` nun sofort eine passende Cache-Vorabansicht und aktualisiert diese anschliessend im Hintergrund neu.
 
 ## Diagnose
 

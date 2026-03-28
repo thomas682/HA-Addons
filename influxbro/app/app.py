@@ -14571,6 +14571,7 @@ def api_global_stats_job_start():
 
     cache_id = None
     cache_key = None
+    stale_prefill = False
     try:
         if bool(cfg.get("stats_cache_enabled", True)) and int(cfg.get("stats_cache_max_items", 10) or 10) > 0:
             cache_key = _stats_cache_key(
@@ -14653,6 +14654,10 @@ def api_global_stats_job_start():
                 )
                 return jsonify({"ok": True, "job_id": job_id, "cache_id": cache_id, "cache_append": True, "append_from": _dt_to_rfc3339_utc(append_from)})
 
+            stale_prefill = bool(cache_rows) and not bool(meta.get("mismatch"))
+            if stale_prefill:
+                meta["last_used_at"] = _utc_now_iso_ms()
+                _stats_cache_write_meta(meta)
             meta["dirty"] = True
             meta["dirty_reason"] = "job_start"
             meta["dirty_at"] = _utc_now_iso_ms()
@@ -14676,7 +14681,7 @@ def api_global_stats_job_start():
         cache_id=cache_id,
         cache_key=cache_key,
     )
-    return jsonify({"ok": True, "job_id": job_id, "cache_id": cache_id})
+    return jsonify({"ok": True, "job_id": job_id, "cache_id": cache_id, "cache_prefill": bool(stale_prefill), "cache_hit": False})
 
 
 @app.get("/api/global_stats_job/status")

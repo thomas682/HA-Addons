@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.140
+
+### Enhancement
+
+- Statistik: Wenn fuer gleitende Zeitraeume noch kein echter Delta-Append moeglich ist, zeigt `Statistik laden` jetzt wenigstens sofort eine passende Cache-Vorabansicht und aktualisiert diese parallel im Hintergrundjob weiter.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`, `pytest tests/test_api_ui_support.py -q`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.139
 
 ### Enhancement

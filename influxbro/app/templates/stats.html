@@ -986,7 +986,31 @@
         JOB_MERGE = false;
         JOB_ADD_COLS = [];
         MERGE_OFFSET = 0;
-        return j.job_id;
+        return j;
+      }
+
+      async function tryLoadPrefillCache(cacheId){
+        const cid = String(cacheId || '').trim();
+        if(!cid) return false;
+        try{
+          const j = await api(`./api/stats_cache/get?cache_id=${encodeURIComponent(cid)}&limit=20000&offset=0`);
+          if(!j.ready) return false;
+          const rows = Array.isArray(j.rows) ? j.rows : [];
+          if(!rows.length) return false;
+          try{ syncLoadedCols(j.columns || BASE_COLS); }catch(e){}
+          ROWS = rows;
+          render();
+          try{ rebuildDatalists(); }catch(e){}
+          try{ saveSnapshot('cache_prefill'); }catch(e){}
+          try{ saveUiState(); }catch(e){}
+          const coveredStart = (j.cache && j.cache.covered_start) ? fmtTs(j.cache.covered_start) : '';
+          const coveredStop = (j.cache && j.cache.covered_stop) ? fmtTs(j.cache.covered_stop) : '';
+          const spanTxt = (coveredStart || coveredStop) ? (` | Cache: ${coveredStart || '?'} - ${coveredStop || '?'}`) : '';
+          setStatus([`Cache-Vorabansicht geladen. Zeilen: ${ROWS.length}${spanTxt}`, 'Hintergrundabfrage aktualisiert das Ergebnis weiter.']);
+          return true;
+        }catch(e){
+          return false;
+        }
       }
 
       async function fetchStatus(){
@@ -1112,7 +1136,10 @@
         try{
           setStatus(['Starte Hintergrundabfrage...', ROWS && ROWS.length ? 'Hinweis: Tabelle zeigt letztes Ergebnis waehrend der neuen Berechnung.' : '', 'Phase: Job anlegen und in Wartestatus wechseln.']);
           try{ window.InfluxBroStatus && window.InfluxBroStatus.start && window.InfluxBroStatus.start('stats.load', 'Statistik laeuft...'); }catch(e){}
-          await startJob();
+          const job = await startJob();
+          try{
+            if(job && job.cache_prefill && job.cache_id) await tryLoadPrefillCache(job.cache_id);
+          }catch(e){}
           beginPolling();
         }catch(e){
           try{ window.InfluxBroStatus && window.InfluxBroStatus.fail && window.InfluxBroStatus.fail('stats.load', String(e && e.message ? e.message : e)); }catch(ex){}
