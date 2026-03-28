@@ -267,6 +267,14 @@ def test_stats_ui_can_show_cache_prefill_while_background_job_runs():
     assert "setStatus([`Cache-Vorabansicht geladen. Zeilen: ${ROWS.length}${spanTxt}`" in body
 
 
+def test_stats_backend_reuses_cached_series_for_stale_prefill_rebuilds():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "app.py").read_text()
+    assert '"cache_discover_after": str(cache_discover_after or "").strip() or None,' in body
+    assert 'stale_seed_series = [' in body
+    assert 'set_state("query", "Ergaenze Serienliste aus Cache-Fortsetzung...")' in body
+    assert 'stale_seed_series or series_list' in body
+
+
 def test_import_analyze_shows_success_and_error_popups():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "import.html").read_text()
     assert "window.InfluxBroPopup.show('Import Analyse erfolgreich', msg);" in body

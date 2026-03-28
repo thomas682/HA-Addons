@@ -13583,6 +13583,13 @@ def _global_stats_job_thread(
     mf = (measurement_filter or "").strip()
     eid_f = (entity_id_filter or "").strip()
     fn_f = (friendly_name_filter or "").strip()
+    discover_after_iso = None
+    try:
+        with GLOBAL_STATS_LOCK:
+            job_now = GLOBAL_STATS_JOBS.get(job_id) or {}
+        discover_after_iso = str(job_now.get("cache_discover_after") or "").strip() or None
+    except Exception:
+        discover_after_iso = None
 
     want_cols = [str(c).strip() for c in (columns or []) if str(c).strip()]
     if not want_cols:
@@ -14011,8 +14018,79 @@ from(bucket: "{bucket}")
         with v2_client(cfg_local) as c:
             qapi = c.query_api()
 
+            def _series_last_span(a: datetime, b: datetime) -> list[dict[str, Any]]:
+                s_iso = _dt_to_rfc3339_utc(a)
+                e_iso = _dt_to_rfc3339_utc(b)
+                ff_clause = f"|> filter(fn: (r) => r._field == {_flux_str(ff)})" if ff else ""
+                mf_clause = f"|> filter(fn: (r) => r._measurement == {_flux_str(mf)})" if mf else ""
+                tag_clause = ""
+                if eid_f:
+                    tag_clause += f"|> filter(fn: (r) => r.entity_id == {_flux_str(eid_f)})\n"
+                if fn_f:
+                    tag_clause += f"|> filter(fn: (r) => r.friendly_name == {_flux_str(fn_f)})\n"
+                q_last = f'''
+from(bucket: "{cfg_local["bucket"]}")
+  |> range(start: time(v: "{s_iso}"), stop: time(v: "{e_iso}"))
+  |> filter(fn: (r) => exists r._measurement and exists r._field)
+  {mf_clause}
+  {ff_clause}
+  {tag_clause.strip()}
+  |> map(fn: (r) => ({{ r with entity_id: if exists r.entity_id then string(v: r.entity_id) else "", friendly_name: if exists r.friendly_name then string(v: r.friendly_name) else "" }}))
+  |> keep(columns: ["_measurement","_field","entity_id","friendly_name","_time","_value"])
+  |> group(columns: ["_measurement","_field","entity_id","friendly_name"])
+  |> last()
+'''
+                set_query("Series span", q_last)
+                out: list[dict[str, Any]] = []
+                for rec in qapi.query_stream(q_last, org=cfg_local["org"]):
+                    vals = getattr(rec, "values", {}) or {}
+                    newest = rec.get_time() or vals.get("_time")
+                    out.append({
+                        "measurement": str(vals.get("_measurement") or ""),
+                        "field": str(vals.get("_field") or ""),
+                        "entity_id": str(vals.get("entity_id") or ""),
+                        "friendly_name": str(vals.get("friendly_name") or ""),
+                        "newest_time": _as_rfc3339(newest),
+                        "last_value": rec.get_value(),
+                    })
+                return out
+
+            def _series_last_span_split(a: datetime, b: datetime) -> list[dict[str, Any]]:
+                if should_cancel():
+                    raise RuntimeError("cancelled")
+                min_chunk_seconds = 5 * 60
+                span_s = max(0.0, (b - a).total_seconds())
+                try:
+                    return _series_last_span(a, b)
+                except Exception as e:
+                    if _is_timeout_error(e) and span_s > min_chunk_seconds:
+                        mid = a + timedelta(seconds=(span_s / 2.0))
+                        return _series_last_span_split(a, mid) + _series_last_span_split(mid, b)
+                    raise
+
             # If series_list is provided: enrich only these series.
             if series_list is not None:
+                try:
+                    if discover_after_iso:
+                        discover_after_dt = _parse_iso_datetime(discover_after_iso)
+                        if discover_after_dt and discover_after_dt < stop_dt:
+                            set_state("query", "Ergaenze Serienliste aus Cache-Fortsetzung...")
+                            seed_map = {
+                                (str(it.get("measurement") or ""), str(it.get("field") or ""), str(it.get("entity_id") or ""), str(it.get("friendly_name") or "")): dict(it)
+                                for it in (series_list or []) if isinstance(it, dict)
+                            }
+                            for srow in _series_last_span_split(discover_after_dt, stop_dt):
+                                key = (str(srow.get("measurement") or ""), str(srow.get("field") or ""), str(srow.get("entity_id") or ""), str(srow.get("friendly_name") or ""))
+                                if key not in seed_map:
+                                    seed_map[key] = dict(srow)
+                            series_list = list(seed_map.values())
+                            total_series = len(series_list)
+                            with GLOBAL_STATS_LOCK:
+                                if job_id in GLOBAL_STATS_JOBS:
+                                    GLOBAL_STATS_JOBS[job_id]["total_series"] = total_series
+                except Exception:
+                    pass
+
                 for idx, srow in enumerate(series_list):
                     if should_cancel():
                         set_state("cancelled", "Abgebrochen.")
@@ -14030,6 +14108,8 @@ from(bucket: "{bucket}")
                         set_state("query", f"Details {idx+1}: {fn or eid or (m + '/' + f)}")
                         det = _series_stats(qapi, cfg_local["bucket"], m, f, eid, fn)
                         cnum = int(det.get("count") or 0)
+                        if cnum <= 0:
+                            continue
                         scanned_points += max(0, cnum)
                         add_row(m, f, eid, fn, None, det)
                     elif want_last or want_oldest:
@@ -14039,6 +14119,8 @@ from(bucket: "{bucket}")
                             base.update(_series_last(qapi, cfg_local["bucket"], m, f, eid, fn))
                         if want_oldest:
                             base.update(_series_first(qapi, cfg_local["bucket"], m, f, eid, fn))
+                        if not any(base.get(k) is not None for k in ("oldest_time", "newest_time", "last_value")):
+                            continue
                         add_row(m, f, eid, fn, base if base else None, None)
                     else:
                         add_row(m, f, eid, fn, None, None)
@@ -14057,40 +14139,6 @@ from(bucket: "{bucket}")
                     tag_clause += f"|> filter(fn: (r) => r.entity_id == {_flux_str(eid_f)})\n"
                 if fn_f:
                     tag_clause += f"|> filter(fn: (r) => r.friendly_name == {_flux_str(fn_f)})\n"
-
-                # Load series list for the whole window in a single pass, chunking further on timeouts.
-                # This avoids the previous paging approach which repeated a full scan per page.
-                min_chunk_seconds = 5 * 60
-
-                def _series_last_span(a: datetime, b: datetime) -> list[dict[str, Any]]:
-                    s_iso = _dt_to_rfc3339_utc(a)
-                    e_iso = _dt_to_rfc3339_utc(b)
-                    q_last = f'''
-from(bucket: "{cfg_local["bucket"]}")
-  |> range(start: time(v: "{s_iso}"), stop: time(v: "{e_iso}"))
-  |> filter(fn: (r) => exists r._measurement and exists r._field)
-  {mf_clause}
-  {ff_clause}
-  {tag_clause.strip()}
-  |> map(fn: (r) => ({{ r with entity_id: if exists r.entity_id then string(v: r.entity_id) else "", friendly_name: if exists r.friendly_name then string(v: r.friendly_name) else "" }}))
-  |> keep(columns: ["_measurement","_field","entity_id","friendly_name","_time","_value"])
-  |> group(columns: ["_measurement","_field","entity_id","friendly_name"])
-  |> last()
-'''
-                    set_query("Series span", q_last)
-                    out: list[dict[str, Any]] = []
-                    for rec in qapi.query_stream(q_last, org=cfg_local["org"]):
-                        vals = getattr(rec, "values", {}) or {}
-                        newest = rec.get_time() or vals.get("_time")
-                        out.append({
-                            "measurement": str(vals.get("_measurement") or ""),
-                            "field": str(vals.get("_field") or ""),
-                            "entity_id": str(vals.get("entity_id") or ""),
-                            "friendly_name": str(vals.get("friendly_name") or ""),
-                            "newest_time": _as_rfc3339(newest),
-                            "last_value": rec.get_value(),
-                        })
-                    return out
 
                 def _series_first_span(a: datetime, b: datetime) -> list[dict[str, Any]]:
                     s_iso = _dt_to_rfc3339_utc(a)
@@ -14121,20 +14169,6 @@ from(bucket: "{cfg_local["bucket"]}")
                             "oldest_time": _as_rfc3339(oldest),
                         })
                     return out
-
-                def _series_last_span_split(a: datetime, b: datetime) -> list[dict[str, Any]]:
-                    if should_cancel():
-                        raise RuntimeError("cancelled")
-                    span_s = max(0.0, (b - a).total_seconds())
-                    try:
-                        return _series_last_span(a, b)
-                    except Exception as e:
-                        if _is_timeout_error(e) and span_s > min_chunk_seconds:
-                            mid = a + timedelta(seconds=(span_s / 2.0))
-                            left = _series_last_span_split(a, mid)
-                            right = _series_last_span_split(mid, b)
-                            return left + right
-                        raise
 
                 def _series_first_span_split(a: datetime, b: datetime) -> list[dict[str, Any]]:
                     if should_cancel():
@@ -14373,6 +14407,7 @@ def _global_stats_start_job(
     cache_key: dict[str, Any] | None = None,
     cache_merge_rows: list[dict[str, Any]] | None = None,
     cache_merge_start: str | None = None,
+    cache_discover_after: str | None = None,
 ) -> str:
     job_id = uuid.uuid4().hex
     ip = _req_ip()
@@ -14402,6 +14437,7 @@ def _global_stats_start_job(
         "cache_key": cache_key,
         "cache_merge_rows": list(cache_merge_rows or []),
         "cache_merge_start": str(cache_merge_start or "").strip() or None,
+        "cache_discover_after": str(cache_discover_after or "").strip() or None,
         "field_filter": field_filter,
         "measurement": measurement_filter,
         "entity_id": entity_id_filter,
@@ -14572,6 +14608,8 @@ def api_global_stats_job_start():
     cache_id = None
     cache_key = None
     stale_prefill = False
+    stale_seed_series = None
+    stale_discover_after = None
     try:
         if bool(cfg.get("stats_cache_enabled", True)) and int(cfg.get("stats_cache_max_items", 10) or 10) > 0:
             cache_key = _stats_cache_key(
@@ -14656,6 +14694,19 @@ def api_global_stats_job_start():
 
             stale_prefill = bool(cache_rows) and not bool(meta.get("mismatch"))
             if stale_prefill:
+                stale_seed_series = [
+                    {
+                        "measurement": str(r.get("measurement") or ""),
+                        "field": str(r.get("field") or ""),
+                        "entity_id": str(r.get("entity_id") or ""),
+                        "friendly_name": str(r.get("friendly_name") or ""),
+                    }
+                    for r in (cache_rows or []) if isinstance(r, dict)
+                ]
+                try:
+                    stale_discover_after = str((payload or {}).get("covered_stop") or "").strip() or None
+                except Exception:
+                    stale_discover_after = None
                 meta["last_used_at"] = _utc_now_iso_ms()
                 _stats_cache_write_meta(meta)
             meta["dirty"] = True
@@ -14674,12 +14725,13 @@ def api_global_stats_job_start():
         measurement_filter,
         entity_id_filter,
         friendly_name_filter,
-        series_list,
+        stale_seed_series or series_list,
         columns,
         page_limit,
         trigger_page="stats",
         cache_id=cache_id,
         cache_key=cache_key,
+        cache_discover_after=stale_discover_after,
     )
     return jsonify({"ok": True, "job_id": job_id, "cache_id": cache_id, "cache_prefill": bool(stale_prefill), "cache_hit": False})
 
