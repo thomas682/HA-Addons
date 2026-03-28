@@ -6,6 +6,18 @@
 
 - Anweisungen, die im Chat erteilt werden, werden solange nicht bearbeitet, bis die laufenden Umsetzungen oder Issues beendet sind.
 - Neue Eingaben werden daher zunächst in eine Queue bzw. ToDo-Liste aufgenommen.
+- Wenn bereits eine Abarbeitung laeuft, unterbrechen spaetere Benutzeranweisungen diese laufende Abarbeitung NICHT automatisch.
+- Jede neue Benutzeranweisung wird stattdessen in die Queue bzw. ToDo-Liste einsortiert und erst nach Abschluss der aktuell laufenden Abarbeitung der Reihe nach bearbeitet.
+- Das gilt ausdruecklich auch dann, wenn:
+  - waehrend einer laufenden `build`-Abarbeitung eine weitere `build`-Anweisung kommt
+  - waehrend einer laufenden `build`-Abarbeitung eine neue `plan`-Anfrage kommt
+  - waehrend einer laufenden `plan`-Analyse eine weitere `plan`-Anfrage kommt
+  - waehrend einer laufenden `plan`-Analyse eine neue `build`-Anweisung kommt
+- Eine neue `build`-Anweisung unterbricht also weder eine laufende `build`-Abarbeitung noch eine laufende `plan`-Analyse.
+- Eine neue `plan`-Anfrage unterbricht also ebenfalls keine bereits laufende `build`- oder `plan`-Abarbeitung.
+- Ausnahme:
+  - Antworten des Benutzers auf konkrete Rueckfragen des Agenten gehoeren zur aktuell laufenden Abarbeitung und wirken sofort auf diese laufende Aufgabe.
+  - Solche Rueckantworten werden NICHT als neuer Queue-Eintrag behandelt.
 
 - 2026-03-27: Betriebsmodus `build` per Chat-Befehl `GO` aktiv. Der Agent darf Aenderungen am Arbeitsbaum vornehmen, Tests ausfuehren sowie Commits/Pushes nach `main` erstellen.
 
@@ -419,6 +431,3 @@ No Cursor/Copilot instruction files were found at:
   - `rules/ISSUES.md`
   - `rules/WORKFLOW.md`
   - `rules/CODESTYLE.md`
-
-- Do NOT automatically load all rule files.
-- Only load the rule file(s) directly relevant to the current task.
