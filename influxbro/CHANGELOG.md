@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.143
+
+### Fix
+
+- Statistik: Ein veralteter Dev-Referenzfehler durch `$influxDbRefresh` wurde entfernt. Dadurch bricht die Statistik-Seite im Browser-Debugmodus nicht mehr an dieser Stelle ab.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`, `pytest tests/test_api_ui_support.py -q`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.142
 
 ### Enhancement

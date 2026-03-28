@@ -246,6 +246,7 @@ def test_stats_page_uses_finish_status_and_shared_table_height_helper():
     assert 'function finishStatus(lines)' in body
     assert "$tblResize.classList.add('ib_tbl_resize');" in body
     assert "window.InfluxBroTableHeight.attach($tblBox, 'tbl', {minPx: 160})" in body
+    assert '$influxDbRefresh' not in body
 
 
 def test_stats_backend_can_short_circuit_fresh_cache_hits():

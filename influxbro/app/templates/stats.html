@@ -1612,11 +1612,6 @@
         render();
       });
 
-      if($influxDbRefresh) $influxDbRefresh.addEventListener('click', (ev)=>{
-        try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
-        // Influx DB info moved to Info page.
-      });
-
       if($queryCopy) $queryCopy.addEventListener('click', (ev)=>{
         try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
         try{
