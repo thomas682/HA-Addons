@@ -3,7 +3,7 @@ description: Ideas for me to remember if time
 title: "[remeberme]: "
 labels:
   - "type/remember"
-  - "state/rememberme"
+  - "rememberme"
 body:
   - type: markdown
     attributes:
