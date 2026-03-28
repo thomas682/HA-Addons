@@ -468,6 +468,7 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Fuer verankerte Zeitraeume wie `all` und `this_year` kann ein veralteter Statistik-Cache jetzt per Append aktualisiert werden: Es wird nur der fehlende rechte Zeitraum seit Cache-Ende nachgeladen und mit dem bestehenden Cache zusammengefuehrt.
 - Fuer gleitende Zeitraeume ohne echten Delta-Append zeigt `Statistik laden` nun sofort eine passende Cache-Vorabansicht und aktualisiert diese anschliessend im Hintergrund neu.
 - Dieser Hintergrund-Rebuild startet dabei mit den bereits im Cache bekannten Serien und sucht nur noch nach neuen Serien seit dem letzten Cache-Ende.
+- Fuer gleitende Zeitraeume gibt es jetzt zusaetzlich einen ersten Trim+Append-Schritt: Nur Serien, die im herausfallenden linken Rand oder im neuen rechten Rand auftreten, werden neu berechnet; unveraenderte Serien bleiben aus dem Cache erhalten.
 
 ## Diagnose
 

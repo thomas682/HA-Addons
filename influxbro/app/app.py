@@ -3082,6 +3082,11 @@ def _stats_cache_append_supported(range_key: str) -> bool:
     return rk in ("all", "this_year")
 
 
+def _stats_cache_sliding_supported(range_key: str) -> bool:
+    rk = str(range_key or "").strip().lower()
+    return rk in ("24h", "7d", "30d", "90d", "180d", "365d", "12mo", "24mo")
+
+
 def _stats_row_identity(row: dict[str, Any]) -> tuple[str, str, str, str]:
     return (
         str(row.get("measurement") or ""),
@@ -3180,6 +3185,82 @@ def _stats_cache_merge_rows(base_rows: list[dict[str, Any]], delta_rows: list[di
         merged[key] = out
 
     return sorted(merged.values(), key=lambda r: int(r.get("count") or 0), reverse=True)
+
+
+def _stats_cache_discover_series_span(
+    cfg: dict[str, Any],
+    start_dt: datetime,
+    stop_dt: datetime,
+    field_filter: str | None,
+    measurement_filter: str | None,
+    entity_id_filter: str | None,
+    friendly_name_filter: str | None,
+) -> list[dict[str, Any]]:
+    ff = str(field_filter or "").strip()
+    mf = str(measurement_filter or "").strip()
+    eid_f = str(entity_id_filter or "").strip()
+    fn_f = str(friendly_name_filter or "").strip()
+    cfg_local = dict(cfg)
+    try:
+        cfg_local["timeout_seconds"] = min(max(int(cfg_local.get("timeout_seconds", 10)), 10), 60)
+    except Exception:
+        cfg_local["timeout_seconds"] = 60
+
+    min_chunk_seconds = 5 * 60
+
+    def _run(a: datetime, b: datetime) -> list[dict[str, Any]]:
+        s_iso = _dt_to_rfc3339_utc(a)
+        e_iso = _dt_to_rfc3339_utc(b)
+        ff_clause = f"|> filter(fn: (r) => r._field == {_flux_str(ff)})" if ff else ""
+        mf_clause = f"|> filter(fn: (r) => r._measurement == {_flux_str(mf)})" if mf else ""
+        tag_clause = ""
+        if eid_f:
+            tag_clause += f"|> filter(fn: (r) => r.entity_id == {_flux_str(eid_f)})\n"
+        if fn_f:
+            tag_clause += f"|> filter(fn: (r) => r.friendly_name == {_flux_str(fn_f)})\n"
+        q = f'''
+from(bucket: "{cfg_local["bucket"]}")
+  |> range(start: time(v: "{s_iso}"), stop: time(v: "{e_iso}"))
+  |> filter(fn: (r) => exists r._measurement and exists r._field)
+  {mf_clause}
+  {ff_clause}
+  {tag_clause.strip()}
+  |> map(fn: (r) => ({{ r with entity_id: if exists r.entity_id then string(v: r.entity_id) else "", friendly_name: if exists r.friendly_name then string(v: r.friendly_name) else "" }}))
+  |> keep(columns: ["_measurement","_field","entity_id","friendly_name","_time","_value"])
+  |> group(columns: ["_measurement","_field","entity_id","friendly_name"])
+  |> last()
+'''
+        out: list[dict[str, Any]] = []
+        with v2_client(cfg_local) as c:
+            qapi = c.query_api()
+            for rec in qapi.query_stream(q, org=cfg_local["org"]):
+                vals = getattr(rec, "values", {}) or {}
+                newest = rec.get_time() or vals.get("_time")
+                out.append({
+                    "measurement": str(vals.get("_measurement") or ""),
+                    "field": str(vals.get("_field") or ""),
+                    "entity_id": str(vals.get("entity_id") or ""),
+                    "friendly_name": str(vals.get("friendly_name") or ""),
+                    "newest_time": _as_rfc3339(newest),
+                    "last_value": rec.get_value(),
+                })
+        return out
+
+    def _split(a: datetime, b: datetime) -> list[dict[str, Any]]:
+        span_s = max(0.0, (b - a).total_seconds())
+        try:
+            return _run(a, b)
+        except Exception as e:
+            s = str(e).lower()
+            timeout = ("timed out" in s) or ("timeout" in s) or ("read timed out" in s)
+            if timeout and span_s > min_chunk_seconds:
+                mid = a + timedelta(seconds=(span_s / 2.0))
+                return _split(a, mid) + _split(mid, b)
+            raise
+
+    if stop_dt <= start_dt:
+        return []
+    return _split(start_dt, stop_dt)
 
 
 def _stats_cache_id(key: dict[str, Any]) -> str:
@@ -14691,6 +14772,89 @@ def api_global_stats_job_start():
                     cache_merge_start=covered_start_s,
                 )
                 return jsonify({"ok": True, "job_id": job_id, "cache_id": cache_id, "cache_append": True, "append_from": _dt_to_rfc3339_utc(append_from)})
+
+            sliding_merge_rows = None
+            sliding_series = None
+            try:
+                rk = str(cache_key.get("range") or "").strip().lower()
+                covered_start_s = str((payload or {}).get("covered_start") or "").strip()
+                covered_stop_s = str((payload or {}).get("covered_stop") or "").strip()
+                covered_start_dt = _parse_iso_datetime(covered_start_s) if covered_start_s else None
+                covered_stop_dt = _parse_iso_datetime(covered_stop_s) if covered_stop_s else None
+                cache_rows_ok = isinstance(cache_rows, list) and len(cache_rows) > 0
+                old_span = (covered_stop_dt - covered_start_dt).total_seconds() if covered_start_dt and covered_stop_dt else None
+                new_span = (stop_dt - start_dt).total_seconds()
+                if (
+                    _stats_cache_sliding_supported(rk)
+                    and cache_rows_ok
+                    and not bool(meta.get("dirty"))
+                    and not bool(meta.get("mismatch"))
+                    and covered_start_dt and covered_stop_dt
+                    and start_dt > covered_start_dt
+                    and stop_dt > covered_stop_dt
+                    and old_span is not None
+                    and abs(old_span - new_span) <= 60.0
+                ):
+                    left_rows = _stats_cache_discover_series_span(cfg, covered_start_dt, start_dt, ff, measurement_filter, entity_id_filter, friendly_name_filter)
+                    right_rows = _stats_cache_discover_series_span(cfg, covered_stop_dt, stop_dt, ff, measurement_filter, entity_id_filter, friendly_name_filter)
+                    changed_keys = {
+                        _stats_row_identity(r)
+                        for r in list(left_rows or []) + list(right_rows or [])
+                        if isinstance(r, dict)
+                    }
+                    if changed_keys:
+                        sliding_merge_rows = [r for r in (cache_rows or []) if isinstance(r, dict) and _stats_row_identity(r) not in changed_keys]
+                        series_map: dict[tuple[str, str, str, str], dict[str, Any]] = {}
+                        for r in (cache_rows or []):
+                            if not isinstance(r, dict):
+                                continue
+                            k = _stats_row_identity(r)
+                            if k in changed_keys:
+                                series_map[k] = {
+                                    "measurement": k[0],
+                                    "field": k[1],
+                                    "entity_id": k[2],
+                                    "friendly_name": k[3],
+                                }
+                        for r in list(left_rows or []) + list(right_rows or []):
+                            if not isinstance(r, dict):
+                                continue
+                            k = _stats_row_identity(r)
+                            if k in changed_keys:
+                                series_map[k] = {
+                                    "measurement": k[0],
+                                    "field": k[1],
+                                    "entity_id": k[2],
+                                    "friendly_name": k[3],
+                                }
+                        sliding_series = list(series_map.values())
+            except Exception:
+                sliding_merge_rows = None
+                sliding_series = None
+
+            if sliding_merge_rows is not None and sliding_series is not None:
+                meta["dirty"] = True
+                meta["dirty_reason"] = "sliding_trim_append"
+                meta["dirty_at"] = _utc_now_iso_ms()
+                _stats_cache_write_meta(meta)
+                job_id = _global_stats_start_job(
+                    cfg,
+                    start_dt,
+                    stop_dt,
+                    ff,
+                    measurement_filter,
+                    entity_id_filter,
+                    friendly_name_filter,
+                    sliding_series,
+                    columns,
+                    page_limit,
+                    trigger_page="stats",
+                    cache_id=cache_id,
+                    cache_key=cache_key,
+                    cache_merge_rows=sliding_merge_rows,
+                    cache_merge_start=_dt_to_rfc3339_utc(start_dt),
+                )
+                return jsonify({"ok": True, "job_id": job_id, "cache_id": cache_id, "cache_slide": True, "cache_prefill": True})
 
             stale_prefill = bool(cache_rows) and not bool(meta.get("mismatch"))
             if stale_prefill:

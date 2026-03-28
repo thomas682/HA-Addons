@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.142
+
+### Enhancement
+
+- Statistik: Gleitende Zeitraeume koennen jetzt einen ersten Trim+Append-Schritt nutzen. Wenn sich das Zeitfenster nur nach rechts verschiebt, werden nur die in den linken/rechten Randbereichen betroffenen Serien neu berechnet, waehrend unveraenderte Cache-Serien direkt uebernommen werden.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`, `pytest tests/test_api_ui_support.py -q`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.141
 
 ### Enhancement

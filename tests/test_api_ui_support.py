@@ -275,6 +275,14 @@ def test_stats_backend_reuses_cached_series_for_stale_prefill_rebuilds():
     assert 'stale_seed_series or series_list' in body
 
 
+def test_stats_backend_supports_sliding_trim_append_updates():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "app.py").read_text()
+    assert 'def _stats_cache_sliding_supported(range_key: str) -> bool:' in body
+    assert 'def _stats_cache_discover_series_span(' in body
+    assert 'meta["dirty_reason"] = "sliding_trim_append"' in body
+    assert 'return jsonify({"ok": True, "job_id": job_id, "cache_id": cache_id, "cache_slide": True, "cache_prefill": True})' in body
+
+
 def test_import_analyze_shows_success_and_error_popups():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "import.html").read_text()
     assert "window.InfluxBroPopup.show('Import Analyse erfolgreich', msg);" in body
