@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.149
+
+### Fix
+
+- Bei aktivem `Dashboard: nav.ui_picker_super` pickt der UI-Picker jetzt das direkt gehoverte Unterelement selbst. Dadurch werden nicht mehr nur naechste `data-ui`-Container, sondern auch darunterliegende Elemente per Fallback-Metadaten sichtbar.
+
+### Maintenance
+
+- Tests: `pytest tests/test_api_ui_support.py -q`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.148
 
 ### Fix

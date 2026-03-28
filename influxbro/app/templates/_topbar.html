@@ -638,10 +638,15 @@
 
     function pickTarget(el){
       try{
+        if(el && el.nodeType === Node.TEXT_NODE) el = el.parentElement;
         if(!el || el === document.body || el === document.documentElement) return null;
+        if(readSuper()){
+          const ownUi = String(el.getAttribute && el.getAttribute('data-ui') || '').trim();
+          if(ownUi) return { el, name: ownUi, kind: 'data-ui' };
+          return { el, name: _fallbackNameFor(el), kind: 'fallback' };
+        }
         const withUi = el.closest && el.closest('[data-ui]');
         if(withUi) return { el: withUi, name: String(withUi.getAttribute('data-ui') || '').trim(), kind: 'data-ui' };
-        if(readSuper()) return { el, name: _fallbackNameFor(el), kind: 'fallback' };
         return null;
       }catch(e){ return null; }
     }

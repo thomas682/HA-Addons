@@ -431,7 +431,10 @@ def test_picker_supports_superpicker_fallback_mode():
     assert "id=\"ui_picker_super\"" in topbar
     assert 'class="row_sel"' in topbar
     assert "const LS_SUPER = 'influxbro.ui_picker.super.v1';" in topbar
-    assert "if(readSuper()) return { el, name: _fallbackNameFor(el), kind: 'fallback' };" in topbar
+    assert "if(el && el.nodeType === Node.TEXT_NODE) el = el.parentElement;" in topbar
+    assert "if(readSuper()){" in topbar
+    assert "if(ownUi) return { el, name: ownUi, kind: 'data-ui' };" in topbar
+    assert "return { el, name: _fallbackNameFor(el), kind: 'fallback' };" in topbar
     assert "badge.textContent = target.kind === 'fallback' ? ('fallback: ' + (name || 'element')) : (name || '(kein data-ui)');" in topbar
 
 
