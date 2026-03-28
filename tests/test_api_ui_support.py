@@ -418,9 +418,16 @@ def test_quality_nav_and_material_button_tokens_exist():
 def test_picker_supports_superpicker_fallback_mode():
     topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
     assert "id=\"ui_picker_super\"" in topbar
+    assert 'class="row_sel"' in topbar
     assert "const LS_SUPER = 'influxbro.ui_picker.super.v1';" in topbar
     assert "if(readSuper()) return { el, name: _fallbackNameFor(el), kind: 'fallback' };" in topbar
     assert "badge.textContent = target.kind === 'fallback' ? ('fallback: ' + (name || 'element')) : (name || '(kein data-ui)');" in topbar
+
+
+def test_template_requires_standard_checkbox_scale_for_toolbar_checkboxes():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "Template.md").read_text()
+    assert 'Checkbox size must stay consistent across pages and topbars.' in body
+    assert 'Preferred pattern: add class `row_sel` to the checkbox' in body
 
 
 def test_info_and_manual_pages_have_local_search_controls():

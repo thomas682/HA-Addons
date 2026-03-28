@@ -203,6 +203,9 @@ Checkboxes/selects/inputs
 
 - Align vertically in toolbars.
 - Prefer a label text that matches what the user expects (German UI).
+- Checkbox size must stay consistent across pages and topbars.
+  - Reuse the same visual scale as standard list/graph checkboxes such as `Dashboard: graph_markers`.
+  - Preferred pattern: add class `row_sel` to the checkbox and avoid page-specific checkbox sizes unless there is a strong reason.
 
 ### Auswahlfeld (Master: Filter)
 
