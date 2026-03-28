@@ -415,6 +415,14 @@ def test_quality_nav_and_material_button_tokens_exist():
     assert 'border-radius: 999px;' in topbar
 
 
+def test_picker_supports_superpicker_fallback_mode():
+    topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    assert "id=\"ui_picker_super\"" in topbar
+    assert "const LS_SUPER = 'influxbro.ui_picker.super.v1';" in topbar
+    assert "if(readSuper()) return { el, name: _fallbackNameFor(el), kind: 'fallback' };" in topbar
+    assert "badge.textContent = target.kind === 'fallback' ? ('fallback: ' + (name || 'element')) : (name || '(kein data-ui)');" in topbar
+
+
 def test_info_and_manual_pages_have_local_search_controls():
     info = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "info.html").read_text()
     manual = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "manual.html").read_text()

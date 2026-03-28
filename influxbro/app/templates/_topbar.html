@@ -546,13 +546,27 @@
   (function(){
     function initPicker(){
       const $btn = document.getElementById('ui_picker_toggle');
-      if(!$btn || $btn.dataset.ibPickerReady === '1') return;
+      const $super = document.getElementById('ui_picker_super');
+      if(!$btn || !$super || $btn.dataset.ibPickerReady === '1') return;
       $btn.dataset.ibPickerReady = '1';
+      const LS_SUPER = 'influxbro.ui_picker.super.v1';
 
       let active = false;
       let currentEl = null;
       let overlay = null;
       let badge = null;
+
+    function readSuper(){
+      try{ return localStorage.getItem(LS_SUPER) === '1'; }catch(e){ return false; }
+    }
+
+    function writeSuper(v){
+      try{ localStorage.setItem(LS_SUPER, v ? '1' : '0'); }catch(e){}
+    }
+
+    function applySuperUi(){
+      try{ $super.checked = !!readSuper(); }catch(e){}
+    }
 
     function ensureUi(){
       if(!overlay){
@@ -602,11 +616,32 @@
       }catch(e){ return false; }
     }
 
+    function _fallbackNameFor(el){
+      try{
+        if(!el || !el.tagName) return 'element';
+        const tag = String(el.tagName || '').toLowerCase() || 'element';
+        const id = String(el.getAttribute('id') || '').trim();
+        const role = String(el.getAttribute('role') || '').trim();
+        const title = String(el.getAttribute('aria-label') || el.getAttribute('title') || el.getAttribute('name') || el.getAttribute('placeholder') || '').trim();
+        const cls = String(el.className || '').trim().split(/\s+/).filter(Boolean).slice(0, 2).join('.');
+        const text = String(el.textContent || '').replace(/\s+/g, ' ').trim();
+        const bits = [tag];
+        if(id) bits.push('#' + id);
+        else if(cls) bits.push('.' + cls);
+        if(role) bits.push('[role=' + role + ']');
+        if(title) bits.push('"' + title + '"');
+        else if(text) bits.push('"' + text.slice(0, 60) + '"');
+        return bits.join(' ');
+      }catch(e){ return 'element'; }
+    }
+
     function pickTarget(el){
       try{
         if(!el || el === document.body || el === document.documentElement) return null;
         const withUi = el.closest && el.closest('[data-ui]');
-        return withUi || null;
+        if(withUi) return { el: withUi, name: String(withUi.getAttribute('data-ui') || '').trim(), kind: 'data-ui' };
+        if(readSuper()) return { el, name: _fallbackNameFor(el), kind: 'fallback' };
+        return null;
       }catch(e){ return null; }
     }
 
@@ -627,14 +662,15 @@
       return 'Seite';
     }
 
-    function renderTarget(el, ev){
+    function renderTarget(target, ev){
       ensureUi();
-      if(!el){
+      if(!target || !target.el){
         overlay.style.display = 'none';
         badge.style.display = 'none';
         currentEl = null;
         return;
       }
+      const el = target.el;
       currentEl = el;
       const r = el.getBoundingClientRect();
       overlay.style.display = 'block';
@@ -642,8 +678,8 @@
       overlay.style.top = Math.max(0, r.top - 2) + 'px';
       overlay.style.width = Math.max(0, r.width + 4) + 'px';
       overlay.style.height = Math.max(0, r.height + 4) + 'px';
-      const name = String(el.getAttribute('data-ui') || '').trim();
-      badge.textContent = name || '(kein data-ui)';
+      const name = String(target.name || '').trim();
+      badge.textContent = target.kind === 'fallback' ? ('fallback: ' + (name || 'element')) : (name || '(kein data-ui)');
       badge.style.display = 'block';
       const x = ev && typeof ev.clientX === 'number' ? ev.clientX + 12 : (r.left + 12);
       const y = ev && typeof ev.clientY === 'number' ? ev.clientY + 12 : (r.top + 12);
@@ -673,16 +709,15 @@
 
     function onMove(ev){
       if(!active) return;
-      const t = pickTarget(ev.target);
-      renderTarget(t, ev);
+      renderTarget(pickTarget(ev.target), ev);
     }
 
     async function onClick(ev){
       if(!active) return;
       const t = pickTarget(ev.target);
-      if(!t) return;
+      if(!t || !t.el) return;
       try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
-      const name = String(t.getAttribute('data-ui') || '').trim();
+      const name = String(t.name || '').trim();
       const text = currentPageLabel() + ': ' + name;
       const ok = await copyText(text);
       try{
@@ -702,6 +737,8 @@
         if(active) stop();
         else start();
       });
+      $super.addEventListener('change', ()=>{ writeSuper(!!$super.checked); });
+      applySuperUi();
     }
 
     if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initPicker, { once: true });
@@ -756,6 +793,9 @@
       <button id="ui_profile_save" type="button" data-ui="nav.profile.save" title="nav.profile.save">Speichern</button>
       <button id="ui_profile_info" type="button" data-ui="nav.profile.info" title="nav.profile.info">Info</button>
       <button id="ui_picker_toggle" type="button" data-ui="nav.ui_picker" title="nav.ui_picker">Picker</button>
+      <div class="pickeropts" data-ui="nav.ui_picker_options" title="nav.ui_picker_options">
+        <label><input id="ui_picker_super" type="checkbox" data-ui="nav.ui_picker_super" title="nav.ui_picker_super"/><span>superpicker</span></label>
+      </div>
     </div>
     <div class="zoom" data-ui="topbar.zoom" title="topbar.zoom">
       <span class="meta">Zoom</span>

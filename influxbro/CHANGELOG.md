@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.145
+
+### Enhancement
+
+- Der UI-Picker hat jetzt optional einen `superpicker`-Modus. Wenn die Checkbox aktiv ist, koennen auch Elemente ohne `data-ui` ueber Fallback-Metadaten wie Tag, ID, Klassen, Rolle oder sichtbaren Text erfasst werden.
+
+### Maintenance
+
+- Tests: `pytest tests/test_api_ui_support.py -q`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.144
 
 ### Enhancement
