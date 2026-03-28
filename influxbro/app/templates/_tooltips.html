@@ -1754,6 +1754,101 @@ try{ _ensureSummarySettingsButtons(); }catch(e){}
 </script>
 
 <script>
+// Global button logging and button error reporting
+(function(){
+  if(window.InfluxBroButtons) return;
+
+  function _page(){
+    try{ return (document && document.querySelector('main[data-ui]') && document.querySelector('main[data-ui]').getAttribute('data-ui')) || ''; }catch(e){ return ''; }
+  }
+  function _buttonSel(){
+    return 'button, input[type="button"], input[type="submit"], input[type="reset"], [role="button"]';
+  }
+  function _buttonTargetFromEvent(ev){
+    try{ return ev && ev.target && ev.target.closest ? ev.target.closest(_buttonSel()) : null; }catch(e){ return null; }
+  }
+  function _buttonMeta(el){
+    try{
+      if(!el) return { ui:'', id:'', text:'', tag:'' };
+      const txt = String(el.getAttribute('data-ui') || el.getAttribute('aria-label') || el.getAttribute('title') || el.textContent || '').replace(/\s+/g, ' ').trim();
+      return {
+        ui: String(el.getAttribute('data-ui') || '').trim(),
+        id: String(el.getAttribute('id') || '').trim(),
+        text: txt.slice(0, 120),
+        tag: String(el.tagName || '').toLowerCase(),
+      };
+    }catch(e){ return { ui:'', id:'', text:'', tag:'' }; }
+  }
+  async function _log(kind, el, extra){
+    try{
+      const m = _buttonMeta(el);
+      await fetch('./api/ui_event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          page: _page(),
+          ui: m.ui || m.id || m.tag,
+          text: m.text || m.id || m.tag,
+          extra: Object.assign({ kind: String(kind || 'button_event') }, extra || {}, m),
+        })
+      });
+    }catch(e){}
+  }
+  function reportError(err, context, el, extra){
+    const msg = String(err && err.message ? err.message : err || 'Button-Fehler');
+    const meta = Object.assign({ kind:'button_error', context: String(context || '') }, _buttonMeta(el), extra || {});
+    try{ window.InfluxBroErrors && window.InfluxBroErrors.add && window.InfluxBroErrors.add(msg, meta); }catch(e){}
+    try{ window.InfluxBroClientLog && window.InfluxBroClientLog.reportError && window.InfluxBroClientLog.reportError(msg, meta, String(err && err.stack ? err.stack : '')); }catch(e){}
+    try{ _log('button_error', el, Object.assign({ error: msg }, meta)); }catch(e){}
+  }
+
+  try{
+    document.addEventListener('click', (ev)=>{
+      const btn = _buttonTargetFromEvent(ev);
+      if(!btn) return;
+      _log('button_press', btn, { pointer: 'click' });
+    }, true);
+  }catch(e){}
+
+  try{
+    const origAdd = EventTarget.prototype.addEventListener;
+    if(!origAdd.__ib_button_wrap){
+      EventTarget.prototype.addEventListener = function(type, listener, options){
+        if(type !== 'click' || !listener) return origAdd.call(this, type, listener, options);
+        if(typeof listener === 'function'){
+          if(listener.__ib_button_wrapped) return origAdd.call(this, type, listener, options);
+          const wrapped = function(){
+            const ev = arguments && arguments.length ? arguments[0] : null;
+            const btn = (this && this.matches && this.matches(_buttonSel())) ? this : _buttonTargetFromEvent(ev);
+            try{
+              const out = listener.apply(this, arguments);
+              if(out && typeof out.then === 'function'){
+                return out.catch((err)=>{
+                  reportError(err, 'button.click', btn, { async: true });
+                  throw err;
+                });
+              }
+              return out;
+            }catch(err){
+              reportError(err, 'button.click', btn, { async: false });
+              throw err;
+            }
+          };
+          wrapped.__ib_button_wrapped = true;
+          wrapped.__ib_button_original = listener;
+          return origAdd.call(this, type, wrapped, options);
+        }
+        return origAdd.call(this, type, listener, options);
+      };
+      EventTarget.prototype.addEventListener.__ib_button_wrap = true;
+    }
+  }catch(e){}
+
+  window.InfluxBroButtons = { log: _log, reportError };
+})();
+</script>
+
+<script>
 // Client-side error logging (browser -> server log)
 // Also keeps a small local ring buffer for export.
 (function(){

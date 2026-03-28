@@ -435,6 +435,23 @@ def test_picker_supports_superpicker_fallback_mode():
     assert "badge.textContent = target.kind === 'fallback' ? ('fallback: ' + (name || 'element')) : (name || '(kein data-ui)');" in topbar
 
 
+def test_global_button_logging_and_button_error_reporting_exist():
+    tooltips = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
+    assert 'if(window.InfluxBroButtons) return;' in tooltips
+    assert "document.addEventListener('click', (ev)=>{" in tooltips
+    assert "_log('button_press', btn, { pointer: 'click' });" in tooltips
+    assert "reportError(err, 'button.click', btn, { async: false });" in tooltips
+    assert "window.InfluxBroButtons = { log: _log, reportError };" in tooltips
+
+
+def test_dashboard_query_and_stats_buttons_report_dialog_errors_instead_of_swallowing():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert "throw new Error('Dialogsystem fuer Dashboard Query ist nicht verfuegbar');" in body
+    assert "window.InfluxBroButtons.reportError(e, 'dashboard.query_details', $dashboardQueryOpen);" in body
+    assert "throw new Error('Dialogsystem fuer Gesamtstatistik ist nicht verfuegbar');" in body
+    assert "window.InfluxBroButtons.reportError(e, 'section.stats_total', $statsTotalOpen);" in body
+
+
 def test_template_requires_standard_checkbox_scale_for_toolbar_checkboxes():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "Template.md").read_text()
     assert 'Checkbox size must stay consistent across pages and topbars.' in body

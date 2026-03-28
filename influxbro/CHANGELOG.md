@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.148
+
+### Fix
+
+- Button-Klicks werden jetzt global als `ui_event` mit `button_press` geloggt. Wenn ein Button-Handler einen Fehler wirft, wird dieser nicht mehr still geschluckt, sondern als Button-Fehler in UI-Fehlerlog und Add-on-Log geschrieben.
+- `Dashboard: dashboard.query_details` und `Dashboard: section.stats_total` melden Dialogfehler jetzt explizit und haben einen Popup-Fallback, falls das Dialogsystem nicht verfuegbar ist.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`, `pytest tests/test_api_ui_support.py -q`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.147
 
 ### Fix

@@ -474,6 +474,7 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Der UI-Picker hat optional einen `superpicker`-Modus. Mit aktivierter Checkbox kann er auch Layout-Container oder andere Elemente ohne `data-ui` ueber Fallback-Metadaten erfassen.
 - Die Checkbox `superpicker` nutzt dieselbe visuelle Groesse wie die normalen Dashboard-Checkboxen.
 - Die Hoehe der Titel-/Pagecard-Leiste schrumpft nach automatischen Erweiterungen wieder auf die kleinste vollstaendige Hoehe des aktuell sichtbaren Inhalts zurueck.
+- Button-Klicks werden fuer Supportzwecke jetzt global protokolliert. Wenn ein Button-Handler scheitert, landet der Fehler nicht nur im Browser, sondern auch im UI-Fehlerlog und im Add-on-Log.
 
 ## Diagnose
 

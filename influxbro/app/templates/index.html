@@ -2846,8 +2846,17 @@ function openDashboardQueryDialog(){
         meta: $queryMeta ? String($queryMeta.textContent || '') : '',
         scope: 'dashboard',
       });
+    }else if(window.InfluxBroPopup && window.InfluxBroPopup.show){
+      window.InfluxBroPopup.show('Dashboard Query', $queryPre ? String($queryPre.textContent || '') : 'Noch keine Query vorhanden.', {
+        meta: $queryMeta ? String($queryMeta.textContent || '') : '',
+      });
+    }else{
+      throw new Error('Dialogsystem fuer Dashboard Query ist nicht verfuegbar');
     }
-  }catch(e){}
+  }catch(e){
+    try{ window.InfluxBroButtons && window.InfluxBroButtons.reportError && window.InfluxBroButtons.reportError(e, 'dashboard.query_details', $dashboardQueryOpen); }catch(x){}
+    displayError(e);
+  }
 }
 
 function openGraphQueryDialog(){
@@ -2886,8 +2895,18 @@ function openStatsTotalDialog(){
         text: _statsTotalText(),
         copyTitle: 'Zwischenablage',
       });
+    }else if(window.InfluxBroPopup && window.InfluxBroPopup.show){
+      window.InfluxBroPopup.show('Gesamtstatistik (Alles)', _statsTotalText(), {
+        copyText: _statsTotalText(),
+        copyTitle: 'Zwischenablage',
+      });
+    }else{
+      throw new Error('Dialogsystem fuer Gesamtstatistik ist nicht verfuegbar');
     }
-  }catch(e){}
+  }catch(e){
+    try{ window.InfluxBroButtons && window.InfluxBroButtons.reportError && window.InfluxBroButtons.reportError(e, 'section.stats_total', $statsTotalOpen); }catch(x){}
+    displayError(e);
+  }
 }
 
 function _statsCurrentText(){
