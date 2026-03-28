@@ -469,6 +469,8 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Fuer gleitende Zeitraeume ohne echten Delta-Append zeigt `Statistik laden` nun sofort eine passende Cache-Vorabansicht und aktualisiert diese anschliessend im Hintergrund neu.
 - Dieser Hintergrund-Rebuild startet dabei mit den bereits im Cache bekannten Serien und sucht nur noch nach neuen Serien seit dem letzten Cache-Ende.
 - Fuer gleitende Zeitraeume gibt es jetzt zusaetzlich einen ersten Trim+Append-Schritt: Nur Serien, die im herausfallenden linken Rand oder im neuen rechten Rand auftreten, werden neu berechnet; unveraenderte Serien bleiben aus dem Cache erhalten.
+- Die neue Seite `Datenqualitaet` fuehrt durch Raw-, Clean- und Rollup-Buckets, zeigt Regelpflege und Bucket-/Task-Verwaltung und bietet einen Bereinigungs-Testlauf bzw. Bereinigungslauf direkt aus dem Add-on.
+- Buttons ueber das gesamte Add-on verwenden jetzt einen konsistenteren, an Material angelehnten Look mit runden Filled-/Tonal-Flaechen.
 
 ## Diagnose
 

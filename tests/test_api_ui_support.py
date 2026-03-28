@@ -393,6 +393,28 @@ def test_dashboard_tables_use_shared_height_resizers():
     assert "window.InfluxBroTableHeight.attach($detailsBox, 'details_box', {minPx: 180})" in body
 
 
+def test_quality_page_exists_with_tabs_and_cleanup_actions(load_app_module, tmp_path):
+    app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
+    client = app_mod.app.test_client()
+    r = client.get('/quality')
+    text = r.get_data(as_text=True)
+    assert r.status_code == 200
+    assert 'Datenqualitaet & Langzeitdaten' in text
+    assert 'quality.tab.cleanup' in text
+    assert 'quality_buckets_apply' in text
+    assert 'quality_tasks_apply' in text
+    assert 'id="cleanup_run"' in text
+
+
+def test_quality_nav_and_material_button_tokens_exist():
+    nav = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_nav.html").read_text()
+    topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    assert 'href="./quality"' in nav
+    assert '--ib-btn-bg: #eef3ff;' in topbar
+    assert 'body button {' in topbar
+    assert 'border-radius: 999px;' in topbar
+
+
 def test_info_and_manual_pages_have_local_search_controls():
     info = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "info.html").read_text()
     manual = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "manual.html").read_text()

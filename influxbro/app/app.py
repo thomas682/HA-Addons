@@ -1,5 +1,6 @@
 import csv
 from collections import deque
+import fnmatch
 import gzip
 import hashlib
 import io
@@ -66,6 +67,7 @@ UI_ACTIONS_LOCK = threading.RLock()
 UI_ACTIONS_MAX_MEM = 200
 UI_ACTIONS_MEM: "deque[dict[str, Any]]" = deque(maxlen=UI_ACTIONS_MAX_MEM)
 UI_ACTIONS_PATH = DATA_DIR / "influxbro_ui_actions.jsonl"
+QUALITY_CLEANUP_LOG_PATH = DATA_DIR / "influxbro_quality_cleanup.jsonl"
 MONITOR_LOCK = threading.RLock()
 MONITOR_CFG_PATH = DATA_DIR / "influxbro_monitoring_config.json"
 MONITOR_STATE_PATH = DATA_DIR / "influxbro_monitoring_state.json"
@@ -802,6 +804,21 @@ DEFAULT_CFG = {
     "stats_full_refresh_weekday": 0,
     # Safety cap for scheduled full stats scans (prevents querying from epoch / huge ranges)
     "stats_full_max_days": 3650,
+
+    # Data quality / long-term buckets
+    "quality_raw_bucket": "homeassistant_raw_30d",
+    "quality_clean_bucket": "homeassistant_clean_180d",
+    "quality_rollup_bucket": "homeassistant_rollup",
+    "quality_retention_raw_days": 30,
+    "quality_retention_clean_days": 180,
+    "quality_retention_rollup_days": 1825,
+    "quality_timezone": "Europe/Berlin",
+    "quality_lateness_minutes": 10,
+    "quality_auto_create_buckets": True,
+    "quality_auto_create_tasks": False,
+    "quality_rules_json": "",
+    "quality_rollup_levels_json": "",
+    "quality_cleanup_plan_json": "",
 
 }
 
@@ -4300,6 +4317,12 @@ def stats_page():
     return render_template("stats.html", cfg=cfg, allow_delete=True, nav="stats", suggestions=_initial_suggestions(cfg))
 
 
+@app.get("/quality")
+def quality_page():
+    cfg = load_cfg()
+    return render_template("quality.html", cfg=cfg, allow_delete=True, nav="quality")
+
+
 @app.get("/logs")
 def logs_page():
     cfg = load_cfg()
@@ -4806,6 +4829,503 @@ def api_v2_buckets():
             return jsonify({"ok": True, "buckets": names})
     except Exception as e:
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
+
+
+def _quality_default_rules() -> list[dict[str, Any]]:
+    return [
+        {
+            "enabled": True,
+            "pattern": "sensor.*_energy*",
+            "type": "counter",
+            "min": 0,
+            "max": None,
+            "max_delta": 30,
+            "invalid_policy": "carry_last",
+            "reset_allowed": False,
+            "rollup": True,
+            "rollup_levels": "15m,1h,1d",
+        },
+        {
+            "enabled": True,
+            "pattern": "sensor.*power*",
+            "type": "gauge",
+            "min": 0,
+            "max": 30000,
+            "max_delta": 30000,
+            "invalid_policy": "drop",
+            "reset_allowed": False,
+            "rollup": True,
+            "rollup_levels": "15m,1h",
+        },
+        {
+            "enabled": True,
+            "pattern": "binary_sensor.*",
+            "type": "binary",
+            "min": None,
+            "max": None,
+            "max_delta": None,
+            "invalid_policy": "drop",
+            "reset_allowed": False,
+            "rollup": True,
+            "rollup_levels": "1h,1d",
+        },
+    ]
+
+
+def _quality_default_rollup_levels() -> list[dict[str, Any]]:
+    return [
+        {"name": "15m", "source_after_days": 30, "every": "1h", "window": "15m", "mode_counter": "last", "mode_gauge": "mean"},
+        {"name": "1h", "source_after_days": 90, "every": "6h", "window": "1h", "mode_counter": "last", "mode_gauge": "mean"},
+        {"name": "1d", "source_after_days": 365, "every": "24h", "window": "1d", "mode_counter": "last", "mode_gauge": "mean"},
+    ]
+
+
+def _quality_parse_json_or_default(raw: str, default: Any) -> Any:
+    try:
+        txt = str(raw or "").strip()
+        if not txt:
+            return default
+        val = json.loads(txt)
+        return val if isinstance(val, type(default)) else default
+    except Exception:
+        return default
+
+
+def _quality_cfg_view(cfg: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "raw_bucket": str(cfg.get("quality_raw_bucket") or DEFAULT_CFG["quality_raw_bucket"]),
+        "clean_bucket": str(cfg.get("quality_clean_bucket") or DEFAULT_CFG["quality_clean_bucket"]),
+        "rollup_bucket": str(cfg.get("quality_rollup_bucket") or DEFAULT_CFG["quality_rollup_bucket"]),
+        "retention_raw_days": int(cfg.get("quality_retention_raw_days") or DEFAULT_CFG["quality_retention_raw_days"]),
+        "retention_clean_days": int(cfg.get("quality_retention_clean_days") or DEFAULT_CFG["quality_retention_clean_days"]),
+        "retention_rollup_days": int(cfg.get("quality_retention_rollup_days") or DEFAULT_CFG["quality_retention_rollup_days"]),
+        "timezone": str(cfg.get("quality_timezone") or DEFAULT_CFG["quality_timezone"]),
+        "lateness_minutes": int(cfg.get("quality_lateness_minutes") or DEFAULT_CFG["quality_lateness_minutes"]),
+        "auto_create_buckets": bool(cfg.get("quality_auto_create_buckets", True)),
+        "auto_create_tasks": bool(cfg.get("quality_auto_create_tasks", False)),
+        "rules": _quality_parse_json_or_default(cfg.get("quality_rules_json") or "", _quality_default_rules()),
+        "rollups": _quality_parse_json_or_default(cfg.get("quality_rollup_levels_json") or "", _quality_default_rollup_levels()),
+        "cleanup_plan": _quality_parse_json_or_default(cfg.get("quality_cleanup_plan_json") or "", {}),
+    }
+
+
+def _quality_influx_request(cfg: dict[str, Any], method: str, path: str, payload: Any | None = None) -> tuple[int, Any]:
+    token = str(cfg.get("admin_token") or cfg.get("token") or "").strip()
+    if not token:
+        raise RuntimeError("token required")
+    url = _influx_url(cfg).rstrip("/") + path
+    data = None
+    headers = {"Authorization": f"Bearer {token}"}
+    if payload is not None:
+        data = json.dumps(payload).encode("utf-8")
+        headers["Content-Type"] = "application/json"
+    req = urllib.request.Request(url, headers=headers, method=method.upper(), data=data)
+    try:
+        with urllib.request.urlopen(req, timeout=min(20, int(cfg.get("timeout_seconds") or 10))) as resp:
+            raw = resp.read().decode("utf-8", errors="replace")
+            status = int(getattr(resp, "status", 200) or 200)
+            try:
+                return status, json.loads(raw) if raw else {}
+            except Exception:
+                return status, raw
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8", errors="replace") if hasattr(e, "read") else ""
+        try:
+            return int(getattr(e, "code", 0) or 0), json.loads(body) if body else {}
+        except Exception:
+            return int(getattr(e, "code", 0) or 0), body
+
+
+def _quality_org_id(cfg: dict[str, Any]) -> str:
+    org = str(cfg.get("org") or "").strip()
+    if not org:
+        raise RuntimeError("org required")
+    st, js = _quality_influx_request(cfg, "GET", "/api/v2/orgs?org=" + urllib.parse.quote(org))
+    orgs = js.get("orgs") if isinstance(js, dict) else None
+    if st < 200 or st >= 300 or not isinstance(orgs, list) or not orgs:
+        raise RuntimeError("org lookup failed")
+    oid = str((orgs[0] or {}).get("id") or "").strip()
+    if not oid:
+        raise RuntimeError("org id missing")
+    return oid
+
+
+def _quality_bucket_retention(days: int) -> list[dict[str, Any]]:
+    try:
+        d = int(days or 0)
+    except Exception:
+        d = 0
+    if d <= 0:
+        return []
+    return [{"type": "expire", "everySeconds": int(d) * 86400}]
+
+
+def _quality_bucket_specs(cfg: dict[str, Any]) -> list[dict[str, Any]]:
+    q = _quality_cfg_view(cfg)
+    return [
+        {"name": q["raw_bucket"], "retention_days": q["retention_raw_days"], "kind": "raw"},
+        {"name": q["clean_bucket"], "retention_days": q["retention_clean_days"], "kind": "clean"},
+        {"name": q["rollup_bucket"], "retention_days": q["retention_rollup_days"], "kind": "rollup"},
+    ]
+
+
+def _quality_list_buckets(cfg: dict[str, Any]) -> list[dict[str, Any]]:
+    org = str(cfg.get("org") or "").strip()
+    st, js = _quality_influx_request(cfg, "GET", "/api/v2/buckets?org=" + urllib.parse.quote(org))
+    if st < 200 or st >= 300 or not isinstance(js, dict):
+        raise RuntimeError("bucket listing failed")
+    out = []
+    for item in js.get("buckets") or []:
+        if not isinstance(item, dict):
+            continue
+        rules = item.get("retentionRules") if isinstance(item.get("retentionRules"), list) else []
+        days = None
+        try:
+            if rules:
+                every = int((rules[0] or {}).get("everySeconds") or 0)
+                days = int(round(every / 86400)) if every > 0 else None
+        except Exception:
+            days = None
+        out.append({"id": str(item.get("id") or ""), "name": str(item.get("name") or ""), "retention_days": days})
+    return out
+
+
+def _quality_apply_buckets(cfg: dict[str, Any]) -> list[dict[str, Any]]:
+    oid = _quality_org_id(cfg)
+    existing = {str(b.get("name") or ""): b for b in _quality_list_buckets(cfg)}
+    out = []
+    for spec in _quality_bucket_specs(cfg):
+        name = str(spec.get("name") or "").strip()
+        if not name:
+            continue
+        payload = {"name": name, "orgID": oid, "retentionRules": _quality_bucket_retention(int(spec.get("retention_days") or 0))}
+        if name in existing and str(existing[name].get("id") or ""):
+            st, _ = _quality_influx_request(cfg, "PATCH", "/api/v2/buckets/" + urllib.parse.quote(str(existing[name]["id"])), payload)
+            if st < 200 or st >= 300:
+                raise RuntimeError(f"bucket update failed: {name}")
+            out.append({"name": name, "action": "updated"})
+        else:
+            st, _ = _quality_influx_request(cfg, "POST", "/api/v2/buckets", payload)
+            if st < 200 or st >= 300:
+                raise RuntimeError(f"bucket create failed: {name}")
+            out.append({"name": name, "action": "created"})
+    return out
+
+
+def _quality_task_flux(cfg: dict[str, Any], level: dict[str, Any], quality_cfg: dict[str, Any]) -> str:
+    clean_bucket = str(quality_cfg.get("clean_bucket") or "")
+    rollup_bucket = str(quality_cfg.get("rollup_bucket") or "")
+    org = str(cfg.get("org") or "")
+    window = str(level.get("window") or "15m")
+    every = str(level.get("every") or "1h")
+    return (
+        f'option task = {{name: "InfluxBro Rollup {window}", every: {every}, offset: 1m}}\n'
+        f'from(bucket: "{clean_bucket}")\n'
+        f'  |> range(start: -task.every)\n'
+        f'  |> aggregateWindow(every: {window}, fn: mean, createEmpty: false)\n'
+        f'  |> to(bucket: "{rollup_bucket}", org: "{org}")\n'
+    )
+
+
+def _quality_apply_tasks(cfg: dict[str, Any]) -> list[dict[str, Any]]:
+    oid = _quality_org_id(cfg)
+    qcfg = _quality_cfg_view(cfg)
+    out = []
+    for level in qcfg.get("rollups") or []:
+        if not isinstance(level, dict):
+            continue
+        name = f'InfluxBro Rollup {str(level.get("window") or level.get("name") or "")}'
+        payload = {
+            "orgID": oid,
+            "status": "active",
+            "description": f'InfluxBro Rollup {str(level.get("name") or "")}',
+            "flux": _quality_task_flux(cfg, level, qcfg),
+        }
+        st, _ = _quality_influx_request(cfg, "POST", "/api/v2/tasks", payload)
+        if st < 200 or st >= 300:
+            raise RuntimeError(f"task create failed: {name}")
+        out.append({"name": name, "action": "created"})
+    return out
+
+
+def _quality_rule_matches(rule: dict[str, Any], entity_id: str, measurement: str) -> bool:
+    pat = str(rule.get("pattern") or "").strip()
+    if not pat:
+        return False
+    target = entity_id or measurement
+    return fnmatch.fnmatch(target, pat)
+
+
+def _quality_load_entity_catalog(cfg: dict[str, Any]) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    try:
+        with v2_client(cfg) as c:
+            q = f'''
+import "influxdata/influxdb/schema"
+schema.tagValues(bucket: "{cfg["bucket"]}", tag: "entity_id", start: -30d)
+'''
+            ids = []
+            for rec in c.query_api().query_stream(q, org=cfg["org"]):
+                v = str(rec.get_value() or "").strip()
+                if v:
+                    ids.append(v)
+            ids = sorted(set(ids))[:2000]
+            for eid in ids:
+                out.append({"entity_id": eid, "measurement": "", "friendly_name": ""})
+    except Exception:
+        return []
+    return out
+
+
+def _quality_cleanup_analyse(cfg: dict[str, Any], start_dt: datetime, stop_dt: datetime, dry_run: bool) -> dict[str, Any]:
+    qcfg = _quality_cfg_view(cfg)
+    rules = [r for r in (qcfg.get("rules") or []) if isinstance(r, dict) and bool(r.get("enabled", True))]
+    raw_bucket = str(qcfg.get("raw_bucket") or "").strip()
+    clean_bucket = str(qcfg.get("clean_bucket") or "").strip()
+    if not raw_bucket or not clean_bucket:
+        raise RuntimeError("raw/clean bucket required")
+    start = _dt_to_rfc3339_utc(start_dt)
+    stop = _dt_to_rfc3339_utc(stop_dt)
+    q = f'''
+from(bucket: "{raw_bucket}")
+  |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
+  |> filter(fn: (r) => exists r._measurement and exists r._field)
+  |> keep(columns: ["_measurement","_field","entity_id","friendly_name","_time","_value"])
+  |> group(columns: ["_measurement","_field","entity_id","friendly_name"])
+  |> sort(columns: ["_time"])
+'''
+    summary = {"series": 0, "points": 0, "corrected": 0, "dropped": 0, "written": 0}
+    lines = []
+    with v2_client(cfg) as c:
+        qapi = c.query_api()
+        wapi = c.write_api(write_options=SYNCHRONOUS) if not dry_run else None
+        series_rows: dict[tuple[str, str, str, str], list[Any]] = {}
+        for rec in qapi.query_stream(q, org=cfg["org"]):
+            vals = getattr(rec, "values", {}) or {}
+            key = (str(vals.get("_measurement") or ""), str(vals.get("_field") or ""), str(vals.get("entity_id") or ""), str(vals.get("friendly_name") or ""))
+            series_rows.setdefault(key, []).append(rec)
+        for (measurement, field, entity_id, friendly_name), recs in series_rows.items():
+            rule = next((r for r in rules if _quality_rule_matches(r, entity_id, measurement)), None)
+            if not rule:
+                continue
+            summary["series"] += 1
+            last_valid = None
+            write_batch = []
+            for rec in recs:
+                summary["points"] += 1
+                dt = rec.get_time()
+                raw_val = rec.get_value()
+                typ = str(rule.get("type") or "gauge")
+                invalid_policy = str(rule.get("invalid_policy") or "drop")
+                out_val = raw_val
+                valid = True
+                try:
+                    if typ in ("counter", "gauge"):
+                        num = float(raw_val)
+                        mn = rule.get("min")
+                        mx = rule.get("max")
+                        if mn is not None and num < float(mn):
+                            valid = False
+                        if mx is not None and num > float(mx):
+                            valid = False
+                        max_delta = rule.get("max_delta")
+                        if max_delta not in (None, "", 0) and last_valid is not None and abs(num - float(last_valid)) > float(max_delta):
+                            valid = False
+                        if typ == "counter" and last_valid is not None and not bool(rule.get("reset_allowed")) and num < float(last_valid):
+                            valid = False
+                        if valid:
+                            out_val = num
+                    elif typ == "binary":
+                        sval = str(raw_val).strip().lower()
+                        if sval in ("1", "true", "on", "open"):
+                            out_val = 1
+                        elif sval in ("0", "false", "off", "closed"):
+                            out_val = 0
+                        else:
+                            valid = False
+                    else:
+                        sval = str(raw_val).strip()
+                        if not sval:
+                            valid = False
+                        out_val = sval
+                except Exception:
+                    valid = False
+                if not valid:
+                    if invalid_policy == "carry_last" and last_valid is not None:
+                        out_val = last_valid
+                        summary["corrected"] += 1
+                    else:
+                        summary["dropped"] += 1
+                        continue
+                else:
+                    if out_val != raw_val:
+                        summary["corrected"] += 1
+                last_valid = out_val
+                if not dry_run and wapi is not None and isinstance(dt, datetime):
+                    p = Point(str(measurement)).field(str(field), out_val).time(dt, WritePrecision.NS)
+                    if entity_id:
+                        p = p.tag("entity_id", entity_id)
+                    if friendly_name:
+                        p = p.tag("friendly_name", friendly_name)
+                    write_batch.append(p)
+            if write_batch and not dry_run and wapi is not None:
+                wapi.write(bucket=clean_bucket, org=cfg["org"], record=write_batch, write_precision=WritePrecision.NS)
+                summary["written"] += len(write_batch)
+            lines.append({"measurement": measurement, "field": field, "entity_id": entity_id, "friendly_name": friendly_name, "points": len(recs)})
+    try:
+        QUALITY_CLEANUP_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        QUALITY_CLEANUP_LOG_PATH.open("a", encoding="utf-8").write(json.dumps({"at": _utc_now_iso_ms(), "dry_run": dry_run, "summary": summary}) + "\n")
+    except Exception:
+        pass
+    return {"summary": summary, "series": lines[:200], "query": q}
+
+
+@app.get("/api/quality/config")
+def api_quality_config_get():
+    return jsonify({"ok": True, "config": _quality_cfg_view(load_cfg())})
+
+
+@app.post("/api/quality/config")
+def api_quality_config_set():
+    body = request.get_json(force=True) or {}
+    cfg = load_cfg()
+    allowed = {
+        "quality_raw_bucket", "quality_clean_bucket", "quality_rollup_bucket",
+        "quality_retention_raw_days", "quality_retention_clean_days", "quality_retention_rollup_days",
+        "quality_timezone", "quality_lateness_minutes", "quality_auto_create_buckets", "quality_auto_create_tasks",
+        "quality_rules_json", "quality_rollup_levels_json", "quality_cleanup_plan_json",
+    }
+    for k in allowed:
+        if k in body:
+            cfg[k] = body.get(k)
+    save_cfg(cfg)
+    return jsonify({"ok": True, "config": _quality_cfg_view(cfg)})
+
+
+@app.get("/api/quality/buckets/status")
+def api_quality_buckets_status():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    qcfg = _quality_cfg_view(cfg)
+    try:
+        buckets = _quality_list_buckets(cfg)
+    except Exception as e:
+        return jsonify({"ok": False, "error": _short_influx_error(e), "config": qcfg}), 500
+    return jsonify({"ok": True, "config": qcfg, "buckets": buckets, "desired": _quality_bucket_specs(cfg)})
+
+
+@app.post("/api/quality/buckets/apply")
+def api_quality_buckets_apply():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    try:
+        actions = _quality_apply_buckets(cfg)
+        return jsonify({"ok": True, "actions": actions})
+    except Exception as e:
+        return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
+
+
+@app.post("/api/quality/tasks/apply")
+def api_quality_tasks_apply():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    try:
+        actions = _quality_apply_tasks(cfg)
+        return jsonify({"ok": True, "actions": actions})
+    except Exception as e:
+        return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
+
+
+@app.get("/api/quality/catalog")
+def api_quality_catalog():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    return jsonify({"ok": True, "entities": _quality_load_entity_catalog(cfg)})
+
+
+@app.post("/api/quality/rules/preview")
+def api_quality_rules_preview():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    body = request.get_json(force=True) or {}
+    rules = body.get("rules") if isinstance(body.get("rules"), list) else _quality_cfg_view(cfg).get("rules")
+    entities = _quality_load_entity_catalog(cfg)
+    out = []
+    for rule in rules or []:
+        if not isinstance(rule, dict):
+            continue
+        matches = [e for e in entities if _quality_rule_matches(rule, str(e.get("entity_id") or ""), str(e.get("measurement") or ""))]
+        out.append({"pattern": str(rule.get("pattern") or ""), "count": len(matches), "matches": matches[:20]})
+    return jsonify({"ok": True, "preview": out})
+
+
+@app.post("/api/quality/query_preview")
+def api_quality_query_preview():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    body = request.get_json(force=True) or {}
+    bucket = str(body.get("bucket") or cfg.get("quality_clean_bucket") or cfg.get("bucket") or "").strip()
+    measurement = str(body.get("measurement") or "").strip()
+    field = str(body.get("field") or "value").strip()
+    entity_id = str(body.get("entity_id") or "").strip()
+    mode = str(body.get("mode") or "single").strip().lower()
+    if not bucket or not measurement:
+        return jsonify({"ok": False, "error": "bucket und measurement erforderlich"}), 400
+    extra = f' and r.entity_id == {_flux_str(entity_id)}' if entity_id else ''
+    if mode == "graph":
+        q = f'''
+from(bucket: "{bucket}")
+  |> range(start: -30d)
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
+  |> aggregateWindow(every: 1h, fn: mean, createEmpty: false)
+  |> keep(columns: ["_time","_value"])
+  |> limit(n: 300)
+'''
+    else:
+        q = f'''
+from(bucket: "{bucket}")
+  |> range(start: -30d)
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
+  |> last()
+'''
+    rows = []
+    with v2_client(cfg) as c:
+        for rec in c.query_api().query_stream(q, org=cfg["org"]):
+            rows.append({"time": _as_rfc3339(rec.get_time()), "value": rec.get_value()})
+    return jsonify({"ok": True, "query": q, "rows": rows[:300]})
+
+
+@app.post("/api/quality/cleanup_preview")
+def api_quality_cleanup_preview():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    body = request.get_json(force=True) or {}
+    try:
+        start_dt, stop_dt = _get_start_stop_from_payload(body)
+        out = _quality_cleanup_analyse(cfg, start_dt, stop_dt, True)
+        return jsonify({"ok": True, **out})
+    except Exception as e:
+        return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
+
+
+@app.post("/api/quality/cleanup_run")
+def api_quality_cleanup_run():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    body = request.get_json(force=True) or {}
+    try:
+        start_dt, stop_dt = _get_start_stop_from_payload(body)
+        out = _quality_cleanup_analyse(cfg, start_dt, stop_dt, False)
+        return jsonify({"ok": True, **out})
+    except Exception as e:
+        return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
+
+
+@app.get("/api/quality/log")
+def api_quality_log():
+    rows = []
+    try:
+        if QUALITY_CLEANUP_LOG_PATH.exists():
+            for ln in QUALITY_CLEANUP_LOG_PATH.read_text(encoding="utf-8", errors="replace").splitlines()[-100:]:
+                try:
+                    rows.append(json.loads(ln))
+                except Exception:
+                    continue
+    except Exception:
+        rows = []
+    return jsonify({"ok": True, "rows": rows})
 
 
 _ENTITY_ID_RE = re.compile(r"^[A-Za-z0-9_]+\.[A-Za-z0-9_]+$")

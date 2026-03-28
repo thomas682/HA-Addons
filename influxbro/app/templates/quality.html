@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>InfluxBro - Datenqualitaet</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; }
+    main.content { padding: 16px; }
+    .muted { opacity: 0.75; font-size: 12px; }
+    .row { display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; }
+    .card { border:1px solid #ddd; border-radius:12px; padding:12px; margin-top:12px; }
+    .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+    label { display:block; font-size:12px; opacity:0.85; margin-bottom:4px; }
+    input, select, textarea, button { box-sizing:border-box; }
+    input, select, textarea { width:100%; padding:10px 12px; min-height:40px; }
+    textarea { min-height:90px; }
+    .tabs { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
+    .tabbtn { min-height:36px; padding:8px 14px; }
+    .tabbtn.active { background:#111; color:#fff; }
+    .tabpanel { display:none; }
+    .tabpanel.active { display:block; }
+    .table_wrap { border: 1px solid #ddd; border-radius: 12px; padding: 12px; margin-top: 12px; }
+    .table_title { font-weight: 800; font-size: 14px; margin-bottom: 6px; }
+    .table_head { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+    .tbl_actions { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    .table_box { border:1px solid #eee; border-radius:12px; margin-top:10px; overflow:auto; max-height:55vh; }
+    table { width:100%; border-collapse:collapse; }
+    th, td { border:1px solid #eee; padding:6px 8px; font-size:12px; text-align:left; vertical-align:top; }
+    th { background:#f6f6f6; position:sticky; top:0; z-index:1; }
+    .ok { color:#0a7a28; white-space:pre-wrap; }
+    .err { color:#b00020; white-space:pre-wrap; }
+    .pill { display:inline-flex; align-items:center; padding:2px 10px; border-radius:999px; background:#f2f6ff; border:1px solid #dbe5ff; font-size:12px; }
+    .arch { display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; margin-top: 10px; }
+    .arch .box { border:1px solid #ddd; border-radius:12px; padding:12px; background:#fafafa; }
+    .mini { font-size:11px; }
+    #quality_plot { width:100%; height:280px; }
+    @media (max-width: 980px){ .arch { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  {% include "_topbar.html" %}
+  <div class="shell">
+    {% include "_nav.html" %}
+    <main class="content" data-ui="quality.page" title="quality.page">
+      <h2>Datenqualitaet & Langzeitdaten</h2>
+      <div class="muted">Zentrale fuer Raw-, Clean- und Rollup-Buckets, Bereinigungsregeln, Rollup-Tasks, Query-Beispiele und Debug-Vergleich.</div>
+
+      <div class="tabs" data-ui="quality.tabs" title="quality.tabs">
+        <button type="button" class="tabbtn active" data-tab="overview" data-ui="quality.tab.overview" title="quality.tab.overview">Uebersicht</button>
+        <button type="button" class="tabbtn" data-tab="buckets" data-ui="quality.tab.buckets" title="quality.tab.buckets">Buckets</button>
+        <button type="button" class="tabbtn" data-tab="rules" data-ui="quality.tab.rules" title="quality.tab.rules">Regeln</button>
+        <button type="button" class="tabbtn" data-tab="cleanup" data-ui="quality.tab.cleanup" title="quality.tab.cleanup">Bereinigung</button>
+        <button type="button" class="tabbtn" data-tab="queries" data-ui="quality.tab.queries" title="quality.tab.queries">Query-Beispiele</button>
+        <button type="button" class="tabbtn" data-tab="debug" data-ui="quality.tab.debug" title="quality.tab.debug">Debug</button>
+      </div>
+
+      <div id="msg_ok" class="ok" style="margin-top:10px;"></div>
+      <div id="msg_err" class="err" style="margin-top:6px;"></div>
+
+      <section class="tabpanel active" data-panel="overview">
+        <details open class="card" data-ui="quality.section.overview" title="quality.section.overview">
+          <summary><span class="ib_summary_row"><span>Architektur & Assistent</span><button type="button" class="ib_info_icon" data-info-title="Datenqualitaet: Architektur" data-info-body="Diese Seite fuehrt durch die empfohlene Dreiteilung Raw -> Clean -> Rollup. Raw bleibt unveraendert, Clean enthaelt bereinigte operative Daten, Rollup enthaelt verdichtete Langzeitdaten. Der Assistent speichert Bucket-Namen, Retention, Zeitzone und Standard-Latenz und dient als Grundlage fuer Bucket- und Task-Aktionen.">i</button></span></summary>
+          <div class="arch">
+            <div class="box"><div class="table_title">Raw</div><div class="muted">Unveraenderte Originaldaten, forensische Quelle, Standard: 30 Tage.</div></div>
+            <div class="box"><div class="table_title">Clean</div><div class="muted">Bereinigte operative Wahrheit, Standard fuer Diagramme und Auswertung.</div></div>
+            <div class="box"><div class="table_title">Rollup</div><div class="muted">Verdichtete Langzeitdaten fuer schnelle historische Graphen.</div></div>
+          </div>
+          <div class="grid" style="margin-top:12px;">
+            <div><label>Raw-Bucket</label><input id="raw_bucket" data-ui="quality.raw_bucket" title="quality.raw_bucket"></div>
+            <div><label>Clean-Bucket</label><input id="clean_bucket" data-ui="quality.clean_bucket" title="quality.clean_bucket"></div>
+            <div><label>Rollup-Bucket</label><input id="rollup_bucket" data-ui="quality.rollup_bucket" title="quality.rollup_bucket"></div>
+            <div><label>Retention Raw (Tage)</label><input id="ret_raw" type="number" min="0" data-ui="quality.retention_raw" title="quality.retention_raw"></div>
+            <div><label>Retention Clean (Tage)</label><input id="ret_clean" type="number" min="0" data-ui="quality.retention_clean" title="quality.retention_clean"></div>
+            <div><label>Retention Rollup (Tage, 0=unbegrenzt)</label><input id="ret_rollup" type="number" min="0" data-ui="quality.retention_rollup" title="quality.retention_rollup"></div>
+            <div><label>Zeitzone</label><input id="quality_timezone" data-ui="quality.timezone" title="quality.timezone"></div>
+            <div><label>Latenzfenster (Minuten)</label><input id="quality_lateness_minutes" type="number" min="0" data-ui="quality.lateness_minutes" title="quality.lateness_minutes"></div>
+            <div><label>&nbsp;</label><button id="save_quality_cfg" type="button" data-ui="quality.save" title="quality.save">Assistent speichern</button></div>
+          </div>
+        </details>
+      </section>
+
+      <section class="tabpanel" data-panel="buckets">
+        <div class="table_wrap">
+          <div class="table_title">Buckets & Rollup-Tasks</div>
+          <div class="table_head">
+            <div class="tbl_actions">
+              <button id="quality_buckets_reload" type="button" class="btn_sm" data-ui="quality.buckets.reload" title="quality.buckets.reload">Status laden</button>
+              <button id="quality_buckets_apply" type="button" class="btn_sm" data-ui="quality.buckets.apply" title="quality.buckets.apply">Buckets anlegen/aktualisieren</button>
+              <button id="quality_tasks_apply" type="button" class="btn_sm" data-ui="quality.tasks.apply" title="quality.tasks.apply">Beispiel-Tasks anlegen</button>
+            </div>
+            <div class="muted" id="bucket_info"></div>
+          </div>
+          <div class="table_box" id="quality_bucket_box">
+            <table id="quality_bucket_tbl" class="ib_tbl" data-ui="quality.bucket.table" title="quality.bucket.table">
+              <thead><tr><th>Soll</th><th>Name</th><th>Retention</th><th>Status</th></tr></thead>
+              <tbody id="bucket_rows"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="tabpanel" data-panel="rules">
+        <div class="table_wrap">
+          <div class="table_title">Messwertregeln</div>
+          <div class="table_head">
+            <div class="tbl_actions">
+              <button id="rule_add" type="button" class="btn_sm" data-ui="quality.rules.add" title="quality.rules.add">Regel hinzufügen</button>
+              <button id="rule_save" type="button" class="btn_sm" data-ui="quality.rules.save" title="quality.rules.save">Regeln speichern</button>
+              <button id="rule_preview" type="button" class="btn_sm" data-ui="quality.rules.preview" title="quality.rules.preview">Treffer prüfen</button>
+            </div>
+            <div class="muted">Pattern greift auf `entity_id` oder ersatzweise auf Measurement.</div>
+          </div>
+          <div class="table_box" id="quality_rule_box">
+            <table id="quality_rule_tbl" class="ib_tbl" data-ui="quality.rule.table" title="quality.rule.table">
+              <thead><tr><th>aktiv</th><th>Pattern</th><th>Typ</th><th>Min</th><th>Max</th><th>max Delta</th><th>ungueltig</th><th>Reset</th><th>Rollup</th><th>Stufen</th><th>Aktion</th></tr></thead>
+              <tbody id="rule_rows"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="table_wrap">
+          <div class="table_title">Regelvorschau</div>
+          <div class="table_box" id="quality_match_box">
+            <table id="quality_match_tbl" class="ib_tbl" data-ui="quality.match.table" title="quality.match.table">
+              <thead><tr><th>Pattern</th><th>Treffer</th><th>Beispiele</th></tr></thead>
+              <tbody id="match_rows"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="tabpanel" data-panel="cleanup">
+        <div class="card">
+          <div class="row">
+            <div><label>Start</label><input id="cleanup_start" type="datetime-local" data-ui="quality.cleanup.start" title="quality.cleanup.start"></div>
+            <div><label>Stop</label><input id="cleanup_stop" type="datetime-local" data-ui="quality.cleanup.stop" title="quality.cleanup.stop"></div>
+            <div><label>&nbsp;</label><button id="cleanup_preview" type="button" data-ui="quality.cleanup.preview" title="quality.cleanup.preview">Testlauf</button></div>
+            <div><label>&nbsp;</label><button id="cleanup_run" type="button" data-ui="quality.cleanup.run" title="quality.cleanup.run">Bereinigung starten</button></div>
+          </div>
+          <div class="muted" style="margin-top:8px;">Der Testlauf liest aus dem Raw-Bucket und zaehlt Korrekturen/Verwerfungen. Der Lauf schreibt bereinigte Punkte in den Clean-Bucket.</div>
+        </div>
+        <div class="table_wrap">
+          <div class="table_title">Bereinigungsreport</div>
+          <div class="table_head"><div class="tbl_actions"><span class="pill" id="cleanup_summary">Noch kein Lauf.</span></div></div>
+          <div class="table_box" id="quality_cleanup_box">
+            <table id="quality_cleanup_tbl" class="ib_tbl" data-ui="quality.cleanup.table" title="quality.cleanup.table">
+              <thead><tr><th>Measurement</th><th>Field</th><th>Entity</th><th>Name</th><th>Punkte</th></tr></thead>
+              <tbody id="cleanup_rows"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="tabpanel" data-panel="queries">
+        <div class="card">
+          <div class="grid">
+            <div><label>Bucket</label><select id="query_bucket" data-ui="quality.query.bucket" title="quality.query.bucket"></select></div>
+            <div><label>Measurement</label><input id="query_measurement" data-ui="quality.query.measurement" title="quality.query.measurement" placeholder="z.B. sensor"></div>
+            <div><label>Field</label><input id="query_field" data-ui="quality.query.field" title="quality.query.field" value="value"></div>
+            <div><label>Entity-ID</label><input id="query_entity" data-ui="quality.query.entity" title="quality.query.entity" placeholder="optional"></div>
+            <div><label>Modus</label><select id="query_mode" data-ui="quality.query.mode" title="quality.query.mode"><option value="single">Einzelwert</option><option value="graph">Graph</option></select></div>
+            <div><label>&nbsp;</label><button id="query_preview_btn" type="button" data-ui="quality.query.preview" title="quality.query.preview">Query-Vorschau</button></div>
+          </div>
+          <pre id="query_text" style="margin-top:12px; white-space:pre-wrap; font-size:12px; background:#fafafa; border:1px solid #eee; border-radius:12px; padding:12px;">Noch keine Query vorhanden.</pre>
+          <div id="quality_plot"></div>
+        </div>
+      </section>
+
+      <section class="tabpanel" data-panel="debug">
+        <div class="table_wrap">
+          <div class="table_title">Bereinigungs-Log</div>
+          <div class="table_head"><div class="tbl_actions"><button id="debug_reload" type="button" class="btn_sm" data-ui="quality.debug.reload" title="quality.debug.reload">Log neu laden</button></div></div>
+          <div class="table_box" id="quality_log_box">
+            <table id="quality_log_tbl" class="ib_tbl" data-ui="quality.log.table" title="quality.log.table">
+              <thead><tr><th>Zeit</th><th>dry_run</th><th>Zusammenfassung</th></tr></thead>
+              <tbody id="log_rows"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <script src="./static/plotly.min.js"></script>
+      <script>
+        const $ok = document.getElementById('msg_ok');
+        const $err = document.getElementById('msg_err');
+        const $bucketRows = document.getElementById('bucket_rows');
+        const $bucketInfo = document.getElementById('bucket_info');
+        const $ruleRows = document.getElementById('rule_rows');
+        const $matchRows = document.getElementById('match_rows');
+        const $cleanupRows = document.getElementById('cleanup_rows');
+        const $cleanupSummary = document.getElementById('cleanup_summary');
+        const $logRows = document.getElementById('log_rows');
+        const $queryText = document.getElementById('query_text');
+        const $qualityPlot = document.getElementById('quality_plot');
+        let QUALITY_CFG = null;
+
+        function err(s){ $err.textContent = String(s||''); $ok.textContent=''; }
+        function ok(s){ $ok.textContent = String(s||''); $err.textContent=''; }
+        async function api(url, opts){ const r = await fetch(url, opts); const j = await r.json().catch(()=>({ok:false,error:'Invalid JSON'})); if(!r.ok || !j.ok) throw new Error(j.error || ('HTTP ' + r.status)); return j; }
+        function q(id){ return document.getElementById(id); }
+        function fmtTs(v){ if(!v) return ''; const d = new Date(String(v)); return isFinite(d.getTime()) ? d.toLocaleString('de-DE') : String(v); }
+
+        function setTab(name){
+          document.querySelectorAll('.tabbtn').forEach(b => b.classList.toggle('active', b.getAttribute('data-tab') === name));
+          document.querySelectorAll('.tabpanel').forEach(p => p.classList.toggle('active', p.getAttribute('data-panel') === name));
+        }
+        document.querySelectorAll('.tabbtn').forEach(btn => btn.addEventListener('click', ()=>setTab(btn.getAttribute('data-tab'))));
+
+        function syncCfgForm(){
+          if(!QUALITY_CFG) return;
+          q('raw_bucket').value = QUALITY_CFG.raw_bucket || '';
+          q('clean_bucket').value = QUALITY_CFG.clean_bucket || '';
+          q('rollup_bucket').value = QUALITY_CFG.rollup_bucket || '';
+          q('ret_raw').value = QUALITY_CFG.retention_raw_days || 0;
+          q('ret_clean').value = QUALITY_CFG.retention_clean_days || 0;
+          q('ret_rollup').value = QUALITY_CFG.retention_rollup_days || 0;
+          q('quality_timezone').value = QUALITY_CFG.timezone || '';
+          q('quality_lateness_minutes').value = QUALITY_CFG.lateness_minutes || 0;
+          const bucketSel = q('query_bucket');
+          bucketSel.innerHTML = '';
+          [QUALITY_CFG.raw_bucket, QUALITY_CFG.clean_bucket, QUALITY_CFG.rollup_bucket].forEach(name=>{
+            const opt = document.createElement('option'); opt.value = name; opt.textContent = name; bucketSel.appendChild(opt);
+          });
+        }
+
+        function currentCfgPayload(){
+          return {
+            quality_raw_bucket: q('raw_bucket').value.trim(),
+            quality_clean_bucket: q('clean_bucket').value.trim(),
+            quality_rollup_bucket: q('rollup_bucket').value.trim(),
+            quality_retention_raw_days: Number(q('ret_raw').value || 0),
+            quality_retention_clean_days: Number(q('ret_clean').value || 0),
+            quality_retention_rollup_days: Number(q('ret_rollup').value || 0),
+            quality_timezone: q('quality_timezone').value.trim(),
+            quality_lateness_minutes: Number(q('quality_lateness_minutes').value || 0),
+            quality_rules_json: JSON.stringify(readRules()),
+          };
+        }
+
+        function addRuleRow(rule){
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td><input type="checkbox" class="r_enabled" ${rule.enabled !== false ? 'checked' : ''}></td>
+            <td><input class="r_pattern" value="${String(rule.pattern || '').replace(/"/g,'&quot;')}"></td>
+            <td><select class="r_type"><option value="counter">counter</option><option value="gauge">gauge</option><option value="binary">binary</option><option value="discrete_state">discrete_state</option></select></td>
+            <td><input class="r_min" value="${rule.min ?? ''}"></td>
+            <td><input class="r_max" value="${rule.max ?? ''}"></td>
+            <td><input class="r_delta" value="${rule.max_delta ?? ''}"></td>
+            <td><select class="r_policy"><option value="carry_last">carry_last</option><option value="drop">drop</option></select></td>
+            <td><input type="checkbox" class="r_reset" ${rule.reset_allowed ? 'checked' : ''}></td>
+            <td><input type="checkbox" class="r_rollup" ${rule.rollup !== false ? 'checked' : ''}></td>
+            <td><input class="r_levels" value="${String(rule.rollup_levels || '').replace(/"/g,'&quot;')}"></td>
+            <td><button type="button" class="btn_sm r_del">Loeschen</button></td>`;
+          tr.querySelector('.r_type').value = rule.type || 'gauge';
+          tr.querySelector('.r_policy').value = rule.invalid_policy || 'drop';
+          tr.querySelector('.r_del').addEventListener('click', ()=> tr.remove());
+          $ruleRows.appendChild(tr);
+        }
+
+        function renderRules(){
+          $ruleRows.innerHTML = '';
+          (QUALITY_CFG.rules || []).forEach(addRuleRow);
+        }
+
+        function readRules(){
+          return Array.from($ruleRows.querySelectorAll('tr')).map(tr => ({
+            enabled: !!tr.querySelector('.r_enabled').checked,
+            pattern: tr.querySelector('.r_pattern').value.trim(),
+            type: tr.querySelector('.r_type').value,
+            min: tr.querySelector('.r_min').value === '' ? null : Number(tr.querySelector('.r_min').value),
+            max: tr.querySelector('.r_max').value === '' ? null : Number(tr.querySelector('.r_max').value),
+            max_delta: tr.querySelector('.r_delta').value === '' ? null : Number(tr.querySelector('.r_delta').value),
+            invalid_policy: tr.querySelector('.r_policy').value,
+            reset_allowed: !!tr.querySelector('.r_reset').checked,
+            rollup: !!tr.querySelector('.r_rollup').checked,
+            rollup_levels: tr.querySelector('.r_levels').value.trim(),
+          })).filter(r => r.pattern);
+        }
+
+        async function loadCfg(){
+          const j = await api('./api/quality/config');
+          QUALITY_CFG = j.config || {};
+          syncCfgForm();
+          renderRules();
+        }
+
+        async function loadBuckets(){
+          const j = await api('./api/quality/buckets/status');
+          $bucketRows.innerHTML = '';
+          const existing = new Map((j.buckets || []).map(b => [b.name, b]));
+          (j.desired || []).forEach(spec => {
+            const ex = existing.get(spec.name);
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${spec.kind}</td><td>${spec.name}</td><td>${spec.retention_days || 0} d</td><td>${ex ? ('vorhanden' + (ex.retention_days !== null ? ' (' + ex.retention_days + ' d)' : '')) : 'fehlt'}</td>`;
+            $bucketRows.appendChild(tr);
+          });
+          $bucketInfo.textContent = `Gefundene Buckets: ${(j.buckets || []).length}`;
+        }
+
+        async function previewRules(){
+          const j = await api('./api/quality/rules/preview', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({rules: readRules()})});
+          $matchRows.innerHTML = '';
+          (j.preview || []).forEach(it => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${it.pattern || ''}</td><td>${it.count || 0}</td><td>${(it.matches || []).map(m => m.entity_id || m.measurement).join(', ')}</td>`;
+            $matchRows.appendChild(tr);
+          });
+        }
+
+        function cleanupPayload(){
+          return { start: new Date(q('cleanup_start').value).toISOString(), stop: new Date(q('cleanup_stop').value).toISOString() };
+        }
+
+        async function runCleanup(url){
+          const j = await api(url, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(cleanupPayload())});
+          const s = j.summary || {};
+          $cleanupSummary.textContent = `Serien ${s.series || 0} | Punkte ${s.points || 0} | korrigiert ${s.corrected || 0} | verworfen ${s.dropped || 0} | geschrieben ${s.written || 0}`;
+          $cleanupRows.innerHTML = '';
+          (j.series || []).forEach(r => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${r.measurement || ''}</td><td>${r.field || ''}</td><td>${r.entity_id || ''}</td><td>${r.friendly_name || ''}</td><td>${r.points || 0}</td>`;
+            $cleanupRows.appendChild(tr);
+          });
+          ok(url.includes('run') ? 'Bereinigung ausgefuehrt.' : 'Testlauf abgeschlossen.');
+        }
+
+        async function previewQuery(){
+          const j = await api('./api/quality/query_preview', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({
+            bucket: q('query_bucket').value,
+            measurement: q('query_measurement').value.trim(),
+            field: q('query_field').value.trim(),
+            entity_id: q('query_entity').value.trim(),
+            mode: q('query_mode').value,
+          })});
+          $queryText.textContent = j.query || 'Keine Query';
+          const rows = j.rows || [];
+          if(window.Plotly && q('query_mode').value === 'graph'){
+            window.Plotly.react($qualityPlot, [{x: rows.map(r=>r.time), y: rows.map(r=>r.value), mode:'lines', line:{color:'#0b57d0'}}], {margin:{l:50,r:20,t:20,b:40}}, {displayModeBar:false, responsive:true});
+          }else if(window.Plotly){
+            window.Plotly.purge($qualityPlot);
+          }
+        }
+
+        async function loadLog(){
+          const j = await api('./api/quality/log');
+          $logRows.innerHTML = '';
+          (j.rows || []).slice().reverse().forEach(r => {
+            const s = r.summary || {};
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${fmtTs(r.at)}</td><td>${r.dry_run ? 'ja' : 'nein'}</td><td>Serien ${s.series || 0}, Punkte ${s.points || 0}, korrigiert ${s.corrected || 0}, verworfen ${s.dropped || 0}, geschrieben ${s.written || 0}</td>`;
+            $logRows.appendChild(tr);
+          });
+        }
+
+        q('save_quality_cfg').addEventListener('click', async ()=>{ try{ const j = await api('./api/quality/config', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(currentCfgPayload())}); QUALITY_CFG = j.config || QUALITY_CFG; syncCfgForm(); ok('Assistent gespeichert.'); }catch(e){ err(e.message); } });
+        q('quality_buckets_reload').addEventListener('click', ()=>loadBuckets().catch(e=>err(e.message)));
+        q('quality_buckets_apply').addEventListener('click', async ()=>{ try{ await api('./api/quality/buckets/apply', {method:'POST'}); await loadBuckets(); ok('Buckets angelegt/aktualisiert.'); }catch(e){ err(e.message); } });
+        q('quality_tasks_apply').addEventListener('click', async ()=>{ try{ const j = await api('./api/quality/tasks/apply', {method:'POST'}); ok('Tasks angelegt: ' + (j.actions || []).length); }catch(e){ err(e.message); } });
+        q('rule_add').addEventListener('click', ()=> addRuleRow({enabled:true, type:'gauge', invalid_policy:'drop', rollup:true}));
+        q('rule_save').addEventListener('click', async ()=>{ try{ const j = await api('./api/quality/config', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({...currentCfgPayload(), quality_rules_json: JSON.stringify(readRules())})}); QUALITY_CFG = j.config || QUALITY_CFG; ok('Regeln gespeichert.'); }catch(e){ err(e.message); } });
+        q('rule_preview').addEventListener('click', ()=> previewRules().catch(e=>err(e.message)));
+        q('cleanup_preview').addEventListener('click', ()=> runCleanup('./api/quality/cleanup_preview').catch(e=>err(e.message)));
+        q('cleanup_run').addEventListener('click', ()=> runCleanup('./api/quality/cleanup_run').catch(e=>err(e.message)));
+        q('query_preview_btn').addEventListener('click', ()=> previewQuery().catch(e=>err(e.message)));
+        q('debug_reload').addEventListener('click', ()=> loadLog().catch(e=>err(e.message)));
+
+        (function initDefaults(){
+          const now = new Date();
+          const earlier = new Date(now.getTime() - 7 * 24 * 3600 * 1000);
+          q('cleanup_start').value = earlier.toISOString().slice(0,16);
+          q('cleanup_stop').value = now.toISOString().slice(0,16);
+        })();
+
+        window.InfluxBroTableInfoSpec = window.InfluxBroTableInfoSpec || {};
+        window.InfluxBroTableInfoSpec['quality_bucket_tbl'] = { purpose: 'Zeigt Soll-/Ist-Status der Raw-, Clean- und Rollup-Buckets.', columns: { Soll:'Rolle des Buckets', Name:'Bucket-Name', Retention:'Gewuenschte Retention in Tagen', Status:'Vorhanden oder fehlend inklusive aktueller Retention.' }, actions: ['Buckets anlegen/aktualisieren erzeugt fehlende Buckets oder setzt die Retention nach.', 'Beispiel-Tasks anlegen erstellt Influx-Tasks fuer Rollup-Stufen.'] };
+        window.InfluxBroTableInfoSpec['quality_rule_tbl'] = { purpose: 'Bearbeitet Bereinigungsregeln fuer Entity- oder Measurement-Muster.', columns: { aktiv:'Schaltet die Regel ein oder aus.', Pattern:'fnmatch-Muster fuer entity_id oder Measurement.', Typ:'counter/gauge/binary/discrete_state.', Min:'Untergrenze.', Max:'Obergrenze.', 'max Delta':'Maximal erlaubter Sprung zum letzten gueltigen Wert.', ungueltig:'Behandlung ungueltiger Werte.', Reset:'Erlaubt Zaehler-Resets.', Rollup:'Kennzeichnet die Regel fuer Rollup-Nutzung.', Stufen:'Gewuenschte Rollup-Stufen.', Aktion:'Entfernt die Regelzeile.' }, actions: ['Treffer pruefen vergleicht die Pattern mit aktuellen entity_id-Werten.', 'Regeln speichern legt die Regeldefinition in der Add-on-Konfiguration ab.'] };
+        window.InfluxBroTableInfoSpec['quality_cleanup_tbl'] = { purpose: 'Zeigt die im letzten Test- oder Bereinigungslauf verarbeiteten Serien.', columns: { Measurement:'Measurement der Serie.', Field:'Field der Serie.', Entity:'entity_id.', Name:'friendly_name.', Punkte:'Anzahl gelesener Punkte.' }, actions: ['Testlauf berechnet nur Analysewerte.', 'Bereinigung starten schreibt bereinigte Punkte in den Clean-Bucket.'] };
+        window.InfluxBroTableInfoSpec['quality_log_tbl'] = { purpose: 'Zeigt die letzten Bereinigungslaeufe aus dem lokalen Add-on-Log.', columns: { Zeit:'Zeitpunkt des Laufs.', dry_run:'Kennzeichnet Testlauf oder echten Lauf.', Zusammenfassung:'Kurzinfo ueber Serien, Punkte, Korrekturen und Schreibvorgaenge.' }, actions: ['Log neu laden liest die letzten protokollierten Bereinigungslaeufe erneut ein.'] };
+
+        Promise.all([loadCfg(), loadBuckets(), loadLog()]).catch(e=>err(e.message));
+      </script>
+      {% include "_table_cols.html" %}
+      {% include "_tooltips.html" %}
+      <script>
+        try{ if(window.InfluxBroTableHeight) window.InfluxBroTableHeight.attach(document.getElementById('quality_bucket_box'), 'quality_bucket_tbl', {minPx: 180}); }catch(e){}
+        try{ if(window.InfluxBroTableHeight) window.InfluxBroTableHeight.attach(document.getElementById('quality_rule_box'), 'quality_rule_tbl', {minPx: 220}); }catch(e){}
+        try{ if(window.InfluxBroTableHeight) window.InfluxBroTableHeight.attach(document.getElementById('quality_match_box'), 'quality_match_tbl', {minPx: 180}); }catch(e){}
+        try{ if(window.InfluxBroTableHeight) window.InfluxBroTableHeight.attach(document.getElementById('quality_cleanup_box'), 'quality_cleanup_tbl', {minPx: 180}); }catch(e){}
+        try{ if(window.InfluxBroTableHeight) window.InfluxBroTableHeight.attach(document.getElementById('quality_log_box'), 'quality_log_tbl', {minPx: 180}); }catch(e){}
+      </script>
+    </main>
+  </div>
+</body>
+</html>

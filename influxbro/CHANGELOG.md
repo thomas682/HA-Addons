@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.144
+
+### Enhancement
+
+- Neue Seite `Datenqualitaet` hinzugefuegt. Sie deckt Bucket-Assistent, Bucket-Verwaltung, Regelpflege, Bereinigungslauf, Rollup-Task-Erzeugung, Query-Beispiele und Debug-Log ab.
+- Button-Look global auf eine deutlich Material-orientierte Optik umgestellt: runde Pill-Buttons, weichere Farben, aktive Filled-Variante und einheitliches Verhalten ueber alle Seiten.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`, `pytest tests/test_api_ui_support.py -q`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.143
 
 ### Fix

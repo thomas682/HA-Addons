@@ -13,6 +13,12 @@
       --ib-page-search-hl-color: {{ (cfg.get('ui_page_search_highlight_color') or '#FF9900') if cfg else '#FF9900' }};
       --ib-page-search-hl-width: {{ (cfg.get('ui_page_search_highlight_width_px') or 3) | int }}px;
       --ib-page-search-hl-duration-ms: {{ (cfg.get('ui_page_search_highlight_duration_ms') or 1400) | int }}ms;
+      --ib-btn-bg: #eef3ff;
+      --ib-btn-fg: #103a7c;
+      --ib-btn-border: #cad7f2;
+      --ib-btn-shadow: 0 1px 2px rgba(16, 58, 124, 0.14), 0 1px 3px rgba(16, 58, 124, 0.08);
+      --ib-btn-hover-bg: #dce7ff;
+      --ib-btn-active-bg: #cddcff;
       --ib-zoom-scale: 1;
       --ui-font-zoomed: var(--ui-font, 14px);
       --ui-font-small-zoomed: var(--ui-font-small, 11px);
@@ -25,6 +31,25 @@
       padding-bottom: calc(var(--ib-bottombar-h) + env(safe-area-inset-bottom, 0px));
     }
     .muted { font-size: var(--ui-font-small-zoomed); }
+    body button {
+      border-radius: 999px;
+      border: 1px solid var(--ib-btn-border);
+      background: var(--ib-btn-bg);
+      color: var(--ib-btn-fg);
+      box-shadow: var(--ib-btn-shadow);
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      transition: background 120ms ease, box-shadow 120ms ease, transform 120ms ease, border-color 120ms ease;
+    }
+    body button:hover { background: var(--ib-btn-hover-bg); }
+    body button:active { background: var(--ib-btn-active-bg); transform: translateY(1px); }
+    body button:disabled { opacity: 0.55; box-shadow: none; cursor: not-allowed; }
+    body button.active {
+      background: #0b57d0;
+      border-color: #0b57d0;
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(11, 87, 208, 0.28);
+    }
 
     /* Bottom error status bar */
     .ib_bottombar {
