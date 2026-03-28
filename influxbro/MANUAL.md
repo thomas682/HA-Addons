@@ -478,6 +478,7 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Mit aktivem `superpicker` wird jetzt das direkt gehoverte Unterelement bevorzugt erfasst; dadurch lassen sich auch Elemente innerhalb eines groesseren `data-ui`-Containers gezielter identifizieren.
 - Query- und Statistik-Dialoge verwenden wieder denselben stabilen Popup-Pfad; ein fehlender Decode-Helper blockiert das Oeffnen nicht mehr.
 - Query-Dialoge zeigen ihre History jetzt im selben modalen Fenster unterhalb des Query-Textes. Ein horizontaler Splitter erlaubt das Anpassen der Hoehe beider Bereiche direkt im Dialog.
+- In der Topbar gibt es jetzt statt der separaten Checkbox einen direkten `S-Picker`-Button fuer den Superpicker. Dashboard-Aktionen sind unterhalb des Filterblocks gebuendelt, und mehrere Such-/Filterfelder sind explizit fuer den Clear-Button-Pfad markiert.
 
 ## Diagnose
 

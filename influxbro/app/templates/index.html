@@ -193,6 +193,9 @@
     #edit_split.outlier_stack { flex-direction: column; }
     #edit_split.outlier_stack #edit_split_handle { display:none !important; }
     #edit_split.outlier_stack #edit_right { display:block !important; flex: 0 0 auto !important; padding-left: 0 !important; margin-top: 12px; }
+    #edit_split { flex-direction: column; }
+    #edit_split #edit_split_handle { display:none !important; }
+    #edit_split #edit_right { display:block !important; flex: 0 0 auto !important; width: 100%; padding-left: 0 !important; margin-top: 12px; }
   </style>
 </head>
 <body>
@@ -307,7 +310,9 @@
       </div>
       <div class="muted">Zeitangaben werden als lokale Zeit interpretiert und als UTC an die API gesendet.</div>
     </div>
-    <div class="control">
+    </div>
+
+    <div class="control" data-ui="dashboard.actions" title="dashboard.actions">
       <div style="display:flex; gap: 8px; align-items: stretch;">
         <button id="load" class="btn_sm" style="flex:1; height:34px; padding:8px 10px;" data-ui="dashboard.load">Aktualisieren</button>
         <button id="cancel_load" class="btn_sm" style="width:auto; white-space:nowrap;" data-ui="dashboard.cancel">Abbruch</button>
@@ -327,6 +332,7 @@
         <pre id="query_pre">Noch keine Query vorhanden.</pre>
       </div>
     </div>
+  
   </div>
 
   <div class="table_wrap" id="tag_choices" style="display:none; margin-top: 10px;" data-ui="dashboard.tag_choices" title="dashboard.tag_choices">
@@ -630,11 +636,11 @@
 
           <div style="min-width: 220px;">
             <label style="display:block; font-size:12px; opacity:0.8;">Grund Filter</label>
-            <input id="reason_filter" placeholder="enthaelt..." style="height: 34px;" />
+            <input id="reason_filter" placeholder="enthaelt..." data-ui="reason_filter" title="reason_filter" style="height: 34px;" />
           </div>
           <div style="min-width: 180px;">
             <label style="display:block; font-size:12px; opacity:0.8;">Klasse</label>
-            <select id="class_filter" data-ui="editlist.class_filter" title="editlist.class_filter" style="height: 34px;">
+            <select id="class_filter" data-ui="editlist.class_filter" title="editlist.class_filter" style="height: 34px; min-width: 210px; padding: 4px 24px 4px 8px;">
               <option value="all" selected>alle</option>
               <option value="primary">primaer</option>
               <option value="secondary">sekundaer</option>

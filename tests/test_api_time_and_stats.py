@@ -8,10 +8,10 @@ from pathlib import Path
 def test_dashboard_selection_labels_and_order():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     assert "<div style=\"font-weight:800;\">Quelle</div>" in body
-    assert "<label class=\"ib_sel_label\">_measurement</label>" in body
-    assert "<label class=\"ib_sel_label\">_field</label>" in body
-    assert "<span>friendly_name</span>" in body
-    assert "<span>entity_id</span>" in body
+    assert "<label class=\"ib_sel_label\">Einheit</label>" in body
+    assert "<span>Feld</span>" in body
+    assert "<span>Name</span>" in body
+    assert "<span>Entity</span>" in body
     assert 'id="measurement"' not in body
     assert "Zeitraum (Graph/Tabelle)" in body
 
@@ -72,6 +72,12 @@ def test_dashboard_no_longer_has_resolved_selection_info_box():
     assert 'data-ui="dashboard.selection"' not in body
     assert 'Quelle (aufgeloest)' not in body
     assert 'function refreshSelectionInfo()' not in body
+
+
+def test_dashboard_actions_are_below_filters_and_reason_filter_has_data_ui():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert 'data-ui="dashboard.actions"' in body
+    assert 'data-ui="reason_filter"' in body
 
 
 def test_import_ui_has_transform_preview_controls():
@@ -176,8 +182,7 @@ def test_settings_page_uses_only_shared_title_card():
 
 def test_sidebar_starts_below_pagecard():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_nav.html").read_text()
-    assert 'padding-top: calc(var(--ib-pagecard-h, 0px) + 20px);' in body
-    assert 'top: calc(var(--ib-pagecard-h, 0px) + 20px);' in body
+    assert 'top: calc(var(--ib-topbar-h, 0px) + var(--ib-pagecard-live-h, 0px) + 20px);' in body
     assert 'id = \'influxbro_sections_bar\'' not in body
 
 

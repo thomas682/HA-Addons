@@ -316,7 +316,6 @@
   (function(){
     function initPageCard(){
       const $card = document.getElementById('ib_pagecard');
-      const $title = document.getElementById('ib_pagecard_title');
       const $search = document.getElementById('ib_page_search');
       const $prev = document.getElementById('ib_page_search_prev');
       const $next = document.getElementById('ib_page_search_next');
@@ -325,12 +324,10 @@
       const $close = document.getElementById('ib_close_all');
       const $results = document.getElementById('ib_pagecard_results');
       const $searchModal = document.getElementById('ib_page_search_modal');
-      if(!$card || !$title || $card.dataset.ibPagecardReady === '1') return;
+      if(!$card || $card.dataset.ibPagecardReady === '1') return;
       $card.dataset.ibPagecardReady = '1';
 
       const main = document.querySelector('main.content');
-      const h2 = main ? main.querySelector('h2') : null;
-      $title.textContent = String((h2 && h2.textContent) || document.title || 'Seite').replace(/^InfluxBro\s*[–-]\s*/, '').trim();
 
       function setAllDetailsOpen(root, wantOpen){
         try{
@@ -547,8 +544,8 @@
   (function(){
     function initPicker(){
       const $btn = document.getElementById('ui_picker_toggle');
-      const $super = document.getElementById('ui_picker_super');
-      if(!$btn || !$super || $btn.dataset.ibPickerReady === '1') return;
+      const $superBtn = document.getElementById('ui_superpicker_toggle');
+      if(!$btn || !$superBtn || $btn.dataset.ibPickerReady === '1') return;
       $btn.dataset.ibPickerReady = '1';
       const LS_SUPER = 'influxbro.ui_picker.super.v1';
 
@@ -566,7 +563,7 @@
     }
 
     function applySuperUi(){
-      try{ $super.checked = !!readSuper(); }catch(e){}
+      try{ $superBtn.classList.toggle('active', !!(active && readSuper())); }catch(e){}
     }
 
     function ensureUi(){
@@ -697,6 +694,7 @@
       active = false;
       currentEl = null;
       try{ if($btn) $btn.classList.remove('active'); }catch(e){}
+      try{ if($superBtn) $superBtn.classList.remove('active'); }catch(e){}
       try{ if(overlay) overlay.style.display = 'none'; }catch(e){}
       try{ if(badge) badge.style.display = 'none'; }catch(e){}
       document.removeEventListener('mousemove', onMove, true);
@@ -707,7 +705,7 @@
     function start(){
       active = true;
       ensureUi();
-      try{ if($btn) $btn.classList.add('active'); }catch(e){}
+      try{ if(readSuper()){ if($superBtn) $superBtn.classList.add('active'); if($btn) $btn.classList.remove('active'); } else { if($btn) $btn.classList.add('active'); if($superBtn) $superBtn.classList.remove('active'); } }catch(e){}
       document.addEventListener('mousemove', onMove, true);
       document.addEventListener('click', onClick, true);
       document.addEventListener('keydown', onKey, true);
@@ -740,10 +738,18 @@
 
       $btn.addEventListener('click', (ev)=>{
         try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+        writeSuper(false);
+        applySuperUi();
         if(active) stop();
         else start();
       });
-      $super.addEventListener('change', ()=>{ writeSuper(!!$super.checked); });
+      $superBtn.addEventListener('click', (ev)=>{
+        try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+        writeSuper(true);
+        applySuperUi();
+        if(active) stop();
+        else start();
+      });
       applySuperUi();
     }
 
@@ -815,7 +821,6 @@
         <img alt="Buy me a coffee" src="https://img.shields.io/badge/Donate-Buy%20Me%20a%20Coffee-yellow.svg"/>
       </a>
     </div>
-    <div class="title" id="ib_pagecard_title"></div>
   </div>
   <div class="actions">
     <div data-ui="topbar.profile" title="topbar.profile" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
@@ -824,9 +829,7 @@
       <button id="ui_profile_save" type="button" data-ui="nav.profile.save" title="nav.profile.save">Speichern</button>
       <button id="ui_profile_info" type="button" data-ui="nav.profile.info" title="nav.profile.info">Info</button>
       <button id="ui_picker_toggle" type="button" data-ui="nav.ui_picker" title="nav.ui_picker">Picker</button>
-      <div class="pickeropts" data-ui="nav.ui_picker_options" title="nav.ui_picker_options">
-        <label><input id="ui_picker_super" class="row_sel" type="checkbox" data-ui="nav.ui_picker_super" title="nav.ui_picker_super"/><span>superpicker</span></label>
-      </div>
+      <button id="ui_superpicker_toggle" type="button" data-ui="nav.ui_picker_super" title="nav.ui_picker_super">S-Picker</button>
     </div>
     <div class="zoom" data-ui="topbar.zoom" title="topbar.zoom">
       <span class="meta">Zoom</span>

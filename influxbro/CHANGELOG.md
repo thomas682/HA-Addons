@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.152
+
+### Fix
+
+- Dashboard-/Topbar-Filter: `ib_pagecard_title` wurde entfernt, der Buttonblock unterhalb von `dashboard.filters` ausgegliedert und `superpicker` durch einen direkten `S-Picker`-Button ersetzt.
+- Dashboard/History/Editlist/Backup: Such-/Filterfelder wie `reason_filter` und `history.search` sind jetzt sauber fuer den globalen Clear-Button-Pfad markiert; `editlist.right` bleibt unter `edit.left`, `editlist.class_filter` zeigt seinen Text vollstaendig, und die Backup-Aktionszeile ist oben ausgerichtet.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`, `pytest tests/test_api_ui_support.py tests/test_api_time_and_stats.py -q`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.151
 
 ### Enhancement
