@@ -3059,7 +3059,7 @@ def _stats_cache_key(
     stop_iso = _dt_to_rfc3339_utc(stop_dt) if range_key == "custom" else None
 
     return {
-        "v": 1,
+        "v": 2,
         "kind": "global_stats",
         "cfg_fp": _stats_cache_cfg_fp(cfg),
         "range": range_key,
@@ -3075,6 +3075,111 @@ def _stats_cache_key(
         "payload_start": body.get("start") or body.get("start_time"),
         "payload_stop": body.get("stop") or body.get("end") or body.get("stop_time"),
     }
+
+
+def _stats_cache_append_supported(range_key: str) -> bool:
+    rk = str(range_key or "").strip().lower()
+    return rk in ("all", "this_year")
+
+
+def _stats_row_identity(row: dict[str, Any]) -> tuple[str, str, str, str]:
+    return (
+        str(row.get("measurement") or ""),
+        str(row.get("field") or ""),
+        str(row.get("entity_id") or ""),
+        str(row.get("friendly_name") or ""),
+    )
+
+
+def _stats_row_sum(row: dict[str, Any]) -> float | None:
+    try:
+        if row.get("__sum") is not None:
+            return float(row.get("__sum"))
+    except Exception:
+        pass
+    try:
+        count = int(row.get("count") or 0)
+        mean = row.get("mean")
+        if count > 0 and mean is not None:
+            return float(mean) * float(count)
+    except Exception:
+        pass
+    return None
+
+
+def _stats_cache_merge_rows(base_rows: list[dict[str, Any]], delta_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    merged: dict[tuple[str, str, str, str], dict[str, Any]] = {}
+    for src in base_rows or []:
+        if isinstance(src, dict):
+            merged[_stats_row_identity(src)] = dict(src)
+
+    for src in delta_rows or []:
+        if not isinstance(src, dict):
+            continue
+        key = _stats_row_identity(src)
+        cur = merged.get(key)
+        if not cur:
+            merged[key] = dict(src)
+            continue
+
+        out = dict(cur)
+
+        try:
+            c0 = int(cur.get("count") or 0)
+            c1 = int(src.get("count") or 0)
+            if c0 or c1:
+                out["count"] = c0 + c1
+        except Exception:
+            pass
+
+        s0 = _stats_row_sum(cur)
+        s1 = _stats_row_sum(src)
+        if s0 is not None or s1 is not None:
+            total_sum = float(s0 or 0.0) + float(s1 or 0.0)
+            out["__sum"] = total_sum
+            try:
+                total_count = int(out.get("count") or 0)
+                if total_count > 0:
+                    out["mean"] = total_sum / float(total_count)
+            except Exception:
+                pass
+
+        try:
+            if cur.get("min") is None:
+                out["min"] = src.get("min")
+            elif src.get("min") is not None:
+                out["min"] = min(float(cur.get("min")), float(src.get("min")))
+        except Exception:
+            pass
+        try:
+            if cur.get("max") is None:
+                out["max"] = src.get("max")
+            elif src.get("max") is not None:
+                out["max"] = max(float(cur.get("max")), float(src.get("max")))
+        except Exception:
+            pass
+
+        try:
+            ct = _parse_iso_datetime(str(cur.get("oldest_time") or ""))
+            st = _parse_iso_datetime(str(src.get("oldest_time") or ""))
+            if st and (not ct or st < ct):
+                out["oldest_time"] = _dt_to_rfc3339_utc(st)
+        except Exception:
+            pass
+
+        try:
+            ct = _parse_iso_datetime(str(cur.get("newest_time") or ""))
+            st = _parse_iso_datetime(str(src.get("newest_time") or ""))
+            if st and (not ct or st >= ct):
+                out["newest_time"] = _dt_to_rfc3339_utc(st)
+                if "last_value" in src:
+                    out["last_value"] = src.get("last_value")
+        except Exception:
+            pass
+
+        merged[key] = out
+
+    return sorted(merged.values(), key=lambda r: int(r.get("count") or 0), reverse=True)
 
 
 def _stats_cache_id(key: dict[str, Any]) -> str:
@@ -10161,6 +10266,8 @@ def api_stats_cache_get():
             "updated_at": meta.get("updated_at"),
             "dirty": bool(meta.get("dirty")),
             "mismatch": bool(meta.get("mismatch")),
+            "covered_start": payload.get("covered_start") if isinstance(payload, dict) else None,
+            "covered_stop": payload.get("covered_stop") if isinstance(payload, dict) else None,
         },
     })
 
@@ -13785,6 +13892,7 @@ data
         mean = (ssum / float(count)) if count > 0 else None
         return {
             "count": count,
+            "sum": ssum,
             "min": min_v,
             "max": max_v,
             "mean": mean,
@@ -13887,9 +13995,12 @@ from(bucket: "{bucket}")
                 if "last_value" in base_last:
                     r["last_value"] = base_last.get("last_value")
             if det:
-                for k in ("count", "min", "max", "mean", "oldest_time"):
+                for k in ("count", "min", "max", "mean", "oldest_time", "sum"):
                     if k in det:
-                        r[k] = det.get(k)
+                        if k == "sum":
+                            r["__sum"] = det.get(k)
+                        else:
+                            r[k] = det.get(k)
                 # det may also include newest/last
                 if "newest_time" in det and "newest_time" not in r:
                     r["newest_time"] = det.get("newest_time")
@@ -14153,6 +14264,14 @@ from(bucket: "{cfg_local["bucket"]}")
                             GLOBAL_STATS_JOBS[job_id]["groups_count"] = len(rows)
 
         final_rows = sorted(rows, key=lambda r: int(r.get("count") or 0), reverse=True)
+        try:
+            with GLOBAL_STATS_LOCK:
+                job_now = GLOBAL_STATS_JOBS.get(job_id) or {}
+                merge_rows = job_now.get("cache_merge_rows") if isinstance(job_now.get("cache_merge_rows"), list) else []
+            if merge_rows:
+                final_rows = _stats_cache_merge_rows(merge_rows, final_rows)
+        except Exception:
+            pass
         with GLOBAL_STATS_LOCK:
             if job_id in GLOBAL_STATS_JOBS:
                 GLOBAL_STATS_JOBS[job_id]["rows"] = final_rows
@@ -14178,6 +14297,8 @@ from(bucket: "{cfg_local["bucket"]}")
                         "generated_at": _utc_now_iso_ms(),
                         "key": cache_key,
                         "rows": rows,
+                        "covered_start": str(j.get("cache_merge_start") or start),
+                        "covered_stop": stop,
                     }
                     bytes_written = _stats_cache_write_payload(cache_id, payload)
                     meta = _stats_cache_load_meta(cache_id) or {"id": cache_id, "key": cache_key}
@@ -14250,6 +14371,8 @@ def _global_stats_start_job(
     timer_id: str | None = None,
     cache_id: str | None = None,
     cache_key: dict[str, Any] | None = None,
+    cache_merge_rows: list[dict[str, Any]] | None = None,
+    cache_merge_start: str | None = None,
 ) -> str:
     job_id = uuid.uuid4().hex
     ip = _req_ip()
@@ -14277,6 +14400,8 @@ def _global_stats_start_job(
         "error": None,
         "cache_id": cache_id,
         "cache_key": cache_key,
+        "cache_merge_rows": list(cache_merge_rows or []),
+        "cache_merge_start": str(cache_merge_start or "").strip() or None,
         "field_filter": field_filter,
         "measurement": measurement_filter,
         "entity_id": entity_id_filter,
@@ -14478,6 +14603,56 @@ def api_global_stats_job_start():
                     trigger_page="stats",
                 )
                 return jsonify({"ok": True, "job_id": job_id, "cache_id": cache_id, "cache_hit": True})
+
+            append_from = None
+            append_rows = None
+            try:
+                rk = str(cache_key.get("range") or "").strip().lower()
+                covered_start_s = str((payload or {}).get("covered_start") or "").strip()
+                covered_stop_s = str((payload or {}).get("covered_stop") or "").strip()
+                covered_start_dt = _parse_iso_datetime(covered_start_s) if covered_start_s else None
+                covered_stop_dt = _parse_iso_datetime(covered_stop_s) if covered_stop_s else None
+                cache_rows_ok = isinstance(cache_rows, list) and len(cache_rows) > 0
+                if (
+                    _stats_cache_append_supported(rk)
+                    and cache_rows_ok
+                    and not bool(meta.get("dirty"))
+                    and not bool(meta.get("mismatch"))
+                    and covered_start_dt
+                    and covered_stop_dt
+                    and abs((covered_start_dt - start_dt).total_seconds()) <= 1.0
+                    and stop_dt > covered_stop_dt
+                ):
+                    append_from = covered_stop_dt
+                    append_rows = list(cache_rows or [])
+            except Exception:
+                append_from = None
+                append_rows = None
+
+            if append_from and append_rows:
+                meta["dirty"] = True
+                meta["dirty_reason"] = "append_update"
+                meta["dirty_at"] = _utc_now_iso_ms()
+                _stats_cache_write_meta(meta)
+                job_id = _global_stats_start_job(
+                    cfg,
+                    append_from,
+                    stop_dt,
+                    ff,
+                    measurement_filter,
+                    entity_id_filter,
+                    friendly_name_filter,
+                    series_list,
+                    columns,
+                    page_limit,
+                    trigger_page="stats",
+                    cache_id=cache_id,
+                    cache_key=cache_key,
+                    cache_merge_rows=append_rows,
+                    cache_merge_start=covered_start_s,
+                )
+                return jsonify({"ok": True, "job_id": job_id, "cache_id": cache_id, "cache_append": True, "append_from": _dt_to_rfc3339_utc(append_from)})
+
             meta["dirty"] = True
             meta["dirty_reason"] = "job_start"
             meta["dirty_at"] = _utc_now_iso_ms()

@@ -252,6 +252,11 @@ def test_stats_backend_can_short_circuit_fresh_cache_hits():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "app.py").read_text()
     assert 'def _global_stats_start_cached_job(' in body
     assert 'cache_hit": True' in body
+    assert 'def _stats_cache_append_supported(range_key: str) -> bool:' in body
+    assert 'def _stats_cache_merge_rows(base_rows: list[dict[str, Any]], delta_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:' in body
+    assert '"covered_start": str(j.get("cache_merge_start") or start),' in body
+    assert '"covered_stop": stop,' in body
+    assert 'cache_append": True' in body
 
 
 def test_import_analyze_shows_success_and_error_popups():

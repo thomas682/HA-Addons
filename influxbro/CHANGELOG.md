@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.139
+
+### Enhancement
+
+- Statistik-Cache kann fuer verankerte Zeitraeume (`all`, `this_year`) jetzt nicht nur frische Treffer direkt verwenden, sondern bei veralteten Caches auch den fehlenden rechten Zeitraum per Append-Update nachladen und mit dem vorhandenen Cache zusammenfuehren.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`, `pytest tests/test_api_ui_support.py -q`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.138
 
 ### Enhancement
