@@ -173,11 +173,16 @@ After successful implementation AND completed QA:
 
 ### Version Bump (CRITICAL FOR HA)
 
+- Jede Aenderung am Code erzwingt eine neue Version.
+  - Sobald Python, HTML, JavaScript, CSS, Docker-, Shell- oder sonstige Laufzeit-/Build-Logik geaendert wird, MUSS zwingend eine neue Add-on-Version erzeugt werden.
+  - Es gibt keine Ausnahmen fuer kleine Fixes, Refactorings oder rein strukturelle Codeaenderungen.
+
 - Every change that affects runtime, UI, API, or behavior MUST:
   - increment `version` in `influxbro/config.yaml`
 
 - Without version bump:
   - Home Assistant will NOT detect an update
+  - die Aenderung gilt in diesem Repository als unvollstaendig
 
 - Version format:
   - increment last digit (e.g. 1.12.44 → 1.12.45)

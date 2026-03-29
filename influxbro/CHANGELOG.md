@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.12.155
+
+### Maintenance
+
+- Regeln und Handbuch praezisiert: Jede Codeaenderung erzwingt jetzt explizit eine neue Add-on-Version, und das Dashboard-Handbuch dokumentiert die Reihenfolge `Graph` -> `Raw Daten (DB)` -> `Bearbeitungsliste` direkt unter `Auswahl`.
+- Tests: nicht ausgefuehrt (nur Regeln/Dokumentation/Metadaten)
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.154
 
 ### Fix

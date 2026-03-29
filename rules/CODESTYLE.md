@@ -100,6 +100,10 @@ from flask import Flask, jsonify, request
 
 ## Versioning / Releases (Home Assistant add-on)
 
+- Jede Codeaenderung erfordert zwingend eine neue Version.
+  - Wenn Dateien mit Code oder Laufzeitlogik geaendert werden (z. B. `*.py`, `*.html`, `*.js`, `*.css`, Docker-/Start-/Shell-Logik, Laufzeit-Configs), MUSS immer eine neue Add-on-Version erzeugt werden.
+  - Dies gilt auch fuer kleine Korrekturen, Umstrukturierungen und rein technische Anpassungen.
+
 - Bump `version:` in `influxbro/config.yaml` for any user-visible change.
 - Do not change `slug:`.
 - Keep `repository.yaml` in the repo root.
