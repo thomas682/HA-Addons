@@ -1,3 +1,6 @@
+
+# Codestyle Regeln
+
 ## Repo Layout (important for HA)
 
 - `repository.yaml`: must stay in repo root for Home Assistant add-on repositories.

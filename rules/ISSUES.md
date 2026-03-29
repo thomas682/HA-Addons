@@ -1,3 +1,6 @@
+
+# Issue Regeln
+
 ## Requirements Tracking (preferred: GitHub Issues)
 
 - Track requirements primarily as GitHub Issues so others can create/report items externally.

@@ -1,3 +1,6 @@
+
+# Testing regeln 
+
 ## Mandatory Testing & Cost-Aware Execution (REQUIRED)
 
 After every implementation, testing is REQUIRED, but execution must remain cost-efficient.
