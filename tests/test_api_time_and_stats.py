@@ -82,6 +82,15 @@ def test_dashboard_actions_are_below_filters_and_reason_filter_has_data_ui():
     assert 'Tipps: Messwert = <code>friendly_name</code>' not in body
 
 
+def test_dashboard_sections_are_direct_children_of_dashboard_page():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert '<div class="main">' not in body
+    assert '<details id="graph_section" class="section"' in body
+    assert '<details id="raw_section" class="section"' in body
+    assert '<details id="filterlist_section" class="section"' in body
+    assert '<details id="raw_section" style="margin-top: 10px;"' not in body
+
+
 def test_import_ui_has_transform_preview_controls():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "import.html").read_text()
     assert 'id="preview_transform"' in body

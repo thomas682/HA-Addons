@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.154
+
+### Fix
+
+- Dashboard: `section.graph`, `section.raw` und `section.filterlist` sind jetzt direkte Kinder von `dashboard.page`. Die alte Zwischenebene `.main` wurde entfernt, und `section.raw` ist nicht mehr in `section.graph` verschachtelt.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`, `pytest tests/test_api_ui_support.py tests/test_api_time_and_stats.py -q`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.153
 
 ### Fix

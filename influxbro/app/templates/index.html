@@ -358,9 +358,6 @@
 
   <div id="stats_total_store" style="display:none;"><table class="stats_tbl"><tbody id="stats_tot_body"></tbody></table></div>
 
-
-  <div class="main">
-
     <details id="graph_section" class="section" {{ 'open' if cfg.get('ui_open_graph') else '' }} data-ui="section.graph" title="section.graph">
       <summary><span class="ib_summary_row"><span class="section_title" style="margin:0;">Graph</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Graph" data-info-body="Der Graph ist die zentrale Visualisierung der aktuell gewaehlten Serie.\n\nEnthaelt:\n- Zeitreihen-Plot mit Zoom und Auswahl\n- Marker fuer selektierte Punkte\n- Detail-Modi, Ableitungen und Zusatzinfos unter dem Plot\n- Raw-Synchronisation: ein Klick auf einen Punkt steuert die Raw-Tabelle\n\nNutzen:\n- zeitliche Analyse\n- Auswahl eines Ankerpunkts fuer Raw-Daten und Bearbeitung" >i</button></span></summary>
       <div class="tbl_actions" data-ui="graph_actions">
@@ -417,71 +414,71 @@
         <div id="deriv_graph_plot" style="display:none; width: 100%; height: 140px; margin-top: 8px; pointer-events:none;"></div>
         <div id="graph_resize" data-ui="graph.resize" title="graph.resize" style="height: 12px; cursor: ns-resize; margin-top: 8px; border-radius: 999px; background: linear-gradient(90deg, #eee, #f8f8f8);"></div>
       </div>
+    </details>
 
-          <details id="raw_section" style="margin-top: 10px;" data-ui="section.raw" title="section.raw">
-            <summary><span class="ib_summary_row"><span>Raw Daten (DB)</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Raw Daten" data-info-body="Raw-Tabelle zeigt echte Datenpunkte aus der DB rund um den im Graph selektierten Messpunkt.\n\nFeatures:\n- symmetrisches Laden um den selektierten Punkt\n- automatische Erweiterung bei zu wenigen Datenpunkten je Seite\n- direkte Wertuebernahme per Quelle/Ziel oder Drag-and-Drop" >i</button></span></summary>
-            <div class="table_wrap" style="margin-top: 10px;">
-              <div class="table_title">Raw Daten</div>
-              <div class="table_head">
-                <div>
-                <div class="muted" id="raw_info" data-ui="raw.info" title="raw.info"></div>
-                </div>
-              </div>
-
-            <div class="tbl_actions" style="justify-content:flex-start; margin-top: 6px;" data-ui="raw.opts" title="raw.opts">
-              <label><input type="checkbox" id="raw_time_from_graph" class="row_sel" data-ui="raw.time_from_graph" checked/>Zeit gefuehrt durch Graph</label>
-            </div>
-
-            <div class="tbl_actions" style="justify-content:flex-start; margin-top: 8px; gap: 12px; flex-wrap:wrap;" data-ui="raw.center_range" title="raw.center_range">
-              <div style="display:flex; flex-direction:column; gap: 4px; min-width: 170px;">
-                <label for="raw_center_range">Bereich +- (Minuten)</label>
-                <input id="raw_center_range" type="number" min="0" max="2000" step="1" value="100" style="height:34px; padding: 6px 10px; width: 140px;" />
-              </div>
-              <div class="muted" id="raw_center_range_hint">Zeitfenster um den selektierten Messwert herum in Minuten. Speicherung erfolgt automatisch im Browser.</div>
-            </div>
-
-            <div id="raw_status" style="display:none; margin-top: 6px; font-size: 12px; opacity: 0.85; align-items:center; gap: 8px;" data-ui="raw.status" title="raw.status">
-              <span id="raw_spinner" aria-hidden="true" style="width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(0,0,0,0.18); border-top-color: rgba(0,0,0,0.75); animation: spin 0.9s linear infinite;"></span>
-              <span id="raw_status_txt">Raw laeuft...</span>
-              <span id="raw_status_time" style="opacity:0.85; white-space: nowrap;"></span>
-            </div>
-
-            <div class="tbl_actions" style="justify-content:flex-start; margin-top: 8px;" data-ui="raw.actions" title="raw.actions">
-              <button class="btn_sm" id="raw_refresh" type="button" data-ui="raw.refresh" title="raw.refresh" aria-label="Raw Daten aktualisieren"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M18.6091 5.89092L15.5 9H21.5V3L18.6091 5.89092ZM18.6091 5.89092C16.965 4.1131 14.6125 3 12 3C7.36745 3 3.55237 6.50005 3.05493 11M5.39092 18.1091L2.5 21V15H8.5L5.39092 18.1091ZM5.39092 18.1091C7.03504 19.8869 9.38753 21 12 21C16.6326 21 20.4476 17.5 20.9451 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
-              <button class="btn_sm" id="raw_autowidth" data-ui="raw.autowidth" title="raw.autowidth" aria-label="Spaltenbreite automatisch">
-                <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                  <path d="M5 5v14M19 5v14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                  <path d="M8 12h8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                  <path d="M10 10l-2 2 2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                  <path d="M14 10l2 2-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-              </button>
-              <button class="btn_sm" id="raw_windowwidth" data-ui="raw.windowwidth" title="raw.windowwidth" aria-label="Fensterbreite">
-                <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                  <rect x="4" y="6" width="16" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
-                  <path d="M12 12H6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                  <path d="M6 12l2-2M6 12l2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                  <path d="M12 12h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                  <path d="M18 12l-2-2M18 12l-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-              </button>
-              <label><input type="checkbox" id="raw_wrap" class="row_sel" data-ui="raw.wrap" title="raw.wrap"/>Umbruch</label>
-              <label><input type="checkbox" id="raw_colfilter" class="row_sel" data-ui="raw.colfilter" title="raw.colfilter"/>Spaltenfilter</label>
-              <button class="btn_sm" id="raw_copy" data-ui="raw.copy" title="raw.copy">Kopieren</button>
-              <button class="btn_sm" id="raw_copy_value" data-ui="raw.copy_value" title="raw.copy_value">Wert kopieren</button>
-              <button class="btn_sm" id="raw_paste" data-ui="raw.paste" title="raw.paste" disabled>Einfügen</button>
-              <span id="raw_copied_info" class="muted" style="margin-left:6px;"></span>
-            </div>
-
-            <div class="table_box" id="raw_box" style="--max-rows: 10;">
-            <table id="raw_tbl" class="list_tbl ib_tbl" data-ui="raw.table" title="raw.table">
-              <thead><tr><th style="min-width: 170px;">Zeit</th><th>Wert</th></tr></thead>
-              <tbody id="raw_body"></tbody>
-            </table>
+    <details id="raw_section" class="section" style="margin-top: 10px;" data-ui="section.raw" title="section.raw">
+      <summary><span class="ib_summary_row"><span>Raw Daten (DB)</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Raw Daten" data-info-body="Raw-Tabelle zeigt echte Datenpunkte aus der DB rund um den im Graph selektierten Messpunkt.\n\nFeatures:\n- symmetrisches Laden um den selektierten Punkt\n- automatische Erweiterung bei zu wenigen Datenpunkten je Seite\n- direkte Wertuebernahme per Quelle/Ziel oder Drag-and-Drop" >i</button></span></summary>
+      <div class="table_wrap" style="margin-top: 10px;">
+        <div class="table_title">Raw Daten</div>
+        <div class="table_head">
+          <div>
+          <div class="muted" id="raw_info" data-ui="raw.info" title="raw.info"></div>
           </div>
-          <div id="raw_resize" data-ui="raw.resize" title="raw.resize" style="height: 12px; cursor: ns-resize; margin-top: 8px; border-radius: 999px; background: linear-gradient(90deg, #eee, #f8f8f8);"></div>
         </div>
-      </details>
+
+      <div class="tbl_actions" style="justify-content:flex-start; margin-top: 6px;" data-ui="raw.opts" title="raw.opts">
+        <label><input type="checkbox" id="raw_time_from_graph" class="row_sel" data-ui="raw.time_from_graph" checked/>Zeit gefuehrt durch Graph</label>
+      </div>
+
+      <div class="tbl_actions" style="justify-content:flex-start; margin-top: 8px; gap: 12px; flex-wrap:wrap;" data-ui="raw.center_range" title="raw.center_range">
+        <div style="display:flex; flex-direction:column; gap: 4px; min-width: 170px;">
+          <label for="raw_center_range">Bereich +- (Minuten)</label>
+          <input id="raw_center_range" type="number" min="0" max="2000" step="1" value="100" style="height:34px; padding: 6px 10px; width: 140px;" />
+        </div>
+        <div class="muted" id="raw_center_range_hint">Zeitfenster um den selektierten Messwert herum in Minuten. Speicherung erfolgt automatisch im Browser.</div>
+      </div>
+
+      <div id="raw_status" style="display:none; margin-top: 6px; font-size: 12px; opacity: 0.85; align-items:center; gap: 8px;" data-ui="raw.status" title="raw.status">
+        <span id="raw_spinner" aria-hidden="true" style="width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(0,0,0,0.18); border-top-color: rgba(0,0,0,0.75); animation: spin 0.9s linear infinite;"></span>
+        <span id="raw_status_txt">Raw laeuft...</span>
+        <span id="raw_status_time" style="opacity:0.85; white-space: nowrap;"></span>
+      </div>
+
+      <div class="tbl_actions" style="justify-content:flex-start; margin-top: 8px;" data-ui="raw.actions" title="raw.actions">
+        <button class="btn_sm" id="raw_refresh" type="button" data-ui="raw.refresh" title="raw.refresh" aria-label="Raw Daten aktualisieren"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M18.6091 5.89092L15.5 9H21.5V3L18.6091 5.89092ZM18.6091 5.89092C16.965 4.1131 14.6125 3 12 3C7.36745 3 3.55237 6.50005 3.05493 11M5.39092 18.1091L2.5 21V15H8.5L5.39092 18.1091ZM5.39092 18.1091C7.03504 19.8869 9.38753 21 12 21C16.6326 21 20.4476 17.5 20.9451 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
+        <button class="btn_sm" id="raw_autowidth" data-ui="raw.autowidth" title="raw.autowidth" aria-label="Spaltenbreite automatisch">
+          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M5 5v14M19 5v14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M8 12h8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M10 10l-2 2 2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M14 10l2 2-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <button class="btn_sm" id="raw_windowwidth" data-ui="raw.windowwidth" title="raw.windowwidth" aria-label="Fensterbreite">
+          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <rect x="4" y="6" width="16" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
+            <path d="M12 12H6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M6 12l2-2M6 12l2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M12 12h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M18 12l-2-2M18 12l-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <label><input type="checkbox" id="raw_wrap" class="row_sel" data-ui="raw.wrap" title="raw.wrap"/>Umbruch</label>
+        <label><input type="checkbox" id="raw_colfilter" class="row_sel" data-ui="raw.colfilter" title="raw.colfilter"/>Spaltenfilter</label>
+        <button class="btn_sm" id="raw_copy" data-ui="raw.copy" title="raw.copy">Kopieren</button>
+        <button class="btn_sm" id="raw_copy_value" data-ui="raw.copy_value" title="raw.copy_value">Wert kopieren</button>
+        <button class="btn_sm" id="raw_paste" data-ui="raw.paste" title="raw.paste" disabled>Einfügen</button>
+        <span id="raw_copied_info" class="muted" style="margin-left:6px;"></span>
+      </div>
+
+      <div class="table_box" id="raw_box" style="--max-rows: 10;">
+      <table id="raw_tbl" class="list_tbl ib_tbl" data-ui="raw.table" title="raw.table">
+        <thead><tr><th style="min-width: 170px;">Zeit</th><th>Wert</th></tr></thead>
+        <tbody id="raw_body"></tbody>
+      </table>
+    </div>
+    <div id="raw_resize" data-ui="raw.resize" title="raw.resize" style="height: 12px; cursor: ns-resize; margin-top: 8px; border-radius: 999px; background: linear-gradient(90deg, #eee, #f8f8f8);"></div>
+  </div>
     </details>
 
     <details id="filterlist_section" class="section" {{ 'open' if cfg.get('ui_open_filterlist') else '' }} data-ui="section.filterlist" title="section.filterlist">
@@ -709,9 +706,9 @@
 
       </div>
 
-    </details>
+     </details>
 
-    <div id="apply_modal" style="display:none; position:fixed; inset:0; z-index: 9999; background: rgba(0,0,0,0.45);" data-ui="editlist_apply_modal" title="editlist_apply_modal">
+     <div id="apply_modal" style="display:none; position:fixed; inset:0; z-index: 9999; background: rgba(0,0,0,0.45);" data-ui="editlist_apply_modal" title="editlist_apply_modal">
       <div style="max-width: 980px; margin: 6vh auto; background: #fff; border-radius: 16px; padding: 14px 14px 12px 14px; box-shadow: 0 12px 60px rgba(0,0,0,0.28);">
         <div style="display:flex; justify-content:space-between; align-items:baseline; gap:12px;">
           <div style="font-weight:800; font-size: 16px;">Schreiben bestaetigen</div>
@@ -742,8 +739,6 @@
         </div>
       </div>
     </div>
-
-  </div>
 
   <script src="./static/plotly.min.js"></script>
 
