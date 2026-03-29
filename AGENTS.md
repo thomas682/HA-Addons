@@ -53,6 +53,12 @@
 - Bei Konflikten zwischen allgemeinem Standardverhalten und diesen Repo-Regeln haben diese vier Regeldateien Vorrang.
 - Eine Aufgabe darf NICHT als abgeschlossen gemeldet werden, wenn eine relevante Anforderung aus diesen Regeldateien nicht eingehalten wurde.
 
+### Output Token Efficiency Rule
+
+- Detaildarstellungen von Codeaenderungen, Diffs oder laengeren technischen Einzelaenderungen duerfen dem Benutzer NICHT standardmaessig angezeigt werden.
+- Solche Detaildarstellungen sind nur erlaubt, wenn der Benutzer sie explizit anfordert.
+- Standardausgabe nach Codeaenderungen bleibt deshalb knapp und enthaelt nur das noetige Ergebnis, betroffene Pfade, Tests und ggf. Commit-/Push-Status.
+
 ### Default Model Strategy
 
 - API:
