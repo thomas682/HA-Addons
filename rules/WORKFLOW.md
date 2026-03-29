@@ -182,6 +182,17 @@ After successful implementation AND completed QA:
 - Version format:
   - increment last digit (e.g. 1.12.44 → 1.12.45)
 
+### Live Verification Gate (CRITICAL FOR HA)
+
+- Before any live verification against Home Assistant / the running add-on instance, the required code changes MUST already be available as an add-on version on `main`.
+- Therefore, before a live check against the HA instance, the agent MUST first:
+  - stage changes
+  - create commit
+  - bump `influxbro/config.yaml` version if runtime/UI/API/behavior changed
+  - push to `main`
+- The agent MUST NOT rely on local-only uncommitted changes for HA live verification.
+- If the live instance still runs an older version, the agent must explicitly state that the requested live verification cannot validate the new code until the updated add-on version is installed in Home Assistant.
+
 ### Decision Logic (SIMPLIFIED FOR HA)
 
 #### Case 1: Small / Medium Changes
