@@ -78,6 +78,8 @@ def test_dashboard_actions_are_below_filters_and_reason_filter_has_data_ui():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     assert 'data-ui="dashboard.actions"' in body
     assert 'data-ui="reason_filter"' in body
+    assert '<span class="section_title" style="margin:0;">Gesamtstatistik (Alles)</span>' not in body
+    assert 'Tipps: Messwert = <code>friendly_name</code>' not in body
 
 
 def test_import_ui_has_transform_preview_controls():

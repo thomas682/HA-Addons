@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.153
+
+### Fix
+
+- Dashboard: Die sichtbare Kopfzeile `Gesamtstatistik (Alles)` und der alte Tipps-Text unterhalb der Statistik wurden entfernt. Die angeforderten Bereiche `tip.selection`, `section.graph`, `section.raw` und `section.filterlist` bleiben innerhalb von `dashboard.page`.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`, `pytest tests/test_api_ui_support.py tests/test_api_time_and_stats.py -q`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.152
 
 ### Fix

@@ -132,7 +132,7 @@ def test_dashboard_raw_buttons_show_feedback_and_last_error_button_removed():
 
 def test_dashboard_collapsible_sections_have_info_icons():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
-    assert 'data-info-title="Dashboard: Gesamtstatistik (Alles)"' in body
+    assert 'data-info-title="Dashboard: Gesamtstatistik (Alles)"' not in body
     assert 'data-info-title="Dashboard: Graph"' in body
     assert 'data-info-title="Dashboard: Statistik Zeitraum"' not in body
     assert 'data-info-title="Dashboard: Bearbeitungsliste"' in body
