@@ -220,7 +220,10 @@
           <div class="ib_sel" id="c_measurement_filter" data-ui="filter_measurement">
             <label class="ib_sel_label">Einheit</label>
             <div class="ib_sel_stack">
-              <input id="measurement_filter" list="measurement_filter_list" placeholder="optional" data-ui="filter_measurement_input" autocomplete="off" />
+              <div class="ib_clear_row">
+                <input id="measurement_filter" list="measurement_filter_list" placeholder="optional" data-ui="filter_measurement_input" autocomplete="off" />
+                <button type="button" class="ib_clear_btn" data-clear-for="measurement_filter" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+              </div>
               <datalist id="measurement_filter_list">
                 {% for it in (suggestions.measurements or []) %}
                 <option value="{{ it|e }}"></option>
@@ -237,7 +240,7 @@
             <div class="ib_sel_stack">
               <div class="ib_clear_row">
                 <input id="field" list="field_list" placeholder="optional" data-ui="filter_field_select" title="filter_field_select" autocomplete="off" />
-                <button type="button" class="ib_clear_btn" data-clear-for="field" aria-label="Feld leeren" title="Feld leeren">X</button>
+                <button type="button" class="ib_clear_btn" data-clear-for="field" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
               </div>
               <datalist id="field_list"></datalist>
               <div class="ib_sel_desc">
@@ -249,7 +252,10 @@
           <div class="ib_sel" id="c_entity" data-ui="filter_entity">
             <label class="label_row ib_sel_label"><span>Entity</span><span id="cnt_entity_id" class="muted"></span></label>
             <div class="ib_sel_stack">
-              <input id="entity_id" list="entity_list" placeholder="optional" data-ui="filter_entity_input" autocomplete="off" />
+              <div class="ib_clear_row">
+                <input id="entity_id" list="entity_list" placeholder="optional" data-ui="filter_entity_input" autocomplete="off" />
+                <button type="button" class="ib_clear_btn" data-clear-for="entity_id" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+              </div>
               <datalist id="entity_list">
                 {% for it in (suggestions.entity_id or []) %}
                 <option value="{{ it|e }}"></option>
@@ -266,7 +272,7 @@
             <div class="ib_sel_stack">
               <div class="ib_clear_row">
                 <input id="friendly_name" list="friendly_list" placeholder="optional" data-ui="filter_friendly_input" autocomplete="off" />
-                <button type="button" class="ib_clear_btn" data-clear-for="friendly_name" aria-label="Feld leeren" title="Feld leeren">X</button>
+                <button type="button" class="ib_clear_btn" data-clear-for="friendly_name" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
               </div>
               <datalist id="friendly_list">
                 {% for it in (suggestions.friendly_name or []) %}
@@ -285,6 +291,7 @@
     <div class="control ib_sel ib_sel_time span2" id="c_range" data-ui="filter_range">
       <label class="label_row ib_sel_label"><span>Zeitraum (Graph/Tabelle)</span><span><span id="cnt_range" class="muted"></span></span></label>
       <div class="ib_sel_stack">
+      <div class="ib_clear_row">
       <select id="range" data-ui="filter_range_select">
         <option value="1h">Letzte 1h</option>
         <option value="6h">Letzte 6h</option>
@@ -300,6 +307,8 @@
         <option value="all">Alle</option>
         <option value="custom">Benutzerdefiniert…</option>
       </select>
+      <button type="button" class="ib_clear_btn" data-clear-for="range" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+      </div>
       <div class="ib_sel_desc">
         <button type="button" class="ib_sel_help" data-title="Zeitraum" data-help="Steuert den Zeitbereich fuer Graph und Tabelle. Bei Benutzerdefiniert kannst du Start/Stop setzen. Der angezeigte Bereich wird als lokale Zeit interpretiert und als UTC an die API gesendet.">?</button>
         <div class="muted">Zeitintervall fuer Graph/Tabelle.</div>
@@ -506,7 +515,8 @@
             <div class="row" style="margin-top:0;" data-ui="filterlist_scan_row" title="filterlist_scan_row">
               <div style="min-width: 260px;">
                 <label>Filter (DB-Scan)</label>
-                <select id="scan_preset" data-ui="filterlist_scan_preset" title="filterlist_scan_preset">
+                <div class="ib_clear_row">
+                  <select id="scan_preset" data-ui="filterlist_scan_preset" title="filterlist_scan_preset">
                   <option value="free">Filter frei</option>
                   <option value="counter" selected>Counter Ausreisser</option>
                   <option value="decrease">nicht ansteigende Spruenge</option>
@@ -515,7 +525,9 @@
                   <option value="null">NULL Werte</option>
                   <option value="zero">0-Werte</option>
                   <option value="all">alle werte</option>
-                </select>
+                  </select>
+                  <button type="button" class="ib_clear_btn" data-clear-for="scan_preset" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+                </div>
                 <div class="muted">&nbsp;</div>
               </div>
 
@@ -537,38 +549,53 @@
            <div class="row" style="margin-top:0;" id="free_filter_row" data-ui="filterlist_free_row" title="filterlist_free_row">
               <div style="min-width: 110px;">
                 <label>Links</label>
+                <div class="ib_clear_row">
                 <select id="tbl_a_op" data-ui="filterlist_left_op">
                   <option value=">">&gt;</option>
                   <option value=">=">&gt;=</option>
                   <option value="<" selected>&lt;</option>
                   <option value="<=">&lt;=</option>
                 </select>
+                <button type="button" class="ib_clear_btn" data-clear-for="tbl_a_op" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+                </div>
               </div>
               <div style="min-width: 130px;">
                 <label>&nbsp;</label>
-                <input id="tbl_a_val" placeholder="0" data-ui="filterlist_left_val" />
+                <div class="ib_clear_row">
+                  <input id="tbl_a_val" placeholder="0" data-ui="filterlist_left_val" />
+                  <button type="button" class="ib_clear_btn" data-clear-for="tbl_a_val" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+                </div>
               </div>
 
               <div style="min-width: 110px;">
                 <label>Verb.</label>
+                <div class="ib_clear_row">
                 <select id="tbl_mode" data-ui="filterlist_mode">
                   <option value="or" selected>oder</option>
                   <option value="and">und</option>
                 </select>
+                <button type="button" class="ib_clear_btn" data-clear-for="tbl_mode" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+                </div>
               </div>
 
               <div style="min-width: 110px;">
                 <label>Rechts</label>
+                <div class="ib_clear_row">
                 <select id="tbl_b_op" data-ui="filterlist_right_op">
                   <option value=">" selected>&gt;</option>
                   <option value=">=">&gt;=</option>
                   <option value="<">&lt;</option>
                   <option value="<=">&lt;=</option>
                 </select>
+                <button type="button" class="ib_clear_btn" data-clear-for="tbl_b_op" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+                </div>
               </div>
               <div style="min-width: 130px;">
                 <label>&nbsp;</label>
-                <input id="tbl_b_val" placeholder="999999" data-ui="filterlist_right_val" />
+                <div class="ib_clear_row">
+                  <input id="tbl_b_val" placeholder="999999" data-ui="filterlist_right_val" />
+                  <button type="button" class="ib_clear_btn" data-clear-for="tbl_b_val" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+                </div>
              </div>
            </div>
 
@@ -629,16 +656,19 @@
             <label style="display:block; font-size:12px; opacity:0.8;">Grund Filter</label>
             <div class="ib_clear_row">
               <input id="reason_filter" placeholder="enthaelt..." data-ui="reason_filter" title="reason_filter" style="height: 34px;" />
-              <button type="button" class="ib_clear_btn" data-clear-for="reason_filter" aria-label="Feld leeren" title="Feld leeren">X</button>
+              <button type="button" class="ib_clear_btn" data-clear-for="reason_filter" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
             </div>
           </div>
           <div style="min-width: 180px;">
             <label style="display:block; font-size:12px; opacity:0.8;">Klasse</label>
+            <div class="ib_clear_row">
             <select id="class_filter" data-ui="editlist.class_filter" title="editlist.class_filter" style="height: 34px; min-width: 210px; padding: 4px 24px 4px 8px;">
               <option value="all" selected>alle</option>
               <option value="primary">primaer</option>
               <option value="secondary">sekundaer</option>
             </select>
+            <button type="button" class="ib_clear_btn" data-clear-for="class_filter" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+            </div>
           </div>
         </div>
 

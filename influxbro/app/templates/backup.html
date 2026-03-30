@@ -123,7 +123,10 @@
             <div>
               <label class="label_row ib_sel_label"><span>Einheit (_measurement)</span><span id="cnt_measurement_filter" class="muted"></span></label>
               <div class="ib_sel_stack">
-                <input id="measurement_filter" list="measurement_list" placeholder="optional" data-ui="backup.measurement_filter" title="backup.measurement_filter" />
+                <div class="ib_clear_row">
+                  <input id="measurement_filter" list="measurement_list" placeholder="optional" data-ui="backup.measurement_filter" title="backup.measurement_filter" />
+                  <button type="button" class="ib_clear_btn" data-clear-for="measurement_filter" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+                </div>
                 <datalist id="measurement_list"></datalist>
                 <div class="ib_sel_desc">
                   <button type="button" class="ib_sel_help" data-title="Einheit (_measurement)" data-help="Filtert die Vorschlaege fuer friendly_name/entity_id auf dieses Measurement. Du kannst frei tippen oder aus der Liste waehlen.">?</button>
@@ -134,7 +137,10 @@
             <div>
               <label class="label_row ib_sel_label"><span>Messwert (Klartext / friendly_name)</span><span id="cnt_friendly_name" class="muted"></span></label>
               <div class="ib_sel_stack">
-                <input id="friendly_name" list="friendly_list" placeholder="optional" data-ui="backup.friendly_name" title="backup.friendly_name" />
+                <div class="ib_clear_row">
+                  <input id="friendly_name" list="friendly_list" placeholder="optional" data-ui="backup.friendly_name" title="backup.friendly_name" />
+                  <button type="button" class="ib_clear_btn" data-clear-for="friendly_name" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+                </div>
                 <datalist id="friendly_list"></datalist>
                 <div class="ib_sel_desc">
                   <button type="button" class="ib_sel_help" data-title="Messwert (friendly_name)" data-help="Waehle den Klartext-Namen des Messwerts. Falls mehrere Entity-IDs denselben Namen haben, nutze zusaetzlich den entity_id Filter.">?</button>
@@ -145,7 +151,10 @@
             <div>
               <label class="label_row ib_sel_label"><span>Entity ID (entity_id)</span><span id="cnt_entity_id" class="muted"></span></label>
               <div class="ib_sel_stack">
-                <input id="entity_id" list="entity_list" placeholder="optional" data-ui="backup.entity_id" title="backup.entity_id" />
+                <div class="ib_clear_row">
+                  <input id="entity_id" list="entity_list" placeholder="optional" data-ui="backup.entity_id" title="backup.entity_id" />
+                  <button type="button" class="ib_clear_btn" data-clear-for="entity_id" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+                </div>
                 <datalist id="entity_list"></datalist>
                 <div class="ib_sel_desc">
                   <button type="button" class="ib_sel_help" data-title="Entity ID" data-help="Optionaler Filter, um Messwerte zu unterscheiden, wenn mehrere Entity-IDs denselben friendly_name teilen.">?</button>
@@ -157,7 +166,8 @@
             <div>
               <label class="label_row ib_sel_label"><span>Zeitraum</span><span><span id="cnt_range" class="muted"></span> <span id="range_bounds" class="muted"></span></span></label>
               <div class="ib_sel_stack">
-                <select id="range" data-ui="backup.range" title="backup.range">
+                <div class="ib_clear_row">
+                  <select id="range" data-ui="backup.range" title="backup.range">
                   <option value="1h">Letzte 1h</option>
                   <option value="6h">Letzte 6h</option>
                   <option value="12h">Letzte 12h</option>
@@ -171,7 +181,9 @@
                   <option value="24mo">Letzte 24 Monate</option>
                   <option value="all">Alle</option>
                   <option value="custom">Benutzerdefiniert…</option>
-                </select>
+                  </select>
+                  <button type="button" class="ib_clear_btn" data-clear-for="range" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+                </div>
                 <div class="ib_sel_desc">
                   <button type="button" class="ib_sel_help" data-title="Zeitraum" data-help="Steuert den Zeitbereich fuer ein Zeitbereich-Backup (Auswahl) und die Anzeige unterhalb. Bei Benutzerdefiniert kannst du Start/Stop setzen.">?</button>
                   <div class="muted">Zeitintervall fuer Zeitbereich-Backup (Auswahl).</div>
@@ -238,7 +250,10 @@
               <div style="min-width: 320px; flex:1;">
                 <label>Volltextsuche (Backupliste)</label>
                 <div class="row" style="margin-top:0; align-items:center; gap: 8px;">
-                  <input id="q_backup" placeholder="created_at, name, measurement, field, entity_id..." data-ui="backup.search" title="backup.search" style="flex:1; min-width: 220px;" />
+                  <div class="ib_clear_row" style="flex:1; min-width:220px;">
+                    <input id="q_backup" placeholder="created_at, name, measurement, field, entity_id..." data-ui="backup.search" title="backup.search" style="flex:1; min-width: 220px;" />
+                    <button type="button" class="ib_clear_btn" data-clear-for="q_backup" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+                  </div>
                   <button id="q_backup_all" class="btn_sm" data-ui="backup.search_all" title="backup.search_all" style="height:34px; padding:8px 10px;">Alle</button>
                   <button id="q_backup_from_dash" class="btn_sm" data-ui="backup.search_from_dash" title="backup.search_from_dash" style="height:34px; padding:8px 10px;">aus Dashboardauswahl</button>
                 </div>

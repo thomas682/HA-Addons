@@ -837,7 +837,10 @@
       <span class="pct" id="ib_zoom_pct" data-ui="topbar.zoom.pct" title="topbar.zoom.pct">100%</span>
       <button id="ib_zoom_in" type="button" aria-label="Zoom in" data-ui="topbar.zoom.in" title="topbar.zoom.in">+</button>
     </div>
-    <input id="ib_page_search" type="text" data-ui="page.search" title="page.search" placeholder="Elemente auf dieser Seite suchen..." />
+    <div class="ib_clear_row" style="flex:1 1 280px; min-width:220px;">
+      <input id="ib_page_search" type="text" data-ui="page.search" title="page.search" placeholder="Elemente auf dieser Seite suchen..." />
+      <button type="button" class="ib_clear_btn" data-clear-for="ib_page_search" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+    </div>
     <button id="ib_page_search_prev" class="iconbtn ib_page_search_btn" type="button" data-ui="page.search.prev" title="page.search.prev" aria-label="Vorheriger Treffer">&lt;</button>
     <button id="ib_page_search_next" class="iconbtn ib_page_search_btn" type="button" data-ui="page.search.next" title="page.search.next" aria-label="Naechster Treffer">&gt;</button>
     <button id="ib_page_search_settings" class="iconbtn ib_page_search_btn" type="button" data-ui="page.search.settings" title="page.search.settings" aria-label="Sucheinstellungen">

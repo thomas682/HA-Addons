@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.159
+
+### Fix
+
+- Alle Felder, die zuvor ueber die alte Laufzeitlogik automatisch einen Clear-Button erhalten haben, besitzen jetzt statische `.ib_clear_btn`-Buttons direkt im HTML. Dadurch ist die Clear-Funktion wieder auf allen betroffenen Seiten vollstaendig sichtbar verfuegbar.
+- Die Clear-Buttons verwenden wieder das urspruengliche Papierkorb-SVG statt eines Text-`X`.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`, `pytest tests/test_api_ui_support.py -q`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.158
 
 ### Fix

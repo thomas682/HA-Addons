@@ -126,7 +126,10 @@
                   <div style="min-width: 320px; flex:1;">
                     <label>Volltextsuche</label>
                     <div class="row" style="margin-top:0; align-items:center; gap: 8px;">
-                      <input id="q_backup" placeholder="created_at, name, measurement, field..." data-ui="restore.backup_search" title="restore.backup_search" style="flex:1; min-width: 220px;" />
+                      <div class="ib_clear_row" style="flex:1; min-width:220px;">
+                        <input id="q_backup" placeholder="created_at, name, measurement, field..." data-ui="restore.backup_search" title="restore.backup_search" style="flex:1; min-width: 220px;" />
+                        <button type="button" class="ib_clear_btn" data-clear-for="q_backup" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+                      </div>
                       <button id="q_backup_all" class="btn_sm" data-ui="restore.search_all" title="restore.search_all" style="height:34px; padding:8px 10px;">Alle</button>
                       <button id="q_backup_from_dash" class="btn_sm" data-ui="restore.search_from_dash" title="restore.search_from_dash" style="height:34px; padding:8px 10px;">aus Dashboardauswahl</button>
                     </div>
@@ -211,7 +214,7 @@
                  <div class="ib_sel_stack">
                     <div class="ib_clear_row">
                       <input id="measurement_filter" list="measurement_list" placeholder="optional" data-ui="restore.measurement_filter" title="restore.measurement_filter" />
-                      <button type="button" class="ib_clear_btn" data-clear-for="measurement_filter" aria-label="Feld leeren" title="Feld leeren">X</button>
+                      <button type="button" class="ib_clear_btn" data-clear-for="measurement_filter" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
                     </div>
                    <datalist id="measurement_list"></datalist>
                    <div class="ib_sel_desc">
@@ -225,7 +228,7 @@
                 <div class="ib_sel_stack">
                   <div class="ib_clear_row">
                     <input id="friendly_name" list="friendly_list" placeholder="optional" data-ui="restore.friendly_name" title="restore.friendly_name" />
-                    <button type="button" class="ib_clear_btn" data-clear-for="friendly_name" aria-label="Feld leeren" title="Feld leeren">X</button>
+                    <button type="button" class="ib_clear_btn" data-clear-for="friendly_name" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
                   </div>
                   <datalist id="friendly_list"></datalist>
                   <div class="ib_sel_desc">
@@ -239,7 +242,7 @@
                  <div class="ib_sel_stack">
                     <div class="ib_clear_row">
                       <input id="entity_id" list="entity_list" placeholder="optional" data-ui="restore.entity_id" title="restore.entity_id" />
-                      <button type="button" class="ib_clear_btn" data-clear-for="entity_id" aria-label="Feld leeren" title="Feld leeren">X</button>
+                      <button type="button" class="ib_clear_btn" data-clear-for="entity_id" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
                     </div>
                    <datalist id="entity_list"></datalist>
                    <div class="ib_sel_desc">
@@ -263,7 +266,7 @@
                     <option value="all" selected>Alle Werte</option>
                     <option value="custom">Benutzerdefiniert…</option>
                     </select>
-                    <button type="button" class="ib_clear_btn" data-clear-for="range" aria-label="Feld leeren" title="Feld leeren">X</button>
+                    <button type="button" class="ib_clear_btn" data-clear-for="range" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
                   </div>
                   <div class="ib_sel_desc">
                     <button type="button" class="ib_sel_help" data-title="Zeitfilter" data-help="Optionaler Zeitfilter fuer den Restore. Standard ist 'Alle Werte'. Bei Benutzerdefiniert kannst du Start/Stop setzen.">?</button>

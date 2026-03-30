@@ -106,7 +106,10 @@
               <div class="ib_sel" style="min-width: 220px;">
                 <label class="label_row ib_sel_label"><span>_measurement</span><span id="cnt_src_measurement" class="muted"></span></label>
                 <div class="ib_sel_stack">
-                  <input id="src_measurement" list="measurement_list" placeholder="required" data-ui="combine.src.measurement" title="combine.src.measurement"/>
+                  <div class="ib_clear_row">
+                    <input id="src_measurement" list="measurement_list" placeholder="required" data-ui="combine.src.measurement" title="combine.src.measurement"/>
+                    <button type="button" class="ib_clear_btn" data-clear-for="src_measurement" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+                  </div>
                   <datalist id="measurement_list"></datalist>
                   <div class="ib_sel_desc">
                     <button type="button" class="ib_sel_help" data-title="Quelle _measurement" data-help="Measurement der Quelle. Aktuell ist _measurement erforderlich (Preview + Copy benoetigen eine eindeutige Serie).">?</button>
@@ -117,7 +120,10 @@
               <div class="ib_sel" style="min-width: 220px;">
                 <label class="label_row ib_sel_label"><span>_field</span><span id="cnt_src_field" class="muted"></span></label>
                 <div class="ib_sel_stack">
-                  <input id="src_field" list="src_field_list" placeholder="value" data-ui="combine.src.field" title="combine.src.field"/>
+                  <div class="ib_clear_row">
+                    <input id="src_field" list="src_field_list" placeholder="value" data-ui="combine.src.field" title="combine.src.field"/>
+                    <button type="button" class="ib_clear_btn" data-clear-for="src_field" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+                  </div>
                   <datalist id="src_field_list"></datalist>
                   <div class="ib_sel_desc">
                     <button type="button" class="ib_sel_help" data-title="Quelle _field" data-help="Field der Quelle. Default: value.">?</button>
@@ -130,7 +136,10 @@
               <div class="ib_sel" style="min-width: 240px;">
                 <label class="label_row ib_sel_label"><span>Entity ID (entity_id)</span><span id="cnt_src_entity" class="muted"></span></label>
                 <div class="ib_sel_stack">
-                  <input id="src_entity_id" list="src_entity_list" placeholder="optional" data-ui="combine.src.entity_id" title="combine.src.entity_id"/>
+                  <div class="ib_clear_row">
+                    <input id="src_entity_id" list="src_entity_list" placeholder="optional" data-ui="combine.src.entity_id" title="combine.src.entity_id"/>
+                    <button type="button" class="ib_clear_btn" data-clear-for="src_entity_id" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+                  </div>
                   <datalist id="src_entity_list"></datalist>
                   <div class="ib_sel_desc">
                     <button type="button" class="ib_sel_help" data-title="Quelle entity_id" data-help="Tag-Filter fuer die Quelle. Mindestens entity_id ODER friendly_name muss gesetzt sein.">?</button>
@@ -141,7 +150,10 @@
               <div class="ib_sel" style="min-width: 240px;">
                 <label class="label_row ib_sel_label"><span>Messwert (friendly_name)</span><span id="cnt_src_friendly" class="muted"></span></label>
                 <div class="ib_sel_stack">
-                  <input id="src_friendly_name" list="src_friendly_list" placeholder="optional" data-ui="combine.src.friendly" title="combine.src.friendly"/>
+                  <div class="ib_clear_row">
+                    <input id="src_friendly_name" list="src_friendly_list" placeholder="optional" data-ui="combine.src.friendly" title="combine.src.friendly"/>
+                    <button type="button" class="ib_clear_btn" data-clear-for="src_friendly_name" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+                  </div>
                   <datalist id="src_friendly_list"></datalist>
                   <div class="ib_sel_desc">
                     <button type="button" class="ib_sel_help" data-title="Quelle friendly_name" data-help="Tag-Filter fuer die Quelle. Mindestens entity_id ODER friendly_name muss gesetzt sein.">?</button>
