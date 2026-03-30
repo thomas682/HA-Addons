@@ -211,7 +211,7 @@ def test_summary_rows_use_full_summary_bar_style():
 
 def test_dashboard_selection_labels_and_widths_are_updated():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
-    assert '<label class="ib_sel_label">Einheit</label>' in body
+    assert '<span>Einheit</span><span id="cnt_measurement_filter" class="muted"></span>' in body
     assert '<span>Feld</span><span id="cnt_field" class="muted"></span>' in body
     assert '<span>Entity</span>' in body
     assert '<span>Name</span>' in body
@@ -221,6 +221,34 @@ def test_dashboard_selection_labels_and_widths_are_updated():
     assert "selEl.style.width = '';" in body
     assert "inputEl.style.width = px + 'px';" not in body
     assert "selEl.style.width = px + 'px';" not in body
+
+
+def test_dashboard_raw_actions_and_titles_are_updated():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert 'Grafische Analyse' in body
+    assert 'Raw Daten Analyse' in body
+    assert 'id="raw_delete"' in body
+    assert 'id="raw_undo"' in body
+    assert 'id="raw_info_btn"' in body
+    assert '>Änderung<' in body
+
+
+def test_popup_copy_icon_and_font_setting_are_present():
+    tooltips = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
+    config = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "config.html").read_text()
+    app_py = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "app.py").read_text()
+    assert 'stroke="#1C274C"' in tooltips
+    assert 'ui_popup_pre_font_px' in tooltips
+    assert 'ui_popup_pre_font_px' in config
+    assert 'ui_popup_pre_font_px' in app_py
+
+
+def test_raw_history_summary_endpoint_and_trigger_metadata_exist():
+    app_py = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "app.py").read_text()
+    assert '@app.post("/api/raw_history_summary")' in app_py
+    assert '"trigger_page": trigger_page' in app_py
+    assert '"trigger_source": trigger_source' in app_py
+    assert '"trigger_button": trigger_button' in app_py
 
 
 def test_popup_remains_mouse_resizable():

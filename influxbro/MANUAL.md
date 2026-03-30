@@ -129,7 +129,7 @@ Sichtbare Feldnamen im Dashboard:
 - `friendly_name` -> `Name`
 
 Die Auswahlelemente sind auf maximal 60% Breite begrenzt; Labels und Hinweistexte darunter orientieren sich an derselben Breite.
-Das Label `Feld` zeigt wieder die aktuelle Anzahl der verfuegbaren Optionen direkt daneben an.
+Die Labels `Einheit` und `Feld` zeigen wieder die aktuelle Anzahl der verfuegbaren Optionen direkt daneben an.
 Auch nach dynamischen Refreshs und Vorschlagslisten-Updates werden keine Inline-Breiten mehr gesetzt, damit diese 60%-Begrenzung stabil wirksam bleibt.
 
 Alle Felder, die frueher automatisch einen Clear-Button erhalten haben, besitzen jetzt dauerhaft einen statischen Clear-Button mit dem urspruenglichen Papierkorb-Icon direkt neben dem Feld.
@@ -494,6 +494,9 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Im Dashboard wurden die alte sichtbare Kopfzeile `Gesamtstatistik (Alles)` und der zugehoerige Tipps-Text entfernt. Die zentrale Seitenstruktur bleibt innerhalb von `dashboard.page` gebuendelt.
 - Die Dashboard-Sections `selection`, `graph`, `raw` und `filterlist` sind jetzt als direkte Geschwister unter `dashboard.page` angeordnet.
 - Ein frueherer HTML-Strukturfehler im Auswahl-Block ist entfernt; dadurch stimmt die DevTools-Struktur wieder mit der beabsichtigten Dashboard-Hierarchie ueberein.
+- Die Dashboard-Bloecke heissen jetzt `Grafische Analyse` und `Raw Daten Analyse`.
+- Die Raw-Tabelle besitzt jetzt eine kompakte Spalte `Aenderung`. Darin werden passende History-Eintraege je DB-Wert kurz zusammengefasst.
+- Ueber der Raw-Tabelle gibt es zusaetzlich `Löschen`, `Undo` und `Info`. `Löschen` loescht den selektierten DB-Wert nach Rueckfrage. `Undo` macht genau die letzte direkte Button-Aenderung (`Einfügen` oder `Löschen`) fuer den selektierten Raw-Wert rueckgaengig. `Info` zeigt die komplette Aenderungshistorie des selektierten Raw-Werts im Popup.
 
 ## Diagnose
 
@@ -599,6 +602,7 @@ UI:
 - `Raw max. Bereich +-`: Obergrenze in Minuten fuer den Dashboard-Wert `Bereich +-` ueber der Raw-Tabelle.
 - `Raw Bereich +- Standard`: Vorbelegung in Minuten fuer den Dashboard-Wert `Bereich +-`.
 - `Raw Mindestdatenpunkte je Seite`: Mindestanzahl an Rohpunkten vor und nach dem selektierten Messpunkt, bevor InfluxBro den Suchbereich automatisch erweitert.
+- `Popup Text Schriftgroesse (px)`: Schriftgroesse fuer `influxbro_popup_pre` in Info-, Query- und Log-Dialogen (Default: 10).
 - `Bugreport Log-Historie (Stunden)`: begrenzt die Log-Historie im Debug-Report auf die letzten X Stunden.
 - Dashboard-Autotuning nutzt fuer benutzerdefinierte Zeitraeume jetzt immer UTC-Zeitstempel mit Zeitzone, damit die Server-Pruefung stabil funktioniert.
 - `Manual max. Punkte (Dashboard Graph)`: Sicherheitslimit fuer `Details: Manuell` (100%).

@@ -218,7 +218,7 @@
         <div style="font-weight:800;">Quelle</div>
         <div class="grid" style="margin-top:10px;">
           <div class="ib_sel" id="c_measurement_filter" data-ui="filter_measurement">
-            <label class="ib_sel_label">Einheit</label>
+            <label class="label_row ib_sel_label"><span>Einheit</span><span id="cnt_measurement_filter" class="muted"></span></label>
             <div class="ib_sel_stack">
               <div class="ib_clear_row">
                 <input id="measurement_filter" list="measurement_filter_list" placeholder="optional" data-ui="filter_measurement_input" autocomplete="off" />
@@ -329,7 +329,7 @@
 
     <div class="control" data-ui="dashboard.actions" title="dashboard.actions">
       <div style="display:flex; gap: 8px; align-items: stretch;">
-        <button id="load" class="btn_sm" style="flex:1; height:34px; padding:8px 10px;" data-ui="dashboard.load">Aktualisieren</button>
+        <button id="load" class="btn_sm" style="height:34px; padding:8px 10px; flex:0 0 auto; width:auto;" data-ui="dashboard.load">Aktualisieren</button>
         <button id="cancel_load" class="btn_sm" style="width:auto; white-space:nowrap;" data-ui="dashboard.cancel">Abbruch</button>
         <button id="reset_filters" class="btn_sm" style="width:auto; white-space:nowrap;" data-ui="dashboard.reset" title="dashboard.reset">Reset</button>
         <button id="dashboard_query_open" type="button" class="btn_sm" style="width:auto; min-width:34px; padding:6px 8px;" data-ui="dashboard.query_details" title="dashboard.query_details" aria-label="Dashboard Query anzeigen"><svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="11" cy="15.5" r="1.5"></circle><path d="M12,12H10V8h2a2,2,0,0,0,0-4H10A2.0023,2.0023,0,0,0,8,6v.5H6V6a4.0045,4.0045,0,0,1,4-4h2a4,4,0,0,1,0,8Z"></path><path d="M22.4479,21.0337A10.971,10.971,0,0,0,19.9211,4.7446l-.999,1.73A8.9967,8.9967,0,1,1,5,14H3a10.9916,10.9916,0,0,0,18.0338,8.4478L28.5859,30,30,28.5859Z"></path></svg></button>
@@ -372,7 +372,7 @@
   <div id="stats_total_store" style="display:none;"><table class="stats_tbl"><tbody id="stats_tot_body"></tbody></table></div>
 
     <details id="graph_section" class="section" {{ 'open' if cfg.get('ui_open_graph') else '' }} data-ui="section.graph" title="section.graph">
-      <summary><span class="ib_summary_row"><span class="section_title" style="margin:0;">Graph</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Graph" data-info-body="Der Graph ist die zentrale Visualisierung der aktuell gewaehlten Serie.\n\nEnthaelt:\n- Zeitreihen-Plot mit Zoom und Auswahl\n- Marker fuer selektierte Punkte\n- Detail-Modi, Ableitungen und Zusatzinfos unter dem Plot\n- Raw-Synchronisation: ein Klick auf einen Punkt steuert die Raw-Tabelle\n\nNutzen:\n- zeitliche Analyse\n- Auswahl eines Ankerpunkts fuer Raw-Daten und Bearbeitung" >i</button></span></summary>
+      <summary><span class="ib_summary_row"><span class="section_title" style="margin:0;">Grafische Analyse</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Graph" data-info-body="Der Graph ist die zentrale Visualisierung der aktuell gewaehlten Serie.\n\nEnthaelt:\n- Zeitreihen-Plot mit Zoom und Auswahl\n- Marker fuer selektierte Punkte\n- Detail-Modi, Ableitungen und Zusatzinfos unter dem Plot\n- Raw-Synchronisation: ein Klick auf einen Punkt steuert die Raw-Tabelle\n\nNutzen:\n- zeitliche Analyse\n- Auswahl eines Ankerpunkts fuer Raw-Daten und Bearbeitung" >i</button></span></summary>
       <div class="tbl_actions" data-ui="graph_actions">
         <label><input type="checkbox" id="graph_markers" class="row_sel" data-ui="graph_markers"/>Messpunkte markieren</label>
         <button class="btn_sm" id="graph_refresh" type="button" data-ui="graph.refresh" title="graph.refresh" aria-label="Graph neu zeichnen"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M18.6091 5.89092L15.5 9H21.5V3L18.6091 5.89092ZM18.6091 5.89092C16.965 4.1131 14.6125 3 12 3C7.36745 3 3.55237 6.50005 3.05493 11M5.39092 18.1091L2.5 21V15H8.5L5.39092 18.1091ZM5.39092 18.1091C7.03504 19.8869 9.38753 21 12 21C16.6326 21 20.4476 17.5 20.9451 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
@@ -430,7 +430,7 @@
     </details>
 
     <details id="raw_section" class="section" style="margin-top: 10px;" data-ui="section.raw" title="section.raw">
-      <summary><span class="ib_summary_row"><span>Raw Daten (DB)</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Raw Daten" data-info-body="Raw-Tabelle zeigt echte Datenpunkte aus der DB rund um den im Graph selektierten Messpunkt.\n\nFeatures:\n- symmetrisches Laden um den selektierten Punkt\n- automatische Erweiterung bei zu wenigen Datenpunkten je Seite\n- direkte Wertuebernahme per Quelle/Ziel oder Drag-and-Drop" >i</button></span></summary>
+      <summary><span class="ib_summary_row"><span>Raw Daten Analyse</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Raw Daten" data-info-body="Raw-Tabelle zeigt echte Datenpunkte aus der DB rund um den im Graph selektierten Messpunkt.\n\nFeatures:\n- symmetrisches Laden um den selektierten Punkt\n- automatische Erweiterung bei zu wenigen Datenpunkten je Seite\n- direkte Wertuebernahme per Quelle/Ziel oder Drag-and-Drop" >i</button></span></summary>
       <div class="table_wrap" style="margin-top: 10px;">
         <div class="table_title">Raw Daten</div>
         <div class="table_head">
@@ -481,12 +481,15 @@
         <button class="btn_sm" id="raw_copy" data-ui="raw.copy" title="raw.copy">Kopieren</button>
         <button class="btn_sm" id="raw_copy_value" data-ui="raw.copy_value" title="raw.copy_value">Wert kopieren</button>
         <button class="btn_sm" id="raw_paste" data-ui="raw.paste" title="raw.paste" disabled>Einfügen</button>
+        <button class="btn_sm" id="raw_delete" data-ui="raw.delete" title="raw.delete" disabled>Löschen</button>
+        <button class="btn_sm" id="raw_undo" data-ui="raw.undo" title="raw.undo" disabled>Undo</button>
+        <button class="btn_sm" id="raw_info_btn" data-ui="raw.info_btn" title="raw.info_btn" disabled>Info</button>
         <span id="raw_copied_info" class="muted" style="margin-left:6px;"></span>
       </div>
 
       <div class="table_box" id="raw_box" style="--max-rows: 10;">
       <table id="raw_tbl" class="list_tbl ib_tbl" data-ui="raw.table" title="raw.table">
-        <thead><tr><th style="min-width: 170px;">Zeit</th><th>Wert</th></tr></thead>
+        <thead><tr><th style="min-width: 170px;">Zeit</th><th>Wert</th><th style="min-width: 220px;">Änderung</th></tr></thead>
         <tbody id="raw_body"></tbody>
       </table>
     </div>
@@ -897,6 +900,9 @@ const $rawCenterRange = document.getElementById('raw_center_range');
 const $rawCenterRangeHint = document.getElementById('raw_center_range_hint');
 const $rawCopyValue = document.getElementById('raw_copy_value');
 const $rawPaste = document.getElementById('raw_paste');
+const $rawDelete = document.getElementById('raw_delete');
+const $rawUndo = document.getElementById('raw_undo');
+const $rawInfoBtn = document.getElementById('raw_info_btn');
 const $rawCopiedInfo = document.getElementById('raw_copied_info');
 
 const $graphQuerySection = document.getElementById('graph_query_section');
@@ -2205,6 +2211,84 @@ async function preloadOutlierDetails(maxTotal, awaitFirst){
 
 function rowKey(row){
   return String(row && row.time ? row.time : "");
+}
+
+let RAW_HISTORY_BY_KEY = new Map();
+let RAW_UNDOABLE_BY_KEY = new Map();
+
+function _rawHistoryEntries(key){
+  try{
+    const arr = RAW_HISTORY_BY_KEY.get(String(key || ''));
+    return Array.isArray(arr) ? arr : [];
+  }catch(e){
+    return [];
+  }
+}
+
+function _rawUndoableEntry(key){
+  try{ return RAW_UNDOABLE_BY_KEY.get(String(key || '')) || null; }catch(e){ return null; }
+}
+
+function _rawHistoryCompact(key){
+  const entries = _rawHistoryEntries(key);
+  if(!entries.length) return '';
+  const it = entries[0] || {};
+  const act = String(it.action || '').trim();
+  const oldTxt = (it.old_value === null || it.old_value === undefined) ? '' : fmtNum(it.old_value);
+  const newTxt = (it.new_value === null || it.new_value === undefined) ? '' : fmtNum(it.new_value);
+  const delta = (act === 'delete') ? `delete ${oldTxt}` : (oldTxt || newTxt ? `${oldTxt} -> ${newTxt || '-'}` : act);
+  const when = fmtTs(it.at || it.time || '');
+  const extra = entries.length > 1 ? ` (+${entries.length - 1})` : '';
+  return `${act || 'change'} ${delta}${when ? ' | ' + when : ''}${extra}`.trim();
+}
+
+function _rawHistoryDetailsText(key){
+  const entries = _rawHistoryEntries(key);
+  if(!entries.length) return 'Keine History zu diesem Raw-Wert vorhanden.';
+  return entries.map((it, idx)=>[
+    `#${idx + 1}`,
+    `Datum: ${fmtTs(it.at || '')}`,
+    `Zeitpunkt: ${fmtTs(it.time || '')}`,
+    `Aktion: ${String(it.action || '')}`,
+    `Alt: ${(it.old_value === null || it.old_value === undefined) ? '-' : fmtNum(it.old_value)}`,
+    `Neu: ${(it.new_value === null || it.new_value === undefined) ? '-' : fmtNum(it.new_value)}`,
+    `Grund: ${String(it.reason || '-')}`,
+    `Ausloeser: ${String(it.trigger_button || it.trigger_action || '-')}`,
+    `Bereich: ${String(it.trigger_source || '-')}`,
+    `Seite: ${String(it.trigger_page || '-')}`,
+  ].join('\n')).join('\n\n');
+}
+
+async function loadRawHistorySummary(base){
+  try{
+    RAW_HISTORY_BY_KEY = new Map();
+    RAW_UNDOABLE_BY_KEY = new Map();
+    const rows = Array.isArray(RAW_ROWS) ? RAW_ROWS : [];
+    const times = rows.map(r => String(r && r.time ? r.time : '')).filter(Boolean);
+    if(!times.length || !base || !base.measurement || !base.field) return;
+    const j = await api('./api/raw_history_summary', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        measurement: base.measurement,
+        field: base.field,
+        entity_id: base.entity_id,
+        friendly_name: base.friendly_name,
+        times,
+      })
+    });
+    const grouped = j && j.rows ? j.rows : {};
+    const undoable = j && j.undoable ? j.undoable : {};
+    rows.forEach(r => {
+      const key = rowKey(r);
+      if(!key) return;
+      const list = Array.isArray(grouped[key]) ? grouped[key] : [];
+      RAW_HISTORY_BY_KEY.set(key, list);
+      if(undoable[key]) RAW_UNDOABLE_BY_KEY.set(key, undoable[key]);
+    });
+  }catch(e){
+    try{ console.warn('raw history summary failed', e); }catch(x){}
+  }
 }
 
 function _histGet(key){
@@ -4143,8 +4227,11 @@ function renderRawTable(){
     tdT.textContent = fmtTs(r.time);
     const tdV = document.createElement('td');
     tdV.textContent = fmtNum(r.value);
+    const tdH = document.createElement('td');
+    tdH.textContent = _rawHistoryCompact(rowKey(r));
     tr.appendChild(tdT);
     tr.appendChild(tdV);
+    tr.appendChild(tdH);
 
     tr.addEventListener('click', (ev)=>{
       try{ _stop(ev); }catch(e){}
@@ -4258,8 +4345,12 @@ function updateRawToolbarState(){
     if(!$rawPaste || !$rawCopyValue) return;
     const hasCopied = !!(RAW_COPIED && RAW_COPIED.key !== undefined);
     const hasTarget = !!(RAW_ROW_SELECTED_KEY && String(RAW_ROW_SELECTED_KEY).trim());
+    const undoable = hasTarget ? _rawUndoableEntry(RAW_ROW_SELECTED_KEY) : null;
     $rawPaste.disabled = !(hasCopied && hasTarget && String(RAW_ROW_SELECTED_KEY) !== String(RAW_COPIED && RAW_COPIED.key));
     $rawCopyValue.disabled = !hasTarget;
+    if($rawDelete) $rawDelete.disabled = !hasTarget;
+    if($rawUndo) $rawUndo.disabled = !undoable;
+    if($rawInfoBtn) $rawInfoBtn.disabled = !(hasTarget && _rawHistoryEntries(RAW_ROW_SELECTED_KEY).length);
     if($rawCopiedInfo){
       $rawCopiedInfo.textContent = hasCopied ? (`Quelle: ${fmtTs(RAW_COPIED.time)} | Wert: ${String(RAW_COPIED.value_str || '')}`) : '';
     }
@@ -4302,6 +4393,51 @@ function confirmRawOverwrite(sourceRow, targetRow){
   });
 }
 
+function buildRawDeletePrompt(row){
+  return [
+    'Raw Wert loeschen',
+    '',
+    `Zeitpunkt: ${fmtTs(row.time)}`,
+    `Wert: ${fmtNum(row.value)}`,
+    '',
+    'Wollen Sie diesen DB-Wert loeschen?'
+  ].join('\n');
+}
+
+function confirmRawDelete(row){
+  return new Promise((resolve)=>{
+    try{
+      if(window.InfluxBroPopup && window.InfluxBroPopup.show){
+        const txt = buildRawDeletePrompt(row);
+        window.InfluxBroPopup.show('Raw Wert loeschen', txt, {
+          actions: [
+            { label: 'Abbrechen', title: 'Abbrechen', onClick: ()=>resolve(false) },
+            { label: 'OK', title: 'OK', onClick: ()=>resolve(true) },
+          ],
+          copyText: txt,
+          copyTitle: 'Zwischenablage',
+        });
+        return;
+      }
+    }catch(e){}
+    try{ resolve(confirm(buildRawDeletePrompt(row))); }catch(e){ resolve(false); }
+  });
+}
+
+function buildRawUndoPrompt(hist){
+  return [
+    'Raw Undo',
+    '',
+    `DB-Zeitpunkt: ${fmtTs(hist.time || '')}`,
+    `Aenderung am: ${fmtTs(hist.at || '')}`,
+    `Alt: ${(hist.old_value === null || hist.old_value === undefined) ? '-' : fmtNum(hist.old_value)}`,
+    `Neu: ${(hist.new_value === null || hist.new_value === undefined) ? '-' : fmtNum(hist.new_value)}`,
+    `Aktion: ${String(hist.action || '')}`,
+    '',
+    'Moechten Sie diese Aenderung rueckgaengig machen?'
+  ].join('\n');
+}
+
 async function reloadRawRowByKey(key){
   const row = findRawRowByKey(key);
   const base = currentFilters();
@@ -4339,7 +4475,7 @@ async function triggerRawOverwrite(sourceKey, targetKey, opts){
   if(!sourceRow){ err('Quell-Zeile nicht geladen.'); return false; }
   if(!targetRow){ err('Ziel-Zeile nicht geladen.'); return false; }
   if(String(sourceKey) === String(targetKey)){ err('Quell- und Zielzeile sind identisch.'); return false; }
-  if(!base || !base.measurement || !base.field || !base.entity_id){ err('Bitte zuerst eine gueltige Dashboard-Serie laden.'); return false; }
+  if(!base || !base.measurement || !base.field || (!base.entity_id && !base.friendly_name)){ err('Bitte zuerst eine gueltige Dashboard-Serie laden.'); return false; }
   const newValue = rawNumericValueString(sourceRow.value);
   if(!newValue){ err('Quellwert ist nicht numerisch.'); return false; }
   if(!(await confirmRawOverwrite(sourceRow, targetRow))) return false;
@@ -4348,14 +4484,18 @@ async function triggerRawOverwrite(sourceKey, targetKey, opts){
   await api('./api/apply_changes', {
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({
-      confirm: true,
-      measurement: base.measurement,
-      field: base.field,
-      entity_id: base.entity_id,
-      friendly_name: base.friendly_name,
-      changes: [{
-        action: 'overwrite',
+      body: JSON.stringify({
+        confirm: true,
+        measurement: base.measurement,
+        field: base.field,
+        entity_id: base.entity_id,
+        friendly_name: base.friendly_name,
+        trigger_page: 'dashboard',
+        trigger_source: 'raw',
+        trigger_action: (opts && opts.mode === 'dragdrop') ? 'overwrite' : 'overwrite',
+        trigger_button: (opts && opts.mode === 'dragdrop') ? 'raw_dragdrop' : 'raw_paste',
+        changes: [{
+          action: 'overwrite',
         time: String(targetRow.time || ''),
         new_value: newValue,
         decimals: Math.max(0, _countDecimals(newValue)),
@@ -4397,6 +4537,94 @@ try{
       if(!RAW_COPIED){ err('Kein Quellwert markiert.'); return; }
       if(!RAW_ROW_SELECTED_KEY){ err('Bitte Ziel-Zeile markieren.'); return; }
       await triggerRawOverwrite(RAW_COPIED.key, RAW_ROW_SELECTED_KEY, {mode:'button'});
+    }catch(e){ displayError(e); }
+  });
+}catch(e){}
+
+try{
+  if($rawDelete) $rawDelete.addEventListener('click', async (ev)=>{
+    _stop(ev);
+    try{
+      if(!RAW_ROW_SELECTED_KEY){ err('Bitte zuerst eine Raw-Zeile markieren.'); return; }
+      const row = findRawRowByKey(RAW_ROW_SELECTED_KEY);
+      const base = currentFilters();
+      if(!row){ err('Zeile nicht geladen.'); return; }
+      if(!base || !base.measurement || !base.field || (!base.entity_id && !base.friendly_name)){ err('Bitte zuerst eine gueltige Dashboard-Serie laden.'); return; }
+      if(!(await confirmRawDelete(row))) return;
+      await api('./api/apply_changes', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          confirm: true,
+          measurement: base.measurement,
+          field: base.field,
+          entity_id: base.entity_id,
+          friendly_name: base.friendly_name,
+          trigger_page: 'dashboard',
+          trigger_source: 'raw',
+          trigger_action: 'delete',
+          trigger_button: 'raw_delete',
+          changes: [{
+            action: 'delete',
+            time: String(row.time || ''),
+            decimals: 0,
+            reason: 'Raw Delete button',
+          }],
+        })
+      });
+      await refreshAfterDataMutation({ rerunOutliers: true });
+      setRawSelectedKey(rowKey(row));
+      ok('Raw-Wert wurde geloescht.');
+      showRawActionFeedback('Raw Wert geloescht', `Zeitpunkt: ${fmtTs(row.time)}\nWert: ${fmtNum(row.value)}`);
+    }catch(e){ displayError(e); }
+  });
+}catch(e){}
+
+try{
+  if($rawUndo) $rawUndo.addEventListener('click', async (ev)=>{
+    _stop(ev);
+    try{
+      const key = String(RAW_ROW_SELECTED_KEY || '');
+      if(!key){ err('Bitte zuerst eine Raw-Zeile markieren.'); return; }
+      const hist = _rawUndoableEntry(key);
+      if(!hist){ err('Keine direkte Raw-Aenderung fuer Undo vorhanden.'); return; }
+      const txt = buildRawUndoPrompt(hist);
+      let want = false;
+      if(window.InfluxBroPopup && window.InfluxBroPopup.show){
+        want = await new Promise((resolve)=>{
+          window.InfluxBroPopup.show('Raw Undo', txt, {
+            actions: [
+              { label: 'Abbrechen', title: 'Abbrechen', onClick: ()=>resolve(false) },
+              { label: 'OK', title: 'OK', onClick: ()=>resolve(true) },
+            ],
+            copyText: txt,
+            copyTitle: 'Zwischenablage',
+          });
+        });
+      }else{
+        want = confirm(txt);
+      }
+      if(!want) return;
+      await api('./api/history_rollback', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ confirm: true, ids: [String(hist.id || '')] })
+      });
+      await refreshAfterDataMutation({ rerunOutliers: true });
+      setRawSelectedKey(key);
+      ok('Letzte Raw-Aenderung wurde rueckgaengig gemacht.');
+    }catch(e){ displayError(e); }
+  });
+}catch(e){}
+
+try{
+  if($rawInfoBtn) $rawInfoBtn.addEventListener('click', (ev)=>{
+    _stop(ev);
+    try{
+      const key = String(RAW_ROW_SELECTED_KEY || '');
+      if(!key){ err('Bitte zuerst eine Raw-Zeile markieren.'); return; }
+      const txt = _rawHistoryDetailsText(key);
+      if(window.InfluxBroPopup && window.InfluxBroPopup.show) window.InfluxBroPopup.show('Raw Aenderungen', txt, { copyText: txt, copyTitle: 'Zwischenablage' });
     }catch(e){ displayError(e); }
   });
 }catch(e){}
@@ -4461,6 +4689,8 @@ async function loadRawFromGraph(reset){
     RAW_OFFSET = 0;
     RAW_ROWS = [];
     RAW_META = null;
+    RAW_HISTORY_BY_KEY = new Map();
+    RAW_UNDOABLE_BY_KEY = new Map();
     RAW_ANCHOR_ISO = anchorIso;
     RAW_LAST_KEY = key;
   }
@@ -4528,6 +4758,8 @@ async function loadRawFromGraph(reset){
       else RAW_ROWS = (RAW_ROWS || []).concat(rows);
       RAW_OFFSET = (RAW_ROWS || []).length;
     }
+    renderRawTable();
+    try{ await loadRawHistorySummary(base); }catch(e){}
     renderRawTable();
     try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done('dashboard.raw', `Raw: ${RAW_OFFSET}`); }catch(e){}
     _rawStatusEnd(true);

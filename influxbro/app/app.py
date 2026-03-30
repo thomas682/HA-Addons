@@ -673,6 +673,7 @@ DEFAULT_CFG = {
 
     "ui_font_size_px": 14,
     "ui_font_small_px": 11,
+    "ui_popup_pre_font_px": 10,
     "ui_pagecard_title_px": 30,
     "ui_page_search_highlight_color": "#FF9900",
     "ui_page_search_highlight_width_px": 3,
@@ -921,6 +922,59 @@ def _history_read_all() -> list[dict[str, Any]]:
         return out
     except Exception:
         return []
+
+
+def _history_series_matches(
+    item: dict[str, Any],
+    measurement: str,
+    field: str,
+    entity_id: str | None,
+    friendly_name: str | None,
+) -> bool:
+    try:
+        series = item.get("series") or {}
+        if str(series.get("measurement") or "").strip() != str(measurement or "").strip():
+            return False
+        if str(series.get("field") or "").strip() != str(field or "").strip():
+            return False
+        want_eid = str(entity_id or "").strip()
+        have_eid = str(series.get("entity_id") or "").strip()
+        if want_eid != have_eid:
+            return False
+        want_fn = str(friendly_name or "").strip()
+        have_fn = str(series.get("friendly_name") or "").strip()
+        if want_fn != have_fn:
+            return False
+        return True
+    except Exception:
+        return False
+
+
+def _history_time_key(value: Any) -> str:
+    try:
+        raw = str(value or "").strip()
+        if not raw:
+            return ""
+        return _parse_iso_datetime(raw).isoformat()
+    except Exception:
+        return ""
+
+
+def _history_trigger_meta(item: dict[str, Any]) -> dict[str, str]:
+    try:
+        return {
+            "trigger_page": str(item.get("trigger_page") or "").strip(),
+            "trigger_source": str(item.get("trigger_source") or "").strip(),
+            "trigger_action": str(item.get("trigger_action") or "").strip(),
+            "trigger_button": str(item.get("trigger_button") or "").strip(),
+        }
+    except Exception:
+        return {
+            "trigger_page": "",
+            "trigger_source": "",
+            "trigger_action": "",
+            "trigger_button": "",
+        }
 
 
 def _timers_state_load() -> dict[str, Any]:
@@ -11432,6 +11486,7 @@ def api_set_config():
 
     _clamp_int("ui_font_size_px", 14, 10, 22)
     _clamp_int("ui_font_small_px", 11, 9, 18)
+    _clamp_int("ui_popup_pre_font_px", 10, 8, 24)
     _clamp_int("ui_pagecard_title_px", 30, 18, 48)
     _clamp_int("ui_page_search_highlight_width_px", 3, 1, 12)
     _clamp_int("ui_page_search_highlight_duration_ms", 1400, 200, 10000)
@@ -16899,6 +16954,10 @@ def apply_changes():
     entity_id = (body.get("entity_id") or "").strip() or None
     friendly_name = (body.get("friendly_name") or "").strip() or None
     changes = body.get("changes")
+    trigger_page = str(body.get("trigger_page") or "").strip() or None
+    trigger_source = str(body.get("trigger_source") or "").strip() or None
+    trigger_action = str(body.get("trigger_action") or "").strip() or None
+    trigger_button = str(body.get("trigger_button") or "").strip() or None
 
     if not measurement or not field:
         return jsonify({"ok": False, "error": "measurement and field required"}), 400
@@ -17058,6 +17117,10 @@ from(bucket: "{cfg["bucket"]}")
                 "old_value": old_val,
                 "new_value": new_val,
                 "reason": reason,
+                "trigger_page": trigger_page,
+                "trigger_source": trigger_source,
+                "trigger_action": trigger_action,
+                "trigger_button": trigger_button,
                 "ip": _req_ip(),
                 "ua": _req_ua(),
             })
@@ -17124,6 +17187,81 @@ def api_history_list():
                 break
 
         return jsonify({"ok": True, "rows": out})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 500
+
+
+@app.post("/api/raw_history_summary")
+def api_raw_history_summary():
+    try:
+        body = request.get_json(force=True) or {}
+        measurement = str(body.get("measurement") or "").strip()
+        field = str(body.get("field") or "").strip()
+        entity_id = str(body.get("entity_id") or "").strip() or None
+        friendly_name = str(body.get("friendly_name") or "").strip() or None
+        times = body.get("times")
+
+        if not measurement or not field:
+            return jsonify({"ok": False, "error": "measurement and field required"}), 400
+        if not isinstance(times, list) or not times:
+            return jsonify({"ok": False, "error": "times must be a non-empty list"}), 400
+
+        raw_time_map: dict[str, str] = {}
+        for it in times:
+            raw_key = str(it or "").strip()
+            norm = _history_time_key(raw_key)
+            if raw_key and norm:
+                raw_time_map[raw_key] = norm
+        wanted_keys = set(raw_time_map.values())
+        if not wanted_keys:
+            return jsonify({"ok": True, "rows": {}, "undoable": {}})
+
+        all_rows = _history_read_all()
+        rolled_back_refs = {
+            str(it.get("ref_id") or "").strip()
+            for it in all_rows
+            if isinstance(it, dict) and str(it.get("action") or "").strip().lower() == "rollback"
+        }
+
+        grouped: dict[str, list[dict[str, Any]]] = {k: [] for k in raw_time_map.keys()}
+        undoable: dict[str, dict[str, Any]] = {}
+
+        for it in reversed(all_rows):
+            if not isinstance(it, dict):
+                continue
+            if not _history_series_matches(it, measurement, field, entity_id, friendly_name):
+                continue
+            time_key = _history_time_key(it.get("time"))
+            if not time_key or time_key not in wanted_keys:
+                continue
+
+            trigger = _history_trigger_meta(it)
+            pub = {
+                "id": str(it.get("id") or ""),
+                "at": str(it.get("at") or ""),
+                "time": str(it.get("time") or ""),
+                "action": str(it.get("action") or ""),
+                "old_value": it.get("old_value"),
+                "new_value": it.get("new_value"),
+                "reason": str(it.get("reason") or ""),
+                "ref_id": str(it.get("ref_id") or ""),
+                **trigger,
+            }
+            is_raw_change = (
+                trigger["trigger_page"] == "dashboard"
+                and trigger["trigger_source"] == "raw"
+                and str(it.get("action") or "").strip().lower() in ("overwrite", "delete")
+                and trigger["trigger_button"] in ("raw_paste", "raw_delete")
+                and str(it.get("id") or "").strip() not in rolled_back_refs
+            )
+            for raw_key, norm in raw_time_map.items():
+                if norm != time_key:
+                    continue
+                grouped[raw_key].append(pub)
+                if raw_key not in undoable and is_raw_change:
+                    undoable[raw_key] = pub
+
+        return jsonify({"ok": True, "rows": grouped, "undoable": undoable})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 500
 

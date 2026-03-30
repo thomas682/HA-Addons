@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.12.160
+
+### Fix
+
+- Dashboard: `Einheit` zeigt wieder die Anzahl der verfuegbaren `_measurement`-Eintraege; `Aktualisieren` nutzt nur noch die benoetigte Textbreite. Die Sections wurden in `Grafische Analyse` und `Raw Daten Analyse` umbenannt.
+- Popup: `influxbro_popup_copy` verwendet das neue Copy-SVG, `influxbro_popup_pre` nutzt standardmaessig 10px und kann jetzt ueber `ui_popup_pre_font_px` konfiguriert werden. Der `Logs (5min)`-Button schaltet den Popup-Inhalt jetzt als Toggle um und bleibt dabei sichtbar aktiv, ohne den Ursprungstitel zu aendern.
+- Dashboard Raw: Die Tabelle besitzt jetzt eine kompakte Spalte `Aenderung`, einen `Info`-Button fuer Details und neue Buttons `Loeschen` sowie `Undo`. Raw-Aenderungen ueber `Einfügen` und `Löschen` werden mit Ausloeser-Metadaten in der History protokolliert; `Undo` macht genau die letzte direkte Button-Aenderung fuer den selektierten Raw-Wert rueckgaengig und laedt die Tabelle anschliessend neu.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`, `pytest tests/test_api_ui_support.py -q`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.159
 
 ### Fix
