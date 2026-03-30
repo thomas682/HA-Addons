@@ -666,6 +666,7 @@
   let CURRENT_POPUP_BASE_TEXT = '';
   let CURRENT_POPUP_LOG_TEXT = '';
   let CURRENT_POPUP_LOGS_ACTIVE = false;
+  let CURRENT_HISTORY_SELECTED_AT = '';
   let POPUP_REFS = null;
   let POPUP_SET_ACTIONS = ()=>{};
   const POPUP_SIZE_PREFIX = 'influxbro.popup.size.v1.';
@@ -1101,6 +1102,7 @@
         }
         xs.slice().reverse().forEach((it)=>{
           const row = document.createElement('button');
+          const rowAt = String(it && it.at ? it.at : '');
           row.type = 'button';
           row.style.display = 'block';
           row.style.width = '100%';
@@ -1110,10 +1112,17 @@
           row.style.borderRadius = '12px';
           row.style.border = '1px solid #e8ebf2';
           row.style.background = '#f8faff';
-          row.innerHTML = '<div style="font-weight:700; font-size:12px; margin-bottom:4px;">' + String(it.at || '') + (it.label ? (' | ' + String(it.label)) : '') + '</div>' +
-            '<div style="font-size:12px; white-space:pre-wrap; opacity:0.9;">' + String((it.query || '').slice(0, 500)).replace(/</g,'&lt;') + '</div>';
+          if(CURRENT_HISTORY_SELECTED_AT && CURRENT_HISTORY_SELECTED_AT === rowAt){
+            row.style.border = '1px solid #7aa7ff';
+            row.style.background = '#eaf2ff';
+          }
+          row.innerHTML = '<div style="font-weight:700; font-size:12px; margin-bottom:4px;">' + rowAt + (it.label ? (' | ' + String(it.label)) : '') + '</div>' +
+            '<div style="font-size:12px; white-space:pre-wrap; opacity:0.9; margin-bottom:4px;">' + String((it.query || '').slice(0, 500)).replace(/</g,'&lt;') + '</div>' +
+            ((it && it.response) ? ('<div class="muted" style="font-size:11px; white-space:pre-wrap;">response: ' + String((it.response || '').slice(0, 220)).replace(/</g,'&lt;') + '</div>') : '');
           row.addEventListener('click', ()=>{
+            try{ CURRENT_HISTORY_SELECTED_AT = rowAt; }catch(e){}
             try{ pre.textContent = String(it.query || ''); }catch(e){}
+            try{ _renderHistory(scope); }catch(e){}
           });
           historyBox.appendChild(row);
         });

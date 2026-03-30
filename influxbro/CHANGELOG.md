@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.162
+
+### Fix
+
+- Popup Query-History: Der untere Bereich blieb trotz gesetztem `historyScope` leer, weil im Auto-Open-Pfad die Variable `CURRENT_HISTORY_SELECTED_AT` ohne Deklaration verwendet wurde und der Fehler intern geschluckt wurde. Die History wird jetzt wieder korrekt unterhalb von `influxbro_popup_pre` gerendert.
+- Popup Query-History: Der aktive Verlaufseintrag wird jetzt sichtbar markiert; optionale Response-Vorschauen werden ebenfalls im unteren Bereich angezeigt.
+
+### Maintenance
+
+- Tests: `pytest tests/test_api_ui_support.py -q`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.161
 
 ### Fix

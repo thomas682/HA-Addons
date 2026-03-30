@@ -498,6 +498,7 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Die Raw-Tabelle besitzt jetzt eine kompakte Spalte `Aenderung`. Darin werden passende History-Eintraege je DB-Wert kurz zusammengefasst.
 - Ueber der Raw-Tabelle gibt es zusaetzlich `Löschen`, `Undo` und `Info`. `Löschen` loescht den selektierten DB-Wert nach Rueckfrage. `Undo` macht genau die letzte direkte Button-Aenderung (`Einfügen` oder `Löschen`) fuer den selektierten Raw-Wert rueckgaengig. `Info` zeigt die komplette Aenderungshistorie des selektierten Raw-Werts im Popup.
 - Query-History wird im bestehenden Popup unterhalb des Haupttexts angezeigt. Der `History`-Button oeffnet den unteren Bereich mit verschiebbarem Trenner, statt einen zusaetzlichen Popup-Dialog zu erzeugen.
+- Der aktuell gewaehlt History-Eintrag wird im unteren Query-History-Bereich hervorgehoben und laedt seine Query in den oberen Textbereich.
 
 ## Diagnose
 
