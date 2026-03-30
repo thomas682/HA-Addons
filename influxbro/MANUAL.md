@@ -207,6 +207,7 @@ Hinweis: Zeitstempel werden im gesamten UI inklusive Millisekunden angezeigt.
 - Sobald einmal geladen wurde, werden die Ergebnisse serverseitig gecacht (unter `/data/dash_cache`) und beim naechsten Aufruf des Dashboards wiederhergestellt (auch nach Seitenwechsel in InfluxBro / Home Assistant).
 - Die Hauptbereiche im Dashboard folgen unterhalb von `Auswahl` in dieser Reihenfolge: `Graph`, `Raw Daten (DB)`, `Bearbeitungsliste`.
 - `Raw Daten (DB)` ist ein eigener Bereich direkt unter dem Graph und nicht innerhalb des Graph-Bereichs verschachtelt.
+- Die Dashboard-Hauptbereiche bleiben auch im Live-DOM innerhalb von `dashboard.page`; Browser-DevTools sollten `main.content` daher nicht mehr vor `Graph`/`Raw`/`Bearbeitungsliste` implizit schliessen.
 
 ## Graph
 
@@ -483,6 +484,7 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - In der Topbar gibt es jetzt statt der separaten Checkbox einen direkten `S-Picker`-Button fuer den Superpicker. Dashboard-Aktionen sind unterhalb des Filterblocks gebuendelt, und mehrere Such-/Filterfelder sind explizit fuer den Clear-Button-Pfad markiert.
 - Im Dashboard wurden die alte sichtbare Kopfzeile `Gesamtstatistik (Alles)` und der zugehoerige Tipps-Text entfernt. Die zentrale Seitenstruktur bleibt innerhalb von `dashboard.page` gebuendelt.
 - Die Dashboard-Sections `selection`, `graph`, `raw` und `filterlist` sind jetzt als direkte Geschwister unter `dashboard.page` angeordnet.
+- Ein frueherer HTML-Strukturfehler im Auswahl-Block ist entfernt; dadurch stimmt die DevTools-Struktur wieder mit der beabsichtigten Dashboard-Hierarchie ueberein.
 
 ## Diagnose
 

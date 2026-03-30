@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.156
+
+### Fix
+
+- Dashboard: Ein ueberschuessiges `</div>` im Auswahl-Block wurde entfernt. Dadurch beendet der Browser `dashboard.page` nicht mehr implizit vorzeitig, und `section.graph`, `section.raw` sowie `section.filterlist` bleiben im Live-DOM sauber innerhalb von `main.content`.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`, `pytest tests/test_api_ui_support.py -q`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.155
 
 ### Maintenance
