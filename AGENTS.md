@@ -2,7 +2,7 @@
 
 ## Codestyle Regeln
 
-## Repo Layout (important for HA)
+### Repo Layout (important for HA)
 
 - `repository.yaml`: must stay in repo root for Home Assistant add-on repositories.
 - `influxbro/config.yaml`: add-on metadata (versioning, slug, ingress settings).
@@ -19,7 +19,7 @@ Constraints:
   - `/data` (writable, persistent)
   - `/config` (read-only in this add-on)
 
-## Code Style Guidelines
+### Code Style Guidelines
 
 ### General
 
@@ -115,7 +115,6 @@ from flask import Flask, jsonify, request
   - bump `influxbro/config.yaml:version` (so Home Assistant detects the update)
   - add an entry to `influxbro/CHANGELOG.md` for that version
   - update the user handbook `influxbro/MANUAL.md` so it reflects the current UI/behavior for that version
-  - update the user handbook `influxbro/MANUAL.md` so it reflects the current UI/behavior for that version
   - verify `influxbro/CHANGELOG.md` completeness/order (the file MUST list version entries in descending order, newest version at the top)
     - The CHANGELOG.md must present versions in strict descending order (most recent first). When adding a new entry, insert it at the top under the new version heading.
 
@@ -134,7 +133,7 @@ from flask import Flask, jsonify, request
 
 ## Issue Regeln
 
-## Requirements Tracking (preferred: GitHub Issues)
+### Requirements Tracking (preferred: GitHub Issues)
 
 - Track requirements primarily as GitHub Issues so others can create/report items externally.
 - Use the issue templates to distinguish between:
@@ -228,157 +227,63 @@ Triage flow:
 
 ## Testing Regeln
 
-## Mandatory Testing & Cost-Aware Execution (REQUIRED)
+### Mandatory Testing & Cost-Aware Execution (REQUIRED)
 
 After every implementation, testing is REQUIRED, but execution must remain cost-efficient.
 
-### Execution Order
+### Required QA Flow
 
-Run checks in this order:
+Run validation in this order:
 
 1. Syntax / static sanity check first
 2. Targeted tests second
-3. Runtime / Docker checks only if relevant
-4. Full broader validation only if earlier checks fail or the change is high-risk
+3. Runtime / API smoke checks only if relevant
+4. Docker/build verification only if relevant
+5. Broader validation only if earlier checks fail, the user explicitly requests it, or the change is high-risk
 
-### Minimum Required Checks
+Minimum requirements:
 
-#### 1. Syntax Check (ALWAYS)
+- Syntax check is ALWAYS required:
+  - `python -m py_compile influxbro/app/app.py`
+- Targeted tests are required WHEN AVAILABLE for the changed functionality:
+  - single test by node id
+  - single test file
+  - keyword-filtered pytest run
+- Runtime / API smoke tests are required WHEN RELEVANT for backend routes, request handling, config loading, or UI-triggered API actions.
+- Docker verification is required ONLY WHEN RELEVANT for runtime behavior, dependencies, container behavior, startup scripts, add-on packaging, or config handling.
+- UI verification is required WHEN RELEVANT for templates, JavaScript, or browser interactions:
+  - verify the affected page loads
+  - verify the changed interaction path only
+  - avoid broad manual retesting of unrelated pages
 
-Run:
-
-- `python -m py_compile influxbro/app/app.py`
-
-This must pass before declaring the work complete.
-
-#### 2. Targeted Tests (WHEN AVAILABLE)
-
-If existing tests cover the changed functionality, run the smallest relevant subset first, for example:
-
-- single test by node id
-- single test file
-- keyword-filtered pytest run
-
-Examples:
-
-- `pytest tests/test_api_yaml_flow.py -q`
-- `pytest tests/test_api_yaml_flow.py::test_load_influx_yaml_resolves_secret -q`
-- `pytest -k measurements -q`
-
-Do NOT start with full test suites unless necessary.
-
-#### 3. Runtime / API Smoke Test (WHEN RELEVANT)
-
-If backend routes, request handling, config loading, or UI-triggered API actions were changed, perform at least one relevant smoke test.
-
-Examples:
-
-- `curl -fsS http://localhost:8099/api/info | jq .`
-- `curl -fsS http://localhost:8099/api/config | jq .`
-
-#### 4. Docker Verification (ONLY WHEN RELEVANT)
-
-Build and/or run Docker ONLY if changes affect:
-
-- runtime behavior
-- dependencies
-- container behavior
-- startup scripts
-- add-on packaging
-- config handling
-
-Example:
-
-- `docker build -t influxbro:dev ./influxbro`
-
-### UI Verification (WHEN RELEVANT)
-
-If templates, JavaScript, or browser interactions were changed:
-
-- verify the affected page loads
-- verify the changed interaction path only
-- avoid broad manual retesting of unrelated pages
-
-### Cost Optimization Rules
-
-- Prefer the cheapest sufficient model for:
-  - syntax-related fixes
-  - log interpretation
-  - small single-file corrections
-  - narrow follow-up adjustments
-
-- Use the stronger model only for:
-  - multi-file architecture work
-  - repeated failed fixes
-  - complex debugging
-  - ambiguous root-cause analysis
+Execution constraints:
 
 - Prefer targeted reads over full-file rereads.
 - Prefer targeted tests over full test suites.
 - Do not rerun the same failing test repeatedly without making a change.
 - Do not perform Docker/runtime validation if the change is clearly documentation-only or non-runtime-only.
+- Use minimal sufficient QA by default; do not automatically expand to full end-to-end or heavy integration tests unless needed.
 
-### Failure Handling
+Failure handling and completion:
 
 - If any required check fails:
-
-- do NOT declare the work complete
-- fix the issue first
-- rerun the smallest relevant validation set
-- escalate validation scope only if needed
-
-### Completion Rule
-
-Implementation is ONLY complete if:
-
-- syntax check passed
-- relevant targeted tests passed (if applicable)
-- relevant runtime/API checks passed (if applicable)
-- relevant Docker/build checks passed (if applicable)
-
-### Reporting Rule
-
-At the end of the task, explicitly report:
-
-- which checks were executed
-- which were skipped
-- why they were skipped
-- final result of each executed check
-
-## QA Depth Strategy
-
-- Perform ONLY minimal sufficient QA by default:
-  - syntax
-  - API smoke tests
-  - basic runtime verification
-
-- Do NOT automatically perform:
-  - full end-to-end tests
-  - UI interaction simulations
-  - heavy integration tests
-
-- Only expand QA depth if:
-  - user explicitly requests it
-  - previous tests failed
-  - change is high-risk
-
-## QA Completion Policy (NO QUESTIONS)
-
-- After completing all REQUIRED tests, DO NOT ask the user whether additional testing should be performed.
-
-- If all required checks passed:
-  - declare QA as completed
-  - provide a short summary of results
-  - proceed to next logical step (e.g. push, PR, or finish)
-
-- Only ask for additional QA if:
-  - explicitly requested by the user
+  - do NOT declare the work complete
+  - fix the issue first
+  - rerun the smallest relevant validation set
+  - escalate validation scope only if needed
+- Implementation is ONLY complete if all relevant required checks passed.
+- After completing all REQUIRED tests, DO NOT ask the user whether additional testing should be performed unless:
+  - the user explicitly requested it
   - critical functionality could not be tested
-  - test environment is incomplete (e.g. missing InfluxDB)
+  - the test environment is incomplete
 
-- Default behavior:
-  - minimal sufficient QA
-  - no interactive confirmation required
+Reporting:
+
+- At the end of the task, explicitly report:
+  - which checks were executed
+  - which were skipped
+  - why they were skipped
+  - final result of each executed check
 
 ## Build / Run / Lint / Test
 
@@ -478,7 +383,7 @@ curl -fsS -X POST http://localhost:8099/api/test   -H 'Content-Type: application
 
 ## Workflow Regeln
 
-## Parallel Execution Strategy (CONTROLLED)
+### Parallel Execution Strategy (CONTROLLED)
 
 ### General Rule
 
@@ -513,7 +418,7 @@ Analysis MUST remain sequential if:
 
 - When in doubt, prefer sequential analysis over parallel analysis.
 
-## Plan Mode Workflow
+### Plan Mode Workflow
 
 When plan mode is active:
 
@@ -522,7 +427,7 @@ When plan mode is active:
 - Group tasks logically.
 - Wait for explicit user approval before implementing anything (no file edits, no commits, no pushes).
 
-## Task Tracking (ToDo List)
+### Task Tracking (ToDo List)
 
 - Always create and show a ToDo list for the current request.
 - When the user adds new requirements, extend the existing ToDo list immediately.
@@ -609,20 +514,12 @@ If multiple issues are selected:
 - Therefore ALL changes MUST be pushed to `main` to enable testing inside Home Assistant.
 - Feature branches and PR-only workflows are NOT the default in this repository.
 
-### Default Behavior (MANDATORY)
+### Mandatory Completion Flow (NO SILENT STOP)
 
 After successful implementation AND completed QA:
 
-- DO NOT ask for confirmation
-- ALWAYS:
-  - stage changes
-  - create commit
-  - bump add-on version
-  - push directly to `main`
-
-### Completion Gate (NO SILENT STOP)
-
-- The agent MUST treat the following sequence as mandatory end-of-task behavior for implementation work in build/GO mode:
+- DO NOT ask for confirmation.
+- ALWAYS complete this sequence for build/GO execution when applicable:
   1. run required QA
   2. classify any failures as either:
      - fix-related/blocking
@@ -635,9 +532,6 @@ After successful implementation AND completed QA:
   8. report result clearly in chat
 - It is FORBIDDEN to stop after code changes or after QA only, if the policy in this file requires version bump, commit, and push.
 - It is FORBIDDEN to treat `build` mode as mere permission while skipping mandatory completion steps.
-
-### Final Checklist (REQUIRED BEFORE REPORTING DONE)
-
 - Before declaring implementation complete, explicitly verify:
   - implementation finished
   - required QA executed
@@ -677,55 +571,20 @@ After successful implementation AND completed QA:
 
 ### Decision Logic (SIMPLIFIED FOR HA)
 
-#### Case 1: Small / Medium Changes
+Default rule:
 
-If the change is:
+- If a change affects runtime, UI, API, or behavior, use the HA main-first flow:
+  - commit
+  - bump version
+  - push directly to `main`
 
-- bugfix
-- small feature
-- UI change
-- API adjustment
-- limited multi-file change
+High-risk exception handling:
 
-THEN:
-
-- commit
-- bump version
-- push directly to `main`
-
-#### Case 2: Larger Changes (HA-Test Required)
-
-If the change involves:
-
-- multiple files
-- new features
-- refactoring
-- logic changes
-
-AND requires testing inside Home Assistant:
-
-THEN:
-
-- commit
-- bump version
-- push directly to `main`
-
-#### Case 3: High-Risk Changes
-
-If the change involves:
-
-- security-related logic
-- deletion logic
-- major architecture changes
-- unclear side effects
-
-THEN:
-
-- STILL push to `main` (for HA testing)
-- BUT:
-  - clearly label commit message with:
-    - `⚠ HIGH-RISK`
-  - ensure stricter QA before push
+- If the change involves security-related logic, deletion logic, major architecture changes, or unclear side effects:
+  - STILL push to `main` for HA testing
+  - BUT:
+    - ensure stricter QA before push
+    - clearly label the commit message with `⚠ HIGH-RISK`
 
 ### Optional Branch Usage (LIMITED)
 
@@ -843,24 +702,14 @@ If user explicitly requests:
   - If the workflow produced a new add-on version (i.e., `influxbro/config.yaml` version was bumped as part of the changes), use a female voice and speak the version as a version number (not a date), e.g. `say -v Anna "Generierung erfolgt, Version 1 Punkt 11 Punkt 34 wurde erzeugt"` (version derived from `influxbro/config.yaml`)
   - If the workflow ends with pending questions/blockers: `say "Einige Punkte müssten noch beantwortet werden"`
 
-## Completion Notifications
+## Audio Notifications
 
-- After completing any user-requested execution/workflow that runs commands (independent of plan/build mode and independent of `go`), play a macOS completion sound:
-  - Success: `afplay /System/Library/Sounds/Glass.aiff`
-  - Failure/blocker: `afplay /System/Library/Sounds/Basso.aiff`
-- After completing a unit of work where you either (a) expect an answer from the user to continue, or (b) you are fully done and ready for a new input, play a macOS completion sound:
-  - Ready/awaiting input: `afplay /System/Library/Sounds/Glass.aiff`
-  - Blocked/failed: `afplay /System/Library/Sounds/Basso.aiff`
-- When you ask the user for confirmation/decision to continue (a blocking question), also:
-  - play a completion sound: `afplay /System/Library/Sounds/Glass.aiff`
-  - speak a short prompt via macOS `say` (German), e.g. `say "Bitte bestaetigen"`
-- Only speak the "Generierung erfolgt..." message when a new add-on version was produced (version bump in `influxbro/config.yaml`).
-
-## Interactive Prompts (Audio)
-
-- If you need any input/decision from the user to continue (any question that blocks progress or requires a choice), you MUST:
-  - play a sound: `afplay /System/Library/Sounds/Glass.aiff`
-  - speak (German): `say "Entscheidung erforderlich"`
-- If you are done implementing the requested work are ready for the next instruction, you MUST:
-  - play a sound: `afplay /System/Library/Sounds/Glass.aiff`
-  - speak (German): `say "Fertig mit der Umsetzung"`
+- After completing any user-requested execution/workflow that runs commands, play a macOS completion sound:
+  - success / ready for next input: `afplay /System/Library/Sounds/Glass.aiff`
+  - failure / blocker: `afplay /System/Library/Sounds/Basso.aiff`
+- If you need any blocking input or decision from the user, also speak a short German prompt via `say`:
+  - default for decision needed: `say "Entscheidung erforderlich"`
+  - optional confirmation-style prompt: `say "Bitte bestaetigen"`
+- If the requested work is fully done and you are ready for the next instruction, speak:
+  - `say "Fertig mit der Umsetzung"`
+- Only speak the "Generierung erfolgt..." version message when a new add-on version was produced via version bump in `influxbro/config.yaml`.
