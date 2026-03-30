@@ -666,7 +666,13 @@
   let CURRENT_POPUP_BASE_TEXT = '';
   let CURRENT_POPUP_LOG_TEXT = '';
   let CURRENT_POPUP_LOGS_ACTIVE = false;
+  let CURRENT_ACTIONS = [];
+  let CURRENT_HISTORY_SCOPE = '';
   let CURRENT_HISTORY_SELECTED_AT = '';
+  let SPLIT_DRAG = null;
+  let _renderHistory = ()=>{};
+  let _toggleHistory = ()=>{};
+  let _openHistoryInPopup = ()=>{};
   let POPUP_REFS = null;
   let POPUP_SET_ACTIONS = ()=>{};
   const POPUP_SIZE_PREFIX = 'influxbro.popup.size.v1.';
@@ -675,6 +681,21 @@
     const raw = String(title || 'Hinweis').trim().toLowerCase();
     return (raw || 'hinweis').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 80) || 'hinweis';
   }
+
+  _openHistoryInPopup = function(scope){
+    try{
+      CURRENT_HISTORY_SCOPE = String(scope || '').trim();
+      CURRENT_HISTORY_SELECTED_AT = '';
+      if(window.InfluxBroPopup && window.InfluxBroPopup.show){
+        window.InfluxBroPopup.show('Query History', 'Wähle unten einen History-Eintrag aus.', {
+          historyScope: CURRENT_HISTORY_SCOPE,
+          autoOpenHistory: true,
+          copyText: '',
+          copyTitle: 'Zwischenablage',
+        });
+      }
+    }catch(e){}
+  };
 
   function _popupSizeStorageKey(title){
     return POPUP_SIZE_PREFIX + _popupSizeKey(title);
@@ -692,6 +713,8 @@
           copyBtn: document.getElementById('influxbro_popup_copy'),
           logsBtn: document.getElementById('influxbro_popup_logs'),
           settingsBtn: document.getElementById('influxbro_popup_settings'),
+          split: document.getElementById('influxbro_popup_split'),
+          historyBox: document.getElementById('influxbro_popup_history'),
         };
       }
       return root;
@@ -1063,18 +1086,18 @@
       try{ localStorage.setItem(WRAP_KEY, on ? '1' : '0'); }catch(e){}
     });
 
-    let CURRENT_ACTIONS = [];
-    let CURRENT_HISTORY_SCOPE = '';
-    let SPLIT_DRAG = null;
-
     function _historyEntries(scope){
       try{
         return (window.InfluxBroQueryHistory && window.InfluxBroQueryHistory.list) ? window.InfluxBroQueryHistory.list(scope) : [];
       }catch(e){ return []; }
     }
 
-    function _renderHistory(scope){
+    _renderHistory = function(scope){
       try{
+        const refs = POPUP_REFS || {};
+        const historyBox = refs.historyBox || document.getElementById('influxbro_popup_history');
+        const pre = refs.pre || document.getElementById('influxbro_popup_pre');
+        if(!historyBox || !pre) return;
         const xs = _historyEntries(scope);
         historyBox.innerHTML = '';
         const titleRow = document.createElement('div');
@@ -1127,10 +1150,14 @@
           historyBox.appendChild(row);
         });
       }catch(e){}
-    }
+    };
 
-    function _toggleHistory(scope){
+    _toggleHistory = function(scope){
       try{
+        const refs = POPUP_REFS || {};
+        const historyBox = refs.historyBox || document.getElementById('influxbro_popup_history');
+        const split = refs.split || document.getElementById('influxbro_popup_split');
+        if(!historyBox || !split) return;
         const show = historyBox.style.display === 'none';
         CURRENT_HISTORY_SCOPE = show ? String(scope || '') : CURRENT_HISTORY_SCOPE;
         if(show) _renderHistory(CURRENT_HISTORY_SCOPE);
@@ -1138,22 +1165,7 @@
         split.style.display = show ? 'block' : 'none';
         if(show && !historyBox.style.flexBasis) historyBox.style.flex = '0 0 180px';
       }catch(e){}
-    }
-
-    function _openHistoryInPopup(scope){
-      try{
-        CURRENT_HISTORY_SCOPE = String(scope || '').trim();
-        CURRENT_HISTORY_SELECTED_AT = '';
-        if(window.InfluxBroPopup && window.InfluxBroPopup.show){
-          window.InfluxBroPopup.show('Query History', 'Wähle unten einen History-Eintrag aus.', {
-            historyScope: CURRENT_HISTORY_SCOPE,
-            autoOpenHistory: true,
-            copyText: '',
-            copyTitle: 'Zwischenablage',
-          });
-        }
-      }catch(e){}
-    }
+    };
 
     try{
       split.addEventListener('mousedown', (ev)=>{
@@ -1552,7 +1564,7 @@
     // Expose the bugreport action for other UI elements (e.g. bottom status bar)
     try{ window.InfluxBroBugreport = { run: (msg)=>_bugreportRun(msg) }; }catch(e){}
 
-    POPUP_REFS = { root, title, pre, meta, copyBtn, settingsBtn, logsBtn };
+    POPUP_REFS = { root, title, pre, meta, copyBtn, settingsBtn, logsBtn, split, historyBox };
 
     function close(){
       try{ CURRENT_POPUP_BASE_TITLE = ''; }catch(e){}
@@ -1600,6 +1612,8 @@
       const settingsBtn = refs.settingsBtn || document.getElementById('influxbro_popup_settings');
       const copyBtn = refs.copyBtn || document.getElementById('influxbro_popup_copy');
       const logsBtn = refs.logsBtn || document.getElementById('influxbro_popup_logs');
+      const historyBox = refs.historyBox || document.getElementById('influxbro_popup_history');
+      const split = refs.split || document.getElementById('influxbro_popup_split');
       if(t) t.textContent = title || 'Hinweis';
       const normalizedMsg = (window.InfluxBroDecodeInfoText ? window.InfluxBroDecodeInfoText(String(msg || '')) : String(msg || ''));
       if(pre) pre.textContent = normalizedMsg;
@@ -1619,6 +1633,7 @@
         meta.style.display = metaTxt ? 'block' : 'none';
       }
       try{
+        if(!historyBox || !split) return;
         CURRENT_HISTORY_SCOPE = String(opts && opts.historyScope ? opts.historyScope : '');
         CURRENT_HISTORY_SELECTED_AT = '';
         historyBox.style.display = 'none';
@@ -1669,6 +1684,8 @@
         _show('Fehler', s);
       }
     };
+
+    try{ _ensureUi(); }catch(e){}
 
    try{
      const QUERY_ICON = '<svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="11" cy="15.5" r="1.5"></circle><path d="M12,12H10V8h2a2,2,0,0,0,0-4H10A2.0023,2.0023,0,0,0,8,6v.5H6V6a4.0045,4.0045,0,0,1,4-4h2a4,4,0,0,1,0,8Z"></path><path d="M22.4479,21.0337A10.971,10.971,0,0,0,19.9211,4.7446l-.999,1.73A8.9967,8.9967,0,1,1,5,14H3a10.9916,10.9916,0,0,0,18.0338,8.4478L28.5859,30,30,28.5859Z"></path></svg>';

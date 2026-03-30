@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.163
+
+### Fix
+
+- Popup Query-History: Die History-Helfer und der gemeinsame History-Zustand wurden aus lokalen `_ensureUi()`-Scopes in den geteilten Popup-Scope gezogen. Dadurch funktionieren Auto-Open, Toggle und das Rendern des unteren History-Bereichs jetzt auch im echten Browserlauf stabil.
+- Verifiziert im lokalen sichtbaren Browserlauf: Query-History wird unterhalb von `influxbro_popup_pre` angezeigt, ein History-Eintrag laedt seine Query oben, und der aktive Eintrag wird markiert.
+
+### Maintenance
+
+- Tests: `pytest tests/test_api_ui_support.py -q`, `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.162
 
 ### Fix
