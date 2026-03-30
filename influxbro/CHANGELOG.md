@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.161
+
+### Fix
+
+- Query-History verwendet jetzt keinen separaten Text-Popup mehr. Alle History-Buttons oeffnen die Query-History direkt im bestehenden `influxbro_popup_card` unterhalb von `influxbro_popup_pre` mit dem verschiebbaren Trenner.
+- Der untere Bereich `influxbro_popup_history` zeigt jetzt die Query-History kompakt mit Query-Vorschau und optionaler Response-Vorschau. Beim Klick auf einen Eintrag wird dessen Query oben geladen und der aktive Verlaufseintrag sichtbar markiert.
+
+### Maintenance
+
+- Tests: `pytest tests/test_api_ui_support.py -q`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.160
 
 ### Fix

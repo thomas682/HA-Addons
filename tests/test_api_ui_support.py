@@ -243,6 +243,15 @@ def test_popup_copy_icon_and_font_setting_are_present():
     assert 'ui_popup_pre_font_px' in app_py
 
 
+def test_query_history_uses_existing_popup_history_area():
+    tooltips = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
+    assert "function _openHistoryInPopup(scope)" in tooltips
+    assert "autoOpenHistory: true" in tooltips
+    assert "if(CURRENT_HISTORY_SCOPE && opts && opts.autoOpenHistory){" in tooltips
+    assert "CURRENT_HISTORY_SELECTED_AT" in tooltips
+    assert "window.InfluxBroPopup.show('Query History', 'Wähle unten einen History-Eintrag aus.'" in tooltips or "window.InfluxBroPopup.show('Query History', 'Waehle unten einen History-Eintrag aus.'" in tooltips
+
+
 def test_raw_history_summary_endpoint_and_trigger_metadata_exist():
     app_py = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "app.py").read_text()
     assert '@app.post("/api/raw_history_summary")' in app_py

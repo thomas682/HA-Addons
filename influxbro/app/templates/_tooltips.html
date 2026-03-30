@@ -1131,6 +1131,21 @@
       }catch(e){}
     }
 
+    function _openHistoryInPopup(scope){
+      try{
+        CURRENT_HISTORY_SCOPE = String(scope || '').trim();
+        CURRENT_HISTORY_SELECTED_AT = '';
+        if(window.InfluxBroPopup && window.InfluxBroPopup.show){
+          window.InfluxBroPopup.show('Query History', 'Wähle unten einen History-Eintrag aus.', {
+            historyScope: CURRENT_HISTORY_SCOPE,
+            autoOpenHistory: true,
+            copyText: '',
+            copyTitle: 'Zwischenablage',
+          });
+        }
+      }catch(e){}
+    }
+
     try{
       split.addEventListener('mousedown', (ev)=>{
         try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
@@ -1596,9 +1611,16 @@
       }
       try{
         CURRENT_HISTORY_SCOPE = String(opts && opts.historyScope ? opts.historyScope : '');
+        CURRENT_HISTORY_SELECTED_AT = '';
         historyBox.style.display = 'none';
         historyBox.innerHTML = '';
         split.style.display = 'none';
+        if(CURRENT_HISTORY_SCOPE && opts && opts.autoOpenHistory){
+          _renderHistory(CURRENT_HISTORY_SCOPE);
+          historyBox.style.display = 'block';
+          split.style.display = 'block';
+          if(!historyBox.style.flexBasis) historyBox.style.flex = '0 0 180px';
+        }
       }catch(e){}
       POPUP_SET_ACTIONS(opts && opts.actions ? opts.actions : []);
       try{ _applyPopupSize(title || 'Hinweis'); }catch(e){}
@@ -1859,32 +1881,9 @@
   }
 
   function show(scope){
-    const xs = _load(scope);
-    const lines = [];
-    lines.push('Query History: ' + String(scope || 'global'));
-    lines.push('');
-    if(!xs.length){
-      lines.push('(keine Eintraege)');
-    }else{
-      for(const it of xs.slice().reverse()){
-        const at = String(it && it.at ? it.at : '');
-        const lab = String(it && it.label ? it.label : '').trim();
-        lines.push('- ' + (at ? at : '') + (lab ? (' | ' + lab) : ''));
-        const q = _clipLines(it && it.query ? it.query : '', 5);
-        if(q){
-          lines.push('  query:');
-          lines.push('  ' + q.replace(/\n/g, '\n  '));
-        }
-        const r = _clipLines(it && it.response ? it.response : '', 5);
-        if(r){
-          lines.push('  response:');
-          lines.push('  ' + r.replace(/\n/g, '\n  '));
-        }
-      }
-    }
     try{
-      if(window.InfluxBroPopup && window.InfluxBroPopup.show) window.InfluxBroPopup.show('Query History', lines.join('\n'));
-      else alert(lines.join('\n'));
+      if(window.InfluxBroPopup && window.InfluxBroPopup.show) _openHistoryInPopup(scope);
+      else alert('Query History: ' + String(scope || 'global'));
     }catch(e){}
   }
 
