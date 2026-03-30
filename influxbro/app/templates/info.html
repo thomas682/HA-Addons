@@ -43,7 +43,10 @@
       </div>
 
       <div class="searchbar" data-ui="info.searchbar" title="info.searchbar">
-        <input id="info_search" type="text" placeholder="Changelog durchsuchen..." data-ui="info.search" title="info.search" />
+        <div class="ib_clear_row">
+          <input id="info_search" type="text" placeholder="Changelog durchsuchen..." data-ui="info.search" title="info.search" />
+          <button type="button" class="ib_clear_btn" data-clear-for="info_search" aria-label="Feld leeren" title="Feld leeren">X</button>
+        </div>
         <div class="search_meta"><span id="info_search_idx">0</span>/<span id="info_search_cnt">0</span></div>
         <button id="info_search_prev" type="button" data-ui="info.search.prev" title="info.search.prev">Zurueck</button>
         <button id="info_search_next" type="button" data-ui="info.search.next" title="info.search.next">Vor</button>

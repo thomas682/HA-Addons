@@ -209,7 +209,10 @@
               <div>
                  <label class="label_row ib_sel_label"><span>Einheit (_measurement)</span><span id="cnt_measurement_filter" class="muted"></span></label>
                  <div class="ib_sel_stack">
-                   <input id="measurement_filter" list="measurement_list" placeholder="optional" data-ui="restore.measurement_filter" title="restore.measurement_filter" />
+                    <div class="ib_clear_row">
+                      <input id="measurement_filter" list="measurement_list" placeholder="optional" data-ui="restore.measurement_filter" title="restore.measurement_filter" />
+                      <button type="button" class="ib_clear_btn" data-clear-for="measurement_filter" aria-label="Feld leeren" title="Feld leeren">X</button>
+                    </div>
                    <datalist id="measurement_list"></datalist>
                    <div class="ib_sel_desc">
                      <button type="button" class="ib_sel_help" data-title="Einheit (_measurement)" data-help="Filtert die Vorschlaege fuer friendly_name/entity_id auf dieses Measurement.">?</button>
@@ -220,7 +223,10 @@
               <div>
                 <label class="label_row ib_sel_label"><span>Messwert (Klartext / friendly_name)</span><span id="cnt_friendly_name" class="muted"></span></label>
                 <div class="ib_sel_stack">
-                  <input id="friendly_name" list="friendly_list" placeholder="optional" data-ui="restore.friendly_name" title="restore.friendly_name" />
+                  <div class="ib_clear_row">
+                    <input id="friendly_name" list="friendly_list" placeholder="optional" data-ui="restore.friendly_name" title="restore.friendly_name" />
+                    <button type="button" class="ib_clear_btn" data-clear-for="friendly_name" aria-label="Feld leeren" title="Feld leeren">X</button>
+                  </div>
                   <datalist id="friendly_list"></datalist>
                   <div class="ib_sel_desc">
                     <button type="button" class="ib_sel_help" data-title="Messwert (friendly_name)" data-help="Waehle den Klartext-Namen des Messwerts. Optional kannst du entity_id zusaetzlich setzen.">?</button>
@@ -231,7 +237,10 @@
               <div>
                  <label class="label_row ib_sel_label"><span>Entity ID (entity_id)</span><span id="cnt_entity_id" class="muted"></span></label>
                  <div class="ib_sel_stack">
-                   <input id="entity_id" list="entity_list" placeholder="optional" data-ui="restore.entity_id" title="restore.entity_id" />
+                    <div class="ib_clear_row">
+                      <input id="entity_id" list="entity_list" placeholder="optional" data-ui="restore.entity_id" title="restore.entity_id" />
+                      <button type="button" class="ib_clear_btn" data-clear-for="entity_id" aria-label="Feld leeren" title="Feld leeren">X</button>
+                    </div>
                    <datalist id="entity_list"></datalist>
                    <div class="ib_sel_desc">
                      <button type="button" class="ib_sel_help" data-title="Entity ID" data-help="Optionaler Filter, um Messwerte zu unterscheiden, wenn mehrere Entity-IDs denselben friendly_name teilen.">?</button>
@@ -249,10 +258,13 @@
               <div style="min-width: 220px; flex:1;">
                 <label class="label_row ib_sel_label"><span>Zeitfilter</span><span><span id="cnt_restore_range" class="muted"></span> <span id="restore_range_bounds" class="muted"></span></span></label>
                 <div class="ib_sel_stack">
-                  <select id="range" data-ui="restore.range" title="restore.range">
+                  <div class="ib_clear_row">
+                    <select id="range" data-ui="restore.range" title="restore.range">
                     <option value="all" selected>Alle Werte</option>
                     <option value="custom">Benutzerdefiniert…</option>
-                  </select>
+                    </select>
+                    <button type="button" class="ib_clear_btn" data-clear-for="range" aria-label="Feld leeren" title="Feld leeren">X</button>
+                  </div>
                   <div class="ib_sel_desc">
                     <button type="button" class="ib_sel_help" data-title="Zeitfilter" data-help="Optionaler Zeitfilter fuer den Restore. Standard ist 'Alle Werte'. Bei Benutzerdefiniert kannst du Start/Stop setzen.">?</button>
                     <div class="muted">Begrenzt den Restore auf einen Zeitbereich.</div>
@@ -292,12 +304,10 @@
               </div>
             </details>
 
-         <div id="err" class="err"></div>
-         <div id="ok" class="ok"></div>
-             </div>
-
-          </div>
-       </details>
+          <div id="err" class="err"></div>
+          <div id="ok" class="ok"></div>
+              </div>
+        </details>
 
        <div class="card" data-ui="restore.fullrestore.card" title="restore.fullrestore.card" style="--restore_visible_rows: {{ (cfg.get('ui_restore_visible_rows') or 24) | int }};">
           <details id="fullrestore_details" data-ui="restore.fullrestore.details" title="restore.fullrestore.details">

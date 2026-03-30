@@ -101,7 +101,10 @@
             <div class="ib_sel" id="c_field">
               <label class="label_row ib_sel_label"><span>_field</span></label>
               <div class="ib_sel_stack">
-                <input id="field" list="field_list" placeholder="value" data-ui="export.field" title="export.field" />
+                <div class="ib_clear_row">
+                  <input id="field" list="field_list" placeholder="value" data-ui="export.field" title="export.field" />
+                  <button type="button" class="ib_clear_btn" data-clear-for="field" aria-label="Feld leeren" title="Feld leeren">X</button>
+                </div>
                 <datalist id="field_list"></datalist>
                 <div class="ib_sel_desc">
                   <button type="button" class="ib_sel_help" data-title="_field" data-help="Wahl des internen Field-Namens. Default ist value, wenn vorhanden.">?</button>
@@ -173,13 +176,7 @@
             </div>
           </div>
 
-            <div class="row" data-ui="export.selection_row" title="export.selection_row">
-             <div style="min-width: 320px; flex:1;">
-               <label>Auswahl (aufgeloest)</label>
-               <textarea id="sel" class="resizable" readonly data-ui="export.selection" title="export.selection"></textarea>
-               <div class="muted" id="series_info" data-ui="export.series_info" title="export.series_info"></div>
-             </div>
-           </div>
+            <div class="muted" id="series_info" data-ui="export.series_info" title="export.series_info"></div>
         </div>
       </details>
 
@@ -289,7 +286,6 @@
       const $targetCancel = document.getElementById('target_cancel');
       const $targetClose = document.getElementById('target_close');
 
-      const $sel = document.getElementById('sel');
       const $seriesInfo = document.getElementById('series_info');
 
       const err = (s)=>{ $err.textContent = String(s||""); $ok.textContent=""; if(s){ try{ if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error(String(s)); else alert(String(s)); }catch(e){} } };
@@ -522,33 +518,7 @@
         });
       }
 
-      // Auto-persist layout changes (resizable blocks) without explicit save.
-      try{
-        let _T = null;
-        const schedule = ()=>{
-          try{ if(_T) clearTimeout(_T); }catch(e){}
-          _T = setTimeout(()=>{ _T = null; try{ saveState(); }catch(e){} }, 140);
-        };
-        const els = [$sel].filter(Boolean);
-        if(window.ResizeObserver && els.length){
-          const ro = new ResizeObserver(()=>schedule());
-          els.forEach(el=>{ try{ ro.observe(el); }catch(e){} });
-        }
-      }catch(e){}
-
       function setStatus(s){ try{ if($status) $status.textContent = String(s||""); }catch(e){} }
-      function setResolvedSelection(txt){
-        try{ if($sel) $sel.value = String(txt||""); }catch(e){}
-        // If user didn't resize/persist a height, keep it readable by auto-sizing.
-        try{
-          const st = loadState();
-          if(st && st.export_sel_h) return;
-          if(!$sel) return;
-          $sel.style.height = 'auto';
-          const want = Math.min(320, Math.max(140, ($sel.scrollHeight || 0) + 2));
-          $sel.style.height = want + 'px';
-        }catch(e){}
-      }
       function setSeriesInfo(txt){ try{ if($seriesInfo) $seriesInfo.textContent = String(txt||""); }catch(e){} }
 
       function stopPolling(){ try{ if(POLL_T) clearInterval(POLL_T); }catch(e){}; POLL_T = null; }
@@ -559,12 +529,6 @@
           st.measurement_filter = String($mf.value||'');
           st.friendly_name = String($n.value||'');
           st.entity_id = String($e.value||'');
-          try{
-            if($sel){
-              const h = Math.round($sel.getBoundingClientRect().height || 0);
-              if(h >= 60) st.export_sel_h = h;
-            }
-          }catch(e){}
           localStorage.setItem(LS_KEY, JSON.stringify(st));
         }catch(e){}
       }
@@ -733,17 +697,6 @@
         const tf = timeFilter();
         const fn = String($n.value||'').trim();
         const eid = String($e.value||'').trim();
-        const txt = [
-          `entity_id: ${eid || '-'}`,
-          `friendly_name: ${fn || '-'}`,
-          `measurement: ${String($m.value||'') || '-'}`,
-          `field: ${String($f.value||'') || '-'}`,
-          `range: ${String($r.value||'') || '-'}`,
-          `start: ${tf.start || '-'}`,
-          `stop: ${tf.stop || '-'}`,
-        ].join('\n');
-        setResolvedSelection(txt);
-
         // Quick info (best-effort)
         try{
           const m = String($m.value||'').trim();
@@ -1028,8 +981,6 @@
           if(st.measurement_filter) $mf.value = st.measurement_filter;
           if(st.friendly_name) $n.value = st.friendly_name;
           if(st.entity_id) $e.value = st.entity_id;
-          try{ if(st.export_sel_h && $sel) $sel.style.height = String(st.export_sel_h) + 'px'; }catch(e){}
-
           const now = new Date();
           const start = new Date(now.getTime() - 24*60*60*1000);
           if(!$start.value) $start.value = toLocalDatetimeValue(start);
@@ -1058,8 +1009,6 @@
            $run.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); }catch(e){}; runExport(false); });
            try{ if($exportSave) $exportSave.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); }catch(e){}; runExport(true); }); }catch(e){}
           if($cancel) $cancel.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); }catch(e){}; cancelJob(); });
-          try{ if($sel) $sel.addEventListener('mouseup', ()=>{ /* size captured on save */ }); }catch(e){}
-
           const upd = debounceAsync(refreshResolved, 220);
           [$r,$start,$stop,$m,$f].forEach(el=>{ try{ if(el) el.addEventListener('change', upd); }catch(e){}; try{ if(el && el.tagName==='INPUT') el.addEventListener('input', upd); }catch(e){} });
           try{ if($mf) $mf.addEventListener('input', onExportMeasurementChanged); }catch(e){}

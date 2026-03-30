@@ -1,5 +1,28 @@
 # Changelog
 
+## 1.12.158
+
+### Fix
+
+- Die angeforderten Filter- und Suchfelder verwenden jetzt statische, immer sichtbare `.ib_clear_btn`-Buttons statt dynamisch nachgeruesteter Buttons. Das betrifft u. a. Dashboard, Statistik, Restore, Kombinieren, Export, Logs, Jobs & Cache, History, Changelog, Handbuch und Profilverwaltung.
+- Export: Der Block `Auswahl (aufgeloest)` wurde entfernt; die Export-Seite zeigt stattdessen nur noch die kompakte Serieninfo. Backup: Die festen Breiten fuer `backup.range`, `backup.entity_id` und `backup.friendly_name` wurden aufgehoben.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`, `pytest tests/test_api_ui_support.py -q`
+- Tested with Home Assistant Core: unknown
+
+## 1.12.157
+
+### Fix
+
+- Restore: Ein ueberschuessiges `</div>` im Bereich `Ziel (Messwert)` wurde entfernt. Dadurch bleibt die `details`-Struktur der Restore-Seite korrekt verschachtelt.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.156
 
 ### Fix

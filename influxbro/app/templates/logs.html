@@ -183,7 +183,10 @@
         </div>
         <div style="flex:1; min-width: 220px;">
           <label>Suche</label>
-          <input id="q" placeholder="Text..." data-ui="logs.search" title="logs.search" />
+          <div class="ib_clear_row">
+            <input id="q" placeholder="Text..." data-ui="logs.search" title="logs.search" />
+            <button type="button" class="ib_clear_btn" data-clear-for="q" aria-label="Feld leeren" title="Feld leeren">X</button>
+          </div>
         </div>
       </div>
 

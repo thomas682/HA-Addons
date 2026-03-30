@@ -97,7 +97,10 @@
             </div>
             <div style="flex:1; min-width: 260px;">
               <label class="muted" style="display:block; font-size: 12px;">Suche</label>
-              <input id="q" placeholder="job_id/state/message..." data-ui="jobs.search" title="jobs.search" />
+              <div class="ib_clear_row">
+                <input id="q" placeholder="job_id/state/message..." data-ui="jobs.search" title="jobs.search" />
+                <button type="button" class="ib_clear_btn" data-clear-for="q" aria-label="Feld leeren" title="Feld leeren">X</button>
+              </div>
             </div>
           </div>
 
@@ -176,7 +179,10 @@
            </div>
           <div style="flex:1; min-width: 260px;">
             <label class="muted" style="display:block; font-size: 12px;">Suche</label>
-             <input id="cache_q" placeholder="dashboard/stats/measurement/field/..." data-ui="cache.search" title="cache.search" />
+             <div class="ib_clear_row">
+               <input id="cache_q" placeholder="dashboard/stats/measurement/field/..." data-ui="cache.search" title="cache.search" />
+               <button type="button" class="ib_clear_btn" data-clear-for="cache_q" aria-label="Feld leeren" title="Feld leeren">X</button>
+             </div>
            </div>
           </div>
 
@@ -315,7 +321,10 @@
         <div class="row" style="margin-top: 10px;" data-ui="usage.controls" title="usage.controls">
           <div style="flex:1; min-width: 260px;">
             <label class="muted" style="display:block; font-size: 12px;">Suche</label>
-            <input id="usage_q" placeholder="kind/page/cache_id/run_id/note..." data-ui="usage.search" title="usage.search" />
+            <div class="ib_clear_row">
+              <input id="usage_q" placeholder="kind/page/cache_id/run_id/note..." data-ui="usage.search" title="usage.search" />
+              <button type="button" class="ib_clear_btn" data-clear-for="usage_q" aria-label="Feld leeren" title="Feld leeren">X</button>
+            </div>
           </div>
           <div>
             <label class="muted" style="display:block; font-size: 12px;">&nbsp;</label>

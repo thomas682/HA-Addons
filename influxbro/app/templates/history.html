@@ -51,7 +51,10 @@
         <div class="row" data-ui="history.filters" title="history.filters" style="align-items:end;">
           <div style="min-width: 240px; flex: 1 1 360px;">
             <label>Suche (Volltext)</label>
-            <input id="q" placeholder="Grund, friendly_name, entity_id, _measurement..." data-ui="history.search" title="history.search" style="width:100%;" />
+            <div class="ib_clear_row">
+              <input id="q" placeholder="Grund, friendly_name, entity_id, _measurement..." data-ui="history.search" title="history.search" style="width:100%;" />
+              <button type="button" class="ib_clear_btn" data-clear-for="q" aria-label="Feld leeren" title="Feld leeren">X</button>
+            </div>
           </div>
           <div style="min-width: 160px; flex: 0 0 auto;">
             <label>Aktion</label>

@@ -134,6 +134,8 @@ Auch nach dynamischen Refreshs und Vorschlagslisten-Updates werden keine Inline-
 
 Die vier Auswahlfelder `_measurement`, `_field`, `friendly_name` und `entity_id` verwenden dieselbe Kaskadenlogik wie auf der Backup-Seite. Wenn du eines der Felder aenderst, werden die anderen Listen sofort mit den gefilterten Datenbankwerten neu geladen. Der Zeitraum beeinflusst diese vier Vorschlagslisten nicht; er steuert nur die spaetere Datenabfrage fuer Graph, Tabelle und Statistik.
 
+Die Felder `Feld`, `Name` und `Grund Filter` besitzen jetzt jeweils einen dauerhaft sichtbaren Button `Feld leeren` direkt neben dem Eingabefeld.
+
 Auch `_measurement`-Werte mit Sonderzeichen wie `°F` werden direkt ueber die echten Daten gefiltert. Wenn es zu einem Measurement keine passenden Fields, friendly_names oder Entity IDs gibt, bleiben die anderen Listen entsprechend leer.
 
 Unter den Filtern zeigt `Auswahl (aufgeloest)` den finalen Stand der Auswahl an - analog zur Export-Seite. Dort siehst du direkt, welche Werte fuer `_measurement`, `_field`, `friendly_name`, `entity_id` und Zeitraum aktuell wirksam sind.
@@ -341,6 +343,7 @@ Tipp: In der Toolbar gibt es Mehrfachaktionen (z.B. Werte davor uebernehmen oder
 - HA-Infos:
   - device_class, state_class, unit_of_measurement werden (wenn moeglich) aus Home Assistant geladen.
 - `stats.info` zeigt waehrend laufender Berechnungen jetzt detailliertere Phasen- und Fortschrittsinformationen plus Sanduhr an.
+- Im Block `Quelle` sowie im Suchfeld gibt es jetzt jeweils einen dauerhaft sichtbaren Button `Feld leeren`.
 
 ## Logs
 
@@ -348,7 +351,8 @@ Tipp: In der Toolbar gibt es Mehrfachaktionen (z.B. Werte davor uebernehmen oder
 - Typische Nutzung:
   - Follow/Refresh fuer Live-Ansicht
   - Buttons `aeltester`/`neuster` springen innerhalb der Ansicht nach oben/unten
-  - Suche/Filter um Fehler schneller zu finden
+- Suche/Filter um Fehler schneller zu finden
+- Das Suchfeld besitzt einen dauerhaft sichtbaren Button `Feld leeren`.
   - Copy/Download fuer Support oder Analyse
 - Export: erstellt ein Debug-Bundle (JSON, inkl. Client-Fehler wie "Failed to fetch").
 - Debug report: erstellt einen GitHub-freundlichen Report als Markdown-Datei (empfohlen fuer Issue/Kommentar).
@@ -366,6 +370,7 @@ Tipp: In der Toolbar gibt es Mehrfachaktionen (z.B. Werte davor uebernehmen oder
 - In `message` wird kein zusaetzlicher `Modus:`-Text mehr eingeblendet.
 - Spalte `Ausloeser`: zeigt den Trigger (trigger_page + optional timer_id), z.B. `scheduler | stats_cache`.
 - Tipp: `Open Statistik` setzt die Job-ID fuer die Statistik-Seite und wechselt dorthin.
+- Die Suchfelder in `Jobs`, `Cache` und `Cache Nutzung` besitzen jeweils einen dauerhaft sichtbaren Button `Feld leeren`.
 
 Cache:
 
@@ -440,6 +445,8 @@ Neu: FullBackup (InfluxDB komplett)
 - Restore schreibt die Werte zurueck, ohne doppelte Messpunkte zu erzeugen (idempotent, weil gleiche Zeitpunkte/Tags/Field ueberschrieben werden).
 - Restore fragt bei destruktiven Aktionen nur noch per Browser-Dialog nach Bestaetigung.
 - Die Bereiche `Quelle (Backup)` und `Ziel (Messwert)` sind jetzt einklappbar.
+- Die Sektion `Ziel (Messwert)` bleibt strukturell sauber geschlossen; nachfolgende Restore- und FullRestore-Bereiche bleiben dadurch korrekt im Restore-Layout eingebettet.
+- Die Auswahlfelder in `Ziel (Messwert)` inklusive Zeitfilter besitzen jetzt dauerhaft sichtbare Buttons `Feld leeren`.
 - Tipp: In der Volltextsuche gibt es Buttons `Alle` (leeren) und `aus Dashboardauswahl`.
 - Die Hoehe der Restore-Backup-Liste ist per Einstellung "Sichtbare Zeilen (Restore-Liste)" konfigurierbar.
 - Restore: Backup-Liste, Query und Detail-Boxen sind resizable; Hoehen werden automatisch gemerkt.
@@ -497,8 +504,9 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Auswahl:
   - Quelle und Ziel jeweils per `_measurement` (Pflicht), `_field`, `entity_id` und/oder `friendly_name` setzen.
   - `entity_id` / `friendly_name` bieten Vorschlaege (datalist). Measurement/Field werden best-effort automatisch aus der Auswahl ermittelt.
-  - Wichtig: Mindestens `entity_id` oder `friendly_name` muss pro Seite gesetzt sein (damit die Serie eindeutig ist).
-  - `Richtung` bestimmt, welche Seite als Quelle gilt (Quelle->Ziel oder Ziel->Quelle).
+- Wichtig: Mindestens `entity_id` oder `friendly_name` muss pro Seite gesetzt sein (damit die Serie eindeutig ist).
+- `Richtung` bestimmt, welche Seite als Quelle gilt (Quelle->Ziel oder Ziel->Quelle).
+- Alle Auswahlfelder in `Quelle` und `Ziel` besitzen jetzt dauerhaft sichtbare Buttons `Feld leeren`.
 - Vorschau:
   - `Timeline`: zeigt die Verteilung der Punkte im Von/Bis Fenster; mit Maus ziehen markierst du den exakten Kopierbereich.
   - `Mini-Graph`: downsampled Linie als schnelle Orientierung.
@@ -515,15 +523,14 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 
 - Seite `Export`: Auswahl wie im Dashboard; Measurement/Field wird best-effort aus friendly_name/entity_id aufgeloest.
 - Die `_field`-Liste wird dabei mit `_measurement`, `friendly_name`, `entity_id` und Zeitraum gemeinsam gefiltert. `value` wird nur noch dann automatisch gesetzt, wenn dieses Field in der gefilterten Auswahl wirklich existiert.
-- Feld `Auswahl (aufgeloest)`: zeigt die aktuell aufgeloeste Serie (measurement/field + tags) und den Zeitraum.
 - Export-Erzeugung laeuft als Hintergrund-Job und kann mit `Abbrechen` gestoppt werden.
 - Der Button `Export` oeffnet in Chromium-basierten Browsern einen klickbaren Client-Ordnerbrowser. Du waehlt zuerst einen lokalen Root-Ordner und kannst danach Unterordner direkt im Dialog mit der Maus auswaehlen. Die fertige Datei wird clientseitig dorthin geschrieben.
 - Buttons:
   - `Download`: startet den Export-Job und laedt die Datei herunter.
   - `Export`: fragt bevorzugt ein Zielverzeichnis oder Save-As-Ziel im Browser ab und speichert die fertige Datei dort.
 - Export begrenzt die Anzahl der Datenpunkte nicht mehr; es werden alle Treffer im gewaehlten Zeitraum geschrieben.
-- Das Feld `Auswahl (aufgeloest)` ist resizable; die Groesse wird automatisch gemerkt.
-- Das Textfeld nutzt die volle Breite des Export-Bereichs.
+- Das Feld `_field` besitzt einen dauerhaft sichtbaren Button `Feld leeren`.
+- Unterhalb der Auswahl bleibt nur noch die kompakte Serieninfo sichtbar; der fruehere Block `Auswahl (aufgeloest)` wurde entfernt.
 - Formate: Text (Delimiter, Default `;`) oder Excel (`.xlsx`).
 - Zeitstempel im Export sind im lokalen Browser-Format (wie in der UI angezeigt).
 
@@ -549,6 +556,7 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Filter:
   - Volltextsuche (z.B. Grund, friendly_name, entity_id, _measurement)
   - Aktion / Messwert / entity_id / Grund
+- Die Volltextsuche besitzt einen dauerhaft sichtbaren Button `Feld leeren`.
 - Tabelle: zeigt friendly_name, entity_id, _measurement und _field in separaten Spalten.
 - Rollback:
   - selektierte Eintraege

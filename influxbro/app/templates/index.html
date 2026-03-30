@@ -235,7 +235,10 @@
           <div class="ib_sel" id="c_field_select" data-ui="filter_field">
             <label class="label_row ib_sel_label"><span>Feld</span><span id="cnt_field" class="muted"></span></label>
             <div class="ib_sel_stack">
-              <input id="field" list="field_list" placeholder="optional" data-ui="filter_field_select" title="filter_field_select" autocomplete="off" />
+              <div class="ib_clear_row">
+                <input id="field" list="field_list" placeholder="optional" data-ui="filter_field_select" title="filter_field_select" autocomplete="off" />
+                <button type="button" class="ib_clear_btn" data-clear-for="field" aria-label="Feld leeren" title="Feld leeren">X</button>
+              </div>
               <datalist id="field_list"></datalist>
               <div class="ib_sel_desc">
                 <button type="button" class="ib_sel_help" data-title="Quelle _field" data-help="Quell-Field fuer das Dashboard. Default ist `value`, wenn dieses Field verfuegbar ist.">?</button>
@@ -261,7 +264,10 @@
           <div class="ib_sel" id="c_friendly" data-ui="filter_friendly">
             <label class="label_row ib_sel_label"><span>Name</span><span id="cnt_friendly_name" class="muted"></span></label>
             <div class="ib_sel_stack">
-              <input id="friendly_name" list="friendly_list" placeholder="optional" data-ui="filter_friendly_input" autocomplete="off" />
+              <div class="ib_clear_row">
+                <input id="friendly_name" list="friendly_list" placeholder="optional" data-ui="filter_friendly_input" autocomplete="off" />
+                <button type="button" class="ib_clear_btn" data-clear-for="friendly_name" aria-label="Feld leeren" title="Feld leeren">X</button>
+              </div>
               <datalist id="friendly_list">
                 {% for it in (suggestions.friendly_name or []) %}
                 <option value="{{ it|e }}"></option>
@@ -621,7 +627,10 @@
 
           <div style="min-width: 220px;">
             <label style="display:block; font-size:12px; opacity:0.8;">Grund Filter</label>
-            <input id="reason_filter" placeholder="enthaelt..." data-ui="reason_filter" title="reason_filter" style="height: 34px;" />
+            <div class="ib_clear_row">
+              <input id="reason_filter" placeholder="enthaelt..." data-ui="reason_filter" title="reason_filter" style="height: 34px;" />
+              <button type="button" class="ib_clear_btn" data-clear-for="reason_filter" aria-label="Feld leeren" title="Feld leeren">X</button>
+            </div>
           </div>
           <div style="min-width: 180px;">
             <label style="display:block; font-size:12px; opacity:0.8;">Klasse</label>

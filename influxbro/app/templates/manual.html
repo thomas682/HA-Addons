@@ -62,7 +62,10 @@
       <div class="muted">Quelle: <code>influxbro/MANUAL.md</code></div>
 
       <div class="searchbar" data-ui="manual.searchbar" title="manual.searchbar">
-        <input id="manual_search" type="text" placeholder="Handbuch durchsuchen..." data-ui="manual.search" title="manual.search" />
+        <div class="ib_clear_row">
+          <input id="manual_search" type="text" placeholder="Handbuch durchsuchen..." data-ui="manual.search" title="manual.search" />
+          <button type="button" class="ib_clear_btn" data-clear-for="manual_search" aria-label="Feld leeren" title="Feld leeren">X</button>
+        </div>
         <div class="search_meta"><span id="manual_search_idx">0</span>/<span id="manual_search_cnt">0</span></div>
         <button id="manual_search_prev" type="button" data-ui="manual.search.prev" title="manual.search.prev">Zurueck</button>
         <button id="manual_search_next" type="button" data-ui="manual.search.next" title="manual.search.next">Vor</button>
