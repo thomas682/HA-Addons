@@ -1217,7 +1217,7 @@
         const controls = document.createElement('div');
         controls.style.display = 'flex';
         controls.style.alignItems = 'center';
-        controls.style.justifyContent = 'space-between';
+        controls.style.justifyContent = 'flex-start';
         controls.style.gap = '10px';
         controls.style.flexWrap = 'wrap';
         controls.style.marginBottom = '8px';
@@ -1237,6 +1237,8 @@
         wrapLbl.style.gap = '8px';
         wrapLbl.style.fontSize = '12px';
         wrapLbl.style.opacity = '0.85';
+        wrapLbl.style.flex = '0 0 auto';
+        wrapLbl.style.width = 'auto';
 
         const wrapCb = document.createElement('input');
         wrapCb.id = 'influxbro_popup_history_wrap';
@@ -1254,6 +1256,8 @@
         clientLbl.style.gap = '8px';
         clientLbl.style.fontSize = '12px';
         clientLbl.style.opacity = '0.85';
+        clientLbl.style.flex = '0 0 auto';
+        clientLbl.style.width = 'auto';
 
         const clientCb = document.createElement('input');
         clientCb.id = 'influxbro_popup_history_client_time';

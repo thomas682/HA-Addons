@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.169
+
+### Fix
+
+- Query-History: Die Steuerelemente oberhalb des unteren History-Felds verwenden jetzt ein kompaktes Links-Layout ohne streckendes `space-between`. Dadurch bleiben `Umbruch` und `Client time` als gleich grosse Checkboxen sichtbar.
+
+### Maintenance
+
+- Tests: `pytest tests/test_api_ui_support.py -q`, `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.168
 
 ### Fix

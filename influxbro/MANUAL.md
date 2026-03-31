@@ -502,6 +502,7 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Der untere Query-History-Bereich wird als reine Textansicht dargestellt, aehnlich den Logfiles. Ueber dem Textfeld gibt es ein eigenes Suchfeld und eine eigene Checkbox `Umbruch` fuer die History-Anzeige.
 - Query-Dialoge zeigen die History jetzt immer automatisch an. Der Dialog zeigt zusaetzlich, wann die aktuelle Query ausgeloest wurde und wodurch sie ausgeloest wurde. Im unteren History-Bereich steuert `Client time`, ob Zeiten lokal im Browser formatiert oder als rohe ISO-Zeit angezeigt werden.
 - Die Checkbox `Client time` verwendet dieselbe kompakte Darstellung wie `Umbruch`.
+- Die Steuerleiste ueber der Query-History bleibt kompakt links ausgerichtet, damit beide Checkboxen visuell gleich bleiben.
 - Die untere Query-History inklusive horizontalem Trenner ist im Query-Dialog jetzt immer sichtbar; sie muss nicht mehr separat eingeblendet werden.
 - Die Query-Metadaten im Dialog laufen jetzt stabil auch im Live-System, weil die gemeinsame History-Auswertung im globalen Popup-Scope verfuegbar ist.
 - Die gemeinsame Popup-History arbeitet stabil ueber alle Query-Dialoge hinweg, weil Render-, Toggle- und Scope-Logik denselben geteilten Popup-Zustand verwenden.
