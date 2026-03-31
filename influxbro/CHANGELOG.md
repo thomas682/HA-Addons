@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.175
+
+### Fix
+
+- Query-Test-Dialog: Schliessen stellt jetzt den urspruenglichen Dialog-Zustand korrekt wieder her. Vorher blieben `pre`, `meta` und `controls` ausgeblendet, sodass nachfolgende Dialoge (Query-Details, Statistik) leer angezeigt wurden.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.174
 
 ### Fix

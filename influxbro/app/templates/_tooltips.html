@@ -1935,6 +1935,22 @@
 
           if(!root || !card || !titleEl || !preEl) return;
 
+          const contentWrap = document.getElementById('influxbro_popup_content');
+
+          const savedChildren = [];
+          while(contentWrap.firstChild){
+            savedChildren.push(contentWrap.firstChild);
+            contentWrap.removeChild(contentWrap.firstChild);
+          }
+          const savedPreDisplay = preEl.style.display;
+          const savedMetaDisplay = metaEl.style.display;
+          const savedControlsDisplay = controlsEl.style.display;
+          const savedHistoryDisplay = historyBox ? historyBox.style.display : '';
+          const savedSplitDisplay = splitEl ? splitEl.style.display : '';
+          const savedActionsDisplay = actionsWrap ? actionsWrap.style.display : '';
+          const savedCardWidth = card.style.width;
+          const savedCardHeight = card.style.height;
+
           preEl.style.display = 'none';
           metaEl.style.display = 'none';
           controlsEl.style.display = 'none';
@@ -1944,7 +1960,6 @@
 
           titleEl.textContent = String(o.title || 'Query testen');
 
-          const contentWrap = document.getElementById('influxbro_popup_content');
           contentWrap.innerHTML = '';
           contentWrap.style.gap = '10px';
 
@@ -2244,9 +2259,21 @@
             const origOnclick = closeBtn.onclick;
             closeBtn.onclick = (ev)=>{
               try{ if(queryAbortController) queryAbortController.abort(); }catch(e){}
-              card.style.width = 'min(860px, calc(100vw - 24px))';
-              card.style.height = 'min(72vh, 720px)';
-              _ensureUi();
+              card.style.width = savedCardWidth || 'min(860px, calc(100vw - 24px))';
+              card.style.height = savedCardHeight || 'min(72vh, 720px)';
+
+              contentWrap.innerHTML = '';
+              for(const child of savedChildren){
+                contentWrap.appendChild(child);
+              }
+
+              preEl.style.display = savedPreDisplay || '';
+              metaEl.style.display = savedMetaDisplay || '';
+              controlsEl.style.display = savedControlsDisplay || '';
+              if(historyBox) historyBox.style.display = savedHistoryDisplay || 'none';
+              if(splitEl) splitEl.style.display = savedSplitDisplay || 'none';
+              if(actionsWrap) actionsWrap.style.display = savedActionsDisplay || 'none';
+
               if(typeof origOnclick === 'function') origOnclick(ev);
             };
           }
