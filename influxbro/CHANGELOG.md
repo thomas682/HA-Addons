@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.12.178
+
+### Enhancement
+
+- Raw-Tabelle: Ausreisser-Suche erfolgt jetzt chunk-basiert (1-14 Tage je nach Zeitspanne) wie bei der Bearbeitungsliste, um Abfrage-Timeouts zu verhindern.
+- Raw-Tabelle: Neuer Button "Suchen" startet die chunk-basierte Suche ueber den gesamten Zeitraum.
+- Raw-Tabelle: "Suche ab Beginn" umbenannt in "Anzeige ab Beginn" – laedt gefundene Ausreisser in die Tabelle, markiert sie und zentriert die Ansicht.
+- Raw-Tabelle: "Weitersuchen" umbenannt in "Naechster" – springt zum naechsten Ausreisser mit Wrap-around zum Anfang.
+- Raw-Tabelle: Neuer Button "Zurueck" vor "Naechster" – springt zum vorherigen Ausreisser mit Wrap-around zum Ende.
+- Raw-Tabelle: Statusanzeige zeigt jetzt Chunk-Fortschritt, gepruefte Punkte, gefundene Ausreisser und elapsed time (wie Bearbeitungsliste).
+- Raw-Tabelle: Neuer Abbruch-Button waehrend der Suche.
+- Raw-Tabelle: Optionale Eingabefelder fuer Grenzen (Min/Max) und Max Sprung bei entsprechenden Ausreisser-Typen.
+- Backend: `/api/outlier_search` unterstuetzt jetzt State-Parameter (`prev_value`, `counter_base_value`, `scan_state`) fuer chunk-uebergreifende Kontinuitaet.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.177
 
 ### Fix

@@ -16792,18 +16792,19 @@ def api_outlier_search():
 
     rows: list[dict[str, Any]] = []
     scanned = 0
-    prev_val: float | None = None
+    prev_val: float | None = body.get("prev_value")
     last_time_iso: str | None = None
-    counter_base_val: float | None = None
+    counter_base_val: float | None = body.get("counter_base_value")
 
+    scan_state_in = body.get("scan_state") or {}
     fault_state = {
-        "status": "normal",
-        "last_valid_value": None,
-        "fault_started_at": None,
-        "fault_count": 0,
-        "recovery_streak": 0,
-        "last_reason": None,
-        "fault_ended_at": None,
+        "status": str(scan_state_in.get("status") or "normal"),
+        "last_valid_value": scan_state_in.get("last_valid_value"),
+        "fault_started_at": str(scan_state_in.get("fault_started_at") or "") or None,
+        "fault_count": int(scan_state_in.get("fault_count") or 0),
+        "recovery_streak": int(scan_state_in.get("recovery_streak") or 0),
+        "last_reason": str(scan_state_in.get("last_reason") or "") or None,
+        "fault_ended_at": str(scan_state_in.get("fault_ended_at") or "") or None,
     }
     recovery_valid_streak = 2
 
@@ -17046,6 +17047,10 @@ from(bucket: "{cfg["bucket"]}")
             "stop": stop,
             "limit": limit,
             "truncated": len(rows) >= limit,
+            "last_time": last_time_iso,
+            "last_value": prev_val,
+            "counter_base_value": counter_base_val,
+            "scan_state": fault_state if fault_phase_enabled else None,
         })
     except Exception as e:
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500

@@ -498,23 +498,51 @@
       </div>
 
       <div id="raw_search_bar" style="display:none; border:1px solid #eee; border-radius:12px; padding:10px 12px; margin-top:10px; background:#fafafa;">
-        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-          <select id="raw_outlier_types" multiple style="height:auto; min-height:68px; padding:4px; border:1px solid #ddd; border-radius:8px; min-width:200px;">
-            <option value="counter">Counter Ausreisser</option>
-            <option value="decrease">Counter Abfall</option>
-            <option value="bounds">Grenzen</option>
-            <option value="fault_phase">Stoerphasensuche</option>
-            <option value="null">NULL Werte</option>
-            <option value="zero">0-Werte</option>
-          </select>
+        <div style="display:flex; align-items:flex-start; gap:10px; flex-wrap:wrap;">
           <div style="display:flex; flex-direction:column; gap:4px;">
-            <button class="btn_sm" id="raw_outlier_select_all">Alle</button>
-            <button class="btn_sm" id="raw_outlier_select_none">Keiner</button>
+            <select id="raw_outlier_types" multiple style="height:auto; min-height:68px; padding:4px; border:1px solid #ddd; border-radius:8px; min-width:200px;">
+              <option value="counter">Counter Ausreisser</option>
+              <option value="decrease">Counter Abfall</option>
+              <option value="bounds">Grenzen</option>
+              <option value="fault_phase">Stoerphasensuche</option>
+              <option value="null">NULL Werte</option>
+              <option value="zero">0-Werte</option>
+            </select>
+            <div style="display:flex; flex-direction:column; gap:4px;">
+              <button class="btn_sm" id="raw_outlier_select_all">Alle</button>
+              <button class="btn_sm" id="raw_outlier_select_none">Keiner</button>
+            </div>
           </div>
-          <button class="btn_sm" id="raw_search_start">Suche ab Beginn</button>
-          <button class="btn_sm" id="raw_search_next" disabled>Weitersuchen</button>
-          <button class="btn_sm" id="raw_search_clear" style="display:none;">Suche beenden</button>
-          <span id="raw_search_status" class="muted" style="font-size:12px;"></span>
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+              <button class="btn_sm" id="raw_search_run">Suchen</button>
+              <button class="btn_sm" id="raw_search_start" disabled>Anzeige ab Beginn</button>
+              <button class="btn_sm" id="raw_search_prev" disabled>Zurück</button>
+              <button class="btn_sm" id="raw_search_next" disabled>Nächster</button>
+              <button class="btn_sm" id="raw_search_clear" style="display:none;">Suche beenden</button>
+              <button class="btn_sm" id="raw_search_abort" style="display:none;">Abbruch</button>
+            </div>
+            <div id="raw_outlier_inputs" style="display:none; flex-direction:column; gap:6px;">
+              <div id="raw_scan_counter" style="display:none;">
+                <label style="font-size:12px;">Max Sprung (optional)</label>
+                <input id="raw_out_max_step" placeholder="(auto)" style="width:120px;" />
+              </div>
+              <div id="raw_scan_bounds" style="display:none; display:none;">
+                <label style="font-size:12px;">Grenzen (Min/Max)</label>
+                <div style="display:flex; gap:6px;">
+                  <input id="raw_out_min" placeholder="Min" style="width:80px;" />
+                  <input id="raw_out_max" placeholder="Max" style="width:80px;" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="raw_outlier_status" style="display:none; margin-top:8px; font-size:12px; opacity:0.85; align-items:center; gap:8px; flex-wrap:wrap;">
+          <span id="raw_outlier_spinner" aria-hidden="true" style="width:14px; height:14px; border-radius:50%; border:2px solid rgba(0,0,0,0.18); border-top-color:rgba(0,0,0,0.75); animation:spin 0.9s linear infinite;"></span>
+          <span id="raw_outlier_status_txt">Suche laeuft...</span>
+          <span id="raw_outlier_status_meta"></span>
+          <span id="raw_outlier_status_now"></span>
+          <span id="raw_outlier_status_time"></span>
         </div>
       </div>
 
@@ -927,12 +955,26 @@ const $rawResize = document.getElementById('raw_resize');
 const $rawAutoWidth = document.getElementById('raw_autowidth');
 const $rawSearchBar = document.getElementById('raw_search_bar');
 const $rawOutlierTypes = document.getElementById('raw_outlier_types');
+const $rawSearchRun = document.getElementById('raw_search_run');
 const $rawSearchStart = document.getElementById('raw_search_start');
+const $rawSearchPrev = document.getElementById('raw_search_prev');
 const $rawSearchNext = document.getElementById('raw_search_next');
 const $rawSearchClear = document.getElementById('raw_search_clear');
-const $rawSearchStatus = document.getElementById('raw_search_status');
+const $rawSearchAbort = document.getElementById('raw_search_abort');
+const $rawOutlierStatus = document.getElementById('raw_outlier_status');
+const $rawOutlierSpinner = document.getElementById('raw_outlier_spinner');
+const $rawOutlierStatusTxt = document.getElementById('raw_outlier_status_txt');
+const $rawOutlierStatusMeta = document.getElementById('raw_outlier_status_meta');
+const $rawOutlierStatusNow = document.getElementById('raw_outlier_status_now');
+const $rawOutlierStatusTime = document.getElementById('raw_outlier_status_time');
 const $rawOutlierSelectAll = document.getElementById('raw_outlier_select_all');
 const $rawOutlierSelectNone = document.getElementById('raw_outlier_select_none');
+const $rawOutlierInputs = document.getElementById('raw_outlier_inputs');
+const $rawScanCounter = document.getElementById('raw_scan_counter');
+const $rawScanBounds = document.getElementById('raw_scan_bounds');
+const $rawOutMaxStep = document.getElementById('raw_out_max_step');
+const $rawOutMin = document.getElementById('raw_out_min');
+const $rawOutMax = document.getElementById('raw_out_max');
 const $rawWindowWidth = document.getElementById('raw_windowwidth');
 const $rawWrap = document.getElementById('raw_wrap');
 const $rawColFilter = document.getElementById('raw_colfilter');
@@ -4185,6 +4227,11 @@ let RAW_OUTLIER_RESULTS = [];
 let RAW_OUTLIER_INDEX = -1;
 let RAW_OUTLIER_MAP = null;
 let RAW_OUTLIER_SEARCHING = false;
+let RAW_OUTLIER_T0 = 0;
+let RAW_OUTLIER_TIMER = null;
+let RAW_OUTLIER_META_TEXT = "";
+let RAW_OUTLIER_SCANNED_TOTAL = 0;
+let RAW_OUTLIER_ABORT = null;
 let GRAPH_QUERY_DASH_AT = "";
 let GRAPH_QUERY_EDIT_AT = "";
 let APPLY_QUERY_LAST_AT = "";
@@ -4355,101 +4402,285 @@ function renderRawTable(){
   updateRawToolbarState();
 }
 
-async function runRawOutlierSearch(fromStart){
+function _rawOutlierFmtDur(ms){
+  try{
+    const s = ms / 1000;
+    if(s < 60) return s.toFixed(1) + 's';
+    if(s < 3600) return Math.floor(s / 60) + 'm ' + Math.floor(s % 60) + 's';
+    return Math.floor(s / 3600) + 'h ' + Math.floor((s % 3600) / 60) + 'm';
+  }catch(e){ return ''; }
+}
+
+function _rawOutlierRenderTime(){
+  try{
+    if(!$rawOutlierStatusTime) return;
+    const total = performance.now() - RAW_OUTLIER_T0;
+    $rawOutlierStatusTime.textContent = 'Gesamt: ' + _rawOutlierFmtDur(total);
+    if($rawOutlierStatusNow) $rawOutlierStatusNow.textContent = 'Jetzt: ' + fmtTs(new Date().toISOString());
+    if($rawOutlierStatusMeta) $rawOutlierStatusMeta.textContent = RAW_OUTLIER_META_TEXT || '';
+  }catch(e){}
+}
+
+function startRawOutlierUi(metaText){
+  try{
+    RAW_OUTLIER_T0 = performance.now();
+    RAW_OUTLIER_META_TEXT = metaText || '';
+    if($rawOutlierStatus) $rawOutlierStatus.style.display = 'flex';
+    if($rawOutlierSpinner) $rawOutlierSpinner.style.display = 'inline-block';
+    if($rawOutlierStatusTxt) $rawOutlierStatusTxt.textContent = 'Suche laeuft...';
+    _rawOutlierRenderTime();
+    if(RAW_OUTLIER_TIMER) clearInterval(RAW_OUTLIER_TIMER);
+    RAW_OUTLIER_TIMER = setInterval(_rawOutlierRenderTime, 120);
+  }catch(e){}
+}
+
+function stopRawOutlierUi(okDone, errText){
+  try{
+    if(RAW_OUTLIER_TIMER) clearInterval(RAW_OUTLIER_TIMER);
+    RAW_OUTLIER_TIMER = null;
+    _rawOutlierRenderTime();
+    if($rawOutlierSpinner) $rawOutlierSpinner.style.display = 'none';
+    if($rawOutlierStatusTxt){
+      $rawOutlierStatusTxt.textContent = okDone
+        ? 'Fertig: ' + RAW_OUTLIER_RESULTS.length + ' Ausreisser | geprueft: ' + RAW_OUTLIER_SCANNED_TOTAL
+        : 'Fehler: ' + (errText || 'unbekannt');
+    }
+  }catch(e){}
+}
+
+function _rawOutlierMetaFromPayload(p){
+  const parts = [];
+  if(p.measurement) parts.push('M=' + p.measurement);
+  if(p.field) parts.push('F=' + p.field);
+  if(p.entity_id) parts.push('E=' + p.entity_id);
+  if(p.friendly_name) parts.push('N=' + p.friendly_name);
+  const types = (p.search_types || []).join(', ');
+  if(types) parts.push('Typen=' + types);
+  return parts.join(' | ');
+}
+
+function _rawOutlierApplyPresetVisibility(){
+  const types = Array.from($rawOutlierTypes.selectedOptions).map(o => o.value);
+  const hasBounds = types.includes('bounds') || types.includes('fault_phase');
+  const hasCounter = types.includes('counter') || types.includes('decrease') || types.includes('fault_phase');
+  if($rawScanCounter) $rawScanCounter.style.display = hasCounter ? 'block' : 'none';
+  if($rawScanBounds) $rawScanBounds.style.display = hasBounds ? 'flex' : 'none';
+  if($rawOutlierInputs){
+    const any = hasBounds || hasCounter;
+    $rawOutlierInputs.style.display = any ? 'flex' : 'none';
+  }
+}
+
+async function runRawOutlierSearch(){
   if(RAW_OUTLIER_SEARCHING) return;
   const types = Array.from($rawOutlierTypes.selectedOptions).map(o => o.value);
   if(!types.length){
-    if($rawSearchStatus) $rawSearchStatus.textContent = 'Kein Ausreisser-Typ ausgewaehlt.';
+    if($rawOutlierStatusTxt) $rawOutlierStatusTxt.textContent = 'Kein Ausreisser-Typ ausgewaehlt.';
     return;
   }
 
   const win = _rawWindowIso();
   if(!win || !win.start || !win.stop){
-    if($rawSearchStatus) $rawSearchStatus.textContent = 'Kein gueltiger Zeitraum gewaehlt.';
+    if($rawOutlierStatusTxt) $rawOutlierStatusTxt.textContent = 'Kein gueltiger Zeitraum gewaehlt.';
     return;
   }
 
+  const base = {
+    measurement: String($mf ? ($mf.value || '') : ''),
+    field: String($f ? ($f.value || '') : ''),
+    entity_id: String($e ? ($e.value || '') : ''),
+    friendly_name: String($n ? ($n.value || '') : ''),
+  };
+  if(!base.measurement || !base.field){
+    if($rawOutlierStatusTxt) $rawOutlierStatusTxt.textContent = 'Measurement oder Field fehlt.';
+    return;
+  }
+
+  const startMs = TABLE_TIME.graph_start_ms;
+  const stopMs = TABLE_TIME.graph_stop_ms;
+  if(!(isFinite(startMs) && isFinite(stopMs))){
+    if($rawOutlierStatusTxt) $rawOutlierStatusTxt.textContent = 'Kein Graph-Zeitraum bekannt.';
+    return;
+  }
+
+  const unit = (HA_ENTITY_INFO && HA_ENTITY_INFO.entity && HA_ENTITY_INFO.entity.unit_of_measurement)
+    ? String(HA_ENTITY_INFO.entity.unit_of_measurement) : '';
+  const baseMeta = _rawOutlierMetaFromPayload({...base, search_types: types});
+  const overallSpanTxt = 'Suchbereich: ' + fmtTs(win.start) + ' bis ' + fmtTs(win.stop);
+
+  startRawOutlierUi(baseMeta);
   RAW_OUTLIER_SEARCHING = true;
+  RAW_OUTLIER_RESULTS = [];
+  RAW_OUTLIER_INDEX = -1;
+  RAW_OUTLIER_MAP = {};
+  RAW_OUTLIER_SCANNED_TOTAL = 0;
+  RAW_OUTLIER_ABORT = new AbortController();
+
+  if($rawSearchRun) $rawSearchRun.disabled = true;
+  if($rawSearchAbort) $rawSearchAbort.style.display = 'inline-block';
+
   try{
-    if($rawSearchStart) $rawSearchStart.disabled = true;
-    if($rawSearchNext) $rawSearchNext.disabled = true;
-    if($rawSearchStatus) $rawSearchStatus.textContent = 'Suche laeuft...';
+    const spanMs = Math.max(0, stopMs - startMs);
+    const spanDays = spanMs / 86400000;
+    let chunkDays = 1;
+    if(spanDays > 180) chunkDays = 14;
+    else if(spanDays > 60) chunkDays = 7;
+    else if(spanDays > 14) chunkDays = 2;
 
-    const payload = {
-      measurement: String($mf ? ($mf.value || '') : ''),
-      field: String($f ? ($f.value || '') : ''),
-      entity_id: String($e ? ($e.value || '') : ''),
-      friendly_name: String($n ? ($n.value || '') : ''),
-      start: win.start,
-      stop: win.stop,
-      search_types: types,
-    };
-
-    const r = await fetch('./api/outlier_search', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(payload),
-    });
-    const j = await r.json().catch(()=>({ok:false, error:'Invalid JSON'}));
-
-    if(!r.ok || !j.ok){
-      if($rawSearchStatus) $rawSearchStatus.textContent = 'Fehler: ' + (j.error || ('HTTP ' + r.status));
-      RAW_OUTLIER_RESULTS = [];
-      RAW_OUTLIER_INDEX = -1;
-      RAW_OUTLIER_MAP = null;
-      renderRawTable();
-      return;
+    const chunks = [];
+    let cur = startMs;
+    const step = chunkDays * 86400000;
+    while(cur < stopMs){
+      const nxt = Math.min(stopMs, cur + step);
+      chunks.push([new Date(cur).toISOString(), new Date(nxt).toISOString()]);
+      cur = nxt;
     }
 
-    RAW_OUTLIER_RESULTS = j.rows || [];
-    RAW_OUTLIER_INDEX = -1;
-    RAW_OUTLIER_MAP = {};
-    for(const row of RAW_OUTLIER_RESULTS){
-      RAW_OUTLIER_MAP[String(row.time)] = {reason: row.reason || '', types: row.types || []};
+    let scannedTotal = 0;
+    let prevValue = null;
+    let counterBase = null;
+    let scanState = null;
+    let lastIso = null;
+
+    for(let i = 0; i < chunks.length; i++){
+      if(RAW_OUTLIER_ABORT && RAW_OUTLIER_ABORT.signal.aborted) throw {aborted: true};
+
+      const [aIso, bIso] = chunks[i];
+      const upto = lastIso || aIso;
+      RAW_OUTLIER_META_TEXT = 'Chunk ' + (i+1) + '/' + chunks.length + ': ' + fmtTs(aIso) + ' bis ' + fmtTs(bIso) + ' | ' + overallSpanTxt + ' | Geprueft bis: ' + fmtTs(upto) + ' | Punkte: ' + scannedTotal + ' | ' + baseMeta;
+      _rawOutlierRenderTime();
+
+      const payload = {
+        measurement: base.measurement,
+        field: base.field,
+        entity_id: base.entity_id,
+        friendly_name: base.friendly_name,
+        start: aIso,
+        stop: bIso,
+        search_types: types,
+        unit: unit,
+        prev_value: prevValue,
+        counter_base_value: counterBase,
+        scan_state: scanState,
+        min: $rawOutMin ? $rawOutMin.value : '',
+        max: $rawOutMax ? $rawOutMax.value : '',
+        max_step: $rawOutMaxStep ? $rawOutMaxStep.value : '',
+      };
+
+      const r = await fetch('./api/outlier_search', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload),
+        signal: RAW_OUTLIER_ABORT ? RAW_OUTLIER_ABORT.signal : undefined,
+      });
+      const j = await r.json().catch(()=>({ok:false, error:'Invalid JSON'}));
+
+      if(!r.ok || !j.ok){
+        throw new Error(j.error || ('HTTP ' + r.status));
+      }
+
+      scannedTotal += Number(j.scanned || 0);
+      lastIso = j.last_time || lastIso;
+      prevValue = (j.last_value !== undefined && j.last_value !== null) ? j.last_value : prevValue;
+      counterBase = (j.counter_base_value !== undefined && j.counter_base_value !== null && String(j.counter_base_value).trim() !== '') ? j.counter_base_value : counterBase;
+      scanState = (j.scan_state && typeof j.scan_state === 'object') ? j.scan_state : scanState;
+
+      const got = j.rows || [];
+      for(const row of got){
+        if(!RAW_OUTLIER_MAP[String(row.time)]){
+          RAW_OUTLIER_RESULTS.push(row);
+          RAW_OUTLIER_MAP[String(row.time)] = {reason: row.reason || '', types: row.types || []};
+        }
+      }
+      RAW_OUTLIER_SCANNED_TOTAL = scannedTotal;
+
+      if(RAW_OUTLIER_RESULTS.length >= 5000){
+        RAW_OUTLIER_RESULTS = RAW_OUTLIER_RESULTS.slice(0, 5000);
+        break;
+      }
+
+      RAW_OUTLIER_META_TEXT = '';
+      _rawOutlierRenderTime();
+      if($rawOutlierStatusTxt) $rawOutlierStatusTxt.textContent = 'Ausreisser gefunden: ' + RAW_OUTLIER_RESULTS.length + ' | geprueft: ' + scannedTotal;
     }
+
     renderRawTable();
-
-    if($rawSearchStatus) $rawSearchStatus.textContent = RAW_OUTLIER_RESULTS.length + ' Ausreisser gefunden.';
-    if($rawSearchClear) $rawSearchClear.style.display = 'inline-block';
+    stopRawOutlierUi(true);
 
     if(RAW_OUTLIER_RESULTS.length > 0){
-      jumpToNextOutlier();
-    }else{
-      if($rawSearchStatus) $rawSearchStatus.textContent = 'Keine Ausreisser gefunden.';
+      if($rawSearchStart) $rawSearchStart.disabled = false;
+      if($rawSearchClear) $rawSearchClear.style.display = 'inline-block';
     }
   }catch(e){
-    if($rawSearchStatus) $rawSearchStatus.textContent = 'Fehler: ' + (e && e.message ? e.message : String(e));
-    try{ window.InfluxBroClientLog && window.InfluxBroClientLog.fetchError && window.InfluxBroClientLog.fetchError('./api/outlier_search', {}, e); }catch(x){}
+    if(e && e.aborted){
+      stopRawOutlierUi(true);
+    }else{
+      stopRawOutlierUi(false, e && e.message ? e.message : String(e));
+      try{ window.InfluxBroClientLog && window.InfluxBroClientLog.fetchError && window.InfluxBroClientLog.fetchError('./api/outlier_search', {}, e); }catch(x){}
+    }
   }finally{
     RAW_OUTLIER_SEARCHING = false;
-    if($rawSearchStart) $rawSearchStart.disabled = false;
+    RAW_OUTLIER_ABORT = null;
+    if($rawSearchRun) $rawSearchRun.disabled = false;
+    if($rawSearchAbort) $rawSearchAbort.style.display = 'none';
   }
 }
 
-function jumpToNextOutlier(){
-  RAW_OUTLIER_INDEX++;
-  if(RAW_OUTLIER_INDEX >= RAW_OUTLIER_RESULTS.length){
-    RAW_OUTLIER_INDEX = RAW_OUTLIER_RESULTS.length - 1;
-    if($rawSearchStatus) $rawSearchStatus.textContent = 'Keine weiteren Ausreisser.';
-    if($rawSearchNext) $rawSearchNext.disabled = true;
+function displayOutliersFromStart(){
+  if(!RAW_OUTLIER_RESULTS.length){
+    if($rawOutlierStatusTxt) $rawOutlierStatusTxt.textContent = 'Keine Ausreisser gefunden.';
     return;
   }
+  RAW_OUTLIER_INDEX = 0;
+  renderRawTable();
+  highlightOutlierAtIndex(0);
+  _updateOutlierNavStatus();
+  if($rawSearchPrev) $rawSearchPrev.disabled = false;
+  if($rawSearchNext) $rawSearchNext.disabled = false;
+}
 
-  const result = RAW_OUTLIER_RESULTS[RAW_OUTLIER_INDEX];
+function jumpToNextOutlier(){
+  if(!RAW_OUTLIER_RESULTS.length) return;
+  RAW_OUTLIER_INDEX++;
+  if(RAW_OUTLIER_INDEX >= RAW_OUTLIER_RESULTS.length){
+    RAW_OUTLIER_INDEX = 0;
+  }
+  highlightOutlierAtIndex(RAW_OUTLIER_INDEX);
+  _updateOutlierNavStatus();
+}
+
+function jumpToPrevOutlier(){
+  if(!RAW_OUTLIER_RESULTS.length) return;
+  RAW_OUTLIER_INDEX--;
+  if(RAW_OUTLIER_INDEX < 0){
+    RAW_OUTLIER_INDEX = RAW_OUTLIER_RESULTS.length - 1;
+  }
+  highlightOutlierAtIndex(RAW_OUTLIER_INDEX);
+  _updateOutlierNavStatus();
+}
+
+function highlightOutlierAtIndex(idx){
+  if(idx < 0 || idx >= RAW_OUTLIER_RESULTS.length) return;
+  const result = RAW_OUTLIER_RESULTS[idx];
   const ms = Date.parse(String(result.time || ''));
   if(!isFinite(ms)) return;
-
-  if($rawSearchStatus) $rawSearchStatus.textContent =
-    'Ausreisser ' + (RAW_OUTLIER_INDEX + 1) + ' / ' + RAW_OUTLIER_RESULTS.length +
-    ' | ' + (result.reason || '') +
-    ' | ' + fmtTs(result.time);
-
   highlightOutlierRow(ms);
-
   if(_setGraphSelection){
     _setGraphSelection(ms, result.value);
   }
+}
 
+function _updateOutlierNavStatus(){
+  if(!RAW_OUTLIER_RESULTS.length || RAW_OUTLIER_INDEX < 0){
+    if($rawOutlierStatusTxt) $rawOutlierStatusTxt.textContent = 'Keine Ausreisser.';
+    return;
+  }
+  const result = RAW_OUTLIER_RESULTS[RAW_OUTLIER_INDEX];
+  if($rawOutlierStatusTxt) $rawOutlierStatusTxt.textContent =
+    'Ausreisser ' + (RAW_OUTLIER_INDEX + 1) + ' / ' + RAW_OUTLIER_RESULTS.length +
+    ' | ' + (result.reason || '') +
+    ' | ' + fmtTs(result.time);
+  if($rawSearchPrev) $rawSearchPrev.disabled = false;
   if($rawSearchNext) $rawSearchNext.disabled = false;
 }
 
@@ -4490,7 +4721,14 @@ function clearRawOutlierSearch(){
   RAW_OUTLIER_RESULTS = [];
   RAW_OUTLIER_INDEX = -1;
   RAW_OUTLIER_MAP = null;
-  if($rawSearchStatus) $rawSearchStatus.textContent = '';
+  RAW_OUTLIER_SCANNED_TOTAL = 0;
+  if($rawOutlierStatusTxt) $rawOutlierStatusTxt.textContent = '';
+  if($rawOutlierStatusMeta) $rawOutlierStatusMeta.textContent = '';
+  if($rawOutlierStatusNow) $rawOutlierStatusNow.textContent = '';
+  if($rawOutlierStatusTime) $rawOutlierStatusTime.textContent = '';
+  if($rawOutlierStatus) $rawOutlierStatus.style.display = 'none';
+  if($rawSearchStart) $rawSearchStart.disabled = true;
+  if($rawSearchPrev) $rawSearchPrev.disabled = true;
   if($rawSearchNext) $rawSearchNext.disabled = true;
   if($rawSearchClear) $rawSearchClear.style.display = 'none';
   renderRawTable();
@@ -7336,17 +7574,27 @@ try{
 
 try{
   if($rawSearchBar) $rawSearchBar.style.display = ($rawSection && $rawSection.open) ? 'block' : 'none';
-  if($rawSearchStart) $rawSearchStart.addEventListener('click', ()=>{ runRawOutlierSearch(true).catch(()=>{}); });
+  if($rawSearchRun) $rawSearchRun.addEventListener('click', ()=>{ runRawOutlierSearch().catch(()=>{}); });
+  if($rawSearchStart) $rawSearchStart.addEventListener('click', ()=>{ displayOutliersFromStart(); });
+  if($rawSearchPrev) $rawSearchPrev.addEventListener('click', ()=>{ jumpToPrevOutlier(); });
   if($rawSearchNext) $rawSearchNext.addEventListener('click', ()=>{ jumpToNextOutlier(); });
   if($rawSearchClear) $rawSearchClear.addEventListener('click', ()=>{ clearRawOutlierSearch(); });
+  if($rawSearchAbort) $rawSearchAbort.addEventListener('click', ()=>{
+    try{
+      if(RAW_OUTLIER_ABORT) RAW_OUTLIER_ABORT.abort();
+    }catch(e){}
+  });
+  if($rawOutlierTypes) $rawOutlierTypes.addEventListener('change', ()=>{ _rawOutlierApplyPresetVisibility(); });
   if($rawOutlierSelectAll){
     $rawOutlierSelectAll.addEventListener('click', ()=>{
       Array.from($rawOutlierTypes.options).forEach(o => o.selected = true);
+      _rawOutlierApplyPresetVisibility();
     });
   }
   if($rawOutlierSelectNone){
     $rawOutlierSelectNone.addEventListener('click', ()=>{
       Array.from($rawOutlierTypes.options).forEach(o => o.selected = false);
+      _rawOutlierApplyPresetVisibility();
     });
   }
   if($rawSection){
@@ -7354,6 +7602,7 @@ try{
       if($rawSearchBar) $rawSearchBar.style.display = $rawSection.open ? 'block' : 'none';
     });
   }
+  _rawOutlierApplyPresetVisibility();
 }catch(e){}
 </script>
 
