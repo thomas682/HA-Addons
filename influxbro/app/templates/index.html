@@ -4632,8 +4632,7 @@ function displayOutliersFromStart(){
     return;
   }
   RAW_OUTLIER_INDEX = 0;
-  renderRawTable();
-  highlightOutlierAtIndex(0);
+  highlightOutlierAtIndex(0).catch(()=>{});
   _updateOutlierNavStatus();
   if($rawSearchPrev) $rawSearchPrev.disabled = false;
   if($rawSearchNext) $rawSearchNext.disabled = false;
@@ -4645,7 +4644,7 @@ function jumpToNextOutlier(){
   if(RAW_OUTLIER_INDEX >= RAW_OUTLIER_RESULTS.length){
     RAW_OUTLIER_INDEX = 0;
   }
-  highlightOutlierAtIndex(RAW_OUTLIER_INDEX);
+  highlightOutlierAtIndex(RAW_OUTLIER_INDEX).catch(()=>{});
   _updateOutlierNavStatus();
 }
 
@@ -4655,16 +4654,34 @@ function jumpToPrevOutlier(){
   if(RAW_OUTLIER_INDEX < 0){
     RAW_OUTLIER_INDEX = RAW_OUTLIER_RESULTS.length - 1;
   }
-  highlightOutlierAtIndex(RAW_OUTLIER_INDEX);
+  highlightOutlierAtIndex(RAW_OUTLIER_INDEX).catch(()=>{});
   _updateOutlierNavStatus();
 }
 
-function highlightOutlierAtIndex(idx){
+async function highlightOutlierAtIndex(idx){
   if(idx < 0 || idx >= RAW_OUTLIER_RESULTS.length) return;
   const result = RAW_OUTLIER_RESULTS[idx];
   const ms = Date.parse(String(result.time || ''));
   if(!isFinite(ms)) return;
-  highlightOutlierRow(ms);
+
+  RAW_SELECTED_MS = ms;
+
+  const startMs = TABLE_TIME.graph_start_ms;
+  const stopMs = TABLE_TIME.graph_stop_ms;
+  if(isFinite(startMs) && isFinite(stopMs)){
+    const lo = Math.min(startMs, stopMs);
+    const hi = Math.max(startMs, stopMs);
+    if(ms < lo){
+      TABLE_TIME.graph_start_ms = ms;
+      TABLE_TIME.graph_stop_ms = hi;
+    }else if(ms > hi){
+      TABLE_TIME.graph_start_ms = lo;
+      TABLE_TIME.graph_stop_ms = ms;
+    }
+  }
+
+  await loadRawFromGraph(true);
+
   if(_setGraphSelection){
     _setGraphSelection(ms, result.value);
   }

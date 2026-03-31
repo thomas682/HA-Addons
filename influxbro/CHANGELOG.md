@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.181
+
+### Enhancement
+
+- Raw-Tabelle: Beim Sprung zu einem Ausreisser werden jetzt automatisch Datenpunkte davor und danach geladen. Nutzt den bestehenden Centered-Load-Mechanismus: Startet mit `Bereich +- (Minuten)` und erweitert das Zeitfenster schrittweise bis die eingestellte Mindestanzahl von Datenpunkten pro Seite erreicht ist oder Anfang/Ende des Zeitbereichs.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.180
 
 ### Fix
