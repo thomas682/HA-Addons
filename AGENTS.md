@@ -383,6 +383,80 @@ curl -fsS -X POST http://localhost:8099/api/test   -H 'Content-Type: application
 
 ## Workflow Regeln
 
+## 📦 Bulk File Processing & Large Context Handling (CRITICAL)
+
+### General Rule
+
+- NEVER load or analyze all files at once.
+- ALWAYS process files in small batches or individually.
+
+### HTML / Template Analysis
+
+When analyzing HTML, Jinja2 templates, or UI files:
+- Process ONE file at a time.
+- Do NOT preload multiple templates into context.
+- Limit file reads to only the relevant sections when possible.
+
+### Iterative Processing Strategy
+
+For tasks like:
+- "analyze all HTML files"
+- "check all templates"
+- "validate project structure"
+
+The agent MUST:
+1. Discover file list first
+2. Iterate over files one-by-one
+3. Analyze each file independently
+4. Summarize results incrementally
+5. NEVER accumulate full file contents in memory
+
+### Output Constraints
+
+- Do NOT output full file contents unless explicitly requested
+- Only output:
+  - errors
+  - relevant snippets
+  - line references
+- Prefer summaries over full dumps
+
+### Token Safety Rules
+
+- If context grows too large:
+  - STOP processing
+  - summarize current findings
+  - continue in next iteration
+
+- Avoid large diffs and full-file outputs
+
+### HTML Validation Rules
+
+When validating HTML structure:
+- Focus on:
+  - tag balance (<div>, <main>, <section>, <details>)
+  - nesting correctness
+  - parent/child hierarchy
+- Ignore:
+  - styling
+  - JavaScript
+  - unrelated content
+
+### Preferred Workflow
+
+1. Identify target files
+2. Loop:
+   - read file
+   - analyze structure
+   - report issues
+3. Final summary
+
+### Hard Constraint
+
+The agent MUST NOT:
+- load entire project into context
+- analyze more than 1–2 files simultaneously
+- produce large unstructured outputs
+
 ### Parallel Execution Strategy (CONTROLLED)
 
 ### General Rule
@@ -426,6 +500,14 @@ When plan mode is active:
 - Show all tasks that need to be done.
 - Group tasks logically.
 - Wait for explicit user approval before implementing anything (no file edits, no commits, no pushes).
+
+### Plan Mode Must Not Interrupt Active Build Execution
+
+- If a build/GO execution was already explicitly approved and implementation has already started, that execution remains active until a logical completion point is reached.
+- A later switch into plan mode MUST NOT retroactively stop, block, or reinterpret that already running build execution as read-only work.
+- New requests that arrive while such an active build execution is still running may be acknowledged internally, but they MUST be answered or handled only after the running build execution is completed, unless the user explicitly asks to stop or abort the build.
+- In this situation, plan mode applies only to new, not-yet-started work items and MUST be deferred until the active build execution is finished.
+- Only an explicit user interruption such as `stop`, `abbrechen`, or an equivalent direct cancellation instruction may interrupt a running build execution in favor of plan work.
 
 ### Task Tracking (ToDo List)
 
