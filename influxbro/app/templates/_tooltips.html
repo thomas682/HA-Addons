@@ -1935,7 +1935,6 @@
 
           if(!root || !card || !titleEl || !preEl) return;
 
-          // Hide default content areas
           preEl.style.display = 'none';
           metaEl.style.display = 'none';
           controlsEl.style.display = 'none';
@@ -1945,12 +1944,10 @@
 
           titleEl.textContent = String(o.title || 'Query testen');
 
-          // Build test dialog content
           const contentWrap = document.getElementById('influxbro_popup_content');
           contentWrap.innerHTML = '';
           contentWrap.style.gap = '10px';
 
-          // Query textarea
           const queryArea = document.createElement('textarea');
           queryArea.id = 'influxbro_querytest_input';
           queryArea.placeholder = 'Flux oder InfluxQL Query eingeben...';
@@ -1965,7 +1962,6 @@
           queryArea.style.resize = 'vertical';
           queryArea.value = String(o.query || '');
 
-          // Button row
           const btnRow = document.createElement('div');
           btnRow.style.display = 'flex';
           btnRow.style.gap = '8px';
@@ -1975,7 +1971,7 @@
           const runBtn = document.createElement('button');
           runBtn.type = 'button';
           runBtn.id = 'influxbro_querytest_run';
-          runBtn.innerHTML = QUERY_ICON + ' <span style="margin-left:4px;">Ausfuehren</span>';
+          runBtn.textContent = 'Ausfuehren';
           runBtn.style.cursor = 'pointer';
           runBtn.style.padding = '8px 12px';
           runBtn.style.height = '34px';
@@ -2006,6 +2002,18 @@
           clearBtn.style.border = '1px solid #ddd';
           clearBtn.style.background = '#fff';
 
+          const lastBtn = document.createElement('button');
+          lastBtn.type = 'button';
+          lastBtn.id = 'influxbro_querytest_last';
+          lastBtn.textContent = 'Last';
+          lastBtn.style.cursor = 'pointer';
+          lastBtn.style.padding = '8px 12px';
+          lastBtn.style.height = '34px';
+          lastBtn.style.borderRadius = '8px';
+          lastBtn.style.border = '1px solid #ddd';
+          lastBtn.style.background = '#fff';
+          lastBtn.disabled = true;
+
           const copyQueryBtn = document.createElement('button');
           copyQueryBtn.type = 'button';
           copyQueryBtn.id = 'influxbro_querytest_copy';
@@ -2019,9 +2027,9 @@
           btnRow.appendChild(runBtn);
           btnRow.appendChild(cancelBtn);
           btnRow.appendChild(clearBtn);
+          btnRow.appendChild(lastBtn);
           btnRow.appendChild(copyQueryBtn);
 
-          // Status line
           const statusLine = document.createElement('div');
           statusLine.id = 'influxbro_querytest_status';
           statusLine.style.display = 'none';
@@ -2033,23 +2041,27 @@
           statusLine.style.border = '1px solid #eee';
           statusLine.style.whiteSpace = 'pre-wrap';
 
-          // Result area
+          const resultWrap = document.createElement('div');
+          resultWrap.id = 'influxbro_querytest_result_wrap';
+          resultWrap.style.flex = '1 1 auto';
+          resultWrap.style.minHeight = '80px';
+          resultWrap.style.overflow = 'auto';
+          resultWrap.style.border = '1px solid #eee';
+          resultWrap.style.borderRadius = '12px';
+          resultWrap.style.background = '#fafafa';
+
           const resultPre = document.createElement('pre');
           resultPre.id = 'influxbro_querytest_result';
           resultPre.style.margin = '0';
           resultPre.style.padding = '10px 12px';
-          resultPre.style.border = '1px solid #eee';
-          resultPre.style.borderRadius = '12px';
-          resultPre.style.background = '#fafafa';
-          resultPre.style.overflow = 'auto';
           resultPre.style.overflowWrap = 'anywhere';
-          resultPre.style.flex = '1 1 auto';
-          resultPre.style.minHeight = '80px';
           resultPre.style.fontSize = '11px';
           resultPre.style.lineHeight = '1.35';
+          resultPre.style.whiteSpace = 'pre';
           resultPre.textContent = '(noch keine Ausfuehrung)';
 
-          // Result button row
+          resultWrap.appendChild(resultPre);
+
           const resultBtnRow = document.createElement('div');
           resultBtnRow.style.display = 'flex';
           resultBtnRow.style.gap = '8px';
@@ -2082,21 +2094,38 @@
           contentWrap.appendChild(queryArea);
           contentWrap.appendChild(btnRow);
           contentWrap.appendChild(statusLine);
-          contentWrap.appendChild(resultPre);
+          contentWrap.appendChild(resultWrap);
           contentWrap.appendChild(resultBtnRow);
 
-          // Adjust card size for query test
           card.style.width = 'min(960px, calc(100vw - 24px))';
           card.style.height = 'min(80vh, 800px)';
 
-          // Show popup
           root.style.display = 'block';
           try{ root.showModal(); }catch(e){}
 
-          // AbortController for cancellation
           let queryAbortController = null;
+          let lastQueryValue = '';
 
-          // Run button handler
+          function renderResult(rows){
+            if(!rows || !rows.length){
+              resultPre.textContent = '(leeres Resultat)';
+              return;
+            }
+            const cols = Object.keys(rows[0]);
+            let txt = '';
+            const colWidths = cols.map(c => Math.max(c.length, ...rows.map(r => String(r[c] ?? '').length)));
+            const header = cols.map((c, i) => c.padEnd(colWidths[i])).join(' | ');
+            const sep = cols.map((_, i) => '-'.repeat(colWidths[i])).join('-+-');
+            txt += header + '\n' + sep + '\n';
+            for(const row of rows){
+              txt += cols.map((c, i) => String(row[c] ?? '').padEnd(colWidths[i])).join(' | ') + '\n';
+            }
+            if(rows.length > 200){
+              txt += '\n... (' + rows.length + ' Zeilen, erste 200 angezeigt)';
+            }
+            resultPre.textContent = txt;
+          }
+
           runBtn.onclick = async ()=>{
             const q = String(queryArea.value || '').trim();
             if(!q){
@@ -2106,15 +2135,11 @@
               resultPre.textContent = '';
               return;
             }
-
-            // Reset state
             statusLine.style.display = 'none';
             resultPre.textContent = 'Laeuft...';
             runBtn.disabled = true;
             cancelBtn.disabled = false;
             queryAbortController = new AbortController();
-
-            const startTime = new Date();
             try{
               const r = await fetch('./api/query_test', {
                 method: 'POST',
@@ -2123,7 +2148,6 @@
                 signal: queryAbortController.signal,
               });
               const j = await r.json().catch(()=>({ok:false, error:'Invalid JSON'}));
-
               if(!r.ok || !j.ok){
                 statusLine.style.display = 'block';
                 statusLine.style.color = '#b00020';
@@ -2144,7 +2168,7 @@
                 parts.push('Sprache: ' + (j.query_language || '-'));
                 parts.push('Zeilen: ' + (j.rows ? j.rows.length : 0));
                 statusLine.textContent = parts.join(' | ');
-                resultPre.textContent = JSON.stringify(j.rows, null, 2) || '(leeres Resultat)';
+                renderResult(j.rows || []);
               }
             }catch(e){
               if(e && e.name === 'AbortError'){
@@ -2166,20 +2190,30 @@
             }
           };
 
-          // Cancel button handler
           cancelBtn.onclick = ()=>{
             if(queryAbortController){
               queryAbortController.abort();
             }
           };
 
-          // Clear query button
           clearBtn.onclick = ()=>{
+            const cur = String(queryArea.value || '').trim();
+            if(cur){
+              lastQueryValue = cur;
+              lastBtn.disabled = false;
+            }
             queryArea.value = '';
             queryArea.focus();
           };
 
-          // Copy query button
+          lastBtn.onclick = ()=>{
+            if(lastQueryValue){
+              queryArea.value = lastQueryValue;
+              lastQueryValue = '';
+              lastBtn.disabled = true;
+            }
+          };
+
           copyQueryBtn.onclick = async ()=>{
             const txt = String(queryArea.value || '');
             if(!txt) return;
@@ -2190,7 +2224,6 @@
             }catch(e){}
           };
 
-          // Copy result button
           copyResultBtn.onclick = async ()=>{
             const txt = String(resultPre.textContent || '');
             if(!txt) return;
@@ -2201,13 +2234,11 @@
             }catch(e){}
           };
 
-          // Clear result button
           clearResultBtn.onclick = ()=>{
             resultPre.textContent = '(noch keine Ausfuehrung)';
             statusLine.style.display = 'none';
           };
 
-          // Close button resets card size
           const closeBtn = document.getElementById('influxbro_popup_close');
           if(closeBtn){
             const origOnclick = closeBtn.onclick;
@@ -2215,7 +2246,6 @@
               try{ if(queryAbortController) queryAbortController.abort(); }catch(e){}
               card.style.width = 'min(860px, calc(100vw - 24px))';
               card.style.height = 'min(72vh, 720px)';
-              // Restore default content
               _ensureUi();
               if(typeof origOnclick === 'function') origOnclick(ev);
             };

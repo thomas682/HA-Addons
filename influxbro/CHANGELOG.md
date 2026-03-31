@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.12.174
+
+### Fix
+
+- Query-Test-Dialog: Resultat wird jetzt tabellarisch statt als JSON dargestellt.
+- Query-Test-Dialog: Button "Ausfuehren" hat kein Icon mehr.
+- Query-Test-Dialog: Button "Loeschen" leert nur das Eingabefeld. Neuer Button "Last" stellt die letzte Query vor dem Loeschen wieder her.
+- Query-Test-Buttons verwenden jetzt das Listen-Icon statt des Lupen-Icons.
+- Dialog-Trennung: Query-Details-Buttons (`dashboard_query_open`, `graph_query_open`, `raw_query_open`) oeffnen weiterhin den bestehenden Query-Details-Dialog mit History. Query-Test-Buttons oeffnen den separaten Query-Test-Dialog. `section.stats_total` oeffnet weiterhin den Statistik-Dialog.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.173
 
 ### Enhancement
