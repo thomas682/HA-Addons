@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.179
+
+### Fix
+
+- Raw-Tabelle: Verbliebene Referenz auf `$rawSearchStatus` (nicht mehr deklariert) in Zeile 5156 verursachte JavaScript-Fehler, der das gesamte Dashboard-Skript stoppte. Raw-Tabelle blieb dadurch leer. Ersetzt durch `$rawOutlierStatusTxt`.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.178
 
 ### Enhancement
