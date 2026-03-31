@@ -977,6 +977,7 @@
     historyBox.style.minHeight = '96px';
     historyBox.style.flex = '0 0 180px';
     historyBox.style.padding = '8px 10px';
+    historyBox.style.flexDirection = 'column';
 
     contentWrap.appendChild(pre);
     contentWrap.appendChild(split);
@@ -1282,8 +1283,8 @@
         historyPre.style.background = '#fafafa';
         historyPre.style.overflow = 'auto';
         historyPre.style.overflowWrap = 'anywhere';
-        historyPre.style.minHeight = '120px';
-        historyPre.style.maxHeight = '100%';
+        historyPre.style.minHeight = '0';
+        historyPre.style.flex = '1 1 auto';
         historyPre.style.fontSize = '{{ (cfg.get("ui_popup_history_font_px") or 10) | int }}px';
         historyPre.style.lineHeight = '1.35';
         historyBox.appendChild(historyPre);
@@ -1342,7 +1343,7 @@
         const show = historyBox.style.display === 'none';
         CURRENT_HISTORY_SCOPE = show ? String(scope || '') : CURRENT_HISTORY_SCOPE;
         if(show) _renderHistory(CURRENT_HISTORY_SCOPE);
-        historyBox.style.display = show ? 'block' : 'none';
+        historyBox.style.display = show ? 'flex' : 'none';
         split.style.display = show ? 'block' : 'none';
         if(show && !historyBox.style.flexBasis) historyBox.style.flex = '0 0 180px';
       }catch(e){}
@@ -1825,7 +1826,7 @@
         split.style.display = 'none';
         if(CURRENT_HISTORY_SCOPE && opts && (opts.autoOpenHistory || opts.forceHistoryVisible)){
           _renderHistory(CURRENT_HISTORY_SCOPE);
-          historyBox.style.display = 'block';
+          historyBox.style.display = 'flex';
           split.style.display = 'block';
           if(!historyBox.style.flexBasis) historyBox.style.flex = '0 0 180px';
         }
