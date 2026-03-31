@@ -1116,6 +1116,14 @@
     function applyHistoryWrap(preEl, on){
       try{ if(preEl) preEl.style.whiteSpace = on ? 'pre-wrap' : 'pre'; }catch(e){}
     }
+    function applyMiniCheckboxStyle(el){
+      try{
+        if(!el) return;
+        el.className = 'row_sel';
+        el.style.transform = 'scale(0.95)';
+        el.style.transformOrigin = 'left center';
+      }catch(e){}
+    }
     try{
       const saved = localStorage.getItem(WRAP_KEY);
       const on = String(saved || '').trim() === '1';
@@ -1233,8 +1241,7 @@
         const wrapCb = document.createElement('input');
         wrapCb.id = 'influxbro_popup_history_wrap';
         wrapCb.type = 'checkbox';
-        wrapCb.style.transform = 'scale(0.95)';
-        wrapCb.style.transformOrigin = 'left center';
+        applyMiniCheckboxStyle(wrapCb);
 
         const wrapTxt = document.createElement('span');
         wrapTxt.textContent = 'Umbruch';
@@ -1251,8 +1258,7 @@
         const clientCb = document.createElement('input');
         clientCb.id = 'influxbro_popup_history_client_time';
         clientCb.type = 'checkbox';
-        clientCb.style.transform = 'scale(0.95)';
-        clientCb.style.transformOrigin = 'left center';
+        applyMiniCheckboxStyle(clientCb);
 
         const clientTxt = document.createElement('span');
         clientTxt.textContent = 'Client time';

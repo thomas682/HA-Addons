@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.168
+
+### Fix
+
+- Query-History: Die Checkbox `Client time` verwendet jetzt dieselbe kompakte Checkbox-Darstellung wie `Umbruch` direkt daneben.
+
+### Maintenance
+
+- Tests: `pytest tests/test_api_ui_support.py -q`, `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.167
 
 ### Fix
