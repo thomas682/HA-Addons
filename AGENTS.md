@@ -509,6 +509,14 @@ When plan mode is active:
 - In this situation, plan mode applies only to new, not-yet-started work items and MUST be deferred until the active build execution is finished.
 - Only an explicit user interruption such as `stop`, `abbrechen`, or an equivalent direct cancellation instruction may interrupt a running build execution in favor of plan work.
 
+### Build Mode Must Not Interrupt Active Plan Work
+
+- If plan mode work was already explicitly requested and the agent is actively producing that plan, analysis, or decision-preparation output, a later build/GO instruction MUST NOT retroactively abort or skip that ongoing plan work mid-response.
+- The active plan work must first reach a logical completion point for the current answer before any newly requested build execution starts.
+- In this situation, the later build/GO request is to be deferred and executed immediately after the running plan response is completed, unless the user explicitly instructs the agent to stop planning and switch immediately.
+- This rule applies only to already active plan work; once the current planning response is finished, the deferred build/GO execution becomes the next required action.
+- Only an explicit user interruption such as `stop`, `abbrechen`, or an equivalent direct cancellation instruction may interrupt a running plan response in favor of immediate build execution.
+
 ### Task Tracking (ToDo List)
 
 - Always create and show a ToDo list for the current request.
