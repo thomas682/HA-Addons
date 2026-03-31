@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.12.167
+
+### Fix
+
+- Query-Dialoge blenden die untere Query-History jetzt immer sichtbar ein, inklusive horizontalem Trenner. Der gemeinsame Popup-Pfad erzwingt die Anzeige fuer Query-Dialoge auch dann, wenn ein Browser noch einen aelteren Dialogzustand gespeichert hatte.
+
+### Maintenance
+
+- Tests: `pytest tests/test_api_ui_support.py -q`, Browser-Pruefung gegen lokal und Live-System
+- Tested with Home Assistant Core: unknown
+
+## 1.12.166
+
+### Fix
+
+- Live-Fix fuer Query-Dialoge: `_latestHistoryEntry` wurde in den gemeinsamen Popup-Scope verschoben. Dadurch funktionieren die neuen Ausloeser-/Zeit-Metadaten im Live-System wieder ohne JavaScript-Fehler beim Oeffnen des Query-Dialogs.
+
+### Maintenance
+
+- Tests: `pytest tests/test_api_ui_support.py -q`, Live-Pruefung gegen ausgeliefertes Frontend
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.165
 
 ### Fix

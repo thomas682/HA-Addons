@@ -251,7 +251,8 @@ def test_query_history_uses_existing_popup_history_area():
     assert "let _openHistoryInPopup = ()=>{};" in tooltips
     assert "_openHistoryInPopup = function(scope){" in tooltips
     assert "autoOpenHistory: true" in tooltips
-    assert "if(CURRENT_HISTORY_SCOPE && opts && opts.autoOpenHistory){" in tooltips
+    assert "forceHistoryVisible: !!o.scope" in tooltips
+    assert "if(CURRENT_HISTORY_SCOPE && opts && (opts.autoOpenHistory || opts.forceHistoryVisible)){" in tooltips
     assert "influxbro_popup_history_search" in tooltips
     assert "influxbro_popup_history_wrap" in tooltips
     assert "influxbro_popup_history_client_time" in tooltips

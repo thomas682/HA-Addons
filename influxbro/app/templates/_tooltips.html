@@ -672,6 +672,7 @@
   let _renderHistory = ()=>{};
   let _toggleHistory = ()=>{};
   let _openHistoryInPopup = ()=>{};
+  let _latestHistoryEntry = ()=>null;
   let POPUP_REFS = null;
   let POPUP_SET_ACTIONS = ()=>{};
   const POPUP_SIZE_PREFIX = 'influxbro.popup.size.v1.';
@@ -724,6 +725,20 @@
       return parts.join(' | ');
     }catch(e){ return ''; }
   }
+
+  _latestHistoryEntry = function(scope, queryText){
+    try{
+      const xs = (window.InfluxBroQueryHistory && window.InfluxBroQueryHistory.list) ? window.InfluxBroQueryHistory.list(scope) : [];
+      const q = String(queryText || '').trim();
+      if(q){
+        for(let i = xs.length - 1; i >= 0; i -= 1){
+          const it = xs[i];
+          if(String(it && it.query ? it.query : '').trim() === q) return it || null;
+        }
+      }
+      return xs.length ? (xs[xs.length - 1] || null) : null;
+    }catch(e){ return null; }
+  };
 
   function _ensureUi(){
     let root = document.getElementById('influxbro_popup_root');
@@ -1794,7 +1809,7 @@
         historyBox.style.display = 'none';
         historyBox.innerHTML = '';
         split.style.display = 'none';
-        if(CURRENT_HISTORY_SCOPE && opts && opts.autoOpenHistory){
+        if(CURRENT_HISTORY_SCOPE && opts && (opts.autoOpenHistory || opts.forceHistoryVisible)){
           _renderHistory(CURRENT_HISTORY_SCOPE);
           historyBox.style.display = 'block';
           split.style.display = 'block';
@@ -1876,6 +1891,7 @@
                actions,
                historyScope: String(o.scope || ''),
                autoOpenHistory: !!o.scope,
+               forceHistoryVisible: !!o.scope,
              });
            }
        },
