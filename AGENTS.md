@@ -271,6 +271,7 @@ Failure handling and completion:
   - fix the issue first
   - rerun the smallest relevant validation set
   - escalate validation scope only if needed
+- If a user-reported or agent-reproduced UI/browser-visible error remains present after at least one concrete fix attempt, explicitly offer a Playwright-based browser test to validate the real interaction path.
 - Implementation is ONLY complete if all relevant required checks passed.
 - After completing all REQUIRED tests, DO NOT ask the user whether additional testing should be performed unless:
   - the user explicitly requested it
