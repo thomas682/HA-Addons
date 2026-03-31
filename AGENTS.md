@@ -507,6 +507,8 @@ When plan mode is active:
 - A later switch into plan mode MUST NOT retroactively stop, block, or reinterpret that already running build execution as read-only work.
 - New requests that arrive while such an active build execution is still running may be acknowledged internally, but they MUST be answered or handled only after the running build execution is completed, unless the user explicitly asks to stop or abort the build.
 - In this situation, plan mode applies only to new, not-yet-started work items and MUST be deferred until the active build execution is finished.
+- If additional build/GO-style execution requests arrive while a build execution is already active, they MUST NOT interrupt the running build. They are to be placed into a sequential execution queue and handled one after another after the current build reaches a logical completion point.
+- If additional plan-mode requests arrive while a deferred plan queue already exists behind an active build, those plan requests are also to be queued and answered sequentially after the active build and after any earlier queued plan items.
 - Only an explicit user interruption such as `stop`, `abbrechen`, or an equivalent direct cancellation instruction may interrupt a running build execution in favor of plan work.
 
 ### Build Mode Must Not Interrupt Active Plan Work
@@ -515,6 +517,8 @@ When plan mode is active:
 - The active plan work must first reach a logical completion point for the current answer before any newly requested build execution starts.
 - In this situation, the later build/GO request is to be deferred and executed immediately after the running plan response is completed, unless the user explicitly instructs the agent to stop planning and switch immediately.
 - This rule applies only to already active plan work; once the current planning response is finished, the deferred build/GO execution becomes the next required action.
+- If additional plan-mode requests arrive while plan work is already active, they MUST NOT interrupt the running plan response. They are to be placed into a sequential plan queue and answered one after another after the current plan item reaches a logical completion point.
+- If additional build/GO requests are already queued behind active plan work, those build requests must also be handled sequentially in queue order after the active plan response and after any earlier queued items.
 - Only an explicit user interruption such as `stop`, `abbrechen`, or an equivalent direct cancellation instruction may interrupt a running plan response in favor of immediate build execution.
 
 ### Task Tracking (ToDo List)
