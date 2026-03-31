@@ -701,6 +701,9 @@ DEFAULT_CFG = {
     "ui_sel_auto_width": True,
     "ui_sel_width_px": 260,
 
+    # Outlier search limit (max results returned in raw outlier search)
+    "ui_raw_outlier_search_limit": 5000,
+
     # Jobs UI colors (used by Jobs & Cache table)
     "ui_job_color_running": "#eef3ff",
     "ui_job_color_done": "#eefaf1",
@@ -16715,6 +16718,334 @@ from(bucket: "{cfg["bucket"]}")
             "last_value": prev_val,
             "counter_base_value": counter_base_val,
             "scan_state": fault_state if fault_phase_enabled else None,
+        })
+    except Exception as e:
+        return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
+
+
+@app.post("/api/outlier_search")
+def api_outlier_search():
+    """Find outliers in a time window for raw table search.
+
+    Accepts multiple scan preset types and returns all outliers up to a configurable limit.
+    Used by the raw table outlier search feature.
+    """
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    body = request.get_json(force=True) or {}
+
+    measurement = (body.get("measurement") or "").strip()
+    field = (body.get("field") or "").strip()
+    entity_id = (body.get("entity_id") or "").strip() or None
+    friendly_name = (body.get("friendly_name") or "").strip() or None
+    unit = (body.get("unit") or "").strip()
+
+    if not measurement or not field:
+        return jsonify({"ok": False, "error": "measurement and field required"}), 400
+
+    try:
+        start_dt, stop_dt = _get_start_stop_from_payload(body)
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+
+    if int(cfg.get("influx_version", 2)) != 2:
+        return jsonify({"ok": False, "error": "outlier_search currently supports InfluxDB v2 only"}), 400
+    if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+        return jsonify({
+            "ok": False,
+            "error": "InfluxDB v2 requires token, org, bucket.",
+        }), 400
+
+    # Selected outlier types to search for
+    search_types = body.get("search_types") or []
+    if isinstance(search_types, str):
+        search_types = [search_types]
+    search_types = [str(t).strip() for t in search_types if str(t).strip()]
+
+    if not search_types:
+        return jsonify({"ok": False, "error": "Kein Ausreisser-Typ ausgewaehlt."}), 400
+
+    limit = int(body.get("limit") or cfg.get("ui_raw_outlier_search_limit", 5000))
+    limit = min(max(limit, 100), 50000)
+
+    include_null = "null" in search_types
+    include_zero = "zero" in search_types
+    bounds_enabled = "bounds" in search_types
+    counter_enabled = "counter" in search_types
+    counter_decrease = "decrease" in search_types
+    fault_phase_enabled = "fault_phase" in search_types
+
+    min_v = body.get("min")
+    max_v = body.get("max")
+    max_step = _outlier_max_step(cfg, measurement, unit)
+    try:
+        if "max_step" in body and body.get("max_step") is not None and str(body.get("max_step")).strip() != "":
+            max_step = float(body.get("max_step"))
+    except Exception:
+        pass
+
+    extra = flux_tag_filter(entity_id, friendly_name)
+    start = _dt_to_rfc3339_utc(start_dt)
+    stop = _dt_to_rfc3339_utc(stop_dt)
+
+    MAX_SCAN_CHUNK = 200000
+    MIN_CHUNK_SECONDS = 5 * 60
+
+    rows: list[dict[str, Any]] = []
+    scanned = 0
+    prev_val: float | None = None
+    last_time_iso: str | None = None
+    counter_base_val: float | None = None
+
+    fault_state = {
+        "status": "normal",
+        "last_valid_value": None,
+        "fault_started_at": None,
+        "fault_count": 0,
+        "recovery_streak": 0,
+        "last_reason": None,
+        "fault_ended_at": None,
+    }
+    recovery_valid_streak = 2
+
+    def _cmp(op: str, v: float, ref: float) -> bool:
+        if op == ">":
+            return v > ref
+        if op == ">=":
+            return v >= ref
+        if op == "<":
+            return v < ref
+        if op == "<=":
+            return v <= ref
+        return True
+
+    def _scan_span(qapi: Any, a: datetime, b: datetime, prev: float | None) -> float | None:
+        nonlocal scanned, rows, last_time_iso, counter_base_val
+
+        if len(rows) >= limit:
+            return prev
+
+        s_iso = _dt_to_rfc3339_utc(a)
+        e_iso = _dt_to_rfc3339_utc(b)
+
+        q_span = f'''
+from(bucket: "{cfg["bucket"]}")
+  |> range(start: time(v: "{s_iso}"), stop: time(v: "{e_iso}"))
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
+  |> keep(columns: ["_time", "_value"])
+  |> group()
+  |> sort(columns: ["_time"])
+  |> limit(n: {MAX_SCAN_CHUNK + 1})
+'''
+
+        scanned_local = 0
+        for rec in qapi.query_stream(q_span, org=cfg["org"]):
+            scanned_local += 1
+            scanned += 1
+            if scanned_local > MAX_SCAN_CHUNK:
+                raise OverflowError("too_many_points")
+
+            t = rec.get_time()
+            v = rec.get_value()
+            iso = _dt_to_rfc3339_utc(t) if isinstance(t, datetime) else None
+            if iso:
+                last_time_iso = iso
+
+            reasons: list[str] = []
+            if v is None:
+                if fault_phase_enabled:
+                    reasons.append("ungueltiger Wert")
+                    fault_state["status"] = "fault_active"
+                    fault_state["fault_started_at"] = fault_state.get("fault_started_at") or iso
+                    fault_state["fault_count"] = int(fault_state.get("fault_count") or 0) + 1
+                    fault_state["recovery_streak"] = 0
+                    fault_state["last_reason"] = "ungueltiger Wert"
+                if include_null:
+                    rows.append({"time": iso, "value": None, "reason": "NULL", "type": "null"})
+                    if len(rows) >= limit:
+                        return prev
+                continue
+
+            if isinstance(v, bool) or not isinstance(v, (int, float)):
+                continue
+
+            fv = float(v)
+            finite = math.isfinite(fv)
+
+            if include_zero and fv == 0.0:
+                reasons.append("0")
+            if bounds_enabled:
+                try:
+                    min_num = float(min_v) if min_v is not None and str(min_v).strip() != "" else None
+                except Exception:
+                    min_num = None
+                try:
+                    max_num = float(max_v) if max_v is not None and str(max_v).strip() != "" else None
+                except Exception:
+                    max_num = None
+                if min_num is not None and fv < min_num:
+                    reasons.append(f"< min ({min_num})")
+                if max_num is not None and fv > max_num:
+                    reasons.append(f"> max ({max_num})")
+
+            if counter_enabled and prev is not None:
+                d = fv - prev
+                if counter_decrease and d < 0:
+                    reasons.append("counter decrease")
+                    counter_base_val = float(prev)
+                if "decrease" not in search_types and counter_decrease is False:
+                    pass
+                if max_step is not None and d > float(max_step):
+                    reasons.append(f"step > {max_step} {unit or ''}".strip())
+
+            if fault_phase_enabled:
+                phase_reasons: list[str] = []
+                if not finite:
+                    phase_reasons.append("ungueltiger Wert")
+                elif fv == 0.0:
+                    phase_reasons.append("0")
+                if bounds_enabled:
+                    try:
+                        min_num2 = float(min_v) if min_v is not None and str(min_v).strip() != "" else None
+                    except Exception:
+                        min_num2 = None
+                    try:
+                        max_num2 = float(max_v) if max_v is not None and str(max_v).strip() != "" else None
+                    except Exception:
+                        max_num2 = None
+                    if min_num2 is not None and finite and fv < min_num2:
+                        if "< min ({})".format(min_num2) not in phase_reasons:
+                            phase_reasons.append(f"< min ({min_num2})")
+                    if max_num2 is not None and finite and fv > max_num2:
+                        if "> max ({})".format(max_num2) not in phase_reasons:
+                            phase_reasons.append(f"> max ({max_num2})")
+                if prev is not None and finite:
+                    d = fv - prev
+                    if counter_decrease and d < 0:
+                        phase_reasons.append("counter decrease")
+                    if max_step is not None and d > float(max_step):
+                        phase_reasons.append(f"step > {max_step} {unit or ''}".strip())
+
+                status = str(fault_state.get("status") or "normal")
+                last_valid_value = fault_state.get("last_valid_value")
+                valid_candidate = finite and not phase_reasons
+                plausible_return = valid_candidate
+                if plausible_return and last_valid_value is not None and max_step is not None:
+                    try:
+                        plausible_return = abs(fv - float(last_valid_value)) <= float(max_step)
+                    except Exception:
+                        plausible_return = True
+
+                if status == "normal":
+                    if phase_reasons:
+                        fault_state["status"] = "fault_active"
+                        fault_state["fault_started_at"] = fault_state.get("fault_started_at") or iso
+                        fault_state["fault_count"] = 1
+                        fault_state["recovery_streak"] = 0
+                        fault_state["last_reason"] = ", ".join(phase_reasons)
+                        reasons = list(dict.fromkeys(reasons + phase_reasons))
+                    elif finite:
+                        fault_state["last_valid_value"] = fv
+                        fault_state["fault_ended_at"] = None
+                else:
+                    if phase_reasons:
+                        fault_state["status"] = "fault_active"
+                        fault_state["fault_count"] = int(fault_state.get("fault_count") or 0) + 1
+                        fault_state["recovery_streak"] = 0
+                        fault_state["last_reason"] = ", ".join(phase_reasons)
+                        reasons = list(dict.fromkeys(reasons + phase_reasons + ["fault_active"]))
+                    elif plausible_return:
+                        fault_state["status"] = "recovering"
+                        fault_state["recovery_streak"] = int(fault_state.get("recovery_streak") or 0) + 1
+                        if int(fault_state.get("recovery_streak") or 0) >= recovery_valid_streak:
+                            fault_state["status"] = "normal"
+                            fault_state["fault_ended_at"] = iso
+                            fault_state["last_valid_value"] = fv
+                            fault_state["fault_count"] = 0
+                            fault_state["recovery_streak"] = 0
+                            fault_state["last_reason"] = None
+                        else:
+                            reasons = list(dict.fromkeys(reasons + ["recovering"]))
+                    else:
+                        fault_state["status"] = "fault_active"
+                        fault_state["fault_count"] = int(fault_state.get("fault_count") or 0) + 1
+                        fault_state["recovery_streak"] = 0
+                        reasons = list(dict.fromkeys(reasons + ["fault_active"]))
+
+            if reasons:
+                type_labels = []
+                for r in reasons:
+                    if "NULL" in r or "ungueltiger" in r:
+                        type_labels.append("null")
+                    elif r == "0":
+                        type_labels.append("zero")
+                    elif "< min" in r or "> max" in r:
+                        type_labels.append("bounds")
+                    elif "counter decrease" in r:
+                        type_labels.append("counter")
+                    elif "step >" in r:
+                        type_labels.append("counter")
+                    elif "fault_active" in r or "recovering" in r:
+                        type_labels.append("fault_phase")
+                unique_types = list(dict.fromkeys(type_labels))
+
+                cls = "primary"
+                try:
+                    if (
+                        counter_base_val is not None
+                        and any(r.startswith("step >") for r in reasons)
+                        and max_step is not None
+                        and abs(fv - float(counter_base_val)) <= float(max_step)
+                        and not any(r == "counter decrease" for r in reasons)
+                    ):
+                        cls = "secondary"
+                        counter_base_val = None
+                except Exception:
+                    cls = "primary"
+
+                rows.append({
+                    "time": iso,
+                    "value": fv,
+                    "reason": ", ".join(reasons),
+                    "class": cls,
+                    "types": unique_types,
+                })
+                if len(rows) >= limit:
+                    return fv
+
+            prev = fv
+
+        return prev
+
+    def _scan_span_split(qapi: Any, a: datetime, b: datetime, prev: float | None) -> float | None:
+        span_s = max(0.0, (b - a).total_seconds())
+        try:
+            return _scan_span(qapi, a, b, prev)
+        except OverflowError:
+            if span_s <= MIN_CHUNK_SECONDS:
+                raise
+            mid = a + timedelta(seconds=(span_s / 2.0))
+            prev2 = _scan_span_split(qapi, a, mid, prev)
+            return _scan_span_split(qapi, mid, b, prev2)
+
+    try:
+        with v2_client(cfg) as c:
+            qapi = c.query_api()
+            try:
+                prev_val = _scan_span_split(qapi, start_dt, stop_dt, prev_val)
+            except OverflowError:
+                return jsonify({
+                    "ok": False,
+                    "error": f"Zu viele Punkte im Zeitraum ({MAX_SCAN_CHUNK}+ in kleinstem Chunk). Bitte im Graph weiter reinzoomen.",
+                }), 413
+
+        return jsonify({
+            "ok": True,
+            "rows": rows,
+            "scanned": scanned,
+            "start": start,
+            "stop": stop,
+            "limit": limit,
+            "truncated": len(rows) >= limit,
         })
     except Exception as e:
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500

@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.12.176
+
+### Enhancement
+
+- Raw-Tabelle: Sticky Header – die Titelzeile bleibt beim Scrollen fixiert.
+- Raw-Tabelle: Neue Ausreisser-Suchleiste mit Multi-Select fuer Ausreisser-Typen (Counter, Grenzen, Stoerphasensuche, NULL, 0-Werte) sowie Buttons "Alle" und "Keiner".
+- Raw-Tabelle: "Suche ab Beginn" ruft alle Ausreisser im aktuellen Zeitfenster vom Backend ab (einmalig) und springt zum ersten Treffer.
+- Raw-Tabelle: "Weitersuchen" springt lokal zum naechsten Ausreisser, markiert ihn in der Tabelle und im Graph.
+- Raw-Tabelle: Neue Spalte "Ausreisser" zeigt den Grund fuer gefundene Ausreisser an.
+- Raw-Tabelle: Ausreisser-Zeilen werden rot hervorgehoben.
+- Backend: Neuer Endpunkt `/api/outlier_search` mit konfigurierbarem Limit (Einstellung: `ui_raw_outlier_search_limit`).
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.175
 
 ### Fix
