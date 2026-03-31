@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.180
+
+### Fix
+
+- Raw-Tabelle: Mindestanzahl sichtbarer Zeilen von 3 auf 5 erhöht, damit die Tabelle immer mindestens 5 Zeilen anzeigt.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.179
 
 ### Fix
