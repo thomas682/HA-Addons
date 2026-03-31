@@ -668,7 +668,6 @@
   let CURRENT_POPUP_LOGS_ACTIVE = false;
   let CURRENT_ACTIONS = [];
   let CURRENT_HISTORY_SCOPE = '';
-  let CURRENT_HISTORY_SELECTED_AT = '';
   let SPLIT_DRAG = null;
   let _renderHistory = ()=>{};
   let _toggleHistory = ()=>{};
@@ -933,7 +932,7 @@
     historyBox.style.border = '1px solid #eee';
     historyBox.style.borderRadius = '12px';
     historyBox.style.background = '#fff';
-    historyBox.style.overflow = 'auto';
+    historyBox.style.overflow = 'hidden';
     historyBox.style.minHeight = '96px';
     historyBox.style.flex = '0 0 180px';
     historyBox.style.padding = '8px 10px';
@@ -1068,8 +1067,12 @@
 
     // Wrap preference
     const WRAP_KEY = 'influxbro.popup.wrap.v1';
+    const HISTORY_WRAP_KEY = 'influxbro.popup.history.wrap.v1';
     function applyWrap(on){
       try{ pre.style.whiteSpace = on ? 'pre-wrap' : 'pre'; }catch(e){}
+    }
+    function applyHistoryWrap(preEl, on){
+      try{ if(preEl) preEl.style.whiteSpace = on ? 'pre-wrap' : 'pre'; }catch(e){}
     }
     try{
       const saved = localStorage.getItem(WRAP_KEY);
@@ -1092,12 +1095,33 @@
       }catch(e){ return []; }
     }
 
+    function _historyTextEntries(scope, query){
+      try{
+        const xs = _historyEntries(scope);
+        const q = String(query || '').trim().toLowerCase();
+        const filtered = !q ? xs : xs.filter((it)=>{
+          const hay = [it && it.at, it && it.label, it && it.query, it && it.response].map(v => String(v || '').toLowerCase()).join('\n');
+          return hay.includes(q);
+        });
+        return filtered.slice().reverse().map((it, idx)=>{
+          const parts = [];
+          parts.push(`#${idx + 1} | ${String(it && it.at ? it.at : '')}${it && it.label ? ' | ' + String(it.label) : ''}`);
+          parts.push('query:');
+          parts.push(String(it && it.query ? it.query : '(leer)'));
+          if(it && it.response){
+            parts.push('response:');
+            parts.push(String(it.response));
+          }
+          return parts.join('\n');
+        }).join('\n\n-----\n\n');
+      }catch(e){ return ''; }
+    }
+
     _renderHistory = function(scope){
       try{
         const refs = POPUP_REFS || {};
         const historyBox = refs.historyBox || document.getElementById('influxbro_popup_history');
-        const pre = refs.pre || document.getElementById('influxbro_popup_pre');
-        if(!historyBox || !pre) return;
+        if(!historyBox) return;
         const xs = _historyEntries(scope);
         historyBox.innerHTML = '';
         const titleRow = document.createElement('div');
@@ -1116,39 +1140,94 @@
         titleRow.appendChild(titleTxt);
         titleRow.appendChild(hint);
         historyBox.appendChild(titleRow);
+
+        const controls = document.createElement('div');
+        controls.style.display = 'flex';
+        controls.style.alignItems = 'center';
+        controls.style.justifyContent = 'space-between';
+        controls.style.gap = '10px';
+        controls.style.flexWrap = 'wrap';
+        controls.style.marginBottom = '8px';
+
+        const search = document.createElement('input');
+        search.id = 'influxbro_popup_history_search';
+        search.type = 'search';
+        search.placeholder = 'History durchsuchen...';
+        search.style.flex = '1 1 260px';
+        search.style.minWidth = '220px';
+        search.style.height = '34px';
+        search.style.padding = '6px 10px';
+
+        const wrapLbl = document.createElement('label');
+        wrapLbl.style.display = 'flex';
+        wrapLbl.style.alignItems = 'center';
+        wrapLbl.style.gap = '8px';
+        wrapLbl.style.fontSize = '12px';
+        wrapLbl.style.opacity = '0.85';
+
+        const wrapCb = document.createElement('input');
+        wrapCb.id = 'influxbro_popup_history_wrap';
+        wrapCb.type = 'checkbox';
+        wrapCb.style.transform = 'scale(0.95)';
+        wrapCb.style.transformOrigin = 'left center';
+
+        const wrapTxt = document.createElement('span');
+        wrapTxt.textContent = 'Umbruch';
+        wrapLbl.appendChild(wrapCb);
+        wrapLbl.appendChild(wrapTxt);
+        controls.appendChild(search);
+        controls.appendChild(wrapLbl);
+        historyBox.appendChild(controls);
+
+        const historyPre = document.createElement('pre');
+        historyPre.id = 'influxbro_popup_history_pre';
+        historyPre.style.margin = '0';
+        historyPre.style.padding = '10px 12px';
+        historyPre.style.border = '1px solid #eee';
+        historyPre.style.borderRadius = '12px';
+        historyPre.style.background = '#fafafa';
+        historyPre.style.overflow = 'auto';
+        historyPre.style.overflowWrap = 'anywhere';
+        historyPre.style.minHeight = '120px';
+        historyPre.style.maxHeight = '100%';
+        historyPre.style.fontSize = '12px';
+        historyPre.style.lineHeight = '1.35';
+        historyBox.appendChild(historyPre);
+
+        const renderText = ()=>{
+          try{
+            const txt = _historyTextEntries(scope, search.value);
+            historyPre.textContent = txt || '(keine Eintraege)';
+            hint.textContent = txt ? (String((_historyEntries(scope).filter((it)=>{
+              const q = String(search.value || '').trim().toLowerCase();
+              if(!q) return true;
+              const hay = [it && it.at, it && it.label, it && it.query, it && it.response].map(v => String(v || '').toLowerCase()).join('\n');
+              return hay.includes(q);
+            }).length)) + ' Eintraege') : 'keine Eintraege';
+          }catch(e){ historyPre.textContent = '(keine Eintraege)'; }
+        };
+
+        try{
+          const saved = localStorage.getItem(HISTORY_WRAP_KEY);
+          const on = String(saved || '').trim() === '1';
+          wrapCb.checked = on;
+          applyHistoryWrap(historyPre, on);
+        }catch(e){
+          wrapCb.checked = false;
+          applyHistoryWrap(historyPre, false);
+        }
+        wrapCb.addEventListener('change', ()=>{
+          const on = !!wrapCb.checked;
+          applyHistoryWrap(historyPre, on);
+          try{ localStorage.setItem(HISTORY_WRAP_KEY, on ? '1' : '0'); }catch(e){}
+        });
+        search.addEventListener('input', renderText);
+
         if(!xs.length){
-          const empty = document.createElement('div');
-          empty.className = 'muted';
-          empty.textContent = '(keine Eintraege)';
-          historyBox.appendChild(empty);
+          historyPre.textContent = '(keine Eintraege)';
           return;
         }
-        xs.slice().reverse().forEach((it)=>{
-          const row = document.createElement('button');
-          const rowAt = String(it && it.at ? it.at : '');
-          row.type = 'button';
-          row.style.display = 'block';
-          row.style.width = '100%';
-          row.style.textAlign = 'left';
-          row.style.padding = '10px 12px';
-          row.style.marginBottom = '8px';
-          row.style.borderRadius = '12px';
-          row.style.border = '1px solid #e8ebf2';
-          row.style.background = '#f8faff';
-          if(CURRENT_HISTORY_SELECTED_AT && CURRENT_HISTORY_SELECTED_AT === rowAt){
-            row.style.border = '1px solid #7aa7ff';
-            row.style.background = '#eaf2ff';
-          }
-          row.innerHTML = '<div style="font-weight:700; font-size:12px; margin-bottom:4px;">' + rowAt + (it.label ? (' | ' + String(it.label)) : '') + '</div>' +
-            '<div style="font-size:12px; white-space:pre-wrap; opacity:0.9; margin-bottom:4px;">' + String((it.query || '').slice(0, 500)).replace(/</g,'&lt;') + '</div>' +
-            ((it && it.response) ? ('<div class="muted" style="font-size:11px; white-space:pre-wrap;">response: ' + String((it.response || '').slice(0, 220)).replace(/</g,'&lt;') + '</div>') : '');
-          row.addEventListener('click', ()=>{
-            try{ CURRENT_HISTORY_SELECTED_AT = rowAt; }catch(e){}
-            try{ pre.textContent = String(it.query || ''); }catch(e){}
-            try{ _renderHistory(scope); }catch(e){}
-          });
-          historyBox.appendChild(row);
-        });
+        renderText();
       }catch(e){}
     };
 

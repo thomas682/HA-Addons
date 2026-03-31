@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.164
+
+### Fix
+
+- Popup Query-History: Der untere Bereich stellt History-Eintraege nicht mehr als klickbare Buttons dar, sondern als reine Textansicht im Stil der Log-Anzeige.
+- Popup Query-History: Ueber dem unteren Textfeld gibt es jetzt ein Volltextsuchfeld sowie eine eigene Checkbox `Umbruch`, damit Suche und Zeilenumbruch fuer die History getrennt vom oberen Query-Feld steuerbar sind.
+
+### Maintenance
+
+- Tests: `pytest tests/test_api_ui_support.py -q`, `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.163
 
 ### Fix

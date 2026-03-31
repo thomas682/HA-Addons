@@ -249,7 +249,10 @@ def test_query_history_uses_existing_popup_history_area():
     assert "_openHistoryInPopup = function(scope){" in tooltips
     assert "autoOpenHistory: true" in tooltips
     assert "if(CURRENT_HISTORY_SCOPE && opts && opts.autoOpenHistory){" in tooltips
-    assert "CURRENT_HISTORY_SELECTED_AT" in tooltips
+    assert "influxbro_popup_history_search" in tooltips
+    assert "influxbro_popup_history_wrap" in tooltips
+    assert "influxbro_popup_history_pre" in tooltips
+    assert "HISTORY_WRAP_KEY = 'influxbro.popup.history.wrap.v1'" in tooltips
     assert "window.InfluxBroPopup.show('Query History', 'Wähle unten einen History-Eintrag aus.'" in tooltips or "window.InfluxBroPopup.show('Query History', 'Waehle unten einen History-Eintrag aus.'" in tooltips
 
 
