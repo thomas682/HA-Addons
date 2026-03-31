@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.177
+
+### Fix
+
+- Raw-Tabelle: Ausreisser-Suche (`/api/outlier_search`) verwendete nicht existierende JavaScript-Variablen (`$measurement`, `$field`, `$entityId`, `$friendlyName`). Verwendet jetzt die korrekten Dashboard-Selektorvariablen (`$mf`, `$f`, `$e`, `$n`).
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.176
 
 ### Enhancement

@@ -4376,10 +4376,10 @@ async function runRawOutlierSearch(fromStart){
     if($rawSearchStatus) $rawSearchStatus.textContent = 'Suche laeuft...';
 
     const payload = {
-      measurement: String($measurement ? ($measurement.value || '') : ''),
-      field: String($field ? ($field.value || '') : ''),
-      entity_id: String($entityId ? ($entityId.value || '') : ''),
-      friendly_name: String($friendlyName ? ($friendlyName.value || '') : ''),
+      measurement: String($mf ? ($mf.value || '') : ''),
+      field: String($f ? ($f.value || '') : ''),
+      entity_id: String($e ? ($e.value || '') : ''),
+      friendly_name: String($n ? ($n.value || '') : ''),
       start: win.start,
       stop: win.stop,
       search_types: types,
