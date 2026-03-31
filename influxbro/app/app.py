@@ -11824,6 +11824,120 @@ def api_test():
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
 
 
+@app.post("/api/query_test")
+def api_query_test():
+    """Execute a free-form InfluxDB query with safety checks.
+
+    Accepts JSON body:
+      - query: the Flux (v2) or InfluxQL (v1) query string
+      - influx_version: 1 or 2 (defaults to config)
+
+    Returns:
+      - ok, query, query_language, is_mutating, rows, start, stop, duration_ms
+    """
+    import re as _re
+    from datetime import datetime, timezone
+
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    body = request.get_json(silent=True) or {}
+    raw_query = str(body.get("query") or "").strip()
+
+    if not raw_query:
+        return jsonify({"ok": False, "error": "Query ist leer."}), 400
+
+    influx_version = int(body.get("influx_version") or cfg.get("influx_version", 2))
+
+    # Detect query language and mutating statements
+    query_lower = raw_query.lower()
+    query_language = "flux" if influx_version == 2 else "influxql"
+
+    MUTATING_FLUX = ["to(", "drop(", "delete"]
+    MUTATING_INFLUXQL = [
+        _re.compile(r"\bdelete\b", _re.IGNORECASE),
+        _re.compile(r"\bdrop\b", _re.IGNORECASE),
+        _re.compile(r"\bselect\s+.+\binto\b", _re.IGNORECASE),
+    ]
+
+    is_mutating = False
+    mutation_hint = ""
+
+    if influx_version == 2:
+        for pattern in MUTATING_FLUX:
+            if pattern in query_lower:
+                is_mutating = True
+                mutation_hint = f"Mutierendes Flux-Statement erkannt ('{pattern}'). Ausfuehrung verweigert."
+                break
+    else:
+        for pattern in MUTATING_INFLUXQL:
+            if pattern.search(raw_query):
+                is_mutating = True
+                mutation_hint = "Mutierendes InfluxQL-Statement erkannt. Ausfuehrung verweigert."
+                break
+
+    if is_mutating:
+        return jsonify({
+            "ok": False,
+            "error": mutation_hint,
+            "query": raw_query,
+            "query_language": query_language,
+            "is_mutating": True,
+        }), 403
+
+    start_iso = datetime.now(timezone.utc).isoformat()
+    t0 = time.perf_counter()
+    rows = []
+
+    try:
+        if influx_version == 2:
+            if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+                return jsonify({"ok": False, "error": "v2: token, org, bucket fehlen."}), 400
+            with v2_client(cfg) as c:
+                log_query("query_test", raw_query)
+                result = c.query_api().query(raw_query, org=cfg["org"])
+                for table in result:
+                    for record in table.records:
+                        row = {}
+                        for key, val in record.values.items():
+                            row[key] = val
+                        rows.append(row)
+        else:
+            if not cfg.get("database"):
+                return jsonify({"ok": False, "error": "v1: database fehlt."}), 400
+            c = v1_client(cfg)
+            log_query("query_test", raw_query)
+            result = c.query(raw_query)
+            for _, points in result.items():
+                for p in points:
+                    rows.append(dict(p))
+
+        dur_ms = int((time.perf_counter() - t0) * 1000)
+        stop_iso = datetime.now(timezone.utc).isoformat()
+
+        return jsonify({
+            "ok": True,
+            "query": raw_query,
+            "query_language": query_language,
+            "is_mutating": False,
+            "rows": rows,
+            "start": start_iso,
+            "stop": stop_iso,
+            "duration_ms": dur_ms,
+        })
+    except Exception as e:
+        dur_ms = int((time.perf_counter() - t0) * 1000)
+        stop_iso = datetime.now(timezone.utc).isoformat()
+        return jsonify({
+            "ok": False,
+            "error": _short_influx_error(e),
+            "query": raw_query,
+            "query_language": query_language,
+            "is_mutating": False,
+            "start": start_iso,
+            "stop": stop_iso,
+            "duration_ms": dur_ms,
+        }), 500
+
+
 @app.get("/api/influx_ping")
 def api_influx_ping():
     """Best-effort connection check using the saved configuration.

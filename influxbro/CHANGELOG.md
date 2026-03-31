@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.12.173
+
+### Enhancement
+
+- Query-Test-Dialog: Neuer modaler Dialog zum Ausfuehren beliebiger Flux (v2) oder InfluxQL (v1) Queries direkt aus der UI.
+- Sicherheitspruefung: Mutierende Statements (DELETE, DROP, SELECT INTO, to(), delete) werden erkannt und blockiert.
+- Abbruch-Button: Laufende Queries koennen waehrend der Ausfuehrung abgebrochen werden (AbortController).
+- Einstiegspunkte: Query-Test-Button im Dashboard (neben Query-Icon), Graph-Bereich, Raw-Bereich und Diagnose-Seite.
+- Backend: Neuer Endpunkt `/api/query_test` mit Query-Spracherkennung, Mutations-Check und Laufzeitmessung.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.170
 
 ### Fix

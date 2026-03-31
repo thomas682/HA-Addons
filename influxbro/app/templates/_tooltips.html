@@ -1910,17 +1910,318 @@
              });
            }
        },
-       openText: (opts)=>{
-         const o = opts || {};
-         if(window.InfluxBroPopup && window.InfluxBroPopup.show){
-           window.InfluxBroPopup.show(String(o.title || 'Hinweis'), String(o.text || ''), {
-             meta: String(o.meta || ''),
-             copyText: String(o.copyText !== undefined ? o.copyText : (o.text || '')),
-             copyTitle: String(o.copyTitle || 'Zwischenablage'),
-           });
-         }
-       },
-     };
+        openText: (opts)=>{
+          const o = opts || {};
+          if(window.InfluxBroPopup && window.InfluxBroPopup.show){
+            window.InfluxBroPopup.show(String(o.title || 'Hinweis'), String(o.text || ''), {
+              meta: String(o.meta || ''),
+              copyText: String(o.copyText !== undefined ? o.copyText : (o.text || '')),
+              copyTitle: String(o.copyTitle || 'Zwischenablage'),
+            });
+          }
+        },
+        openQueryTest: (opts)=>{
+          const o = opts || {};
+          try{ _ensureUi(); }catch(e){}
+          const root = document.getElementById('influxbro_popup_root');
+          const card = document.getElementById('influxbro_popup_card');
+          const titleEl = document.getElementById('influxbro_popup_title');
+          const preEl = document.getElementById('influxbro_popup_pre');
+          const metaEl = document.getElementById('influxbro_popup_meta');
+          const controlsEl = document.getElementById('influxbro_popup_controls');
+          const actionsWrap = document.getElementById('influxbro_popup_actions');
+          const historyBox = document.getElementById('influxbro_popup_history');
+          const splitEl = document.getElementById('influxbro_popup_split');
+
+          if(!root || !card || !titleEl || !preEl) return;
+
+          // Hide default content areas
+          preEl.style.display = 'none';
+          metaEl.style.display = 'none';
+          controlsEl.style.display = 'none';
+          if(historyBox) historyBox.style.display = 'none';
+          if(splitEl) splitEl.style.display = 'none';
+          if(actionsWrap) actionsWrap.style.display = 'none';
+
+          titleEl.textContent = String(o.title || 'Query testen');
+
+          // Build test dialog content
+          const contentWrap = document.getElementById('influxbro_popup_content');
+          contentWrap.innerHTML = '';
+          contentWrap.style.gap = '10px';
+
+          // Query textarea
+          const queryArea = document.createElement('textarea');
+          queryArea.id = 'influxbro_querytest_input';
+          queryArea.placeholder = 'Flux oder InfluxQL Query eingeben...';
+          queryArea.style.width = '100%';
+          queryArea.style.minHeight = '120px';
+          queryArea.style.padding = '10px 12px';
+          queryArea.style.boxSizing = 'border-box';
+          queryArea.style.border = '1px solid #eee';
+          queryArea.style.borderRadius = '12px';
+          queryArea.style.fontFamily = 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace';
+          queryArea.style.fontSize = '12px';
+          queryArea.style.resize = 'vertical';
+          queryArea.value = String(o.query || '');
+
+          // Button row
+          const btnRow = document.createElement('div');
+          btnRow.style.display = 'flex';
+          btnRow.style.gap = '8px';
+          btnRow.style.flexWrap = 'wrap';
+          btnRow.style.alignItems = 'center';
+
+          const runBtn = document.createElement('button');
+          runBtn.type = 'button';
+          runBtn.id = 'influxbro_querytest_run';
+          runBtn.innerHTML = QUERY_ICON + ' <span style="margin-left:4px;">Ausfuehren</span>';
+          runBtn.style.cursor = 'pointer';
+          runBtn.style.padding = '8px 12px';
+          runBtn.style.height = '34px';
+          runBtn.style.borderRadius = '8px';
+          runBtn.style.border = '1px solid #ddd';
+          runBtn.style.background = '#fff';
+
+          const cancelBtn = document.createElement('button');
+          cancelBtn.type = 'button';
+          cancelBtn.id = 'influxbro_querytest_cancel';
+          cancelBtn.textContent = 'Abbrechen';
+          cancelBtn.style.cursor = 'pointer';
+          cancelBtn.style.padding = '8px 12px';
+          cancelBtn.style.height = '34px';
+          cancelBtn.style.borderRadius = '8px';
+          cancelBtn.style.border = '1px solid #ddd';
+          cancelBtn.style.background = '#fff';
+          cancelBtn.disabled = true;
+
+          const clearBtn = document.createElement('button');
+          clearBtn.type = 'button';
+          clearBtn.id = 'influxbro_querytest_clear';
+          clearBtn.textContent = 'Loeschen';
+          clearBtn.style.cursor = 'pointer';
+          clearBtn.style.padding = '8px 12px';
+          clearBtn.style.height = '34px';
+          clearBtn.style.borderRadius = '8px';
+          clearBtn.style.border = '1px solid #ddd';
+          clearBtn.style.background = '#fff';
+
+          const copyQueryBtn = document.createElement('button');
+          copyQueryBtn.type = 'button';
+          copyQueryBtn.id = 'influxbro_querytest_copy';
+          copyQueryBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" aria-hidden="true" focusable="false"><path d="M6 11C6 8.17157 6 6.75736 6.87868 5.87868C7.75736 5 9.17157 5 12 5H15C17.8284 5 19.2426 5 20.1213 5.87868C21 6.75736 21 8.17157 21 11V16C21 18.8284 21 20.2426 20.1213 21.1213C19.2426 22 17.8284 22 15 22H12C9.17157 22 7.75736 22 6.87868 21.1213C6 20.2426 6 18.8284 6 16V11Z" stroke="#1C274C" stroke-width="1.5"></path><path d="M6 19C4.34315 19 3 17.6569 3 16V10C3 6.22876 3 4.34315 4.17157 3.17157C5.34315 2 7.22876 2 11 2H15C16.6569 2 18 3.34315 18 5" stroke="#1C274C" stroke-width="1.5"></path></svg>';
+          copyQueryBtn.style.cursor = 'pointer';
+          copyQueryBtn.style.padding = '8px 10px';
+          copyQueryBtn.style.height = '34px';
+          copyQueryBtn.setAttribute('aria-label', 'Query kopieren');
+          copyQueryBtn.setAttribute('title', 'Query kopieren');
+
+          btnRow.appendChild(runBtn);
+          btnRow.appendChild(cancelBtn);
+          btnRow.appendChild(clearBtn);
+          btnRow.appendChild(copyQueryBtn);
+
+          // Status line
+          const statusLine = document.createElement('div');
+          statusLine.id = 'influxbro_querytest_status';
+          statusLine.style.display = 'none';
+          statusLine.style.fontSize = '12px';
+          statusLine.style.opacity = '0.85';
+          statusLine.style.padding = '6px 10px';
+          statusLine.style.background = '#fafafa';
+          statusLine.style.borderRadius = '8px';
+          statusLine.style.border = '1px solid #eee';
+          statusLine.style.whiteSpace = 'pre-wrap';
+
+          // Result area
+          const resultPre = document.createElement('pre');
+          resultPre.id = 'influxbro_querytest_result';
+          resultPre.style.margin = '0';
+          resultPre.style.padding = '10px 12px';
+          resultPre.style.border = '1px solid #eee';
+          resultPre.style.borderRadius = '12px';
+          resultPre.style.background = '#fafafa';
+          resultPre.style.overflow = 'auto';
+          resultPre.style.overflowWrap = 'anywhere';
+          resultPre.style.flex = '1 1 auto';
+          resultPre.style.minHeight = '80px';
+          resultPre.style.fontSize = '11px';
+          resultPre.style.lineHeight = '1.35';
+          resultPre.textContent = '(noch keine Ausfuehrung)';
+
+          // Result button row
+          const resultBtnRow = document.createElement('div');
+          resultBtnRow.style.display = 'flex';
+          resultBtnRow.style.gap = '8px';
+          resultBtnRow.style.flexWrap = 'wrap';
+
+          const copyResultBtn = document.createElement('button');
+          copyResultBtn.type = 'button';
+          copyResultBtn.id = 'influxbro_querytest_copy_result';
+          copyResultBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" aria-hidden="true" focusable="false"><path d="M6 11C6 8.17157 6 6.75736 6.87868 5.87868C7.75736 5 9.17157 5 12 5H15C17.8284 5 19.2426 5 20.1213 5.87868C21 6.75736 21 8.17157 21 11V16C21 18.8284 21 20.2426 20.1213 21.1213C19.2426 22 17.8284 22 15 22H12C9.17157 22 7.75736 22 6.87868 21.1213C6 20.2426 6 18.8284 6 16V11Z" stroke="#1C274C" stroke-width="1.5"></path><path d="M6 19C4.34315 19 3 17.6569 3 16V10C3 6.22876 3 4.34315 4.17157 3.17157C5.34315 2 7.22876 2 11 2H15C16.6569 2 18 3.34315 18 5" stroke="#1C274C" stroke-width="1.5"></path></svg>';
+          copyResultBtn.style.cursor = 'pointer';
+          copyResultBtn.style.padding = '8px 10px';
+          copyResultBtn.style.height = '34px';
+          copyResultBtn.setAttribute('aria-label', 'Resultat kopieren');
+          copyResultBtn.setAttribute('title', 'Resultat kopieren');
+
+          const clearResultBtn = document.createElement('button');
+          clearResultBtn.type = 'button';
+          clearResultBtn.id = 'influxbro_querytest_clear_result';
+          clearResultBtn.textContent = 'Resultat loeschen';
+          clearResultBtn.style.cursor = 'pointer';
+          clearResultBtn.style.padding = '8px 12px';
+          clearResultBtn.style.height = '34px';
+          clearResultBtn.style.borderRadius = '8px';
+          clearResultBtn.style.border = '1px solid #ddd';
+          clearResultBtn.style.background = '#fff';
+
+          resultBtnRow.appendChild(copyResultBtn);
+          resultBtnRow.appendChild(clearResultBtn);
+
+          contentWrap.appendChild(queryArea);
+          contentWrap.appendChild(btnRow);
+          contentWrap.appendChild(statusLine);
+          contentWrap.appendChild(resultPre);
+          contentWrap.appendChild(resultBtnRow);
+
+          // Adjust card size for query test
+          card.style.width = 'min(960px, calc(100vw - 24px))';
+          card.style.height = 'min(80vh, 800px)';
+
+          // Show popup
+          root.style.display = 'block';
+          try{ root.showModal(); }catch(e){}
+
+          // AbortController for cancellation
+          let queryAbortController = null;
+
+          // Run button handler
+          runBtn.onclick = async ()=>{
+            const q = String(queryArea.value || '').trim();
+            if(!q){
+              statusLine.style.display = 'block';
+              statusLine.style.color = '#b00020';
+              statusLine.textContent = 'Fehler: Query ist leer.';
+              resultPre.textContent = '';
+              return;
+            }
+
+            // Reset state
+            statusLine.style.display = 'none';
+            resultPre.textContent = 'Laeuft...';
+            runBtn.disabled = true;
+            cancelBtn.disabled = false;
+            queryAbortController = new AbortController();
+
+            const startTime = new Date();
+            try{
+              const r = await fetch('./api/query_test', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({query: q}),
+                signal: queryAbortController.signal,
+              });
+              const j = await r.json().catch(()=>({ok:false, error:'Invalid JSON'}));
+
+              if(!r.ok || !j.ok){
+                statusLine.style.display = 'block';
+                statusLine.style.color = '#b00020';
+                const parts = [];
+                if(j.start) parts.push('Start: ' + j.start);
+                if(j.stop) parts.push('Stop: ' + j.stop);
+                if(j.duration_ms !== undefined) parts.push('Dauer: ' + j.duration_ms + ' ms');
+                parts.push('Fehler: ' + (j.error || ('HTTP ' + r.status)));
+                statusLine.textContent = parts.join('\n');
+                resultPre.textContent = j.error || ('HTTP ' + r.status);
+              }else{
+                statusLine.style.display = 'block';
+                statusLine.style.color = '#0a7a28';
+                const parts = [];
+                if(j.start) parts.push('Start: ' + j.start);
+                if(j.stop) parts.push('Stop: ' + j.stop);
+                parts.push('Dauer: ' + j.duration_ms + ' ms');
+                parts.push('Sprache: ' + (j.query_language || '-'));
+                parts.push('Zeilen: ' + (j.rows ? j.rows.length : 0));
+                statusLine.textContent = parts.join(' | ');
+                resultPre.textContent = JSON.stringify(j.rows, null, 2) || '(leeres Resultat)';
+              }
+            }catch(e){
+              if(e && e.name === 'AbortError'){
+                statusLine.style.display = 'block';
+                statusLine.style.color = '#f59e0b';
+                statusLine.textContent = 'Abgebrochen.';
+                resultPre.textContent = '(vom Benutzer abgebrochen)';
+              }else{
+                statusLine.style.display = 'block';
+                statusLine.style.color = '#b00020';
+                statusLine.textContent = 'Fehler: ' + (e && e.message ? e.message : String(e));
+                resultPre.textContent = String(e && e.message ? e.message : e);
+                try{ window.InfluxBroClientLog && window.InfluxBroClientLog.fetchError && window.InfluxBroClientLog.fetchError('./api/query_test', {query: q}, e); }catch(x){}
+              }
+            }finally{
+              runBtn.disabled = false;
+              cancelBtn.disabled = true;
+              queryAbortController = null;
+            }
+          };
+
+          // Cancel button handler
+          cancelBtn.onclick = ()=>{
+            if(queryAbortController){
+              queryAbortController.abort();
+            }
+          };
+
+          // Clear query button
+          clearBtn.onclick = ()=>{
+            queryArea.value = '';
+            queryArea.focus();
+          };
+
+          // Copy query button
+          copyQueryBtn.onclick = async ()=>{
+            const txt = String(queryArea.value || '');
+            if(!txt) return;
+            try{
+              if(navigator && navigator.clipboard && navigator.clipboard.writeText){
+                await navigator.clipboard.writeText(txt);
+              }
+            }catch(e){}
+          };
+
+          // Copy result button
+          copyResultBtn.onclick = async ()=>{
+            const txt = String(resultPre.textContent || '');
+            if(!txt) return;
+            try{
+              if(navigator && navigator.clipboard && navigator.clipboard.writeText){
+                await navigator.clipboard.writeText(txt);
+              }
+            }catch(e){}
+          };
+
+          // Clear result button
+          clearResultBtn.onclick = ()=>{
+            resultPre.textContent = '(noch keine Ausfuehrung)';
+            statusLine.style.display = 'none';
+          };
+
+          // Close button resets card size
+          const closeBtn = document.getElementById('influxbro_popup_close');
+          if(closeBtn){
+            const origOnclick = closeBtn.onclick;
+            closeBtn.onclick = (ev)=>{
+              try{ if(queryAbortController) queryAbortController.abort(); }catch(e){}
+              card.style.width = 'min(860px, calc(100vw - 24px))';
+              card.style.height = 'min(72vh, 720px)';
+              // Restore default content
+              _ensureUi();
+              if(typeof origOnclick === 'function') origOnclick(ev);
+            };
+          }
+        },
+      };
    }catch(e){}
 
    // Global helper for "Git Bugreport" button (works even before the popup was opened).

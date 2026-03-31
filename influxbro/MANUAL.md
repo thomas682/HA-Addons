@@ -226,6 +226,17 @@ Graph Query:
   - Neu: Query Details zeigt Zeitstempel und hat eine History.
 - Button `Query kopieren`: kopiert den Query in die Zwischenablage (z.B. fuer den Influx Explorer).
 - Auswahl `Dashboard / Bearbeitungsgraph`: schaltet die angezeigte Query-Quelle um (Hauptgraph vs. rechter Bearbeitungsgraph).
+- Button `Query testen`: oeffnet einen modalen Dialog zum Ausfuehren beliebiger Queries (Flux/InfluxQL). Die aktuelle Query wird dabei direkt uebernommen.
+
+Query-Test-Dialog:
+
+- Der Query-Test-Dialog kann aus mehreren Stellen geoeffnet werden: Dashboard (Query-Icon neben Query-Details), Graph-Bereich, Raw-Bereich und Diagnose-Seite.
+- Oben: Textarea zum Eingeben oder Bearbeiten der Query.
+- Buttons: `Ausfuehren` (startet die Query), `Abbrechen` (bricht laufende Query ab), `Loeschen` (leert Query-Feld), `Kopieren` (kopiert Query).
+- Status-Zeile: zeigt Startzeit, Endzeit, Dauer, Query-Sprache und Anzahl Ergebniszeilen.
+- Unten: Resultatfeld mit JSON-Ausgabe der Query-Ergebnisse. Buttons: `Resultat kopieren`, `Resultat loeschen`.
+- Sicherheit: Mutierende Queries (DELETE, DROP, SELECT INTO, to(), delete) werden erkannt und blockiert.
+- Abbruch: Waehrend die Query laeuft, kann sie ueber `Abbrechen` gestoppt werden. Die UI zeigt sofort "Abgebrochen" an.
 
 Details (Sampling) + Ableitung:
 
