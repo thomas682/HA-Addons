@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.170
+
+### Fix
+
+- Popup Query-History: Die Hoehenberechnung beim Ziehen von `influxbro_popup_split` verwendet jetzt eine echte Resthoehen-Berechnung fuer den unteren Bereich. Dadurch kann `influxbro_popup_history` beim Hochziehen des Trenners nicht mehr groesser als der Dialog werden.
+
+### Maintenance
+
+- Tests: `pytest tests/test_api_ui_support.py -q`, `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.169
 
 ### Fix
