@@ -674,6 +674,7 @@ DEFAULT_CFG = {
     "ui_font_size_px": 14,
     "ui_font_small_px": 11,
     "ui_popup_pre_font_px": 10,
+    "ui_popup_history_font_px": 10,
     "ui_pagecard_title_px": 30,
     "ui_page_search_highlight_color": "#FF9900",
     "ui_page_search_highlight_width_px": 3,
@@ -11487,6 +11488,7 @@ def api_set_config():
     _clamp_int("ui_font_size_px", 14, 10, 22)
     _clamp_int("ui_font_small_px", 11, 9, 18)
     _clamp_int("ui_popup_pre_font_px", 10, 8, 24)
+    _clamp_int("ui_popup_history_font_px", 10, 8, 24)
     _clamp_int("ui_pagecard_title_px", 30, 18, 48)
     _clamp_int("ui_page_search_highlight_width_px", 3, 1, 12)
     _clamp_int("ui_page_search_highlight_duration_ms", 1400, 200, 10000)

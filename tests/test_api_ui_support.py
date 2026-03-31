@@ -239,8 +239,11 @@ def test_popup_copy_icon_and_font_setting_are_present():
     app_py = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "app.py").read_text()
     assert 'stroke="#1C274C"' in tooltips
     assert 'ui_popup_pre_font_px' in tooltips
+    assert 'ui_popup_history_font_px' in tooltips
     assert 'ui_popup_pre_font_px' in config
+    assert 'ui_popup_history_font_px' in config
     assert 'ui_popup_pre_font_px' in app_py
+    assert 'ui_popup_history_font_px' in app_py
 
 
 def test_query_history_uses_existing_popup_history_area():
@@ -251,9 +254,19 @@ def test_query_history_uses_existing_popup_history_area():
     assert "if(CURRENT_HISTORY_SCOPE && opts && opts.autoOpenHistory){" in tooltips
     assert "influxbro_popup_history_search" in tooltips
     assert "influxbro_popup_history_wrap" in tooltips
+    assert "influxbro_popup_history_client_time" in tooltips
     assert "influxbro_popup_history_pre" in tooltips
     assert "HISTORY_WRAP_KEY = 'influxbro.popup.history.wrap.v1'" in tooltips
+    assert "HISTORY_CLIENT_TIME_KEY = 'influxbro.popup.history.client_time.v1'" in tooltips
     assert "window.InfluxBroPopup.show('Query History', 'Wähle unten einen History-Eintrag aus.'" in tooltips or "window.InfluxBroPopup.show('Query History', 'Waehle unten einen History-Eintrag aus.'" in tooltips
+
+
+def test_dashboard_raw_query_button_and_query_history_metadata_exist():
+    index_html = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert 'id="raw_query_open"' in index_html
+    assert "trigger_button: 'dashboard.load'" in index_html
+    assert "trigger_program: 'raw load'" in index_html
+    assert "trigger_program: 'edit graph refresh'" in index_html
 
 
 def test_raw_history_summary_endpoint_and_trigger_metadata_exist():
@@ -404,7 +417,7 @@ def test_dashboard_issue137_modal_and_toolbar_updates():
     assert 'id="edit_toolbar_overwrite"' in body
     assert 'id="edit_toolbar_apply_one"' in body
     assert 'id="raw_refresh"' in body
-    assert 'id="raw_query_open"' not in body
+    assert 'id="raw_query_open"' in body
     assert 'id="raw_query_section"' not in body
     assert 'id="err" class="err"' not in body
     assert 'id="ok" class="ok"' not in body
@@ -497,7 +510,7 @@ def test_popup_uses_global_decode_helper_for_query_and_meta_texts():
     assert "historyBox.id = 'influxbro_popup_history';" in tooltips
     assert "split.id = 'influxbro_popup_split';" in tooltips
     assert "root.addEventListener('click'" not in tooltips
-    assert "onClick: ()=>{ try{ _toggleHistory(String(o.scope)); }catch(e){} }," in tooltips
+    assert "onClick: ()=>{ try{ _renderHistory(String(o.scope)); }catch(e){} }," in tooltips
     assert "window.InfluxBroQueryHistory = { add, show, list };" in tooltips
 
 

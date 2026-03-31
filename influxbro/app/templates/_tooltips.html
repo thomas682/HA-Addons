@@ -684,7 +684,6 @@
   _openHistoryInPopup = function(scope){
     try{
       CURRENT_HISTORY_SCOPE = String(scope || '').trim();
-      CURRENT_HISTORY_SELECTED_AT = '';
       if(window.InfluxBroPopup && window.InfluxBroPopup.show){
         window.InfluxBroPopup.show('Query History', 'Wähle unten einen History-Eintrag aus.', {
           historyScope: CURRENT_HISTORY_SCOPE,
@@ -698,6 +697,32 @@
 
   function _popupSizeStorageKey(title){
     return POPUP_SIZE_PREFIX + _popupSizeKey(title);
+  }
+
+  function _fmtLocalTs(iso){
+    try{
+      const raw = String(iso || '').trim();
+      if(!raw) return '';
+      const d = new Date(raw);
+      if(!isFinite(d.getTime())) return raw;
+      const pad = (n, w=2) => String(n).padStart(w, '0');
+      const pad3 = (n) => String(n).padStart(3, '0');
+      return pad(d.getDate()) + '.' + pad(d.getMonth()+1) + '.' + String(d.getFullYear()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()) + '.' + pad3(d.getMilliseconds());
+    }catch(e){ return String(iso || ''); }
+  }
+
+  function _fmtTrigger(entry){
+    try{
+      if(!entry) return '';
+      const page = String(entry.trigger_page || '').trim();
+      const button = String(entry.trigger_button || '').trim();
+      const program = String(entry.trigger_program || '').trim();
+      const parts = [];
+      if(page) parts.push(page.charAt(0).toUpperCase() + page.slice(1));
+      if(button) parts.push('Button: ' + button);
+      else if(program) parts.push('Programm: ' + program);
+      return parts.join(' | ');
+    }catch(e){ return ''; }
   }
 
   function _ensureUi(){
@@ -841,6 +866,7 @@
     meta.style.fontSize = '12px';
     meta.style.opacity = '0.8';
     meta.style.display = 'none';
+    meta.style.whiteSpace = 'pre-wrap';
 
     const right = document.createElement('div');
     right.style.display = 'flex';
@@ -1068,6 +1094,7 @@
     // Wrap preference
     const WRAP_KEY = 'influxbro.popup.wrap.v1';
     const HISTORY_WRAP_KEY = 'influxbro.popup.history.wrap.v1';
+    const HISTORY_CLIENT_TIME_KEY = 'influxbro.popup.history.client_time.v1';
     function applyWrap(on){
       try{ pre.style.whiteSpace = on ? 'pre-wrap' : 'pre'; }catch(e){}
     }
@@ -1095,17 +1122,40 @@
       }catch(e){ return []; }
     }
 
-    function _historyTextEntries(scope, query){
+    function _historyDisplayTime(it, clientTime){
+      try{
+        if(clientTime) return _fmtLocalTs(it && (it.started_at_client || it.at_client || it.at) ? (it.started_at_client || it.at_client || it.at) : '');
+        return String(it && (it.started_at_source || it.at_source || it.at) ? (it.started_at_source || it.at_source || it.at) : '');
+      }catch(e){ return ''; }
+    }
+
+    function _latestHistoryEntry(scope, queryText){
+      try{
+        const xs = _historyEntries(scope);
+        const q = String(queryText || '').trim();
+        if(q){
+          for(let i = xs.length - 1; i >= 0; i -= 1){
+            const it = xs[i];
+            if(String(it && it.query ? it.query : '').trim() === q) return it || null;
+          }
+        }
+        return xs.length ? (xs[xs.length - 1] || null) : null;
+      }catch(e){ return null; }
+    }
+
+    function _historyTextEntries(scope, query, clientTime){
       try{
         const xs = _historyEntries(scope);
         const q = String(query || '').trim().toLowerCase();
         const filtered = !q ? xs : xs.filter((it)=>{
-          const hay = [it && it.at, it && it.label, it && it.query, it && it.response].map(v => String(v || '').toLowerCase()).join('\n');
+          const hay = [it && it.at, it && it.started_at_client, it && it.started_at_source, it && it.label, it && it.query, it && it.response, it && it.trigger_page, it && it.trigger_button, it && it.trigger_program].map(v => String(v || '').toLowerCase()).join('\n');
           return hay.includes(q);
         });
         return filtered.slice().reverse().map((it, idx)=>{
           const parts = [];
-          parts.push(`#${idx + 1} | ${String(it && it.at ? it.at : '')}${it && it.label ? ' | ' + String(it.label) : ''}`);
+          parts.push(`#${idx + 1} | ${_historyDisplayTime(it, clientTime)}${it && it.label ? ' | ' + String(it.label) : ''}`);
+          const trigger = _fmtTrigger(it);
+          if(trigger) parts.push('ausgeloest durch: ' + trigger);
           parts.push('query:');
           parts.push(String(it && it.query ? it.query : '(leer)'));
           if(it && it.response){
@@ -1175,8 +1225,27 @@
         wrapTxt.textContent = 'Umbruch';
         wrapLbl.appendChild(wrapCb);
         wrapLbl.appendChild(wrapTxt);
+
+        const clientLbl = document.createElement('label');
+        clientLbl.style.display = 'flex';
+        clientLbl.style.alignItems = 'center';
+        clientLbl.style.gap = '8px';
+        clientLbl.style.fontSize = '12px';
+        clientLbl.style.opacity = '0.85';
+
+        const clientCb = document.createElement('input');
+        clientCb.id = 'influxbro_popup_history_client_time';
+        clientCb.type = 'checkbox';
+        clientCb.style.transform = 'scale(0.95)';
+        clientCb.style.transformOrigin = 'left center';
+
+        const clientTxt = document.createElement('span');
+        clientTxt.textContent = 'Client time';
+        clientLbl.appendChild(clientCb);
+        clientLbl.appendChild(clientTxt);
         controls.appendChild(search);
         controls.appendChild(wrapLbl);
+        controls.appendChild(clientLbl);
         historyBox.appendChild(controls);
 
         const historyPre = document.createElement('pre');
@@ -1190,18 +1259,18 @@
         historyPre.style.overflowWrap = 'anywhere';
         historyPre.style.minHeight = '120px';
         historyPre.style.maxHeight = '100%';
-        historyPre.style.fontSize = '12px';
+        historyPre.style.fontSize = '{{ (cfg.get("ui_popup_history_font_px") or 10) | int }}px';
         historyPre.style.lineHeight = '1.35';
         historyBox.appendChild(historyPre);
 
         const renderText = ()=>{
           try{
-            const txt = _historyTextEntries(scope, search.value);
+            const txt = _historyTextEntries(scope, search.value, !!clientCb.checked);
             historyPre.textContent = txt || '(keine Eintraege)';
             hint.textContent = txt ? (String((_historyEntries(scope).filter((it)=>{
               const q = String(search.value || '').trim().toLowerCase();
               if(!q) return true;
-              const hay = [it && it.at, it && it.label, it && it.query, it && it.response].map(v => String(v || '').toLowerCase()).join('\n');
+              const hay = [it && it.at, it && it.started_at_client, it && it.started_at_source, it && it.label, it && it.query, it && it.response, it && it.trigger_page, it && it.trigger_button, it && it.trigger_program].map(v => String(v || '').toLowerCase()).join('\n');
               return hay.includes(q);
             }).length)) + ' Eintraege') : 'keine Eintraege';
           }catch(e){ historyPre.textContent = '(keine Eintraege)'; }
@@ -1220,6 +1289,14 @@
           const on = !!wrapCb.checked;
           applyHistoryWrap(historyPre, on);
           try{ localStorage.setItem(HISTORY_WRAP_KEY, on ? '1' : '0'); }catch(e){}
+        });
+        try{
+          const saved = localStorage.getItem(HISTORY_CLIENT_TIME_KEY);
+          clientCb.checked = String(saved || '1').trim() !== '0';
+        }catch(e){ clientCb.checked = true; }
+        clientCb.addEventListener('change', ()=>{
+          try{ localStorage.setItem(HISTORY_CLIENT_TIME_KEY, clientCb.checked ? '1' : '0'); }catch(e){}
+          renderText();
         });
         search.addEventListener('input', renderText);
 
@@ -1714,7 +1791,6 @@
       try{
         if(!historyBox || !split) return;
         CURRENT_HISTORY_SCOPE = String(opts && opts.historyScope ? opts.historyScope : '');
-        CURRENT_HISTORY_SELECTED_AT = '';
         historyBox.style.display = 'none';
         historyBox.innerHTML = '';
         split.style.display = 'none';
@@ -1769,32 +1845,39 @@
    try{
      const QUERY_ICON = '<svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="11" cy="15.5" r="1.5"></circle><path d="M12,12H10V8h2a2,2,0,0,0,0-4H10A2.0023,2.0023,0,0,0,8,6v.5H6V6a4.0045,4.0045,0,0,1,4-4h2a4,4,0,0,1,0,8Z"></path><path d="M22.4479,21.0337A10.971,10.971,0,0,0,19.9211,4.7446l-.999,1.73A8.9967,8.9967,0,1,1,5,14H3a10.9916,10.9916,0,0,0,18.0338,8.4478L28.5859,30,30,28.5859Z"></path></svg>';
      const HISTORY_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M12 8V12L14.5 14.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M5.60423 5.60423L5.0739 5.0739V5.0739L5.60423 5.60423ZM4.33785 6.87061L3.58786 6.87438C3.58992 7.28564 3.92281 7.61853 4.33408 7.6206L4.33785 6.87061ZM6.87963 7.63339C7.29384 7.63547 7.63131 7.30138 7.63339 6.88717C7.63547 6.47296 7.30138 6.13549 6.88717 6.13341L6.87963 7.63339ZM5.07505 4.32129C5.07296 3.90708 4.7355 3.57298 4.32129 3.57506C3.90708 3.57715 3.57298 3.91462 3.57507 4.32882L5.07505 4.32129ZM3.75 12C3.75 11.5858 3.41421 11.25 3 11.25C2.58579 11.25 2.25 11.5858 2.25 12H3.75ZM16.8755 20.4452C17.2341 20.2378 17.3566 19.779 17.1492 19.4204C16.9418 19.0619 16.483 18.9393 16.1245 19.1468L16.8755 20.4452ZM19.1468 16.1245C18.9393 16.483 19.0619 16.9418 19.4204 17.1492C19.779 17.3566 20.2378 17.2341 20.4452 16.8755L19.1468 16.1245ZM5.14033 5.07126C4.84598 5.36269 4.84361 5.83756 5.13505 6.13191C5.42648 6.42626 5.90134 6.42862 6.19569 6.13719L5.14033 5.07126ZM18.8623 5.13786C15.0421 1.31766 8.86882 1.27898 5.0739 5.0739L6.13456 6.13456C9.33366 2.93545 14.5572 2.95404 17.8017 6.19852L18.8623 5.13786ZM5.0739 5.0739L3.80752 6.34028L4.86818 7.40094L6.13456 6.13456L5.0739 5.0739ZM4.33408 7.6206L6.87963 7.63339L6.88717 6.13341L4.34162 6.12062L4.33408 7.6206ZM5.08784 6.86684L5.07505 4.32129L3.57507 4.32882L3.58786 6.87438L5.08784 6.86684ZM12 3.75C16.5563 3.75 20.25 7.44365 20.25 12H21.75C21.75 6.61522 17.3848 2.25 12 2.25V3.75ZM12 20.25C7.44365 20.25 3.75 16.5563 3.75 12H2.25C2.25 17.3848 6.61522 21.75 12 21.75V20.25ZM16.1245 19.1468C14.9118 19.8483 13.5039 20.25 12 20.25V21.75C13.7747 21.75 15.4407 21.2752 16.8755 20.4452L16.1245 19.1468ZM20.25 12C20.25 13.5039 19.8483 14.9118 19.1468 16.1245L20.4452 16.8755C21.2752 15.4407 21.75 13.7747 21.75 12H20.25ZM6.19569 6.13719C7.68707 4.66059 9.73646 3.75 12 3.75V2.25C9.32542 2.25 6.90113 3.32791 5.14033 5.07126L6.19569 6.13719Z"></path></svg>';
+     const HISTORY_REFRESH_ICON = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18" aria-hidden="true" focusable="false"><path d="M12 21C16.9706 21 21 16.9706 21 12C21 9.69494 20.1334 7.59227 18.7083 6L16 3M12 3C7.02944 3 3 7.02944 3 12C3 14.3051 3.86656 16.4077 5.29168 18L8 21M21 3H16M16 3V8M3 21H8M8 21V16" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>';
      window.InfluxBroDialogs = {
        queryIcon: QUERY_ICON,
        historyIcon: HISTORY_ICON,
-       openQuery: (opts)=>{
-         const o = opts || {};
-         const parts = [];
-         if(o.meta) parts.push(String(o.meta));
-         if(o.label) parts.push(String(o.label));
-         const actions = [];
-         if(o.scope){
-            actions.push({
-              label: 'History',
-              title: 'History',
-              icon: HISTORY_ICON,
-              onClick: ()=>{ try{ _toggleHistory(String(o.scope)); }catch(e){} },
-            });
-          }
-          if(window.InfluxBroPopup && window.InfluxBroPopup.show){
-            window.InfluxBroPopup.show(String(o.title || 'Query'), String(o.text || 'Noch keine Query vorhanden.'), {
-              meta: parts.join(' | '),
-              copyText: String(o.copyText !== undefined ? o.copyText : (o.text || '')),
-              copyTitle: String(o.copyTitle || 'Zwischenablage'),
-              actions,
-              historyScope: String(o.scope || ''),
-            });
-          }
+        openQuery: (opts)=>{
+          const o = opts || {};
+          const parts = [];
+          if(o.meta) parts.push(String(o.meta));
+          if(o.label) parts.push(String(o.label));
+          const latest = _latestHistoryEntry(String(o.scope || ''), String(o.text || ''));
+          const latestClientAt = latest ? _fmtLocalTs(latest.started_at_client || latest.at_client || latest.at) : '';
+          const latestTrigger = _fmtTrigger(latest);
+          if(latestClientAt) parts.push('Ausgeloest: ' + latestClientAt);
+          if(latestTrigger) parts.push('Ausloeser: ' + latestTrigger);
+          const actions = [];
+          if(o.scope){
+             actions.push({
+               label: 'Refresh',
+               title: 'History aktualisieren',
+               icon: HISTORY_REFRESH_ICON,
+               onClick: ()=>{ try{ _renderHistory(String(o.scope)); }catch(e){} },
+             });
+           }
+           if(window.InfluxBroPopup && window.InfluxBroPopup.show){
+             window.InfluxBroPopup.show(String(o.title || 'Query'), String(o.text || 'Noch keine Query vorhanden.'), {
+               meta: parts.join('\n'),
+               copyText: String(o.copyText !== undefined ? o.copyText : (o.text || '')),
+               copyTitle: String(o.copyTitle || 'Zwischenablage'),
+               actions,
+               historyScope: String(o.scope || ''),
+               autoOpenHistory: !!o.scope,
+             });
+           }
        },
        openText: (opts)=>{
          const o = opts || {};
@@ -1968,14 +2051,25 @@
     return xs.length > k ? (out + '\n...') : out;
   }
 
-  function add(scope, label, query, response, startedAtIso){
+  function add(scope, label, query, response, startedAtOrMeta, maybeMeta){
     const q = String(query || '').trim();
     if(!q) return;
+    const meta = (startedAtOrMeta && typeof startedAtOrMeta === 'object' && !Array.isArray(startedAtOrMeta)) ? startedAtOrMeta : (maybeMeta || {});
+    const sourceIso = String((startedAtOrMeta && typeof startedAtOrMeta === 'object' && !Array.isArray(startedAtOrMeta)) ? (meta.started_at_source || meta.startedAtIso || '') : (startedAtOrMeta || meta.started_at_source || meta.startedAtIso || '')).trim();
+    let clientIso = '';
+    try{ clientIso = new Date().toISOString(); }catch(e){ clientIso = sourceIso || ''; }
     const ent = {
-      at: String(startedAtIso || new Date().toISOString()),
+      at: String(sourceIso || clientIso),
+      at_client: clientIso,
+      at_source: String(sourceIso || clientIso),
+      started_at_client: clientIso,
+      started_at_source: String(sourceIso || clientIso),
       label: String(label || ''),
       query: q.slice(0, 20000),
       response: String(response || '').slice(0, 20000),
+      trigger_page: String(meta.trigger_page || ''),
+      trigger_button: String(meta.trigger_button || ''),
+      trigger_program: String(meta.trigger_program || ''),
     };
     const xs = _load(scope);
     const prev = xs.length ? xs[xs.length - 1] : null;

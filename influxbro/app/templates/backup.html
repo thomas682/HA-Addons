@@ -933,7 +933,11 @@
               LAST_BACKUP_QUERY = s;
               const resp = String(responseHint || '').trim();
               if(window.InfluxBroQueryHistory && window.InfluxBroQueryHistory.add){
-                window.InfluxBroQueryHistory.add('backup', 'Backup Job', s, resp, String(startedAtIso||''));
+                window.InfluxBroQueryHistory.add('backup', 'Backup Job', s, resp, {
+                  started_at_source: String(startedAtIso||''),
+                  trigger_page: 'backup',
+                  trigger_button: 'backup.run',
+                });
               }
             }
           }catch(e){}
@@ -972,7 +976,11 @@
               LAST_FULLBACKUP_ACTION = s;
               const resp = String(responseHint || '').trim();
               if(window.InfluxBroQueryHistory && window.InfluxBroQueryHistory.add){
-                window.InfluxBroQueryHistory.add('fullbackup', 'FullBackup', s, resp, String(startedAtIso||''));
+                window.InfluxBroQueryHistory.add('fullbackup', 'FullBackup', s, resp, {
+                  started_at_source: String(startedAtIso||''),
+                  trigger_page: 'backup',
+                  trigger_button: 'fullbackup.run',
+                });
               }
             }
           }catch(e){}

@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.12.165
+
+### Fix
+
+- Query-History protokolliert jetzt zusaetzliche Metadaten zum Ausloeser jeder Abfrage: Funktionsseite, ausloesender Button oder Programm sowie Ausloesezeitpunkt.
+- Query-Dialoge zeigen die History jetzt immer automatisch im unteren Bereich an. Der bisherige `History`-Button im Dialog wurde zu einem Refresh-Button mit neuem Icon fuer die aktuelle Query-History umgebaut.
+- Die untere Query-History besitzt jetzt eine Checkbox `Client time` fuer lokale Zeitdarstellung vs. Roh-ISO-Zeit sowie eine eigene konfigurierbare Schriftgroesse `ui_popup_history_font_px`.
+- Dashboard Raw: Neuer Button `Query` im Bereich `raw.actions`, um die zuletzt verwendete Raw-Abfragequery im gemeinsamen Query-Dialog anzuzeigen.
+
+### Maintenance
+
+- Tests: `pytest tests/test_api_ui_support.py -q`, `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.164
 
 ### Fix

@@ -793,7 +793,11 @@
             LAST_QUERY_SIG = sig;
             const resp = error ? String(error) : '';
             if(window.InfluxBroQueryHistory && window.InfluxBroQueryHistory.add){
-              window.InfluxBroQueryHistory.add('stats', l || 'stats', q, resp, stAt || new Date().toISOString());
+              window.InfluxBroQueryHistory.add('stats', l || 'stats', q, resp, {
+                started_at_source: stAt || new Date().toISOString(),
+                trigger_page: 'stats',
+                trigger_button: 'stats.run',
+              });
             }
           }
         }catch(e){}
@@ -806,32 +810,7 @@
         });
         if($queryHistory) $queryHistory.addEventListener('click', (ev)=>{
           try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
-          try{
-            const xs = Array.isArray(LAST_QUERY_HISTORY) ? LAST_QUERY_HISTORY : [];
-            const lines = [];
-            lines.push('Query History (Statistik Job)');
-            lines.push('');
-            if(!xs.length){
-              lines.push('(keine Eintraege)');
-            }else{
-              const tail = xs.slice(Math.max(0, xs.length - 20));
-              for(const it of tail){
-                const at = fmtTs(it && it.at ? it.at : '');
-                const lab = String(it && (it.label || it.last_query_label) ? (it.label || it.last_query_label) : '').trim();
-                const qq = String(it && (it.query || it.last_query) ? (it.query || it.last_query) : '').trim();
-                lines.push('- ' + at + (lab ? (' | ' + lab) : ''));
-                if(qq){
-                  const maxLines = 5;
-                  const qLines = qq.split(/\r?\n/);
-                  const clipped = qLines.slice(0, maxLines).join('\n');
-                  lines.push('  ' + clipped.replace(/\n/g, '\n  '));
-                  if(qLines.length > maxLines) lines.push('  ...');
-                }
-              }
-            }
-            if(window.InfluxBroPopup && window.InfluxBroPopup.show) window.InfluxBroPopup.show('Query History', lines.join('\n'));
-            else alert(lines.join('\n'));
-          }catch(e){}
+          try{ window.InfluxBroQueryHistory && window.InfluxBroQueryHistory.show && window.InfluxBroQueryHistory.show('stats'); }catch(e){}
         });
       }catch(e){}
 

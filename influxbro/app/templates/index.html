@@ -484,6 +484,7 @@
         <button class="btn_sm" id="raw_delete" data-ui="raw.delete" title="raw.delete" disabled>Löschen</button>
         <button class="btn_sm" id="raw_undo" data-ui="raw.undo" title="raw.undo" disabled>Undo</button>
         <button class="btn_sm" id="raw_info_btn" data-ui="raw.info_btn" title="raw.info_btn" disabled>Info</button>
+        <button class="btn_sm" id="raw_query_open" data-ui="raw.query_section" title="raw.query_section">Query</button>
         <span id="raw_copied_info" class="muted" style="margin-left:6px;"></span>
       </div>
 
@@ -903,6 +904,7 @@ const $rawPaste = document.getElementById('raw_paste');
 const $rawDelete = document.getElementById('raw_delete');
 const $rawUndo = document.getElementById('raw_undo');
 const $rawInfoBtn = document.getElementById('raw_info_btn');
+const $rawQueryOpen = document.getElementById('raw_query_open');
 const $rawCopiedInfo = document.getElementById('raw_copied_info');
 
 const $graphQuerySection = document.getElementById('graph_query_section');
@@ -2930,7 +2932,11 @@ function setLastQuery(q, triggeredAtIso, durationMs){
     $queryPre.textContent = s || 'Noch keine Query vorhanden.';
     try{
       if(s && window.InfluxBroQueryHistory && window.InfluxBroQueryHistory.add){
-        window.InfluxBroQueryHistory.add('dashboard', 'Aktualisieren', s, '', at || new Date().toISOString());
+        window.InfluxBroQueryHistory.add('dashboard', 'Aktualisieren', s, '', {
+          started_at_source: at || new Date().toISOString(),
+          trigger_page: 'dashboard',
+          trigger_button: 'dashboard.load',
+        });
       }
     }catch(e){}
 
@@ -2999,6 +3005,19 @@ function openApplyQueryDialog(){
   }catch(e){}
 }
 
+function openRawQueryDialog(){
+  try{
+    if(window.InfluxBroDialogs && window.InfluxBroDialogs.openQuery){
+      window.InfluxBroDialogs.openQuery({
+        title: 'Raw Query',
+        text: String(RAW_QUERY_LAST || '') || 'Noch keine Query vorhanden.',
+        meta: RAW_QUERY_LAST_AT ? ('Zeit: ' + fmtTs(RAW_QUERY_LAST_AT)) : '',
+        scope: 'dashboard.raw',
+      });
+    }
+  }catch(e){}
+}
+
 function openStatsTotalDialog(){
   try{
     if(window.InfluxBroDialogs && window.InfluxBroDialogs.openText){
@@ -3037,6 +3056,7 @@ try{ if($graphQueryOpen) $graphQueryOpen.addEventListener('click', (ev)=>{ _stop
 try{ if($graphQueryHistory) $graphQueryHistory.addEventListener('click', (ev)=>{ _stop(ev); try{ window.InfluxBroQueryHistory && window.InfluxBroQueryHistory.show && window.InfluxBroQueryHistory.show('dashboard.graph'); }catch(e){}; }); }catch(e){}
 try{ if($applyModalQueryOpen) $applyModalQueryOpen.addEventListener('click', (ev)=>{ _stop(ev); openApplyQueryDialog(); }); }catch(e){}
 try{ if($applyModalQueryHistory) $applyModalQueryHistory.addEventListener('click', (ev)=>{ _stop(ev); try{ window.InfluxBroQueryHistory && window.InfluxBroQueryHistory.show && window.InfluxBroQueryHistory.show('dashboard.apply_preview'); }catch(e){}; }); }catch(e){}
+try{ if($rawQueryOpen) $rawQueryOpen.addEventListener('click', (ev)=>{ _stop(ev); openRawQueryDialog(); }); }catch(e){}
 try{ if($statsTotalOpen) $statsTotalOpen.addEventListener('click', (ev)=>{ _stop(ev); openStatsTotalDialog(); }); }catch(e){}
 let GRAPH_QUERY_DASH = "";
 let GRAPH_QUERY_EDIT = "";
@@ -4120,6 +4140,8 @@ const RAW_WINDOW_LIMIT = 5000;
 let GRAPH_QUERY_DASH_AT = "";
 let GRAPH_QUERY_EDIT_AT = "";
 let APPLY_QUERY_LAST_AT = "";
+let RAW_QUERY_LAST = "";
+let RAW_QUERY_LAST_AT = "";
 let RAW_LAST_KEY = "";
 let _RAW_STATUS_T0 = 0;
 let _RAW_STATUS_TIMER = null;
@@ -4746,7 +4768,13 @@ async function loadRawFromGraph(reset){
     RAW_META = meta;
     try{
       if(meta && meta.query && window.InfluxBroQueryHistory && window.InfluxBroQueryHistory.add){
-        window.InfluxBroQueryHistory.add('dashboard.raw', 'Raw', String(meta.query || ''), '', new Date().toISOString());
+        RAW_QUERY_LAST = String(meta.query || '');
+        RAW_QUERY_LAST_AT = new Date().toISOString();
+        window.InfluxBroQueryHistory.add('dashboard.raw', 'Raw', RAW_QUERY_LAST, '', {
+          started_at_source: RAW_QUERY_LAST_AT,
+          trigger_page: 'dashboard',
+          trigger_program: 'raw load',
+        });
       }
     }catch(e){}
 
@@ -5827,7 +5855,11 @@ async function refreshEditGraph(){
     GRAPH_QUERY_EDIT = (j && j.meta && j.meta.query) ? String(j.meta.query || '') : '';
     GRAPH_QUERY_EDIT_AT = new Date().toISOString();
     if(GRAPH_QUERY_EDIT && window.InfluxBroQueryHistory && window.InfluxBroQueryHistory.add){
-      window.InfluxBroQueryHistory.add('dashboard.graph', 'Bearbeitungsgraph', GRAPH_QUERY_EDIT, '', GRAPH_QUERY_EDIT_AT);
+      window.InfluxBroQueryHistory.add('dashboard.graph', 'Bearbeitungsgraph', GRAPH_QUERY_EDIT, '', {
+        started_at_source: GRAPH_QUERY_EDIT_AT,
+        trigger_page: 'dashboard',
+        trigger_program: 'edit graph refresh',
+      });
     }
     _renderGraphQueryPanel();
   }catch(e){}
@@ -6048,7 +6080,11 @@ function openApplyDialog(dirty){
     }
     try{
       if(q && window.InfluxBroQueryHistory && window.InfluxBroQueryHistory.add){
-        window.InfluxBroQueryHistory.add('dashboard.apply_preview', 'Apply Preview', q, '', APPLY_QUERY_LAST_AT);
+        window.InfluxBroQueryHistory.add('dashboard.apply_preview', 'Apply Preview', q, '', {
+          started_at_source: APPLY_QUERY_LAST_AT,
+          trigger_page: 'dashboard',
+          trigger_button: 'apply.preview',
+        });
       }
     }catch(e){}
 
@@ -6241,7 +6277,11 @@ async function loadData(){
     const cnt = Array.isArray(j.rows) ? j.rows.length : 0;
     const totalPts = (j && j.meta && j.meta.total_points !== undefined) ? String(j.meta.total_points) : '';
     const resp = `ok=${String(!!j.ok)} rows=${cnt}${totalPts?` total_points=${totalPts}`:''}`;
-    if(window.InfluxBroQueryHistory && window.InfluxBroQueryHistory.add) window.InfluxBroQueryHistory.add('dashboard', 'Aktualisieren', String(j.query||''), resp, startedAtIso);
+    if(window.InfluxBroQueryHistory && window.InfluxBroQueryHistory.add) window.InfluxBroQueryHistory.add('dashboard', 'Aktualisieren', String(j.query||''), resp, {
+      started_at_source: startedAtIso,
+      trigger_page: 'dashboard',
+      trigger_button: 'dashboard.load',
+    });
   }catch(e){}
   if(STATUS_COUNT > 0) _setLoadStatus("Query fertig – Graph wird aktualisiert...");
   const rows0 = j.rows || [];
