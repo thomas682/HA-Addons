@@ -3649,7 +3649,7 @@ let RAW_VISIBLE_ROWS = 10;
 function loadRawRows(){
   try{
     const v = Number(localStorage.getItem(RAW_ROWS_KEY));
-    if(isFinite(v) && v >= 3 && v <= 500) RAW_VISIBLE_ROWS = Math.trunc(v);
+    if(isFinite(v) && v >= 5 && v <= 500) RAW_VISIBLE_ROWS = Math.trunc(v);
   }catch(e){}
   if($rawBox) $rawBox.style.setProperty('--max-rows', String(RAW_VISIBLE_ROWS));
 }
