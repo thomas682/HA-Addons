@@ -270,6 +270,13 @@ Raw Daten (DB):
 - Die Raw-Tabelle hat einen eigenen Refresh-Button und behaelt dabei denselben sichtbaren Zeitraum bzw. denselben graphgefuehrten Ausschnitt bei.
 - Die Buttons `Kopieren`, `Wert kopieren` und `Einfügen` zeigen zusaetzlich eine direkte Rueckmeldung im Popup.
 - Fuer die Ausreissersuche kannst du in den Einstellungen jetzt eine separate Mindesthoehe der Bearbeitungsliste festlegen, damit Treffer nach einem erneuten Scan sichtbar bleiben.
+- Die Raw-Tabelle hat einen fixierten Header (Titelzeile scrollt nicht mit).
+- Ausreisser-Suchleiste: Oberhalb der Raw-Tabelle kannst du eine oder mehrere Ausreisser-Kategorien auswaehlen (Counter Ausreisser, Counter Abfall, Grenzen, Stoerphasensuche, NULL Werte, 0-Werte). Mit "Alle" / "Keiner" schnell alle oder keine auswaehlen.
+- "Suche ab Beginn": Startet die Suche im aktuellen Zeitfenster. Alle gefundenen Ausreisser werden einmalig vom Backend geladen und lokal durchsucht. Der erste Treffer wird in der Raw-Tabelle und im Graph markiert.
+- "Weitersuchen": Springt zum naechsten gefundenen Ausreisser. Zeile wird in der Tabelle hervorgehoben und im Graph markiert. Du kannst den Wert wie gewohnt aendern oder loeschen.
+- "Suche beenden": Beendet die Ausreisser-Suche und entfernt die Markierungen.
+- Neue Spalte "Ausreisser": Zeigt bei gefundenen Ausreissern den Grund an (z.B. "counter decrease", "< min (0)", "NULL"). Normale Zeilen bleiben leer.
+- Das Limit fuer die maximale Anzahl gefundener Ausreisser kann in den Einstellungen unter `ui_raw_outlier_search_limit` konfiguriert werden (Default: 5000).
 
 Konzept fuer sehr grosse Tabellen (z.B. ~2 Mio Zeilen):
 
