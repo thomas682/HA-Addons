@@ -8,14 +8,17 @@ Goal
 - Keep tables and controls consistent across pages.
 - Make global UI adjustments possible from one place ("master"), with explicit per-page overrides ("child").
 
-## Section Titles (Info Icon)
+## Section Titles (Info Icon + Settings Button)
 
 Applies to all pages/sections that have a visible title (e.g. `details > summary`, cards, panels).
 
 Required pattern
 
-- Each section title gets an info icon next to it.
-- Clicking the icon opens the global info popup (resizable, scrollbars, wrap toggle, copy).
+- Each section title gets an info icon AND a settings button next to it.
+- The settings button (gear icon) is inserted BEFORE the info icon.
+- Visual order: `[Section Title] [⚙ Settings] [i Info]`
+- Clicking the settings icon navigates to `./config` (Einstellungen).
+- Clicking the info icon opens the global info popup (resizable, scrollbars, wrap toggle, copy).
 - Text must be in German and should be detailed (describe purpose + controls + pitfalls).
 
 Preferred markup
@@ -34,10 +37,24 @@ Preferred markup
 </details>
 ```
 
+Settings button injection
+
+- The settings button (`.ib_cfg_icon`) is auto-injected by a global script in `_topbar.html`.
+- It runs on ALL pages that include `_topbar.html`.
+- It finds every `summary .ib_summary_row .ib_info_icon` and inserts a `.ib_cfg_icon` button before it.
+- The settings button is NOT injected on `config.html` (the settings page itself already has back buttons).
+
+CSS
+
+- `.ib_cfg_icon` is defined in `_topbar.html` (22x22px, circular, gear SVG icon).
+- `.ib_info_icon` is defined in `_topbar.html` (22x22px, circular, "i" text).
+- Both use `flex: 0 0 auto` so they don't shrink.
+
 Notes
 
 - Use `type="button"` so it never submits forms.
 - The click handler is global (see `_tooltips.html`) and stops propagation so the `details` does not toggle.
+- The settings button click handler is also global (in `_topbar.html`) and stops propagation.
 
 ## Tables (Standard)
 
