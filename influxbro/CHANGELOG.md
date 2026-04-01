@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.12.192
+
+### Enhancement
+
+- Umfassendes Logging fuer alle API-Endpunkte und UI-Aktionen hinzugefuegt.
+- `/api/outlier_search`: Entry-Log (measurement, field, search_types, start, stop), Ergebnis-Log (scanned, found, duration), Error-Log mit Stacktrace.
+- `/api/window_points`: Entry-Log (measurement, mode), Ergebnis-Log (rows, duration), Error-Log.
+- `/api/raw_points`: Entry-Log (measurement, field, mode), Error-Log.
+- `/api/query`: Entry-Log (measurement, field, range), Ergebnis-Log (rows, duration), Error-Log.
+- `/api/test`: Ergebnis-Log (OK/Fehler, version), Error-Log.
+- `/api/config` POST: Log aller geaenderten Felder (changed_keys), Ergebnis-Log.
+- Neuer Endpunkt `/api/page_view`: Loggt Seitenaufrufe mit Seitenname und IP.
+- Client-seitig: Automatischer Page-View beim Laden jeder Seite.
+- Client-seitig: Globaler Action-Reporter fuer Button-Klicks, Select-Aenderungen, Checkbox-Aenderungen.
+- `ui_event` Log-Level von DEBUG auf INFO erhoehen fuer bessere Sichtbarkeit.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.191
 
 ### Fix

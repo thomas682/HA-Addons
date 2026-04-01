@@ -11432,14 +11432,21 @@ def api_stats_cache_run_now():
 @app.post("/api/config")
 def api_set_config():
     body = request.get_json(force=True) or {}
-    cfg = load_cfg()
+    old_cfg = load_cfg()
+    cfg = dict(old_cfg)
     allowed = set(DEFAULT_CFG.keys())
+    changed_keys = []
     for k, v in body.items():
         if k not in allowed:
             continue
         if k in ("token", "admin_token", "password") and v == "********":
             continue
+        old_val = old_cfg.get(k)
+        if old_val != v:
+            changed_keys.append(k)
         cfg[k] = v
+
+    LOG.info("api.config_save called from=%s changed=%s", request.remote_addr, changed_keys)
 
     try:
         cfg["influx_version"] = int(cfg.get("influx_version", 2))
@@ -11733,6 +11740,7 @@ def api_set_config():
         cfg["outlier_max_step_units"] = cfg["outlier_max_step_units"][:8000]
 
     save_cfg(cfg)
+    LOG.info("api.config_save done from=%s changed=%s", request.remote_addr, changed_keys)
     try:
         configure_logging(cfg)
     except Exception:
@@ -11816,6 +11824,7 @@ def api_test():
             with v2_client(cfg) as c:
                 q = f'import "influxdata/influxdb/schema"\nschema.measurements(bucket: "{cfg["bucket"]}") |> limit(n:1)'
                 c.query_api().query(q, org=cfg["org"])
+                LOG.info("api.test done from=%s result=OK version=2", request.remote_addr)
                 return jsonify({"ok": True, "message": "Connection OK (v2)."})
         else:
             if not cfg.get("database"):
@@ -11826,8 +11835,10 @@ def api_test():
 
             c = v1_client(cfg)
             c.ping()
+            LOG.info("api.test done from=%s result=OK version=1", request.remote_addr)
             return jsonify({"ok": True, "message": "Connection OK (v1)."})
     except Exception as e:
+        LOG.error("api.test error from=%s: %s", request.remote_addr, _short_influx_error(e), exc_info=True)
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
 
 
@@ -12754,6 +12765,9 @@ def query():
     friendly_name = (body.get("friendly_name") or None)
     unit = str(body.get("unit") or "").strip()
 
+    LOG.info("api.query called from=%s measurement=%s field=%s range=%s",
+        request.remote_addr, measurement, field, range_key)
+
     detail_mode = str(body.get("detail_mode") or "dynamic").strip().lower()
     if detail_mode not in ("dynamic", "manual"):
         detail_mode = "dynamic"
@@ -12763,9 +12777,11 @@ def query():
         manual_density_pct = 100
     manual_density_pct = min(100, max(1, manual_density_pct))
 
+    t0 = time.monotonic()
     try:
         start_dt, stop_dt = _get_start_stop_from_payload(body)
     except Exception as e:
+        LOG.error("api.query parse_error: %s", e)
         return jsonify({"ok": False, "error": f"invalid start/stop: {e}"}), 400
 
     if not measurement or not field:
@@ -12937,10 +12953,17 @@ def query():
                 _dash_last_set_from_query(body, cache_id, key)
         except Exception:
             pass
+        dur_ms = int((time.monotonic() - t0) * 1000)
+        row_count = len(payload.get("rows") or [])
+        LOG.info("api.query done from=%s rows=%d dur=%dms", request.remote_addr, row_count, dur_ms)
         return jsonify(payload)
     except _ApiError as e:
+        dur_ms = int((time.monotonic() - t0) * 1000)
+        LOG.error("api.query api_error: %s dur=%dms", e.message, dur_ms)
         return jsonify({"ok": False, "error": e.message}), int(e.status)
     except Exception as e:
+        dur_ms = int((time.monotonic() - t0) * 1000)
+        LOG.error("api.query error: %s dur=%dms", e, dur_ms, exc_info=True)
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
 
 
@@ -13106,21 +13129,25 @@ def api_raw_points():
 
     Intended for the Dashboard "Raw Daten" table.
     """
-
     cfg = _overlay_from_yaml_if_enabled(load_cfg())
     body = request.get_json(force=True) or {}
-
     measurement = str(body.get("measurement") or "").strip()
     field = str(body.get("field") or "").strip()
     entity_id = str(body.get("entity_id") or "").strip() or None
     friendly_name = str(body.get("friendly_name") or "").strip() or None
+    mode_str = str(body.get("mode") or "").strip().lower() or "window"
+
+    LOG.info("api.raw_points called from=%s measurement=%s field=%s mode=%s",
+        request.remote_addr, measurement, field, mode_str)
 
     if not measurement or not field:
         return jsonify({"ok": False, "error": "measurement and field required"}), 400
 
+    t0 = time.monotonic()
     try:
         start_dt, stop_dt = _get_start_stop_from_payload(body)
     except Exception as e:
+        LOG.error("api.raw_points parse_error: %s", e)
         return jsonify({"ok": False, "error": f"invalid start/stop: {e}"}), 400
     if not start_dt or not stop_dt:
         return jsonify({"ok": False, "error": "start and stop required"}), 400
@@ -13680,19 +13707,23 @@ from(bucket: "{cfg['bucket']}")
 @app.post("/api/window_points")
 def api_window_points():
     """Return time/value points for a given window, optionally downsampled."""
-
     cfg = _overlay_from_yaml_if_enabled(load_cfg())
     body = request.get_json(force=True) or {}
     measurement = str(body.get("measurement") or "").strip()
     field = str(body.get("field") or "").strip()
     entity_id = str(body.get("entity_id") or "").strip() or None
     friendly_name = str(body.get("friendly_name") or "").strip() or None
+    start_str = body.get("start", "")
+    stop_str = body.get("stop", "")
+
     if not measurement or not field:
         return jsonify({"ok": False, "error": "measurement and field required"}), 400
 
+    t0 = time.monotonic()
     try:
         start_dt, stop_dt = _get_start_stop_from_payload(body)
     except Exception as e:
+        LOG.error("api.window_points parse_error: %s", e)
         return jsonify({"ok": False, "error": f"invalid start/stop: {e}"}), 400
     if not start_dt or not stop_dt:
         return jsonify({"ok": False, "error": "start and stop required"}), 400
@@ -13751,6 +13782,9 @@ from(bucket: "{cfg["bucket"]}")
                     val = r.get_value()
                     if isinstance(ts, datetime):
                         rows.append({"time": _dt_to_rfc3339_utc_ms(ts), "value": val})
+        dur = int((time.monotonic() - t0) * 1000)
+        LOG.info("api.window_points done from=%s measurement=%s mode=%s rows=%d dur=%dms",
+            request.remote_addr, measurement, mode, len(rows), dur)
         return jsonify({
             "ok": True,
             "rows": rows,
@@ -13763,6 +13797,8 @@ from(bucket: "{cfg["bucket"]}")
             },
         })
     except Exception as e:
+        dur = int((time.monotonic() - t0) * 1000)
+        LOG.error("api.window_points error: %s dur=%dms", e, dur, exc_info=True)
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
 
 
@@ -15686,10 +15722,22 @@ def api_ui_event():
             "ip": request.headers.get("X-Forwarded-For") or request.remote_addr or "",
             "ua": (request.headers.get("User-Agent") or "")[:80],
         })
-        LOG.debug("ui_event page=%s ui=%s text=%s extra=%s", page, ui, text, extra_s)
+        LOG.info("ui_event page=%s ui=%s text=%s extra=%s", page, ui, text, extra_s)
     except Exception:
         pass
 
+    return jsonify({"ok": True})
+
+
+@app.post("/api/page_view")
+def api_page_view():
+    """Log page view events."""
+    try:
+        body = request.get_json(force=True) or {}
+        page = str(body.get("page") or "").strip()[:80]
+        LOG.info("page_view page=%s from=%s", page, request.remote_addr)
+    except Exception:
+        pass
     return jsonify({"ok": True})
 
 
@@ -16736,9 +16784,15 @@ def api_outlier_search():
     """
     cfg = _overlay_from_yaml_if_enabled(load_cfg())
     body = request.get_json(force=True) or {}
-
     measurement = (body.get("measurement") or "").strip()
     field = (body.get("field") or "").strip()
+    search_types = body.get("search_types", [])
+    start_str = body.get("start", "")
+    stop_str = body.get("stop", "")
+
+    LOG.info("api.outlier_search called from=%s measurement=%s field=%s search_types=%s start=%s stop=%s",
+        request.remote_addr, measurement, field, search_types, start_str, stop_str)
+
     entity_id = (body.get("entity_id") or "").strip() or None
     friendly_name = (body.get("friendly_name") or "").strip() or None
     unit = (body.get("unit") or "").strip()
@@ -16746,9 +16800,11 @@ def api_outlier_search():
     if not measurement or not field:
         return jsonify({"ok": False, "error": "measurement and field required"}), 400
 
+    t0 = time.monotonic()
     try:
         start_dt, stop_dt = _get_start_stop_from_payload(body)
     except Exception as e:
+        LOG.error("api.outlier_search parse_error: %s", e)
         return jsonify({"ok": False, "error": str(e)}), 400
 
     if int(cfg.get("influx_version", 2)) != 2:
@@ -17043,6 +17099,10 @@ from(bucket: "{cfg["bucket"]}")
                     "error": f"Zu viele Punkte im Zeitraum ({MAX_SCAN_CHUNK}+ in kleinstem Chunk). Bitte im Graph weiter reinzoomen.",
                 }), 413
 
+        dur_ms = int((time.monotonic() - t0) * 1000)
+        LOG.info("api.outlier_search done from=%s scanned=%d found=%d dur=%dms",
+            request.remote_addr, scanned, len(rows), dur_ms)
+
         return jsonify({
             "ok": True,
             "rows": rows,
@@ -17057,6 +17117,8 @@ from(bucket: "{cfg["bucket"]}")
             "scan_state": fault_state if fault_phase_enabled else None,
         })
     except Exception as e:
+        dur_ms = int((time.monotonic() - t0) * 1000)
+        LOG.error("api.outlier_search error: %s dur=%dms", e, dur_ms, exc_info=True)
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
 
 

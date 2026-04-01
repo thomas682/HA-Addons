@@ -1005,3 +1005,50 @@ try{
   });
 }catch(e){}
 </script>
+
+<script>
+// Report page view on load
+try{
+  const page = (window.location && window.location.pathname) ? String(window.location.pathname) : '';
+  fetch('./api/page_view', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({page: page}),
+  }).catch(()=>{});
+}catch(e){}
+
+// Global action reporter for UI interactions
+try{
+  let _ACTION_THROTTLE = null;
+  function _reportAction(type, id, value){
+    if(!id) return;
+    if(_ACTION_THROTTLE) clearTimeout(_ACTION_THROTTLE);
+    _ACTION_THROTTLE = setTimeout(()=>{
+      const page = (window.location && window.location.pathname) ? String(window.location.pathname) : '';
+      fetch('./api/ui_event', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({type: type, ui: id, text: String(value || ''), page: page}),
+      }).catch(()=>{});
+    }, 300);
+  }
+
+  document.addEventListener('click', (ev)=>{
+    const btn = ev.target.closest('button');
+    if(btn && btn.id && !btn.classList.contains('ib_info_icon') && !btn.classList.contains('ib_cfg_icon')){
+      _reportAction('click', btn.dataset.ui || btn.id, btn.textContent.trim());
+    }
+  }, true);
+
+  document.addEventListener('change', (ev)=>{
+    const sel = ev.target.closest('select');
+    if(sel && sel.id){
+      _reportAction('select_change', sel.dataset.ui || sel.id, sel.value);
+    }
+    const chk = ev.target.closest('input[type="checkbox"]');
+    if(chk && chk.id){
+      _reportAction('checkbox_change', chk.dataset.ui || chk.id, chk.checked ? 'on' : 'off');
+    }
+  }, true);
+}catch(e){}
+</script>
