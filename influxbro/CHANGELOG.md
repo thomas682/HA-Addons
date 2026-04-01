@@ -1,5 +1,28 @@
 # Changelog
 
+## 1.12.188
+
+### Enhancement
+
+- Raw-Tabelle: Ausreisser-Uebersichtstabelle jetzt immer sichtbar (auch ohne Suchergebnis), zeigt leeren Zustand mit Hinweistext.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
+## 1.12.187
+
+### Fix
+
+- Raw-Tabelle: `jumpToOldestOutlier` und `jumpToNewestOutlier` waren nicht als `async` deklariert, wodurch `.catch()` einen Fehler ausloeste ("undefined is not an object").
+- Event-Listener rufen jetzt korrekt `.catch(()=>{})` auf.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.186
 
 ### Enhancement

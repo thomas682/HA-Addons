@@ -4900,7 +4900,7 @@ async function runRawOutlierSearch(){
   }
 }
 
-function jumpToOldestOutlier(){
+async function jumpToOldestOutlier(){
   if(!RAW_OUTLIER_RESULTS.length) return;
   const filtered = getFilteredOutliers();
   if(!filtered.length){
@@ -4912,7 +4912,7 @@ function jumpToOldestOutlier(){
   _updateOutlierNavStatus();
 }
 
-function jumpToNewestOutlier(){
+async function jumpToNewestOutlier(){
   if(!RAW_OUTLIER_RESULTS.length) return;
   const filtered = getFilteredOutliers();
   if(!filtered.length){
@@ -4993,11 +4993,20 @@ function renderOutlierOverviewTable(){
   if(!$rawOutlierBody) return;
   $rawOutlierBody.innerHTML = '';
   const filtered = getFilteredOutliers();
+  if($rawOutlierOverviewBox) $rawOutlierOverviewBox.style.display = 'block';
+
   if(!filtered.length){
-    if($rawOutlierOverviewBox) $rawOutlierOverviewBox.style.display = 'none';
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.colSpan = 4;
+    td.style.textAlign = 'center';
+    td.style.opacity = '0.5';
+    td.style.padding = '16px';
+    td.textContent = 'Keine Ausreisser gefunden. Druecke "Suchen" um zu starten.';
+    tr.appendChild(td);
+    $rawOutlierBody.appendChild(tr);
     return;
   }
-  if($rawOutlierOverviewBox) $rawOutlierOverviewBox.style.display = 'block';
 
   filtered.forEach((r, idx) => {
     const tr = document.createElement('tr');
@@ -7964,8 +7973,8 @@ try{
 try{
   if($rawSearchBar) $rawSearchBar.style.display = ($rawSection && $rawSection.open) ? 'block' : 'none';
   if($rawSearchRun) $rawSearchRun.addEventListener('click', ()=>{ runRawOutlierSearch().catch(()=>{}); });
-  if($rawJumpOldest) $rawJumpOldest.addEventListener('click', ()=>{ jumpToOldestOutlier(); });
-  if($rawJumpNewest) $rawJumpNewest.addEventListener('click', ()=>{ jumpToNewestOutlier(); });
+  if($rawJumpOldest) $rawJumpOldest.addEventListener('click', ()=>{ jumpToOldestOutlier().catch(()=>{}); });
+  if($rawJumpNewest) $rawJumpNewest.addEventListener('click', ()=>{ jumpToNewestOutlier().catch(()=>{}); });
   if($rawSearchClear) $rawSearchClear.addEventListener('click', ()=>{ clearRawOutlierSearch(); });
   if($rawSearchAbort) $rawSearchAbort.addEventListener('click', ()=>{
     try{
