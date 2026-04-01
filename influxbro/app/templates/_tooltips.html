@@ -1701,7 +1701,7 @@
       _openIssueComposer({ msg, meta });
     }
 
-    bugBtn.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} _bugreportRun(null).catch(()=>{}); });
+    bugBtn.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} _bugreportRun(null).then(()=>{ close(); }).catch(()=>{ close(); }); });
 
     try{
       logsBtn.addEventListener('click', async (ev)=>{

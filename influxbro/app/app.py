@@ -13728,7 +13728,7 @@ def api_window_points():
     agg = ""
     mode = "raw"
     if every_ms > 1:
-        agg = f'  |> aggregateWindow(every: {every_ms}ms, fn: mean, createEmpty: false)\n'
+        agg = f'  |> aggregateWindow(every: {every_ms}ms, fn: last, createEmpty: false)\n'
         mode = "downsample"
 
     q = f'''

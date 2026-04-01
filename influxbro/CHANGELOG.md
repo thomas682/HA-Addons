@@ -1,5 +1,29 @@
 # Changelog
 
+## 1.12.183
+
+### Fix
+
+- `$rawSearchNext is not defined` Fehler beim Druecken von "Aktualisieren" behoben. Referenz durch `$rawJumpOldest`/`$rawJumpNewest` ersetzt.
+- Logs: Button-Texte von "Alt"/"Ende" auf "ältester"/"neuester" geaendert.
+- Bugreport-Button schliesst jetzt den modalen Dialog nach dem Oeffnen des Issue-Composers.
+
+### Enhancement
+
+- Raw-Tabelle: Ausreisser-Typ-Auswahl jetzt als Dropdown mit Checkboxen (Standard: alle selektiert).
+- Raw-Tabelle: Uebersichtstabelle immer sichtbar (default 5 Zeilen).
+- Raw-Tabelle: Detail-Tabelle immer sichtbar (default 5 Zeilen).
+- Raw-Tabelle: `raw_center_range` Input vom Dashboard entfernt (nur noch in Einstellungen).
+- Raw-Tabelle: Neuer Parameter-Dialog fuer Ausreisser-Einstellungen (Max Sprung, Min/Max, Recovery-Streak), geoeffnet per Settings-Button.
+- Raw-Tabelle: Suchergebnisse werden in sessionStorage gecached; erneute Suche nutzt Cache.
+- Graph: Downsampling verwendet jetzt `fn: last` statt `fn: mean` um Ausreisser-Spitzen sichtbar zu halten.
+- Backend: Neues Setting `ui_raw_outlier_context_rows` (default 10).
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.182
 
 ### Enhancement

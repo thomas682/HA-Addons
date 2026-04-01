@@ -453,11 +453,6 @@
 
       <div class="tbl_actions" style="justify-content:flex-start; margin-top: 8px; gap: 12px; flex-wrap:wrap;" data-ui="raw.center_range" title="raw.center_range">
         <div style="display:flex; flex-direction:column; gap: 4px; min-width: 170px;">
-          <label for="raw_center_range">Bereich +- (Minuten)</label>
-          <input id="raw_center_range" type="number" min="0" max="2000" step="1" value="100" style="height:34px; padding: 6px 10px; width: 140px;" />
-        </div>
-        <div class="muted" id="raw_center_range_hint">Zeitfenster um den selektierten Messwert herum in Minuten. Speicherung erfolgt automatisch im Browser.</div>
-        <div style="display:flex; flex-direction:column; gap: 4px; min-width: 170px;">
           <label for="raw_outlier_context_rows">Zeilen vor/nach Ausreisser</label>
           <input id="raw_outlier_context_rows" type="number" min="1" max="500" step="1" value="10" style="height:34px; padding: 6px 10px; width: 140px;" />
         </div>
@@ -506,7 +501,7 @@
       <div id="raw_search_bar" style="display:none; border:1px solid #eee; border-radius:12px; padding:10px 12px; margin-top:10px; background:#fafafa;">
         <div style="display:flex; align-items:flex-start; gap:10px; flex-wrap:wrap;">
           <div style="display:flex; flex-direction:column; gap:4px;">
-            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:flex-start;">
               <button class="btn_sm" id="raw_search_run">Suchen</button>
               <button class="btn_sm" id="raw_jump_oldest" disabled title="ältester Ausreisser">
                 <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -525,30 +520,24 @@
             </div>
           </div>
           <div style="display:flex; flex-direction:column; gap:4px;">
-            <select id="raw_outlier_types" multiple style="height:auto; min-height:68px; padding:4px; border:1px solid #ddd; border-radius:8px; min-width:200px;">
-              <option value="counter">Counter Ausreisser</option>
-              <option value="decrease">Counter Abfall</option>
-              <option value="bounds">Grenzen</option>
-              <option value="fault_phase">Stoerphasensuche</option>
-              <option value="null">NULL Werte</option>
-              <option value="zero">0-Werte</option>
-            </select>
-            <div style="display:flex; flex-direction:column; gap:4px;">
-              <button class="btn_sm" id="raw_outlier_select_all">Alle</button>
-              <button class="btn_sm" id="raw_outlier_select_none">Keiner</button>
-            </div>
-          </div>
-          <div id="raw_outlier_inputs" style="display:none; flex-direction:column; gap:6px;">
-            <div id="raw_scan_counter" style="display:none;">
-              <label style="font-size:12px;">Max Sprung (optional)</label>
-              <input id="raw_out_max_step" placeholder="(auto)" style="width:120px;" />
-            </div>
-            <div id="raw_scan_bounds" style="display:none;">
-              <label style="font-size:12px;">Grenzen (Min/Max)</label>
-              <div style="display:flex; gap:6px;">
-                <input id="raw_out_min" placeholder="Min" style="width:80px;" />
-                <input id="raw_out_max" placeholder="Max" style="width:80px;" />
+            <div style="display:flex; gap:6px; align-items:flex-start;">
+              <div id="raw_outlier_type_dropdown" style="position:relative;">
+                <button class="btn_sm" id="raw_outlier_type_toggle" type="button" style="min-width:200px; text-align:left; justify-content:space-between;">6 Typen ausgewählt</button>
+                <div id="raw_outlier_type_menu" style="display:none; position:absolute; top:100%; left:0; z-index:100; background:#fff; border:1px solid #ddd; border-radius:8px; padding:6px 8px; min-width:220px; box-shadow:0 4px 16px rgba(0,0,0,0.12);">
+                  <label style="display:flex; align-items:center; gap:6px; padding:3px 0; font-size:13px; cursor:pointer;"><input type="checkbox" class="raw_outlier_type_cb" value="counter" checked/> Counter Ausreisser</label>
+                  <label style="display:flex; align-items:center; gap:6px; padding:3px 0; font-size:13px; cursor:pointer;"><input type="checkbox" class="raw_outlier_type_cb" value="decrease" checked/> Counter Abfall</label>
+                  <label style="display:flex; align-items:center; gap:6px; padding:3px 0; font-size:13px; cursor:pointer;"><input type="checkbox" class="raw_outlier_type_cb" value="bounds" checked/> Grenzen</label>
+                  <label style="display:flex; align-items:center; gap:6px; padding:3px 0; font-size:13px; cursor:pointer;"><input type="checkbox" class="raw_outlier_type_cb" value="fault_phase" checked/> Stoerphasensuche</label>
+                  <label style="display:flex; align-items:center; gap:6px; padding:3px 0; font-size:13px; cursor:pointer;"><input type="checkbox" class="raw_outlier_type_cb" value="null" checked/> NULL Werte</label>
+                  <label style="display:flex; align-items:center; gap:6px; padding:3px 0; font-size:13px; cursor:pointer;"><input type="checkbox" class="raw_outlier_type_cb" value="zero" checked/> 0-Werte</label>
+                </div>
               </div>
+              <button class="btn_sm" id="raw_outlier_params" type="button" title="Ausreisser-Parameter" aria-label="Ausreisser-Parameter">
+                <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path d="M12 8.8A3.2 3.2 0 1 0 12 15.2A3.2 3.2 0 0 0 12 8.8Z" fill="none" stroke="currentColor" stroke-width="1.8"/>
+                  <path d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a1.2 1.2 0 0 1 0 1.7l-1.6 1.6a1.2 1.2 0 0 1-1.7 0l-.1-.1a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.9V22a1.2 1.2 0 0 1-1.2 1.2h-2.2a1.2 1.2 0 0 1-1.2-1.2v-.2a1 1 0 0 0-.7-.9 1 1 0 0 0-1.1.2l-.1.1a1.2 1.2 0 0 1-1.7 0l-1.6-1.6a1.2 1.2 0 0 1 0-1.7l.1-.1a1 1 0 0 0 .2-1.1 1 1 0 0 0-.9-.6H2a1.2 1.2 0 0 1-1.2-1.2v-2.2a1.2 1.2 0 0 1 1.2-1.2h.2a1 1 0 0 0 .9-.7 1 1 0 0 0-.2-1.1l-.1-.1a1.2 1.2 0 0 1 0-1.7l1.6-1.6a1.2 1.2 0 0 1 1.7 0l.1.1a1 1 0 0 0 1.1.2h.1a1 1 0 0 0 .6-.9V2a1.2 1.2 0 0 1 1.2-1.2h2.2A1.2 1.2 0 0 1 13 2v.2a1 1 0 0 0 .7.9 1 1 0 0 0 1.1-.2l.1-.1a1.2 1.2 0 0 1 1.7 0l1.6 1.6a1.2 1.2 0 0 1 0 1.7l-.1.1a1 1 0 0 0-.2 1.1v.1a1 1 0 0 0 .9.6H22a1.2 1.2 0 0 1 1.2 1.2v2.2a1.2 1.2 0 0 1-1.2 1.2h-.2a1 1 0 0 0-.9.7Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+                </svg>
+              </button>
             </div>
           </div>
         </div>
@@ -561,8 +550,8 @@
         </div>
       </div>
 
-      <div id="raw_outlier_overview_box" style="display:none; margin-top:10px;">
-        <div class="table_box" id="raw_outlier_overview" style="--max-rows: 20;">
+      <div id="raw_outlier_overview_box" style="margin-top:10px;">
+        <div class="table_box" id="raw_outlier_overview" style="--max-rows: 5;">
           <table id="raw_outlier_tbl" class="list_tbl ib_tbl" data-ui="raw.outlier_table" title="raw.outlier_table">
             <thead><tr><th style="min-width: 170px;">Zeit</th><th>Wert</th><th style="min-width: 220px;">Änderung</th><th style="min-width: 140px;">Ausreisser</th></tr></thead>
             <tbody id="raw_outlier_body"></tbody>
@@ -570,7 +559,7 @@
         </div>
       </div>
 
-      <div class="table_box" id="raw_box" style="--max-rows: 10;">
+      <div class="table_box" id="raw_box" style="--max-rows: 5;">
       <table id="raw_tbl" class="list_tbl ib_tbl" data-ui="raw.table" title="raw.table">
         <thead><tr><th style="min-width: 170px;">Zeit</th><th>Wert</th><th style="min-width: 220px;">Änderung</th><th style="min-width: 140px;">Ausreisser</th></tr></thead>
         <tbody id="raw_body"></tbody>
@@ -579,6 +568,36 @@
     <div id="raw_resize" data-ui="raw.resize" title="raw.resize" style="height: 12px; cursor: ns-resize; margin-top: 8px; border-radius: 999px; background: linear-gradient(90deg, #eee, #f8f8f8);"></div>
   </div>
     </details>
+
+    <div id="raw_outlier_params_dialog" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; z-index:9999; background:rgba(0,0,0,0.4); align-items:center; justify-content:center;">
+      <div style="background:#fff; border-radius:16px; padding:20px; max-width:600px; width:90%; max-height:80vh; overflow:auto; box-shadow:0 12px 60px rgba(0,0,0,0.28);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+          <h3 style="margin:0;">Ausreisser-Parameter</h3>
+          <button class="btn_sm" id="raw_outlier_params_close" type="button">Schliessen</button>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #eee;">
+            <label style="font-weight:500;">Counter: Max Sprung</label>
+            <input id="raw_param_max_step" type="number" step="any" placeholder="(auto)" style="width:120px;" />
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #eee;">
+            <label style="font-weight:500;">Grenzen: Min</label>
+            <input id="raw_param_min" type="number" step="any" placeholder="auto" style="width:120px;" />
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #eee;">
+            <label style="font-weight:500;">Grenzen: Max</label>
+            <input id="raw_param_max" type="number" step="any" placeholder="auto" style="width:120px;" />
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #eee;">
+            <label style="font-weight:500;">Stoerphase: Recovery-Streak</label>
+            <input id="raw_param_recovery_streak" type="number" min="1" max="10" step="1" value="2" style="width:80px;" />
+          </div>
+        </div>
+        <div style="margin-top:16px; display:flex; gap:8px; justify-content:flex-end;">
+          <button class="btn_sm" id="raw_outlier_params_save" type="button">Speichern</button>
+        </div>
+      </div>
+    </div>
 
     <details id="filterlist_section" class="section" {{ 'open' if cfg.get('ui_open_filterlist') else '' }} data-ui="section.filterlist" title="section.filterlist">
       <summary><span class="ib_summary_row"><span class="section_title" style="margin:0;">Bearbeitungsliste</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Bearbeitungsliste" data-info-body="Die Bearbeitungsliste sammelt vorgemerkte Aenderungen fuer Datenpunkte, bevor sie geschrieben werden.\n\nEnthaelt:\n- markierte Zeilen mit altem und neuem Wert\n- Aktionen zum Uebernehmen, Verwerfen, Mitteln oder Loeschen\n- Vorschau-Query fuer die spaetere Schreibaktion\n\nNutzen:\n- sichere Sammelbearbeitung mehrerer Punkte\n- Kontrolle vor dem eigentlichen Schreiben in InfluxDB" >i</button></span></summary>
@@ -978,7 +997,16 @@ const $rawBody = document.getElementById('raw_body');
 const $rawResize = document.getElementById('raw_resize');
 const $rawAutoWidth = document.getElementById('raw_autowidth');
 const $rawSearchBar = document.getElementById('raw_search_bar');
-const $rawOutlierTypes = document.getElementById('raw_outlier_types');
+const $rawOutlierTypeToggle = document.getElementById('raw_outlier_type_toggle');
+const $rawOutlierTypeMenu = document.getElementById('raw_outlier_type_menu');
+const $rawOutlierParams = document.getElementById('raw_outlier_params');
+const $rawOutlierParamsDialog = document.getElementById('raw_outlier_params_dialog');
+const $rawOutlierParamsClose = document.getElementById('raw_outlier_params_close');
+const $rawOutlierParamsSave = document.getElementById('raw_outlier_params_save');
+const $rawParamMaxStep = document.getElementById('raw_param_max_step');
+const $rawParamMin = document.getElementById('raw_param_min');
+const $rawParamMax = document.getElementById('raw_param_max');
+const $rawParamRecoveryStreak = document.getElementById('raw_param_recovery_streak');
 const $rawSearchRun = document.getElementById('raw_search_run');
 const $rawJumpOldest = document.getElementById('raw_jump_oldest');
 const $rawJumpNewest = document.getElementById('raw_jump_newest');
@@ -990,25 +1018,17 @@ const $rawOutlierStatusTxt = document.getElementById('raw_outlier_status_txt');
 const $rawOutlierStatusMeta = document.getElementById('raw_outlier_status_meta');
 const $rawOutlierStatusNow = document.getElementById('raw_outlier_status_now');
 const $rawOutlierStatusTime = document.getElementById('raw_outlier_status_time');
-const $rawOutlierSelectAll = document.getElementById('raw_outlier_select_all');
-const $rawOutlierSelectNone = document.getElementById('raw_outlier_select_none');
-const $rawOutlierInputs = document.getElementById('raw_outlier_inputs');
-const $rawScanCounter = document.getElementById('raw_scan_counter');
-const $rawScanBounds = document.getElementById('raw_scan_bounds');
-const $rawOutMaxStep = document.getElementById('raw_out_max_step');
-const $rawOutMin = document.getElementById('raw_out_min');
-const $rawOutMax = document.getElementById('raw_out_max');
-const $rawAllTime = document.getElementById('raw_all_time');
 const $rawOutlierOverviewBox = document.getElementById('raw_outlier_overview_box');
 const $rawOutlierBody = document.getElementById('raw_outlier_body');
 const $rawOutlierContextRows = document.getElementById('raw_outlier_context_rows');
+const $rawCenterRange = null;
+const $rawCenterRangeHint = null;
+const $rawAllTime = document.getElementById('raw_all_time');
 const $rawWindowWidth = document.getElementById('raw_windowwidth');
 const $rawWrap = document.getElementById('raw_wrap');
 const $rawColFilter = document.getElementById('raw_colfilter');
 const $rawRefresh = document.getElementById('raw_refresh');
 const $rawCopy = document.getElementById('raw_copy');
-const $rawCenterRange = document.getElementById('raw_center_range');
-const $rawCenterRangeHint = document.getElementById('raw_center_range_hint');
 const $rawCopyValue = document.getElementById('raw_copy_value');
 const $rawPaste = document.getElementById('raw_paste');
 const $rawDelete = document.getElementById('raw_delete');
@@ -4490,25 +4510,66 @@ function _rawOutlierMetaFromPayload(p){
   return parts.join(' | ');
 }
 
-function _rawOutlierApplyPresetVisibility(){
-  const types = Array.from($rawOutlierTypes.selectedOptions).map(o => o.value);
-  const hasBounds = types.includes('bounds') || types.includes('fault_phase');
-  const hasCounter = types.includes('counter') || types.includes('decrease') || types.includes('fault_phase');
-  if($rawScanCounter) $rawScanCounter.style.display = hasCounter ? 'block' : 'none';
-  if($rawScanBounds) $rawScanBounds.style.display = hasBounds ? 'flex' : 'none';
-  if($rawOutlierInputs){
-    const any = hasBounds || hasCounter;
-    $rawOutlierInputs.style.display = any ? 'flex' : 'none';
-  }
+function getRawOutlierFilterTypes(){
+  const cbs = document.querySelectorAll('.raw_outlier_type_cb');
+  return Array.from(cbs).filter(cb => cb.checked).map(cb => cb.value);
+}
+
+function getRawOutlierSelectedCount(){
+  const cbs = document.querySelectorAll('.raw_outlier_type_cb');
+  return Array.from(cbs).filter(cb => cb.checked).length;
+}
+
+function updateRawOutlierTypeToggleLabel(){
+  if(!$rawOutlierTypeToggle) return;
+  const count = getRawOutlierSelectedCount();
+  const total = document.querySelectorAll('.raw_outlier_type_cb').length;
+  if(count === total) $rawOutlierTypeToggle.textContent = 'Alle Typen';
+  else if(count === 0) $rawOutlierTypeToggle.textContent = 'Kein Typ';
+  else $rawOutlierTypeToggle.textContent = count + ' / ' + total + ' Typen';
 }
 
 function getFilteredOutliers(){
-  const types = Array.from($rawOutlierTypes.selectedOptions).map(o => o.value);
+  const types = getRawOutlierFilterTypes();
   if(!types.length) return RAW_OUTLIER_RESULTS;
   return RAW_OUTLIER_RESULTS.filter(r => {
     const rTypes = r.types || [];
     return types.some(t => rTypes.includes(t));
   });
+}
+
+function saveOutlierParams(){
+  try{
+    const p = {
+      max_step: $rawParamMaxStep ? $rawParamMaxStep.value : '',
+      min: $rawParamMin ? $rawParamMin.value : '',
+      max: $rawParamMax ? $rawParamMax.value : '',
+      recovery_streak: $rawParamRecoveryStreak ? $rawParamRecoveryStreak.value : '2',
+    };
+    localStorage.setItem('raw_outlier_params', JSON.stringify(p));
+  }catch(e){}
+}
+
+function loadOutlierParams(){
+  try{
+    const s = localStorage.getItem('raw_outlier_params');
+    if(s){
+      const p = JSON.parse(s);
+      if($rawParamMaxStep) $rawParamMaxStep.value = p.max_step || '';
+      if($rawParamMin) $rawParamMin.value = p.min || '';
+      if($rawParamMax) $rawParamMax.value = p.max || '';
+      if($rawParamRecoveryStreak) $rawParamRecoveryStreak.value = p.recovery_streak || '2';
+    }
+  }catch(e){}
+}
+
+function openOutlierParamsDialog(){
+  loadOutlierParams();
+  if($rawOutlierParamsDialog) $rawOutlierParamsDialog.style.display = 'flex';
+}
+
+function closeOutlierParamsDialog(){
+  if($rawOutlierParamsDialog) $rawOutlierParamsDialog.style.display = 'none';
 }
 
 async function runRawOutlierSearch(){
@@ -4537,10 +4598,45 @@ async function runRawOutlierSearch(){
     return;
   }
 
+  const cacheKey = 'raw_outlier_cache:' + [base.measurement, base.field, base.entity_id || '', base.friendly_name || '', win.start, win.stop].join('|');
+  let cached = null;
+  try{
+    const cs = sessionStorage.getItem(cacheKey);
+    if(cs) cached = JSON.parse(cs);
+  }catch(e){}
+
+  if(cached && cached.results && cached.results.length > 0){
+    RAW_OUTLIER_RESULTS = cached.results;
+    RAW_OUTLIER_MAP = cached.map || {};
+    RAW_OUTLIER_SCANNED_TOTAL = cached.scanned || 0;
+    RAW_OUTLIER_INDEX = -1;
+    RAW_OUTLIER_RESULTS.sort((a, b) => {
+      const ta = Date.parse(String(a.time || ''));
+      const tb = Date.parse(String(b.time || ''));
+      return (isFinite(ta) && isFinite(tb)) ? (ta - tb) : 0;
+    });
+    renderOutlierOverviewTable();
+    renderRawTable();
+    if(RAW_OUTLIER_RESULTS.length > 0){
+      if($rawJumpOldest) $rawJumpOldest.disabled = false;
+      if($rawJumpNewest) $rawJumpNewest.disabled = false;
+      if($rawSearchClear) $rawSearchClear.style.display = 'inline-block';
+      if($rawOutlierStatusTxt) $rawOutlierStatusTxt.textContent = 'Cache: ' + RAW_OUTLIER_RESULTS.length + ' Ausreisser.';
+      jumpToOldestOutlier().catch(()=>{});
+    }
+    return;
+  }
+
   const unit = (HA_ENTITY_INFO && HA_ENTITY_INFO.entity && HA_ENTITY_INFO.entity.unit_of_measurement)
     ? String(HA_ENTITY_INFO.entity.unit_of_measurement) : '';
   const baseMeta = _rawOutlierMetaFromPayload(base);
   const overallSpanTxt = 'Suchbereich: ' + fmtTs(win.start) + ' bis ' + fmtTs(win.stop);
+
+  const params = {};
+  try{
+    const ps = localStorage.getItem('raw_outlier_params');
+    if(ps) Object.assign(params, JSON.parse(ps));
+  }catch(e){}
 
   startRawOutlierUi(baseMeta);
   RAW_OUTLIER_SEARCHING = true;
@@ -4554,7 +4650,6 @@ async function runRawOutlierSearch(){
   if($rawSearchAbort) $rawSearchAbort.style.display = 'inline-block';
   if($rawJumpOldest) $rawJumpOldest.disabled = true;
   if($rawJumpNewest) $rawJumpNewest.disabled = true;
-  if($rawOutlierOverviewBox) $rawOutlierOverviewBox.style.display = 'none';
 
   try{
     const spanMs = Math.max(0, stopMs - startMs);
@@ -4599,9 +4694,9 @@ async function runRawOutlierSearch(){
         prev_value: prevValue,
         counter_base_value: counterBase,
         scan_state: scanState,
-        min: $rawOutMin ? $rawOutMin.value : '',
-        max: $rawOutMax ? $rawOutMax.value : '',
-        max_step: $rawOutMaxStep ? $rawOutMaxStep.value : '',
+        min: params.min || '',
+        max: params.max || '',
+        max_step: params.max_step || '',
       };
 
       const r = await fetch('./api/outlier_search', {
@@ -4646,6 +4741,15 @@ async function runRawOutlierSearch(){
       const tb = Date.parse(String(b.time || ''));
       return (isFinite(ta) && isFinite(tb)) ? (ta - tb) : 0;
     });
+
+    try{
+      sessionStorage.setItem(cacheKey, JSON.stringify({
+        results: RAW_OUTLIER_RESULTS,
+        map: RAW_OUTLIER_MAP,
+        scanned: RAW_OUTLIER_SCANNED_TOTAL,
+        ts: Date.now(),
+      }));
+    }catch(e){}
 
     renderOutlierOverviewTable();
     renderRawTable();
@@ -5305,7 +5409,8 @@ async function loadRawFromGraph(reset){
     RAW_OUTLIER_RESULTS = [];
     RAW_OUTLIER_INDEX = -1;
     RAW_OUTLIER_MAP = null;
-    if($rawSearchNext) $rawSearchNext.disabled = true;
+    if($rawJumpOldest) $rawJumpOldest.disabled = true;
+    if($rawJumpNewest) $rawJumpNewest.disabled = true;
     if($rawSearchClear) $rawSearchClear.style.display = 'none';
     if($rawOutlierStatusTxt) $rawOutlierStatusTxt.textContent = '';
     RAW_ANCHOR_ISO = anchorIso;
@@ -7739,19 +7844,36 @@ try{
       if(RAW_OUTLIER_ABORT) RAW_OUTLIER_ABORT.abort();
     }catch(e){}
   });
-  if($rawOutlierTypes) $rawOutlierTypes.addEventListener('change', ()=>{ _rawOutlierApplyPresetVisibility(); renderOutlierOverviewTable(); });
-  if($rawOutlierSelectAll){
-    $rawOutlierSelectAll.addEventListener('click', ()=>{
-      Array.from($rawOutlierTypes.options).forEach(o => o.selected = true);
-      _rawOutlierApplyPresetVisibility();
-      renderOutlierOverviewTable();
+  if($rawOutlierTypeToggle){
+    $rawOutlierTypeToggle.addEventListener('click', (ev)=>{
+      ev.stopPropagation();
+      if($rawOutlierTypeMenu){
+        const showing = $rawOutlierTypeMenu.style.display === 'block';
+        $rawOutlierTypeMenu.style.display = showing ? 'none' : 'block';
+      }
     });
   }
-  if($rawOutlierSelectNone){
-    $rawOutlierSelectNone.addEventListener('click', ()=>{
-      Array.from($rawOutlierTypes.options).forEach(o => o.selected = false);
-      _rawOutlierApplyPresetVisibility();
+  document.addEventListener('click', (ev)=>{
+    if($rawOutlierTypeMenu && $rawOutlierTypeMenu.style.display === 'block'){
+      const dd = document.getElementById('raw_outlier_type_dropdown');
+      if(dd && !dd.contains(ev.target)){
+        $rawOutlierTypeMenu.style.display = 'none';
+      }
+    }
+  });
+  document.querySelectorAll('.raw_outlier_type_cb').forEach(cb=>{
+    cb.addEventListener('change', ()=>{
+      updateRawOutlierTypeToggleLabel();
       renderOutlierOverviewTable();
+      _updateOutlierNavStatus();
+    });
+  });
+  if($rawOutlierParams) $rawOutlierParams.addEventListener('click', ()=>{ openOutlierParamsDialog(); });
+  if($rawOutlierParamsClose) $rawOutlierParamsClose.addEventListener('click', ()=>{ closeOutlierParamsDialog(); });
+  if($rawOutlierParamsSave) $rawOutlierParamsSave.addEventListener('click', ()=>{ saveOutlierParams(); closeOutlierParamsDialog(); });
+  if($rawOutlierParamsDialog){
+    $rawOutlierParamsDialog.addEventListener('click', (ev)=>{
+      if(ev.target === $rawOutlierParamsDialog) closeOutlierParamsDialog();
     });
   }
   if($rawAllTime) $rawAllTime.addEventListener('click', ()=>{ setRawTimeToAll().catch(()=>{}); });
@@ -7771,7 +7893,7 @@ try{
       if($rawSearchBar) $rawSearchBar.style.display = $rawSection.open ? 'block' : 'none';
     });
   }
-  _rawOutlierApplyPresetVisibility();
+  updateRawOutlierTypeToggleLabel();
 }catch(e){}
 </script>
 
