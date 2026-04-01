@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.191
+
+### Fix
+
+- Graph Reset Button: "Maximum call stack size exceeded" behoben. `_tryLoadZoomData` hatte keine Re-Entry-Sperre, wodurch `plotly_relayout` nach `_mergeAndDraw` eine Endlosschleife ausloeste.
+- Guard-Flag `_ZOOM_LOADING` verhindert rekursive Aufrufe.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.190
 
 ### Enhancement

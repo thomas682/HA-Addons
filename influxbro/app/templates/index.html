@@ -2164,6 +2164,7 @@ let TABLE_TIME = {
 
 let FULL_GRAPH_BOUNDS = null; // {min,max} in ms
 let _IN_X_RELAYOUT = false;
+let _ZOOM_LOADING = false;
 
 let GRAPH_MARKERS = false;
 let ALLOW_WRITES = true;
@@ -2673,32 +2674,28 @@ function drawCanvas(rows){
 }
 
 function _tryLoadZoomData(visStartMs, visStopMs){
+  if(_ZOOM_LOADING) return;
   if(!visStartMs || !visStopMs) return;
   const existing = LAST_ROWS || [];
   if(!existing.length) return;
 
-  // Count points already in visible range
   let existingInWindow = 0;
   for(let i = 0; i < existing.length; i++){
     const ms = Date.parse(String(existing[i].time || ''));
     if(isFinite(ms) && ms >= visStartMs && ms <= visStopMs) existingInWindow++;
   }
 
-  // If we already have enough points in the window, don't reload
   const targetPoints = Math.max(500, Math.min(UI_QUERY_MAX_POINTS || 5000, 3000));
   if(existingInWindow >= targetPoints * 0.7) return;
 
-  // Check if the visible range extends beyond what we already have
   const existingMin = Math.min(...existing.map(r => Date.parse(String(r.time || ''))).filter(t => isFinite(t)));
   const existingMax = Math.max(...existing.map(r => Date.parse(String(r.time || ''))).filter(t => isFinite(t)));
   if(!isFinite(existingMin) || !isFinite(existingMax)) return;
 
-  // Only load if we're zoomed in (visible range is smaller than full existing range)
   const fullSpan = existingMax - existingMin;
   const visSpan = visStopMs - visStartMs;
-  if(visSpan >= fullSpan * 0.9) return; // Not zoomed in enough
+  if(visSpan >= fullSpan * 0.9) return;
 
-  // Load data for the visible range
   const base = currentFilters();
   if(!base.measurement || !base.field) return;
 
@@ -2706,6 +2703,7 @@ function _tryLoadZoomData(visStartMs, visStopMs){
   const stopIso = new Date(visStopMs).toISOString();
   const everyMs = Math.max(1000, Math.round(visSpan / targetPoints));
 
+  _ZOOM_LOADING = true;
   api("./api/window_points", {
     method: "POST",
     headers: {"Content-Type": "application/json"},
@@ -2724,7 +2722,9 @@ function _tryLoadZoomData(visStartMs, visStopMs){
     if(rows.length > 0){
       _mergeAndDraw(rows);
     }
-  }).catch(()=>{});
+  }).catch(()=>{}).finally(()=>{
+    _ZOOM_LOADING = false;
+  });
 }
 
 function drawPlotly(rows){
