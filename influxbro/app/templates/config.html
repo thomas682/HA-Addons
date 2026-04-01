@@ -8,71 +8,72 @@
     body { font-family: system-ui, sans-serif; margin: 0; }
     .content { padding: 16px; }
     .row { display:flex; gap:12px; flex-wrap:wrap; align-items:end; }
-    /* Parameterliste: 1 Spalte (Titel/Control/Description pro Block) */
+    /* iOS-style settings list: label left, control right */
     .grid { display:block; }
-    .grid > div { border: 1px solid #eee; border-radius: 12px; padding: 10px 12px; background: #fff; }
-    .grid > div + div { margin-top: 10px; }
-    .grid > div > .muted { margin-top: 6px; }
-    /* Notes inside a section (no box) */
-    .grid > .muted { border: 0; padding: 0; background: transparent; }
+    .grid > .param_row { display:flex; align-items:center; justify-content:space-between; padding:10px 12px; border-bottom:1px solid #eee; gap:12px; min-height:44px; }
+    .grid > .param_row:last-child { border-bottom:none; }
+    .grid > .param_row > .param_label { flex:1; font-size:14px; min-width:0; }
+    .grid > .param_row > .param_label .param_hint { display:block; font-size:11px; opacity:0.6; margin-top:2px; }
+    .grid > .param_row > .param_control { flex:0 0 auto; min-width:140px; max-width:320px; display:flex; align-items:center; gap:6px; }
+    .grid > .param_row > .param_control input,
+    .grid > .param_row > .param_control select { width:100%; min-width:100px; }
+    .grid > .param_row.param_full { flex-direction:column; align-items:stretch; }
+    .grid > .param_row.param_full > .param_control { max-width:100%; }
+    .grid > .section_note { padding:8px 12px; font-size:12px; opacity:0.6; border-bottom:1px solid #eee; }
+    .grid > .section_note:last-child { border-bottom:none; }
+    .grid > .section_note .muted { opacity:0.7; font-size:12px; }
+    .card { border: 1px solid #ddd; border-radius: 10px; padding: 0; margin-top: 12px; overflow:hidden; }
+    details.card { padding: 0; }
+    details.card > summary { list-style: none; cursor: pointer; padding: 12px; font-weight: 700; }
+    details.card > summary::-webkit-details-marker { display: none; }
+    details.card > summary:after { content: "▾"; float: right; opacity: 0.6; }
+    details.card[open] > summary:after { content: "▴"; }
+    details.card > .card_body { padding: 0; }
+    details.card > .card_body > .grid { border-top:1px solid #eee; }
+    details.card > .card_body > .grid:first-child { border-top:none; }
+    /* Sub-sections within a section */
+    .sub_section { border-top:1px solid #eee; }
+    .sub_section > summary { list-style:none; cursor:pointer; padding:10px 12px; font-weight:600; font-size:14px; background:#fafafa; }
+    .sub_section > summary::-webkit-details-marker { display:none; }
+    .sub_section > summary:after { content:"▾"; float:right; opacity:0.5; }
+    .sub_section[open] > summary:after { content:"▴"; }
+    .sub_section > .card_body { padding:0; }
     main.content label { display:block; font-size:12px; opacity:0.8; }
-    main.content label.ib_chk_row { display:flex; align-items:center; gap: 10px; height: 40px; padding: 0 4px; margin: 0; opacity: 0.85; }
-    main.content label.ib_chk_row input[type="checkbox"] { width: 18px; height: 18px; margin: 0; flex: 0 0 auto; }
-    main.content label.ib_chk_row span { display:block; line-height: 1.2; }
-    main.content input, main.content select, main.content button { padding:10px 12px; height: 40px; box-sizing: border-box; }
-    main.content input, main.content select { width: 100%; }
-    main.content input[type="number"]{ width: 100%; }
-    main.content input.cfg_num_wide[type="number"]{
-      min-width: 12ch;
-      padding-right: 40px;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      font-variant-numeric: tabular-nums;
-    }
-    main.content button:not(.ib_info_icon) { width: 100%; }
-    main.content .ib_info_icon {
-      width: 22px;
-      height: 22px;
-      padding: 0;
-      border-radius: 999px;
-      border: 1px solid rgba(0, 0, 0, 0.18);
-      background: #fff;
-      color: #111;
-      cursor: pointer;
-      font-weight: 900;
-      line-height: 20px;
-      text-align: center;
-      flex: 0 0 auto;
-      user-select: none;
-    }
-    main.content .err { color: #b00020; margin-top: 8px; white-space: pre-wrap; }
-    main.content .ok { color: #0a7a28; margin-top: 8px; white-space: pre-wrap; }
-    main.content .card { border: 1px solid #ddd; border-radius: 10px; padding: 12px; margin-top: 12px; }
-    main.content details.card { padding: 0; }
-    main.content details.card > summary { list-style: none; cursor: pointer; padding: 12px; font-weight: 700; }
-    main.content details.card > summary::-webkit-details-marker { display: none; }
-    main.content details.card > summary:after { content: "▾"; float: right; opacity: 0.6; }
-    main.content details.card[open] > summary:after { content: "▴"; }
-    main.content details.card > .card_body { padding: 0 12px 12px 12px; }
-
-    main.content .muted { opacity: 0.7; font-size: 12px; }
-    main.content .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    main.content label.ib_chk_row { display:flex; align-items:center; gap:10px; height:44px; padding:0 4px; margin:0; opacity:0.85; cursor:pointer; }
+    main.content label.ib_chk_row input[type="checkbox"] { width:18px; height:18px; margin:0; flex:0 0 auto; }
+    main.content label.ib_chk_row span { display:block; line-height:1.2; }
+    main.content input, main.content select, main.content button { padding:8px 10px; height:36px; box-sizing:border-box; font-size:14px; }
+    main.content input[type="number"] { width:100%; }
+    main.content input.cfg_num_wide[type="number"] { min-width:12ch; padding-right:40px; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace; font-variant-numeric:tabular-nums; }
+    main.content button:not(.ib_info_icon):not(.ib_cfg_back_icon):not(.btn_sm) { width:100%; }
+    main.content .ib_info_icon { width:22px; height:22px; padding:0; border-radius:999px; border:1px solid rgba(0,0,0,0.18); background:#fff; color:#111; cursor:pointer; font-weight:900; line-height:20px; text-align:center; flex:0 0 auto; user-select:none; }
+    main.content .err { color:#b00020; margin-top:8px; white-space:pre-wrap; }
+    main.content .ok { color:#0a7a28; margin-top:8px; white-space:pre-wrap; }
+    main.content .muted { opacity:0.7; font-size:12px; }
+    main.content .mono { font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace; }
     main.content code { background:#f6f6f6; padding:2px 6px; border-radius:6px; }
-    main.content a { color: inherit; }
-    main.content .btn_stack { display:flex; flex-direction:column; gap: 12px; }
-    main.content .span2 { width: 100%; }
-    main.content .jump_hl { outline: 3px solid rgba(255, 153, 0, 0.55); outline-offset: 2px; border-radius: 10px; }
-    main.content table.cfg_tbl { width: 100%; border-collapse: collapse; }
-    main.content table.cfg_tbl th, main.content table.cfg_tbl td { border: 1px solid #eee; padding: 8px; vertical-align: middle; }
-    main.content table.cfg_tbl th { background: #fafafa; font-size: 12px; opacity: 0.85; text-align: left; }
-    main.content table.cfg_tbl tr.selected { background: #fff3d6; }
-    main.content table.cfg_tbl input { height: 34px; padding: 6px 10px; }
-
-    main.content .table_wrap { border: 1px solid #eee; border-radius: 12px; padding: 10px; margin-top: 10px; }
-    main.content .table_title { font-weight: 800; font-size: 14px; margin-bottom: 6px; }
-    main.content .table_head { display:flex; justify-content:space-between; gap: 12px; align-items:flex-end; flex-wrap:wrap; }
-    main.content .tbl_actions { display:flex; gap: 10px; align-items:center; flex-wrap:wrap; }
-    main.content .tbl_actions label { display:flex; gap: 6px; align-items:center; font-size: 12px; opacity: 0.85; }
+    main.content a { color:inherit; }
+    main.content .btn_stack { display:flex; flex-direction:column; gap:8px; }
+    main.content .span2 { width:100%; }
+    main.content .jump_hl { outline:3px solid rgba(255,153,0,0.55); outline-offset:2px; border-radius:10px; }
+    main.content table.cfg_tbl { width:100%; border-collapse:collapse; }
+    main.content table.cfg_tbl th, main.content table.cfg_tbl td { border:1px solid #eee; padding:8px; vertical-align:middle; }
+    main.content table.cfg_tbl th { background:#fafafa; font-size:12px; opacity:0.85; text-align:left; }
+    main.content table.cfg_tbl tr.selected { background:#fff3d6; }
+    main.content table.cfg_tbl input { height:34px; padding:6px 10px; }
+    main.content .table_wrap { border:1px solid #eee; border-radius:12px; padding:10px; margin-top:10px; }
+    main.content .table_title { font-weight:800; font-size:14px; margin-bottom:6px; }
+    main.content .table_head { display:flex; justify-content:space-between; gap:12px; align-items:flex-end; flex-wrap:wrap; }
+    main.content .tbl_actions { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    main.content .tbl_actions label { display:flex; gap:6px; align-items:center; font-size:12px; opacity:0.85; }
     main.content .tbl_actions input[type="checkbox"] { width:auto; height:auto; padding:0; margin:0; }
+    /* Color picker row */
+    .color_pick_row { display:flex; gap:8px; align-items:center; }
+    .color_pick_row input[type="color"] { width:44px; height:36px; padding:0; flex:0 0 auto; }
+    .color_pick_row input[type="text"] { flex:1; }
+    /* Save card special */
+    .save_card { border:1px solid #ddd; border-radius:10px; padding:12px; margin-top:12px; }
+    .save_card .btn_sm { width:auto; }
   </style>
 </head>
 <body>
@@ -95,13 +96,16 @@
   <details class="card" open data-ui="settings.section.yaml" title="settings.section.yaml">
     <summary><span class="ib_summary_row"><span>Parametrierung aus Home Assistant YAML</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: YAML" data-info-body="Dieser Bereich steuert das Einlesen/Overlay einer Influx-Konfiguration aus Home Assistant (z.B. /config/influx.yaml).\n\nTypisch:\n- YAML einlesen, Werte in der Maske pruefen, dann Speichern.\n- Optional kann ein YAML-Overlay aktiviert werden, damit Werte bei jedem Start/Request ueberlagert werden.\n\nWichtig:\n- Secrets werden beim Einlesen aufgeloest (best-effort), aber Tokens/Passwoerter nie im Klartext geloggt." >i</button></span></summary>
     <div class="card_body">
-          <div class="grid">
-          <div>
-            <label>Konfigurationsdatei (relativ zu <code>/config</code> oder absolut unter <code>/config</code>)</label>
+      <div class="grid">
+        <div class="param_row">
+          <div class="param_label">Konfigurationsdatei (relativ zu <code>/config</code> oder absolut unter <code>/config</code>)<span class="param_hint">Beispiel: <code>homeassistant/influx.yaml</code> (entspricht <code>/config/homeassistant/influx.yaml</code>)</span></div>
+          <div class="param_control">
             <input id="influx_yaml_path" />
           </div>
-          <div>
-            <label>&nbsp;</label>
+        </div>
+        <div class="param_row param_full">
+          <div class="param_label">Aktionen</div>
+          <div class="param_control">
             <div class="btn_stack">
               <button id="find_yaml" data-ui="settings.find_yaml" title="settings.find_yaml">influx.yaml suchen</button>
               <button id="read_yaml" data-ui="settings.read_yaml" title="settings.read_yaml">yaml Daten einlesen</button>
@@ -109,10 +113,10 @@
               <div id="test_status" class="ok" style="margin-top:8px; font-weight:700; display:block;"></div>
             </div>
           </div>
-      <div class="muted span2">Beispiel: <code>homeassistant/influx.yaml</code> (entspricht <code>/config/homeassistant/influx.yaml</code>)</div>
-      <div class="muted span2">Ablauf: erst <code>influx.yaml suchen</code>, Pfad ggf. anpassen, dann <code>yaml Daten einlesen</code> (traegt Werte ein, speichert aber nicht).</div>
+        </div>
+        <div class="section_note"><span class="muted">Ablauf: erst <code>influx.yaml suchen</code>, Pfad ggf. anpassen, dann <code>yaml Daten einlesen</code> (traegt Werte ein, speichert aber nicht).</span></div>
+      </div>
     </div>
-  </div>
   </details>
 
   <script>
@@ -125,40 +129,106 @@
   <details class="card" open data-ui="settings.section.conn" title="settings.section.conn">
     <summary><span class="ib_summary_row"><span>Verbindung</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Verbindung" data-info-body="Grundlegende Verbindungseinstellungen fuer InfluxDB.\n\nEnthaelt u.a.:\n- influx_version (v2 Flux oder v1 InfluxQL)\n- scheme/host/port\n- verify_ssl und timeout\n\nHinweis:\n- Nach Aenderungen: 'Test' prueft die Verbindung, 'Speichern' persistiert nach /data." >i</button></span></summary>
     <div class="card_body">
-    <div class="grid">
-      <div><label>Influx Version</label><select id="influx_version" data-ui="settings.influx_version" title="settings.influx_version"><option value="2">2 (Flux)</option><option value="1">1 (InfluxQL)</option></select></div>
-      <div><label>Scheme</label><select id="scheme" data-ui="settings.scheme" title="settings.scheme"><option value="http">http</option><option value="https">https</option></select></div>
-      <div><label>Host</label><input id="host" /><div class="muted">DNS-Name oder IP der InfluxDB (z.B. <code>localhost</code> oder HA Add-on Hostname).</div></div>
-      <div><label>Port</label><input id="port" type="number" /><div class="muted">Standard: <code>8086</code>.</div></div>
-      <div><label>verify_ssl</label><select id="verify_ssl" data-ui="settings.verify_ssl" title="settings.verify_ssl"><option value="true">true</option><option value="false">false</option></select></div>
-      <div><label>timeout_seconds</label><input id="timeout_seconds" type="number" /><div class="muted">Timeout fuer API Calls (Sekunden).</div></div>
-    </div>
-    <div class="muted">Hinweis: Diese Werte werden in <code>/data/influx_browser_config.json</code> gespeichert (persistent).</div>
+      <div class="grid">
+        <div class="param_row">
+          <div class="param_label">Influx Version</div>
+          <div class="param_control">
+            <select id="influx_version" data-ui="settings.influx_version" title="settings.influx_version"><option value="2">2 (Flux)</option><option value="1">1 (InfluxQL)</option></select>
+          </div>
+        </div>
+        <div class="param_row">
+          <div class="param_label">Scheme</div>
+          <div class="param_control">
+            <select id="scheme" data-ui="settings.scheme" title="settings.scheme"><option value="http">http</option><option value="https">https</option></select>
+          </div>
+        </div>
+        <div class="param_row">
+          <div class="param_label">Host<span class="param_hint">DNS-Name oder IP der InfluxDB (z.B. <code>localhost</code> oder HA Add-on Hostname).</span></div>
+          <div class="param_control">
+            <input id="host" />
+          </div>
+        </div>
+        <div class="param_row">
+          <div class="param_label">Port<span class="param_hint">Standard: <code>8086</code>.</span></div>
+          <div class="param_control">
+            <input id="port" type="number" />
+          </div>
+        </div>
+        <div class="param_row">
+          <div class="param_label">verify_ssl</div>
+          <div class="param_control">
+            <select id="verify_ssl" data-ui="settings.verify_ssl" title="settings.verify_ssl"><option value="true">true</option><option value="false">false</option></select>
+          </div>
+        </div>
+        <div class="param_row">
+          <div class="param_label">timeout_seconds<span class="param_hint">Timeout fuer API Calls (Sekunden).</span></div>
+          <div class="param_control">
+            <input id="timeout_seconds" type="number" />
+          </div>
+        </div>
+        <div class="section_note"><span class="muted">Hinweis: Diese Werte werden in <code>/data/influx_browser_config.json</code> gespeichert (persistent).</span></div>
+      </div>
     </div>
   </details>
 
   <details class="card" open data-ui="settings.section.v2" title="settings.section.v2">
-          <summary><span class="ib_summary_row"><span>InfluxDB v2</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: InfluxDB v2" data-info-body="Zugangsdaten fuer InfluxDB v2 (Flux).\n\nPflichtfelder fuer v2 Funktionen:\n- org, bucket, token\n\nOptional:\n- admin_token: nur fuer Native v2 FullBackup/FullRestore (Influx CLI). Muss ein All-Access Token sein (sonst 401 Unauthorized: read:authorizations).\n\nSicherheit:\n- Token-Felder sind maskiert (********). Lass ******** stehen, wenn du den Wert nicht aendern willst." >i</button></span></summary>
+    <summary><span class="ib_summary_row"><span>InfluxDB v2</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: InfluxDB v2" data-info-body="Zugangsdaten fuer InfluxDB v2 (Flux).\n\nPflichtfelder fuer v2 Funktionen:\n- org, bucket, token\n\nOptional:\n- admin_token: nur fuer Native v2 FullBackup/FullRestore (Influx CLI). Muss ein All-Access Token sein (sonst 401 Unauthorized: read:authorizations).\n\nSicherheit:\n- Token-Felder sind maskiert (********). Lass ******** stehen, wenn du den Wert nicht aendern willst." >i</button></span></summary>
     <div class="card_body">
-    <div class="grid">
-      <div><label>org</label><input id="org" /><div class="muted">Organisation (InfluxDB v2).</div></div>
-      <div><label>bucket</label><input id="bucket" /><div class="muted">Bucket-Name (InfluxDB v2).</div></div>
-      <div><label>token</label><input id="token" /><div class="muted">In der UI wird Token als <code>********</code> maskiert.</div></div>
-      <div><label>admin_token</label><input id="admin_token" /> <button id="admin_token_test" type="button" class="btn_sm">Token testen</button><div class="muted">Nur fuer <code>Native FullBackup/FullRestore (v2)</code>. Muss ein <b>All-Access Token</b> sein (sonst 401 Unauthorized: read:authorizations). Wird als <code>********</code> maskiert.</div></div>
-    </div>
-    <div class="muted">Token: lass <code>********</code> stehen, wenn du es nicht ändern willst.</div>
+      <div class="grid">
+        <div class="param_row">
+          <div class="param_label">org<span class="param_hint">Organisation (InfluxDB v2).</span></div>
+          <div class="param_control">
+            <input id="org" />
+          </div>
+        </div>
+        <div class="param_row">
+          <div class="param_label">bucket<span class="param_hint">Bucket-Name (InfluxDB v2).</span></div>
+          <div class="param_control">
+            <input id="bucket" />
+          </div>
+        </div>
+        <div class="param_row">
+          <div class="param_label">token<span class="param_hint">In der UI wird Token als <code>********</code> maskiert.</span></div>
+          <div class="param_control">
+            <input id="token" />
+          </div>
+        </div>
+        <div class="param_row">
+          <div class="param_label">admin_token<span class="param_hint">Nur fuer <code>Native FullBackup/FullRestore (v2)</code>. Muss ein <b>All-Access Token</b> sein (sonst 401 Unauthorized: read:authorizations). Wird als <code>********</code> maskiert.</span></div>
+          <div class="param_control">
+            <input id="admin_token" />
+            <button id="admin_token_test" type="button" class="btn_sm">Token testen</button>
+          </div>
+        </div>
+        <div class="section_note"><span class="muted">Token: lass <code>********</code> stehen, wenn du es nicht ändern willst.</span></div>
+      </div>
     </div>
   </details>
 
   <details class="card" data-ui="settings.section.v1" title="settings.section.v1">
     <summary><span class="ib_summary_row"><span>InfluxDB v1</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: InfluxDB v1" data-info-body="Zugangsdaten fuer InfluxDB v1 (InfluxQL).\n\nTypisch:\n- database, username, password\n- SSL/Timeout ueber Verbindung\n\nHinweis:\n- Einige Features sind v2-only (z.B. Kombinieren/History Rollback)." >i</button></span></summary>
     <div class="card_body">
-    <div class="grid">
-      <div><label>database</label><input id="database" /><div class="muted">DB Name (InfluxDB v1).</div></div>
-      <div><label>username</label><input id="username" /><div class="muted">Optional, je nach Influx Konfiguration.</div></div>
-      <div><label>password</label><input id="password" /><div class="muted">In der UI wird Passwort als <code>********</code> maskiert.</div></div>
-    </div>
-    <div class="muted">Passwort: lass <code>********</code> stehen, wenn du es nicht ändern willst.</div>
+      <div class="grid">
+        <div class="param_row">
+          <div class="param_label">database<span class="param_hint">DB Name (InfluxDB v1).</span></div>
+          <div class="param_control">
+            <input id="database" />
+          </div>
+        </div>
+        <div class="param_row">
+          <div class="param_label">username<span class="param_hint">Optional, je nach Influx Konfiguration.</span></div>
+          <div class="param_control">
+            <input id="username" />
+          </div>
+        </div>
+        <div class="param_row">
+          <div class="param_label">password<span class="param_hint">In der UI wird Passwort als <code>********</code> maskiert.</span></div>
+          <div class="param_control">
+            <input id="password" />
+          </div>
+        </div>
+        <div class="section_note"><span class="muted">Passwort: lass <code>********</code> stehen, wenn du es nicht ändern willst.</span></div>
+      </div>
     </div>
   </details>
 
@@ -173,424 +243,513 @@
         <details class="card" id="ui_table" open data-ui="settings.ui.table" title="settings.ui.table">
           <summary><span class="ib_summary_row"><span>Tabellen</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Tabellen" data-info-body="Globale Tabellen-Defaults (Master-Template).\n\nBeispiele:\n- sichtbare Zeilen (Hoehe)\n- Spalten/Umbruch/Filter\n- Checkbox-Skalierung\n\nDiese Werte betreffen u.a. Backup/Restore/Jobs/History Tabellen." >i</button></span></summary>
           <div class="card_body">
-          <div class="grid">
-            <div>
-              <label>Tabellenzeilen (sichtbar)</label>
-              <input id="ui_table_visible_rows" type="number" min="5" max="500" />
-              <div class="muted">Hoehe der Tabelle in Zeilen (Scroll zeigt trotzdem alle Messwerte).</div>
+            <div class="grid">
+              <div class="param_row">
+                <div class="param_label">Tabellenzeilen (sichtbar)<span class="param_hint">Hoehe der Tabelle in Zeilen (Scroll zeigt trotzdem alle Messwerte).</span></div>
+                <div class="param_control">
+                  <input id="ui_table_visible_rows" type="number" min="5" max="500" />
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Ausreisserliste sichtbare Zeilen<span class="param_hint">Mindesthoehe der Bearbeitungsliste waehrend einer Ausreissersuche.</span></div>
+                <div class="param_control">
+                  <input id="ui_outlier_visible_rows" type="number" min="5" max="200" />
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Tabellenzeilen Hoehe (px)<span class="param_hint">Effektive Zeilenhoehe ist max. +20% ueber kleiner Schriftgroesse.</span></div>
+                <div class="param_control">
+                  <input id="ui_table_row_height_px" type="number" min="9" max="60" />
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Dezimalstellen (Anzeige)<span class="param_hint">Rundung fuer Zahlen in Statistik/Tabelle (nur Anzeige).</span></div>
+                <div class="param_control">
+                  <input id="ui_decimals" type="number" min="0" max="10" />
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Query max. Punkte (Dashboard Graph)<span class="param_hint">Limit/Downsampling fuer den Dashboard-Graph (Default: 5000).</span></div>
+                <div class="param_control">
+                  <input id="ui_query_max_points" type="number" min="500" max="200000" />
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Raw max. Punkte<span class="param_hint">Maximale Zeilen/Points pro Raw-DB-Abfrage (Default: 20000).</span></div>
+                <div class="param_control">
+                  <input id="ui_raw_max_points" type="number" min="1000" max="200000" />
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Raw max. Bereich +- (Minuten)<span class="param_hint">Obergrenze in Minuten fuer den Dashboard-Wert <code>Bereich +-</code> ueber der Raw-Tabelle (Default: 2000).</span></div>
+                <div class="param_control">
+                  <input id="ui_raw_center_max_points" type="number" min="1" max="200000" />
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Raw Bereich +- Standard (Minuten)<span class="param_hint">Vorbelegung in Minuten um den selektierten Messwert herum (Default: 100).</span></div>
+                <div class="param_control">
+                  <input id="ui_raw_center_range_default" type="number" min="0" max="200000" />
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Raw Mindestdatenpunkte je Seite<span class="param_hint">Wenn vor oder nach dem selektierten Messpunkt weniger Punkte gefunden werden, erweitert InfluxBro den Suchbereich automatisch in 100-Minuten-Schritten (Default: 10).</span></div>
+                <div class="param_control">
+                  <input id="ui_raw_center_min_points" type="number" min="1" max="100000" />
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Popup Text Schriftgroesse (px)<span class="param_hint">Standard fuer <code>influxbro_popup_pre</code>, z. B. fuer Info-, Query- und Log-Dialoge (Default: 10).</span></div>
+                <div class="param_control">
+                  <input id="ui_popup_pre_font_px" type="number" min="8" max="24" />
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Popup History Schriftgroesse (px)<span class="param_hint">Standard fuer die untere Query-History im Popup (Default: 10).</span></div>
+                <div class="param_control">
+                  <input id="ui_popup_history_font_px" type="number" min="8" max="24" />
+                </div>
+              </div>
+              <div class="param_row param_full">
+                <div class="param_label">Auto-Tuning</div>
+                <div class="param_control">
+                  <button id="ui_raw_autotune_settings" type="button" class="btn_sm">Auto-Tuning (Dashboard)</button>
+                </div>
+              </div>
+              <div class="section_note"><span class="muted">Der Auto-Tuning Button ist in die Einstellungen verschoben. Klick &quot;Auto-Tuning (Dashboard)&quot; oeffnet das Dashboard und startet Auto-Tuning, falls eine Serie ausgewaehlt ist.</span></div>
+              <div class="param_row">
+                <div class="param_label">Manual max. Punkte (Dashboard Graph)<span class="param_hint">Sicherheitslimit fuer Manuell=100% (Default: 200000).</span></div>
+                <div class="param_control">
+                  <input id="ui_query_manual_max_points" type="number" min="1000" max="2000000" />
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Sprung-Polster (Intervalle)<span class="param_hint">Markierung/Refine um Spruenge: +/- N Downsample-Intervalle.</span></div>
+                <div class="param_control">
+                  <input id="ui_graph_jump_padding_intervals" type="number" min="0" max="50" />
+                </div>
+              </div>
             </div>
-            <div>
-              <label>Ausreisserliste sichtbare Zeilen</label>
-              <input id="ui_outlier_visible_rows" type="number" min="5" max="200" />
-              <div class="muted">Mindesthoehe der Bearbeitungsliste waehrend einer Ausreissersuche.</div>
-            </div>
-            <div>
-              <label>Tabellenzeilen Hoehe (px)</label>
-              <input id="ui_table_row_height_px" type="number" min="9" max="60" />
-              <div class="muted">Effektive Zeilenhoehe ist max. +20% ueber kleiner Schriftgroesse.</div>
-            </div>
-            <div>
-              <label>Dezimalstellen (Anzeige)</label>
-              <input id="ui_decimals" type="number" min="0" max="10" />
-              <div class="muted">Rundung fuer Zahlen in Statistik/Tabelle (nur Anzeige).</div>
-            </div>
-
-            <div>
-              <label>Query max. Punkte (Dashboard Graph)</label>
-              <input id="ui_query_max_points" type="number" min="500" max="200000" />
-              <div class="muted">Limit/Downsampling fuer den Dashboard-Graph (Default: 5000).</div>
-            </div>
-
-        <div>
-          <label>Raw max. Punkte</label>
-          <input id="ui_raw_max_points" type="number" min="1000" max="200000" />
-          <div class="muted">Maximale Zeilen/Points pro Raw-DB-Abfrage (Default: 20000).</div>
-        </div>
-
-        <div>
-              <label>Raw max. Bereich +- (Minuten)</label>
-              <input id="ui_raw_center_max_points" type="number" min="1" max="200000" />
-              <div class="muted">Obergrenze in Minuten fuer den Dashboard-Wert <code>Bereich +-</code> ueber der Raw-Tabelle (Default: 2000).</div>
-        </div>
-
-        <div>
-              <label>Raw Bereich +- Standard (Minuten)</label>
-              <input id="ui_raw_center_range_default" type="number" min="0" max="200000" />
-              <div class="muted">Vorbelegung in Minuten um den selektierten Messwert herum (Default: 100).</div>
-        </div>
-
-        <div>
-              <label>Raw Mindestdatenpunkte je Seite</label>
-              <input id="ui_raw_center_min_points" type="number" min="1" max="100000" />
-              <div class="muted">Wenn vor oder nach dem selektierten Messpunkt weniger Punkte gefunden werden, erweitert InfluxBro den Suchbereich automatisch in 100-Minuten-Schritten (Default: 10).</div>
-        </div>
-
-        <div>
-          <label>Popup Text Schriftgroesse (px)</label>
-          <input id="ui_popup_pre_font_px" type="number" min="8" max="24" />
-          <div class="muted">Standard fuer <code>influxbro_popup_pre</code>, z. B. fuer Info-, Query- und Log-Dialoge (Default: 10).</div>
-        </div>
-
-        <div>
-          <label>Popup History Schriftgroesse (px)</label>
-          <input id="ui_popup_history_font_px" type="number" min="8" max="24" />
-          <div class="muted">Standard fuer die untere Query-History im Popup (Default: 10).</div>
-        </div>
-
-        <div>
-          <label>Auto-Tuning</label>
-          <button id="ui_raw_autotune_settings" type="button" class="btn_sm">Auto-Tuning (Dashboard)</button>
-          <div class="muted">Der Auto-Tuning Button ist in die Einstellungen verschoben. Klick &quot;Auto-Tuning (Dashboard)&quot; oeffnet das Dashboard und startet Auto-Tuning, falls eine Serie ausgewaehlt ist.</div>
-        </div>
-
-        <div>
-          <label>Manual max. Punkte (Dashboard Graph)</label>
-          <input id="ui_query_manual_max_points" type="number" min="1000" max="2000000" />
-          <div class="muted">Sicherheitslimit fuer Manuell=100% (Default: 200000).</div>
-        </div>
-
-        <div>
-          <label>Sprung-Polster (Intervalle)</label>
-          <input id="ui_graph_jump_padding_intervals" type="number" min="0" max="50" />
-          <div class="muted">Markierung/Refine um Spruenge: +/- N Downsample-Intervalle.</div>
-        </div>
-      </div>
-      </div>
-    </details>
+          </div>
+        </details>
 
         <details class="card" id="ui_cache" open data-ui="settings.ui.cache" title="settings.ui.cache">
           <summary><span class="ib_summary_row"><span>Dashboard Cache</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Dashboard Cache" data-info-body="Serverseitiger Cache fuer Dashboard-Abfragen (unter /data).\n\nKonfigurierbar:\n- enabled/auto_update\n- refresh_mode (hours/daily/weekly/manual) + Parameter\n- Limits (max items/MB)\n\nHinweis:\n- Auto-Update Jobs laufen im Hintergrund (Timer Jobs)." >i</button></span></summary>
           <div class="card_body">
-          <div class="grid">
-            <div>
-              <label class="ib_chk_row"><input type="checkbox" id="dash_cache_enabled" data-ui="settings.dash_cache_enabled" title="settings.dash_cache_enabled" /><span>Cache aktiv</span></label>
-              <div class="muted">Speichert Dashboard Query-Ergebnisse unter <code>/data/dash_cache</code> und nutzt sie beim naechsten Aufruf.</div>
+            <div class="grid">
+              <div class="param_row">
+                <div class="param_label">Cache aktiv</div>
+                <div class="param_control">
+                  <label class="ib_chk_row"><input type="checkbox" id="dash_cache_enabled" data-ui="settings.dash_cache_enabled" title="settings.dash_cache_enabled" /><span></span></label>
+                </div>
+              </div>
+              <div class="section_note"><span class="muted">Speichert Dashboard Query-Ergebnisse unter <code>/data/dash_cache</code> und nutzt sie beim naechsten Aufruf.</span></div>
+              <div class="param_row">
+                <div class="param_label">Automatisch aktualisieren</div>
+                <div class="param_control">
+                  <label class="ib_chk_row"><input type="checkbox" id="dash_cache_auto_update" data-ui="settings.dash_cache_auto_update" title="settings.dash_cache_auto_update" /><span></span></label>
+                </div>
+              </div>
+              <div class="section_note"><span class="muted">Background-Job haelt Caches aktuell (siehe Jobs-Seite).</span></div>
+              <div class="param_row">
+                <div class="param_label">Intervall-Modus<span class="param_hint">Steuert, wann ein Cache als "stale" gilt.</span></div>
+                <div class="param_control">
+                  <select id="dash_cache_refresh_mode" data-ui="settings.dash_cache_refresh_mode" title="settings.dash_cache_refresh_mode">
+                    <option value="hours">alle X Stunden</option>
+                    <option value="daily">taeglich</option>
+                  </select>
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">X Stunden<span class="param_hint">Gilt nur fuer Modus "alle X Stunden".</span></div>
+                <div class="param_control">
+                  <input id="dash_cache_refresh_hours" type="number" min="1" max="168" data-ui="settings.dash_cache_refresh_hours" title="settings.dash_cache_refresh_hours" />
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Taeglich um (HH:MM:SS)<span class="param_hint">Gilt nur fuer Modus "taeglich" (lokale Zeit im Add-on).</span></div>
+                <div class="param_control">
+                  <input id="dash_cache_refresh_daily_at" placeholder="00:00:00" data-ui="settings.dash_cache_refresh_daily_at" title="settings.dash_cache_refresh_daily_at" />
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Max Cache Eintraege<span class="param_hint">0 = Cache ist effektiv aus (Eintraege werden sofort evicted).</span></div>
+                <div class="param_control">
+                  <input id="dash_cache_max_items" type="number" min="0" max="500" data-ui="settings.dash_cache_max_items" title="settings.dash_cache_max_items" />
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Max Cache Groesse (MB)<span class="param_hint">Best-effort Eviction nach LRU.</span></div>
+                <div class="param_control">
+                  <input id="dash_cache_max_mb" type="number" min="0" max="2048" data-ui="settings.dash_cache_max_mb" title="settings.dash_cache_max_mb" />
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Bei Nutzung stale markieren</div>
+                <div class="param_control">
+                  <label class="ib_chk_row"><input type="checkbox" id="dash_cache_update_on_use_if_stale" data-ui="settings.dash_cache_update_on_use_if_stale" title="settings.dash_cache_update_on_use_if_stale" /><span></span></label>
+                </div>
+              </div>
+              <div class="section_note"><span class="muted">Wenn ein alter Cache genutzt wird, wird er als dirty markiert und vom Background-Job bevorzugt aktualisiert.</span></div>
             </div>
-            <div>
-              <label class="ib_chk_row"><input type="checkbox" id="dash_cache_auto_update" data-ui="settings.dash_cache_auto_update" title="settings.dash_cache_auto_update" /><span>Automatisch aktualisieren</span></label>
-              <div class="muted">Background-Job haelt Caches aktuell (siehe Jobs-Seite).</div>
-            </div>
-
-            <div>
-              <label>Intervall-Modus</label>
-              <select id="dash_cache_refresh_mode" data-ui="settings.dash_cache_refresh_mode" title="settings.dash_cache_refresh_mode">
-                <option value="hours">alle X Stunden</option>
-                <option value="daily">taeglich</option>
-              </select>
-              <div class="muted">Steuert, wann ein Cache als "stale" gilt.</div>
-            </div>
-            <div>
-              <label>X Stunden</label>
-              <input id="dash_cache_refresh_hours" type="number" min="1" max="168" data-ui="settings.dash_cache_refresh_hours" title="settings.dash_cache_refresh_hours" />
-              <div class="muted">Gilt nur fuer Modus "alle X Stunden".</div>
-            </div>
-            <div>
-              <label>Taeglich um (HH:MM:SS)</label>
-              <input id="dash_cache_refresh_daily_at" placeholder="00:00:00" data-ui="settings.dash_cache_refresh_daily_at" title="settings.dash_cache_refresh_daily_at" />
-              <div class="muted">Gilt nur fuer Modus "taeglich" (lokale Zeit im Add-on).</div>
-            </div>
-
-            <div>
-              <label>Max Cache Eintraege</label>
-              <input id="dash_cache_max_items" type="number" min="0" max="500" data-ui="settings.dash_cache_max_items" title="settings.dash_cache_max_items" />
-              <div class="muted">0 = Cache ist effektiv aus (Eintraege werden sofort evicted).</div>
-            </div>
-            <div>
-              <label>Max Cache Groesse (MB)</label>
-              <input id="dash_cache_max_mb" type="number" min="0" max="2048" data-ui="settings.dash_cache_max_mb" title="settings.dash_cache_max_mb" />
-              <div class="muted">Best-effort Eviction nach LRU.</div>
-            </div>
-            <div>
-              <label class="ib_chk_row"><input type="checkbox" id="dash_cache_update_on_use_if_stale" data-ui="settings.dash_cache_update_on_use_if_stale" title="settings.dash_cache_update_on_use_if_stale" /><span>Bei Nutzung stale markieren</span></label>
-              <div class="muted">Wenn ein alter Cache genutzt wird, wird er als dirty markiert und vom Background-Job bevorzugt aktualisiert.</div>
-            </div>
-          </div>
           </div>
         </details>
 
         <details class="card" id="ui_stats_cache" open data-ui="settings.ui.stats_cache" title="settings.ui.stats_cache">
           <summary><span class="ib_summary_row"><span>Statistik Cache</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Statistik Cache" data-info-body="Serverseitiger Cache fuer Statistik-Berechnungen (unter /data).\n\nKonfigurierbar:\n- enabled/auto_update\n- refresh_mode (hours/daily/weekly/manual) + Parameter\n- Limits (max items/MB)\n\nHinweis:\n- Reduziert Last und beschleunigt wiederholte Statistik-Abfragen." >i</button></span></summary>
           <div class="card_body">
-          <div class="grid">
-            <div>
-              <label class="ib_chk_row"><input type="checkbox" id="stats_cache_enabled" data-ui="settings.stats_cache_enabled" title="settings.stats_cache_enabled" /><span>Cache aktiv</span></label>
-              <div class="muted">Speichert Statistik-Ergebnisse unter <code>/data/stats_cache</code> und kann diese nach Seitenwechsel/Restart wiederverwenden.</div>
+            <div class="grid">
+              <div class="param_row">
+                <div class="param_label">Cache aktiv</div>
+                <div class="param_control">
+                  <label class="ib_chk_row"><input type="checkbox" id="stats_cache_enabled" data-ui="settings.stats_cache_enabled" title="settings.stats_cache_enabled" /><span></span></label>
+                </div>
+              </div>
+              <div class="section_note"><span class="muted">Speichert Statistik-Ergebnisse unter <code>/data/stats_cache</code> und kann diese nach Seitenwechsel/Restart wiederverwenden.</span></div>
+              <div class="param_row">
+                <div class="param_label">Automatisch aktualisieren</div>
+                <div class="param_control">
+                  <label class="ib_chk_row"><input type="checkbox" id="stats_cache_auto_update" data-ui="settings.stats_cache_auto_update" title="settings.stats_cache_auto_update" /><span></span></label>
+                </div>
+              </div>
+              <div class="section_note"><span class="muted">Nightly/inkrementell ueber Background-Jobs (siehe Jobs-Seite).</span></div>
+              <div class="param_row">
+                <div class="param_label">Intervall-Modus<span class="param_hint">Steuert, wann ein Cache als "stale" gilt.</span></div>
+                <div class="param_control">
+                  <select id="stats_cache_refresh_mode" data-ui="settings.stats_cache_refresh_mode" title="settings.stats_cache_refresh_mode">
+                    <option value="hours">alle X Stunden</option>
+                    <option value="daily">taeglich (nightly)</option>
+                  </select>
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">X Stunden<span class="param_hint">Gilt nur fuer Modus "alle X Stunden".</span></div>
+                <div class="param_control">
+                  <input id="stats_cache_refresh_hours" type="number" min="1" max="720" data-ui="settings.stats_cache_refresh_hours" title="settings.stats_cache_refresh_hours" />
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Taeglich um (HH:MM:SS)<span class="param_hint">Gilt nur fuer Modus "taeglich" (lokale Zeit im Add-on).</span></div>
+                <div class="param_control">
+                  <input id="stats_cache_refresh_daily_at" placeholder="03:00:00" data-ui="settings.stats_cache_refresh_daily_at" title="settings.stats_cache_refresh_daily_at" />
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Max Cache Eintraege<span class="param_hint">0 = Cache ist effektiv aus (Eintraege werden sofort evicted).</span></div>
+                <div class="param_control">
+                  <input id="stats_cache_max_items" type="number" min="0" max="200" data-ui="settings.stats_cache_max_items" title="settings.stats_cache_max_items" />
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Max Cache Groesse (MB)<span class="param_hint">Best-effort Eviction nach LRU.</span></div>
+                <div class="param_control">
+                  <input id="stats_cache_max_mb" type="number" min="0" max="2048" data-ui="settings.stats_cache_max_mb" title="settings.stats_cache_max_mb" />
+                </div>
+              </div>
             </div>
-            <div>
-              <label class="ib_chk_row"><input type="checkbox" id="stats_cache_auto_update" data-ui="settings.stats_cache_auto_update" title="settings.stats_cache_auto_update" /><span>Automatisch aktualisieren</span></label>
-              <div class="muted">Nightly/inkrementell ueber Background-Jobs (siehe Jobs-Seite).</div>
-            </div>
-
-            <div>
-              <label>Intervall-Modus</label>
-              <select id="stats_cache_refresh_mode" data-ui="settings.stats_cache_refresh_mode" title="settings.stats_cache_refresh_mode">
-                <option value="hours">alle X Stunden</option>
-                <option value="daily">taeglich (nightly)</option>
-              </select>
-              <div class="muted">Steuert, wann ein Cache als "stale" gilt.</div>
-            </div>
-            <div>
-              <label>X Stunden</label>
-              <input id="stats_cache_refresh_hours" type="number" min="1" max="720" data-ui="settings.stats_cache_refresh_hours" title="settings.stats_cache_refresh_hours" />
-              <div class="muted">Gilt nur fuer Modus "alle X Stunden".</div>
-            </div>
-            <div>
-              <label>Taeglich um (HH:MM:SS)</label>
-              <input id="stats_cache_refresh_daily_at" placeholder="03:00:00" data-ui="settings.stats_cache_refresh_daily_at" title="settings.stats_cache_refresh_daily_at" />
-              <div class="muted">Gilt nur fuer Modus "taeglich" (lokale Zeit im Add-on).</div>
-            </div>
-
-            <div>
-              <label>Max Cache Eintraege</label>
-              <input id="stats_cache_max_items" type="number" min="0" max="200" data-ui="settings.stats_cache_max_items" title="settings.stats_cache_max_items" />
-              <div class="muted">0 = Cache ist effektiv aus (Eintraege werden sofort evicted).</div>
-            </div>
-            <div>
-              <label>Max Cache Groesse (MB)</label>
-              <input id="stats_cache_max_mb" type="number" min="0" max="2048" data-ui="settings.stats_cache_max_mb" title="settings.stats_cache_max_mb" />
-              <div class="muted">Best-effort Eviction nach LRU.</div>
-            </div>
-          </div>
           </div>
         </details>
 
         <details class="card" id="ui_edit" open data-ui="settings.ui.edit" title="settings.ui.edit">
           <summary><span class="ib_summary_row"><span>Bearbeitungsliste</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Bearbeitungsliste" data-info-body="Einstellungen fuer die Bearbeitungsliste (Editlist) im Dashboard.\n\nBeispiele:\n- Vorschauzeilen\n- Detailpanel Verhalten\n- Limits/Performance" >i</button></span></summary>
           <div class="card_body">
-          <div class="grid">
-            <div>
-              <label>Nachbarwerte (n)</label>
-              <input id="ui_edit_neighbors_n" type="number" min="1" max="50" />
-              <div class="muted">Zeigt n Werte davor und n Werte danach unterhalb der Bearbeitungsliste.</div>
+            <div class="grid">
+              <div class="param_row">
+                <div class="param_label">Nachbarwerte (n)<span class="param_hint">Zeigt n Werte davor und n Werte danach unterhalb der Bearbeitungsliste.</span></div>
+                <div class="param_control">
+                  <input id="ui_edit_neighbors_n" type="number" min="1" max="50" />
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Detailsliste (sichtbare Zeilen)<span class="param_hint">Hoehe der Detailsliste unterhalb der Bearbeitungsliste.</span></div>
+                <div class="param_control">
+                  <input id="ui_edit_details_visible_rows" type="number" min="4" max="80" />
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Graph Puffer (Minuten)<span class="param_hint">Zeitfenster fuer den Graph: min/max der Bearbeitungsliste +/- Puffer.</span></div>
+                <div class="param_control">
+                  <input id="ui_edit_graph_buffer_minutes" type="number" min="0" max="1440" />
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Graph max. Punkte<span class="param_hint">Limit fuer DB-Punkte im Bearbeitungs-Graph (Downsampling erfolgt automatisch).</span></div>
+                <div class="param_control">
+                  <input id="ui_edit_graph_max_points" type="number" min="1000" max="200000" />
+                </div>
+              </div>
             </div>
-            <div>
-              <label>Detailsliste (sichtbare Zeilen)</label>
-              <input id="ui_edit_details_visible_rows" type="number" min="4" max="80" />
-              <div class="muted">Hoehe der Detailsliste unterhalb der Bearbeitungsliste.</div>
-            </div>
-            <div>
-              <label>Graph Puffer (Minuten)</label>
-              <input id="ui_edit_graph_buffer_minutes" type="number" min="0" max="1440" />
-              <div class="muted">Zeitfenster fuer den Graph: min/max der Bearbeitungsliste +/- Puffer.</div>
-            </div>
-            <div>
-              <label>Graph max. Punkte</label>
-              <input id="ui_edit_graph_max_points" type="number" min="1000" max="200000" />
-              <div class="muted">Limit fuer DB-Punkte im Bearbeitungs-Graph (Downsampling erfolgt automatisch).</div>
-            </div>
-          </div>
           </div>
         </details>
 
         <details class="card" id="ui_layout" open data-ui="settings.ui.layout" title="settings.ui.layout">
           <summary><span class="ib_summary_row"><span>Darstellung</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Darstellung" data-info-body="Optische/UX Einstellungen (z.B. Zoom, Tooltips, Auto-Breite der Auswahlfelder).\n\nHinweis:\n- Einige Werte werden im Browser gespeichert (UI-State), andere in /data (Addon-Config)." >i</button></span></summary>
           <div class="card_body">
-          <div class="grid">
-            <div>
-              <label>Basis Schriftgroesse (px)</label>
-              <input id="ui_font_size_px" type="number" min="10" max="22" />
-              <div class="muted">Standard: 14.</div>
-            </div>
-            <div>
-              <label>Kleine Schriftgroesse (px)</label>
-              <input id="ui_font_small_px" type="number" min="9" max="18" />
-              <div class="muted">z.B. fuer Statistik/Infotexte.</div>
-            </div>
-            <div>
-              <label>Seitentitel Schriftgroesse (px)</label>
-              <input id="ui_pagecard_title_px" type="number" min="18" max="48" />
-              <div class="muted">Groesse des Seitentitels in der festen Titelkarte.</div>
-            </div>
-            <div>
-              <label>Seitensuche Highlight Farbe</label>
-              <input id="ui_page_search_highlight_color" type="color" />
-              <div class="muted">Rahmenfarbe fuer Treffer aus `page.search`.</div>
-            </div>
-            <div>
-              <label>Seitensuche Highlight Breite (px)</label>
-              <input id="ui_page_search_highlight_width_px" type="number" min="1" max="12" />
-              <div class="muted">Rahmenbreite fuer Treffer aus `page.search`.</div>
-            </div>
-            <div>
-              <label>Seitensuche Highlight Dauer (ms)</label>
-              <input id="ui_page_search_highlight_duration_ms" type="number" min="200" max="10000" />
-              <div class="muted">Wie lange der Trefferrahmen sichtbar bleibt.</div>
-            </div>
-            <div>
-              <label>Status Schriftgroesse (px)</label>
-              <input id="ui_status_font_px" type="number" min="9" max="18" />
-              <div class="muted">Sidebar Status Panel (Refresh/Eintraege).</div>
-            </div>
-            <div>
-              <label>Untere Statusleiste Hoehe (px)</label>
-              <input id="ui_status_bar_height_px" type="number" min="28" max="90" />
-              <div class="muted">Feste Hoehe der unteren Statusleiste auf allen Seiten.</div>
-            </div>
-            <div>
-              <label class="ib_chk_row"><input type="checkbox" id="ui_status_show_sysinfo" data-ui="settings.ui.status_sysinfo" title="settings.ui.status_sysinfo" /><span>Info in Titelzeile einblenden</span></label>
-              <div class="muted">Zeigt zusaetzlich Memory/CPU/Disk im Statusbereich (unter dem Menue).</div>
-            </div>
-            <div>
-              <label>Checkbox Groesse (Scale)</label>
-              <input id="ui_checkbox_scale" type="number" min="0.5" max="1.6" step="0.05" />
-              <div class="muted">0.85 = kleiner, 1.0 = normal.</div>
-            </div>
-
-            <div>
-              <label>Bereich-Titel (Details): Hintergrund</label>
-              <div style="display:flex; gap: 8px; align-items:center;">
-                <input id="ui_section_title_bg_color" type="color" value="#3287a8" style="width:44px; height:34px; padding:0;" />
-                <input id="ui_section_title_bg" placeholder="transparent oder #RRGGBB" style="flex:1;" />
+            <div class="grid">
+              <div class="param_row">
+                <div class="param_label">Basis Schriftgroesse (px)<span class="param_hint">Standard: 14.</span></div>
+                <div class="param_control">
+                  <input id="ui_font_size_px" type="number" min="10" max="22" />
+                </div>
               </div>
-              <div class="muted">Leer = Standard. Erlaubt: <code>transparent</code> oder <code>#RRGGBB</code>.</div>
-            </div>
-            <div>
-              <label>Bereich-Titel (Details): Textfarbe</label>
-              <div style="display:flex; gap: 8px; align-items:center;">
-                <input id="ui_section_title_fg_color" type="color" value="#ffffff" style="width:44px; height:34px; padding:0;" />
-                <input id="ui_section_title_fg" placeholder="inherit oder #RRGGBB" style="flex:1;" />
+              <div class="param_row">
+                <div class="param_label">Kleine Schriftgroesse (px)<span class="param_hint">z.B. fuer Statistik/Infotexte.</span></div>
+                <div class="param_control">
+                  <input id="ui_font_small_px" type="number" min="9" max="18" />
+                </div>
               </div>
-              <div class="muted">Leer = Standard. Erlaubt: <code>inherit</code> oder <code>#RRGGBB</code>.</div>
-            </div>
-            <div>
-              <label>Statusleiste: Hintergrund</label>
-              <div style="display:flex; gap: 8px; align-items:center;">
-                <input id="ui_status_bar_bg_color" type="color" value="#ffffff" style="width:44px; height:34px; padding:0;" />
-                <input id="ui_status_bar_bg" placeholder="#FFFFFF" style="flex:1;" />
+              <div class="param_row">
+                <div class="param_label">Seitentitel Schriftgroesse (px)<span class="param_hint">Groesse des Seitentitels in der festen Titelkarte.</span></div>
+                <div class="param_control">
+                  <input id="ui_pagecard_title_px" type="number" min="18" max="48" />
+                </div>
               </div>
-              <div class="muted">Farbe der unteren festen Statusleiste.</div>
-            </div>
-            <div>
-              <label>Statusleiste: Textfarbe</label>
-              <div style="display:flex; gap: 8px; align-items:center;">
-                <input id="ui_status_bar_fg_color" type="color" value="#111111" style="width:44px; height:34px; padding:0;" />
-                <input id="ui_status_bar_fg" placeholder="#111111" style="flex:1;" />
+              <div class="param_row">
+                <div class="param_label">Seitensuche Highlight Farbe<span class="param_hint">Rahmenfarbe fuer Treffer aus `page.search`.</span></div>
+                <div class="param_control">
+                  <input id="ui_page_search_highlight_color" type="color" />
+                </div>
               </div>
-              <div class="muted">Text-/Buttonfarbe der unteren festen Statusleiste.</div>
+              <div class="param_row">
+                <div class="param_label">Seitensuche Highlight Breite (px)<span class="param_hint">Rahmenbreite fuer Treffer aus `page.search`.</span></div>
+                <div class="param_control">
+                  <input id="ui_page_search_highlight_width_px" type="number" min="1" max="12" />
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Seitensuche Highlight Dauer (ms)<span class="param_hint">Wie lange der Trefferrahmen sichtbar bleibt.</span></div>
+                <div class="param_control">
+                  <input id="ui_page_search_highlight_duration_ms" type="number" min="200" max="10000" />
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Status Schriftgroesse (px)<span class="param_hint">Sidebar Status Panel (Refresh/Eintraege).</span></div>
+                <div class="param_control">
+                  <input id="ui_status_font_px" type="number" min="9" max="18" />
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Untere Statusleiste Hoehe (px)<span class="param_hint">Feste Hoehe der unteren Statusleiste auf allen Seiten.</span></div>
+                <div class="param_control">
+                  <input id="ui_status_bar_height_px" type="number" min="28" max="90" />
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Info in Titelzeile einblenden</div>
+                <div class="param_control">
+                  <label class="ib_chk_row"><input type="checkbox" id="ui_status_show_sysinfo" data-ui="settings.ui.status_sysinfo" title="settings.ui.status_sysinfo" /><span></span></label>
+                </div>
+              </div>
+              <div class="section_note"><span class="muted">Zeigt zusaetzlich Memory/CPU/Disk im Statusbereich (unter dem Menue).</span></div>
+              <div class="param_row">
+                <div class="param_label">Checkbox Groesse (Scale)<span class="param_hint">0.85 = kleiner, 1.0 = normal.</span></div>
+                <div class="param_control">
+                  <input id="ui_checkbox_scale" type="number" min="0.5" max="1.6" step="0.05" />
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Bereich-Titel (Details): Hintergrund<span class="param_hint">Leer = Standard. Erlaubt: <code>transparent</code> oder <code>#RRGGBB</code>.</span></div>
+                <div class="param_control">
+                  <div class="color_pick_row">
+                    <input id="ui_section_title_bg_color" type="color" value="#3287a8" />
+                    <input id="ui_section_title_bg" placeholder="transparent oder #RRGGBB" />
+                  </div>
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Bereich-Titel (Details): Textfarbe<span class="param_hint">Leer = Standard. Erlaubt: <code>inherit</code> oder <code>#RRGGBB</code>.</span></div>
+                <div class="param_control">
+                  <div class="color_pick_row">
+                    <input id="ui_section_title_fg_color" type="color" value="#ffffff" />
+                    <input id="ui_section_title_fg" placeholder="inherit oder #RRGGBB" />
+                  </div>
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Statusleiste: Hintergrund<span class="param_hint">Farbe der unteren festen Statusleiste.</span></div>
+                <div class="param_control">
+                  <div class="color_pick_row">
+                    <input id="ui_status_bar_bg_color" type="color" value="#ffffff" />
+                    <input id="ui_status_bar_bg" placeholder="#FFFFFF" />
+                  </div>
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Statusleiste: Textfarbe<span class="param_hint">Text-/Buttonfarbe der unteren festen Statusleiste.</span></div>
+                <div class="param_control">
+                  <div class="color_pick_row">
+                    <input id="ui_status_bar_fg_color" type="color" value="#111111" />
+                    <input id="ui_status_bar_fg" placeholder="#111111" />
+                  </div>
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Filter Label Breite (px)<span class="param_hint">Label links neben dem Auswahlfeld.</span></div>
+                <div class="param_control">
+                  <input id="ui_filter_label_width_px" class="cfg_num_wide" type="number" min="80" max="360" />
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Filter Feld Breite (px)<span class="param_hint">Breite fuer Suche+Auswahl (Desktop).</span></div>
+                <div class="param_control">
+                  <input id="ui_filter_control_width_px" class="cfg_num_wide" type="number" min="180" max="900" />
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Filter Suche Breite (px)<span class="param_hint">Breite fuer das Suchfeld links neben der Auswahl.</span></div>
+                <div class="param_control">
+                  <input id="ui_filter_search_width_px" class="cfg_num_wide" type="number" min="80" max="420" />
+                </div>
+              </div>
+              <div class="section_note"><span class="muted">Auswahlfelder (Filter/Zeiten)</span></div>
+              <div class="param_row">
+                <div class="param_label">Textgroesse im Feld (px)<span class="param_hint">Schriftgroesse in Auswahlfeldern (Input/Select).</span></div>
+                <div class="param_control">
+                  <input id="ui_sel_field_font_px" class="cfg_num_wide" type="number" min="9" max="22" />
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Textgroesse Name + Anzahl (px)<span class="param_hint">Label oberhalb des Felds.</span></div>
+                <div class="param_control">
+                  <input id="ui_sel_label_font_px" type="number" min="9" max="22" />
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Textgroesse Kurzbeschreibung (px)<span class="param_hint">Kurztext unterhalb des Felds.</span></div>
+                <div class="param_control">
+                  <input id="ui_sel_desc_font_px" type="number" min="9" max="22" />
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Breite automatisch</div>
+                <div class="param_control">
+                  <label class="ib_chk_row"><input type="checkbox" id="ui_sel_auto_width" data-ui="settings.ui_sel_auto_width" title="settings.ui_sel_auto_width" /><span></span></label>
+                </div>
+              </div>
+              <div class="section_note"><span class="muted">Wenn aktiv, wird die Breite aus der durchschnittlichen Textbreite der Vorschlaege berechnet.</span></div>
+              <div class="param_row">
+                <div class="param_label">Breite (px)<span class="param_hint">Manuelle Breite wenn Auto aus. Wenn Auto an: zeigt die zuletzt berechnete Breite.</span></div>
+                <div class="param_control">
+                  <input id="ui_sel_width_px" type="number" min="120" max="900" />
+                </div>
+              </div>
             </div>
-            <div>
-              <label>Filter Label Breite (px)</label>
-              <input id="ui_filter_label_width_px" class="cfg_num_wide" type="number" min="80" max="360" />
-              <div class="muted">Label links neben dem Auswahlfeld.</div>
-            </div>
-            <div>
-              <label>Filter Feld Breite (px)</label>
-              <input id="ui_filter_control_width_px" class="cfg_num_wide" type="number" min="180" max="900" />
-              <div class="muted">Breite fuer Suche+Auswahl (Desktop).</div>
-            </div>
-            <div>
-              <label>Filter Suche Breite (px)</label>
-              <input id="ui_filter_search_width_px" class="cfg_num_wide" type="number" min="80" max="420" />
-              <div class="muted">Breite fuer das Suchfeld links neben der Auswahl.</div>
-            </div>
-
-            <div class="span2">
-              <div class="muted" style="margin-top: 6px;">Auswahlfelder (Filter/Zeiten)</div>
-            </div>
-
-            <div>
-              <label>Textgroesse im Feld (px)</label>
-              <input id="ui_sel_field_font_px" class="cfg_num_wide" type="number" min="9" max="22" />
-              <div class="muted">Schriftgroesse in Auswahlfeldern (Input/Select).</div>
-            </div>
-            <div>
-              <label>Textgroesse Name + Anzahl (px)</label>
-              <input id="ui_sel_label_font_px" type="number" min="9" max="22" />
-              <div class="muted">Label oberhalb des Felds.</div>
-            </div>
-            <div>
-              <label>Textgroesse Kurzbeschreibung (px)</label>
-              <input id="ui_sel_desc_font_px" type="number" min="9" max="22" />
-              <div class="muted">Kurztext unterhalb des Felds.</div>
-            </div>
-            <div>
-              <label class="ib_chk_row"><input type="checkbox" id="ui_sel_auto_width" data-ui="settings.ui_sel_auto_width" title="settings.ui_sel_auto_width" /><span>Breite automatisch</span></label>
-              <div class="muted">Wenn aktiv, wird die Breite aus der durchschnittlichen Textbreite der Vorschlaege berechnet.</div>
-            </div>
-            <div>
-              <label>Breite (px)</label>
-              <input id="ui_sel_width_px" type="number" min="120" max="900" />
-              <div class="muted">Manuelle Breite wenn Auto aus. Wenn Auto an: zeigt die zuletzt berechnete Breite.</div>
-            </div>
-          </div>
           </div>
         </details>
 
         <details class="card" id="ui_jobs" open data-ui="settings.ui.jobs" title="settings.ui.jobs">
           <summary><span class="ib_summary_row"><span>Jobs &amp; Cache</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Jobs & Cache" data-info-body="Steuert Limits/Verhalten von Background-Jobs und Cache-Mechanismen.\n\nBeispiele:\n- Jobs Laufzeitlimits\n- Auto-Cancel\n- Cache-Usage-Logging" >i</button></span></summary>
           <div class="card_body">
-          <div class="grid">
-            <div>
-              <label>Max Job Laufzeit (Sekunden)</label>
-              <input id="jobs_max_runtime_seconds" type="number" min="0" max="604800" />
-              <div class="muted">0 = deaktiviert. Default: 3600 (1h). Laeuft ein Job laenger, wird er automatisch abgebrochen (Logeintrag).</div>
-            </div>
-            <div>
-              <label>Job Farbe: running</label>
-              <div style="display:flex; gap: 8px; align-items:center;">
-                <input id="ui_job_color_running_color" type="color" value="#EEF3FF" style="width:44px; height:34px; padding:0;" />
-                <input id="ui_job_color_running" placeholder="#RRGGBB" style="flex:1;" />
+            <div class="grid">
+              <div class="param_row">
+                <div class="param_label">Max Job Laufzeit (Sekunden)<span class="param_hint">0 = deaktiviert. Default: 3600 (1h). Laeuft ein Job laenger, wird er automatisch abgebrochen (Logeintrag).</span></div>
+                <div class="param_control">
+                  <input id="jobs_max_runtime_seconds" type="number" min="0" max="604800" />
+                </div>
               </div>
-              <div class="muted">Hintergrundfarbe in Jobs Tabelle.</div>
-            </div>
-            <div>
-              <label>Job Farbe: done</label>
-              <div style="display:flex; gap: 8px; align-items:center;">
-                <input id="ui_job_color_done_color" type="color" value="#EEFAF1" style="width:44px; height:34px; padding:0;" />
-                <input id="ui_job_color_done" placeholder="#RRGGBB" style="flex:1;" />
+              <div class="param_row">
+                <div class="param_label">Job Farbe: running<span class="param_hint">Hintergrundfarbe in Jobs Tabelle.</span></div>
+                <div class="param_control">
+                  <div class="color_pick_row">
+                    <input id="ui_job_color_running_color" type="color" value="#EEF3FF" />
+                    <input id="ui_job_color_running" placeholder="#RRGGBB" />
+                  </div>
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Job Farbe: done</div>
+                <div class="param_control">
+                  <div class="color_pick_row">
+                    <input id="ui_job_color_done_color" type="color" value="#EEFAF1" />
+                    <input id="ui_job_color_done" placeholder="#RRGGBB" />
+                  </div>
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Job Farbe: error</div>
+                <div class="param_control">
+                  <div class="color_pick_row">
+                    <input id="ui_job_color_error_color" type="color" value="#FFF0F0" />
+                    <input id="ui_job_color_error" placeholder="#RRGGBB" />
+                  </div>
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Job Farbe: cancelled</div>
+                <div class="param_control">
+                  <div class="color_pick_row">
+                    <input id="ui_job_color_cancelled_color" type="color" value="#F6F6F6" />
+                    <input id="ui_job_color_cancelled" placeholder="#RRGGBB" />
+                  </div>
+                </div>
               </div>
             </div>
-            <div>
-              <label>Job Farbe: error</label>
-              <div style="display:flex; gap: 8px; align-items:center;">
-                <input id="ui_job_color_error_color" type="color" value="#FFF0F0" style="width:44px; height:34px; padding:0;" />
-                <input id="ui_job_color_error" placeholder="#RRGGBB" style="flex:1;" />
-              </div>
-            </div>
-            <div>
-              <label>Job Farbe: cancelled</label>
-              <div style="display:flex; gap: 8px; align-items:center;">
-                <input id="ui_job_color_cancelled_color" type="color" value="#F6F6F6" style="width:44px; height:34px; padding:0;" />
-                <input id="ui_job_color_cancelled" placeholder="#RRGGBB" style="flex:1;" />
-              </div>
-            </div>
-          </div>
           </div>
         </details>
 
         <details class="card" id="ui_sections" data-ui="settings.ui.sections" title="settings.ui.sections">
           <summary><span class="ib_summary_row"><span>Standardmaessig geoeffnete Bereiche</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Default Bereiche" data-info-body="Legt fest, welche Details-Bereiche beim Laden standardmaessig offen sind (Dashboard).\n\nTipp:\n- Fuer langsame Browser: weniger Bereiche automatisch oeffnen." >i</button></span></summary>
           <div class="card_body">
-          <div class="grid">
-            <div class="span2 muted">Standard ist "zu" (nicht geoeffnet).</div>
-            <div><label class="ib_chk_row"><input type="checkbox" id="ui_open_selection" data-ui="settings.ui_open_selection" title="settings.ui_open_selection" /><span>Auswahl</span></label></div>
-            <div><label class="ib_chk_row"><input type="checkbox" id="ui_open_graph" data-ui="settings.ui_open_graph" title="settings.ui_open_graph" /><span>Graph</span></label></div>
-            <div><label class="ib_chk_row"><input type="checkbox" id="ui_open_filterlist" data-ui="settings.ui_open_filterlist" title="settings.ui_open_filterlist" /><span>Fehler-/Filtertabelle</span></label></div>
-            <div><label class="ib_chk_row"><input type="checkbox" id="ui_open_editlist" data-ui="settings.ui_open_editlist" title="settings.ui_open_editlist" /><span>Bearbeitungsliste</span></label></div>
-            <div><label class="ib_chk_row"><input type="checkbox" id="ui_open_stats_total" data-ui="settings.ui_open_stats_total" title="settings.ui_open_stats_total" /><span>Gesamtstatistik (Alles)</span></label></div>
-            <div>
-              <label class="ib_chk_row"><input type="checkbox" id="ui_tooltips_enabled" data-ui="settings.ui_tooltips_enabled" title="settings.ui_tooltips_enabled" /><span>Tooltips anzeigen</span></label>
-              <div class="muted">Wenn deaktiviert, werden keine Tooltips erzeugt/angezeigt.</div>
+            <div class="grid">
+              <div class="section_note"><span class="muted">Standard ist "zu" (nicht geoeffnet).</span></div>
+              <div class="param_row">
+                <div class="param_label">Auswahl</div>
+                <div class="param_control">
+                  <label class="ib_chk_row"><input type="checkbox" id="ui_open_selection" data-ui="settings.ui_open_selection" title="settings.ui_open_selection" /><span></span></label>
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Graph</div>
+                <div class="param_control">
+                  <label class="ib_chk_row"><input type="checkbox" id="ui_open_graph" data-ui="settings.ui_open_graph" title="settings.ui_open_graph" /><span></span></label>
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Fehler-/Filtertabelle</div>
+                <div class="param_control">
+                  <label class="ib_chk_row"><input type="checkbox" id="ui_open_filterlist" data-ui="settings.ui_open_filterlist" title="settings.ui_open_filterlist" /><span></span></label>
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Bearbeitungsliste</div>
+                <div class="param_control">
+                  <label class="ib_chk_row"><input type="checkbox" id="ui_open_editlist" data-ui="settings.ui_open_editlist" title="settings.ui_open_editlist" /><span></span></label>
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Gesamtstatistik (Alles)</div>
+                <div class="param_control">
+                  <label class="ib_chk_row"><input type="checkbox" id="ui_open_stats_total" data-ui="settings.ui_open_stats_total" title="settings.ui_open_stats_total" /><span></span></label>
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Tooltips anzeigen</div>
+                <div class="param_control">
+                  <label class="ib_chk_row"><input type="checkbox" id="ui_tooltips_enabled" data-ui="settings.ui_tooltips_enabled" title="settings.ui_tooltips_enabled" /><span></span></label>
+                </div>
+              </div>
+              <div class="section_note"><span class="muted">Wenn deaktiviert, werden keine Tooltips erzeugt/angezeigt.</span></div>
             </div>
-          </div>
           </div>
         </details>
 
         <details class="card" id="ui_links" data-ui="settings.ui.links" title="settings.ui.links">
           <summary><span class="ib_summary_row"><span>Links</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Links" data-info-body="Schnelllinks und Hilfen (z.B. Influx Docs, Repo, Template)." >i</button></span></summary>
           <div class="card_body">
-          <div class="grid">
-            <div class="span2">
-              <label>Repository URL (Info Seite)</label>
-              <input id="ui_repo_url" />
-              <div class="muted">Wird in der Info-Seite als Link angezeigt.</div>
+            <div class="grid">
+              <div class="param_row param_full">
+                <div class="param_label">Repository URL (Info Seite)<span class="param_hint">Wird in der Info-Seite als Link angezeigt.</span></div>
+                <div class="param_control">
+                  <input id="ui_repo_url" />
+                </div>
+              </div>
+              <div class="param_row param_full">
+                <div class="param_label">PayPal Donate URL (Sidebar)<span class="param_hint">Wird vom PayPal Spendenbutton im Sidebar verwendet (z.B. hosted_button_id URL).</span></div>
+                <div class="param_control">
+                  <input id="ui_paypal_donate_url" />
+                </div>
+              </div>
             </div>
-            <div class="span2">
-              <label>PayPal Donate URL (Sidebar)</label>
-              <input id="ui_paypal_donate_url" />
-              <div class="muted">Wird vom PayPal Spendenbutton im Sidebar verwendet (z.B. hosted_button_id URL).</div>
-            </div>
-          </div>
           </div>
         </details>
 
@@ -601,47 +760,49 @@
       <summary><span class="ib_summary_row"><span>Statistik</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Statistik" data-info-body="Einstellungen fuer die Statistik-Seite (Job-Verhalten, Defaults, Performance)." >i</button></span></summary>
       <div class="card_body">
         <div class="grid">
-          <div class="span2">
-            <div class="muted">
-              Hinweis: "Vollscan" ist ein geplanter Background-Job (stats_full), der die Gesamtstatistik fuer alle Serien aktualisiert.
-              Fuer grosse Datenmengen muss der Zeitraum begrenzt werden, um Timeouts/InfluxDB-Fehler zu vermeiden.
+          <div class="section_note"><span class="muted">Hinweis: "Vollscan" ist ein geplanter Background-Job (stats_full), der die Gesamtstatistik fuer alle Serien aktualisiert. Fuer grosse Datenmengen muss der Zeitraum begrenzt werden, um Timeouts/InfluxDB-Fehler zu vermeiden.</span></div>
+          <div class="param_row">
+            <div class="param_label">Vollscan Refresh Modus</div>
+            <div class="param_control">
+              <select id="stats_full_refresh_mode">
+                <option value="manual">manual (aus)</option>
+                <option value="hours">alle X Stunden</option>
+                <option value="daily">taeglich</option>
+                <option value="weekly">woechentlich</option>
+              </select>
             </div>
           </div>
-          <div>
-            <label>Vollscan Refresh Modus</label>
-            <select id="stats_full_refresh_mode">
-              <option value="manual">manual (aus)</option>
-              <option value="hours">alle X Stunden</option>
-              <option value="daily">taeglich</option>
-              <option value="weekly">woechentlich</option>
-            </select>
+          <div class="param_row">
+            <div class="param_label">X Stunden<span class="param_hint">Gilt nur fuer Modus "alle X Stunden".</span></div>
+            <div class="param_control">
+              <input id="stats_full_refresh_hours" type="number" min="1" max="8760" />
+            </div>
           </div>
-          <div>
-            <label>X Stunden</label>
-            <input id="stats_full_refresh_hours" type="number" min="1" max="8760" />
-            <div class="muted">Gilt nur fuer Modus "alle X Stunden".</div>
+          <div class="param_row">
+            <div class="param_label">Taeglich um (HH:MM:SS)<span class="param_hint">Gilt fuer daily/weekly (lokale Zeit im Add-on).</span></div>
+            <div class="param_control">
+              <input id="stats_full_refresh_daily_at" placeholder="03:00:00" />
+            </div>
           </div>
-          <div>
-            <label>Taeglich um (HH:MM:SS)</label>
-            <input id="stats_full_refresh_daily_at" placeholder="03:00:00" />
-            <div class="muted">Gilt fuer daily/weekly (lokale Zeit im Add-on).</div>
+          <div class="param_row">
+            <div class="param_label">Wochentag (weekly)</div>
+            <div class="param_control">
+              <select id="stats_full_refresh_weekday">
+                <option value="0">Mo</option>
+                <option value="1">Di</option>
+                <option value="2">Mi</option>
+                <option value="3">Do</option>
+                <option value="4">Fr</option>
+                <option value="5">Sa</option>
+                <option value="6">So</option>
+              </select>
+            </div>
           </div>
-          <div>
-            <label>Wochentag (weekly)</label>
-            <select id="stats_full_refresh_weekday">
-              <option value="0">Mo</option>
-              <option value="1">Di</option>
-              <option value="2">Mi</option>
-              <option value="3">Do</option>
-              <option value="4">Fr</option>
-              <option value="5">Sa</option>
-              <option value="6">So</option>
-            </select>
-          </div>
-          <div>
-            <label>Vollscan max. Zeitraum (Tage)</label>
-            <input id="stats_full_max_days" type="number" min="1" max="36500" />
-            <div class="muted">Sicherheitslimit: Vollscan startet nicht vor "now - N Tage" (Default: 3650).</div>
+          <div class="param_row">
+            <div class="param_label">Vollscan max. Zeitraum (Tage)<span class="param_hint">Sicherheitslimit: Vollscan startet nicht vor "now - N Tage" (Default: 3650).</span></div>
+            <div class="param_control">
+              <input id="stats_full_max_days" type="number" min="1" max="36500" />
+            </div>
           </div>
         </div>
       </div>
@@ -654,28 +815,32 @@
         <details class="card" id="ui_backups" open data-ui="settings.ui.backups" title="settings.ui.backups">
           <summary><span class="ib_summary_row"><span>Backups</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Backups" data-info-body="Details zur Backup-Erstellung/Anzeige (z.B. Mindestfreier Speicher, Preview/Query Anzeige)." >i</button></span></summary>
           <div class="card_body">
-          <div class="grid">
-            <div class="span2">
-              <label>Backup Verzeichnis (unter <code>/config</code> oder <code>/data</code>)</label>
-              <input id="backup_dir" />
-              <div class="muted">Default: <code>/config/influxbro/backup</code> (im HA Filebrowser sichtbar). Relative Pfade werden unter <code>/config</code> abgelegt. Aus Sicherheitsgruenden sind nur Pfade unter <code>/config</code> oder <code>/data</code> erlaubt.</div>
+            <div class="grid">
+              <div class="param_row param_full">
+                <div class="param_label">Backup Verzeichnis (unter <code>/config</code> oder <code>/data</code>)<span class="param_hint">Default: <code>/config/influxbro/backup</code> (im HA Filebrowser sichtbar). Relative Pfade werden unter <code>/config</code> abgelegt. Aus Sicherheitsgruenden sind nur Pfade unter <code>/config</code> oder <code>/data</code> erlaubt.</span></div>
+                <div class="param_control">
+                  <input id="backup_dir" />
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Tabellenzeilen Hoehe (px, Backup)<span class="param_hint">Wirkt nur auf die Backup-Tabelle.</span></div>
+                <div class="param_control">
+                  <input id="ui_backup_table_row_height_px" type="number" min="9" max="60" />
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Sichtbare Zeilen (Backup-Liste)<span class="param_hint">Hoehe der Backup-Tabelle in Zeilen (scrollt bei mehr Eintraegen).</span></div>
+                <div class="param_control">
+                  <input id="ui_backup_visible_rows" type="number" min="5" max="200" data-ui="settings.ui_backup_visible_rows" title="settings.ui_backup_visible_rows" />
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Min. freier Speicher (MB)<span class="param_hint">Wenn kleiner als diese Schwelle, wird das Erstellen eines Backups abgelehnt (0 = deaktiviert).</span></div>
+                <div class="param_control">
+                  <input id="backup_min_free_mb" type="number" min="0" max="500000" data-ui="settings.backup_min_free_mb" title="settings.backup_min_free_mb" />
+                </div>
+              </div>
             </div>
-            <div>
-              <label>Tabellenzeilen Hoehe (px, Backup)</label>
-              <input id="ui_backup_table_row_height_px" type="number" min="9" max="60" />
-              <div class="muted">Wirkt nur auf die Backup-Tabelle.</div>
-            </div>
-            <div>
-              <label>Sichtbare Zeilen (Backup-Liste)</label>
-              <input id="ui_backup_visible_rows" type="number" min="5" max="200" data-ui="settings.ui_backup_visible_rows" title="settings.ui_backup_visible_rows" />
-              <div class="muted">Hoehe der Backup-Tabelle in Zeilen (scrollt bei mehr Eintraegen).</div>
-            </div>
-            <div>
-              <label>Min. freier Speicher (MB)</label>
-              <input id="backup_min_free_mb" type="number" min="0" max="500000" data-ui="settings.backup_min_free_mb" title="settings.backup_min_free_mb" />
-              <div class="muted">Wenn kleiner als diese Schwelle, wird das Erstellen eines Backups abgelehnt (0 = deaktiviert).</div>
-            </div>
-          </div>
           </div>
         </details>
 
@@ -689,18 +854,20 @@
         <details class="card" id="ui_restore" open data-ui="settings.ui.restore" title="settings.ui.restore">
           <summary><span class="ib_summary_row"><span>Restore</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Restore Details" data-info-body="Feinparameter fuer Restore (z.B. Preview-Lines, UI-Defaults)." >i</button></span></summary>
           <div class="card_body">
-          <div class="grid">
-            <div>
-              <label>Vorschauzeilen (Restore)</label>
-              <input id="restore_preview_lines" type="number" min="0" max="200" />
-              <div class="muted">Anzahl der ersten umgeschriebenen Line-Protocol Zeilen, die nach "Restore ausfuehren" angezeigt werden. Default: 5.</div>
+            <div class="grid">
+              <div class="param_row">
+                <div class="param_label">Vorschauzeilen (Restore)<span class="param_hint">Anzahl der ersten umgeschriebenen Line-Protocol Zeilen, die nach "Restore ausfuehren" angezeigt werden. Default: 5.</span></div>
+                <div class="param_control">
+                  <input id="restore_preview_lines" type="number" min="0" max="200" />
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Sichtbare Zeilen (Restore-Liste)<span class="param_hint">Hoehe der Restore-Backup-Liste in Zeilen (scrollt bei mehr Eintraegen).</span></div>
+                <div class="param_control">
+                  <input id="ui_restore_visible_rows" type="number" min="5" max="200" data-ui="settings.ui_restore_visible_rows" title="settings.ui_restore_visible_rows" />
+                </div>
+              </div>
             </div>
-            <div>
-              <label>Sichtbare Zeilen (Restore-Liste)</label>
-              <input id="ui_restore_visible_rows" type="number" min="5" max="200" data-ui="settings.ui_restore_visible_rows" title="settings.ui_restore_visible_rows" />
-              <div class="muted">Hoehe der Restore-Backup-Liste in Zeilen (scrollt bei mehr Eintraegen).</div>
-            </div>
-          </div>
           </div>
         </details>
 
@@ -709,31 +876,35 @@
 
     <details class="card" id="ui_page_jobs" data-ui="settings.ui.page_jobs" title="settings.ui.page_jobs">
       <summary><span class="ib_summary_row"><span>Jobs</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Jobs" data-info-body="Einstellungen fuer Background-Jobs (Limits/Timeouts/Auto-Cancel)." >i</button></span></summary>
-      <div class="card_body"><div class="muted">Derzeit keine zusaetzlichen UI-Settings fuer diese Seite.</div></div>
+      <div class="card_body"><div class="section_note"><span class="muted">Derzeit keine zusaetzlichen UI-Settings fuer diese Seite.</span></div></div>
     </details>
 
     <details class="card" id="ui_page_logs" data-ui="settings.ui.page_logs" title="settings.ui.page_logs">
       <summary><span class="ib_summary_row"><span>Logs</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Logs" data-info-body="Logging/Rotation/Profil und UI-Optionen fuer Logs-Seite." >i</button></span></summary>
-      <div class="card_body"><div class="muted">Hinweis: Logging-Settings findest du weiter unten im Bereich "Logs".</div></div>
+      <div class="card_body"><div class="section_note"><span class="muted">Hinweis: Logging-Settings findest du weiter unten im Bereich "Logs".</span></div></div>
     </details>
 
     <details class="card" id="ui_page_history" data-ui="settings.ui.page_history" title="settings.ui.page_history">
       <summary><span class="ib_summary_row"><span>History</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: History" data-info-body="Einstellungen fuer History-Seite (Anzeige/Limit/Logging)." >i</button></span></summary>
-      <div class="card_body"><div class="muted">Derzeit keine zusaetzlichen UI-Settings fuer diese Seite.</div></div>
+      <div class="card_body"><div class="section_note"><span class="muted">Derzeit keine zusaetzlichen UI-Settings fuer diese Seite.</span></div></div>
     </details>
 
     <details class="card" id="ui_page_export" data-ui="settings.ui.page_export" title="settings.ui.page_export">
       <summary><span class="ib_summary_row"><span>Export</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Export" data-info-body="Defaults/Limits fuer Export (Format, Delimiter, Download-Verhalten)." >i</button></span></summary>
-      <div class="card_body"><div class="muted">Derzeit keine zusaetzlichen UI-Settings fuer diese Seite.</div></div>
+      <div class="card_body"><div class="section_note"><span class="muted">Derzeit keine zusaetzlichen UI-Settings fuer diese Seite.</span></div></div>
     </details>
 
     <details class="card" id="ui_page_import" data-ui="settings.ui.page_import" title="settings.ui.page_import">
       <summary><span class="ib_summary_row"><span>Import</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Import" data-info-body="Defaults/Limits fuer Import (Backup vorher, Delete first, Vorschau)." >i</button></span></summary>
       <div class="card_body">
-        <div>
-          <label>Measurement-Transformationen</label>
-          <textarea id="import_measurement_transforms" rows="8"></textarea>
-          <div class="muted">Eine Regel pro Zeile im Format <code>Quelle;Ziel;Faktor</code>, z.B. <code>Wh;kWh;0.001</code>.</div>
+        <div class="grid">
+          <div class="param_row param_full">
+            <div class="param_label">Measurement-Transformationen</div>
+            <div class="param_control">
+              <textarea id="import_measurement_transforms" rows="8"></textarea>
+            </div>
+          </div>
+          <div class="section_note"><span class="muted">Eine Regel pro Zeile im Format <code>Quelle;Ziel;Faktor</code>, z.B. <code>Wh;kWh;0.001</code>.</span></div>
         </div>
       </div>
     </details>
@@ -744,115 +915,136 @@
   <details class="card" open data-ui="settings.section.logs" title="settings.section.logs">
     <summary><span class="ib_summary_row"><span>Logs</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Logs (Profil)" data-info-body="Erweitertes Logging: Profil, Rotation, Debug/Trace Optionen. Vorsicht: kann sehr viele Logzeilen erzeugen." >i</button></span></summary>
     <div class="card_body">
-    <div class="grid">
-      <div>
-        <label class="ib_chk_row"><input type="checkbox" id="log_to_file" data-ui="settings.log_to_file" title="settings.log_to_file" /><span>Logfile aktiv</span></label>
-        <div class="muted">Schreibt zusaetzlich nach <code>/data/influxbro.log</code> (Rotation).</div>
+      <div class="grid">
+        <div class="param_row">
+          <div class="param_label">Logfile aktiv</div>
+          <div class="param_control">
+            <label class="ib_chk_row"><input type="checkbox" id="log_to_file" data-ui="settings.log_to_file" title="settings.log_to_file" /><span></span></label>
+          </div>
+        </div>
+        <div class="section_note"><span class="muted">Schreibt zusaetzlich nach <code>/data/influxbro.log</code> (Rotation).</span></div>
+        <div class="param_row">
+          <div class="param_label">Log Stufe<span class="param_hint">TRACE loggt zusaetzlich interne Abfragen/Details.</span></div>
+          <div class="param_control">
+            <select id="log_profile" data-ui="settings.log_profile" title="settings.log_profile">
+              <option value="error">ERROR (nur Fehler)</option>
+              <option value="debug" selected>DEBUG</option>
+              <option value="trace">TRACE (Details)</option>
+            </select>
+          </div>
+        </div>
+        <div class="param_row">
+          <div class="param_label">Max MB pro Datei<span class="param_hint">Rotation nach Groesse.</span></div>
+          <div class="param_control">
+            <input id="log_max_mb" type="number" min="1" max="200" />
+          </div>
+        </div>
+        <div class="param_row">
+          <div class="param_label">Backups (Anzahl)<span class="param_hint">Begrenzt Gesamtgroesse (ca. MB * (Backups+1)).</span></div>
+          <div class="param_control">
+            <input id="log_backup_count" type="number" min="1" max="50" />
+          </div>
+        </div>
+        <div class="param_row">
+          <div class="param_label">Max Alter (Tage)<span class="param_hint">0 = deaktiviert.</span></div>
+          <div class="param_control">
+            <input id="log_max_age_days" type="number" min="0" max="365" />
+          </div>
+        </div>
+        <div class="param_row">
+          <div class="param_label">Bugreport Log-Historie (Stunden)<span class="param_hint">Begrenzt den Log-Ausschnitt im Debug-Report. Default: 1 Stunde.</span></div>
+          <div class="param_control">
+            <input id="bugreport_log_history_hours" type="number" min="1" max="168" />
+          </div>
+        </div>
+        <div class="param_row">
+          <div class="param_label">HTTP Request Logs</div>
+          <div class="param_control">
+            <label class="ib_chk_row"><input type="checkbox" id="log_http_requests" data-ui="settings.log_http_requests" title="settings.log_http_requests" /><span></span></label>
+          </div>
+        </div>
+        <div class="section_note"><span class="muted">Default: aus (sehr viele Zeilen).</span></div>
+        <div class="param_row">
+          <div class="param_label">Influx Query protokollieren</div>
+          <div class="param_control">
+            <label class="ib_chk_row"><input type="checkbox" id="log_influx_queries" data-ui="settings.log_influx_queries" title="settings.log_influx_queries" /><span></span></label>
+          </div>
+        </div>
+        <div class="section_note"><span class="muted">Schreibt Query-Strings ins Log (nur wenn Log Stufe TRACE aktiv ist).</span></div>
+        <div class="param_row">
+          <div class="param_label">logge Caching</div>
+          <div class="param_control">
+            <label class="ib_chk_row"><input type="checkbox" id="log_cache_usage" data-ui="settings.log_cache_usage" title="settings.log_cache_usage" /><span></span></label>
+          </div>
+        </div>
+        <div class="section_note"><span class="muted">Schreibt Cache-Nutzung (Jobs&Cache) ins Logfile (zusaetzlich zur Usage-Tabelle).</span></div>
       </div>
-      <div>
-        <label>Log Stufe</label>
-        <select id="log_profile" data-ui="settings.log_profile" title="settings.log_profile">
-          <option value="error">ERROR (nur Fehler)</option>
-          <option value="debug" selected>DEBUG</option>
-          <option value="trace">TRACE (Details)</option>
-        </select>
-        <div class="muted">TRACE loggt zusaetzlich interne Abfragen/Details.</div>
-      </div>
-      <div>
-        <label>Max MB pro Datei</label>
-        <input id="log_max_mb" type="number" min="1" max="200" />
-        <div class="muted">Rotation nach Groesse.</div>
-      </div>
-      <div>
-        <label>Backups (Anzahl)</label>
-        <input id="log_backup_count" type="number" min="1" max="50" />
-        <div class="muted">Begrenzt Gesamtgroesse (ca. MB * (Backups+1)).</div>
-      </div>
-      <div>
-        <label>Max Alter (Tage)</label>
-        <input id="log_max_age_days" type="number" min="0" max="365" />
-        <div class="muted">0 = deaktiviert.</div>
-      </div>
-      <div>
-        <label>Bugreport Log-Historie (Stunden)</label>
-        <input id="bugreport_log_history_hours" type="number" min="1" max="168" />
-        <div class="muted">Begrenzt den Log-Ausschnitt im Debug-Report. Default: 1 Stunde.</div>
-      </div>
-      <div>
-        <label class="ib_chk_row"><input type="checkbox" id="log_http_requests" data-ui="settings.log_http_requests" title="settings.log_http_requests" /><span>HTTP Request Logs</span></label>
-        <div class="muted">Default: aus (sehr viele Zeilen).</div>
-      </div>
-      <div>
-        <label class="ib_chk_row"><input type="checkbox" id="log_influx_queries" data-ui="settings.log_influx_queries" title="settings.log_influx_queries" /><span>Influx Query protokollieren</span></label>
-        <div class="muted">Schreibt Query-Strings ins Log (nur wenn Log Stufe TRACE aktiv ist).</div>
-      </div>
-      <div>
-        <label class="ib_chk_row"><input type="checkbox" id="log_cache_usage" data-ui="settings.log_cache_usage" title="settings.log_cache_usage" /><span>logge Caching</span></label>
-        <div class="muted">Schreibt Cache-Nutzung (Jobs&Cache) ins Logfile (zusaetzlich zur Usage-Tabelle).</div>
-      </div>
-    </div>
     </div>
   </details>
 
   <details class="card" open data-ui="settings.section.outliers" title="settings.section.outliers">
     <summary><span class="ib_summary_row"><span>Ausreisser</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Ausreisser" data-info-body="Grenzwerte fuer Ausreisser-Erkennung (maximaler Sprung pro Punkt).\n\nZiel:\n- Unplausible Messspruenge automatisch finden und in der Filtertabelle markieren.\n\nKonzept:\n- Default-Grenzen (W, kW, Wh, kWh) gelten global.\n- Zusatzgrenzen pro Unit koennen gepflegt werden.\n- Pro _measurement kann ein max_step ueberschrieben werden (Tabelle).\n\nHinweis:\n- Zu niedrige Grenzen erzeugen viele False-Positives; zu hohe Grenzen finden wenig." >i</button></span></summary>
     <div class="card_body">
-    <div class="grid">
-      <div class="span2">
-        <div class="muted">Werte gelten als "unsinnig", wenn ein Sprung groesser als diese Grenze ist (nur Counter-Regel).</div>
+      <div class="grid">
+        <div class="section_note"><span class="muted">Werte gelten als "unsinnig", wenn ein Sprung groesser als diese Grenze ist (nur Counter-Regel).</span></div>
+        <div class="param_row param_full">
+          <div class="param_label">Ausreisser Tabelle (_measurement / max_step)</div>
+          <div class="param_control">
+            <div class="table_wrap" data-ui="settings.outliers.table.wrap" title="settings.outliers.table.wrap">
+              <div class="table_head" data-ui="settings.outliers.table.head" title="settings.outliers.table.head">
+                <div class="tbl_actions" data-ui="settings.outliers.table.actions" title="settings.outliers.table.actions">
+                  <button id="outliers_autowidth" type="button" data-ui="settings.outliers.autofit" title="settings.outliers.autofit" aria-label="Auto-Fit" style="width:auto;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                      <path d="M5 5v14M19 5v14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                      <path d="M8 12h8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                      <path d="M10 10l-2 2 2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                      <path d="M14 10l2 2-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </button>
+                  <button id="outliers_windowwidth" type="button" data-ui="settings.outliers.windowfit" title="settings.outliers.windowfit" aria-label="Fensterbreite" style="width:auto;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                      <rect x="4" y="6" width="16" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
+                      <path d="M12 12H6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                      <path d="M6 12l2-2M6 12l2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                      <path d="M12 12h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                      <path d="M18 12l-2-2M18 12l-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </button>
+                  <label style="display:flex; align-items:center; gap: 6px; padding: 0 4px;"><input type="checkbox" id="outliers_wrap" data-ui="settings.outliers.wrap" title="settings.outliers.wrap"/>Umbruch</label>
+                  <label style="display:flex; align-items:center; gap: 6px; padding: 0 4px;"><input type="checkbox" id="outliers_colfilter" data-ui="settings.outliers.colfilter" title="settings.outliers.colfilter"/>Spaltenfilter</label>
+                </div>
+                <div class="muted" data-ui="settings.outliers.table.hint" title="settings.outliers.table.hint">_measurement ist nicht editierbar. Speichern uebernimmt die Tabelle in die Konfiguration. Wird fuer Counter-Ausreisser und dynamisches Graph-Sampling genutzt.</div>
+              </div>
+
+              <div class="table_box" id="outliers_box" style="max-height: 45vh; overflow:auto; border: 1px solid #eee; border-radius: 12px; margin-top: 8px;">
+                <table id="outliers_tbl" class="cfg_tbl ib_tbl" data-ui="settings.outliers.table" title="settings.outliers.table">
+                  <thead>
+                    <tr>
+                      <th data-key="measurement">_measurement</th>
+                      <th data-key="max_step">max_step</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-
-       <div class="span2">
-         <div class="table_wrap" data-ui="settings.outliers.table.wrap" title="settings.outliers.table.wrap">
-           <div class="table_title">Ausreisser Tabelle (_measurement / max_step)</div>
-           <div class="table_head" data-ui="settings.outliers.table.head" title="settings.outliers.table.head">
-             <div class="tbl_actions" data-ui="settings.outliers.table.actions" title="settings.outliers.table.actions">
-               <button id="outliers_autowidth" type="button" data-ui="settings.outliers.autofit" title="settings.outliers.autofit" aria-label="Auto-Fit" style="width:auto;">
-                 <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                   <path d="M5 5v14M19 5v14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                   <path d="M8 12h8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                   <path d="M10 10l-2 2 2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                   <path d="M14 10l2 2-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                 </svg>
-               </button>
-               <button id="outliers_windowwidth" type="button" data-ui="settings.outliers.windowfit" title="settings.outliers.windowfit" aria-label="Fensterbreite" style="width:auto;">
-                 <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                   <rect x="4" y="6" width="16" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
-                   <path d="M12 12H6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                   <path d="M6 12l2-2M6 12l2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                   <path d="M12 12h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                   <path d="M18 12l-2-2M18 12l-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                 </svg>
-               </button>
-               <label style="display:flex; align-items:center; gap: 6px; padding: 0 4px;"><input type="checkbox" id="outliers_wrap" data-ui="settings.outliers.wrap" title="settings.outliers.wrap"/>Umbruch</label>
-               <label style="display:flex; align-items:center; gap: 6px; padding: 0 4px;"><input type="checkbox" id="outliers_colfilter" data-ui="settings.outliers.colfilter" title="settings.outliers.colfilter"/>Spaltenfilter</label>
-             </div>
-             <div class="muted" data-ui="settings.outliers.table.hint" title="settings.outliers.table.hint">_measurement ist nicht editierbar. Speichern uebernimmt die Tabelle in die Konfiguration. Wird fuer Counter-Ausreisser und dynamisches Graph-Sampling genutzt.</div>
-           </div>
-
-           <div class="table_box" id="outliers_box" style="max-height: 45vh; overflow:auto; border: 1px solid #eee; border-radius: 12px; margin-top: 8px;">
-             <table id="outliers_tbl" class="cfg_tbl ib_tbl" data-ui="settings.outliers.table" title="settings.outliers.table">
-               <thead>
-                 <tr>
-                   <th data-key="measurement">_measurement</th>
-                   <th data-key="max_step">max_step</th>
-                 </tr>
-               </thead>
-               <tbody></tbody>
-             </table>
-           </div>
-         </div>
-       </div>
-     </div>
-     </div>
+    </div>
   </details>
 
-  <div class="card">
+  <div class="save_card">
     <div class="grid">
-      <div><button id="save" data-ui="settings.save" title="settings.save">Speichern</button></div>
+      <div class="param_row param_full">
+        <div class="param_label">Speichern</div>
+        <div class="param_control">
+          <button id="save" data-ui="settings.save" title="settings.save" class="btn_sm">Speichern</button>
+        </div>
+      </div>
+      <div id="err" class="err"></div>
+      <div id="ok" class="ok"></div>
     </div>
-    <div id="err" class="err"></div>
-    <div id="ok" class="ok"></div>
   </div>
 
 <script>

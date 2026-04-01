@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.12.185
+
+### Enhancement
+
+- Einstellungen: Komplett neues iOS-Style Layout mit Parameter-Zeilen (Label links, Eingabefeld rechts) statt bisheriger Karten-Ansicht (Label ueber Eingabefeld).
+- Einstellungen: Untergeordnete Bereiche als aufklappbare Sub-Sektionen innerhalb der Hauptbereiche.
+- Einstellungen: Neue CSS-Klassen `.param_row`, `.param_label`, `.param_control`, `.section_note`, `.sub_section` fuer das neue Layout.
+- Einstellungen: Farb-Picker und Checkboxen in das neue Zeilen-Layout integriert.
+- Einstellungen: Speichern-Button als eigene `save_card` Sektion am Ende.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.184
 
 ### Enhancement
