@@ -303,3 +303,72 @@ This is a child of the filter selection field (inherits everything above) plus:
 - The select provides the same interval options as used in Dashboard/Backup selection.
 - If a range is selected, show the resolved start/stop timestamps in the label row (same line) after `(n)`.
 - Width must be large enough so that `Name + (n) + range` fits in one line.
+
+## Logging Requirements
+
+### Backend Logging (app.py)
+
+Every API endpoint MUST log:
+
+1. **Entry log** – when the endpoint is called, with key parameters
+2. **Result log** – when the endpoint completes successfully, with result summary
+3. **Error log** – when the endpoint fails, with error message and stacktrace (`exc_info=True`)
+
+Standard pattern:
+
+```python
+@app.post("/api/example")
+def api_example():
+    body = request.get_json(force=True) or {}
+    LOG.info("api.example called from=%s param1=%s param2=%s",
+        request.remote_addr, body.get("param1",""), body.get("param2",""))
+    t0 = time.monotonic()
+    try:
+        ...
+        dur_ms = int((time.monotonic() - t0) * 1000)
+        LOG.info("api.example done from=%s result=%s dur=%dms",
+            request.remote_addr, result_summary, dur_ms)
+        return jsonify({"ok": True, ...})
+    except Exception as e:
+        dur_ms = int((time.monotonic() - t0) * 1000)
+        LOG.error("api.example error: %s dur=%dms", e, dur_ms, exc_info=True)
+        return jsonify({"ok": False, "error": str(e)}), 500
+```
+
+Log format: `key=value` pairs, one line per log entry.
+
+Required fields in entry logs:
+- `from=` – client IP (`request.remote_addr`)
+- Key parameters (measurement, field, entity_id, action type, etc.)
+
+Required fields in result logs:
+- `from=` – client IP
+- Result summary (rows count, found count, success/failure)
+- `dur=` – duration in milliseconds
+
+### Client-Side Logging
+
+Every page MUST:
+
+1. **Report page view** on load via `POST ./api/page_view` with `{page: pathname}`
+2. **Report UI actions** via `POST ./api/ui_event` for:
+   - Button clicks (with `data-ui` attribute or element id)
+   - Select changes (element id, new value)
+   - Checkbox changes (element id, on/off)
+
+Implementation: Global action reporter in `_topbar.html` that:
+- Sends `page_view` on every page load
+- Listens for `click` and `change` events on buttons, selects, checkboxes
+- Throttles reports to 300ms to avoid flooding
+- Uses `data-ui` attribute for consistent naming, falls back to element id
+
+### What MUST Be Logged
+
+| Category | Examples |
+|---|---|
+| Page views | Every page navigation/load |
+| UI actions | Button clicks, select changes, checkbox toggles |
+| API calls | All `/api/*` endpoint invocations |
+| Config changes | Which fields were changed in `/api/config` POST |
+| Errors | All exceptions with stacktrace |
+| Duration | All API call durations in milliseconds |
