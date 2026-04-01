@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.12.189
+
+### Enhancement
+
+- Alle Funktionsseiten: Settings-Button (Zahnrad-Icon) jetzt automatisch in jedem aufklappbaren Bereich links neben dem Info-Button.
+- Wird zentral ueber `_topbar.html` fuer alle Seiten eingefuegt (Dashboard, Statistik, Logs, Backup, Restore, Combine, Export, Import, Quality, Monitor, History, Jobs, etc.).
+- Klick auf den Settings-Button springt direkt zu den Einstellungen (`./config`).
+- Einstellungsseite selbst ist ausgenommen (hat bereits Zurueck-Buttons).
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.188
 
 ### Enhancement
