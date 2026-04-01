@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.12.190
+
+### Enhancement
+
+- Raw-Tabelle wird jetzt NUR noch bei Ausreisser-Navigation befuellt (Suche abgeschlossen, Naechster/Vorheriger Button, Klick auf Ausreisser-Zeile).
+- Raw-Tabelle wird NICHT mehr bei Entity-Wechsel, Graph-Zoom oder Graph-Klick befuellt.
+- Graph-Klick markiert jetzt nur noch den entsprechenden Ausreisser in der Uebersichtstabelle (falls vorhanden), ohne Raw-Daten zu laden.
+- Ausreisser-Ergebnisse bleiben beim Wechsel des Graph-Zeitraums erhalten.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.189
 
 ### Enhancement

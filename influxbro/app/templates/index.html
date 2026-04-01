@@ -2909,7 +2909,25 @@ function drawPlotly(rows){
           }catch(e){ ms = null; }
           if(!(isFinite(ms) && ms > 0)) return;
           _setGraphSelection(ms, y);
-          _jumpToRawByMs(ms).catch(()=>{});
+
+          // Mark outlier in overview table if present, but do NOT load raw data
+          if(RAW_OUTLIER_MAP && RAW_OUTLIER_MAP[String(new Date(ms).toISOString())]){
+            const iso = new Date(ms).toISOString();
+            const filtered = getFilteredOutliers();
+            for(let i = 0; i < filtered.length; i++){
+              if(String(filtered[i].time) === iso){
+                RAW_OUTLIER_INDEX = i;
+                _updateOutlierNavStatus();
+                // Highlight row in overview table
+                try{
+                  const trs = Array.from($rawOutlierBody.querySelectorAll('tr'));
+                  trs.forEach(t => t.classList.remove('raw_hl', 'raw_outlier'));
+                  if(trs[i]) trs[i].classList.add('raw_hl', 'raw_outlier');
+                }catch(e){}
+                break;
+              }
+            }
+          }
         }catch(e){}
       });
     }catch(e){}
@@ -4740,7 +4758,11 @@ async function runRawOutlierSearch(){
       return (isFinite(ta) && isFinite(tb)) ? (ta - tb) : 0;
     });
     renderOutlierOverviewTable();
-    renderRawTable();
+    if(RAW_OUTLIER_RESULTS.length > 0){
+      await loadRawFromGraph(true);
+    }else{
+      renderRawTable();
+    }
     if(RAW_OUTLIER_RESULTS.length > 0){
       if($rawJumpOldest) $rawJumpOldest.disabled = false;
       if($rawJumpNewest) $rawJumpNewest.disabled = false;
@@ -4876,7 +4898,11 @@ async function runRawOutlierSearch(){
     }catch(e){}
 
     renderOutlierOverviewTable();
-    renderRawTable();
+    if(RAW_OUTLIER_RESULTS.length > 0){
+      await loadRawFromGraph(true);
+    }else{
+      renderRawTable();
+    }
     stopRawOutlierUi(true);
 
     if(RAW_OUTLIER_RESULTS.length > 0){
@@ -5539,9 +5565,6 @@ async function loadRawFromGraph(reset){
     RAW_META = null;
     RAW_HISTORY_BY_KEY = new Map();
     RAW_UNDOABLE_BY_KEY = new Map();
-    RAW_OUTLIER_RESULTS = [];
-    RAW_OUTLIER_INDEX = -1;
-    RAW_OUTLIER_MAP = null;
     if($rawJumpOldest) $rawJumpOldest.disabled = true;
     if($rawJumpNewest) $rawJumpNewest.disabled = true;
     if($rawSearchClear) $rawSearchClear.style.display = 'none';
