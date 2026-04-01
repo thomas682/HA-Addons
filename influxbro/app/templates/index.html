@@ -457,6 +457,11 @@
           <input id="raw_center_range" type="number" min="0" max="2000" step="1" value="100" style="height:34px; padding: 6px 10px; width: 140px;" />
         </div>
         <div class="muted" id="raw_center_range_hint">Zeitfenster um den selektierten Messwert herum in Minuten. Speicherung erfolgt automatisch im Browser.</div>
+        <div style="display:flex; flex-direction:column; gap: 4px; min-width: 170px;">
+          <label for="raw_outlier_context_rows">Zeilen vor/nach Ausreisser</label>
+          <input id="raw_outlier_context_rows" type="number" min="1" max="500" step="1" value="10" style="height:34px; padding: 6px 10px; width: 140px;" />
+        </div>
+        <div class="muted" id="raw_outlier_context_hint">Anzahl Zeilen die vor und nach einem Ausreisser in der Raw-Tabelle angezeigt werden.</div>
       </div>
 
       <div id="raw_status" style="display:none; margin-top: 6px; font-size: 12px; opacity: 0.85; align-items:center; gap: 8px;" data-ui="raw.status" title="raw.status">
@@ -467,6 +472,7 @@
 
       <div class="tbl_actions" style="justify-content:flex-start; margin-top: 8px;" data-ui="raw.actions" title="raw.actions">
         <button class="btn_sm" id="raw_refresh" type="button" data-ui="raw.refresh" title="raw.refresh" aria-label="Raw Daten aktualisieren"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M18.6091 5.89092L15.5 9H21.5V3L18.6091 5.89092ZM18.6091 5.89092C16.965 4.1131 14.6125 3 12 3C7.36745 3 3.55237 6.50005 3.05493 11M5.39092 18.1091L2.5 21V15H8.5L5.39092 18.1091ZM5.39092 18.1091C7.03504 19.8869 9.38753 21 12 21C16.6326 21 20.4476 17.5 20.9451 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
+        <button class="btn_sm" id="raw_all_time" type="button" data-ui="raw.all_time" title="raw.all_time" aria-label="Zeitraum Alle"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
         <button class="btn_sm" id="raw_autowidth" data-ui="raw.autowidth" title="raw.autowidth" aria-label="Spaltenbreite automatisch">
           <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <path d="M5 5v14M19 5v14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -500,6 +506,25 @@
       <div id="raw_search_bar" style="display:none; border:1px solid #eee; border-radius:12px; padding:10px 12px; margin-top:10px; background:#fafafa;">
         <div style="display:flex; align-items:flex-start; gap:10px; flex-wrap:wrap;">
           <div style="display:flex; flex-direction:column; gap:4px;">
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+              <button class="btn_sm" id="raw_search_run">Suchen</button>
+              <button class="btn_sm" id="raw_jump_oldest" disabled title="ältester Ausreisser">
+                <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path d="M7 7v10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                  <path d="M17 17l-5-5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
+              <button class="btn_sm" id="raw_jump_newest" disabled title="neuster Ausreisser">
+                <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path d="M17 7v10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                  <path d="M7 7l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
+              <button class="btn_sm" id="raw_search_clear" style="display:none;">Suche beenden</button>
+              <button class="btn_sm" id="raw_search_abort" style="display:none;">Abbruch</button>
+            </div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:4px;">
             <select id="raw_outlier_types" multiple style="height:auto; min-height:68px; padding:4px; border:1px solid #ddd; border-radius:8px; min-width:200px;">
               <option value="counter">Counter Ausreisser</option>
               <option value="decrease">Counter Abfall</option>
@@ -513,26 +538,16 @@
               <button class="btn_sm" id="raw_outlier_select_none">Keiner</button>
             </div>
           </div>
-          <div style="display:flex; flex-direction:column; gap:4px;">
-            <div style="display:flex; gap:6px; flex-wrap:wrap;">
-              <button class="btn_sm" id="raw_search_run">Suchen</button>
-              <button class="btn_sm" id="raw_search_start" disabled>Anzeige ab Beginn</button>
-              <button class="btn_sm" id="raw_search_prev" disabled>Zurück</button>
-              <button class="btn_sm" id="raw_search_next" disabled>Nächster</button>
-              <button class="btn_sm" id="raw_search_clear" style="display:none;">Suche beenden</button>
-              <button class="btn_sm" id="raw_search_abort" style="display:none;">Abbruch</button>
+          <div id="raw_outlier_inputs" style="display:none; flex-direction:column; gap:6px;">
+            <div id="raw_scan_counter" style="display:none;">
+              <label style="font-size:12px;">Max Sprung (optional)</label>
+              <input id="raw_out_max_step" placeholder="(auto)" style="width:120px;" />
             </div>
-            <div id="raw_outlier_inputs" style="display:none; flex-direction:column; gap:6px;">
-              <div id="raw_scan_counter" style="display:none;">
-                <label style="font-size:12px;">Max Sprung (optional)</label>
-                <input id="raw_out_max_step" placeholder="(auto)" style="width:120px;" />
-              </div>
-              <div id="raw_scan_bounds" style="display:none; display:none;">
-                <label style="font-size:12px;">Grenzen (Min/Max)</label>
-                <div style="display:flex; gap:6px;">
-                  <input id="raw_out_min" placeholder="Min" style="width:80px;" />
-                  <input id="raw_out_max" placeholder="Max" style="width:80px;" />
-                </div>
+            <div id="raw_scan_bounds" style="display:none;">
+              <label style="font-size:12px;">Grenzen (Min/Max)</label>
+              <div style="display:flex; gap:6px;">
+                <input id="raw_out_min" placeholder="Min" style="width:80px;" />
+                <input id="raw_out_max" placeholder="Max" style="width:80px;" />
               </div>
             </div>
           </div>
@@ -543,6 +558,15 @@
           <span id="raw_outlier_status_meta"></span>
           <span id="raw_outlier_status_now"></span>
           <span id="raw_outlier_status_time"></span>
+        </div>
+      </div>
+
+      <div id="raw_outlier_overview_box" style="display:none; margin-top:10px;">
+        <div class="table_box" id="raw_outlier_overview" style="--max-rows: 20;">
+          <table id="raw_outlier_tbl" class="list_tbl ib_tbl" data-ui="raw.outlier_table" title="raw.outlier_table">
+            <thead><tr><th style="min-width: 170px;">Zeit</th><th>Wert</th><th style="min-width: 220px;">Änderung</th><th style="min-width: 140px;">Ausreisser</th></tr></thead>
+            <tbody id="raw_outlier_body"></tbody>
+          </table>
         </div>
       </div>
 
@@ -956,9 +980,8 @@ const $rawAutoWidth = document.getElementById('raw_autowidth');
 const $rawSearchBar = document.getElementById('raw_search_bar');
 const $rawOutlierTypes = document.getElementById('raw_outlier_types');
 const $rawSearchRun = document.getElementById('raw_search_run');
-const $rawSearchStart = document.getElementById('raw_search_start');
-const $rawSearchPrev = document.getElementById('raw_search_prev');
-const $rawSearchNext = document.getElementById('raw_search_next');
+const $rawJumpOldest = document.getElementById('raw_jump_oldest');
+const $rawJumpNewest = document.getElementById('raw_jump_newest');
 const $rawSearchClear = document.getElementById('raw_search_clear');
 const $rawSearchAbort = document.getElementById('raw_search_abort');
 const $rawOutlierStatus = document.getElementById('raw_outlier_status');
@@ -975,6 +998,10 @@ const $rawScanBounds = document.getElementById('raw_scan_bounds');
 const $rawOutMaxStep = document.getElementById('raw_out_max_step');
 const $rawOutMin = document.getElementById('raw_out_min');
 const $rawOutMax = document.getElementById('raw_out_max');
+const $rawAllTime = document.getElementById('raw_all_time');
+const $rawOutlierOverviewBox = document.getElementById('raw_outlier_overview_box');
+const $rawOutlierBody = document.getElementById('raw_outlier_body');
+const $rawOutlierContextRows = document.getElementById('raw_outlier_context_rows');
 const $rawWindowWidth = document.getElementById('raw_windowwidth');
 const $rawWrap = document.getElementById('raw_wrap');
 const $rawColFilter = document.getElementById('raw_colfilter');
@@ -1629,6 +1656,7 @@ function saveState(){
       graph_window_stop_ms: TABLE_TIME.graph_stop_ms,
       raw_time_from_graph: RAW_TIME_FROM_GRAPH,
       raw_center_range: RAW_CENTER_RANGE,
+      raw_outlier_context_rows: RAW_OUTLIER_CONTEXT_ROWS,
     };
     localStorage.setItem(LS_KEY, JSON.stringify(j));
   }catch(e){}
@@ -3533,6 +3561,10 @@ async function loadUiConfig(){
     }
     if($rawCenterRangeHint) $rawCenterRangeHint.textContent = `Zeitfenster um den selektierten Messwert herum in Minuten. Bei weniger als ${UI_RAW_CENTER_MIN_POINTS} Punkten pro Seite erweitert InfluxBro automatisch in 100-Minuten-Schritten. Max Eingabe: ${UI_RAW_CENTER_MAX_POINTS} min.`;
 
+    const ocr = Number(cfg.ui_raw_outlier_context_rows);
+    if(isFinite(ocr) && ocr >= 1 && ocr <= 500) RAW_OUTLIER_CONTEXT_ROWS = Math.trunc(ocr);
+    if($rawOutlierContextRows) $rawOutlierContextRows.value = String(RAW_OUTLIER_CONTEXT_ROWS);
+
     const fs = Number(cfg.ui_font_size_px);
     if(isFinite(fs) && fs >= 10 && fs <= 22) document.documentElement.style.setProperty("--ui-font", fs + "px");
     const fss = Number(cfg.ui_font_small_px);
@@ -4232,6 +4264,7 @@ let RAW_OUTLIER_TIMER = null;
 let RAW_OUTLIER_META_TEXT = "";
 let RAW_OUTLIER_SCANNED_TOTAL = 0;
 let RAW_OUTLIER_ABORT = null;
+let RAW_OUTLIER_CONTEXT_ROWS = 10;
 let GRAPH_QUERY_DASH_AT = "";
 let GRAPH_QUERY_EDIT_AT = "";
 let APPLY_QUERY_LAST_AT = "";
@@ -4454,8 +4487,6 @@ function _rawOutlierMetaFromPayload(p){
   if(p.field) parts.push('F=' + p.field);
   if(p.entity_id) parts.push('E=' + p.entity_id);
   if(p.friendly_name) parts.push('N=' + p.friendly_name);
-  const types = (p.search_types || []).join(', ');
-  if(types) parts.push('Typen=' + types);
   return parts.join(' | ');
 }
 
@@ -4471,14 +4502,17 @@ function _rawOutlierApplyPresetVisibility(){
   }
 }
 
+function getFilteredOutliers(){
+  const types = Array.from($rawOutlierTypes.selectedOptions).map(o => o.value);
+  if(!types.length) return RAW_OUTLIER_RESULTS;
+  return RAW_OUTLIER_RESULTS.filter(r => {
+    const rTypes = r.types || [];
+    return types.some(t => rTypes.includes(t));
+  });
+}
+
 async function runRawOutlierSearch(){
   if(RAW_OUTLIER_SEARCHING) return;
-  const types = Array.from($rawOutlierTypes.selectedOptions).map(o => o.value);
-  if(!types.length){
-    if($rawOutlierStatusTxt) $rawOutlierStatusTxt.textContent = 'Kein Ausreisser-Typ ausgewaehlt.';
-    return;
-  }
-
   const win = _rawWindowIso();
   if(!win || !win.start || !win.stop){
     if($rawOutlierStatusTxt) $rawOutlierStatusTxt.textContent = 'Kein gueltiger Zeitraum gewaehlt.';
@@ -4505,7 +4539,7 @@ async function runRawOutlierSearch(){
 
   const unit = (HA_ENTITY_INFO && HA_ENTITY_INFO.entity && HA_ENTITY_INFO.entity.unit_of_measurement)
     ? String(HA_ENTITY_INFO.entity.unit_of_measurement) : '';
-  const baseMeta = _rawOutlierMetaFromPayload({...base, search_types: types});
+  const baseMeta = _rawOutlierMetaFromPayload(base);
   const overallSpanTxt = 'Suchbereich: ' + fmtTs(win.start) + ' bis ' + fmtTs(win.stop);
 
   startRawOutlierUi(baseMeta);
@@ -4518,6 +4552,9 @@ async function runRawOutlierSearch(){
 
   if($rawSearchRun) $rawSearchRun.disabled = true;
   if($rawSearchAbort) $rawSearchAbort.style.display = 'inline-block';
+  if($rawJumpOldest) $rawJumpOldest.disabled = true;
+  if($rawJumpNewest) $rawJumpNewest.disabled = true;
+  if($rawOutlierOverviewBox) $rawOutlierOverviewBox.style.display = 'none';
 
   try{
     const spanMs = Math.max(0, stopMs - startMs);
@@ -4557,7 +4594,7 @@ async function runRawOutlierSearch(){
         friendly_name: base.friendly_name,
         start: aIso,
         stop: bIso,
-        search_types: types,
+        search_types: ['counter', 'decrease', 'bounds', 'fault_phase', 'null', 'zero'],
         unit: unit,
         prev_value: prevValue,
         counter_base_value: counterBase,
@@ -4604,12 +4641,21 @@ async function runRawOutlierSearch(){
       if($rawOutlierStatusTxt) $rawOutlierStatusTxt.textContent = 'Ausreisser gefunden: ' + RAW_OUTLIER_RESULTS.length + ' | geprueft: ' + scannedTotal;
     }
 
+    RAW_OUTLIER_RESULTS.sort((a, b) => {
+      const ta = Date.parse(String(a.time || ''));
+      const tb = Date.parse(String(b.time || ''));
+      return (isFinite(ta) && isFinite(tb)) ? (ta - tb) : 0;
+    });
+
+    renderOutlierOverviewTable();
     renderRawTable();
     stopRawOutlierUi(true);
 
     if(RAW_OUTLIER_RESULTS.length > 0){
-      if($rawSearchStart) $rawSearchStart.disabled = false;
+      if($rawJumpOldest) $rawJumpOldest.disabled = false;
+      if($rawJumpNewest) $rawJumpNewest.disabled = false;
       if($rawSearchClear) $rawSearchClear.style.display = 'inline-block';
+      jumpToOldestOutlier().catch(()=>{});
     }
   }catch(e){
     if(e && e.aborted){
@@ -4626,22 +4672,35 @@ async function runRawOutlierSearch(){
   }
 }
 
-function displayOutliersFromStart(){
-  if(!RAW_OUTLIER_RESULTS.length){
-    if($rawOutlierStatusTxt) $rawOutlierStatusTxt.textContent = 'Keine Ausreisser gefunden.';
+function jumpToOldestOutlier(){
+  if(!RAW_OUTLIER_RESULTS.length) return;
+  const filtered = getFilteredOutliers();
+  if(!filtered.length){
+    if($rawOutlierStatusTxt) $rawOutlierStatusTxt.textContent = 'Kein Ausreisser mit diesem Filter.';
     return;
   }
   RAW_OUTLIER_INDEX = 0;
   highlightOutlierAtIndex(0).catch(()=>{});
   _updateOutlierNavStatus();
-  if($rawSearchPrev) $rawSearchPrev.disabled = false;
-  if($rawSearchNext) $rawSearchNext.disabled = false;
+}
+
+function jumpToNewestOutlier(){
+  if(!RAW_OUTLIER_RESULTS.length) return;
+  const filtered = getFilteredOutliers();
+  if(!filtered.length){
+    if($rawOutlierStatusTxt) $rawOutlierStatusTxt.textContent = 'Kein Ausreisser mit diesem Filter.';
+    return;
+  }
+  RAW_OUTLIER_INDEX = filtered.length - 1;
+  highlightOutlierAtIndex(filtered.length - 1).catch(()=>{});
+  _updateOutlierNavStatus();
 }
 
 function jumpToNextOutlier(){
-  if(!RAW_OUTLIER_RESULTS.length) return;
+  const filtered = getFilteredOutliers();
+  if(!filtered.length) return;
   RAW_OUTLIER_INDEX++;
-  if(RAW_OUTLIER_INDEX >= RAW_OUTLIER_RESULTS.length){
+  if(RAW_OUTLIER_INDEX >= filtered.length){
     RAW_OUTLIER_INDEX = 0;
   }
   highlightOutlierAtIndex(RAW_OUTLIER_INDEX).catch(()=>{});
@@ -4649,18 +4708,20 @@ function jumpToNextOutlier(){
 }
 
 function jumpToPrevOutlier(){
-  if(!RAW_OUTLIER_RESULTS.length) return;
+  const filtered = getFilteredOutliers();
+  if(!filtered.length) return;
   RAW_OUTLIER_INDEX--;
   if(RAW_OUTLIER_INDEX < 0){
-    RAW_OUTLIER_INDEX = RAW_OUTLIER_RESULTS.length - 1;
+    RAW_OUTLIER_INDEX = filtered.length - 1;
   }
   highlightOutlierAtIndex(RAW_OUTLIER_INDEX).catch(()=>{});
   _updateOutlierNavStatus();
 }
 
 async function highlightOutlierAtIndex(idx){
-  if(idx < 0 || idx >= RAW_OUTLIER_RESULTS.length) return;
-  const result = RAW_OUTLIER_RESULTS[idx];
+  const filtered = getFilteredOutliers();
+  if(idx < 0 || idx >= filtered.length) return;
+  const result = filtered[idx];
   const ms = Date.parse(String(result.time || ''));
   if(!isFinite(ms)) return;
 
@@ -4688,17 +4749,57 @@ async function highlightOutlierAtIndex(idx){
 }
 
 function _updateOutlierNavStatus(){
-  if(!RAW_OUTLIER_RESULTS.length || RAW_OUTLIER_INDEX < 0){
+  const filtered = getFilteredOutliers();
+  if(!filtered.length || RAW_OUTLIER_INDEX < 0){
     if($rawOutlierStatusTxt) $rawOutlierStatusTxt.textContent = 'Keine Ausreisser.';
     return;
   }
-  const result = RAW_OUTLIER_RESULTS[RAW_OUTLIER_INDEX];
+  const result = filtered[RAW_OUTLIER_INDEX];
   if($rawOutlierStatusTxt) $rawOutlierStatusTxt.textContent =
-    'Ausreisser ' + (RAW_OUTLIER_INDEX + 1) + ' / ' + RAW_OUTLIER_RESULTS.length +
+    'Ausreisser ' + (RAW_OUTLIER_INDEX + 1) + ' / ' + filtered.length +
     ' | ' + (result.reason || '') +
     ' | ' + fmtTs(result.time);
-  if($rawSearchPrev) $rawSearchPrev.disabled = false;
-  if($rawSearchNext) $rawSearchNext.disabled = false;
+}
+
+function renderOutlierOverviewTable(){
+  if(!$rawOutlierBody) return;
+  $rawOutlierBody.innerHTML = '';
+  const filtered = getFilteredOutliers();
+  if(!filtered.length){
+    if($rawOutlierOverviewBox) $rawOutlierOverviewBox.style.display = 'none';
+    return;
+  }
+  if($rawOutlierOverviewBox) $rawOutlierOverviewBox.style.display = 'block';
+
+  filtered.forEach((r, idx) => {
+    const tr = document.createElement('tr');
+    try{
+      const ms = Date.parse(String(r.time || ''));
+      if(isFinite(ms)) tr.setAttribute('data-ts-ms', String(ms));
+    }catch(e){}
+    const tdT = document.createElement('td');
+    tdT.textContent = fmtTs(r.time);
+    const tdV = document.createElement('td');
+    tdV.textContent = fmtNum(r.value);
+    const tdH = document.createElement('td');
+    tdH.textContent = '';
+    const tdO = document.createElement('td');
+    tdO.style.fontSize = '11px';
+    tdO.textContent = r.reason || '';
+    tdO.style.color = '#b00020';
+    tr.appendChild(tdT);
+    tr.appendChild(tdV);
+    tr.appendChild(tdH);
+    tr.appendChild(tdO);
+
+    tr.addEventListener('click', ()=>{
+      RAW_OUTLIER_INDEX = idx;
+      highlightOutlierAtIndex(idx).catch(()=>{});
+      _updateOutlierNavStatus();
+    });
+
+    $rawOutlierBody.appendChild(tr);
+  });
 }
 
 function highlightOutlierRow(ms){
@@ -4744,10 +4845,11 @@ function clearRawOutlierSearch(){
   if($rawOutlierStatusNow) $rawOutlierStatusNow.textContent = '';
   if($rawOutlierStatusTime) $rawOutlierStatusTime.textContent = '';
   if($rawOutlierStatus) $rawOutlierStatus.style.display = 'none';
-  if($rawSearchStart) $rawSearchStart.disabled = true;
-  if($rawSearchPrev) $rawSearchPrev.disabled = true;
-  if($rawSearchNext) $rawSearchNext.disabled = true;
+  if($rawJumpOldest) $rawJumpOldest.disabled = true;
+  if($rawJumpNewest) $rawJumpNewest.disabled = true;
   if($rawSearchClear) $rawSearchClear.style.display = 'none';
+  if($rawOutlierOverviewBox) $rawOutlierOverviewBox.style.display = 'none';
+  if($rawOutlierBody) $rawOutlierBody.innerHTML = '';
   renderRawTable();
 }
 
@@ -5105,6 +5207,41 @@ try{
 
 try{ updateRawToolbarState(); }catch(e){}
 
+async function setRawTimeToAll(){
+  const base = currentFilters();
+  if(!base.measurement || !base.field){
+    err("Measurement oder Field fehlt.");
+    return;
+  }
+  try{
+    const payload = {
+      measurement: base.measurement,
+      field: base.field,
+      entity_id: base.entity_id,
+      friendly_name: base.friendly_name,
+      start: new Date(0).toISOString(),
+      stop: new Date().toISOString(),
+      limit: 1,
+      offset: 0,
+      include_total: false,
+    };
+    const j = await api("./api/raw_points", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)});
+    const meta = j.meta || {};
+    if(meta.oldest_time && meta.newest_time){
+      const oldestMs = Date.parse(String(meta.oldest_time));
+      const newestMs = Date.parse(String(meta.newest_time));
+      if(isFinite(oldestMs) && isFinite(newestMs)){
+        TABLE_TIME.graph_start_ms = oldestMs;
+        TABLE_TIME.graph_stop_ms = newestMs;
+        saveState();
+        scheduleRawReload(true);
+      }
+    }
+  }catch(e){
+    err("Zeitraum Alle: " + (e && e.message ? e.message : String(e)));
+  }
+}
+
 function _rawStatusStart(txt){
   try{
     if(!$rawStatus) return;
@@ -5190,7 +5327,7 @@ async function loadRawFromGraph(reset){
 
     let j = null;
     if(useCenter){
-      const minPoints = Math.max(1, Math.trunc(Number(UI_RAW_CENTER_MIN_POINTS || 10)));
+      const minPoints = Math.max(1, Math.trunc(Number(RAW_OUTLIER_CONTEXT_ROWS || UI_RAW_CENTER_MIN_POINTS || 10)));
       let centerMinutes = Math.max(0, clampRawCenterRange(RAW_CENTER_RANGE));
       payload.mode = 'center';
       payload.anchor_time = anchorIso;
@@ -7419,6 +7556,8 @@ try{
       if($rawTimeFromGraph) $rawTimeFromGraph.checked = RAW_TIME_FROM_GRAPH;
       RAW_CENTER_RANGE = (st.raw_center_range !== undefined) ? clampRawCenterRange(st.raw_center_range) : clampRawCenterRange(RAW_CENTER_RANGE);
       if($rawCenterRange) $rawCenterRange.value = String(RAW_CENTER_RANGE);
+      RAW_OUTLIER_CONTEXT_ROWS = (st.raw_outlier_context_rows !== undefined) ? Math.max(1, Math.min(500, Number(st.raw_outlier_context_rows))) : RAW_OUTLIER_CONTEXT_ROWS;
+      if($rawOutlierContextRows) $rawOutlierContextRows.value = String(RAW_OUTLIER_CONTEXT_ROWS);
     }catch(e){}
 
     renderStats();
@@ -7592,26 +7731,39 @@ try{
 try{
   if($rawSearchBar) $rawSearchBar.style.display = ($rawSection && $rawSection.open) ? 'block' : 'none';
   if($rawSearchRun) $rawSearchRun.addEventListener('click', ()=>{ runRawOutlierSearch().catch(()=>{}); });
-  if($rawSearchStart) $rawSearchStart.addEventListener('click', ()=>{ displayOutliersFromStart(); });
-  if($rawSearchPrev) $rawSearchPrev.addEventListener('click', ()=>{ jumpToPrevOutlier(); });
-  if($rawSearchNext) $rawSearchNext.addEventListener('click', ()=>{ jumpToNextOutlier(); });
+  if($rawJumpOldest) $rawJumpOldest.addEventListener('click', ()=>{ jumpToOldestOutlier(); });
+  if($rawJumpNewest) $rawJumpNewest.addEventListener('click', ()=>{ jumpToNewestOutlier(); });
   if($rawSearchClear) $rawSearchClear.addEventListener('click', ()=>{ clearRawOutlierSearch(); });
   if($rawSearchAbort) $rawSearchAbort.addEventListener('click', ()=>{
     try{
       if(RAW_OUTLIER_ABORT) RAW_OUTLIER_ABORT.abort();
     }catch(e){}
   });
-  if($rawOutlierTypes) $rawOutlierTypes.addEventListener('change', ()=>{ _rawOutlierApplyPresetVisibility(); });
+  if($rawOutlierTypes) $rawOutlierTypes.addEventListener('change', ()=>{ _rawOutlierApplyPresetVisibility(); renderOutlierOverviewTable(); });
   if($rawOutlierSelectAll){
     $rawOutlierSelectAll.addEventListener('click', ()=>{
       Array.from($rawOutlierTypes.options).forEach(o => o.selected = true);
       _rawOutlierApplyPresetVisibility();
+      renderOutlierOverviewTable();
     });
   }
   if($rawOutlierSelectNone){
     $rawOutlierSelectNone.addEventListener('click', ()=>{
       Array.from($rawOutlierTypes.options).forEach(o => o.selected = false);
       _rawOutlierApplyPresetVisibility();
+      renderOutlierOverviewTable();
+    });
+  }
+  if($rawAllTime) $rawAllTime.addEventListener('click', ()=>{ setRawTimeToAll().catch(()=>{}); });
+  if($rawOutlierContextRows){
+    $rawOutlierContextRows.addEventListener('change', ()=>{
+      const v = Math.max(1, Math.min(500, Number($rawOutlierContextRows.value) || 10));
+      RAW_OUTLIER_CONTEXT_ROWS = v;
+      $rawOutlierContextRows.value = String(v);
+      saveState();
+      if(RAW_SELECTED_MS !== null && RAW_OUTLIER_RESULTS.length > 0){
+        highlightOutlierAtIndex(RAW_OUTLIER_INDEX >= 0 ? RAW_OUTLIER_INDEX : 0).catch(()=>{});
+      }
     });
   }
   if($rawSection){

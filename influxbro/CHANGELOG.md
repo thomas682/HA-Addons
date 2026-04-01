@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.12.182
+
+### Enhancement
+
+- Raw-Tabelle: Neuer Button "Alle" neben "Aktualisieren" setzt den Graph-Zeitraum auf alle verfuegbaren Messwerte.
+- Raw-Tabelle: Neues Eingabefeld "Zeilen vor/nach Ausreisser" (default 10, konfigurierbar 1-500) steuert die Anzahl Kontextzeilen beim Sprung zu einem Ausreisser.
+- Raw-Tabelle: Ausreisser-Suche prueft jetzt immer alle Typen auf einmal; die Typ-Auswahl dient nur noch als Filter fuer die Anzeige.
+- Raw-Tabelle: Neue Uebersichtstabelle zeigt alle gefundenen Ausreisser; Klick auf eine Zeile springt zum Ausreisser in der Raw-Tabelle.
+- Raw-Tabelle: "Suchen" startet die Suche ohne Typ-Auswahl-Pflicht; nach Abschluss wird automatisch der aelteste Ausreisser zentriert angezeigt.
+- Raw-Tabelle: Buttons "ältester" und "neuster" Ausreisser (Icons wie Logs jump_oldest/jump_newest) ersetzen die bisherigen Prev/Next-Buttons.
+- Raw-Tabelle: Filteraenderung in der Typ-Auswahl aktualisiert sofort die Uebersichtstabelle.
+- Backend: Neues Setting `ui_raw_outlier_context_rows` (default 10).
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.181
 
 ### Enhancement
