@@ -7895,6 +7895,16 @@ try{
   }
   updateRawOutlierTypeToggleLabel();
 }catch(e){}
+
+try{
+  const $pageSettings = document.getElementById('ib_page_settings');
+  if($pageSettings){
+    $pageSettings.style.display = 'inline-flex';
+    $pageSettings.addEventListener('click', ()=>{
+      try{ location.href = './config'; }catch(e){}
+    });
+  }
+}catch(e){}
 </script>
 
     </main>

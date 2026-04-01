@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.184
+
+### Enhancement
+
+- Alle Funktionsseiten: Neuer Settings-Button (Zahnrad-Icon) in der Titelzeile, springt direkt zu den Einstellungen.
+- Einstellungsseite: Jeder Bereich hat jetzt einen Zurueck-Button (Pfeil-Icon) links neben dem Info-Icon, springt zurueck zum Dashboard.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.183
 
 ### Fix
