@@ -12513,7 +12513,7 @@ from(bucket: "{cfg["bucket"]}")
 from(bucket: "{cfg["bucket"]}")
   {range_clause}
   |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
-  |> aggregateWindow(every: {every_ms}ms, fn: last, createEmpty: false)
+  |> aggregateWindow(every: {every_ms}ms, fn: max, createEmpty: false)
   |> keep(columns: ["_time","_value"])
   |> sort(columns: ["_time"])
 '''
@@ -13728,7 +13728,7 @@ def api_window_points():
     agg = ""
     mode = "raw"
     if every_ms > 1:
-        agg = f'  |> aggregateWindow(every: {every_ms}ms, fn: last, createEmpty: false)\n'
+        agg = f'  |> aggregateWindow(every: {every_ms}ms, fn: max, createEmpty: false)\n'
         mode = "downsample"
 
     q = f'''

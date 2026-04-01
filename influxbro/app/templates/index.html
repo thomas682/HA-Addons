@@ -383,6 +383,7 @@
       <div class="tbl_actions" data-ui="graph_actions">
         <label><input type="checkbox" id="graph_markers" class="row_sel" data-ui="graph_markers"/>Messpunkte markieren</label>
         <button class="btn_sm" id="graph_refresh" type="button" data-ui="graph.refresh" title="graph.refresh" aria-label="Graph neu zeichnen"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M18.6091 5.89092L15.5 9H21.5V3L18.6091 5.89092ZM18.6091 5.89092C16.965 4.1131 14.6125 3 12 3C7.36745 3 3.55237 6.50005 3.05493 11M5.39092 18.1091L2.5 21V15H8.5L5.39092 18.1091ZM5.39092 18.1091C7.03504 19.8869 9.38753 21 12 21C16.6326 21 20.4476 17.5 20.9451 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
+        <button class="btn_sm" id="graph_reset_time" type="button" data-ui="graph.reset_time" title="graph.reset_time" aria-label="Zeitraum zuruecksetzen"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M3 12a9 9 0 1 1 3 6.7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M3 7v5h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         <button class="btn_sm" id="graph_query_open" type="button" data-ui="graph.query_section" title="graph.query_section" aria-label="Graph Query anzeigen"><svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="11" cy="15.5" r="1.5"></circle><path d="M12,12H10V8h2a2,2,0,0,0,0-4H10A2.0023,2.0023,0,0,0,8,6v.5H6V6a4.0045,4.0045,0,0,1,4-4h2a4,4,0,0,1,0,8Z"></path><path d="M22.4479,21.0337A10.971,10.971,0,0,0,19.9211,4.7446l-.999,1.73A8.9967,8.9967,0,1,1,5,14H3a10.9916,10.9916,0,0,0,18.0338,8.4478L28.5859,30,30,28.5859Z"></path></svg></button>
         <button class="btn_sm" id="graph_query_test" type="button" data-ui="graph.query_test" title="graph.query_test" aria-label="Query testen"><svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="#000000" width="18" height="18" aria-hidden="true" focusable="false"><path d="M6 10V9h9v1H6zm4-4h5v1h-5V6zm5-3v1H6V3h9zm-9 9v1h9v-1H6z"></path><path fill-rule="evenodd" clip-rule="evenodd" d="M1 2.795l.783-.419 5.371 3.581v.838l-5.371 3.581L1 9.957V2.795zm1.007.94v5.281l3.96-2.64-3.96-2.64z"></path></svg></button>
       </div>
@@ -988,6 +989,7 @@ const ctx = canvas.getContext('2d');
 const $plotly = document.getElementById('chart_plotly');
 const $graphResize = document.getElementById('graph_resize');
 const $graphRefresh = document.getElementById('graph_refresh');
+const $graphResetTime = document.getElementById('graph_reset_time');
 const $graphQueryOpen = document.getElementById('graph_query_open');
 
 const $rawSection = document.getElementById('raw_section');
@@ -2670,6 +2672,61 @@ function drawCanvas(rows){
   }
 }
 
+function _tryLoadZoomData(visStartMs, visStopMs){
+  if(!visStartMs || !visStopMs) return;
+  const existing = LAST_ROWS || [];
+  if(!existing.length) return;
+
+  // Count points already in visible range
+  let existingInWindow = 0;
+  for(let i = 0; i < existing.length; i++){
+    const ms = Date.parse(String(existing[i].time || ''));
+    if(isFinite(ms) && ms >= visStartMs && ms <= visStopMs) existingInWindow++;
+  }
+
+  // If we already have enough points in the window, don't reload
+  const targetPoints = Math.max(500, Math.min(UI_QUERY_MAX_POINTS || 5000, 3000));
+  if(existingInWindow >= targetPoints * 0.7) return;
+
+  // Check if the visible range extends beyond what we already have
+  const existingMin = Math.min(...existing.map(r => Date.parse(String(r.time || ''))).filter(t => isFinite(t)));
+  const existingMax = Math.max(...existing.map(r => Date.parse(String(r.time || ''))).filter(t => isFinite(t)));
+  if(!isFinite(existingMin) || !isFinite(existingMax)) return;
+
+  // Only load if we're zoomed in (visible range is smaller than full existing range)
+  const fullSpan = existingMax - existingMin;
+  const visSpan = visStopMs - visStartMs;
+  if(visSpan >= fullSpan * 0.9) return; // Not zoomed in enough
+
+  // Load data for the visible range
+  const base = currentFilters();
+  if(!base.measurement || !base.field) return;
+
+  const startIso = new Date(visStartMs).toISOString();
+  const stopIso = new Date(visStopMs).toISOString();
+  const everyMs = Math.max(1000, Math.round(visSpan / targetPoints));
+
+  api("./api/window_points", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({
+      measurement: base.measurement,
+      field: base.field,
+      entity_id: base.entity_id,
+      friendly_name: base.friendly_name,
+      start: startIso,
+      stop: stopIso,
+      every_ms: everyMs,
+      max_points: targetPoints,
+    }),
+  }).then(j => {
+    const rows = j.rows || [];
+    if(rows.length > 0){
+      _mergeAndDraw(rows);
+    }
+  }).catch(()=>{});
+}
+
 function drawPlotly(rows){
   if(!$plotly || !window.Plotly) return false;
   const pts = (rows || []).map(r => {
@@ -2807,6 +2864,9 @@ function drawPlotly(rows){
             scheduleRawReload(true);
             try{ _applyOverlays(); }catch(e){}
             try{ _updateGraphPointsInfo(); }catch(e){}
+
+            // Zoom-to-load: if we're zoomed in and point density is low, fetch more data
+            try{ _tryLoadZoomData(Math.min(a, b), Math.max(a, b)); }catch(e){}
           }
         }
       }catch(e){}
@@ -2895,6 +2955,70 @@ function autoScaleYFromWindow(){
   }catch(e){
     _IN_Y_RELAYOUT = false;
   }
+}
+
+async function resetGraphTimeRange(){
+  let oldestMs = null;
+  let newestMs = null;
+
+  if(LAST_TOTAL_BOUNDS && LAST_TOTAL_BOUNDS.oldest_time && LAST_TOTAL_BOUNDS.newest_time){
+    oldestMs = Date.parse(String(LAST_TOTAL_BOUNDS.oldest_time));
+    newestMs = Date.parse(String(LAST_TOTAL_BOUNDS.newest_time));
+  }
+
+  if(!isFinite(oldestMs) || !isFinite(newestMs)){
+    const base = currentFilters();
+    if(!base.measurement || !base.field){
+      err("Measurement oder Field fehlt.");
+      return;
+    }
+    try{
+      const payload = {
+        measurement: base.measurement,
+        field: base.field,
+        entity_id: base.entity_id,
+        friendly_name: base.friendly_name,
+        start: new Date(0).toISOString(),
+        stop: new Date().toISOString(),
+        limit: 1,
+        offset: 0,
+        include_total: true,
+      };
+      const j = await api("./api/raw_points", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)});
+      const meta = j.meta || {};
+      if(meta.oldest_time && meta.newest_time){
+        oldestMs = Date.parse(String(meta.oldest_time));
+        newestMs = Date.parse(String(meta.newest_time));
+      }
+    }catch(e){
+      err("Zeitraum zuruecksetzen: " + (e && e.message ? e.message : String(e)));
+      return;
+    }
+  }
+
+  if(!isFinite(oldestMs) || !isFinite(newestMs)){
+    err("Kein gueltiger Zeitraum verfuegbar.");
+    return;
+  }
+
+  TABLE_TIME.graph_start_ms = oldestMs;
+  TABLE_TIME.graph_stop_ms = newestMs;
+  saveState();
+  loadData().catch(displayError);
+}
+
+function _mergeAndDraw(newRows){
+  const existing = LAST_ROWS || [];
+  const merged = [...existing, ...newRows];
+  const seen = new Map();
+  merged.forEach(r => { if(r && r.time) seen.set(String(r.time), r); });
+  const deduped = Array.from(seen.values()).sort((a,b) => {
+    const ta = Date.parse(String(a.time || ''));
+    const tb = Date.parse(String(b.time || ''));
+    return (isFinite(ta) && isFinite(tb)) ? (ta - tb) : 0;
+  });
+  LAST_ROWS = deduped;
+  draw(deduped);
 }
 
 function draw(rows){
@@ -6689,6 +6813,10 @@ try{
   if($graphRefresh) $graphRefresh.addEventListener('click', (ev)=>{
     _stop(ev);
     loadData().catch(displayError);
+  });
+  if($graphResetTime) $graphResetTime.addEventListener('click', (ev)=>{
+    try{ _stop(ev); }catch(e){}
+    resetGraphTimeRange().catch(displayError);
   });
   if($editGraphRefresh) $editGraphRefresh.addEventListener('click', (ev)=>{ _stop(ev); refreshEditGraph().catch(displayError); });
 }catch(e){}

@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.12.186
+
+### Enhancement
+
+- Graph: Neuer Reset-Button in der Graph-Toolbar setzt den Graph auf den gesamten verfuegbaren Zeitraum (aeltester bis neuester Messwert).
+- Graph: Downsampling verwendet jetzt `fn: max` statt `fn: last` um Ausreisser-Spitzen sicher sichtbar zu halten.
+- Graph: Beim Reinzoomen werden automatisch zusaetzliche Datenpunkte fuer den sichtbaren Bereich nachgeladen, bis die Ziel-Punktdichte erreicht ist.
+- Graph: Neue Daten werden mit bestehenden zusammengeführt (Deduplizierung nach Zeitstempel).
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.185
 
 ### Enhancement
