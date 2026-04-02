@@ -1,0 +1,71 @@
+name-template: 'v$RESOLVED_VERSION'
+tag-template: 'v$RESOLVED_VERSION'
+
+categories:
+  - title: '⚠️ Breaking Changes'
+    labels:
+      - 'breaking'
+  - title: '🚀 Features'
+    labels:
+      - 'feature'
+      - 'enhancement'
+  - title: '🐛 Bug Fixes'
+    labels:
+      - 'fix'
+      - 'bugfix'
+      - 'bug'
+  - title: '🧰 Maintenance'
+    labels:
+      - 'chore'
+      - 'documentation'
+      - 'miscellaneous'
+
+filter-by-commitish: true
+
+exclude-labels:
+  - 'dependencies'
+
+change-template: '- $TITLE #$NUMBER (@$AUTHOR)'
+change-title-escapes: '\<*_&'
+
+autolabeler:
+  - label: 'breaking'
+    title:
+      - '/!:/i'
+    body:
+      - '/BREAKING CHANGE/i'
+  - label: 'enhancement'
+    title:
+      - '/^feat[:(]/i'
+  - label: 'bug'
+    title:
+      - '/^fix[:(]/i'
+  - label: 'miscellaneous'
+    title:
+      - '/^chore[:(]/i'
+
+version-resolver:
+  major:
+    labels:
+      - 'major'
+      - 'breaking'
+  minor:
+    labels:
+      - 'minor'
+  patch:
+    labels:
+      - 'patch'
+  default: patch
+
+template: |
+  $CHANGES
+
+  ❤️ Thank you to all contributors for your bug reports, ideas, and code. You're awesome!
+
+  If you want to show your support please
+
+  [![Buy me a coffee](https://www.buymeacoffee.com/assets/img/custom_images/yellow_img.png)](https://buymeacoffee.com/thomasschatz)
+
+  [![Donate with PayPal](https://raw.githubusercontent.com/stefan-niedermann/paypal-donate-button/master/paypal-donate-button.png)](https://www.paypal.com/donate/?hosted_button_id=ZWZE3WM4NBUW6)
+
+  ![GitHub Releases (by Release)](https://img.shields.io/github/downloads/thomas682/HA-Addons/v$RESOLVED_VERSION/total)
