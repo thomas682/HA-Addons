@@ -301,13 +301,17 @@ from flask import Flask, jsonify, request
   - Preferred place: the corresponding entry in `influxbro/CHANGELOG.md` (e.g. a Maintenance bullet: `Tested with Home Assistant Core: 2026.3.0`).
   - If the HA version cannot be determined in the current environment, explicitly note it as `unknown` and update once you have the value.
   - **Ermittlung der HA Core Version:** Vor dem Schreiben des Changelog-Eintrags MUSS die installierte Home Assistant Core Version auf dem Echtsystem ermittelt werden:
+  
     ```bash
     curl -fsS http://192.168.2.200:8099/api/info | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('ha_core_version','unknown'))"
-    ```
+      ```
+  
     Falls das API-Feld `ha_core_version` nicht existiert, alternativ:
+
     ```bash
     curl -fsS http://192.168.2.200:8099/ | grep -o 'Home Assistant [0-9.]*' | head -1
     ```
+  
     Der ermittelte Wert MUSS im Changelog-Eintrag unter `Tested with Home Assistant Core: <wert>` eingetragen werden.
 
 ## Support & Logging
@@ -358,13 +362,31 @@ from flask import Flask, jsonify, request
 - If the user explicitly requests implementation of all open issues or a defined subset of open issues, do NOT require per-issue decisions and process the selected issues immediately.
 
 - Reflect the user's decision back to GitHub:
-  - implement now: set `status/in_progress` and (optionally) add a short comment "picked for implementation"
+  - implement now: set `status/in_progress` and add a short comment "picked for implementation"
   - defer: keep `status/open` and add a short comment "deferred"
   - decline: set `status/cancelled`, add a short comment with reason (if provided), and close the issue
-- When implementation is finished:
-  - set `status/done`
-  - add a comment with the PR URL and/or commit hash
-  - close the issue
+
+### Issue Completion (STRICT)
+
+- An issue counts as implemented only when:
+  1. the requested code/config/documentation change is actually applied
+  2. all REQUIRED relevant QA checks for that issue have been executed
+  3. blocking failures for that issue do not remain
+  4. the change has been committed
+  5. if repository policy requires it, the change has also been pushed
+
+- Once an issue is implemented by the above definition, the agent MUST immediately do all of the following:
+  1. set the issue status label to `status/done`
+  2. add an issue comment containing at least:
+     - root cause
+     - implemented solution
+     - commit hash and/or PR link
+  3. close the issue
+
+- This completion flow is MANDATORY and MUST NOT be skipped.
+- The issue MUST be closed even if no PR exists; in that case the commit hash is sufficient.
+- Do NOT wait for extra user confirmation to perform the close step if the issue was selected for implementation.
+
 - Wenn du angewiesen wirst, offene Issues zu bearbeiten oder abzuarbeiten, musst du vor jeder Umsetzung den gesamten Issue-Text, alle Kommentare und insbesondere die neuesten Kommentare/Fehlermeldungen lesen und beruecksichtigen.
 - Die neueste Information im Issue hat Vorrang vor aelteren Annahmen; keine Umsetzung auf Basis veralteter Informationen.
 - Vor jeder Aenderung muss der aktuelle Ist-Zustand der betroffenen Datei(en) gelesen werden; nicht auf erwartete oder fruehere Versionen verlassen.
@@ -376,9 +398,19 @@ from flask import Flask, jsonify, request
   - Ursache des Problems
   - gewaehlte Loesung
   - Commit-Hash und/oder PR-Link
+- Nach jeder erfolgreich abgeschlossenen Issue-Umsetzung ist das Issue im selben Arbeitsgang zwingend auf `status/done` zu setzen und zu schliessen.
+- Ein Issue darf nach erfolgreicher Umsetzung nicht offen bleiben, nur weil kein PR existiert oder kein weiterer Benutzerhinweis vorliegt.
 - Sync selected issues into the local open-points list:
   - add chosen "implement now" issues to the in-chat ToDo list and to `./.opencode/plan_state.md` (with `#<id>` + title)
   - when the issue is completed/declined/deferred, update `./.opencode/plan_state.md` accordingly
+- Before declaring an implemented issue complete, verify all of the following:
+  - [ ] requested change implemented
+  - [ ] relevant QA completed
+  - [ ] issue comment added
+  - [ ] status set to `status/done`
+  - [ ] issue closed
+- The issue close step MUST happen only after the required repository completion flow for that issue is finished.
+- If the repository policy requires push to `main`, the issue must not be closed before that push succeeded.
 
 ### GitHub Issues: Proactive Prompting
 

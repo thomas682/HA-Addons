@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.197
+
+### Fix
+
+- "Maximum call stack size exceeded" nach Laden erneut behoben. `_tryLoadZoomData` prueft jetzt ob der gleiche Zeitbereich bereits geladen wurde (`_LAST_ZOOM_RANGE`), bevor ein neuer API-Aufruf erfolgt. Verhindert dass das asynchrone `plotly_relayout` Event nach `_mergeAndDraw()` dieselbe Abfrage erneut ausloest.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.196
 
 ### Enhancement

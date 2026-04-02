@@ -2165,6 +2165,7 @@ let TABLE_TIME = {
 let FULL_GRAPH_BOUNDS = null; // {min,max} in ms
 let _IN_X_RELAYOUT = false;
 let _ZOOM_LOADING = false;
+let _LAST_ZOOM_RANGE = null;
 
 let GRAPH_MARKERS = false;
 let ALLOW_WRITES = true;
@@ -2676,6 +2677,10 @@ function drawCanvas(rows){
 function _tryLoadZoomData(visStartMs, visStopMs){
   if(_ZOOM_LOADING) return;
   if(!visStartMs || !visStopMs) return;
+
+  const rangeKey = Math.round(visStartMs) + '|' + Math.round(visStopMs);
+  if(_LAST_ZOOM_RANGE === rangeKey) return;
+
   const existing = LAST_ROWS || [];
   if(!existing.length) return;
 
@@ -2722,6 +2727,7 @@ function _tryLoadZoomData(visStartMs, visStopMs){
     if(rows.length > 0){
       _mergeAndDraw(rows);
     }
+    _LAST_ZOOM_RANGE = rangeKey;
     _ZOOM_LOADING = false;
   }).catch(()=>{
     _ZOOM_LOADING = false;
