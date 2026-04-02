@@ -381,7 +381,7 @@ from flask import Flask, jsonify, request
      - root cause
      - implemented solution
      - commit hash and/or PR link
-  3. close the issue
+  3. set the issue to 'close'
 
 - This completion flow is MANDATORY and MUST NOT be skipped.
 - The issue MUST be closed even if no PR exists; in that case the commit hash is sufficient.

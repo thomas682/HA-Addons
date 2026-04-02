@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.12.200
+
+### Enhancement
+
+- Issue #167: Alle Info-Buttons auf allen Seiten (Dashboard, Einstellungen, Logs, Backup, Restore, Combine, Export, Import, Qualität, Monitor, History) haben jetzt einheitliches SVG-Icon statt Text "i".
+- Issue #168: Return-Button auf Einstellungsseite hat neues SVG-Icon (ionicons back arrow).
+- Issue #168: Settings-Button (`.ib_cfg_icon`) auf Einstellungsseite entfernt.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.199
 
 ### Enhancement

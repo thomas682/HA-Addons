@@ -1002,6 +1002,8 @@
 // Wrapped in DOMContentLoaded because _topbar.html is included at the top of
 // the page, before section elements exist in the DOM.
   document.addEventListener('DOMContentLoaded', ()=>{
+    // Skip on config page (has back buttons instead)
+    if(window.location && window.location.pathname && window.location.pathname.includes('config')) return;
     try{
       document.querySelectorAll('summary .ib_summary_row .ib_info_icon').forEach((infoBtn)=>{
         const parent = infoBtn.parentElement;

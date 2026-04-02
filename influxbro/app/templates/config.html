@@ -119,7 +119,7 @@
   </div>
 
   <details class="card" open data-ui="settings.section.yaml" title="settings.section.yaml">
-    <summary><span class="ib_summary_row"><span>Parametrierung aus Home Assistant YAML</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: YAML" data-info-body="Dieser Bereich steuert das Einlesen/Overlay einer Influx-Konfiguration aus Home Assistant (z.B. /config/influx.yaml).\n\nTypisch:\n- YAML einlesen, Werte in der Maske pruefen, dann Speichern.\n- Optional kann ein YAML-Overlay aktiviert werden, damit Werte bei jedem Start/Request ueberlagert werden.\n\nWichtig:\n- Secrets werden beim Einlesen aufgeloest (best-effort), aber Tokens/Passwoerter nie im Klartext geloggt." >i</button></span></summary>
+    <summary><span class="ib_summary_row"><span>Parametrierung aus Home Assistant YAML</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: YAML" data-info-body="Dieser Bereich steuert das Einlesen/Overlay einer Influx-Konfiguration aus Home Assistant (z.B. /config/influx.yaml).\n\nTypisch:\n- YAML einlesen, Werte in der Maske pruefen, dann Speichern.\n- Optional kann ein YAML-Overlay aktiviert werden, damit Werte bei jedem Start/Request ueberlagert werden.\n\nWichtig:\n- Secrets werden beim Einlesen aufgeloest (best-effort), aber Tokens/Passwoerter nie im Klartext geloggt." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
     <div class="card_body">
       <div class="grid">
         <div class="param_row">
@@ -152,7 +152,7 @@
   </script>
 
   <details class="card" open data-ui="settings.section.conn" title="settings.section.conn">
-    <summary><span class="ib_summary_row"><span>Verbindung</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Verbindung" data-info-body="Grundlegende Verbindungseinstellungen fuer InfluxDB.\n\nEnthaelt u.a.:\n- influx_version (v2 Flux oder v1 InfluxQL)\n- scheme/host/port\n- verify_ssl und timeout\n\nHinweis:\n- Nach Aenderungen: 'Test' prueft die Verbindung, 'Speichern' persistiert nach /data." >i</button></span></summary>
+    <summary><span class="ib_summary_row"><span>Verbindung</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Verbindung" data-info-body="Grundlegende Verbindungseinstellungen fuer InfluxDB.\n\nEnthaelt u.a.:\n- influx_version (v2 Flux oder v1 InfluxQL)\n- scheme/host/port\n- verify_ssl und timeout\n\nHinweis:\n- Nach Aenderungen: 'Test' prueft die Verbindung, 'Speichern' persistiert nach /data." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
     <div class="card_body">
       <div class="grid">
         <div class="param_row">
@@ -197,7 +197,7 @@
   </details>
 
   <details class="card" open data-ui="settings.section.v2" title="settings.section.v2">
-    <summary><span class="ib_summary_row"><span>InfluxDB v2</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: InfluxDB v2" data-info-body="Zugangsdaten fuer InfluxDB v2 (Flux).\n\nPflichtfelder fuer v2 Funktionen:\n- org, bucket, token\n\nOptional:\n- admin_token: nur fuer Native v2 FullBackup/FullRestore (Influx CLI). Muss ein All-Access Token sein (sonst 401 Unauthorized: read:authorizations).\n\nSicherheit:\n- Token-Felder sind maskiert (********). Lass ******** stehen, wenn du den Wert nicht aendern willst." >i</button></span></summary>
+    <summary><span class="ib_summary_row"><span>InfluxDB v2</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: InfluxDB v2" data-info-body="Zugangsdaten fuer InfluxDB v2 (Flux).\n\nPflichtfelder fuer v2 Funktionen:\n- org, bucket, token\n\nOptional:\n- admin_token: nur fuer Native v2 FullBackup/FullRestore (Influx CLI). Muss ein All-Access Token sein (sonst 401 Unauthorized: read:authorizations).\n\nSicherheit:\n- Token-Felder sind maskiert (********). Lass ******** stehen, wenn du den Wert nicht aendern willst." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
     <div class="card_body">
       <div class="grid">
         <div class="param_row">
@@ -231,7 +231,7 @@
   </details>
 
   <details class="card" data-ui="settings.section.v1" title="settings.section.v1">
-    <summary><span class="ib_summary_row"><span>InfluxDB v1</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: InfluxDB v1" data-info-body="Zugangsdaten fuer InfluxDB v1 (InfluxQL).\n\nTypisch:\n- database, username, password\n- SSL/Timeout ueber Verbindung\n\nHinweis:\n- Einige Features sind v2-only (z.B. Kombinieren/History Rollback)." >i</button></span></summary>
+    <summary><span class="ib_summary_row"><span>InfluxDB v1</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: InfluxDB v1" data-info-body="Zugangsdaten fuer InfluxDB v1 (InfluxQL).\n\nTypisch:\n- database, username, password\n- SSL/Timeout ueber Verbindung\n\nHinweis:\n- Einige Features sind v2-only (z.B. Kombinieren/History Rollback)." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
     <div class="card_body">
       <div class="grid">
         <div class="param_row">
@@ -258,15 +258,15 @@
   </details>
 
   <details class="card" open data-ui="settings.section.ui" title="settings.section.ui">
-    <summary><span class="ib_summary_row"><span>UI</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: UI" data-info-body="UI-Defaults fuer alle Seiten (Dashboard, Tabellen, Cache, Darstellung).\n\nHinweise:\n- Viele Werte beeinflussen Hoehen/Spaltenbreiten/Umbruch/Bedienbarkeit.\n- Einige Werte sind pro Seite uebersteuert (z.B. Backup-Zeilenhoehe).\n\nTipp:\n- Nach Aenderungen: Seite neu laden, um Effekte zu sehen." >i</button></span></summary>
+    <summary><span class="ib_summary_row"><span>UI</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: UI" data-info-body="UI-Defaults fuer alle Seiten (Dashboard, Tabellen, Cache, Darstellung).\n\nHinweise:\n- Viele Werte beeinflussen Hoehen/Spaltenbreiten/Umbruch/Bedienbarkeit.\n- Einige Werte sind pro Seite uebersteuert (z.B. Backup-Zeilenhoehe).\n\nTipp:\n- Nach Aenderungen: Seite neu laden, um Effekte zu sehen." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
     <div class="card_body">
 
     <details class="card" id="ui_page_dashboard" open data-ui="settings.ui.page_dashboard" title="settings.ui.page_dashboard">
-      <summary><span class="ib_summary_row"><span>Dashboard</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Dashboard" data-info-body="Einstellungen fuer die Dashboard-Seite (Auswahl/Graph/Raw/Tabellen).\n\nTypisch:\n- Default-UI Verhalten\n- Query Limits / Raw max points\n- Cache Verhalten" >i</button></span></summary>
+      <summary><span class="ib_summary_row"><span>Dashboard</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Dashboard" data-info-body="Einstellungen fuer die Dashboard-Seite (Auswahl/Graph/Raw/Tabellen).\n\nTypisch:\n- Default-UI Verhalten\n- Query Limits / Raw max points\n- Cache Verhalten" ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
       <div class="card_body">
 
         <details class="card" id="ui_table" open data-ui="settings.ui.table" title="settings.ui.table">
-          <summary><span class="ib_summary_row"><span>Tabellen</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Tabellen" data-info-body="Globale Tabellen-Defaults (Master-Template).\n\nBeispiele:\n- sichtbare Zeilen (Hoehe)\n- Spalten/Umbruch/Filter\n- Checkbox-Skalierung\n\nDiese Werte betreffen u.a. Backup/Restore/Jobs/History Tabellen." >i</button></span></summary>
+          <summary><span class="ib_summary_row"><span>Tabellen</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Tabellen" data-info-body="Globale Tabellen-Defaults (Master-Template).\n\nBeispiele:\n- sichtbare Zeilen (Hoehe)\n- Spalten/Umbruch/Filter\n- Checkbox-Skalierung\n\nDiese Werte betreffen u.a. Backup/Restore/Jobs/History Tabellen." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
           <div class="card_body">
             <div class="grid">
               <div class="param_row">
@@ -359,7 +359,7 @@
         </details>
 
         <details class="card" id="ui_cache" open data-ui="settings.ui.cache" title="settings.ui.cache">
-          <summary><span class="ib_summary_row"><span>Dashboard Cache</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Dashboard Cache" data-info-body="Serverseitiger Cache fuer Dashboard-Abfragen (unter /data).\n\nKonfigurierbar:\n- enabled/auto_update\n- refresh_mode (hours/daily/weekly/manual) + Parameter\n- Limits (max items/MB)\n\nHinweis:\n- Auto-Update Jobs laufen im Hintergrund (Timer Jobs)." >i</button></span></summary>
+          <summary><span class="ib_summary_row"><span>Dashboard Cache</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Dashboard Cache" data-info-body="Serverseitiger Cache fuer Dashboard-Abfragen (unter /data).\n\nKonfigurierbar:\n- enabled/auto_update\n- refresh_mode (hours/daily/weekly/manual) + Parameter\n- Limits (max items/MB)\n\nHinweis:\n- Auto-Update Jobs laufen im Hintergrund (Timer Jobs)." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
           <div class="card_body">
             <div class="grid">
               <div class="param_row">
@@ -421,7 +421,7 @@
         </details>
 
         <details class="card" id="ui_stats_cache" open data-ui="settings.ui.stats_cache" title="settings.ui.stats_cache">
-          <summary><span class="ib_summary_row"><span>Statistik Cache</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Statistik Cache" data-info-body="Serverseitiger Cache fuer Statistik-Berechnungen (unter /data).\n\nKonfigurierbar:\n- enabled/auto_update\n- refresh_mode (hours/daily/weekly/manual) + Parameter\n- Limits (max items/MB)\n\nHinweis:\n- Reduziert Last und beschleunigt wiederholte Statistik-Abfragen." >i</button></span></summary>
+          <summary><span class="ib_summary_row"><span>Statistik Cache</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Statistik Cache" data-info-body="Serverseitiger Cache fuer Statistik-Berechnungen (unter /data).\n\nKonfigurierbar:\n- enabled/auto_update\n- refresh_mode (hours/daily/weekly/manual) + Parameter\n- Limits (max items/MB)\n\nHinweis:\n- Reduziert Last und beschleunigt wiederholte Statistik-Abfragen." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
           <div class="card_body">
             <div class="grid">
               <div class="param_row">
@@ -476,7 +476,7 @@
         </details>
 
         <details class="card" id="ui_edit" open data-ui="settings.ui.edit" title="settings.ui.edit">
-          <summary><span class="ib_summary_row"><span>Bearbeitungsliste</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Bearbeitungsliste" data-info-body="Einstellungen fuer die Bearbeitungsliste (Editlist) im Dashboard.\n\nBeispiele:\n- Vorschauzeilen\n- Detailpanel Verhalten\n- Limits/Performance" >i</button></span></summary>
+          <summary><span class="ib_summary_row"><span>Bearbeitungsliste</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Bearbeitungsliste" data-info-body="Einstellungen fuer die Bearbeitungsliste (Editlist) im Dashboard.\n\nBeispiele:\n- Vorschauzeilen\n- Detailpanel Verhalten\n- Limits/Performance" ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
           <div class="card_body">
             <div class="grid">
               <div class="param_row">
@@ -508,7 +508,7 @@
         </details>
 
         <details class="card" id="ui_layout" open data-ui="settings.ui.layout" title="settings.ui.layout">
-          <summary><span class="ib_summary_row"><span>Darstellung</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Darstellung" data-info-body="Optische/UX Einstellungen (z.B. Zoom, Tooltips, Auto-Breite der Auswahlfelder).\n\nHinweis:\n- Einige Werte werden im Browser gespeichert (UI-State), andere in /data (Addon-Config)." >i</button></span></summary>
+          <summary><span class="ib_summary_row"><span>Darstellung</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Darstellung" data-info-body="Optische/UX Einstellungen (z.B. Zoom, Tooltips, Auto-Breite der Auswahlfelder).\n\nHinweis:\n- Einige Werte werden im Browser gespeichert (UI-State), andere in /data (Addon-Config)." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
           <div class="card_body">
             <div class="grid">
               <div class="param_row">
@@ -663,7 +663,7 @@
         </details>
 
         <details class="card" id="ui_jobs" open data-ui="settings.ui.jobs" title="settings.ui.jobs">
-          <summary><span class="ib_summary_row"><span>Jobs &amp; Cache</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Jobs & Cache" data-info-body="Steuert Limits/Verhalten von Background-Jobs und Cache-Mechanismen.\n\nBeispiele:\n- Jobs Laufzeitlimits\n- Auto-Cancel\n- Cache-Usage-Logging" >i</button></span></summary>
+          <summary><span class="ib_summary_row"><span>Jobs &amp; Cache</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Jobs & Cache" data-info-body="Steuert Limits/Verhalten von Background-Jobs und Cache-Mechanismen.\n\nBeispiele:\n- Jobs Laufzeitlimits\n- Auto-Cancel\n- Cache-Usage-Logging" ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
           <div class="card_body">
             <div class="grid">
               <div class="param_row">
@@ -713,7 +713,7 @@
         </details>
 
         <details class="card" id="ui_links" data-ui="settings.ui.links" title="settings.ui.links">
-          <summary><span class="ib_summary_row"><span>Links</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Links" data-info-body="Schnelllinks und Hilfen (z.B. Influx Docs, Repo, Template)." >i</button></span></summary>
+          <summary><span class="ib_summary_row"><span>Links</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Links" data-info-body="Schnelllinks und Hilfen (z.B. Influx Docs, Repo, Template)." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
           <div class="card_body">
             <div class="grid">
               <div class="param_row param_full">
@@ -736,7 +736,7 @@
     </details>
 
     <details class="card" id="ui_page_stats" data-ui="settings.ui.page_stats" title="settings.ui.page_stats">
-      <summary><span class="ib_summary_row"><span>Statistik</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Statistik" data-info-body="Einstellungen fuer die Statistik-Seite (Job-Verhalten, Defaults, Performance)." >i</button></span></summary>
+      <summary><span class="ib_summary_row"><span>Statistik</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Statistik" data-info-body="Einstellungen fuer die Statistik-Seite (Job-Verhalten, Defaults, Performance)." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
       <div class="card_body">
         <div class="grid">
           <div class="section_note"><span class="muted">Hinweis: "Vollscan" ist ein geplanter Background-Job (stats_full), der die Gesamtstatistik fuer alle Serien aktualisiert. Fuer grosse Datenmengen muss der Zeitraum begrenzt werden, um Timeouts/InfluxDB-Fehler zu vermeiden.</span></div>
@@ -788,11 +788,11 @@
     </details>
 
     <details class="card" id="ui_page_backup" open data-ui="settings.ui.page_backup" title="settings.ui.page_backup">
-      <summary><span class="ib_summary_row"><span>Backup</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Backup" data-info-body="Einstellungen fuer Backup-Seite (sichtbare Zeilen, Speicher/Warnschwelle, Limits)." >i</button></span></summary>
+      <summary><span class="ib_summary_row"><span>Backup</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Backup" data-info-body="Einstellungen fuer Backup-Seite (sichtbare Zeilen, Speicher/Warnschwelle, Limits)." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
       <div class="card_body">
 
         <details class="card" id="ui_backups" open data-ui="settings.ui.backups" title="settings.ui.backups">
-          <summary><span class="ib_summary_row"><span>Backups</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Backups" data-info-body="Details zur Backup-Erstellung/Anzeige (z.B. Mindestfreier Speicher, Preview/Query Anzeige)." >i</button></span></summary>
+          <summary><span class="ib_summary_row"><span>Backups</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Backups" data-info-body="Details zur Backup-Erstellung/Anzeige (z.B. Mindestfreier Speicher, Preview/Query Anzeige)." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
           <div class="card_body">
             <div class="grid">
               <div class="param_row param_full">
@@ -827,11 +827,11 @@
     </details>
 
     <details class="card" id="ui_page_restore" open data-ui="settings.ui.page_restore" title="settings.ui.page_restore">
-      <summary><span class="ib_summary_row"><span>Restore</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Restore" data-info-body="Einstellungen fuer Restore-Seite (sichtbare Zeilen, Vorschau, Defaults)." >i</button></span></summary>
+      <summary><span class="ib_summary_row"><span>Restore</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Restore" data-info-body="Einstellungen fuer Restore-Seite (sichtbare Zeilen, Vorschau, Defaults)." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
       <div class="card_body">
 
         <details class="card" id="ui_restore" open data-ui="settings.ui.restore" title="settings.ui.restore">
-          <summary><span class="ib_summary_row"><span>Restore</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Restore Details" data-info-body="Feinparameter fuer Restore (z.B. Preview-Lines, UI-Defaults)." >i</button></span></summary>
+          <summary><span class="ib_summary_row"><span>Restore</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Restore Details" data-info-body="Feinparameter fuer Restore (z.B. Preview-Lines, UI-Defaults)." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
           <div class="card_body">
             <div class="grid">
               <div class="param_row">
@@ -854,27 +854,27 @@
     </details>
 
     <details class="card" id="ui_page_jobs" data-ui="settings.ui.page_jobs" title="settings.ui.page_jobs">
-      <summary><span class="ib_summary_row"><span>Jobs</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Jobs" data-info-body="Einstellungen fuer Background-Jobs (Limits/Timeouts/Auto-Cancel)." >i</button></span></summary>
+      <summary><span class="ib_summary_row"><span>Jobs</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Jobs" data-info-body="Einstellungen fuer Background-Jobs (Limits/Timeouts/Auto-Cancel)." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
       <div class="card_body"><div class="section_note"><span class="muted">Derzeit keine zusaetzlichen UI-Settings fuer diese Seite.</span></div></div>
     </details>
 
     <details class="card" id="ui_page_logs" data-ui="settings.ui.page_logs" title="settings.ui.page_logs">
-      <summary><span class="ib_summary_row"><span>Logs</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Logs" data-info-body="Logging/Rotation/Profil und UI-Optionen fuer Logs-Seite." >i</button></span></summary>
+      <summary><span class="ib_summary_row"><span>Logs</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Logs" data-info-body="Logging/Rotation/Profil und UI-Optionen fuer Logs-Seite." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
       <div class="card_body"><div class="section_note"><span class="muted">Hinweis: Logging-Settings findest du weiter unten im Bereich "Logs".</span></div></div>
     </details>
 
     <details class="card" id="ui_page_history" data-ui="settings.ui.page_history" title="settings.ui.page_history">
-      <summary><span class="ib_summary_row"><span>History</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: History" data-info-body="Einstellungen fuer History-Seite (Anzeige/Limit/Logging)." >i</button></span></summary>
+      <summary><span class="ib_summary_row"><span>History</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: History" data-info-body="Einstellungen fuer History-Seite (Anzeige/Limit/Logging)." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
       <div class="card_body"><div class="section_note"><span class="muted">Derzeit keine zusaetzlichen UI-Settings fuer diese Seite.</span></div></div>
     </details>
 
     <details class="card" id="ui_page_export" data-ui="settings.ui.page_export" title="settings.ui.page_export">
-      <summary><span class="ib_summary_row"><span>Export</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Export" data-info-body="Defaults/Limits fuer Export (Format, Delimiter, Download-Verhalten)." >i</button></span></summary>
+      <summary><span class="ib_summary_row"><span>Export</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Export" data-info-body="Defaults/Limits fuer Export (Format, Delimiter, Download-Verhalten)." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
       <div class="card_body"><div class="section_note"><span class="muted">Derzeit keine zusaetzlichen UI-Settings fuer diese Seite.</span></div></div>
     </details>
 
     <details class="card" id="ui_page_import" data-ui="settings.ui.page_import" title="settings.ui.page_import">
-      <summary><span class="ib_summary_row"><span>Import</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Import" data-info-body="Defaults/Limits fuer Import (Backup vorher, Delete first, Vorschau)." >i</button></span></summary>
+      <summary><span class="ib_summary_row"><span>Import</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Import" data-info-body="Defaults/Limits fuer Import (Backup vorher, Delete first, Vorschau)." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
       <div class="card_body">
         <div class="grid">
           <div class="param_row param_full">
@@ -892,7 +892,7 @@
   </details>
 
   <details class="card" open data-ui="settings.section.logs" title="settings.section.logs">
-    <summary><span class="ib_summary_row"><span>Logs</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Logs (Profil)" data-info-body="Erweitertes Logging: Profil, Rotation, Debug/Trace Optionen. Vorsicht: kann sehr viele Logzeilen erzeugen." >i</button></span></summary>
+    <summary><span class="ib_summary_row"><span>Logs</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Logs (Profil)" data-info-body="Erweitertes Logging: Profil, Rotation, Debug/Trace Optionen. Vorsicht: kann sehr viele Logzeilen erzeugen." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
     <div class="card_body">
       <div class="grid">
         <div class="param_row">
@@ -962,7 +962,7 @@
   </details>
 
   <details class="card" open data-ui="settings.section.outliers" title="settings.section.outliers">
-    <summary><span class="ib_summary_row"><span>Ausreisser</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Ausreisser" data-info-body="Grenzwerte fuer Ausreisser-Erkennung (maximaler Sprung pro Punkt).\n\nZiel:\n- Unplausible Messspruenge automatisch finden und in der Filtertabelle markieren.\n\nKonzept:\n- Default-Grenzen (W, kW, Wh, kWh) gelten global.\n- Zusatzgrenzen pro Unit koennen gepflegt werden.\n- Pro _measurement kann ein max_step ueberschrieben werden (Tabelle).\n\nHinweis:\n- Zu niedrige Grenzen erzeugen viele False-Positives; zu hohe Grenzen finden wenig." >i</button></span></summary>
+    <summary><span class="ib_summary_row"><span>Ausreisser</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Ausreisser" data-info-body="Grenzwerte fuer Ausreisser-Erkennung (maximaler Sprung pro Punkt).\n\nZiel:\n- Unplausible Messspruenge automatisch finden und in der Filtertabelle markieren.\n\nKonzept:\n- Default-Grenzen (W, kW, Wh, kWh) gelten global.\n- Zusatzgrenzen pro Unit koennen gepflegt werden.\n- Pro _measurement kann ein max_step ueberschrieben werden (Tabelle).\n\nHinweis:\n- Zu niedrige Grenzen erzeugen viele False-Positives; zu hohe Grenzen finden wenig." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
     <div class="card_body">
       <div class="grid">
         <div class="section_note"><span class="muted">Werte gelten als "unsinnig", wenn ein Sprung groesser als diese Grenze ist (nur Counter-Regel).</span></div>
@@ -1856,7 +1856,7 @@ try{
     backBtn.className = 'ib_cfg_back_icon';
     backBtn.title = 'Zurück zum Dashboard';
     backBtn.setAttribute('aria-label', 'Zurück zum Dashboard');
-    backBtn.innerHTML = '<svg viewBox="0 0 21 21" xmlns="http://www.w3.org/2000/svg" fill="#000000" width="16" height="16"><g fill="none" fill-rule="evenodd" stroke="#000000" stroke-linecap="round" stroke-linejoin="round" transform="translate(4.5 6.5)"> <path d="m11 8v-2c0-1.65685425-1.34314575-3-3-3h-8"></path> <path d="m3 6-3.001-3 3.001-3"></path> </g></svg>';
+    backBtn.innerHTML = '<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" fill="#000000" width="16" height="16"><polyline points="112 352 48 288 112 224" style="fill:none;stroke:#000000;stroke-linecap:round;stroke-linejoin:round;stroke-width:32px"></polyline><path d="M64,288H358c58.76,0,106-49.33,106-108V160" style="fill:none;stroke:#000000;stroke-linecap:round;stroke-linejoin:round;stroke-width:32px"></path></svg>';
     backBtn.addEventListener('click', (ev)=>{
       try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
       try{ location.href = './'; }catch(e){}

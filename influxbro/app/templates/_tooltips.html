@@ -2492,7 +2492,7 @@
   window.InfluxBroQueryHistory = { add, show, list };
 })();
 
-try{ _ensureSummarySettingsButtons(); }catch(e){}
+try{ if(window.location && window.location.pathname && !window.location.pathname.includes('config')) _ensureSummarySettingsButtons(); }catch(e){}
 </script>
 
 <script>
