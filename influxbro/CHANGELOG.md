@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.12.196
+
+### Enhancement
+
+- Issue #155: Settings-Button und Info-Button sind jetzt in einer Gruppe rechtsbuendig im Section-Titel angeordnet.
+- Issue #155: Info-Button hat jetzt ein SVG-Icon statt Text "i".
+- Neue CSS-Klasse `.ib_btn_group` fuer die Button-Gruppierung in `.ib_summary_row`.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.195
 
 ### Fix

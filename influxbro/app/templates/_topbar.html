@@ -187,6 +187,16 @@
       color: var(--ib-section-title-fg);
       box-sizing: border-box;
     }
+    .ib_summary_row > span:first-child {
+      flex: 1;
+      min-width: 0;
+    }
+    .ib_summary_row > .ib_btn_group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex: 0 0 auto;
+    }
     .ib_summary_row * { color: inherit; }
     .ib_info_icon {
       width: 22px;
@@ -197,12 +207,15 @@
       background: #fff;
       color: #111;
       cursor: pointer;
-      font-weight: 900;
       line-height: 20px;
       text-align: center;
       flex: 0 0 auto;
       user-select: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
+    .ib_info_icon svg { display: block; }
     .ib_info_icon:hover { background: #f6f6f6; }
     .ib_info_icon:active { transform: translateY(1px); }
     .ib_cfg_icon {
@@ -988,26 +1001,38 @@
 // icon so the visual order is: [Section Title] [⚙ Settings] [i Info].
 // Wrapped in DOMContentLoaded because _topbar.html is included at the top of
 // the page, before section elements exist in the DOM.
-document.addEventListener('DOMContentLoaded', ()=>{
-  try{
-    document.querySelectorAll('summary .ib_summary_row .ib_info_icon').forEach((infoBtn)=>{
-      const existing = infoBtn.parentElement.querySelector('.ib_cfg_icon');
-      if(existing) return;
+  document.addEventListener('DOMContentLoaded', ()=>{
+    try{
+      document.querySelectorAll('summary .ib_summary_row .ib_info_icon').forEach((infoBtn)=>{
+        const parent = infoBtn.parentElement;
+        if(!parent) return;
+        if(parent.querySelector('.ib_cfg_icon')) return;
 
-      const cfgBtn = document.createElement('button');
-      cfgBtn.type = 'button';
-      cfgBtn.className = 'ib_cfg_icon';
-      cfgBtn.title = 'Zu Einstellungen';
-      cfgBtn.setAttribute('aria-label', 'Zu Einstellungen');
-      cfgBtn.innerHTML = '<svg fill="#000000" height="14" width="14" viewBox="0 0 24 24"><path d="M4,24c-1.1,0-2.1-0.4-2.8-1.2C0.5,22.1,0,21,0,20s0.4-2.1,1.2-2.8l8-8C9.1,8.7,9,8.1,9,7.5C9,3.4,12.4,0,16.5,0 c0.9,0,1.8,0.2,2.6,0.5L20.6,1L16,5.6L18.4,8L23,3.4l0.6,1.4C23.8,5.7,24,6.6,24,7.5c0,4.1-3.4,7.5-7.5,7.5 c-0.6,0-1.1-0.1-1.7-0.2l-8,8C6.1,23.6,5.1,24,4,24z M16.5,2c-3,0-5.5,2.5-5.5,5.5c0,0.6,0.1,1.1,0.3,1.7l0.2,0.6l-8.9,8.9 C2.2,19,2,19.5,2,20s0.2,1,0.6,1.4c0.7,0.8,2.1,0.8,2.8,0l8.9-8.9l0.6,0.2c0.5,0.2,1.1,0.3,1.7,0.3c3,0,5.5-2.5,5.5-5.5 c0-0.1,0-0.2,0-0.3l-3.6,3.6l-5.2-5.2L16.9,2C16.7,2,16.6,2,16.5,2z"></path></svg>';
-      cfgBtn.addEventListener('click', (ev)=>{
-        try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
-        try{ location.href = './config'; }catch(e){}
+        // Wrap both buttons in a group for right-aligned layout
+        let btnGroup = parent.querySelector('.ib_btn_group');
+        if(!btnGroup){
+          btnGroup = document.createElement('span');
+          btnGroup.className = 'ib_btn_group';
+          parent.appendChild(btnGroup);
+        }
+
+        const cfgBtn = document.createElement('button');
+        cfgBtn.type = 'button';
+        cfgBtn.className = 'ib_cfg_icon';
+        cfgBtn.title = 'Zu Einstellungen';
+        cfgBtn.setAttribute('aria-label', 'Zu Einstellungen');
+        cfgBtn.innerHTML = '<svg fill="#000000" height="14" width="14" viewBox="0 0 24 24"><path d="M4,24c-1.1,0-2.1-0.4-2.8-1.2C0.5,22.1,0,21,0,20s0.4-2.1,1.2-2.8l8-8C9.1,8.7,9,8.1,9,7.5C9,3.4,12.4,0,16.5,0 c0.9,0,1.8,0.2,2.6,0.5L20.6,1L16,5.6L18.4,8L23,3.4l0.6,1.4C23.8,5.7,24,6.6,24,7.5c0,4.1-3.4,7.5-7.5,7.5 c-0.6,0-1.1-0.1-1.7-0.2l-8,8C6.1,23.6,5.1,24,4,24z M16.5,2c-3,0-5.5,2.5-5.5,5.5c0,0.6,0.1,1.1,0.3,1.7l0.2,0.6l-8.9,8.9 C2.2,19,2,19.5,2,20s0.2,1,0.6,1.4c0.7,0.8,2.1,0.8,2.8,0l8.9-8.9l0.6,0.2c0.5,0.2,1.1,0.3,1.7,0.3c3,0,5.5-2.5,5.5-5.5 c0-0.1,0-0.2,0-0.3l-3.6,3.6l-5.2-5.2L16.9,2C16.7,2,16.6,2,16.5,2z"></path></svg>';
+        cfgBtn.addEventListener('click', (ev)=>{
+          try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+          try{ location.href = './config'; }catch(e){}
+        });
+
+        // Insert settings button into the group, before info icon
+        btnGroup.appendChild(cfgBtn);
+        btnGroup.appendChild(infoBtn);
       });
-      infoBtn.parentElement.insertBefore(cfgBtn, infoBtn);
-    });
-  }catch(e){}
-});
+    }catch(e){}
+  });
 </script>
 
 <script>
