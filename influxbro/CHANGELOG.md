@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.199
+
+### Enhancement
+
+- Issue #166: Summary-Zeilen in Einstellungen bekommen konfigurierbare Hintergrundfarbe via CSS-Variable `--ib-section-title-bg`.
+- Issue #166: "Standardmaessig geoeffnete Bereiche" entfernt (default alle zugeklappt).
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.198
 
 ### Enhancement

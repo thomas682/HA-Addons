@@ -43,12 +43,12 @@
     }
     details.card > .card_body > details.card > summary {
       padding: 10px 12px;
-      background: #fafafa;
+      background: var(--ib-section-title-bg, #fafafa);
       font-size: 14px;
       font-weight: 600;
     }
     details.card > .card_body > details.card > summary:hover {
-      background: #f5f5f5;
+      background: var(--ib-section-title-bg-hover, #f5f5f5);
     }
     /* Deeper nesting: indent sub-sub-sections */
     details.card > .card_body > details.card > .card_body > details.card {
@@ -56,8 +56,12 @@
       border-top: 1px solid #f0f0f0;
     }
     details.card > .card_body > details.card > .card_body > details.card > summary {
-      background: #f8f8f8;
+      background: var(--ib-section-title-bg, #f8f8f8);
       font-size: 13px;
+    }
+    /* Top-level section summaries */
+    details.card > summary .ib_summary_row {
+      background: var(--ib-section-title-bg, transparent);
     }
     main.content label { display:block; font-size:12px; opacity:0.8; }
     main.content label.ib_chk_row { display:flex; align-items:center; gap:10px; height:44px; padding:0 4px; margin:0; opacity:0.85; cursor:pointer; }
@@ -704,52 +708,6 @@
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
-        </details>
-
-        <details class="card" id="ui_sections" data-ui="settings.ui.sections" title="settings.ui.sections">
-          <summary><span class="ib_summary_row"><span>Standardmaessig geoeffnete Bereiche</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Default Bereiche" data-info-body="Legt fest, welche Details-Bereiche beim Laden standardmaessig offen sind (Dashboard).\n\nTipp:\n- Fuer langsame Browser: weniger Bereiche automatisch oeffnen." >i</button></span></summary>
-          <div class="card_body">
-            <div class="grid">
-              <div class="section_note"><span class="muted">Standard ist "zu" (nicht geoeffnet).</span></div>
-              <div class="param_row">
-                <div class="param_label">Auswahl</div>
-                <div class="param_control">
-                  <label class="ib_chk_row"><input type="checkbox" id="ui_open_selection" data-ui="settings.ui_open_selection" title="settings.ui_open_selection" /><span></span></label>
-                </div>
-              </div>
-              <div class="param_row">
-                <div class="param_label">Graph</div>
-                <div class="param_control">
-                  <label class="ib_chk_row"><input type="checkbox" id="ui_open_graph" data-ui="settings.ui_open_graph" title="settings.ui_open_graph" /><span></span></label>
-                </div>
-              </div>
-              <div class="param_row">
-                <div class="param_label">Fehler-/Filtertabelle</div>
-                <div class="param_control">
-                  <label class="ib_chk_row"><input type="checkbox" id="ui_open_filterlist" data-ui="settings.ui_open_filterlist" title="settings.ui_open_filterlist" /><span></span></label>
-                </div>
-              </div>
-              <div class="param_row">
-                <div class="param_label">Bearbeitungsliste</div>
-                <div class="param_control">
-                  <label class="ib_chk_row"><input type="checkbox" id="ui_open_editlist" data-ui="settings.ui_open_editlist" title="settings.ui_open_editlist" /><span></span></label>
-                </div>
-              </div>
-              <div class="param_row">
-                <div class="param_label">Gesamtstatistik (Alles)</div>
-                <div class="param_control">
-                  <label class="ib_chk_row"><input type="checkbox" id="ui_open_stats_total" data-ui="settings.ui_open_stats_total" title="settings.ui_open_stats_total" /><span></span></label>
-                </div>
-              </div>
-              <div class="param_row">
-                <div class="param_label">Tooltips anzeigen</div>
-                <div class="param_control">
-                  <label class="ib_chk_row"><input type="checkbox" id="ui_tooltips_enabled" data-ui="settings.ui_tooltips_enabled" title="settings.ui_tooltips_enabled" /><span></span></label>
-                </div>
-              </div>
-              <div class="section_note"><span class="muted">Wenn deaktiviert, werden keine Tooltips erzeugt/angezeigt.</span></div>
             </div>
           </div>
         </details>
