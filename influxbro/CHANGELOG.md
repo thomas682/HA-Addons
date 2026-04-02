@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.194
+
+### Fix
+
+- Settings-Button (Zahnrad-Icon) in Sections war nicht sichtbar weil das JavaScript zu frueh ausgefuehrt wurde (vor dem Laden der Section-Elemente). Jetzt in `DOMContentLoaded` eingepackt.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.193
 
 ### Enhancement
