@@ -2722,7 +2722,8 @@ function _tryLoadZoomData(visStartMs, visStopMs){
     if(rows.length > 0){
       _mergeAndDraw(rows);
     }
-  }).catch(()=>{}).finally(()=>{
+    _ZOOM_LOADING = false;
+  }).catch(()=>{
     _ZOOM_LOADING = false;
   });
 }

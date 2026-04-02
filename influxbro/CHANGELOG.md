@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.195
+
+### Fix
+
+- "Maximum call stack size exceeded" bei dashboard.load und graph.refresh behoben. `_ZOOM_LOADING` Flag wurde in `.finally()` zu frueh zurueckgesetzt (vor dem asynchronen `plotly_relayout` Event), was eine Endlosrekursion ausloeste. Flag wird jetzt erst NACH `_mergeAndDraw()` zurueckgesetzt.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.194
 
 ### Fix
