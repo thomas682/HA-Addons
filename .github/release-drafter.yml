@@ -44,6 +44,7 @@ autolabeler:
     title:
       - '/^chore[:(]/i'
 
+
 version-resolver:
   major:
     labels:
@@ -56,6 +57,7 @@ version-resolver:
     labels:
       - 'patch'
   default: patch
+
 
 template: |
   $CHANGES
