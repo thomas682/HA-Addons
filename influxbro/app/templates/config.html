@@ -31,13 +31,34 @@
     details.card > .card_body { padding: 0; }
     details.card > .card_body > .grid { border-top:1px solid #eee; }
     details.card > .card_body > .grid:first-child { border-top:none; }
-    /* Sub-sections within a section */
-    .sub_section { border-top:1px solid #eee; }
-    .sub_section > summary { list-style:none; cursor:pointer; padding:10px 12px; font-weight:600; font-size:14px; background:#fafafa; }
-    .sub_section > summary::-webkit-details-marker { display:none; }
-    .sub_section > summary:after { content:"▾"; float:right; opacity:0.5; }
-    .sub_section[open] > summary:after { content:"▴"; }
-    .sub_section > .card_body { padding:0; }
+    /* Sub-sections within a section: integrated list look */
+    details.card > .card_body > details.card {
+      border: none;
+      border-radius: 0;
+      margin-top: 0;
+      border-top: 1px solid #eee;
+    }
+    details.card > .card_body > details.card:first-child {
+      border-top: none;
+    }
+    details.card > .card_body > details.card > summary {
+      padding: 10px 12px;
+      background: #fafafa;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    details.card > .card_body > details.card > summary:hover {
+      background: #f5f5f5;
+    }
+    /* Deeper nesting: indent sub-sub-sections */
+    details.card > .card_body > details.card > .card_body > details.card {
+      margin-left: 12px;
+      border-top: 1px solid #f0f0f0;
+    }
+    details.card > .card_body > details.card > .card_body > details.card > summary {
+      background: #f8f8f8;
+      font-size: 13px;
+    }
     main.content label { display:block; font-size:12px; opacity:0.8; }
     main.content label.ib_chk_row { display:flex; align-items:center; gap:10px; height:44px; padding:0 4px; margin:0; opacity:0.85; cursor:pointer; }
     main.content label.ib_chk_row input[type="checkbox"] { width:18px; height:18px; margin:0; flex:0 0 auto; }

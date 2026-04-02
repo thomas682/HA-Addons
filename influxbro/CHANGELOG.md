@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.12.193
+
+### Enhancement
+
+- Einstellungen: Untergeordnete Bereiche (Sub-Sektionen) jetzt als integrierte Liste innerhalb der Hauptbereiche dargestellt.
+- Sub-Sektionen haben keine eigene Rahmen mehr, sondern sind durch Trennlinien und hellen Hintergrund visuell eingebettet.
+- Tiefer verschachtelte Bereiche (Sub-Sub-Sektionen) werden eingerueckt dargestellt.
+- CSS: Neue Styles fuer `details.card > .card_body > details.card` und tiefere Verschachtelungen.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.192
 
 ### Enhancement
