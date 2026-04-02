@@ -1412,6 +1412,7 @@
         if(navigator && navigator.clipboard && navigator.clipboard.writeText){
           await navigator.clipboard.writeText(txt);
         }else{
+          // Fallback für ältere Browser oder unsichere Kontexte
           const ta = document.createElement('textarea');
           ta.value = txt;
           ta.style.position = 'fixed';
@@ -1420,16 +1421,24 @@
           document.body.appendChild(ta);
           ta.focus();
           ta.select();
-          document.execCommand('copy');
+          const success = document.execCommand('copy');
           document.body.removeChild(ta);
+          if(!success) throw new Error('execCommand copy failed');
         }
         try{ copyHint.textContent = 'kopiert'; }catch(e){}
         setTimeout(()=>{ try{ copyHint.textContent = ''; }catch(e){} }, 900);
       }catch(e){
-        try{ copyHint.textContent = 'copy fehlgeschlagen'; }catch(x){}
+        try{ copyHint.textContent = 'copy fehlgeschlagen: ' + e.message; }catch(x){}
+        console.error('Copy error:', e);
       }
     }
-    copyBtn.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} doCopy(); });
+       copyBtn.addEventListener('click', (ev)=>{ 
+       try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+       doCopy().catch(e => {
+         console.error('Copy operation failed:', e);
+         try{ copyHint.textContent = 'copy fehlgeschlagen: ' + e.message; }catch(x){}
+       });
+     });
 
     function _filenameFromContentDisposition(cd){
       try{

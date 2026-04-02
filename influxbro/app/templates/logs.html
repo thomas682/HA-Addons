@@ -574,7 +574,22 @@
       $q.addEventListener('input', ()=>applySearch());
       $clear.addEventListener('click', ()=>{ RAW = ""; $logpre.textContent = ""; err(""); });
       $copy.addEventListener('click', async ()=>{
-        try{ await navigator.clipboard.writeText($logpre.textContent || ""); }catch(e){ err("Copy failed: " + String(e)); }
+        try{ 
+          await navigator.clipboard.writeText($logpre.textContent || ""); 
+        }catch(e){ 
+          // Fallback auf execCommand wenn clipboard API fehlschlägt
+          const ta = document.createElement('textarea');
+          ta.value = $logpre.textContent || "";
+          ta.style.position = 'fixed';
+          ta.style.left = '-9999px';
+          ta.style.top = '0';
+          document.body.appendChild(ta);
+          ta.focus();
+          ta.select();
+          const success = document.execCommand('copy');
+          document.body.removeChild(ta);
+          if(!success) throw new Error('execCommand copy failed');
+        }
       });
       $download.addEventListener('click', ()=>{
         const blob = new Blob([$logpre.textContent || ""], {type:"text/plain"});
