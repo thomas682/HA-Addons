@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.12.198
+
+### Enhancement
+
+- Issue #165: Dashboard Button "Aktualisieren" in "Analyse" umbenannt.
+- Issue #165: "Analyse"-Button fuehrt chunkweise Ausreisser-Suche im gewaehlten Zeitraum durch.
+- Issue #165: Nach Analyse: Graph zeigt kompletten Zeitraum, Ausreisertabelle wird gefuellt, Raw-Tabelle wird geloescht (leere Zeilen).
+- Issue #165: Klick auf Ausreisser-Zeile laedt Raw-Daten mit Kontextzeilen (`raw_outlier_context_rows`).
+- Issue #165: Zeilenanzahl wird ueber jeder Tabelle angezeigt.
+- Issue #165: Leere Tabellen zeigen mindestens 3 leere Zeilen.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.197
 
 ### Fix
