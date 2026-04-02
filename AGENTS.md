@@ -300,6 +300,15 @@ from flask import Flask, jsonify, request
 - For each released add-on version, record the Home Assistant Core version the add-on was tested with.
   - Preferred place: the corresponding entry in `influxbro/CHANGELOG.md` (e.g. a Maintenance bullet: `Tested with Home Assistant Core: 2026.3.0`).
   - If the HA version cannot be determined in the current environment, explicitly note it as `unknown` and update once you have the value.
+  - **Ermittlung der HA Core Version:** Vor dem Schreiben des Changelog-Eintrags MUSS die installierte Home Assistant Core Version auf dem Echtsystem ermittelt werden:
+    ```bash
+    curl -fsS http://192.168.2.200:8099/api/info | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('ha_core_version','unknown'))"
+    ```
+    Falls das API-Feld `ha_core_version` nicht existiert, alternativ:
+    ```bash
+    curl -fsS http://192.168.2.200:8099/ | grep -o 'Home Assistant [0-9.]*' | head -1
+    ```
+    Der ermittelte Wert MUSS im Changelog-Eintrag unter `Tested with Home Assistant Core: <wert>` eingetragen werden.
 
 ## Support & Logging
 
@@ -318,6 +327,12 @@ from flask import Flask, jsonify, request
 ### Requirements Tracking (preferred: GitHub Issues)
 
 - Track requirements primarily as GitHub Issues so others can create/report items externally.
+- **AUTOMATISCHE ISSUE-ERSTELLUNG:** Wenn der Benutzer eine neue Aufgabe/Anforderung im Chat stellt, MUSS der Agent automatisch ein GitHub Issue erstellen, BEVOR mit der Umsetzung begonnen wird.
+  - Issue-Titel: Kurze Zusammenfassung der Anforderung
+  - Issue-Body: Vollstaendige Beschreibung der Anforderung (wie vom Benutzer formuliert)
+  - Label: `type/enhancement` fuer neue Features, `type/bug` fuer Fehler
+  - Status: `status/in_progress` wenn sofort umgesetzt wird, sonst `status/open`
+  - Nach Umsetzung: Status auf `status/done` setzen, Kommentar mit Commit-Hash/PR-Link hinzufuegen
 - Use the issue templates to distinguish between:
   - Bug reports (not working): label with `type/bug`
   - Enhancements (feature requests): label with `type/enhancement`
@@ -417,6 +432,25 @@ Triage flow:
   - UI validation
   - integration checks
 - Localhost remains valid only for isolated local development or container-local verification.
+
+### Playwright E2E Tests
+
+Playwright is configured for browser-based UI testing against the live HA instance.
+
+- Config: `playwright.config.js` (baseURL: `http://192.168.2.200:8099`)
+- Tests: `tests/e2e/*.spec.js`
+- Run: `npx playwright test` (all tests) or `npx playwright test tests/e2e/dashboard.spec.js` (single file)
+
+**"teste auf dem echtsystem" Prompt:**
+- When the user says "teste auf dem echtsystem" (or equivalent), the agent MUST:
+  1. First check if the live system version matches the latest git version:
+     ```bash
+     curl -fsS http://192.168.2.200:8099/api/info | python3 -c "import json,sys; print(json.load(sys.stdin).get('version','unknown'))"
+     ```
+  2. Compare with the latest version in `influxbro/config.yaml`.
+  3. If versions DO NOT match: warn the user that the live system is outdated and ask whether to proceed with API tests only, or skip testing until the live system is updated.
+  4. If versions MATCH: ask the user whether to also run Playwright E2E browser tests in addition to API smoke tests.
+  5. If the user confirms Playwright tests: run `npx playwright test` and report results.
 
 ### Mandatory Testing & Cost-Aware Execution (REQUIRED)
 
