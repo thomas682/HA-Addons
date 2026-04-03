@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.214
+
+### Fix
+
+- Feld-Auswahl auf Dashboard blieb leer weil `loadMeasurements()` und `loadDashboardFields()` im `silent`-Modus Input-Werte loeschten.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.212
 
 ### Enhancement
