@@ -7918,6 +7918,9 @@ try{
     if(!$stop.value) $stop.value = toLocalDatetimeValue(now);
     if(!$r.value) $r.value = "24h";
 
+    // Load measurements first so dropdowns have options
+    await loadMeasurements({silent: true});
+
     // Restore stored selection early so list loads can narrow correctly.
     if(st.measurement_filter){ if($mf) $mf.value = String(st.measurement_filter); }
     else if(st.measurement){ if($mf) $mf.value = String(st.measurement); }
