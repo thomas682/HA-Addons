@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.12.212
+
+### Enhancement
+
+- Ausreisser-Suche verwendet jetzt immer den bei Quellauswahl eingestellten Zeitraum (nicht mehr Graph-Zeitraum).
+- Checkbox "Zeit gefuehrt durch Graph" entfernt.
+- Raw-Tabelle wird NUR noch geladen wenn ein Ausreisser in der Uebersichtstabelle selektiert wird.
+- Raw-Daten werden mit Anzahl Zeilen (nicht Minuten) um den Ausreisser geladen.
+- Wenn im Start-Fenster nicht genug Zeilen gefunden werden, wird das Suchfenster schrittweise erweitert bis Anfang/Ende des Zeitbereichs erreicht ist.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.211
 
 ### Enhancement

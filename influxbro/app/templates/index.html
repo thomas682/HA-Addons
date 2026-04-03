@@ -448,10 +448,6 @@
           </div>
         </div>
 
-      <div class="tbl_actions" style="justify-content:flex-start; margin-top: 6px;" data-ui="raw.opts" title="raw.opts">
-        <label><input type="checkbox" id="raw_time_from_graph" class="row_sel" data-ui="raw.time_from_graph" checked/>Zeit gefuehrt durch Graph</label>
-      </div>
-
       <div class="tbl_actions" style="justify-content:flex-start; margin-top: 8px; gap: 12px; flex-wrap:wrap;" data-ui="raw.center_range" title="raw.center_range">
         <div style="display:flex; flex-direction:column; gap: 4px; min-width: 170px;">
           <label for="raw_outlier_context_rows">Zeilen vor/nach Ausreisser</label>
@@ -1070,7 +1066,6 @@ const $graphPointsInfo = document.getElementById('graph_points_info');
 const $graphSelectedInfo = document.getElementById('graph_selected_info');
 const $analysisInfo = document.getElementById('analysis_info');
 const $editGraphCounts = document.getElementById('edit_graph_counts');
-const $rawTimeFromGraph = document.getElementById('raw_time_from_graph');
 
 const $rawStatus = document.getElementById('raw_status');
 const $rawStatusTxt = document.getElementById('raw_status_txt');
@@ -1680,7 +1675,6 @@ function saveState(){
       deriv_outlier_thr: $derivOutlierThr ? Number($derivOutlierThr.value || 90) : 90,
       graph_window_start_ms: TABLE_TIME.graph_start_ms,
       graph_window_stop_ms: TABLE_TIME.graph_stop_ms,
-      raw_time_from_graph: RAW_TIME_FROM_GRAPH,
       raw_center_range: RAW_CENTER_RANGE,
       raw_outlier_context_rows: RAW_OUTLIER_CONTEXT_ROWS,
     };
@@ -3466,22 +3460,6 @@ async function _jumpToRawByMs(ms){
       try{ $rawSection.scrollIntoView({block:'nearest'}); }catch(e){}
     }
 
-    // Ensure a graph-derived window exists when Raw is graph-driven.
-    // (Without it, raw loading is a no-op and the list cannot jump.)
-    try{
-      if(RAW_TIME_FROM_GRAPH){
-        const w = _graphWindowIso();
-        if(!w){
-          const xs = (LAST_ROWS || []).map(r => Date.parse(r && r.time ? String(r.time) : '')).filter(t => isFinite(t));
-          if(xs.length){
-            TABLE_TIME.graph_start_ms = Math.min(...xs);
-            TABLE_TIME.graph_stop_ms = Math.max(...xs);
-            try{ saveState(); }catch(e){}
-          }
-        }
-      }
-    }catch(e){}
-
     for(let i=0;i<25;i++){
       if(!_RAW_INFLIGHT && (RAW_ROWS || []).length) break;
       await new Promise(r=>setTimeout(r, 120));
@@ -4447,7 +4425,7 @@ let RAW_QUERY_LAST_AT = "";
 let RAW_LAST_KEY = "";
 let _RAW_STATUS_T0 = 0;
 let _RAW_STATUS_TIMER = null;
-let RAW_TIME_FROM_GRAPH = true;
+let RAW_CENTER_RANGE = 100;
 
 function _graphWindowIso(){
   const a = TABLE_TIME.graph_start_ms;
@@ -4461,9 +4439,6 @@ function _graphWindowIso(){
 
 function _rawWindowIso(){
   try{
-    if(RAW_TIME_FROM_GRAPH){
-      return _graphWindowIso();
-    }
     const tf = currentTimeFilter();
     if(!tf) return null;
     if(tf.range && tf.range !== 'custom'){
@@ -5810,18 +5785,6 @@ function scheduleRawReload(reset){
   if(_RAW_TIMER) clearTimeout(_RAW_TIMER);
   _RAW_TIMER = setTimeout(()=>{ loadRawFromGraph(!!reset).catch(()=>{}); }, 650);
 }
-
-try{
-    if($rawTimeFromGraph){
-      $rawTimeFromGraph.addEventListener('change', ()=>{
-        try{
-          RAW_TIME_FROM_GRAPH = !!$rawTimeFromGraph.checked;
-          saveState();
-          renderRawTable();
-        }catch(e){}
-      });
-    }
-}catch(e){}
 
 try{
   if($rawCenterRange) $rawCenterRange.addEventListener('change', ()=>{
@@ -7964,8 +7927,6 @@ try{
 
     // Raw options
     try{
-      RAW_TIME_FROM_GRAPH = (st.raw_time_from_graph !== false);
-      if($rawTimeFromGraph) $rawTimeFromGraph.checked = RAW_TIME_FROM_GRAPH;
       RAW_CENTER_RANGE = (st.raw_center_range !== undefined) ? clampRawCenterRange(st.raw_center_range) : clampRawCenterRange(RAW_CENTER_RANGE);
       if($rawCenterRange) $rawCenterRange.value = String(RAW_CENTER_RANGE);
       RAW_OUTLIER_CONTEXT_ROWS = (st.raw_outlier_context_rows !== undefined) ? Math.max(1, Math.min(500, Number(st.raw_outlier_context_rows))) : RAW_OUTLIER_CONTEXT_ROWS;
