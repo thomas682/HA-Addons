@@ -4545,78 +4545,9 @@ function renderRawTable(){
       tr.innerHTML = '<td></td><td></td><td></td><td></td>';
       $rawBody.appendChild(tr);
     }
+    updateRawToolbarState();
     return;
   }
-
-  (RAW_ROWS || []).forEach(r => {
-    const tr = document.createElement('tr');
-    try{
-      const ms = Date.parse(String(r.time || ''));
-      if(isFinite(ms)) tr.setAttribute('data-ts-ms', String(ms));
-      const key = rowKey(r);
-      if(key) tr.dataset.key = key;
-      if(key) tr.draggable = true;
-      if(bestMs !== null && isFinite(ms) && ms === bestMs) tr.classList.add('raw_hl');
-      if(RAW_ROW_SELECTED_KEY && String(RAW_ROW_SELECTED_KEY) === String(key)) tr.classList.add('raw_sel');
-      if(RAW_COPIED && String(RAW_COPIED.key || '') === String(key)) tr.classList.add('raw_src');
-    }catch(e){}
-    const tdT = document.createElement('td');
-    tdT.textContent = fmtTs(r.time);
-    const tdV = document.createElement('td');
-    tdV.textContent = fmtNum(r.value);
-    const tdH = document.createElement('td');
-    tdH.textContent = _rawHistoryCompact(rowKey(r));
-    const tdO = document.createElement('td');
-    tdO.style.fontSize = '11px';
-    const outlierInfo = RAW_OUTLIER_MAP ? RAW_OUTLIER_MAP[String(r.time) || ''] : null;
-    if(outlierInfo){
-      tdO.textContent = outlierInfo.reason || '';
-      tdO.style.color = '#b00020';
-    }
-    tr.appendChild(tdT);
-    tr.appendChild(tdV);
-    tr.appendChild(tdH);
-    tr.appendChild(tdO);
-
-    tr.addEventListener('click', (ev)=>{
-      try{ _stop(ev); }catch(e){}
-      const target = ev && ev.target;
-      if(target && target.tagName){ const tag = String(target.tagName).toLowerCase(); if(tag === 'button' || tag === 'input' || tag === 'select') return; }
-      setRawSelectedKey(tr.dataset.key || '');
-    });
-
-    tr.addEventListener('dragstart', (ev)=>{
-      try{
-        const key = String(tr.dataset.key || '');
-        if(!key) return;
-        ev.dataTransfer.setData('text/plain', key);
-        ev.dataTransfer.effectAllowed = 'move';
-      }catch(e){}
-    });
-
-    $rawBody.appendChild(tr);
-  });
-}
-  if(RAW_META && RAW_META.mode === 'center'){
-    const beforePts = Math.max(0, Math.trunc(Number(RAW_META.before_points || 0)));
-    const afterPts = Math.max(0, Math.trunc(Number(RAW_META.after_points || 0)));
-    info += ` | Vorher/Nachher: ${beforePts}/${afterPts}`;
-  }
-  $rawInfo.textContent = info;
-
-  const selMs = (RAW_SELECTED_MS !== null && RAW_SELECTED_MS !== undefined && isFinite(Number(RAW_SELECTED_MS))) ? Number(RAW_SELECTED_MS) : null;
-  let bestMs = null;
-  let bestDiff = null;
-  try{
-    if(selMs !== null){
-      (RAW_ROWS || []).forEach(r => {
-        const ms = Date.parse(String(r.time || ''));
-        if(!isFinite(ms)) return;
-        const d = Math.abs(ms - selMs);
-        if(bestDiff === null || d < bestDiff){ bestDiff = d; bestMs = ms; }
-      });
-    }
-  }catch(e){}
 
   (RAW_ROWS || []).forEach(r => {
     const tr = document.createElement('tr');

@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.12.202
+
+### Fix
+
+- Kritischer Merge-Fehler aus Version 1.12.198 behoben: `renderRawTable()` hatte duplizierten Code ausserhalb der Funktion, der die gesamte JavaScript-Ausfuehrung blockierte.
+- Alle Buttons (dashboard.load, dashboard.query_details, dashboard.query_test) und Auswahlfelder funktionieren wieder.
+- Optional Chaining (`?.`) fuer DOM-Element-Referenzen verhindert Absturz bei fehlenden Elementen.
+- Drag/Drop-Funktionalitaet in Raw-Tabelle korrekt integriert.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.201
 
 ### Fix
