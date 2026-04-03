@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.12.203
+
+### Enhancement
+
+- Error- und Warning-Zeilen in Log-Ansicht werden farblich hervorgehoben (konfigurierbar in Einstellungen).
+- ERROR-Zeilen (` ERROR `, `EXCEPTION`, `TRACEBACK`, `TypeError`, `Cannot set properties`): Hintergrund- und Textfarbe einstellbar.
+- WARNING-Zeilen (` WARNING `): Eigene Hintergrund- und Textfarbe einstellbar.
+- Vier neue Einstellungsfelder: `ui_log_error_bg`, `ui_log_error_fg`, `ui_log_warn_bg`, `ui_log_warn_fg`.
+
+### Fix
+
+- `graph.reset_time` Button: "Maximum call stack size exceeded" behoben. `_SUPPRESS_RELAYOUT` Flag verhindert Rekursionsschleife im `plotly_relayout` Handler waehrend `loadData()`.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.202
 
 ### Fix

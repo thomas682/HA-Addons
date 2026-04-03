@@ -35,6 +35,8 @@
     pre { margin: 0; font-size: 12px; line-height: 1.35; white-space: pre; }
     .wrap pre { white-space: pre-wrap; word-break: break-word; }
     .err { color: #b00020; margin-top: 8px; white-space: pre-wrap; }
+    .log_error_line { display: block; background: var(--log-error-bg, #ffe0e0); color: var(--log-error-fg, #b00020); }
+    .log_warn_line { display: block; background: var(--log-warn-bg, #fff8e1); color: var(--log-warn-fg, #b07000); }
   </style>
 </head>
 <body>
@@ -279,11 +281,40 @@
           return true;
         });
 
+        function escapeHtml(s){
+          return String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+        }
+
+        function isErrorLine(s){
+          const up = String(s || "").toUpperCase();
+          if(up.includes(" ERROR ") || up.includes("EXCEPTION") || up.includes("TRACEBACK")) return true;
+          if(up.includes("TypeError") || up.includes("TypeError:")) return true;
+          if(up.includes("Cannot set properties")) return true;
+          return false;
+        }
+
+        function isWarnLine(s){
+          return String(s || "").toUpperCase().includes(" WARNING ");
+        }
+
         if(!t){
-          $logpre.textContent = filtered.join("\n");
+          const html = filtered.map(l => {
+            const esc = escapeHtml(l);
+            if(isErrorLine(l)) return `<span class="log_error_line">${esc}</span>`;
+            if(isWarnLine(l)) return `<span class="log_warn_line">${esc}</span>`;
+            return esc;
+          }).join("\n");
+          $logpre.innerHTML = html;
           return;
         }
-        $logpre.textContent = filtered.filter(l => String(l||"").toLowerCase().includes(t)).join("\n");
+        const searched = filtered.filter(l => String(l||"").toLowerCase().includes(t));
+        const html = searched.map(l => {
+          const esc = escapeHtml(l);
+          if(isErrorLine(l)) return `<span class="log_error_line">${esc}</span>`;
+          if(isWarnLine(l)) return `<span class="log_warn_line">${esc}</span>`;
+          return esc;
+        }).join("\n");
+        $logpre.innerHTML = html;
       }
 
       async function setServerProfile(p){
@@ -318,6 +349,26 @@
           if(["error","debug","trace"].includes(p)) $serverProfile.value = p;
           if($serverInfluxQueries) $serverInfluxQueries.checked = !!cfg.log_influx_queries;
           if($serverCacheUsage) $serverCacheUsage.checked = !!cfg.log_cache_usage;
+        }catch(e){}
+      }
+
+      async function loadLogColors(){
+        try{
+          let r;
+          try{ r = await fetch("./api/config"); }
+          catch(e){ return; }
+          const j = await r.json().catch(()=>({ok:false,error:"Invalid JSON"}));
+          if(!r.ok || !j.ok) return;
+          const cfg = j.config || {};
+          const root = document.documentElement;
+          const errBg = cfg.ui_log_error_bg || '#ffe0e0';
+          const errFg = cfg.ui_log_error_fg || '#b00020';
+          const warnBg = cfg.ui_log_warn_bg || '#fff8e1';
+          const warnFg = cfg.ui_log_warn_fg || '#b07000';
+          root.style.setProperty('--log-error-bg', errBg);
+          root.style.setProperty('--log-error-fg', errFg);
+          root.style.setProperty('--log-warn-bg', warnBg);
+          root.style.setProperty('--log-warn-fg', warnFg);
         }catch(e){}
       }
 
@@ -572,7 +623,7 @@
       $follow.addEventListener('change', ()=>setFollow(!!($follow && $follow.checked)));
       $wrap.addEventListener('change', ()=>{ applyWrap(); });
       $q.addEventListener('input', ()=>applySearch());
-      $clear.addEventListener('click', ()=>{ RAW = ""; $logpre.textContent = ""; err(""); });
+      $clear.addEventListener('click', ()=>{ RAW = ""; $logpre.innerHTML = ""; err(""); });
       $copy.addEventListener('click', async ()=>{
         try{ 
           await navigator.clipboard.writeText($logpre.textContent || ""); 
@@ -607,6 +658,7 @@
       applyWrap();
       loadViewProfile();
       loadServerProfile();
+      loadLogColors().catch(()=>{});
       setFollow(!!($follow && $follow.checked));
       loadLogs().then(()=>{ try{ jumpNewest(); }catch(e){} }).catch(e=>err(String(e && e.message ? e.message : e)));
       </script>

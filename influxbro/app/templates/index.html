@@ -2168,6 +2168,7 @@ let TABLE_TIME = {
 
 let FULL_GRAPH_BOUNDS = null; // {min,max} in ms
 let _IN_X_RELAYOUT = false;
+let _SUPPRESS_RELAYOUT = false;
 let _ZOOM_LOADING = false;
 let _LAST_ZOOM_RANGE = null;
 
@@ -2829,6 +2830,7 @@ function drawPlotly(rows){
 
     $plotly.on("plotly_relayout", (ev) => {
       try{
+        if(_SUPPRESS_RELAYOUT) return;
         if(_IN_X_RELAYOUT) return;
         if(!ev) return;
 
@@ -3033,7 +3035,12 @@ async function resetGraphTimeRange(){
   TABLE_TIME.graph_start_ms = oldestMs;
   TABLE_TIME.graph_stop_ms = newestMs;
   saveState();
-  loadData().catch(displayError);
+  _SUPPRESS_RELAYOUT = true;
+  try {
+    await loadData();
+  } finally {
+    _SUPPRESS_RELAYOUT = false;
+  }
 }
 
 function _mergeAndDraw(newRows){

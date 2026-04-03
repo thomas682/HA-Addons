@@ -614,7 +614,6 @@
                   <input id="ui_filter_label_width_px" class="cfg_num_wide" type="number" min="80" max="360" />
                 </div>
               </div>
-              <div class="param_row">
                 <div class="param_label">Filter Feld Breite (px)<span class="param_hint">Breite fuer Suche+Auswahl (Desktop).</span></div>
                 <div class="param_control">
                   <input id="ui_filter_control_width_px" class="cfg_num_wide" type="number" min="180" max="900" />
@@ -1073,6 +1072,7 @@ const ids = [
   ,"stats_cache_enabled","stats_cache_auto_update","stats_cache_refresh_mode","stats_cache_refresh_hours","stats_cache_refresh_daily_at"
   ,"stats_cache_max_items","stats_cache_max_mb"
   ,"stats_full_refresh_mode","stats_full_refresh_hours","stats_full_refresh_daily_at","stats_full_refresh_weekday","stats_full_max_days"
+  ,"ui_log_error_bg","ui_log_error_fg","ui_log_warn_bg","ui_log_warn_fg"
 ];
 
 const el = {};
@@ -1097,6 +1097,12 @@ const $jobRunColor = document.getElementById('ui_job_color_running_color');
 const $jobDoneColor = document.getElementById('ui_job_color_done_color');
 const $jobErrColor = document.getElementById('ui_job_color_error_color');
 const $jobCancelColor = document.getElementById('ui_job_color_cancelled_color');
+
+// Log highlight colors
+const $logErrorBgColor = document.getElementById('ui_log_error_bg_color');
+const $logErrorFgColor = document.getElementById('ui_log_error_fg_color');
+const $logWarnBgColor = document.getElementById('ui_log_warn_bg_color');
+const $logWarnFgColor = document.getElementById('ui_log_warn_fg_color');
 
 function _isHexColor(s){
   const x = String(s || '').trim();
@@ -1150,6 +1156,22 @@ try{ if(el.ui_job_color_running) el.ui_job_color_running.addEventListener('input
 try{ if(el.ui_job_color_done) el.ui_job_color_done.addEventListener('input', ()=>_syncJobColorPickersFromText()); }catch(e){}
 try{ if(el.ui_job_color_error) el.ui_job_color_error.addEventListener('input', ()=>_syncJobColorPickersFromText()); }catch(e){}
 try{ if(el.ui_job_color_cancelled) el.ui_job_color_cancelled.addEventListener('input', ()=>_syncJobColorPickersFromText()); }catch(e){}
+
+function _syncLogColorPickersFromText(){
+  try{ const v = el.ui_log_error_bg ? String(el.ui_log_error_bg.value || '').trim() : ''; if($logErrorBgColor && _isHexColor(v)) $logErrorBgColor.value = v; }catch(e){}
+  try{ const v = el.ui_log_error_fg ? String(el.ui_log_error_fg.value || '').trim() : ''; if($logErrorFgColor && _isHexColor(v)) $logErrorFgColor.value = v; }catch(e){}
+  try{ const v = el.ui_log_warn_bg ? String(el.ui_log_warn_bg.value || '').trim() : ''; if($logWarnBgColor && _isHexColor(v)) $logWarnBgColor.value = v; }catch(e){}
+  try{ const v = el.ui_log_warn_fg ? String(el.ui_log_warn_fg.value || '').trim() : ''; if($logWarnFgColor && _isHexColor(v)) $logWarnFgColor.value = v; }catch(e){}
+}
+
+try{ if($logErrorBgColor && el.ui_log_error_bg) $logErrorBgColor.addEventListener('input', ()=>{ try{ el.ui_log_error_bg.value = String($logErrorBgColor.value || '').toUpperCase(); }catch(e){}; _syncLogColorPickersFromText(); }); }catch(e){}
+try{ if($logErrorFgColor && el.ui_log_error_fg) $logErrorFgColor.addEventListener('input', ()=>{ try{ el.ui_log_error_fg.value = String($logErrorFgColor.value || '').toUpperCase(); }catch(e){}; _syncLogColorPickersFromText(); }); }catch(e){}
+try{ if($logWarnBgColor && el.ui_log_warn_bg) $logWarnBgColor.addEventListener('input', ()=>{ try{ el.ui_log_warn_bg.value = String($logWarnBgColor.value || '').toUpperCase(); }catch(e){}; _syncLogColorPickersFromText(); }); }catch(e){}
+try{ if($logWarnFgColor && el.ui_log_warn_fg) $logWarnFgColor.addEventListener('input', ()=>{ try{ el.ui_log_warn_fg.value = String($logWarnFgColor.value || '').toUpperCase(); }catch(e){}; _syncLogColorPickersFromText(); }); }catch(e){}
+try{ if(el.ui_log_error_bg) el.ui_log_error_bg.addEventListener('input', ()=>_syncLogColorPickersFromText()); }catch(e){}
+try{ if(el.ui_log_error_fg) el.ui_log_error_fg.addEventListener('input', ()=>_syncLogColorPickersFromText()); }catch(e){}
+try{ if(el.ui_log_warn_bg) el.ui_log_warn_bg.addEventListener('input', ()=>_syncLogColorPickersFromText()); }catch(e){}
+try{ if(el.ui_log_warn_fg) el.ui_log_warn_fg.addEventListener('input', ()=>_syncLogColorPickersFromText()); }catch(e){}
 
 function _parseUnitMapText(raw){
   const out = {};
@@ -1469,6 +1491,12 @@ function setForm(cfg){
   el.stats_full_refresh_daily_at.value = cfg.stats_full_refresh_daily_at ?? '03:00:00';
   el.stats_full_refresh_weekday.value = String((cfg.stats_full_refresh_weekday !== null && cfg.stats_full_refresh_weekday !== undefined) ? cfg.stats_full_refresh_weekday : 0);
   el.stats_full_max_days.value = cfg.stats_full_max_days ?? 3650;
+
+  el.ui_log_error_bg.value = cfg.ui_log_error_bg ?? '#ffe0e0';
+  el.ui_log_error_fg.value = cfg.ui_log_error_fg ?? '#b00020';
+  el.ui_log_warn_bg.value = cfg.ui_log_warn_bg ?? '#fff8e1';
+  el.ui_log_warn_fg.value = cfg.ui_log_warn_fg ?? '#b07000';
+  _syncLogColorPickersFromText();
 }
 
 function getForm(){
@@ -1598,6 +1626,11 @@ function getForm(){
     stats_full_refresh_daily_at: String(el.stats_full_refresh_daily_at.value || '03:00:00').trim(),
     stats_full_refresh_weekday: parseInt(el.stats_full_refresh_weekday.value, 10),
     stats_full_max_days: parseInt(el.stats_full_max_days.value, 10),
+
+    ui_log_error_bg: String(el.ui_log_error_bg.value || '').trim(),
+    ui_log_error_fg: String(el.ui_log_error_fg.value || '').trim(),
+    ui_log_warn_bg: String(el.ui_log_warn_bg.value || '').trim(),
+    ui_log_warn_fg: String(el.ui_log_warn_fg.value || '').trim(),
   };
 }
 
