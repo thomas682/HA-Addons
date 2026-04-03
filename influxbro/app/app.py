@@ -16403,7 +16403,11 @@ def api_outliers():
     friendly_name = (body.get("friendly_name") or "").strip() or None
     unit = (body.get("unit") or "").strip()
 
+    LOG.info("api.outliers called from=%s measurement=%s field=%s",
+        request.remote_addr, measurement, field)
+
     if not measurement or not field:
+        LOG.warning("api.outliers rejected: missing measurement or field")
         return jsonify({"ok": False, "error": "measurement and field required"}), 400
 
     try:
@@ -16562,6 +16566,10 @@ def api_outliers():
         nonlocal rows
         nonlocal last_time_iso
         nonlocal counter_base_val
+
+        span_s = (b - a).total_seconds()
+        LOG.info("api.outliers _scan_span ENTER a=%s b=%s span=%.0fs rows=%d scanned=%d",
+            _dt_to_rfc3339_utc(a), _dt_to_rfc3339_utc(b), span_s, len(rows), scanned)
 
         if len(rows) >= MAX_OUT:
             return prev
@@ -16733,29 +16741,43 @@ from(bucket: "{cfg["bucket"]}")
 
             prev = fv
 
+        LOG.info("api.outliers _scan_span DONE a=%s b=%s scanned_local=%d total_scanned=%d total_rows=%d",
+            _dt_to_rfc3339_utc(a), _dt_to_rfc3339_utc(b), scanned_local, scanned, len(rows))
         return prev
 
     def _scan_span_split(qapi: Any, a: datetime, b: datetime, prev: float | None) -> float | None:
         span_s = max(0.0, (b - a).total_seconds())
         try:
+            LOG.debug("api.outliers _scan_span_split PROCESSING chunk a=%s b=%s span=%.0fs",
+                _dt_to_rfc3339_utc(a), _dt_to_rfc3339_utc(b), span_s)
             return _scan_span(qapi, a, b, prev)
         except OverflowError:
             if span_s <= MIN_CHUNK_SECONDS:
+                LOG.warning("api.outliers _scan_span_split OVERFLOW at min chunk a=%s b=%s span=%.0fs",
+                    _dt_to_rfc3339_utc(a), _dt_to_rfc3339_utc(b), span_s)
                 raise
             mid = a + timedelta(seconds=(span_s / 2.0))
+            LOG.info("api.outliers _scan_span_split SPLITTING chunk a=%s b=%s span=%.0fs -> two halves",
+                _dt_to_rfc3339_utc(a), _dt_to_rfc3339_utc(b), span_s)
             prev2 = _scan_span_split(qapi, a, mid, prev)
             return _scan_span_split(qapi, mid, b, prev2)
 
     try:
+        LOG.info("api.outliers entering scan loop")
         with v2_client(cfg) as c:
             qapi = c.query_api()
             try:
                 prev_val = _scan_span_split(qapi, start_dt, stop_dt, prev_val)
             except OverflowError:
+                LOG.error("api.outliers OVERFLOW: too many points even in smallest chunks")
                 return jsonify({
                     "ok": False,
                     "error": f"Zu viele Punkte im Zeitraum ({MAX_SCAN_CHUNK}+ in kleinstem Chunk). Bitte im Graph weiter reinzoomen.",
                 }), 413
+
+        dur_ms = int((time.monotonic() - t0) * 1000)
+        LOG.info("api.outliers done from=%s scanned=%d found=%d dur=%dms",
+            request.remote_addr, scanned, len(rows), dur_ms)
 
         return jsonify({
             "ok": True,
@@ -16772,6 +16794,8 @@ from(bucket: "{cfg["bucket"]}")
             "scan_state": fault_state if fault_phase_enabled else None,
         })
     except Exception as e:
+        dur_ms = int((time.monotonic() - t0) * 1000)
+        LOG.error("api.outliers error: %s dur=%dms", e, dur_ms, exc_info=True)
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
 
 
@@ -16798,6 +16822,7 @@ def api_outlier_search():
     unit = (body.get("unit") or "").strip()
 
     if not measurement or not field:
+        LOG.warning("api.outlier_search rejected: missing measurement or field")
         return jsonify({"ok": False, "error": "measurement and field required"}), 400
 
     t0 = time.monotonic()
@@ -16808,8 +16833,10 @@ def api_outlier_search():
         return jsonify({"ok": False, "error": str(e)}), 400
 
     if int(cfg.get("influx_version", 2)) != 2:
+        LOG.warning("api.outlier_search rejected: not influxdb v2")
         return jsonify({"ok": False, "error": "outlier_search currently supports InfluxDB v2 only"}), 400
     if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+        LOG.warning("api.outlier_search rejected: missing token/org/bucket")
         return jsonify({
             "ok": False,
             "error": "InfluxDB v2 requires token, org, bucket.",
@@ -16822,6 +16849,7 @@ def api_outlier_search():
     search_types = [str(t).strip() for t in search_types if str(t).strip()]
 
     if not search_types:
+        LOG.warning("api.outlier_search rejected: no search types selected")
         return jsonify({"ok": False, "error": "Kein Ausreisser-Typ ausgewaehlt."}), 400
 
     limit = int(body.get("limit") or cfg.get("ui_raw_outlier_search_limit", 5000))
@@ -16847,6 +16875,10 @@ def api_outlier_search():
     start = _dt_to_rfc3339_utc(start_dt)
     stop = _dt_to_rfc3339_utc(stop_dt)
 
+    span_seconds = max(0.0, (stop_dt - start_dt).total_seconds())
+    LOG.info("api.outlier_search span=%.0fs (%.1f days) limit=%d max_step=%s",
+        span_seconds, span_seconds / 86400.0, limit, max_step)
+
     MAX_SCAN_CHUNK = 200000
     MIN_CHUNK_SECONDS = 5 * 60
 
@@ -16868,6 +16900,10 @@ def api_outlier_search():
     }
     recovery_valid_streak = 2
 
+    LOG.info("api.outlier_search starting scan with types=%s", search_types)
+
+    LOG.info("api.outlier_search starting scan with types=%s", search_types)
+
     def _cmp(op: str, v: float, ref: float) -> bool:
         if op == ">":
             return v > ref
@@ -16882,7 +16918,12 @@ def api_outlier_search():
     def _scan_span(qapi: Any, a: datetime, b: datetime, prev: float | None) -> float | None:
         nonlocal scanned, rows, last_time_iso, counter_base_val
 
+        span_s = (b - a).total_seconds()
+        LOG.info("api.outlier_search _scan_span ENTER a=%s b=%s span=%.0fs rows=%d scanned=%d",
+            _dt_to_rfc3339_utc(a), _dt_to_rfc3339_utc(b), span_s, len(rows), scanned)
+
         if len(rows) >= limit:
+            LOG.debug("api.outlier_search _scan_span LIMIT reached, returning early")
             return prev
 
         s_iso = _dt_to_rfc3339_utc(a)
@@ -16903,6 +16944,8 @@ from(bucket: "{cfg["bucket"]}")
             scanned_local += 1
             scanned += 1
             if scanned_local > MAX_SCAN_CHUNK:
+                LOG.warning("api.outlier_search _scan_span OVERFLOW at chunk a=%s b=%s scanned_local=%d",
+                    _dt_to_rfc3339_utc(a), _dt_to_rfc3339_utc(b), scanned_local)
                 raise OverflowError("too_many_points")
 
             t = rec.get_time()
@@ -16922,6 +16965,7 @@ from(bucket: "{cfg["bucket"]}")
                     fault_state["last_reason"] = "ungueltiger Wert"
                 if include_null:
                     rows.append({"time": iso, "value": None, "reason": "NULL", "type": "null"})
+                    LOG.info("api.outlier_search found NULL at %s", iso)
                     if len(rows) >= limit:
                         return prev
                 continue
@@ -16934,6 +16978,7 @@ from(bucket: "{cfg["bucket"]}")
 
             if include_zero and fv == 0.0:
                 reasons.append("0")
+                LOG.info("api.outlier_search found 0 at %s value=%s", iso, fv)
             if bounds_enabled:
                 try:
                     min_num = float(min_v) if min_v is not None and str(min_v).strip() != "" else None
@@ -17075,33 +17120,45 @@ from(bucket: "{cfg["bucket"]}")
 
             prev = fv
 
+        LOG.info("api.outlier_search _scan_span DONE a=%s b=%s scanned_local=%d total_scanned=%d total_rows=%d",
+            _dt_to_rfc3339_utc(a), _dt_to_rfc3339_utc(b), scanned_local, scanned, len(rows))
         return prev
 
     def _scan_span_split(qapi: Any, a: datetime, b: datetime, prev: float | None) -> float | None:
         span_s = max(0.0, (b - a).total_seconds())
         try:
+            LOG.debug("api.outlier_search _scan_span_split PROCESSING chunk a=%s b=%s span=%.0fs",
+                _dt_to_rfc3339_utc(a), _dt_to_rfc3339_utc(b), span_s)
             return _scan_span(qapi, a, b, prev)
         except OverflowError:
             if span_s <= MIN_CHUNK_SECONDS:
+                LOG.warning("api.outlier_search _scan_span_split OVERFLOW at min chunk a=%s b=%s span=%.0fs",
+                    _dt_to_rfc3339_utc(a), _dt_to_rfc3339_utc(b), span_s)
                 raise
             mid = a + timedelta(seconds=(span_s / 2.0))
+            LOG.info("api.outlier_search _scan_span_split SPLITTING chunk a=%s b=%s span=%.0fs -> two halves",
+                _dt_to_rfc3339_utc(a), _dt_to_rfc3339_utc(b), span_s)
             prev2 = _scan_span_split(qapi, a, mid, prev)
             return _scan_span_split(qapi, mid, b, prev2)
 
     try:
+        LOG.info("api.outlier_search entering scan loop")
         with v2_client(cfg) as c:
             qapi = c.query_api()
             try:
                 prev_val = _scan_span_split(qapi, start_dt, stop_dt, prev_val)
             except OverflowError:
+                LOG.error("api.outlier_search OVERFLOW: too many points even in smallest chunks")
                 return jsonify({
                     "ok": False,
                     "error": f"Zu viele Punkte im Zeitraum ({MAX_SCAN_CHUNK}+ in kleinstem Chunk). Bitte im Graph weiter reinzoomen.",
                 }), 413
 
         dur_ms = int((time.monotonic() - t0) * 1000)
-        LOG.info("api.outlier_search done from=%s scanned=%d found=%d dur=%dms",
-            request.remote_addr, scanned, len(rows), dur_ms)
+        LOG.info("api.outlier_search done from=%s scanned=%d found=%d dur=%dms limit=%d truncated=%s",
+            request.remote_addr, scanned, len(rows), dur_ms, limit, len(rows) >= limit)
+        LOG.info("api.outlier_search result: last_time=%s prev_val=%s counter_base=%s",
+            last_time_iso, prev_val, counter_base_val)
 
         return jsonify({
             "ok": True,

@@ -1,5 +1,35 @@
 # Changelog
 
+## 1.12.210
+
+### Enhancement
+
+- Serverseitige Analyse-Logs fuer `/api/outliers` erweitert.
+- Loggt jetzt: Validierung, Zeitfenster, Spanne, Chunk-Logik, Split-Entscheidungen, Overflow, Ergebnis-Zusammenfassung.
+- DEBUG-Level: Jeder Chunk-Eintritt, Chunk-Splitting.
+- WARNING-Level: Rejections, Overflow bei kleinstem Chunk.
+- INFO-Level: Start, Spanne, Scan-Loop, `_scan_span` ENTER/DONE, `_scan_span_split` PROCESSING/SPLITTING/OVERFLOW, Ergebnis mit scanned/found/dur.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
+## 1.12.209
+
+### Enhancement
+
+- Serverseitige Analyse-Logs fuer `/api/outlier_search` erweitert.
+- Loggt jetzt: Validierung, Zeitfenster, Spanne, Chunk-Logik, Split-Entscheidungen, Overflow, Ergebnis-Zusammenfassung.
+- DEBUG-Level: Jeder Chunk-Eintritt, gefundene Ausreisser, Chunk-Splitting.
+- WARNING-Level: Rejections, Overflow bei kleinstem Chunk.
+- INFO-Level: Start, Spanne, Scan-Loop, Ergebnis mit scanned/found/dur/limit/truncated.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.208
 
 ### Enhancement
