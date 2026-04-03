@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.211
+
+### Enhancement
+
+- Ausreisser-Uebersichtstabelle zeigt jetzt Anzahl pro Ausreissertyp an (z.B. "5 Ausreisser | Counter: 3 | Grenzen: 2").
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.210
 
 ### Enhancement

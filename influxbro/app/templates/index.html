@@ -5157,9 +5157,24 @@ function renderOutlierOverviewTable(){
   const filtered = getFilteredOutliers();
   if($rawOutlierOverviewBox) $rawOutlierOverviewBox.style.display = 'block';
 
-  // Show row count
+  // Show row count and type breakdown
   const $rowCount = document.getElementById('raw_outlier_row_count');
-  if($rowCount) $rowCount.textContent = filtered.length > 0 ? `${filtered.length} Zeilen` : '';
+  if($rowCount){
+    if(!filtered.length){
+      $rowCount.textContent = '';
+    }else{
+      const typeCounts = {};
+      filtered.forEach(r => {
+        const types = r.types || [];
+        types.forEach(t => {
+          typeCounts[t] = (typeCounts[t] || 0) + 1;
+        });
+      });
+      const typeLabels = {counter: 'Counter', decrease: 'Counter Abfall', bounds: 'Grenzen', fault_phase: 'Stoerphase', null: 'NULL', zero: '0-Werte'};
+      const parts = Object.entries(typeCounts).map(([t, c]) => `${typeLabels[t] || t}: ${c}`);
+      $rowCount.textContent = `${filtered.length} Ausreisser | ${parts.join(' | ')}`;
+    }
+  }
 
   if(!filtered.length){
     for(let i = 0; i < 3; i++){
