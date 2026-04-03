@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.12.207
+
+### Enhancement
+
+- Raw-Tabelle wird NUR noch geladen wenn ein Ausreisser in der Ausreisser-Tabelle selektiert wird.
+- Alle automatischen Raw-Tabelle Ladevorgänge entfernt:
+  - Cache-Wiederherstellung (lokal und Server)
+  - Graph-Zoom/Range-Änderung (plotly_relayout)
+  - Graph-Doppelklick (reset zoom)
+  - Auto-Tuning Dashboard
+  - "Alle" Button in Raw
+  - Raw-Zeitbereich-Checkbox Wechsel
+  - Raw-Section auf/zuklappen
+  - Raw-Zeitraum-Einstellung Wechsel
+- Manuelles Laden über Raw-Refresh-Button bleibt erhalten.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.206
 
 ### Fix

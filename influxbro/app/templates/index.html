@@ -1806,7 +1806,6 @@ function cacheRestoreIfAvailable(){
       draw(LAST_ROWS);
       autoScaleYFromWindow();
       try{ _updateGraphDetailUi(); _applyOverlays(); _updateGraphPointsInfo(); }catch(e){}
-      scheduleRawReload(true);
       loadStats().catch(()=>{});
     }
 
@@ -1886,7 +1885,6 @@ async function cachePeekServerIfAvailable(){
       draw(LAST_ROWS);
       autoScaleYFromWindow();
       try{ _updateGraphDetailUi(); _applyOverlays(); _updateGraphPointsInfo(); }catch(e){}
-      scheduleRawReload(true);
       loadStats().catch(()=>{});
     }
     try{ refreshEditGraph().catch(()=>{}); }catch(e){}
@@ -1959,7 +1957,6 @@ async function cacheRestoreLastDashboardIfAvailable(){
     try{ _updateGraphPointsInfo(); }catch(e){}
 
     try{ await loadStats(); }catch(e){}
-    scheduleRawReload(true);
     try{ cacheSaveDebounced(); }catch(e){}
     try{ saveState(); }catch(e){}
     try{ autoSpanAll(); }catch(e){}
@@ -2857,7 +2854,6 @@ function drawPlotly(rows){
           renderTable();
           autoScaleYFromWindow();
           scheduleStatsCurrentReload();
-          scheduleRawReload(true);
           try{ _applyOverlays(); }catch(e){}
           try{ _updateGraphPointsInfo(); }catch(e){}
           return;
@@ -2876,7 +2872,6 @@ function drawPlotly(rows){
             renderTable();
             autoScaleYFromWindow();
             scheduleStatsCurrentReload();
-            scheduleRawReload(true);
             try{ _applyOverlays(); }catch(e){}
             try{ _updateGraphPointsInfo(); }catch(e){}
 
@@ -2903,7 +2898,6 @@ function drawPlotly(rows){
       try{ _applyOverlays(); }catch(e){}
       try{ _updateGraphPointsInfo(); }catch(e){}
       scheduleStatsCurrentReload();
-      scheduleRawReload(true);
     });
 
     try{
@@ -3488,8 +3482,6 @@ async function _jumpToRawByMs(ms){
       }
     }catch(e){}
 
-    // ensure raw data exists (first page)
-    try{ await loadRawFromGraph(true); }catch(e){}
     for(let i=0;i<25;i++){
       if(!_RAW_INFLIGHT && (RAW_ROWS || []).length) break;
       await new Promise(r=>setTimeout(r, 120));
@@ -5579,7 +5571,6 @@ async function setRawTimeToAll(){
         TABLE_TIME.graph_start_ms = oldestMs;
         TABLE_TIME.graph_stop_ms = newestMs;
         saveState();
-        scheduleRawReload(true);
       }
     }
   }catch(e){
@@ -5744,16 +5735,15 @@ function scheduleRawReload(reset){
 }
 
 try{
-  if($rawTimeFromGraph){
-    $rawTimeFromGraph.addEventListener('change', ()=>{
-      try{
-        RAW_TIME_FROM_GRAPH = !!$rawTimeFromGraph.checked;
-        saveState();
-        if($rawSection && $rawSection.open) scheduleRawReload(true);
-        renderRawTable();
-      }catch(e){}
-    });
-  }
+    if($rawTimeFromGraph){
+      $rawTimeFromGraph.addEventListener('change', ()=>{
+        try{
+          RAW_TIME_FROM_GRAPH = !!$rawTimeFromGraph.checked;
+          saveState();
+          renderRawTable();
+        }catch(e){}
+      });
+    }
 }catch(e){}
 
 try{
@@ -5762,7 +5752,6 @@ try{
     $rawCenterRange.value = String(RAW_CENTER_RANGE);
     saveState();
     renderRawTable();
-    if($rawSection && $rawSection.open && RAW_SELECTED_MS !== null && RAW_SELECTED_MS !== undefined) scheduleRawReload(true);
   });
 }catch(e){}
 
@@ -7493,7 +7482,7 @@ if($graphMarkers) $graphMarkers.addEventListener("change", ()=>{
 
 // Raw data table
 if($rawSection) $rawSection.addEventListener("toggle", ()=>{
-  if($rawSection.open) scheduleRawReload(true);
+  // Raw table no longer auto-loads; only loads on outlier click
 });
 if($rawRefresh) $rawRefresh.addEventListener("click", (ev)=>{
   _stop(ev);
