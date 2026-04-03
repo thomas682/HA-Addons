@@ -4742,10 +4742,16 @@ function closeOutlierParamsDialog(){
 }
 
 async function runRawOutlierSearch(){
-  if(RAW_OUTLIER_SEARCHING) return;
+  console.log('[OUTLIER_SEARCH] ENTRY: RAW_OUTLIER_SEARCHING =', RAW_OUTLIER_SEARCHING);
+  if(RAW_OUTLIER_SEARCHING){
+    console.log('[OUTLIER_SEARCH] BLOCKED: Already searching');
+    return;
+  }
   const win = _rawWindowIso();
+  console.log('[OUTLIER_SEARCH] Step 1: Time window from _rawWindowIso()', win);
   if(!win || !win.start || !win.stop){
     if($rawOutlierStatusTxt) $rawOutlierStatusTxt.textContent = 'Kein gueltiger Zeitraum gewaehlt.';
+    console.error('[OUTLIER_SEARCH] FAILED: No valid time window from _rawWindowIso()');
     return;
   }
 
@@ -4755,19 +4761,25 @@ async function runRawOutlierSearch(){
     entity_id: String($e ? ($e.value || '') : ''),
     friendly_name: String($n ? ($n.value || '') : ''),
   };
+  console.log('[OUTLIER_SEARCH] Step 2: Base params', base);
   if(!base.measurement || !base.field){
     if($rawOutlierStatusTxt) $rawOutlierStatusTxt.textContent = 'Measurement oder Field fehlt.';
+    console.error('[OUTLIER_SEARCH] FAILED: Missing measurement or field');
     return;
   }
 
   const startMs = TABLE_TIME.graph_start_ms;
   const stopMs = TABLE_TIME.graph_stop_ms;
+  console.log('[OUTLIER_SEARCH] Step 3: TABLE_TIME graph range', startMs, stopMs, 'isFinite:', isFinite(startMs), isFinite(stopMs));
   if(!(isFinite(startMs) && isFinite(stopMs))){
     if($rawOutlierStatusTxt) $rawOutlierStatusTxt.textContent = 'Kein Graph-Zeitraum bekannt.';
+    console.error('[OUTLIER_SEARCH] FAILED: No graph time range in TABLE_TIME');
     return;
   }
+  console.log('[OUTLIER_SEARCH] Step 3: Graph time range', startMs, stopMs);
 
   const cacheKey = 'raw_outlier_cache:' + [base.measurement, base.field, base.entity_id || '', base.friendly_name || '', win.start, win.stop].join('|');
+  console.log('[OUTLIER_SEARCH] Step 4: Checking cache', cacheKey);
   let cached = null;
   try{
     const cs = sessionStorage.getItem(cacheKey);
@@ -4775,6 +4787,7 @@ async function runRawOutlierSearch(){
   }catch(e){}
 
   if(cached && cached.results && cached.results.length > 0){
+    console.log('[OUTLIER_SEARCH] CACHE HIT:', cached.results.length, 'results');
     RAW_OUTLIER_RESULTS = cached.results;
     RAW_OUTLIER_MAP = cached.map || {};
     RAW_OUTLIER_SCANNED_TOTAL = cached.scanned || 0;
@@ -4784,6 +4797,7 @@ async function runRawOutlierSearch(){
       const tb = Date.parse(String(b.time || ''));
       return (isFinite(ta) && isFinite(tb)) ? (ta - tb) : 0;
     });
+    console.log('[OUTLIER_SEARCH] CACHE: Rendering overview table');
     renderOutlierOverviewTable();
     // After analysis: raw table stays empty (5 empty rows)
     RAW_ROWS = [];
@@ -4801,6 +4815,7 @@ async function runRawOutlierSearch(){
     return;
   }
 
+  console.log('[OUTLIER_SEARCH] CACHE MISS - Starting full search');
   const unit = (HA_ENTITY_INFO && HA_ENTITY_INFO.entity && HA_ENTITY_INFO.entity.unit_of_measurement)
     ? String(HA_ENTITY_INFO.entity.unit_of_measurement) : '';
   const baseMeta = _rawOutlierMetaFromPayload(base);
@@ -4811,6 +4826,7 @@ async function runRawOutlierSearch(){
     const ps = localStorage.getItem('raw_outlier_params');
     if(ps) Object.assign(params, JSON.parse(ps));
   }catch(e){}
+  console.log('[OUTLIER_SEARCH] Step 5: Starting chunk search, params:', {base, params});
 
   startRawOutlierUi(baseMeta);
   RAW_OUTLIER_SEARCHING = true;
@@ -4828,6 +4844,7 @@ async function runRawOutlierSearch(){
   try{
     const spanMs = Math.max(0, stopMs - startMs);
     const spanDays = spanMs / 86400000;
+    console.log('[OUTLIER_SEARCH] Step 6: Span', spanDays, 'days, computing chunks');
     let chunkDays = 1;
     if(spanDays > 180) chunkDays = 14;
     else if(spanDays > 60) chunkDays = 7;
@@ -4848,13 +4865,22 @@ async function runRawOutlierSearch(){
     let scanState = null;
     let lastIso = null;
 
+    console.log('[OUTLIER_SEARCH] Step 7: Processing', chunks.length, 'chunks');
+    console.log('[OUTLIER_SEARCH]   Chunk boundaries:', chunks.map((c,idx) => `#${idx+1}: ${c[0]} -> ${c[1]}`).join(' | '));
+    let chunksProcessed = 0;
     for(let i = 0; i < chunks.length; i++){
-      if(RAW_OUTLIER_ABORT && RAW_OUTLIER_ABORT.signal.aborted) throw {aborted: true};
+      chunksProcessed = i + 1;
+      console.log('[OUTLIER_SEARCH]   === Chunk', i+1, '/', chunks.length, 'START ===');
+      if(RAW_OUTLIER_ABORT && RAW_OUTLIER_ABORT.signal.aborted){
+        console.log('[OUTLIER_SEARCH]   ABORT signal detected at chunk', i+1);
+        throw {aborted: true};
+      }
 
       const [aIso, bIso] = chunks[i];
       const upto = lastIso || aIso;
       RAW_OUTLIER_META_TEXT = 'Chunk ' + (i+1) + '/' + chunks.length + ': ' + fmtTs(aIso) + ' bis ' + fmtTs(bIso) + ' | ' + overallSpanTxt + ' | Geprueft bis: ' + fmtTs(upto) + ' | Punkte: ' + scannedTotal + ' | ' + baseMeta;
       _rawOutlierRenderTime();
+      console.log('[OUTLIER_SEARCH]   Chunk', i+1, 'fetching', aIso, '->', bIso);
 
       const payload = {
         measurement: base.measurement,
@@ -4873,18 +4899,27 @@ async function runRawOutlierSearch(){
         max_step: params.max_step || '',
       };
 
-      const r = await fetch('./api/outlier_search', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(payload),
-        signal: RAW_OUTLIER_ABORT ? RAW_OUTLIER_ABORT.signal : undefined,
-      });
-      const j = await r.json().catch(()=>({ok:false, error:'Invalid JSON'}));
+      let r, j;
+      try{
+        r = await fetch('./api/outlier_search', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(payload),
+          signal: RAW_OUTLIER_ABORT ? RAW_OUTLIER_ABORT.signal : undefined,
+        });
+        j = await r.json().catch(()=>({ok:false, error:'Invalid JSON'}));
+      }catch(fetchErr){
+        console.error('[OUTLIER_SEARCH]   Chunk', i+1, 'FETCH ERROR:', fetchErr.message || fetchErr);
+        throw fetchErr;
+      }
 
+      console.log('[OUTLIER_SEARCH]   Chunk', i+1, 'response: ok=', r.ok, 'j.ok=', j.ok, 'scanned=', j.scanned, 'rows=', (j.rows||[]).length);
       if(!r.ok || !j.ok){
+        console.error('[OUTLIER_SEARCH]   Chunk', i+1, 'FAILED: HTTP', r.status, 'error:', j.error);
         throw new Error(j.error || ('HTTP ' + r.status));
       }
 
+      console.log('[OUTLIER_SEARCH]   Chunk', i+1, 'OK: scanned', j.scanned, 'found', (j.rows||[]).length);
       scannedTotal += Number(j.scanned || 0);
       lastIso = j.last_time || lastIso;
       prevValue = (j.last_value !== undefined && j.last_value !== null) ? j.last_value : prevValue;
@@ -4901,6 +4936,7 @@ async function runRawOutlierSearch(){
       RAW_OUTLIER_SCANNED_TOTAL = scannedTotal;
 
       if(RAW_OUTLIER_RESULTS.length >= 5000){
+        console.log('[OUTLIER_SEARCH]   LIMIT 5000 reached at chunk', i+1, '- BREAKING');
         RAW_OUTLIER_RESULTS = RAW_OUTLIER_RESULTS.slice(0, 5000);
         break;
       }
@@ -4908,7 +4944,9 @@ async function runRawOutlierSearch(){
       RAW_OUTLIER_META_TEXT = '';
       _rawOutlierRenderTime();
       if($rawOutlierStatusTxt) $rawOutlierStatusTxt.textContent = 'Ausreisser gefunden: ' + RAW_OUTLIER_RESULTS.length + ' | geprueft: ' + scannedTotal;
+      console.log('[OUTLIER_SEARCH]   === Chunk', i+1, 'DONE === cumulative found:', RAW_OUTLIER_RESULTS.length);
     }
+    console.log('[OUTLIER_SEARCH] Step 7 DONE: Processed', chunksProcessed, 'of', chunks.length, 'chunks. Total scanned:', scannedTotal, 'Total found:', RAW_OUTLIER_RESULTS.length);
 
     RAW_OUTLIER_RESULTS.sort((a, b) => {
       const ta = Date.parse(String(a.time || ''));
@@ -4958,6 +4996,7 @@ async function runRawOutlierSearch(){
 async function runAnalysis(){
   err(""); ok("");
   const base = currentFilters();
+  console.log('[ANALYSIS] Step 1: Validating inputs', JSON.stringify(base));
   if(!base.measurement || !base.field){
     err("Bitte zuerst Measurement und Field auswaehlen.");
     return;
@@ -4968,17 +5007,16 @@ async function runAnalysis(){
   }
 
   const win = _rawWindowIso();
+  console.log('[ANALYSIS] Step 2: Time window', win);
   if(!win || !win.start || !win.stop){
     err("Bitte einen gueltigen Zeitraum waehlen.");
     return;
   }
 
-  // Run the outlier search (chunk-wise)
-  await runRawOutlierSearch();
-
-  // After search: set graph to full range
+  // Set graph to full range BEFORE loading data
   const startMs = TABLE_TIME.graph_start_ms;
   const stopMs = TABLE_TIME.graph_stop_ms;
+  console.log('[ANALYSIS] Step 3: Setting graph range', startMs, stopMs);
   if(isFinite(startMs) && isFinite(stopMs)){
     TABLE_TIME.graph_start_ms = Math.min(startMs, stopMs);
     TABLE_TIME.graph_stop_ms = Math.max(startMs, stopMs);
@@ -4990,20 +5028,44 @@ async function runAnalysis(){
   _LAST_ZOOM_RANGE = null;
   _ZOOM_LOADING = false;
 
-  // Load graph data for full range (ONCE, no auto updates after)
+  // Load graph data for full range FIRST (before outlier search clears it)
+  console.log('[ANALYSIS] Step 4: Loading graph data...');
   try{
     await loadData();
+    console.log('[ANALYSIS] Step 4 DONE: Graph loaded, rows:', LAST_ROWS ? LAST_ROWS.length : 0);
   }catch(e){
     err("Graph laden: " + (e && e.message ? e.message : String(e)));
+    console.error('[ANALYSIS] Step 4 FAILED:', e);
+  }
+
+  // Run the outlier search (chunk-wise) AFTER graph data is loaded
+  console.log('[ANALYSIS] Step 5: Starting outlier search...');
+  console.log('[ANALYSIS]   - TABLE_TIME before search:', TABLE_TIME.graph_start_ms, TABLE_TIME.graph_stop_ms);
+  console.log('[ANALYSIS]   - RAW_OUTLIER_SEARCHING:', RAW_OUTLIER_SEARCHING);
+  console.log('[ANALYSIS]   - RAW_OUTLIER_RESULTS before:', RAW_OUTLIER_RESULTS.length);
+  console.log('[ANALYSIS]   - _rawWindowIso():', JSON.stringify(_rawWindowIso()));
+  console.log('[ANALYSIS]   - Cache key:', 'raw_outlier_cache:' + [base.measurement, base.field, base.entity_id || '', base.friendly_name || '', win.start, win.stop].join('|'));
+  try{
+    await runRawOutlierSearch();
+    console.log('[ANALYSIS] Step 5 DONE: Outlier search complete');
+    console.log('[ANALYSIS]   - RAW_OUTLIER_RESULTS after:', RAW_OUTLIER_RESULTS.length);
+    console.log('[ANALYSIS]   - RAW_OUTLIER_MAP size:', RAW_OUTLIER_MAP ? Object.keys(RAW_OUTLIER_MAP).length : 0);
+    console.log('[ANALYSIS]   - Filtered outliers:', getFilteredOutliers().length);
+    console.log('[ANALYSIS]   - Filter types:', getRawOutlierFilterTypes());
+  }catch(e){
+    err("Ausreisser-Suche: " + (e && e.message ? e.message : String(e)));
+    console.error('[ANALYSIS] Step 5 FAILED:', e);
   }
 
   // Clear raw table, show 5 empty rows
+  console.log('[ANALYSIS] Step 6: Clearing raw table');
   RAW_ROWS = [];
   RAW_META = null;
   RAW_OFFSET = 0;
   renderRawTable();
   const $rawRowCount = document.getElementById('raw_row_count');
   if($rawRowCount) $rawRowCount.textContent = '0 Zeilen';
+  console.log('[ANALYSIS] DONE');
 }
 
 async function jumpToOldestOutlier(){
