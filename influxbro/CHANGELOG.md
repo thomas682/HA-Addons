@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.12.208
+
+### Enhancement
+
+- Detaillierte Console-Logs fuer Analyse und Ausreisser-Suche hinzugefuegt.
+- Logs zeigen: RAW_OUTLIER_SEARCHING flag, Zeitfenster, Cache-Status, Chunk-Verarbeitung, API-Antworten, Abbruch-Signale.
+- Hilft bei der Diagnose warum nicht alle Chunks durchlaufen werden.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.207
 
 ### Enhancement
