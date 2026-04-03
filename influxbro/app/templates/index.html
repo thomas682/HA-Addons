@@ -4993,13 +4993,14 @@ async function runAnalysis(){
     saveState();
   }
 
-  // Load graph data for full range
+  // Block zoom reload for 5 seconds to prevent plotly_relayout cascade
+  _ZOOM_BLOCK_UNTIL = Date.now() + 5000;
+  _LAST_ZOOM_RANGE = null;
+  _ZOOM_LOADING = false;
+
+  // Load graph data for full range (ONCE, no auto updates after)
   try{
     await loadData();
-    // Prevent zoom reload cascade after loadData triggers plotly_relayout
-    _LAST_ZOOM_RANGE = null;
-    _ZOOM_LOADING = false;
-    _ZOOM_BLOCK_UNTIL = Date.now() + 2000;
   }catch(e){
     err("Graph laden: " + (e && e.message ? e.message : String(e)));
   }
@@ -7267,7 +7268,6 @@ async function loadData(){
   autoScaleYFromWindow();
   try{ _updateGraphDetailUi(); _applyOverlays(); _updateGraphPointsInfo(); }catch(e){}
   await loadStats();
-  scheduleRawReload(true);
 }
 
 async function refreshAll(){

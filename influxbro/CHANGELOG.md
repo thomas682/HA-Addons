@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.12.205
+
+### Enhancement
+
+- Analyse-Logik ueberarbeitet: Nur Analyse liest alle Daten und fuehrt Stoerstellenanalyse durch.
+- Nach Analyse: Graph und Tabellen werden einmalig gefuellt, keine weiteren automatischen Updates.
+- Raw-Tabelle bleibt nach Analyse leer (5 leere Zeilen).
+- Raw-Tabelle wird NUR geladen wenn ein Ausreisser in der Ausreisser-Tabelle selektiert wird.
+- `scheduleRawReload(true)` aus `loadData()` entfernt um automatische Raw-Updates zu verhindern.
+- Zoom-Nachladen wird nach Analyse fuer 5 Sekunden blockiert.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.204
 
 ### Fix
