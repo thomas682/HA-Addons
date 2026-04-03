@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.204
+
+### Fix
+
+- "Maximum call stack size exceeded" beim Analyse-Button behoben. Nach `loadData()` wurde `_tryLoadZoomData()` durch das asynchrone `plotly_relayout` Event erneut aufgerufen. Neuer Guard `_ZOOM_BLOCK_UNTIL` blockiert Zoom-Nachladen fuer 2 Sekunden nach Analyse.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.203
 
 ### Enhancement

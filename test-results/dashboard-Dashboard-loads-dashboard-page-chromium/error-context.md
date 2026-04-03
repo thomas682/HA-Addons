@@ -6,8 +6,8 @@
 
 # Test info
 
-- Name: dashboard.spec.js >> Dashboard >> settings buttons visible in section summaries
-- Location: tests/e2e/dashboard.spec.js:9:3
+- Name: dashboard.spec.js >> Dashboard >> loads dashboard page
+- Location: tests/e2e/dashboard.spec.js:4:3
 
 # Error details
 
@@ -25,13 +25,13 @@ Call log:
   2  | 
   3  | test.describe('Dashboard', () => {
   4  |   test('loads dashboard page', async ({ page }) => {
-  5  |     await page.goto('/');
+> 5  |     await page.goto('/');
+     |                ^ Error: page.goto: net::ERR_ADDRESS_UNREACHABLE at http://192.168.2.200:8099/
   6  |     await expect(page).toHaveTitle(/InfluxBro/);
   7  |   });
   8  | 
   9  |   test('settings buttons visible in section summaries', async ({ page }) => {
-> 10 |     await page.goto('/');
-     |                ^ Error: page.goto: net::ERR_ADDRESS_UNREACHABLE at http://192.168.2.200:8099/
+  10 |     await page.goto('/');
   11 |     const settingsBtns = page.locator('.ib_cfg_icon');
   12 |     await expect(settingsBtns).toHaveCount({ min: 1 });
   13 |   });

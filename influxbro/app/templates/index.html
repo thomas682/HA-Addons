@@ -2171,6 +2171,7 @@ let _IN_X_RELAYOUT = false;
 let _SUPPRESS_RELAYOUT = false;
 let _ZOOM_LOADING = false;
 let _LAST_ZOOM_RANGE = null;
+let _ZOOM_BLOCK_UNTIL = 0;
 
 let GRAPH_MARKERS = false;
 let ALLOW_WRITES = true;
@@ -2682,6 +2683,7 @@ function drawCanvas(rows){
 function _tryLoadZoomData(visStartMs, visStopMs){
   if(_ZOOM_LOADING) return;
   if(!visStartMs || !visStopMs) return;
+  if(Date.now() < _ZOOM_BLOCK_UNTIL) return;
 
   const rangeKey = Math.round(visStartMs) + '|' + Math.round(visStopMs);
   if(_LAST_ZOOM_RANGE === rangeKey) return;
@@ -4994,6 +4996,10 @@ async function runAnalysis(){
   // Load graph data for full range
   try{
     await loadData();
+    // Prevent zoom reload cascade after loadData triggers plotly_relayout
+    _LAST_ZOOM_RANGE = null;
+    _ZOOM_LOADING = false;
+    _ZOOM_BLOCK_UNTIL = Date.now() + 2000;
   }catch(e){
     err("Graph laden: " + (e && e.message ? e.message : String(e)));
   }
