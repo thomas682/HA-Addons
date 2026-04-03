@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.12.201
+
+### Fix
+
+- Dashboard Buttons (dashboard.load, dashboard.query_details, dashboard.query_test) und Auswahlfelder reagieren wieder.
+- Optional Chaining (`?.`) fuer alle DOM-Element-Referenzen ($mf, $n, $e, $r, $start, $stop) verhindert JavaScript-Absturz bei fehlenden Elementen.
+- Verbessertes Error-Logging in Event-Handlern statt stummem `.catch(()=>{})`.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.200
 
 ### Enhancement

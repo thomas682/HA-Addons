@@ -7457,36 +7457,36 @@ async function triggerDashboardTagRefresh(){
   _debAutoResolveDashboardSrc();
 }
 
-$mf.addEventListener("input", ()=>{
-  triggerDashboardMeasurementRefresh().catch(()=>{});
+$mf?.addEventListener("input", ()=>{
+  triggerDashboardMeasurementRefresh().catch((e)=>{ console.warn('Measurement refresh failed:', e); });
   _debRefreshDashboardSrc();
 });
-$mf.addEventListener("change", ()=>{
-  triggerDashboardMeasurementRefresh().catch(()=>{});
+$mf?.addEventListener("change", ()=>{
+  triggerDashboardMeasurementRefresh().catch((e)=>{ console.warn('Measurement refresh failed:', e); });
 });
-$mf.addEventListener("blur", ()=>{ triggerDashboardMeasurementRefresh().catch(()=>{}); });
+$mf?.addEventListener("blur", ()=>{ triggerDashboardMeasurementRefresh().catch((e)=>{ console.warn('Measurement refresh failed:', e); }); });
 
-$n.addEventListener("input", ()=>{
-  triggerDashboardTagRefresh().catch(()=>{});
+$n?.addEventListener("input", ()=>{
+  triggerDashboardTagRefresh().catch((e)=>{ console.warn('Tag refresh failed:', e); });
   _debRefreshDashboardSrc();
 });
-$n.addEventListener("change", ()=>{
-  triggerDashboardTagRefresh().catch(()=>{});
+$n?.addEventListener("change", ()=>{
+  triggerDashboardTagRefresh().catch((e)=>{ console.warn('Tag refresh failed:', e); });
 });
-$n.addEventListener("blur", ()=>{ triggerDashboardTagRefresh().catch(()=>{}); });
+$n?.addEventListener("blur", ()=>{ triggerDashboardTagRefresh().catch((e)=>{ console.warn('Tag refresh failed:', e); }); });
 
-$e.addEventListener("input", ()=>{
-  triggerDashboardTagRefresh().catch(()=>{});
+$e?.addEventListener("input", ()=>{
+  triggerDashboardTagRefresh().catch((e)=>{ console.warn('Tag refresh failed:', e); });
   _debRefreshDashboardSrc();
 });
-$e.addEventListener("change", ()=>{
-  triggerDashboardTagRefresh().catch(()=>{});
+$e?.addEventListener("change", ()=>{
+  triggerDashboardTagRefresh().catch((e)=>{ console.warn('Tag refresh failed:', e); });
 });
-$e.addEventListener("blur", ()=>{ triggerDashboardTagRefresh().catch(()=>{}); });
+$e?.addEventListener("blur", ()=>{ triggerDashboardTagRefresh().catch((e)=>{ console.warn('Tag refresh failed:', e); }); });
 
 if($btnReset) $btnReset.addEventListener("click", (ev)=>{ _stop(ev); resetFiltersKeepRange().catch(()=>{}); });
 
-$r.addEventListener("change", async ()=>{
+$r?.addEventListener("change", async ()=>{
   try{
     saveState();
     $custom.style.display = ($r.value === "custom") ? "block" : "none";
@@ -7496,8 +7496,8 @@ $r.addEventListener("change", async ()=>{
   }catch(e){ displayError(e); }
 });
 
-$start.addEventListener("change", async ()=>{ if($r.value==="custom") { saveState(); autoSpanAll(); renderTableRange(); renderRangeFromTo(); } });
-$stop.addEventListener("change", async ()=>{ if($r.value==="custom") { saveState(); autoSpanAll(); renderTableRange(); renderRangeFromTo(); } });
+$start?.addEventListener("change", async ()=>{ if($r?.value==="custom") { saveState(); autoSpanAll(); renderTableRange(); renderRangeFromTo(); } });
+$stop?.addEventListener("change", async ()=>{ if($r?.value==="custom") { saveState(); autoSpanAll(); renderTableRange(); renderRangeFromTo(); } });
 
 // Search inputs (case-insensitive filtering)
 // (search inputs removed; datalist inputs filter automatically)
