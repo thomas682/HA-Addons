@@ -4247,7 +4247,7 @@ async function loadMeasurements(opts){
     err(msg + ' Bitte Influx Einstellungen pruefen und ggf. unter Einstellungen -> Verbindung speichern (Token/Org/Bucket).');
     ALL_MEASUREMENTS = [];
     renderMeasurements();
-    if($mf) $mf.value = "";
+    if($mf && !o.silent) $mf.value = "";
     return true;
   }
 }
@@ -4270,7 +4270,7 @@ async function loadDashboardFields(measurement, opts){
     if($fieldList) $fieldList.innerHTML = '';
     _setSelCount($cntField, 0);
     _selApplyWidthForInput($f, []);
-    if($f) $f.value = "";
+    if($f && !o.silent) $f.value = "";
     return true;
   }
   const j = await api("./api/fields?measurement=" + encodeURIComponent(m), null, { key: "fields", status: "Lade Fields...", silent: !!o.silent });
