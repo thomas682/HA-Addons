@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.12.218
+
+### Enhancement
+
+- Ausreisser-Typ-Auswahl: Default ist jetzt nur "Counter Ausreisser" (statt alle Typen). Andere Typen koennen im Dropdown aktiviert werden.
+- Ausreisser-Typ-Auswahl wird im Browser-Speicher gespeichert.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Playwright: 4/4 Tests bestanden
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.217
 
 ### Fix
