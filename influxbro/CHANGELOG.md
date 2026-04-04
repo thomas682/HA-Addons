@@ -1,5 +1,33 @@
 # Changelog
 
+## 1.12.225
+
+### Enhancement
+
+- Analyse-Debug-Logging: Jeder Schritt der Analyse wird ins Server-Log geschrieben.
+- Log-Eintraege: start, validate, window, types, search_start, fetch_start, fetch_response, fetch_json, fetch_error, search_done, search_error.
+- Ermöglicht Diagnose warum Analyse-Button auf Live-System nichts tut.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
+## 1.12.224
+
+### Enhancement
+
+- Analyse-Button: Neue Statuszeile zeigt aktuelle Parameter (Measurement, Field, Entity, Zeitraum).
+- Measurement/Field Anzahl zeigt jetzt tatsächliche Datalist-Optionen statt API-Gesamtzahl.
+- Zeitspanne wird nach Seitenwechsel korrekt wiederhergestellt.
+- Statuszeile aktualisiert sich bei jeder Filter-Änderung.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Playwright: 4/4 Tests bestanden
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.223
 
 ### Enhancement

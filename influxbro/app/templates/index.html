@@ -5008,9 +5008,26 @@ function _updateAnalysisStatus(){
   }catch(e){}
 }
 
+function _logAnalysis(step, data){
+  try{
+    fetch('./api/client_error', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        kind: 'analysis_debug',
+        page: 'dashboard',
+        step: step,
+        ts: new Date().toISOString(),
+        ...data
+      })
+    }).catch(()=>{});
+  }catch(e){}
+}
+
 async function runAnalysis(){
   err(""); ok("");
   const base = currentFilters();
+  _logAnalysis('start', {measurement: base.measurement, field: base.field, entity_id: base.entity_id, friendly_name: base.friendly_name, range: base.range});
   const checklist = [];
   const chunkLog = [];
   let allOk = true;
@@ -5034,22 +5051,27 @@ async function runAnalysis(){
   }
 
   // Step 1: Validate inputs
+  _logAnalysis('validate', {measurement: base.measurement, field: base.field, entity_id: base.entity_id, friendly_name: base.friendly_name});
   if(!base.measurement || !base.field){
     err("Bitte zuerst Measurement und Field auswaehlen.");
     _addCheck('Eingaben pruefen', 'err');
+    _logAnalysis('error', {step: 'validate', error: 'Missing measurement or field'});
     return;
   }
   if(!base.entity_id && !base.friendly_name){
     err("Bitte zuerst friendly_name oder entity_id auswaehlen.");
     _addCheck('Eingaben pruefen', 'err');
+    _logAnalysis('error', {step: 'validate', error: 'Missing entity_id or friendly_name'});
     return;
   }
   _addCheck('Eingaben pruefen', 'ok');
 
   const win = _rawWindowIso();
+  _logAnalysis('window', {win: win});
   if(!win || !win.start || !win.stop){
     err("Bitte einen gueltigen Zeitraum waehlen.");
     _addCheck('Zeitraum: ' + fmtTs(win ? win.start : '-') + ' bis ' + fmtTs(win ? win.stop : '-'), 'err');
+    _logAnalysis('error', {step: 'window', error: 'Invalid time window', win: win});
     return;
   }
   _addCheck('Zeitraum: ' + fmtTs(win.start) + ' bis ' + fmtTs(win.stop), 'ok');
@@ -5057,6 +5079,7 @@ async function runAnalysis(){
   const types = getRawOutlierFilterTypes();
   const typeLabels = {counter: 'Counter', decrease: 'Counter Abfall', bounds: 'Grenzen', fault_phase: 'Stoerphase', null: 'NULL', zero: '0-Werte'};
   const typeNames = types.map(t => typeLabels[t] || t).join(', ');
+  _logAnalysis('types', {types: types});
   _addCheck('Ausreisser-Typen: ' + (typeNames || 'Keine'), types.length > 0 ? 'ok' : 'err');
 
   // Clear previous analysis log
@@ -5067,10 +5090,12 @@ async function runAnalysis(){
   const t0 = performance.now();
   progressIdx = checklist.length;
   _addCheck('Ausreisser-Suche: 0 gefunden (0s)', 'running', 0);
+  _logAnalysis('search_start', {});
   try{
     await runRawOutlierSearchWithProgress(_updateProgress, _onChunkLog);
     const dur = Math.round(performance.now() - t0);
     const count = RAW_OUTLIER_RESULTS ? RAW_OUTLIER_RESULTS.length : 0;
+    _logAnalysis('search_done', {count: count, dur: dur});
 
     // Count by type
     const typeCounts = {};
@@ -5101,6 +5126,7 @@ async function runAnalysis(){
     });
   }catch(e){
     const dur = Math.round(performance.now() - t0);
+    _logAnalysis('search_error', {error: e && e.message ? e.message : String(e), stack: e && e.stack ? e.stack : ''});
     checklist[progressIdx] = {label: 'Ausreisser-Suche: ' + (e && e.message ? e.message : String(e)), status: 'err', dur: dur, sub: ''};
     _renderChecklist(checklist);
     allOk = false;
@@ -5408,6 +5434,7 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog){
       const fetchTimeoutId = setTimeout(() => {
         if(RAW_OUTLIER_ABORT) RAW_OUTLIER_ABORT.abort();
       }, FETCH_TIMEOUT_MS);
+      _logAnalysis('fetch_start', {chunk: chunkIdx+1, total: chunks.length, start: aIso, stop: bIso});
       try{
         r = await fetch('./api/outlier_search', {
           method: 'POST',
@@ -5415,10 +5442,13 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog){
           body: JSON.stringify(payload),
           signal: RAW_OUTLIER_ABORT ? RAW_OUTLIER_ABORT.signal : undefined,
         });
+        _logAnalysis('fetch_response', {chunk: chunkIdx+1, status: r.status, ok: r.ok});
         j = await r.json().catch(()=>({ok:false, error:'Invalid JSON'}));
+        _logAnalysis('fetch_json', {chunk: chunkIdx+1, ok: j.ok, scanned: j.scanned, rows: (j.rows||[]).length});
       }catch(fetchErr){
         const chunkDur = Math.round(performance.now() - chunkT0);
         const isAbort = fetchErr.name === 'AbortError';
+        _logAnalysis('fetch_error', {chunk: chunkIdx+1, dur: chunkDur, isAbort: isAbort, error: fetchErr.message || String(fetchErr)});
         // Log failed chunk with abort detection
         if(onChunkLog) onChunkLog({
           idx: chunkIdx + 1,
