@@ -8,7 +8,7 @@ module.exports = defineConfig({
   workers: 1,
   reporter: 'list',
   use: {
-    baseURL: 'http://192.168.2.200:8099',
+    baseURL: 'http://127.0.0.1:8099',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',

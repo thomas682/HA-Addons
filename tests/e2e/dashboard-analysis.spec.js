@@ -1,59 +1,171 @@
 const { test, expect } = require('@playwright/test');
 
 test.describe('Dashboard Analyse', () => {
-  test('complete analysis flow: select source, run analysis, check outliers', async ({ page }) => {
+  test('UI elements visible', async ({ page }) => {
     // Step 1: Navigate to dashboard
     await page.goto('/');
     await expect(page).toHaveTitle(/InfluxBro/);
 
-    // Step 2: Select measurement "Wh"
-    await page.fill('#measurement', 'Wh');
-    await page.locator('#measurement').press('Enter');
-    await expect(page.locator('#measurement')).toHaveValue('Wh');
+    // Step 2: Selection section is open by default - ensure it's open
+    const isOpen = await page.locator('#selection_details').evaluate(el => el.open);
+    if (!isOpen) {
+      await page.click('#selection_details summary');
+    }
+    await page.waitForTimeout(500);
 
-    // Wait for fields to load
-    await page.waitForTimeout(1000);
-    await expect(page.locator('#field_list option')).toHaveCount({ min: 1 });
+    // Step 3: Verify input elements exist and are visible
+    await expect(page.locator('#measurement_filter')).toBeVisible();
+    await expect(page.locator('#field')).toBeVisible();
+    await expect(page.locator('#entity_id')).toBeVisible();
+    await expect(page.locator('#friendly_name')).toBeVisible();
+    await expect(page.locator('#range')).toBeVisible();
+    await expect(page.locator('#load')).toBeVisible();
 
-    // Step 3: Select field "value"
+    // Step 4: Select measurement
+    await page.fill('#measurement_filter', 'Wh');
+    await page.locator('#measurement_filter').press('Enter');
+    await expect(page.locator('#measurement_filter')).toHaveValue('Wh');
+
+    // Step 5: Select field
     await page.fill('#field', 'value');
     await page.locator('#field').press('Enter');
     await expect(page.locator('#field')).toHaveValue('value');
 
-    // Step 4: Select entity_id "sma_30581_energy_bezug_wh_hm2"
+    // Step 6: Select entity
     await page.fill('#entity_id', 'sma_30581_energy_bezug_wh_hm2');
     await page.locator('#entity_id').press('Enter');
     await expect(page.locator('#entity_id')).toHaveValue('sma_30581_energy_bezug_wh_hm2');
 
-    // Step 5: Wait for friendly_name to populate (should have 1 option)
-    await page.waitForTimeout(1000);
-    const friendlyCount = await page.locator('#friendly_name_list option').count();
-    expect(friendlyCount).toBeGreaterThanOrEqual(1);
-
-    // Step 6: Select time range "all"
+    // Step 7: Select time range
     await page.selectOption('#range', 'all');
 
-    // Step 7: Click Analyse button
-    await page.click('#load');
+    console.log('Dashboard UI test passed');
+  });
 
-    // Step 8: Wait for analysis to complete
-    await page.waitForTimeout(5000);
+  test('analysis flow with InfluxDB', async ({ page }) => {
+    await page.goto('/');
+    await expect(page).toHaveTitle(/InfluxBro/);
 
-    // Step 9: Check if outlier overview table has content or empty state
-    const outlierBody = page.locator('#raw_outlier_body tr');
-    const outlierCount = await outlierBody.count();
-
-    if (outlierCount > 0) {
-      const firstRow = outlierBody.first();
-      await expect(firstRow).toBeVisible();
-      console.log(`Found ${outlierCount} outlier rows`);
-    } else {
-      const emptyMsg = page.locator('#raw_outlier_body td');
-      const text = await emptyMsg.first().textContent();
-      console.log('No outliers found:', text);
+    // Open selection section if closed
+    const isOpen = await page.locator('#selection_details').evaluate(el => el.open);
+    if (!isOpen) {
+      await page.click('#selection_details summary');
+      await page.waitForTimeout(500);
     }
 
-    // Step 10: Verify outlier row count display is visible
-    await expect(page.locator('#raw_outlier_row_count')).toBeVisible();
+    // Select source
+    await page.fill('#measurement_filter', 'Wh');
+    await page.locator('#measurement_filter').press('Enter');
+    await page.waitForTimeout(1000);
+
+    await page.fill('#field', 'value');
+    await page.locator('#field').press('Enter');
+    await page.waitForTimeout(1000);
+
+    await page.fill('#entity_id', 'sma_30581_energy_bezug_wh_hm2');
+    await page.locator('#entity_id').press('Enter');
+    await page.waitForTimeout(1000);
+
+    // Select time range
+    await page.selectOption('#range', 'all');
+
+    // Click Analyse
+    await page.click('#load');
+    await page.waitForTimeout(5000);
+
+    // Open Raw section
+    const rawSection = page.locator('#raw_section');
+    const rawIsOpen = await rawSection.evaluate(el => el.hasAttribute('open'));
+    if (!rawIsOpen) {
+      await page.click('#raw_section summary');
+      await page.waitForTimeout(500);
+    }
+
+    // Check that the raw table container exists
+    const rawTable = page.locator('#raw_box');
+    await expect(rawTable).toBeVisible();
+
+    // Check that the outlier overview box exists (may be hidden if no outliers)
+    const outlierOverview = page.locator('#raw_outlier_overview_box');
+    await expect(outlierOverview).toHaveCount(1);
+
+    console.log('Analysis flow test passed');
+  });
+
+  test('field selection loads after measurement', async ({ page }) => {
+    // Test that selecting a measurement populates the field dropdown
+    await page.goto('/');
+    await expect(page).toHaveTitle(/InfluxBro/);
+
+    // Open selection section if closed
+    const isOpen = await page.locator('#selection_details').evaluate(el => el.open);
+    if (!isOpen) {
+      await page.click('#selection_details summary');
+      await page.waitForTimeout(500);
+    }
+
+    // Initial field list should be empty
+    const initialFieldCount = await page.locator('#field_list option').count();
+    console.log('Initial field count:', initialFieldCount);
+
+    // Select measurement
+    await page.fill('#measurement_filter', 'Wh');
+    await page.locator('#measurement_filter').press('Enter');
+    await page.waitForTimeout(1500);
+
+    // Field list should now have options
+    const fieldCount = await page.locator('#field_list option').count();
+    console.log('Field count after selecting Wh:', fieldCount);
+    expect(fieldCount).toBeGreaterThan(0);
+
+    // Select field
+    await page.fill('#field', 'value');
+    await page.locator('#field').press('Enter');
+    await expect(page.locator('#field')).toHaveValue('value');
+
+    console.log('Field selection test passed');
+  });
+
+  test('friendly_name filters by entity_id', async ({ page }) => {
+    // Test that selecting an entity_id filters the friendly_name dropdown
+    await page.goto('/');
+    await expect(page).toHaveTitle(/InfluxBro/);
+
+    // Open selection section if closed
+    const isOpen = await page.locator('#selection_details').evaluate(el => el.open);
+    if (!isOpen) {
+      await page.click('#selection_details summary');
+      await page.waitForTimeout(500);
+    }
+
+    // Select measurement and field first
+    await page.fill('#measurement_filter', 'Wh');
+    await page.locator('#measurement_filter').press('Enter');
+    await page.waitForTimeout(1000);
+
+    await page.fill('#field', 'value');
+    await page.locator('#field').press('Enter');
+    await page.waitForTimeout(1000);
+
+    // Check friendly_name count before entity_id
+    const initialFriendlyCount = await page.locator('#friendly_list option').count();
+    console.log('Initial friendly_name count:', initialFriendlyCount);
+
+    // Select entity_id
+    await page.fill('#entity_id', 'sma_30581_energy_bezug_wh_hm2');
+    await page.locator('#entity_id').press('Enter');
+    await page.waitForTimeout(1500);
+
+    // Friendly name should be filtered to 1
+    const filteredFriendlyCount = await page.locator('#friendly_list option').count();
+    console.log('Friendly_name count after entity_id:', filteredFriendlyCount);
+    expect(filteredFriendlyCount).toBe(1);
+
+    // Verify the value
+    const friendlyValue = await page.locator('#friendly_list option').first().getAttribute('value');
+    console.log('Filtered friendly_name:', friendlyValue);
+    expect(friendlyValue).toContain('SMA_30581');
+
+    console.log('Friendly name filtering test passed');
   });
 });

@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.12.215
+
+### Fix
+
+- Dashboard: Doppelte Deklaration von `RAW_CENTER_RANGE` (Zeile 1146 und 4428) verursachte JavaScript-Fehler der das gesamte Dashboard-Skript blockierte. Dadurch waren alle Auswahlfelder (Measurement, Field, Entity, Friendly-Name) nicht funktionsfaehig.
+- Playwright-Tests: 2 neue Tests hinzugefuegt - Field-Auswahl nach Measurement und Friendly-Name-Filterung nach Entity-ID.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Playwright: 4/4 Tests bestanden
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.214
 
 ### Fix
