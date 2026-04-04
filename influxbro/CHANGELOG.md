@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.12.221
+
+### Enhancement
+
+- Analyse-Checklist: Fortschrittsbalken zeigt 0-100% waehrend der Chunk-Suche.
+- Analyse-Checklist: Typen-Aufschluesselung unter Ausreisser-Suche (z.B. "→ Counter: 44").
+- Jeder Schritt zeigt Laufzeit an.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.220
 
 ### Enhancement
