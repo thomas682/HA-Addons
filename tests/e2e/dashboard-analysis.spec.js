@@ -6,7 +6,7 @@ test.describe('Dashboard Analyse', () => {
     await page.goto('/');
     await expect(page).toHaveTitle(/InfluxBro/);
 
-    // Step 2: Selection section is open by default - ensure it's open
+    // Step 2: Open selection section
     const isOpen = await page.locator('#selection_details').evaluate(el => el.open);
     if (!isOpen) {
       await page.click('#selection_details summary');
@@ -57,21 +57,17 @@ test.describe('Dashboard Analyse', () => {
     await page.fill('#measurement_filter', 'Wh');
     await page.locator('#measurement_filter').press('Enter');
     await page.waitForTimeout(1000);
-
     await page.fill('#field', 'value');
     await page.locator('#field').press('Enter');
     await page.waitForTimeout(1000);
-
     await page.fill('#entity_id', 'sma_30581_energy_bezug_wh_hm2');
     await page.locator('#entity_id').press('Enter');
     await page.waitForTimeout(1000);
-
-    // Select time range
     await page.selectOption('#range', 'all');
 
     // Click Analyse
     await page.click('#load');
-    await page.waitForTimeout(5000);
+    await page.waitForTimeout(15000);
 
     // Open Raw section
     const rawSection = page.locator('#raw_section');
@@ -93,7 +89,6 @@ test.describe('Dashboard Analyse', () => {
   });
 
   test('field selection loads after measurement', async ({ page }) => {
-    // Test that selecting a measurement populates the field dropdown
     await page.goto('/');
     await expect(page).toHaveTitle(/InfluxBro/);
 
@@ -127,7 +122,6 @@ test.describe('Dashboard Analyse', () => {
   });
 
   test('friendly_name filters by entity_id', async ({ page }) => {
-    // Test that selecting an entity_id filters the friendly_name dropdown
     await page.goto('/');
     await expect(page).toHaveTitle(/InfluxBro/);
 
