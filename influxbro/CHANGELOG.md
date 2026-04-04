@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.12.217
+
+### Fix
+
+- Statistik: `NameError: min_chunk_seconds is not defined` behoben. Variable war in `_series_stats()` definiert, wurde aber in `_series_first_span_split()` und `_series_last_span_split()` verwendet die in anderen Scopes liegen. Auf `_global_stats_job_thread`-Ebene verschoben.
+
+### Enhancement
+
+- Analyse-Button nutzt jetzt die Ausreisser-Typ-Auswahl aus dem Dropdown-Filter statt immer alle Typen zu suchen.
+- Ausreisser-Typ-Auswahl wird jetzt im Browser-Speicher gespeichert und beim Laden wiederhergestellt.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.215
 
 ### Fix

@@ -1677,6 +1677,7 @@ function saveState(){
       graph_window_stop_ms: TABLE_TIME.graph_stop_ms,
       raw_center_range: RAW_CENTER_RANGE,
       raw_outlier_context_rows: RAW_OUTLIER_CONTEXT_ROWS,
+      raw_outlier_types: getRawOutlierFilterTypes(),
     };
     localStorage.setItem(LS_KEY, JSON.stringify(j));
   }catch(e){}
@@ -4863,7 +4864,7 @@ async function runRawOutlierSearch(){
         friendly_name: base.friendly_name,
         start: aIso,
         stop: bIso,
-        search_types: ['counter', 'decrease', 'bounds', 'fault_phase', 'null', 'zero'],
+        search_types: getRawOutlierFilterTypes(),
         unit: unit,
         prev_value: prevValue,
         counter_base_value: counterBase,
@@ -7930,6 +7931,14 @@ try{
       if($rawCenterRange) $rawCenterRange.value = String(RAW_CENTER_RANGE);
       RAW_OUTLIER_CONTEXT_ROWS = (st.raw_outlier_context_rows !== undefined) ? Math.max(1, Math.min(500, Number(st.raw_outlier_context_rows))) : RAW_OUTLIER_CONTEXT_ROWS;
       if($rawOutlierContextRows) $rawOutlierContextRows.value = String(RAW_OUTLIER_CONTEXT_ROWS);
+
+      // Restore outlier type selections
+      if(st.raw_outlier_types && Array.isArray(st.raw_outlier_types)){
+        document.querySelectorAll('.raw_outlier_type_cb').forEach(cb=>{
+          cb.checked = st.raw_outlier_types.includes(cb.value);
+        });
+        updateRawOutlierTypeToggleLabel();
+      }
     }catch(e){}
 
     renderStats();
@@ -8136,6 +8145,7 @@ try{
       updateRawOutlierTypeToggleLabel();
       renderOutlierOverviewTable();
       _updateOutlierNavStatus();
+      saveState();
     });
   });
   if($rawOutlierParams) $rawOutlierParams.addEventListener('click', ()=>{ openOutlierParamsDialog(); });
