@@ -1,4 +1,86 @@
-# Agent Rules
+# AGENTS v2
+
+## EXECUTION BLOCK (CRITICAL – ALWAYS FIRST)
+
+### Mandatory Execution Flow (Hard Requirements)
+
+1 Before ANY implementation:
+
+1.1 Verify repository root:
+
+- `influxbro/`
+- `AGENTS.md`
+- `repository.yaml`
+- If any are missing: STOP immediately.
+
+1.2 Check open GitHub issues unless the user explicitly points to a specific issue.
+
+1.3 If the user request is NEW:
+
+- MUST create a GitHub issue BEFORE implementation.
+
+1.4 Create or update the ToDo list.
+
+1.5 Mirror the current ToDo/plan state to `./.opencode/plan_state.md`.
+
+2 During implementation:
+
+2.1 Execute all write operations strictly sequentially.
+
+2.2 Keep changes minimal and consistent with the repository patterns.
+
+2.3 Maintain exactly ONE ToDo item as `in_progress`.
+
+3 After implementation (Mandatory Completion Flow):
+
+3.1 Run REQUIRED QA:
+
+- syntax check (mandatory)
+- targeted tests where relevant/available
+- runtime/API/UI checks when relevant
+
+3.2 If ANY required QA fails:
+
+- DO NOT declare the work complete.
+
+3.3 Versioning (MANDATORY when required by repo rules):
+
+- bump `influxbro/config.yaml`
+- update `influxbro/CHANGELOG.md`
+- update `influxbro/MANUAL.md` when behavior/UI changed
+
+3.4 Git flow (HA main-first unless user explicitly overrides):
+
+- stage changes
+- commit
+- push to `main`
+
+3.5 GitHub issue completion flow (when an issue was implemented):
+
+- set status to `status/done`
+- add issue comment with root cause, solution, and commit hash / PR link
+- close the issue
+
+3.6 Completion Signal (MANDATORY – MUST ALWAYS EXECUTE)
+
+4 After successful completion:
+
+- `afplay /System/Library/Sounds/Glass.aiff`
+- `say "Fertig mit der Umsetzung"`
+
+If a new version was produced:
+
+- `say -v Anna "Generierung erfolgt, Version X Punkt Y Punkt Z wurde erzeugt"`
+
+If blockers or failures remain:
+
+- `afplay /System/Library/Sounds/Basso.aiff`
+- `say "Einige Punkte müssten noch beantwortet werden"`
+
+### Completion Definition
+
+Completion is ONLY valid if ALL mandatory steps above, including the audio/speech completion signal, were executed.
+The agent MUST NOT return control before the completion signal was executed.
 
 ## Workspace Requirement (CRITICAL)
 
@@ -474,11 +556,14 @@ Playwright is configured for browser-based UI testing against the live HA instan
 - Run: `npx playwright test` (all tests) or `npx playwright test tests/e2e/dashboard.spec.js` (single file)
 
 **"teste auf dem echtsystem" Prompt:**
+
 - When the user says "teste auf dem echtsystem" (or equivalent), the agent MUST:
   1. First check if the live system version matches the latest git version:
+
      ```bash
      curl -fsS http://192.168.2.200:8099/api/info | python3 -c "import json,sys; print(json.load(sys.stdin).get('version','unknown'))"
      ```
+
   2. Compare with the latest version in `influxbro/config.yaml`.
   3. If versions DO NOT match: warn the user that the live system is outdated and ask whether to proceed with API tests only, or skip testing until the live system is updated.
   4. If versions MATCH: ask the user whether to also run Playwright E2E browser tests in addition to API smoke tests.
@@ -545,7 +630,7 @@ Reporting:
 
 ## Build / Run / Lint / Test
 
-#### Build the add-on image
+### Build the add-on image
 
 From repo root:
 
@@ -553,7 +638,7 @@ From repo root:
 docker build -t influxbro:dev ./influxbro
 ```
 
-#### Run locally (Docker)
+### Run locally (Docker)
 
 Minimum (no HA supervisor; you must provide `/data/options.json` yourself):
 
@@ -568,7 +653,7 @@ docker run --rm -p 8099:8099   -v "$PWD/.local-data:/data"   -v "$PWD:/repo:ro" 
 
 Notes:
 
-- The UI is served on `http://localhost:8099/`.
+- The UI is served on `http://127.0.0.1:8099/`.
 - In real HA, Ingress changes the base path; keep relative URLs (current templates do).
 
 #### Run locally (Python, outside Docker)
@@ -901,11 +986,9 @@ If user explicitly requests:
 
 → follow user instruction instead of this policy
 
-
-
 #### GO Must Complete Planned Work
 
-- When the user issues `go`/`GO`, you MUST ensure all open/pending planned work is implemented before committing/pushing.
+- When the user start working on issues, you MUST ensure all open/pending planned work is implemented before committing/pushing.
 - "Planned work" includes both:
   - the current request's ToDo list (in-chat)
   - any remaining open items recorded in `./.opencode/plan_state.md` (if the file exists)
@@ -916,7 +999,7 @@ If user explicitly requests:
 - Diese verbleibenden geplanten Items muessen danach automatisch weiter umgesetzt werden, bis alle vom Benutzer angeforderten Issues abgearbeitet sind oder ein echter Blocker vorliegt.
 - Dasselbe gilt ausdruecklich fuer ausgewaehlte/offene GitHub-Issues: sie muessen selbststaendig automatisch weiter bearbeitet und abgeschlossen werden, bis keine zur Umsetzung vorgesehenen Issues mehr offen sind.
 - Auch bei Befehlen wie `arbeite alle Issues ausser #134 ab` muessen die verbleibenden offenen Issues automatisch ohne Rueckfrage bis zum Abschluss abgearbeitet werden.
-- After a successful `go` workflow (commit + push), play a macOS completion sound:
+- After a successful workflow (commit + push), play a macOS completion sound:
   - `afplay /System/Library/Sounds/Glass.aiff`
   - If the workflow fails, play an error sound:
     - `afplay /System/Library/Sounds/Basso.aiff`

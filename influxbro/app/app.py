@@ -14421,6 +14421,9 @@ def _global_stats_job_thread(
         s = str(e).lower()
         return ("timed out" in s) or ("timeout" in s) or ("read timed out" in s)
 
+    # Chunking threshold for timeout recovery
+    min_chunk_seconds = 5 * 60
+
     # Used only for progress messages. May be unknown for full scans.
     total_series: int | None = None
     if series_list is not None:
@@ -14578,8 +14581,6 @@ data
     def _series_stats(qapi: Any, bucket: str, m: str, f: str, eid: str, fn: str) -> dict[str, Any]:
         span_days = max(0.0, (stop_dt - start_dt).total_seconds() / 86400.0)
         chunks = _chunk_ranges(start_dt, stop_dt, 14) if span_days > 20 else [(start_dt, stop_dt)]
-
-        min_chunk_seconds = 5 * 60
 
         def _is_timeout_error(e: Exception) -> bool:
             s = str(e).lower()
