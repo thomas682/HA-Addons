@@ -4971,7 +4971,6 @@ async function runRawOutlierSearch(){
 async function runAnalysis(){
   err(""); ok("");
   const base = currentFilters();
-  console.log('[ANALYSIS] Step 1: Validating inputs', JSON.stringify(base));
   if(!base.measurement || !base.field){
     err("Bitte zuerst Measurement und Field auswaehlen.");
     return;
@@ -4982,65 +4981,16 @@ async function runAnalysis(){
   }
 
   const win = _rawWindowIso();
-  console.log('[ANALYSIS] Step 2: Time window', win);
   if(!win || !win.start || !win.stop){
     err("Bitte einen gueltigen Zeitraum waehlen.");
     return;
   }
 
-  // Set graph to full range BEFORE loading data
-  const startMs = TABLE_TIME.graph_start_ms;
-  const stopMs = TABLE_TIME.graph_stop_ms;
-  console.log('[ANALYSIS] Step 3: Setting graph range', startMs, stopMs);
-  if(isFinite(startMs) && isFinite(stopMs)){
-    TABLE_TIME.graph_start_ms = Math.min(startMs, stopMs);
-    TABLE_TIME.graph_stop_ms = Math.max(startMs, stopMs);
-    saveState();
-  }
-
-  // Block zoom reload for 5 seconds to prevent plotly_relayout cascade
-  _ZOOM_BLOCK_UNTIL = Date.now() + 5000;
-  _LAST_ZOOM_RANGE = null;
-  _ZOOM_LOADING = false;
-
-  // Load graph data for full range FIRST (before outlier search clears it)
-  console.log('[ANALYSIS] Step 4: Loading graph data...');
-  try{
-    await loadData();
-    console.log('[ANALYSIS] Step 4 DONE: Graph loaded, rows:', LAST_ROWS ? LAST_ROWS.length : 0);
-  }catch(e){
-    err("Graph laden: " + (e && e.message ? e.message : String(e)));
-    console.error('[ANALYSIS] Step 4 FAILED:', e);
-  }
-
-  // Run the outlier search (chunk-wise) AFTER graph data is loaded
-  console.log('[ANALYSIS] Step 5: Starting outlier search...');
-  console.log('[ANALYSIS]   - TABLE_TIME before search:', TABLE_TIME.graph_start_ms, TABLE_TIME.graph_stop_ms);
-  console.log('[ANALYSIS]   - RAW_OUTLIER_SEARCHING:', RAW_OUTLIER_SEARCHING);
-  console.log('[ANALYSIS]   - RAW_OUTLIER_RESULTS before:', RAW_OUTLIER_RESULTS.length);
-  console.log('[ANALYSIS]   - _rawWindowIso():', JSON.stringify(_rawWindowIso()));
-  console.log('[ANALYSIS]   - Cache key:', 'raw_outlier_cache:' + [base.measurement, base.field, base.entity_id || '', base.friendly_name || '', win.start, win.stop].join('|'));
   try{
     await runRawOutlierSearch();
-    console.log('[ANALYSIS] Step 5 DONE: Outlier search complete');
-    console.log('[ANALYSIS]   - RAW_OUTLIER_RESULTS after:', RAW_OUTLIER_RESULTS.length);
-    console.log('[ANALYSIS]   - RAW_OUTLIER_MAP size:', RAW_OUTLIER_MAP ? Object.keys(RAW_OUTLIER_MAP).length : 0);
-    console.log('[ANALYSIS]   - Filtered outliers:', getFilteredOutliers().length);
-    console.log('[ANALYSIS]   - Filter types:', getRawOutlierFilterTypes());
   }catch(e){
     err("Ausreisser-Suche: " + (e && e.message ? e.message : String(e)));
-    console.error('[ANALYSIS] Step 5 FAILED:', e);
   }
-
-  // Clear raw table, show 5 empty rows
-  console.log('[ANALYSIS] Step 6: Clearing raw table');
-  RAW_ROWS = [];
-  RAW_META = null;
-  RAW_OFFSET = 0;
-  renderRawTable();
-  const $rawRowCount = document.getElementById('raw_row_count');
-  if($rawRowCount) $rawRowCount.textContent = '0 Zeilen';
-  console.log('[ANALYSIS] DONE');
 }
 
 async function jumpToOldestOutlier(){

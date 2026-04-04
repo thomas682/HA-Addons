@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.12.219
+
+### Enhancement
+
+- Analyse-Button fuehrt NUR noch Ausreisser-Suche aus, ohne Graph oder Raw-Tabelle zu veraendern.
+- Graph und Raw-Tabelle bleiben waehrend der Analyse unveraendert.
+- Ausreisser-Tabelle wird mit Suchergebnissen gefuellt.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.218
 
 ### Enhancement
