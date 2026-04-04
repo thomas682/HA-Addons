@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.12.223
+
+### Enhancement
+
+- Analyse: Fetch-Timeout auf 120s gesetzt um HA Ingress-Abbrueche zu vermeiden.
+- Chunk-Log zeigt jetzt Abbruch-Dauer an (z.B. "Abgebrochen nach 58.3s").
+- Timeout-Chunks werden mit orangem Warn-Icon (⏱) angezeigt statt rotem Fehler-Icon.
+- Backend loggt Chunk-Dauer fuer jeden einzelnen Scan-Schritt.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.222
 
 ### Enhancement

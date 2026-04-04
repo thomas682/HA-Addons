@@ -113,6 +113,7 @@
     .checklist_icon.running { background:#eee; border:2px solid rgba(0,0,0,0.18); border-top-color:rgba(0,0,0,0.75); animation:spin 0.9s linear infinite; }
     .checklist_icon.ok { background:#4caf50; color:#fff; }
     .checklist_icon.err { background:#f44336; color:#fff; }
+    .checklist_icon.warn { background:#ff9800; color:#fff; }
     .checklist_label { flex:1; }
     .checklist_dur { opacity:0.6; white-space:nowrap; }
     .checklist_progress { height: 6px; background: #eee; border-radius: 3px; overflow: hidden; margin-top: 4px; }
@@ -5121,14 +5122,15 @@ function _renderAnalysisLog(chunks){
     return;
   }
   $alog.innerHTML = chunks.map(c => {
-    const okClass = c.error ? 'err' : 'ok';
-    const icon = c.error ? '✗' : '✓';
+    const isAbort = c.aborted;
+    const okClass = c.error ? (isAbort ? 'warn' : 'err') : 'ok';
+    const icon = c.error ? (isAbort ? '⏱' : '✗') : '✓';
     const rows = c.rows !== undefined ? c.rows : 0;
     const scanned = c.scanned !== undefined ? c.scanned : 0;
     const dur = c.dur !== undefined ? _fmtDur(c.dur) : '-';
     const days = c.chunkDays !== undefined ? c.chunkDays + ' Tage' : '-';
     const range = fmtTs(c.start) + ' – ' + fmtTs(c.stop);
-    const errText = c.error ? ' | FEHLER: ' + c.error : '';
+    const errText = c.error ? ' | ' + (isAbort ? 'TIMEOUT: ' : 'FEHLER: ') + c.error : '';
     return '<div class="checklist_item"><span class="checklist_icon ' + okClass + '">' + icon + '</span><span class="checklist_label">Chunk ' + c.idx + '/' + c.total + ': ' + range + '</span><span class="checklist_dur">' + scanned + ' Werte | ' + dur + '</span></div><div class="checklist_sub">' + rows + ' Ausreisser | Chunk-Größe: ' + days + errText + '</div>';
   }).join('');
 }
@@ -5311,7 +5313,8 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog){
   let chunkDays = 1;
   const MIN_CHUNK_DAYS = 1;
   const MAX_CHUNK_DAYS = 14;
-  const TIMEOUT_MS = 60000; // 60s timeout threshold
+  const FETCH_TIMEOUT_MS = 120000; // 120s fetch timeout
+  const TIMEOUT_MS = 60000; // 60s timeout threshold for adaptive sizing
   const OPTIMAL_MS = 30000; // target: under 30s per chunk
 
   // Analysis log for this run
@@ -5376,6 +5379,9 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog){
 
       const chunkT0 = performance.now();
       let r, j;
+      const fetchTimeoutId = setTimeout(() => {
+        if(RAW_OUTLIER_ABORT) RAW_OUTLIER_ABORT.abort();
+      }, FETCH_TIMEOUT_MS);
       try{
         r = await fetch('./api/outlier_search', {
           method: 'POST',
@@ -5386,7 +5392,8 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog){
         j = await r.json().catch(()=>({ok:false, error:'Invalid JSON'}));
       }catch(fetchErr){
         const chunkDur = Math.round(performance.now() - chunkT0);
-        // Log failed chunk
+        const isAbort = fetchErr.name === 'AbortError';
+        // Log failed chunk with abort detection
         if(onChunkLog) onChunkLog({
           idx: chunkIdx + 1,
           total: chunks.length,
@@ -5396,9 +5403,12 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog){
           scanned: 0,
           dur: chunkDur,
           chunkDays: chunkDays,
-          error: fetchErr.message || String(fetchErr),
+          error: isAbort ? ('Abgebrochen nach ' + _fmtDur(chunkDur)) : (fetchErr.message || String(fetchErr)),
+          aborted: isAbort,
         });
         throw fetchErr;
+      }finally{
+        clearTimeout(fetchTimeoutId);
       }
 
       const chunkDur = Math.round(performance.now() - chunkT0);
