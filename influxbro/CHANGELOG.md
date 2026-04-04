@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.12.222
+
+### Enhancement
+
+- Analyse: Adaptive Chunk-Groesse startet bei 1 Tag und passt sich dynamisch an.
+- Bei schneller Antwort (< 15s) wird Chunk-Groesse verdoppelt (max 14 Tage).
+- Bei langsamer Antwort (> 30s) wird Chunk-Groesse halbiert (min 1 Tag).
+- Bei Timeout (> 60s) wird Chunk-Groesse halbiert und Chunk wiederholt.
+- Backend Timeout fuer outlier_search auf 60s erhoehen.
+- Chunk-Messung: Laufzeit, Anzahl Messwerte, Zeitbereich und Chunk-Groesse werden protokolliert.
+- Neues Analyse-Log unter der Checklist zeigt jeden Chunk mit Details an.
+- Neuer Analyse-Verlauf Button (neben Analyse) zeigt History aller Analysen mit ausfuehrlichem Protokoll.
+- Analyse-Eintraege werden in localStorage gespeichert (max 50 Eintraege).
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.221
 
 ### Enhancement

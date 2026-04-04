@@ -16818,6 +16818,9 @@ def api_outlier_search():
     LOG.info("api.outlier_search called from=%s measurement=%s field=%s search_types=%s start=%s stop=%s",
         request.remote_addr, measurement, field, search_types, start_str, stop_str)
 
+    # Use a longer timeout for outlier search (up to 60s)
+    cfg["timeout_seconds"] = min(max(int(cfg.get("timeout_seconds", 10)), 30), 60)
+
     entity_id = (body.get("entity_id") or "").strip() or None
     friendly_name = (body.get("friendly_name") or "").strip() or None
     unit = (body.get("unit") or "").strip()
@@ -16920,8 +16923,7 @@ def api_outlier_search():
         nonlocal scanned, rows, last_time_iso, counter_base_val
 
         span_s = (b - a).total_seconds()
-        LOG.info("api.outlier_search _scan_span ENTER a=%s b=%s span=%.0fs rows=%d scanned=%d",
-            _dt_to_rfc3339_utc(a), _dt_to_rfc3339_utc(b), span_s, len(rows), scanned)
+        chunk_t0 = time.monotonic()
 
         if len(rows) >= limit:
             LOG.debug("api.outlier_search _scan_span LIMIT reached, returning early")
@@ -17121,8 +17123,9 @@ from(bucket: "{cfg["bucket"]}")
 
             prev = fv
 
-        LOG.info("api.outlier_search _scan_span DONE a=%s b=%s scanned_local=%d total_scanned=%d total_rows=%d",
-            _dt_to_rfc3339_utc(a), _dt_to_rfc3339_utc(b), scanned_local, scanned, len(rows))
+        chunk_dur = time.monotonic() - chunk_t0
+        LOG.info("api.outlier_search _scan_span DONE a=%s b=%s span=%.0fs scanned_local=%d total_scanned=%d total_rows=%d dur=%.1fs",
+            _dt_to_rfc3339_utc(a), _dt_to_rfc3339_utc(b), span_s, scanned_local, scanned, len(rows), chunk_dur)
         return prev
 
     def _scan_span_split(qapi: Any, a: datetime, b: datetime, prev: float | None) -> float | None:
