@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.12.237
+
+### Enhancement
+
+- Analyse merkt sich serverseitig pro Messwert den aeltesten bekannten Datensatz und nutzt ihn bei Zeitraum `Alle` als effektiven Start, begrenzt durch `Max. Alter der Datenanalyse (Jahre)`.
+- Dashboard zeigt unter der Quellauswahl jetzt `Analyse-Start`, `Ältester bekannter Datensatz` und `Ermittelt am` sowie den Button `Startalter löschen`.
+- Neue API-Endpunkte fuer Analyse-Startwert: `POST /api/series_oldest` und `POST /api/series_oldest/reset`.
+- Einstellungen erweitert um `ui_analysis_max_age_years` und `ui_raw_target_chunk_ms`.
+- Analyse-History zeigt den erweiterten Analysezustand inkl. Gesamtzeitraum, letztem Chunk und Typ-Details.
+
+### Maintenance
+
+- Tests: vom Benutzer explizit uebersprungen
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.236
 
 ### Enhancement

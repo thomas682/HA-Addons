@@ -317,12 +317,24 @@
                   <input id="ui_raw_center_range_default" type="number" min="0" max="200000" />
                 </div>
               </div>
-              <div class="param_row">
-                <div class="param_label">Raw Mindestdatenpunkte je Seite<span class="param_hint">Wenn vor oder nach dem selektierten Messpunkt weniger Punkte gefunden werden, erweitert InfluxBro den Suchbereich automatisch in 100-Minuten-Schritten (Default: 10).</span></div>
-                <div class="param_control">
-                  <input id="ui_raw_center_min_points" type="number" min="1" max="100000" />
+                <div class="param_row">
+                  <div class="param_label">Raw Mindestdatenpunkte je Seite<span class="param_hint">Wenn vor oder nach dem selektierten Messpunkt weniger Punkte gefunden werden, erweitert InfluxBro den Suchbereich automatisch in 100-Minuten-Schritten (Default: 10).</span></div>
+                  <div class="param_control">
+                    <input id="ui_raw_center_min_points" type="number" min="1" max="100000" />
+                  </div>
                 </div>
-              </div>
+                <div class="param_row">
+                  <div class="param_label">Adaptive Zielzeit pro Analyse-Chunk (ms)<span class="param_hint">Ziel-Laufzeit pro Analyse-Chunk. Die Chunk-Groesse wird an diesen Wert angepasst (Default: 5000).</span></div>
+                  <div class="param_control">
+                    <input id="ui_raw_target_chunk_ms" type="number" min="1000" max="60000" />
+                  </div>
+                </div>
+                <div class="param_row">
+                  <div class="param_label">Max. Alter der Datenanalyse (Jahre)<span class="param_hint">Bei Zeitraum &quot;Alle&quot; startet die Analyse standardmaessig bei jetzt minus X Jahren (Default: 5).</span></div>
+                  <div class="param_control">
+                    <input id="ui_analysis_max_age_years" type="number" min="1" max="50" />
+                  </div>
+                </div>
               <div class="param_row">
                 <div class="param_label">Popup Text Schriftgroesse (px)<span class="param_hint">Standard fuer <code>influxbro_popup_pre</code>, z. B. fuer Info-, Query- und Log-Dialoge (Default: 10).</span></div>
                 <div class="param_control">
@@ -1046,7 +1058,7 @@ const ids = [
   "database","username","password",
   "ui_table_visible_rows","ui_outlier_visible_rows","ui_table_row_height_px","ui_edit_neighbors_n","ui_edit_details_visible_rows","ui_edit_graph_buffer_minutes","ui_edit_graph_max_points","ui_decimals",
   "ui_backup_table_row_height_px","ui_backup_visible_rows","ui_restore_visible_rows",
-  "ui_query_max_points","ui_raw_max_points","ui_raw_center_max_points","ui_raw_center_range_default","ui_raw_center_min_points","ui_popup_pre_font_px","ui_popup_history_font_px",
+  "ui_query_max_points","ui_raw_max_points","ui_raw_center_max_points","ui_raw_center_range_default","ui_raw_center_min_points","ui_raw_target_chunk_ms","ui_analysis_max_age_years","ui_popup_pre_font_px","ui_popup_history_font_px",
   "ui_query_manual_max_points","ui_graph_jump_padding_intervals",
   "ui_font_size_px","ui_font_small_px","ui_pagecard_title_px","ui_page_search_highlight_color","ui_page_search_highlight_width_px","ui_page_search_highlight_duration_ms","ui_checkbox_scale",
   "ui_section_title_bg","ui_section_title_fg",
@@ -1403,6 +1415,8 @@ function setForm(cfg){
   el.ui_raw_center_max_points.value = cfg.ui_raw_center_max_points ?? 2000;
   el.ui_raw_center_range_default.value = cfg.ui_raw_center_range_default ?? 100;
   el.ui_raw_center_min_points.value = cfg.ui_raw_center_min_points ?? 10;
+  el.ui_raw_target_chunk_ms.value = cfg.ui_raw_target_chunk_ms ?? 5000;
+  el.ui_analysis_max_age_years.value = cfg.ui_analysis_max_age_years ?? 5;
   el.ui_popup_pre_font_px.value = cfg.ui_popup_pre_font_px ?? 10;
   el.ui_popup_history_font_px.value = cfg.ui_popup_history_font_px ?? 10;
   el.ui_decimals.value = cfg.ui_decimals ?? 3;
@@ -1535,6 +1549,8 @@ function getForm(){
     ui_raw_center_max_points: parseInt(el.ui_raw_center_max_points.value, 10),
     ui_raw_center_range_default: parseInt(el.ui_raw_center_range_default.value, 10),
     ui_raw_center_min_points: parseInt(el.ui_raw_center_min_points.value, 10),
+    ui_raw_target_chunk_ms: parseInt(el.ui_raw_target_chunk_ms.value, 10),
+    ui_analysis_max_age_years: parseInt(el.ui_analysis_max_age_years.value, 10),
     ui_popup_pre_font_px: parseInt(el.ui_popup_pre_font_px.value, 10),
     ui_popup_history_font_px: parseInt(el.ui_popup_history_font_px.value, 10),
     ui_query_manual_max_points: parseInt(el.ui_query_manual_max_points.value, 10),

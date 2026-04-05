@@ -334,6 +334,8 @@
       </div>
       <div style="margin-top:6px;">
         <div id="range_from_to" class="muted" data-ui="filter_range_bounds"></div>
+        <div id="analysis_start_info" class="muted" style="margin-top:4px;"></div>
+        <div style="margin-top:4px;"><button id="analysis_start_reset" class="btn_sm" style="width:auto; display:none;" data-ui="dashboard.analysis_start_reset">Startalter löschen</button></div>
       </div>
     </div>
     <div class="control span2" id="custom_range" style="display:none;">
@@ -1034,6 +1036,8 @@ const $graphRefresh = document.getElementById('graph_refresh');
 const $graphResetTime = document.getElementById('graph_reset_time');
 const $graphQueryOpen = document.getElementById('graph_query_open');
 const $analysisSection = document.getElementById('analysis_section');
+const $analysisStartInfo = document.getElementById('analysis_start_info');
+const $analysisStartReset = document.getElementById('analysis_start_reset');
 
 const $rawSection = document.getElementById('raw_section');
 const $rawInfo = document.getElementById('raw_info');
@@ -1182,6 +1186,7 @@ let UI_RAW_CENTER_MAX_POINTS = 2000;
 let UI_RAW_CENTER_MIN_POINTS = 10;
 let UI_RAW_TARGET_CHUNK_MS = 5000;
 let CFG_TIMEOUT_SECONDS = 60;
+let UI_ANALYSIS_MAX_AGE_YEARS = 5;
 
 function applyFilterTableVisibleRows(){
   try{
@@ -3763,6 +3768,8 @@ async function loadUiConfig(){
     if(isFinite(rmin) && rmin >= 1 && rmin <= 100000) UI_RAW_CENTER_MIN_POINTS = Math.trunc(rmin);
     const rtcm = Number(cfg.ui_raw_target_chunk_ms);
     if(isFinite(rtcm) && rtcm >= 1000) UI_RAW_TARGET_CHUNK_MS = Math.trunc(rtcm);
+    const amax = Number(cfg.ui_analysis_max_age_years);
+    if(isFinite(amax) && amax >= 1) UI_ANALYSIS_MAX_AGE_YEARS = Math.trunc(amax);
     if($rawCenterRange) {
       $rawCenterRange.max = String(UI_RAW_CENTER_MAX_POINTS);
       $rawCenterRange.value = String(clampRawCenterRange(RAW_CENTER_RANGE));
@@ -5119,6 +5126,68 @@ function _updateAnalysisStatus(){
   }catch(e){}
 }
 
+async function refreshAnalysisStartInfo(){
+  try{
+    if(!$analysisStartInfo) return;
+    const base = currentFilters();
+    const range = $r ? String($r.value || '24h') : '24h';
+    if(range !== 'all' || !base.measurement || !base.field){
+      $analysisStartInfo.textContent = '';
+      if($analysisStartReset) $analysisStartReset.style.display = 'none';
+      return;
+    }
+    const j = await api('./api/series_oldest', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        measurement: base.measurement,
+        field: base.field,
+        entity_id: base.entity_id || '',
+        friendly_name: base.friendly_name || '',
+        resolve_if_missing: true,
+      })
+    }, {silent:true});
+    const years = Math.max(1, Number(window.UI_ANALYSIS_MAX_AGE_YEARS || 5));
+    const now = new Date();
+    const defaultStart = new Date(now);
+    defaultStart.setFullYear(defaultStart.getFullYear() - years);
+    const oldest = j && j.oldest_time ? String(j.oldest_time) : '';
+    const effective = oldest && Date.parse(oldest) > defaultStart.getTime() ? oldest : defaultStart.toISOString();
+    $analysisStartInfo.textContent = 'Analyse-Start: ' + fmtTs(effective) + (oldest ? ' | Ältester bekannter Datensatz: ' + fmtTs(oldest) : ' | Ältester bekannter Datensatz: noch nicht ermittelt') + (j && j.resolved_at ? ' | Ermittelt am: ' + fmtTs(j.resolved_at) : '');
+    if($analysisStartReset) $analysisStartReset.style.display = oldest ? 'inline-block' : 'none';
+  }catch(e){
+    $analysisStartInfo.textContent = 'Analyse-Start konnte nicht ermittelt werden.';
+    if($analysisStartReset) $analysisStartReset.style.display = 'none';
+  }
+}
+
+async function resolveEffectiveAnalysisWindow(){
+  const win = _rawWindowIso();
+  const base = currentFilters();
+  const range = $r ? String($r.value || '24h') : '24h';
+  if(range !== 'all' || !win || !base.measurement || !base.field){
+    return win;
+  }
+  const j = await api('./api/series_oldest', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+      measurement: base.measurement,
+      field: base.field,
+      entity_id: base.entity_id || '',
+      friendly_name: base.friendly_name || '',
+      resolve_if_missing: true,
+    })
+  }, {silent:true});
+  const years = Math.max(1, Number(window.UI_ANALYSIS_MAX_AGE_YEARS || 5));
+  const now = new Date();
+  const defaultStart = new Date(now);
+  defaultStart.setFullYear(defaultStart.getFullYear() - years);
+  const oldest = j && j.oldest_time ? String(j.oldest_time) : '';
+  const effectiveStart = oldest && Date.parse(oldest) > defaultStart.getTime() ? oldest : defaultStart.toISOString();
+  return { start: effectiveStart, stop: win.stop };
+}
+
 function updateAnalysisUI(){
   try{
     const s = ANALYSIS_STATE;
@@ -5288,7 +5357,7 @@ async function runAnalysis(){
   err(""); ok("");
   const base = currentFilters();
   const types = getRawOutlierFilterTypes();
-  const win = _rawWindowIso();
+  const win = await resolveEffectiveAnalysisWindow();
 
   // Initialize ANALYSIS_STATE
   ANALYSIS_STATE.measurement = base.measurement;
@@ -8369,43 +8438,51 @@ async function triggerDashboardTagRefresh(){
 $f?.addEventListener("input", ()=>{
   _debRefreshDashboardSrc();
   _updateAnalysisStatus();
+  refreshAnalysisStartInfo().catch(()=>{});
 });
 $f?.addEventListener("change", ()=>{
   _updateAnalysisStatus();
+  refreshAnalysisStartInfo().catch(()=>{});
 });
 
 $mf?.addEventListener("input", ()=>{
   triggerDashboardMeasurementRefresh().catch((e)=>{ console.warn('Measurement refresh failed:', e); });
   _debRefreshDashboardSrc();
   _updateAnalysisStatus();
+  refreshAnalysisStartInfo().catch(()=>{});
 });
 $mf?.addEventListener("change", ()=>{
   triggerDashboardMeasurementRefresh().catch((e)=>{ console.warn('Measurement refresh failed:', e); });
   _updateAnalysisStatus();
+  refreshAnalysisStartInfo().catch(()=>{});
 });
-$mf?.addEventListener("blur", ()=>{ triggerDashboardMeasurementRefresh().catch((e)=>{ console.warn('Measurement refresh failed:', e); }); _updateAnalysisStatus(); });
+$mf?.addEventListener("blur", ()=>{ triggerDashboardMeasurementRefresh().catch((e)=>{ console.warn('Measurement refresh failed:', e); }); _updateAnalysisStatus(); refreshAnalysisStartInfo().catch(()=>{}); });
 
 $n?.addEventListener("input", ()=>{
   triggerDashboardTagRefresh().catch((e)=>{ console.warn('Tag refresh failed:', e); });
   _debRefreshDashboardSrc();
   _updateAnalysisStatus();
+  refreshAnalysisStartInfo().catch(()=>{});
 });
 $n?.addEventListener("change", ()=>{
   triggerDashboardTagRefresh().catch((e)=>{ console.warn('Tag refresh failed:', e); });
   _updateAnalysisStatus();
+  refreshAnalysisStartInfo().catch(()=>{});
 });
-$n?.addEventListener("blur", ()=>{ triggerDashboardTagRefresh().catch((e)=>{ console.warn('Tag refresh failed:', e); }); _updateAnalysisStatus(); });
+$n?.addEventListener("blur", ()=>{ triggerDashboardTagRefresh().catch((e)=>{ console.warn('Tag refresh failed:', e); }); _updateAnalysisStatus(); refreshAnalysisStartInfo().catch(()=>{}); });
 
 $e?.addEventListener("input", ()=>{
   triggerDashboardTagRefresh().catch((e)=>{ console.warn('Tag refresh failed:', e); });
   _debRefreshDashboardSrc();
   _updateAnalysisStatus();
+  refreshAnalysisStartInfo().catch(()=>{});
 });
 $e?.addEventListener("change", ()=>{
   triggerDashboardTagRefresh().catch((e)=>{ console.warn('Tag refresh failed:', e); });
   _updateAnalysisStatus();
+  refreshAnalysisStartInfo().catch(()=>{});
 });
-$e?.addEventListener("blur", ()=>{ triggerDashboardTagRefresh().catch((e)=>{ console.warn('Tag refresh failed:', e); }); _updateAnalysisStatus(); });
+$e?.addEventListener("blur", ()=>{ triggerDashboardTagRefresh().catch((e)=>{ console.warn('Tag refresh failed:', e); }); _updateAnalysisStatus(); refreshAnalysisStartInfo().catch(()=>{}); });
 
 if($btnReset) $btnReset.addEventListener("click", (ev)=>{ _stop(ev); resetFiltersKeepRange().catch(()=>{}); });
 
@@ -8417,6 +8494,7 @@ $r?.addEventListener("change", async ()=>{
     renderTableRange();
     renderRangeFromTo();
     _updateAnalysisStatus();
+    refreshAnalysisStartInfo().catch(()=>{});
   }catch(e){ displayError(e); }
 });
 
@@ -8767,6 +8845,24 @@ if($btnLoad) $btnLoad.addEventListener("click", (ev)=>{
 });
 if($btnCancelLoad) $btnCancelLoad.addEventListener("click", (ev)=>{ _stop(ev); cancelLoadNow(); });
 if($analysisHistoryBtn) $analysisHistoryBtn.addEventListener("click", (ev)=>{ _stop(ev); _showAnalysisHistory(); });
+if($analysisStartReset) $analysisStartReset.addEventListener('click', async (ev)=>{
+  _stop(ev);
+  try{
+    const base = currentFilters();
+    if(!base.measurement || !base.field) return;
+    await api('./api/series_oldest/reset', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        measurement: base.measurement,
+        field: base.field,
+        entity_id: base.entity_id || '',
+        friendly_name: base.friendly_name || '',
+      })
+    }, {silent:true});
+    await refreshAnalysisStartInfo();
+  }catch(e){ displayError(e); }
+});
 
 try{
   const $tblAuto = document.getElementById('tbl_autowidth');
@@ -8952,6 +9048,7 @@ try{
 
     // Update analysis status line
     try{ _updateAnalysisStatus(); }catch(e){}
+    try{ await refreshAnalysisStartInfo(); }catch(e){}
     try{ renderAnalysisTypeLists(); updateAnalysisUI(); }catch(e){}
     try{ renderAnalysisTypeLists(); updateAnalysisUI(); }catch(e){}
 

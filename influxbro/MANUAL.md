@@ -271,9 +271,11 @@ Raw Daten (DB):
 - Die Buttons `Kopieren`, `Wert kopieren` und `Einfügen` zeigen zusaetzlich eine direkte Rueckmeldung im Popup.
 - Fuer die Ausreissersuche kannst du in den Einstellungen jetzt eine separate Mindesthoehe der Bearbeitungsliste festlegen, damit Treffer nach einem erneuten Scan sichtbar bleiben.
 - Die Raw-Tabelle hat einen fixierten Header (Titelzeile scrollt nicht mit).
-- Ausreisser-Suchleiste: Oberhalb der Raw-Tabelle kannst du eine oder mehrere Ausreisser-Kategorien auswaehlen (Counter Ausreisser, Counter Abfall, Grenzen, Stoerphasensuche, NULL Werte, 0-Werte). Mit "Alle" / "Keiner" schnell alle oder keine auswaehlen.
-- "Suche ab Beginn": Startet die Suche im aktuellen Zeitfenster. Alle gefundenen Ausreisser werden einmalig vom Backend geladen und lokal durchsucht. Der erste Treffer wird in der Raw-Tabelle und im Graph markiert.
-- "Weitersuchen": Springt zum naechsten gefundenen Ausreisser. Zeile wird in der Tabelle hervorgehoben und im Graph markiert. Du kannst den Wert wie gewohnt aendern oder loeschen.
+- Analyse-Section: Unterhalb der Quellauswahl gibt es einen eigenen Bereich `Analyse` mit Fortschrittsbalken, Checkliste, Chunk-Details und den gefundenen Ausreissern nach Typ.
+- Bei `Zeitraum = Alle` startet die Analyse nicht mehr pauschal bei 1970, sondern verwendet einen serverseitig gemerkten Analyse-Startwert pro Messwert. Standardmaessig wird auf `jetzt - Max. Alter der Datenanalyse (Jahre)` begrenzt; ist der aelteste bekannte Datensatz juenger, beginnt die Analyse dort.
+- Unter der Quellauswahl wird dazu `Analyse-Start`, `Ältester bekannter Datensatz` und `Ermittelt am` angezeigt. Mit `Startalter löschen` kannst du den gespeicherten Startwert fuer den aktuellen Messwert zuruecksetzen.
+- Die Ausreisser-Typen werden in der Analyse-Section ueber zwei Listen verwaltet: `Abgewählte Typen` und `Gewählte Typen`. Nur die rechts stehenden Typen werden analysiert.
+- Die Analyse-History (`Analyse-Verlauf`) zeigt die komplette Analyse inklusive Fortschritt, Chunks, Typ-Auswahl und Ergebnis-Zusammenfassung.
 - "Suche beenden": Beendet die Ausreisser-Suche und entfernt die Markierungen.
 - Neue Spalte "Ausreisser": Zeigt bei gefundenen Ausreissern den Grund an (z.B. "counter decrease", "< min (0)", "NULL"). Normale Zeilen bleiben leer.
 - Das Limit fuer die maximale Anzahl gefundener Ausreisser kann in den Einstellungen unter `ui_raw_outlier_search_limit` konfiguriert werden (Default: 5000).

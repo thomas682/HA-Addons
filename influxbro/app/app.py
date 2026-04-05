@@ -96,6 +96,9 @@ UI_PROFILE_ACTIVE_PATH = DATA_DIR / "ui_profile_active.json"
 DASH_LAST_LOCK = threading.RLock()
 DASH_LAST_PATH = DATA_DIR / "influxbro_dashboard_last.json"
 
+ANALYSIS_START_CACHE_LOCK = threading.RLock()
+ANALYSIS_START_CACHE_PATH = DATA_DIR / "analysis_series_start_cache.json"
+
 # toggled via config (configure_logging)
 CACHE_USAGE_LOGGING = False
 
@@ -709,6 +712,9 @@ DEFAULT_CFG = {
 
     # Target chunk duration for adaptive outlier search (milliseconds)
     "ui_raw_target_chunk_ms": 5000,
+
+    # Max analysis age when range=all (years)
+    "ui_analysis_max_age_years": 5,
 
     # Jobs UI colors (used by Jobs & Cache table)
     "ui_job_color_running": "#eef3ff",
@@ -1918,6 +1924,40 @@ def _monitor_load_state() -> dict[str, Any]:
 
 def _monitor_save_state(state: dict[str, Any]) -> None:
     _monitor_save_json(MONITOR_STATE_PATH, state)
+
+
+def _analysis_load_json(path: Path, default: Any) -> Any:
+    try:
+        if not path.exists():
+            return default
+        raw = path.read_text(encoding="utf-8", errors="replace")
+        data = json.loads(raw) if raw else default
+        return data if isinstance(data, type(default)) else default
+    except Exception:
+        return default
+
+
+def _analysis_save_json(path: Path, data: Any) -> None:
+    with ANALYSIS_START_CACHE_LOCK:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(data, indent=2, sort_keys=True, ensure_ascii=True), encoding="utf-8")
+
+
+def _analysis_series_key(measurement: str, field: str, entity_id: str | None, friendly_name: str | None) -> str:
+    return "|".join([
+        str(measurement or "").strip(),
+        str(field or "").strip(),
+        str(entity_id or "").strip(),
+        str(friendly_name or "").strip(),
+    ])
+
+
+def _analysis_start_cache_load() -> dict[str, Any]:
+    return _analysis_load_json(ANALYSIS_START_CACHE_PATH, {})
+
+
+def _analysis_start_cache_save(data: dict[str, Any]) -> None:
+    _analysis_save_json(ANALYSIS_START_CACHE_PATH, data)
 
 
 def _monitor_load_pending() -> list[dict[str, Any]]:
@@ -11528,6 +11568,7 @@ def api_set_config():
     _clamp_int("ui_raw_center_min_points", 10, 1, 100000)
     _clamp_int("ui_raw_outlier_context_rows", 10, 1, 500)
     _clamp_int("ui_raw_target_chunk_ms", 5000, 1000, max(1000, int(cfg.get("timeout_seconds", 60) or 60) * 1000))
+    _clamp_int("ui_analysis_max_age_years", 5, 1, 50)
     _clamp_float("ui_checkbox_scale", 0.85, 0.5, 1.6)
     _clamp_int("ui_filter_label_width_px", 170, 80, 360)
     _clamp_int("ui_filter_control_width_px", 320, 180, 900)
@@ -17186,6 +17227,91 @@ from(bucket: "{cfg["bucket"]}")
         dur_ms = int((time.monotonic() - t0) * 1000)
         LOG.error("api.outlier_search error: %s dur=%dms", e, dur_ms, exc_info=True)
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
+
+
+@app.post("/api/series_oldest")
+def api_series_oldest():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    body = request.get_json(force=True) or {}
+    measurement = str(body.get("measurement") or "").strip()
+    field = str(body.get("field") or "").strip()
+    entity_id = str(body.get("entity_id") or "").strip() or None
+    friendly_name = str(body.get("friendly_name") or "").strip() or None
+    resolve_if_missing = bool(body.get("resolve_if_missing", True))
+
+    if not measurement or not field:
+        return jsonify({"ok": False, "error": "measurement and field required"}), 400
+
+    key = _analysis_series_key(measurement, field, entity_id, friendly_name)
+    cache = _analysis_start_cache_load()
+    item = cache.get(key) if isinstance(cache, dict) else None
+    if isinstance(item, dict) and str(item.get("oldest_time") or "").strip():
+        return jsonify({
+            "ok": True,
+            "key": key,
+            "oldest_time": item.get("oldest_time"),
+            "resolved_at": item.get("resolved_at"),
+            "cached": True,
+        })
+
+    if not resolve_if_missing:
+        return jsonify({"ok": True, "key": key, "cached": False, "oldest_time": None, "resolved_at": None})
+
+    if int(cfg.get("influx_version", 2)) != 2:
+        return jsonify({"ok": False, "error": "series_oldest currently supports InfluxDB v2 only"}), 400
+    if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+        return jsonify({"ok": False, "error": "InfluxDB v2 requires token, org, bucket."}), 400
+
+    extra = flux_tag_filter(entity_id, friendly_name)
+    q = f'''
+from(bucket: "{cfg["bucket"]}")
+  |> range(start: 0)
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
+  |> keep(columns: ["_time"])
+  |> sort(columns: ["_time"], desc: false)
+  |> limit(n: 1)
+'''
+    try:
+        oldest_time = None
+        with v2_client(cfg) as c:
+            tables = c.query_api().query(q, org=cfg["org"])
+            for t in tables or []:
+                for r in getattr(t, "records", []) or []:
+                    ts = r.get_time()
+                    if isinstance(ts, datetime):
+                        oldest_time = _dt_to_rfc3339_utc(ts)
+                        break
+                if oldest_time:
+                    break
+        resolved_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        cache[key] = {"oldest_time": oldest_time, "resolved_at": resolved_at}
+        _analysis_start_cache_save(cache)
+        return jsonify({
+            "ok": True,
+            "key": key,
+            "oldest_time": oldest_time,
+            "resolved_at": resolved_at,
+            "cached": False,
+        })
+    except Exception as e:
+        return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
+
+
+@app.post("/api/series_oldest/reset")
+def api_series_oldest_reset():
+    body = request.get_json(force=True) or {}
+    measurement = str(body.get("measurement") or "").strip()
+    field = str(body.get("field") or "").strip()
+    entity_id = str(body.get("entity_id") or "").strip() or None
+    friendly_name = str(body.get("friendly_name") or "").strip() or None
+    if not measurement or not field:
+        return jsonify({"ok": False, "error": "measurement and field required"}), 400
+    key = _analysis_series_key(measurement, field, entity_id, friendly_name)
+    cache = _analysis_start_cache_load()
+    if isinstance(cache, dict) and key in cache:
+        cache.pop(key, None)
+        _analysis_start_cache_save(cache)
+    return jsonify({"ok": True, "key": key})
 
 
 @app.post("/api/resolve_signal")
