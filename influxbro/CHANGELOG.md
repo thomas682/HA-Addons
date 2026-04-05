@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.228
+
+### Fix
+
+- Analyse-Button: `runRawOutlierSearchWithProgress` nutzte `TABLE_TIME.graph_start_ms` (null bei Zeitraum "Alle") statt `_rawWindowIso()`.
+- Verwendet jetzt `Date.parse(win.start)` und `Date.parse(win.stop)` aus `_rawWindowIso()`.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.227
 
 ### Fix

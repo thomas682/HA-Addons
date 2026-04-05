@@ -5314,10 +5314,11 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog){
     return;
   }
 
-  const startMs = TABLE_TIME.graph_start_ms;
-  const stopMs = TABLE_TIME.graph_stop_ms;
+  const startMs = Date.parse(win.start);
+  const stopMs = Date.parse(win.stop);
   if(!(isFinite(startMs) && isFinite(stopMs))){
-    if($rawOutlierStatusTxt) $rawOutlierStatusTxt.textContent = 'Kein Graph-Zeitraum bekannt.';
+    if($rawOutlierStatusTxt) $rawOutlierStatusTxt.textContent = 'Kein gueltiger Zeitraum.';
+    _logAnalysis('error', {step: 'parse_time', startMs: startMs, stopMs: stopMs});
     return;
   }
 
