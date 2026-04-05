@@ -5287,10 +5287,18 @@ function _showAnalysisHistory(){
 }
 
 async function runRawOutlierSearchWithProgress(onProgress, onChunkLog){
-  if(RAW_OUTLIER_SEARCHING) return;
+  if(RAW_OUTLIER_SEARCHING){
+    _logAnalysis('blocked', {reason: 'RAW_OUTLIER_SEARCHING is true, resetting'});
+    console.log('[ANALYSIS] BLOCKED: RAW_OUTLIER_SEARCHING is true, resetting');
+    RAW_OUTLIER_SEARCHING = false;
+    RAW_OUTLIER_ABORT = null;
+    if($rawSearchRun) $rawSearchRun.disabled = false;
+    if($rawSearchAbort) $rawSearchAbort.style.display = 'none';
+  }
   const win = _rawWindowIso();
   if(!win || !win.start || !win.stop){
     if($rawOutlierStatusTxt) $rawOutlierStatusTxt.textContent = 'Kein gueltiger Zeitraum gewaehlt.';
+    _logAnalysis('error', {step: 'window', error: 'No valid time window', win: win});
     return;
   }
 
@@ -5302,6 +5310,7 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog){
   };
   if(!base.measurement || !base.field){
     if($rawOutlierStatusTxt) $rawOutlierStatusTxt.textContent = 'Measurement oder Field fehlt.';
+    _logAnalysis('error', {step: 'base', error: 'Missing measurement or field', base: base});
     return;
   }
 
@@ -5313,6 +5322,8 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog){
   }
 
   const cacheKey = 'raw_outlier_cache:' + [base.measurement, base.field, base.entity_id || '', base.friendly_name || '', win.start, win.stop].join('|');
+  _logAnalysis('cache_check', {cacheKey: cacheKey});
+  console.log('[ANALYSIS] cache_key:', cacheKey);
   let cached = null;
   try{
     const cs = sessionStorage.getItem(cacheKey);
@@ -5320,6 +5331,8 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog){
   }catch(e){}
 
   if(cached && cached.results && cached.results.length > 0){
+    _logAnalysis('cache_hit', {count: cached.results.length});
+    console.log('[ANALYSIS] CACHE HIT:', cached.results.length, 'results');
     RAW_OUTLIER_RESULTS = cached.results;
     RAW_OUTLIER_MAP = cached.map || {};
     RAW_OUTLIER_SCANNED_TOTAL = cached.scanned || 0;
@@ -5340,6 +5353,8 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog){
     if(onProgress) onProgress(1, 'Cache: ' + RAW_OUTLIER_RESULTS.length + ' Ausreisser');
     return;
   }
+  _logAnalysis('cache_miss', {});
+  console.log('[ANALYSIS] CACHE MISS, starting full search');
 
   const unit = (HA_ENTITY_INFO && HA_ENTITY_INFO.entity && HA_ENTITY_INFO.entity.unit_of_measurement)
     ? String(HA_ENTITY_INFO.entity.unit_of_measurement) : '';
@@ -5351,6 +5366,9 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog){
     const ps = localStorage.getItem('raw_outlier_params');
     if(ps) Object.assign(params, JSON.parse(ps));
   }catch(e){}
+
+  _logAnalysis('search_init', {startMs: startMs, stopMs: stopMs, spanDays: Math.round((stopMs - startMs) / 86400000)});
+  console.log('[ANALYSIS] Starting search, span:', Math.round((stopMs - startMs) / 86400000), 'days');
 
   startRawOutlierUi(baseMeta);
   RAW_OUTLIER_SEARCHING = true;

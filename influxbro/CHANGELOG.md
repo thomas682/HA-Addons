@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.12.227
+
+### Fix
+
+- Analyse-Button: Safety-Reset fuer `RAW_OUTLIER_SEARCHING` Flag falls von vorherigem Aufruf blockiert.
+- Erweitertes Debug-Logging: cache_check, cache_hit, cache_miss, search_init, blocked.
+- Console.log fuer jeden Schritt zur lokalen Diagnose.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.226
 
 ### Fix
