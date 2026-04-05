@@ -1039,6 +1039,8 @@ const $rawInfo = document.getElementById('raw_info');
 const $rawBox = document.getElementById('raw_box');
 const $rawBody = document.getElementById('raw_body');
 const $rawResize = document.getElementById('raw_resize');
+const $rawOutlierBox = document.getElementById('raw_outlier_overview');
+const $rawOutlierResize = document.getElementById('raw_outlier_resize');
 const $rawAutoWidth = document.getElementById('raw_autowidth');
 const $rawSearchBar = document.getElementById('raw_search_bar');
 const $rawOutlierTypeToggle = document.getElementById('raw_outlier_type_toggle');
@@ -1177,6 +1179,8 @@ let UI_EDIT_GRAPH_MAX_POINTS = 50000;
 let UI_RAW_MAX_POINTS = 20000;
 let UI_RAW_CENTER_MAX_POINTS = 2000;
 let UI_RAW_CENTER_MIN_POINTS = 10;
+let UI_RAW_TARGET_CHUNK_MS = 5000;
+let CFG_TIMEOUT_SECONDS = 60;
 
 function applyFilterTableVisibleRows(){
   try{
@@ -1722,6 +1726,7 @@ function saveState(){
       analysis_open: !!($analysisSection && $analysisSection.open),
       raw_center_range: RAW_CENTER_RANGE,
       raw_outlier_context_rows: RAW_OUTLIER_CONTEXT_ROWS,
+      raw_outlier_visible_rows: RAW_OUTLIER_VISIBLE_ROWS,
       raw_outlier_types: getRawOutlierFilterTypes(),
     };
     localStorage.setItem(LS_KEY, JSON.stringify(j));
@@ -3723,6 +3728,8 @@ async function loadUiConfig(){
     ALLOW_WRITES = true;
     const d = Number(cfg.ui_decimals);
     if(isFinite(d) && d >= 0 && d <= 10) UI_DECIMALS = Math.trunc(d);
+    const tsec = Number(cfg.timeout_seconds);
+    if(isFinite(tsec) && tsec >= 1) CFG_TIMEOUT_SECONDS = Math.trunc(tsec);
     const r = Number(cfg.ui_table_visible_rows);
     if(isFinite(r) && r > 0) UI_TABLE_VISIBLE_ROWS = Math.trunc(r);
     const orows = Number(cfg.ui_outlier_visible_rows);
@@ -3753,6 +3760,8 @@ async function loadUiConfig(){
     else RAW_CENTER_RANGE = clampRawCenterRange(RAW_CENTER_RANGE);
     const rmin = Number(cfg.ui_raw_center_min_points);
     if(isFinite(rmin) && rmin >= 1 && rmin <= 100000) UI_RAW_CENTER_MIN_POINTS = Math.trunc(rmin);
+    const rtcm = Number(cfg.ui_raw_target_chunk_ms);
+    if(isFinite(rtcm) && rtcm >= 1000) UI_RAW_TARGET_CHUNK_MS = Math.trunc(rtcm);
     if($rawCenterRange) {
       $rawCenterRange.max = String(UI_RAW_CENTER_MAX_POINTS);
       $rawCenterRange.value = String(clampRawCenterRange(RAW_CENTER_RANGE));
@@ -3944,6 +3953,53 @@ function initRawResize(){
 
   $rawResize.addEventListener('mousedown', onDown);
   $rawResize.addEventListener('touchstart', onDown, {passive:false});
+}
+
+function initRawOutlierResize(){
+  if(!$rawOutlierResize || !$rawOutlierBox) return;
+  let startY = 0;
+  let startRows = RAW_OUTLIER_VISIBLE_ROWS;
+  let dragging = false;
+
+  function rowPx(){ return 14; }
+
+  function onMove(ev){
+    if(!dragging) return;
+    const y = (ev && (ev.touches && ev.touches[0] ? ev.touches[0].clientY : ev.clientY)) || 0;
+    const dy = y - startY;
+    const deltaRows = Math.round(dy / rowPx());
+    let rows = startRows + deltaRows;
+    if(rows < 5) rows = 5;
+    if(rows > 500) rows = 500;
+    RAW_OUTLIER_VISIBLE_ROWS = rows;
+    $rawOutlierBox.style.setProperty('--max-rows', String(rows));
+  }
+
+  function onUp(){
+    if(!dragging) return;
+    dragging = false;
+    document.body.style.userSelect = '';
+    try{ saveState(); }catch(e){}
+    window.removeEventListener('mousemove', onMove);
+    window.removeEventListener('mouseup', onUp);
+    window.removeEventListener('touchmove', onMove);
+    window.removeEventListener('touchend', onUp);
+  }
+
+  function onDown(ev){
+    dragging = true;
+    startY = (ev && (ev.touches && ev.touches[0] ? ev.touches[0].clientY : ev.clientY)) || 0;
+    startRows = RAW_OUTLIER_VISIBLE_ROWS;
+    document.body.style.userSelect = 'none';
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    window.addEventListener('touchmove', onMove, {passive:false});
+    window.addEventListener('touchend', onUp);
+    try{ ev.preventDefault(); }catch(e){}
+  }
+
+  $rawOutlierResize.addEventListener('mousedown', onDown);
+  $rawOutlierResize.addEventListener('touchstart', onDown, {passive:false});
 }
 
 function toLocalDatetimeValue(d){
@@ -4465,6 +4521,7 @@ let RAW_OUTLIER_META_TEXT = "";
 let RAW_OUTLIER_SCANNED_TOTAL = 0;
 let RAW_OUTLIER_ABORT = null;
 let RAW_OUTLIER_CONTEXT_ROWS = 10;
+let RAW_OUTLIER_VISIBLE_ROWS = 5;
 
 const ALL_OUTLIER_TYPES = [
   {value: 'counter', label: 'Counter'},
@@ -5655,10 +5712,10 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog){
   // Adaptive chunk sizing: start with 1 day
   let chunkDays = 1;
   const MIN_CHUNK_DAYS = 1;
-  const MAX_CHUNK_DAYS = 14;
+  const MAX_CHUNK_DAYS = Math.max(14, Math.floor((Number(CFG_TIMEOUT_SECONDS || 60) * 1000) / Math.max(1000, UI_RAW_TARGET_CHUNK_MS)) * 14);
   const FETCH_TIMEOUT_MS = 120000; // 120s fetch timeout
   const TIMEOUT_MS = 60000; // 60s timeout threshold for adaptive sizing
-  const OPTIMAL_MS = 30000; // target: under 30s per chunk
+  const OPTIMAL_MS = Math.max(1000, UI_RAW_TARGET_CHUNK_MS || 5000);
 
   // Analysis log for this run
   const analysisLog = [];
@@ -5812,7 +5869,7 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog){
         error: null,
       });
 
-      // Adaptive chunk sizing
+      // Adaptive chunk sizing toward target duration
       if(chunkDur > TIMEOUT_MS){
         // Timeout: halve chunk size, retry this chunk
         chunkDays = Math.max(MIN_CHUNK_DAYS, Math.floor(chunkDays / 2));
@@ -5829,9 +5886,10 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog){
           chunks = done.concat(buildChunks(remainingStart, stopMs, chunkDays));
         }
         chunkIdx++;
-      }else if(chunkDur < OPTIMAL_MS * 0.5 && chunkDays < MAX_CHUNK_DAYS){
-        // Fast: double chunk size for next chunks
-        chunkDays = Math.min(MAX_CHUNK_DAYS, chunkDays * 2);
+      }else if(chunkDur < OPTIMAL_MS * 0.95 && chunkDays < MAX_CHUNK_DAYS){
+        // Fast: estimate next chunk size from measured duration toward target duration
+        const factor = Math.max(1.1, Math.min(8, OPTIMAL_MS / Math.max(1, chunkDur)));
+        chunkDays = Math.min(MAX_CHUNK_DAYS, Math.max(MIN_CHUNK_DAYS, Math.round(chunkDays * factor)));
         const remainingStart = Date.parse(bIso);
         if(chunkIdx + 1 < chunks.length){
           const done = chunks.slice(0, chunkIdx + 1);
@@ -8741,6 +8799,7 @@ try{
     initGraphResize();
     loadRawRows();
     initRawResize();
+    initRawOutlierResize();
     initEditSplit();
     initMultiSelect();
 
@@ -8812,17 +8871,18 @@ try{
 
     // Raw options
     try{
+      if($analysisSection && st.analysis_open !== undefined) $analysisSection.open = !!st.analysis_open;
       RAW_CENTER_RANGE = (st.raw_center_range !== undefined) ? clampRawCenterRange(st.raw_center_range) : clampRawCenterRange(RAW_CENTER_RANGE);
       if($rawCenterRange) $rawCenterRange.value = String(RAW_CENTER_RANGE);
       RAW_OUTLIER_CONTEXT_ROWS = (st.raw_outlier_context_rows !== undefined) ? Math.max(1, Math.min(500, Number(st.raw_outlier_context_rows))) : RAW_OUTLIER_CONTEXT_ROWS;
       if($rawOutlierContextRows) $rawOutlierContextRows.value = String(RAW_OUTLIER_CONTEXT_ROWS);
+      RAW_OUTLIER_VISIBLE_ROWS = (st.raw_outlier_visible_rows !== undefined) ? Math.max(5, Math.min(500, Number(st.raw_outlier_visible_rows))) : RAW_OUTLIER_VISIBLE_ROWS;
+      try{ const box = document.getElementById('raw_outlier_overview'); if(box) box.style.setProperty('--max-rows', String(RAW_OUTLIER_VISIBLE_ROWS)); }catch(e){}
 
-      // Restore outlier type selections
+      // Restore selected analysis types
       if(st.raw_outlier_types && Array.isArray(st.raw_outlier_types)){
-        document.querySelectorAll('.raw_outlier_type_cb').forEach(cb=>{
-          cb.checked = st.raw_outlier_types.includes(cb.value);
-        });
-        updateRawOutlierTypeToggleLabel();
+        ANALYSIS_SELECTED_TYPES = st.raw_outlier_types.slice();
+        ANALYSIS_UNSELECTED_TYPES = ALL_OUTLIER_TYPES.map(t=>t.value).filter(v => !ANALYSIS_SELECTED_TYPES.includes(v));
       }
     }catch(e){}
 
@@ -8881,6 +8941,7 @@ try{
     // Update analysis status line
     try{ _updateAnalysisStatus(); }catch(e){}
     try{ renderAnalysisTypeLists(); updateAnalysisUI(); }catch(e){}
+    try{ renderAnalysisTypeLists(); updateAnalysisUI(); }catch(e){}
 
     // Ensure graph query panel reflects persisted selection.
     try{ _renderGraphQueryPanel(); }catch(e){}
@@ -8896,6 +8957,10 @@ try{
   const persistNow = ()=>{ try{ saveState(); }catch(e){}; try{ cacheSaveNow(); }catch(e){}; };
   window.addEventListener('pagehide', persistNow);
   document.addEventListener('visibilitychange', ()=>{ try{ if(document.visibilityState === 'hidden') persistNow(); }catch(e){}; });
+}catch(e){}
+
+try{
+  if($analysisSection) $analysisSection.addEventListener('toggle', ()=>{ try{ saveState(); }catch(e){}; });
 }catch(e){}
 
 try{

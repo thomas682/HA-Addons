@@ -707,6 +707,9 @@ DEFAULT_CFG = {
     # Outlier context rows (rows shown before/after outlier in raw table)
     "ui_raw_outlier_context_rows": 10,
 
+    # Target chunk duration for adaptive outlier search (milliseconds)
+    "ui_raw_target_chunk_ms": 5000,
+
     # Jobs UI colors (used by Jobs & Cache table)
     "ui_job_color_running": "#eef3ff",
     "ui_job_color_done": "#eefaf1",
@@ -11524,6 +11527,7 @@ def api_set_config():
     _clamp_int("ui_raw_center_range_default", 100, 0, 200000)
     _clamp_int("ui_raw_center_min_points", 10, 1, 100000)
     _clamp_int("ui_raw_outlier_context_rows", 10, 1, 500)
+    _clamp_int("ui_raw_target_chunk_ms", 5000, 1000, max(1000, int(cfg.get("timeout_seconds", 60) or 60) * 1000))
     _clamp_float("ui_checkbox_scale", 0.85, 0.5, 1.6)
     _clamp_int("ui_filter_label_width_px", 170, 80, 360)
     _clamp_int("ui_filter_control_width_px", 320, 180, 900)

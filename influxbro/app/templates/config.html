@@ -1711,6 +1711,14 @@ async function save(){
   ok(j.message || "Saved.");
 }
 
+let _AUTO_SAVE_T = null;
+function scheduleAutoSave(){
+  try{
+    if(_AUTO_SAVE_T) clearTimeout(_AUTO_SAVE_T);
+    _AUTO_SAVE_T = setTimeout(()=>{ save().catch(e=>err(String(e))); }, 500);
+  }catch(e){}
+}
+
 async function testConn(){
   err(""); ok("");
   const j = await api("./api/test", {
@@ -1801,6 +1809,17 @@ try{
 try{
   if($outliersAuto) $outliersAuto.addEventListener('click', ()=>{
     try{ if(window.InfluxBroTableCols) window.InfluxBroTableCols.autoFit('#outliers_tbl', {maxRows: 200}); }catch(e){}
+  });
+}catch(e){}
+
+// Auto-save settings on change for all inputs/selects (except explicit action buttons)
+try{
+  document.querySelectorAll('main.content input, main.content select').forEach(elm => {
+    const id = String(elm.id || '');
+    if(!id) return;
+    // skip non-setting/operational controls
+    if(['save','test','find_yaml','read_yaml','admin_token_test'].includes(id)) return;
+    elm.addEventListener('change', ()=>{ scheduleAutoSave(); });
   });
 }catch(e){}
 

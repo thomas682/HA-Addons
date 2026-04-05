@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.12.234
+
+### Enhancement
+
+- Analyse-Section vervollstaendigt: Gesamtzeitraum und aktueller Chunk-Zeitraum werden angezeigt.
+- Fortschrittsanzeige nutzt konsistent den Analysezustand (Chunks/Fortschritt/Fundzahlen).
+- Ausreisser-Typ-Auswahl als Zwei-Listen-UI (abgewaehlt/gewaehlt) mit Speicherung im Browser.
+- Resize-Bar unter `raw.outlier_table` ist jetzt funktional.
+- Neue Setting-Grundlage fuer adaptive Chunk-Zielzeit vorbereitet (`ui_raw_target_chunk_ms`).
+- Einstellungen speichern jetzt automatisch bei Aenderungen auf der Einstellungsseite.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Playwright: `tests/e2e/dashboard-analysis.spec.js` 4/4 bestanden
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.233
 
 ### Enhancement
