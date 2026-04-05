@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.12.238
+
+### Fix
+
+- Analyse verwendet bei `Zeitraum = Alle` jetzt den serverseitig ermittelten effektiven Startwert auch tatsaechlich fuer die Ausreissersuche.
+- `runRawOutlierSearchWithProgress()` akzeptiert nun das bereits berechnete Analyse-Zeitfenster aus `resolveEffectiveAnalysisWindow()` statt erneut `_rawWindowIso()` zu verwenden.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Playwright: `tests/e2e/dashboard-analysis.spec.js` 4/4 bestanden
+- API: `/api/series_oldest` lokal verifiziert
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.237
 
 ### Enhancement

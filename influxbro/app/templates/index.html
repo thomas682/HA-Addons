@@ -5469,7 +5469,7 @@ async function runAnalysis(){
   _addCheck('Ausreisser-Suche: 0 gefunden (0s)', 'running', 0);
   _logAnalysis('search_start', {});
   try{
-    await runRawOutlierSearchWithProgress(_updateProgress, _onChunkLog);
+    await runRawOutlierSearchWithProgress(_updateProgress, _onChunkLog, win);
     const dur = Math.round(performance.now() - t0);
     const count = RAW_OUTLIER_RESULTS ? RAW_OUTLIER_RESULTS.length : 0;
     _logAnalysis('search_done', {count: count, dur: dur});
@@ -5683,7 +5683,7 @@ function _showAnalysisHistory(){
   }
 }
 
-async function runRawOutlierSearchWithProgress(onProgress, onChunkLog){
+async function runRawOutlierSearchWithProgress(onProgress, onChunkLog, effectiveWin){
   if(RAW_OUTLIER_SEARCHING){
     _logAnalysis('blocked', {reason: 'RAW_OUTLIER_SEARCHING is true, resetting'});
     console.log('[ANALYSIS] BLOCKED: RAW_OUTLIER_SEARCHING is true, resetting');
@@ -5692,7 +5692,7 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog){
     if($rawSearchRun) $rawSearchRun.disabled = false;
     if($rawSearchAbort) $rawSearchAbort.style.display = 'none';
   }
-  const win = _rawWindowIso();
+  const win = effectiveWin || _rawWindowIso();
   if(!win || !win.start || !win.stop){
     if($rawOutlierStatusTxt) $rawOutlierStatusTxt.textContent = 'Kein gueltiger Zeitraum gewaehlt.';
     _logAnalysis('error', {step: 'window', error: 'No valid time window', win: win});
