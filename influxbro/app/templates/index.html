@@ -392,7 +392,7 @@
 
   <div id="stats_total_store" style="display:none;"><table class="stats_tbl"><tbody id="stats_tot_body"></tbody></table></div>
 
-    <details id="analysis_section" class="section" data-ui="section.analysis" title="section.analysis">
+    <details id="analysis_section" class="section" open data-ui="section.analysis" title="section.analysis">
       <summary><span class="ib_summary_row"><span>Analyse</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Analyse" data-info-body="Ausreisser-Analyse ueber den gewaehlten Zeitraum.\n\nZeigt:\n- Quellparameter und Zeitraum\n- Fortschrittsbalken (0-100%)\n- Checkliste der Analyseetappen\n- Aktueller Chunk mit Zeitbereich und Dauer\n- Intervall-Info mit Timeout-Warnung\n- Gefundene Ausreisser nach Typ" ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
       <div class="card_body">
         <div id="analysis_info" class="muted" style="font-size:12px;margin-bottom:8px;"></div>
@@ -403,7 +403,19 @@
         <div id="analysis_checklist" style="font-size:12px;margin-bottom:8px;"></div>
         <div id="analysis_chunk_info" class="muted" style="font-size:11px;margin-bottom:4px;"></div>
         <div id="analysis_interval_info" class="muted" style="font-size:11px;margin-bottom:8px;"></div>
-        <div id="analysis_found_info" style="font-size:12px;"></div>
+        <div id="analysis_found_info" style="font-size:12px;margin-bottom:12px;"></div>
+
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px;">Ausreisser-Typen auswaehlen</div>
+        <div style="display:flex;gap:12px;margin-bottom:8px;">
+          <div style="flex:1;">
+            <div style="font-size:11px;opacity:0.7;margin-bottom:4px;">Abgewaehlte Typen</div>
+            <div id="analysis_types_unselected" style="border:1px solid #eee;border-radius:8px;padding:8px;min-height:40px;"></div>
+          </div>
+          <div style="flex:1;">
+            <div style="font-size:11px;opacity:0.7;margin-bottom:4px;">Gewählte Typen</div>
+            <div id="analysis_types_selected" style="border:1px solid #eee;border-radius:8px;padding:8px;min-height:40px;"></div>
+          </div>
+        </div>
       </div>
     </details>
 
@@ -4451,12 +4463,34 @@ let RAW_OUTLIER_SCANNED_TOTAL = 0;
 let RAW_OUTLIER_ABORT = null;
 let RAW_OUTLIER_CONTEXT_ROWS = 10;
 
+const ALL_OUTLIER_TYPES = [
+  {value: 'counter', label: 'Counter'},
+  {value: 'decrease', label: 'Counter Abfall'},
+  {value: 'bounds', label: 'Grenzen'},
+  {value: 'fault_phase', label: 'Stoerphase'},
+  {value: 'null', label: 'NULL'},
+  {value: 'zero', label: '0-Werte'},
+];
+
+let ANALYSIS_SELECTED_TYPES = ['counter', 'decrease', 'bounds', 'fault_phase', 'null', 'zero'];
+let ANALYSIS_UNSELECTED_TYPES = [];
+
+try{
+  const saved = localStorage.getItem('analysis_types');
+  if(saved){
+    const parsed = JSON.parse(saved);
+    ANALYSIS_SELECTED_TYPES = parsed.selected || ANALYSIS_SELECTED_TYPES;
+    ANALYSIS_UNSELECTED_TYPES = parsed.unselected || [];
+  }
+}catch(e){}
+
 const ANALYSIS_STATE = {
   measurement: '', field: '', entity_id: '', friendly_name: '',
   timeRange: '', types: [], totalChunks: 0, currentChunk: 0,
   chunkInterval: '', chunkDuration: 0, foundByType: {},
   totalFound: 0, totalScanned: 0, status: 'idle',
-  startTime: null,
+  startTime: null, totalSpanStart: '', totalSpanStop: '',
+  currentChunkStart: '', currentChunkStop: '',
 };
 let GRAPH_QUERY_DASH_AT = "";
 let GRAPH_QUERY_EDIT_AT = "";
@@ -4694,14 +4728,8 @@ function _rawOutlierMetaFromPayload(p){
   return parts.join(' | ');
 }
 
-function getRawOutlierFilterTypes(){
-  const cbs = document.querySelectorAll('.raw_outlier_type_cb');
-  return Array.from(cbs).filter(cb => cb.checked).map(cb => cb.value);
-}
-
 function getRawOutlierSelectedCount(){
-  const cbs = document.querySelectorAll('.raw_outlier_type_cb');
-  return Array.from(cbs).filter(cb => cb.checked).length;
+  return ANALYSIS_SELECTED_TYPES.length;
 }
 
 function updateRawOutlierTypeToggleLabel(){
@@ -5033,12 +5061,21 @@ function _updateAnalysisStatus(){
 function updateAnalysisUI(){
   try{
     const s = ANALYSIS_STATE;
-    // 1. Quellinfos
+    const typeLabels = {counter: 'Counter', decrease: 'Counter Abfall', bounds: 'Grenzen', fault_phase: 'Stoerphase', null: 'NULL', zero: '0-Werte'};
+    const typeNames = (s.types || []).map(t => typeLabels[t] || t).join(', ');
+
+    // 1. Quellinfos + Gesamtzeitraum + aktueller Zeitraum
     const $info = document.getElementById('analysis_info');
     if($info){
-      const typeLabels = {counter: 'Counter', decrease: 'Counter Abfall', bounds: 'Grenzen', fault_phase: 'Stoerphase', null: 'NULL', zero: '0-Werte'};
-      const typeNames = (s.types || []).map(t => typeLabels[t] || t).join(', ');
-      $info.textContent = (s.measurement || '-') + ' / ' + (s.field || '-') + ' | ' + (s.entity_id || s.friendly_name || '-') + ' | Zeitraum: ' + (s.timeRange || '-') + ' | Typen: ' + (typeNames || '-');
+      let txt = (s.measurement || '-') + ' / ' + (s.field || '-') + ' | ' + (s.entity_id || s.friendly_name || '-') + ' | Zeitraum: ' + (s.timeRange || '-');
+      txt += ' | Typen: ' + (typeNames || '-');
+      if(s.totalSpanStart && s.totalSpanStop){
+        txt += '\nGesamt: ' + fmtTs(s.totalSpanStart) + ' – ' + fmtTs(s.totalSpanStop);
+      }
+      if(s.currentChunkStart && s.currentChunkStop){
+        txt += ' | Aktuell: ' + fmtTs(s.currentChunkStart) + ' – ' + fmtTs(s.currentChunkStop);
+      }
+      $info.textContent = txt;
     }
 
     // 2. Fortschrittsbalken
@@ -5092,14 +5129,74 @@ function updateAnalysisUI(){
       $interval.textContent = hint;
     }
 
-    // 6. Gefundene nach Typ
+    // 6. Gefundene nach Typ - ALLE Typen anzeigen (auch 0)
     const $found = document.getElementById('analysis_found_info');
     if($found){
-      const typeLabels = {counter: 'Counter', decrease: 'Counter Abfall', bounds: 'Grenzen', fault_phase: 'Stoerphase', null: 'NULL', zero: '0-Werte'};
-      const parts = Object.entries(s.foundByType || {}).map(([t, c]) => (typeLabels[t] || t) + ': ' + c);
-      $found.textContent = parts.length ? 'Gefunden: ' + parts.join(' | ') : '';
+      const parts = ALL_OUTLIER_TYPES.map(t => {
+        const count = (s.foundByType || {})[t.value] || 0;
+        return t.label + ': ' + count;
+      });
+      $found.textContent = 'Gefunden: ' + parts.join(' | ');
     }
+
+    // 7. Render type selection lists
+    renderAnalysisTypeLists();
   }catch(e){}
+}
+
+function renderAnalysisTypeLists(){
+  try{
+    const $unselected = document.getElementById('analysis_types_unselected');
+    const $selected = document.getElementById('analysis_types_selected');
+    if(!$unselected || !$selected) return;
+
+    $unselected.innerHTML = ANALYSIS_UNSELECTED_TYPES.map(t => {
+      const type = ALL_OUTLIER_TYPES.find(x => x.value === t);
+      const label = type ? type.label : t;
+      return '<div style="padding:4px 8px;margin:2px 0;background:#f5f5f5;border-radius:4px;cursor:pointer;font-size:12px;" data-type="' + t + '" data-list="unselected">' + label + '</div>';
+    }).join('') || '<div style="opacity:0.5;font-size:11px;">Keine</div>';
+
+    $selected.innerHTML = ANALYSIS_SELECTED_TYPES.map(t => {
+      const type = ALL_OUTLIER_TYPES.find(x => x.value === t);
+      const label = type ? type.label : t;
+      return '<div style="padding:4px 8px;margin:2px 0;background:#e8f5e9;border-radius:4px;cursor:pointer;font-size:12px;" data-type="' + t + '" data-list="selected">' + label + '</div>';
+    }).join('') || '<div style="opacity:0.5;font-size:11px;">Keine</div>';
+
+    // Add click handlers
+    $unselected.querySelectorAll('[data-type]').forEach(el => {
+      el.addEventListener('click', ()=>{
+        const type = el.getAttribute('data-type');
+        ANALYSIS_UNSELECTED_TYPES = ANALYSIS_UNSELECTED_TYPES.filter(t => t !== type);
+        ANALYSIS_SELECTED_TYPES.push(type);
+        ANALYSIS_SELECTED_TYPES.sort();
+        saveAnalysisTypes();
+        renderAnalysisTypeLists();
+      });
+    });
+    $selected.querySelectorAll('[data-type]').forEach(el => {
+      el.addEventListener('click', ()=>{
+        const type = el.getAttribute('data-type');
+        ANALYSIS_SELECTED_TYPES = ANALYSIS_SELECTED_TYPES.filter(t => t !== type);
+        ANALYSIS_UNSELECTED_TYPES.push(type);
+        ANALYSIS_UNSELECTED_TYPES.sort();
+        saveAnalysisTypes();
+        renderAnalysisTypeLists();
+      });
+    });
+  }catch(e){}
+}
+
+function saveAnalysisTypes(){
+  try{
+    localStorage.setItem('analysis_types', JSON.stringify({
+      selected: ANALYSIS_SELECTED_TYPES,
+      unselected: ANALYSIS_UNSELECTED_TYPES,
+    }));
+  }catch(e){}
+}
+
+function getRawOutlierFilterTypes(){
+  return ANALYSIS_SELECTED_TYPES.slice();
 }
 
 function _logAnalysis(step, data){
@@ -5126,6 +5223,7 @@ async function runAnalysis(){
   err(""); ok("");
   const base = currentFilters();
   const types = getRawOutlierFilterTypes();
+  const win = _rawWindowIso();
 
   // Initialize ANALYSIS_STATE
   ANALYSIS_STATE.measurement = base.measurement;
@@ -5143,6 +5241,10 @@ async function runAnalysis(){
   ANALYSIS_STATE.totalScanned = 0;
   ANALYSIS_STATE.status = 'idle';
   ANALYSIS_STATE.startTime = performance.now();
+  ANALYSIS_STATE.totalSpanStart = win ? win.start : '';
+  ANALYSIS_STATE.totalSpanStop = win ? win.stop : '';
+  ANALYSIS_STATE.currentChunkStart = '';
+  ANALYSIS_STATE.currentChunkStop = '';
   updateAnalysisUI();
 
   _logAnalysis('start', {measurement: base.measurement, field: base.field, entity_id: base.entity_id, friendly_name: base.friendly_name, range: base.range});
