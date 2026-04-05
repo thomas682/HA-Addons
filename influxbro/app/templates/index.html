@@ -5192,11 +5192,15 @@ function updateAnalysisUI(){
     // 6. Gefundene nach Typ - ALLE Typen anzeigen (auch 0)
     const $found = document.getElementById('analysis_found_info');
     if($found){
+      const filterParts = ALL_OUTLIER_TYPES.map(t => {
+        const active = ANALYSIS_SELECTED_TYPES.includes(t.value);
+        return (active ? '✓ ' : '✗ ') + t.label;
+      });
       const parts = ALL_OUTLIER_TYPES.map(t => {
         const count = (s.foundByType || {})[t.value] || 0;
         return t.label + ': ' + count;
       });
-      $found.textContent = 'Gefunden: ' + parts.join(' | ');
+      $found.innerHTML = '<div>Suchfilter: ' + filterParts.join(' | ') + '</div><div style="margin-top:4px;">Gefunden: ' + parts.join(' | ') + '</div>';
     }
 
     // 7. Render type selection lists
@@ -5336,15 +5340,13 @@ async function runAnalysis(){
       ANALYSIS_STATE.chunkInterval = entry.chunkDays ? entry.chunkDays + ' Tage' : '';
       ANALYSIS_STATE.currentChunkStart = entry.start || '';
       ANALYSIS_STATE.currentChunkStop = entry.stop || '';
-      if(entry.rows){
-        entry.rows.forEach(row => {
-          (row.types || []).forEach(t => {
-            ANALYSIS_STATE.foundByType[t] = (ANALYSIS_STATE.foundByType[t] || 0) + 1;
-          });
+      if(entry.byType && typeof entry.byType === 'object'){
+        Object.entries(entry.byType).forEach(([t, c]) => {
+          ANALYSIS_STATE.foundByType[t] = Number(c || 0);
         });
-        ANALYSIS_STATE.totalFound += entry.rows.length;
       }
-      ANALYSIS_STATE.totalScanned += (entry.scanned || 0);
+      ANALYSIS_STATE.totalFound = Number(entry.totalFound || ANALYSIS_STATE.totalFound || 0);
+      ANALYSIS_STATE.totalScanned = Number(entry.totalScanned || ANALYSIS_STATE.totalScanned || 0);
       updateAnalysisUI();
     }
   }
@@ -5841,6 +5843,12 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog){
 
       const chunkRows = (j.rows || []).length;
       const chunkScanned = Number(j.scanned || 0);
+      const chunkTypeCounts = {};
+      (j.rows || []).forEach(row => {
+        (row.types || []).forEach(t => {
+          chunkTypeCounts[t] = (chunkTypeCounts[t] || 0) + 1;
+        });
+      });
 
       // Update ANALYSIS_STATE with chunk results
       ANALYSIS_STATE.currentChunk = chunkIdx + 1;
@@ -5866,6 +5874,9 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog){
         scanned: chunkScanned,
         dur: chunkDur,
         chunkDays: chunkDays,
+        byType: chunkTypeCounts,
+        totalFound: RAW_OUTLIER_RESULTS.length + chunkRows,
+        totalScanned: scannedTotal + chunkScanned,
         error: null,
       });
 
