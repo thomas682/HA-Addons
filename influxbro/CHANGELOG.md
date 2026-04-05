@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.12.230
+
+### Enhancement
+
+- Neue "Analyse" Section unterhalb von Quellauswahl mit detailliertem Fortschritt.
+- Zeigt: Quellparameter, Fortschrittsbalken (0-100%), Checkliste der Analyseetappen, aktueller Chunk mit Zeitbereich/Dauer, Intervall-Info mit Timeout-Warnung, gefundene Ausreisser nach Typ.
+- Section "Raw Daten" wird jetzt VOR "Grafische Analyse" angezeigt.
+- Console-Fehler werden automatisch ins Server-Log geschrieben (alle Seiten).
+- Statistik-Seite: Erkennt abgelaufene Jobs und faellt auf Cache zurueck.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.229
 
 ### Enhancement

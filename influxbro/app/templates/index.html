@@ -392,63 +392,18 @@
 
   <div id="stats_total_store" style="display:none;"><table class="stats_tbl"><tbody id="stats_tot_body"></tbody></table></div>
 
-    <details id="graph_section" class="section" {{ 'open' if cfg.get('ui_open_graph') else '' }} data-ui="section.graph" title="section.graph">
-      <summary><span class="ib_summary_row"><span class="section_title" style="margin:0;">Grafische Analyse</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Graph" data-info-body="Der Graph ist die zentrale Visualisierung der aktuell gewaehlten Serie.\n\nEnthaelt:\n- Zeitreihen-Plot mit Zoom und Auswahl\n- Marker fuer selektierte Punkte\n- Detail-Modi, Ableitungen und Zusatzinfos unter dem Plot\n- Raw-Synchronisation: ein Klick auf einen Punkt steuert die Raw-Tabelle\n\nNutzen:\n- zeitliche Analyse\n- Auswahl eines Ankerpunkts fuer Raw-Daten und Bearbeitung" ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
-      <div class="tbl_actions" data-ui="graph_actions">
-        <label><input type="checkbox" id="graph_markers" class="row_sel" data-ui="graph_markers"/>Messpunkte markieren</label>
-        <button class="btn_sm" id="graph_refresh" type="button" data-ui="graph.refresh" title="graph.refresh" aria-label="Graph neu zeichnen"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M18.6091 5.89092L15.5 9H21.5V3L18.6091 5.89092ZM18.6091 5.89092C16.965 4.1131 14.6125 3 12 3C7.36745 3 3.55237 6.50005 3.05493 11M5.39092 18.1091L2.5 21V15H8.5L5.39092 18.1091ZM5.39092 18.1091C7.03504 19.8869 9.38753 21 12 21C16.6326 21 20.4476 17.5 20.9451 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
-        <button class="btn_sm" id="graph_reset_time" type="button" data-ui="graph.reset_time" title="graph.reset_time" aria-label="Zeitraum zuruecksetzen"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M3 12a9 9 0 1 1 3 6.7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M3 7v5h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-        <button class="btn_sm" id="graph_query_open" type="button" data-ui="graph.query_section" title="graph.query_section" aria-label="Graph Query anzeigen"><svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="11" cy="15.5" r="1.5"></circle><path d="M12,12H10V8h2a2,2,0,0,0,0-4H10A2.0023,2.0023,0,0,0,8,6v.5H6V6a4.0045,4.0045,0,0,1,4-4h2a4,4,0,0,1,0,8Z"></path><path d="M22.4479,21.0337A10.971,10.971,0,0,0,19.9211,4.7446l-.999,1.73A8.9967,8.9967,0,1,1,5,14H3a10.9916,10.9916,0,0,0,18.0338,8.4478L28.5859,30,30,28.5859Z"></path></svg></button>
-        <button class="btn_sm" id="graph_query_test" type="button" data-ui="graph.query_test" title="graph.query_test" aria-label="Query testen"><svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="#000000" width="18" height="18" aria-hidden="true" focusable="false"><path d="M6 10V9h9v1H6zm4-4h5v1h-5V6zm5-3v1H6V3h9zm-9 9v1h9v-1H6z"></path><path fill-rule="evenodd" clip-rule="evenodd" d="M1 2.795l.783-.419 5.371 3.581v.838l-5.371 3.581L1 9.957V2.795zm1.007.94v5.281l3.96-2.64-3.96-2.64z"></path></svg></button>
-      </div>
-
-      <div class="tbl_actions" style="justify-content:flex-start; margin-top: 8px; gap: 10px; flex-wrap:wrap;" data-ui="graph.detail" title="graph.detail">
-        <label style="display:flex; align-items:center; gap: 8px;">
-          <span class="muted" style="min-width: 76px;">Details</span>
-          <select id="graph_detail_mode" class="btn_sm" data-ui="graph.detail_mode" title="graph.detail_mode" style="height:34px; padding: 6px 10px;">
-            <option value="dynamic" selected>Dynamisch</option>
-            <option value="manual">Manuell</option>
-          </select>
-        </label>
-
-        <label id="graph_manual_density_wrap" style="display:none; align-items:center; gap: 8px;">
-          <span class="muted">Punktdichte</span>
-          <input id="graph_manual_density" type="range" min="1" max="100" value="100" style="width: 180px;" />
-          <span class="muted" id="graph_manual_density_lbl">100%</span>
-        </label>
-
-        <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_bg" class="row_sel" checked data-ui="graph.deriv_bg" title="graph.deriv_bg"/>Ableitung: Hintergrund</label>
-        <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_strip" class="row_sel" checked data-ui="graph.deriv_strip" title="graph.deriv_strip"/>Ableitung: Farbleiste</label>
-        <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_graph" class="row_sel" checked data-ui="graph.deriv_graph" title="graph.deriv_graph"/>Ableitungs-Graph</label>
-        <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_abs" class="row_sel" checked data-ui="graph.deriv_abs" title="graph.deriv_abs"/>absolut</label>
-        <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_signed" class="row_sel" data-ui="graph.deriv_signed" title="graph.deriv_signed"/>signiert</label>
-
-        <label id="deriv_outlier_wrap" style="display:none; align-items:center; gap: 8px;">
-          <span class="muted">Ableitung Outlier</span>
-          <input id="deriv_outlier_thr" type="range" min="0" max="100" value="90" style="width: 160px;" />
-          <span class="muted" id="deriv_outlier_lbl">90%</span>
-        </label>
-      </div>
-       <div id="graph_query_section" style="display:none;" data-ui="graph.query_section" title="graph.query_section">
-         <button class="btn_sm" id="graph_copy_query" data-ui="graph.copy_query" title="graph.copy_query"></button>
-         <select class="btn_sm" id="graph_query_source" data-ui="graph.query_source" title="graph.query_source" style="height:34px; padding: 6px 10px;">
-           <option value="dashboard" selected>Dashboard</option>
-           <option value="edit_graph">Bearbeitungsgraph</option>
-         </select>
-         <button class="btn_sm" id="graph_query_history" type="button" data-ui="graph.query_history" title="graph.query_history"></button>
-         <div id="graph_query_meta"></div>
-         <div id="graph_query_label"></div>
-         <pre id="graph_query">Noch keine Query vorhanden.</pre>
-       </div>
-        <div class="muted" data-ui="tip.graph" title="tip.graph">Zoomen/Pan im Plot. Doppelklick setzt Zoom zurueck. Griff unten zieht die Hoehe.</div>
-        <div class="muted" id="graph_points_info" style="margin-top: 6px;"></div>
-        <div class="muted" id="graph_selected_info" style="margin-top: 6px; font-weight: 650;" data-ui="graph.selected" title="graph.selected"></div>
-         <div class="graph_frame" data-ui="graph.frame" title="graph.frame" style="position:relative;">
-          <div id="chart_plotly"></div>
-          <canvas id="chart" width="800" height="200"></canvas>
-        <div id="deriv_strip_plot" style="display:none; width: 100%; height: 60px; margin-top: 8px; pointer-events:none;"></div>
-        <div id="deriv_graph_plot" style="display:none; width: 100%; height: 140px; margin-top: 8px; pointer-events:none;"></div>
-        <div id="graph_resize" data-ui="graph.resize" title="graph.resize" style="height: 12px; cursor: ns-resize; margin-top: 8px; border-radius: 999px; background: linear-gradient(90deg, #eee, #f8f8f8);"></div>
+    <details id="analysis_section" class="section" data-ui="section.analysis" title="section.analysis">
+      <summary><span class="ib_summary_row"><span>Analyse</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Analyse" data-info-body="Ausreisser-Analyse ueber den gewaehlten Zeitraum.\n\nZeigt:\n- Quellparameter und Zeitraum\n- Fortschrittsbalken (0-100%)\n- Checkliste der Analyseetappen\n- Aktueller Chunk mit Zeitbereich und Dauer\n- Intervall-Info mit Timeout-Warnung\n- Gefundene Ausreisser nach Typ" ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
+      <div class="card_body">
+        <div id="analysis_info" class="muted" style="font-size:12px;margin-bottom:8px;"></div>
+        <div style="height:8px;background:#eee;border-radius:4px;margin:4px 0;overflow:hidden;">
+          <div id="analysis_progress_fill" style="height:100%;background:#4caf50;width:0%;transition:width 0.3s;"></div>
+        </div>
+        <div id="analysis_progress_text" class="muted" style="font-size:11px;margin-bottom:8px;">0%</div>
+        <div id="analysis_checklist" style="font-size:12px;margin-bottom:8px;"></div>
+        <div id="analysis_chunk_info" class="muted" style="font-size:11px;margin-bottom:4px;"></div>
+        <div id="analysis_interval_info" class="muted" style="font-size:11px;margin-bottom:8px;"></div>
+        <div id="analysis_found_info" style="font-size:12px;"></div>
       </div>
     </details>
 
@@ -580,6 +535,65 @@
     </div>
     <div id="raw_resize" data-ui="raw.resize" title="raw.resize" style="height: 12px; cursor: ns-resize; margin-top: 8px; border-radius: 999px; background: linear-gradient(90deg, #eee, #f8f8f8);"></div>
   </div>
+    </details>
+    <details id="graph_section" class="section" {{ 'open' if cfg.get('ui_open_graph') else '' }} data-ui="section.graph" title="section.graph">
+      <summary><span class="ib_summary_row"><span class="section_title" style="margin:0;">Grafische Analyse</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Graph" data-info-body="Der Graph ist die zentrale Visualisierung der aktuell gewaehlten Serie.\n\nEnthaelt:\n- Zeitreihen-Plot mit Zoom und Auswahl\n- Marker fuer selektierte Punkte\n- Detail-Modi, Ableitungen und Zusatzinfos unter dem Plot\n- Raw-Synchronisation: ein Klick auf einen Punkt steuert die Raw-Tabelle\n\nNutzen:\n- zeitliche Analyse\n- Auswahl eines Ankerpunkts fuer Raw-Daten und Bearbeitung" ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
+      <div class="tbl_actions" data-ui="graph_actions">
+        <label><input type="checkbox" id="graph_markers" class="row_sel" data-ui="graph_markers"/>Messpunkte markieren</label>
+        <button class="btn_sm" id="graph_refresh" type="button" data-ui="graph.refresh" title="graph.refresh" aria-label="Graph neu zeichnen"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M18.6091 5.89092L15.5 9H21.5V3L18.6091 5.89092ZM18.6091 5.89092C16.965 4.1131 14.6125 3 12 3C7.36745 3 3.55237 6.50005 3.05493 11M5.39092 18.1091L2.5 21V15H8.5L5.39092 18.1091ZM5.39092 18.1091C7.03504 19.8869 9.38753 21 12 21C16.6326 21 20.4476 17.5 20.9451 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
+        <button class="btn_sm" id="graph_reset_time" type="button" data-ui="graph.reset_time" title="graph.reset_time" aria-label="Zeitraum zuruecksetzen"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M3 12a9 9 0 1 1 3 6.7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M3 7v5h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button class="btn_sm" id="graph_query_open" type="button" data-ui="graph.query_section" title="graph.query_section" aria-label="Graph Query anzeigen"><svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="11" cy="15.5" r="1.5"></circle><path d="M12,12H10V8h2a2,2,0,0,0,0-4H10A2.0023,2.0023,0,0,0,8,6v.5H6V6a4.0045,4.0045,0,0,1,4-4h2a4,4,0,0,1,0,8Z"></path><path d="M22.4479,21.0337A10.971,10.971,0,0,0,19.9211,4.7446l-.999,1.73A8.9967,8.9967,0,1,1,5,14H3a10.9916,10.9916,0,0,0,18.0338,8.4478L28.5859,30,30,28.5859Z"></path></svg></button>
+        <button class="btn_sm" id="graph_query_test" type="button" data-ui="graph.query_test" title="graph.query_test" aria-label="Query testen"><svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="#000000" width="18" height="18" aria-hidden="true" focusable="false"><path d="M6 10V9h9v1H6zm4-4h5v1h-5V6zm5-3v1H6V3h9zm-9 9v1h9v-1H6z"></path><path fill-rule="evenodd" clip-rule="evenodd" d="M1 2.795l.783-.419 5.371 3.581v.838l-5.371 3.581L1 9.957V2.795zm1.007.94v5.281l3.96-2.64-3.96-2.64z"></path></svg></button>
+      </div>
+
+      <div class="tbl_actions" style="justify-content:flex-start; margin-top: 8px; gap: 10px; flex-wrap:wrap;" data-ui="graph.detail" title="graph.detail">
+        <label style="display:flex; align-items:center; gap: 8px;">
+          <span class="muted" style="min-width: 76px;">Details</span>
+          <select id="graph_detail_mode" class="btn_sm" data-ui="graph.detail_mode" title="graph.detail_mode" style="height:34px; padding: 6px 10px;">
+            <option value="dynamic" selected>Dynamisch</option>
+            <option value="manual">Manuell</option>
+          </select>
+        </label>
+
+        <label id="graph_manual_density_wrap" style="display:none; align-items:center; gap: 8px;">
+          <span class="muted">Punktdichte</span>
+          <input id="graph_manual_density" type="range" min="1" max="100" value="100" style="width: 180px;" />
+          <span class="muted" id="graph_manual_density_lbl">100%</span>
+        </label>
+
+        <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_bg" class="row_sel" checked data-ui="graph.deriv_bg" title="graph.deriv_bg"/>Ableitung: Hintergrund</label>
+        <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_strip" class="row_sel" checked data-ui="graph.deriv_strip" title="graph.deriv_strip"/>Ableitung: Farbleiste</label>
+        <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_graph" class="row_sel" checked data-ui="graph.deriv_graph" title="graph.deriv_graph"/>Ableitungs-Graph</label>
+        <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_abs" class="row_sel" checked data-ui="graph.deriv_abs" title="graph.deriv_abs"/>absolut</label>
+        <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_signed" class="row_sel" data-ui="graph.deriv_signed" title="graph.deriv_signed"/>signiert</label>
+
+        <label id="deriv_outlier_wrap" style="display:none; align-items:center; gap: 8px;">
+          <span class="muted">Ableitung Outlier</span>
+          <input id="deriv_outlier_thr" type="range" min="0" max="100" value="90" style="width: 160px;" />
+          <span class="muted" id="deriv_outlier_lbl">90%</span>
+        </label>
+      </div>
+       <div id="graph_query_section" style="display:none;" data-ui="graph.query_section" title="graph.query_section">
+         <button class="btn_sm" id="graph_copy_query" data-ui="graph.copy_query" title="graph.copy_query"></button>
+         <select class="btn_sm" id="graph_query_source" data-ui="graph.query_source" title="graph.query_source" style="height:34px; padding: 6px 10px;">
+           <option value="dashboard" selected>Dashboard</option>
+           <option value="edit_graph">Bearbeitungsgraph</option>
+         </select>
+         <button class="btn_sm" id="graph_query_history" type="button" data-ui="graph.query_history" title="graph.query_history"></button>
+         <div id="graph_query_meta"></div>
+         <div id="graph_query_label"></div>
+         <pre id="graph_query">Noch keine Query vorhanden.</pre>
+       </div>
+        <div class="muted" data-ui="tip.graph" title="tip.graph">Zoomen/Pan im Plot. Doppelklick setzt Zoom zurueck. Griff unten zieht die Hoehe.</div>
+        <div class="muted" id="graph_points_info" style="margin-top: 6px;"></div>
+        <div class="muted" id="graph_selected_info" style="margin-top: 6px; font-weight: 650;" data-ui="graph.selected" title="graph.selected"></div>
+         <div class="graph_frame" data-ui="graph.frame" title="graph.frame" style="position:relative;">
+          <div id="chart_plotly"></div>
+          <canvas id="chart" width="800" height="200"></canvas>
+        <div id="deriv_strip_plot" style="display:none; width: 100%; height: 60px; margin-top: 8px; pointer-events:none;"></div>
+        <div id="deriv_graph_plot" style="display:none; width: 100%; height: 140px; margin-top: 8px; pointer-events:none;"></div>
+        <div id="graph_resize" data-ui="graph.resize" title="graph.resize" style="height: 12px; cursor: ns-resize; margin-top: 8px; border-radius: 999px; background: linear-gradient(90deg, #eee, #f8f8f8);"></div>
+      </div>
     </details>
 
     <div id="raw_outlier_params_dialog" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; z-index:9999; background:rgba(0,0,0,0.4); align-items:center; justify-content:center;">
@@ -4436,6 +4450,14 @@ let RAW_OUTLIER_META_TEXT = "";
 let RAW_OUTLIER_SCANNED_TOTAL = 0;
 let RAW_OUTLIER_ABORT = null;
 let RAW_OUTLIER_CONTEXT_ROWS = 10;
+
+const ANALYSIS_STATE = {
+  measurement: '', field: '', entity_id: '', friendly_name: '',
+  timeRange: '', types: [], totalChunks: 0, currentChunk: 0,
+  chunkInterval: '', chunkDuration: 0, foundByType: {},
+  totalFound: 0, totalScanned: 0, status: 'idle',
+  startTime: null,
+};
 let GRAPH_QUERY_DASH_AT = "";
 let GRAPH_QUERY_EDIT_AT = "";
 let APPLY_QUERY_LAST_AT = "";
@@ -5008,6 +5030,78 @@ function _updateAnalysisStatus(){
   }catch(e){}
 }
 
+function updateAnalysisUI(){
+  try{
+    const s = ANALYSIS_STATE;
+    // 1. Quellinfos
+    const $info = document.getElementById('analysis_info');
+    if($info){
+      const typeLabels = {counter: 'Counter', decrease: 'Counter Abfall', bounds: 'Grenzen', fault_phase: 'Stoerphase', null: 'NULL', zero: '0-Werte'};
+      const typeNames = (s.types || []).map(t => typeLabels[t] || t).join(', ');
+      $info.textContent = (s.measurement || '-') + ' / ' + (s.field || '-') + ' | ' + (s.entity_id || s.friendly_name || '-') + ' | Zeitraum: ' + (s.timeRange || '-') + ' | Typen: ' + (typeNames || '-');
+    }
+
+    // 2. Fortschrittsbalken
+    const pct = s.totalChunks > 0 ? Math.round((s.currentChunk / s.totalChunks) * 100) : 0;
+    const $fill = document.getElementById('analysis_progress_fill');
+    if($fill) $fill.style.width = pct + '%';
+    const $ptxt = document.getElementById('analysis_progress_text');
+    if($ptxt) $ptxt.textContent = pct + '% (' + s.currentChunk + '/' + s.totalChunks + ' Chunks)';
+
+    // 3. Checkliste
+    const $cl = document.getElementById('analysis_checklist');
+    if($cl){
+      const items = [];
+      items.push({label: 'Eingaben pruefen', status: 'ok'});
+      items.push({label: 'Zeitraum: ' + (s.timeRange || '-'), status: 'ok'});
+      items.push({label: 'Ausreisser-Typen', status: 'ok'});
+      if(s.status === 'running'){
+        items.push({label: 'Chunk ' + s.currentChunk + ' von ' + s.totalChunks, status: 'running'});
+      }else if(s.status === 'done'){
+        items.push({label: 'Chunks: ' + s.totalChunks + '/' + s.totalChunks + ' abgeschlossen', status: 'ok'});
+      }else if(s.status === 'error'){
+        items.push({label: 'Fehler aufgetreten', status: 'err'});
+      }
+      if(s.totalFound > 0){
+        items.push({label: s.totalFound + ' Ausreisser gefunden', status: 'ok'});
+      }
+      $cl.innerHTML = items.map(it => {
+        const iconClass = it.status === 'ok' ? 'ok' : it.status === 'err' ? 'err' : 'running';
+        const icon = it.status === 'ok' ? '✓' : it.status === 'err' ? '✗' : '';
+        return '<div class="checklist_item"><span class="checklist_icon ' + iconClass + '">' + icon + '</span><span class="checklist_label">' + it.label + '</span></div>';
+      }).join('');
+    }
+
+    // 4. Aktueller Chunk
+    const $chunk = document.getElementById('analysis_chunk_info');
+    if($chunk && s.currentChunk > 0){
+      $chunk.textContent = 'Chunk ' + s.currentChunk + '/' + s.totalChunks + ' | Dauer: ' + _fmtDur(s.chunkDuration);
+    }
+
+    // 5. Intervall-Info
+    const $interval = document.getElementById('analysis_interval_info');
+    if($interval){
+      let hint = 'Intervall: ' + (s.chunkInterval || '-');
+      if(s.chunkDuration > 50000){
+        hint += ' | ⚠ Nahe Timeout - Intervall reduzieren';
+      }else if(s.chunkDuration < 5000 && s.chunkDuration > 0){
+        hint += ' | ✓ Schnell - Intervall koennte erhoht werden';
+      }else if(s.chunkDuration > 0){
+        hint += ' | ✓ Optimal';
+      }
+      $interval.textContent = hint;
+    }
+
+    // 6. Gefundene nach Typ
+    const $found = document.getElementById('analysis_found_info');
+    if($found){
+      const typeLabels = {counter: 'Counter', decrease: 'Counter Abfall', bounds: 'Grenzen', fault_phase: 'Stoerphase', null: 'NULL', zero: '0-Werte'};
+      const parts = Object.entries(s.foundByType || {}).map(([t, c]) => (typeLabels[t] || t) + ': ' + c);
+      $found.textContent = parts.length ? 'Gefunden: ' + parts.join(' | ') : '';
+    }
+  }catch(e){}
+}
+
 function _logAnalysis(step, data){
   try{
     const msg = 'analysis_debug step=' + step;
@@ -5031,6 +5125,26 @@ function _logAnalysis(step, data){
 async function runAnalysis(){
   err(""); ok("");
   const base = currentFilters();
+  const types = getRawOutlierFilterTypes();
+
+  // Initialize ANALYSIS_STATE
+  ANALYSIS_STATE.measurement = base.measurement;
+  ANALYSIS_STATE.field = base.field;
+  ANALYSIS_STATE.entity_id = base.entity_id || '';
+  ANALYSIS_STATE.friendly_name = base.friendly_name || '';
+  ANALYSIS_STATE.timeRange = base.range || '24h';
+  ANALYSIS_STATE.types = types;
+  ANALYSIS_STATE.totalChunks = 0;
+  ANALYSIS_STATE.currentChunk = 0;
+  ANALYSIS_STATE.chunkInterval = '';
+  ANALYSIS_STATE.chunkDuration = 0;
+  ANALYSIS_STATE.foundByType = {};
+  ANALYSIS_STATE.totalFound = 0;
+  ANALYSIS_STATE.totalScanned = 0;
+  ANALYSIS_STATE.status = 'idle';
+  ANALYSIS_STATE.startTime = performance.now();
+  updateAnalysisUI();
+
   _logAnalysis('start', {measurement: base.measurement, field: base.field, entity_id: base.entity_id, friendly_name: base.friendly_name, range: base.range});
   const checklist = [];
   const chunkLog = [];
@@ -5052,6 +5166,17 @@ async function runAnalysis(){
   function _onChunkLog(entry){
     chunkLog.push(entry);
     _renderAnalysisLog(chunkLog);
+    // Update ANALYSIS_STATE from chunk log
+    if(entry.idx !== undefined){
+      ANALYSIS_STATE.currentChunk = entry.idx;
+      ANALYSIS_STATE.chunkDuration = entry.dur || 0;
+      ANALYSIS_STATE.chunkInterval = entry.chunkDays ? entry.chunkDays + ' Tage' : '';
+      // Update found by type
+      if(entry.rows){
+        // Count types from the response
+      }
+      updateAnalysisUI();
+    }
   }
 
   // Step 1: Validate inputs
@@ -5059,12 +5184,16 @@ async function runAnalysis(){
   if(!base.measurement || !base.field){
     err("Bitte zuerst Measurement und Field auswaehlen.");
     _addCheck('Eingaben pruefen', 'err');
+    ANALYSIS_STATE.status = 'error';
+    updateAnalysisUI();
     _logAnalysis('error', {step: 'validate', error: 'Missing measurement or field'});
     return;
   }
   if(!base.entity_id && !base.friendly_name){
     err("Bitte zuerst friendly_name oder entity_id auswaehlen.");
     _addCheck('Eingaben pruefen', 'err');
+    ANALYSIS_STATE.status = 'error';
+    updateAnalysisUI();
     _logAnalysis('error', {step: 'validate', error: 'Missing entity_id or friendly_name'});
     return;
   }
@@ -5075,12 +5204,13 @@ async function runAnalysis(){
   if(!win || !win.start || !win.stop){
     err("Bitte einen gueltigen Zeitraum waehlen.");
     _addCheck('Zeitraum: ' + fmtTs(win ? win.start : '-') + ' bis ' + fmtTs(win ? win.stop : '-'), 'err');
+    ANALYSIS_STATE.status = 'error';
+    updateAnalysisUI();
     _logAnalysis('error', {step: 'window', error: 'Invalid time window', win: win});
     return;
   }
   _addCheck('Zeitraum: ' + fmtTs(win.start) + ' bis ' + fmtTs(win.stop), 'ok');
 
-  const types = getRawOutlierFilterTypes();
   const typeLabels = {counter: 'Counter', decrease: 'Counter Abfall', bounds: 'Grenzen', fault_phase: 'Stoerphase', null: 'NULL', zero: '0-Werte'};
   const typeNames = types.map(t => typeLabels[t] || t).join(', ');
   _logAnalysis('types', {types: types});
@@ -5093,6 +5223,8 @@ async function runAnalysis(){
   // Step: Run outlier search
   const t0 = performance.now();
   progressIdx = checklist.length;
+  ANALYSIS_STATE.status = 'running';
+  updateAnalysisUI();
   _addCheck('Ausreisser-Suche: 0 gefunden (0s)', 'running', 0);
   _logAnalysis('search_start', {});
   try{
@@ -5108,6 +5240,13 @@ async function runAnalysis(){
     });
     const typeBreakdown = Object.entries(typeCounts).map(([t, c]) => typeLabels[t] + ': ' + c).join(', ');
     const subText = typeBreakdown ? '→ ' + typeBreakdown : '';
+
+    // Update ANALYSIS_STATE
+    ANALYSIS_STATE.status = 'done';
+    ANALYSIS_STATE.totalFound = count;
+    ANALYSIS_STATE.foundByType = typeCounts;
+    ANALYSIS_STATE.totalScanned = RAW_OUTLIER_SCANNED_TOTAL;
+    updateAnalysisUI();
 
     checklist[progressIdx] = {label: 'Ausreisser-Suche: ' + count + ' gefunden (' + _fmtDur(dur) + ')', status: 'ok', dur: dur, sub: subText};
     _renderChecklist(checklist);
@@ -5414,6 +5553,12 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog){
 
     let chunks = buildChunks(startMs, stopMs, chunkDays);
 
+    // Set initial ANALYSIS_STATE
+    ANALYSIS_STATE.totalChunks = chunks.length;
+    ANALYSIS_STATE.currentChunk = 0;
+    ANALYSIS_STATE.chunkInterval = chunkDays + ' Tage';
+    updateAnalysisUI();
+
     let scannedTotal = 0;
     let prevValue = null;
     let counterBase = null;
@@ -5510,6 +5655,20 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog){
 
       const chunkRows = (j.rows || []).length;
       const chunkScanned = Number(j.scanned || 0);
+
+      // Update ANALYSIS_STATE with chunk results
+      ANALYSIS_STATE.currentChunk = chunkIdx + 1;
+      ANALYSIS_STATE.chunkDuration = chunkDur;
+      ANALYSIS_STATE.chunkInterval = chunkDays + ' Tage';
+      ANALYSIS_STATE.totalScanned = scannedTotal + chunkScanned;
+      // Update found by type
+      (j.rows || []).forEach(row => {
+        (row.types || []).forEach(t => {
+          ANALYSIS_STATE.foundByType[t] = (ANALYSIS_STATE.foundByType[t] || 0) + 1;
+        });
+      });
+      ANALYSIS_STATE.totalFound = RAW_OUTLIER_RESULTS.length + chunkRows;
+      updateAnalysisUI();
 
       // Log successful chunk
       if(onChunkLog) onChunkLog({
