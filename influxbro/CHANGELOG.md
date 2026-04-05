@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.12.229
+
+### Enhancement
+
+- Console-Fehler werden jetzt automatisch ins Server-Log geschrieben (alle Seiten).
+- Erfasst: JavaScript-Fehler, unhandled promise rejections, 404-Fehler.
+- Log-Eintrag enthaelt: Fehlertyp, Nachricht, Dateiname, Zeilennummer, Stack-Trace, URL, Zeitstempel.
+- Statistik-Seite: Erkennt abgelaufene Jobs (expired: true) und faellt automatisch auf Cache zurueck.
+- Backend loggt Warning wenn global_stats_job nicht gefunden wird.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.228
 
 ### Fix

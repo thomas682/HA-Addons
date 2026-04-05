@@ -15657,7 +15657,8 @@ def api_global_stats_job_result():
     with GLOBAL_STATS_LOCK:
         job = GLOBAL_STATS_JOBS.get(job_id)
         if not job:
-            return jsonify({"ok": False, "error": "job not found"}), 404
+            LOG.warning("api.global_stats_job.result job_id=%s not found (expired or deleted)", job_id)
+            return jsonify({"ok": False, "error": "job not found or expired", "expired": True}), 404
         state = str(job.get("state") or "")
         rows_all = list(job.get("rows") or [])
         cols = list(job.get("columns") or []) if isinstance(job.get("columns"), list) else []

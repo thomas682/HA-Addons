@@ -1098,6 +1098,10 @@
                 return;
               }
             }
+            // If job expired (expired: true from server), fall through to cache fallback
+            if(j.expired){
+              console.log('[stats] Job expired, falling back to cache');
+            }
           }
           throw new Error('fallback');
         }catch(e){

@@ -1082,4 +1082,36 @@ try{
     }
   }, true);
 }catch(e){}
+
+// Global console error reporter - sends all browser errors to server log
+try{
+  function _reportConsoleError(type, message, filename, lineno, stack){
+    try{
+      fetch('./api/client_error', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          message: message || '',
+          extra: {
+            kind: 'console_error',
+            type: type,
+            filename: filename || '',
+            lineno: lineno || 0,
+            stack: (stack || '').substring(0, 4000),
+            url: window.location.href.substring(0, 500),
+            ts: new Date().toISOString()
+          }
+        })
+      }).catch(()=>{});
+    }catch(e){}
+  }
+
+  window.addEventListener('error', (e)=>{
+    _reportConsoleError('error', e.message, e.filename, e.lineno, e.error && e.error.stack);
+  });
+
+  window.addEventListener('unhandledrejection', (e)=>{
+    _reportConsoleError('unhandledrejection', String(e.reason || ''), '', 0, '');
+  });
+}catch(e){}
 </script>
