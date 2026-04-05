@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.236
+
+### Enhancement
+
+- `raw.table` und `raw.outlier_table` verwenden jetzt dieselbe Monospace-Schriftdarstellung.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.235
 
 ### Fix
