@@ -5010,18 +5010,22 @@ function _updateAnalysisStatus(){
 
 function _logAnalysis(step, data){
   try{
+    const msg = 'analysis_debug step=' + step;
+    const payload = {
+      message: msg,
+      extra: {kind: 'analysis_debug', step: step, ts: new Date().toISOString(), ...(data || {})}
+    };
+    console.log('[ANALYSIS]', step, JSON.stringify(data));
     fetch('./api/client_error', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        kind: 'analysis_debug',
-        page: 'dashboard',
-        step: step,
-        ts: new Date().toISOString(),
-        ...data
-      })
-    }).catch(()=>{});
-  }catch(e){}
+      body: JSON.stringify(payload),
+    }).catch((e)=>{
+      console.log('[ANALYSIS] fetch failed:', e.message);
+    });
+  }catch(e){
+    console.log('[ANALYSIS] error:', e.message);
+  }
 }
 
 async function runAnalysis(){
