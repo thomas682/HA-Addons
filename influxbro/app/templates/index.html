@@ -1032,6 +1032,7 @@ const $graphResize = document.getElementById('graph_resize');
 const $graphRefresh = document.getElementById('graph_refresh');
 const $graphResetTime = document.getElementById('graph_reset_time');
 const $graphQueryOpen = document.getElementById('graph_query_open');
+const $analysisSection = document.getElementById('analysis_section');
 
 const $rawSection = document.getElementById('raw_section');
 const $rawInfo = document.getElementById('raw_info');
@@ -1718,6 +1719,7 @@ function saveState(){
       deriv_outlier_thr: $derivOutlierThr ? Number($derivOutlierThr.value || 90) : 90,
       graph_window_start_ms: TABLE_TIME.graph_start_ms,
       graph_window_stop_ms: TABLE_TIME.graph_stop_ms,
+      analysis_open: !!($analysisSection && $analysisSection.open),
       raw_center_range: RAW_CENTER_RANGE,
       raw_outlier_context_rows: RAW_OUTLIER_CONTEXT_ROWS,
       raw_outlier_types: getRawOutlierFilterTypes(),
@@ -5272,12 +5274,20 @@ async function runAnalysis(){
     // Update ANALYSIS_STATE from chunk log
     if(entry.idx !== undefined){
       ANALYSIS_STATE.currentChunk = entry.idx;
+      ANALYSIS_STATE.totalChunks = entry.total || ANALYSIS_STATE.totalChunks;
       ANALYSIS_STATE.chunkDuration = entry.dur || 0;
       ANALYSIS_STATE.chunkInterval = entry.chunkDays ? entry.chunkDays + ' Tage' : '';
-      // Update found by type
+      ANALYSIS_STATE.currentChunkStart = entry.start || '';
+      ANALYSIS_STATE.currentChunkStop = entry.stop || '';
       if(entry.rows){
-        // Count types from the response
+        entry.rows.forEach(row => {
+          (row.types || []).forEach(t => {
+            ANALYSIS_STATE.foundByType[t] = (ANALYSIS_STATE.foundByType[t] || 0) + 1;
+          });
+        });
+        ANALYSIS_STATE.totalFound += entry.rows.length;
       }
+      ANALYSIS_STATE.totalScanned += (entry.scanned || 0);
       updateAnalysisUI();
     }
   }
@@ -5302,7 +5312,6 @@ async function runAnalysis(){
   }
   _addCheck('Eingaben pruefen', 'ok');
 
-  const win = _rawWindowIso();
   _logAnalysis('window', {win: win});
   if(!win || !win.start || !win.stop){
     err("Bitte einen gueltigen Zeitraum waehlen.");
@@ -5369,6 +5378,7 @@ async function runAnalysis(){
       dur: dur,
       chunks: chunkLog,
       status: 'ok',
+      analysisState: JSON.parse(JSON.stringify(ANALYSIS_STATE)),
     });
   }catch(e){
     const dur = Math.round(performance.now() - t0);
@@ -5393,6 +5403,7 @@ async function runAnalysis(){
       chunks: chunkLog,
       status: 'err',
       error: e && e.message ? e.message : String(e),
+      analysisState: JSON.parse(JSON.stringify(ANALYSIS_STATE)),
     });
   }
   progressIdx = -1;
@@ -5494,6 +5505,7 @@ function _showAnalysisHistory(){
     const statusIcon = entry.status === 'ok' ? '✓' : '✗';
     const statusColor = entry.status === 'ok' ? '#4caf50' : '#f44336';
     const typeNames = (entry.types || []).map(t => typeLabels[t] || t).join(', ');
+    const s = entry.analysisState || {};
     const chunksHtml = (entry.chunks || []).map(c => {
       const cIcon = c.error ? '✗' : '✓';
       const cColor = c.error ? '#f44336' : '#4caf50';
@@ -5501,6 +5513,10 @@ function _showAnalysisHistory(){
       const cErr = c.error ? ' | FEHLER: ' + c.error : '';
       return '<div style="padding:2px 0 2px 16px;font-size:11px;"><span style="color:' + cColor + '">' + cIcon + '</span> Chunk ' + c.idx + '/' + c.total + ': ' + cRange + ' | ' + (c.scanned||0) + ' Werte | ' + _fmtDur(c.dur) + ' | ' + (c.chunkDays||'?') + ' Tage' + cErr + '</div>';
     }).join('');
+    const foundParts = ALL_OUTLIER_TYPES.map(t => {
+      const count = (s.foundByType || {})[t.value] || 0;
+      return t.label + ': ' + count;
+    }).join(' | ');
 
     html += '<div style="border:1px solid #eee;border-radius:8px;padding:10px;margin-bottom:8px;background:#fff;">';
     html += '<div style="display:flex;justify-content:space-between;align-items:center;">';
@@ -5510,6 +5526,16 @@ function _showAnalysisHistory(){
     html += '<div style="font-size:11px;margin-top:4px;opacity:0.8;">' + entry.measurement + '/' + entry.field + ' | ' + (entry.entity_id || entry.friendly_name || '') + '</div>';
     html += '<div style="font-size:11px;margin-top:2px;opacity:0.8;">Typen: ' + typeNames + ' | Zeitraum: ' + fmtTs(entry.start) + ' – ' + fmtTs(entry.stop) + '</div>';
     html += '<div style="font-size:11px;margin-top:2px;opacity:0.8;">Gefunden: ' + entry.found + ' | Gescannt: ' + entry.scanned + ' | Dauer: ' + _fmtDur(entry.dur) + '</div>';
+    if(s.totalSpanStart && s.totalSpanStop){
+      html += '<div style="font-size:11px;margin-top:2px;opacity:0.8;">Gesamtzeitraum: ' + fmtTs(s.totalSpanStart) + ' – ' + fmtTs(s.totalSpanStop) + '</div>';
+    }
+    if(s.currentChunkStart && s.currentChunkStop){
+      html += '<div style="font-size:11px;margin-top:2px;opacity:0.8;">Letzter Chunk: ' + fmtTs(s.currentChunkStart) + ' – ' + fmtTs(s.currentChunkStop) + '</div>';
+    }
+    if(s.totalChunks){
+      html += '<div style="font-size:11px;margin-top:2px;opacity:0.8;">Chunks: ' + (s.currentChunk || 0) + '/' + s.totalChunks + ' | Intervall: ' + (s.chunkInterval || '-') + '</div>';
+    }
+    html += '<div style="font-size:11px;margin-top:2px;opacity:0.8;">Typ-Details: ' + foundParts + '</div>';
     if(chunksHtml){
       html += '<details style="margin-top:6px;"><summary style="font-size:11px;cursor:pointer;opacity:0.7;">Chunk-Details (' + (entry.chunks||[]).length + ')</summary><div style="margin-top:4px;">' + chunksHtml + '</div></details>';
     }
@@ -8727,6 +8753,7 @@ try{
     if($r && st.range) $r.value = st.range;
     if($start && st.start) $start.value = st.start;
     if($stop && st.stop) $stop.value = st.stop;
+    try{ if($analysisSection && st.analysis_open !== undefined) $analysisSection.open = !!st.analysis_open; }catch(e){}
     $custom.style.display = ($r.value === "custom") ? "block" : "none";
     // Render range display after restoring state
     try{ renderTableRange(); renderRangeFromTo(); }catch(e){}
@@ -8853,6 +8880,7 @@ try{
 
     // Update analysis status line
     try{ _updateAnalysisStatus(); }catch(e){}
+    try{ renderAnalysisTypeLists(); updateAnalysisUI(); }catch(e){}
 
     // Ensure graph query panel reflects persisted selection.
     try{ _renderGraphQueryPanel(); }catch(e){}
@@ -8868,6 +8896,10 @@ try{
   const persistNow = ()=>{ try{ saveState(); }catch(e){}; try{ cacheSaveNow(); }catch(e){}; };
   window.addEventListener('pagehide', persistNow);
   document.addEventListener('visibilitychange', ()=>{ try{ if(document.visibilityState === 'hidden') persistNow(); }catch(e){}; });
+}catch(e){}
+
+try{
+  if($analysisSection) $analysisSection.addEventListener('toggle', ()=>{ try{ saveState(); }catch(e){}; });
 }catch(e){}
 
 </script>

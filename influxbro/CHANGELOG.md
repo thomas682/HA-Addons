@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.12.233
+
+### Enhancement
+
+- Analyse-Verlauf zeigt jetzt die kompletten Analyse-Ereignisse und den gespeicherten Analysezustand an.
+- Analyse-Section merkt sich ihren Open/Closed-Zustand ueber Seitenwechsel hinweg.
+- Analyse-Section initialisiert Typ-Listen und Analyse-UI nach dem Laden des gespeicherten Zustands.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.230
 
 ### Enhancement
