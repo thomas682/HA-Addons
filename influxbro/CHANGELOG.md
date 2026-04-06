@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.12.245
+
+### Enhancement
+
+- Dashboard `section.raw`: Tabellenkopf-Informationen sind jetzt sichtbarer den jeweiligen Tabellen zugeordnet.
+- Ausreißer-Tabelle hat eigenen Kopf-/Info-Bereich.
+- Raw-Tabelle hat eigenen Kopf-/Info-Bereich.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.244
 
 ### Fix

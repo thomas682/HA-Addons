@@ -479,6 +479,11 @@
         <span id="raw_copied_info" class="muted" style="margin-left:6px;"></span>
       </div>
 
+      <div class="table_title" style="margin-top:10px;">Ausreißer</div>
+      <div class="table_head" style="margin-bottom:6px;">
+        <div class="tbl_actions"></div>
+        <div class="muted" id="raw_outlier_info"></div>
+      </div>
       <div id="raw_search_bar" style="display:none; border:1px solid #eee; border-radius:12px; padding:10px 12px; margin-top:10px; background:#fafafa;">
         <div style="display:flex; align-items:flex-start; gap:10px; flex-wrap:wrap;">
           <div style="display:flex; flex-direction:column; gap:4px;">
@@ -542,6 +547,11 @@
         <div id="raw_outlier_resize" data-ui="raw.outlier_resize" title="raw.outlier_resize" style="height: 12px; cursor: ns-resize; margin-top: 8px; border-radius: 999px; background: linear-gradient(90deg, #eee, #f8f8f8);"></div>
       </div>
 
+      <div class="table_title" style="margin-top:12px;">Raw Daten</div>
+      <div class="table_head" style="margin-bottom:6px;">
+        <div class="tbl_actions"></div>
+        <div class="muted" id="raw_info_inline"></div>
+      </div>
       <div id="raw_row_count" style="font-size:12px; opacity:0.7; margin-bottom:4px;"></div>
       <div class="table_box" id="raw_box" style="--max-rows: 5;">
       <table id="raw_tbl" class="list_tbl ib_tbl" data-ui="raw.table" title="raw.table">
@@ -1041,6 +1051,8 @@ const $analysisStartReset = document.getElementById('analysis_start_reset');
 
 const $rawSection = document.getElementById('raw_section');
 const $rawInfo = document.getElementById('raw_info');
+const $rawInfoInline = document.getElementById('raw_info_inline');
+const $rawOutlierInfo = document.getElementById('raw_outlier_info');
 const $rawBox = document.getElementById('raw_box');
 const $rawBody = document.getElementById('raw_body');
 const $rawResize = document.getElementById('raw_resize');
@@ -4657,7 +4669,8 @@ function renderRawTable(){
     const afterPts = Math.max(0, Math.trunc(Number(RAW_META.after_points || 0)));
     info += ` | Vorher/Nachher: ${beforePts}/${afterPts}`;
   }
-  $rawInfo.textContent = info;
+  if($rawInfo) $rawInfo.textContent = info;
+  if($rawInfoInline) $rawInfoInline.textContent = info;
 
   // Show row count above raw table
   const $rawRowCount = document.getElementById('raw_row_count');
@@ -6164,6 +6177,7 @@ function renderOutlierOverviewTable(){
   if($rowCount){
     if(!filtered.length){
       $rowCount.textContent = '';
+      if($rawOutlierInfo) $rawOutlierInfo.textContent = '';
     }else{
       const typeCounts = {};
       filtered.forEach(r => {
@@ -6175,6 +6189,7 @@ function renderOutlierOverviewTable(){
       const typeLabels = {counter: 'Counter', decrease: 'Counter Abfall', bounds: 'Grenzen', fault_phase: 'Stoerphase', null: 'NULL', zero: '0-Werte'};
       const parts = Object.entries(typeCounts).map(([t, c]) => `${typeLabels[t] || t}: ${c}`);
       $rowCount.textContent = `${filtered.length} Ausreisser | ${parts.join(' | ')}`;
+      if($rawOutlierInfo) $rawOutlierInfo.textContent = `${filtered.length} Einträge`;
     }
   }
 
