@@ -262,6 +262,14 @@ def test_dashboard_outlier_section_is_separate_and_above_raw_section():
     assert body.index('id="outlier_section"') < body.index('id="raw_section"')
 
 
+def test_outlier_table_header_is_explicitly_sticky_and_search_bar_tracks_outlier_section():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert '#raw_outlier_tbl thead { position: sticky; top: 0; z-index: 2; }' in body
+    assert '#raw_outlier_tbl thead th { background: #fafafa; }' in body
+    assert "if($rawSearchBar) $rawSearchBar.style.display = ($outlierSection && $outlierSection.open) ? 'block' : 'none';" in body
+    assert "$outlierSection.addEventListener('toggle', ()=>{" in body
+
+
 def test_dashboard_raw_actions_and_titles_are_updated():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     assert 'Grafische Analyse' in body

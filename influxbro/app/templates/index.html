@@ -171,6 +171,8 @@
     }
     #raw_tbl thead { position: sticky; top: 0; z-index: 2; }
     #raw_tbl thead th { background: #fafafa; }
+    #raw_outlier_tbl thead { position: sticky; top: 0; z-index: 2; }
+    #raw_outlier_tbl thead th { background: #fafafa; }
     #raw_tbl tr.raw_hl td { background: rgba(255, 153, 0, 0.18); }
     #raw_tbl tr.raw_outlier td { background: rgba(220, 38, 38, 0.12); }
     #raw_tbl tr.raw_src td { background: rgba(16, 185, 129, 0.16); }
@@ -9459,7 +9461,7 @@ try{
 }catch(e){}
 
 try{
-  if($rawSearchBar) $rawSearchBar.style.display = ($rawSection && $rawSection.open) ? 'block' : 'none';
+  if($rawSearchBar) $rawSearchBar.style.display = ($outlierSection && $outlierSection.open) ? 'block' : 'none';
   if($rawSearchRun) $rawSearchRun.addEventListener('click', ()=>{ runRawOutlierSearch().catch(()=>{}); });
   if($rawJumpOldest) $rawJumpOldest.addEventListener('click', ()=>{ jumpToOldestOutlier().catch(()=>{}); });
   if($rawJumpNewest) $rawJumpNewest.addEventListener('click', ()=>{ jumpToNewestOutlier().catch(()=>{}); });
@@ -9514,9 +9516,9 @@ try{
       }
     });
   }
-  if($rawSection){
-    $rawSection.addEventListener('toggle', ()=>{
-      if($rawSearchBar) $rawSearchBar.style.display = $rawSection.open ? 'block' : 'none';
+  if($outlierSection){
+    $outlierSection.addEventListener('toggle', ()=>{
+      if($rawSearchBar) $rawSearchBar.style.display = $outlierSection.open ? 'block' : 'none';
     });
   }
   updateRawOutlierTypeToggleLabel();

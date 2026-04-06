@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.12.254
+
+### Fix
+
+- Die Headerzeile der Dashboard-Ausreissertabelle ist jetzt explizit sticky wie bei `raw.table` und scrollt nicht mehr mit dem Tabelleninhalt weg.
+- Die Outlier-Suchleiste richtet sich jetzt nach dem Open/Close-Zustand der eigenen Section `Ausreißer` statt nach `Raw Daten Analyse`.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tests: `pytest tests/test_api_ui_support.py -q -k "outlier_table_header_is_explicitly_sticky_and_search_bar_tracks_outlier_section or dashboard_outlier_section_is_separate_and_above_raw_section or raw_outlier_table_uses_template_structure_and_helpers"`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.253
 
 ### Fix
