@@ -108,7 +108,10 @@
         // images
         out = out.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (m, alt, url)=>{
           const u = String(url||'').trim();
-          return `<img alt="${esc(alt)}" src="${esc(u)}"/>`;
+          const src = /^(https?:)?\/\//i.test(u) || u.startsWith('/')
+            ? esc(u)
+            : ('./api/manual_asset?path=' + encodeURIComponent(u));
+          return `<img alt="${esc(alt)}" src="${src}"/>`;
         });
         // links
         out = out.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (m, txt, url)=>{

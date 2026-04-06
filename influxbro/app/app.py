@@ -30,7 +30,7 @@ from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
-from flask import Flask, jsonify, make_response, render_template, request, send_file
+from flask import Flask, abort, jsonify, make_response, render_template, request, send_file
 from influxdb_client import InfluxDBClient
 from influxdb_client import Point
 from influxdb_client import WritePrecision
@@ -4575,6 +4575,29 @@ def manual_page():
         nav="manual",
         manual_text=manual,
     )
+
+
+@app.get("/api/manual_asset")
+def manual_asset():
+    rel = str(request.args.get("path") or "").strip()
+    if not rel:
+        return jsonify({"ok": False, "error": "path required"}), 400
+
+    addon_root = APP_DIR.parent.resolve()
+    images_root = (addon_root / "images").resolve()
+    target = (addon_root / rel).resolve()
+
+    try:
+        target.relative_to(images_root)
+    except Exception:
+        LOG.warning("manual_asset blocked path=%s", rel)
+        abort(404)
+
+    if not target.is_file():
+        LOG.warning("manual_asset missing path=%s", rel)
+        abort(404)
+
+    return send_file(target)
 
 
 @app.get("/profiles")

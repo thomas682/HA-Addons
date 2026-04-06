@@ -643,7 +643,7 @@ UI:
 - `Min. freier Speicher (MB)`: wenn kleiner als diese Schwelle, wird das Erstellen eines Backups abgelehnt (0 = deaktiviert).
 - `Basis/Kleine Schriftgroesse`: UI Typografie.
 - `Seitentitel Schriftgroesse (px)`: Groesse des Titels in der festen Titelkarte.
-- `Seitensuche Highlight Farbe`: Rahmenfarbe fuer Treffer aus `page.search`.
+- `Seitensuche Highlight Farbe`: Farbe fuer Treffer aus `page.search` sowie fuer die Markierung/Navigation in Popup- und Logs-Volltextsuchen.
 - `Seitensuche Highlight Breite (px)`: Rahmenbreite fuer Treffer aus `page.search`.
 - `Seitensuche Highlight Dauer (ms)`: Sichtdauer des Trefferrahmens nach dem Sprung.
 - Die Felder `ui_filter_label_width_px`, `ui_filter_control_width_px`, `ui_filter_search_width_px` und `ui_sel_field_font_px` verwenden eine breitere numerische Darstellung, damit Werte auch beim Hoch-/Runterzaehlen sichtbar bleiben.

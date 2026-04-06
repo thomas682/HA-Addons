@@ -153,7 +153,7 @@
     'settings.ui_outlier_visible_rows': 'Mindestzahl sichtbarer Zeilen der Bearbeitungsliste waehrend einer Ausreissersuche.',
     'settings.ui_tooltips_enabled': 'Schaltet Tooltips global ein/aus.',
     'settings.ui_pagecard_title_px': 'Steuert die Schriftgroesse des Seitentitels in der festen Titelkarte.',
-    'settings.ui_page_search_highlight_color': 'Rahmenfarbe fuer Treffer, zu denen `page.search` springt.',
+    'settings.ui_page_search_highlight_color': 'Farbe fuer Treffer, zu denen `page.search`, Popup- oder Logs-Volltextsuchen springen.',
     'settings.ui_page_search_highlight_width_px': 'Rahmenbreite fuer Treffer, zu denen `page.search` springt.',
     'settings.ui_page_search_highlight_duration_ms': 'Dauer, wie lange der Trefferrahmen nach dem Sprung sichtbar bleibt.',
     'settings.ui_raw_center_max_points': 'Maximaler Wert fuer den Dashboard-Regler Bereich +- in Minuten.',
@@ -1827,6 +1827,26 @@
     }catch(e){}
   }
 
+    function _popupHighlightColor(){
+      try{
+        const raw = String(getComputedStyle(document.documentElement).getPropertyValue('--ib-page-search-hl-color') || '').trim();
+        return raw || '#FF9900';
+      }catch(e){
+        return '#FF9900';
+      }
+    }
+
+    function _popupHighlightFillColor(){
+      try{
+        const color = _popupHighlightColor();
+        if(/^#[0-9a-fA-F]{6}$/.test(color)) return color + '66';
+        if(/^#[0-9a-fA-F]{3}$/.test(color)) return '#' + color.slice(1).split('').map(ch => ch + ch).join('') + '66';
+        return color;
+      }catch(e){
+        return '#ffe08a';
+      }
+    }
+
     function _show(title, msg, opts){
       const root = _ensureUi();
       const refs = POPUP_REFS || {};
@@ -1883,6 +1903,7 @@
         function renderSearch(){
           if(!pre) return;
           const term = String(searchInput && searchInput.value ? searchInput.value : '').trim();
+          const fillColor = _popupHighlightFillColor();
           if(!term){
             pre.innerHTML = esc(normalizedMsg);
             marks = [];
@@ -1890,7 +1911,7 @@
             return;
           }
           const re = new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'ig');
-          pre.innerHTML = esc(normalizedMsg).replace(re, m => '<mark style="background:yellow;">' + esc(m) + '</mark>');
+          pre.innerHTML = esc(normalizedMsg).replace(re, m => '<mark style="background:' + fillColor + ';">' + esc(m) + '</mark>');
           marks = Array.from(pre.querySelectorAll('mark'));
           idx = marks.length ? 0 : -1;
           jump(0);
@@ -1901,7 +1922,7 @@
           marks.forEach(m => m.style.outline = '');
           const m = marks[idx];
           if(m){
-            m.style.outline = '2px solid orange';
+            m.style.outline = '2px solid ' + _popupHighlightColor();
             try{ m.scrollIntoView({block:'center', behavior:'smooth'}); }catch(e){}
           }
         }

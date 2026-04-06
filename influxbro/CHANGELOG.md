@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.248
+
+### Fix
+
+- Handbuch-Bilder werden jetzt ueber einen abgesicherten Add-on-Pfad ausgeliefert, sodass die eingebetteten Screenshots auf der Handbuch-Seite wieder sichtbar sind.
+- Popup- und Logs-Volltextsuche verwenden jetzt die konfigurierbare Highlight-Farbe aus den Einstellungen statt fest verdrahteter Gelb/Orange-Werte.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.247
 
 ### Enhancement

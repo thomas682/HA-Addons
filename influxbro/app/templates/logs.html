@@ -281,8 +281,21 @@
         if(!$qMark || !$logpre) return;
         const term = String($qMark.value || '').trim();
         if(!term) return;
+        const color = (()=>{
+          try{
+            const raw = String(getComputedStyle(document.documentElement).getPropertyValue('--ib-page-search-hl-color') || '').trim();
+            return raw || '#FF9900';
+          }catch(e){
+            return '#FF9900';
+          }
+        })();
+        const fill = /^#[0-9a-fA-F]{6}$/.test(color)
+          ? (color + '66')
+          : (/^#[0-9a-fA-F]{3}$/.test(color)
+            ? ('#' + color.slice(1).split('').map(ch => ch + ch).join('') + '66')
+            : color);
         const re = new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'ig');
-        $logpre.innerHTML = String($logpre.innerHTML || '').replace(re, m => `<mark style="background:yellow;">${m}</mark>`);
+        $logpre.innerHTML = String($logpre.innerHTML || '').replace(re, m => `<mark style="background:${fill};">${m}</mark>`);
         MARKS = Array.from($logpre.querySelectorAll('mark'));
         if(MARKS.length){ MARK_IDX = 0; jumpMark(0); }
       }
@@ -293,7 +306,12 @@
         MARKS.forEach(m => m.style.outline = '');
         const m = MARKS[MARK_IDX];
         if(m){
-          m.style.outline = '2px solid orange';
+          try{
+            const raw = String(getComputedStyle(document.documentElement).getPropertyValue('--ib-page-search-hl-color') || '').trim();
+            m.style.outline = '2px solid ' + (raw || '#FF9900');
+          }catch(e){
+            m.style.outline = '2px solid #FF9900';
+          }
           try{ m.scrollIntoView({block:'center', behavior:'smooth'}); }catch(e){}
         }
       }
