@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.244
+
+### Fix
+
+- `Dashboard: raw.table` zeigt bei Ausreißer-Navigation jetzt nur noch genau `x` Werte davor und `x` Werte danach an (gemäß `raw_outlier_context_rows`).
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.243
 
 ### Fix

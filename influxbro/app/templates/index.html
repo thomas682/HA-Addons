@@ -6312,6 +6312,28 @@ function countCenteredRows(rows, anchorIso){
   return { before, after, anchor };
 }
 
+function trimCenteredRows(rows, anchorIso, contextRows){
+  const xs = Array.isArray(rows) ? rows.slice() : [];
+  const limit = Math.max(1, Math.trunc(Number(contextRows || 10)));
+  const anchorMs = Date.parse(String(anchorIso || ''));
+  if(!isFinite(anchorMs) || !xs.length) return xs;
+  let bestIdx = -1;
+  let bestDiff = null;
+  for(let i = 0; i < xs.length; i++){
+    const ms = Date.parse(String(xs[i] && xs[i].time ? xs[i].time : ''));
+    if(!isFinite(ms)) continue;
+    const diff = Math.abs(ms - anchorMs);
+    if(bestDiff === null || diff < bestDiff){
+      bestDiff = diff;
+      bestIdx = i;
+    }
+  }
+  if(bestIdx < 0) return xs;
+  const start = Math.max(0, bestIdx - limit);
+  const end = Math.min(xs.length, bestIdx + limit + 1);
+  return xs.slice(start, end);
+}
+
 function setRawSelectedKey(key){
   const next = String(key || '').trim();
   RAW_ROW_SELECTED_KEY = next || null;
@@ -6787,7 +6809,7 @@ async function loadRawFromGraph(reset){
     }catch(e){}
 
     if(useCenter){
-      RAW_ROWS = rows;
+      RAW_ROWS = trimCenteredRows(rows, anchorIso, RAW_OUTLIER_CONTEXT_ROWS);
       RAW_OFFSET = (RAW_ROWS || []).length;
     }else{
       if(RAW_OFFSET === 0) RAW_ROWS = rows;
