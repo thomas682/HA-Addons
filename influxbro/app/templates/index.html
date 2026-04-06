@@ -485,9 +485,30 @@
         <span id="raw_copied_info" class="muted" style="margin-left:6px;"></span>
       </div>
 
-      <div class="table_title" style="margin-top:10px;">Ausreißer</div>
+      <div class="table_wrap" id="raw_outlier_table_wrap" style="margin-top:10px;">
+      <div class="table_title">Ausreißer</div>
       <div class="table_head" style="margin-bottom:6px;">
-        <div class="tbl_actions"></div>
+        <div class="tbl_actions" data-ui="raw.outlier_actions" title="raw.outlier_actions">
+          <button class="btn_sm" id="raw_outlier_autowidth" data-ui="raw.outlier_autowidth" title="raw.outlier_autowidth" aria-label="Spaltenbreite automatisch">
+            <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M5 5v14M19 5v14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <path d="M8 12h8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <path d="M10 10l-2 2 2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M14 10l2 2-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <button class="btn_sm" id="raw_outlier_windowwidth" data-ui="raw.outlier_windowwidth" title="raw.outlier_windowwidth" aria-label="Fensterbreite">
+            <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <rect x="4" y="6" width="16" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
+              <path d="M12 12H6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <path d="M6 12l2-2M6 12l2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M12 12h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <path d="M18 12l-2-2M18 12l-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <label><input type="checkbox" id="raw_outlier_wrap" class="row_sel" data-ui="raw.outlier_wrap" title="raw.outlier_wrap"/>Umbruch</label>
+          <label><input type="checkbox" id="raw_outlier_colfilter" class="row_sel" data-ui="raw.outlier_colfilter" title="raw.outlier_colfilter"/>Spaltenfilter</label>
+        </div>
         <div class="muted" id="raw_outlier_info"></div>
       </div>
       <div id="raw_search_bar" style="display:none; border:1px solid #eee; border-radius:12px; padding:10px 12px; margin-top:10px; background:#fafafa;">
@@ -550,7 +571,7 @@
             <tbody id="raw_outlier_body"></tbody>
           </table>
         </div>
-        <div id="raw_outlier_resize" data-ui="raw.outlier_resize" title="raw.outlier_resize" style="height: 12px; cursor: ns-resize; margin-top: 8px; border-radius: 999px; background: linear-gradient(90deg, #eee, #f8f8f8);"></div>
+      </div>
       </div>
 
       <div class="table_title" style="margin-top:12px;">Raw Daten</div>
@@ -1063,8 +1084,8 @@ const $rawBox = document.getElementById('raw_box');
 const $rawBody = document.getElementById('raw_body');
 const $rawResize = document.getElementById('raw_resize');
 const $rawOutlierBox = document.getElementById('raw_outlier_overview');
-const $rawOutlierResize = document.getElementById('raw_outlier_resize');
 const $rawAutoWidth = document.getElementById('raw_autowidth');
+const $rawOutlierAutoWidth = document.getElementById('raw_outlier_autowidth');
 const $rawSearchBar = document.getElementById('raw_search_bar');
 const $rawOutlierTypeToggle = document.getElementById('raw_outlier_type_toggle');
 const $rawOutlierTypeMenu = document.getElementById('raw_outlier_type_menu');
@@ -1096,6 +1117,9 @@ const $rawAllTime = document.getElementById('raw_all_time');
 const $rawWindowWidth = document.getElementById('raw_windowwidth');
 const $rawWrap = document.getElementById('raw_wrap');
 const $rawColFilter = document.getElementById('raw_colfilter');
+const $rawOutlierWindowWidth = document.getElementById('raw_outlier_windowwidth');
+const $rawOutlierWrap = document.getElementById('raw_outlier_wrap');
+const $rawOutlierColFilter = document.getElementById('raw_outlier_colfilter');
 const $rawRefresh = document.getElementById('raw_refresh');
 const $rawCopy = document.getElementById('raw_copy');
 const $rawCopyValue = document.getElementById('raw_copy_value');
@@ -4004,53 +4028,6 @@ function initRawResize(){
   $rawResize.addEventListener('touchstart', onDown, {passive:false});
 }
 
-function initRawOutlierResize(){
-  if(!$rawOutlierResize || !$rawOutlierBox) return;
-  let startY = 0;
-  let startRows = RAW_OUTLIER_VISIBLE_ROWS;
-  let dragging = false;
-
-  function rowPx(){ return 14; }
-
-  function onMove(ev){
-    if(!dragging) return;
-    const y = (ev && (ev.touches && ev.touches[0] ? ev.touches[0].clientY : ev.clientY)) || 0;
-    const dy = y - startY;
-    const deltaRows = Math.round(dy / rowPx());
-    let rows = startRows + deltaRows;
-    if(rows < 5) rows = 5;
-    if(rows > 500) rows = 500;
-    RAW_OUTLIER_VISIBLE_ROWS = rows;
-    $rawOutlierBox.style.setProperty('--max-rows', String(rows));
-  }
-
-  function onUp(){
-    if(!dragging) return;
-    dragging = false;
-    document.body.style.userSelect = '';
-    try{ saveState(); }catch(e){}
-    window.removeEventListener('mousemove', onMove);
-    window.removeEventListener('mouseup', onUp);
-    window.removeEventListener('touchmove', onMove);
-    window.removeEventListener('touchend', onUp);
-  }
-
-  function onDown(ev){
-    dragging = true;
-    startY = (ev && (ev.touches && ev.touches[0] ? ev.touches[0].clientY : ev.clientY)) || 0;
-    startRows = RAW_OUTLIER_VISIBLE_ROWS;
-    document.body.style.userSelect = 'none';
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
-    window.addEventListener('touchmove', onMove, {passive:false});
-    window.addEventListener('touchend', onUp);
-    try{ ev.preventDefault(); }catch(e){}
-  }
-
-  $rawOutlierResize.addEventListener('mousedown', onDown);
-  $rawOutlierResize.addEventListener('touchstart', onDown, {passive:false});
-}
-
 function toLocalDatetimeValue(d){
   const pad = (n) => String(n).padStart(2,"0");
   return d.getFullYear() + "-" + pad(d.getMonth()+1) + "-" + pad(d.getDate()) + "T" + pad(d.getHours()) + ":" + pad(d.getMinutes());
@@ -6313,6 +6290,7 @@ function renderOutlierOverviewTable(){
       if($rawOutlierInfo) $rawOutlierInfo.textContent = '';
     }else{
       const typeCounts = {};
+      const totalCount = Array.isArray(RAW_OUTLIER_RESULTS) ? RAW_OUTLIER_RESULTS.length : filtered.length;
       filtered.forEach(r => {
         const types = isIgnoredOutlier(r) ? ['ignored'] : (r.types || []);
         types.forEach(t => {
@@ -6321,8 +6299,8 @@ function renderOutlierOverviewTable(){
       });
       const typeLabels = {counter: 'Counter', decrease: 'Counter Abfall', bounds: 'Grenzen', fault_phase: 'Stoerphase', null: 'NULL', zero: '0-Werte', ignored: 'Ignoriert'};
       const parts = Object.entries(typeCounts).map(([t, c]) => `${typeLabels[t] || t}: ${c}`);
-      $rowCount.textContent = `${filtered.length} Ausreisser | ${parts.join(' | ')}`;
-      if($rawOutlierInfo) $rawOutlierInfo.textContent = `${filtered.length} Einträge`;
+      $rowCount.textContent = `${filtered.length} / ${totalCount} Ausreisser | ${parts.join(' | ')}`;
+      if($rawOutlierInfo) $rawOutlierInfo.textContent = `${filtered.length} / ${totalCount} Einträge`;
     }
   }
 
@@ -9133,6 +9111,26 @@ try{
   setTimeout(moveRawColVis, 250);
 }catch(e){}
 
+try{
+  if($rawOutlierAutoWidth) $rawOutlierAutoWidth.addEventListener('click', (ev)=>{
+    _stop(ev);
+    try{ window.InfluxBroTableCols && window.InfluxBroTableCols.autoFit('#raw_outlier_tbl', {maxRows: 80}); }catch(e){}
+  });
+  if($rawOutlierWindowWidth) $rawOutlierWindowWidth.addEventListener('click', (ev)=>{
+    _stop(ev);
+    try{ window.InfluxBroTableCols && window.InfluxBroTableCols.windowFit('#raw_outlier_tbl', {minW: 120}); }catch(e){}
+  });
+  const moveRawOutlierColVis = ()=>{
+    try{
+      const btn = document.querySelector('button[data-table-colvis="raw_outlier_tbl"]');
+      const winBtn = document.getElementById('raw_outlier_windowwidth');
+      if(btn && winBtn && winBtn.parentNode) winBtn.insertAdjacentElement('afterend', btn);
+    }catch(e){}
+  };
+  moveRawOutlierColVis();
+  setTimeout(moveRawOutlierColVis, 250);
+}catch(e){}
+
   (async ()=>{
     try{
       await loadUiConfig();
@@ -9142,7 +9140,6 @@ try{
     initGraphResize();
     loadRawRows();
     initRawResize();
-    initRawOutlierResize();
     initEditSplit();
     initMultiSelect();
 
@@ -9338,6 +9335,20 @@ try{
       'Query kopieren: kopiert die Raw Query in die Zwischenablage.',
     ],
   };
+  window.InfluxBroTableInfoSpec[pkey + ':raw_outlier_tbl'] = {
+    purpose: 'Ausreisser-Uebersicht zeigt die aktuell gefundenen Raw-Ausreisser fuer die gewaehlte Serie. Ein Klick auf eine Zeile springt zum passenden Messwert in der Raw-Tabelle.',
+    columns: {
+      'Zeit': 'Zeitstempel des gefundenen Ausreissers.',
+      'Wert': 'Wert des gefundenen Messpunkts.',
+      'Änderung': 'Reserviert fuer zusaetzliche Differenz- oder Kontextinformationen.',
+      'Ausreisser': 'Erkannter Typ oder Status des Ausreissers.'
+    },
+    actions: [
+      'Spaltenbreite automatisch / Fensterbreite: passt Spaltenbreiten an.',
+      'Umbruch/Spaltenfilter: Darstellung und Filterzeile toggeln.',
+      'Klick auf eine Zeile: springt zum passenden Eintrag in der Raw-Tabelle.'
+    ],
+  };
   window.InfluxBroTableInfoSpec[pkey + ':tbl'] = {
     purpose: 'Bearbeitungsliste fuer Ausreisser/Analyse. Hier werden Aktionen (ueberschreiben/loeschen) vorgemerkt und anschliessend gesammelt in die Datenbank geschrieben.',
     columns: {
@@ -9362,6 +9373,7 @@ try{
   if(window.InfluxBroTableCols){
     window.InfluxBroTableCols.init('#tbl');
     window.InfluxBroTableCols.init('#raw_tbl');
+    window.InfluxBroTableCols.init('#raw_outlier_tbl');
   }
 }catch(e){}
 
@@ -9369,16 +9381,21 @@ try{
   const pk = (window.location && window.location.pathname) ? String(window.location.pathname) : '';
   const kWrapTbl = 'influxbro.ui.wrap.v1.' + pk + '.dash_tbl';
   const kWrapRaw = 'influxbro.ui.wrap.v1.' + pk + '.dash_raw_tbl';
+  const kWrapRawOutlier = 'influxbro.ui.wrap.v1.' + pk + '.dash_raw_outlier_tbl';
   const kFiltTbl = 'influxbro.ui.colfilter.v1.' + pk + '.dash_tbl';
   const kFiltRaw = 'influxbro.ui.colfilter.v1.' + pk + '.dash_raw_tbl';
+  const kFiltRawOutlier = 'influxbro.ui.colfilter.v1.' + pk + '.dash_raw_outlier_tbl';
 
   const $tblWrap = document.getElementById('tbl_wrap');
   const $rawWrap = document.getElementById('raw_wrap');
+  const $rawOutlierWrap = document.getElementById('raw_outlier_wrap');
   const $tblColFilter = document.getElementById('tbl_colfilter');
   const $rawColFilter = document.getElementById('raw_colfilter');
+  const $rawOutlierColFilter = document.getElementById('raw_outlier_colfilter');
 
   try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.init('#tbl', {startHidden: true}); }catch(e){}
   try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.init('#raw_tbl', {startHidden: true}); }catch(e){}
+  try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.init('#raw_outlier_tbl', {startHidden: true}); }catch(e){}
 
   if($tblWrap){
     try{ $tblWrap.checked = (localStorage.getItem(kWrapTbl) || '') === '1'; }catch(e){}
@@ -9394,6 +9411,14 @@ try{
     $rawWrap.addEventListener('change', ()=>{
       try{ localStorage.setItem(kWrapRaw, $rawWrap.checked ? '1' : '0'); }catch(e){}
       try{ window.InfluxBroTableWrap && window.InfluxBroTableWrap.setWrap('#raw_tbl', $rawWrap.checked); }catch(e){}
+    });
+  }
+  if($rawOutlierWrap){
+    try{ $rawOutlierWrap.checked = (localStorage.getItem(kWrapRawOutlier) || '') === '1'; }catch(e){}
+    try{ window.InfluxBroTableWrap && window.InfluxBroTableWrap.setWrap('#raw_outlier_tbl', $rawOutlierWrap.checked); }catch(e){}
+    $rawOutlierWrap.addEventListener('change', ()=>{
+      try{ localStorage.setItem(kWrapRawOutlier, $rawOutlierWrap.checked ? '1' : '0'); }catch(e){}
+      try{ window.InfluxBroTableWrap && window.InfluxBroTableWrap.setWrap('#raw_outlier_tbl', $rawOutlierWrap.checked); }catch(e){}
     });
   }
 
@@ -9413,9 +9438,18 @@ try{
       try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.setVisible('#raw_tbl', $rawColFilter.checked); }catch(e){}
     });
   }
+  if($rawOutlierColFilter){
+    try{ $rawOutlierColFilter.checked = (localStorage.getItem(kFiltRawOutlier) || '') === '1'; }catch(e){}
+    try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.setVisible('#raw_outlier_tbl', $rawOutlierColFilter.checked); }catch(e){}
+    $rawOutlierColFilter.addEventListener('change', ()=>{
+      try{ localStorage.setItem(kFiltRawOutlier, $rawOutlierColFilter.checked ? '1' : '0'); }catch(e){}
+      try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.setVisible('#raw_outlier_tbl', $rawOutlierColFilter.checked); }catch(e){}
+    });
+  }
 
   try{ if(window.InfluxBroTableHeight && $tableBox) window.InfluxBroTableHeight.attach($tableBox, 'tbl', {minPx: 180}); }catch(e){}
   try{ if(window.InfluxBroTableHeight && $detailsBox) window.InfluxBroTableHeight.attach($detailsBox, 'details_box', {minPx: 180}); }catch(e){}
+  try{ if(window.InfluxBroTableHeight && $rawOutlierBox) window.InfluxBroTableHeight.attach($rawOutlierBox, 'raw_outlier_tbl', {minPx: 120}); }catch(e){}
 }catch(e){}
 
 try{

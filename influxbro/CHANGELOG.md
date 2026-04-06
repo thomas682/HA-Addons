@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.12.251
+
+### Enhancement
+
+- Die Dashboard-Ausreißer-Tabelle folgt jetzt der gemeinsamen Table-Template-Struktur mit eigenem Rahmen, Tabellenkopf, Tabelleninfo sowie Standard-Helpern fuer Spaltenbreite, Umbruch, Spaltenfilter und Hoehenanpassung.
+- Die Ausreißer-Tabelle zeigt ihre Zeilenanzahl jetzt als `filtered / total` und nutzt denselben Tabellen-Helper-Stack wie andere Listen im Add-on.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tests: `pytest tests/test_api_ui_support.py -q -k "raw_outlier_table_uses_template_structure_and_helpers or raw_and_outlier_tables_share_same_font_size_rule or dashboard_load_supports_cache_plan_prompt_and_time_savings"`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.250
 
 ### Fix

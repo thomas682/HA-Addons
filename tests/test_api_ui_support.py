@@ -240,6 +240,20 @@ def test_raw_and_outlier_tables_share_same_font_size_rule():
     assert "selEl.style.width = px + 'px';" not in body
 
 
+def test_raw_outlier_table_uses_template_structure_and_helpers():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert 'id="raw_outlier_table_wrap"' in body
+    assert 'id="raw_outlier_tbl" class="list_tbl ib_tbl"' in body
+    assert 'id="raw_outlier_autowidth"' in body
+    assert 'id="raw_outlier_windowwidth"' in body
+    assert 'id="raw_outlier_wrap"' in body
+    assert 'id="raw_outlier_colfilter"' in body
+    assert "window.InfluxBroTableCols.init('#raw_outlier_tbl');" in body
+    assert "window.InfluxBroTableFilter.init('#raw_outlier_tbl', {startHidden: true});" in body
+    assert "window.InfluxBroTableHeight.attach($rawOutlierBox, 'raw_outlier_tbl', {minPx: 120});" in body
+    assert 'button[data-table-colvis="raw_outlier_tbl"]' in body
+
+
 def test_dashboard_raw_actions_and_titles_are_updated():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     assert 'Grafische Analyse' in body
