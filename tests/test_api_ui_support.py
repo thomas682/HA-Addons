@@ -254,6 +254,14 @@ def test_raw_outlier_table_uses_template_structure_and_helpers():
     assert 'button[data-table-colvis="raw_outlier_tbl"]' in body
 
 
+def test_dashboard_outlier_section_is_separate_and_above_raw_section():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert 'id="outlier_section"' in body
+    assert 'data-ui="section.outliers"' in body
+    assert '<span>Ausreißer</span>' in body
+    assert body.index('id="outlier_section"') < body.index('id="raw_section"')
+
+
 def test_dashboard_raw_actions_and_titles_are_updated():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     assert 'Grafische Analyse' in body

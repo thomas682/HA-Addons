@@ -426,65 +426,8 @@
       </div>
     </details>
 
-    <details id="raw_section" class="section" style="margin-top: 10px;" data-ui="section.raw" title="section.raw">
-      <summary><span class="ib_summary_row"><span>Raw Daten Analyse</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Raw Daten" data-info-body="Raw-Tabelle zeigt echte Datenpunkte aus der DB rund um den im Graph selektierten Messpunkt.\n\nFeatures:\n- symmetrisches Laden um den selektierten Punkt\n- automatische Erweiterung bei zu wenigen Datenpunkten je Seite\n- direkte Wertuebernahme per Quelle/Ziel oder Drag-and-Drop" ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
-      <div class="table_wrap" style="margin-top: 10px;">
-        <div class="table_title">Raw Daten</div>
-        <div class="table_head">
-          <div>
-          <div class="muted" id="raw_info" data-ui="raw.info" title="raw.info"></div>
-          </div>
-        </div>
-
-      <div class="tbl_actions" style="justify-content:flex-start; margin-top: 8px; gap: 12px; flex-wrap:wrap;" data-ui="raw.center_range" title="raw.center_range">
-        <div style="display:flex; flex-direction:column; gap: 4px; min-width: 170px;">
-          <label for="raw_outlier_context_rows">Zeilen vor/nach Ausreisser</label>
-          <input id="raw_outlier_context_rows" type="number" min="1" max="500" step="1" value="10" style="height:34px; padding: 6px 10px; width: 140px;" />
-        </div>
-        <div class="muted" id="raw_outlier_context_hint">Anzahl Zeilen die vor und nach einem Ausreisser in der Raw-Tabelle angezeigt werden.</div>
-      </div>
-
-      <div id="raw_status" style="display:none; margin-top: 6px; font-size: 12px; opacity: 0.85; align-items:center; gap: 8px;" data-ui="raw.status" title="raw.status">
-        <span id="raw_spinner" aria-hidden="true" style="width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(0,0,0,0.18); border-top-color: rgba(0,0,0,0.75); animation: spin 0.9s linear infinite;"></span>
-        <span id="raw_status_txt">Raw laeuft...</span>
-        <span id="raw_status_time" style="opacity:0.85; white-space: nowrap;"></span>
-      </div>
-
-      <div class="tbl_actions" style="justify-content:flex-start; margin-top: 8px;" data-ui="raw.actions" title="raw.actions">
-        <button class="btn_sm" id="raw_refresh" type="button" data-ui="raw.refresh" title="raw.refresh" aria-label="Raw Daten aktualisieren"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M18.6091 5.89092L15.5 9H21.5V3L18.6091 5.89092ZM18.6091 5.89092C16.965 4.1131 14.6125 3 12 3C7.36745 3 3.55237 6.50005 3.05493 11M5.39092 18.1091L2.5 21V15H8.5L5.39092 18.1091ZM5.39092 18.1091C7.03504 19.8869 9.38753 21 12 21C16.6326 21 20.4476 17.5 20.9451 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
-        <button class="btn_sm" id="raw_all_time" type="button" data-ui="raw.all_time" title="raw.all_time" aria-label="Zeitraum Alle"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
-        <button class="btn_sm" id="raw_autowidth" data-ui="raw.autowidth" title="raw.autowidth" aria-label="Spaltenbreite automatisch">
-          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-            <path d="M5 5v14M19 5v14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            <path d="M8 12h8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            <path d="M10 10l-2 2 2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M14 10l2 2-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
-        <button class="btn_sm" id="raw_windowwidth" data-ui="raw.windowwidth" title="raw.windowwidth" aria-label="Fensterbreite">
-          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-            <rect x="4" y="6" width="16" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
-            <path d="M12 12H6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            <path d="M6 12l2-2M6 12l2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M12 12h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            <path d="M18 12l-2-2M18 12l-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
-        <label><input type="checkbox" id="raw_wrap" class="row_sel" data-ui="raw.wrap" title="raw.wrap"/>Umbruch</label>
-        <label><input type="checkbox" id="raw_colfilter" class="row_sel" data-ui="raw.colfilter" title="raw.colfilter"/>Spaltenfilter</label>
-        <button class="btn_sm" id="raw_copy" data-ui="raw.copy" title="raw.copy">Kopieren</button>
-        <button class="btn_sm" id="raw_copy_value" data-ui="raw.copy_value" title="raw.copy_value">Wert kopieren</button>
-        <button class="btn_sm" id="raw_paste" data-ui="raw.paste" title="raw.paste" disabled>Einfügen</button>
-        <button class="btn_sm" id="raw_delete" data-ui="raw.delete" title="raw.delete" disabled>Löschen</button>
-        <button class="btn_sm" id="raw_undo" data-ui="raw.undo" title="raw.undo" disabled>Undo</button>
-        <button class="btn_sm" id="raw_ignore" data-ui="raw.ignore" title="raw.ignore" disabled>Ignorieren</button>
-        <button class="btn_sm" id="raw_unignore" data-ui="raw.unignore" title="raw.unignore" disabled>Nicht mehr ignorieren</button>
-        <button class="btn_sm" id="raw_info_btn" data-ui="raw.info_btn" title="raw.info_btn" disabled>Info</button>
-        <button class="btn_sm" id="raw_query_open" data-ui="raw.query_section" title="raw.query_section"><svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="11" cy="15.5" r="1.5"></circle><path d="M12,12H10V8h2a2,2,0,0,0,0-4H10A2.0023,2.0023,0,0,0,8,6v.5H6V6a4.0045,4.0045,0,0,1,4-4h2a4,4,0,0,1,0,8Z"></path><path d="M22.4479,21.0337A10.971,10.971,0,0,0,19.9211,4.7446l-.999,1.73A8.9967,8.9967,0,1,1,5,14H3a10.9916,10.9916,0,0,0,18.0338,8.4478L28.5859,30,30,28.5859Z"></path></svg></button>
-        <button class="btn_sm" id="raw_query_test" data-ui="raw.query_test" title="raw.query_test" aria-label="Query testen"><svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="#000000" width="18" height="18" aria-hidden="true" focusable="false"><path d="M6 10V9h9v1H6zm4-4h5v1h-5V6zm5-3v1H6V3h9zm-9 9v1h9v-1H6z"></path><path fill-rule="evenodd" clip-rule="evenodd" d="M1 2.795l.783-.419 5.371 3.581v.838l-5.371 3.581L1 9.957V2.795zm1.007.94v5.281l3.96-2.64-3.96-2.64z"></path></svg></button>
-        <span id="raw_copied_info" class="muted" style="margin-left:6px;"></span>
-      </div>
-
+    <details id="outlier_section" class="section" style="margin-top: 10px;" data-ui="section.outliers" title="section.outliers">
+      <summary><span class="ib_summary_row"><span>Ausreißer</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Ausreißer" data-info-body="Ausreißer ist ein eigener Dashboard-Bereich fuer Suche, Navigation und Tabelle der aktuell gefundenen Raw-Ausreißer.\n\nEnthaelt:\n- Suchlauf fuer die ausgewaehlte Serie\n- Navigation zum aeltesten/neuesten Treffer\n- Typauswahl und Parameter\n- Ausreißer-Tabelle mit Tabellenfunktionen\n\nNutzen:\n- gefundene Treffer getrennt von den Raw-Daten betrachten\n- Treffer filtern, pruefen und gezielt in die Raw-Tabelle uebernehmen" ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
       <div class="table_wrap" id="raw_outlier_table_wrap" style="margin-top:10px;">
       <div class="table_title">Ausreißer</div>
       <div class="table_head" style="margin-bottom:6px;">
@@ -572,6 +515,66 @@
           </table>
         </div>
       </div>
+      </div>
+    </details>
+
+    <details id="raw_section" class="section" style="margin-top: 10px;" data-ui="section.raw" title="section.raw">
+      <summary><span class="ib_summary_row"><span>Raw Daten Analyse</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Raw Daten" data-info-body="Raw-Tabelle zeigt echte Datenpunkte aus der DB rund um den im Graph selektierten Messpunkt.\n\nFeatures:\n- symmetrisches Laden um den selektierten Punkt\n- automatische Erweiterung bei zu wenigen Datenpunkten je Seite\n- direkte Wertuebernahme per Quelle/Ziel oder Drag-and-Drop" ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
+      <div class="table_wrap" style="margin-top: 10px;">
+        <div class="table_title">Raw Daten</div>
+        <div class="table_head">
+          <div>
+          <div class="muted" id="raw_info" data-ui="raw.info" title="raw.info"></div>
+          </div>
+        </div>
+
+      <div class="tbl_actions" style="justify-content:flex-start; margin-top: 8px; gap: 12px; flex-wrap:wrap;" data-ui="raw.center_range" title="raw.center_range">
+        <div style="display:flex; flex-direction:column; gap: 4px; min-width: 170px;">
+          <label for="raw_outlier_context_rows">Zeilen vor/nach Ausreisser</label>
+          <input id="raw_outlier_context_rows" type="number" min="1" max="500" step="1" value="10" style="height:34px; padding: 6px 10px; width: 140px;" />
+        </div>
+        <div class="muted" id="raw_outlier_context_hint">Anzahl Zeilen die vor und nach einem Ausreisser in der Raw-Tabelle angezeigt werden.</div>
+      </div>
+
+      <div id="raw_status" style="display:none; margin-top: 6px; font-size: 12px; opacity: 0.85; align-items:center; gap: 8px;" data-ui="raw.status" title="raw.status">
+        <span id="raw_spinner" aria-hidden="true" style="width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(0,0,0,0.18); border-top-color: rgba(0,0,0,0.75); animation: spin 0.9s linear infinite;"></span>
+        <span id="raw_status_txt">Raw laeuft...</span>
+        <span id="raw_status_time" style="opacity:0.85; white-space: nowrap;"></span>
+      </div>
+
+      <div class="tbl_actions" style="justify-content:flex-start; margin-top: 8px;" data-ui="raw.actions" title="raw.actions">
+        <button class="btn_sm" id="raw_refresh" type="button" data-ui="raw.refresh" title="raw.refresh" aria-label="Raw Daten aktualisieren"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M18.6091 5.89092L15.5 9H21.5V3L18.6091 5.89092ZM18.6091 5.89092C16.965 4.1131 14.6125 3 12 3C7.36745 3 3.55237 6.50005 3.05493 11M5.39092 18.1091L2.5 21V15H8.5L5.39092 18.1091ZM5.39092 18.1091C7.03504 19.8869 9.38753 21 12 21C16.6326 21 20.4476 17.5 20.9451 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
+        <button class="btn_sm" id="raw_all_time" type="button" data-ui="raw.all_time" title="raw.all_time" aria-label="Zeitraum Alle"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+        <button class="btn_sm" id="raw_autowidth" data-ui="raw.autowidth" title="raw.autowidth" aria-label="Spaltenbreite automatisch">
+          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M5 5v14M19 5v14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M8 12h8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M10 10l-2 2 2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M14 10l2 2-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <button class="btn_sm" id="raw_windowwidth" data-ui="raw.windowwidth" title="raw.windowwidth" aria-label="Fensterbreite">
+          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <rect x="4" y="6" width="16" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
+            <path d="M12 12H6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M6 12l2-2M6 12l2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M12 12h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M18 12l-2-2M18 12l-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <label><input type="checkbox" id="raw_wrap" class="row_sel" data-ui="raw.wrap" title="raw.wrap"/>Umbruch</label>
+        <label><input type="checkbox" id="raw_colfilter" class="row_sel" data-ui="raw.colfilter" title="raw.colfilter"/>Spaltenfilter</label>
+        <button class="btn_sm" id="raw_copy" data-ui="raw.copy" title="raw.copy">Kopieren</button>
+        <button class="btn_sm" id="raw_copy_value" data-ui="raw.copy_value" title="raw.copy_value">Wert kopieren</button>
+        <button class="btn_sm" id="raw_paste" data-ui="raw.paste" title="raw.paste" disabled>Einfügen</button>
+        <button class="btn_sm" id="raw_delete" data-ui="raw.delete" title="raw.delete" disabled>Löschen</button>
+        <button class="btn_sm" id="raw_undo" data-ui="raw.undo" title="raw.undo" disabled>Undo</button>
+        <button class="btn_sm" id="raw_ignore" data-ui="raw.ignore" title="raw.ignore" disabled>Ignorieren</button>
+        <button class="btn_sm" id="raw_unignore" data-ui="raw.unignore" title="raw.unignore" disabled>Nicht mehr ignorieren</button>
+        <button class="btn_sm" id="raw_info_btn" data-ui="raw.info_btn" title="raw.info_btn" disabled>Info</button>
+        <button class="btn_sm" id="raw_query_open" data-ui="raw.query_section" title="raw.query_section"><svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="11" cy="15.5" r="1.5"></circle><path d="M12,12H10V8h2a2,2,0,0,0,0-4H10A2.0023,2.0023,0,0,0,8,6v.5H6V6a4.0045,4.0045,0,0,1,4-4h2a4,4,0,0,1,0,8Z"></path><path d="M22.4479,21.0337A10.971,10.971,0,0,0,19.9211,4.7446l-.999,1.73A8.9967,8.9967,0,1,1,5,14H3a10.9916,10.9916,0,0,0,18.0338,8.4478L28.5859,30,30,28.5859Z"></path></svg></button>
+        <button class="btn_sm" id="raw_query_test" data-ui="raw.query_test" title="raw.query_test" aria-label="Query testen"><svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="#000000" width="18" height="18" aria-hidden="true" focusable="false"><path d="M6 10V9h9v1H6zm4-4h5v1h-5V6zm5-3v1H6V3h9zm-9 9v1h9v-1H6z"></path><path fill-rule="evenodd" clip-rule="evenodd" d="M1 2.795l.783-.419 5.371 3.581v.838l-5.371 3.581L1 9.957V2.795zm1.007.94v5.281l3.96-2.64-3.96-2.64z"></path></svg></button>
+        <span id="raw_copied_info" class="muted" style="margin-left:6px;"></span>
       </div>
 
       <div class="table_title" style="margin-top:12px;">Raw Daten</div>
@@ -1073,6 +1076,7 @@ const $graphRefresh = document.getElementById('graph_refresh');
 const $graphResetTime = document.getElementById('graph_reset_time');
 const $graphQueryOpen = document.getElementById('graph_query_open');
 const $analysisSection = document.getElementById('analysis_section');
+const $outlierSection = document.getElementById('outlier_section');
 const $analysisStartInfo = document.getElementById('analysis_start_info');
 const $analysisStartReset = document.getElementById('analysis_start_reset');
 
@@ -1796,6 +1800,7 @@ function saveState(){
       graph_window_start_ms: TABLE_TIME.graph_start_ms,
       graph_window_stop_ms: TABLE_TIME.graph_stop_ms,
       analysis_open: !!($analysisSection && $analysisSection.open),
+      outlier_open: !!($outlierSection && $outlierSection.open),
       raw_center_range: RAW_CENTER_RANGE,
       raw_outlier_context_rows: RAW_OUTLIER_CONTEXT_ROWS,
       raw_outlier_visible_rows: RAW_OUTLIER_VISIBLE_ROWS,
@@ -9213,6 +9218,7 @@ try{
     // Raw options
     try{
       if($analysisSection && st.analysis_open !== undefined) $analysisSection.open = !!st.analysis_open;
+      if($outlierSection && st.outlier_open !== undefined) $outlierSection.open = !!st.outlier_open;
       RAW_CENTER_RANGE = (st.raw_center_range !== undefined) ? clampRawCenterRange(st.raw_center_range) : clampRawCenterRange(RAW_CENTER_RANGE);
       if($rawCenterRange) $rawCenterRange.value = String(RAW_CENTER_RANGE);
       RAW_OUTLIER_CONTEXT_ROWS = (st.raw_outlier_context_rows !== undefined) ? Math.max(1, Math.min(500, Number(st.raw_outlier_context_rows))) : RAW_OUTLIER_CONTEXT_ROWS;
@@ -9309,7 +9315,7 @@ try{
 }catch(e){}
 
 try{
-  if($analysisSection) $analysisSection.addEventListener('toggle', ()=>{ try{ saveState(); }catch(e){}; });
+  if($outlierSection) $outlierSection.addEventListener('toggle', ()=>{ try{ saveState(); }catch(e){}; });
 }catch(e){}
 
 </script>

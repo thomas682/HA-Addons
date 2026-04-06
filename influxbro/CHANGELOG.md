@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.12.252
+
+### Enhancement
+
+- Der Dashboard-Ausreißerbereich ist jetzt eine eigene Section `Ausreißer` oberhalb von `Raw Daten Analyse`, statt innerhalb des Raw-Bereichs verschachtelt zu sein.
+- Die neue Section behaelt die bestehende Ausreißer-Suche, Navigation und Tabelle bei und speichert ihren Open/Close-Zustand lokal im Dashboard-State.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tests: `pytest tests/test_api_ui_support.py -q -k "dashboard_outlier_section_is_separate_and_above_raw_section or raw_outlier_table_uses_template_structure_and_helpers or raw_and_outlier_tables_share_same_font_size_rule or dashboard_load_supports_cache_plan_prompt_and_time_savings"`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.251
 
 ### Enhancement
