@@ -5165,7 +5165,7 @@ async function refreshAnalysisStartInfo(){
         field: base.field,
         entity_id: base.entity_id || '',
         friendly_name: base.friendly_name || '',
-        resolve_if_missing: true,
+        resolve_if_missing: false,
       })
     }, {silent:true});
     const years = Math.max(1, Number(window.UI_ANALYSIS_MAX_AGE_YEARS || 5));

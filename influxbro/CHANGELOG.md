@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.12.240
+
+### Fix
+
+- `Startalter löschen` löscht den gespeicherten ältesten Datensatz jetzt sichtbar aus der Dashboard-Anzeige.
+- `refreshAnalysisStartInfo()` liest den Startwert nur noch aus dem Cache (`resolve_if_missing: false`) und löst keine sofortige Neuermittlung mehr aus.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Template verification: `resolve_if_missing: false` gesetzt
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.239
 
 ### Enhancement
