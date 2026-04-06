@@ -411,11 +411,11 @@
         <div style="font-size:13px;font-weight:600;margin-bottom:8px;">Ausreisser-Typen auswaehlen</div>
         <div style="display:flex;gap:12px;margin-bottom:8px;">
           <div style="flex:1;">
-            <div style="font-size:11px;opacity:0.7;margin-bottom:4px;">Abgewaehlte Typen</div>
+            <div style="font-size:11px;opacity:0.7;margin-bottom:4px;">Gewählte Typen</div>
             <div id="analysis_types_unselected" style="border:1px solid #eee;border-radius:8px;padding:8px;min-height:40px;"></div>
           </div>
           <div style="flex:1;">
-            <div style="font-size:11px;opacity:0.7;margin-bottom:4px;">Gewählte Typen</div>
+            <div style="font-size:11px;opacity:0.7;margin-bottom:4px;">Abgewaehlte Typen</div>
             <div id="analysis_types_selected" style="border:1px solid #eee;border-radius:8px;padding:8px;min-height:40px;"></div>
           </div>
         </div>
@@ -473,6 +473,8 @@
         <button class="btn_sm" id="raw_paste" data-ui="raw.paste" title="raw.paste" disabled>Einfügen</button>
         <button class="btn_sm" id="raw_delete" data-ui="raw.delete" title="raw.delete" disabled>Löschen</button>
         <button class="btn_sm" id="raw_undo" data-ui="raw.undo" title="raw.undo" disabled>Undo</button>
+        <button class="btn_sm" id="raw_ignore" data-ui="raw.ignore" title="raw.ignore" disabled>Ignorieren</button>
+        <button class="btn_sm" id="raw_unignore" data-ui="raw.unignore" title="raw.unignore" disabled>Nicht mehr ignorieren</button>
         <button class="btn_sm" id="raw_info_btn" data-ui="raw.info_btn" title="raw.info_btn" disabled>Info</button>
         <button class="btn_sm" id="raw_query_open" data-ui="raw.query_section" title="raw.query_section"><svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="11" cy="15.5" r="1.5"></circle><path d="M12,12H10V8h2a2,2,0,0,0,0-4H10A2.0023,2.0023,0,0,0,8,6v.5H6V6a4.0045,4.0045,0,0,1,4-4h2a4,4,0,0,1,0,8Z"></path><path d="M22.4479,21.0337A10.971,10.971,0,0,0,19.9211,4.7446l-.999,1.73A8.9967,8.9967,0,1,1,5,14H3a10.9916,10.9916,0,0,0,18.0338,8.4478L28.5859,30,30,28.5859Z"></path></svg></button>
         <button class="btn_sm" id="raw_query_test" data-ui="raw.query_test" title="raw.query_test" aria-label="Query testen"><svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="#000000" width="18" height="18" aria-hidden="true" focusable="false"><path d="M6 10V9h9v1H6zm4-4h5v1h-5V6zm5-3v1H6V3h9zm-9 9v1h9v-1H6z"></path><path fill-rule="evenodd" clip-rule="evenodd" d="M1 2.795l.783-.419 5.371 3.581v.838l-5.371 3.581L1 9.957V2.795zm1.007.94v5.281l3.96-2.64-3.96-2.64z"></path></svg></button>
@@ -1096,6 +1098,8 @@ const $rawCopyValue = document.getElementById('raw_copy_value');
 const $rawPaste = document.getElementById('raw_paste');
 const $rawDelete = document.getElementById('raw_delete');
 const $rawUndo = document.getElementById('raw_undo');
+const $rawIgnore = document.getElementById('raw_ignore');
+const $rawUnignore = document.getElementById('raw_unignore');
 const $rawInfoBtn = document.getElementById('raw_info_btn');
 const $rawQueryOpen = document.getElementById('raw_query_open');
 const $rawCopiedInfo = document.getElementById('raw_copied_info');
@@ -4571,10 +4575,12 @@ const ALL_OUTLIER_TYPES = [
   {value: 'fault_phase', label: 'Stoerphase'},
   {value: 'null', label: 'NULL'},
   {value: 'zero', label: '0-Werte'},
+  {value: 'ignored', label: 'Ignoriert'},
 ];
 
 let ANALYSIS_SELECTED_TYPES = ['counter', 'decrease', 'bounds', 'fault_phase', 'null', 'zero'];
 let ANALYSIS_UNSELECTED_TYPES = [];
+let IGNORED_OUTLIERS_STATE = {};
 
 try{
   const saved = localStorage.getItem('analysis_types');
@@ -4845,8 +4851,9 @@ function updateRawOutlierTypeToggleLabel(){
 
 function getFilteredOutliers(){
   const types = getRawOutlierFilterTypes();
-  if(!types.length) return RAW_OUTLIER_RESULTS;
+  if(!types.length) return RAW_OUTLIER_RESULTS.filter(r => !isIgnoredOutlier(r));
   return RAW_OUTLIER_RESULTS.filter(r => {
+    if(isIgnoredOutlier(r)) return types.includes('ignored');
     const rTypes = r.types || [];
     return types.some(t => rTypes.includes(t));
   });
@@ -5318,16 +5325,16 @@ function renderAnalysisTypeLists(){
     const $selected = document.getElementById('analysis_types_selected');
     if(!$unselected || !$selected) return;
 
-    $unselected.innerHTML = ANALYSIS_UNSELECTED_TYPES.map(t => {
-      const type = ALL_OUTLIER_TYPES.find(x => x.value === t);
-      const label = type ? type.label : t;
-      return '<div style="padding:4px 8px;margin:2px 0;background:#f5f5f5;border-radius:4px;cursor:pointer;font-size:12px;" data-type="' + t + '" data-list="unselected">' + label + '</div>';
-    }).join('') || '<div style="opacity:0.5;font-size:11px;">Keine</div>';
-
-    $selected.innerHTML = ANALYSIS_SELECTED_TYPES.map(t => {
+    $unselected.innerHTML = ANALYSIS_SELECTED_TYPES.map(t => {
       const type = ALL_OUTLIER_TYPES.find(x => x.value === t);
       const label = type ? type.label : t;
       return '<div style="padding:4px 8px;margin:2px 0;background:#e8f5e9;border-radius:4px;cursor:pointer;font-size:12px;" data-type="' + t + '" data-list="selected">' + label + '</div>';
+    }).join('') || '<div style="opacity:0.5;font-size:11px;">Keine</div>';
+
+    $selected.innerHTML = ANALYSIS_UNSELECTED_TYPES.map(t => {
+      const type = ALL_OUTLIER_TYPES.find(x => x.value === t);
+      const label = type ? type.label : t;
+      return '<div style="padding:4px 8px;margin:2px 0;background:#f5f5f5;border-radius:4px;cursor:pointer;font-size:12px;" data-type="' + t + '" data-list="unselected">' + label + '</div>';
     }).join('') || '<div style="opacity:0.5;font-size:11px;">Keine</div>';
 
     // Add click handlers
@@ -5362,6 +5369,44 @@ function saveAnalysisTypes(){
     }));
   }catch(e){}
   try{ saveGlobalDashboardSelection().catch(()=>{}); }catch(e){}
+}
+
+function ignoredSeriesKey(base){
+  return [
+    String(base.measurement || '').trim(),
+    String(base.field || '').trim(),
+    String(base.entity_id || '').trim(),
+    String(base.friendly_name || '').trim(),
+  ].join('|');
+}
+
+async function loadIgnoredOutliersState(){
+  try{
+    const j = await api('./api/app_state?scope=ignored_outliers', null, {silent:true});
+    IGNORED_OUTLIERS_STATE = (j && j.state && typeof j.state === 'object') ? j.state : {};
+  }catch(e){
+    IGNORED_OUTLIERS_STATE = {};
+  }
+}
+
+async function saveIgnoredOutliersState(){
+  try{
+    await api('./api/app_state/set', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({scope:'ignored_outliers', state: IGNORED_OUTLIERS_STATE || {}})
+    }, {silent:true});
+  }catch(e){}
+}
+
+function isIgnoredOutlier(row){
+  try{
+    if(!row || !row.time) return false;
+    const base = currentFilters();
+    const key = ignoredSeriesKey(base);
+    const bucket = IGNORED_OUTLIERS_STATE && typeof IGNORED_OUTLIERS_STATE === 'object' ? (IGNORED_OUTLIERS_STATE[key] || {}) : {};
+    return !!bucket[String(row.time)];
+  }catch(e){ return false; }
 }
 
 function getRawOutlierFilterTypes(){
@@ -5512,7 +5557,8 @@ async function runAnalysis(){
     // Count by type
     const typeCounts = {};
     RAW_OUTLIER_RESULTS.forEach(r => {
-      (r.types || []).forEach(t => { typeCounts[t] = (typeCounts[t] || 0) + 1; });
+      const typesForCount = isIgnoredOutlier(r) ? ['ignored'] : (r.types || []);
+      typesForCount.forEach(t => { typeCounts[t] = (typeCounts[t] || 0) + 1; });
     });
     const typeBreakdown = Object.entries(typeCounts).map(([t, c]) => typeLabels[t] + ': ' + c).join(', ');
     const subText = typeBreakdown ? '→ ' + typeBreakdown : '';
@@ -6181,12 +6227,12 @@ function renderOutlierOverviewTable(){
     }else{
       const typeCounts = {};
       filtered.forEach(r => {
-        const types = r.types || [];
+        const types = isIgnoredOutlier(r) ? ['ignored'] : (r.types || []);
         types.forEach(t => {
           typeCounts[t] = (typeCounts[t] || 0) + 1;
         });
       });
-      const typeLabels = {counter: 'Counter', decrease: 'Counter Abfall', bounds: 'Grenzen', fault_phase: 'Stoerphase', null: 'NULL', zero: '0-Werte'};
+      const typeLabels = {counter: 'Counter', decrease: 'Counter Abfall', bounds: 'Grenzen', fault_phase: 'Stoerphase', null: 'NULL', zero: '0-Werte', ignored: 'Ignoriert'};
       const parts = Object.entries(typeCounts).map(([t, c]) => `${typeLabels[t] || t}: ${c}`);
       $rowCount.textContent = `${filtered.length} Ausreisser | ${parts.join(' | ')}`;
       if($rawOutlierInfo) $rawOutlierInfo.textContent = `${filtered.length} Einträge`;
@@ -6216,7 +6262,7 @@ function renderOutlierOverviewTable(){
     tdH.textContent = '';
     const tdO = document.createElement('td');
     tdO.style.fontSize = '11px';
-    tdO.textContent = r.reason || '';
+    tdO.textContent = isIgnoredOutlier(r) ? 'ignoriert' : (r.reason || '');
     tdO.style.color = '#b00020';
     tr.appendChild(tdT);
     tr.appendChild(tdV);
@@ -6264,6 +6310,22 @@ function highlightOutlierRow(ms){
       }
     }
   }catch(e){}
+}
+
+async function setIgnoredForCurrentOutlier(ignore){
+  const filtered = getFilteredOutliers();
+  const row = (RAW_OUTLIER_INDEX >= 0 && RAW_OUTLIER_INDEX < filtered.length) ? filtered[RAW_OUTLIER_INDEX] : null;
+  if(!row || !row.time) return;
+  const base = currentFilters();
+  const key = ignoredSeriesKey(base);
+  if(!IGNORED_OUTLIERS_STATE || typeof IGNORED_OUTLIERS_STATE !== 'object') IGNORED_OUTLIERS_STATE = {};
+  if(!IGNORED_OUTLIERS_STATE[key] || typeof IGNORED_OUTLIERS_STATE[key] !== 'object') IGNORED_OUTLIERS_STATE[key] = {};
+  if(ignore) IGNORED_OUTLIERS_STATE[key][String(row.time)] = true;
+  else delete IGNORED_OUTLIERS_STATE[key][String(row.time)];
+  await saveIgnoredOutliersState();
+  renderOutlierOverviewTable();
+  updateAnalysisUI();
+  updateRawToolbarState();
 }
 
 function clearRawOutlierSearch(){
@@ -6380,6 +6442,11 @@ function updateRawToolbarState(){
     if($rawDelete) $rawDelete.disabled = !hasTarget;
     if($rawUndo) $rawUndo.disabled = !undoable;
     if($rawInfoBtn) $rawInfoBtn.disabled = !(hasTarget && _rawHistoryEntries(RAW_ROW_SELECTED_KEY).length);
+    const filtered = getFilteredOutliers();
+    const activeOutlier = (RAW_OUTLIER_INDEX >= 0 && RAW_OUTLIER_INDEX < filtered.length) ? filtered[RAW_OUTLIER_INDEX] : null;
+    const ignored = activeOutlier ? isIgnoredOutlier(activeOutlier) : false;
+    if($rawIgnore) $rawIgnore.disabled = !(activeOutlier && !ignored);
+    if($rawUnignore) $rawUnignore.disabled = !(activeOutlier && ignored);
     if($rawCopiedInfo){
       $rawCopiedInfo.textContent = hasCopied ? (`Quelle: ${fmtTs(RAW_COPIED.time)} | Wert: ${String(RAW_COPIED.value_str || '')}`) : '';
     }
@@ -8931,6 +8998,8 @@ if($analysisStartReset) $analysisStartReset.addEventListener('click', async (ev)
     await refreshAnalysisStartInfo();
   }catch(e){ displayError(e); }
 });
+if($rawIgnore) $rawIgnore.addEventListener('click', async (ev)=>{ _stop(ev); try{ await setIgnoredForCurrentOutlier(true); }catch(e){ displayError(e); } });
+if($rawUnignore) $rawUnignore.addEventListener('click', async (ev)=>{ _stop(ev); try{ await setIgnoredForCurrentOutlier(false); }catch(e){ displayError(e); } });
 
 try{
   const $tblAuto = document.getElementById('tbl_autowidth');
@@ -9115,6 +9184,8 @@ try{
     try{
       loadDashboardFields(String(($mf && $mf.value) || '').trim(), {silent: true}).then(()=>refreshDashboardSuggestions({silent: true})).catch(()=>{});
     }catch(e){}
+
+    try{ await loadIgnoredOutliersState(); }catch(e){}
 
     // Update analysis status line
     try{ _updateAnalysisStatus(); }catch(e){}

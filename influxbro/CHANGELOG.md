@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.12.246
+
+### Enhancement
+
+- `Dashboard: raw.actions` erweitert um `Ignorieren` und `Nicht mehr ignorieren`.
+- Neuer Ausreißertyp `Ignoriert` für bewusst ausgeblendete Treffer.
+- Ignorierte Ausreißer werden global/serverseitig im App-State gespeichert.
+- Analyse-Typ-Listen wurden getauscht: `Gewählte Typen` jetzt links, `Abgewählte Typen` rechts.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.245
 
 ### Enhancement
