@@ -1667,7 +1667,7 @@ def _cache_usage_append(cfg: dict[str, Any] | None, entry: dict[str, Any]) -> No
             if "token" in lk or "password" in lk or "confirm_phrase" in lk:
                 e.pop(k, None)
         # cap large strings
-        for k in ("kind", "page", "step", "cache_id", "run_id", "note"):
+        for k in ("kind", "page", "step", "cache_id", "run_id", "note", "series_key"):
             if k in e and e[k] is not None:
                 e[k] = str(e[k])[:400]
         with CACHE_USAGE_LOCK:
@@ -2643,6 +2643,27 @@ def _dash_cache_store(
         created_trigger = str(meta.get("trigger_page") or "").strip() or str(trigger_page or "").strip() or "dashboard"
 
         # Keep a stable small meta file for list views.
+        covered_start = None
+        covered_stop = None
+        outlier_count = None
+        query_ms_original = None
+        source_cache_ids = []
+        cache_strategy = None
+        try:
+            m = payload.get("meta") if isinstance(payload.get("meta"), dict) else {}
+            covered_start = str(m.get("covered_start") or "").strip() or first_time
+            covered_stop = str(m.get("covered_stop") or "").strip() or last_time
+            js = m.get("jump_spans") if isinstance(m.get("jump_spans"), list) else []
+            outlier_count = int(m.get("outlier_count") or len(js) or 0)
+            if m.get("query_ms_original") is not None:
+                query_ms_original = int(m.get("query_ms_original") or 0)
+            src_ids = m.get("source_cache_ids") if isinstance(m.get("source_cache_ids"), list) else []
+            source_cache_ids = [str(x) for x in src_ids if str(x).strip()][:8]
+            cache_strategy = str(m.get("cache_strategy") or "").strip() or None
+        except Exception:
+            covered_start = first_time
+            covered_stop = last_time
+
         out = {
             "v": 1,
             "id": cache_id,
@@ -2654,7 +2675,13 @@ def _dash_cache_store(
             "row_count": row_count,
             "first_time": first_time,
             "last_time": last_time,
+            "covered_start": covered_start,
+            "covered_stop": covered_stop,
             "total_points": None,
+            "outlier_count": outlier_count,
+            "query_ms_original": query_ms_original,
+            "cache_strategy": cache_strategy,
+            "source_cache_ids": source_cache_ids,
             "bytes": bytes_written,
             "dirty": False,
             "dirty_reason": None,
@@ -2713,6 +2740,338 @@ def _dash_cache_touch_used(cache_id: str) -> None:
             pass
     except Exception:
         return
+
+
+def _dash_cache_signature(key: dict[str, Any]) -> tuple[str, str, str, str, str, str, int, str]:
+    return (
+        str(key.get("cfg_fp") or "").strip(),
+        str(key.get("measurement") or "").strip(),
+        str(key.get("field") or "").strip(),
+        str(key.get("entity_id") or "").strip(),
+        str(key.get("friendly_name") or "").strip(),
+        str(key.get("detail_mode") or "dynamic").strip().lower(),
+        int(key.get("manual_density_pct") or 100),
+        str(key.get("unit") or "").strip(),
+    )
+
+
+def _dash_cache_requested_range(range_key: str, start_dt: datetime | None, stop_dt: datetime | None) -> tuple[datetime, datetime]:
+    if start_dt and stop_dt:
+        return start_dt, stop_dt
+    return parse_range_to_datetimes(range_key)
+
+
+def _dash_cache_meta_span(meta: dict[str, Any]) -> tuple[datetime | None, datetime | None]:
+    try:
+        start_raw = str(meta.get("covered_start") or meta.get("first_time") or "").strip()
+        stop_raw = str(meta.get("covered_stop") or meta.get("last_time") or "").strip()
+        start_dt = _parse_iso_datetime(start_raw) if start_raw else None
+        stop_dt = _parse_iso_datetime(stop_raw) if stop_raw else None
+        if start_dt and stop_dt and stop_dt > start_dt:
+            return start_dt, stop_dt
+    except Exception:
+        pass
+    try:
+        key = meta.get("key") if isinstance(meta.get("key"), dict) else {}
+        _, _, range_key, _, _, _, _, _, start_dt, stop_dt = _dash_cache_key_to_params(key)
+        if start_dt and stop_dt and stop_dt > start_dt:
+            return start_dt, stop_dt
+    except Exception:
+        pass
+    return None, None
+
+
+def _dash_cache_row_in_window(row: dict[str, Any], start_dt: datetime, stop_dt: datetime) -> bool:
+    try:
+        ts = _parse_iso_datetime(str(row.get("time") or ""))
+        return start_dt <= ts <= stop_dt
+    except Exception:
+        return False
+
+
+def _dash_cache_filter_rows(rows: list[dict[str, Any]], start_dt: datetime, stop_dt: datetime) -> list[dict[str, Any]]:
+    return [r for r in rows if isinstance(r, dict) and _dash_cache_row_in_window(r, start_dt, stop_dt)]
+
+
+def _dash_cache_merge_rows(row_groups: list[list[dict[str, Any]]]) -> list[dict[str, Any]]:
+    merged: dict[str, dict[str, Any]] = {}
+    for rows in row_groups:
+        for row in rows or []:
+            if not isinstance(row, dict):
+                continue
+            ts = str(row.get("time") or "").strip()
+            if not ts:
+                continue
+            merged[ts] = row
+    out = list(merged.values())
+    out.sort(key=lambda r: str(r.get("time") or ""))
+    return out
+
+
+def _dash_cache_merge_spans(spans: list[tuple[datetime, datetime]]) -> list[tuple[datetime, datetime]]:
+    valid = [(a, b) for a, b in spans if a and b and b > a]
+    valid.sort(key=lambda x: x[0])
+    merged: list[tuple[datetime, datetime]] = []
+    for a, b in valid:
+        if not merged:
+            merged.append((a, b))
+            continue
+        la, lb = merged[-1]
+        if a <= lb:
+            merged[-1] = (la, max(lb, b))
+        else:
+            merged.append((a, b))
+    return merged
+
+
+def _dash_cache_gap_ranges(start_dt: datetime, stop_dt: datetime, covered: list[tuple[datetime, datetime]]) -> list[tuple[datetime, datetime]]:
+    gaps: list[tuple[datetime, datetime]] = []
+    cur = start_dt
+    for a, b in _dash_cache_merge_spans(covered):
+        if b <= start_dt or a >= stop_dt:
+            continue
+        aa = max(start_dt, a)
+        bb = min(stop_dt, b)
+        if aa > cur:
+            gaps.append((cur, aa))
+        if bb > cur:
+            cur = bb
+    if cur < stop_dt:
+        gaps.append((cur, stop_dt))
+    return [(a, b) for a, b in gaps if b > a]
+
+
+def _dash_cache_series_key(measurement: str, field: str, entity_id: str | None, friendly_name: str | None, detail_mode: str) -> str:
+    return "|".join([
+        str(measurement or "").strip(),
+        str(field or "").strip(),
+        str(entity_id or "").strip(),
+        str(friendly_name or "").strip(),
+        str(detail_mode or "dynamic").strip().lower(),
+    ])
+
+
+def _history_changes_for_window(
+    measurement: str,
+    field: str,
+    entity_id: str | None,
+    friendly_name: str | None,
+    start_dt: datetime,
+    stop_dt: datetime,
+    since_dt: datetime,
+    limit: int = 50,
+) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    for it in reversed(_history_read_all()):
+        if not isinstance(it, dict):
+            continue
+        if not _history_series_matches(it, measurement, field, entity_id, friendly_name):
+            continue
+        action = str(it.get("action") or "").strip().lower()
+        if action not in ("overwrite", "delete"):
+            continue
+        try:
+            changed_at = _parse_iso_datetime(str(it.get("at") or ""))
+            value_at = _parse_iso_datetime(str(it.get("time") or ""))
+        except Exception:
+            continue
+        if changed_at < since_dt:
+            continue
+        if value_at < start_dt or value_at > stop_dt:
+            continue
+        trigger = _history_trigger_meta(it)
+        out.append({
+            "id": str(it.get("id") or ""),
+            "at": str(it.get("at") or ""),
+            "time": str(it.get("time") or ""),
+            "action": action,
+            "old_value": it.get("old_value"),
+            "new_value": it.get("new_value"),
+            "reason": str(it.get("reason") or ""),
+            **trigger,
+        })
+        if len(out) >= limit:
+            break
+    return out
+
+
+def _dash_cache_reference_ms(series_key: str, desired_span_s: float, kind: str = "dash_db_query") -> int | None:
+    vals: list[int] = []
+    tol = max(60.0, desired_span_s * 0.25)
+    for row in reversed(_cache_usage_tail(2000)):
+        if not isinstance(row, dict):
+            continue
+        if str(row.get("kind") or "") != kind:
+            continue
+        if str(row.get("series_key") or "") != series_key:
+            continue
+        try:
+            span_s = float(row.get("requested_span_s") or 0)
+            dur_ms = int(row.get("dur_ms") or 0)
+        except Exception:
+            continue
+        if dur_ms <= 0:
+            continue
+        if span_s > 0 and abs(span_s - desired_span_s) > tol:
+            continue
+        vals.append(dur_ms)
+        if len(vals) >= 5:
+            break
+    if not vals:
+        return None
+    return int(sum(vals) / len(vals))
+
+
+def _dash_cache_plan(
+    cfg: dict[str, Any],
+    body: dict[str, Any],
+    measurement: str,
+    field: str,
+    range_key: str,
+    entity_id: str | None,
+    friendly_name: str | None,
+    unit: str,
+    detail_mode: str,
+    manual_density_pct: int,
+    start_dt: datetime | None,
+    stop_dt: datetime | None,
+    *,
+    max_segments: int = 8,
+) -> dict[str, Any]:
+    req_start, req_stop = _dash_cache_requested_range(range_key, start_dt, stop_dt)
+    key = _dash_cache_key(
+        cfg,
+        body,
+        measurement,
+        field,
+        range_key,
+        entity_id,
+        friendly_name,
+        unit,
+        detail_mode,
+        manual_density_pct,
+        start_dt,
+        stop_dt,
+    )
+    exact_cache_id = _dash_cache_id(key)
+    signature = _dash_cache_signature(key)
+    candidates: list[dict[str, Any]] = []
+    for meta in _dash_cache_list_meta():
+        try:
+            key2 = meta.get("key") if isinstance(meta.get("key"), dict) else {}
+            if _dash_cache_signature(key2) != signature:
+                continue
+            if bool(meta.get("dirty")) or bool(meta.get("mismatch")):
+                continue
+            cache_id = str(meta.get("id") or "").strip()
+            if not cache_id:
+                continue
+            payload = _dash_cache_load_payload(cache_id)
+            if not payload or not bool(payload.get("ok")):
+                continue
+            rows = payload.get("rows") if isinstance(payload.get("rows"), list) else []
+            if not rows:
+                continue
+            cov_start, cov_stop = _dash_cache_meta_span(meta)
+            if not cov_start or not cov_stop:
+                continue
+            use_start = max(req_start, cov_start)
+            use_stop = min(req_stop, cov_stop)
+            if use_stop <= use_start:
+                continue
+            filtered_rows = _dash_cache_filter_rows(rows, use_start, use_stop)
+            if not filtered_rows:
+                continue
+            candidates.append({
+                "cache_id": cache_id,
+                "meta": meta,
+                "payload": payload,
+                "covered_start": cov_start,
+                "covered_stop": cov_stop,
+                "use_start": use_start,
+                "use_stop": use_stop,
+                "filtered_rows": filtered_rows,
+                "covered_seconds": (use_stop - use_start).total_seconds(),
+            })
+        except Exception:
+            continue
+
+    candidates.sort(key=lambda c: (float(c.get("covered_seconds") or 0.0), _dash_cache_ts(c.get("meta") or {}, "updated_at")), reverse=True)
+    selected: list[dict[str, Any]] = []
+    covered: list[tuple[datetime, datetime]] = []
+    for cand in candidates:
+        if len(selected) >= max_segments:
+            break
+        gaps_before = _dash_cache_gap_ranges(req_start, req_stop, covered)
+        if not gaps_before:
+            break
+        adds = False
+        for ga, gb in gaps_before:
+            if min(gb, cand["use_stop"]) > max(ga, cand["use_start"]):
+                adds = True
+                break
+        if not adds:
+            continue
+        selected.append(cand)
+        covered.append((cand["use_start"], cand["use_stop"]))
+
+    gaps = _dash_cache_gap_ranges(req_start, req_stop, covered)
+    exact = False
+    for seg in selected:
+        if str(seg.get("cache_id") or "") == exact_cache_id and not gaps and len(selected) == 1:
+            exact = True
+            break
+
+    earliest_created = None
+    for seg in selected:
+        try:
+            created = _parse_iso_datetime(str((seg.get("meta") or {}).get("created_at") or ""))
+        except Exception:
+            created = None
+        if created and (earliest_created is None or created < earliest_created):
+            earliest_created = created
+    changes = _history_changes_for_window(measurement, field, entity_id, friendly_name, req_start, req_stop, earliest_created, limit=50) if earliest_created else []
+
+    desired_span_s = max(1.0, (req_stop - req_start).total_seconds())
+    series_key = _dash_cache_series_key(measurement, field, entity_id, friendly_name, detail_mode)
+    full_ref_ms = _dash_cache_reference_ms(series_key, desired_span_s, kind="dash_db_query")
+    cache_ref_ms = _dash_cache_reference_ms(series_key, desired_span_s, kind="dash_cache_hit")
+    if cache_ref_ms is None:
+        cache_ref_ms = _dash_cache_reference_ms(series_key, desired_span_s, kind="dash_cache_partial_hit")
+    gap_fraction = sum((b - a).total_seconds() for a, b in gaps) / desired_span_s
+    estimated_total_ms = None
+    estimated_savings_ms = None
+    if full_ref_ms is not None:
+        base_cache_ms = int(cache_ref_ms or 25)
+        estimated_total_ms = int((len(selected) * base_cache_ms) + (full_ref_ms * gap_fraction) + (len(selected) * 15))
+        estimated_savings_ms = max(0, full_ref_ms - estimated_total_ms)
+
+    cached_outlier_count = 0
+    for seg in selected:
+        try:
+            m = seg.get("payload", {}).get("meta") if isinstance(seg.get("payload"), dict) else {}
+            cached_outlier_count += int(m.get("outlier_count") or len(m.get("jump_spans") or []))
+        except Exception:
+            continue
+
+    return {
+        "request": {
+            "start": _dt_to_rfc3339_utc(req_start),
+            "stop": _dt_to_rfc3339_utc(req_stop),
+            "range": range_key,
+        },
+        "exact_cache_id": exact_cache_id,
+        "exact": exact,
+        "has_cache": bool(selected),
+        "segments": selected,
+        "gaps": gaps,
+        "series_key": series_key,
+        "full_reference_ms": full_ref_ms,
+        "estimated_total_ms": estimated_total_ms,
+        "estimated_savings_ms": estimated_savings_ms,
+        "changes": changes,
+        "cached_outlier_count": cached_outlier_count,
+    }
 
 
 def _dash_cache_is_stale(cfg: dict[str, Any], meta: dict[str, Any]) -> bool:
@@ -10826,6 +11185,85 @@ def api_cache_peek():
     return jsonify(out)
 
 
+@app.post("/api/cache/plan")
+def api_cache_plan():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    body = request.get_json(force=True) or {}
+    measurement = str(body.get("measurement") or "").strip()
+    field = str(body.get("field") or "").strip()
+    range_key = str(body.get("range") or "24h")
+    entity_id = str(body.get("entity_id") or "").strip() or None
+    friendly_name = str(body.get("friendly_name") or "").strip() or None
+    unit = str(body.get("unit") or "").strip()
+    detail_mode = str(body.get("detail_mode") or "dynamic").strip().lower()
+    if detail_mode not in ("dynamic", "manual"):
+        detail_mode = "dynamic"
+    try:
+        manual_density_pct = int(body.get("manual_density_pct") or 100)
+    except Exception:
+        manual_density_pct = 100
+    manual_density_pct = min(100, max(1, manual_density_pct))
+    try:
+        start_dt, stop_dt = _get_start_stop_from_payload(body)
+    except Exception:
+        start_dt, stop_dt = None, None
+
+    if not measurement or not field:
+        return jsonify({"ok": False, "error": "measurement and field required"}), 400
+    if not bool(cfg.get("dash_cache_enabled", True)):
+        return jsonify({"ok": True, "plan": {"has_cache": False, "segments": [], "gaps": [], "changes": []}})
+
+    plan = _dash_cache_plan(
+        cfg,
+        body,
+        measurement,
+        field,
+        range_key,
+        entity_id,
+        friendly_name,
+        unit,
+        detail_mode,
+        manual_density_pct,
+        start_dt,
+        stop_dt,
+    )
+
+    out_segments = []
+    for seg in plan.get("segments") or []:
+        meta = seg.get("meta") if isinstance(seg.get("meta"), dict) else {}
+        out_segments.append({
+            "cache_id": str(seg.get("cache_id") or ""),
+            "created_at": meta.get("created_at"),
+            "updated_at": meta.get("updated_at"),
+            "use_start": _dt_to_rfc3339_utc(seg.get("use_start")),
+            "use_stop": _dt_to_rfc3339_utc(seg.get("use_stop")),
+            "covered_start": _dt_to_rfc3339_utc(seg.get("covered_start")),
+            "covered_stop": _dt_to_rfc3339_utc(seg.get("covered_stop")),
+            "row_count": meta.get("row_count"),
+            "outlier_count": meta.get("outlier_count"),
+        })
+
+    out_gaps = [
+        {"start": _dt_to_rfc3339_utc(a), "stop": _dt_to_rfc3339_utc(b)}
+        for a, b in (plan.get("gaps") or [])
+    ]
+    return jsonify({
+        "ok": True,
+        "plan": {
+            "has_cache": bool(plan.get("has_cache")),
+            "exact": bool(plan.get("exact")),
+            "request": plan.get("request") or {},
+            "segments": out_segments,
+            "gaps": out_gaps,
+            "changes": plan.get("changes") or [],
+            "cached_outlier_count": int(plan.get("cached_outlier_count") or 0),
+            "full_reference_ms": plan.get("full_reference_ms"),
+            "estimated_total_ms": plan.get("estimated_total_ms"),
+            "estimated_savings_ms": plan.get("estimated_savings_ms"),
+        },
+    })
+
+
 @app.post("/api/cache/delete")
 def api_cache_delete():
     body = request.get_json(force=True) or {}
@@ -12589,6 +13027,9 @@ from(bucket: "{cfg["bucket"]}")
                             "returned": len(rows),
                             "unit": unit,
                             "total_points": total_points,
+                            "covered_start": _dt_to_rfc3339_utc(start_dt) if start_dt else (rows[0]["time"] if rows else None),
+                            "covered_stop": _dt_to_rfc3339_utc(stop_dt) if stop_dt else (rows[-1]["time"] if rows else None),
+                            "outlier_count": 0,
                         },
                     }
 
@@ -12755,11 +13196,11 @@ from(bucket: "{cfg["bucket"]}")
                             rest_rows = rest_rows[::step]
                         rows_all = sorted(keep_rows + rest_rows, key=lambda r: str(r.get("time") or ""))
 
-                return {
-                    "ok": True,
-                    "rows": rows_all,
-                    "query": q.strip(),
-                    "meta": {
+                    return {
+                        "ok": True,
+                        "rows": rows_all,
+                        "query": q.strip(),
+                        "meta": {
                         "mode": "dynamic",
                         "coarse_mode": mode,
                         "every_ms": every_ms,
@@ -12767,12 +13208,15 @@ from(bucket: "{cfg["bucket"]}")
                         "returned": len(rows_all),
                         "refined": len(refine_points),
                         "jump_threshold": step_th,
-                        "jump_padding_intervals": pad_n,
-                        "jump_spans": jump_spans,
-                        "unit": unit,
-                        "total_points": total_points,
-                    },
-                }
+                            "jump_padding_intervals": pad_n,
+                            "jump_spans": jump_spans,
+                            "unit": unit,
+                            "total_points": total_points,
+                            "covered_start": _dt_to_rfc3339_utc(start_dt) if start_dt else (rows_all[0]["time"] if rows_all else None),
+                            "covered_stop": _dt_to_rfc3339_utc(stop_dt) if stop_dt else (rows_all[-1]["time"] if rows_all else None),
+                            "outlier_count": len(jump_spans),
+                        },
+                    }
 
         # v1
         if not cfg.get("database"):
@@ -12871,6 +13315,9 @@ def query():
     except Exception:
         manual_density_pct = 100
     manual_density_pct = min(100, max(1, manual_density_pct))
+    cache_strategy = str(body.get("cache_strategy") or "default").strip().lower()
+    if cache_strategy not in ("default", "reuse", "refresh"):
+        cache_strategy = "default"
 
     t0 = time.monotonic()
     try:
@@ -12881,6 +13328,16 @@ def query():
 
     if not measurement or not field:
         return jsonify({"ok": False, "error": "measurement and field required"}), 400
+
+    req_start, req_stop = _dash_cache_requested_range(range_key, start_dt, stop_dt)
+    requested_span_s = max(1.0, (req_stop - req_start).total_seconds())
+    series_key = _dash_cache_series_key(
+        measurement,
+        field,
+        str(entity_id) if entity_id else None,
+        str(friendly_name) if friendly_name else None,
+        detail_mode,
+    )
 
     # Correlation id for cache usage logging
     run_id = uuid.uuid4().hex
@@ -12917,7 +13374,7 @@ def query():
             )
             cache_id = _dash_cache_id(key)
             meta = _dash_cache_load_meta(cache_id)
-            if meta and not bool(meta.get("dirty")):
+            if cache_strategy != "refresh" and meta and not bool(meta.get("dirty")):
                 t0 = time.perf_counter()
                 cached = _dash_cache_load_payload(cache_id)
                 dur_ms = int((time.perf_counter() - t0) * 1000)
@@ -12932,6 +13389,8 @@ def query():
                             "dur_ms": dur_ms,
                             "rows": len(cached.get("rows") or []) if isinstance(cached.get("rows"), list) else None,
                             "bytes": meta.get("bytes"),
+                            "series_key": series_key,
+                            "requested_span_s": requested_span_s,
                             "note": f"range={range_key} detail={detail_mode}",
                         })
                     except Exception:
@@ -12943,7 +13402,18 @@ def query():
                         pass
                     out = dict(cached)
                     out["cached"] = True
-                    out["cache"] = {"id": cache_id, "updated_at": meta.get("updated_at")}
+                    out["cache"] = {"id": cache_id, "updated_at": meta.get("updated_at"), "strategy": "exact"}
+                    out["cache_plan"] = {
+                        "strategy": "exact",
+                        "segments_used": 1,
+                        "gaps_loaded": 0,
+                        "steps": [{
+                            "label": "Exakten Cache verwendet",
+                            "status": "ok",
+                            "sub": f"Cache-Datum: {str(meta.get('updated_at') or '-')}",
+                        }],
+                        "estimated_savings_ms": None,
+                    }
                     # Enqueue background refresh if stale (best-effort)
                     try:
                         if bool(cfg.get("dash_cache_update_on_use_if_stale", True)) and _dash_cache_is_stale(cfg, meta):
@@ -12971,6 +13441,8 @@ def query():
                             "cache_id": cache_id,
                             "step": "read_payload",
                             "dur_ms": dur_ms,
+                            "series_key": series_key,
+                            "requested_span_s": requested_span_s,
                             "note": "payload missing/invalid",
                         })
                     except Exception:
@@ -12983,6 +13455,8 @@ def query():
                         "run_id": run_id,
                         "cache_id": cache_id,
                         "step": "meta",
+                        "series_key": series_key,
+                        "requested_span_s": requested_span_s,
                         "note": ("dirty" if (meta and bool(meta.get("dirty"))) else "no_meta"),
                     })
                 except Exception:
@@ -12991,6 +13465,190 @@ def query():
         # Cache is best-effort. Ignore and fall back to DB query.
         cache_id = None
         key = None
+
+    if cache_strategy == "reuse" and bool(cfg.get("dash_cache_enabled", True)) and key and cache_id:
+        try:
+            plan = _dash_cache_plan(
+                cfg,
+                body,
+                measurement,
+                field,
+                range_key,
+                str(entity_id) if entity_id else None,
+                str(friendly_name) if friendly_name else None,
+                unit,
+                detail_mode,
+                manual_density_pct,
+                start_dt,
+                stop_dt,
+            )
+            if plan.get("has_cache") and not plan.get("exact") and (plan.get("segments") or []):
+                row_groups: list[list[dict[str, Any]]] = []
+                cache_steps: list[dict[str, Any]] = []
+                source_cache_ids: list[str] = []
+                gap_query_ms = 0
+                used_jump_spans: list[dict[str, Any]] = []
+                total_points_acc: int | None = 0
+                for seg in plan.get("segments") or []:
+                    seg_t0 = time.perf_counter()
+                    rows_seg = list(seg.get("filtered_rows") or [])
+                    seg_ms = int((time.perf_counter() - seg_t0) * 1000)
+                    row_groups.append(rows_seg)
+                    source_cache_ids.append(str(seg.get("cache_id") or ""))
+                    meta_seg = seg.get("meta") if isinstance(seg.get("meta"), dict) else {}
+                    payload_seg = seg.get("payload") if isinstance(seg.get("payload"), dict) else {}
+                    meta_info = payload_seg.get("meta") if isinstance(payload_seg.get("meta"), dict) else {}
+                    js = meta_info.get("jump_spans") if isinstance(meta_info.get("jump_spans"), list) else []
+                    used_jump_spans.extend(js)
+                    try:
+                        tp = meta_info.get("total_points")
+                        total_points_acc = (int(total_points_acc or 0) + int(tp)) if isinstance(tp, (int, float)) else total_points_acc
+                    except Exception:
+                        total_points_acc = None
+                    _dash_cache_touch_used(str(seg.get("cache_id") or ""))
+                    try:
+                        _cache_usage_append(cfg, {
+                            "kind": "dash_cache_partial_hit",
+                            "page": "dashboard",
+                            "run_id": run_id,
+                            "cache_id": str(seg.get("cache_id") or ""),
+                            "step": "segment",
+                            "dur_ms": seg_ms,
+                            "rows": len(rows_seg),
+                            "series_key": series_key,
+                            "requested_span_s": requested_span_s,
+                            "note": f"{_dt_to_rfc3339_utc(seg.get('use_start'))}..{_dt_to_rfc3339_utc(seg.get('use_stop'))}",
+                        })
+                    except Exception:
+                        pass
+                    cache_steps.append({
+                        "label": "Cache-Segment verwendet",
+                        "status": "ok",
+                        "sub": f"{_dt_to_rfc3339_utc(seg.get('use_start'))} bis {_dt_to_rfc3339_utc(seg.get('use_stop'))} | Cache: {str(meta_seg.get('updated_at') or '-')}",
+                    })
+
+                for ga, gb in plan.get("gaps") or []:
+                    gap_t0 = time.perf_counter()
+                    part = _query_payload(
+                        cfg,
+                        measurement,
+                        field,
+                        range_key,
+                        str(entity_id) if entity_id else None,
+                        str(friendly_name) if friendly_name else None,
+                        unit,
+                        detail_mode,
+                        manual_density_pct,
+                        ga,
+                        gb,
+                    )
+                    part_ms = int((time.perf_counter() - gap_t0) * 1000)
+                    gap_query_ms += part_ms
+                    row_groups.append(list(part.get("rows") or []))
+                    part_meta = part.get("meta") if isinstance(part.get("meta"), dict) else {}
+                    js = part_meta.get("jump_spans") if isinstance(part_meta.get("jump_spans"), list) else []
+                    used_jump_spans.extend(js)
+                    cache_steps.append({
+                        "label": "Fehlenden Rest geladen",
+                        "status": "ok",
+                        "sub": f"{_dt_to_rfc3339_utc(ga)} bis {_dt_to_rfc3339_utc(gb)} | {part_ms}ms",
+                    })
+                    try:
+                        _cache_usage_append(cfg, {
+                            "kind": "dash_cache_partial_gap_query",
+                            "page": "dashboard",
+                            "run_id": run_id,
+                            "cache_id": cache_id,
+                            "step": "gap_query",
+                            "dur_ms": part_ms,
+                            "rows": len(part.get("rows") or []) if isinstance(part.get("rows"), list) else None,
+                            "series_key": series_key,
+                            "requested_span_s": requested_span_s,
+                            "note": f"{_dt_to_rfc3339_utc(ga)}..{_dt_to_rfc3339_utc(gb)}",
+                        })
+                    except Exception:
+                        pass
+
+                merge_t0 = time.perf_counter()
+                merged_rows = _dash_cache_merge_rows(row_groups)
+                merge_ms = int((time.perf_counter() - merge_t0) * 1000)
+                cache_steps.append({
+                    "label": "Cache-Daten zusammengefuehrt",
+                    "status": "ok",
+                    "sub": f"Segmente: {len(plan.get('segments') or [])} | Luecken: {len(plan.get('gaps') or [])}",
+                })
+                jump_unique: dict[str, dict[str, Any]] = {}
+                for sp in used_jump_spans:
+                    if not isinstance(sp, dict):
+                        continue
+                    k = f"{str(sp.get('start') or '')}|{str(sp.get('stop') or '')}|{str(sp.get('delta') or '')}"
+                    jump_unique[k] = sp
+                merged_jump_spans = list(jump_unique.values())
+                payload = {
+                    "ok": True,
+                    "rows": merged_rows,
+                    "query": "cache-partial-merge",
+                    "meta": {
+                        "mode": "manual" if detail_mode == "manual" else "dynamic",
+                        "returned": len(merged_rows),
+                        "unit": unit,
+                        "total_points": total_points_acc,
+                        "jump_spans": merged_jump_spans,
+                        "outlier_count": len(merged_jump_spans),
+                        "covered_start": _dt_to_rfc3339_utc(req_start),
+                        "covered_stop": _dt_to_rfc3339_utc(req_stop),
+                        "cache_strategy": "partial_merge",
+                        "query_ms_original": gap_query_ms,
+                        "source_cache_ids": [x for x in source_cache_ids if x],
+                    },
+                }
+                t_s0 = time.perf_counter()
+                stored_meta = _dash_cache_store(cache_id, key, payload, trigger_page="dashboard")
+                s_ms = int((time.perf_counter() - t_s0) * 1000)
+                try:
+                    _cache_usage_append(cfg, {
+                        "kind": "dash_cache_partial_merge",
+                        "page": "dashboard",
+                        "run_id": run_id,
+                        "cache_id": cache_id,
+                        "step": "merge",
+                        "dur_ms": merge_ms + s_ms,
+                        "rows": len(merged_rows),
+                        "series_key": series_key,
+                        "requested_span_s": requested_span_s,
+                        "note": f"segments={len(source_cache_ids)} gaps={len(plan.get('gaps') or [])}",
+                    })
+                except Exception:
+                    pass
+                try:
+                    if cache_id:
+                        _dash_last_set_from_query(body, cache_id, key)
+                except Exception:
+                    pass
+                payload["cached"] = True
+                payload["cache"] = {
+                    "id": cache_id,
+                    "updated_at": stored_meta.get("updated_at") if isinstance(stored_meta, dict) else _utc_now_iso_ms(),
+                    "strategy": "partial_merge",
+                }
+                savings_ms = plan.get("estimated_savings_ms")
+                if savings_ms is not None:
+                    cache_steps.append({
+                        "label": "Geschaetzte Zeitersparnis",
+                        "status": "ok",
+                        "sub": f"ca. {int(savings_ms)}ms gegenueber Vollabfrage",
+                    })
+                payload["cache_plan"] = {
+                    "strategy": "partial_merge",
+                    "segments_used": len(source_cache_ids),
+                    "gaps_loaded": len(plan.get("gaps") or []),
+                    "steps": cache_steps,
+                    "estimated_savings_ms": savings_ms,
+                    "changes": plan.get("changes") or [],
+                }
+                return jsonify(payload)
+        except Exception:
+            pass
 
     try:
         t_db0 = time.perf_counter()
@@ -13017,8 +13675,16 @@ def query():
                 "step": "_query_payload",
                 "dur_ms": db_ms,
                 "rows": len(payload.get("rows") or []) if isinstance(payload.get("rows"), list) else None,
+                "series_key": series_key,
+                "requested_span_s": requested_span_s,
                 "note": f"range={range_key} detail={detail_mode}",
             })
+        except Exception:
+            pass
+        try:
+            if isinstance(payload.get("meta"), dict):
+                payload["meta"]["query_ms_original"] = db_ms
+                payload["meta"].setdefault("cache_strategy", "fresh_query")
         except Exception:
             pass
         if cache_id and key and bool(cfg.get("dash_cache_enabled", True)):
@@ -13035,13 +13701,22 @@ def query():
                     "dur_ms": s_ms,
                     "rows": stored_meta.get("row_count") if isinstance(stored_meta, dict) else None,
                     "bytes": stored_meta.get("bytes") if isinstance(stored_meta, dict) else None,
+                    "series_key": series_key,
+                    "requested_span_s": requested_span_s,
                     "note": f"range={range_key}",
                 })
             except Exception:
                 pass
             payload = dict(payload)
             payload["cached"] = False
-            payload["cache"] = {"id": cache_id, "updated_at": _utc_now_iso_ms()}
+            payload["cache"] = {"id": cache_id, "updated_at": _utc_now_iso_ms(), "strategy": "fresh_query"}
+            payload["cache_plan"] = {
+                "strategy": "fresh_query",
+                "segments_used": 0,
+                "gaps_loaded": 1,
+                "steps": [{"label": "Datenbankabfrage ausgefuehrt", "status": "ok", "sub": f"{db_ms}ms"}],
+                "estimated_savings_ms": None,
+            }
 
         try:
             if cache_id:

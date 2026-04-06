@@ -218,6 +218,15 @@ def test_dashboard_selection_labels_and_widths_are_updated():
     assert 'width: auto;' in body
     assert 'max-width: 60%;' in body
     assert "inputEl.style.width = '';" in body
+
+
+def test_dashboard_load_supports_cache_plan_prompt_and_time_savings():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert "async function maybePromptDashboardCacheUse(filters){" in body
+    assert "./api/cache/plan" in body
+    assert "Geschaetzte Zeitersparnis" in body
+    assert "Cache-Ausreisser" in body
+    assert "cache_strategy" in body
     assert "selEl.style.width = '';" in body
     assert "inputEl.style.width = px + 'px';" not in body
     assert "selEl.style.width = px + 'px';" not in body

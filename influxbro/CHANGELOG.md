@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.12.249
+
+### Enhancement
+
+- Dashboard `Analyse` prueft jetzt serverseitige Cache-Treffer und teilweise passende Cache-Segmente, zeigt bei vorhandener Teilabdeckung fehlende Restbereiche und kann beim Verwenden nur diese Luecken nachladen.
+- Die Dashboard-Abarbeitungsliste zeigt jetzt Cache-Segmente, Restabfragen, Merge-Schritte, rote Aenderungswarnungen und eine geschaetzte Zeitersparnis auf Basis der Cache-Nutzungsprotokolle.
+- Neue technische Richtlinie `influxbro/caching.md` dokumentiert die bestehenden und neuen Cache-Regeln zentral fuer kuenftige Cache-Funktionen.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tests: `pytest tests/test_api_dashboard_cache_plan.py -q`
+- Tests: `pytest tests/test_api_ui_support.py -q -k "cache_plan_prompt_and_time_savings"`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.248
 
 ### Fix

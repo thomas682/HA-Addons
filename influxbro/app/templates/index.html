@@ -5674,6 +5674,90 @@ function _renderChecklist(items){
   }).join('');
 }
 
+function _clearLoadPlanUi(){
+  try{
+    _renderChecklist([]);
+    const $alog = document.getElementById('analysis_log');
+    if($alog) $alog.innerHTML = '';
+  }catch(e){}
+}
+
+function _renderLoadPlanChanges(changes){
+  const $alog = document.getElementById('analysis_log');
+  if(!$alog) return;
+  const rows = Array.isArray(changes) ? changes : [];
+  if(!rows.length){
+    $alog.innerHTML = '';
+    return;
+  }
+  $alog.innerHTML = rows.map((row)=>{
+    const when = fmtTs(String(row.at || ''));
+    const at = fmtTs(String(row.time || ''));
+    const oldVal = (row.old_value === null || row.old_value === undefined) ? '-' : fmtNum(row.old_value);
+    const newVal = (row.new_value === null || row.new_value === undefined) ? '-' : fmtNum(row.new_value);
+    const reason = String(row.reason || row.trigger_button || row.trigger_action || '-');
+    return '<div class="checklist_item"><span class="checklist_icon err">!</span><span class="checklist_label" style="color:#b00020;">Wert geaendert: ' + at + '</span><span class="checklist_dur" style="color:#b00020;">' + when + '</span></div><div class="checklist_sub" style="color:#b00020;">' + String(row.action || '-') + ' | Alt: ' + oldVal + ' | Neu: ' + newVal + ' | ' + reason + '</div>';
+  }).join('');
+}
+
+function _renderLoadPlan(plan){
+  try{
+    const p = plan || {};
+    const items = [];
+    const segs = Array.isArray(p.segments) ? p.segments : [];
+    const gaps = Array.isArray(p.gaps) ? p.gaps : [];
+    if(p.exact){
+      const seg = segs[0] || {};
+      items.push({label: 'Exakter Cache gefunden', status: 'ok', sub: 'Cache-Datum: ' + String(seg.updated_at || '-') + ' | Ausreisser im Cache: ' + String(p.cached_outlier_count || 0)});
+    }else{
+      segs.forEach((seg)=>{
+        items.push({label: 'Cache-Segment verfuegbar', status: 'ok', sub: fmtTs(seg.use_start) + ' bis ' + fmtTs(seg.use_stop) + ' | Cache: ' + String(seg.updated_at || '-')});
+      });
+      gaps.forEach((gap)=>{
+        items.push({label: 'Fehlender Restbereich', status: 'running', sub: fmtTs(gap.start) + ' bis ' + fmtTs(gap.stop)});
+      });
+    }
+    if(p.estimated_savings_ms !== null && p.estimated_savings_ms !== undefined){
+      items.push({label: 'Geschaetzte Zeitersparnis', status: 'ok', sub: _fmtDur(Number(p.estimated_savings_ms || 0))});
+    }
+    _renderChecklist(items);
+    _renderLoadPlanChanges(p.changes || []);
+  }catch(e){}
+}
+
+async function maybePromptDashboardCacheUse(filters){
+  try{
+    const j = await api('./api/cache/plan', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(filters)}, { key: 'dashboard_cache_plan', silent: true });
+    const plan = (j && j.plan) ? j.plan : null;
+    if(!plan || !plan.has_cache){
+      _clearLoadPlanUi();
+      return { cacheStrategy: 'default', plan: null };
+    }
+    _renderLoadPlan(plan);
+    const lines = [];
+    lines.push(plan.exact ? 'Exakter Cache gefunden.' : ('Teilweise Cache-Abdeckung gefunden: ' + String((plan.segments || []).length) + ' Segmente.'));
+    lines.push('Cache-Ausreisser: ' + String(plan.cached_outlier_count || 0));
+    if(plan.segments && plan.segments.length){
+      lines.push('Cache-Datum: ' + String(plan.segments[0].updated_at || '-'));
+    }
+    if(plan.gaps && plan.gaps.length){
+      lines.push('Fehlende Restbereiche: ' + String(plan.gaps.length));
+    }
+    if(plan.estimated_savings_ms !== null && plan.estimated_savings_ms !== undefined){
+      lines.push('Geschaetzte Zeitersparnis: ' + _fmtDur(Number(plan.estimated_savings_ms || 0)));
+    }
+    if(plan.changes && plan.changes.length){
+      lines.push('Achtung: ' + String(plan.changes.length) + ' Werte wurden nach Cache-Erstellung geaendert. Details stehen rot in der Abarbeitungsliste.');
+    }
+    lines.push('OK = Cache verwenden, Abbrechen = Analyse erneut starten');
+    const reuse = confirm(lines.join('\n'));
+    return { cacheStrategy: reuse ? 'reuse' : 'refresh', plan };
+  }catch(e){
+    _clearLoadPlanUi();
+    return { cacheStrategy: 'default', plan: null };
+  }
+}
+
 // --- Analysis History ---
 const ANALYSIS_HISTORY_KEY = 'influxbro_analysis_history_v1';
 const ANALYSIS_HISTORY_MAX = 50;
@@ -8337,7 +8421,8 @@ async function loadStats(){
   renderStats();
 }
 
-async function loadData(){
+async function loadData(opts){
+  const o = opts || {};
   err(""); ok("");
   const hasMeasurement = !!($m && String($m.value || "").trim());
   const hasField = !!($f && String($f.value || "").trim());
@@ -8369,7 +8454,7 @@ async function loadData(){
   const startedAtIso = new Date().toISOString();
   const j = await api(
     "./api/query",
-    {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(filters)},
+    {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({...filters, cache_strategy: String(o.cacheStrategy || 'default')})},
     { key: "query", status: "Query laeuft..." },
   );
   const dur = performance.now() - q0;
@@ -8386,6 +8471,14 @@ async function loadData(){
     });
   }catch(e){}
   if(STATUS_COUNT > 0) _setLoadStatus("Query fertig – Graph wird aktualisiert...");
+  try{
+    if(j && j.cache_plan){
+      _renderChecklist(Array.isArray(j.cache_plan.steps) ? j.cache_plan.steps : []);
+      _renderLoadPlanChanges(Array.isArray(j.cache_plan.changes) ? j.cache_plan.changes : []);
+    }else{
+      _clearLoadPlanUi();
+    }
+  }catch(e){}
   const rows0 = j.rows || [];
   try{ LAST_JUMP_SPANS = (j && j.meta && Array.isArray(j.meta.jump_spans)) ? j.meta.jump_spans : []; }catch(e){ LAST_JUMP_SPANS = []; }
   try{ LAST_TOTAL_POINTS = (j && j.meta && j.meta.total_points !== undefined) ? Number(j.meta.total_points) : null; }catch(e){ LAST_TOTAL_POINTS = null; }
@@ -8430,7 +8523,8 @@ async function loadData(){
   await loadStats();
 }
 
-async function refreshAll(){
+async function refreshAll(opts){
+  const o = opts || {};
   try{
     const hasFriendly = !!($n && String($n.value || "").trim());
     const hasEntity = !!($e && String($e.value || "").trim());
@@ -8447,7 +8541,7 @@ async function refreshAll(){
       }
     }catch(e){ displayError(e); }
     try{ _setLoadStatus("Daten werden geladen..."); }catch(e){}
-    await loadData();
+    await loadData(o);
   }catch(e){
     displayError(e);
   }
@@ -8472,7 +8566,9 @@ async function refreshAllWithStatus(){
       stopLoadUi(false, msg);
       return;
     }
-    await refreshAll();
+    const filters = currentFilters();
+    const planChoice = await maybePromptDashboardCacheUse(filters);
+    await refreshAll({ cacheStrategy: planChoice && planChoice.cacheStrategy ? planChoice.cacheStrategy : 'default' });
     stopLoadUi(true);
   }catch(e){
     if(e && e.aborted){

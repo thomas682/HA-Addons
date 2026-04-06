@@ -199,6 +199,42 @@ Hinweis: Zeitstempel werden im gesamten UI inklusive Millisekunden angezeigt.
 
 - GUI-Aenderungen werden automatisch gespeichert (Checkboxen/Selects/Inputs sowie resizable Hoehen).
 
+## Caching
+
+- InfluxBro verwendet mehrere Cache-Arten mit unterschiedlichen Aufgaben.
+- Funktionale Caches liegen serverseitig unter `/data` und bleiben damit auch ueber Browserwechsel oder Add-on-Neustarts hinweg nutzbar.
+- Browserlokale Session-/UI-Caches dienen nur der bequemen Wiederherstellung sichtbarer Zustande.
+
+Dashboard Cache:
+
+- `Analyse` im Dashboard schreibt die geladenen Graphdaten serverseitig nach `/data/dash_cache`.
+- Wenn ein exakt passender Dashboard-Cache vorhanden ist, kann dieser direkt verwendet werden.
+- Wenn nur teilweise passende Caches vorhanden sind, versucht InfluxBro jetzt auch Teilabdeckung zu nutzen.
+- Dabei werden vorhandene Cache-Segmente fuer denselben Messwert und Zeitraum verwendet und nur die fehlenden Restbereiche neu aus InfluxDB geladen.
+- Danach werden Cache-Segmente und neue Daten zusammengefuehrt und als neuer zusammenhaengender Cache gespeichert.
+- Diese Teilcache-Logik gilt fuer alle Zeitbereiche, sofern sich der gewaehlte Zeitraum konkret bestimmen laesst.
+- Vor der Verwendung zeigt InfluxBro an:
+  - Cache-Datum
+  - Ausreisser-Anzahl aus dem verwendbaren Cache
+  - fehlende Restbereiche
+  - geschaetzte Zeitersparnis
+- Wenn seit Erstellung eines verwendeten Caches Werte im gewaehlten Zeitraum geaendert wurden, erscheint zusaetzlich eine rote Aenderungsliste.
+- Diese Warnung blockiert die Cache-Nutzung nicht automatisch; du kannst trotzdem `Cache verwenden` oder `Analyse erneut starten`.
+
+Dashboard Restore:
+
+- Wenn das Dashboard ohne aktive Auswahl geoeffnet wird, kann der letzte serverseitig bekannte Graph best-effort aus dem Dashboard-Cache wiederhergestellt werden.
+
+Statistik Cache:
+
+- Die Statistik-Seite nutzt einen eigenen serverseitigen Cache unter `/data/stats_cache`.
+- Dort koennen je nach Zeitbereich passende Daten direkt verwendet, rechtsseitig per Append aktualisiert oder per Sliding-Strategie teilweise neu aufgebaut werden.
+
+Cache Nutzung:
+
+- In `Jobs & Cache -> Cache Nutzung` protokolliert InfluxBro, welche Caches verwendet, nachgeladen, zusammengefuehrt oder neu geschrieben wurden.
+- Diese Protokolle dienen auch dazu, die geschaetzte Zeitersparnis im Dashboard zu bestimmen.
+
 ### 2) Zeitraum setzen
 
 - `Zeitraum (Graph/Tabelle)`: z.B. 24h, 7d, oder `Alle`.
@@ -208,7 +244,7 @@ Hinweis: Zeitstempel werden im gesamten UI inklusive Millisekunden angezeigt.
 
 - Erst mit `Aktualisieren` werden Graph und Statistik geladen.
 - Die Bearbeitungsliste bleibt dabei leer und wird erst durch `Fehlersuche Ausreisser` gefuellt.
-- Sobald einmal geladen wurde, werden die Ergebnisse serverseitig gecacht (unter `/data/dash_cache`) und beim naechsten Aufruf des Dashboards wiederhergestellt (auch nach Seitenwechsel in InfluxBro / Home Assistant).
+- Sobald einmal geladen wurde, werden die Ergebnisse serverseitig gecacht (unter `/data/dash_cache`) und beim naechsten Aufruf des Dashboards wiederverwendet oder teilweise aus mehreren Cache-Segmenten zusammengesetzt.
 - Die Hauptbereiche im Dashboard folgen unterhalb von `Auswahl` in dieser Reihenfolge: `Graph`, `Raw Daten (DB)`, `Bearbeitungsliste`.
 - `Raw Daten (DB)` ist ein eigener Bereich direkt unter dem Graph und nicht innerhalb des Graph-Bereichs verschachtelt.
 - Die Dashboard-Hauptbereiche bleiben auch im Live-DOM innerhalb von `dashboard.page`; Browser-DevTools sollten `main.content` daher nicht mehr vor `Graph`/`Raw`/`Bearbeitungsliste` implizit schliessen.
