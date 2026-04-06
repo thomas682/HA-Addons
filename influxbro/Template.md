@@ -202,6 +202,78 @@ Rule
 
 ## Other GUI elements (future)
 
+## Storage Policy (Global vs. Profile-based)
+
+This policy applies to ALL pages and functions of the app, not only Dashboard.
+
+### Global (server-side) state
+
+Store server-side when the value changes the functional behavior or data scope of the app and should therefore be identical on iMac and iPhone.
+
+Examples:
+
+- source selection:
+  - `measurement`
+  - `field`
+  - `measurement_filter`
+  - `entity_id`
+  - `friendly_name`
+- time selection:
+  - `range`
+  - `start`
+  - `stop`
+- analysis-relevant values:
+  - selected outlier types
+  - effective analysis start value / oldest known point per series
+  - analysis limits / functional thresholds
+- other functional selections on Statistics / Logs / Import / Export / Backup / Restore / Monitor / Jobs / History
+
+Rule:
+
+- If a state changes what data is queried, filtered, analyzed, imported, exported, restored, or processed, it belongs to the global/server-side state.
+
+### Profile-based (UI / optical) state
+
+Store profile-based when the value only changes appearance, ergonomics, or layout and may intentionally differ between profiles like `PC` and `MOBIL`.
+
+Examples:
+
+- section open/closed state:
+  - `analysis_open`
+  - `selection_open`
+  - `raw_open`
+  - `graph_open`
+  - `filterlist_open`
+  - analogous `*_open` values on all pages
+- table and layout state:
+  - table heights
+  - splitters / resize values
+  - column widths
+  - wrap / no-wrap
+  - column visibility
+  - window-fit / auto-width preferences
+- display state:
+  - font sizes
+  - row heights / density
+  - popup sizes
+  - device-specific UI geometry
+
+Rule:
+
+- If a state changes only how the UI looks or feels, but not what data is processed, it belongs to the active UI profile.
+
+### Do not mix both responsibilities
+
+- Functional selection must not be restored from browser-only local state if a server-side/global source exists.
+- UI profile state must not overwrite global functional selections.
+- A page may combine both, but must keep them technically separate.
+
+Recommended precedence:
+
+1. Global functional state
+2. Profile-based UI state
+3. Temporary local/session-only helpers only when they are purely ephemeral
+
 Buttons
 
 - Keep consistent sizing (e.g. `.btn_sm` / `.btn_xs`) and spacing.

@@ -247,6 +247,61 @@ When plan mode is active:
 
 ## Codestyle Rules
 
+## Storage Policy (Global vs. Profile-based)
+
+This policy applies to ALL pages and functions of the app.
+
+### Global / server-side state
+
+Store a state server-side if it changes the functional behavior or data scope and therefore must be identical across devices (e.g. iMac and iPhone).
+
+Examples:
+
+- source selection:
+  - `measurement`
+  - `field`
+  - `measurement_filter`
+  - `entity_id`
+  - `friendly_name`
+- time selection:
+  - `range`
+  - `start`
+  - `stop`
+- analysis-relevant values:
+  - selected outlier types
+  - effective analysis start value / oldest known point per series
+  - functional thresholds and limits
+- analogous functional selections on Statistics / Logs / Import / Export / Backup / Restore / Monitor / Jobs / History
+
+Rule:
+
+- If a value changes what data is queried, filtered, analyzed, imported, exported, restored, or processed, it belongs to the global/server-side state.
+
+### Profile-based UI state
+
+Store a state in the active UI profile if it changes only appearance, ergonomics, or layout and may intentionally differ between profiles like `PC` and `MOBIL`.
+
+Examples:
+
+- section open/closed state (`*_open`)
+- table heights
+- splitters / resize values
+- column widths
+- wrap / no-wrap
+- column visibility
+- popup sizes
+- font sizes / row density
+
+Rule:
+
+- If a value changes only how the UI looks or feels, but not what data is processed, it belongs to the UI profile.
+
+### Separation rule
+
+- Functional global state and profile-based UI state MUST remain technically separate.
+- Browser-local state must not override a server-side functional state.
+- UI profile state must not overwrite global functional selections.
+
 ### Repo Layout (important for HA)
 
 - `repository.yaml`: must stay in repo root for Home Assistant add-on repositories.
