@@ -302,6 +302,24 @@ Rule:
 - Browser-local state must not override a server-side functional state.
 - UI profile state must not overwrite global functional selections.
 
+### App-wide inventory (applies to all pages/functions)
+
+Dashboard
+- Global: source selection (`measurement`, `field`, `measurement_filter`, `entity_id`, `friendly_name`), time selection (`range`, `start`, `stop`), selected outlier types, effective analysis start value
+- Profile-based: section open states, table heights, resize/split values, popup/layout geometry
+
+Statistics
+- Global: source/time selection and functional stats filters
+- Profile-based: section open states, table/list geometry, wrap/column visibility/widths
+
+Logs
+- Global: functional query/filter state
+- Profile-based: visual list/table state and layout preferences
+
+Backup / Restore / Import / Export / Combine / Monitor / Jobs / History
+- Global: all functional selections and operation-relevant parameters
+- Profile-based: purely visual/open/layout state only
+
 ### Repo Layout (important for HA)
 
 - `repository.yaml`: must stay in repo root for Home Assistant add-on repositories.

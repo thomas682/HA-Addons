@@ -274,6 +274,104 @@ Recommended precedence:
 2. Profile-based UI state
 3. Temporary local/session-only helpers only when they are purely ephemeral
 
+### App-wide Inventory (What belongs where)
+
+This inventory applies to ALL pages/functions of the app.
+
+#### Dashboard
+
+Global / server-side:
+- `measurement`
+- `field`
+- `measurement_filter`
+- `entity_id`
+- `friendly_name`
+- `range`
+- `start`
+- `stop`
+- selected outlier types
+- persisted analysis start / oldest known point per series
+
+Profile-based:
+- `selection_open`
+- `analysis_open`
+- `raw_open`
+- `graph_open`
+- `filterlist_open`
+- raw/outlier table heights
+- raw/outlier resize values
+- graph height / splitter values
+- popup sizes / wrap / local display geometry
+
+#### Statistics
+
+Global / server-side:
+- active source selection
+- time range
+- functional statistics filters
+- selected stats mode / cache scope / job-related functional selections
+
+Profile-based:
+- section open/closed states
+- table height
+- wrap / column visibility / column widths
+- local popup/dialog sizes
+
+#### Logs
+
+Global / server-side:
+- functional filters that change what log data is queried
+
+Profile-based:
+- view/layout preferences
+- table/list geometry
+- open/closed states
+
+#### Backup / Restore
+
+Global / server-side:
+- selected backup source/target
+- restore selection
+- functional operation parameters
+
+Profile-based:
+- table height
+- popup/layout state
+- section open/closed state
+
+#### Import / Export / Combine
+
+Global / server-side:
+- source/target mapping
+- time range
+- transformation-relevant settings
+- operation mode selections
+
+Profile-based:
+- table/dialog geometry
+- open/closed sections
+- wrap / visibility / sizing
+
+#### Monitor / Jobs / History
+
+Global / server-side:
+- all functional monitor/job/history filters
+- persisted jobs / history / pending state
+
+Profile-based:
+- list height
+- open/closed states
+- UI visibility / local layout only
+
+#### Config / Profiles
+
+Global / server-side:
+- all real configuration values affecting runtime behavior
+
+Profile-based:
+- none of the functional config values themselves
+- only visual representation / local configuration-page layout may be profile-based
+
 Buttons
 
 - Keep consistent sizing (e.g. `.btn_sm` / `.btn_xs`) and spacing.
