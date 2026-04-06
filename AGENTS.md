@@ -305,18 +305,22 @@ Rule:
 ### App-wide inventory (applies to all pages/functions)
 
 Dashboard
+
 - Global: source selection (`measurement`, `field`, `measurement_filter`, `entity_id`, `friendly_name`), time selection (`range`, `start`, `stop`), selected outlier types, effective analysis start value
 - Profile-based: section open states, table heights, resize/split values, popup/layout geometry
 
 Statistics
+
 - Global: source/time selection and functional stats filters
 - Profile-based: section open states, table/list geometry, wrap/column visibility/widths
 
 Logs
+
 - Global: functional query/filter state
 - Profile-based: visual list/table state and layout preferences
 
 Backup / Restore / Import / Export / Combine / Monitor / Jobs / History
+
 - Global: all functional selections and operation-relevant parameters
 - Profile-based: purely visual/open/layout state only
 
@@ -566,6 +570,81 @@ from flask import Flask, jsonify, request
   - [ ] issue closed
 - The issue close step MUST happen only after the required repository completion flow for that issue is finished.
 - If the repository policy requires push to `main`, the issue must not be closed before that push succeeded.
+
+### GitHub Comment Execution Safety (CRITICAL)
+
+#### Core Rule
+
+When creating GitHub issue comments via CLI, the agent MUST ensure that the comment text is NOT interpreted by the shell.
+
+#### Mandatory Method (ALWAYS USE)
+
+The agent MUST:
+
+A. Write the full comment text into a temporary Markdown file using a HEREDOC with single-quoted EOF:
+
+```bash
+cat > /tmp/opencode_issue_comment.md <<'EOF'
+<full comment text including backticks, $, URLs, etc.>
+EOF
+```
+
+B. Post the comment using:
+
+```bash
+gh issue comment <ISSUE_NUMBER> --repo <OWNER>/<REPO> --body-file /tmp/opencode_issue_comment.md
+```
+
+#### Forbidden Patterns (STRICT)
+
+The agent MUST NOT use:
+
+```bash
+gh issue comment -b "..."
+```
+
+if the content contains any of:
+
+- backticks (`...`)
+- dollar signs ($...)
+- shell-like expressions
+- URLs with query parameters
+- file paths or commands
+
+Reason:
+
+- Backticks trigger command substitution in the shell
+- This leads to unintended command execution (e.g. "command not found")
+- Comment content becomes corrupted or partially executed
+
+#### Rationale
+
+Backticks inside double quotes are interpreted by the shell as commands:
+
+```bash
+`GET /api/app_state`
+```
+
+→ becomes command execution instead of literal text
+
+This MUST be prevented by using HEREDOC with <<'EOF'.
+
+#### Optional Post-Processing
+
+After posting the comment, the agent MAY:
+
+```bash
+gh issue edit <ISSUE_NUMBER> --repo <OWNER>/<REPO> --remove-label "status/in_progress" --add-label "status/done"
+gh issue close <ISSUE_NUMBER> --repo <OWNER>/<REPO>
+```
+
+### Completion Rule
+
+A GitHub issue comment is considered successfully created ONLY if:
+
+- the comment content is fully intact
+- no shell errors occurred during execution
+- no unintended commands were executed
 
 ### GitHub Issues: Proactive Prompting
 
