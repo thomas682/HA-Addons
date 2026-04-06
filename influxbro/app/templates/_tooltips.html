@@ -853,6 +853,29 @@
     wrapLbl.appendChild(wrapCb);
     wrapLbl.appendChild(wrapTxt);
 
+    const searchInput = document.createElement('input');
+    searchInput.id = 'influxbro_popup_search';
+    searchInput.placeholder = 'Volltextsuche...';
+    searchInput.style.height = '34px';
+    searchInput.style.padding = '8px 10px';
+    searchInput.style.minWidth = '180px';
+
+    const searchPrev = document.createElement('button');
+    searchPrev.id = 'influxbro_popup_search_prev';
+    searchPrev.type = 'button';
+    searchPrev.textContent = 'Zurueck';
+    searchPrev.style.cursor = 'pointer';
+    searchPrev.style.padding = '8px 10px';
+    searchPrev.style.height = '34px';
+
+    const searchNext = document.createElement('button');
+    searchNext.id = 'influxbro_popup_search_next';
+    searchNext.type = 'button';
+    searchNext.textContent = 'Weiter';
+    searchNext.style.cursor = 'pointer';
+    searchNext.style.padding = '8px 10px';
+    searchNext.style.height = '34px';
+
     const copyBtn = document.createElement('button');
     copyBtn.id = 'influxbro_popup_copy';
     copyBtn.type = 'button';
@@ -872,6 +895,9 @@
 
     left.appendChild(actionsWrap);
     left.appendChild(wrapLbl);
+    left.appendChild(searchInput);
+    left.appendChild(searchPrev);
+    left.appendChild(searchNext);
     left.appendChild(copyBtn);
     left.appendChild(copyHint);
     controls.appendChild(left);
@@ -1806,6 +1832,9 @@
       const refs = POPUP_REFS || {};
       const t = refs.title || document.getElementById('influxbro_popup_title');
       const pre = refs.pre || document.getElementById('influxbro_popup_pre');
+      const searchInput = document.getElementById('influxbro_popup_search');
+      const searchPrev = document.getElementById('influxbro_popup_search_prev');
+      const searchNext = document.getElementById('influxbro_popup_search_next');
       const meta = refs.meta || document.getElementById('influxbro_popup_meta');
       const settingsBtn = refs.settingsBtn || document.getElementById('influxbro_popup_settings');
       const copyBtn = refs.copyBtn || document.getElementById('influxbro_popup_copy');
@@ -1846,6 +1875,40 @@
       POPUP_SET_ACTIONS(opts && opts.actions ? opts.actions : []);
       try{ _applyPopupSize(title || 'Hinweis'); }catch(e){}
       try{ window.__InfluxBroPopupLast = { title: String(title || ''), msg: normalizedMsg }; }catch(e){}
+
+      try{
+        let marks = [];
+        let idx = -1;
+        function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+        function renderSearch(){
+          if(!pre) return;
+          const term = String(searchInput && searchInput.value ? searchInput.value : '').trim();
+          if(!term){
+            pre.innerHTML = esc(normalizedMsg);
+            marks = [];
+            idx = -1;
+            return;
+          }
+          const re = new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'ig');
+          pre.innerHTML = esc(normalizedMsg).replace(re, m => '<mark style="background:yellow;">' + esc(m) + '</mark>');
+          marks = Array.from(pre.querySelectorAll('mark'));
+          idx = marks.length ? 0 : -1;
+          jump(0);
+        }
+        function jump(delta){
+          if(!marks.length) return;
+          idx = (idx + delta + marks.length) % marks.length;
+          marks.forEach(m => m.style.outline = '');
+          const m = marks[idx];
+          if(m){
+            m.style.outline = '2px solid orange';
+            try{ m.scrollIntoView({block:'center', behavior:'smooth'}); }catch(e){}
+          }
+        }
+        if(searchInput){ searchInput.value = ''; searchInput.oninput = renderSearch; }
+        if(searchPrev) searchPrev.onclick = (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} jump(-1); };
+        if(searchNext) searchNext.onclick = (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} jump(1); };
+      }catch(e){}
       try{
         if(settingsBtn){
           if(opts && opts.settings){

@@ -1050,6 +1050,9 @@ const err = (msg) => {
   }
 };
 const ok = (msg) => { document.getElementById('ok').textContent = msg || ""; };
+const _setVal = (node, value) => { try{ if(node) node.value = value; }catch(e){} };
+const _setChecked = (node, value) => { try{ if(node) node.checked = !!value; }catch(e){} };
+const _isChecked = (node) => !!(node && node.checked);
 
 const ids = [
   "influx_yaml_path",
@@ -1415,11 +1418,11 @@ function setForm(cfg){
   el.ui_raw_center_max_points.value = cfg.ui_raw_center_max_points ?? 2000;
   el.ui_raw_center_range_default.value = cfg.ui_raw_center_range_default ?? 100;
   el.ui_raw_center_min_points.value = cfg.ui_raw_center_min_points ?? 10;
-  el.ui_raw_target_chunk_ms.value = cfg.ui_raw_target_chunk_ms ?? 5000;
-  el.ui_analysis_max_age_years.value = cfg.ui_analysis_max_age_years ?? 5;
-  el.ui_popup_pre_font_px.value = cfg.ui_popup_pre_font_px ?? 10;
-  el.ui_popup_history_font_px.value = cfg.ui_popup_history_font_px ?? 10;
-  el.ui_decimals.value = cfg.ui_decimals ?? 3;
+  _setVal(el.ui_raw_target_chunk_ms, cfg.ui_raw_target_chunk_ms ?? 5000);
+  _setVal(el.ui_analysis_max_age_years, cfg.ui_analysis_max_age_years ?? 5);
+  _setVal(el.ui_popup_pre_font_px, cfg.ui_popup_pre_font_px ?? 10);
+  _setVal(el.ui_popup_history_font_px, cfg.ui_popup_history_font_px ?? 10);
+  _setVal(el.ui_decimals, cfg.ui_decimals ?? 3);
 
   el.ui_font_size_px.value = cfg.ui_font_size_px ?? 14;
   el.ui_font_small_px.value = cfg.ui_font_small_px ?? 11;
@@ -1429,7 +1432,7 @@ function setForm(cfg){
   el.ui_page_search_highlight_duration_ms.value = cfg.ui_page_search_highlight_duration_ms ?? 1400;
   el.ui_status_font_px.value = cfg.ui_status_font_px ?? 12;
   el.ui_status_bar_height_px.value = cfg.ui_status_bar_height_px ?? 38;
-  el.ui_status_show_sysinfo.checked = !!cfg.ui_status_show_sysinfo;
+  _setChecked(el.ui_status_show_sysinfo, !!cfg.ui_status_show_sysinfo);
   el.ui_checkbox_scale.value = cfg.ui_checkbox_scale ?? 0.85;
   el.ui_section_title_bg.value = cfg.ui_section_title_bg ?? '#3287A8';
   el.ui_section_title_fg.value = cfg.ui_section_title_fg ?? '#FFFFFF';
@@ -1444,7 +1447,7 @@ function setForm(cfg){
   el.ui_sel_field_font_px.value = cfg.ui_sel_field_font_px ?? 13;
   el.ui_sel_label_font_px.value = cfg.ui_sel_label_font_px ?? 12;
   el.ui_sel_desc_font_px.value = cfg.ui_sel_desc_font_px ?? 11;
-  el.ui_sel_auto_width.checked = !!cfg.ui_sel_auto_width;
+  _setChecked(el.ui_sel_auto_width, !!cfg.ui_sel_auto_width);
   el.ui_sel_width_px.value = cfg.ui_sel_width_px ?? 260;
 
   el.jobs_max_runtime_seconds.value = cfg.jobs_max_runtime_seconds ?? 3600;
@@ -1459,12 +1462,12 @@ function setForm(cfg){
   el.backup_dir.value = cfg.backup_dir ?? "/config/influxbro/backup";
   el.backup_min_free_mb.value = cfg.backup_min_free_mb ?? 0;
 
-  el.ui_open_selection.checked = !!cfg.ui_open_selection;
-  el.ui_open_graph.checked = !!cfg.ui_open_graph;
-  el.ui_open_filterlist.checked = !!cfg.ui_open_filterlist;
-  el.ui_open_editlist.checked = !!cfg.ui_open_editlist;
-  el.ui_open_stats_total.checked = !!cfg.ui_open_stats_total;
-  el.ui_tooltips_enabled.checked = (cfg.ui_tooltips_enabled !== false);
+  _setChecked(el.ui_open_selection, !!cfg.ui_open_selection);
+  _setChecked(el.ui_open_graph, !!cfg.ui_open_graph);
+  _setChecked(el.ui_open_filterlist, !!cfg.ui_open_filterlist);
+  _setChecked(el.ui_open_editlist, !!cfg.ui_open_editlist);
+  _setChecked(el.ui_open_stats_total, !!cfg.ui_open_stats_total);
+  _setChecked(el.ui_tooltips_enabled, (cfg.ui_tooltips_enabled !== false));
 
   el.restore_preview_lines.value = (cfg.restore_preview_lines !== null && cfg.restore_preview_lines !== undefined) ? String(cfg.restore_preview_lines) : '5';
   el.import_measurement_transforms.value = cfg.import_measurement_transforms ?? '';
@@ -1472,28 +1475,28 @@ function setForm(cfg){
   _renderOutliersTable(_outlierRowsFromCfg(cfg || {}));
   prefillOutlierMeasurements(cfg || {}).catch(()=>{});
 
-  el.log_to_file.checked = (cfg.log_to_file !== false);
+  _setChecked(el.log_to_file, (cfg.log_to_file !== false));
   el.log_profile.value = String(cfg.log_profile ?? "debug");
   el.log_max_mb.value = cfg.log_max_mb ?? 5;
   el.log_backup_count.value = cfg.log_backup_count ?? 5;
   el.log_max_age_days.value = cfg.log_max_age_days ?? 14;
   el.bugreport_log_history_hours.value = cfg.bugreport_log_history_hours ?? 1;
-  el.log_http_requests.checked = !!cfg.log_http_requests;
-  el.log_influx_queries.checked = !!cfg.log_influx_queries;
-  el.log_cache_usage.checked = !!cfg.log_cache_usage;
+  _setChecked(el.log_http_requests, !!cfg.log_http_requests);
+  _setChecked(el.log_influx_queries, !!cfg.log_influx_queries);
+  _setChecked(el.log_cache_usage, !!cfg.log_cache_usage);
 
 
-  el.dash_cache_enabled.checked = (cfg.dash_cache_enabled !== false);
-  el.dash_cache_auto_update.checked = (cfg.dash_cache_auto_update !== false);
+  _setChecked(el.dash_cache_enabled, (cfg.dash_cache_enabled !== false));
+  _setChecked(el.dash_cache_auto_update, (cfg.dash_cache_auto_update !== false));
   el.dash_cache_refresh_mode.value = String(cfg.dash_cache_refresh_mode ?? 'hours');
   el.dash_cache_refresh_hours.value = cfg.dash_cache_refresh_hours ?? 6;
   el.dash_cache_refresh_daily_at.value = cfg.dash_cache_refresh_daily_at ?? '00:00:00';
   el.dash_cache_max_items.value = cfg.dash_cache_max_items ?? 40;
   el.dash_cache_max_mb.value = cfg.dash_cache_max_mb ?? 50;
-  el.dash_cache_update_on_use_if_stale.checked = (cfg.dash_cache_update_on_use_if_stale !== false);
+  _setChecked(el.dash_cache_update_on_use_if_stale, (cfg.dash_cache_update_on_use_if_stale !== false));
 
-  el.stats_cache_enabled.checked = (cfg.stats_cache_enabled !== false);
-  el.stats_cache_auto_update.checked = (cfg.stats_cache_auto_update !== false);
+  _setChecked(el.stats_cache_enabled, (cfg.stats_cache_enabled !== false));
+  _setChecked(el.stats_cache_auto_update, (cfg.stats_cache_auto_update !== false));
   el.stats_cache_refresh_mode.value = String(cfg.stats_cache_refresh_mode ?? 'daily');
   el.stats_cache_refresh_hours.value = cfg.stats_cache_refresh_hours ?? 24;
   el.stats_cache_refresh_daily_at.value = cfg.stats_cache_refresh_daily_at ?? '03:00:00';
@@ -1565,7 +1568,7 @@ function getForm(){
     ui_page_search_highlight_duration_ms: parseInt(el.ui_page_search_highlight_duration_ms.value, 10),
     ui_status_font_px: parseInt(el.ui_status_font_px.value, 10),
     ui_status_bar_height_px: parseInt(el.ui_status_bar_height_px.value, 10),
-    ui_status_show_sysinfo: !!el.ui_status_show_sysinfo.checked,
+    ui_status_show_sysinfo: _isChecked(el.ui_status_show_sysinfo),
     ui_checkbox_scale: parseFloat(el.ui_checkbox_scale.value),
     ui_section_title_bg: String(el.ui_section_title_bg.value || '').trim(),
     ui_section_title_fg: String(el.ui_section_title_fg.value || '').trim(),
@@ -1578,7 +1581,7 @@ function getForm(){
     ui_sel_field_font_px: parseInt(el.ui_sel_field_font_px.value, 10),
     ui_sel_label_font_px: parseInt(el.ui_sel_label_font_px.value, 10),
     ui_sel_desc_font_px: parseInt(el.ui_sel_desc_font_px.value, 10),
-    ui_sel_auto_width: !!el.ui_sel_auto_width.checked,
+    ui_sel_auto_width: _isChecked(el.ui_sel_auto_width),
     ui_sel_width_px: parseInt(el.ui_sel_width_px.value, 10),
 
     jobs_max_runtime_seconds: parseInt(el.jobs_max_runtime_seconds.value, 10),
@@ -1593,12 +1596,12 @@ function getForm(){
     backup_dir: (el.backup_dir.value || "").trim(),
     backup_min_free_mb: parseInt(el.backup_min_free_mb.value, 10),
 
-    ui_open_selection: !!el.ui_open_selection.checked,
-    ui_open_graph: !!el.ui_open_graph.checked,
-    ui_open_filterlist: !!el.ui_open_filterlist.checked,
-    ui_open_editlist: !!el.ui_open_editlist.checked,
-    ui_open_stats_total: !!el.ui_open_stats_total.checked,
-    ui_tooltips_enabled: !!el.ui_tooltips_enabled.checked,
+    ui_open_selection: _isChecked(el.ui_open_selection),
+    ui_open_graph: _isChecked(el.ui_open_graph),
+    ui_open_filterlist: _isChecked(el.ui_open_filterlist),
+    ui_open_editlist: _isChecked(el.ui_open_editlist),
+    ui_open_stats_total: _isChecked(el.ui_open_stats_total),
+    ui_tooltips_enabled: _isChecked(el.ui_tooltips_enabled),
 
     restore_preview_lines: Number(el.restore_preview_lines.value || 5),
     import_measurement_transforms: String(el.import_measurement_transforms.value || ''),
@@ -1609,28 +1612,28 @@ function getForm(){
     outlier_max_step_kwh: Number(outlierCfg.outlier_max_step_kwh),
     outlier_max_step_units: String(outlierCfg.outlier_max_step_units || ""),
 
-    log_to_file: !!el.log_to_file.checked,
+    log_to_file: _isChecked(el.log_to_file),
     log_profile: String(el.log_profile.value || "debug"),
     log_max_mb: parseInt(el.log_max_mb.value, 10),
     log_backup_count: parseInt(el.log_backup_count.value, 10),
     log_max_age_days: parseInt(el.log_max_age_days.value, 10),
     bugreport_log_history_hours: parseInt(el.bugreport_log_history_hours.value, 10),
-    log_http_requests: !!el.log_http_requests.checked,
-    log_influx_queries: !!el.log_influx_queries.checked,
-    log_cache_usage: !!el.log_cache_usage.checked,
+    log_http_requests: _isChecked(el.log_http_requests),
+    log_influx_queries: _isChecked(el.log_influx_queries),
+    log_cache_usage: _isChecked(el.log_cache_usage),
 
 
-    dash_cache_enabled: !!el.dash_cache_enabled.checked,
-    dash_cache_auto_update: !!el.dash_cache_auto_update.checked,
+    dash_cache_enabled: _isChecked(el.dash_cache_enabled),
+    dash_cache_auto_update: _isChecked(el.dash_cache_auto_update),
     dash_cache_refresh_mode: String(el.dash_cache_refresh_mode.value || 'hours'),
     dash_cache_refresh_hours: parseInt(el.dash_cache_refresh_hours.value, 10),
     dash_cache_refresh_daily_at: String(el.dash_cache_refresh_daily_at.value || '00:00:00').trim(),
     dash_cache_max_items: parseInt(el.dash_cache_max_items.value, 10),
     dash_cache_max_mb: parseInt(el.dash_cache_max_mb.value, 10),
-    dash_cache_update_on_use_if_stale: !!el.dash_cache_update_on_use_if_stale.checked,
+    dash_cache_update_on_use_if_stale: _isChecked(el.dash_cache_update_on_use_if_stale),
 
-    stats_cache_enabled: !!el.stats_cache_enabled.checked,
-    stats_cache_auto_update: !!el.stats_cache_auto_update.checked,
+    stats_cache_enabled: _isChecked(el.stats_cache_enabled),
+    stats_cache_auto_update: _isChecked(el.stats_cache_auto_update),
     stats_cache_refresh_mode: String(el.stats_cache_refresh_mode.value || 'daily'),
     stats_cache_refresh_hours: parseInt(el.stats_cache_refresh_hours.value, 10),
     stats_cache_refresh_daily_at: String(el.stats_cache_refresh_daily_at.value || '03:00:00').trim(),
@@ -1924,7 +1927,7 @@ try{
     backBtn.className = 'ib_cfg_back_icon';
     backBtn.title = 'Zurück zum Dashboard';
     backBtn.setAttribute('aria-label', 'Zurück zum Dashboard');
-    backBtn.innerHTML = '<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" fill="#000000" width="16" height="16"><polyline points="112 352 48 288 112 224" style="fill:none;stroke:#000000;stroke-linecap:round;stroke-linejoin:round;stroke-width:32px"></polyline><path d="M64,288H358c58.76,0,106-49.33,106-108V160" style="fill:none;stroke:#000000;stroke-linecap:round;stroke-linejoin:round;stroke-width:32px"></path></svg>';
+    backBtn.innerHTML = '<svg viewBox="0 0 21 21" xmlns="http://www.w3.org/2000/svg" fill="#000000" width="16" height="16"><g fill="none" fill-rule="evenodd" stroke="#000000" stroke-linecap="round" stroke-linejoin="round" transform="translate(4.5 6.5)"><path d="m11 8v-2c0-1.65685425-1.34314575-3-3-3h-8"></path><path d="m3 6-3.001-3 3.001-3"></path></g></svg>';
     backBtn.addEventListener('click', (ev)=>{
       try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
       try{ location.href = './'; }catch(e){}

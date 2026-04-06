@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.12.247
+
+### Enhancement
+
+- Diagnose (`dbinfo`): `Aktualisieren` und `Query testen` jetzt optisch gleich groß und sauber nebeneinander.
+- Handbuch: fehlerhaften Bildpfad für die Übersicht korrigiert.
+- `influxbro_profile_modal`: Text jetzt mit 10px (über bestehende Popup-Textgröße steuerbar) und zusätzlicher Checkbox `Zeilenumbruch`.
+- `influxbro_popup_card`: Volltextsuche mit Vor/Zurück und gelber Markierung ergänzt.
+- Logs-Seite: zweite Textsuche mit Vor/Zurück und gelber Markierung ergänzt.
+- Einstellungsseite: `TypeError` durch fehlende Checkbox-Elemente mit null-sicherem Lesen/Schreiben abgefangen.
+- Einstellungs-Back-Button verwendet jetzt das gewünschte neue Icon.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.246
 
 ### Enhancement

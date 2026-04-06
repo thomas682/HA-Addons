@@ -190,6 +190,14 @@
             <button type="button" class="ib_clear_btn" data-clear-for="q" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
           </div>
         </div>
+        <div style="flex:1; min-width: 220px;">
+          <label>Markieren</label>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <input id="q_mark" placeholder="Text markieren..." data-ui="logs.search_mark" title="logs.search_mark" />
+            <button id="q_mark_prev" type="button" data-ui="logs.search_mark_prev" title="logs.search_mark_prev">Zurueck</button>
+            <button id="q_mark_next" type="button" data-ui="logs.search_mark_next" title="logs.search_mark_next">Weiter</button>
+          </div>
+        </div>
       </div>
 
       <div id="err" class="err"></div>
@@ -220,6 +228,9 @@
       const $debugReport = document.getElementById('debug_report');
       const $wrap = document.getElementById('wrap');
       const $q = document.getElementById('q');
+      const $qMark = document.getElementById('q_mark');
+      const $qMarkPrev = document.getElementById('q_mark_prev');
+      const $qMarkNext = document.getElementById('q_mark_next');
       const $err = document.getElementById('err');
       const $logbox = document.getElementById('logbox');
       const $logpre = document.getElementById('logpre');
@@ -227,6 +238,8 @@
       let FOLLOW = true;
       let RAW = "";
       let TIMER = null;
+      let MARKS = [];
+      let MARK_IDX = -1;
 
       const LS_VIEW = "influxbro_logs_view_profile_v1";
 
@@ -260,6 +273,29 @@
       }
       function jumpNewest(){
         try{ if($logbox) $logbox.scrollTop = ($logbox.scrollHeight || 0); }catch(e){}
+      }
+
+      function applyMarkSearch(){
+        MARKS = [];
+        MARK_IDX = -1;
+        if(!$qMark || !$logpre) return;
+        const term = String($qMark.value || '').trim();
+        if(!term) return;
+        const re = new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'ig');
+        $logpre.innerHTML = String($logpre.innerHTML || '').replace(re, m => `<mark style="background:yellow;">${m}</mark>`);
+        MARKS = Array.from($logpre.querySelectorAll('mark'));
+        if(MARKS.length){ MARK_IDX = 0; jumpMark(0); }
+      }
+
+      function jumpMark(delta){
+        if(!MARKS.length) return;
+        MARK_IDX = (MARK_IDX + delta + MARKS.length) % MARKS.length;
+        MARKS.forEach(m => m.style.outline = '');
+        const m = MARKS[MARK_IDX];
+        if(m){
+          m.style.outline = '2px solid orange';
+          try{ m.scrollIntoView({block:'center', behavior:'smooth'}); }catch(e){}
+        }
       }
 
       function applySearch(){
@@ -305,6 +341,7 @@
             return esc;
           }).join("\n");
           $logpre.innerHTML = html;
+          applyMarkSearch();
           return;
         }
         const searched = filtered.filter(l => String(l||"").toLowerCase().includes(t));
@@ -315,6 +352,7 @@
           return esc;
         }).join("\n");
         $logpre.innerHTML = html;
+        applyMarkSearch();
       }
 
       async function setServerProfile(p){
@@ -623,6 +661,9 @@
       $follow.addEventListener('change', ()=>setFollow(!!($follow && $follow.checked)));
       $wrap.addEventListener('change', ()=>{ applyWrap(); });
       $q.addEventListener('input', ()=>applySearch());
+      if($qMark) $qMark.addEventListener('input', ()=>applySearch());
+      if($qMarkPrev) $qMarkPrev.addEventListener('click', ()=>jumpMark(-1));
+      if($qMarkNext) $qMarkNext.addEventListener('click', ()=>jumpMark(1));
       $clear.addEventListener('click', ()=>{ RAW = ""; $logpre.innerHTML = ""; err(""); });
       $copy.addEventListener('click', async ()=>{
         try{ 

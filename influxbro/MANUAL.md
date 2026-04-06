@@ -14,7 +14,7 @@ Aktuelle UI (Beispiele):
 
 ### Uebersicht (Dashboard)
 
-![InfluxBro Uebersicht](<images/InlfuxBro Übersicht.png>)
+![InfluxBro Uebersicht](images/uebersicht.png)
 
 ### Einstellungen
 

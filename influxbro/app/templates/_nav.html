@@ -723,6 +723,20 @@
       cnt.style.fontSize = '12px';
       cnt.style.opacity = '0.75';
 
+      const wrapLbl = document.createElement('label');
+      wrapLbl.style.display = 'flex';
+      wrapLbl.style.gap = '6px';
+      wrapLbl.style.alignItems = 'center';
+      wrapLbl.style.fontSize = '12px';
+      const wrapChk = document.createElement('input');
+      wrapChk.type = 'checkbox';
+      wrapChk.id = 'influxbro_profile_modal_wrap';
+      wrapChk.checked = true;
+      const wrapTxt = document.createElement('span');
+      wrapTxt.textContent = 'Zeilenumbruch';
+      wrapLbl.appendChild(wrapChk);
+      wrapLbl.appendChild(wrapTxt);
+
       const prev = document.createElement('button');
       prev.id = 'influxbro_profile_modal_prev';
       prev.textContent = 'Zurueck';
@@ -737,6 +751,7 @@
 
       tools.appendChild(q);
       tools.appendChild(cnt);
+      tools.appendChild(wrapLbl);
       tools.appendChild(prev);
       tools.appendChild(next);
 
@@ -744,6 +759,7 @@
       pre.id = 'influxbro_profile_modal_pre';
       pre.style.marginTop = '10px';
       pre.style.padding = '10px 12px';
+      pre.style.fontSize = '{{ (cfg.get("ui_popup_pre_font_px") or 10) | int }}px';
       pre.style.border = '1px solid #eee';
       pre.style.borderRadius = '12px';
       pre.style.background = '#fafafa';
@@ -773,6 +789,7 @@
       const $pre = document.getElementById('influxbro_profile_modal_pre');
       const $prev = document.getElementById('influxbro_profile_modal_prev');
       const $next = document.getElementById('influxbro_profile_modal_next');
+      const $wrap = document.getElementById('influxbro_profile_modal_wrap');
       if($t) $t.textContent = 'Profil: ' + String(label || '');
 
       const lines = [];
@@ -786,6 +803,12 @@
       function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
       function render(){
         const term = String($q && $q.value ? $q.value : '').toLowerCase();
+        try{
+          if($wrap && $pre){
+            $pre.style.whiteSpace = $wrap.checked ? 'pre-wrap' : 'pre';
+            $pre.style.overflowWrap = $wrap.checked ? 'anywhere' : 'normal';
+          }
+        }catch(e){}
         if(!term){
           $pre.innerHTML = esc(raw);
           marks = [];
@@ -817,6 +840,7 @@
       if($prev) $prev.onclick = (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}; jump(-1); };
       if($next) $next.onclick = (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}; jump(1); };
       if($q) $q.oninput = ()=>render();
+      if($wrap) $wrap.onchange = ()=>render();
 
       if($q) $q.value = '';
       $pre.textContent = raw;
