@@ -1929,13 +1929,9 @@ try{
       try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
       try{ location.href = './'; }catch(e){}
     });
-    const infoBtn = row.querySelector('.ib_info_icon');
-    if(infoBtn){
-      row.insertBefore(backBtn, infoBtn);
-    }else{
-      row.appendChild(backBtn);
-    }
+    row.appendChild(backBtn);
   });
+  try{ if(window.InfluxBroNormalizeSummaryActions) window.InfluxBroNormalizeSummaryActions(); }catch(e){}
 }catch(e){}
 </script>
 

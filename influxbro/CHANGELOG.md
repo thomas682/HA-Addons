@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.12.241
+
+### Enhancement
+
+- Section-Header wurden accessibility-freundlich umgestellt: interaktive Buttons werden nun außerhalb von `<summary>` in einem separaten Action-Container gerendert.
+- Gilt appweit für Info-, Settings- und Back-Buttons in Section-Headers.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Playwright: `tests/e2e/dashboard-analysis.spec.js` 4/4 bestanden
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.240
 
 ### Fix
