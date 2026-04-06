@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.12.239
+
+### Enhancement
+
+- Dashboard-Auswahl wird jetzt serverseitig/global unter `dashboard_selection` gespeichert und wiederhergestellt.
+- Fachliche Dashboard-Zustände (`measurement`, `field`, `measurement_filter`, `entity_id`, `friendly_name`, `range`, `start`, `stop`, `raw_outlier_types`) sind damit nicht mehr nur browserlokal.
+- Neue App-State-API: `GET /api/app_state`, `POST /api/app_state/set`.
+- Dashboard lädt globale Auswahl beim Start und schreibt Auswahländerungen direkt serverseitig weg.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Playwright: `tests/e2e/dashboard-analysis.spec.js` 4/4 bestanden
+- API: `/api/app_state` lokal verifiziert
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.238
 
 ### Fix

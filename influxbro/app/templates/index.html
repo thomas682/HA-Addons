@@ -1344,6 +1344,36 @@ function loadState(){
   }
 }
 
+async function loadGlobalDashboardSelection(){
+  try{
+    const j = await api('./api/app_state?scope=dashboard_selection', null, {silent:true});
+    return (j && j.state && typeof j.state === 'object') ? j.state : {};
+  }catch(e){
+    return {};
+  }
+}
+
+async function saveGlobalDashboardSelection(){
+  try{
+    const state = {
+      measurement: $m ? String($m.value || '') : '',
+      field: $f ? String($f.value || '') : '',
+      measurement_filter: $mf ? String($mf.value || '') : '',
+      friendly_name: $n ? String($n.value || '') : '',
+      entity_id: $e ? String($e.value || '') : '',
+      range: $r ? String($r.value || '24h') : '24h',
+      start: $start ? String($start.value || '') : '',
+      stop: $stop ? String($stop.value || '') : '',
+      raw_outlier_types: getRawOutlierFilterTypes(),
+    };
+    await api('./api/app_state/set', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({scope:'dashboard_selection', state})
+    }, {silent:true});
+  }catch(e){}
+}
+
 function _updateGraphDetailUi(){
   try{
     const mode = $graphDetailMode ? String($graphDetailMode.value || 'dynamic') : 'dynamic';
@@ -1695,14 +1725,6 @@ function _applyOverlays(){
 function saveState(){
   try{
     const j = {
-      measurement: $m ? String($m.value || "") : "",
-      field: $f ? String($f.value || "") : "",
-      measurement_filter: $mf ? $mf.value : "",
-      friendly_name: $n ? $n.value : "",
-      entity_id: $e ? $e.value : "",
-      range: $r ? $r.value : "24h",
-      start: $start ? $start.value : "",
-      stop: $stop ? $stop.value : "",
       scan_preset: $scanPreset ? $scanPreset.value : "counter",
       out_min: $outMin ? $outMin.value : "",
       out_max: $outMax ? $outMax.value : "",
@@ -1733,7 +1755,6 @@ function saveState(){
       raw_center_range: RAW_CENTER_RANGE,
       raw_outlier_context_rows: RAW_OUTLIER_CONTEXT_ROWS,
       raw_outlier_visible_rows: RAW_OUTLIER_VISIBLE_ROWS,
-      raw_outlier_types: getRawOutlierFilterTypes(),
     };
     localStorage.setItem(LS_KEY, JSON.stringify(j));
   }catch(e){}
@@ -5327,6 +5348,7 @@ function saveAnalysisTypes(){
       unselected: ANALYSIS_UNSELECTED_TYPES,
     }));
   }catch(e){}
+  try{ saveGlobalDashboardSelection().catch(()=>{}); }catch(e){}
 }
 
 function getRawOutlierFilterTypes(){
@@ -8439,10 +8461,12 @@ $f?.addEventListener("input", ()=>{
   _debRefreshDashboardSrc();
   _updateAnalysisStatus();
   refreshAnalysisStartInfo().catch(()=>{});
+  saveGlobalDashboardSelection().catch(()=>{});
 });
 $f?.addEventListener("change", ()=>{
   _updateAnalysisStatus();
   refreshAnalysisStartInfo().catch(()=>{});
+  saveGlobalDashboardSelection().catch(()=>{});
 });
 
 $mf?.addEventListener("input", ()=>{
@@ -8450,39 +8474,45 @@ $mf?.addEventListener("input", ()=>{
   _debRefreshDashboardSrc();
   _updateAnalysisStatus();
   refreshAnalysisStartInfo().catch(()=>{});
+  saveGlobalDashboardSelection().catch(()=>{});
 });
 $mf?.addEventListener("change", ()=>{
   triggerDashboardMeasurementRefresh().catch((e)=>{ console.warn('Measurement refresh failed:', e); });
   _updateAnalysisStatus();
   refreshAnalysisStartInfo().catch(()=>{});
+  saveGlobalDashboardSelection().catch(()=>{});
 });
-$mf?.addEventListener("blur", ()=>{ triggerDashboardMeasurementRefresh().catch((e)=>{ console.warn('Measurement refresh failed:', e); }); _updateAnalysisStatus(); refreshAnalysisStartInfo().catch(()=>{}); });
+$mf?.addEventListener("blur", ()=>{ triggerDashboardMeasurementRefresh().catch((e)=>{ console.warn('Measurement refresh failed:', e); }); _updateAnalysisStatus(); refreshAnalysisStartInfo().catch(()=>{}); saveGlobalDashboardSelection().catch(()=>{}); });
 
 $n?.addEventListener("input", ()=>{
   triggerDashboardTagRefresh().catch((e)=>{ console.warn('Tag refresh failed:', e); });
   _debRefreshDashboardSrc();
   _updateAnalysisStatus();
   refreshAnalysisStartInfo().catch(()=>{});
+  saveGlobalDashboardSelection().catch(()=>{});
 });
 $n?.addEventListener("change", ()=>{
   triggerDashboardTagRefresh().catch((e)=>{ console.warn('Tag refresh failed:', e); });
   _updateAnalysisStatus();
   refreshAnalysisStartInfo().catch(()=>{});
+  saveGlobalDashboardSelection().catch(()=>{});
 });
-$n?.addEventListener("blur", ()=>{ triggerDashboardTagRefresh().catch((e)=>{ console.warn('Tag refresh failed:', e); }); _updateAnalysisStatus(); refreshAnalysisStartInfo().catch(()=>{}); });
+$n?.addEventListener("blur", ()=>{ triggerDashboardTagRefresh().catch((e)=>{ console.warn('Tag refresh failed:', e); }); _updateAnalysisStatus(); refreshAnalysisStartInfo().catch(()=>{}); saveGlobalDashboardSelection().catch(()=>{}); });
 
 $e?.addEventListener("input", ()=>{
   triggerDashboardTagRefresh().catch((e)=>{ console.warn('Tag refresh failed:', e); });
   _debRefreshDashboardSrc();
   _updateAnalysisStatus();
   refreshAnalysisStartInfo().catch(()=>{});
+  saveGlobalDashboardSelection().catch(()=>{});
 });
 $e?.addEventListener("change", ()=>{
   triggerDashboardTagRefresh().catch((e)=>{ console.warn('Tag refresh failed:', e); });
   _updateAnalysisStatus();
   refreshAnalysisStartInfo().catch(()=>{});
+  saveGlobalDashboardSelection().catch(()=>{});
 });
-$e?.addEventListener("blur", ()=>{ triggerDashboardTagRefresh().catch((e)=>{ console.warn('Tag refresh failed:', e); }); _updateAnalysisStatus(); refreshAnalysisStartInfo().catch(()=>{}); });
+$e?.addEventListener("blur", ()=>{ triggerDashboardTagRefresh().catch((e)=>{ console.warn('Tag refresh failed:', e); }); _updateAnalysisStatus(); refreshAnalysisStartInfo().catch(()=>{}); saveGlobalDashboardSelection().catch(()=>{}); });
 
 if($btnReset) $btnReset.addEventListener("click", (ev)=>{ _stop(ev); resetFiltersKeepRange().catch(()=>{}); });
 
@@ -8495,11 +8525,12 @@ $r?.addEventListener("change", async ()=>{
     renderRangeFromTo();
     _updateAnalysisStatus();
     refreshAnalysisStartInfo().catch(()=>{});
+    saveGlobalDashboardSelection().catch(()=>{});
   }catch(e){ displayError(e); }
 });
 
-$start?.addEventListener("change", async ()=>{ if($r?.value==="custom") { saveState(); autoSpanAll(); renderTableRange(); renderRangeFromTo(); } });
-$stop?.addEventListener("change", async ()=>{ if($r?.value==="custom") { saveState(); autoSpanAll(); renderTableRange(); renderRangeFromTo(); } });
+$start?.addEventListener("change", async ()=>{ if($r?.value==="custom") { saveState(); autoSpanAll(); renderTableRange(); renderRangeFromTo(); saveGlobalDashboardSelection().catch(()=>{}); } });
+$stop?.addEventListener("change", async ()=>{ if($r?.value==="custom") { saveState(); autoSpanAll(); renderTableRange(); renderRangeFromTo(); saveGlobalDashboardSelection().catch(()=>{}); } });
 
 // Search inputs (case-insensitive filtering)
 // (search inputs removed; datalist inputs filter automatically)
@@ -8917,9 +8948,10 @@ try{
     }
 
     const st = loadState();
-    if($r && st.range) $r.value = st.range;
-    if($start && st.start) $start.value = st.start;
-    if($stop && st.stop) $stop.value = st.stop;
+    const globalSel = await loadGlobalDashboardSelection();
+    if($r && globalSel.range) $r.value = globalSel.range;
+    if($start && globalSel.start) $start.value = globalSel.start;
+    if($stop && globalSel.stop) $stop.value = globalSel.stop;
     try{ if($analysisSection && st.analysis_open !== undefined) $analysisSection.open = !!st.analysis_open; }catch(e){}
     $custom.style.display = ($r.value === "custom") ? "block" : "none";
     // Render range display after restoring state
@@ -8987,9 +9019,10 @@ try{
       RAW_OUTLIER_VISIBLE_ROWS = (st.raw_outlier_visible_rows !== undefined) ? Math.max(5, Math.min(500, Number(st.raw_outlier_visible_rows))) : RAW_OUTLIER_VISIBLE_ROWS;
       try{ const box = document.getElementById('raw_outlier_overview'); if(box) box.style.setProperty('--max-rows', String(RAW_OUTLIER_VISIBLE_ROWS)); }catch(e){}
 
-      // Restore selected analysis types
-      if(st.raw_outlier_types && Array.isArray(st.raw_outlier_types)){
-        ANALYSIS_SELECTED_TYPES = st.raw_outlier_types.slice();
+      // Restore selected analysis types (prefer global selection state if present)
+      const savedTypes = (globalSel.raw_outlier_types && Array.isArray(globalSel.raw_outlier_types)) ? globalSel.raw_outlier_types : (st.raw_outlier_types && Array.isArray(st.raw_outlier_types) ? st.raw_outlier_types : null);
+      if(savedTypes){
+        ANALYSIS_SELECTED_TYPES = savedTypes.slice();
         ANALYSIS_UNSELECTED_TYPES = ALL_OUTLIER_TYPES.map(t=>t.value).filter(v => !ANALYSIS_SELECTED_TYPES.includes(v));
       }
     }catch(e){}
@@ -9010,12 +9043,12 @@ try{
     await loadMeasurements({silent: true});
 
     // Restore stored selection early so list loads can narrow correctly.
-    if(st.measurement_filter){ if($mf) $mf.value = String(st.measurement_filter); }
-    else if(st.measurement){ if($mf) $mf.value = String(st.measurement); }
-    if(st.field) ensureOption($f, st.field);
-    if(st.field) $f.value = String(st.field);
-    if(st.friendly_name) $n.value = st.friendly_name;
-    if(st.entity_id) $e.value = st.entity_id;
+    if(globalSel.measurement_filter){ if($mf) $mf.value = String(globalSel.measurement_filter); }
+    else if(globalSel.measurement){ if($mf) $mf.value = String(globalSel.measurement); }
+    if(globalSel.field) ensureOption($f, globalSel.field);
+    if(globalSel.field) $f.value = String(globalSel.field);
+    if(globalSel.friendly_name) $n.value = globalSel.friendly_name;
+    if(globalSel.entity_id) $e.value = globalSel.entity_id;
     await loadDashboardFields(String(($mf && $mf.value) || '').trim(), {silent: true});
     await refreshDashboardSuggestions({silent: true});
     saveState();

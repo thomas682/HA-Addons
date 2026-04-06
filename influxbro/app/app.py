@@ -87,6 +87,9 @@ INFLUX_PING_CACHE: dict[str, Any] = {}
 UI_STATE_LOCK = threading.RLock()
 UI_STATE_PATH = DATA_DIR / "influxbro_ui_state.json"
 
+APP_STATE_LOCK = threading.RLock()
+APP_STATE_PATH = DATA_DIR / "influxbro_app_state.json"
+
 # UI profiles (file-based; global active profile)
 UI_PROFILES_LOCK = threading.RLock()
 UI_PROFILES_DIR = DATA_DIR / "ui_profiles"
@@ -1130,6 +1133,30 @@ def _ui_state_save(state: dict[str, str]) -> None:
         DATA_DIR.mkdir(parents=True, exist_ok=True)
         with UI_STATE_LOCK:
             UI_STATE_PATH.write_text(
+                json.dumps(state or {}, indent=2, sort_keys=True, ensure_ascii=True),
+                encoding="utf-8",
+            )
+    except Exception:
+        return
+
+
+def _app_state_load() -> dict[str, Any]:
+    try:
+        if not APP_STATE_PATH.exists():
+            return {}
+        with APP_STATE_LOCK:
+            raw = APP_STATE_PATH.read_text(encoding="utf-8", errors="replace")
+        j = json.loads(raw) if raw else {}
+        return j if isinstance(j, dict) else {}
+    except Exception:
+        return {}
+
+
+def _app_state_save(state: dict[str, Any]) -> None:
+    try:
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        with APP_STATE_LOCK:
+            APP_STATE_PATH.write_text(
                 json.dumps(state or {}, indent=2, sort_keys=True, ensure_ascii=True),
                 encoding="utf-8",
             )
@@ -15880,6 +15907,31 @@ def api_ui_state_prune():
     if to_del:
         _ui_state_save(st)
     return jsonify({"ok": True, "deleted": len(to_del), "prefix": prefix})
+
+
+@app.get("/api/app_state")
+def api_app_state_get():
+    scope = str(request.args.get("scope") or "").strip()
+    st = _app_state_load()
+    if not scope:
+        return jsonify({"ok": True, "state": st})
+    val = st.get(scope) if isinstance(st, dict) else None
+    return jsonify({"ok": True, "scope": scope, "state": val if isinstance(val, dict) else {}})
+
+
+@app.post("/api/app_state/set")
+def api_app_state_set():
+    body = request.get_json(force=True) or {}
+    scope = str(body.get("scope") or "").strip()
+    state = body.get("state") if isinstance(body.get("state"), dict) else None
+    if not scope:
+        return jsonify({"ok": False, "error": "scope required"}), 400
+    if state is None:
+        return jsonify({"ok": False, "error": "state must be an object"}), 400
+    st = _app_state_load()
+    st[scope] = state
+    _app_state_save(st)
+    return jsonify({"ok": True, "scope": scope})
 
 
 @app.get("/api/ui_profiles")

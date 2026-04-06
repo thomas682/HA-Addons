@@ -703,13 +703,89 @@ Reporting:
 
 ## Build / Run / Lint / Test
 
-### Build the add-on image
+### Test Rules
 
-From repo root:
+#### Robust Local Start / Healthcheck (REQUIRED)
+
+When starting a local server (Flask or similar), the agent MUST:
+
+- NOT rely on fixed short sleep (e.g. `sleep 2` / `sleep 4`)
+- ALWAYS verify readiness via API endpoint
+
+##### Readiness Rule
+
+A service is considered READY only if:
+
+- the health endpoint responds successfully
+- AND returns valid JSON
+
+Port listening alone is NOT sufficient.
+
+##### Required Health Endpoint
+
+- <http://127.0.0.1:8099/api/info>
+
+##### Mandatory Readiness Loop
+
+The agent MUST use a retry loop:
 
 ```bash
-docker build -t influxbro:dev ./influxbro
+ready=0
+for i in {1..20}; do
+  if curl -fsS http://127.0.0.1:8099/api/info >/tmp/influxbro_info.json 2>/dev/null; then
+    python3 - <<'PY'
+import json
+from pathlib import Path
+
+data = json.loads(Path("/tmp/influxbro_info.json").read_text())
+print(data.get("version", "unknown"))
+PY
+    echo "Service ready"
+    ready=1
+    break
+  fi
+  echo "Waiting for local service... ($i/20)"
+  sleep 1
+done
 ```
+
+##### Failure Handling
+
+If the service is NOT ready after retries, the agent MUST:
+
+- inspect `/tmp/influxbro_local.log`
+- check whether the process still exists
+- check whether port `8099` is listening
+- classify the failure as one of:
+  - startup delay
+  - app crash
+  - bind/port problem
+  - health endpoint failure
+
+If readiness cannot be confirmed, the agent MUST treat this as a blocker and MUST NOT continue as if the app were running.
+
+##### Forbidden Pattern
+
+The agent MUST NOT use a fixed short sleep as the sole readiness check, for example:
+
+```bash
+nohup python influxbro/app/app.py >/tmp/influxbro_local.log 2>&1 & sleep 4 && curl -fsS http://127.0.0.1:8099/api/info
+```
+
+Reason:
+
+- fixed sleep is unreliable
+- the app may still be starting
+- a single early failed curl can incorrectly stop the workflow
+
+##### Completion Rule
+
+The local start step is only complete if:
+
+- the app process was started
+- the health endpoint responded successfully
+- the response was validated as JSON
+- the agent explicitly reports readiness before continuing
 
 ### Run locally (Docker)
 
