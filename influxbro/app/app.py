@@ -17405,7 +17405,7 @@ from(bucket: "{cfg["bucket"]}")
 
             t = rec.get_time()
             v = rec.get_value()
-            iso = _dt_to_rfc3339_utc(t) if isinstance(t, datetime) else None
+            iso = _dt_to_rfc3339_utc_ms(t) if isinstance(t, datetime) else None
             if iso:
                 last_time_iso = iso
 
@@ -17760,7 +17760,7 @@ from(bucket: "{cfg["bucket"]}")
 
             t = rec.get_time()
             v = rec.get_value()
-            iso = _dt_to_rfc3339_utc(t) if isinstance(t, datetime) else None
+            iso = _dt_to_rfc3339_utc_ms(t) if isinstance(t, datetime) else None
             if iso:
                 last_time_iso = iso
 

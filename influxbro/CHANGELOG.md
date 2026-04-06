@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.12.253
+
+### Fix
+
+- Die Dashboard-Ausreissertabelle behaelt jetzt die echten Millisekunden aus `api/outlier_search`, statt Zeitstempel immer auf volle Sekunden zu runden.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tests: `pytest tests/test_api_outlier_search.py -q`
+- Tests: `pytest tests/test_api_ui_support.py -q -k "raw_outlier_table_uses_template_structure_and_helpers or raw_and_outlier_tables_share_same_font_size_rule or dashboard_outlier_section_is_separate_and_above_raw_section"`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.252
 
 ### Enhancement
