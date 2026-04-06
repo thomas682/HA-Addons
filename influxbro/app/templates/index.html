@@ -164,7 +164,11 @@
 
     /* Raw tables: same monospace styling for stable digit widths. */
     #raw_tbl, #raw_tbl th, #raw_tbl td,
-    #raw_outlier_tbl, #raw_outlier_tbl th, #raw_outlier_tbl td { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    #raw_outlier_tbl, #raw_outlier_tbl th, #raw_outlier_tbl td {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: var(--ui-font-small) !important;
+      line-height: var(--ui-table-line-height, 1.2);
+    }
     #raw_tbl thead { position: sticky; top: 0; z-index: 2; }
     #raw_tbl thead th { background: #fafafa; }
     #raw_tbl tr.raw_hl td { background: rgba(255, 153, 0, 0.18); }
@@ -4726,7 +4730,6 @@ function renderRawTable(){
     const tdH = document.createElement('td');
     tdH.textContent = _rawHistoryCompact(rowKey(r));
     const tdO = document.createElement('td');
-    tdO.style.fontSize = '11px';
     const outlierInfo = RAW_OUTLIER_MAP ? RAW_OUTLIER_MAP[String(r.time) || ''] : null;
     if(outlierInfo){
       tdO.textContent = outlierInfo.reason || '';
@@ -6345,7 +6348,6 @@ function renderOutlierOverviewTable(){
     const tdH = document.createElement('td');
     tdH.textContent = '';
     const tdO = document.createElement('td');
-    tdO.style.fontSize = '11px';
     tdO.textContent = isIgnoredOutlier(r) ? 'ignoriert' : (r.reason || '');
     tdO.style.color = '#b00020';
     tr.appendChild(tdT);

@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.250
+
+### Fix
+
+- Dashboard `raw.table` und `raw.outlier_table` verwenden jetzt dieselbe erzwungene Tabellen-Schriftgroesse und haben keine abweichende Inline-Schriftgroesse mehr in der Ausreisser-Spalte.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tests: `pytest tests/test_api_ui_support.py -q -k "raw_and_outlier_tables_share_same_font_size_rule or dashboard_load_supports_cache_plan_prompt_and_time_savings"`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.249
 
 ### Enhancement

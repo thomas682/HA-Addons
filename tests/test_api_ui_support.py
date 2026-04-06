@@ -227,6 +227,14 @@ def test_dashboard_load_supports_cache_plan_prompt_and_time_savings():
     assert "Geschaetzte Zeitersparnis" in body
     assert "Cache-Ausreisser" in body
     assert "cache_strategy" in body
+
+
+def test_raw_and_outlier_tables_share_same_font_size_rule():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert '#raw_tbl, #raw_tbl th, #raw_tbl td,' in body
+    assert '#raw_outlier_tbl, #raw_outlier_tbl th, #raw_outlier_tbl td {' in body
+    assert 'font-size: var(--ui-font-small) !important;' in body
+    assert "tdO.style.fontSize = '11px';" not in body
     assert "selEl.style.width = '';" in body
     assert "inputEl.style.width = px + 'px';" not in body
     assert "selEl.style.width = px + 'px';" not in body
