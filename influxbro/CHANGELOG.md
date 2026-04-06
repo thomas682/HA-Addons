@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.243
+
+### Fix
+
+- `Jobs & Cache: timers.table` speichert den geänderten Modus jetzt sofort beim Ändern des Select-/Zeit-/Intervall-Werts statt erst beim erneuten Klick auf den Modus-Button.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.242
 
 ### Fix

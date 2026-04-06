@@ -1133,7 +1133,10 @@
             };
             const currentModeText = ()=>{ const m = String(modeSel.value || 'manual'); if(m === 'hours') return `${m} (${String(hoursInput.value || '')}h)`; if(m === 'daily') return `${m} (${String(timeInput.value || '')})`; if(m === 'weekly') return `${m} (${String(weekdaySel.options[weekdaySel.selectedIndex] ? weekdaySel.options[weekdaySel.selectedIndex].textContent : '')} ${String(timeInput.value || '')})`; return 'manual'; };
             syncModeUi();
-            modeSel.addEventListener('change', syncModeUi);
+            modeSel.addEventListener('change', async ()=>{ syncModeUi(); await save(); });
+            hoursInput.addEventListener('change', async ()=>{ syncModeUi(); await save(); });
+            timeInput.addEventListener('change', async ()=>{ syncModeUi(); await save(); });
+            weekdaySel.addEventListener('change', async ()=>{ syncModeUi(); await save(); });
             const save = async ()=>{ const payload = { id, refresh_mode: String(modeSel.value || 'manual') }; if(payload.refresh_mode === 'hours') payload.refresh_hours = parseInt(String(hoursInput.value || '24').trim() || '24', 10); else if(payload.refresh_mode === 'daily') payload.refresh_daily_at = String(timeInput.value || '03:00:00').trim(); else if(payload.refresh_mode === 'weekly'){ payload.refresh_weekday = parseInt(String(weekdaySel.value || '0').trim() || '0', 10); payload.refresh_daily_at = String(timeInput.value || '03:00:00').trim(); } await api('./api/timers/schedule', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)}); await loadTimers(); };
             TIMER_MODE_UI[id] = { wrap, save };
             tdMode.appendChild(wrap);
