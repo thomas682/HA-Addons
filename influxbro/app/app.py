@@ -16190,7 +16190,18 @@ def api_client_error():
         except Exception:
             extra_s = str(extra)[:2000] if extra is not None else ""
 
-        LOG.error(
+        kind = ""
+        if isinstance(extra, dict):
+            try:
+                kind = str(extra.get("kind") or "").strip().lower()
+            except Exception:
+                kind = ""
+
+        log_fn = LOG.error
+        if kind in ("analysis_debug", "selector_debug", "ui_debug"):
+            log_fn = LOG.info
+
+        log_fn(
             "client_error page=%s msg=%s href=%s ua=%s stack=%s extra=%s",
             page,
             message,

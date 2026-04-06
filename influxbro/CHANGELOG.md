@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.242
+
+### Fix
+
+- `analysis_debug` und andere reine Debug-Events aus `client_error` werden nicht mehr als ERROR geloggt, sondern als INFO.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.241
 
 ### Enhancement
