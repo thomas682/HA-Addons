@@ -358,6 +358,17 @@ def test_navigation_helper_uses_pending_target_and_html_badges():
     assert "_navigateToEntry(entry);" in topbar
 
 
+def test_settings_restructure_script_and_general_navigation_params_exist():
+    config = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "config.html").read_text()
+    assert 'function restructureSettings(){' in config
+    assert "_cfgMakeSection('Datenbank', 'settings.section.database'" in config
+    assert "_cfgMakeSection('Allgemein', 'settings.section.general'" in config
+    assert 'ui_nav_helper_history_limit' in config
+    assert 'ui_nav_helper_highlight_color' in config
+    assert 'ui_nav_helper_highlight_duration_ms' in config
+    assert "_cfgLinkRow('Globale Darstellung & Auswahl', '#ui_font_size_px')" in config
+
+
 def test_dashboard_raw_actions_and_titles_are_updated():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     assert 'Grafische Analyse' in body

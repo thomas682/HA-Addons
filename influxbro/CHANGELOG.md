@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.12.261
+
+### Enhancement
+
+- Paket C: Die Einstellungen werden jetzt in Hauptbereiche fuer `Datenbank`, `Allgemein` und menuebezogene Bereiche gegliedert; der alte Sammelblock `settings.section.ui` wird zur Laufzeit aufgeloest.
+- Mehrfach genutzte Parameter werden unter `Allgemein` gebuendelt, waehrend Fachbereiche statt doppelter Werte gezielt auf globale Parameter verlinken.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tests: `pytest tests/test_api_ui_support.py -q -k "settings_restructure_script_and_general_navigation_params_exist or settings_layout_and_null_safe_bindings_are_present or navigation_helper_controls_and_config_exist"`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.260
 
 ### Enhancement

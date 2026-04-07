@@ -1864,6 +1864,172 @@ try{
   });
 }catch(e){}
 
+function _cfgSectionNote(text){
+  const wrap = document.createElement('div');
+  wrap.className = 'section_note';
+  wrap.innerHTML = '<span class="muted">' + String(text || '') + '</span>';
+  return wrap;
+}
+
+function _cfgMakeSection(title, dataUi, note){
+  const details = document.createElement('details');
+  details.className = 'card';
+  details.open = true;
+  details.setAttribute('data-ui', dataUi);
+  details.setAttribute('title', dataUi);
+  details.innerHTML = '<summary><span class="ib_summary_row"><span>' + title + '</span></span></summary><div class="card_body"></div>';
+  const body = details.querySelector('.card_body');
+  if(body && note) body.appendChild(_cfgSectionNote(note));
+  return details;
+}
+
+function _cfgBody(section){ return section ? section.querySelector(':scope > .card_body') : null; }
+function _cfgDetach(sel){ const node = document.querySelector(sel); if(node && node.parentNode) node.parentNode.removeChild(node); return node || null; }
+function _cfgRetitle(section, title, dataUi){
+  try{
+    if(!section) return;
+    section.setAttribute('data-ui', dataUi);
+    section.setAttribute('title', dataUi);
+    const span = section.querySelector(':scope > summary .ib_summary_row > span:first-child');
+    if(span) span.textContent = title;
+  }catch(e){}
+}
+function _cfgMoveParamRow(id, target){
+  try{
+    const node = document.getElementById(id);
+    const row = node && node.closest ? node.closest('.param_row') : null;
+    if(row && target) target.appendChild(row);
+  }catch(e){}
+}
+function _cfgLinkRow(label, targetSel){
+  const row = document.createElement('div');
+  row.className = 'param_row';
+  row.innerHTML = '<div class="param_label">' + label + '<span class="param_hint">Globaler Parameter unter Allgemein.</span></div><div class="param_control"><button type="button" class="btn_sm" style="width:auto;">Zum Parameter</button></div>';
+  const btn = row.querySelector('button');
+  if(btn) btn.addEventListener('click', ()=>{
+    try{
+      const t = document.querySelector(targetSel);
+      if(!t) return;
+      const d = t.closest('details');
+      if(d) d.open = true;
+      t.scrollIntoView({behavior:'smooth', block:'center'});
+      t.classList.add('jump_hl');
+      setTimeout(()=>{ try{ t.classList.remove('jump_hl'); }catch(e){} }, 1600);
+    }catch(e){}
+  });
+  return row;
+}
+
+function restructureSettings(){
+  try{
+    const main = document.querySelector('main.content');
+    const saveCard = document.querySelector('.save_card');
+    const uiWrap = document.querySelector('details.card[data-ui="settings.section.ui"]');
+    if(!main || !saveCard || !uiWrap || uiWrap.dataset.restructured === '1') return;
+    uiWrap.dataset.restructured = '1';
+
+    const dbSec = _cfgMakeSection('Datenbank', 'settings.section.database', 'Datenbankverbindung, YAML und InfluxDB-Zugangsdaten.');
+    const generalSec = _cfgMakeSection('Allgemein', 'settings.section.general', 'Mehrfach verwendete Parameter fuer Darstellung, Auswahl, Jobs, Links und Navigation.');
+
+    const yamlSec = _cfgDetach('details.card[data-ui="settings.section.yaml"]');
+    const connSec = _cfgDetach('details.card[data-ui="settings.section.conn"]');
+    const v2Sec = _cfgDetach('details.card[data-ui="settings.section.v2"]');
+    const v1Sec = _cfgDetach('details.card[data-ui="settings.section.v1"]');
+    [yamlSec, connSec, v2Sec, v1Sec].forEach(sec => { if(sec) _cfgBody(dbSec).appendChild(sec); });
+
+    const dashboardSec = _cfgDetach('#ui_page_dashboard');
+    const statsSec = _cfgDetach('#ui_page_stats');
+    const backupSec = _cfgDetach('#ui_page_backup');
+    const restoreSec = _cfgDetach('#ui_page_restore');
+    const jobsSec = _cfgDetach('#ui_page_jobs');
+    const logsPageSec = _cfgDetach('#ui_page_logs');
+    const historySec = _cfgDetach('#ui_page_history');
+    const exportSec = _cfgDetach('#ui_page_export');
+    const importSec = _cfgDetach('#ui_page_import');
+    const logsSec = _cfgDetach('details.card[data-ui="settings.section.logs"]');
+    const outlierSec = _cfgDetach('details.card[data-ui="settings.section.outliers"]');
+
+    if(dashboardSec){
+      _cfgRetitle(dashboardSec, 'Dashboard', 'settings.section.dashboard');
+      const dashboardBody = _cfgBody(dashboardSec);
+      const uiLayout = dashboardSec.querySelector('#ui_layout');
+      const uiJobs = dashboardSec.querySelector('#ui_jobs');
+      const uiLinks = dashboardSec.querySelector('#ui_links');
+      const uiStatsCache = dashboardSec.querySelector('#ui_stats_cache');
+      [uiLayout, uiJobs, uiLinks, uiStatsCache].forEach(sec => { if(sec && sec.parentNode) sec.parentNode.removeChild(sec); });
+
+      const generalBody = _cfgBody(generalSec);
+      if(generalBody){
+        const commonUi = _cfgMakeSection('Darstellung & Auswahl', 'settings.general.layout', 'Gemeinsame Darstellung fuer mehrere Menuepunkte.');
+        const commonGrid = document.createElement('div');
+        commonGrid.className = 'grid';
+        ['ui_table_visible_rows','ui_table_row_height_px','ui_decimals','ui_popup_pre_font_px','ui_popup_history_font_px'].forEach(id => _cfgMoveParamRow(id, commonGrid));
+        _cfgBody(commonUi).appendChild(commonGrid);
+        if(uiLayout) generalBody.appendChild(uiLayout);
+        generalBody.appendChild(commonUi);
+        if(uiJobs) generalBody.appendChild(uiJobs);
+        if(uiLinks) generalBody.appendChild(uiLinks);
+      }
+
+      const dashGrid = dashboardBody && dashboardBody.querySelector(':scope > .grid');
+      if(dashGrid){
+        dashGrid.insertBefore(_cfgLinkRow('Globale Darstellung & Auswahl', '#ui_font_size_px'), dashGrid.firstChild);
+      }
+      main.insertBefore(dashboardSec, saveCard);
+
+      if(statsSec){
+        _cfgRetitle(statsSec, 'Statistik', 'settings.section.stats');
+        if(uiStatsCache) _cfgBody(statsSec).insertBefore(uiStatsCache, _cfgBody(statsSec).firstChild);
+        main.insertBefore(statsSec, saveCard);
+      }
+    }
+
+    [dbSec, generalSec].reverse().forEach(sec => main.insertBefore(sec, dashboardSec || saveCard));
+    if(backupSec){ _cfgRetitle(backupSec, 'Backup', 'settings.section.backup'); main.insertBefore(backupSec, saveCard); }
+    if(restoreSec){ _cfgRetitle(restoreSec, 'Restore', 'settings.section.restore'); main.insertBefore(restoreSec, saveCard); }
+    if(importSec){ _cfgRetitle(importSec, 'Import', 'settings.section.import'); main.insertBefore(importSec, saveCard); }
+    if(logsSec){ _cfgRetitle(logsSec, 'Logs', 'settings.section.logs'); main.insertBefore(logsSec, saveCard); }
+    if(outlierSec){ _cfgRetitle(outlierSec, 'Ausreisser', 'settings.section.outliers'); main.insertBefore(outlierSec, saveCard); }
+
+    const simpleSections = [
+      [jobsSec, 'Jobs', 'settings.section.jobs', '#ui_jobs'],
+      [logsPageSec, 'Logs Seite', 'settings.section.logs_page', '#log_profile'],
+      [historySec, 'History', 'settings.section.history', '#log_profile'],
+      [exportSec, 'Export', 'settings.section.export', '#ui_repo_url'],
+    ];
+    simpleSections.forEach(([sec, title, ui, linkSel])=>{
+      if(!sec) return;
+      _cfgRetitle(sec, title, ui);
+      const body = _cfgBody(sec);
+      if(body && !body.querySelector('.grid')){
+        const grid = document.createElement('div');
+        grid.className = 'grid';
+        grid.appendChild(_cfgLinkRow('Globale Parameter', linkSel));
+        body.appendChild(grid);
+      }
+      main.insertBefore(sec, saveCard);
+    });
+
+    [
+      ['Qualitaet','settings.section.quality'],
+      ['Monitor','settings.section.monitor'],
+      ['Combine','settings.section.combine'],
+      ['DB Info','settings.section.dbinfo'],
+      ['Info','settings.section.info'],
+      ['Manual','settings.section.manual'],
+      ['Profiles','settings.section.profiles']
+    ].forEach(([title, ui])=>{
+      if(document.querySelector('[data-ui="' + ui + '"]')) return;
+      main.insertBefore(_cfgMakeSection(title, ui, 'Derzeit keine eigenen Parameter. Falls benoetigt, werden globale Parameter unter Allgemein verlinkt.'), saveCard);
+    });
+
+    if(uiWrap && uiWrap.parentNode) uiWrap.parentNode.removeChild(uiWrap);
+    try{ if(window.InfluxBroNormalizeSummaryActions) window.InfluxBroNormalizeSummaryActions(); }catch(e){}
+  }catch(e){}
+}
+
+try{ if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', restructureSettings, {once:true}); else restructureSettings(); }catch(e){}
+
 load().catch(e=>err(String(e)));
 </script>
 
