@@ -283,13 +283,17 @@ def test_outlier_search_button_marks_existing_table_and_context_rows_save_immedi
 
 def test_analysis_history_uses_event_log_and_dashboard_actions_params_button():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    tooltips = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
     assert "const ANALYSIS_EVENT_HISTORY_KEY = 'influxbro_analysis_event_history_v1'" in body
     assert "Durchfuehrungsprotokolle" in body
     assert 'id="raw_outlier_params_action"' in body
     assert "fetch('./api/client_log'" in body
     assert "fetch('./api/analysis_history_event'" in body
     assert "await api('./api/analysis_history?limit=500'" in body
-    assert "window.InfluxBroPopup.show('Analyse-Verlauf ('" in body
+    assert "function _analysisEventHtml(entry){" in body
+    assert "window.InfluxBroPopup.show('Analyse-Verlauf (' + (history.length + events.length) + ' Eintraege)', html, { bodyHtml: true });" in body
+    assert "const htmlMode = !!(opts && opts.bodyHtml);" in tooltips
+    assert "if(htmlMode) pre.innerHTML = normalizedMsg;" in tooltips
 
 
 def test_summary_actions_are_inline_in_topbar_and_back_icon_uses_return_svg():

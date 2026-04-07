@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.12.258
+
+### Fix
+
+- Der Dialog `dashboard.analysis_history` rendert seine Inhalte jetzt als formatierte HTML-Ansicht statt als escaped Roh-Markup.
+- Analyse-, Cache- und zugehoerige Verlaufseintraege werden im Dialog jetzt lesbar nach Eventtyp dargestellt, statt rohe JSON-Strings anzuzeigen.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tests: `pytest tests/test_api_analysis_history.py -q`
+- Tests: `pytest tests/test_api_ui_support.py -q -k "analysis_history_uses_event_log_and_dashboard_actions_params_button"`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.257
 
 ### Fix

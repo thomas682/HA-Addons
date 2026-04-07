@@ -561,6 +561,7 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Wenn fuer `Analyse` kein `Cache verwenden`-Dialog erscheint, wird der Grund jetzt im Dashboard sichtbarer protokolliert.
 - Browser-Debugmeldungen fuer Analyse-Ablauf und UI-Hilfsprotokolle laufen intern jetzt ueber einen neutralen Client-Log-Endpunkt, damit sie in den Browser-Netzwerktools nicht mehr wie Fehler-Requests aussehen.
 - Der Dialog `Analyse-Verlauf` nutzt jetzt eine serverseitige Analyse-History. Dadurch sind Analyse-Ereignisse, Cache-Entscheidungen und Markierungsaktionen nicht mehr nur browserlokal, sondern zentral im Add-on erfassbar und im Dialog sichtbar.
+- Die Eintraege im Dialog `Analyse-Verlauf` werden jetzt als formatierte Karten dargestellt. Zeitstempel, Eventtyp und wichtige Detailwerte werden lesbar angezeigt, statt HTML-Markup oder JSON-Rohtext auszugeben.
 - Die Raw-Tabelle besitzt jetzt eine kompakte Spalte `Aenderung`. Darin werden passende History-Eintraege je DB-Wert kurz zusammengefasst.
 - Die Ausreißer-Tabelle im Raw-Bereich ist jetzt wie die anderen Listen als eigener Tabellenblock aufgebaut: mit Titel, Tabelleninfo und Standardfunktionen fuer Spaltenbreite, Umbruch, Spaltenfilter und Hoehenanpassung.
 - Die Ausreißer-Tabelle zeigt den Zaehler oberhalb der Liste jetzt als `gefiltert / gesamt` an.

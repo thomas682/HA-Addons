@@ -1862,13 +1862,27 @@
       const historyBox = refs.historyBox || document.getElementById('influxbro_popup_history');
       const split = refs.split || document.getElementById('influxbro_popup_split');
       if(t) t.textContent = title || 'Hinweis';
+      const htmlMode = !!(opts && opts.bodyHtml);
       const normalizedMsg = (window.InfluxBroDecodeInfoText ? window.InfluxBroDecodeInfoText(String(msg || '')) : String(msg || ''));
-      if(pre) pre.textContent = normalizedMsg;
+      let normalizedText = normalizedMsg;
+      if(htmlMode){
+        try{
+          const tmp = document.createElement('div');
+          tmp.innerHTML = normalizedMsg;
+          normalizedText = String(tmp.textContent || tmp.innerText || '');
+        }catch(e){
+          normalizedText = normalizedMsg;
+        }
+      }
+      if(pre){
+        if(htmlMode) pre.innerHTML = normalizedMsg;
+        else pre.textContent = normalizedMsg;
+      }
       CURRENT_POPUP_BASE_TITLE = String(title || 'Hinweis');
-      CURRENT_POPUP_BASE_TEXT = normalizedMsg;
+      CURRENT_POPUP_BASE_TEXT = normalizedText;
       CURRENT_POPUP_LOG_TEXT = '';
       CURRENT_POPUP_LOGS_ACTIVE = false;
-      CURRENT_COPY_TEXT = String(opts && opts.copyText !== undefined ? opts.copyText : normalizedMsg || '');
+      CURRENT_COPY_TEXT = String(opts && opts.copyText !== undefined ? opts.copyText : (htmlMode ? normalizedText : normalizedMsg) || '');
       try{ if(logsBtn){ logsBtn.style.background = ''; logsBtn.style.borderColor = ''; logsBtn.style.fontWeight = '400'; } }catch(e){}
       if(copyBtn){
         copyBtn.setAttribute('title', String(opts && opts.copyTitle ? opts.copyTitle : 'Zwischenablage'));
@@ -1902,6 +1916,7 @@
         function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
         function renderSearch(){
           if(!pre) return;
+          if(htmlMode) return;
           const term = String(searchInput && searchInput.value ? searchInput.value : '').trim();
           const fillColor = _popupHighlightFillColor();
           if(!term){
@@ -1926,7 +1941,12 @@
             try{ m.scrollIntoView({block:'center', behavior:'smooth'}); }catch(e){}
           }
         }
-        if(searchInput){ searchInput.value = ''; searchInput.oninput = renderSearch; }
+        if(searchInput){
+          searchInput.value = '';
+          searchInput.disabled = htmlMode;
+          searchInput.placeholder = htmlMode ? 'Suche fuer HTML-Ansicht deaktiviert' : '';
+          searchInput.oninput = renderSearch;
+        }
         if(searchPrev) searchPrev.onclick = (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} jump(-1); };
         if(searchNext) searchNext.onclick = (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} jump(1); };
       }catch(e){}

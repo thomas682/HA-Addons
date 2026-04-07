@@ -5834,6 +5834,67 @@ function _loadAnalysisHistory(){
   }catch(e){ return []; }
 }
 
+function _escHtml(s){
+  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function _analysisDetailObject(entry){
+  try{
+    if(entry && entry.extra && typeof entry.extra === 'object') return entry.extra;
+    if(entry && entry.detail){
+      const d = JSON.parse(String(entry.detail || ''));
+      if(d && typeof d === 'object') return d;
+    }
+  }catch(e){}
+  return null;
+}
+
+function _analysisEventHtml(entry){
+  const kind = String(entry && entry.kind || '-');
+  const step = String(entry && entry.step || '-');
+  const detailObj = _analysisDetailObject(entry);
+  const lines = [];
+  if(detailObj){
+    if(detailObj.measurement || detailObj.field){
+      lines.push('Serie: ' + _escHtml(String(detailObj.measurement || '-')) + ' / ' + _escHtml(String(detailObj.field || '-')));
+    }
+    if(detailObj.entity_id || detailObj.friendly_name){
+      lines.push('Quelle: ' + _escHtml(String(detailObj.entity_id || detailObj.friendly_name || '-')));
+    }
+    if(detailObj.range){
+      lines.push('Zeitraum: ' + _escHtml(String(detailObj.range || '-')));
+    }
+    if(detailObj.win && (detailObj.win.start || detailObj.win.stop)){
+      lines.push('Fenster: ' + _escHtml(fmtTs(detailObj.win.start || '-')) + ' bis ' + _escHtml(fmtTs(detailObj.win.stop || '-')));
+    }
+    if(detailObj.start || detailObj.stop){
+      lines.push('Intervall: ' + _escHtml(fmtTs(detailObj.start || '-')) + ' bis ' + _escHtml(fmtTs(detailObj.stop || '-')));
+    }
+    if(detailObj.chunk !== undefined || detailObj.total !== undefined){
+      lines.push('Chunk: ' + _escHtml(String(detailObj.chunk || '-')) + ' / ' + _escHtml(String(detailObj.total || '-')));
+    }
+    if(detailObj.scanned !== undefined || detailObj.totalScanned !== undefined){
+      lines.push('Geprueft: ' + _escHtml(String(detailObj.scanned || detailObj.totalScanned || 0)));
+    }
+    if(detailObj.totalFound !== undefined){
+      lines.push('Gefunden: ' + _escHtml(String(detailObj.totalFound || 0)));
+    }
+    if(detailObj.error){
+      lines.push('Fehler: ' + _escHtml(String(detailObj.error || '')));
+    }
+  }
+  if(!lines.length && entry && entry.detail){
+    lines.push(_escHtml(String(entry.detail || '')));
+  }
+  return '<div style="border:1px solid #eee;border-radius:8px;padding:10px;margin-bottom:8px;background:#fff;">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">'
+    + '<span style="font-weight:700;">' + _escHtml(fmtTs(entry.at)) + '</span>'
+    + '<span style="font-size:11px;opacity:0.7;">' + _escHtml(kind + ' / ' + step) + '</span>'
+    + '</div>'
+    + lines.map(line => '<div style="font-size:11px;margin-top:4px;opacity:0.85;white-space:pre-wrap;">' + line + '</div>').join('')
+    + '</div>';
+}
+
 async function _showAnalysisHistory(){
   let rows = [];
   try{
@@ -5857,13 +5918,7 @@ async function _showAnalysisHistory(){
   if(events.length){
     html += '<div style="font-weight:700;margin-bottom:8px;">Durchfuehrungsprotokolle</div>';
     events.forEach((entry) => {
-      html += '<div style="border:1px solid #eee;border-radius:8px;padding:10px;margin-bottom:8px;background:#fff;">';
-      html += '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">';
-      html += '<span style="font-weight:700;">' + fmtTs(entry.at) + '</span>';
-      html += '<span style="font-size:11px;opacity:0.7;">' + String(entry.kind || '-') + ' / ' + String(entry.step || '-') + '</span>';
-      html += '</div>';
-      if(entry.detail) html += '<div style="font-size:11px;margin-top:4px;opacity:0.85;white-space:pre-wrap;">' + String(entry.detail) + '</div>';
-      html += '</div>';
+      html += _analysisEventHtml(entry);
     });
     if(history.length) html += '<div style="font-weight:700;margin:12px 0 8px;">Analyse-Zusammenfassungen</div>';
   }
@@ -5913,7 +5968,7 @@ async function _showAnalysisHistory(){
   html += '</div>';
 
   if(window.InfluxBroPopup){
-    window.InfluxBroPopup.show('Analyse-Verlauf (' + (history.length + events.length) + ' Eintraege)', html);
+    window.InfluxBroPopup.show('Analyse-Verlauf (' + (history.length + events.length) + ' Eintraege)', html, { bodyHtml: true });
   }
 }
 
