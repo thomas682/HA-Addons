@@ -175,6 +175,64 @@ The agent MUST NOT:
 
 ### Parallel Execution Strategy (CONTROLLED)
 
+### Rate Limit & API Stability (MANDATORY)
+
+#### Problem
+
+External APIs (e.g. Alibaba Qwen) may reject requests if traffic increases too quickly:
+"Request rate increased too quickly"
+
+#### Root Cause
+
+Burst traffic caused by:
+
+- too many parallel requests
+- missing throttling
+- immediate retries
+
+#### Mandatory Rules
+
+A. Global Request Control
+
+- ALL external API calls MUST be routed through a single central request handler
+- Direct parallel calls from multiple modules are FORBIDDEN
+
+B. Parallelism Limit
+
+- Maximum 2 concurrent API requests
+- MUST be enforced via semaphore / queue
+- This is NOT optional
+
+C. Request Smoothing
+
+- Introduce delay between requests:
+  - minimum 300ms
+  - recommended 400–600ms
+- Prevent burst traffic at all times
+
+D. Retry Strategy
+
+- On HTTP 429:
+  - exponential backoff: 1s → 2s → 4s → 8s (max 10s)
+  - add jitter (0–500ms)
+- Immediate retry WITHOUT delay is FORBIDDEN
+
+E. Queue System
+
+- Requests exceeding concurrency MUST be queued
+- Process sequentially or controlled parallel
+
+F. Fail-safe Behavior
+
+- On repeated 429 errors:
+  - reduce concurrency to 1
+  - increase delay to 800–1200ms
+
+#### Execution Policy
+
+- When in doubt, ALWAYS prefer sequential execution over parallel execution
+- Stability has priority over speed
+
 ### General Rule plus
 
 - Parallel execution is allowed ONLY for clearly independent read, search, and validation tasks.

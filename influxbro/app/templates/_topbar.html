@@ -890,6 +890,7 @@
       }catch(e){}
       return 'Seite';
     }
+    window.currentPageLabel = currentPageLabel;
 
     function renderTarget(target, ev){
       ensureUi();
@@ -949,7 +950,7 @@
       if(!t || !t.el) return;
       try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
       const name = String(t.name || '').trim();
-      const text = '<' + currentPageLabel() + ': ' + name + '>';
+      const text = '<' + (window.currentPageLabel ? window.currentPageLabel() : 'Seite') + ': ' + name + '>';
       const ok = await copyText(text);
       try{
         if(window.InfluxBroPopup && window.InfluxBroPopup.show){

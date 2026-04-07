@@ -16957,6 +16957,81 @@ def api_analysis_history():
     return jsonify({"ok": True, "rows": rows, "total": len(rows)})
 
 
+@app.post("/api/series_stats")
+def api_series_stats():
+    """Return basic stats for a measurement/field series."""
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    body = request.get_json(force=True) or {}
+    measurement = str(body.get("measurement") or "").strip()
+    field = str(body.get("field") or "").strip()
+    entity_id = str(body.get("entity_id") or "").strip() or None
+    friendly_name = str(body.get("friendly_name") or "").strip() or None
+
+    LOG.info("api.series_stats measurement=%s field=%s entity_id=%s",
+        measurement, field, entity_id)
+
+    if not measurement or not field:
+        return jsonify({"ok": False, "error": "measurement and field required"}), 400
+
+    try:
+        with v2_client(cfg) as c:
+            qapi = c.query_api()
+            # Get count, min, max, first, last
+            q = f'''
+from(bucket: "{cfg["bucket"]}")
+  |> range(start: -10y)
+  |> filter(fn: (r) => r._measurement == "{measurement}")
+  |> filter(fn: (r) => r._field == "{field}")'''
+            if entity_id:
+                q += f'\n  |> filter(fn: (r) => r.entity_id == "{entity_id}")'
+            if friendly_name:
+                q += f'\n  |> filter(fn: (r) => r.friendly_name == "{friendly_name}")'
+            q += '''
+  |> group()
+  |> sort(columns: ["_time"])
+'''
+            # Run multiple aggregations
+            count_q = q + '  |> count()\n'
+            min_q = q + '  |> min()\n'
+            max_q = q + '  |> max()\n'
+            first_q = q + '  |> first()\n'
+            last_q = q + '  |> last()\n'
+
+            stats: dict[str, Any] = {}
+            try:
+                for rec in qapi.query(count_q, org=cfg["org"]):
+                    stats["count"] = rec.get_value()
+            except Exception:
+                pass
+            try:
+                for rec in qapi.query(min_q, org=cfg["org"]):
+                    stats["min"] = rec.get_value()
+            except Exception:
+                pass
+            try:
+                for rec in qapi.query(max_q, org=cfg["org"]):
+                    stats["max"] = rec.get_value()
+            except Exception:
+                pass
+            try:
+                for rec in qapi.query(first_q, org=cfg["org"]):
+                    stats["oldest_time"] = rec.get_time()
+                    stats["current_value"] = rec.get_value()
+            except Exception:
+                pass
+            try:
+                for rec in qapi.query(last_q, org=cfg["org"]):
+                    stats["newest_time"] = rec.get_time()
+                    stats["current_value"] = rec.get_value()
+            except Exception:
+                pass
+
+            return jsonify({"ok": True, "stats": stats})
+    except Exception as e:
+        LOG.error("api.series_stats error: %s", e)
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 def _client_event_log(kind_hint: str) -> Response:
     try:
         body = request.get_json(force=True) or {}

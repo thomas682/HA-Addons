@@ -1,5 +1,28 @@
 # Changelog
 
+## 1.12.262
+
+### Fix
+
+- #209: `dashboard.load_status` ist jetzt dauerhaft sichtbar (nicht nur waehrend des Ladens).
+- #209: `nav.ui_picker_super` (S-Picker) kann wieder alle Elemente auf der Seite selektieren.
+- #209: Analyse-Verlauf wird jetzt als reiner Text im Modal angezeigt (nicht als HTML).
+- #209: Neuer Info-Panel-Bereich zeigt aktuelle Messwert-Statistiken (Anzahl Werte, Min/Max, aeltester/neuster Zeitstempel).
+- #209: Ausreisser-Tabelle markiert Zeilen nicht mehr automatisch beim Rendern.
+- #209: `currentPageLabel` ReferenceError behoben (Funktion jetzt global verfuegbar).
+- #209: Analyse-Button oeffnet jetzt einen Bestaetigungsdialog mit Uebersicht aller Parameter vor dem Start.
+- #208: `raw.outlier_actions` Layout umstrukturiert – Suchleiste oben, Aktionen und Tabelle nebeneinander, `raw_outlier_info` entfernt.
+- #207: `dashboard.cancel` (Abbruch-Button) wird jetzt waehrend der Analyse sichtbar und beendet alle laufenden Anfragen.
+
+### Enhancement
+
+- Neuer API-Endpunkt `POST /api/series_stats` liefert Basis-Statistiken fuer eine Measurement/Field-Serie.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.261
 
 ### Enhancement
