@@ -193,14 +193,11 @@
     .ib_summary_row > .ib_btn_group { display:none; }
     .ib_summary_row * { color: inherit; }
     .ib_summary_actions {
-      position: absolute;
-      right: 10px;
-      top: 50%;
-      transform: translateY(-50%);
+      margin-left: auto;
       display: flex;
       align-items: center;
       gap: 6px;
-      z-index: 2;
+      flex: 0 0 auto;
     }
     .ib_info_icon {
       width: 22px;
@@ -1005,11 +1002,11 @@
       document.querySelectorAll('main.content details > summary').forEach((summary)=>{
         const row = summary.querySelector('.ib_summary_row');
         if(!row) return;
-        let actions = summary.parentElement.querySelector(':scope > .ib_summary_actions');
+        let actions = row.querySelector(':scope > .ib_summary_actions');
         if(!actions){
           actions = document.createElement('div');
           actions.className = 'ib_summary_actions';
-          summary.insertAdjacentElement('afterend', actions);
+          row.appendChild(actions);
         }
         row.querySelectorAll('.ib_info_icon, .ib_cfg_icon, .ib_cfg_back_icon').forEach((btn)=>{
           actions.appendChild(btn);

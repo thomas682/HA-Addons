@@ -11211,7 +11211,7 @@ def api_cache_plan():
     if not measurement or not field:
         return jsonify({"ok": False, "error": "measurement and field required"}), 400
     if not bool(cfg.get("dash_cache_enabled", True)):
-        return jsonify({"ok": True, "plan": {"has_cache": False, "segments": [], "gaps": [], "changes": []}})
+        return jsonify({"ok": True, "plan": {"has_cache": False, "segments": [], "gaps": [], "changes": [], "reason": "cache_disabled", "reason_label": "Dashboard-Cache ist deaktiviert."}})
 
     plan = _dash_cache_plan(
         cfg,
@@ -11260,6 +11260,8 @@ def api_cache_plan():
             "full_reference_ms": plan.get("full_reference_ms"),
             "estimated_total_ms": plan.get("estimated_total_ms"),
             "estimated_savings_ms": plan.get("estimated_savings_ms"),
+            "reason": None if bool(plan.get("has_cache")) else "no_matching_cache",
+            "reason_label": None if bool(plan.get("has_cache")) else "Kein passender Dashboard-Cache fuer Auswahl, Zeitraum und Detailmodus vorhanden.",
         },
     })
 

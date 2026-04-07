@@ -227,6 +227,8 @@ def test_dashboard_load_supports_cache_plan_prompt_and_time_savings():
     assert "Geschaetzte Zeitersparnis" in body
     assert "Cache-Ausreisser" in body
     assert "cache_strategy" in body
+    assert "Kein Cache-Dialog" in body
+    assert "dashboard_cache_plan', step: 'no_cache_dialog'" in body
 
 
 def test_raw_and_outlier_tables_share_same_font_size_rule():
@@ -268,6 +270,30 @@ def test_outlier_table_header_is_explicitly_sticky_and_search_bar_tracks_outlier
     assert '#raw_outlier_tbl thead th { background: #fafafa; }' in body
     assert "if($rawSearchBar) $rawSearchBar.style.display = ($outlierSection && $outlierSection.open) ? 'block' : 'none';" in body
     assert "$outlierSection.addEventListener('toggle', ()=>{" in body
+
+
+def test_outlier_search_button_marks_existing_table_and_context_rows_save_immediately():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert '>Markieren<' in body
+    assert "RAW_OUTLIER_MARKED_TYPE = getRawOutlierFilterTypes().join('|');" in body
+    assert "kind: 'outlier_table', step: 'mark_selected_types'" in body
+    assert "$rawOutlierContextRows.addEventListener('input', saveRowsNow);" in body
+    assert "$rawOutlierParamsAction" in body
+
+
+def test_analysis_history_uses_event_log_and_dashboard_actions_params_button():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert "const ANALYSIS_EVENT_HISTORY_KEY = 'influxbro_analysis_event_history_v1'" in body
+    assert "Durchfuehrungsprotokolle" in body
+    assert 'id="raw_outlier_params_action"' in body
+
+
+def test_summary_actions_are_inline_in_topbar_and_back_icon_uses_return_svg():
+    topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    config = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "config.html").read_text()
+    assert 'margin-left: auto;' in topbar
+    assert "let actions = row.querySelector(':scope > .ib_summary_actions');" in topbar
+    assert 'M19,8 L19,11 C19,12.1045695 18.1045695,13 17,13 L6,13' in config
 
 
 def test_dashboard_raw_actions_and_titles_are_updated():

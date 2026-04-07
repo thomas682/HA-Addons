@@ -173,6 +173,14 @@
     #raw_tbl thead th { background: #fafafa; }
     #raw_outlier_tbl thead { position: sticky; top: 0; z-index: 2; }
     #raw_outlier_tbl thead th { background: #fafafa; }
+    #raw_outlier_tbl tr.raw_hl td {
+      background: color-mix(in srgb, var(--ib-page-search-hl-color, #FF9900) 22%, white);
+      outline: 1px solid var(--ib-page-search-hl-color, #FF9900);
+      outline-offset: -1px;
+    }
+    #raw_outlier_tbl tr.raw_match td {
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ib-page-search-hl-color, #FF9900) 60%, transparent);
+    }
     #raw_tbl tr.raw_hl td { background: rgba(255, 153, 0, 0.18); }
     #raw_tbl tr.raw_outlier td { background: rgba(220, 38, 38, 0.12); }
     #raw_tbl tr.raw_src td { background: rgba(16, 185, 129, 0.16); }
@@ -357,6 +365,7 @@
       <div id="analysis_status" class="muted" style="font-size:11px; margin-bottom:4px; min-height:14px;"></div>
       <div style="display:flex; gap: 8px; align-items: stretch;">
         <button id="load" class="btn_sm" style="height:34px; padding:8px 10px; flex:0 0 auto; width:auto;" data-ui="dashboard.load">Analyse</button>
+        <button id="raw_outlier_params_action" class="btn_sm" style="width:auto; min-width:34px; padding:6px 8px;" data-ui="dashboard.raw_outlier_params" title="dashboard.raw_outlier_params" aria-label="Ausreißer-Parameter"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 8.8A3.2 3.2 0 1 0 12 15.2A3.2 3.2 0 0 0 12 8.8Z" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a1.2 1.2 0 0 1 0 1.7l-1.6 1.6a1.2 1.2 0 0 1-1.7 0l-.1-.1a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.9V22a1.2 1.2 0 0 1-1.2 1.2h-2.2a1.2 1.2 0 0 1-1.2-1.2v-.2a1 1 0 0 0-.7-.9 1 1 0 0 0-1.1.2l-.1.1a1.2 1.2 0 0 1-1.7 0l-1.6-1.6a1.2 1.2 0 0 1 0-1.7l.1-.1a1 1 0 0 0 .2-1.1 1 1 0 0 0-.9-.6H2a1.2 1.2 0 0 1-1.2-1.2v-2.2a1.2 1.2 0 0 1 1.2-1.2h.2a1 1 0 0 0 .9-.7 1 1 0 0 0-.2-1.1l-.1-.1a1.2 1.2 0 0 1 0-1.7l1.6-1.6a1.2 1.2 0 0 1 1.7 0l.1.1a1 1 0 0 0 1.1.2h.1a1 1 0 0 0 .6-.9V2a1.2 1.2 0 0 1 1.2-1.2h2.2A1.2 1.2 0 0 1 13 2v.2a1 1 0 0 0 .7.9 1 1 0 0 0 1.1-.2l.1-.1a1.2 1.2 0 0 1 1.7 0l1.6 1.6a1.2 1.2 0 0 1 0 1.7l-.1.1a1 1 0 0 0-.2 1.1v.1a1 1 0 0 0 .9.6H22a1.2 1.2 0 0 1 1.2 1.2v2.2a1.2 1.2 0 0 1-1.2 1.2h-.2a1 1 0 0 0-.9.7Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></button>
         <button id="analysis_history" class="btn_sm" style="width:auto; min-width:34px; padding:6px 8px;" data-ui="dashboard.analysis_history" title="dashboard.analysis_history" aria-label="Analyse-Verlauf anzeigen"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7a6.97 6.97 0 0 1-4.95-2.05l-1.41 1.41A8.96 8.96 0 0 0 13 21a9 9 0 0 0 0-18zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z" fill="currentColor"/></svg></button>
         <button id="cancel_load" class="btn_sm" style="width:auto; white-space:nowrap;" data-ui="dashboard.cancel">Abbruch</button>
         <button id="reset_filters" class="btn_sm" style="width:auto; white-space:nowrap;" data-ui="dashboard.reset" title="dashboard.reset">Reset</button>
@@ -460,7 +469,7 @@
         <div style="display:flex; align-items:flex-start; gap:10px; flex-wrap:wrap;">
           <div style="display:flex; flex-direction:column; gap:4px;">
             <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:flex-start;">
-              <button class="btn_sm" id="raw_search_run">Suchen</button>
+              <button class="btn_sm" id="raw_search_run">Markieren</button>
               <button class="btn_sm" id="raw_jump_oldest" disabled title="ältester Ausreisser">
                 <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                   <path d="M7 7v10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -490,12 +499,6 @@
                   <label style="display:flex; align-items:center; gap:6px; padding:3px 0; font-size:13px; cursor:pointer;"><input type="checkbox" class="raw_outlier_type_cb" value="zero"/> 0-Werte</label>
                 </div>
               </div>
-              <button class="btn_sm" id="raw_outlier_params" type="button" title="Ausreisser-Parameter" aria-label="Ausreisser-Parameter">
-                <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                  <path d="M12 8.8A3.2 3.2 0 1 0 12 15.2A3.2 3.2 0 0 0 12 8.8Z" fill="none" stroke="currentColor" stroke-width="1.8"/>
-                  <path d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a1.2 1.2 0 0 1 0 1.7l-1.6 1.6a1.2 1.2 0 0 1-1.7 0l-.1-.1a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.9V22a1.2 1.2 0 0 1-1.2 1.2h-2.2a1.2 1.2 0 0 1-1.2-1.2v-.2a1 1 0 0 0-.7-.9 1 1 0 0 0-1.1.2l-.1.1a1.2 1.2 0 0 1-1.7 0l-1.6-1.6a1.2 1.2 0 0 1 0-1.7l.1-.1a1 1 0 0 0 .2-1.1 1 1 0 0 0-.9-.6H2a1.2 1.2 0 0 1-1.2-1.2v-2.2a1.2 1.2 0 0 1 1.2-1.2h.2a1 1 0 0 0 .9-.7 1 1 0 0 0-.2-1.1l-.1-.1a1.2 1.2 0 0 1 0-1.7l1.6-1.6a1.2 1.2 0 0 1 1.7 0l.1.1a1 1 0 0 0 1.1.2h.1a1 1 0 0 0 .6-.9V2a1.2 1.2 0 0 1 1.2-1.2h2.2A1.2 1.2 0 0 1 13 2v.2a1 1 0 0 0 .7.9 1 1 0 0 0 1.1-.2l.1-.1a1.2 1.2 0 0 1 1.7 0l1.6 1.6a1.2 1.2 0 0 1 0 1.7l-.1.1a1 1 0 0 0-.2 1.1v.1a1 1 0 0 0 .9.6H22a1.2 1.2 0 0 1 1.2 1.2v2.2a1.2 1.2 0 0 1-1.2 1.2h-.2a1 1 0 0 0-.9.7Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
-                </svg>
-              </button>
             </div>
           </div>
         </div>
@@ -1096,6 +1099,7 @@ const $rawSearchBar = document.getElementById('raw_search_bar');
 const $rawOutlierTypeToggle = document.getElementById('raw_outlier_type_toggle');
 const $rawOutlierTypeMenu = document.getElementById('raw_outlier_type_menu');
 const $rawOutlierParams = document.getElementById('raw_outlier_params');
+const $rawOutlierParamsAction = document.getElementById('raw_outlier_params_action');
 const $rawOutlierParamsDialog = document.getElementById('raw_outlier_params_dialog');
 const $rawOutlierParamsClose = document.getElementById('raw_outlier_params_close');
 const $rawOutlierParamsSave = document.getElementById('raw_outlier_params_save');
@@ -4555,6 +4559,7 @@ let RAW_OUTLIER_SCANNED_TOTAL = 0;
 let RAW_OUTLIER_ABORT = null;
 let RAW_OUTLIER_CONTEXT_ROWS = 10;
 let RAW_OUTLIER_VISIBLE_ROWS = 5;
+let RAW_OUTLIER_MARKED_TYPE = '';
 
 const ALL_OUTLIER_TYPES = [
   {value: 'counter', label: 'Counter'},
@@ -5402,6 +5407,10 @@ function getRawOutlierFilterTypes(){
 
 function _logAnalysis(step, data){
   try{
+    try{
+      const detail = JSON.stringify(data || {});
+      _saveAnalysisEvent({at: new Date().toISOString(), kind: 'analysis', step: step, detail: detail});
+    }catch(e){}
     const msg = 'analysis_debug step=' + step;
     const payload = {
       message: msg,
@@ -5707,6 +5716,9 @@ function _renderLoadPlan(plan){
     if(p.estimated_savings_ms !== null && p.estimated_savings_ms !== undefined){
       items.push({label: 'Geschaetzte Zeitersparnis', status: 'ok', sub: _fmtDur(Number(p.estimated_savings_ms || 0))});
     }
+    if(!p.has_cache && p.reason_label){
+      items.push({label: 'Kein Cache-Dialog', status: 'running', sub: String(p.reason_label || '')});
+    }
     _renderChecklist(items);
     _renderLoadPlanChanges(p.changes || []);
   }catch(e){}
@@ -5717,10 +5729,17 @@ async function maybePromptDashboardCacheUse(filters){
     const j = await api('./api/cache/plan', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(filters)}, { key: 'dashboard_cache_plan', silent: true });
     const plan = (j && j.plan) ? j.plan : null;
     if(!plan || !plan.has_cache){
-      _clearLoadPlanUi();
-      return { cacheStrategy: 'default', plan: null };
+      if(plan){
+        _renderLoadPlan(plan);
+        _saveAnalysisEvent({at: new Date().toISOString(), kind: 'dashboard_cache_plan', step: 'no_cache_dialog', detail: String(plan.reason_label || plan.reason || 'Kein passender Cache vorhanden.')});
+        if($loadStatus) $loadStatus.style.display = 'block';
+      }else{
+        _clearLoadPlanUi();
+      }
+      return { cacheStrategy: 'default', plan: plan || null };
     }
     _renderLoadPlan(plan);
+    _saveAnalysisEvent({at: new Date().toISOString(), kind: 'dashboard_cache_plan', step: plan.exact ? 'exact_cache_available' : 'partial_cache_available', detail: 'Segmente: ' + String((plan.segments || []).length) + ' | Luecken: ' + String((plan.gaps || []).length)});
     const lines = [];
     lines.push(plan.exact ? 'Exakter Cache gefunden.' : ('Teilweise Cache-Abdeckung gefunden: ' + String((plan.segments || []).length) + ' Segmente.'));
     lines.push('Cache-Ausreisser: ' + String(plan.cached_outlier_count || 0));
@@ -5738,9 +5757,11 @@ async function maybePromptDashboardCacheUse(filters){
     }
     lines.push('OK = Cache verwenden, Abbrechen = Analyse erneut starten');
     const reuse = confirm(lines.join('\n'));
+    _saveAnalysisEvent({at: new Date().toISOString(), kind: 'dashboard_cache_plan', step: reuse ? 'reuse_selected' : 'refresh_selected', detail: reuse ? 'Cache verwenden' : 'Analyse erneut starten'});
     return { cacheStrategy: reuse ? 'reuse' : 'refresh', plan };
   }catch(e){
     _clearLoadPlanUi();
+    _saveAnalysisEvent({at: new Date().toISOString(), kind: 'dashboard_cache_plan', step: 'plan_error', detail: e && e.message ? e.message : String(e)});
     return { cacheStrategy: 'default', plan: null };
   }
 }
@@ -5748,6 +5769,26 @@ async function maybePromptDashboardCacheUse(filters){
 // --- Analysis History ---
 const ANALYSIS_HISTORY_KEY = 'influxbro_analysis_history_v1';
 const ANALYSIS_HISTORY_MAX = 50;
+const ANALYSIS_EVENT_HISTORY_KEY = 'influxbro_analysis_event_history_v1';
+const ANALYSIS_EVENT_HISTORY_MAX = 400;
+
+function _saveAnalysisEvent(entry){
+  try{
+    let history = [];
+    const raw = localStorage.getItem(ANALYSIS_EVENT_HISTORY_KEY);
+    if(raw) history = JSON.parse(raw);
+    history.unshift(entry);
+    if(history.length > ANALYSIS_EVENT_HISTORY_MAX) history = history.slice(0, ANALYSIS_EVENT_HISTORY_MAX);
+    localStorage.setItem(ANALYSIS_EVENT_HISTORY_KEY, JSON.stringify(history));
+  }catch(e){}
+}
+
+function _loadAnalysisEvents(){
+  try{
+    const raw = localStorage.getItem(ANALYSIS_EVENT_HISTORY_KEY);
+    return raw ? JSON.parse(raw) : [];
+  }catch(e){ return []; }
+}
 
 function _saveAnalysisHistory(entry){
   try{
@@ -5769,7 +5810,8 @@ function _loadAnalysisHistory(){
 
 function _showAnalysisHistory(){
   const history = _loadAnalysisHistory();
-  if(!history.length){
+  const events = _loadAnalysisEvents();
+  if(!history.length && !events.length){
     if(window.InfluxBroPopup){
       window.InfluxBroPopup.show('analysis_history', {
         title: 'Analyse-Verlauf',
@@ -5782,6 +5824,19 @@ function _showAnalysisHistory(){
   const typeLabels = {counter: 'Counter', decrease: 'Counter Abfall', bounds: 'Grenzen', fault_phase: 'Stoerphase', null: 'NULL', zero: '0-Werte'};
 
   let html = '<div style="max-height:70vh;overflow:auto;">';
+  if(events.length){
+    html += '<div style="font-weight:700;margin-bottom:8px;">Durchfuehrungsprotokolle</div>';
+    events.forEach((entry) => {
+      html += '<div style="border:1px solid #eee;border-radius:8px;padding:10px;margin-bottom:8px;background:#fff;">';
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">';
+      html += '<span style="font-weight:700;">' + fmtTs(entry.at) + '</span>';
+      html += '<span style="font-size:11px;opacity:0.7;">' + String(entry.kind || '-') + ' / ' + String(entry.step || '-') + '</span>';
+      html += '</div>';
+      if(entry.detail) html += '<div style="font-size:11px;margin-top:4px;opacity:0.85;white-space:pre-wrap;">' + String(entry.detail) + '</div>';
+      html += '</div>';
+    });
+    if(history.length) html += '<div style="font-weight:700;margin:12px 0 8px;">Analyse-Zusammenfassungen</div>';
+  }
   history.forEach((entry, idx) => {
     const statusIcon = entry.status === 'ok' ? '✓' : '✗';
     const statusColor = entry.status === 'ok' ? '#4caf50' : '#f44336';
@@ -5829,10 +5884,25 @@ function _showAnalysisHistory(){
 
   if(window.InfluxBroPopup){
     window.InfluxBroPopup.show('analysis_history', {
-      title: 'Analyse-Verlauf (' + history.length + ' Eintraege)',
+      title: 'Analyse-Verlauf (' + (history.length + events.length) + ' Eintraege)',
       body: html,
     });
   }
+}
+
+async function runRawOutlierSearch(){
+  const filtered = getFilteredOutliers();
+  RAW_OUTLIER_MARKED_TYPE = getRawOutlierFilterTypes().join('|');
+  renderOutlierOverviewTable();
+  if(!filtered.length){
+    if($rawOutlierStatusTxt) $rawOutlierStatusTxt.textContent = 'Kein passender Ausreisser in der Tabelle.';
+    _saveAnalysisEvent({at: new Date().toISOString(), kind: 'outlier_table', step: 'mark_none', detail: 'Keine sichtbaren Ausreisser fuer die aktuell gewaehlten Typen.'});
+    return;
+  }
+  RAW_OUTLIER_INDEX = 0;
+  _saveAnalysisEvent({at: new Date().toISOString(), kind: 'outlier_table', step: 'mark_selected_types', detail: 'Treffer: ' + filtered.length + ' | Typen: ' + (RAW_OUTLIER_MARKED_TYPE || '-')});
+  await highlightOutlierAtIndex(0);
+  _updateOutlierNavStatus();
 }
 
 async function runRawOutlierSearchWithProgress(onProgress, onChunkLog, effectiveWin){
@@ -6335,6 +6405,13 @@ function renderOutlierOverviewTable(){
     const tdO = document.createElement('td');
     tdO.textContent = isIgnoredOutlier(r) ? 'ignoriert' : (r.reason || '');
     tdO.style.color = '#b00020';
+    const rowTypes = isIgnoredOutlier(r) ? ['ignored'] : (r.types || []);
+    if(rowTypes.some(t => getRawOutlierFilterTypes().includes(t))) tr.classList.add('raw_match');
+    try{
+      const selMs = (RAW_SELECTED_MS !== null && RAW_SELECTED_MS !== undefined) ? Number(RAW_SELECTED_MS) : NaN;
+      const rowMs = Date.parse(String(r.time || ''));
+      if(isFinite(selMs) && isFinite(rowMs) && rowMs === selMs) tr.classList.add('raw_hl');
+    }catch(e){}
     tr.appendChild(tdT);
     tr.appendChild(tdV);
     tr.appendChild(tdH);
@@ -9496,7 +9573,7 @@ try{
       saveState();
     });
   });
-  if($rawOutlierParams) $rawOutlierParams.addEventListener('click', ()=>{ openOutlierParamsDialog(); });
+  if($rawOutlierParamsAction) $rawOutlierParamsAction.addEventListener('click', ()=>{ openOutlierParamsDialog(); });
   if($rawOutlierParamsClose) $rawOutlierParamsClose.addEventListener('click', ()=>{ closeOutlierParamsDialog(); });
   if($rawOutlierParamsSave) $rawOutlierParamsSave.addEventListener('click', ()=>{ saveOutlierParams(); closeOutlierParamsDialog(); });
   if($rawOutlierParamsDialog){
@@ -9506,7 +9583,7 @@ try{
   }
   if($rawAllTime) $rawAllTime.addEventListener('click', ()=>{ setRawTimeToAll().catch(()=>{}); });
   if($rawOutlierContextRows){
-    $rawOutlierContextRows.addEventListener('change', ()=>{
+    const saveRowsNow = ()=>{
       const v = Math.max(1, Math.min(500, Number($rawOutlierContextRows.value) || 10));
       RAW_OUTLIER_CONTEXT_ROWS = v;
       $rawOutlierContextRows.value = String(v);
@@ -9514,7 +9591,9 @@ try{
       if(RAW_SELECTED_MS !== null && RAW_OUTLIER_RESULTS.length > 0){
         highlightOutlierAtIndex(RAW_OUTLIER_INDEX >= 0 ? RAW_OUTLIER_INDEX : 0).catch(()=>{});
       }
-    });
+    };
+    $rawOutlierContextRows.addEventListener('input', saveRowsNow);
+    $rawOutlierContextRows.addEventListener('change', saveRowsNow);
   }
   if($outlierSection){
     $outlierSection.addEventListener('toggle', ()=>{

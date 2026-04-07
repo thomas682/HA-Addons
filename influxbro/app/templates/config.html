@@ -1927,7 +1927,7 @@ try{
     backBtn.className = 'ib_cfg_back_icon';
     backBtn.title = 'Zurück zum Dashboard';
     backBtn.setAttribute('aria-label', 'Zurück zum Dashboard');
-    backBtn.innerHTML = '<svg viewBox="0 0 21 21" xmlns="http://www.w3.org/2000/svg" fill="#000000" width="16" height="16"><g fill="none" fill-rule="evenodd" stroke="#000000" stroke-linecap="round" stroke-linejoin="round" transform="translate(4.5 6.5)"><path d="m11 8v-2c0-1.65685425-1.34314575-3-3-3h-8"></path><path d="m3 6-3.001-3 3.001-3"></path></g></svg>';
+    backBtn.innerHTML = '<svg viewBox="0 0 24 24" role="img" xmlns="http://www.w3.org/2000/svg" aria-labelledby="returnIconTitle" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" color="#000000" width="16" height="16"><title id="returnIconTitle">Return</title><path d="M19,8 L19,11 C19,12.1045695 18.1045695,13 17,13 L6,13"></path><polyline points="8 16 5 13 8 10"></polyline></svg>';
     backBtn.addEventListener('click', (ev)=>{
       try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
       try{ location.href = './'; }catch(e){}

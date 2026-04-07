@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.12.255
+
+### Enhancement
+
+- Summary-Aktionen stehen jetzt global direkt rechts neben dem jeweiligen Section-Titel statt als separat ueberlagerte Aktionsgruppe.
+- Das Ruecksprung-Icon auf der Einstellungsseite nutzt jetzt das neue Return-SVG.
+- Im Dashboard wurde `raw_outlier_params` in `dashboard.actions` verschoben, `raw_outlier_context_rows` speichert sofort ab Eingabe, und `raw_search_run` markiert jetzt den aktuell gefilterten Typ in der vorhandenen Ausreißer-Tabelle statt erneut serverseitig zu suchen.
+- `dashboard.analysis_history` zeigt jetzt zusaetzlich die echten Durchfuehrungsprotokolle mit Zeitstempeln, und die Dashboard-Cache-Planung protokolliert sichtbare Gruende, wenn kein `Cache verwenden`-Dialog erscheint.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tests: `pytest tests/test_api_dashboard_cache_plan.py -q`
+- Tests: `pytest tests/test_api_outlier_search.py -q`
+- Tests: `pytest tests/test_api_ui_support.py -q -k "summary_actions_are_inline_in_topbar_and_back_icon_uses_return_svg or analysis_history_uses_event_log_and_dashboard_actions_params_button or outlier_search_button_marks_existing_table_and_context_rows_save_immediately or outlier_table_header_is_explicitly_sticky_and_search_bar_tracks_outlier_section or dashboard_load_supports_cache_plan_prompt_and_time_savings"`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.254
 
 ### Fix

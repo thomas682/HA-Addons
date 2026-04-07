@@ -149,6 +149,36 @@ def test_cache_plan_reports_partial_segments_and_gap(load_app_module, tmp_path):
     assert len(j["plan"]["gaps"]) == 1
 
 
+def test_cache_plan_reports_reason_when_no_matching_cache(load_app_module, tmp_path):
+    cfg_root = tmp_path / "config"
+    data_root = tmp_path / "data"
+
+    app_mod = load_app_module(config_dir=cfg_root, data_dir=data_root)
+    client = app_mod.app.test_client()
+
+    r = client.post(
+        "/api/cache/plan",
+        json={
+            "measurement": "m",
+            "field": "value",
+            "entity_id": "sensor.demo",
+            "friendly_name": "Demo",
+            "range": "custom",
+            "start": _iso(datetime(2026, 4, 6, 8, 0, tzinfo=timezone.utc)),
+            "stop": _iso(datetime(2026, 4, 6, 10, 0, tzinfo=timezone.utc)),
+            "unit": "W",
+            "detail_mode": "dynamic",
+            "manual_density_pct": 100,
+        },
+    )
+    j = r.get_json()
+
+    assert r.status_code == 200
+    assert j["ok"] is True
+    assert j["plan"]["has_cache"] is False
+    assert j["plan"]["reason"] == "no_matching_cache"
+
+
 def test_query_reuses_partial_cache_and_merges_gap(load_app_module, tmp_path):
     cfg_root = tmp_path / "config"
     data_root = tmp_path / "data"
