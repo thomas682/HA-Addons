@@ -16865,14 +16865,7 @@ def api_cache_usage_ui_event():
     return jsonify({"ok": True})
 
 
-@app.post("/api/client_error")
-def api_client_error():
-    """Receive client-side errors from the browser and write them to the server log.
-
-    This is important because network errors (e.g. "Failed to fetch") and JS errors
-    otherwise never show up in the add-on logs.
-    """
-
+def _client_event_log(kind_hint: str) -> Response:
     try:
         body = request.get_json(force=True) or {}
     except Exception:
@@ -16897,12 +16890,13 @@ def api_client_error():
             except Exception:
                 kind = ""
 
-        log_fn = LOG.error
+        log_fn = LOG.error if kind_hint == "error" else LOG.info
         if kind in ("analysis_debug", "selector_debug", "ui_debug"):
             log_fn = LOG.info
 
         log_fn(
-            "client_error page=%s msg=%s href=%s ua=%s stack=%s extra=%s",
+            "client_%s page=%s msg=%s href=%s ua=%s stack=%s extra=%s",
+            kind_hint,
             page,
             message,
             href,
@@ -16915,6 +16909,20 @@ def api_client_error():
         pass
 
     return jsonify({"ok": True})
+
+
+@app.post("/api/client_error")
+def api_client_error():
+    """Receive client-side browser errors and write them to the server log."""
+
+    return _client_event_log("error")
+
+
+@app.post("/api/client_log")
+def api_client_log():
+    """Receive client-side info/debug events and write them to the server log."""
+
+    return _client_event_log("log")
 
 
 @app.post("/api/global_stats_job/cancel")

@@ -5417,7 +5417,7 @@ function _logAnalysis(step, data){
       extra: {kind: 'analysis_debug', step: step, ts: new Date().toISOString(), ...(data || {})}
     };
     console.log('[ANALYSIS]', step, JSON.stringify(data));
-    fetch('./api/client_error', {
+    fetch('./api/client_log', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify(payload),

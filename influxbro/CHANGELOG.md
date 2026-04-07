@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.12.256
+
+### Fix
+
+- Browser-Debug- und Analyse-Ablaufmeldungen laufen jetzt ueber den neutralen Endpoint `api/client_log` statt ueber `api/client_error`, damit harmlose Netzwerk-Events in DevTools nicht mehr wie echte Fehler wirken.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tests: `pytest tests/test_api_client_log.py -q`
+- Tests: `pytest tests/test_api_ui_support.py -q -k "analysis_history_uses_event_log_and_dashboard_actions_params_button"`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.255
 
 ### Enhancement

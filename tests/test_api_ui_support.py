@@ -286,6 +286,7 @@ def test_analysis_history_uses_event_log_and_dashboard_actions_params_button():
     assert "const ANALYSIS_EVENT_HISTORY_KEY = 'influxbro_analysis_event_history_v1'" in body
     assert "Durchfuehrungsprotokolle" in body
     assert 'id="raw_outlier_params_action"' in body
+    assert "fetch('./api/client_log'" in body
 
 
 def test_summary_actions_are_inline_in_topbar_and_back_icon_uses_return_svg():
