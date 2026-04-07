@@ -336,6 +336,28 @@ def test_dashboard_abort_buttons_and_search_width_are_updated():
     assert 'flex:1 1 140px; min-width:110px; max-width:320px;' in topbar
 
 
+def test_navigation_helper_controls_and_config_exist():
+    topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    config = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "config.html").read_text()
+    assert 'id="ib_nav_back"' in topbar
+    assert 'id="ib_nav_forward"' in topbar
+    assert 'id="ib_param_help_toggle"' in topbar
+    assert 'const NAV_HISTORY_KEY = ' in topbar
+    assert 'const PARAM_LINKS = {' in topbar
+    assert 'ui_nav_helper_history_limit' in config
+    assert 'ui_nav_helper_highlight_color' in config
+    assert 'ui_nav_helper_highlight_duration_ms' in config
+
+
+def test_navigation_helper_uses_pending_target_and_html_badges():
+    topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    assert 'const NAV_PENDING_KEY = ' in topbar
+    assert 'function _consumePendingNav(){' in topbar
+    assert 'function _renderParamHelpBadges(){' in topbar
+    assert 'ib_param_hint_badge' in topbar
+    assert "_navigateToEntry(entry);" in topbar
+
+
 def test_dashboard_raw_actions_and_titles_are_updated():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     assert 'Grafische Analyse' in body

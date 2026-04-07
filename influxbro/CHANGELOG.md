@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.12.260
+
+### Enhancement
+
+- Paket B: `page.title.card` bietet jetzt eine Navigationshilfe mit Verlauf, Vor/Zurueck-Sprung und einer Parametrierhilfe fuer verknuepfte Elemente.
+- Die Navigationshilfe kann Highlight-Farbe, Highlight-Dauer und Verlaufsgroesse ueber neue Einstellungen steuern.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tests: `pytest tests/test_api_ui_support.py -q -k "navigation_helper_controls_and_config_exist or navigation_helper_uses_pending_target_and_html_badges or picker_supports_disabled_targets_and_angle_bracket_labels or dashboard_load_runs_cache_path_and_stats_reload"`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.259
 
 ### Fix

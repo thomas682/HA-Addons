@@ -14,6 +14,9 @@
       --ib-page-search-hl-color: {{ (cfg.get('ui_page_search_highlight_color') or '#FF9900') if cfg else '#FF9900' }};
       --ib-page-search-hl-width: {{ (cfg.get('ui_page_search_highlight_width_px') or 3) | int }}px;
       --ib-page-search-hl-duration-ms: {{ (cfg.get('ui_page_search_highlight_duration_ms') or 1400) | int }}ms;
+      --ib-nav-helper-history-limit: {{ (cfg.get('ui_nav_helper_history_limit') or 10) | int }};
+      --ib-nav-helper-hl-color: {{ (cfg.get('ui_nav_helper_highlight_color') or '#FF9900') if cfg else '#FF9900' }};
+      --ib-nav-helper-hl-duration-ms: {{ (cfg.get('ui_nav_helper_highlight_duration_ms') or 1400) | int }}ms;
       --ib-btn-bg: #eef3ff;
       --ib-btn-fg: #103a7c;
       --ib-btn-border: #cad7f2;
@@ -163,6 +166,26 @@
     .ib_pagecard_results button { display:block; width:100%; text-align:left; border:0; border-bottom:1px solid #eee; background:#fff; padding:10px 12px; cursor:pointer; }
     .ib_pagecard_results button:hover { background:#f6f6f6; }
     .ib_page_search_btn.active { border-color:#ff9900; box-shadow:0 0 0 2px rgba(255,153,0,0.18); }
+    .nav_jump_hl {
+      outline: 3px solid var(--ib-nav-helper-hl-color);
+      outline-offset: 2px;
+      border-radius: 10px;
+      box-shadow: 0 0 0 4px color-mix(in srgb, var(--ib-nav-helper-hl-color) 18%, transparent);
+    }
+    .ib_param_hint_badge {
+      position:absolute;
+      top:4px;
+      right:4px;
+      z-index:5;
+      padding:2px 6px;
+      border-radius:999px;
+      background:#0b57d0;
+      color:#fff;
+      font-size:10px;
+      line-height:1.2;
+      box-shadow:0 2px 8px rgba(11,87,208,0.28);
+      cursor:pointer;
+    }
     .ib_page_search_modal_chk { display:flex; gap:8px; align-items:center; min-height:32px; }
     .ib_page_search_modal_chk input[type="checkbox"] { width:16px; height:16px; flex:0 0 16px; }
     @media (max-width: 980px){
@@ -356,6 +379,9 @@
       const $settings = document.getElementById('ib_page_search_settings');
       const $open = document.getElementById('ib_open_all');
       const $close = document.getElementById('ib_close_all');
+      const $navBack = document.getElementById('ib_nav_back');
+      const $navForward = document.getElementById('ib_nav_forward');
+      const $paramHelp = document.getElementById('ib_param_help_toggle');
       const $results = document.getElementById('ib_pagecard_results');
       const $searchModal = document.getElementById('ib_page_search_modal');
       if(!$card || $card.dataset.ibPagecardReady === '1') return;
@@ -373,8 +399,153 @@
       try{ if($close) $close.addEventListener('click', ()=>setAllDetailsOpen(main, false)); }catch(e){}
 
       const SEARCH_CFG_KEY = 'influxbro.page.search.cfg.v1';
+      const NAV_HISTORY_KEY = 'influxbro.nav.helper.history.v1';
+      const NAV_INDEX_KEY = 'influxbro.nav.helper.index.v1';
+      const NAV_PENDING_KEY = 'influxbro.nav.helper.pending.v1';
+      const PARAM_HELP_KEY = 'influxbro.nav.helper.param_help.v1';
+      const NAV_HISTORY_LIMIT_DEFAULT = {{ (cfg.get('ui_nav_helper_history_limit') or 10) | int }};
+      const PARAM_LINKS = {
+        'page.title.card': { path: './config', selector: '#ui_pagecard_title_px', label: 'Seitentitel Schriftgroesse' },
+        'page.search': { path: './config', selector: '#ui_page_search_highlight_color', label: 'Seitensuche Highlight Farbe' },
+        'nav.ui_picker': { path: './config', selector: '#ui_nav_helper_history_limit', label: 'Navigationshilfe Verlauf' },
+        'nav.ui_picker_super': { path: './config', selector: '#ui_nav_helper_history_limit', label: 'Navigationshilfe Verlauf' },
+        'nav.history.back': { path: './config', selector: '#ui_nav_helper_history_limit', label: 'Navigationshilfe Verlauf' },
+        'nav.history.forward': { path: './config', selector: '#ui_nav_helper_history_limit', label: 'Navigationshilfe Verlauf' },
+        'nav.param_help': { path: './config', selector: '#ui_nav_helper_history_limit', label: 'Navigationshilfe Verlauf' },
+      };
       let LAST_RESULTS = [];
       let LAST_CURSOR = -1;
+      let PARAM_HELP_ACTIVE = false;
+      let PARAM_HELP_NODES = [];
+      let NAV_SUPPRESS_RECORD = false;
+
+      function _navHistoryLimit(){
+        try{
+          const raw = getComputedStyle(document.documentElement).getPropertyValue('--ib-nav-helper-history-limit').trim();
+          const n = Number(raw || NAV_HISTORY_LIMIT_DEFAULT);
+          return Math.max(1, Math.min(100, isFinite(n) ? n : NAV_HISTORY_LIMIT_DEFAULT));
+        }catch(e){ return NAV_HISTORY_LIMIT_DEFAULT; }
+      }
+      function _navHighlightDuration(){
+        try{
+          const raw = getComputedStyle(document.documentElement).getPropertyValue('--ib-nav-helper-hl-duration-ms').replace('ms','').trim();
+          const n = Number(raw || 1400);
+          return Math.max(200, Math.min(15000, isFinite(n) ? n : 1400));
+        }catch(e){ return 1400; }
+      }
+      function _navPath(){
+        try{
+          const p = String((location && location.pathname) || '').replace(/\/+$/,'');
+          const seg = p.split('/').filter(Boolean).pop() || '';
+          if(!seg || seg === '6ce7c04c_influxbro') return './';
+          return './' + seg;
+        }catch(e){ return './'; }
+      }
+      function _readJson(key, fallback){ try{ const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback; }catch(e){ return fallback; } }
+      function _writeJson(key, value){ try{ localStorage.setItem(key, JSON.stringify(value)); }catch(e){} }
+      function _readNavHistory(){ return _readJson(NAV_HISTORY_KEY, []); }
+      function _writeNavHistory(rows){ _writeJson(NAV_HISTORY_KEY, rows || []); }
+      function _readNavIndex(){ try{ return Number(localStorage.getItem(NAV_INDEX_KEY) || -1); }catch(e){ return -1; } }
+      function _writeNavIndex(idx){ try{ localStorage.setItem(NAV_INDEX_KEY, String(idx)); }catch(e){} }
+      function _setParamHelpActive(v){ PARAM_HELP_ACTIVE = !!v; try{ localStorage.setItem(PARAM_HELP_KEY, PARAM_HELP_ACTIVE ? '1':'0'); }catch(e){}; try{ if($paramHelp) $paramHelp.classList.toggle('active', PARAM_HELP_ACTIVE); }catch(e){}; }
+      function _readParamHelp(){ try{ return localStorage.getItem(PARAM_HELP_KEY) === '1'; }catch(e){ return false; } }
+      function _entryLabel(entry){ return '<' + String(entry.page || 'Seite') + ': ' + String(entry.ui || entry.label || 'element') + '>'; }
+      function _openParentDetails(el){ try{ let cur = el; while(cur){ const d = cur.closest && cur.closest('details'); if(!d) break; d.open = true; cur = d.parentElement; } }catch(e){} }
+      function _highlightNavTarget(el){ try{ if(!el) return; _openParentDetails(el); el.scrollIntoView({behavior:'smooth', block:'center'}); el.classList.add('nav_jump_hl'); setTimeout(()=>{ try{ el.classList.remove('nav_jump_hl'); }catch(e){} }, _navHighlightDuration()); }catch(e){} }
+      function _resolveTarget(entry){
+        try{
+          if(!entry) return null;
+          let el = null;
+          if(entry.selector) el = document.querySelector(String(entry.selector));
+          if(!el && entry.ui) el = document.querySelector('[data-ui="' + String(entry.ui).replace(/"/g,'\\"') + '"]');
+          return el;
+        }catch(e){ return null; }
+      }
+      function _navigateToEntry(entry){
+        try{
+          if(!entry) return;
+          const targetPath = String(entry.path || './');
+          if(targetPath && targetPath !== './' && targetPath !== _navPath()){
+            _writeJson(NAV_PENDING_KEY, entry);
+            location.href = targetPath;
+            return;
+          }
+          const el = _resolveTarget(entry);
+          if(el) _highlightNavTarget(el);
+        }catch(e){}
+      }
+      function _recordNavTarget(entry){
+        try{
+          if(!entry || NAV_SUPPRESS_RECORD) return;
+          let rows = _readNavHistory();
+          let idx = _readNavIndex();
+          if(idx >= 0 && idx < rows.length - 1) rows = rows.slice(0, idx + 1);
+          const last = rows.length ? rows[rows.length - 1] : null;
+          if(last && last.path === entry.path && last.ui === entry.ui && last.selector === entry.selector) return;
+          rows.push(entry);
+          const lim = _navHistoryLimit();
+          if(rows.length > lim) rows = rows.slice(rows.length - lim);
+          _writeNavHistory(rows);
+          _writeNavIndex(rows.length - 1);
+          _updateNavButtons();
+        }catch(e){}
+      }
+      function _updateNavButtons(){
+        try{
+          const rows = _readNavHistory();
+          const idx = _readNavIndex();
+          if($navBack){ $navBack.disabled = !(idx > 0); $navBack.title = idx > 0 ? _entryLabel(rows[idx - 1]) : 'Kein vorheriges Element'; }
+          if($navForward){ $navForward.disabled = !(idx >= 0 && idx < rows.length - 1); $navForward.title = (idx >= 0 && idx < rows.length - 1) ? _entryLabel(rows[idx + 1]) : 'Kein naechstes Element'; }
+        }catch(e){}
+      }
+      function _consumePendingNav(){
+        try{
+          const entry = _readJson(NAV_PENDING_KEY, null);
+          if(!entry) return;
+          if(String(entry.path || '') && String(entry.path || '') !== _navPath()) return;
+          localStorage.removeItem(NAV_PENDING_KEY);
+          setTimeout(()=>{ _navigateToEntry(entry); }, 120);
+        }catch(e){}
+      }
+      function _paramLinkFor(el){
+        try{
+          const ui = String((el && el.getAttribute && el.getAttribute('data-ui')) || '').trim();
+          if(ui && PARAM_LINKS[ui]) return { ui, ...PARAM_LINKS[ui] };
+        }catch(e){}
+        return null;
+      }
+      function _clearParamHelpBadges(){ try{ PARAM_HELP_NODES.forEach(n=>{ try{ n.remove(); }catch(e){} }); }catch(e){} PARAM_HELP_NODES = []; }
+      function _renderParamHelpBadges(){
+        _clearParamHelpBadges();
+        if(!PARAM_HELP_ACTIVE || !main) return;
+        Object.keys(PARAM_LINKS).forEach((ui)=>{
+          try{
+            const el = document.querySelector('[data-ui="' + ui.replace(/"/g,'\\"') + '"]');
+            if(!el) return;
+            const host = el.closest('.control, .card, .table_wrap, details, .ib_pagecard, .nav_item, [data-ui]') || el;
+            if(!host || host.querySelector(':scope > .ib_param_hint_badge')) return;
+            const prevPos = getComputedStyle(host).position;
+            if(prevPos === 'static') host.style.position = 'relative';
+            const badge = document.createElement('button');
+            badge.type = 'button';
+            badge.className = 'ib_param_hint_badge';
+            badge.textContent = '⚙';
+            badge.title = 'Zu Parametern';
+            badge.addEventListener('click', (ev)=>{
+              try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+              const link = PARAM_LINKS[ui];
+              if(!link) return;
+              NAV_SUPPRESS_RECORD = true;
+              const entry = { path: String(link.path || './config'), selector: String(link.selector || ''), ui: 'settings' + String(link.selector || ''), page: 'Einstellungen', label: String(link.label || ui) };
+              _setParamHelpActive(false);
+              _navigateToEntry(entry);
+              setTimeout(()=>{ NAV_SUPPRESS_RECORD = false; }, 400);
+            });
+            host.appendChild(badge);
+            PARAM_HELP_NODES.push(badge);
+          }catch(e){}
+        });
+      }
       function readSearchCfg(){
         try{
           const raw = localStorage.getItem(SEARCH_CFG_KEY);
@@ -513,6 +684,7 @@
         const hit = LAST_RESULTS[idx];
         if(!hit || !hit.el) return;
         LAST_CURSOR = idx;
+        _recordNavTarget({ path: _navPath(), ui: String(hit.ui || ''), selector: '', page: currentPageLabel(), label: String(hit.ui || hit.txt || '') });
         try{ hit.el.scrollIntoView({behavior:'smooth', block:'center'}); }catch(e){}
         try{
           const dur = Math.max(200, Number(getComputedStyle(document.documentElement).getPropertyValue('--ib-page-search-hl-duration-ms').replace('ms','').trim() || '1400'));
@@ -566,8 +738,13 @@
       try{ if($prev) $prev.addEventListener('click', ()=>stepResult(-1)); }catch(e){}
       try{ if($next) $next.addEventListener('click', ()=>stepResult(1)); }catch(e){}
       try{ if($settings) $settings.addEventListener('click', ()=>renderSearchSettings()); }catch(e){}
+      try{ if($navBack) $navBack.addEventListener('click', ()=>{ const rows = _readNavHistory(); let idx = _readNavIndex(); if(idx > 0){ idx -= 1; _writeNavIndex(idx); _navigateToEntry(rows[idx]); _updateNavButtons(); } }); }catch(e){}
+      try{ if($navForward) $navForward.addEventListener('click', ()=>{ const rows = _readNavHistory(); let idx = _readNavIndex(); if(idx >= 0 && idx < rows.length - 1){ idx += 1; _writeNavIndex(idx); _navigateToEntry(rows[idx]); _updateNavButtons(); } }); }catch(e){}
+      try{ if($paramHelp) $paramHelp.addEventListener('click', ()=>{ _setParamHelpActive(!PARAM_HELP_ACTIVE); _renderParamHelpBadges(); }); }catch(e){}
+      try{ document.addEventListener('click', (ev)=>{ if(NAV_SUPPRESS_RECORD) return; const t = ev.target && ev.target.closest ? ev.target.closest('[data-ui]') : null; if(!t) return; const ui = String(t.getAttribute('data-ui') || '').trim(); if(!ui || ui.startsWith('nav.history.') || ui === 'nav.param_help') return; _recordNavTarget({ path: _navPath(), ui, selector: '', page: currentPageLabel(), label: ui }); }, true); }catch(e){}
       try{ document.addEventListener('click', (ev)=>{ if(!$results || !$results.style || $results.style.display === 'none') return; if(ev.target === $search || $results.contains(ev.target)) return; $results.style.display='none'; }, true); }catch(e){}
       try{ applySearchCfgUi(); }catch(e){}
+      try{ _setParamHelpActive(_readParamHelp()); _renderParamHelpBadges(); _consumePendingNav(); _updateNavButtons(); }catch(e){}
     }
 
     if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initPageCard, { once: true });
@@ -880,6 +1057,9 @@
       <button id="ui_profile_info" type="button" data-ui="nav.profile.info" title="nav.profile.info">Info</button>
       <button id="ui_picker_toggle" type="button" data-ui="nav.ui_picker" title="nav.ui_picker">Picker</button>
       <button id="ui_superpicker_toggle" type="button" data-ui="nav.ui_picker_super" title="nav.ui_picker_super">S-Picker</button>
+      <button id="ib_nav_back" type="button" data-ui="nav.history.back" title="nav.history.back" aria-label="Vorheriges Element">◀</button>
+      <button id="ib_nav_forward" type="button" data-ui="nav.history.forward" title="nav.history.forward" aria-label="Naechstes Element">▶</button>
+      <button id="ib_param_help_toggle" type="button" data-ui="nav.param_help" title="nav.param_help">Param-Hilfe</button>
     </div>
     <div class="zoom" data-ui="topbar.zoom" title="topbar.zoom">
       <span class="meta">Zoom</span>
