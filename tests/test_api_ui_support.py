@@ -287,6 +287,9 @@ def test_analysis_history_uses_event_log_and_dashboard_actions_params_button():
     assert "Durchfuehrungsprotokolle" in body
     assert 'id="raw_outlier_params_action"' in body
     assert "fetch('./api/client_log'" in body
+    assert "fetch('./api/analysis_history_event'" in body
+    assert "await api('./api/analysis_history?limit=500'" in body
+    assert "window.InfluxBroPopup.show('Analyse-Verlauf ('" in body
 
 
 def test_summary_actions_are_inline_in_topbar_and_back_icon_uses_return_svg():

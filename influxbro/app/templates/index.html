@@ -5772,6 +5772,30 @@ const ANALYSIS_HISTORY_MAX = 50;
 const ANALYSIS_EVENT_HISTORY_KEY = 'influxbro_analysis_event_history_v1';
 const ANALYSIS_EVENT_HISTORY_MAX = 400;
 
+function _analysisContext(){
+  try{
+    return {
+      page: 'dashboard',
+      measurement: String(ANALYSIS_STATE && ANALYSIS_STATE.measurement || ''),
+      field: String(ANALYSIS_STATE && ANALYSIS_STATE.field || ''),
+      entity_id: String(ANALYSIS_STATE && ANALYSIS_STATE.entity_id || ''),
+      friendly_name: String(ANALYSIS_STATE && ANALYSIS_STATE.friendly_name || ''),
+    };
+  }catch(e){
+    return { page: 'dashboard', measurement: '', field: '', entity_id: '', friendly_name: '' };
+  }
+}
+
+function _postAnalysisHistory(entry){
+  try{
+    fetch('./api/analysis_history_event', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({..._analysisContext(), ...(entry || {})}),
+    }).catch(()=>{});
+  }catch(e){}
+}
+
 function _saveAnalysisEvent(entry){
   try{
     let history = [];
@@ -5781,6 +5805,7 @@ function _saveAnalysisEvent(entry){
     if(history.length > ANALYSIS_EVENT_HISTORY_MAX) history = history.slice(0, ANALYSIS_EVENT_HISTORY_MAX);
     localStorage.setItem(ANALYSIS_EVENT_HISTORY_KEY, JSON.stringify(history));
   }catch(e){}
+  try{ _postAnalysisHistory(entry); }catch(e){}
 }
 
 function _loadAnalysisEvents(){
@@ -5799,6 +5824,7 @@ function _saveAnalysisHistory(entry){
     if(history.length > ANALYSIS_HISTORY_MAX) history = history.slice(0, ANALYSIS_HISTORY_MAX);
     localStorage.setItem(ANALYSIS_HISTORY_KEY, JSON.stringify(history));
   }catch(e){}
+  try{ _postAnalysisHistory({kind:'analysis_summary', step:'summary', status:String(entry && entry.status || ''), detail:'Zusammenfassung gespeichert', summary: entry || {}}); }catch(e){}
 }
 
 function _loadAnalysisHistory(){
@@ -5808,15 +5834,19 @@ function _loadAnalysisHistory(){
   }catch(e){ return []; }
 }
 
-function _showAnalysisHistory(){
-  const history = _loadAnalysisHistory();
-  const events = _loadAnalysisEvents();
+async function _showAnalysisHistory(){
+  let rows = [];
+  try{
+    const j = await api('./api/analysis_history?limit=500', {method:'GET'}, { key: 'analysis_history_fetch', silent: true });
+    rows = Array.isArray(j && j.rows) ? j.rows : [];
+  }catch(e){
+    rows = [];
+  }
+  const events = rows.filter(r => String(r.kind || '') !== 'analysis_summary');
+  const history = rows.filter(r => String(r.kind || '') === 'analysis_summary').map(r => r.summary || {}).filter(r => r && typeof r === 'object');
   if(!history.length && !events.length){
     if(window.InfluxBroPopup){
-      window.InfluxBroPopup.show('analysis_history', {
-        title: 'Analyse-Verlauf',
-        body: '<div style="padding:16px;opacity:0.6;">Keine Analysen vorhanden.</div>',
-      });
+      window.InfluxBroPopup.show('Analyse-Verlauf', '<div style="padding:16px;opacity:0.6;">Keine Analysen vorhanden.</div>');
     }
     return;
   }
@@ -5883,10 +5913,7 @@ function _showAnalysisHistory(){
   html += '</div>';
 
   if(window.InfluxBroPopup){
-    window.InfluxBroPopup.show('analysis_history', {
-      title: 'Analyse-Verlauf (' + (history.length + events.length) + ' Eintraege)',
-      body: html,
-    });
+    window.InfluxBroPopup.show('Analyse-Verlauf (' + (history.length + events.length) + ' Eintraege)', html);
   }
 }
 
@@ -9139,7 +9166,7 @@ if($btnLoad) $btnLoad.addEventListener("click", (ev)=>{
   runAnalysis().catch(displayError);
 });
 if($btnCancelLoad) $btnCancelLoad.addEventListener("click", (ev)=>{ _stop(ev); cancelLoadNow(); });
-if($analysisHistoryBtn) $analysisHistoryBtn.addEventListener("click", (ev)=>{ _stop(ev); _showAnalysisHistory(); });
+if($analysisHistoryBtn) $analysisHistoryBtn.addEventListener("click", (ev)=>{ _stop(ev); _showAnalysisHistory().catch(displayError); });
 if($analysisStartReset) $analysisStartReset.addEventListener('click', async (ev)=>{
   _stop(ev);
   try{

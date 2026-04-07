@@ -30,7 +30,7 @@ from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
-from flask import Flask, abort, jsonify, make_response, render_template, request, send_file
+from flask import Flask, Response, abort, jsonify, make_response, render_template, request, send_file
 from influxdb_client import InfluxDBClient
 from influxdb_client import Point
 from influxdb_client import WritePrecision
@@ -67,6 +67,10 @@ UI_ACTIONS_LOCK = threading.RLock()
 UI_ACTIONS_MAX_MEM = 200
 UI_ACTIONS_MEM: "deque[dict[str, Any]]" = deque(maxlen=UI_ACTIONS_MAX_MEM)
 UI_ACTIONS_PATH = DATA_DIR / "influxbro_ui_actions.jsonl"
+ANALYSIS_HISTORY_LOCK = threading.RLock()
+ANALYSIS_HISTORY_MAX_MEM = 1000
+ANALYSIS_HISTORY_MEM: "deque[dict[str, Any]]" = deque(maxlen=ANALYSIS_HISTORY_MAX_MEM)
+ANALYSIS_HISTORY_PATH = DATA_DIR / "influxbro_analysis_history.jsonl"
 QUALITY_CLEANUP_LOG_PATH = DATA_DIR / "influxbro_quality_cleanup.jsonl"
 MONITOR_LOCK = threading.RLock()
 MONITOR_CFG_PATH = DATA_DIR / "influxbro_monitoring_config.json"
@@ -1789,6 +1793,56 @@ def _ui_action_tail(limit: int = 5) -> list[dict[str, Any]]:
     try:
         if UI_ACTIONS_PATH.exists():
             lines = UI_ACTIONS_PATH.read_text(encoding="utf-8").splitlines()
+            out: list[dict[str, Any]] = []
+            for ln in lines[-lim:]:
+                try:
+                    j = json.loads(ln)
+                    if isinstance(j, dict):
+                        out.append(j)
+                except Exception:
+                    continue
+            return out
+    except Exception:
+        pass
+    return []
+
+
+def _analysis_history_append(entry: dict[str, Any]) -> None:
+    try:
+        e = dict(entry or {})
+        e.setdefault("at", _utc_now_iso_ms())
+        e.setdefault("id", uuid.uuid4().hex)
+        for k in list(e.keys()):
+            lk = str(k).lower()
+            if "token" in lk or "password" in lk or "confirm_phrase" in lk:
+                e.pop(k, None)
+        for k in ("kind", "step", "page", "measurement", "field", "entity_id", "friendly_name", "detail", "status"):
+            if k in e and e[k] is not None:
+                e[k] = str(e[k])[:2000]
+        with ANALYSIS_HISTORY_LOCK:
+            ANALYSIS_HISTORY_MEM.append(e)
+        try:
+            DATA_DIR.mkdir(parents=True, exist_ok=True)
+            with ANALYSIS_HISTORY_PATH.open("a", encoding="utf-8") as f:
+                f.write(json.dumps(e, ensure_ascii=True) + "\n")
+        except Exception:
+            pass
+    except Exception:
+        return
+
+
+def _analysis_history_tail(limit: int = 500) -> list[dict[str, Any]]:
+    try:
+        lim = min(5000, max(1, int(limit or 500)))
+    except Exception:
+        lim = 500
+    with ANALYSIS_HISTORY_LOCK:
+        xs = list(ANALYSIS_HISTORY_MEM)
+    if xs:
+        return xs[-lim:]
+    try:
+        if ANALYSIS_HISTORY_PATH.exists():
+            lines = ANALYSIS_HISTORY_PATH.read_text(encoding="utf-8").splitlines()
             out: list[dict[str, Any]] = []
             for ln in lines[-lim:]:
                 try:
@@ -16863,6 +16917,44 @@ def api_cache_usage_ui_event():
         pass
 
     return jsonify({"ok": True})
+
+
+@app.post("/api/analysis_history_event")
+def api_analysis_history_event():
+    try:
+        body = request.get_json(force=True) or {}
+    except Exception:
+        body = {}
+    try:
+        entry = {
+            "kind": str(body.get("kind") or "analysis").strip()[:80],
+            "step": str(body.get("step") or "").strip()[:120],
+            "page": str(body.get("page") or "dashboard").strip()[:40],
+            "measurement": str(body.get("measurement") or "").strip()[:200],
+            "field": str(body.get("field") or "").strip()[:200],
+            "entity_id": str(body.get("entity_id") or "").strip()[:200],
+            "friendly_name": str(body.get("friendly_name") or "").strip()[:200],
+            "detail": str(body.get("detail") or "").strip()[:4000],
+            "status": str(body.get("status") or "").strip()[:40],
+            "summary": body.get("summary") if isinstance(body.get("summary"), dict) else None,
+            "extra": body.get("extra") if isinstance(body.get("extra"), dict) else None,
+            "ip": _req_ip(),
+            "ua": _req_ua(),
+        }
+        _analysis_history_append(entry)
+    except Exception:
+        pass
+    return jsonify({"ok": True})
+
+
+@app.get("/api/analysis_history")
+def api_analysis_history():
+    try:
+        limit = int(request.args.get("limit", "500"))
+    except Exception:
+        limit = 500
+    rows = _analysis_history_tail(limit)
+    return jsonify({"ok": True, "rows": rows, "total": len(rows)})
 
 
 def _client_event_log(kind_hint: str) -> Response:
