@@ -5987,11 +5987,8 @@ async function _showAnalysisHistory(){
     text += '\n';
   });
 
-  const escText = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  const html = '<pre style="white-space:pre-wrap;word-break:break-word;font-size:12px;line-height:1.5;max-height:70vh;overflow:auto;margin:0;padding:8px;">' + escText + '</pre>';
-
   if(window.InfluxBroPopup){
-    window.InfluxBroPopup.show('Analyse-Verlauf (' + (history.length + events.length) + ' Eintraege)', html, { bodyHtml: true });
+    window.InfluxBroPopup.show('Analyse-Verlauf (' + (history.length + events.length) + ' Eintraege)', text);
   }
 }
 

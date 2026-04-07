@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.263
+
+### Fix
+
+- Analyse-Verlauf (`dashboard.analysis_history`) wird jetzt als reiner Plain-Text ohne HTML-Wrapper oder `{ bodyHtml: true }` an das Popup uebergeben.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.262
 
 ### Fix
