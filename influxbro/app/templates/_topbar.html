@@ -667,17 +667,32 @@
       }catch(e){ return 'element'; }
     }
 
-    function pickTarget(el){
+    function _targetsFromEvent(ev){
+      try{
+        const x = ev && typeof ev.clientX === 'number' ? ev.clientX : null;
+        const y = ev && typeof ev.clientY === 'number' ? ev.clientY : null;
+        if(x === null || y === null || !document.elementsFromPoint) return [];
+        return Array.from(document.elementsFromPoint(x, y) || []);
+      }catch(e){ return []; }
+    }
+
+    function pickTarget(el, ev){
       try{
         if(el && el.nodeType === Node.TEXT_NODE) el = el.parentElement;
+        const stack = _targetsFromEvent(ev);
+        if(!el || el === document.body || el === document.documentElement) el = stack[0] || el;
         if(!el || el === document.body || el === document.documentElement) return null;
         if(readSuper()){
-          const ownUi = String(el.getAttribute && el.getAttribute('data-ui') || '').trim();
-          if(ownUi) return { el, name: ownUi, kind: 'data-ui' };
+          for(const cand of (stack.length ? stack : [el])){
+            const ownUi = String(cand.getAttribute && cand.getAttribute('data-ui') || '').trim();
+            if(ownUi) return { el: cand, name: ownUi, kind: 'data-ui' };
+          }
           return { el, name: _fallbackNameFor(el), kind: 'fallback' };
         }
-        const withUi = el.closest && el.closest('[data-ui]');
-        if(withUi) return { el: withUi, name: String(withUi.getAttribute('data-ui') || '').trim(), kind: 'data-ui' };
+        for(const cand of (stack.length ? stack : [el])){
+          const withUi = cand.closest && cand.closest('[data-ui]');
+          if(withUi) return { el: withUi, name: String(withUi.getAttribute('data-ui') || '').trim(), kind: 'data-ui' };
+        }
         return null;
       }catch(e){ return null; }
     }
@@ -716,7 +731,8 @@
       overlay.style.width = Math.max(0, r.width + 4) + 'px';
       overlay.style.height = Math.max(0, r.height + 4) + 'px';
       const name = String(target.name || '').trim();
-      badge.textContent = target.kind === 'fallback' ? ('fallback: ' + (name || 'element')) : (name || '(kein data-ui)');
+      const display = target.kind === 'fallback' ? ('fallback: <' + (name || 'element') + '>') : ('<' + (name || '(kein data-ui)') + '>');
+      badge.textContent = display;
       badge.style.display = 'block';
       const x = ev && typeof ev.clientX === 'number' ? ev.clientX + 12 : (r.left + 12);
       const y = ev && typeof ev.clientY === 'number' ? ev.clientY + 12 : (r.top + 12);
@@ -747,16 +763,16 @@
 
     function onMove(ev){
       if(!active) return;
-      renderTarget(pickTarget(ev.target), ev);
+      renderTarget(pickTarget(ev.target, ev), ev);
     }
 
     async function onClick(ev){
       if(!active) return;
-      const t = pickTarget(ev.target);
+      const t = pickTarget(ev.target, ev);
       if(!t || !t.el) return;
       try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
       const name = String(t.name || '').trim();
-      const text = currentPageLabel() + ': ' + name;
+      const text = '<' + currentPageLabel() + ': ' + name + '>';
       const ok = await copyText(text);
       try{
         if(window.InfluxBroPopup && window.InfluxBroPopup.show){
@@ -871,7 +887,7 @@
       <span class="pct" id="ib_zoom_pct" data-ui="topbar.zoom.pct" title="topbar.zoom.pct">100%</span>
       <button id="ib_zoom_in" type="button" aria-label="Zoom in" data-ui="topbar.zoom.in" title="topbar.zoom.in">+</button>
     </div>
-    <div class="ib_clear_row" style="flex:1 1 280px; min-width:220px;">
+    <div class="ib_clear_row" style="flex:1 1 140px; min-width:110px; max-width:320px;">
       <input id="ib_page_search" type="text" data-ui="page.search" title="page.search" placeholder="Elemente auf dieser Seite suchen..." />
       <button type="button" class="ib_clear_btn" data-clear-for="ib_page_search" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
     </div>

@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.12.259
+
+### Fix
+
+- Paket A: Dashboard-Analyse nutzt jetzt wieder den eigentlichen Dashboard-Ladepfad mit Cache-Pruefung, fuellt danach die Gesamtstatistik neu und bietet den Ausreißer-Abbruch direkt in `dashboard.actions` an.
+- Picker erfassen jetzt auch deaktivierte Elemente zuverlaessiger und kopieren Labels im Format `<Seite: data-ui>`.
+- Die Einstellungsseite entfernt den alten `summary::after`-Pfeil und den Ruecksprung-Button, behebt weitere null-unsichere Feldzuweisungen und korrigiert Layout-Ueberlaeufe bei breiten Parametern.
+- Die Standardbreite von `page.search` wurde reduziert.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tests: `pytest tests/test_api_ui_support.py -q -k "picker_supports_disabled_targets_and_angle_bracket_labels or dashboard_load_runs_cache_path_and_stats_reload or settings_layout_and_null_safe_bindings_are_present or dashboard_abort_buttons_and_search_width_are_updated or summary_actions_are_inline_in_topbar_and_back_icon_uses_return_svg"`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.258
 
 ### Fix

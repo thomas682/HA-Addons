@@ -301,7 +301,39 @@ def test_summary_actions_are_inline_in_topbar_and_back_icon_uses_return_svg():
     config = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "config.html").read_text()
     assert 'margin-left: auto;' in topbar
     assert "let actions = row.querySelector(':scope > .ib_summary_actions');" in topbar
-    assert 'M19,8 L19,11 C19,12.1045695 18.1045695,13 17,13 L6,13' in config
+    assert 'ib_cfg_back_icon' not in config
+
+
+def test_picker_supports_disabled_targets_and_angle_bracket_labels():
+    topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    assert 'document.elementsFromPoint' in topbar
+    assert "const text = '<' + currentPageLabel() + ': ' + name + '>';" in topbar
+    assert "'<' + (name || '(kein data-ui)') + '>'" in topbar
+
+
+def test_dashboard_load_runs_cache_path_and_stats_reload():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert 'async function runDashboardAnalysisFlow(){' in body
+    assert 'await refreshAll({ cacheStrategy: planChoice && planChoice.cacheStrategy ? planChoice.cacheStrategy : \'default\' });' in body
+    assert 'runDashboardAnalysisFlow().catch(displayError);' in body
+    assert 'try{ await loadStats(); }catch(e){}' in body
+
+
+def test_settings_layout_and_null_safe_bindings_are_present():
+    config = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "config.html").read_text()
+    assert 'details.card > summary:after' not in config
+    assert 'main.content button:not(.ib_info_icon):not(.btn_sm) { width:100%; }' in config
+    assert '.color_pick_row input[type="text"] { flex:1 1 auto; min-width:0; }' in config
+    assert '_setVal(el.ui_filter_control_width_px' in config
+    assert '_setVal(el.ui_job_color_running' in config
+
+
+def test_dashboard_abort_buttons_and_search_width_are_updated():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    assert 'id="raw_search_abort" style="display:none; width:auto; white-space:nowrap;"' in body
+    assert 'aria-label="Laufende Dashboard-Abfrage abbrechen">Laden abbrechen</button>' in body
+    assert 'flex:1 1 140px; min-width:110px; max-width:320px;' in topbar
 
 
 def test_dashboard_raw_actions_and_titles_are_updated():
