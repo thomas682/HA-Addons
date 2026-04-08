@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.266
+
+### Fix
+
+- Die Dashboard-Analyse verwendet ihren Session-Cache jetzt auch bei `0` Treffern wieder korrekt und bildet fuer `range=all` einen stabileren Cache-Key, damit direkte Wiederholungen nicht jedes Mal erneut alle Chunks durchlaufen.
+- Der Analyse-Dialog startet die Dashboard-Analyse nicht mehr doppelt; damit entfaellt der zweite `analysis / start` mit nachfolgendem `blocked`-Reset.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.265
 
 ### Fix

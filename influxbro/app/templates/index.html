@@ -4908,6 +4908,50 @@ function closeOutlierParamsDialog(){
   if($rawOutlierParamsDialog) $rawOutlierParamsDialog.style.display = 'none';
 }
 
+function _analysisCacheStopKey(stopIso, rangeKey){
+  try{
+    const ts = Date.parse(String(stopIso || ''));
+    if(!isFinite(ts)) return String(stopIso || '');
+    if(String(rangeKey || '') === 'all'){
+      const rounded = new Date(Math.floor(ts / 60000) * 60000);
+      return rounded.toISOString().replace('.000Z', 'Z');
+    }
+    return new Date(ts).toISOString().replace('.000Z', 'Z');
+  }catch(e){
+    return String(stopIso || '');
+  }
+}
+
+function _analysisCacheParamsKey(){
+  try{
+    const ps = localStorage.getItem('raw_outlier_params');
+    const p = ps ? JSON.parse(ps) : {};
+    return JSON.stringify({
+      min: String(p.min || ''),
+      max: String(p.max || ''),
+      max_step: String(p.max_step || ''),
+    });
+  }catch(e){
+    return '{}';
+  }
+}
+
+function _analysisCacheKey(base, win, types){
+  const rangeKey = $r ? String($r.value || '24h') : '24h';
+  const sortedTypes = Array.isArray(types) ? types.slice().sort().join(',') : '';
+  return 'raw_outlier_cache:' + [
+    String(base.measurement || ''),
+    String(base.field || ''),
+    String(base.entity_id || ''),
+    String(base.friendly_name || ''),
+    String(win && win.start || ''),
+    _analysisCacheStopKey(win && win.stop || '', rangeKey),
+    rangeKey,
+    sortedTypes,
+    _analysisCacheParamsKey(),
+  ].join('|');
+}
+
 async function runRawOutlierSearch(){
   console.log('[OUTLIER_SEARCH] ENTRY: RAW_OUTLIER_SEARCHING =', RAW_OUTLIER_SEARCHING);
   if(RAW_OUTLIER_SEARCHING){
@@ -4945,7 +4989,7 @@ async function runRawOutlierSearch(){
   }
   console.log('[OUTLIER_SEARCH] Step 3: Graph time range', startMs, stopMs);
 
-  const cacheKey = 'raw_outlier_cache:' + [base.measurement, base.field, base.entity_id || '', base.friendly_name || '', win.start, win.stop].join('|');
+  const cacheKey = _analysisCacheKey(base, win, getRawOutlierFilterTypes());
   console.log('[OUTLIER_SEARCH] Step 4: Checking cache', cacheKey);
   let cached = null;
   try{
@@ -4953,7 +4997,7 @@ async function runRawOutlierSearch(){
     if(cs) cached = JSON.parse(cs);
   }catch(e){}
 
-  if(cached && cached.results && cached.results.length > 0){
+  if(cached && Array.isArray(cached.results)){
     console.log('[OUTLIER_SEARCH] CACHE HIT:', cached.results.length, 'results');
     RAW_OUTLIER_RESULTS = cached.results;
     RAW_OUTLIER_MAP = cached.map || {};
@@ -6060,7 +6104,7 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog, effective
     return;
   }
 
-  const cacheKey = 'raw_outlier_cache:' + [base.measurement, base.field, base.entity_id || '', base.friendly_name || '', win.start, win.stop].join('|');
+  const cacheKey = _analysisCacheKey(base, win, getRawOutlierFilterTypes());
   _logAnalysis('cache_check', {cacheKey: cacheKey});
   console.log('[ANALYSIS] cache_key:', cacheKey);
   let cached = null;
@@ -6069,7 +6113,7 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog, effective
     if(cs) cached = JSON.parse(cs);
   }catch(e){}
 
-  if(cached && cached.results && cached.results.length > 0){
+  if(cached && Array.isArray(cached.results)){
     _logAnalysis('cache_hit', {count: cached.results.length});
     console.log('[ANALYSIS] CACHE HIT:', cached.results.length, 'results');
     RAW_OUTLIER_RESULTS = cached.results;
@@ -9356,15 +9400,6 @@ if($analysisHistoryBtn) $analysisHistoryBtn.addEventListener("click", (ev)=>{ _s
 // Analysis confirm dialog event listeners
 try{
   const $analysisConfirmDlg = document.getElementById('analysis_confirm_dialog');
-  const $analysisConfirmClose = document.getElementById('analysis_confirm_close');
-  const $analysisConfirmCancel = document.getElementById('analysis_confirm_cancel');
-  const $analysisConfirmStart = document.getElementById('analysis_confirm_start');
-  if($analysisConfirmClose) $analysisConfirmClose.addEventListener('click', ()=>{ $analysisConfirmDlg.style.display = 'none'; });
-  if($analysisConfirmCancel) $analysisConfirmCancel.addEventListener('click', ()=>{ $analysisConfirmDlg.style.display = 'none'; });
-  if($analysisConfirmStart) $analysisConfirmStart.addEventListener('click', ()=>{
-    $analysisConfirmDlg.style.display = 'none';
-    runDashboardAnalysisFlow().catch(displayError);
-  });
   if($analysisConfirmDlg){
     $analysisConfirmDlg.addEventListener('click', (ev)=>{
       if(ev.target === $analysisConfirmDlg) $analysisConfirmDlg.style.display = 'none';
