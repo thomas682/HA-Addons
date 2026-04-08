@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.270
+
+### Fix
+
+- `icon.png` und `logo.png` des Add-ons verwenden jetzt das gewuenschte Bild `InfluxBro Logo Design.png`. ([#217](https://github.com/thomas682/HA-Addons/issues/217))
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Dateien: `influxbro/icon.png`, `influxbro/logo.png` verifiziert
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.269
 
 ### Enhancement
