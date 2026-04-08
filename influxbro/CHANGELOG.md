@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.275
+
+### Fix
+
+- `InfluxBroLogo.png`, `logo.png` und `icon.png` wurden bei gleicher 3:2-Proportion randärmer beschnitten, damit das Add-on-Logo auf der Home-Assistant-Info-Seite größer wirkt. ([#221](https://github.com/thomas682/HA-Addons/issues/221))
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Dateien: `influxbro/images/InfluxBroLogo.png`, `influxbro/logo.png`, `influxbro/icon.png` verifiziert (`1200x800`)
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.274
 
 ### Enhancement
