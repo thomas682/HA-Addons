@@ -544,6 +544,7 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Die Hoehe der Titel-/Pagecard-Leiste schrumpft nach automatischen Erweiterungen wieder auf die kleinste vollstaendige Hoehe des aktuell sichtbaren Inhalts zurueck.
 - Button-Klicks werden fuer Supportzwecke jetzt global protokolliert. Wenn ein Button-Handler scheitert, landet der Fehler nicht nur im Browser, sondern auch im UI-Fehlerlog und im Add-on-Log.
 - Mit aktivem `superpicker` wird jetzt das direkt gehoverte Unterelement bevorzugt erfasst; dadurch lassen sich auch Elemente innerhalb eines groesseren `data-ui`-Containers gezielter identifizieren.
+- Der `S-Picker` prueft im Super-Modus wieder zuerst das direkt getroffene Element wie in den frueheren Dashboard-Versionen; dadurch lassen sich auch feinere Unterelemente wieder zuverlaessig selektieren.
 - Query- und Statistik-Dialoge verwenden wieder denselben stabilen Popup-Pfad; ein fehlender Decode-Helper blockiert das Oeffnen nicht mehr.
 - Query-Dialoge zeigen ihre History jetzt im selben modalen Fenster unterhalb des Query-Textes. Ein horizontaler Splitter erlaubt das Anpassen der Hoehe beider Bereiche direkt im Dialog.
 - In der Topbar gibt es jetzt statt der separaten Checkbox einen direkten `S-Picker`-Button fuer den Superpicker. Dashboard-Aktionen sind unterhalb des Filterblocks gebuendelt, und mehrere Such-/Filterfelder sind explizit fuer den Clear-Button-Pfad markiert.
@@ -552,6 +553,7 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Ein frueherer HTML-Strukturfehler im Auswahl-Block ist entfernt; dadurch stimmt die DevTools-Struktur wieder mit der beabsichtigten Dashboard-Hierarchie ueberein.
 - Die Dashboard-Bloecke heissen jetzt `Grafische Analyse` und `Raw Daten Analyse`.
 - Der bisher im Raw-Bereich eingebettete Ausreißer-Block ist jetzt eine eigene Dashboard-Section `Ausreißer` oberhalb von `Raw Daten Analyse`.
+- Die Dashboard-Analyse fuehrt ihre Laufzeit- und Chunk-Schritte jetzt gesammelt in `analysis_checklist`; der Bereich `dashboard.load_status` zeigt dafuer keine separaten Chunk-Zeilen mehr.
 - Zeitstempel in der Ausreißer-Tabelle zeigen jetzt wieder echte Millisekunden, wenn die Datenquelle diese liefert.
 - Der Tabellenkopf der Ausreißer-Tabelle bleibt jetzt beim vertikalen Scrollen fix sichtbar, analog zur Raw-Tabelle.
 - Der Button fuer `Ausreißer-Parameter` sitzt jetzt im Dashboard-Aktionsblock neben `Analyse` statt innerhalb des Ausreißer-Tabellenblocks.

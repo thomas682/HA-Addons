@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.264
+
+### Fix
+
+- Dashboard-Analyse konsolidiert Status- und Fortschrittseintraege jetzt in `analysis_checklist`; doppelte Eintraege entfallen und einzelne Chunks werden dort direkt mit angezeigt, waehrend `dashboard.load_status` keine separaten Chunk-Zeilen mehr ausgibt.
+- Der `S-Picker` (`nav.ui_picker_super`) nutzt im Super-Modus wieder vorrangig das direkt getroffene Element wie in den frueheren Versionen und faellt erst danach auf tiefere Stack-Treffer zurueck.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.263
 
 ### Fix

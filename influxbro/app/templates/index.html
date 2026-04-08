@@ -4613,6 +4613,8 @@ const ANALYSIS_STATE = {
   startTime: null, totalSpanStart: '', totalSpanStop: '',
   currentChunkStart: '', currentChunkStop: '',
 };
+let ANALYSIS_CHECKLIST_ITEMS = [];
+let ANALYSIS_CHUNK_LOG = [];
 let GRAPH_QUERY_DASH_AT = "";
 let GRAPH_QUERY_EDIT_AT = "";
 let APPLY_QUERY_LAST_AT = "";
@@ -5272,25 +5274,16 @@ function updateAnalysisUI(){
     // 3. Checkliste
     const $cl = document.getElementById('analysis_checklist');
     if($cl){
-      const items = [];
-      items.push({label: 'Eingaben pruefen', status: 'ok'});
-      items.push({label: 'Zeitraum: ' + (s.timeRange || '-'), status: 'ok'});
-      items.push({label: 'Ausreisser-Typen', status: 'ok'});
-      if(s.status === 'running'){
-        items.push({label: 'Chunk ' + s.currentChunk + ' von ' + s.totalChunks, status: 'running'});
-      }else if(s.status === 'done'){
-        items.push({label: 'Chunks: ' + s.totalChunks + '/' + s.totalChunks + ' abgeschlossen', status: 'ok'});
-      }else if(s.status === 'error'){
-        items.push({label: 'Fehler aufgetreten', status: 'err'});
+      const items = ANALYSIS_CHECKLIST_ITEMS.length ? ANALYSIS_CHECKLIST_ITEMS.slice() : [];
+      if(!items.length){
+        items.push({label: 'Eingaben pruefen', status: 'ok'});
+        items.push({label: 'Zeitraum: ' + (s.timeRange || '-'), status: 'ok'});
+        items.push({label: 'Ausreisser-Typen', status: 'ok'});
+        if(s.status === 'done') items.push({label: 'Ausreisser-Suche abgeschlossen', status: 'ok'});
+        else if(s.status === 'error') items.push({label: 'Fehler aufgetreten', status: 'err'});
+        if(s.totalFound > 0) items.push({label: s.totalFound + ' Ausreisser gefunden', status: 'ok'});
       }
-      if(s.totalFound > 0){
-        items.push({label: s.totalFound + ' Ausreisser gefunden', status: 'ok'});
-      }
-      $cl.innerHTML = items.map(it => {
-        const iconClass = it.status === 'ok' ? 'ok' : it.status === 'err' ? 'err' : 'running';
-        const icon = it.status === 'ok' ? '✓' : it.status === 'err' ? '✗' : '';
-        return '<div class="checklist_item"><span class="checklist_icon ' + iconClass + '">' + icon + '</span><span class="checklist_label">' + it.label + '</span></div>';
-      }).join('');
+      _renderAnalysisChecklist(items, ANALYSIS_CHUNK_LOG);
     }
 
     // 4. Aktueller Chunk
@@ -5455,6 +5448,9 @@ async function runAnalysis(){
   const base = currentFilters();
   const types = getRawOutlierFilterTypes();
   const win = await resolveEffectiveAnalysisWindow();
+  ANALYSIS_CHECKLIST_ITEMS = [];
+  ANALYSIS_CHUNK_LOG = [];
+  _renderAnalysisChecklist([], []);
 
   // Initialize ANALYSIS_STATE
   ANALYSIS_STATE.measurement = base.measurement;
@@ -5486,18 +5482,22 @@ async function runAnalysis(){
 
   function _addCheck(label, status, dur, sub){
     checklist.push({label, status, dur: dur !== undefined ? dur : null, sub: sub || ''});
-    _renderChecklist(checklist);
+    ANALYSIS_CHECKLIST_ITEMS = checklist.slice();
+    _renderAnalysisChecklist(ANALYSIS_CHECKLIST_ITEMS, ANALYSIS_CHUNK_LOG);
   }
 
   function _updateProgress(pct, label){
     if(progressIdx < 0) return;
     checklist[progressIdx].progress = pct;
     checklist[progressIdx].label = label || checklist[progressIdx].label;
-    _renderChecklist(checklist);
+    ANALYSIS_CHECKLIST_ITEMS = checklist.slice();
+    _renderAnalysisChecklist(ANALYSIS_CHECKLIST_ITEMS, ANALYSIS_CHUNK_LOG);
   }
 
   function _onChunkLog(entry){
     chunkLog.push(entry);
+    ANALYSIS_CHUNK_LOG = chunkLog.slice();
+    _renderAnalysisChecklist(ANALYSIS_CHECKLIST_ITEMS, ANALYSIS_CHUNK_LOG);
     _renderAnalysisLog(chunkLog);
     // Update ANALYSIS_STATE from chunk log
     if(entry.idx !== undefined){
@@ -5588,7 +5588,8 @@ async function runAnalysis(){
     updateAnalysisUI();
 
     checklist[progressIdx] = {label: 'Ausreisser-Suche: ' + count + ' gefunden (' + _fmtDur(dur) + ')', status: 'ok', dur: dur, sub: subText};
-    _renderChecklist(checklist);
+    ANALYSIS_CHECKLIST_ITEMS = checklist.slice();
+    _renderAnalysisChecklist(ANALYSIS_CHECKLIST_ITEMS, ANALYSIS_CHUNK_LOG);
 
     // Save to history
     _saveAnalysisHistory({
@@ -5611,7 +5612,8 @@ async function runAnalysis(){
     const dur = Math.round(performance.now() - t0);
     _logAnalysis('search_error', {error: e && e.message ? e.message : String(e), stack: e && e.stack ? e.stack : ''});
     checklist[progressIdx] = {label: 'Ausreisser-Suche: ' + (e && e.message ? e.message : String(e)), status: 'err', dur: dur, sub: ''};
-    _renderChecklist(checklist);
+    ANALYSIS_CHECKLIST_ITEMS = checklist.slice();
+    _renderAnalysisChecklist(ANALYSIS_CHECKLIST_ITEMS, ANALYSIS_CHUNK_LOG);
     allOk = false;
 
     // Save failed analysis to history
@@ -5654,32 +5656,19 @@ async function runAnalysis(){
 function _renderAnalysisLog(chunks){
   const $alog = document.getElementById('analysis_log');
   if(!$alog) return;
-  if(!chunks.length){
-    $alog.innerHTML = '';
-    return;
-  }
-  $alog.innerHTML = chunks.map(c => {
-    const isAbort = c.aborted;
-    const okClass = c.error ? (isAbort ? 'warn' : 'err') : 'ok';
-    const icon = c.error ? (isAbort ? '⏱' : '✗') : '✓';
-    const rows = c.rows !== undefined ? c.rows : 0;
-    const scanned = c.scanned !== undefined ? c.scanned : 0;
-    const dur = c.dur !== undefined ? _fmtDur(c.dur) : '-';
-    const days = c.chunkDays !== undefined ? c.chunkDays + ' Tage' : '-';
-    const range = fmtTs(c.start) + ' – ' + fmtTs(c.stop);
-    const errText = c.error ? ' | ' + (isAbort ? 'TIMEOUT: ' : 'FEHLER: ') + c.error : '';
-    return '<div class="checklist_item"><span class="checklist_icon ' + okClass + '">' + icon + '</span><span class="checklist_label">Chunk ' + c.idx + '/' + c.total + ': ' + range + '</span><span class="checklist_dur">' + scanned + ' Werte | ' + dur + '</span></div><div class="checklist_sub">' + rows + ' Ausreisser | Chunk-Größe: ' + days + errText + '</div>';
-  }).join('');
+  $alog.innerHTML = '';
 }
 
-function _renderChecklist(items){
-  const $cl = document.getElementById('load_checklist');
-  if(!$cl) return;
-  $cl.style.display = 'block';
-  $cl.innerHTML = items.map(item => {
+function _analysisChecklistHtml(items, chunkLog){
+  const rows = [];
+  const seen = new Set();
+  (Array.isArray(items) ? items : []).forEach((item) => {
+    const key = [item.label || '', item.status || '', item.sub || '', item.progress !== undefined ? item.progress : ''].join('|');
+    if(seen.has(key)) return;
+    seen.add(key);
     const iconClass = item.status === 'ok' ? 'ok' : item.status === 'err' ? 'err' : 'running';
     const iconText = item.status === 'ok' ? '✓' : item.status === 'err' ? '✗' : '';
-    const durText = item.dur !== null ? ' (' + _fmtDur(item.dur) + ')' : '';
+    const durText = item.dur !== null && item.dur !== undefined ? ' (' + _fmtDur(item.dur) + ')' : '';
     let html = '<div class="checklist_item"><span class="checklist_icon ' + iconClass + '">' + iconText + '</span><span class="checklist_label">' + item.label + '</span><span class="checklist_dur">' + durText + '</span></div>';
     if(item.sub){
       html += '<div class="checklist_sub">' + item.sub + '</div>';
@@ -5688,8 +5677,36 @@ function _renderChecklist(items){
       const pct = Math.min(100, Math.max(0, Math.round(item.progress * 100)));
       html += '<div class="checklist_progress"><div class="checklist_progress_bar" style="width:' + pct + '%"></div></div>';
     }
-    return html;
-  }).join('');
+    rows.push(html);
+  });
+  (Array.isArray(chunkLog) ? chunkLog : []).forEach((c) => {
+    const isAbort = c.aborted;
+    const okClass = c.error ? (isAbort ? 'warn' : 'err') : 'ok';
+    const icon = c.error ? (isAbort ? '⏱' : '✗') : '✓';
+    const rowsFound = c.rows !== undefined ? c.rows : 0;
+    const scanned = c.scanned !== undefined ? c.scanned : 0;
+    const dur = c.dur !== undefined ? _fmtDur(c.dur) : '-';
+    const days = c.chunkDays !== undefined ? c.chunkDays + ' Tage' : '-';
+    const range = fmtTs(c.start) + ' – ' + fmtTs(c.stop);
+    const errText = c.error ? ' | ' + (isAbort ? 'TIMEOUT: ' : 'FEHLER: ') + c.error : '';
+    rows.push('<div class="checklist_item"><span class="checklist_icon ' + okClass + '">' + icon + '</span><span class="checklist_label">Chunk ' + c.idx + '/' + c.total + ': ' + range + '</span><span class="checklist_dur">' + scanned + ' Werte | ' + dur + '</span></div><div class="checklist_sub">' + rowsFound + ' Ausreisser | Chunk-Größe: ' + days + errText + '</div>');
+  });
+  return rows.join('');
+}
+
+function _renderChecklist(items){
+  const $cl = document.getElementById('load_checklist');
+  if(!$cl) return;
+  $cl.style.display = 'block';
+  $cl.innerHTML = '';
+  ANALYSIS_CHECKLIST_ITEMS = Array.isArray(items) ? items.slice() : [];
+  _renderAnalysisChecklist(ANALYSIS_CHECKLIST_ITEMS, ANALYSIS_CHUNK_LOG);
+}
+
+function _renderAnalysisChecklist(items, chunkLog){
+  const $cl = document.getElementById('analysis_checklist');
+  if(!$cl) return;
+  $cl.innerHTML = _analysisChecklistHtml(items, chunkLog);
 }
 
 function _clearLoadPlanUi(){

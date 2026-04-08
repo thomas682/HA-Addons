@@ -860,7 +860,10 @@
         if(!el || el === document.body || el === document.documentElement) el = stack[0] || el;
         if(!el || el === document.body || el === document.documentElement) return null;
         if(readSuper()){
-          for(const cand of (stack.length ? stack : [el])){
+          const ownUi = String(el.getAttribute && el.getAttribute('data-ui') || '').trim();
+          if(ownUi) return { el, name: ownUi, kind: 'data-ui' };
+          for(let i = (stack.length ? stack.length - 1 : -1); i >= 0; i -= 1){
+            const cand = stack[i];
             const ownUi = String(cand.getAttribute && cand.getAttribute('data-ui') || '').trim();
             if(ownUi) return { el: cand, name: ownUi, kind: 'data-ui' };
           }
