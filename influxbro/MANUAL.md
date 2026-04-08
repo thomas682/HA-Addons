@@ -546,6 +546,7 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Mit aktivem `superpicker` wird jetzt das direkt gehoverte Unterelement bevorzugt erfasst; dadurch lassen sich auch Elemente innerhalb eines groesseren `data-ui`-Containers gezielter identifizieren.
 - Der `S-Picker` prueft im Super-Modus wieder zuerst das direkt getroffene Element wie in den frueheren Dashboard-Versionen; dadurch lassen sich auch feinere Unterelemente wieder zuverlaessig selektieren.
 - Falls ein Element kein `data-ui`, aber eine stabile `id` besitzt, kann der `S-Picker` diese `id` ebenfalls direkt kopieren, z. B. `analysis_start_info`.
+- Wenn unter dem Mauszeiger mehrere relevante Elemente uebereinander liegen, zeigt der `S-Picker` jetzt eine Trefferliste an. Mit dem Mausrad kannst du zwischen diesen Treffern wechseln, bis z. B. statt `section.analysis` gezielt `analysis_checklist` aktiv ist.
 - Die Dashboard-Analyse verwendet ihren Session-Cache jetzt auch dann wieder, wenn eine vorige Analyse keine Ausreisser gefunden hat. Fuer `all` wird der Cache-Key stabilisiert, damit direkte Wiederholungen nicht unnoetig alle Chunks neu laden.
 - Query- und Statistik-Dialoge verwenden wieder denselben stabilen Popup-Pfad; ein fehlender Decode-Helper blockiert das Oeffnen nicht mehr.
 - Query-Dialoge zeigen ihre History jetzt im selben modalen Fenster unterhalb des Query-Textes. Ein horizontaler Splitter erlaubt das Anpassen der Hoehe beider Bereiche direkt im Dialog.

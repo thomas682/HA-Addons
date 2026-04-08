@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.267
+
+### Enhancement
+
+- Der `S-Picker` (`nav.ui_picker_super`) kann jetzt alle relevanten Treffer unter dem Mauszeiger als Trefferliste bereitstellen; mit dem Mausrad laesst sich zwischen ueberdeckten Elementen wie `section.analysis` und `analysis_checklist` wechseln, bevor der gewuenschte Treffer per Klick kopiert wird.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.266
 
 ### Fix

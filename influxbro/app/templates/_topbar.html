@@ -764,6 +764,9 @@
       let currentEl = null;
       let overlay = null;
       let badge = null;
+      let currentTargets = [];
+      let currentTargetIndex = 0;
+      let lastPointer = { x: null, y: null };
 
     function readSuper(){
       try{ return localStorage.getItem(LS_SUPER) === '1'; }catch(e){ return false; }
@@ -853,6 +856,59 @@
       }catch(e){ return []; }
     }
 
+    function _targetMetaFor(el){
+      try{
+        if(!el || !el.tagName) return null;
+        const ui = String(el.getAttribute && el.getAttribute('data-ui') || '').trim();
+        if(ui) return { el, name: ui, kind: 'data-ui' };
+        const id = String(el.getAttribute && el.getAttribute('id') || '').trim();
+        if(id) return { el, name: id, kind: 'id' };
+        return { el, name: _fallbackNameFor(el), kind: 'fallback' };
+      }catch(e){ return null; }
+    }
+
+    function _isOwnPickerUi(el){
+      try{
+        if(!el) return true;
+        if(el === overlay || el === badge) return true;
+        const id = String(el.getAttribute && el.getAttribute('id') || '').trim();
+        if(id === 'ui_picker_toggle' || id === 'ui_superpicker_toggle') return true;
+        return !!(el.closest && el.closest('#pagecard_topbar'));
+      }catch(e){ return false; }
+    }
+
+    function _collectTargets(el, ev){
+      try{
+        if(el && el.nodeType === Node.TEXT_NODE) el = el.parentElement;
+        const stack = _targetsFromEvent(ev).filter((cand)=>!_isOwnPickerUi(cand));
+        const seen = new Set();
+        const out = [];
+        const pushTarget = (cand)=>{
+          const meta = _targetMetaFor(cand);
+          if(!meta || !meta.name) return;
+          const key = meta.kind + '|' + meta.name;
+          if(seen.has(key)) return;
+          seen.add(key);
+          out.push(meta);
+        };
+        if(el && !_isOwnPickerUi(el)) pushTarget(el);
+        for(let i = 0; i < stack.length; i += 1) pushTarget(stack[i]);
+        return out;
+      }catch(e){ return []; }
+    }
+
+    function _resolveTarget(el, ev){
+      const targets = _collectTargets(el, ev);
+      currentTargets = targets;
+      if(!targets.length){
+        currentTargetIndex = 0;
+        return null;
+      }
+      if(currentTargetIndex >= targets.length) currentTargetIndex = targets.length - 1;
+      if(currentTargetIndex < 0) currentTargetIndex = 0;
+      return targets[currentTargetIndex] || null;
+    }
+
     function pickTarget(el, ev){
       try{
         if(el && el.nodeType === Node.TEXT_NODE) el = el.parentElement;
@@ -860,18 +916,7 @@
         if(!el || el === document.body || el === document.documentElement) el = stack[0] || el;
         if(!el || el === document.body || el === document.documentElement) return null;
         if(readSuper()){
-          const ownUi = String(el.getAttribute && el.getAttribute('data-ui') || '').trim();
-          if(ownUi) return { el, name: ownUi, kind: 'data-ui' };
-          const ownId = String(el.getAttribute && el.getAttribute('id') || '').trim();
-          if(ownId) return { el, name: ownId, kind: 'id' };
-          for(let i = (stack.length ? stack.length - 1 : -1); i >= 0; i -= 1){
-            const cand = stack[i];
-            const candUi = String(cand.getAttribute && cand.getAttribute('data-ui') || '').trim();
-            if(candUi) return { el: cand, name: candUi, kind: 'data-ui' };
-            const candId = String(cand.getAttribute && cand.getAttribute('id') || '').trim();
-            if(candId) return { el: cand, name: candId, kind: 'id' };
-          }
-          return { el, name: _fallbackNameFor(el), kind: 'fallback' };
+          return _resolveTarget(el, ev);
         }
         for(const cand of (stack.length ? stack : [el])){
           const withUi = cand.closest && cand.closest('[data-ui]');
@@ -917,7 +962,10 @@
       overlay.style.height = Math.max(0, r.height + 4) + 'px';
       const name = String(target.name || '').trim();
       const display = target.kind === 'fallback' ? ('fallback: <' + (name || 'element') + '>') : ('<' + (name || '(kein data-ui)') + '>');
+      const pos = currentTargets.length > 1 ? (' (' + (currentTargetIndex + 1) + '/' + currentTargets.length + ')') : '';
+      const hint = currentTargets.length > 1 ? ' | Mausrad: Treffer wechseln' : '';
       badge.textContent = display;
+      badge.textContent = display + pos + hint;
       badge.style.display = 'block';
       const x = ev && typeof ev.clientX === 'number' ? ev.clientX + 12 : (r.left + 12);
       const y = ev && typeof ev.clientY === 'number' ? ev.clientY + 12 : (r.top + 12);
@@ -928,12 +976,16 @@
     function stop(){
       active = false;
       currentEl = null;
+      currentTargets = [];
+      currentTargetIndex = 0;
+      lastPointer = { x: null, y: null };
       try{ if($btn) $btn.classList.remove('active'); }catch(e){}
       try{ if($superBtn) $superBtn.classList.remove('active'); }catch(e){}
       try{ if(overlay) overlay.style.display = 'none'; }catch(e){}
       try{ if(badge) badge.style.display = 'none'; }catch(e){}
       document.removeEventListener('mousemove', onMove, true);
       document.removeEventListener('click', onClick, true);
+      document.removeEventListener('wheel', onWheel, true);
       document.removeEventListener('keydown', onKey, true);
     }
 
@@ -943,12 +995,30 @@
       try{ if(readSuper()){ if($superBtn) $superBtn.classList.add('active'); if($btn) $btn.classList.remove('active'); } else { if($btn) $btn.classList.add('active'); if($superBtn) $superBtn.classList.remove('active'); } }catch(e){}
       document.addEventListener('mousemove', onMove, true);
       document.addEventListener('click', onClick, true);
+      document.addEventListener('wheel', onWheel, { capture: true, passive: false });
       document.addEventListener('keydown', onKey, true);
     }
 
     function onMove(ev){
       if(!active) return;
+      lastPointer = { x: ev.clientX, y: ev.clientY };
+      currentTargetIndex = 0;
       renderTarget(pickTarget(ev.target, ev), ev);
+    }
+
+    function onWheel(ev){
+      try{
+        if(!active || !readSuper()) return;
+        if(!currentTargets || currentTargets.length <= 1) return;
+        ev.preventDefault();
+        ev.stopPropagation();
+        currentTargetIndex += ev.deltaY > 0 ? 1 : -1;
+        if(currentTargetIndex < 0) currentTargetIndex = currentTargets.length - 1;
+        if(currentTargetIndex >= currentTargets.length) currentTargetIndex = 0;
+        const target = currentTargets[currentTargetIndex] || null;
+        if(!target) return;
+        renderTarget(target, { clientX: lastPointer.x, clientY: lastPointer.y });
+      }catch(e){}
     }
 
     async function onClick(ev){
