@@ -137,6 +137,10 @@ def export_dir_from_target(target: str | None) -> Path:
 DASH_CACHE_DIR = DATA_DIR / "dash_cache"
 DASH_CACHE_LOCK = threading.RLock()
 
+# Analysis cache (server-side, persisted under /data)
+ANALYSIS_CACHE_DIR = DATA_DIR / "analysis_cache"
+ANALYSIS_CACHE_LOCK = threading.RLock()
+
 DASH_CACHE_JOBS: dict[str, dict[str, Any]] = {}
 DASH_CACHE_JOBS_LOCK = threading.RLock()
 
@@ -2450,6 +2454,193 @@ def _dash_cache_id(key: dict[str, Any]) -> str:
     return hashlib.sha1(raw.encode("utf-8")).hexdigest()
 
 
+def _analysis_cache_meta_path(cache_id: str) -> Path:
+    return ANALYSIS_CACHE_DIR / f"{cache_id}.meta.json"
+
+
+def _analysis_cache_data_path(cache_id: str) -> Path:
+    return ANALYSIS_CACHE_DIR / f"{cache_id}.data.json.gz"
+
+
+def _analysis_cache_cfg_fp(cfg: dict[str, Any]) -> str:
+    return _dash_cache_cfg_fp(cfg)
+
+
+def _analysis_cache_series_key(measurement: str, field: str, entity_id: str | None, friendly_name: str | None) -> str:
+    return "|".join([
+        str(measurement or "").strip(),
+        str(field or "").strip(),
+        str(entity_id or "").strip(),
+        str(friendly_name or "").strip(),
+    ])
+
+
+def _analysis_cache_key(
+    cfg: dict[str, Any],
+    measurement: str,
+    field: str,
+    entity_id: str | None,
+    friendly_name: str | None,
+    start_iso: str,
+    stop_iso: str,
+) -> dict[str, Any]:
+    return {
+        "v": 1,
+        "kind": "analysis_cache_segment",
+        "cfg_fp": _analysis_cache_cfg_fp(cfg),
+        "measurement": str(measurement or "").strip(),
+        "field": str(field or "").strip(),
+        "entity_id": str(entity_id or "").strip() or None,
+        "friendly_name": str(friendly_name or "").strip() or None,
+        "start": str(start_iso or "").strip(),
+        "stop": str(stop_iso or "").strip(),
+        "search_types": ["bounds", "counter", "decrease", "fault_phase", "null", "zero"],
+    }
+
+
+def _analysis_cache_id(key: dict[str, Any]) -> str:
+    raw = json.dumps(key, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+    return hashlib.sha1(raw.encode("utf-8")).hexdigest()
+
+
+def _analysis_cache_load_meta(cache_id: str) -> dict[str, Any] | None:
+    try:
+        p = _analysis_cache_meta_path(cache_id)
+        if not p.exists():
+            return None
+        with ANALYSIS_CACHE_LOCK:
+            j = json.loads(p.read_text(encoding="utf-8"))
+        return j if isinstance(j, dict) else None
+    except Exception:
+        return None
+
+
+def _analysis_cache_write_meta(meta: dict[str, Any]) -> None:
+    try:
+        ANALYSIS_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        cache_id = str(meta.get("id") or "").strip()
+        if not cache_id:
+            return
+        p = _analysis_cache_meta_path(cache_id)
+        raw = json.dumps(meta, indent=2, sort_keys=True, ensure_ascii=True)
+        with ANALYSIS_CACHE_LOCK:
+            p.write_text(raw, encoding="utf-8")
+    except Exception:
+        return
+
+
+def _analysis_cache_load_payload(cache_id: str) -> dict[str, Any] | None:
+    try:
+        p = _analysis_cache_data_path(cache_id)
+        if not p.exists():
+            return None
+        with ANALYSIS_CACHE_LOCK:
+            with gzip.open(p, "rt", encoding="utf-8", errors="replace") as f:
+                j = json.loads(f.read() or "{}")
+        return j if isinstance(j, dict) else None
+    except Exception:
+        return None
+
+
+def _analysis_cache_write_payload(cache_id: str, payload: dict[str, Any]) -> int:
+    try:
+        ANALYSIS_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        p = _analysis_cache_data_path(cache_id)
+        raw = json.dumps(payload, separators=(",", ":"), ensure_ascii=True)
+        with ANALYSIS_CACHE_LOCK:
+            with gzip.open(p, "wt", encoding="utf-8") as f:
+                f.write(raw)
+        try:
+            return int(p.stat().st_size)
+        except Exception:
+            return 0
+    except Exception:
+        return 0
+
+
+def _analysis_cache_list_meta() -> list[dict[str, Any]]:
+    try:
+        if not ANALYSIS_CACHE_DIR.exists():
+            return []
+        out: list[dict[str, Any]] = []
+        for p in sorted(ANALYSIS_CACHE_DIR.glob("*.meta.json")):
+            try:
+                j = json.loads(p.read_text(encoding="utf-8"))
+                if isinstance(j, dict):
+                    out.append(j)
+            except Exception:
+                continue
+        return out
+    except Exception:
+        return []
+
+
+def _analysis_cache_delete_id(cache_id: str) -> None:
+    try:
+        _analysis_cache_meta_path(cache_id).unlink(missing_ok=True)
+    except Exception:
+        pass
+    try:
+        _analysis_cache_data_path(cache_id).unlink(missing_ok=True)
+    except Exception:
+        pass
+
+
+def _analysis_cache_store_segment(
+    cfg: dict[str, Any],
+    measurement: str,
+    field: str,
+    entity_id: str | None,
+    friendly_name: str | None,
+    start_iso: str,
+    stop_iso: str,
+    rows: list[dict[str, Any]],
+    scanned: int,
+) -> dict[str, Any] | None:
+    try:
+        key = _analysis_cache_key(cfg, measurement, field, entity_id, friendly_name, start_iso, stop_iso)
+        cache_id = _analysis_cache_id(key)
+        now = _utc_now_iso_ms()
+        payload = {
+            "ok": True,
+            "rows": rows,
+            "scanned": int(scanned or 0),
+            "meta": {
+                "covered_start": start_iso,
+                "covered_stop": stop_iso,
+                "outlier_count": len(rows),
+            },
+        }
+        bytes_written = _analysis_cache_write_payload(cache_id, payload)
+        prev = _analysis_cache_load_meta(cache_id) or {}
+        meta = {
+            "v": 1,
+            "id": cache_id,
+            "key": key,
+            "series_key": _analysis_cache_series_key(measurement, field, entity_id, friendly_name),
+            "measurement": str(measurement or "").strip(),
+            "field": str(field or "").strip(),
+            "entity_id": str(entity_id or "").strip() or None,
+            "friendly_name": str(friendly_name or "").strip() or None,
+            "covered_start": start_iso,
+            "covered_stop": stop_iso,
+            "updated_at": now,
+            "created_at": str(prev.get("created_at") or now),
+            "last_used_at": now,
+            "bytes": bytes_written,
+            "outlier_count": len(rows),
+            "scanned": int(scanned or 0),
+            "dirty": False,
+            "dirty_reason": None,
+            "dirty_at": None,
+            "search_types": ["bounds", "counter", "decrease", "fault_phase", "null", "zero"],
+        }
+        _analysis_cache_write_meta(meta)
+        return meta
+    except Exception:
+        return None
+
+
 def _dash_cache_load_meta(cache_id: str) -> dict[str, Any] | None:
     try:
         p = _dash_cache_meta_path(cache_id)
@@ -3126,6 +3317,195 @@ def _dash_cache_plan(
         "changes": changes,
         "cached_outlier_count": cached_outlier_count,
     }
+
+
+def _analysis_cache_meta_span(meta: dict[str, Any]) -> tuple[datetime | None, datetime | None]:
+    try:
+        start_raw = str(meta.get("covered_start") or "").strip()
+        stop_raw = str(meta.get("covered_stop") or "").strip()
+        start_dt = _parse_iso_datetime(start_raw) if start_raw else None
+        stop_dt = _parse_iso_datetime(stop_raw) if stop_raw else None
+        if start_dt and stop_dt and stop_dt > start_dt:
+            return start_dt, stop_dt
+    except Exception:
+        pass
+    return None, None
+
+
+def _analysis_cache_payload_rows_in_window(payload: dict[str, Any], start_dt: datetime, stop_dt: datetime) -> list[dict[str, Any]]:
+    rows = payload.get("rows") if isinstance(payload.get("rows"), list) else []
+    return [r for r in rows if isinstance(r, dict) and _dash_cache_row_in_window(r, start_dt, stop_dt)]
+
+
+def _analysis_cache_plan(
+    cfg: dict[str, Any],
+    measurement: str,
+    field: str,
+    entity_id: str | None,
+    friendly_name: str | None,
+    start_dt: datetime,
+    stop_dt: datetime,
+    *,
+    max_segments: int = 64,
+) -> dict[str, Any]:
+    req_start = start_dt
+    req_stop = stop_dt
+    cfg_fp = _analysis_cache_cfg_fp(cfg)
+    series_key = _analysis_cache_series_key(measurement, field, entity_id, friendly_name)
+    candidates: list[dict[str, Any]] = []
+    dirty_ranges: list[tuple[datetime, datetime]] = []
+    dirty_changes: list[dict[str, Any]] = []
+    for meta in _analysis_cache_list_meta():
+        try:
+            key = meta.get("key") if isinstance(meta.get("key"), dict) else {}
+            if str(key.get("cfg_fp") or "") != cfg_fp:
+                continue
+            if str(meta.get("series_key") or "") != series_key:
+                continue
+            cache_id = str(meta.get("id") or "").strip()
+            if not cache_id:
+                continue
+            payload = _analysis_cache_load_payload(cache_id)
+            if not payload or not bool(payload.get("ok")):
+                continue
+            cov_start, cov_stop = _analysis_cache_meta_span(meta)
+            if not cov_start or not cov_stop:
+                continue
+            use_start = max(req_start, cov_start)
+            use_stop = min(req_stop, cov_stop)
+            if use_stop <= use_start:
+                continue
+            updated_at = _parse_iso_datetime(str(meta.get("updated_at") or ""))
+            changed = _history_changes_for_window(
+                measurement,
+                field,
+                entity_id,
+                friendly_name,
+                use_start,
+                use_stop,
+                updated_at or datetime.fromtimestamp(0, tz=timezone.utc),
+                limit=200,
+            )
+            if changed:
+                dirty_ranges.append((use_start, use_stop))
+                for ch in changed:
+                    item = dict(ch)
+                    item["cache_id"] = cache_id
+                    dirty_changes.append(item)
+                continue
+            filtered_rows = _analysis_cache_payload_rows_in_window(payload, use_start, use_stop)
+            candidates.append({
+                "cache_id": cache_id,
+                "meta": meta,
+                "payload": payload,
+                "use_start": use_start,
+                "use_stop": use_stop,
+                "covered_seconds": (use_stop - use_start).total_seconds(),
+                "filtered_rows": filtered_rows,
+            })
+        except Exception:
+            continue
+    candidates.sort(key=lambda c: (float(c.get("covered_seconds") or 0.0), _dash_cache_ts(c.get("meta") or {}, "updated_at")), reverse=True)
+    selected: list[dict[str, Any]] = []
+    covered: list[tuple[datetime, datetime]] = []
+    for cand in candidates:
+        if len(selected) >= max_segments:
+            break
+        gaps_before = _dash_cache_gap_ranges(req_start, req_stop, covered + dirty_ranges)
+        if not gaps_before:
+            break
+        adds = False
+        for ga, gb in gaps_before:
+            if min(gb, cand["use_stop"]) > max(ga, cand["use_start"]):
+                adds = True
+                break
+        if not adds:
+            continue
+        selected.append(cand)
+        covered.append((cand["use_start"], cand["use_stop"]))
+    gaps = _dash_cache_gap_ranges(req_start, req_stop, covered + dirty_ranges)
+    cached_outlier_count = 0
+    for seg in selected:
+        try:
+            cached_outlier_count += int((seg.get("meta") or {}).get("outlier_count") or 0)
+        except Exception:
+            continue
+    return {
+        "request": {
+            "start": _dt_to_rfc3339_utc(req_start),
+            "stop": _dt_to_rfc3339_utc(req_stop),
+        },
+        "has_cache": bool(selected),
+        "segments": selected,
+        "gaps": gaps,
+        "dirty_ranges": dirty_ranges,
+        "changes": dirty_changes,
+        "cached_outlier_count": cached_outlier_count,
+        "series_key": series_key,
+    }
+
+
+def _analysis_cache_group_list(cfg: dict[str, Any]) -> list[dict[str, Any]]:
+    groups: dict[str, dict[str, Any]] = {}
+    for meta in _analysis_cache_list_meta():
+        try:
+            key = meta.get("key") if isinstance(meta.get("key"), dict) else {}
+            if str(key.get("cfg_fp") or "") != _analysis_cache_cfg_fp(cfg):
+                continue
+            series_key = str(meta.get("series_key") or "").strip()
+            if not series_key:
+                continue
+            group = groups.get(series_key)
+            if not group:
+                group = {
+                    "series_key": series_key,
+                    "measurement": meta.get("measurement"),
+                    "field": meta.get("field"),
+                    "entity_id": meta.get("entity_id"),
+                    "friendly_name": meta.get("friendly_name"),
+                    "segments": [],
+                    "bytes": 0,
+                    "outlier_count": 0,
+                }
+                groups[series_key] = group
+            start_dt, stop_dt = _analysis_cache_meta_span(meta)
+            if not start_dt or not stop_dt:
+                continue
+            changed = _history_changes_for_window(
+                str(meta.get("measurement") or ""),
+                str(meta.get("field") or ""),
+                str(meta.get("entity_id") or "") or None,
+                str(meta.get("friendly_name") or "") or None,
+                start_dt,
+                stop_dt,
+                _parse_iso_datetime(str(meta.get("updated_at") or "")) or datetime.fromtimestamp(0, tz=timezone.utc),
+                limit=50,
+            )
+            group["segments"].append({
+                "cache_id": str(meta.get("id") or ""),
+                "start": str(meta.get("covered_start") or ""),
+                "stop": str(meta.get("covered_stop") or ""),
+                "updated_at": meta.get("updated_at"),
+                "outlier_count": int(meta.get("outlier_count") or 0),
+                "bytes": int(meta.get("bytes") or 0),
+                "dirty": bool(changed),
+                "changes": changed,
+            })
+            group["bytes"] = int(group.get("bytes") or 0) + int(meta.get("bytes") or 0)
+            group["outlier_count"] = int(group.get("outlier_count") or 0) + int(meta.get("outlier_count") or 0)
+        except Exception:
+            continue
+    out = list(groups.values())
+    for group in out:
+        segs = group.get("segments") if isinstance(group.get("segments"), list) else []
+        segs.sort(key=lambda s: str(s.get("start") or ""))
+        group["segment_count"] = len(segs)
+        group["dirty_segment_count"] = len([s for s in segs if bool(s.get("dirty"))])
+        group["covered_start"] = segs[0].get("start") if segs else None
+        group["covered_stop"] = segs[-1].get("stop") if segs else None
+        group["updated_at"] = max((str(s.get("updated_at") or "") for s in segs), default=None)
+    out.sort(key=lambda g: str(g.get("updated_at") or ""), reverse=True)
+    return out
 
 
 def _dash_cache_is_stale(cfg: dict[str, Any], meta: dict[str, Any]) -> bool:
@@ -11318,6 +11698,168 @@ def api_cache_plan():
             "reason_label": None if bool(plan.get("has_cache")) else "Kein passender Dashboard-Cache fuer Auswahl, Zeitraum und Detailmodus vorhanden.",
         },
     })
+
+
+@app.post("/api/analysis_cache/plan")
+def api_analysis_cache_plan():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    body = request.get_json(force=True) or {}
+    measurement = str(body.get("measurement") or "").strip()
+    field = str(body.get("field") or "").strip()
+    entity_id = str(body.get("entity_id") or "").strip() or None
+    friendly_name = str(body.get("friendly_name") or "").strip() or None
+    try:
+        start_dt, stop_dt = _get_start_stop_from_payload(body)
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+    if not measurement or not field:
+        return jsonify({"ok": False, "error": "measurement and field required"}), 400
+    plan = _analysis_cache_plan(cfg, measurement, field, entity_id, friendly_name, start_dt, stop_dt)
+    out_segments = []
+    for seg in plan.get("segments") or []:
+        meta = seg.get("meta") if isinstance(seg.get("meta"), dict) else {}
+        out_segments.append({
+            "cache_id": str(seg.get("cache_id") or ""),
+            "updated_at": meta.get("updated_at"),
+            "use_start": _dt_to_rfc3339_utc(seg.get("use_start")),
+            "use_stop": _dt_to_rfc3339_utc(seg.get("use_stop")),
+            "covered_start": meta.get("covered_start"),
+            "covered_stop": meta.get("covered_stop"),
+            "outlier_count": meta.get("outlier_count"),
+            "bytes": meta.get("bytes"),
+        })
+    out_gaps = [{"start": _dt_to_rfc3339_utc(a), "stop": _dt_to_rfc3339_utc(b)} for a, b in (plan.get("gaps") or [])]
+    out_dirty = [{"start": _dt_to_rfc3339_utc(a), "stop": _dt_to_rfc3339_utc(b)} for a, b in (plan.get("dirty_ranges") or [])]
+    return jsonify({
+        "ok": True,
+        "plan": {
+            "request": plan.get("request") or {},
+            "has_cache": bool(plan.get("has_cache")),
+            "segments": out_segments,
+            "gaps": out_gaps,
+            "dirty_ranges": out_dirty,
+            "changes": plan.get("changes") or [],
+            "cached_outlier_count": int(plan.get("cached_outlier_count") or 0),
+            "series_key": str(plan.get("series_key") or ""),
+        },
+    })
+
+
+@app.post("/api/analysis_cache/segment")
+def api_analysis_cache_segment():
+    body = request.get_json(force=True) or {}
+    cache_id = str(body.get("cache_id") or "").strip()
+    if not cache_id:
+        return jsonify({"ok": False, "error": "cache_id required"}), 400
+    meta = _analysis_cache_load_meta(cache_id)
+    payload = _analysis_cache_load_payload(cache_id)
+    if not meta or not payload or not bool(payload.get("ok")):
+        return jsonify({"ok": False, "error": "cache miss"}), 404
+    try:
+        meta["last_used_at"] = _utc_now_iso_ms()
+        _analysis_cache_write_meta(meta)
+    except Exception:
+        pass
+    return jsonify({"ok": True, "cache": meta, "payload": payload})
+
+
+@app.post("/api/analysis_cache/store_segment")
+def api_analysis_cache_store_segment():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    body = request.get_json(force=True) or {}
+    measurement = str(body.get("measurement") or "").strip()
+    field = str(body.get("field") or "").strip()
+    entity_id = str(body.get("entity_id") or "").strip() or None
+    friendly_name = str(body.get("friendly_name") or "").strip() or None
+    start_iso = str(body.get("start") or "").strip()
+    stop_iso = str(body.get("stop") or "").strip()
+    rows = body.get("rows") if isinstance(body.get("rows"), list) else []
+    scanned = int(body.get("scanned") or 0)
+    if not measurement or not field or not start_iso or not stop_iso:
+        return jsonify({"ok": False, "error": "measurement, field, start, stop required"}), 400
+    meta = _analysis_cache_store_segment(cfg, measurement, field, entity_id, friendly_name, start_iso, stop_iso, rows, scanned)
+    if not meta:
+        return jsonify({"ok": False, "error": "store failed"}), 500
+    return jsonify({"ok": True, "cache": meta})
+
+
+@app.get("/api/analysis_cache/list")
+def api_analysis_cache_list():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    return jsonify({"ok": True, "series": _analysis_cache_group_list(cfg)})
+
+
+@app.post("/api/analysis_cache/delete")
+def api_analysis_cache_delete():
+    body = request.get_json(force=True) or {}
+    cache_id = str(body.get("cache_id") or "").strip()
+    series_key = str(body.get("series_key") or "").strip()
+    delete_all = bool(body.get("all"))
+    if delete_all:
+        for meta in _analysis_cache_list_meta():
+            _analysis_cache_delete_id(str(meta.get("id") or ""))
+        return jsonify({"ok": True, "deleted": "all"})
+    if cache_id:
+        _analysis_cache_delete_id(cache_id)
+        return jsonify({"ok": True, "deleted": cache_id})
+    if series_key:
+        count = 0
+        for meta in _analysis_cache_list_meta():
+            if str(meta.get("series_key") or "") != series_key:
+                continue
+            _analysis_cache_delete_id(str(meta.get("id") or ""))
+            count += 1
+        return jsonify({"ok": True, "deleted": count})
+    return jsonify({"ok": False, "error": "cache_id or series_key required"}), 400
+
+
+@app.post("/api/analysis_cache/rebuild")
+def api_analysis_cache_rebuild():
+    body = request.get_json(force=True) or {}
+    series_key = str(body.get("series_key") or "").strip()
+    if not series_key:
+        return jsonify({"ok": False, "error": "series_key required"}), 400
+    metas = [m for m in _analysis_cache_list_meta() if str(m.get("series_key") or "") == series_key]
+    if not metas:
+        return jsonify({"ok": False, "error": "series not found"}), 404
+    metas.sort(key=lambda m: str(m.get("covered_start") or ""))
+    rebuilt = 0
+    for meta in metas:
+        key = meta.get("key") if isinstance(meta.get("key"), dict) else {}
+        body0 = {
+            "measurement": str(key.get("measurement") or meta.get("measurement") or ""),
+            "field": str(key.get("field") or meta.get("field") or ""),
+            "entity_id": str(key.get("entity_id") or meta.get("entity_id") or ""),
+            "friendly_name": str(key.get("friendly_name") or meta.get("friendly_name") or ""),
+            "start": str(key.get("start") or meta.get("covered_start") or ""),
+            "stop": str(key.get("stop") or meta.get("covered_stop") or ""),
+            "search_types": ["bounds", "counter", "decrease", "fault_phase", "null", "zero"],
+            "limit": int(load_cfg().get("ui_raw_outlier_search_limit", 5000) or 5000),
+        }
+        with app.test_request_context("/api/outlier_search", method="POST", json=body0):
+            resp = api_outlier_search()
+        response = make_response(resp)
+        if response.status_code >= 400:
+            err_payload = response.get_json(silent=True) or {}
+            err_text = err_payload.get("error") if isinstance(err_payload, dict) else str(err_payload)
+            return jsonify({"ok": False, "error": err_text or f"rebuild failed: {response.status_code}"}), 500
+        data = response.get_json(silent=True) or {}
+        if not data.get("ok"):
+            return jsonify({"ok": False, "error": data.get("error") or "rebuild failed"}), 500
+        cfg = _overlay_from_yaml_if_enabled(load_cfg())
+        _analysis_cache_store_segment(
+            cfg,
+            body0["measurement"],
+            body0["field"],
+            body0["entity_id"] or None,
+            body0["friendly_name"] or None,
+            body0["start"],
+            body0["stop"],
+            data.get("rows") if isinstance(data.get("rows"), list) else [],
+            int(data.get("scanned") or 0),
+        )
+        rebuilt += 1
+    return jsonify({"ok": True, "rebuilt": rebuilt})
 
 
 @app.post("/api/cache/delete")

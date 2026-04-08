@@ -58,6 +58,8 @@
     tr.job_state_error td { background: var(--ui-job-err); }
     tr.job_state_cancelled td { background: var(--ui-job-cancel); }
     tr.row_selected td { outline: 2px solid rgba(255,153,0,0.55); outline-offset: -2px; }
+    .timeline_bar { position:relative; height:22px; border:1px solid #ddd; border-radius:8px; background:#fff; overflow:hidden; min-width:220px; }
+    .timeline_seg { position:absolute; top:0; bottom:0; border-radius:6px; }
   </style>
 </head>
 <body>
@@ -249,6 +251,61 @@
         </div>
       </div>
 
+      <div class="card" data-ui="analysis_cache.card" title="analysis_cache.card">
+        <div style="display:flex; align-items:baseline; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+          <div>
+            <div style="font-weight:800;">Analysecache</div>
+            <div class="muted">Persistente Analyse-Segmente fuer die Ausreissersuche mit farbiger Cache-Abdeckung.</div>
+          </div>
+        </div>
+        <div class="row" style="margin-top:10px;" data-ui="analysis_cache.controls" title="analysis_cache.controls">
+          <div>
+            <label class="muted" style="display:block; font-size: 12px;">&nbsp;</label>
+            <button id="analysis_cache_refresh" data-ui="analysis_cache.refresh" title="analysis_cache.refresh">Aktualisieren</button>
+          </div>
+          <div>
+            <label class="muted" style="display:block; font-size: 12px;">&nbsp;</label>
+            <button id="analysis_cache_delete_all" data-ui="analysis_cache.delete_all" title="analysis_cache.delete_all">Alle loeschen</button>
+          </div>
+          <div style="flex:1; min-width:260px;">
+            <label class="muted" style="display:block; font-size:12px;">Suche</label>
+            <div class="ib_clear_row">
+              <input id="analysis_cache_q" placeholder="measurement/field/entity_id/friendly_name..." data-ui="analysis_cache.search" title="analysis_cache.search" />
+              <button type="button" class="ib_clear_btn" data-clear-for="analysis_cache_q" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+            </div>
+          </div>
+        </div>
+        <div class="status" id="analysis_cache_info" data-ui="analysis_cache.info" title="analysis_cache.info"></div>
+        <div id="analysis_cache_err" class="err"></div>
+        <div class="table_wrap" data-ui="analysis_cache.table.wrap" title="analysis_cache.table.wrap">
+          <div class="table_title">Analysecache</div>
+          <div class="table_head" data-ui="analysis_cache.table.head" title="analysis_cache.table.head">
+            <div class="tbl_actions" data-ui="analysis_cache.table.actions" title="analysis_cache.table.actions">
+              <button class="btn_xs" id="analysis_cache_rebuild_btn" data-ui="analysis_cache.table.rebuild" title="analysis_cache.table.rebuild" disabled>Neu aufbauen</button>
+              <button class="btn_xs" id="analysis_cache_delete_btn" data-ui="analysis_cache.table.delete" title="analysis_cache.table.delete" disabled>Loeschen</button>
+            </div>
+            <div class="muted">Gruppiert nach Serie; Zeitstrahl zeigt Cache, Neu lesen und geaenderte Bereiche.</div>
+          </div>
+          <div class="table_box" id="analysis_cache_box">
+            <table id="analysis_cache_tbl" class="ib_tbl" data-ui="analysis_cache.table" title="analysis_cache.table">
+              <thead>
+                <tr>
+                  <th style="width:46px;">sel</th>
+                  <th style="width:260px;">series</th>
+                  <th style="width:260px;">tags</th>
+                  <th style="width:130px;">updated</th>
+                  <th style="width:90px;">Segmente</th>
+                  <th style="width:90px;">Treffer</th>
+                  <th style="width:90px;">size</th>
+                  <th style="width:320px;">Zeitstrahl</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <div class="card" data-ui="timers.card" title="timers.card">
         <div style="display:flex; align-items:baseline; justify-content:space-between; gap: 10px; flex-wrap:wrap;">
           <div>
@@ -431,6 +488,16 @@
       const $cacheUpdateBtn = document.getElementById('cache_update_btn');
       const $cacheDeleteBtn = document.getElementById('cache_delete_btn');
 
+      const $analysisCacheRefresh = document.getElementById('analysis_cache_refresh');
+      const $analysisCacheDeleteAll = document.getElementById('analysis_cache_delete_all');
+      const $analysisCacheInfo = document.getElementById('analysis_cache_info');
+      const $analysisCacheErr = document.getElementById('analysis_cache_err');
+      const $analysisCacheQ = document.getElementById('analysis_cache_q');
+      const $analysisCacheBody = document.querySelector('#analysis_cache_tbl tbody');
+      const $analysisCacheBox = document.getElementById('analysis_cache_box');
+      const $analysisCacheRebuildBtn = document.getElementById('analysis_cache_rebuild_btn');
+      const $analysisCacheDeleteBtn = document.getElementById('analysis_cache_delete_btn');
+
       const $timersInfo = document.getElementById('timers_info');
       const $timersErr = document.getElementById('timers_err');
       const $timersBody = document.querySelector('#timers_tbl tbody');
@@ -462,9 +529,11 @@
       let POLL = null;
       let SELECTED_JOB_ID = '';
       let SELECTED_CACHE_ID = '';
+      let SELECTED_ANALYSIS_CACHE_KEY = '';
       let SELECTED_TIMER_ID = '';
       let LAST_JOBS = [];
       let LAST_TIMERS = [];
+      let LAST_ANALYSIS_CACHES = [];
 
       function pageKey(){
         try{
@@ -635,12 +704,14 @@
         // Column resize persistence
         try{ window.InfluxBroTableCols && window.InfluxBroTableCols.init('#tbl'); }catch(e){}
         try{ window.InfluxBroTableCols && window.InfluxBroTableCols.init('#cache_tbl'); }catch(e){}
+        try{ window.InfluxBroTableCols && window.InfluxBroTableCols.init('#analysis_cache_tbl'); }catch(e){}
         try{ window.InfluxBroTableCols && window.InfluxBroTableCols.init('#timers_tbl'); }catch(e){}
         try{ window.InfluxBroTableCols && window.InfluxBroTableCols.init('#usage_tbl'); }catch(e){}
 
         // Default height: ~10 rows (persisted in TableHeight)
         try{ window.InfluxBroTableHeight && window.InfluxBroTableHeight.attach($jobsBox, 'jobs_tbl', {minPx: 160}); }catch(e){}
         try{ window.InfluxBroTableHeight && window.InfluxBroTableHeight.attach($cacheBox, 'cache_tbl', {minPx: 180}); }catch(e){}
+        try{ window.InfluxBroTableHeight && window.InfluxBroTableHeight.attach($analysisCacheBox, 'analysis_cache_tbl', {minPx: 180}); }catch(e){}
         try{ window.InfluxBroTableHeight && window.InfluxBroTableHeight.attach($timersBox, 'timers_tbl', {minPx: 160}); }catch(e){}
         try{ window.InfluxBroTableHeight && window.InfluxBroTableHeight.attach($usageBox, 'usage_tbl', {minPx: 180}); }catch(e){}
 
@@ -722,6 +793,7 @@
 
       function selectedJob(){ return (LAST_JOBS || []).find(j => String(j.id || '') === String(SELECTED_JOB_ID || '')) || null; }
       function selectedCache(){ return (LAST_CACHES || []).find(m => String(m.id || '') === String(SELECTED_CACHE_ID || '')) || null; }
+      function selectedAnalysisCache(){ return (LAST_ANALYSIS_CACHES || []).find(m => String(m.series_key || '') === String(SELECTED_ANALYSIS_CACHE_KEY || '')) || null; }
       function selectedTimer(){ return (LAST_TIMERS || []).find(t => String(t.id || '') === String(SELECTED_TIMER_ID || '')) || null; }
 
       function syncToolbarButtons(){
@@ -737,6 +809,10 @@
           if($cacheCheckBtn) $cacheCheckBtn.disabled = !(c && String(c.cache_kind || '') === 'dash');
           if($cacheUpdateBtn) $cacheUpdateBtn.disabled = !c;
           if($cacheDeleteBtn) $cacheDeleteBtn.disabled = !c;
+
+          const ac = selectedAnalysisCache();
+          if($analysisCacheRebuildBtn) $analysisCacheRebuildBtn.disabled = !ac;
+          if($analysisCacheDeleteBtn) $analysisCacheDeleteBtn.disabled = !ac;
 
           const t = selectedTimer();
           if($timersModeBtn) $timersModeBtn.disabled = !t;
@@ -1082,6 +1158,79 @@
         renderCaches(LAST_CACHES);
       }
 
+      function analysisCacheErr(s){
+        const msg = s || '';
+        if($analysisCacheErr) $analysisCacheErr.textContent = msg;
+        if(msg){
+          try{ if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error(msg); else alert(msg); }catch(e){}
+        }
+      }
+
+      function analysisCacheBlob(m){
+        try{
+          return [m.measurement, m.field, m.entity_id, m.friendly_name, m.series_key].map(x=>String(x||'')).join(' ').toLowerCase();
+        }catch(e){ return ''; }
+      }
+
+      function analysisTimeline(m){
+        try{
+          const segs = Array.isArray(m.segments) ? m.segments : [];
+          if(!segs.length) return '';
+          const startMs = Date.parse(String(m.covered_start || segs[0].start || ''));
+          const stopMs = Date.parse(String(m.covered_stop || segs[segs.length - 1].stop || ''));
+          if(!(isFinite(startMs) && isFinite(stopMs) && stopMs > startMs)) return '';
+          const parts = segs.map((seg)=>{
+            const s = Date.parse(String(seg.start || ''));
+            const e = Date.parse(String(seg.stop || ''));
+            if(!(isFinite(s) && isFinite(e) && e > s)) return '';
+            const left = ((s - startMs) / (stopMs - startMs)) * 100;
+            const width = Math.max(1, ((e - s) / (stopMs - startMs)) * 100);
+            const bg = seg.dirty ? '#ffe1e1' : '#d9f7d9';
+            const bd = seg.dirty ? '#d46a6a' : '#5ea56a';
+            return '<div class="timeline_seg" title="' + fmtTs(seg.start) + ' - ' + fmtTs(seg.stop) + ' | Treffer: ' + String(seg.outlier_count || 0) + '" style="left:' + left.toFixed(3) + '%;width:' + width.toFixed(3) + '%;background:' + bg + ';border:1px solid ' + bd + ';"></div>';
+          }).join('');
+          return '<div class="timeline_bar">' + parts + '</div>';
+        }catch(e){ return ''; }
+      }
+
+      function renderAnalysisCaches(items){
+        if(!$analysisCacheBody) return;
+        $analysisCacheBody.textContent = '';
+        const q = String($analysisCacheQ && $analysisCacheQ.value ? $analysisCacheQ.value : '').trim().toLowerCase();
+        const rows = (items || []).filter(m => !q || analysisCacheBlob(m).includes(q));
+        let totalBytes = 0;
+        for(const m of rows){
+          totalBytes += Number(m.bytes || 0);
+          const tr = document.createElement('tr');
+          const sk = String(m.series_key || '');
+          const series = String(m.measurement || '') + '/' + String(m.field || '');
+          const tags = [m.entity_id ? ('entity_id=' + m.entity_id) : '', m.friendly_name ? ('friendly_name=' + m.friendly_name) : ''].filter(Boolean).join(' ');
+          tr.innerHTML = [
+            `<td style="text-align:center;"><input type="radio" name="analysis_cache_sel" ${sk===String(SELECTED_ANALYSIS_CACHE_KEY||'')?'checked':''}/></td>`,
+            `<td class="mono">${series}</td>`,
+            `<td class="mono" title="${tags.replace(/"/g,'&quot;')}">${tags}</td>`,
+            `<td>${fmtTs(m.updated_at)}</td>`,
+            `<td class="mono" style="text-align:right;">${String(m.segment_count || 0)}${m.dirty_segment_count ? (' / dirty=' + String(m.dirty_segment_count)) : ''}</td>`,
+            `<td class="mono" style="text-align:right;">${String(m.outlier_count || 0)}</td>`,
+            `<td class="mono" style="text-align:right;">${fmtSize(m.bytes)}</td>`,
+            `<td>${analysisTimeline(m)}</td>`,
+          ].join('');
+          tr.setAttribute('data-series-key', sk);
+          tr.addEventListener('click', ()=>{ SELECTED_ANALYSIS_CACHE_KEY = sk; selectRow($analysisCacheBody, 'data-series-key', SELECTED_ANALYSIS_CACHE_KEY); syncToolbarButtons(); });
+          if(sk === String(SELECTED_ANALYSIS_CACHE_KEY||'')) tr.classList.add('row_selected');
+          $analysisCacheBody.appendChild(tr);
+        }
+        if($analysisCacheInfo) $analysisCacheInfo.textContent = `Analysecache Serien: ${rows.length} | Gesamtgroesse: ${fmtSize(totalBytes)}`;
+        syncToolbarButtons();
+      }
+
+      async function loadAnalysisCaches(){
+        analysisCacheErr('');
+        const j = await api('./api/analysis_cache/list', {});
+        LAST_ANALYSIS_CACHES = j.series || [];
+        renderAnalysisCaches(LAST_ANALYSIS_CACHES);
+      }
+
       const TIMER_MODE_UI = {};
       async function loadTimers(){
         timersErr('');
@@ -1152,6 +1301,7 @@
       async function loadAll(){
         await loadJobs();
         await loadCaches();
+        await loadAnalysisCaches();
         await loadTimers();
         await loadUsage();
       }
@@ -1164,6 +1314,23 @@
       if($cacheCheckBtn) $cacheCheckBtn.onclick = async ()=>{ try{ const m = selectedCache(); if(m) await checkCache(m); }catch(e){ cacheErr(e && e.message ? e.message : String(e)); } };
       if($cacheUpdateBtn) $cacheUpdateBtn.onclick = async ()=>{ try{ const m = selectedCache(); if(m) await updateCache(m); }catch(e){ cacheErr(e && e.message ? e.message : String(e)); } };
       if($cacheDeleteBtn) $cacheDeleteBtn.onclick = async ()=>{ try{ const m = selectedCache(); if(m) await deleteCache(m); }catch(e){ cacheErr(e && e.message ? e.message : String(e)); } };
+      if($analysisCacheRebuildBtn) $analysisCacheRebuildBtn.onclick = async ()=>{
+        try{
+          const m = selectedAnalysisCache();
+          if(!m) return;
+          await api('./api/analysis_cache/rebuild', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({series_key: String(m.series_key || '')})});
+          await loadAnalysisCaches();
+        }catch(e){ analysisCacheErr(e && e.message ? e.message : String(e)); }
+      };
+      if($analysisCacheDeleteBtn) $analysisCacheDeleteBtn.onclick = async ()=>{
+        try{
+          const m = selectedAnalysisCache();
+          if(!m) return;
+          if(!confirm('Analysecache fuer diese Serie wirklich loeschen?')) return;
+          await api('./api/analysis_cache/delete', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({series_key: String(m.series_key || '')})});
+          await loadAnalysisCaches();
+        }catch(e){ analysisCacheErr(e && e.message ? e.message : String(e)); }
+      };
       if($timersModeBtn) $timersModeBtn.onclick = async ()=>{ try{ const t = selectedTimer(); if(!t) return; const ui = TIMER_MODE_UI[String(t.id||'')]; if(!ui) return; const open = ui.wrap.style.display !== 'none'; ui.wrap.style.display = open ? 'none' : 'flex'; if(!open) return; await ui.save(); }catch(e){ timersErr(e && e.message ? e.message : String(e)); } };
       if($timersHistoryBtn) $timersHistoryBtn.onclick = async ()=>{ try{ const t = selectedTimer(); if(t) await showTimerHistory(t); }catch(e){ timersErr(e && e.message ? e.message : String(e)); } };
       if($timersStartBtn) $timersStartBtn.onclick = async ()=>{ try{ const t = selectedTimer(); if(t) await startTimer(t); }catch(e){ timersErr(e && e.message ? e.message : String(e)); } };
@@ -1176,6 +1343,15 @@
 
       $cacheRefresh.onclick = ()=>{ loadAll().catch(()=>{}); };
       $cacheQ.oninput = ()=>{ renderCaches(LAST_CACHES); };
+      if($analysisCacheRefresh) $analysisCacheRefresh.onclick = ()=>{ loadAnalysisCaches().catch(e=>analysisCacheErr(e && e.message ? e.message : String(e))); };
+      if($analysisCacheQ) $analysisCacheQ.oninput = ()=>{ renderAnalysisCaches(LAST_ANALYSIS_CACHES); };
+      if($analysisCacheDeleteAll) $analysisCacheDeleteAll.onclick = async ()=>{
+        try{
+          if(!confirm('Analysecache komplett loeschen?')) return;
+          await api('./api/analysis_cache/delete', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({all: true})});
+          await loadAnalysisCaches();
+        }catch(e){ analysisCacheErr(e && e.message ? e.message : String(e)); }
+      };
       $cacheDeleteAll.onclick = async ()=>{
         try{
           if(!confirm('Cache komplett loeschen?\n\nDas loescht nur Cache-Dateien unter /data, nicht die Datenbank.')) return;

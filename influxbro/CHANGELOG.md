@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.12.272
+
+### Enhancement
+
+- Die Dashboard-Analyse besitzt jetzt einen persistenten serverseitigen `Analysecache` mit Zeitstrahl im `analysis_confirm_dialog`; vorhandene Segmente, neu zu lesende Bereiche und nachtraeglich geaenderte Cache-Bereiche werden dort direkt sichtbar. ([#214](https://github.com/thomas682/HA-Addons/issues/214))
+- Die Ausreissersuche baut den Analyse-Cache immer mit allen Typen (`bounds`, `counter`, `decrease`, `fault_phase`, `null`, `zero`) auf und nutzt beim naechsten Lauf vorhandene Cache-Segmente wieder, waehrend nur Luecken oder geaenderte Bereiche neu gelesen werden. ([#214](https://github.com/thomas682/HA-Addons/issues/214))
+- Auf `Cache & Jobs` gibt es jetzt einen eigenen Bereich `Analysecache` mit Serienliste, farbigem Zeitstrahl, Groessenanzeige sowie Aktionen zum Loeschen und kompletten Neuaufbau. ([#214](https://github.com/thomas682/HA-Addons/issues/214))
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tests: `pytest tests/test_api_analysis_cache.py tests/test_api_ui_support.py -q -k "analysis_cache"`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.271
 
 ### Maintenance
