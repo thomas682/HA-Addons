@@ -551,6 +551,15 @@ def test_dashboard_issue219_analysis_controls_and_limits_exist():
     assert '"ui_raw_outlier_display_limit_per_type": 100' in app_body
 
 
+def test_dashboard_caching_section_has_visible_cache_targets_and_no_old_dialog():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert 'id="analysis_cache_box"' in body
+    assert 'id="analysis_confirm_cache_summary"' in body
+    assert 'id="analysis_confirm_cache_timeline"' in body
+    assert 'id="analysis_confirm_cache_changes"' in body
+    assert 'id="analysis_confirm_dialog"' not in body
+
+
 def test_table_helpers_strip_ingress_token_from_storage_keys():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_table_cols.html").read_text()
     assert "replace(/\\/api\\/hassio_ingress\\/[0-9a-fA-F]+/g, '')" in body

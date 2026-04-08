@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.12.276
+
+### Fix
+
+- Die Cache-Summary, der Zeitstrahl und die Cache-Aenderungen werden jetzt in der sichtbaren `Caching`-Section gerendert statt in einem versteckten Alt-Dialog. ([#222](https://github.com/thomas682/HA-Addons/issues/222))
+- `dashboard.AnalyseStart` schreibt die Cache-Pruefung jetzt mit sichtbaren Plan-/Aenderungsinformationen in den Analyse-Verlauf. ([#222](https://github.com/thomas682/HA-Addons/issues/222))
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tests: `pytest tests/test_api_ui_support.py -q -k "caching_section_has_visible_cache_targets_and_no_old_dialog"`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.275
 
 ### Fix

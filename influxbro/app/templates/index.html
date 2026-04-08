@@ -403,6 +403,12 @@
             <div id="load_checklist" style="font-size:12px; border:1px solid #eee; border-radius:8px; padding:8px 12px; background:#fafafa;"></div>
             <div id="analysis_log" style="font-size:12px; border:1px solid #eee; border-radius:8px; padding:8px 12px; background:#fafafa; margin-top:6px;"></div>
           </div>
+          <div id="analysis_cache_box" style="margin-top:14px; border:1px solid #eee; border-radius:12px; padding:12px; background:#fafafa;">
+            <div style="font-weight:600; margin-bottom:6px;">Analysecache</div>
+            <div id="analysis_confirm_cache_summary" class="muted" style="font-size:12px;"></div>
+            <div id="analysis_confirm_cache_timeline" style="margin-top:10px;"></div>
+            <div id="analysis_confirm_cache_changes" style="margin-top:10px;"></div>
+          </div>
           <div id="query_details" style="display:none;" data-ui="dashboard.query_details" title="dashboard.query_details">
             <div id="query_meta" data-ui="dashboard.query_meta" title="dashboard.query_meta"></div>
             <button id="query_history" type="button" data-ui="dashboard.query_history" title="dashboard.query_history"></button>
@@ -702,30 +708,6 @@
         </div>
         <div style="margin-top:16px; display:flex; gap:8px; justify-content:flex-end;">
           <button class="btn_sm" id="raw_outlier_params_save" type="button">Speichern</button>
-        </div>
-      </div>
-    </div>
-
-    <div id="analysis_confirm_dialog" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; z-index:9999; background:rgba(0,0,0,0.4); align-items:center; justify-content:center;">
-      <div style="background:#fff; border-radius:16px; padding:20px; max-width:760px; width:92%; max-height:80vh; overflow:auto; box-shadow:0 12px 60px rgba(0,0,0,0.28);">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-          <h3 style="margin:0;">Analyse starten</h3>
-          <button class="btn_sm" id="analysis_confirm_close" type="button">Abbrechen</button>
-        </div>
-        <div id="analysis_confirm_body" style="font-size:13px; line-height:1.6;"></div>
-        <div id="analysis_confirm_cache_box" style="margin-top:14px; border:1px solid #eee; border-radius:12px; padding:12px; background:#fafafa;">
-          <div style="font-weight:600; margin-bottom:6px;">Analysecache</div>
-          <div id="analysis_confirm_cache_summary" class="muted" style="font-size:12px;"></div>
-          <div id="analysis_confirm_cache_timeline" style="margin-top:10px;"></div>
-          <div id="analysis_confirm_cache_changes" style="margin-top:10px;"></div>
-          <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:12px; font-size:12px;">
-            <label><input type="radio" name="analysis_cache_strategy" value="reuse" checked/> Cache verwenden</label>
-            <label><input type="radio" name="analysis_cache_strategy" value="refresh"/> Cache ignorieren / neu lesen</label>
-          </div>
-        </div>
-        <div style="margin-top:16px; display:flex; gap:8px; justify-content:flex-end;">
-          <button class="btn_sm" id="analysis_confirm_cancel" type="button">Abbrechen</button>
-          <button class="btn_sm" id="analysis_confirm_start" type="button" style="background:#4caf50; color:#fff;">Analyse starten</button>
         </div>
       </div>
     </div>
@@ -9078,6 +9060,12 @@ async function refreshCachingSection(){
   const typeNames = types.map(t => typeLabels[t] || t).join(', ');
   const range = base.range || '24h';
   const entityInfo = base.entity_id ? ('Entity ID: ' + base.entity_id) : (base.friendly_name ? ('Friendly Name: ' + base.friendly_name) : '');
+  _saveAnalysisEvent({
+    at: new Date().toISOString(),
+    kind: 'analysis_cache_plan',
+    step: 'check_start',
+    detail: [base.measurement + '/' + base.field, base.entity_id || base.friendly_name || '', 'range=' + range].filter(Boolean).join(' | '),
+  });
   const win = await resolveEffectiveAnalysisWindow();
   const dashPlan = await fetchDashboardCachePlan({...base});
   const analysisPlan = (win && win.start && win.stop) ? await fetchAnalysisCachePlan(base, win) : null;
@@ -9090,14 +9078,41 @@ async function refreshCachingSection(){
         const gaps = (analysisPlan.gaps || []).length;
         const dirty = (analysisPlan.dirty_ranges || []).length;
         const dashSegs = dashPlan && Array.isArray(dashPlan.segments) ? dashPlan.segments.length : 0;
+        _saveAnalysisEventOnce({
+          at: new Date().toISOString(),
+          kind: 'analysis_cache_plan',
+          step: segs ? (gaps || dirty ? 'partial_cache_available' : 'cache_available') : 'no_cache',
+          detail: 'Analysecache Segmente: ' + segs + ' | Neu lesen: ' + gaps + ' | Geaendert: ' + dirty + ' | Bekannte Ausreisser im Cache: ' + String(analysisPlan.cached_outlier_count || 0) + ' | Dashboard-Cache Segmente: ' + dashSegs,
+          extra: {
+            key: ['analysis_cache_plan', base.measurement, base.field, base.entity_id || '', base.friendly_name || '', win.start, win.stop, segs, gaps, dirty, analysisPlan.cached_outlier_count || 0].join('|'),
+          },
+        });
         $summary.textContent = 'Analysecache Segmente: ' + segs + ' | Neu lesen: ' + gaps + ' | Geaendert: ' + dirty + ' | Bekannte Ausreisser im Cache: ' + String(analysisPlan.cached_outlier_count || 0) + ' | Dashboard-Cache Segmente: ' + dashSegs + ' | Start: ' + fmtTs(win.start) + ' | Ende: ' + fmtTs(win.stop);
       }else{
+        _saveAnalysisEventOnce({
+          at: new Date().toISOString(),
+          kind: 'analysis_cache_plan',
+          step: 'no_cache',
+          detail: 'Kein Analyse-Cache gefunden.',
+          extra: { key: ['analysis_cache_plan', 'no_cache', base.measurement, base.field, base.entity_id || '', base.friendly_name || '', win.start, win.stop].join('|') },
+        });
         $summary.textContent = 'Kein Analyse-Cache gefunden.';
       }
     }
     if($timeline) $timeline.innerHTML = analysisPlan ? _analysisCacheTimelineHtml(analysisPlan) : '';
     if($changes){
       const rows = analysisPlan && Array.isArray(analysisPlan.changes) ? analysisPlan.changes.slice(0, 8) : [];
+      rows.forEach((row) => {
+        const oldVal = (row.old_value === null || row.old_value === undefined) ? '-' : fmtNum(row.old_value);
+        const newVal = (row.new_value === null || row.new_value === undefined) ? '-' : fmtNum(row.new_value);
+        _saveAnalysisEventOnce({
+          at: new Date().toISOString(),
+          kind: 'analysis_cache_plan',
+          step: 'value_changed',
+          detail: 'Geaendert: ' + fmtTs(row.time) + ' | Alt: ' + oldVal + ' | Neu: ' + newVal + ' | ' + String(row.reason || row.action || '-'),
+          extra: { key: ['analysis_cache_change', String(row.time || ''), String(row.old_value), String(row.new_value), String(row.reason || row.action || '-')].join('|') },
+        });
+      });
       $changes.innerHTML = rows.length ? rows.map((row)=>{
         const oldVal = (row.old_value === null || row.old_value === undefined) ? '-' : fmtNum(row.old_value);
         const newVal = (row.new_value === null || row.new_value === undefined) ? '-' : fmtNum(row.new_value);
