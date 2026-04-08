@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.12.277
+
+### Enhancement
+
+- Die Dashboard-Seite verwendet jetzt ein strukturiertes `data-ui`-Namensschema im Format `page_section.role_action`, z. B. `dashboard_caching.btn_cache_pruefen`, `dashboard_analysis.btn_analyse_mit_cache` oder `dashboard_raw.tbl_rohdaten`. ([#224](https://github.com/thomas682/HA-Addons/issues/224))
+- `Template.md` dokumentiert das neue `data-ui`-Schema; das Folge-Issue fuer die restlichen Seiten bleibt separat offen. ([#224](https://github.com/thomas682/HA-Addons/issues/224))
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tests: `pytest tests/test_api_ui_support.py -q -k "structured_data_ui_naming_scheme_samples"`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.276
 
 ### Fix

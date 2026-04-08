@@ -560,6 +560,18 @@ def test_dashboard_caching_section_has_visible_cache_targets_and_no_old_dialog()
     assert 'id="analysis_confirm_dialog"' not in body
 
 
+def test_dashboard_uses_structured_data_ui_naming_scheme_samples():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    tmpl = (Path(__file__).resolve().parents[1] / "influxbro" / "Template.md").read_text()
+    assert 'data-ui="dashboard_caching.btn_cache_pruefen"' in body
+    assert 'data-ui="dashboard_analysis.btn_analyse_mit_cache"' in body
+    assert 'data-ui="dashboard_outliers.tbl_ausreisser"' in body
+    assert 'data-ui="dashboard_raw.tbl_rohdaten"' in body
+    assert 'data-ui="dashboard_graph.btn_aktualisieren"' in body
+    assert 'data-ui="dashboard_filterlist.section_root"' in body
+    assert '`page_section.role_action`' in tmpl
+
+
 def test_table_helpers_strip_ingress_token_from_storage_keys():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_table_cols.html").read_text()
     assert "replace(/\\/api\\/hassio_ingress\\/[0-9a-fA-F]+/g, '')" in body

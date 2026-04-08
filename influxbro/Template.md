@@ -202,6 +202,49 @@ Rule
 
 ## Other GUI elements (future)
 
+## `data-ui` Naming
+
+Applies to all interactive and inspectable GUI elements.
+
+Required format
+
+- Use `page_section.role_action`
+- All parts must be lowercase and use `_`
+- The name should make all three things obvious:
+  - page/context
+  - visual/functional section
+  - role and action of the element
+
+Preferred role prefixes
+
+- `btn_` for buttons
+- `input_` for text/number inputs
+- `select_` for selects
+- `chk_` for checkboxes
+- `tbl_` for tables
+- `panel_` for panels/containers
+- `txt_` for text/status/info fields
+- `dlg_` for dialogs
+- `row_` for toolbar/action rows
+- `handle_` for resize/split handles
+
+Examples
+
+- `dashboard_caching.btn_cache_pruefen`
+- `dashboard_analysis.btn_analyse_mit_cache`
+- `dashboard_outliers.tbl_ausreisser`
+- `dashboard_raw.btn_query_test`
+- `settings_yaml.btn_yaml_daten_einlesen`
+
+Rules
+
+- Prefer the visible button meaning over vague technical names.
+- If the button text is the clearest description, use that text in normalized form.
+- Avoid generic names like `section.raw`, `dashboard.actions`, `graph.refresh`.
+- If a container and its button both need names, give them distinct roles, e.g.:
+  - `dashboard_caching.btn_query_anzeigen`
+  - `dashboard_caching.panel_query_details`
+
 ## Storage Policy (Global vs. Profile-based)
 
 This policy applies to ALL pages and functions of the app, not only Dashboard.

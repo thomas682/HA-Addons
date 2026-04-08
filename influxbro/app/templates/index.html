@@ -234,26 +234,26 @@
   {% include "_topbar.html" %}
   <div class="shell">
     {% include "_nav.html" %}
-    <main class="content" data-ui="dashboard.page" title="dashboard.page">
+    <main class="content" data-ui="dashboard_page.main" title="dashboard_page.main">
 
   <div style="display:flex; justify-content:space-between; gap: 12px; align-items:baseline; flex-wrap:wrap;">
     <h2 style="margin:0;">Dashboard</h2>
   </div>
-  <div class="muted" id="backup_badge" data-ui="dashboard.backup_badge" title="dashboard.backup_badge"></div>
+  <div class="muted" id="backup_badge" data-ui="dashboard_header.badge_backup" title="dashboard_header.badge_backup"></div>
 
-  <details id="selection_details" {{ 'open' if cfg.get('ui_open_selection') else '' }} data-ui="section.selection" title="section.selection">
+  <details id="selection_details" {{ 'open' if cfg.get('ui_open_selection') else '' }} data-ui="dashboard_selection.section_root" title="dashboard_selection.section_root">
     <summary><span class="ib_summary_row"><span>Auswahl</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Auswahl" data-info-body="Auswahl bestimmt, welche Serie geladen wird (measurement/field/entity_id/friendly_name) und welcher Zeitraum fuer Graph/Tabellen gilt.\n\nTypisch:\n1) friendly_name/entity_id waehlen (Measurement optional als Filter).\n2) Zeitraum setzen (Preset oder Custom).\n3) Laden startet Query und fuellt Graph, Raw und Tabellen.\n\nHinweis:\n- Auswahl wird im Browser gespeichert und fuer Backup/Restore/Export wiederverwendet." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
 
-    <div class="grid" id="filters" data-ui="dashboard.filters" title="dashboard.filters">
-    <div class="control span2" data-ui="dashboard.source_selection" title="dashboard.source_selection">
+    <div class="grid" id="filters" data-ui="dashboard_selection.panel_filters" title="dashboard_selection.panel_filters">
+    <div class="control span2" data-ui="dashboard_selection.panel_source" title="dashboard_selection.panel_source">
       <div class="card" style="margin-top:0;">
         <div style="font-weight:800;">Quelle</div>
         <div class="grid" style="margin-top:10px;">
-          <div class="ib_sel" id="c_measurement_filter" data-ui="filter_measurement">
+          <div class="ib_sel" id="c_measurement_filter" data-ui="dashboard_selection.input_measurement_filter">
             <label class="label_row ib_sel_label"><span>Einheit</span><span id="cnt_measurement_filter" class="muted"></span></label>
             <div class="ib_sel_stack">
               <div class="ib_clear_row">
-                <input id="measurement_filter" list="measurement_filter_list" placeholder="optional" data-ui="filter_measurement_input" autocomplete="off" />
+                <input id="measurement_filter" list="measurement_filter_list" placeholder="optional" data-ui="dashboard_selection.input_measurement_filter_value" autocomplete="off" />
                 <button type="button" class="ib_clear_btn" data-clear-for="measurement_filter" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
               </div>
               <datalist id="measurement_filter_list">
@@ -267,11 +267,11 @@
               </div>
             </div>
           </div>
-          <div class="ib_sel" id="c_field_select" data-ui="filter_field">
+          <div class="ib_sel" id="c_field_select" data-ui="dashboard_selection.input_field">
             <label class="label_row ib_sel_label"><span>Feld</span><span id="cnt_field" class="muted"></span></label>
             <div class="ib_sel_stack">
               <div class="ib_clear_row">
-                <input id="field" list="field_list" placeholder="optional" data-ui="filter_field_select" title="filter_field_select" autocomplete="off" />
+                <input id="field" list="field_list" placeholder="optional" data-ui="dashboard_selection.input_field_value" title="dashboard_selection.input_field_value" autocomplete="off" />
                 <button type="button" class="ib_clear_btn" data-clear-for="field" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
               </div>
               <datalist id="field_list"></datalist>
@@ -281,11 +281,11 @@
               </div>
             </div>
           </div>
-          <div class="ib_sel" id="c_entity" data-ui="filter_entity">
+          <div class="ib_sel" id="c_entity" data-ui="dashboard_selection.input_entity">
             <label class="label_row ib_sel_label"><span>Entity</span><span id="cnt_entity_id" class="muted"></span></label>
             <div class="ib_sel_stack">
               <div class="ib_clear_row">
-                <input id="entity_id" list="entity_list" placeholder="optional" data-ui="filter_entity_input" autocomplete="off" />
+                <input id="entity_id" list="entity_list" placeholder="optional" data-ui="dashboard_selection.input_entity_value" autocomplete="off" />
                 <button type="button" class="ib_clear_btn" data-clear-for="entity_id" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
               </div>
               <datalist id="entity_list">
@@ -299,11 +299,11 @@
               </div>
             </div>
           </div>
-          <div class="ib_sel" id="c_friendly" data-ui="filter_friendly">
+          <div class="ib_sel" id="c_friendly" data-ui="dashboard_selection.input_friendly_name">
             <label class="label_row ib_sel_label"><span>Name</span><span id="cnt_friendly_name" class="muted"></span></label>
             <div class="ib_sel_stack">
               <div class="ib_clear_row">
-                <input id="friendly_name" list="friendly_list" placeholder="optional" data-ui="filter_friendly_input" autocomplete="off" />
+                <input id="friendly_name" list="friendly_list" placeholder="optional" data-ui="dashboard_selection.input_friendly_name_value" autocomplete="off" />
                 <button type="button" class="ib_clear_btn" data-clear-for="friendly_name" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
               </div>
               <datalist id="friendly_list">
@@ -320,11 +320,11 @@
         </div>
       </div>
     </div>
-    <div class="control ib_sel ib_sel_time span2" id="c_range" data-ui="filter_range">
+    <div class="control ib_sel ib_sel_time span2" id="c_range" data-ui="dashboard_selection.select_range">
       <label class="label_row ib_sel_label"><span>Zeitraum (Graph/Tabelle)</span><span><span id="cnt_range" class="muted"></span></span></label>
       <div class="ib_sel_stack">
       <div class="ib_clear_row">
-      <select id="range" data-ui="filter_range_select">
+      <select id="range" data-ui="dashboard_selection.select_range_value">
         <option value="1h">Letzte 1h</option>
         <option value="6h">Letzte 6h</option>
         <option value="12h">Letzte 12h</option>
@@ -347,7 +347,7 @@
       </div>
       </div>
       <div style="margin-top:6px;">
-        <div id="range_from_to" class="muted" data-ui="filter_range_bounds"></div>
+        <div id="range_from_to" class="muted" data-ui="dashboard_selection.txt_range_bounds"></div>
         <div id="analysis_start_info" class="muted" style="margin-top:4px;"></div>
       </div>
     </div>
@@ -360,7 +360,7 @@
     </div>
     </div>
 
-  <div class="table_wrap" id="tag_choices" style="display:none; margin-top: 10px;" data-ui="dashboard.tag_choices" title="dashboard.tag_choices">
+  <div class="table_wrap" id="tag_choices" style="display:none; margin-top: 10px;" data-ui="dashboard_selection.panel_tag_choices" title="dashboard_selection.panel_tag_choices">
     <div class="muted" id="tag_choices_title"></div>
     <div class="table_box" style="max-height: 220px; overflow:auto; border: 1px solid #eee; border-radius: 10px; margin-top: 8px;">
       <table style="margin-top:0;">
@@ -381,25 +381,25 @@
 
   <div id="stats_total_store" style="display:none;"><table class="stats_tbl"><tbody id="stats_tot_body"></tbody></table></div>
 
-    <details id="caching_section" class="section" open data-ui="section.caching" title="section.caching">
+    <details id="caching_section" class="section" open data-ui="dashboard_caching.section_root" title="dashboard_caching.section_root">
       <summary><span class="ib_summary_row"><span>Caching</span></span></summary>
       <div class="card_body">
-        <div class="muted" data-ui="tip.selection" title="tip.selection" style="margin-bottom:8px;">Laedt Graph/Tabelle/Statistik erst nach Klick auf <code>Aktualisieren</code>. Vor der Analyse wird hier der Cache fuer den aktuellen Messwert geprueft.</div>
-        <div class="control" data-ui="dashboard.actions" title="dashboard.actions">
+        <div class="muted" data-ui="dashboard_caching.txt_hint_aktualisieren" title="dashboard_caching.txt_hint_aktualisieren" style="margin-bottom:8px;">Laedt Graph/Tabelle/Statistik erst nach Klick auf <code>Aktualisieren</code>. Vor der Analyse wird hier der Cache fuer den aktuellen Messwert geprueft.</div>
+        <div class="control" data-ui="dashboard_caching.row_actions" title="dashboard_caching.row_actions">
           <div id="analysis_status" class="muted" style="font-size:11px; margin-bottom:4px; min-height:14px;"></div>
           <div style="display:flex; gap: 8px; align-items: stretch; flex-wrap:wrap;">
-            <button id="load" class="btn_sm" style="height:34px; padding:8px 10px; flex:0 0 auto; width:auto;" data-ui="dashboard.AnalyseStart">Cache pruefen</button>
-            <button id="raw_outlier_params_action" class="btn_sm" style="width:auto; min-width:34px; padding:6px 8px;" data-ui="dashboard.raw_outlier_params" title="dashboard.raw_outlier_params" aria-label="Ausreißer-Parameter"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 8.8A3.2 3.2 0 1 0 12 15.2A3.2 3.2 0 0 0 12 8.8Z" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a1.2 1.2 0 0 1 0 1.7l-1.6 1.6a1.2 1.2 0 0 1-1.7 0l-.1-.1a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.9V22a1.2 1.2 0 0 1-1.2 1.2h-2.2a1.2 1.2 0 0 1-1.2-1.2v-.2a1 1 0 0 0-.7-.9 1 1 0 0 0-1.1.2l-.1.1a1.2 1.2 0 0 1-1.7 0l-1.6-1.6a1.2 1.2 0 0 1 0-1.7l.1-.1a1 1 0 0 0 .2-1.1 1 1 0 0 0-.9-.6H2a1.2 1.2 0 0 1-1.2-1.2v-2.2a1.2 1.2 0 0 1 1.2-1.2h.2a1 1 0 0 0 .9-.7 1 1 0 0 0-.2-1.1l-.1-.1a1.2 1.2 0 0 1 0-1.7l1.6-1.6a1.2 1.2 0 0 1 1.7 0l.1.1a1 1 0 0 0 1.1.2h.1a1 1 0 0 0 .6-.9V2a1.2 1.2 0 0 1 1.2-1.2h2.2A1.2 1.2 0 0 1 13 2v.2a1 1 0 0 0 .7.9 1 1 0 0 0 1.1-.2l.1-.1a1.2 1.2 0 0 1 1.7 0l1.6 1.6a1.2 1.2 0 0 1 0 1.7l-.1.1a1 1 0 0 0-.2 1.1v.1a1 1 0 0 0 .9.6H22a1.2 1.2 0 0 1 1.2 1.2v2.2a1.2 1.2 0 0 1-1.2 1.2h-.2a1 1 0 0 0-.9.7Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></button>
-            <button id="analysis_history" class="btn_sm" style="width:auto; min-width:34px; padding:6px 8px;" data-ui="dashboard.analysis_history" title="dashboard.analysis_history" aria-label="Analyse-Verlauf anzeigen"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7a6.97 6.97 0 0 1-4.95-2.05l-1.41 1.41A8.96 8.96 0 0 0 13 21a9 9 0 0 0 0-18zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z" fill="currentColor"/></svg></button>
-            <button id="cancel_load" class="btn_sm" style="width:auto; white-space:nowrap;" data-ui="dashboard.cancel" title="dashboard.cancel" aria-label="Laufende Dashboard-Abfrage abbrechen">Laden abbrechen</button>
+            <button id="load" class="btn_sm" style="height:34px; padding:8px 10px; flex:0 0 auto; width:auto;" data-ui="dashboard_caching.btn_cache_pruefen">Cache pruefen</button>
+            <button id="raw_outlier_params_action" class="btn_sm" style="width:auto; min-width:34px; padding:6px 8px;" data-ui="dashboard_caching.btn_ausreisser_parameter" title="dashboard_caching.btn_ausreisser_parameter" aria-label="Ausreißer-Parameter"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 8.8A3.2 3.2 0 1 0 12 15.2A3.2 3.2 0 0 0 12 8.8Z" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a1.2 1.2 0 0 1 0 1.7l-1.6 1.6a1.2 1.2 0 0 1-1.7 0l-.1-.1a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.9V22a1.2 1.2 0 0 1-1.2 1.2h-2.2a1.2 1.2 0 0 1-1.2-1.2v-.2a1 1 0 0 0-.7-.9 1 1 0 0 0-1.1.2l-.1.1a1.2 1.2 0 0 1-1.7 0l-1.6-1.6a1.2 1.2 0 0 1 0-1.7l.1-.1a1 1 0 0 0 .2-1.1 1 1 0 0 0-.9-.6H2a1.2 1.2 0 0 1-1.2-1.2v-2.2a1.2 1.2 0 0 1 1.2-1.2h.2a1 1 0 0 0 .9-.7 1 1 0 0 0-.2-1.1l-.1-.1a1.2 1.2 0 0 1 0-1.7l1.6-1.6a1.2 1.2 0 0 1 1.7 0l.1.1a1 1 0 0 0 1.1.2h.1a1 1 0 0 0 .6-.9V2a1.2 1.2 0 0 1 1.2-1.2h2.2A1.2 1.2 0 0 1 13 2v.2a1 1 0 0 0 .7.9 1 1 0 0 0 1.1-.2l.1-.1a1.2 1.2 0 0 1 1.7 0l1.6 1.6a1.2 1.2 0 0 1 0 1.7l-.1.1a1 1 0 0 0-.2 1.1v.1a1 1 0 0 0 .9.6H22a1.2 1.2 0 0 1 1.2 1.2v2.2a1.2 1.2 0 0 1-1.2 1.2h-.2a1 1 0 0 0-.9.7Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></button>
+            <button id="analysis_history" class="btn_sm" style="width:auto; min-width:34px; padding:6px 8px;" data-ui="dashboard_caching.btn_analyse_verlauf" title="dashboard_caching.btn_analyse_verlauf" aria-label="Analyse-Verlauf anzeigen"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7a6.97 6.97 0 0 1-4.95-2.05l-1.41 1.41A8.96 8.96 0 0 0 13 21a9 9 0 0 0 0-18zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z" fill="currentColor"/></svg></button>
+            <button id="cancel_load" class="btn_sm" style="width:auto; white-space:nowrap;" data-ui="dashboard_caching.btn_laden_abbrechen" title="dashboard_caching.btn_laden_abbrechen" aria-label="Laufende Dashboard-Abfrage abbrechen">Laden abbrechen</button>
             <button class="btn_sm" id="raw_search_abort" style="width:auto; white-space:nowrap;" title="Ausreißer-Suche abbrechen" disabled>Ausreißer-Abbruch</button>
-            <button id="analysis_start_reset" class="btn_sm" style="width:auto; display:none;" data-ui="dashboard.analysis_start_reset">Startalter löschen</button>
-            <button id="reset_filters" class="btn_sm" style="width:auto; white-space:nowrap;" data-ui="dashboard.reset" title="dashboard.reset">Reset</button>
-            <button id="dashboard_query_open" type="button" class="btn_sm" style="width:auto; min-width:34px; padding:6px 8px;" data-ui="dashboard.query_details" title="dashboard.query_details" aria-label="Dashboard Query anzeigen"><svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="11" cy="15.5" r="1.5"></circle><path d="M12,12H10V8h2a2,2,0,0,0,0-4H10A2.0023,2.0023,0,0,0,8,6v.5H6V6a4.0045,4.0045,0,0,1,4-4h2a4,4,0,0,1,0,8Z"></path><path d="M22.4479,21.0337A10.971,10.971,0,0,0,19.9211,4.7446l-.999,1.73A8.9967,8.9967,0,1,1,5,14H3a10.9916,10.9916,0,0,0,18.0338,8.4478L28.5859,30,30,28.5859Z"></path></svg></button>
-            <button id="dashboard_query_test" type="button" class="btn_sm" style="width:auto; min-width:34px; padding:6px 8px;" data-ui="dashboard.query_test" title="dashboard.query_test" aria-label="Query testen"><svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="#000000" width="18" height="18" aria-hidden="true" focusable="false"><path d="M6 10V9h9v1H6zm4-4h5v1h-5V6zm5-3v1H6V3h9zm-9 9v1h9v-1H6z"></path><path fill-rule="evenodd" clip-rule="evenodd" d="M1 2.795l.783-.419 5.371 3.581v.838l-5.371 3.581L1 9.957V2.795zm1.007.94v5.281l3.96-2.64-3.96-2.64z"></path></svg></button>
-            <button id="stats_total_open" type="button" class="btn_sm" style="width:auto; min-width:34px; padding:6px 8px;" data-ui="section.stats_total" title="section.stats_total" aria-label="Gesamtstatistik anzeigen"><svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><path d="M5,9h18v1H5V9z M5,13h8v9H5V13z M6,21h6v-7H6V21z M16,14h7v-1h-7V14z M16,16h7v-1h-7V16z M16,20h7v-1 h-7V20z M16,18h7v-1h-7V18z M16,22h7v-1h-7V22z M32,7v17c0,2.206-1.794,4-4,4H4c-2.206,0-4-1.794-4-4V5c0-0.552,0.448-1,1-1h26 c0.552,0,1,0.448,1,1v1h3C31.552,6,32,6.448,32,7z M30,8h-3v14h-1V7V6H2v18c0,1.103,0.897,2,2,2h24c1.103,0,2-0.897,2-2V8z"></path></svg></button>
+            <button id="analysis_start_reset" class="btn_sm" style="width:auto; display:none;" data-ui="dashboard_caching.btn_startalter_loeschen">Startalter löschen</button>
+            <button id="reset_filters" class="btn_sm" style="width:auto; white-space:nowrap;" data-ui="dashboard_caching.btn_reset" title="dashboard_caching.btn_reset">Reset</button>
+            <button id="dashboard_query_open" type="button" class="btn_sm" style="width:auto; min-width:34px; padding:6px 8px;" data-ui="dashboard_caching.btn_query_anzeigen" title="dashboard_caching.btn_query_anzeigen" aria-label="Dashboard Query anzeigen"><svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="11" cy="15.5" r="1.5"></circle><path d="M12,12H10V8h2a2,2,0,0,0,0-4H10A2.0023,2.0023,0,0,0,8,6v.5H6V6a4.0045,4.0045,0,0,1,4-4h2a4,4,0,0,1,0,8Z"></path><path d="M22.4479,21.0337A10.971,10.971,0,0,0,19.9211,4.7446l-.999,1.73A8.9967,8.9967,0,1,1,5,14H3a10.9916,10.9916,0,0,0,18.0338,8.4478L28.5859,30,30,28.5859Z"></path></svg></button>
+            <button id="dashboard_query_test" type="button" class="btn_sm" style="width:auto; min-width:34px; padding:6px 8px;" data-ui="dashboard_caching.btn_query_test" title="dashboard_caching.btn_query_test" aria-label="Query testen"><svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="#000000" width="18" height="18" aria-hidden="true" focusable="false"><path d="M6 10V9h9v1H6zm4-4h5v1h-5V6zm5-3v1H6V3h9zm-9 9v1h9v-1H6z"></path><path fill-rule="evenodd" clip-rule="evenodd" d="M1 2.795l.783-.419 5.371 3.581v.838l-5.371 3.581L1 9.957V2.795zm1.007.94v5.281l3.96-2.64-3.96-2.64z"></path></svg></button>
+            <button id="stats_total_open" type="button" class="btn_sm" style="width:auto; min-width:34px; padding:6px 8px;" data-ui="dashboard_caching.btn_gesamtstatistik_anzeigen" title="dashboard_caching.btn_gesamtstatistik_anzeigen" aria-label="Gesamtstatistik anzeigen"><svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><path d="M5,9h18v1H5V9z M5,13h8v9H5V13z M6,21h6v-7H6V21z M16,14h7v-1h-7V14z M16,16h7v-1h-7V16z M16,20h7v-1 h-7V20z M16,18h7v-1h-7V18z M16,22h7v-1h-7V22z M32,7v17c0,2.206-1.794,4-4,4H4c-2.206,0-4-1.794-4-4V5c0-0.552,0.448-1,1-1h26 c0.552,0,1,0.448,1,1v1h3C31.552,6,32,6.448,32,7z M30,8h-3v14h-1V7V6H2v18c0,1.103,0.897,2,2,2h24c1.103,0,2-0.897,2-2V8z"></path></svg></button>
           </div>
-          <div id="load_status" data-ui="dashboard.load_status" title="dashboard.load_status" style="margin-top:8px;">
+          <div id="load_status" data-ui="dashboard_caching.panel_status" title="dashboard_caching.panel_status" style="margin-top:8px;">
             <div id="load_checklist" style="font-size:12px; border:1px solid #eee; border-radius:8px; padding:8px 12px; background:#fafafa;"></div>
             <div id="analysis_log" style="font-size:12px; border:1px solid #eee; border-radius:8px; padding:8px 12px; background:#fafafa; margin-top:6px;"></div>
           </div>
@@ -409,23 +409,23 @@
             <div id="analysis_confirm_cache_timeline" style="margin-top:10px;"></div>
             <div id="analysis_confirm_cache_changes" style="margin-top:10px;"></div>
           </div>
-          <div id="query_details" style="display:none;" data-ui="dashboard.query_details" title="dashboard.query_details">
-            <div id="query_meta" data-ui="dashboard.query_meta" title="dashboard.query_meta"></div>
-            <button id="query_history" type="button" data-ui="dashboard.query_history" title="dashboard.query_history"></button>
+          <div id="query_details" style="display:none;" data-ui="dashboard_caching.panel_query_details" title="dashboard_caching.panel_query_details">
+            <div id="query_meta" data-ui="dashboard_caching.txt_query_meta" title="dashboard_caching.txt_query_meta"></div>
+            <button id="query_history" type="button" data-ui="dashboard_caching.btn_query_verlauf" title="dashboard_caching.btn_query_verlauf"></button>
             <pre id="query_pre">Noch keine Query vorhanden.</pre>
           </div>
         </div>
       </div>
     </details>
 
-    <details id="analysis_section" class="section" open data-ui="section.analysis" title="section.analysis">
+    <details id="analysis_section" class="section" open data-ui="dashboard_analysis.section_root" title="dashboard_analysis.section_root">
       <summary><span class="ib_summary_row"><span>Analyse</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Analyse" data-info-body="Ausreisser-Analyse ueber den gewaehlten Zeitraum.\n\nZeigt:\n- Quellparameter und Zeitraum\n- Fortschrittsbalken (0-100%)\n- Checkliste der Analyseetappen\n- Aktueller Chunk mit Zeitbereich und Dauer\n- Intervall-Info mit Timeout-Warnung\n- Gefundene Ausreisser nach Typ" ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
        <div class="card_body">
          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
-           <button id="analysis_run_with_cache" class="btn_sm" style="width:auto;">Analyse mit Cache</button>
-           <button id="analysis_run_without_cache" class="btn_sm" style="width:auto;">Analyse ohne Cache</button>
+           <button id="analysis_run_with_cache" class="btn_sm" style="width:auto;" data-ui="dashboard_analysis.btn_analyse_mit_cache">Analyse mit Cache</button>
+           <button id="analysis_run_without_cache" class="btn_sm" style="width:auto;" data-ui="dashboard_analysis.btn_analyse_ohne_cache">Analyse ohne Cache</button>
          </div>
-         <div id="analysis_inline_stats" class="muted" style="font-size:12px;margin-bottom:8px;"></div>
+          <div id="analysis_inline_stats" class="muted" data-ui="dashboard_analysis.txt_inline_stats" style="font-size:12px;margin-bottom:8px;"></div>
          <div id="analysis_stats_panel" style="display:none; border:1px solid #eee; border-radius:12px; padding:12px 14px; margin-bottom:10px; background:#fafafa; font-size:13px; line-height:1.7;">
            <div style="font-weight:600; margin-bottom:6px;">Messwert-Information</div>
            <div id="analysis_stats_content"></div>
@@ -434,30 +434,30 @@
           <div id="analysis_progress_fill" style="height:100%;background:#4caf50;width:0%;transition:width 0.3s;"></div>
         </div>
         <div id="analysis_progress_text" class="muted" style="font-size:11px;margin-bottom:8px;">0%</div>
-        <div id="analysis_checklist" style="font-size:12px;margin-bottom:8px;"></div>
-        <div id="analysis_chunk_info" class="muted" style="font-size:11px;margin-bottom:4px;"></div>
-        <div id="analysis_interval_info" class="muted" style="font-size:11px;margin-bottom:8px;"></div>
-        <div id="analysis_found_info" style="font-size:12px;margin-bottom:12px;"></div>
+         <div id="analysis_checklist" data-ui="dashboard_analysis.panel_checklist" style="font-size:12px;margin-bottom:8px;"></div>
+         <div id="analysis_chunk_info" class="muted" data-ui="dashboard_analysis.txt_chunk_info" style="font-size:11px;margin-bottom:4px;"></div>
+         <div id="analysis_interval_info" class="muted" data-ui="dashboard_analysis.txt_interval_info" style="font-size:11px;margin-bottom:8px;"></div>
+         <div id="analysis_found_info" data-ui="dashboard_analysis.txt_found_info" style="font-size:12px;margin-bottom:12px;"></div>
 
         <div style="font-size:13px;font-weight:600;margin-bottom:8px;">Ausreisser-Typen auswaehlen</div>
         <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
-          <button class="btn_sm" id="analysis_types_reset" style="width:auto;">Reset</button>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;"><input type="checkbox" id="analysis_types_show_ignored"/>Ignoriert</label>
+          <button class="btn_sm" id="analysis_types_reset" style="width:auto;" data-ui="dashboard_analysis.btn_typen_reset">Reset</button>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;"><input type="checkbox" id="analysis_types_show_ignored" data-ui="dashboard_analysis.chk_ignoriert"/>Ignoriert</label>
         </div>
         <div style="display:flex;gap:12px;margin-bottom:8px;">
           <div style="flex:1;">
             <div style="font-size:11px;opacity:0.7;margin-bottom:4px;">Gewaehlte Typen</div>
-            <div id="analysis_types_selected" style="border:1px solid #eee;border-radius:8px;padding:8px;min-height:40px;"></div>
+            <div id="analysis_types_selected" data-ui="dashboard_analysis.panel_typen_gewaehlt" style="border:1px solid #eee;border-radius:8px;padding:8px;min-height:40px;"></div>
           </div>
           <div style="flex:1;">
             <div style="font-size:11px;opacity:0.7;margin-bottom:4px;">Abgewaehlte Typen</div>
-            <div id="analysis_types_unselected" style="border:1px solid #eee;border-radius:8px;padding:8px;min-height:40px;"></div>
+            <div id="analysis_types_unselected" data-ui="dashboard_analysis.panel_typen_abgewaehlt" style="border:1px solid #eee;border-radius:8px;padding:8px;min-height:40px;"></div>
           </div>
         </div>
       </div>
     </details>
 
-    <details id="outlier_section" class="section" style="margin-top: 10px;" data-ui="section.outliers" title="section.outliers">
+    <details id="outlier_section" class="section" style="margin-top: 10px;" data-ui="dashboard_outliers.section_root" title="dashboard_outliers.section_root">
       <summary><span class="ib_summary_row"><span>Ausreißer</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Ausreißer" data-info-body="Ausreißer ist ein eigener Dashboard-Bereich fuer Suche, Navigation und Tabelle der aktuell gefundenen Raw-Ausreißer.\n\nEnthaelt:\n- Suchlauf fuer die ausgewaehlte Serie\n- Navigation zum aeltesten/neuesten Treffer\n- Typauswahl und Parameter\n- Ausreißer-Tabelle mit Tabellenfunktionen\n\nNutzen:\n- gefundene Treffer getrennt von den Raw-Daten betrachten\n- Treffer filtern, pruefen und gezielt in die Raw-Tabelle uebernehmen" ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
       <div class="table_wrap" id="raw_outlier_table_wrap" style="margin-top:10px;">
       <div class="table_title">Ausreißer</div>
@@ -511,8 +511,8 @@
       </div>
       <div style="display:flex; gap:10px; align-items:flex-start;">
       <div class="table_head" style="flex:1; min-width:0;">
-        <div class="tbl_actions" data-ui="raw.outlier_actions" title="raw.outlier_actions">
-          <button class="btn_sm" id="raw_outlier_autowidth" data-ui="raw.outlier_autowidth" title="raw.outlier_autowidth" aria-label="Spaltenbreite automatisch">
+        <div class="tbl_actions" data-ui="dashboard_outliers.row_table_actions" title="dashboard_outliers.row_table_actions">
+          <button class="btn_sm" id="raw_outlier_autowidth" data-ui="dashboard_outliers.btn_autobreite" title="dashboard_outliers.btn_autobreite" aria-label="Spaltenbreite automatisch">
             <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
               <path d="M5 5v14M19 5v14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
               <path d="M8 12h8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -520,7 +520,7 @@
               <path d="M14 10l2 2-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </button>
-          <button class="btn_sm" id="raw_outlier_windowwidth" data-ui="raw.outlier_windowwidth" title="raw.outlier_windowwidth" aria-label="Fensterbreite">
+          <button class="btn_sm" id="raw_outlier_windowwidth" data-ui="dashboard_outliers.btn_fensterbreite" title="dashboard_outliers.btn_fensterbreite" aria-label="Fensterbreite">
             <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
               <rect x="4" y="6" width="16" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
               <path d="M12 12H6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -529,12 +529,12 @@
               <path d="M18 12l-2-2M18 12l-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </button>
-          <label><input type="checkbox" id="raw_outlier_wrap" class="row_sel" data-ui="raw.outlier_wrap" title="raw.outlier_wrap"/>Umbruch</label>
-          <label><input type="checkbox" id="raw_outlier_colfilter" class="row_sel" data-ui="raw.outlier_colfilter" title="raw.outlier_colfilter"/>Spaltenfilter</label>
+          <label><input type="checkbox" id="raw_outlier_wrap" class="row_sel" data-ui="dashboard_outliers.chk_umbruch" title="dashboard_outliers.chk_umbruch"/>Umbruch</label>
+          <label><input type="checkbox" id="raw_outlier_colfilter" class="row_sel" data-ui="dashboard_outliers.chk_spaltenfilter" title="dashboard_outliers.chk_spaltenfilter"/>Spaltenfilter</label>
         </div>
         <div id="raw_outlier_overview_box" style="margin-top:10px;">
           <div class="table_box" id="raw_outlier_overview" style="--max-rows: 5;">
-            <table id="raw_outlier_tbl" class="list_tbl ib_tbl" data-ui="raw.outlier_table" title="raw.outlier_table">
+            <table id="raw_outlier_tbl" class="list_tbl ib_tbl" data-ui="dashboard_outliers.tbl_ausreisser" title="dashboard_outliers.tbl_ausreisser">
               <thead><tr><th style="min-width: 170px;">Zeit</th><th>Wert</th><th style="min-width: 220px;">Änderung</th><th style="min-width: 140px;">Ausreisser</th></tr></thead>
               <tbody id="raw_outlier_body"></tbody>
             </table>
@@ -548,17 +548,17 @@
       </div>
     </details>
 
-    <details id="raw_section" class="section" style="margin-top: 10px;" data-ui="section.raw" title="section.raw">
+    <details id="raw_section" class="section" style="margin-top: 10px;" data-ui="dashboard_raw.section_root" title="dashboard_raw.section_root">
       <summary><span class="ib_summary_row"><span>Raw Daten Analyse</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Raw Daten" data-info-body="Raw-Tabelle zeigt echte Datenpunkte aus der DB rund um den im Graph selektierten Messpunkt.\n\nFeatures:\n- symmetrisches Laden um den selektierten Punkt\n- automatische Erweiterung bei zu wenigen Datenpunkten je Seite\n- direkte Wertuebernahme per Quelle/Ziel oder Drag-and-Drop" ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
       <div class="table_wrap" style="margin-top: 10px;">
         <div class="table_title">Raw Daten</div>
         <div class="table_head">
           <div>
-          <div class="muted" id="raw_info" data-ui="raw.info" title="raw.info"></div>
+          <div class="muted" id="raw_info" data-ui="dashboard_raw.txt_info" title="dashboard_raw.txt_info"></div>
           </div>
         </div>
 
-      <div class="tbl_actions" style="justify-content:flex-start; margin-top: 8px; gap: 12px; flex-wrap:wrap;" data-ui="raw.center_range" title="raw.center_range">
+      <div class="tbl_actions" style="justify-content:flex-start; margin-top: 8px; gap: 12px; flex-wrap:wrap;" data-ui="dashboard_raw.row_ausreisser_umfeld" title="dashboard_raw.row_ausreisser_umfeld">
         <div style="display:flex; flex-direction:column; gap: 4px; min-width: 170px;">
           <label for="raw_outlier_context_rows">Zeilen vor/nach Ausreisser</label>
           <input id="raw_outlier_context_rows" type="number" min="1" max="500" step="1" value="10" style="height:34px; padding: 6px 10px; width: 140px;" />
@@ -566,16 +566,16 @@
         <div class="muted" id="raw_outlier_context_hint">Anzahl Zeilen die vor und nach einem Ausreisser in der Raw-Tabelle angezeigt werden.</div>
       </div>
 
-      <div id="raw_status" style="display:none; margin-top: 6px; font-size: 12px; opacity: 0.85; align-items:center; gap: 8px;" data-ui="raw.status" title="raw.status">
+      <div id="raw_status" style="display:none; margin-top: 6px; font-size: 12px; opacity: 0.85; align-items:center; gap: 8px;" data-ui="dashboard_raw.panel_status" title="dashboard_raw.panel_status">
         <span id="raw_spinner" aria-hidden="true" style="width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(0,0,0,0.18); border-top-color: rgba(0,0,0,0.75); animation: spin 0.9s linear infinite;"></span>
         <span id="raw_status_txt">Raw laeuft...</span>
         <span id="raw_status_time" style="opacity:0.85; white-space: nowrap;"></span>
       </div>
 
-      <div class="tbl_actions" style="justify-content:flex-start; margin-top: 8px;" data-ui="raw.actions" title="raw.actions">
-        <button class="btn_sm" id="raw_refresh" type="button" data-ui="raw.refresh" title="raw.refresh" aria-label="Raw Daten aktualisieren"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M18.6091 5.89092L15.5 9H21.5V3L18.6091 5.89092ZM18.6091 5.89092C16.965 4.1131 14.6125 3 12 3C7.36745 3 3.55237 6.50005 3.05493 11M5.39092 18.1091L2.5 21V15H8.5L5.39092 18.1091ZM5.39092 18.1091C7.03504 19.8869 9.38753 21 12 21C16.6326 21 20.4476 17.5 20.9451 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
-        <button class="btn_sm" id="raw_all_time" type="button" data-ui="raw.all_time" title="raw.all_time" aria-label="Zeitraum Alle"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
-        <button class="btn_sm" id="raw_autowidth" data-ui="raw.autowidth" title="raw.autowidth" aria-label="Spaltenbreite automatisch">
+      <div class="tbl_actions" style="justify-content:flex-start; margin-top: 8px;" data-ui="dashboard_raw.row_actions" title="dashboard_raw.row_actions">
+        <button class="btn_sm" id="raw_refresh" type="button" data-ui="dashboard_raw.btn_aktualisieren" title="dashboard_raw.btn_aktualisieren" aria-label="Raw Daten aktualisieren"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M18.6091 5.89092L15.5 9H21.5V3L18.6091 5.89092ZM18.6091 5.89092C16.965 4.1131 14.6125 3 12 3C7.36745 3 3.55237 6.50005 3.05493 11M5.39092 18.1091L2.5 21V15H8.5L5.39092 18.1091ZM5.39092 18.1091C7.03504 19.8869 9.38753 21 12 21C16.6326 21 20.4476 17.5 20.9451 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
+        <button class="btn_sm" id="raw_all_time" type="button" data-ui="dashboard_raw.btn_zeitraum_alle" title="dashboard_raw.btn_zeitraum_alle" aria-label="Zeitraum Alle"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+        <button class="btn_sm" id="raw_autowidth" data-ui="dashboard_raw.btn_autobreite" title="dashboard_raw.btn_autobreite" aria-label="Spaltenbreite automatisch">
           <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <path d="M5 5v14M19 5v14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
             <path d="M8 12h8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -583,7 +583,7 @@
             <path d="M14 10l2 2-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </button>
-        <button class="btn_sm" id="raw_windowwidth" data-ui="raw.windowwidth" title="raw.windowwidth" aria-label="Fensterbreite">
+        <button class="btn_sm" id="raw_windowwidth" data-ui="dashboard_raw.btn_fensterbreite" title="dashboard_raw.btn_fensterbreite" aria-label="Fensterbreite">
           <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <rect x="4" y="6" width="16" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
             <path d="M12 12H6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -592,18 +592,18 @@
             <path d="M18 12l-2-2M18 12l-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </button>
-        <label><input type="checkbox" id="raw_wrap" class="row_sel" data-ui="raw.wrap" title="raw.wrap"/>Umbruch</label>
-        <label><input type="checkbox" id="raw_colfilter" class="row_sel" data-ui="raw.colfilter" title="raw.colfilter"/>Spaltenfilter</label>
-        <button class="btn_sm" id="raw_copy" data-ui="raw.copy" title="raw.copy">Kopieren</button>
-        <button class="btn_sm" id="raw_copy_value" data-ui="raw.copy_value" title="raw.copy_value">Wert kopieren</button>
-        <button class="btn_sm" id="raw_paste" data-ui="raw.paste" title="raw.paste" disabled>Einfügen</button>
-        <button class="btn_sm" id="raw_delete" data-ui="raw.delete" title="raw.delete" disabled>Löschen</button>
-        <button class="btn_sm" id="raw_undo" data-ui="raw.undo" title="raw.undo" disabled>Undo</button>
-        <button class="btn_sm" id="raw_ignore" data-ui="raw.ignore" title="raw.ignore" disabled>Ignorieren</button>
-        <button class="btn_sm" id="raw_unignore" data-ui="raw.unignore" title="raw.unignore" disabled>Nicht mehr ignorieren</button>
-        <button class="btn_sm" id="raw_info_btn" data-ui="raw.info_btn" title="raw.info_btn" disabled>Info</button>
-        <button class="btn_sm" id="raw_query_open" data-ui="raw.query_section" title="raw.query_section"><svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="11" cy="15.5" r="1.5"></circle><path d="M12,12H10V8h2a2,2,0,0,0,0-4H10A2.0023,2.0023,0,0,0,8,6v.5H6V6a4.0045,4.0045,0,0,1,4-4h2a4,4,0,0,1,0,8Z"></path><path d="M22.4479,21.0337A10.971,10.971,0,0,0,19.9211,4.7446l-.999,1.73A8.9967,8.9967,0,1,1,5,14H3a10.9916,10.9916,0,0,0,18.0338,8.4478L28.5859,30,30,28.5859Z"></path></svg></button>
-        <button class="btn_sm" id="raw_query_test" data-ui="raw.query_test" title="raw.query_test" aria-label="Query testen"><svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="#000000" width="18" height="18" aria-hidden="true" focusable="false"><path d="M6 10V9h9v1H6zm4-4h5v1h-5V6zm5-3v1H6V3h9zm-9 9v1h9v-1H6z"></path><path fill-rule="evenodd" clip-rule="evenodd" d="M1 2.795l.783-.419 5.371 3.581v.838l-5.371 3.581L1 9.957V2.795zm1.007.94v5.281l3.96-2.64-3.96-2.64z"></path></svg></button>
+        <label><input type="checkbox" id="raw_wrap" class="row_sel" data-ui="dashboard_raw.chk_umbruch" title="dashboard_raw.chk_umbruch"/>Umbruch</label>
+        <label><input type="checkbox" id="raw_colfilter" class="row_sel" data-ui="dashboard_raw.chk_spaltenfilter" title="dashboard_raw.chk_spaltenfilter"/>Spaltenfilter</label>
+        <button class="btn_sm" id="raw_copy" data-ui="dashboard_raw.btn_kopieren" title="dashboard_raw.btn_kopieren">Kopieren</button>
+        <button class="btn_sm" id="raw_copy_value" data-ui="dashboard_raw.btn_wert_kopieren" title="dashboard_raw.btn_wert_kopieren">Wert kopieren</button>
+        <button class="btn_sm" id="raw_paste" data-ui="dashboard_raw.btn_einfuegen" title="dashboard_raw.btn_einfuegen" disabled>Einfügen</button>
+        <button class="btn_sm" id="raw_delete" data-ui="dashboard_raw.btn_loeschen" title="dashboard_raw.btn_loeschen" disabled>Löschen</button>
+        <button class="btn_sm" id="raw_undo" data-ui="dashboard_raw.btn_undo" title="dashboard_raw.btn_undo" disabled>Undo</button>
+        <button class="btn_sm" id="raw_ignore" data-ui="dashboard_raw.btn_ignorieren" title="dashboard_raw.btn_ignorieren" disabled>Ignorieren</button>
+        <button class="btn_sm" id="raw_unignore" data-ui="dashboard_raw.btn_nicht_mehr_ignorieren" title="dashboard_raw.btn_nicht_mehr_ignorieren" disabled>Nicht mehr ignorieren</button>
+        <button class="btn_sm" id="raw_info_btn" data-ui="dashboard_raw.btn_info" title="dashboard_raw.btn_info" disabled>Info</button>
+        <button class="btn_sm" id="raw_query_open" data-ui="dashboard_raw.btn_query_anzeigen" title="dashboard_raw.btn_query_anzeigen"><svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="11" cy="15.5" r="1.5"></circle><path d="M12,12H10V8h2a2,2,0,0,0,0-4H10A2.0023,2.0023,0,0,0,8,6v.5H6V6a4.0045,4.0045,0,0,1,4-4h2a4,4,0,0,1,0,8Z"></path><path d="M22.4479,21.0337A10.971,10.971,0,0,0,19.9211,4.7446l-.999,1.73A8.9967,8.9967,0,1,1,5,14H3a10.9916,10.9916,0,0,0,18.0338,8.4478L28.5859,30,30,28.5859Z"></path></svg></button>
+        <button class="btn_sm" id="raw_query_test" data-ui="dashboard_raw.btn_query_test" title="dashboard_raw.btn_query_test" aria-label="Query testen"><svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="#000000" width="18" height="18" aria-hidden="true" focusable="false"><path d="M6 10V9h9v1H6zm4-4h5v1h-5V6zm5-3v1H6V3h9zm-9 9v1h9v-1H6z"></path><path fill-rule="evenodd" clip-rule="evenodd" d="M1 2.795l.783-.419 5.371 3.581v.838l-5.371 3.581L1 9.957V2.795zm1.007.94v5.281l3.96-2.64-3.96-2.64z"></path></svg></button>
         <span id="raw_copied_info" class="muted" style="margin-left:6px;"></span>
       </div>
 
@@ -614,28 +614,28 @@
       </div>
       <div id="raw_row_count" style="font-size:12px; opacity:0.7; margin-bottom:4px;"></div>
       <div class="table_box" id="raw_box" style="--max-rows: 5;">
-      <table id="raw_tbl" class="list_tbl ib_tbl" data-ui="raw.table" title="raw.table">
+      <table id="raw_tbl" class="list_tbl ib_tbl" data-ui="dashboard_raw.tbl_rohdaten" title="dashboard_raw.tbl_rohdaten">
         <thead><tr><th style="min-width: 170px;">Zeit</th><th>Wert</th><th style="min-width: 220px;">Änderung</th><th style="min-width: 140px;">Ausreisser</th></tr></thead>
         <tbody id="raw_body"></tbody>
       </table>
     </div>
-    <div id="raw_resize" data-ui="raw.resize" title="raw.resize" style="height: 12px; cursor: ns-resize; margin-top: 8px; border-radius: 999px; background: linear-gradient(90deg, #eee, #f8f8f8);"></div>
+    <div id="raw_resize" data-ui="dashboard_raw.handle_resize" title="dashboard_raw.handle_resize" style="height: 12px; cursor: ns-resize; margin-top: 8px; border-radius: 999px; background: linear-gradient(90deg, #eee, #f8f8f8);"></div>
   </div>
     </details>
-    <details id="graph_section" class="section" {{ 'open' if cfg.get('ui_open_graph') else '' }} data-ui="section.graph" title="section.graph">
+    <details id="graph_section" class="section" {{ 'open' if cfg.get('ui_open_graph') else '' }} data-ui="dashboard_graph.section_root" title="dashboard_graph.section_root">
       <summary><span class="ib_summary_row"><span class="section_title" style="margin:0;">Grafische Analyse</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Graph" data-info-body="Der Graph ist die zentrale Visualisierung der aktuell gewaehlten Serie.\n\nEnthaelt:\n- Zeitreihen-Plot mit Zoom und Auswahl\n- Marker fuer selektierte Punkte\n- Detail-Modi, Ableitungen und Zusatzinfos unter dem Plot\n- Raw-Synchronisation: ein Klick auf einen Punkt steuert die Raw-Tabelle\n\nNutzen:\n- zeitliche Analyse\n- Auswahl eines Ankerpunkts fuer Raw-Daten und Bearbeitung" ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
-      <div class="tbl_actions" data-ui="graph_actions">
-        <label><input type="checkbox" id="graph_markers" class="row_sel" data-ui="graph_markers"/>Messpunkte markieren</label>
-        <button class="btn_sm" id="graph_refresh" type="button" data-ui="graph.refresh" title="graph.refresh" aria-label="Graph neu zeichnen"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M18.6091 5.89092L15.5 9H21.5V3L18.6091 5.89092ZM18.6091 5.89092C16.965 4.1131 14.6125 3 12 3C7.36745 3 3.55237 6.50005 3.05493 11M5.39092 18.1091L2.5 21V15H8.5L5.39092 18.1091ZM5.39092 18.1091C7.03504 19.8869 9.38753 21 12 21C16.6326 21 20.4476 17.5 20.9451 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
-        <button class="btn_sm" id="graph_reset_time" type="button" data-ui="graph.reset_time" title="graph.reset_time" aria-label="Zeitraum zuruecksetzen"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M3 12a9 9 0 1 1 3 6.7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M3 7v5h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-        <button class="btn_sm" id="graph_query_open" type="button" data-ui="graph.query_section" title="graph.query_section" aria-label="Graph Query anzeigen"><svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="11" cy="15.5" r="1.5"></circle><path d="M12,12H10V8h2a2,2,0,0,0,0-4H10A2.0023,2.0023,0,0,0,8,6v.5H6V6a4.0045,4.0045,0,0,1,4-4h2a4,4,0,0,1,0,8Z"></path><path d="M22.4479,21.0337A10.971,10.971,0,0,0,19.9211,4.7446l-.999,1.73A8.9967,8.9967,0,1,1,5,14H3a10.9916,10.9916,0,0,0,18.0338,8.4478L28.5859,30,30,28.5859Z"></path></svg></button>
-        <button class="btn_sm" id="graph_query_test" type="button" data-ui="graph.query_test" title="graph.query_test" aria-label="Query testen"><svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="#000000" width="18" height="18" aria-hidden="true" focusable="false"><path d="M6 10V9h9v1H6zm4-4h5v1h-5V6zm5-3v1H6V3h9zm-9 9v1h9v-1H6z"></path><path fill-rule="evenodd" clip-rule="evenodd" d="M1 2.795l.783-.419 5.371 3.581v.838l-5.371 3.581L1 9.957V2.795zm1.007.94v5.281l3.96-2.64-3.96-2.64z"></path></svg></button>
+      <div class="tbl_actions" data-ui="dashboard_graph.row_actions">
+        <label><input type="checkbox" id="graph_markers" class="row_sel" data-ui="dashboard_graph.chk_messpunkte_markieren"/>Messpunkte markieren</label>
+        <button class="btn_sm" id="graph_refresh" type="button" data-ui="dashboard_graph.btn_aktualisieren" title="dashboard_graph.btn_aktualisieren" aria-label="Graph neu zeichnen"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M18.6091 5.89092L15.5 9H21.5V3L18.6091 5.89092ZM18.6091 5.89092C16.965 4.1131 14.6125 3 12 3C7.36745 3 3.55237 6.50005 3.05493 11M5.39092 18.1091L2.5 21V15H8.5L5.39092 18.1091ZM5.39092 18.1091C7.03504 19.8869 9.38753 21 12 21C16.6326 21 20.4476 17.5 20.9451 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
+        <button class="btn_sm" id="graph_reset_time" type="button" data-ui="dashboard_graph.btn_zeitraum_reset" title="dashboard_graph.btn_zeitraum_reset" aria-label="Zeitraum zuruecksetzen"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M3 12a9 9 0 1 1 3 6.7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M3 7v5h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button class="btn_sm" id="graph_query_open" type="button" data-ui="dashboard_graph.btn_query_anzeigen" title="dashboard_graph.btn_query_anzeigen" aria-label="Graph Query anzeigen"><svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="11" cy="15.5" r="1.5"></circle><path d="M12,12H10V8h2a2,2,0,0,0,0-4H10A2.0023,2.0023,0,0,0,8,6v.5H6V6a4.0045,4.0045,0,0,1,4-4h2a4,4,0,0,1,0,8Z"></path><path d="M22.4479,21.0337A10.971,10.971,0,0,0,19.9211,4.7446l-.999,1.73A8.9967,8.9967,0,1,1,5,14H3a10.9916,10.9916,0,0,0,18.0338,8.4478L28.5859,30,30,28.5859Z"></path></svg></button>
+        <button class="btn_sm" id="graph_query_test" type="button" data-ui="dashboard_graph.btn_query_test" title="dashboard_graph.btn_query_test" aria-label="Query testen"><svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="#000000" width="18" height="18" aria-hidden="true" focusable="false"><path d="M6 10V9h9v1H6zm4-4h5v1h-5V6zm5-3v1H6V3h9zm-9 9v1h9v-1H6z"></path><path fill-rule="evenodd" clip-rule="evenodd" d="M1 2.795l.783-.419 5.371 3.581v.838l-5.371 3.581L1 9.957V2.795zm1.007.94v5.281l3.96-2.64-3.96-2.64z"></path></svg></button>
       </div>
 
-      <div class="tbl_actions" style="justify-content:flex-start; margin-top: 8px; gap: 10px; flex-wrap:wrap;" data-ui="graph.detail" title="graph.detail">
+      <div class="tbl_actions" style="justify-content:flex-start; margin-top: 8px; gap: 10px; flex-wrap:wrap;" data-ui="dashboard_graph.panel_detail" title="dashboard_graph.panel_detail">
         <label style="display:flex; align-items:center; gap: 8px;">
           <span class="muted" style="min-width: 76px;">Details</span>
-          <select id="graph_detail_mode" class="btn_sm" data-ui="graph.detail_mode" title="graph.detail_mode" style="height:34px; padding: 6px 10px;">
+          <select id="graph_detail_mode" class="btn_sm" data-ui="dashboard_graph.panel_detail_mode" title="dashboard_graph.panel_detail_mode" style="height:34px; padding: 6px 10px;">
             <option value="dynamic" selected>Dynamisch</option>
             <option value="manual">Manuell</option>
           </select>
@@ -647,11 +647,11 @@
           <span class="muted" id="graph_manual_density_lbl">100%</span>
         </label>
 
-        <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_bg" class="row_sel" checked data-ui="graph.deriv_bg" title="graph.deriv_bg"/>Ableitung: Hintergrund</label>
-        <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_strip" class="row_sel" checked data-ui="graph.deriv_strip" title="graph.deriv_strip"/>Ableitung: Farbleiste</label>
-        <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_graph" class="row_sel" checked data-ui="graph.deriv_graph" title="graph.deriv_graph"/>Ableitungs-Graph</label>
-        <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_abs" class="row_sel" checked data-ui="graph.deriv_abs" title="graph.deriv_abs"/>absolut</label>
-        <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_signed" class="row_sel" data-ui="graph.deriv_signed" title="graph.deriv_signed"/>signiert</label>
+        <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_bg" class="row_sel" checked data-ui="dashboard_graph.chk_ableitung_hintergrund" title="dashboard_graph.chk_ableitung_hintergrund"/>Ableitung: Hintergrund</label>
+        <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_strip" class="row_sel" checked data-ui="dashboard_graph.chk_ableitung_farbleiste" title="dashboard_graph.chk_ableitung_farbleiste"/>Ableitung: Farbleiste</label>
+        <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_graph" class="row_sel" checked data-ui="dashboard_graph.chk_ableitung_graph" title="dashboard_graph.chk_ableitung_graph"/>Ableitungs-Graph</label>
+        <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_abs" class="row_sel" checked data-ui="dashboard_graph.chk_ableitung_absolut" title="dashboard_graph.chk_ableitung_absolut"/>absolut</label>
+        <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_signed" class="row_sel" data-ui="dashboard_graph.chk_ableitung_signiert" title="dashboard_graph.chk_ableitung_signiert"/>signiert</label>
 
         <label id="deriv_outlier_wrap" style="display:none; align-items:center; gap: 8px;">
           <span class="muted">Ableitung Outlier</span>
@@ -659,26 +659,26 @@
           <span class="muted" id="deriv_outlier_lbl">90%</span>
         </label>
       </div>
-       <div id="graph_query_section" style="display:none;" data-ui="graph.query_section" title="graph.query_section">
-         <button class="btn_sm" id="graph_copy_query" data-ui="graph.copy_query" title="graph.copy_query"></button>
-         <select class="btn_sm" id="graph_query_source" data-ui="graph.query_source" title="graph.query_source" style="height:34px; padding: 6px 10px;">
+       <div id="graph_query_section" style="display:none;" data-ui="dashboard_graph.panel_query" title="dashboard_graph.panel_query">
+         <button class="btn_sm" id="graph_copy_query" data-ui="dashboard_graph.btn_query_kopieren" title="dashboard_graph.btn_query_kopieren"></button>
+         <select class="btn_sm" id="graph_query_source" data-ui="dashboard_graph.select_query_quelle" title="dashboard_graph.select_query_quelle" style="height:34px; padding: 6px 10px;">
            <option value="dashboard" selected>Dashboard</option>
            <option value="edit_graph">Bearbeitungsgraph</option>
          </select>
-         <button class="btn_sm" id="graph_query_history" type="button" data-ui="graph.query_history" title="graph.query_history"></button>
+         <button class="btn_sm" id="graph_query_history" type="button" data-ui="dashboard_graph.btn_query_verlauf" title="dashboard_graph.btn_query_verlauf"></button>
          <div id="graph_query_meta"></div>
          <div id="graph_query_label"></div>
          <pre id="graph_query">Noch keine Query vorhanden.</pre>
        </div>
-        <div class="muted" data-ui="tip.graph" title="tip.graph">Zoomen/Pan im Plot. Doppelklick setzt Zoom zurueck. Griff unten zieht die Hoehe.</div>
+        <div class="muted" data-ui="dashboard_graph.txt_hint" title="dashboard_graph.txt_hint">Zoomen/Pan im Plot. Doppelklick setzt Zoom zurueck. Griff unten zieht die Hoehe.</div>
         <div class="muted" id="graph_points_info" style="margin-top: 6px;"></div>
-        <div class="muted" id="graph_selected_info" style="margin-top: 6px; font-weight: 650;" data-ui="graph.selected" title="graph.selected"></div>
-         <div class="graph_frame" data-ui="graph.frame" title="graph.frame" style="position:relative;">
+        <div class="muted" id="graph_selected_info" style="margin-top: 6px; font-weight: 650;" data-ui="dashboard_graph.txt_auswahl" title="dashboard_graph.txt_auswahl"></div>
+         <div class="graph_frame" data-ui="dashboard_graph.panel_frame" title="dashboard_graph.panel_frame" style="position:relative;">
           <div id="chart_plotly"></div>
           <canvas id="chart" width="800" height="200"></canvas>
         <div id="deriv_strip_plot" style="display:none; width: 100%; height: 60px; margin-top: 8px; pointer-events:none;"></div>
         <div id="deriv_graph_plot" style="display:none; width: 100%; height: 140px; margin-top: 8px; pointer-events:none;"></div>
-        <div id="graph_resize" data-ui="graph.resize" title="graph.resize" style="height: 12px; cursor: ns-resize; margin-top: 8px; border-radius: 999px; background: linear-gradient(90deg, #eee, #f8f8f8);"></div>
+        <div id="graph_resize" data-ui="dashboard_graph.handle_resize" title="dashboard_graph.handle_resize" style="height: 12px; cursor: ns-resize; margin-top: 8px; border-radius: 999px; background: linear-gradient(90deg, #eee, #f8f8f8);"></div>
       </div>
     </details>
 
@@ -712,7 +712,7 @@
       </div>
     </div>
 
-    <details id="filterlist_section" class="section" {{ 'open' if cfg.get('ui_open_filterlist') else '' }} data-ui="section.filterlist" title="section.filterlist">
+    <details id="filterlist_section" class="section" {{ 'open' if cfg.get('ui_open_filterlist') else '' }} data-ui="dashboard_filterlist.section_root" title="dashboard_filterlist.section_root">
       <summary><span class="ib_summary_row"><span class="section_title" style="margin:0;">Bearbeitungsliste</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Bearbeitungsliste" data-info-body="Die Bearbeitungsliste sammelt vorgemerkte Aenderungen fuer Datenpunkte, bevor sie geschrieben werden.\n\nEnthaelt:\n- markierte Zeilen mit altem und neuem Wert\n- Aktionen zum Uebernehmen, Verwerfen, Mitteln oder Loeschen\n- Vorschau-Query fuer die spaetere Schreibaktion\n\nNutzen:\n- sichere Sammelbearbeitung mehrerer Punkte\n- Kontrolle vor dem eigentlichen Schreiben in InfluxDB" ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
       <div class="table_wrap">
         <div class="table_title">Bearbeitungsliste</div>
@@ -724,17 +724,17 @@
               <div class="muted" id="analysis_info"></div>
 
               <div class="tbl_actions">
-                <label><input type="checkbox" id="tbl_time_from_graph" class="row_sel" data-ui="filterlist_time_from_graph"/>Zeit gefuehrt durch Graph</label>
-                <label><input type="checkbox" id="tbl_enabled" class="row_sel" data-ui="filterlist_filter_enabled"/> Filter aktiv</label>
+                <label><input type="checkbox" id="tbl_time_from_graph" class="row_sel" data-ui="dashboard_filterlist.chk_zeit_aus_graph"/>Zeit gefuehrt durch Graph</label>
+                <label><input type="checkbox" id="tbl_enabled" class="row_sel" data-ui="dashboard_filterlist.chk_filter_aktiv"/> Filter aktiv</label>
               </div>
 
-              <div class="muted" data-ui="tip.filterlist" title="tip.filterlist" style="margin-top: 8px;">Filter (DB-Scan) steuert, welche Punkte als "Ausreisser" markiert werden.</div>
+              <div class="muted" data-ui="dashboard_filterlist.txt_hint" title="dashboard_filterlist.txt_hint" style="margin-top: 8px;">Filter (DB-Scan) steuert, welche Punkte als "Ausreisser" markiert werden.</div>
 
-            <div class="row" style="margin-top:0;" data-ui="filterlist_scan_row" title="filterlist_scan_row">
+            <div class="row" style="margin-top:0;" data-ui="dashboard_filterlist.row_scan" title="dashboard_filterlist.row_scan">
               <div style="min-width: 260px;">
                 <label>Filter (DB-Scan)</label>
                 <div class="ib_clear_row">
-                  <select id="scan_preset" data-ui="filterlist_scan_preset" title="filterlist_scan_preset">
+                  <select id="scan_preset" data-ui="dashboard_filterlist.select_scan_preset" title="dashboard_filterlist.select_scan_preset">
                   <option value="free">Filter frei</option>
                   <option value="counter" selected>Counter Ausreisser</option>
                   <option value="decrease">nicht ansteigende Spruenge</option>
@@ -751,24 +751,24 @@
 
               <div id="scan_counter" style="min-width: 220px; display:none;">
                 <label>Max Sprung (optional)</label>
-                <input id="out_max_step" placeholder="(auto)" data-ui="outliers.max_step" title="outliers.max_step" />
+                <input id="out_max_step" placeholder="(auto)" data-ui="dashboard_filterlist.input_max_step" title="dashboard_filterlist.input_max_step" />
                 <div class="muted">Ueberschreibt das Einheit-Default aus Einstellungen.</div>
               </div>
 
               <div id="scan_bounds" style="min-width: 320px; display:none;">
                 <label>Grenzen (Min/Max)</label>
                 <div class="row" style="margin-top:0;">
-                  <input id="out_min" placeholder="Min" data-ui="outliers.min" title="outliers.min" />
-                  <input id="out_max" placeholder="Max" data-ui="outliers.max" title="outliers.max" />
+                  <input id="out_min" placeholder="Min" data-ui="dashboard_filterlist.input_min" title="dashboard_filterlist.input_min" />
+                  <input id="out_max" placeholder="Max" data-ui="dashboard_filterlist.input_max" title="dashboard_filterlist.input_max" />
                 </div>
               </div>
             </div>
 
-           <div class="row" style="margin-top:0;" id="free_filter_row" data-ui="filterlist_free_row" title="filterlist_free_row">
+           <div class="row" style="margin-top:0;" id="free_filter_row" data-ui="dashboard_filterlist.row_freifilter" title="dashboard_filterlist.row_freifilter">
               <div style="min-width: 110px;">
                 <label>Links</label>
                 <div class="ib_clear_row">
-                <select id="tbl_a_op" data-ui="filterlist_left_op">
+                <select id="tbl_a_op" data-ui="dashboard_filterlist.select_links_operator">
                   <option value=">">&gt;</option>
                   <option value=">=">&gt;=</option>
                   <option value="<" selected>&lt;</option>
@@ -780,7 +780,7 @@
               <div style="min-width: 130px;">
                 <label>&nbsp;</label>
                 <div class="ib_clear_row">
-                  <input id="tbl_a_val" placeholder="0" data-ui="filterlist_left_val" />
+                  <input id="tbl_a_val" placeholder="0" data-ui="dashboard_filterlist.input_links_wert" />
                   <button type="button" class="ib_clear_btn" data-clear-for="tbl_a_val" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
                 </div>
               </div>
@@ -788,7 +788,7 @@
               <div style="min-width: 110px;">
                 <label>Verb.</label>
                 <div class="ib_clear_row">
-                <select id="tbl_mode" data-ui="filterlist_mode">
+                <select id="tbl_mode" data-ui="dashboard_filterlist.select_filter_modus">
                   <option value="or" selected>oder</option>
                   <option value="and">und</option>
                 </select>
@@ -799,7 +799,7 @@
               <div style="min-width: 110px;">
                 <label>Rechts</label>
                 <div class="ib_clear_row">
-                <select id="tbl_b_op" data-ui="filterlist_right_op">
+                <select id="tbl_b_op" data-ui="dashboard_filterlist.select_rechts_operator">
                   <option value=">" selected>&gt;</option>
                   <option value=">=">&gt;=</option>
                   <option value="<">&lt;</option>
@@ -811,18 +811,18 @@
               <div style="min-width: 130px;">
                 <label>&nbsp;</label>
                 <div class="ib_clear_row">
-                  <input id="tbl_b_val" placeholder="999999" data-ui="filterlist_right_val" />
+                  <input id="tbl_b_val" placeholder="999999" data-ui="dashboard_filterlist.input_rechts_wert" />
                   <button type="button" class="ib_clear_btn" data-clear-for="tbl_b_val" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
                 </div>
              </div>
            </div>
 
-           <div class="tbl_actions" style="justify-content:flex-start; margin-top: 10px;" data-ui="filterlist_outlier_actions" title="filterlist_outlier_actions">
-             <button class="btn_sm" id="outlier_scan" data-ui="filterlist_outlier_scan">Fehlersuche Ausreisser</button>
-             <button class="btn_sm" id="outlier_reset" data-ui="filterlist_outlier_reset">Abbruch</button>
+           <div class="tbl_actions" style="justify-content:flex-start; margin-top: 10px;" data-ui="dashboard_filterlist.row_ausreisser_aktionen" title="dashboard_filterlist.row_ausreisser_aktionen">
+             <button class="btn_sm" id="outlier_scan" data-ui="dashboard_filterlist.btn_ausreisser_scan">Fehlersuche Ausreisser</button>
+             <button class="btn_sm" id="outlier_reset" data-ui="dashboard_filterlist.btn_ausreisser_reset">Abbruch</button>
            </div>
 
-           <div id="outlier_status" data-ui="filterlist_outlier_status" title="filterlist_outlier_status">
+           <div id="outlier_status" data-ui="dashboard_filterlist.txt_ausreisser_status" title="dashboard_filterlist.txt_ausreisser_status">
              <span id="outlier_spinner" aria-hidden="true"></span>
              <span id="outlier_status_txt">Fehlersuche laeuft...</span>
              <span id="outlier_status_meta"></span>
@@ -831,23 +831,23 @@
            </div>
          </div>
        </div>
-            <div class="tbl_actions" id="edit_toolbar" style="justify-content:flex-start; margin-top: 10px; align-items:flex-start;" data-ui="editlist.toolbar" title="editlist.toolbar">
-              <label style="display:flex; align-items:center; gap: 6px; font-size: 12px; opacity: 0.85; padding-top: 2px;"><input type="checkbox" id="edit_show_graph" class="row_sel" data-ui="editlist.show_graph" title="editlist.show_graph"/>Graph</label>
-              <label style="display:flex; align-items:center; gap: 6px; font-size: 12px; opacity: 0.85; padding-top: 2px;"><input type="checkbox" id="tbl_multiselect" class="row_sel" data-ui="editlist.multiselect" title="editlist.multiselect"/>Multiselekt</label>
-              <button class="btn_sm" id="edit_toolbar_overwrite" data-ui="editlist.toolbar.overwrite" title="editlist.toolbar.overwrite" disabled>Ueberschreiben</button>
-              <button class="btn_sm" id="edit_toolbar_delete" data-ui="editlist.toolbar.delete" title="editlist.toolbar.delete" disabled>Loeschen</button>
-              <button class="btn_sm" id="edit_toolbar_apply_one" data-ui="editlist.toolbar.apply_one" title="editlist.toolbar.apply_one" disabled>Uebernehmen</button>
-              <button class="btn_sm" id="edit_toolbar_undo_one" data-ui="editlist.toolbar.undo_one" title="editlist.toolbar.undo_one" disabled>Undo</button>
+            <div class="tbl_actions" id="edit_toolbar" style="justify-content:flex-start; margin-top: 10px; align-items:flex-start;" data-ui="dashboard_editlist.row_toolbar" title="dashboard_editlist.row_toolbar">
+              <label style="display:flex; align-items:center; gap: 6px; font-size: 12px; opacity: 0.85; padding-top: 2px;"><input type="checkbox" id="edit_show_graph" class="row_sel" data-ui="dashboard_editlist.chk_graph_anzeigen" title="dashboard_editlist.chk_graph_anzeigen"/>Graph</label>
+              <label style="display:flex; align-items:center; gap: 6px; font-size: 12px; opacity: 0.85; padding-top: 2px;"><input type="checkbox" id="tbl_multiselect" class="row_sel" data-ui="dashboard_editlist.chk_multiselect" title="dashboard_editlist.chk_multiselect"/>Multiselekt</label>
+              <button class="btn_sm" id="edit_toolbar_overwrite" data-ui="dashboard_editlist.btn_toolbar_eintrag_ueberschreiben" title="dashboard_editlist.btn_toolbar_eintrag_ueberschreiben" disabled>Ueberschreiben</button>
+              <button class="btn_sm" id="edit_toolbar_delete" data-ui="dashboard_editlist.btn_toolbar_eintrag_loeschen" title="dashboard_editlist.btn_toolbar_eintrag_loeschen" disabled>Loeschen</button>
+              <button class="btn_sm" id="edit_toolbar_apply_one" data-ui="dashboard_editlist.btn_toolbar_eintrag_anwenden" title="dashboard_editlist.btn_toolbar_eintrag_anwenden" disabled>Uebernehmen</button>
+              <button class="btn_sm" id="edit_toolbar_undo_one" data-ui="dashboard_editlist.btn_toolbar_eintrag_undo" title="dashboard_editlist.btn_toolbar_eintrag_undo" disabled>Undo</button>
               <span class="muted" id="edit_toolbar_info" style="padding-top: 6px;"></span>
               <span style="flex:1;"></span>
             </div>
-         <div class="err" id="edit_apply_err" data-ui="editlist_apply_err" title="editlist_apply_err"></div>
+        <div class="err" id="edit_apply_err" data-ui="dashboard_editlist.txt_anwenden_fehler" title="dashboard_editlist.txt_anwenden_fehler"></div>
 
-        <div id="edit_split" style="display:flex; gap: 0; align-items:stretch; margin-top: 10px;" data-ui="editlist.split" title="editlist.split">
+        <div id="edit_split" style="display:flex; gap: 0; align-items:stretch; margin-top: 10px;" data-ui="dashboard_editlist.panel_split" title="dashboard_editlist.panel_split">
           <div id="edit_left" style="flex: 1 1 auto; min-width: 0;">
 
            <div class="tbl_actions" style="justify-content:flex-start; margin-top: 10px; gap: 10px; flex-wrap:wrap; align-items:flex-end;">
-             <button class="btn_sm" id="tbl_autowidth" data-ui="filterlist.autowidth" title="filterlist.autowidth" aria-label="Spaltenbreite automatisch">
+             <button class="btn_sm" id="tbl_autowidth" data-ui="dashboard_filterlist.btn_autobreite" title="dashboard_filterlist.btn_autobreite" aria-label="Spaltenbreite automatisch">
                <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                  <path d="M5 5v14M19 5v14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                  <path d="M8 12h8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -855,7 +855,7 @@
                  <path d="M14 10l2 2-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                </svg>
              </button>
-             <button class="btn_sm" id="tbl_windowwidth" data-ui="filterlist.windowwidth" title="filterlist.windowwidth" aria-label="Fensterbreite">
+             <button class="btn_sm" id="tbl_windowwidth" data-ui="dashboard_filterlist.btn_fensterbreite" title="dashboard_filterlist.btn_fensterbreite" aria-label="Fensterbreite">
                <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                  <rect x="4" y="6" width="16" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
                  <path d="M12 12H6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -864,23 +864,23 @@
                  <path d="M18 12l-2-2M18 12l-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                </svg>
              </button>
-             <button class="btn_sm" id="tbl_clear" data-ui="filterlist.clear" title="filterlist.clear">Liste leeren</button>
-             <button class="btn_sm" id="edit_clear_staged" data-ui="editlist.clear_staged" title="editlist.clear_staged">Staging leeren</button>
+             <button class="btn_sm" id="tbl_clear" data-ui="dashboard_filterlist.btn_leeren" title="dashboard_filterlist.btn_leeren">Liste leeren</button>
+             <button class="btn_sm" id="edit_clear_staged" data-ui="dashboard_editlist.btn_staging_leeren" title="dashboard_editlist.btn_staging_leeren">Staging leeren</button>
 
-             <label><input type="checkbox" id="tbl_wrap" class="row_sel" data-ui="filterlist.wrap" title="filterlist.wrap"/>Umbruch</label>
-             <label><input type="checkbox" id="tbl_colfilter" class="row_sel" data-ui="filterlist.colfilter" title="filterlist.colfilter"/>Spaltenfilter</label>
+             <label><input type="checkbox" id="tbl_wrap" class="row_sel" data-ui="dashboard_filterlist.chk_umbruch" title="dashboard_filterlist.chk_umbruch"/>Umbruch</label>
+             <label><input type="checkbox" id="tbl_colfilter" class="row_sel" data-ui="dashboard_filterlist.chk_spaltenfilter" title="dashboard_filterlist.chk_spaltenfilter"/>Spaltenfilter</label>
 
           <div style="min-width: 220px;">
             <label style="display:block; font-size:12px; opacity:0.8;">Grund Filter</label>
             <div class="ib_clear_row">
-              <input id="reason_filter" placeholder="enthaelt..." data-ui="reason_filter" title="reason_filter" style="height: 34px;" />
-              <button type="button" class="ib_clear_btn" data-clear-for="reason_filter" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+              <input id="dashboard_graph.select_grund_filter" placeholder="enthaelt..." data-ui="dashboard_graph.select_grund_filter" title="dashboard_graph.select_grund_filter" style="height: 34px;" />
+              <button type="button" class="ib_clear_btn" data-clear-for="dashboard_graph.select_grund_filter" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
             </div>
           </div>
           <div style="min-width: 180px;">
             <label style="display:block; font-size:12px; opacity:0.8;">Klasse</label>
             <div class="ib_clear_row">
-            <select id="class_filter" data-ui="editlist.class_filter" title="editlist.class_filter" style="height: 34px; min-width: 210px; padding: 4px 24px 4px 8px;">
+            <select id="class_filter" data-ui="dashboard_editlist.select_klasse_filter" title="dashboard_editlist.select_klasse_filter" style="height: 34px; min-width: 210px; padding: 4px 24px 4px 8px;">
               <option value="all" selected>alle</option>
               <option value="primary">primaer</option>
               <option value="secondary">sekundaer</option>
@@ -891,15 +891,15 @@
         </div>
 
         <div class="table_box" id="table_box" style="margin-top: 10px;">
-          <table id="tbl" class="list_tbl ib_tbl" data-ui="editlist.table" title="editlist.table">
+          <table id="tbl" class="list_tbl ib_tbl" data-ui="dashboard_editlist.tbl_bearbeitung" title="dashboard_editlist.tbl_bearbeitung">
             <thead>
               <tr>
-                <th style="width:20px;"><input type="checkbox" id="tbl_sel_all" class="row_sel" data-ui="editlist.select_all"/></th>
-                <th id="th_time" data-key="time" data-ui="editlist.col_time">Zeit</th>
-                <th id="th_value" data-key="value" data-ui="editlist.col_old">Aktuell</th>
-                <th data-ui="editlist.col_reason">Grund</th>
-                <th data-ui="editlist.col_class">Klasse</th>
-                <th style="width:220px;" data-ui="editlist.col_new">Neuwert</th>
+                <th style="width:20px;"><input type="checkbox" id="tbl_sel_all" class="row_sel" data-ui="dashboard_editlist.chk_alle_waehlen"/></th>
+                <th id="th_time" data-key="time" data-ui="dashboard_editlist.col_zeit">Zeit</th>
+                <th id="th_value" data-key="value" data-ui="dashboard_editlist.col_alt">Aktuell</th>
+                <th data-ui="dashboard_editlist.col_grund">Grund</th>
+                <th data-ui="dashboard_editlist.col_klasse">Klasse</th>
+                <th style="width:220px;" data-ui="dashboard_editlist.col_neu">Neuwert</th>
               </tr>
             </thead>
             <tbody></tbody>
@@ -907,47 +907,47 @@
         </div>
 
         <div class="tbl_actions" style="justify-content:flex-start; margin-top: 10px;">
-          <button class="btn_sm" id="edit_apply" data-ui="editlist_apply">Aenderungen in Datenbank uebernehmen</button>
+          <button class="btn_sm" id="edit_apply" data-ui="dashboard_editlist.btn_anwenden">Aenderungen in Datenbank uebernehmen</button>
         </div>
 
-        <div class="muted" data-ui="tip.pointlist" title="tip.pointlist">Aktionen werden zuerst in der Tabelle vorgemerkt (<code>Aktion</code>/<code>Neuwert</code>). Erst mit <code>Aenderungen in Datenbank uebernehmen</code> wird geschrieben/geloescht.</div>
+        <div class="muted" data-ui="dashboard_editlist.txt_hint" title="dashboard_editlist.txt_hint">Aktionen werden zuerst in der Tabelle vorgemerkt (<code>Aktion</code>/<code>Neuwert</code>). Erst mit <code>Aenderungen in Datenbank uebernehmen</code> wird geschrieben/geloescht.</div>
 
           </div>
 
-          <div id="edit_split_handle" style="display:none; width: 10px; cursor: col-resize; position: relative;" data-ui="editlist.split_handle" title="editlist.split_handle">
+          <div id="edit_split_handle" style="display:none; width: 10px; cursor: col-resize; position: relative;" data-ui="dashboard_editlist.panel_split_handle" title="dashboard_editlist.panel_split_handle">
             <div style="position:absolute; inset: 0; background: transparent;"></div>
             <div style="position:absolute; left: 4px; top: 10px; bottom: 10px; width: 2px; background: rgba(0,0,0,0.12);"></div>
           </div>
 
-           <div id="edit_right" style="display:none; flex: 0 0 45%; min-width: 240px; padding-left: 12px; box-sizing: border-box;" data-ui="editlist.right" title="editlist.right">
-             <div class="card" id="details_panel" style="margin-top: 0; display:none;" data-ui="editdetails.panel" title="editdetails.panel">
+           <div id="edit_right" style="display:none; flex: 0 0 45%; min-width: 240px; padding-left: 12px; box-sizing: border-box;" data-ui="dashboard_editlist.panel_rechts" title="dashboard_editlist.panel_rechts">
+             <div class="card" id="details_panel" style="margin-top: 0; display:none;" data-ui="dashboard_editdetails.panel_root" title="dashboard_editdetails.panel_root">
                <div style="display:flex; align-items:baseline; justify-content:space-between; gap: 10px;">
                  <div style="font-weight:800;">Details</div>
-                 <button class="btn_sm" id="details_close" data-ui="editdetails.close" title="editdetails.close">Schliessen</button>
+                 <button class="btn_sm" id="details_close" data-ui="dashboard_editdetails.btn_schliessen" title="dashboard_editdetails.btn_schliessen">Schliessen</button>
                </div>
 
                <div class="tbl_actions" style="justify-content:flex-start; margin-top: 8px; gap: 8px; flex-wrap:wrap; align-items:flex-end;">
-                 <button class="btn_sm" id="edit_btn_edit" disabled data-ui="editlist.edit" title="editlist.edit">Bearbeiten</button>
-                 <button class="btn_sm" id="edit_btn_take_before" disabled data-ui="editlist.take_before" title="editlist.take_before">Wert davor</button>
-                 <button class="btn_sm" id="edit_btn_take_avg" disabled data-ui="editlist.take_avg" title="editlist.take_avg">Avg davor+danach</button>
-                 <button class="btn_sm" id="edit_btn_stage_delete" disabled data-ui="editlist.stage_delete" title="editlist.stage_delete">Wert loeschen</button>
-                 <button class="btn_sm" id="details_take" disabled data-ui="editdetails.take" title="editdetails.take">Uebernehmen als neuer Wert</button>
+                 <button class="btn_sm" id="edit_btn_edit" disabled data-ui="dashboard_editlist.btn_bearbeiten" title="dashboard_editlist.btn_bearbeiten">Bearbeiten</button>
+                 <button class="btn_sm" id="edit_btn_take_before" disabled data-ui="dashboard_editlist.btn_vorwert_uebernehmen" title="dashboard_editlist.btn_vorwert_uebernehmen">Wert davor</button>
+                 <button class="btn_sm" id="edit_btn_take_avg" disabled data-ui="dashboard_editlist.btn_mittelwert_uebernehmen" title="dashboard_editlist.btn_mittelwert_uebernehmen">Avg davor+danach</button>
+                 <button class="btn_sm" id="edit_btn_stage_delete" disabled data-ui="dashboard_editlist.btn_loeschen_vormerken" title="dashboard_editlist.btn_loeschen_vormerken">Wert loeschen</button>
+                 <button class="btn_sm" id="details_take" disabled data-ui="dashboard_editdetails.btn_uebernehmen" title="dashboard_editdetails.btn_uebernehmen">Uebernehmen als neuer Wert</button>
                </div>
 
                <pre id="details_info" style="margin:8px 0 0 0; padding:10px 12px; border:1px solid #eee; border-radius:12px; background:#fafafa; white-space:pre-wrap; overflow:auto; max-height: 140px; font-size: 12px;"></pre>
 
                <div class="table_box" id="details_box" style="margin-top: 10px; --max-rows: 10; max-height: 55vh;">
-                 <table class="list_tbl" data-ui="editdetails.table" title="editdetails.table">
+                 <table class="list_tbl" data-ui="dashboard_editdetails.tbl_details" title="dashboard_editdetails.tbl_details">
                    <thead><tr><th style="width: 74px;">Typ</th><th style="min-width: 170px;">Zeit</th><th>Wert</th></tr></thead>
                    <tbody id="details_rows"></tbody>
                  </table>
                </div>
              </div>
 
-             <div class="card" id="edit_graph_card" style="margin-top: 12px;" data-ui="editlist.right_graph" title="editlist.right_graph">
+             <div class="card" id="edit_graph_card" style="margin-top: 12px;" data-ui="dashboard_editlist.panel_rechts_graph" title="dashboard_editlist.panel_rechts_graph">
                <div style="display:flex; align-items:baseline; justify-content:space-between; gap: 10px;">
                  <div style="font-weight:800;">Graph (Bearbeitungsliste)</div>
-                 <button class="btn_sm" id="edit_graph_refresh" data-ui="editlist.graph_refresh" title="editlist.graph_refresh">Refresh</button>
+                 <button class="btn_sm" id="edit_graph_refresh" data-ui="dashboard_editlist.btn_graph_aktualisieren" title="dashboard_editlist.btn_graph_aktualisieren">Refresh</button>
                </div>
                <div class="muted" id="edit_graph_info" style="margin-top: 6px;"></div>
                <div class="muted" id="edit_graph_counts" style="margin-top: 4px;"></div>
@@ -963,25 +963,25 @@
 
      </details>
 
-     <div id="apply_modal" style="display:none; position:fixed; inset:0; z-index: 9999; background: rgba(0,0,0,0.45);" data-ui="editlist_apply_modal" title="editlist_apply_modal">
+     <div id="apply_modal" style="display:none; position:fixed; inset:0; z-index: 9999; background: rgba(0,0,0,0.45);" data-ui="dashboard_editlist.dlg_anwenden" title="dashboard_editlist.dlg_anwenden">
       <div style="max-width: 980px; margin: 6vh auto; background: #fff; border-radius: 16px; padding: 14px 14px 12px 14px; box-shadow: 0 12px 60px rgba(0,0,0,0.28);">
         <div style="display:flex; justify-content:space-between; align-items:baseline; gap:12px;">
           <div style="font-weight:800; font-size: 16px;">Schreiben bestaetigen</div>
           <div style="display:flex; align-items:center; gap:8px;">
-            <button class="btn_sm" id="apply_modal_query_open" type="button" data-ui="editlist_apply_modal_query" title="editlist_apply_modal_query" aria-label="Pruef-Query anzeigen"><svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="11" cy="15.5" r="1.5"></circle><path d="M12,12H10V8h2a2,2,0,0,0,0-4H10A2.0023,2.0023,0,0,0,8,6v.5H6V6a4.0045,4.0045,0,0,1,4-4h2a4,4,0,0,1,0,8Z"></path><path d="M22.4479,21.0337A10.971,10.971,0,0,0,19.9211,4.7446l-.999,1.73A8.9967,8.9967,0,1,1,5,14H3a10.9916,10.9916,0,0,0,18.0338,8.4478L28.5859,30,30,28.5859Z"></path></svg></button>
-            <button class="btn_sm" id="apply_modal_close" data-ui="editlist_apply_modal_close" title="editlist_apply_modal_close">Schliessen</button>
+            <button class="btn_sm" id="apply_modal_query_open" type="button" data-ui="dashboard_editlist.btn_dialog_query_anzeigen" title="dashboard_editlist.btn_dialog_query_anzeigen" aria-label="Pruef-Query anzeigen"><svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="11" cy="15.5" r="1.5"></circle><path d="M12,12H10V8h2a2,2,0,0,0,0-4H10A2.0023,2.0023,0,0,0,8,6v.5H6V6a4.0045,4.0045,0,0,1,4-4h2a4,4,0,0,1,0,8Z"></path><path d="M22.4479,21.0337A10.971,10.971,0,0,0,19.9211,4.7446l-.999,1.73A8.9967,8.9967,0,1,1,5,14H3a10.9916,10.9916,0,0,0,18.0338,8.4478L28.5859,30,30,28.5859Z"></path></svg></button>
+            <button class="btn_sm" id="apply_modal_close" data-ui="dashboard_editlist.btn_anwenden_modal_close" title="dashboard_editlist.btn_anwenden_modal_close">Schliessen</button>
           </div>
         </div>
         <div class="muted" id="apply_modal_info" style="margin-top: 6px;"></div>
 
-        <div id="apply_modal_query_section" style="display:none;" data-ui="editlist_apply_modal_query" title="editlist_apply_modal_query">
-          <button class="btn_sm" id="apply_modal_copy_query" data-ui="editlist_apply_modal_copy_query" title="editlist_apply_modal_copy_query"></button>
-          <button class="btn_sm" id="apply_modal_query_history" type="button" data-ui="editlist_apply_modal_query_history" title="editlist_apply_modal_query_history"></button>
+         <div id="apply_modal_query_section" style="display:none;" data-ui="dashboard_editlist.panel_dialog_query" title="dashboard_editlist.panel_dialog_query">
+           <button class="btn_sm" id="apply_modal_copy_query" data-ui="dashboard_editlist.btn_dialog_query_kopieren" title="dashboard_editlist.btn_dialog_query_kopieren"></button>
+           <button class="btn_sm" id="apply_modal_query_history" type="button" data-ui="dashboard_editlist.btn_dialog_query_verlauf" title="dashboard_editlist.btn_dialog_query_verlauf"></button>
           <div id="apply_modal_query_meta"></div>
           <pre id="apply_modal_query">Noch keine Query vorhanden.</pre>
         </div>
 
-          <div class="table_box" style="margin-top: 10px; max-height: 45vh;" data-ui="editlist_apply_modal_table" title="editlist_apply_modal_table">
+          <div class="table_box" style="margin-top: 10px; max-height: 45vh;" data-ui="dashboard_editlist.tbl_dialog_vorschau" title="dashboard_editlist.tbl_dialog_vorschau">
             <table>
               <thead><tr><th>Zeit</th><th>Aktion</th><th>Alt</th><th>Neu</th></tr></thead>
               <tbody id="apply_modal_rows"></tbody>
@@ -989,8 +989,8 @@
           </div>
 
         <div class="tbl_actions" style="justify-content:flex-end; margin-top: 10px;">
-          <button class="btn_sm" id="apply_modal_cancel" data-ui="editlist_apply_modal_cancel" title="editlist_apply_modal_cancel">Abbrechen</button>
-          <button class="btn_sm" id="apply_modal_confirm" data-ui="editlist_apply_modal_confirm" title="editlist_apply_modal_confirm">Jetzt schreiben</button>
+          <button class="btn_sm" id="apply_modal_cancel" data-ui="dashboard_editlist.btn_dialog_abbrechen" title="dashboard_editlist.btn_dialog_abbrechen">Abbrechen</button>
+          <button class="btn_sm" id="apply_modal_confirm" data-ui="dashboard_editlist.btn_dialog_bestaetigen" title="dashboard_editlist.btn_dialog_bestaetigen">Jetzt schreiben</button>
         </div>
       </div>
     </div>
@@ -1221,7 +1221,7 @@ const $editToolbarDelete = document.getElementById('edit_toolbar_delete');
 const $editToolbarApplyOne = document.getElementById('edit_toolbar_apply_one');
 const $editToolbarUndoOne = document.getElementById('edit_toolbar_undo_one');
 
-const $reasonFilter = document.getElementById('reason_filter');
+const $reasonFilter = document.getElementById('dashboard_graph.select_grund_filter');
 const $classFilter = document.getElementById('class_filter');
 
 const $detailsPanel = document.getElementById('details_panel');
@@ -1811,7 +1811,7 @@ function saveState(){
       out_min: $outMin ? $outMin.value : "",
       out_max: $outMax ? $outMax.value : "",
       out_max_step: $outMaxStep ? $outMaxStep.value : "",
-      reason_filter: $reasonFilter ? String($reasonFilter.value || "") : "",
+      dashboard_graph.select_grund_filter: $reasonFilter ? String($reasonFilter.value || "") : "",
       class_filter: $classFilter ? String($classFilter.value || "all") : "all",
       tbl_filter_enabled: TABLE_FILTER.enabled,
       tbl_mode: TABLE_FILTER.mode,
@@ -1889,7 +1889,7 @@ function cacheSaveNow(){
       deriv_abs: !!($derivAbs && $derivAbs.checked),
       deriv_signed: !!($derivSigned && $derivSigned.checked),
       deriv_outlier_thr: $derivOutlierThr ? Number($derivOutlierThr.value || 90) : 90,
-      reason_filter: $reasonFilter ? String($reasonFilter.value || "") : "",
+      dashboard_graph.select_grund_filter: $reasonFilter ? String($reasonFilter.value || "") : "",
       class_filter: $classFilter ? String($classFilter.value || "all") : "all",
       last_rows: LAST_ROWS || [],
       last_query: ($queryPre ? String($queryPre.textContent || '') : ''),
@@ -1934,13 +1934,13 @@ function cacheRestoreIfAvailable(){
       if($derivAbs) $derivAbs.checked = (j.deriv_abs !== undefined) ? !!j.deriv_abs : true;
       if($derivSigned) $derivSigned.checked = !!j.deriv_signed;
       if($derivOutlierThr) $derivOutlierThr.value = (j.deriv_outlier_thr !== undefined) ? String(j.deriv_outlier_thr) : "90";
-      if($reasonFilter) $reasonFilter.value = (j.reason_filter !== undefined) ? String(j.reason_filter || "") : "";
+      if($reasonFilter) $reasonFilter.value = (j.dashboard_graph.select_grund_filter !== undefined) ? String(j.dashboard_graph.select_grund_filter || "") : "";
       if($classFilter) $classFilter.value = (j.class_filter !== undefined) ? String(j.class_filter || "all") : "all";
       try{ _normalizeDerivToggles(null); }catch(e){}
     }catch(e){}
     OUTLIER_ACTIVE = !!j.outlier_active;
     if(Array.isArray(j.outlier_rows)) OUTLIER_ROWS = j.outlier_rows;
-    try{ TABLE_REASON_FILTER = $reasonFilter ? String($reasonFilter.value || "") : (j.reason_filter ? String(j.reason_filter) : ""); }catch(e){ TABLE_REASON_FILTER = ""; }
+    try{ TABLE_REASON_FILTER = $reasonFilter ? String($reasonFilter.value || "") : (j.dashboard_graph.select_grund_filter ? String(j.dashboard_graph.select_grund_filter) : ""); }catch(e){ TABLE_REASON_FILTER = ""; }
     try{ TABLE_CLASS_FILTER = $classFilter ? String($classFilter.value || "all") : (j.class_filter ? String(j.class_filter) : "all"); }catch(e){ TABLE_CLASS_FILTER = "all"; }
     FILTER_TABLE_CLEARED = false;
     try{ FILTER_SELECTED = new Set(Array.isArray(j.selected_keys) ? j.selected_keys : []); }catch(e){ FILTER_SELECTED = new Set(); }
@@ -7590,7 +7590,7 @@ try{
   if($derivSigned) $derivSigned.checked = (st.deriv_signed !== undefined) ? !!st.deriv_signed : false;
   if($derivAbs) $derivAbs.checked = (st.deriv_abs !== undefined) ? !!st.deriv_abs : (!$derivSigned || !$derivSigned.checked);
   if($derivOutlierThr) $derivOutlierThr.value = (st.deriv_outlier_thr !== undefined) ? String(st.deriv_outlier_thr) : '90';
-  if($reasonFilter) $reasonFilter.value = (st.reason_filter !== undefined) ? String(st.reason_filter || "") : "";
+  if($reasonFilter) $reasonFilter.value = (st.dashboard_graph.select_grund_filter !== undefined) ? String(st.dashboard_graph.select_grund_filter || "") : "";
   if($classFilter) $classFilter.value = (st.class_filter !== undefined) ? String(st.class_filter || "all") : "all";
   try{ TABLE_REASON_FILTER = $reasonFilter ? String($reasonFilter.value || "") : ""; }catch(e){ TABLE_REASON_FILTER = ""; }
   try{ TABLE_CLASS_FILTER = $classFilter ? String($classFilter.value || "all") : "all"; }catch(e){ TABLE_CLASS_FILTER = "all"; }
@@ -9855,7 +9855,7 @@ try{
     if($tblBVal) $tblBVal.value = TABLE_FILTER.b_val;
 
     try{
-      TABLE_REASON_FILTER = (st.reason_filter !== undefined) ? String(st.reason_filter || "") : "";
+      TABLE_REASON_FILTER = (st.dashboard_graph.select_grund_filter !== undefined) ? String(st.dashboard_graph.select_grund_filter || "") : "";
       TABLE_CLASS_FILTER = (st.class_filter !== undefined) ? String(st.class_filter || "all") : "all";
       if($reasonFilter) $reasonFilter.value = TABLE_REASON_FILTER;
       if($classFilter) $classFilter.value = TABLE_CLASS_FILTER;
