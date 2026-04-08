@@ -1,10 +1,19 @@
 # Changelog
 
+## 1.12.271
+
+### Maintenance
+
+- Die Quelldatei des Logos im Repository wurde auf `influxbro/images/InfluxBroLogo.png` vereinheitlicht; die kleine `90 x 60`-Ansicht in GitHub war nur die Vorschau, die echte Bildgroesse ist `1536 x 1024`. ([#218](https://github.com/thomas682/HA-Addons/issues/218))
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Dateien: `influxbro/images/InfluxBroLogo.png`, `influxbro/icon.png`, `influxbro/logo.png` verifiziert
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.270
 
 ### Fix
 
-- `icon.png` und `logo.png` des Add-ons verwenden jetzt das gewuenschte Bild `InfluxBro Logo Design.png`. ([#217](https://github.com/thomas682/HA-Addons/issues/217))
+- `icon.png` und `logo.png` des Add-ons verwenden jetzt das gewuenschte Bild `InfluxBroLogo.png`. ([#217](https://github.com/thomas682/HA-Addons/issues/217))
 
 ### Maintenance
 
