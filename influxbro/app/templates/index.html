@@ -381,7 +381,14 @@
   <div id="stats_total_store" style="display:none;"><table class="stats_tbl"><tbody id="stats_tot_body"></tbody></table></div>
 
     <details id="caching_section" class="section" open data-ui="dashboard_caching.section_root" title="dashboard_caching.section_root">
-      <summary><span class="ib_summary_row"><span>Caching</span></span></summary>
+      <summary><span class="ib_summary_row"><span>Caching</span><div class="ib_summary_actions"><button type="button" class="ib_info_icon" id="caching_summary_info" data-ui="dashboard_caching.btn_info" title="dashboard_caching.btn_info" data-info-title="Dashboard: Caching" data-info-body="Der Bereich Caching zeigt, welche Teile des aktuellen Messwert-Zeitraums bereits im Analyse-Cache vorliegen, welche Luecken neu gelesen werden und welche Cache-Segmente wegen geaenderter Messwerte neu aufgebaut werden muessen.
+
+Farben im Zeitstrahl:
+- Gruen: vorhandener Cache
+- Blau: neu lesen
+- Rot: geaenderte Bereiche
+
+Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></div></span></summary>
       <div class="card_body">
         <div class="muted" data-ui="dashboard_caching.txt_hint_aktualisieren" title="dashboard_caching.txt_hint_aktualisieren" style="margin-bottom:8px;">Laedt Graph/Tabelle/Statistik erst nach Klick auf <code>Aktualisieren</code>. Vor der Analyse wird hier der Cache fuer den aktuellen Messwert geprueft.</div>
         <div class="control" data-ui="dashboard_caching.row_actions" title="dashboard_caching.row_actions">
@@ -5974,21 +5981,43 @@ function _analysisCacheTimelineHtml(plan){
   const stopMs = Date.parse(String(req.stop || ''));
   if(!(isFinite(startMs) && isFinite(stopMs) && stopMs > startMs)) return '';
   const parts = [];
+  const labels = [];
   (plan.segments || []).forEach((seg, idx) => {
     parts.push(_timelineSegHtml(seg.use_start || seg.covered_start, seg.use_stop || seg.covered_stop, startMs, stopMs, '#d9f7d9', 'Cache ' + (idx + 1), '#5ea56a'));
+    labels.push('<div style="font-size:11px;"><span style="display:inline-block;width:10px;height:10px;background:#d9f7d9;border:1px solid #5ea56a;border-radius:3px;margin-right:6px;"></span>Cache ' + (idx + 1) + ': ' + _escHtml(fmtTs(seg.use_start || seg.covered_start)) + ' – ' + _escHtml(fmtTs(seg.use_stop || seg.covered_stop)) + '</div>');
   });
   (plan.gaps || []).forEach((gap, idx) => {
     parts.push(_timelineSegHtml(gap.start, gap.stop, startMs, stopMs, '#eef2ff', 'Neu lesen ' + (idx + 1), '#7a8be6'));
+    labels.push('<div style="font-size:11px;"><span style="display:inline-block;width:10px;height:10px;background:#eef2ff;border:1px solid #7a8be6;border-radius:3px;margin-right:6px;"></span>Neu lesen ' + (idx + 1) + ': ' + _escHtml(fmtTs(gap.start)) + ' – ' + _escHtml(fmtTs(gap.stop)) + '</div>');
   });
   (plan.dirty_ranges || []).forEach((gap, idx) => {
     parts.push(_timelineSegHtml(gap.start, gap.stop, startMs, stopMs, '#ffe1e1', 'Geaenderter Cache ' + (idx + 1), '#d46a6a'));
+    labels.push('<div style="font-size:11px;"><span style="display:inline-block;width:10px;height:10px;background:#ffe1e1;border:1px solid #d46a6a;border-radius:3px;margin-right:6px;"></span>Geaendert ' + (idx + 1) + ': ' + _escHtml(fmtTs(gap.start)) + ' – ' + _escHtml(fmtTs(gap.stop)) + '</div>');
   });
   return '<div style="position:relative;height:28px;border:1px solid #ddd;border-radius:8px;background:#fff;overflow:hidden;">' + parts.join('') + '</div>'
+    + '<div style="display:flex;justify-content:space-between;gap:12px;margin-top:6px;font-size:11px;opacity:0.75;"><span>' + _escHtml(fmtTs(req.start)) + '</span><span>' + _escHtml(fmtTs(req.stop)) + '</span></div>'
     + '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:6px;font-size:11px;">'
     + '<span><span style="display:inline-block;width:10px;height:10px;background:#d9f7d9;border:1px solid #5ea56a;border-radius:3px;margin-right:4px;"></span>Cache</span>'
     + '<span><span style="display:inline-block;width:10px;height:10px;background:#eef2ff;border:1px solid #7a8be6;border-radius:3px;margin-right:4px;"></span>Neu lesen</span>'
     + '<span><span style="display:inline-block;width:10px;height:10px;background:#ffe1e1;border:1px solid #d46a6a;border-radius:3px;margin-right:4px;"></span>Geaendert</span>'
-    + '</div>';
+    + '</div>'
+    + (labels.length ? '<div style="display:flex;flex-direction:column;gap:4px;margin-top:8px;">' + labels.join('') + '</div>' : '');
+}
+
+function showCachingSummaryInfo(){
+  const txt = [
+    'Analysecache Segmente: vorhandene Cache-Bloecke fuer den aktuell gewaehlten Messwert.',
+    'Neu lesen: Bereiche, die aktuell nicht im Cache liegen und deshalb neu aus der Datenquelle geladen werden.',
+    'Geaendert: Cache-Bereiche, in denen sich nachtraeglich Messwerte geaendert haben und die deshalb nicht direkt wiederverwendet werden.',
+    '',
+    'Im Zeitstrahl gilt:',
+    '- Gruen = vorhandener Cache',
+    '- Blau = neu lesen',
+    '- Rot = geaendert / neu aufbauen',
+  ].join('\n');
+  try{
+    if(window.InfluxBroPopup && window.InfluxBroPopup.show) window.InfluxBroPopup.show('Caching Info', txt);
+  }catch(e){}
 }
 
 async function fetchAnalysisCachePlan(base, win){
@@ -9088,7 +9117,16 @@ async function refreshCachingSection(){
             key: ['analysis_cache_plan', base.measurement, base.field, base.entity_id || '', base.friendly_name || '', win.start, win.stop, segs, gaps, dirty, analysisPlan.cached_outlier_count || 0].join('|'),
           },
         });
-        $summary.textContent = 'Analysecache Segmente: ' + segs + ' | Neu lesen: ' + gaps + ' | Geaendert: ' + dirty + ' | Bekannte Ausreisser im Cache: ' + String(analysisPlan.cached_outlier_count || 0) + ' | Dashboard-Cache Segmente: ' + dashSegs + ' | Start: ' + fmtTs(win.start) + ' | Ende: ' + fmtTs(win.stop);
+        $summary.innerHTML = '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">'
+          + '<span>Analysecache Segmente: <strong>' + segs + '</strong></span>'
+          + '<span>Neu lesen: <strong>' + gaps + '</strong></span>'
+          + '<span style="display:flex;align-items:center;gap:6px;">Geaendert: <strong>' + dirty + '</strong><button type="button" class="ib_info_icon" id="caching_changed_info" style="width:20px;height:20px;line-height:18px;">?</button></span>'
+          + '<span>Bekannte Ausreisser im Cache: <strong>' + String(analysisPlan.cached_outlier_count || 0) + '</strong></span>'
+          + '<span>Dashboard-Cache Segmente: <strong>' + dashSegs + '</strong></span>'
+          + '</div>'
+          + '<div style="margin-top:4px; font-size:11px; opacity:0.75;">Start: ' + _escHtml(fmtTs(win.start)) + ' | Ende: ' + _escHtml(fmtTs(win.stop)) + '</div>';
+        const $changedInfo = document.getElementById('caching_changed_info');
+        if($changedInfo) $changedInfo.onclick = ()=>showCachingSummaryInfo();
       }else{
         _saveAnalysisEventOnce({
           at: new Date().toISOString(),
@@ -9097,7 +9135,7 @@ async function refreshCachingSection(){
           detail: 'Kein Analyse-Cache gefunden.',
           extra: { key: ['analysis_cache_plan', 'no_cache', base.measurement, base.field, base.entity_id || '', base.friendly_name || '', win.start, win.stop].join('|') },
         });
-        $summary.textContent = 'Kein Analyse-Cache gefunden.';
+        $summary.innerHTML = 'Kein Analyse-Cache gefunden.';
       }
     }
     if($timeline) $timeline.innerHTML = analysisPlan ? _analysisCacheTimelineHtml(analysisPlan) : '';

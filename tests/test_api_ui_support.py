@@ -560,6 +560,14 @@ def test_dashboard_caching_section_has_visible_cache_targets_and_no_old_dialog()
     assert 'id="analysis_confirm_dialog"' not in body
 
 
+def test_dashboard_caching_section_has_info_button_timeline_labels_and_summary_actions():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert '<div class="ib_summary_actions"><button type="button" class="ib_info_icon" id="caching_summary_info"' in body
+    assert 'id="caching_changed_info"' in body
+    assert 'function showCachingSummaryInfo()' in body
+    assert 'fmtTs(req.start)' in body and 'fmtTs(req.stop)' in body
+
+
 def test_dashboard_uses_structured_data_ui_naming_scheme_samples():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     tmpl = (Path(__file__).resolve().parents[1] / "influxbro" / "Template.md").read_text()
