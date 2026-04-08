@@ -561,6 +561,7 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - `analysis_start_info` sitzt jetzt direkt in der sichtbaren Caching-Zone unter `analysis_status`. Der alte Hinweis `tip.selection` wurde dort entfernt.
 - `Analyse mit Cache` behaelt jetzt bereits bekannte Cache-Ausreisser und ergaenzt nur noch fehlende Bereiche, statt vorgeladene Treffer vor dem Suchlauf zu verwerfen.
 - Das strukturierte `data-ui`-Schema `page_section.role_action` gilt jetzt nicht mehr nur fuer das Dashboard, sondern auch fuer die restlichen Seiten und Shared-Templates.
+- Nach der globalen `data-ui`-Migration wurde ein versehentlich betroffener normaler JS-State-Key im Dashboard wieder bereinigt. Das Dashboard-Script ist damit wieder syntaktisch gueltig.
 - `raw.table` und `raw.outlier_table` zeigen auch ohne Daten immer mindestens 5 sichtbare Leerzeilen, damit die Tabellenhoehe stabil bleibt.
 - Stoerphasen (`fault_phase`) werden in der Ausreißer-Tabelle jetzt als zusammengefasste Phase mit Start/Ende und Punktanzahl dargestellt, statt jede `fault_active`-Fortsetzung einzeln aufzulisten.
 - Analysebezogene Cache-Plan-Schritte und Cache-Aenderungen werden jetzt im Analyse-Verlauf gespeichert. Die Live-Analyseansicht bleibt kompakt und zeigt keine einzelnen Chunk-Zeilen mehr; diese Details stehen ausschliesslich im Analyse-Verlauf.

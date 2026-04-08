@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.279
+
+### Fix
+
+- Ein nach der `data-ui`-Migration versehentlich umbenannter normaler JS-State-Key im Dashboard wurde korrigiert; dadurch ist der Browser-Syntaxfehler `Unexpected token '.'` in `index.html` behoben. ([#226](https://github.com/thomas682/HA-Addons/issues/226))
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tests: JS-Syntaxpruefung des eingebetteten Dashboard-Scripts in `index.html` via `node`/`vm.Script`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.278
 
 ### Enhancement
