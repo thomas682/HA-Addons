@@ -52,19 +52,19 @@
   {% include "_topbar.html" %}
   <div class="shell">
     {% include "_nav.html" %}
-    <main class="content" data-ui="dbinfo.page" title="dbinfo.page">
+    <main class="content" data-ui="dbinfo_page.main" title="dbinfo.page">
       <h2>InfluxDB Diagnose</h2>
       <div class="muted">
         Repository: {% if repo_url %}<a href="{{ repo_url }}" target="_blank" rel="noreferrer">{{ repo_url }}</a>{% else %}<span>(nicht konfiguriert)</span>{% endif %}
       </div>
 
-      <div class="card" data-ui="dbinfo.summary.card" title="dbinfo.summary.card">
+      <div class="card" data-ui="dbinfo_summary.panel_card" title="dbinfo.summary.card">
         <div class="headrow">
           <div>
             <div class="title">InfluxBro – Diagnose</div>
             <div class="muted">Best-effort Status + KPIs (Add-on + InfluxDB). Je nach Influx-Konfiguration sind nicht alle Werte verfuegbar.</div>
           </div>
-          <div class="meta" data-ui="dbinfo.summary.meta" title="dbinfo.summary.meta">
+          <div class="meta" data-ui="dbinfo_summary.panel_meta" title="dbinfo.summary.meta">
             <div class="k">Version</div><div class="v" id="meta_version">-</div>
             <div class="k">Build</div><div class="v" id="meta_build">-</div>
             <div class="k">Architektur</div><div class="v" id="meta_arch">-</div>
@@ -73,15 +73,15 @@
           </div>
         </div>
 
-        <div class="row" style="margin-top: 10px;" data-ui="dbinfo.summary.controls" title="dbinfo.summary.controls">
+        <div class="row" style="margin-top: 10px;" data-ui="dbinfo_summary.panel_controls" title="dbinfo.summary.controls">
           <div style="display:flex; gap:10px; align-items:center;">
-            <button id="refresh" type="button" class="btn_xs" data-ui="dbinfo.refresh" title="dbinfo.refresh">Aktualisieren</button>
-            <button id="dbinfo_query_test" type="button" class="btn_xs" data-ui="dbinfo.query_test" title="dbinfo.query_test" aria-label="Query testen"><svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="#000000" width="16" height="16" aria-hidden="true" focusable="false"><path d="M6 10V9h9v1H6zm4-4h5v1h-5V6zm5-3v1H6V3h9zm-9 9v1h9v-1H6z"></path><path fill-rule="evenodd" clip-rule="evenodd" d="M1 2.795l.783-.419 5.371 3.581v.838l-5.371 3.581L1 9.957V2.795zm1.007.94v5.281l3.96-2.64-3.96-2.64z"></path></svg> Query testen</button>
+            <button id="refresh" type="button" class="btn_xs" data-ui="dbinfo_main.btn_refresh" title="dbinfo.refresh">Aktualisieren</button>
+            <button id="dbinfo_query_test" type="button" class="btn_xs" data-ui="dbinfo_main.btn_query_test" title="dbinfo.query_test" aria-label="Query testen"><svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="#000000" width="16" height="16" aria-hidden="true" focusable="false"><path d="M6 10V9h9v1H6zm4-4h5v1h-5V6zm5-3v1H6V3h9zm-9 9v1h9v-1H6z"></path><path fill-rule="evenodd" clip-rule="evenodd" d="M1 2.795l.783-.419 5.371 3.581v.838l-5.371 3.581L1 9.957V2.795zm1.007.94v5.281l3.96-2.64-3.96-2.64z"></path></svg> Query testen</button>
           </div>
           <div class="muted" id="hint" style="padding-top: 10px;"></div>
         </div>
 
-        <div class="grid4" data-ui="dbinfo.summary.kpis" title="dbinfo.summary.kpis">
+        <div class="grid4" data-ui="dbinfo_summary.panel_kpis" title="dbinfo.summary.kpis">
           <div class="kpi"><div class="k">Addon Status</div><div class="v"><span class="pill"><span class="dot" id="st_addon_dot"></span><span id="st_addon">-</span></span></div></div>
           <div class="kpi"><div class="k">Influx Verbindung</div><div class="v"><span class="pill"><span class="dot" id="st_influx_dot"></span><span id="st_influx">-</span></span></div></div>
           <div class="kpi"><div class="k">Letzter Cleanup-Lauf</div><div class="v"><span class="pill"><span class="dot neutral" id="st_cleanup_dot"></span><span id="st_cleanup">noch nie</span></span></div></div>
@@ -91,12 +91,12 @@
         <div id="err" class="err"></div>
       </div>
 
-      <div class="card" data-ui="dbinfo.health.card" title="dbinfo.health.card">
+      <div class="card" data-ui="dbinfo_health.panel_card" title="dbinfo.health.card">
         <div style="font-weight:800;">Health Summary</div>
         <div class="muted" style="margin-top: 4px;">InfluxDB-/Go-Metriken sind nur verfuegbar, wenn <code>/metrics</code> erreichbar ist. Bei InfluxDB v1 kann die erweiterte Diagnose eingeschraenkt sein.</div>
 
-        <div class="grid2" data-ui="dbinfo.health.grid" title="dbinfo.health.grid">
-          <div class="kpi" data-ui="dbinfo.health.ram" title="dbinfo.health.ram">
+        <div class="grid2" data-ui="dbinfo_health.panel_grid" title="dbinfo.health.grid">
+          <div class="kpi" data-ui="dbinfo_health.panel_ram" title="dbinfo.health.ram">
             <div class="k">RAM</div>
             <div class="kv">
               <div class="k">RAM aktuell</div><div class="v" id="ram_alloc">-</div>
@@ -106,7 +106,7 @@
             </div>
           </div>
 
-          <div class="kpi" data-ui="dbinfo.health.goro" title="dbinfo.health.goro">
+          <div class="kpi" data-ui="dbinfo_health.panel_goro" title="dbinfo.health.goro">
             <div class="k">Goroutines</div>
             <div class="kv">
               <div class="k">Goroutines</div><div class="v" id="goro">-</div>
@@ -115,7 +115,7 @@
             </div>
           </div>
 
-          <div class="kpi" data-ui="dbinfo.health.gc" title="dbinfo.health.gc">
+          <div class="kpi" data-ui="dbinfo_health.panel_gc" title="dbinfo.health.gc">
             <div class="k">Garbage Collector</div>
             <div class="kv">
               <div class="k">GC Pause avg</div><div class="v" id="gc_avg">-</div>
@@ -124,7 +124,7 @@
             </div>
           </div>
 
-          <div class="kpi" data-ui="dbinfo.health.req" title="dbinfo.health.req">
+          <div class="kpi" data-ui="dbinfo_health.panel_req" title="dbinfo.health.req">
             <div class="k">Influx Request Health</div>
             <div class="kv">
               <div class="k">HTTP Requests total</div><div class="v" id="http_total">-</div>

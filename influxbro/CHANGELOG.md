@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.12.278
+
+### Enhancement
+
+- `tip.selection` auf dem Dashboard wurde entfernt und `analysis_start_info` direkt unter `analysis_status` in die sichtbare Caching-Zone verschoben. Beim Start `Analyse mit Cache` bleiben nun bereits bekannte Cache-Ausreißer erhalten; fehlende Bereiche werden ergänzt statt den vorgeladenen Bestand wieder zu verwerfen. ([#223](https://github.com/thomas682/HA-Addons/issues/223))
+- Die restlichen Seiten und Shared-Templates wurden auf das strukturierte `data-ui`-Schema `page_section.role_action` migriert, inklusive Jobs, Settings, Stats, Backup/Restore, Logs, History, Import/Export, Topbar und Navigation. ([#225](https://github.com/thomas682/HA-Addons/issues/225))
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tests: `pytest tests/test_api_ui_support.py -q -k "issue223_removed_tip_selection_and_moved_start_info or non_dashboard_pages_use_structured_data_ui_samples"`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.277
 
 ### Enhancement

@@ -41,14 +41,14 @@
   {% include "_topbar.html" %}
   <div class="shell">
     {% include "_nav.html" %}
-    <main class="content" data-ui="monitor.page" title="monitor.page">
+    <main class="content" data-ui="monitor_page.main" title="monitor.page">
       <h2>Monitor</h2>
       <div class="muted">Eigenstaendige Monitoring-Seite fuer Ausreisser, offene Korrekturen, kritische Messwerte und Template-Daten.</div>
 
       <div id="err" class="err"></div>
       <div id="ok" class="ok"></div>
 
-      <details class="card" open data-ui="monitor.section.config" title="monitor.section.config">
+      <details class="card" open data-ui="monitor_config.section_root" title="monitor.section.config">
         <summary><span class="ib_summary_row"><span>Monitoring Konfiguration</span><button type="button" class="ib_info_icon" data-info-title="Monitoring: Konfiguration" data-info-body="Hier definierst du die ueberwachten Messwerte, Grenzwerte, Recovery-Regeln und Korrekturmodi.\n\nJede Zeile repraesentiert einen ueberwachten Messwert-Key." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
         <div class="card_body">
           <div class="grid">
@@ -62,14 +62,14 @@
             </div>
           </div>
           <div class="tbl_actions">
-            <button id="cfg_add" class="btn_sm" data-ui="monitor.config.add" title="monitor.config.add">Zeile hinzufuegen</button>
-            <button id="cfg_save" class="btn_sm" data-ui="monitor.config.save" title="monitor.config.save">Konfiguration speichern</button>
+            <button id="cfg_add" class="btn_sm" data-ui="monitor_config.btn_add" title="monitor.config.add">Zeile hinzufuegen</button>
+            <button id="cfg_save" class="btn_sm" data-ui="monitor_config.btn_save" title="monitor.config.save">Konfiguration speichern</button>
             <span class="muted">Korrekturmodus: <code>auto</code> wendet den Vorschlag sofort intern an, <code>pending</code> legt eine offene Korrektur an.</span>
           </div>
-          <div class="table_wrap" data-ui="monitor.config.table.wrap" title="monitor.config.table.wrap">
+          <div class="table_wrap" data-ui="monitor_config.panel_table_wrap" title="monitor.config.table.wrap">
             <div class="table_title">Ueberwachte Messwerte</div>
             <div class="table_box">
-              <table id="cfg_tbl" class="ib_tbl" data-ui="monitor.config.table" title="monitor.config.table">
+              <table id="cfg_tbl" class="ib_tbl" data-ui="monitor_config.tbl_table" title="monitor.config.table">
                 <thead>
                   <tr>
                     <th>Key</th>
@@ -97,7 +97,7 @@
         </div>
       </details>
 
-      <details class="card" open data-ui="monitor.section.evaluate" title="monitor.section.evaluate">
+      <details class="card" open data-ui="monitor_evaluate.section_root" title="monitor.section.evaluate">
         <summary><span class="ib_summary_row"><span>Wert pruefen / einspeisen</span><button type="button" class="ib_info_icon" data-info-title="Monitoring: Wert pruefen" data-info-body="Mit diesem Formular kannst du neue Rohwerte gegen die Monitoring-Regeln pruefen. Das ist zugleich der API-Einstieg fuer externe Uebergaben nach /api/monitoring/evaluate." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
         <div class="card_body">
           <div class="grid">
@@ -115,7 +115,7 @@
             </div>
           </div>
           <div class="tbl_actions">
-            <button id="eval_run" class="btn_sm" data-ui="monitor.evaluate.run" title="monitor.evaluate.run">Pruefen</button>
+            <button id="eval_run" class="btn_sm" data-ui="monitor_evaluate.btn_run" title="monitor.evaluate.run">Pruefen</button>
             <span class="muted">Ergebnis wird in Ausreisser-/Pending-/Critical-Listen und im Template-Status sichtbar.</span>
           </div>
           <div class="card" style="margin-top:10px;">
@@ -125,16 +125,16 @@
         </div>
       </details>
 
-      <div class="table_wrap" data-ui="monitor.summary.wrap" title="monitor.summary.wrap">
+      <div class="table_wrap" data-ui="monitor_summary.panel_wrap" title="monitor.summary.wrap">
         <div class="table_title">Template-Status</div>
         <div class="table_head">
           <div class="tbl_actions">
-            <button id="reload_all" class="btn_sm" data-ui="monitor.reload" title="monitor.reload">Refresh</button>
+            <button id="reload_all" class="btn_sm" data-ui="monitor_main.btn_reload" title="monitor.reload">Refresh</button>
           </div>
           <div class="muted" id="summary_info"></div>
         </div>
         <div class="table_box">
-          <table id="summary_tbl" class="ib_tbl" data-ui="monitor.summary.table" title="monitor.summary.table">
+          <table id="summary_tbl" class="ib_tbl" data-ui="monitor_summary.tbl_table" title="monitor.summary.table">
             <thead>
               <tr><th>Key</th><th>Status</th><th>Raw</th><th>Korrigiert</th><th>Letzter gueltiger Wert</th><th>Grund</th><th>Pending</th><th>Kritisch</th><th>Fault</th><th>Letztes Event</th></tr>
             </thead>
@@ -143,7 +143,7 @@
         </div>
       </div>
 
-      <div class="table_wrap" data-ui="monitor.pending.wrap" title="monitor.pending.wrap">
+      <div class="table_wrap" data-ui="monitor_pending.panel_wrap" title="monitor.pending.wrap">
         <div class="table_title">Offene Korrekturen</div>
         <div class="table_head">
           <div class="tbl_actions">
@@ -152,7 +152,7 @@
           <div class="muted" id="pending_info"></div>
         </div>
         <div class="table_box">
-          <table id="pending_tbl" class="ib_tbl" data-ui="monitor.pending.table" title="monitor.pending.table">
+          <table id="pending_tbl" class="ib_tbl" data-ui="monitor_pending.tbl_table" title="monitor.pending.table">
             <thead>
               <tr><th>Zeit</th><th>Key</th><th>Grund</th><th>Rohwert</th><th>Vorschlag</th><th>Aktionen</th></tr>
             </thead>
@@ -161,14 +161,14 @@
         </div>
       </div>
 
-      <div class="table_wrap" data-ui="monitor.critical.wrap" title="monitor.critical.wrap">
+      <div class="table_wrap" data-ui="monitor_critical.panel_wrap" title="monitor.critical.wrap">
         <div class="table_title">Kritische Werte</div>
         <div class="table_head">
           <div class="tbl_actions"><input id="critical_q" placeholder="Suche..." style="min-width:220px;" /></div>
           <div class="muted" id="critical_info"></div>
         </div>
         <div class="table_box">
-          <table id="critical_tbl" class="ib_tbl" data-ui="monitor.critical.table" title="monitor.critical.table">
+          <table id="critical_tbl" class="ib_tbl" data-ui="monitor_critical.tbl_table" title="monitor.critical.table">
             <thead>
               <tr><th>Key</th><th>Status</th><th>Grund</th><th>Pending</th><th>Fault aktiv</th><th>Event-Anzahl</th><th>Letztes Event</th></tr>
             </thead>
@@ -177,7 +177,7 @@
         </div>
       </div>
 
-      <div class="table_wrap" data-ui="monitor.events.wrap" title="monitor.events.wrap">
+      <div class="table_wrap" data-ui="monitor_events.panel_wrap" title="monitor.events.wrap">
         <div class="table_title">Alle Ausreisser / Monitoring-Events</div>
         <div class="table_head">
           <div class="tbl_actions">
@@ -187,7 +187,7 @@
           <div class="muted" id="events_info"></div>
         </div>
         <div class="table_box">
-          <table id="events_tbl" class="ib_tbl" data-ui="monitor.events.table" title="monitor.events.table">
+          <table id="events_tbl" class="ib_tbl" data-ui="monitor_events.tbl_table" title="monitor.events.table">
             <thead>
               <tr><th>Zeit</th><th>Kind</th><th>Key</th><th>Grund</th><th>Rohwert</th><th>Korrigiert</th><th>Status</th><th>Fault</th><th>Kritisch</th></tr>
             </thead>
@@ -196,7 +196,7 @@
         </div>
       </div>
 
-      <details class="card" data-ui="monitor.section.json" title="monitor.section.json">
+      <details class="card" data-ui="monitor_json.section_root" title="monitor.section.json">
         <summary><span class="ib_summary_row"><span>Template JSON</span><button type="button" class="ib_info_icon" data-info-title="Monitoring: Template JSON" data-info-body="Diese JSON-Daten koennen fuer Visu, Automationen oder Weiterverarbeitung abgefragt werden. Sie entsprechen /api/monitoring/templates." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
         <div class="card_body">
           <pre id="template_json" class="mono">{}</pre>

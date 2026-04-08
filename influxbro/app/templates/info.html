@@ -36,25 +36,25 @@
   {% include "_topbar.html" %}
   <div class="shell">
     {% include "_nav.html" %}
-    <main class="content" data-ui="info.page" title="info.page">
+    <main class="content" data-ui="info_page.main" title="info.page">
       <h2>Changelog</h2>
       <div class="muted">
         Repository: {% if repo_url %}<a href="{{ repo_url }}" target="_blank" rel="noreferrer">{{ repo_url }}</a>{% else %}<span>(nicht konfiguriert)</span>{% endif %}
       </div>
 
-      <div class="searchbar" data-ui="info.searchbar" title="info.searchbar">
+      <div class="searchbar" data-ui="info_main.panel_searchbar" title="info.searchbar">
         <div class="ib_clear_row">
-          <input id="info_search" type="text" placeholder="Changelog durchsuchen..." data-ui="info.search" title="info.search" />
+          <input id="info_search" type="text" placeholder="Changelog durchsuchen..." data-ui="info_main.input_search" title="info.search" />
           <button type="button" class="ib_clear_btn" data-clear-for="info_search" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
         </div>
         <div class="search_meta"><span id="info_search_idx">0</span>/<span id="info_search_cnt">0</span></div>
-        <button id="info_search_prev" type="button" data-ui="info.search.prev" title="info.search.prev">Zurueck</button>
-        <button id="info_search_next" type="button" data-ui="info.search.next" title="info.search.next">Vor</button>
+        <button id="info_search_prev" type="button" data-ui="info_search.btn_prev" title="info.search.prev">Zurueck</button>
+        <button id="info_search_next" type="button" data-ui="info_search.btn_next" title="info.search.next">Vor</button>
       </div>
 
       <div class="card">
         <div class="muted">Release Notes (Changelog)</div>
-        <pre id="info_changelog" data-ui="info.changelog" title="info.changelog">{{ changelog_text }}</pre>
+        <pre id="info_changelog" data-ui="info_main.txt_changelog" title="info.changelog">{{ changelog_text }}</pre>
       </div>
 
       <script>

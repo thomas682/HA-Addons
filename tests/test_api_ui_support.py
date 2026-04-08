@@ -572,6 +572,27 @@ def test_dashboard_uses_structured_data_ui_naming_scheme_samples():
     assert '`page_section.role_action`' in tmpl
 
 
+def test_dashboard_issue223_removed_tip_selection_and_moved_start_info():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert 'data-ui="tip.selection"' not in body
+    assert '<div id="analysis_start_info" class="muted" style="font-size:12px; margin-top:6px;">' in body
+    assert 'const preloadSegments = Array.isArray(serverPlan && serverPlan.segments) ? serverPlan.segments : [];' in body
+
+
+def test_non_dashboard_pages_use_structured_data_ui_samples():
+    jobs = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "jobs.html").read_text()
+    config = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "config.html").read_text()
+    stats = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "stats.html").read_text()
+    topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    assert 'data-ui="jobs_main.btn_refresh"' in jobs
+    assert 'data-ui="jobs_cache.tbl_table"' in jobs
+    assert 'data-ui="config_settings.btn_save"' in config
+    assert 'data-ui="config_settings.chk_dash_cache_enabled"' in config
+    assert 'data-ui="stats_main.btn_load"' in stats
+    assert 'data-ui="stats_table.panel_wrap"' in stats
+    assert 'data-ui="nav_main.btn_ui_picker"' in topbar
+
+
 def test_table_helpers_strip_ingress_token_from_storage_keys():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_table_cols.html").read_text()
     assert "replace(/\\/api\\/hassio_ingress\\/[0-9a-fA-F]+/g, '')" in body

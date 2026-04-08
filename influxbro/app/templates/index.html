@@ -348,7 +348,6 @@
       </div>
       <div style="margin-top:6px;">
         <div id="range_from_to" class="muted" data-ui="dashboard_selection.txt_range_bounds"></div>
-        <div id="analysis_start_info" class="muted" style="margin-top:4px;"></div>
       </div>
     </div>
     <div class="control span2" id="custom_range" style="display:none;">
@@ -401,7 +400,8 @@
           </div>
           <div id="load_status" data-ui="dashboard_caching.panel_status" title="dashboard_caching.panel_status" style="margin-top:8px;">
             <div id="load_checklist" style="font-size:12px; border:1px solid #eee; border-radius:8px; padding:8px 12px; background:#fafafa;"></div>
-            <div id="analysis_log" style="font-size:12px; border:1px solid #eee; border-radius:8px; padding:8px 12px; background:#fafafa; margin-top:6px;"></div>
+          <div id="analysis_start_info" class="muted" style="font-size:12px; margin-top:6px;"></div>
+          <div id="analysis_log" style="font-size:12px; border:1px solid #eee; border-radius:8px; padding:8px 12px; background:#fafafa; margin-top:6px;"></div>
           </div>
           <div id="analysis_cache_box" style="margin-top:14px; border:1px solid #eee; border-radius:12px; padding:12px; background:#fafafa;">
             <div style="font-weight:600; margin-bottom:6px;">Analysecache</div>
@@ -5120,10 +5120,7 @@ async function runRawOutlierSearch(){
 
   startRawOutlierUi(baseMeta);
   RAW_OUTLIER_SEARCHING = true;
-  RAW_OUTLIER_RESULTS = [];
   RAW_OUTLIER_INDEX = -1;
-  RAW_OUTLIER_MAP = {};
-  RAW_OUTLIER_SCANNED_TOTAL = 0;
   RAW_OUTLIER_ABORT = new AbortController();
 
   if($rawSearchRun) $rawSearchRun.disabled = true;
@@ -6357,6 +6354,10 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog, effective
 
   _logAnalysis('search_init', {startMs: startMs, stopMs: stopMs, spanDays: Math.round((stopMs - startMs) / 86400000)});
   console.log('[ANALYSIS] Starting search, span:', Math.round((stopMs - startMs) / 86400000), 'days');
+
+  RAW_OUTLIER_RESULTS = [];
+  RAW_OUTLIER_MAP = {};
+  RAW_OUTLIER_SCANNED_TOTAL = 0;
 
   const preloadSegments = Array.isArray(serverPlan && serverPlan.segments) ? serverPlan.segments : [];
   if(preloadSegments.length && ANALYSIS_CACHE_PLAN_CHOICE && ANALYSIS_CACHE_PLAN_CHOICE.cacheStrategy !== 'refresh'){

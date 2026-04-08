@@ -43,24 +43,24 @@
   {% include "_topbar.html" %}
   <div class="shell">
     {% include "_nav.html" %}
-    <main class="content" data-ui="logs.page" title="logs.page">
+    <main class="content" data-ui="logs_page.main" title="logs.page">
       <h2>Logs</h2>
       <div class="muted">InfluxBro Add-on Logs (Supervisor)</div>
 
-      <details class="card" open data-ui="logs.page.card" title="logs.page">
+      <details class="card" open data-ui="logs_page.section_root" title="logs.page">
         <summary><span class="ib_summary_row"><span>Logs</span><button type="button" class="ib_info_icon" data-info-title="Logs: Logs" data-info-body="Dieser Bereich zeigt Add-on- oder Supervisor-Logs, bietet Schnellfilter, Download/Export und Debug-Report-Funktionen." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
         <div class="card_body">
       <div class="row">
         <div>
           <label>Quelle</label>
-          <select id="source" data-ui="logs.source" title="logs.source">
+          <select id="source" data-ui="logs_main.select_source" title="logs.source">
             <option value="logfile" selected>Logfile</option>
             <option value="supervisor">Supervisor</option>
           </select>
         </div>
         <div>
           <label>Anzeigen</label>
-          <select id="view_profile" data-ui="logs.view_profile" title="logs.view_profile">
+          <select id="view_profile" data-ui="logs_main.select_view_profile" title="logs.view_profile">
             <option value="error">ERROR (nur Fehler)</option>
             <option value="debug">DEBUG</option>
             <option value="trace" selected>TRACE (Details)</option>
@@ -68,7 +68,7 @@
         </div>
         <div>
           <label>Log Stufe (Server)</label>
-          <select id="server_profile" data-ui="logs.server_profile" title="logs.server_profile">
+          <select id="server_profile" data-ui="logs_main.select_server_profile" title="logs.server_profile">
             <option value="error">ERROR</option>
             <option value="debug" selected>DEBUG</option>
             <option value="trace">TRACE</option>
@@ -77,20 +77,20 @@
         <div>
           <label>Influx Queries</label>
           <label style="display:flex; align-items:center; gap:8px; height:40px; padding:0 4px;">
-            <input id="server_influx_queries" type="checkbox" data-ui="logs.server_influx_queries" title="logs.server_influx_queries" />
+            <input id="server_influx_queries" type="checkbox" data-ui="logs_main.chk_server_influx_queries" title="logs.server_influx_queries" />
             <span class="muted" style="opacity:0.85;">protokollieren</span>
           </label>
         </div>
         <div>
           <label>Caching</label>
           <label style="display:flex; align-items:center; gap:8px; height:40px; padding:0 4px;">
-            <input id="server_cache_usage" type="checkbox" data-ui="logs.server_cache_usage" title="logs.server_cache_usage" />
+            <input id="server_cache_usage" type="checkbox" data-ui="logs_main.chk_server_cache_usage" title="logs.server_cache_usage" />
             <span class="muted" style="opacity:0.85;">logge Caching</span>
           </label>
         </div>
         <div>
           <label>Tail</label>
-          <select id="tail" data-ui="logs.tail" title="logs.tail">
+          <select id="tail" data-ui="logs_main.select_tail" title="logs.tail">
             <option value="200">200</option>
             <option value="1000">1000</option>
             <option value="2000" selected>2000</option>
@@ -99,7 +99,7 @@
         </div>
         <div>
           <label>&nbsp;</label>
-          <button id="refresh" data-ui="logs.refresh" title="logs.refresh" aria-label="Refresh">
+          <button id="refresh" data-ui="logs_main.btn_refresh" title="logs.refresh" aria-label="Refresh">
             <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
               <path d="M20 12a8 8 0 1 1-2.34-5.66" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
               <path d="M20 4v6h-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -108,7 +108,7 @@
         </div>
         <div>
           <label>&nbsp;</label>
-          <button id="jump_oldest" data-ui="logs.jump_oldest" title="logs.jump_oldest" aria-label="aeltester">
+          <button id="jump_oldest" data-ui="logs_main.btn_jump_oldest" title="logs.jump_oldest" aria-label="aeltester">
             <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
               <path d="M7 7v10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
               <path d="M17 17l-5-5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -117,7 +117,7 @@
         </div>
         <div>
           <label>&nbsp;</label>
-          <button id="jump_newest" data-ui="logs.jump_newest" title="logs.jump_newest" aria-label="neuster">
+          <button id="jump_newest" data-ui="logs_main.btn_jump_newest" title="logs.jump_newest" aria-label="neuster">
             <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
               <path d="M17 7v10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
               <path d="M7 7l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -126,11 +126,11 @@
         </div>
         <div>
           <label>Follow</label>
-          <input id="follow" type="checkbox" data-ui="logs.follow" title="logs.follow" aria-label="Follow" checked />
+          <input id="follow" type="checkbox" data-ui="logs_main.chk_follow" title="logs.follow" aria-label="Follow" checked />
         </div>
         <div>
           <label>&nbsp;</label>
-          <button id="copy" data-ui="logs.copy" title="logs.copy" aria-label="Copy">
+          <button id="copy" data-ui="logs_main.btn_copy" title="logs.copy" aria-label="Copy">
             <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
               <rect x="9" y="9" width="10" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
               <rect x="5" y="5" width="10" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="2" opacity="0.6"/>
@@ -139,7 +139,7 @@
         </div>
         <div>
           <label>&nbsp;</label>
-          <button id="download" data-ui="logs.download" title="logs.download" aria-label="Download">
+          <button id="download" data-ui="logs_main.btn_download" title="logs.download" aria-label="Download">
             <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
               <path d="M12 3v11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
               <path d="M8.5 10.5 12 14l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
@@ -150,7 +150,7 @@
         </div>
         <div>
           <label>&nbsp;</label>
-          <button id="export" type="button" data-ui="logs.export" title="logs.export" aria-label="Export">
+          <button id="export" type="button" data-ui="logs_main.btn_export" title="logs.export" aria-label="Export">
             <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
               <path d="M12 20V9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
               <path d="M8.5 12.5 12 9l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
@@ -161,7 +161,7 @@
         </div>
         <div>
           <label>&nbsp;</label>
-          <button id="debug_report" type="button" data-ui="logs.debug_report" title="logs.debug_report" aria-label="Debug report">
+          <button id="debug_report" type="button" data-ui="logs_main.btn_debug_report" title="logs.debug_report" aria-label="Debug report">
             <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
               <path d="M9 4h6l1.5 2.5H20l-1.7 3 .7 1.2-1.7 2.8H20l-3 5h-3.5L12 20l-1.5-1.5H7l-3-5h2.7L5 10.7l.7-1.2-1.7-3H7.5L9 4Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
               <circle cx="12" cy="10" r="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/>
@@ -171,7 +171,7 @@
         </div>
         <div>
           <label>&nbsp;</label>
-          <button id="clear" data-ui="logs.clear" title="logs.clear" aria-label="Clear view">
+          <button id="clear" data-ui="logs_main.btn_clear" title="logs.clear" aria-label="Clear view">
             <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
               <path d="M3 6h18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
               <path d="M8 6V4h8v2" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
@@ -181,21 +181,21 @@
         </div>
         <div>
           <label>Wrap</label>
-          <input id="wrap" type="checkbox" data-ui="logs.wrap" title="logs.wrap" />
+          <input id="wrap" type="checkbox" data-ui="logs_main.chk_wrap" title="logs.wrap" />
         </div>
         <div style="flex:1; min-width: 220px;">
           <label>Suche</label>
           <div class="ib_clear_row">
-            <input id="q" placeholder="Text..." data-ui="logs.search" title="logs.search" />
+            <input id="q" placeholder="Text..." data-ui="logs_main.input_search" title="logs.search" />
             <button type="button" class="ib_clear_btn" data-clear-for="q" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
           </div>
         </div>
         <div style="flex:1; min-width: 220px;">
           <label>Markieren</label>
           <div style="display:flex; gap:8px; align-items:center;">
-            <input id="q_mark" placeholder="Text markieren..." data-ui="logs.search_mark" title="logs.search_mark" />
-            <button id="q_mark_prev" type="button" data-ui="logs.search_mark_prev" title="logs.search_mark_prev">Zurueck</button>
-            <button id="q_mark_next" type="button" data-ui="logs.search_mark_next" title="logs.search_mark_next">Weiter</button>
+            <input id="q_mark" placeholder="Text markieren..." data-ui="logs_main.input_search_mark" title="logs.search_mark" />
+            <button id="q_mark_prev" type="button" data-ui="logs_main.btn_search_mark_prev" title="logs.search_mark_prev">Zurueck</button>
+            <button id="q_mark_next" type="button" data-ui="logs_main.btn_search_mark_next" title="logs.search_mark_next">Weiter</button>
           </div>
         </div>
       </div>
@@ -204,7 +204,7 @@
 
       <div class="card" id="log_card">
         <div class="logbox" id="logbox">
-          <pre id="logpre" data-ui="logs.text" title="logs.text"></pre>
+          <pre id="logpre" data-ui="logs_main.txt_text" title="logs.text"></pre>
         </div>
       </div>
         </div>

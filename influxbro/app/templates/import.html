@@ -70,34 +70,34 @@
   {% include "_topbar.html" %}
   <div class="shell">
     {% include "_nav.html" %}
-    <main class="content" data-ui="import.page" title="import.page">
+    <main class="content" data-ui="import_page.main" title="import.page">
       <h2>Import</h2>
       <div class="muted">Importiert Text-Exporte (Zeitstempel im lokalen UI-Format). Optional: vorher Backup und/oder Loeschen im Zeitraum.</div>
 
-      <details class="card" open data-ui="import.source" title="import.source">
+      <details class="card" open data-ui="import_main.section_root" title="import.source">
         <summary><span class="ib_summary_row"><span>Datei</span><button type="button" class="ib_info_icon" data-info-title="Import: Datei" data-info-body="Waehle eine Importdatei (z.B. zuvor exportierte/erzeugte Daten).\n\nHinweis:\n- Import schreibt nach InfluxDB v2.\n- Fuer grosse Dateien empfiehlt sich vorher Backup/Plan anzeigen." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
         <div class="card_body">
           <div class="grid">
             <div>
               <label>Datei (Upload)</label>
-              <input id="file" type="file" accept=".csv,.txt" data-ui="import.file" title="import.file" />
+              <input id="file" type="file" accept=".csv,.txt" data-ui="import_main.input_file" title="import.file" />
               <div class="muted">Erwartete Spalten: <code>time,value,entity_id,friendly_name,_measurement,_field</code></div>
             </div>
             <div>
               <label>Delimiter (optional)</label>
-              <input id="delimiter" value=";" maxlength="1" data-ui="import.delimiter" title="import.delimiter" />
+              <input id="delimiter" value=";" maxlength="1" data-ui="import_main.input_delimiter" title="import.delimiter" />
               <div class="muted">Wenn leer/ungueltig, wird best-effort erkannt.</div>
             </div>
           </div>
           <div class="row">
-            <div style="min-width: 220px;"><button id="analyze" data-ui="import.analyze" title="import.analyze">Analysieren</button></div>
+            <div style="min-width: 220px;"><button id="analyze" data-ui="import_main.btn_analyze" title="import.analyze">Analysieren</button></div>
             <div class="muted" id="analyze_hint" style="padding-top: 10px;"></div>
           </div>
-          <div class="status" id="analysis" style="display:none;" data-ui="import.analysis" title="import.analysis"></div>
+          <div class="status" id="analysis" style="display:none;" data-ui="import_main.panel_analysis" title="import.analysis"></div>
         </div>
       </details>
 
-      <details class="card" open data-ui="import.target" title="import.target">
+      <details class="card" open data-ui="import_main.section_root" title="import.target">
         <summary><span class="ib_summary_row"><span>Ziel</span><button type="button" class="ib_info_icon" data-info-title="Import: Ziel" data-info-body="Definiert Zielserie (measurement/field/entity_id/friendly_name) und Sicherheitsoptionen.\n\nOptionen:\n- Backup vorher (empfohlen)\n- Delete first (destruktiv, mit Browser-Bestaetigung)" ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
         <div class="card_body">
           <div class="card" style="margin-top: 0;">
@@ -107,7 +107,7 @@
                 <label class="label_row ib_sel_label"><span>_measurement</span><span id="cnt_src_measurement" class="muted"></span></label>
                 <div class="ib_sel_stack">
                   <div class="ib_clear_row">
-                    <input id="src_measurement" list="measurement_list" placeholder="required" data-ui="combine.src.measurement" title="combine.src.measurement"/>
+                    <input id="src_measurement" list="measurement_list" placeholder="required" data-ui="import_combine.input_src_measurement" title="combine.src.measurement"/>
                     <button type="button" class="ib_clear_btn" data-clear-for="src_measurement" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
                   </div>
                   <datalist id="measurement_list"></datalist>
@@ -121,7 +121,7 @@
                 <label class="label_row ib_sel_label"><span>_field</span><span id="cnt_src_field" class="muted"></span></label>
                 <div class="ib_sel_stack">
                   <div class="ib_clear_row">
-                    <input id="src_field" list="src_field_list" placeholder="value" data-ui="combine.src.field" title="combine.src.field"/>
+                    <input id="src_field" list="src_field_list" placeholder="value" data-ui="import_combine.input_src_field" title="combine.src.field"/>
                     <button type="button" class="ib_clear_btn" data-clear-for="src_field" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
                   </div>
                   <datalist id="src_field_list"></datalist>
@@ -137,7 +137,7 @@
                 <label class="label_row ib_sel_label"><span>Entity ID (entity_id)</span><span id="cnt_src_entity" class="muted"></span></label>
                 <div class="ib_sel_stack">
                   <div class="ib_clear_row">
-                    <input id="src_entity_id" list="src_entity_list" placeholder="optional" data-ui="combine.src.entity_id" title="combine.src.entity_id"/>
+                    <input id="src_entity_id" list="src_entity_list" placeholder="optional" data-ui="import_combine.input_src_entity_id" title="combine.src.entity_id"/>
                     <button type="button" class="ib_clear_btn" data-clear-for="src_entity_id" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
                   </div>
                   <datalist id="src_entity_list"></datalist>
@@ -151,7 +151,7 @@
                 <label class="label_row ib_sel_label"><span>Messwert (friendly_name)</span><span id="cnt_src_friendly" class="muted"></span></label>
                 <div class="ib_sel_stack">
                   <div class="ib_clear_row">
-                    <input id="src_friendly_name" list="src_friendly_list" placeholder="optional" data-ui="combine.src.friendly" title="combine.src.friendly"/>
+                    <input id="src_friendly_name" list="src_friendly_list" placeholder="optional" data-ui="import_combine.input_src_friendly" title="combine.src.friendly"/>
                     <button type="button" class="ib_clear_btn" data-clear-for="src_friendly_name" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
                   </div>
                   <datalist id="src_friendly_list"></datalist>
@@ -166,11 +166,11 @@
 
           <div class="grid" style="margin-top: 12px;">
             <div class="ib_chk_col">
-              <label class="ib_chk_row"><input type="checkbox" id="backup_before" checked data-ui="import.backup_before" title="import.backup_before" /><span>Vor Import Backup erstellen</span></label>
+              <label class="ib_chk_row"><input type="checkbox" id="backup_before" checked data-ui="import_main.chk_backup_before" title="import.backup_before" /><span>Vor Import Backup erstellen</span></label>
               <div class="muted">Erstellt ein Range-Backup im Import-Zeitraum (Zielserie).</div>
             </div>
             <div class="ib_chk_col">
-              <label class="ib_chk_row"><input type="checkbox" id="delete_first" data-ui="import.delete_first" title="import.delete_first" /><span>Vorher loeschen (im Import-Zeitraum)</span></label>
+              <label class="ib_chk_row"><input type="checkbox" id="delete_first" data-ui="import_main.chk_delete_first" title="import.delete_first" /><span>Vorher loeschen (im Import-Zeitraum)</span></label>
               <div class="muted">Vor dem Loeschen wird nur noch per Browser-Dialog bestaetigt.</div>
             </div>
           </div>
@@ -178,15 +178,15 @@
         </div>
       </details>
 
-      <div class="card" data-ui="import.actions" title="import.actions">
+      <div class="card" data-ui="import_main.panel_actions" title="import.actions">
         <div class="row" style="margin-top:0;">
-          <div style="min-width: 220px;"><button id="preview_transform" type="button" data-ui="import.preview_transform" title="import.preview_transform">Transformation testen</button></div>
+          <div style="min-width: 220px;"><button id="preview_transform" type="button" data-ui="import_main.btn_preview_transform" title="import.preview_transform">Transformation testen</button></div>
           <div class="muted" id="preview_hint" style="padding-top: 10px;"></div>
         </div>
-        <div class="status" id="transform_status" style="display:none;" data-ui="import.transform_status" title="import.transform_status"></div>
-        <div class="status" id="transform_preview" style="display:none;" data-ui="import.transform_preview" title="import.transform_preview"></div>
+        <div class="status" id="transform_status" style="display:none;" data-ui="import_main.panel_transform_status" title="import.transform_status"></div>
+        <div class="status" id="transform_preview" style="display:none;" data-ui="import_main.panel_transform_preview" title="import.transform_preview"></div>
         <div class="row" style="margin-top:0;">
-          <div style="min-width: 220px;"><button id="run" data-ui="import.run" title="import.run">Import starten</button></div>
+          <div style="min-width: 220px;"><button id="run" data-ui="import_main.btn_run" title="import.run">Import starten</button></div>
           <div class="muted" id="run_hint" style="padding-top: 10px;"></div>
         </div>
         <div id="err" class="err"></div>

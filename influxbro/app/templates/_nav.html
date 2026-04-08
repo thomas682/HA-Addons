@@ -45,99 +45,99 @@
     #influxbro_status_panel .item { white-space: nowrap; min-width: max-content; }
     #influxbro_status_panel .last { margin-top: 10px; font-size: var(--ui-status-font); overflow: auto; max-height: 84px; }
   </style>
-  <a class="nav_item {{ 'active' if nav == 'dashboard' else '' }}" href="./" data-ui="nav.dashboard" title="nav.dashboard">
+  <a class="nav_item {{ 'active' if nav == 'dashboard' else '' }}" href="./" data-ui="nav_main.panel_dashboard" title="nav.dashboard">
     <span class="ico" aria-hidden="true">D</span>
     <span>Dashboard</span>
   </a>
 
-  <a class="nav_item {{ 'active' if nav == 'stats' else '' }}" href="./stats" data-ui="nav.stats" title="nav.stats">
+  <a class="nav_item {{ 'active' if nav == 'stats' else '' }}" href="./stats" data-ui="nav_main.panel_stats" title="nav.stats">
     <span class="ico" aria-hidden="true">T</span>
     <span>Statistik</span>
   </a>
 
-  <a class="nav_item {{ 'active' if nav == 'quality' else '' }}" href="./quality" data-ui="nav.quality" title="nav.quality">
+  <a class="nav_item {{ 'active' if nav == 'quality' else '' }}" href="./quality" data-ui="nav_main.panel_quality" title="nav.quality">
     <span class="ico" aria-hidden="true">Q</span>
     <span>Datenqualitaet</span>
   </a>
 
-  <a class="nav_item {{ 'active' if nav == 'monitor' else '' }}" href="./monitor" data-ui="nav.monitor" title="nav.monitor">
+  <a class="nav_item {{ 'active' if nav == 'monitor' else '' }}" href="./monitor" data-ui="nav_main.panel_monitor" title="nav.monitor">
     <span class="ico" aria-hidden="true">O</span>
     <span>Monitor</span>
   </a>
 
-  <a class="nav_item {{ 'active' if nav == 'backup' else '' }}" href="./backup" data-ui="nav.backup" title="nav.backup">
+  <a class="nav_item {{ 'active' if nav == 'backup' else '' }}" href="./backup" data-ui="nav_main.panel_backup" title="nav.backup">
     <span class="ico" aria-hidden="true">B</span>
     <span>Backup</span>
   </a>
 
-  <a class="nav_item {{ 'active' if nav == 'restore' else '' }}" href="./restore" data-ui="nav.restore" title="nav.restore">
+  <a class="nav_item {{ 'active' if nav == 'restore' else '' }}" href="./restore" data-ui="nav_main.panel_restore" title="nav.restore">
     <span class="ico" aria-hidden="true">R</span>
     <span>Restore</span>
   </a>
 
-  <a class="nav_item {{ 'active' if nav == 'combine' else '' }}" href="./combine" data-ui="nav.combine" title="nav.combine">
+  <a class="nav_item {{ 'active' if nav == 'combine' else '' }}" href="./combine" data-ui="nav_main.panel_combine" title="nav.combine">
     <span class="ico" aria-hidden="true">C</span>
     <span>Kombinieren</span>
   </a>
 
-  <a class="nav_item {{ 'active' if nav == 'export' else '' }}" href="./export" data-ui="nav.export" title="nav.export">
+  <a class="nav_item {{ 'active' if nav == 'export' else '' }}" href="./export" data-ui="nav_main.panel_export" title="nav.export">
     <span class="ico" aria-hidden="true">X</span>
     <span>Export</span>
   </a>
 
-  <a class="nav_item {{ 'active' if nav == 'import' else '' }}" href="./import" data-ui="nav.import" title="nav.import">
+  <a class="nav_item {{ 'active' if nav == 'import' else '' }}" href="./import" data-ui="nav_main.panel_import" title="nav.import">
     <span class="ico" aria-hidden="true">M</span>
     <span>Import</span>
   </a>
 
-  <a class="nav_item {{ 'active' if nav == 'logs' else '' }}" href="./logs" data-ui="nav.logs" title="nav.logs">
+  <a class="nav_item {{ 'active' if nav == 'logs' else '' }}" href="./logs" data-ui="nav_main.panel_logs" title="nav.logs">
     <span class="ico" aria-hidden="true">L</span>
     <span>Logs</span>
   </a>
 
-  <a class="nav_item {{ 'active' if nav == 'jobs' else '' }}" href="./jobs" data-ui="nav.jobs" title="nav.jobs">
+  <a class="nav_item {{ 'active' if nav == 'jobs' else '' }}" href="./jobs" data-ui="nav_main.panel_jobs" title="nav.jobs">
     <span class="ico" aria-hidden="true">J</span>
     <span>Jobs &amp; Cache</span>
   </a>
 
-  <a class="nav_item {{ 'active' if nav == 'history' else '' }}" href="./history" data-ui="nav.history" title="nav.history">
+  <a class="nav_item {{ 'active' if nav == 'history' else '' }}" href="./history" data-ui="nav_main.panel_history" title="nav.history">
     <span class="ico" aria-hidden="true">H</span>
     <span>History</span>
   </a>
 
-  <a class="nav_item {{ 'active' if nav == 'dbinfo' else '' }}" href="./dbinfo" data-ui="nav.dbinfo" title="nav.dbinfo">
+  <a class="nav_item {{ 'active' if nav == 'dbinfo' else '' }}" href="./dbinfo" data-ui="nav_main.panel_dbinfo" title="nav.dbinfo">
     <span class="ico" aria-hidden="true">I</span>
     <span>Diagnose</span>
   </a>
 
-  <a class="nav_item {{ 'active' if nav == 'changelog' else '' }}" href="./info" data-ui="nav.info" title="nav.info">
+  <a class="nav_item {{ 'active' if nav == 'changelog' else '' }}" href="./info" data-ui="nav_main.panel_info" title="nav.info">
     <span class="ico" aria-hidden="true">i</span>
     <span>Changelog</span>
   </a>
 
-  <a class="nav_item {{ 'active' if nav == 'manual' else '' }}" href="./manual" data-ui="nav.manual" title="nav.manual">
+  <a class="nav_item {{ 'active' if nav == 'manual' else '' }}" href="./manual" data-ui="nav_main.panel_manual" title="nav.manual">
     <span class="ico" aria-hidden="true">?</span>
     <span>Handbuch</span>
   </a>
 
-  <a class="nav_item {{ 'active' if nav == 'profiles' else '' }}" href="./profiles" data-ui="nav.profiles" title="nav.profiles">
+  <a class="nav_item {{ 'active' if nav == 'profiles' else '' }}" href="./profiles" data-ui="nav_main.panel_profiles" title="nav.profiles">
     <span class="ico" aria-hidden="true">P</span>
     <span>Profilverwaltung</span>
   </a>
 
-  <a class="nav_item {{ 'active' if nav == 'settings' else '' }}" href="./config" data-ui="nav.settings" title="nav.settings">
+  <a class="nav_item {{ 'active' if nav == 'settings' else '' }}" href="./config" data-ui="nav_main.panel_settings" title="nav.settings">
     <span class="ico" aria-hidden="true">S</span>
     <span>Einstellungen</span>
   </a>
 
-  <div id="influxbro_status_panel" data-ui="nav.status" title="nav.status">
+  <div id="influxbro_status_panel" data-ui="nav_main.panel_status" title="nav.status">
     <div class="title">Status</div>
     <div class="row" style="margin-top: 8px; justify-content:flex-start; gap: 8px;">
-      <button id="influxbro_status_refresh" type="button" style="cursor:pointer; padding: 8px 10px; height: 32px;" data-ui="nav.status.refresh" title="nav.status.refresh">Refresh</button>
+      <button id="influxbro_status_refresh" type="button" style="cursor:pointer; padding: 8px 10px; height: 32px;" data-ui="nav_status.btn_refresh" title="nav.status.refresh">Refresh</button>
       <div class="muted" style="font-size: var(--ui-status-font); opacity: 0.75;">Loescht abgeschlossene Eintraege.</div>
     </div>
     <div class="box">
-      <div class="row" id="influxbro_sysinfo" style="display:none; margin-bottom: 8px;" data-ui="nav.sysinfo" title="nav.sysinfo">
+      <div class="row" id="influxbro_sysinfo" style="display:none; margin-bottom: 8px;" data-ui="nav_main.panel_sysinfo" title="nav.sysinfo">
         <span class="t" id="influxbro_sysinfo_txt" style="font-size: var(--ui-status-font); opacity: 0.85; white-space: normal;"></span>
       </div>
       <div class="row" id="influxbro_status_head" style="display:none;">

@@ -110,33 +110,33 @@
   {% include "_topbar.html" %}
   <div class="shell">
     {% include "_nav.html" %}
-    <main class="content" data-ui="restore.page" title="restore.page">
+    <main class="content" data-ui="restore_page.main" title="restore.page">
        <h2>Restore</h2>
        <div class="muted">Quelle: Backup auswaehlen. Ziel: Messwert auswaehlen. Restore schreibt Daten (vorhandene Punkte koennen ueberschrieben werden).</div>
 
        <div class="page_grid">
 
-          <details class="card" open data-ui="restore.source" title="restore.source" style="--restore_visible_rows: {{ (cfg.get('ui_restore_visible_rows') or 24) | int }};">
+          <details class="card" open data-ui="restore_main.section_root" title="restore.source" style="--restore_visible_rows: {{ (cfg.get('ui_restore_visible_rows') or 24) | int }};">
             <summary><span class="ib_summary_row"><span>Quelle (Backup)</span><button type="button" class="ib_info_icon" data-info-title="Restore: Quelle" data-info-body="Waehle genau ein Backup als Quelle fuer den Restore aus." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
             <div class="card_body">
-            <div class="table_wrap" data-ui="restore.table.wrap" title="restore.table.wrap">
+            <div class="table_wrap" data-ui="restore_table.panel_wrap" title="restore.table.wrap">
                <div class="table_title">Backupliste (Quelle)</div>
-              <div class="table_head" data-ui="restore.table.head" title="restore.table.head">
-                <div class="tbl_actions" data-ui="restore.table.actions" title="restore.table.actions">
+              <div class="table_head" data-ui="restore_table.panel_head" title="restore.table.head">
+                <div class="tbl_actions" data-ui="restore_table.panel_actions" title="restore.table.actions">
                   <div style="min-width: 320px; flex:1;">
                     <label>Volltextsuche</label>
                     <div class="row" style="margin-top:0; align-items:center; gap: 8px;">
                       <div class="ib_clear_row" style="flex:1; min-width:220px;">
-                        <input id="q_backup" placeholder="created_at, name, measurement, field..." data-ui="restore.backup_search" title="restore.backup_search" style="flex:1; min-width: 220px;" />
+                        <input id="q_backup" placeholder="created_at, name, measurement, field..." data-ui="restore_main.input_backup_search" title="restore.backup_search" style="flex:1; min-width: 220px;" />
                         <button type="button" class="ib_clear_btn" data-clear-for="q_backup" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
                       </div>
-                      <button id="q_backup_all" class="btn_sm" data-ui="restore.search_all" title="restore.search_all" style="height:34px; padding:8px 10px;">Alle</button>
-                      <button id="q_backup_from_dash" class="btn_sm" data-ui="restore.search_from_dash" title="restore.search_from_dash" style="height:34px; padding:8px 10px;">aus Dashboardauswahl</button>
+                      <button id="q_backup_all" class="btn_sm" data-ui="restore_main.btn_search_all" title="restore.search_all" style="height:34px; padding:8px 10px;">Alle</button>
+                      <button id="q_backup_from_dash" class="btn_sm" data-ui="restore_main.btn_search_from_dash" title="restore.search_from_dash" style="height:34px; padding:8px 10px;">aus Dashboardauswahl</button>
                     </div>
                   </div>
-                  <button id="reload" data-ui="restore.reload" title="restore.reload" aria-label="Liste aktualisieren"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 12a8 8 0 1 1-2.34-5.66" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M20 4v6h-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-                  <button id="backup_download" class="btn_sm" data-ui="restore.backup_download" title="restore.backup_download" style="height:34px; padding:8px 10px;"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="vertical-align:middle; margin-right:6px;"><path d="M12 3v11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M8.5 10.5 12 14l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 18.5h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M6.5 15.5v3M17.5 15.5v3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Download</button>
-                  <button id="restore_autowidth" class="btn_sm" data-ui="restore.autowidth" title="restore.autowidth" aria-label="Spaltenbreite automatisch" style="height:34px; padding:8px 10px;">
+                  <button id="reload" data-ui="restore_main.btn_reload" title="restore.reload" aria-label="Liste aktualisieren"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 12a8 8 0 1 1-2.34-5.66" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M20 4v6h-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                  <button id="backup_download" class="btn_sm" data-ui="restore_main.btn_backup_download" title="restore.backup_download" style="height:34px; padding:8px 10px;"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="vertical-align:middle; margin-right:6px;"><path d="M12 3v11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M8.5 10.5 12 14l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 18.5h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M6.5 15.5v3M17.5 15.5v3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Download</button>
+                  <button id="restore_autowidth" class="btn_sm" data-ui="restore_main.btn_autowidth" title="restore.autowidth" aria-label="Spaltenbreite automatisch" style="height:34px; padding:8px 10px;">
                     <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                       <path d="M5 5v14M19 5v14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                       <path d="M8 12h8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -144,7 +144,7 @@
                       <path d="M14 10l2 2-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                   </button>
-                  <button id="restore_windowwidth" class="btn_sm" data-ui="restore.windowwidth" title="restore.windowwidth" aria-label="Fensterbreite" style="height:34px; padding:8px 10px;">
+                  <button id="restore_windowwidth" class="btn_sm" data-ui="restore_main.btn_windowwidth" title="restore.windowwidth" aria-label="Fensterbreite" style="height:34px; padding:8px 10px;">
                     <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                       <rect x="4" y="6" width="16" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
                       <path d="M12 12H6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -153,14 +153,14 @@
                       <path d="M18 12l-2-2M18 12l-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                   </button>
-                  <label style="display:flex; align-items:center; gap: 6px; padding-top: 6px;"><input type="checkbox" id="restore_wrap" data-ui="restore.wrap" title="restore.wrap"/>Umbruch</label>
-                  <label style="display:flex; align-items:center; gap: 6px; padding-top: 6px;"><input type="checkbox" id="restore_colfilter" data-ui="restore.colfilter" title="restore.colfilter"/>Spaltenfilter</label>
+                  <label style="display:flex; align-items:center; gap: 6px; padding-top: 6px;"><input type="checkbox" id="restore_wrap" data-ui="restore_main.chk_wrap" title="restore.wrap"/>Umbruch</label>
+                  <label style="display:flex; align-items:center; gap: 6px; padding-top: 6px;"><input type="checkbox" id="restore_colfilter" data-ui="restore_main.chk_colfilter" title="restore.colfilter"/>Spaltenfilter</label>
                 </div>
-                <div class="muted" id="src_info" data-ui="restore.src_info" title="restore.src_info"></div>
+                <div class="muted" id="src_info" data-ui="restore_main.panel_src_info" title="restore.src_info"></div>
               </div>
 
-              <div class="table_box" id="restore_box" data-ui="restore.table_box" title="restore.table_box">
-                <table id="restore_tbl" class="list_tbl ib_tbl" data-ui="restore.backup_table" title="restore.backup_table">
+              <div class="table_box" id="restore_box" data-ui="restore_main.panel_table_box" title="restore.table_box">
+                <table id="restore_tbl" class="list_tbl ib_tbl" data-ui="restore_main.tbl_backup_table" title="restore.backup_table">
                   <thead>
                     <tr>
                       <th style="width: 34px;">Ausw.</th>
@@ -185,27 +185,27 @@
             </div>
         </details>
 
-       <details class="card" open data-ui="restore.target" title="restore.target">
+       <details class="card" open data-ui="restore_main.section_root" title="restore.target">
           <summary><span class="ib_summary_row"><span>Ziel (Messwert)</span><button type="button" class="ib_info_icon" data-info-title="Restore: Ziel" data-info-body="Hier waehlst du die Zielserie fuer den Restore und startest die Rueckschreibung." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
           <div class="card_body">
-          <div class="status" id="plan_info" data-ui="restore.plan" title="restore.plan" style="margin-top:8px; border: 1px dashed #ddd; border-radius: 12px; padding: 10px 12px; background: #fafafa; font-size: 12px; white-space: pre-wrap;"></div>
+          <div class="status" id="plan_info" data-ui="restore_main.panel_plan" title="restore.plan" style="margin-top:8px; border: 1px dashed #ddd; border-radius: 12px; padding: 10px 12px; background: #fafafa; font-size: 12px; white-space: pre-wrap;"></div>
 
-           <div class="row" style="margin-top: 8px;" data-ui="restore.plan_query" title="restore.plan_query">
+           <div class="row" style="margin-top: 8px;" data-ui="restore_main.panel_plan_query" title="restore.plan_query">
              <label style="display:flex; gap: 8px; align-items:center; height:40px; padding:0 4px;">
-               <input id="show_query" type="checkbox" data-ui="restore.show_query" title="restore.show_query" />
+               <input id="show_query" type="checkbox" data-ui="restore_main.chk_show_query" title="restore.show_query" />
                <span class="muted" style="opacity:0.85;">Query anzeigen</span>
              </label>
            </div>
-           <pre id="plan_query" style="display:none; margin:6px 0 0 0; padding:10px 12px; border:1px solid #eee; border-radius:12px; background:#fafafa; white-space:pre; overflow:auto; max-height: 80vh; min-height: 90px;" data-ui="restore.query" title="restore.query"></pre>
+           <pre id="plan_query" style="display:none; margin:6px 0 0 0; padding:10px 12px; border:1px solid #eee; border-radius:12px; background:#fafafa; white-space:pre; overflow:auto; max-height: 80vh; min-height: 90px;" data-ui="restore_main.txt_query" title="restore.query"></pre>
 
-            <div class="row" style="margin-top: 8px; justify-content:flex-start; align-items:center;" data-ui="restore.copy_source" title="restore.copy_source">
+            <div class="row" style="margin-top: 8px; justify-content:flex-start; align-items:center;" data-ui="restore_main.panel_copy_source" title="restore.copy_source">
               <label style="display:flex; gap: 8px; align-items:center; height:40px; padding:0 4px;">
                 <input id="tgt_same_as_src" type="checkbox" checked />
                 <span class="muted" style="opacity:0.9;">Zieldaten = Quelldaten</span>
               </label>
-              <button id="source_to_target" data-ui="restore.source_to_target" title="restore.source_to_target" class="btn_sm" style="height:34px; padding:8px 10px;">Quelle -> Ziel</button>
+              <button id="source_to_target" data-ui="restore_main.btn_source_to_target" title="restore.source_to_target" class="btn_sm" style="height:34px; padding:8px 10px;">Quelle -> Ziel</button>
             </div>
-          <details id="selection_details" open data-ui="section.selection" title="section.selection" style="margin-top: 10px;">
+          <details id="selection_details" open data-ui="restore_selection.section_root" title="section.selection" style="margin-top: 10px;">
             <summary><span class="ib_summary_row"><span>Auswahl</span><button type="button" class="ib_info_icon" data-info-title="Restore: Auswahl" data-info-body="Hier waehlst du das Backup (Quelle) und die Zielserie fuer den Restore.\n\nQuelle:\n- Backupliste: selektiere genau 1 Backup (ZIP).\n- Volltextsuche hilft beim Finden; 'aus Dashboardauswahl' setzt den Filter.\n\nZiel:\n- Checkbox 'Zieldaten = Quelldaten' (default) uebernimmt Quelle -> Ziel automatisch.\n- Wenn deaktiviert, kannst du Zielmeasurement/field/entity_id/friendly_name frei setzen.\n\nRestore:\n- Plant/zeigt Query und schreibt Line Protocol in die Zielserie (Upsert)." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
 
            <div class="grid">
@@ -213,7 +213,7 @@
                  <label class="label_row ib_sel_label"><span>Einheit (_measurement)</span><span id="cnt_measurement_filter" class="muted"></span></label>
                  <div class="ib_sel_stack">
                     <div class="ib_clear_row">
-                      <input id="measurement_filter" list="measurement_list" placeholder="optional" data-ui="restore.measurement_filter" title="restore.measurement_filter" />
+                      <input id="measurement_filter" list="measurement_list" placeholder="optional" data-ui="restore_main.input_measurement_filter" title="restore.measurement_filter" />
                       <button type="button" class="ib_clear_btn" data-clear-for="measurement_filter" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
                     </div>
                    <datalist id="measurement_list"></datalist>
@@ -227,7 +227,7 @@
                 <label class="label_row ib_sel_label"><span>Messwert (Klartext / friendly_name)</span><span id="cnt_friendly_name" class="muted"></span></label>
                 <div class="ib_sel_stack">
                   <div class="ib_clear_row">
-                    <input id="friendly_name" list="friendly_list" placeholder="optional" data-ui="restore.friendly_name" title="restore.friendly_name" />
+                    <input id="friendly_name" list="friendly_list" placeholder="optional" data-ui="restore_main.input_friendly_name" title="restore.friendly_name" />
                     <button type="button" class="ib_clear_btn" data-clear-for="friendly_name" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
                   </div>
                   <datalist id="friendly_list"></datalist>
@@ -241,7 +241,7 @@
                  <label class="label_row ib_sel_label"><span>Entity ID (entity_id)</span><span id="cnt_entity_id" class="muted"></span></label>
                  <div class="ib_sel_stack">
                     <div class="ib_clear_row">
-                      <input id="entity_id" list="entity_list" placeholder="optional" data-ui="restore.entity_id" title="restore.entity_id" />
+                      <input id="entity_id" list="entity_list" placeholder="optional" data-ui="restore_main.input_entity_id" title="restore.entity_id" />
                       <button type="button" class="ib_clear_btn" data-clear-for="entity_id" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
                     </div>
                    <datalist id="entity_list"></datalist>
@@ -253,16 +253,16 @@
               </div>
               <div>
                 <label>Ziel (aufgeloest)</label>
-                <textarea id="sel" readonly data-ui="restore.selection" title="restore.selection"></textarea>
+                <textarea id="sel" readonly data-ui="restore_main.txt_selection" title="restore.selection"></textarea>
               </div>
             </div>
 
-            <div class="row" data-ui="restore.time" title="restore.time">
+            <div class="row" data-ui="restore_main.panel_time" title="restore.time">
               <div style="min-width: 220px; flex:1;">
                 <label class="label_row ib_sel_label"><span>Zeitfilter</span><span><span id="cnt_restore_range" class="muted"></span> <span id="restore_range_bounds" class="muted"></span></span></label>
                 <div class="ib_sel_stack">
                   <div class="ib_clear_row">
-                    <select id="range" data-ui="restore.range" title="restore.range">
+                    <select id="range" data-ui="restore_main.select_range" title="restore.range">
                     <option value="all" selected>Alle Werte</option>
                     <option value="custom">Benutzerdefiniert…</option>
                     </select>
@@ -277,27 +277,27 @@
               <div id="custom" style="min-width: 320px; display:none;">
                 <label>Von/Bis (lokal)</label>
                 <div class="row" style="margin-top:0;">
-                  <input id="start" type="datetime-local" data-ui="restore.start" title="restore.start" />
-                  <input id="stop" type="datetime-local" data-ui="restore.stop" title="restore.stop" />
+                  <input id="start" type="datetime-local" data-ui="restore_main.input_start" title="restore.start" />
+                  <input id="stop" type="datetime-local" data-ui="restore_main.input_stop" title="restore.stop" />
                 </div>
               </div>
             </div>
           </details>
 
-            <div class="row" data-ui="restore.actions" title="restore.actions" style="justify-content:flex-start;">
+            <div class="row" data-ui="restore_main.panel_actions" title="restore.actions" style="justify-content:flex-start;">
               <div>
-                <button id="run" data-ui="restore.run" title="restore.run">Restore ausfuehren</button>
+                <button id="run" data-ui="restore_main.btn_run" title="restore.run">Restore ausfuehren</button>
               </div>
-              <div class="muted" style="min-width: 320px; flex:1; padding-top: 6px;" data-ui="restore.write_hint" title="restore.write_hint">Hinweis: Restore schreibt Daten (vorhandene Punkte koennen ueberschrieben werden).</div>
+              <div class="muted" style="min-width: 320px; flex:1; padding-top: 6px;" data-ui="restore_main.panel_write_hint" title="restore.write_hint">Hinweis: Restore schreibt Daten (vorhandene Punkte koennen ueberschrieben werden).</div>
             </div>
 
-            <div id="run_status" data-ui="restore.run_status" title="restore.run_status">
+            <div id="run_status" data-ui="restore_main.panel_run_status" title="restore.run_status">
               <span id="run_spinner" aria-hidden="true"></span>
               <span id="run_status_txt">Restore laeuft...</span>
               <span id="run_status_time"></span>
             </div>
 
-            <details id="run_details" class="card" style="display:none; margin-top: 10px;" data-ui="restore.run_details" title="restore.run_details">
+            <details id="run_details" class="card" style="display:none; margin-top: 10px;" data-ui="restore_main.section_root" title="restore.run_details">
               <summary><span class="ib_summary_row"><span>Restore Details</span><button type="button" class="ib_info_icon" data-info-title="Restore: Details" data-info-body="Zeigt Details des laufenden/letzten Restore-Jobs.\n\nEnthaelt:\n- Meta-Infos (Quelle/Ziel/Zeitraum).\n- Query/Write-Aktion (best-effort).\n- Vorschau der geschriebenen Line-Protocol Zeilen." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
               <div class="card_body">
                 <div class="muted" id="run_details_meta" style="margin-top:6px;"></div>
@@ -312,16 +312,16 @@
               </div>
         </details>
 
-       <div class="card" data-ui="restore.fullrestore.card" title="restore.fullrestore.card" style="--restore_visible_rows: {{ (cfg.get('ui_restore_visible_rows') or 24) | int }};">
-          <details id="fullrestore_details" data-ui="restore.fullrestore.details" title="restore.fullrestore.details">
+       <div class="card" data-ui="restore_fullrestore.panel_card" title="restore.fullrestore.card" style="--restore_visible_rows: {{ (cfg.get('ui_restore_visible_rows') or 24) | int }};">
+          <details id="fullrestore_details" data-ui="restore_fullrestore.section_root" title="restore.fullrestore.details">
               <summary><span class="ib_summary_row"><span>FullRestore (InfluxDB komplett)</span><button type="button" class="ib_info_icon" data-info-title="Restore: FullRestore" data-info-body="Stellt ein FullBackup wieder her (InfluxDB komplett).\n\nformat=lp:\n- Schreibt Line Protocol in die konfigurierte InfluxDB (kompatibel).\n\nformat=native_v2:\n- Nutzt influx restore.\n- Zielbucket optional (new-bucket).\n- Ueberschreiben loescht Zielbucket vorher und fragt nur noch per Browser-Dialog nach einer Bestaetigung." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
              <div class="muted" style="margin-top: 6px;">Stellt ein FullBackup wieder her (v1: database, v2: bucket). Achtung: ueberschreibt Daten.</div>
-             <div class="muted" id="fullrestore_native_support" data-ui="restore.fullrestore.native_support" title="restore.fullrestore.native_support" style="margin-top:4px;"></div>
+             <div class="muted" id="fullrestore_native_support" data-ui="restore_fullrestore.panel_native_support" title="restore.fullrestore.native_support" style="margin-top:4px;"></div>
 
-            <div class="row" style="align-items:flex-start;" data-ui="restore.fullrestore.native" title="restore.fullrestore.native">
+            <div class="row" style="align-items:flex-start;" data-ui="restore_fullrestore.panel_native" title="restore.fullrestore.native">
               <div style="min-width: 320px; flex:1;">
                 <label>Zielbucket (nur Native v2)</label>
-                <input id="native_target_bucket" list="native_bucket_list" placeholder="leer = wie Quelle" data-ui="restore.fullrestore.target_bucket" title="restore.fullrestore.target_bucket" />
+                <input id="native_target_bucket" list="native_bucket_list" placeholder="leer = wie Quelle" data-ui="restore_fullrestore.input_target_bucket" title="restore.fullrestore.target_bucket" />
                 <datalist id="native_bucket_list"></datalist>
                 <div class="muted" style="margin-top:4px;">Hinweis: <code>influx restore</code> kann nicht in existierende Buckets schreiben. Nutze neues Ziel oder aktiviere <code>Ueberschreiben</code> (loescht Zielbucket vorher).</div>
               </div>
@@ -338,25 +338,25 @@
               </div>
             </div>
 
-           <div class="row" style="align-items:flex-start;" data-ui="restore.fullrestore.actions" title="restore.fullrestore.actions">
-              <div><label>&nbsp;</label><button id="fullrestore_reload" data-ui="restore.fullrestore.reload" title="restore.fullrestore.reload" aria-label="Liste aktualisieren"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 12a8 8 0 1 1-2.34-5.66" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M20 4v6h-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
-             <div><label>&nbsp;</label><button id="fullrestore_download" class="btn_sm" data-ui="restore.fullrestore.download" title="restore.fullrestore.download"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="vertical-align:middle; margin-right:6px;"><path d="M12 3v11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M8.5 10.5 12 14l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 18.5h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M6.5 15.5v3M17.5 15.5v3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Download</button></div>
-             <div><label>&nbsp;</label><button id="fullrestore_delete" data-ui="restore.fullrestore.delete" title="restore.fullrestore.delete">FullBackup loeschen</button></div>
-             <div><label>&nbsp;</label><button id="fullrestore_run" data-ui="restore.fullrestore.run" title="restore.fullrestore.run">FullRestore ausfuehren</button></div>
-             <div><label>&nbsp;</label><button id="fullrestore_cancel" class="btn_sm" data-ui="restore.fullrestore.cancel" title="restore.fullrestore.cancel" disabled>Abbruch</button></div>
+           <div class="row" style="align-items:flex-start;" data-ui="restore_fullrestore.panel_actions" title="restore.fullrestore.actions">
+              <div><label>&nbsp;</label><button id="fullrestore_reload" data-ui="restore_fullrestore.btn_reload" title="restore.fullrestore.reload" aria-label="Liste aktualisieren"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 12a8 8 0 1 1-2.34-5.66" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M20 4v6h-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+             <div><label>&nbsp;</label><button id="fullrestore_download" class="btn_sm" data-ui="restore_fullrestore.btn_download" title="restore.fullrestore.download"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="vertical-align:middle; margin-right:6px;"><path d="M12 3v11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M8.5 10.5 12 14l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 18.5h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M6.5 15.5v3M17.5 15.5v3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Download</button></div>
+             <div><label>&nbsp;</label><button id="fullrestore_delete" data-ui="restore_fullrestore.btn_delete" title="restore.fullrestore.delete">FullBackup loeschen</button></div>
+             <div><label>&nbsp;</label><button id="fullrestore_run" data-ui="restore_fullrestore.btn_run" title="restore.fullrestore.run">FullRestore ausfuehren</button></div>
+             <div><label>&nbsp;</label><button id="fullrestore_cancel" class="btn_sm" data-ui="restore_fullrestore.btn_cancel" title="restore.fullrestore.cancel" disabled>Abbruch</button></div>
            </div>
 
-           <div id="fullrestore_status" data-ui="restore.fullrestore.status" title="restore.fullrestore.status">
+           <div id="fullrestore_status" data-ui="restore_fullrestore.panel_status" title="restore.fullrestore.status">
              <span id="fullrestore_spinner" aria-hidden="true"></span>
              <span id="fullrestore_status_txt">FullRestore laeuft...</span>
              <span id="fullrestore_status_time"></span>
            </div>
 
-           <div class="table_wrap" data-ui="restore.fullrestore.table.wrap" title="restore.fullrestore.table.wrap">
+           <div class="table_wrap" data-ui="restore_fullrestore.panel_table_wrap" title="restore.fullrestore.table.wrap">
               <div class="table_title">FullBackupliste (Quelle)</div>
-             <div class="table_head" data-ui="restore.fullrestore.table.head" title="restore.fullrestore.table.head">
-               <div class="tbl_actions" data-ui="restore.fullrestore.table.actions" title="restore.fullrestore.table.actions">
-                 <button id="fullrestore_autowidth" class="btn_sm" data-ui="restore.fullrestore.autowidth" title="restore.fullrestore.autowidth" aria-label="Spaltenbreite automatisch" style="height:34px; padding:8px 10px;">
+             <div class="table_head" data-ui="restore_fullrestore.panel_table_head" title="restore.fullrestore.table.head">
+               <div class="tbl_actions" data-ui="restore_fullrestore.panel_table_actions" title="restore.fullrestore.table.actions">
+                 <button id="fullrestore_autowidth" class="btn_sm" data-ui="restore_fullrestore.btn_autowidth" title="restore.fullrestore.autowidth" aria-label="Spaltenbreite automatisch" style="height:34px; padding:8px 10px;">
                    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                      <path d="M5 5v14M19 5v14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                      <path d="M8 12h8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -364,7 +364,7 @@
                      <path d="M14 10l2 2-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                    </svg>
                  </button>
-                 <button id="fullrestore_windowwidth" class="btn_sm" data-ui="restore.fullrestore.windowwidth" title="restore.fullrestore.windowwidth" aria-label="Fensterbreite" style="height:34px; padding:8px 10px;">
+                 <button id="fullrestore_windowwidth" class="btn_sm" data-ui="restore_fullrestore.btn_windowwidth" title="restore.fullrestore.windowwidth" aria-label="Fensterbreite" style="height:34px; padding:8px 10px;">
                    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                      <rect x="4" y="6" width="16" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
                      <path d="M12 12H6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -373,14 +373,14 @@
                      <path d="M18 12l-2-2M18 12l-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                    </svg>
                  </button>
-                 <label style="display:flex; align-items:center; gap: 6px; padding-top: 6px;"><input type="checkbox" id="fullrestore_wrap" data-ui="restore.fullrestore.wrap" title="restore.fullrestore.wrap"/>Umbruch</label>
-                 <label style="display:flex; align-items:center; gap: 6px; padding-top: 6px;"><input type="checkbox" id="fullrestore_colfilter" data-ui="restore.fullrestore.colfilter" title="restore.fullrestore.colfilter"/>Spaltenfilter</label>
+                 <label style="display:flex; align-items:center; gap: 6px; padding-top: 6px;"><input type="checkbox" id="fullrestore_wrap" data-ui="restore_fullrestore.chk_wrap" title="restore.fullrestore.wrap"/>Umbruch</label>
+                 <label style="display:flex; align-items:center; gap: 6px; padding-top: 6px;"><input type="checkbox" id="fullrestore_colfilter" data-ui="restore_fullrestore.chk_colfilter" title="restore.fullrestore.colfilter"/>Spaltenfilter</label>
                </div>
-               <div class="muted" id="fullrestore_info" data-ui="restore.fullrestore.info" title="restore.fullrestore.info"></div>
+               <div class="muted" id="fullrestore_info" data-ui="restore_fullrestore.panel_info" title="restore.fullrestore.info"></div>
              </div>
 
-             <div class="table_box" id="fullrestore_box" data-ui="restore.fullrestore.table_box" title="restore.fullrestore.table_box">
-               <table id="fullrestore_tbl" class="list_tbl ib_tbl" data-ui="restore.fullrestore.table" title="restore.fullrestore.table">
+             <div class="table_box" id="fullrestore_box" data-ui="restore_fullrestore.panel_table_box" title="restore.fullrestore.table_box">
+               <table id="fullrestore_tbl" class="list_tbl ib_tbl" data-ui="restore_fullrestore.tbl_table" title="restore.fullrestore.table">
                  <thead>
                    <tr>
                      <th style="width: 34px;">Ausw.</th>

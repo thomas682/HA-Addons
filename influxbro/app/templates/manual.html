@@ -57,27 +57,27 @@
   {% include "_topbar.html" %}
   <div class="shell">
     {% include "_nav.html" %}
-    <main class="content" data-ui="manual.page" title="manual.page">
+    <main class="content" data-ui="manual_page.main" title="manual.page">
       <h2>Handbuch</h2>
       <div class="muted">Quelle: <code>influxbro/MANUAL.md</code></div>
 
-      <div class="searchbar" data-ui="manual.searchbar" title="manual.searchbar">
+      <div class="searchbar" data-ui="manual_main.panel_searchbar" title="manual.searchbar">
         <div class="ib_clear_row">
-          <input id="manual_search" type="text" placeholder="Handbuch durchsuchen..." data-ui="manual.search" title="manual.search" />
+          <input id="manual_search" type="text" placeholder="Handbuch durchsuchen..." data-ui="manual_main.input_search" title="manual.search" />
           <button type="button" class="ib_clear_btn" data-clear-for="manual_search" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
         </div>
         <div class="search_meta"><span id="manual_search_idx">0</span>/<span id="manual_search_cnt">0</span></div>
-        <button id="manual_search_prev" type="button" data-ui="manual.search.prev" title="manual.search.prev">Zurueck</button>
-        <button id="manual_search_next" type="button" data-ui="manual.search.next" title="manual.search.next">Vor</button>
+        <button id="manual_search_prev" type="button" data-ui="manual_search.btn_prev" title="manual.search.prev">Zurueck</button>
+        <button id="manual_search_next" type="button" data-ui="manual_search.btn_next" title="manual.search.next">Vor</button>
       </div>
 
-      <div class="manual_layout" data-ui="manual.layout" title="manual.layout">
-        <aside class="toc" data-ui="manual.toc" title="manual.toc">
+      <div class="manual_layout" data-ui="manual_main.panel_layout" title="manual.layout">
+        <aside class="toc" data-ui="manual_main.panel_toc" title="manual.toc">
           <div class="toc_title">Inhalt</div>
           <div id="toc_links"></div>
         </aside>
 
-        <section class="card md" data-ui="manual.content" title="manual.content">
+        <section class="card md" data-ui="manual_main.panel_content" title="manual.content">
           <div id="manual_html"></div>
         </section>
       </div>

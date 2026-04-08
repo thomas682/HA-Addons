@@ -42,24 +42,24 @@
   {% include "_topbar.html" %}
   <div class="shell">
     {% include "_nav.html" %}
-    <main class="content" data-ui="quality.page" title="quality.page">
+    <main class="content" data-ui="quality_page.main" title="quality.page">
       <h2>Datenqualitaet & Langzeitdaten</h2>
       <div class="muted">Zentrale fuer Raw-, Clean- und Rollup-Buckets, Bereinigungsregeln, Rollup-Tasks, Query-Beispiele und Debug-Vergleich.</div>
 
-      <div class="tabs" data-ui="quality.tabs" title="quality.tabs">
-        <button type="button" class="tabbtn active" data-tab="overview" data-ui="quality.tab.overview" title="quality.tab.overview">Uebersicht</button>
-        <button type="button" class="tabbtn" data-tab="buckets" data-ui="quality.tab.buckets" title="quality.tab.buckets">Buckets</button>
-        <button type="button" class="tabbtn" data-tab="rules" data-ui="quality.tab.rules" title="quality.tab.rules">Regeln</button>
-        <button type="button" class="tabbtn" data-tab="cleanup" data-ui="quality.tab.cleanup" title="quality.tab.cleanup">Bereinigung</button>
-        <button type="button" class="tabbtn" data-tab="queries" data-ui="quality.tab.queries" title="quality.tab.queries">Query-Beispiele</button>
-        <button type="button" class="tabbtn" data-tab="debug" data-ui="quality.tab.debug" title="quality.tab.debug">Debug</button>
+      <div class="tabs" data-ui="quality_main.panel_tabs" title="quality.tabs">
+        <button type="button" class="tabbtn active" data-tab="overview" data-ui="quality_tab.btn_overview" title="quality.tab.overview">Uebersicht</button>
+        <button type="button" class="tabbtn" data-tab="buckets" data-ui="quality_tab.btn_buckets" title="quality.tab.buckets">Buckets</button>
+        <button type="button" class="tabbtn" data-tab="rules" data-ui="quality_tab.btn_rules" title="quality.tab.rules">Regeln</button>
+        <button type="button" class="tabbtn" data-tab="cleanup" data-ui="quality_tab.btn_cleanup" title="quality.tab.cleanup">Bereinigung</button>
+        <button type="button" class="tabbtn" data-tab="queries" data-ui="quality_tab.btn_queries" title="quality.tab.queries">Query-Beispiele</button>
+        <button type="button" class="tabbtn" data-tab="debug" data-ui="quality_tab.btn_debug" title="quality.tab.debug">Debug</button>
       </div>
 
       <div id="msg_ok" class="ok" style="margin-top:10px;"></div>
       <div id="msg_err" class="err" style="margin-top:6px;"></div>
 
       <section class="tabpanel active" data-panel="overview">
-        <details open class="card" data-ui="quality.section.overview" title="quality.section.overview">
+        <details open class="card" data-ui="quality_overview.section_root" title="quality.section.overview">
           <summary><span class="ib_summary_row"><span>Architektur & Assistent</span><button type="button" class="ib_info_icon" data-info-title="Datenqualitaet: Architektur" data-info-body="Diese Seite fuehrt durch die empfohlene Dreiteilung Raw -> Clean -> Rollup. Raw bleibt unveraendert, Clean enthaelt bereinigte operative Daten, Rollup enthaelt verdichtete Langzeitdaten. Der Assistent speichert Bucket-Namen, Retention, Zeitzone und Standard-Latenz und dient als Grundlage fuer Bucket- und Task-Aktionen."><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
           <div class="arch">
             <div class="box"><div class="table_title">Raw</div><div class="muted">Unveraenderte Originaldaten, forensische Quelle, Standard: 30 Tage.</div></div>
@@ -67,15 +67,15 @@
             <div class="box"><div class="table_title">Rollup</div><div class="muted">Verdichtete Langzeitdaten fuer schnelle historische Graphen.</div></div>
           </div>
           <div class="grid" style="margin-top:12px;">
-            <div><label>Raw-Bucket</label><input id="raw_bucket" data-ui="quality.raw_bucket" title="quality.raw_bucket"></div>
-            <div><label>Clean-Bucket</label><input id="clean_bucket" data-ui="quality.clean_bucket" title="quality.clean_bucket"></div>
-            <div><label>Rollup-Bucket</label><input id="rollup_bucket" data-ui="quality.rollup_bucket" title="quality.rollup_bucket"></div>
-            <div><label>Retention Raw (Tage)</label><input id="ret_raw" type="number" min="0" data-ui="quality.retention_raw" title="quality.retention_raw"></div>
-            <div><label>Retention Clean (Tage)</label><input id="ret_clean" type="number" min="0" data-ui="quality.retention_clean" title="quality.retention_clean"></div>
-            <div><label>Retention Rollup (Tage, 0=unbegrenzt)</label><input id="ret_rollup" type="number" min="0" data-ui="quality.retention_rollup" title="quality.retention_rollup"></div>
-            <div><label>Zeitzone</label><input id="quality_timezone" data-ui="quality.timezone" title="quality.timezone"></div>
-            <div><label>Latenzfenster (Minuten)</label><input id="quality_lateness_minutes" type="number" min="0" data-ui="quality.lateness_minutes" title="quality.lateness_minutes"></div>
-            <div><label>&nbsp;</label><button id="save_quality_cfg" type="button" data-ui="quality.save" title="quality.save">Assistent speichern</button></div>
+            <div><label>Raw-Bucket</label><input id="raw_bucket" data-ui="quality_main.input_raw_bucket" title="quality.raw_bucket"></div>
+            <div><label>Clean-Bucket</label><input id="clean_bucket" data-ui="quality_main.input_clean_bucket" title="quality.clean_bucket"></div>
+            <div><label>Rollup-Bucket</label><input id="rollup_bucket" data-ui="quality_main.input_rollup_bucket" title="quality.rollup_bucket"></div>
+            <div><label>Retention Raw (Tage)</label><input id="ret_raw" type="number" min="0" data-ui="quality_main.input_retention_raw" title="quality.retention_raw"></div>
+            <div><label>Retention Clean (Tage)</label><input id="ret_clean" type="number" min="0" data-ui="quality_main.input_retention_clean" title="quality.retention_clean"></div>
+            <div><label>Retention Rollup (Tage, 0=unbegrenzt)</label><input id="ret_rollup" type="number" min="0" data-ui="quality_main.input_retention_rollup" title="quality.retention_rollup"></div>
+            <div><label>Zeitzone</label><input id="quality_timezone" data-ui="quality_main.input_timezone" title="quality.timezone"></div>
+            <div><label>Latenzfenster (Minuten)</label><input id="quality_lateness_minutes" type="number" min="0" data-ui="quality_main.input_lateness_minutes" title="quality.lateness_minutes"></div>
+            <div><label>&nbsp;</label><button id="save_quality_cfg" type="button" data-ui="quality_main.btn_save" title="quality.save">Assistent speichern</button></div>
           </div>
         </details>
       </section>
@@ -85,14 +85,14 @@
           <div class="table_title">Buckets & Rollup-Tasks</div>
           <div class="table_head">
             <div class="tbl_actions">
-              <button id="quality_buckets_reload" type="button" class="btn_sm" data-ui="quality.buckets.reload" title="quality.buckets.reload">Status laden</button>
-              <button id="quality_buckets_apply" type="button" class="btn_sm" data-ui="quality.buckets.apply" title="quality.buckets.apply">Buckets anlegen/aktualisieren</button>
-              <button id="quality_tasks_apply" type="button" class="btn_sm" data-ui="quality.tasks.apply" title="quality.tasks.apply">Beispiel-Tasks anlegen</button>
+              <button id="quality_buckets_reload" type="button" class="btn_sm" data-ui="quality_buckets.btn_reload" title="quality.buckets.reload">Status laden</button>
+              <button id="quality_buckets_apply" type="button" class="btn_sm" data-ui="quality_buckets.btn_apply" title="quality.buckets.apply">Buckets anlegen/aktualisieren</button>
+              <button id="quality_tasks_apply" type="button" class="btn_sm" data-ui="quality_tasks.btn_apply" title="quality.tasks.apply">Beispiel-Tasks anlegen</button>
             </div>
             <div class="muted" id="bucket_info"></div>
           </div>
           <div class="table_box" id="quality_bucket_box">
-            <table id="quality_bucket_tbl" class="ib_tbl" data-ui="quality.bucket.table" title="quality.bucket.table">
+            <table id="quality_bucket_tbl" class="ib_tbl" data-ui="quality_bucket.tbl_table" title="quality.bucket.table">
               <thead><tr><th>Soll</th><th>Name</th><th>Retention</th><th>Status</th></tr></thead>
               <tbody id="bucket_rows"></tbody>
             </table>
@@ -105,14 +105,14 @@
           <div class="table_title">Messwertregeln</div>
           <div class="table_head">
             <div class="tbl_actions">
-              <button id="rule_add" type="button" class="btn_sm" data-ui="quality.rules.add" title="quality.rules.add">Regel hinzufügen</button>
-              <button id="rule_save" type="button" class="btn_sm" data-ui="quality.rules.save" title="quality.rules.save">Regeln speichern</button>
-              <button id="rule_preview" type="button" class="btn_sm" data-ui="quality.rules.preview" title="quality.rules.preview">Treffer prüfen</button>
+              <button id="rule_add" type="button" class="btn_sm" data-ui="quality_rules.btn_add" title="quality.rules.add">Regel hinzufügen</button>
+              <button id="rule_save" type="button" class="btn_sm" data-ui="quality_rules.btn_save" title="quality.rules.save">Regeln speichern</button>
+              <button id="rule_preview" type="button" class="btn_sm" data-ui="quality_rules.btn_preview" title="quality.rules.preview">Treffer prüfen</button>
             </div>
             <div class="muted">Pattern greift auf `entity_id` oder ersatzweise auf Measurement.</div>
           </div>
           <div class="table_box" id="quality_rule_box">
-            <table id="quality_rule_tbl" class="ib_tbl" data-ui="quality.rule.table" title="quality.rule.table">
+            <table id="quality_rule_tbl" class="ib_tbl" data-ui="quality_rule.tbl_table" title="quality.rule.table">
               <thead><tr><th>aktiv</th><th>Pattern</th><th>Typ</th><th>Min</th><th>Max</th><th>max Delta</th><th>ungueltig</th><th>Reset</th><th>Rollup</th><th>Stufen</th><th>Aktion</th></tr></thead>
               <tbody id="rule_rows"></tbody>
             </table>
@@ -121,7 +121,7 @@
         <div class="table_wrap">
           <div class="table_title">Regelvorschau</div>
           <div class="table_box" id="quality_match_box">
-            <table id="quality_match_tbl" class="ib_tbl" data-ui="quality.match.table" title="quality.match.table">
+            <table id="quality_match_tbl" class="ib_tbl" data-ui="quality_match.tbl_table" title="quality.match.table">
               <thead><tr><th>Pattern</th><th>Treffer</th><th>Beispiele</th></tr></thead>
               <tbody id="match_rows"></tbody>
             </table>
@@ -132,10 +132,10 @@
       <section class="tabpanel" data-panel="cleanup">
         <div class="card">
           <div class="row">
-            <div><label>Start</label><input id="cleanup_start" type="datetime-local" data-ui="quality.cleanup.start" title="quality.cleanup.start"></div>
-            <div><label>Stop</label><input id="cleanup_stop" type="datetime-local" data-ui="quality.cleanup.stop" title="quality.cleanup.stop"></div>
-            <div><label>&nbsp;</label><button id="cleanup_preview" type="button" data-ui="quality.cleanup.preview" title="quality.cleanup.preview">Testlauf</button></div>
-            <div><label>&nbsp;</label><button id="cleanup_run" type="button" data-ui="quality.cleanup.run" title="quality.cleanup.run">Bereinigung starten</button></div>
+            <div><label>Start</label><input id="cleanup_start" type="datetime-local" data-ui="quality_cleanup.input_start" title="quality.cleanup.start"></div>
+            <div><label>Stop</label><input id="cleanup_stop" type="datetime-local" data-ui="quality_cleanup.input_stop" title="quality.cleanup.stop"></div>
+            <div><label>&nbsp;</label><button id="cleanup_preview" type="button" data-ui="quality_cleanup.btn_preview" title="quality.cleanup.preview">Testlauf</button></div>
+            <div><label>&nbsp;</label><button id="cleanup_run" type="button" data-ui="quality_cleanup.btn_run" title="quality.cleanup.run">Bereinigung starten</button></div>
           </div>
           <div class="muted" style="margin-top:8px;">Der Testlauf liest aus dem Raw-Bucket und zaehlt Korrekturen/Verwerfungen. Der Lauf schreibt bereinigte Punkte in den Clean-Bucket.</div>
         </div>
@@ -143,7 +143,7 @@
           <div class="table_title">Bereinigungsreport</div>
           <div class="table_head"><div class="tbl_actions"><span class="pill" id="cleanup_summary">Noch kein Lauf.</span></div></div>
           <div class="table_box" id="quality_cleanup_box">
-            <table id="quality_cleanup_tbl" class="ib_tbl" data-ui="quality.cleanup.table" title="quality.cleanup.table">
+            <table id="quality_cleanup_tbl" class="ib_tbl" data-ui="quality_cleanup.tbl_table" title="quality.cleanup.table">
               <thead><tr><th>Measurement</th><th>Field</th><th>Entity</th><th>Name</th><th>Punkte</th></tr></thead>
               <tbody id="cleanup_rows"></tbody>
             </table>
@@ -154,12 +154,12 @@
       <section class="tabpanel" data-panel="queries">
         <div class="card">
           <div class="grid">
-            <div><label>Bucket</label><select id="query_bucket" data-ui="quality.query.bucket" title="quality.query.bucket"></select></div>
-            <div><label>Measurement</label><div class="ib_clear_row"><input id="query_measurement" data-ui="quality.query.measurement" title="quality.query.measurement" placeholder="z.B. sensor"><button type="button" class="ib_clear_btn" data-clear-for="query_measurement" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></div></div>
-            <div><label>Field</label><div class="ib_clear_row"><input id="query_field" data-ui="quality.query.field" title="quality.query.field" value="value"><button type="button" class="ib_clear_btn" data-clear-for="query_field" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></div></div>
-            <div><label>Entity-ID</label><div class="ib_clear_row"><input id="query_entity" data-ui="quality.query.entity" title="quality.query.entity" placeholder="optional"><button type="button" class="ib_clear_btn" data-clear-for="query_entity" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></div></div>
-            <div><label>Modus</label><select id="query_mode" data-ui="quality.query.mode" title="quality.query.mode"><option value="single">Einzelwert</option><option value="graph">Graph</option></select></div>
-            <div><label>&nbsp;</label><button id="query_preview_btn" type="button" data-ui="quality.query.preview" title="quality.query.preview">Query-Vorschau</button></div>
+            <div><label>Bucket</label><select id="query_bucket" data-ui="quality_query.select_bucket" title="quality.query.bucket"></select></div>
+            <div><label>Measurement</label><div class="ib_clear_row"><input id="query_measurement" data-ui="quality_query.input_measurement" title="quality.query.measurement" placeholder="z.B. sensor"><button type="button" class="ib_clear_btn" data-clear-for="query_measurement" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></div></div>
+            <div><label>Field</label><div class="ib_clear_row"><input id="query_field" data-ui="quality_query.input_field" title="quality.query.field" value="value"><button type="button" class="ib_clear_btn" data-clear-for="query_field" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></div></div>
+            <div><label>Entity-ID</label><div class="ib_clear_row"><input id="query_entity" data-ui="quality_query.input_entity" title="quality.query.entity" placeholder="optional"><button type="button" class="ib_clear_btn" data-clear-for="query_entity" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></div></div>
+            <div><label>Modus</label><select id="query_mode" data-ui="quality_query.select_mode" title="quality.query.mode"><option value="single">Einzelwert</option><option value="graph">Graph</option></select></div>
+            <div><label>&nbsp;</label><button id="query_preview_btn" type="button" data-ui="quality_query.btn_preview" title="quality.query.preview">Query-Vorschau</button></div>
           </div>
           <pre id="query_text" style="margin-top:12px; white-space:pre-wrap; font-size:12px; background:#fafafa; border:1px solid #eee; border-radius:12px; padding:12px;">Noch keine Query vorhanden.</pre>
           <div id="quality_plot"></div>
@@ -169,9 +169,9 @@
       <section class="tabpanel" data-panel="debug">
         <div class="table_wrap">
           <div class="table_title">Bereinigungs-Log</div>
-          <div class="table_head"><div class="tbl_actions"><button id="debug_reload" type="button" class="btn_sm" data-ui="quality.debug.reload" title="quality.debug.reload">Log neu laden</button></div></div>
+          <div class="table_head"><div class="tbl_actions"><button id="debug_reload" type="button" class="btn_sm" data-ui="quality_debug.btn_reload" title="quality.debug.reload">Log neu laden</button></div></div>
           <div class="table_box" id="quality_log_box">
-            <table id="quality_log_tbl" class="ib_tbl" data-ui="quality.log.table" title="quality.log.table">
+            <table id="quality_log_tbl" class="ib_tbl" data-ui="quality_log.tbl_table" title="quality.log.table">
               <thead><tr><th>Zeit</th><th>dry_run</th><th>Zusammenfassung</th></tr></thead>
               <tbody id="log_rows"></tbody>
             </table>
