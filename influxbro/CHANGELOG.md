@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.268
+
+### Enhancement
+
+- Analysebezogene Cache-Plan- und Cache-Aenderungsinformationen werden jetzt in den Analyse-Verlauf uebernommen, statt im Bereich `dashboard.load_status` gerendert zu werden.
+- Die Live-Analyse in `section.analysis` zeigt keine einzelnen Chunk-Zeilen mehr; die Chunk-Details bleiben ausschliesslich im Analyse-Verlauf sichtbar.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.267
 
 ### Enhancement

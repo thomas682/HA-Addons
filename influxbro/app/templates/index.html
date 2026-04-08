@@ -5723,28 +5723,14 @@ function _analysisChecklistHtml(items, chunkLog){
     }
     rows.push(html);
   });
-  (Array.isArray(chunkLog) ? chunkLog : []).forEach((c) => {
-    const isAbort = c.aborted;
-    const okClass = c.error ? (isAbort ? 'warn' : 'err') : 'ok';
-    const icon = c.error ? (isAbort ? '⏱' : '✗') : '✓';
-    const rowsFound = c.rows !== undefined ? c.rows : 0;
-    const scanned = c.scanned !== undefined ? c.scanned : 0;
-    const dur = c.dur !== undefined ? _fmtDur(c.dur) : '-';
-    const days = c.chunkDays !== undefined ? c.chunkDays + ' Tage' : '-';
-    const range = fmtTs(c.start) + ' – ' + fmtTs(c.stop);
-    const errText = c.error ? ' | ' + (isAbort ? 'TIMEOUT: ' : 'FEHLER: ') + c.error : '';
-    rows.push('<div class="checklist_item"><span class="checklist_icon ' + okClass + '">' + icon + '</span><span class="checklist_label">Chunk ' + c.idx + '/' + c.total + ': ' + range + '</span><span class="checklist_dur">' + scanned + ' Werte | ' + dur + '</span></div><div class="checklist_sub">' + rowsFound + ' Ausreisser | Chunk-Größe: ' + days + errText + '</div>');
-  });
   return rows.join('');
 }
 
 function _renderChecklist(items){
   const $cl = document.getElementById('load_checklist');
   if(!$cl) return;
-  $cl.style.display = 'block';
+  $cl.style.display = 'none';
   $cl.innerHTML = '';
-  ANALYSIS_CHECKLIST_ITEMS = Array.isArray(items) ? items.slice() : [];
-  _renderAnalysisChecklist(ANALYSIS_CHECKLIST_ITEMS, ANALYSIS_CHUNK_LOG);
 }
 
 function _renderAnalysisChecklist(items, chunkLog){
@@ -5763,20 +5749,30 @@ function _clearLoadPlanUi(){
 
 function _renderLoadPlanChanges(changes){
   const $alog = document.getElementById('analysis_log');
-  if(!$alog) return;
+  if($alog) $alog.innerHTML = '';
   const rows = Array.isArray(changes) ? changes : [];
-  if(!rows.length){
-    $alog.innerHTML = '';
-    return;
-  }
-  $alog.innerHTML = rows.map((row)=>{
+  rows.forEach((row)=>{
     const when = fmtTs(String(row.at || ''));
     const at = fmtTs(String(row.time || ''));
     const oldVal = (row.old_value === null || row.old_value === undefined) ? '-' : fmtNum(row.old_value);
     const newVal = (row.new_value === null || row.new_value === undefined) ? '-' : fmtNum(row.new_value);
     const reason = String(row.reason || row.trigger_button || row.trigger_action || '-');
-    return '<div class="checklist_item"><span class="checklist_icon err">!</span><span class="checklist_label" style="color:#b00020;">Wert geaendert: ' + at + '</span><span class="checklist_dur" style="color:#b00020;">' + when + '</span></div><div class="checklist_sub" style="color:#b00020;">' + String(row.action || '-') + ' | Alt: ' + oldVal + ' | Neu: ' + newVal + ' | ' + reason + '</div>';
-  }).join('');
+    _saveAnalysisEventOnce({
+      at: new Date().toISOString(),
+      kind: 'dashboard_cache_plan',
+      step: 'value_changed',
+      detail: 'Wert geaendert: ' + at + ' | ' + String(row.action || '-') + ' | Alt: ' + oldVal + ' | Neu: ' + newVal + ' | ' + reason,
+      extra: {
+        key: ['change', String(row.time || ''), String(row.at || ''), String(row.action || ''), String(row.old_value), String(row.new_value)].join('|'),
+        time: String(row.time || ''),
+        at: String(row.at || ''),
+        action: String(row.action || ''),
+        old_value: row.old_value,
+        new_value: row.new_value,
+        reason: reason,
+      },
+    });
+  });
 }
 
 function _renderLoadPlan(plan){
@@ -5802,6 +5798,20 @@ function _renderLoadPlan(plan){
     if(!p.has_cache && p.reason_label){
       items.push({label: 'Kein Cache-Dialog', status: 'running', sub: String(p.reason_label || '')});
     }
+    items.forEach((item, idx) => {
+      _saveAnalysisEventOnce({
+        at: new Date().toISOString(),
+        kind: 'dashboard_cache_plan',
+        step: 'plan_step',
+        detail: String(item.label || ''),
+        extra: {
+          key: ['plan', idx, String(item.label || ''), String(item.status || ''), String(item.sub || '')].join('|'),
+          label: String(item.label || ''),
+          status: String(item.status || ''),
+          sub: String(item.sub || ''),
+        },
+      });
+    });
     _renderChecklist(items);
     _renderLoadPlanChanges(p.changes || []);
   }catch(e){}
@@ -5889,6 +5899,35 @@ function _saveAnalysisEvent(entry){
     localStorage.setItem(ANALYSIS_EVENT_HISTORY_KEY, JSON.stringify(history));
   }catch(e){}
   try{ _postAnalysisHistory(entry); }catch(e){}
+}
+
+function _analysisEventDedupKey(entry){
+  try{
+    const e = entry || {};
+    const extra = (e.extra && typeof e.extra === 'object') ? e.extra : {};
+    return [
+      String(e.kind || ''),
+      String(e.step || ''),
+      String(extra.key || ''),
+      String(extra.time || ''),
+      String(extra.at || ''),
+      String(extra.action || ''),
+      String(extra.old_value === undefined ? '' : extra.old_value),
+      String(extra.new_value === undefined ? '' : extra.new_value),
+      String(extra.reason || ''),
+      String(e.detail || ''),
+    ].join('|');
+  }catch(e){ return ''; }
+}
+
+function _saveAnalysisEventOnce(entry){
+  try{
+    const key = _analysisEventDedupKey(entry);
+    if(!key){ _saveAnalysisEvent(entry); return; }
+    const history = _loadAnalysisEvents();
+    if(Array.isArray(history) && history.some((row) => _analysisEventDedupKey(row) === key)) return;
+  }catch(e){}
+  _saveAnalysisEvent(entry);
 }
 
 function _loadAnalysisEvents(){
