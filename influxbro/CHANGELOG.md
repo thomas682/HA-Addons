@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.12.274
+
+### Enhancement
+
+- Eine neue Section `Caching` sitzt jetzt vor `section.analysis`. Der bisherige Aktionsblock wurde dorthin verschoben; der modale Analyse-Startdialog ist fuer den Normalablauf nicht mehr noetig. In `section.analysis` gibt es stattdessen direkte Buttons fuer `Analyse mit Cache` und `Analyse ohne Cache`. ([#220](https://github.com/thomas682/HA-Addons/issues/220))
+- `raw.outlier_table` ist wieder stabil klickbar markierbar. Sowohl `raw.table` als auch `raw.outlier_table` zeigen jetzt auch ungefuellt immer mindestens 5 sichtbare Leerzeilen. ([#220](https://github.com/thomas682/HA-Addons/issues/220))
+- Das Feld `raw_outlier_display_limit_per_type` ist im `raw_search_bar` optisch an den Typ-Selektor angeglichen. ([#220](https://github.com/thomas682/HA-Addons/issues/220))
+- `fault_phase`-Treffer werden in der Ausreißer-Tabelle jetzt als zusammengefasste Stoerphasen mit Start/Ende und Punktanzahl dargestellt, statt viele einzelne `fault_active`-Zeilen zu zeigen. ([#220](https://github.com/thomas682/HA-Addons/issues/220))
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tests: `pytest tests/test_api_ui_support.py -q -k "issue219_analysis_controls_and_limits_exist"`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.273
 
 ### Enhancement

@@ -537,10 +537,16 @@ def test_dashboard_issue219_analysis_controls_and_limits_exist():
     config_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "config.html").read_text()
     app_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "app.py").read_text()
     assert 'data-ui="dashboard.AnalyseStart"' in body
+    assert 'data-ui="section.caching"' in body
+    assert 'id="analysis_run_with_cache"' in body
+    assert 'id="analysis_run_without_cache"' in body
     assert 'id="analysis_types_reset"' in body
     assert 'id="analysis_types_show_ignored"' in body
     assert 'id="raw_outlier_display_limit_per_type"' in body
     assert 'function getDisplayedOutliers()' in body
+    assert 'function aggregateFaultPhaseRows(rows)' in body
+    assert 'for(let i = rows.length; i < 5; i++){' in body
+    assert 'for(let i = filtered.length; i < 5; i++){' in body
     assert 'ui_raw_outlier_display_limit_per_type' in config_body
     assert '"ui_raw_outlier_display_limit_per_type": 100' in app_body
 
