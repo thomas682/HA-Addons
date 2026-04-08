@@ -1,11 +1,24 @@
 # Changelog
 
+## 1.12.269
+
+### Enhancement
+
+- Root-README und Add-on-README enthalten jetzt einen direkten Home-Assistant-Installationslink fuer das Repository. ([#216](https://github.com/thomas682/HA-Addons/issues/216))
+- Das Add-on liefert jetzt eigene `icon.png`- und `logo.png`-Dateien fuer die Home-Assistant-Darstellung im Stil des gewuenschten Referenz-Add-ons. ([#216](https://github.com/thomas682/HA-Addons/issues/216))
+- Changelog-Eintraege mit Issue-Bezug wurden auf klickbare GitHub-Issue-Links nachgezogen; kuenftige Pflicht dazu ist in `AGENTS.md` festgehalten. ([#216](https://github.com/thomas682/HA-Addons/issues/216))
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.268
 
 ### Enhancement
 
-- Analysebezogene Cache-Plan- und Cache-Aenderungsinformationen werden jetzt in den Analyse-Verlauf uebernommen, statt im Bereich `dashboard.load_status` gerendert zu werden.
-- Die Live-Analyse in `section.analysis` zeigt keine einzelnen Chunk-Zeilen mehr; die Chunk-Details bleiben ausschliesslich im Analyse-Verlauf sichtbar.
+- Analysebezogene Cache-Plan- und Cache-Aenderungsinformationen werden jetzt in den Analyse-Verlauf uebernommen, statt im Bereich `dashboard.load_status` gerendert zu werden. ([#215](https://github.com/thomas682/HA-Addons/issues/215))
+- Die Live-Analyse in `section.analysis` zeigt keine einzelnen Chunk-Zeilen mehr; die Chunk-Details bleiben ausschliesslich im Analyse-Verlauf sichtbar. ([#215](https://github.com/thomas682/HA-Addons/issues/215))
 
 ### Maintenance
 
@@ -16,7 +29,7 @@
 
 ### Enhancement
 
-- Der `S-Picker` (`nav.ui_picker_super`) kann jetzt alle relevanten Treffer unter dem Mauszeiger als Trefferliste bereitstellen; mit dem Mausrad laesst sich zwischen ueberdeckten Elementen wie `section.analysis` und `analysis_checklist` wechseln, bevor der gewuenschte Treffer per Klick kopiert wird.
+- Der `S-Picker` (`nav.ui_picker_super`) kann jetzt alle relevanten Treffer unter dem Mauszeiger als Trefferliste bereitstellen; mit dem Mausrad laesst sich zwischen ueberdeckten Elementen wie `section.analysis` und `analysis_checklist` wechseln, bevor der gewuenschte Treffer per Klick kopiert wird. ([#213](https://github.com/thomas682/HA-Addons/issues/213))
 
 ### Maintenance
 
@@ -27,8 +40,8 @@
 
 ### Fix
 
-- Die Dashboard-Analyse verwendet ihren Session-Cache jetzt auch bei `0` Treffern wieder korrekt und bildet fuer `range=all` einen stabileren Cache-Key, damit direkte Wiederholungen nicht jedes Mal erneut alle Chunks durchlaufen.
-- Der Analyse-Dialog startet die Dashboard-Analyse nicht mehr doppelt; damit entfaellt der zweite `analysis / start` mit nachfolgendem `blocked`-Reset.
+- Die Dashboard-Analyse verwendet ihren Session-Cache jetzt auch bei `0` Treffern wieder korrekt und bildet fuer `range=all` einen stabileren Cache-Key, damit direkte Wiederholungen nicht jedes Mal erneut alle Chunks durchlaufen. ([#212](https://github.com/thomas682/HA-Addons/issues/212))
+- Der Analyse-Dialog startet die Dashboard-Analyse nicht mehr doppelt; damit entfaellt der zweite `analysis / start` mit nachfolgendem `blocked`-Reset. ([#212](https://github.com/thomas682/HA-Addons/issues/212))
 
 ### Maintenance
 
@@ -39,7 +52,7 @@
 
 ### Fix
 
-- Der `S-Picker` (`nav.ui_picker_super`) kann im Super-Modus jetzt auch Elemente ohne `data-ui`, aber mit stabiler `id`, direkt erfassen, z. B. `analysis_start_info`.
+- Der `S-Picker` (`nav.ui_picker_super`) kann im Super-Modus jetzt auch Elemente ohne `data-ui`, aber mit stabiler `id`, direkt erfassen, z. B. `analysis_start_info`. ([#211](https://github.com/thomas682/HA-Addons/issues/211))
 
 ### Maintenance
 
@@ -50,8 +63,8 @@
 
 ### Fix
 
-- Dashboard-Analyse konsolidiert Status- und Fortschrittseintraege jetzt in `analysis_checklist`; doppelte Eintraege entfallen und einzelne Chunks werden dort direkt mit angezeigt, waehrend `dashboard.load_status` keine separaten Chunk-Zeilen mehr ausgibt.
-- Der `S-Picker` (`nav.ui_picker_super`) nutzt im Super-Modus wieder vorrangig das direkt getroffene Element wie in den frueheren Versionen und faellt erst danach auf tiefere Stack-Treffer zurueck.
+- Dashboard-Analyse konsolidiert Status- und Fortschrittseintraege jetzt in `analysis_checklist`; doppelte Eintraege entfallen und einzelne Chunks werden dort direkt mit angezeigt, waehrend `dashboard.load_status` keine separaten Chunk-Zeilen mehr ausgibt. ([#210](https://github.com/thomas682/HA-Addons/issues/210))
+- Der `S-Picker` (`nav.ui_picker_super`) nutzt im Super-Modus wieder vorrangig das direkt getroffene Element wie in den frueheren Versionen und faellt erst danach auf tiefere Stack-Treffer zurueck. ([#210](https://github.com/thomas682/HA-Addons/issues/210))
 
 ### Maintenance
 
@@ -73,15 +86,15 @@
 
 ### Fix
 
-- #209: `dashboard.load_status` ist jetzt dauerhaft sichtbar (nicht nur waehrend des Ladens).
-- #209: `nav.ui_picker_super` (S-Picker) kann wieder alle Elemente auf der Seite selektieren.
-- #209: Analyse-Verlauf wird jetzt als reiner Text im Modal angezeigt (nicht als HTML).
-- #209: Neuer Info-Panel-Bereich zeigt aktuelle Messwert-Statistiken (Anzahl Werte, Min/Max, aeltester/neuster Zeitstempel).
-- #209: Ausreisser-Tabelle markiert Zeilen nicht mehr automatisch beim Rendern.
-- #209: `currentPageLabel` ReferenceError behoben (Funktion jetzt global verfuegbar).
-- #209: Analyse-Button oeffnet jetzt einen Bestaetigungsdialog mit Uebersicht aller Parameter vor dem Start.
-- #208: `raw.outlier_actions` Layout umstrukturiert – Suchleiste oben, Aktionen und Tabelle nebeneinander, `raw_outlier_info` entfernt.
-- #207: `dashboard.cancel` (Abbruch-Button) wird jetzt waehrend der Analyse sichtbar und beendet alle laufenden Anfragen.
+- `dashboard.load_status` ist jetzt dauerhaft sichtbar (nicht nur waehrend des Ladens). ([#209](https://github.com/thomas682/HA-Addons/issues/209))
+- `nav.ui_picker_super` (S-Picker) kann wieder alle Elemente auf der Seite selektieren. ([#209](https://github.com/thomas682/HA-Addons/issues/209))
+- Analyse-Verlauf wird jetzt als reiner Text im Modal angezeigt (nicht als HTML). ([#209](https://github.com/thomas682/HA-Addons/issues/209))
+- Neuer Info-Panel-Bereich zeigt aktuelle Messwert-Statistiken (Anzahl Werte, Min/Max, aeltester/neuster Zeitstempel). ([#209](https://github.com/thomas682/HA-Addons/issues/209))
+- Ausreisser-Tabelle markiert Zeilen nicht mehr automatisch beim Rendern. ([#209](https://github.com/thomas682/HA-Addons/issues/209))
+- `currentPageLabel` ReferenceError behoben (Funktion jetzt global verfuegbar). ([#209](https://github.com/thomas682/HA-Addons/issues/209))
+- Analyse-Button oeffnet jetzt einen Bestaetigungsdialog mit Uebersicht aller Parameter vor dem Start. ([#209](https://github.com/thomas682/HA-Addons/issues/209))
+- `raw.outlier_actions` Layout umstrukturiert – Suchleiste oben, Aktionen und Tabelle nebeneinander, `raw_outlier_info` entfernt. ([#208](https://github.com/thomas682/HA-Addons/issues/208))
+- `dashboard.cancel` (Abbruch-Button) wird jetzt waehrend der Analyse sichtbar und beendet alle laufenden Anfragen. ([#207](https://github.com/thomas682/HA-Addons/issues/207))
 
 ### Enhancement
 

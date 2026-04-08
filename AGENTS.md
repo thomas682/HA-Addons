@@ -508,6 +508,7 @@ from flask import Flask, jsonify, request
   - bump `influxbro/config.yaml:version` (so Home Assistant detects the update)
   - add an entry to `influxbro/CHANGELOG.md` for that version
   - update the user handbook `influxbro/MANUAL.md` so it reflects the current UI/behavior for that version
+  - when the change implements a GitHub Issue, the corresponding changelog bullets MUST include a clickable issue link in the form `([#123](https://github.com/<owner>/<repo>/issues/123))`
   - verify `influxbro/CHANGELOG.md` completeness/order (the file MUST list version entries in descending order, newest version at the top)
     - The CHANGELOG.md must present versions in strict descending order (most recent first). When adding a new entry, insert it at the top under the new version heading.
 
