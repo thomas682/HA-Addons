@@ -862,10 +862,14 @@
         if(readSuper()){
           const ownUi = String(el.getAttribute && el.getAttribute('data-ui') || '').trim();
           if(ownUi) return { el, name: ownUi, kind: 'data-ui' };
+          const ownId = String(el.getAttribute && el.getAttribute('id') || '').trim();
+          if(ownId) return { el, name: ownId, kind: 'id' };
           for(let i = (stack.length ? stack.length - 1 : -1); i >= 0; i -= 1){
             const cand = stack[i];
-            const ownUi = String(cand.getAttribute && cand.getAttribute('data-ui') || '').trim();
-            if(ownUi) return { el: cand, name: ownUi, kind: 'data-ui' };
+            const candUi = String(cand.getAttribute && cand.getAttribute('data-ui') || '').trim();
+            if(candUi) return { el: cand, name: candUi, kind: 'data-ui' };
+            const candId = String(cand.getAttribute && cand.getAttribute('id') || '').trim();
+            if(candId) return { el: cand, name: candId, kind: 'id' };
           }
           return { el, name: _fallbackNameFor(el), kind: 'fallback' };
         }

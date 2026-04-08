@@ -545,6 +545,7 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Button-Klicks werden fuer Supportzwecke jetzt global protokolliert. Wenn ein Button-Handler scheitert, landet der Fehler nicht nur im Browser, sondern auch im UI-Fehlerlog und im Add-on-Log.
 - Mit aktivem `superpicker` wird jetzt das direkt gehoverte Unterelement bevorzugt erfasst; dadurch lassen sich auch Elemente innerhalb eines groesseren `data-ui`-Containers gezielter identifizieren.
 - Der `S-Picker` prueft im Super-Modus wieder zuerst das direkt getroffene Element wie in den frueheren Dashboard-Versionen; dadurch lassen sich auch feinere Unterelemente wieder zuverlaessig selektieren.
+- Falls ein Element kein `data-ui`, aber eine stabile `id` besitzt, kann der `S-Picker` diese `id` ebenfalls direkt kopieren, z. B. `analysis_start_info`.
 - Query- und Statistik-Dialoge verwenden wieder denselben stabilen Popup-Pfad; ein fehlender Decode-Helper blockiert das Oeffnen nicht mehr.
 - Query-Dialoge zeigen ihre History jetzt im selben modalen Fenster unterhalb des Query-Textes. Ein horizontaler Splitter erlaubt das Anpassen der Hoehe beider Bereiche direkt im Dialog.
 - In der Topbar gibt es jetzt statt der separaten Checkbox einen direkten `S-Picker`-Button fuer den Superpicker. Dashboard-Aktionen sind unterhalb des Filterblocks gebuendelt, und mehrere Such-/Filterfelder sind explizit fuer den Clear-Button-Pfad markiert.

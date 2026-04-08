@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.265
+
+### Fix
+
+- Der `S-Picker` (`nav.ui_picker_super`) kann im Super-Modus jetzt auch Elemente ohne `data-ui`, aber mit stabiler `id`, direkt erfassen, z. B. `analysis_start_info`.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.264
 
 ### Fix
