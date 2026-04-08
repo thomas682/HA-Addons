@@ -280,6 +280,12 @@
                 </div>
               </div>
               <div class="param_row">
+                <div class="param_label">Ausreisser max je Typ<span class="param_hint">Begrenzt die angezeigten Ausreisser pro Typ in der GUI. Die Analyse berechnet intern weiterhin alle Treffer.</span></div>
+                <div class="param_control">
+                  <input id="ui_raw_outlier_display_limit_per_type" type="number" min="1" max="1000" />
+                </div>
+              </div>
+              <div class="param_row">
                 <div class="param_label">Tabellenzeilen Hoehe (px)<span class="param_hint">Effektive Zeilenhoehe ist max. +20% ueber kleiner Schriftgroesse.</span></div>
                 <div class="param_control">
                   <input id="ui_table_row_height_px" type="number" min="9" max="60" />
@@ -1075,7 +1081,7 @@ const ids = [
   "influx_version","scheme","host","port","verify_ssl","timeout_seconds",
   "org","bucket","token","admin_token",
   "database","username","password",
-  "ui_table_visible_rows","ui_outlier_visible_rows","ui_table_row_height_px","ui_edit_neighbors_n","ui_edit_details_visible_rows","ui_edit_graph_buffer_minutes","ui_edit_graph_max_points","ui_decimals",
+  "ui_table_visible_rows","ui_outlier_visible_rows","ui_raw_outlier_display_limit_per_type","ui_table_row_height_px","ui_edit_neighbors_n","ui_edit_details_visible_rows","ui_edit_graph_buffer_minutes","ui_edit_graph_max_points","ui_decimals",
   "ui_backup_table_row_height_px","ui_backup_visible_rows","ui_restore_visible_rows",
   "ui_query_max_points","ui_raw_max_points","ui_raw_center_max_points","ui_raw_center_range_default","ui_raw_center_min_points","ui_raw_target_chunk_ms","ui_analysis_max_age_years","ui_popup_pre_font_px","ui_popup_history_font_px",
   "ui_query_manual_max_points","ui_graph_jump_padding_intervals",
@@ -1419,6 +1425,7 @@ function setForm(cfg){
 
   el.ui_table_visible_rows.value = cfg.ui_table_visible_rows ?? 20;
   el.ui_outlier_visible_rows.value = cfg.ui_outlier_visible_rows ?? 10;
+  el.ui_raw_outlier_display_limit_per_type.value = cfg.ui_raw_outlier_display_limit_per_type ?? 100;
   el.ui_table_row_height_px.value = cfg.ui_table_row_height_px ?? 16;
   el.ui_backup_table_row_height_px.value = cfg.ui_backup_table_row_height_px ?? (cfg.ui_table_row_height_px ?? 16);
   el.ui_backup_visible_rows.value = cfg.ui_backup_visible_rows ?? 24;
@@ -1558,6 +1565,7 @@ function getForm(){
 
     ui_table_visible_rows: parseInt(el.ui_table_visible_rows.value, 10),
     ui_outlier_visible_rows: parseInt(el.ui_outlier_visible_rows.value, 10),
+    ui_raw_outlier_display_limit_per_type: parseInt(el.ui_raw_outlier_display_limit_per_type.value, 10),
     ui_table_row_height_px: parseInt(el.ui_table_row_height_px.value, 10),
     ui_backup_table_row_height_px: parseInt(el.ui_backup_table_row_height_px.value, 10),
     ui_backup_visible_rows: parseInt(el.ui_backup_visible_rows.value, 10),

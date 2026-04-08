@@ -718,6 +718,9 @@ DEFAULT_CFG = {
     # Outlier search limit (max results returned in raw outlier search)
     "ui_raw_outlier_search_limit": 5000,
 
+    # Max visible outliers per type in the outlier table (analysis still computes all)
+    "ui_raw_outlier_display_limit_per_type": 100,
+
     # Outlier context rows (rows shown before/after outlier in raw table)
     "ui_raw_outlier_context_rows": 10,
 
@@ -12641,6 +12644,7 @@ def api_set_config():
     _clamp_int("ui_backup_visible_rows", 24, 5, 200)
     _clamp_int("ui_restore_visible_rows", 24, 5, 200)
     _clamp_int("ui_outlier_visible_rows", 10, 5, 200)
+    _clamp_int("ui_raw_outlier_display_limit_per_type", 100, 1, 1000)
     _clamp_int("ui_query_manual_max_points", 200000, 1000, 2000000)
     _clamp_int("ui_graph_jump_padding_intervals", 1, 0, 50)
     _clamp_int("ui_edit_neighbors_n", 5, 1, 50)

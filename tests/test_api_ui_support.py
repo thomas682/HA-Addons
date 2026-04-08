@@ -532,6 +532,19 @@ def test_jobs_page_has_analysis_cache_section_and_actions():
     assert "./api/analysis_cache/delete" in body
 
 
+def test_dashboard_issue219_analysis_controls_and_limits_exist():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    config_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "config.html").read_text()
+    app_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "app.py").read_text()
+    assert 'data-ui="dashboard.AnalyseStart"' in body
+    assert 'id="analysis_types_reset"' in body
+    assert 'id="analysis_types_show_ignored"' in body
+    assert 'id="raw_outlier_display_limit_per_type"' in body
+    assert 'function getDisplayedOutliers()' in body
+    assert 'ui_raw_outlier_display_limit_per_type' in config_body
+    assert '"ui_raw_outlier_display_limit_per_type": 100' in app_body
+
+
 def test_table_helpers_strip_ingress_token_from_storage_keys():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_table_cols.html").read_text()
     assert "replace(/\\/api\\/hassio_ingress\\/[0-9a-fA-F]+/g, '')" in body

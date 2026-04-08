@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.12.273
+
+### Enhancement
+
+- Der Dashboard-Button `dashboard.load` wurde auf `dashboard.AnalyseStart` umgestellt; Aktionen und Hinweistext sitzen jetzt direkt unter dem Analyse-Titel. ([#219](https://github.com/thomas682/HA-Addons/issues/219))
+- Die Analyse zeigt die Gesamtstatistik direkt im Analyse-Bereich als kompakte Liste; doppelte Zeitraum-/Stats-Infos wurden aus `analysis_info` entfernt. ([#219](https://github.com/thomas682/HA-Addons/issues/219))
+- Die Typ-Auswahl im Analyse-Bereich wurde korrigiert: Ein Klick verschiebt Typen jetzt wirklich zwischen `Gewaehlte Typen` und `Abgewaehlte Typen`. Zusaetzlich gibt es `Reset` und die Checkbox `Ignoriert`. ([#219](https://github.com/thomas682/HA-Addons/issues/219))
+- Im `raw_search_bar` ist jetzt `Max je Typ` parametrierbar; intern werden weiterhin alle Ausreißer berechnet, in der GUI aber pro Typ begrenzt angezeigt. Der Wert ist auch in den Einstellungen verfuegbar. ([#219](https://github.com/thomas682/HA-Addons/issues/219))
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tests: `pytest tests/test_api_ui_support.py -q -k "issue219_analysis_controls_and_limits_exist"`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.272
 
 ### Enhancement
