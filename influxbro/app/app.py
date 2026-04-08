@@ -667,6 +667,7 @@ DEFAULT_CFG = {
     "ui_table_visible_rows": 20,
     "ui_outlier_visible_rows": 10,
     "ui_table_row_height_px": 13,
+    "ui_analysis_cache_hidden_color": "#b0b0b0",
     "ui_backup_table_row_height_px": 13,
     "ui_backup_visible_rows": 24,
     "ui_restore_visible_rows": 24,
@@ -3493,6 +3494,8 @@ def _analysis_cache_group_list(cfg: dict[str, Any]) -> list[dict[str, Any]]:
                 "bytes": int(meta.get("bytes") or 0),
                 "dirty": bool(changed),
                 "changes": changed,
+                "meta_path": f"analysis_cache/{str(meta.get('id') or '')}.meta.json",
+                "data_path": f"analysis_cache/{str(meta.get('id') or '')}.data.json.gz",
             })
             group["bytes"] = int(group.get("bytes") or 0) + int(meta.get("bytes") or 0)
             group["outlier_count"] = int(group.get("outlier_count") or 0) + int(meta.get("outlier_count") or 0)
@@ -3507,6 +3510,7 @@ def _analysis_cache_group_list(cfg: dict[str, Any]) -> list[dict[str, Any]]:
         group["covered_start"] = segs[0].get("start") if segs else None
         group["covered_stop"] = segs[-1].get("stop") if segs else None
         group["updated_at"] = max((str(s.get("updated_at") or "") for s in segs), default=None)
+        group["paths"] = [str(s.get("data_path") or "") for s in segs if str(s.get("data_path") or "")]
     out.sort(key=lambda g: str(g.get("updated_at") or ""), reverse=True)
     return out
 
@@ -12708,6 +12712,7 @@ def api_set_config():
     _clamp_color("ui_job_color_done", "#eefaf1")
     _clamp_color("ui_job_color_error", "#fff0f0")
     _clamp_color("ui_job_color_cancelled", "#f6f6f6")
+    _clamp_color("ui_analysis_cache_hidden_color", "#b0b0b0")
 
     _clamp_color_opt("ui_section_title_bg", allow_words=("transparent",))
     _clamp_color_opt("ui_section_title_fg", allow_words=("inherit",))

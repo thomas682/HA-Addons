@@ -568,6 +568,22 @@ def test_dashboard_caching_section_has_info_button_timeline_labels_and_summary_a
     assert 'fmtTs(req.start)' in body and 'fmtTs(req.stop)' in body
 
 
+def test_cache_timeline_hidden_color_and_jobs_analysis_table_features_exist():
+    index_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    jobs_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "jobs.html").read_text()
+    config_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "config.html").read_text()
+    app_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "app.py").read_text()
+    assert 'ANALYSIS_CACHE_SEGMENT_COLORS' in index_body
+    assert 'ui_analysis_cache_hidden_color' in config_body
+    assert 'ui_analysis_cache_hidden_color' in app_body
+    assert 'data-cache-toggle=' in index_body
+    assert 'id="analysis_cache_autowidth"' in jobs_body
+    assert 'id="analysis_cache_windowwidth"' in jobs_body
+    assert 'id="analysis_cache_wrap"' in jobs_body
+    assert 'id="analysis_cache_colfilter"' in jobs_body
+    assert '>Pfad<' in jobs_body
+
+
 def test_dashboard_uses_structured_data_ui_naming_scheme_samples():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     tmpl = (Path(__file__).resolve().parents[1] / "influxbro" / "Template.md").read_text()

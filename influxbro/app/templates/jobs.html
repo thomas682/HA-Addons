@@ -281,6 +281,14 @@
           <div class="table_title">Analysecache</div>
           <div class="table_head" data-ui="jobs_analysis_cache.panel_table_head" title="analysis_cache.table.head">
             <div class="tbl_actions" data-ui="jobs_analysis_cache.panel_table_actions" title="analysis_cache.table.actions">
+              <button class="btn_xs" id="analysis_cache_autowidth" data-ui="jobs_analysis_cache.btn_table_autowidth" title="analysis_cache.table.autowidth" aria-label="Spaltenbreite automatisch">
+                <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 5v14M19 5v14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M8 12h8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M10 10l-2 2 2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 10l2 2-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+              <button class="btn_xs" id="analysis_cache_windowwidth" data-ui="jobs_analysis_cache.btn_table_windowwidth" title="analysis_cache.table.windowwidth" aria-label="Fensterbreite">
+                <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="4" y="6" width="16" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 12H6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M6 12l2-2M6 12l2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 12h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M18 12l-2-2M18 12l-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+              <label><input type="checkbox" id="analysis_cache_wrap" data-ui="jobs_analysis_cache.chk_table_wrap_toggle" title="analysis_cache.table.wrap_toggle"/>Umbruch</label>
+              <label><input type="checkbox" id="analysis_cache_colfilter" data-ui="jobs_analysis_cache.chk_table_colfilter" title="analysis_cache.table.colfilter"/>Spaltenfilter</label>
               <button class="btn_xs" id="analysis_cache_rebuild_btn" data-ui="jobs_analysis_cache.btn_table_rebuild" title="analysis_cache.table.rebuild" disabled>Neu aufbauen</button>
               <button class="btn_xs" id="analysis_cache_delete_btn" data-ui="jobs_analysis_cache.btn_table_delete" title="analysis_cache.table.delete" disabled>Loeschen</button>
             </div>
@@ -297,6 +305,7 @@
                   <th style="width:90px;">Segmente</th>
                   <th style="width:90px;">Treffer</th>
                   <th style="width:90px;">size</th>
+                  <th style="width:260px;">Pfad</th>
                   <th style="width:320px;">Zeitstrahl</th>
                 </tr>
               </thead>
@@ -495,6 +504,10 @@
       const $analysisCacheQ = document.getElementById('analysis_cache_q');
       const $analysisCacheBody = document.querySelector('#analysis_cache_tbl tbody');
       const $analysisCacheBox = document.getElementById('analysis_cache_box');
+      const $analysisCacheAutoWidth = document.getElementById('analysis_cache_autowidth');
+      const $analysisCacheWindowWidth = document.getElementById('analysis_cache_windowwidth');
+      const $analysisCacheWrap = document.getElementById('analysis_cache_wrap');
+      const $analysisCacheColFilter = document.getElementById('analysis_cache_colfilter');
       const $analysisCacheRebuildBtn = document.getElementById('analysis_cache_rebuild_btn');
       const $analysisCacheDeleteBtn = document.getElementById('analysis_cache_delete_btn');
 
@@ -534,6 +547,14 @@
       let LAST_JOBS = [];
       let LAST_TIMERS = [];
       let LAST_ANALYSIS_CACHES = [];
+      const ANALYSIS_CACHE_SEGMENT_COLORS = [
+        ['#d9f7d9', '#5ea56a'],
+        ['#d9f0ff', '#5d86d6'],
+        ['#fff0cc', '#d7a545'],
+        ['#efe3ff', '#8b66d1'],
+        ['#dff7f3', '#4da790'],
+        ['#ffe5d6', '#d47d57'],
+      ];
 
       function pageKey(){
         try{
@@ -718,6 +739,7 @@
         // Wrap toggle
         const wJobsK = lsKey('wrap', 'jobs_tbl');
         const wCacheK = lsKey('wrap', 'cache_tbl');
+        const wAnalysisCacheK = lsKey('wrap', 'analysis_cache_tbl');
         const wTimersK = lsKey('wrap', 'timers_tbl');
         const wUsageK = lsKey('wrap', 'usage_tbl');
         if($jobsWrap){
@@ -744,6 +766,14 @@
             try{ window.InfluxBroTableWrap && window.InfluxBroTableWrap.setWrap('#timers_tbl', $timersWrap.checked); }catch(e){}
           });
         }
+        if($analysisCacheWrap){
+          $analysisCacheWrap.checked = loadBool(wAnalysisCacheK, false);
+          try{ window.InfluxBroTableWrap && window.InfluxBroTableWrap.setWrap('#analysis_cache_tbl', $analysisCacheWrap.checked); }catch(e){}
+          $analysisCacheWrap.addEventListener('change', ()=>{
+            saveBool(wAnalysisCacheK, $analysisCacheWrap.checked);
+            try{ window.InfluxBroTableWrap && window.InfluxBroTableWrap.setWrap('#analysis_cache_tbl', $analysisCacheWrap.checked); }catch(e){}
+          });
+        }
         if($usageWrap){
           $usageWrap.checked = loadBool(wUsageK, false);
           try{ window.InfluxBroTableWrap && window.InfluxBroTableWrap.setWrap('#usage_tbl', $usageWrap.checked); }catch(e){}
@@ -756,6 +786,7 @@
         // Column filter row
         try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.init('#tbl', {startHidden: true}); }catch(e){}
         try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.init('#cache_tbl', {startHidden: true}); }catch(e){}
+        try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.init('#analysis_cache_tbl', {startHidden: true}); }catch(e){}
         try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.init('#timers_tbl', {startHidden: true}); }catch(e){}
         try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.init('#usage_tbl', {startHidden: true}); }catch(e){}
 
@@ -771,17 +802,20 @@
         }
         bindColFilter($jobsColFilter, 'tbl');
         bindColFilter($cacheColFilter, 'cache_tbl');
+        bindColFilter($analysisCacheColFilter, 'analysis_cache_tbl');
         bindColFilter($timersColFilter, 'timers_tbl');
         bindColFilter($usageColFilter, 'usage_tbl');
 
         // Auto width / window width
         if($jobsAutoWidth) $jobsAutoWidth.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} try{ window.InfluxBroTableCols && window.InfluxBroTableCols.autoFit('#tbl', {maxRows: 200}); }catch(e){} });
         if($cacheAutoWidth) $cacheAutoWidth.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} try{ window.InfluxBroTableCols && window.InfluxBroTableCols.autoFit('#cache_tbl', {maxRows: 200}); }catch(e){} });
+        if($analysisCacheAutoWidth) $analysisCacheAutoWidth.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} try{ window.InfluxBroTableCols && window.InfluxBroTableCols.autoFit('#analysis_cache_tbl', {maxRows: 200}); }catch(e){} });
         if($timersAutoWidth) $timersAutoWidth.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} try{ window.InfluxBroTableCols && window.InfluxBroTableCols.autoFit('#timers_tbl', {maxRows: 200}); }catch(e){} });
         if($usageAutoWidth) $usageAutoWidth.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} try{ window.InfluxBroTableCols && window.InfluxBroTableCols.autoFit('#usage_tbl', {maxRows: 200}); }catch(e){} });
 
         if($jobsWindowWidth) $jobsWindowWidth.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} try{ window.InfluxBroTableCols && window.InfluxBroTableCols.windowFit('#tbl', {minW: 60}); }catch(e){} });
         if($cacheWindowWidth) $cacheWindowWidth.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} try{ window.InfluxBroTableCols && window.InfluxBroTableCols.windowFit('#cache_tbl', {minW: 70}); }catch(e){} });
+        if($analysisCacheWindowWidth) $analysisCacheWindowWidth.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} try{ window.InfluxBroTableCols && window.InfluxBroTableCols.windowFit('#analysis_cache_tbl', {minW: 70}); }catch(e){} });
         if($timersWindowWidth) $timersWindowWidth.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} try{ window.InfluxBroTableCols && window.InfluxBroTableCols.windowFit('#timers_tbl', {minW: 80}); }catch(e){} });
         if($usageWindowWidth) $usageWindowWidth.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} try{ window.InfluxBroTableCols && window.InfluxBroTableCols.windowFit('#usage_tbl', {minW: 80}); }catch(e){} });
       }
@@ -1179,17 +1213,27 @@
           const startMs = Date.parse(String(m.covered_start || segs[0].start || ''));
           const stopMs = Date.parse(String(m.covered_stop || segs[segs.length - 1].stop || ''));
           if(!(isFinite(startMs) && isFinite(stopMs) && stopMs > startMs)) return '';
-          const parts = segs.map((seg)=>{
+          const parts = segs.map((seg, idx)=>{
             const s = Date.parse(String(seg.start || ''));
             const e = Date.parse(String(seg.stop || ''));
             if(!(isFinite(s) && isFinite(e) && e > s)) return '';
             const left = ((s - startMs) / (stopMs - startMs)) * 100;
             const width = Math.max(1, ((e - s) / (stopMs - startMs)) * 100);
-            const bg = seg.dirty ? '#ffe1e1' : '#d9f7d9';
-            const bd = seg.dirty ? '#d46a6a' : '#5ea56a';
+            const pair = ANALYSIS_CACHE_SEGMENT_COLORS[idx % ANALYSIS_CACHE_SEGMENT_COLORS.length];
+            const bg = seg.dirty ? '#ffe1e1' : pair[0];
+            const bd = seg.dirty ? '#d46a6a' : pair[1];
             return '<div class="timeline_seg" title="' + fmtTs(seg.start) + ' - ' + fmtTs(seg.stop) + ' | Treffer: ' + String(seg.outlier_count || 0) + '" style="left:' + left.toFixed(3) + '%;width:' + width.toFixed(3) + '%;background:' + bg + ';border:1px solid ' + bd + ';"></div>';
           }).join('');
-          return '<div class="timeline_bar">' + parts + '</div>';
+          const labels = segs.map((seg, idx)=>{
+            const pair = ANALYSIS_CACHE_SEGMENT_COLORS[idx % ANALYSIS_CACHE_SEGMENT_COLORS.length];
+            const bg = seg.dirty ? '#ffe1e1' : pair[0];
+            const bd = seg.dirty ? '#d46a6a' : pair[1];
+            const name = seg.dirty ? ('Geaendert ' + (idx + 1)) : ('Cache ' + (idx + 1));
+            return '<div style="font-size:11px;"><span style="display:inline-block;width:10px;height:10px;background:' + bg + ';border:1px solid ' + bd + ';border-radius:3px;margin-right:6px;"></span>' + name + ': ' + fmtTs(seg.start) + ' – ' + fmtTs(seg.stop) + '</div>';
+          }).join('');
+          return '<div class="timeline_bar">' + parts + '</div>'
+            + '<div style="display:flex;justify-content:space-between;gap:12px;margin-top:6px;font-size:11px;opacity:0.75;"><span>' + fmtTs(m.covered_start || segs[0].start || '') + '</span><span>' + fmtTs(m.covered_stop || segs[segs.length - 1].stop || '') + '</span></div>'
+            + '<div style="display:flex;flex-direction:column;gap:4px;margin-top:8px;">' + labels + '</div>';
         }catch(e){ return ''; }
       }
 
@@ -1205,6 +1249,7 @@
           const sk = String(m.series_key || '');
           const series = String(m.measurement || '') + '/' + String(m.field || '');
           const tags = [m.entity_id ? ('entity_id=' + m.entity_id) : '', m.friendly_name ? ('friendly_name=' + m.friendly_name) : ''].filter(Boolean).join(' ');
+          const paths = Array.isArray(m.paths) ? m.paths : [];
           tr.innerHTML = [
             `<td style="text-align:center;"><input type="radio" name="analysis_cache_sel" ${sk===String(SELECTED_ANALYSIS_CACHE_KEY||'')?'checked':''}/></td>`,
             `<td class="mono">${series}</td>`,
@@ -1213,6 +1258,7 @@
             `<td class="mono" style="text-align:right;">${String(m.segment_count || 0)}${m.dirty_segment_count ? (' / dirty=' + String(m.dirty_segment_count)) : ''}</td>`,
             `<td class="mono" style="text-align:right;">${String(m.outlier_count || 0)}</td>`,
             `<td class="mono" style="text-align:right;">${fmtSize(m.bytes)}</td>`,
+            `<td class="mono" style="font-size:11px;">${paths.map(p=>String(p||'')).join('<br>')}</td>`,
             `<td>${analysisTimeline(m)}</td>`,
           ].join('');
           tr.setAttribute('data-series-key', sk);

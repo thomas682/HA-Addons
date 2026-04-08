@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.12.281
+
+### Enhancement
+
+- Der Dashboard-Zeitstrahl des Analyse-Cache verwendet jetzt unterschiedliche Farben pro Cache-Segment. Die Segmentzeilen darunter sind klickbar und blenden Segmente rein visuell grau aus bzw. wieder ein; die Ausblendefarbe ist jetzt in den Einstellungen konfigurierbar. ([#229](https://github.com/thomas682/HA-Addons/issues/229))
+- `Jobs & Cache: jobs_analysis_cache.tbl_table` verwendet jetzt dieselbe Zeitstrahl-Optik wie das Dashboard, inklusive Segmentfarben und Zeitlabels. Zusaetzlich gibt es dort eine Pfad-Spalte sowie die ueblichen Tabellenaktionen (Auto-Breite, Fensterbreite, Umbruch, Spaltenfilter). ([#229](https://github.com/thomas682/HA-Addons/issues/229))
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tests: `pytest tests/test_api_ui_support.py -q -k "cache_timeline_hidden_color_and_jobs_analysis_table_features_exist"`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.280
 
 ### Enhancement

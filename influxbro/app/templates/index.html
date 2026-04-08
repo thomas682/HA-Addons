@@ -3896,6 +3896,7 @@ async function loadUiConfig(){
     const odlp = Number(cfg.ui_raw_outlier_display_limit_per_type);
     if(isFinite(odlp) && odlp >= 1 && odlp <= 1000) RAW_OUTLIER_DISPLAY_LIMIT_PER_TYPE = Math.trunc(odlp);
     if($rawOutlierDisplayLimitPerType) $rawOutlierDisplayLimitPerType.value = String(RAW_OUTLIER_DISPLAY_LIMIT_PER_TYPE);
+    if(cfg.ui_analysis_cache_hidden_color) ANALYSIS_CACHE_HIDDEN_COLOR = String(cfg.ui_analysis_cache_hidden_color || ANALYSIS_CACHE_HIDDEN_COLOR);
 
     const fs = Number(cfg.ui_font_size_px);
     if(isFinite(fs) && fs >= 10 && fs <= 22) document.documentElement.style.setProperty("--ui-font", fs + "px");
@@ -4639,6 +4640,15 @@ const ANALYSIS_STATE = {
 let ANALYSIS_CHECKLIST_ITEMS = [];
 let ANALYSIS_CHUNK_LOG = [];
 let ANALYSIS_CACHE_PLAN_CHOICE = { cacheStrategy: 'reuse', plan: null };
+let ANALYSIS_CACHE_HIDDEN_COLOR = {{ (cfg.get('ui_analysis_cache_hidden_color') or '#b0b0b0') | tojson }};
+const ANALYSIS_CACHE_SEGMENT_COLORS = [
+  ['#d9f7d9', '#5ea56a'],
+  ['#d9f0ff', '#5d86d6'],
+  ['#fff0cc', '#d7a545'],
+  ['#efe3ff', '#8b66d1'],
+  ['#dff7f3', '#4da790'],
+  ['#ffe5d6', '#d47d57'],
+];
 let GRAPH_QUERY_DASH_AT = "";
 let GRAPH_QUERY_EDIT_AT = "";
 let APPLY_QUERY_LAST_AT = "";
@@ -5975,6 +5985,28 @@ function _timelineSegHtml(startIso, stopIso, totalStartMs, totalStopMs, color, l
   }catch(e){ return ''; }
 }
 
+function _analysisCacheUiStateKey(plan){
+  try{
+    const req = plan && plan.request ? plan.request : {};
+    return 'influxbro.analysis_cache_ui.' + [String(req.start || ''), String(req.stop || ''), String((plan && plan.series_key) || '')].join('|');
+  }catch(e){ return 'influxbro.analysis_cache_ui'; }
+}
+
+function _loadAnalysisCacheUiState(plan){
+  try{
+    const raw = localStorage.getItem(_analysisCacheUiStateKey(plan));
+    return raw ? JSON.parse(raw) : {};
+  }catch(e){ return {}; }
+}
+
+function _saveAnalysisCacheUiState(plan, state){
+  try{ localStorage.setItem(_analysisCacheUiStateKey(plan), JSON.stringify(state || {})); }catch(e){}
+}
+
+function _analysisCacheSegColor(idx){
+  return ANALYSIS_CACHE_SEGMENT_COLORS[idx % ANALYSIS_CACHE_SEGMENT_COLORS.length];
+}
+
 function _analysisCacheTimelineHtml(plan){
   const req = plan && plan.request ? plan.request : {};
   const startMs = Date.parse(String(req.start || ''));
@@ -5982,9 +6014,15 @@ function _analysisCacheTimelineHtml(plan){
   if(!(isFinite(startMs) && isFinite(stopMs) && stopMs > startMs)) return '';
   const parts = [];
   const labels = [];
+  const vis = _loadAnalysisCacheUiState(plan);
   (plan.segments || []).forEach((seg, idx) => {
-    parts.push(_timelineSegHtml(seg.use_start || seg.covered_start, seg.use_stop || seg.covered_stop, startMs, stopMs, '#d9f7d9', 'Cache ' + (idx + 1), '#5ea56a'));
-    labels.push('<div style="font-size:11px;"><span style="display:inline-block;width:10px;height:10px;background:#d9f7d9;border:1px solid #5ea56a;border-radius:3px;margin-right:6px;"></span>Cache ' + (idx + 1) + ': ' + _escHtml(fmtTs(seg.use_start || seg.covered_start)) + ' – ' + _escHtml(fmtTs(seg.use_stop || seg.covered_stop)) + '</div>');
+    const id = 'seg|' + String(seg.cache_id || idx);
+    const hidden = !!vis[id];
+    const [bg, bd] = _analysisCacheSegColor(idx);
+    const color = hidden ? ANALYSIS_CACHE_HIDDEN_COLOR : bg;
+    const border = hidden ? ANALYSIS_CACHE_HIDDEN_COLOR : bd;
+    parts.push(_timelineSegHtml(seg.use_start || seg.covered_start, seg.use_stop || seg.covered_stop, startMs, stopMs, color, 'Cache ' + (idx + 1), border));
+    labels.push('<button type="button" data-cache-toggle="' + _escHtml(id) + '" style="font-size:11px;text-align:left;border:none;background:transparent;padding:0;cursor:pointer;' + (hidden ? 'text-decoration:line-through;color:' + ANALYSIS_CACHE_HIDDEN_COLOR + ';' : '') + '"><span style="display:inline-block;width:10px;height:10px;background:' + color + ';border:1px solid ' + border + ';border-radius:3px;margin-right:6px;"></span>Cache ' + (idx + 1) + ': ' + _escHtml(fmtTs(seg.use_start || seg.covered_start)) + ' – ' + _escHtml(fmtTs(seg.use_stop || seg.covered_stop)) + '</button>');
   });
   (plan.gaps || []).forEach((gap, idx) => {
     parts.push(_timelineSegHtml(gap.start, gap.stop, startMs, stopMs, '#eef2ff', 'Neu lesen ' + (idx + 1), '#7a8be6'));
@@ -9138,7 +9176,23 @@ async function refreshCachingSection(){
         $summary.innerHTML = 'Kein Analyse-Cache gefunden.';
       }
     }
-    if($timeline) $timeline.innerHTML = analysisPlan ? _analysisCacheTimelineHtml(analysisPlan) : '';
+    if($timeline){
+      $timeline.innerHTML = analysisPlan ? _analysisCacheTimelineHtml(analysisPlan) : '';
+      if(analysisPlan){
+        $timeline.querySelectorAll('[data-cache-toggle]').forEach((btn)=>{
+          btn.addEventListener('click', ()=>{
+            const id = String(btn.getAttribute('data-cache-toggle') || '');
+            if(!id) return;
+            const vis = _loadAnalysisCacheUiState(analysisPlan);
+            vis[id] = !vis[id];
+            _saveAnalysisCacheUiState(analysisPlan, vis);
+            $timeline.innerHTML = _analysisCacheTimelineHtml(analysisPlan);
+            const $changedInfoAgain = document.getElementById('caching_changed_info');
+            if($changedInfoAgain) $changedInfoAgain.onclick = ()=>showCachingSummaryInfo();
+          });
+        });
+      }
+    }
     if($changes){
       const rows = analysisPlan && Array.isArray(analysisPlan.changes) ? analysisPlan.changes.slice(0, 8) : [];
       rows.forEach((row) => {
