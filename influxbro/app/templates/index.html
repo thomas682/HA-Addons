@@ -6024,6 +6024,18 @@ function _analysisCacheSetSegUi(plan, id, patch){
   return state[id];
 }
 
+function _analysisCacheTimelineSegHtml(startIso, stopIso, totalStartMs, totalStopMs, color, borderColor, highlighted, label){
+  try{
+    const s = Date.parse(String(startIso || ''));
+    const e = Date.parse(String(stopIso || ''));
+    if(!(isFinite(s) && isFinite(e) && totalStopMs > totalStartMs && e > s)) return '';
+    const left = Math.max(0, Math.min(100, ((s - totalStartMs) / (totalStopMs - totalStartMs)) * 100));
+    const width = Math.max(0.8, Math.min(100 - left, ((e - s) / (totalStopMs - totalStartMs)) * 100));
+    const hl = highlighted ? ';box-shadow:0 0 0 2px #ff9900 inset, 0 0 0 2px #ff9900' : '';
+    return '<div title="' + _escHtml(label) + '" style="position:absolute;left:' + left.toFixed(3) + '%;width:' + width.toFixed(3) + '%;top:0;bottom:0;background:' + color + ';border:1px solid ' + borderColor + ';border-radius:6px' + hl + '"></div>';
+  }catch(e){ return ''; }
+}
+
 function _analysisCacheTimelineHtml(plan){
   const req = plan && plan.request ? plan.request : {};
   const startMs = Date.parse(String(req.start || ''));
@@ -6038,8 +6050,7 @@ function _analysisCacheTimelineHtml(plan){
     const [bg, bd] = _analysisCacheSegColor(idx);
     const color = ui.active ? bg : ANALYSIS_CACHE_HIDDEN_COLOR;
     const border = ui.active ? bd : ANALYSIS_CACHE_HIDDEN_COLOR;
-    const hlStyle = ui.hl ? 'box-shadow:0 0 0 2px #ff9900 inset, 0 0 0 2px #ff9900;' : '';
-    parts.push(_timelineSegHtml(seg.use_start || seg.covered_start, seg.use_stop || seg.covered_stop, startMs, stopMs, color, 'Cache ' + (idx + 1), border).replace('border-radius:6px;"', 'border-radius:6px;' + hlStyle + '"'));
+    parts.push(_analysisCacheTimelineSegHtml(seg.use_start || seg.covered_start, seg.use_stop || seg.covered_stop, startMs, stopMs, color, border, ui.hl, 'Cache ' + (idx + 1)));
     labels.push(
       '<div style="display:flex;align-items:center;gap:8px;font-size:11px;' + (!ui.active ? 'text-decoration:line-through;color:' + ANALYSIS_CACHE_HIDDEN_COLOR + ';' : '') + '">' +
       '<button type="button" data-cache-hl="' + _escHtml(id) + '" class="btn_xs" style="width:auto;min-width:28px;' + (ui.hl ? 'background:#ff9900;color:#fff;border-color:#ff9900;' : '') + '">hl</button>' +
