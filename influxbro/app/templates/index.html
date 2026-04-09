@@ -539,6 +539,8 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
           </button>
           <label><input type="checkbox" id="raw_outlier_wrap" class="row_sel" data-ui="dashboard_outliers.chk_umbruch" title="dashboard_outliers.chk_umbruch"/>Umbruch</label>
           <label><input type="checkbox" id="raw_outlier_colfilter" class="row_sel" data-ui="dashboard_outliers.chk_spaltenfilter" title="dashboard_outliers.chk_spaltenfilter"/>Spaltenfilter</label>
+          <button class="btn_sm" id="outlier_ignore" data-ui="dashboard_outliers.btn_ignorieren" title="dashboard_outliers.btn_ignorieren" disabled>ignorieren</button>
+          <button class="btn_sm" id="outlier_unignore" data-ui="dashboard_outliers.btn_nicht_mehr_ignorieren" title="dashboard_outliers.btn_nicht_mehr_ignorieren" disabled>nicht mehr ignorieren</button>
         </div>
         <div id="raw_outlier_overview_box" style="margin-top:10px;">
           <div class="table_box" id="raw_outlier_overview" style="--max-rows: 5;">
@@ -1158,6 +1160,8 @@ const $rawOutlierStatusNow = document.getElementById('raw_outlier_status_now');
 const $rawOutlierStatusTime = document.getElementById('raw_outlier_status_time');
 const $rawOutlierOverviewBox = document.getElementById('raw_outlier_overview_box');
 const $rawOutlierBody = document.getElementById('raw_outlier_body');
+const $outlierIgnore = document.getElementById('outlier_ignore');
+const $outlierUnignore = document.getElementById('outlier_unignore');
 const $rawOutlierContextRows = document.getElementById('raw_outlier_context_rows');
 const $rawCenterRange = null;
 const $rawCenterRangeHint = null;
@@ -6013,7 +6017,7 @@ function _analysisCacheSegColor(idx){
 
 function _analysisCacheSegUi(state, id){
   const s = state && state[id] && typeof state[id] === 'object' ? state[id] : {};
-  return { active: s.active !== false, hl: !!s.hl };
+  return { active: s.active !== false, hl: !!s.hl, ol: !!s.ol };
 }
 
 function _analysisCacheSetSegUi(plan, id, patch){
@@ -6051,10 +6055,19 @@ function _analysisCacheTimelineHtml(plan){
     const color = ui.active ? bg : ANALYSIS_CACHE_HIDDEN_COLOR;
     const border = ui.active ? bd : ANALYSIS_CACHE_HIDDEN_COLOR;
     parts.push(_analysisCacheTimelineSegHtml(seg.use_start || seg.covered_start, seg.use_stop || seg.covered_stop, startMs, stopMs, color, border, ui.hl, 'Cache ' + (idx + 1)));
+    if(ui.ol){
+      (Array.isArray(seg.outlier_times) ? seg.outlier_times : []).forEach((ts)=>{
+        const ms = Date.parse(String(ts || ''));
+        if(!(isFinite(ms) && stopMs > startMs)) return;
+        const left = Math.max(0, Math.min(100, ((ms - startMs) / (stopMs - startMs)) * 100));
+        parts.push('<div title="Ausreißer: ' + _escHtml(fmtTs(ts)) + '" style="position:absolute;left:' + left.toFixed(3) + '%;top:0;bottom:0;width:0;border-left:2px solid ' + (ui.active ? bd : ANALYSIS_CACHE_HIDDEN_COLOR) + ';"></div>');
+      });
+    }
     labels.push(
       '<div style="display:flex;align-items:center;gap:8px;font-size:11px;' + (!ui.active ? 'text-decoration:line-through;color:' + ANALYSIS_CACHE_HIDDEN_COLOR + ';' : '') + '">' +
       '<button type="button" data-cache-hl="' + _escHtml(id) + '" class="btn_xs" style="width:auto;min-width:28px;' + (ui.hl ? 'background:#ff9900;color:#fff;border-color:#ff9900;' : '') + '">hl</button>' +
       '<button type="button" data-cache-ac="' + _escHtml(id) + '" class="btn_xs" style="width:auto;min-width:28px;' + (ui.active ? '' : 'background:' + ANALYSIS_CACHE_HIDDEN_COLOR + ';color:#fff;border-color:' + ANALYSIS_CACHE_HIDDEN_COLOR + ';') + '">ac</button>' +
+      '<button type="button" data-cache-ol="' + _escHtml(id) + '" class="btn_xs" style="width:auto;min-width:28px;' + (ui.ol ? 'background:' + bd + ';color:#fff;border-color:' + bd + ';' : '') + '">ol</button>' +
       '<span style="display:inline-block;width:10px;height:10px;background:' + color + ';border:1px solid ' + border + ';border-radius:3px;"></span>' +
       '<span style="flex:1;">Cache ' + (idx + 1) + ': ' + _escHtml(fmtTs(seg.use_start || seg.covered_start)) + ' – ' + _escHtml(fmtTs(seg.use_stop || seg.covered_stop)) + ' (' + _escHtml(fmtTs(seg.updated_at || '')) + ')</span>' +
       '<span style="white-space:nowrap;">Treffer: ' + String(seg.outlier_count || 0) + '</span>' +
@@ -7120,6 +7133,8 @@ function updateRawToolbarState(){
     const ignored = activeOutlier ? isIgnoredOutlier(activeOutlier) : false;
     if($rawIgnore) $rawIgnore.disabled = !(activeOutlier && !ignored);
     if($rawUnignore) $rawUnignore.disabled = !(activeOutlier && ignored);
+    if($outlierIgnore) $outlierIgnore.disabled = !(activeOutlier && !ignored);
+    if($outlierUnignore) $outlierUnignore.disabled = !(activeOutlier && ignored);
     if($rawCopiedInfo){
       $rawCopiedInfo.textContent = hasCopied ? (`Quelle: ${fmtTs(RAW_COPIED.time)} | Wert: ${String(RAW_COPIED.value_str || '')}`) : '';
     }
@@ -7824,7 +7839,7 @@ function renderStats(){
     const $inline = document.getElementById('analysis_inline_stats');
     const $panel = document.getElementById('analysis_stats_panel');
     const rows = _statsRowsTotal(LAST_STATS_TOT).filter(r => ['Aktueller Wert','Anzahl Werte','Aeltester Zeitstempel','Neuster Zeitstempel','Minimum','Maximum','Mittelwert'].includes(String(r.k || '')));
-    if($inline) $inline.innerHTML = rows.map(r => '<div class="checklist_item"><span class="checklist_icon ok">✓</span><span class="checklist_label">' + String(r.k || '') + ': ' + String(fmt(r.v) || '') + '</span></div>').join('');
+    if($inline) $inline.innerHTML = rows.map(r => '<div class="checklist_item"><span class="checklist_icon" style="background:#eef2ff;color:#5d86d6;">i</span><span class="checklist_label">' + String(r.k || '') + ': ' + String(fmt(r.v) || '') + '</span></div>').join('');
     if($panel) $panel.style.display = 'none';
   }catch(e){}
 }
@@ -9188,6 +9203,14 @@ async function refreshCachingSection(){
         const gaps = (analysisPlan.gaps || []).length;
         const dirty = (analysisPlan.dirty_ranges || []).length;
         const dashSegs = dashPlan && Array.isArray(dashPlan.segments) ? dashPlan.segments.length : 0;
+        const typeCounts = analysisPlan.cached_outlier_type_counts || {};
+        const foundTxt = 'Gefunden: Counter: ' + String(typeCounts.counter || 0)
+          + ' | Counter Abfall: ' + String(typeCounts.decrease || 0)
+          + ' | Grenzen: ' + String(typeCounts.bounds || 0)
+          + ' | Stoerphase: ' + String(typeCounts.fault_phase || 0)
+          + ' | NULL: ' + String(typeCounts.null || 0)
+          + ' | 0-Werte: ' + String(typeCounts.zero || 0)
+          + ' | Ignoriert: ' + String(typeCounts.ignored || 0);
         _saveAnalysisEventOnce({
           at: new Date().toISOString(),
           kind: 'analysis_cache_plan',
@@ -9204,7 +9227,8 @@ async function refreshCachingSection(){
           + '<span>Bekannte Ausreisser im Cache: <strong>' + String(analysisPlan.cached_outlier_count || 0) + '</strong></span>'
           + '<span>Dashboard-Cache Segmente: <strong>' + dashSegs + '</strong></span>'
           + '</div>'
-          + '<div style="margin-top:4px; font-size:11px; opacity:0.75;">Start: ' + _escHtml(fmtTs(win.start)) + ' | Ende: ' + _escHtml(fmtTs(win.stop)) + '</div>';
+          + '<div style="margin-top:4px; font-size:11px; opacity:0.75;">Start: ' + _escHtml(fmtTs(win.start)) + ' | Ende: ' + _escHtml(fmtTs(win.stop)) + '</div>'
+          + '<div style="margin-top:4px; font-size:11px;">' + _escHtml(foundTxt) + '</div>';
         const $changedInfo = document.getElementById('caching_changed_info');
         if($changedInfo) $changedInfo.onclick = ()=>showCachingSummaryInfo();
         if($combineBtn) $combineBtn.disabled = !((analysisPlan.segments || []).length > 1);
@@ -9244,6 +9268,15 @@ async function refreshCachingSection(){
               if(!id) return;
               const cur = _analysisCacheSegUi(_loadAnalysisCacheUiState(analysisPlan), id);
               _analysisCacheSetSegUi(analysisPlan, id, { active: !cur.active });
+              rerenderTimeline();
+            });
+          });
+          $timeline.querySelectorAll('[data-cache-ol]').forEach((btn)=>{
+            btn.addEventListener('click', ()=>{
+              const id = String(btn.getAttribute('data-cache-ol') || '');
+              if(!id) return;
+              const cur = _analysisCacheSegUi(_loadAnalysisCacheUiState(analysisPlan), id);
+              _analysisCacheSetSegUi(analysisPlan, id, { ol: !cur.ol });
               rerenderTimeline();
             });
           });
@@ -9337,6 +9370,7 @@ async function startDashboardAnalysis(cacheStrategy){
     await refreshCachingSection();
     ANALYSIS_CACHE_PLAN_CHOICE = Object.assign({}, ANALYSIS_CACHE_PLAN_CHOICE || {}, { cacheStrategy: cacheStrategy || 'reuse' });
     await runDashboardAnalysisFlow();
+    try{ await combineAnalysisCacheForCurrentSelection(); }catch(e){}
   }catch(e){
     displayError(e);
   }
@@ -9610,13 +9644,21 @@ if($rawRefresh) $rawRefresh.addEventListener("click", (ev)=>{
 if($rawCopy) $rawCopy.addEventListener("click", async (ev)=>{
   _stop(ev);
   try{
-    const rows = RAW_ROWS || [];
-    const lines = ["Zeit\tWert"];
-    rows.forEach(r => { lines.push(fmtTs(r.time) + "\t" + fmtNum(r.value)); });
+    const $tbl = document.getElementById('raw_tbl');
+    const lines = [];
+    if($tbl){
+      const headers = Array.from($tbl.querySelectorAll('thead th')).map(th => String((th.textContent || '').replace(/\s+/g,' ').trim() || ''));
+      if(headers.length) lines.push(headers.join('\t'));
+      Array.from($tbl.querySelectorAll('tbody tr')).forEach(tr => {
+        const cells = Array.from(tr.querySelectorAll('td')).map(td => String((td.textContent || '').replace(/\s+/g,' ').trim() || ''));
+        lines.push(cells.join('\t'));
+      });
+    }
     const okCopy = await copyTextToClipboard(lines.join("\n"));
     if(okCopy){
-      ok(`Raw Daten kopiert: ${rows.length} Zeilen.`);
-      showRawActionFeedback('Raw Daten kopiert', `Zeilen: ${rows.length}\nFormat: Zeit<TAB>Wert`);
+      const rowCount = Math.max(0, lines.length - 1);
+      ok(`Raw Daten kopiert: ${rowCount} Zeilen.`);
+      showRawActionFeedback('Raw Daten kopiert', `Zeilen: ${rowCount}\nFormat: alle sichtbaren Spalten als TSV`);
     }
     else err("Copy failed (Clipboard blockiert). Bitte im Browser Clipboard erlauben.");
   }catch(e){
@@ -9929,6 +9971,8 @@ if($analysisStartReset) $analysisStartReset.addEventListener('click', async (ev)
 });
 if($rawIgnore) $rawIgnore.addEventListener('click', async (ev)=>{ _stop(ev); try{ await setIgnoredForCurrentOutlier(true); }catch(e){ displayError(e); } });
 if($rawUnignore) $rawUnignore.addEventListener('click', async (ev)=>{ _stop(ev); try{ await setIgnoredForCurrentOutlier(false); }catch(e){ displayError(e); } });
+if($outlierIgnore) $outlierIgnore.addEventListener('click', async (ev)=>{ _stop(ev); try{ await setIgnoredForCurrentOutlier(true); }catch(e){ displayError(e); } });
+if($outlierUnignore) $outlierUnignore.addEventListener('click', async (ev)=>{ _stop(ev); try{ await setIgnoredForCurrentOutlier(false); }catch(e){ displayError(e); } });
 
 try{
   const $tblAuto = document.getElementById('tbl_autowidth');

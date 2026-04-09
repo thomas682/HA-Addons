@@ -595,6 +595,8 @@ def test_dashboard_cache_timeline_has_hl_ac_toggles_and_combine_buttons():
     assert 'function deleteAnalysisCacheForCurrentSelection()' in body
     assert '>Messwertauswahl<' in body
     assert '>Messwert Cache Analyse<' in body
+    assert 'data-cache-ol=' in body
+    assert 'cached_outlier_type_counts' in body
 
 
 def test_dashboard_uses_structured_data_ui_naming_scheme_samples():
@@ -643,6 +645,30 @@ def test_stats_page_clears_expired_last_job_ids_before_cache_fallback():
     assert 'function clearLastJobIds()' in stats
     assert "Stored global_stats job expired, falling back to cache/snapshot" in stats
     assert 'Vorheriger Statistik-Job abgelaufen, Cache wird geladen.' in stats
+
+
+def test_tooltip_template_uses_short_description_plus_key_and_mentions_picker_suppression():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
+    tmpl = (Path(__file__).resolve().parents[1] / "influxbro" / "Template.md").read_text()
+    assert "return (t ? (t + '\\n' + suffix) : suffix);" in body
+    assert 'base = _short(base, 110);' in body
+    assert 'Tooltips must not be shown while `Picker` or `S-Picker` is active' in tmpl
+
+
+def test_dashboard_cache_summary_lists_type_counts_and_has_outlier_toggle():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert 'cached_outlier_type_counts' in body
+    assert 'Gefunden: Counter:' in body
+    assert 'data-cache-ol=' in body
+
+
+def test_dashboard_issue235_controls_exist():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert 'await combineAnalysisCacheForCurrentSelection();' in body
+    assert 'id="outlier_ignore"' in body
+    assert 'id="outlier_unignore"' in body
+    assert 'Format: alle sichtbaren Spalten als TSV' in body
+    assert 'checklist_icon" style="background:#eef2ff;color:#5d86d6;">i</span>' in body
 
 
 def test_picker_suppresses_titles_and_handles_disabled_elements_via_mousedown():

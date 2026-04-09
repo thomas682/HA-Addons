@@ -245,6 +245,24 @@ Rules
   - `dashboard_caching.btn_query_anzeigen`
   - `dashboard_caching.panel_query_details`
 
+## Tooltips
+
+Applies to all pages and interactive elements.
+
+Required format
+
+- Tooltip line 1: a short description of the element/function (maximum about 2 short lines in total when rendered by the browser)
+- Tooltip line 2: the stable element name in parentheses, e.g. `(dashboard_caching.btn_cache_pruefen)`
+- Prefer concise functional wording over long explanations
+- Tooltips must not be shown while `Picker` or `S-Picker` is active
+
+Rules
+
+- Use the explicit tooltip definition from the template when present
+- If no explicit tooltip exists, derive a short tooltip from nearby label/help text
+- Do not use long prose paragraphs in native `title` tooltips
+- Detailed explanations still belong into info popups, not into native hover tooltips
+
 ## Storage Policy (Global vs. Profile-based)
 
 This policy applies to ALL pages and functions of the app, not only Dashboard.

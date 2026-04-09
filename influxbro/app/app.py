@@ -3341,6 +3341,41 @@ def _analysis_cache_payload_rows_in_window(payload: dict[str, Any], start_dt: da
     return [r for r in rows if isinstance(r, dict) and _dash_cache_row_in_window(r, start_dt, stop_dt)]
 
 
+def _analysis_type_counts(rows: list[dict[str, Any]]) -> dict[str, int]:
+    counts = {
+        "counter": 0,
+        "decrease": 0,
+        "bounds": 0,
+        "fault_phase": 0,
+        "null": 0,
+        "zero": 0,
+        "ignored": 0,
+    }
+    for row in rows or []:
+        if not isinstance(row, dict):
+            continue
+        for t in row.get("types") if isinstance(row.get("types"), list) else []:
+            key = str(t or "").strip()
+            if key in counts:
+                counts[key] += 1
+    return counts
+
+
+def _analysis_outlier_times(rows: list[dict[str, Any]]) -> list[str]:
+    out: list[str] = []
+    seen: set[str] = set()
+    for row in rows or []:
+        if not isinstance(row, dict):
+            continue
+        ts = str(row.get("time") or "").strip()
+        if not ts or ts in seen:
+            continue
+        seen.add(ts)
+        out.append(ts)
+    out.sort()
+    return out
+
+
 def _analysis_cache_plan(
     cfg: dict[str, Any],
     measurement: str,
@@ -11839,6 +11874,7 @@ def api_analysis_cache_plan():
     out_segments = []
     for seg in plan.get("segments") or []:
         meta = seg.get("meta") if isinstance(seg.get("meta"), dict) else {}
+        filtered_rows = seg.get("filtered_rows") if isinstance(seg.get("filtered_rows"), list) else []
         out_segments.append({
             "cache_id": str(seg.get("cache_id") or ""),
             "updated_at": meta.get("updated_at"),
@@ -11848,9 +11884,12 @@ def api_analysis_cache_plan():
             "covered_stop": meta.get("covered_stop"),
             "outlier_count": meta.get("outlier_count"),
             "bytes": meta.get("bytes"),
+            "type_counts": _analysis_type_counts(filtered_rows),
+            "outlier_times": _analysis_outlier_times(filtered_rows),
         })
     out_gaps = [{"start": _dt_to_rfc3339_utc(a), "stop": _dt_to_rfc3339_utc(b)} for a, b in (plan.get("gaps") or [])]
     out_dirty = [{"start": _dt_to_rfc3339_utc(a), "stop": _dt_to_rfc3339_utc(b)} for a, b in (plan.get("dirty_ranges") or [])]
+    summary_counts = _analysis_type_counts([r for seg in (plan.get("segments") or []) for r in (seg.get("filtered_rows") or []) if isinstance(r, dict)])
     return jsonify({
         "ok": True,
         "plan": {
@@ -11861,6 +11900,7 @@ def api_analysis_cache_plan():
             "dirty_ranges": out_dirty,
             "changes": plan.get("changes") or [],
             "cached_outlier_count": int(plan.get("cached_outlier_count") or 0),
+            "cached_outlier_type_counts": summary_counts,
             "series_key": str(plan.get("series_key") or ""),
         },
     })

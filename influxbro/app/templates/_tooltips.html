@@ -253,13 +253,13 @@
     if(!k) return t;
     const suffix = `(${k})`;
     if(t.includes(suffix)) return t;
-    return (t ? (t + ' ' + suffix) : suffix);
+    return (t ? (t + '\n' + suffix) : suffix);
   }
 
   function _short(s, n){
     const x = _norm(s);
     if(!x) return '';
-    const m = Number(n) || 180;
+      const m = Number(n) || 110;
     return x.length > m ? (x.slice(0, m) + '...') : x;
   }
 
@@ -392,7 +392,8 @@
         base = _short(txt, 220);
       }
 
-       // Always append the element key in parentheses.
+       // Keep tooltips short (max. 2 lines) and append the key in parentheses on the second line.
+       base = _short(base, 110);
        base = _ensureKeySuffix(base, k);
        if(base) el.setAttribute('title', base);
 
