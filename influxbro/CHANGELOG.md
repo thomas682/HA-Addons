@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.285
+
+### Fix
+
+- Die Statistik-Seite behandelt abgelaufene `global_stats`-Jobs jetzt still: alte Job-IDs werden aus dem Browser-Storage entfernt und die Seite faellt ohne lauten 404-Fehler auf Cache-/Snapshot-Laden zurueck. ([#233](https://github.com/thomas682/HA-Addons/issues/233))
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tests: `pytest tests/test_api_ui_support.py -q -k "stats_page_clears_expired_last_job_ids_before_cache_fallback"`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.284
 
 ### Fix

@@ -638,6 +638,13 @@ def test_non_dashboard_pages_use_structured_data_ui_samples():
     assert 'data-ui="nav_main.btn_ui_picker"' in topbar
 
 
+def test_stats_page_clears_expired_last_job_ids_before_cache_fallback():
+    stats = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "stats.html").read_text()
+    assert 'function clearLastJobIds()' in stats
+    assert "Stored global_stats job expired, falling back to cache/snapshot" in stats
+    assert 'Vorheriger Statistik-Job abgelaufen, Cache wird geladen.' in stats
+
+
 def test_picker_suppresses_titles_and_handles_disabled_elements_via_mousedown():
     topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
     assert 'function suppressTitles()' in topbar
