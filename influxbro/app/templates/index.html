@@ -398,7 +398,7 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
             <button id="raw_outlier_params_action" class="btn_sm" style="width:auto; min-width:34px; padding:6px 8px;" data-ui="dashboard_caching.btn_ausreisser_parameter" title="dashboard_caching.btn_ausreisser_parameter" aria-label="Ausreißer-Parameter"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 8.8A3.2 3.2 0 1 0 12 15.2A3.2 3.2 0 0 0 12 8.8Z" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a1.2 1.2 0 0 1 0 1.7l-1.6 1.6a1.2 1.2 0 0 1-1.7 0l-.1-.1a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.9V22a1.2 1.2 0 0 1-1.2 1.2h-2.2a1.2 1.2 0 0 1-1.2-1.2v-.2a1 1 0 0 0-.7-.9 1 1 0 0 0-1.1.2l-.1.1a1.2 1.2 0 0 1-1.7 0l-1.6-1.6a1.2 1.2 0 0 1 0-1.7l.1-.1a1 1 0 0 0 .2-1.1 1 1 0 0 0-.9-.6H2a1.2 1.2 0 0 1-1.2-1.2v-2.2a1.2 1.2 0 0 1 1.2-1.2h.2a1 1 0 0 0 .9-.7 1 1 0 0 0-.2-1.1l-.1-.1a1.2 1.2 0 0 1 0-1.7l1.6-1.6a1.2 1.2 0 0 1 1.7 0l.1.1a1 1 0 0 0 1.1.2h.1a1 1 0 0 0 .6-.9V2a1.2 1.2 0 0 1 1.2-1.2h2.2A1.2 1.2 0 0 1 13 2v.2a1 1 0 0 0 .7.9 1 1 0 0 0 1.1-.2l.1-.1a1.2 1.2 0 0 1 1.7 0l1.6 1.6a1.2 1.2 0 0 1 0 1.7l-.1.1a1 1 0 0 0-.2 1.1v.1a1 1 0 0 0 .9.6H22a1.2 1.2 0 0 1 1.2 1.2v2.2a1.2 1.2 0 0 1-1.2 1.2h-.2a1 1 0 0 0-.9.7Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></button>
             <button id="analysis_history" class="btn_sm" style="width:auto; min-width:34px; padding:6px 8px;" data-ui="dashboard_caching.btn_analyse_verlauf" title="dashboard_caching.btn_analyse_verlauf" aria-label="Analyse-Verlauf anzeigen"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7a6.97 6.97 0 0 1-4.95-2.05l-1.41 1.41A8.96 8.96 0 0 0 13 21a9 9 0 0 0 0-18zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z" fill="currentColor"/></svg></button>
             <button id="cancel_load" class="btn_sm" style="width:auto; white-space:nowrap;" data-ui="dashboard_caching.btn_laden_abbrechen" title="dashboard_caching.btn_laden_abbrechen" aria-label="Laufende Dashboard-Abfrage abbrechen">Laden abbrechen</button>
-            <button class="btn_sm" id="raw_search_abort" style="width:auto; white-space:nowrap;" title="Ausreißer-Suche abbrechen" disabled>Ausreißer-Abbruch</button>
+            <button class="btn_sm" id="raw_search_abort" style="width:auto; white-space:nowrap;" data-ui="dashboard_filterlist.btn_ausreisser_reset" title="Ausreißer-Suche abbrechen" disabled>Ausreißer-Abbruch</button>
             <button id="analysis_start_reset" class="btn_sm" style="width:auto; display:none;" data-ui="dashboard_caching.btn_startalter_loeschen">Startalter löschen</button>
             <button id="reset_filters" class="btn_sm" style="width:auto; white-space:nowrap;" data-ui="dashboard_caching.btn_reset" title="dashboard_caching.btn_reset">Reset</button>
             <button id="analysis_cache_delete_series" class="btn_sm" style="width:auto; white-space:nowrap;" data-ui="dashboard_caching.btn_loeschen" title="dashboard_caching.btn_loeschen" disabled>löschen</button>
@@ -473,26 +473,26 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
         <div style="display:flex; align-items:flex-start; gap:10px; flex-wrap:wrap;">
           <div style="display:flex; flex-direction:column; gap:4px;">
             <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:flex-start;">
-              <button class="btn_sm" id="raw_search_run">Markieren</button>
-              <button class="btn_sm" id="raw_jump_oldest" disabled title="ältester Ausreisser">
+              <button class="btn_sm" id="raw_search_run" data-ui="dashboard_outliers.btn_ausreisser_suche">Markieren</button>
+              <button class="btn_sm" id="raw_jump_oldest" disabled data-ui="dashboard_outliers.btn_jump_oldest" title="ältester Ausreisser">
                 <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                   <path d="M7 7v10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                   <path d="M17 17l-5-5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
               </button>
-              <button class="btn_sm" id="raw_jump_newest" disabled title="neuster Ausreisser">
+              <button class="btn_sm" id="raw_jump_newest" disabled data-ui="dashboard_outliers.btn_jump_newest" title="neuster Ausreisser">
                 <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                   <path d="M17 7v10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                   <path d="M7 7l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
               </button>
-              <button class="btn_sm" id="raw_search_clear" style="display:none;">Suche beenden</button>
+              <button class="btn_sm" id="raw_search_clear" style="display:none;" data-ui="dashboard_outliers.btn_suche_beenden">Suche beenden</button>
             </div>
           </div>
           <div style="display:flex; flex-direction:column; gap:4px;">
             <div style="display:flex; gap:6px; align-items:flex-start;">
               <div id="raw_outlier_type_dropdown" style="position:relative;">
-                <button class="btn_sm" id="raw_outlier_type_toggle" type="button" style="min-width:200px; text-align:left; justify-content:space-between;">6 Typen ausgewählt</button>
+                <button class="btn_sm" id="raw_outlier_type_toggle" type="button" style="min-width:200px; text-align:left; justify-content:space-between;" data-ui="dashboard_outliers.btn_typ_auswahl">6 Typen ausgewählt</button>
                 <div id="raw_outlier_type_menu" style="display:none; position:absolute; top:100%; left:0; z-index:100; background:#fff; border:1px solid #ddd; border-radius:8px; padding:6px 8px; min-width:220px; box-shadow:0 4px 16px rgba(0,0,0,0.12);">
                   <label style="display:flex; align-items:center; gap:6px; padding:3px 0; font-size:13px; cursor:pointer;"><input type="checkbox" class="raw_outlier_type_cb" value="counter" checked/> Counter Ausreisser</label>
                   <label style="display:flex; align-items:center; gap:6px; padding:3px 0; font-size:13px; cursor:pointer;"><input type="checkbox" class="raw_outlier_type_cb" value="decrease"/> Counter Abfall</label>
@@ -6087,9 +6087,9 @@ function _analysisCacheTimelineHtml(plan){
     }
     labels.push(
       '<div style="display:flex;align-items:center;gap:8px;font-size:11px;' + (!ui.active ? 'text-decoration:line-through;color:' + ANALYSIS_CACHE_HIDDEN_COLOR + ';' : '') + '">' +
-      '<button type="button" data-cache-hl="' + _escHtml(id) + '" class="btn_xs" style="width:auto;min-width:28px;' + (ui.hl ? 'background:#ff9900;color:#fff;border-color:#ff9900;' : '') + '">hl</button>' +
-      '<button type="button" data-cache-ac="' + _escHtml(id) + '" class="btn_xs" style="width:auto;min-width:28px;' + (ui.active ? '' : 'background:' + ANALYSIS_CACHE_HIDDEN_COLOR + ';color:#fff;border-color:' + ANALYSIS_CACHE_HIDDEN_COLOR + ';') + '">ac</button>' +
-      '<button type="button" data-cache-ol="' + _escHtml(id) + '" class="btn_xs" style="width:auto;min-width:28px;' + (ui.ol ? 'background:' + bd + ';color:#fff;border-color:' + bd + ';' : '') + '">ol</button>' +
+      '<button type="button" data-cache-hl="' + _escHtml(id) + '" class="btn_xs" style="width:auto;min-width:28px;' + (ui.hl ? 'background:#ff9900;color:#fff;border-color:#ff9900;' : '') + '" data-ui="cache_timeline.btn_hl">hl</button>' +
+      '<button type="button" data-cache-ac="' + _escHtml(id) + '" class="btn_xs" style="width:auto;min-width:28px;' + (ui.active ? '' : 'background:' + ANALYSIS_CACHE_HIDDEN_COLOR + ';color:#fff;border-color:' + ANALYSIS_CACHE_HIDDEN_COLOR + ';') + '" data-ui="cache_timeline.btn_ac">ac</button>' +
+      '<button type="button" data-cache-ol="' + _escHtml(id) + '" class="btn_xs" style="width:auto;min-width:28px;' + (ui.ol ? 'background:' + bd + ';color:#fff;border-color:' + bd + ';' : '') + '" data-ui="cache_timeline.btn_ol">ol</button>' +
       '<span style="display:inline-block;width:10px;height:10px;background:' + color + ';border:1px solid ' + border + ';border-radius:3px;"></span>' +
       '<span style="flex:1;">Cache ' + (idx + 1) + ': ' + _escHtml(fmtTs(seg.use_start || seg.covered_start)) + ' – ' + _escHtml(fmtTs(seg.use_stop || seg.covered_stop)) + ' (' + _escHtml(fmtTs(seg.updated_at || '')) + ')</span>' +
       '<span style="white-space:nowrap;">Treffer: ' + String(seg.outlier_count || 0) + '</span>' +

@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.288
+
+### Enhancement
+
+- Alle Dashboard-Tooltips verwenden jetzt explizite `data-ui`-Keys mit passenden Beschreibungen im TIPS-Dictionary. Dynamisch generierte Buttons (hl/ac/ol im Cache-Zeitstrahl) sowie bisher ohne `data-ui` versehene Elemente (Ausreisser-Suche, Jump-Buttons, Typauswahl) erhalten jetzt korrekte Tooltips.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tests: `pytest tests/test_api_ui_support.py -q -k "tooltip"`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.287
 
 ### Enhancement
