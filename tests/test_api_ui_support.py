@@ -593,6 +593,8 @@ def test_dashboard_cache_timeline_has_hl_ac_toggles_and_combine_buttons():
     assert 'data-cache-ac=' in body
     assert 'function combineAnalysisCacheForCurrentSelection()' in body
     assert 'function deleteAnalysisCacheForCurrentSelection()' in body
+    assert '>Messwertauswahl<' in body
+    assert '>Messwert Cache Analyse<' in body
 
 
 def test_dashboard_uses_structured_data_ui_naming_scheme_samples():
