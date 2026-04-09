@@ -576,12 +576,23 @@ def test_cache_timeline_hidden_color_and_jobs_analysis_table_features_exist():
     assert 'ANALYSIS_CACHE_SEGMENT_COLORS' in index_body
     assert 'ui_analysis_cache_hidden_color' in config_body
     assert 'ui_analysis_cache_hidden_color' in app_body
-    assert 'data-cache-toggle=' in index_body
+    assert 'data-cache-hl=' in index_body
+    assert 'data-cache-ac=' in index_body
     assert 'id="analysis_cache_autowidth"' in jobs_body
     assert 'id="analysis_cache_windowwidth"' in jobs_body
     assert 'id="analysis_cache_wrap"' in jobs_body
     assert 'id="analysis_cache_colfilter"' in jobs_body
     assert '>Pfad<' in jobs_body
+
+
+def test_dashboard_cache_timeline_has_hl_ac_toggles_and_combine_buttons():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert 'id="analysis_cache_combine"' in body
+    assert 'id="analysis_cache_delete_series"' in body
+    assert 'data-cache-hl=' in body
+    assert 'data-cache-ac=' in body
+    assert 'function combineAnalysisCacheForCurrentSelection()' in body
+    assert 'function deleteAnalysisCacheForCurrentSelection()' in body
 
 
 def test_dashboard_uses_structured_data_ui_naming_scheme_samples():

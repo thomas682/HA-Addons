@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.12.282
+
+### Enhancement
+
+- `Messwertauswahl` ersetzt auf dem Dashboard den bisherigen Titel `Auswahl`; der sichtbare Text `Quelle` entfällt. In der Caching-Zone gibt es jetzt die Buttons `kombinieren` und `löschen` fuer den aktuellen Messwert-Cache. ([#228](https://github.com/thomas682/HA-Addons/issues/228))
+- Die Segmentzeilen im Dashboard-Zeitstrahl besitzen jetzt die zwei Toggle-Buttons `hl` und `ac`. `hl` markiert ein Segment im Zeitstrahl, `ac` blendet es rein visuell grau aus/ein. Rechts wird pro Cache-Segment die Summe der Ausreißer angezeigt. ([#228](https://github.com/thomas682/HA-Addons/issues/228))
+- `kombinieren` fasst zusammenhängende Analyse-Cache-Segmente serverseitig zu neuen Cache-Dateien zusammen, integriert bekannte Messwertänderungen direkt in den kombinierten Cache, entfernt die alten Einzel-Segmente und setzt das Aktualisierungsdatum neu. ([#228](https://github.com/thomas682/HA-Addons/issues/228))
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tests: `pytest tests/test_api_analysis_cache.py tests/test_api_ui_support.py -q -k "analysis_cache_combine_merges_contiguous_segments or dashboard_cache_timeline_has_hl_ac_toggles_and_combine_buttons or cache_timeline_hidden_color_and_jobs_analysis_table_features_exist"`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.281
 
 ### Enhancement

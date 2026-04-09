@@ -242,12 +242,11 @@
   <div class="muted" id="backup_badge" data-ui="dashboard_header.badge_backup" title="dashboard_header.badge_backup"></div>
 
   <details id="selection_details" {{ 'open' if cfg.get('ui_open_selection') else '' }} data-ui="dashboard_selection.section_root" title="dashboard_selection.section_root">
-    <summary><span class="ib_summary_row"><span>Auswahl</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Auswahl" data-info-body="Auswahl bestimmt, welche Serie geladen wird (measurement/field/entity_id/friendly_name) und welcher Zeitraum fuer Graph/Tabellen gilt.\n\nTypisch:\n1) friendly_name/entity_id waehlen (Measurement optional als Filter).\n2) Zeitraum setzen (Preset oder Custom).\n3) Laden startet Query und fuellt Graph, Raw und Tabellen.\n\nHinweis:\n- Auswahl wird im Browser gespeichert und fuer Backup/Restore/Export wiederverwendet." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
+    <summary><span class="ib_summary_row"><span>Messwertauswahl</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Messwertauswahl" data-info-body="Auswahl bestimmt, welche Serie geladen wird (measurement/field/entity_id/friendly_name) und welcher Zeitraum fuer Graph/Tabellen gilt.\n\nTypisch:\n1) friendly_name/entity_id waehlen (Measurement optional als Filter).\n2) Zeitraum setzen (Preset oder Custom).\n3) Laden startet Query und fuellt Graph, Raw und Tabellen.\n\nHinweis:\n- Auswahl wird im Browser gespeichert und fuer Backup/Restore/Export wiederverwendet." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
 
     <div class="grid" id="filters" data-ui="dashboard_selection.panel_filters" title="dashboard_selection.panel_filters">
     <div class="control span2" data-ui="dashboard_selection.panel_source" title="dashboard_selection.panel_source">
       <div class="card" style="margin-top:0;">
-        <div style="font-weight:800;">Quelle</div>
         <div class="grid" style="margin-top:10px;">
           <div class="ib_sel" id="c_measurement_filter" data-ui="dashboard_selection.input_measurement_filter">
             <label class="label_row ib_sel_label"><span>Einheit</span><span id="cnt_measurement_filter" class="muted"></span></label>
@@ -395,12 +394,14 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
           <div id="analysis_status" class="muted" style="font-size:11px; margin-bottom:4px; min-height:14px;"></div>
           <div style="display:flex; gap: 8px; align-items: stretch; flex-wrap:wrap;">
             <button id="load" class="btn_sm" style="height:34px; padding:8px 10px; flex:0 0 auto; width:auto;" data-ui="dashboard_caching.btn_cache_pruefen">Cache pruefen</button>
+            <button id="analysis_cache_combine" class="btn_sm" style="height:34px; padding:8px 10px; flex:0 0 auto; width:auto;" data-ui="dashboard_caching.btn_kombinieren" disabled>kombinieren</button>
             <button id="raw_outlier_params_action" class="btn_sm" style="width:auto; min-width:34px; padding:6px 8px;" data-ui="dashboard_caching.btn_ausreisser_parameter" title="dashboard_caching.btn_ausreisser_parameter" aria-label="Ausreißer-Parameter"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 8.8A3.2 3.2 0 1 0 12 15.2A3.2 3.2 0 0 0 12 8.8Z" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a1.2 1.2 0 0 1 0 1.7l-1.6 1.6a1.2 1.2 0 0 1-1.7 0l-.1-.1a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.9V22a1.2 1.2 0 0 1-1.2 1.2h-2.2a1.2 1.2 0 0 1-1.2-1.2v-.2a1 1 0 0 0-.7-.9 1 1 0 0 0-1.1.2l-.1.1a1.2 1.2 0 0 1-1.7 0l-1.6-1.6a1.2 1.2 0 0 1 0-1.7l.1-.1a1 1 0 0 0 .2-1.1 1 1 0 0 0-.9-.6H2a1.2 1.2 0 0 1-1.2-1.2v-2.2a1.2 1.2 0 0 1 1.2-1.2h.2a1 1 0 0 0 .9-.7 1 1 0 0 0-.2-1.1l-.1-.1a1.2 1.2 0 0 1 0-1.7l1.6-1.6a1.2 1.2 0 0 1 1.7 0l.1.1a1 1 0 0 0 1.1.2h.1a1 1 0 0 0 .6-.9V2a1.2 1.2 0 0 1 1.2-1.2h2.2A1.2 1.2 0 0 1 13 2v.2a1 1 0 0 0 .7.9 1 1 0 0 0 1.1-.2l.1-.1a1.2 1.2 0 0 1 1.7 0l1.6 1.6a1.2 1.2 0 0 1 0 1.7l-.1.1a1 1 0 0 0-.2 1.1v.1a1 1 0 0 0 .9.6H22a1.2 1.2 0 0 1 1.2 1.2v2.2a1.2 1.2 0 0 1-1.2 1.2h-.2a1 1 0 0 0-.9.7Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></button>
             <button id="analysis_history" class="btn_sm" style="width:auto; min-width:34px; padding:6px 8px;" data-ui="dashboard_caching.btn_analyse_verlauf" title="dashboard_caching.btn_analyse_verlauf" aria-label="Analyse-Verlauf anzeigen"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7a6.97 6.97 0 0 1-4.95-2.05l-1.41 1.41A8.96 8.96 0 0 0 13 21a9 9 0 0 0 0-18zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z" fill="currentColor"/></svg></button>
             <button id="cancel_load" class="btn_sm" style="width:auto; white-space:nowrap;" data-ui="dashboard_caching.btn_laden_abbrechen" title="dashboard_caching.btn_laden_abbrechen" aria-label="Laufende Dashboard-Abfrage abbrechen">Laden abbrechen</button>
             <button class="btn_sm" id="raw_search_abort" style="width:auto; white-space:nowrap;" title="Ausreißer-Suche abbrechen" disabled>Ausreißer-Abbruch</button>
             <button id="analysis_start_reset" class="btn_sm" style="width:auto; display:none;" data-ui="dashboard_caching.btn_startalter_loeschen">Startalter löschen</button>
             <button id="reset_filters" class="btn_sm" style="width:auto; white-space:nowrap;" data-ui="dashboard_caching.btn_reset" title="dashboard_caching.btn_reset">Reset</button>
+            <button id="analysis_cache_delete_series" class="btn_sm" style="width:auto; white-space:nowrap;" data-ui="dashboard_caching.btn_loeschen" title="dashboard_caching.btn_loeschen" disabled>löschen</button>
             <button id="dashboard_query_open" type="button" class="btn_sm" style="width:auto; min-width:34px; padding:6px 8px;" data-ui="dashboard_caching.btn_query_anzeigen" title="dashboard_caching.btn_query_anzeigen" aria-label="Dashboard Query anzeigen"><svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="11" cy="15.5" r="1.5"></circle><path d="M12,12H10V8h2a2,2,0,0,0,0-4H10A2.0023,2.0023,0,0,0,8,6v.5H6V6a4.0045,4.0045,0,0,1,4-4h2a4,4,0,0,1,0,8Z"></path><path d="M22.4479,21.0337A10.971,10.971,0,0,0,19.9211,4.7446l-.999,1.73A8.9967,8.9967,0,1,1,5,14H3a10.9916,10.9916,0,0,0,18.0338,8.4478L28.5859,30,30,28.5859Z"></path></svg></button>
             <button id="dashboard_query_test" type="button" class="btn_sm" style="width:auto; min-width:34px; padding:6px 8px;" data-ui="dashboard_caching.btn_query_test" title="dashboard_caching.btn_query_test" aria-label="Query testen"><svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="#000000" width="18" height="18" aria-hidden="true" focusable="false"><path d="M6 10V9h9v1H6zm4-4h5v1h-5V6zm5-3v1H6V3h9zm-9 9v1h9v-1H6z"></path><path fill-rule="evenodd" clip-rule="evenodd" d="M1 2.795l.783-.419 5.371 3.581v.838l-5.371 3.581L1 9.957V2.795zm1.007.94v5.281l3.96-2.64-3.96-2.64z"></path></svg></button>
             <button id="stats_total_open" type="button" class="btn_sm" style="width:auto; min-width:34px; padding:6px 8px;" data-ui="dashboard_caching.btn_gesamtstatistik_anzeigen" title="dashboard_caching.btn_gesamtstatistik_anzeigen" aria-label="Gesamtstatistik anzeigen"><svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><path d="M5,9h18v1H5V9z M5,13h8v9H5V13z M6,21h6v-7H6V21z M16,14h7v-1h-7V14z M16,16h7v-1h-7V16z M16,20h7v-1 h-7V20z M16,18h7v-1h-7V18z M16,22h7v-1h-7V22z M32,7v17c0,2.206-1.794,4-4,4H4c-2.206,0-4-1.794-4-4V5c0-0.552,0.448-1,1-1h26 c0.552,0,1,0.448,1,1v1h3C31.552,6,32,6.448,32,7z M30,8h-3v14h-1V7V6H2v18c0,1.103,0.897,2,2,2h24c1.103,0,2-0.897,2-2V8z"></path></svg></button>
@@ -411,7 +412,7 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
           <div id="analysis_log" style="font-size:12px; border:1px solid #eee; border-radius:8px; padding:8px 12px; background:#fafafa; margin-top:6px;"></div>
           </div>
           <div id="analysis_cache_box" style="margin-top:14px; border:1px solid #eee; border-radius:12px; padding:12px; background:#fafafa;">
-            <div style="font-weight:600; margin-bottom:6px;">Analysecache</div>
+            <div style="font-weight:600; margin-bottom:6px;">Messwert Cache Analyse</div>
             <div id="analysis_confirm_cache_summary" class="muted" style="font-size:12px;"></div>
             <div id="analysis_confirm_cache_timeline" style="margin-top:10px;"></div>
             <div id="analysis_confirm_cache_changes" style="margin-top:10px;"></div>
@@ -1074,6 +1075,8 @@ const $btnTblAllValues = document.getElementById('tbl_all_values');
 const $btnLoad = document.getElementById('load');
 const $analysisRunWithCache = document.getElementById('analysis_run_with_cache');
 const $analysisRunWithoutCache = document.getElementById('analysis_run_without_cache');
+const $analysisCacheCombineBtn = document.getElementById('analysis_cache_combine');
+const $analysisCacheDeleteSeriesBtn = document.getElementById('analysis_cache_delete_series');
 const $analysisStatus = document.getElementById('analysis_status');
 const $analysisHistoryBtn = document.getElementById('analysis_history');
 const $btnCancelLoad = document.getElementById('cancel_load');
@@ -5995,7 +5998,8 @@ function _analysisCacheUiStateKey(plan){
 function _loadAnalysisCacheUiState(plan){
   try{
     const raw = localStorage.getItem(_analysisCacheUiStateKey(plan));
-    return raw ? JSON.parse(raw) : {};
+    const parsed = raw ? JSON.parse(raw) : {};
+    return (parsed && typeof parsed === 'object') ? parsed : {};
   }catch(e){ return {}; }
 }
 
@@ -6005,6 +6009,19 @@ function _saveAnalysisCacheUiState(plan, state){
 
 function _analysisCacheSegColor(idx){
   return ANALYSIS_CACHE_SEGMENT_COLORS[idx % ANALYSIS_CACHE_SEGMENT_COLORS.length];
+}
+
+function _analysisCacheSegUi(state, id){
+  const s = state && state[id] && typeof state[id] === 'object' ? state[id] : {};
+  return { active: s.active !== false, hl: !!s.hl };
+}
+
+function _analysisCacheSetSegUi(plan, id, patch){
+  const state = _loadAnalysisCacheUiState(plan);
+  const cur = _analysisCacheSegUi(state, id);
+  state[id] = Object.assign({}, cur, patch || {});
+  _saveAnalysisCacheUiState(plan, state);
+  return state[id];
 }
 
 function _analysisCacheTimelineHtml(plan){
@@ -6017,12 +6034,21 @@ function _analysisCacheTimelineHtml(plan){
   const vis = _loadAnalysisCacheUiState(plan);
   (plan.segments || []).forEach((seg, idx) => {
     const id = 'seg|' + String(seg.cache_id || idx);
-    const hidden = !!vis[id];
+    const ui = _analysisCacheSegUi(vis, id);
     const [bg, bd] = _analysisCacheSegColor(idx);
-    const color = hidden ? ANALYSIS_CACHE_HIDDEN_COLOR : bg;
-    const border = hidden ? ANALYSIS_CACHE_HIDDEN_COLOR : bd;
-    parts.push(_timelineSegHtml(seg.use_start || seg.covered_start, seg.use_stop || seg.covered_stop, startMs, stopMs, color, 'Cache ' + (idx + 1), border));
-    labels.push('<button type="button" data-cache-toggle="' + _escHtml(id) + '" style="font-size:11px;text-align:left;border:none;background:transparent;padding:0;cursor:pointer;' + (hidden ? 'text-decoration:line-through;color:' + ANALYSIS_CACHE_HIDDEN_COLOR + ';' : '') + '"><span style="display:inline-block;width:10px;height:10px;background:' + color + ';border:1px solid ' + border + ';border-radius:3px;margin-right:6px;"></span>Cache ' + (idx + 1) + ': ' + _escHtml(fmtTs(seg.use_start || seg.covered_start)) + ' – ' + _escHtml(fmtTs(seg.use_stop || seg.covered_stop)) + '</button>');
+    const color = ui.active ? bg : ANALYSIS_CACHE_HIDDEN_COLOR;
+    const border = ui.active ? bd : ANALYSIS_CACHE_HIDDEN_COLOR;
+    const hlStyle = ui.hl ? 'box-shadow:0 0 0 2px #ff9900 inset, 0 0 0 2px #ff9900;' : '';
+    parts.push(_timelineSegHtml(seg.use_start || seg.covered_start, seg.use_stop || seg.covered_stop, startMs, stopMs, color, 'Cache ' + (idx + 1), border).replace('border-radius:6px;"', 'border-radius:6px;' + hlStyle + '"'));
+    labels.push(
+      '<div style="display:flex;align-items:center;gap:8px;font-size:11px;' + (!ui.active ? 'text-decoration:line-through;color:' + ANALYSIS_CACHE_HIDDEN_COLOR + ';' : '') + '">' +
+      '<button type="button" data-cache-hl="' + _escHtml(id) + '" class="btn_xs" style="width:auto;min-width:28px;' + (ui.hl ? 'background:#ff9900;color:#fff;border-color:#ff9900;' : '') + '">hl</button>' +
+      '<button type="button" data-cache-ac="' + _escHtml(id) + '" class="btn_xs" style="width:auto;min-width:28px;' + (ui.active ? '' : 'background:' + ANALYSIS_CACHE_HIDDEN_COLOR + ';color:#fff;border-color:' + ANALYSIS_CACHE_HIDDEN_COLOR + ';') + '">ac</button>' +
+      '<span style="display:inline-block;width:10px;height:10px;background:' + color + ';border:1px solid ' + border + ';border-radius:3px;"></span>' +
+      '<span style="flex:1;">Cache ' + (idx + 1) + ': ' + _escHtml(fmtTs(seg.use_start || seg.covered_start)) + ' – ' + _escHtml(fmtTs(seg.use_stop || seg.covered_stop)) + ' (' + _escHtml(fmtTs(seg.updated_at || '')) + ')</span>' +
+      '<span style="white-space:nowrap;">Treffer: ' + String(seg.outlier_count || 0) + '</span>' +
+      '</div>'
+    );
   });
   (plan.gaps || []).forEach((gap, idx) => {
     parts.push(_timelineSegHtml(gap.start, gap.stop, startMs, stopMs, '#eef2ff', 'Neu lesen ' + (idx + 1), '#7a8be6'));
@@ -6030,7 +6056,13 @@ function _analysisCacheTimelineHtml(plan){
   });
   (plan.dirty_ranges || []).forEach((gap, idx) => {
     parts.push(_timelineSegHtml(gap.start, gap.stop, startMs, stopMs, '#ffe1e1', 'Geaenderter Cache ' + (idx + 1), '#d46a6a'));
-    labels.push('<div style="font-size:11px;"><span style="display:inline-block;width:10px;height:10px;background:#ffe1e1;border:1px solid #d46a6a;border-radius:3px;margin-right:6px;"></span>Geaendert ' + (idx + 1) + ': ' + _escHtml(fmtTs(gap.start)) + ' – ' + _escHtml(fmtTs(gap.stop)) + '</div>');
+    const gs = Date.parse(String(gap.start || ''));
+    const ge = Date.parse(String(gap.stop || ''));
+    const changeCount = (plan.changes || []).filter((ch)=>{
+      const ts = Date.parse(String(ch.time || ''));
+      return isFinite(ts) && isFinite(gs) && isFinite(ge) && ts >= gs && ts <= ge;
+    }).length;
+    labels.push('<div style="font-size:11px;"><span style="display:inline-block;width:10px;height:10px;background:#ffe1e1;border:1px solid #d46a6a;border-radius:3px;margin-right:6px;"></span>Geaendert ' + (idx + 1) + ': ' + _escHtml(fmtTs(gap.start)) + ' – ' + _escHtml(fmtTs(gap.stop)) + ' | Messwertaenderungen: ' + String(changeCount) + '</div>');
   });
   return '<div style="position:relative;height:28px;border:1px solid #ddd;border-radius:8px;background:#fff;overflow:hidden;">' + parts.join('') + '</div>'
     + '<div style="display:flex;justify-content:space-between;gap:12px;margin-top:6px;font-size:11px;opacity:0.75;"><span>' + _escHtml(fmtTs(req.start)) + '</span><span>' + _escHtml(fmtTs(req.stop)) + '</span></div>'
@@ -9122,6 +9154,8 @@ async function refreshCachingSection(){
   const $timeline = document.getElementById('analysis_confirm_cache_timeline');
   const $changes = document.getElementById('analysis_confirm_cache_changes');
   const $status = document.getElementById('analysis_status');
+  const $combineBtn = document.getElementById('analysis_cache_combine');
+  const $deleteBtn = document.getElementById('analysis_cache_delete_series');
 
   const types = getRawOutlierFilterTypes();
   const typeLabels = {counter: 'Counter Ausreisser', decrease: 'Counter Abfall', bounds: 'Grenzen', fault_phase: 'Stoerphasensuche', null: 'NULL Werte', zero: '0-Werte'};
@@ -9165,6 +9199,8 @@ async function refreshCachingSection(){
           + '<div style="margin-top:4px; font-size:11px; opacity:0.75;">Start: ' + _escHtml(fmtTs(win.start)) + ' | Ende: ' + _escHtml(fmtTs(win.stop)) + '</div>';
         const $changedInfo = document.getElementById('caching_changed_info');
         if($changedInfo) $changedInfo.onclick = ()=>showCachingSummaryInfo();
+        if($combineBtn) $combineBtn.disabled = !((analysisPlan.segments || []).length > 1);
+        if($deleteBtn) $deleteBtn.disabled = !((analysisPlan.segments || []).length > 0);
       }else{
         _saveAnalysisEventOnce({
           at: new Date().toISOString(),
@@ -9174,23 +9210,37 @@ async function refreshCachingSection(){
           extra: { key: ['analysis_cache_plan', 'no_cache', base.measurement, base.field, base.entity_id || '', base.friendly_name || '', win.start, win.stop].join('|') },
         });
         $summary.innerHTML = 'Kein Analyse-Cache gefunden.';
+        if($combineBtn) $combineBtn.disabled = true;
+        if($deleteBtn) $deleteBtn.disabled = true;
       }
     }
     if($timeline){
       $timeline.innerHTML = analysisPlan ? _analysisCacheTimelineHtml(analysisPlan) : '';
       if(analysisPlan){
-        $timeline.querySelectorAll('[data-cache-toggle]').forEach((btn)=>{
-          btn.addEventListener('click', ()=>{
-            const id = String(btn.getAttribute('data-cache-toggle') || '');
-            if(!id) return;
-            const vis = _loadAnalysisCacheUiState(analysisPlan);
-            vis[id] = !vis[id];
-            _saveAnalysisCacheUiState(analysisPlan, vis);
-            $timeline.innerHTML = _analysisCacheTimelineHtml(analysisPlan);
-            const $changedInfoAgain = document.getElementById('caching_changed_info');
-            if($changedInfoAgain) $changedInfoAgain.onclick = ()=>showCachingSummaryInfo();
+        const rerenderTimeline = ()=>{
+          $timeline.innerHTML = _analysisCacheTimelineHtml(analysisPlan);
+          const $changedInfoAgain = document.getElementById('caching_changed_info');
+          if($changedInfoAgain) $changedInfoAgain.onclick = ()=>showCachingSummaryInfo();
+          $timeline.querySelectorAll('[data-cache-hl]').forEach((btn)=>{
+            btn.addEventListener('click', ()=>{
+              const id = String(btn.getAttribute('data-cache-hl') || '');
+              if(!id) return;
+              const cur = _analysisCacheSegUi(_loadAnalysisCacheUiState(analysisPlan), id);
+              _analysisCacheSetSegUi(analysisPlan, id, { hl: !cur.hl });
+              rerenderTimeline();
+            });
           });
-        });
+          $timeline.querySelectorAll('[data-cache-ac]').forEach((btn)=>{
+            btn.addEventListener('click', ()=>{
+              const id = String(btn.getAttribute('data-cache-ac') || '');
+              if(!id) return;
+              const cur = _analysisCacheSegUi(_loadAnalysisCacheUiState(analysisPlan), id);
+              _analysisCacheSetSegUi(analysisPlan, id, { active: !cur.active });
+              rerenderTimeline();
+            });
+          });
+        };
+        rerenderTimeline();
       }
     }
     if($changes){
@@ -9282,6 +9332,30 @@ async function startDashboardAnalysis(cacheStrategy){
   }catch(e){
     displayError(e);
   }
+}
+
+async function combineAnalysisCacheForCurrentSelection(){
+  const base = currentFilters();
+  const win = await resolveEffectiveAnalysisWindow();
+  const plan = (ANALYSIS_CACHE_PLAN_CHOICE && ANALYSIS_CACHE_PLAN_CHOICE.plan) ? ANALYSIS_CACHE_PLAN_CHOICE.plan : await fetchAnalysisCachePlan(base, win);
+  if(!plan || !plan.series_key) throw new Error('Kein Analyse-Cache fuer diese Auswahl vorhanden.');
+  const j = await api('./api/analysis_cache/combine', {
+    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({series_key: plan.series_key})
+  });
+  _saveAnalysisEvent({at: new Date().toISOString(), kind: 'analysis_cache_plan', step: 'combined', detail: 'Kombiniert: ' + String(j.groups_combined || 0) + ' Gruppe(n)'});
+  await refreshCachingSection();
+}
+
+async function deleteAnalysisCacheForCurrentSelection(){
+  const base = currentFilters();
+  const win = await resolveEffectiveAnalysisWindow();
+  const plan = (ANALYSIS_CACHE_PLAN_CHOICE && ANALYSIS_CACHE_PLAN_CHOICE.plan) ? ANALYSIS_CACHE_PLAN_CHOICE.plan : await fetchAnalysisCachePlan(base, win);
+  if(!plan || !plan.series_key) throw new Error('Kein Analyse-Cache fuer diese Auswahl vorhanden.');
+  await api('./api/analysis_cache/delete', {
+    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({series_key: plan.series_key})
+  });
+  _saveAnalysisEvent({at: new Date().toISOString(), kind: 'analysis_cache_plan', step: 'deleted', detail: 'Analysecache fuer aktuelle Serie geloescht'});
+  await refreshCachingSection();
 }
 
 async function refreshAllWithStatus(){
@@ -9811,6 +9885,8 @@ if($btnLoad) $btnLoad.addEventListener("click", (ev)=>{
   }catch(e){}
   refreshCachingSection().catch(displayError);
 });
+if($analysisCacheCombineBtn) $analysisCacheCombineBtn.addEventListener('click', (ev)=>{ _stop(ev); combineAnalysisCacheForCurrentSelection().catch(displayError); });
+if($analysisCacheDeleteSeriesBtn) $analysisCacheDeleteSeriesBtn.addEventListener('click', (ev)=>{ _stop(ev); if(confirm('Alle Analyse-Cache-Segmente dieser Messwertauswahl loeschen?')) deleteAnalysisCacheForCurrentSelection().catch(displayError); });
 if($analysisRunWithCache) $analysisRunWithCache.addEventListener('click', (ev)=>{ _stop(ev); startDashboardAnalysis('reuse'); });
 if($analysisRunWithoutCache) $analysisRunWithoutCache.addEventListener('click', (ev)=>{ _stop(ev); startDashboardAnalysis('refresh'); });
 if($btnCancelLoad) $btnCancelLoad.addEventListener("click", (ev)=>{ _stop(ev); cancelLoadNow(); });

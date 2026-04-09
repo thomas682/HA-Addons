@@ -3515,6 +3515,120 @@ def _analysis_cache_group_list(cfg: dict[str, Any]) -> list[dict[str, Any]]:
     return out
 
 
+def _analysis_cache_fetch_segment(
+    cfg: dict[str, Any],
+    measurement: str,
+    field: str,
+    entity_id: str | None,
+    friendly_name: str | None,
+    start_iso: str,
+    stop_iso: str,
+) -> tuple[list[dict[str, Any]], int]:
+    body0 = {
+        "measurement": str(measurement or ""),
+        "field": str(field or ""),
+        "entity_id": str(entity_id or ""),
+        "friendly_name": str(friendly_name or ""),
+        "start": str(start_iso or ""),
+        "stop": str(stop_iso or ""),
+        "search_types": ["bounds", "counter", "decrease", "fault_phase", "null", "zero"],
+        "limit": int(cfg.get("ui_raw_outlier_search_limit", 5000) or 5000),
+    }
+    with app.test_request_context("/api/outlier_search", method="POST", json=body0):
+        resp = api_outlier_search()
+    response = make_response(resp)
+    if response.status_code >= 400:
+        err_payload = response.get_json(silent=True) or {}
+        err_text = err_payload.get("error") if isinstance(err_payload, dict) else str(err_payload)
+        raise _ApiError(err_text or f"rebuild failed: {response.status_code}", 500)
+    data = response.get_json(silent=True) or {}
+    if not data.get("ok"):
+        raise _ApiError(str(data.get("error") or "rebuild failed"), 500)
+    return data.get("rows") if isinstance(data.get("rows"), list) else [], int(data.get("scanned") or 0)
+
+
+def _analysis_cache_merge_group(cfg: dict[str, Any], metas: list[dict[str, Any]]) -> dict[str, Any] | None:
+    if len(metas) < 2:
+        return None
+    metas = sorted(metas, key=lambda m: str(m.get("covered_start") or ""))
+    first = metas[0]
+    key0 = first.get("key") if isinstance(first.get("key"), dict) else {}
+    measurement = str(key0.get("measurement") or first.get("measurement") or "")
+    field = str(key0.get("field") or first.get("field") or "")
+    entity_id = str(key0.get("entity_id") or first.get("entity_id") or "") or None
+    friendly_name = str(key0.get("friendly_name") or first.get("friendly_name") or "") or None
+    all_rows: list[dict[str, Any]] = []
+    total_scanned = 0
+    now = _utc_now_iso_ms()
+    for meta in metas:
+        start_iso = str(meta.get("covered_start") or "")
+        stop_iso = str(meta.get("covered_stop") or "")
+        start_dt, stop_dt = _analysis_cache_meta_span(meta)
+        updated_at = _parse_iso_datetime(str(meta.get("updated_at") or "")) or datetime.fromtimestamp(0, tz=timezone.utc)
+        changed = _history_changes_for_window(measurement, field, entity_id, friendly_name, start_dt, stop_dt, updated_at, limit=500) if start_dt and stop_dt else []
+        if changed:
+            rows, scanned = _analysis_cache_fetch_segment(cfg, measurement, field, entity_id, friendly_name, start_iso, stop_iso)
+        else:
+            payload = _analysis_cache_load_payload(str(meta.get("id") or "")) or {}
+            rows = payload.get("rows") if isinstance(payload.get("rows"), list) else []
+            scanned = int(payload.get("scanned") or meta.get("scanned") or 0)
+        all_rows.extend([r for r in rows if isinstance(r, dict)])
+        total_scanned += int(scanned or 0)
+    merged_by_time: dict[str, dict[str, Any]] = {}
+    for row in all_rows:
+        merged_by_time[str(row.get("time") or "")] = row
+    merged_rows = list(merged_by_time.values())
+    merged_rows.sort(key=lambda r: str(r.get("time") or ""))
+    merged_meta = _analysis_cache_store_segment(
+        cfg,
+        measurement,
+        field,
+        entity_id,
+        friendly_name,
+        str(metas[0].get("covered_start") or ""),
+        str(metas[-1].get("covered_stop") or ""),
+        merged_rows,
+        total_scanned,
+    )
+    if not merged_meta:
+        return None
+    merged_meta["updated_at"] = now
+    merged_meta["combined_from"] = [str(m.get("id") or "") for m in metas]
+    _analysis_cache_write_meta(merged_meta)
+    for meta in metas:
+        _analysis_cache_delete_id(str(meta.get("id") or ""))
+    return merged_meta
+
+
+def _analysis_cache_contiguous_groups(metas: list[dict[str, Any]]) -> list[list[dict[str, Any]]]:
+    ordered = sorted(metas, key=lambda m: str(m.get("covered_start") or ""))
+    groups: list[list[dict[str, Any]]] = []
+    cur: list[dict[str, Any]] = []
+    cur_stop: datetime | None = None
+    for meta in ordered:
+        start_dt, stop_dt = _analysis_cache_meta_span(meta)
+        if not start_dt or not stop_dt:
+            continue
+        if not cur:
+            cur = [meta]
+            cur_stop = stop_dt
+            continue
+        if cur_stop and start_dt <= cur_stop:
+            cur.append(meta)
+            if stop_dt > cur_stop:
+                cur_stop = stop_dt
+        elif cur_stop and abs((start_dt - cur_stop).total_seconds()) <= 1:
+            cur.append(meta)
+            cur_stop = stop_dt
+        else:
+            groups.append(cur)
+            cur = [meta]
+            cur_stop = stop_dt
+    if cur:
+        groups.append(cur)
+    return groups
+
+
 def _dash_cache_is_stale(cfg: dict[str, Any], meta: dict[str, Any]) -> bool:
     try:
         mode = str(cfg.get("dash_cache_refresh_mode") or "hours").strip().lower()
@@ -11833,40 +11947,67 @@ def api_analysis_cache_rebuild():
     rebuilt = 0
     for meta in metas:
         key = meta.get("key") if isinstance(meta.get("key"), dict) else {}
-        body0 = {
-            "measurement": str(key.get("measurement") or meta.get("measurement") or ""),
-            "field": str(key.get("field") or meta.get("field") or ""),
-            "entity_id": str(key.get("entity_id") or meta.get("entity_id") or ""),
-            "friendly_name": str(key.get("friendly_name") or meta.get("friendly_name") or ""),
-            "start": str(key.get("start") or meta.get("covered_start") or ""),
-            "stop": str(key.get("stop") or meta.get("covered_stop") or ""),
-            "search_types": ["bounds", "counter", "decrease", "fault_phase", "null", "zero"],
-            "limit": int(load_cfg().get("ui_raw_outlier_search_limit", 5000) or 5000),
-        }
-        with app.test_request_context("/api/outlier_search", method="POST", json=body0):
-            resp = api_outlier_search()
-        response = make_response(resp)
-        if response.status_code >= 400:
-            err_payload = response.get_json(silent=True) or {}
-            err_text = err_payload.get("error") if isinstance(err_payload, dict) else str(err_payload)
-            return jsonify({"ok": False, "error": err_text or f"rebuild failed: {response.status_code}"}), 500
-        data = response.get_json(silent=True) or {}
-        if not data.get("ok"):
-            return jsonify({"ok": False, "error": data.get("error") or "rebuild failed"}), 500
+        measurement = str(key.get("measurement") or meta.get("measurement") or "")
+        field = str(key.get("field") or meta.get("field") or "")
+        entity_id = str(key.get("entity_id") or meta.get("entity_id") or "") or None
+        friendly_name = str(key.get("friendly_name") or meta.get("friendly_name") or "") or None
+        start_iso = str(key.get("start") or meta.get("covered_start") or "")
+        stop_iso = str(key.get("stop") or meta.get("covered_stop") or "")
+        try:
+            rows, scanned = _analysis_cache_fetch_segment(cfg, measurement, field, entity_id, friendly_name, start_iso, stop_iso)
+        except _ApiError as e:
+            return jsonify({"ok": False, "error": str(e)}), int(getattr(e, "status_code", 500) or 500)
         cfg = _overlay_from_yaml_if_enabled(load_cfg())
         _analysis_cache_store_segment(
             cfg,
-            body0["measurement"],
-            body0["field"],
-            body0["entity_id"] or None,
-            body0["friendly_name"] or None,
-            body0["start"],
-            body0["stop"],
-            data.get("rows") if isinstance(data.get("rows"), list) else [],
-            int(data.get("scanned") or 0),
+            measurement,
+            field,
+            entity_id,
+            friendly_name,
+            start_iso,
+            stop_iso,
+            rows,
+            scanned,
         )
         rebuilt += 1
     return jsonify({"ok": True, "rebuilt": rebuilt})
+
+
+@app.post("/api/analysis_cache/combine")
+def api_analysis_cache_combine():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    body = request.get_json(force=True) or {}
+    series_key = str(body.get("series_key") or "").strip()
+    if not series_key:
+        return jsonify({"ok": False, "error": "series_key required"}), 400
+    metas = [m for m in _analysis_cache_list_meta() if str(m.get("series_key") or "") == series_key]
+    if not metas:
+        return jsonify({"ok": False, "error": "series not found"}), 404
+    groups = [g for g in _analysis_cache_contiguous_groups(metas) if len(g) > 1]
+    if not groups:
+        return jsonify({"ok": False, "error": "no contiguous segments to combine"}), 400
+    created: list[dict[str, Any]] = []
+    deleted_ids: list[str] = []
+    for group in groups:
+        merged = _analysis_cache_merge_group(cfg, group)
+        if not merged:
+            continue
+        created.append({
+            "cache_id": str(merged.get("id") or ""),
+            "start": str(merged.get("covered_start") or ""),
+            "stop": str(merged.get("covered_stop") or ""),
+            "updated_at": str(merged.get("updated_at") or ""),
+            "outlier_count": int(merged.get("outlier_count") or 0),
+        })
+        deleted_ids.extend([str(m.get("id") or "") for m in group])
+    if not created:
+        return jsonify({"ok": False, "error": "combine failed"}), 500
+    return jsonify({
+        "ok": True,
+        "created": created,
+        "deleted_ids": deleted_ids,
+        "groups_combined": len(created),
+    })
 
 
 @app.post("/api/cache/delete")
