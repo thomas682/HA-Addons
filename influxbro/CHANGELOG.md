@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.12.284
+
+### Fix
+
+- `Analyse mit Cache` behaelt vorgeladene Analyse-Cache-Treffer jetzt bis zum Ende des Suchlaufs, sodass `dashboard_outliers.tbl_ausreisser` und `dashboard_analysis.txt_found_info` nach Cache-Nutzung wieder befuellt werden. ([#230](https://github.com/thomas682/HA-Addons/issues/230))
+- `nav_main.btn_ui_picker` und `nav_main.btn_ui_picker_super` akzeptieren jetzt auch deaktivierte Elemente ueber `mousedown`, und waehrend des Picker-Modus werden native `title`-Tooltips temporaer unterdrueckt. ([#231](https://github.com/thomas682/HA-Addons/issues/231))
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tests: `pytest tests/test_api_ui_support.py -q -k "cache_analysis_keeps_preloaded_results_before_search or picker_suppresses_titles_and_handles_disabled_elements_via_mousedown"`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.283
 
 ### Enhancement

@@ -767,6 +767,7 @@
       let currentTargets = [];
       let currentTargetIndex = 0;
       let lastPointer = { x: null, y: null };
+      let tooltipSuppressed = [];
 
     function readSuper(){
       try{ return localStorage.getItem(LS_SUPER) === '1'; }catch(e){ return false; }
@@ -808,6 +809,27 @@
         badge.style.display = 'none';
         document.body.appendChild(badge);
       }
+    }
+
+    function suppressTitles(){
+      try{
+        tooltipSuppressed = [];
+        document.querySelectorAll('[title]').forEach((el)=>{
+          const title = String(el.getAttribute('title') || '');
+          if(!title) return;
+          tooltipSuppressed.push([el, title]);
+          el.removeAttribute('title');
+        });
+      }catch(e){}
+    }
+
+    function restoreTitles(){
+      try{
+        tooltipSuppressed.forEach(([el, title])=>{
+          try{ if(el && title !== undefined) el.setAttribute('title', title); }catch(e){}
+        });
+      }catch(e){}
+      tooltipSuppressed = [];
     }
 
     async function copyText(txt){
@@ -983,7 +1005,9 @@
       try{ if($superBtn) $superBtn.classList.remove('active'); }catch(e){}
       try{ if(overlay) overlay.style.display = 'none'; }catch(e){}
       try{ if(badge) badge.style.display = 'none'; }catch(e){}
+      try{ restoreTitles(); }catch(e){}
       document.removeEventListener('mousemove', onMove, true);
+      document.removeEventListener('mousedown', onMouseDown, true);
       document.removeEventListener('click', onClick, true);
       document.removeEventListener('wheel', onWheel, true);
       document.removeEventListener('keydown', onKey, true);
@@ -992,8 +1016,10 @@
     function start(){
       active = true;
       ensureUi();
+      try{ suppressTitles(); }catch(e){}
       try{ if(readSuper()){ if($superBtn) $superBtn.classList.add('active'); if($btn) $btn.classList.remove('active'); } else { if($btn) $btn.classList.add('active'); if($superBtn) $superBtn.classList.remove('active'); } }catch(e){}
       document.addEventListener('mousemove', onMove, true);
+      document.addEventListener('mousedown', onMouseDown, true);
       document.addEventListener('click', onClick, true);
       document.addEventListener('wheel', onWheel, { capture: true, passive: false });
       document.addEventListener('keydown', onKey, true);
@@ -1021,12 +1047,10 @@
       }catch(e){}
     }
 
-    async function onClick(ev){
-      if(!active) return;
-      const t = pickTarget(ev.target, ev);
-      if(!t || !t.el) return;
-      try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
-      const name = String(t.name || '').trim();
+    async function _copyCurrentTarget(target, ev){
+      if(!target || !target.el) return;
+      try{ ev && ev.preventDefault && ev.preventDefault(); ev && ev.stopPropagation && ev.stopPropagation(); }catch(e){}
+      const name = String(target.name || '').trim();
       const text = '<' + (window.currentPageLabel ? window.currentPageLabel() : 'Seite') + ': ' + name + '>';
       const ok = await copyText(text);
       try{
@@ -1035,6 +1059,22 @@
         }
       }catch(e){}
       stop();
+    }
+
+    function onMouseDown(ev){
+      try{
+        if(!active) return;
+        const t = pickTarget(ev.target, ev);
+        if(!t || !t.el) return;
+        _copyCurrentTarget(t, ev).catch(()=>{});
+      }catch(e){}
+    }
+
+    async function onClick(ev){
+      if(!active) return;
+      const t = pickTarget(ev.target, ev);
+      if(!t || !t.el) return;
+      await _copyCurrentTarget(t, ev);
     }
 
     function onKey(ev){

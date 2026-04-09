@@ -6491,10 +6491,7 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog, effective
 
   startRawOutlierUi(baseMeta);
   RAW_OUTLIER_SEARCHING = true;
-  RAW_OUTLIER_RESULTS = [];
   RAW_OUTLIER_INDEX = -1;
-  RAW_OUTLIER_MAP = {};
-  RAW_OUTLIER_SCANNED_TOTAL = 0;
   RAW_OUTLIER_ABORT = new AbortController();
 
   if($rawSearchRun) $rawSearchRun.disabled = true;

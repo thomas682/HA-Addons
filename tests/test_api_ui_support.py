@@ -616,6 +616,14 @@ def test_dashboard_issue223_removed_tip_selection_and_moved_start_info():
     assert 'const preloadSegments = Array.isArray(serverPlan && serverPlan.segments) ? serverPlan.segments : [];' in body
 
 
+def test_dashboard_cache_analysis_keeps_preloaded_results_before_search():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert 'const preloadSegments = Array.isArray(serverPlan && serverPlan.segments) ? serverPlan.segments : [];' in body
+    assert 'RAW_OUTLIER_RESULTS = [];' in body  # initial reset exists
+    assert 'startRawOutlierUi(baseMeta);\n  RAW_OUTLIER_SEARCHING = true;\n  RAW_OUTLIER_INDEX = -1;' in body
+    assert 'startRawOutlierUi(baseMeta);\n  RAW_OUTLIER_SEARCHING = true;\n  RAW_OUTLIER_RESULTS = [];' not in body
+
+
 def test_non_dashboard_pages_use_structured_data_ui_samples():
     jobs = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "jobs.html").read_text()
     config = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "config.html").read_text()
@@ -628,6 +636,14 @@ def test_non_dashboard_pages_use_structured_data_ui_samples():
     assert 'data-ui="stats_main.btn_load"' in stats
     assert 'data-ui="stats_table.panel_wrap"' in stats
     assert 'data-ui="nav_main.btn_ui_picker"' in topbar
+
+
+def test_picker_suppresses_titles_and_handles_disabled_elements_via_mousedown():
+    topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    assert 'function suppressTitles()' in topbar
+    assert 'function restoreTitles()' in topbar
+    assert "document.addEventListener('mousedown', onMouseDown, true);" in topbar
+    assert 'async function _copyCurrentTarget(target, ev)' in topbar
 
 
 def test_table_helpers_strip_ingress_token_from_storage_keys():
