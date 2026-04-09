@@ -497,6 +497,7 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
                   <label style="display:flex; align-items:center; gap:6px; padding:3px 0; font-size:13px; cursor:pointer;"><input type="checkbox" class="raw_outlier_type_cb" value="counter" checked/> Counter Ausreisser</label>
                   <label style="display:flex; align-items:center; gap:6px; padding:3px 0; font-size:13px; cursor:pointer;"><input type="checkbox" class="raw_outlier_type_cb" value="decrease"/> Counter Abfall</label>
                   <label style="display:flex; align-items:center; gap:6px; padding:3px 0; font-size:13px; cursor:pointer;"><input type="checkbox" class="raw_outlier_type_cb" value="bounds"/> Grenzen</label>
+                  <label style="display:flex; align-items:center; gap:6px; padding:3px 0; font-size:13px; cursor:pointer;"><input type="checkbox" class="raw_outlier_type_cb" value="gap"/> Messwertlücke</label>
                   <label style="display:flex; align-items:center; gap:6px; padding:3px 0; font-size:13px; cursor:pointer;"><input type="checkbox" class="raw_outlier_type_cb" value="fault_phase"/> Stoerphasensuche</label>
                   <label style="display:flex; align-items:center; gap:6px; padding:3px 0; font-size:13px; cursor:pointer;"><input type="checkbox" class="raw_outlier_type_cb" value="null"/> NULL Werte</label>
                   <label style="display:flex; align-items:center; gap:6px; padding:3px 0; font-size:13px; cursor:pointer;"><input type="checkbox" class="raw_outlier_type_cb" value="zero"/> 0-Werte</label>
@@ -715,6 +716,10 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
             <label style="font-weight:500;">Stoerphase: Recovery-Streak</label>
             <input id="raw_param_recovery_streak" type="number" min="1" max="10" step="1" value="2" style="width:80px;" />
           </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #eee;">
+            <label style="font-weight:500;">Messwertlücke: Max Abstand (s)</label>
+            <input id="raw_param_gap_seconds" type="number" min="1" max="86400" step="1" value="300" style="width:120px;" />
+          </div>
         </div>
         <div style="margin-top:16px; display:flex; gap:8px; justify-content:flex-end;">
           <button class="btn_sm" id="raw_outlier_params_save" type="button">Speichern</button>
@@ -749,6 +754,7 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
                   <option value="counter" selected>Counter Ausreisser</option>
                   <option value="decrease">nicht ansteigende Spruenge</option>
                   <option value="bounds">Grenzen</option>
+                  <option value="gap">Messwertlücke</option>
                   <option value="fault_phase">Stoerphasensuche</option>
                   <option value="null">NULL Werte</option>
                   <option value="zero">0-Werte</option>
@@ -763,6 +769,12 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
                 <label>Max Sprung (optional)</label>
                 <input id="out_max_step" placeholder="(auto)" data-ui="dashboard_filterlist.input_max_step" title="dashboard_filterlist.input_max_step" />
                 <div class="muted">Ueberschreibt das Einheit-Default aus Einstellungen.</div>
+              </div>
+
+              <div id="scan_gap" style="min-width: 220px; display:none;">
+                <label>Max Abstand (s)</label>
+                <input id="out_gap_seconds" placeholder="300" data-ui="dashboard_filterlist.input_gap_seconds" title="dashboard_filterlist.input_gap_seconds" />
+                <div class="muted">Groessere Abstaende gelten als Messwertlücke und nicht als normaler Sprung.</div>
               </div>
 
               <div id="scan_bounds" style="min-width: 320px; display:none;">
@@ -1048,10 +1060,12 @@ const $btnOutlierReset = document.getElementById('outlier_reset');
 const $scanPreset = document.getElementById('scan_preset');
 const $freeFilterRow = document.getElementById('free_filter_row');
 const $scanCounter = document.getElementById('scan_counter');
+const $scanGap = document.getElementById('scan_gap');
 const $scanBounds = document.getElementById('scan_bounds');
 const $outMin = document.getElementById('out_min');
 const $outMax = document.getElementById('out_max');
 const $outMaxStep = document.getElementById('out_max_step');
+const $outGapSeconds = document.getElementById('out_gap_seconds');
 const $tblEnabled = document.getElementById('tbl_enabled');
 const $tblMode = document.getElementById('tbl_mode');
 const $tblAOp = document.getElementById('tbl_a_op');
@@ -1147,6 +1161,7 @@ const $rawParamMaxStep = document.getElementById('raw_param_max_step');
 const $rawParamMin = document.getElementById('raw_param_min');
 const $rawParamMax = document.getElementById('raw_param_max');
 const $rawParamRecoveryStreak = document.getElementById('raw_param_recovery_streak');
+const $rawParamGapSeconds = document.getElementById('raw_param_gap_seconds');
 const $rawSearchRun = document.getElementById('raw_search_run');
 const $rawJumpOldest = document.getElementById('raw_jump_oldest');
 const $rawJumpNewest = document.getElementById('raw_jump_newest');
@@ -1825,6 +1840,7 @@ function saveState(){
       out_min: $outMin ? $outMin.value : "",
       out_max: $outMax ? $outMax.value : "",
       out_max_step: $outMaxStep ? $outMaxStep.value : "",
+      out_gap_seconds: $outGapSeconds ? $outGapSeconds.value : "300",
       reason_filter: $reasonFilter ? String($reasonFilter.value || "") : "",
       class_filter: $classFilter ? String($classFilter.value || "all") : "all",
       tbl_filter_enabled: TABLE_FILTER.enabled,
@@ -2324,6 +2340,7 @@ function applyScanPreset(){
     const p = $scanPreset ? String($scanPreset.value || "") : "counter";
     if($freeFilterRow) $freeFilterRow.style.display = (p === "free") ? "flex" : "none";
     if($scanCounter) $scanCounter.style.display = (p === "counter" || p === "decrease" || p === "fault_phase") ? "block" : "none";
+    if($scanGap) $scanGap.style.display = (p === "counter" || p === "decrease" || p === "fault_phase" || p === "gap") ? "block" : "none";
     if($scanBounds) $scanBounds.style.display = (p === "bounds" || p === "fault_phase") ? "block" : "none";
   }catch(e){}
 }
@@ -4614,13 +4631,14 @@ const ALL_OUTLIER_TYPES = [
   {value: 'counter', label: 'Counter'},
   {value: 'decrease', label: 'Counter Abfall'},
   {value: 'bounds', label: 'Grenzen'},
+  {value: 'gap', label: 'Messwertlücke'},
   {value: 'fault_phase', label: 'Stoerphase'},
   {value: 'null', label: 'NULL'},
   {value: 'zero', label: '0-Werte'},
   {value: 'ignored', label: 'Ignoriert'},
 ];
 
-let ANALYSIS_SELECTED_TYPES = ['counter', 'decrease', 'bounds', 'fault_phase', 'null', 'zero'];
+let ANALYSIS_SELECTED_TYPES = ['counter', 'decrease', 'bounds', 'gap', 'fault_phase', 'null', 'zero'];
 let ANALYSIS_UNSELECTED_TYPES = [];
 let ANALYSIS_SHOW_IGNORED = false;
 let IGNORED_OUTLIERS_STATE = {};
@@ -4984,6 +5002,7 @@ function saveOutlierParams(){
       min: $rawParamMin ? $rawParamMin.value : '',
       max: $rawParamMax ? $rawParamMax.value : '',
       recovery_streak: $rawParamRecoveryStreak ? $rawParamRecoveryStreak.value : '2',
+      gap_seconds: $rawParamGapSeconds ? $rawParamGapSeconds.value : '300',
     };
     localStorage.setItem('raw_outlier_params', JSON.stringify(p));
   }catch(e){}
@@ -4998,6 +5017,7 @@ function loadOutlierParams(){
       if($rawParamMin) $rawParamMin.value = p.min || '';
       if($rawParamMax) $rawParamMax.value = p.max || '';
       if($rawParamRecoveryStreak) $rawParamRecoveryStreak.value = p.recovery_streak || '2';
+      if($rawParamGapSeconds) $rawParamGapSeconds.value = p.gap_seconds || '300';
     }
   }catch(e){}
 }
@@ -5203,11 +5223,13 @@ async function runRawOutlierSearch(){
         search_types: getRawOutlierFilterTypes(),
         unit: unit,
         prev_value: prevValue,
+        prev_time: lastIso,
         counter_base_value: counterBase,
         scan_state: scanState,
         min: params.min || '',
         max: params.max || '',
         max_step: params.max_step || '',
+        gap_seconds: params.gap_seconds || '300',
       };
 
       let r, j;
@@ -5391,7 +5413,7 @@ async function resolveEffectiveAnalysisWindow(){
 function updateAnalysisUI(){
   try{
     const s = ANALYSIS_STATE;
-    const typeLabels = {counter: 'Counter', decrease: 'Counter Abfall', bounds: 'Grenzen', fault_phase: 'Stoerphase', null: 'NULL', zero: '0-Werte'};
+    const typeLabels = {counter: 'Counter', decrease: 'Counter Abfall', bounds: 'Grenzen', gap: 'Messwertlücke', fault_phase: 'Stoerphase', null: 'NULL', zero: '0-Werte'};
     const typeNames = (s.types || []).map(t => typeLabels[t] || t).join(', ');
 
     // 1. Quellinfos + Gesamtzeitraum + aktueller Zeitraum
@@ -5705,7 +5727,7 @@ async function runAnalysis(){
   }
   _addCheck('Zeitraum: ' + fmtTs(win.start) + ' bis ' + fmtTs(win.stop), 'ok');
 
-  const typeLabels = {counter: 'Counter', decrease: 'Counter Abfall', bounds: 'Grenzen', fault_phase: 'Stoerphase', null: 'NULL', zero: '0-Werte'};
+  const typeLabels = {counter: 'Counter', decrease: 'Counter Abfall', bounds: 'Grenzen', gap: 'Messwertlücke', fault_phase: 'Stoerphase', null: 'NULL', zero: '0-Werte'};
   const typeNames = types.map(t => typeLabels[t] || t).join(', ');
   _logAnalysis('types', {types: types});
   _addCheck('Ausreisser-Typen: ' + (typeNames || 'Keine'), types.length > 0 ? 'ok' : 'err');
@@ -6310,7 +6332,7 @@ async function _showAnalysisHistory(){
     return;
   }
 
-  const typeLabels = {counter: 'Counter', decrease: 'Counter Abfall', bounds: 'Grenzen', fault_phase: 'Stoerphase', null: 'NULL', zero: '0-Werte'};
+  const typeLabels = {counter: 'Counter', decrease: 'Counter Abfall', bounds: 'Grenzen', gap: 'Messwertlücke', fault_phase: 'Stoerphase', null: 'NULL', zero: '0-Werte'};
 
   let text = '';
   if(events.length){
@@ -6587,11 +6609,13 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog, effective
         search_types: getAnalysisCacheTypes(),
         unit: unit,
         prev_value: prevValue,
+        prev_time: lastIso,
         counter_base_value: counterBase,
         scan_state: scanState,
         min: params.min || '',
         max: params.max || '',
         max_step: params.max_step || '',
+        gap_seconds: params.gap_seconds || '300',
       };
 
       const chunkT0 = performance.now();
@@ -6907,7 +6931,7 @@ function renderOutlierOverviewTable(){
           typeCounts[t] = (typeCounts[t] || 0) + 1;
         });
       });
-      const typeLabels = {counter: 'Counter', decrease: 'Counter Abfall', bounds: 'Grenzen', fault_phase: 'Stoerphase', null: 'NULL', zero: '0-Werte', ignored: 'Ignoriert'};
+      const typeLabels = {counter: 'Counter', decrease: 'Counter Abfall', bounds: 'Grenzen', gap: 'Messwertlücke', fault_phase: 'Stoerphase', null: 'NULL', zero: '0-Werte', ignored: 'Ignoriert'};
       const parts = Object.entries(typeCounts).map(([t, c]) => `${typeLabels[t] || t}: ${c}`);
       $rowCount.textContent = `${filtered.length} angezeigt / ${totalFiltered} passend | ${parts.join(' | ')}`;
     }
@@ -9181,7 +9205,7 @@ async function refreshCachingSection(){
   const $deleteBtn = document.getElementById('analysis_cache_delete_series');
 
   const types = getRawOutlierFilterTypes();
-  const typeLabels = {counter: 'Counter Ausreisser', decrease: 'Counter Abfall', bounds: 'Grenzen', fault_phase: 'Stoerphasensuche', null: 'NULL Werte', zero: '0-Werte'};
+  const typeLabels = {counter: 'Counter Ausreisser', decrease: 'Counter Abfall', bounds: 'Grenzen', gap: 'Messwertlücke', fault_phase: 'Stoerphasensuche', null: 'NULL Werte', zero: '0-Werte'};
   const typeNames = types.map(t => typeLabels[t] || t).join(', ');
   const range = base.range || '24h';
   const entityInfo = base.entity_id ? ('Entity ID: ' + base.entity_id) : (base.friendly_name ? ('Friendly Name: ' + base.friendly_name) : '');
@@ -9207,6 +9231,7 @@ async function refreshCachingSection(){
         const foundTxt = 'Gefunden: Counter: ' + String(typeCounts.counter || 0)
           + ' | Counter Abfall: ' + String(typeCounts.decrease || 0)
           + ' | Grenzen: ' + String(typeCounts.bounds || 0)
+          + ' | Messwertlücke: ' + String(typeCounts.gap || 0)
           + ' | Stoerphase: ' + String(typeCounts.fault_phase || 0)
           + ' | NULL: ' + String(typeCounts.null || 0)
           + ' | 0-Werte: ' + String(typeCounts.zero || 0)
@@ -9761,6 +9786,7 @@ async function runOutlierScan(){
     return_all: preset === "all",
     include_null: (preset === "null" || preset === "all"),
     include_zero: (preset === "zero" || preset === "all"),
+    include_gap: (preset === "gap" || preset === "all"),
     bounds_enabled: preset === "bounds",
     fault_phase_enabled: preset === "fault_phase",
     min: $outMin ? $outMin.value : "",
@@ -9769,6 +9795,7 @@ async function runOutlierScan(){
     counter_decrease: (preset === "counter" || preset === "decrease"),
     counter_max_step: (preset === "counter"),
     max_step: $outMaxStep ? $outMaxStep.value : "",
+    gap_seconds: $outGapSeconds ? $outGapSeconds.value : "300",
     recovery_valid_streak: 2,
     value_filter_enabled: preset === "free",
     value_mode: $tblMode ? $tblMode.value : "or",
@@ -9827,6 +9854,7 @@ async function runOutlierScan(){
             start: aIso,
             stop: bIso,
             prev_value: prevValue,
+            prev_time: lastIso,
             counter_base_value: counterBase,
             scan_state: scanState,
           }),
@@ -10076,7 +10104,7 @@ try{
     if($tblBVal) $tblBVal.value = TABLE_FILTER.b_val;
 
     try{
-      TABLE_REASON_FILTER = (st.dashboard_graph.select_grund_filter !== undefined) ? String(st.dashboard_graph.select_grund_filter || "") : "";
+      TABLE_REASON_FILTER = (st.reason_filter !== undefined) ? String(st.reason_filter || "") : "";
       TABLE_CLASS_FILTER = (st.class_filter !== undefined) ? String(st.class_filter || "all") : "all";
       if($reasonFilter) $reasonFilter.value = TABLE_REASON_FILTER;
       if($classFilter) $classFilter.value = TABLE_CLASS_FILTER;
@@ -10089,6 +10117,7 @@ try{
     if($outMin && st.out_min !== undefined) $outMin.value = String(st.out_min || "");
     if($outMax && st.out_max !== undefined) $outMax.value = String(st.out_max || "");
     if($outMaxStep && st.out_max_step !== undefined) $outMaxStep.value = String(st.out_max_step || "");
+    if($outGapSeconds && st.out_gap_seconds !== undefined) $outGapSeconds.value = String(st.out_gap_seconds || "300");
     applyScanPreset();
 
     TABLE_TIME.from_graph = !!st.tbl_time_from_graph;

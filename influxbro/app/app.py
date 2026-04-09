@@ -774,6 +774,8 @@ DEFAULT_CFG = {
     # Energy deltas depend on sampling interval; defaults assume coarse (hour-ish) steps.
     "outlier_max_step_wh": 30000,
     "outlier_max_step_kwh": 30,
+    # A time gap above this threshold is treated as measurement gap instead of a normal step jump.
+    "outlier_gap_seconds_default": 300,
 
     # Additional unit thresholds (one per line): unit=max_step
     # Example: 
@@ -6396,6 +6398,7 @@ from(bucket: "{bucket}")
 def api_quality_cleanup_preview():
     cfg = _overlay_from_yaml_if_enabled(load_cfg())
     body = request.get_json(force=True) or {}
+    t0 = time.monotonic()
     try:
         start_dt, stop_dt = _get_start_stop_from_payload(body)
         out = _quality_cleanup_analyse(cfg, start_dt, stop_dt, True)
@@ -7518,6 +7521,13 @@ def _outlier_max_step(cfg: dict[str, Any], measurement: str, unit: str) -> float
         return float(cfg.get("outlier_max_step_kwh", 30))
     # fallback
     return float(cfg.get("outlier_max_step_w", 30000))
+
+
+def _outlier_gap_seconds(cfg: dict[str, Any]) -> float:
+    try:
+        return float(cfg.get("outlier_gap_seconds_default", 300) or 300)
+    except Exception:
+        return 300.0
 
 
 def _list_backups(dir_path: Path, include_db_full: bool = False) -> list[dict[str, Any]]:
@@ -13052,6 +13062,7 @@ def api_set_config():
     _clamp_num("outlier_max_step_kw", 30, 0.5, 200)
     _clamp_num("outlier_max_step_wh", 30000, 100, 10000000)
     _clamp_num("outlier_max_step_kwh", 30, 0.01, 100000)
+    _clamp_num("outlier_gap_seconds_default", 300, 1, 86400)
 
     try:
         cfg["outlier_max_step_units"] = str(cfg.get("outlier_max_step_units") or "")
@@ -18127,6 +18138,7 @@ def api_outliers():
         LOG.warning("api.outliers rejected: missing measurement or field")
         return jsonify({"ok": False, "error": "measurement and field required"}), 400
 
+    t0 = time.monotonic()
     try:
         start_dt, stop_dt = _get_start_stop_from_payload(body)
     except Exception as e:
@@ -18142,6 +18154,7 @@ def api_outliers():
 
     include_null = bool(body.get("include_null", False))
     include_zero = bool(body.get("include_zero", False))
+    include_gap = bool(body.get("include_gap", False))
     bounds_enabled = bool(body.get("bounds_enabled", False))
     min_v = body.get("min")
     max_v = body.get("max")
@@ -18181,6 +18194,12 @@ def api_outliers():
             max_step = float(body.get("max_step"))
     except Exception:
         pass
+    gap_seconds = _outlier_gap_seconds(cfg)
+    try:
+        if "gap_seconds" in body and body.get("gap_seconds") is not None and str(body.get("gap_seconds")).strip() != "":
+            gap_seconds = float(body.get("gap_seconds"))
+    except Exception:
+        pass
 
     extra = flux_tag_filter(entity_id, friendly_name)
     start = _dt_to_rfc3339_utc(start_dt)
@@ -18196,6 +18215,7 @@ def api_outliers():
     rows: list[dict[str, Any]] = []
     scanned = 0
     prev_val: float | None = None
+    prev_time_dt: datetime | None = None
     last_time_iso: str | None = None
 
     counter_base_val: float | None = None
@@ -18227,6 +18247,12 @@ def api_outliers():
             prev_val = float(pv)
     except Exception:
         prev_val = None
+    try:
+        pt = body.get("prev_time")
+        if pt is not None and str(pt).strip() != "":
+            prev_time_dt = _parse_iso_datetime(str(pt))
+    except Exception:
+        prev_time_dt = None
 
     try:
         cbv = body.get("counter_base_value")
@@ -18283,6 +18309,7 @@ def api_outliers():
         nonlocal rows
         nonlocal last_time_iso
         nonlocal counter_base_val
+        nonlocal prev_time_dt
 
         span_s = (b - a).total_seconds()
         LOG.info("api.outliers _scan_span ENTER a=%s b=%s span=%.0fs rows=%d scanned=%d",
@@ -18339,16 +18366,36 @@ from(bucket: "{cfg["bucket"]}")
             fv = float(v)
             finite = math.isfinite(fv)
 
+            gap_detected = False
+            gap_label = ""
+            prev_for_delta = prev
+            if isinstance(t, datetime) and prev_time_dt is not None and gap_seconds is not None:
+                gap_s = (t - prev_time_dt).total_seconds()
+                if gap_s > float(gap_seconds):
+                    gap_detected = True
+                    gap_label = f"gap > {int(float(gap_seconds))}s ({int(gap_s)}s)"
+                    prev_for_delta = None
+                    if fault_phase_enabled:
+                        fault_state["status"] = "normal"
+                        fault_state["fault_started_at"] = None
+                        fault_state["fault_count"] = 0
+                        fault_state["recovery_streak"] = 0
+                        fault_state["last_reason"] = None
+
             if return_all:
                 rows.append({"time": iso, "value": fv, "reason": ""})
                 if len(rows) >= MAX_OUT:
                     return fv
                 prev = fv
+                if isinstance(t, datetime):
+                    prev_time_dt = t
                 continue
 
             if value_filter_enabled and value_filter_hit(fv):
                 r = value_filter_reason()
                 reasons.append(r or "Filter")
+            if include_gap and gap_detected:
+                reasons.append(gap_label)
             if include_zero and fv == 0.0:
                 reasons.append("0")
             if bounds_enabled:
@@ -18357,13 +18404,13 @@ from(bucket: "{cfg["bucket"]}")
                 if max_num is not None and fv > max_num:
                     reasons.append(f"> max ({max_num})")
 
-            if counter_enabled and prev is not None:
-                d = fv - prev
+            if counter_enabled and prev_for_delta is not None:
+                d = fv - prev_for_delta
                 if counter_decrease and d < 0:
                     reasons.append("counter decrease")
                     # Remember the value before the drop as a reference for follow-up recovery jumps.
                     # This value is persisted across chunks via counter_base_value.
-                    counter_base_val = float(prev)
+                    counter_base_val = float(prev_for_delta)
                 if counter_max_step and max_step is not None and d > float(max_step):
                     reasons.append(f"step > {max_step} {unit or ''}".strip())
 
@@ -18380,8 +18427,8 @@ from(bucket: "{cfg["bucket"]}")
                     if max_num is not None and finite and fv > max_num:
                         if "> max ({})".format(max_num) not in phase_reasons:
                             phase_reasons.append(f"> max ({max_num})")
-                if prev is not None and finite:
-                    d = fv - prev
+                if prev_for_delta is not None and finite:
+                    d = fv - prev_for_delta
                     if counter_decrease and d < 0:
                         phase_reasons.append("counter decrease")
                     if counter_max_step and max_step is not None and d > float(max_step):
@@ -18457,6 +18504,8 @@ from(bucket: "{cfg["bucket"]}")
                     return fv
 
             prev = fv
+            if isinstance(t, datetime):
+                prev_time_dt = t
 
         LOG.info("api.outliers _scan_span DONE a=%s b=%s scanned_local=%d total_scanned=%d total_rows=%d",
             _dt_to_rfc3339_utc(a), _dt_to_rfc3339_utc(b), scanned_local, scanned, len(rows))
@@ -18577,6 +18626,7 @@ def api_outlier_search():
 
     include_null = "null" in search_types
     include_zero = "zero" in search_types
+    include_gap = "gap" in search_types
     bounds_enabled = "bounds" in search_types
     counter_enabled = "counter" in search_types
     counter_decrease = "decrease" in search_types
@@ -18588,6 +18638,12 @@ def api_outlier_search():
     try:
         if "max_step" in body and body.get("max_step") is not None and str(body.get("max_step")).strip() != "":
             max_step = float(body.get("max_step"))
+    except Exception:
+        pass
+    gap_seconds = _outlier_gap_seconds(cfg)
+    try:
+        if "gap_seconds" in body and body.get("gap_seconds") is not None and str(body.get("gap_seconds")).strip() != "":
+            gap_seconds = float(body.get("gap_seconds"))
     except Exception:
         pass
 
@@ -18605,8 +18661,15 @@ def api_outlier_search():
     rows: list[dict[str, Any]] = []
     scanned = 0
     prev_val: float | None = body.get("prev_value")
+    prev_time_dt: datetime | None = None
     last_time_iso: str | None = None
     counter_base_val: float | None = body.get("counter_base_value")
+    try:
+        pt = body.get("prev_time")
+        if pt is not None and str(pt).strip() != "":
+            prev_time_dt = _parse_iso_datetime(str(pt))
+    except Exception:
+        prev_time_dt = None
 
     scan_state_in = body.get("scan_state") or {}
     fault_state = {
@@ -18636,7 +18699,7 @@ def api_outlier_search():
         return True
 
     def _scan_span(qapi: Any, a: datetime, b: datetime, prev: float | None) -> float | None:
-        nonlocal scanned, rows, last_time_iso, counter_base_val
+        nonlocal scanned, rows, last_time_iso, counter_base_val, prev_time_dt
 
         span_s = (b - a).total_seconds()
         chunk_t0 = time.monotonic()
@@ -18673,6 +18736,22 @@ from(bucket: "{cfg["bucket"]}")
             if iso:
                 last_time_iso = iso
 
+            gap_detected = False
+            gap_label = ""
+            prev_for_delta = prev
+            if isinstance(t, datetime) and prev_time_dt is not None and gap_seconds is not None:
+                gap_s = (t - prev_time_dt).total_seconds()
+                if gap_s > float(gap_seconds):
+                    gap_detected = True
+                    gap_label = f"gap > {int(float(gap_seconds))}s ({int(gap_s)}s)"
+                    prev_for_delta = None
+                    if fault_phase_enabled:
+                        fault_state["status"] = "normal"
+                        fault_state["fault_started_at"] = None
+                        fault_state["fault_count"] = 0
+                        fault_state["recovery_streak"] = 0
+                        fault_state["last_reason"] = None
+
             reasons: list[str] = []
             if v is None:
                 if fault_phase_enabled:
@@ -18695,6 +18774,8 @@ from(bucket: "{cfg["bucket"]}")
             fv = float(v)
             finite = math.isfinite(fv)
 
+            if include_gap and gap_detected:
+                reasons.append(gap_label)
             if include_zero and fv == 0.0:
                 reasons.append("0")
                 LOG.info("api.outlier_search found 0 at %s value=%s", iso, fv)
@@ -18712,11 +18793,11 @@ from(bucket: "{cfg["bucket"]}")
                 if max_num is not None and fv > max_num:
                     reasons.append(f"> max ({max_num})")
 
-            if counter_enabled and prev is not None:
-                d = fv - prev
+            if counter_enabled and prev_for_delta is not None:
+                d = fv - prev_for_delta
                 if counter_decrease and d < 0:
                     reasons.append("counter decrease")
-                    counter_base_val = float(prev)
+                    counter_base_val = float(prev_for_delta)
                 if "decrease" not in search_types and counter_decrease is False:
                     pass
                 if max_step is not None and d > float(max_step):
@@ -18743,8 +18824,8 @@ from(bucket: "{cfg["bucket"]}")
                     if max_num2 is not None and finite and fv > max_num2:
                         if "> max ({})".format(max_num2) not in phase_reasons:
                             phase_reasons.append(f"> max ({max_num2})")
-                if prev is not None and finite:
-                    d = fv - prev
+                if prev_for_delta is not None and finite:
+                    d = fv - prev_for_delta
                     if counter_decrease and d < 0:
                         phase_reasons.append("counter decrease")
                     if max_step is not None and d > float(max_step):
@@ -18811,6 +18892,8 @@ from(bucket: "{cfg["bucket"]}")
                         type_labels.append("counter")
                     elif "fault_active" in r or "recovering" in r:
                         type_labels.append("fault_phase")
+                    elif r.startswith("gap >"):
+                        type_labels.append("gap")
                 unique_types = list(dict.fromkeys(type_labels))
 
                 cls = "primary"
@@ -18838,6 +18921,10 @@ from(bucket: "{cfg["bucket"]}")
                     return fv
 
             prev = fv
+            if isinstance(t, datetime):
+                prev_time_dt = t
+            if isinstance(t, datetime):
+                prev_time_dt = t
 
         chunk_dur = time.monotonic() - chunk_t0
         LOG.info("api.outlier_search _scan_span DONE a=%s b=%s span=%.0fs scanned_local=%d total_scanned=%d total_rows=%d dur=%.1fs",

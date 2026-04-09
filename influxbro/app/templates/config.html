@@ -1005,6 +1005,12 @@
     <div class="card_body">
       <div class="grid">
         <div class="section_note"><span class="muted">Werte gelten als "unsinnig", wenn ein Sprung groesser als diese Grenze ist (nur Counter-Regel).</span></div>
+        <div class="param_row">
+          <div class="param_label">Messwertlücke: Max Abstand (s)<span class="param_hint">Groessere Zeitabstaende zwischen zwei Punkten gelten als Messwertlücke und nicht als normaler Sprung.</span></div>
+          <div class="param_control">
+            <input id="outlier_gap_seconds_default" type="number" min="1" max="86400" />
+          </div>
+        </div>
         <div class="param_row param_full">
           <div class="param_label">Ausreisser Tabelle (_measurement / max_step)</div>
           <div class="param_control">
@@ -1092,6 +1098,8 @@ const ids = [
   "ui_query_max_points","ui_raw_max_points","ui_raw_center_max_points","ui_raw_center_range_default","ui_raw_center_min_points","ui_raw_target_chunk_ms","ui_analysis_max_age_years","ui_popup_pre_font_px","ui_popup_history_font_px",
   "ui_query_manual_max_points","ui_graph_jump_padding_intervals",
   "ui_font_size_px","ui_font_small_px","ui_pagecard_title_px","ui_page_search_highlight_color","ui_page_search_highlight_width_px","ui_page_search_highlight_duration_ms","ui_nav_helper_history_limit","ui_nav_helper_highlight_color","ui_nav_helper_highlight_duration_ms","ui_analysis_cache_hidden_color","ui_checkbox_scale",
+  "outlier_gap_seconds_default",
+  "outlier_gap_seconds_default",
   "ui_section_title_bg","ui_section_title_fg",
   "ui_status_font_px","ui_status_bar_height_px","ui_status_bar_bg","ui_status_bar_fg",
   "ui_status_show_sysinfo",
@@ -1436,6 +1444,7 @@ function setForm(cfg){
   el.ui_backup_table_row_height_px.value = cfg.ui_backup_table_row_height_px ?? (cfg.ui_table_row_height_px ?? 16);
   el.ui_backup_visible_rows.value = cfg.ui_backup_visible_rows ?? 24;
   el.ui_restore_visible_rows.value = cfg.ui_restore_visible_rows ?? 24;
+  el.outlier_gap_seconds_default.value = cfg.outlier_gap_seconds_default ?? 300;
   el.ui_query_manual_max_points.value = cfg.ui_query_manual_max_points ?? 200000;
   el.ui_graph_jump_padding_intervals.value = cfg.ui_graph_jump_padding_intervals ?? 1;
   el.ui_edit_neighbors_n.value = cfg.ui_edit_neighbors_n ?? 5;
@@ -1577,6 +1586,7 @@ function getForm(){
     ui_backup_table_row_height_px: parseInt(el.ui_backup_table_row_height_px.value, 10),
     ui_backup_visible_rows: parseInt(el.ui_backup_visible_rows.value, 10),
     ui_restore_visible_rows: parseInt(el.ui_restore_visible_rows.value, 10),
+    outlier_gap_seconds_default: parseInt(el.outlier_gap_seconds_default.value, 10),
     ui_edit_neighbors_n: parseInt(el.ui_edit_neighbors_n.value, 10),
     ui_edit_details_visible_rows: parseInt(el.ui_edit_details_visible_rows.value, 10),
     ui_edit_graph_buffer_minutes: parseInt(el.ui_edit_graph_buffer_minutes.value, 10),

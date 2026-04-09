@@ -668,7 +668,19 @@ def test_dashboard_issue235_controls_exist():
     assert 'id="outlier_ignore"' in body
     assert 'id="outlier_unignore"' in body
     assert 'Format: alle sichtbaren Spalten als TSV' in body
-    assert 'checklist_icon" style="background:#eef2ff;color:#5d86d6;">i</span>' in body
+
+
+def test_dashboard_and_settings_expose_gap_outlier_controls():
+    index_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    config_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "config.html").read_text()
+    app_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "app.py").read_text()
+    assert 'value="gap"' in index_body
+    assert 'id="raw_param_gap_seconds"' in index_body
+    assert 'id="out_gap_seconds"' in index_body
+    assert 'Messwertlücke' in index_body
+    assert 'id="outlier_gap_seconds_default"' in config_body
+    assert '"outlier_gap_seconds_default": 300' in app_body
+    assert 'checklist_icon" style="background:#eef2ff;color:#5d86d6;">i</span>' in index_body
 
 
 def test_picker_suppresses_titles_and_handles_disabled_elements_via_mousedown():
