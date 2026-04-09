@@ -540,6 +540,7 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
           </button>
           <label><input type="checkbox" id="raw_outlier_wrap" class="row_sel" data-ui="dashboard_outliers.chk_umbruch" title="dashboard_outliers.chk_umbruch"/>Umbruch</label>
           <label><input type="checkbox" id="raw_outlier_colfilter" class="row_sel" data-ui="dashboard_outliers.chk_spaltenfilter" title="dashboard_outliers.chk_spaltenfilter"/>Spaltenfilter</label>
+          <button class="btn_sm" id="raw_outlier_copy" data-ui="dashboard_outliers.btn_kopieren" title="dashboard_outliers.btn_kopieren">Kopieren</button>
           <button class="btn_sm" id="outlier_ignore" data-ui="dashboard_outliers.btn_ignorieren" title="dashboard_outliers.btn_ignorieren" disabled>ignorieren</button>
           <button class="btn_sm" id="outlier_unignore" data-ui="dashboard_outliers.btn_nicht_mehr_ignorieren" title="dashboard_outliers.btn_nicht_mehr_ignorieren" disabled>nicht mehr ignorieren</button>
         </div>
@@ -1187,6 +1188,7 @@ const $rawColFilter = document.getElementById('raw_colfilter');
 const $rawOutlierWindowWidth = document.getElementById('raw_outlier_windowwidth');
 const $rawOutlierWrap = document.getElementById('raw_outlier_wrap');
 const $rawOutlierColFilter = document.getElementById('raw_outlier_colfilter');
+const $rawOutlierCopy = document.getElementById('raw_outlier_copy');
 const $rawRefresh = document.getElementById('raw_refresh');
 const $rawCopy = document.getElementById('raw_copy');
 const $rawCopyValue = document.getElementById('raw_copy_value');
@@ -6976,6 +6978,7 @@ function renderOutlierOverviewTable(){
       RAW_OUTLIER_INDEX = idx;
       highlightOutlierAtIndex(idx).catch(()=>{});
       _updateOutlierNavStatus();
+      updateRawToolbarState();
     });
 
     tr.style.cursor = 'pointer';
@@ -9684,6 +9687,54 @@ if($rawCopy) $rawCopy.addEventListener("click", async (ev)=>{
       const rowCount = Math.max(0, lines.length - 1);
       ok(`Raw Daten kopiert: ${rowCount} Zeilen.`);
       showRawActionFeedback('Raw Daten kopiert', `Zeilen: ${rowCount}\nFormat: alle sichtbaren Spalten als TSV`);
+    }
+    else err("Copy failed (Clipboard blockiert). Bitte im Browser Clipboard erlauben.");
+  }catch(e){
+    err("Copy failed: " + String(e && e.message ? e.message : e));
+  }
+});
+
+if($rawOutlierCopy) $rawOutlierCopy.addEventListener("click", async (ev)=>{
+  _stop(ev);
+  try{
+    const $tbl = document.getElementById('raw_outlier_tbl');
+    const lines = [];
+    if($tbl){
+      const headers = Array.from($tbl.querySelectorAll('thead th')).map(th => String((th.textContent || '').replace(/\s+/g,' ').trim() || ''));
+      if(headers.length) lines.push(headers.join('\t'));
+      Array.from($tbl.querySelectorAll('tbody tr')).forEach(tr => {
+        const cells = Array.from(tr.querySelectorAll('td')).map(td => String((td.textContent || '').replace(/\s+/g,' ').trim() || ''));
+        lines.push(cells.join('\t'));
+      });
+    }
+    const okCopy = await copyTextToClipboard(lines.join("\n"));
+    if(okCopy){
+      const rowCount = Math.max(0, lines.length - 1);
+      ok(`Ausreisser kopiert: ${rowCount} Zeilen.`);
+    }
+    else err("Copy failed (Clipboard blockiert). Bitte im Browser Clipboard erlauben.");
+  }catch(e){
+    err("Copy failed: " + String(e && e.message ? e.message : e));
+  }
+});
+
+if($rawOutlierCopy) $rawOutlierCopy.addEventListener("click", async (ev)=>{
+  _stop(ev);
+  try{
+    const $tbl = document.getElementById('raw_outlier_tbl');
+    const lines = [];
+    if($tbl){
+      const headers = Array.from($tbl.querySelectorAll('thead th')).map(th => String((th.textContent || '').replace(/\s+/g,' ').trim() || ''));
+      if(headers.length) lines.push(headers.join('\t'));
+      Array.from($tbl.querySelectorAll('tbody tr')).forEach(tr => {
+        const cells = Array.from(tr.querySelectorAll('td')).map(td => String((td.textContent || '').replace(/\s+/g,' ').trim() || ''));
+        lines.push(cells.join('\t'));
+      });
+    }
+    const okCopy = await copyTextToClipboard(lines.join("\n"));
+    if(okCopy){
+      const rowCount = Math.max(0, lines.length - 1);
+      ok(`Ausreisser kopiert: ${rowCount} Zeilen.`);
     }
     else err("Copy failed (Clipboard blockiert). Bitte im Browser Clipboard erlauben.");
   }catch(e){

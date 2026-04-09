@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.12.289
+
+### Enhancement
+
+- Ausreisser-Tabelle: Neuer "Kopieren"-Button kopiert alle Zeilen und Spalten als TSV in die Zwischenablage.
+- "Nicht mehr ignorieren"-Button funktioniert jetzt korrekt: Beim Klick auf eine ignorierte Zeile wird der Button aktiviert.
+
+### Fix
+
+- Einstellungsseite: TypeError `Cannot set properties of null (setting 'value')` behoben. Ursache waren 10 fehlende HTML-Elemente (`ui_open_selection`, `ui_open_graph`, `ui_open_filterlist`, `ui_open_editlist`, `ui_open_stats_total`, `ui_tooltips_enabled`, `ui_log_error_bg`, `ui_log_error_fg`, `ui_log_warn_bg`, `ui_log_warn_fg`).
+- Null-Guards in `setForm()` und `getForm()` verhindern, dass einzelne fehlende Elemente die gesamte Form-Population abbrechen.
+- Duplikat im `ids`-Array (`outlier_gap_seconds_default`) entfernt.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tests: `pytest tests/test_api_ui_support.py -q -k "tooltip"`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.288
 
 ### Enhancement

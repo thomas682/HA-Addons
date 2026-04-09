@@ -263,6 +263,45 @@
       <summary><span class="ib_summary_row"><span>Dashboard</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Dashboard" data-info-body="Einstellungen fuer die Dashboard-Seite (Auswahl/Graph/Raw/Tabellen).\n\nTypisch:\n- Default-UI Verhalten\n- Query Limits / Raw max points\n- Cache Verhalten" ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
       <div class="card_body">
 
+        <div class="grid">
+          <div class="param_row">
+            <div class="param_label">Bereich "Auswahl" beim Laden geoeffnet</div>
+            <div class="param_control">
+              <label class="ib_chk_row"><input type="checkbox" id="ui_open_selection" data-ui="config_settings.chk_ui_open_selection" title="settings.ui_open_selection" /><span></span></label>
+            </div>
+          </div>
+          <div class="param_row">
+            <div class="param_label">Bereich "Graph" beim Laden geoeffnet</div>
+            <div class="param_control">
+              <label class="ib_chk_row"><input type="checkbox" id="ui_open_graph" data-ui="config_settings.chk_ui_open_graph" title="settings.ui_open_graph" /><span></span></label>
+            </div>
+          </div>
+          <div class="param_row">
+            <div class="param_label">Bereich "Filtertabelle" beim Laden geoeffnet</div>
+            <div class="param_control">
+              <label class="ib_chk_row"><input type="checkbox" id="ui_open_filterlist" data-ui="config_settings.chk_ui_open_filterlist" title="settings.ui_open_filterlist" /><span></span></label>
+            </div>
+          </div>
+          <div class="param_row">
+            <div class="param_label">Bereich "Bearbeitungsliste" beim Laden geoeffnet</div>
+            <div class="param_control">
+              <label class="ib_chk_row"><input type="checkbox" id="ui_open_editlist" data-ui="config_settings.chk_ui_open_editlist" title="settings.ui_open_editlist" /><span></span></label>
+            </div>
+          </div>
+          <div class="param_row">
+            <div class="param_label">Bereich "Gesamtstatistik" beim Laden geoeffnet</div>
+            <div class="param_control">
+              <label class="ib_chk_row"><input type="checkbox" id="ui_open_stats_total" data-ui="config_settings.chk_ui_open_stats_total" title="settings.ui_open_stats_total" /><span></span></label>
+            </div>
+          </div>
+          <div class="param_row">
+            <div class="param_label">Tooltips global aktiviert</div>
+            <div class="param_control">
+              <label class="ib_chk_row"><input type="checkbox" id="ui_tooltips_enabled" data-ui="config_settings.chk_ui_tooltips_enabled" title="settings.ui_tooltips_enabled" /><span></span></label>
+            </div>
+          </div>
+        </div>
+
         <details class="card" id="ui_table" open data-ui="config_settings.section_root" title="settings.ui.table">
           <summary><span class="ib_summary_row"><span>Tabellen</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Tabellen" data-info-body="Globale Tabellen-Defaults (Master-Template).\n\nBeispiele:\n- sichtbare Zeilen (Hoehe)\n- Spalten/Umbruch/Filter\n- Checkbox-Skalierung\n\nDiese Werte betreffen u.a. Backup/Restore/Jobs/History Tabellen." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
           <div class="card_body">
@@ -996,6 +1035,30 @@
           </div>
         </div>
         <div class="section_note"><span class="muted">Schreibt Cache-Nutzung (Jobs&Cache) ins Logfile (zusaetzlich zur Usage-Tabelle).</span></div>
+        <div class="param_row">
+          <div class="param_label">Log ERROR Hintergrundfarbe<span class="param_hint">Hex-Farbe fuer ERROR-Eintraege im Log (Default: #ffe0e0).</span></div>
+          <div class="param_control">
+            <input id="ui_log_error_bg" type="text" placeholder="#ffe0e0" />
+          </div>
+        </div>
+        <div class="param_row">
+          <div class="param_label">Log ERROR Vordergrundfarbe<span class="param_hint">Hex-Farbe fuer ERROR-Text im Log (Default: #b00020).</span></div>
+          <div class="param_control">
+            <input id="ui_log_error_fg" type="text" placeholder="#b00020" />
+          </div>
+        </div>
+        <div class="param_row">
+          <div class="param_label">Log WARN Hintergrundfarbe<span class="param_hint">Hex-Farbe fuer WARN-Eintraege im Log (Default: #fff8e1).</span></div>
+          <div class="param_control">
+            <input id="ui_log_warn_bg" type="text" placeholder="#fff8e1" />
+          </div>
+        </div>
+        <div class="param_row">
+          <div class="param_label">Log WARN Vordergrundfarbe<span class="param_hint">Hex-Farbe fuer WARN-Text im Log (Default: #b07000).</span></div>
+          <div class="param_control">
+            <input id="ui_log_warn_fg" type="text" placeholder="#b07000" />
+          </div>
+        </div>
       </div>
     </div>
   </details>
@@ -1098,7 +1161,6 @@ const ids = [
   "ui_query_max_points","ui_raw_max_points","ui_raw_center_max_points","ui_raw_center_range_default","ui_raw_center_min_points","ui_raw_target_chunk_ms","ui_analysis_max_age_years","ui_popup_pre_font_px","ui_popup_history_font_px",
   "ui_query_manual_max_points","ui_graph_jump_padding_intervals",
   "ui_font_size_px","ui_font_small_px","ui_pagecard_title_px","ui_page_search_highlight_color","ui_page_search_highlight_width_px","ui_page_search_highlight_duration_ms","ui_nav_helper_history_limit","ui_nav_helper_highlight_color","ui_nav_helper_highlight_duration_ms","ui_analysis_cache_hidden_color","ui_checkbox_scale",
-  "outlier_gap_seconds_default",
   "outlier_gap_seconds_default",
   "ui_section_title_bg","ui_section_title_fg",
   "ui_status_font_px","ui_status_bar_height_px","ui_status_bar_bg","ui_status_bar_fg",
@@ -1551,10 +1613,10 @@ function setForm(cfg){
   el.stats_full_refresh_weekday.value = String((cfg.stats_full_refresh_weekday !== null && cfg.stats_full_refresh_weekday !== undefined) ? cfg.stats_full_refresh_weekday : 0);
   el.stats_full_max_days.value = cfg.stats_full_max_days ?? 3650;
 
-  el.ui_log_error_bg.value = cfg.ui_log_error_bg ?? '#ffe0e0';
-  el.ui_log_error_fg.value = cfg.ui_log_error_fg ?? '#b00020';
-  el.ui_log_warn_bg.value = cfg.ui_log_warn_bg ?? '#fff8e1';
-  el.ui_log_warn_fg.value = cfg.ui_log_warn_fg ?? '#b07000';
+  _setVal(el.ui_log_error_bg, cfg.ui_log_error_bg ?? '#ffe0e0');
+  _setVal(el.ui_log_error_fg, cfg.ui_log_error_fg ?? '#b00020');
+  _setVal(el.ui_log_warn_bg, cfg.ui_log_warn_bg ?? '#fff8e1');
+  _setVal(el.ui_log_warn_fg, cfg.ui_log_warn_fg ?? '#b07000');
   _syncLogColorPickersFromText();
 }
 
@@ -1694,10 +1756,10 @@ function getForm(){
     stats_full_refresh_weekday: parseInt(el.stats_full_refresh_weekday.value, 10),
     stats_full_max_days: parseInt(el.stats_full_max_days.value, 10),
 
-    ui_log_error_bg: String(el.ui_log_error_bg.value || '').trim(),
-    ui_log_error_fg: String(el.ui_log_error_fg.value || '').trim(),
-    ui_log_warn_bg: String(el.ui_log_warn_bg.value || '').trim(),
-    ui_log_warn_fg: String(el.ui_log_warn_fg.value || '').trim(),
+    ui_log_error_bg: el.ui_log_error_bg ? String(el.ui_log_error_bg.value || '').trim() : '',
+    ui_log_error_fg: el.ui_log_error_fg ? String(el.ui_log_error_fg.value || '').trim() : '',
+    ui_log_warn_bg: el.ui_log_warn_bg ? String(el.ui_log_warn_bg.value || '').trim() : '',
+    ui_log_warn_fg: el.ui_log_warn_fg ? String(el.ui_log_warn_fg.value || '').trim() : '',
   };
 }
 
