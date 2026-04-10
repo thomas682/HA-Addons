@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.293
+
+### Fix
+
+- Dashboard-Analysefunktionen wieder verfuegbar: Der versehentlich zu weit reichende Kommentarblock um eine alte `runRawOutlierSearch`-Implementierung wurde auf den Legacy-Block selbst begrenzt. Dadurch ist `getRawOutlierFilterTypes()` wieder im aktiven Script verfuegbar und `Cache pruefen` funktioniert wieder.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tests: Klammer-Balance des eingebetteten Dashboard-Skripts geprueft
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.292
 
 ### Fix
