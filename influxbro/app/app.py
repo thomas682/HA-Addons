@@ -18214,452 +18214,7 @@ def api_outliers():
 
     rows: list[dict[str, Any]] = []
     scanned = 0
-    prev_val: float | None = None
-    prev_time_dt: datetime | None = None
-    last_time_iso: str | None = None
-
-    counter_base_val: float | None = None
-    scan_state = body.get("scan_state") if isinstance(body.get("scan_state"), dict) else {}
-    fault_state = {
-        "status": str(scan_state.get("status") or "normal"),
-        "last_valid_value": scan_state.get("last_valid_value"),
-        "fault_started_at": str(scan_state.get("fault_started_at") or "") or None,
-        "fault_count": int(scan_state.get("fault_count") or 0),
-        "recovery_streak": int(scan_state.get("recovery_streak") or 0),
-        "last_reason": str(scan_state.get("last_reason") or "") or None,
-        "fault_ended_at": str(scan_state.get("fault_ended_at") or "") or None,
-    }
-    try:
-        if fault_state["last_valid_value"] not in (None, ""):
-            fault_state["last_valid_value"] = float(fault_state["last_valid_value"])
-        else:
-            fault_state["last_valid_value"] = None
-    except Exception:
-        fault_state["last_valid_value"] = None
-    try:
-        recovery_valid_streak = max(1, int(body.get("recovery_valid_streak") or 2))
-    except Exception:
-        recovery_valid_streak = 2
-
-    try:
-        pv = body.get("prev_value")
-        if pv is not None and str(pv).strip() != "":
-            prev_val = float(pv)
-    except Exception:
-        prev_val = None
-    try:
-        pt = body.get("prev_time")
-        if pt is not None and str(pt).strip() != "":
-            prev_time_dt = _parse_iso_datetime(str(pt))
-    except Exception:
-        prev_time_dt = None
-
-    try:
-        cbv = body.get("counter_base_value")
-        if cbv is not None and str(cbv).strip() != "":
-            counter_base_val = float(cbv)
-    except Exception:
-        counter_base_val = None
-
-    def _cmp(op: str, v: float, ref: float) -> bool:
-        if op == ">":
-            return v > ref
-        if op == ">=":
-            return v >= ref
-        if op == "<":
-            return v < ref
-        if op == "<=":
-            return v <= ref
-        return True
-
-    allowed_ops = {">", ">=", "<", "<="}
-    has_a = value_a_raw != "" and value_a_op in allowed_ops
-    has_b = value_b_raw != "" and value_b_op in allowed_ops
-    try:
-        a_num = float(value_a_raw) if has_a else None
-    except Exception:
-        a_num = None
-        has_a = False
-    try:
-        b_num = float(value_b_raw) if has_b else None
-    except Exception:
-        b_num = None
-        has_b = False
-
-    def value_filter_hit(v: float) -> bool:
-        if not value_filter_enabled:
-            return False
-        if not has_a and not has_b:
-            return False
-        ok_a = True if not has_a else _cmp(value_a_op, v, float(a_num))
-        ok_b = True if not has_b else _cmp(value_b_op, v, float(b_num))
-        return (ok_a and ok_b) if value_mode == "and" else (ok_a or ok_b)
-
-    def value_filter_reason() -> str:
-        if not value_filter_enabled or (not has_a and not has_b):
-            return ""
-        a_txt = f"({value_a_op} {value_a_raw})" if has_a else ""
-        b_txt = f"({value_b_op} {value_b_raw})" if has_b else ""
-        if has_a and has_b:
-            return f"Filter: {a_txt} {value_mode} {b_txt}"
-        return f"Filter: {a_txt or b_txt}"
-
-    def _scan_span(qapi: Any, a: datetime, b: datetime, prev: float | None) -> float | None:
-        nonlocal scanned
-        nonlocal rows
-        nonlocal last_time_iso
-        nonlocal counter_base_val
-        nonlocal prev_time_dt
-
-        span_s = (b - a).total_seconds()
-        LOG.info("api.outliers _scan_span ENTER a=%s b=%s span=%.0fs rows=%d scanned=%d",
-            _dt_to_rfc3339_utc(a), _dt_to_rfc3339_utc(b), span_s, len(rows), scanned)
-
-        if len(rows) >= MAX_OUT:
-            return prev
-
-        s_iso = _dt_to_rfc3339_utc(a)
-        e_iso = _dt_to_rfc3339_utc(b)
-
-        q_span = f'''
-from(bucket: "{cfg["bucket"]}")
-  |> range(start: time(v: "{s_iso}"), stop: time(v: "{e_iso}"))
-  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
-  |> keep(columns: ["_time", "_value"])
-  |> group()
-  |> sort(columns: ["_time"])
-  |> limit(n: {MAX_SCAN_CHUNK + 1})
-'''
-
-        scanned_local = 0
-        for rec in qapi.query_stream(q_span, org=cfg["org"]):
-            scanned_local += 1
-            scanned += 1
-            if scanned_local > MAX_SCAN_CHUNK:
-                # too dense for this span; caller will split
-                raise OverflowError("too_many_points")
-
-            t = rec.get_time()
-            v = rec.get_value()
-            iso = _dt_to_rfc3339_utc_ms(t) if isinstance(t, datetime) else None
-            if iso:
-                last_time_iso = iso
-
-            reasons: list[str] = []
-            if v is None:
-                if fault_phase_enabled:
-                    reasons.append("ungueltiger Wert")
-                    fault_state["status"] = "fault_active"
-                    fault_state["fault_started_at"] = fault_state.get("fault_started_at") or iso
-                    fault_state["fault_count"] = int(fault_state.get("fault_count") or 0) + 1
-                    fault_state["recovery_streak"] = 0
-                    fault_state["last_reason"] = "ungueltiger Wert"
-                if return_all or include_null:
-                    rows.append({"time": iso, "value": None, "reason": "NULL" if not return_all else ""})
-                    if len(rows) >= MAX_OUT:
-                        return prev
-                continue
-
-            if isinstance(v, bool) or not isinstance(v, (int, float)):
-                continue
-
-            fv = float(v)
-            finite = math.isfinite(fv)
-
-            gap_detected = False
-            gap_label = ""
-            prev_for_delta = prev
-            if isinstance(t, datetime) and prev_time_dt is not None and gap_seconds is not None:
-                gap_s = (t - prev_time_dt).total_seconds()
-                if gap_s > float(gap_seconds):
-                    gap_detected = True
-                    gap_label = f"gap > {int(float(gap_seconds))}s ({int(gap_s)}s)"
-                    prev_for_delta = None
-                    if fault_phase_enabled:
-                        fault_state["status"] = "normal"
-                        fault_state["fault_started_at"] = None
-                        fault_state["fault_count"] = 0
-                        fault_state["recovery_streak"] = 0
-                        fault_state["last_reason"] = None
-
-            if return_all:
-                rows.append({"time": iso, "value": fv, "reason": ""})
-                if len(rows) >= MAX_OUT:
-                    return fv
-                prev = fv
-                if isinstance(t, datetime):
-                    prev_time_dt = t
-                continue
-
-            if value_filter_enabled and value_filter_hit(fv):
-                r = value_filter_reason()
-                reasons.append(r or "Filter")
-            if include_gap and gap_detected:
-                reasons.append(gap_label)
-            if include_zero and fv == 0.0:
-                reasons.append("0")
-            if bounds_enabled:
-                if min_num is not None and fv < min_num:
-                    reasons.append(f"< min ({min_num})")
-                if max_num is not None and fv > max_num:
-                    reasons.append(f"> max ({max_num})")
-
-            if counter_enabled and prev_for_delta is not None:
-                d = fv - prev_for_delta
-                if counter_decrease and d < 0:
-                    reasons.append("counter decrease")
-                    # Remember the value before the drop as a reference for follow-up recovery jumps.
-                    # This value is persisted across chunks via counter_base_value.
-                    counter_base_val = float(prev_for_delta)
-                if counter_max_step and max_step is not None and d > float(max_step):
-                    reasons.append(f"step > {max_step} {unit or ''}".strip())
-
-            if fault_phase_enabled:
-                phase_reasons: list[str] = []
-                if not finite:
-                    phase_reasons.append("ungueltiger Wert")
-                elif fv == 0.0:
-                    phase_reasons.append("0")
-                if bounds_enabled:
-                    if min_num is not None and finite and fv < min_num:
-                        if "< min ({})".format(min_num) not in phase_reasons:
-                            phase_reasons.append(f"< min ({min_num})")
-                    if max_num is not None and finite and fv > max_num:
-                        if "> max ({})".format(max_num) not in phase_reasons:
-                            phase_reasons.append(f"> max ({max_num})")
-                if prev_for_delta is not None and finite:
-                    d = fv - prev_for_delta
-                    if counter_decrease and d < 0:
-                        phase_reasons.append("counter decrease")
-                    if counter_max_step and max_step is not None and d > float(max_step):
-                        phase_reasons.append(f"step > {max_step} {unit or ''}".strip())
-
-                status = str(fault_state.get("status") or "normal")
-                last_valid_value = fault_state.get("last_valid_value")
-                valid_candidate = finite and not phase_reasons
-                plausible_return = valid_candidate
-                if plausible_return and last_valid_value is not None and max_step is not None:
-                    try:
-                        plausible_return = abs(fv - float(last_valid_value)) <= float(max_step)
-                    except Exception:
-                        plausible_return = True
-
-                if status == "normal":
-                    if phase_reasons:
-                        fault_state["status"] = "fault_active"
-                        fault_state["fault_started_at"] = fault_state.get("fault_started_at") or iso
-                        fault_state["fault_count"] = 1
-                        fault_state["recovery_streak"] = 0
-                        fault_state["last_reason"] = ", ".join(phase_reasons)
-                        reasons = list(dict.fromkeys(reasons + phase_reasons))
-                    elif finite:
-                        fault_state["last_valid_value"] = fv
-                        fault_state["fault_ended_at"] = None
-                else:
-                    if phase_reasons:
-                        fault_state["status"] = "fault_active"
-                        fault_state["fault_count"] = int(fault_state.get("fault_count") or 0) + 1
-                        fault_state["recovery_streak"] = 0
-                        fault_state["last_reason"] = ", ".join(phase_reasons)
-                        reasons = list(dict.fromkeys(reasons + phase_reasons + ["fault_active"]))
-                    elif plausible_return:
-                        fault_state["status"] = "recovering"
-                        fault_state["recovery_streak"] = int(fault_state.get("recovery_streak") or 0) + 1
-                        if int(fault_state.get("recovery_streak") or 0) >= recovery_valid_streak:
-                            fault_state["status"] = "normal"
-                            fault_state["fault_ended_at"] = iso
-                            fault_state["last_valid_value"] = fv
-                            fault_state["fault_count"] = 0
-                            fault_state["recovery_streak"] = 0
-                            fault_state["last_reason"] = None
-                        else:
-                            reasons = list(dict.fromkeys(reasons + ["recovering"]))
-                    else:
-                        fault_state["status"] = "fault_active"
-                        fault_state["fault_count"] = int(fault_state.get("fault_count") or 0) + 1
-                        fault_state["recovery_streak"] = 0
-                        reasons = list(dict.fromkeys(reasons + ["fault_active"]))
-
-            if reasons:
-                cls = "primary"
-                # A large positive step after a counter decrease can be a follow-up jump back towards
-                # the pre-drop level. Mark these as secondary if the current value is close enough
-                # to the saved counter_base_val.
-                try:
-                    if (
-                        counter_base_val is not None
-                        and any(r.startswith("step >") for r in reasons)
-                        and max_step is not None
-                        and abs(fv - float(counter_base_val)) <= float(max_step)
-                        and not any(r == "counter decrease" for r in reasons)
-                    ):
-                        cls = "secondary"
-                        # Once we're back near the base, clear the reference.
-                        counter_base_val = None
-                except Exception:
-                    cls = "primary"
-
-                rows.append({"time": iso, "value": fv, "reason": ", ".join(reasons), "class": cls})
-                if len(rows) >= MAX_OUT:
-                    return fv
-
-            prev = fv
-            if isinstance(t, datetime):
-                prev_time_dt = t
-
-        LOG.info("api.outliers _scan_span DONE a=%s b=%s scanned_local=%d total_scanned=%d total_rows=%d",
-            _dt_to_rfc3339_utc(a), _dt_to_rfc3339_utc(b), scanned_local, scanned, len(rows))
-        return prev
-
-    def _scan_span_split(qapi: Any, a: datetime, b: datetime, prev: float | None) -> float | None:
-        span_s = max(0.0, (b - a).total_seconds())
-        try:
-            LOG.debug("api.outliers _scan_span_split PROCESSING chunk a=%s b=%s span=%.0fs",
-                _dt_to_rfc3339_utc(a), _dt_to_rfc3339_utc(b), span_s)
-            return _scan_span(qapi, a, b, prev)
-        except OverflowError:
-            if span_s <= MIN_CHUNK_SECONDS:
-                LOG.warning("api.outliers _scan_span_split OVERFLOW at min chunk a=%s b=%s span=%.0fs",
-                    _dt_to_rfc3339_utc(a), _dt_to_rfc3339_utc(b), span_s)
-                raise
-            mid = a + timedelta(seconds=(span_s / 2.0))
-            LOG.info("api.outliers _scan_span_split SPLITTING chunk a=%s b=%s span=%.0fs -> two halves",
-                _dt_to_rfc3339_utc(a), _dt_to_rfc3339_utc(b), span_s)
-            prev2 = _scan_span_split(qapi, a, mid, prev)
-            return _scan_span_split(qapi, mid, b, prev2)
-
-    try:
-        LOG.info("api.outliers entering scan loop")
-        with v2_client(cfg) as c:
-            qapi = c.query_api()
-            try:
-                prev_val = _scan_span_split(qapi, start_dt, stop_dt, prev_val)
-            except OverflowError:
-                LOG.error("api.outliers OVERFLOW: too many points even in smallest chunks")
-                return jsonify({
-                    "ok": False,
-                    "error": f"Zu viele Punkte im Zeitraum ({MAX_SCAN_CHUNK}+ in kleinstem Chunk). Bitte im Graph weiter reinzoomen.",
-                }), 413
-
-        dur_ms = int((time.monotonic() - t0) * 1000)
-        LOG.info("api.outliers done from=%s scanned=%d found=%d dur=%dms",
-            request.remote_addr, scanned, len(rows), dur_ms)
-
-        return jsonify({
-            "ok": True,
-            "rows": rows,
-            "scanned": scanned,
-            "start": start,
-            "stop": stop,
-            "max_step": max_step,
-            "unit": unit,
-            "chunked": True,
-            "last_time": last_time_iso,
-            "last_value": prev_val,
-            "counter_base_value": counter_base_val,
-            "scan_state": fault_state if fault_phase_enabled else None,
-        })
-    except Exception as e:
-        dur_ms = int((time.monotonic() - t0) * 1000)
-        LOG.error("api.outliers error: %s dur=%dms", e, dur_ms, exc_info=True)
-        return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
-
-
-@app.post("/api/outlier_search")
-def api_outlier_search():
-    """Find outliers in a time window for raw table search.
-
-    Accepts multiple scan preset types and returns all outliers up to a configurable limit.
-    Used by the raw table outlier search feature.
-    """
-    cfg = _overlay_from_yaml_if_enabled(load_cfg())
-    body = request.get_json(force=True) or {}
-    measurement = (body.get("measurement") or "").strip()
-    field = (body.get("field") or "").strip()
-    search_types = body.get("search_types", [])
-    start_str = body.get("start", "")
-    stop_str = body.get("stop", "")
-
-    LOG.info("api.outlier_search called from=%s measurement=%s field=%s search_types=%s start=%s stop=%s",
-        request.remote_addr, measurement, field, search_types, start_str, stop_str)
-
-    # Use a longer timeout for outlier search (up to 60s)
-    cfg["timeout_seconds"] = min(max(int(cfg.get("timeout_seconds", 10)), 30), 60)
-
-    entity_id = (body.get("entity_id") or "").strip() or None
-    friendly_name = (body.get("friendly_name") or "").strip() or None
-    unit = (body.get("unit") or "").strip()
-
-    if not measurement or not field:
-        LOG.warning("api.outlier_search rejected: missing measurement or field")
-        return jsonify({"ok": False, "error": "measurement and field required"}), 400
-
-    t0 = time.monotonic()
-    try:
-        start_dt, stop_dt = _get_start_stop_from_payload(body)
-    except Exception as e:
-        LOG.error("api.outlier_search parse_error: %s", e)
-        return jsonify({"ok": False, "error": str(e)}), 400
-
-    if int(cfg.get("influx_version", 2)) != 2:
-        LOG.warning("api.outlier_search rejected: not influxdb v2")
-        return jsonify({"ok": False, "error": "outlier_search currently supports InfluxDB v2 only"}), 400
-    if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
-        LOG.warning("api.outlier_search rejected: missing token/org/bucket")
-        return jsonify({
-            "ok": False,
-            "error": "InfluxDB v2 requires token, org, bucket.",
-        }), 400
-
-    # Selected outlier types to search for
-    search_types = body.get("search_types") or []
-    if isinstance(search_types, str):
-        search_types = [search_types]
-    search_types = [str(t).strip() for t in search_types if str(t).strip()]
-
-    if not search_types:
-        LOG.warning("api.outlier_search rejected: no search types selected")
-        return jsonify({"ok": False, "error": "Kein Ausreisser-Typ ausgewaehlt."}), 400
-
-    limit = int(body.get("limit") or cfg.get("ui_raw_outlier_search_limit", 5000))
-    limit = min(max(limit, 100), 50000)
-
-    include_null = "null" in search_types
-    include_zero = "zero" in search_types
-    include_gap = "gap" in search_types
-    bounds_enabled = "bounds" in search_types
-    counter_enabled = "counter" in search_types
-    counter_decrease = "decrease" in search_types
-    fault_phase_enabled = "fault_phase" in search_types
-
-    min_v = body.get("min")
-    max_v = body.get("max")
-    max_step = _outlier_max_step(cfg, measurement, unit)
-    try:
-        if "max_step" in body and body.get("max_step") is not None and str(body.get("max_step")).strip() != "":
-            max_step = float(body.get("max_step"))
-    except Exception:
-        pass
-    gap_seconds = _outlier_gap_seconds(cfg)
-    try:
-        if "gap_seconds" in body and body.get("gap_seconds") is not None and str(body.get("gap_seconds")).strip() != "":
-            gap_seconds = float(body.get("gap_seconds"))
-    except Exception:
-        pass
-
-    extra = flux_tag_filter(entity_id, friendly_name)
-    start = _dt_to_rfc3339_utc(start_dt)
-    stop = _dt_to_rfc3339_utc(stop_dt)
-
-    span_seconds = max(0.0, (stop_dt - start_dt).total_seconds())
-    LOG.info("api.outlier_search span=%.0fs (%.1f days) limit=%d max_step=%s",
-        span_seconds, span_seconds / 86400.0, limit, max_step)
-
-    MAX_SCAN_CHUNK = 200000
-    MIN_CHUNK_SECONDS = 5 * 60
-
-    rows: list[dict[str, Any]] = []
-    scanned = 0
+    point_index = 0
     prev_val: float | None = body.get("prev_value")
     prev_time_dt: datetime | None = None
     last_time_iso: str | None = None
@@ -18699,7 +18254,7 @@ def api_outlier_search():
         return True
 
     def _scan_span(qapi: Any, a: datetime, b: datetime, prev: float | None) -> float | None:
-        nonlocal scanned, rows, last_time_iso, counter_base_val, prev_time_dt
+        nonlocal scanned, rows, last_time_iso, counter_base_val, prev_time_dt, point_index
 
         span_s = (b - a).total_seconds()
         chunk_t0 = time.monotonic()
@@ -18725,6 +18280,7 @@ from(bucket: "{cfg["bucket"]}")
         for rec in qapi.query_stream(q_span, org=cfg["org"]):
             scanned_local += 1
             scanned += 1
+            point_index += 1
             if scanned_local > MAX_SCAN_CHUNK:
                 LOG.warning("api.outlier_search _scan_span OVERFLOW at chunk a=%s b=%s scanned_local=%d",
                     _dt_to_rfc3339_utc(a), _dt_to_rfc3339_utc(b), scanned_local)
@@ -18762,7 +18318,7 @@ from(bucket: "{cfg["bucket"]}")
                     fault_state["recovery_streak"] = 0
                     fault_state["last_reason"] = "ungueltiger Wert"
                 if include_null:
-                    rows.append({"time": iso, "value": None, "reason": "NULL", "type": "null"})
+                    rows.append({"time": iso, "value": None, "reason": "NULL", "type": "null", "point_index": point_index})
                     LOG.info("api.outlier_search found NULL at %s", iso)
                     if len(rows) >= limit:
                         return prev
@@ -18916,6 +18472,7 @@ from(bucket: "{cfg["bucket"]}")
                     "reason": ", ".join(reasons),
                     "class": cls,
                     "types": unique_types,
+                    "point_index": point_index,
                 })
                 if len(rows) >= limit:
                     return fv
@@ -18984,6 +18541,120 @@ from(bucket: "{cfg["bucket"]}")
         dur_ms = int((time.monotonic() - t0) * 1000)
         LOG.error("api.outlier_search error: %s dur=%dms", e, dur_ms, exc_info=True)
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
+
+
+@app.post("/api/outlier_windows")
+def api_outlier_windows():
+    """Compute per-outlier time windows based on point-count distance.
+
+    For each outlier (identified by time + point_index), finds the N-th point
+    before and after it in the raw data stream and computes the corresponding
+    time deltas (before_minutes, after_minutes, center_minutes).
+
+    Called once after analysis completes.
+    """
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    body = request.get_json(force=True) or {}
+    measurement = str(body.get("measurement") or "").strip()
+    field = str(body.get("field") or "").strip()
+    entity_id = str(body.get("entity_id") or "").strip() or None
+    friendly_name = str(body.get("friendly_name") or "").strip() or None
+    start_str = str(body.get("start") or "").strip()
+    stop_str = str(body.get("stop") or "").strip()
+    outliers = body.get("outliers") or []
+    n = int(body.get("n") or 10)
+
+    if not measurement or not field:
+        return jsonify({"ok": False, "error": "measurement and field required"}), 400
+    if not outliers:
+        return jsonify({"ok": True, "windows": []})
+
+    t0 = time.monotonic()
+    try:
+        start_dt, stop_dt = _get_start_stop_from_payload(body)
+    except Exception as e:
+        LOG.error("api.outlier_windows parse_error: %s", e)
+        return jsonify({"ok": False, "error": str(e)}), 400
+
+    extra = flux_tag_filter(entity_id, friendly_name)
+    s_iso = _dt_to_rfc3339_utc(start_dt)
+    e_iso = _dt_to_rfc3339_utc(stop_dt)
+
+    LOG.info("api.outlier_windows called measurement=%s field=%s outliers=%d n=%d span=%.0fs",
+        measurement, field, len(outliers), n, (stop_dt - start_dt).total_seconds())
+
+    q = f'''
+from(bucket: "{cfg["bucket"]}")
+  |> range(start: time(v: "{s_iso}"), stop: time(v: "{e_iso}"))
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
+  |> keep(columns: ["_time", "_value"])
+  |> group()
+  |> sort(columns: ["_time"])
+'''
+
+    all_points: list[dict[str, Any]] = []
+    try:
+        v2_cfg = _v2_client_config(cfg)
+        with InfluxDBClient(**v2_cfg) as client:
+            qapi = client.query_api()
+            for rec in qapi.query_stream(q, org=cfg["org"]):
+                t = rec.get_time()
+                v = rec.get_value()
+                iso = _dt_to_rfc3339_utc_ms(t) if isinstance(t, datetime) else None
+                if iso:
+                    all_points.append({"time": iso, "value": float(v) if isinstance(v, (int, float)) else None, "_dt": t})
+    except Exception as e:
+        LOG.error("api.outlier_windows query error: %s", e, exc_info=True)
+        return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
+
+    LOG.info("api.outlier_windows fetched %d raw points in %.1fs", len(all_points), time.monotonic() - t0)
+
+    # Build index lookup: time -> datetime for O(1) access
+    time_to_dt: dict[str, Any] = {}
+    for p in all_points:
+        time_to_dt[p["time"]] = p["_dt"]
+
+    windows: list[dict[str, Any]] = []
+    for ol in outliers:
+        ol_time = str(ol.get("time") or "")
+        ol_idx = int(ol.get("point_index") or -1)
+        if ol_idx < 0 or not ol_time:
+            continue
+
+        before_minutes = None
+        after_minutes = None
+        center_minutes = None
+
+        before_idx = ol_idx - n
+        after_idx = ol_idx + n
+
+        ol_dt = time_to_dt.get(ol_time)
+
+        if before_idx >= 0 and before_idx < len(all_points) and ol_dt is not None:
+            before_dt = all_points[before_idx]["_dt"]
+            before_minutes = (ol_dt - before_dt).total_seconds() / 60.0
+
+        if after_idx >= 0 and after_idx < len(all_points) and ol_dt is not None:
+            after_dt = all_points[after_idx]["_dt"]
+            after_minutes = (after_dt - ol_dt).total_seconds() / 60.0
+
+        if before_minutes is not None and after_minutes is not None:
+            center_minutes = max(before_minutes, after_minutes)
+        elif before_minutes is not None:
+            center_minutes = before_minutes
+        elif after_minutes is not None:
+            center_minutes = after_minutes
+
+        windows.append({
+            "time": ol_time,
+            "point_index": ol_idx,
+            "center_minutes": round(center_minutes, 2) if center_minutes is not None else None,
+            "before_minutes": round(before_minutes, 2) if before_minutes is not None else None,
+            "after_minutes": round(after_minutes, 2) if after_minutes is not None else None,
+        })
+
+    LOG.info("api.outlier_windows computed %d windows in %.1fs", len(windows), time.monotonic() - t0)
+    return jsonify({"ok": True, "windows": windows})
 
 
 @app.post("/api/series_oldest")

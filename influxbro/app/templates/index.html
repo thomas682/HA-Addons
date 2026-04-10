@@ -5133,32 +5133,95 @@ async function runRawOutlierSearch(){
       const tb = Date.parse(String(b.time || ''));
       return (isFinite(ta) && isFinite(tb)) ? (ta - tb) : 0;
     });
-    console.log('[OUTLIER_SEARCH] CACHE: Rendering overview table');
-    renderOutlierOverviewTable();
-    // After analysis: raw table stays empty (5 empty rows)
-    RAW_ROWS = [];
-    RAW_META = null;
-    RAW_OFFSET = 0;
-    renderRawTable();
-    const $rawRowCount = document.getElementById('raw_row_count');
-    if($rawRowCount) $rawRowCount.textContent = '0 Zeilen';
-    if(RAW_OUTLIER_RESULTS.length > 0){
-      if($rawJumpOldest) $rawJumpOldest.disabled = false;
-      if($rawJumpNewest) $rawJumpNewest.disabled = false;
-      if($rawSearchClear) $rawSearchClear.style.display = 'inline-block';
-      if($rawOutlierStatusTxt) $rawOutlierStatusTxt.textContent = 'Cache: ' + RAW_OUTLIER_RESULTS.length + ' Ausreisser.';
+
+    // Compute per-outlier windows (N points before/after)
+    try{
+      const nContext = Math.max(1, Math.trunc(Number(RAW_OUTLIER_CONTEXT_ROWS || UI_RAW_CENTER_MIN_POINTS || 10)));
+      const outlierList = RAW_OUTLIER_RESULTS.filter(r => r.point_index != null && r.point_index >= 0).map(r => ({
+        time: r.time,
+        point_index: r.point_index
+      }));
+      if(outlierList.length > 0){
+        const wj = await api('./api/outlier_windows', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({
+            measurement: base.measurement,
+            field: base.field,
+            entity_id: base.entity_id || null,
+            friendly_name: base.friendly_name || null,
+            start: win.start,
+            stop: win.stop,
+            outliers: outlierList,
+            n: nContext,
+          })
+        }, { key: 'outlier_windows_' + String(win.start || '') + '_' + String(win.stop || ''), silent: true });
+
+        const winMap = {};
+        (wj.windows || []).forEach(w => { winMap[w.time] = w; });
+
+        // Store windows in RAW_OUTLIER_MAP and RAW_OUTLIER_RESULTS
+        RAW_OUTLIER_RESULTS.forEach(row => {
+          const w = winMap[row.time];
+          if(w){
+            row.window = {
+              center_minutes: w.center_minutes,
+              before_minutes: w.before_minutes,
+              after_minutes: w.after_minutes,
+            };
+            const entry = RAW_OUTLIER_MAP[String(row.time)];
+            if(entry) entry.window = row.window;
+          }
+        });
+      }
+    }catch(e){
+      console.warn('[ANALYSIS] outlier_windows failed, continuing without windows:', e && e.message ? e.message : e);
     }
-    return;
-  }
 
-  console.log('[OUTLIER_SEARCH] CACHE MISS - Starting full search');
-  const unit = (HA_ENTITY_INFO && HA_ENTITY_INFO.entity && HA_ENTITY_INFO.entity.unit_of_measurement)
-    ? String(HA_ENTITY_INFO.entity.unit_of_measurement) : '';
-  const baseMeta = _rawOutlierMetaFromPayload(base);
-  const overallSpanTxt = 'Suchbereich: ' + fmtTs(win.start) + ' bis ' + fmtTs(win.stop);
+    try{
+      const nContext = Math.max(1, Math.trunc(Number(RAW_OUTLIER_CONTEXT_ROWS || UI_RAW_CENTER_MIN_POINTS || 10)));
+      const outlierList = RAW_OUTLIER_RESULTS.filter(r => r.point_index != null && r.point_index >= 0).map(r => ({
+        time: r.time,
+        point_index: r.point_index
+      }));
+      if(outlierList.length > 0){
+        const wj = await api('./api/outlier_windows', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({
+            measurement: base.measurement,
+            field: base.field,
+            entity_id: base.entity_id || null,
+            friendly_name: base.friendly_name || null,
+            start: win.start,
+            stop: win.stop,
+            outliers: outlierList,
+            n: nContext,
+          })
+        }, { key: 'outlier_windows_' + String(win.start || '') + '_' + String(win.stop || ''), silent: true });
 
-  const params = {};
-  try{
+        const winMap = {};
+        (wj.windows || []).forEach(w => { winMap[w.time] = w; });
+
+        // Store windows in RAW_OUTLIER_MAP and RAW_OUTLIER_RESULTS
+        RAW_OUTLIER_RESULTS.forEach(row => {
+          const w = winMap[row.time];
+          if(w){
+            row.window = {
+              center_minutes: w.center_minutes,
+              before_minutes: w.before_minutes,
+              after_minutes: w.after_minutes,
+            };
+            const entry = RAW_OUTLIER_MAP[String(row.time)];
+            if(entry) entry.window = row.window;
+          }
+        });
+      }
+    }catch(e){
+      console.warn('[ANALYSIS] outlier_windows failed, continuing without windows:', e && e.message ? e.message : e);
+    }
+
+    try{
     const ps = localStorage.getItem('raw_outlier_params');
     if(ps) Object.assign(params, JSON.parse(ps));
   }catch(e){}
@@ -5265,7 +5328,11 @@ async function runRawOutlierSearch(){
       for(const row of got){
         if(!RAW_OUTLIER_MAP[String(row.time)]){
           RAW_OUTLIER_RESULTS.push(row);
-          RAW_OUTLIER_MAP[String(row.time)] = {reason: row.reason || '', types: row.types || []};
+          RAW_OUTLIER_MAP[String(row.time)] = {
+            reason: row.reason || '',
+            types: row.types || [],
+            window: row.window || null,
+          };
         }
       }
       RAW_OUTLIER_SCANNED_TOTAL = scannedTotal;
@@ -6517,7 +6584,11 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog, effective
         rows.forEach((row) => {
           if(!RAW_OUTLIER_MAP[String(row.time)]){
             RAW_OUTLIER_RESULTS.push(row);
-            RAW_OUTLIER_MAP[String(row.time)] = {reason: row.reason || '', types: row.types || []};
+            RAW_OUTLIER_MAP[String(row.time)] = {
+              reason: row.reason || '',
+              types: row.types || [],
+              window: row.window || null,
+            };
           }
         });
         RAW_OUTLIER_SCANNED_TOTAL += Number((pj && pj.payload && pj.payload.scanned) || 0);
@@ -6756,7 +6827,11 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog, effective
       for(const row of got){
         if(!RAW_OUTLIER_MAP[String(row.time)]){
           RAW_OUTLIER_RESULTS.push(row);
-          RAW_OUTLIER_MAP[String(row.time)] = {reason: row.reason || '', types: row.types || []};
+          RAW_OUTLIER_MAP[String(row.time)] = {
+            reason: row.reason || '',
+            types: row.types || [],
+            window: row.window || null,
+          };
         }
       }
       RAW_OUTLIER_SCANNED_TOTAL = scannedTotal;
@@ -7560,29 +7635,26 @@ async function loadRawFromGraph(reset){
     let j = null;
     if(useCenter){
       const minPoints = Math.max(1, Math.trunc(Number(RAW_OUTLIER_CONTEXT_ROWS || UI_RAW_CENTER_MIN_POINTS || 10)));
-      let centerMinutes = Math.max(0, clampRawCenterRange(RAW_CENTER_RANGE));
       payload.mode = 'center';
       payload.anchor_time = anchorIso;
       payload.include_total = false;
-      for(let guard = 0; guard < 2000; guard += 1){
-        payload.center_minutes = centerMinutes;
+
+      // Try to get window from cache (computed during analysis)
+      const outlierInfo = RAW_OUTLIER_MAP && RAW_OUTLIER_MAP[String(anchorIso)];
+      const cachedWindow = outlierInfo && outlierInfo.window ? outlierInfo.window : null;
+
+      if(cachedWindow && cachedWindow.center_minutes){
+        // Window im Cache vorhanden: EIN direkter Aufruf
+        payload.center_minutes = cachedWindow.center_minutes;
         j = await api("./api/raw_points", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)});
-        const rowsNow = j && Array.isArray(j.rows) ? j.rows : [];
-        const metaNow = (j && j.meta) ? j.meta : {};
-        const counts = countCenteredRows(rowsNow, anchorIso);
-        const needBefore = counts.before < minPoints && !!metaNow.has_more_before;
-        const needAfter = counts.after < minPoints && !!metaNow.has_more_after;
-        if(!needBefore && !needAfter){
-          j.meta = Object.assign({}, metaNow, {
-            center_minutes_loaded: centerMinutes,
-            center_min_points: minPoints,
-            before_points: counts.before,
-            after_points: counts.after,
-            anchor_points: counts.anchor,
-          });
-          break;
-        }
-        centerMinutes += 100;
+      } else {
+        // Kein Window im Cache → alter Cache ohne Fenster → löschen und neu analysieren
+        try{
+          await clearAnalysisCacheForCurrentSeries();
+        }catch(e){}
+        _rawStatusEnd(false, 'Alter Cache ohne Fenster-Daten. Cache wurde gelöscht. Bitte Analyse neu starten.');
+        _RAW_INFLIGHT = false;
+        return;
       }
     }else{
       payload.limit = RAW_WINDOW_LIMIT;
@@ -9414,6 +9486,40 @@ async function combineAnalysisCacheForCurrentSelection(){
   });
   _saveAnalysisEvent({at: new Date().toISOString(), kind: 'analysis_cache_plan', step: 'combined', detail: 'Kombiniert: ' + String(j.groups_combined || 0) + ' Gruppe(n)'});
   await refreshCachingSection();
+}
+
+async function clearAnalysisCacheForCurrentSeries(){
+  try{
+    const base = currentFilters();
+    const win = await resolveEffectiveAnalysisWindow();
+    const plan = (ANALYSIS_CACHE_PLAN_CHOICE && ANALYSIS_CACHE_PLAN_CHOICE.plan) ? ANALYSIS_CACHE_PLAN_CHOICE.plan : await fetchAnalysisCachePlan(base, win);
+    if(plan && plan.series_key){
+      await api('./api/analysis_cache/delete', {
+        method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({series_key: plan.series_key})
+      });
+    }
+    RAW_OUTLIER_RESULTS = [];
+    RAW_OUTLIER_MAP = {};
+    RAW_OUTLIER_SCANNED_TOTAL = 0;
+    try{ sessionStorage.removeItem(_analysisCacheKey(base, win, getAnalysisCacheTypes())); }catch(e){}
+  }catch(e){}
+}
+
+async function clearAnalysisCacheForCurrentSeries(){
+  try{
+    const base = currentFilters();
+    const win = await resolveEffectiveAnalysisWindow();
+    const plan = (ANALYSIS_CACHE_PLAN_CHOICE && ANALYSIS_CACHE_PLAN_CHOICE.plan) ? ANALYSIS_CACHE_PLAN_CHOICE.plan : await fetchAnalysisCachePlan(base, win);
+    if(plan && plan.series_key){
+      await api('./api/analysis_cache/delete', {
+        method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({series_key: plan.series_key})
+      });
+    }
+    RAW_OUTLIER_RESULTS = [];
+    RAW_OUTLIER_MAP = {};
+    RAW_OUTLIER_SCANNED_TOTAL = 0;
+    try{ sessionStorage.removeItem(_analysisCacheKey(base, win, getAnalysisCacheTypes())); }catch(e){}
+  }catch(e){}
 }
 
 async function deleteAnalysisCacheForCurrentSelection(){

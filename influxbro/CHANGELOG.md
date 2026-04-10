@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.12.290
+
+### Enhancement
+
+- Raw-Daten-Laden bei Klick auf Ausreisser: Die expandierende Zeitschleife (bis zu 19+ API-Aufrufe) entfällt komplett. Stattdessen wird während der Analyse für jeden Ausreisser das optimale Zeitfenster (N Punkte vor/nach) berechnet und im Cache gespeichert. Beim Klick: ein einziger API-Aufruf mit dem korrekten Fenster.
+- Neuer Backend-Endpunkt `/api/outlier_windows`: Berechnet nach der Analyse einmalig für alle Ausreisser die Fenstergröße basierend auf Point-Index-Arithmetik.
+- Alter Cache ohne `window`-Feld wird beim Klick automatisch gelöscht und muss neu analysiert werden.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tests: `pytest tests/test_api_ui_support.py -q -k "tooltip"`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.289
 
 ### Enhancement
