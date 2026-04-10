@@ -1016,6 +1016,7 @@ Ausreisser:
 ## Release Notes (1.12.92)
 
 - Titelzeile: `nav.donate` sitzt jetzt neben `InfluxBro`, darunter steht `by Thomas Schatz`. `topbar.profile` und `topbar.zoom` sind in die Titelzeile gewandert. Die bisherigen Buttons `sections.open_all`, `sections.close_all` und `page.search.clear` wurden dort entfernt.
+- Titelzeile: Die globale Seitensuche in der Topbar bricht auf schmalen Breiten jetzt sauber in eine eigene Zeile um. Dadurch bleibt `page.search` auch auf kleineren Fenstern benutzbar und wird nicht mehr von den Such-Navigationsbuttons ueberdeckt.
 - Einstellungen: `ui_status_bar_bg` und `ui_status_bar_fg` haben jetzt links einen Color Picker vor dem Farbtext.
 
 ## Release Notes (1.12.93)

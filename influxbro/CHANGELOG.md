@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.296
+
+### Fix
+
+- Die Seitensuche in der Topbar bleibt bei schmaler Fensterbreite benutzbar: `page_main.input_search` bricht jetzt vor die Seitensuch-Buttons um, statt von `page_search.btn_prev` und den rechts folgenden Buttons ueberdeckt zu werden. ([#238](https://github.com/thomas682/HA-Addons/issues/238))
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tests: `_topbar.html` auf responsive Marker fuer Suchfeld-Umbruch geprueft
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.295
 
 ### Enhancement
