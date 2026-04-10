@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.294
+
+### Fix
+
+- Analyse-Cache kombinieren liefert bei nicht kombinierbaren Segmenten keinen 400-Fehler mehr. Wenn keine zusammenhaengenden Segmente vorhanden sind, antwortet die API jetzt erfolgreich mit `groups_combined: 0` statt mit `no contiguous segments to combine`.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.293
 
 ### Fix

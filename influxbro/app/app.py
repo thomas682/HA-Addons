@@ -12035,7 +12035,13 @@ def api_analysis_cache_combine():
         return jsonify({"ok": False, "error": "series not found"}), 404
     groups = [g for g in _analysis_cache_contiguous_groups(metas) if len(g) > 1]
     if not groups:
-        return jsonify({"ok": False, "error": "no contiguous segments to combine"}), 400
+        return jsonify({
+            "ok": True,
+            "created": [],
+            "deleted_ids": [],
+            "groups_combined": 0,
+            "note": "no contiguous segments to combine",
+        })
     created: list[dict[str, Any]] = []
     deleted_ids: list[str] = []
     for group in groups:
