@@ -5077,6 +5077,7 @@ function _analysisCacheKey(base, win, types){
   ].join('|');
 }
 
+/* Duplicate legacy implementation disabled after merge conflict.
 async function runRawOutlierSearch(){
   console.log('[OUTLIER_SEARCH] ENTRY: RAW_OUTLIER_SEARCHING =', RAW_OUTLIER_SEARCHING);
   if(RAW_OUTLIER_SEARCHING){
@@ -6416,6 +6417,7 @@ async function _showAnalysisHistory(){
   }
 }
 
+*/
 async function runRawOutlierSearch(){
   const filtered = getDisplayedOutliers();
   RAW_OUTLIER_MARKED_TYPE = getRawOutlierFilterTypes().join('|');

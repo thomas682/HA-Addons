@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.292
+
+### Fix
+
+- Dashboard-JavaScript repariert: Die versehentlich doppelt vorhandene alte `runRawOutlierSearch()`-Implementierung wird nicht mehr mitgeparst. Dadurch verschwindet der Browser-Fehler `Unexpected end of input` beim Laden des Dashboards.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tests: Klammer-Balance des eingebetteten Dashboard-Skripts geprueft
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.291
 
 ### Fix
