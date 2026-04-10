@@ -5179,53 +5179,10 @@ async function runRawOutlierSearch(){
     }
 
     try{
-      const nContext = Math.max(1, Math.trunc(Number(RAW_OUTLIER_CONTEXT_ROWS || UI_RAW_CENTER_MIN_POINTS || 10)));
-      const outlierList = RAW_OUTLIER_RESULTS.filter(r => r.point_index != null && r.point_index >= 0).map(r => ({
-        time: r.time,
-        point_index: r.point_index
-      }));
-      if(outlierList.length > 0){
-        const wj = await api('./api/outlier_windows', {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({
-            measurement: base.measurement,
-            field: base.field,
-            entity_id: base.entity_id || null,
-            friendly_name: base.friendly_name || null,
-            start: win.start,
-            stop: win.stop,
-            outliers: outlierList,
-            n: nContext,
-          })
-        }, { key: 'outlier_windows_' + String(win.start || '') + '_' + String(win.stop || ''), silent: true });
-
-        const winMap = {};
-        (wj.windows || []).forEach(w => { winMap[w.time] = w; });
-
-        // Store windows in RAW_OUTLIER_MAP and RAW_OUTLIER_RESULTS
-        RAW_OUTLIER_RESULTS.forEach(row => {
-          const w = winMap[row.time];
-          if(w){
-            row.window = {
-              center_minutes: w.center_minutes,
-              before_minutes: w.before_minutes,
-              after_minutes: w.after_minutes,
-            };
-            const entry = RAW_OUTLIER_MAP[String(row.time)];
-            if(entry) entry.window = row.window;
-          }
-        });
-      }
-    }catch(e){
-      console.warn('[ANALYSIS] outlier_windows failed, continuing without windows:', e && e.message ? e.message : e);
-    }
-
-    try{
-    const ps = localStorage.getItem('raw_outlier_params');
-    if(ps) Object.assign(params, JSON.parse(ps));
-  }catch(e){}
-  console.log('[OUTLIER_SEARCH] Step 5: Starting chunk search, params:', {base, params});
+      const ps = localStorage.getItem('raw_outlier_params');
+      if(ps) Object.assign(params, JSON.parse(ps));
+    }catch(e){}
+    console.log('[OUTLIER_SEARCH] Step 5: Starting chunk search, params:', {base, params});
 
   startRawOutlierUi(baseMeta);
   RAW_OUTLIER_SEARCHING = true;

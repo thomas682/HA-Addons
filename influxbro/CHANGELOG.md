@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.291
+
+### Fix
+
+- SyntaxError `Unexpected end of input` beim Dashboard-Aufruf behoben. Ursache: Duplizierter outlier_windows-Code-Block in `runRawOutlierSearch()` hatte falsche Klammer-Struktur.
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.290
 
 ### Enhancement
