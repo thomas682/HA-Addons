@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.298
+
+### Fix
+
+- Analyse mit Cache: Der 404-Fehler bei der Ausreisser-Suche ist behoben. Das Frontend ruft jetzt korrekt `/api/outliers` statt des nicht existierenden `/api/outlier_search` auf. ([#240](https://github.com/thomas682/HA-Addons/issues/240))
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tests: Dashboard-Skript auf Klammer-Balance geprueft
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.297
 
 ### Enhancement

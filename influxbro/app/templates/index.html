@@ -5293,7 +5293,7 @@ async function runRawOutlierSearch_DISABLED_LEGACY(){
 
       let r, j;
       try{
-        r = await fetch('./api/outlier_search', {
+        r = await fetch('./api/outliers', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify(payload),
@@ -5379,7 +5379,7 @@ async function runRawOutlierSearch_DISABLED_LEGACY(){
       stopRawOutlierUi(true);
     }else{
       stopRawOutlierUi(false, e && e.message ? e.message : String(e));
-      try{ window.InfluxBroClientLog && window.InfluxBroClientLog.fetchError && window.InfluxBroClientLog.fetchError('./api/outlier_search', {}, e); }catch(x){}
+      try{ window.InfluxBroClientLog && window.InfluxBroClientLog.fetchError && window.InfluxBroClientLog.fetchError('./api/outliers', {}, e); }catch(x){}
     }
   }finally{
     RAW_OUTLIER_SEARCHING = false;
@@ -6806,7 +6806,7 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog, effective
       }, FETCH_TIMEOUT_MS);
       _logAnalysis('fetch_start', {chunk: chunkIdx+1, total: chunks.length, start: aIso, stop: bIso});
       try{
-        r = await fetch('./api/outlier_search', {
+        r = await fetch('./api/outliers', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify(payload),
@@ -7018,7 +7018,7 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog, effective
       stopRawOutlierUi(true);
     }else{
       stopRawOutlierUi(false, e && e.message ? e.message : String(e));
-      try{ window.InfluxBroClientLog && window.InfluxBroClientLog.fetchError && window.InfluxBroClientLog.fetchError('./api/outlier_search', {}, e); }catch(x){}
+      try{ window.InfluxBroClientLog && window.InfluxBroClientLog.fetchError && window.InfluxBroClientLog.fetchError('./api/outliers', {}, e); }catch(x){}
     }
   }finally{
     RAW_OUTLIER_SEARCHING = false;
