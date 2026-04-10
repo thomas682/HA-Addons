@@ -148,14 +148,16 @@
     .ib_pagecard .brand { font-weight:900; letter-spacing:.2px; font-size:22px; line-height:1; margin:0; }
     .ib_pagecard .byline { font-size:12px; opacity:.8; margin-top:0; line-height:1; }
     .ib_pagecard .hintline { font-size:12px; opacity:.75; line-height:1; margin-top:2px; }
-    .ib_pagecard .branddonate { display:flex; flex-direction:column; align-items:flex-start; gap:6px; }
+    .ib_pagecard .branddonate { display:flex; flex-direction:row; align-items:center; gap:8px; flex-wrap:wrap; }
     .ib_pagecard .title { font-weight: 800; font-size: var(--ib-pagecard-title-size); min-width:120px; line-height: 1.1; }
     .ib_pagecard .actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end; min-width:0; }
     .ib_pagecard .actions input { height:34px; padding:6px 10px; min-width:240px; }
     .ib_pagecard .actions button { height:34px; padding:6px 10px; }
     .ib_pagecard .actions .iconbtn { width:34px; padding:0; display:inline-flex; align-items:center; justify-content:center; }
     .ib_pagecard .actions .iconbtn svg { width:18px; height:18px; }
-    .ib_pagecard .actions .ib_clear_row { flex:1 1 240px; min-width:180px; max-width:320px; min-height:34px; }
+    .ib_pagecard .actions .topbar_profile_group { display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end; min-width:0; width:100%; }
+    .ib_pagecard .actions .topbar_profile_group .zoom { display:flex; align-items:center; gap:8px; padding-left:10px; border-left:1px solid rgba(0,0,0,0.08); }
+    .ib_pagecard .actions .topbar_profile_group .ib_clear_row { flex:1 1 240px; min-width:180px; max-width:320px; min-height:34px; }
     .jump_hl {
       outline: var(--ib-page-search-hl-width) solid var(--ib-page-search-hl-color);
       outline-offset: 2px;
@@ -194,7 +196,9 @@
       .ib_pagecard { flex-wrap:wrap; align-items:flex-start; }
       .ib_pagecard .actions { width:100%; justify-content:flex-start; }
       .ib_pagecard .actions input { min-width:0; width:100%; }
-      .ib_pagecard .actions .ib_clear_row { flex:1 0 100%; max-width:none; }
+      .ib_pagecard .actions .topbar_profile_group { justify-content:flex-start; }
+      .ib_pagecard .actions .topbar_profile_group .zoom { padding-left:0; border-left:0; }
+      .ib_pagecard .actions .topbar_profile_group .ib_clear_row { flex:1 0 100%; max-width:none; }
       .ib_pagecard .title { width:100%; }
       .ib_pagecard .branddonate { width:100%; }
     }
@@ -1170,7 +1174,7 @@
     </div>
   </div>
   <div class="actions">
-    <div data-ui="topbar_main.panel_profile" title="topbar.profile" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+    <div class="topbar_profile_group" data-ui="topbar_main.panel_profile" title="topbar.profile">
       <select id="ui_profile_sel" data-ui="nav_profile.select_select" title="nav.profile.select"></select>
       <button id="ui_profile_apply" type="button" data-ui="nav_profile.btn_apply" title="nav.profile.apply">Anwenden</button>
       <button id="ui_profile_save" type="button" data-ui="nav_profile.btn_save" title="nav.profile.save">Speichern</button>
@@ -1180,27 +1184,27 @@
       <button id="ib_nav_back" type="button" data-ui="nav_history.btn_back" title="nav.history.back" aria-label="Vorheriges Element">◀</button>
       <button id="ib_nav_forward" type="button" data-ui="nav_history.btn_forward" title="nav.history.forward" aria-label="Naechstes Element">▶</button>
       <button id="ib_param_help_toggle" type="button" data-ui="nav_main.btn_param_help" title="nav.param_help">Param-Hilfe</button>
-    </div>
-    <div class="zoom" data-ui="topbar_main.panel_zoom" title="topbar.zoom">
-      <span class="meta">Zoom</span>
-      <button id="ib_zoom_out" type="button" aria-label="Zoom out" data-ui="topbar_zoom.btn_out" title="topbar.zoom.out">-</button>
-      <span class="pct" id="ib_zoom_pct" data-ui="topbar_zoom.panel_pct" title="topbar.zoom.pct">100%</span>
-      <button id="ib_zoom_in" type="button" aria-label="Zoom in" data-ui="topbar_zoom.btn_in" title="topbar.zoom.in">+</button>
-    </div>
-    <div class="ib_clear_row" style="flex:1 1 140px; min-width:110px; max-width:320px;">
-      <input id="ib_page_search" type="text" data-ui="page_main.input_search" title="page.search" placeholder="Elemente auf dieser Seite suchen..." />
-      <button type="button" class="ib_clear_btn" data-clear-for="ib_page_search" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
-    </div>
-    <button id="ib_page_search_prev" class="iconbtn ib_page_search_btn" type="button" data-ui="page_search.btn_prev" title="page.search.prev" aria-label="Vorheriger Treffer">&lt;</button>
-    <button id="ib_page_search_next" class="iconbtn ib_page_search_btn" type="button" data-ui="page_search.btn_next" title="page.search.next" aria-label="Naechster Treffer">&gt;</button>
-    <button id="ib_page_settings" class="iconbtn ib_page_search_btn" type="button" data-ui="page_main.btn_settings" title="page.settings" aria-label="Zu Einstellungen" style="display:none;">
+      <div class="zoom" data-ui="topbar_main.panel_zoom" title="topbar.zoom">
+        <span class="meta">Zoom</span>
+        <button id="ib_zoom_out" type="button" aria-label="Zoom out" data-ui="topbar_zoom.btn_out" title="topbar.zoom.out">-</button>
+        <span class="pct" id="ib_zoom_pct" data-ui="topbar_zoom.panel_pct" title="topbar.zoom.pct">100%</span>
+        <button id="ib_zoom_in" type="button" aria-label="Zoom in" data-ui="topbar_zoom.btn_in" title="topbar.zoom.in">+</button>
+      </div>
+      <div class="ib_clear_row" style="flex:1 1 140px; min-width:110px; max-width:320px;">
+        <input id="ib_page_search" type="text" data-ui="page_main.input_search" title="page.search" placeholder="Elemente auf dieser Seite suchen..." />
+        <button type="button" class="ib_clear_btn" data-clear-for="ib_page_search" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+      </div>
+      <button id="ib_page_search_prev" class="iconbtn ib_page_search_btn" type="button" data-ui="page_search.btn_prev" title="page.search.prev" aria-label="Vorheriger Treffer">&lt;</button>
+      <button id="ib_page_search_next" class="iconbtn ib_page_search_btn" type="button" data-ui="page_search.btn_next" title="page.search.next" aria-label="Naechster Treffer">&gt;</button>
+      <button id="ib_page_settings" class="iconbtn ib_page_search_btn" type="button" data-ui="page_main.btn_settings" title="page.settings" aria-label="Zu Einstellungen" style="display:none;">
       <svg fill="#000000" height="18px" width="18px" version="1.1" viewBox="0 0 24 24" xml:space="preserve"><g> <path d="M4,24c-1.1,0-2.1-0.4-2.8-1.2C0.5,22.1,0,21,0,20s0.4-2.1,1.2-2.8l8-8C9.1,8.7,9,8.1,9,7.5C9,3.4,12.4,0,16.5,0 c0.9,0,1.8,0.2,2.6,0.5L20.6,1L16,5.6L18.4,8L23,3.4l0.6,1.4C23.8,5.7,24,6.6,24,7.5c0,4.1-3.4,7.5-7.5,7.5 c-0.6,0-1.1-0.1-1.7-0.2l-8,8C6.1,23.6,5.1,24,4,24z M16.5,2c-3,0-5.5,2.5-5.5,5.5c0,0.6,0.1,1.1,0.3,1.7l0.2,0.6l-8.9,8.9 C2.2,19,2,19.5,2,20s0.2,1,0.6,1.4c0.7,0.8,2.1,0.8,2.8,0l8.9-8.9l0.6,0.2c0.5,0.2,1.1,0.3,1.7,0.3c3,0,5.5-2.5,5.5-5.5 c0-0.1,0-0.2,0-0.3l-3.6,3.6l-5.2-5.2L16.9,2C16.7,2,16.6,2,16.5,2z"></path> </g></svg>
-    </button>
-    <button id="ib_page_search_settings" class="iconbtn ib_page_search_btn" type="button" data-ui="page_search.btn_settings" title="page.search.settings" aria-label="Sucheinstellungen">
+      </button>
+      <button id="ib_page_search_settings" class="iconbtn ib_page_search_btn" type="button" data-ui="page_search.btn_settings" title="page.search.settings" aria-label="Sucheinstellungen">
       <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 8.8A3.2 3.2 0 1 0 12 15.2 3.2 3.2 0 1 0 12 8.8" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a1.2 1.2 0 0 1 0 1.7l-1.6 1.6a1.2 1.2 0 0 1-1.7 0l-.1-.1a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.9V21a1.2 1.2 0 0 1-1.2 1.2h-2.2A1.2 1.2 0 0 1 10 21v-.2a1 1 0 0 0-.6-.9 1 1 0 0 0-1.1.2l-.1.1a1.2 1.2 0 0 1-1.7 0l-1.6-1.6a1.2 1.2 0 0 1 0-1.7l.1-.1a1 1 0 0 0 .2-1.1 1 1 0 0 0-.9-.6H3A1.2 1.2 0 0 1 1.8 13v-2.2A1.2 1.2 0 0 1 3 9.6h.2a1 1 0 0 0 .9-.6 1 1 0 0 0-.2-1.1l-.1-.1a1.2 1.2 0 0 1 0-1.7l1.6-1.6a1.2 1.2 0 0 1 1.7 0l.1.1a1 1 0 0 0 1.1.2 1 1 0 0 0 .6-.9V3A1.2 1.2 0 0 1 10 1.8h2.2A1.2 1.2 0 0 1 13.4 3v.2a1 1 0 0 0 .6.9 1 1 0 0 0 1.1-.2l.1-.1a1.2 1.2 0 0 1 1.7 0l1.6 1.6a1.2 1.2 0 0 1 0 1.7l-.1.1a1 1 0 0 0-.2 1.1 1 1 0 0 0 .9.6h.2A1.2 1.2 0 0 1 22.2 10v2.2a1.2 1.2 0 0 1-1.2 1.2h-.2a1 1 0 0 0-.9.6Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
-    </button>
-    <button id="ib_open_all" class="iconbtn" type="button" data-ui="sections_main.btn_open_all" title="sections.open_all" aria-label="Alle oeffnen"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 5h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.6"/></svg></button>
-    <button id="ib_close_all" class="iconbtn" type="button" data-ui="sections_main.btn_close_all" title="sections.close_all" aria-label="Alle schliessen"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M18 15l-6-6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 19h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.6"/></svg></button>
+      </button>
+      <button id="ib_open_all" class="iconbtn" type="button" data-ui="sections_main.btn_open_all" title="sections.open_all" aria-label="Alle oeffnen"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 5h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.6"/></svg></button>
+      <button id="ib_close_all" class="iconbtn" type="button" data-ui="sections_main.btn_close_all" title="sections.close_all" aria-label="Alle schliessen"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M18 15l-6-6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 19h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.6"/></svg></button>
+    </div>
   </div>
 </div>
 <div class="ib_pagecard_results" id="ib_pagecard_results"></div>

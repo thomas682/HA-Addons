@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.12.297
+
+### Enhancement
+
+- Die rechte Titelzeile ist jetzt in `topbar_main.panel_profile` als gemeinsamer Wrapper zusammengefasst. `topbar_main.panel_zoom`, Seitensuche, Suchnavigation und Open/Close-All umbrechen dadurch sauber gemeinsam, und `nav_main.panel_donate` zeigt PayPal und Buy-me-a-coffee nebeneinander an. ([#239](https://github.com/thomas682/HA-Addons/issues/239))
+- Die Analyse-Checkliste zeigt jetzt den echten Cache-Workflow: Cache-Plan laden, Cache-Hit pruefen, fehlende Restbereiche lesen, neue Cache-Segmente speichern und Cache-Segmente kombinieren. Alle sichtbaren Checklist-Schritte werden zusaetzlich als Analyse-Events ins Add-on-Logfile geschrieben. ([#239](https://github.com/thomas682/HA-Addons/issues/239))
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tests: Dashboard-Skript auf Klammer-Balance und Cache-Checklist-Marker geprueft
+- Tests: `_topbar.html` auf Topbar-Wrapper- und Donate-Layout-Marker geprueft
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.296
 
 ### Fix

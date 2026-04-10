@@ -592,6 +592,7 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Der bisher im Raw-Bereich eingebettete Ausreißer-Block ist jetzt eine eigene Dashboard-Section `Ausreißer` oberhalb von `Raw Daten Analyse`.
 - Die Dashboard-Analyse fuehrt ihre Laufzeit- und Chunk-Schritte jetzt gesammelt in `analysis_checklist`; der Bereich `dashboard.load_status` zeigt dafuer keine separaten Chunk-Zeilen mehr.
 - Die Checkliste zeigt feste Analyseschritte mit Uhrzeit (`HH:MM:SS`). Noch nicht erreichte Schritte tragen ein `?`, erfolgreiche Schritte einen gruenen Haken und Fehler ein rotes Kreuz. Direkt nach dem Klick auf `Analyse mit Cache` oder `Analyse ohne Cache` erscheinen bereits Start- und Cache-Pruefschritte, damit vor dem eigentlichen Suchlauf sofort Feedback sichtbar ist.
+- Die Analyse-Checkliste bildet jetzt auch den Cache-Workflow sichtbar ab: Cache-Plan, Cache-Hit, fehlende Restbereiche, neues Speichern und Kombinieren. Dieselben Checklist-Schritte werden als Analyse-Events ins Add-on-Logfile geschrieben.
 - Zeitstempel in der Ausreißer-Tabelle zeigen jetzt wieder echte Millisekunden, wenn die Datenquelle diese liefert.
 - Der Tabellenkopf der Ausreißer-Tabelle bleibt jetzt beim vertikalen Scrollen fix sichtbar, analog zur Raw-Tabelle.
 - Der Button fuer `Ausreißer-Parameter` sitzt jetzt im Dashboard-Aktionsblock neben `Analyse` statt innerhalb des Ausreißer-Tabellenblocks.
@@ -1017,6 +1018,7 @@ Ausreisser:
 
 - Titelzeile: `nav.donate` sitzt jetzt neben `InfluxBro`, darunter steht `by Thomas Schatz`. `topbar.profile` und `topbar.zoom` sind in die Titelzeile gewandert. Die bisherigen Buttons `sections.open_all`, `sections.close_all` und `page.search.clear` wurden dort entfernt.
 - Titelzeile: Die globale Seitensuche in der Topbar bricht auf schmalen Breiten jetzt sauber in eine eigene Zeile um. Dadurch bleibt `page.search` auch auf kleineren Fenstern benutzbar und wird nicht mehr von den Such-Navigationsbuttons ueberdeckt.
+- Titelzeile: Alle rechten Titelzeilen-Elemente liegen jetzt gemeinsam in `topbar.profile`. Dadurch umbrechen Zoom, Seitensuche, Suchnavigation und Open/Close-All als zusammengehoeriger Block. Die Spenden-Buttons in `nav.donate` stehen nebeneinander.
 - Einstellungen: `ui_status_bar_bg` und `ui_status_bar_fg` haben jetzt links einen Color Picker vor dem Farbtext.
 
 ## Release Notes (1.12.93)

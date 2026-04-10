@@ -4669,25 +4669,39 @@ let ANALYSIS_CHUNK_LOG = [];
 let ANALYSIS_CACHE_PLAN_CHOICE = { cacheStrategy: 'reuse', plan: null };
 const ANALYSIS_STEP_ORDER = [
   'button_start',
-  'cache_status',
+  'cache_plan',
+  'cache_hit',
   'validate',
   'window',
   'types',
   'prepare',
+  'cache_read',
   'search',
+  'cache_store',
   'combine',
   'complete',
 ];
 const ANALYSIS_STEP_LABELS = {
   button_start: 'Analyse durch Button gestartet',
-  cache_status: 'Cache-Status pruefen',
+  cache_plan: 'Cache-Plan laden',
+  cache_hit: 'Cache-Hit pruefen',
   validate: 'Eingaben pruefen',
   window: 'Analysefenster bestimmen',
   types: 'Ausreisser-Typen uebernehmen',
   prepare: 'Analyse vorbereiten',
+  cache_read: 'Fehlende Restbereiche lesen',
   search: 'Ausreisser-Suche ausfuehren',
+  cache_store: 'Neue Cache-Segmente speichern',
   combine: 'Cache-Segmente kombinieren',
   complete: 'Analyse abgeschlossen',
+};
+let ANALYSIS_CACHE_RUNTIME = {
+  store_ok: 0,
+  store_err: 0,
+  preload_segments: 0,
+  gaps: 0,
+  dirty_ranges: 0,
+  fresh_plan: null,
 };
 let ANALYSIS_CACHE_HIDDEN_COLOR = {{ (cfg.get('ui_analysis_cache_hidden_color') or '#b0b0b0') | tojson }};
 const ANALYSIS_CACHE_SEGMENT_COLORS = [
@@ -5695,8 +5709,32 @@ function _analysisChecklistBaseItems(){
 }
 
 function _analysisChecklistReset(){
+  ANALYSIS_CACHE_RUNTIME = { store_ok: 0, store_err: 0, preload_segments: 0, gaps: 0, dirty_ranges: 0, fresh_plan: null };
   ANALYSIS_CHECKLIST_ITEMS = _analysisChecklistBaseItems();
   _renderAnalysisChecklist(ANALYSIS_CHECKLIST_ITEMS, ANALYSIS_CHUNK_LOG);
+}
+
+function _analysisChecklistLog(item){
+  try{
+    const key = String(item && item.key || '');
+    if(!key || String(item.status || '') === 'pending') return;
+    const label = String(item.label || ANALYSIS_STEP_LABELS[key] || key);
+    const sub = String(item.sub || '');
+    const status = String(item.status || '');
+    _saveAnalysisEventOnce({
+      at: item.at || new Date().toISOString(),
+      kind: 'analysis_checklist',
+      step: key,
+      status: status,
+      detail: sub ? (label + ' | ' + sub) : label,
+      extra: {
+        key: ['analysis_checklist', key, status, label, sub].join('|'),
+        label: label,
+        status: status,
+        sub: sub,
+      },
+    });
+  }catch(e){}
 }
 
 function _analysisChecklistSet(key, patch){
@@ -5727,6 +5765,9 @@ function _analysisChecklistSet(key, patch){
     return (ia < 0 ? 999 : ia) - (ib < 0 ? 999 : ib);
   });
   ANALYSIS_CHECKLIST_ITEMS = items;
+  if(next.status !== undefined || next.label !== undefined || next.sub !== undefined){
+    _analysisChecklistLog(merged);
+  }
   _renderAnalysisChecklist(ANALYSIS_CHECKLIST_ITEMS, ANALYSIS_CHUNK_LOG);
 }
 
@@ -5852,6 +5893,9 @@ async function runAnalysis(){
   _logAnalysis('types', {types: types});
   _setStep('types', types.length > 0 ? 'ok' : 'err', {sub: typeNames || 'Keine Typen aktiv.'});
   _setStep('prepare', 'ok', {sub: 'Analysezustand vorbereitet und UI aktualisiert.'});
+  _setStep('cache_read', 'pending', {});
+  _setStep('cache_store', 'pending', {});
+  _setStep('combine', 'pending', {});
 
   // Clear previous analysis log
   const $alog = document.getElementById('analysis_log');
@@ -5933,14 +5977,13 @@ async function runAnalysis(){
   try{
     const filtered = getFilteredOutliers();
     renderOutlierOverviewTable();
-    _setStep('complete', allOk ? 'ok' : 'pending', {sub: 'Ausreisser-Tabelle: ' + filtered.length + ' Eintraege'});
+    _setStep('complete', allOk ? 'pending' : 'pending', {sub: 'Ausreisser-Tabelle: ' + filtered.length + ' Eintraege'});
   }catch(e){
     _setStep('complete', 'err', {sub: e && e.message ? e.message : String(e)});
     allOk = false;
   }
 
   if(allOk){
-    _setStep('complete', 'ok', {sub: 'Analyse erfolgreich abgeschlossen.'});
     ok("Analyse abgeschlossen.");
   }
   try{ await loadStats(); }catch(e){}
@@ -6575,6 +6618,10 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog, effective
     }
   }catch(e){}
 
+  ANALYSIS_CACHE_RUNTIME.preload_segments = Array.isArray(serverPlan && serverPlan.segments) ? serverPlan.segments.length : 0;
+  ANALYSIS_CACHE_RUNTIME.gaps = Array.isArray(serverPlan && serverPlan.gaps) ? serverPlan.gaps.length : 0;
+  ANALYSIS_CACHE_RUNTIME.dirty_ranges = Array.isArray(serverPlan && serverPlan.dirty_ranges) ? serverPlan.dirty_ranges.length : 0;
+
   if(cached && Array.isArray(cached.results) && (!serverPlan || !(Array.isArray(serverPlan.gaps) && serverPlan.gaps.length) && !(Array.isArray(serverPlan.dirty_ranges) && serverPlan.dirty_ranges.length))){
     _logAnalysis('cache_hit', {count: cached.results.length});
     console.log('[ANALYSIS] CACHE HIT:', cached.results.length, 'results');
@@ -6596,6 +6643,8 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog, effective
       jumpToOldestOutlier().catch(()=>{});
     }
     if(onProgress) onProgress(1, 'Cache: ' + RAW_OUTLIER_RESULTS.length + ' Ausreisser');
+    _analysisChecklistSet('cache_read', {status: 'ok', sub: 'Keine fehlenden Restbereiche vorhanden.'});
+    _analysisChecklistSet('cache_store', {status: 'ok', sub: 'Kein neues Cache-Segment erforderlich.'});
     return;
   }
   _logAnalysis('cache_miss', {});
@@ -6641,6 +6690,19 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog, effective
       }catch(e){}
     }
     _logAnalysis('cache_hit', {count: RAW_OUTLIER_RESULTS.length, segments: preloadSegments.length});
+  }
+
+  const initialPlannedRanges = (Array.isArray(serverPlan && serverPlan.gaps) ? serverPlan.gaps.length : 0)
+    + (Array.isArray(serverPlan && serverPlan.dirty_ranges) ? serverPlan.dirty_ranges.length : 0);
+  if(initialPlannedRanges > 0){
+    _analysisChecklistSet('cache_read', {status: 'running', sub: initialPlannedRanges + ' fehlende/geaenderte Bereich(e) werden gelesen.'});
+    _analysisChecklistSet('cache_store', {status: 'running', sub: 'Neue Analyse-Cache-Segmente werden gespeichert.'});
+  }else if(preloadSegments.length){
+    _analysisChecklistSet('cache_read', {status: 'ok', sub: 'Cache deckt den Zeitraum bereits ab.'});
+    _analysisChecklistSet('cache_store', {status: 'ok', sub: 'Kein neues Cache-Segment erforderlich.'});
+  }else{
+    _analysisChecklistSet('cache_read', {status: 'running', sub: 'Kein passender Cache vorhanden, Bereich wird komplett gelesen.'});
+    _analysisChecklistSet('cache_store', {status: 'running', sub: 'Erste Analyse-Cache-Segmente werden gespeichert.'});
   }
 
   startRawOutlierUi(baseMeta);
@@ -6897,7 +6959,12 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog, effective
             scanned: chunkScanned,
           })
         }, { key: 'analysis_cache_store_' + String(aIso || '') + '_' + String(bIso || ''), silent: true });
-      }catch(e){}
+        ANALYSIS_CACHE_RUNTIME.store_ok += 1;
+        _analysisChecklistSet('cache_store', {status: 'running', sub: ANALYSIS_CACHE_RUNTIME.store_ok + ' Segment(e) gespeichert.'});
+      }catch(e){
+        ANALYSIS_CACHE_RUNTIME.store_err += 1;
+        _analysisChecklistSet('cache_store', {status: 'err', sub: 'Speichern fehlgeschlagen: ' + (e && e.message ? e.message : String(e))});
+      }
 
       if(RAW_OUTLIER_RESULTS.length >= 5000){
         RAW_OUTLIER_RESULTS = RAW_OUTLIER_RESULTS.slice(0, 5000);
@@ -6924,6 +6991,17 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog, effective
       }));
     }catch(e){}
 
+    if(ANALYSIS_CACHE_RUNTIME.store_err > 0){
+      _analysisChecklistSet('cache_store', {status: 'err', sub: ANALYSIS_CACHE_RUNTIME.store_err + ' Segment-Speicherfehler aufgetreten.'});
+    }else if(ANALYSIS_CACHE_RUNTIME.store_ok > 0){
+      _analysisChecklistSet('cache_store', {status: 'ok', sub: ANALYSIS_CACHE_RUNTIME.store_ok + ' neues/neue Cache-Segment(e) gespeichert.'});
+    }else{
+      _analysisChecklistSet('cache_store', {status: 'ok', sub: 'Kein neues Cache-Segment erforderlich.'});
+    }
+    if(initialPlannedRanges > 0){
+      _analysisChecklistSet('cache_read', {status: 'ok', sub: initialPlannedRanges + ' Bereich(e) nachgeladen und verarbeitet.'});
+    }
+
     renderOutlierOverviewTable();
     stopRawOutlierUi(true);
     if(onProgress) onProgress(1, RAW_OUTLIER_RESULTS.length + ' Ausreisser gefunden');
@@ -6935,6 +7013,7 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog, effective
       jumpToOldestOutlier().catch(()=>{});
     }
   }catch(e){
+    _analysisChecklistSet('cache_read', {status: 'err', sub: e && e.message ? e.message : String(e)});
     if(e && e.aborted){
       stopRawOutlierUi(true);
     }else{
@@ -9510,44 +9589,69 @@ async function runDashboardAnalysisFlow(){
 async function startDashboardAnalysis(cacheStrategy){
   try{
     const base = currentFilters();
+    const win = await resolveEffectiveAnalysisWindow();
     ANALYSIS_CHUNK_LOG = [];
     _analysisChecklistReset();
     _analysisChecklistSet('button_start', {status: 'ok', sub: 'Start ueber ' + (cacheStrategy === 'refresh' ? 'Analyse ohne Cache' : 'Analyse mit Cache') + '.'});
-    _analysisChecklistSet('cache_status', {status: 'running', sub: 'Cache-Status und Analyseplan werden geladen.'});
+    _analysisChecklistSet('cache_plan', {status: 'running', sub: 'Cache-Status und Analyseplan werden geladen.'});
     if(!base.measurement || !base.field){
       _analysisChecklistSet('validate', {status: 'err', sub: 'Measurement oder Field fehlt.'});
       err('Bitte zuerst Measurement und Field auswaehlen.');
       return;
     }
+    let freshPlan = null;
     await refreshCachingSection();
-    _analysisChecklistSet('cache_status', {status: 'ok', sub: 'Cache-Status wurde erfolgreich gelesen.'});
-    ANALYSIS_CACHE_PLAN_CHOICE = Object.assign({}, ANALYSIS_CACHE_PLAN_CHOICE || {}, { cacheStrategy: cacheStrategy || 'reuse' });
+    try{
+      freshPlan = (win && win.start && win.stop) ? await fetchAnalysisCachePlan(base, win) : null;
+      ANALYSIS_CACHE_RUNTIME.fresh_plan = freshPlan || null;
+      const segCount = Array.isArray(freshPlan && freshPlan.segments) ? freshPlan.segments.length : 0;
+      const gapCount = Array.isArray(freshPlan && freshPlan.gaps) ? freshPlan.gaps.length : 0;
+      const dirtyCount = Array.isArray(freshPlan && freshPlan.dirty_ranges) ? freshPlan.dirty_ranges.length : 0;
+      _analysisChecklistSet('cache_plan', {status: 'ok', sub: 'Plan geladen: ' + segCount + ' Segment(e), ' + (gapCount + dirtyCount) + ' offener Bereich(e).'});
+      if(segCount > 0){
+        _analysisChecklistSet('cache_hit', {status: 'ok', sub: gapCount || dirtyCount ? ('Teilweise Abdeckung: ' + segCount + ' Segment(e) vorhanden.') : ('Vollstaendiger Cache-Hit mit ' + segCount + ' Segment(en).')});
+      }else{
+        _analysisChecklistSet('cache_hit', {status: 'ok', sub: 'Kein vorhandener Analyse-Cache fuer diese Auswahl.'});
+      }
+    }catch(e){
+      _analysisChecklistSet('cache_plan', {status: 'err', sub: e && e.message ? e.message : String(e)});
+    }
+    ANALYSIS_CACHE_PLAN_CHOICE = Object.assign({}, ANALYSIS_CACHE_PLAN_CHOICE || {}, { cacheStrategy: cacheStrategy || 'reuse', plan: freshPlan });
     await runDashboardAnalysisFlow();
     try{
-      _analysisChecklistSet('combine', {status: 'running', sub: 'Analyse-Cache wird zusammengefuehrt.'});
-      await combineAnalysisCacheForCurrentSelection();
-      _analysisChecklistSet('combine', {status: 'ok', sub: 'Cache-Kombination abgeschlossen.'});
+      const combineResult = await combineAnalysisCacheForCurrentSelection();
+      if(combineResult && combineResult.note){
+        _analysisChecklistSet('combine', {status: 'ok', sub: combineResult.note});
+      }else if(combineResult){
+        _analysisChecklistSet('combine', {status: 'ok', sub: 'Cache-Kombination abgeschlossen: ' + String(combineResult.groups_combined || 0) + ' Gruppe(n).'});
+      }
     }catch(e){
       _analysisChecklistSet('combine', {status: 'err', sub: e && e.message ? e.message : String(e)});
     }
     _analysisChecklistSet('complete', {status: 'ok', sub: 'Analyseflow inklusive Nacharbeiten abgeschlossen.'});
   }catch(e){
-    _analysisChecklistSet('cache_status', {status: 'err', sub: e && e.message ? e.message : String(e)});
+    _analysisChecklistSet('cache_plan', {status: 'err', sub: e && e.message ? e.message : String(e)});
     _analysisChecklistSet('complete', {status: 'err', sub: e && e.message ? e.message : String(e)});
     displayError(e);
   }
 }
 
-async function combineAnalysisCacheForCurrentSelection(){
+async function combineAnalysisCacheForCurrentSelection(planArg){
   const base = currentFilters();
   const win = await resolveEffectiveAnalysisWindow();
-  const plan = (ANALYSIS_CACHE_PLAN_CHOICE && ANALYSIS_CACHE_PLAN_CHOICE.plan) ? ANALYSIS_CACHE_PLAN_CHOICE.plan : await fetchAnalysisCachePlan(base, win);
-  if(!plan || !plan.series_key) throw new Error('Kein Analyse-Cache fuer diese Auswahl vorhanden.');
+  const plan = planArg || await fetchAnalysisCachePlan(base, win);
+  ANALYSIS_CACHE_PLAN_CHOICE = Object.assign({}, ANALYSIS_CACHE_PLAN_CHOICE || {}, { plan: plan || null });
+  if(!plan || !plan.series_key) return { ok: true, groups_combined: 0, note: 'Kein Analyse-Cache fuer diese Auswahl vorhanden.' };
+  if(!plan.has_cache || !Array.isArray(plan.segments) || !plan.segments.length){
+    return { ok: true, groups_combined: 0, note: 'Es wurden keine Analyse-Cache-Segmente gespeichert.' };
+  }
+  _analysisChecklistSet('combine', {status: 'running', sub: 'Analyse-Cache wird zusammengefuehrt.'});
   const j = await api('./api/analysis_cache/combine', {
     method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({series_key: plan.series_key})
   });
   _saveAnalysisEvent({at: new Date().toISOString(), kind: 'analysis_cache_plan', step: 'combined', detail: 'Kombiniert: ' + String(j.groups_combined || 0) + ' Gruppe(n)'});
   await refreshCachingSection();
+  return j;
 }
 
 async function clearAnalysisCacheForCurrentSeries(){

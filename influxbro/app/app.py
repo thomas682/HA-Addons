@@ -17691,6 +17691,17 @@ def api_analysis_history_event():
             "ua": _req_ua(),
         }
         _analysis_history_append(entry)
+        try:
+            LOG.info(
+                "analysis_event kind=%s step=%s status=%s detail=%s extra=%s",
+                str(entry.get("kind") or ""),
+                str(entry.get("step") or ""),
+                str(entry.get("status") or ""),
+                str(entry.get("detail") or "")[:400],
+                _json_short(entry.get("extra") if isinstance(entry.get("extra"), dict) else {}, 1200),
+            )
+        except Exception:
+            pass
     except Exception:
         pass
     return jsonify({"ok": True})
