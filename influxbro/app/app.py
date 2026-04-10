@@ -18169,16 +18169,20 @@ def api_outliers():
             "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
         }), 400
 
-    include_null = bool(body.get("include_null", False))
-    include_zero = bool(body.get("include_zero", False))
-    include_gap = bool(body.get("include_gap", False))
-    bounds_enabled = bool(body.get("bounds_enabled", False))
+    search_types = body.get("search_types") or []
+    if isinstance(search_types, str):
+        search_types = [t.strip() for t in search_types.split(",") if t.strip()]
+
+    include_null = "null" in search_types or bool(body.get("include_null", False))
+    include_zero = "zero" in search_types or bool(body.get("include_zero", False))
+    include_gap = "gap" in search_types or bool(body.get("include_gap", False))
+    bounds_enabled = "bounds" in search_types or bool(body.get("bounds_enabled", False))
     min_v = body.get("min")
     max_v = body.get("max")
-    counter_enabled = bool(body.get("counter_enabled", False))
-    counter_decrease = bool(body.get("counter_decrease", True))
-    counter_max_step = bool(body.get("counter_max_step", True))
-    fault_phase_enabled = bool(body.get("fault_phase_enabled", False))
+    counter_enabled = "counter" in search_types or bool(body.get("counter_enabled", False))
+    counter_decrease = "decrease" in search_types or bool(body.get("counter_decrease", True))
+    counter_max_step = "counter" in search_types or bool(body.get("counter_max_step", True))
+    fault_phase_enabled = "fault_phase" in search_types or bool(body.get("fault_phase_enabled", False))
 
     # Optional value filter mode (e.g. free filter on the dashboard).
     value_filter_enabled = bool(body.get("value_filter_enabled", False))

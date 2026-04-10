@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.299
+
+### Fix
+
+- Analyse mit Cache: Der 500-Fehler \`NameError: name 'search_types' is not defined\` ist behoben. Der Endpunkt \`/api/outliers\` extrahiert jetzt \`search_types\` aus dem Request-Body und leitet die individuellen Flags (\`include_null\`, \`bounds_enabled\`, etc.) daraus ab. ([#242](https://github.com/thomas682/HA-Addons/issues/242))
+
+### Maintenance
+
+- Tests: \`python -m py_compile influxbro/app/app.py\`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.298
 
 ### Fix
