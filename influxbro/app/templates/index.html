@@ -4667,6 +4667,28 @@ const ANALYSIS_STATE = {
 let ANALYSIS_CHECKLIST_ITEMS = [];
 let ANALYSIS_CHUNK_LOG = [];
 let ANALYSIS_CACHE_PLAN_CHOICE = { cacheStrategy: 'reuse', plan: null };
+const ANALYSIS_STEP_ORDER = [
+  'button_start',
+  'cache_status',
+  'validate',
+  'window',
+  'types',
+  'prepare',
+  'search',
+  'combine',
+  'complete',
+];
+const ANALYSIS_STEP_LABELS = {
+  button_start: 'Analyse durch Button gestartet',
+  cache_status: 'Cache-Status pruefen',
+  validate: 'Eingaben pruefen',
+  window: 'Analysefenster bestimmen',
+  types: 'Ausreisser-Typen uebernehmen',
+  prepare: 'Analyse vorbereiten',
+  search: 'Ausreisser-Suche ausfuehren',
+  combine: 'Cache-Segmente kombinieren',
+  complete: 'Analyse abgeschlossen',
+};
 let ANALYSIS_CACHE_HIDDEN_COLOR = {{ (cfg.get('ui_analysis_cache_hidden_color') or '#b0b0b0') | tojson }};
 const ANALYSIS_CACHE_SEGMENT_COLORS = [
   ['#d9f7d9', '#5ea56a'],
@@ -5649,14 +5671,77 @@ function _logAnalysis(step, data){
   }
 }
 
+function _analysisStepClock(iso){
+  try{
+    const ms = Date.parse(String(iso || ''));
+    if(!isFinite(ms)) return '';
+    const d = new Date(ms);
+    const p = (n)=>String(n).padStart(2, '0');
+    return p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+  }catch(e){
+    return '';
+  }
+}
+
+function _analysisChecklistBaseItems(){
+  return ANALYSIS_STEP_ORDER.map((key)=>({
+    key,
+    label: ANALYSIS_STEP_LABELS[key] || key,
+    status: 'pending',
+    dur: null,
+    sub: '',
+    at: '',
+  }));
+}
+
+function _analysisChecklistReset(){
+  ANALYSIS_CHECKLIST_ITEMS = _analysisChecklistBaseItems();
+  _renderAnalysisChecklist(ANALYSIS_CHECKLIST_ITEMS, ANALYSIS_CHUNK_LOG);
+}
+
+function _analysisChecklistSet(key, patch){
+  const next = Object.assign({}, patch || {});
+  const items = Array.isArray(ANALYSIS_CHECKLIST_ITEMS) && ANALYSIS_CHECKLIST_ITEMS.length
+    ? ANALYSIS_CHECKLIST_ITEMS.slice()
+    : _analysisChecklistBaseItems();
+  let idx = items.findIndex((item) => item.key === key);
+  if(idx < 0){
+    items.push({ key, label: ANALYSIS_STEP_LABELS[key] || key, status: 'pending', dur: null, sub: '', at: '' });
+    idx = items.length - 1;
+  }
+  const prev = items[idx] || {};
+  const merged = Object.assign({}, prev, next);
+  if(next.label === undefined && !merged.label){
+    merged.label = ANALYSIS_STEP_LABELS[key] || key;
+  }
+  if(next.status && next.status !== 'pending' && !next.at){
+    merged.at = new Date().toISOString();
+  }
+  if(next.status === 'pending' && next.at === undefined){
+    merged.at = '';
+  }
+  items[idx] = merged;
+  items.sort((a, b) => {
+    const ia = ANALYSIS_STEP_ORDER.indexOf(a.key);
+    const ib = ANALYSIS_STEP_ORDER.indexOf(b.key);
+    return (ia < 0 ? 999 : ia) - (ib < 0 ? 999 : ib);
+  });
+  ANALYSIS_CHECKLIST_ITEMS = items;
+  _renderAnalysisChecklist(ANALYSIS_CHECKLIST_ITEMS, ANALYSIS_CHUNK_LOG);
+}
+
 async function runAnalysis(){
   err(""); ok("");
   const base = currentFilters();
   const types = getRawOutlierFilterTypes();
   const win = await resolveEffectiveAnalysisWindow();
-  ANALYSIS_CHECKLIST_ITEMS = [];
   ANALYSIS_CHUNK_LOG = [];
-  _renderAnalysisChecklist([], []);
+  if(!(Array.isArray(ANALYSIS_CHECKLIST_ITEMS) && ANALYSIS_CHECKLIST_ITEMS.length)){
+    _analysisChecklistReset();
+  }else{
+    _renderAnalysisChecklist(ANALYSIS_CHECKLIST_ITEMS, ANALYSIS_CHUNK_LOG);
+  }
+  _analysisChecklistSet('prepare', {status: 'running', sub: 'Analysezustand und UI werden initialisiert.'});
 
   // Initialize ANALYSIS_STATE
   ANALYSIS_STATE.measurement = base.measurement;
@@ -5681,23 +5766,30 @@ async function runAnalysis(){
   updateAnalysisUI();
 
   _logAnalysis('start', {measurement: base.measurement, field: base.field, entity_id: base.entity_id, friendly_name: base.friendly_name, range: base.range});
-  const checklist = [];
+  const checklist = ANALYSIS_CHECKLIST_ITEMS.slice();
   const chunkLog = [];
   let allOk = true;
-  let progressIdx = -1;
+  const progressKey = 'search';
 
-  function _addCheck(label, status, dur, sub){
-    checklist.push({label, status, dur: dur !== undefined ? dur : null, sub: sub || ''});
-    ANALYSIS_CHECKLIST_ITEMS = checklist.slice();
-    _renderAnalysisChecklist(ANALYSIS_CHECKLIST_ITEMS, ANALYSIS_CHUNK_LOG);
+  function _setStep(key, status, opts){
+    const options = opts || {};
+    const item = {
+      key,
+      label: options.label !== undefined ? options.label : (ANALYSIS_STEP_LABELS[key] || key),
+      status,
+      dur: options.dur !== undefined ? options.dur : null,
+      sub: options.sub || '',
+    };
+    if(options.progress !== undefined) item.progress = options.progress;
+    _analysisChecklistSet(key, item);
   }
 
   function _updateProgress(pct, label){
-    if(progressIdx < 0) return;
-    checklist[progressIdx].progress = pct;
-    checklist[progressIdx].label = label || checklist[progressIdx].label;
-    ANALYSIS_CHECKLIST_ITEMS = checklist.slice();
-    _renderAnalysisChecklist(ANALYSIS_CHECKLIST_ITEMS, ANALYSIS_CHUNK_LOG);
+    _setStep(progressKey, 'running', {
+      label: label || 'Ausreisser-Suche ausfuehren',
+      progress: pct,
+      sub: 'Chunk-Verarbeitung laeuft.',
+    });
   }
 
   function _onChunkLog(entry){
@@ -5728,7 +5820,7 @@ async function runAnalysis(){
   _logAnalysis('validate', {measurement: base.measurement, field: base.field, entity_id: base.entity_id, friendly_name: base.friendly_name});
   if(!base.measurement || !base.field){
     err("Bitte zuerst Measurement und Field auswaehlen.");
-    _addCheck('Eingaben pruefen', 'err');
+    _setStep('validate', 'err', {sub: 'Measurement oder Field fehlt.'});
     ANALYSIS_STATE.status = 'error';
     updateAnalysisUI();
     _logAnalysis('error', {step: 'validate', error: 'Missing measurement or field'});
@@ -5736,29 +5828,30 @@ async function runAnalysis(){
   }
   if(!base.entity_id && !base.friendly_name){
     err("Bitte zuerst friendly_name oder entity_id auswaehlen.");
-    _addCheck('Eingaben pruefen', 'err');
+    _setStep('validate', 'err', {sub: 'entity_id oder friendly_name fehlt.'});
     ANALYSIS_STATE.status = 'error';
     updateAnalysisUI();
     _logAnalysis('error', {step: 'validate', error: 'Missing entity_id or friendly_name'});
     return;
   }
-  _addCheck('Eingaben pruefen', 'ok');
+  _setStep('validate', 'ok', {sub: 'Measurement, Field und Serie sind gesetzt.'});
 
   _logAnalysis('window', {win: win});
   if(!win || !win.start || !win.stop){
     err("Bitte einen gueltigen Zeitraum waehlen.");
-    _addCheck('Zeitraum: ' + fmtTs(win ? win.start : '-') + ' bis ' + fmtTs(win ? win.stop : '-'), 'err');
+    _setStep('window', 'err', {label: 'Analysefenster bestimmen', sub: 'Kein gueltiger Zeitraum vorhanden.'});
     ANALYSIS_STATE.status = 'error';
     updateAnalysisUI();
     _logAnalysis('error', {step: 'window', error: 'Invalid time window', win: win});
     return;
   }
-  _addCheck('Zeitraum: ' + fmtTs(win.start) + ' bis ' + fmtTs(win.stop), 'ok');
+  _setStep('window', 'ok', {sub: fmtTs(win.start) + ' bis ' + fmtTs(win.stop)});
 
   const typeLabels = {counter: 'Counter', decrease: 'Counter Abfall', bounds: 'Grenzen', gap: 'Messwertlücke', fault_phase: 'Stoerphase', null: 'NULL', zero: '0-Werte'};
   const typeNames = types.map(t => typeLabels[t] || t).join(', ');
   _logAnalysis('types', {types: types});
-  _addCheck('Ausreisser-Typen: ' + (typeNames || 'Keine'), types.length > 0 ? 'ok' : 'err');
+  _setStep('types', types.length > 0 ? 'ok' : 'err', {sub: typeNames || 'Keine Typen aktiv.'});
+  _setStep('prepare', 'ok', {sub: 'Analysezustand vorbereitet und UI aktualisiert.'});
 
   // Clear previous analysis log
   const $alog = document.getElementById('analysis_log');
@@ -5766,10 +5859,9 @@ async function runAnalysis(){
 
   // Step: Run outlier search
   const t0 = performance.now();
-  progressIdx = checklist.length;
   ANALYSIS_STATE.status = 'running';
   updateAnalysisUI();
-  _addCheck('Ausreisser-Suche: 0 gefunden (0s)', 'running', 0);
+  _setStep('search', 'running', {label: 'Ausreisser-Suche ausfuehren', dur: 0, sub: 'Suche gestartet.', progress: 0});
   _logAnalysis('search_start', {});
   try{
     await runRawOutlierSearchWithProgress(_updateProgress, _onChunkLog, win);
@@ -5794,9 +5886,7 @@ async function runAnalysis(){
     ANALYSIS_STATE.totalScanned = RAW_OUTLIER_SCANNED_TOTAL;
     updateAnalysisUI();
 
-    checklist[progressIdx] = {label: 'Ausreisser-Suche: ' + count + ' gefunden (' + _fmtDur(dur) + ')', status: 'ok', dur: dur, sub: subText};
-    ANALYSIS_CHECKLIST_ITEMS = checklist.slice();
-    _renderAnalysisChecklist(ANALYSIS_CHECKLIST_ITEMS, ANALYSIS_CHUNK_LOG);
+    _setStep('search', 'ok', {label: 'Ausreisser-Suche ausfuehren', dur: dur, sub: (count + ' Treffer. ' + subText).trim()});
 
     // Save to history
     _saveAnalysisHistory({
@@ -5818,9 +5908,7 @@ async function runAnalysis(){
   }catch(e){
     const dur = Math.round(performance.now() - t0);
     _logAnalysis('search_error', {error: e && e.message ? e.message : String(e), stack: e && e.stack ? e.stack : ''});
-    checklist[progressIdx] = {label: 'Ausreisser-Suche: ' + (e && e.message ? e.message : String(e)), status: 'err', dur: dur, sub: ''};
-    ANALYSIS_CHECKLIST_ITEMS = checklist.slice();
-    _renderAnalysisChecklist(ANALYSIS_CHECKLIST_ITEMS, ANALYSIS_CHUNK_LOG);
+    _setStep('search', 'err', {label: 'Ausreisser-Suche ausfuehren', dur: dur, sub: e && e.message ? e.message : String(e)});
     allOk = false;
 
     // Save failed analysis to history
@@ -5842,19 +5930,17 @@ async function runAnalysis(){
       analysisState: JSON.parse(JSON.stringify(ANALYSIS_STATE)),
     });
   }
-  progressIdx = -1;
-
-  // Step: Fill outlier table
   try{
     const filtered = getFilteredOutliers();
     renderOutlierOverviewTable();
-    _addCheck('Ausreisser-Tabelle: ' + filtered.length + ' Eintraege', 'ok');
+    _setStep('complete', allOk ? 'ok' : 'pending', {sub: 'Ausreisser-Tabelle: ' + filtered.length + ' Eintraege'});
   }catch(e){
-    _addCheck('Ausreisser-Tabelle: ' + (e && e.message ? e.message : String(e)), 'err');
+    _setStep('complete', 'err', {sub: e && e.message ? e.message : String(e)});
     allOk = false;
   }
 
   if(allOk){
+    _setStep('complete', 'ok', {sub: 'Analyse erfolgreich abgeschlossen.'});
     ok("Analyse abgeschlossen.");
   }
   try{ await loadStats(); }catch(e){}
@@ -5870,15 +5956,16 @@ function _analysisChecklistHtml(items, chunkLog){
   const rows = [];
   const seen = new Set();
   (Array.isArray(items) ? items : []).forEach((item) => {
-    const key = [item.label || '', item.status || '', item.sub || '', item.progress !== undefined ? item.progress : ''].join('|');
+    const key = String(item.key || [item.label || '', item.status || '', item.sub || ''].join('|'));
     if(seen.has(key)) return;
     seen.add(key);
-    const iconClass = item.status === 'ok' ? 'ok' : item.status === 'err' ? 'err' : 'running';
-    const iconText = item.status === 'ok' ? '✓' : item.status === 'err' ? '✗' : '';
+    const iconClass = item.status === 'ok' ? 'ok' : item.status === 'err' ? 'err' : item.status === 'pending' ? 'running' : 'running';
+    const iconText = item.status === 'ok' ? '✓' : item.status === 'err' ? '✗' : '?';
     const durText = item.dur !== null && item.dur !== undefined ? ' (' + _fmtDur(item.dur) + ')' : '';
-    let html = '<div class="checklist_item"><span class="checklist_icon ' + iconClass + '">' + iconText + '</span><span class="checklist_label">' + item.label + '</span><span class="checklist_dur">' + durText + '</span></div>';
+    const atText = item.at ? _analysisStepClock(item.at) : '';
+    let html = '<div class="checklist_item"><span class="checklist_icon ' + iconClass + '">' + iconText + '</span><span class="checklist_label">' + _escHtml(item.label || '') + '</span><span class="checklist_dur">' + _escHtml(atText + durText) + '</span></div>';
     if(item.sub){
-      html += '<div class="checklist_sub">' + item.sub + '</div>';
+      html += '<div class="checklist_sub">' + _escHtml(item.sub) + '</div>';
     }
     if(item.progress !== undefined && item.status === 'running'){
       const pct = Math.min(100, Math.max(0, Math.round(item.progress * 100)));
@@ -9415,6 +9502,7 @@ async function refreshAnalysisStatsPanel(){
 
 async function runDashboardAnalysisFlow(){
   const planChoice = ANALYSIS_CACHE_PLAN_CHOICE || { cacheStrategy: 'default', plan: null };
+  _analysisChecklistSet('prepare', {status: 'running', sub: 'Dashboard-Daten und Analyse werden vorbereitet.'});
   await refreshAll({ cacheStrategy: planChoice && planChoice.cacheStrategy ? planChoice.cacheStrategy : 'default' });
   await runAnalysis();
 }
@@ -9422,15 +9510,30 @@ async function runDashboardAnalysisFlow(){
 async function startDashboardAnalysis(cacheStrategy){
   try{
     const base = currentFilters();
+    ANALYSIS_CHUNK_LOG = [];
+    _analysisChecklistReset();
+    _analysisChecklistSet('button_start', {status: 'ok', sub: 'Start ueber ' + (cacheStrategy === 'refresh' ? 'Analyse ohne Cache' : 'Analyse mit Cache') + '.'});
+    _analysisChecklistSet('cache_status', {status: 'running', sub: 'Cache-Status und Analyseplan werden geladen.'});
     if(!base.measurement || !base.field){
+      _analysisChecklistSet('validate', {status: 'err', sub: 'Measurement oder Field fehlt.'});
       err('Bitte zuerst Measurement und Field auswaehlen.');
       return;
     }
     await refreshCachingSection();
+    _analysisChecklistSet('cache_status', {status: 'ok', sub: 'Cache-Status wurde erfolgreich gelesen.'});
     ANALYSIS_CACHE_PLAN_CHOICE = Object.assign({}, ANALYSIS_CACHE_PLAN_CHOICE || {}, { cacheStrategy: cacheStrategy || 'reuse' });
     await runDashboardAnalysisFlow();
-    try{ await combineAnalysisCacheForCurrentSelection(); }catch(e){}
+    try{
+      _analysisChecklistSet('combine', {status: 'running', sub: 'Analyse-Cache wird zusammengefuehrt.'});
+      await combineAnalysisCacheForCurrentSelection();
+      _analysisChecklistSet('combine', {status: 'ok', sub: 'Cache-Kombination abgeschlossen.'});
+    }catch(e){
+      _analysisChecklistSet('combine', {status: 'err', sub: e && e.message ? e.message : String(e)});
+    }
+    _analysisChecklistSet('complete', {status: 'ok', sub: 'Analyseflow inklusive Nacharbeiten abgeschlossen.'});
   }catch(e){
+    _analysisChecklistSet('cache_status', {status: 'err', sub: e && e.message ? e.message : String(e)});
+    _analysisChecklistSet('complete', {status: 'err', sub: e && e.message ? e.message : String(e)});
     displayError(e);
   }
 }

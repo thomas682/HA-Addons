@@ -591,6 +591,7 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Die Dashboard-Bloecke heissen jetzt `Grafische Analyse` und `Raw Daten Analyse`.
 - Der bisher im Raw-Bereich eingebettete Ausreißer-Block ist jetzt eine eigene Dashboard-Section `Ausreißer` oberhalb von `Raw Daten Analyse`.
 - Die Dashboard-Analyse fuehrt ihre Laufzeit- und Chunk-Schritte jetzt gesammelt in `analysis_checklist`; der Bereich `dashboard.load_status` zeigt dafuer keine separaten Chunk-Zeilen mehr.
+- Die Checkliste zeigt feste Analyseschritte mit Uhrzeit (`HH:MM:SS`). Noch nicht erreichte Schritte tragen ein `?`, erfolgreiche Schritte einen gruenen Haken und Fehler ein rotes Kreuz. Direkt nach dem Klick auf `Analyse mit Cache` oder `Analyse ohne Cache` erscheinen bereits Start- und Cache-Pruefschritte, damit vor dem eigentlichen Suchlauf sofort Feedback sichtbar ist.
 - Zeitstempel in der Ausreißer-Tabelle zeigen jetzt wieder echte Millisekunden, wenn die Datenquelle diese liefert.
 - Der Tabellenkopf der Ausreißer-Tabelle bleibt jetzt beim vertikalen Scrollen fix sichtbar, analog zur Raw-Tabelle.
 - Der Button fuer `Ausreißer-Parameter` sitzt jetzt im Dashboard-Aktionsblock neben `Analyse` statt innerhalb des Ausreißer-Tabellenblocks.

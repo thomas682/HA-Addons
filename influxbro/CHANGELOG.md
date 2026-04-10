@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.12.295
+
+### Enhancement
+
+- Die Dashboard-Analyse-Checkliste zeigt jetzt feste Schritte mit HH:MM:SS-Zeitstempeln. Noch nicht durchlaufene Schritte erscheinen mit `?`, erfolgreiche Schritte mit gruenem Haken und Fehler mit rotem Kreuz.
+- Direkt nach Klick auf `Analyse mit Cache` oder `Analyse ohne Cache` erscheinen sofort fruehe Statuszeilen wie `Analyse durch Button gestartet` und `Cache-Status pruefen`, damit die GUI schon vor dem eigentlichen Suchlauf sichtbares Feedback gibt. ([#237](https://github.com/thomas682/HA-Addons/issues/237))
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tests: eingebettetes Dashboard-Skript auf Klammer-Balance und Checklist-Marker geprueft
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.294
 
 ### Fix
