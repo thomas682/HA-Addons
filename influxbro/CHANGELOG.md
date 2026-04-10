@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.300
+
+### Fix
+
+- Analyse mit Cache: Der 500-Fehler \`NameError: name 'limit' is not defined\` im Endpunkt \`/api/outliers\` ist behoben. Das Limit wird jetzt aus der Konfiguration gelesen und korrekt an die Scan-Funktion uebergeben.
+
+### Maintenance
+
+- Tests: \`python -m py_compile influxbro/app/app.py\`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.299
 
 ### Fix

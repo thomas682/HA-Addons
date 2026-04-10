@@ -18230,8 +18230,9 @@ def api_outliers():
     # Always scan in chunks to support large time windows.
     # If a chunk still contains too many points, split it recursively.
     MAX_SCAN_CHUNK = 200000
-    MAX_OUT = 5000
+    MAX_OUT = int(cfg.get("ui_raw_outlier_search_limit", 5000) or 5000)
     MIN_CHUNK_SECONDS = 5 * 60
+    limit = MAX_OUT
 
     rows: list[dict[str, Any]] = []
     scanned = 0
