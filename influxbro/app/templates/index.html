@@ -432,7 +432,11 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
            <button id="analysis_run_with_cache" class="btn_sm" style="width:auto;" data-ui="dashboard_analysis.btn_analyse_mit_cache">Analyse mit Cache</button>
            <button id="analysis_run_without_cache" class="btn_sm" style="width:auto;" data-ui="dashboard_analysis.btn_analyse_ohne_cache">Analyse ohne Cache</button>
-         </div>
+           <button id="analysis_abort" class="btn_sm" style="width:auto; display:none;" data-ui="dashboard_analysis.btn_abbruch">Analyse-Abbruch</button>
+           <button id="analysis_query_open" type="button" class="btn_sm" style="width:auto;" data-ui="dashboard_analysis.btn_query_anzeigen">Query anzeigen</button>
+           <button id="analysis_query_test" type="button" class="btn_sm" style="width:auto;" data-ui="dashboard_analysis.btn_query_test">Query testen</button>
+           <button id="analysis_stats_total" type="button" class="btn_sm" style="width:auto;" data-ui="dashboard_analysis.btn_gesamtstatistik_anzeigen">Gesamtstatistik</button>
+          </div>
           <div id="analysis_inline_stats" class="muted" data-ui="dashboard_analysis.txt_inline_stats" style="font-size:12px;margin-bottom:8px;"></div>
          <div id="analysis_stats_panel" style="display:none; border:1px solid #eee; border-radius:12px; padding:12px 14px; margin-bottom:10px; background:#fafafa; font-size:13px; line-height:1.7;">
            <div style="font-weight:600; margin-bottom:6px;">Messwert-Information</div>
@@ -441,8 +445,9 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
         <div style="height:8px;background:#eee;border-radius:4px;margin:4px 0;overflow:hidden;">
           <div id="analysis_progress_fill" style="height:100%;background:#4caf50;width:0%;transition:width 0.3s;"></div>
         </div>
-        <div id="analysis_progress_text" class="muted" style="font-size:11px;margin-bottom:8px;">0%</div>
-         <div id="analysis_checklist" data-ui="dashboard_analysis.panel_checklist" style="font-size:12px;margin-bottom:8px;"></div>
+         <div id="analysis_progress_text" class="muted" style="font-size:11px;margin-bottom:8px;">0%</div>
+         <div id="analysis_chunk_timeline" style="display:none; margin-bottom:10px;"></div>
+          <div id="analysis_checklist" data-ui="dashboard_analysis.panel_checklist" style="font-size:12px;margin-bottom:8px;"></div>
          <div id="analysis_chunk_info" class="muted" data-ui="dashboard_analysis.txt_chunk_info" style="font-size:11px;margin-bottom:4px;"></div>
          <div id="analysis_interval_info" class="muted" data-ui="dashboard_analysis.txt_interval_info" style="font-size:11px;margin-bottom:8px;"></div>
          <div id="analysis_found_info" data-ui="dashboard_analysis.txt_found_info" style="font-size:12px;margin-bottom:12px;"></div>
@@ -1092,6 +1097,10 @@ const $btnTblAllValues = document.getElementById('tbl_all_values');
 const $btnLoad = document.getElementById('load');
 const $analysisRunWithCache = document.getElementById('analysis_run_with_cache');
 const $analysisRunWithoutCache = document.getElementById('analysis_run_without_cache');
+const $analysisAbort = document.getElementById('analysis_abort');
+const $analysisQueryOpen = document.getElementById('analysis_query_open');
+const $analysisQueryTest = document.getElementById('analysis_query_test');
+const $analysisStatsTotal = document.getElementById('analysis_stats_total');
 const $analysisCacheCombineBtn = document.getElementById('analysis_cache_combine');
 const $analysisCacheDeleteSeriesBtn = document.getElementById('analysis_cache_delete_series');
 const $analysisStatus = document.getElementById('analysis_status');
@@ -3538,6 +3547,9 @@ try{ if($statsTotalOpen) $statsTotalOpen.addEventListener('click', (ev)=>{ _stop
 try{ if($dashboardQueryTest) $dashboardQueryTest.addEventListener('click', (ev)=>{ _stop(ev); try{ window.InfluxBroDialogs && window.InfluxBroDialogs.openQueryTest && window.InfluxBroDialogs.openQueryTest({query: $queryPre ? String($queryPre.textContent || '') : ''}); }catch(e){} }); }catch(e){}
 try{ if($graphQueryTest) $graphQueryTest.addEventListener('click', (ev)=>{ _stop(ev); try{ window.InfluxBroDialogs && window.InfluxBroDialogs.openQueryTest && window.InfluxBroDialogs.openQueryTest({query: $graphQuery ? String($graphQuery.textContent || '') : ''}); }catch(e){} }); }catch(e){}
 try{ if($rawQueryTest) $rawQueryTest.addEventListener('click', (ev)=>{ _stop(ev); try{ window.InfluxBroDialogs && window.InfluxBroDialogs.openQueryTest && window.InfluxBroDialogs.openQueryTest({query: String(RAW_QUERY_LAST || '')}); }catch(e){} }); }catch(e){}
+try{ if($analysisQueryOpen) $analysisQueryOpen.addEventListener('click', (ev)=>{ _stop(ev); try{ openDashboardQueryDialog(); }catch(e){} }); }catch(e){}
+try{ if($analysisQueryTest) $analysisQueryTest.addEventListener('click', (ev)=>{ _stop(ev); try{ window.InfluxBroDialogs && window.InfluxBroDialogs.openQueryTest && window.InfluxBroDialogs.openQueryTest({query: $queryPre ? String($queryPre.textContent || '') : ''}); }catch(e){} }); }catch(e){}
+try{ if($analysisStatsTotal) $analysisStatsTotal.addEventListener('click', (ev)=>{ _stop(ev); try{ openStatsTotalDialog(); }catch(e){} }); }catch(e){}
 let GRAPH_QUERY_DASH = "";
 let GRAPH_QUERY_EDIT = "";
 
@@ -5499,6 +5511,7 @@ function updateAnalysisUI(){
     if($fill) $fill.style.width = pct + '%';
     const $ptxt = document.getElementById('analysis_progress_text');
     if($ptxt) $ptxt.textContent = pct + '% (' + s.currentChunk + '/' + s.totalChunks + ' Chunks)';
+    if($analysisAbort) $analysisAbort.style.display = (s.status === 'running') ? 'inline-block' : 'none';
 
     // 3. Checkliste
     const $cl = document.getElementById('analysis_checklist');
@@ -5697,6 +5710,19 @@ function _analysisStepClock(iso){
   }
 }
 
+function _fmtChunkSpanDays(days){
+  try{
+    const d = Number(days || 0);
+    if(!(isFinite(d) && d > 0)) return '-';
+    const totalMs = Math.round(d * 86400000);
+    if(totalMs < 3600000) return Math.max(1, Math.round(totalMs / 60000)) + ' min';
+    if(totalMs < 86400000) return (Math.round((totalMs / 3600000) * 10) / 10) + ' h';
+    return (Math.round(d * 10) / 10) + ' Tage';
+  }catch(e){
+    return '-';
+  }
+}
+
 function _analysisChecklistBaseItems(){
   return ANALYSIS_STEP_ORDER.map((key)=>({
     key,
@@ -5836,6 +5862,21 @@ async function runAnalysis(){
   function _onChunkLog(entry){
     chunkLog.push(entry);
     ANALYSIS_CHUNK_LOG = chunkLog.slice();
+    const totalChunkDur = chunkLog.reduce((acc, row) => acc + Math.max(0, Number(row && row.dur || 0)), 0);
+    _setStep('search', entry.error ? 'err' : 'running', {
+      label: 'Ausreisser-Suche ausfuehren',
+      dur: Number(entry && entry.dur || 0),
+      sub: 'Chunks ' + String(entry.idx || chunkLog.length) + '/' + String(entry.total || chunkLog.length) + ' | letzter Chunk: ' + Math.max(0, Number(entry && entry.dur || 0)) + ' ms | gesamt: ' + totalChunkDur + ' ms' + (entry.error ? ' | ' + String(entry.error) : ''),
+      progress: entry.total ? Math.min(1, Math.max(0, Number(entry.idx || 0) / Math.max(1, Number(entry.total || 1)))) : 0,
+    });
+    _saveAnalysisEvent({
+      at: new Date().toISOString(),
+      kind: 'analysis_chunk',
+      step: entry.error ? 'chunk_error' : 'chunk_done',
+      status: entry.error ? 'err' : 'ok',
+      detail: 'Chunk ' + String(entry.idx || chunkLog.length) + '/' + String(entry.total || chunkLog.length) + ' | ' + fmtTs(String(entry.start || '')) + ' bis ' + fmtTs(String(entry.stop || '')) + ' | ' + Math.max(0, Number(entry && entry.dur || 0)) + ' ms' + (entry.error ? ' | ' + String(entry.error) : ''),
+      extra: { idx: entry.idx, total: entry.total, dur: entry.dur, start: entry.start, stop: entry.stop, error: entry.error || '' },
+    });
     _renderAnalysisChecklist(ANALYSIS_CHECKLIST_ITEMS, ANALYSIS_CHUNK_LOG);
     _renderAnalysisLog(chunkLog);
     // Update ANALYSIS_STATE from chunk log
@@ -5992,7 +6033,45 @@ async function runAnalysis(){
 function _renderAnalysisLog(chunks){
   const $alog = document.getElementById('analysis_log');
   if(!$alog) return;
-  $alog.innerHTML = '';
+  const rows = Array.isArray(chunks) ? chunks : [];
+  if(!rows.length){
+    $alog.innerHTML = '';
+    const $timeline = document.getElementById('analysis_chunk_timeline');
+    if($timeline) $timeline.style.display = 'none';
+    return;
+  }
+  const totalStart = Date.parse(String(ANALYSIS_STATE.totalSpanStart || rows[0].start || ''));
+  const totalStop = Date.parse(String(ANALYSIS_STATE.totalSpanStop || rows[rows.length - 1].stop || ''));
+  const totalSpan = Math.max(1, totalStop - totalStart);
+  const doneMs = rows.reduce((acc, row) => {
+    if(row && !row.error){
+      const a = Date.parse(String(row.start || ''));
+      const b = Date.parse(String(row.stop || ''));
+      if(isFinite(a) && isFinite(b) && b > a) return acc + (b - a);
+    }
+    return acc;
+  }, 0);
+  const pct = Math.max(0, Math.min(100, Math.round((doneMs / totalSpan) * 100)));
+  const totalDur = rows.reduce((acc, row) => acc + Math.max(0, Number(row && row.dur || 0)), 0);
+  const last = rows[rows.length - 1] || {};
+  const timelineParts = rows.map((row, idx) => {
+    const a = Date.parse(String(row.start || ''));
+    const b = Date.parse(String(row.stop || ''));
+    const widthPct = (isFinite(a) && isFinite(b) && b > a) ? Math.max(0.8, ((b - a) / totalSpan) * 100) : (100 / Math.max(1, rows.length));
+    const color = row.error ? '#d9534f' : 'hsl(' + ((idx * 53) % 360) + ' 62% 58%)';
+    const opacity = row.error ? 1 : (row.aborted ? 0.55 : 0.9);
+    const title = 'Chunk ' + String(row.idx || idx + 1) + '/' + String(row.total || rows.length)
+      + ' | ' + fmtTs(String(row.start || '')) + ' bis ' + fmtTs(String(row.stop || ''))
+      + ' | ' + Math.max(0, Number(row.dur || 0)) + ' ms'
+      + (row.error ? ' | ' + String(row.error) : '');
+    return '<div title="' + _escHtml(title) + '" style="height:14px; min-width:4px; width:' + widthPct + '%; background:' + color + '; opacity:' + opacity + '; border-radius:4px;"></div>';
+  }).join('');
+  const $timeline = document.getElementById('analysis_chunk_timeline');
+  if($timeline){
+    $timeline.style.display = 'block';
+    $timeline.innerHTML = '<div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;"><div style="flex:1 1 auto; display:flex; gap:3px; align-items:center; min-height:14px;">' + timelineParts + '</div><div style="font-size:12px; font-weight:600; min-width:58px; text-align:right;">' + pct + '%</div></div>';
+  }
+  $alog.innerHTML = '<div style="font-size:12px; color:#555;">Chunks: ' + String(last.idx || rows.length) + '/' + String(last.total || rows.length) + ' | letzter Chunk: ' + Math.max(0, Number(last.dur || 0)) + ' ms | gesamt: ' + totalDur + ' ms</div>';
 }
 
 function _analysisChecklistHtml(items, chunkLog){
@@ -6004,9 +6083,10 @@ function _analysisChecklistHtml(items, chunkLog){
     seen.add(key);
     const iconClass = item.status === 'ok' ? 'ok' : item.status === 'err' ? 'err' : item.status === 'pending' ? 'running' : 'running';
     const iconText = item.status === 'ok' ? '✓' : item.status === 'err' ? '✗' : '?';
-    const durText = item.dur !== null && item.dur !== undefined ? ' (' + _fmtDur(item.dur) + ')' : '';
+    const durText = item.dur !== null && item.dur !== undefined ? String(Math.max(0, Math.round(Number(item.dur || 0)))) + ' ms' : '';
     const atText = item.at ? _analysisStepClock(item.at) : '';
-    let html = '<div class="checklist_item"><span class="checklist_icon ' + iconClass + '">' + iconText + '</span><span class="checklist_label">' + _escHtml(item.label || '') + '</span><span class="checklist_dur">' + _escHtml(atText + durText) + '</span></div>';
+    const metaText = [atText, durText].filter(Boolean).join(' ');
+    let html = '<div class="checklist_item"><span class="checklist_icon ' + iconClass + '">' + iconText + '</span><span class="checklist_dur">' + _escHtml(metaText) + '</span><span class="checklist_label">' + _escHtml(item.label || '') + '</span></div>';
     if(item.sub){
       html += '<div class="checklist_sub">' + _escHtml(item.sub) + '</div>';
     }
@@ -6717,11 +6797,12 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog, effective
 
   // Adaptive chunk sizing: start with 1 day
   let chunkDays = 1;
-  const MIN_CHUNK_DAYS = 1;
+  const MIN_CHUNK_DAYS = 5 / (24 * 60);
   const MAX_CHUNK_DAYS = Math.max(14, Math.floor((Number(CFG_TIMEOUT_SECONDS || 60) * 1000) / Math.max(1000, UI_RAW_TARGET_CHUNK_MS)) * 14);
   const FETCH_TIMEOUT_MS = 120000; // 120s fetch timeout
   const TIMEOUT_MS = 60000; // 60s timeout threshold for adaptive sizing
   const OPTIMAL_MS = Math.max(1000, UI_RAW_TARGET_CHUNK_MS || 5000);
+  const MAX_CHUNK_RETRIES = 3;
 
   // Analysis log for this run
   const analysisLog = [];
@@ -6731,26 +6812,37 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog, effective
     const spanDays = spanMs / 86400000;
 
     // Build chunks dynamically (will be rebuilt as chunkDays changes)
-    function buildChunks(curStart, curStop, days){
+    function buildChunks(curStart, curStop, days, retry){
       const result = [];
       let cur = curStart;
       const step = days * 86400000;
       while(cur < curStop){
         const nxt = Math.min(curStop, cur + step);
-        result.push([new Date(cur).toISOString(), new Date(nxt).toISOString()]);
+        result.push({ start: new Date(cur).toISOString(), stop: new Date(nxt).toISOString(), retry: retry || 0, chunkDays: days });
         cur = nxt;
       }
       return result;
     }
 
+    function rebuildChunksForObjects(chunkObjs, days){
+      const rebuilt = [];
+      (chunkObjs || []).forEach((chunk) => {
+        const a = Date.parse(String(chunk.start || ''));
+        const b = Date.parse(String(chunk.stop || ''));
+        if(!(isFinite(a) && isFinite(b) && b > a)) return;
+        rebuilt.push(...buildChunks(a, b, days, 0));
+      });
+      return rebuilt;
+    }
+
     let chunks = (serverPlan && ANALYSIS_CACHE_PLAN_CHOICE && ANALYSIS_CACHE_PLAN_CHOICE.cacheStrategy !== 'refresh' && (Array.isArray(serverPlan.gaps) || Array.isArray(serverPlan.dirty_ranges)))
-      ? [] : buildChunks(startMs, stopMs, chunkDays);
+      ? [] : buildChunks(startMs, stopMs, chunkDays, 0);
     if(!chunks.length && serverPlan && ANALYSIS_CACHE_PLAN_CHOICE && ANALYSIS_CACHE_PLAN_CHOICE.cacheStrategy !== 'refresh'){
       const planned = [];
-      (serverPlan.dirty_ranges || []).forEach((gap)=>{ planned.push([String(gap.start || ''), String(gap.stop || '')]); });
-      (serverPlan.gaps || []).forEach((gap)=>{ planned.push([String(gap.start || ''), String(gap.stop || '')]); });
-      planned.sort((a,b)=>Date.parse(a[0]) - Date.parse(b[0]));
-      chunks = planned;
+      (serverPlan.dirty_ranges || []).forEach((gap)=>{ planned.push({ start: String(gap.start || ''), stop: String(gap.stop || '') }); });
+      (serverPlan.gaps || []).forEach((gap)=>{ planned.push({ start: String(gap.start || ''), stop: String(gap.stop || '') }); });
+      planned.sort((a,b)=>Date.parse(a.start) - Date.parse(b.start));
+      chunks = rebuildChunksForObjects(planned, chunkDays);
     }
 
     // Set initial ANALYSIS_STATE
@@ -6769,7 +6861,10 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog, effective
     while(chunkIdx < chunks.length){
       if(RAW_OUTLIER_ABORT && RAW_OUTLIER_ABORT.signal.aborted) throw {aborted: true};
 
-      const [aIso, bIso] = chunks[chunkIdx];
+      const chunk = chunks[chunkIdx] || {};
+      const aIso = String(chunk.start || '');
+      const bIso = String(chunk.stop || '');
+      const retryCount = Math.max(0, Math.trunc(Number(chunk.retry || 0)));
       const aMs = Date.parse(aIso);
       const bMs = Date.parse(bIso);
       const upto = lastIso || aIso;
@@ -6778,7 +6873,7 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog, effective
 
       // Update progress
       const progress = chunks.length > 0 ? (chunkIdx / chunks.length) : 0;
-      if(onProgress) onProgress(progress, 'Chunk ' + (chunkIdx+1) + '/' + chunks.length + '...');
+      if(onProgress) onProgress(progress, 'Chunk ' + (chunkIdx+1) + '/' + chunks.length + (retryCount ? ' (Retry ' + retryCount + ')' : '') + '...');
 
       const payload = {
         measurement: base.measurement,
@@ -6819,6 +6914,15 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog, effective
         const chunkDur = Math.round(performance.now() - chunkT0);
         const isAbort = fetchErr.name === 'AbortError';
         _logAnalysis('fetch_error', {chunk: chunkIdx+1, dur: chunkDur, isAbort: isAbort, error: fetchErr.message || String(fetchErr)});
+        const spanDaysCurrent = Math.max(MIN_CHUNK_DAYS, (bMs - aMs) / 86400000);
+        if(!isAbort && retryCount < MAX_CHUNK_RETRIES && spanDaysCurrent > MIN_CHUNK_DAYS){
+          const nextDays = Math.max(MIN_CHUNK_DAYS, spanDaysCurrent / 2);
+          const retryChunks = buildChunks(aMs, bMs, nextDays, retryCount + 1);
+          chunks = chunks.slice(0, chunkIdx).concat(retryChunks, chunks.slice(chunkIdx + 1));
+          ANALYSIS_STATE.totalChunks = chunks.length;
+          _saveAnalysisEvent({at:new Date().toISOString(), kind:'analysis_chunk', step:'retry', status:'running', detail:'Chunk ' + (chunkIdx+1) + ' wird mit kleinerem Intervall neu versucht.', extra:{idx:chunkIdx+1, total:chunks.length, retry:retryCount+1, next_days:nextDays}});
+          continue;
+        }
         // Log failed chunk with abort detection
         if(onChunkLog) onChunkLog({
           idx: chunkIdx + 1,
@@ -6841,6 +6945,15 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog, effective
 
       if(!r.ok || !j.ok){
         const errText = j.error || ('HTTP ' + r.status);
+        const spanDaysCurrent = Math.max(MIN_CHUNK_DAYS, (bMs - aMs) / 86400000);
+        if(retryCount < MAX_CHUNK_RETRIES && spanDaysCurrent > MIN_CHUNK_DAYS){
+          const nextDays = Math.max(MIN_CHUNK_DAYS, spanDaysCurrent / 2);
+          const retryChunks = buildChunks(aMs, bMs, nextDays, retryCount + 1);
+          chunks = chunks.slice(0, chunkIdx).concat(retryChunks, chunks.slice(chunkIdx + 1));
+          ANALYSIS_STATE.totalChunks = chunks.length;
+          _saveAnalysisEvent({at:new Date().toISOString(), kind:'analysis_chunk', step:'retry_http', status:'running', detail:'Chunk ' + (chunkIdx+1) + ' wird nach Fehler erneut mit kleinerem Intervall versucht: ' + errText, extra:{idx:chunkIdx+1, total:chunks.length, retry:retryCount+1, next_days:nextDays}});
+          continue;
+        }
         if(onChunkLog) onChunkLog({
           idx: chunkIdx + 1,
           total: chunks.length,
@@ -6867,7 +6980,7 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog, effective
       // Update ANALYSIS_STATE with chunk results
       ANALYSIS_STATE.currentChunk = chunkIdx + 1;
       ANALYSIS_STATE.chunkDuration = chunkDur;
-      ANALYSIS_STATE.chunkInterval = chunkDays + ' Tage';
+      ANALYSIS_STATE.chunkInterval = _fmtChunkSpanDays((bMs - aMs) / 86400000);
       ANALYSIS_STATE.totalScanned = scannedTotal + chunkScanned;
       // Update found by type
       (j.rows || []).forEach(row => {
@@ -6887,7 +7000,7 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog, effective
         rows: chunkRows,
         scanned: chunkScanned,
         dur: chunkDur,
-        chunkDays: chunkDays,
+        chunkDays: (bMs - aMs) / 86400000,
         byType: chunkTypeCounts,
         totalFound: RAW_OUTLIER_RESULTS.length + chunkRows,
         totalScanned: scannedTotal + chunkScanned,
@@ -6897,28 +7010,24 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog, effective
       // Adaptive chunk sizing toward target duration
       if(chunkDur > TIMEOUT_MS){
         // Timeout: halve chunk size, retry this chunk
-        chunkDays = Math.max(MIN_CHUNK_DAYS, Math.floor(chunkDays / 2));
-        // Rebuild remaining chunks with new size
-        const remainingStart = Date.parse(aIso);
-        chunks = chunks.slice(0, chunkIdx).concat(buildChunks(remainingStart, stopMs, chunkDays));
+        chunkDays = Math.max(MIN_CHUNK_DAYS, chunkDays / 2);
+        chunks = chunks.slice(0, chunkIdx + 1).concat(rebuildChunksForObjects(chunks.slice(chunkIdx + 1), chunkDays));
         // Don't advance chunkIdx - retry this chunk with smaller size
       }else if(chunkDur > OPTIMAL_MS){
         // Slow: halve chunk size for next chunks
-        chunkDays = Math.max(MIN_CHUNK_DAYS, Math.floor(chunkDays / 2));
-        const remainingStart = Date.parse(bIso);
+        chunkDays = Math.max(MIN_CHUNK_DAYS, chunkDays / 2);
         if(chunkIdx + 1 < chunks.length){
           const done = chunks.slice(0, chunkIdx + 1);
-          chunks = done.concat(buildChunks(remainingStart, stopMs, chunkDays));
+          chunks = done.concat(rebuildChunksForObjects(chunks.slice(chunkIdx + 1), chunkDays));
         }
         chunkIdx++;
       }else if(chunkDur < OPTIMAL_MS * 0.95 && chunkDays < MAX_CHUNK_DAYS){
         // Fast: estimate next chunk size from measured duration toward target duration
         const factor = Math.max(1.1, Math.min(8, OPTIMAL_MS / Math.max(1, chunkDur)));
-        chunkDays = Math.min(MAX_CHUNK_DAYS, Math.max(MIN_CHUNK_DAYS, Math.round(chunkDays * factor)));
-        const remainingStart = Date.parse(bIso);
+        chunkDays = Math.min(MAX_CHUNK_DAYS, Math.max(MIN_CHUNK_DAYS, chunkDays * factor));
         if(chunkIdx + 1 < chunks.length){
           const done = chunks.slice(0, chunkIdx + 1);
-          chunks = done.concat(buildChunks(remainingStart, stopMs, chunkDays));
+          chunks = done.concat(rebuildChunksForObjects(chunks.slice(chunkIdx + 1), chunkDays));
         }
         chunkIdx++;
       }else{
@@ -7019,6 +7128,7 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog, effective
     }else{
       stopRawOutlierUi(false, e && e.message ? e.message : String(e));
       try{ window.InfluxBroClientLog && window.InfluxBroClientLog.fetchError && window.InfluxBroClientLog.fetchError('./api/outliers', {}, e); }catch(x){}
+      throw e;
     }
   }finally{
     RAW_OUTLIER_SEARCHING = false;
@@ -10707,6 +10817,12 @@ try{
 
 try{
   if($rawSearchBar) $rawSearchBar.style.display = ($outlierSection && $outlierSection.open) ? 'block' : 'none';
+  if($analysisAbort) $analysisAbort.addEventListener('click', ()=>{
+    try{
+      if(RAW_OUTLIER_ABORT) RAW_OUTLIER_ABORT.abort();
+      _analysisChecklistSet('search', {status:'err', sub:'Analyse wurde manuell abgebrochen.'});
+    }catch(e){}
+  });
   if($rawSearchRun) $rawSearchRun.addEventListener('click', ()=>{ runRawOutlierSearch().catch(()=>{}); });
   if($rawJumpOldest) $rawJumpOldest.addEventListener('click', ()=>{ jumpToOldestOutlier().catch(()=>{}); });
   if($rawJumpNewest) $rawJumpNewest.addEventListener('click', ()=>{ jumpToNewestOutlier().catch(()=>{}); });

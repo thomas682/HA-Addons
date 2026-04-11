@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.12.301
+
+### Enhancement
+
+- Die Analyse-Sektion hat jetzt eigene Aktionsbuttons fuer Abbruch, Query anzeigen, Query testen und Gesamtstatistik. Die Checkliste zeigt Zeitstempel und Dauer links vor dem Schritttext, und die Analyse visualisiert Chunks zusaetzlich in einem farbigen Zeitstrahl mit Prozentanzeige und kompakter Chunk-Zusammenfassung. ([#245](https://github.com/thomas682/HA-Addons/issues/245))
+- Fehlende/geaenderte Cache-Bereiche werden bei `Analyse mit Cache` vor dem ersten Request in Tages-Chunks zerlegt, adaptiv weiter angepasst und bei Fehlern bis zu drei Mal mit kleineren Chunks erneut versucht. Sichtbare Chunk-/Checklist-Infos werden weiterhin ins Logfile geschrieben. ([#245](https://github.com/thomas682/HA-Addons/issues/245))
+
+### Fix
+
+- Die Einstellungsseite zeigt wieder die vollstaendige vorhandene Settings-Ansicht, statt durch die nachtraegliche DOM-Umsortierung viele Werte zu verstecken. Zusaetzlich ist `ui_raw_outlier_search_limit` jetzt wieder als eigenes Eingabefeld sichtbar und speicherbar. ([#245](https://github.com/thomas682/HA-Addons/issues/245))
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tests: Marker fuer Analyse-Toolbar, Chunk-Planung, Settings-Feld und Template-Klammer-Balance geprueft
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.300
 
 ### Fix

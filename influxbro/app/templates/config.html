@@ -325,6 +325,12 @@
                 </div>
               </div>
               <div class="param_row">
+                <div class="param_label">Ausreisser Suchlimit gesamt<span class="param_hint">Maximale Anzahl gefundener Ausreisser, die der Suchlauf insgesamt zurueckgeben darf (Default: 5000).</span></div>
+                <div class="param_control">
+                  <input id="ui_raw_outlier_search_limit" type="number" min="1" max="50000" />
+                </div>
+              </div>
+              <div class="param_row">
                 <div class="param_label">Tabellenzeilen Hoehe (px)<span class="param_hint">Effektive Zeilenhoehe ist max. +20% ueber kleiner Schriftgroesse.</span></div>
                 <div class="param_control">
                   <input id="ui_table_row_height_px" type="number" min="9" max="60" />
@@ -1156,7 +1162,7 @@ const ids = [
   "influx_version","scheme","host","port","verify_ssl","timeout_seconds",
   "org","bucket","token","admin_token",
   "database","username","password",
-  "ui_table_visible_rows","ui_outlier_visible_rows","ui_raw_outlier_display_limit_per_type","ui_table_row_height_px","ui_edit_neighbors_n","ui_edit_details_visible_rows","ui_edit_graph_buffer_minutes","ui_edit_graph_max_points","ui_decimals",
+  "ui_table_visible_rows","ui_outlier_visible_rows","ui_raw_outlier_display_limit_per_type","ui_raw_outlier_search_limit","ui_table_row_height_px","ui_edit_neighbors_n","ui_edit_details_visible_rows","ui_edit_graph_buffer_minutes","ui_edit_graph_max_points","ui_decimals",
   "ui_backup_table_row_height_px","ui_backup_visible_rows","ui_restore_visible_rows",
   "ui_query_max_points","ui_raw_max_points","ui_raw_center_max_points","ui_raw_center_range_default","ui_raw_center_min_points","ui_raw_target_chunk_ms","ui_analysis_max_age_years","ui_popup_pre_font_px","ui_popup_history_font_px",
   "ui_query_manual_max_points","ui_graph_jump_padding_intervals",
@@ -1502,6 +1508,7 @@ function setForm(cfg){
   el.ui_table_visible_rows.value = cfg.ui_table_visible_rows ?? 20;
   el.ui_outlier_visible_rows.value = cfg.ui_outlier_visible_rows ?? 10;
   el.ui_raw_outlier_display_limit_per_type.value = cfg.ui_raw_outlier_display_limit_per_type ?? 100;
+  el.ui_raw_outlier_search_limit.value = cfg.ui_raw_outlier_search_limit ?? 5000;
   el.ui_table_row_height_px.value = cfg.ui_table_row_height_px ?? 16;
   el.ui_backup_table_row_height_px.value = cfg.ui_backup_table_row_height_px ?? (cfg.ui_table_row_height_px ?? 16);
   el.ui_backup_visible_rows.value = cfg.ui_backup_visible_rows ?? 24;
@@ -1644,6 +1651,7 @@ function getForm(){
     ui_table_visible_rows: parseInt(el.ui_table_visible_rows.value, 10),
     ui_outlier_visible_rows: parseInt(el.ui_outlier_visible_rows.value, 10),
     ui_raw_outlier_display_limit_per_type: parseInt(el.ui_raw_outlier_display_limit_per_type.value, 10),
+    ui_raw_outlier_search_limit: parseInt(el.ui_raw_outlier_search_limit.value, 10),
     ui_table_row_height_px: parseInt(el.ui_table_row_height_px.value, 10),
     ui_backup_table_row_height_px: parseInt(el.ui_backup_table_row_height_px.value, 10),
     ui_backup_visible_rows: parseInt(el.ui_backup_visible_rows.value, 10),
@@ -2010,108 +2018,6 @@ function _cfgLinkRow(label, targetSel){
 
 function restructureSettings(){
   try{
-    const main = document.querySelector('main.content');
-    const saveCard = document.querySelector('.save_card');
-    const uiWrap = document.querySelector('#ui_page_dashboard');
-    if(!main || !saveCard || !uiWrap || uiWrap.dataset.restructured === '1') return;
-    uiWrap.dataset.restructured = '1';
-
-    const dbSec = _cfgMakeSection('Datenbank', 'settings.section.database', 'Datenbankverbindung, YAML und InfluxDB-Zugangsdaten.');
-    const generalSec = _cfgMakeSection('Allgemein', 'settings.section.general', 'Mehrfach verwendete Parameter fuer Darstellung, Auswahl, Jobs, Links und Navigation.');
-
-    const yamlSec = _cfgDetach('details.card[title="settings.section.yaml"]');
-    const connSec = _cfgDetach('details.card[title="settings.section.conn"]');
-    const v2Sec = _cfgDetach('details.card[title="settings.section.v2"]');
-    const v1Sec = _cfgDetach('details.card[title="settings.section.v1"]');
-    [yamlSec, connSec, v2Sec, v1Sec].forEach(sec => { if(sec) _cfgBody(dbSec).appendChild(sec); });
-
-    const dashboardSec = _cfgDetach('#ui_page_dashboard');
-    const statsSec = _cfgDetach('#ui_page_stats');
-    const backupSec = _cfgDetach('#ui_page_backup');
-    const restoreSec = _cfgDetach('#ui_page_restore');
-    const jobsSec = _cfgDetach('#ui_page_jobs');
-    const logsPageSec = _cfgDetach('#ui_page_logs');
-    const historySec = _cfgDetach('#ui_page_history');
-    const exportSec = _cfgDetach('#ui_page_export');
-    const importSec = _cfgDetach('#ui_page_import');
-    const logsSec = _cfgDetach('details.card[title="settings.section.logs"]');
-    const outlierSec = _cfgDetach('details.card[title="settings.section.outliers"]');
-
-    if(dashboardSec){
-      _cfgRetitle(dashboardSec, 'Dashboard', 'settings.section.dashboard');
-      const dashboardBody = _cfgBody(dashboardSec);
-      const uiLayout = dashboardSec.querySelector('#ui_layout');
-      const uiJobs = dashboardSec.querySelector('#ui_jobs');
-      const uiLinks = dashboardSec.querySelector('#ui_links');
-      const uiStatsCache = dashboardSec.querySelector('#ui_stats_cache');
-      [uiLayout, uiJobs, uiLinks, uiStatsCache].forEach(sec => { if(sec && sec.parentNode) sec.parentNode.removeChild(sec); });
-
-      const generalBody = _cfgBody(generalSec);
-      if(generalBody){
-        const commonUi = _cfgMakeSection('Darstellung & Auswahl', 'settings.general.layout', 'Gemeinsame Darstellung fuer mehrere Menuepunkte.');
-        const commonGrid = document.createElement('div');
-        commonGrid.className = 'grid';
-        ['ui_table_visible_rows','ui_table_row_height_px','ui_decimals','ui_popup_pre_font_px','ui_popup_history_font_px'].forEach(id => _cfgMoveParamRow(id, commonGrid));
-        _cfgBody(commonUi).appendChild(commonGrid);
-        if(uiLayout) generalBody.appendChild(uiLayout);
-        generalBody.appendChild(commonUi);
-        if(uiJobs) generalBody.appendChild(uiJobs);
-        if(uiLinks) generalBody.appendChild(uiLinks);
-      }
-
-      const dashGrid = dashboardBody && dashboardBody.querySelector(':scope > .grid');
-      if(dashGrid){
-        dashGrid.insertBefore(_cfgLinkRow('Globale Darstellung & Auswahl', '#ui_font_size_px'), dashGrid.firstChild);
-      }
-      main.insertBefore(dashboardSec, saveCard);
-
-      if(statsSec){
-        _cfgRetitle(statsSec, 'Statistik', 'settings.section.stats');
-        if(uiStatsCache) _cfgBody(statsSec).insertBefore(uiStatsCache, _cfgBody(statsSec).firstChild);
-        main.insertBefore(statsSec, saveCard);
-      }
-    }
-
-    [dbSec, generalSec].reverse().forEach(sec => main.insertBefore(sec, dashboardSec || saveCard));
-    if(backupSec){ _cfgRetitle(backupSec, 'Backup', 'settings.section.backup'); main.insertBefore(backupSec, saveCard); }
-    if(restoreSec){ _cfgRetitle(restoreSec, 'Restore', 'settings.section.restore'); main.insertBefore(restoreSec, saveCard); }
-    if(importSec){ _cfgRetitle(importSec, 'Import', 'settings.section.import'); main.insertBefore(importSec, saveCard); }
-    if(logsSec){ _cfgRetitle(logsSec, 'Logs', 'settings.section.logs'); main.insertBefore(logsSec, saveCard); }
-    if(outlierSec){ _cfgRetitle(outlierSec, 'Ausreisser', 'settings.section.outliers'); main.insertBefore(outlierSec, saveCard); }
-
-    const simpleSections = [
-      [jobsSec, 'Jobs', 'settings.section.jobs', '#ui_jobs'],
-      [logsPageSec, 'Logs Seite', 'settings.section.logs_page', '#log_profile'],
-      [historySec, 'History', 'settings.section.history', '#log_profile'],
-      [exportSec, 'Export', 'settings.section.export', '#ui_repo_url'],
-    ];
-    simpleSections.forEach(([sec, title, ui, linkSel])=>{
-      if(!sec) return;
-      _cfgRetitle(sec, title, ui);
-      const body = _cfgBody(sec);
-      if(body && !body.querySelector('.grid')){
-        const grid = document.createElement('div');
-        grid.className = 'grid';
-        grid.appendChild(_cfgLinkRow('Globale Parameter', linkSel));
-        body.appendChild(grid);
-      }
-      main.insertBefore(sec, saveCard);
-    });
-
-    [
-      ['Qualitaet','settings.section.quality'],
-      ['Monitor','settings.section.monitor'],
-      ['Combine','settings.section.combine'],
-      ['DB Info','settings.section.dbinfo'],
-      ['Info','settings.section.info'],
-      ['Manual','settings.section.manual'],
-      ['Profiles','settings.section.profiles']
-    ].forEach(([title, ui])=>{
-      if(document.querySelector('[data-ui="' + ui + '"]')) return;
-      main.insertBefore(_cfgMakeSection(title, ui, 'Derzeit keine eigenen Parameter. Falls benoetigt, werden globale Parameter unter Allgemein verlinkt.'), saveCard);
-    });
-
-    if(uiWrap && uiWrap.parentNode) uiWrap.parentNode.removeChild(uiWrap);
     try{ if(window.InfluxBroNormalizeSummaryActions) window.InfluxBroNormalizeSummaryActions(); }catch(e){}
   }catch(e){}
 }

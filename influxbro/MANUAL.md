@@ -312,6 +312,9 @@ Raw Daten (DB):
 - Unter der Quellauswahl wird dazu `Analyse-Start`, `Ältester bekannter Datensatz` und `Ermittelt am` angezeigt. Mit `Startalter löschen` kannst du den gespeicherten Startwert fuer den aktuellen Messwert zuruecksetzen.
 - Die Ausreisser-Typen werden in der Analyse-Section ueber zwei Listen verwaltet: `Abgewählte Typen` und `Gewählte Typen`. Nur die rechts stehenden Typen werden analysiert.
 - Die Analyse-History (`Analyse-Verlauf`) zeigt die komplette Analyse inklusive Fortschritt, Chunks, Typ-Auswahl und Ergebnis-Zusammenfassung.
+- Die Analyse-Sektion besitzt jetzt eigene Buttons fuer `Analyse-Abbruch`, `Query anzeigen`, `Query testen` und `Gesamtstatistik`.
+- Bei `Analyse mit Cache` werden grosse Restbereiche vor dem ersten Fetch in Tages-Chunks zerlegt. Die Chunk-Groesse passt sich weiter an die Zielzeit `ui_raw_target_chunk_ms` an und versucht Fehler mit kleineren Chunks bis zu drei Mal erneut.
+- Die Analyse zeigt zusaetzlich einen farbigen Chunk-Zeitstrahl mit Prozentanzeige nach abgedeckter Zeitspanne. In der Checkliste werden Zeitstempel und Dauer links vor dem Schritttext angezeigt; Chunk-Infos bleiben kompakt als `x/y`, letzter Chunk und Gesamtdauer sichtbar.
 - "Suche beenden": Beendet die Ausreisser-Suche und entfernt die Markierungen.
 - Neue Spalte "Ausreisser": Zeigt bei gefundenen Ausreissern den Grund an (z.B. "counter decrease", "< min (0)", "NULL"). Normale Zeilen bleiben leer.
 - Das Limit fuer die maximale Anzahl gefundener Ausreisser kann in den Einstellungen unter `ui_raw_outlier_search_limit` konfiguriert werden (Default: 5000).
