@@ -314,10 +314,12 @@ Raw Daten (DB):
 - Die Analyse-History (`Analyse-Verlauf`) zeigt die komplette Analyse inklusive Fortschritt, Chunks, Typ-Auswahl und Ergebnis-Zusammenfassung.
 - Die Analyse-Sektion besitzt jetzt eigene Buttons fuer `Analyse-Abbruch`, `Query anzeigen`, `Query testen` und `Gesamtstatistik`.
 - Bei `Analyse mit Cache` werden grosse Restbereiche vor dem ersten Fetch in Tages-Chunks zerlegt. Die Chunk-Groesse passt sich weiter an die Zielzeit `ui_raw_target_chunk_ms` an und versucht Fehler mit kleineren Chunks bis zu drei Mal erneut.
-- Die Analyse zeigt zusaetzlich einen farbigen Chunk-Zeitstrahl mit Prozentanzeige nach abgedeckter Zeitspanne. In der Checkliste werden Zeitstempel und Dauer links vor dem Schritttext angezeigt; Chunk-Infos bleiben kompakt als `x/y`, letzter Chunk und Gesamtdauer sichtbar.
+- Die Analyse zeigt zusaetzlich einen durchgaengigen farbigen Chunk-Zeitstrahl ohne Zwischenabstaende mit Prozentanzeige nach abgedeckter Zeitspanne. In der Checkliste werden Zeitstempel und Dauer links vor dem Schritttext angezeigt; Chunk-Infos bleiben kompakt als `x/y`, letzter Chunk und Gesamtdauer sichtbar.
+- Ueber den neuen Button `Logs` in der Analyse-Sektion laesst sich ein gefilterter Volltext-Logdialog oeffnen. Dort koennen Logeintraege nach `Ausloeser`, `Bereichsfilter` und Freitext gefiltert werden.
 - "Suche beenden": Beendet die Ausreisser-Suche und entfernt die Markierungen.
 - Neue Spalte "Ausreisser": Zeigt bei gefundenen Ausreissern den Grund an (z.B. "counter decrease", "< min (0)", "NULL"). Normale Zeilen bleiben leer.
 - Das Limit fuer die maximale Anzahl gefundener Ausreisser kann in den Einstellungen unter `ui_raw_outlier_search_limit` konfiguriert werden (Default: 5000).
+- Die Fehler-Statusleiste besitzt Schnellaktionen fuer `Bugreport`, `5 min Logs` und `Jump Logs`.
 
 Konzept fuer sehr grosse Tabellen (z.B. ~2 Mio Zeilen):
 

@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.12.302
+
+### Enhancement
+
+- Die Fehler-Statusleiste hat jetzt direkte Schnellaktionen fuer `Bugreport`, `5 min Logs` und `Jump Logs`. Die Analyse-Sektion besitzt zusaetzlich einen eigenen Volltext-Logdialog mit Filtern fuer `Ausloeser`, `Bereichsfilter` und Freitextsuche. ([#246](https://github.com/thomas682/HA-Addons/issues/246))
+- Die Analyse verwendet jetzt dieselben Icons fuer `Query anzeigen`, `Query testen` und `Gesamtstatistik` wie der Caching-Bereich. Der Chunk-Zeitstrahl ist als durchgaengiger Balken ohne Zwischenabstaende ausgefuehrt und nutzt die volle Breite des Analyse-Bereichs. ([#246](https://github.com/thomas682/HA-Addons/issues/246))
+
+### Fix
+
+- Die adaptive Chunk-Vergoesserung funktioniert wieder fuer grosse Restbereiche: verbleibende zusammenhaengende Chunk-Bereiche werden vor dem Neuaufbau wieder zusammengefasst, sodass schnelle Tages-Chunks jetzt zu groesseren Intervallen anwachsen koennen statt bei hunderten Ein-Tages-Chunks zu bleiben. ([#246](https://github.com/thomas682/HA-Addons/issues/246))
+- Nach der Analyse wird die Caching-Sektion jetzt immer frisch aktualisiert, damit neu gespeicherte Analyse-Cache-Segmente auch in `Cache pruefen` sichtbar werden. ([#246](https://github.com/thomas682/HA-Addons/issues/246))
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tests: Marker fuer Statusbar-Buttons, Logdialog, kontinuierlichen Chunk-Zeitstrahl und Cache-Refresh geprueft
+- Tests: Template-Klammer-Balance fuer `index.html`, `config.html`, `_topbar.html` und `_tooltips.html` geprueft
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.301
 
 ### Enhancement

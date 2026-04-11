@@ -433,9 +433,10 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
            <button id="analysis_run_with_cache" class="btn_sm" style="width:auto;" data-ui="dashboard_analysis.btn_analyse_mit_cache">Analyse mit Cache</button>
            <button id="analysis_run_without_cache" class="btn_sm" style="width:auto;" data-ui="dashboard_analysis.btn_analyse_ohne_cache">Analyse ohne Cache</button>
            <button id="analysis_abort" class="btn_sm" style="width:auto; display:none;" data-ui="dashboard_analysis.btn_abbruch">Analyse-Abbruch</button>
-           <button id="analysis_query_open" type="button" class="btn_sm" style="width:auto;" data-ui="dashboard_analysis.btn_query_anzeigen">Query anzeigen</button>
-           <button id="analysis_query_test" type="button" class="btn_sm" style="width:auto;" data-ui="dashboard_analysis.btn_query_test">Query testen</button>
-           <button id="analysis_stats_total" type="button" class="btn_sm" style="width:auto;" data-ui="dashboard_analysis.btn_gesamtstatistik_anzeigen">Gesamtstatistik</button>
+           <button id="analysis_query_open" type="button" class="btn_sm" style="width:auto; min-width:34px; padding:6px 8px;" data-ui="dashboard_analysis.btn_query_anzeigen" aria-label="Analyse Query anzeigen" title="dashboard_analysis.btn_query_anzeigen"><svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="11" cy="15.5" r="1.5"></circle><path d="M12,12H10V8h2a2,2,0,0,0,0-4H10A2.0023,2.0023,0,0,0,8,6v.5H6V6a4.0045,4.0045,0,0,1,4-4h2a4,4,0,0,1,0,8Z"></path><path d="M22.4479,21.0337A10.971,10.971,0,0,0,19.9211,4.7446l-.999,1.73A8.9967,8.9967,0,1,1,5,14H3a10.9916,10.9916,0,0,0,18.0338,8.4478L28.5859,30,30,28.5859Z"></path></svg></button>
+           <button id="analysis_query_test" type="button" class="btn_sm" style="width:auto; min-width:34px; padding:6px 8px;" data-ui="dashboard_analysis.btn_query_test" aria-label="Analyse Query testen" title="dashboard_analysis.btn_query_test"><svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="#000000" width="18" height="18" aria-hidden="true" focusable="false"><path d="M6 10V9h9v1H6zm4-4h5v1h-5V6zm5-3v1H6V3h9zm-9 9v1h9v-1H6z"></path><path fill-rule="evenodd" clip-rule="evenodd" d="M1 2.795l.783-.419 5.371 3.581v.838l-5.371 3.581L1 9.957V2.795zm1.007.94v5.281l3.96-2.64-3.96-2.64z"></path></svg></button>
+           <button id="analysis_stats_total" type="button" class="btn_sm" style="width:auto; min-width:34px; padding:6px 8px;" data-ui="dashboard_analysis.btn_gesamtstatistik_anzeigen" aria-label="Analyse Gesamtstatistik anzeigen" title="dashboard_analysis.btn_gesamtstatistik_anzeigen"><svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><path d="M5,9h18v1H5V9z M5,13h8v9H5V13z M6,21h6v-7H6V21z M16,14h7v-1h-7V14z M16,16h7v-1h-7V16z M16,20h7v-1 h-7V20z M16,18h7v-1h-7V18z M16,22h7v-1h-7V22z M32,7v17c0,2.206-1.794,4-4,4H4c-2.206,0-4-1.794-4-4V5c0-0.552,0.448-1,1-1h26 c0.552,0,1,0.448,1,1v1h3C31.552,6,32,6.448,32,7z M30,8h-3v14h-1V7V6H2v18c0,1.103,0.897,2,2,2h24c1.103,0,2-0.897,2-2V8z"></path></svg></button>
+           <button id="analysis_logs_open" type="button" class="btn_sm" style="width:auto;" data-ui="dashboard_analysis.btn_logs">Logs</button>
           </div>
           <div id="analysis_inline_stats" class="muted" data-ui="dashboard_analysis.txt_inline_stats" style="font-size:12px;margin-bottom:8px;"></div>
          <div id="analysis_stats_panel" style="display:none; border:1px solid #eee; border-radius:12px; padding:12px 14px; margin-bottom:10px; background:#fafafa; font-size:13px; line-height:1.7;">
@@ -1101,6 +1102,7 @@ const $analysisAbort = document.getElementById('analysis_abort');
 const $analysisQueryOpen = document.getElementById('analysis_query_open');
 const $analysisQueryTest = document.getElementById('analysis_query_test');
 const $analysisStatsTotal = document.getElementById('analysis_stats_total');
+const $analysisLogsOpen = document.getElementById('analysis_logs_open');
 const $analysisCacheCombineBtn = document.getElementById('analysis_cache_combine');
 const $analysisCacheDeleteSeriesBtn = document.getElementById('analysis_cache_delete_series');
 const $analysisStatus = document.getElementById('analysis_status');
@@ -3550,6 +3552,7 @@ try{ if($rawQueryTest) $rawQueryTest.addEventListener('click', (ev)=>{ _stop(ev)
 try{ if($analysisQueryOpen) $analysisQueryOpen.addEventListener('click', (ev)=>{ _stop(ev); try{ openDashboardQueryDialog(); }catch(e){} }); }catch(e){}
 try{ if($analysisQueryTest) $analysisQueryTest.addEventListener('click', (ev)=>{ _stop(ev); try{ window.InfluxBroDialogs && window.InfluxBroDialogs.openQueryTest && window.InfluxBroDialogs.openQueryTest({query: $queryPre ? String($queryPre.textContent || '') : ''}); }catch(e){} }); }catch(e){}
 try{ if($analysisStatsTotal) $analysisStatsTotal.addEventListener('click', (ev)=>{ _stop(ev); try{ openStatsTotalDialog(); }catch(e){} }); }catch(e){}
+try{ if($analysisLogsOpen) $analysisLogsOpen.addEventListener('click', (ev)=>{ _stop(ev); openFilteredAnalysisLogsDialog('dashboard_analysis', ANALYSIS_ACTIVE_ACTION || '').catch(()=>{}); }); }catch(e){}
 let GRAPH_QUERY_DASH = "";
 let GRAPH_QUERY_EDIT = "";
 
@@ -4679,6 +4682,8 @@ const ANALYSIS_STATE = {
 let ANALYSIS_CHECKLIST_ITEMS = [];
 let ANALYSIS_CHUNK_LOG = [];
 let ANALYSIS_CACHE_PLAN_CHOICE = { cacheStrategy: 'reuse', plan: null };
+let ANALYSIS_ACTIVE_SCOPE = 'dashboard_analysis';
+let ANALYSIS_ACTIVE_ACTION = '';
 const ANALYSIS_STEP_ORDER = [
   'button_start',
   'cache_plan',
@@ -5755,6 +5760,8 @@ function _analysisChecklistLog(item){
       detail: sub ? (label + ' | ' + sub) : label,
       extra: {
         key: ['analysis_checklist', key, status, label, sub].join('|'),
+        scope: String(ANALYSIS_ACTIVE_SCOPE || 'dashboard_analysis'),
+        action: String(ANALYSIS_ACTIVE_ACTION || ''),
         label: label,
         status: status,
         sub: sub,
@@ -6057,19 +6064,19 @@ function _renderAnalysisLog(chunks){
   const timelineParts = rows.map((row, idx) => {
     const a = Date.parse(String(row.start || ''));
     const b = Date.parse(String(row.stop || ''));
-    const widthPct = (isFinite(a) && isFinite(b) && b > a) ? Math.max(0.8, ((b - a) / totalSpan) * 100) : (100 / Math.max(1, rows.length));
+    const spanMs = (isFinite(a) && isFinite(b) && b > a) ? (b - a) : Math.max(1, totalSpan / Math.max(1, rows.length));
     const color = row.error ? '#d9534f' : 'hsl(' + ((idx * 53) % 360) + ' 62% 58%)';
     const opacity = row.error ? 1 : (row.aborted ? 0.55 : 0.9);
     const title = 'Chunk ' + String(row.idx || idx + 1) + '/' + String(row.total || rows.length)
       + ' | ' + fmtTs(String(row.start || '')) + ' bis ' + fmtTs(String(row.stop || ''))
       + ' | ' + Math.max(0, Number(row.dur || 0)) + ' ms'
       + (row.error ? ' | ' + String(row.error) : '');
-    return '<div title="' + _escHtml(title) + '" style="height:14px; min-width:4px; width:' + widthPct + '%; background:' + color + '; opacity:' + opacity + '; border-radius:4px;"></div>';
+    return '<div title="' + _escHtml(title) + '" style="height:14px; min-width:0; flex:' + spanMs + ' 1 0; background:' + color + '; opacity:' + opacity + ';"></div>';
   }).join('');
   const $timeline = document.getElementById('analysis_chunk_timeline');
   if($timeline){
     $timeline.style.display = 'block';
-    $timeline.innerHTML = '<div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;"><div style="flex:1 1 auto; display:flex; gap:3px; align-items:center; min-height:14px;">' + timelineParts + '</div><div style="font-size:12px; font-weight:600; min-width:58px; text-align:right;">' + pct + '%</div></div>';
+    $timeline.innerHTML = '<div style="display:flex; align-items:center; gap:10px; width:100%; margin-bottom:6px;"><div style="flex:1 1 auto; min-width:0; overflow:hidden; border-radius:4px; background:#eee;"><div style="display:flex; gap:0; align-items:stretch; min-height:14px; width:100%;">' + timelineParts + '</div></div><div style="font-size:12px; font-weight:600; min-width:58px; text-align:right;">' + pct + '%</div></div>';
   }
   $alog.innerHTML = '<div style="font-size:12px; color:#555;">Chunks: ' + String(last.idx || rows.length) + '/' + String(last.total || rows.length) + ' | letzter Chunk: ' + Math.max(0, Number(last.dur || 0)) + ' ms | gesamt: ' + totalDur + ' ms</div>';
 }
@@ -6405,6 +6412,8 @@ function _analysisContext(){
   try{
     return {
       page: 'dashboard',
+      scope: String(ANALYSIS_ACTIVE_SCOPE || 'dashboard_analysis'),
+      action: String(ANALYSIS_ACTIVE_ACTION || ''),
       measurement: String(ANALYSIS_STATE && ANALYSIS_STATE.measurement || ''),
       field: String(ANALYSIS_STATE && ANALYSIS_STATE.field || ''),
       entity_id: String(ANALYSIS_STATE && ANALYSIS_STATE.entity_id || ''),
@@ -6427,10 +6436,11 @@ function _postAnalysisHistory(entry){
 
 function _saveAnalysisEvent(entry){
   try{
+    const merged = {..._analysisContext(), ...(entry || {})};
     let history = [];
     const raw = localStorage.getItem(ANALYSIS_EVENT_HISTORY_KEY);
     if(raw) history = JSON.parse(raw);
-    history.unshift(entry);
+    history.unshift(merged);
     if(history.length > ANALYSIS_EVENT_HISTORY_MAX) history = history.slice(0, ANALYSIS_EVENT_HISTORY_MAX);
     localStorage.setItem(ANALYSIS_EVENT_HISTORY_KEY, JSON.stringify(history));
   }catch(e){}
@@ -6471,6 +6481,99 @@ function _loadAnalysisEvents(){
     const raw = localStorage.getItem(ANALYSIS_EVENT_HISTORY_KEY);
     return raw ? JSON.parse(raw) : [];
   }catch(e){ return []; }
+}
+
+function _analysisEventToTextLine(row){
+  try{
+    const r = row || {};
+    const extra = (r.extra && typeof r.extra === 'object') ? r.extra : {};
+    const at = _analysisStepClock(r.at || '') || fmtTs(String(r.at || ''));
+    const scope = String(r.scope || extra.scope || '');
+    const action = String(r.action || extra.action || '');
+    const kind = String(r.kind || '');
+    const step = String(r.step || '');
+    const status = String(r.status || '');
+    const detail = String(r.detail || '');
+    return [at, scope, action, kind, step, status, detail].filter(Boolean).join(' | ');
+  }catch(e){
+    return '';
+  }
+}
+
+function _ensureFilteredLogModal(){
+  let dlg = document.getElementById('analysis_log_modal');
+  if(dlg) return dlg;
+  dlg = document.createElement('dialog');
+  dlg.id = 'analysis_log_modal';
+  dlg.style.width = 'min(1200px, calc(100vw - 32px))';
+  dlg.style.maxWidth = '1200px';
+  dlg.style.border = '0';
+  dlg.style.borderRadius = '12px';
+  dlg.style.padding = '0';
+  dlg.innerHTML = '<div style="display:flex; flex-direction:column; min-height:70vh; max-height:85vh;"><div style="padding:14px 16px; border-bottom:1px solid #eee; display:flex; align-items:center; justify-content:space-between; gap:12px;"><div style="font-weight:700;">Gefiltertes Logging</div><button type="button" id="analysis_log_modal_close" class="btn_sm" style="width:auto;">Schliessen</button></div><div style="padding:12px 16px; display:flex; gap:10px; flex-wrap:wrap; border-bottom:1px solid #eee;"><label style="display:flex; flex-direction:column; gap:4px; font-size:12px;"><span>Ausloeser</span><select id="analysis_log_filter_action" style="min-width:220px;"><option value="">Alle</option><option value="analysis_run_with_cache">Analyse mit Cache</option><option value="analysis_run_without_cache">Analyse ohne Cache</option></select></label><label style="display:flex; flex-direction:column; gap:4px; font-size:12px;"><span>Bereichsfilter</span><select id="analysis_log_filter_scope" style="min-width:220px;"><option value="">Alle</option><option value="dashboard_analysis">Dashboard Analyse</option><option value="dashboard_caching">Dashboard Cache</option><option value="dashboard_outliers">Dashboard Ausreisser</option></select></label><label style="display:flex; flex-direction:column; gap:4px; font-size:12px; flex:1 1 260px;"><span>Textsuche</span><input id="analysis_log_filter_text" type="text" placeholder="Volltextsuche in den Logzeilen" /></label><button type="button" id="analysis_log_filter_refresh" class="btn_sm" style="width:auto; align-self:end;">Refresh</button></div><div style="padding:12px 16px; display:flex; flex-direction:column; gap:8px; min-height:0; flex:1 1 auto;"><div id="analysis_log_filter_meta" class="muted" style="font-size:12px;"></div><pre id="analysis_log_filter_pre" style="margin:0; flex:1 1 auto; min-height:0; overflow:auto; background:#fafafa; border:1px solid #eee; border-radius:10px; padding:12px; font-size:12px; line-height:1.45;"></pre></div></div>';
+  document.body.appendChild(dlg);
+  const close = document.getElementById('analysis_log_modal_close');
+  if(close) close.addEventListener('click', ()=>{ try{ dlg.close(); }catch(e){ dlg.style.display='none'; } });
+  return dlg;
+}
+
+async function openFilteredAnalysisLogsDialog(defaultScope, defaultAction){
+  const dlg = _ensureFilteredLogModal();
+  const $scope = document.getElementById('analysis_log_filter_scope');
+  const $action = document.getElementById('analysis_log_filter_action');
+  const $text = document.getElementById('analysis_log_filter_text');
+  const $meta = document.getElementById('analysis_log_filter_meta');
+  const $pre = document.getElementById('analysis_log_filter_pre');
+  const $refresh = document.getElementById('analysis_log_filter_refresh');
+  if($scope && defaultScope !== undefined) $scope.value = String(defaultScope || '');
+  if($action && defaultAction !== undefined) $action.value = String(defaultAction || '');
+
+  async function renderLogs(){
+    if($pre) $pre.textContent = 'Logs werden geladen...';
+    try{
+      const resp = await api('./api/analysis_history?limit=1000', null, {silent:true});
+      const rows = Array.isArray(resp && resp.rows) ? resp.rows : [];
+      const prevScope = $scope ? String($scope.value || '').trim() : '';
+      const prevAction = $action ? String($action.value || '').trim() : '';
+      const scopes = Array.from(new Set(rows.map((row) => String(row.scope || (row.extra && row.extra.scope) || '')).filter(Boolean))).sort();
+      const actions = Array.from(new Set(rows.map((row) => String(row.action || (row.extra && row.extra.action) || '')).filter(Boolean))).sort();
+      if($scope){
+        $scope.innerHTML = '<option value="">Alle</option>' + scopes.map((v) => '<option value="' + _escHtml(v) + '">' + _escHtml(v) + '</option>').join('');
+        $scope.value = prevScope;
+      }
+      if($action){
+        $action.innerHTML = '<option value="">Alle</option>' + actions.map((v) => '<option value="' + _escHtml(v) + '">' + _escHtml(v) + '</option>').join('');
+        $action.value = prevAction;
+      }
+      const scopeVal = $scope ? String($scope.value || '').trim() : '';
+      const actionVal = $action ? String($action.value || '').trim() : '';
+      const textVal = $text ? String($text.value || '').trim().toLowerCase() : '';
+      const out = rows.filter((row) => {
+        const extra = (row && row.extra && typeof row.extra === 'object') ? row.extra : {};
+        const rowScope = String(row.scope || extra.scope || '');
+        const rowAction = String(row.action || extra.action || '');
+        const line = _analysisEventToTextLine(row).toLowerCase();
+        if(scopeVal && rowScope !== scopeVal) return false;
+        if(actionVal && rowAction !== actionVal) return false;
+        if(textVal && !line.includes(textVal)) return false;
+        return true;
+      }).map(_analysisEventToTextLine).filter(Boolean);
+      if($meta) $meta.textContent = 'Eintraege: ' + out.length + ' | Bereich: ' + (scopeVal || 'alle') + ' | Ausloeser: ' + (actionVal || 'alle');
+      if($pre) $pre.textContent = out.length ? out.join('\n') : 'Keine passenden Logeintraege gefunden.';
+    }catch(e){
+      if($meta) $meta.textContent = 'Fehler beim Laden der Logs';
+      if($pre) $pre.textContent = String(e && e.message ? e.message : e);
+    }
+  }
+
+  ['change','input'].forEach((evt)=>{
+    try{ if($scope) $scope['on' + evt] = renderLogs; }catch(e){}
+    try{ if($action) $action['on' + evt] = renderLogs; }catch(e){}
+    try{ if($text) $text['on' + evt] = renderLogs; }catch(e){}
+  });
+  if($refresh) $refresh.onclick = renderLogs;
+  await renderLogs();
+  try{ if(typeof dlg.showModal === 'function') dlg.showModal(); else dlg.style.display = 'block'; }catch(e){ dlg.style.display = 'block'; }
 }
 
 function _saveAnalysisHistory(entry){
@@ -6826,10 +6929,23 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog, effective
 
     function rebuildChunksForObjects(chunkObjs, days){
       const rebuilt = [];
+      const ranges = [];
       (chunkObjs || []).forEach((chunk) => {
         const a = Date.parse(String(chunk.start || ''));
         const b = Date.parse(String(chunk.stop || ''));
         if(!(isFinite(a) && isFinite(b) && b > a)) return;
+        if(!ranges.length){
+          ranges.push([a, b]);
+          return;
+        }
+        const last = ranges[ranges.length - 1];
+        if(a <= last[1] + 1000){
+          last[1] = Math.max(last[1], b);
+        }else{
+          ranges.push([a, b]);
+        }
+      });
+      ranges.forEach(([a, b]) => {
         rebuilt.push(...buildChunks(a, b, days, 0));
       });
       return rebuilt;
@@ -9700,6 +9816,8 @@ async function startDashboardAnalysis(cacheStrategy){
   try{
     const base = currentFilters();
     const win = await resolveEffectiveAnalysisWindow();
+    ANALYSIS_ACTIVE_SCOPE = 'dashboard_analysis';
+    ANALYSIS_ACTIVE_ACTION = (cacheStrategy === 'refresh') ? 'analysis_run_without_cache' : 'analysis_run_with_cache';
     ANALYSIS_CHUNK_LOG = [];
     _analysisChecklistReset();
     _analysisChecklistSet('button_start', {status: 'ok', sub: 'Start ueber ' + (cacheStrategy === 'refresh' ? 'Analyse ohne Cache' : 'Analyse mit Cache') + '.'});
@@ -9738,6 +9856,7 @@ async function startDashboardAnalysis(cacheStrategy){
     }catch(e){
       _analysisChecklistSet('combine', {status: 'err', sub: e && e.message ? e.message : String(e)});
     }
+    try{ await refreshCachingSection(); }catch(e){}
     _analysisChecklistSet('complete', {status: 'ok', sub: 'Analyseflow inklusive Nacharbeiten abgeschlossen.'});
   }catch(e){
     _analysisChecklistSet('cache_plan', {status: 'err', sub: e && e.message ? e.message : String(e)});
