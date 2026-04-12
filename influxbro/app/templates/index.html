@@ -5753,6 +5753,7 @@ function _analysisChecklistBaseItems(){
     dur: null,
     sub: '',
     at: '',
+    started_at: '',
   }));
 }
 
@@ -5794,7 +5795,7 @@ function _analysisChecklistSet(key, patch){
     : _analysisChecklistBaseItems();
   let idx = items.findIndex((item) => item.key === key);
   if(idx < 0){
-    items.push({ key, label: ANALYSIS_STEP_LABELS[key] || key, status: 'pending', dur: null, sub: '', at: '' });
+    items.push({ key, label: ANALYSIS_STEP_LABELS[key] || key, status: 'pending', dur: null, sub: '', at: '', started_at: '' });
     idx = items.length - 1;
   }
   const prev = items[idx] || {};
@@ -5802,11 +5803,24 @@ function _analysisChecklistSet(key, patch){
   if(next.label === undefined && !merged.label){
     merged.label = ANALYSIS_STEP_LABELS[key] || key;
   }
-  if(next.status && next.status !== 'pending' && !next.at){
+  if(next.status === 'running'){
+    if(!merged.started_at) merged.started_at = new Date().toISOString();
+    if(!next.at) merged.at = merged.started_at;
+  }
+  if(next.status && next.status !== 'pending' && next.status !== 'running' && !next.at){
     merged.at = new Date().toISOString();
+  }
+  if((next.status === 'ok' || next.status === 'err') && (next.dur === undefined || next.dur === null)){
+    try{
+      const started = Date.parse(String(merged.started_at || prev.started_at || ''));
+      const ended = Date.parse(String(merged.at || ''));
+      if(isFinite(started) && isFinite(ended) && ended >= started) merged.dur = ended - started;
+    }catch(e){}
   }
   if(next.status === 'pending' && next.at === undefined){
     merged.at = '';
+    merged.started_at = '';
+    if(next.dur === undefined) merged.dur = null;
   }
   items[idx] = merged;
   items.sort((a, b) => {
@@ -6457,6 +6471,15 @@ async function fetchAnalysisCachePlan(base, win){
   }
 }
 
+async function fetchAnalysisCacheList(){
+  try{
+    const j = await api('./api/analysis_cache/list', null, { key: 'analysis_cache_list', silent: true });
+    return Array.isArray(j && j.series) ? j.series : [];
+  }catch(e){
+    return [];
+  }
+}
+
 // --- Analysis History ---
 const ANALYSIS_HISTORY_KEY = 'influxbro_analysis_history_v1';
 const ANALYSIS_HISTORY_MAX = 50;
@@ -6587,7 +6610,14 @@ async function openFilteredAnalysisLogsDialog(defaultScope, defaultAction){
     if($pre) $pre.textContent = 'Logs werden geladen...';
     try{
       const resp = await api('./api/analysis_history?limit=1000', null, {silent:true});
-      const rows = Array.isArray(resp && resp.rows) ? resp.rows : [];
+      const serverRows = Array.isArray(resp && resp.rows) ? resp.rows : [];
+      const localRows = Array.isArray(_loadAnalysisEvents()) ? _loadAnalysisEvents() : [];
+      const mergedMap = new Map();
+      serverRows.concat(localRows).forEach((row) => {
+        const key = _analysisEventDedupKey(row) || JSON.stringify(row || {});
+        if(!mergedMap.has(key)) mergedMap.set(key, row);
+      });
+      const rows = Array.from(mergedMap.values()).sort((a, b) => Date.parse(String(b && b.at || '')) - Date.parse(String(a && a.at || '')));
       const prevScope = $scope ? String($scope.value || '').trim() : '';
       const prevAction = $action ? String($action.value || '').trim() : '';
       const scopes = Array.from(new Set(rows.map((row) => String(row.scope || (row.extra && row.extra.scope) || '')).filter(Boolean))).sort();
@@ -8058,6 +8088,7 @@ async function loadRawFromGraph(reset){
         try{
           await clearAnalysisCacheForCurrentSeries();
         }catch(e){}
+        try{ window.InfluxBroStatus && window.InfluxBroStatus.fail && window.InfluxBroStatus.fail('dashboard.raw', 'Alter Cache ohne Fenster-Daten.'); }catch(e){}
         _rawStatusEnd(false, 'Alter Cache ohne Fenster-Daten. Cache wurde gelöscht. Bitte Analyse neu starten.');
         _RAW_INFLIGHT = false;
         return;
@@ -8102,6 +8133,7 @@ async function loadRawFromGraph(reset){
     _rawStatusEnd(false, (e && e.message) ? e.message : String(e));
   }finally{
     _RAW_INFLIGHT = false;
+    try{ if(window.InfluxBroStatus && window.InfluxBroStatus.current && window.InfluxBroStatus.current() === 'dashboard.raw'){ window.InfluxBroStatus.done('dashboard.raw', 'Raw fertig'); } }catch(e){}
   }
 }
 
@@ -9886,6 +9918,8 @@ async function startDashboardAnalysis(cacheStrategy){
     await refreshCachingSection();
     try{
       freshPlan = (win && win.start && win.stop) ? await fetchAnalysisCachePlan(base, win) : null;
+      const listRows = await fetchAnalysisCacheList();
+      const physical = listRows.find((row) => String(row && row.series_key || '') === String(freshPlan && freshPlan.series_key || [base.measurement, base.field, base.entity_id || '', base.friendly_name || ''].join('|')));
       ANALYSIS_CACHE_RUNTIME.fresh_plan = freshPlan || null;
       const segCount = Array.isArray(freshPlan && freshPlan.segments) ? freshPlan.segments.length : 0;
       const gapCount = Array.isArray(freshPlan && freshPlan.gaps) ? freshPlan.gaps.length : 0;
@@ -9893,6 +9927,8 @@ async function startDashboardAnalysis(cacheStrategy){
       _analysisChecklistSet('cache_plan', {status: 'ok', sub: 'Plan geladen: ' + segCount + ' Segment(e), ' + (gapCount + dirtyCount) + ' offener Bereich(e).'});
       if(segCount > 0){
         _analysisChecklistSet('cache_hit', {status: 'ok', sub: gapCount || dirtyCount ? ('Teilweise Abdeckung: ' + segCount + ' Segment(e) vorhanden.') : ('Vollstaendiger Cache-Hit mit ' + segCount + ' Segment(en).')});
+      }else if(physical && Number(physical.segment_count || 0) > 0){
+        _analysisChecklistSet('cache_hit', {status: 'ok', sub: 'Physisch vorhanden: ' + String(physical.segment_count || 0) + ' Segment(e), derzeit aber nicht direkt wiederverwendbar.'});
       }else{
         _analysisChecklistSet('cache_hit', {status: 'ok', sub: 'Kein vorhandener Analyse-Cache fuer diese Auswahl.'});
       }
@@ -9904,11 +9940,17 @@ async function startDashboardAnalysis(cacheStrategy){
     await runDashboardAnalysisFlow();
     try{
       const verifyPlan = (win && win.start && win.stop) ? await fetchAnalysisCachePlan(base, win) : null;
+      const verifyList = await fetchAnalysisCacheList();
+      const verifySeriesKey = String(verifyPlan && verifyPlan.series_key || [base.measurement, base.field, base.entity_id || '', base.friendly_name || ''].join('|'));
+      const physical = verifyList.find((row) => String(row && row.series_key || '') === verifySeriesKey);
+      const physicalSegs = Number(physical && physical.segment_count || 0);
       const verifySegs = Array.isArray(verifyPlan && verifyPlan.segments) ? verifyPlan.segments.length : 0;
       const storedSegs = Number(ANALYSIS_CACHE_RUNTIME.store_ok || 0);
       const dirtySegs = Array.isArray(verifyPlan && verifyPlan.dirty_ranges) ? verifyPlan.dirty_ranges.length : 0;
       if(storedSegs > 0 && verifySegs > 0){
         _analysisChecklistSet('cache_verify', {status: 'ok', sub: storedSegs + ' Segment(e) physisch gespeichert und ' + verifySegs + ' Segment(e) direkt wiederverwendbar.'});
+      }else if(storedSegs > 0 && physicalSegs > 0){
+        _analysisChecklistSet('cache_verify', {status: 'err', sub: storedSegs + ' Segment(e) gespeichert und ' + physicalSegs + ' Segment(e) physisch vorhanden, aber im frischen Cache-Plan nicht direkt wiederverwendbar.'});
       }else if(storedSegs > 0 && dirtySegs > 0){
         _analysisChecklistSet('cache_verify', {status: 'err', sub: storedSegs + ' Segment(e) gespeichert, aber der frische Cache-Plan meldet ' + dirtySegs + ' offenen/geaenderten Bereich(e).'});
       }else if(storedSegs > 0){
@@ -9938,9 +9980,14 @@ async function combineAnalysisCacheForCurrentSelection(planArg){
   const base = currentFilters();
   const win = await resolveEffectiveAnalysisWindow();
   const plan = planArg || await fetchAnalysisCachePlan(base, win);
+  const listRows = await fetchAnalysisCacheList();
+  const physical = listRows.find((row) => String(row && row.series_key || '') === String(plan && plan.series_key || [base.measurement, base.field, base.entity_id || '', base.friendly_name || ''].join('|')));
   ANALYSIS_CACHE_PLAN_CHOICE = Object.assign({}, ANALYSIS_CACHE_PLAN_CHOICE || {}, { plan: plan || null });
   if(!plan || !plan.series_key) return { ok: true, groups_combined: 0, note: 'Kein Analyse-Cache fuer diese Auswahl vorhanden.' };
   if(!plan.has_cache || !Array.isArray(plan.segments) || !plan.segments.length){
+    if(physical && Number(physical.segment_count || 0) > 0){
+      return { ok: true, groups_combined: 0, note: String(physical.segment_count || 0) + ' Analyse-Cache-Segment(e) sind physisch vorhanden, aber aktuell nicht direkt wiederverwendbar.' };
+    }
     return { ok: true, groups_combined: 0, note: 'Es wurden keine Analyse-Cache-Segmente gespeichert.' };
   }
   _analysisChecklistSet('combine', {status: 'running', sub: 'Analyse-Cache wird zusammengefuehrt.'});

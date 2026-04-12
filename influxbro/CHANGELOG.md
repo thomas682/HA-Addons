@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.12.305
+
+### Fix
+
+- Der Analyse-Logdialog mischt jetzt serverseitige Analyse-History mit den lokal gespeicherten Analyse-Events, sodass alle sichtbaren Analyse-/Checklist-Schritte und Chunk-Details im Volltextdialog auftauchen. ([#249](https://github.com/thomas682/HA-Addons/issues/249))
+- Die Cache-Verifikation unterscheidet jetzt zwischen physisch vorhandenen und direkt wiederverwendbaren Analyse-Cache-Segmenten. Dadurch wird sichtbar, wenn Segmente gespeichert wurden, der frische Cache-Plan sie aber noch nicht wiederverwendet. ([#249](https://github.com/thomas682/HA-Addons/issues/249))
+- Der hängende Status `Raw laedt... dashboard.raw` wird in zusätzlichen Frühabbruch-/Cleanup-Pfaden beendet. Gleichzeitig wurde die Mindestbreite des Topbar-Suchfelds gelockert, damit `page_main.input_search` bei kleiner Fensterbreite nicht mehr von den folgenden Controls überdeckt wird. ([#249](https://github.com/thomas682/HA-Addons/issues/249))
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tests: Marker fuer Analyse-Logdialog, Cache-Physik/Wiederverwendung, Raw-Status-Cleanup und Topbar-Suchfeld geprueft
+- Tests: Script-Balance fuer `index.html` und `_topbar.html` geprueft
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.304
 
 ### Enhancement
