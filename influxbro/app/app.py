@@ -2618,6 +2618,14 @@ def _analysis_cache_store_segment(
             },
         }
         bytes_written = _analysis_cache_write_payload(cache_id, payload)
+        if bytes_written <= 0:
+            LOG.error(
+                "analysis_cache_store_segment payload write failed measurement=%s field=%s cache_id=%s",
+                measurement,
+                field,
+                cache_id,
+            )
+            return None
         prev = _analysis_cache_load_meta(cache_id) or {}
         meta = {
             "v": 1,
@@ -2642,8 +2650,41 @@ def _analysis_cache_store_segment(
             "search_types": ["bounds", "counter", "decrease", "fault_phase", "null", "zero"],
         }
         _analysis_cache_write_meta(meta)
-        return meta
-    except Exception:
+        meta_path = _analysis_cache_meta_path(cache_id)
+        data_path = _analysis_cache_data_path(cache_id)
+        if not meta_path.exists() or not data_path.exists():
+            LOG.error(
+                "analysis_cache_store_segment files missing after write measurement=%s field=%s cache_id=%s meta_exists=%s data_exists=%s",
+                measurement,
+                field,
+                cache_id,
+                meta_path.exists(),
+                data_path.exists(),
+            )
+            return None
+        stored_meta = _analysis_cache_load_meta(cache_id)
+        stored_payload = _analysis_cache_load_payload(cache_id)
+        if not stored_meta or not stored_payload or not bool(stored_payload.get("ok")):
+            LOG.error(
+                "analysis_cache_store_segment verification failed measurement=%s field=%s cache_id=%s meta_ok=%s payload_ok=%s",
+                measurement,
+                field,
+                cache_id,
+                bool(stored_meta),
+                bool(stored_payload and bool(stored_payload.get("ok"))),
+            )
+            return None
+        return stored_meta
+    except Exception as e:
+        LOG.error(
+            "analysis_cache_store_segment exception measurement=%s field=%s start=%s stop=%s error=%s",
+            measurement,
+            field,
+            start_iso,
+            stop_iso,
+            e,
+            exc_info=True,
+        )
         return None
 
 

@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.303
+
+### Fix
+
+- Analyse-Cache-Segmente gelten jetzt nur dann als erfolgreich gespeichert, wenn Payload und Metadatei danach wirklich vorhanden und wieder lesbar sind. Dadurch wird der Widerspruch behoben, dass die Analyse `gespeichert` meldet, `Cache pruefen` danach aber keinen Analyse-Cache sieht. ([#247](https://github.com/thomas682/HA-Addons/issues/247))
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.302
 
 ### Enhancement
