@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.308
+
+### Fix
+
+- Ein fehlendes Raw-Window fuer den automatisch ausgewaehlten ersten Ausreisser loescht den frisch erzeugten Analyse-Cache nicht mehr. Stattdessen bleibt der Analyse-Cache erhalten und die GUI zeigt nur noch einen Hinweis, dass fuer diesen Ausreisser noch kein Raw-Fenster verfuegbar ist. ([#254](https://github.com/thomas682/HA-Addons/issues/254))
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tests: Marker fuer den Raw-Window-Fix und Script-Balance in `index.html` geprueft
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.307
 
 ### Maintenance

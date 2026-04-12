@@ -8108,12 +8108,17 @@ async function loadRawFromGraph(reset){
         payload.center_minutes = cachedWindow.center_minutes;
         j = await api("./api/raw_points", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)});
       } else {
-        // Kein Window im Cache → alter Cache ohne Fenster → löschen und neu analysieren
-        try{
-          await clearAnalysisCacheForCurrentSeries();
-        }catch(e){}
-        try{ window.InfluxBroStatus && window.InfluxBroStatus.fail && window.InfluxBroStatus.fail('dashboard.raw', 'Alter Cache ohne Fenster-Daten.'); }catch(e){}
-        _rawStatusEnd(false, 'Alter Cache ohne Fenster-Daten. Cache wurde gelöscht. Bitte Analyse neu starten.');
+        // Kein Window im Cache: Cache NICHT löschen, sondern nur Hinweis anzeigen.
+        _saveAnalysisEvent({
+          at: new Date().toISOString(),
+          kind: 'analysis_cache_window',
+          step: 'missing_window',
+          status: 'err',
+          detail: 'Fuer den ausgewaehlten Ausreisser wurde noch kein Raw-Fenster gefunden. Analyse-Cache bleibt erhalten.',
+          extra: { scope: 'dashboard_analysis', action: String(ANALYSIS_ACTIVE_ACTION || ''), anchor_time: String(anchorIso || '') },
+        });
+        try{ window.InfluxBroStatus && window.InfluxBroStatus.fail && window.InfluxBroStatus.fail('dashboard.raw', 'Kein Raw-Fenster im Analyse-Cache.'); }catch(e){}
+        _rawStatusEnd(false, 'Fuer diesen Ausreisser ist noch kein Raw-Fenster vorhanden. Analyse-Cache bleibt erhalten. Bitte Analyse erneut starten oder einen anderen Ausreisser waehlen.');
         _RAW_INFLIGHT = false;
         return;
       }

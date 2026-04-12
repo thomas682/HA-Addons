@@ -322,6 +322,7 @@ Raw Daten (DB):
 - Die Cache-Verifikation unterscheidet zwischen physisch gespeicherten Segmenten und direkt wiederverwendbaren Segmenten im frischen Cache-Plan.
 - Analyse-Cache-Segmente fuer dieselbe Serie bleiben in `Cache pruefen` jetzt auch dann sichtbar, wenn sich der fruehere query-nahe Fingerprint geaendert hat. Die Sichtbarkeit des Analyse-Caches haengt damit nicht mehr unnoetig an Dashboard-Query-Parametern.
 - Fuer die weitere Diagnose werden Store-, Listen- und Plan-Schritte des Analyse-Caches jetzt detailliert ins Log geschrieben, inklusive `cache_id`, `series_key`, Dateipfaden und `selected`/`dirty`-Zustaenden.
+- Wenn nach einer Analyse fuer den automatisch angesprungenen ersten Ausreisser noch kein Raw-Fenster vorliegt, bleibt der frisch erzeugte Analyse-Cache jetzt erhalten. Die GUI zeigt in diesem Fall nur einen Hinweis, statt den Analyse-Cache wieder zu loeschen.
 - "Suche beenden": Beendet die Ausreisser-Suche und entfernt die Markierungen.
 - Neue Spalte "Ausreisser": Zeigt bei gefundenen Ausreissern den Grund an (z.B. "counter decrease", "< min (0)", "NULL"). Normale Zeilen bleiben leer.
 - Das Limit fuer die maximale Anzahl gefundener Ausreisser kann in den Einstellungen unter `ui_raw_outlier_search_limit` konfiguriert werden (Default: 5000).
