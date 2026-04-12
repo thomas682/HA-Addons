@@ -599,8 +599,17 @@
     }
   }
 
+  function _pickerModeActive(){
+    try{
+      return !!document.querySelector('#ui_picker_toggle.active, #ui_superpicker_toggle.active');
+    }catch(e){
+      return false;
+    }
+  }
+
   function apply(){
     try{
+      if(_pickerModeActive()) return;
       const root = document.querySelector('main.content') || document.body;
       const sel = [
         'button',
@@ -657,6 +666,7 @@
   try{
     let t = null;
     const obs = new MutationObserver(()=>{
+      if(_pickerModeActive()) return;
       if(t) return;
       t = setTimeout(()=>{ t = null; apply(); }, 80);
     });

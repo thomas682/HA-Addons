@@ -4695,9 +4695,25 @@ const ANALYSIS_STEP_ORDER = [
   'cache_read',
   'search',
   'cache_store',
+  'cache_verify',
   'combine',
   'complete',
 ];
+const ANALYSIS_STEP_WEIGHTS = {
+  button_start: 0.04,
+  cache_plan: 0.10,
+  cache_hit: 0.06,
+  validate: 0.05,
+  window: 0.05,
+  types: 0.05,
+  prepare: 0.10,
+  cache_read: 0.22,
+  search: 0.18,
+  cache_store: 0.08,
+  cache_verify: 0.04,
+  combine: 0.02,
+  complete: 0.01,
+};
 const ANALYSIS_STEP_LABELS = {
   button_start: 'Analyse durch Button gestartet',
   cache_plan: 'Cache-Plan laden',
@@ -4709,6 +4725,7 @@ const ANALYSIS_STEP_LABELS = {
   cache_read: 'Fehlende Restbereiche lesen',
   search: 'Ausreisser-Suche ausfuehren',
   cache_store: 'Neue Cache-Segmente speichern',
+  cache_verify: 'Gespeicherten Cache pruefen',
   combine: 'Cache-Segmente kombinieren',
   complete: 'Analyse abgeschlossen',
 };
@@ -5511,7 +5528,7 @@ function updateAnalysisUI(){
     }
 
     // 2. Fortschrittsbalken
-    const pct = s.totalChunks > 0 ? Math.round((s.currentChunk / s.totalChunks) * 100) : 0;
+    const pct = _analysisOverallProgress();
     const $fill = document.getElementById('analysis_progress_fill');
     if($fill) $fill.style.width = pct + '%';
     const $ptxt = document.getElementById('analysis_progress_text');
@@ -5802,6 +5819,43 @@ function _analysisChecklistSet(key, patch){
     _analysisChecklistLog(merged);
   }
   _renderAnalysisChecklist(ANALYSIS_CHECKLIST_ITEMS, ANALYSIS_CHUNK_LOG);
+  try{ updateAnalysisUI(); }catch(e){}
+}
+
+function _analysisStepProgressValue(item){
+  try{
+    if(!item) return 0;
+    const st = String(item.status || 'pending');
+    if(st === 'ok' || st === 'err') return 1;
+    if(st === 'running'){
+      const p = Number(item.progress);
+      if(isFinite(p)) return Math.max(0.05, Math.min(0.99, p));
+      return 0.5;
+    }
+    return 0;
+  }catch(e){
+    return 0;
+  }
+}
+
+function _analysisOverallProgress(){
+  try{
+    const items = Array.isArray(ANALYSIS_CHECKLIST_ITEMS) ? ANALYSIS_CHECKLIST_ITEMS : [];
+    if(!items.length) return 0;
+    let totalWeight = 0;
+    let done = 0;
+    items.forEach((item) => {
+      const key = String(item.key || '');
+      const w = Number(ANALYSIS_STEP_WEIGHTS[key] || 0);
+      if(w <= 0) return;
+      totalWeight += w;
+      done += w * _analysisStepProgressValue(item);
+    });
+    if(totalWeight <= 0) return 0;
+    return Math.max(0, Math.min(100, Math.round((done / totalWeight) * 100)));
+  }catch(e){
+    return 0;
+  }
 }
 
 async function runAnalysis(){
@@ -5943,6 +5997,7 @@ async function runAnalysis(){
   _setStep('prepare', 'ok', {sub: 'Analysezustand vorbereitet und UI aktualisiert.'});
   _setStep('cache_read', 'pending', {});
   _setStep('cache_store', 'pending', {});
+  _setStep('cache_verify', 'pending', {});
   _setStep('combine', 'pending', {});
 
   // Clear previous analysis log
@@ -9841,12 +9896,26 @@ async function startDashboardAnalysis(cacheStrategy){
       }else{
         _analysisChecklistSet('cache_hit', {status: 'ok', sub: 'Kein vorhandener Analyse-Cache fuer diese Auswahl.'});
       }
+      _analysisChecklistSet('cache_verify', {status: 'pending', sub: 'Gespeicherte Segmente werden nach dem Lauf frisch geprueft.'});
     }catch(e){
       _analysisChecklistSet('cache_plan', {status: 'err', sub: e && e.message ? e.message : String(e)});
     }
     ANALYSIS_CACHE_PLAN_CHOICE = Object.assign({}, ANALYSIS_CACHE_PLAN_CHOICE || {}, { cacheStrategy: cacheStrategy || 'reuse', plan: freshPlan });
     await runDashboardAnalysisFlow();
     try{
+      const verifyPlan = (win && win.start && win.stop) ? await fetchAnalysisCachePlan(base, win) : null;
+      const verifySegs = Array.isArray(verifyPlan && verifyPlan.segments) ? verifyPlan.segments.length : 0;
+      const storedSegs = Number(ANALYSIS_CACHE_RUNTIME.store_ok || 0);
+      const dirtySegs = Array.isArray(verifyPlan && verifyPlan.dirty_ranges) ? verifyPlan.dirty_ranges.length : 0;
+      if(storedSegs > 0 && verifySegs > 0){
+        _analysisChecklistSet('cache_verify', {status: 'ok', sub: storedSegs + ' Segment(e) physisch gespeichert und ' + verifySegs + ' Segment(e) direkt wiederverwendbar.'});
+      }else if(storedSegs > 0 && dirtySegs > 0){
+        _analysisChecklistSet('cache_verify', {status: 'err', sub: storedSegs + ' Segment(e) gespeichert, aber der frische Cache-Plan meldet ' + dirtySegs + ' offenen/geaenderten Bereich(e).'});
+      }else if(storedSegs > 0){
+        _analysisChecklistSet('cache_verify', {status: 'err', sub: storedSegs + ' Segment(e) gespeichert, aber im frischen Cache-Plan nicht gefunden.'});
+      }else{
+        _analysisChecklistSet('cache_verify', {status: 'ok', sub: 'Kein neuer Analyse-Cache gespeichert oder erforderlich.'});
+      }
       const combineResult = await combineAnalysisCacheForCurrentSelection();
       if(combineResult && combineResult.note){
         _analysisChecklistSet('combine', {status: 'ok', sub: combineResult.note});

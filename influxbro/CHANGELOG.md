@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.12.304
+
+### Enhancement
+
+- Der Analyse-Fortschrittsbalken startet jetzt sofort nach dem Buttondruck und bildet alle Hauptphasen des Analyseflows ab, statt nur auf der Chunk-Anzahl zu basieren. Die Checkliste hat zusaetzlich den neuen Schritt `Gespeicherten Cache pruefen`, damit physisch gespeicherte Segmente und direkt wiederverwendbare Segmente sichtbar unterschieden werden. ([#248](https://github.com/thomas682/HA-Addons/issues/248))
+
+### Fix
+
+- Tooltips bleiben jetzt auch im `S-Picker` deaktiviert. Der Tooltip-Renderer setzt keine `title`-Attribute mehr nach, solange Picker oder S-Picker aktiv sind. ([#248](https://github.com/thomas682/HA-Addons/issues/248))
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tests: Marker fuer Fortschrittsmodell, Cache-Verifikationsschritt und S-Picker-Tooltip-Unterdrueckung geprueft
+- Tests: Script-Balance fuer `index.html` und `_tooltips.html` geprueft
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.303
 
 ### Fix
