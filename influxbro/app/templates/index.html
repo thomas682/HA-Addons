@@ -7255,7 +7255,7 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog, effective
       RAW_OUTLIER_SCANNED_TOTAL = scannedTotal;
 
       try{
-        await api('./api/analysis_cache/store_segment', {
+        const storeResp = await api('./api/analysis_cache/store_segment', {
           method:'POST',
           headers:{'Content-Type':'application/json'},
           body: JSON.stringify({
@@ -7269,10 +7269,34 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog, effective
             scanned: chunkScanned,
           })
         }, { key: 'analysis_cache_store_' + String(aIso || '') + '_' + String(bIso || ''), silent: true });
+        _saveAnalysisEvent({
+          at: new Date().toISOString(),
+          kind: 'analysis_cache_store',
+          step: 'store_ok',
+          status: 'ok',
+          detail: 'Segment gespeichert',
+          extra: {
+            chunk: chunkIdx + 1,
+            start: aIso,
+            stop: bIso,
+            cache_id: storeResp && storeResp.cache ? String(storeResp.cache.id || '') : '',
+            series_key: storeResp && storeResp.cache ? String(storeResp.cache.series_key || '') : '',
+            rows: got.length,
+            scanned: chunkScanned,
+          },
+        });
         ANALYSIS_CACHE_RUNTIME.store_ok += 1;
         _analysisChecklistSet('cache_store', {status: 'running', sub: ANALYSIS_CACHE_RUNTIME.store_ok + ' Segment(e) gespeichert.'});
       }catch(e){
         ANALYSIS_CACHE_RUNTIME.store_err += 1;
+        _saveAnalysisEvent({
+          at: new Date().toISOString(),
+          kind: 'analysis_cache_store',
+          step: 'store_err',
+          status: 'err',
+          detail: 'Store-Response ohne gueltige Cache-Metadaten',
+          extra: { chunk: chunkIdx + 1, start: aIso, stop: bIso, rows: got.length, scanned: chunkScanned, error: e && e.message ? e.message : String(e) },
+        });
         _analysisChecklistSet('cache_store', {status: 'err', sub: 'Speichern fehlgeschlagen: ' + (e && e.message ? e.message : String(e))});
       }
 

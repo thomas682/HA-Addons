@@ -2567,7 +2567,9 @@ def _analysis_cache_write_payload(cache_id: str, payload: dict[str, Any]) -> int
 def _analysis_cache_list_meta() -> list[dict[str, Any]]:
     try:
         if not ANALYSIS_CACHE_DIR.exists():
+            LOG.info("analysis_cache_list_meta files_found=0 meta_loaded=0 dir_exists=False")
             return []
+        file_count = len(list(ANALYSIS_CACHE_DIR.glob("*.meta.json")))
         out: list[dict[str, Any]] = []
         for p in sorted(ANALYSIS_CACHE_DIR.glob("*.meta.json")):
             try:
@@ -2576,6 +2578,7 @@ def _analysis_cache_list_meta() -> list[dict[str, Any]]:
                     out.append(j)
             except Exception:
                 continue
+        LOG.info("analysis_cache_list_meta files_found=%d meta_loaded=%d", file_count, len(out))
         return out
     except Exception:
         return []
@@ -2606,6 +2609,15 @@ def _analysis_cache_store_segment(
     try:
         key = _analysis_cache_key(cfg, measurement, field, entity_id, friendly_name, start_iso, stop_iso)
         cache_id = _analysis_cache_id(key)
+        LOG.info(
+            "analysis_cache_store_segment start cache_id=%s series_key=%s start=%s stop=%s rows=%d scanned=%d",
+            cache_id,
+            _analysis_cache_series_key(measurement, field, entity_id, friendly_name),
+            start_iso,
+            stop_iso,
+            len(rows),
+            scanned,
+        )
         now = _utc_now_iso_ms()
         payload = {
             "ok": True,
@@ -2626,6 +2638,12 @@ def _analysis_cache_store_segment(
                 cache_id,
             )
             return None
+        LOG.info(
+            "analysis_cache_store_segment payload_written cache_id=%s bytes=%d data_path=%s",
+            cache_id,
+            bytes_written,
+            str(_analysis_cache_data_path(cache_id)),
+        )
         prev = _analysis_cache_load_meta(cache_id) or {}
         meta = {
             "v": 1,
@@ -2650,6 +2668,13 @@ def _analysis_cache_store_segment(
             "search_types": ["bounds", "counter", "decrease", "fault_phase", "null", "zero"],
         }
         _analysis_cache_write_meta(meta)
+        LOG.info(
+            "analysis_cache_store_segment meta_written cache_id=%s meta_path=%s updated_at=%s outlier_count=%d",
+            cache_id,
+            str(_analysis_cache_meta_path(cache_id)),
+            now,
+            len(rows),
+        )
         meta_path = _analysis_cache_meta_path(cache_id)
         data_path = _analysis_cache_data_path(cache_id)
         if not meta_path.exists() or not data_path.exists():
@@ -2674,6 +2699,13 @@ def _analysis_cache_store_segment(
                 bool(stored_payload and bool(stored_payload.get("ok"))),
             )
             return None
+        LOG.info(
+            "analysis_cache_store_segment verified cache_id=%s meta_ok=%s payload_ok=%s series_key=%s",
+            cache_id,
+            bool(stored_meta),
+            bool(stored_payload and bool(stored_payload.get("ok"))),
+            str(meta.get("series_key") or ""),
+        )
         return stored_meta
     except Exception as e:
         LOG.error(
@@ -3509,6 +3541,19 @@ def _analysis_cache_plan(
             cached_outlier_count += int((seg.get("meta") or {}).get("outlier_count") or 0)
         except Exception:
             continue
+    LOG.info(
+        "analysis_cache_plan series_key=%s selected=%d gaps=%d dirty_ranges=%d dirty_changes=%d",
+        series_key,
+        len(selected),
+        len(gaps),
+        len(dirty_ranges),
+        len(dirty_changes),
+    )
+    LOG.info(
+        "analysis_cache_plan selected_ids=%s dirty_cache_ids=%s",
+        [str(s.get("cache_id") or "") for s in selected],
+        list({str(ch.get("cache_id") or "") for ch in dirty_changes if ch.get("cache_id")}),
+    )
     return {
         "request": {
             "start": _dt_to_rfc3339_utc(req_start),
@@ -3584,6 +3629,11 @@ def _analysis_cache_group_list(cfg: dict[str, Any]) -> list[dict[str, Any]]:
         group["updated_at"] = max((str(s.get("updated_at") or "") for s in segs), default=None)
         group["paths"] = [str(s.get("data_path") or "") for s in segs if str(s.get("data_path") or "")]
     out.sort(key=lambda g: str(g.get("updated_at") or ""), reverse=True)
+    LOG.info(
+        "analysis_cache_group_list groups=%d series=%s",
+        len(out),
+        [str(g.get("series_key") or "") for g in out[:20]],
+    )
     return out
 
 
@@ -11983,16 +12033,36 @@ def api_analysis_cache_store_segment():
     scanned = int(body.get("scanned") or 0)
     if not measurement or not field or not start_iso or not stop_iso:
         return jsonify({"ok": False, "error": "measurement, field, start, stop required"}), 400
+    LOG.info(
+        "api.analysis_cache.store_segment called measurement=%s field=%s entity_id=%s friendly_name=%s start=%s stop=%s rows=%d scanned=%d",
+        measurement,
+        field,
+        entity_id,
+        friendly_name,
+        start_iso,
+        stop_iso,
+        len(rows),
+        scanned,
+    )
     meta = _analysis_cache_store_segment(cfg, measurement, field, entity_id, friendly_name, start_iso, stop_iso, rows, scanned)
     if not meta:
         return jsonify({"ok": False, "error": "store failed"}), 500
+    LOG.info(
+        "api.analysis_cache.store_segment ok cache_id=%s series_key=%s outlier_count=%s bytes=%s",
+        str(meta.get("id") or ""),
+        str(meta.get("series_key") or ""),
+        str(meta.get("outlier_count") or 0),
+        str(meta.get("bytes") or 0),
+    )
     return jsonify({"ok": True, "cache": meta})
 
 
 @app.get("/api/analysis_cache/list")
 def api_analysis_cache_list():
     cfg = _overlay_from_yaml_if_enabled(load_cfg())
-    return jsonify({"ok": True, "series": _analysis_cache_group_list(cfg)})
+    rows = _analysis_cache_group_list(cfg)
+    LOG.info("api.analysis_cache.list result groups=%d", len(rows))
+    return jsonify({"ok": True, "series": rows})
 
 
 @app.post("/api/analysis_cache/delete")

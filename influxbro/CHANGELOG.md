@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.12.307
+
+### Maintenance
+
+- Das Analyse-Cache-Diagnoselogging wurde erweitert: Store, List und Plan schreiben jetzt detaillierte Diagnoseeintraege mit `cache_id`, `series_key`, Dateipfaden, Anzahl gefundener Metadateien sowie `selected`/`dirty`-Zustaenden. Auch das Frontend loggt jetzt die Store-Responses mit Cache-Metadaten explizit. ([#252](https://github.com/thomas682/HA-Addons/issues/252))
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tests: Marker fuer Analyse-Cache-Diagnoselogging in Backend und Frontend geprueft
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.306
 
 ### Fix
