@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.306
+
+### Fix
+
+- Analyse-Cache-Segmente werden bei Plan- und Listenaufbau nicht mehr vollstaendig ueber den bisherigen `cfg_fp`-Filter ausgeblendet. Dadurch bleiben frisch gespeicherte Analyse-Cache-Segmente fuer dieselbe Serie in `Cache pruefen` sichtbar, auch wenn sich query-nahe UI-Settings oder Fingerprints geaendert haben. ([#251](https://github.com/thomas682/HA-Addons/issues/251))
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.305
 
 ### Fix

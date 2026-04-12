@@ -3432,7 +3432,6 @@ def _analysis_cache_plan(
 ) -> dict[str, Any]:
     req_start = start_dt
     req_stop = stop_dt
-    cfg_fp = _analysis_cache_cfg_fp(cfg)
     series_key = _analysis_cache_series_key(measurement, field, entity_id, friendly_name)
     candidates: list[dict[str, Any]] = []
     dirty_ranges: list[tuple[datetime, datetime]] = []
@@ -3440,8 +3439,6 @@ def _analysis_cache_plan(
     for meta in _analysis_cache_list_meta():
         try:
             key = meta.get("key") if isinstance(meta.get("key"), dict) else {}
-            if str(key.get("cfg_fp") or "") != cfg_fp:
-                continue
             if str(meta.get("series_key") or "") != series_key:
                 continue
             cache_id = str(meta.get("id") or "").strip()
@@ -3531,9 +3528,6 @@ def _analysis_cache_group_list(cfg: dict[str, Any]) -> list[dict[str, Any]]:
     groups: dict[str, dict[str, Any]] = {}
     for meta in _analysis_cache_list_meta():
         try:
-            key = meta.get("key") if isinstance(meta.get("key"), dict) else {}
-            if str(key.get("cfg_fp") or "") != _analysis_cache_cfg_fp(cfg):
-                continue
             series_key = str(meta.get("series_key") or "").strip()
             if not series_key:
                 continue
