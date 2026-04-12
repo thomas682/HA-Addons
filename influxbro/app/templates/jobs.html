@@ -70,7 +70,9 @@
       <h2>Jobs &amp; Cache</h2>
       <div class="muted">Background-Jobs (Statistik, Restore/Copy). Hier siehst du laufende Jobs und die letzten abgeschlossenen Jobs aus der Historie.</div>
 
-        <div class="card">
+        <details class="card" open data-ui="jobs_main.section_root" title="jobs.section.root">
+          <summary><span class="ib_summary_row"><span>Jobs</span></span></summary>
+          <div class="card_body" style="padding:12px;">
           <div class="row" data-ui="jobs_main.panel_controls" title="jobs.controls">
             <div>
               <label class="muted" style="display:block; font-size: 12px;">Auto-Refresh</label>
@@ -160,10 +162,13 @@
               <tbody></tbody>
             </table>
           </div>
-        </div>
+          </div>
+        </details>
       </div>
 
-      <div class="card" data-ui="jobs_cache.panel_card" title="cache.card">
+      <details class="card" open data-ui="jobs_cache.section_root" title="cache.section.root">
+        <summary><span class="ib_summary_row"><span>Cache</span></span></summary>
+        <div class="card_body" style="padding:12px;">
         <div style="display:flex; align-items:baseline; justify-content:space-between; gap: 10px; flex-wrap:wrap;">
           <div>
             <div style="font-weight:800;">Cache</div>
@@ -251,9 +256,12 @@
           </table>
           </div>
         </div>
-      </div>
+        </div>
+      </details>
 
-      <div class="card" data-ui="jobs_analysis_cache.panel_card" title="analysis_cache.card">
+      <details class="card" open data-ui="jobs_analysis_cache.section_root" title="analysis_cache.section.root">
+        <summary><span class="ib_summary_row"><span>Analysecache</span></span></summary>
+        <div class="card_body" style="padding:12px;">
         <div style="display:flex; align-items:baseline; justify-content:space-between; gap:10px; flex-wrap:wrap;">
           <div>
             <div style="font-weight:800;">Analysecache</div>
@@ -314,9 +322,12 @@
             </table>
           </div>
         </div>
-      </div>
+        </div>
+      </details>
 
-      <div class="card" data-ui="jobs_timers.panel_card" title="timers.card">
+      <details class="card" open data-ui="jobs_timers.section_root" title="timers.section.root">
+        <summary><span class="ib_summary_row"><span>Timer Jobs</span></span></summary>
+        <div class="card_body" style="padding:12px;">
         <div style="display:flex; align-items:baseline; justify-content:space-between; gap: 10px; flex-wrap:wrap;">
           <div>
             <div style="font-weight:800;">Timer Jobs</div>
@@ -376,9 +387,12 @@
             </table>
           </div>
         </div>
-      </div>
+        </div>
+      </details>
 
-      <div class="card" data-ui="jobs_usage.panel_card" title="usage.card">
+      <details class="card" open data-ui="jobs_usage.section_root" title="usage.section.root">
+        <summary><span class="ib_summary_row"><span>Cache Nutzung</span></span></summary>
+        <div class="card_body" style="padding:12px;">
         <div style="display:flex; align-items:baseline; justify-content:space-between; gap: 10px; flex-wrap:wrap;">
           <div>
             <div style="font-weight:800;">Cache Nutzung</div>
@@ -463,7 +477,8 @@
             </table>
           </div>
         </div>
-      </div>
+        </div>
+      </details>
 
       <script>
       const $auto = document.getElementById('auto');

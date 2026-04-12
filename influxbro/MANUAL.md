@@ -331,6 +331,9 @@ Raw Daten (DB):
 - Das Suchfeld in der rechten Titelzeile ist jetzt flexibler und darf bei kleiner Fensterbreite auf minimale Breite schrumpfen, damit es nicht mehr von den folgenden Buttons ueberdeckt wird.
 - Jobs & Cache: Die Tabellen in Jobs, Cache, Analyse-Cache, Timer und Cache-Nutzung unterstuetzen jetzt Mehrfachauswahl per Zeilenklick sowie `selektiere alle` / `selektiere keine` in der jeweiligen Tabellenleiste. In der Analyse-Cache-Tabelle wurden `entity_id` und `friendly_name` als eigene Spalten aufgeteilt, `Groesse` umbenannt und `series` ans Tabellenende verschoben.
 - Tooltips sind sowohl im Picker-Modus als auch im S-Picker-Modus unterdrueckt, damit der Hover-Inspektor nicht durch nachtraeglich gesetzte `title`-Attribute stoert.
+- Tabellen-Tooltips zeigen bei Tabellenzellen jetzt den sichtbaren Zelltext und den bisherigen Elementnamen in Klammern.
+- Weitere Bereiche sind jetzt als einklappbare Sections umgesetzt, darunter `Template-Status` im Monitor, die Backupliste/FullBackupliste sowie die grossen Bereiche in `Jobs & Cache`.
+- Die Log-Redaction maskiert zusaetzlich Begriffe wie `admin_token`, `secret`, `private_key`, `public_key` und `access_key` aggressiver.
 
 Konzept fuer sehr grosse Tabellen (z.B. ~2 Mio Zeilen):
 

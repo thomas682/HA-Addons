@@ -584,18 +584,7 @@
 
   function _tableCellDesc(td){
     try{
-      const tr = td && td.parentElement ? td.parentElement : null;
-      const tbl = td.closest('table');
-      if(!tbl) return _short(td.textContent, 200);
-      const thead = tbl.querySelector('thead');
-      const ths = thead ? Array.from(thead.querySelectorAll('th')) : [];
-      const tds = tr ? Array.from(tr.querySelectorAll('td')) : [];
-      const idx = tds.indexOf(td);
-      const th = (idx >= 0 && idx < ths.length) ? ths[idx] : null;
-      const col = th ? _norm(th.textContent) : '';
       const val = _short(td.textContent, 200);
-      if(col && val) return col + ': ' + val;
-      if(col) return col;
       return val;
     }catch(e){
       return _short(td && td.textContent ? td.textContent : '', 200);

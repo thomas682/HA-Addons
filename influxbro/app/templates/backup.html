@@ -243,7 +243,10 @@
 
         <div class="muted" id="loc" data-ui="backup_main.panel_location" title="backup.location" style="margin-top:10px;"></div>
 
-        <div class="table_wrap" data-ui="backup_table.panel_wrap" title="backup.table.wrap">
+        <details class="card" open data-ui="backup_table.section_root" title="backup.table.section">
+          <summary><span class="ib_summary_row"><span>Backupliste</span></span></summary>
+          <div class="card_body" style="padding:10px;">
+          <div class="table_wrap" data-ui="backup_table.panel_wrap" title="backup.table.wrap">
           <div class="table_title">Backupliste</div>
           <div class="table_head" data-ui="backup_table.panel_head" title="backup.table.head">
             <div class="tbl_actions" data-ui="backup_table.panel_actions" title="backup.table.actions">
@@ -308,7 +311,9 @@
               <tbody id="rows"></tbody>
             </table>
           </div>
-        </div>
+          </div>
+          </div>
+        </details>
         </details>
       </div>
 
@@ -348,9 +353,12 @@
 
           <div class="muted" id="fullbackup_loc" data-ui="backup_fullbackup.panel_location" title="backup.fullbackup.location" style="margin-top:10px;"></div>
 
-           <div class="table_wrap" data-ui="backup_fullbackup.panel_table_wrap" title="backup.fullbackup.table.wrap">
-             <div class="table_title">FullBackupliste</div>
-             <div class="table_head" data-ui="backup_fullbackup.panel_table_head" title="backup.fullbackup.table.head">
+           <details class="card" open data-ui="backup_fullbackup.table_section_root" title="backup.fullbackup.table.section">
+             <summary><span class="ib_summary_row"><span>FullBackupliste</span></span></summary>
+             <div class="card_body" style="padding:10px;">
+             <div class="table_wrap" data-ui="backup_fullbackup.panel_table_wrap" title="backup.fullbackup.table.wrap">
+              <div class="table_title">FullBackupliste</div>
+              <div class="table_head" data-ui="backup_fullbackup.panel_table_head" title="backup.fullbackup.table.head">
                <div class="tbl_actions" data-ui="backup_fullbackup.panel_table_actions" title="backup.fullbackup.table.actions">
                  <button id="fullbackup_reload" data-ui="backup_fullbackup.btn_reload" title="backup.fullbackup.reload" aria-label="Liste aktualisieren" class="btn_sm" style="height:34px; padding:8px 10px;"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 12a8 8 0 1 1-2.34-5.66" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M20 4v6h-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
                  <button id="fullbackup_autowidth" class="btn_sm" data-ui="backup_fullbackup.btn_autowidth" title="backup.fullbackup.autowidth" aria-label="Spaltenbreite automatisch" style="height:34px; padding:8px 10px;">
@@ -376,7 +384,7 @@
               <div class="muted" id="fullbackup_list_info" data-ui="backup_fullbackup.panel_list_info" title="backup.fullbackup.list_info"></div>
             </div>
 
-            <div class="table_box" id="fullbackup_box" data-ui="backup_fullbackup.panel_table_box" title="backup.fullbackup.table_box">
+             <div class="table_box" id="fullbackup_box" data-ui="backup_fullbackup.panel_table_box" title="backup.fullbackup.table_box">
               <table id="fullbackup_tbl" class="ib_tbl" data-ui="backup_fullbackup.tbl_table" title="backup.fullbackup.table">
                 <thead>
                   <tr>
@@ -398,8 +406,10 @@
                 </thead>
                 <tbody id="fullbackup_rows"></tbody>
               </table>
-            </div>
-          </div>
+             </div>
+             </div>
+             </div>
+           </details>
         </details>
       </div>
 

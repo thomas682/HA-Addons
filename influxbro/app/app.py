@@ -437,7 +437,8 @@ def _redact_secrets(s: str) -> str:
     # Bearer tokens
     out = re.sub(r"(?i)(authorization\s*[:=]\s*bearer\s+)([^\s\"]+)", r"\1***", out)
     # Common key=value patterns
-    out = re.sub(r"(?i)\b(token|password|passwd|api_key|apikey)\s*[:=]\s*([^\s,;\"]+)", r"\1=***", out)
+    out = re.sub(r"(?i)\b(token|admin_token|password|passwd|api_key|apikey|secret|private_key|public_key|access_key)\s*[:=]\s*([^\s,;\"]+)", r"\1=***", out)
+    out = re.sub(r'(?i)(\b(?:token|admin_token|password|passwd|api_key|apikey|secret|private_key|public_key|access_key)\b\s*["\']?\s*[:=]\s*["\'])([^"\'\s]+)(["\'])', r'\1***\3', out)
     return out
 
 

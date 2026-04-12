@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.12.312
+
+### Fix
+
+- Zweites Teilpaket fuer `#250`: Tabellen-Tooltips zeigen bei Tabellenzellen jetzt den Zelltext und den bisherigen Elementnamen in Klammern. Ausserdem wurden die geforderten Bereiche in Monitor, Backup und Jobs & Cache in einklappbare Sections umgebaut. Die Log-Redaction maskiert zusaetzlich `admin_token`, `secret`, `private_key`, `public_key` und `access_key` aggressiver. ([#250](https://github.com/thomas682/HA-Addons/issues/250))
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tests: Script-Balance fuer `monitor.html`, `backup.html`, `jobs.html` und `_tooltips.html` geprueft
+- Tests: Marker fuer `#250` Teilpaket 2 geprueft
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.311
 
 ### Enhancement

@@ -125,8 +125,11 @@
         </div>
       </details>
 
-      <div class="table_wrap" data-ui="monitor_summary.panel_wrap" title="monitor.summary.wrap">
-        <div class="table_title">Template-Status</div>
+      <details class="card" open data-ui="monitor_summary.section_root" title="monitor.summary.section">
+        <summary><span class="ib_summary_row"><span>Template-Status</span></span></summary>
+        <div class="card_body" style="padding:10px;">
+        <div class="table_wrap" data-ui="monitor_summary.panel_wrap" title="monitor.summary.wrap">
+          <div class="table_title">Template-Status</div>
         <div class="table_head">
           <div class="tbl_actions">
             <button id="reload_all" class="btn_sm" data-ui="monitor_main.btn_reload" title="monitor.reload">Refresh</button>
@@ -141,7 +144,9 @@
             <tbody id="summary_rows"></tbody>
           </table>
         </div>
-      </div>
+        </div>
+        </div>
+      </details>
 
       <div class="table_wrap" data-ui="monitor_pending.panel_wrap" title="monitor.pending.wrap">
         <div class="table_title">Offene Korrekturen</div>
