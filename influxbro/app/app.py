@@ -13469,6 +13469,10 @@ def measurements():
             return jsonify({"ok": False, "error": f"invalid start/stop: {e}"}), 400
     selector_range = _selector_range_key(range_key, start_dt, stop_dt)
     try:
+        selector_limit = min(200000, max(1, int(cfg.get("ui_query_max_points", 5000) or 5000)))
+    except Exception:
+        selector_limit = 5000
+    try:
         if int(cfg.get("influx_version",2)) == 2:
             if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
                 return jsonify({
@@ -13495,7 +13499,7 @@ from(bucket: "{cfg["bucket"]}")
   |> sort(columns: ["_measurement"])
   |> map(fn: (r) => ({{ _value: r._measurement }}))
   |> keep(columns: ["_value"])
-  |> limit(n: 5000)
+  |> limit(n: {selector_limit})
 '''
                 else:
                     q = f'import "influxdata/influxdb/schema"\nschema.measurements(bucket: "{cfg["bucket"]}")'
@@ -13550,6 +13554,10 @@ def fields():
         except Exception as e:
             return jsonify({"ok": False, "error": f"invalid start/stop: {e}"}), 400
     selector_range = _selector_range_key(range_key, start_dt, stop_dt)
+    try:
+        selector_limit = min(200000, max(1, int(cfg.get("ui_query_max_points", 5000) or 5000)))
+    except Exception:
+        selector_limit = 5000
     if not measurement and not entity_id and not friendly_name:
         return jsonify({"ok": False, "error": "measurement or tag filter required"}), 400
     try:
@@ -13578,7 +13586,7 @@ from(bucket: "{cfg["bucket"]}")
   |> sort(columns: ["_field"])
   |> map(fn: (r) => ({{ _value: r._field }}))
   |> keep(columns: ["_value"])
-  |> limit(n: 5000)
+  |> limit(n: {selector_limit})
 '''
                 log_query("api.fields (flux)", q)
                 tables = c.query_api().query(q, org=cfg["org"])
@@ -13644,6 +13652,10 @@ def tag_values():
         except Exception as e:
             return jsonify({"ok": False, "error": f"invalid start/stop: {e}"}), 400
     selector_range = _selector_range_key(range_key, start_dt, stop_dt)
+    try:
+        selector_limit = min(200000, max(1, int(cfg.get("ui_query_max_points", 5000) or 5000)))
+    except Exception:
+        selector_limit = 5000
 
     try:
         if int(cfg.get("influx_version",2)) == 2:
@@ -13677,7 +13689,7 @@ from(bucket: "{cfg["bucket"]}")
   |> sort(columns: ["{tag}"])
   |> map(fn: (r) => ({{ _value: r.{tag} }}))
   |> keep(columns: ["_value"])
-  |> limit(n: 5000)
+  |> limit(n: {selector_limit})
 '''
                 else:
                     start_arg = range_to_flux(selector_range)

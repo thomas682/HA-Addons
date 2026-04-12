@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.309
+
+### Fix
+
+- Verbliebene userrelevante 5000-Hardlimits wurden auf bestehende Einstellungen umgestellt: die Ausreisser-Suche nutzt jetzt `ui_raw_outlier_search_limit` auch in der Frontend-Begrenzung, und die Measurement/Field/Tag-Selector-Flux-Queries verwenden `ui_query_max_points` statt fester `limit(n: 5000)`. ([#253](https://github.com/thomas682/HA-Addons/issues/253))
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tests: Marker fuer konfigurierbare 5000-Grenzen in Backend und Frontend geprueft
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.308
 
 ### Fix

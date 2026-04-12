@@ -326,6 +326,7 @@ Raw Daten (DB):
 - "Suche beenden": Beendet die Ausreisser-Suche und entfernt die Markierungen.
 - Neue Spalte "Ausreisser": Zeigt bei gefundenen Ausreissern den Grund an (z.B. "counter decrease", "< min (0)", "NULL"). Normale Zeilen bleiben leer.
 - Das Limit fuer die maximale Anzahl gefundener Ausreisser kann in den Einstellungen unter `ui_raw_outlier_search_limit` konfiguriert werden (Default: 5000).
+- Auch die clientseitige Begrenzung der Ausreisser-Ergebnislisten nutzt jetzt `ui_raw_outlier_search_limit`. Die Selector-Queries fuer Measurements, Fields und Tag-Werte verwenden `ui_query_max_points` statt einer festen 5000-Grenze.
 - Die Fehler-Statusleiste besitzt Schnellaktionen fuer `Bugreport`, `5 min Logs` und `Jump Logs`.
 - Das Suchfeld in der rechten Titelzeile ist jetzt flexibler und darf bei kleiner Fensterbreite auf minimale Breite schrumpfen, damit es nicht mehr von den folgenden Buttons ueberdeckt wird.
 - Tooltips sind sowohl im Picker-Modus als auch im S-Picker-Modus unterdrueckt, damit der Hover-Inspektor nicht durch nachtraeglich gesetzte `title`-Attribute stoert.
