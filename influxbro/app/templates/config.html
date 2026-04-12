@@ -2039,6 +2039,64 @@ function _cfgLinkRow(label, targetSel){
 
 function restructureSettings(){
   try{
+    const main = document.querySelector('main.content');
+    const saveCard = document.querySelector('.save_card');
+    if(!main || !saveCard || main.dataset.restructured250 === '1'){
+      try{ if(window.InfluxBroNormalizeSummaryActions) window.InfluxBroNormalizeSummaryActions(); }catch(e){}
+      return;
+    }
+    main.dataset.restructured250 = '1';
+
+    const sections = {
+      yaml: _cfgDetach('details.card[title="settings.section.yaml"]'),
+      conn: _cfgDetach('details.card[title="settings.section.conn"]'),
+      v2: _cfgDetach('details.card[title="settings.section.v2"]'),
+      v1: _cfgDetach('details.card[title="settings.section.v1"]'),
+      ui: _cfgDetach('details.card[title="settings.section.ui"]'),
+      stats: _cfgDetach('#ui_page_stats'),
+      backup: _cfgDetach('#ui_page_backup'),
+      restore: _cfgDetach('#ui_page_restore'),
+      jobs: _cfgDetach('#ui_page_jobs'),
+      logsPage: _cfgDetach('#ui_page_logs'),
+      history: _cfgDetach('#ui_page_history'),
+      export: _cfgDetach('#ui_page_export'),
+      importPage: _cfgDetach('#ui_page_import'),
+      logs: _cfgDetach('details.card[title="settings.section.logs"]'),
+      outliers: _cfgDetach('details.card[title="settings.section.outliers"]'),
+      links: _cfgDetach('#ui_links'),
+    };
+
+    const groups = [
+      ['Anbindung', 'config_settings.group_connection', [sections.yaml, sections.conn, sections.v2, sections.v1]],
+      ['Dashboard', 'config_settings.group_dashboard', [sections.ui && (()=>{ _cfgRetitle(sections.ui, 'Dashboard', 'config_settings.group_dashboard_content'); return sections.ui; })()]],
+      ['Statistik', 'config_settings.group_stats', [sections.stats]],
+      ['Datenqualitaet', 'config_settings.group_quality', [sections.outliers]],
+      ['Monitor', 'config_settings.group_monitor', []],
+      ['Backup', 'config_settings.group_backup', [sections.backup]],
+      ['Restore', 'config_settings.group_restore', [sections.restore]],
+      ['Kombinieren', 'config_settings.group_combine', []],
+      ['Export', 'config_settings.group_export', [sections.export]],
+      ['Import', 'config_settings.group_import', [sections.importPage]],
+      ['Logs', 'config_settings.group_logs', [sections.logsPage, sections.logs]],
+      ['Jobs & Cache', 'config_settings.group_jobs_cache', [sections.jobs]],
+      ['History', 'config_settings.group_history', [sections.history]],
+      ['Diagnose', 'config_settings.group_diagnostics', [sections.links]],
+      ['Changelog', 'config_settings.group_changelog', []],
+      ['Handbuch', 'config_settings.group_manual', []],
+      ['Profilverwaltung', 'config_settings.group_profiles', []],
+      ['Einstellungen', 'config_settings.group_settings', []],
+    ];
+
+    groups.forEach(([title, dataUi, nodes])=>{
+      const sec = _cfgMakeSection(title, dataUi, '');
+      const body = _cfgBody(sec);
+      (nodes || []).forEach((node)=>{ if(node && body) body.appendChild(node); });
+      if((nodes || []).filter(Boolean).length === 0 && body){
+        body.appendChild(_cfgSectionNote('Derzeit keine eigenen Einstellungen in diesem Bereich.')); 
+      }
+      main.insertBefore(sec, saveCard);
+    });
+
     try{ if(window.InfluxBroNormalizeSummaryActions) window.InfluxBroNormalizeSummaryActions(); }catch(e){}
   }catch(e){}
 }

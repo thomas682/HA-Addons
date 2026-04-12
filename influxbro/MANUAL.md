@@ -729,6 +729,7 @@ Neu:
 - Jobs: Max Job Laufzeit (Sekunden) fuer Auto-Abbruch; Job-Farben (running/done/error/cancelled).
 - Job-Farben koennen per Colorpicker oder per Hex (`#RRGGBB`) gesetzt werden.
 - Ausreisser Tabelle: `_measurement` ist nicht editierbar; Zeilen werden automatisch aus bekannten Measurements vorbefuellt.
+- Die Einstellungsseite ist jetzt in grobe Obergruppen gegliedert, u.a. `Anbindung`, `Dashboard`, `Statistik`, `Backup`, `Restore`, `Logs`, `Jobs & Cache`, `History`, `Diagnose` und `Einstellungen`. Bereiche ohne eigene Felder werden als Platzhalter sichtbar gehalten, damit die Struktur konsistent bleibt.
 
 Verbindung:
 

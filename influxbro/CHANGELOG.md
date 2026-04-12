@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.313
+
+### Enhancement
+
+- Drittes Teilpaket fuer `#250`: Die Einstellungsseite wurde auf die gewuenschte neue Oberstruktur umgestellt. Vorhandene Cards werden jetzt unter Gruppen wie `Anbindung`, `Dashboard`, `Statistik`, `Backup`, `Restore`, `Logs`, `Jobs & Cache`, `History`, `Diagnose` und `Einstellungen` einsortiert; Bereiche ohne eigene Felder erscheinen als klare Platzhalter statt zu verschwinden. ([#250](https://github.com/thomas682/HA-Addons/issues/250))
+
+### Maintenance
+
+- Tests: Script-Balance und Marker fuer `restructureSettings()` geprueft
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.312
 
 ### Fix
