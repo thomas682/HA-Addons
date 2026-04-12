@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.311
+
+### Enhancement
+
+- Jobs & Cache: Tabellen im Bereich Jobs, Cache, Analyse-Cache, Timer und Cache-Nutzung lassen sich jetzt per Zeilenklick mehrfacht selektieren. Neue Buttons `selektiere alle` und `selektiere keine` stehen in den Tabellenleisten bereit; vorhandene Aktionen wie Loeschen, Neu aufbauen, Start oder Abbruch arbeiten auf den selektierten Zeilen. In der Analyse-Cache-Tabelle wurden ausserdem die Spalten umgestellt (`entity_id`, `friendly_name`, `Groesse`, `series` am Ende) und `Alle loeschen` in die Tabellenaktionen verschoben. ([#255](https://github.com/thomas682/HA-Addons/issues/255))
+
+### Maintenance
+
+- Tests: Script-Balance fuer `jobs.html` geprueft
+- Tests: Marker fuer Mehrfachauswahl, Select-All/None und Analyse-Cache-Spaltenlayout geprueft
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.310
 
 ### Fix

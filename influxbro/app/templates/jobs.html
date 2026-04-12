@@ -132,6 +132,8 @@
               </button>
               <label><input type="checkbox" id="jobs_wrap" data-ui="jobs_table.chk_wrap_toggle" title="jobs.table.wrap_toggle"/>Umbruch</label>
               <label><input type="checkbox" id="jobs_colfilter" data-ui="jobs_table.chk_colfilter" title="jobs.table.colfilter"/>Spaltenfilter</label>
+              <button class="btn_xs" id="jobs_select_all_btn" data-ui="jobs_table.btn_select_all" title="jobs.table.select_all" style="width:auto; min-width:34px; padding:6px 8px;" aria-label="Selektiere alle"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M20.5 7.75v10A2.75 2.75 0 0 1 17.75 20.5H7.75a2.75 2.75 0 0 1-2.12-1h11.62a3.25 3.25 0 0 0 3.25-3.25V7.75zM17.2468 3.5H4.25a.75.75 0 0 0-.75.75v12.9968c0 .4142.3358.75.75.75h12.9968a.75.75 0 0 0 .75-.75V4.25a.75.75 0 0 0-.75-.75zm-7.6657 7.8582 3.8885-3.8885a.75.75 0 1 1 1.0606 1.0606l-4.5 4.5a.75.75 0 0 1-1.1304-.0489l-1.5-2a.75.75 0 1 1 1.2-.9z" fill="currentColor"/></svg></button>
+              <button class="btn_xs" id="jobs_select_none_btn" data-ui="jobs_table.btn_select_none" title="jobs.table.select_none" style="width:auto; min-width:34px; padding:6px 8px;" aria-label="Selektiere keine"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M20.5 7.75v10A2.75 2.75 0 0 1 17.75 20.5H7.75a2.75 2.75 0 0 1-2.12-1h11.62a3.25 3.25 0 0 0 3.25-3.25V7.75zM17.2468 3.5H4.25a.75.75 0 0 0-.75.75v12.9968c0 .4142.3358.75.75.75h12.9968a.75.75 0 0 0 .75-.75V4.25a.75.75 0 0 0-.75-.75z" fill="currentColor"/></svg></button>
               <button class="btn_xs" id="jobs_details_btn" data-ui="jobs_table.btn_details" title="jobs.table.details" disabled>Details</button>
               <button class="btn_xs" id="jobs_copy_btn" data-ui="jobs_table.btn_copy_id" title="jobs.table.copy_id" disabled>Copy ID</button>
               <button class="btn_xs" id="jobs_open_btn" data-ui="jobs_table.btn_open_stats" title="jobs.table.open_stats" disabled>Open Statistik</button>
@@ -144,7 +146,6 @@
             <table id="tbl" class="ib_tbl" data-ui="jobs_main.tbl_table" title="jobs.table">
               <thead>
                 <tr>
-                  <th style="width: 46px;">sel</th>
                   <th style="width: 180px;">job_id</th>
                   <th style="width: 160px;">started</th>
                   <th style="width: 90px;">elapsed</th>
@@ -214,6 +215,8 @@
               </button>
               <label><input type="checkbox" id="cache_wrap" data-ui="jobs_cache.chk_table_wrap_toggle" title="cache.table.wrap_toggle"/>Umbruch</label>
               <label><input type="checkbox" id="cache_colfilter" data-ui="jobs_cache.chk_table_colfilter" title="cache.table.colfilter"/>Spaltenfilter</label>
+              <button class="btn_xs" id="cache_select_all_btn" data-ui="jobs_cache.btn_select_all" title="cache.table.select_all" style="width:auto; min-width:34px; padding:6px 8px;" aria-label="Selektiere alle"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M20.5 7.75v10A2.75 2.75 0 0 1 17.75 20.5H7.75a2.75 2.75 0 0 1-2.12-1h11.62a3.25 3.25 0 0 0 3.25-3.25V7.75zM17.2468 3.5H4.25a.75.75 0 0 0-.75.75v12.9968c0 .4142.3358.75.75.75h12.9968a.75.75 0 0 0 .75-.75V4.25a.75.75 0 0 0-.75-.75zm-7.6657 7.8582 3.8885-3.8885a.75.75 0 1 1 1.0606 1.0606l-4.5 4.5a.75.75 0 0 1-1.1304-.0489l-1.5-2a.75.75 0 1 1 1.2-.9z" fill="currentColor"/></svg></button>
+              <button class="btn_xs" id="cache_select_none_btn" data-ui="jobs_cache.btn_select_none" title="cache.table.select_none" style="width:auto; min-width:34px; padding:6px 8px;" aria-label="Selektiere keine"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M20.5 7.75v10A2.75 2.75 0 0 1 17.75 20.5H7.75a2.75 2.75 0 0 1-2.12-1h11.62a3.25 3.25 0 0 0 3.25-3.25V7.75zM17.2468 3.5H4.25a.75.75 0 0 0-.75.75v12.9968c0 .4142.3358.75.75.75h12.9968a.75.75 0 0 0 .75-.75V4.25a.75.75 0 0 0-.75-.75z" fill="currentColor"/></svg></button>
               <button class="btn_xs" id="cache_info_btn" data-ui="jobs_cache.btn_table_info" title="cache.table.info" disabled>Info</button>
               <button class="btn_xs" id="cache_check_btn" data-ui="jobs_cache.btn_table_check" title="cache.table.check" disabled>Pruefen</button>
               <button class="btn_xs" id="cache_update_btn" data-ui="jobs_cache.btn_table_update" title="cache.table.update" disabled>Aktualisieren</button>
@@ -225,9 +228,8 @@
           <div class="table_box" id="cache_box">
             <table id="cache_tbl" class="ib_tbl" data-ui="jobs_cache.tbl_table" title="cache.table">
             <thead>
-              <tr>
-                <th style="width: 46px;">sel</th>
-                <th style="width: 46px;">ok</th>
+                <tr>
+                  <th style="width: 46px;">ok</th>
                 <th style="width: 170px;">id</th>
                 <th style="width: 100px;">Bereich</th>
                 <th style="width: 110px;">Ausloeser</th>
@@ -263,10 +265,6 @@
             <label class="muted" style="display:block; font-size: 12px;">&nbsp;</label>
             <button id="analysis_cache_refresh" data-ui="jobs_analysis_cache.btn_refresh" title="analysis_cache.refresh">Aktualisieren</button>
           </div>
-          <div>
-            <label class="muted" style="display:block; font-size: 12px;">&nbsp;</label>
-            <button id="analysis_cache_delete_all" data-ui="jobs_analysis_cache.btn_delete_all" title="analysis_cache.delete_all">Alle loeschen</button>
-          </div>
           <div style="flex:1; min-width:260px;">
             <label class="muted" style="display:block; font-size:12px;">Suche</label>
             <div class="ib_clear_row">
@@ -289,8 +287,11 @@
               </button>
               <label><input type="checkbox" id="analysis_cache_wrap" data-ui="jobs_analysis_cache.chk_table_wrap_toggle" title="analysis_cache.table.wrap_toggle"/>Umbruch</label>
               <label><input type="checkbox" id="analysis_cache_colfilter" data-ui="jobs_analysis_cache.chk_table_colfilter" title="analysis_cache.table.colfilter"/>Spaltenfilter</label>
+              <button class="btn_xs" id="analysis_cache_select_all_btn" data-ui="jobs_analysis_cache.btn_select_all" title="analysis_cache.table.select_all" style="width:auto; min-width:34px; padding:6px 8px;" aria-label="Selektiere alle"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M20.5 7.75v10A2.75 2.75 0 0 1 17.75 20.5H7.75a2.75 2.75 0 0 1-2.12-1h11.62a3.25 3.25 0 0 0 3.25-3.25V7.75zM17.2468 3.5H4.25a.75.75 0 0 0-.75.75v12.9968c0 .4142.3358.75.75.75h12.9968a.75.75 0 0 0 .75-.75V4.25a.75.75 0 0 0-.75-.75zm-7.6657 7.8582 3.8885-3.8885a.75.75 0 1 1 1.0606 1.0606l-4.5 4.5a.75.75 0 0 1-1.1304-.0489l-1.5-2a.75.75 0 1 1 1.2-.9z" fill="currentColor"/></svg></button>
+              <button class="btn_xs" id="analysis_cache_select_none_btn" data-ui="jobs_analysis_cache.btn_select_none" title="analysis_cache.table.select_none" style="width:auto; min-width:34px; padding:6px 8px;" aria-label="Selektiere keine"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M20.5 7.75v10A2.75 2.75 0 0 1 17.75 20.5H7.75a2.75 2.75 0 0 1-2.12-1h11.62a3.25 3.25 0 0 0 3.25-3.25V7.75zM17.2468 3.5H4.25a.75.75 0 0 0-.75.75v12.9968c0 .4142.3358.75.75.75h12.9968a.75.75 0 0 0 .75-.75V4.25a.75.75 0 0 0-.75-.75z" fill="currentColor"/></svg></button>
               <button class="btn_xs" id="analysis_cache_rebuild_btn" data-ui="jobs_analysis_cache.btn_table_rebuild" title="analysis_cache.table.rebuild" disabled>Neu aufbauen</button>
               <button class="btn_xs" id="analysis_cache_delete_btn" data-ui="jobs_analysis_cache.btn_table_delete" title="analysis_cache.table.delete" disabled>Loeschen</button>
+              <button class="btn_xs" id="analysis_cache_delete_all" data-ui="jobs_analysis_cache.btn_delete_all" title="analysis_cache.delete_all">Alle loeschen</button>
             </div>
             <div class="muted">Gruppiert nach Serie; Zeitstrahl zeigt Cache, Neu lesen und geaenderte Bereiche.</div>
           </div>
@@ -298,15 +299,15 @@
             <table id="analysis_cache_tbl" class="ib_tbl" data-ui="jobs_analysis_cache.tbl_table" title="analysis_cache.table">
               <thead>
                 <tr>
-                  <th style="width:46px;">sel</th>
-                  <th style="width:260px;">series</th>
-                  <th style="width:260px;">tags</th>
-                  <th style="width:130px;">updated</th>
+                  <th style="width:170px;">updated</th>
+                  <th style="width:120px;">entity_id</th>
+                  <th style="width:160px;">friendly_name</th>
                   <th style="width:90px;">Segmente</th>
                   <th style="width:90px;">Treffer</th>
-                  <th style="width:90px;">size</th>
+                  <th style="width:90px;">Groesse</th>
                   <th style="width:260px;">Pfad</th>
                   <th style="width:320px;">Zeitstrahl</th>
+                  <th style="width:260px;">series</th>
                 </tr>
               </thead>
               <tbody></tbody>
@@ -349,6 +350,8 @@
               </button>
               <label><input type="checkbox" id="timers_wrap" data-ui="jobs_timers.chk_table_wrap_toggle" title="timers.table.wrap_toggle"/>Umbruch</label>
               <label><input type="checkbox" id="timers_colfilter" data-ui="jobs_timers.chk_table_colfilter" title="timers.table.colfilter"/>Spaltenfilter</label>
+              <button class="btn_xs" id="timers_select_all_btn" data-ui="jobs_timers.btn_select_all" title="timers.table.select_all" style="width:auto; min-width:34px; padding:6px 8px;" aria-label="Selektiere alle"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M20.5 7.75v10A2.75 2.75 0 0 1 17.75 20.5H7.75a2.75 2.75 0 0 1-2.12-1h11.62a3.25 3.25 0 0 0 3.25-3.25V7.75zM17.2468 3.5H4.25a.75.75 0 0 0-.75.75v12.9968c0 .4142.3358.75.75.75h12.9968a.75.75 0 0 0 .75-.75V4.25a.75.75 0 0 0-.75-.75zm-7.6657 7.8582 3.8885-3.8885a.75.75 0 1 1 1.0606 1.0606l-4.5 4.5a.75.75 0 0 1-1.1304-.0489l-1.5-2a.75.75 0 1 1 1.2-.9z" fill="currentColor"/></svg></button>
+              <button class="btn_xs" id="timers_select_none_btn" data-ui="jobs_timers.btn_select_none" title="timers.table.select_none" style="width:auto; min-width:34px; padding:6px 8px;" aria-label="Selektiere keine"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M20.5 7.75v10A2.75 2.75 0 0 1 17.75 20.5H7.75a2.75 2.75 0 0 1-2.12-1h11.62a3.25 3.25 0 0 0 3.25-3.25V7.75zM17.2468 3.5H4.25a.75.75 0 0 0-.75.75v12.9968c0 .4142.3358.75.75.75h12.9968a.75.75 0 0 0 .75-.75V4.25a.75.75 0 0 0-.75-.75z" fill="currentColor"/></svg></button>
               <button class="btn_xs" id="timers_mode_btn" data-ui="jobs_timers.btn_table_mode" title="timers.table.mode" disabled>Modus</button>
               <button class="btn_xs" id="timers_history_btn" data-ui="jobs_timers.btn_table_history" title="timers.table.history" disabled>History</button>
               <button class="btn_xs" id="timers_start_btn" data-ui="jobs_timers.btn_table_start" title="timers.table.start" disabled>Start</button>
@@ -361,7 +364,6 @@
            <table id="timers_tbl" class="ib_tbl" data-ui="jobs_timers.tbl_table" title="timers.table">
              <thead>
                 <tr>
-                  <th style="width: 46px;">sel</th>
                   <th style="width: 140px;">id</th>
                   <th style="width: 140px;">enabled</th>
                   <th style="width: 260px;">Modus</th>
@@ -435,6 +437,8 @@
               </button>
               <label><input type="checkbox" id="usage_wrap" data-ui="jobs_usage.chk_table_wrap_toggle" title="usage.table.wrap_toggle"/>Umbruch</label>
               <label><input type="checkbox" id="usage_colfilter" data-ui="jobs_usage.chk_table_colfilter" title="usage.table.colfilter"/>Spaltenfilter</label>
+              <button class="btn_xs" id="usage_select_all_btn" data-ui="jobs_usage.btn_select_all" title="usage.table.select_all" style="width:auto; min-width:34px; padding:6px 8px;" aria-label="Selektiere alle"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M20.5 7.75v10A2.75 2.75 0 0 1 17.75 20.5H7.75a2.75 2.75 0 0 1-2.12-1h11.62a3.25 3.25 0 0 0 3.25-3.25V7.75zM17.2468 3.5H4.25a.75.75 0 0 0-.75.75v12.9968c0 .4142.3358.75.75.75h12.9968a.75.75 0 0 0 .75-.75V4.25a.75.75 0 0 0-.75-.75zm-7.6657 7.8582 3.8885-3.8885a.75.75 0 1 1 1.0606 1.0606l-4.5 4.5a.75.75 0 0 1-1.1304-.0489l-1.5-2a.75.75 0 1 1 1.2-.9z" fill="currentColor"/></svg></button>
+              <button class="btn_xs" id="usage_select_none_btn" data-ui="jobs_usage.btn_select_none" title="usage.table.select_none" style="width:auto; min-width:34px; padding:6px 8px;" aria-label="Selektiere keine"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M20.5 7.75v10A2.75 2.75 0 0 1 17.75 20.5H7.75a2.75 2.75 0 0 1-2.12-1h11.62a3.25 3.25 0 0 0 3.25-3.25V7.75zM17.2468 3.5H4.25a.75.75 0 0 0-.75.75v12.9968c0 .4142.3358.75.75.75h12.9968a.75.75 0 0 0 .75-.75V4.25a.75.75 0 0 0-.75-.75z" fill="currentColor"/></svg></button>
             </div>
             <div class="muted">Tipp: Filter/Sortierung im Header + Volltextsuche.</div>
           </div>
@@ -479,6 +483,8 @@
       const $jobsCopyBtn = document.getElementById('jobs_copy_btn');
       const $jobsOpenBtn = document.getElementById('jobs_open_btn');
       const $jobsCancelBtn = document.getElementById('jobs_cancel_btn');
+      const $jobsSelectAllBtn = document.getElementById('jobs_select_all_btn');
+      const $jobsSelectNoneBtn = document.getElementById('jobs_select_none_btn');
 
       const $cacheQ = document.getElementById('cache_q');
       const $cacheRefresh = document.getElementById('cache_refresh');
@@ -496,6 +502,8 @@
       const $cacheCheckBtn = document.getElementById('cache_check_btn');
       const $cacheUpdateBtn = document.getElementById('cache_update_btn');
       const $cacheDeleteBtn = document.getElementById('cache_delete_btn');
+      const $cacheSelectAllBtn = document.getElementById('cache_select_all_btn');
+      const $cacheSelectNoneBtn = document.getElementById('cache_select_none_btn');
 
       const $analysisCacheRefresh = document.getElementById('analysis_cache_refresh');
       const $analysisCacheDeleteAll = document.getElementById('analysis_cache_delete_all');
@@ -510,6 +518,8 @@
       const $analysisCacheColFilter = document.getElementById('analysis_cache_colfilter');
       const $analysisCacheRebuildBtn = document.getElementById('analysis_cache_rebuild_btn');
       const $analysisCacheDeleteBtn = document.getElementById('analysis_cache_delete_btn');
+      const $analysisCacheSelectAllBtn = document.getElementById('analysis_cache_select_all_btn');
+      const $analysisCacheSelectNoneBtn = document.getElementById('analysis_cache_select_none_btn');
 
       const $timersInfo = document.getElementById('timers_info');
       const $timersErr = document.getElementById('timers_err');
@@ -524,6 +534,8 @@
       const $timersHistoryBtn = document.getElementById('timers_history_btn');
       const $timersStartBtn = document.getElementById('timers_start_btn');
       const $timersAbortBtn = document.getElementById('timers_abort_btn');
+      const $timersSelectAllBtn = document.getElementById('timers_select_all_btn');
+      const $timersSelectNoneBtn = document.getElementById('timers_select_none_btn');
 
       const $usageQ = document.getElementById('usage_q');
       const $usageRefresh = document.getElementById('usage_refresh');
@@ -538,12 +550,24 @@
       const $usageWrap = document.getElementById('usage_wrap');
       const $usageColFilter = document.getElementById('usage_colfilter');
       const $usageBody = document.querySelector('#usage_tbl tbody');
+      const $usageSelectAllBtn = document.getElementById('usage_select_all_btn');
+      const $usageSelectNoneBtn = document.getElementById('usage_select_none_btn');
 
       let POLL = null;
       let SELECTED_JOB_ID = '';
       let SELECTED_CACHE_ID = '';
       let SELECTED_ANALYSIS_CACHE_KEY = '';
       let SELECTED_TIMER_ID = '';
+      let SELECTED_JOB_IDS = new Set();
+      let SELECTED_CACHE_IDS = new Set();
+      let SELECTED_ANALYSIS_CACHE_KEYS = new Set();
+      let SELECTED_TIMER_IDS = new Set();
+      let SELECTED_USAGE_KEYS = new Set();
+      let SELECTED_JOB_IDS = new Set();
+      let SELECTED_CACHE_IDS = new Set();
+      let SELECTED_ANALYSIS_CACHE_KEYS = new Set();
+      let SELECTED_TIMER_IDS = new Set();
+      let SELECTED_USAGE_KEYS = new Set();
       let LAST_JOBS = [];
       let LAST_TIMERS = [];
       let LAST_ANALYSIS_CACHES = [];
@@ -674,6 +698,7 @@
         const rows = (items || []).filter(e => !q || usageBlob(e).includes(q));
         for(const e of rows){
           const tr = document.createElement('tr');
+          const rowKey = [String(e.at||''), String(e.kind||''), String(e.page||''), String(e.run_id||''), String(e.cache_id||''), String(e.step||'')].join('|');
           const cid = String(e.cache_id || '');
           tr.innerHTML = [
             `<td>${fmtTs(e.at)}</td>`,
@@ -687,6 +712,8 @@
             `<td class="mono" style="text-align:right;">${(e.bytes===null||e.bytes===undefined)?'':String(e.bytes)}</td>`,
             `<td title="${String(e.note||'').replace(/"/g,'&quot;')}">${String(e.note||'')}</td>`,
           ].join('');
+          tr.setAttribute('data-usage-key', rowKey);
+          tr.addEventListener('click', ()=>{ toggleSelected(SELECTED_USAGE_KEYS, rowKey); applySelectedRows($usageBody, 'data-usage-key', SELECTED_USAGE_KEYS); });
 
           try{
             const a = tr.querySelector('a[data-cache-id]');
@@ -698,6 +725,7 @@
               });
             }
           }catch(x){}
+          if(SELECTED_USAGE_KEYS.has(rowKey)) tr.classList.add('row_selected');
           $usageBody.appendChild(tr);
         }
         if($usageInfo) $usageInfo.textContent = `Eintraege: ${rows.length}`;
@@ -829,36 +857,69 @@
       function selectedCache(){ return (LAST_CACHES || []).find(m => String(m.id || '') === String(SELECTED_CACHE_ID || '')) || null; }
       function selectedAnalysisCache(){ return (LAST_ANALYSIS_CACHES || []).find(m => String(m.series_key || '') === String(SELECTED_ANALYSIS_CACHE_KEY || '')) || null; }
       function selectedTimer(){ return (LAST_TIMERS || []).find(t => String(t.id || '') === String(SELECTED_TIMER_ID || '')) || null; }
+      function selectedJobs(){ return (LAST_JOBS || []).filter(j => SELECTED_JOB_IDS.has(String(j.id || ''))); }
+      function selectedCaches(){ return (LAST_CACHES || []).filter(m => SELECTED_CACHE_IDS.has(String(m.id || ''))); }
+      function selectedAnalysisCaches(){ return (LAST_ANALYSIS_CACHES || []).filter(m => SELECTED_ANALYSIS_CACHE_KEYS.has(String(m.series_key || ''))); }
+      function selectedTimers(){ return (LAST_TIMERS || []).filter(t => SELECTED_TIMER_IDS.has(String(t.id || ''))); }
 
       function syncToolbarButtons(){
         try{
-          const j = selectedJob();
+          const sj = selectedJobs();
+          const j = sj[0] || selectedJob();
           if($jobsDetailsBtn) $jobsDetailsBtn.disabled = !j;
           if($jobsCopyBtn) $jobsCopyBtn.disabled = !j;
           if($jobsOpenBtn) $jobsOpenBtn.disabled = !(j && String(j.type || '') === 'global_stats');
-          if($jobsCancelBtn) $jobsCancelBtn.disabled = !(j && String(j.id || ''));
+          if($jobsCancelBtn) $jobsCancelBtn.disabled = !sj.length;
 
-          const c = selectedCache();
+          const sc = selectedCaches();
+          const c = sc[0] || selectedCache();
           if($cacheInfoBtn) $cacheInfoBtn.disabled = !c;
           if($cacheCheckBtn) $cacheCheckBtn.disabled = !(c && String(c.cache_kind || '') === 'dash');
-          if($cacheUpdateBtn) $cacheUpdateBtn.disabled = !c;
-          if($cacheDeleteBtn) $cacheDeleteBtn.disabled = !c;
+          if($cacheUpdateBtn) $cacheUpdateBtn.disabled = !sc.length;
+          if($cacheDeleteBtn) $cacheDeleteBtn.disabled = !sc.length;
 
-          const ac = selectedAnalysisCache();
-          if($analysisCacheRebuildBtn) $analysisCacheRebuildBtn.disabled = !ac;
-          if($analysisCacheDeleteBtn) $analysisCacheDeleteBtn.disabled = !ac;
+          const sac = selectedAnalysisCaches();
+          const ac = sac[0] || selectedAnalysisCache();
+          if($analysisCacheRebuildBtn) $analysisCacheRebuildBtn.disabled = !sac.length;
+          if($analysisCacheDeleteBtn) $analysisCacheDeleteBtn.disabled = !sac.length;
 
-          const t = selectedTimer();
+          const st = selectedTimers();
+          const t = st[0] || selectedTimer();
           if($timersModeBtn) $timersModeBtn.disabled = !t;
           if($timersHistoryBtn) $timersHistoryBtn.disabled = !t;
-          if($timersStartBtn) $timersStartBtn.disabled = !t;
-          if($timersAbortBtn) $timersAbortBtn.disabled = !t;
+          if($timersStartBtn) $timersStartBtn.disabled = !st.length;
+          if($timersAbortBtn) $timersAbortBtn.disabled = !st.length;
         }catch(e){}
       }
 
       function selectRow(tbody, keyAttr, value){
         try{
           Array.from(tbody.querySelectorAll('tr')).forEach(tr => tr.classList.toggle('row_selected', String(tr.getAttribute(keyAttr) || '') === String(value || '')));
+        }catch(e){}
+      }
+      function applySelectedRows(tbody, keyAttr, selectedSet){
+        try{
+          Array.from(tbody.querySelectorAll('tr')).forEach(tr => tr.classList.toggle('row_selected', selectedSet.has(String(tr.getAttribute(keyAttr) || ''))));
+        }catch(e){}
+      }
+      function toggleSelected(setObj, key){
+        const k = String(key || '');
+        if(!k) return;
+        if(setObj.has(k)) setObj.delete(k); else setObj.add(k);
+      }
+      function selectAllVisible(tbody, keyAttr, setObj){
+        try{
+          setObj.clear();
+          Array.from(tbody.querySelectorAll('tr')).forEach(tr => { const k = String(tr.getAttribute(keyAttr) || ''); if(k) setObj.add(k); });
+          applySelectedRows(tbody, keyAttr, setObj);
+          syncToolbarButtons();
+        }catch(e){}
+      }
+      function clearAllVisible(tbody, keyAttr, setObj){
+        try{
+          setObj.clear();
+          applySelectedRows(tbody, keyAttr, setObj);
+          syncToolbarButtons();
         }catch(e){}
       }
 
@@ -923,7 +984,6 @@
           const check = m.last_check_at ? (fmtTs(m.last_check_at) + (m.last_check_ok ? ' OK' : ' CHANGED')) : '';
           const cid = String(m.id || '');
           tr.innerHTML = [
-            `<td style="text-align:center;"><input type="radio" name="cache_sel" ${cid===String(SELECTED_CACHE_ID||'')?'checked':''}/></td>`,
             `<td style="text-align:center;">${okIcon}</td>`,
             `<td class="mono" title="${cid.replace(/"/g,'&quot;')}"><a href="#" class="cache_id_link" data-cache-id="${cid.replace(/"/g,'&quot;')}">${cid}</a></td>`,
             `<td class="mono">${String(m.bereich||'')}</td>`,
@@ -942,8 +1002,8 @@
             `<td class="mono">${flags}</td>`
           ].join('');
           tr.setAttribute('data-cache-id', cid);
-          tr.addEventListener('click', ()=>{ SELECTED_CACHE_ID = cid; selectRow($cacheBody, 'data-cache-id', SELECTED_CACHE_ID); syncToolbarButtons(); });
-          if(cid === String(SELECTED_CACHE_ID||'')) tr.classList.add('row_selected');
+          tr.addEventListener('click', ()=>{ SELECTED_CACHE_ID = cid; toggleSelected(SELECTED_CACHE_IDS, cid); applySelectedRows($cacheBody, 'data-cache-id', SELECTED_CACHE_IDS); syncToolbarButtons(); });
+          if(SELECTED_CACHE_IDS.has(cid)) tr.classList.add('row_selected');
           try{
             const a = tr.querySelector('a[data-cache-id]');
             if(a){
@@ -1151,7 +1211,6 @@
           if(timerId) trig = trig ? (trig + ' | ' + timerId) : timerId;
           const id = String(j.id || '');
           tr.innerHTML = [
-            `<td style="text-align:center;"><input type="radio" name="jobs_sel" ${id===String(SELECTED_JOB_ID||'')?'checked':''}/></td>`,
             `<td class="mono">${id}</td>`,
             `<td>${fmtTs(j.started_at)}</td>`,
             `<td class="mono">${String(j.elapsed||'')}</td>`,
@@ -1163,8 +1222,8 @@
             `<td title="${er.replace(/"/g,'&quot;')}">${er}</td>`
           ].join('');
           tr.setAttribute('data-job-id', id);
-          tr.addEventListener('click', ()=>{ SELECTED_JOB_ID = id; selectRow($tblBody, 'data-job-id', SELECTED_JOB_ID); syncToolbarButtons(); });
-          if(id === String(SELECTED_JOB_ID||'')) tr.classList.add('row_selected');
+          tr.addEventListener('click', ()=>{ SELECTED_JOB_ID = id; toggleSelected(SELECTED_JOB_IDS, id); applySelectedRows($tblBody, 'data-job-id', SELECTED_JOB_IDS); syncToolbarButtons(); });
+          if(SELECTED_JOB_IDS.has(id)) tr.classList.add('row_selected');
           $tblBody.appendChild(tr);
         }
         $info.textContent = `Jobs: ${rows.length}`;
@@ -1248,22 +1307,23 @@
           const tr = document.createElement('tr');
           const sk = String(m.series_key || '');
           const series = String(m.measurement || '') + '/' + String(m.field || '');
-          const tags = [m.entity_id ? ('entity_id=' + m.entity_id) : '', m.friendly_name ? ('friendly_name=' + m.friendly_name) : ''].filter(Boolean).join(' ');
+          const entityId = String(m.entity_id || '');
+          const friendlyName = String(m.friendly_name || '');
           const paths = Array.isArray(m.paths) ? m.paths : [];
           tr.innerHTML = [
-            `<td style="text-align:center;"><input type="radio" name="analysis_cache_sel" ${sk===String(SELECTED_ANALYSIS_CACHE_KEY||'')?'checked':''}/></td>`,
-            `<td class="mono">${series}</td>`,
-            `<td class="mono" title="${tags.replace(/"/g,'&quot;')}">${tags}</td>`,
             `<td>${fmtTs(m.updated_at)}</td>`,
+            `<td class="mono" title="${entityId.replace(/"/g,'&quot;')}">${entityId}</td>`,
+            `<td class="mono" title="${friendlyName.replace(/"/g,'&quot;')}">${friendlyName}</td>`,
             `<td class="mono" style="text-align:right;">${String(m.segment_count || 0)}${m.dirty_segment_count ? (' / dirty=' + String(m.dirty_segment_count)) : ''}</td>`,
             `<td class="mono" style="text-align:right;">${String(m.outlier_count || 0)}</td>`,
             `<td class="mono" style="text-align:right;">${fmtSize(m.bytes)}</td>`,
             `<td class="mono" style="font-size:11px;">${paths.map(p=>String(p||'')).join('<br>')}</td>`,
             `<td>${analysisTimeline(m)}</td>`,
+            `<td class="mono">${series}</td>`,
           ].join('');
           tr.setAttribute('data-series-key', sk);
-          tr.addEventListener('click', ()=>{ SELECTED_ANALYSIS_CACHE_KEY = sk; selectRow($analysisCacheBody, 'data-series-key', SELECTED_ANALYSIS_CACHE_KEY); syncToolbarButtons(); });
-          if(sk === String(SELECTED_ANALYSIS_CACHE_KEY||'')) tr.classList.add('row_selected');
+          tr.addEventListener('click', ()=>{ SELECTED_ANALYSIS_CACHE_KEY = sk; toggleSelected(SELECTED_ANALYSIS_CACHE_KEYS, sk); applySelectedRows($analysisCacheBody, 'data-series-key', SELECTED_ANALYSIS_CACHE_KEYS); syncToolbarButtons(); });
+          if(SELECTED_ANALYSIS_CACHE_KEYS.has(sk)) tr.classList.add('row_selected');
           $analysisCacheBody.appendChild(tr);
         }
         if($analysisCacheInfo) $analysisCacheInfo.textContent = `Analysecache Serien: ${rows.length} | Gesamtgroesse: ${fmtSize(totalBytes)}`;
@@ -1290,7 +1350,6 @@
           const tr = document.createElement('tr');
           const id = String(t.id || '');
           tr.innerHTML = [
-            `<td style="text-align:center;"><input type="radio" name="timers_sel" ${id===String(SELECTED_TIMER_ID||'')?'checked':''}/></td>`,
             `<td class="mono">${id}</td>`,
             `<td class="mono">${String((t.enabled ? 'true' : 'false'))} / auto=${String((t.auto_update ? 'true' : 'false'))}</td>`,
             `<td class="mono timer_mode_cell"></td>`,
@@ -1299,8 +1358,8 @@
             `<td>${String(t.comment||'')}</td>`
           ].join('');
           tr.setAttribute('data-timer-id', id);
-          tr.addEventListener('click', ()=>{ SELECTED_TIMER_ID = id; selectRow($timersBody, 'data-timer-id', SELECTED_TIMER_ID); syncToolbarButtons(); });
-          if(id === String(SELECTED_TIMER_ID||'')) tr.classList.add('row_selected');
+          tr.addEventListener('click', ()=>{ SELECTED_TIMER_ID = id; toggleSelected(SELECTED_TIMER_IDS, id); applySelectedRows($timersBody, 'data-timer-id', SELECTED_TIMER_IDS); syncToolbarButtons(); });
+          if(SELECTED_TIMER_IDS.has(id)) tr.classList.add('row_selected');
           const tdMode = tr.children[3];
           if(id === 'dash_cache' || id === 'stats_cache' || id === 'stats_full'){
             const wrap = document.createElement('div');
@@ -1355,32 +1414,36 @@
       if($jobsDetailsBtn) $jobsDetailsBtn.onclick = ()=>{ const j = selectedJob(); if(j) showJobDetails(j); };
       if($jobsCopyBtn) $jobsCopyBtn.onclick = async ()=>{ const j = selectedJob(); if(!j) return; try{ await navigator.clipboard.writeText(String(j.id||'')); }catch(e){} };
       if($jobsOpenBtn) $jobsOpenBtn.onclick = ()=>{ const j = selectedJob(); if(!j || String(j.type||'') !== 'global_stats') return; try{ localStorage.setItem('influxbro_global_stats_job_id_v1', String(j.id||'')); }catch(e){} location.href = './stats'; };
-      if($jobsCancelBtn) $jobsCancelBtn.onclick = async ()=>{ try{ const j = selectedJob(); if(!j) return; await cancelJobById(String(j.id||'')); }catch(e){ err(e && e.message ? e.message : String(e)); } };
+      if($jobsCancelBtn) $jobsCancelBtn.onclick = async ()=>{ try{ for(const j of selectedJobs()){ await cancelJobById(String(j.id||'')); } }catch(e){ err(e && e.message ? e.message : String(e)); } };
       if($cacheInfoBtn) $cacheInfoBtn.onclick = ()=>{ const m = selectedCache(); if(m) showCacheInfo(m); };
       if($cacheCheckBtn) $cacheCheckBtn.onclick = async ()=>{ try{ const m = selectedCache(); if(m) await checkCache(m); }catch(e){ cacheErr(e && e.message ? e.message : String(e)); } };
-      if($cacheUpdateBtn) $cacheUpdateBtn.onclick = async ()=>{ try{ const m = selectedCache(); if(m) await updateCache(m); }catch(e){ cacheErr(e && e.message ? e.message : String(e)); } };
-      if($cacheDeleteBtn) $cacheDeleteBtn.onclick = async ()=>{ try{ const m = selectedCache(); if(m) await deleteCache(m); }catch(e){ cacheErr(e && e.message ? e.message : String(e)); } };
+      if($cacheUpdateBtn) $cacheUpdateBtn.onclick = async ()=>{ try{ for(const m of selectedCaches()){ await updateCache(m); } }catch(e){ cacheErr(e && e.message ? e.message : String(e)); } };
+      if($cacheDeleteBtn) $cacheDeleteBtn.onclick = async ()=>{ try{ for(const m of selectedCaches()){ await deleteCache(m); } }catch(e){ cacheErr(e && e.message ? e.message : String(e)); } };
       if($analysisCacheRebuildBtn) $analysisCacheRebuildBtn.onclick = async ()=>{
         try{
-          const m = selectedAnalysisCache();
-          if(!m) return;
-          await api('./api/analysis_cache/rebuild', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({series_key: String(m.series_key || '')})});
+          const xs = selectedAnalysisCaches();
+          if(!xs.length) return;
+          for(const m of xs){
+            await api('./api/analysis_cache/rebuild', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({series_key: String(m.series_key || '')})});
+          }
           await loadAnalysisCaches();
         }catch(e){ analysisCacheErr(e && e.message ? e.message : String(e)); }
       };
       if($analysisCacheDeleteBtn) $analysisCacheDeleteBtn.onclick = async ()=>{
         try{
-          const m = selectedAnalysisCache();
-          if(!m) return;
-          if(!confirm('Analysecache fuer diese Serie wirklich loeschen?')) return;
-          await api('./api/analysis_cache/delete', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({series_key: String(m.series_key || '')})});
+          const xs = selectedAnalysisCaches();
+          if(!xs.length) return;
+          if(!confirm('Analysecache fuer die selektierten Serien wirklich loeschen?')) return;
+          for(const m of xs){
+            await api('./api/analysis_cache/delete', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({series_key: String(m.series_key || '')})});
+          }
           await loadAnalysisCaches();
         }catch(e){ analysisCacheErr(e && e.message ? e.message : String(e)); }
       };
       if($timersModeBtn) $timersModeBtn.onclick = async ()=>{ try{ const t = selectedTimer(); if(!t) return; const ui = TIMER_MODE_UI[String(t.id||'')]; if(!ui) return; const open = ui.wrap.style.display !== 'none'; ui.wrap.style.display = open ? 'none' : 'flex'; if(!open) return; await ui.save(); }catch(e){ timersErr(e && e.message ? e.message : String(e)); } };
       if($timersHistoryBtn) $timersHistoryBtn.onclick = async ()=>{ try{ const t = selectedTimer(); if(t) await showTimerHistory(t); }catch(e){ timersErr(e && e.message ? e.message : String(e)); } };
-      if($timersStartBtn) $timersStartBtn.onclick = async ()=>{ try{ const t = selectedTimer(); if(t) await startTimer(t); }catch(e){ timersErr(e && e.message ? e.message : String(e)); } };
-      if($timersAbortBtn) $timersAbortBtn.onclick = async ()=>{ try{ const t = selectedTimer(); if(t) await abortTimer(t); }catch(e){ timersErr(e && e.message ? e.message : String(e)); } };
+      if($timersStartBtn) $timersStartBtn.onclick = async ()=>{ try{ for(const t of selectedTimers()){ await startTimer(t); } }catch(e){ timersErr(e && e.message ? e.message : String(e)); } };
+      if($timersAbortBtn) $timersAbortBtn.onclick = async ()=>{ try{ for(const t of selectedTimers()){ await abortTimer(t); } }catch(e){ timersErr(e && e.message ? e.message : String(e)); } };
 
       $refresh.onclick = ()=>{ loadAll().catch(e => err(e && e.message ? e.message : String(e))); };
       $auto.onchange = ()=>{ loadAll().catch(()=>{}); };
@@ -1398,6 +1461,16 @@
           await loadAnalysisCaches();
         }catch(e){ analysisCacheErr(e && e.message ? e.message : String(e)); }
       };
+      if($jobsSelectAllBtn) $jobsSelectAllBtn.onclick = ()=>{ selectAllVisible($tblBody, 'data-job-id', SELECTED_JOB_IDS); };
+      if($jobsSelectNoneBtn) $jobsSelectNoneBtn.onclick = ()=>{ clearAllVisible($tblBody, 'data-job-id', SELECTED_JOB_IDS); };
+      if($cacheSelectAllBtn) $cacheSelectAllBtn.onclick = ()=>{ selectAllVisible($cacheBody, 'data-cache-id', SELECTED_CACHE_IDS); };
+      if($cacheSelectNoneBtn) $cacheSelectNoneBtn.onclick = ()=>{ clearAllVisible($cacheBody, 'data-cache-id', SELECTED_CACHE_IDS); };
+      if($analysisCacheSelectAllBtn) $analysisCacheSelectAllBtn.onclick = ()=>{ selectAllVisible($analysisCacheBody, 'data-series-key', SELECTED_ANALYSIS_CACHE_KEYS); };
+      if($analysisCacheSelectNoneBtn) $analysisCacheSelectNoneBtn.onclick = ()=>{ clearAllVisible($analysisCacheBody, 'data-series-key', SELECTED_ANALYSIS_CACHE_KEYS); };
+      if($timersSelectAllBtn) $timersSelectAllBtn.onclick = ()=>{ selectAllVisible($timersBody, 'data-timer-id', SELECTED_TIMER_IDS); };
+      if($timersSelectNoneBtn) $timersSelectNoneBtn.onclick = ()=>{ clearAllVisible($timersBody, 'data-timer-id', SELECTED_TIMER_IDS); };
+      if($usageSelectAllBtn) $usageSelectAllBtn.onclick = ()=>{ selectAllVisible($usageBody, 'data-usage-key', SELECTED_USAGE_KEYS); };
+      if($usageSelectNoneBtn) $usageSelectNoneBtn.onclick = ()=>{ clearAllVisible($usageBody, 'data-usage-key', SELECTED_USAGE_KEYS); };
       $cacheDeleteAll.onclick = async ()=>{
         try{
           if(!confirm('Cache komplett loeschen?\n\nDas loescht nur Cache-Dateien unter /data, nicht die Datenbank.')) return;
