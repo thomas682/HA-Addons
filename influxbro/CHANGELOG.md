@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.310
+
+### Fix
+
+- Erstes Teilpaket fuer GUI-Settings/UI-Qualitaet: sichtbarer Tooltip-Textrest unter der letzten Section entfernt, Summary-Aktionsbuttons toggeln Details nicht mehr ungewollt, `admin_token_test` speichert/testet jetzt robuster mit sichtbarer Rueckmeldung, und die Statistik-Tabelle ist als einklappbare Section `Messwertuebersicht` umgesetzt. ([#250](https://github.com/thomas682/HA-Addons/issues/250))
+
+### Maintenance
+
+- Tests: Template-Script-Balance fuer `config.html`, `stats.html`, `_topbar.html` und `_tooltips.html` geprueft
+- Tests: Marker fuer `#250` Teilpaket 1 geprueft
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.309
 
 ### Fix

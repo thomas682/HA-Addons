@@ -242,7 +242,10 @@
         </div>
         <div id="err" class="err"></div>
 
-        <div class="table_wrap" data-ui="stats_table.panel_wrap" title="stats.table.wrap">
+        <details class="card" open data-ui="stats_table.section_root" title="stats.table.section">
+          <summary><span class="ib_summary_row"><span>Messwertuebersicht</span></span></summary>
+          <div class="card_body" style="padding:10px;">
+          <div class="table_wrap" data-ui="stats_table.panel_wrap" title="stats.table.wrap">
           <div class="table_title">Statistik Tabelle</div>
           <div class="table_head" data-ui="stats_table.panel_head" title="stats.table.head">
             <div class="tbl_actions" data-ui="stats_main.panel_actions" title="stats.actions">
@@ -299,7 +302,9 @@
             </table>
           </div>
           <div id="tbl_resize" data-ui="stats_table.panel_resize" title="stats.table.resize"></div>
-        </div>
+          </div>
+          </div>
+        </details>
       </div>
 
       <script>

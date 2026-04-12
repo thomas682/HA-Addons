@@ -1929,11 +1929,32 @@ async function testConn(){
   document.getElementById("read_yaml").addEventListener("click", ()=>loadYaml().catch(e=>err(String(e))));
   document.getElementById("save").addEventListener("click", ()=>save().catch(e=>err(String(e))));
   document.getElementById("test").addEventListener("click", ()=>testConn().catch(e=>err(String(e))));
-  try{ if(document.getElementById('admin_token_test')) document.getElementById('admin_token_test').addEventListener('click', (ev)=>{
+  try{ if(document.getElementById('admin_token_test')) document.getElementById('admin_token_test').addEventListener('click', async (ev)=>{
     try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
-    (async ()=>{
-      try{ ok(''); err(''); const j = await api('./api/influx_admin_test'); if(!j || !j.ok) throw new Error((j && j.error) ? j.error : 'Fehler'); ok('Admin token: OK'); }catch(e){ err(String(e && e.message ? e.message : e)); }
-    })();
+    let ts = document.getElementById('test_status');
+    if(!ts){
+      try{
+        ts = document.createElement('div');
+        ts.id = 'test_status';
+        ts.className = 'ok';
+        ts.style.marginTop = '8px';
+        ts.style.fontWeight = '700';
+        const host = document.getElementById('admin_token_test');
+        if(host && host.parentElement) host.parentElement.appendChild(ts);
+      }catch(e){}
+    }
+    try{ if(ts){ ts.className = 'muted'; ts.textContent = 'Admin token wird getestet...'; } }catch(e){}
+    try{
+      await save();
+      const j = await api('./api/influx_admin_test');
+      if(!j || !j.ok) throw new Error((j && j.error) ? j.error : 'Fehler');
+      ok('Admin token: OK');
+      try{ if(ts){ ts.className = 'ok'; ts.textContent = 'Admin token: OK'; } }catch(e){}
+    }catch(e){
+      const msg = String(e && e.message ? e.message : e);
+      err(msg);
+      try{ if(ts){ ts.className = 'err'; ts.textContent = msg; } }catch(e2){}
+    }
   }); }catch(e){}
 
 try{

@@ -730,7 +730,8 @@ Verbindung:
 
 - `Influx Version`, `Scheme`, `Host`, `Port`, `verify_ssl`, `timeout_seconds`: steuern die Verbindung zur InfluxDB.
 - `InfluxDB v2` (`org`, `bucket`, `token`, `admin_token`): v2 Zugangsdaten.
-  - `admin_token` wird nur fuer `Native Backup/Restore (v2)` benoetigt (FullBackup/FullRestore Modus "Native v2").
+- `admin_token` wird nur fuer `Native Backup/Restore (v2)` benoetigt (FullBackup/FullRestore Modus "Native v2").
+- `Token testen` speichert die aktuellen Einstellungen jetzt zuerst und zeigt den Teststatus sichtbar direkt im Einstellungsbereich an.
 - `InfluxDB v1` (`database`, `username`, `password`): v1 Zugangsdaten.
 
 UI:
@@ -1014,6 +1015,7 @@ Ausreisser:
 ## Release Notes (1.12.88)
 
 - Statistik: Die alte Auswahl wurde entfernt. Stattdessen verwendet die Statistik-Seite jetzt 1:1 die Quellauswahl aus `Kombinieren` mit `_measurement`, `_field`, `entity_id` und `friendly_name`.
+- Statistik: Die Statistiktabelle liegt jetzt in der einklappbaren Section `Messwertuebersicht`.
 
 ## Release Notes (1.12.89)
 
@@ -1068,6 +1070,7 @@ Ausreisser:
 ## Release Notes (1.12.100)
 
 - Titelzeile: `sections.open_all` und `sections.close_all` sitzen jetzt wieder als Icon-Buttons direkt rechts neben `page.search`. Die Seitensuche initialisiert sich erst, wenn die gemeinsame `page.title.card` im DOM vorhanden ist, damit sie auf allen Seiten zuverlässig arbeitet.
+- Aktionsbuttons innerhalb von Section-Summaries (Info/Config/sonstige Buttons) toggeln die Section nicht mehr ungewollt mit.
 
 ## Release Notes (1.12.101)
 

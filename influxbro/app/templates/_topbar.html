@@ -1369,6 +1369,25 @@
 </script>
 
 <script>
+  // Prevent buttons/links inside section summaries from toggling the details element.
+  try{
+    document.addEventListener('click', (ev)=>{
+      try{
+        const t = ev && ev.target && ev.target.closest ? ev.target.closest('summary button, summary a, summary input, summary select, summary textarea, summary label') : null;
+        if(!t) return;
+        ev.preventDefault();
+        ev.stopPropagation();
+      }catch(e){}
+    }, true);
+    document.addEventListener('mousedown', (ev)=>{
+      try{
+        const t = ev && ev.target && ev.target.closest ? ev.target.closest('summary button, summary a, summary input, summary select, summary textarea, summary label') : null;
+        if(!t) return;
+        ev.stopPropagation();
+      }catch(e){}
+    }, true);
+  }catch(e){}
+
 // Report page view on load
 try{
   const page = (window.location && window.location.pathname) ? String(window.location.pathname) : '';
