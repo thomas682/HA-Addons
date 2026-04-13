@@ -2189,7 +2189,14 @@ function restructureSettings(){
         if((nodes || []).filter(Boolean).length === 0 && body){
           body.appendChild(_cfgSectionNote('Derzeit keine eigenen Einstellungen in diesem Bereich.'));
         }
-        main.insertBefore(sec, saveCard);
+        // saveCard may have been detached or moved during restructuring;
+        // re-check before each insert to avoid insertBefore DOM errors.
+        const refNode = (saveCard && saveCard.parentNode === main) ? saveCard : null;
+        if(refNode){
+          main.insertBefore(sec, refNode);
+        }else{
+          main.appendChild(sec);
+        }
       }catch(e){
         reportConfigError('restructureSettings group failed: ' + title, { group: title }, e && e.stack ? e.stack : String(e || ''));
       }

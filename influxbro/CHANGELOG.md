@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.318
+
+### Bug Fix
+
+- Die Settings-Seite (`/config`) hat bei leeren Gruppen (`Handbuch`, `Profilverwaltung`, `Einstellungen`) `insertBefore`-Fehler geworfen, weil `saveCard` waehrend der Restrukturierung verschoben wurde. Der Code prueft jetzt vor jedem Einfuegen, ob `saveCard` noch Kind von `main` ist, und faellt sonst auf `appendChild` zurueck. ([#260](https://github.com/thomas682/HA-Addons/issues/260))
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: 2026.4.2
+
 ## 1.12.317
 
 ### Bug Fix
