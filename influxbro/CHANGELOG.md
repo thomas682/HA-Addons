@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.12.317
+
+### Bug Fix
+
+- Die Settings-Seite (`/config`) wurde robuster gegen Initialisierungsfehler gemacht. `restructureSettings()` protokolliert jetzt Fehler pro Gruppe ins Server-Log statt sie still zu schlucken. `setForm()` verwendet jetzt Null-sichere Setter, damit fehlende Felder nicht mehr die gesamte Seite zum Absturz bringen. ([#260](https://github.com/thomas682/HA-Addons/issues/260))
+- JavaScript-Fehler auf der Settings-Seite werden jetzt explizit ins Add-on-Log gemeldet, inkl. Vendor-/Ingress-Fehlern wie `No Listener: tabs:outgoing.message.ready`. ([#260](https://github.com/thomas682/HA-Addons/issues/260))
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tests: `pytest tests/test_api_ui_support.py -q -k "settings_layout_and_null_safe_bindings_are_present"`
+- Tested with Home Assistant Core: 2026.4.2
+
 ## 1.12.316
 
 ### Bug Fix

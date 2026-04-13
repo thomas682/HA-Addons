@@ -831,6 +831,7 @@ Hinweis Dashboard:
 
 - Der Bereich `Logs` ist jetzt einklappbar.
 - Client-/Browserfehler aus Navigation und Ingress-Host werden frueher an das Add-on-Log gemeldet. Dazu gehoeren auch Vendor-Fehler beim Menuewechsel, z. B. `No Listener: tabs:outgoing.message.ready`, jeweils mit Navigationskontext.
+- Die Settings-Seite ist jetzt robuster gegen Initialisierungsfehler: fehlende Felder fuehren nicht mehr zum kompletten Ausfall, und JavaScript-Fehler werden ins Add-on-Log geschrieben.
 - Die wichtigsten Aktionen tragen zusaetzlich kurze Textlabels direkt auf dem Button.
 
 Ausreisser:

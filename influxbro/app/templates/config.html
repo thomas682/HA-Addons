@@ -1550,45 +1550,58 @@ async function api(url, opts){
   return j;
 }
 
+function _safeSet(el, prop, value){
+  try{
+    if(el && typeof el === 'object' && prop in el){
+      el[prop] = value;
+      return true;
+    }
+    return false;
+  }catch(e){
+    reportConfigError('setForm field failed', { prop: String(prop || '') }, e && e.stack ? e.stack : String(e || ''));
+    return false;
+  }
+}
+
 function setForm(cfg){
-  el.influx_yaml_path.value = cfg.influx_yaml_path ?? "homeassistant/influx.yaml";
+  _safeSet(el.influx_yaml_path, 'value', cfg.influx_yaml_path ?? "homeassistant/influx.yaml");
 
-  el.influx_version.value = String(cfg.influx_version ?? 2);
-  el.scheme.value = cfg.scheme ?? "http";
-  el.host.value = cfg.host ?? "";
-  el.port.value = cfg.port ?? 8086;
-  el.verify_ssl.value = String(!!cfg.verify_ssl);
-  el.timeout_seconds.value = cfg.timeout_seconds ?? 10;
+  _safeSet(el.influx_version, 'value', String(cfg.influx_version ?? 2));
+  _safeSet(el.scheme, 'value', cfg.scheme ?? "http");
+  _safeSet(el.host, 'value', cfg.host ?? "");
+  _safeSet(el.port, 'value', cfg.port ?? 8086);
+  _safeSet(el.verify_ssl, 'value', String(!!cfg.verify_ssl));
+  _safeSet(el.timeout_seconds, 'value', cfg.timeout_seconds ?? 10);
 
-  el.org.value = cfg.org ?? "";
-  el.bucket.value = cfg.bucket ?? "";
-  el.token.value = cfg.token ?? "";
-  el.admin_token.value = cfg.admin_token ?? "";
+  _safeSet(el.org, 'value', cfg.org ?? "");
+  _safeSet(el.bucket, 'value', cfg.bucket ?? "");
+  _safeSet(el.token, 'value', cfg.token ?? "");
+  _safeSet(el.admin_token, 'value', cfg.admin_token ?? "");
 
-  el.database.value = cfg.database ?? "";
-  el.username.value = cfg.username ?? "";
-  el.password.value = cfg.password ?? "";
+  _safeSet(el.database, 'value', cfg.database ?? "");
+  _safeSet(el.username, 'value', cfg.username ?? "");
+  _safeSet(el.password, 'value', cfg.password ?? "");
 
-  el.ui_table_visible_rows.value = cfg.ui_table_visible_rows ?? 20;
-  el.ui_outlier_visible_rows.value = cfg.ui_outlier_visible_rows ?? 10;
-  el.ui_raw_outlier_display_limit_per_type.value = cfg.ui_raw_outlier_display_limit_per_type ?? 100;
-  el.ui_raw_outlier_search_limit.value = cfg.ui_raw_outlier_search_limit ?? 5000;
-  el.ui_table_row_height_px.value = cfg.ui_table_row_height_px ?? 16;
-  el.ui_backup_table_row_height_px.value = cfg.ui_backup_table_row_height_px ?? (cfg.ui_table_row_height_px ?? 16);
-  el.ui_backup_visible_rows.value = cfg.ui_backup_visible_rows ?? 24;
-  el.ui_restore_visible_rows.value = cfg.ui_restore_visible_rows ?? 24;
-  el.outlier_gap_seconds_default.value = cfg.outlier_gap_seconds_default ?? 300;
-  el.ui_query_manual_max_points.value = cfg.ui_query_manual_max_points ?? 200000;
-  el.ui_graph_jump_padding_intervals.value = cfg.ui_graph_jump_padding_intervals ?? 1;
-  el.ui_edit_neighbors_n.value = cfg.ui_edit_neighbors_n ?? 5;
-  el.ui_edit_details_visible_rows.value = cfg.ui_edit_details_visible_rows ?? 12;
-  el.ui_edit_graph_buffer_minutes.value = cfg.ui_edit_graph_buffer_minutes ?? 30;
-  el.ui_edit_graph_max_points.value = cfg.ui_edit_graph_max_points ?? 50000;
-  el.ui_query_max_points.value = cfg.ui_query_max_points ?? 5000;
-  el.ui_raw_max_points.value = cfg.ui_raw_max_points ?? 20000;
-  el.ui_raw_center_max_points.value = cfg.ui_raw_center_max_points ?? 2000;
-  el.ui_raw_center_range_default.value = cfg.ui_raw_center_range_default ?? 100;
-  el.ui_raw_center_min_points.value = cfg.ui_raw_center_min_points ?? 10;
+  _safeSet(el.ui_table_visible_rows, 'value', cfg.ui_table_visible_rows ?? 20);
+  _safeSet(el.ui_outlier_visible_rows, 'value', cfg.ui_outlier_visible_rows ?? 10);
+  _safeSet(el.ui_raw_outlier_display_limit_per_type, 'value', cfg.ui_raw_outlier_display_limit_per_type ?? 100);
+  _safeSet(el.ui_raw_outlier_search_limit, 'value', cfg.ui_raw_outlier_search_limit ?? 5000);
+  _safeSet(el.ui_table_row_height_px, 'value', cfg.ui_table_row_height_px ?? 16);
+  _safeSet(el.ui_backup_table_row_height_px, 'value', cfg.ui_backup_table_row_height_px ?? (cfg.ui_table_row_height_px ?? 16));
+  _safeSet(el.ui_backup_visible_rows, 'value', cfg.ui_backup_visible_rows ?? 24);
+  _safeSet(el.ui_restore_visible_rows, 'value', cfg.ui_restore_visible_rows ?? 24);
+  _safeSet(el.outlier_gap_seconds_default, 'value', cfg.outlier_gap_seconds_default ?? 300);
+  _safeSet(el.ui_query_manual_max_points, 'value', cfg.ui_query_manual_max_points ?? 200000);
+  _safeSet(el.ui_graph_jump_padding_intervals, 'value', cfg.ui_graph_jump_padding_intervals ?? 1);
+  _safeSet(el.ui_edit_neighbors_n, 'value', cfg.ui_edit_neighbors_n ?? 5);
+  _safeSet(el.ui_edit_details_visible_rows, 'value', cfg.ui_edit_details_visible_rows ?? 12);
+  _safeSet(el.ui_edit_graph_buffer_minutes, 'value', cfg.ui_edit_graph_buffer_minutes ?? 30);
+  _safeSet(el.ui_edit_graph_max_points, 'value', cfg.ui_edit_graph_max_points ?? 50000);
+  _safeSet(el.ui_query_max_points, 'value', cfg.ui_query_max_points ?? 5000);
+  _safeSet(el.ui_raw_max_points, 'value', cfg.ui_raw_max_points ?? 20000);
+  _safeSet(el.ui_raw_center_max_points, 'value', cfg.ui_raw_center_max_points ?? 2000);
+  _safeSet(el.ui_raw_center_range_default, 'value', cfg.ui_raw_center_range_default ?? 100);
+  _safeSet(el.ui_raw_center_min_points, 'value', cfg.ui_raw_center_min_points ?? 10);
   _setVal(el.ui_raw_target_chunk_ms, cfg.ui_raw_target_chunk_ms ?? 5000);
   _setVal(el.ui_analysis_max_age_years, cfg.ui_analysis_max_age_years ?? 5);
   _setVal(el.ui_popup_pre_font_px, cfg.ui_popup_pre_font_px ?? 10);
@@ -1615,27 +1628,27 @@ function setForm(cfg){
   _setVal(el.ui_status_bar_fg, cfg.ui_status_bar_fg ?? '#111111');
   _syncSectionColorPickersFromText();
   _syncStatusBarColorPickersFromText();
-  el.ui_filter_label_width_px.value = cfg.ui_filter_label_width_px ?? 170;
+  _safeSet(el.ui_filter_label_width_px, 'value', cfg.ui_filter_label_width_px ?? 170);
   _setVal(el.ui_filter_control_width_px, cfg.ui_filter_control_width_px ?? 320);
-  el.ui_filter_search_width_px.value = cfg.ui_filter_search_width_px ?? 160;
+  _safeSet(el.ui_filter_search_width_px, 'value', cfg.ui_filter_search_width_px ?? 160);
 
-  el.ui_sel_field_font_px.value = cfg.ui_sel_field_font_px ?? 13;
-  el.ui_sel_label_font_px.value = cfg.ui_sel_label_font_px ?? 12;
-  el.ui_sel_desc_font_px.value = cfg.ui_sel_desc_font_px ?? 11;
+  _safeSet(el.ui_sel_field_font_px, 'value', cfg.ui_sel_field_font_px ?? 13);
+  _safeSet(el.ui_sel_label_font_px, 'value', cfg.ui_sel_label_font_px ?? 12);
+  _safeSet(el.ui_sel_desc_font_px, 'value', cfg.ui_sel_desc_font_px ?? 11);
   _setChecked(el.ui_sel_auto_width, !!cfg.ui_sel_auto_width);
-  el.ui_sel_width_px.value = cfg.ui_sel_width_px ?? 260;
+  _safeSet(el.ui_sel_width_px, 'value', cfg.ui_sel_width_px ?? 260);
 
-  el.jobs_max_runtime_seconds.value = cfg.jobs_max_runtime_seconds ?? 3600;
+  _safeSet(el.jobs_max_runtime_seconds, 'value', cfg.jobs_max_runtime_seconds ?? 3600);
   _setVal(el.ui_job_color_running, cfg.ui_job_color_running ?? '#eef3ff');
-  el.ui_job_color_done.value = cfg.ui_job_color_done ?? '#eefaf1';
-  el.ui_job_color_error.value = cfg.ui_job_color_error ?? '#fff0f0';
-  el.ui_job_color_cancelled.value = cfg.ui_job_color_cancelled ?? '#f6f6f6';
+  _safeSet(el.ui_job_color_done, 'value', cfg.ui_job_color_done ?? '#eefaf1');
+  _safeSet(el.ui_job_color_error, 'value', cfg.ui_job_color_error ?? '#fff0f0');
+  _safeSet(el.ui_job_color_cancelled, 'value', cfg.ui_job_color_cancelled ?? '#f6f6f6');
   _syncJobColorPickersFromText();
-  el.ui_repo_url.value = cfg.ui_repo_url ?? "";
-  el.ui_paypal_donate_url.value = cfg.ui_paypal_donate_url ?? "";
+  _safeSet(el.ui_repo_url, 'value', cfg.ui_repo_url ?? "");
+  _safeSet(el.ui_paypal_donate_url, 'value', cfg.ui_paypal_donate_url ?? "");
 
-  el.backup_dir.value = cfg.backup_dir ?? "/config/influxbro/backup";
-  el.backup_min_free_mb.value = cfg.backup_min_free_mb ?? 0;
+  _safeSet(el.backup_dir, 'value', cfg.backup_dir ?? "/config/influxbro/backup");
+  _safeSet(el.backup_min_free_mb, 'value', cfg.backup_min_free_mb ?? 0);
 
   _setChecked(el.ui_open_selection, !!cfg.ui_open_selection);
   _setChecked(el.ui_open_graph, !!cfg.ui_open_graph);
@@ -1644,18 +1657,20 @@ function setForm(cfg){
   _setChecked(el.ui_open_stats_total, !!cfg.ui_open_stats_total);
   _setChecked(el.ui_tooltips_enabled, (cfg.ui_tooltips_enabled !== false));
 
-  el.restore_preview_lines.value = (cfg.restore_preview_lines !== null && cfg.restore_preview_lines !== undefined) ? String(cfg.restore_preview_lines) : '5';
-  el.import_measurement_transforms.value = cfg.import_measurement_transforms ?? '';
+  _safeSet(el.restore_preview_lines, 'value', (cfg.restore_preview_lines !== null && cfg.restore_preview_lines !== undefined) ? String(cfg.restore_preview_lines) : '5');
+  _safeSet(el.import_measurement_transforms, 'value', cfg.import_measurement_transforms ?? '');
 
   _renderOutliersTable(_outlierRowsFromCfg(cfg || {}));
-  prefillOutlierMeasurements(cfg || {}).catch(()=>{});
+  prefillOutlierMeasurements(cfg || {}).catch((e)=>{
+    try{ reportConfigError('prefillOutlierMeasurements failed', {}, e && e.stack ? e.stack : String(e || '')); }catch(x){}
+  });
 
   _setChecked(el.log_to_file, (cfg.log_to_file !== false));
-  el.log_profile.value = String(cfg.log_profile ?? "debug");
-  el.log_max_mb.value = cfg.log_max_mb ?? 5;
-  el.log_backup_count.value = cfg.log_backup_count ?? 5;
-  el.log_max_age_days.value = cfg.log_max_age_days ?? 14;
-  el.bugreport_log_history_hours.value = cfg.bugreport_log_history_hours ?? 1;
+  _safeSet(el.log_profile, 'value', String(cfg.log_profile ?? "debug"));
+  _safeSet(el.log_max_mb, 'value', cfg.log_max_mb ?? 5);
+  _safeSet(el.log_backup_count, 'value', cfg.log_backup_count ?? 5);
+  _safeSet(el.log_max_age_days, 'value', cfg.log_max_age_days ?? 14);
+  _safeSet(el.bugreport_log_history_hours, 'value', cfg.bugreport_log_history_hours ?? 1);
   _setChecked(el.log_http_requests, !!cfg.log_http_requests);
   _setChecked(el.log_influx_queries, !!cfg.log_influx_queries);
   _setChecked(el.log_cache_usage, !!cfg.log_cache_usage);
@@ -1663,26 +1678,26 @@ function setForm(cfg){
 
   _setChecked(el.dash_cache_enabled, (cfg.dash_cache_enabled !== false));
   _setChecked(el.dash_cache_auto_update, (cfg.dash_cache_auto_update !== false));
-  el.dash_cache_refresh_mode.value = String(cfg.dash_cache_refresh_mode ?? 'hours');
-  el.dash_cache_refresh_hours.value = cfg.dash_cache_refresh_hours ?? 6;
-  el.dash_cache_refresh_daily_at.value = cfg.dash_cache_refresh_daily_at ?? '00:00:00';
-  el.dash_cache_max_items.value = cfg.dash_cache_max_items ?? 40;
-  el.dash_cache_max_mb.value = cfg.dash_cache_max_mb ?? 50;
+  _safeSet(el.dash_cache_refresh_mode, 'value', String(cfg.dash_cache_refresh_mode ?? 'hours'));
+  _safeSet(el.dash_cache_refresh_hours, 'value', cfg.dash_cache_refresh_hours ?? 6);
+  _safeSet(el.dash_cache_refresh_daily_at, 'value', cfg.dash_cache_refresh_daily_at ?? '00:00:00');
+  _safeSet(el.dash_cache_max_items, 'value', cfg.dash_cache_max_items ?? 40);
+  _safeSet(el.dash_cache_max_mb, 'value', cfg.dash_cache_max_mb ?? 50);
   _setChecked(el.dash_cache_update_on_use_if_stale, (cfg.dash_cache_update_on_use_if_stale !== false));
 
   _setChecked(el.stats_cache_enabled, (cfg.stats_cache_enabled !== false));
   _setChecked(el.stats_cache_auto_update, (cfg.stats_cache_auto_update !== false));
-  el.stats_cache_refresh_mode.value = String(cfg.stats_cache_refresh_mode ?? 'daily');
-  el.stats_cache_refresh_hours.value = cfg.stats_cache_refresh_hours ?? 24;
-  el.stats_cache_refresh_daily_at.value = cfg.stats_cache_refresh_daily_at ?? '03:00:00';
-  el.stats_cache_max_items.value = cfg.stats_cache_max_items ?? 10;
-  el.stats_cache_max_mb.value = cfg.stats_cache_max_mb ?? 50;
+  _safeSet(el.stats_cache_refresh_mode, 'value', String(cfg.stats_cache_refresh_mode ?? 'daily'));
+  _safeSet(el.stats_cache_refresh_hours, 'value', cfg.stats_cache_refresh_hours ?? 24);
+  _safeSet(el.stats_cache_refresh_daily_at, 'value', cfg.stats_cache_refresh_daily_at ?? '03:00:00');
+  _safeSet(el.stats_cache_max_items, 'value', cfg.stats_cache_max_items ?? 10);
+  _safeSet(el.stats_cache_max_mb, 'value', cfg.stats_cache_max_mb ?? 50);
 
-  el.stats_full_refresh_mode.value = String(cfg.stats_full_refresh_mode ?? 'manual');
-  el.stats_full_refresh_hours.value = cfg.stats_full_refresh_hours ?? 24;
-  el.stats_full_refresh_daily_at.value = cfg.stats_full_refresh_daily_at ?? '03:00:00';
-  el.stats_full_refresh_weekday.value = String((cfg.stats_full_refresh_weekday !== null && cfg.stats_full_refresh_weekday !== undefined) ? cfg.stats_full_refresh_weekday : 0);
-  el.stats_full_max_days.value = cfg.stats_full_max_days ?? 3650;
+  _safeSet(el.stats_full_refresh_mode, 'value', String(cfg.stats_full_refresh_mode ?? 'manual'));
+  _safeSet(el.stats_full_refresh_hours, 'value', cfg.stats_full_refresh_hours ?? 24);
+  _safeSet(el.stats_full_refresh_daily_at, 'value', cfg.stats_full_refresh_daily_at ?? '03:00:00');
+  _safeSet(el.stats_full_refresh_weekday, 'value', String((cfg.stats_full_refresh_weekday !== null && cfg.stats_full_refresh_weekday !== undefined) ? cfg.stats_full_refresh_weekday : 0));
+  _safeSet(el.stats_full_max_days, 'value', cfg.stats_full_max_days ?? 3650);
 
   _setVal(el.ui_log_error_bg, cfg.ui_log_error_bg ?? '#ffe0e0');
   _setVal(el.ui_log_error_fg, cfg.ui_log_error_fg ?? '#b00020');
@@ -2124,6 +2139,7 @@ function restructureSettings(){
     }
     main.dataset.restructured250 = '1';
 
+    const detachLog = {};
     const sections = {
       yaml: _cfgDetach('details.card[title="settings.section.yaml"]'),
       conn: _cfgDetach('details.card[title="settings.section.conn"]'),
@@ -2142,6 +2158,7 @@ function restructureSettings(){
       outliers: _cfgDetach('details.card[title="settings.section.outliers"]'),
       links: _cfgDetach('#ui_links'),
     };
+    Object.keys(sections).forEach((k)=>{ detachLog[k] = !!sections[k]; });
 
     const groups = [
       ['Anbindung', 'config_settings.group_connection', [sections.yaml, sections.conn, sections.v2, sections.v1]],
@@ -2165,17 +2182,25 @@ function restructureSettings(){
     ];
 
     groups.forEach(([title, dataUi, nodes])=>{
-      const sec = _cfgMakeSection(title, dataUi, '');
-      const body = _cfgBody(sec);
-      (nodes || []).forEach((node)=>{ if(node && body) body.appendChild(node); });
-      if((nodes || []).filter(Boolean).length === 0 && body){
-        body.appendChild(_cfgSectionNote('Derzeit keine eigenen Einstellungen in diesem Bereich.')); 
+      try{
+        const sec = _cfgMakeSection(title, dataUi, '');
+        const body = _cfgBody(sec);
+        (nodes || []).forEach((node)=>{ if(node && body) body.appendChild(node); });
+        if((nodes || []).filter(Boolean).length === 0 && body){
+          body.appendChild(_cfgSectionNote('Derzeit keine eigenen Einstellungen in diesem Bereich.'));
+        }
+        main.insertBefore(sec, saveCard);
+      }catch(e){
+        reportConfigError('restructureSettings group failed: ' + title, { group: title }, e && e.stack ? e.stack : String(e || ''));
       }
-      main.insertBefore(sec, saveCard);
     });
 
-    try{ if(window.InfluxBroNormalizeSummaryActions) window.InfluxBroNormalizeSummaryActions(); }catch(e){}
-  }catch(e){}
+    try{ if(window.InfluxBroNormalizeSummaryActions) window.InfluxBroNormalizeSummaryActions(); }catch(e){
+      reportConfigError('restructureSettings NormalizeSummaryActions failed', {}, e && e.stack ? e.stack : String(e || ''));
+    }
+  }catch(e){
+    reportConfigError('restructureSettings failed', {}, e && e.stack ? e.stack : String(e || ''));
+  }
 }
 
 try{ if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', restructureSettings, {once:true}); else restructureSettings(); }catch(e){}
@@ -2184,6 +2209,26 @@ load().catch(e=>{
   try{ reportConfigError('Settings initial load failed', { stage: 'load' }, e && e.stack ? e.stack : String(e || '')); }catch(x){}
   err(String(e));
 });
+
+// Global error catch for settings page - catches errors that slip through individual try/catch blocks
+try{
+  window.addEventListener('error', function(ev){
+    try{
+      const msg = ev && ev.message ? ev.message : 'JS error on settings page';
+      const stack = ev && ev.error && ev.error.stack ? ev.error.stack : '';
+      const filename = ev && ev.filename ? ev.filename : '';
+      reportConfigError('settings.window.error', { filename: filename, lineno: ev && typeof ev.lineno === 'number' ? ev.lineno : 0 }, stack || msg);
+    }catch(e){}
+  });
+  window.addEventListener('unhandledrejection', function(ev){
+    try{
+      const reason = ev ? ev.reason : null;
+      const msg = reason && reason.message ? reason.message : String(reason || 'Unhandled promise rejection on settings page');
+      const stack = reason && reason.stack ? reason.stack : '';
+      reportConfigError('settings.unhandledrejection', { raw_reason: String(reason || '') }, stack || msg);
+    }catch(e){}
+  });
+}catch(e){}
 </script>
 
 {% include "_table_cols.html" %}
