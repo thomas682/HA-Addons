@@ -4,6 +4,55 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>InfluxBro – Einstellungen</title>
+  <script>
+    (function(){
+      if(window.__InfluxBroEarlyClientLogInstalled) return;
+      window.__InfluxBroEarlyClientLogInstalled = true;
+      let lastKey = '';
+      let lastAt = 0;
+      function send(kind, message, stack, extra){
+        try{
+          const msg = String(message || '').slice(0, 2000);
+          const key = kind + '|' + msg;
+          const now = Date.now();
+          if(key && lastKey === key && (now - lastAt) < 800) return;
+          lastKey = key;
+          lastAt = now;
+          fetch('./api/client_error', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              page: 'config_page.main',
+              message: msg,
+              href: String(location && location.href ? location.href : ''),
+              ua: String(navigator && navigator.userAgent ? navigator.userAgent : ''),
+              stack: String(stack || '').slice(0, 4000),
+              extra: Object.assign({ kind: kind }, extra || {}),
+            }),
+            keepalive: true,
+          }).catch(()=>{});
+        }catch(e){}
+      }
+      window.__InfluxBroEarlyClientLog = { send };
+      window.addEventListener('error', function(ev){
+        try{
+          send('config.window.error', ev && ev.message ? ev.message : 'JS error', ev && ev.error && ev.error.stack ? ev.error.stack : '', {
+            src: ev && ev.filename ? ev.filename : '',
+            line: ev && typeof ev.lineno === 'number' ? ev.lineno : 0,
+            col: ev && typeof ev.colno === 'number' ? ev.colno : 0,
+          });
+        }catch(e){}
+      });
+      window.addEventListener('unhandledrejection', function(ev){
+        try{
+          const reason = ev ? ev.reason : null;
+          const msg = reason && reason.message ? reason.message : String(reason || 'Unhandled promise rejection');
+          const stack = reason && reason.stack ? reason.stack : '';
+          send('config.unhandledrejection', msg, stack, { raw_reason: String(reason || '') });
+        }catch(e){}
+      });
+    })();
+  </script>
   <style>
     body { font-family: system-ui, sans-serif; margin: 0; }
     .content { padding: 16px; }
@@ -1141,11 +1190,26 @@
   </div>
 
 <script>
+function reportConfigError(message, extra, stack){
+  try{
+    if(window.InfluxBroClientLog && window.InfluxBroClientLog.reportError){
+      window.InfluxBroClientLog.reportError(String(message || ''), Object.assign({ kind: 'config' }, extra || {}), String(stack || ''));
+      return;
+    }
+  }catch(e){}
+  try{
+    if(window.__InfluxBroEarlyClientLog && window.__InfluxBroEarlyClientLog.send){
+      window.__InfluxBroEarlyClientLog.send('config.report', String(message || ''), String(stack || ''), extra || {});
+    }
+  }catch(e){}
+}
+
 const err = (msg) => {
   const el = document.getElementById('err');
   const s = String(msg || "");
-  el.textContent = s;
+  if(el) el.textContent = s;
   if(s){
+    try{ reportConfigError(s, { kind: 'config.err' }, ''); }catch(e){}
     try{
       if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error(s);
       else alert(s);
@@ -1774,10 +1838,15 @@ function getForm(){
 async function load(){
   err(""); ok("");
   const j = await api("./api/config");
-  setForm(j.config);
+  try{
+    setForm(j.config);
+  }catch(e){
+    reportConfigError('Settings setForm failed', { stage: 'setForm' }, e && e.stack ? e.stack : String(e || ''));
+    throw e;
+  }
 
   try{ applySelAutoUi(); }catch(e){}
-  try{ await loadSelComputedWidth(); }catch(e){}
+  try{ await loadSelComputedWidth(); }catch(e){ reportConfigError('Settings loadSelComputedWidth failed', { stage: 'loadSelComputedWidth' }, e && e.stack ? e.stack : String(e || '')); }
 
   const card = document.getElementById("loadyaml_card");
   if(card) card.style.display = "none";
@@ -1925,10 +1994,18 @@ async function testConn(){
   }catch(e){}
 }
 
-  document.getElementById("find_yaml").addEventListener("click", ()=>findYaml().catch(e=>err(String(e))));
-  document.getElementById("read_yaml").addEventListener("click", ()=>loadYaml().catch(e=>err(String(e))));
-  document.getElementById("save").addEventListener("click", ()=>save().catch(e=>err(String(e))));
-  document.getElementById("test").addEventListener("click", ()=>testConn().catch(e=>err(String(e))));
+  try{
+    const $findYaml = document.getElementById("find_yaml");
+    const $readYaml = document.getElementById("read_yaml");
+    const $saveBtn = document.getElementById("save");
+    const $testBtn = document.getElementById("test");
+    if($findYaml) $findYaml.addEventListener("click", ()=>findYaml().catch(e=>err(String(e))));
+    if($readYaml) $readYaml.addEventListener("click", ()=>loadYaml().catch(e=>err(String(e))));
+    if($saveBtn) $saveBtn.addEventListener("click", ()=>save().catch(e=>err(String(e))));
+    if($testBtn) $testBtn.addEventListener("click", ()=>testConn().catch(e=>err(String(e))));
+  }catch(e){
+    reportConfigError('Settings action binding failed', { stage: 'action_bindings' }, e && e.stack ? e.stack : String(e || ''));
+  }
   try{ if(document.getElementById('admin_token_test')) document.getElementById('admin_token_test').addEventListener('click', async (ev)=>{
     try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
     let ts = document.getElementById('test_status');
@@ -2103,7 +2180,10 @@ function restructureSettings(){
 
 try{ if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', restructureSettings, {once:true}); else restructureSettings(); }catch(e){}
 
-load().catch(e=>err(String(e)));
+load().catch(e=>{
+  try{ reportConfigError('Settings initial load failed', { stage: 'load' }, e && e.stack ? e.stack : String(e || '')); }catch(x){}
+  err(String(e));
+});
 </script>
 
 {% include "_table_cols.html" %}

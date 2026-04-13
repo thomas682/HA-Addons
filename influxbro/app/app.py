@@ -18376,7 +18376,11 @@ def api_outliers():
         "last_reason": str(scan_state_in.get("last_reason") or "") or None,
         "fault_ended_at": str(scan_state_in.get("fault_ended_at") or "") or None,
     }
-    recovery_valid_streak = 2
+    try:
+        recovery_valid_streak = int(body.get("recovery_valid_streak") or 2)
+    except Exception:
+        recovery_valid_streak = 2
+    recovery_valid_streak = max(1, recovery_valid_streak)
 
     LOG.info("api.outlier_search starting scan with types=%s", search_types)
 

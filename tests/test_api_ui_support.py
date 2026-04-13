@@ -259,6 +259,19 @@ def test_raw_outlier_table_uses_template_structure_and_helpers():
     assert 'button[data-table-colvis="raw_outlier_tbl"]' in body
 
 
+def test_raw_outlier_params_dialog_has_explanations_and_recovery_override():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert 'id="raw_outlier_params_reset"' in body
+    assert 'placeholder="leer = automatisch aus Measurement/Einheit"' in body
+    assert 'placeholder="leer = keine Untergrenze"' in body
+    assert 'placeholder="leer = keine Obergrenze"' in body
+    assert 'placeholder="leer = Standard 2"' in body
+    assert 'placeholder="leer = Standard aus Einstellungen"' in body
+    assert 'Anzahl gueltiger Werte in Folge, bis eine aktive Stoerphase wieder als beendet gilt.' in body
+    assert 'recovery_valid_streak: params.recovery_streak || \'\'' in body
+    assert 'function resetOutlierParams(){' in body
+
+
 def test_dashboard_outlier_section_is_separate_and_above_raw_section():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     assert 'id="outlier_section"' in body
@@ -329,6 +342,10 @@ def test_settings_layout_and_null_safe_bindings_are_present():
     assert '.color_pick_row input[type="text"] { flex:1 1 auto; min-width:0; }' in config
     assert '_setVal(el.ui_filter_control_width_px' in config
     assert '_setVal(el.ui_job_color_running' in config
+    assert 'window.__InfluxBroEarlyClientLogInstalled' in config
+    assert 'function reportConfigError(message, extra, stack){' in config
+    assert "reportConfigError('Settings initial load failed'" in config
+    assert "reportConfigError('Settings action binding failed'" in config
 
 
 def test_dashboard_abort_buttons_and_search_width_are_updated():

@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.12.315
+
+### Bug Fix
+
+- Der Dashboard-Dialog `Ausreisser-Parameter` nutzt `Recovery-Streak` jetzt wirklich fuer die laufende Ausreisseranalyse. Die Felder wurden visuell ueberarbeitet und enthalten erklaerende Hinweise zu Wirkung und Leerwert-/Default-Verhalten statt missverstaendlicher `auto`-Platzhalter. ([#257](https://github.com/thomas682/HA-Addons/issues/257))
+- Die Settings-Seite meldet Initialisierungs- und Browserfehler jetzt frueher ins Add-on-Log. Dadurch werden auch Fehler wie `No Listener: tabs:outgoing.message.ready` aus dem Startup-/Vendor-Kontext besser sichtbar, statt die Seite nur leer erscheinen zu lassen. ([#257](https://github.com/thomas682/HA-Addons/issues/257))
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tests: `pytest tests/test_api_outliers_fault_phase.py tests/test_api_ui_support.py -q -k "recovery_valid_streak_override or raw_outlier_params_dialog_has_explanations_and_recovery_override or settings_layout_and_null_safe_bindings_are_present or fault_phase_preset_present_in_dashboard_ui"`
+- Tested with Home Assistant Core: 2026.4.2
+
 ## 1.12.314
 
 ### Enhancement

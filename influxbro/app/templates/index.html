@@ -700,35 +700,44 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
       </div>
     </details>
 
-    <div id="raw_outlier_params_dialog" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; z-index:9999; background:rgba(0,0,0,0.4); align-items:center; justify-content:center;">
-      <div style="background:#fff; border-radius:16px; padding:20px; max-width:600px; width:90%; max-height:80vh; overflow:auto; box-shadow:0 12px 60px rgba(0,0,0,0.28);">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-          <h3 style="margin:0;">Ausreisser-Parameter</h3>
+    <div id="raw_outlier_params_dialog" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;">
+      <div style="background:#fff; border-radius:16px; padding:20px; max-width:760px; width:min(760px, 100%); max-height:88vh; overflow:auto; box-shadow:0 12px 60px rgba(0,0,0,0.28);">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:16px;">
+          <div>
+            <h3 style="margin:0 0 6px 0;">Ausreisser-Parameter</h3>
+            <div class="muted" style="font-size:13px; line-height:1.45;">Die Werte ueberschreiben nur fuer diese Dashboard-Ausreisseranalyse die globalen Standards. Leere Felder verwenden weiterhin den jeweils hinterlegten Standardwert.</div>
+          </div>
           <button class="btn_sm" id="raw_outlier_params_close" type="button">Schliessen</button>
         </div>
-        <div style="display:flex; flex-direction:column; gap:16px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #eee;">
-            <label style="font-weight:500;">Counter: Max Sprung</label>
-            <input id="raw_param_max_step" type="number" step="any" placeholder="(auto)" style="width:120px;" />
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:14px;">
+          <div style="border:1px solid #e7e7e7; border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:8px;">
+            <label for="raw_param_max_step" style="font-weight:700;">Counter: Max Sprung</label>
+            <input id="raw_param_max_step" type="number" step="any" placeholder="leer = automatisch aus Measurement/Einheit" style="width:100%;" />
+            <div class="muted" style="font-size:12px; line-height:1.45;">Maximal erlaubter positiver Sprung zwischen zwei aufeinanderfolgenden Punkten. Leerlassen nutzt den automatisch aus Measurement/Einheit abgeleiteten Standard.</div>
           </div>
-          <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #eee;">
-            <label style="font-weight:500;">Grenzen: Min</label>
-            <input id="raw_param_min" type="number" step="any" placeholder="auto" style="width:120px;" />
+          <div style="border:1px solid #e7e7e7; border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:8px;">
+            <label for="raw_param_min" style="font-weight:700;">Grenzen: Min</label>
+            <input id="raw_param_min" type="number" step="any" placeholder="leer = keine Untergrenze" style="width:100%;" />
+            <div class="muted" style="font-size:12px; line-height:1.45;">Werte unterhalb dieser Grenze werden als Grenzverletzung markiert. Bleibt das Feld leer, wird keine untere Grenze geprueft.</div>
           </div>
-          <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #eee;">
-            <label style="font-weight:500;">Grenzen: Max</label>
-            <input id="raw_param_max" type="number" step="any" placeholder="auto" style="width:120px;" />
+          <div style="border:1px solid #e7e7e7; border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:8px;">
+            <label for="raw_param_max" style="font-weight:700;">Grenzen: Max</label>
+            <input id="raw_param_max" type="number" step="any" placeholder="leer = keine Obergrenze" style="width:100%;" />
+            <div class="muted" style="font-size:12px; line-height:1.45;">Werte oberhalb dieser Grenze werden als Grenzverletzung markiert. Bleibt das Feld leer, wird keine obere Grenze geprueft.</div>
           </div>
-          <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #eee;">
-            <label style="font-weight:500;">Stoerphase: Recovery-Streak</label>
-            <input id="raw_param_recovery_streak" type="number" min="1" max="10" step="1" value="2" style="width:80px;" />
+          <div style="border:1px solid #e7e7e7; border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:8px;">
+            <label for="raw_param_recovery_streak" style="font-weight:700;">Stoerphase: Recovery-Streak</label>
+            <input id="raw_param_recovery_streak" type="number" min="1" max="50" step="1" placeholder="leer = Standard 2" style="width:100%;" />
+            <div class="muted" style="font-size:12px; line-height:1.45;">Anzahl gueltiger Werte in Folge, bis eine aktive Stoerphase wieder als beendet gilt. Hoehere Werte machen die Rueckkehr in den Normalzustand strenger.</div>
           </div>
-          <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #eee;">
-            <label style="font-weight:500;">Messwertlücke: Max Abstand (s)</label>
-            <input id="raw_param_gap_seconds" type="number" min="1" max="86400" step="1" value="300" style="width:120px;" />
+          <div style="border:1px solid #e7e7e7; border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:8px; grid-column:1 / -1;">
+            <label for="raw_param_gap_seconds" style="font-weight:700;">Messwertluecke: Max Abstand (s)</label>
+            <input id="raw_param_gap_seconds" type="number" min="1" max="86400" step="1" placeholder="leer = Standard aus Einstellungen" style="width:100%; max-width:240px;" />
+            <div class="muted" style="font-size:12px; line-height:1.45;">Wenn zwei aufeinanderfolgende Werte weiter auseinanderliegen als dieser Abstand, wird das als Messwertluecke gewertet statt als normaler Verlauf oder Counter-Sprung.</div>
           </div>
         </div>
-        <div style="margin-top:16px; display:flex; gap:8px; justify-content:flex-end;">
+        <div style="margin-top:16px; display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
+          <button class="btn_sm" id="raw_outlier_params_reset" type="button">Standardwerte</button>
           <button class="btn_sm" id="raw_outlier_params_save" type="button">Speichern</button>
         </div>
       </div>
@@ -1169,6 +1178,7 @@ const $rawOutlierParamsAction = document.getElementById('raw_outlier_params_acti
 const $rawOutlierParamsDialog = document.getElementById('raw_outlier_params_dialog');
 const $rawOutlierParamsClose = document.getElementById('raw_outlier_params_close');
 const $rawOutlierParamsSave = document.getElementById('raw_outlier_params_save');
+const $rawOutlierParamsReset = document.getElementById('raw_outlier_params_reset');
 const $rawParamMaxStep = document.getElementById('raw_param_max_step');
 const $rawParamMin = document.getElementById('raw_param_min');
 const $rawParamMax = document.getElementById('raw_param_max');
@@ -5091,26 +5101,37 @@ function getDisplayedOutliers(){
 function saveOutlierParams(){
   try{
     const p = {
-      max_step: $rawParamMaxStep ? $rawParamMaxStep.value : '',
-      min: $rawParamMin ? $rawParamMin.value : '',
-      max: $rawParamMax ? $rawParamMax.value : '',
-      recovery_streak: $rawParamRecoveryStreak ? $rawParamRecoveryStreak.value : '2',
-      gap_seconds: $rawParamGapSeconds ? $rawParamGapSeconds.value : '300',
+      max_step: $rawParamMaxStep ? String($rawParamMaxStep.value || '').trim() : '',
+      min: $rawParamMin ? String($rawParamMin.value || '').trim() : '',
+      max: $rawParamMax ? String($rawParamMax.value || '').trim() : '',
+      recovery_streak: $rawParamRecoveryStreak ? String($rawParamRecoveryStreak.value || '').trim() : '',
+      gap_seconds: $rawParamGapSeconds ? String($rawParamGapSeconds.value || '').trim() : '',
     };
     localStorage.setItem('raw_outlier_params', JSON.stringify(p));
   }catch(e){}
 }
 
+function resetOutlierParams(){
+  try{
+    if($rawParamMaxStep) $rawParamMaxStep.value = '';
+    if($rawParamMin) $rawParamMin.value = '';
+    if($rawParamMax) $rawParamMax.value = '';
+    if($rawParamRecoveryStreak) $rawParamRecoveryStreak.value = '';
+    if($rawParamGapSeconds) $rawParamGapSeconds.value = '';
+  }catch(e){}
+}
+
 function loadOutlierParams(){
   try{
+    resetOutlierParams();
     const s = localStorage.getItem('raw_outlier_params');
     if(s){
       const p = JSON.parse(s);
       if($rawParamMaxStep) $rawParamMaxStep.value = p.max_step || '';
       if($rawParamMin) $rawParamMin.value = p.min || '';
       if($rawParamMax) $rawParamMax.value = p.max || '';
-      if($rawParamRecoveryStreak) $rawParamRecoveryStreak.value = p.recovery_streak || '2';
-      if($rawParamGapSeconds) $rawParamGapSeconds.value = p.gap_seconds || '300';
+      if($rawParamRecoveryStreak) $rawParamRecoveryStreak.value = p.recovery_streak || '';
+      if($rawParamGapSeconds) $rawParamGapSeconds.value = p.gap_seconds || '';
     }
   }catch(e){}
 }
@@ -5347,6 +5368,7 @@ async function runRawOutlierSearch_DISABLED_LEGACY(){
         min: params.min || '',
         max: params.max || '',
         max_step: params.max_step || '',
+        recovery_valid_streak: params.recovery_streak || '',
         gap_seconds: params.gap_seconds || '300',
       };
 
@@ -11166,6 +11188,7 @@ try{
   });
   if($rawOutlierParamsAction) $rawOutlierParamsAction.addEventListener('click', ()=>{ openOutlierParamsDialog(); });
   if($rawOutlierParamsClose) $rawOutlierParamsClose.addEventListener('click', ()=>{ closeOutlierParamsDialog(); });
+  if($rawOutlierParamsReset) $rawOutlierParamsReset.addEventListener('click', ()=>{ resetOutlierParams(); });
   if($rawOutlierParamsSave) $rawOutlierParamsSave.addEventListener('click', ()=>{ saveOutlierParams(); closeOutlierParamsDialog(); });
   if($rawOutlierParamsDialog){
     $rawOutlierParamsDialog.addEventListener('click', (ev)=>{
