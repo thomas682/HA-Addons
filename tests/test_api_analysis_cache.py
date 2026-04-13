@@ -107,3 +107,35 @@ def test_analysis_cache_combine_merges_contiguous_segments(load_app_module, tmp_
     series = app_mod._analysis_cache_group_list(cfg)
     assert len(series) == 1
     assert series[0]["segment_count"] == 1
+
+
+def test_analysis_cache_combine_returns_json_error_on_merge_exception(load_app_module, tmp_path, monkeypatch):
+    cfg_root = tmp_path / "config"
+    data_root = tmp_path / "data"
+
+    app_mod = load_app_module(config_dir=cfg_root, data_dir=data_root)
+    client = app_mod.app.test_client()
+    cfg = app_mod.load_cfg()
+
+    a = app_mod._analysis_cache_store_segment(
+        cfg, "m", "value", "sensor.demo", "Demo",
+        "2026-01-01T00:00:00Z", "2026-01-02T00:00:00Z",
+        [{"time": "2026-01-01T12:00:00Z", "value": 1.0, "reason": "NULL", "types": ["null"]}], 5,
+    )
+    b = app_mod._analysis_cache_store_segment(
+        cfg, "m", "value", "sensor.demo", "Demo",
+        "2026-01-02T00:00:00Z", "2026-01-03T00:00:00Z",
+        [{"time": "2026-01-02T12:00:00Z", "value": 2.0, "reason": "0", "types": ["zero"]}], 7,
+    )
+    assert a and b
+
+    def _boom(_cfg, _group):
+        raise app_mod._ApiError("combine exploded", 500)
+
+    monkeypatch.setattr(app_mod, "_analysis_cache_merge_group", _boom)
+
+    r = client.post("/api/analysis_cache/combine", json={"series_key": a["series_key"]})
+    j = r.get_json()
+
+    assert r.status_code == 500
+    assert j == {"ok": False, "error": "combine exploded"}

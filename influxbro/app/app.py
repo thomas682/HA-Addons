@@ -12131,45 +12131,52 @@ def api_analysis_cache_rebuild():
 
 @app.post("/api/analysis_cache/combine")
 def api_analysis_cache_combine():
-    cfg = _overlay_from_yaml_if_enabled(load_cfg())
-    body = request.get_json(force=True) or {}
-    series_key = str(body.get("series_key") or "").strip()
-    if not series_key:
-        return jsonify({"ok": False, "error": "series_key required"}), 400
-    metas = [m for m in _analysis_cache_list_meta() if str(m.get("series_key") or "") == series_key]
-    if not metas:
-        return jsonify({"ok": False, "error": "series not found"}), 404
-    groups = [g for g in _analysis_cache_contiguous_groups(metas) if len(g) > 1]
-    if not groups:
+    try:
+        cfg = _overlay_from_yaml_if_enabled(load_cfg())
+        body = request.get_json(force=True) or {}
+        series_key = str(body.get("series_key") or "").strip()
+        if not series_key:
+            return jsonify({"ok": False, "error": "series_key required"}), 400
+        metas = [m for m in _analysis_cache_list_meta() if str(m.get("series_key") or "") == series_key]
+        if not metas:
+            return jsonify({"ok": False, "error": "series not found"}), 404
+        groups = [g for g in _analysis_cache_contiguous_groups(metas) if len(g) > 1]
+        if not groups:
+            return jsonify({
+                "ok": True,
+                "created": [],
+                "deleted_ids": [],
+                "groups_combined": 0,
+                "note": "no contiguous segments to combine",
+            })
+        created: list[dict[str, Any]] = []
+        deleted_ids: list[str] = []
+        for group in groups:
+            merged = _analysis_cache_merge_group(cfg, group)
+            if not merged:
+                continue
+            created.append({
+                "cache_id": str(merged.get("id") or ""),
+                "start": str(merged.get("covered_start") or ""),
+                "stop": str(merged.get("covered_stop") or ""),
+                "updated_at": str(merged.get("updated_at") or ""),
+                "outlier_count": int(merged.get("outlier_count") or 0),
+            })
+            deleted_ids.extend([str(m.get("id") or "") for m in group])
+        if not created:
+            return jsonify({"ok": False, "error": "combine failed"}), 500
         return jsonify({
             "ok": True,
-            "created": [],
-            "deleted_ids": [],
-            "groups_combined": 0,
-            "note": "no contiguous segments to combine",
+            "created": created,
+            "deleted_ids": deleted_ids,
+            "groups_combined": len(created),
         })
-    created: list[dict[str, Any]] = []
-    deleted_ids: list[str] = []
-    for group in groups:
-        merged = _analysis_cache_merge_group(cfg, group)
-        if not merged:
-            continue
-        created.append({
-            "cache_id": str(merged.get("id") or ""),
-            "start": str(merged.get("covered_start") or ""),
-            "stop": str(merged.get("covered_stop") or ""),
-            "updated_at": str(merged.get("updated_at") or ""),
-            "outlier_count": int(merged.get("outlier_count") or 0),
-        })
-        deleted_ids.extend([str(m.get("id") or "") for m in group])
-    if not created:
-        return jsonify({"ok": False, "error": "combine failed"}), 500
-    return jsonify({
-        "ok": True,
-        "created": created,
-        "deleted_ids": deleted_ids,
-        "groups_combined": len(created),
-    })
+    except _ApiError as e:
+        LOG.error("api.analysis_cache.combine api_error series_key=%s error=%s", request.get_json(silent=True) and str((request.get_json(silent=True) or {}).get("series_key") or "") or "", e)
+        return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), int(getattr(e, "status_code", 500) or 500)
+    except Exception as e:
+        LOG.error("api.analysis_cache.combine unexpected error: %s", e, exc_info=True)
+        return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
 
 
 @app.post("/api/cache/delete")

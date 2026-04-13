@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.330
+
+### Bug Fix
+
+- Der Endpoint `/api/analysis_cache/combine` gibt bei Merge-Fehlern jetzt immer eine saubere JSON-Fehlerantwort statt einer HTML-500-Seite zurück. Dadurch zeigt das Dashboard bei Fehlern im Analyse-Cache-Kombinieren den eigentlichen Backend-Fehler statt `Invalid JSON`. ([#268](https://github.com/thomas682/HA-Addons/issues/268))
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tests: `pytest tests/test_api_analysis_cache.py -q -k "analysis_cache_combine_merges_contiguous_segments or analysis_cache_combine_returns_json_error_on_merge_exception"`
+- Tested with Home Assistant Core: 2026.4.2
+
 ## 1.12.329
 
 ### Bug Fix
