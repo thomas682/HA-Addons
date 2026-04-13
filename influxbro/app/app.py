@@ -3657,8 +3657,8 @@ def _analysis_cache_fetch_segment(
         "search_types": ["bounds", "counter", "decrease", "fault_phase", "null", "zero"],
         "limit": int(cfg.get("ui_raw_outlier_search_limit", 5000) or 5000),
     }
-    with app.test_request_context("/api/outlier_search", method="POST", json=body0):
-        resp = api_outlier_search()
+    with app.test_request_context("/api/outliers", method="POST", json=body0):
+        resp = api_outliers()
     response = make_response(resp)
     if response.status_code >= 400:
         err_payload = response.get_json(silent=True) or {}

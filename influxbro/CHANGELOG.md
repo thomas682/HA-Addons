@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.331
+
+### Bug Fix
+
+- Das serverseitige Kombinieren von Analyse-Cache-Segmenten nutzt fuer Dirty-Segmente jetzt wieder den aktuellen Outlier-Endpoint. Dadurch schlagen Combine-Laeufe mit geaenderten Segmenten nicht mehr mit `name 'api_outlier_search' is not defined` fehl. ([#268](https://github.com/thomas682/HA-Addons/issues/268))
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tests: `pytest tests/test_api_analysis_cache.py -q`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.330
 
 ### Bug Fix

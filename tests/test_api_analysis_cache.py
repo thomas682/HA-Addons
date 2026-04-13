@@ -139,3 +139,74 @@ def test_analysis_cache_combine_returns_json_error_on_merge_exception(load_app_m
 
     assert r.status_code == 500
     assert j == {"ok": False, "error": "combine exploded"}
+
+
+def test_analysis_cache_combine_refetches_dirty_segments_via_api_outliers(load_app_module, tmp_path, monkeypatch):
+    cfg_root = tmp_path / "config"
+    data_root = tmp_path / "data"
+
+    app_mod = load_app_module(config_dir=cfg_root, data_dir=data_root)
+    client = app_mod.app.test_client()
+    cfg = app_mod.load_cfg()
+
+    a = app_mod._analysis_cache_store_segment(
+        cfg, "m", "value", "sensor.demo", "Demo",
+        "2026-01-01T00:00:00Z", "2026-01-02T00:00:00Z",
+        [{"time": "2026-01-01T12:00:00Z", "value": 1.0, "reason": "NULL", "types": ["null"]}], 5,
+    )
+    b = app_mod._analysis_cache_store_segment(
+        cfg, "m", "value", "sensor.demo", "Demo",
+        "2026-01-02T00:00:00Z", "2026-01-03T00:00:00Z",
+        [{"time": "2026-01-02T12:00:00Z", "value": 2.0, "reason": "0", "types": ["zero"]}], 7,
+    )
+    assert a and b
+
+    b["updated_at"] = "2026-01-02T00:30:00Z"
+    app_mod._analysis_cache_write_meta(b)
+    app_mod._history_append({
+        "at": "2026-01-02T01:00:00Z",
+        "time": "2026-01-02T12:00:00Z",
+        "action": "overwrite",
+        "old_value": 2.0,
+        "new_value": 3.0,
+        "reason": "manual fix",
+        "series": {
+            "measurement": "m",
+            "field": "value",
+            "entity_id": "sensor.demo",
+            "friendly_name": "Demo",
+        },
+    })
+
+    calls: list[dict[str, object]] = []
+
+    def _fake_api_outliers():
+        body = app_mod.request.get_json(force=True) or {}
+        calls.append(body)
+        return app_mod.jsonify({
+            "ok": True,
+            "rows": [{
+                "time": "2026-01-02T18:00:00Z",
+                "value": 3.0,
+                "reason": "0",
+                "types": ["zero"],
+            }],
+            "scanned": 11,
+        })
+
+    monkeypatch.setattr(app_mod, "api_outliers", _fake_api_outliers)
+
+    r = client.post("/api/analysis_cache/combine", json={"series_key": a["series_key"]})
+    j = r.get_json()
+
+    assert r.status_code == 200
+    assert j["ok"] is True
+    assert j["groups_combined"] == 1
+    assert len(calls) == 1
+    assert calls[0]["measurement"] == "m"
+    assert calls[0]["field"] == "value"
+
+    series = app_mod._analysis_cache_group_list(cfg)
+    assert len(series) == 1
+    assert series[0]["segment_count"] == 1
+    assert series[0]["outlier_count"] == 2
