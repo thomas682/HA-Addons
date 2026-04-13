@@ -270,14 +270,20 @@ def test_raw_outlier_params_dialog_has_explanations_and_recovery_override():
     assert 'Anzahl gueltiger Werte in Folge, bis eine aktive Stoerphase wieder als beendet gilt.' in body
     assert 'recovery_valid_streak: params.recovery_streak || \'\'' in body
     assert 'function resetOutlierParams(){' in body
+    assert 'function _ensureOutlierWindows(base, win, source){' in body
+    assert "kind: 'analysis_cache_window'" in body
+    assert "_logOutlierWindowStats('status_before'" in body
+    assert "_logOutlierWindowStats('status_after'" in body
 
 
 def test_dashboard_outlier_section_is_separate_and_above_raw_section():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     assert 'id="outlier_section"' in body
-    assert 'data-ui="section.outliers"' in body
+    assert 'data-ui="dashboard_outliers.section_root"' in body
     assert '<span>Ausreißer</span>' in body
     assert body.index('id="outlier_section"') < body.index('id="raw_section"')
+    assert 'id="raw_outlier_row_count" style="font-size:12px; opacity:0.7; margin-top:8px;"' in body
+    assert 'style="--max-rows: 5; min-width:0; width:100%; box-sizing:border-box;"' in body
 
 
 def test_outlier_table_header_is_explicitly_sticky_and_search_bar_tracks_outlier_section():
@@ -358,12 +364,17 @@ def test_dashboard_abort_buttons_and_search_width_are_updated():
 
 def test_navigation_helper_controls_and_config_exist():
     topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    nav = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_nav.html").read_text()
     config = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "config.html").read_text()
     assert 'id="ib_nav_back"' in topbar
     assert 'id="ib_nav_forward"' in topbar
     assert 'id="ib_param_help_toggle"' in topbar
     assert 'const NAV_HISTORY_KEY = ' in topbar
     assert 'const PARAM_LINKS = {' in topbar
+    assert "sessionStorage.setItem('influxbro_nav_context_v1'" in nav
+    assert 'function _pendingNavContext(){' in topbar
+    assert 'keepalive: true,' in topbar
+    assert 'pending_nav: pendingNav,' in topbar
     assert 'ui_nav_helper_history_limit' in config
     assert 'ui_nav_helper_highlight_color' in config
     assert 'ui_nav_helper_highlight_duration_ms' in config

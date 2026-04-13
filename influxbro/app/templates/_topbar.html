@@ -1435,11 +1435,26 @@ try{
 
 // Global console error reporter - sends all browser errors to server log
 try{
+  function _pendingNavContext(){
+    try{
+      if(window.__InfluxBroNavContext && typeof window.__InfluxBroNavContext === 'object') return window.__InfluxBroNavContext;
+    }catch(e){}
+    try{
+      const raw = sessionStorage.getItem('influxbro_nav_context_v1');
+      const parsed = raw ? JSON.parse(raw) : null;
+      return parsed && typeof parsed === 'object' ? parsed : null;
+    }catch(e){
+      return null;
+    }
+  }
+
   function _reportConsoleError(type, message, filename, lineno, stack){
     try{
+      const pendingNav = _pendingNavContext();
       fetch('./api/client_error', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
+        keepalive: true,
         body: JSON.stringify({
           message: message || '',
           extra: {
@@ -1449,7 +1464,8 @@ try{
             lineno: lineno || 0,
             stack: (stack || '').substring(0, 4000),
             url: window.location.href.substring(0, 500),
-            ts: new Date().toISOString()
+            ts: new Date().toISOString(),
+            pending_nav: pendingNav,
           }
         })
       }).catch(()=>{});
@@ -1461,7 +1477,8 @@ try{
   });
 
   window.addEventListener('unhandledrejection', (e)=>{
-    _reportConsoleError('unhandledrejection', String(e.reason || ''), '', 0, '');
+    const reason = e ? e.reason : null;
+    _reportConsoleError('unhandledrejection', String(reason && reason.message ? reason.message : reason || ''), '', 0, reason && reason.stack ? reason.stack : '');
   });
 }catch(e){}
 </script>

@@ -1111,6 +1111,15 @@
           const a = t.closest ? t.closest('a.nav_item') : null;
           if(a){
             try{
+              const navCtx = {
+                href: String(a.getAttribute('href') || ''),
+                ui: String(a.getAttribute('data-ui') || ''),
+                text: String((a.textContent || '').trim()).slice(0, 120),
+                from_page: '{{ nav }}',
+                at: new Date().toISOString(),
+              };
+              try{ window.__InfluxBroNavContext = navCtx; }catch(e){}
+              try{ sessionStorage.setItem('influxbro_nav_context_v1', JSON.stringify(navCtx)); }catch(e){}
               const ui = (a.getAttribute('data-ui') || a.getAttribute('href') || '').trim();
               const txt = (a.textContent || '').trim().slice(0, 120);
               const page = '{{ nav }}';

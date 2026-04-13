@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.12.316
+
+### Bug Fix
+
+- Die Dashboard-Ausreisseranalyse berechnet und protokolliert Raw-Fenster jetzt im aktiven Hauptpfad fuer `Analyse mit Cache` und `Analyse ohne Cache`. Dadurch wird die neue Spalte `Raw-Kontext` konsistent gefuellt und `missing_window`-Faelle enthalten aussagekraeftigere Diagnoseinformationen. ([#258](https://github.com/thomas682/HA-Addons/issues/258))
+- Das Ausreisser-Tabellenlayout wurde auf eine vertikale Anordnung ohne rechte Nebenspalte umgebaut, damit `dashboard_outliers.tbl_ausreisser` nicht mehr ueber die Breite des Mutterobjekts hinausragt. ([#258](https://github.com/thomas682/HA-Addons/issues/258))
+- Browser-/Vendor-Fehler beim Menuewechsel wie `No Listener: tabs:outgoing.message.ready` werden jetzt global mit Navigationskontext ins Add-on-Log gemeldet. ([#258](https://github.com/thomas682/HA-Addons/issues/258))
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tests: `pytest tests/test_api_ui_support.py -q -k "raw_outlier_params_dialog_has_explanations_and_recovery_override or dashboard_outlier_section_is_separate_and_above_raw_section or navigation_helper_controls_and_config_exist"`
+- Tested with Home Assistant Core: 2026.4.2
+
 ## 1.12.315
 
 ### Bug Fix

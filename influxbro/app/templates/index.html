@@ -524,8 +524,7 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
           <span id="raw_outlier_status_time"></span>
         </div>
       </div>
-      <div style="display:flex; gap:10px; align-items:flex-start;">
-      <div class="table_head" style="flex:1; min-width:0;">
+      <div class="table_head" style="min-width:0;">
         <div class="tbl_actions" data-ui="dashboard_outliers.row_table_actions" title="dashboard_outliers.row_table_actions">
           <button class="btn_sm" id="raw_outlier_autowidth" data-ui="dashboard_outliers.btn_autobreite" title="dashboard_outliers.btn_autobreite" aria-label="Spaltenbreite automatisch">
             <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -550,18 +549,15 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
           <button class="btn_sm" id="outlier_ignore" data-ui="dashboard_outliers.btn_ignorieren" title="dashboard_outliers.btn_ignorieren" disabled>ignorieren</button>
           <button class="btn_sm" id="outlier_unignore" data-ui="dashboard_outliers.btn_nicht_mehr_ignorieren" title="dashboard_outliers.btn_nicht_mehr_ignorieren" disabled>nicht mehr ignorieren</button>
         </div>
+        <div id="raw_outlier_row_count" style="font-size:12px; opacity:0.7; margin-top:8px;"></div>
         <div id="raw_outlier_overview_box" style="margin-top:10px;">
-          <div class="table_box" id="raw_outlier_overview" style="--max-rows: 5;">
+          <div class="table_box" id="raw_outlier_overview" style="--max-rows: 5; min-width:0; width:100%; box-sizing:border-box;">
             <table id="raw_outlier_tbl" class="list_tbl ib_tbl" data-ui="dashboard_outliers.tbl_ausreisser" title="dashboard_outliers.tbl_ausreisser">
               <thead><tr><th style="min-width: 170px;">Zeit</th><th>Wert</th><th style="min-width: 220px;">Änderung</th><th style="min-width: 140px;">Ausreisser</th><th style="min-width: 280px;">Raw-Kontext</th></tr></thead>
               <tbody id="raw_outlier_body"></tbody>
             </table>
           </div>
         </div>
-      </div>
-      <div style="flex:0 0 auto; min-width:160px;">
-        <div id="raw_outlier_row_count" style="font-size:12px; opacity:0.7; margin-bottom:4px;"></div>
-      </div>
       </div>
       </div>
     </details>
@@ -4977,6 +4973,122 @@ function _rawOutlierContextInfo(row){
   }
 }
 
+function _outlierWindowStats(rows){
+  const list = Array.isArray(rows) ? rows : [];
+  let total = 0;
+  let withWindow = 0;
+  let missingWindow = 0;
+  let withPointIndex = 0;
+  const missingExamples = [];
+  list.forEach((row) => {
+    if(!row || !row.time) return;
+    total += 1;
+    if(row.point_index !== null && row.point_index !== undefined && Number(row.point_index) >= 0) withPointIndex += 1;
+    if(row.window && typeof row.window === 'object' && (row.window.center_minutes || row.window.before_time || row.window.after_time)){
+      withWindow += 1;
+      return;
+    }
+    missingWindow += 1;
+    if(missingExamples.length < 5) missingExamples.push(String(row.time || ''));
+  });
+  return {
+    total,
+    with_window: withWindow,
+    missing_window: missingWindow,
+    with_point_index: withPointIndex,
+    missing_examples: missingExamples,
+  };
+}
+
+function _logOutlierWindowStats(step, rows, extra){
+  try{
+    const stats = _outlierWindowStats(rows);
+    _saveAnalysisEvent({
+      at: new Date().toISOString(),
+      kind: 'analysis_cache_window',
+      step,
+      status: stats.missing_window > 0 ? 'warn' : 'ok',
+      detail: 'Raw-Fenster: ' + stats.with_window + '/' + stats.total + ' vorhanden | fehlend: ' + stats.missing_window,
+      extra: Object.assign({
+        scope: 'dashboard_analysis',
+        action: String(ANALYSIS_ACTIVE_ACTION || ''),
+        context_rows: Math.max(1, Math.trunc(Number(RAW_OUTLIER_CONTEXT_ROWS || UI_RAW_CENTER_MIN_POINTS || 10))),
+      }, stats, extra || {}),
+    });
+  }catch(e){}
+}
+
+async function _ensureOutlierWindows(base, win, source){
+  const rows = Array.isArray(RAW_OUTLIER_RESULTS) ? RAW_OUTLIER_RESULTS : [];
+  _logOutlierWindowStats('status_before', rows, { source: String(source || '') });
+  const outlierList = rows.filter((row) => row && row.time && row.point_index != null && Number(row.point_index) >= 0).map((row) => ({
+    time: row.time,
+    point_index: row.point_index,
+  }));
+  if(!outlierList.length){
+    _saveAnalysisEvent({
+      at: new Date().toISOString(),
+      kind: 'analysis_cache_window',
+      step: 'no_outlier_indices',
+      status: 'warn',
+      detail: 'Keine Ausreisser mit point_index fuer Raw-Fensterberechnung vorhanden.',
+      extra: { scope: 'dashboard_analysis', action: String(ANALYSIS_ACTIVE_ACTION || ''), source: String(source || ''), total: rows.length },
+    });
+    return _outlierWindowStats(rows);
+  }
+  try{
+    const nContext = Math.max(1, Math.trunc(Number(RAW_OUTLIER_CONTEXT_ROWS || UI_RAW_CENTER_MIN_POINTS || 10)));
+    const wj = await api('./api/outlier_windows', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        measurement: base.measurement,
+        field: base.field,
+        entity_id: base.entity_id || null,
+        friendly_name: base.friendly_name || null,
+        start: win.start,
+        stop: win.stop,
+        outliers: outlierList,
+        n: nContext,
+      })
+    }, { key: 'outlier_windows_' + String(win.start || '') + '_' + String(win.stop || '') + '_' + String(source || ''), silent: true });
+    const winMap = {};
+    (wj && Array.isArray(wj.windows) ? wj.windows : []).forEach((w) => { if(w && w.time) winMap[w.time] = w; });
+    rows.forEach((row) => {
+      if(!row || !row.time) return;
+      const w = winMap[row.time];
+      if(!w) return;
+      row.window = {
+        center_minutes: w.center_minutes,
+        before_minutes: w.before_minutes,
+        after_minutes: w.after_minutes,
+        before_count: w.before_count,
+        after_count: w.after_count,
+        before_time: w.before_time,
+        after_time: w.after_time,
+      };
+      if(!RAW_OUTLIER_MAP) RAW_OUTLIER_MAP = {};
+      if(!RAW_OUTLIER_MAP[String(row.time)]){
+        RAW_OUTLIER_MAP[String(row.time)] = { reason: row.reason || '', types: row.types || [], point_index: row.point_index, window: row.window };
+      }else{
+        RAW_OUTLIER_MAP[String(row.time)].point_index = row.point_index;
+        RAW_OUTLIER_MAP[String(row.time)].window = row.window;
+      }
+    });
+    _logOutlierWindowStats('status_after', rows, { source: String(source || ''), computed_windows: Array.isArray(wj && wj.windows) ? wj.windows.length : 0 });
+  }catch(e){
+    _saveAnalysisEvent({
+      at: new Date().toISOString(),
+      kind: 'analysis_cache_window',
+      step: 'compute_err',
+      status: 'err',
+      detail: e && e.message ? e.message : String(e),
+      extra: { scope: 'dashboard_analysis', action: String(ANALYSIS_ACTIVE_ACTION || ''), source: String(source || '') },
+    });
+  }
+  return _outlierWindowStats(rows);
+}
+
 function startRawOutlierUi(metaText){
   try{
     RAW_OUTLIER_T0 = performance.now();
@@ -5406,6 +5518,7 @@ async function runRawOutlierSearch_DISABLED_LEGACY(){
           RAW_OUTLIER_MAP[String(row.time)] = {
             reason: row.reason || '',
             types: row.types || [],
+            point_index: row.point_index,
             window: row.window || null,
           };
         }
@@ -6949,6 +7062,7 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog, effective
       const tb = Date.parse(String(b.time || ''));
       return (isFinite(ta) && isFinite(tb)) ? (ta - tb) : 0;
     });
+    await _ensureOutlierWindows(base, win, 'analysis_cache_hit');
     renderOutlierOverviewTable();
     if(RAW_OUTLIER_RESULTS.length > 0){
       if($rawJumpOldest) $rawJumpOldest.disabled = false;
@@ -6997,6 +7111,7 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog, effective
             RAW_OUTLIER_MAP[String(row.time)] = {
               reason: row.reason || '',
               types: row.types || [],
+              point_index: row.point_index,
               window: row.window || null,
             };
           }
@@ -7005,6 +7120,7 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog, effective
       }catch(e){}
     }
     _logAnalysis('cache_hit', {count: RAW_OUTLIER_RESULTS.length, segments: preloadSegments.length});
+    _logOutlierWindowStats('preload_segments', RAW_OUTLIER_RESULTS, { source: 'analysis_preload_segments', segments: preloadSegments.length });
   }
 
   const initialPlannedRanges = (Array.isArray(serverPlan && serverPlan.gaps) ? serverPlan.gaps.length : 0)
@@ -7295,6 +7411,7 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog, effective
           RAW_OUTLIER_MAP[String(row.time)] = {
             reason: row.reason || '',
             types: row.types || [],
+            point_index: row.point_index,
             window: row.window || null,
           };
         }
@@ -7362,6 +7479,8 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog, effective
       const tb = Date.parse(String(b.time || ''));
       return (isFinite(ta) && isFinite(tb)) ? (ta - tb) : 0;
     });
+
+    await _ensureOutlierWindows(base, win, 'analysis_search_complete');
 
     try{
       sessionStorage.setItem(cacheKey, JSON.stringify({
@@ -8173,13 +8292,26 @@ async function loadRawFromGraph(reset){
         j = await api("./api/raw_points", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)});
       } else {
         // Kein Window im Cache: Cache NICHT löschen, sondern nur Hinweis anzeigen.
+        const allStats = _outlierWindowStats(RAW_OUTLIER_RESULTS);
         _saveAnalysisEvent({
           at: new Date().toISOString(),
           kind: 'analysis_cache_window',
           step: 'missing_window',
           status: 'err',
           detail: 'Fuer den ausgewaehlten Ausreisser wurde noch kein Raw-Fenster gefunden. Analyse-Cache bleibt erhalten.',
-          extra: { scope: 'dashboard_analysis', action: String(ANALYSIS_ACTIVE_ACTION || ''), anchor_time: String(anchorIso || '') },
+          extra: {
+            scope: 'dashboard_analysis',
+            action: String(ANALYSIS_ACTIVE_ACTION || ''),
+            anchor_time: String(anchorIso || ''),
+            has_outlier_entry: !!outlierInfo,
+            reason: outlierInfo && outlierInfo.reason ? String(outlierInfo.reason) : '',
+            types: outlierInfo && Array.isArray(outlierInfo.types) ? outlierInfo.types.slice(0, 8) : [],
+            point_index: outlierInfo && outlierInfo.point_index !== undefined ? outlierInfo.point_index : null,
+            total_outliers: allStats.total,
+            windows_present: allStats.with_window,
+            windows_missing: allStats.missing_window,
+            missing_examples: allStats.missing_examples,
+          },
         });
         try{ window.InfluxBroStatus && window.InfluxBroStatus.fail && window.InfluxBroStatus.fail('dashboard.raw', 'Kein Raw-Fenster im Analyse-Cache.'); }catch(e){}
         _rawStatusEnd(false, 'Fuer diesen Ausreisser ist noch kein Raw-Fenster vorhanden. Analyse-Cache bleibt erhalten. Bitte Analyse erneut starten oder einen anderen Ausreisser waehlen.');
@@ -9998,6 +10130,19 @@ async function startDashboardAnalysis(cacheStrategy){
     const win = await resolveEffectiveAnalysisWindow();
     ANALYSIS_ACTIVE_SCOPE = 'dashboard_analysis';
     ANALYSIS_ACTIVE_ACTION = (cacheStrategy === 'refresh') ? 'analysis_run_without_cache' : 'analysis_run_with_cache';
+    _saveAnalysisEvent({
+      at: new Date().toISOString(),
+      kind: 'analysis_cache_window',
+      step: 'analysis_start',
+      status: 'running',
+      detail: 'Analyse gestartet, Raw-Fensterstatus wird mitprotokolliert.',
+      extra: {
+        scope: 'dashboard_analysis',
+        action: String(ANALYSIS_ACTIVE_ACTION || ''),
+        cache_strategy: String(cacheStrategy || 'reuse'),
+        context_rows: Math.max(1, Math.trunc(Number(RAW_OUTLIER_CONTEXT_ROWS || UI_RAW_CENTER_MIN_POINTS || 10))),
+      },
+    });
     ANALYSIS_CHUNK_LOG = [];
     _analysisChecklistReset();
     _analysisChecklistSet('button_start', {status: 'ok', sub: 'Start ueber ' + (cacheStrategy === 'refresh' ? 'Analyse ohne Cache' : 'Analyse mit Cache') + '.'});
