@@ -1,5 +1,38 @@
 # Changelog
 
+## 1.12.322
+
+### Bug Fix
+
+- Cache-Performanz: Bei `Analyse mit Cache` wurden bisher alle Chunks neu gelesen, auch wenn nur `dirty_ranges` vorhanden waren. Die Bedingung prueft jetzt, ob die Arrays tatsaechlich Eintraege enthalten, statt nur auf Existenz zu pruefen. ([#262](https://github.com/thomas682/HA-Addons/issues/262))
+
+### Enhancement
+
+- Resize-Handle fuer Ausreisser-Tabelle explizit im Markup ergaenzt mit eigener Drag-Logik. ([#262](https://github.com/thomas682/HA-Addons/issues/262))
+- `raw_outlier_display_limit_per_type` aus dem Dashboard entfernt. Wert kann nur noch in den Einstellungen parametriert werden. Bei Ueberschreitung erscheint ein Hinweis in der Suchleiste. ([#262](https://github.com/thomas682/HA-Addons/issues/262))
+- S-Picker erfasst jetzt auch disabled/graue Elemente und kennzeichnet sie im Badge mit `[disabled]`. ([#262](https://github.com/thomas682/HA-Addons/issues/262))
+- Copy-Icon auf allen Tabellen vereinheitlicht (Raw, Ausreisser, Logs). ([#262](https://github.com/thomas682/HA-Addons/issues/262))
+- Refresh-Button laedt nur den aktuellen Raw-Zeitbereich neu. ([#262](https://github.com/thomas682/HA-Addons/issues/262))
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: 2026.4.2
+
+## 1.12.321
+
+### Enhancement
+
+- Resize-Handle fuer Ausreisser-Tabelle explizit im Markup ergaenzt. ([#262](https://github.com/thomas682/HA-Addons/issues/262))
+- `raw_outlier_display_limit_per_type` aus dem Dashboard entfernt, Hinweis bei Ueberschreitung ergaenzt. ([#262](https://github.com/thomas682/HA-Addons/issues/262))
+- S-Picker erfasst jetzt auch disabled Elemente. ([#262](https://github.com/thomas682/HA-Addons/issues/262))
+- Copy-Icon auf allen Tabellen vereinheitlicht. ([#262](https://github.com/thomas682/HA-Addons/issues/262))
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: 2026.4.2
+
 ## 1.12.320
 
 ### Bug Fix

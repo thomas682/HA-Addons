@@ -895,6 +895,18 @@
       }catch(e){ return null; }
     }
 
+    function _isDisabled(el){
+      try{
+        if(!el) return false;
+        if(el.disabled) return true;
+        if(el.getAttribute && el.getAttribute('aria-disabled') === 'true') return true;
+        const style = window.getComputedStyle && window.getComputedStyle(el);
+        if(style && (style.pointerEvents === 'none' || style.opacity === '0')) return true;
+        if(el.closest && el.closest('[disabled]')) return true;
+        return false;
+      }catch(e){ return false; }
+    }
+
     function _isOwnPickerUi(el){
       try{
         if(!el) return true;
@@ -914,6 +926,7 @@
         const pushTarget = (cand)=>{
           const meta = _targetMetaFor(cand);
           if(!meta || !meta.name) return;
+          meta.disabled = _isDisabled(cand);
           const key = meta.kind + '|' + meta.name;
           if(seen.has(key)) return;
           seen.add(key);
@@ -989,11 +1002,12 @@
       overlay.style.width = Math.max(0, r.width + 4) + 'px';
       overlay.style.height = Math.max(0, r.height + 4) + 'px';
       const name = String(target.name || '').trim();
+      const disabledTag = target.disabled ? ' [disabled]' : '';
       const display = target.kind === 'fallback' ? ('fallback: <' + (name || 'element') + '>') : ('<' + (name || '(kein data-ui)') + '>');
       const pos = currentTargets.length > 1 ? (' (' + (currentTargetIndex + 1) + '/' + currentTargets.length + ')') : '';
       const hint = currentTargets.length > 1 ? ' | Mausrad: Treffer wechseln' : '';
       badge.textContent = display;
-      badge.textContent = display + pos + hint;
+      badge.textContent = display + disabledTag + pos + hint;
       badge.style.display = 'block';
       const x = ev && typeof ev.clientX === 'number' ? ev.clientX + 12 : (r.left + 12);
       const y = ev && typeof ev.clientY === 'number' ? ev.clientY + 12 : (r.top + 12);

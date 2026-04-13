@@ -476,6 +476,7 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
       <div class="table_wrap" id="raw_outlier_table_wrap" style="margin-top:10px;">
       <div class="table_title">Ausreißer</div>
       <div id="raw_search_bar" style="display:none; border:1px solid #eee; border-radius:12px; padding:10px 12px; margin-bottom:10px; background:#fafafa;">
+        <div id="raw_outlier_limit_hint" style="display:none; font-size:12px; color:#b07000; margin-bottom:8px; padding:6px 8px; background:#fff8e1; border-radius:6px; border:1px solid #ffe082;"></div>
         <div style="display:flex; align-items:flex-start; gap:10px; flex-wrap:wrap;">
           <div style="display:flex; flex-direction:column; gap:4px;">
             <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:flex-start;">
@@ -509,10 +510,6 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
                   <label style="display:flex; align-items:center; gap:6px; padding:3px 0; font-size:13px; cursor:pointer;"><input type="checkbox" class="raw_outlier_type_cb" value="zero"/> 0-Werte</label>
                 </div>
               </div>
-              <div style="display:flex; flex-direction:column; gap:4px; min-width:140px; align-items:flex-start;">
-                <input id="raw_outlier_display_limit_per_type" type="number" min="1" max="1000" step="1" value="100" style="height:34px; padding:6px 10px; width:120px;" />
-                <label for="raw_outlier_display_limit_per_type" style="font-size:12px; opacity:0.8;">Max je Typ</label>
-              </div>
             </div>
           </div>
         </div>
@@ -545,7 +542,7 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
           </button>
           <label><input type="checkbox" id="raw_outlier_wrap" class="row_sel" data-ui="dashboard_outliers.chk_umbruch" title="dashboard_outliers.chk_umbruch"/>Umbruch</label>
           <label><input type="checkbox" id="raw_outlier_colfilter" class="row_sel" data-ui="dashboard_outliers.chk_spaltenfilter" title="dashboard_outliers.chk_spaltenfilter"/>Spaltenfilter</label>
-          <button class="btn_sm" id="raw_outlier_copy" data-ui="dashboard_outliers.btn_kopieren" title="dashboard_outliers.btn_kopieren">Kopieren</button>
+          <button class="btn_sm" id="raw_outlier_copy" data-ui="dashboard_outliers.btn_kopieren" title="dashboard_outliers.btn_kopieren" aria-label="Ausreisser kopieren"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18" aria-hidden="true" focusable="false"><path d="M6 11C6 8.17157 6 6.75736 6.87868 5.87868C7.75736 5 9.17157 5 12 5H15C17.8284 5 19.2426 5 20.1213 5.87868C21 6.75736 21 8.17157 21 11V16C21 18.8284 21 20.2426 20.1213 21.1213C19.2426 22 17.8284 22 15 22H12C9.17157 22 7.75736 22 6.87868 21.1213C6 20.2426 6 18.8284 6 16V11Z" stroke="#1C274C" stroke-width="1.5"></path><path d="M6 19C4.34315 19 3 17.6569 3 16V10C3 6.22876 3 4.34315 4.17157 3.17157C5.34315 2 7.22876 2 11 2H15C16.6569 2 18 3.34315 18 5" stroke="#1C274C" stroke-width="1.5"></path></svg></button>
           <button class="btn_sm" id="outlier_ignore" data-ui="dashboard_outliers.btn_ignorieren" title="dashboard_outliers.btn_ignorieren" disabled>ignorieren</button>
           <button class="btn_sm" id="outlier_unignore" data-ui="dashboard_outliers.btn_nicht_mehr_ignorieren" title="dashboard_outliers.btn_nicht_mehr_ignorieren" disabled>nicht mehr ignorieren</button>
         </div>
@@ -557,6 +554,7 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
               <tbody id="raw_outlier_body"></tbody>
             </table>
           </div>
+          <div id="raw_outlier_tbl_resize" class="ib_tbl_resize" data-for="raw_outlier_tbl" style="height:12px;cursor:ns-resize;margin-top:8px;border-radius:999px;background:linear-gradient(90deg,#eee,#f8f8f8);" data-ui="dashboard_outliers.tbl_resize" title="dashboard_outliers.tbl_resize"></div>
         </div>
       </div>
       </div>
@@ -608,7 +606,7 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
         </button>
         <label><input type="checkbox" id="raw_wrap" class="row_sel" data-ui="dashboard_raw.chk_umbruch" title="dashboard_raw.chk_umbruch"/>Umbruch</label>
         <label><input type="checkbox" id="raw_colfilter" class="row_sel" data-ui="dashboard_raw.chk_spaltenfilter" title="dashboard_raw.chk_spaltenfilter"/>Spaltenfilter</label>
-        <button class="btn_sm" id="raw_copy" data-ui="dashboard_raw.btn_kopieren" title="dashboard_raw.btn_kopieren">Kopieren</button>
+        <button class="btn_sm" id="raw_copy" data-ui="dashboard_raw.btn_kopieren" title="dashboard_raw.btn_kopieren" aria-label="Raw Daten kopieren"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18" aria-hidden="true" focusable="false"><path d="M6 11C6 8.17157 6 6.75736 6.87868 5.87868C7.75736 5 9.17157 5 12 5H15C17.8284 5 19.2426 5 20.1213 5.87868C21 6.75736 21 8.17157 21 11V16C21 18.8284 21 20.2426 20.1213 21.1213C19.2426 22 17.8284 22 15 22H12C9.17157 22 7.75736 22 6.87868 21.1213C6 20.2426 6 18.8284 6 16V11Z" stroke="#1C274C" stroke-width="1.5"></path><path d="M6 19C4.34315 19 3 17.6569 3 16V10C3 6.22876 3 4.34315 4.17157 3.17157C5.34315 2 7.22876 2 11 2H15C16.6569 2 18 3.34315 18 5" stroke="#1C274C" stroke-width="1.5"></path></svg></button>
         <button class="btn_sm" id="raw_copy_value" data-ui="dashboard_raw.btn_wert_kopieren" title="dashboard_raw.btn_wert_kopieren">Wert kopieren</button>
         <button class="btn_sm" id="raw_paste" data-ui="dashboard_raw.btn_einfuegen" title="dashboard_raw.btn_einfuegen" disabled>Einfügen</button>
         <button class="btn_sm" id="raw_delete" data-ui="dashboard_raw.btn_loeschen" title="dashboard_raw.btn_loeschen" disabled>Löschen</button>
@@ -5225,11 +5223,28 @@ function getDisplayedOutliers(){
   const limit = Math.max(1, Math.min(1000, Number(RAW_OUTLIER_DISPLAY_LIMIT_PER_TYPE || 100)));
   const counts = {};
   const out = [];
+  const exceededTypes = {};
   filtered.forEach((row) => {
     const key = outlierDisplayTypeKey(row);
     counts[key] = (counts[key] || 0) + 1;
     if(counts[key] <= limit) out.push(row);
+    else exceededTypes[key] = counts[key];
   });
+  // Show limit hint if any type exceeds the limit
+  try{
+    const $hint = document.getElementById('raw_outlier_limit_hint');
+    if($hint){
+      const exceededKeys = Object.keys(exceededTypes);
+      if(exceededKeys.length){
+        const typeLabels = {counter: 'Counter Ausreisser', decrease: 'Counter Abfall', bounds: 'Grenzen', gap: 'Messwertlücke', fault_phase: 'Stoerphasensuche', null: 'NULL Werte', zero: '0-Werte'};
+        const parts = exceededKeys.map(k => (typeLabels[k] || k) + ': ' + exceededTypes[k] + ' gefunden, ' + limit + ' angezeigt');
+        $hint.textContent = 'Hinweis: ' + parts.join(' | ') + '. Grenze kann in den Einstellungen unter ui_raw_outlier_display_limit_per_type angepasst werden.';
+        $hint.style.display = 'block';
+      }else{
+        $hint.style.display = 'none';
+      }
+    }
+  }catch(e){}
   return out;
 }
 
@@ -7222,7 +7237,7 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog, effective
       return rebuilt;
     }
 
-    let chunks = (serverPlan && ANALYSIS_CACHE_PLAN_CHOICE && ANALYSIS_CACHE_PLAN_CHOICE.cacheStrategy !== 'refresh' && (Array.isArray(serverPlan.gaps) || Array.isArray(serverPlan.dirty_ranges)))
+    let chunks = (serverPlan && ANALYSIS_CACHE_PLAN_CHOICE && ANALYSIS_CACHE_PLAN_CHOICE.cacheStrategy !== 'refresh' && ((Array.isArray(serverPlan.gaps) && serverPlan.gaps.length) || (Array.isArray(serverPlan.dirty_ranges) && serverPlan.dirty_ranges.length)))
       ? [] : buildChunks(startMs, stopMs, chunkDays, 0);
     if(!chunks.length && serverPlan && ANALYSIS_CACHE_PLAN_CHOICE && ANALYSIS_CACHE_PLAN_CHOICE.cacheStrategy !== 'refresh'){
       const planned = [];
@@ -10661,7 +10676,14 @@ if($rawSection) $rawSection.addEventListener("toggle", ()=>{
 });
 if($rawRefresh) $rawRefresh.addEventListener("click", (ev)=>{
   _stop(ev);
-  loadRawFromGraph(true).catch(displayError);
+  // Refresh only the current raw window, not a full reset
+  if(RAW_LAST_KEY && RAW_ROWS.length > 0){
+    // Reload with same key but reset offset/rows to refresh current window
+    loadRawFromGraph(true).catch(displayError);
+  }else{
+    // No raw data loaded yet: load from scratch
+    loadRawFromGraph(true).catch(displayError);
+  }
 });
 if($rawCopy) $rawCopy.addEventListener("click", async (ev)=>{
   _stop(ev);
@@ -11426,6 +11448,90 @@ try{
   try{ if(window.InfluxBroTableHeight && $tableBox) window.InfluxBroTableHeight.attach($tableBox, 'tbl', {minPx: 180}); }catch(e){}
   try{ if(window.InfluxBroTableHeight && $detailsBox) window.InfluxBroTableHeight.attach($detailsBox, 'details_box', {minPx: 180}); }catch(e){}
   try{ if(window.InfluxBroTableHeight && $rawOutlierBox) window.InfluxBroTableHeight.attach($rawOutlierBox, 'raw_outlier_tbl', {minPx: 120}); }catch(e){}
+  // Explicit resize handle for outlier table
+  try{
+    const $olResize = document.getElementById('raw_outlier_tbl_resize');
+    if($olResize && $rawOutlierBox){
+      const olResizeKey = 'influxbro.table_height.raw_outlier_tbl';
+      const olMinPx = 120;
+      const olMaxPx = Math.round(window.innerHeight * 0.85);
+      try{
+        const saved = Number(localStorage.getItem(olResizeKey) || 0);
+        if(isFinite(saved) && saved >= olMinPx) $rawOutlierBox.style.height = Math.round(saved) + 'px';
+      }catch(e){}
+      let olStartY = 0, olStartH = 0, olDragging = false;
+      $olResize.addEventListener('mousedown', (e)=>{
+        olStartY = e.clientY;
+        olStartH = $rawOutlierBox.getBoundingClientRect().height || olMinPx;
+        olDragging = true;
+        document.body.style.userSelect = 'none';
+        window.addEventListener('mousemove', olOnMove);
+        window.addEventListener('mouseup', olOnUp);
+      });
+      function olOnMove(e){
+        if(!olDragging) return;
+        const dy = e.clientY - olStartY;
+        let h = olStartH + dy;
+        if(h < olMinPx) h = olMinPx;
+        if(h > olMaxPx) h = olMaxPx;
+        $rawOutlierBox.style.height = Math.round(h) + 'px';
+        e.preventDefault();
+      }
+      function olOnUp(){
+        if(!olDragging) return;
+        olDragging = false;
+        document.body.style.userSelect = '';
+        window.removeEventListener('mousemove', olOnMove);
+        window.removeEventListener('mouseup', olOnUp);
+        try{
+          const h = Math.round($rawOutlierBox.getBoundingClientRect().height || 0);
+          if(h >= olMinPx) localStorage.setItem(olResizeKey, String(h));
+        }catch(e){}
+      }
+    }
+  }catch(e){}
+  // Explicit resize handle for outlier table
+  try{
+    const $olResize = document.getElementById('raw_outlier_tbl_resize');
+    if($olResize && $rawOutlierBox){
+      const olResizeKey = 'influxbro.table_height.raw_outlier_tbl';
+      const olMinPx = 120;
+      const olMaxPx = Math.round(window.innerHeight * 0.85);
+      try{
+        const saved = Number(localStorage.getItem(olResizeKey) || 0);
+        if(isFinite(saved) && saved >= olMinPx) $rawOutlierBox.style.height = Math.round(saved) + 'px';
+      }catch(e){}
+      let olStartY = 0, olStartH = 0, olDragging = false;
+      $olResize.addEventListener('mousedown', (e)=>{
+        olStartY = e.clientY;
+        olStartH = $rawOutlierBox.getBoundingClientRect().height || olMinPx;
+        olDragging = true;
+        document.body.style.userSelect = 'none';
+        window.addEventListener('mousemove', olOnMove);
+        window.addEventListener('mouseup', olOnUp);
+      });
+      function olOnMove(e){
+        if(!olDragging) return;
+        const dy = e.clientY - olStartY;
+        let h = olStartH + dy;
+        if(h < olMinPx) h = olMinPx;
+        if(h > olMaxPx) h = olMaxPx;
+        $rawOutlierBox.style.height = Math.round(h) + 'px';
+        e.preventDefault();
+      }
+      function olOnUp(){
+        if(!olDragging) return;
+        olDragging = false;
+        document.body.style.userSelect = '';
+        window.removeEventListener('mousemove', olOnMove);
+        window.removeEventListener('mouseup', olOnUp);
+        try{
+          const h = Math.round($rawOutlierBox.getBoundingClientRect().height || 0);
+          if(h >= olMinPx) localStorage.setItem(olResizeKey, String(h));
+        }catch(e){}
+      }
+    }
+  }catch(e){}
 }catch(e){}
 
 try{
