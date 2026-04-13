@@ -835,6 +835,7 @@ Hinweis Dashboard:
 - Client-/Browserfehler aus Navigation und Ingress-Host werden frueher an das Add-on-Log gemeldet. Dazu gehoeren auch Vendor-Fehler beim Menuewechsel, z. B. `No Listener: tabs:outgoing.message.ready`, jeweils mit Navigationskontext.
 - Die Settings-Seite ist jetzt robuster gegen Initialisierungsfehler: fehlende Felder fuehren nicht mehr zum kompletten Ausfall, und JavaScript-Fehler werden ins Add-on-Log geschrieben.
 - Weitere Dashboard-Skriptregressionen durch versehentlich doppelt eingefuegte Funktionsbloecke wurden bereinigt. Das Dashboard sollte dadurch wieder ohne `already been declared`-Syntaxfehler starten.
+- Weitere direkte Duplikate im Raw-Handler-Bereich des Dashboards wurden ebenfalls entfernt. Damit sollte das Dashboard-JavaScript nicht mehr durch abgeschnittene oder doppelte Undo-/Raw-Blöcke abbrechen.
 - Die wichtigsten Aktionen tragen zusaetzlich kurze Textlabels direkt auf dem Button.
 
 Ausreisser:

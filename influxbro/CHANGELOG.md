@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.328
+
+### Bug Fix
+
+- Einen zweiten, versehentlich doppelt eingefügten `rawUndo`-Handler im Dashboard entfernt. Dadurch verschwindet ein weiterer Script-Duplikatblock im Raw-Bereich, der zusammen mit den vorherigen Doppeldefinitionen zu kaputtem/abgeschnittenem Dashboard-JavaScript geführt hat. ([#266](https://github.com/thomas682/HA-Addons/issues/266))
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tests: Duplikatprüfung für `clearAnalysisCacheForCurrentSeries`, `showRawManualDialog`, `promptForValue`, `editRawValueInline`, `doRawOverwrite` und `rawUndo`-Listener
+- Tested with Home Assistant Core: 2026.4.2
+
 ## 1.12.327
 
 ### Bug Fix
