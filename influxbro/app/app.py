@@ -3800,6 +3800,11 @@ def _analysis_cache_patch_window(
     last_dt = max(times)
     start_dt = _parse_iso_datetime(str(meta.get("covered_start") or ""))
     stop_dt = _parse_iso_datetime(str(meta.get("covered_stop") or ""))
+    if start_dt is None or stop_dt is None:
+        return None
+    pad = timedelta(seconds=ANALYSIS_CACHE_PATCH_PADDING_SECONDS)
+    fallback_start = max(start_dt, first_dt - pad)
+    fallback_stop = min(stop_dt, last_dt + pad)
     prev_cp = None
     next_cp = None
     for cp in cps:
@@ -3812,9 +3817,16 @@ def _analysis_cache_patch_window(
         if cp_dt >= last_dt and next_cp is None:
             next_cp = cp
             break
-    patch_start = _parse_iso_datetime(str(prev_cp.get("at") or "")) if isinstance(prev_cp, dict) else start_dt
-    patch_stop = _parse_iso_datetime(str(next_cp.get("at") or "")) if isinstance(next_cp, dict) else stop_dt
+    patch_start = _parse_iso_datetime(str(prev_cp.get("at") or "")) if isinstance(prev_cp, dict) else fallback_start
+    patch_stop = _parse_iso_datetime(str(next_cp.get("at") or "")) if isinstance(next_cp, dict) else fallback_stop
+    used_fallback = not isinstance(prev_cp, dict) or not isinstance(next_cp, dict)
     if patch_start is None or patch_stop is None or patch_stop <= patch_start:
+        return None
+    if (patch_stop - patch_start).total_seconds() > ANALYSIS_CACHE_PATCH_MAX_SPAN_SECONDS:
+        patch_start = fallback_start
+        patch_stop = fallback_stop
+        used_fallback = True
+    if patch_stop <= patch_start:
         return None
     if (patch_stop - patch_start).total_seconds() > ANALYSIS_CACHE_PATCH_MAX_SPAN_SECONDS:
         return None
@@ -3827,6 +3839,7 @@ def _analysis_cache_patch_window(
         "prev_value": prev_cp.get("last_value") if isinstance(prev_cp, dict) else None,
         "counter_base_value": prev_cp.get("counter_base_value") if isinstance(prev_cp, dict) else None,
         "scan_state": prev_cp.get("scan_state") if isinstance(prev_cp, dict) else None,
+        "used_fallback": used_fallback,
     }
 
 
@@ -18928,7 +18941,7 @@ def api_outliers():
         "analysis_cache_checkpoint_seconds": body.get("checkpoint_seconds")
     })
     checkpoints: list[dict[str, Any]] = []
-    next_checkpoint_dt = (start_dt + timedelta(seconds=checkpoint_seconds)) if return_checkpoints else None
+    next_checkpoint_dt = start_dt if return_checkpoints else None
     prev_val: float | None = body.get("prev_value")
     prev_time_dt: datetime | None = None
     last_time_iso: str | None = None

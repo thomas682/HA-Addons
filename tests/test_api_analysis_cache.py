@@ -225,3 +225,81 @@ def test_analysis_cache_combine_skips_dirty_segments_without_refetch(load_app_mo
     series = app_mod._analysis_cache_group_list(cfg)
     assert len(series) == 1
     assert series[0]["segment_count"] == 2
+
+
+def test_analysis_cache_patch_meta_uses_legacy_fallback_window_without_checkpoints(load_app_module, tmp_path, monkeypatch):
+    cfg_root = tmp_path / "config"
+    data_root = tmp_path / "data"
+
+    app_mod = load_app_module(config_dir=cfg_root, data_dir=data_root)
+    cfg = app_mod.load_cfg()
+
+    meta = app_mod._analysis_cache_store_segment(
+        cfg, "m", "value", "sensor.demo", "Demo",
+        "2026-01-02T00:00:00Z", "2026-01-03T00:00:00Z",
+        [{"time": "2026-01-02T12:00:00Z", "value": 2.0, "reason": "0", "types": ["zero"]}], 7,
+    )
+    assert meta is not None
+    meta["updated_at"] = "2026-01-02T00:30:00Z"
+    app_mod._analysis_cache_write_meta(meta)
+    app_mod._history_append({
+        "at": "2026-01-02T01:00:00Z",
+        "time": "2026-01-02T12:00:00Z",
+        "action": "overwrite",
+        "old_value": 2.0,
+        "new_value": 3.0,
+        "reason": "manual fix",
+        "series": {
+            "measurement": "m",
+            "field": "value",
+            "entity_id": "sensor.demo",
+            "friendly_name": "Demo",
+        },
+    })
+
+    captured: dict[str, object] = {}
+
+    def _fake_fetch_result(_cfg, measurement, field, entity_id, friendly_name, start_iso, stop_iso, **kwargs):
+        captured.update({
+            "measurement": measurement,
+            "field": field,
+            "entity_id": entity_id,
+            "friendly_name": friendly_name,
+            "start_iso": start_iso,
+            "stop_iso": stop_iso,
+            "prev_time": kwargs.get("prev_time"),
+            "prev_value": kwargs.get("prev_value"),
+        })
+        return {
+            "ok": True,
+            "rows": [{"time": "2026-01-02T12:00:00Z", "value": 3.0, "reason": "0", "types": ["zero"]}],
+            "scanned": 3,
+            "checkpoints": [{
+                "at": "2026-01-02T11:55:00.000Z",
+                "last_time": None,
+                "last_value": None,
+                "counter_base_value": None,
+                "scan_state": {"status": "normal"},
+            }],
+            "last_time": "2026-01-02T12:05:00.000Z",
+            "last_value": 3.0,
+            "counter_base_value": None,
+            "scan_state": {"status": "normal"},
+        }
+
+    monkeypatch.setattr(app_mod, "_analysis_cache_fetch_segment_result", _fake_fetch_result)
+
+    res = app_mod._analysis_cache_patch_meta(cfg, meta)
+    stored_meta = app_mod._analysis_cache_load_meta(str(meta["id"]))
+
+    assert res["ok"] is True
+    assert res["patched"] is True
+    assert captured["measurement"] == "m"
+    assert captured["field"] == "value"
+    assert captured["start_iso"] == "2026-01-02T11:55:00.000Z"
+    assert captured["stop_iso"] == "2026-01-02T12:05:00.000Z"
+    assert captured["prev_time"] is None
+    assert captured["prev_value"] is None
+    assert stored_meta is not None
+    assert stored_meta["patch_status"] == "ok"
+    assert stored_meta["checkpoint_count"] == 1

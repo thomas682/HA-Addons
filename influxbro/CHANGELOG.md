@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.12.334
+
+### Bug Fix
+
+- Legacy-Analyse-Cache-Segmente ohne verwertbare Checkpoints verwenden fuer den Hintergrund-Patchjob jetzt einen kleinen Fallbackbereich um die geaenderten History-Zeitpunkte. Dadurch bleiben auch aeltere Cache-Dateien oefter lokal patchbar, statt direkt auf `patch_not_safe` zu landen. ([#271](https://github.com/thomas682/HA-Addons/issues/271))
+- Neue Analyse-Cache-Segmente schreiben jetzt zusaetzlich einen Start-Checkpoint ab Segmentbeginn, damit auch fruehe Segmentaenderungen checkpoint-basiert lokal repariert werden koennen. ([#271](https://github.com/thomas682/HA-Addons/issues/271))
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tests: `pytest tests/test_api_analysis_cache.py -q`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.333
 
 ### Bug Fix
