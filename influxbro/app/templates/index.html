@@ -10564,23 +10564,6 @@ async function clearAnalysisCacheForCurrentSeries(){
   }catch(e){}
 }
 
-async function clearAnalysisCacheForCurrentSeries(){
-  try{
-    const base = currentFilters();
-    const win = await resolveEffectiveAnalysisWindow();
-    const plan = (ANALYSIS_CACHE_PLAN_CHOICE && ANALYSIS_CACHE_PLAN_CHOICE.plan) ? ANALYSIS_CACHE_PLAN_CHOICE.plan : await fetchAnalysisCachePlan(base, win);
-    if(plan && plan.series_key){
-      await api('./api/analysis_cache/delete', {
-        method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({series_key: plan.series_key})
-      });
-    }
-    RAW_OUTLIER_RESULTS = [];
-    RAW_OUTLIER_MAP = {};
-    RAW_OUTLIER_SCANNED_TOTAL = 0;
-    try{ sessionStorage.removeItem(_analysisCacheKey(base, win, getAnalysisCacheTypes())); }catch(e){}
-  }catch(e){}
-}
-
 async function deleteAnalysisCacheForCurrentSelection(){
   const base = currentFilters();
   const win = await resolveEffectiveAnalysisWindow();

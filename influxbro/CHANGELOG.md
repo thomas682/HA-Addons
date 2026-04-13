@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.327
+
+### Bug Fix
+
+- Die doppelte Definition von `clearAnalysisCacheForCurrentSeries` im Dashboard-Script wurde entfernt. Dadurch verschwindet der Browserfehler `Identifier 'clearAnalysisCacheForCurrentSeries' has already been declared` beim Aufruf des Dashboards. ([#265](https://github.com/thomas682/HA-Addons/issues/265))
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tests: Duplikatpruefung fuer `clearAnalysisCacheForCurrentSeries` und direkte Funktionsduplikate im betroffenen Dashboard-Bereich
+- Tested with Home Assistant Core: 2026.4.2
+
 ## 1.12.326
 
 ### Bug Fix
