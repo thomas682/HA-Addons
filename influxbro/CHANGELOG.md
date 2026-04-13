@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.319
+
+### Enhancement
+
+- Der Schritt `Analyse vorbereiten` wird jetzt in sichtbare Detailschritte aufgeteilt. Jeder Teilschritt (`UI-Zustand speichern`, `Serie aufloesen`, `Entity-ID ergaenzen`, `Daten laden`, `Analysefenster bestimmen`, `Cache-Status pruefen`) wird mit eigener Dauer-Messung ins Analyse-Log geschrieben und ist im Dashboard unter `dashboard_analysis.btn_logs` einsehbar. ([#263](https://github.com/thomas682/HA-Addons/issues/263))
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: 2026.4.2
+
 ## 1.12.318
 
 ### Bug Fix
