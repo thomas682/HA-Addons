@@ -8363,45 +8363,112 @@ try{
     try{
       const key = String(RAW_ROW_SELECTED_KEY || '');
       if(!key){ err('Bitte zuerst eine Raw-Zeile markieren.'); return; }
-      const hist = _rawUndoableEntry(key);
-      if(!hist){ err('Keine direkte Raw-Aenderung fuer Undo vorhanden.'); return; }
-      const txt = buildRawUndoPrompt(hist);
-      let want = false;
-      if(window.InfluxBroPopup && window.InfluxBroPopup.show){
-        want = await new Promise((resolve)=>{
-          window.InfluxBroPopup.show('Raw Undo', txt, {
-            actions: [
-              { label: 'Abbrechen', title: 'Abbrechen', onClick: ()=>resolve(false) },
-              { label: 'OK', title: 'OK', onClick: ()=>resolve(true) },
-            ],
-            copyText: txt,
-            copyTitle: 'Zwischenablage',
+      const entries = _rawHistoryEntries(key).filter(h => h.action === 'overwrite' || h.action === 'delete');
+      if(!entries.length){ err('Keine direkte Raw-Aenderung fuer Undo vorhanden.'); return; }
+      if(entries.length === 1){
+        const hist = entries[0];
+        const txt = buildRawUndoPrompt(hist);
+        let want = false;
+        if(window.InfluxBroPopup && window.InfluxBroPopup.show){
+          want = await new Promise((resolve)=>{
+            window.InfluxBroPopup.show('Raw Undo', txt, {
+              actions: [
+                { label: 'Abbrechen', title: 'Abbrechen', onClick: ()=>resolve(false) },
+                { label: 'OK', title: 'OK', onClick: ()=>resolve(true) },
+              ],
+              copyText: txt,
+              copyTitle: 'Zwischenablage',
+            });
           });
+        }else{
+          want = confirm(txt);
+        }
+        if(!want) return;
+        await api('./api/history_rollback', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ confirm: true, ids: [String(hist.id || '')] })
         });
       }else{
-        want = confirm(txt);
+        // Multiple entries: show selection dialog
+        const lines = ['Welche Aenderung soll rueckgaengig gemacht werden?', ''];
+        entries.forEach((h, i) => {
+          lines.push(`${i+1}. ${fmtTs(h.at || '')} | ${h.action} | Alt: ${fmtNum(h.old_value)} -> Neu: ${fmtNum(h.new_value)}`);
+        });
+        lines.push('');
+        lines.push('Nummer eingeben (0 = Abbrechen):');
+        const choice = prompt(lines.join('\n'), '1');
+        if(!choice) return;
+        const idx = parseInt(String(choice).trim(), 10) - 1;
+        if(idx < 0 || idx >= entries.length) return;
+        const hist = entries[idx];
+        await api('./api/history_rollback', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ confirm: true, ids: [String(hist.id || '')] })
+        });
       }
-      if(!want) return;
-      await api('./api/history_rollback', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ confirm: true, ids: [String(hist.id || '')] })
-      });
       await refreshAfterDataMutation({ rerunOutliers: true });
       setRawSelectedKey(key);
-      ok('Letzte Raw-Aenderung wurde rueckgaengig gemacht.');
+      ok('Raw-Aenderung wurde rueckgaengig gemacht.');
     }catch(e){ displayError(e); }
   });
 }catch(e){}
 
 try{
-  if($rawInfoBtn) $rawInfoBtn.addEventListener('click', (ev)=>{
+  if($rawUndo) $rawUndo.addEventListener('click', async (ev)=>{
     _stop(ev);
     try{
       const key = String(RAW_ROW_SELECTED_KEY || '');
       if(!key){ err('Bitte zuerst eine Raw-Zeile markieren.'); return; }
-      const txt = _rawHistoryDetailsText(key);
-      if(window.InfluxBroPopup && window.InfluxBroPopup.show) window.InfluxBroPopup.show('Raw Aenderungen', txt, { copyText: txt, copyTitle: 'Zwischenablage' });
+      const entries = _rawHistoryEntries(key).filter(h => h.action === 'overwrite' || h.action === 'delete');
+      if(!entries.length){ err('Keine direkte Raw-Aenderung fuer Undo vorhanden.'); return; }
+      if(entries.length === 1){
+        const hist = entries[0];
+        const txt = buildRawUndoPrompt(hist);
+        let want = false;
+        if(window.InfluxBroPopup && window.InfluxBroPopup.show){
+          want = await new Promise((resolve)=>{
+            window.InfluxBroPopup.show('Raw Undo', txt, {
+              actions: [
+                { label: 'Abbrechen', title: 'Abbrechen', onClick: ()=>resolve(false) },
+                { label: 'OK', title: 'OK', onClick: ()=>resolve(true) },
+              ],
+              copyText: txt,
+              copyTitle: 'Zwischenablage',
+            });
+          });
+        }else{
+          want = confirm(txt);
+        }
+        if(!want) return;
+        await api('./api/history_rollback', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ confirm: true, ids: [String(hist.id || '')] })
+        });
+      }else{
+        // Multiple entries: show selection dialog
+        const lines = ['Welche Aenderung soll rueckgaengig gemacht werden?', ''];
+        entries.forEach((h, i) => {
+          lines.push(`${i+1}. ${fmtTs(h.at || '')} | ${h.action} | Alt: ${fmtNum(h.old_value)} -> Neu: ${fmtNum(h.new_value)}`);
+        });
+        lines.push('');
+        lines.push('Nummer eingeben (0 = Abbrechen):');
+        const choice = prompt(lines.join('\n'), '1');
+        if(!choice) return;
+        const idx = parseInt(String(choice).trim(), 10) - 1;
+        if(idx < 0 || idx >= entries.length) return;
+        const hist = entries[idx];
+        await api('./api/history_rollback', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ confirm: true, ids: [String(hist.id || '')] })
+        });
+      }
+      await refreshAfterDataMutation({ rerunOutliers: true });
+      setRawSelectedKey(key);
+      ok('Raw-Aenderung wurde rueckgaengig gemacht.');
     }catch(e){ displayError(e); }
   });
 }catch(e){}
