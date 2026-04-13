@@ -7,6 +7,8 @@
 - Raw-Werte koennen jetzt direkt in der Tabelle durch Klick auf den Wert bearbeitet werden. Ein Bestaetigungsdialog fragt vor dem Ueberschreiben nach. ([#262](https://github.com/thomas682/HA-Addons/issues/262))
 - Neuer Button `Manuell` neben `Einfuegen` in der Raw-Toolbar. Eroeffnet einen Dialog mit Interpolations- und Nachbarwert-Vorschlaegen fuer Einzelausreisser. ([#262](https://github.com/thomas682/HA-Addons/issues/262))
 - Backend-Endpoint `/api/raw_overwrite` zum Ueberschreiben einzelner Raw-Werte mit History-Protokollierung. ([#262](https://github.com/thomas682/HA-Addons/issues/262))
+- Undo-Dialog zeigt bei mehreren History-Eintraegen eine Auswahlliste, damit der Benutzer gezielt eine Aenderung rueckgaengig machen kann. ([#262](https://github.com/thomas682/HA-Addons/issues/262))
+- Undo-Dialog zeigt bei mehreren History-Eintraegen eine Auswahlliste, damit der Benutzer gezielt eine Aenderung rueckgaengig machen kann. ([#262](https://github.com/thomas682/HA-Addons/issues/262))
 
 ### Maintenance
 
