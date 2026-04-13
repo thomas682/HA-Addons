@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.12.320
+
+### Bug Fix
+
+- Raw-Kontext Zeiten in der Ausreisser-Tabelle zeigten falsche Start-/Endwerte, weil `point_index` sich auf Chunk-Ergebnisse statt auf die gesamte Datenreihe bezog. Das Backend loest den Index jetzt ueber den Zeitstempel direkt auf. ([#262](https://github.com/thomas682/HA-Addons/issues/262))
+- Row-Highlight-Versatz in der Ausreisser-Tabelle behoben: Zeilen werden jetzt ueber `data-time`-Attribut statt ueber Index-Position markiert. ([#262](https://github.com/thomas682/HA-Addons/issues/262))
+- fault_phase-Eintraege zeigen jetzt `aggregiert` statt `kein Raw-Fenster`, da es sich um zusammengefasste Stoerphasen handelt. ([#262](https://github.com/thomas682/HA-Addons/issues/262))
+
+### Enhancement
+
+- Logs-Seite: Suchfeld-Breite auf `min-width: 40px` reduziert und `flex:1` entfernt. Clear-Button neben `Markieren`-Eingabefeld ergaenzt. ([#259](https://github.com/thomas682/HA-Addons/issues/259))
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: 2026.4.2
+
 ## 1.12.319
 
 ### Enhancement

@@ -4957,6 +4957,29 @@ function _rawOutlierRenderTime(){
 
 function _rawOutlierContextInfo(row){
   try{
+    if(row && row._agg_kind === 'fault_phase'){
+      return {
+        counts: 'aggregiert',
+        times: 'Stoerphase: ' + fmtTs(row.time) + (row.end_time ? (' – ' + fmtTs(row.end_time)) : ''),
+        missing: true,
+        aggregated: true,
+      };
+    }
+    const win = row && row.window && typeof row.window === 'object' ? row.window : null;
+    if(!win) return null;
+    const beforeCount = Math.max(0, Math.trunc(Number(win.before_count || 0)));
+    const afterCount = Math.max(0, Math.trunc(Number(win.after_count || 0)));
+    const beforeLabel = win.before_time ? fmtTs(win.before_time) : '-';
+    const centerLabel = row && row.time ? fmtTs(row.time) : '-';
+    const afterLabel = win.after_time ? fmtTs(win.after_time) : '-';
+    return {
+      counts: beforeCount + ' davor | ' + afterCount + ' danach',
+      times: beforeLabel + ' -> ' + centerLabel + ' -> ' + afterLabel,
+    };
+  }catch(e){
+    return null;
+  }
+}
     const win = row && row.window && typeof row.window === 'object' ? row.window : null;
     if(!win) return null;
     const beforeCount = Math.max(0, Math.trunc(Number(win.before_count || 0)));
@@ -7585,12 +7608,52 @@ async function highlightOutlierAtIndex(idx){
   if(!isFinite(ms)) return;
 
   RAW_SELECTED_MS = ms;
+  RAW_OUTLIER_INDEX = idx;
 
-  // Highlight row in overview table
+  // Highlight row in overview table by matching timestamp, not index
   try{
     const trs = Array.from($rawOutlierBody.querySelectorAll('tr'));
     trs.forEach(t => t.classList.remove('raw_hl', 'raw_outlier'));
-    if(trs[idx]) trs[idx].classList.add('raw_hl', 'raw_outlier');
+    const timeStr = String(result.time || '');
+    let found = false;
+    for(const tr of trs){
+      const td = tr.querySelector('td');
+      if(td && String(td.textContent || '').trim() === timeStr){
+        tr.classList.add('raw_hl', 'raw_outlier');
+        found = true;
+        break;
+      }
+    }
+    // Fallback: use data attribute if available
+    if(!found){
+      for(const tr of trs){
+        const dataTime = tr.getAttribute('data-time');
+        if(dataTime && dataTime === timeStr){
+          tr.classList.add('raw_hl', 'raw_outlier');
+          break;
+        }
+      }
+    }
+  }catch(e){}
+
+  // Load raw data centered around this outlier
+  await loadRawFromGraph(true);
+
+  if(_setGraphSelection){
+    _setGraphSelection(ms, result.value);
+  }
+}
+    }
+    // Fallback: use data attribute if available
+    if(!found){
+      for(const tr of trs){
+        const dataTime = tr.getAttribute('data-time');
+        if(dataTime && dataTime === timeStr){
+          tr.classList.add('raw_hl', 'raw_outlier');
+          break;
+        }
+      }
+    }
   }catch(e){}
 
   // Load raw data centered around this outlier
@@ -7654,6 +7717,7 @@ function renderOutlierOverviewTable(){
     try{
       const ms = Date.parse(String(r.time || ''));
       if(isFinite(ms)) tr.setAttribute('data-ts-ms', String(ms));
+      if(r && r.time) tr.setAttribute('data-time', String(r.time));
     }catch(e){}
     const tdT = document.createElement('td');
     tdT.textContent = fmtTs(r.time);

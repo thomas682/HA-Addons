@@ -18761,8 +18761,19 @@ from(bucket: "{cfg["bucket"]}")
     for ol in outliers:
         ol_time = str(ol.get("time") or "")
         ol_idx = int(ol.get("point_index") or -1)
-        if ol_idx < 0 or not ol_time or ol_idx >= len(all_points):
+        if not ol_time:
             continue
+
+        # Resolve actual index from time if point_index is unreliable
+        if ol_idx < 0 or ol_idx >= len(all_points):
+            actual_idx = None
+            for i, p in enumerate(all_points):
+                if p["time"] == ol_time:
+                    actual_idx = i
+                    break
+            if actual_idx is None:
+                continue
+            ol_idx = actual_idx
 
         before_minutes = None
         after_minutes = None
