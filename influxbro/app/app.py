@@ -2683,6 +2683,7 @@ def _analysis_cache_store_segment(
     final_state: dict[str, Any] | None = None,
     patch_status: str | None = None,
     patch_error: str | None = None,
+    patch_info: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     try:
         key = _analysis_cache_key(cfg, measurement, field, entity_id, friendly_name, start_iso, stop_iso)
@@ -2726,6 +2727,7 @@ def _analysis_cache_store_segment(
             str(_analysis_cache_data_path(cache_id)),
         )
         prev = _analysis_cache_load_meta(cache_id) or {}
+        patch_meta = dict(patch_info or {}) if isinstance(patch_info, dict) else {}
         meta = {
             "v": 1,
             "id": cache_id,
@@ -2749,6 +2751,14 @@ def _analysis_cache_store_segment(
             "patch_status": str(patch_status or "ok"),
             "patch_error": str(patch_error or "") or None,
             "last_patch_at": now if patch_status else None,
+            "last_patch_mode": str(patch_meta.get("mode") or ("initial_build" if not patch_status else str(patch_status or "ok"))),
+            "last_patch_start": patch_meta.get("start_iso") or start_iso,
+            "last_patch_stop": patch_meta.get("stop_iso") or stop_iso,
+            "last_patch_checkpoint_at": patch_meta.get("checkpoint_at"),
+            "last_patch_context_before": patch_meta.get("context_before_time"),
+            "last_patch_context_after": patch_meta.get("context_after_time"),
+            "last_patch_change_start": patch_meta.get("change_start"),
+            "last_patch_change_stop": patch_meta.get("change_stop"),
             "checkpoint_count": len(checkpoints if isinstance(checkpoints, list) else []),
             "search_types": ["bounds", "counter", "decrease", "fault_phase", "null", "zero"],
         }
@@ -3702,6 +3712,13 @@ def _analysis_cache_group_list(cfg: dict[str, Any]) -> list[dict[str, Any]]:
                 "patch_status": str(meta.get("patch_status") or "ok"),
                 "patch_error": meta.get("patch_error"),
                 "checkpoint_count": int(meta.get("checkpoint_count") or 0),
+                "last_patch_mode": meta.get("last_patch_mode"),
+                "last_patch_at": meta.get("last_patch_at"),
+                "last_patch_start": meta.get("last_patch_start"),
+                "last_patch_stop": meta.get("last_patch_stop"),
+                "last_patch_checkpoint_at": meta.get("last_patch_checkpoint_at"),
+                "last_patch_context_before": meta.get("last_patch_context_before"),
+                "last_patch_context_after": meta.get("last_patch_context_after"),
                 "changes": changed,
                 "meta_path": f"analysis_cache/{str(meta.get('id') or '')}.meta.json",
                 "data_path": f"analysis_cache/{str(meta.get('id') or '')}.data.json.gz",
@@ -3718,6 +3735,7 @@ def _analysis_cache_group_list(cfg: dict[str, Any]) -> list[dict[str, Any]]:
         group["dirty_segment_count"] = len([s for s in segs if bool(s.get("dirty"))])
         group["patch_pending_count"] = len([s for s in segs if str(s.get("patch_status") or "") == "patch_pending"])
         group["patch_failed_count"] = len([s for s in segs if str(s.get("patch_status") or "") in ("patch_failed", "patch_not_safe")])
+        group["checkpoint_count"] = sum(int(s.get("checkpoint_count") or 0) for s in segs)
         group["covered_start"] = segs[0].get("start") if segs else None
         group["covered_stop"] = segs[-1].get("stop") if segs else None
         group["updated_at"] = max((str(s.get("updated_at") or "") for s in segs), default=None)
@@ -3779,7 +3797,69 @@ def _analysis_cache_fetch_segment_result(
     return data
 
 
+def _analysis_cache_fetch_neighbor_points(
+    cfg: dict[str, Any],
+    measurement: str,
+    field: str,
+    entity_id: str | None,
+    friendly_name: str | None,
+    center_dt: datetime,
+    start_dt: datetime,
+    stop_dt: datetime,
+    *,
+    n: int = 2,
+) -> dict[str, list[dict[str, Any]]]:
+    if int(cfg.get("influx_version", 2)) != 2:
+        return {"older": [], "newer": []}
+    if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+        return {"older": [], "newer": []}
+    n = max(1, min(int(n or 2), 10))
+    start = _dt_to_rfc3339_utc(start_dt)
+    stop = _dt_to_rfc3339_utc(stop_dt)
+    center = _dt_to_rfc3339_utc(center_dt)
+    extra = flux_tag_filter(entity_id, friendly_name)
+    q_older = f'''
+from(bucket: "{cfg["bucket"]}")
+  |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
+  |> filter(fn: (r) => r._time < time(v: "{center}"))
+  |> keep(columns: ["_time", "_value"])
+  |> sort(columns: ["_time"], desc: true)
+  |> limit(n: {n})
+'''
+    q_newer = f'''
+from(bucket: "{cfg["bucket"]}")
+  |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
+  |> filter(fn: (r) => r._time > time(v: "{center}"))
+  |> keep(columns: ["_time", "_value"])
+  |> sort(columns: ["_time"], desc: false)
+  |> limit(n: {n})
+'''
+    older: list[dict[str, Any]] = []
+    newer: list[dict[str, Any]] = []
+    try:
+        with v2_client(cfg) as client:
+            qapi = client.query_api()
+            for table in qapi.query(q_older, org=cfg["org"]) or []:
+                for rec in getattr(table, "records", []) or []:
+                    ts = rec.get_time()
+                    if isinstance(ts, datetime):
+                        older.append({"time": _dt_to_rfc3339_utc_ms(ts), "value": rec.get_value()})
+            for table in qapi.query(q_newer, org=cfg["org"]) or []:
+                for rec in getattr(table, "records", []) or []:
+                    ts = rec.get_time()
+                    if isinstance(ts, datetime):
+                        newer.append({"time": _dt_to_rfc3339_utc_ms(ts), "value": rec.get_value()})
+    except Exception as e:
+        LOG.warning("analysis_cache_fetch_neighbor_points failed center=%s error=%s", center, e)
+        return {"older": [], "newer": []}
+    older.reverse()
+    return {"older": older, "newer": newer}
+
+
 def _analysis_cache_patch_window(
+    cfg: dict[str, Any],
     meta: dict[str, Any],
     payload: dict[str, Any],
     changes: list[dict[str, Any]],
@@ -3805,6 +3885,39 @@ def _analysis_cache_patch_window(
     pad = timedelta(seconds=ANALYSIS_CACHE_PATCH_PADDING_SECONDS)
     fallback_start = max(start_dt, first_dt - pad)
     fallback_stop = min(stop_dt, last_dt + pad)
+    series = {
+        "measurement": str(meta.get("measurement") or ""),
+        "field": str(meta.get("field") or ""),
+        "entity_id": str(meta.get("entity_id") or "") or None,
+        "friendly_name": str(meta.get("friendly_name") or "") or None,
+    }
+    first_neighbors = _analysis_cache_fetch_neighbor_points(
+        cfg,
+        series["measurement"],
+        series["field"],
+        series["entity_id"],
+        series["friendly_name"],
+        first_dt,
+        start_dt,
+        stop_dt,
+        n=2,
+    )
+    last_neighbors = first_neighbors if last_dt == first_dt else _analysis_cache_fetch_neighbor_points(
+        cfg,
+        series["measurement"],
+        series["field"],
+        series["entity_id"],
+        series["friendly_name"],
+        last_dt,
+        start_dt,
+        stop_dt,
+        n=2,
+    )
+    older_first = first_neighbors.get("older") if isinstance(first_neighbors.get("older"), list) else []
+    newer_last = last_neighbors.get("newer") if isinstance(last_neighbors.get("newer"), list) else []
+    prev_neighbor = older_first[-1] if older_first else None
+    prev_seed_point = older_first[-2] if len(older_first) > 1 else None
+    next_neighbor = newer_last[0] if newer_last else None
     prev_cp = None
     next_cp = None
     for cp in cps:
@@ -3817,29 +3930,42 @@ def _analysis_cache_patch_window(
         if cp_dt >= last_dt and next_cp is None:
             next_cp = cp
             break
-    patch_start = _parse_iso_datetime(str(prev_cp.get("at") or "")) if isinstance(prev_cp, dict) else fallback_start
-    patch_stop = _parse_iso_datetime(str(next_cp.get("at") or "")) if isinstance(next_cp, dict) else fallback_stop
-    used_fallback = not isinstance(prev_cp, dict) or not isinstance(next_cp, dict)
+    prev_neighbor_dt = _parse_iso_datetime(str((prev_neighbor or {}).get("time") or "")) if isinstance(prev_neighbor, dict) else None
+    next_neighbor_dt = _parse_iso_datetime(str((next_neighbor or {}).get("time") or "")) if isinstance(next_neighbor, dict) else None
+    patch_start = _parse_iso_datetime(str(prev_cp.get("at") or "")) if isinstance(prev_cp, dict) else (prev_neighbor_dt or fallback_start)
+    patch_stop = _parse_iso_datetime(str(next_cp.get("at") or "")) if isinstance(next_cp, dict) else ((next_neighbor_dt + timedelta(milliseconds=1)) if next_neighbor_dt else fallback_stop)
+    mode = "checkpoint"
+    if not isinstance(prev_cp, dict) and not isinstance(next_cp, dict):
+        mode = "neighbor_context" if (prev_neighbor_dt or next_neighbor_dt) else "fallback_time"
+    elif not isinstance(prev_cp, dict) or not isinstance(next_cp, dict):
+        mode = "checkpoint_mixed_neighbor" if (prev_neighbor_dt or next_neighbor_dt) else "checkpoint_mixed_fallback"
     if patch_start is None or patch_stop is None or patch_stop <= patch_start:
         return None
     if (patch_stop - patch_start).total_seconds() > ANALYSIS_CACHE_PATCH_MAX_SPAN_SECONDS:
         patch_start = fallback_start
         patch_stop = fallback_stop
-        used_fallback = True
+        mode = "fallback_time"
     if patch_stop <= patch_start:
         return None
     if (patch_stop - patch_start).total_seconds() > ANALYSIS_CACHE_PATCH_MAX_SPAN_SECONDS:
         return None
+    prev_seed_time = prev_cp.get("last_time") if isinstance(prev_cp, dict) else ((prev_seed_point or {}).get("time") if isinstance(prev_seed_point, dict) else None)
+    prev_seed_value = prev_cp.get("last_value") if isinstance(prev_cp, dict) else ((prev_seed_point or {}).get("value") if isinstance(prev_seed_point, dict) else None)
     return {
         "start_dt": patch_start,
         "stop_dt": patch_stop,
         "start_iso": _dt_to_rfc3339_utc_ms(patch_start),
         "stop_iso": _dt_to_rfc3339_utc_ms(patch_stop),
-        "prev_time": prev_cp.get("last_time") if isinstance(prev_cp, dict) else None,
-        "prev_value": prev_cp.get("last_value") if isinstance(prev_cp, dict) else None,
+        "prev_time": prev_seed_time,
+        "prev_value": prev_seed_value,
         "counter_base_value": prev_cp.get("counter_base_value") if isinstance(prev_cp, dict) else None,
         "scan_state": prev_cp.get("scan_state") if isinstance(prev_cp, dict) else None,
-        "used_fallback": used_fallback,
+        "mode": mode,
+        "checkpoint_at": prev_cp.get("at") if isinstance(prev_cp, dict) else None,
+        "context_before_time": (prev_neighbor or {}).get("time") if isinstance(prev_neighbor, dict) else None,
+        "context_after_time": (next_neighbor or {}).get("time") if isinstance(next_neighbor, dict) else None,
+        "change_start": _dt_to_rfc3339_utc_ms(first_dt),
+        "change_stop": _dt_to_rfc3339_utc_ms(last_dt),
     }
 
 
@@ -3868,7 +3994,7 @@ def _analysis_cache_patch_meta(cfg: dict[str, Any], meta: dict[str, Any]) -> dic
         meta2["last_patch_at"] = _utc_now_iso_ms()
         _analysis_cache_write_meta(meta2)
         return {"ok": True, "cache_id": str(meta.get("id") or ""), "patched": False, "reason": "clean"}
-    window = _analysis_cache_patch_window(meta, payload, changes)
+    window = _analysis_cache_patch_window(cfg, meta, payload, changes)
     if not window:
         meta2 = dict(meta)
         meta2["dirty"] = True
@@ -3877,6 +4003,7 @@ def _analysis_cache_patch_meta(cfg: dict[str, Any], meta: dict[str, Any]) -> dic
         meta2["patch_status"] = "patch_not_safe"
         meta2["patch_error"] = "patch window too large or checkpoint missing"
         meta2["last_patch_at"] = _utc_now_iso_ms()
+        meta2["last_patch_mode"] = "patch_not_safe"
         _analysis_cache_write_meta(meta2)
         return {"ok": False, "cache_id": str(meta.get("id") or ""), "patched": False, "reason": "patch_not_safe"}
     data = _analysis_cache_fetch_segment_result(
@@ -3924,6 +4051,7 @@ def _analysis_cache_patch_meta(cfg: dict[str, Any], meta: dict[str, Any]) -> dic
             data.get("scan_state") if isinstance(data.get("scan_state"), dict) else (payload.get("final_state") if isinstance(payload.get("final_state"), dict) else {}).get("scan_state"),
         ),
         patch_status="ok",
+        patch_info=window,
     )
     if not merged_meta:
         raise _ApiError("analysis cache patch store failed", 500)

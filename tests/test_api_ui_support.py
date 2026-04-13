@@ -564,6 +564,8 @@ def test_jobs_page_has_analysis_cache_section_and_actions():
     assert '<option value="analysis_cache_patch">analysis_cache_patch</option>' in body
     assert "Patch pending:" in body
     assert "patch_failed_count" in body
+    assert "Checkpoint:" in body
+    assert "last_patch_mode" in body or "Modus:" in body
     assert "./api/analysis_cache/list" in body
     assert "./api/analysis_cache/rebuild" in body
     assert "./api/analysis_cache/delete" in body

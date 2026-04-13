@@ -1285,6 +1285,15 @@
         try{
           const segs = Array.isArray(m.segments) ? m.segments : [];
           if(!segs.length) return '';
+          const segPatchInfo = (seg)=>{
+            const parts = [];
+            if(seg.patch_status) parts.push('Patch: ' + String(seg.patch_status));
+            if(seg.last_patch_mode) parts.push('Modus: ' + String(seg.last_patch_mode));
+            if(seg.last_patch_checkpoint_at) parts.push('Checkpoint: ' + fmtTs(seg.last_patch_checkpoint_at));
+            if(seg.last_patch_context_before) parts.push('Vorpunkt: ' + fmtTs(seg.last_patch_context_before));
+            if(seg.last_patch_context_after) parts.push('Nachpunkt: ' + fmtTs(seg.last_patch_context_after));
+            return parts.join(' | ');
+          };
           const startMs = Date.parse(String(m.covered_start || segs[0].start || ''));
           const stopMs = Date.parse(String(m.covered_stop || segs[segs.length - 1].stop || ''));
           if(!(isFinite(startMs) && isFinite(stopMs) && stopMs > startMs)) return '';
@@ -1297,14 +1306,16 @@
             const pair = ANALYSIS_CACHE_SEGMENT_COLORS[idx % ANALYSIS_CACHE_SEGMENT_COLORS.length];
             const bg = seg.dirty ? '#ffe1e1' : pair[0];
             const bd = seg.dirty ? '#d46a6a' : pair[1];
-            return '<div class="timeline_seg" title="' + fmtTs(seg.start) + ' - ' + fmtTs(seg.stop) + ' | Treffer: ' + String(seg.outlier_count || 0) + '" style="left:' + left.toFixed(3) + '%;width:' + width.toFixed(3) + '%;background:' + bg + ';border:1px solid ' + bd + ';"></div>';
+            const info = segPatchInfo(seg);
+            return '<div class="timeline_seg" title="' + fmtTs(seg.start) + ' - ' + fmtTs(seg.stop) + ' | Treffer: ' + String(seg.outlier_count || 0) + (info ? (' | ' + info) : '') + '" style="left:' + left.toFixed(3) + '%;width:' + width.toFixed(3) + '%;background:' + bg + ';border:1px solid ' + bd + ';"></div>';
           }).join('');
           const labels = segs.map((seg, idx)=>{
             const pair = ANALYSIS_CACHE_SEGMENT_COLORS[idx % ANALYSIS_CACHE_SEGMENT_COLORS.length];
             const bg = seg.dirty ? '#ffe1e1' : pair[0];
             const bd = seg.dirty ? '#d46a6a' : pair[1];
             const name = seg.dirty ? ('Geaendert ' + (idx + 1)) : ('Cache ' + (idx + 1));
-            return '<div style="font-size:11px;"><span style="display:inline-block;width:10px;height:10px;background:' + bg + ';border:1px solid ' + bd + ';border-radius:3px;margin-right:6px;"></span>' + name + ': ' + fmtTs(seg.start) + ' – ' + fmtTs(seg.stop) + '</div>';
+            const info = segPatchInfo(seg);
+            return '<div style="font-size:11px;" title="' + info + '"><span style="display:inline-block;width:10px;height:10px;background:' + bg + ';border:1px solid ' + bd + ';border-radius:3px;margin-right:6px;"></span>' + name + ': ' + fmtTs(seg.start) + ' – ' + fmtTs(seg.stop) + (info ? (' <span class="mono" style="opacity:0.7;">(' + info + ')</span>') : '') + '</div>';
           }).join('');
           return '<div class="timeline_bar">' + parts + '</div>'
             + '<div style="display:flex;justify-content:space-between;gap:12px;margin-top:6px;font-size:11px;opacity:0.75;"><span>' + fmtTs(m.covered_start || segs[0].start || '') + '</span><span>' + fmtTs(m.covered_stop || segs[segs.length - 1].stop || '') + '</span></div>'
@@ -1344,7 +1355,8 @@
         }
         const patchPending = rows.reduce((acc, row)=>acc + Number(row && row.patch_pending_count || 0), 0);
         const patchFailed = rows.reduce((acc, row)=>acc + Number(row && row.patch_failed_count || 0), 0);
-        if($analysisCacheInfo) $analysisCacheInfo.textContent = `Analysecache Serien: ${rows.length} | Gesamtgroesse: ${fmtSize(totalBytes)} | Patch pending: ${patchPending} | Patch failed: ${patchFailed}`;
+        const checkpointCount = rows.reduce((acc, row)=>acc + Number(row && row.checkpoint_count || 0), 0);
+        if($analysisCacheInfo) $analysisCacheInfo.textContent = `Analysecache Serien: ${rows.length} | Gesamtgroesse: ${fmtSize(totalBytes)} | Checkpoints: ${checkpointCount} | Patch pending: ${patchPending} | Patch failed: ${patchFailed}`;
         syncToolbarButtons();
       }
 

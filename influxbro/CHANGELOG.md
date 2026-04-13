@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.12.335
+
+### Bug Fix
+
+- Analyse-Cache-Patchjobs bestimmen den Minimalbereich fuer dirty Segmente jetzt ueber echte Vor-/Nachbarpunkte aus InfluxDB. Dadurch wird der Rebuild-Bereich enger als beim reinen Zeitfallback und bleibt auch bei Legacy-Segmenten klein. ([#272](https://github.com/thomas682/HA-Addons/issues/272))
+- `Jobs & Cache -> Analysecache` zeigt fuer Segmente jetzt zusaetzliche Patchdetails wie Modus, verwendeten Checkpoint und Kontextpunkte in der Timeline/Segmentanzeige. ([#272](https://github.com/thomas682/HA-Addons/issues/272))
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tests: `pytest tests/test_api_analysis_cache.py -q`
+- Tests: `pytest tests/test_api_ui_support.py -q -k "jobs_page_has_analysis_cache_section_and_actions"`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.334
 
 ### Bug Fix

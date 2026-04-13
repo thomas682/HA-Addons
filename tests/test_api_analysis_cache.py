@@ -259,6 +259,20 @@ def test_analysis_cache_patch_meta_uses_legacy_fallback_window_without_checkpoin
 
     captured: dict[str, object] = {}
 
+    def _fake_neighbors(_cfg, _measurement, _field, _entity_id, _friendly_name, center_dt, _start_dt, _stop_dt, **_kwargs):
+        iso = center_dt.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+        if iso.startswith("2026-01-02T12:00:00"):
+            return {
+                "older": [
+                    {"time": "2026-01-02T11:50:00.000Z", "value": 1.5},
+                    {"time": "2026-01-02T11:59:00.000Z", "value": 2.0},
+                ],
+                "newer": [
+                    {"time": "2026-01-02T12:01:00.000Z", "value": 3.0},
+                ],
+            }
+        return {"older": [], "newer": []}
+
     def _fake_fetch_result(_cfg, measurement, field, entity_id, friendly_name, start_iso, stop_iso, **kwargs):
         captured.update({
             "measurement": measurement,
@@ -287,6 +301,7 @@ def test_analysis_cache_patch_meta_uses_legacy_fallback_window_without_checkpoin
             "scan_state": {"status": "normal"},
         }
 
+    monkeypatch.setattr(app_mod, "_analysis_cache_fetch_neighbor_points", _fake_neighbors)
     monkeypatch.setattr(app_mod, "_analysis_cache_fetch_segment_result", _fake_fetch_result)
 
     res = app_mod._analysis_cache_patch_meta(cfg, meta)
@@ -296,10 +311,13 @@ def test_analysis_cache_patch_meta_uses_legacy_fallback_window_without_checkpoin
     assert res["patched"] is True
     assert captured["measurement"] == "m"
     assert captured["field"] == "value"
-    assert captured["start_iso"] == "2026-01-02T11:55:00.000Z"
-    assert captured["stop_iso"] == "2026-01-02T12:05:00.000Z"
-    assert captured["prev_time"] is None
-    assert captured["prev_value"] is None
+    assert captured["start_iso"] == "2026-01-02T11:59:00.000Z"
+    assert captured["stop_iso"] == "2026-01-02T12:01:00.001Z"
+    assert captured["prev_time"] == "2026-01-02T11:50:00.000Z"
+    assert captured["prev_value"] == 1.5
     assert stored_meta is not None
     assert stored_meta["patch_status"] == "ok"
     assert stored_meta["checkpoint_count"] == 1
+    assert stored_meta["last_patch_mode"] == "neighbor_context"
+    assert stored_meta["last_patch_context_before"] == "2026-01-02T11:59:00.000Z"
+    assert stored_meta["last_patch_context_after"] == "2026-01-02T12:01:00.000Z"
