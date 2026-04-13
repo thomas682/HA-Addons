@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.12.332
+
+### Bug Fix
+
+- Die Einstellungsseite haertet den Lade- und Speicherpfad fuer die Log-Farbfelder (`ui_log_error_bg`, `ui_log_error_fg`, `ui_log_warn_bg`, `ui_log_warn_fg`) jetzt mit lazy DOM-Rebind und Null-Guards. Dadurch fuehren fehlende oder spaet gebundene Felder nicht mehr zu Statusbar-Fehlern wie `TypeError: null is not an object`. ([#269](https://github.com/thomas682/HA-Addons/issues/269))
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tests: `pytest tests/test_api_ui_support.py -q -k "settings_layout_and_null_safe_bindings_are_present"`
+- Tests: lokaler Render-Smoke fuer `/config` via Flask-Testclient
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.331
 
 ### Bug Fix

@@ -350,6 +350,9 @@ def test_settings_layout_and_null_safe_bindings_are_present():
     assert '_setVal(el.ui_job_color_running' in config
     assert 'window.__InfluxBroEarlyClientLogInstalled' in config
     assert 'function reportConfigError(message, extra, stack){' in config
+    assert 'function _getEl(id){' in config
+    assert "_safeSetById('ui_log_error_bg', 'value', cfg.ui_log_error_bg ?? '#ffe0e0');" in config
+    assert "ui_log_error_bg: _getEl('ui_log_error_bg') ? String(_getEl('ui_log_error_bg').value || '').trim() : ''," in config
     assert "reportConfigError('Settings initial load failed'" in config
     assert "reportConfigError('Settings action binding failed'" in config
 
