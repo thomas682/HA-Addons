@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.12.329
+
+### Bug Fix
+
+- Den verbleibenden abgeschnittenen Abschluss von `highlightOutlierAtIndex` und den doppelten `rawUndo`-Handler im Dashboard-Script bereinigt. Dadurch verschwinden weitere JavaScript-Abbrüche wie `Unexpected end of input` im Dashboard. ([#267](https://github.com/thomas682/HA-Addons/issues/267))
+
+### Maintenance
+
+- Neue wiederkehrende QA fuer Dashboard-Scriptintegritaet: extrahierte `<script>`-Blöcke werden per `node --check` validiert, und kritische Dashboard-Funktionen duerfen nur einmal definiert sein.
+- Neuer Playwright-Smoke-Test fuer Dashboard-Konsole/Pageerrors: `tests/e2e/dashboard-console.spec.js`
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tests: `pytest tests/test_dashboard_script_integrity.py -q`
+- Tests: lokaler Browser-Smoke-Test gegen `http://127.0.0.1:8099/` ohne kritische Console-/Pageerrors
+- Tests: `npx playwright test tests/e2e/dashboard-console.spec.js`
+- Tested with Home Assistant Core: 2026.4.2
+
 ## 1.12.328
 
 ### Bug Fix

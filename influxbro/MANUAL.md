@@ -836,6 +836,7 @@ Hinweis Dashboard:
 - Die Settings-Seite ist jetzt robuster gegen Initialisierungsfehler: fehlende Felder fuehren nicht mehr zum kompletten Ausfall, und JavaScript-Fehler werden ins Add-on-Log geschrieben.
 - Weitere Dashboard-Skriptregressionen durch versehentlich doppelt eingefuegte Funktionsbloecke wurden bereinigt. Das Dashboard sollte dadurch wieder ohne `already been declared`-Syntaxfehler starten.
 - Weitere direkte Duplikate im Raw-Handler-Bereich des Dashboards wurden ebenfalls entfernt. Damit sollte das Dashboard-JavaScript nicht mehr durch abgeschnittene oder doppelte Undo-/Raw-Blöcke abbrechen.
+- Fuer Dashboard-/Template-Aenderungen gibt es jetzt zusaetzlich eine technische Integritaetspruefung: die final extrahierten Dashboard-Scriptblöcke werden syntaktisch per `node --check` validiert, und kritische Dashboard-Funktionsnamen duerfen nur einmal vorkommen. Zusaetzlich prueft ein Playwright-Smoke-Test die Browser-Konsole beim Laden des Dashboards auf Syntaxfehler.
 - Die wichtigsten Aktionen tragen zusaetzlich kurze Textlabels direkt auf dem Button.
 
 Ausreisser:

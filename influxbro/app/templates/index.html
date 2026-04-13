@@ -7637,6 +7637,26 @@ async function highlightOutlierAtIndex(idx){
         found = true;
         break;
       }
+    }
+    // Fallback: use data attribute if available
+    if(!found){
+      for(const tr of trs){
+        const dataTime = tr.getAttribute('data-time');
+        if(dataTime && dataTime === timeStr){
+          tr.classList.add('raw_hl', 'raw_outlier');
+          break;
+        }
+      }
+    }
+  }catch(e){}
+
+  // Load raw data centered around this outlier
+  await loadRawFromGraph(true);
+
+  if(_setGraphSelection){
+    _setGraphSelection(ms, result.value);
+  }
+}
 
 function _updateOutlierNavStatus(){
   const filtered = getDisplayedOutliers();
@@ -10176,6 +10196,12 @@ async function refreshAll(opts){
         extra: { dur_ms: 0, skipped: true },
       });
     }
+
+    await _prepareStep('prepare_load_data', 'Daten laden', async ()=>{ await loadData(o); });
+  }catch(e){
+    displayError(e);
+  }
+}
 
 async function refreshCachingSection(){
   const base = currentFilters();
