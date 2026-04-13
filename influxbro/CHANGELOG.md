@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.325
+
+### Bug Fix
+
+- Duplizierte `_prepareStep`-Funktion entfernt, die einen `SyntaxError: Identifier '_prepareStep' has already been declared` verursacht hat. ([#262](https://github.com/thomas682/HA-Addons/issues/262))
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: 2026.4.2
+
 ## 1.12.324
 
 ### Bug Fix
