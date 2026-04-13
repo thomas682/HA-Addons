@@ -15397,6 +15397,100 @@ from(bucket: "{cfg['bucket']}")
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
 
 
+@app.post("/api/raw_overwrite")
+def api_raw_overwrite():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    body = request.get_json(force=True) or {}
+    measurement = str(body.get("measurement") or "").strip()
+    field = str(body.get("field") or "").strip()
+    entity_id = str(body.get("entity_id") or "").strip() or None
+    friendly_name = str(body.get("friendly_name") or "").strip() or None
+    time_str = str(body.get("time") or "").strip()
+    try:
+        new_value = float(body.get("new_value"))
+    except Exception:
+        return jsonify({"ok": False, "error": "new_value must be a number"}), 400
+    old_value = body.get("old_value")
+    mode = str(body.get("mode") or "overwrite").strip()
+    if not measurement or not field:
+        return jsonify({"ok": False, "error": "measurement and field required"}), 400
+    if not time_str:
+        return jsonify({"ok": False, "error": "time required"}), 400
+    try:
+        ts = _parse_time(time_str)
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"invalid time: {e}"}), 400
+    try:
+        if int(cfg.get("influx_version", 2)) == 2:
+            extra = flux_tag_filter(entity_id, friendly_name)
+            start = _dt_to_rfc3339_utc(ts - timedelta(seconds=1))
+            stop = _dt_to_rfc3339_utc(ts + timedelta(seconds=1))
+            q = f'''
+from(bucket: "{cfg['bucket']}")
+  |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
+  |> keep(columns: ["_time","_value"])
+  |> sort(columns: ["_time"], desc: false)
+  |> limit(n: 5)
+'''
+            with v2_client(cfg) as c:
+                tables = c.query_api().query(q, org=cfg["org"])
+                existing = []
+                for table in tables:
+                    for rec in table.records:
+                        existing.append(rec)
+                if not existing:
+                    return jsonify({"ok": False, "error": "Zeitpunkt nicht in DB gefunden"}), 404
+                wapi = c.write_api(write_options=SYNCHRONOUS)
+                point = Point(measurement).field(field, new_value).time(ts)
+                if entity_id:
+                    point = point.tag("entity_id", entity_id)
+                if friendly_name:
+                    point = point.tag("friendly_name", friendly_name)
+                wapi.write(cfg["bucket"], cfg["org"], point)
+                wapi.close()
+        else:
+            start = _dt_to_rfc3339_utc(ts - timedelta(seconds=1))
+            stop = _dt_to_rfc3339_utc(ts + timedelta(seconds=1))
+            tag_where = influxql_tag_filter(entity_id, friendly_name)
+            q = f'SELECT "{field}" FROM "{measurement}" WHERE time >= \'{start}\' AND time <= \'{stop}\'{tag_where} ORDER BY time ASC LIMIT 5'
+            c = v1_client(cfg)
+            try:
+                res = c.query(q)
+                existing = []
+                for _, pts in res.items():
+                    existing.extend(pts)
+                if not existing:
+                    return jsonify({"ok": False, "error": "Zeitpunkt nicht in DB gefunden"}), 404
+                tags = {}
+                if entity_id:
+                    tags["entity_id"] = entity_id
+                if friendly_name:
+                    tags["friendly_name"] = friendly_name
+                json_body = {"measurement": measurement, "tags": tags, "time": _dt_to_rfc3339_utc(ts), "fields": {field: new_value}}
+                c.write_points([json_body])
+            finally:
+                try:
+                    c.close()
+                except Exception:
+                    pass
+        _history_write({
+            "measurement": measurement,
+            "field": field,
+            "entity_id": entity_id or "",
+            "friendly_name": friendly_name or "",
+            "time": time_str,
+            "action": "overwrite",
+            "old_value": old_value,
+            "new_value": new_value,
+            "reason": mode or "manual",
+        })
+        return jsonify({"ok": True})
+    except Exception as e:
+        LOG.error("api.raw_overwrite error: %s", e, exc_info=True)
+        return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
+
+
 @app.post("/api/window_points")
 def api_window_points():
     """Return time/value points for a given window, optionally downsampled."""

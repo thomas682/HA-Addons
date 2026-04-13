@@ -609,6 +609,7 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
         <button class="btn_sm" id="raw_copy" data-ui="dashboard_raw.btn_kopieren" title="dashboard_raw.btn_kopieren" aria-label="Raw Daten kopieren"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18" aria-hidden="true" focusable="false"><path d="M6 11C6 8.17157 6 6.75736 6.87868 5.87868C7.75736 5 9.17157 5 12 5H15C17.8284 5 19.2426 5 20.1213 5.87868C21 6.75736 21 8.17157 21 11V16C21 18.8284 21 20.2426 20.1213 21.1213C19.2426 22 17.8284 22 15 22H12C9.17157 22 7.75736 22 6.87868 21.1213C6 20.2426 6 18.8284 6 16V11Z" stroke="#1C274C" stroke-width="1.5"></path><path d="M6 19C4.34315 19 3 17.6569 3 16V10C3 6.22876 3 4.34315 4.17157 3.17157C5.34315 2 7.22876 2 11 2H15C16.6569 2 18 3.34315 18 5" stroke="#1C274C" stroke-width="1.5"></path></svg></button>
         <button class="btn_sm" id="raw_copy_value" data-ui="dashboard_raw.btn_wert_kopieren" title="dashboard_raw.btn_wert_kopieren">Wert kopieren</button>
         <button class="btn_sm" id="raw_paste" data-ui="dashboard_raw.btn_einfuegen" title="dashboard_raw.btn_einfuegen" disabled>Einfügen</button>
+        <button class="btn_sm" id="raw_manual" data-ui="dashboard_raw.btn_manuell" title="dashboard_raw.btn_manuell" disabled>Manuell</button>
         <button class="btn_sm" id="raw_delete" data-ui="dashboard_raw.btn_loeschen" title="dashboard_raw.btn_loeschen" disabled>Löschen</button>
         <button class="btn_sm" id="raw_undo" data-ui="dashboard_raw.btn_undo" title="dashboard_raw.btn_undo" disabled>Undo</button>
         <button class="btn_sm" id="raw_ignore" data-ui="dashboard_raw.btn_ignorieren" title="dashboard_raw.btn_ignorieren" disabled>Ignorieren</button>
@@ -1208,6 +1209,7 @@ const $rawRefresh = document.getElementById('raw_refresh');
 const $rawCopy = document.getElementById('raw_copy');
 const $rawCopyValue = document.getElementById('raw_copy_value');
 const $rawPaste = document.getElementById('raw_paste');
+const $rawManual = document.getElementById('raw_manual');
 const $rawDelete = document.getElementById('raw_delete');
 const $rawUndo = document.getElementById('raw_undo');
 const $rawIgnore = document.getElementById('raw_ignore');
@@ -4877,6 +4879,18 @@ function renderRawTable(){
     tdT.textContent = fmtTs(r.time);
     const tdV = document.createElement('td');
     tdV.textContent = fmtNum(r.value);
+    tdV.style.cursor = 'pointer';
+    tdV.title = 'Klicken zum Bearbeiten';
+    tdV.addEventListener('click', async (ev)=>{
+      try{ ev.stopPropagation(); }catch(e){}
+      await editRawValueInline(tr, r, tdV);
+    });
+    tdV.style.cursor = 'pointer';
+    tdV.title = 'Klicken zum Bearbeiten';
+    tdV.addEventListener('click', async (ev)=>{
+      try{ ev.stopPropagation(); }catch(e){}
+      await editRawValueInline(tr, r, tdV);
+    });
     const tdH = document.createElement('td');
     tdH.textContent = _rawHistoryCompact(rowKey(r));
     const tdO = document.createElement('td');
@@ -4963,21 +4977,6 @@ function _rawOutlierContextInfo(row){
         aggregated: true,
       };
     }
-    const win = row && row.window && typeof row.window === 'object' ? row.window : null;
-    if(!win) return null;
-    const beforeCount = Math.max(0, Math.trunc(Number(win.before_count || 0)));
-    const afterCount = Math.max(0, Math.trunc(Number(win.after_count || 0)));
-    const beforeLabel = win.before_time ? fmtTs(win.before_time) : '-';
-    const centerLabel = row && row.time ? fmtTs(row.time) : '-';
-    const afterLabel = win.after_time ? fmtTs(win.after_time) : '-';
-    return {
-      counts: beforeCount + ' davor | ' + afterCount + ' danach',
-      times: beforeLabel + ' -> ' + centerLabel + ' -> ' + afterLabel,
-    };
-  }catch(e){
-    return null;
-  }
-}
     const win = row && row.window && typeof row.window === 'object' ? row.window : null;
     if(!win) return null;
     const beforeCount = Math.max(0, Math.trunc(Number(win.before_count || 0)));
@@ -7950,6 +7949,7 @@ function updateRawToolbarState(){
     $rawPaste.disabled = !(hasCopied && hasTarget && String(RAW_ROW_SELECTED_KEY) !== String(RAW_COPIED && RAW_COPIED.key));
     $rawCopyValue.disabled = !hasTarget;
     if($rawDelete) $rawDelete.disabled = !hasTarget;
+    if($rawManual) $rawManual.disabled = !hasTarget;
     if($rawUndo) $rawUndo.disabled = !undoable;
     if($rawInfoBtn) $rawInfoBtn.disabled = !(hasTarget && _rawHistoryEntries(RAW_ROW_SELECTED_KEY).length);
     const filtered = getFilteredOutliers();
@@ -8148,6 +8148,175 @@ try{
     }catch(e){ displayError(e); }
   });
 }catch(e){}
+
+try{
+  if($rawManual) $rawManual.addEventListener('click', async (ev)=>{
+    _stop(ev);
+    try{
+      if(!RAW_ROW_SELECTED_KEY){ err('Bitte zuerst eine Raw-Zeile markieren.'); return; }
+      await showRawManualDialog(RAW_ROW_SELECTED_KEY);
+    }catch(e){ displayError(e); }
+  });
+}catch(e){}
+
+async function showRawManualDialog(key){
+  const row = findRawRowByKey(key);
+  if(!row){ err('Zeile nicht geladen.'); return; }
+  const base = currentFilters();
+  if(!base || !base.measurement || !base.field){ err('Bitte zuerst eine gueltige Dashboard-Serie laden.'); return; }
+
+  // Find valid values before and after
+  const rows = RAW_ROWS || [];
+  const idx = rows.findIndex(r => rowKey(r) === String(key));
+  if(idx < 0){ err('Zeile nicht in aktueller Liste.'); return; }
+
+  let beforeVal = null, beforeTime = null;
+  for(let i = idx - 1; i >= 0; i--){
+    if(rows[i].value !== null && rows[i].value !== undefined && isFinite(Number(rows[i].value))){
+      beforeVal = Number(rows[i].value);
+      beforeTime = rows[i].time;
+      break;
+    }
+  }
+  let afterVal = null, afterTime = null;
+  for(let i = idx + 1; i < rows.length; i++){
+    if(rows[i].value !== null && rows[i].value !== undefined && isFinite(Number(rows[i].value))){
+      afterVal = Number(rows[i].value);
+      afterTime = rows[i].time;
+      break;
+    }
+  }
+
+  const interpolated = (beforeVal !== null && afterVal !== null) ? (beforeVal + (afterVal - beforeVal) / 2) : null;
+
+  const prompt = [
+    'Manueller Wert',
+    '',
+    `Zeitpunkt: ${fmtTs(row.time)}`,
+    `Aktueller Wert: ${fmtNum(row.value)}`,
+    '',
+    beforeVal !== null ? `Vorher: ${fmtNum(beforeVal)} @ ${fmtTs(beforeTime)}` : 'Vorher: kein gueltiger Wert gefunden',
+    afterVal !== null ? `Nachher: ${fmtNum(afterVal)} @ ${fmtTs(afterTime)}` : 'Nachher: kein gueltiger Wert gefunden',
+    interpolated !== null ? `Interpoliert: ${fmtNum(interpolated)}` : 'Interpolation: nicht moeglich (fehlende Nachbarwerte)',
+    '',
+    'Neuer Wert:',
+  ].join('\n');
+
+  const newVal = promptForValue(prompt, interpolated !== null ? String(interpolated) : '');
+  if(newVal === null || String(newVal).trim() === '') return;
+  const numVal = parseFloat(String(newVal).trim());
+  if(!isFinite(numVal)){ err('Ungueltiger Zahlenwert.'); return; }
+
+  const ok = await confirmRawOverwrite(
+    { time: 'berechnet', value: numVal },
+    { time: row.time, value: row.value }
+  );
+  if(!ok) return;
+
+  await doRawOverwrite(base, row.time, numVal, row.value, 'manual');
+}
+
+function promptForValue(promptText, defaultVal){
+  try{
+    if(window.InfluxBroPopup && window.InfluxBroPopup.show){
+      return new Promise((resolve)=>{
+        window.InfluxBroPopup.show('Manueller Wert', promptText, {
+          input: { label: 'Neuer Wert', type: 'number', value: defaultVal || '' },
+          actions: [
+            { label: 'Abbrechen', title: 'Abbrechen', onClick: ()=>resolve(null) },
+            { label: 'Uebernehmen', title: 'Uebernehmen', onClick: (inputVal)=>resolve(inputVal !== undefined ? inputVal : null) },
+          ],
+        });
+      });
+    }
+  }catch(e){}
+  return prompt(promptText, defaultVal);
+}
+
+async function editRawValueInline(tr, row, tdV){
+  if(!row || !tdV) return;
+  const oldText = tdV.textContent;
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.step = 'any';
+  input.value = row.value !== null && row.value !== undefined ? String(row.value) : '';
+  input.style.width = '100%';
+  input.style.fontSize = 'inherit';
+  input.style.fontFamily = 'inherit';
+  tdV.textContent = '';
+  tdV.appendChild(input);
+  input.focus();
+  input.select();
+
+  return new Promise((resolve)=>{
+    const finish = async (confirmed)=>{
+      tdV.textContent = oldText;
+      if(!confirmed){ resolve(false); return; }
+      const newVal = parseFloat(String(input.value || '').trim());
+      if(!isFinite(newVal)){ resolve(false); return; }
+      const oldVal = row.value !== null && row.value !== undefined ? Number(row.value) : null;
+      if(isFinite(oldVal) && newVal === oldVal){ resolve(false); return; }
+
+      const ok = await confirmRawOverwrite(
+        { time: 'manuell', value: newVal },
+        { time: row.time, value: row.value }
+      );
+      if(!ok){ resolve(false); return; }
+
+      const base = currentFilters();
+      await doRawOverwrite(base, row.time, newVal, row.value, 'inline_edit');
+      resolve(true);
+    };
+
+    input.addEventListener('keydown', async (ev)=>{
+      if(ev.key === 'Enter'){ ev.preventDefault(); await finish(true); }
+      else if(ev.key === 'Escape'){ ev.preventDefault(); await finish(false); }
+    });
+    input.addEventListener('blur', async ()=>{
+      // Only trigger if value changed
+      const newVal = parseFloat(String(input.value || '').trim());
+      const oldVal = row.value !== null && row.value !== undefined ? Number(row.value) : null;
+      if(isFinite(newVal) && isFinite(oldVal) && newVal !== oldVal){
+        await finish(true);
+      }else{
+        await finish(false);
+      }
+    });
+  });
+}
+
+async function doRawOverwrite(base, time, newVal, oldVal, mode){
+  try{
+    _rawStatusStart('Ueberschreibe...');
+    const j = await api('./api/raw_overwrite', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        measurement: base.measurement,
+        field: base.field,
+        entity_id: base.entity_id || '',
+        friendly_name: base.friendly_name || '',
+        time: String(time || ''),
+        new_value: newVal,
+        old_value: oldVal,
+        mode: mode || 'overwrite',
+      })
+    });
+    if(j && j.ok){
+      ok('Wert ueberschrieben.');
+      showRawActionFeedback('Wert ueberschrieben', `Zeit: ${fmtTs(time)}\nAlt: ${fmtNum(oldVal)}\nNeu: ${fmtNum(newVal)}`);
+      // Update local cache
+      RAW_ROWS = (RAW_ROWS || []).map(r => rowKey(r) === rowKey({time}) ? Object.assign({}, r, {value: newVal}) : r);
+      renderRawTable();
+    }else{
+      err((j && j.error) ? j.error : 'Ueberschreiben fehlgeschlagen.');
+    }
+  }catch(e){
+    displayError(e);
+  }finally{
+    _rawStatusEnd(true, '');
+  }
+}
 
 try{
   if($rawDelete) $rawDelete.addEventListener('click', async (ev)=>{
