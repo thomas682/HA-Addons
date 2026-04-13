@@ -557,10 +557,13 @@ def test_jobs_and_cache_tables_use_selection_toolbar_actions():
 
 def test_jobs_page_has_analysis_cache_section_and_actions():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "jobs.html").read_text()
-    assert 'data-ui="analysis_cache.card"' in body
+    assert 'data-ui="jobs_analysis_cache.section_root"' in body
     assert 'id="analysis_cache_tbl"' in body
     assert 'id="analysis_cache_rebuild_btn"' in body
     assert 'id="analysis_cache_delete_btn"' in body
+    assert '<option value="analysis_cache_patch">analysis_cache_patch</option>' in body
+    assert "Patch pending:" in body
+    assert "patch_failed_count" in body
     assert "./api/analysis_cache/list" in body
     assert "./api/analysis_cache/rebuild" in body
     assert "./api/analysis_cache/delete" in body

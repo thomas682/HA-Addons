@@ -154,6 +154,13 @@ RESTORE_COPY_LOCK = threading.RLock()
 COMBINE_JOBS: dict[str, dict[str, Any]] = {}
 COMBINE_LOCK = threading.RLock()
 
+ANALYSIS_CACHE_PATCH_JOBS: dict[str, dict[str, Any]] = {}
+ANALYSIS_CACHE_PATCH_LOCK = threading.RLock()
+
+ANALYSIS_CACHE_CHECKPOINT_SECONDS = 3600
+ANALYSIS_CACHE_PATCH_PADDING_SECONDS = 300
+ANALYSIS_CACHE_PATCH_MAX_SPAN_SECONDS = 7200
+
 BACKUP_JOBS: dict[str, dict[str, Any]] = {}
 EXPORT_JOBS: dict[str, dict[str, Any]] = {}
 BACKUP_LOCK = threading.RLock()
@@ -2510,6 +2517,71 @@ def _analysis_cache_id(key: dict[str, Any]) -> str:
     return hashlib.sha1(raw.encode("utf-8")).hexdigest()
 
 
+def _analysis_cache_checkpoint_interval_seconds(cfg: dict[str, Any] | None = None) -> int:
+    try:
+        val = int((cfg or {}).get("analysis_cache_checkpoint_seconds") or ANALYSIS_CACHE_CHECKPOINT_SECONDS)
+    except Exception:
+        val = ANALYSIS_CACHE_CHECKPOINT_SECONDS
+    return max(300, val)
+
+
+def _analysis_cache_state_snapshot(
+    last_time: str | None,
+    last_value: Any,
+    counter_base_value: Any,
+    scan_state: dict[str, Any] | None,
+) -> dict[str, Any]:
+    out = {
+        "last_time": str(last_time or "") or None,
+        "last_value": last_value,
+        "counter_base_value": counter_base_value,
+        "scan_state": dict(scan_state or {}) if isinstance(scan_state, dict) else None,
+    }
+    return out
+
+
+def _analysis_cache_state_equal(left: dict[str, Any] | None, right: dict[str, Any] | None) -> bool:
+    l = left if isinstance(left, dict) else {}
+    r = right if isinstance(right, dict) else {}
+    try:
+        return json.dumps(l, sort_keys=True, ensure_ascii=True, default=str) == json.dumps(r, sort_keys=True, ensure_ascii=True, default=str)
+    except Exception:
+        return False
+
+
+def _analysis_cache_payload_checkpoints(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    cps = payload.get("checkpoints") if isinstance(payload.get("checkpoints"), list) else []
+    out: list[dict[str, Any]] = []
+    for cp in cps:
+        if not isinstance(cp, dict):
+            continue
+        at = str(cp.get("at") or "").strip()
+        if not at:
+            continue
+        item = dict(cp)
+        item["at"] = at
+        out.append(item)
+    out.sort(key=lambda x: str(x.get("at") or ""))
+    return out
+
+
+def _analysis_cache_segment_changes(meta: dict[str, Any], limit: int = 200) -> list[dict[str, Any]]:
+    start_dt, stop_dt = _analysis_cache_meta_span(meta)
+    if not start_dt or not stop_dt:
+        return []
+    updated_at = _parse_iso_datetime(str(meta.get("updated_at") or "")) or datetime.fromtimestamp(0, tz=timezone.utc)
+    return _history_changes_for_window(
+        str(meta.get("measurement") or ""),
+        str(meta.get("field") or ""),
+        str(meta.get("entity_id") or "") or None,
+        str(meta.get("friendly_name") or "") or None,
+        start_dt,
+        stop_dt,
+        updated_at,
+        limit=limit,
+    )
+
+
 def _analysis_cache_load_meta(cache_id: str) -> dict[str, Any] | None:
     try:
         p = _analysis_cache_meta_path(cache_id)
@@ -2606,6 +2678,11 @@ def _analysis_cache_store_segment(
     stop_iso: str,
     rows: list[dict[str, Any]],
     scanned: int,
+    *,
+    checkpoints: list[dict[str, Any]] | None = None,
+    final_state: dict[str, Any] | None = None,
+    patch_status: str | None = None,
+    patch_error: str | None = None,
 ) -> dict[str, Any] | None:
     try:
         key = _analysis_cache_key(cfg, measurement, field, entity_id, friendly_name, start_iso, stop_iso)
@@ -2624,10 +2701,13 @@ def _analysis_cache_store_segment(
             "ok": True,
             "rows": rows,
             "scanned": int(scanned or 0),
+            "checkpoints": checkpoints if isinstance(checkpoints, list) else [],
+            "final_state": final_state if isinstance(final_state, dict) else {},
             "meta": {
                 "covered_start": start_iso,
                 "covered_stop": stop_iso,
                 "outlier_count": len(rows),
+                "checkpoint_count": len(checkpoints if isinstance(checkpoints, list) else []),
             },
         }
         bytes_written = _analysis_cache_write_payload(cache_id, payload)
@@ -2666,6 +2746,10 @@ def _analysis_cache_store_segment(
             "dirty": False,
             "dirty_reason": None,
             "dirty_at": None,
+            "patch_status": str(patch_status or "ok"),
+            "patch_error": str(patch_error or "") or None,
+            "last_patch_at": now if patch_status else None,
+            "checkpoint_count": len(checkpoints if isinstance(checkpoints, list) else []),
             "search_types": ["bounds", "counter", "decrease", "fault_phase", "null", "zero"],
         }
         _analysis_cache_write_meta(meta)
@@ -3498,7 +3582,9 @@ def _analysis_cache_plan(
                 updated_at or datetime.fromtimestamp(0, tz=timezone.utc),
                 limit=200,
             )
-            if changed:
+            patch_status = str(meta.get("patch_status") or "ok")
+            explicitly_dirty = bool(meta.get("dirty")) or patch_status in ("patch_pending", "patch_failed", "patch_not_safe")
+            if changed or explicitly_dirty:
                 dirty_ranges.append((use_start, use_stop))
                 for ch in changed:
                     item = dict(ch)
@@ -3610,7 +3696,12 @@ def _analysis_cache_group_list(cfg: dict[str, Any]) -> list[dict[str, Any]]:
                 "updated_at": meta.get("updated_at"),
                 "outlier_count": int(meta.get("outlier_count") or 0),
                 "bytes": int(meta.get("bytes") or 0),
-                "dirty": bool(changed),
+                "dirty": bool(changed) or bool(meta.get("dirty")),
+                "dirty_reason": meta.get("dirty_reason"),
+                "dirty_at": meta.get("dirty_at"),
+                "patch_status": str(meta.get("patch_status") or "ok"),
+                "patch_error": meta.get("patch_error"),
+                "checkpoint_count": int(meta.get("checkpoint_count") or 0),
                 "changes": changed,
                 "meta_path": f"analysis_cache/{str(meta.get('id') or '')}.meta.json",
                 "data_path": f"analysis_cache/{str(meta.get('id') or '')}.data.json.gz",
@@ -3625,6 +3716,8 @@ def _analysis_cache_group_list(cfg: dict[str, Any]) -> list[dict[str, Any]]:
         segs.sort(key=lambda s: str(s.get("start") or ""))
         group["segment_count"] = len(segs)
         group["dirty_segment_count"] = len([s for s in segs if bool(s.get("dirty"))])
+        group["patch_pending_count"] = len([s for s in segs if str(s.get("patch_status") or "") == "patch_pending"])
+        group["patch_failed_count"] = len([s for s in segs if str(s.get("patch_status") or "") in ("patch_failed", "patch_not_safe")])
         group["covered_start"] = segs[0].get("start") if segs else None
         group["covered_stop"] = segs[-1].get("stop") if segs else None
         group["updated_at"] = max((str(s.get("updated_at") or "") for s in segs), default=None)
@@ -3638,7 +3731,7 @@ def _analysis_cache_group_list(cfg: dict[str, Any]) -> list[dict[str, Any]]:
     return out
 
 
-def _analysis_cache_fetch_segment(
+def _analysis_cache_fetch_segment_result(
     cfg: dict[str, Any],
     measurement: str,
     field: str,
@@ -3646,7 +3739,13 @@ def _analysis_cache_fetch_segment(
     friendly_name: str | None,
     start_iso: str,
     stop_iso: str,
-) -> tuple[list[dict[str, Any]], int]:
+    *,
+    prev_time: str | None = None,
+    prev_value: Any = None,
+    counter_base_value: Any = None,
+    scan_state: dict[str, Any] | None = None,
+    return_checkpoints: bool = False,
+) -> dict[str, Any]:
     body0 = {
         "measurement": str(measurement or ""),
         "field": str(field or ""),
@@ -3656,7 +3755,17 @@ def _analysis_cache_fetch_segment(
         "stop": str(stop_iso or ""),
         "search_types": ["bounds", "counter", "decrease", "fault_phase", "null", "zero"],
         "limit": int(cfg.get("ui_raw_outlier_search_limit", 5000) or 5000),
+        "return_checkpoints": bool(return_checkpoints),
+        "checkpoint_seconds": _analysis_cache_checkpoint_interval_seconds(cfg),
     }
+    if prev_time:
+        body0["prev_time"] = str(prev_time)
+    if prev_value is not None:
+        body0["prev_value"] = prev_value
+    if counter_base_value is not None:
+        body0["counter_base_value"] = counter_base_value
+    if isinstance(scan_state, dict) and scan_state:
+        body0["scan_state"] = scan_state
     with app.test_request_context("/api/outliers", method="POST", json=body0):
         resp = api_outliers()
     response = make_response(resp)
@@ -3667,7 +3776,303 @@ def _analysis_cache_fetch_segment(
     data = response.get_json(silent=True) or {}
     if not data.get("ok"):
         raise _ApiError(str(data.get("error") or "rebuild failed"), 500)
+    return data
+
+
+def _analysis_cache_patch_window(
+    meta: dict[str, Any],
+    payload: dict[str, Any],
+    changes: list[dict[str, Any]],
+) -> dict[str, Any] | None:
+    cps = _analysis_cache_payload_checkpoints(payload)
+    if not changes:
+        return None
+    times = []
+    for ch in changes:
+        try:
+            times.append(_parse_iso_datetime(str(ch.get("time") or "")))
+        except Exception:
+            continue
+    times = [t for t in times if isinstance(t, datetime)]
+    if not times:
+        return None
+    first_dt = min(times)
+    last_dt = max(times)
+    start_dt = _parse_iso_datetime(str(meta.get("covered_start") or ""))
+    stop_dt = _parse_iso_datetime(str(meta.get("covered_stop") or ""))
+    prev_cp = None
+    next_cp = None
+    for cp in cps:
+        try:
+            cp_dt = _parse_iso_datetime(str(cp.get("at") or ""))
+        except Exception:
+            continue
+        if cp_dt <= first_dt:
+            prev_cp = cp
+        if cp_dt >= last_dt and next_cp is None:
+            next_cp = cp
+            break
+    patch_start = _parse_iso_datetime(str(prev_cp.get("at") or "")) if isinstance(prev_cp, dict) else start_dt
+    patch_stop = _parse_iso_datetime(str(next_cp.get("at") or "")) if isinstance(next_cp, dict) else stop_dt
+    if patch_start is None or patch_stop is None or patch_stop <= patch_start:
+        return None
+    if (patch_stop - patch_start).total_seconds() > ANALYSIS_CACHE_PATCH_MAX_SPAN_SECONDS:
+        return None
+    return {
+        "start_dt": patch_start,
+        "stop_dt": patch_stop,
+        "start_iso": _dt_to_rfc3339_utc_ms(patch_start),
+        "stop_iso": _dt_to_rfc3339_utc_ms(patch_stop),
+        "prev_time": prev_cp.get("last_time") if isinstance(prev_cp, dict) else None,
+        "prev_value": prev_cp.get("last_value") if isinstance(prev_cp, dict) else None,
+        "counter_base_value": prev_cp.get("counter_base_value") if isinstance(prev_cp, dict) else None,
+        "scan_state": prev_cp.get("scan_state") if isinstance(prev_cp, dict) else None,
+    }
+
+
+def _analysis_cache_merge_rows_with_patch(
+    existing_rows: list[dict[str, Any]],
+    patch_rows: list[dict[str, Any]],
+    start_dt: datetime,
+    stop_dt: datetime,
+) -> list[dict[str, Any]]:
+    kept = [r for r in existing_rows if isinstance(r, dict) and not _dash_cache_row_in_window(r, start_dt, stop_dt)]
+    merged = kept + [r for r in patch_rows if isinstance(r, dict)]
+    merged.sort(key=lambda r: str(r.get("time") or ""))
+    return merged
+
+
+def _analysis_cache_patch_meta(cfg: dict[str, Any], meta: dict[str, Any]) -> dict[str, Any]:
+    payload = _analysis_cache_load_payload(str(meta.get("id") or "")) or {}
+    changes = _analysis_cache_segment_changes(meta, limit=500)
+    if not changes:
+        meta2 = dict(meta)
+        meta2["dirty"] = False
+        meta2["dirty_reason"] = None
+        meta2["dirty_at"] = None
+        meta2["patch_status"] = "ok"
+        meta2["patch_error"] = None
+        meta2["last_patch_at"] = _utc_now_iso_ms()
+        _analysis_cache_write_meta(meta2)
+        return {"ok": True, "cache_id": str(meta.get("id") or ""), "patched": False, "reason": "clean"}
+    window = _analysis_cache_patch_window(meta, payload, changes)
+    if not window:
+        meta2 = dict(meta)
+        meta2["dirty"] = True
+        meta2["dirty_reason"] = "patch_window_too_large"
+        meta2["dirty_at"] = _utc_now_iso_ms()
+        meta2["patch_status"] = "patch_not_safe"
+        meta2["patch_error"] = "patch window too large or checkpoint missing"
+        meta2["last_patch_at"] = _utc_now_iso_ms()
+        _analysis_cache_write_meta(meta2)
+        return {"ok": False, "cache_id": str(meta.get("id") or ""), "patched": False, "reason": "patch_not_safe"}
+    data = _analysis_cache_fetch_segment_result(
+        cfg,
+        str(meta.get("measurement") or ""),
+        str(meta.get("field") or ""),
+        str(meta.get("entity_id") or "") or None,
+        str(meta.get("friendly_name") or "") or None,
+        str(window.get("start_iso") or ""),
+        str(window.get("stop_iso") or ""),
+        prev_time=str(window.get("prev_time") or "") or None,
+        prev_value=window.get("prev_value"),
+        counter_base_value=window.get("counter_base_value"),
+        scan_state=window.get("scan_state") if isinstance(window.get("scan_state"), dict) else None,
+        return_checkpoints=True,
+    )
+    merged_rows = _analysis_cache_merge_rows_with_patch(
+        payload.get("rows") if isinstance(payload.get("rows"), list) else [],
+        data.get("rows") if isinstance(data.get("rows"), list) else [],
+        window["start_dt"],
+        window["stop_dt"],
+    )
+    existing_cps = _analysis_cache_payload_checkpoints(payload)
+    patch_start_iso = str(window.get("start_iso") or "")
+    patch_stop_iso = str(window.get("stop_iso") or "")
+    kept_cps = [cp for cp in existing_cps if not (patch_start_iso <= str(cp.get("at") or "") <= patch_stop_iso)]
+    new_cps = [cp for cp in (data.get("checkpoints") if isinstance(data.get("checkpoints"), list) else []) if isinstance(cp, dict)]
+    merged_cps = kept_cps + new_cps
+    merged_cps.sort(key=lambda cp: str(cp.get("at") or ""))
+    merged_meta = _analysis_cache_store_segment(
+        cfg,
+        str(meta.get("measurement") or ""),
+        str(meta.get("field") or ""),
+        str(meta.get("entity_id") or "") or None,
+        str(meta.get("friendly_name") or "") or None,
+        str(meta.get("covered_start") or ""),
+        str(meta.get("covered_stop") or ""),
+        merged_rows,
+        int((payload.get("scanned") or 0)) + int(data.get("scanned") or 0),
+        checkpoints=merged_cps,
+        final_state=_analysis_cache_state_snapshot(
+            data.get("last_time") or (payload.get("final_state") or {}).get("last_time"),
+            data.get("last_value") if "last_value" in data else (payload.get("final_state") or {}).get("last_value"),
+            data.get("counter_base_value") if "counter_base_value" in data else (payload.get("final_state") or {}).get("counter_base_value"),
+            data.get("scan_state") if isinstance(data.get("scan_state"), dict) else (payload.get("final_state") if isinstance(payload.get("final_state"), dict) else {}).get("scan_state"),
+        ),
+        patch_status="ok",
+    )
+    if not merged_meta:
+        raise _ApiError("analysis cache patch store failed", 500)
+    return {"ok": True, "cache_id": str(meta.get("id") or ""), "patched": True, "reason": "patched"}
+
+
+def _analysis_cache_fetch_segment(
+    cfg: dict[str, Any],
+    measurement: str,
+    field: str,
+    entity_id: str | None,
+    friendly_name: str | None,
+    start_iso: str,
+    stop_iso: str,
+) -> tuple[list[dict[str, Any]], int]:
+    data = _analysis_cache_fetch_segment_result(cfg, measurement, field, entity_id, friendly_name, start_iso, stop_iso)
     return data.get("rows") if isinstance(data.get("rows"), list) else [], int(data.get("scanned") or 0)
+
+
+def _analysis_cache_patch_job_public(job: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": job.get("id"),
+        "state": job.get("state"),
+        "message": job.get("message"),
+        "started_at": job.get("started_at"),
+        "updated_at": job.get("updated_at"),
+        "finished_at": job.get("finished_at"),
+        "elapsed": _job_elapsed_hms(job),
+        "current": job.get("current") or "",
+        "series_key": job.get("series_key") or "",
+        "patched": int(job.get("patched") or 0),
+        "skipped": int(job.get("skipped") or 0),
+        "cancelled": bool(job.get("cancelled")),
+        "error": job.get("error"),
+        "ready": job.get("state") in ("done", "error", "cancelled"),
+    }
+
+
+def _analysis_cache_patch_job_thread(job_id: str, cfg: dict[str, Any], series_key: str) -> None:
+    def set_state(state: str, msg: str, current: str | None = None) -> None:
+        with ANALYSIS_CACHE_PATCH_LOCK:
+            if job_id not in ANALYSIS_CACHE_PATCH_JOBS:
+                return
+            ANALYSIS_CACHE_PATCH_JOBS[job_id]["state"] = state
+            ANALYSIS_CACHE_PATCH_JOBS[job_id]["message"] = msg
+            ANALYSIS_CACHE_PATCH_JOBS[job_id]["updated_at"] = _utc_now_iso_ms()
+            if current is not None:
+                ANALYSIS_CACHE_PATCH_JOBS[job_id]["current"] = current
+            if state in ("done", "error", "cancelled"):
+                _job_set_finished(ANALYSIS_CACHE_PATCH_JOBS[job_id])
+
+    try:
+        metas = [m for m in _analysis_cache_list_meta() if str(m.get("series_key") or "") == series_key]
+        patched = 0
+        skipped = 0
+        for meta in metas:
+            with ANALYSIS_CACHE_PATCH_LOCK:
+                if bool((ANALYSIS_CACHE_PATCH_JOBS.get(job_id) or {}).get("cancelled")):
+                    set_state("cancelled", "Patchjob abgebrochen")
+                    return
+            cid = str(meta.get("id") or "")
+            set_state("running", "Analysecache wird lokal repariert...", current=cid)
+            try:
+                res = _analysis_cache_patch_meta(cfg, meta)
+                if bool(res.get("patched")):
+                    patched += 1
+                else:
+                    skipped += 1
+            except Exception as e:
+                meta2 = dict(meta)
+                meta2["dirty"] = True
+                meta2["dirty_reason"] = "patch_failed"
+                meta2["dirty_at"] = _utc_now_iso_ms()
+                meta2["patch_status"] = "patch_failed"
+                meta2["patch_error"] = str(e) or e.__class__.__name__
+                meta2["last_patch_at"] = _utc_now_iso_ms()
+                _analysis_cache_write_meta(meta2)
+                skipped += 1
+        with ANALYSIS_CACHE_PATCH_LOCK:
+            if job_id in ANALYSIS_CACHE_PATCH_JOBS:
+                ANALYSIS_CACHE_PATCH_JOBS[job_id]["patched"] = patched
+                ANALYSIS_CACHE_PATCH_JOBS[job_id]["skipped"] = skipped
+        set_state("done", f"Patchjob fertig: {patched} Segment(e) gepatcht, {skipped} uebersprungen.")
+    except Exception as e:
+        with ANALYSIS_CACHE_PATCH_LOCK:
+            if job_id in ANALYSIS_CACHE_PATCH_JOBS:
+                ANALYSIS_CACHE_PATCH_JOBS[job_id]["error"] = str(e) or e.__class__.__name__
+        set_state("error", str(e) or e.__class__.__name__)
+
+
+def _analysis_cache_queue_patch_job(
+    cfg: dict[str, Any],
+    measurement: str,
+    field: str,
+    entity_id: str | None,
+    friendly_name: str | None,
+    reason: str,
+) -> str | None:
+    series_key = _analysis_cache_series_key(measurement, field, entity_id, friendly_name)
+    if not series_key.strip():
+        return None
+    with ANALYSIS_CACHE_PATCH_LOCK:
+        for job in ANALYSIS_CACHE_PATCH_JOBS.values():
+            if str(job.get("series_key") or "") != series_key:
+                continue
+            if str(job.get("state") or "") not in ("running", "pending"):
+                continue
+            return str(job.get("id") or "") or None
+        job_id = uuid.uuid4().hex
+        ANALYSIS_CACHE_PATCH_JOBS[job_id] = {
+            "id": job_id,
+            "series_key": series_key,
+            "measurement": measurement,
+            "field": field,
+            "entity_id": entity_id,
+            "friendly_name": friendly_name,
+            "reason": reason,
+            "state": "pending",
+            "message": "Patchjob wird gestartet...",
+            "started_at": _utc_now_iso_ms(),
+            "updated_at": _utc_now_iso_ms(),
+            "started_mono": time.monotonic(),
+            "patched": 0,
+            "skipped": 0,
+            "cancelled": False,
+            "error": None,
+        }
+    t = threading.Thread(target=_analysis_cache_patch_job_thread, args=(job_id, dict(cfg), series_key), daemon=True)
+    t.start()
+    return job_id
+
+
+def _analysis_cache_mark_dirty_series(
+    cfg: dict[str, Any],
+    measurement: str,
+    field: str,
+    entity_id: str | None,
+    friendly_name: str | None,
+    reason: str,
+) -> str | None:
+    now = _utc_now_iso_ms()
+    touched = False
+    for meta in _analysis_cache_list_meta():
+        if str(meta.get("measurement") or "") != str(measurement or ""):
+            continue
+        if str(meta.get("field") or "") != str(field or ""):
+            continue
+        if (str(meta.get("entity_id") or "") or None) != (str(entity_id or "") or None):
+            continue
+        if (str(meta.get("friendly_name") or "") or None) != (str(friendly_name or "") or None):
+            continue
+        meta2 = dict(meta)
+        meta2["dirty"] = True
+        meta2["dirty_reason"] = str(reason or "manual_change")
+        meta2["dirty_at"] = now
+        meta2["patch_status"] = "patch_pending"
+        meta2["patch_error"] = None
+        _analysis_cache_write_meta(meta2)
+        touched = True
+    if not touched:
+        return None
+    return _analysis_cache_queue_patch_job(cfg, measurement, field, entity_id, friendly_name, reason)
 
 
 def _analysis_cache_merge_group(cfg: dict[str, Any], metas: list[dict[str, Any]]) -> dict[str, Any] | None:
@@ -11393,6 +11798,14 @@ def api_jobs():
         _jobs_history_upsert(pub)
         out.append(pub)
 
+    with ANALYSIS_CACHE_PATCH_LOCK:
+        acp_items = list(ANALYSIS_CACHE_PATCH_JOBS.items())
+    for _, j in acp_items:
+        pub = _analysis_cache_patch_job_public(j)
+        pub["type"] = "analysis_cache_patch"
+        _jobs_history_upsert(pub)
+        out.append(pub)
+
     with EXPORT_LOCK:
         e_items = list(EXPORT_JOBS.items())
     for _, j in e_items:
@@ -11490,6 +11903,15 @@ def api_jobs_cancel():
             DASH_CACHE_JOBS[job_id]["cancelled"] = True
             try:
                 LOG.info("job_cancel type=dash_cache job_id=%s ip=%s ua=%s", job_id, _req_ip(), _req_ua())
+            except Exception:
+                pass
+            return jsonify({"ok": True})
+
+    with ANALYSIS_CACHE_PATCH_LOCK:
+        if job_id in ANALYSIS_CACHE_PATCH_JOBS:
+            ANALYSIS_CACHE_PATCH_JOBS[job_id]["cancelled"] = True
+            try:
+                LOG.info("job_cancel type=analysis_cache_patch job_id=%s ip=%s ua=%s", job_id, _req_ip(), _req_ua())
             except Exception:
                 pass
             return jsonify({"ok": True})
@@ -11980,6 +12402,8 @@ def api_analysis_cache_plan():
             "covered_stop": meta.get("covered_stop"),
             "outlier_count": meta.get("outlier_count"),
             "bytes": meta.get("bytes"),
+            "patch_status": str(meta.get("patch_status") or "ok"),
+            "checkpoint_count": int(meta.get("checkpoint_count") or 0),
             "type_counts": _analysis_type_counts(filtered_rows),
             "outlier_times": _analysis_outlier_times(filtered_rows),
         })
@@ -12032,6 +12456,8 @@ def api_analysis_cache_store_segment():
     stop_iso = str(body.get("stop") or "").strip()
     rows = body.get("rows") if isinstance(body.get("rows"), list) else []
     scanned = int(body.get("scanned") or 0)
+    checkpoints = body.get("checkpoints") if isinstance(body.get("checkpoints"), list) else []
+    final_state = body.get("final_state") if isinstance(body.get("final_state"), dict) else {}
     if not measurement or not field or not start_iso or not stop_iso:
         return jsonify({"ok": False, "error": "measurement, field, start, stop required"}), 400
     LOG.info(
@@ -12045,7 +12471,19 @@ def api_analysis_cache_store_segment():
         len(rows),
         scanned,
     )
-    meta = _analysis_cache_store_segment(cfg, measurement, field, entity_id, friendly_name, start_iso, stop_iso, rows, scanned)
+    meta = _analysis_cache_store_segment(
+        cfg,
+        measurement,
+        field,
+        entity_id,
+        friendly_name,
+        start_iso,
+        stop_iso,
+        rows,
+        scanned,
+        checkpoints=checkpoints,
+        final_state=final_state,
+    )
     if not meta:
         return jsonify({"ok": False, "error": "store failed"}), 500
     LOG.info(
@@ -12140,14 +12578,33 @@ def api_analysis_cache_combine():
         metas = [m for m in _analysis_cache_list_meta() if str(m.get("series_key") or "") == series_key]
         if not metas:
             return jsonify({"ok": False, "error": "series not found"}), 404
-        groups = [g for g in _analysis_cache_contiguous_groups(metas) if len(g) > 1]
+        groups_all = [g for g in _analysis_cache_contiguous_groups(metas) if len(g) > 1]
+        groups: list[list[dict[str, Any]]] = []
+        skipped_dirty_segments: list[dict[str, Any]] = []
+        for group in groups_all:
+            dirty_group = False
+            for meta in group:
+                changes = _analysis_cache_segment_changes(meta, limit=20)
+                patch_status = str(meta.get("patch_status") or "ok")
+                if changes or patch_status in ("patch_pending", "patch_failed", "patch_not_safe"):
+                    dirty_group = True
+                    skipped_dirty_segments.append({
+                        "cache_id": str(meta.get("id") or ""),
+                        "start": str(meta.get("covered_start") or ""),
+                        "stop": str(meta.get("covered_stop") or ""),
+                        "patch_status": patch_status,
+                        "dirty_reason": str(meta.get("dirty_reason") or "history_change"),
+                    })
+            if not dirty_group:
+                groups.append(group)
         if not groups:
             return jsonify({
                 "ok": True,
                 "created": [],
                 "deleted_ids": [],
                 "groups_combined": 0,
-                "note": "no contiguous segments to combine",
+                "skipped_dirty_segments": skipped_dirty_segments,
+                "note": "no clean contiguous segments to combine",
             })
         created: list[dict[str, Any]] = []
         deleted_ids: list[str] = []
@@ -12170,6 +12627,7 @@ def api_analysis_cache_combine():
             "created": created,
             "deleted_ids": deleted_ids,
             "groups_combined": len(created),
+            "skipped_dirty_segments": skipped_dirty_segments,
         })
     except _ApiError as e:
         LOG.error("api.analysis_cache.combine api_error series_key=%s error=%s", request.get_json(silent=True) and str((request.get_json(silent=True) or {}).get("series_key") or "") or "", e)
@@ -15481,18 +15939,27 @@ from(bucket: "{cfg['bucket']}")
                     c.close()
                 except Exception:
                     pass
-        _history_write({
-            "measurement": measurement,
-            "field": field,
-            "entity_id": entity_id or "",
-            "friendly_name": friendly_name or "",
+        _history_append({
+            "kind": "change",
+            "series": {
+                "measurement": measurement,
+                "field": field,
+                "entity_id": entity_id,
+                "friendly_name": friendly_name,
+                "tags": {"entity_id": entity_id, "friendly_name": friendly_name},
+            },
             "time": time_str,
             "action": "overwrite",
             "old_value": old_value,
             "new_value": new_value,
             "reason": mode or "manual",
+            "ip": _req_ip(),
+            "ua": _req_ua(),
         })
-        return jsonify({"ok": True})
+        _dash_cache_mark_dirty_series(measurement, field, entity_id, friendly_name, "raw_overwrite")
+        _stats_cache_mark_dirty_series(measurement, field, entity_id, friendly_name, "raw_overwrite")
+        patch_job_id = _analysis_cache_mark_dirty_series(cfg, measurement, field, entity_id, friendly_name, "raw_overwrite")
+        return jsonify({"ok": True, "patch_job_id": patch_job_id})
     except Exception as e:
         LOG.error("api.raw_overwrite error: %s", e, exc_info=True)
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
@@ -18456,6 +18923,12 @@ def api_outliers():
     rows: list[dict[str, Any]] = []
     scanned = 0
     point_index = 0
+    return_checkpoints = bool(body.get("return_checkpoints", False))
+    checkpoint_seconds = _analysis_cache_checkpoint_interval_seconds({
+        "analysis_cache_checkpoint_seconds": body.get("checkpoint_seconds")
+    })
+    checkpoints: list[dict[str, Any]] = []
+    next_checkpoint_dt = (start_dt + timedelta(seconds=checkpoint_seconds)) if return_checkpoints else None
     prev_val: float | None = body.get("prev_value")
     prev_time_dt: datetime | None = None
     last_time_iso: str | None = None
@@ -18498,8 +18971,24 @@ def api_outliers():
             return v <= ref
         return True
 
+    def _append_checkpoint(at_dt: datetime, prev: float | None) -> None:
+        if not return_checkpoints:
+            return
+        at_iso = _dt_to_rfc3339_utc_ms(at_dt)
+        if checkpoints and str(checkpoints[-1].get("at") or "") == at_iso:
+            return
+        checkpoints.append({
+            "at": at_iso,
+            **_analysis_cache_state_snapshot(
+                last_time_iso,
+                prev,
+                counter_base_val,
+                fault_state if fault_phase_enabled else None,
+            ),
+        })
+
     def _scan_span(qapi: Any, a: datetime, b: datetime, prev: float | None) -> float | None:
-        nonlocal scanned, rows, last_time_iso, counter_base_val, prev_time_dt, point_index
+        nonlocal scanned, rows, last_time_iso, counter_base_val, prev_time_dt, point_index, next_checkpoint_dt
 
         span_s = (b - a).total_seconds()
         chunk_t0 = time.monotonic()
@@ -18533,6 +19022,9 @@ from(bucket: "{cfg["bucket"]}")
 
             t = rec.get_time()
             v = rec.get_value()
+            while return_checkpoints and isinstance(t, datetime) and next_checkpoint_dt is not None and t >= next_checkpoint_dt:
+                _append_checkpoint(next_checkpoint_dt, prev)
+                next_checkpoint_dt = next_checkpoint_dt + timedelta(seconds=checkpoint_seconds)
             iso = _dt_to_rfc3339_utc_ms(t) if isinstance(t, datetime) else None
             if iso:
                 last_time_iso = iso
@@ -18769,6 +19261,12 @@ from(bucket: "{cfg["bucket"]}")
         LOG.info("api.outlier_search result: last_time=%s prev_val=%s counter_base=%s",
             last_time_iso, prev_val, counter_base_val)
 
+        while return_checkpoints and next_checkpoint_dt is not None and next_checkpoint_dt < stop_dt:
+            _append_checkpoint(next_checkpoint_dt, prev_val)
+            next_checkpoint_dt = next_checkpoint_dt + timedelta(seconds=checkpoint_seconds)
+        if return_checkpoints:
+            _append_checkpoint(stop_dt, prev_val)
+
         return jsonify({
             "ok": True,
             "rows": rows,
@@ -18781,6 +19279,7 @@ from(bucket: "{cfg["bucket"]}")
             "last_value": prev_val,
             "counter_base_value": counter_base_val,
             "scan_state": fault_state if fault_phase_enabled else None,
+            "checkpoints": checkpoints,
         })
     except Exception as e:
         dur_ms = int((time.monotonic() - t0) * 1000)
@@ -19330,9 +19829,12 @@ from(bucket: "{cfg["bucket"]}")
                 if applied > 0:
                     _dash_cache_mark_dirty_series(measurement, field, entity_id, friendly_name, "apply_edits")
                     _stats_cache_mark_dirty_series(measurement, field, entity_id, friendly_name, "apply_edits")
+                    patch_job_id = _analysis_cache_mark_dirty_series(cfg, measurement, field, entity_id, friendly_name, "apply_edits")
+                else:
+                    patch_job_id = None
             except Exception:
-                pass
-            return jsonify({"ok": True, "message": f"Applied edits: {applied}", "applied": applied})
+                patch_job_id = None
+            return jsonify({"ok": True, "message": f"Applied edits: {applied}", "applied": applied, "patch_job_id": patch_job_id})
     except Exception as ex:
         return jsonify({"ok": False, "error": _short_influx_error(ex)}), 500
 
@@ -19537,9 +20039,12 @@ from(bucket: "{cfg["bucket"]}")
         if applied > 0:
             _dash_cache_mark_dirty_series(measurement, field, entity_id, friendly_name, "apply_changes")
             _stats_cache_mark_dirty_series(measurement, field, entity_id, friendly_name, "apply_changes")
+            patch_job_id = _analysis_cache_mark_dirty_series(cfg, measurement, field, entity_id, friendly_name, "apply_changes")
+        else:
+            patch_job_id = None
     except Exception:
-        pass
-    return jsonify({"ok": True, "applied": applied, "message": f"Applied changes: {applied}"})
+        patch_job_id = None
+    return jsonify({"ok": True, "applied": applied, "message": f"Applied changes: {applied}", "patch_job_id": patch_job_id})
 
 
 @app.get("/api/history_list")
@@ -19877,6 +20382,7 @@ def api_history_rollback():
         for m, f, eid, fn in dirty_series:
             _dash_cache_mark_dirty_series(m, f, eid, fn, "history_rollback")
             _stats_cache_mark_dirty_series(m, f, eid, fn, "history_rollback")
+            _analysis_cache_mark_dirty_series(cfg, m, f, eid, fn, "history_rollback")
     except Exception:
         pass
 
@@ -20725,6 +21231,7 @@ from(bucket: "{cfg["bucket"]}")
             if imported > 0 or delete_first:
                 _dash_cache_mark_dirty_series(measurement, field, entity_id, friendly_name, "import")
                 _stats_cache_mark_dirty_series(measurement, field, entity_id, friendly_name, "import")
+                _analysis_cache_mark_dirty_series(cfg, measurement, field, entity_id, friendly_name, "import")
         except Exception:
             pass
 
@@ -20783,6 +21290,7 @@ def delete():
             try:
                 _dash_cache_mark_dirty_series(measurement, field, str(entity_id) if entity_id else None, str(friendly_name) if friendly_name else None, "delete")
                 _stats_cache_mark_dirty_series(measurement, field, str(entity_id) if entity_id else None, str(friendly_name) if friendly_name else None, "delete")
+                _analysis_cache_mark_dirty_series(cfg, measurement, field, str(entity_id) if entity_id else None, str(friendly_name) if friendly_name else None, "delete")
             except Exception:
                 pass
             return jsonify({"ok": True, "message": f"Deleted v2: {predicate} in {cfg['bucket']} from {start.isoformat()} to {stop.isoformat()}"})
@@ -20797,6 +21305,7 @@ def delete():
             try:
                 _dash_cache_mark_dirty_series(measurement, field, str(entity_id) if entity_id else None, str(friendly_name) if friendly_name else None, "delete")
                 _stats_cache_mark_dirty_series(measurement, field, str(entity_id) if entity_id else None, str(friendly_name) if friendly_name else None, "delete")
+                _analysis_cache_mark_dirty_series(cfg, measurement, field, str(entity_id) if entity_id else None, str(friendly_name) if friendly_name else None, "delete")
             except Exception:
                 pass
             return jsonify({"ok": True, "message": f"Deleted v1: measurement={measurement}, last {dur}{' with tag filters' if tag_where else ''}."})

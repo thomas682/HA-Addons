@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.12.333
+
+### Bug Fix
+
+- Analyse-Cache-Segmente speichern jetzt Checkpoints des Analysezustands und werden nach `overwrite`/`delete`/`import`/Rollback automatisch ueber einen Hintergrund-Job lokal repariert. Dadurch bleiben geaenderte Segmente sichtbar patchbar, statt spaeter beim `kombinieren` grosse Requeries gegen InfluxDB auszufuehren. ([#270](https://github.com/thomas682/HA-Addons/issues/270))
+- Das serverseitige `combine` ueberspringt dirty oder noch nicht gepatchte Analyse-Cache-Segmente jetzt explizit und meldet diese im Ergebnis zurueck, statt fuer diese Gruppen Timeout-anfaellige Voll-Requeries auszufuehren. ([#270](https://github.com/thomas682/HA-Addons/issues/270))
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tests: `pytest tests/test_api_analysis_cache.py -q`
+- Tests: `pytest tests/test_api_time_and_stats.py -q -k "api_jobs_includes"`
+- Tests: `pytest tests/test_api_ui_support.py -q -k "jobs_page_has_analysis_cache_section_and_actions"`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.332
 
 ### Bug Fix

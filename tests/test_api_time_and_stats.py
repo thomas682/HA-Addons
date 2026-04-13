@@ -684,6 +684,31 @@ def test_api_jobs_includes_recent_history(load_app_module, tmp_path):
     assert any(str(x.get("id") or "") == "job-1" for x in j.get("jobs", []))
 
 
+def test_api_jobs_includes_analysis_cache_patch_jobs(load_app_module, tmp_path):
+    app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
+    with app_mod.ANALYSIS_CACHE_PATCH_LOCK:
+        app_mod.ANALYSIS_CACHE_PATCH_JOBS["patch-job-1"] = {
+            "id": "patch-job-1",
+            "series_key": "m|value|sensor.demo|Demo",
+            "state": "running",
+            "message": "patch running",
+            "started_at": "2026-03-20T10:00:00Z",
+            "updated_at": "2026-03-20T10:01:00Z",
+            "started_mono": 1.0,
+            "patched": 1,
+            "skipped": 0,
+            "cancelled": False,
+            "error": None,
+        }
+
+    client = app_mod.app.test_client()
+    r = client.get("/api/jobs?limit=20")
+    assert r.status_code == 200
+    j = r.get_json()
+    assert j["ok"] is True
+    assert any(str(x.get("type") or "") == "analysis_cache_patch" for x in j.get("jobs", []))
+
+
 def test_stats_v2_flux_avoids_time_label_literal(load_app_module, tmp_path, monkeypatch):
     app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
     captured: list[str] = []

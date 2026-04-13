@@ -738,6 +738,8 @@ Neu:
 - Jobs: Max Job Laufzeit (Sekunden) fuer Auto-Abbruch; Job-Farben (running/done/error/cancelled).
 - Job-Farben koennen per Colorpicker oder per Hex (`#RRGGBB`) gesetzt werden.
 - Die Log-Farbfaelder in den Einstellungen (`ui_log_error_bg`, `ui_log_error_fg`, `ui_log_warn_bg`, `ui_log_warn_fg`) werden beim Laden und Speichern jetzt defensiv erneut im DOM aufgeloest. Dadurch bleibt die Settings-Seite auch bei spaet gebundenen oder kurzzeitig fehlenden Feldern benutzbar, statt mit einem Statusbar-TypeError abzubrechen.
+- Analyse-Cache-Segmente speichern jetzt zusaetzliche Checkpoints des Analysezustands. Wenn Werte nachtraeglich geaendert, geloescht, importiert oder per Rollback zurueckgesetzt werden, markiert InfluxBro die betroffenen Analyse-Cache-Segmente fuer einen lokalen Patchjob. Dieser Job erscheint in `Jobs & Cache` als `analysis_cache_patch` und repariert moeglichst nur kleine Bereiche statt spaeter beim `kombinieren` komplette Dirty-Segmente erneut aus InfluxDB zu lesen.
+- `Jobs & Cache -> Analysecache` zeigt jetzt neben `dirty` auch `patch`/`failed`-Zaehler fuer Serien mit ausstehenden oder fehlgeschlagenen Analyse-Cache-Reparaturen.
 - Ausreisser Tabelle: `_measurement` ist nicht editierbar; Zeilen werden automatisch aus bekannten Measurements vorbefuellt.
 - Die Einstellungsseite ist jetzt in grobe Obergruppen gegliedert, u.a. `Anbindung`, `Dashboard`, `Statistik`, `Backup`, `Restore`, `Logs`, `Jobs & Cache`, `History`, `Diagnose` und `Einstellungen`. Bereiche ohne eigene Felder werden als Platzhalter sichtbar gehalten, damit die Struktur konsistent bleibt.
 

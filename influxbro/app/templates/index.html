@@ -7293,6 +7293,7 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog, effective
         max: params.max || '',
         max_step: params.max_step || '',
         gap_seconds: params.gap_seconds || '300',
+        return_checkpoints: true,
       };
 
       const chunkT0 = performance.now();
@@ -7468,6 +7469,13 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog, effective
             stop: bIso,
             rows: got,
             scanned: chunkScanned,
+            checkpoints: Array.isArray(j && j.checkpoints) ? j.checkpoints : [],
+            final_state: {
+              last_time: j && j.last_time ? j.last_time : null,
+              last_value: j && Object.prototype.hasOwnProperty.call(j, 'last_value') ? j.last_value : null,
+              counter_base_value: j && Object.prototype.hasOwnProperty.call(j, 'counter_base_value') ? j.counter_base_value : null,
+              scan_state: j && j.scan_state ? j.scan_state : null,
+            },
           })
         }, { key: 'analysis_cache_store_' + String(aIso || '') + '_' + String(bIso || ''), silent: true });
         _saveAnalysisEvent({

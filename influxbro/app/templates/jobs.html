@@ -92,6 +92,7 @@
               <option value="fullbackup">fullbackup</option>
               <option value="fullrestore">fullrestore</option>
               <option value="dash_cache">dash_cache</option>
+              <option value="analysis_cache_patch">analysis_cache_patch</option>
               <option value="export">export</option>
             </select>
             </div>
@@ -1329,7 +1330,7 @@
             `<td>${fmtTs(m.updated_at)}</td>`,
             `<td class="mono" title="${entityId.replace(/"/g,'&quot;')}">${entityId}</td>`,
             `<td class="mono" title="${friendlyName.replace(/"/g,'&quot;')}">${friendlyName}</td>`,
-            `<td class="mono" style="text-align:right;">${String(m.segment_count || 0)}${m.dirty_segment_count ? (' / dirty=' + String(m.dirty_segment_count)) : ''}</td>`,
+            `<td class="mono" style="text-align:right;">${String(m.segment_count || 0)}${m.dirty_segment_count ? (' / dirty=' + String(m.dirty_segment_count)) : ''}${m.patch_pending_count ? (' / patch=' + String(m.patch_pending_count)) : ''}${m.patch_failed_count ? (' / failed=' + String(m.patch_failed_count)) : ''}</td>`,
             `<td class="mono" style="text-align:right;">${String(m.outlier_count || 0)}</td>`,
             `<td class="mono" style="text-align:right;">${fmtSize(m.bytes)}</td>`,
             `<td class="mono" style="font-size:11px;">${paths.map(p=>String(p||'')).join('<br>')}</td>`,
@@ -1341,7 +1342,9 @@
           if(SELECTED_ANALYSIS_CACHE_KEYS.has(sk)) tr.classList.add('row_selected');
           $analysisCacheBody.appendChild(tr);
         }
-        if($analysisCacheInfo) $analysisCacheInfo.textContent = `Analysecache Serien: ${rows.length} | Gesamtgroesse: ${fmtSize(totalBytes)}`;
+        const patchPending = rows.reduce((acc, row)=>acc + Number(row && row.patch_pending_count || 0), 0);
+        const patchFailed = rows.reduce((acc, row)=>acc + Number(row && row.patch_failed_count || 0), 0);
+        if($analysisCacheInfo) $analysisCacheInfo.textContent = `Analysecache Serien: ${rows.length} | Gesamtgroesse: ${fmtSize(totalBytes)} | Patch pending: ${patchPending} | Patch failed: ${patchFailed}`;
         syncToolbarButtons();
       }
 

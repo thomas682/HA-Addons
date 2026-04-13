@@ -141,7 +141,37 @@ def test_analysis_cache_combine_returns_json_error_on_merge_exception(load_app_m
     assert j == {"ok": False, "error": "combine exploded"}
 
 
-def test_analysis_cache_combine_refetches_dirty_segments_via_api_outliers(load_app_module, tmp_path, monkeypatch):
+def test_analysis_cache_store_segment_persists_checkpoints(load_app_module, tmp_path):
+    cfg_root = tmp_path / "config"
+    data_root = tmp_path / "data"
+
+    app_mod = load_app_module(config_dir=cfg_root, data_dir=data_root)
+    cfg = app_mod.load_cfg()
+
+    meta = app_mod._analysis_cache_store_segment(
+        cfg, "m", "value", "sensor.demo", "Demo",
+        "2026-01-01T00:00:00Z", "2026-01-02T00:00:00Z",
+        [{"time": "2026-01-01T12:00:00Z", "value": 1.0, "reason": "NULL", "types": ["null"]}], 5,
+        checkpoints=[{
+            "at": "2026-01-01T06:00:00.000Z",
+            "last_time": "2026-01-01T05:59:00.000Z",
+            "last_value": 1.0,
+            "counter_base_value": None,
+            "scan_state": {"status": "normal"},
+        }],
+        final_state={"last_time": "2026-01-01T23:59:00.000Z", "last_value": 1.0},
+    )
+    assert meta is not None
+
+    payload = app_mod._analysis_cache_load_payload(str(meta["id"]))
+
+    assert payload is not None
+    assert len(payload["checkpoints"]) == 1
+    assert payload["checkpoints"][0]["at"] == "2026-01-01T06:00:00.000Z"
+    assert payload["final_state"]["last_time"] == "2026-01-01T23:59:00.000Z"
+
+
+def test_analysis_cache_combine_skips_dirty_segments_without_refetch(load_app_module, tmp_path, monkeypatch):
     cfg_root = tmp_path / "config"
     data_root = tmp_path / "data"
 
@@ -178,21 +208,8 @@ def test_analysis_cache_combine_refetches_dirty_segments_via_api_outliers(load_a
         },
     })
 
-    calls: list[dict[str, object]] = []
-
     def _fake_api_outliers():
-        body = app_mod.request.get_json(force=True) or {}
-        calls.append(body)
-        return app_mod.jsonify({
-            "ok": True,
-            "rows": [{
-                "time": "2026-01-02T18:00:00Z",
-                "value": 3.0,
-                "reason": "0",
-                "types": ["zero"],
-            }],
-            "scanned": 11,
-        })
+        raise AssertionError("combine must not refetch dirty segments")
 
     monkeypatch.setattr(app_mod, "api_outliers", _fake_api_outliers)
 
@@ -201,12 +218,10 @@ def test_analysis_cache_combine_refetches_dirty_segments_via_api_outliers(load_a
 
     assert r.status_code == 200
     assert j["ok"] is True
-    assert j["groups_combined"] == 1
-    assert len(calls) == 1
-    assert calls[0]["measurement"] == "m"
-    assert calls[0]["field"] == "value"
+    assert j["groups_combined"] == 0
+    assert len(j["skipped_dirty_segments"]) == 1
+    assert j["note"] == "no clean contiguous segments to combine"
 
     series = app_mod._analysis_cache_group_list(cfg)
     assert len(series) == 1
-    assert series[0]["segment_count"] == 1
-    assert series[0]["outlier_count"] == 2
+    assert series[0]["segment_count"] == 2
