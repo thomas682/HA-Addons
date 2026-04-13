@@ -18734,8 +18734,7 @@ from(bucket: "{cfg["bucket"]}")
 
     all_points: list[dict[str, Any]] = []
     try:
-        v2_cfg = _v2_client_config(cfg)
-        with InfluxDBClient(**v2_cfg) as client:
+        with v2_client(cfg) as client:
             qapi = client.query_api()
             for rec in qapi.query_stream(q, org=cfg["org"]):
                 t = rec.get_time()
@@ -18758,24 +18757,33 @@ from(bucket: "{cfg["bucket"]}")
     for ol in outliers:
         ol_time = str(ol.get("time") or "")
         ol_idx = int(ol.get("point_index") or -1)
-        if ol_idx < 0 or not ol_time:
+        if ol_idx < 0 or not ol_time or ol_idx >= len(all_points):
             continue
 
         before_minutes = None
         after_minutes = None
         center_minutes = None
 
-        before_idx = ol_idx - n
-        after_idx = ol_idx + n
+        before_time = None
+        after_time = None
+        before_count = 0
+        after_count = 0
+
+        before_idx = max(0, ol_idx - n)
+        after_idx = min(len(all_points) - 1, ol_idx + n)
 
         ol_dt = time_to_dt.get(ol_time)
 
-        if before_idx >= 0 and before_idx < len(all_points) and ol_dt is not None:
+        if before_idx < ol_idx and ol_dt is not None:
             before_dt = all_points[before_idx]["_dt"]
+            before_time = all_points[before_idx]["time"]
+            before_count = ol_idx - before_idx
             before_minutes = (ol_dt - before_dt).total_seconds() / 60.0
 
-        if after_idx >= 0 and after_idx < len(all_points) and ol_dt is not None:
+        if after_idx > ol_idx and ol_dt is not None:
             after_dt = all_points[after_idx]["_dt"]
+            after_time = all_points[after_idx]["time"]
+            after_count = after_idx - ol_idx
             after_minutes = (after_dt - ol_dt).total_seconds() / 60.0
 
         if before_minutes is not None and after_minutes is not None:
@@ -18791,6 +18799,10 @@ from(bucket: "{cfg["bucket"]}")
             "center_minutes": round(center_minutes, 2) if center_minutes is not None else None,
             "before_minutes": round(before_minutes, 2) if before_minutes is not None else None,
             "after_minutes": round(after_minutes, 2) if after_minutes is not None else None,
+            "before_count": before_count,
+            "after_count": after_count,
+            "before_time": before_time,
+            "after_time": after_time,
         })
 
     LOG.info("api.outlier_windows computed %d windows in %.1fs", len(windows), time.monotonic() - t0)

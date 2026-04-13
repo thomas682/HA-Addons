@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.314
+
+### Enhancement
+
+- Die Dashboard-Ausreisser-Tabelle zeigt jetzt eine neue Spalte `Raw-Kontext`. Dort siehst du pro Treffer die tatsaechlich verfuegbaren Raw-Punkte vor und nach dem Ausreisser sowie den exakten Zeitbereich `Start -> Ausreisser -> Ende` des vorberechneten Kontextfensters. Zusaetzlich wurde der zugrundeliegende Endpoint `api/outlier_windows` auf das bestehende v2-Client-Muster umgestellt. ([#256](https://github.com/thomas682/HA-Addons/issues/256))
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`
+- Tests: `pytest tests/test_api_outlier_windows.py tests/test_api_ui_support.py -q -k "outlier_windows_returns_exact_counts_and_bounds or raw_outlier_table_uses_template_structure_and_helpers"`
+- Tested with Home Assistant Core: 2026.4.2
+
 ## 1.12.313
 
 ### Enhancement

@@ -553,7 +553,7 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
         <div id="raw_outlier_overview_box" style="margin-top:10px;">
           <div class="table_box" id="raw_outlier_overview" style="--max-rows: 5;">
             <table id="raw_outlier_tbl" class="list_tbl ib_tbl" data-ui="dashboard_outliers.tbl_ausreisser" title="dashboard_outliers.tbl_ausreisser">
-              <thead><tr><th style="min-width: 170px;">Zeit</th><th>Wert</th><th style="min-width: 220px;">Änderung</th><th style="min-width: 140px;">Ausreisser</th></tr></thead>
+              <thead><tr><th style="min-width: 170px;">Zeit</th><th>Wert</th><th style="min-width: 220px;">Änderung</th><th style="min-width: 140px;">Ausreisser</th><th style="min-width: 280px;">Raw-Kontext</th></tr></thead>
               <tbody id="raw_outlier_body"></tbody>
             </table>
           </div>
@@ -4949,6 +4949,24 @@ function _rawOutlierRenderTime(){
   }catch(e){}
 }
 
+function _rawOutlierContextInfo(row){
+  try{
+    const win = row && row.window && typeof row.window === 'object' ? row.window : null;
+    if(!win) return null;
+    const beforeCount = Math.max(0, Math.trunc(Number(win.before_count || 0)));
+    const afterCount = Math.max(0, Math.trunc(Number(win.after_count || 0)));
+    const beforeLabel = win.before_time ? fmtTs(win.before_time) : '-';
+    const centerLabel = row && row.time ? fmtTs(row.time) : '-';
+    const afterLabel = win.after_time ? fmtTs(win.after_time) : '-';
+    return {
+      counts: beforeCount + ' davor | ' + afterCount + ' danach',
+      times: beforeLabel + ' -> ' + centerLabel + ' -> ' + afterLabel,
+    };
+  }catch(e){
+    return null;
+  }
+}
+
 function startRawOutlierUi(metaText){
   try{
     RAW_OUTLIER_T0 = performance.now();
@@ -5242,6 +5260,10 @@ async function runRawOutlierSearch_DISABLED_LEGACY(){
               center_minutes: w.center_minutes,
               before_minutes: w.before_minutes,
               after_minutes: w.after_minutes,
+              before_count: w.before_count,
+              after_count: w.after_count,
+              before_time: w.before_time,
+              after_time: w.after_time,
             };
             const entry = RAW_OUTLIER_MAP[String(row.time)];
             if(entry) entry.window = row.window;
@@ -7480,7 +7502,7 @@ function renderOutlierOverviewTable(){
   if(!filtered.length){
     for(let i = 0; i < 5; i++){
       const tr = document.createElement('tr');
-      tr.innerHTML = '<td></td><td></td><td></td><td></td>';
+      tr.innerHTML = '<td></td><td></td><td></td><td></td><td></td>';
       $rawOutlierBody.appendChild(tr);
     }
     return;
@@ -7501,6 +7523,22 @@ function renderOutlierOverviewTable(){
     const tdO = document.createElement('td');
     tdO.textContent = isIgnoredOutlier(r) ? 'ignoriert' : (r.reason || '');
     tdO.style.color = '#b00020';
+    const tdC = document.createElement('td');
+    const context = _rawOutlierContextInfo(r);
+    if(context){
+      const counts = document.createElement('div');
+      counts.textContent = context.counts;
+      const times = document.createElement('div');
+      times.textContent = context.times;
+      times.className = 'muted';
+      times.style.fontSize = '12px';
+      times.style.marginTop = '2px';
+      tdC.appendChild(counts);
+      tdC.appendChild(times);
+    }else{
+      tdC.textContent = 'kein Raw-Fenster';
+      tdC.className = 'muted';
+    }
     try{
       const selMs = (RAW_SELECTED_MS !== null && RAW_SELECTED_MS !== undefined) ? Number(RAW_SELECTED_MS) : NaN;
       const rowMs = Date.parse(String(r.time || ''));
@@ -7510,6 +7548,7 @@ function renderOutlierOverviewTable(){
     tr.appendChild(tdV);
     tr.appendChild(tdH);
     tr.appendChild(tdO);
+    tr.appendChild(tdC);
 
     tr.addEventListener('click', ()=>{
       RAW_SELECTED_MS = Date.parse(String(r.time || ''));
@@ -7525,7 +7564,7 @@ function renderOutlierOverviewTable(){
   });
   for(let i = filtered.length; i < 5; i++){
     const tr = document.createElement('tr');
-    tr.innerHTML = '<td></td><td></td><td></td><td></td>';
+    tr.innerHTML = '<td></td><td></td><td></td><td></td><td></td>';
     $rawOutlierBody.appendChild(tr);
   }
 }
@@ -10971,7 +11010,8 @@ try{
       'Zeit': 'Zeitstempel des gefundenen Ausreissers.',
       'Wert': 'Wert des gefundenen Messpunkts.',
       'Änderung': 'Reserviert fuer zusaetzliche Differenz- oder Kontextinformationen.',
-      'Ausreisser': 'Erkannter Typ oder Status des Ausreissers.'
+      'Ausreisser': 'Erkannter Typ oder Status des Ausreissers.',
+      'Raw-Kontext': 'Zeigt die tatsaechlich verfuegbaren Raw-Punkte vor und nach dem Ausreisser sowie Startzeit, Ausreisser-Zeit und Endzeit des vorberechneten Kontextfensters.'
     },
     actions: [
       'Spaltenbreite automatisch / Fensterbreite: passt Spaltenbreiten an.',

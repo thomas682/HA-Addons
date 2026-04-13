@@ -246,6 +246,9 @@ def test_raw_outlier_table_uses_template_structure_and_helpers():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     assert 'id="raw_outlier_table_wrap"' in body
     assert 'id="raw_outlier_tbl" class="list_tbl ib_tbl"' in body
+    assert '>Raw-Kontext<' in body
+    assert "function _rawOutlierContextInfo(row){" in body
+    assert "kein Raw-Fenster" in body
     assert 'id="raw_outlier_autowidth"' in body
     assert 'id="raw_outlier_windowwidth"' in body
     assert 'id="raw_outlier_wrap"' in body
