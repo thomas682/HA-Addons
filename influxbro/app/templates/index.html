@@ -10180,6 +10180,36 @@ async function loadData(opts){
   await loadStats();
 }
 
+async function _prepareStep(name, label, fn){
+  const t0 = performance.now();
+  _analysisChecklistSet('prepare', {status: 'running', sub: label + '...'});
+  try{
+    const result = await fn();
+    const dur = Math.round(performance.now() - t0);
+    _analysisChecklistSet('prepare', {status: 'running', sub: label + ' (' + dur + ' ms)'});
+    _saveAnalysisEvent({
+      at: new Date().toISOString(),
+      kind: 'analysis_prepare',
+      step: name,
+      status: 'ok',
+      detail: label + ' (' + dur + ' ms)',
+      extra: { dur_ms: dur },
+    });
+    return result;
+  }catch(e){
+    const dur = Math.round(performance.now() - t0);
+    _saveAnalysisEvent({
+      at: new Date().toISOString(),
+      kind: 'analysis_prepare',
+      step: name,
+      status: 'err',
+      detail: label + ' fehlgeschlagen (' + dur + ' ms): ' + (e && e.message ? e.message : String(e)),
+      extra: { dur_ms: dur, error: e && e.message ? e.message : String(e) },
+    });
+    throw e;
+  }
+}
+
 async function refreshAll(opts){
   const o = opts || {};
   try{
@@ -10204,16 +10234,6 @@ async function refreshAll(opts){
         extra: { dur_ms: 0, skipped: true },
       });
     }
-    await _prepareStep('prepare_load_data', 'Daten laden', async ()=>{ await loadData(o); });
-  }catch(e){
-    displayError(e);
-  }
-}
-    await _prepareStep('prepare_load_data', 'Daten laden', async ()=>{ await loadData(o); });
-  }catch(e){
-    displayError(e);
-  }
-}
 
 async function refreshCachingSection(){
   const base = currentFilters();
