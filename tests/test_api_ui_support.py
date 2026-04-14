@@ -664,6 +664,22 @@ def test_dashboard_cache_timeline_has_hl_ac_toggles_and_combine_buttons():
     assert 'cached_outlier_type_counts' in body
 
 
+def test_dashboard_caching_panel_has_logs_button_progress_and_range_details():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    tooltips = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
+    agents = (Path(__file__).resolve().parents[1] / "AGENTS.md").read_text()
+    assert 'id="caching_logs_open"' in body
+    assert 'id="load_progress_fill"' in body
+    assert 'id="load_progress_text"' in body
+    assert "const LOAD_STEP_ORDER = ['start', 'dash_plan', 'analysis_plan', 'areas', 'result'];" in body
+    assert 'function _formatCachePlanRanges(gaps, dirtyRanges){' in body
+    assert "openFilteredAnalysisLogsDialog('dashboard_caching', 'cache_check')" in body
+    assert 'dashboard_caching.btn_logs' in tooltips
+    assert 'scope: \'dashboard_caching\'' in body
+    assert "curl -s -H \"Authorization: Bearer $SUPERVISOR_TOKEN\" http://192.168.2.200:8123/api/config | jq -r '.version'" in agents
+    assert 'unknown` ist nur als Fallback erlaubt' in agents
+
+
 def test_dashboard_uses_structured_data_ui_naming_scheme_samples():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     tmpl = (Path(__file__).resolve().parents[1] / "influxbro" / "Template.md").read_text()

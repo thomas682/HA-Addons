@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.12.341
+
+### Enhancement
+
+- `Cache pruefen` im Dashboard zeigt jetzt einen eigenen kleinen Fortschrittsblock mit Caching-Checkliste, Prozentanzeige und deutlich detaillierterem Logging. Fehlende bzw. geaenderte Bereiche werden dabei nicht nur gezaehlt, sondern mit konkreten Zeitbereichen in UI und Logs aufgefuehrt. Rechts neben der Gesamtstatistik gibt es zusaetzlich einen `Logs`-Button fuer den gefilterten Cache-Dialog. ([#277](https://github.com/thomas682/HA-Addons/issues/277))
+- Der Analyse-Schritt `Fehlende Restbereiche lesen` nennt jetzt ebenfalls die konkreten fehlenden bzw. geaenderten Zeitbereiche, statt nur deren Anzahl zu melden. ([#277](https://github.com/thomas682/HA-Addons/issues/277))
+
+### Maintenance
+
+- `AGENTS.md` verlangt die Ermittlung der getesteten Home-Assistant-Core-Version jetzt explizit ueber `curl -s -H "Authorization: Bearer $SUPERVISOR_TOKEN" http://192.168.2.200:8123/api/config | jq -r '.version'`. `unknown` bleibt nur noch als Fallback erlaubt, wenn genau diese Abfrage fehlschlaegt oder keinen verwertbaren Wert liefert. ([#280](https://github.com/thomas682/HA-Addons/issues/280))
+- Tests: `python3 -m py_compile influxbro/app/app.py`
+- Tests: `pytest tests/test_api_ui_support.py -q -k "dashboard_caching_panel_has_logs_button_progress_and_range_details or dashboard_caching_section_has_visible_cache_targets_and_no_old_dialog or dashboard_cache_timeline_has_hl_ac_toggles_and_combine_buttons or analysis_cache_hit_summary_replaces_interval_hint_line"`
+- Tested with Home Assistant Core: 2026.4.2
+
 ## 1.12.340
 
 ### Enhancement

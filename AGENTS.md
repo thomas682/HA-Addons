@@ -517,14 +517,14 @@ from flask import Flask, jsonify, request
 - If you change Python dependencies (new imports, add/remove packages, or behavior that requires a new library version), update `influxbro/requirements.txt` in the same change.
 - For each released add-on version, record the Home Assistant Core version the add-on was tested with.
   - Preferred place: the corresponding entry in `influxbro/CHANGELOG.md` (e.g. a Maintenance bullet: `Tested with Home Assistant Core: 2026.3.0`).
-  - If the HA version cannot be determined in the current environment, explicitly note it as `unknown` and update once you have the value.
   - **Ermittlung der HA Core Version:** Vor dem Schreiben des Changelog-Eintrags MUSS die installierte Home Assistant Core Version auf dem Echtsystem ermittelt werden:
   
     ```bash
     curl -s -H "Authorization: Bearer $SUPERVISOR_TOKEN" http://192.168.2.200:8123/api/config | jq -r '.version'
-      ```
+    ```
   
   Der ermittelte Wert MUSS im Changelog-Eintrag unter `Tested with Home Assistant Core: <wert>` eingetragen werden.
+  - `unknown` ist nur als Fallback erlaubt, wenn genau diese Abfrage im aktuellen Umfeld nicht erfolgreich ausgefuehrt werden kann oder keinen verwertbaren Versionswert liefert.
 
 ## Support & Logging
 
