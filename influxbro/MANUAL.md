@@ -1117,6 +1117,7 @@ Ausreisser:
 ## Release Notes (1.12.101)
 
 - Einstellungen: Die Info-Buttons behalten jetzt auch auf der Einstellungsseite wieder ihre feste 22x22-Darstellung und werden nicht mehr von der seitenlokalen Button-Breitenregel aufgezogen.
+- Einstellungen: Die Parametrierzeilen besitzen keine festen Breiten-Constraints mehr; Felder wie `ui_status_bar_bg` brechen jetzt innerhalb der Karte um, statt rechts herauszulaufen.
 - Navigation: Die Sidebar startet jetzt global mit 20px Abstand unterhalb von `page.title.card`.
 
 ## Release Notes (1.12.102)

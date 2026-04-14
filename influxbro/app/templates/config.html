@@ -63,9 +63,9 @@
     .grid > .param_row:last-child { border-bottom:none; }
     .grid > .param_row > .param_label { flex:1; font-size:14px; min-width:0; }
     .grid > .param_row > .param_label .param_hint { display:block; font-size:11px; opacity:0.6; margin-top:2px; }
-    .grid > .param_row > .param_control { flex:1 1 220px; min-width:140px; max-width:100%; display:flex; align-items:center; gap:6px; }
+    .grid > .param_row > .param_control { display:flex; align-items:center; gap:6px; }
     .grid > .param_row > .param_control input,
-    .grid > .param_row > .param_control select { width:100%; min-width:100px; }
+    .grid > .param_row > .param_control select { }
     .grid > .param_row.param_full { flex-direction:column; align-items:stretch; }
     .grid > .param_row.param_full > .param_control { max-width:100%; }
     .grid > .section_note { padding:8px 12px; font-size:12px; opacity:0.6; border-bottom:1px solid #eee; }
@@ -139,9 +139,11 @@
     main.content .tbl_actions label { display:flex; gap:6px; align-items:center; font-size:12px; opacity:0.85; }
     main.content .tbl_actions input[type="checkbox"] { width:auto; height:auto; padding:0; margin:0; }
     /* Color picker row */
-    .color_pick_row { display:flex; gap:8px; align-items:center; width:100%; min-width:0; }
+    .color_pick_row { display:flex; gap:8px; align-items:center; }
     .color_pick_row input[type="color"] { width:44px; height:36px; padding:0; flex:0 0 auto; }
     .color_pick_row input[type="text"] { flex:1 1 auto; min-width:0; }
+    #ui_status_bar_bg_color,
+    #ui_status_bar_bg { width:auto; min-width:0; }
     /* Save card special */
     .save_card { border:1px solid #ddd; border-radius:10px; padding:12px; margin-top:12px; }
     .save_card .btn_sm { width:auto; }

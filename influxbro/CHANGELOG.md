@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.343
+
+### Enhancement
+
+- Die Einstellungs-Parameterzeilen haben jetzt keine festen Breiten-Constraints mehr. Dadurch laufen Felder wie `ui_status_bar_bg` nicht mehr rechts aus `config_settings.section_root`, sondern brechen sauber um. ([#285](https://github.com/thomas682/HA-Addons/issues/285))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`
+- Tests: `pytest tests/test_api_ui_support.py -q -k "dashboard_cache_timeline_has_hl_ac_toggles_and_combine_buttons or dashboard_caching_panel_has_logs_button_progress_and_range_details"`
+- Tested with Home Assistant Core: 2026.4.2
+
 ## 1.12.342
 
 ### Enhancement
