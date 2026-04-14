@@ -678,7 +678,7 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
         <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:16px;">
           <div>
             <h3 style="margin:0 0 6px 0;">Ausreisser-Parameter</h3>
-            <div class="muted" style="font-size:13px; line-height:1.45;">Die Werte ueberschreiben nur fuer diese Dashboard-Ausreisseranalyse die globalen Standards. Leere Felder verwenden weiterhin den jeweils hinterlegten Standardwert.</div>
+            <div class="muted" style="font-size:13px; line-height:1.45;">Die Werte werden global gespeichert (wie in den Einstellungen). Leere Felder deaktivieren optionale Grenzen oder setzen wieder den Default.</div>
           </div>
           <button class="btn_sm" id="raw_outlier_params_close" type="button">Schliessen</button>
         </div>
@@ -1160,6 +1160,21 @@ const $rawParamMin = document.getElementById('raw_param_min');
 const $rawParamMax = document.getElementById('raw_param_max');
 const $rawParamRecoveryStreak = document.getElementById('raw_param_recovery_streak');
 const $rawParamGapSeconds = document.getElementById('raw_param_gap_seconds');
+
+// Global outlier parameter defaults (loaded from /api/config)
+let OUTLIER_PARAM_CFG = {
+  min: '',
+  max: '',
+  gap_seconds: '300',
+  recovery_streak: '2',
+};
+let OUTLIER_STEP_CFG = {
+  w: 30000,
+  kw: 30,
+  wh: 30000,
+  kwh: 30,
+  units: '',
+};
 const $rawSearchRun = document.getElementById('raw_search_run');
 const $rawJumpOldest = document.getElementById('raw_jump_oldest');
 const $rawJumpNewest = document.getElementById('raw_jump_newest');
@@ -3943,6 +3958,25 @@ async function loadUiConfig(){
     if($rawOutlierDisplayLimitPerType) $rawOutlierDisplayLimitPerType.value = String(RAW_OUTLIER_DISPLAY_LIMIT_PER_TYPE);
     if(cfg.ui_analysis_cache_hidden_color) ANALYSIS_CACHE_HIDDEN_COLOR = String(cfg.ui_analysis_cache_hidden_color || ANALYSIS_CACHE_HIDDEN_COLOR);
 
+    // Outlier params (global config)
+    try{
+      OUTLIER_PARAM_CFG = {
+        min: (cfg.outlier_bounds_min_default !== undefined && cfg.outlier_bounds_min_default !== null) ? String(cfg.outlier_bounds_min_default) : '',
+        max: (cfg.outlier_bounds_max_default !== undefined && cfg.outlier_bounds_max_default !== null) ? String(cfg.outlier_bounds_max_default) : '',
+        gap_seconds: (cfg.outlier_gap_seconds_default !== undefined && cfg.outlier_gap_seconds_default !== null) ? String(cfg.outlier_gap_seconds_default) : '300',
+        recovery_streak: (cfg.outlier_recovery_valid_streak_default !== undefined && cfg.outlier_recovery_valid_streak_default !== null) ? String(cfg.outlier_recovery_valid_streak_default) : '2',
+      };
+    }catch(e){}
+    try{
+      OUTLIER_STEP_CFG = {
+        w: (cfg.outlier_max_step_w !== undefined && cfg.outlier_max_step_w !== null) ? Number(cfg.outlier_max_step_w) : 30000,
+        kw: (cfg.outlier_max_step_kw !== undefined && cfg.outlier_max_step_kw !== null) ? Number(cfg.outlier_max_step_kw) : 30,
+        wh: (cfg.outlier_max_step_wh !== undefined && cfg.outlier_max_step_wh !== null) ? Number(cfg.outlier_max_step_wh) : 30000,
+        kwh: (cfg.outlier_max_step_kwh !== undefined && cfg.outlier_max_step_kwh !== null) ? Number(cfg.outlier_max_step_kwh) : 30,
+        units: String(cfg.outlier_max_step_units || ''),
+      };
+    }catch(e){}
+
     const fs = Number(cfg.ui_font_size_px);
     if(isFinite(fs) && fs >= 10 && fs <= 22) document.documentElement.style.setProperty("--ui-font", fs + "px");
     const fss = Number(cfg.ui_font_small_px);
@@ -5397,51 +5431,144 @@ function getDisplayedOutliers(){
   return out;
 }
 
-function saveOutlierParams(){
+function _parseUnitStepMapText(raw){
+  const out = {};
   try{
-    const p = {
-      max_step: $rawParamMaxStep ? String($rawParamMaxStep.value || '').trim() : '',
-      min: $rawParamMin ? String($rawParamMin.value || '').trim() : '',
-      max: $rawParamMax ? String($rawParamMax.value || '').trim() : '',
-      recovery_streak: $rawParamRecoveryStreak ? String($rawParamRecoveryStreak.value || '').trim() : '',
-      gap_seconds: $rawParamGapSeconds ? String($rawParamGapSeconds.value || '').trim() : '',
-    };
-    localStorage.setItem('raw_outlier_params', JSON.stringify(p));
+    const lines = String(raw || '').split(/\r?\n/);
+    lines.forEach(ln => {
+      const s0 = String(ln || '').trim();
+      if(!s0) return;
+      if(s0.startsWith('#')) return;
+      let a = null;
+      let b = null;
+      if(s0.includes('=')){
+        const p = s0.split('=', 2);
+        a = p[0];
+        b = p[1];
+      }else if(s0.includes(':')){
+        const p = s0.split(':', 2);
+        a = p[0];
+        b = p[1];
+      }else{
+        const parts = s0.split(/\s+/);
+        if(parts.length < 2) return;
+        a = parts[0];
+        b = parts[1];
+      }
+      const k = String(a || '').trim();
+      if(!k) return;
+      const v = parseFloat(String(b || '').trim());
+      if(!isFinite(v)) return;
+      out[k] = v;
+    });
   }catch(e){}
+  return out;
 }
 
-function resetOutlierParams(){
+function _unitStepMapToText(map){
   try{
-    if($rawParamMaxStep) $rawParamMaxStep.value = '';
-    if($rawParamMin) $rawParamMin.value = '';
-    if($rawParamMax) $rawParamMax.value = '';
-    if($rawParamRecoveryStreak) $rawParamRecoveryStreak.value = '';
-    if($rawParamGapSeconds) $rawParamGapSeconds.value = '';
-  }catch(e){}
+    const keys = Object.keys(map || {});
+    keys.sort((a,b)=>String(a).localeCompare(String(b)));
+    return keys.map(k => `${k}=${map[k]}`).join('\n');
+  }catch(e){
+    return '';
+  }
 }
 
-function loadOutlierParams(){
+function _currentEntityUnit(){
   try{
-    resetOutlierParams();
-    const s = localStorage.getItem('raw_outlier_params');
-    if(s){
-      const p = JSON.parse(s);
-      if($rawParamMaxStep) $rawParamMaxStep.value = p.max_step || '';
-      if($rawParamMin) $rawParamMin.value = p.min || '';
-      if($rawParamMax) $rawParamMax.value = p.max || '';
-      if($rawParamRecoveryStreak) $rawParamRecoveryStreak.value = p.recovery_streak || '';
-      if($rawParamGapSeconds) $rawParamGapSeconds.value = p.gap_seconds || '';
-    }
-  }catch(e){}
+    return (HA_ENTITY_INFO && HA_ENTITY_INFO.entity && HA_ENTITY_INFO.entity.unit_of_measurement)
+      ? String(HA_ENTITY_INFO.entity.unit_of_measurement) : '';
+  }catch(e){
+    return '';
+  }
 }
 
-function openOutlierParamsDialog(){
-  loadOutlierParams();
+function _effectiveMaxStepForUnit(unit){
+  const u = String(unit || '').trim();
+  const ul = u.toLowerCase();
+  if(ul === 'w') return Number(OUTLIER_STEP_CFG.w || 30000);
+  if(ul === 'kw') return Number(OUTLIER_STEP_CFG.kw || 30);
+  if(ul === 'wh') return Number(OUTLIER_STEP_CFG.wh || 30000);
+  if(ul === 'kwh') return Number(OUTLIER_STEP_CFG.kwh || 30);
+  const m = _parseUnitStepMapText(OUTLIER_STEP_CFG.units || '');
+  if(u && m && m[u] !== undefined && m[u] !== null) return Number(m[u]);
+  return Number(OUTLIER_STEP_CFG.w || 30000);
+}
+
+async function openOutlierParamsDialog(){
+  try{ await loadUiConfig(); }catch(e){}
+  const unit = _currentEntityUnit();
+  try{ if($rawParamMaxStep) $rawParamMaxStep.value = String(_effectiveMaxStepForUnit(unit) || ''); }catch(e){}
+  try{ if($rawParamMin) $rawParamMin.value = String(OUTLIER_PARAM_CFG.min || '').trim(); }catch(e){}
+  try{ if($rawParamMax) $rawParamMax.value = String(OUTLIER_PARAM_CFG.max || '').trim(); }catch(e){}
+  try{ if($rawParamRecoveryStreak) $rawParamRecoveryStreak.value = String(OUTLIER_PARAM_CFG.recovery_streak || '2').trim(); }catch(e){}
+  try{ if($rawParamGapSeconds) $rawParamGapSeconds.value = String(OUTLIER_PARAM_CFG.gap_seconds || '300').trim(); }catch(e){}
   if($rawOutlierParamsDialog) $rawOutlierParamsDialog.style.display = 'flex';
 }
 
 function closeOutlierParamsDialog(){
   if($rawOutlierParamsDialog) $rawOutlierParamsDialog.style.display = 'none';
+}
+
+async function saveOutlierParamsDialog({useDefaults}={}){
+  const wantDefaults = !!(useDefaults);
+  try{
+    const unit = _currentEntityUnit();
+    const dj = await api('./api/config_defaults');
+    const d = (dj && dj.defaults) ? dj.defaults : {};
+
+    const patch = {};
+
+    // Bounds defaults
+    if($rawParamMin) patch.outlier_bounds_min_default = wantDefaults ? '' : String($rawParamMin.value || '').trim();
+    if($rawParamMax) patch.outlier_bounds_max_default = wantDefaults ? '' : String($rawParamMax.value || '').trim();
+
+    // Recovery streak default
+    if($rawParamRecoveryStreak){
+      const s = wantDefaults ? '' : String($rawParamRecoveryStreak.value || '').trim();
+      patch.outlier_recovery_valid_streak_default = (s === '') ? (d.outlier_recovery_valid_streak_default || 2) : parseInt(s, 10);
+    }
+
+    // Gap seconds default
+    if($rawParamGapSeconds){
+      const s = wantDefaults ? '' : String($rawParamGapSeconds.value || '').trim();
+      patch.outlier_gap_seconds_default = (s === '') ? (d.outlier_gap_seconds_default || 300) : parseInt(s, 10);
+    }
+
+    // Max step: write back into the global unit thresholds (not a per-run override)
+    if($rawParamMaxStep){
+      const s = wantDefaults ? '' : String($rawParamMaxStep.value || '').trim();
+      const ul = String(unit || '').trim().toLowerCase();
+      if(ul === 'w') patch.outlier_max_step_w = (s === '') ? (d.outlier_max_step_w || 30000) : parseFloat(s);
+      else if(ul === 'kw') patch.outlier_max_step_kw = (s === '') ? (d.outlier_max_step_kw || 30) : parseFloat(s);
+      else if(ul === 'wh') patch.outlier_max_step_wh = (s === '') ? (d.outlier_max_step_wh || 30000) : parseFloat(s);
+      else if(ul === 'kwh') patch.outlier_max_step_kwh = (s === '') ? (d.outlier_max_step_kwh || 30) : parseFloat(s);
+      else{
+        const m = _parseUnitStepMapText(OUTLIER_STEP_CFG.units || '');
+        if(String(unit || '').trim()){
+          if(s === ''){
+            try{ delete m[String(unit || '').trim()]; }catch(e){}
+          }else{
+            const v = parseFloat(s);
+            if(isFinite(v)) m[String(unit || '').trim()] = v;
+          }
+        }
+        patch.outlier_max_step_units = _unitStepMapToText(m);
+      }
+    }
+
+    await api('./api/config', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(patch),
+    });
+
+    try{ await loadUiConfig(); }catch(e){}
+    closeOutlierParamsDialog();
+  }catch(e){
+    displayError(e);
+  }
 }
 
 function _analysisCacheStopKey(stopIso, rangeKey){
@@ -5460,12 +5587,15 @@ function _analysisCacheStopKey(stopIso, rangeKey){
 
 function _analysisCacheParamsKey(){
   try{
-    const ps = localStorage.getItem('raw_outlier_params');
-    const p = ps ? JSON.parse(ps) : {};
+    const unit = _currentEntityUnit();
+    const effStep = _effectiveMaxStepForUnit(unit);
     return JSON.stringify({
-      min: String(p.min || ''),
-      max: String(p.max || ''),
-      max_step: String(p.max_step || ''),
+      min: String(OUTLIER_PARAM_CFG && OUTLIER_PARAM_CFG.min ? OUTLIER_PARAM_CFG.min : ''),
+      max: String(OUTLIER_PARAM_CFG && OUTLIER_PARAM_CFG.max ? OUTLIER_PARAM_CFG.max : ''),
+      gap_seconds: String(OUTLIER_PARAM_CFG && OUTLIER_PARAM_CFG.gap_seconds ? OUTLIER_PARAM_CFG.gap_seconds : ''),
+      recovery_streak: String(OUTLIER_PARAM_CFG && OUTLIER_PARAM_CFG.recovery_streak ? OUTLIER_PARAM_CFG.recovery_streak : ''),
+      unit: String(unit || ''),
+      effective_max_step: String(isFinite(Number(effStep)) ? Number(effStep) : ''),
     });
   }catch(e){
     return '{}';
@@ -5594,10 +5724,6 @@ async function runRawOutlierSearch_DISABLED_LEGACY(){
       console.warn('[ANALYSIS] outlier_windows failed, continuing without windows:', e && e.message ? e.message : e);
     }
 
-    try{
-      const ps = localStorage.getItem('raw_outlier_params');
-      if(ps) Object.assign(params, JSON.parse(ps));
-    }catch(e){}
     console.log('[OUTLIER_SEARCH] Step 5: Starting chunk search, params:', {base, params});
 
   startRawOutlierUi(baseMeta);
@@ -7451,11 +7577,14 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog, effective
   const baseMeta = _rawOutlierMetaFromPayload(base);
   const overallSpanTxt = 'Suchbereich: ' + fmtTs(win.start) + ' bis ' + fmtTs(win.stop);
 
-  const params = {};
-  try{
-    const ps = localStorage.getItem('raw_outlier_params');
-    if(ps) Object.assign(params, JSON.parse(ps));
-  }catch(e){}
+  const params = {
+    min: String(OUTLIER_PARAM_CFG && OUTLIER_PARAM_CFG.min ? OUTLIER_PARAM_CFG.min : ''),
+    max: String(OUTLIER_PARAM_CFG && OUTLIER_PARAM_CFG.max ? OUTLIER_PARAM_CFG.max : ''),
+    // max_step is derived from global settings (unit thresholds), no per-run override
+    max_step: '',
+    recovery_streak: String(OUTLIER_PARAM_CFG && OUTLIER_PARAM_CFG.recovery_streak ? OUTLIER_PARAM_CFG.recovery_streak : ''),
+    gap_seconds: String(OUTLIER_PARAM_CFG && OUTLIER_PARAM_CFG.gap_seconds ? OUTLIER_PARAM_CFG.gap_seconds : '300'),
+  };
 
   _logAnalysis('search_init', {startMs: startMs, stopMs: stopMs, spanDays: Math.round((stopMs - startMs) / 86400000)});
   console.log('[ANALYSIS] Starting search, span:', Math.round((stopMs - startMs) / 86400000), 'days');
@@ -12098,8 +12227,8 @@ try{
   });
   if($rawOutlierParamsAction) $rawOutlierParamsAction.addEventListener('click', ()=>{ openOutlierParamsDialog(); });
   if($rawOutlierParamsClose) $rawOutlierParamsClose.addEventListener('click', ()=>{ closeOutlierParamsDialog(); });
-  if($rawOutlierParamsReset) $rawOutlierParamsReset.addEventListener('click', ()=>{ resetOutlierParams(); });
-  if($rawOutlierParamsSave) $rawOutlierParamsSave.addEventListener('click', ()=>{ saveOutlierParams(); closeOutlierParamsDialog(); });
+  if($rawOutlierParamsReset) $rawOutlierParamsReset.addEventListener('click', ()=>{ saveOutlierParamsDialog({useDefaults:true}); });
+  if($rawOutlierParamsSave) $rawOutlierParamsSave.addEventListener('click', ()=>{ saveOutlierParamsDialog({useDefaults:false}); });
   if($rawOutlierParamsDialog){
     $rawOutlierParamsDialog.addEventListener('click', (ev)=>{
       if(ev.target === $rawOutlierParamsDialog) closeOutlierParamsDialog();

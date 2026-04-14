@@ -19,6 +19,10 @@ def test_config_defaults_endpoint_exposes_section_title_defaults_without_secrets
     assert d.get("ui_section_level3_fg") == "#FFFFFF"
     assert d.get("ui_section_level3_font_px") == 11
 
+    assert d.get("outlier_bounds_min_default") == ""
+    assert d.get("outlier_bounds_max_default") == ""
+    assert d.get("outlier_recovery_valid_streak_default") == 2
+
     # No secrets via defaults endpoint
     assert d.get("token") == ""
     assert d.get("admin_token") == ""

@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.12.346
+
+### Enhancement
+
+- Der Dialog `Ausreisser-Parameter` im Dashboard arbeitet jetzt global mit den Settings: Werte werden aus den Einstellungen geladen und bei Aenderungen direkt global gespeichert, inklusive `config_settings.tbl_outliers_table` (Max-Sprung je Einheit/Zeile), Messwertluecke, Bounds-Defaults und Recovery-Streak. ([#283](https://github.com/thomas682/HA-Addons/issues/283))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`
+- Tests: `pytest tests/test_api_config_io.py -q`
+- Tests: `pytest -k dashboard_outlier_params_dialog_is_global_config_based -q`
+- Tested with Home Assistant Core: 2026.4.2
+
 ## 1.12.345
 
 ### Enhancement

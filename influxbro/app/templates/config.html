@@ -1147,6 +1147,24 @@
             <input id="outlier_gap_seconds_default" type="number" min="1" max="86400" />
           </div>
         </div>
+        <div class="param_row">
+          <div class="param_label">Grenzen Default: Min<span class="param_hint">Optional: Standard-Untergrenze fuer Ausreisser-Suche (leer = deaktiviert).</span></div>
+          <div class="param_control">
+            <input id="outlier_bounds_min_default" type="number" step="any" placeholder="leer = deaktiviert" data-ui="config_settings.input_outlier_bounds_min_default" title="settings.outliers.bounds_min_default" />
+          </div>
+        </div>
+        <div class="param_row">
+          <div class="param_label">Grenzen Default: Max<span class="param_hint">Optional: Standard-Obergrenze fuer Ausreisser-Suche (leer = deaktiviert).</span></div>
+          <div class="param_control">
+            <input id="outlier_bounds_max_default" type="number" step="any" placeholder="leer = deaktiviert" data-ui="config_settings.input_outlier_bounds_max_default" title="settings.outliers.bounds_max_default" />
+          </div>
+        </div>
+        <div class="param_row">
+          <div class="param_label">Stoerphase: Recovery-Streak Default<span class="param_hint">Anzahl gueltiger Werte in Folge, bis eine Stoerphase als beendet gilt.</span></div>
+          <div class="param_control">
+            <input id="outlier_recovery_valid_streak_default" type="number" min="1" max="50" step="1" data-ui="config_settings.input_outlier_recovery_valid_streak_default" title="settings.outliers.recovery_valid_streak_default" />
+          </div>
+        </div>
         <div class="param_row param_full">
           <div class="param_label">Ausreisser Tabelle (_measurement / max_step)</div>
           <div class="param_control">
@@ -1272,6 +1290,9 @@ const ids = [
   "ui_query_manual_max_points","ui_graph_jump_padding_intervals",
   "ui_font_size_px","ui_font_small_px","ui_pagecard_title_px","ui_page_search_highlight_color","ui_page_search_highlight_width_px","ui_page_search_highlight_duration_ms","ui_nav_helper_history_limit","ui_nav_helper_highlight_color","ui_nav_helper_highlight_duration_ms","ui_analysis_cache_hidden_color","ui_checkbox_scale",
   "outlier_gap_seconds_default",
+  "outlier_bounds_min_default",
+  "outlier_bounds_max_default",
+  "outlier_recovery_valid_streak_default",
   "ui_section_title_bg","ui_section_title_fg","ui_section_level2_bg","ui_section_level2_fg","ui_section_level2_font_px","ui_section_level3_bg","ui_section_level3_fg","ui_section_level3_font_px",
   "ui_section_title_font_px",
   "ui_status_font_px","ui_status_bar_height_px","ui_status_bar_bg","ui_status_bar_fg",
@@ -1738,6 +1759,9 @@ function setForm(cfg){
   _safeSet(el.ui_backup_visible_rows, 'value', cfg.ui_backup_visible_rows ?? 24);
   _safeSet(el.ui_restore_visible_rows, 'value', cfg.ui_restore_visible_rows ?? 24);
   _safeSet(el.outlier_gap_seconds_default, 'value', cfg.outlier_gap_seconds_default ?? 300);
+  _safeSet(el.outlier_bounds_min_default, 'value', (cfg.outlier_bounds_min_default !== undefined && cfg.outlier_bounds_min_default !== null) ? cfg.outlier_bounds_min_default : '');
+  _safeSet(el.outlier_bounds_max_default, 'value', (cfg.outlier_bounds_max_default !== undefined && cfg.outlier_bounds_max_default !== null) ? cfg.outlier_bounds_max_default : '');
+  _safeSet(el.outlier_recovery_valid_streak_default, 'value', cfg.outlier_recovery_valid_streak_default ?? 2);
   _safeSet(el.ui_query_manual_max_points, 'value', cfg.ui_query_manual_max_points ?? 200000);
   _safeSet(el.ui_graph_jump_padding_intervals, 'value', cfg.ui_graph_jump_padding_intervals ?? 1);
   _safeSet(el.ui_edit_neighbors_n, 'value', cfg.ui_edit_neighbors_n ?? 5);
@@ -1883,6 +1907,9 @@ function getForm(){
     ui_backup_visible_rows: parseInt(el.ui_backup_visible_rows.value, 10),
     ui_restore_visible_rows: parseInt(el.ui_restore_visible_rows.value, 10),
     outlier_gap_seconds_default: parseInt(el.outlier_gap_seconds_default.value, 10),
+    outlier_bounds_min_default: String(el.outlier_bounds_min_default ? el.outlier_bounds_min_default.value : '').trim(),
+    outlier_bounds_max_default: String(el.outlier_bounds_max_default ? el.outlier_bounds_max_default.value : '').trim(),
+    outlier_recovery_valid_streak_default: parseInt(el.outlier_recovery_valid_streak_default.value, 10),
     ui_edit_neighbors_n: parseInt(el.ui_edit_neighbors_n.value, 10),
     ui_edit_details_visible_rows: parseInt(el.ui_edit_details_visible_rows.value, 10),
     ui_edit_graph_buffer_minutes: parseInt(el.ui_edit_graph_buffer_minutes.value, 10),

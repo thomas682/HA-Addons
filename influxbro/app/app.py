@@ -782,6 +782,13 @@ DEFAULT_CFG = {
     # A time gap above this threshold is treated as measurement gap instead of a normal step jump.
     "outlier_gap_seconds_default": 300,
 
+    # Optional default bounds for outlier scan (empty = disabled)
+    "outlier_bounds_min_default": "",
+    "outlier_bounds_max_default": "",
+
+    # Fault-phase search: number of valid values until leaving a fault phase.
+    "outlier_recovery_valid_streak_default": 2,
+
     # Additional unit thresholds (one per line): unit=max_step
     # Example: 
     #   °C=2
@@ -13912,6 +13919,23 @@ def api_set_config():
     _clamp_num("outlier_max_step_wh", 30000, 100, 10000000)
     _clamp_num("outlier_max_step_kwh", 30, 0.01, 100000)
     _clamp_num("outlier_gap_seconds_default", 300, 1, 86400)
+
+    def _clamp_num_opt(key: str) -> None:
+        v = cfg.get(key)
+        if v is None:
+            cfg[key] = ""
+            return
+        if isinstance(v, str) and v.strip() == "":
+            cfg[key] = ""
+            return
+        try:
+            cfg[key] = float(v)
+        except Exception:
+            cfg[key] = ""
+
+    _clamp_num_opt("outlier_bounds_min_default")
+    _clamp_num_opt("outlier_bounds_max_default")
+    _clamp_int("outlier_recovery_valid_streak_default", 2, 1, 50)
 
     try:
         cfg["outlier_max_step_units"] = str(cfg.get("outlier_max_step_units") or "")

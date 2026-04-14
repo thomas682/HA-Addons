@@ -682,6 +682,15 @@ def test_dashboard_caching_panel_has_logs_button_progress_and_range_details():
     assert 'unknown` ist nur als Fallback erlaubt' in agents
 
 
+def test_dashboard_outlier_params_dialog_is_global_config_based():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert "./api/config_defaults" in body
+    assert "outlier_recovery_valid_streak_default" in body
+    assert "outlier_bounds_min_default" in body
+    assert "localStorage.getItem('raw_outlier_params')" not in body
+    assert "localStorage.setItem('raw_outlier_params'" not in body
+
+
 def test_dashboard_uses_structured_data_ui_naming_scheme_samples():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     tmpl = (Path(__file__).resolve().parents[1] / "influxbro" / "Template.md").read_text()
