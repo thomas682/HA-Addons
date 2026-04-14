@@ -714,12 +714,13 @@ DEFAULT_CFG = {
     # Defaults chosen for better readability.
     "ui_section_title_bg": "#3287a8",
     "ui_section_title_fg": "#FFFFFF",
-    "ui_section_level2_bg": "#E7F0F5",
-    "ui_section_level2_fg": "#173042",
-    "ui_section_level2_font_px": 14,
-    "ui_section_level3_bg": "#F5F9FC",
-    "ui_section_level3_fg": "#22384A",
-    "ui_section_level3_font_px": 13,
+    "ui_section_title_font_px": 13,
+    "ui_section_level2_bg": "#8BA293",
+    "ui_section_level2_fg": "#FFFFFF",
+    "ui_section_level2_font_px": 12,
+    "ui_section_level3_bg": "#B8B17F",
+    "ui_section_level3_fg": "#FFFFFF",
+    "ui_section_level3_font_px": 11,
     "ui_filter_label_width_px": 170,
     "ui_filter_control_width_px": 320,
     "ui_filter_search_width_px": 160,
@@ -6325,6 +6326,29 @@ def api_get_config():
         "writes_enabled": True,
         "autodetect_source": LAST_AUTODETECT_SOURCE,
     })
+
+
+@app.get("/api/config_defaults")
+def api_get_config_defaults():
+    """Returns DEFAULT_CFG for UI (without secrets)."""
+
+    defaults = dict(DEFAULT_CFG)
+    defaults["token"] = ""
+    defaults["admin_token"] = ""
+    defaults["password"] = ""
+    return jsonify({"ok": True, "defaults": defaults})
+
+
+@app.get("/api/config_export")
+def api_config_export():
+    """Exports the current settings as a JSON file."""
+
+    cfg = load_cfg()
+    txt = json.dumps(cfg, indent=2, sort_keys=True, ensure_ascii=True) + "\n"
+    resp = make_response(txt)
+    resp.headers["Content-Type"] = "application/json; charset=utf-8"
+    resp.headers["Content-Disposition"] = "attachment; filename=\"influxbro_settings.json\""
+    return resp
 
 
 @app.get("/api/influx_admin_test")
@@ -13744,15 +13768,16 @@ def api_set_config():
 
     _clamp_color_opt("ui_section_title_bg", allow_words=("transparent",))
     _clamp_color_opt("ui_section_title_fg", allow_words=("inherit",))
-    _clamp_color("ui_section_level2_bg", "#E7F0F5")
-    _clamp_color("ui_section_level2_fg", "#173042")
-    _clamp_color("ui_section_level3_bg", "#F5F9FC")
-    _clamp_color("ui_section_level3_fg", "#22384A")
+    _clamp_color("ui_section_level2_bg", "#8BA293")
+    _clamp_color("ui_section_level2_fg", "#FFFFFF")
+    _clamp_color("ui_section_level3_bg", "#B8B17F")
+    _clamp_color("ui_section_level3_fg", "#FFFFFF")
     _clamp_color("ui_page_search_highlight_color", "#FF9900")
     _clamp_color("ui_status_bar_bg", "#FFFFFF")
     _clamp_color("ui_status_bar_fg", "#111111")
-    _clamp_int("ui_section_level2_font_px", 14, 10, 22)
-    _clamp_int("ui_section_level3_font_px", 13, 9, 20)
+    _clamp_int("ui_section_title_font_px", 13, 10, 22)
+    _clamp_int("ui_section_level2_font_px", 12, 10, 22)
+    _clamp_int("ui_section_level3_font_px", 11, 9, 20)
 
     try:
         cfg["import_measurement_transforms"] = str(cfg.get("import_measurement_transforms") or "").strip()

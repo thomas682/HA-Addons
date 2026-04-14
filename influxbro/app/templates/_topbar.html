@@ -7,12 +7,13 @@
       --ib-pagecard-live-h: 74px;
       --ib-section-title-bg: {{ (cfg.get('ui_section_title_bg') or 'transparent') if cfg else 'transparent' }};
       --ib-section-title-fg: {{ (cfg.get('ui_section_title_fg') or 'inherit') if cfg else 'inherit' }};
-      --ib-section-level2-bg: {{ (cfg.get('ui_section_level2_bg') or '#E7F0F5') if cfg else '#E7F0F5' }};
-      --ib-section-level2-fg: {{ (cfg.get('ui_section_level2_fg') or '#173042') if cfg else '#173042' }};
-      --ib-section-level2-font-px: {{ (cfg.get('ui_section_level2_font_px') or 14) | int }}px;
-      --ib-section-level3-bg: {{ (cfg.get('ui_section_level3_bg') or '#F5F9FC') if cfg else '#F5F9FC' }};
-      --ib-section-level3-fg: {{ (cfg.get('ui_section_level3_fg') or '#22384A') if cfg else '#22384A' }};
-      --ib-section-level3-font-px: {{ (cfg.get('ui_section_level3_font_px') or 13) | int }}px;
+      --ib-section-title-font-px: {{ (cfg.get('ui_section_title_font_px') or 13) | int }}px;
+      --ib-section-level2-bg: {{ (cfg.get('ui_section_level2_bg') or '#8BA293') if cfg else '#8BA293' }};
+      --ib-section-level2-fg: {{ (cfg.get('ui_section_level2_fg') or '#FFFFFF') if cfg else '#FFFFFF' }};
+      --ib-section-level2-font-px: {{ (cfg.get('ui_section_level2_font_px') or 12) | int }}px;
+      --ib-section-level3-bg: {{ (cfg.get('ui_section_level3_bg') or '#B8B17F') if cfg else '#B8B17F' }};
+      --ib-section-level3-fg: {{ (cfg.get('ui_section_level3_fg') or '#FFFFFF') if cfg else '#FFFFFF' }};
+      --ib-section-level3-font-px: {{ (cfg.get('ui_section_level3_font_px') or 11) | int }}px;
       --ib-statusbar-bg: {{ (cfg.get('ui_status_bar_bg') or '#FFFFFF') if cfg else '#FFFFFF' }};
       --ib-statusbar-fg: {{ (cfg.get('ui_status_bar_fg') or '#111111') if cfg else '#111111' }};
       --ib-bottombar-h: {{ (cfg.get('ui_status_bar_height_px') or 38) | int }}px;
@@ -304,6 +305,7 @@
       border-radius: 10px;
       background: var(--ib-section-title-bg);
       color: var(--ib-section-title-fg);
+      font-size: var(--ib-section-title-font-px);
     }
     main.content details > summary::-webkit-details-marker { display: none; }
     main.content details > summary::before {

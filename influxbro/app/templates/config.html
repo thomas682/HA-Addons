@@ -696,10 +696,16 @@
                 </div>
               </div>
               <div class="param_row">
+                <div class="param_label">Bereich-Titel (Details): Schriftgroesse (px)<span class="param_hint">Schriftgroesse der einklappbaren Bereichstitel (Details/Sektionen).</span></div>
+                <div class="param_control">
+                  <input id="ui_section_title_font_px" class="cfg_num_wide" type="number" min="10" max="22" data-ui="config_settings.input_ui_section_title_font_px" title="settings.ui_section_title_font_px" />
+                </div>
+              </div>
+              <div class="param_row">
                 <div class="param_label">Bereich-Titel Ebene 2: Hintergrund<span class="param_hint">Farbe fuer die zweite Section-Ebene der Einstellungen.</span></div>
                 <div class="param_control">
                   <div class="color_pick_row">
-                    <input id="ui_section_level2_bg_color" type="color" value="#E7F0F5" />
+                    <input id="ui_section_level2_bg_color" type="color" value="#8BA293" />
                     <input id="ui_section_level2_bg" placeholder="#RRGGBB" />
                   </div>
                 </div>
@@ -708,7 +714,7 @@
                 <div class="param_label">Bereich-Titel Ebene 2: Textfarbe</div>
                 <div class="param_control">
                   <div class="color_pick_row">
-                    <input id="ui_section_level2_fg_color" type="color" value="#173042" />
+                    <input id="ui_section_level2_fg_color" type="color" value="#FFFFFF" />
                     <input id="ui_section_level2_fg" placeholder="#RRGGBB" />
                   </div>
                 </div>
@@ -723,7 +729,7 @@
                 <div class="param_label">Bereich-Titel Ebene 3: Hintergrund<span class="param_hint">Farbe fuer die dritte Section-Ebene der Einstellungen.</span></div>
                 <div class="param_control">
                   <div class="color_pick_row">
-                    <input id="ui_section_level3_bg_color" type="color" value="#F5F9FC" />
+                    <input id="ui_section_level3_bg_color" type="color" value="#B8B17F" />
                     <input id="ui_section_level3_bg" placeholder="#RRGGBB" />
                   </div>
                 </div>
@@ -732,7 +738,7 @@
                 <div class="param_label">Bereich-Titel Ebene 3: Textfarbe</div>
                 <div class="param_control">
                   <div class="color_pick_row">
-                    <input id="ui_section_level3_fg_color" type="color" value="#22384A" />
+                    <input id="ui_section_level3_fg_color" type="color" value="#FFFFFF" />
                     <input id="ui_section_level3_fg" placeholder="#RRGGBB" />
                   </div>
                 </div>
@@ -1190,6 +1196,26 @@
     </div>
   </details>
 
+  <details class="card" open data-ui="config_settings.section_config_io" title="settings.section.config_io">
+    <summary><span class="ib_summary_row"><span>Default / Import / Export</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Default / Import / Export" data-info-body="Export/Import der Add-on Einstellungen als JSON-Datei.\n\nHinweise:\n- Export enthaelt alle gespeicherten Werte (inkl. Token).\n- Import prueft JSON-Struktur und uebernimmt nur bekannte Keys; Werte werden serverseitig validiert.\n- Default setzt alle Einstellungen auf die aktuellen Defaultwerte zurueck." >
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+    </button></span></summary>
+    <div class="card_body">
+      <div class="grid">
+        <div class="param_row param_full">
+          <div class="param_label">Einstellungen Datei</div>
+          <div class="param_control" style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button id="cfg_export" type="button" class="btn_sm" data-ui="config_settings.btn_export" title="settings.config.export" style="width:auto;">Export</button>
+            <button id="cfg_import" type="button" class="btn_sm" data-ui="config_settings.btn_import" title="settings.config.import" style="width:auto;">Import</button>
+            <input id="cfg_import_file" type="file" accept="application/json" style="display:none;" />
+            <button id="cfg_defaults" type="button" class="btn_sm" data-ui="config_settings.btn_defaults" title="settings.config.defaults" style="width:auto;">Default</button>
+          </div>
+        </div>
+        <div class="section_note"><span class="muted">Import uebernimmt Einstellungen sofort und speichert sie global (wie "Speichern").</span></div>
+      </div>
+    </div>
+  </details>
+
   <div class="save_card">
     <div class="grid">
       <div class="param_row param_full">
@@ -1247,6 +1273,7 @@ const ids = [
   "ui_font_size_px","ui_font_small_px","ui_pagecard_title_px","ui_page_search_highlight_color","ui_page_search_highlight_width_px","ui_page_search_highlight_duration_ms","ui_nav_helper_history_limit","ui_nav_helper_highlight_color","ui_nav_helper_highlight_duration_ms","ui_analysis_cache_hidden_color","ui_checkbox_scale",
   "outlier_gap_seconds_default",
   "ui_section_title_bg","ui_section_title_fg","ui_section_level2_bg","ui_section_level2_fg","ui_section_level2_font_px","ui_section_level3_bg","ui_section_level3_fg","ui_section_level3_font_px",
+  "ui_section_title_font_px",
   "ui_status_font_px","ui_status_bar_height_px","ui_status_bar_bg","ui_status_bar_fg",
   "ui_status_show_sysinfo",
   "ui_filter_label_width_px","ui_filter_control_width_px","ui_filter_search_width_px"
@@ -1280,6 +1307,12 @@ const $outliersColFilter = document.getElementById('outliers_colfilter');
 const $outliersAddRow = document.getElementById('outliers_add_row');
 const $outliersDeleteRow = document.getElementById('outliers_delete_row');
 let _OUTLIERS_SEL_IDX = -1;
+
+const $cfgExport = document.getElementById('cfg_export');
+const $cfgImport = document.getElementById('cfg_import');
+const $cfgImportFile = document.getElementById('cfg_import_file');
+const $cfgDefaults = document.getElementById('cfg_defaults');
+let CFG_DEFAULTS = null;
 
 // Section title color pickers (sync with text inputs; text inputs also allow words)
 const $sectionBgColor = document.getElementById('ui_section_title_bg_color');
@@ -1738,12 +1771,13 @@ function setForm(cfg){
   _setVal(el.ui_checkbox_scale, cfg.ui_checkbox_scale ?? 0.85);
   _setVal(el.ui_section_title_bg, cfg.ui_section_title_bg ?? '#3287A8');
   _setVal(el.ui_section_title_fg, cfg.ui_section_title_fg ?? '#FFFFFF');
-  _setVal(el.ui_section_level2_bg, cfg.ui_section_level2_bg ?? '#E7F0F5');
-  _setVal(el.ui_section_level2_fg, cfg.ui_section_level2_fg ?? '#173042');
-  _setVal(el.ui_section_level2_font_px, cfg.ui_section_level2_font_px ?? 14);
-  _setVal(el.ui_section_level3_bg, cfg.ui_section_level3_bg ?? '#F5F9FC');
-  _setVal(el.ui_section_level3_fg, cfg.ui_section_level3_fg ?? '#22384A');
-  _setVal(el.ui_section_level3_font_px, cfg.ui_section_level3_font_px ?? 13);
+  _setVal(el.ui_section_title_font_px, cfg.ui_section_title_font_px ?? 13);
+  _setVal(el.ui_section_level2_bg, cfg.ui_section_level2_bg ?? '#8BA293');
+  _setVal(el.ui_section_level2_fg, cfg.ui_section_level2_fg ?? '#FFFFFF');
+  _setVal(el.ui_section_level2_font_px, cfg.ui_section_level2_font_px ?? 12);
+  _setVal(el.ui_section_level3_bg, cfg.ui_section_level3_bg ?? '#B8B17F');
+  _setVal(el.ui_section_level3_fg, cfg.ui_section_level3_fg ?? '#FFFFFF');
+  _setVal(el.ui_section_level3_font_px, cfg.ui_section_level3_font_px ?? 11);
   _setVal(el.ui_status_bar_bg, cfg.ui_status_bar_bg ?? '#FFFFFF');
   _setVal(el.ui_status_bar_fg, cfg.ui_status_bar_fg ?? '#111111');
   _syncSectionColorPickersFromText();
@@ -1882,6 +1916,7 @@ function getForm(){
     ui_checkbox_scale: parseFloat(el.ui_checkbox_scale.value),
     ui_section_title_bg: String(el.ui_section_title_bg.value || '').trim(),
     ui_section_title_fg: String(el.ui_section_title_fg.value || '').trim(),
+    ui_section_title_font_px: parseInt(el.ui_section_title_font_px.value, 10),
     ui_section_level2_bg: String(el.ui_section_level2_bg.value || '').trim(),
     ui_section_level2_fg: String(el.ui_section_level2_fg.value || '').trim(),
     ui_section_level2_font_px: parseInt(el.ui_section_level2_font_px.value, 10),
@@ -1961,6 +1996,51 @@ function getForm(){
   };
 }
 
+function _fmtDefault(v){
+  if(v === null || v === undefined) return '';
+  if(typeof v === 'boolean') return v ? 'true' : 'false';
+  if(typeof v === 'number') return isFinite(v) ? String(v) : '';
+  return String(v);
+}
+
+function _installDefaultHints(defaults){
+  try{
+    if(!defaults) return;
+    ids.forEach(id => {
+      try{
+        if(!(id in defaults)) return;
+        const node = _getEl(id);
+        if(!node) return;
+        const row = node.closest ? node.closest('.param_row') : null;
+        if(!row) return;
+        const ctrl = row.querySelector('.param_control');
+        if(!ctrl) return;
+        if(ctrl.querySelector(':scope > .param_default')) return;
+        let dv = _fmtDefault(defaults[id]);
+        if(dv === '') dv = '(leer)';
+        const d = document.createElement('div');
+        d.className = 'param_default muted';
+        d.style.fontSize = '11px';
+        d.style.opacity = '0.85';
+        d.style.marginTop = '4px';
+        d.textContent = 'Default = ' + dv;
+        ctrl.appendChild(d);
+      }catch(e){}
+    });
+  }catch(e){}
+}
+
+async function ensureDefaultsLoaded(){
+  if(CFG_DEFAULTS) return CFG_DEFAULTS;
+  try{
+    const j = await api('./api/config_defaults');
+    CFG_DEFAULTS = (j && j.defaults) ? j.defaults : null;
+  }catch(e){
+    CFG_DEFAULTS = null;
+  }
+  return CFG_DEFAULTS;
+}
+
 async function load(){
   err(""); ok("");
   const j = await api("./api/config");
@@ -1970,6 +2050,11 @@ async function load(){
     reportConfigError('Settings setForm failed', { stage: 'setForm' }, e && e.stack ? e.stack : String(e || ''));
     throw e;
   }
+
+  try{
+    await ensureDefaultsLoaded();
+    _installDefaultHints(CFG_DEFAULTS);
+  }catch(e){}
 
   try{ applySelAutoUi(); }catch(e){}
   try{ await loadSelComputedWidth(); }catch(e){ reportConfigError('Settings loadSelComputedWidth failed', { stage: 'loadSelComputedWidth' }, e && e.stack ? e.stack : String(e || '')); }
@@ -2129,6 +2214,83 @@ async function testConn(){
     if($readYaml) $readYaml.addEventListener("click", ()=>loadYaml().catch(e=>err(String(e))));
     if($saveBtn) $saveBtn.addEventListener("click", ()=>save().catch(e=>err(String(e))));
     if($testBtn) $testBtn.addEventListener("click", ()=>testConn().catch(e=>err(String(e))));
+
+    if($cfgExport) $cfgExport.addEventListener('click', async ()=>{
+      try{
+        err(''); ok('');
+        const r = await fetch('./api/config_export');
+        if(!r.ok){
+          throw new Error('HTTP ' + r.status);
+        }
+        const blob = await r.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'influxbro_settings.json';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(()=>{ try{ URL.revokeObjectURL(url); }catch(e){} }, 2000);
+        ok('Export gestartet.');
+      }catch(e){
+        err(String(e && e.message ? e.message : e));
+      }
+    });
+
+    if($cfgImport) $cfgImport.addEventListener('click', ()=>{
+      try{ if($cfgImportFile) $cfgImportFile.click(); }catch(e){}
+    });
+
+    if($cfgImportFile) $cfgImportFile.addEventListener('change', async ()=>{
+      try{
+        err(''); ok('');
+        const f = ($cfgImportFile.files && $cfgImportFile.files.length) ? $cfgImportFile.files[0] : null;
+        if(!f) return;
+        const raw = await f.text();
+        const parsed = JSON.parse(String(raw || ''));
+        if(!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('Import-Datei ist kein JSON-Objekt.');
+        await api('./api/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(parsed)
+        });
+        try{ $cfgImportFile.value = ''; }catch(e){}
+        await load();
+        ok('Import erfolgreich.');
+      }catch(e){
+        try{ $cfgImportFile.value = ''; }catch(x){}
+        err(String(e && e.message ? e.message : e));
+      }
+    });
+
+    if($cfgDefaults) $cfgDefaults.addEventListener('click', async ()=>{
+      try{
+        err(''); ok('');
+        await ensureDefaultsLoaded();
+        if(!CFG_DEFAULTS) throw new Error('Defaultwerte konnten nicht geladen werden.');
+        ids.forEach(id => {
+          try{
+            if(!(id in CFG_DEFAULTS)) return;
+            const node = _getEl(id);
+            if(!node) return;
+            const v = CFG_DEFAULTS[id];
+            const type = String(node.type || '').toLowerCase();
+            if(type === 'checkbox') node.checked = !!v;
+            else node.value = String(v);
+          }catch(e){}
+        });
+        try{ _syncSectionColorPickersFromText(); }catch(e){}
+        try{ _syncStatusBarColorPickersFromText(); }catch(e){}
+        try{ _syncJobColorPickersFromText(); }catch(e){}
+        try{ _syncLogColorPickersFromText(); }catch(e){}
+        try{ applySelAutoUi(); }catch(e){}
+        await save();
+        await load();
+        ok('Defaultwerte uebernommen.');
+      }catch(e){
+        err(String(e && e.message ? e.message : e));
+      }
+    });
   }catch(e){
     reportConfigError('Settings action binding failed', { stage: 'action_bindings' }, e && e.stack ? e.stack : String(e || ''));
   }
@@ -2187,7 +2349,7 @@ try{
     const id = String(elm.id || '');
     if(!id) return;
     // skip non-setting/operational controls
-    if(['save','test','find_yaml','read_yaml','admin_token_test'].includes(id)) return;
+    if(['save','test','find_yaml','read_yaml','admin_token_test','cfg_import_file'].includes(id)) return;
     elm.addEventListener('change', ()=>{ scheduleAutoSave(); });
   });
 }catch(e){}

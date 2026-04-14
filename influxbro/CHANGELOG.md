@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.345
+
+### Enhancement
+
+- Default-UI in den Einstellungen: neue Standardfarben/Schriftgroessen fuer Bereich-Titel Ebene 2/3 sowie neue Schriftgroesse fuer Bereich-Titel (Details). Zusaetzlich gibt es einen Block `Default / Import / Export` fuer JSON-Export, JSON-Import (mit Strukturpruefung) und Reset auf Defaultwerte; unter jedem Eingabefeld wird der Default als `Default = ...` angezeigt. ([#282](https://github.com/thomas682/HA-Addons/issues/282))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`
+- Tests: `pytest tests/test_api_config_io.py -q`
+- Tested with Home Assistant Core: 2026.4.2
+
 ## 1.12.344
 
 ### Enhancement
