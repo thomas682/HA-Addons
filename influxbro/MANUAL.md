@@ -758,7 +758,7 @@ Neu:
 - Fuer aeltere Analyse-Cache-Dateien ohne nutzbare Checkpoints verwendet der Patchjob jetzt als Fallback einen kleinen Bereich um den geaenderten History-Zeitpunkt (standardmaessig wenige Minuten davor/danach), damit auch Legacy-Segmente haeufig lokal repariert werden koennen. Neue Segmente schreiben zusaetzlich sofort einen Start-Checkpoint ab Segmentbeginn.
 - Dirty-Patches nutzen jetzt nach Moeglichkeit echte Vor-/Nachbarpunkte aus InfluxDB, um den lokalen Rebuild-Bereich enger und fachlich sauberer zu bestimmen als mit einem reinen Zeitfenster.
 - `Jobs & Cache -> Analysecache` zeigt jetzt neben `dirty` auch `patch`/`failed`-Zaehler fuer Serien mit ausstehenden oder fehlgeschlagenen Analyse-Cache-Reparaturen sowie in der Segmentanzeige Details zu Patchmodus, Checkpoint und Kontextpunkten.
-- Ausreisser Tabelle: `_measurement` ist nicht editierbar; Zeilen werden automatisch aus bekannten Measurements vorbefuellt.
+- Ausreisser Tabelle: bestehende `_measurement` Zeilen sind nicht editierbar und werden automatisch aus bekannten Measurements vorbefuellt. Zusaetzlich gibt es `+ Zeile` / `- Zeile` (markierte Zeile), um eigene Regeln manuell zu pflegen.
 - Die Einstellungsseite ist jetzt in grobe Obergruppen gegliedert, u.a. `Oberflaeche`, `Anbindung`, `Dashboard`, `Statistik`, `Backup`, `Restore`, `Logs`, `Jobs & Cache`, `History`, `Diagnose` und `Einstellungen`. Bereiche ohne eigene Felder zeigen den Hinweis `Derzeit keine eigenen Einstellungen in diesem Bereich.`.
 
 Verbindung:
@@ -866,8 +866,10 @@ Hinweis Dashboard:
 
 Ausreisser:
 
- - Tabelle `_measurement / max_step`: Grenzen fuer Counter-Ausreisser (Spruenge) in der Fehler-/Filtertabelle.
- - Die Tabelle wird beim Laden mit allen bekannten `_measurement` Werten vorbefuellt; leere `max_step` Werte werden beim Speichern ignoriert.
+- Tabelle `_measurement / max_step`: Grenzen fuer Counter-Ausreisser (Spruenge) in der Fehler-/Filtertabelle.
+- Die Tabelle wird beim Laden mit allen bekannten `_measurement` Werten vorbefuellt; leere `max_step` Werte werden beim Speichern ignoriert.
+- `+ Zeile`: Fuegt eine neue manuelle Zeile hinzu (Eingabe `_measurement` und `max_step`).
+- `- Zeile`: Loescht die aktuell markierte Zeile (Zeilenmarkierung per Klick).
 
 ## Info / Changelog
 

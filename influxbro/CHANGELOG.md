@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.344
+
+### Enhancement
+
+- In den Einstellungen hat die Ausreisser-Tabelle jetzt `+ Zeile` und `- Zeile` Buttons: Zeilen werden per Klick markiert, und `- Zeile` ist nur bei markierter Zeile aktiv. Neue Zeilen erlauben die manuelle Eingabe von `_measurement` und `max_step`. ([#286](https://github.com/thomas682/HA-Addons/issues/286))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`
+- Tests: `pytest -k settings_outliers_table_has_add_delete_buttons_and_tooltips -q`
+- Tested with Home Assistant Core: 2026.4.2
+
 ## 1.12.343
 
 ### Enhancement

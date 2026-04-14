@@ -1147,6 +1147,8 @@
             <div class="table_wrap" data-ui="config_settings.panel_outliers_table_wrap" title="settings.outliers.table.wrap">
               <div class="table_head" data-ui="config_settings.panel_outliers_table_head" title="settings.outliers.table.head">
                 <div class="tbl_actions" data-ui="config_settings.panel_outliers_table_actions" title="settings.outliers.table.actions">
+                  <button id="outliers_add_row" type="button" data-ui="config_settings.btn_outliers_add_row" title="settings.outliers.add_row" aria-label="Zeile hinzufuegen" style="width:auto;">+ Zeile</button>
+                  <button id="outliers_delete_row" type="button" data-ui="config_settings.btn_outliers_delete_row" title="settings.outliers.delete_row" aria-label="Zeile loeschen" style="width:auto;" disabled>- Zeile</button>
                   <button id="outliers_autowidth" type="button" data-ui="config_settings.btn_outliers_autofit" title="settings.outliers.autofit" aria-label="Auto-Fit" style="width:auto;">
                     <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                       <path d="M5 5v14M19 5v14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -1167,7 +1169,7 @@
                   <label style="display:flex; align-items:center; gap: 6px; padding: 0 4px;"><input type="checkbox" id="outliers_wrap" data-ui="config_settings.chk_outliers_wrap" title="settings.outliers.wrap"/>Umbruch</label>
                   <label style="display:flex; align-items:center; gap: 6px; padding: 0 4px;"><input type="checkbox" id="outliers_colfilter" data-ui="config_settings.chk_outliers_colfilter" title="settings.outliers.colfilter"/>Spaltenfilter</label>
                 </div>
-                <div class="muted" data-ui="config_settings.panel_outliers_table_hint" title="settings.outliers.table.hint">_measurement ist nicht editierbar. Speichern uebernimmt die Tabelle in die Konfiguration. Wird fuer Counter-Ausreisser und dynamisches Graph-Sampling genutzt.</div>
+                <div class="muted" data-ui="config_settings.panel_outliers_table_hint" title="settings.outliers.table.hint">_measurement ist fuer bestehende Zeilen nicht editierbar. Neue Zeilen erlauben manuelle Eingabe. Speichern uebernimmt die Tabelle in die Konfiguration. Wird fuer Counter-Ausreisser und dynamisches Graph-Sampling genutzt.</div>
               </div>
 
               <div class="table_box" id="outliers_box" style="max-height: 45vh; overflow:auto; border: 1px solid #eee; border-radius: 12px; margin-top: 8px;">
@@ -1275,6 +1277,8 @@ const $outliersBox = document.getElementById('outliers_box');
 const $outliersWin = document.getElementById('outliers_windowwidth');
 const $outliersWrap = document.getElementById('outliers_wrap');
 const $outliersColFilter = document.getElementById('outliers_colfilter');
+const $outliersAddRow = document.getElementById('outliers_add_row');
+const $outliersDeleteRow = document.getElementById('outliers_delete_row');
 let _OUTLIERS_SEL_IDX = -1;
 
 // Section title color pickers (sync with text inputs; text inputs also allow words)
@@ -1495,6 +1499,7 @@ function _outliersClearSelection(){
     if(!$outliersTbl) return;
     $outliersTbl.querySelectorAll('tbody tr').forEach(tr => tr.classList.remove('selected'));
   }catch(e){}
+  try{ if($outliersDeleteRow) $outliersDeleteRow.disabled = true; }catch(e){}
 }
 
 function _outliersSelectRow(idx){
@@ -1507,6 +1512,7 @@ function _outliersSelectRow(idx){
       else tr.classList.remove('selected');
     });
   }catch(e){}
+  try{ if($outliersDeleteRow) $outliersDeleteRow.disabled = !(idx >= 0); }catch(e){}
 }
 
 function _renderOutliersTable(rows){
@@ -1517,7 +1523,7 @@ function _renderOutliersTable(rows){
     tb.innerHTML = '';
     (rows || []).forEach((r, idx) => {
       const tr = document.createElement('tr');
-      tr.addEventListener('click', ()=>_outliersSelectRow(idx));
+      tr.onclick = ()=>_outliersSelectRow(idx);
 
       const tdM = document.createElement('td');
       tdM.textContent = String(r && r.m ? r.m : '');
@@ -1529,7 +1535,7 @@ function _renderOutliersTable(rows){
       iV.step = 'any';
       iV.value = (r && r.v !== null && r.v !== undefined) ? String(r.v) : '';
       iV.placeholder = 'z.B. 30';
-      iV.addEventListener('click', (ev)=>{ try{ ev.stopPropagation(); }catch(e){}; _outliersSelectRow(idx); });
+      iV.onclick = (ev)=>{ try{ ev.stopPropagation(); }catch(e){}; _outliersSelectRow(idx); };
       tdV.appendChild(iV);
 
       tr.appendChild(tdM);
@@ -1538,6 +1544,60 @@ function _renderOutliersTable(rows){
     });
     _outliersClearSelection();
     // table helpers are initialized after shared helpers are loaded
+  }catch(e){}
+}
+
+function _outliersAddRow(){
+  try{
+    if(!$outliersTbl) return;
+    const tb = $outliersTbl.querySelector('tbody');
+    if(!tb) return;
+    const tr = document.createElement('tr');
+    const idx = tb.children.length;
+    tr.onclick = ()=>_outliersSelectRow(idx);
+
+    const tdM = document.createElement('td');
+    const iM = document.createElement('input');
+    iM.type = 'text';
+    iM.placeholder = 'measurement';
+    iM.onclick = (ev)=>{ try{ ev.stopPropagation(); }catch(e){}; _outliersSelectRow(idx); };
+    tdM.appendChild(iM);
+    tdM.className = 'mono';
+
+    const tdV = document.createElement('td');
+    const iV = document.createElement('input');
+    iV.type = 'number';
+    iV.step = 'any';
+    iV.placeholder = 'z.B. 30';
+    iV.onclick = (ev)=>{ try{ ev.stopPropagation(); }catch(e){}; _outliersSelectRow(idx); };
+    tdV.appendChild(iV);
+
+    tr.appendChild(tdM);
+    tr.appendChild(tdV);
+    tb.appendChild(tr);
+    _outliersSelectRow(idx);
+    try{ iV.focus(); }catch(e){}
+  }catch(e){}
+}
+
+function _outliersDeleteSelectedRow(){
+  try{
+    if(!$outliersTbl) return;
+    const tb = $outliersTbl.querySelector('tbody');
+    if(!tb) return;
+    if(!(_OUTLIERS_SEL_IDX >= 0)) return;
+    const trs = Array.from(tb.querySelectorAll('tr'));
+    if(_OUTLIERS_SEL_IDX >= trs.length) return;
+    tb.removeChild(trs[_OUTLIERS_SEL_IDX]);
+    const remaining = Array.from(tb.querySelectorAll('tr'));
+    remaining.forEach((tr, i)=>{
+      tr.onclick = ()=>_outliersSelectRow(i);
+      const inputs = Array.from(tr.querySelectorAll('input'));
+      inputs.forEach(input => {
+        input.onclick = (ev)=>{ try{ ev.stopPropagation(); }catch(e){}; _outliersSelectRow(i); };
+      });
+    });
+    _outliersClearSelection();
   }catch(e){}
 }
 
@@ -1550,7 +1610,8 @@ function _readOutliersTable(){
       try{
         const tds = Array.from(tr.querySelectorAll('td'));
         if(tds.length < 2) return;
-        const m = _norm(tds[0].textContent || '');
+        const mInput = tds[0].querySelector('input');
+        const m = _norm(mInput ? mInput.value : (tds[0].textContent || ''));
         if(!m) return;
         const v = parseFloat(String(tds[1].querySelector('input') ? tds[1].querySelector('input').value : ''));
         if(!isFinite(v)) return;
@@ -2112,6 +2173,14 @@ try{
   });
 }catch(e){}
 
+try{
+  if($outliersAddRow) $outliersAddRow.addEventListener('click', ()=>{ try{ _outliersAddRow(); }catch(e){} });
+}catch(e){}
+
+try{
+  if($outliersDeleteRow) $outliersDeleteRow.addEventListener('click', ()=>{ try{ _outliersDeleteSelectedRow(); }catch(e){} });
+}catch(e){}
+
 // Auto-save settings on change for all inputs/selects (except explicit action buttons)
 try{
   document.querySelectorAll('main.content input, main.content select').forEach(elm => {
@@ -2385,6 +2454,8 @@ try{
         'max_step': 'Maximaler Sprung fuer Counter-Ausreisser (Zahlenwert).',
       },
       actions: [
+        'Neue Zeile: fuegt eine manuell editierbare _measurement Zeile hinzu.',
+        'Zeile loeschen: entfernt die aktuell markierte Tabellenzeile.',
         'Auto-Fit / Fensterbreite: passt Spaltenbreiten an.',
         'Umbruch/Spaltenfilter: Darstellung und Filterzeile toggeln.',
         'Speichern (unten): uebernimmt die Tabelle in die Add-on Konfiguration.',

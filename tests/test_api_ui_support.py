@@ -723,6 +723,16 @@ def test_non_dashboard_pages_use_structured_data_ui_samples():
     assert 'data-ui="nav_main.btn_ui_picker"' in topbar
 
 
+def test_settings_outliers_table_has_add_delete_buttons_and_tooltips():
+    config = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "config.html").read_text()
+    tooltips = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
+    assert 'id="outliers_add_row"' in config
+    assert 'id="outliers_delete_row"' in config
+    assert 'settings.outliers.add_row' in tooltips
+    assert 'settings.outliers.delete_row' in tooltips
+    assert 'settings.outliers.windowfit' in tooltips
+
+
 def test_stats_page_clears_expired_last_job_ids_before_cache_fallback():
     stats = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "stats.html").read_text()
     assert 'function clearLastJobIds()' in stats
