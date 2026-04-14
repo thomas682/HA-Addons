@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.12.338
+
+### Bug Fix
+
+- Die Dashboard-Ausreißertabelle bleibt jetzt innerhalb von `raw_outlier_table_wrap`, statt horizontal ueber den Elterncontainer hinauszulaufen. Gleichzeitig wurde die doppelt registrierte Hoehen-Resize-Logik bereinigt, sodass der Griff `dashboard_outliers.tbl_resize` wieder sauber nach oben und unten arbeitet. ([#274](https://github.com/thomas682/HA-Addons/issues/274))
+- Der alte Bereich mit `Markieren` / `Suche beenden` / Typbutton wurde im Dashboard-Ausreißerblock entfernt. Stattdessen kann die Spalte `Ausreißer` jetzt direkt ueber die Tabellen-Filterzeile gefiltert werden, inklusive Vorschlagsliste vorhandener Werte und freiem Texteingabefilter. ([#274](https://github.com/thomas682/HA-Addons/issues/274))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`
+- Tests: `pytest tests/test_api_ui_support.py -q -k "raw_outlier_table_uses_template_structure_and_helpers or dashboard_outlier_section_is_separate_and_above_raw_section or outlier_table_header_is_explicitly_sticky_and_search_bar_tracks_outlier_section or outlier_table_uses_column_filter_suggestions_and_context_rows_save_immediately"`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.337
 
 ### Enhancement

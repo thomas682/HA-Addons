@@ -183,6 +183,10 @@
     #raw_outlier_tbl tr.raw_match td {
       box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ib-page-search-hl-color, #FF9900) 60%, transparent);
     }
+    #raw_outlier_table_wrap { min-width:0; overflow:hidden; }
+    #raw_outlier_overview_box { min-width:0; max-width:100%; overflow:hidden; }
+    #raw_outlier_overview.table_box { width:100%; max-width:100%; overflow:auto; }
+    #raw_outlier_tbl { width:max-content; min-width:100%; max-width:100%; table-layout:auto; }
     #raw_tbl tr.raw_hl td { background: rgba(255, 153, 0, 0.18); }
     #raw_tbl tr.raw_outlier td { background: rgba(220, 38, 38, 0.12); }
     #raw_tbl tr.raw_src td { background: rgba(16, 185, 129, 0.16); }
@@ -476,45 +480,10 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
       <summary><span class="ib_summary_row"><span>Ausreißer</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Ausreißer" data-info-body="Ausreißer ist ein eigener Dashboard-Bereich fuer Suche, Navigation und Tabelle der aktuell gefundenen Raw-Ausreißer.\n\nEnthaelt:\n- Suchlauf fuer die ausgewaehlte Serie\n- Navigation zum aeltesten/neuesten Treffer\n- Typauswahl und Parameter\n- Ausreißer-Tabelle mit Tabellenfunktionen\n\nNutzen:\n- gefundene Treffer getrennt von den Raw-Daten betrachten\n- Treffer filtern, pruefen und gezielt in die Raw-Tabelle uebernehmen" ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
       <div class="table_wrap" id="raw_outlier_table_wrap" style="margin-top:10px;">
       <div class="table_title">Ausreißer</div>
-      <div id="raw_search_bar" style="display:none; border:1px solid #eee; border-radius:12px; padding:10px 12px; margin-bottom:10px; background:#fafafa;">
+      <div id="raw_search_bar" style="display:block; border:1px solid #eee; border-radius:12px; padding:10px 12px; margin-bottom:10px; background:#fafafa;">
         <div id="raw_outlier_limit_hint" style="display:none; font-size:12px; color:#b07000; margin-bottom:8px; padding:6px 8px; background:#fff8e1; border-radius:6px; border:1px solid #ffe082;"></div>
-        <div style="display:flex; align-items:flex-start; gap:10px; flex-wrap:wrap;">
-          <div style="display:flex; flex-direction:column; gap:4px;">
-            <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:flex-start;">
-              <button class="btn_sm" id="raw_search_run" data-ui="dashboard_outliers.btn_ausreisser_suche">Markieren</button>
-              <button class="btn_sm" id="raw_jump_oldest" disabled data-ui="dashboard_outliers.btn_jump_oldest" title="ältester Ausreisser">
-                <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                  <path d="M7 7v10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                  <path d="M17 17l-5-5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-              </button>
-              <button class="btn_sm" id="raw_jump_newest" disabled data-ui="dashboard_outliers.btn_jump_newest" title="neuster Ausreisser">
-                <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                  <path d="M17 7v10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                  <path d="M7 7l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-              </button>
-              <button class="btn_sm" id="raw_search_clear" style="display:none;" data-ui="dashboard_outliers.btn_suche_beenden">Suche beenden</button>
-            </div>
-          </div>
-          <div style="display:flex; flex-direction:column; gap:4px;">
-            <div style="display:flex; gap:6px; align-items:flex-start;">
-              <div id="raw_outlier_type_dropdown" style="position:relative;">
-                <button class="btn_sm" id="raw_outlier_type_toggle" type="button" style="min-width:200px; text-align:left; justify-content:space-between;" data-ui="dashboard_outliers.btn_typ_auswahl">6 Typen ausgewählt</button>
-                <div id="raw_outlier_type_menu" style="display:none; position:absolute; top:100%; left:0; z-index:100; background:#fff; border:1px solid #ddd; border-radius:8px; padding:6px 8px; min-width:220px; box-shadow:0 4px 16px rgba(0,0,0,0.12);">
-                  <label style="display:flex; align-items:center; gap:6px; padding:3px 0; font-size:13px; cursor:pointer;"><input type="checkbox" class="raw_outlier_type_cb" value="counter" checked/> Counter Ausreisser</label>
-                  <label style="display:flex; align-items:center; gap:6px; padding:3px 0; font-size:13px; cursor:pointer;"><input type="checkbox" class="raw_outlier_type_cb" value="decrease"/> Counter Abfall</label>
-                  <label style="display:flex; align-items:center; gap:6px; padding:3px 0; font-size:13px; cursor:pointer;"><input type="checkbox" class="raw_outlier_type_cb" value="bounds"/> Grenzen</label>
-                  <label style="display:flex; align-items:center; gap:6px; padding:3px 0; font-size:13px; cursor:pointer;"><input type="checkbox" class="raw_outlier_type_cb" value="gap"/> Messwertlücke</label>
-                  <label style="display:flex; align-items:center; gap:6px; padding:3px 0; font-size:13px; cursor:pointer;"><input type="checkbox" class="raw_outlier_type_cb" value="fault_phase"/> Stoerphasensuche</label>
-                  <label style="display:flex; align-items:center; gap:6px; padding:3px 0; font-size:13px; cursor:pointer;"><input type="checkbox" class="raw_outlier_type_cb" value="null"/> NULL Werte</label>
-                  <label style="display:flex; align-items:center; gap:6px; padding:3px 0; font-size:13px; cursor:pointer;"><input type="checkbox" class="raw_outlier_type_cb" value="zero"/> 0-Werte</label>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div id="raw_outlier_status" style="display:none; margin-top:8px; font-size:12px; opacity:0.85; align-items:center; gap:8px; flex-wrap:wrap;">
+        <div class="muted">Filtere die Spalte <code>Ausreißer</code> direkt in der Tabellen-Filterzeile. Dort kannst du vorhandene Werte aus der Liste auswaehlen oder freien Text eingeben.</div>
+          <div id="raw_outlier_status" style="display:none; margin-top:8px; font-size:12px; opacity:0.85; align-items:center; gap:8px; flex-wrap:wrap;">
           <span id="raw_outlier_spinner" aria-hidden="true" style="width:14px; height:14px; border-radius:50%; border:2px solid rgba(0,0,0,0.18); border-top-color:rgba(0,0,0,0.75); animation:spin 0.9s linear infinite;"></span>
           <span id="raw_outlier_status_txt">Suche laeuft...</span>
           <span id="raw_outlier_status_meta"></span>
@@ -550,6 +519,7 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
         <div id="raw_outlier_row_count" style="font-size:12px; opacity:0.7; margin-top:8px;"></div>
         <div id="raw_outlier_overview_box" style="margin-top:10px;">
           <div class="table_box" id="raw_outlier_overview" style="--max-rows: 5; min-width:0; width:100%; box-sizing:border-box;">
+            <datalist id="raw_outlier_reason_options"></datalist>
             <table id="raw_outlier_tbl" class="list_tbl ib_tbl" data-ui="dashboard_outliers.tbl_ausreisser" title="dashboard_outliers.tbl_ausreisser">
               <thead><tr><th style="min-width: 170px;">Zeit</th><th>Wert</th><th style="min-width: 220px;">Änderung</th><th style="min-width: 140px;">Ausreisser</th><th style="min-width: 280px;">Raw-Kontext</th></tr></thead>
               <tbody id="raw_outlier_body"></tbody>
@@ -7855,6 +7825,7 @@ function renderOutlierOverviewTable(){
   $rawOutlierBody.innerHTML = '';
   const filtered = getDisplayedOutliers();
   if($rawOutlierOverviewBox) $rawOutlierOverviewBox.style.display = 'block';
+  try{ _updateRawOutlierReasonFilterOptions(filtered); }catch(e){}
 
   // Show row count and type breakdown
   const $rowCount = document.getElementById('raw_outlier_row_count');
@@ -7945,6 +7916,22 @@ function renderOutlierOverviewTable(){
     tr.innerHTML = '<td></td><td></td><td></td><td></td><td></td>';
     $rawOutlierBody.appendChild(tr);
   }
+}
+
+function _updateRawOutlierReasonFilterOptions(rows){
+  try{
+    const list = document.getElementById('raw_outlier_reason_options');
+    const tbl = document.getElementById('raw_outlier_tbl');
+    if(!list || !tbl) return;
+    const inp = tbl.querySelector('thead tr.ib_filter_row input[data-col-idx="3"]');
+    if(inp){
+      inp.setAttribute('list', 'raw_outlier_reason_options');
+      inp.setAttribute('placeholder', 'Auswahl/Freitext');
+      inp.setAttribute('title', 'Vorhandene Werte auswaehlen oder freien Text filtern');
+    }
+    const values = Array.from(new Set((Array.isArray(rows) ? rows : []).map((row)=> String(isIgnoredOutlier(row) ? 'ignoriert' : (row && row.reason ? row.reason : '')).trim()).filter(Boolean))).sort((a,b)=> a.localeCompare(b, 'de', {sensitivity:'base'}));
+    list.innerHTML = values.map((value)=> '<option value="' + _escAttr(value) + '"></option>').join('');
+  }catch(e){}
 }
 
 function highlightOutlierRow(ms){
@@ -11039,30 +11026,6 @@ if($rawOutlierCopy) $rawOutlierCopy.addEventListener("click", async (ev)=>{
   }
 });
 
-if($rawOutlierCopy) $rawOutlierCopy.addEventListener("click", async (ev)=>{
-  _stop(ev);
-  try{
-    const $tbl = document.getElementById('raw_outlier_tbl');
-    const lines = [];
-    if($tbl){
-      const headers = Array.from($tbl.querySelectorAll('thead th')).map(th => String((th.textContent || '').replace(/\s+/g,' ').trim() || ''));
-      if(headers.length) lines.push(headers.join('\t'));
-      Array.from($tbl.querySelectorAll('tbody tr')).forEach(tr => {
-        const cells = Array.from(tr.querySelectorAll('td')).map(td => String((td.textContent || '').replace(/\s+/g,' ').trim() || ''));
-        lines.push(cells.join('\t'));
-      });
-    }
-    const okCopy = await copyTextToClipboard(lines.join("\n"));
-    if(okCopy){
-      const rowCount = Math.max(0, lines.length - 1);
-      ok(`Ausreisser kopiert: ${rowCount} Zeilen.`);
-    }
-    else err("Copy failed (Clipboard blockiert). Bitte im Browser Clipboard erlauben.");
-  }catch(e){
-    err("Copy failed: " + String(e && e.message ? e.message : e));
-  }
-});
-
 // Table time from graph
 if($tblTimeFromGraph) $tblTimeFromGraph.addEventListener("change", ()=>{
   TABLE_TIME.from_graph = !!$tblTimeFromGraph.checked;
@@ -11699,6 +11662,7 @@ try{
   try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.init('#tbl', {startHidden: true}); }catch(e){}
   try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.init('#raw_tbl', {startHidden: true}); }catch(e){}
   try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.init('#raw_outlier_tbl', {startHidden: true}); }catch(e){}
+  try{ _updateRawOutlierReasonFilterOptions(getDisplayedOutliers()); }catch(e){}
 
   if($tblWrap){
     try{ $tblWrap.checked = (localStorage.getItem(kWrapTbl) || '') === '1'; }catch(e){}
@@ -11753,48 +11717,6 @@ try{
   try{ if(window.InfluxBroTableHeight && $tableBox) window.InfluxBroTableHeight.attach($tableBox, 'tbl', {minPx: 180}); }catch(e){}
   try{ if(window.InfluxBroTableHeight && $detailsBox) window.InfluxBroTableHeight.attach($detailsBox, 'details_box', {minPx: 180}); }catch(e){}
   try{ if(window.InfluxBroTableHeight && $rawOutlierBox) window.InfluxBroTableHeight.attach($rawOutlierBox, 'raw_outlier_tbl', {minPx: 120}); }catch(e){}
-  // Explicit resize handle for outlier table
-  try{
-    const $olResize = document.getElementById('raw_outlier_tbl_resize');
-    if($olResize && $rawOutlierBox){
-      const olResizeKey = 'influxbro.table_height.raw_outlier_tbl';
-      const olMinPx = 120;
-      const olMaxPx = Math.round(window.innerHeight * 0.85);
-      try{
-        const saved = Number(localStorage.getItem(olResizeKey) || 0);
-        if(isFinite(saved) && saved >= olMinPx) $rawOutlierBox.style.height = Math.round(saved) + 'px';
-      }catch(e){}
-      let olStartY = 0, olStartH = 0, olDragging = false;
-      $olResize.addEventListener('mousedown', (e)=>{
-        olStartY = e.clientY;
-        olStartH = $rawOutlierBox.getBoundingClientRect().height || olMinPx;
-        olDragging = true;
-        document.body.style.userSelect = 'none';
-        window.addEventListener('mousemove', olOnMove);
-        window.addEventListener('mouseup', olOnUp);
-      });
-      function olOnMove(e){
-        if(!olDragging) return;
-        const dy = e.clientY - olStartY;
-        let h = olStartH + dy;
-        if(h < olMinPx) h = olMinPx;
-        if(h > olMaxPx) h = olMaxPx;
-        $rawOutlierBox.style.height = Math.round(h) + 'px';
-        e.preventDefault();
-      }
-      function olOnUp(){
-        if(!olDragging) return;
-        olDragging = false;
-        document.body.style.userSelect = '';
-        window.removeEventListener('mousemove', olOnMove);
-        window.removeEventListener('mouseup', olOnUp);
-        try{
-          const h = Math.round($rawOutlierBox.getBoundingClientRect().height || 0);
-          if(h >= olMinPx) localStorage.setItem(olResizeKey, String(h));
-        }catch(e){}
-      }
-    }
-  }catch(e){}
   // Explicit resize handle for outlier table
   try{
     const $olResize = document.getElementById('raw_outlier_tbl_resize');

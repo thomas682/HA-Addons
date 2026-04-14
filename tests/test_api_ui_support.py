@@ -294,11 +294,12 @@ def test_outlier_table_header_is_explicitly_sticky_and_search_bar_tracks_outlier
     assert "$outlierSection.addEventListener('toggle', ()=>{" in body
 
 
-def test_outlier_search_button_marks_existing_table_and_context_rows_save_immediately():
+def test_outlier_table_uses_column_filter_suggestions_and_context_rows_save_immediately():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
-    assert '>Markieren<' in body
-    assert "RAW_OUTLIER_MARKED_TYPE = getRawOutlierFilterTypes().join('|');" in body
-    assert "kind: 'outlier_table', step: 'mark_selected_types'" in body
+    assert '>Markieren<' not in body
+    assert 'id="raw_outlier_reason_options"' in body
+    assert "_updateRawOutlierReasonFilterOptions(filtered);" in body
+    assert "inp.setAttribute('list', 'raw_outlier_reason_options');" in body
     assert "$rawOutlierContextRows.addEventListener('input', saveRowsNow);" in body
     assert "$rawOutlierParamsAction" in body
 

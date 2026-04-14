@@ -622,7 +622,7 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Zeitstempel in der Ausreißer-Tabelle zeigen jetzt wieder echte Millisekunden, wenn die Datenquelle diese liefert.
 - Der Tabellenkopf der Ausreißer-Tabelle bleibt jetzt beim vertikalen Scrollen fix sichtbar, analog zur Raw-Tabelle.
 - Der Button fuer `Ausreißer-Parameter` sitzt jetzt im Dashboard-Aktionsblock neben `Analyse` statt innerhalb des Ausreißer-Tabellenblocks.
-- `Markieren` im Ausreißer-Bereich arbeitet jetzt auf der bereits vorhandenen Ausreißer-Tabelle: der aktuell gewaehlte Typ-Filter wird in der Tabelle markiert, statt eine neue Server-Suche zu starten.
+- Der fruehere Zusatzbereich mit `Markieren`, `Suche beenden` und separatem Typ-Button im Ausreißer-Block entfaellt. Fuer die gezielte Suche innerhalb der vorhandenen Treffer wird jetzt direkt die Tabellen-Filterzeile verwendet.
 - Geklickte Zeilen in der Ausreißer-Tabelle werden mit der bestehenden Highlight-Farbe aus den UI-Einstellungen hervorgehoben.
 - Der Verlauf `Analyse` zeigt jetzt nicht nur Zusammenfassungen, sondern auch die tatsaechlichen Durchfuehrungsprotokolle mit Zeitstempeln.
 - Wenn fuer `Analyse` kein `Cache verwenden`-Dialog erscheint, wird der Grund jetzt im Dashboard sichtbarer protokolliert.
@@ -638,8 +638,10 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Die Ausreißer-Tabelle im Raw-Bereich ist jetzt wie die anderen Listen als eigener Tabellenblock aufgebaut: mit Titel, Tabelleninfo und Standardfunktionen fuer Spaltenbreite, Umbruch, Spaltenfilter und Hoehenanpassung.
 - Die Ausreißer-Tabelle zeigt den Zaehler oberhalb der Liste jetzt als `gefiltert / gesamt` an.
 - Die Ausreißer-Tabelle besitzt jetzt zusaetzlich die Spalte `Raw-Kontext`. Pro Treffer zeigt sie die tatsaechlich verfuegbaren Raw-Punkte `davor / danach` und darunter die exakten Zeiten `Start -> Ausreißer -> Ende` des vorberechneten Kontextfensters. Falls fuer einen Treffer noch kein Kontextfenster vorliegt, erscheint `kein Raw-Fenster`.
+- Die Spalte `Ausreißer` in der Tabellen-Filterzeile bietet jetzt Vorschlaege aus den aktuell vorhandenen Spaltenwerten an und akzeptiert zusaetzlich freien Text. Das ist als leichter Excel-aehnlicher Filter fuer vorhandene Treffer gedacht.
 - Die Raw-Fenster werden im aktiven Analysepfad fuer `Analyse mit Cache` und `Analyse ohne Cache` jetzt immer nachgezogen und als Diagnose im Analyse-Log mitgezaehlt (`vorhanden`, `fehlend`, Beispiel-Zeitstempel fehlender Fenster). Das hilft beim Debugging von `missing_window`-Faellen direkt aus dem Dashboard.
 - Der Zaehler `raw_outlier_row_count` steht jetzt direkt ueber der Ausreißer-Tabelle; die fruehere rechte Nebenspalte wurde entfernt, damit die Tabelle nicht mehr breiter als ihr Elterncontainer wird.
+- Die Ausreißer-Tabelle bleibt jetzt auch bei breiteren Inhalten innerhalb ihres Wrappers und ihr Hoehengriff arbeitet wieder konsistent mit nur einer aktiven Resize-Logik.
 - Der Dialog `Ausreißer-Parameter` erklaert jetzt jeden Parameter direkt unter dem Eingabefeld. Leere Felder nutzen wieder den jeweiligen Standard (`Counter: automatisch aus Measurement/Einheit`, `Grenzen: keine Min/Max-Grenze`, `Messwertlücke: Standard aus Einstellungen`, `Recovery-Streak: Standard 2`).
 - `Recovery-Streak` wirkt jetzt auch wirklich auf die Dashboard-Ausreißeranalyse: Erst nach der eingestellten Anzahl gueltiger Werte in Folge gilt eine Stoerphase wieder als beendet.
 - Ueber der Raw-Tabelle gibt es zusaetzlich `Löschen`, `Undo` und `Info`. `Löschen` loescht den selektierten DB-Wert nach Rueckfrage. `Undo` macht genau die letzte direkte Button-Aenderung (`Einfügen` oder `Löschen`) fuer den selektierten Raw-Wert rueckgaengig. `Info` zeigt die komplette Aenderungshistorie des selektierten Raw-Werts im Popup.
