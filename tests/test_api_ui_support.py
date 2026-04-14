@@ -319,6 +319,15 @@ def test_analysis_history_uses_event_log_and_dashboard_actions_params_button():
     assert "if(htmlMode) pre.innerHTML = normalizedMsg;" in tooltips
 
 
+def test_analysis_cache_hit_summary_replaces_interval_hint_line():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    tooltips = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
+    assert 'id="analysis_interval_info"' not in body
+    assert 'dashboard_analysis.txt_interval_info' not in tooltips
+    assert 'function _analysisCacheReasonSummary(plan){' in body
+    assert "dirty Segment(e) lokal bereinigt" in body
+
+
 def test_summary_actions_are_inline_in_topbar_and_back_icon_uses_return_svg():
     topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
     config = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "config.html").read_text()

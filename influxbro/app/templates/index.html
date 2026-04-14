@@ -455,8 +455,7 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
          <div id="analysis_progress_text" class="muted" style="font-size:11px;margin-bottom:8px;">0%</div>
          <div id="analysis_chunk_timeline" style="display:none; margin-bottom:10px;"></div>
           <div id="analysis_checklist" data-ui="dashboard_analysis.panel_checklist" style="font-size:12px;margin-bottom:8px;"></div>
-          <div id="analysis_interval_info" class="muted" data-ui="dashboard_analysis.txt_interval_info" style="font-size:11px;margin-bottom:8px;"></div>
-         <div id="analysis_found_info" data-ui="dashboard_analysis.txt_found_info" style="font-size:12px;margin-bottom:12px;"></div>
+          <div id="analysis_found_info" data-ui="dashboard_analysis.txt_found_info" style="font-size:12px;margin-bottom:12px;"></div>
 
         <div style="font-size:13px;font-weight:600;margin-bottom:8px;">Ausreisser-Typen auswaehlen</div>
         <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
@@ -5859,21 +5858,7 @@ function updateAnalysisUI(){
       _renderAnalysisChecklist(items, ANALYSIS_CHUNK_LOG);
     }
 
-    // 4. Intervall-Info
-    const $interval = document.getElementById('analysis_interval_info');
-    if($interval){
-      let hint = 'Intervall: ' + (s.chunkInterval || '-');
-      if(s.chunkDuration > 50000){
-        hint += ' | ⚠ Nahe Timeout - Intervall reduzieren';
-      }else if(s.chunkDuration < 5000 && s.chunkDuration > 0){
-        hint += ' | ✓ Schnell - Intervall koennte erhoht werden';
-      }else if(s.chunkDuration > 0){
-        hint += ' | ✓ Optimal';
-      }
-      $interval.textContent = hint;
-    }
-
-    // 5. Gefundene nach Typ - ALLE Typen anzeigen (auch 0)
+    // 4. Gefundene nach Typ - ALLE Typen anzeigen (auch 0)
     const $found = document.getElementById('analysis_found_info');
     if($found){
       const filterParts = ALL_OUTLIER_TYPES.map(t => {
@@ -5887,7 +5872,7 @@ function updateAnalysisUI(){
       $found.innerHTML = '<div>Suchfilter: ' + filterParts.join(' | ') + '</div><div style="margin-top:4px;">Gefunden: ' + parts.join(' | ') + '</div>';
     }
 
-    // 6. Render type selection lists
+    // 5. Render type selection lists
     renderAnalysisTypeLists();
   }catch(e){}
 }
@@ -6052,6 +6037,32 @@ function _analysisStepInfoText(item){
     return parts.join('\n');
   }catch(e){
     return 'Zu diesem Analyseschritt ist noch keine Detailbeschreibung hinterlegt.';
+  }
+}
+
+function _analysisCacheReasonSummary(plan){
+  try{
+    const segCount = Array.isArray(plan && plan.segments) ? plan.segments.length : 0;
+    const gapCount = Array.isArray(plan && plan.gaps) ? plan.gaps.length : 0;
+    const dirtyCount = Array.isArray(plan && plan.dirty_ranges) ? plan.dirty_ranges.length : 0;
+    const repaired = Array.isArray(plan && plan.repaired_segments) ? plan.repaired_segments.length : 0;
+    const blocked = Array.isArray(plan && plan.blocked_segments) ? plan.blocked_segments : [];
+    const parts = [];
+    if(segCount > 0) parts.push(segCount + ' Segment(e) wiederverwendbar');
+    if(repaired > 0) parts.push(repaired + ' dirty Segment(e) lokal bereinigt');
+    if(gapCount > 0) parts.push(gapCount + ' Luecke(n) neu lesen');
+    if(dirtyCount > 0) parts.push(dirtyCount + ' dirty Bereich(e) bleiben offen');
+    if(blocked.length){
+      const reasons = Array.from(new Set(blocked.map((row)=> {
+        const patch = String(row && row.patch_status || 'ok');
+        const dirty = String(row && row.dirty_reason || 'history_change');
+        return patch !== 'ok' ? (patch + ' / ' + dirty) : dirty;
+      }).filter(Boolean)));
+      if(reasons.length) parts.push('Gruende: ' + reasons.join(', '));
+    }
+    return parts.join(' | ');
+  }catch(e){
+    return '';
   }
 }
 
@@ -10608,9 +10619,11 @@ async function startDashboardAnalysis(cacheStrategy){
       const dirtyCount = Array.isArray(freshPlan && freshPlan.dirty_ranges) ? freshPlan.dirty_ranges.length : 0;
       _analysisChecklistSet('cache_plan', {status: 'ok', sub: 'Plan geladen: ' + segCount + ' Segment(e), ' + (gapCount + dirtyCount) + ' offener Bereich(e).'});
       if(segCount > 0){
-        _analysisChecklistSet('cache_hit', {status: 'ok', sub: gapCount || dirtyCount ? ('Teilweise Abdeckung: ' + segCount + ' Segment(e) vorhanden.') : ('Vollstaendiger Cache-Hit mit ' + segCount + ' Segment(en).')});
+        const reasonSummary = _analysisCacheReasonSummary(freshPlan);
+        _analysisChecklistSet('cache_hit', {status: 'ok', sub: gapCount || dirtyCount ? ('Teilweise Abdeckung: ' + reasonSummary) : ('Vollstaendiger Cache-Hit: ' + reasonSummary)});
       }else if(physical && Number(physical.segment_count || 0) > 0){
-        _analysisChecklistSet('cache_hit', {status: 'ok', sub: 'Physisch vorhanden: ' + String(physical.segment_count || 0) + ' Segment(e), derzeit aber nicht direkt wiederverwendbar.'});
+        const reasonSummary = _analysisCacheReasonSummary(freshPlan);
+        _analysisChecklistSet('cache_hit', {status: 'ok', sub: 'Physisch vorhanden: ' + String(physical.segment_count || 0) + ' Segment(e), derzeit aber nicht direkt wiederverwendbar.' + (reasonSummary ? ' ' + reasonSummary : '')});
       }else{
         _analysisChecklistSet('cache_hit', {status: 'ok', sub: 'Kein vorhandener Analyse-Cache fuer diese Auswahl.'});
       }
@@ -10683,18 +10696,19 @@ async function combineAnalysisCacheForCurrentSelection(){
 function describeAnalysisCacheCombineResult(result){
   try{
     const j = result || {};
+    const repaired = Array.isArray(j.repaired_before_combine) ? j.repaired_before_combine.length : 0;
     if(j.note === 'no clean contiguous segments to combine'){
       const skipped = Array.isArray(j.skipped_dirty_segments) ? j.skipped_dirty_segments : [];
-      if(!skipped.length) return 'Keine sauberen zusammenhaengenden Cache-Segmente zum Kombinieren gefunden.';
+      if(!skipped.length) return repaired > 0 ? ('Keine sauberen zusammenhaengenden Cache-Segmente zum Kombinieren gefunden. Vorher lokal bereinigt: ' + repaired + ' Segment(e).') : 'Keine sauberen zusammenhaengenden Cache-Segmente zum Kombinieren gefunden.';
       const reasons = Array.from(new Set(skipped.map((row) => {
         const patch = String(row && row.patch_status || 'ok');
         const dirty = String(row && row.dirty_reason || 'history_change');
         return patch !== 'ok' ? (patch + ' / ' + dirty) : dirty;
       }).filter(Boolean)));
-      return 'Keine sauberen zusammenhaengenden Cache-Segmente zum Kombinieren: ' + skipped.length + ' dirty Segment(e) blockieren die Gruppenbildung. Gruende: ' + reasons.join(', ');
+      return 'Keine sauberen zusammenhaengenden Cache-Segmente zum Kombinieren: ' + skipped.length + ' dirty Segment(e) blockieren die Gruppenbildung.' + (repaired > 0 ? (' Vorher lokal bereinigt: ' + repaired + ' Segment(e).') : '') + ' Gruende: ' + reasons.join(', ');
     }
     if(j.note) return String(j.note);
-    return 'Cache-Kombination abgeschlossen: ' + String(j.groups_combined || 0) + ' Gruppe(n).';
+    return 'Cache-Kombination abgeschlossen: ' + String(j.groups_combined || 0) + ' Gruppe(n).' + (repaired > 0 ? (' Vorher lokal bereinigt: ' + repaired + ' Segment(e).') : '');
   }catch(e){
     return 'Cache-Kombination abgeschlossen.';
   }

@@ -7,7 +7,7 @@ def _iso(dt: datetime) -> str:
     return dt.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
-def test_analysis_cache_plan_reports_segments_and_dirty_ranges(load_app_module, tmp_path):
+def test_analysis_cache_plan_repairs_dirty_segments_and_reuses_them(load_app_module, tmp_path, monkeypatch):
     cfg_root = tmp_path / "config"
     data_root = tmp_path / "data"
 
@@ -60,6 +60,36 @@ def test_analysis_cache_plan_reports_segments_and_dirty_ranges(load_app_module, 
         },
     })
 
+    def _fake_neighbors(_cfg, _measurement, _field, _entity_id, _friendly_name, center_dt, _start_dt, _stop_dt, **_kwargs):
+        iso = center_dt.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+        if iso.startswith("2026-04-06T09:15:00"):
+            return {
+                "older": [{"time": "2026-04-06T09:14:00.000Z", "value": 1.0}],
+                "newer": [{"time": "2026-04-06T09:16:00.000Z", "value": 2.0}],
+            }
+        return {"older": [], "newer": []}
+
+    def _fake_fetch_result(_cfg, measurement, field, entity_id, friendly_name, start_iso, stop_iso, **kwargs):
+        return {
+            "ok": True,
+            "rows": [{"time": "2026-04-06T09:15:00Z", "value": 2.0, "reason": "NULL", "types": ["null"]}],
+            "scanned": 2,
+            "checkpoints": [{
+                "at": "2026-04-06T09:14:30.000Z",
+                "last_time": kwargs.get("prev_time"),
+                "last_value": kwargs.get("prev_value"),
+                "counter_base_value": None,
+                "scan_state": {"status": "normal"},
+            }],
+            "last_time": "2026-04-06T09:16:00.000Z",
+            "last_value": 2.0,
+            "counter_base_value": None,
+            "scan_state": {"status": "normal"},
+        }
+
+    monkeypatch.setattr(app_mod, "_analysis_cache_fetch_neighbor_points", _fake_neighbors)
+    monkeypatch.setattr(app_mod, "_analysis_cache_fetch_segment_result", _fake_fetch_result)
+
     r = client.post(
         "/api/analysis_cache/plan",
         json={
@@ -75,9 +105,11 @@ def test_analysis_cache_plan_reports_segments_and_dirty_ranges(load_app_module, 
 
     assert r.status_code == 200
     assert j["ok"] is True
-    assert len(j["plan"]["segments"]) == 1
-    assert len(j["plan"]["dirty_ranges"]) == 1
-    assert len(j["plan"]["changes"]) == 1
+    assert len(j["plan"]["segments"]) == 2
+    assert len(j["plan"]["dirty_ranges"]) == 0
+    assert len(j["plan"]["changes"]) == 0
+    assert len(j["plan"]["repaired_segments"]) == 1
+    assert len(j["plan"]["blocked_segments"]) == 0
 
 
 def test_analysis_cache_combine_merges_contiguous_segments(load_app_module, tmp_path):
@@ -171,7 +203,7 @@ def test_analysis_cache_store_segment_persists_checkpoints(load_app_module, tmp_
     assert payload["final_state"]["last_time"] == "2026-01-01T23:59:00.000Z"
 
 
-def test_analysis_cache_combine_skips_dirty_segments_without_refetch(load_app_module, tmp_path, monkeypatch):
+def test_analysis_cache_combine_repairs_dirty_segments_before_grouping(load_app_module, tmp_path, monkeypatch):
     cfg_root = tmp_path / "config"
     data_root = tmp_path / "data"
 
@@ -208,23 +240,48 @@ def test_analysis_cache_combine_skips_dirty_segments_without_refetch(load_app_mo
         },
     })
 
-    def _fake_api_outliers():
-        raise AssertionError("combine must not refetch dirty segments")
+    def _fake_neighbors(_cfg, _measurement, _field, _entity_id, _friendly_name, center_dt, _start_dt, _stop_dt, **_kwargs):
+        iso = center_dt.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+        if iso.startswith("2026-01-02T12:00:00"):
+            return {
+                "older": [{"time": "2026-01-02T11:59:00.000Z", "value": 2.0}],
+                "newer": [{"time": "2026-01-02T12:01:00.000Z", "value": 3.0}],
+            }
+        return {"older": [], "newer": []}
 
-    monkeypatch.setattr(app_mod, "api_outliers", _fake_api_outliers)
+    def _fake_fetch_result(_cfg, measurement, field, entity_id, friendly_name, start_iso, stop_iso, **kwargs):
+        return {
+            "ok": True,
+            "rows": [{"time": "2026-01-02T12:00:00Z", "value": 3.0, "reason": "0", "types": ["zero"]}],
+            "scanned": 3,
+            "checkpoints": [{
+                "at": "2026-01-02T11:59:30.000Z",
+                "last_time": kwargs.get("prev_time"),
+                "last_value": kwargs.get("prev_value"),
+                "counter_base_value": None,
+                "scan_state": {"status": "normal"},
+            }],
+            "last_time": "2026-01-02T12:01:00.000Z",
+            "last_value": 3.0,
+            "counter_base_value": None,
+            "scan_state": {"status": "normal"},
+        }
+
+    monkeypatch.setattr(app_mod, "_analysis_cache_fetch_neighbor_points", _fake_neighbors)
+    monkeypatch.setattr(app_mod, "_analysis_cache_fetch_segment_result", _fake_fetch_result)
 
     r = client.post("/api/analysis_cache/combine", json={"series_key": a["series_key"]})
     j = r.get_json()
 
     assert r.status_code == 200
     assert j["ok"] is True
-    assert j["groups_combined"] == 0
-    assert len(j["skipped_dirty_segments"]) == 1
-    assert j["note"] == "no clean contiguous segments to combine"
+    assert j["groups_combined"] == 1
+    assert len(j["skipped_dirty_segments"]) == 0
+    assert len(j["repaired_before_combine"]) == 1
 
     series = app_mod._analysis_cache_group_list(cfg)
     assert len(series) == 1
-    assert series[0]["segment_count"] == 2
+    assert series[0]["segment_count"] == 1
 
 
 def test_analysis_cache_patch_meta_uses_legacy_fallback_window_without_checkpoints(load_app_module, tmp_path, monkeypatch):

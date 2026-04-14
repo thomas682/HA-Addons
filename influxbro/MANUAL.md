@@ -619,6 +619,9 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Jeder feste Analyseschritt besitzt jetzt ein eigenes Info-Icon. Das Popup erklaert fuer den jeweiligen Schritt sehr detailliert, welche Eingaben, Cache-Entscheidungen, UI-Zustaende und API-/DB-Aktionen intern beteiligt sind.
 - Die fruehere separate Chunk-Zeile unterhalb der Checkliste ist entfallen. Die relevante Diagnose bleibt in Checkliste, Fortschritt, Chunk-Zeitstrahl und Analyse-Verlauf sichtbar.
 - Wenn `Cache-Segmente kombinieren` keinen neuen Cache erzeugt, nennt die Checkliste jetzt nicht nur den generischen Hinweis, sondern auch dirty blockierende Segmente und deren `patch_status`-/`dirty_reason`-Ursachen.
+- `Cache-Hit pruefen` nennt jetzt genauer, warum vorhandener Cache nicht vollstaendig verwendet wird: wiederverwendbare Segmente, lokal bereinigte dirty Segmente, verbleibende Luecken und blockierende Dirty-Gruende werden direkt im Schritttext zusammengefasst.
+- Die fruehere Zeile mit der Intervall-Heuristik unter der Analyse-Checkliste wurde entfernt, weil sie fuer die Entscheidung im Alltag zu unpraezise war.
+- Dirty Analyse-Cache wird jetzt beim Planen und beim manuellen `Cache-Segmente kombinieren` zuerst lokal ueber Checkpoints/Nachbarpunkte bereinigt. Nur wenn danach weiterhin ein dirty Fenster offen bleibt oder der Patch nicht sicher ist, wird dieser Bereich neu gelesen bzw. blockiert weiterhin die Kombination.
 - Zeitstempel in der Ausreißer-Tabelle zeigen jetzt wieder echte Millisekunden, wenn die Datenquelle diese liefert.
 - Der Tabellenkopf der Ausreißer-Tabelle bleibt jetzt beim vertikalen Scrollen fix sichtbar, analog zur Raw-Tabelle.
 - Der Button fuer `Ausreißer-Parameter` sitzt jetzt im Dashboard-Aktionsblock neben `Analyse` statt innerhalb des Ausreißer-Tabellenblocks.

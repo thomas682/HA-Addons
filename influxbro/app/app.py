@@ -3542,6 +3542,68 @@ def _analysis_outlier_times(rows: list[dict[str, Any]]) -> list[str]:
     return out
 
 
+def _analysis_cache_resolve_segment_reuse(
+    cfg: dict[str, Any],
+    meta: dict[str, Any],
+    use_start: datetime,
+    use_stop: datetime,
+) -> dict[str, Any]:
+    cache_id = str(meta.get("id") or "").strip()
+    payload = _analysis_cache_load_payload(cache_id) or {}
+    updated_at = _parse_iso_datetime(str(meta.get("updated_at") or "")) or datetime.fromtimestamp(0, tz=timezone.utc)
+    changed = _history_changes_for_window(
+        str(meta.get("measurement") or ""),
+        str(meta.get("field") or ""),
+        str(meta.get("entity_id") or "") or None,
+        str(meta.get("friendly_name") or "") or None,
+        use_start,
+        use_stop,
+        updated_at,
+        limit=200,
+    )
+    patch_status = str(meta.get("patch_status") or "ok")
+    explicitly_dirty = bool(meta.get("dirty")) or patch_status in ("patch_pending", "patch_failed", "patch_not_safe")
+    repair_reason: str | None = None
+    repair_error: str | None = None
+    reused_after_repair = False
+    if changed or explicitly_dirty:
+        try:
+            repair = _analysis_cache_patch_meta(cfg, meta)
+        except Exception as e:
+            repair = {"ok": False, "patched": False, "reason": "patch_failed", "error": str(e) or e.__class__.__name__}
+        repair_reason = str(repair.get("reason") or "") or None
+        repair_error = str(repair.get("error") or "") or None
+        meta = _analysis_cache_load_meta(cache_id) or dict(meta)
+        payload = _analysis_cache_load_payload(cache_id) or payload
+        updated_at = _parse_iso_datetime(str(meta.get("updated_at") or "")) or datetime.fromtimestamp(0, tz=timezone.utc)
+        changed = _history_changes_for_window(
+            str(meta.get("measurement") or ""),
+            str(meta.get("field") or ""),
+            str(meta.get("entity_id") or "") or None,
+            str(meta.get("friendly_name") or "") or None,
+            use_start,
+            use_stop,
+            updated_at,
+            limit=200,
+        )
+        patch_status = str(meta.get("patch_status") or "ok")
+        explicitly_dirty = bool(meta.get("dirty")) or patch_status in ("patch_pending", "patch_failed", "patch_not_safe")
+        reused_after_repair = bool(repair_reason) and not changed and not explicitly_dirty and bool(payload.get("ok"))
+    dirty_reason = str(meta.get("dirty_reason") or ("history_change" if changed else "")).strip() or None
+    return {
+        "cache_id": cache_id,
+        "meta": meta,
+        "payload": payload,
+        "changes": changed,
+        "patch_status": patch_status,
+        "dirty_reason": dirty_reason,
+        "usable": bool(payload.get("ok")) and not changed and not explicitly_dirty,
+        "reused_after_repair": reused_after_repair,
+        "repair_reason": repair_reason,
+        "repair_error": repair_error,
+    }
+
+
 def _analysis_cache_plan(
     cfg: dict[str, Any],
     measurement: str,
@@ -3559,6 +3621,8 @@ def _analysis_cache_plan(
     candidates: list[dict[str, Any]] = []
     dirty_ranges: list[tuple[datetime, datetime]] = []
     dirty_changes: list[dict[str, Any]] = []
+    repaired_segments: list[dict[str, Any]] = []
+    blocked_segments: list[dict[str, Any]] = []
     for meta in _analysis_cache_list_meta():
         try:
             key = meta.get("key") if isinstance(meta.get("key"), dict) else {}
@@ -3577,25 +3641,33 @@ def _analysis_cache_plan(
             use_stop = min(req_stop, cov_stop)
             if use_stop <= use_start:
                 continue
-            updated_at = _parse_iso_datetime(str(meta.get("updated_at") or ""))
-            changed = _history_changes_for_window(
-                measurement,
-                field,
-                entity_id,
-                friendly_name,
-                use_start,
-                use_stop,
-                updated_at or datetime.fromtimestamp(0, tz=timezone.utc),
-                limit=200,
-            )
-            patch_status = str(meta.get("patch_status") or "ok")
-            explicitly_dirty = bool(meta.get("dirty")) or patch_status in ("patch_pending", "patch_failed", "patch_not_safe")
-            if changed or explicitly_dirty:
+            resolved = _analysis_cache_resolve_segment_reuse(cfg, meta, use_start, use_stop)
+            meta = resolved.get("meta") if isinstance(resolved.get("meta"), dict) else meta
+            payload = resolved.get("payload") if isinstance(resolved.get("payload"), dict) else payload
+            changed = resolved.get("changes") if isinstance(resolved.get("changes"), list) else []
+            if bool(resolved.get("reused_after_repair")):
+                repaired_segments.append({
+                    "cache_id": cache_id,
+                    "start": _dt_to_rfc3339_utc(use_start),
+                    "stop": _dt_to_rfc3339_utc(use_stop),
+                    "repair_reason": str(resolved.get("repair_reason") or "patched"),
+                })
+            if not bool(resolved.get("usable")):
                 dirty_ranges.append((use_start, use_stop))
                 for ch in changed:
                     item = dict(ch)
                     item["cache_id"] = cache_id
                     dirty_changes.append(item)
+                blocked_segments.append({
+                    "cache_id": cache_id,
+                    "start": _dt_to_rfc3339_utc(use_start),
+                    "stop": _dt_to_rfc3339_utc(use_stop),
+                    "patch_status": str(resolved.get("patch_status") or "ok"),
+                    "dirty_reason": str(resolved.get("dirty_reason") or "history_change"),
+                    "change_count": len(changed),
+                    "repair_reason": resolved.get("repair_reason"),
+                    "repair_error": resolved.get("repair_error"),
+                })
                 continue
             filtered_rows = _analysis_cache_payload_rows_in_window(payload, use_start, use_stop)
             candidates.append({
@@ -3657,6 +3729,8 @@ def _analysis_cache_plan(
         "gaps": gaps,
         "dirty_ranges": dirty_ranges,
         "changes": dirty_changes,
+        "repaired_segments": repaired_segments,
+        "blocked_segments": blocked_segments,
         "cached_outlier_count": cached_outlier_count,
         "series_key": series_key,
     }
@@ -12543,6 +12617,30 @@ def api_analysis_cache_plan():
         })
     out_gaps = [{"start": _dt_to_rfc3339_utc(a), "stop": _dt_to_rfc3339_utc(b)} for a, b in (plan.get("gaps") or [])]
     out_dirty = [{"start": _dt_to_rfc3339_utc(a), "stop": _dt_to_rfc3339_utc(b)} for a, b in (plan.get("dirty_ranges") or [])]
+    out_repaired = [
+        {
+            "cache_id": str(seg.get("cache_id") or ""),
+            "start": str(seg.get("start") or ""),
+            "stop": str(seg.get("stop") or ""),
+            "repair_reason": str(seg.get("repair_reason") or ""),
+        }
+        for seg in (plan.get("repaired_segments") or [])
+        if isinstance(seg, dict)
+    ]
+    out_blocked = [
+        {
+            "cache_id": str(seg.get("cache_id") or ""),
+            "start": str(seg.get("start") or ""),
+            "stop": str(seg.get("stop") or ""),
+            "patch_status": str(seg.get("patch_status") or "ok"),
+            "dirty_reason": str(seg.get("dirty_reason") or "history_change"),
+            "change_count": int(seg.get("change_count") or 0),
+            "repair_reason": seg.get("repair_reason"),
+            "repair_error": seg.get("repair_error"),
+        }
+        for seg in (plan.get("blocked_segments") or [])
+        if isinstance(seg, dict)
+    ]
     summary_counts = _analysis_type_counts([r for seg in (plan.get("segments") or []) for r in (seg.get("filtered_rows") or []) if isinstance(r, dict)])
     return jsonify({
         "ok": True,
@@ -12553,6 +12651,8 @@ def api_analysis_cache_plan():
             "gaps": out_gaps,
             "dirty_ranges": out_dirty,
             "changes": plan.get("changes") or [],
+            "repaired_segments": out_repaired,
+            "blocked_segments": out_blocked,
             "cached_outlier_count": int(plan.get("cached_outlier_count") or 0),
             "cached_outlier_type_counts": summary_counts,
             "series_key": str(plan.get("series_key") or ""),
@@ -12715,28 +12815,53 @@ def api_analysis_cache_combine():
         groups_all = [g for g in _analysis_cache_contiguous_groups(metas) if len(g) > 1]
         groups: list[list[dict[str, Any]]] = []
         skipped_dirty_segments: list[dict[str, Any]] = []
+        repaired_before_combine: list[dict[str, Any]] = []
         for group in groups_all:
             dirty_group = False
+            resolved_group: list[dict[str, Any]] = []
             for meta in group:
-                changes = _analysis_cache_segment_changes(meta, limit=20)
-                patch_status = str(meta.get("patch_status") or "ok")
-                if changes or patch_status in ("patch_pending", "patch_failed", "patch_not_safe"):
+                start_dt, stop_dt = _analysis_cache_meta_span(meta)
+                if not start_dt or not stop_dt:
+                    dirty_group = True
+                    skipped_dirty_segments.append({
+                        "cache_id": str(meta.get("id") or ""),
+                        "start": str(meta.get("covered_start") or ""),
+                        "stop": str(meta.get("covered_stop") or ""),
+                        "patch_status": str(meta.get("patch_status") or "ok"),
+                        "dirty_reason": str(meta.get("dirty_reason") or "invalid_span"),
+                    })
+                    continue
+                resolved = _analysis_cache_resolve_segment_reuse(cfg, meta, start_dt, stop_dt)
+                if bool(resolved.get("reused_after_repair")):
+                    repaired_before_combine.append({
+                        "cache_id": str(meta.get("id") or ""),
+                        "repair_reason": str(resolved.get("repair_reason") or "patched"),
+                    })
+                if not bool(resolved.get("usable")):
+                    changes = resolved.get("changes") if isinstance(resolved.get("changes"), list) else []
+                    patch_status = str(resolved.get("patch_status") or "ok")
                     dirty_group = True
                     skipped_dirty_segments.append({
                         "cache_id": str(meta.get("id") or ""),
                         "start": str(meta.get("covered_start") or ""),
                         "stop": str(meta.get("covered_stop") or ""),
                         "patch_status": patch_status,
-                        "dirty_reason": str(meta.get("dirty_reason") or "history_change"),
+                        "dirty_reason": str(resolved.get("dirty_reason") or "history_change"),
+                        "change_count": len(changes),
+                        "repair_reason": resolved.get("repair_reason"),
+                        "repair_error": resolved.get("repair_error"),
                     })
+                    continue
+                resolved_group.append(resolved.get("meta") if isinstance(resolved.get("meta"), dict) else meta)
             if not dirty_group:
-                groups.append(group)
+                groups.append(resolved_group or group)
         if not groups:
             return jsonify({
                 "ok": True,
                 "created": [],
                 "deleted_ids": [],
                 "groups_combined": 0,
+                "repaired_before_combine": repaired_before_combine,
                 "skipped_dirty_segments": skipped_dirty_segments,
                 "note": "no clean contiguous segments to combine",
             })
@@ -12761,6 +12886,7 @@ def api_analysis_cache_combine():
             "created": created,
             "deleted_ids": deleted_ids,
             "groups_combined": len(created),
+            "repaired_before_combine": repaired_before_combine,
             "skipped_dirty_segments": skipped_dirty_segments,
         })
     except _ApiError as e:

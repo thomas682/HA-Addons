@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.12.339
+
+### Bug Fix
+
+- Die Dashboard-Analyse erklaert beim Schritt `Cache-Hit pruefen` jetzt genauer, warum vorhandener Cache nur teilweise genutzt wird: wiederverwendbare Segmente, lokal bereinigte dirty Segmente, verbleibende Luecken und blockierende Dirty-Gruende werden direkt in der Checkliste angezeigt. Die wenig hilfreiche Zeile `dashboard_analysis.txt_interval_info` wurde entfernt. ([#276](https://github.com/thomas682/HA-Addons/issues/276))
+- Dirty Analyse-Cache wird jetzt nicht mehr pauschal komplett verworfen. Beim Cache-Plan und beim `Combine`-Ablauf werden dirty Segmente zuerst ueber die vorhandene Checkpoint-/Patchlogik lokal repariert; nur wirklich verbleibende dirty Fenster werden neu analysiert oder blockieren weiterhin die Gruppenbildung. ([#276](https://github.com/thomas682/HA-Addons/issues/276))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`
+- Tests: `pytest tests/test_api_analysis_cache.py -q`
+- Tests: `pytest tests/test_api_ui_support.py -q -k "analysis_cache_hit_summary_replaces_interval_hint_line or dashboard_cache_timeline_has_hl_ac_toggles_and_combine_buttons"`
+- Tests: `pytest tests/test_api_ui_support.py -q -k "jobs_page_has_analysis_cache_section_and_actions or jobs_and_cache_tables_use_selection_toolbar_actions"`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.338
 
 ### Bug Fix
