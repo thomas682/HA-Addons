@@ -490,6 +490,88 @@ thead tr.ib_filter_row input, thead tr.ib_filter_row select { width: 100%; heigh
 </script>
 
 <script>
+// Shared helper: copy selected table row with header into clipboard.
+(function(){
+  if(window.InfluxBroTableRowCopy) return;
+
+  function _norm(s){ return String(s || '').replace(/\s+/g, ' ').trim(); }
+
+  function _getTable(table){
+    if(!table) return null;
+    if(typeof table === 'string') return document.querySelector(table);
+    return table;
+  }
+
+  function _getSelectedRow(tbl, selected){
+    if(!tbl) return null;
+    if(typeof selected === 'function'){
+      try{ return selected(tbl) || null; }catch(e){ return null; }
+    }
+    if(typeof selected === 'string' && selected.trim()) return tbl.querySelector(selected);
+    return tbl.querySelector('tbody tr.raw_sel, tbody tr[aria-selected="true"], tbody tr.selected');
+  }
+
+  function _copyText(txt){
+    return new Promise((resolve)=>{
+      const s = String(txt || '');
+      try{
+        if(navigator && navigator.clipboard && window.isSecureContext){
+          navigator.clipboard.writeText(s).then(()=>resolve(true)).catch(()=>fallback());
+          return;
+        }
+      }catch(e){}
+      fallback();
+      function fallback(){
+        try{
+          const ta = document.createElement('textarea');
+          ta.value = s;
+          ta.setAttribute('readonly', 'readonly');
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          ta.style.left = '-9999px';
+          document.body.appendChild(ta);
+          ta.focus();
+          ta.select();
+          const ok = document.execCommand('copy');
+          try{ document.body.removeChild(ta); }catch(e){}
+          resolve(!!ok);
+        }catch(e){
+          resolve(false);
+        }
+      }
+    });
+  }
+
+  function _headerCells(tbl){
+    try{
+      const hdr = tbl.querySelector('thead tr:not(.ib_filter_row)');
+      return hdr ? Array.from(hdr.children || []) : [];
+    }catch(e){
+      return [];
+    }
+  }
+
+  function _rowCells(tr){
+    try{ return Array.from(tr && tr.children ? tr.children : []); }catch(e){ return []; }
+  }
+
+  async function copySelectedRow(table, opts){
+    const tbl = _getTable(table);
+    if(!tbl) return { ok: false, error: 'table_not_found' };
+    const row = _getSelectedRow(tbl, opts && opts.selectedRow);
+    if(!row) return { ok: false, error: 'no_selected_row' };
+    const headers = _headerCells(tbl).map((th)=> _norm(th.textContent || ''));
+    const cells = _rowCells(row).map((td)=> _norm(td.textContent || ''));
+    const text = ['...', headers.join('\t'), cells.join('\t'), '...'].join('\n');
+    const ok = await _copyText(text);
+    return { ok, text, header_count: headers.length, cell_count: cells.length };
+  }
+
+  window.InfluxBroTableRowCopy = { copySelectedRow };
+})();
+</script>
+
+<script>
 // Shared helper: table box height resize handle (persisted, per page+table)
 (function(){
   if(window.InfluxBroTableHeight) return;

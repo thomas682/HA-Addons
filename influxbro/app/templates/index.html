@@ -183,6 +183,7 @@
     #raw_outlier_tbl tr.raw_match td {
       box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ib-page-search-hl-color, #FF9900) 60%, transparent);
     }
+    #raw_outlier_tbl tr.raw_sel td { outline: 2px solid rgba(36,99,235,0.35); outline-offset: -2px; }
     #raw_outlier_table_wrap { min-width:0; overflow:hidden; }
     #raw_outlier_overview_box { min-width:0; max-width:100%; overflow:hidden; }
     #raw_outlier_overview.table_box { width:100%; max-width:100%; overflow:auto; }
@@ -512,6 +513,7 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
           <label><input type="checkbox" id="raw_outlier_wrap" class="row_sel" data-ui="dashboard_outliers.chk_umbruch" title="dashboard_outliers.chk_umbruch"/>Umbruch</label>
           <label><input type="checkbox" id="raw_outlier_colfilter" class="row_sel" data-ui="dashboard_outliers.chk_spaltenfilter" title="dashboard_outliers.chk_spaltenfilter"/>Spaltenfilter</label>
           <button class="btn_sm" id="raw_outlier_copy" data-ui="dashboard_outliers.btn_kopieren" title="dashboard_outliers.btn_kopieren" aria-label="Ausreisser kopieren"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18" aria-hidden="true" focusable="false"><path d="M6 11C6 8.17157 6 6.75736 6.87868 5.87868C7.75736 5 9.17157 5 12 5H15C17.8284 5 19.2426 5 20.1213 5.87868C21 6.75736 21 8.17157 21 11V16C21 18.8284 21 20.2426 20.1213 21.1213C19.2426 22 17.8284 22 15 22H12C9.17157 22 7.75736 22 6.87868 21.1213C6 20.2426 6 18.8284 6 16V11Z" stroke="#1C274C" stroke-width="1.5"></path><path d="M6 19C4.34315 19 3 17.6569 3 16V10C3 6.22876 3 4.34315 4.17157 3.17157C5.34315 2 7.22876 2 11 2H15C16.6569 2 18 3.34315 18 5" stroke="#1C274C" stroke-width="1.5"></path></svg></button>
+          <button class="btn_sm" id="raw_outlier_copy_row" data-ui="dashboard_outliers.btn_zeile_kopieren" title="dashboard_outliers.btn_zeile_kopieren" aria-label="Ausreisser-Zeile kopieren"><svg fill="currentColor" viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><path d="M4 24h24v2H4z"></path><path d="M26 18H6v-4h20v4m2 0v-4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2H26a2 2 0 0 0 2-2Z"></path></svg><span>Zeile kopieren</span></button>
           <button class="btn_sm" id="outlier_ignore" data-ui="dashboard_outliers.btn_ignorieren" title="dashboard_outliers.btn_ignorieren" disabled>ignorieren</button>
           <button class="btn_sm" id="outlier_unignore" data-ui="dashboard_outliers.btn_nicht_mehr_ignorieren" title="dashboard_outliers.btn_nicht_mehr_ignorieren" disabled>nicht mehr ignorieren</button>
         </div>
@@ -577,6 +579,7 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
         <label><input type="checkbox" id="raw_wrap" class="row_sel" data-ui="dashboard_raw.chk_umbruch" title="dashboard_raw.chk_umbruch"/>Umbruch</label>
         <label><input type="checkbox" id="raw_colfilter" class="row_sel" data-ui="dashboard_raw.chk_spaltenfilter" title="dashboard_raw.chk_spaltenfilter"/>Spaltenfilter</label>
         <button class="btn_sm" id="raw_copy" data-ui="dashboard_raw.btn_kopieren" title="dashboard_raw.btn_kopieren" aria-label="Raw Daten kopieren"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18" aria-hidden="true" focusable="false"><path d="M6 11C6 8.17157 6 6.75736 6.87868 5.87868C7.75736 5 9.17157 5 12 5H15C17.8284 5 19.2426 5 20.1213 5.87868C21 6.75736 21 8.17157 21 11V16C21 18.8284 21 20.2426 20.1213 21.1213C19.2426 22 17.8284 22 15 22H12C9.17157 22 7.75736 22 6.87868 21.1213C6 20.2426 6 18.8284 6 16V11Z" stroke="#1C274C" stroke-width="1.5"></path><path d="M6 19C4.34315 19 3 17.6569 3 16V10C3 6.22876 3 4.34315 4.17157 3.17157C5.34315 2 7.22876 2 11 2H15C16.6569 2 18 3.34315 18 5" stroke="#1C274C" stroke-width="1.5"></path></svg></button>
+        <button class="btn_sm" id="raw_copy_row" data-ui="dashboard_raw.btn_zeile_kopieren" title="dashboard_raw.btn_zeile_kopieren" aria-label="Raw-Zeile kopieren"><svg fill="currentColor" viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><path d="M4 24h24v2H4z"></path><path d="M26 18H6v-4h20v4m2 0v-4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2H26a2 2 0 0 0 2-2Z"></path></svg><span>Zeile kopieren</span></button>
         <button class="btn_sm" id="raw_copy_value" data-ui="dashboard_raw.btn_wert_kopieren" title="dashboard_raw.btn_wert_kopieren">Wert kopieren</button>
         <button class="btn_sm" id="raw_paste" data-ui="dashboard_raw.btn_einfuegen" title="dashboard_raw.btn_einfuegen" disabled>Einfügen</button>
         <button class="btn_sm" id="raw_manual" data-ui="dashboard_raw.btn_manuell" title="dashboard_raw.btn_manuell" disabled>Manuell</button>
@@ -1175,8 +1178,10 @@ const $rawOutlierWindowWidth = document.getElementById('raw_outlier_windowwidth'
 const $rawOutlierWrap = document.getElementById('raw_outlier_wrap');
 const $rawOutlierColFilter = document.getElementById('raw_outlier_colfilter');
 const $rawOutlierCopy = document.getElementById('raw_outlier_copy');
+const $rawOutlierCopyRow = document.getElementById('raw_outlier_copy_row');
 const $rawRefresh = document.getElementById('raw_refresh');
 const $rawCopy = document.getElementById('raw_copy');
+const $rawCopyRow = document.getElementById('raw_copy_row');
 const $rawCopyValue = document.getElementById('raw_copy_value');
 const $rawPaste = document.getElementById('raw_paste');
 const $rawManual = document.getElementById('raw_manual');
@@ -1391,6 +1396,16 @@ async function copyTextToClipboard(text){
   }catch(e){
     console.error('Copy operation failed:', e);
     return false;
+  }
+}
+
+async function copySelectedTableRowWithFeedback(tableSelector, opts){
+  try{
+    const helper = window.InfluxBroTableRowCopy;
+    if(!helper || typeof helper.copySelectedRow !== 'function') return { ok: false, error: 'helper_missing' };
+    return await helper.copySelectedRow(tableSelector, opts || {});
+  }catch(e){
+    return { ok: false, error: String(e && e.message ? e.message : e) };
   }
 }
 
@@ -3104,12 +3119,13 @@ function drawPlotly(rows){
             for(let i = 0; i < filtered.length; i++){
               if(String(filtered[i].time) === iso){
                 RAW_OUTLIER_INDEX = i;
+                RAW_OUTLIER_SELECTED_TIME = iso;
                 _updateOutlierNavStatus();
                 // Highlight row in overview table
                 try{
                   const trs = Array.from($rawOutlierBody.querySelectorAll('tr'));
-                  trs.forEach(t => t.classList.remove('raw_hl', 'raw_outlier'));
-                  if(trs[i]) trs[i].classList.add('raw_hl', 'raw_outlier');
+                  trs.forEach(t => t.classList.remove('raw_hl', 'raw_outlier', 'raw_sel'));
+                  if(trs[i]) trs[i].classList.add('raw_hl', 'raw_outlier', 'raw_sel');
                 }catch(e){}
                 break;
               }
@@ -4612,6 +4628,7 @@ let RAW_ANCHOR_ISO = null;
 const RAW_WINDOW_LIMIT = 5000;
 let RAW_OUTLIER_RESULTS = [];
 let RAW_OUTLIER_INDEX = -1;
+let RAW_OUTLIER_SELECTED_TIME = null;
 let RAW_OUTLIER_MAP = null;
 let RAW_OUTLIER_SEARCHING = false;
 let RAW_OUTLIER_T0 = 0;
@@ -5092,9 +5109,13 @@ function _rawOutlierContextInfo(row){
     if(!win) return null;
     const beforeCount = Math.max(0, Math.trunc(Number(win.before_count || 0)));
     const afterCount = Math.max(0, Math.trunc(Number(win.after_count || 0)));
-    const beforeLabel = win.before_time ? fmtTs(win.before_time) : '-';
+    const centerTime = row && row.time ? String(row.time) : '';
+    const beforeMs = Date.parse(String(win.before_time || ''));
+    const centerMs = Date.parse(centerTime);
+    const afterMs = Date.parse(String(win.after_time || ''));
+    const beforeLabel = (isFinite(beforeMs) && isFinite(centerMs) && beforeMs <= centerMs) ? fmtTs(win.before_time) : '-';
     const centerLabel = row && row.time ? fmtTs(row.time) : '-';
-    const afterLabel = win.after_time ? fmtTs(win.after_time) : '-';
+    const afterLabel = (isFinite(afterMs) && isFinite(centerMs) && afterMs >= centerMs) ? fmtTs(win.after_time) : '-';
     return {
       counts: beforeCount + ' davor | ' + afterCount + ' danach',
       times: beforeLabel + ' -> ' + centerLabel + ' -> ' + afterLabel,
@@ -7783,17 +7804,19 @@ async function highlightOutlierAtIndex(idx){
 
   RAW_SELECTED_MS = ms;
   RAW_OUTLIER_INDEX = idx;
+  RAW_OUTLIER_SELECTED_TIME = String(result.time || '') || null;
 
   // Highlight row in overview table by matching timestamp, not index
   try{
     const trs = Array.from($rawOutlierBody.querySelectorAll('tr'));
-    trs.forEach(t => t.classList.remove('raw_hl', 'raw_outlier'));
+    trs.forEach(t => t.classList.remove('raw_hl', 'raw_outlier', 'raw_sel'));
     const timeStr = String(result.time || '');
     let found = false;
     for(const tr of trs){
       const td = tr.querySelector('td');
       if(td && String(td.textContent || '').trim() === timeStr){
         tr.classList.add('raw_hl', 'raw_outlier');
+        tr.classList.add('raw_sel');
         found = true;
         break;
       }
@@ -7804,6 +7827,7 @@ async function highlightOutlierAtIndex(idx){
         const dataTime = tr.getAttribute('data-time');
         if(dataTime && dataTime === timeStr){
           tr.classList.add('raw_hl', 'raw_outlier');
+          tr.classList.add('raw_sel');
           break;
         }
       }
@@ -7904,6 +7928,7 @@ function renderOutlierOverviewTable(){
       const rowMs = Date.parse(String(r.time || ''));
       if(isFinite(selMs) && isFinite(rowMs) && rowMs === selMs) tr.classList.add('raw_hl');
     }catch(e){}
+    if(RAW_OUTLIER_SELECTED_TIME && String(RAW_OUTLIER_SELECTED_TIME) === String(r.time || '')) tr.classList.add('raw_sel');
     tr.appendChild(tdT);
     tr.appendChild(tdV);
     tr.appendChild(tdH);
@@ -7913,6 +7938,7 @@ function renderOutlierOverviewTable(){
     tr.addEventListener('click', ()=>{
       RAW_SELECTED_MS = Date.parse(String(r.time || ''));
       RAW_OUTLIER_INDEX = idx;
+      RAW_OUTLIER_SELECTED_TIME = String(r.time || '') || null;
       highlightOutlierAtIndex(idx).catch(()=>{});
       _updateOutlierNavStatus();
       updateRawToolbarState();
@@ -7997,6 +8023,7 @@ async function setIgnoredForCurrentOutlier(ignore){
 function clearRawOutlierSearch(){
   RAW_OUTLIER_RESULTS = [];
   RAW_OUTLIER_INDEX = -1;
+  RAW_OUTLIER_SELECTED_TIME = null;
   RAW_OUTLIER_MAP = null;
   RAW_OUTLIER_SCANNED_TOTAL = 0;
   if($rawOutlierStatusTxt) $rawOutlierStatusTxt.textContent = '';
@@ -8055,6 +8082,46 @@ function countCenteredRows(rows, anchorIso){
   return { before, after, anchor };
 }
 
+function _findOutlierInfoByTime(iso){
+  try{
+    const key = String(iso || '').trim();
+    if(!key) return null;
+    if(RAW_OUTLIER_MAP && RAW_OUTLIER_MAP[key]) return RAW_OUTLIER_MAP[key];
+    const targetMs = Date.parse(key);
+    if(!isFinite(targetMs) || !RAW_OUTLIER_MAP) return null;
+    for(const k of Object.keys(RAW_OUTLIER_MAP)){
+      const ms = Date.parse(String(k || ''));
+      if(isFinite(ms) && ms === targetMs) return RAW_OUTLIER_MAP[k];
+    }
+  }catch(e){}
+  return null;
+}
+
+function _syncSelectedOutlierWindowFromRawRows(anchorIso, rows){
+  try{
+    const anchor = String(anchorIso || '').trim();
+    if(!anchor) return;
+    const filtered = getDisplayedOutliers();
+    const row = filtered.find((it)=> String(it && it.time || '') === anchor) || (RAW_OUTLIER_RESULTS || []).find((it)=> String(it && it.time || '') === anchor);
+    if(!row) return;
+    const counts = countCenteredRows(rows, anchor);
+    const beforeRows = (rows || []).filter((it)=> Date.parse(String(it && it.time || '')) < Date.parse(anchor));
+    const afterRows = (rows || []).filter((it)=> Date.parse(String(it && it.time || '')) > Date.parse(anchor));
+    const nextWindow = {
+      center_minutes: null,
+      before_minutes: null,
+      after_minutes: null,
+      before_count: counts.before,
+      after_count: counts.after,
+      before_time: beforeRows.length ? String(beforeRows[0].time || '') : null,
+      after_time: afterRows.length ? String(afterRows[afterRows.length - 1].time || '') : null,
+    };
+    row.window = nextWindow;
+    const mapped = _findOutlierInfoByTime(anchor);
+    if(mapped) mapped.window = nextWindow;
+  }catch(e){}
+}
+
 function trimCenteredRows(rows, anchorIso, contextRows){
   const xs = Array.isArray(rows) ? rows.slice() : [];
   const limit = Math.max(1, Math.trunc(Number(contextRows || 10)));
@@ -8105,12 +8172,14 @@ function updateRawToolbarState(){
     const undoable = hasTarget ? _rawUndoableEntry(RAW_ROW_SELECTED_KEY) : null;
     $rawPaste.disabled = !(hasCopied && hasTarget && String(RAW_ROW_SELECTED_KEY) !== String(RAW_COPIED && RAW_COPIED.key));
     $rawCopyValue.disabled = !hasTarget;
+    if($rawCopyRow) $rawCopyRow.disabled = !hasTarget;
     if($rawDelete) $rawDelete.disabled = !hasTarget;
     if($rawManual) $rawManual.disabled = !hasTarget;
     if($rawUndo) $rawUndo.disabled = !undoable;
     if($rawInfoBtn) $rawInfoBtn.disabled = !(hasTarget && _rawHistoryEntries(RAW_ROW_SELECTED_KEY).length);
     const filtered = getFilteredOutliers();
     const activeOutlier = (RAW_OUTLIER_INDEX >= 0 && RAW_OUTLIER_INDEX < filtered.length) ? filtered[RAW_OUTLIER_INDEX] : null;
+    if($rawOutlierCopyRow) $rawOutlierCopyRow.disabled = !activeOutlier;
     const ignored = activeOutlier ? isIgnoredOutlier(activeOutlier) : false;
     if($rawIgnore) $rawIgnore.disabled = !(activeOutlier && !ignored);
     if($rawUnignore) $rawUnignore.disabled = !(activeOutlier && ignored);
@@ -8695,43 +8764,18 @@ async function loadRawFromGraph(reset){
       payload.mode = 'center';
       payload.anchor_time = anchorIso;
       payload.include_total = false;
+      payload.before_limit = minPoints + 1;
+      payload.after_limit = minPoints;
 
-      // Try to get window from cache (computed during analysis)
-      const outlierInfo = RAW_OUTLIER_MAP && RAW_OUTLIER_MAP[String(anchorIso)];
+      // Nutze vorhandene Fenstergrenzen nur zum Einengen der Query, nicht mehr fuer die eigentliche N-davor/N-danach-Logik.
+      const outlierInfo = _findOutlierInfoByTime(anchorIso);
       const cachedWindow = outlierInfo && outlierInfo.window ? outlierInfo.window : null;
-
-      if(cachedWindow && cachedWindow.center_minutes){
-        // Window im Cache vorhanden: EIN direkter Aufruf
-        payload.center_minutes = cachedWindow.center_minutes;
-        j = await api("./api/raw_points", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)});
-      } else {
-        // Kein Window im Cache: Cache NICHT löschen, sondern nur Hinweis anzeigen.
-        const allStats = _outlierWindowStats(RAW_OUTLIER_RESULTS);
-        _saveAnalysisEvent({
-          at: new Date().toISOString(),
-          kind: 'analysis_cache_window',
-          step: 'missing_window',
-          status: 'err',
-          detail: 'Fuer den ausgewaehlten Ausreisser wurde noch kein Raw-Fenster gefunden. Analyse-Cache bleibt erhalten.',
-          extra: {
-            scope: 'dashboard_analysis',
-            action: String(ANALYSIS_ACTIVE_ACTION || ''),
-            anchor_time: String(anchorIso || ''),
-            has_outlier_entry: !!outlierInfo,
-            reason: outlierInfo && outlierInfo.reason ? String(outlierInfo.reason) : '',
-            types: outlierInfo && Array.isArray(outlierInfo.types) ? outlierInfo.types.slice(0, 8) : [],
-            point_index: outlierInfo && outlierInfo.point_index !== undefined ? outlierInfo.point_index : null,
-            total_outliers: allStats.total,
-            windows_present: allStats.with_window,
-            windows_missing: allStats.missing_window,
-            missing_examples: allStats.missing_examples,
-          },
-        });
-        try{ window.InfluxBroStatus && window.InfluxBroStatus.fail && window.InfluxBroStatus.fail('dashboard.raw', 'Kein Raw-Fenster im Analyse-Cache.'); }catch(e){}
-        _rawStatusEnd(false, 'Fuer diesen Ausreisser ist noch kein Raw-Fenster vorhanden. Analyse-Cache bleibt erhalten. Bitte Analyse erneut starten oder einen anderen Ausreisser waehlen.');
-        _RAW_INFLIGHT = false;
-        return;
-      }
+      const beforeMs = Date.parse(String(cachedWindow && cachedWindow.before_time || ''));
+      const afterMs = Date.parse(String(cachedWindow && cachedWindow.after_time || ''));
+      const centerMs = Date.parse(String(anchorIso || ''));
+      if(isFinite(beforeMs) && isFinite(centerMs) && beforeMs <= centerMs) payload.start = new Date(beforeMs).toISOString();
+      if(isFinite(afterMs) && isFinite(centerMs) && afterMs >= centerMs) payload.stop = new Date(afterMs + 1).toISOString();
+      j = await api("./api/raw_points", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)});
     }else{
       payload.limit = RAW_WINDOW_LIMIT;
       payload.offset = RAW_OFFSET;
@@ -8756,6 +8800,8 @@ async function loadRawFromGraph(reset){
     if(useCenter){
       RAW_ROWS = trimCenteredRows(rows, anchorIso, RAW_OUTLIER_CONTEXT_ROWS);
       RAW_OFFSET = (RAW_ROWS || []).length;
+      _syncSelectedOutlierWindowFromRawRows(anchorIso, RAW_ROWS || []);
+      renderOutlierOverviewTable();
     }else{
       if(RAW_OFFSET === 0) RAW_ROWS = rows;
       else RAW_ROWS = (RAW_ROWS || []).concat(rows);
@@ -11016,6 +11062,23 @@ if($rawCopy) $rawCopy.addEventListener("click", async (ev)=>{
   }
 });
 
+if($rawCopyRow) $rawCopyRow.addEventListener("click", async (ev)=>{
+  _stop(ev);
+  try{
+    const res = await copySelectedTableRowWithFeedback('#raw_tbl');
+    if(res && res.ok){
+      ok('Raw-Zeile kopiert.');
+      showRawActionFeedback('Raw-Zeile kopiert', 'Format: ... / Titelzeile / markierte Zeile / ...');
+    }else if(res && res.error === 'no_selected_row'){
+      err('Bitte zuerst eine Raw-Zeile markieren.');
+    }else{
+      err('Copy failed (Clipboard blockiert). Bitte im Browser Clipboard erlauben.');
+    }
+  }catch(e){
+    err("Copy failed: " + String(e && e.message ? e.message : e));
+  }
+});
+
 if($rawOutlierCopy) $rawOutlierCopy.addEventListener("click", async (ev)=>{
   _stop(ev);
   try{
@@ -11035,6 +11098,22 @@ if($rawOutlierCopy) $rawOutlierCopy.addEventListener("click", async (ev)=>{
       ok(`Ausreisser kopiert: ${rowCount} Zeilen.`);
     }
     else err("Copy failed (Clipboard blockiert). Bitte im Browser Clipboard erlauben.");
+  }catch(e){
+    err("Copy failed: " + String(e && e.message ? e.message : e));
+  }
+});
+
+if($rawOutlierCopyRow) $rawOutlierCopyRow.addEventListener("click", async (ev)=>{
+  _stop(ev);
+  try{
+    const res = await copySelectedTableRowWithFeedback('#raw_outlier_tbl');
+    if(res && res.ok){
+      ok('Ausreisser-Zeile kopiert.');
+    }else if(res && res.error === 'no_selected_row'){
+      err('Bitte zuerst eine Ausreisser-Zeile markieren.');
+    }else{
+      err('Copy failed (Clipboard blockiert). Bitte im Browser Clipboard erlauben.');
+    }
   }catch(e){
     err("Copy failed: " + String(e && e.message ? e.message : e));
   }

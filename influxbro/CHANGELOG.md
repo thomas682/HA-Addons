@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.12.340
+
+### Enhancement
+
+- Das gemeinsame Tabellen-Template besitzt jetzt einen Shared-Helper `Zeile kopieren`. Im Dashboard wurden dafuer zunaechst die Buttons fuer Raw- und Ausreißer-Tabelle ergaenzt; kopiert werden jeweils `...`, die Titelzeile, die markierte Zeile und ein abschliessendes `...` in die Zwischenablage. ([#279](https://github.com/thomas682/HA-Addons/issues/279))
+- Beim Klick auf einen Ausreißer laedt `Raw Daten` jetzt punktbasiert exakt `N davor / N danach` statt ein grosses Zeitfenster ueber `center_minutes`. Falls vorberechnete Fenstergrenzen vorhanden sind, werden sie nur noch zum Einengen der Query genutzt. Dadurch passen Query-Umfang, geladene Zeilen und angezeigter Raw-Kontext besser zusammen. ([#279](https://github.com/thomas682/HA-Addons/issues/279))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`
+- Tests: `pytest tests/test_api_outlier_windows.py -q`
+- Tests: `pytest tests/test_api_raw_points_center.py -q`
+- Tests: `pytest tests/test_api_ui_support.py -q -k "table_template_and_dashboard_actions_support_copy_selected_row_and_point_based_raw_context or raw_outlier_table_uses_column_filter_suggestions_and_context_rows_save_immediately or dashboard_outlier_section_is_separate_and_above_raw_section or outlier_table_header_is_explicitly_sticky_and_search_bar_tracks_outlier_section"`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.339
 
 ### Bug Fix

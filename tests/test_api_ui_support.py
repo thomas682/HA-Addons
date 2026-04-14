@@ -328,6 +328,22 @@ def test_analysis_cache_hit_summary_replaces_interval_hint_line():
     assert "dirty Segment(e) lokal bereinigt" in body
 
 
+def test_table_template_and_dashboard_actions_support_copy_selected_row_and_point_based_raw_context():
+    table_helpers = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_table_cols.html").read_text()
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    tooltips = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
+    assert 'window.InfluxBroTableRowCopy = { copySelectedRow };' in table_helpers
+    assert "const text = ['...', headers.join('\\t'), cells.join('\\t'), '...'].join('\\n');" in table_helpers
+    assert 'id="raw_copy_row"' in body
+    assert 'id="raw_outlier_copy_row"' in body
+    assert 'RAW_OUTLIER_SELECTED_TIME' in body
+    assert "payload.before_limit = minPoints + 1;" in body
+    assert "payload.after_limit = minPoints;" in body
+    assert "payload.center_minutes = cachedWindow.center_minutes;" not in body
+    assert 'dashboard_raw.btn_zeile_kopieren' in tooltips
+    assert 'dashboard_outliers.btn_zeile_kopieren' in tooltips
+
+
 def test_summary_actions_are_inline_in_topbar_and_back_icon_uses_return_svg():
     topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
     config = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "config.html").read_text()

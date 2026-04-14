@@ -19611,15 +19611,17 @@ from(bucket: "{cfg["bucket"]}")
         if not ol_time:
             continue
 
-        # Resolve actual index from time if point_index is unreliable
-        if ol_idx < 0 or ol_idx >= len(all_points):
-            actual_idx = None
-            for i, p in enumerate(all_points):
-                if p["time"] == ol_time:
-                    actual_idx = i
-                    break
-            if actual_idx is None:
+        # Always resolve the actual index from time first. point_index from the analysis result
+        # can be stale or chunk-local and must not override the real raw position here.
+        actual_idx = None
+        for i, p in enumerate(all_points):
+            if p["time"] == ol_time:
+                actual_idx = i
+                break
+        if actual_idx is None:
+            if ol_idx < 0 or ol_idx >= len(all_points):
                 continue
+        else:
             ol_idx = actual_idx
 
         before_minutes = None
@@ -19647,6 +19649,21 @@ from(bucket: "{cfg["bucket"]}")
             after_time = all_points[after_idx]["time"]
             after_count = after_idx - ol_idx
             after_minutes = (after_dt - ol_dt).total_seconds() / 60.0
+
+        # Keep the UI context display monotonic even if inconsistent data slipped through.
+        if ol_dt is not None:
+            if before_time:
+                before_dt2 = time_to_dt.get(before_time)
+                if before_dt2 is not None and before_dt2 > ol_dt:
+                    before_time = None
+                    before_count = 0
+                    before_minutes = None
+            if after_time:
+                after_dt2 = time_to_dt.get(after_time)
+                if after_dt2 is not None and after_dt2 < ol_dt:
+                    after_time = None
+                    after_count = 0
+                    after_minutes = None
 
         if before_minutes is not None and after_minutes is not None:
             center_minutes = max(before_minutes, after_minutes)
