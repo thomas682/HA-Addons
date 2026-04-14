@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.12.337
+
+### Enhancement
+
+- `Jobs & Cache` laedt jetzt wieder ohne JavaScript-Syntaxfehler. Die doppelte Deklaration der Selektionsmengen wurde entfernt, damit Mehrfachauswahl und Toolbars sauber initialisieren. ([#275](https://github.com/thomas682/HA-Addons/issues/275))
+- Die Einstellungsseite wurde fuer die Bedienung und Struktur bereinigt: neue Obergruppe `Oberflaeche`, konsistentes Hover-/Titelverhalten wie auf dem Dashboard, getrennte Farben/Schriftgroessen fuer Section-Ebene 2 und 3, keine doppelte Logs-Section mehr und einheitliche Color-Picker fuer Log-ERROR/WARN-Farben. ([#275](https://github.com/thomas682/HA-Addons/issues/275))
+- Veraltete oder nicht mehr gewollte Settings-Pfade wurden entfernt: die Open-on-load-Parameter der Dashboard-Details entfallen zugunsten fester Start-Defaults `geoeffnet`, und `Repository URL` / `PayPal Donate URL` sind nicht mehr parametrierbar, sondern fest im Add-on hinterlegt. ([#275](https://github.com/thomas682/HA-Addons/issues/275))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`
+- Tests: `pytest tests/test_api_ui_support.py -q -k "jobs_page_has_analysis_cache_section_and_actions or settings_layout_and_null_safe_bindings_are_present or page_search_setting_present_across_pages or settings_restructure_script_and_general_navigation_params_exist"`
+- Tests: `pytest tests/test_api_ui_support.py -q -k "settings_include_bugreport_log_history_hours or jobs_and_cache_tables_use_selection_toolbar_actions or jobs_page_has_analysis_cache_section_and_actions or cache_timeline_hidden_color_and_jobs_analysis_table_features_exist or dashboard_and_settings_expose_gap_outlier_controls or config_tooltips_include_page_search_highlight_settings"`
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.336
 
 ### Enhancement

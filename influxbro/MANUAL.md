@@ -747,7 +747,7 @@ Neu:
 - Dirty-Patches nutzen jetzt nach Moeglichkeit echte Vor-/Nachbarpunkte aus InfluxDB, um den lokalen Rebuild-Bereich enger und fachlich sauberer zu bestimmen als mit einem reinen Zeitfenster.
 - `Jobs & Cache -> Analysecache` zeigt jetzt neben `dirty` auch `patch`/`failed`-Zaehler fuer Serien mit ausstehenden oder fehlgeschlagenen Analyse-Cache-Reparaturen sowie in der Segmentanzeige Details zu Patchmodus, Checkpoint und Kontextpunkten.
 - Ausreisser Tabelle: `_measurement` ist nicht editierbar; Zeilen werden automatisch aus bekannten Measurements vorbefuellt.
-- Die Einstellungsseite ist jetzt in grobe Obergruppen gegliedert, u.a. `Anbindung`, `Dashboard`, `Statistik`, `Backup`, `Restore`, `Logs`, `Jobs & Cache`, `History`, `Diagnose` und `Einstellungen`. Bereiche ohne eigene Felder werden als Platzhalter sichtbar gehalten, damit die Struktur konsistent bleibt.
+- Die Einstellungsseite ist jetzt in grobe Obergruppen gegliedert, u.a. `Oberflaeche`, `Anbindung`, `Dashboard`, `Statistik`, `Backup`, `Restore`, `Logs`, `Jobs & Cache`, `History`, `Diagnose` und `Einstellungen`. Bereiche ohne eigene Felder zeigen den Hinweis `Derzeit keine eigenen Einstellungen in diesem Bereich.`.
 
 Verbindung:
 
@@ -784,13 +784,15 @@ UI:
 - `Checkbox Groesse (Scale)`: Checkbox-Scaling fuer bessere Bedienbarkeit.
 - `Bereich-Titel (Details): Hintergrund/Textfarbe`: Farben der einklappbaren Bereichstitel (Details/Sektionen). Leer = Standard; erlaubt: `transparent`/`inherit` oder `#RRGGBB`.
   - Default: Hintergrund `#3287A8`, Text `#FFFFFF`. In den Einstellungen gibt es zusaetzlich Colorpicker.
+- `Bereich-Titel Ebene 2/3`: fuer die verschachtelten Settings-Sections gibt es jetzt eigene Hintergrund-/Textfarben und eigene Schriftgroessen.
 - `Filter ... Breite`: steuert die Layout-Breiten im Dashboard.
-- `Bereiche standardmaessig geoeffnet`: welche <details>-Sektionen beim Start offen sind.
+- Dashboard-Details wie `Auswahl`, `Graph` und `Bearbeitungsliste` starten nach Erstinstallation wieder fest `geoeffnet`; dafuer gibt es keine separate Parametrierung mehr.
 - Auswahlfelder (Filter/Zeiten):
   - Fontgroessen (Label / Feld / Beschreibung)
   - Auto-Breite (Default) oder manuelle Breite (px)
   - Wenn Auto aktiv ist, wird die zuletzt berechnete Breite als Vorschlagswert angezeigt.
-- `PayPal Donate URL (Sidebar)`: Linkziel des PayPal-Spendenbuttons im Sidebar.
+- `Repository URL` und `PayPal Donate URL` sind feste interne Werte und nicht mehr in der Settings-UI editierbar.
+- Die Log-Farbparameter fuer `ERROR` und `WARN` verwenden jetzt denselben kombinierten Color-Picker/Textfeld-Stil wie die anderen Farbparameter der Oberflaeche.
 
 Fehleranzeige:
 

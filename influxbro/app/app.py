@@ -48,6 +48,7 @@ PROCESS_STARTED_MONO = time.monotonic()
 APP_DIR = Path(__file__).resolve().parent
 DEFAULT_BACKUP_DIR = CONFIG_DIR / "influxbro" / "backup"
 OLD_DEFAULT_BACKUP_DIR = DATA_DIR / "backups"
+FIXED_REPO_URL = "https://github.com/thomas682/HA-Addons"
 
 # default; may be overridden via UI config
 BACKUP_DIR = DEFAULT_BACKUP_DIR
@@ -713,6 +714,12 @@ DEFAULT_CFG = {
     # Defaults chosen for better readability.
     "ui_section_title_bg": "#3287a8",
     "ui_section_title_fg": "#FFFFFF",
+    "ui_section_level2_bg": "#E7F0F5",
+    "ui_section_level2_fg": "#173042",
+    "ui_section_level2_font_px": 14,
+    "ui_section_level3_bg": "#F5F9FC",
+    "ui_section_level3_fg": "#22384A",
+    "ui_section_level3_font_px": 13,
     "ui_filter_label_width_px": 170,
     "ui_filter_control_width_px": 320,
     "ui_filter_search_width_px": 160,
@@ -757,23 +764,12 @@ DEFAULT_CFG = {
     # Tooltips
     "ui_tooltips_enabled": True,
 
-    # Links / Info
-    "ui_repo_url": "https://github.com/thomas682/HA-Addons",
-    "ui_paypal_donate_url": "https://www.paypal.com/donate/?hosted_button_id=ZWZE3WM4NBUW6",
-
     # Backups (must live under /config or /data)
     "backup_dir": str(DEFAULT_BACKUP_DIR),
     # Refuse creating a backup if free space is below this threshold (0 = disabled)
     "backup_min_free_mb": 0,
     # One-time migration marker when moving from the old default (/data/backups)
     "backup_migrated_to_config": False,
-
-    # Default collapsed sections
-    "ui_open_selection": False,
-    "ui_open_graph": False,
-    "ui_open_filterlist": False,
-    "ui_open_editlist": False,
-    "ui_open_stats_total": False,
 
     # Outlier scan defaults (max jump per point)
     # Based on a typical household connection: 3-phase 400V, 35A -> ~24.2kW; use 30kW as practical ceiling.
@@ -6114,7 +6110,6 @@ def import_page():
 @app.get("/info")
 def info_page():
     cfg = load_cfg()
-    repo_url = (cfg.get("ui_repo_url") or "").strip()
     changelog = ""
     try:
         changelog = (APP_DIR / "CHANGELOG.md").read_text(encoding="utf-8")
@@ -6125,7 +6120,7 @@ def info_page():
         cfg=cfg,
         allow_delete=True,
         nav="changelog",
-        repo_url=repo_url,
+        repo_url=FIXED_REPO_URL,
         changelog_text=changelog,
     )
 
@@ -6133,13 +6128,12 @@ def info_page():
 @app.get("/dbinfo")
 def dbinfo_page():
     cfg = load_cfg()
-    repo_url = (cfg.get("ui_repo_url") or "").strip()
     return render_template(
         "dbinfo.html",
         cfg=cfg,
         allow_delete=True,
         nav="dbinfo",
-        repo_url=repo_url,
+        repo_url=FIXED_REPO_URL,
     )
 
 
@@ -7537,8 +7531,7 @@ def api_bugreport_meta():
     """Small metadata for pre-filling a GitHub bug report (no secrets)."""
 
     cfg = _overlay_from_yaml_if_enabled(load_cfg())
-    repo_cfg = str(cfg.get("ui_repo_url") or "").strip()
-    repo_base = _github_repo_base(repo_cfg)
+    repo_base = _github_repo_base(FIXED_REPO_URL)
     # Prefer the advanced bugreport template if present.
     new_issue_url = (repo_base + "/issues/new") if repo_base else ""
 
@@ -13625,27 +13618,20 @@ def api_set_config():
 
     _clamp_color_opt("ui_section_title_bg", allow_words=("transparent",))
     _clamp_color_opt("ui_section_title_fg", allow_words=("inherit",))
+    _clamp_color("ui_section_level2_bg", "#E7F0F5")
+    _clamp_color("ui_section_level2_fg", "#173042")
+    _clamp_color("ui_section_level3_bg", "#F5F9FC")
+    _clamp_color("ui_section_level3_fg", "#22384A")
     _clamp_color("ui_page_search_highlight_color", "#FF9900")
     _clamp_color("ui_status_bar_bg", "#FFFFFF")
     _clamp_color("ui_status_bar_fg", "#111111")
-
-    # Optional link
-    try:
-        cfg["ui_repo_url"] = str(cfg.get("ui_repo_url") or "").strip()
-    except Exception:
-        cfg["ui_repo_url"] = ""
-
-    try:
-        cfg["ui_paypal_donate_url"] = str(cfg.get("ui_paypal_donate_url") or "").strip()
-    except Exception:
-        cfg["ui_paypal_donate_url"] = ""
+    _clamp_int("ui_section_level2_font_px", 14, 10, 22)
+    _clamp_int("ui_section_level3_font_px", 13, 9, 20)
 
     try:
         cfg["import_measurement_transforms"] = str(cfg.get("import_measurement_transforms") or "").strip()
     except Exception:
         cfg["import_measurement_transforms"] = ""
-    if len(cfg["ui_paypal_donate_url"]) > 600:
-        cfg["ui_paypal_donate_url"] = cfg["ui_paypal_donate_url"][:600]
 
     # Backups directory (must stay under /data)
     try:
@@ -13663,12 +13649,6 @@ def api_set_config():
             return
         s = str(v).strip().lower()
         cfg[key] = s in ("1", "true", "yes", "on")
-
-    _bool("ui_open_selection", False)
-    _bool("ui_open_graph", False)
-    _bool("ui_open_filterlist", False)
-    _bool("ui_open_editlist", False)
-    _bool("ui_open_stats", False)
 
     _bool("ui_status_show_sysinfo", False)
 

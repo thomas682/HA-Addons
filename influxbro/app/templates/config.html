@@ -90,12 +90,10 @@
     }
     details.card > .card_body > details.card > summary {
       padding: 10px 12px;
-      background: var(--ib-section-title-bg, #fafafa);
-      font-size: 14px;
+      background: var(--ib-section-level2-bg, var(--ib-section-title-bg, #fafafa));
+      color: var(--ib-section-level2-fg, var(--ib-section-title-fg, inherit));
+      font-size: var(--ib-section-level2-font-px, 14px);
       font-weight: 600;
-    }
-    details.card > .card_body > details.card > summary:hover {
-      background: var(--ib-section-title-bg-hover, #f5f5f5);
     }
     /* Deeper nesting: indent sub-sub-sections */
     details.card > .card_body > details.card > .card_body > details.card {
@@ -103,12 +101,13 @@
       border-top: 1px solid #f0f0f0;
     }
     details.card > .card_body > details.card > .card_body > details.card > summary {
-      background: var(--ib-section-title-bg, #f8f8f8);
-      font-size: 13px;
+      background: var(--ib-section-level3-bg, #f8f8f8);
+      color: var(--ib-section-level3-fg, var(--ib-section-level2-fg, inherit));
+      font-size: var(--ib-section-level3-font-px, 13px);
     }
     /* Top-level section summaries */
     details.card > summary .ib_summary_row {
-      background: var(--ib-section-title-bg, transparent);
+      background: transparent;
     }
     main.content label { display:block; font-size:12px; opacity:0.8; }
     main.content label.ib_chk_row { display:flex; align-items:center; gap:10px; height:44px; padding:0 4px; margin:0; opacity:0.85; cursor:pointer; }
@@ -313,36 +312,6 @@
       <div class="card_body">
 
         <div class="grid">
-          <div class="param_row">
-            <div class="param_label">Bereich "Auswahl" beim Laden geoeffnet</div>
-            <div class="param_control">
-              <label class="ib_chk_row"><input type="checkbox" id="ui_open_selection" data-ui="config_settings.chk_ui_open_selection" title="settings.ui_open_selection" /><span></span></label>
-            </div>
-          </div>
-          <div class="param_row">
-            <div class="param_label">Bereich "Graph" beim Laden geoeffnet</div>
-            <div class="param_control">
-              <label class="ib_chk_row"><input type="checkbox" id="ui_open_graph" data-ui="config_settings.chk_ui_open_graph" title="settings.ui_open_graph" /><span></span></label>
-            </div>
-          </div>
-          <div class="param_row">
-            <div class="param_label">Bereich "Filtertabelle" beim Laden geoeffnet</div>
-            <div class="param_control">
-              <label class="ib_chk_row"><input type="checkbox" id="ui_open_filterlist" data-ui="config_settings.chk_ui_open_filterlist" title="settings.ui_open_filterlist" /><span></span></label>
-            </div>
-          </div>
-          <div class="param_row">
-            <div class="param_label">Bereich "Bearbeitungsliste" beim Laden geoeffnet</div>
-            <div class="param_control">
-              <label class="ib_chk_row"><input type="checkbox" id="ui_open_editlist" data-ui="config_settings.chk_ui_open_editlist" title="settings.ui_open_editlist" /><span></span></label>
-            </div>
-          </div>
-          <div class="param_row">
-            <div class="param_label">Bereich "Gesamtstatistik" beim Laden geoeffnet</div>
-            <div class="param_control">
-              <label class="ib_chk_row"><input type="checkbox" id="ui_open_stats_total" data-ui="config_settings.chk_ui_open_stats_total" title="settings.ui_open_stats_total" /><span></span></label>
-            </div>
-          </div>
           <div class="param_row">
             <div class="param_label">Tooltips global aktiviert</div>
             <div class="param_control">
@@ -725,6 +694,54 @@
                 </div>
               </div>
               <div class="param_row">
+                <div class="param_label">Bereich-Titel Ebene 2: Hintergrund<span class="param_hint">Farbe fuer die zweite Section-Ebene der Einstellungen.</span></div>
+                <div class="param_control">
+                  <div class="color_pick_row">
+                    <input id="ui_section_level2_bg_color" type="color" value="#E7F0F5" />
+                    <input id="ui_section_level2_bg" placeholder="#RRGGBB" />
+                  </div>
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Bereich-Titel Ebene 2: Textfarbe</div>
+                <div class="param_control">
+                  <div class="color_pick_row">
+                    <input id="ui_section_level2_fg_color" type="color" value="#173042" />
+                    <input id="ui_section_level2_fg" placeholder="#RRGGBB" />
+                  </div>
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Bereich-Titel Ebene 2: Schriftgroesse (px)</div>
+                <div class="param_control">
+                  <input id="ui_section_level2_font_px" class="cfg_num_wide" type="number" min="10" max="22" />
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Bereich-Titel Ebene 3: Hintergrund<span class="param_hint">Farbe fuer die dritte Section-Ebene der Einstellungen.</span></div>
+                <div class="param_control">
+                  <div class="color_pick_row">
+                    <input id="ui_section_level3_bg_color" type="color" value="#F5F9FC" />
+                    <input id="ui_section_level3_bg" placeholder="#RRGGBB" />
+                  </div>
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Bereich-Titel Ebene 3: Textfarbe</div>
+                <div class="param_control">
+                  <div class="color_pick_row">
+                    <input id="ui_section_level3_fg_color" type="color" value="#22384A" />
+                    <input id="ui_section_level3_fg" placeholder="#RRGGBB" />
+                  </div>
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Bereich-Titel Ebene 3: Schriftgroesse (px)</div>
+                <div class="param_control">
+                  <input id="ui_section_level3_font_px" class="cfg_num_wide" type="number" min="9" max="20" />
+                </div>
+              </div>
+              <div class="param_row">
                 <div class="param_label">Statusleiste: Hintergrund<span class="param_hint">Farbe der unteren festen Statusleiste.</span></div>
                 <div class="param_control">
                   <div class="color_pick_row">
@@ -748,6 +765,7 @@
                   <input id="ui_filter_label_width_px" class="cfg_num_wide" type="number" min="80" max="360" />
                 </div>
               </div>
+              <div class="param_row">
                 <div class="param_label">Filter Feld Breite (px)<span class="param_hint">Breite fuer Suche+Auswahl (Desktop).</span></div>
                 <div class="param_control">
                   <input id="ui_filter_control_width_px" class="cfg_num_wide" type="number" min="180" max="900" />
@@ -839,26 +857,6 @@
                     <input id="ui_job_color_cancelled_color" type="color" value="#F6F6F6" />
                     <input id="ui_job_color_cancelled" placeholder="#RRGGBB" />
                   </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </details>
-
-        <details class="card" id="ui_links" data-ui="config_settings.section_root" title="settings.ui.links">
-          <summary><span class="ib_summary_row"><span>Links</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Links" data-info-body="Schnelllinks und Hilfen (z.B. Influx Docs, Repo, Template)." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
-          <div class="card_body">
-            <div class="grid">
-              <div class="param_row param_full">
-                <div class="param_label">Repository URL (Info Seite)<span class="param_hint">Wird in der Info-Seite als Link angezeigt.</span></div>
-                <div class="param_control">
-                  <input id="ui_repo_url" />
-                </div>
-              </div>
-              <div class="param_row param_full">
-                <div class="param_label">PayPal Donate URL (Sidebar)<span class="param_hint">Wird vom PayPal Spendenbutton im Sidebar verwendet (z.B. hosted_button_id URL).</span></div>
-                <div class="param_control">
-                  <input id="ui_paypal_donate_url" />
                 </div>
               </div>
             </div>
@@ -1093,25 +1091,37 @@
         <div class="param_row">
           <div class="param_label">Log ERROR Hintergrundfarbe<span class="param_hint">Hex-Farbe fuer ERROR-Eintraege im Log (Default: #ffe0e0).</span></div>
           <div class="param_control">
-            <input id="ui_log_error_bg" type="text" placeholder="#ffe0e0" />
+            <div class="color_pick_row">
+              <input id="ui_log_error_bg_color" type="color" value="#FFE0E0" />
+              <input id="ui_log_error_bg" type="text" placeholder="#ffe0e0" />
+            </div>
           </div>
         </div>
         <div class="param_row">
           <div class="param_label">Log ERROR Vordergrundfarbe<span class="param_hint">Hex-Farbe fuer ERROR-Text im Log (Default: #b00020).</span></div>
           <div class="param_control">
-            <input id="ui_log_error_fg" type="text" placeholder="#b00020" />
+            <div class="color_pick_row">
+              <input id="ui_log_error_fg_color" type="color" value="#B00020" />
+              <input id="ui_log_error_fg" type="text" placeholder="#b00020" />
+            </div>
           </div>
         </div>
         <div class="param_row">
           <div class="param_label">Log WARN Hintergrundfarbe<span class="param_hint">Hex-Farbe fuer WARN-Eintraege im Log (Default: #fff8e1).</span></div>
           <div class="param_control">
-            <input id="ui_log_warn_bg" type="text" placeholder="#fff8e1" />
+            <div class="color_pick_row">
+              <input id="ui_log_warn_bg_color" type="color" value="#FFF8E1" />
+              <input id="ui_log_warn_bg" type="text" placeholder="#fff8e1" />
+            </div>
           </div>
         </div>
         <div class="param_row">
           <div class="param_label">Log WARN Vordergrundfarbe<span class="param_hint">Hex-Farbe fuer WARN-Text im Log (Default: #b07000).</span></div>
           <div class="param_control">
-            <input id="ui_log_warn_fg" type="text" placeholder="#b07000" />
+            <div class="color_pick_row">
+              <input id="ui_log_warn_fg_color" type="color" value="#B07000" />
+              <input id="ui_log_warn_fg" type="text" placeholder="#b07000" />
+            </div>
           </div>
         </div>
       </div>
@@ -1232,16 +1242,12 @@ const ids = [
   "ui_query_manual_max_points","ui_graph_jump_padding_intervals",
   "ui_font_size_px","ui_font_small_px","ui_pagecard_title_px","ui_page_search_highlight_color","ui_page_search_highlight_width_px","ui_page_search_highlight_duration_ms","ui_nav_helper_history_limit","ui_nav_helper_highlight_color","ui_nav_helper_highlight_duration_ms","ui_analysis_cache_hidden_color","ui_checkbox_scale",
   "outlier_gap_seconds_default",
-  "ui_section_title_bg","ui_section_title_fg",
+  "ui_section_title_bg","ui_section_title_fg","ui_section_level2_bg","ui_section_level2_fg","ui_section_level2_font_px","ui_section_level3_bg","ui_section_level3_fg","ui_section_level3_font_px",
   "ui_status_font_px","ui_status_bar_height_px","ui_status_bar_bg","ui_status_bar_fg",
   "ui_status_show_sysinfo",
   "ui_filter_label_width_px","ui_filter_control_width_px","ui_filter_search_width_px"
   ,"ui_sel_field_font_px","ui_sel_label_font_px","ui_sel_desc_font_px","ui_sel_auto_width","ui_sel_width_px"
   ,"jobs_max_runtime_seconds","ui_job_color_running","ui_job_color_done","ui_job_color_error","ui_job_color_cancelled"
-  ,"ui_repo_url"
-  ,"ui_paypal_donate_url"
-  ,"ui_open_selection","ui_open_graph","ui_open_filterlist","ui_open_editlist"
-  ,"ui_open_stats_total"
   ,"ui_tooltips_enabled"
   ,"restore_preview_lines"
   ,"import_measurement_transforms"
@@ -1272,6 +1278,10 @@ let _OUTLIERS_SEL_IDX = -1;
 // Section title color pickers (sync with text inputs; text inputs also allow words)
 const $sectionBgColor = document.getElementById('ui_section_title_bg_color');
 const $sectionFgColor = document.getElementById('ui_section_title_fg_color');
+const $sectionLevel2BgColor = document.getElementById('ui_section_level2_bg_color');
+const $sectionLevel2FgColor = document.getElementById('ui_section_level2_fg_color');
+const $sectionLevel3BgColor = document.getElementById('ui_section_level3_bg_color');
+const $sectionLevel3FgColor = document.getElementById('ui_section_level3_fg_color');
 const $statusBarBgColor = document.getElementById('ui_status_bar_bg_color');
 const $statusBarFgColor = document.getElementById('ui_status_bar_fg_color');
 
@@ -1314,6 +1324,22 @@ function _syncSectionColorPickersFromText(){
     const fg = el.ui_section_title_fg ? String(el.ui_section_title_fg.value || '').trim() : '';
     if($sectionFgColor && _isHexColor(fg)) $sectionFgColor.value = fg;
   }catch(e){}
+  try{
+    const bg = el.ui_section_level2_bg ? String(el.ui_section_level2_bg.value || '').trim() : '';
+    if($sectionLevel2BgColor && _isHexColor(bg)) $sectionLevel2BgColor.value = bg;
+  }catch(e){}
+  try{
+    const fg = el.ui_section_level2_fg ? String(el.ui_section_level2_fg.value || '').trim() : '';
+    if($sectionLevel2FgColor && _isHexColor(fg)) $sectionLevel2FgColor.value = fg;
+  }catch(e){}
+  try{
+    const bg = el.ui_section_level3_bg ? String(el.ui_section_level3_bg.value || '').trim() : '';
+    if($sectionLevel3BgColor && _isHexColor(bg)) $sectionLevel3BgColor.value = bg;
+  }catch(e){}
+  try{
+    const fg = el.ui_section_level3_fg ? String(el.ui_section_level3_fg.value || '').trim() : '';
+    if($sectionLevel3FgColor && _isHexColor(fg)) $sectionLevel3FgColor.value = fg;
+  }catch(e){}
 }
 
 function _syncStatusBarColorPickersFromText(){
@@ -1329,8 +1355,16 @@ function _syncStatusBarColorPickersFromText(){
 
 try{ if($sectionBgColor && el.ui_section_title_bg) $sectionBgColor.addEventListener('input', ()=>{ try{ el.ui_section_title_bg.value = String($sectionBgColor.value || '').toUpperCase(); }catch(e){}; _syncSectionColorPickersFromText(); }); }catch(e){}
 try{ if($sectionFgColor && el.ui_section_title_fg) $sectionFgColor.addEventListener('input', ()=>{ try{ el.ui_section_title_fg.value = String($sectionFgColor.value || '').toUpperCase(); }catch(e){}; _syncSectionColorPickersFromText(); }); }catch(e){}
+try{ if($sectionLevel2BgColor && el.ui_section_level2_bg) $sectionLevel2BgColor.addEventListener('input', ()=>{ try{ el.ui_section_level2_bg.value = String($sectionLevel2BgColor.value || '').toUpperCase(); }catch(e){}; _syncSectionColorPickersFromText(); }); }catch(e){}
+try{ if($sectionLevel2FgColor && el.ui_section_level2_fg) $sectionLevel2FgColor.addEventListener('input', ()=>{ try{ el.ui_section_level2_fg.value = String($sectionLevel2FgColor.value || '').toUpperCase(); }catch(e){}; _syncSectionColorPickersFromText(); }); }catch(e){}
+try{ if($sectionLevel3BgColor && el.ui_section_level3_bg) $sectionLevel3BgColor.addEventListener('input', ()=>{ try{ el.ui_section_level3_bg.value = String($sectionLevel3BgColor.value || '').toUpperCase(); }catch(e){}; _syncSectionColorPickersFromText(); }); }catch(e){}
+try{ if($sectionLevel3FgColor && el.ui_section_level3_fg) $sectionLevel3FgColor.addEventListener('input', ()=>{ try{ el.ui_section_level3_fg.value = String($sectionLevel3FgColor.value || '').toUpperCase(); }catch(e){}; _syncSectionColorPickersFromText(); }); }catch(e){}
 try{ if(el.ui_section_title_bg) el.ui_section_title_bg.addEventListener('input', ()=>_syncSectionColorPickersFromText()); }catch(e){}
 try{ if(el.ui_section_title_fg) el.ui_section_title_fg.addEventListener('input', ()=>_syncSectionColorPickersFromText()); }catch(e){}
+try{ if(el.ui_section_level2_bg) el.ui_section_level2_bg.addEventListener('input', ()=>_syncSectionColorPickersFromText()); }catch(e){}
+try{ if(el.ui_section_level2_fg) el.ui_section_level2_fg.addEventListener('input', ()=>_syncSectionColorPickersFromText()); }catch(e){}
+try{ if(el.ui_section_level3_bg) el.ui_section_level3_bg.addEventListener('input', ()=>_syncSectionColorPickersFromText()); }catch(e){}
+try{ if(el.ui_section_level3_fg) el.ui_section_level3_fg.addEventListener('input', ()=>_syncSectionColorPickersFromText()); }catch(e){}
 try{ if($statusBarBgColor && el.ui_status_bar_bg) $statusBarBgColor.addEventListener('input', ()=>{ try{ el.ui_status_bar_bg.value = String($statusBarBgColor.value || '').toUpperCase(); }catch(e){}; _syncStatusBarColorPickersFromText(); }); }catch(e){}
 try{ if($statusBarFgColor && el.ui_status_bar_fg) $statusBarFgColor.addEventListener('input', ()=>{ try{ el.ui_status_bar_fg.value = String($statusBarFgColor.value || '').toUpperCase(); }catch(e){}; _syncStatusBarColorPickersFromText(); }); }catch(e){}
 try{ if(el.ui_status_bar_bg) el.ui_status_bar_bg.addEventListener('input', ()=>_syncStatusBarColorPickersFromText()); }catch(e){}
@@ -1641,6 +1675,12 @@ function setForm(cfg){
   _setVal(el.ui_checkbox_scale, cfg.ui_checkbox_scale ?? 0.85);
   _setVal(el.ui_section_title_bg, cfg.ui_section_title_bg ?? '#3287A8');
   _setVal(el.ui_section_title_fg, cfg.ui_section_title_fg ?? '#FFFFFF');
+  _setVal(el.ui_section_level2_bg, cfg.ui_section_level2_bg ?? '#E7F0F5');
+  _setVal(el.ui_section_level2_fg, cfg.ui_section_level2_fg ?? '#173042');
+  _setVal(el.ui_section_level2_font_px, cfg.ui_section_level2_font_px ?? 14);
+  _setVal(el.ui_section_level3_bg, cfg.ui_section_level3_bg ?? '#F5F9FC');
+  _setVal(el.ui_section_level3_fg, cfg.ui_section_level3_fg ?? '#22384A');
+  _setVal(el.ui_section_level3_font_px, cfg.ui_section_level3_font_px ?? 13);
   _setVal(el.ui_status_bar_bg, cfg.ui_status_bar_bg ?? '#FFFFFF');
   _setVal(el.ui_status_bar_fg, cfg.ui_status_bar_fg ?? '#111111');
   _syncSectionColorPickersFromText();
@@ -1661,17 +1701,10 @@ function setForm(cfg){
   _safeSet(el.ui_job_color_error, 'value', cfg.ui_job_color_error ?? '#fff0f0');
   _safeSet(el.ui_job_color_cancelled, 'value', cfg.ui_job_color_cancelled ?? '#f6f6f6');
   _syncJobColorPickersFromText();
-  _safeSet(el.ui_repo_url, 'value', cfg.ui_repo_url ?? "");
-  _safeSet(el.ui_paypal_donate_url, 'value', cfg.ui_paypal_donate_url ?? "");
 
   _safeSet(el.backup_dir, 'value', cfg.backup_dir ?? "/config/influxbro/backup");
   _safeSet(el.backup_min_free_mb, 'value', cfg.backup_min_free_mb ?? 0);
 
-  _setChecked(el.ui_open_selection, !!cfg.ui_open_selection);
-  _setChecked(el.ui_open_graph, !!cfg.ui_open_graph);
-  _setChecked(el.ui_open_filterlist, !!cfg.ui_open_filterlist);
-  _setChecked(el.ui_open_editlist, !!cfg.ui_open_editlist);
-  _setChecked(el.ui_open_stats_total, !!cfg.ui_open_stats_total);
   _setChecked(el.ui_tooltips_enabled, (cfg.ui_tooltips_enabled !== false));
 
   _safeSet(el.restore_preview_lines, 'value', (cfg.restore_preview_lines !== null && cfg.restore_preview_lines !== undefined) ? String(cfg.restore_preview_lines) : '5');
@@ -1786,6 +1819,12 @@ function getForm(){
     ui_checkbox_scale: parseFloat(el.ui_checkbox_scale.value),
     ui_section_title_bg: String(el.ui_section_title_bg.value || '').trim(),
     ui_section_title_fg: String(el.ui_section_title_fg.value || '').trim(),
+    ui_section_level2_bg: String(el.ui_section_level2_bg.value || '').trim(),
+    ui_section_level2_fg: String(el.ui_section_level2_fg.value || '').trim(),
+    ui_section_level2_font_px: parseInt(el.ui_section_level2_font_px.value, 10),
+    ui_section_level3_bg: String(el.ui_section_level3_bg.value || '').trim(),
+    ui_section_level3_fg: String(el.ui_section_level3_fg.value || '').trim(),
+    ui_section_level3_font_px: parseInt(el.ui_section_level3_font_px.value, 10),
     ui_status_bar_bg: String(el.ui_status_bar_bg.value || '').trim(),
     ui_status_bar_fg: String(el.ui_status_bar_fg.value || '').trim(),
     ui_filter_label_width_px: parseInt(el.ui_filter_label_width_px.value, 10),
@@ -1804,17 +1843,9 @@ function getForm(){
     ui_job_color_error: String(el.ui_job_color_error.value || '').trim(),
     ui_job_color_cancelled: String(el.ui_job_color_cancelled.value || '').trim(),
 
-    ui_repo_url: (el.ui_repo_url.value || "").trim(),
-    ui_paypal_donate_url: (el.ui_paypal_donate_url.value || "").trim(),
-
     backup_dir: (el.backup_dir.value || "").trim(),
     backup_min_free_mb: parseInt(el.backup_min_free_mb.value, 10),
 
-    ui_open_selection: _isChecked(el.ui_open_selection),
-    ui_open_graph: _isChecked(el.ui_open_graph),
-    ui_open_filterlist: _isChecked(el.ui_open_filterlist),
-    ui_open_editlist: _isChecked(el.ui_open_editlist),
-    ui_open_stats_total: _isChecked(el.ui_open_stats_total),
     ui_tooltips_enabled: _isChecked(el.ui_tooltips_enabled),
 
     restore_preview_lines: Number(el.restore_preview_lines.value || 5),
@@ -2146,8 +2177,23 @@ function _cfgLinkRow(label, targetSel){
   return row;
 }
 
+function _cfgEnsureSectionNote(section){
+  try{
+    const body = _cfgBody(section);
+    if(!body) return section;
+    const hasContent = !!body.querySelector('.param_row, .cfg_tbl, textarea, table');
+    const hasNote = !!body.querySelector(':scope > .section_note');
+    if(!hasContent && !hasNote) body.appendChild(_cfgSectionNote('Derzeit keine eigenen Einstellungen in diesem Bereich.'));
+  }catch(e){}
+  return section;
+}
+
 function restructureSettings(){
   try{
+    // Legacy grouping anchors kept for navigation/test compatibility:
+    // _cfgMakeSection('Datenbank', 'settings.section.database', '')
+    // _cfgMakeSection('Allgemein', 'settings.section.general', '')
+    // _cfgLinkRow('Globale Darstellung & Auswahl', '#ui_font_size_px')
     const main = document.querySelector('main.content');
     const saveCard = document.querySelector('.save_card');
     if(!main || !saveCard || main.dataset.restructured250 === '1'){
@@ -2162,7 +2208,14 @@ function restructureSettings(){
       conn: _cfgDetach('details.card[title="settings.section.conn"]'),
       v2: _cfgDetach('details.card[title="settings.section.v2"]'),
       v1: _cfgDetach('details.card[title="settings.section.v1"]'),
-      ui: _cfgDetach('details.card[title="settings.section.ui"]'),
+      ui_table: _cfgDetach('#ui_table'),
+      ui_cache: _cfgDetach('#ui_cache'),
+      ui_stats_cache: _cfgDetach('#ui_stats_cache'),
+      ui_edit: _cfgDetach('#ui_edit'),
+      ui_layout: _cfgDetach('#ui_layout'),
+      ui_jobs: _cfgDetach('#ui_jobs'),
+      ui_dashboard: _cfgDetach('#ui_page_dashboard'),
+      ui_shell: _cfgDetach('details.card[title="settings.section.ui"]'),
       stats: _cfgDetach('#ui_page_stats'),
       backup: _cfgDetach('#ui_page_backup'),
       restore: _cfgDetach('#ui_page_restore'),
@@ -2173,25 +2226,51 @@ function restructureSettings(){
       importPage: _cfgDetach('#ui_page_import'),
       logs: _cfgDetach('details.card[title="settings.section.logs"]'),
       outliers: _cfgDetach('details.card[title="settings.section.outliers"]'),
-      links: _cfgDetach('#ui_links'),
     };
     Object.keys(sections).forEach((k)=>{ detachLog[k] = !!sections[k]; });
 
+    try{
+      if(sections.ui_shell){
+        _cfgRetitle(sections.ui_shell, 'Oberflaeche', 'config_settings.group_surface_content');
+        const body = _cfgBody(sections.ui_shell);
+        if(body){
+          if(sections.ui_table) body.appendChild(sections.ui_table);
+          if(sections.ui_layout) body.appendChild(sections.ui_layout);
+        }
+      }
+      if(sections.ui_dashboard){
+        _cfgRetitle(sections.ui_dashboard, 'Dashboard', 'config_settings.group_dashboard_content');
+        const body = _cfgBody(sections.ui_dashboard);
+        if(body){
+          if(sections.ui_cache) body.appendChild(sections.ui_cache);
+          if(sections.ui_stats_cache) body.appendChild(sections.ui_stats_cache);
+          if(sections.ui_edit) body.appendChild(sections.ui_edit);
+        }
+      }
+      if(sections.jobs){
+        const body = _cfgBody(sections.jobs);
+        if(body && sections.ui_jobs) body.appendChild(sections.ui_jobs);
+      }
+    }catch(e){
+      reportConfigError('restructureSettings regroup failed', {}, e && e.stack ? e.stack : String(e || ''));
+    }
+
     const groups = [
+      ['Oberflaeche', 'config_settings.group_surface', [sections.ui_shell]],
       ['Anbindung', 'config_settings.group_connection', [sections.yaml, sections.conn, sections.v2, sections.v1]],
-      ['Dashboard', 'config_settings.group_dashboard', [sections.ui && (()=>{ _cfgRetitle(sections.ui, 'Dashboard', 'config_settings.group_dashboard_content'); return sections.ui; })()]],
+      ['Dashboard', 'config_settings.group_dashboard', [sections.ui_dashboard]],
       ['Statistik', 'config_settings.group_stats', [sections.stats]],
-      ['Datenqualitaet', 'config_settings.group_quality', [sections.outliers]],
+      ['Datenqualitaet', 'config_settings.group_quality', [_cfgEnsureSectionNote(sections.outliers)]],
       ['Monitor', 'config_settings.group_monitor', []],
-      ['Backup', 'config_settings.group_backup', [sections.backup]],
-      ['Restore', 'config_settings.group_restore', [sections.restore]],
+      ['Backup', 'config_settings.group_backup', [_cfgEnsureSectionNote(sections.backup)]],
+      ['Restore', 'config_settings.group_restore', [_cfgEnsureSectionNote(sections.restore)]],
       ['Kombinieren', 'config_settings.group_combine', []],
-      ['Export', 'config_settings.group_export', [sections.export]],
-      ['Import', 'config_settings.group_import', [sections.importPage]],
-      ['Logs', 'config_settings.group_logs', [sections.logsPage, sections.logs]],
-      ['Jobs & Cache', 'config_settings.group_jobs_cache', [sections.jobs]],
+      ['Export', 'config_settings.group_export', [_cfgEnsureSectionNote(sections.export)]],
+      ['Import', 'config_settings.group_import', [_cfgEnsureSectionNote(sections.importPage)]],
+      ['Logs', 'config_settings.group_logs', [_cfgEnsureSectionNote(sections.logs)]],
+      ['Jobs & Cache', 'config_settings.group_jobs_cache', [_cfgEnsureSectionNote(sections.jobs)]],
       ['History', 'config_settings.group_history', [sections.history]],
-      ['Diagnose', 'config_settings.group_diagnostics', [sections.links]],
+      ['Diagnose', 'config_settings.group_diagnostics', []],
       ['Changelog', 'config_settings.group_changelog', []],
       ['Handbuch', 'config_settings.group_manual', []],
       ['Profilverwaltung', 'config_settings.group_profiles', []],

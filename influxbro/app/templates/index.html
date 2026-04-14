@@ -243,7 +243,7 @@
   </div>
   <div class="muted" id="backup_badge" data-ui="dashboard_header.badge_backup" title="dashboard_header.badge_backup"></div>
 
-  <details id="selection_details" {{ 'open' if cfg.get('ui_open_selection') else '' }} data-ui="dashboard_selection.section_root" title="dashboard_selection.section_root">
+  <details id="selection_details" open data-ui="dashboard_selection.section_root" title="dashboard_selection.section_root">
     <summary><span class="ib_summary_row"><span>Messwertauswahl</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Messwertauswahl" data-info-body="Auswahl bestimmt, welche Serie geladen wird (measurement/field/entity_id/friendly_name) und welcher Zeitraum fuer Graph/Tabellen gilt.\n\nTypisch:\n1) friendly_name/entity_id waehlen (Measurement optional als Filter).\n2) Zeitraum setzen (Preset oder Custom).\n3) Laden startet Query und fuellt Graph, Raw und Tabellen.\n\nHinweis:\n- Auswahl wird im Browser gespeichert und fuer Backup/Restore/Export wiederverwendet." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
 
     <div class="grid" id="filters" data-ui="dashboard_selection.panel_filters" title="dashboard_selection.panel_filters">
@@ -636,7 +636,7 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
     <div id="raw_resize" data-ui="dashboard_raw.handle_resize" title="dashboard_raw.handle_resize" style="height: 12px; cursor: ns-resize; margin-top: 8px; border-radius: 999px; background: linear-gradient(90deg, #eee, #f8f8f8);"></div>
   </div>
     </details>
-    <details id="graph_section" class="section" {{ 'open' if cfg.get('ui_open_graph') else '' }} data-ui="dashboard_graph.section_root" title="dashboard_graph.section_root">
+    <details id="graph_section" class="section" open data-ui="dashboard_graph.section_root" title="dashboard_graph.section_root">
       <summary><span class="ib_summary_row"><span class="section_title" style="margin:0;">Grafische Analyse</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Graph" data-info-body="Der Graph ist die zentrale Visualisierung der aktuell gewaehlten Serie.\n\nEnthaelt:\n- Zeitreihen-Plot mit Zoom und Auswahl\n- Marker fuer selektierte Punkte\n- Detail-Modi, Ableitungen und Zusatzinfos unter dem Plot\n- Raw-Synchronisation: ein Klick auf einen Punkt steuert die Raw-Tabelle\n\nNutzen:\n- zeitliche Analyse\n- Auswahl eines Ankerpunkts fuer Raw-Daten und Bearbeitung" ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
       <div class="tbl_actions" data-ui="dashboard_graph.row_actions">
         <label><input type="checkbox" id="graph_markers" class="row_sel" data-ui="dashboard_graph.chk_messpunkte_markieren"/>Messpunkte markieren</label>
@@ -739,7 +739,7 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
       </div>
     </div>
 
-    <details id="filterlist_section" class="section" {{ 'open' if cfg.get('ui_open_filterlist') else '' }} data-ui="dashboard_filterlist.section_root" title="dashboard_filterlist.section_root">
+    <details id="filterlist_section" class="section" open data-ui="dashboard_filterlist.section_root" title="dashboard_filterlist.section_root">
       <summary><span class="ib_summary_row"><span class="section_title" style="margin:0;">Bearbeitungsliste</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Bearbeitungsliste" data-info-body="Die Bearbeitungsliste sammelt vorgemerkte Aenderungen fuer Datenpunkte, bevor sie geschrieben werden.\n\nEnthaelt:\n- markierte Zeilen mit altem und neuem Wert\n- Aktionen zum Uebernehmen, Verwerfen, Mitteln oder Loeschen\n- Vorschau-Query fuer die spaetere Schreibaktion\n\nNutzen:\n- sichere Sammelbearbeitung mehrerer Punkte\n- Kontrolle vor dem eigentlichen Schreiben in InfluxDB" ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
       <div class="table_wrap">
         <div class="table_title">Bearbeitungsliste</div>

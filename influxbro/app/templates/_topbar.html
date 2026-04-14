@@ -7,6 +7,12 @@
       --ib-pagecard-live-h: 74px;
       --ib-section-title-bg: {{ (cfg.get('ui_section_title_bg') or 'transparent') if cfg else 'transparent' }};
       --ib-section-title-fg: {{ (cfg.get('ui_section_title_fg') or 'inherit') if cfg else 'inherit' }};
+      --ib-section-level2-bg: {{ (cfg.get('ui_section_level2_bg') or '#E7F0F5') if cfg else '#E7F0F5' }};
+      --ib-section-level2-fg: {{ (cfg.get('ui_section_level2_fg') or '#173042') if cfg else '#173042' }};
+      --ib-section-level2-font-px: {{ (cfg.get('ui_section_level2_font_px') or 14) | int }}px;
+      --ib-section-level3-bg: {{ (cfg.get('ui_section_level3_bg') or '#F5F9FC') if cfg else '#F5F9FC' }};
+      --ib-section-level3-fg: {{ (cfg.get('ui_section_level3_fg') or '#22384A') if cfg else '#22384A' }};
+      --ib-section-level3-font-px: {{ (cfg.get('ui_section_level3_font_px') or 13) | int }}px;
       --ib-statusbar-bg: {{ (cfg.get('ui_status_bar_bg') or '#FFFFFF') if cfg else '#FFFFFF' }};
       --ib-statusbar-fg: {{ (cfg.get('ui_status_bar_fg') or '#111111') if cfg else '#111111' }};
       --ib-bottombar-h: {{ (cfg.get('ui_status_bar_height_px') or 38) | int }}px;
@@ -1170,7 +1176,6 @@
   </script>
 </header>
 
-{% set _pp_url = (cfg.get('ui_paypal_donate_url') or 'https://www.paypal.com/donate/?hosted_button_id=ZWZE3WM4NBUW6') %}
 <div class="ib_pagecard" id="ib_pagecard" data-ui="page_title.panel_card" title="page.title.card">
   <div class="brandwrap">
     <div class="brandbox">
@@ -1179,7 +1184,7 @@
       <span class="meta hintline" id="ui_profile_hint">Version: {{ addon_version }}</span>
     </div>
     <div class="branddonate" data-ui="nav_main.panel_donate" title="nav.donate">
-      <a href="{{ _pp_url }}" target="_blank" rel="noreferrer" style="display:inline-block; vertical-align:middle;">
+      <a href="https://www.paypal.com/donate/?hosted_button_id=ZWZE3WM4NBUW6" target="_blank" rel="noreferrer" style="display:inline-block; vertical-align:middle;">
         <img alt="Donate with PayPal" src="https://raw.githubusercontent.com/stefan-niedermann/paypal-donate-button/master/paypal-donate-button.png" style="height: 30px;" />
       </a>
       <a href="https://buymeacoffee.com/thomasschatz" target="_blank" rel="noreferrer" style="display:inline-block; vertical-align:middle;">
