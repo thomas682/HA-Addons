@@ -521,16 +521,10 @@ from flask import Flask, jsonify, request
   - **Ermittlung der HA Core Version:** Vor dem Schreiben des Changelog-Eintrags MUSS die installierte Home Assistant Core Version auf dem Echtsystem ermittelt werden:
   
     ```bash
-    curl -fsS http://192.168.2.200:8099/api/info | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('ha_core_version','unknown'))"
+    curl -s -H "Authorization: Bearer $SUPERVISOR_TOKEN" http://192.168.2.200:8123/api/config | jq -r '.version'
       ```
   
-    Falls das API-Feld `ha_core_version` nicht existiert, alternativ:
-
-    ```bash
-    curl -fsS http://192.168.2.200:8099/ | grep -o 'Home Assistant [0-9.]*' | head -1
-    ```
-  
-    Der ermittelte Wert MUSS im Changelog-Eintrag unter `Tested with Home Assistant Core: <wert>` eingetragen werden.
+  Der ermittelte Wert MUSS im Changelog-Eintrag unter `Tested with Home Assistant Core: <wert>` eingetragen werden.
 
 ## Support & Logging
 
