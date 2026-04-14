@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.12.336
+
+### Enhancement
+
+- Die Analyse-Checkliste im Dashboard zeigt jetzt fuer jeden festen Schritt ein eigenes Info-Icon mit sehr ausfuehrlicher technischer Erklaerung. Zusaetzlich werden Startzeit und Laufzeit pro Schritt durchgaengig mit Millisekunden angezeigt. ([#273](https://github.com/thomas682/HA-Addons/issues/273))
+- Der Schritt `Cache-Segmente kombinieren` meldet jetzt genauer, ob keine sauberen zusammenhaengenden Gruppen existieren oder ob dirty Segmente mit konkreten `patch_status`-/`dirty_reason`-Gruenden die Kombination blockieren. Die alte separate Chunk-Statuszeile unter der Checkliste entfaellt. ([#273](https://github.com/thomas682/HA-Addons/issues/273))
+- Der gemeinsame Popup-Splitter `influxbro_popup_split` laesst sich jetzt deutlich freier nach oben und unten ziehen. Beide Bereiche behalten nur noch eine kleine Resthoehe, statt frueh hart zu begrenzen. ([#273](https://github.com/thomas682/HA-Addons/issues/273))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`
+- Tests: `pytest tests/test_api_analysis_cache.py -q`
+- Tests: `pytest tests/test_api_ui_support.py::test_dashboard_cache_timeline_has_hl_ac_toggles_and_combine_buttons -q`
+- Hinweis: `pytest tests/test_api_ui_support.py -q` enthaelt weiterhin mehrere vorbestehende String-/Snapshot-Fails in nicht von dieser Aenderung beruehrten Bereichen.
+- Tested with Home Assistant Core: unknown
+
 ## 1.12.335
 
 ### Bug Fix

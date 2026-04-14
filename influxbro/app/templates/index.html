@@ -119,6 +119,8 @@
     .checklist_progress { height: 6px; background: #eee; border-radius: 3px; overflow: hidden; margin-top: 4px; }
     .checklist_progress_bar { height: 100%; background: #4caf50; transition: width 0.3s; }
     .checklist_sub { padding-left: 24px; font-size: 11px; opacity: 0.8; margin-top: 2px; }
+    .checklist_main { display:flex; align-items:center; gap:8px; flex:1; min-width:0; }
+    .checklist_main .ib_info_icon { width:20px; height:20px; min-width:20px; }
     #load_status_time { opacity: 0.85; white-space: nowrap; }
 
     #outlier_status { display:none; margin-top: 6px; font-size: 12px; opacity: 0.85; align-items:center; gap: 8px; }
@@ -449,8 +451,7 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
          <div id="analysis_progress_text" class="muted" style="font-size:11px;margin-bottom:8px;">0%</div>
          <div id="analysis_chunk_timeline" style="display:none; margin-bottom:10px;"></div>
           <div id="analysis_checklist" data-ui="dashboard_analysis.panel_checklist" style="font-size:12px;margin-bottom:8px;"></div>
-         <div id="analysis_chunk_info" class="muted" data-ui="dashboard_analysis.txt_chunk_info" style="font-size:11px;margin-bottom:4px;"></div>
-         <div id="analysis_interval_info" class="muted" data-ui="dashboard_analysis.txt_interval_info" style="font-size:11px;margin-bottom:8px;"></div>
+          <div id="analysis_interval_info" class="muted" data-ui="dashboard_analysis.txt_interval_info" style="font-size:11px;margin-bottom:8px;"></div>
          <div id="analysis_found_info" data-ui="dashboard_analysis.txt_found_info" style="font-size:12px;margin-bottom:12px;"></div>
 
         <div style="font-size:13px;font-weight:600;margin-bottom:8px;">Ausreisser-Typen auswaehlen</div>
@@ -4738,6 +4739,147 @@ const ANALYSIS_STEP_LABELS = {
   combine: 'Cache-Segmente kombinieren',
   complete: 'Analyse abgeschlossen',
 };
+const ANALYSIS_STEP_INFO_TEXTS = {
+  button_start: [
+    'Dieser Schritt dokumentiert den exakten Einstieg in den Analyseflow durch den Dashboard-Button.',
+    '',
+    'Intern passiert hier:',
+    '- Der aktuelle Trigger (Analyse mit Cache oder ohne Cache) wird als Aktion gespeichert.',
+    '- Die Checkliste wird fuer einen neuen Lauf vorbereitet und die Folgeschritte werden zeitlich daran ausgerichtet.',
+    '- Die Analysehistorie bekommt damit einen definierten Startpunkt fuer spaetere Korrelation mit Cache-, Chunk- und Fehlerereignissen.',
+    '',
+    'Dieser Schritt fuehrt noch keine Datenbankabfrage aus. Er markiert den Benutzerstart und schafft die technische Basis fuer alle folgenden Messungen der Startzeit und Laufzeit.'
+  ].join('\n'),
+  cache_plan: [
+    'In diesem Schritt wird der serverseitige Analyse-Cache-Plan fuer die aktuelle Serienauswahl und das aktuelle Analysefenster geladen.',
+    '',
+    'Geprueft werden insbesondere:',
+    '- welche Cache-Segmente zur Serie gehoeren',
+    '- welche Zeitbereiche bereits direkt wiederverwendbar sind',
+    '- welche Luecken neu gelesen werden muessen',
+    '- welche Bereiche wegen nachtraeglicher Messwertaenderungen als dirty gelten',
+    '',
+    'Das Ergebnis steuert den weiteren Ablauf direkt: reuse bedeutet vorhandene Segmente vorladen, gaps/dirty_ranges bedeuten gezielte Nachladung statt Vollscan.'
+  ].join('\n'),
+  cache_hit: [
+    'Hier wird entschieden, ob der vorhandene Cache den gewuenschten Zeitraum bereits vollstaendig oder nur teilweise abdeckt.',
+    '',
+    'Intern wird ausgewertet:',
+    '- ob Session-Cache-Ergebnisse vorhanden sind',
+    '- ob der frische Server-Plan keine offenen Restbereiche mehr meldet',
+    '- ob vorhandene Segment-Payloads direkt in das Analyseergebnis vorgeladen werden koennen',
+    '',
+    'Teilweise Abdeckung bedeutet: vorhandene Segmente werden uebernommen, fehlende oder dirty Bereiche werden spaeter zusaetzlich gelesen.'
+  ].join('\n'),
+  validate: [
+    'Dieser Schritt validiert die funktionalen Pflichtparameter der Analyse.',
+    '',
+    'Pflicht sind:',
+    '- Measurement',
+    '- Field',
+    '- mindestens eine Serienidentifikation ueber entity_id oder friendly_name',
+    '',
+    'Bei einem Fehler endet der Lauf hier sofort, damit keine uneindeutige oder unvollstaendige Influx-Abfrage erzeugt wird.'
+  ].join('\n'),
+  window: [
+    'Dieser Schritt berechnet das effektive Analysefenster, also den tatsaechlich verwendeten Start- und Stop-Zeitpunkt.',
+    '',
+    'Dazu gehoert:',
+    '- Aufloesen von Presets wie 24h oder custom',
+    '- Beruecksichtigung des effektiven Analyse-Starts',
+    '- Normierung in ISO-Zeitstempel fuer API-Aufrufe und Cache-Schluessel',
+    '',
+    'Der hier bestimmte Zeitraum ist die Grundlage fuer Cache-Plan, Chunk-Aufteilung und die spaetere Ausreisser-Suche.'
+  ].join('\n'),
+  types: [
+    'Hier werden die aktuell aktivierten Ausreisser-Typen in den Analysezustand uebernommen.',
+    '',
+    'Das betrifft insbesondere die Typen:',
+    '- Counter',
+    '- Counter Abfall',
+    '- Grenzen',
+    '- Messwertluecken / Stoerphase',
+    '- NULL / 0-Werte / ignored',
+    '',
+    'Die Auswahl bestimmt unmittelbar, welche Treffer im Suchlauf erzeugt, aggregiert und spaeter in der UI sichtbar gemacht werden.'
+  ].join('\n'),
+  prepare: [
+    'Dieser Schritt initialisiert den kompletten Analysezustand im Frontend.',
+    '',
+    'Dazu gehoert unter anderem:',
+    '- Ruecksetzen alter Chunk- und Trefferdaten',
+    '- Fuellen von ANALYSIS_STATE mit Quelle, Zeitraum und Typen',
+    '- Vorbereiten von Progressbar, Checkliste und Detailanzeige',
+    '- Starten der Zeitmessung fuer den aktuellen Lauf',
+    '',
+    'Noch vor dem eigentlichen Suchlauf wird damit sichergestellt, dass UI und interne Zustandsobjekte synchron starten.'
+  ].join('\n'),
+  cache_read: [
+    'Dieser Schritt steht fuer das gezielte Lesen aller fehlenden oder als geaendert markierten Restbereiche.',
+    '',
+    'Statt den gesamten Zeitraum erneut zu scannen, werden nur die vom Cache-Plan gemeldeten Zeitfenster abgearbeitet.',
+    '',
+    'Dabei passiert intern:',
+    '- Vorladen vorhandener Segment-Payloads',
+    '- Erzeugen der noch offenen Chunks fuer Luecken und dirty ranges',
+    '- API-Aufrufe gegen die Ausreisser-Suche nur fuer diese Restbereiche',
+    '- Merge der neu gelesenen Ergebnisse mit den bereits wiederverwendeten Cache-Daten'
+  ].join('\n'),
+  search: [
+    'Dies ist der eigentliche Kernschritt der Analyse: die chunk-basierte Ausreisser-Suche.',
+    '',
+    'Intern laeuft hier ab:',
+    '- Aufteilen des Suchfensters in Chunks',
+    '- adaptive Groessenanpassung der Chunks anhand der gemessenen Laufzeit',
+    '- Retry mit kleineren Intervallen bei Timeout- oder HTTP-Problemen',
+    '- fortlaufendes Sammeln von Treffern, Scanzahlen und Typzaehlern',
+    '- Fortschrittsupdates fuer UI, Ereignislog und Historie',
+    '',
+    'Die gemessene Laufzeit dieses Schritts ist deshalb meist der groesste Zeitblock des gesamten Analyseflows.'
+  ].join('\n'),
+  cache_store: [
+    'Hier werden neu gelesene Suchergebnisse als Analyse-Cache-Segmente persistiert.',
+    '',
+    'Pro Segment werden typischerweise gespeichert:',
+    '- Trefferzeilen',
+    '- Anzahl gescannter Punkte',
+    '- Checkpoints fuer spaetere Dirty- oder Patch-Bewertung',
+    '- finaler Suchzustand wie last_time, last_value oder scan_state',
+    '',
+    'Ziel ist, spaetere Analyselaeufe fuer denselben Bereich ohne erneute Vollabfrage teilweise oder vollstaendig aus dem Cache bedienen zu koennen.'
+  ].join('\n'),
+  cache_verify: [
+    'Nach dem Speichern wird geprueft, ob der neue Cache physisch vorhanden und direkt wiederverwendbar ist.',
+    '',
+    'Dabei werden zwei Sichten verglichen:',
+    '- physische Segmentliste auf Dateiebene',
+    '- frischer Cache-Plan fuer dieselbe Serie und dasselbe Fenster',
+    '',
+    'So wird sichtbar, ob ein Segment zwar gespeichert wurde, aber wegen dirty ranges, fehlender Abdeckung oder anderer Planbedingungen noch nicht sofort nutzbar ist.'
+  ].join('\n'),
+  combine: [
+    'Dieser Schritt versucht mehrere zusammenhaengende Analyse-Cache-Segmente zu groesseren Segmenten zu verschmelzen.',
+    '',
+    'Wichtig fuer die Bewertung:',
+    '- kombiniert werden nur zusammenhaengende Gruppen mit mehr als einem Segment',
+    '- jede Gruppe muss clean sein',
+    '- dirty Segmente oder problematische patch_status-Werte blockieren die Kombination der gesamten Gruppe',
+    '',
+    'Wenn hier kein neuer Cache entsteht, liegt die Ursache oft nicht an fehlender Nachbarschaft, sondern an dirty Segmenten oder an Segmenten mit patch_pending, patch_failed oder patch_not_safe.'
+  ].join('\n'),
+  complete: [
+    'Dieser Schritt markiert den Abschluss des Analyseflows inklusive Nacharbeiten.',
+    '',
+    'Zu den Nacharbeiten gehoeren typischerweise:',
+    '- Rendern der Ausreisser-Tabelle',
+    '- Aktualisieren von Cache- und Analyseanzeigen',
+    '- Speichern der Analysehistorie',
+    '- Abschlussstatus fuer Checkliste und Progressbar',
+    '',
+    'Erst an diesem Punkt gilt der komplette Frontend-Flow als beendet.'
+  ].join('\n'),
+};
+const ANALYSIS_INFO_ICON_SVG = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
 let ANALYSIS_CACHE_RUNTIME = {
   store_ok: 0,
   store_err: 0,
@@ -5747,13 +5889,7 @@ function updateAnalysisUI(){
       _renderAnalysisChecklist(items, ANALYSIS_CHUNK_LOG);
     }
 
-    // 4. Aktueller Chunk
-    const $chunk = document.getElementById('analysis_chunk_info');
-    if($chunk && s.currentChunk > 0){
-      $chunk.textContent = 'Chunk ' + s.currentChunk + '/' + s.totalChunks + ' | Dauer: ' + _fmtDur(s.chunkDuration);
-    }
-
-    // 5. Intervall-Info
+    // 4. Intervall-Info
     const $interval = document.getElementById('analysis_interval_info');
     if($interval){
       let hint = 'Intervall: ' + (s.chunkInterval || '-');
@@ -5767,7 +5903,7 @@ function updateAnalysisUI(){
       $interval.textContent = hint;
     }
 
-    // 6. Gefundene nach Typ - ALLE Typen anzeigen (auch 0)
+    // 5. Gefundene nach Typ - ALLE Typen anzeigen (auch 0)
     const $found = document.getElementById('analysis_found_info');
     if($found){
       const filterParts = ALL_OUTLIER_TYPES.map(t => {
@@ -5781,7 +5917,7 @@ function updateAnalysisUI(){
       $found.innerHTML = '<div>Suchfilter: ' + filterParts.join(' | ') + '</div><div style="margin-top:4px;">Gefunden: ' + parts.join(' | ') + '</div>';
     }
 
-    // 7. Render type selection lists
+    // 6. Render type selection lists
     renderAnalysisTypeLists();
   }catch(e){}
 }
@@ -5923,10 +6059,39 @@ function _analysisStepClock(iso){
     if(!isFinite(ms)) return '';
     const d = new Date(ms);
     const p = (n)=>String(n).padStart(2, '0');
-    return p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+    const p3 = (n)=>String(n).padStart(3, '0');
+    return p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds()) + '.' + p3(d.getMilliseconds());
   }catch(e){
     return '';
   }
+}
+
+function _analysisStepInfoText(item){
+  try{
+    const key = String(item && item.key || '');
+    const base = String(ANALYSIS_STEP_INFO_TEXTS[key] || 'Zu diesem Analyseschritt ist noch keine Detailbeschreibung hinterlegt.');
+    const parts = [base];
+    const sub = String(item && item.sub || '').trim();
+    const status = String(item && item.status || '').trim();
+    if(status || sub){
+      parts.push('');
+      parts.push('Letzter Lauf:');
+      if(status) parts.push('- Status: ' + status);
+      if(sub) parts.push('- Ergebnis: ' + sub);
+    }
+    return parts.join('\n');
+  }catch(e){
+    return 'Zu diesem Analyseschritt ist noch keine Detailbeschreibung hinterlegt.';
+  }
+}
+
+function _escAttr(s){
+  return String(s || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function _fmtChunkSpanDays(days){
@@ -6007,11 +6172,15 @@ function _analysisChecklistSet(key, patch){
   if(next.status && next.status !== 'pending' && next.status !== 'running' && !next.at){
     merged.at = new Date().toISOString();
   }
+  if(next.status && next.status !== 'pending' && !merged.started_at){
+    merged.started_at = merged.at || new Date().toISOString();
+  }
   if((next.status === 'ok' || next.status === 'err') && (next.dur === undefined || next.dur === null)){
     try{
       const started = Date.parse(String(merged.started_at || prev.started_at || ''));
       const ended = Date.parse(String(merged.at || ''));
       if(isFinite(started) && isFinite(ended) && ended >= started) merged.dur = ended - started;
+      else merged.dur = 0;
     }catch(e){}
   }
   if(next.status === 'pending' && next.at === undefined){
@@ -6356,10 +6525,12 @@ function _analysisChecklistHtml(items, chunkLog){
     seen.add(key);
     const iconClass = item.status === 'ok' ? 'ok' : item.status === 'err' ? 'err' : item.status === 'pending' ? 'running' : 'running';
     const iconText = item.status === 'ok' ? '✓' : item.status === 'err' ? '✗' : '?';
-    const durText = item.dur !== null && item.dur !== undefined ? String(Math.max(0, Math.round(Number(item.dur || 0)))) + ' ms' : '';
+    const durText = String(Math.max(0, Math.round(Number(item && item.dur || 0)))) + ' ms';
     const atText = item.at ? _analysisStepClock(item.at) : '';
     const metaText = [atText, durText].filter(Boolean).join(' ');
-    let html = '<div class="checklist_item"><span class="checklist_icon ' + iconClass + '">' + iconText + '</span><span class="checklist_dur">' + _escHtml(metaText) + '</span><span class="checklist_label">' + _escHtml(item.label || '') + '</span></div>';
+    const infoTitle = 'Analyse: ' + String(item.label || 'Schritt');
+    const infoBody = _analysisStepInfoText(item);
+    let html = '<div class="checklist_item"><span class="checklist_icon ' + iconClass + '">' + iconText + '</span><span class="checklist_dur">' + _escHtml(metaText) + '</span><span class="checklist_main"><span class="checklist_label">' + _escHtml(item.label || '') + '</span><button type="button" class="ib_info_icon" data-info-title="' + _escAttr(infoTitle) + '" data-info-body="' + _escAttr(infoBody) + '">' + ANALYSIS_INFO_ICON_SVG + '</button></span></div>';
     if(item.sub){
       html += '<div class="checklist_sub">' + _escHtml(item.sub) + '</div>';
     }
@@ -10483,10 +10654,8 @@ async function startDashboardAnalysis(cacheStrategy){
         _analysisChecklistSet('cache_verify', {status: 'ok', sub: 'Kein neuer Analyse-Cache gespeichert oder erforderlich.'});
       }
       const combineResult = await combineAnalysisCacheForCurrentSelection();
-      if(combineResult && combineResult.note){
-        _analysisChecklistSet('combine', {status: 'ok', sub: combineResult.note});
-      }else if(combineResult){
-        _analysisChecklistSet('combine', {status: 'ok', sub: 'Cache-Kombination abgeschlossen: ' + String(combineResult.groups_combined || 0) + ' Gruppe(n).'});
+      if(combineResult){
+        _analysisChecklistSet('combine', {status: 'ok', sub: describeAnalysisCacheCombineResult(combineResult)});
       }
     }catch(e){
       _analysisChecklistSet('combine', {status: 'err', sub: e && e.message ? e.message : String(e)});
@@ -10500,9 +10669,10 @@ async function startDashboardAnalysis(cacheStrategy){
   }
 }
 
-async function combineAnalysisCacheForCurrentSelection(planArg){
+async function combineAnalysisCacheForCurrentSelection(){
   const base = currentFilters();
   const win = await resolveEffectiveAnalysisWindow();
+  const planArg = arguments.length ? arguments[0] : undefined;
   const plan = planArg || await fetchAnalysisCachePlan(base, win);
   const listRows = await fetchAnalysisCacheList();
   const physical = listRows.find((row) => String(row && row.series_key || '') === String(plan && plan.series_key || [base.measurement, base.field, base.entity_id || '', base.friendly_name || ''].join('|')));
@@ -10521,6 +10691,26 @@ async function combineAnalysisCacheForCurrentSelection(planArg){
   _saveAnalysisEvent({at: new Date().toISOString(), kind: 'analysis_cache_plan', step: 'combined', detail: 'Kombiniert: ' + String(j.groups_combined || 0) + ' Gruppe(n)'});
   await refreshCachingSection();
   return j;
+}
+
+function describeAnalysisCacheCombineResult(result){
+  try{
+    const j = result || {};
+    if(j.note === 'no clean contiguous segments to combine'){
+      const skipped = Array.isArray(j.skipped_dirty_segments) ? j.skipped_dirty_segments : [];
+      if(!skipped.length) return 'Keine sauberen zusammenhaengenden Cache-Segmente zum Kombinieren gefunden.';
+      const reasons = Array.from(new Set(skipped.map((row) => {
+        const patch = String(row && row.patch_status || 'ok');
+        const dirty = String(row && row.dirty_reason || 'history_change');
+        return patch !== 'ok' ? (patch + ' / ' + dirty) : dirty;
+      }).filter(Boolean)));
+      return 'Keine sauberen zusammenhaengenden Cache-Segmente zum Kombinieren: ' + skipped.length + ' dirty Segment(e) blockieren die Gruppenbildung. Gruende: ' + reasons.join(', ');
+    }
+    if(j.note) return String(j.note);
+    return 'Cache-Kombination abgeschlossen: ' + String(j.groups_combined || 0) + ' Gruppe(n).';
+  }catch(e){
+    return 'Cache-Kombination abgeschlossen.';
+  }
 }
 
 async function clearAnalysisCacheForCurrentSeries(){

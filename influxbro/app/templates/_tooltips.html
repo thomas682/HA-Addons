@@ -77,7 +77,6 @@
     'dashboard_analysis.btn_logs': 'Oeffnet das gefilterte Volltext-Logging fuer die Analyse mit Filtern nach Ausloeser und Bereich.',
     'dashboard_analysis.txt_inline_stats': 'Zeigt inline Statistik zur laufenden Analyse (Chunk, Dauer, Treffer).',
     'dashboard_analysis.panel_checklist': 'Checkliste der Analyseetappen mit Status-Icons (erledigt/laufend/offen).',
-    'dashboard_analysis.txt_chunk_info': 'Zeigt den aktuell verarbeiteten Chunk mit Zeitbereich und Dauer.',
     'dashboard_analysis.txt_interval_info': 'Zeigt das aktuelle Analyse-Intervall mit Timeout-Warnung falls noetig.',
     'dashboard_analysis.txt_found_info': 'Zeigt die Anzahl der bisher gefundenen Ausreisser nach Typ.',
     'dashboard_analysis.btn_typen_reset': 'Setzt die Auswahl der Analyse-Typen auf Standard zurueck.',
@@ -1156,7 +1155,7 @@
     pre.style.overflowWrap = 'anywhere';
     pre.style.overflow = 'auto';
     pre.style.flex = '1 1 auto';
-    pre.style.minHeight = '120px';
+    pre.style.minHeight = '48px';
     pre.style.fontSize = '{{ (cfg.get("ui_popup_pre_font_px") or 10) | int }}px';
 
     const split = document.createElement('div');
@@ -1175,7 +1174,7 @@
     historyBox.style.borderRadius = '12px';
     historyBox.style.background = '#fff';
     historyBox.style.overflow = 'hidden';
-    historyBox.style.minHeight = '96px';
+    historyBox.style.minHeight = '48px';
     historyBox.style.flex = '0 0 180px';
     historyBox.style.padding = '8px 10px';
     historyBox.style.flexDirection = 'column';
@@ -1564,10 +1563,11 @@
         const delta = SPLIT_DRAG.startY - ev.clientY;
         const contentGap = (()=>{ try{ return parseFloat(getComputedStyle(contentWrap).rowGap || getComputedStyle(contentWrap).gap || '0') || 0; }catch(e){ return 8; } })();
         const splitH = (()=>{ try{ return Math.round(split.getBoundingClientRect().height || 0) || 10; }catch(e){ return 10; } })();
-        const preMin = (()=>{ try{ return parseFloat(getComputedStyle(pre).minHeight || '0') || 120; }catch(e){ return 120; } })();
-        const reserve = preMin + splitH + (contentGap * 2) + 24;
-        const maxH = Math.max(96, Math.round((SPLIT_DRAG.totalH || 0) - reserve));
-        const nextH = Math.max(96, Math.min(maxH, Math.round((SPLIT_DRAG.startH || 180) + delta)));
+        const preMin = (()=>{ try{ return parseFloat(getComputedStyle(pre).minHeight || '0') || 48; }catch(e){ return 48; } })();
+        const histMin = (()=>{ try{ return parseFloat(getComputedStyle(historyBox).minHeight || '0') || 48; }catch(e){ return 48; } })();
+        const reserve = preMin + splitH + contentGap;
+        const maxH = Math.max(histMin, Math.round((SPLIT_DRAG.totalH || 0) - reserve));
+        const nextH = Math.max(histMin, Math.min(maxH, Math.round((SPLIT_DRAG.startH || 180) + delta)));
         historyBox.style.flex = '0 0 ' + nextH + 'px';
       });
       window.addEventListener('mouseup', ()=>{
