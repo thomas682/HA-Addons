@@ -59,11 +59,11 @@
     .row { display:flex; gap:12px; flex-wrap:wrap; align-items:end; }
     /* iOS-style settings list: label left, control right */
     .grid { display:block; }
-    .grid > .param_row { display:flex; align-items:center; justify-content:space-between; padding:10px 12px; border-bottom:1px solid #eee; gap:12px; min-height:44px; }
+    .grid > .param_row { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; padding:10px 12px; border-bottom:1px solid #eee; gap:12px; min-height:44px; }
     .grid > .param_row:last-child { border-bottom:none; }
     .grid > .param_row > .param_label { flex:1; font-size:14px; min-width:0; }
     .grid > .param_row > .param_label .param_hint { display:block; font-size:11px; opacity:0.6; margin-top:2px; }
-    .grid > .param_row > .param_control { flex:0 0 auto; min-width:140px; max-width:320px; display:flex; align-items:center; gap:6px; }
+    .grid > .param_row > .param_control { flex:1 1 220px; min-width:140px; max-width:100%; display:flex; align-items:center; gap:6px; }
     .grid > .param_row > .param_control input,
     .grid > .param_row > .param_control select { width:100%; min-width:100px; }
     .grid > .param_row.param_full { flex-direction:column; align-items:stretch; }

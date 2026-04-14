@@ -586,6 +586,8 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - In der Caching-Zone gibt es jetzt neben `Cache pruefen` den Button `kombinieren`, der zusammenhaengende Analyse-Cache-Segmente eines Messwerts zu neuen Segmenten zusammenfasst. Rechts neben `Reset` gibt es zusaetzlich `löschen`, um alle Analyse-Cache-Segmente der aktuellen Messwertauswahl zu entfernen.
 - `Cache pruefen` besitzt jetzt einen eigenen kleinen Fortschrittsblock mit Prozentanzeige, Checkliste (`Dashboard-Cache-Plan`, `Analyse-Cache-Plan`, `Bereiche bestimmen`, `Ergebnis`) und einem separaten `Logs`-Button direkt in der Caching-Actionsleiste.
 - Fehlende bzw. geaenderte Bereiche werden in der Caching-Checkliste und im Caching-Log nicht nur gezaehlt, sondern mit konkreten Zeitbereichen ausgegeben.
+- In der Cache-Timeline ist der `ol`-Button fuer neue Cache-Segmente jetzt standardmaessig aktiv und bleibt serienweit erhalten, auch nach erneutem `Cache pruefen`.
+- Die Zeilen `Neu lesen` werden im Zeitstrahl wie Cache-Zeilen mit `hl`/`ac`/`ol` dargestellt; `ol` ist dort immer deaktiviert.
 - Unter dem Dashboard-Zeitstrahl besitzt jede Cache-Zeile nun die kleinen Toggle-Buttons `hl` (nur optische Hervorhebung im Zeitstrahl) und `ac` (rein visuelles Aktiv/Ausblenden). Rechts daneben wird die Summe der Ausreißer in diesem Segment angezeigt.
 - `hl` hebt ein Cache-Segment im Zeitstrahl optisch hervor, ohne Daten oder Statistiken zu filtern. `ac` blendet ein Segment nur visuell aus; die zugrunde liegenden Cache-Daten bleiben unverändert.
 - `Analyse mit Cache` behaelt vorgeladene Cache-Ausreisser jetzt bis zum Ende des Laufs. Dadurch erscheinen Cache-Treffer wieder direkt in `dashboard_outliers.tbl_ausreisser` und in `dashboard_analysis.txt_found_info`.

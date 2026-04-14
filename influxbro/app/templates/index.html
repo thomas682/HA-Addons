@@ -6828,16 +6828,25 @@ function _timelineSegHtml(startIso, stopIso, totalStartMs, totalStopMs, color, l
 
 function _analysisCacheUiStateKey(plan){
   try{
-    const req = plan && plan.request ? plan.request : {};
-    return 'influxbro.analysis_cache_ui.' + [String(req.start || ''), String(req.stop || ''), String((plan && plan.series_key) || '')].join('|');
+    return 'influxbro.analysis_cache_ui.' + String((plan && plan.series_key) || '');
   }catch(e){ return 'influxbro.analysis_cache_ui'; }
 }
 
 function _loadAnalysisCacheUiState(plan){
   try{
-    const raw = localStorage.getItem(_analysisCacheUiStateKey(plan));
+    const key = _analysisCacheUiStateKey(plan);
+    const raw = localStorage.getItem(key);
     const parsed = raw ? JSON.parse(raw) : {};
-    return (parsed && typeof parsed === 'object') ? parsed : {};
+    if(parsed && typeof parsed === 'object' && Object.keys(parsed).length) return parsed;
+    const req = plan && plan.request ? plan.request : {};
+    const legacyKey = 'influxbro.analysis_cache_ui.' + [String(req.start || ''), String(req.stop || ''), String((plan && plan.series_key) || '')].join('|');
+    const legacyRaw = localStorage.getItem(legacyKey);
+    const legacyParsed = legacyRaw ? JSON.parse(legacyRaw) : {};
+    if(legacyParsed && typeof legacyParsed === 'object' && Object.keys(legacyParsed).length){
+      _saveAnalysisCacheUiState(plan, legacyParsed);
+      return legacyParsed;
+    }
+    return {};
   }catch(e){ return {}; }
 }
 
@@ -6850,8 +6859,15 @@ function _analysisCacheSegColor(idx){
 }
 
 function _analysisCacheSegUi(state, id){
-  const s = state && state[id] && typeof state[id] === 'object' ? state[id] : {};
-  return { active: s.active !== false, hl: !!s.hl, ol: !!s.ol };
+  const hasState = !!(state && state[id] && typeof state[id] === 'object');
+  const s = hasState ? state[id] : {};
+  const kind = String(id || '').startsWith('gap|') ? 'gap' : 'seg';
+  const defaultOl = kind === 'seg';
+  return {
+    active: hasState ? (s.active !== false) : true,
+    hl: hasState ? !!s.hl : false,
+    ol: hasState ? !!s.ol : defaultOl,
+  };
 }
 
 function _analysisCacheSetSegUi(plan, id, patch){
@@ -6909,8 +6925,21 @@ function _analysisCacheTimelineHtml(plan){
     );
   });
   (plan.gaps || []).forEach((gap, idx) => {
-    parts.push(_timelineSegHtml(gap.start, gap.stop, startMs, stopMs, '#eef2ff', 'Neu lesen ' + (idx + 1), '#7a8be6'));
-    labels.push('<div style="font-size:11px;"><span style="display:inline-block;width:10px;height:10px;background:#eef2ff;border:1px solid #7a8be6;border-radius:3px;margin-right:6px;"></span>Neu lesen ' + (idx + 1) + ': ' + _escHtml(fmtTs(gap.start)) + ' – ' + _escHtml(fmtTs(gap.stop)) + '</div>');
+    const id = 'gap|' + String(idx + 1);
+    const ui = _analysisCacheSegUi(vis, id);
+    const [bg, bd] = ['#eef2ff', '#7a8be6'];
+    const color = ui.active ? bg : ANALYSIS_CACHE_HIDDEN_COLOR;
+    const border = ui.active ? bd : ANALYSIS_CACHE_HIDDEN_COLOR;
+    parts.push(_analysisCacheTimelineSegHtml(gap.start, gap.stop, startMs, stopMs, color, border, ui.hl, 'Neu lesen ' + (idx + 1)));
+    labels.push(
+      '<div style="display:flex;align-items:center;gap:8px;font-size:11px;' + (!ui.active ? 'text-decoration:line-through;color:' + ANALYSIS_CACHE_HIDDEN_COLOR + ';' : '') + '">' +
+      '<button type="button" data-cache-hl="' + _escHtml(id) + '" class="btn_xs" style="width:auto;min-width:28px;' + (ui.hl ? 'background:#ff9900;color:#fff;border-color:#ff9900;' : '') + '" data-ui="cache_timeline.btn_hl">hl</button>' +
+      '<button type="button" data-cache-ac="' + _escHtml(id) + '" class="btn_xs" style="width:auto;min-width:28px;' + (ui.active ? '' : 'background:' + ANALYSIS_CACHE_HIDDEN_COLOR + ';color:#fff;border-color:' + ANALYSIS_CACHE_HIDDEN_COLOR + ';') + '" data-ui="cache_timeline.btn_ac">ac</button>' +
+      '<button type="button" data-cache-ol="' + _escHtml(id) + '" class="btn_xs" style="width:auto;min-width:28px;background:#ddd;color:#777;border-color:#ddd;cursor:not-allowed;" data-ui="cache_timeline.btn_ol" disabled>ol</button>' +
+      '<span style="display:inline-block;width:10px;height:10px;background:' + color + ';border:1px solid ' + border + ';border-radius:3px;"></span>' +
+      '<span style="flex:1;">Neu lesen ' + (idx + 1) + ': ' + _escHtml(fmtTs(gap.start)) + ' – ' + _escHtml(fmtTs(gap.stop)) + '</span>' +
+      '</div>'
+    );
   });
   (plan.dirty_ranges || []).forEach((gap, idx) => {
     parts.push(_timelineSegHtml(gap.start, gap.stop, startMs, stopMs, '#ffe1e1', 'Geaenderter Cache ' + (idx + 1), '#d46a6a'));
@@ -10700,6 +10729,7 @@ async function refreshCachingSection(){
             btn.addEventListener('click', ()=>{
               const id = String(btn.getAttribute('data-cache-ol') || '');
               if(!id) return;
+              if(id.startsWith('gap|')) return;
               const cur = _analysisCacheSegUi(_loadAnalysisCacheUiState(analysisPlan), id);
               _analysisCacheSetSegUi(analysisPlan, id, { ol: !cur.ol });
               rerenderTimeline();

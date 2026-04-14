@@ -661,6 +661,8 @@ def test_dashboard_cache_timeline_has_hl_ac_toggles_and_combine_buttons():
     assert '>Messwertauswahl<' in body
     assert '>Messwert Cache Analyse<' in body
     assert 'data-cache-ol=' in body
+    assert 'gap|' in body
+    assert 'cursor:not-allowed' in body
     assert 'cached_outlier_type_counts' in body
 
 
