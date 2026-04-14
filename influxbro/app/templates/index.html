@@ -10978,9 +10978,6 @@ async function startDashboardAnalysis(cacheStrategy){
       return;
     }
     let freshPlan = null;
-    await _prepareStep('prepare_cache_check', 'Cache-Status pruefen', async ()=>{
-      await refreshCachingSection();
-    });
     const win = await _prepareStep('prepare_resolve_window', 'Analysefenster bestimmen', async ()=>{
       return await resolveEffectiveAnalysisWindow();
     });
@@ -11028,14 +11025,13 @@ async function startDashboardAnalysis(cacheStrategy){
       }else{
         _analysisChecklistSet('cache_verify', {status: 'ok', sub: 'Kein neuer Analyse-Cache gespeichert oder erforderlich.'});
       }
-      const combineResult = await combineAnalysisCacheForCurrentSelection();
+      const combineResult = await combineAnalysisCacheForCurrentSelection({silent: true});
       if(combineResult){
         _analysisChecklistSet('combine', {status: 'ok', sub: describeAnalysisCacheCombineResult(combineResult)});
       }
     }catch(e){
       _analysisChecklistSet('combine', {status: 'err', sub: e && e.message ? e.message : String(e)});
     }
-    try{ await refreshCachingSection(); }catch(e){}
     _analysisChecklistSet('complete', {status: 'ok', sub: 'Analyseflow inklusive Nacharbeiten abgeschlossen.'});
   }catch(e){
     _analysisChecklistSet('cache_plan', {status: 'err', sub: e && e.message ? e.message : String(e)});
@@ -11044,11 +11040,12 @@ async function startDashboardAnalysis(cacheStrategy){
   }
 }
 
-async function combineAnalysisCacheForCurrentSelection(){
+async function combineAnalysisCacheForCurrentSelection(opts){
   const base = currentFilters();
   const win = await resolveEffectiveAnalysisWindow();
-  const planArg = arguments.length ? arguments[0] : undefined;
-  const plan = planArg || await fetchAnalysisCachePlan(base, win);
+  const o = (opts && typeof opts === 'object') ? opts : {};
+  const silent = !!o.silent;
+  const plan = (o.plan || null) || await fetchAnalysisCachePlan(base, win);
   const listRows = await fetchAnalysisCacheList();
   const physical = listRows.find((row) => String(row && row.series_key || '') === String(plan && plan.series_key || [base.measurement, base.field, base.entity_id || '', base.friendly_name || ''].join('|')));
   ANALYSIS_CACHE_PLAN_CHOICE = Object.assign({}, ANALYSIS_CACHE_PLAN_CHOICE || {}, { plan: plan || null });
@@ -11064,7 +11061,7 @@ async function combineAnalysisCacheForCurrentSelection(){
     method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({series_key: plan.series_key})
   });
   _saveAnalysisEvent({at: new Date().toISOString(), kind: 'analysis_cache_plan', step: 'combined', detail: 'Kombiniert: ' + String(j.groups_combined || 0) + ' Gruppe(n)'});
-  await refreshCachingSection();
+  if(!silent) await refreshCachingSection();
   return j;
 }
 

@@ -638,6 +638,7 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Der Dialog `Analyse-Verlauf` nutzt jetzt eine serverseitige Analyse-History. Dadurch sind Analyse-Ereignisse, Cache-Entscheidungen und Markierungsaktionen nicht mehr nur browserlokal, sondern zentral im Add-on erfassbar und im Dialog sichtbar.
 - Die Eintraege im Dialog `Analyse-Verlauf` werden jetzt als formatierte Karten dargestellt. Zeitstempel, Eventtyp und wichtige Detailwerte werden lesbar angezeigt, statt HTML-Markup oder JSON-Rohtext auszugeben.
 - `Analyse` im Dashboard nutzt jetzt wieder den eigentlichen Dashboard-Ladepfad inklusive Cache-Pruefung und fuellt danach die Gesamtstatistik neu. Wenn eine Ausreißer-Suche laeuft, befindet sich der zugehoerige Abbruch-Button direkt im Aktionsbereich des Dashboards.
+- `Analyse mit Cache` veraendert den Caching-Bereich nicht mehr automatisch. Der Bereich `Caching` aktualisiert sich nur noch bei expliziten Aktionen wie `Cache pruefen` oder `kombinieren`.
 - Picker und Super-Picker kopieren Elementkennungen jetzt im Format `<Seite: element>` und koennen auch deaktivierte Elemente besser erfassen.
 - Auf der Einstellungsseite wurden der alte Summary-Pfeil und der Dashboard-Ruecksprung-Button entfernt; ausserdem wurde das Layout fuer breite Eingaben robuster gemacht.
 - `page.title.card` besitzt jetzt eine Navigationshilfe mit Verlauf sowie Vor-/Zurueck-Buttons. Ueber die Parametrierhilfe lassen sich verknuepfte Elemente gezielt zu ihren Einstellungen springen und dort farbig markieren.

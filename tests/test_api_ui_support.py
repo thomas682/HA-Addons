@@ -691,6 +691,12 @@ def test_dashboard_outlier_params_dialog_is_global_config_based():
     assert "localStorage.setItem('raw_outlier_params'" not in body
 
 
+def test_analysis_does_not_refresh_caching_section_ui():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert "prepare_cache_check" not in body
+    assert "combineAnalysisCacheForCurrentSelection({silent: true})" in body
+
+
 def test_dashboard_uses_structured_data_ui_naming_scheme_samples():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     tmpl = (Path(__file__).resolve().parents[1] / "influxbro" / "Template.md").read_text()

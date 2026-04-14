@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.347
+
+### Bug Fix
+
+- `Analyse mit Cache` aktualisiert den Bereich `dashboard_caching.section_root` nicht mehr automatisch im Hintergrund (kein implizites `Cache pruefen`/Refresh der Caching-UI waehrend der Analyse). Der Caching-Bereich bleibt stabil und aendert sich nur noch bei expliziten Aktionen wie `Cache pruefen` oder `kombinieren`. ([#284](https://github.com/thomas682/HA-Addons/issues/284))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`
+- Tests: `pytest -k analysis_does_not_refresh_caching_section_ui -q`
+- Tested with Home Assistant Core: 2026.4.2
+
 ## 1.12.346
 
 ### Enhancement
