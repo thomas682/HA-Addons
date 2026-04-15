@@ -4738,6 +4738,15 @@ let LOAD_CHECKLIST_ITEMS = [];
 let ANALYSIS_CACHE_PLAN_CHOICE = { cacheStrategy: 'reuse', plan: null };
 let ANALYSIS_ACTIVE_SCOPE = 'dashboard_analysis';
 let ANALYSIS_ACTIVE_ACTION = '';
+let ANALYSIS_INFLIGHT = false;
+
+function _setAnalysisRunButtonsDisabled(disabled){
+  try{
+    const d = !!disabled;
+    if($analysisRunWithCache) $analysisRunWithCache.disabled = d;
+    if($analysisRunWithoutCache) $analysisRunWithoutCache.disabled = d;
+  }catch(e){}
+}
 const ANALYSIS_STEP_ORDER = [
   'button_start',
   'cache_plan',
@@ -10994,6 +11003,12 @@ async function runDashboardAnalysisFlow(){
 }
 
 async function startDashboardAnalysis(cacheStrategy){
+  if(ANALYSIS_INFLIGHT){
+    err('Analyse laeuft bereits. Bitte warten oder Analyse-Abbruch druecken.');
+    return;
+  }
+  ANALYSIS_INFLIGHT = true;
+  _setAnalysisRunButtonsDisabled(true);
   try{
     const base = currentFilters();
     ANALYSIS_ACTIVE_SCOPE = 'dashboard_analysis';
@@ -11080,6 +11095,10 @@ async function startDashboardAnalysis(cacheStrategy){
     _analysisChecklistSet('cache_plan', {status: 'err', sub: e && e.message ? e.message : String(e)});
     _analysisChecklistSet('complete', {status: 'err', sub: e && e.message ? e.message : String(e)});
     displayError(e);
+  }finally{
+    ANALYSIS_INFLIGHT = false;
+    _setAnalysisRunButtonsDisabled(false);
+    try{ updateAnalysisUI(); }catch(e){}
   }
 }
 
@@ -12229,6 +12248,10 @@ try{
     try{
       if(RAW_OUTLIER_ABORT) RAW_OUTLIER_ABORT.abort();
       _analysisChecklistSet('search', {status:'err', sub:'Analyse wurde manuell abgebrochen.'});
+      ANALYSIS_INFLIGHT = false;
+      _setAnalysisRunButtonsDisabled(false);
+      try{ ANALYSIS_STATE.status = 'idle'; }catch(e){}
+      try{ updateAnalysisUI(); }catch(e){}
     }catch(e){}
   });
   if($rawSearchRun) $rawSearchRun.addEventListener('click', ()=>{ runRawOutlierSearch().catch(()=>{}); });

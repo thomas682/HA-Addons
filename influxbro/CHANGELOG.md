@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.353
+
+### Bug Fix
+
+- Dashboard: Waehren einer laufenden Analyse werden `Analyse mit Cache` und `Analyse ohne Cache` gesperrt, damit kein zweiter Lauf parallel gestartet werden kann. Der `Analyse-Abbruch` entsperrt die Buttons sofort. ([#296](https://github.com/thomas682/HA-Addons/issues/296))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: 2026.4.2
+
 ## 1.12.352
 
 ### Enhancement
