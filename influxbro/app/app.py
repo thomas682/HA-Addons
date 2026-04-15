@@ -19623,117 +19623,160 @@ def api_outlier_windows():
     LOG.info("api.outlier_windows called measurement=%s field=%s outliers=%d n=%d span=%.0fs",
         measurement, field, len(outliers), n, (stop_dt - start_dt).total_seconds())
 
-    q = f'''
+    windows: list[dict[str, Any]] = []
+    query_count = 0
+    expand_count = 0
+
+    def _neighbors_for_time(qapi, center_dt: datetime, span_s: int) -> tuple[list[str], list[str]]:
+        """Returns (older_times_desc, newer_times_asc) within a limited span."""
+
+        nonlocal query_count
+        span = max(1, int(span_s))
+        a = max(start_dt, center_dt - timedelta(seconds=span))
+        b = min(stop_dt, center_dt + timedelta(seconds=span))
+        c_iso = _dt_to_rfc3339_utc(center_dt)
+        a_iso = _dt_to_rfc3339_utc(a)
+        b_iso = _dt_to_rfc3339_utc(b)
+
+        q_old = f'''
 from(bucket: "{cfg["bucket"]}")
-  |> range(start: time(v: "{s_iso}"), stop: time(v: "{e_iso}"))
+  |> range(start: time(v: "{a_iso}"), stop: time(v: "{c_iso}"))
   |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
-  |> keep(columns: ["_time", "_value"])
-  |> group()
-  |> sort(columns: ["_time"])
+  |> keep(columns: ["_time"])
+  |> sort(columns: ["_time"], desc: true)
+  |> limit(n: {n})
+'''
+        q_new = f'''
+from(bucket: "{cfg["bucket"]}")
+  |> range(start: time(v: "{c_iso}"), stop: time(v: "{b_iso}"))
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
+  |> keep(columns: ["_time"])
+  |> sort(columns: ["_time"], desc: false)
+  |> limit(n: {n})
 '''
 
-    all_points: list[dict[str, Any]] = []
+        older: list[str] = []
+        newer: list[str] = []
+        query_count += 2
+        for rec in qapi.query_stream(q_old, org=cfg["org"]):
+            try:
+                t = rec.get_time()
+                if isinstance(t, datetime):
+                    older.append(_dt_to_rfc3339_utc_ms(t))
+            except Exception:
+                continue
+        for rec in qapi.query_stream(q_new, org=cfg["org"]):
+            try:
+                t = rec.get_time()
+                if isinstance(t, datetime):
+                    newer.append(_dt_to_rfc3339_utc_ms(t))
+            except Exception:
+                continue
+        return older, newer
+
+    # Heuristic: start with a limited span and expand until we have enough neighbors.
+    try:
+        gap_s = int(cfg.get("outlier_gap_seconds_default", 300) or 300)
+    except Exception:
+        gap_s = 300
+    base_span_s = max(3600, min(7 * 86400, max(3600, int(n) * max(1, gap_s) * 4)))
+
     try:
         with v2_client(cfg) as client:
             qapi = client.query_api()
-            for rec in qapi.query_stream(q, org=cfg["org"]):
-                t = rec.get_time()
-                v = rec.get_value()
-                iso = _dt_to_rfc3339_utc_ms(t) if isinstance(t, datetime) else None
-                if iso:
-                    all_points.append({"time": iso, "value": float(v) if isinstance(v, (int, float)) else None, "_dt": t})
+            for ol in outliers:
+                ol_time = str(ol.get("time") or "").strip()
+                if not ol_time:
+                    continue
+                try:
+                    center_dt = _parse_iso_datetime(ol_time)
+                except Exception:
+                    continue
+                if center_dt < start_dt or center_dt > stop_dt:
+                    continue
+
+                span_s = base_span_s
+                older: list[str] = []
+                newer: list[str] = []
+                for attempt in range(0, 4):
+                    older, newer = _neighbors_for_time(qapi, center_dt, span_s)
+                    if len(older) >= n and len(newer) >= n:
+                        break
+                    # Expand span for sparse data.
+                    span_s = min(int((stop_dt - start_dt).total_seconds()), span_s * 4)
+                    expand_count += 1
+
+                before_time = older[-1] if older else None
+                after_time = newer[-1] if newer else None
+                before_count = len(older)
+                after_count = len(newer)
+
+                before_minutes = None
+                after_minutes = None
+                center_minutes = None
+                if before_time:
+                    try:
+                        before_dt = _parse_iso_datetime(before_time)
+                        before_minutes = (center_dt - before_dt).total_seconds() / 60.0
+                    except Exception:
+                        before_minutes = None
+                if after_time:
+                    try:
+                        after_dt = _parse_iso_datetime(after_time)
+                        after_minutes = (after_dt - center_dt).total_seconds() / 60.0
+                    except Exception:
+                        after_minutes = None
+
+        # Keep the UI context display monotonic even if inconsistent data slipped through.
+                if before_time:
+                    try:
+                        before_dt2 = _parse_iso_datetime(before_time)
+                        if before_dt2 > center_dt:
+                            before_time = None
+                            before_count = 0
+                            before_minutes = None
+                    except Exception:
+                        pass
+                if after_time:
+                    try:
+                        after_dt2 = _parse_iso_datetime(after_time)
+                        if after_dt2 < center_dt:
+                            after_time = None
+                            after_count = 0
+                            after_minutes = None
+                    except Exception:
+                        pass
+
+                if before_minutes is not None and after_minutes is not None:
+                    center_minutes = max(before_minutes, after_minutes)
+                elif before_minutes is not None:
+                    center_minutes = before_minutes
+                elif after_minutes is not None:
+                    center_minutes = after_minutes
+
+                windows.append({
+                    "time": _dt_to_rfc3339_utc_ms(center_dt),
+                    "point_index": int(ol.get("point_index") or -1),
+                    "center_minutes": round(center_minutes, 2) if center_minutes is not None else None,
+                    "before_minutes": round(before_minutes, 2) if before_minutes is not None else None,
+                    "after_minutes": round(after_minutes, 2) if after_minutes is not None else None,
+                    "before_count": before_count,
+                    "after_count": after_count,
+                    "before_time": before_time,
+                    "after_time": after_time,
+                })
     except Exception as e:
         LOG.error("api.outlier_windows query error: %s", e, exc_info=True)
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
 
-    LOG.info("api.outlier_windows fetched %d raw points in %.1fs", len(all_points), time.monotonic() - t0)
-
-    # Build index lookup: time -> datetime for O(1) access
-    time_to_dt: dict[str, Any] = {}
-    for p in all_points:
-        time_to_dt[p["time"]] = p["_dt"]
-
-    windows: list[dict[str, Any]] = []
-    for ol in outliers:
-        ol_time = str(ol.get("time") or "")
-        ol_idx = int(ol.get("point_index") or -1)
-        if not ol_time:
-            continue
-
-        # Always resolve the actual index from time first. point_index from the analysis result
-        # can be stale or chunk-local and must not override the real raw position here.
-        actual_idx = None
-        for i, p in enumerate(all_points):
-            if p["time"] == ol_time:
-                actual_idx = i
-                break
-        if actual_idx is None:
-            if ol_idx < 0 or ol_idx >= len(all_points):
-                continue
-        else:
-            ol_idx = actual_idx
-
-        before_minutes = None
-        after_minutes = None
-        center_minutes = None
-
-        before_time = None
-        after_time = None
-        before_count = 0
-        after_count = 0
-
-        before_idx = max(0, ol_idx - n)
-        after_idx = min(len(all_points) - 1, ol_idx + n)
-
-        ol_dt = time_to_dt.get(ol_time)
-
-        if before_idx < ol_idx and ol_dt is not None:
-            before_dt = all_points[before_idx]["_dt"]
-            before_time = all_points[before_idx]["time"]
-            before_count = ol_idx - before_idx
-            before_minutes = (ol_dt - before_dt).total_seconds() / 60.0
-
-        if after_idx > ol_idx and ol_dt is not None:
-            after_dt = all_points[after_idx]["_dt"]
-            after_time = all_points[after_idx]["time"]
-            after_count = after_idx - ol_idx
-            after_minutes = (after_dt - ol_dt).total_seconds() / 60.0
-
-        # Keep the UI context display monotonic even if inconsistent data slipped through.
-        if ol_dt is not None:
-            if before_time:
-                before_dt2 = time_to_dt.get(before_time)
-                if before_dt2 is not None and before_dt2 > ol_dt:
-                    before_time = None
-                    before_count = 0
-                    before_minutes = None
-            if after_time:
-                after_dt2 = time_to_dt.get(after_time)
-                if after_dt2 is not None and after_dt2 < ol_dt:
-                    after_time = None
-                    after_count = 0
-                    after_minutes = None
-
-        if before_minutes is not None and after_minutes is not None:
-            center_minutes = max(before_minutes, after_minutes)
-        elif before_minutes is not None:
-            center_minutes = before_minutes
-        elif after_minutes is not None:
-            center_minutes = after_minutes
-
-        windows.append({
-            "time": ol_time,
-            "point_index": ol_idx,
-            "center_minutes": round(center_minutes, 2) if center_minutes is not None else None,
-            "before_minutes": round(before_minutes, 2) if before_minutes is not None else None,
-            "after_minutes": round(after_minutes, 2) if after_minutes is not None else None,
-            "before_count": before_count,
-            "after_count": after_count,
-            "before_time": before_time,
-            "after_time": after_time,
-        })
-
-    LOG.info("api.outlier_windows computed %d windows in %.1fs", len(windows), time.monotonic() - t0)
+    LOG.info(
+        "api.outlier_windows computed %d windows in %.1fs (queries=%d expansions=%d base_span_s=%d)",
+        len(windows),
+        time.monotonic() - t0,
+        query_count,
+        expand_count,
+        base_span_s,
+    )
     return jsonify({"ok": True, "windows": windows})
 
 

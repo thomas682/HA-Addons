@@ -697,6 +697,17 @@ def test_analysis_does_not_refresh_caching_section_ui():
     assert "combineAnalysisCacheForCurrentSelection({silent: true})" in body
 
 
+def test_analysis_has_separate_raw_windows_step_and_does_not_compute_windows_inside_raw_search():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert "raw_windows" in body
+    assert "Raw-Fenster berechnen" in body
+    # Raw search function should not call _ensureOutlierWindows anymore.
+    raw_search_pos = body.find("async function runRawOutlierSearchWithProgress")
+    assert raw_search_pos >= 0
+    tail = body[raw_search_pos: raw_search_pos + 120000]
+    assert "_ensureOutlierWindows" not in tail
+
+
 def test_dashboard_caching_status_panel_is_always_visible_and_has_text_fields():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     assert 'data-ui="dashboard_caching.panel_status"' in body

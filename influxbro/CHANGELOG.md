@@ -12,6 +12,18 @@
 - Tests: `pytest -k global_unhandledrejection_suppresses_tabs_outgoing_ready_noise -q`
 - Tested with Home Assistant Core: 2026.4.2
 
+## 1.12.351
+
+### Bug Fix
+
+- Analyse: Raw-Fenster (`/api/outlier_windows`) werden jetzt ohne Vollscan des kompletten Analysefensters berechnet (lokale Nachbarschaftsqueries pro Treffer). Die Raw-Fensterberechnung ist ausserdem als eigener Checklisten-Schritt `Raw-Fenster berechnen` sichtbar und faellt nicht mehr unter die reine Suchlaufzeit. ([#292](https://github.com/thomas682/HA-Addons/issues/292))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`
+- Tests: `pytest -k analysis_has_separate_raw_windows_step_and_does_not_compute_windows_inside_raw_search -q`
+- Tested with Home Assistant Core: 2026.4.2
+
 ## 1.12.349
 
 ### Enhancement

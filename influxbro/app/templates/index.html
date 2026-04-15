@@ -4745,6 +4745,7 @@ const ANALYSIS_STEP_ORDER = [
   'prepare',
   'cache_read',
   'search',
+  'raw_windows',
   'cache_store',
   'cache_verify',
   'combine',
@@ -4758,8 +4759,9 @@ const ANALYSIS_STEP_WEIGHTS = {
   window: 0.05,
   types: 0.05,
   prepare: 0.10,
-  cache_read: 0.22,
-  search: 0.18,
+  cache_read: 0.18,
+  search: 0.16,
+  raw_windows: 0.06,
   cache_store: 0.08,
   cache_verify: 0.04,
   combine: 0.02,
@@ -4775,6 +4777,7 @@ const ANALYSIS_STEP_LABELS = {
   prepare: 'Analyse vorbereiten',
   cache_read: 'Fehlende Restbereiche lesen',
   search: 'Ausreisser-Suche ausfuehren',
+  raw_windows: 'Raw-Fenster berechnen',
   cache_store: 'Neue Cache-Segmente speichern',
   cache_verify: 'Gespeicherten Cache pruefen',
   combine: 'Cache-Segmente kombinieren',
@@ -4811,6 +4814,15 @@ const ANALYSIS_STEP_INFO_TEXTS = {
     '- ob vorhandene Segment-Payloads direkt in das Analyseergebnis vorgeladen werden koennen',
     '',
     'Teilweise Abdeckung bedeutet: vorhandene Segmente werden uebernommen, fehlende oder dirty Bereiche werden spaeter zusaetzlich gelesen.'
+  ].join('\n'),
+  raw_windows: [
+    'In diesem Schritt werden pro Ausreisser (Treffer) die Raw-Kontextfenster berechnet (N Punkte davor und danach).',
+    '',
+    'Wichtig:',
+    '- Dieser Schritt darf nicht das komplette Analysefenster als Rohdaten lesen (sonst skaliert die Laufzeit mit Monaten/Jahren).',
+    '- Stattdessen werden lokale Nachbarschaftsabfragen um jede Outlier-Zeit ausgefuehrt.',
+    '',
+    'Das Ergebnis steuert die Anzeige von "Raw-Fenster" in der Trefferliste und erleichtert die manuelle Bewertung/Auswahl.',
   ].join('\n'),
   validate: [
     'Dieser Schritt validiert die funktionalen Pflichtparameter der Analyse.',
@@ -6525,6 +6537,7 @@ async function runAnalysis(){
   _setStep('types', types.length > 0 ? 'ok' : 'err', {sub: typeNames || 'Keine Typen aktiv.'});
   _setStep('prepare', 'ok', {sub: 'Analysezustand vorbereitet und UI aktualisiert.'});
   _setStep('cache_read', 'pending', {});
+  _setStep('raw_windows', 'pending', {});
   _setStep('cache_store', 'pending', {});
   _setStep('cache_verify', 'pending', {});
   _setStep('combine', 'pending', {});
@@ -6563,6 +6576,19 @@ async function runAnalysis(){
     updateAnalysisUI();
 
     _setStep('search', 'ok', {label: 'Ausreisser-Suche ausfuehren', dur: dur, sub: (count + ' Treffer. ' + subText).trim()});
+
+    // Compute Raw windows as a separate step (can be expensive; keep it out of the search duration)
+    try{
+      const w0 = performance.now();
+      _analysisChecklistSet('raw_windows', {status: 'running', sub: 'Raw-Fenster werden berechnet...'});
+      await _ensureOutlierWindows(base, win, 'analysis_search_complete');
+      const wdur = Math.round(performance.now() - w0);
+      _analysisChecklistSet('raw_windows', {status: 'ok', sub: 'Raw-Fenster berechnet (' + wdur + ' ms).'});
+      _saveAnalysisEvent({at: new Date().toISOString(), kind: 'analysis_raw_windows', step: 'done', status: 'ok', detail: 'Raw-Fenster berechnet', extra: { dur_ms: wdur, total: RAW_OUTLIER_RESULTS.length }});
+    }catch(e){
+      _analysisChecklistSet('raw_windows', {status: 'err', sub: e && e.message ? e.message : String(e)});
+      _saveAnalysisEvent({at: new Date().toISOString(), kind: 'analysis_raw_windows', step: 'error', status: 'err', detail: e && e.message ? e.message : String(e)});
+    }
 
     // Save to history
     _saveAnalysisHistory({
@@ -7558,7 +7584,6 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog, effective
       const tb = Date.parse(String(b.time || ''));
       return (isFinite(ta) && isFinite(tb)) ? (ta - tb) : 0;
     });
-    await _ensureOutlierWindows(base, win, 'analysis_cache_hit');
     renderOutlierOverviewTable();
     if(RAW_OUTLIER_RESULTS.length > 0){
       if($rawJumpOldest) $rawJumpOldest.disabled = false;
@@ -7987,8 +8012,6 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog, effective
       const tb = Date.parse(String(b.time || ''));
       return (isFinite(ta) && isFinite(tb)) ? (ta - tb) : 0;
     });
-
-    await _ensureOutlierWindows(base, win, 'analysis_search_complete');
 
     try{
       sessionStorage.setItem(cacheKey, JSON.stringify({
