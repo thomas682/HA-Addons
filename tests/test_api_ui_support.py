@@ -697,6 +697,15 @@ def test_analysis_does_not_refresh_caching_section_ui():
     assert "combineAnalysisCacheForCurrentSelection({silent: true})" in body
 
 
+def test_dashboard_caching_status_panel_is_always_visible_and_has_text_fields():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert 'data-ui="dashboard_caching.panel_status"' in body
+    assert 'id="load_status_txt"' in body
+    assert 'id="load_status_time"' in body
+    assert '$loadStatus.style.display = "none"' not in body
+    assert 'if($loadStatus) $loadStatus.style.display = "none"' not in body
+
+
 def test_dashboard_uses_structured_data_ui_naming_scheme_samples():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     tmpl = (Path(__file__).resolve().parents[1] / "influxbro" / "Template.md").read_text()

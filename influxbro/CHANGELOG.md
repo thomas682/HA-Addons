@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.348
+
+### Bug Fix
+
+- Dashboard: Das Caching-Statuspanel `dashboard_caching.panel_status` bleibt jetzt immer sichtbar (kein Auto-Hide mehr) und zeigt wieder Status-Text sowie Laufzeit. ([#289](https://github.com/thomas682/HA-Addons/issues/289))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`
+- Tests: `pytest -k dashboard_caching_status_panel_is_always_visible_and_has_text_fields -q`
+- Tested with Home Assistant Core: 2026.4.2
+
 ## 1.12.347
 
 ### Bug Fix
