@@ -6068,12 +6068,17 @@ def _flux_range_clause(range_key: str, start: datetime | None, stop: datetime | 
 
 
 def _selector_range_key(range_key: str | None, start: datetime | None, stop: datetime | None) -> str:
-    """Use all-time unless the selector request explicitly carries a time filter."""
+    """Selector endpoints must stay fast.
+
+    Default to a bounded range when no time filter is provided to avoid
+    expensive all-time scans (can trigger timeouts or InfluxDB internal errors
+    on large buckets). Clients can still request full history via range=all.
+    """
 
     if start and stop:
         return str(range_key or "24h")
     rk = str(range_key or "").strip()
-    return rk if rk else "all"
+    return rk if rk else "24h"
 
 
 def _log_selector_debug(kind: str, payload: dict[str, Any]) -> None:

@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.355
+
+### Bug Fix
+
+- Dashboard/Selector: Wenn bei `/api/fields` und `/api/tag_values` kein `range`/start/stop uebergeben wird, wird jetzt standardmaessig ein begrenzter Zeitraum (`24h`) verwendet statt eines All-Time-Scans. Das verhindert timeouts und InfluxDB-internen Fehler (panic) beim spaeten Nachladen von Vorschlagslisten. ([#298](https://github.com/thomas682/HA-Addons/issues/298))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`
+- Tests: `pytest tests/test_selector_default_range.py -q`
+- Tested with Home Assistant Core: 2026.4.2
+
 ## 1.12.354
 
 ### Bug Fix
