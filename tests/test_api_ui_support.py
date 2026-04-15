@@ -702,6 +702,8 @@ def test_dashboard_caching_status_panel_is_always_visible_and_has_text_fields():
     assert 'data-ui="dashboard_caching.panel_status"' in body
     assert 'id="load_status_txt"' in body
     assert 'id="load_status_time"' in body
+    assert 'align-items: flex-start' in body
+    assert 'text-align: left' in body
     assert '$loadStatus.style.display = "none"' not in body
     assert 'if($loadStatus) $loadStatus.style.display = "none"' not in body
 

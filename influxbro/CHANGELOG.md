@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.349
+
+### Enhancement
+
+- Dashboard: Alle Elemente in `dashboard_caching.panel_status` sind jetzt linksbuendig ausgerichtet. ([#290](https://github.com/thomas682/HA-Addons/issues/290))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`
+- Tests: `pytest -k dashboard_caching_status_panel_is_always_visible_and_has_text_fields -q`
+- Tested with Home Assistant Core: 2026.4.2
+
 ## 1.12.348
 
 ### Bug Fix

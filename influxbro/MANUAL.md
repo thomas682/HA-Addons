@@ -619,6 +619,7 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Der bisher im Raw-Bereich eingebettete Ausreißer-Block ist jetzt eine eigene Dashboard-Section `Ausreißer` oberhalb von `Raw Daten Analyse`.
 - Die Dashboard-Analyse fuehrt ihre Laufzeit- und Chunk-Schritte jetzt gesammelt in `analysis_checklist`; der Bereich `dashboard.load_status` zeigt dafuer keine separaten Chunk-Zeilen mehr.
 - Der Bereich `Caching` zeigt sein Statuspanel `dashboard_caching.panel_status` dauerhaft (auch ohne laufende Aktion) und blendet es nicht mehr automatisch aus.
+- Alle Elemente innerhalb von `dashboard_caching.panel_status` sind linksbuendig ausgerichtet.
 - Die Checkliste zeigt feste Analyseschritte mit Uhrzeit inklusive Millisekunden (`HH:MM:SS.mmm`) und daneben durchgaengig die jeweilige Laufzeit in Millisekunden. Noch nicht erreichte Schritte tragen ein `?`, erfolgreiche Schritte einen gruenen Haken und Fehler ein rotes Kreuz. Direkt nach dem Klick auf `Analyse mit Cache` oder `Analyse ohne Cache` erscheinen bereits Start- und Cache-Pruefschritte, damit vor dem eigentlichen Suchlauf sofort Feedback sichtbar ist.
 - Die Analyse-Checkliste bildet jetzt auch den Cache-Workflow sichtbar ab: Cache-Plan, Cache-Hit, fehlende Restbereiche, neues Speichern und Kombinieren. Dieselben Checklist-Schritte werden als Analyse-Events ins Add-on-Logfile geschrieben.
 - Der Schritt `Fehlende Restbereiche lesen` nennt jetzt auch die konkreten fehlenden bzw. geaenderten Zeitfenster, die nachgeladen werden muessen.
