@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.358
+
+### Maintenance
+
+- Release: Reine Versionsmarke (keine Codeaenderungen) vor dem naechsten Umsetzungspaket.
+- Tested with Home Assistant Core: 2026.4.2
+
 ## 1.12.357
 
 ### Bug Fix
