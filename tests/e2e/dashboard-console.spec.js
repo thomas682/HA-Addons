@@ -19,7 +19,7 @@ test.describe('Dashboard Console', () => {
     });
 
     await page.goto('/');
-    await expect(page.locator('main[data-ui="dashboard.page"]')).toHaveCount(1);
+    await expect(page.locator('main[data-ui="dashboard_page.main"]')).toHaveCount(1);
     await page.waitForTimeout(1500);
 
     expect(errors).toEqual([]);
