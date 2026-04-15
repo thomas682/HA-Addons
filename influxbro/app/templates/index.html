@@ -1989,8 +1989,13 @@ function cacheRestoreIfAvailable(){
     // Use global ensureOption helper to add option/datalist entry for a control
     const ensureSelectOption = (sel, val) => { try{ ensureOption(sel, val); }catch(e){} };
     try{
-      if(cf && cf.measurement){ ensureSelectOption($m, cf.measurement); $m.value = String(cf.measurement); }
-      if(cf && cf.field){ ensureSelectOption($f, cf.field); $f.value = String(cf.field); }
+      if(cf && cf.measurement){
+        if($mf) $mf.value = String(cf.measurement);
+      }
+      if(cf && cf.field){
+        ensureSelectOption($f, cf.field);
+        $f.value = String(cf.field);
+      }
     }catch(e){}
 
     if(Array.isArray(j.last_rows)) LAST_ROWS = j.last_rows;
@@ -2139,7 +2144,9 @@ async function cacheRestoreLastDashboardIfAvailable(){
     const ensureSelectOption = (selEl, val) => { try{ ensureOption(selEl, val); }catch(e){} };
 
     try{
-      if(sel.measurement){ ensureSelectOption($m, sel.measurement); $m.value = String(sel.measurement); }
+      if(sel.measurement){
+        if($mf) $mf.value = String(sel.measurement);
+      }
       await loadDashboardFields(String(sel.measurement || ''), {silent:true}).catch(()=>{});
       if(sel.field){ ensureSelectOption($f, sel.field); $f.value = String(sel.field); }
     }catch(e){}
@@ -12020,11 +12027,8 @@ try{
       }
     }
 
-    // Ensure suggestion lists are loaded on page open (Backup loads these automatically).
-    // Keep best-effort: failures are handled and will show an actionable error to the user.
-    try{
-      loadDashboardFields(String(($mf && $mf.value) || '').trim(), {silent: true}).then(()=>refreshDashboardSuggestions({silent: true})).catch(()=>{});
-    }catch(e){}
+    // Selector lists are already loaded above (awaited). Avoid a redundant fire-and-forget reload here:
+    // it can run time-delayed (timeouts/panic) and also causes unnecessary load on InfluxDB.
 
     try{ await loadIgnoredOutliersState(); }catch(e){}
 

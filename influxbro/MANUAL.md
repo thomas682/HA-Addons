@@ -134,7 +134,7 @@ Auch nach dynamischen Refreshs und Vorschlagslisten-Updates werden keine Inline-
 
 Alle Felder, die frueher automatisch einen Clear-Button erhalten haben, besitzen jetzt dauerhaft einen statischen Clear-Button mit dem urspruenglichen Papierkorb-Icon direkt neben dem Feld.
 
-Die vier Auswahlfelder `_measurement`, `_field`, `friendly_name` und `entity_id` verwenden dieselbe Kaskadenlogik wie auf der Backup-Seite. Wenn du eines der Felder aenderst, werden die anderen Listen sofort mit den gefilterten Datenbankwerten neu geladen. Der Zeitraum beeinflusst diese vier Vorschlagslisten nicht; er steuert nur die spaetere Datenabfrage fuer Graph, Tabelle und Statistik. Fuer Selector-Requests ohne explizites `range` wird serverseitig ein begrenztes Default-Fenster (`24h`) verwendet, damit Vorschlagslisten auch bei grossen Buckets stabil bleiben.
+Die vier Auswahlfelder `_measurement`, `_field`, `friendly_name` und `entity_id` verwenden dieselbe Kaskadenlogik wie auf der Backup-Seite. Wenn du eines der Felder aenderst, werden die anderen Listen sofort mit den gefilterten Datenbankwerten neu geladen. Der Zeitraum beeinflusst diese vier Vorschlagslisten nicht; er steuert nur die spaetere Datenabfrage fuer Graph, Tabelle und Statistik. Fuer Selector-Requests ohne explizites `range` wird serverseitig ein begrenztes Default-Fenster (`24h`) verwendet, damit Vorschlagslisten auch bei grossen Buckets stabil bleiben. Beim Dashboard-Start werden die Selector-Listen einmal deterministisch geladen; ein zusaetzlicher zeitversetzter Hintergrund-Reload wird nicht mehr gestartet.
 
 Die Felder `Feld`, `Name` und `Grund Filter` besitzen jetzt jeweils einen dauerhaft sichtbaren Button `Feld leeren` direkt neben dem Eingabefeld.
 

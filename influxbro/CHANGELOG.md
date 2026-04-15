@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.356
+
+### Bug Fix
+
+- Dashboard: Redundantes, zeitversetztes Nachladen der Selector-Listen beim Seitenstart entfernt (kein zweiter fire-and-forget Lauf fuer Fields/TagValues). Dadurch weniger Influx-Last und keine spaeten Fehlermeldungen durch ablaufende Selector-Requests. ([#299](https://github.com/thomas682/HA-Addons/issues/299))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: 2026.4.2
+
 ## 1.12.355
 
 ### Bug Fix
