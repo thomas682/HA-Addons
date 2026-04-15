@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.357
+
+### Bug Fix
+
+- Analyse/Dashboard: `/api/resolve_signal` nutzt bei `range=all` ohne explizite Start/Stop-Zeit jetzt ein begrenztes Resolve-Fenster (`30d`), um teure All-Time Scans zu vermeiden. Das verhindert InfluxDB-internen Fehler (panic: negative WaitGroup counter) beim Analysestart fuer grosse Buckets. ([#300](https://github.com/thomas682/HA-Addons/issues/300))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`
+- Tests: `pytest tests/test_api_resolve_signal_range_safety.py -q`
+- Tested with Home Assistant Core: 2026.4.2
+
 ## 1.12.356
 
 ### Bug Fix

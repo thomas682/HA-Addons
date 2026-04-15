@@ -20813,6 +20813,19 @@ def resolve_signal():
         return jsonify({"ok": False, "error": f"invalid start/stop: {e}"}), 400
     selector_range = _selector_range_key(range_key, start_dt, stop_dt)
 
+    # Safety: resolve_signal is a selector-like helper, not the actual data query.
+    # Using all-time ranges here can trigger very expensive scans and even InfluxDB
+    # internal errors (panic). We therefore bound the effective resolve window
+    # when the client requests range=all without explicit start/stop.
+    eff_range = selector_range
+    try:
+        if not (start_dt and stop_dt):
+            rk = str(selector_range or "").strip().lower()
+            if rk in ("all", "alle", "inf", "infinite", "infinity"):
+                eff_range = "30d"
+    except Exception:
+        eff_range = selector_range
+
     try:
         if int(cfg.get("influx_version", 2)) == 2:
             if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
@@ -20822,7 +20835,7 @@ def resolve_signal():
                 }), 400
 
             extra = flux_tag_filter(entity_id, friendly_name)
-            range_clause = _flux_range_clause(selector_range, start_dt, stop_dt)
+            range_clause = _flux_range_clause(str(eff_range), start_dt, stop_dt)
             mfilter = f" and r._measurement == {_flux_str(measurement_filter)}" if measurement_filter else ""
             with v2_client(cfg) as c:
                 q = f'''
