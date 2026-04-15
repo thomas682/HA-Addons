@@ -4995,7 +4995,21 @@ function _rawWindowIso(){
     if(tf.range && tf.range !== 'custom'){
       // For non-custom ranges we use the same derived start/stop as the dashboard uses.
       const rr = rangeToStartStop();
-      if(rr && rr.all) return { start: new Date(0).toISOString(), stop: new Date().toISOString() };
+      if(rr && rr.all){
+        // Avoid unbounded "epoch" windows for raw queries.
+        const now = new Date();
+        const years = Math.max(1, Number((typeof UI_ANALYSIS_MAX_AGE_YEARS !== 'undefined' ? UI_ANALYSIS_MAX_AGE_YEARS : 5) || 5));
+        const defaultStart = new Date(now);
+        try{ defaultStart.setFullYear(defaultStart.getFullYear() - years); }catch(e){}
+        let startMs = defaultStart.getTime();
+        try{
+          const oldest = (typeof LAST_TOTAL_BOUNDS !== 'undefined' && LAST_TOTAL_BOUNDS && LAST_TOTAL_BOUNDS.oldest_time) ? String(LAST_TOTAL_BOUNDS.oldest_time) : '';
+          const om = oldest ? Date.parse(oldest) : NaN;
+          if(isFinite(om) && om > startMs) startMs = om;
+        }catch(e){}
+        const start = new Date(startMs);
+        return { start: start.toISOString(), stop: now.toISOString() };
+      }
       if(rr && rr.start && rr.stop){
         return { start: rr.start.toISOString(), stop: rr.stop.toISOString() };
       }

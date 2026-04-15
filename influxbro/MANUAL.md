@@ -768,6 +768,7 @@ Neu:
 - `Jobs & Cache -> Analysecache` zeigt jetzt neben `dirty` auch `patch`/`failed`-Zaehler fuer Serien mit ausstehenden oder fehlgeschlagenen Analyse-Cache-Reparaturen sowie in der Segmentanzeige Details zu Patchmodus, Checkpoint und Kontextpunkten.
 - Ausreisser Tabelle: bestehende `_measurement` Zeilen sind nicht editierbar und werden automatisch aus bekannten Measurements vorbefuellt. Zusaetzlich gibt es `+ Zeile` / `- Zeile` (markierte Zeile), um eigene Regeln manuell zu pflegen.
 - Die Einstellungsseite ist jetzt in grobe Obergruppen gegliedert, u.a. `Oberflaeche`, `Anbindung`, `Dashboard`, `Statistik`, `Backup`, `Restore`, `Logs`, `Jobs & Cache`, `History`, `Diagnose` und `Einstellungen`. Bereiche ohne eigene Felder zeigen den Hinweis `Derzeit keine eigenen Einstellungen in diesem Bereich.`.
+- `Einstellungen -> Diagnose`: zeigt `Speicherverbrauch` (freie Platte + Inventar aller persistierten /data-Artefakte) sowie `Worklog` (Analyse/Statistik/Raw Operationen inkl. Zeitfenster, Grund und Dauer in ms).
 - Einstellungen: Neuer Block `Default / Import / Export`.
   - `Export`: laedt die aktuellen Einstellungen als JSON-Datei herunter.
   - `Import`: liest eine JSON-Datei ein und uebernimmt die enthaltenen Werte (unbekannte Keys werden ignoriert; serverseitige Validierung bleibt aktiv).
@@ -793,6 +794,8 @@ UI:
 - `Raw Mindestdatenpunkte je Seite`: Mindestanzahl an Rohpunkten vor und nach dem selektierten Messpunkt, bevor InfluxBro den Suchbereich automatisch erweitert.
 - `Popup Text Schriftgroesse (px)`: Schriftgroesse fuer `influxbro_popup_pre` in Info-, Query- und Log-Dialogen (Default: 10).
 - `Bugreport Log-Historie (Stunden)`: begrenzt die Log-Historie im Debug-Report auf die letzten X Stunden.
+- `Tracing: Max Alter (Tage)`: Traces werden abgeschnitten, sobald entweder max. Eintraege oder max. Tage erreicht sind.
+- `Worklog: Max Eintraege` und `Worklog: Max Alter (Tage)`: Worklog wird abgeschnitten, sobald entweder max. Eintraege oder max. Tage erreicht sind.
 - Dashboard-Autotuning nutzt fuer benutzerdefinierte Zeitraeume jetzt immer UTC-Zeitstempel mit Zeitzone, damit die Server-Pruefung stabil funktioniert.
 - `Manual max. Punkte (Dashboard Graph)`: Sicherheitslimit fuer `Details: Manuell` (100%).
 - `Sprung-Polster (Intervalle)`: +/- N Downsample-Intervalle fuer Sprung-Markierung/Detail-Nachladen.

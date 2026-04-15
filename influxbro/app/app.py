@@ -74,14 +74,17 @@ TRACE_PATH = DATA_DIR / "influxbro_traces.json"
 TRACE_ENABLED = True
 TRACE_PERSIST = True
 TRACE_MAX_ENTRIES = 1000
+TRACE_MAX_DAYS = 14
 TRACE_LAST_WRITE_MONO = 0.0
 # Recents/LRU order of trace_ids (oldest -> newest). We keep it bounded manually so
 # we can also evict TRACE_INDEX entries.
 TRACE_MEM: "deque[str]" = deque()
 TRACE_INDEX: dict[str, dict[str, Any]] = {}
 ANALYSIS_HISTORY_LOCK = threading.RLock()
-ANALYSIS_HISTORY_MAX_MEM = 1000
-ANALYSIS_HISTORY_MEM: "deque[dict[str, Any]]" = deque(maxlen=ANALYSIS_HISTORY_MAX_MEM)
+WORKLOG_MAX_ENTRIES = 2000
+WORKLOG_MAX_DAYS = 14
+WORKLOG_LAST_PRUNE_MONO = 0.0
+ANALYSIS_HISTORY_MEM: "deque[dict[str, Any]]" = deque()
 ANALYSIS_HISTORY_PATH = DATA_DIR / "influxbro_analysis_history.jsonl"
 QUALITY_CLEANUP_LOG_PATH = DATA_DIR / "influxbro_quality_cleanup.jsonl"
 MONITOR_LOCK = threading.RLock()
@@ -685,11 +688,17 @@ def configure_logging(cfg: dict[str, Any]) -> None:
     except Exception:
         pass
 
+    try:
+        _worklog_configure(cfg)
+    except Exception:
+        pass
+
 
 def _trace_configure(cfg: dict[str, Any]) -> None:
     global TRACE_ENABLED
     global TRACE_PERSIST
     global TRACE_MAX_ENTRIES
+    global TRACE_MAX_DAYS
     global TRACE_MEM
 
     TRACE_ENABLED = bool(cfg.get("trace_enabled", True))
@@ -700,8 +709,15 @@ def _trace_configure(cfg: dict[str, Any]) -> None:
         TRACE_MAX_ENTRIES = 1000
     TRACE_MAX_ENTRIES = max(100, min(20000, TRACE_MAX_ENTRIES))
 
+    try:
+        TRACE_MAX_DAYS = int(cfg.get("trace_max_days", 14) or 14)
+    except Exception:
+        TRACE_MAX_DAYS = 14
+    TRACE_MAX_DAYS = max(1, min(3650, TRACE_MAX_DAYS))
+
     # Keep recents bounded and evict stale trace entries.
     with TRACE_LOCK:
+        _trace_prune_locked()
         while len(TRACE_MEM) > TRACE_MAX_ENTRIES:
             old_tid = TRACE_MEM.popleft()
             try:
@@ -715,6 +731,26 @@ def _trace_configure(cfg: dict[str, Any]) -> None:
 
     if TRACE_PERSIST:
         _trace_load_from_disk()
+
+
+def _worklog_configure(cfg: dict[str, Any]) -> None:
+    global WORKLOG_MAX_ENTRIES
+    global WORKLOG_MAX_DAYS
+    try:
+        WORKLOG_MAX_ENTRIES = int(cfg.get("worklog_max_entries", WORKLOG_MAX_ENTRIES) or WORKLOG_MAX_ENTRIES)
+    except Exception:
+        WORKLOG_MAX_ENTRIES = 2000
+    WORKLOG_MAX_ENTRIES = max(200, min(50000, WORKLOG_MAX_ENTRIES))
+
+    try:
+        WORKLOG_MAX_DAYS = int(cfg.get("worklog_max_days", WORKLOG_MAX_DAYS) or WORKLOG_MAX_DAYS)
+    except Exception:
+        WORKLOG_MAX_DAYS = 14
+    WORKLOG_MAX_DAYS = max(1, min(3650, WORKLOG_MAX_DAYS))
+
+    # Best-effort prune in-memory buffer to the new limits.
+    with ANALYSIS_HISTORY_LOCK:
+        _worklog_prune_mem_locked()
 
 
 def _trace_load_from_disk() -> None:
@@ -747,6 +783,9 @@ def _trace_load_from_disk() -> None:
             items.sort(key=lambda d: str(d.get("last_at") or ""))
             for d in items[-TRACE_MAX_ENTRIES:]:
                 TRACE_MEM.append(str(d.get("trace_id") or "").strip())
+
+            # Enforce retention by age as well.
+            _trace_prune_locked()
     except Exception:
         return
 
@@ -763,6 +802,7 @@ def _trace_save_to_disk() -> None:
     try:
         DATA_DIR.mkdir(parents=True, exist_ok=True)
         with TRACE_LOCK:
+            _trace_prune_locked()
             # Persist in recent/LRU order.
             items = []
             for tid in list(TRACE_MEM)[-TRACE_MAX_ENTRIES:]:
@@ -876,6 +916,46 @@ def _trace_recent_touch_locked(tid: str) -> None:
         except Exception:
             break
     TRACE_MEM.append(tid)
+    while len(TRACE_MEM) > TRACE_MAX_ENTRIES:
+        old_tid = TRACE_MEM.popleft()
+        try:
+            TRACE_INDEX.pop(old_tid, None)
+        except Exception:
+            pass
+
+
+def _trace_prune_locked(now_dt: datetime | None = None) -> None:
+    """Prune trace store by age and max entries.
+
+    TRACE_LOCK must be held.
+    """
+
+    try:
+        now = now_dt or datetime.now(timezone.utc)
+        cutoff = now - timedelta(days=int(TRACE_MAX_DAYS or 14))
+    except Exception:
+        cutoff = None
+
+    if cutoff is not None:
+        keep_ids: list[str] = []
+        for tid in list(TRACE_MEM):
+            tr = TRACE_INDEX.get(tid)
+            if not isinstance(tr, dict):
+                continue
+            last = _trace_parse_iso(str(tr.get("last_at") or "")) or _trace_parse_iso(str(tr.get("started_at") or ""))
+            if last and last < cutoff:
+                continue
+            keep_ids.append(tid)
+
+        TRACE_MEM.clear()
+        for tid in keep_ids:
+            TRACE_MEM.append(tid)
+
+        keep_set = set(keep_ids)
+        for tid in list(TRACE_INDEX.keys()):
+            if tid not in keep_set:
+                TRACE_INDEX.pop(tid, None)
+
     while len(TRACE_MEM) > TRACE_MAX_ENTRIES:
         old_tid = TRACE_MEM.popleft()
         try:
@@ -1239,6 +1319,11 @@ DEFAULT_CFG = {
     "trace_enabled": True,
     "trace_persist": True,
     "trace_max_entries": 1000,
+    "trace_max_days": 14,
+
+    # Worklog (Analyse/Statistik/Raw Operations; persistent under /data)
+    "worklog_max_entries": 2000,
+    "worklog_max_days": 14,
 
     # Dashboard query cache (server-side, persisted under /data)
     "dash_cache_enabled": True,
@@ -2262,6 +2347,13 @@ def _ui_action_tail(limit: int = 5) -> list[dict[str, Any]]:
 
 def _analysis_history_append(entry: dict[str, Any]) -> None:
     try:
+        # Apply retention settings (configured via Settings).
+        cutoff_dt: datetime | None = None
+        try:
+            cutoff_dt = datetime.now(timezone.utc) - timedelta(days=int(WORKLOG_MAX_DAYS or 14))
+        except Exception:
+            cutoff_dt = None
+
         e = dict(entry or {})
         e.setdefault("at", _utc_now_iso_ms())
         e.setdefault("id", uuid.uuid4().hex)
@@ -2274,12 +2366,186 @@ def _analysis_history_append(entry: dict[str, Any]) -> None:
                 e[k] = str(e[k])[:2000]
         with ANALYSIS_HISTORY_LOCK:
             ANALYSIS_HISTORY_MEM.append(e)
+            _worklog_prune_mem_locked(cutoff_dt=cutoff_dt)
         try:
             DATA_DIR.mkdir(parents=True, exist_ok=True)
             with ANALYSIS_HISTORY_PATH.open("a", encoding="utf-8") as f:
                 f.write(json.dumps(e, ensure_ascii=True) + "\n")
         except Exception:
             pass
+
+        # Best-effort disk pruning (avoid churn).
+        try:
+            _worklog_prune_disk_best_effort(cutoff_dt=cutoff_dt)
+        except Exception:
+            pass
+    except Exception:
+        return
+
+
+def _worklog_prune_mem_locked(cutoff_dt: datetime | None = None) -> None:
+    """Prune in-memory worklog buffer.
+
+    ANALYSIS_HISTORY_LOCK must be held.
+    """
+
+    try:
+        max_entries = int(WORKLOG_MAX_ENTRIES or 2000)
+    except Exception:
+        max_entries = 2000
+    max_entries = max(200, min(50000, max_entries))
+
+    if cutoff_dt is not None:
+        while ANALYSIS_HISTORY_MEM:
+            try:
+                first = ANALYSIS_HISTORY_MEM[0]
+                at = _trace_parse_iso(str(first.get("at") or ""))
+                if at and at < cutoff_dt:
+                    ANALYSIS_HISTORY_MEM.popleft()
+                    continue
+            except Exception:
+                break
+            break
+
+    while len(ANALYSIS_HISTORY_MEM) > max_entries:
+        try:
+            ANALYSIS_HISTORY_MEM.popleft()
+        except Exception:
+            break
+
+
+def _worklog_prune_disk_best_effort(cutoff_dt: datetime | None = None) -> None:
+    global WORKLOG_LAST_PRUNE_MONO
+
+    # Avoid frequent full-file rewrites.
+    now = time.monotonic()
+    if (now - float(WORKLOG_LAST_PRUNE_MONO or 0.0)) < 8.0:
+        return
+    WORKLOG_LAST_PRUNE_MONO = now
+
+    try:
+        if not ANALYSIS_HISTORY_PATH.exists():
+            return
+    except Exception:
+        return
+
+    try:
+        max_entries = int(WORKLOG_MAX_ENTRIES or 2000)
+    except Exception:
+        max_entries = 2000
+    max_entries = max(200, min(50000, max_entries))
+
+    try:
+        lines = ANALYSIS_HISTORY_PATH.read_text(encoding="utf-8", errors="replace").splitlines()
+    except Exception:
+        return
+
+    if not lines:
+        return
+
+    # Fast path: already within entry limit and no age cutoff.
+    if cutoff_dt is None and len(lines) <= max_entries:
+        return
+
+    out: list[str] = []
+    for ln in lines:
+        try:
+            j = json.loads(ln)
+        except Exception:
+            continue
+        if not isinstance(j, dict):
+            continue
+        if cutoff_dt is not None:
+            at = _trace_parse_iso(str(j.get("at") or ""))
+            if at and at < cutoff_dt:
+                continue
+        out.append(json.dumps(j, ensure_ascii=True))
+
+    if len(out) > max_entries:
+        out = out[-max_entries:]
+
+    try:
+        tmp = ANALYSIS_HISTORY_PATH.with_suffix(".tmp")
+        tmp.write_text("\n".join(out) + ("\n" if out else ""), encoding="utf-8")
+        tmp.replace(ANALYSIS_HISTORY_PATH)
+    except Exception:
+        return
+
+
+def _worklog_append_op(
+    *,
+    purpose: str,
+    op: str,
+    status: str,
+    detail: str,
+    measurement: str = "",
+    field: str = "",
+    entity_id: str = "",
+    friendly_name: str = "",
+    window_start: str = "",
+    window_stop: str = "",
+    source: str = "",
+    reason_code: str = "",
+    reason_label: str = "",
+    duration_ms: int | None = None,
+    counts: dict[str, Any] | None = None,
+    cache: dict[str, Any] | None = None,
+    extra: dict[str, Any] | None = None,
+) -> None:
+    """Append a structured worklog entry (for non-expert diagnostics)."""
+
+    try:
+        ex: dict[str, Any] = {}
+        ex["purpose"] = str(purpose or "")[:40]
+        ex["op"] = str(op or "")[:80]
+        if window_start:
+            ex["window_start"] = str(window_start)
+        if window_stop:
+            ex["window_stop"] = str(window_stop)
+        if source:
+            ex["source"] = str(source)[:20]
+        if reason_code:
+            ex["reason_code"] = str(reason_code)[:60]
+        if reason_label:
+            ex["reason_label"] = str(reason_label)[:240]
+        if duration_ms is not None:
+            try:
+                ex["duration_ms"] = int(duration_ms)
+            except Exception:
+                ex["duration_ms"] = duration_ms
+        if isinstance(counts, dict) and counts:
+            ex["counts"] = {str(k)[:40]: counts[k] for k in list(counts.keys())[:30]}
+        if isinstance(cache, dict) and cache:
+            safe_cache = {}
+            for k, v in list(cache.items())[:30]:
+                lk = str(k).lower()
+                if "token" in lk or "password" in lk:
+                    continue
+                safe_cache[str(k)[:40]] = v
+            ex["cache"] = safe_cache
+        if isinstance(extra, dict) and extra:
+            safe_extra = {}
+            for k, v in list(extra.items())[:40]:
+                lk = str(k).lower()
+                if "token" in lk or "password" in lk:
+                    continue
+                safe_extra[str(k)[:40]] = v
+            ex.update(safe_extra)
+
+        _analysis_history_append({
+            "kind": "worklog",
+            "step": f"{str(purpose or '')}.{str(op or '')}".strip("."),
+            "page": str(purpose or "dashboard")[:40],
+            "measurement": str(measurement or "")[:200],
+            "field": str(field or "")[:200],
+            "entity_id": str(entity_id or "")[:200],
+            "friendly_name": str(friendly_name or "")[:200],
+            "detail": str(detail or "")[:4000],
+            "status": str(status or "")[:40],
+            "extra": ex,
+            "ip": _req_ip(),
+            "ua": _req_ua(),
+        })
     except Exception:
         return
 
@@ -2289,7 +2555,14 @@ def _analysis_history_tail(limit: int = 500) -> list[dict[str, Any]]:
         lim = min(5000, max(1, int(limit or 500)))
     except Exception:
         lim = 500
+    cutoff_dt: datetime | None = None
+    try:
+        cutoff_dt = datetime.now(timezone.utc) - timedelta(days=int(WORKLOG_MAX_DAYS or 14))
+    except Exception:
+        cutoff_dt = None
+
     with ANALYSIS_HISTORY_LOCK:
+        _worklog_prune_mem_locked(cutoff_dt=cutoff_dt)
         xs = list(ANALYSIS_HISTORY_MEM)
     if xs:
         return xs[-lim:]
@@ -2297,10 +2570,20 @@ def _analysis_history_tail(limit: int = 500) -> list[dict[str, Any]]:
         if ANALYSIS_HISTORY_PATH.exists():
             lines = ANALYSIS_HISTORY_PATH.read_text(encoding="utf-8").splitlines()
             out: list[dict[str, Any]] = []
-            for ln in lines[-lim:]:
+            max_entries = lim
+            try:
+                max_entries = min(max_entries, int(WORKLOG_MAX_ENTRIES or max_entries))
+            except Exception:
+                pass
+
+            for ln in lines[-max_entries:]:
                 try:
                     j = json.loads(ln)
                     if isinstance(j, dict):
+                        if cutoff_dt is not None:
+                            at = _trace_parse_iso(str(j.get("at") or ""))
+                            if at and at < cutoff_dt:
+                                continue
                         out.append(j)
                 except Exception:
                     continue
@@ -13188,6 +13471,8 @@ def api_analysis_cache_plan():
         return jsonify({"ok": False, "error": str(e)}), 400
     if not measurement or not field:
         return jsonify({"ok": False, "error": "measurement and field required"}), 400
+
+    t0 = time.monotonic()
     plan = _analysis_cache_plan(cfg, measurement, field, entity_id, friendly_name, start_dt, stop_dt)
     out_segments = []
     for seg in plan.get("segments") or []:
@@ -13234,6 +13519,37 @@ def api_analysis_cache_plan():
         if isinstance(seg, dict)
     ]
     summary_counts = _analysis_type_counts([r for seg in (plan.get("segments") or []) for r in (seg.get("filtered_rows") or []) if isinstance(r, dict)])
+
+    try:
+        segs_n = len(out_segments)
+        gaps_n = len(out_gaps)
+        dirty_n = len(out_dirty)
+        _worklog_append_op(
+            purpose="analysis",
+            op="cache_plan",
+            status="ok",
+            detail=f"Analyse-Cache-Plan: segs={segs_n} gaps={gaps_n} dirty={dirty_n}",
+            measurement=str(measurement),
+            field=str(field),
+            entity_id=str(entity_id or ""),
+            friendly_name=str(friendly_name or ""),
+            window_start=_dt_to_rfc3339_utc(start_dt),
+            window_stop=_dt_to_rfc3339_utc(stop_dt),
+            source="cache" if bool(plan.get("has_cache")) else "db",
+            reason_code="cache_plan",
+            reason_label="Plan bestimmt, was aus Cache wiederverwendet und was neu gelesen werden muss.",
+            duration_ms=int(max(0.0, (time.monotonic() - t0) * 1000.0)),
+            counts={"segments": segs_n, "gaps": gaps_n, "dirty_ranges": dirty_n, "cached_outliers": int(plan.get("cached_outlier_count") or 0)},
+            cache={"series_key": str(plan.get("series_key") or "")},
+            extra={
+                "segments": out_segments[:3],
+                "gaps": out_gaps[:3],
+                "dirty_ranges": out_dirty[:3],
+                "blocked_segments": out_blocked[:3],
+            },
+        )
+    except Exception:
+        pass
     return jsonify({
         "ok": True,
         "plan": {
@@ -13286,6 +13602,8 @@ def api_analysis_cache_store_segment():
     final_state = body.get("final_state") if isinstance(body.get("final_state"), dict) else {}
     if not measurement or not field or not start_iso or not stop_iso:
         return jsonify({"ok": False, "error": "measurement, field, start, stop required"}), 400
+
+    t0 = time.monotonic()
     LOG.info(
         "api.analysis_cache.store_segment called measurement=%s field=%s entity_id=%s friendly_name=%s start=%s stop=%s rows=%d scanned=%d",
         measurement,
@@ -13319,6 +13637,27 @@ def api_analysis_cache_store_segment():
         str(meta.get("outlier_count") or 0),
         str(meta.get("bytes") or 0),
     )
+    try:
+        _worklog_append_op(
+            purpose="analysis",
+            op="cache_store",
+            status="ok",
+            detail=f"Analyse-Cache Segment gespeichert: rows={len(rows)} scanned={scanned}",
+            measurement=str(measurement),
+            field=str(field),
+            entity_id=str(entity_id or ""),
+            friendly_name=str(friendly_name or ""),
+            window_start=str(start_iso),
+            window_stop=str(stop_iso),
+            source="cache",
+            reason_code="cache_store",
+            reason_label="Neu gelesene Analyse-Ergebnisse wurden als Cache-Segment persistent gespeichert.",
+            duration_ms=int(max(0.0, (time.monotonic() - t0) * 1000.0)),
+            counts={"rows": len(rows), "scanned": scanned, "checkpoints": len(checkpoints)},
+            cache={"cache_id": str(meta.get("id") or ""), "series_key": str(meta.get("series_key") or ""), "bytes": meta.get("bytes")},
+        )
+    except Exception:
+        pass
     return jsonify({"ok": True, "cache": meta})
 
 
@@ -13360,6 +13699,7 @@ def api_analysis_cache_rebuild():
     series_key = str(body.get("series_key") or "").strip()
     if not series_key:
         return jsonify({"ok": False, "error": "series_key required"}), 400
+    t0 = time.monotonic()
     metas = [m for m in _analysis_cache_list_meta() if str(m.get("series_key") or "") == series_key]
     if not metas:
         return jsonify({"ok": False, "error": "series not found"}), 404
@@ -13390,6 +13730,21 @@ def api_analysis_cache_rebuild():
             scanned,
         )
         rebuilt += 1
+    try:
+        _worklog_append_op(
+            purpose="analysis",
+            op="cache_rebuild",
+            status="ok",
+            detail=f"Analyse-Cache rebuild: rebuilt={rebuilt}",
+            source="cache",
+            reason_code="rebuild",
+            reason_label="Cache-Segmente wurden neu berechnet und erneut gespeichert.",
+            duration_ms=int(max(0.0, (time.monotonic() - t0) * 1000.0)),
+            counts={"rebuilt": rebuilt},
+            cache={"series_key": series_key},
+        )
+    except Exception:
+        pass
     return jsonify({"ok": True, "rebuilt": rebuilt})
 
 
@@ -13401,6 +13756,7 @@ def api_analysis_cache_combine():
         series_key = str(body.get("series_key") or "").strip()
         if not series_key:
             return jsonify({"ok": False, "error": "series_key required"}), 400
+        t0 = time.monotonic()
         metas = [m for m in _analysis_cache_list_meta() if str(m.get("series_key") or "") == series_key]
         if not metas:
             return jsonify({"ok": False, "error": "series not found"}), 404
@@ -13448,6 +13804,21 @@ def api_analysis_cache_combine():
             if not dirty_group:
                 groups.append(resolved_group or group)
         if not groups:
+            try:
+                _worklog_append_op(
+                    purpose="analysis",
+                    op="cache_combine",
+                    status="ok",
+                    detail="Analyse-Cache combine: keine sauberen Gruppen zum Kombinieren",
+                    source="cache",
+                    reason_code="combine",
+                    duration_ms=int(max(0.0, (time.monotonic() - t0) * 1000.0)),
+                    counts={"groups_combined": 0, "skipped_dirty": len(skipped_dirty_segments)},
+                    cache={"series_key": series_key},
+                    extra={"skipped_dirty_segments": skipped_dirty_segments[:3]},
+                )
+            except Exception:
+                pass
             return jsonify({
                 "ok": True,
                 "created": [],
@@ -13473,6 +13844,23 @@ def api_analysis_cache_combine():
             deleted_ids.extend([str(m.get("id") or "") for m in group])
         if not created:
             return jsonify({"ok": False, "error": "combine failed"}), 500
+
+        try:
+            _worklog_append_op(
+                purpose="analysis",
+                op="cache_combine",
+                status="ok",
+                detail=f"Analyse-Cache combine: groups_combined={len(created)} deleted={len(deleted_ids)}",
+                source="cache",
+                reason_code="combine",
+                reason_label="Zusammenhaengende saubere Segmente wurden zu groesseren Segmenten kombiniert.",
+                duration_ms=int(max(0.0, (time.monotonic() - t0) * 1000.0)),
+                counts={"groups_combined": len(created), "deleted": len(deleted_ids)},
+                cache={"series_key": series_key, "created": created[:3]},
+                extra={"repaired_before_combine": repaired_before_combine[:3], "skipped_dirty_segments": skipped_dirty_segments[:3]},
+            )
+        except Exception:
+            pass
         return jsonify({
             "ok": True,
             "created": created,
@@ -13483,9 +13871,31 @@ def api_analysis_cache_combine():
         })
     except _ApiError as e:
         LOG.error("api.analysis_cache.combine api_error series_key=%s error=%s", request.get_json(silent=True) and str((request.get_json(silent=True) or {}).get("series_key") or "") or "", e)
+        try:
+            _worklog_append_op(
+                purpose="analysis",
+                op="cache_combine",
+                status="err",
+                detail=f"Analyse-Cache combine Fehler: {str(e) or e.__class__.__name__}",
+                source="cache",
+                reason_code="combine",
+            )
+        except Exception:
+            pass
         return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), int(getattr(e, "status_code", 500) or 500)
     except Exception as e:
         LOG.error("api.analysis_cache.combine unexpected error: %s", e, exc_info=True)
+        try:
+            _worklog_append_op(
+                purpose="analysis",
+                op="cache_combine",
+                status="err",
+                detail=f"Analyse-Cache combine Fehler: {_short_influx_error(e)}",
+                source="cache",
+                reason_code="combine",
+            )
+        except Exception:
+            pass
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
 
 
@@ -14469,6 +14879,11 @@ def api_set_config():
     _bool("trace_enabled", True)
     _bool("trace_persist", True)
     _clamp_int("trace_max_entries", 1000, 100, 20000)
+    _clamp_int("trace_max_days", 14, 1, 3650)
+
+    # Worklog (Analyse/Statistik/Raw)
+    _clamp_int("worklog_max_entries", 2000, 200, 50000)
+    _clamp_int("worklog_max_days", 14, 1, 3650)
 
     def _clamp_num(key: str, default: float, lo: float, hi: float) -> None:
         try:
@@ -16476,6 +16891,26 @@ from(bucket: "{cfg["bucket"]}")
                     "has_more_before": (before_returned == before_limit),
                     "has_more_after": (after_returned == after_limit),
                 })
+            try:
+                _worklog_append_op(
+                    purpose="raw",
+                    op="raw_points",
+                    status="ok",
+                    detail=f"Raw-Punkte ({meta.get('mode')})",
+                    measurement=str(measurement),
+                    field=str(field),
+                    entity_id=str(entity_id or ""),
+                    friendly_name=str(friendly_name or ""),
+                    window_start=str(meta.get("start") or ""),
+                    window_stop=str(meta.get("stop") or ""),
+                    source="db",
+                    reason_code="raw_center" if str(meta.get("mode") or "") == "center" else "raw_window",
+                    reason_label="Raw-Tabelle / Kontext um Ausreisser" if str(meta.get("mode") or "") == "center" else "Raw-Tabelle (Paging/Fenster)",
+                    duration_ms=int(max(0.0, (time.monotonic() - t0) * 1000.0)),
+                    counts={"rows": len(rows), "total_count": total_count},
+                )
+            except Exception:
+                pass
             return jsonify({"ok": True, "rows": rows, "meta": meta})
 
         # v1
@@ -16582,9 +17017,43 @@ from(bucket: "{cfg["bucket"]}")
                 "has_more_before": (before_returned == before_limit),
                 "has_more_after": (after_returned == after_limit),
             })
+        try:
+            _worklog_append_op(
+                purpose="raw",
+                op="raw_points",
+                status="ok",
+                detail=f"Raw-Punkte (v1 {mode})",
+                measurement=str(measurement),
+                field=str(field),
+                entity_id=str(entity_id or ""),
+                friendly_name=str(friendly_name or ""),
+                window_start=str(start),
+                window_stop=str(stop),
+                source="db",
+                reason_code="raw_center" if str(mode) == "center" else "raw_window",
+                duration_ms=int(max(0.0, (time.monotonic() - t0) * 1000.0)),
+                counts={"rows": len(rows)},
+            )
+        except Exception:
+            pass
         return jsonify({"ok": True, "rows": rows, "meta": meta})
 
     except Exception as e:
+        try:
+            _worklog_append_op(
+                purpose="raw",
+                op="raw_points",
+                status="err",
+                detail=f"Raw-Punkte Fehler: {_short_influx_error(e)}",
+                measurement=str(measurement),
+                field=str(field),
+                entity_id=str(entity_id or ""),
+                friendly_name=str(friendly_name or ""),
+                source="db",
+                duration_ms=int(max(0.0, (time.monotonic() - t0) * 1000.0)),
+            )
+        except Exception:
+            pass
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
 
 
@@ -17327,6 +17796,8 @@ def stats():
     if not measurement or not field:
         return jsonify({"ok": False, "error": "measurement and field required"}), 400
 
+    t0 = time.monotonic()
+
     try:
         LOG.debug(
             "api.stats measurement=%s field=%s scope=%s range=%s entity_id=%s friendly_name=%s",
@@ -17352,8 +17823,43 @@ def stats():
             if stats_scope in ("inf", "infinite", "all"):
                 try:
                     res = _stats_total_cached_v2(cfg, measurement, field, entity_id, friendly_name)
+                    try:
+                        _worklog_append_op(
+                            purpose="stats",
+                            op="total",
+                            status="ok",
+                            detail=f"Total-Stats (scope={stats_scope}) {'cache' if res.get('cached') else 'db'}",
+                            measurement=str(measurement),
+                            field=str(field),
+                            entity_id=str(entity_id or ""),
+                            friendly_name=str(friendly_name or ""),
+                            window_start=str((res.get('stats') or {}).get('oldest_time') or ""),
+                            window_stop=str((res.get('stats') or {}).get('newest_time') or ""),
+                            source="cache" if res.get("cached") else "db",
+                            reason_code="stats_scope_inf",
+                            reason_label="Gesamtstatistik (all-time) angefordert.",
+                            duration_ms=int(max(0.0, (time.monotonic() - t0) * 1000.0)),
+                        )
+                    except Exception:
+                        pass
                     return jsonify({"ok": True, "stats": res.get("stats") or {}, "stats_scope": stats_scope, "cached": bool(res.get("cached"))})
                 except Exception as e:
+                    try:
+                        _worklog_append_op(
+                            purpose="stats",
+                            op="total",
+                            status="err",
+                            detail=f"Total-Stats fehlgeschlagen: {_short_influx_error(e)}",
+                            measurement=str(measurement),
+                            field=str(field),
+                            entity_id=str(entity_id or ""),
+                            friendly_name=str(friendly_name or ""),
+                            source="db",
+                            reason_code="stats_scope_inf",
+                            duration_ms=int(max(0.0, (time.monotonic() - t0) * 1000.0)),
+                        )
+                    except Exception:
+                        pass
                     return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
 
             extra = flux_tag_filter(entity_id, friendly_name)
@@ -17451,6 +17957,31 @@ data = from(bucket: "{cfg["bucket"]}")
                     _try_stat("max", "data |> max() |> limit(n:1)")
                     _try_stat("mean", "data |> mean() |> limit(n:1)")
 
+            try:
+                ws = _dt_to_rfc3339_utc(start_dt) if start_dt else ""
+                we = _dt_to_rfc3339_utc(stop_dt) if stop_dt else ""
+            except Exception:
+                ws = ""
+                we = ""
+            try:
+                _worklog_append_op(
+                    purpose="stats",
+                    op="range",
+                    status="ok",
+                    detail=f"Range-Stats (scope={stats_scope}, range={range_key})",
+                    measurement=str(measurement),
+                    field=str(field),
+                    entity_id=str(entity_id or ""),
+                    friendly_name=str(friendly_name or ""),
+                    window_start=ws,
+                    window_stop=we,
+                    source="db",
+                    reason_code="stats_scope_range",
+                    reason_label="Statistik fuer aktuellen Zeitraum.",
+                    duration_ms=int(max(0.0, (time.monotonic() - t0) * 1000.0)),
+                )
+            except Exception:
+                pass
             return jsonify({"ok": True, "stats": out, "stats_scope": stats_scope})
         else:
             if not cfg.get("database"):
@@ -17525,8 +18056,39 @@ data = from(bucket: "{cfg["bucket"]}")
                 except Exception:
                     pass
 
+            try:
+                _worklog_append_op(
+                    purpose="stats",
+                    op="range",
+                    status="ok",
+                    detail=f"Range-Stats (v1 scope={stats_scope}, range={range_key})",
+                    measurement=str(measurement),
+                    field=str(field),
+                    entity_id=str(entity_id or ""),
+                    friendly_name=str(friendly_name or ""),
+                    source="db",
+                    reason_code="stats_scope_range",
+                    duration_ms=int(max(0.0, (time.monotonic() - t0) * 1000.0)),
+                )
+            except Exception:
+                pass
             return jsonify({"ok": True, "stats": out, "stats_scope": stats_scope})
     except Exception as e:
+        try:
+            _worklog_append_op(
+                purpose="stats",
+                op="range" if stats_scope not in ("inf", "infinite", "all") else "total",
+                status="err",
+                detail=f"/api/stats Fehler: {_short_influx_error(e)}",
+                measurement=str(measurement),
+                field=str(field),
+                entity_id=str(entity_id or ""),
+                friendly_name=str(friendly_name or ""),
+                source="db",
+                duration_ms=int(max(0.0, (time.monotonic() - t0) * 1000.0)),
+            )
+        except Exception:
+            pass
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
 
 
@@ -19545,6 +20107,101 @@ def api_cache_usage_clear():
     return jsonify({"ok": True, "message": "Cache usage log cleared."})
 
 
+@app.get("/api/storage_usage")
+def api_storage_usage():
+    """Diagnostics: report disk usage for persisted /data artifacts."""
+
+    def _safe_stat(p: Path) -> dict[str, Any]:
+        try:
+            st = p.stat()
+            return {"exists": True, "is_dir": p.is_dir(), "bytes": int(st.st_size), "mtime": st.st_mtime}
+        except Exception:
+            return {"exists": False, "is_dir": False, "bytes": 0, "mtime": None}
+
+    def _dir_size(p: Path) -> tuple[int, int]:
+        total = 0
+        files = 0
+        try:
+            if not p.exists() or not p.is_dir():
+                return 0, 0
+        except Exception:
+            return 0, 0
+        try:
+            for root, _dirs, fnames in os.walk(p):
+                for fn in fnames:
+                    try:
+                        fp = Path(root) / fn
+                        st = fp.stat()
+                        total += int(st.st_size)
+                        files += 1
+                    except Exception:
+                        continue
+        except Exception:
+            return total, files
+        return total, files
+
+    # Inventory of persisted artifacts
+    items: list[dict[str, Any]] = []
+    entries: list[tuple[str, Path]] = [
+        ("log_file", LOG_FILE),
+        ("runtime_cfg", RUNTIME_CFG_FILE),
+        ("dash_last", DASH_LAST_PATH),
+        ("ui_state", UI_STATE_PATH),
+        ("app_state", APP_STATE_PATH),
+        ("ui_profile_active", UI_PROFILE_ACTIVE_PATH),
+        ("history", HISTORY_PATH),
+        ("cache_usage", CACHE_USAGE_PATH),
+        ("ui_actions", UI_ACTIONS_PATH),
+        ("worklog", ANALYSIS_HISTORY_PATH),
+        ("traces", TRACE_PATH),
+        ("quality_cleanup_log", QUALITY_CLEANUP_LOG_PATH),
+        ("monitor_cfg", MONITOR_CFG_PATH),
+        ("monitor_state", MONITOR_STATE_PATH),
+        ("monitor_pending", MONITOR_PENDING_PATH),
+        ("monitor_events", MONITOR_EVENTS_PATH),
+        ("jobs_history", JOBS_HISTORY_PATH),
+        ("timers_state", TIMERS_STATE_PATH),
+        ("analysis_start_cache", ANALYSIS_START_CACHE_PATH),
+        ("exports_dir", EXPORT_DIR),
+        ("imports_dir", IMPORT_DIR),
+        ("ui_profiles_dir", UI_PROFILES_DIR),
+        ("dash_cache_dir", DASH_CACHE_DIR),
+        ("analysis_cache_dir", ANALYSIS_CACHE_DIR),
+        ("stats_cache_dir", STATS_CACHE_DIR),
+        ("series_stats_cache_dir", SERIES_STATS_CACHE_DIR),
+        ("old_default_backups", OLD_DEFAULT_BACKUP_DIR),
+    ]
+
+    for name, p in entries:
+        st = _safe_stat(p)
+        row = {
+            "name": name,
+            "path": str(p),
+            "exists": bool(st.get("exists")),
+            "kind": "dir" if bool(st.get("is_dir")) else "file",
+            "bytes": 0,
+            "files": None,
+            "mtime": st.get("mtime"),
+        }
+        if row["exists"] and row["kind"] == "dir":
+            b, n = _dir_size(p)
+            row["bytes"] = b
+            row["files"] = n
+        elif row["exists"]:
+            row["bytes"] = int(st.get("bytes") or 0)
+        items.append(row)
+
+    try:
+        du = shutil.disk_usage(DATA_DIR)
+        disk = {"path": str(DATA_DIR), "total": int(du.total), "used": int(du.used), "free": int(du.free)}
+    except Exception:
+        disk = {"path": str(DATA_DIR), "total": None, "used": None, "free": None}
+
+    total_bytes = sum(int(it.get("bytes") or 0) for it in items)
+    items.sort(key=lambda r: int(r.get("bytes") or 0), reverse=True)
+    return jsonify({"ok": True, "disk": disk, "total_bytes": total_bytes, "items": items})
+
+
 @app.post("/api/cache_usage/ui_event")
 def api_cache_usage_ui_event():
     """Record a UI-level cache usage event (e.g., button clicks) for the usage table."""
@@ -19625,6 +20282,20 @@ def api_analysis_history():
         limit = 500
     rows = _analysis_history_tail(limit)
     return jsonify({"ok": True, "rows": rows, "total": len(rows)})
+
+
+@app.post("/api/worklog/event")
+def api_worklog_event():
+    """Alias for /api/analysis_history_event (UI worklog)."""
+
+    return api_analysis_history_event()
+
+
+@app.get("/api/worklog")
+def api_worklog():
+    """Alias for /api/analysis_history."""
+
+    return api_analysis_history()
 
 
 @app.post("/api/series_stats")
@@ -20491,6 +21162,28 @@ from(bucket: "{cfg["bucket"]}")
         if return_checkpoints:
             _append_checkpoint(stop_dt, prev_val)
 
+        try:
+            _worklog_append_op(
+                purpose="analysis",
+                op="outliers_scan",
+                status="ok",
+                detail=f"Ausreisser-Suche: scanned={scanned} found={len(rows)} types={','.join([str(t) for t in (search_types or [])])}",
+                measurement=str(measurement),
+                field=str(field),
+                entity_id=str(entity_id or ""),
+                friendly_name=str(friendly_name or ""),
+                window_start=str(start),
+                window_stop=str(stop),
+                source="db",
+                reason_code="analysis_chunk",
+                reason_label="Ausreisser-Suche (Chunk/Zeitraum).",
+                duration_ms=dur_ms,
+                counts={"scanned": scanned, "found": len(rows), "checkpoints": len(checkpoints)},
+                extra={"search_types": search_types, "truncated": bool(len(rows) >= limit)},
+            )
+        except Exception:
+            pass
+
         return jsonify({
             "ok": True,
             "rows": rows,
@@ -20508,6 +21201,25 @@ from(bucket: "{cfg["bucket"]}")
     except Exception as e:
         dur_ms = int((time.monotonic() - t0) * 1000)
         LOG.error("api.outlier_search error: %s dur=%dms", e, dur_ms, exc_info=True)
+        try:
+            _worklog_append_op(
+                purpose="analysis",
+                op="outliers_scan",
+                status="err",
+                detail=f"Ausreisser-Suche Fehler: {_short_influx_error(e)}",
+                measurement=str(measurement),
+                field=str(field),
+                entity_id=str(entity_id or ""),
+                friendly_name=str(friendly_name or ""),
+                window_start=str(start),
+                window_stop=str(stop),
+                source="db",
+                reason_code="analysis_chunk",
+                duration_ms=dur_ms,
+                counts={"scanned": scanned, "found": len(rows)},
+            )
+        except Exception:
+            pass
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
 
 
@@ -20705,6 +21417,26 @@ from(bucket: "{cfg["bucket"]}")
         expand_count,
         base_span_s,
     )
+    try:
+        _worklog_append_op(
+            purpose="analysis",
+            op="outlier_windows",
+            status="ok",
+            detail=f"Raw-Fenster berechnet: windows={len(windows)} queries={query_count} expansions={expand_count}",
+            measurement=str(measurement),
+            field=str(field),
+            entity_id=str(entity_id or ""),
+            friendly_name=str(friendly_name or ""),
+            window_start=str(start_str),
+            window_stop=str(stop_str),
+            source="db",
+            reason_code="raw_windows",
+            reason_label="Raw-Kontextfenster um Ausreisser (N davor/N danach).",
+            duration_ms=int(max(0.0, (time.monotonic() - t0) * 1000.0)),
+            counts={"windows": len(windows), "queries": query_count, "expansions": expand_count},
+        )
+    except Exception:
+        pass
     return jsonify({"ok": True, "windows": windows})
 
 

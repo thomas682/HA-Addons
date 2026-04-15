@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.12.359
+
+### Enhancement
+
+- Settings/Diagnose: Neuer Worklog (Analyse/Statistik/Raw) inkl. Retention (max. Eintraege und max. Tage) sowie neue Diagnose-Ansicht fuer Speicherverbrauch (freie Platte + Inventar aller persistierten /data-Artefakte). ([#302](https://github.com/thomas682/HA-Addons/issues/302))
+- Settings: Kompakteres Padding in der Settings-Liste und robustere Breite fuer `ui_filter_control_width_px`. ([#287](https://github.com/thomas682/HA-Addons/issues/287))
+
+### Bug Fix
+
+- Logs: Doppelte Controls/IDs entfernt, damit Suche/Wrap/Markieren wieder stabil funktionieren. ([#301](https://github.com/thomas682/HA-Addons/issues/301))
+- Dashboard/Raw: Bei `range=all` wird das Raw-Zeitfenster nicht mehr auf Epoch (1970) gesetzt, sondern sinnvoll begrenzt (Default: `ui_analysis_max_age_years`, optional anhand bekannter Serien-Bounds). ([#303](https://github.com/thomas682/HA-Addons/issues/303))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`
+- Tests: `pytest tests/test_api_storage_usage.py -q`
+- Tests: `pytest tests/test_api_config_io.py::test_trace_recent_endpoint_exists -q`
+- Tested with Home Assistant Core: 2026.4.2
+
 ## 1.12.358
 
 ### Maintenance
