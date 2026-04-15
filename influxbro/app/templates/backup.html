@@ -943,10 +943,13 @@
               LAST_BACKUP_QUERY = s;
               const resp = String(responseHint || '').trim();
               if(window.InfluxBroQueryHistory && window.InfluxBroQueryHistory.add){
+                const tr = (window.InfluxBroTrace && window.InfluxBroTrace.current) ? window.InfluxBroTrace.current() : null;
                 window.InfluxBroQueryHistory.add('backup', 'Backup Job', s, resp, {
                   started_at_source: String(startedAtIso||''),
                   trigger_page: 'backup',
-                  trigger_button: 'backup.run',
+                  trigger_button: (tr && tr.action_ui) ? String(tr.action_ui) : 'backup.run',
+                  trace_id: (tr && tr.trace_id) ? String(tr.trace_id) : '',
+                  action: (tr && tr.action_ui) ? String(tr.action_ui) : '',
                 });
               }
             }
@@ -986,10 +989,13 @@
               LAST_FULLBACKUP_ACTION = s;
               const resp = String(responseHint || '').trim();
               if(window.InfluxBroQueryHistory && window.InfluxBroQueryHistory.add){
+                const tr = (window.InfluxBroTrace && window.InfluxBroTrace.current) ? window.InfluxBroTrace.current() : null;
                 window.InfluxBroQueryHistory.add('fullbackup', 'FullBackup', s, resp, {
                   started_at_source: String(startedAtIso||''),
                   trigger_page: 'backup',
-                  trigger_button: 'fullbackup.run',
+                  trigger_button: (tr && tr.action_ui) ? String(tr.action_ui) : 'fullbackup.run',
+                  trace_id: (tr && tr.trace_id) ? String(tr.trace_id) : '',
+                  action: (tr && tr.action_ui) ? String(tr.action_ui) : '',
                 });
               }
             }

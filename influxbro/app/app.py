@@ -30,7 +30,7 @@ from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
-from flask import Flask, Response, abort, jsonify, make_response, render_template, request, send_file
+from flask import Flask, Response, abort, g, jsonify, make_response, render_template, request, send_file
 from influxdb_client import InfluxDBClient
 from influxdb_client import Point
 from influxdb_client import WritePrecision
@@ -68,6 +68,17 @@ UI_ACTIONS_LOCK = threading.RLock()
 UI_ACTIONS_MAX_MEM = 200
 UI_ACTIONS_MEM: "deque[dict[str, Any]]" = deque(maxlen=UI_ACTIONS_MAX_MEM)
 UI_ACTIONS_PATH = DATA_DIR / "influxbro_ui_actions.jsonl"
+
+TRACE_LOCK = threading.RLock()
+TRACE_PATH = DATA_DIR / "influxbro_traces.json"
+TRACE_ENABLED = True
+TRACE_PERSIST = True
+TRACE_MAX_ENTRIES = 1000
+TRACE_LAST_WRITE_MONO = 0.0
+# Recents/LRU order of trace_ids (oldest -> newest). We keep it bounded manually so
+# we can also evict TRACE_INDEX entries.
+TRACE_MEM: "deque[str]" = deque()
+TRACE_INDEX: dict[str, dict[str, Any]] = {}
 ANALYSIS_HISTORY_LOCK = threading.RLock()
 ANALYSIS_HISTORY_MAX_MEM = 1000
 ANALYSIS_HISTORY_MEM: "deque[dict[str, Any]]" = deque(maxlen=ANALYSIS_HISTORY_MAX_MEM)
@@ -479,18 +490,40 @@ def log_details(msg: str, *args: object) -> None:
         return
 
 
-def log_query(label: str, query: str) -> None:
-    """Log an Influx query string under TRACE when enabled."""
+def log_query(label: str, query: str) -> str:
+    """Log an Influx query string under TRACE when enabled.
 
-    if not (DETAILS_ENABLED and INFLUX_QUERY_LOGGING):
-        return
+    Returns the (possibly trace-prefixed) query string.
+    """
+
     q = (query or "").strip()
     if not q:
-        return
+        return ""
+
+    # Add trace correlation (if present).
     try:
-        DETAIL_LOG.debug("%s:\n%s", label, q)
+        trace_id = str(getattr(g, "trace_id", "") or "")
+        action = str(getattr(g, "trace_action", "") or "")
+        span_id = str(getattr(g, "trace_span_id", "") or "")
+        if trace_id:
+            prefix = f"// trace_id={trace_id} action={action} span_id={span_id} label={label}"
+            q = prefix + "\n" + q
     except Exception:
-        return
+        pass
+
+    # Store query in trace store (best effort), independent of log profile.
+    try:
+        _trace_add_query(label, q)
+    except Exception:
+        pass
+
+    if DETAILS_ENABLED and INFLUX_QUERY_LOGGING:
+        try:
+            DETAIL_LOG.debug("%s:\n%s", label, q)
+        except Exception:
+            pass
+
+    return q
 
 
 def _cleanup_old_logs(max_age_days: int) -> None:
@@ -642,6 +675,395 @@ def configure_logging(cfg: dict[str, Any]) -> None:
             max_age_days,
             log_http_requests,
         )
+
+    try:
+        _trace_configure(cfg)
+    except Exception:
+        pass
+
+
+def _trace_configure(cfg: dict[str, Any]) -> None:
+    global TRACE_ENABLED
+    global TRACE_PERSIST
+    global TRACE_MAX_ENTRIES
+    global TRACE_MEM
+
+    TRACE_ENABLED = bool(cfg.get("trace_enabled", True))
+    TRACE_PERSIST = bool(cfg.get("trace_persist", True))
+    try:
+        TRACE_MAX_ENTRIES = int(cfg.get("trace_max_entries", 1000) or 1000)
+    except Exception:
+        TRACE_MAX_ENTRIES = 1000
+    TRACE_MAX_ENTRIES = max(100, min(20000, TRACE_MAX_ENTRIES))
+
+    # Keep recents bounded and evict stale trace entries.
+    with TRACE_LOCK:
+        while len(TRACE_MEM) > TRACE_MAX_ENTRIES:
+            old_tid = TRACE_MEM.popleft()
+            try:
+                TRACE_INDEX.pop(old_tid, None)
+            except Exception:
+                pass
+        keep = set(TRACE_MEM)
+        for tid in list(TRACE_INDEX.keys()):
+            if tid not in keep:
+                TRACE_INDEX.pop(tid, None)
+
+    if TRACE_PERSIST:
+        _trace_load_from_disk()
+
+
+def _trace_load_from_disk() -> None:
+    try:
+        if not TRACE_PATH.exists():
+            return
+        raw = TRACE_PATH.read_text(encoding="utf-8", errors="replace")
+        j = json.loads(raw or "null")
+        if not isinstance(j, list):
+            return
+        with TRACE_LOCK:
+            TRACE_MEM.clear()
+            TRACE_INDEX.clear()
+            items: list[dict[str, Any]] = []
+            for it in j[-TRACE_MAX_ENTRIES:]:
+                if not isinstance(it, dict):
+                    continue
+                tid = str(it.get("trace_id") or "").strip()
+                if not tid:
+                    continue
+                TRACE_INDEX[tid] = it
+                # normalize minimally so later updates are safe
+                try:
+                    _trace_get_or_create(tid)
+                except Exception:
+                    pass
+                items.append({"trace_id": tid, "last_at": str(it.get("last_at") or "")})
+
+            # Prefer recents by last_at, keep stable fallback order.
+            items.sort(key=lambda d: str(d.get("last_at") or ""))
+            for d in items[-TRACE_MAX_ENTRIES:]:
+                TRACE_MEM.append(str(d.get("trace_id") or "").strip())
+    except Exception:
+        return
+
+
+def _trace_save_to_disk() -> None:
+    global TRACE_LAST_WRITE_MONO
+    if not TRACE_PERSIST:
+        return
+    now = time.monotonic()
+    # avoid heavy churn on frequent events
+    if (now - TRACE_LAST_WRITE_MONO) < 0.8:
+        return
+    TRACE_LAST_WRITE_MONO = now
+    try:
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        with TRACE_LOCK:
+            # Persist in recent/LRU order.
+            items = []
+            for tid in list(TRACE_MEM)[-TRACE_MAX_ENTRIES:]:
+                tr = TRACE_INDEX.get(tid)
+                if isinstance(tr, dict):
+                    items.append(tr)
+        tmp = TRACE_PATH.with_suffix(".tmp")
+        tmp.write_text(json.dumps(items, ensure_ascii=True), encoding="utf-8")
+        tmp.replace(TRACE_PATH)
+    except Exception:
+        return
+
+
+def _trace_ctx() -> dict[str, str]:
+    try:
+        return {
+            "trace_id": str(getattr(g, "trace_id", "") or ""),
+            "action": str(getattr(g, "trace_action", "") or ""),
+            "span_id": str(getattr(g, "trace_span_id", "") or ""),
+        }
+    except Exception:
+        return {"trace_id": "", "action": "", "span_id": ""}
+
+
+def _trace_get_or_create(trace_id: str, page: str = "", action: str = "", started_at: str = "") -> dict[str, Any]:
+    tid = str(trace_id or "").strip()
+    if not tid:
+        return {}
+    with TRACE_LOCK:
+        tr = TRACE_INDEX.get(tid)
+        if isinstance(tr, dict):
+            _trace_normalize(tr, tid, page=page, action=action, started_at=started_at)
+            return tr
+        tr = {
+            "trace_id": tid,
+            "page": str(page or ""),
+            "action": str(action or ""),
+            "started_at": started_at or datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "last_at": started_at or datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "status": "running",
+            "dur_ms": None,
+            "counts": {"ui_events": 0, "api_spans": 0, "client_spans": 0, "queries": 0},
+            "ui_events": [],
+            "spans": [],
+            "client_spans": [],
+            "queries": [],
+            "errors": [],
+        }
+        TRACE_INDEX[tid] = tr
+        # add to recents
+        try:
+            _trace_recent_touch_locked(tid)
+        except Exception:
+            pass
+        return tr
+
+
+def _trace_parse_iso(iso: str) -> datetime | None:
+    s = str(iso or "").strip()
+    if not s:
+        return None
+    try:
+        if s.endswith("Z"):
+            s = s[:-1] + "+00:00"
+        return datetime.fromisoformat(s)
+    except Exception:
+        return None
+
+
+def _trace_normalize(tr: dict[str, Any], tid: str, page: str = "", action: str = "", started_at: str = "") -> None:
+    # Minimal shape normalization to handle older persisted traces.
+    tr["trace_id"] = str(tr.get("trace_id") or tid)
+    if page and not str(tr.get("page") or "").strip():
+        tr["page"] = str(page)
+    if action and not str(tr.get("action") or "").strip():
+        tr["action"] = str(action)
+    if started_at and not str(tr.get("started_at") or "").strip():
+        tr["started_at"] = str(started_at)
+    if not str(tr.get("started_at") or "").strip():
+        tr["started_at"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    if not str(tr.get("last_at") or "").strip():
+        tr["last_at"] = str(tr.get("started_at") or "")
+
+    counts = tr.get("counts")
+    if not isinstance(counts, dict):
+        counts = {}
+    for k in ("ui_events", "api_spans", "client_spans", "queries"):
+        try:
+            counts[k] = int(counts.get(k, 0) or 0)
+        except Exception:
+            counts[k] = 0
+    tr["counts"] = counts
+
+    for k in ("ui_events", "spans", "client_spans", "queries", "errors"):
+        if not isinstance(tr.get(k), list):
+            tr[k] = []
+
+    st = str(tr.get("status") or "running")
+    if st not in ("running", "ok", "err"):
+        st = "running"
+    tr["status"] = st
+
+
+def _trace_recent_touch_locked(tid: str) -> None:
+    # TRACE_LOCK must be held.
+    while True:
+        try:
+            TRACE_MEM.remove(tid)
+        except ValueError:
+            break
+        except Exception:
+            break
+    TRACE_MEM.append(tid)
+    while len(TRACE_MEM) > TRACE_MAX_ENTRIES:
+        old_tid = TRACE_MEM.popleft()
+        try:
+            TRACE_INDEX.pop(old_tid, None)
+        except Exception:
+            pass
+
+
+def _trace_summary(tr: dict[str, Any]) -> dict[str, Any]:
+    out = {
+        "trace_id": str(tr.get("trace_id") or ""),
+        "started_at": tr.get("started_at"),
+        "last_at": tr.get("last_at"),
+        "status": tr.get("status"),
+        "page": tr.get("page"),
+        "action": tr.get("action"),
+        "dur_ms": tr.get("dur_ms"),
+        "counts": tr.get("counts") or {},
+    }
+    # Ensure counts is JSON-safe and small.
+    try:
+        c = out["counts"]
+        if not isinstance(c, dict):
+            c = {}
+        out["counts"] = {
+            "ui_events": int(c.get("ui_events", 0) or 0),
+            "api_spans": int(c.get("api_spans", 0) or 0),
+            "client_spans": int(c.get("client_spans", 0) or 0),
+            "queries": int(c.get("queries", 0) or 0),
+        }
+    except Exception:
+        out["counts"] = {"ui_events": 0, "api_spans": 0, "client_spans": 0, "queries": 0}
+    return out
+
+
+def _trace_touch(tr: dict[str, Any]) -> None:
+    # TRACE_LOCK must be held.
+    try:
+        now_iso = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        tr["last_at"] = now_iso
+        try:
+            t0 = _trace_parse_iso(str(tr.get("started_at") or ""))
+            t1 = _trace_parse_iso(now_iso)
+            if t0 and t1:
+                tr["dur_ms"] = int(max(0.0, (t1 - t0).total_seconds() * 1000.0))
+        except Exception:
+            pass
+        _trace_recent_touch_locked(str(tr.get("trace_id") or "").strip())
+    except Exception:
+        return
+
+
+def _trace_add_ui_event(page: str, ui: str, text: str, extra: Any) -> None:
+    if not TRACE_ENABLED:
+        return
+    trace_id = ""
+    action = ""
+    started_at = ""
+    if isinstance(extra, dict):
+        trace_id = str(extra.get("trace_id") or "").strip()
+        action = str(extra.get("action") or extra.get("ui") or "").strip()
+        started_at = str(extra.get("started_at") or "").strip()
+    if not trace_id:
+        return
+    tr = _trace_get_or_create(trace_id, page=page, action=action, started_at=started_at)
+    if not tr:
+        return
+    with TRACE_LOCK:
+        _trace_normalize(tr, str(tr.get("trace_id") or ""), page=page, action=action, started_at=started_at)
+        _trace_touch(tr)
+        tr["counts"]["ui_events"] = int(tr["counts"].get("ui_events", 0) or 0) + 1
+        safe_extra: Any = extra
+        if isinstance(extra, dict):
+            # keep small and non-sensitive
+            safe_extra = {str(k)[:40]: _redact_secrets(str(v)[:200]) for k, v in list(extra.items())[:25]}
+        tr["ui_events"].append({
+            "at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "page": page,
+            "ui": ui,
+            "text": text,
+            "extra": safe_extra,
+        })
+    _trace_save_to_disk()
+
+
+def _trace_add_span(span: dict[str, Any]) -> None:
+    if not TRACE_ENABLED:
+        return
+    tid = str(span.get("trace_id") or "").strip()
+    if not tid:
+        return
+    tr = _trace_get_or_create(tid, page=str(span.get("page") or ""), action=str(span.get("action") or ""), started_at=str(span.get("started_at") or ""))
+    if not tr:
+        return
+    with TRACE_LOCK:
+        _trace_normalize(tr, str(tr.get("trace_id") or ""), page=str(span.get("page") or ""), action=str(span.get("action") or ""), started_at=str(span.get("started_at") or ""))
+        _trace_touch(tr)
+        tr["counts"]["api_spans"] = int(tr["counts"].get("api_spans", 0) or 0) + 1
+        tr["spans"].append(span)
+        # update status/dur
+        try:
+            if span.get("status") == "err":
+                tr["status"] = "err"
+        except Exception:
+            pass
+    _trace_save_to_disk()
+
+
+def _trace_add_client_span(span: dict[str, Any]) -> None:
+    if not TRACE_ENABLED:
+        return
+    tid = str(span.get("trace_id") or "").strip()
+    if not tid:
+        return
+    tr = _trace_get_or_create(tid, page=str(span.get("page") or ""), action=str(span.get("action") or ""), started_at=str(span.get("started_at") or ""))
+    if not tr:
+        return
+    with TRACE_LOCK:
+        _trace_normalize(tr, str(tr.get("trace_id") or ""), page=str(span.get("page") or ""), action=str(span.get("action") or ""), started_at=str(span.get("started_at") or ""))
+        _trace_touch(tr)
+        tr["counts"]["client_spans"] = int(tr["counts"].get("client_spans", 0) or 0) + 1
+        tr["client_spans"].append(span)
+    _trace_save_to_disk()
+
+
+def _trace_add_query(label: str, query: str) -> None:
+    if not TRACE_ENABLED:
+        return
+    ctx = _trace_ctx()
+    tid = str(ctx.get("trace_id") or "").strip()
+    if not tid:
+        return
+    tr = _trace_get_or_create(tid, page="", action=str(ctx.get("action") or ""), started_at="")
+    if not tr:
+        return
+    q = _redact_secrets(str(query or ""))
+    with TRACE_LOCK:
+        _trace_normalize(tr, str(tr.get("trace_id") or ""), action=str(ctx.get("action") or ""))
+        _trace_touch(tr)
+        tr["counts"]["queries"] = int(tr["counts"].get("queries", 0) or 0) + 1
+        tr["queries"].append({
+            "at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "label": str(label or "")[:120],
+            "span_id": str(ctx.get("span_id") or ""),
+            "query": q[:200000],
+        })
+    _trace_save_to_disk()
+
+
+@app.before_request
+def _trace_before_request() -> None:
+    if not TRACE_ENABLED:
+        return
+    try:
+        g.trace_id = str(request.headers.get("X-InfluxBro-Trace-Id") or "").strip()
+        g.trace_span_id = str(request.headers.get("X-InfluxBro-Span-Id") or "").strip()
+        g.trace_action = str(request.headers.get("X-InfluxBro-Action") or "").strip()
+        g.trace_started_at = str(request.headers.get("X-InfluxBro-Trace-Started-At") or "").strip()
+        g.trace_page = str(request.headers.get("X-InfluxBro-Trace-Page") or "").strip()
+        g._trace_req_t0 = time.monotonic()
+    except Exception:
+        return
+
+
+@app.after_request
+def _trace_after_request(resp: Response) -> Response:
+    if not TRACE_ENABLED:
+        return resp
+    try:
+        tid = str(getattr(g, "trace_id", "") or "").strip()
+        if not tid:
+            return resp
+        t0 = float(getattr(g, "_trace_req_t0", 0.0) or 0.0)
+        dur_ms = int(max(0.0, (time.monotonic() - t0) * 1000.0)) if t0 else None
+        span = {
+            "trace_id": tid,
+            "span_id": str(getattr(g, "trace_span_id", "") or ""),
+            "action": str(getattr(g, "trace_action", "") or ""),
+            "page": str(getattr(g, "trace_page", "") or ""),
+            "started_at": str(getattr(g, "trace_started_at", "") or ""),
+            "at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "kind": "http.request",
+            "method": str(request.method or ""),
+            "path": str(request.path or ""),
+            "status_code": int(resp.status_code),
+            "dur_ms": dur_ms,
+            "status": "ok" if int(resp.status_code) < 400 else "err",
+        }
+        _trace_add_span(span)
+    except Exception:
+        return resp
+    return resp
 
 def env_bool(key: str, default: bool) -> bool:
     v = os.environ.get(key, str(default)).lower()
@@ -808,6 +1230,11 @@ DEFAULT_CFG = {
     "log_http_requests": False,
     "log_influx_queries": False,
     "log_cache_usage": False,
+
+    # Tracing / Performanceanalyse (persistent action log)
+    "trace_enabled": True,
+    "trace_persist": True,
+    "trace_max_entries": 1000,
 
     # Dashboard query cache (server-side, persisted under /data)
     "dash_cache_enabled": True,
@@ -6119,6 +6546,12 @@ def quality_page():
 def logs_page():
     cfg = load_cfg()
     return render_template("logs.html", cfg=cfg, allow_delete=True, nav="logs")
+
+
+@app.get("/performance")
+def performance_page():
+    cfg = load_cfg()
+    return render_template("performance.html", cfg=cfg, allow_delete=True, nav="performance")
 
 
 @app.get("/jobs")
@@ -13904,6 +14337,11 @@ def api_set_config():
     _clamp_int("log_max_age_days", 14, 0, 365)
     _clamp_int("bugreport_log_history_hours", 1, 1, 168)
 
+    # Tracing
+    _bool("trace_enabled", True)
+    _bool("trace_persist", True)
+    _clamp_int("trace_max_entries", 1000, 100, 20000)
+
     def _clamp_num(key: str, default: float, lo: float, hi: float) -> None:
         try:
             cfg[key] = float(cfg.get(key, default))
@@ -14687,7 +15125,7 @@ from(bucket: "{cfg["bucket"]}")
                     max_points = min(2000000, max(1000, max_points))
 
                     q = base + f"  |> limit(n: {max_points})\n"
-                    log_query("api.query manual (flux)", q)
+                    q = log_query("api.query manual (flux)", q)
 
                     rows: list[dict[str, Any]] = []
                     for rec in qapi.query_stream(q, org=cfg["org"]):
@@ -14748,7 +15186,7 @@ from(bucket: "{cfg["bucket"]}")
   |> keep(columns: ["_time","_value"])
   |> sort(columns: ["_time"])
 '''
-                log_query("api.query dynamic (flux)", q)
+                q = log_query("api.query dynamic (flux)", q)
 
                 coarse: list[tuple[datetime, float]] = []
                 for rec in qapi.query_stream(q, org=cfg["org"]):
@@ -14839,7 +15277,7 @@ from(bucket: "{cfg["bucket"]}")
   |> sort(columns: ["_time"])
   |> limit(n: {lim})
 '''
-                        log_query("api.query refine (flux)", q2)
+                        q2 = log_query("api.query refine (flux)", q2)
                         for rec in qapi.query_stream(q2, org=cfg["org"]):
                             try:
                                 ts = rec.get_time()
@@ -15777,7 +16215,7 @@ from(bucket: "{cfg["bucket"]}")
   |> limit(n: {limit}, offset: {offset})
 '''
 
-            log_query("api.raw_points (flux)", q)
+            q = log_query("api.raw_points (flux)", q)
 
             q_count = f'''
 from(bucket: "{cfg["bucket"]}")
@@ -15789,7 +16227,7 @@ from(bucket: "{cfg["bucket"]}")
 '''
 
             if include_total:
-                log_query("api.raw_points (flux count)", q_count)
+                q_count = log_query("api.raw_points (flux count)", q_count)
 
             rows: list[dict[str, Any]] = []
             total_count: int | None = None
@@ -15802,7 +16240,7 @@ from(bucket: "{cfg["bucket"]}")
                     q_stop_dt = min(stop_dt, center_dt + timedelta(minutes=center_minutes))
                     q_start = _dt_to_rfc3339_utc(q_start_dt)
                     q_stop = _dt_to_rfc3339_utc(q_stop_dt)
-                    log_query("api.raw_points (flux center_minutes)", q)
+                    q = log_query("api.raw_points (flux center_minutes)", q)
                     tables = qapi.query(q, org=cfg["org"])
                     for t in tables or []:
                         for r in getattr(t, "records", []) or []:
@@ -15835,8 +16273,8 @@ from(bucket: "{cfg["bucket"]}")
 '''
                     older: list[dict[str, Any]] = []
                     newer: list[dict[str, Any]] = []
-                    log_query("api.raw_points (flux older)", q_older)
-                    log_query("api.raw_points (flux newer)", q_newer)
+                    q_older = log_query("api.raw_points (flux older)", q_older)
+                    q_newer = log_query("api.raw_points (flux newer)", q_newer)
                     tables = qapi.query(q_older, org=cfg["org"])
                     for t in tables or []:
                         for r in getattr(t, "records", []) or []:
@@ -16329,7 +16767,7 @@ from(bucket: "{cfg["bucket"]}")
 '''
 
     try:
-        log_query("api.window_points (flux)", q)
+        q = log_query("api.window_points (flux)", q)
         rows: list[dict[str, Any]] = []
         with v2_client(cfg) as c:
             tables = c.query_api().query(q, org=cfg["org"])
@@ -16432,8 +16870,8 @@ from(bucket: "{cfg["bucket"]}")
 
     older: list[dict[str, Any]] = []
     newer: list[dict[str, Any]] = []
-    log_query("api.point_neighbors (flux older)", q_older)
-    log_query("api.point_neighbors (flux newer)", q_newer)
+    q_older = log_query("api.point_neighbors (flux older)", q_older)
+    q_newer = log_query("api.point_neighbors (flux newer)", q_newer)
     try:
         with v2_client(cfg) as c:
             qapi = c.query_api()
@@ -18282,9 +18720,80 @@ def api_ui_event():
             "ua": (request.headers.get("User-Agent") or "")[:80],
         })
         LOG.info("ui_event page=%s ui=%s text=%s extra=%s", page, ui, text, extra_s)
+
+        try:
+            _trace_add_ui_event(page, ui, text, extra)
+        except Exception:
+            pass
     except Exception:
         pass
 
+    return jsonify({"ok": True})
+
+
+@app.get("/api/trace/recent")
+def api_trace_recent():
+    if not TRACE_ENABLED:
+        return jsonify({"ok": True, "enabled": False, "traces": []})
+    try:
+        limit = int(request.args.get("limit", "200"))
+    except Exception:
+        limit = 200
+    limit = max(1, min(2000, limit))
+    with TRACE_LOCK:
+        tids = list(TRACE_MEM)[-limit:]
+        xs = []
+        for tid in tids:
+            tr = TRACE_INDEX.get(tid)
+            if isinstance(tr, dict):
+                xs.append(_trace_summary(tr))
+    return jsonify({"ok": True, "enabled": True, "traces": xs})
+
+
+@app.get("/api/trace/<trace_id>")
+def api_trace_get(trace_id: str):
+    if not TRACE_ENABLED:
+        return jsonify({"ok": False, "error": "tracing disabled"}), 400
+    tid = str(trace_id or "").strip()
+    if not tid:
+        return jsonify({"ok": False, "error": "trace_id required"}), 400
+    with TRACE_LOCK:
+        tr = TRACE_INDEX.get(tid)
+    if not tr:
+        return jsonify({"ok": False, "error": "trace not found"}), 404
+    try:
+        if isinstance(tr, dict):
+            _trace_normalize(tr, tid)
+    except Exception:
+        pass
+    return jsonify({"ok": True, "trace": tr})
+
+
+@app.post("/api/trace/client_span")
+def api_trace_client_span():
+    if not TRACE_ENABLED:
+        return jsonify({"ok": True})
+    body = request.get_json(force=True) or {}
+    if not isinstance(body, dict):
+        return jsonify({"ok": False, "error": "body must be object"}), 400
+    tid = str(body.get("trace_id") or "").strip()
+    if not tid:
+        return jsonify({"ok": False, "error": "trace_id required"}), 400
+    span = {
+        "trace_id": tid,
+        "span_id": str(body.get("span_id") or ""),
+        "action": str(body.get("action") or ""),
+        "page": str(body.get("page") or ""),
+        "started_at": str(body.get("started_at") or ""),
+        "at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "kind": "http.client",
+        "method": str(body.get("method") or ""),
+        "url": _redact_secrets(str(body.get("url") or ""))[:400],
+        "status_code": int(body.get("status_code") or 0),
+        "dur_ms": int(body.get("dur_ms") or 0),
+        "status": str(body.get("status") or ""),
+    }
+    _trace_add_client_span(span)
     return jsonify({"ok": True})
 
 

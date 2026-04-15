@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>InfluxBro – Performanceanalyse</title>
+  <style>
+    :root {
+      --ui-font: 14px;
+      --ui-font-small: 11px;
+    }
+
+    body { font-family: system-ui, sans-serif; margin: 0; font-size: var(--ui-font); }
+
+    .shell { display:grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
+    @media (max-width: 980px){ .shell { grid-template-columns: 1fr; } }
+    .sidebar { padding: 14px; border-right: 1px solid #eee; }
+    @media (max-width: 980px){ .sidebar { border-right: 0; border-bottom: 1px solid #eee; } }
+    .brand { margin-bottom: 10px; }
+    .brand_title { font-weight: 800; font-size: 18px; }
+    .brand_meta { opacity: 0.7; font-size: 12px; margin-top: 2px; }
+    .nav_item { display:flex; align-items:center; gap: 10px; padding: 10px 10px; border-radius: 12px; text-decoration:none; color: inherit; }
+    .nav_item { font-size: 16px; }
+    .nav_item:hover { background: #f6f6f6; }
+    .nav_item.active { background: #0b0b0c; color: #fff; }
+    .ico { width: 22px; height: 22px; display:inline-flex; align-items:center; justify-content:center; font-weight: 800; }
+
+    .content { padding: 16px; }
+    h2 { margin: 0; }
+    .muted { opacity: 0.7; font-size: 12px; }
+    .row { display:flex; gap: 10px; flex-wrap:wrap; align-items:end; margin-top: 10px; }
+    input, select, button { padding: 10px 12px; height: 40px; box-sizing: border-box; }
+    input, select { width: 100%; }
+    button { cursor:pointer; }
+    .card { border: 1px solid #ddd; border-radius: 12px; padding: 12px; margin-top: 12px; }
+    .grid2 { display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 980px){ .grid2 { grid-template-columns: 1fr; } }
+    .tbl { width:100%; border-collapse: collapse; }
+    .tbl th, .tbl td { border-bottom: 1px solid #eee; padding: 8px 10px; font-size: 12px; vertical-align: top; }
+    .tbl th { text-align:left; background:#fafafa; }
+    pre { margin:0; font-size: 12px; line-height:1.45; white-space: pre; overflow:auto; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    .pill { display:inline-flex; align-items:center; height: 22px; padding: 0 8px; border-radius: 999px; border:1px solid #ddd; font-size: 12px; }
+    .pill.ok { background:#eefaf1; border-color:#b6e2c0; color:#0a7a28; }
+    .pill.err { background:#fff0f0; border-color:#f2b0b0; color:#b00020; }
+    .pill.run { background:#fafafa; border-color:#ddd; color: rgba(0,0,0,0.72); }
+  </style>
+</head>
+<body>
+  {% include "_topbar.html" %}
+  <div class="shell">
+    {% include "_nav.html" %}
+    <main class="content" data-ui="perf_page.main" title="perf.page">
+      <h2>Performanceanalyse</h2>
+      <div class="muted">Action/Trace Log: Klicks → API Calls → Queries → Dauer/Fehler (persistent)</div>
+
+      <div class="card" data-ui="perf_page.section_root" title="perf.page">
+        <div class="row">
+          <div style="flex:1; min-width:240px;">
+            <label class="muted">Filter (Volltext)</label>
+            <input id="q" placeholder="z.B. dashboard_caching.btn_cache_pruefen oder trace_id" style="width:100%;" />
+          </div>
+          <div>
+            <label class="muted">Limit</label>
+            <select id="limit">
+              <option value="200" selected>200</option>
+              <option value="500">500</option>
+              <option value="1000">1000</option>
+            </select>
+          </div>
+          <div>
+            <label class="muted">&nbsp;</label>
+            <button id="refresh" type="button" style="width:auto;" data-ui="perf_page.btn_refresh">Refresh</button>
+          </div>
+        </div>
+
+        <div class="grid2" style="margin-top:12px;">
+          <div>
+            <div class="muted" id="meta"></div>
+            <table class="tbl" aria-label="Traces">
+              <thead>
+                <tr>
+                  <th style="width:140px;">Zeit</th>
+                  <th>Action</th>
+                  <th style="width:90px;">Status</th>
+                  <th style="width:110px;">Counts</th>
+                </tr>
+              </thead>
+              <tbody id="tb"></tbody>
+            </table>
+          </div>
+          <div>
+            <div class="muted">Details</div>
+            <pre id="detail" class="mono" style="background:#fafafa; border:1px solid #eee; border-radius:12px; padding:12px; min-height: 40vh;"></pre>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  {% include "_tooltips.html" %}
+  <script>
+    async function api(url){
+      const r = await fetch(url);
+      const j = await r.json().catch(()=>null);
+      if(!r.ok || !j || !j.ok) throw new Error((j && j.error) ? j.error : ('HTTP ' + r.status));
+      return j;
+    }
+
+    function _pill(status){
+      const s = String(status || '');
+      if(s === 'ok') return '<span class="pill ok">ok</span>';
+      if(s === 'err') return '<span class="pill err">err</span>';
+      return '<span class="pill run">' + (s || 'running') + '</span>';
+    }
+
+    function _counts(c){
+      try{
+        const d = c || {};
+        const parts = [];
+        if(d.ui_events) parts.push('ui=' + d.ui_events);
+        if(d.api_spans) parts.push('api=' + d.api_spans);
+        if(d.client_spans) parts.push('net=' + d.client_spans);
+        if(d.queries) parts.push('q=' + d.queries);
+        return parts.join(' ');
+      }catch(e){
+        return '';
+      }
+    }
+
+    function _fmtTime(iso){
+      try{
+        const d = new Date(String(iso || ''));
+        if(!isFinite(d.getTime())) return String(iso || '');
+        const p = (n)=>String(n).padStart(2,'0');
+        const p3 = (n)=>String(n).padStart(3,'0');
+        return p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds()) + '.' + p3(d.getMilliseconds());
+      }catch(e){
+        return String(iso || '');
+      }
+    }
+
+    async function load(){
+      const limit = Number(document.getElementById('limit').value || 200);
+      const q = String(document.getElementById('q').value || '').trim().toLowerCase();
+      const j = await api('./api/trace/recent?limit=' + encodeURIComponent(String(limit)));
+      const xs = Array.isArray(j.traces) ? j.traces.slice().reverse() : [];
+      const filtered = !q ? xs : xs.filter(t => JSON.stringify(t||{}).toLowerCase().includes(q));
+      const tb = document.getElementById('tb');
+      tb.innerHTML = '';
+      document.getElementById('meta').textContent = String(filtered.length) + ' von ' + String(xs.length) + ' Traces';
+      filtered.forEach((t)=>{
+        const tr = document.createElement('tr');
+        tr.style.cursor = 'pointer';
+        tr.addEventListener('click', async ()=>{
+          try{
+            const d = await api('./api/trace/' + encodeURIComponent(String(t.trace_id || '')));
+            document.getElementById('detail').textContent = JSON.stringify(d.trace || {}, null, 2);
+          }catch(e){
+            document.getElementById('detail').textContent = String(e && e.message ? e.message : e);
+          }
+        });
+        tr.innerHTML = '<td class="mono">' + _fmtTime(t.started_at || t.last_at) + '</td>'
+          + '<td><div class="mono">' + String(t.action || '') + '</div><div class="muted mono">' + String(t.trace_id || '') + '</div></td>'
+          + '<td>' + _pill(t.status) + '</td>'
+          + '<td class="mono">' + _counts(t.counts) + '</td>';
+        tb.appendChild(tr);
+      });
+    }
+
+    document.getElementById('refresh').addEventListener('click', ()=>{ load().catch(()=>{}); });
+    document.getElementById('q').addEventListener('keydown', (ev)=>{ if(ev.key === 'Enter') load().catch(()=>{}); });
+    load().catch(()=>{});
+  </script>
+</body>
+</html>

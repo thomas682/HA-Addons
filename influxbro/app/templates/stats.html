@@ -804,10 +804,13 @@
             LAST_QUERY_SIG = sig;
             const resp = error ? String(error) : '';
             if(window.InfluxBroQueryHistory && window.InfluxBroQueryHistory.add){
+              const tr = (window.InfluxBroTrace && window.InfluxBroTrace.current) ? window.InfluxBroTrace.current() : null;
               window.InfluxBroQueryHistory.add('stats', l || 'stats', q, resp, {
                 started_at_source: stAt || new Date().toISOString(),
                 trigger_page: 'stats',
-                trigger_button: 'stats.run',
+                trigger_button: (tr && tr.action_ui) ? String(tr.action_ui) : 'stats.run',
+                trace_id: (tr && tr.trace_id) ? String(tr.trace_id) : '',
+                action: (tr && tr.action_ui) ? String(tr.action_ui) : '',
               });
             }
           }

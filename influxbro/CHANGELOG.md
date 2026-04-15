@@ -1,15 +1,16 @@
 # Changelog
 
-## 1.12.350
+## 1.12.352
 
-### Bug Fix
+### Enhancement
 
-- Logs: Der HA/Vendor Fehler `No Listener: tabs:outgoing.message.ready` wird global im `unhandledrejection` Handler abgefangen (Console bleibt sauber), aber weiterhin mit Navigationskontext ins Add-on Log geschrieben. ([#291](https://github.com/thomas682/HA-Addons/issues/291))
+- Tracing/Performanceanalyse: App-weite Action/Trace-IDs fuer Button-Aktionen inkl. Korrelation von UI-Events, API-Requests, Client-Netzwerkzeiten und Influx-Queries. Traces sind persistent (Default 1000, in Settings parametrierbar) und es gibt einen neuen Menuepunkt `Performanceanalyse` zur Auswertung/Drilldown. Flux Queries werden zusaetzlich mit `// trace_id=...` kommentiert. ([#293](https://github.com/thomas682/HA-Addons/issues/293))
 
 ### Maintenance
 
 - Tests: `python3 -m py_compile influxbro/app/app.py`
-- Tests: `pytest -k global_unhandledrejection_suppresses_tabs_outgoing_ready_noise -q`
+- Tests: `pytest tests/test_api_config_io.py::test_trace_recent_endpoint_exists -q`
+- Tests: `pytest -k "nav_includes_performance_page_link or settings_has_tracing_controls" -q`
 - Tested with Home Assistant Core: 2026.4.2
 
 ## 1.12.351
@@ -22,6 +23,18 @@
 
 - Tests: `python3 -m py_compile influxbro/app/app.py`
 - Tests: `pytest -k analysis_has_separate_raw_windows_step_and_does_not_compute_windows_inside_raw_search -q`
+- Tested with Home Assistant Core: 2026.4.2
+
+## 1.12.350
+
+### Bug Fix
+
+- Logs: Der HA/Vendor Fehler `No Listener: tabs:outgoing.message.ready` wird global im `unhandledrejection` Handler abgefangen (Console bleibt sauber), aber weiterhin mit Navigationskontext ins Add-on Log geschrieben. ([#291](https://github.com/thomas682/HA-Addons/issues/291))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`
+- Tests: `pytest -k global_unhandledrejection_suppresses_tabs_outgoing_ready_noise -q`
 - Tested with Home Assistant Core: 2026.4.2
 
 ## 1.12.349

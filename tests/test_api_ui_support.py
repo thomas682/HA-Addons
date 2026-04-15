@@ -776,6 +776,19 @@ def test_settings_outliers_table_has_add_delete_buttons_and_tooltips():
     assert 'settings.outliers.windowfit' in tooltips
 
 
+def test_nav_includes_performance_page_link():
+    nav = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_nav.html").read_text()
+    assert 'href="./performance"' in nav
+    assert 'data-ui="nav_main.panel_performance"' in nav
+
+
+def test_settings_has_tracing_controls():
+    config = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "config.html").read_text()
+    assert 'id="trace_enabled"' in config
+    assert 'id="trace_persist"' in config
+    assert 'id="trace_max_entries"' in config
+
+
 def test_stats_page_clears_expired_last_job_ids_before_cache_fallback():
     stats = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "stats.html").read_text()
     assert 'function clearLastJobIds()' in stats

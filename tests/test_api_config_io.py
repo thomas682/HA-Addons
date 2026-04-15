@@ -38,3 +38,12 @@ def test_config_export_endpoint_returns_json(load_app_module):
     data = json.loads(r.data.decode("utf-8"))
     assert isinstance(data, dict)
     assert "influx_version" in data
+
+
+def test_trace_recent_endpoint_exists(load_app_module):
+    mod = load_app_module()
+    client = mod.app.test_client()
+    r = client.get("/api/trace/recent?limit=5")
+    assert r.status_code == 200
+    j = r.get_json()
+    assert j and j.get("ok") is True

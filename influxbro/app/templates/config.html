@@ -1096,6 +1096,25 @@
           </div>
         </div>
         <div class="section_note"><span class="muted">Schreibt Cache-Nutzung (Jobs&Cache) ins Logfile (zusaetzlich zur Usage-Tabelle).</span></div>
+
+        <div class="param_row">
+          <div class="param_label">Tracing aktiv<span class="param_hint">Erzeugt Action-IDs (Trace) fuer Button-Aktionen und korreliert API/Queries. Grundlage fuer Performanceanalyse.</span></div>
+          <div class="param_control">
+            <label class="ib_chk_row"><input type="checkbox" id="trace_enabled" data-ui="config_settings.chk_trace_enabled" title="settings.trace_enabled" /><span></span></label>
+          </div>
+        </div>
+        <div class="param_row">
+          <div class="param_label">Tracing persistent</div>
+          <div class="param_control">
+            <label class="ib_chk_row"><input type="checkbox" id="trace_persist" data-ui="config_settings.chk_trace_persist" title="settings.trace_persist" /><span></span></label>
+          </div>
+        </div>
+        <div class="param_row">
+          <div class="param_label">Tracing: Max Actions<span class="param_hint">Anzahl gespeicherter Actions/Traces (Default 1000).</span></div>
+          <div class="param_control">
+            <input id="trace_max_entries" type="number" min="100" max="20000" data-ui="config_settings.input_trace_max_entries" title="settings.trace_max_entries" />
+          </div>
+        </div>
         <div class="param_row">
           <div class="param_label">Log ERROR Hintergrundfarbe<span class="param_hint">Hex-Farbe fuer ERROR-Eintraege im Log (Default: #ffe0e0).</span></div>
           <div class="param_control">
@@ -1306,6 +1325,7 @@ const ids = [
   ,"log_to_file","log_profile","log_max_mb","log_backup_count","log_max_age_days","bugreport_log_history_hours","log_http_requests"
   ,"log_influx_queries"
   ,"log_cache_usage"
+  ,"trace_enabled","trace_persist","trace_max_entries"
   // writes_enabled removed
   ,"backup_dir","backup_min_free_mb"
   ,"dash_cache_enabled","dash_cache_auto_update","dash_cache_refresh_mode","dash_cache_refresh_hours","dash_cache_refresh_daily_at"
@@ -1845,6 +1865,9 @@ function setForm(cfg){
   _setChecked(el.log_http_requests, !!cfg.log_http_requests);
   _setChecked(el.log_influx_queries, !!cfg.log_influx_queries);
   _setChecked(el.log_cache_usage, !!cfg.log_cache_usage);
+  _setChecked(el.trace_enabled, (cfg.trace_enabled !== false));
+  _setChecked(el.trace_persist, (cfg.trace_persist !== false));
+  _safeSet(el.trace_max_entries, 'value', cfg.trace_max_entries ?? 1000);
 
 
   _setChecked(el.dash_cache_enabled, (cfg.dash_cache_enabled !== false));
@@ -1991,6 +2014,9 @@ function getForm(){
     log_http_requests: _isChecked(el.log_http_requests),
     log_influx_queries: _isChecked(el.log_influx_queries),
     log_cache_usage: _isChecked(el.log_cache_usage),
+    trace_enabled: _isChecked(el.trace_enabled),
+    trace_persist: _isChecked(el.trace_persist),
+    trace_max_entries: parseInt(el.trace_max_entries.value, 10),
 
 
     dash_cache_enabled: _isChecked(el.dash_cache_enabled),

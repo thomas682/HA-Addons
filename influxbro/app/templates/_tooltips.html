@@ -350,6 +350,10 @@
     'settings.bugreport_log_history_hours': 'Begrenzt die Log-Historie im Debug-Report auf die letzten X Stunden.',
     'settings.log_http_requests': 'Protokolliert HTTP Requests (sehr viele Zeilen).',
     'settings.log_influx_queries': 'Protokolliert Influx Query-Strings (nur sinnvoll mit TRACE).',
+    'settings.log_cache_usage': 'Protokolliert Cache-Nutzung (Jobs&Cache) zusaetzlich im Logfile.',
+    'settings.trace_enabled': 'Aktiviert Action/Trace IDs und korreliert UI, API und Queries fuer Performanceanalyse.',
+    'settings.trace_persist': 'Speichert Traces persistent unter /data (ueber Neustarts hinweg).',
+    'settings.trace_max_entries': 'Max. Anzahl gespeicherter Traces/Actions (Default 1000).',
     // Settings: Connection basics
     'settings.influx_version': 'Waehlt InfluxDB v2 (Flux) oder v1 (InfluxQL).',
     'settings.scheme': 'Waehlt http/https fuer die InfluxDB URL.',
@@ -904,10 +908,12 @@
       const page = String(entry.trigger_page || '').trim();
       const button = String(entry.trigger_button || '').trim();
       const program = String(entry.trigger_program || '').trim();
+      const traceId = String(entry.trace_id || '').trim();
       const parts = [];
       if(page) parts.push(page.charAt(0).toUpperCase() + page.slice(1));
       if(button) parts.push('Button: ' + button);
       else if(program) parts.push('Programm: ' + program);
+      if(traceId) parts.push('trace_id: ' + traceId);
       return parts.join(' | ');
     }catch(e){ return ''; }
   }
@@ -1384,7 +1390,7 @@
         const xs = _historyEntries(scope);
         const q = String(query || '').trim().toLowerCase();
         const filtered = !q ? xs : xs.filter((it)=>{
-          const hay = [it && it.at, it && it.started_at_client, it && it.started_at_source, it && it.label, it && it.query, it && it.response, it && it.trigger_page, it && it.trigger_button, it && it.trigger_program].map(v => String(v || '').toLowerCase()).join('\n');
+          const hay = [it && it.at, it && it.started_at_client, it && it.started_at_source, it && it.label, it && it.query, it && it.response, it && it.trigger_page, it && it.trigger_button, it && it.trigger_program, it && it.trace_id, it && it.action].map(v => String(v || '').toLowerCase()).join('\n');
           return hay.includes(q);
         });
         return filtered.slice().reverse().map((it, idx)=>{
@@ -2762,6 +2768,9 @@
       trigger_page: String(meta.trigger_page || ''),
       trigger_button: String(meta.trigger_button || ''),
       trigger_program: String(meta.trigger_program || ''),
+      trace_id: String(meta.trace_id || ''),
+      span_id: String(meta.span_id || ''),
+      action: String(meta.action || ''),
     };
     const xs = _load(scope);
     const prev = xs.length ? xs[xs.length - 1] : null;
@@ -2786,6 +2795,170 @@
 })();
 
 try{ if(window.location && window.location.pathname && !window.location.pathname.includes('config')) _ensureSummarySettingsButtons(); }catch(e){}
+</script>
+
+<script>
+// Action/Trace correlation (UI -> API -> Query history)
+(function(){
+  if(window.InfluxBroTrace) return;
+
+  const SS_KEY = 'influxbro_trace_current_v1';
+  let _seq = 0;
+
+  function _page(){
+    try{ return (document && document.querySelector('main[data-ui]') && document.querySelector('main[data-ui]').getAttribute('data-ui')) || ''; }catch(e){ return ''; }
+  }
+  function _nowIso(){
+    try{ return new Date().toISOString(); }catch(e){ return ''; }
+  }
+  function _rand(){
+    try{ return Math.random().toString(16).slice(2, 10); }catch(e){ return '0'; }
+  }
+  function _clean(s){
+    return String(s || '').replace(/[^a-zA-Z0-9_.:-]+/g, '_').slice(0, 80);
+  }
+  function _mkTraceId(page, actionUi){
+    const ts = _nowIso().replace(/[:.]/g, '').replace(/Z$/, 'Z');
+    _seq = (_seq + 1) % 100000;
+    return [ts, _clean(page), _clean(actionUi), String(_seq), _rand()].filter(Boolean).join('|');
+  }
+  function _load(){
+    try{
+      const raw = sessionStorage.getItem(SS_KEY);
+      const j = raw ? JSON.parse(raw) : null;
+      return (j && typeof j === 'object') ? j : null;
+    }catch(e){
+      return null;
+    }
+  }
+  function _save(t){
+    try{ sessionStorage.setItem(SS_KEY, JSON.stringify(t || null)); }catch(e){}
+  }
+  function start(actionUi, meta){
+    const page = _page();
+    const startedAt = _nowIso();
+    const tid = _mkTraceId(page, actionUi);
+    const t = {
+      trace_id: tid,
+      page: page,
+      action_ui: String(actionUi || ''),
+      started_at: startedAt,
+      last_at: startedAt,
+      meta: meta || null,
+      span_seq: 0,
+    };
+    _save(t);
+    return t;
+  }
+  function current(){
+    const t = _load();
+    if(!t) return null;
+    // expire after 10 minutes inactivity
+    try{
+      const last = Date.parse(String(t.last_at || ''));
+      if(isFinite(last) && (Date.now() - last) > (10 * 60 * 1000)) return null;
+    }catch(e){}
+    return t;
+  }
+  function touch(){
+    const t = current();
+    if(!t) return null;
+    t.last_at = _nowIso();
+    _save(t);
+    return t;
+  }
+  function nextSpanId(){
+    const t = touch();
+    if(!t) return '';
+    try{ t.span_seq = (Number(t.span_seq || 0) + 1); }catch(e){ t.span_seq = 1; }
+    _save(t);
+    return String(t.trace_id || '') + ':' + String(t.span_seq || 0);
+  }
+
+  window.InfluxBroTrace = { start, current, touch, nextSpanId };
+})();
+
+// Fetch wrapper: attach trace headers + log client-side durations
+(function(){
+  if(window.__InfluxBroTraceFetchWrapped) return;
+  const orig = window.fetch ? window.fetch.bind(window) : null;
+  if(!orig) return;
+
+  function _url(input){
+    try{ return (typeof input === 'string') ? input : (input && input.url ? String(input.url) : ''); }catch(e){ return ''; }
+  }
+  function _shouldTrace(url){
+    const u = String(url || '');
+    if(!u) return false;
+    if(!(u.startsWith('./api/') || u.startsWith('/api/') || u.includes('/api/'))) return false;
+    if(u.includes('/api/trace/client_span')) return false;
+    return true;
+  }
+
+  window.fetch = function(input, init){
+    const u = _url(input);
+    const o = init || {};
+    const headers0 = o.headers || {};
+    // bypass recursion
+    try{
+      const h0 = (headers0 && headers0.get) ? headers0 : new Headers(headers0);
+      if(String(h0.get('X-InfluxBro-Internal') || '') === '1') return orig(input, init);
+    }catch(e){}
+
+    const t = (window.InfluxBroTrace && window.InfluxBroTrace.current) ? window.InfluxBroTrace.current() : null;
+    const doTrace = !!(t && t.trace_id && _shouldTrace(u));
+    let spanId = '';
+    let t0 = 0;
+    let method = 'GET';
+
+    let init2 = o;
+    if(doTrace){
+      try{ method = String(o.method || 'GET').toUpperCase(); }catch(e){}
+      try{ spanId = window.InfluxBroTrace.nextSpanId(); }catch(e){ spanId = ''; }
+      try{
+        const h = new Headers(headers0);
+        h.set('X-InfluxBro-Trace-Id', String(t.trace_id));
+        h.set('X-InfluxBro-Span-Id', String(spanId || ''));
+        h.set('X-InfluxBro-Action', String(t.action_ui || ''));
+        h.set('X-InfluxBro-Trace-Started-At', String(t.started_at || ''));
+        h.set('X-InfluxBro-Trace-Page', String(t.page || ''));
+        init2 = Object.assign({}, o, { headers: h });
+      }catch(e){}
+      try{ t0 = performance.now(); }catch(e){ t0 = 0; }
+    }
+
+    const p = orig(input, init2);
+    if(!doTrace) return p;
+    return p.then((resp)=>{
+      try{
+        const dur = t0 ? Math.round(performance.now() - t0) : 0;
+        const status = resp && typeof resp.status === 'number' ? resp.status : 0;
+        const ok = resp && resp.ok;
+        // fire-and-forget client span
+        orig('./api/trace/client_span', {
+          method:'POST',
+          headers:{'Content-Type':'application/json','X-InfluxBro-Internal':'1'},
+          keepalive:true,
+          body: JSON.stringify({
+            trace_id: String(t.trace_id || ''),
+            span_id: String(spanId || ''),
+            page: String(t.page || ''),
+            action: String(t.action_ui || ''),
+            started_at: String(t.started_at || ''),
+            method: String(method || 'GET'),
+            url: String(u || ''),
+            status_code: status,
+            dur_ms: dur,
+            status: (ok === false || status >= 400) ? 'err' : 'ok',
+          })
+        }).catch(()=>{});
+      }catch(e){}
+      return resp;
+    });
+  };
+
+  window.__InfluxBroTraceFetchWrapped = true;
+})();
 </script>
 
 <script>
@@ -2817,6 +2990,19 @@ try{ if(window.location && window.location.pathname && !window.location.pathname
   async function _log(kind, el, extra){
     try{
       const m = _buttonMeta(el);
+      let tr = null;
+      try{
+        if(window.InfluxBroTrace){
+          if(String(kind||'') === 'button_press') tr = window.InfluxBroTrace.start(m.ui || m.id || m.tag, m);
+          else tr = window.InfluxBroTrace.current ? window.InfluxBroTrace.current() : null;
+        }
+      }catch(e){ tr = null; }
+      const traceExtra = tr ? {
+        trace_id: String(tr.trace_id || ''),
+        action: String(tr.action_ui || ''),
+        started_at: String(tr.started_at || ''),
+        page: String(tr.page || ''),
+      } : {};
       await fetch('./api/ui_event', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2824,7 +3010,7 @@ try{ if(window.location && window.location.pathname && !window.location.pathname
           page: _page(),
           ui: m.ui || m.id || m.tag,
           text: m.text || m.id || m.tag,
-          extra: Object.assign({ kind: String(kind || 'button_event') }, extra || {}, m),
+          extra: Object.assign({ kind: String(kind || 'button_event') }, traceExtra, extra || {}, m),
         })
       });
     }catch(e){}
