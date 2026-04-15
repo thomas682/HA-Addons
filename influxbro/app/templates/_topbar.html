@@ -1499,7 +1499,12 @@ try{
 
   window.addEventListener('unhandledrejection', (e)=>{
     const reason = e ? e.reason : null;
-    _reportConsoleError('unhandledrejection', String(reason && reason.message ? reason.message : reason || ''), '', 0, reason && reason.stack ? reason.stack : '');
+    const msg = String(reason && reason.message ? reason.message : reason || '');
+    // Home Assistant / Ingress vendor noise on navigation (not actionable for users).
+    if(msg.includes('No Listener: tabs:outgoing.message.ready')){
+      try{ if(e && e.preventDefault) e.preventDefault(); }catch(x){}
+    }
+    _reportConsoleError('unhandledrejection', msg, '', 0, reason && reason.stack ? reason.stack : '');
   });
 }catch(e){}
 </script>

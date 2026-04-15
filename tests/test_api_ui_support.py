@@ -708,6 +708,12 @@ def test_dashboard_caching_status_panel_is_always_visible_and_has_text_fields():
     assert 'if($loadStatus) $loadStatus.style.display = "none"' not in body
 
 
+def test_global_unhandledrejection_suppresses_tabs_outgoing_ready_noise():
+    topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    assert "No Listener: tabs:outgoing.message.ready" in topbar
+    assert "preventDefault" in topbar
+
+
 def test_dashboard_uses_structured_data_ui_naming_scheme_samples():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     tmpl = (Path(__file__).resolve().parents[1] / "influxbro" / "Template.md").read_text()

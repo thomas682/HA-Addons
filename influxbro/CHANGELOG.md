@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.350
+
+### Bug Fix
+
+- Logs: Der HA/Vendor Fehler `No Listener: tabs:outgoing.message.ready` wird global im `unhandledrejection` Handler abgefangen (Console bleibt sauber), aber weiterhin mit Navigationskontext ins Add-on Log geschrieben. ([#291](https://github.com/thomas682/HA-Addons/issues/291))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`
+- Tests: `pytest -k global_unhandledrejection_suppresses_tabs_outgoing_ready_noise -q`
+- Tested with Home Assistant Core: 2026.4.2
+
 ## 1.12.349
 
 ### Enhancement
