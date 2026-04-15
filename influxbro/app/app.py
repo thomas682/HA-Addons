@@ -160,6 +160,10 @@ DASH_CACHE_JOBS_LOCK = threading.RLock()
 STATS_CACHE_DIR = DATA_DIR / "stats_cache"
 STATS_CACHE_LOCK = threading.RLock()
 
+# Per-series statistics cache for /api/stats (persistent under /data)
+SERIES_STATS_CACHE_DIR = DATA_DIR / "series_stats_cache"
+SERIES_STATS_CACHE_LOCK = threading.RLock()
+
 RESTORE_COPY_JOBS: dict[str, dict[str, Any]] = {}
 RESTORE_COPY_LOCK = threading.RLock()
 
@@ -5246,6 +5250,97 @@ def _stats_cache_data_path(cache_id: str) -> Path:
     return STATS_CACHE_DIR / f"{cache_id}.data.json.gz"
 
 
+def _series_stats_cache_meta_path(cache_id: str) -> Path:
+    return SERIES_STATS_CACHE_DIR / f"{cache_id}.meta.json"
+
+
+def _series_stats_cache_data_path(cache_id: str) -> Path:
+    return SERIES_STATS_CACHE_DIR / f"{cache_id}.data.json"
+
+
+def _series_stats_cache_id(key: dict[str, Any]) -> str:
+    try:
+        raw = json.dumps(key or {}, sort_keys=True, ensure_ascii=True)
+    except Exception:
+        raw = str(key or "")
+    return hashlib.sha1(raw.encode("utf-8", errors="ignore")).hexdigest()[:16]
+
+
+def _series_stats_cache_load_meta(cache_id: str) -> dict[str, Any] | None:
+    try:
+        p = _series_stats_cache_meta_path(cache_id)
+        if not p.exists():
+            return None
+        with SERIES_STATS_CACHE_LOCK:
+            return json.loads(p.read_text(encoding="utf-8", errors="replace"))
+    except Exception:
+        return None
+
+
+def _series_stats_cache_write_meta(meta: dict[str, Any]) -> None:
+    try:
+        SERIES_STATS_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        cache_id = str(meta.get("id") or "").strip()
+        if not cache_id:
+            return
+        p = _series_stats_cache_meta_path(cache_id)
+        with SERIES_STATS_CACHE_LOCK:
+            p.write_text(json.dumps(meta, ensure_ascii=True), encoding="utf-8")
+    except Exception:
+        return
+
+
+def _series_stats_cache_load_payload(cache_id: str) -> dict[str, Any] | None:
+    try:
+        p = _series_stats_cache_data_path(cache_id)
+        if not p.exists():
+            return None
+        with SERIES_STATS_CACHE_LOCK:
+            return json.loads(p.read_text(encoding="utf-8", errors="replace"))
+    except Exception:
+        return None
+
+
+def _series_stats_cache_write_payload(cache_id: str, payload: dict[str, Any]) -> int:
+    try:
+        SERIES_STATS_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        raw = json.dumps(payload, ensure_ascii=True)
+        p = _series_stats_cache_data_path(cache_id)
+        with SERIES_STATS_CACHE_LOCK:
+            p.write_text(raw, encoding="utf-8")
+        return len(raw.encode("utf-8"))
+    except Exception:
+        return 0
+
+
+def _series_stats_cache_list_meta() -> list[dict[str, Any]]:
+    try:
+        if not SERIES_STATS_CACHE_DIR.exists():
+            return []
+        out = []
+        for p in sorted(SERIES_STATS_CACHE_DIR.glob("*.meta.json")):
+            try:
+                m = json.loads(p.read_text(encoding="utf-8", errors="replace"))
+                if isinstance(m, dict):
+                    out.append(m)
+            except Exception:
+                continue
+        return out
+    except Exception:
+        return []
+
+
+def _series_stats_cache_touch_used(cache_id: str) -> None:
+    try:
+        meta = _series_stats_cache_load_meta(cache_id)
+        if not meta:
+            return
+        meta["last_used_at"] = _utc_now_iso_ms()
+        _series_stats_cache_write_meta(meta)
+    except Exception:
+        return
+
+
 def _stats_cache_cfg_fp(cfg: dict[str, Any]) -> str:
     """Stable fingerprint for the active Influx connection (no secrets)."""
 
@@ -5740,6 +5835,34 @@ def _stats_cache_mark_dirty_series(
                 meta["dirty_at"] = _utc_now_iso_ms()
                 _meta_add_event(meta, "dirty", str(meta.get("dirty_reason") or ""), at=str(meta.get("dirty_at") or ""))
                 _stats_cache_write_meta(meta)
+            except Exception:
+                continue
+
+        # Also mark per-series total stats cache entries dirty.
+        for meta in _series_stats_cache_list_meta():
+            try:
+                k = meta.get("key") or {}
+                if not isinstance(k, dict) or str(k.get("kind") or "") != "series_stats_total":
+                    continue
+
+                mf = str(k.get("measurement") or "").strip()
+                if measurement and mf and mf != str(measurement):
+                    continue
+                ff = str(k.get("field") or "").strip()
+                if field and ff and ff != str(field):
+                    continue
+                eidf = str(k.get("entity_id") or "").strip()
+                if entity_id and eidf and eidf != str(entity_id):
+                    continue
+                fnf = str(k.get("friendly_name") or "").strip()
+                if friendly_name and fnf and fnf != str(friendly_name):
+                    continue
+
+                meta["dirty"] = True
+                meta["dirty_reason"] = str(reason or "")[:80]
+                meta["dirty_at"] = _utc_now_iso_ms()
+                _meta_add_event(meta, "dirty", str(meta.get("dirty_reason") or ""), at=str(meta.get("dirty_at") or ""))
+                _series_stats_cache_write_meta(meta)
             except Exception:
                 continue
     except Exception:
@@ -16895,6 +17018,288 @@ from(bucket: "{cfg["bucket"]}")
     older.reverse()  # ascending: oldest -> closest
     return jsonify({"ok": True, "older": older, "newer": newer, "n": n})
 
+
+def _series_stats_total_cache_key(
+    cfg: dict[str, Any],
+    measurement: str,
+    field: str,
+    entity_id: str | None,
+    friendly_name: str | None,
+) -> dict[str, Any]:
+    # Never persist secrets; cfg_fp is a stable fingerprint without tokens.
+    return {
+        "kind": "series_stats_total",
+        "measurement": str(measurement or "").strip(),
+        "field": str(field or "").strip(),
+        "entity_id": str(entity_id or "").strip() or "",
+        "friendly_name": str(friendly_name or "").strip() or "",
+        "cfg_fp": _stats_cache_cfg_fp(cfg),
+    }
+
+
+def _stats_total_merge(a: dict[str, Any], b: dict[str, Any]) -> dict[str, Any]:
+    """Merge two per-range stats dicts into a combined total."""
+
+    def _num(v: object) -> float | None:
+        try:
+            if isinstance(v, bool):
+                return None
+            if isinstance(v, (int, float)):
+                return float(v)
+            return float(str(v))
+        except Exception:
+            return None
+
+    def _dt(iso: object) -> datetime | None:
+        try:
+            return _parse_iso_datetime(str(iso or ""))
+        except Exception:
+            return None
+
+    out = dict(a or {})
+    ca = int(a.get("count") or 0) if isinstance(a, dict) else 0
+    cb = int(b.get("count") or 0) if isinstance(b, dict) else 0
+    out["count"] = int(max(0, ca + cb))
+
+    # oldest/newest + first/last
+    a_old = _dt((a or {}).get("oldest_time"))
+    b_old = _dt((b or {}).get("oldest_time"))
+    a_new = _dt((a or {}).get("newest_time"))
+    b_new = _dt((b or {}).get("newest_time"))
+
+    if b_old and (not a_old or b_old < a_old):
+        out["oldest_time"] = (b or {}).get("oldest_time")
+        out["first_value"] = (b or {}).get("first_value")
+    if b_new and (not a_new or b_new > a_new):
+        out["newest_time"] = (b or {}).get("newest_time")
+        out["last_value"] = (b or {}).get("last_value")
+
+    # numeric aggregation via sum
+    sa = _num((a or {}).get("_sum"))
+    sb = _num((b or {}).get("_sum"))
+    if sa is not None and sb is not None and out["count"] > 0:
+        s = sa + sb
+        out["_sum"] = s
+        out["mean"] = s / max(1, out["count"])
+        a_min = _num((a or {}).get("min"))
+        b_min = _num((b or {}).get("min"))
+        a_max = _num((a or {}).get("max"))
+        b_max = _num((b or {}).get("max"))
+        if b_min is not None and (a_min is None or b_min < a_min):
+            out["min"] = b_min
+        if b_max is not None and (a_max is None or b_max > a_max):
+            out["max"] = b_max
+    else:
+        # keep existing numeric fields if we can't safely aggregate
+        out.pop("_sum", None)
+
+    return out
+
+
+def _stats_total_compute_v2(
+    cfg: dict[str, Any],
+    measurement: str,
+    field: str,
+    entity_id: str | None,
+    friendly_name: str | None,
+    start_dt: datetime | None,
+    stop_dt: datetime | None,
+) -> dict[str, Any]:
+    extra = flux_tag_filter(entity_id, friendly_name)
+    if start_dt is None:
+        range_clause = '|> range(start: time(v: "1970-01-01T00:00:00Z"))'
+    else:
+        s = _dt_to_rfc3339_utc_ms(start_dt)
+        e = _dt_to_rfc3339_utc_ms(stop_dt or datetime.now(timezone.utc))
+        range_clause = f'|> range(start: time(v: "{s}"), stop: time(v: "{e}"))'
+
+    base_flux = f'''
+data = from(bucket: "{cfg["bucket"]}")
+  {range_clause}
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
+  |> keep(columns: ["_time", "_value"])
+  |> group()
+'''
+
+    def _q_one(suffix: str) -> str:
+        return (base_flux + "\n" + suffix).strip() + "\n"
+
+    def _first_record(tables):
+        for t in tables or []:
+            for rec in getattr(t, "records", []) or []:
+                return rec
+        return None
+
+    out: dict[str, Any] = {
+        "count": 0,
+        "oldest_time": None,
+        "newest_time": None,
+        "first_value": None,
+        "last_value": None,
+        "min": None,
+        "max": None,
+        "mean": None,
+        "_sum": None,
+    }
+
+    with v2_client(cfg) as c:
+        qapi = c.query_api()
+
+        # count
+        q_count = _q_one("data |> count() |> limit(n:1)")
+        log_query("api.stats (flux count)", q_count)
+        tables = qapi.query(q_count, org=cfg["org"])
+        rec = _first_record(tables)
+        if rec is not None:
+            try:
+                out["count"] = int(rec.get_value() or 0)
+            except Exception:
+                out["count"] = 0
+
+        if out["count"] > 0:
+            # oldest/newest (+ first/last values)
+            q_first = _q_one("data |> first()")
+            q_last = _q_one("data |> last()")
+            log_query("api.stats (flux first)", q_first)
+            log_query("api.stats (flux last)", q_last)
+
+            tables = qapi.query(q_first, org=cfg["org"])
+            rec = _first_record(tables)
+            if rec is not None:
+                ts = rec.get_time()
+                out["oldest_time"] = _dt_to_rfc3339_utc_ms(ts) if isinstance(ts, datetime) else ts
+                out["first_value"] = rec.get_value()
+
+            tables = qapi.query(q_last, org=cfg["org"])
+            rec = _first_record(tables)
+            if rec is not None:
+                ts = rec.get_time()
+                out["newest_time"] = _dt_to_rfc3339_utc_ms(ts) if isinstance(ts, datetime) else ts
+                out["last_value"] = rec.get_value()
+
+            # Numeric-only aggregates (sum/min/max). mean derived from sum/count.
+            lv = out.get("last_value")
+            is_num = isinstance(lv, (int, float)) and not isinstance(lv, bool)
+            if is_num:
+                try:
+                    q_sum = _q_one("data |> sum() |> limit(n:1)")
+                    log_query("api.stats (flux sum)", q_sum)
+                    tables = qapi.query(q_sum, org=cfg["org"])
+                    rec = _first_record(tables)
+                    if rec is not None:
+                        out["_sum"] = rec.get_value()
+                except Exception:
+                    pass
+
+                for nm, tail in (
+                    ("min", "data |> min() |> limit(n:1)"),
+                    ("max", "data |> max() |> limit(n:1)"),
+                ):
+                    try:
+                        qx = _q_one(tail)
+                        log_query(f"api.stats (flux {nm})", qx)
+                        tables = qapi.query(qx, org=cfg["org"])
+                        rec = _first_record(tables)
+                        if rec is not None:
+                            out[nm] = rec.get_value()
+                    except Exception:
+                        continue
+
+                try:
+                    if out.get("_sum") is not None and out["count"] > 0:
+                        out["mean"] = float(out.get("_sum") or 0.0) / max(1, int(out["count"] or 0))
+                except Exception:
+                    pass
+
+    return out
+
+
+def _stats_total_cached_v2(
+    cfg: dict[str, Any],
+    measurement: str,
+    field: str,
+    entity_id: str | None,
+    friendly_name: str | None,
+) -> dict[str, Any]:
+    key = _series_stats_total_cache_key(cfg, measurement, field, entity_id, friendly_name)
+    cache_id = _series_stats_cache_id(key)
+    meta = _series_stats_cache_load_meta(cache_id)
+    payload = _series_stats_cache_load_payload(cache_id)
+
+    def _clean(stats: dict[str, Any]) -> dict[str, Any]:
+        out = dict(stats or {})
+        out.pop("_sum", None)
+        return out
+
+    # Cache hit path
+    if isinstance(meta, dict) and isinstance(payload, dict):
+        try:
+            if meta.get("dirty") or meta.get("mismatch"):
+                raise ValueError("dirty")
+            if str((meta.get("key") or {}).get("cfg_fp") or "") != str(key.get("cfg_fp") or ""):
+                raise ValueError("cfg mismatch")
+            stats0 = payload.get("stats")
+            if not isinstance(stats0, dict):
+                raise ValueError("bad payload")
+
+            cov_stop = payload.get("covered_stop") or stats0.get("newest_time")
+            cov_dt = _parse_iso_datetime(str(cov_stop or "")) if cov_stop else None
+            if cov_dt is None:
+                raise ValueError("no covered_stop")
+
+            # Query delta since covered_stop (exclusive, +1ms).
+            delta_start = cov_dt + timedelta(milliseconds=1)
+            delta = _stats_total_compute_v2(cfg, measurement, field, entity_id, friendly_name, delta_start, None)
+            if int(delta.get("count") or 0) <= 0:
+                _series_stats_cache_touch_used(cache_id)
+                return {"ok": True, "stats": _clean(stats0), "cached": True}
+
+            merged = _stats_total_merge(stats0, delta)
+            now_iso = _utc_now_iso_ms()
+            payload2 = {
+                "key": key,
+                "stats": merged,
+                "covered_start": merged.get("oldest_time") or payload.get("covered_start"),
+                "covered_stop": merged.get("newest_time") or now_iso,
+                "updated_at": now_iso,
+            }
+            bytes_n = _series_stats_cache_write_payload(cache_id, payload2)
+            meta2 = dict(meta)
+            meta2["dirty"] = False
+            meta2["dirty_reason"] = ""
+            meta2["dirty_at"] = ""
+            meta2["updated_at"] = now_iso
+            meta2["last_used_at"] = now_iso
+            meta2["bytes"] = bytes_n
+            _series_stats_cache_write_meta(meta2)
+            return {"ok": True, "stats": _clean(merged), "cached": True}
+        except Exception:
+            pass
+
+    # Full compute
+    stats = _stats_total_compute_v2(cfg, measurement, field, entity_id, friendly_name, None, None)
+    now_iso = _utc_now_iso_ms()
+    payload2 = {
+        "key": key,
+        "stats": stats,
+        "covered_start": stats.get("oldest_time"),
+        "covered_stop": stats.get("newest_time") or now_iso,
+        "updated_at": now_iso,
+    }
+    bytes_n = _series_stats_cache_write_payload(cache_id, payload2)
+    meta2 = {
+        "id": cache_id,
+        "key": key,
+        "dirty": False,
+        "dirty_reason": "",
+        "dirty_at": "",
+        "updated_at": now_iso,
+        "last_used_at": now_iso,
+        "bytes": bytes_n,
+    }
+    _series_stats_cache_write_meta(meta2)
+    return {"ok": True, "stats": _clean(stats), "cached": False}
+
 @app.post("/api/stats")
 def stats():
     cfg = _overlay_from_yaml_if_enabled(load_cfg())
@@ -16937,6 +17342,15 @@ def stats():
                     "ok": False,
                     "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
                 }), 400
+
+            # Total stats can be expensive; use incremental per-series cache.
+            if stats_scope in ("inf", "infinite", "all"):
+                try:
+                    res = _stats_total_cached_v2(cfg, measurement, field, entity_id, friendly_name)
+                    return jsonify({"ok": True, "stats": res.get("stats") or {}, "stats_scope": stats_scope, "cached": bool(res.get("cached"))})
+                except Exception as e:
+                    return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
+
             extra = flux_tag_filter(entity_id, friendly_name)
             range_clause = _flux_range_clause_for_scope(stats_scope, range_key, start_dt, stop_dt)
 
@@ -16992,8 +17406,8 @@ data = from(bucket: "{cfg["bucket"]}")
 
                 # oldest/newest (+ first/last values)
                 try:
-                    q_old = _q_one('data |> sort(columns: ["_time"]) |> limit(n:1)')
-                    log_query("api.stats (flux oldest)", q_old)
+                    q_old = _q_one('data |> first()')
+                    log_query("api.stats (flux first)", q_old)
                     tables = c.query_api().query(q_old, org=cfg["org"])
                     rec = _first_record(tables)
                     if rec is not None:
@@ -17004,8 +17418,8 @@ data = from(bucket: "{cfg["bucket"]}")
                     pass
 
                 try:
-                    q_new = _q_one('data |> sort(columns: ["_time"], desc: true) |> limit(n:1)')
-                    log_query("api.stats (flux newest)", q_new)
+                    q_new = _q_one('data |> last()')
+                    log_query("api.stats (flux last)", q_new)
                     tables = c.query_api().query(q_new, org=cfg["org"])
                     rec = _first_record(tables)
                     if rec is not None:

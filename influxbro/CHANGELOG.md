@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.354
+
+### Bug Fix
+
+- Dashboard/Stats: `POST /api/stats` (stats_scope=inf) nutzt jetzt einen persistenten, inkrementellen Per-Serie Cache (Checkpoint/Delta ab letztem covered_stop), damit Total-Statistiken nicht mehr bei jedem Lauf vollstaendig aus InfluxDB neu berechnet werden muessen. ([#297](https://github.com/thomas682/HA-Addons/issues/297))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`
+- Tests: `pytest tests/test_api_stats_total_cache.py -q`
+- Tested with Home Assistant Core: 2026.4.2
+
 ## 1.12.353
 
 ### Bug Fix

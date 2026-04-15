@@ -229,6 +229,7 @@ Statistik Cache:
 
 - Die Statistik-Seite nutzt einen eigenen serverseitigen Cache unter `/data/stats_cache`.
 - Dort koennen je nach Zeitbereich passende Daten direkt verwendet, rechtsseitig per Append aktualisiert oder per Sliding-Strategie teilweise neu aufgebaut werden.
+- Dashboard: Die Gesamtstatistik (`/api/stats`, stats_scope=inf) nutzt zusaetzlich einen eigenen per-Serie Cache unter `/data/series_stats_cache` und wird inkrementell ab dem letzten Checkpoint (covered_stop) aktualisiert.
 
 Cache Nutzung:
 
