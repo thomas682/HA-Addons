@@ -4628,13 +4628,15 @@ def _analysis_cache_fetch_neighbor_points(
     start_dt: datetime,
     stop_dt: datetime,
     *,
-    n: int = 2,
+    n_before: int = 2,
+    n_after: int = 2,
 ) -> dict[str, list[dict[str, Any]]]:
     if int(cfg.get("influx_version", 2)) != 2:
         return {"older": [], "newer": []}
     if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
         return {"older": [], "newer": []}
-    n = max(1, min(int(n or 2), 10))
+    n_before = max(1, min(int(n_before or 2), 5000))
+    n_after = max(1, min(int(n_after or 2), 5000))
     start = _dt_to_rfc3339_utc(start_dt)
     stop = _dt_to_rfc3339_utc(stop_dt)
     center = _dt_to_rfc3339_utc(center_dt)
@@ -4646,7 +4648,7 @@ from(bucket: "{cfg["bucket"]}")
   |> filter(fn: (r) => r._time < time(v: "{center}"))
   |> keep(columns: ["_time", "_value"])
   |> sort(columns: ["_time"], desc: true)
-  |> limit(n: {n})
+  |> limit(n: {n_before})
 '''
     q_newer = f'''
 from(bucket: "{cfg["bucket"]}")
@@ -4655,7 +4657,7 @@ from(bucket: "{cfg["bucket"]}")
   |> filter(fn: (r) => r._time > time(v: "{center}"))
   |> keep(columns: ["_time", "_value"])
   |> sort(columns: ["_time"], desc: false)
-  |> limit(n: {n})
+  |> limit(n: {n_after})
 '''
     older: list[dict[str, Any]] = []
     newer: list[dict[str, Any]] = []
@@ -4703,9 +4705,18 @@ def _analysis_cache_patch_window(
     stop_dt = _parse_iso_datetime(str(meta.get("covered_stop") or ""))
     if start_dt is None or stop_dt is None:
         return None
-    pad = timedelta(seconds=ANALYSIS_CACHE_PATCH_PADDING_SECONDS)
-    fallback_start = max(start_dt, first_dt - pad)
-    fallback_stop = min(stop_dt, last_dt + pad)
+    # Prefer point-based context around the change window. This aligns with the UI settings
+    # and scales better across different sampling rates.
+    try:
+        ctx_before = int(cfg.get("outlier_context_before_points", 10) or 10)
+    except Exception:
+        ctx_before = 10
+    try:
+        ctx_after = int(cfg.get("outlier_context_after_points", 10) or 10)
+    except Exception:
+        ctx_after = 10
+    ctx_before = max(1, min(5000, ctx_before))
+    ctx_after = max(1, min(5000, ctx_after))
     series = {
         "measurement": str(meta.get("measurement") or ""),
         "field": str(meta.get("field") or ""),
@@ -4721,7 +4732,8 @@ def _analysis_cache_patch_window(
         first_dt,
         start_dt,
         stop_dt,
-        n=2,
+        n_before=max(2, ctx_before + 2),
+        n_after=max(1, ctx_after),
     )
     last_neighbors = first_neighbors if last_dt == first_dt else _analysis_cache_fetch_neighbor_points(
         cfg,
@@ -4732,13 +4744,26 @@ def _analysis_cache_patch_window(
         last_dt,
         start_dt,
         stop_dt,
-        n=2,
+        n_before=max(1, ctx_before),
+        n_after=max(1, ctx_after),
     )
     older_first = first_neighbors.get("older") if isinstance(first_neighbors.get("older"), list) else []
     newer_last = last_neighbors.get("newer") if isinstance(last_neighbors.get("newer"), list) else []
+
+    # older_first is returned in ascending order (oldest -> newest)
     prev_neighbor = older_first[-1] if older_first else None
-    prev_seed_point = older_first[-2] if len(older_first) > 1 else None
+    # Context window start: N points before the change center (best-effort)
+    ctx_start_point = older_first[-(ctx_before + 1)] if len(older_first) >= (ctx_before + 1) else (older_first[0] if older_first else None)
+    # Seed point: one point before ctx_start_point, best-effort (may be missing)
+    prev_seed_point = older_first[-(ctx_before + 2)] if len(older_first) >= (ctx_before + 2) else None
+    # newer_last is ascending order (oldest -> newest), so the N-th after point is at index ctx_after-1
+    ctx_after_point = newer_last[min(len(newer_last) - 1, max(0, ctx_after - 1))] if newer_last else None
     next_neighbor = newer_last[0] if newer_last else None
+
+    ctx_start_dt = _parse_iso_datetime(str((ctx_start_point or {}).get("time") or "")) if isinstance(ctx_start_point, dict) else None
+    ctx_after_dt = _parse_iso_datetime(str((ctx_after_point or {}).get("time") or "")) if isinstance(ctx_after_point, dict) else None
+    fallback_start = max(start_dt, ctx_start_dt or first_dt)
+    fallback_stop = min(stop_dt, ctx_after_dt or last_dt)
     prev_cp = None
     next_cp = None
     for cp in cps:
@@ -4753,8 +4778,8 @@ def _analysis_cache_patch_window(
             break
     prev_neighbor_dt = _parse_iso_datetime(str((prev_neighbor or {}).get("time") or "")) if isinstance(prev_neighbor, dict) else None
     next_neighbor_dt = _parse_iso_datetime(str((next_neighbor or {}).get("time") or "")) if isinstance(next_neighbor, dict) else None
-    patch_start = _parse_iso_datetime(str(prev_cp.get("at") or "")) if isinstance(prev_cp, dict) else (prev_neighbor_dt or fallback_start)
-    patch_stop = _parse_iso_datetime(str(next_cp.get("at") or "")) if isinstance(next_cp, dict) else ((next_neighbor_dt + timedelta(milliseconds=1)) if next_neighbor_dt else fallback_stop)
+    patch_start = _parse_iso_datetime(str(prev_cp.get("at") or "")) if isinstance(prev_cp, dict) else (ctx_start_dt or prev_neighbor_dt or fallback_start)
+    patch_stop = _parse_iso_datetime(str(next_cp.get("at") or "")) if isinstance(next_cp, dict) else ((ctx_after_dt + timedelta(milliseconds=1)) if ctx_after_dt else ((next_neighbor_dt + timedelta(milliseconds=1)) if next_neighbor_dt else fallback_stop))
     mode = "checkpoint"
     if not isinstance(prev_cp, dict) and not isinstance(next_cp, dict):
         mode = "neighbor_context" if (prev_neighbor_dt or next_neighbor_dt) else "fallback_time"
@@ -4765,7 +4790,7 @@ def _analysis_cache_patch_window(
     if (patch_stop - patch_start).total_seconds() > ANALYSIS_CACHE_PATCH_MAX_SPAN_SECONDS:
         patch_start = fallback_start
         patch_stop = fallback_stop
-        mode = "fallback_time"
+        mode = "fallback_points"
     if patch_stop <= patch_start:
         return None
     if (patch_stop - patch_start).total_seconds() > ANALYSIS_CACHE_PATCH_MAX_SPAN_SECONDS:
@@ -4783,8 +4808,10 @@ def _analysis_cache_patch_window(
         "scan_state": prev_cp.get("scan_state") if isinstance(prev_cp, dict) else None,
         "mode": mode,
         "checkpoint_at": prev_cp.get("at") if isinstance(prev_cp, dict) else None,
-        "context_before_time": (prev_neighbor or {}).get("time") if isinstance(prev_neighbor, dict) else None,
-        "context_after_time": (next_neighbor or {}).get("time") if isinstance(next_neighbor, dict) else None,
+        "context_before_time": (ctx_start_point or {}).get("time") if isinstance(ctx_start_point, dict) else ((prev_neighbor or {}).get("time") if isinstance(prev_neighbor, dict) else None),
+        "context_after_time": (ctx_after_point or {}).get("time") if isinstance(ctx_after_point, dict) else ((next_neighbor or {}).get("time") if isinstance(next_neighbor, dict) else None),
+        "context_before_points": int(ctx_before),
+        "context_after_points": int(ctx_after),
         "change_start": _dt_to_rfc3339_utc_ms(first_dt),
         "change_stop": _dt_to_rfc3339_utc_ms(last_dt),
     }

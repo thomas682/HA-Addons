@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.368
+
+### Enhancement
+
+- Analyse-Cache: Dirty-Patch-Fenster verwendet jetzt punktbasierten Kontext (N davor/N danach) ueber `outlier_context_before_points`/`outlier_context_after_points` statt fixer Sekunden-Padding. ([#317](https://github.com/thomas682/HA-Addons/issues/317))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: 2026.4.2
+
 ## 1.12.367
 
 ### Enhancement
