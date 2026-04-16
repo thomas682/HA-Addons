@@ -572,7 +572,7 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
   - Links: Trace-Liste mit Start/Ende/Dauer, Seite, Ausloeser (Klartext + technische ID), Status und Counts.
   - Rechts: JSON-Details (scrollbar/resizable) plus Copy-Buttons (Zwischenablage, TraceID).
   - Diagramm: vollstaendige Analyseansicht (Zeitleiste, Waterfall Vollansicht/Zoom, Endpoint-Statistiken, Tooltip) basierend auf den Trace-Spans; Zoom per Markierung in der Vollansicht.
-  - Diagramm: Optionaler Endpoint-Filter (Toggle + Text) filtert Waterfalls, Endpoint-Statistiken und Summary Cards.
+  - Diagramm: Optionaler Endpoint-Filter (Toggle + Dropdown) listet alle im aktuellen Trace sichtbaren `/api/...` Endpoints. Du kannst einzelne Endpoints deaktivieren; die Auswahl wird gespeichert. Wenn gefiltert wird, erscheint ein gut sichtbarer Hinweis "Gefiltert".
   - Layout: Vertikaler Splitter trennt Trace-Liste/Details (oben) und Diagramm (unten); Hoehe wird gespeichert.
 - Mit aktivem `superpicker` wird jetzt das direkt gehoverte Unterelement bevorzugt erfasst; dadurch lassen sich auch Elemente innerhalb eines groesseren `data-ui`-Containers gezielter identifizieren.
 - Der `S-Picker` prueft im Super-Modus wieder zuerst das direkt getroffene Element wie in den frueheren Dashboard-Versionen; dadurch lassen sich auch feinere Unterelemente wieder zuverlaessig selektieren.

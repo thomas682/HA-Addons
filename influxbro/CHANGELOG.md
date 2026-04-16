@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.365
+
+### Enhancement
+
+- Performanceanalyse Diagramm: Endpoint-Filter ist jetzt ein Dropdown mit allen im aktuellen Trace sichtbaren `/api/...` Endpoints. Alle sind initial aktiv; einzelne Endpoints koennen deaktiviert werden (persistiert). Summary Cards berechnen sich aus den gefilterten Spans; Hinweis-Badge zeigt aktive Filterung. ([#314](https://github.com/thomas682/HA-Addons/issues/314))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: 2026.4.2
+
 ## 1.12.364
 
 ### Enhancement

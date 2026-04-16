@@ -463,6 +463,7 @@
       wf_label_w: null,
       ep_filter_on: false,
       ep_filter_q: "",
+      ep_disabled_eps: [],
     };
 
     function _loadTvPrefs(){
@@ -471,11 +472,20 @@
         const on = String(localStorage.getItem("ib_perf_ep_filter_on") || "");
         _tv_state.ep_filter_on = (on === "1" || on === "true");
       }catch(e){}
+
+      try{
+        const raw = localStorage.getItem("ib_perf_ep_disabled_v1");
+        const xs = raw ? JSON.parse(raw) : [];
+        _tv_state.ep_disabled_eps = Array.isArray(xs) ? xs.map(x=>String(x||'')).filter(Boolean) : [];
+      }catch(e){
+        _tv_state.ep_disabled_eps = [];
+      }
     }
 
     function _saveTvPrefs(){
       try{ localStorage.setItem("ib_perf_ep_filter_q", String(_tv_state.ep_filter_q || "")); }catch(e){}
       try{ localStorage.setItem("ib_perf_ep_filter_on", _tv_state.ep_filter_on ? "1" : "0"); }catch(e){}
+      try{ localStorage.setItem("ib_perf_ep_disabled_v1", JSON.stringify(Array.isArray(_tv_state.ep_disabled_eps) ? _tv_state.ep_disabled_eps : [])); }catch(e){}
     }
 
     _loadTvPrefs();
@@ -593,7 +603,9 @@
               <input type="checkbox" id="tv_ep_filter_on" style="height:auto; width:auto;" />
               <span style="font-size:12px; color:var(--text2)">Endpoint-Filter</span>
             </label>
-            <input id="tv_ep_filter_q" placeholder="z.B. /api/outliers" style="height:34px; padding:0 10px; border-radius:10px; border:1px solid var(--border); background:var(--bg2); color:var(--text); width: min(360px, 42vw);" />
+            <select id="tv_ep_select" multiple style="height:34px; padding:0 10px; border-radius:10px; border:1px solid var(--border); background:var(--bg2); color:var(--text); width: min(420px, 56vw);">
+            </select>
+            <span id="tv_ep_filtered_badge" class="badge" style="display:none; background:rgba(248,81,73,0.14); border-color:rgba(248,81,73,0.45); color:var(--red);">Gefiltert</span>
             <button type="button" id="tv_zoom_reset">Zoom reset</button>
           </div>
           <div class="cards" id="tv_cards"></div>
@@ -611,12 +623,29 @@
       `;
     }
 
+    function _uniqueApiEndpoints(spans){
+      const xs = Array.isArray(spans) ? spans : [];
+      const set = new Set();
+      xs.forEach(s=>{
+        const ep = _normEp(String(s && s.ep || ''));
+        if(!ep) return;
+        if(!ep.startsWith('/api/')) return;
+        set.add(ep);
+      });
+      return Array.from(set.values()).sort();
+    }
+
     function _applyEndpointFilter(spans){
       const xs = Array.isArray(spans) ? spans : [];
       if(!_tv_state.ep_filter_on) return xs;
-      const q = String(_tv_state.ep_filter_q || "").trim().toLowerCase();
-      if(!q) return xs;
-      return xs.filter(s => String(s && s.ep || "").toLowerCase().includes(q));
+      const disabled = new Set((Array.isArray(_tv_state.ep_disabled_eps) ? _tv_state.ep_disabled_eps : []).map(x=>String(x||'')));
+      if(!disabled.size) return xs;
+      return xs.filter(s=>{
+        const ep = _normEp(String(s && s.ep || ''));
+        if(!ep) return false;
+        if(!ep.startsWith('/api/')) return true; // keep non-API spans untouched
+        return !disabled.has(ep);
+      });
     }
 
     function _fmtUtcShort(iso){
@@ -643,14 +672,16 @@
       const serverSum = spansF.reduce((a,s)=>a + Math.max(0, Number(s.sDur)||0), 0);
       const clientSum = spansF.reduce((a,s)=>a + Math.max(0, Number(s.cDur)||0), 0);
       const netSum = spansF.reduce((a,s)=>a + Math.max(0, (Number(s.cDur)||0) - (Number(s.sDur)||0)), 0);
-      const pause = Math.max(0, Math.round((Number(total)||0) - clientSum));
-      const pctPause = total > 0 ? ((pause/total)*100) : 0;
+      const totalF = spansF.length ? Math.max.apply(null, spansF.map(s=>Number(s && s.cEnd || 0))) : 0;
+      const pause = Math.max(0, Math.round((Number(totalF)||0) - clientSum));
+      const pctPause = totalF > 0 ? ((pause/totalF)*100) : 0;
       const overheadAvg = spansF.length ? (netSum / spansF.length) : 0;
-      const serverPct = total > 0 ? ((serverSum/total)*100) : 0;
+      const serverPct = totalF > 0 ? ((serverSum/totalF)*100) : 0;
       const statusCls = (st === 'ok') ? 'green' : (st === 'err' ? 'orange' : 'orange');
-      const filterHint = _tv_state.ep_filter_on ? (' · Filter: ' + String(spansF.length) + '/' + String((spans || []).length)) : '';
+      const disabledCount = (Array.isArray(_tv_state.ep_disabled_eps) ? _tv_state.ep_disabled_eps : []).length;
+      const filterHint = (_tv_state.ep_filter_on && disabledCount) ? (' · Filter: ' + String(spansF.length) + '/' + String((spans || []).length)) : '';
       const cards = [
-        { label:'Gesamtdauer', value: String(Math.round(Number(total)||0)) + 'ms', cls: statusCls, sub: 'Status: ' + (st || '-') + filterHint },
+        { label:'Gesamtdauer', value: String(Math.round(Number(totalF)||0)) + 'ms', cls: statusCls, sub: 'Status: ' + (st || '-') + filterHint },
         { label:'API Calls', value: String(isFinite(api)?api:0), cls:'blue', sub: String(ok) + ' OK · ' + String(err) + ' Fehler' },
         { label:'Bottleneck', value: bott ? (String(Math.round(Number(bott.cDur)||0)) + 'ms') : '-', cls:'orange', sub: bott ? String(bott.ep || '') : '-' },
         { label:'Server-Zeit', value: String(Math.round(serverSum)) + 'ms', cls:'blue', sub: serverPct.toFixed(1).replace('.', ',') + '% der Gesamtzeit' },
@@ -665,12 +696,13 @@
       if(!pbc) return;
       const spansF = _applyEndpointFilter(spans);
       const httpMs = spansF.reduce((a,s)=>a + Math.max(0, Number(s.cDur)||0), 0);
-      const pause = Math.max(0, (Number(total)||0) - httpMs);
+      const totalF = spansF.length ? Math.max.apply(null, spansF.map(s=>Number(s && s.cEnd || 0))) : 0;
+      const pause = Math.max(0, (Number(totalF)||0) - httpMs);
       const phases = [
         { label:'HTTP Calls', ms: Math.round(httpMs), cls:'p1', color:'#2563eb' },
         { label:'Pause (Client)', ms: Math.round(pause), cls:'pause1', color:'#21262d' },
       ];
-      const t = Math.max(1, Number(total)||1);
+      const t = Math.max(1, Number(totalF)||1);
       pbc.innerHTML = `
         <div class="phase-bar">${phases.map(p=>{
           const pct = (p.ms / t * 100);
@@ -958,7 +990,8 @@
       const a = Math.max(0, Number(_tv_state.zoom_start||0));
       const b = Math.min(Number(total||0), Number(_tv_state.zoom_end||0) || Math.min(600, Number(total||0)));
       const len = Math.max(1, b - a);
-      if(badge) badge.textContent = Math.round(a) + ' – ' + Math.round(b) + ' ms' + (_tv_state.ep_filter_on ? ' (gefiltert)' : '');
+      const disabled = (Array.isArray(_tv_state.ep_disabled_eps) ? _tv_state.ep_disabled_eps : []).length;
+      if(badge) badge.textContent = Math.round(a) + ' – ' + Math.round(b) + ' ms' + ((_tv_state.ep_filter_on && disabled) ? ' (gefiltert)' : '');
       const clipped = _applyEndpointFilter(spans).map(s=>_clipSpanToRange(s, a, b)).filter(Boolean);
       const uiRel = (uiMarkers || []).map(t=>Number(t) - a).filter(x=>x >= 0 && x <= len);
       _renderWaterfall(zc, clipped, len, uiRel, false);
@@ -1012,7 +1045,30 @@
       const btnUi = document.getElementById('tv_toggle_ui');
       const btnReset = document.getElementById('tv_zoom_reset');
       const cbEpOn = document.getElementById('tv_ep_filter_on');
-      const inpEpQ = document.getElementById('tv_ep_filter_q');
+      const selEp = document.getElementById('tv_ep_select');
+      const badgeFiltered = document.getElementById('tv_ep_filtered_badge');
+
+      const syncEndpointSelect = ()=>{
+        if(!selEp) return;
+        const eps = _uniqueApiEndpoints(spans);
+        const disabled = new Set((Array.isArray(_tv_state.ep_disabled_eps) ? _tv_state.ep_disabled_eps : []).map(x=>String(x||'')));
+        selEp.innerHTML = '';
+        eps.forEach((ep)=>{
+          const opt = document.createElement('option');
+          opt.value = ep;
+          // Selected == disabled (so selection means "deactivate")
+          opt.selected = disabled.has(ep);
+          opt.textContent = ep;
+          selEp.appendChild(opt);
+        });
+        selEp.disabled = !_tv_state.ep_filter_on;
+
+        if(badgeFiltered){
+          const active = _tv_state.ep_filter_on && disabled.size > 0;
+          badgeFiltered.style.display = active ? 'inline-flex' : 'none';
+          if(active) badgeFiltered.textContent = 'Gefiltert: ' + String(disabled.size) + ' deaktiviert';
+        }
+      };
 
       const refreshViews = ()=>{
         const uiMarkers = computeUiMarkers();
@@ -1023,7 +1079,7 @@
         }
 
         if(btnUi) btnUi.textContent = _tv_state.show_ui_events ? 'UI-Events: an' : 'UI-Events: aus';
-        if(inpEpQ) inpEpQ.disabled = !_tv_state.ep_filter_on;
+        syncEndpointSelect();
 
         _renderCards(trace, spans, total);
         _renderPhaseBar(total, spans);
@@ -1046,12 +1102,14 @@
           refreshViews();
         };
       }
-      if(inpEpQ){
-        inpEpQ.value = String(_tv_state.ep_filter_q || '');
-        inpEpQ.disabled = !_tv_state.ep_filter_on;
-        inpEpQ.oninput = ()=>{
-          _tv_state.ep_filter_q = String(inpEpQ.value || '');
-          _saveTvPrefs();
+
+      if(selEp){
+        selEp.onchange = ()=>{
+          try{
+            const disabled = Array.from(selEp.options).filter(o=>o.selected).map(o=>String(o.value||'')).filter(Boolean);
+            _tv_state.ep_disabled_eps = disabled;
+            _saveTvPrefs();
+          }catch(e){}
           refreshViews();
         };
       }
