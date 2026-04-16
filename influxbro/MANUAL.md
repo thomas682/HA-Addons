@@ -569,7 +569,7 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Neuer Menuepunkt `Performanceanalyse`: zeigt den persistierten Action/Trace-Log (Limit/Filter), erlaubt Drilldown in Details und rendert den selektierten Trace zusaetzlich als Diagramm (Waterfall).
   - Links: Trace-Liste mit Start/Ende/Dauer, Seite, Ausloeser (Klartext + technische ID), Status und Counts.
   - Rechts: JSON-Details (scrollbar/resizable) plus Copy-Buttons (Zwischenablage, TraceID).
-  - Diagramm: grafische Zeitleiste der HTTP Calls (Netzwerk/Server/Netzwerk) basierend auf den Trace-Spans.
+  - Diagramm: vollstaendige Analyseansicht (Zeitleiste, Waterfall Vollansicht/Zoom, Endpoint-Statistiken, Tooltip) basierend auf den Trace-Spans; Zoom per Markierung in der Vollansicht.
 - Mit aktivem `superpicker` wird jetzt das direkt gehoverte Unterelement bevorzugt erfasst; dadurch lassen sich auch Elemente innerhalb eines groesseren `data-ui`-Containers gezielter identifizieren.
 - Der `S-Picker` prueft im Super-Modus wieder zuerst das direkt getroffene Element wie in den frueheren Dashboard-Versionen; dadurch lassen sich auch feinere Unterelemente wieder zuverlaessig selektieren.
 - Falls ein Element kein `data-ui`, aber eine stabile `id` besitzt, kann der `S-Picker` diese `id` ebenfalls direkt kopieren, z. B. `analysis_start_info`.

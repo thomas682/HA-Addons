@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.363
+
+### Bug Fix
+
+- Performanceanalyse Diagramm: Vollstaendige Analyse-Ansicht nach verbindlicher `analyse.html` Vorlage (Zeitleiste, Waterfall Vollansicht/Zoom, Endpoint-Statistiken, Tooltip) inkl. UI-Event Toggle, Endpoint-Erklaerungen und Missing-Endpoint Logging. ([#309](https://github.com/thomas682/HA-Addons/issues/309))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`
+- Tests: `pytest tests/test_settings_defaults_highlight.py -q`
+- Tested with Home Assistant Core: 2026.4.2
+
 ## 1.12.362
 
 ### Enhancement

@@ -67,29 +67,96 @@
       .pane_box { resize: vertical; min-width: 0; }
     }
 
-    /* Diagram (dark, inline) */
-    .diag_wrap { background:#0d1117; color:#e6edf3; border:1px solid #30363d; border-radius:12px; padding:12px; overflow:auto; }
-    .diag_h { font-weight:800; font-size:14px; }
-    .diag_sub { color:#8b949e; font-size:12px; margin-top:4px; }
-    .diag_cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:10px; margin-top:12px; }
-    .diag_card { background:#161b22; border:1px solid #30363d; border-radius:10px; padding:12px 14px; }
-    .diag_card .k { font-size:11px; color:#8b949e; text-transform:uppercase; letter-spacing:.4px; }
-    .diag_card .v { font-size:20px; font-weight:800; margin-top:2px; }
-    .wf { margin-top:14px; border:1px solid #30363d; border-radius:10px; background:#161b22; overflow:auto; }
-    .wf_row { display:flex; align-items:center; height:30px; border-bottom:1px solid #30363d; }
-    .wf_row:last-child { border-bottom:none; }
-    .wf_label { width:320px; min-width:320px; max-width:320px; padding:0 10px; display:flex; align-items:center; gap:8px; }
-    .wf_idx { color:#8b949e; font-size:11px; width:24px; text-align:right; }
-    .wf_m { font-size:10px; font-weight:800; padding:1px 6px; border-radius:4px; }
-    .wf_m.get { background:rgba(63,185,80,0.15); color:#3fb950; }
-    .wf_m.post { background:rgba(88,166,255,0.15); color:#58a6ff; }
-    .wf_ep { font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .wf_bar_area { position:relative; flex:1; min-width:620px; height:100%; }
-    .wf_bar { position:absolute; top:50%; transform:translateY(-50%); height:16px; border-radius:4px; overflow:hidden; display:flex; }
-    .seg_out { background:#1f4a7a; }
-    .seg_srv { background:#58a6ff; }
-    .seg_in { background:#1a3d5c; }
-    .wf_dur { position:absolute; top:50%; transform:translateY(-50%); font-size:10px; color:#8b949e; white-space:nowrap; }
+    /* Diagram: verbindliches Muster (analyse.html) scoped to .tv */
+    .diag_wrap { background:#0d1117; color:#e6edf3; border:1px solid #30363d; border-radius:12px; padding:16px; overflow:auto; }
+    .diag_wrap .tv {
+      --bg: #0d1117; --bg2: #161b22; --bg3: #21262d;
+      --border: #30363d; --text: #e6edf3; --text2: #8b949e;
+      --accent: #58a6ff; --green: #3fb950; --orange: #d29922;
+      --red: #f85149; --purple: #bc8cff; --pink: #f778ba;
+      --network-out: #1f4a7a; --network-in: #1a3d5c;
+      --server: #58a6ff; --server-slow: #d29922;
+      --wf-label-w: 260px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 13px;
+    }
+    .diag_wrap .tv h1 { font-size:20px; font-weight:600; margin-bottom:4px; color:var(--text); }
+    .diag_wrap .tv h2 { font-size:15px; font-weight:600; margin:24px 0 12px; color:var(--text); display:flex; align-items:center; gap:8px; }
+    .diag_wrap .tv h2 .badge { font-size:11px; background:var(--bg3); border:1px solid var(--border); border-radius:12px; padding:2px 10px; color:var(--text2); font-weight:400; }
+    .diag_wrap .tv .subtitle { color:var(--text2); font-size:13px; margin-bottom:14px; }
+    .diag_wrap .tv .tv_controls { display:flex; gap:10px; flex-wrap:wrap; margin:10px 0 6px; }
+    .diag_wrap .tv .tv_controls button { height: 34px; padding: 0 10px; border-radius: 10px; border:1px solid var(--border); background:var(--bg2); color:var(--text); cursor:pointer; }
+    .diag_wrap .tv .tv_controls button:hover { filter:brightness(1.1); }
+
+    .diag_wrap .tv .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:10px; margin-bottom:18px; }
+    .diag_wrap .tv .card { background:var(--bg2); border:1px solid var(--border); border-radius:10px; padding:14px 16px; margin-top:0; }
+    .diag_wrap .tv .card .label { font-size:11px; color:var(--text2); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px; }
+    .diag_wrap .tv .card .value { font-size:22px; font-weight:700; }
+    .diag_wrap .tv .card .value.green { color:var(--green); }
+    .diag_wrap .tv .card .value.orange { color:var(--orange); }
+    .diag_wrap .tv .card .value.blue { color:var(--accent); }
+    .diag_wrap .tv .card .value.purple { color:var(--purple); }
+    .diag_wrap .tv .card .sub { font-size:11px; color:var(--text2); margin-top:2px; }
+
+    .diag_wrap .tv .phase-bar-container { background:var(--bg2); border:1px solid var(--border); border-radius:10px; padding:16px; margin-bottom:16px; }
+    .diag_wrap .tv .phase-bar { display:flex; height:36px; border-radius:6px; overflow:hidden; margin:8px 0; }
+    .diag_wrap .tv .phase-bar .seg { display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:600; color:white; cursor:pointer; }
+    .diag_wrap .tv .phase-bar .seg:hover { filter:brightness(1.2); }
+    .diag_wrap .tv .phase-bar .seg.p1 { background:#2563eb; }
+    .diag_wrap .tv .phase-bar .seg.pause1 { background:var(--bg3); color:var(--text2); }
+    .diag_wrap .tv .phase-labels { display:flex; gap:16px; flex-wrap:wrap; margin-top:8px; }
+    .diag_wrap .tv .phase-label { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text2); }
+    .diag_wrap .tv .phase-dot { width:10px; height:10px; border-radius:50%; }
+
+    .diag_wrap .tv .legend { display:flex; gap:20px; flex-wrap:wrap; margin:12px 0; }
+    .diag_wrap .tv .legend-item { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text2); }
+    .diag_wrap .tv .legend-swatch { width:14px; height:14px; border-radius:3px; }
+
+    .diag_wrap .tv .waterfall-container { background:var(--bg2); border:1px solid var(--border); border-radius:10px; padding:16px; overflow-x:auto; margin-bottom:16px; position:relative; }
+    .diag_wrap .tv .waterfall-row { display:flex; align-items:center; height:32px; border-bottom:1px solid var(--border); }
+    .diag_wrap .tv .waterfall-row:last-child { border-bottom:none; }
+    .diag_wrap .tv .waterfall-row:hover { background:rgba(88,166,255,0.04); }
+    .diag_wrap .tv .wf-label { min-width: var(--wf-label-w); max-width: var(--wf-label-w); padding-right:12px; display:flex; align-items:center; gap:6px; flex-shrink:0; position:relative; }
+    .diag_wrap .tv .wf-label .idx { color:var(--text2); font-size:11px; min-width:24px; text-align:right; }
+    .diag_wrap .tv .wf-label .method { font-size:10px; font-weight:700; padding:1px 5px; border-radius:3px; }
+    .diag_wrap .tv .wf-label .method.get { background:rgba(63,185,80,0.15); color:var(--green); }
+    .diag_wrap .tv .wf-label .method.post { background:rgba(88,166,255,0.15); color:var(--accent); }
+    .diag_wrap .tv .wf-label .endpoint { color:var(--text); font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .diag_wrap .tv .wf-resizer { position:absolute; right:0; top:0; bottom:0; width:10px; cursor:col-resize; }
+    .diag_wrap .tv .wf-bar-area { flex:1; position:relative; height:100%; min-width:600px; }
+    .diag_wrap .tv .wf-bar-wrap { position:absolute; top:50%; transform:translateY(-50%); height:18px; display:flex; border-radius:4px; overflow:hidden; cursor:pointer; }
+    .diag_wrap .tv .wf-bar-wrap:hover { filter:brightness(1.3); }
+    .diag_wrap .tv .wf-seg { height:100%; }
+    .diag_wrap .tv .wf-seg.net-out { background:var(--network-out); }
+    .diag_wrap .tv .wf-seg.server { background:var(--server); }
+    .diag_wrap .tv .wf-seg.server.slow { background:var(--server-slow); }
+    .diag_wrap .tv .wf-seg.net-in { background:var(--network-in); }
+    .diag_wrap .tv .wf-dur { position:absolute; top:50%; transform:translateY(-50%); font-size:10px; color:var(--text2); white-space:nowrap; }
+
+    .diag_wrap .tv .timeline-header { display:flex; height:24px; align-items:flex-end; margin-bottom:2px; }
+    .diag_wrap .tv .timeline-header .wf-label { font-size:11px; color:var(--text2); }
+    .diag_wrap .tv .timeline-ticks { flex:1; position:relative; min-width:600px; height:100%; }
+    .diag_wrap .tv .tick { position:absolute; bottom:0; font-size:10px; color:var(--text2); }
+    .diag_wrap .tv .tick::before { content:''; position:absolute; bottom:14px; left:0; width:1px; height:6px; background:var(--border); }
+    .diag_wrap .tv .phase-marker { position:absolute; top:0; bottom:0; border-left:1px dashed; opacity:0.3; }
+    .diag_wrap .tv .zoom-sel { position:absolute; top:0; bottom:0; background:rgba(88,166,255,0.12); border:1px solid rgba(88,166,255,0.55); pointer-events:none; display:none; }
+
+    .diag_wrap .tv .tooltip { display:none; position:fixed; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:12px 16px; z-index:1000; pointer-events:none; box-shadow:0 8px 24px rgba(0,0,0,0.4); max-width:380px; }
+    .diag_wrap .tv .tooltip.show { display:block; }
+    .diag_wrap .tv .tooltip .tt-title { font-weight:600; font-size:13px; margin-bottom:8px; color:var(--accent); }
+    .diag_wrap .tv .tooltip .tt-row { display:flex; justify-content:space-between; gap:16px; margin-bottom:3px; }
+    .diag_wrap .tv .tooltip .tt-row .k { color:var(--text2); }
+    .diag_wrap .tv .tooltip .tt-row .v { font-weight:600; }
+
+    .diag_wrap .tv .stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:10px; }
+    .diag_wrap .tv .stat-card { background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:12px 14px; }
+    .diag_wrap .tv .stat-card .ep { font-size:12px; color:var(--accent); margin-bottom:6px; display:flex; justify-content:space-between; gap:10px; }
+    .diag_wrap .tv .stat-card .ep .count { color:var(--text2); font-size:11px; white-space:nowrap; }
+    .diag_wrap .tv .bar-bg { background:var(--bg3); border-radius:4px; height:8px; overflow:hidden; margin-bottom:6px; }
+    .diag_wrap .tv .bar-fill { height:100%; border-radius:4px; transition:width 0.6s ease; }
+    .diag_wrap .tv .stat-card .meta { display:flex; justify-content:space-between; font-size:11px; color:var(--text2); gap:10px; }
+
+    @media (max-width:900px) { .diag_wrap .tv .wf-label { min-width:180px; max-width:180px; } }
   </style>
 </head>
 <body>
@@ -343,92 +410,572 @@
       }
     }
 
+    const ENDPOINT_HELP = {
+      "/api/ui_event": "UI-Ereignis wird serverseitig protokolliert und mit trace_id korreliert.",
+      "/api/analysis_history_event": "Schreibt einen Eintrag ins Analyse/Worklog (History Event) fuer Diagnose/Support.",
+      "/api/cache_usage/ui_event": "UI-Event fuer Cache-Auswertung; dient der Cache-Nutzungsanalyse.",
+      "/api/series_oldest": "Ermittelt den aeltesten bekannten Punkt der aktuell selektierten Serie (Bounds/Oldest).",
+      "/api/cache/plan": "Plant Cache-Reads: ermittelt was aus Cache kommt und welche Zeitfenster nachgeladen werden muessen.",
+      "/api/analysis_cache/plan": "Plant Analyse-Cache Segmente (Cache/Gaps/Dirty) fuer den gewaehlten Zeitraum.",
+      "/api/analysis_cache/store_segment": "Speichert neu berechnete Analyse-Cache Segmente persistent.",
+      "/api/analysis_cache/combine": "Kombiniert/merged Analyse-Cache Segmente.",
+      "/api/analysis_cache/rebuild": "Baut Analyse-Cache fuer den Zeitraum/Serie neu auf.",
+      "/api/outliers": "Berechnet/scannt Ausreisser im Zeitfenster (Analyse).",
+      "/api/outlier_windows": "Erzeugt/erweitert Ausreisser-Fenster (Analyse) fuer Drilldown.",
+      "/api/raw_points": "Laedt Rohdatenpunkte fuer die Raw-Tabelle (Zeitfenster) aus Influx.",
+      "/api/stats": "Laedt/aktualisiert Statistik (ggf. Cache) fuer den Zeitraum.",
+      "/api/sysinfo": "Laedt Systeminfos (CPU/RAM/Disk) fuer Statusanzeige/Diagnose.",
+      "/api/storage_usage": "Diagnose: Inventar persistierter Daten + Disk-Frei/Belegt + Verlauf.",
+      "/api/worklog": "Laedt Worklog (letzte Operationen) fuer Diagnose.",
+    };
+
+    const _MISSING_ENDPOINTS_SEEN = new Set();
+    let _tv_state = { show_ui_events: false, zoom_start: 0, zoom_end: null, wf_label_w: null };
+
+    function _normEp(ep){
+      const s = String(ep || '').trim();
+      if(!s) return '';
+      if(s.startsWith('./')) return '/' + s.replace(/^\.\//, '');
+      if(s.startsWith('api/')) return '/' + s;
+      return s;
+    }
+
+    function _epHelp(ep){
+      const k = _normEp(ep);
+      if(ENDPOINT_HELP[k]) return ENDPOINT_HELP[k];
+      if(k.startsWith('/api/analysis_cache/')) return 'Analyse-Cache: Planung/Combine/Rebuild/Store von Cache-Segmenten.';
+      if(k.startsWith('/api/cache/')) return 'Cache: Planung/Operationen fuer Cache-Reads/Segmente.';
+      if(k.startsWith('/api/trace/')) return 'Tracing: laedt Trace-Daten fuer Performanceanalyse.';
+      if(k.startsWith('/api/')) return 'API-Endpunkt von InfluxBro (siehe URL/Path).';
+      return '';
+    }
+
+    async function _clientLog(message, extra){
+      try{
+        await fetch('./api/client_log', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            page: 'perf_page.main',
+            message: String(message || ''),
+            href: String(location && location.href || ''),
+            ua: String(navigator && navigator.userAgent || ''),
+            stack: '',
+            extra: extra || {},
+          })
+        });
+      }catch(e){}
+    }
+
+    function _logMissingEndpointOnce(ep, ctx){
+      const k = _normEp(ep);
+      if(!k) return;
+      if(_MISSING_ENDPOINTS_SEEN.has(k)) return;
+      _MISSING_ENDPOINTS_SEEN.add(k);
+      if(_epHelp(k)) return;
+      _clientLog('perf.diagram.missing_endpoint', {
+        kind: 'ui_debug',
+        endpoint: k,
+        trace_id: ctx && ctx.trace_id ? String(ctx.trace_id) : '',
+        action: ctx && ctx.action ? String(ctx.action) : '',
+        page: ctx && ctx.page ? String(ctx.page) : '',
+      });
+    }
+
+    function _traceToTemplateSpans(trace){
+      const t0 = Date.parse(String(trace && trace.started_at || ''));
+      const client = Array.isArray(trace && trace.client_spans) ? trace.client_spans : [];
+      const server = Array.isArray(trace && trace.spans) ? trace.spans : [];
+      const serverById = new Map();
+      server.forEach(s=>{ try{ if(s && s.span_id) serverById.set(String(s.span_id), s); }catch(e){} });
+
+      const out = [];
+      client.forEach((c, idx)=>{
+        try{
+          const sidFull = String(c.span_id || '');
+          const sv = sidFull ? (serverById.get(sidFull) || null) : null;
+          const cAt = Date.parse(String(c.at || ''));
+          const cDur = Number(c.dur_ms || 0);
+          const cEnd = (isFinite(cAt) && isFinite(t0)) ? Math.max(0, cAt - t0) : 0;
+
+          let sDur = 0;
+          let sEnd = cEnd - cDur; // default: server starts immediately => netOut=0
+          let ep = '';
+          let m = '';
+          let code = null;
+          if(sv){
+            const sAt = Date.parse(String(sv.at || ''));
+            sDur = Number(sv.dur_ms || 0);
+            sEnd = (isFinite(sAt) && isFinite(t0)) ? Math.max(0, sAt - t0) : (cEnd - cDur);
+            ep = _normEp(String(sv.path || ''));
+            m = String(sv.method || '') || String(c.method || '');
+            code = (sv.status_code !== null && sv.status_code !== undefined) ? Number(sv.status_code) : null;
+          }else{
+            ep = _normEp(String(c.url || ''));
+            m = String(c.method || '');
+            code = (c.status_code !== null && c.status_code !== undefined) ? Number(c.status_code) : null;
+          }
+          if(!ep) ep = _normEp(String(c.url || ''));
+          m = String(m || '').toUpperCase();
+
+          const idSuffix = sidFull.includes(':') ? (':' + sidFull.split(':').pop()) : (':' + String(idx + 1));
+          out.push({
+            id: idSuffix,
+            m,
+            ep,
+            cEnd: Number(cEnd),
+            cDur: Number(cDur),
+            sEnd: Number(sEnd),
+            sDur: Number(sDur),
+            status_code: code,
+          });
+        }catch(e){}
+      });
+      out.forEach(s => { s.cStart = Number(s.cEnd) - Number(s.cDur); });
+      return out;
+    }
+
+    function _renderDiagramShell(root){
+      root.innerHTML = `
+        <div class="tv" id="tv_root">
+          <div id="tv_head"></div>
+          <div class="tv_controls">
+            <button type="button" id="tv_toggle_ui">UI-Events: aus</button>
+            <button type="button" id="tv_zoom_reset">Zoom reset</button>
+          </div>
+          <div class="cards" id="tv_cards"></div>
+          <h2>⏱️ Zeitleiste (Gesamt) <span class="badge" id="tv_badge_total">-</span></h2>
+          <div class="phase-bar-container" id="tv_phaseBar"></div>
+          <h2>📊 Waterfall — Vollansicht <span class="badge" id="tv_badge_full">-</span></h2>
+          <div class="legend" id="tv_legend"></div>
+          <div class="waterfall-container" id="tv_waterfallFull"></div>
+          <h2>🔎 Waterfall — Zoom <span class="badge" id="tv_badge_zoom">-</span></h2>
+          <div class="waterfall-container" id="tv_waterfallZoom"></div>
+          <h2>📈 Endpoint-Statistiken</h2>
+          <div class="stats-grid" id="tv_statsGrid"></div>
+          <div class="tooltip" id="tv_tooltip"></div>
+        </div>
+      `;
+    }
+
+    function _fmtUtcShort(iso){
+      try{
+        const d = new Date(String(iso || ''));
+        if(!isFinite(d.getTime())) return String(iso || '');
+        const p = (n)=>String(n).padStart(2,'0');
+        return d.getUTCFullYear() + '-' + p(d.getUTCMonth()+1) + '-' + p(d.getUTCDate()) + ' ' + p(d.getUTCHours()) + ':' + p(d.getUTCMinutes()) + ':' + p(d.getUTCSeconds()) + ' UTC';
+      }catch(e){
+        return String(iso || '');
+      }
+    }
+
+    function _renderCards(trace, spans, total){
+      const el = document.getElementById('tv_cards');
+      if(!el) return;
+      const st = String(trace.status || '');
+      const api = (trace.counts && trace.counts.api_spans) ? Number(trace.counts.api_spans) : spans.length;
+      const ok = spans.filter(s => s.status_code && Number(s.status_code) < 400).length;
+      const err = spans.filter(s => s.status_code && Number(s.status_code) >= 400).length;
+      let bott = null;
+      spans.forEach(s=>{ if(!bott || Number(s.cDur) > Number(bott.cDur)) bott = s; });
+      const serverSum = spans.reduce((a,s)=>a + Math.max(0, Number(s.sDur)||0), 0);
+      const clientSum = spans.reduce((a,s)=>a + Math.max(0, Number(s.cDur)||0), 0);
+      const netSum = spans.reduce((a,s)=>a + Math.max(0, (Number(s.cDur)||0) - (Number(s.sDur)||0)), 0);
+      const pause = Math.max(0, Math.round((Number(total)||0) - clientSum));
+      const pctPause = total > 0 ? ((pause/total)*100) : 0;
+      const overheadAvg = spans.length ? (netSum / spans.length) : 0;
+      const serverPct = total > 0 ? ((serverSum/total)*100) : 0;
+      const statusCls = (st === 'ok') ? 'green' : (st === 'err' ? 'orange' : 'orange');
+      const cards = [
+        { label:'Gesamtdauer', value: String(Math.round(Number(total)||0)) + 'ms', cls: statusCls, sub: 'Status: ' + (st || '-') },
+        { label:'API Calls', value: String(isFinite(api)?api:0), cls:'blue', sub: String(ok) + ' OK · ' + String(err) + ' Fehler' },
+        { label:'Bottleneck', value: bott ? (String(Math.round(Number(bott.cDur)||0)) + 'ms') : '-', cls:'orange', sub: bott ? String(bott.ep || '') : '-' },
+        { label:'Server-Zeit', value: String(Math.round(serverSum)) + 'ms', cls:'blue', sub: serverPct.toFixed(1).replace('.', ',') + '% der Gesamtzeit' },
+        { label:'Netzwerk', value: '~' + String(Math.round(netSum)) + 'ms', cls:'purple', sub: 'Overhead ∅ ' + overheadAvg.toFixed(1).replace('.', ',') + 'ms' },
+        { label:'Client-Pausen', value: String(pause) + 'ms', cls:'orange', sub: pctPause.toFixed(1).replace('.', ',') + '% idle' },
+      ];
+      el.innerHTML = cards.map(c=>`<div class="card"><div class="label">${_escapeHtml(c.label)}</div><div class="value ${_escapeHtml(c.cls)}">${_escapeHtml(c.value)}</div><div class="sub">${_escapeHtml(c.sub)}</div></div>`).join('');
+    }
+
+    function _renderPhaseBar(total, spans){
+      const pbc = document.getElementById('tv_phaseBar');
+      if(!pbc) return;
+      const httpMs = spans.reduce((a,s)=>a + Math.max(0, Number(s.cDur)||0), 0);
+      const pause = Math.max(0, (Number(total)||0) - httpMs);
+      const phases = [
+        { label:'HTTP Calls', ms: Math.round(httpMs), cls:'p1', color:'#2563eb' },
+        { label:'Pause (Client)', ms: Math.round(pause), cls:'pause1', color:'#21262d' },
+      ];
+      const t = Math.max(1, Number(total)||1);
+      pbc.innerHTML = `
+        <div class="phase-bar">${phases.map(p=>{
+          const pct = (p.ms / t * 100);
+          const showLabel = pct > 8;
+          return `<div class="seg ${p.cls}" style="width:${pct}%">${showLabel ? (p.ms + 'ms') : ''}</div>`;
+        }).join('')}</div>
+        <div class="phase-labels">${phases.map(p=>`<div class="phase-label"><div class="phase-dot" style="background:${p.color}"></div>${_escapeHtml(p.label)} (${p.ms}ms · ${(p.ms/t*100).toFixed(1)}%)</div>`).join('')}</div>
+      `;
+    }
+
+    function _renderLegend(){
+      const el = document.getElementById('tv_legend');
+      if(!el) return;
+      el.innerHTML = `
+        <div class="legend-item"><div class="legend-swatch" style="background:var(--network-out)"></div>Request (Netzwerk →)</div>
+        <div class="legend-item"><div class="legend-swatch" style="background:var(--server)"></div>Server-Verarbeitung</div>
+        <div class="legend-item"><div class="legend-swatch" style="background:var(--server-slow)"></div>Server (langsam >100ms)</div>
+        <div class="legend-item"><div class="legend-swatch" style="background:var(--network-in)"></div>Response (Netzwerk ←)</div>
+      `;
+    }
+
+    function _waterfallBarWidth(container){
+      try{
+        const tv = document.getElementById('tv_root');
+        const labelW = tv ? parseFloat(getComputedStyle(tv).getPropertyValue('--wf-label-w')) : 260;
+        return Math.max(600, (container.clientWidth || 900) - (labelW || 260) - 40);
+      }catch(e){
+        return 600;
+      }
+    }
+
+    function _renderWaterfall(container, spanList, timelineEnd, uiMarkers, enableZoomSelect){
+      const barWidth = _waterfallBarWidth(container);
+      const scale = barWidth / Math.max(1, timelineEnd || 1);
+
+      // Timeline ticks
+      const tickCount = 8;
+      let ticksHtml = '';
+      for(let i=0;i<=tickCount;i+=1){
+        const ms = Math.round((timelineEnd / tickCount) * i);
+        const x = ms * scale;
+        ticksHtml += `<div class="tick" style="left:${x}px">${ms >= 1000 ? (ms/1000).toFixed(1)+'s' : ms+'ms'}</div>`;
+      }
+
+      let markersHtml = '';
+      (uiMarkers || []).forEach((m)=>{
+        try{
+          const x = Number(m) * scale;
+          markersHtml += `<div class="phase-marker" style="left:${x}px; border-color: var(--pink);"></div>`;
+        }catch(e){}
+      });
+
+      const zoomSel = enableZoomSelect ? '<div class="zoom-sel" id="tv_zoom_sel"></div>' : '';
+      const resizer = enableZoomSelect ? '<div class="wf-resizer" id="tv_resizer"></div>' : '<div class="wf-resizer"></div>';
+      let html = `<div class="timeline-header"><div class="wf-label" style="font-size:11px;color:var(--text2)">Endpoint${resizer}</div><div class="timeline-ticks" style="min-width:${barWidth}px">${ticksHtml}${markersHtml}${zoomSel}</div></div>`;
+
+      spanList.forEach((s, i)=>{
+        const cStart = Number(s.cStart || 0) * scale;
+        const totalW = Number(s.cDur || 0) * scale;
+
+        const sStartInSpan = Number(s.sEnd || 0) - Number(s.sDur || 0) - Number(s.cStart || 0);
+        const netOut = Math.max(0, sStartInSpan);
+        const serverDur = Math.max(0, Number(s.sDur || 0));
+        const netIn = Math.max(0, Number(s.cDur || 0) - netOut - serverDur);
+
+        const netOutW = Math.max(0.5, netOut * scale);
+        const serverW = Math.max(serverDur > 0 ? 1 : 0, serverDur * scale);
+        const netInW = Math.max(0.5, Math.max(0, totalW - netOutW - serverW));
+        const isSlow = serverDur > 100;
+        const ep = String(s.ep || '');
+        const help = _epHelp(ep);
+        _logMissingEndpointOnce(ep, window.__TV_TRACE_CTX || null);
+
+        html += `
+          <div class="waterfall-row" data-idx="${i}">
+            <div class="wf-label">
+              <span class="idx">${_escapeHtml(String(s.id || ''))}</span>
+              <span class="method ${(String(s.m||'').toLowerCase()==='get')?'get':'post'}">${_escapeHtml(String(s.m||''))}</span>
+              <span class="endpoint" title="${_escapeHtml(ep)}">${_escapeHtml(ep)}</span>
+            </div>
+            <div class="wf-bar-area" style="min-width:${barWidth}px">
+              <div class="wf-bar-wrap" style="left:${cStart}px;width:${Math.max(3,totalW)}px" data-span='${_escapeHtml(JSON.stringify({
+                id: s.id, m: s.m, ep: ep, help: help,
+                cStart: Number(s.cStart||0), cEnd: Number(s.cEnd||0), cDur: Number(s.cDur||0),
+                sEnd: Number(s.sEnd||0), sDur: Number(s.sDur||0)
+              }))}'></div>
+              <div class="wf-dur" style="left:${cStart + totalW + 6}px; display:${(totalW > 30)?'none':'block'};">${Math.round(Number(s.cDur||0))}ms</div>
+            </div>
+          </div>
+        `;
+      });
+
+      container.innerHTML = html;
+
+      // Fill bars + tooltip listeners
+      container.querySelectorAll('.wf-bar-wrap').forEach((el)=>{
+        try{
+          const s = JSON.parse(String(el.getAttribute('data-span') || '{}'));
+          const sStartInSpan = Number(s.sEnd||0) - Number(s.sDur||0) - Number(s.cStart||0);
+          const netOut = Math.max(0, sStartInSpan);
+          const serverDur = Math.max(0, Number(s.sDur||0));
+          const netIn = Math.max(0, Number(s.cDur||0) - netOut - serverDur);
+          const netOutW = Math.max(0.5, netOut * scale);
+          const serverW = Math.max(serverDur > 0 ? 1 : 0, serverDur * scale);
+          const netInW = Math.max(0.5, Math.max(0, (Number(s.cDur||0) * scale) - netOutW - serverW));
+          const isSlow = serverDur > 100;
+          el.innerHTML = `<div class="wf-seg net-out" style="width:${netOutW}px"></div><div class="wf-seg server ${isSlow?'slow':''}" style="width:${serverW}px"></div><div class="wf-seg net-in" style="width:${netInW}px"></div>`;
+          el.addEventListener('mouseenter', (ev)=>_showTT(ev, el));
+          el.addEventListener('mouseleave', ()=>_hideTT());
+        }catch(e){}
+      });
+    }
+
+    function _showTT(ev, el){
+      const ttEl = document.getElementById('tv_tooltip');
+      if(!ttEl) return;
+      let s;
+      try{ s = JSON.parse(String(el.getAttribute('data-span') || '{}')); }catch(e){ s = {}; }
+      const netOut = ((Number(s.sEnd||0) - Number(s.sDur||0)) - Number(s.cStart||0));
+      const netIn = (Number(s.cDur||0) - netOut - Number(s.sDur||0));
+      const help = String(s.help || _epHelp(s.ep || '') || '(unbekannt)');
+      ttEl.innerHTML = `
+        <div class="tt-title">${_escapeHtml(String(s.m||''))} ${_escapeHtml(String(s.ep||''))}</div>
+        <div class="tt-row"><span class="k">Span ID</span><span class="v">${_escapeHtml(String(s.id||''))}</span></div>
+        <div class="tt-row"><span class="k">Client-Start</span><span class="v">T+${Number(s.cStart||0).toFixed(1)}ms</span></div>
+        <div class="tt-row"><span class="k">Client-Ende</span><span class="v">T+${Number(s.cEnd||0).toFixed(1)}ms</span></div>
+        <div class="tt-row"><span class="k">Client-Dauer</span><span class="v" style="color:var(--accent)">${Math.round(Number(s.cDur||0))}ms</span></div>
+        <hr style="border-color:var(--border);margin:6px 0">
+        <div class="tt-row"><span class="k">Netzwerk →</span><span class="v">${netOut.toFixed(1)}ms</span></div>
+        <div class="tt-row"><span class="k">Server</span><span class="v" style="color:${Number(s.sDur||0)>100?'var(--orange)':'var(--green)'}">${Math.round(Number(s.sDur||0))}ms</span></div>
+        <div class="tt-row"><span class="k">Netzwerk ←</span><span class="v">${netIn.toFixed(1)}ms</span></div>
+        <hr style="border-color:var(--border);margin:6px 0">
+        <div class="tt-row"><span class="k">Erklaerung</span><span class="v" style="max-width:220px; text-align:right;">${_escapeHtml(help)}</span></div>
+      `;
+      ttEl.classList.add('show');
+      const r = el.getBoundingClientRect();
+      ttEl.style.left = Math.min((ev && ev.clientX ? ev.clientX : r.left) + 12, window.innerWidth - 420) + 'px';
+      ttEl.style.top = (r.bottom + 8) + 'px';
+    }
+
+    function _hideTT(){
+      const ttEl = document.getElementById('tv_tooltip');
+      if(!ttEl) return;
+      ttEl.classList.remove('show');
+    }
+
+    function _renderStats(spanList){
+      const el = document.getElementById('tv_statsGrid');
+      if(!el) return;
+      const epGroups = {};
+      spanList.forEach(s=>{
+        const key = String(s.ep || '');
+        if(!epGroups[key]) epGroups[key] = { ep: key, calls: [], totalClient: 0, totalServer: 0, maxClient: 0 };
+        epGroups[key].calls.push(s);
+        epGroups[key].totalClient += Number(s.cDur||0);
+        epGroups[key].totalServer += Number(s.sDur||0);
+        epGroups[key].maxClient = Math.max(epGroups[key].maxClient, Number(s.cDur||0));
+      });
+      const vals = Object.values(epGroups);
+      const maxMs = vals.length ? Math.max.apply(null, vals.map(g=>g.maxClient)) : 1;
+      el.innerHTML = vals.sort((a,b)=>b.totalClient - a.totalClient).map(g=>{
+        const pct = (g.maxClient / Math.max(1, maxMs) * 100).toFixed(0);
+        const color = g.maxClient > 100 ? 'var(--orange)' : 'var(--accent)';
+        return `<div class="stat-card">
+          <div class="ep"><span title="${_escapeHtml(g.ep)}">${_escapeHtml(g.ep)}</span><span class="count">${g.calls.length}×</span></div>
+          <div class="bar-bg"><div class="bar-fill" style="width:${pct}%;background:${color}"></div></div>
+          <div class="meta"><span>Max: ${Math.round(g.maxClient)}ms</span><span>Server Σ: ${Math.round(g.totalServer)}ms</span><span>Client Σ: ${Math.round(g.totalClient)}ms</span></div>
+        </div>`;
+      }).join('');
+    }
+
+    function _attachResizer(tvRoot, onResize){
+      const rz = tvRoot.querySelector('#tv_resizer');
+      if(!rz) return;
+      let dragging = false;
+      let startX = 0;
+      let startW = 260;
+      const onMove = (ev)=>{
+        if(!dragging) return;
+        const dx = (ev.clientX - startX);
+        const w = Math.max(180, Math.min(520, Math.round(startW + dx)));
+        tvRoot.style.setProperty('--wf-label-w', w + 'px');
+        try{ localStorage.setItem('ib_perf_wf_label_w', String(w)); }catch(e){}
+        if(onResize) onResize(w);
+      };
+      const onUp = ()=>{
+        dragging = false;
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+      };
+      rz.onmousedown = (ev)=>{
+        try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+        dragging = true;
+        startX = ev.clientX;
+        try{ startW = parseFloat(getComputedStyle(tvRoot).getPropertyValue('--wf-label-w')) || 260; }catch(e){ startW = 260; }
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+      };
+    }
+
+    function _attachZoomSelect(fullContainer, tvRoot, total, spans, uiMarkers){
+      const ticks = fullContainer.querySelector('.timeline-ticks');
+      const sel = fullContainer.querySelector('#tv_zoom_sel');
+      if(!ticks || !sel) return;
+      let down = false;
+      let x0 = 0;
+      const rectFor = ()=>ticks.getBoundingClientRect();
+      const clampX = (x, r)=>Math.max(0, Math.min(r.width, x));
+      const renderSel = (a,b)=>{
+        const lo = Math.min(a,b);
+        const hi = Math.max(a,b);
+        sel.style.display = 'block';
+        sel.style.left = lo + 'px';
+        sel.style.width = Math.max(1, (hi - lo)) + 'px';
+      };
+      const hideSel = ()=>{ sel.style.display = 'none'; };
+
+      const toMs = (x, r)=>{
+        const t = Math.max(1, Number(total)||1);
+        return (x / r.width) * t;
+      };
+
+      const onMove = (ev)=>{
+        if(!down) return;
+        const r = rectFor();
+        const x1 = clampX(ev.clientX - r.left, r);
+        renderSel(x0, x1);
+      };
+      const onUp = (ev)=>{
+        if(!down) return;
+        down = false;
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        const r = rectFor();
+        const x1 = clampX(ev.clientX - r.left, r);
+        const a = toMs(Math.min(x0, x1), r);
+        const b = toMs(Math.max(x0, x1), r);
+        const minLen = 30;
+        if((b - a) < minLen){
+          hideSel();
+          return;
+        }
+        _tv_state.zoom_start = Math.round(a);
+        _tv_state.zoom_end = Math.round(b);
+        _renderZoom(total, spans, uiMarkers);
+      };
+
+      ticks.onmousedown = (ev)=>{
+        try{ ev.preventDefault(); }catch(e){}
+        const r = rectFor();
+        down = true;
+        x0 = clampX(ev.clientX - r.left, r);
+        renderSel(x0, x0 + 1);
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+      };
+    }
+
+    function _clipSpanToRange(s, a, b){
+      const start = Number(s.cStart||0);
+      const end = Number(s.cEnd||0);
+      const lo = Math.max(start, a);
+      const hi = Math.min(end, b);
+      if(hi <= lo) return null;
+      const cStart = lo - a;
+      const cEnd = hi - a;
+      const cDur = cEnd - cStart;
+
+      const sEnd0 = Number(s.sEnd||0);
+      const sDur0 = Number(s.sDur||0);
+      const sStart0 = sEnd0 - sDur0;
+      const sl = Math.max(sStart0, a);
+      const sh = Math.min(sEnd0, b);
+      const sDur = Math.max(0, sh - sl);
+      const sEnd = (sDur > 0) ? (sh - a) : cStart;
+
+      return { ...s, cStart, cEnd, cDur, sEnd, sDur };
+    }
+
+    function _renderZoom(total, spans, uiMarkers){
+      const zc = document.getElementById('tv_waterfallZoom');
+      const badge = document.getElementById('tv_badge_zoom');
+      if(!zc) return;
+      const a = Math.max(0, Number(_tv_state.zoom_start||0));
+      const b = Math.min(Number(total||0), Number(_tv_state.zoom_end||0) || Math.min(600, Number(total||0)));
+      const len = Math.max(1, b - a);
+      if(badge) badge.textContent = Math.round(a) + ' – ' + Math.round(b) + ' ms';
+      const clipped = spans.map(s=>_clipSpanToRange(s, a, b)).filter(Boolean);
+      const uiRel = (uiMarkers || []).map(t=>Number(t) - a).filter(x=>x >= 0 && x <= len);
+      _renderWaterfall(zc, clipped, len, uiRel, false);
+    }
+
     function renderDiagram(trace){
       const root = document.getElementById('diagram');
       if(!root) return;
       if(!trace || !trace.trace_id){
-        root.innerHTML = '<div class="diag_sub">Kein Trace selektiert.</div>';
+        root.innerHTML = '<div class="tv"><div class="subtitle">Kein Trace selektiert.</div></div>';
         return;
       }
 
+      _renderDiagramShell(root);
+      const tvRoot = document.getElementById('tv_root');
+
+      // restore label width
+      if(tvRoot){
+        try{
+          const w = parseInt(localStorage.getItem('ib_perf_wf_label_w') || '', 10);
+          if(isFinite(w) && w >= 180 && w <= 520) tvRoot.style.setProperty('--wf-label-w', w + 'px');
+        }catch(e){}
+      }
+
+      window.__TV_TRACE_CTX = { trace_id: trace.trace_id, action: trace.action, page: trace.page };
+
+      const spans = _traceToTemplateSpans(trace);
+      const total = (trace.dur_ms !== null && trace.dur_ms !== undefined) ? Number(trace.dur_ms) : (spans.length ? Math.max.apply(null, spans.map(s=>Number(s.cEnd||0))) : 0);
+      const uiEvents = Array.isArray(trace.ui_events) ? trace.ui_events : [];
       const t0 = Date.parse(String(trace.started_at || ''));
-      const t1 = Date.parse(String(trace.last_at || trace.started_at || ''));
-      const totalMs = (trace.dur_ms !== null && trace.dur_ms !== undefined) ? Number(trace.dur_ms) : (isFinite(t0) && isFinite(t1) ? Math.max(0, t1 - t0) : 0);
+      const uiMarkers = (_tv_state.show_ui_events && isFinite(t0)) ? uiEvents.map(e=>Math.max(0, Date.parse(String(e.at||'')) - t0)).filter(x=>isFinite(x)) : [];
 
-      const client = Array.isArray(trace.client_spans) ? trace.client_spans : [];
-      const server = Array.isArray(trace.spans) ? trace.spans : [];
-      const serverById = new Map();
-      server.forEach(s=>{ try{ if(s && s.span_id) serverById.set(String(s.span_id), s); }catch(e){} });
+      // header
+      const head = document.getElementById('tv_head');
+      if(head){
+        head.innerHTML = `<h1>Trace: ${_escapeHtml(String(trace.action || ''))}</h1>`
+          + `<div class="subtitle">${_escapeHtml(String(trace.page||''))} · ${_escapeHtml(_fmtUtcShort(trace.started_at||''))} · Trace-ID: ${_escapeHtml(String(trace.trace_id||''))}</div>`;
+      }
 
-      const rows = client.map(c=>{
-        const sid = String(c.span_id || '');
-        const sv = serverById.get(sid) || null;
-        const cAt = Date.parse(String(c.at || ''));
-        const cStart = isFinite(cAt) && isFinite(t0) ? Math.max(0, cAt - t0) : 0;
-        const cDur = Number(c.dur_ms || 0);
-        const sDur = sv ? Number(sv.dur_ms || 0) : 0;
-        const overhead = Math.max(0, cDur - Math.max(0, sDur));
-        const netOut = overhead/2;
-        const netIn = overhead - netOut;
-        const ep = String((c.url || (sv ? sv.path : '')) || '');
-        const method = String(c.method || (sv ? sv.method : '') || '').toUpperCase();
-        const status = String(c.status || (sv ? sv.status : '') || '');
-        const code = (c.status_code !== null && c.status_code !== undefined) ? Number(c.status_code) : (sv ? Number(sv.status_code) : null);
-        return { sid, method, ep, status, code, cStart, cDur, netOut, sDur: Math.max(0, sDur), netIn };
-      }).sort((a,b)=>a.cStart - b.cStart);
+      const badgeTotal = document.getElementById('tv_badge_total');
+      const badgeFull = document.getElementById('tv_badge_full');
+      if(badgeTotal) badgeTotal.textContent = String(Math.round(total)) + ' ms';
+      if(badgeFull) badgeFull.textContent = 'alle ' + String(spans.length) + ' Requests';
 
-      const apiCount = (trace.counts && trace.counts.api_spans) ? Number(trace.counts.api_spans) : server.length;
-      const netCount = (trace.counts && trace.counts.client_spans) ? Number(trace.counts.client_spans) : client.length;
-      const qCount = (trace.counts && trace.counts.queries) ? Number(trace.counts.queries) : 0;
-      const errCount = Array.isArray(trace.errors) ? trace.errors.length : 0;
+      _renderCards(trace, spans, total);
+      _renderPhaseBar(total, spans);
+      _renderLegend();
 
-      const head = `
-        <div class="diag_h">Trace: ${_escapeHtml(prettyAction(trace.action || ''))}</div>
-        <div class="diag_sub">${_escapeHtml(pageLabel(trace.page || ''))} | ${_escapeHtml(_fmtDateTime(trace.started_at || ''))} | Trace-ID: <span class="mono">${_escapeHtml(trace.trace_id || '')}</span></div>
-        <div class="diag_cards">
-          <div class="diag_card"><div class="k">Gesamtdauer</div><div class="v">${isFinite(totalMs)?Math.round(totalMs):0} ms</div></div>
-          <div class="diag_card"><div class="k">API Calls</div><div class="v">${isFinite(apiCount)?apiCount:0}</div></div>
-          <div class="diag_card"><div class="k">HTTP Client</div><div class="v">${isFinite(netCount)?netCount:0}</div></div>
-          <div class="diag_card"><div class="k">Queries</div><div class="v">${isFinite(qCount)?qCount:0}</div></div>
-          <div class="diag_card"><div class="k">Errors</div><div class="v">${isFinite(errCount)?errCount:0}</div></div>
-        </div>
-      `;
+      const full = document.getElementById('tv_waterfallFull');
+      if(full){
+        _renderWaterfall(full, spans, total, uiMarkers, true);
+        _attachResizer(tvRoot, ()=>{
+          _renderWaterfall(full, spans, total, uiMarkers, true);
+          _attachZoomSelect(full, tvRoot, total, spans, uiMarkers);
+          _renderZoom(total, spans, uiMarkers);
+        });
+        _attachZoomSelect(full, tvRoot, total, spans, uiMarkers);
+      }
+      _renderZoom(total, spans, uiMarkers);
+      _renderStats(spans);
 
-      const minW = 620;
-      const scale = (ms)=>{
-        const t = Math.max(1, totalMs || 1);
-        return (ms / t) * (minW - 20);
-      };
+      const btnUi = document.getElementById('tv_toggle_ui');
+      if(btnUi){
+        btnUi.textContent = _tv_state.show_ui_events ? 'UI-Events: an' : 'UI-Events: aus';
+        btnUi.onclick = ()=>{
+          _tv_state.show_ui_events = !_tv_state.show_ui_events;
+          renderDiagram(trace);
+        };
+      }
 
-      const wfRows = rows.map((r, idx)=>{
-        const left = 10 + scale(r.cStart);
-        const w = Math.max(3, scale(r.cDur));
-        const outW = Math.max(0.5, scale(r.netOut));
-        const srvW = Math.max(0, scale(r.sDur));
-        const inW = Math.max(0.5, Math.max(0, w - outW - srvW));
-        const mcls = (r.method === 'GET') ? 'get' : 'post';
-        const ep = r.ep.replace(/^\.\//,'/');
-        const durTxt = (r.cDur >= 30) ? '' : `<div class="wf_dur" style="left:${left + w + 6}px">${Math.round(r.cDur)}ms</div>`;
-        return `
-          <div class="wf_row" title="${_escapeHtml(r.method + ' ' + ep)}">
-            <div class="wf_label">
-              <div class="wf_idx">${idx+1}</div>
-              <div class="wf_m ${mcls}">${_escapeHtml(r.method || '?')}</div>
-              <div class="wf_ep">${_escapeHtml(ep)}</div>
-            </div>
-            <div class="wf_bar_area">
-              <div class="wf_bar" style="left:${left}px; width:${w}px;">
-                <div class="seg_out" style="width:${outW}px"></div>
-                <div class="seg_srv" style="width:${srvW}px"></div>
-                <div class="seg_in" style="width:${inW}px"></div>
-              </div>
-              ${durTxt}
-            </div>
-          </div>
-        `;
-      }).join('');
-
-      root.innerHTML = head + `<div class="wf">${wfRows || '<div class="diag_sub" style="padding:10px;">Keine HTTP Spans vorhanden.</div>'}</div>`;
+      const btnReset = document.getElementById('tv_zoom_reset');
+      if(btnReset){
+        btnReset.onclick = ()=>{
+          _tv_state.zoom_start = 0;
+          _tv_state.zoom_end = Math.min(600, Math.round(total||0));
+          _renderZoom(total, spans, uiMarkers);
+          try{
+            const sel = full ? full.querySelector('#tv_zoom_sel') : null;
+            if(sel) sel.style.display = 'none';
+          }catch(e){}
+        };
+      }
     }
 
     async function load(){
