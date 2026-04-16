@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.362
+
+### Enhancement
+
+- Performanceanalyse: Seite nutzt jetzt Section-Layout mit ausfuehrlicher Hilfe; Trace-Liste markiert selektierte Zeile, zeigt Start/Ende/Dauer und bietet Copy-Buttons; Details sind scrollbar/resizable; neuer Diagramm-Abschnitt (Waterfall) fuer selektierten Trace. ([#308](https://github.com/thomas682/HA-Addons/issues/308))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`
+- Tests: `pytest tests/test_settings_defaults_highlight.py -q`
+- Tested with Home Assistant Core: 2026.4.2
+
 ## 1.12.361
 
 ### Enhancement

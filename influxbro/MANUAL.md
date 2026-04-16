@@ -566,7 +566,10 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Die Hoehe der Titel-/Pagecard-Leiste schrumpft nach automatischen Erweiterungen wieder auf die kleinste vollstaendige Hoehe des aktuell sichtbaren Inhalts zurueck.
 - Button-Klicks werden fuer Supportzwecke jetzt global protokolliert. Wenn ein Button-Handler scheitert, landet der Fehler nicht nur im Browser, sondern auch im UI-Fehlerlog und im Add-on-Log.
 - Neu: App-weites Tracing erzeugt pro Button-Aktion eine eindeutige `trace_id` und korreliert UI-Events, API-Requests, Client-Netzwerkzeiten und Influx-Queries. Flux Queries enthalten zusaetzlich einen Kommentar `// trace_id=...`.
-- Neuer Menuepunkt `Performanceanalyse`: zeigt den persistierten Action/Trace-Log (Default 1000 Eintraege, in den Einstellungen konfigurierbar) und erlaubt Drilldown in Details.
+- Neuer Menuepunkt `Performanceanalyse`: zeigt den persistierten Action/Trace-Log (Limit/Filter), erlaubt Drilldown in Details und rendert den selektierten Trace zusaetzlich als Diagramm (Waterfall).
+  - Links: Trace-Liste mit Start/Ende/Dauer, Seite, Ausloeser (Klartext + technische ID), Status und Counts.
+  - Rechts: JSON-Details (scrollbar/resizable) plus Copy-Buttons (Zwischenablage, TraceID).
+  - Diagramm: grafische Zeitleiste der HTTP Calls (Netzwerk/Server/Netzwerk) basierend auf den Trace-Spans.
 - Mit aktivem `superpicker` wird jetzt das direkt gehoverte Unterelement bevorzugt erfasst; dadurch lassen sich auch Elemente innerhalb eines groesseren `data-ui`-Containers gezielter identifizieren.
 - Der `S-Picker` prueft im Super-Modus wieder zuerst das direkt getroffene Element wie in den frueheren Dashboard-Versionen; dadurch lassen sich auch feinere Unterelemente wieder zuverlaessig selektieren.
 - Falls ein Element kein `data-ui`, aber eine stabile `id` besitzt, kann der `S-Picker` diese `id` ebenfalls direkt kopieren, z. B. `analysis_start_info`.

@@ -26,7 +26,6 @@
     .ico { width: 22px; height: 22px; display:inline-flex; align-items:center; justify-content:center; font-weight: 800; }
 
     .content { padding: 16px; }
-    h2 { margin: 0; }
     .muted { opacity: 0.7; font-size: 12px; }
     .row { display:flex; gap: 10px; flex-wrap:wrap; align-items:end; margin-top: 10px; }
     input, select, button { padding: 10px 12px; height: 40px; box-sizing: border-box; }
@@ -38,12 +37,59 @@
     .tbl { width:100%; border-collapse: collapse; }
     .tbl th, .tbl td { border-bottom: 1px solid #eee; padding: 8px 10px; font-size: 12px; vertical-align: top; }
     .tbl th { text-align:left; background:#fafafa; }
+    .tbl tr { cursor:pointer; }
+    .tbl tr:hover { background:#f6f6f6; }
+    .tbl tr.selected { background:#fff3d6; }
     pre { margin:0; font-size: 12px; line-height:1.45; white-space: pre; overflow:auto; }
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
     .pill { display:inline-flex; align-items:center; height: 22px; padding: 0 8px; border-radius: 999px; border:1px solid #ddd; font-size: 12px; }
     .pill.ok { background:#eefaf1; border-color:#b6e2c0; color:#0a7a28; }
     .pill.err { background:#fff0f0; border-color:#f2b0b0; color:#b00020; }
     .pill.run { background:#fafafa; border-color:#ddd; color: rgba(0,0,0,0.72); }
+
+    .pane_head { display:flex; align-items:flex-end; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+    .pane_actions { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    .iconbtn { width:40px; padding:0; display:inline-flex; align-items:center; justify-content:center; border:1px solid #ddd; background:#fff; border-radius:10px; }
+    .iconbtn svg { width:18px; height:18px; }
+
+    .pane_box {
+      border: 1px solid #eee;
+      border-radius: 12px;
+      padding: 10px;
+      background: #fff;
+      overflow: auto;
+      resize: both;
+      min-height: 44vh;
+      max-height: 78vh;
+      min-width: 280px;
+    }
+    @media (max-width: 980px){
+      .pane_box { resize: vertical; min-width: 0; }
+    }
+
+    /* Diagram (dark, inline) */
+    .diag_wrap { background:#0d1117; color:#e6edf3; border:1px solid #30363d; border-radius:12px; padding:12px; overflow:auto; }
+    .diag_h { font-weight:800; font-size:14px; }
+    .diag_sub { color:#8b949e; font-size:12px; margin-top:4px; }
+    .diag_cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:10px; margin-top:12px; }
+    .diag_card { background:#161b22; border:1px solid #30363d; border-radius:10px; padding:12px 14px; }
+    .diag_card .k { font-size:11px; color:#8b949e; text-transform:uppercase; letter-spacing:.4px; }
+    .diag_card .v { font-size:20px; font-weight:800; margin-top:2px; }
+    .wf { margin-top:14px; border:1px solid #30363d; border-radius:10px; background:#161b22; overflow:auto; }
+    .wf_row { display:flex; align-items:center; height:30px; border-bottom:1px solid #30363d; }
+    .wf_row:last-child { border-bottom:none; }
+    .wf_label { width:320px; min-width:320px; max-width:320px; padding:0 10px; display:flex; align-items:center; gap:8px; }
+    .wf_idx { color:#8b949e; font-size:11px; width:24px; text-align:right; }
+    .wf_m { font-size:10px; font-weight:800; padding:1px 6px; border-radius:4px; }
+    .wf_m.get { background:rgba(63,185,80,0.15); color:#3fb950; }
+    .wf_m.post { background:rgba(88,166,255,0.15); color:#58a6ff; }
+    .wf_ep { font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .wf_bar_area { position:relative; flex:1; min-width:620px; height:100%; }
+    .wf_bar { position:absolute; top:50%; transform:translateY(-50%); height:16px; border-radius:4px; overflow:hidden; display:flex; }
+    .seg_out { background:#1f4a7a; }
+    .seg_srv { background:#58a6ff; }
+    .seg_in { background:#1a3d5c; }
+    .wf_dur { position:absolute; top:50%; transform:translateY(-50%); font-size:10px; color:#8b949e; white-space:nowrap; }
   </style>
 </head>
 <body>
@@ -51,55 +97,165 @@
   <div class="shell">
     {% include "_nav.html" %}
     <main class="content" data-ui="perf_page.main" title="perf.page">
-      <h2>Performanceanalyse</h2>
-      <div class="muted">Action/Trace Log: Klicks → API Calls → Queries → Dauer/Fehler (persistent)</div>
+      <details class="card" open data-ui="perf_page.section_root" title="perf_page.section_root">
+        <summary>
+          <span class="ib_summary_row">
+            <span>Performanceanalyse</span>
+            <div class="ib_summary_actions">
+              <button type="button" class="ib_info_icon" data-info-title="Performanceanalyse" data-info-body="Die Performanceanalyse zeigt pro UI-Aktion (z.B. Button-Klick) einen zusammengefassten Trace. Ein Trace korreliert:\n- UI Ausloeser (action / ui_event)\n- HTTP Calls im Browser (client_spans)\n- HTTP Requests im Add-on (spans kind=http.request)\n- ggf. Influx Queries (queries)\n\nLinks siehst du die letzten Traces (Standard: 200). Rechts siehst du die Details des selektierten Traces als JSON und darunter im Abschnitt \"Diagramm\" eine grafische Zeitleiste (Waterfall).\n\nSo liest du eine Zeile links:\n- \"200 von 200 Traces\": nach Filterung sichtbare Eintraege vs. insgesamt geladene.\n- Start / Ende / ms: Startzeit (started_at), letzte Aktivitaet (last_at) und Gesamtdauer (dur_ms).\n- Seite: aus page/frame (z.B. dashboard_page.main = Dashboard).\n- Ausloeser: technische ID (z.B. dashboard_caching.btn_cache_pruefen) plus Klartext-Name.\n- Status: ok/err/running.\n- Counts: ui= UI-Events, api= server Requests, net= browser HTTP Calls, q= Influx Queries.\n\nReales Beispiel (geklickt: dashboard_caching.btn_cache_pruefen):\n- trace_id: 2026-04-16T090127605Z|dashboard_page.main|dashboard_caching.btn_cache_pruefen|1|2608396c\n- counts.api_spans=13 und counts.client_spans=13: der Klick hat 13 API-Requests ausgeloest.\n- queries=0: keine Influx Queries in dieser Aktion.\n- ui_events=1: ein Klick (button_press) war der Ausloeser.\n- dur_ms=4886: vom Start bis zur letzten Aktivitaet ~4.9s.\n\nDetails JSON (rechts) erklaert:\n- action/page/trace_id: eindeutige Zuordnung des Klicks.\n- client_spans: Browser-Sicht (fetch), inkl. url/method/status_code/dur_ms.\n- spans: Server-Sicht (Flask), inkl. path/method/status_code/dur_ms.\n- Differenz client_dur vs server_dur ist typischer Overhead (Netzwerk/Queue/Browser).\n\nTipps:\n- Suche (Volltext) findet action, trace_id, Endpoints, Statuscodes usw.\n- \"TraceID kopieren\" hilft beim Support: du kannst damit in Logs/Worklog gezielt korrelieren." >
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+              </button>
+              <button id="refresh" type="button" style="width:auto;" data-ui="perf_page.btn_refresh">Refresh</button>
+            </div>
+          </span>
+        </summary>
 
-      <div class="card" data-ui="perf_page.section_root" title="perf.page">
-        <div class="row">
-          <div style="flex:1; min-width:240px;">
-            <label class="muted">Filter (Volltext)</label>
-            <input id="q" placeholder="z.B. dashboard_caching.btn_cache_pruefen oder trace_id" style="width:100%;" />
+        <div class="card_body">
+          <div class="muted">Action/Trace Log: Klicks → API Calls → Queries → Dauer/Fehler (persistent)</div>
+
+          <div class="row">
+            <div style="flex:1; min-width:240px;">
+              <label class="muted">Filter (Volltext)</label>
+              <input id="q" placeholder="z.B. dashboard_caching.btn_cache_pruefen oder trace_id" style="width:100%;" />
+            </div>
+            <div>
+              <label class="muted">Limit</label>
+              <select id="limit">
+                <option value="200" selected>200</option>
+                <option value="500">500</option>
+                <option value="1000">1000</option>
+              </select>
+            </div>
           </div>
-          <div>
-            <label class="muted">Limit</label>
-            <select id="limit">
-              <option value="200" selected>200</option>
-              <option value="500">500</option>
-              <option value="1000">1000</option>
-            </select>
-          </div>
-          <div>
-            <label class="muted">&nbsp;</label>
-            <button id="refresh" type="button" style="width:auto;" data-ui="perf_page.btn_refresh">Refresh</button>
+
+          <div class="grid2" style="margin-top:12px;">
+            <div>
+              <div class="pane_head">
+                <div class="muted" id="meta"></div>
+                <div class="pane_actions">
+                  <button id="list_copy" type="button" class="iconbtn" data-ui="perf_list.btn_copy" title="Zwischenablage kopieren" aria-label="Zwischenablage kopieren">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><path d="M6 11C6 8.17157 6 6.75736 6.87868 5.87868C7.75736 5 9.17157 5 12 5H15C17.8284 5 19.2426 5 20.1213 5.87868C21 6.75736 21 8.17157 21 11V16C21 18.8284 21 20.2426 20.1213 21.1213C19.2426 22 17.8284 22 15 22H12C9.17157 22 7.75736 22 6.87868 21.1213C6 20.2426 6 18.8284 6 16V11Z" stroke="currentColor" stroke-width="1.5"/><path d="M6 19C4.34315 19 3 17.6569 3 16V10C3 6.22876 3 4.34315 4.17157 3.17157C5.34315 2 7.22876 2 11 2H15C16.6569 2 18 3.34315 18 5" stroke="currentColor" stroke-width="1.5"/></svg>
+                  </button>
+                  <button id="list_copy_trace" type="button" class="iconbtn" data-ui="perf_list.btn_copy_trace_id" title="TraceID kopieren" aria-label="TraceID kopieren">
+                    <span class="mono" style="font-size:12px;">ID</span>
+                  </button>
+                </div>
+              </div>
+              <div id="list_box" class="pane_box" style="margin-top:8px;">
+                <table class="tbl" aria-label="Traces">
+                  <thead>
+                    <tr>
+                      <th style="width:118px;">Start</th>
+                      <th style="width:118px;">Ende</th>
+                      <th style="width:70px;">ms</th>
+                      <th style="width:110px;">Seite</th>
+                      <th>Ausloeser</th>
+                      <th style="width:90px;">Status</th>
+                      <th style="width:120px;">Counts</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tb"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <div>
+              <div class="pane_head">
+                <div class="muted" id="detail_meta">Details</div>
+                <div class="pane_actions">
+                  <button id="detail_copy" type="button" class="iconbtn" data-ui="perf_detail.btn_copy" title="Zwischenablage kopieren" aria-label="Zwischenablage kopieren">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><path d="M6 11C6 8.17157 6 6.75736 6.87868 5.87868C7.75736 5 9.17157 5 12 5H15C17.8284 5 19.2426 5 20.1213 5.87868C21 6.75736 21 8.17157 21 11V16C21 18.8284 21 20.2426 20.1213 21.1213C19.2426 22 17.8284 22 15 22H12C9.17157 22 7.75736 22 6.87868 21.1213C6 20.2426 6 18.8284 6 16V11Z" stroke="currentColor" stroke-width="1.5"/><path d="M6 19C4.34315 19 3 17.6569 3 16V10C3 6.22876 3 4.34315 4.17157 3.17157C5.34315 2 7.22876 2 11 2H15C16.6569 2 18 3.34315 18 5" stroke="currentColor" stroke-width="1.5"/></svg>
+                  </button>
+                  <button id="detail_copy_trace" type="button" class="iconbtn" data-ui="perf_detail.btn_copy_trace_id" title="TraceID kopieren" aria-label="TraceID kopieren">
+                    <span class="mono" style="font-size:12px;">ID</span>
+                  </button>
+                </div>
+              </div>
+              <div id="detail_box" class="pane_box" style="margin-top:8px; background:#fafafa;">
+                <pre id="detail" class="mono"></pre>
+              </div>
+            </div>
           </div>
         </div>
+      </details>
 
-        <div class="grid2" style="margin-top:12px;">
-          <div>
-            <div class="muted" id="meta"></div>
-            <table class="tbl" aria-label="Traces">
-              <thead>
-                <tr>
-                  <th style="width:140px;">Zeit</th>
-                  <th>Action</th>
-                  <th style="width:90px;">Status</th>
-                  <th style="width:110px;">Counts</th>
-                </tr>
-              </thead>
-              <tbody id="tb"></tbody>
-            </table>
-          </div>
-          <div>
-            <div class="muted">Details</div>
-            <pre id="detail" class="mono" style="background:#fafafa; border:1px solid #eee; border-radius:12px; padding:12px; min-height: 40vh;"></pre>
+      <details class="card" open data-ui="perf_page.diagram.section_root" title="perf_page.diagram.section_root">
+        <summary><span class="ib_summary_row"><span>Diagramm</span></span></summary>
+        <div class="card_body">
+          <div class="muted">Grafische Zeitleiste (Waterfall) fuer den selektierten Trace.</div>
+          <div id="diagram" class="diag_wrap" style="margin-top:10px;">
+            <div class="diag_sub">Kein Trace selektiert.</div>
           </div>
         </div>
-      </div>
+      </details>
     </main>
   </div>
 
+  {% include "_table_cols.html" %}
   {% include "_tooltips.html" %}
   <script>
+    let LAST_TRACES = [];
+    let SELECTED_TRACE_ID = null;
+
+    const ACTION_LABELS = {
+      'nav_main.btn_ui_picker_super': 'S-Picker',
+      'nav_main.btn_ui_picker': 'Picker',
+      'dashboard_analysis.btn_analyse_mit_cache': 'Analyse mit Cache',
+      'dashboard_analysis.btn_analyse_ohne_cache': 'Analyse ohne Cache',
+      'dashboard_caching.btn_cache_pruefen': 'Cache pruefen',
+    };
+
+    function pageLabel(page){
+      const p = String(page || '');
+      if(p.startsWith('dashboard_')) return 'Dashboard';
+      if(p.startsWith('stats_')) return 'Statistik';
+      if(p.startsWith('config_')) return 'Einstellungen';
+      if(p.startsWith('dbinfo_')) return 'Diagnose';
+      if(p.startsWith('backup_')) return 'Backup';
+      if(p.startsWith('restore_')) return 'Restore';
+      if(p.startsWith('jobs_')) return 'Jobs';
+      if(p.startsWith('history_')) return 'History';
+      if(p.startsWith('quality_')) return 'Datenqualitaet';
+      if(p.startsWith('profiles_')) return 'Profile';
+      if(p.startsWith('perf_')) return 'Performanceanalyse';
+      return p || '-';
+    }
+
+    function prettyAction(action){
+      const a = String(action || '');
+      if(ACTION_LABELS[a]) return ACTION_LABELS[a];
+      // Small heuristics for common patterns
+      if(a.endsWith('.btn_analyse_mit_cache')) return 'Analyse mit Cache';
+      if(a.endsWith('.btn_analyse_ohne_cache')) return 'Analyse ohne Cache';
+      if(a.includes('btn_ui_picker_super')) return 'S-Picker';
+      return a || '-';
+    }
+
+    async function copyToClipboard(text){
+      const s = String(text || '');
+      if(!s) return false;
+      try{
+        if(navigator.clipboard && navigator.clipboard.writeText){
+          await navigator.clipboard.writeText(s);
+          return true;
+        }
+      }catch(e){}
+      try{
+        const ta = document.createElement('textarea');
+        ta.value = s;
+        ta.style.position = 'fixed';
+        ta.style.left = '-1000px';
+        ta.style.top = '-1000px';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        return true;
+      }catch(e){
+        return false;
+      }
+    }
+
     async function api(url){
       const r = await fetch(url);
       const j = await r.json().catch(()=>null);
@@ -140,37 +296,257 @@
       }
     }
 
+    function _fmtDateTime(iso){
+      try{
+        const d = new Date(String(iso || ''));
+        if(!isFinite(d.getTime())) return String(iso || '');
+        const p = (n)=>String(n).padStart(2,'0');
+        const p3 = (n)=>String(n).padStart(3,'0');
+        return p(d.getDate()) + '.' + p(d.getMonth()+1) + '.' + d.getFullYear() + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds()) + '.' + p3(d.getMilliseconds());
+      }catch(e){
+        return String(iso || '');
+      }
+    }
+
+    function _escapeHtml(s){
+      return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function _selectedTrace(){
+      const id = String(SELECTED_TRACE_ID || '');
+      if(!id) return null;
+      return LAST_TRACES.find(t=>String(t && t.trace_id || '') === id) || null;
+    }
+
+    async function loadDetail(traceId){
+      const out = document.getElementById('detail');
+      const meta = document.getElementById('detail_meta');
+      const id = String(traceId || '');
+      if(!id){
+        if(out) out.textContent = '';
+        if(meta) meta.textContent = 'Details';
+        return null;
+      }
+      try{
+        const d = await api('./api/trace/' + encodeURIComponent(id));
+        const tr = d.trace || {};
+        if(out) out.textContent = JSON.stringify(tr, null, 2);
+        const a = String(tr.action || '');
+        const p = String(tr.page || '');
+        const dur = (tr.dur_ms !== null && tr.dur_ms !== undefined) ? String(tr.dur_ms) : '';
+        if(meta) meta.textContent = pageLabel(p) + ' | ' + prettyAction(a) + (dur ? (' | ' + dur + ' ms') : '');
+        return tr;
+      }catch(e){
+        if(out) out.textContent = String(e && e.message ? e.message : e);
+        if(meta) meta.textContent = 'Details';
+        return null;
+      }
+    }
+
+    function renderDiagram(trace){
+      const root = document.getElementById('diagram');
+      if(!root) return;
+      if(!trace || !trace.trace_id){
+        root.innerHTML = '<div class="diag_sub">Kein Trace selektiert.</div>';
+        return;
+      }
+
+      const t0 = Date.parse(String(trace.started_at || ''));
+      const t1 = Date.parse(String(trace.last_at || trace.started_at || ''));
+      const totalMs = (trace.dur_ms !== null && trace.dur_ms !== undefined) ? Number(trace.dur_ms) : (isFinite(t0) && isFinite(t1) ? Math.max(0, t1 - t0) : 0);
+
+      const client = Array.isArray(trace.client_spans) ? trace.client_spans : [];
+      const server = Array.isArray(trace.spans) ? trace.spans : [];
+      const serverById = new Map();
+      server.forEach(s=>{ try{ if(s && s.span_id) serverById.set(String(s.span_id), s); }catch(e){} });
+
+      const rows = client.map(c=>{
+        const sid = String(c.span_id || '');
+        const sv = serverById.get(sid) || null;
+        const cAt = Date.parse(String(c.at || ''));
+        const cStart = isFinite(cAt) && isFinite(t0) ? Math.max(0, cAt - t0) : 0;
+        const cDur = Number(c.dur_ms || 0);
+        const sDur = sv ? Number(sv.dur_ms || 0) : 0;
+        const overhead = Math.max(0, cDur - Math.max(0, sDur));
+        const netOut = overhead/2;
+        const netIn = overhead - netOut;
+        const ep = String((c.url || (sv ? sv.path : '')) || '');
+        const method = String(c.method || (sv ? sv.method : '') || '').toUpperCase();
+        const status = String(c.status || (sv ? sv.status : '') || '');
+        const code = (c.status_code !== null && c.status_code !== undefined) ? Number(c.status_code) : (sv ? Number(sv.status_code) : null);
+        return { sid, method, ep, status, code, cStart, cDur, netOut, sDur: Math.max(0, sDur), netIn };
+      }).sort((a,b)=>a.cStart - b.cStart);
+
+      const apiCount = (trace.counts && trace.counts.api_spans) ? Number(trace.counts.api_spans) : server.length;
+      const netCount = (trace.counts && trace.counts.client_spans) ? Number(trace.counts.client_spans) : client.length;
+      const qCount = (trace.counts && trace.counts.queries) ? Number(trace.counts.queries) : 0;
+      const errCount = Array.isArray(trace.errors) ? trace.errors.length : 0;
+
+      const head = `
+        <div class="diag_h">Trace: ${_escapeHtml(prettyAction(trace.action || ''))}</div>
+        <div class="diag_sub">${_escapeHtml(pageLabel(trace.page || ''))} | ${_escapeHtml(_fmtDateTime(trace.started_at || ''))} | Trace-ID: <span class="mono">${_escapeHtml(trace.trace_id || '')}</span></div>
+        <div class="diag_cards">
+          <div class="diag_card"><div class="k">Gesamtdauer</div><div class="v">${isFinite(totalMs)?Math.round(totalMs):0} ms</div></div>
+          <div class="diag_card"><div class="k">API Calls</div><div class="v">${isFinite(apiCount)?apiCount:0}</div></div>
+          <div class="diag_card"><div class="k">HTTP Client</div><div class="v">${isFinite(netCount)?netCount:0}</div></div>
+          <div class="diag_card"><div class="k">Queries</div><div class="v">${isFinite(qCount)?qCount:0}</div></div>
+          <div class="diag_card"><div class="k">Errors</div><div class="v">${isFinite(errCount)?errCount:0}</div></div>
+        </div>
+      `;
+
+      const minW = 620;
+      const scale = (ms)=>{
+        const t = Math.max(1, totalMs || 1);
+        return (ms / t) * (minW - 20);
+      };
+
+      const wfRows = rows.map((r, idx)=>{
+        const left = 10 + scale(r.cStart);
+        const w = Math.max(3, scale(r.cDur));
+        const outW = Math.max(0.5, scale(r.netOut));
+        const srvW = Math.max(0, scale(r.sDur));
+        const inW = Math.max(0.5, Math.max(0, w - outW - srvW));
+        const mcls = (r.method === 'GET') ? 'get' : 'post';
+        const ep = r.ep.replace(/^\.\//,'/');
+        const durTxt = (r.cDur >= 30) ? '' : `<div class="wf_dur" style="left:${left + w + 6}px">${Math.round(r.cDur)}ms</div>`;
+        return `
+          <div class="wf_row" title="${_escapeHtml(r.method + ' ' + ep)}">
+            <div class="wf_label">
+              <div class="wf_idx">${idx+1}</div>
+              <div class="wf_m ${mcls}">${_escapeHtml(r.method || '?')}</div>
+              <div class="wf_ep">${_escapeHtml(ep)}</div>
+            </div>
+            <div class="wf_bar_area">
+              <div class="wf_bar" style="left:${left}px; width:${w}px;">
+                <div class="seg_out" style="width:${outW}px"></div>
+                <div class="seg_srv" style="width:${srvW}px"></div>
+                <div class="seg_in" style="width:${inW}px"></div>
+              </div>
+              ${durTxt}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      root.innerHTML = head + `<div class="wf">${wfRows || '<div class="diag_sub" style="padding:10px;">Keine HTTP Spans vorhanden.</div>'}</div>`;
+    }
+
     async function load(){
       const limit = Number(document.getElementById('limit').value || 200);
       const q = String(document.getElementById('q').value || '').trim().toLowerCase();
       const j = await api('./api/trace/recent?limit=' + encodeURIComponent(String(limit)));
       const xs = Array.isArray(j.traces) ? j.traces.slice().reverse() : [];
+      LAST_TRACES = xs.slice();
       const filtered = !q ? xs : xs.filter(t => JSON.stringify(t||{}).toLowerCase().includes(q));
       const tb = document.getElementById('tb');
       tb.innerHTML = '';
       document.getElementById('meta').textContent = String(filtered.length) + ' von ' + String(xs.length) + ' Traces';
       filtered.forEach((t)=>{
         const tr = document.createElement('tr');
-        tr.style.cursor = 'pointer';
         tr.addEventListener('click', async ()=>{
+          try{ SELECTED_TRACE_ID = String(t.trace_id || ''); }catch(e){ SELECTED_TRACE_ID = null; }
+          try{ tb.querySelectorAll('tr.selected').forEach(x=>x.classList.remove('selected')); }catch(e){}
+          try{ tr.classList.add('selected'); }catch(e){}
           try{
-            const d = await api('./api/trace/' + encodeURIComponent(String(t.trace_id || '')));
-            document.getElementById('detail').textContent = JSON.stringify(d.trace || {}, null, 2);
+            const full = await loadDetail(String(t.trace_id || ''));
+            try{ renderDiagram(full); }catch(e){}
           }catch(e){
             document.getElementById('detail').textContent = String(e && e.message ? e.message : e);
           }
         });
-        tr.innerHTML = '<td class="mono">' + _fmtTime(t.started_at || t.last_at) + '</td>'
-          + '<td><div class="mono">' + String(t.action || '') + '</div><div class="muted mono">' + String(t.trace_id || '') + '</div></td>'
+
+        const startIso = t.started_at || '';
+        const endIso = t.last_at || '';
+        const durMs = (t.dur_ms !== null && t.dur_ms !== undefined) ? String(t.dur_ms) : '';
+        const pg = String(t.page || '');
+        const act = String(t.action || '');
+        const actPretty = prettyAction(act);
+        tr.innerHTML = '<td class="mono">' + _fmtTime(startIso) + '</td>'
+          + '<td class="mono">' + _fmtTime(endIso) + '</td>'
+          + '<td class="mono" style="text-align:right;">' + durMs + '</td>'
+          + '<td>' + _escapeHtml(pageLabel(pg)) + '</td>'
+          + '<td><div>' + _escapeHtml(actPretty) + '</div><div class="muted mono">' + _escapeHtml(act) + '</div><div class="muted mono" style="margin-top:2px;">' + _escapeHtml(String(t.trace_id || '')) + '</div></td>'
           + '<td>' + _pill(t.status) + '</td>'
           + '<td class="mono">' + _counts(t.counts) + '</td>';
+
+        if(SELECTED_TRACE_ID && String(t.trace_id || '') === String(SELECTED_TRACE_ID)){
+          try{ tr.classList.add('selected'); }catch(e){}
+        }
         tb.appendChild(tr);
       });
+
+      // Keep selection after refresh
+      if(SELECTED_TRACE_ID){
+        const sel = filtered.find(x=>String(x && x.trace_id || '') === String(SELECTED_TRACE_ID));
+        if(sel){
+          const full = await loadDetail(String(SELECTED_TRACE_ID));
+          try{ renderDiagram(full); }catch(e){}
+        }else{
+          // selection no longer present
+          SELECTED_TRACE_ID = null;
+          try{ document.getElementById('detail').textContent = ''; }catch(e){}
+          try{ document.getElementById('detail_meta').textContent = 'Details'; }catch(e){}
+          try{ renderDiagram(null); }catch(e){}
+        }
+      }
     }
+
+    function listAsTsv(traces){
+      const xs = Array.isArray(traces) ? traces : [];
+      const lines = [];
+      lines.push(['started_at','last_at','dur_ms','page','action_pretty','action','status','counts','trace_id'].join('\t'));
+      xs.forEach(t=>{
+        const c = t && t.counts ? t.counts : {};
+        lines.push([
+          String(t.started_at||''),
+          String(t.last_at||''),
+          (t.dur_ms !== null && t.dur_ms !== undefined) ? String(t.dur_ms) : '',
+          String(t.page||''),
+          prettyAction(t.action||''),
+          String(t.action||''),
+          String(t.status||''),
+          _counts(c),
+          String(t.trace_id||''),
+        ].join('\t'));
+      });
+      return lines.join('\n');
+    }
+
+    document.getElementById('list_copy').addEventListener('click', async ()=>{
+      try{
+        const limit = Number(document.getElementById('limit').value || 200);
+        const q = String(document.getElementById('q').value || '').trim().toLowerCase();
+        const xs = LAST_TRACES.slice().reverse();
+        const filtered = !q ? xs : xs.filter(t => JSON.stringify(t||{}).toLowerCase().includes(q));
+        await copyToClipboard(listAsTsv(filtered.slice(0, limit)));
+      }catch(e){}
+    });
+    document.getElementById('list_copy_trace').addEventListener('click', async ()=>{
+      try{
+        if(!SELECTED_TRACE_ID) return;
+        await copyToClipboard(String(SELECTED_TRACE_ID));
+      }catch(e){}
+    });
+    document.getElementById('detail_copy').addEventListener('click', async ()=>{
+      try{
+        const txt = document.getElementById('detail') ? document.getElementById('detail').textContent : '';
+        await copyToClipboard(txt);
+      }catch(e){}
+    });
+    document.getElementById('detail_copy_trace').addEventListener('click', async ()=>{
+      try{
+        if(!SELECTED_TRACE_ID) return;
+        await copyToClipboard(String(SELECTED_TRACE_ID));
+      }catch(e){}
+    });
 
     document.getElementById('refresh').addEventListener('click', ()=>{ load().catch(()=>{}); });
     document.getElementById('q').addEventListener('keydown', (ev)=>{ if(ev.key === 'Enter') load().catch(()=>{}); });
     load().catch(()=>{});
+
+    // Persist panel heights (profile-based)
+    try{ window.InfluxBroTableHeight && window.InfluxBroTableHeight.attach(document.getElementById('list_box'), 'perf_trace_list', {minPx: 240}); }catch(e){}
+    try{ window.InfluxBroTableHeight && window.InfluxBroTableHeight.attach(document.getElementById('detail_box'), 'perf_trace_detail', {minPx: 240}); }catch(e){}
   </script>
 </body>
 </html>
