@@ -1310,6 +1310,13 @@ DEFAULT_CFG = {
     # A time gap above this threshold is treated as measurement gap instead of a normal step jump.
     "outlier_gap_seconds_default": 300,
 
+    # Point-based context around relevant boundaries/outliers.
+    # Used for:
+    # - Raw-Fenster around detected outliers (N points before/after)
+    # - Future boundary buffering (cache append / dirty repair)
+    "outlier_context_before_points": 10,
+    "outlier_context_after_points": 10,
+
     # Optional default bounds for outlier scan (empty = disabled)
     "outlier_bounds_min_default": "",
     "outlier_bounds_max_default": "",
@@ -14939,6 +14946,9 @@ def api_set_config():
     _clamp_num("outlier_max_step_kwh", 30, 0.01, 100000)
     _clamp_num("outlier_gap_seconds_default", 300, 1, 86400)
 
+    _clamp_int("outlier_context_before_points", 10, 1, 5000)
+    _clamp_int("outlier_context_after_points", 10, 1, 5000)
+
     def _clamp_num_opt(key: str) -> None:
         v = cfg.get(key)
         if v is None:
@@ -21396,7 +21406,18 @@ def api_outlier_windows():
     start_str = str(body.get("start") or "").strip()
     stop_str = str(body.get("stop") or "").strip()
     outliers = body.get("outliers") or []
-    n = int(body.get("n") or 10)
+
+    # Context in points (before/after). Keep backward compatibility with legacy `n`.
+    try:
+        n_before = int(body.get("n_before") or body.get("n") or 10)
+    except Exception:
+        n_before = 10
+    try:
+        n_after = int(body.get("n_after") or body.get("n") or 10)
+    except Exception:
+        n_after = 10
+    n_before = max(1, min(5000, n_before))
+    n_after = max(1, min(5000, n_after))
 
     if not measurement or not field:
         return jsonify({"ok": False, "error": "measurement and field required"}), 400
@@ -21414,8 +21435,15 @@ def api_outlier_windows():
     s_iso = _dt_to_rfc3339_utc(start_dt)
     e_iso = _dt_to_rfc3339_utc(stop_dt)
 
-    LOG.info("api.outlier_windows called measurement=%s field=%s outliers=%d n=%d span=%.0fs",
-        measurement, field, len(outliers), n, (stop_dt - start_dt).total_seconds())
+    LOG.info(
+        "api.outlier_windows called measurement=%s field=%s outliers=%d n_before=%d n_after=%d span=%.0fs",
+        measurement,
+        field,
+        len(outliers),
+        n_before,
+        n_after,
+        (stop_dt - start_dt).total_seconds(),
+    )
 
     windows: list[dict[str, Any]] = []
     query_count = 0
@@ -21438,7 +21466,7 @@ from(bucket: "{cfg["bucket"]}")
   |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
   |> keep(columns: ["_time"])
   |> sort(columns: ["_time"], desc: true)
-  |> limit(n: {n})
+   |> limit(n: {n_before})
 '''
         q_new = f'''
 from(bucket: "{cfg["bucket"]}")
@@ -21446,7 +21474,7 @@ from(bucket: "{cfg["bucket"]}")
   |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
   |> keep(columns: ["_time"])
   |> sort(columns: ["_time"], desc: false)
-  |> limit(n: {n})
+   |> limit(n: {n_after})
 '''
 
         older: list[str] = []
@@ -21473,7 +21501,7 @@ from(bucket: "{cfg["bucket"]}")
         gap_s = int(cfg.get("outlier_gap_seconds_default", 300) or 300)
     except Exception:
         gap_s = 300
-    base_span_s = max(3600, min(7 * 86400, max(3600, int(n) * max(1, gap_s) * 4)))
+    base_span_s = max(3600, min(7 * 86400, max(3600, max(n_before, n_after) * max(1, gap_s) * 4)))
 
     try:
         with v2_client(cfg) as client:
@@ -21494,7 +21522,7 @@ from(bucket: "{cfg["bucket"]}")
                 newer: list[str] = []
                 for attempt in range(0, 4):
                     older, newer = _neighbors_for_time(qapi, center_dt, span_s)
-                    if len(older) >= n and len(newer) >= n:
+                    if len(older) >= n_before and len(newer) >= n_after:
                         break
                     # Expand span for sparse data.
                     span_s = min(int((stop_dt - start_dt).total_seconds()), span_s * 4)
@@ -21551,6 +21579,8 @@ from(bucket: "{cfg["bucket"]}")
                 windows.append({
                     "time": _dt_to_rfc3339_utc_ms(center_dt),
                     "point_index": int(ol.get("point_index") or -1),
+                    "n_before": int(n_before),
+                    "n_after": int(n_after),
                     "center_minutes": round(center_minutes, 2) if center_minutes is not None else None,
                     "before_minutes": round(before_minutes, 2) if before_minutes is not None else None,
                     "after_minutes": round(after_minutes, 2) if after_minutes is not None else None,

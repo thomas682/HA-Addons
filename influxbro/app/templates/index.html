@@ -1330,6 +1330,8 @@ let UI_RAW_CENTER_MAX_POINTS = 2000;
 let UI_RAW_CENTER_MIN_POINTS = 10;
 let UI_RAW_TARGET_CHUNK_MS = 5000;
 let UI_RAW_OUTLIER_SEARCH_LIMIT = 5000;
+let UI_OUTLIER_CTX_BEFORE_POINTS = 10;
+let UI_OUTLIER_CTX_AFTER_POINTS = 10;
 let CFG_TIMEOUT_SECONDS = 60;
 let UI_ANALYSIS_MAX_AGE_YEARS = 5;
 
@@ -3983,6 +3985,16 @@ async function loadUiConfig(){
         recovery_streak: (cfg.outlier_recovery_valid_streak_default !== undefined && cfg.outlier_recovery_valid_streak_default !== null) ? String(cfg.outlier_recovery_valid_streak_default) : '2',
       };
     }catch(e){}
+
+    // Point-based outlier context (before/after) for windows/buffering
+    try{
+      const nb = Number(cfg.outlier_context_before_points);
+      if(isFinite(nb) && nb >= 1 && nb <= 5000) UI_OUTLIER_CTX_BEFORE_POINTS = Math.trunc(nb);
+    }catch(e){}
+    try{
+      const na = Number(cfg.outlier_context_after_points);
+      if(isFinite(na) && na >= 1 && na <= 5000) UI_OUTLIER_CTX_AFTER_POINTS = Math.trunc(na);
+    }catch(e){}
     try{
       OUTLIER_STEP_CFG = {
         w: (cfg.outlier_max_step_w !== undefined && cfg.outlier_max_step_w !== null) ? Number(cfg.outlier_max_step_w) : 30000,
@@ -5267,19 +5279,51 @@ function _logOutlierWindowStats(step, rows, extra){
       extra: Object.assign({
         scope: 'dashboard_analysis',
         action: String(ANALYSIS_ACTIVE_ACTION || ''),
-        context_rows: Math.max(1, Math.trunc(Number(RAW_OUTLIER_CONTEXT_ROWS || UI_RAW_CENTER_MIN_POINTS || 10))),
+        context_before_points: Math.max(1, Math.trunc(Number(UI_OUTLIER_CTX_BEFORE_POINTS || 10))),
+        context_after_points: Math.max(1, Math.trunc(Number(UI_OUTLIER_CTX_AFTER_POINTS || 10))),
       }, stats, extra || {}),
     });
   }catch(e){}
 }
 
+function _bsLower(arr, x){
+  let lo = 0;
+  let hi = arr.length;
+  while(lo < hi){
+    const mid = (lo + hi) >> 1;
+    if(arr[mid] < x) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
+}
+
+function _bsUpper(arr, x){
+  let lo = 0;
+  let hi = arr.length;
+  while(lo < hi){
+    const mid = (lo + hi) >> 1;
+    if(arr[mid] <= x) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
+}
+
 async function _ensureOutlierWindows(base, win, source){
   const rows = Array.isArray(RAW_OUTLIER_RESULTS) ? RAW_OUTLIER_RESULTS : [];
   _logOutlierWindowStats('status_before', rows, { source: String(source || '') });
-  const outlierList = rows.filter((row) => row && row.time && row.point_index != null && Number(row.point_index) >= 0).map((row) => ({
+  const outlierListRaw = rows.filter((row) => row && row.time && row.point_index != null && Number(row.point_index) >= 0).map((row) => ({
     time: row.time,
     point_index: row.point_index,
   }));
+  const outlierList = [];
+  const seenTimes = new Set();
+  outlierListRaw.forEach((ol) => {
+    const t = String(ol && ol.time || '');
+    if(!t) return;
+    if(seenTimes.has(t)) return;
+    seenTimes.add(t);
+    outlierList.push(ol);
+  });
   if(!outlierList.length){
     _saveAnalysisEvent({
       at: new Date().toISOString(),
@@ -5292,7 +5336,9 @@ async function _ensureOutlierWindows(base, win, source){
     return _outlierWindowStats(rows);
   }
   try{
-    const nContext = Math.max(1, Math.trunc(Number(RAW_OUTLIER_CONTEXT_ROWS || UI_RAW_CENTER_MIN_POINTS || 10)));
+    const nBefore = Math.max(1, Math.trunc(Number(UI_OUTLIER_CTX_BEFORE_POINTS || 10)));
+    const nAfter = Math.max(1, Math.trunc(Number(UI_OUTLIER_CTX_AFTER_POINTS || 10)));
+    const outlierTimesMs = outlierList.map(o => Date.parse(String(o && o.time || ''))).filter(isFinite).sort((a,b)=>a-b);
     const wj = await api('./api/outlier_windows', {
       method:'POST',
       headers:{'Content-Type':'application/json'},
@@ -5304,11 +5350,19 @@ async function _ensureOutlierWindows(base, win, source){
         start: win.start,
         stop: win.stop,
         outliers: outlierList,
-        n: nContext,
+        n_before: nBefore,
+        n_after: nAfter,
+        n: Math.max(nBefore, nAfter),
       })
     }, { key: 'outlier_windows_' + String(win.start || '') + '_' + String(win.stop || '') + '_' + String(source || ''), silent: true });
     const winMap = {};
-    (wj && Array.isArray(wj.windows) ? wj.windows : []).forEach((w) => { if(w && w.time) winMap[w.time] = w; });
+    (wj && Array.isArray(wj.windows) ? wj.windows : []).forEach((w) => {
+      if(!w || !w.time) return;
+      const t = String(w.time || '');
+      if(!t) return;
+      if(winMap[t]) return;
+      winMap[t] = w;
+    });
     rows.forEach((row) => {
       if(!row || !row.time) return;
       const w = winMap[row.time];
@@ -5338,44 +5392,84 @@ async function _ensureOutlierWindows(base, win, source){
       const src = String(source || '');
       const list = Array.isArray(wj && wj.windows) ? wj.windows : [];
       const maxLog = 60;
-      list.slice(0, maxLog).forEach((w) => {
+      const uniq = [];
+      const seenW = new Set();
+      list.forEach((w) => {
+        const t = String(w && w.time || '');
+        if(!t) return;
+        if(seenW.has(t)) return;
+        seenW.add(t);
+        uniq.push(w);
+      });
+
+      uniq.slice(0, maxLog).forEach((w) => {
         if(!w || !w.time) return;
+        const centerIso = String(w.time || '');
+        const beforeIso = String(w.before_time || '');
+        const afterIso = String(w.after_time || '');
+        const centerMs = Date.parse(centerIso);
+        const beforeMs = Date.parse(beforeIso);
+        const afterMs = Date.parse(afterIso);
+        let otherOutliers = null;
+        if(isFinite(beforeMs) && isFinite(afterMs) && Array.isArray(outlierTimesMs) && outlierTimesMs.length){
+          const a = Math.min(beforeMs, afterMs);
+          const b = Math.max(beforeMs, afterMs);
+          const totalIn = Math.max(0, _bsUpper(outlierTimesMs, b) - _bsLower(outlierTimesMs, a));
+          const hasCenter = (isFinite(centerMs) && centerMs >= a && centerMs <= b) ? 1 : 0;
+          otherOutliers = Math.max(0, totalIn - hasCenter);
+        }
+        let reason = '';
+        let types = [];
+        try{
+          const ent = (RAW_OUTLIER_MAP && RAW_OUTLIER_MAP[centerIso]) ? RAW_OUTLIER_MAP[centerIso] : null;
+          if(ent){
+            reason = String(ent.reason || '');
+            types = Array.isArray(ent.types) ? ent.types.map(x=>String(x||'')).filter(Boolean) : [];
+          }
+        }catch(e){}
+        const typesText = (types && types.length) ? (' types=' + types.join(',')) : '';
+        const otherText = (otherOutliers !== null) ? (' | weitere Ausreisser: ' + String(otherOutliers)) : '';
         const k = ['analysis_raw_windows', 'window', src, String(w.time || ''), String(w.before_time || ''), String(w.after_time || '')].join('|');
         _saveAnalysisEventOnce({
           at: new Date().toISOString(),
           kind: 'analysis_raw_windows',
           step: 'window',
           status: 'ok',
-          detail: 'Raw-Fenster: ' + fmtTs(String(w.before_time || '')) + ' – ' + fmtTs(String(w.after_time || '')),
+          detail: 'Raw-Fenster (N=' + String(nBefore) + '/' + String(nAfter) + ') um ' + fmtTs(centerIso) + ': ' + fmtTs(beforeIso) + ' – ' + fmtTs(afterIso) + otherText + (reason ? (' | reason=' + reason) : '') + typesText,
           extra: {
             key: k,
             scope: 'dashboard_analysis',
             action: String(ANALYSIS_ACTIVE_ACTION || ''),
             source: src,
-            time: String(w.time || ''),
-            before_time: String(w.before_time || ''),
-            after_time: String(w.after_time || ''),
+            time: centerIso,
+            before_time: beforeIso,
+            after_time: afterIso,
+            n_before: nBefore,
+            n_after: nAfter,
             center_minutes: w.center_minutes,
             before_minutes: w.before_minutes,
             after_minutes: w.after_minutes,
             before_count: w.before_count,
             after_count: w.after_count,
+            other_outliers_in_window: otherOutliers,
+            reason: reason,
+            types: types,
           },
         });
       });
-      if(list.length > maxLog){
+      if(uniq.length > maxLog){
         _saveAnalysisEventOnce({
           at: new Date().toISOString(),
           kind: 'analysis_raw_windows',
           step: 'window_more',
           status: 'ok',
-          detail: 'Raw-Fenster: +' + String(list.length - maxLog) + ' weitere (nicht geloggt).',
+          detail: 'Raw-Fenster: +' + String(uniq.length - maxLog) + ' weitere (nicht geloggt).',
           extra: {
-            key: ['analysis_raw_windows', 'window_more', src, String(list.length)].join('|'),
+            key: ['analysis_raw_windows', 'window_more', src, String(uniq.length)].join('|'),
             scope: 'dashboard_analysis',
             action: String(ANALYSIS_ACTIVE_ACTION || ''),
             source: src,
-            total: list.length,
+            total: uniq.length,
             logged: maxLog,
           },
         });
@@ -5779,11 +5873,17 @@ async function runRawOutlierSearch_DISABLED_LEGACY(){
 
     // Compute per-outlier windows (N points before/after)
     try{
-      const nContext = Math.max(1, Math.trunc(Number(RAW_OUTLIER_CONTEXT_ROWS || UI_RAW_CENTER_MIN_POINTS || 10)));
-      const outlierList = RAW_OUTLIER_RESULTS.filter(r => r.point_index != null && r.point_index >= 0).map(r => ({
-        time: r.time,
-        point_index: r.point_index
-      }));
+      const nBefore = Math.max(1, Math.trunc(Number(UI_OUTLIER_CTX_BEFORE_POINTS || 10)));
+      const nAfter = Math.max(1, Math.trunc(Number(UI_OUTLIER_CTX_AFTER_POINTS || 10)));
+      const outlierList = [];
+      const seen = new Set();
+      RAW_OUTLIER_RESULTS.filter(r => r.point_index != null && r.point_index >= 0).forEach((r) => {
+        const t = String(r && r.time || '');
+        if(!t) return;
+        if(seen.has(t)) return;
+        seen.add(t);
+        outlierList.push({ time: r.time, point_index: r.point_index });
+      });
       if(outlierList.length > 0){
         const wj = await api('./api/outlier_windows', {
           method:'POST',
@@ -5796,7 +5896,9 @@ async function runRawOutlierSearch_DISABLED_LEGACY(){
             start: win.start,
             stop: win.stop,
             outliers: outlierList,
-            n: nContext,
+            n_before: nBefore,
+            n_after: nAfter,
+            n: Math.max(nBefore, nAfter),
           })
         }, { key: 'outlier_windows_' + String(win.start || '') + '_' + String(win.stop || ''), silent: true });
 

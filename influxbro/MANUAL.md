@@ -653,6 +653,7 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - `Analyse` im Dashboard nutzt jetzt wieder den eigentlichen Dashboard-Ladepfad inklusive Cache-Pruefung und fuellt danach die Gesamtstatistik neu. Wenn eine Ausreißer-Suche laeuft, befindet sich der zugehoerige Abbruch-Button direkt im Aktionsbereich des Dashboards.
 - `Analyse mit Cache` veraendert den Caching-Bereich nicht mehr automatisch. Der Bereich `Caching` aktualisiert sich nur noch bei expliziten Aktionen wie `Cache pruefen` oder `kombinieren`.
 - Die Raw-Fensterberechnung (Kontext N Punkte davor/danach) ist als eigener Analyseschritt sichtbar und wird ohne Vollscan des gesamten Analysefensters ausgefuehrt.
+- Die Punktanzahl fuer diesen Kontext ist jetzt getrennt einstellbar: `outlier_context_before_points` und `outlier_context_after_points` (Einstellungen -> Ausreisser).
 - Picker und Super-Picker kopieren Elementkennungen jetzt im Format `<Seite: element>` und koennen auch deaktivierte Elemente besser erfassen.
 - Auf der Einstellungsseite wurden der alte Summary-Pfeil und der Dashboard-Ruecksprung-Button entfernt; ausserdem wurde das Layout fuer breite Eingaben robuster gemacht.
 - `page.title.card` besitzt jetzt eine Navigationshilfe mit Verlauf sowie Vor-/Zurueck-Buttons. Ueber die Parametrierhilfe lassen sich verknuepfte Elemente gezielt zu ihren Einstellungen springen und dort farbig markieren.

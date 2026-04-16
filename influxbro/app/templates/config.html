@@ -1202,6 +1202,18 @@
           </div>
         </div>
         <div class="param_row">
+          <div class="param_label">Ausreisser-Kontext davor (Punkte)<span class="param_hint">Anzahl Roh-Messpunkte vor dem Ausreisser bzw. an Grenzstellen (Cache/Dirty) fuer Kontext/Puffer. Wird fuer Raw-Fenster und Grenzstellen-Analyse verwendet (Default: 10).</span></div>
+          <div class="param_control">
+            <input id="outlier_context_before_points" type="number" min="1" max="5000" />
+          </div>
+        </div>
+        <div class="param_row">
+          <div class="param_label">Ausreisser-Kontext danach (Punkte)<span class="param_hint">Anzahl Roh-Messpunkte nach dem Ausreisser bzw. an Grenzstellen (Cache/Dirty) fuer Kontext/Puffer. Wird fuer Raw-Fenster und Grenzstellen-Analyse verwendet (Default: 10).</span></div>
+          <div class="param_control">
+            <input id="outlier_context_after_points" type="number" min="1" max="5000" />
+          </div>
+        </div>
+        <div class="param_row">
           <div class="param_label">Grenzen Default: Min<span class="param_hint">Optional: Standard-Untergrenze fuer Ausreisser-Suche (leer = deaktiviert).</span></div>
           <div class="param_control">
             <input id="outlier_bounds_min_default" type="number" step="any" placeholder="leer = deaktiviert" data-ui="config_settings.input_outlier_bounds_min_default" title="settings.outliers.bounds_min_default" />
@@ -1346,6 +1358,8 @@ const ids = [
   "ui_query_manual_max_points","ui_graph_jump_padding_intervals",
   "ui_font_size_px","ui_font_small_px","ui_pagecard_title_px","ui_page_search_highlight_color","ui_page_search_highlight_width_px","ui_page_search_highlight_duration_ms","ui_nav_helper_history_limit","ui_nav_helper_highlight_color","ui_nav_helper_highlight_duration_ms","ui_analysis_cache_hidden_color","ui_checkbox_scale",
   "outlier_gap_seconds_default",
+  "outlier_context_before_points",
+  "outlier_context_after_points",
   "outlier_bounds_min_default",
   "outlier_bounds_max_default",
   "outlier_recovery_valid_streak_default",
@@ -1856,6 +1870,8 @@ function setForm(cfg){
   _safeSet(el.ui_backup_visible_rows, 'value', cfg.ui_backup_visible_rows ?? 24);
   _safeSet(el.ui_restore_visible_rows, 'value', cfg.ui_restore_visible_rows ?? 24);
   _safeSet(el.outlier_gap_seconds_default, 'value', cfg.outlier_gap_seconds_default ?? 300);
+  _safeSet(el.outlier_context_before_points, 'value', cfg.outlier_context_before_points ?? 10);
+  _safeSet(el.outlier_context_after_points, 'value', cfg.outlier_context_after_points ?? 10);
   _safeSet(el.outlier_bounds_min_default, 'value', (cfg.outlier_bounds_min_default !== undefined && cfg.outlier_bounds_min_default !== null) ? cfg.outlier_bounds_min_default : '');
   _safeSet(el.outlier_bounds_max_default, 'value', (cfg.outlier_bounds_max_default !== undefined && cfg.outlier_bounds_max_default !== null) ? cfg.outlier_bounds_max_default : '');
   _safeSet(el.outlier_recovery_valid_streak_default, 'value', cfg.outlier_recovery_valid_streak_default ?? 2);
@@ -2013,6 +2029,8 @@ function getForm(){
     ui_backup_visible_rows: parseInt(el.ui_backup_visible_rows.value, 10),
     ui_restore_visible_rows: parseInt(el.ui_restore_visible_rows.value, 10),
     outlier_gap_seconds_default: parseInt(el.outlier_gap_seconds_default.value, 10),
+    outlier_context_before_points: parseInt(el.outlier_context_before_points.value, 10),
+    outlier_context_after_points: parseInt(el.outlier_context_after_points.value, 10),
     outlier_bounds_min_default: String(el.outlier_bounds_min_default ? el.outlier_bounds_min_default.value : '').trim(),
     outlier_bounds_max_default: String(el.outlier_bounds_max_default ? el.outlier_bounds_max_default.value : '').trim(),
     outlier_recovery_valid_streak_default: parseInt(el.outlier_recovery_valid_streak_default.value, 10),

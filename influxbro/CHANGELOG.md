@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.367
+
+### Enhancement
+
+- Analyse: Punktbasierter Kontext ist jetzt getrennt konfigurierbar (davor/danach) und wird fuer Raw-Fenster um Ausreisser verwendet. Raw-Fenster-Logs enthalten jetzt Center-Zeitpunkt, N davor/N danach, Counts, Reason/Types und optional die Anzahl weiterer Ausreisser im Fenster; Duplikate werden dedupliziert. ([#316](https://github.com/thomas682/HA-Addons/issues/316))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: 2026.4.2
+
 ## 1.12.366
 
 ### Bug Fix
