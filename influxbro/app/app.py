@@ -447,6 +447,26 @@ def _overlay_from_yaml_if_enabled(cfg_in: dict) -> dict:
     if src:
         global LAST_AUTODETECT_SOURCE
         LAST_AUTODETECT_SOURCE = src
+
+    # Normalize influx_version for runtime callers.
+    # This is intentionally best-effort and does not persist anything.
+    try:
+        v = int(merged.get("influx_version", 2) or 2)
+    except Exception:
+        v = 2
+    if v not in (1, 2):
+        v = 2
+
+    # Safety: if v1 is selected but no database is configured while v2 creds exist,
+    # prefer v2 to avoid confusing "v1 requires database" errors.
+    try:
+        db = str(merged.get("database") or "").strip()
+    except Exception:
+        db = ""
+    has_v2 = bool(merged.get("token")) and bool(merged.get("org")) and bool(merged.get("bucket"))
+    if v != 2 and (not db) and has_v2:
+        v = 2
+    merged["influx_version"] = v
     return merged
 
 

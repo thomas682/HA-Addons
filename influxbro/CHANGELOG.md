@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.366
+
+### Bug Fix
+
+- Config: Runtime-Config-Normalisierung verhindert, dass v2 Setups (token+org+bucket vorhanden) in Query/Dashboard-Cache Jobs faelschlich als v1 behandelt werden ("v1 requires database"). ([#315](https://github.com/thomas682/HA-Addons/issues/315))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: 2026.4.2
+
 ## 1.12.365
 
 ### Enhancement
