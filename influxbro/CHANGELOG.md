@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.12.361
+
+### Enhancement
+
+- Einstellungen: Seitensuche markiert nicht mehr grosse Gruppen-Container, sondern springt filigran zum konkreten Textelement; neue Defaultwerte fuer Trefferrahmen (Breite=5px, Dauer=8000ms). ([#307](https://github.com/thomas682/HA-Addons/issues/307))
+- Einstellungen: Farbpicker fuer Seitensuche/Navigationshilfe/Analysecache zeigen jetzt Picker + Hex-Wert (wie Section-Farben). ([#307](https://github.com/thomas682/HA-Addons/issues/307))
+- Einstellungen: Statusleisten-Hintergrundpicker hat wieder die gleiche Breite wie der Textfarben-Picker. ([#307](https://github.com/thomas682/HA-Addons/issues/307))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: 2026.4.2
+
 ## 1.12.360
 
 ### Bug Fix

@@ -144,8 +144,7 @@
     .color_pick_row { display:flex; gap:8px; align-items:center; }
     .color_pick_row input[type="color"] { width:44px; height:36px; padding:0; flex:0 0 auto; }
     .color_pick_row input[type="text"] { flex:1 1 auto; min-width:0; }
-    #ui_status_bar_bg_color,
-    #ui_status_bar_bg { width:auto; min-width:0; }
+    /* status bar color pickers use the same fixed width as other pickers */
     /* Save card special */
     .save_card { border:1px solid #ddd; border-radius:10px; padding:12px; margin-top:12px; }
     .save_card .btn_sm { width:auto; }
@@ -615,7 +614,10 @@
               <div class="param_row">
                 <div class="param_label">Seitensuche Highlight Farbe<span class="param_hint">Farbe fuer Treffer aus `page.search` sowie fuer Popup- und Logs-Volltextsuche.</span></div>
                 <div class="param_control">
-                  <input id="ui_page_search_highlight_color" type="color" />
+                  <div class="color_pick_row">
+                    <input id="ui_page_search_highlight_color_color" type="color" value="#FF9900" />
+                    <input id="ui_page_search_highlight_color" placeholder="#RRGGBB" />
+                  </div>
                 </div>
               </div>
               <div class="param_row">
@@ -639,7 +641,10 @@
               <div class="param_row">
                 <div class="param_label">Navigationshilfe Highlight Farbe<span class="param_hint">Farbe fuer Sprungmarkierungen ueber Vor/Zurueck und Parametrierhilfe.</span></div>
                 <div class="param_control">
-                  <input id="ui_nav_helper_highlight_color" type="color" />
+                  <div class="color_pick_row">
+                    <input id="ui_nav_helper_highlight_color_color" type="color" value="#FF9900" />
+                    <input id="ui_nav_helper_highlight_color" placeholder="#RRGGBB" />
+                  </div>
                 </div>
               </div>
               <div class="param_row">
@@ -651,7 +656,10 @@
               <div class="param_row">
                 <div class="param_label">Analysecache ausgeblendet Farbe<span class="param_hint">Farbe fuer im Zeitstrahl visuell ausgeblendete Cache-Segmente.</span></div>
                 <div class="param_control">
-                  <input id="ui_analysis_cache_hidden_color" type="color" />
+                  <div class="color_pick_row">
+                    <input id="ui_analysis_cache_hidden_color_color" type="color" value="#B0B0B0" />
+                    <input id="ui_analysis_cache_hidden_color" placeholder="#RRGGBB" />
+                  </div>
                 </div>
               </div>
               <div class="param_row">
@@ -1386,6 +1394,10 @@ const $cfgDefaults = document.getElementById('cfg_defaults');
 let CFG_DEFAULTS = null;
 
 // Section title color pickers (sync with text inputs; text inputs also allow words)
+const $pageSearchHlColor = document.getElementById('ui_page_search_highlight_color_color');
+const $navHelperHlColor = document.getElementById('ui_nav_helper_highlight_color_color');
+const $analysisCacheHiddenColor = document.getElementById('ui_analysis_cache_hidden_color_color');
+
 const $sectionBgColor = document.getElementById('ui_section_title_bg_color');
 const $sectionFgColor = document.getElementById('ui_section_title_fg_color');
 const $sectionLevel2BgColor = document.getElementById('ui_section_level2_bg_color');
@@ -1463,6 +1475,34 @@ function _syncStatusBarColorPickersFromText(){
   }catch(e){}
 }
 
+function _syncUiColorPickersFromText(){
+  try{
+    // Page search highlight
+    try{
+      const s = el.ui_page_search_highlight_color ? String(el.ui_page_search_highlight_color.value || '').trim() : '';
+      if($pageSearchHlColor){
+        if(/^#[0-9a-fA-F]{6}$/.test(s)) $pageSearchHlColor.value = s;
+      }
+    }catch(e){}
+
+    // Nav helper highlight
+    try{
+      const s = el.ui_nav_helper_highlight_color ? String(el.ui_nav_helper_highlight_color.value || '').trim() : '';
+      if($navHelperHlColor){
+        if(/^#[0-9a-fA-F]{6}$/.test(s)) $navHelperHlColor.value = s;
+      }
+    }catch(e){}
+
+    // Analysis cache hidden
+    try{
+      const s = el.ui_analysis_cache_hidden_color ? String(el.ui_analysis_cache_hidden_color.value || '').trim() : '';
+      if($analysisCacheHiddenColor){
+        if(/^#[0-9a-fA-F]{6}$/.test(s)) $analysisCacheHiddenColor.value = s;
+      }
+    }catch(e){}
+  }catch(e){}
+}
+
 try{ if($sectionBgColor && el.ui_section_title_bg) $sectionBgColor.addEventListener('input', ()=>{ try{ el.ui_section_title_bg.value = String($sectionBgColor.value || '').toUpperCase(); }catch(e){}; _syncSectionColorPickersFromText(); }); }catch(e){}
 try{ if($sectionFgColor && el.ui_section_title_fg) $sectionFgColor.addEventListener('input', ()=>{ try{ el.ui_section_title_fg.value = String($sectionFgColor.value || '').toUpperCase(); }catch(e){}; _syncSectionColorPickersFromText(); }); }catch(e){}
 try{ if($sectionLevel2BgColor && el.ui_section_level2_bg) $sectionLevel2BgColor.addEventListener('input', ()=>{ try{ el.ui_section_level2_bg.value = String($sectionLevel2BgColor.value || '').toUpperCase(); }catch(e){}; _syncSectionColorPickersFromText(); }); }catch(e){}
@@ -1479,6 +1519,13 @@ try{ if($statusBarBgColor && el.ui_status_bar_bg) $statusBarBgColor.addEventList
 try{ if($statusBarFgColor && el.ui_status_bar_fg) $statusBarFgColor.addEventListener('input', ()=>{ try{ el.ui_status_bar_fg.value = String($statusBarFgColor.value || '').toUpperCase(); }catch(e){}; _syncStatusBarColorPickersFromText(); }); }catch(e){}
 try{ if(el.ui_status_bar_bg) el.ui_status_bar_bg.addEventListener('input', ()=>_syncStatusBarColorPickersFromText()); }catch(e){}
 try{ if(el.ui_status_bar_fg) el.ui_status_bar_fg.addEventListener('input', ()=>_syncStatusBarColorPickersFromText()); }catch(e){}
+
+try{ if($pageSearchHlColor && el.ui_page_search_highlight_color) $pageSearchHlColor.addEventListener('input', ()=>{ try{ el.ui_page_search_highlight_color.value = String($pageSearchHlColor.value || '').toUpperCase(); }catch(e){}; _syncUiColorPickersFromText(); }); }catch(e){}
+try{ if($navHelperHlColor && el.ui_nav_helper_highlight_color) $navHelperHlColor.addEventListener('input', ()=>{ try{ el.ui_nav_helper_highlight_color.value = String($navHelperHlColor.value || '').toUpperCase(); }catch(e){}; _syncUiColorPickersFromText(); }); }catch(e){}
+try{ if($analysisCacheHiddenColor && el.ui_analysis_cache_hidden_color) $analysisCacheHiddenColor.addEventListener('input', ()=>{ try{ el.ui_analysis_cache_hidden_color.value = String($analysisCacheHiddenColor.value || '').toUpperCase(); }catch(e){}; _syncUiColorPickersFromText(); }); }catch(e){}
+try{ if(el.ui_page_search_highlight_color) el.ui_page_search_highlight_color.addEventListener('input', ()=>_syncUiColorPickersFromText()); }catch(e){}
+try{ if(el.ui_nav_helper_highlight_color) el.ui_nav_helper_highlight_color.addEventListener('input', ()=>_syncUiColorPickersFromText()); }catch(e){}
+try{ if(el.ui_analysis_cache_hidden_color) el.ui_analysis_cache_hidden_color.addEventListener('input', ()=>_syncUiColorPickersFromText()); }catch(e){}
 
 function _syncJobColorPickersFromText(){
   try{ const v = el.ui_job_color_running ? String(el.ui_job_color_running.value || '').trim() : ''; if($jobRunColor && _isHexColor(v)) $jobRunColor.value = v; }catch(e){}
@@ -1833,8 +1880,8 @@ function setForm(cfg){
   _setVal(el.ui_font_small_px, cfg.ui_font_small_px ?? 11);
   _setVal(el.ui_pagecard_title_px, cfg.ui_pagecard_title_px ?? 30);
   _setVal(el.ui_page_search_highlight_color, cfg.ui_page_search_highlight_color ?? '#FF9900');
-  _setVal(el.ui_page_search_highlight_width_px, cfg.ui_page_search_highlight_width_px ?? 3);
-  _setVal(el.ui_page_search_highlight_duration_ms, cfg.ui_page_search_highlight_duration_ms ?? 1400);
+  _setVal(el.ui_page_search_highlight_width_px, cfg.ui_page_search_highlight_width_px ?? 5);
+  _setVal(el.ui_page_search_highlight_duration_ms, cfg.ui_page_search_highlight_duration_ms ?? 8000);
   _setVal(el.ui_nav_helper_history_limit, cfg.ui_nav_helper_history_limit ?? 10);
   _setVal(el.ui_nav_helper_highlight_color, cfg.ui_nav_helper_highlight_color ?? '#FF9900');
   _setVal(el.ui_nav_helper_highlight_duration_ms, cfg.ui_nav_helper_highlight_duration_ms ?? 1400);
@@ -1856,6 +1903,7 @@ function setForm(cfg){
   _setVal(el.ui_status_bar_fg, cfg.ui_status_bar_fg ?? '#111111');
   _syncSectionColorPickersFromText();
   _syncStatusBarColorPickersFromText();
+  try{ _syncUiColorPickersFromText(); }catch(e){}
   _safeSet(el.ui_filter_label_width_px, 'value', cfg.ui_filter_label_width_px ?? 170);
   _setVal(el.ui_filter_control_width_px, cfg.ui_filter_control_width_px ?? 320);
   _safeSet(el.ui_filter_search_width_px, 'value', cfg.ui_filter_search_width_px ?? 160);
@@ -1876,6 +1924,7 @@ function setForm(cfg){
   _safeSet(el.backup_dir, 'value', cfg.backup_dir ?? "/config/influxbro/backup");
   _safeSet(el.backup_min_free_mb, 'value', cfg.backup_min_free_mb ?? 10);
   _safeSet(el.storage_budget_mb, 'value', cfg.storage_budget_mb ?? 5);
+  try{ _syncUiColorPickersFromText(); }catch(e){}
 
   _setChecked(el.ui_tooltips_enabled, (cfg.ui_tooltips_enabled !== false));
 

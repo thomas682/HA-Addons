@@ -1207,8 +1207,8 @@ DEFAULT_CFG = {
     "ui_popup_history_font_px": 10,
     "ui_pagecard_title_px": 30,
     "ui_page_search_highlight_color": "#FF9900",
-    "ui_page_search_highlight_width_px": 3,
-    "ui_page_search_highlight_duration_ms": 1400,
+    "ui_page_search_highlight_width_px": 5,
+    "ui_page_search_highlight_duration_ms": 8000,
     "ui_status_font_px": 12,
     "ui_status_show_sysinfo": False,
     "ui_status_bar_height_px": 38,
@@ -14671,8 +14671,8 @@ def api_set_config():
     _clamp_int("ui_popup_pre_font_px", 10, 8, 24)
     _clamp_int("ui_popup_history_font_px", 10, 8, 24)
     _clamp_int("ui_pagecard_title_px", 30, 18, 48)
-    _clamp_int("ui_page_search_highlight_width_px", 3, 1, 12)
-    _clamp_int("ui_page_search_highlight_duration_ms", 1400, 200, 10000)
+    _clamp_int("ui_page_search_highlight_width_px", 5, 1, 12)
+    _clamp_int("ui_page_search_highlight_duration_ms", 8000, 200, 10000)
     _clamp_int("ui_status_font_px", 12, 9, 18)
     _clamp_int("ui_status_bar_height_px", 38, 28, 90)
     _clamp_int("ui_table_row_height_px", 13, 9, 60)

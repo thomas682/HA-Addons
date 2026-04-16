@@ -810,6 +810,7 @@ UI:
 - `Seitensuche Highlight Farbe`: Farbe fuer Treffer aus `page.search` sowie fuer die Markierung/Navigation in Popup- und Logs-Volltextsuchen.
 - `Seitensuche Highlight Breite (px)`: Rahmenbreite fuer Treffer aus `page.search`.
 - `Seitensuche Highlight Dauer (ms)`: Sichtdauer des Trefferrahmens nach dem Sprung.
+- Hinweis: Auf der Einstellungsseite springt die Volltextsuche jetzt gezielt zum konkreten Textelement (Label/Hint) statt ganze Gruppen-Bloecke zu markieren.
 - Die Felder `ui_filter_label_width_px`, `ui_filter_control_width_px`, `ui_filter_search_width_px` und `ui_sel_field_font_px` verwenden eine breitere numerische Darstellung, damit Werte auch beim Hoch-/Runterzaehlen sichtbar bleiben.
 - `Checkbox Groesse (Scale)`: Checkbox-Scaling fuer bessere Bedienbarkeit.
 - `Bereich-Titel (Details): Hintergrund/Textfarbe`: Farben der einklappbaren Bereichstitel (Details/Sektionen). Leer = Standard; erlaubt: `transparent`/`inherit` oder `#RRGGBB`.
@@ -823,6 +824,7 @@ UI:
   - Wenn Auto aktiv ist, wird die zuletzt berechnete Breite als Vorschlagswert angezeigt.
 - `Repository URL` und `PayPal Donate URL` sind feste interne Werte und nicht mehr in der Settings-UI editierbar.
 - Die Log-Farbparameter fuer `ERROR` und `WARN` verwenden jetzt denselben kombinierten Color-Picker/Textfeld-Stil wie die anderen Farbparameter der Oberflaeche.
+- Die Farbparameter `Seitensuche Highlight Farbe`, `Navigationshilfe Highlight Farbe` und `Analysecache ausgeblendet Farbe` verwenden ebenfalls den kombinierten Color-Picker/Textfeld-Stil.
 
 Fehleranzeige:
 

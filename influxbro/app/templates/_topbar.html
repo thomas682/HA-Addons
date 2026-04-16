@@ -19,8 +19,8 @@
       --ib-bottombar-h: {{ (cfg.get('ui_status_bar_height_px') or 38) | int }}px;
       --ib-pagecard-title-size: {{ (cfg.get('ui_pagecard_title_px') or 30) | int }}px;
       --ib-page-search-hl-color: {{ (cfg.get('ui_page_search_highlight_color') or '#FF9900') if cfg else '#FF9900' }};
-      --ib-page-search-hl-width: {{ (cfg.get('ui_page_search_highlight_width_px') or 3) | int }}px;
-      --ib-page-search-hl-duration-ms: {{ (cfg.get('ui_page_search_highlight_duration_ms') or 1400) | int }}ms;
+      --ib-page-search-hl-width: {{ (cfg.get('ui_page_search_highlight_width_px') or 5) | int }}px;
+      --ib-page-search-hl-duration-ms: {{ (cfg.get('ui_page_search_highlight_duration_ms') or 8000) | int }}ms;
       --ib-nav-helper-history-limit: {{ (cfg.get('ui_nav_helper_history_limit') or 10) | int }};
       --ib-nav-helper-hl-color: {{ (cfg.get('ui_nav_helper_highlight_color') or '#FF9900') if cfg else '#FF9900' }};
       --ib-nav-helper-hl-duration-ms: {{ (cfg.get('ui_nav_helper_highlight_duration_ms') or 1400) | int }}ms;
@@ -739,18 +739,21 @@
               if(!key || seen.has(key)) return;
               if(id === 'ib_page_search') return;
               seen.add(key);
+
+              // Settings page: group containers contain a huge amount of text; do not index them by visible text.
+              const isGroupContainer = _isSettingsPage() && ui && ui.startsWith('config_settings.group_');
               const label = _labelFor(el);
               const sect = _sectionPathFor(el);
-              const txt = _norm(el.textContent || el.getAttribute('placeholder') || el.getAttribute('title') || '');
-              const directTxt = _directTextFor(el);
-              const tooltip = _tooltipTextFor(el);
+              const txt = isGroupContainer ? '' : _norm(el.textContent || el.getAttribute('placeholder') || el.getAttribute('title') || '');
+              const directTxt = isGroupContainer ? '' : _directTextFor(el);
+              const tooltip = isGroupContainer ? '' : _tooltipTextFor(el);
               const parts = [];
               if(cfg.key) parts.push(key);
-              if(cfg.label) parts.push(label);
-              if(cfg.visible_text) parts.push(txt);
-              if(cfg.direct_text) parts.push(directTxt);
+              if(cfg.label && !isGroupContainer) parts.push(label);
+              if(cfg.visible_text && !isGroupContainer) parts.push(txt);
+              if(cfg.direct_text && !isGroupContainer) parts.push(directTxt);
               if(cfg.sections) parts.push(sect.join(' / '));
-              if(cfg.tooltip) parts.push(tooltip);
+              if(cfg.tooltip && !isGroupContainer) parts.push(tooltip);
               const hay = parts.map(_lc).join(' | ');
               out.push({el, ui:key, txt: label || txt, sect, hay, parts:{key, label, txt, direct_text: directTxt, sections: sect.join(' / '), tooltip}});
             }catch(e){}
