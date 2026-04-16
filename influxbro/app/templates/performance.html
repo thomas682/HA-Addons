@@ -67,6 +67,29 @@
       .pane_box { resize: vertical; min-width: 0; }
     }
 
+    /* Layout: vertical splitter (trace area vs diagram) */
+    .perf_split {
+      margin-top: 12px;
+      display: flex;
+      flex-direction: column;
+      height: calc(100vh - 140px);
+      min-height: 620px;
+    }
+    @media (max-width: 980px){
+      .perf_split { height: auto; min-height: 0; }
+    }
+    .perf_split > details.card { margin-top: 0; }
+    .perf_split_top { height: var(--perf_split_top, 33vh); min-height: 260px; overflow: auto; }
+    .perf_split_bottom { flex: 1; min-height: 260px; overflow: auto; }
+    .perf_splitter {
+      height: 10px;
+      margin: 12px 0;
+      border: 1px solid #ddd;
+      border-radius: 999px;
+      background: repeating-linear-gradient(90deg, #f2f2f2 0 10px, #fafafa 10px 20px);
+      cursor: row-resize;
+    }
+
     /* Diagram: verbindliches Muster (analyse.html) scoped to .tv */
     .diag_wrap { background:#0d1117; color:#e6edf3; border:1px solid #30363d; border-radius:12px; padding:16px; overflow:auto; }
     .diag_wrap .tv {
@@ -164,7 +187,8 @@
   <div class="shell">
     {% include "_nav.html" %}
     <main class="content" data-ui="perf_page.main" title="perf.page">
-      <details class="card" open data-ui="perf_page.section_root" title="perf_page.section_root">
+      <div class="perf_split" id="perf_split">
+      <details class="card perf_split_top" open data-ui="perf_page.section_root" title="perf_page.section_root">
         <summary>
           <span class="ib_summary_row">
             <span>Performanceanalyse</span>
@@ -246,7 +270,8 @@
         </div>
       </details>
 
-      <details class="card" open data-ui="perf_page.diagram.section_root" title="perf_page.diagram.section_root">
+      <div class="perf_splitter" id="perf_splitter" title="Hoehe anpassen"></div>
+      <details class="card perf_split_bottom" open data-ui="perf_page.diagram.section_root" title="perf_page.diagram.section_root">
         <summary><span class="ib_summary_row"><span>Diagramm</span></span></summary>
         <div class="card_body">
           <div class="muted">Grafische Zeitleiste (Waterfall) fuer den selektierten Trace.</div>
@@ -255,6 +280,7 @@
           </div>
         </div>
       </details>
+      </div>
     </main>
   </div>
 
@@ -430,7 +456,29 @@
     };
 
     const _MISSING_ENDPOINTS_SEEN = new Set();
-    let _tv_state = { show_ui_events: false, zoom_start: 0, zoom_end: null, wf_label_w: null };
+    let _tv_state = {
+      show_ui_events: false,
+      zoom_start: 0,
+      zoom_end: null,
+      wf_label_w: null,
+      ep_filter_on: false,
+      ep_filter_q: "",
+    };
+
+    function _loadTvPrefs(){
+      try{
+        _tv_state.ep_filter_q = String(localStorage.getItem("ib_perf_ep_filter_q") || "");
+        const on = String(localStorage.getItem("ib_perf_ep_filter_on") || "");
+        _tv_state.ep_filter_on = (on === "1" || on === "true");
+      }catch(e){}
+    }
+
+    function _saveTvPrefs(){
+      try{ localStorage.setItem("ib_perf_ep_filter_q", String(_tv_state.ep_filter_q || "")); }catch(e){}
+      try{ localStorage.setItem("ib_perf_ep_filter_on", _tv_state.ep_filter_on ? "1" : "0"); }catch(e){}
+    }
+
+    _loadTvPrefs();
 
     function _normEp(ep){
       const s = String(ep || '').trim();
@@ -541,6 +589,11 @@
           <div id="tv_head"></div>
           <div class="tv_controls">
             <button type="button" id="tv_toggle_ui">UI-Events: aus</button>
+            <label class="mono" style="display:inline-flex; align-items:center; gap:8px; padding: 0 2px;">
+              <input type="checkbox" id="tv_ep_filter_on" style="height:auto; width:auto;" />
+              <span style="font-size:12px; color:var(--text2)">Endpoint-Filter</span>
+            </label>
+            <input id="tv_ep_filter_q" placeholder="z.B. /api/outliers" style="height:34px; padding:0 10px; border-radius:10px; border:1px solid var(--border); background:var(--bg2); color:var(--text); width: min(360px, 42vw);" />
             <button type="button" id="tv_zoom_reset">Zoom reset</button>
           </div>
           <div class="cards" id="tv_cards"></div>
@@ -558,6 +611,14 @@
       `;
     }
 
+    function _applyEndpointFilter(spans){
+      const xs = Array.isArray(spans) ? spans : [];
+      if(!_tv_state.ep_filter_on) return xs;
+      const q = String(_tv_state.ep_filter_q || "").trim().toLowerCase();
+      if(!q) return xs;
+      return xs.filter(s => String(s && s.ep || "").toLowerCase().includes(q));
+    }
+
     function _fmtUtcShort(iso){
       try{
         const d = new Date(String(iso || ''));
@@ -572,22 +633,24 @@
     function _renderCards(trace, spans, total){
       const el = document.getElementById('tv_cards');
       if(!el) return;
+      const spansF = _applyEndpointFilter(spans);
       const st = String(trace.status || '');
-      const api = (trace.counts && trace.counts.api_spans) ? Number(trace.counts.api_spans) : spans.length;
-      const ok = spans.filter(s => s.status_code && Number(s.status_code) < 400).length;
-      const err = spans.filter(s => s.status_code && Number(s.status_code) >= 400).length;
+      const api = spansF.length;
+      const ok = spansF.filter(s => s.status_code && Number(s.status_code) < 400).length;
+      const err = spansF.filter(s => s.status_code && Number(s.status_code) >= 400).length;
       let bott = null;
-      spans.forEach(s=>{ if(!bott || Number(s.cDur) > Number(bott.cDur)) bott = s; });
-      const serverSum = spans.reduce((a,s)=>a + Math.max(0, Number(s.sDur)||0), 0);
-      const clientSum = spans.reduce((a,s)=>a + Math.max(0, Number(s.cDur)||0), 0);
-      const netSum = spans.reduce((a,s)=>a + Math.max(0, (Number(s.cDur)||0) - (Number(s.sDur)||0)), 0);
+      spansF.forEach(s=>{ if(!bott || Number(s.cDur) > Number(bott.cDur)) bott = s; });
+      const serverSum = spansF.reduce((a,s)=>a + Math.max(0, Number(s.sDur)||0), 0);
+      const clientSum = spansF.reduce((a,s)=>a + Math.max(0, Number(s.cDur)||0), 0);
+      const netSum = spansF.reduce((a,s)=>a + Math.max(0, (Number(s.cDur)||0) - (Number(s.sDur)||0)), 0);
       const pause = Math.max(0, Math.round((Number(total)||0) - clientSum));
       const pctPause = total > 0 ? ((pause/total)*100) : 0;
-      const overheadAvg = spans.length ? (netSum / spans.length) : 0;
+      const overheadAvg = spansF.length ? (netSum / spansF.length) : 0;
       const serverPct = total > 0 ? ((serverSum/total)*100) : 0;
       const statusCls = (st === 'ok') ? 'green' : (st === 'err' ? 'orange' : 'orange');
+      const filterHint = _tv_state.ep_filter_on ? (' · Filter: ' + String(spansF.length) + '/' + String((spans || []).length)) : '';
       const cards = [
-        { label:'Gesamtdauer', value: String(Math.round(Number(total)||0)) + 'ms', cls: statusCls, sub: 'Status: ' + (st || '-') },
+        { label:'Gesamtdauer', value: String(Math.round(Number(total)||0)) + 'ms', cls: statusCls, sub: 'Status: ' + (st || '-') + filterHint },
         { label:'API Calls', value: String(isFinite(api)?api:0), cls:'blue', sub: String(ok) + ' OK · ' + String(err) + ' Fehler' },
         { label:'Bottleneck', value: bott ? (String(Math.round(Number(bott.cDur)||0)) + 'ms') : '-', cls:'orange', sub: bott ? String(bott.ep || '') : '-' },
         { label:'Server-Zeit', value: String(Math.round(serverSum)) + 'ms', cls:'blue', sub: serverPct.toFixed(1).replace('.', ',') + '% der Gesamtzeit' },
@@ -600,7 +663,8 @@
     function _renderPhaseBar(total, spans){
       const pbc = document.getElementById('tv_phaseBar');
       if(!pbc) return;
-      const httpMs = spans.reduce((a,s)=>a + Math.max(0, Number(s.cDur)||0), 0);
+      const spansF = _applyEndpointFilter(spans);
+      const httpMs = spansF.reduce((a,s)=>a + Math.max(0, Number(s.cDur)||0), 0);
       const pause = Math.max(0, (Number(total)||0) - httpMs);
       const phases = [
         { label:'HTTP Calls', ms: Math.round(httpMs), cls:'p1', color:'#2563eb' },
@@ -756,8 +820,9 @@
     function _renderStats(spanList){
       const el = document.getElementById('tv_statsGrid');
       if(!el) return;
+      const spanListF = _applyEndpointFilter(spanList);
       const epGroups = {};
-      spanList.forEach(s=>{
+      spanListF.forEach(s=>{
         const key = String(s.ep || '');
         if(!epGroups[key]) epGroups[key] = { ep: key, calls: [], totalClient: 0, totalServer: 0, maxClient: 0 };
         epGroups[key].calls.push(s);
@@ -893,8 +958,8 @@
       const a = Math.max(0, Number(_tv_state.zoom_start||0));
       const b = Math.min(Number(total||0), Number(_tv_state.zoom_end||0) || Math.min(600, Number(total||0)));
       const len = Math.max(1, b - a);
-      if(badge) badge.textContent = Math.round(a) + ' – ' + Math.round(b) + ' ms';
-      const clipped = spans.map(s=>_clipSpanToRange(s, a, b)).filter(Boolean);
+      if(badge) badge.textContent = Math.round(a) + ' – ' + Math.round(b) + ' ms' + (_tv_state.ep_filter_on ? ' (gefiltert)' : '');
+      const clipped = _applyEndpointFilter(spans).map(s=>_clipSpanToRange(s, a, b)).filter(Boolean);
       const uiRel = (uiMarkers || []).map(t=>Number(t) - a).filter(x=>x >= 0 && x <= len);
       _renderWaterfall(zc, clipped, len, uiRel, false);
     }
@@ -924,7 +989,11 @@
       const total = (trace.dur_ms !== null && trace.dur_ms !== undefined) ? Number(trace.dur_ms) : (spans.length ? Math.max.apply(null, spans.map(s=>Number(s.cEnd||0))) : 0);
       const uiEvents = Array.isArray(trace.ui_events) ? trace.ui_events : [];
       const t0 = Date.parse(String(trace.started_at || ''));
-      const uiMarkers = (_tv_state.show_ui_events && isFinite(t0)) ? uiEvents.map(e=>Math.max(0, Date.parse(String(e.at||'')) - t0)).filter(x=>isFinite(x)) : [];
+      const computeUiMarkers = ()=>{
+        if(!_tv_state.show_ui_events) return [];
+        if(!isFinite(t0)) return [];
+        return uiEvents.map(e=>Math.max(0, Date.parse(String(e.at||'')) - t0)).filter(x=>isFinite(x));
+      };
 
       // header
       const head = document.getElementById('tv_head');
@@ -936,46 +1005,77 @@
       const badgeTotal = document.getElementById('tv_badge_total');
       const badgeFull = document.getElementById('tv_badge_full');
       if(badgeTotal) badgeTotal.textContent = String(Math.round(total)) + ' ms';
-      if(badgeFull) badgeFull.textContent = 'alle ' + String(spans.length) + ' Requests';
 
-      _renderCards(trace, spans, total);
-      _renderPhaseBar(total, spans);
       _renderLegend();
 
       const full = document.getElementById('tv_waterfallFull');
-      if(full){
-        _renderWaterfall(full, spans, total, uiMarkers, true);
-        _attachResizer(tvRoot, ()=>{
-          _renderWaterfall(full, spans, total, uiMarkers, true);
-          _attachZoomSelect(full, tvRoot, total, spans, uiMarkers);
-          _renderZoom(total, spans, uiMarkers);
-        });
-        _attachZoomSelect(full, tvRoot, total, spans, uiMarkers);
-      }
-      _renderZoom(total, spans, uiMarkers);
-      _renderStats(spans);
-
       const btnUi = document.getElementById('tv_toggle_ui');
-      if(btnUi){
-        btnUi.textContent = _tv_state.show_ui_events ? 'UI-Events: an' : 'UI-Events: aus';
-        btnUi.onclick = ()=>{
-          _tv_state.show_ui_events = !_tv_state.show_ui_events;
-          renderDiagram(trace);
+      const btnReset = document.getElementById('tv_zoom_reset');
+      const cbEpOn = document.getElementById('tv_ep_filter_on');
+      const inpEpQ = document.getElementById('tv_ep_filter_q');
+
+      const refreshViews = ()=>{
+        const uiMarkers = computeUiMarkers();
+        const spansF = _applyEndpointFilter(spans);
+
+        if(badgeFull){
+          badgeFull.textContent = _tv_state.ep_filter_on ? (String(spansF.length) + '/' + String(spans.length) + ' Requests') : ('alle ' + String(spans.length) + ' Requests');
+        }
+
+        if(btnUi) btnUi.textContent = _tv_state.show_ui_events ? 'UI-Events: an' : 'UI-Events: aus';
+        if(inpEpQ) inpEpQ.disabled = !_tv_state.ep_filter_on;
+
+        _renderCards(trace, spans, total);
+        _renderPhaseBar(total, spans);
+
+        if(full){
+          _renderWaterfall(full, spansF, total, uiMarkers, true);
+          _attachResizer(tvRoot, refreshViews);
+          _attachZoomSelect(full, tvRoot, total, spans, uiMarkers);
+        }
+
+        _renderZoom(total, spans, uiMarkers);
+        _renderStats(spans);
+      };
+
+      if(cbEpOn){
+        cbEpOn.checked = !!_tv_state.ep_filter_on;
+        cbEpOn.onchange = ()=>{
+          _tv_state.ep_filter_on = !!cbEpOn.checked;
+          _saveTvPrefs();
+          refreshViews();
+        };
+      }
+      if(inpEpQ){
+        inpEpQ.value = String(_tv_state.ep_filter_q || '');
+        inpEpQ.disabled = !_tv_state.ep_filter_on;
+        inpEpQ.oninput = ()=>{
+          _tv_state.ep_filter_q = String(inpEpQ.value || '');
+          _saveTvPrefs();
+          refreshViews();
         };
       }
 
-      const btnReset = document.getElementById('tv_zoom_reset');
+      if(btnUi){
+        btnUi.onclick = ()=>{
+          _tv_state.show_ui_events = !_tv_state.show_ui_events;
+          refreshViews();
+        };
+      }
+
       if(btnReset){
         btnReset.onclick = ()=>{
           _tv_state.zoom_start = 0;
           _tv_state.zoom_end = Math.min(600, Math.round(total||0));
-          _renderZoom(total, spans, uiMarkers);
+          refreshViews();
           try{
             const sel = full ? full.querySelector('#tv_zoom_sel') : null;
             if(sel) sel.style.display = 'none';
           }catch(e){}
         };
       }
+
+      refreshViews();
     }
 
     async function load(){
@@ -1094,6 +1194,61 @@
     // Persist panel heights (profile-based)
     try{ window.InfluxBroTableHeight && window.InfluxBroTableHeight.attach(document.getElementById('list_box'), 'perf_trace_list', {minPx: 240}); }catch(e){}
     try{ window.InfluxBroTableHeight && window.InfluxBroTableHeight.attach(document.getElementById('detail_box'), 'perf_trace_detail', {minPx: 240}); }catch(e){}
+
+    // Persist vertical split (profile-based)
+    (function(){
+      try{
+        if(window.matchMedia && window.matchMedia('(max-width: 980px)').matches) return;
+      }catch(e){}
+      const split = document.getElementById('perf_split');
+      const top = document.querySelector('.perf_split_top');
+      const splitter = document.getElementById('perf_splitter');
+      if(!split || !top || !splitter) return;
+
+      const key = 'ib_perf_split_top_px';
+      const minTop = 260;
+      const minBottom = 260;
+
+      const clamp = (h)=>{
+        const total = Math.max(0, split.clientHeight || 0);
+        const maxTop = Math.max(minTop, total - minBottom - (splitter.offsetHeight || 10) - 24);
+        return Math.max(minTop, Math.min(maxTop, Math.round(Number(h)||0)));
+      };
+
+      const apply = (h)=>{
+        split.style.setProperty('--perf_split_top', String(h) + 'px');
+      };
+
+      let h0 = 0;
+      try{ h0 = parseInt(localStorage.getItem(key) || '', 10); }catch(e){ h0 = 0; }
+      if(!isFinite(h0) || h0 < 200) h0 = Math.round((window.innerHeight || 900) * 0.33);
+      apply(clamp(h0));
+
+      let dragging = false;
+      let startY = 0;
+      let startH = 0;
+      const onMove = (ev)=>{
+        if(!dragging) return;
+        const dy = Number(ev.clientY || 0) - startY;
+        const h = clamp(startH + dy);
+        apply(h);
+        try{ localStorage.setItem(key, String(h)); }catch(e){}
+      };
+      const onUp = ()=>{
+        dragging = false;
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+      };
+
+      splitter.onmousedown = (ev)=>{
+        try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+        dragging = true;
+        startY = Number(ev.clientY || 0);
+        try{ startH = top.getBoundingClientRect().height || 0; }catch(e){ startH = 0; }
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+      };
+    })();
   </script>
 </body>
 </html>

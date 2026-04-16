@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.12.364
+
+### Enhancement
+
+- Performanceanalyse Diagramm: Endpoint-Filter (Toggle + Text) wirkt auf Summary Cards, Waterfall (Vollansicht/Zoom) und Endpoint-Statistiken; Filterzustand wird gespeichert. ([#310](https://github.com/thomas682/HA-Addons/issues/310))
+- Performanceanalyse: Vertikaler Splitter zwischen Trace-Liste/Details (oben) und Diagramm (unten) mit persistierter Hoehe (Default ~1/3). ([#311](https://github.com/thomas682/HA-Addons/issues/311))
+- Dashboard: Analyse-Checklist zeigt TraceID (mit Copy-Button); Raw-Fenster-Logging ist granular (pro Fenster, inkl. Quelle cache/influx). ([#312](https://github.com/thomas682/HA-Addons/issues/312))
+
+### Bug Fix
+
+- Jobs & Cache: Laden der Untersektionen (Cache/Analysecache/Timers/Usage) bricht nicht mehr komplett ab, wenn ein einzelner API-Call fehlschlaegt; Fehler werden pro Sektion angezeigt. ([#313](https://github.com/thomas682/HA-Addons/issues/313))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`
+- Tests: `pytest -q` (derzeit im Repo mehrfach rot; als pre-existing/unrelated eingestuft)
+- Tested with Home Assistant Core: 2026.4.2
+
 ## 1.12.363
 
 ### Bug Fix

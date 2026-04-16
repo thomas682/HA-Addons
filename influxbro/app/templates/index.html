@@ -132,6 +132,9 @@
     .checklist_sub { padding-left: 24px; font-size: 11px; opacity: 0.8; margin-top: 2px; }
     .checklist_main { display:flex; align-items:center; gap:8px; flex:1; min-width:0; }
     .checklist_main .ib_info_icon { width:20px; height:20px; min-width:20px; }
+    .checklist_trace { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 11px; opacity: 0.65; white-space: nowrap; }
+    .checklist_trace_copy { width:24px; height:24px; padding:0; border:1px solid #ddd; background:#fff; border-radius:10px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; flex: 0 0 auto; }
+    .checklist_trace_copy:hover { background:#f6f6f6; }
     #load_status_time { opacity: 0.85; white-space: nowrap; }
 
     #outlier_status { display:none; margin-top: 6px; font-size: 12px; opacity: 0.85; align-items:center; gap: 8px; }
@@ -5327,7 +5330,57 @@ async function _ensureOutlierWindows(base, win, source){
         RAW_OUTLIER_MAP[String(row.time)].window = row.window;
       }
     });
-    _logOutlierWindowStats('status_after', rows, { source: String(source || ''), computed_windows: Array.isArray(wj && wj.windows) ? wj.windows.length : 0 });
+    const computedWindows = Array.isArray(wj && wj.windows) ? wj.windows.length : 0;
+    _logOutlierWindowStats('status_after', rows, { source: String(source || ''), computed_windows: computedWindows });
+
+    // Granular raw window log (bounded)
+    try{
+      const src = String(source || '');
+      const list = Array.isArray(wj && wj.windows) ? wj.windows : [];
+      const maxLog = 60;
+      list.slice(0, maxLog).forEach((w) => {
+        if(!w || !w.time) return;
+        const k = ['analysis_raw_windows', 'window', src, String(w.time || ''), String(w.before_time || ''), String(w.after_time || '')].join('|');
+        _saveAnalysisEventOnce({
+          at: new Date().toISOString(),
+          kind: 'analysis_raw_windows',
+          step: 'window',
+          status: 'ok',
+          detail: 'Raw-Fenster: ' + fmtTs(String(w.before_time || '')) + ' – ' + fmtTs(String(w.after_time || '')),
+          extra: {
+            key: k,
+            scope: 'dashboard_analysis',
+            action: String(ANALYSIS_ACTIVE_ACTION || ''),
+            source: src,
+            time: String(w.time || ''),
+            before_time: String(w.before_time || ''),
+            after_time: String(w.after_time || ''),
+            center_minutes: w.center_minutes,
+            before_minutes: w.before_minutes,
+            after_minutes: w.after_minutes,
+            before_count: w.before_count,
+            after_count: w.after_count,
+          },
+        });
+      });
+      if(list.length > maxLog){
+        _saveAnalysisEventOnce({
+          at: new Date().toISOString(),
+          kind: 'analysis_raw_windows',
+          step: 'window_more',
+          status: 'ok',
+          detail: 'Raw-Fenster: +' + String(list.length - maxLog) + ' weitere (nicht geloggt).',
+          extra: {
+            key: ['analysis_raw_windows', 'window_more', src, String(list.length)].join('|'),
+            scope: 'dashboard_analysis',
+            action: String(ANALYSIS_ACTIVE_ACTION || ''),
+            source: src,
+            total: list.length,
+            logged: maxLog,
+          },
+        });
+      }
+    }catch(e){}
   }catch(e){
     _saveAnalysisEvent({
       at: new Date().toISOString(),
@@ -6359,6 +6412,12 @@ function _analysisChecklistSet(key, patch){
   if(next.label === undefined && !merged.label){
     merged.label = ANALYSIS_STEP_LABELS[key] || key;
   }
+  if(!merged.trace_id){
+    try{
+      const tr = (window.InfluxBroTrace && window.InfluxBroTrace.current) ? window.InfluxBroTrace.current() : null;
+      if(tr && tr.trace_id) merged.trace_id = String(tr.trace_id);
+    }catch(e){}
+  }
   if(next.status === 'running'){
     if(!merged.started_at) merged.started_at = new Date().toISOString();
     if(!next.at) merged.at = merged.started_at;
@@ -6614,7 +6673,8 @@ async function runAnalysis(){
     try{
       const w0 = performance.now();
       _analysisChecklistSet('raw_windows', {status: 'running', sub: 'Raw-Fenster werden berechnet...'});
-      await _ensureOutlierWindows(base, win, 'analysis_search_complete');
+      const srcKind = (ANALYSIS_CACHE_PLAN_CHOICE && String(ANALYSIS_CACHE_PLAN_CHOICE.cacheStrategy || '') === 'refresh') ? 'influx' : 'cache';
+      await _ensureOutlierWindows(base, win, srcKind);
       const wdur = Math.round(performance.now() - w0);
       _analysisChecklistSet('raw_windows', {status: 'ok', sub: 'Raw-Fenster berechnet (' + wdur + ' ms).'});
       _saveAnalysisEvent({at: new Date().toISOString(), kind: 'analysis_raw_windows', step: 'done', status: 'ok', detail: 'Raw-Fenster berechnet', extra: { dur_ms: wdur, total: RAW_OUTLIER_RESULTS.length }});
@@ -6738,7 +6798,13 @@ function _analysisChecklistHtml(items, chunkLog){
     const metaText = [atText, durText].filter(Boolean).join(' ');
     const infoTitle = 'Analyse: ' + String(item.label || 'Schritt');
     const infoBody = _analysisStepInfoText(item);
-    let html = '<div class="checklist_item"><span class="checklist_icon ' + iconClass + '">' + iconText + '</span><span class="checklist_dur">' + _escHtml(metaText) + '</span><span class="checklist_main"><span class="checklist_label">' + _escHtml(item.label || '') + '</span><button type="button" class="ib_info_icon" data-info-title="' + _escAttr(infoTitle) + '" data-info-body="' + _escAttr(infoBody) + '">' + ANALYSIS_INFO_ICON_SVG + '</button></span></div>';
+    const traceId = item && item.trace_id ? String(item.trace_id) : '';
+    const traceShort = traceId ? (traceId.length > 26 ? (traceId.slice(0, 12) + '…' + traceId.slice(-10)) : traceId) : '';
+    const traceHtml = traceId
+      ? ('<span class="checklist_trace" title="' + _escAttr(traceId) + '">' + _escHtml(traceShort) + '</span>'
+        + '<button type="button" class="checklist_trace_copy" data-trace-id="' + _escAttr(traceId) + '" title="TraceID kopieren" aria-label="TraceID kopieren">⧉</button>')
+      : '';
+    let html = '<div class="checklist_item"><span class="checklist_icon ' + iconClass + '">' + iconText + '</span><span class="checklist_dur">' + _escHtml(metaText) + '</span><span class="checklist_main"><span class="checklist_label">' + _escHtml(item.label || '') + '</span>' + traceHtml + '<button type="button" class="ib_info_icon" data-info-title="' + _escAttr(infoTitle) + '" data-info-body="' + _escAttr(infoBody) + '">' + ANALYSIS_INFO_ICON_SVG + '</button></span></div>';
     if(item.sub){
       html += '<div class="checklist_sub">' + _escHtml(item.sub) + '</div>';
     }
@@ -6794,6 +6860,12 @@ function _loadChecklistSet(key, patch){
   }
   const prev = items[idx] || {};
   const merged = Object.assign({}, prev, next);
+  if(!merged.trace_id){
+    try{
+      const tr = (window.InfluxBroTrace && window.InfluxBroTrace.current) ? window.InfluxBroTrace.current() : null;
+      if(tr && tr.trace_id) merged.trace_id = String(tr.trace_id);
+    }catch(e){}
+  }
   if(next.status === 'running'){
     if(!merged.started_at) merged.started_at = new Date().toISOString();
     if(!next.at) merged.at = merged.started_at;
@@ -6822,7 +6894,13 @@ function _loadChecklistHtml(items){
     const durText = String(Math.max(0, Math.round(Number(item && item.dur || 0)))) + ' ms';
     const atText = item.at ? _analysisStepClock(item.at) : '';
     const metaText = [atText, durText].filter(Boolean).join(' ');
-    let html = '<div class="checklist_item"><span class="checklist_icon ' + iconClass + '">' + iconText + '</span><span class="checklist_dur">' + _escHtml(metaText) + '</span><span class="checklist_label">' + _escHtml(item.label || '') + '</span></div>';
+    const traceId = item && item.trace_id ? String(item.trace_id) : '';
+    const traceShort = traceId ? (traceId.length > 26 ? (traceId.slice(0, 12) + '…' + traceId.slice(-10)) : traceId) : '';
+    const traceHtml = traceId
+      ? ('<span class="checklist_trace" title="' + _escAttr(traceId) + '">' + _escHtml(traceShort) + '</span>'
+        + '<button type="button" class="checklist_trace_copy" data-trace-id="' + _escAttr(traceId) + '" title="TraceID kopieren" aria-label="TraceID kopieren">⧉</button>')
+      : '';
+    let html = '<div class="checklist_item"><span class="checklist_icon ' + iconClass + '">' + iconText + '</span><span class="checklist_dur">' + _escHtml(metaText) + '</span><span class="checklist_main"><span class="checklist_label">' + _escHtml(item.label || '') + '</span>' + traceHtml + '</span></div>';
     if(item.sub) html += '<div class="checklist_sub">' + _escHtml(item.sub) + '</div>';
     rows.push(html);
   });
@@ -6867,6 +6945,17 @@ function _renderAnalysisChecklist(items, chunkLog){
   if(!$cl) return;
   $cl.innerHTML = _analysisChecklistHtml(items, chunkLog);
 }
+
+document.addEventListener('click', async (ev)=>{
+  try{
+    const btn = ev && ev.target && ev.target.closest ? ev.target.closest('.checklist_trace_copy') : null;
+    if(!btn) return;
+    try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+    const id = String(btn.getAttribute('data-trace-id') || '');
+    if(!id) return;
+    await copyTextToClipboard(id);
+  }catch(e){}
+});
 
 function _clearLoadPlanUi(){
   try{

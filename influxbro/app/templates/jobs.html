@@ -1429,11 +1429,12 @@
       }
 
       async function loadAll(){
-        await loadJobs();
-        await loadCaches();
-        await loadAnalysisCaches();
-        await loadTimers();
-        await loadUsage();
+        // Do not abort the whole page when one section fails.
+        try{ await loadJobs(); }catch(e){ err(e && e.message ? e.message : String(e)); }
+        try{ await loadCaches(); }catch(e){ cacheErr(e && e.message ? e.message : String(e)); }
+        try{ await loadAnalysisCaches(); }catch(e){ analysisCacheErr(e && e.message ? e.message : String(e)); }
+        try{ await loadTimers(); }catch(e){ timersErr(e && e.message ? e.message : String(e)); }
+        try{ await loadUsage(); }catch(e){ usageErr(e && e.message ? e.message : String(e)); }
       }
 
       if($jobsDetailsBtn) $jobsDetailsBtn.onclick = ()=>{ const j = selectedJob(); if(j) showJobDetails(j); };
