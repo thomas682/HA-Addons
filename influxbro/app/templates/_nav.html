@@ -166,7 +166,15 @@
   // Also persist non-sensitive UI input state in localStorage so navigating away
   // (or updating the add-on) keeps the last UI selections.
   (function(){
-    const TOOLTIP_ENABLED = {{ 'true' if (cfg and cfg.get('ui_tooltips_enabled', true)) else 'false' }};
+  const TOOLTIP_ENABLED = {{ 'true' if (cfg and cfg.get('ui_tooltips_enabled', true)) else 'false' }};
+
+  function _pickerModeActive(){
+    try{
+      return !!document.querySelector('#ui_picker_toggle.active, #ui_superpicker_toggle.active');
+    }catch(e){
+      return false;
+    }
+  }
     const SENSITIVE_IDS = new Set([
       'token',
       'password',
@@ -962,6 +970,7 @@
 
     function applyTooltips(){
       if(!TOOLTIP_ENABLED) return;
+      if(_pickerModeActive()) return;
       document.querySelectorAll('[data-ui]').forEach(el => {
         const ui = (el.getAttribute('data-ui') || '').trim();
         if(!ui) return;
@@ -1158,16 +1167,16 @@
      if(TOOLTIP_ENABLED) applyTooltips();
      else clearTitles();
      // Restore from server (best-effort) then apply to DOM.
-     _restoreUiStateFromServer().then(()=>{
-       try{ scanPersistence(); }catch(e){}
-       try{ ensureSectionToolbar(); }catch(e){}
-       try{ pruneInvalidUiKeys(); }catch(e){}
-     }).catch(()=>{});
+      _restoreUiStateFromServer().then(()=>{
+        try{ scanPersistence(); }catch(e){}
+        try{ ensureSectionToolbar(); }catch(e){}
+        try{ pruneInvalidUiKeys(); }catch(e){}
+      }).catch(()=>{});
      // Initial pass (local cache)
      scanPersistence();
      ensureSectionToolbar();
-    const obs = new MutationObserver((mut)=>{
-      if(TOOLTIP_ENABLED) applyTooltips();
+     const obs = new MutationObserver((mut)=>{
+      if(TOOLTIP_ENABLED && !_pickerModeActive()) applyTooltips();
       try{
           // Restore/save for newly added nodes.
           (mut||[]).forEach(m=>{

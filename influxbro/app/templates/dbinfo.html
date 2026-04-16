@@ -135,6 +135,77 @@
         </div>
       </div>
 
+      <div class="card" data-ui="dbinfo_storage.panel_card" title="dbinfo.storage.card">
+        <div style="font-weight:800;">Diagnose: Speicher</div>
+        <div class="muted" style="margin-top: 4px;">Inventar aller von InfluxBro geschriebenen Daten (inkl. Backup-Verzeichnis) sowie Verlauf/Prognose.</div>
+
+        <div class="grid4" style="margin-top: 10px;" data-ui="dbinfo_storage.panel_kpis" title="dbinfo.storage.kpis">
+          <div class="kpi"><div class="k">Inventar (Summe)</div><div class="v" id="st_total">-</div></div>
+          <div class="kpi"><div class="k">Disk total (Anzeige)</div><div class="v" id="st_disk_total">-</div></div>
+          <div class="kpi"><div class="k">Min freier Cachespeicher</div><div class="v" id="st_budget">-</div></div>
+          <div class="kpi"><div class="k">Prognose bis Limit</div><div class="v" id="st_eta">-</div></div>
+        </div>
+
+        <div class="card" style="margin-top: 10px;" data-ui="dbinfo_storage.panel_trend" title="dbinfo.storage.trend">
+          <div style="display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; align-items:baseline;">
+            <div style="font-weight:800;">Verlauf (12 Monate)</div>
+            <div class="muted" id="st_trend_meta">-</div>
+          </div>
+          <svg id="st_spark" viewBox="0 0 800 120" preserveAspectRatio="none" style="width:100%; height:120px; display:block; margin-top:8px; background:#fafafa; border:1px solid #eee; border-radius:12px;"></svg>
+        </div>
+
+        <div class="row" style="margin-top: 10px;" data-ui="dbinfo_storage.panel_controls" title="dbinfo.storage.controls">
+          <button id="storage_refresh" type="button" class="btn_xs" data-ui="dbinfo_storage.btn_refresh" title="dbinfo.storage.refresh">Aktualisieren</button>
+          <div class="muted" id="storage_meta" style="padding-top: 10px;"></div>
+        </div>
+
+        <div class="table_wrap" style="margin-top:10px;">
+          <table class="cfg_tbl" id="storage_tbl" data-ui="dbinfo_storage.tbl" title="dbinfo.storage.table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Pfad</th>
+                <th>Typ</th>
+                <th>Dateien</th>
+                <th>Groesse</th>
+                <th>mtime</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" data-ui="dbinfo_worklog.panel_card" title="dbinfo.worklog.card">
+        <div style="font-weight:800;">Diagnose: Worklog</div>
+        <div class="muted" style="margin-top: 4px;">Letzte Analyse/Statistik/Raw Operationen inkl. Zeitfenster, Grund und Dauer (ms).</div>
+
+        <div class="row" style="margin-top: 10px;" data-ui="dbinfo_worklog.panel_controls" title="dbinfo.worklog.controls">
+          <button id="worklog_refresh" type="button" class="btn_xs" data-ui="dbinfo_worklog.btn_refresh" title="dbinfo.worklog.refresh">Aktualisieren</button>
+          <label style="display:flex; flex-direction:column; gap:4px; font-size:12px;">
+            <span>Bereich</span>
+            <select id="worklog_purpose" style="min-width:180px;">
+              <option value="">Alle</option>
+              <option value="analysis">Analyse</option>
+              <option value="stats">Statistik</option>
+              <option value="raw">Raw</option>
+            </select>
+          </label>
+          <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; flex:1 1 240px;">
+            <span>Suche</span>
+            <input id="worklog_q" type="text" placeholder="Text (detail/reason/op)" />
+          </label>
+          <div class="muted" id="worklog_meta" style="padding-top: 10px;"></div>
+        </div>
+
+        <div class="table_wrap" style="margin-top:10px;">
+          <table class="cfg_tbl" id="worklog_tbl" data-ui="dbinfo_worklog.tbl" title="dbinfo.worklog.table">
+            <thead><tr><th>Zeit</th><th>Zweck</th><th>Op</th><th>Quelle</th><th>Zeitraum</th><th>Grund</th><th>ms</th><th>Detail</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
       <script>
       const $hint = document.getElementById('hint');
       const $err = document.getElementById('err');
@@ -195,6 +266,240 @@
         if(b < 1024*1024) return (b/1024).toFixed(1) + ' kB';
         if(b < 1024*1024*1024) return (b/1024/1024).toFixed(1) + ' MB';
         return (b/1024/1024/1024).toFixed(2) + ' GB';
+      }
+
+      function fmtMbFromBytes(n){
+        const b = Number(n);
+        if(!isFinite(b) || b < 0) return '-';
+        return (b/1024/1024).toFixed(1) + ' MB';
+      }
+
+      function _safeNum(x){
+        const n = Number(x);
+        return isFinite(n) ? n : null;
+      }
+
+      function _spark(svg, pts, limitY){
+        try{
+          if(!svg) return;
+          svg.innerHTML = '';
+          const w = 800;
+          const h = 120;
+          const pad = 10;
+          const xs = Array.isArray(pts) ? pts : [];
+          if(!xs.length){
+            svg.innerHTML = '<text x="12" y="20" font-size="12" fill="#666">(kein Verlauf)</text>';
+            return;
+          }
+          const ys = xs.map(p=>Number(p.y)).filter(v=>isFinite(v));
+          let minY = Math.min.apply(null, ys);
+          let maxY = Math.max.apply(null, ys);
+          if(limitY !== null && isFinite(Number(limitY))){
+            maxY = Math.max(maxY, Number(limitY));
+            minY = Math.min(minY, Number(limitY));
+          }
+          if(!isFinite(minY) || !isFinite(maxY)) return;
+          if(maxY - minY < 1e-9){ maxY = minY + 1; }
+
+          const x0 = pad;
+          const y0 = pad;
+          const ww = w - pad*2;
+          const hh = h - pad*2;
+
+          const sx = (i)=> x0 + (i/(xs.length-1 || 1))*ww;
+          const sy = (y)=> y0 + (1 - ((y - minY) / (maxY - minY))) * hh;
+
+          const poly = xs.map((p,i)=>`${sx(i).toFixed(2)},${sy(p.y).toFixed(2)}`).join(' ');
+          const path = document.createElementNS('http://www.w3.org/2000/svg','polyline');
+          path.setAttribute('fill','none');
+          path.setAttribute('stroke','#0b57d0');
+          path.setAttribute('stroke-width','2');
+          path.setAttribute('points', poly);
+          svg.appendChild(path);
+
+          if(limitY !== null && isFinite(Number(limitY))){
+            const ly = sy(Number(limitY));
+            const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+            line.setAttribute('x1', String(x0));
+            line.setAttribute('x2', String(x0 + ww));
+            line.setAttribute('y1', String(ly));
+            line.setAttribute('y2', String(ly));
+            line.setAttribute('stroke', '#dc2626');
+            line.setAttribute('stroke-width', '2');
+            line.setAttribute('stroke-dasharray', '6 4');
+            svg.appendChild(line);
+          }
+        }catch(e){}
+      }
+
+      function _estimateEtaDays(hist, limitBytes){
+        try{
+          const lim = Number(limitBytes);
+          if(!isFinite(lim) || lim <= 0) return null;
+          const rows = (hist || []).slice().filter(r=>r && r.total_bytes !== undefined);
+          if(rows.length < 10) return null;
+          const ys = rows.map(r=>({t: Date.parse(String(r.at||'')), b: Number(r.total_bytes)})).filter(p=>isFinite(p.t) && isFinite(p.b));
+          if(ys.length < 10) return null;
+          const last = ys[ys.length-1];
+          const cutoff = last.t - 90*24*60*60*1000;
+          const seg = ys.filter(p=>p.t >= cutoff);
+          if(seg.length < 10) return null;
+          const first = seg[0];
+          const dtDays = (last.t - first.t) / (24*60*60*1000);
+          if(!(isFinite(dtDays) && dtDays > 1)) return null;
+          const db = last.b - first.b;
+          const rate = db / dtDays;
+          if(!(isFinite(rate) && rate > 0)) return null;
+          const remaining = lim - last.b;
+          if(!(isFinite(remaining) && remaining > 0)) return 0;
+          return Math.ceil(remaining / rate);
+        }catch(e){
+          return null;
+        }
+      }
+
+      async function refreshStorage(){
+        const $tbl = document.getElementById('storage_tbl');
+        const $body = $tbl ? $tbl.querySelector('tbody') : null;
+        const $meta = document.getElementById('storage_meta');
+        const $stTotal = document.getElementById('st_total');
+        const $stDiskTotal = document.getElementById('st_disk_total');
+        const $stBudget = document.getElementById('st_budget');
+        const $stEta = document.getElementById('st_eta');
+        const $spark = document.getElementById('st_spark');
+        const $trendMeta = document.getElementById('st_trend_meta');
+        if(!$body) return;
+
+        try{ if($meta) $meta.textContent = 'Lade...'; }catch(e){}
+        $body.innerHTML = '';
+
+        let j;
+        try{
+          j = await jget('./api/storage_usage');
+        }catch(e){
+          try{ if($meta) $meta.textContent = 'Fehler: ' + (e && e.message ? e.message : String(e)); }catch(x){}
+          return;
+        }
+
+        const disk = j.disk || {};
+        const totalBytes = Number(j.total_bytes || 0);
+        const budgetMb = Number(j.storage_budget_mb || 0);
+        const diskTotal = _safeNum(disk.total);
+        const limitBytes = (diskTotal !== null && isFinite(budgetMb)) ? Math.max(0, diskTotal - budgetMb*1024*1024) : null;
+        const etaDays = _estimateEtaDays(j.history || [], limitBytes);
+
+        try{ if($stTotal) $stTotal.textContent = fmtBytes(totalBytes); }catch(e){}
+        try{ if($stDiskTotal) $stDiskTotal.textContent = (diskTotal !== null) ? fmtBytes(diskTotal) : '-'; }catch(e){}
+        try{ if($stBudget) $stBudget.textContent = isFinite(budgetMb) ? (String(Math.round(budgetMb)) + ' MB') : '-'; }catch(e){}
+        try{
+          if($stEta){
+            if(etaDays === null) $stEta.textContent = '-';
+            else if(etaDays <= 0) $stEta.textContent = 'Limit erreicht';
+            else $stEta.textContent = etaDays + ' Tage';
+          }
+        }catch(e){}
+
+        try{
+          const parts = [];
+          if(disk && isFinite(Number(disk.free)) && isFinite(Number(disk.used)) && isFinite(Number(disk.total))){
+            parts.push('Disk ' + String(disk.path || '/data') + ': frei ' + fmtBytes(disk.free) + ' | genutzt ' + fmtBytes(disk.used) + ' | total ' + fmtBytes(disk.total));
+          }
+          if(limitBytes !== null) parts.push('Limit ~ ' + fmtBytes(limitBytes));
+          parts.push('Backup dir: ' + String(j.backup_dir || ''));
+          if($meta) $meta.textContent = parts.join(' | ');
+        }catch(e){}
+
+        try{
+          const rows = Array.isArray(j.items) ? j.items : [];
+          rows.forEach(it=>{
+            const tr = document.createElement('tr');
+            const files = (it.files === null || it.files === undefined) ? '' : String(it.files);
+            const bytes = Number(it.bytes || 0);
+            const mtime = (it.mtime !== null && it.mtime !== undefined) ? String(it.mtime) : '';
+            tr.innerHTML = `<td>${String(it.name||'')}</td>`
+              + `<td style="font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,\"Liberation Mono\",\"Courier New\",monospace; font-size:12px;">${String(it.path||'')}</td>`
+              + `<td>${String(it.kind||'')}</td>`
+              + `<td style="text-align:right;">${files}</td>`
+              + `<td style="text-align:right;" data-sort="${isFinite(bytes)?bytes:0}">${fmtBytes(bytes)}</td>`
+              + `<td style="font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,\"Liberation Mono\",\"Courier New\",monospace; font-size:12px;" data-sort="${isFinite(Number(mtime))?Number(mtime):''}">${mtime}</td>`;
+            $body.appendChild(tr);
+          });
+        }catch(e){}
+
+        try{
+          const hist = Array.isArray(j.history) ? j.history : [];
+          const now = Date.now();
+          const cutoff = now - 366*24*60*60*1000;
+          const xs = hist
+            .map(r=>({t: Date.parse(String(r.at||'')), b: Number(r.total_bytes)}))
+            .filter(p=>isFinite(p.t) && isFinite(p.b) && p.t >= cutoff)
+            .sort((a,b)=>a.t-b.t);
+          const pts = xs.map(p=>({x:p.t, y:(p.b/1024/1024)}));
+          const limMb = (limitBytes !== null) ? (Number(limitBytes)/1024/1024) : null;
+          _spark($spark, pts, limMb);
+          if($trendMeta){
+            const lastMb = pts.length ? pts[pts.length-1].y : 0;
+            $trendMeta.textContent = pts.length ? ('Aktuell: ' + lastMb.toFixed(1) + ' MB' + (limMb !== null ? (' | Limit: ' + limMb.toFixed(1) + ' MB') : '')) : '-';
+          }
+        }catch(e){}
+
+        try{ window.InfluxBroTableSort && window.InfluxBroTableSort.init('#storage_tbl'); }catch(e){}
+      }
+
+      async function refreshWorklog(){
+        const $tbl = document.getElementById('worklog_tbl');
+        const $body = $tbl ? $tbl.querySelector('tbody') : null;
+        const $meta = document.getElementById('worklog_meta');
+        const $purpose = document.getElementById('worklog_purpose');
+        const $q = document.getElementById('worklog_q');
+        if(!$body) return;
+        const wantPurpose = $purpose ? String($purpose.value || '') : '';
+        const q = $q ? String($q.value || '').trim().toLowerCase() : '';
+        $body.innerHTML = '';
+        try{ if($meta) $meta.textContent = 'Lade...'; }catch(e){}
+
+        let j;
+        try{
+          j = await jget('./api/worklog?limit=500');
+        }catch(e){
+          try{ if($meta) $meta.textContent = 'Fehler: ' + (e && e.message ? e.message : String(e)); }catch(x){}
+          return;
+        }
+
+        const rows = Array.isArray(j.rows) ? j.rows : [];
+        const items = rows.filter((r)=> String(r.kind || '') === 'worklog');
+        const filtered = items.filter((r)=>{
+          const ex = (r.extra && typeof r.extra === 'object') ? r.extra : {};
+          const purpose = String(ex.purpose || '').toLowerCase();
+          if(wantPurpose && purpose !== wantPurpose) return false;
+          if(!q) return true;
+          const hay = [r.detail, ex.reason_label, ex.reason_code, ex.op, ex.source, ex.window_start, ex.window_stop].map(x=>String(x||'').toLowerCase()).join(' | ');
+          return hay.includes(q);
+        });
+
+        function fmtTs(iso){
+          try{ return new Date(String(iso||'')).toLocaleString('de-DE'); }catch(e){ return String(iso||''); }
+        }
+
+        filtered.slice(0, 300).forEach((r)=>{
+          const ex = (r.extra && typeof r.extra === 'object') ? r.extra : {};
+          const purpose = String(ex.purpose || '');
+          const op = String(ex.op || '');
+          const source = String(ex.source || '');
+          const ws = String(ex.window_start || '');
+          const we = String(ex.window_stop || '');
+          const win = (ws || we) ? (fmtTs(ws) + (we ? (' – ' + fmtTs(we)) : '')) : '';
+          const reason = String(ex.reason_label || ex.reason_code || '');
+          const ms = (ex.duration_ms !== null && ex.duration_ms !== undefined) ? String(ex.duration_ms) : '';
+          const detail = String(r.detail || '');
+          const tr = document.createElement('tr');
+          if(String(r.status||'') === 'err') tr.style.background = '#fff0f0';
+          tr.innerHTML = `<td>${fmtTs(r.at||'')}</td><td>${purpose}</td><td>${op}</td><td>${source}</td><td>${win}</td><td>${reason}</td><td style="text-align:right;">${ms}</td><td style="white-space:pre-wrap;">${detail}</td>`;
+          $body.appendChild(tr);
+        });
+
+        try{ if($meta) $meta.textContent = 'Eintraege: ' + filtered.length + ' (gezeigt: ' + Math.min(300, filtered.length) + ')'; }catch(e){}
+        try{ window.InfluxBroTableSort && window.InfluxBroTableSort.init('#worklog_tbl'); }catch(e){}
       }
 
       function setDot(el, kind){
@@ -338,8 +643,25 @@
           }catch(e){ err(e && e.message ? e.message : String(e)); }
         };
       }catch(e){}
+
+      try{
+        const b = document.getElementById('storage_refresh');
+        if(b) b.onclick = ()=>{ refreshStorage().catch(()=>{}); };
+      }catch(e){}
+      try{
+        const b = document.getElementById('worklog_refresh');
+        const p = document.getElementById('worklog_purpose');
+        const q = document.getElementById('worklog_q');
+        if(b) b.onclick = ()=>{ refreshWorklog().catch(()=>{}); };
+        if(p) p.onchange = ()=>{ refreshWorklog().catch(()=>{}); };
+        if(q) q.oninput = ()=>{ refreshWorklog().catch(()=>{}); };
+      }catch(e){}
+
+      try{ refreshStorage().catch(()=>{}); }catch(e){}
+      try{ refreshWorklog().catch(()=>{}); }catch(e){}
       </script>
 
+      {% include "_table_cols.html" %}
       {% include "_tooltips.html" %}
     </main>
   </div>

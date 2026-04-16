@@ -905,7 +905,7 @@
             </div>
           </div>
           <div class="param_row">
-            <div class="param_label">Wochentag (weekly)</div>
+            <div class="param_label">Wochentag (weekly)<span class="param_hint">Gilt nur fuer weekly (0=Mo, 6=So).</span></div>
             <div class="param_control">
               <select id="stats_full_refresh_weekday">
                 <option value="0">Mo</option>
@@ -954,10 +954,16 @@
                   <input id="ui_backup_visible_rows" type="number" min="5" max="200" data-ui="config_settings.input_ui_backup_visible_rows" title="settings.ui_backup_visible_rows" />
                 </div>
               </div>
-              <div class="param_row">
-                <div class="param_label">Min. freier Speicher (MB)<span class="param_hint">Wenn kleiner als diese Schwelle, wird das Erstellen eines Backups abgelehnt (0 = deaktiviert).</span></div>
+                <div class="param_row">
+                <div class="param_label">Min. freier Speicher (MB)<span class="param_hint">Wenn kleiner als diese Schwelle, wird das Erstellen eines Backups abgelehnt (0 = deaktiviert). Muss groesser sein als <code>min freier Cachespeicher</code>.</span></div>
                 <div class="param_control">
                   <input id="backup_min_free_mb" type="number" min="0" max="500000" data-ui="config_settings.input_backup_min_free_mb" title="settings.backup_min_free_mb" />
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Min freier Cachespeicher (MB)<span class="param_hint">Sicherheitsbudget: so viel Platz soll auf dem Add-on Datentraeger (typ. <code>/data</code>) frei bleiben. Wird in Diagnose als Limit-Linie genutzt.</span></div>
+                <div class="param_control">
+                  <input id="storage_budget_mb" type="number" min="0" max="500000" data-ui="config_settings.input_storage_budget_mb" title="settings.storage_budget_mb" />
                 </div>
               </div>
             </div>
@@ -1274,55 +1280,7 @@
     </div>
   </details>
 
-  <details class="card" id="diagnostics" open data-ui="config_settings.section_root" title="settings.section.diagnostics">
-    <summary><span class="ib_summary_row"><span>Diagnose</span><button type="button" class="ib_info_icon" data-info-title="Diagnose" data-info-body="Diagnose zeigt Speicherverbrauch und Laufzeit-Protokolle (Worklog) an. Ziel: schnell erkennen was Cache/DB macht, warum und wie lange es dauert." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
-    <div class="card_body">
-      <div class="grid">
-        <div class="param_row param_full">
-          <div class="param_label">Speicherverbrauch<span class="param_hint">Uebersicht ueber alle persistenten Dateien/Ordner unter <code>/data</code> (groesste zuerst) und freier Speicher.</span></div>
-          <div class="param_control">
-            <button id="storage_refresh" type="button" class="btn_sm" style="width:auto;">Aktualisieren</button>
-            <div class="muted" id="storage_meta" style="margin-top:8px;"></div>
-            <div class="table_wrap" style="margin-top:10px;">
-              <table class="cfg_tbl" id="storage_tbl">
-                <thead><tr><th>Name</th><th>Pfad</th><th>Typ</th><th>Dateien</th><th>Bytes</th></tr></thead>
-                <tbody></tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
-        <div class="param_row param_full">
-          <div class="param_label">Worklog (Analyse/Statistik/Raw)<span class="param_hint">Zeigt die letzten Operationen inkl. Quelle (Cache/DB), Zeitfenster, Grund und Dauer (ms).</span></div>
-          <div class="param_control">
-            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:end;">
-              <button id="worklog_refresh" type="button" class="btn_sm" style="width:auto;">Aktualisieren</button>
-              <label style="display:flex; flex-direction:column; gap:4px; font-size:12px;">
-                <span>Bereich</span>
-                <select id="worklog_purpose" style="min-width:180px;">
-                  <option value="">Alle</option>
-                  <option value="analysis">Analyse</option>
-                  <option value="stats">Statistik</option>
-                  <option value="raw">Raw</option>
-                </select>
-              </label>
-              <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; flex:1 1 240px;">
-                <span>Suche</span>
-                <input id="worklog_q" type="text" placeholder="Text (detail/reason/op)" />
-              </label>
-            </div>
-            <div class="muted" id="worklog_meta" style="margin-top:8px;"></div>
-            <div class="table_wrap" style="margin-top:10px;">
-              <table class="cfg_tbl" id="worklog_tbl">
-                <thead><tr><th>Zeit</th><th>Zweck</th><th>Op</th><th>Quelle</th><th>Zeitraum</th><th>Grund</th><th>ms</th><th>Detail</th></tr></thead>
-                <tbody></tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </details>
+  <!-- Diagnose (Storage/Worklog) moved to /dbinfo -->
 
   <div class="save_card">
     <div class="grid">
@@ -1399,7 +1357,7 @@ const ids = [
   ,"trace_enabled","trace_persist","trace_max_entries","trace_max_days"
   ,"worklog_max_entries","worklog_max_days"
   // writes_enabled removed
-  ,"backup_dir","backup_min_free_mb"
+  ,"backup_dir","backup_min_free_mb","storage_budget_mb"
   ,"dash_cache_enabled","dash_cache_auto_update","dash_cache_refresh_mode","dash_cache_refresh_hours","dash_cache_refresh_daily_at"
   ,"dash_cache_max_items","dash_cache_max_mb","dash_cache_update_on_use_if_stale"
   ,"stats_cache_enabled","stats_cache_auto_update","stats_cache_refresh_mode","stats_cache_refresh_hours","stats_cache_refresh_daily_at"
@@ -1916,7 +1874,8 @@ function setForm(cfg){
   _syncJobColorPickersFromText();
 
   _safeSet(el.backup_dir, 'value', cfg.backup_dir ?? "/config/influxbro/backup");
-  _safeSet(el.backup_min_free_mb, 'value', cfg.backup_min_free_mb ?? 0);
+  _safeSet(el.backup_min_free_mb, 'value', cfg.backup_min_free_mb ?? 10);
+  _safeSet(el.storage_budget_mb, 'value', cfg.storage_budget_mb ?? 5);
 
   _setChecked(el.ui_tooltips_enabled, (cfg.ui_tooltips_enabled !== false));
 
@@ -2068,6 +2027,7 @@ function getForm(){
 
     backup_dir: (el.backup_dir.value || "").trim(),
     backup_min_free_mb: parseInt(el.backup_min_free_mb.value, 10),
+    storage_budget_mb: parseInt(el.storage_budget_mb.value, 10),
 
     ui_tooltips_enabled: _isChecked(el.ui_tooltips_enabled),
 
@@ -2134,7 +2094,7 @@ function _fmtDefault(v){
   return String(v);
 }
 
-function _installDefaultHints(defaults){
+function _installDefaultHintSuffixes(defaults){
   try{
     if(!defaults) return;
     ids.forEach(id => {
@@ -2144,18 +2104,27 @@ function _installDefaultHints(defaults){
         if(!node) return;
         const row = node.closest ? node.closest('.param_row') : null;
         if(!row) return;
-        const ctrl = row.querySelector('.param_control');
-        if(!ctrl) return;
-        if(ctrl.querySelector(':scope > .param_default')) return;
+        const lab = row.querySelector('.param_label');
+        if(!lab) return;
+
+        // Remove legacy right-side default hint if it exists.
+        try{ row.querySelectorAll('.param_default').forEach(x=>x.remove()); }catch(e){}
+
+        let hint = lab.querySelector('.param_hint');
+        if(!hint){
+          hint = document.createElement('span');
+          hint.className = 'param_hint';
+          hint.textContent = 'Siehe Tooltip.';
+          lab.appendChild(hint);
+        }
+
+        const cur = String(hint.textContent || '').trim();
+        if(cur.toLowerCase().includes('default')) return;
+
         let dv = _fmtDefault(defaults[id]);
         if(dv === '') dv = '(leer)';
-        const d = document.createElement('div');
-        d.className = 'param_default muted';
-        d.style.fontSize = '11px';
-        d.style.opacity = '0.85';
-        d.style.marginTop = '4px';
-        d.textContent = 'Default = ' + dv;
-        ctrl.appendChild(d);
+        const base = cur ? cur : 'Siehe Tooltip.';
+        hint.textContent = base + ' (Default: ' + dv + ')';
       }catch(e){}
     });
   }catch(e){}
@@ -2184,7 +2153,7 @@ async function load(){
 
   try{
     await ensureDefaultsLoaded();
-    _installDefaultHints(CFG_DEFAULTS);
+    _installDefaultHintSuffixes(CFG_DEFAULTS);
   }catch(e){}
 
   try{ applySelAutoUi(); }catch(e){}
@@ -2590,7 +2559,7 @@ function restructureSettings(){
       importPage: _cfgDetach('#ui_page_import'),
       logs: _cfgDetach('details.card[title="settings.section.logs"]'),
       outliers: _cfgDetach('details.card[title="settings.section.outliers"]'),
-      diagnostics: _cfgDetach('#diagnostics'),
+      diagnostics: null,
     };
     Object.keys(sections).forEach((k)=>{ detachLog[k] = !!sections[k]; });
 
@@ -2635,7 +2604,7 @@ function restructureSettings(){
       ['Logs', 'config_settings.group_logs', [_cfgEnsureSectionNote(sections.logs)]],
       ['Jobs & Cache', 'config_settings.group_jobs_cache', [_cfgEnsureSectionNote(sections.jobs)]],
       ['History', 'config_settings.group_history', [sections.history]],
-      ['Diagnose', 'config_settings.group_diagnostics', [_cfgEnsureSectionNote(sections.diagnostics)]],
+      ['Diagnose', 'config_settings.group_diagnostics', []],
       ['Changelog', 'config_settings.group_changelog', []],
       ['Handbuch', 'config_settings.group_manual', []],
       ['Profilverwaltung', 'config_settings.group_profiles', []],
@@ -2678,143 +2647,7 @@ load().catch(e=>{
   err(String(e));
 });
 
-// Diagnostics: storage usage table
-async function loadStorageUsage(){
-  const $tbl = document.getElementById('storage_tbl');
-  const $meta = document.getElementById('storage_meta');
-  if(!$tbl) return;
-  const $body = $tbl.querySelector('tbody');
-  if(!$body) return;
 
-  function fmtBytes(n){
-    try{
-      const b = Number(n || 0);
-      if(!(isFinite(b) && b >= 0)) return '-';
-      if(b < 1024) return b + ' B';
-      if(b < 1024*1024) return (b/1024).toFixed(1) + ' kB';
-      if(b < 1024*1024*1024) return (b/1024/1024).toFixed(1) + ' MB';
-      return (b/1024/1024/1024).toFixed(2) + ' GB';
-    }catch(e){
-      return '-';
-    }
-  }
-
-  try{ if($meta) $meta.textContent = 'Lade...'; }catch(e){}
-  $body.innerHTML = '';
-  let j;
-  try{
-    const r = await fetch('./api/storage_usage');
-    j = await r.json().catch(()=>({ok:false,error:'Invalid JSON'}));
-    if(!r.ok || !j.ok) throw new Error(j.error || ('HTTP ' + r.status));
-  }catch(e){
-    try{ reportConfigError('diagnostics.storage_usage.fetch', {}, e && e.stack ? e.stack : String(e || '')); }catch(x){}
-    try{ if($meta) $meta.textContent = 'Fehler: ' + (e && e.message ? e.message : String(e)); }catch(x){}
-    return;
-  }
-
-  const disk = j.disk || {};
-  const free = disk.free;
-  const used = disk.used;
-  const total = disk.total;
-  const totalBytes = j.total_bytes;
-  try{
-    if($meta){
-      const parts = [];
-      if(isFinite(total) && isFinite(used) && isFinite(free)) parts.push('Disk ' + String(disk.path || '/data') + ': frei ' + fmtBytes(free) + ' | genutzt ' + fmtBytes(used) + ' | total ' + fmtBytes(total));
-      parts.push('Summe Inventar: ' + fmtBytes(totalBytes));
-      $meta.textContent = parts.join(' | ');
-    }
-  }catch(e){}
-
-  const rows = Array.isArray(j.items) ? j.items : [];
-  rows.forEach((it)=>{
-    const tr = document.createElement('tr');
-    const name = String(it.name || '');
-    const path = String(it.path || '');
-    const kind = String(it.kind || '');
-    const files = (it.files === null || it.files === undefined) ? '' : String(it.files);
-    const bytes = fmtBytes(it.bytes);
-    tr.innerHTML = `<td>${name}</td><td style="font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,\"Liberation Mono\",\"Courier New\",monospace; font-size:12px;">${path}</td><td>${kind}</td><td>${files}</td><td>${bytes}</td>`;
-    $body.appendChild(tr);
-  });
-}
-
-async function loadWorklog(){
-  const $tbl = document.getElementById('worklog_tbl');
-  const $meta = document.getElementById('worklog_meta');
-  const $purpose = document.getElementById('worklog_purpose');
-  const $q = document.getElementById('worklog_q');
-  if(!$tbl) return;
-  const $body = $tbl.querySelector('tbody');
-  if(!$body) return;
-  const wantPurpose = $purpose ? String($purpose.value || '') : '';
-  const q = $q ? String($q.value || '').trim().toLowerCase() : '';
-
-  $body.innerHTML = '';
-  try{ if($meta) $meta.textContent = 'Lade...'; }catch(e){}
-
-  let j;
-  try{
-    const r = await fetch('./api/worklog?limit=500');
-    j = await r.json().catch(()=>({ok:false,error:'Invalid JSON'}));
-    if(!r.ok || !j.ok) throw new Error(j.error || ('HTTP ' + r.status));
-  }catch(e){
-    try{ reportConfigError('diagnostics.worklog.fetch', {}, e && e.stack ? e.stack : String(e || '')); }catch(x){}
-    try{ if($meta) $meta.textContent = 'Fehler: ' + (e && e.message ? e.message : String(e)); }catch(x){}
-    return;
-  }
-
-  const rows = Array.isArray(j.rows) ? j.rows : [];
-  const items = rows.filter((r)=> String(r.kind || '') === 'worklog');
-  const filtered = items.filter((r)=>{
-    const ex = (r.extra && typeof r.extra === 'object') ? r.extra : {};
-    const purpose = String(ex.purpose || '').toLowerCase();
-    if(wantPurpose && purpose !== wantPurpose) return false;
-    if(!q) return true;
-    const hay = [r.detail, ex.reason_label, ex.reason_code, ex.op, ex.source, ex.window_start, ex.window_stop].map(x=>String(x||'').toLowerCase()).join(' | ');
-    return hay.includes(q);
-  });
-
-  function fmtTs(iso){
-    try{ return new Date(String(iso||'')).toLocaleString('de-DE'); }catch(e){ return String(iso||''); }
-  }
-
-  filtered.slice(0, 300).forEach((r)=>{
-    const ex = (r.extra && typeof r.extra === 'object') ? r.extra : {};
-    const purpose = String(ex.purpose || '');
-    const op = String(ex.op || '');
-    const source = String(ex.source || '');
-    const ws = String(ex.window_start || '');
-    const we = String(ex.window_stop || '');
-    const win = (ws || we) ? (fmtTs(ws) + (we ? (' – ' + fmtTs(we)) : '')) : '';
-    const reason = String(ex.reason_label || ex.reason_code || '');
-    const ms = (ex.duration_ms !== null && ex.duration_ms !== undefined) ? String(ex.duration_ms) : '';
-    const detail = String(r.detail || '');
-    const tr = document.createElement('tr');
-    if(String(r.status||'') === 'err') tr.style.background = '#fff0f0';
-    tr.innerHTML = `<td>${fmtTs(r.at||'')}</td><td>${purpose}</td><td>${op}</td><td>${source}</td><td>${win}</td><td>${reason}</td><td>${ms}</td><td style="white-space:pre-wrap;">${detail}</td>`;
-    $body.appendChild(tr);
-  });
-
-  try{ if($meta) $meta.textContent = 'Eintraege: ' + filtered.length + ' (gezeigt: ' + Math.min(300, filtered.length) + ')'; }catch(e){}
-}
-
-try{
-  const btn = document.getElementById('storage_refresh');
-  if(btn) btn.addEventListener('click', ()=>{ loadStorageUsage().catch(()=>{}); });
-  // initial fill (best-effort)
-  loadStorageUsage().catch(()=>{});
-}catch(e){}
-
-try{
-  const btn = document.getElementById('worklog_refresh');
-  const $purpose = document.getElementById('worklog_purpose');
-  const $q = document.getElementById('worklog_q');
-  if(btn) btn.addEventListener('click', ()=>{ loadWorklog().catch(()=>{}); });
-  if($purpose) $purpose.addEventListener('change', ()=>{ loadWorklog().catch(()=>{}); });
-  if($q) $q.addEventListener('input', ()=>{ loadWorklog().catch(()=>{}); });
-  loadWorklog().catch(()=>{});
-}catch(e){}
 
 // Global error catch for settings page - catches errors that slip through individual try/catch blocks
 try{

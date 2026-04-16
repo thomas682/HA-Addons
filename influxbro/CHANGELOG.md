@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.12.360
+
+### Bug Fix
+
+- UI Picker: Waehren Picker/S-Picker aktiv ist, werden Tooltips nicht mehr nachtraeglich re-injiziert, damit keine Overlaps entstehen. ([#304](https://github.com/thomas682/HA-Addons/issues/304))
+
+### Enhancement
+
+- Einstellungen: Seitensuche findet jetzt auch sichtbare Texte (Labels/Hints) und springt zum exakten Treffer; Suchbegriff wird markiert. ([#305](https://github.com/thomas682/HA-Addons/issues/305))
+- Diagnose: Speicher/Worklog wurde aus Einstellungen auf die Diagnose-Seite verschoben; Groesse ist numerisch sortierbar; Backup-Verzeichnis ist im Inventar enthalten; 12M Verlauf + Limit/Prognose via `min freier Cachespeicher`. ([#306](https://github.com/thomas682/HA-Addons/issues/306))
+- Settings: Default-Anzeige rechts entfernt; Defaults werden als Teil der Hint-Zeile angezeigt; neue Defaults `backup_min_free_mb=10` und `storage_budget_mb=5` inkl. Validierung (backup_min_free_mb > storage_budget_mb). ([#306](https://github.com/thomas682/HA-Addons/issues/306))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`
+- Tests: `pytest tests/test_storage_budget_validation.py -q`
+- Tested with Home Assistant Core: 2026.4.2
+
 ## 1.12.359
 
 ### Enhancement

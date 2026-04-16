@@ -172,6 +172,7 @@
       transition: outline-color 120ms ease, box-shadow 120ms ease;
       box-shadow: 0 0 0 calc(var(--ib-page-search-hl-width) + 1px) color-mix(in srgb, var(--ib-page-search-hl-color) 18%, transparent);
     }
+    mark.ib_search_mark { background: #ffec80; color: inherit; padding: 0 2px; border-radius: 4px; }
     .ib_pagecard_results { position:fixed; z-index:9997; top: calc(var(--ib-pagecard-live-h)); right:12px; width:min(560px, calc(100vw - 24px)); max-height:320px; overflow:auto; background:#fff; color:#111; border:1px solid #ddd; border-radius:12px; box-shadow:0 12px 40px rgba(0,0,0,0.18); display:none; }
     .ib_pagecard_results button { display:block; width:100%; text-align:left; border:0; border-bottom:1px solid #eee; background:#fff; padding:10px 12px; cursor:pointer; }
     .ib_pagecard_results button:hover { background:#f6f6f6; }
@@ -601,6 +602,79 @@
 
     function _norm(s){ return String(s || '').trim(); }
     function _lc(s){ return _norm(s).toLowerCase(); }
+
+    function _isSettingsPage(){
+      try{ return String('{{ nav }}' || '') === 'settings'; }catch(e){ return false; }
+    }
+
+    function _openParentDetails(el){
+      try{
+        let cur = el;
+        for(let i=0;i<30;i+=1){
+          if(!cur || !cur.parentElement) break;
+          const d = cur.closest ? cur.closest('details') : null;
+          if(!d) break;
+          try{ d.open = true; }catch(e){}
+          cur = d.parentElement;
+        }
+      }catch(e){}
+    }
+
+    function _clearSearchMarks(root){
+      try{
+        const r = root || document;
+        Array.from(r.querySelectorAll('mark.ib_search_mark')).forEach(m=>{
+          try{
+            const p = m.parentNode;
+            if(!p) return;
+            const t = document.createTextNode(m.textContent || '');
+            p.replaceChild(t, m);
+            p.normalize();
+          }catch(e){}
+        });
+      }catch(e){}
+    }
+
+    function _markFirstOccurrence(el, q){
+      try{
+        const needle = _lc(q);
+        if(!needle) return;
+        const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, {
+          acceptNode: (n)=>{
+            try{
+              if(!n || !n.nodeValue) return NodeFilter.FILTER_REJECT;
+              const s = _lc(n.nodeValue);
+              if(!s) return NodeFilter.FILTER_REJECT;
+              return s.includes(needle) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+            }catch(e){
+              return NodeFilter.FILTER_REJECT;
+            }
+          }
+        });
+        const n = walker.nextNode();
+        if(!n) return;
+
+        const raw = String(n.nodeValue || '');
+        const idx = _lc(raw).indexOf(needle);
+        if(idx < 0) return;
+
+        const before = raw.slice(0, idx);
+        const hit = raw.slice(idx, idx + String(q).length);
+        const after = raw.slice(idx + String(q).length);
+
+        const frag = document.createDocumentFragment();
+        if(before) frag.appendChild(document.createTextNode(before));
+        const m = document.createElement('mark');
+        m.className = 'ib_search_mark';
+        m.textContent = hit || String(q);
+        frag.appendChild(m);
+        if(after) frag.appendChild(document.createTextNode(after));
+
+        const p = n.parentNode;
+        if(!p) return;
+        p.replaceChild(frag, n);
+      }catch(e){}
+    }
     function _sectionPathFor(el){
         try{
           const parts = [];
@@ -681,6 +755,30 @@
               out.push({el, ui:key, txt: label || txt, sect, hay, parts:{key, label, txt, direct_text: directTxt, sections: sect.join(' / '), tooltip}});
             }catch(e){}
           });
+
+          // Settings page: also index visible labels/hints so the search behaves like a fulltext search.
+          if(_isSettingsPage()){
+            try{
+              const txtSel = '.param_label, .param_hint, details > summary, .muted';
+              (main || document).querySelectorAll(txtSel).forEach((el)=>{
+                try{
+                  const txt = _norm(el.textContent || '');
+                  if(!txt) return;
+                  const sect = _sectionPathFor(el);
+                  const ui = _norm(el.getAttribute && el.getAttribute('data-ui'));
+                  const key = ui || ('text:' + txt.slice(0, 60));
+                  const parts = [];
+                  if(cfg.key) parts.push(key);
+                  if(cfg.visible_text) parts.push(txt);
+                  if(cfg.sections) parts.push(sect.join(' / '));
+                  const hay = parts.map(_lc).join(' | ');
+                  // Allow duplicates for pure text keys (so we can jump to exact element), but keep hay stable.
+                  out.push({el, ui: key, txt: txt, sect, hay, parts:{key, label:'', txt, direct_text:'', sections: sect.join(' / '), tooltip:''}});
+                }catch(e){}
+              });
+            }catch(e){}
+          }
+
           return out;
         }catch(e){ return []; }
       }
@@ -699,6 +797,9 @@
         if(!hit || !hit.el) return;
         LAST_CURSOR = idx;
         _recordNavTarget({ path: _navPath(), ui: String(hit.ui || ''), selector: '', page: currentPageLabel(), label: String(hit.ui || hit.txt || '') });
+        try{ _openParentDetails(hit.el); }catch(e){}
+        try{ _clearSearchMarks(main || document); }catch(e){}
+        try{ _markFirstOccurrence(hit.el, ($search && $search.value) ? String($search.value || '').trim() : ''); }catch(e){}
         try{ hit.el.scrollIntoView({behavior:'smooth', block:'center'}); }catch(e){}
         try{
           const dur = Math.max(200, Number(getComputedStyle(document.documentElement).getPropertyValue('--ib-page-search-hl-duration-ms').replace('ms','').trim() || '1400'));

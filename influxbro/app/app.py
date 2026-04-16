@@ -1274,7 +1274,9 @@ DEFAULT_CFG = {
     # Backups (must live under /config or /data)
     "backup_dir": str(DEFAULT_BACKUP_DIR),
     # Refuse creating a backup if free space is below this threshold (0 = disabled)
-    "backup_min_free_mb": 0,
+    "backup_min_free_mb": 10,
+    # Safety budget: keep at least this much space free for caches (/data) (0 = disabled)
+    "storage_budget_mb": 5,
     # One-time migration marker when moving from the old default (/data/backups)
     "backup_migrated_to_config": False,
 
@@ -14770,6 +14772,22 @@ def api_set_config():
     cfg["backup_dir"] = str(backup_dir(cfg))
 
     _clamp_int("backup_min_free_mb", 0, 0, 500000)
+    _clamp_int("storage_budget_mb", 5, 0, 500000)
+
+    # Validation: if backup free-space guard is enabled, it must be higher than the cache budget.
+    try:
+        bmin = int(cfg.get("backup_min_free_mb", 0) or 0)
+    except Exception:
+        bmin = 0
+    try:
+        budget = int(cfg.get("storage_budget_mb", 0) or 0)
+    except Exception:
+        budget = 0
+    if bmin > 0 and budget > 0 and bmin <= budget:
+        return jsonify({
+            "ok": False,
+            "error": "backup_min_free_mb muss groesser sein als min freier Cachespeicher (storage_budget_mb).",
+        }), 400
 
     def _bool(key: str, default: bool = False) -> None:
         v = cfg.get(key, default)
@@ -20109,7 +20127,12 @@ def api_cache_usage_clear():
 
 @app.get("/api/storage_usage")
 def api_storage_usage():
-    """Diagnostics: report disk usage for persisted /data artifacts."""
+    """Diagnostics: report disk usage for persisted artifacts (/data + backup dir)."""
+
+    try:
+        cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    except Exception:
+        cfg = load_cfg()
 
     def _safe_stat(p: Path) -> dict[str, Any]:
         try:
@@ -20139,6 +20162,93 @@ def api_storage_usage():
         except Exception:
             return total, files
         return total, files
+
+    def _fmt_day(iso: str | None) -> str | None:
+        try:
+            if not iso:
+                return None
+            d = _trace_parse_iso(str(iso))
+            if not d:
+                return None
+            return d.astimezone(timezone.utc).strftime("%Y-%m-%d")
+        except Exception:
+            return None
+
+    def _storage_hist_append(total_bytes: int, disk_total: int | None, disk_free: int | None) -> None:
+        # Best-effort: one line per day.
+        try:
+            DATA_DIR.mkdir(parents=True, exist_ok=True)
+        except Exception:
+            return
+
+        path = DATA_DIR / "storage_usage_history.jsonl"
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        try:
+            if path.exists():
+                # Check last non-empty line day
+                last_day = None
+                try:
+                    lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+                    for ln in reversed(lines):
+                        if not ln.strip():
+                            continue
+                        try:
+                            j = json.loads(ln)
+                            last_day = _fmt_day(str(j.get("at") or ""))
+                        except Exception:
+                            last_day = None
+                        break
+                except Exception:
+                    last_day = None
+                if last_day == today:
+                    return
+        except Exception:
+            pass
+
+        try:
+            row = {
+                "at": _utc_now_iso_ms(),
+                "total_bytes": int(total_bytes),
+                "disk_total": int(disk_total) if disk_total is not None else None,
+                "disk_free": int(disk_free) if disk_free is not None else None,
+            }
+            with path.open("a", encoding="utf-8") as f:
+                f.write(json.dumps(row, ensure_ascii=True) + "\n")
+        except Exception:
+            return
+
+    def _storage_hist_tail(max_days: int = 400) -> list[dict[str, Any]]:
+        path = DATA_DIR / "storage_usage_history.jsonl"
+        out: list[dict[str, Any]] = []
+        try:
+            if not path.exists():
+                return []
+            lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+        except Exception:
+            return []
+
+        # Keep last N distinct days.
+        seen_days: set[str] = set()
+        for ln in reversed(lines):
+            if not ln.strip():
+                continue
+            try:
+                j = json.loads(ln)
+            except Exception:
+                continue
+            if not isinstance(j, dict):
+                continue
+            day = _fmt_day(str(j.get("at") or ""))
+            if not day:
+                continue
+            if day in seen_days:
+                continue
+            seen_days.add(day)
+            out.append(j)
+            if len(out) >= max_days:
+                break
+        out.reverse()
+        return out
 
     # Inventory of persisted artifacts
     items: list[dict[str, Any]] = []
@@ -20170,6 +20280,9 @@ def api_storage_usage():
         ("stats_cache_dir", STATS_CACHE_DIR),
         ("series_stats_cache_dir", SERIES_STATS_CACHE_DIR),
         ("old_default_backups", OLD_DEFAULT_BACKUP_DIR),
+        ("backup_dir", backup_dir(cfg)),
+        ("config_influxbro_dir", (CONFIG_DIR / "influxbro")),
+        ("storage_usage_history", (DATA_DIR / "storage_usage_history.jsonl")),
     ]
 
     for name, p in entries:
@@ -20199,7 +20312,28 @@ def api_storage_usage():
 
     total_bytes = sum(int(it.get("bytes") or 0) for it in items)
     items.sort(key=lambda r: int(r.get("bytes") or 0), reverse=True)
-    return jsonify({"ok": True, "disk": disk, "total_bytes": total_bytes, "items": items})
+
+    try:
+        _storage_hist_append(total_bytes, disk.get("total"), disk.get("free"))
+    except Exception:
+        pass
+    hist = _storage_hist_tail(400)
+
+    try:
+        budget_mb = int(cfg.get("storage_budget_mb", 0) or 0)
+    except Exception:
+        budget_mb = 0
+
+    return jsonify({
+        "ok": True,
+        "disk": disk,
+        "total_bytes": total_bytes,
+        "items": items,
+        "history": hist,
+        "storage_budget_mb": budget_mb,
+        "backup_min_free_mb": int(cfg.get("backup_min_free_mb", 0) or 0),
+        "backup_dir": str(backup_dir(cfg)),
+    })
 
 
 @app.post("/api/cache_usage/ui_event")
