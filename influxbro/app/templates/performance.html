@@ -61,10 +61,25 @@
       resize: none;
       min-height: 0;
       max-height: none;
-      min-width: 280px;
+      min-width: 0;
     }
     @media (max-width: 980px){
       .pane_box { resize: vertical; min-width: 0; }
+    }
+
+    /* Top panes: list + details stacked with splitter */
+    .pane_stack { display:flex; flex-direction:column; min-height:0; gap: 0; }
+    .pane_stack .pane_col { min-height:0; }
+    .pane_stack .pane_col.list { flex: 0 0 var(--perf_top_list_h, 320px); }
+    .pane_stack .pane_col.detail { flex: 1 1 auto; }
+    .pane_stack .pane_box { min-width:0; }
+    .pane_vsplit {
+      height: 10px;
+      margin: 12px 0;
+      border: 1px solid #ddd;
+      border-radius: 999px;
+      background: repeating-linear-gradient(90deg, #f2f2f2 0 10px, #fafafa 10px 20px);
+      cursor: row-resize;
     }
 
     /* Layout: vertical splitter (trace area vs diagram) */
@@ -135,7 +150,15 @@
     .corr_wrap .corr_view h2 { font-size:15px;font-weight:600;margin:28px 0 12px;display:flex;align-items:center;gap:8px }
     .corr_wrap .corr_view .badge { font-size:11px;background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:2px 10px;color:var(--text2);font-weight:400 }
 
-    .corr_wrap .corr_view .dep-graph{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:24px;margin-bottom:20px;overflow-x:auto}
+    .corr_wrap .corr_view .dep-controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0 10px}
+    .corr_wrap .corr_view .dep-controls .lbl{font-size:11px;color:var(--text3)}
+    .corr_wrap .corr_view .dep-controls input{height:30px;padding:4px 10px;border-radius:10px;border:1px solid var(--border);background:var(--bg3);color:var(--text);width:90px;font-family:'SF Mono','Cascadia Code',monospace}
+    .corr_wrap .corr_view .dep-controls button{height:30px;padding:4px 12px;border-radius:999px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer}
+    .corr_wrap .corr_view .dep-controls button:hover{border-color:var(--accent);color:var(--accent)}
+    .corr_wrap .corr_view .dep-controls .auto{margin-left:auto;font-size:11px;color:var(--text3)}
+
+    .corr_wrap .corr_view .dep-graph{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:20px;overflow:auto;max-height:90vh}
+    .corr_wrap .corr_view .dep-inner{transform-origin:0 0}
     .corr_wrap .corr_view .dep-svg{width:100%;min-width:900px}
 
     .corr_wrap .corr_view .corr-table-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:20px;overflow-x:auto}
@@ -219,7 +242,7 @@
 
     /* Enable internal scrolling in list + detail boxes (not on the whole section) */
     details[data-ui="perf_page.section_root"] .card_body { display:flex; flex-direction:column; min-height:0; }
-    details[data-ui="perf_page.section_root"] .grid2 { flex:1 1 auto; min-height:0; align-items:stretch; }
+    details[data-ui="perf_page.section_root"] .pane_stack { flex:1 1 auto; min-height:0; align-items:stretch; }
     details[data-ui="perf_page.section_root"] .pane_col { display:flex; flex-direction:column; min-height:0; }
     details[data-ui="perf_page.section_root"] .pane_col .pane_box { flex:1 1 auto; min-height:0; }
     .diag_wrap .tv {
@@ -426,8 +449,8 @@
             </div>
           </div>
 
-            <div class="grid2" style="margin-top:12px;">
-            <div class="pane_col">
+            <div class="pane_stack" id="perf_top_stack" style="margin-top:12px;">
+            <div class="pane_col list">
               <div class="pane_head">
                 <div class="muted" id="meta"></div>
                 <div class="pane_actions">
@@ -457,7 +480,9 @@
               </div>
             </div>
 
-            <div class="pane_col">
+            <div class="pane_vsplit" id="perf_top_splitter" title="Hoehe anpassen"></div>
+
+            <div class="pane_col detail">
               <div class="pane_head">
                 <div class="muted" id="detail_meta">Details</div>
                 <div class="pane_actions">
@@ -578,6 +603,17 @@
 
     async function api(url){
       const r = await fetch(url);
+      const j = await r.json().catch(()=>null);
+      if(!r.ok || !j || !j.ok) throw new Error((j && j.error) ? j.error : ('HTTP ' + r.status));
+      return j;
+    }
+
+    async function apiPost(url, body){
+      const r = await fetch(url, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(body || {}),
+      });
       const j = await r.json().catch(()=>null);
       if(!r.ok || !j || !j.ok) throw new Error((j && j.error) ? j.error : ('HTTP ' + r.status));
       return j;
@@ -1035,7 +1071,7 @@
             <div class="wf-label">
               <span class="idx">${_escapeHtml(String(s.id || ''))}</span>
               <span class="method ${(String(s.m||'').toLowerCase()==='get')?'get':'post'}">${_escapeHtml(String(s.m||''))}</span>
-              <span class="endpoint" title="${_escapeHtml(ep)}">${_escapeHtml(ep)}</span>
+              <span class="endpoint">${_escapeHtml(ep)}</span>
             </div>
             <div class="wf-bar-area" style="min-width:${barWidth}px">
               <div class="wf-bar-wrap" style="left:${cStart}px;width:${Math.max(3,totalW)}px" data-span='${_escapeHtml(JSON.stringify({
@@ -1252,7 +1288,7 @@
     }
 
     // --- Correlation tab (based on demo/korrelationsdiagramm.html) ---
-    let PERF_CFG = { perf_corr_causal_gap_ms: 8, perf_corr_timer_gap_ms: 1000 };
+    let PERF_CFG = { perf_corr_causal_gap_ms: 8, perf_corr_timer_gap_ms: 1000, perf_corr_dep_zoom_pct: 0 };
     let _PERF_CFG_LOADED = false;
     async function ensurePerfCfg(){
       if(_PERF_CFG_LOADED) return PERF_CFG;
@@ -1261,8 +1297,10 @@
         const c = (j && j.config) ? j.config : {};
         const cg = Number(c.perf_corr_causal_gap_ms);
         const tg = Number(c.perf_corr_timer_gap_ms);
+        const zg = Number(c.perf_corr_dep_zoom_pct);
         if(isFinite(cg)) PERF_CFG.perf_corr_causal_gap_ms = Math.max(0, Math.min(200, Math.round(cg)));
         if(isFinite(tg)) PERF_CFG.perf_corr_timer_gap_ms = Math.max(0, Math.min(200000, Math.round(tg)));
+        if(isFinite(zg)) PERF_CFG.perf_corr_dep_zoom_pct = Math.max(0, Math.min(300, Math.round(zg)));
       }catch(e){}
       _PERF_CFG_LOADED = true;
       return PERF_CFG;
@@ -1301,6 +1339,13 @@
           <div class="role-grid" id="corr_role_grid"></div>
 
           <h2>🔗 Abhaengigkeitsgraph <span class="badge">Kausale Ketten</span></h2>
+          <div class="dep-controls" data-ui="perf_corr.dep_controls" title="perf_corr.dep_controls">
+            <span class="lbl">Zoom</span>
+            <button id="corr_dep_zoom_out" type="button" data-ui="perf_corr.btn_dep_zoom_out" title="perf_corr.dep_zoom_out" aria-label="Zoom minus">-</button>
+            <input id="corr_dep_zoom_pct" type="number" min="0" max="300" step="5" data-ui="perf_corr.input_dep_zoom_pct" title="perf_corr.dep_zoom_pct" aria-label="Dep-Graph Zoom Prozent" />
+            <button id="corr_dep_zoom_in" type="button" data-ui="perf_corr.btn_dep_zoom_in" title="perf_corr.dep_zoom_in" aria-label="Zoom plus">+</button>
+            <span class="auto" id="corr_dep_zoom_hint">Auto-Fit</span>
+          </div>
           <div class="dep-graph" id="corr_dep_graph"></div>
 
           <h2>📋 Korrelationsmatrix <span class="badge" id="corr_badge">-</span></h2>
@@ -1499,7 +1544,34 @@
       });
 
       svg += `</svg>`;
-      host.innerHTML = svg;
+
+      // Apply global zoom (0 = auto-fit x+y into ~90% viewport height).
+      let scale = 1;
+      let autoScalePct = 100;
+      try{
+        const targetH = Math.max(240, Math.floor((window.innerHeight || 900) * 0.90));
+        const hostW = Math.max(320, Math.floor(host.clientWidth || 900));
+        const fitX = hostW / Math.max(1, w);
+        const fitY = targetH / Math.max(1, h);
+        const fit = Math.min(fitX, fitY);
+        autoScalePct = Math.max(10, Math.min(300, Math.round(fit * 100)));
+        _corr_state.dep_auto_pct = autoScalePct;
+        const zp = Number(PERF_CFG.perf_corr_dep_zoom_pct || 0);
+        if(isFinite(zp) && zp > 0) scale = Math.max(0.10, Math.min(3.0, zp / 100.0));
+        else scale = Math.max(0.10, Math.min(3.0, fit));
+        // For auto-fit, never enlarge beyond 100% to keep "one page" feel.
+        if(!(isFinite(zp) && zp > 0)) scale = Math.min(1.0, scale);
+      }catch(e){ scale = 1; }
+
+      try{
+        const hint = document.getElementById('corr_dep_zoom_hint');
+        if(hint){
+          const zp = Number(PERF_CFG.perf_corr_dep_zoom_pct || 0);
+          hint.textContent = (isFinite(zp) && zp > 0) ? ('Fix: ' + String(Math.round(zp)) + '%') : ('Auto-Fit ~' + String(Math.round(autoScalePct)) + '%');
+        }
+      }catch(e){}
+
+      host.innerHTML = `<div class="dep-inner" style="width:${w}px; height:${h}px; transform:scale(${scale});">${svg}</div>`;
     }
 
     function _renderCorrTable(ctx){
@@ -1625,7 +1697,10 @@
         const serverShare = (cDur > 0 && isFinite(sDur)) ? Math.round((Math.max(0,sDur) / cDur) * 100) : 0;
         const idleGap = (s.idle_gap_ms_to_prev !== null && s.idle_gap_ms_to_prev !== undefined) ? Number(s.idle_gap_ms_to_prev) : null;
         const q = String(s.query || '').trim();
-        const qLine = q ? q.split(/\r?\n/).map(x=>String(x||'').trim()).filter(Boolean)[0] : '';
+        const qLabel = String(s.query_label || '');
+        const qLines = q ? q.split(/\r?\n/).map(x=>String(x||'').trim()).filter(Boolean) : [];
+        const qLine = qLines.length ? (qLines.find(l => !l.startsWith('// trace_id=')) || qLines[0]) : '';
+        const qCache = (qLabel.includes('dash_cache_hit') || q.includes('dash_cache_hit'));
 
         tt.innerHTML = `
           <div class="tt-t">${_escapeHtml(String(s.m||''))} ${_escapeHtml(String(s.ep||''))}</div>
@@ -1642,7 +1717,7 @@
           <div class="tt-r"><span class="k">Netzwerk →</span><span class="v">${_escapeHtml(String(Math.max(0, netOut).toFixed(1)))}ms</span></div>
           <div class="tt-r"><span class="k">Server</span><span class="v" style="color:${sDur>100?'var(--orange)':'var(--green)'}">${_escapeHtml(String(Math.round(Math.max(0,sDur))))}ms</span></div>
           <div class="tt-r"><span class="k">Netzwerk ←</span><span class="v">${_escapeHtml(String(Math.max(0, netIn).toFixed(1)))}ms</span></div>
-          ${qLine ? ('<hr><div class="tt-r"><span class="k">Query</span><span class="v" style="max-width:240px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + _escapeHtml(qLine) + '</span></div>') : ''}
+          ${(qLine || qCache) ? ('<hr>' + (qCache ? '<div class="tt-r"><span class="k">Cache</span><span class="v">hit</span></div>' : '') + (qLine ? ('<div class="tt-r"><span class="k">Query</span><span class="v" style="max-width:240px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + _escapeHtml(qLine) + '</span></div>') : '')) : ''}
           ${keyHtml}
         `;
         tt.classList.add('show');
@@ -1731,7 +1806,7 @@
           <div class="wf-lbl">
             <span class="idx">${_escapeHtml(String(s.id||''))}</span>
             <span class="method ${_escapeHtml(String(s.m||'').toLowerCase())}">${_escapeHtml(String(s.m||''))}</span>
-            <span class="epname" style="color:${_escapeHtml(String(col))}" title="${_escapeHtml(String(s.ep||''))}">${_escapeHtml(String(s.ep||''))}</span>
+            <span class="epname" style="color:${_escapeHtml(String(col))}">${_escapeHtml(String(s.ep||''))}</span>
             <span class="role-icon">${_escapeHtml(String(role.icon||''))}</span>
           </div>
           <div class="wf-bar-area" style="min-width:${barWidth}px">
@@ -1870,6 +1945,9 @@
         const $a = document.getElementById('corr_tog_arrows');
         const $p = document.getElementById('corr_tog_phases');
         const $z = document.getElementById('corr_tog_zoom');
+        const $zo = document.getElementById('corr_dep_zoom_out');
+        const $zi = document.getElementById('corr_dep_zoom_in');
+        const $zp = document.getElementById('corr_dep_zoom_pct');
         if($a && !$a.dataset.bound){
           $a.dataset.bound = '1';
           $a.addEventListener('click', ()=>{ _corr_state.showArrows = !_corr_state.showArrows; $a.classList.toggle('on', _corr_state.showArrows); _renderCorrelationWF(ctx); });
@@ -1882,8 +1960,47 @@
           $z.dataset.bound = '1';
           $z.addEventListener('click', ()=>{ _corr_state.isZoomed = !_corr_state.isZoomed; $z.classList.toggle('on', _corr_state.isZoomed); _renderCorrelationWF(ctx); });
         }
+
+        // Dep-graph zoom (global)
+        if($zp && !$zp.dataset.bound){
+          $zp.dataset.bound = '1';
+          try{ $zp.value = String(Number(PERF_CFG.perf_corr_dep_zoom_pct || 0)); }catch(e){}
+
+          const clampPct = (v)=>{
+            const n = Math.round(Number(v || 0));
+            if(!isFinite(n)) return 0;
+            return Math.max(0, Math.min(300, n));
+          };
+
+          const applyAndPersist = async (pct)=>{
+            const p = clampPct(pct);
+            PERF_CFG.perf_corr_dep_zoom_pct = p;
+            try{ $zp.value = String(p); }catch(e){}
+            try{ await apiPost('./api/config', { perf_corr_dep_zoom_pct: p }); }catch(e){}
+            try{ _renderDepGraph(ctx); }catch(e){}
+          };
+
+          $zp.addEventListener('change', ()=>{ applyAndPersist($zp.value).catch(()=>{}); });
+          $zp.addEventListener('keydown', (ev)=>{ if(ev.key === 'Enter'){ try{ ev.preventDefault(); }catch(e){}; applyAndPersist($zp.value).catch(()=>{}); } });
+
+          if($zo){
+            $zo.addEventListener('click', ()=>{
+              const cur = clampPct($zp.value);
+              const base = cur > 0 ? cur : Math.max(10, Math.round(Number(_corr_state.dep_auto_pct || 100)));
+              applyAndPersist(base - 5).catch(()=>{});
+            });
+          }
+          if($zi){
+            $zi.addEventListener('click', ()=>{
+              const cur = clampPct($zp.value);
+              const base = cur > 0 ? cur : Math.max(10, Math.round(Number(_corr_state.dep_auto_pct || 100)));
+              applyAndPersist(base + 5).catch(()=>{});
+            });
+          }
+        }
+
         window.removeEventListener('resize', window.__ib_corr_resize);
-        window.__ib_corr_resize = ()=>{ try{ _renderCorrelationWF(ctx); }catch(e){} };
+        window.__ib_corr_resize = ()=>{ try{ _renderCorrelationWF(ctx); }catch(e){}; try{ _renderDepGraph(ctx); }catch(e){} };
         window.addEventListener('resize', window.__ib_corr_resize);
       }catch(e){}
     }
@@ -1909,8 +2026,9 @@
           const sid = String(q && q.span_id || '').trim();
           if(!sid) return;
           const txt = String(q && q.query || '');
-          if(!txt) return;
-          queriesBySpanId.set(sid, txt);
+          const lbl = String(q && q.label || '').trim();
+          // Keep even empty query text (e.g. cache-hit hints) so the UI can show metadata.
+          queriesBySpanId.set(sid, { query: txt, label: lbl });
         }catch(e){}
       });
 
@@ -1920,7 +2038,10 @@
           const sid = String(s && s.span_id || '').trim();
           if(!sid) return;
           const q = queriesBySpanId.get(sid);
-          if(q) s.query = q;
+          if(q){
+            try{ s.query = String(q.query || ''); }catch(e){ s.query = ''; }
+            try{ s.query_label = String(q.label || ''); }catch(e){ s.query_label = ''; }
+          }
         }catch(e){}
       });
 
@@ -2333,9 +2454,12 @@
         const netIn = (Number(s.cDur||0) - netOut - Number(s.sDur||0));
         const help = String(s.help || _epHelp(s.ep || '') || '(unbekannt)');
         const qTxt = String(s.query || '');
-        const qLine = qTxt ? (qTxt.split(/\r?\n/).map(x=>String(x||'').trim()).filter(Boolean)[0] || '') : '';
-        const qMeta = qLine ? (`<div class="tt-row"><span class="k">Query</span><span class="v" style="max-width:220px; text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${_escapeHtml(qLine)}</span></div>`) : '';
-        const qHtml = qTxt ? (`<hr style="border-color:var(--border);margin:6px 0">${qMeta}<div class="tt-row"><span class="k">Query-Lines</span><span class="v">${_escapeHtml(String(qTxt.split(/\r?\n/).length))}</span></div>`) : '';
+        const qLabel = String(s.query_label || '');
+        const qLines = qTxt ? (qTxt.split(/\r?\n/).map(x=>String(x||'').trim()).filter(Boolean)) : [];
+        const qFirst = qLines.length ? (qLines.find(l => !l.startsWith('// trace_id=')) || qLines[0]) : '';
+        const qMeta = qFirst ? (`<div class="tt-row"><span class="k">Query</span><span class="v" style="max-width:220px; text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${_escapeHtml(qFirst)}</span></div>`) : '';
+        const qCache = (qLabel.includes('dash_cache_hit') || qTxt.includes('dash_cache_hit')) ? (`<div class="tt-row"><span class="k">Cache</span><span class="v">hit</span></div>`) : '';
+        const qHtml = (qTxt || qCache) ? (`<hr style="border-color:var(--border);margin:6px 0">${qCache}${qMeta}${qTxt ? ('<div class="tt-row"><span class="k">Query-Lines</span><span class="v">' + _escapeHtml(String(qTxt.split(/\r?\n/).length)) + '</span></div>') : ''}`) : '';
 
         let uiKey = '';
         try{
@@ -2409,6 +2533,7 @@
             id: s.id, m: s.m, ep: ep, help: help,
             span_id: String(s.span_id || ''),
             query: s.query ? String(s.query) : '',
+            query_label: s.query_label ? String(s.query_label) : '',
             cStart: Number(s.cStart||0), cEnd: Number(s.cEnd||0), cDur: Number(s.cDur||0),
             sEnd: Number(s.sEnd||0), sDur: Number(s.sDur||0)
           };
@@ -2418,7 +2543,7 @@
               <div class="wf-label">
                 <span class="idx">${_escapeHtml(String(s.id || ''))}</span>
                 <span class="method ${(String(s.m||'').toLowerCase()==='get')?'get':'post'}">${_escapeHtml(String(s.m||''))}</span>
-                <span class="endpoint" title="${_escapeHtml(ep)}">${_escapeHtml(ep)}</span>
+                <span class="endpoint">${_escapeHtml(ep)}</span>
               </div>
               <div class="wf-bar-area" style="min-width:${barWidth}px">
                 <div class="wf-bar-wrap" style="left:${cStart}px;width:${Math.max(3,totalW)}px" data-span='${_escapeHtml(JSON.stringify(spanData))}'>
@@ -2676,9 +2801,58 @@
     document.getElementById('q').addEventListener('keydown', (ev)=>{ if(ev.key === 'Enter') load().catch(()=>{}); });
     load().catch(()=>{});
 
-    // Persist panel heights (profile-based)
-    try{ window.InfluxBroTableHeight && window.InfluxBroTableHeight.attach(document.getElementById('list_box'), 'perf_trace_list', {minPx: 240}); }catch(e){}
-    try{ window.InfluxBroTableHeight && window.InfluxBroTableHeight.attach(document.getElementById('detail_box'), 'perf_trace_detail', {minPx: 240}); }catch(e){}
+    // Persist top stack split (profile-based)
+    (function(){
+      try{
+        if(window.matchMedia && window.matchMedia('(max-width: 980px)').matches) return;
+      }catch(e){}
+      const stack = document.getElementById('perf_top_stack');
+      const splitter = document.getElementById('perf_top_splitter');
+      if(!stack || !splitter) return;
+
+      const key = 'ib_perf_top_list_h_px';
+      const minTop = 240;
+      const minBottom = 240;
+
+      const clamp = (h)=>{
+        const total = Math.max(0, stack.clientHeight || 0);
+        const maxTop = Math.max(minTop, total - minBottom - (splitter.offsetHeight || 10) - 12);
+        return Math.max(minTop, Math.min(maxTop, Math.round(Number(h)||0)));
+      };
+      const apply = (h)=>{ stack.style.setProperty('--perf_top_list_h', String(h) + 'px'); };
+
+      let h0 = 0;
+      try{ h0 = parseInt(localStorage.getItem(key) || '', 10); }catch(e){ h0 = 0; }
+      if(!isFinite(h0) || h0 < 200) h0 = 320;
+      apply(clamp(h0));
+
+      let dragging = false;
+      let startY = 0;
+      let startH = 0;
+      const onMove = (ev)=>{
+        if(!dragging) return;
+        const dy = Number(ev.clientY || 0) - startY;
+        const h = clamp(startH + dy);
+        apply(h);
+        try{ localStorage.setItem(key, String(h)); }catch(e){}
+      };
+      const onUp = ()=>{
+        dragging = false;
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+      };
+      splitter.onmousedown = (ev)=>{
+        try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+        dragging = true;
+        startY = Number(ev.clientY || 0);
+        try{
+          const cur = stack.style.getPropertyValue('--perf_top_list_h') || '';
+          startH = parseFloat(cur) || 320;
+        }catch(e){ startH = 320; }
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+      };
+    })();
 
     // Persist vertical split (profile-based)
     (function(){

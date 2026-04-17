@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.12.374
+
+### Enhancement
+
+- Performanceanalyse: Trace-Liste und Details sind nicht mehr nebeneinander (kein Horizontal-Overflow). Stattdessen werden sie vertikal gestapelt und ueber einen Splitter in der Hoehe verstellbar angezeigt; Copy-Buttons bleiben sichtbar. ([#323](https://github.com/thomas682/HA-Addons/issues/323))
+- Performanceanalyse: Korrelations-Dep-Graph hat einen globalen Zoom (0=Auto-Fit in X+Y, sonst Prozent). UI: - / % / +; Einstellung wird gespeichert und ist in den Settings parametrierbar. ([#323](https://github.com/thomas682/HA-Addons/issues/323))
+- Performanceanalyse: InfluxBro native Hover-Tooltips sind im Waterfall- und Korrelationsbereich deaktiviert. ([#323](https://github.com/thomas682/HA-Addons/issues/323))
+- Dashboard Query: Wenn `/api/query` aus dem Dash-Cache bedient wird, wird dies im Trace protokolliert und im Waterfall-Tooltip als Cache-Hit inkl. Query-Metadaten sichtbar. ([#323](https://github.com/thomas682/HA-Addons/issues/323))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: 2026.4.2
+
 ## 1.12.373
 
 ### Enhancement

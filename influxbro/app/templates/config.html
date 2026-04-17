@@ -690,6 +690,12 @@
                 </div>
               </div>
               <div class="param_row">
+                <div class="param_label">Performance Korrelation: Dep-Graph Zoom (%)<span class="param_hint">0 = Auto-Fit (X+Y) auf die Anzeige. Sonst fester Zoom in Prozent fuer den Abhaengigkeitsgraph.</span></div>
+                <div class="param_control">
+                  <input id="perf_corr_dep_zoom_pct" type="number" min="0" max="300" />
+                </div>
+              </div>
+              <div class="param_row">
                 <div class="param_label">Analysecache ausgeblendet Farbe<span class="param_hint">Farbe fuer im Zeitstrahl visuell ausgeblendete Cache-Segmente.</span></div>
                 <div class="param_control">
                   <div class="color_pick_row">
@@ -1403,7 +1409,7 @@ const ids = [
   "ui_query_manual_max_points","ui_graph_jump_padding_intervals",
   "ui_font_size_px","ui_font_small_px","ui_pagecard_title_px","ui_page_search_highlight_color","ui_page_search_highlight_width_px","ui_page_search_highlight_duration_ms","ui_nav_helper_history_limit","ui_nav_helper_highlight_color","ui_nav_helper_highlight_duration_ms","ui_analysis_cache_hidden_color","ui_checkbox_scale",
   "ui_analysis_cache_missing_color",
-  "ui_picker_outline_auto","ui_picker_outline_light_bg","ui_picker_outline_dark_bg","perf_corr_causal_gap_ms","perf_corr_timer_gap_ms",
+  "ui_picker_outline_auto","ui_picker_outline_light_bg","ui_picker_outline_dark_bg","perf_corr_causal_gap_ms","perf_corr_timer_gap_ms","perf_corr_dep_zoom_pct",
   "outlier_gap_seconds_default",
   "outlier_context_before_points",
   "outlier_context_after_points",
@@ -1986,6 +1992,7 @@ function setForm(cfg){
   _setVal(el.ui_picker_outline_dark_bg, cfg.ui_picker_outline_dark_bg ?? '#00E5FF');
   _setVal(el.perf_corr_causal_gap_ms, (cfg.perf_corr_causal_gap_ms !== undefined && cfg.perf_corr_causal_gap_ms !== null) ? cfg.perf_corr_causal_gap_ms : 8);
   _setVal(el.perf_corr_timer_gap_ms, (cfg.perf_corr_timer_gap_ms !== undefined && cfg.perf_corr_timer_gap_ms !== null) ? cfg.perf_corr_timer_gap_ms : 1000);
+  _setVal(el.perf_corr_dep_zoom_pct, (cfg.perf_corr_dep_zoom_pct !== undefined && cfg.perf_corr_dep_zoom_pct !== null) ? cfg.perf_corr_dep_zoom_pct : 0);
   _setVal(el.ui_status_font_px, cfg.ui_status_font_px ?? 12);
   _setVal(el.ui_status_bar_height_px, cfg.ui_status_bar_height_px ?? 38);
   _setChecked(el.ui_status_show_sysinfo, !!cfg.ui_status_show_sysinfo);
@@ -2151,6 +2158,7 @@ function getForm(){
     ui_picker_outline_dark_bg: String(el.ui_picker_outline_dark_bg.value || '').trim(),
     perf_corr_causal_gap_ms: parseInt(el.perf_corr_causal_gap_ms.value, 10),
     perf_corr_timer_gap_ms: parseInt(el.perf_corr_timer_gap_ms.value, 10),
+    perf_corr_dep_zoom_pct: parseInt(el.perf_corr_dep_zoom_pct.value, 10),
     ui_status_font_px: parseInt(el.ui_status_font_px.value, 10),
     ui_status_bar_height_px: parseInt(el.ui_status_bar_height_px.value, 10),
     ui_status_show_sysinfo: _isChecked(el.ui_status_show_sysinfo),

@@ -1358,6 +1358,9 @@ DEFAULT_CFG = {
     # Performanceanalyse: correlation heuristics
     "perf_corr_causal_gap_ms": 8,
     "perf_corr_timer_gap_ms": 1000,
+    # Performanceanalyse: correlation dep graph zoom
+    # 0 = auto-fit (x+y), otherwise percent scaling (global)
+    "perf_corr_dep_zoom_pct": 0,
 
     # Worklog (Analyse/Statistik/Raw Operations; persistent under /data)
     "worklog_max_entries": 2000,
@@ -1421,6 +1424,27 @@ DEFAULT_CFG = {
     "quality_cleanup_plan_json": "",
 
 }
+
+
+def _strip_trace_prefix(query: str) -> str:
+    """Remove a leading // trace_id=... prefix line from a stored query.
+
+    This prevents cached queries from carrying an older trace_id into new traces.
+    """
+
+    try:
+        q = str(query or "")
+    except Exception:
+        return ""
+    if not q.strip():
+        return ""
+    try:
+        lines = q.splitlines()
+        while lines and str(lines[0] or "").lstrip().startswith("// trace_id="):
+            lines.pop(0)
+        return "\n".join(lines).lstrip("\n")
+    except Exception:
+        return q
 
 
 def _process_rss_bytes() -> int | None:
@@ -14985,6 +15009,7 @@ def api_set_config():
 
     _clamp_int("perf_corr_causal_gap_ms", 8, 0, 200)
     _clamp_int("perf_corr_timer_gap_ms", 1000, 0, 200000)
+    _clamp_int("perf_corr_dep_zoom_pct", 0, 0, 300)
 
     try:
         cfg["import_measurement_transforms"] = str(cfg.get("import_measurement_transforms") or "").strip()
@@ -16329,6 +16354,19 @@ def query():
                         }],
                         "estimated_savings_ms": None,
                     }
+                    # Persist a trace query entry even for cache hits so the Waterfall can show a hint.
+                    try:
+                        try:
+                            q_cached = str(cached.get("query") or "")
+                        except Exception:
+                            q_cached = ""
+                        q_sane = _strip_trace_prefix(q_cached)
+                        if not q_sane.strip():
+                            q_sane = f"// dash_cache_hit cache_id={cache_id} strategy=exact"
+                        log_query("api.query (dash_cache_hit)", q_sane)
+                    except Exception:
+                        pass
+
                     # Enqueue background refresh if stale (best-effort)
                     try:
                         if bool(cfg.get("dash_cache_update_on_use_if_stale", True)) and _dash_cache_is_stale(cfg, meta):
