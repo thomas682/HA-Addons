@@ -410,16 +410,15 @@ Farben im Zeitstrahl:
 
 Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></div></span></summary>
       <div class="card_body">
-        <div class="muted" data-ui="dashboard_caching.txt_hint_aktualisieren" title="dashboard_caching.txt_hint_aktualisieren" style="margin-bottom:8px;">Laedt Graph/Tabelle/Statistik erst nach Klick auf <code>Aktualisieren</code>. Vor der Analyse wird hier der Cache fuer den aktuellen Messwert geprueft.</div>
+        <div id="analysis_start_info" class="muted" style="font-size:12px; margin-bottom:8px;"></div>
         <div class="control" data-ui="dashboard_caching.row_actions" title="dashboard_caching.row_actions">
-          <div id="analysis_status" class="muted" style="font-size:11px; margin-bottom:4px; min-height:14px;"></div>
+          <div id="analysis_status" class="muted" style="font-size:12px; line-height:1.45; white-space:pre-line; margin-bottom:6px; min-height:18px;"></div>
           <div style="display:flex; gap: 8px; align-items: stretch; flex-wrap:wrap;">
             <button id="load" class="btn_sm" style="height:34px; padding:8px 10px; flex:0 0 auto; width:auto;" data-ui="dashboard_caching.btn_cache_pruefen">Cache pruefen</button>
             <button id="analysis_cache_combine" class="btn_sm" style="height:34px; padding:8px 10px; flex:0 0 auto; width:auto;" data-ui="dashboard_caching.btn_kombinieren" disabled>kombinieren</button>
             <button id="raw_outlier_params_action" class="btn_sm" style="width:auto; min-width:34px; padding:6px 8px;" data-ui="dashboard_caching.btn_ausreisser_parameter" title="dashboard_caching.btn_ausreisser_parameter" aria-label="Ausreißer-Parameter"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 8.8A3.2 3.2 0 1 0 12 15.2A3.2 3.2 0 0 0 12 8.8Z" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a1.2 1.2 0 0 1 0 1.7l-1.6 1.6a1.2 1.2 0 0 1-1.7 0l-.1-.1a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.9V22a1.2 1.2 0 0 1-1.2 1.2h-2.2a1.2 1.2 0 0 1-1.2-1.2v-.2a1 1 0 0 0-.7-.9 1 1 0 0 0-1.1.2l-.1.1a1.2 1.2 0 0 1-1.7 0l-1.6-1.6a1.2 1.2 0 0 1 0-1.7l.1-.1a1 1 0 0 0 .2-1.1 1 1 0 0 0-.9-.6H2a1.2 1.2 0 0 1-1.2-1.2v-2.2a1.2 1.2 0 0 1 1.2-1.2h.2a1 1 0 0 0 .9-.7 1 1 0 0 0-.2-1.1l-.1-.1a1.2 1.2 0 0 1 0-1.7l1.6-1.6a1.2 1.2 0 0 1 1.7 0l.1.1a1 1 0 0 0 1.1.2h.1a1 1 0 0 0 .6-.9V2a1.2 1.2 0 0 1 1.2-1.2h2.2A1.2 1.2 0 0 1 13 2v.2a1 1 0 0 0 .7.9 1 1 0 0 0 1.1-.2l.1-.1a1.2 1.2 0 0 1 1.7 0l1.6 1.6a1.2 1.2 0 0 1 0 1.7l-.1.1a1 1 0 0 0-.2 1.1v.1a1 1 0 0 0 .9.6H22a1.2 1.2 0 0 1 1.2 1.2v2.2a1.2 1.2 0 0 1-1.2 1.2h-.2a1 1 0 0 0-.9.7Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></button>
             <button id="analysis_history" class="btn_sm" style="width:auto; min-width:34px; padding:6px 8px;" data-ui="dashboard_caching.btn_analyse_verlauf" title="dashboard_caching.btn_analyse_verlauf" aria-label="Analyse-Verlauf anzeigen"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7a6.97 6.97 0 0 1-4.95-2.05l-1.41 1.41A8.96 8.96 0 0 0 13 21a9 9 0 0 0 0-18zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z" fill="currentColor"/></svg></button>
             <button id="cancel_load" class="btn_sm" style="width:auto; white-space:nowrap;" data-ui="dashboard_caching.btn_laden_abbrechen" title="dashboard_caching.btn_laden_abbrechen" aria-label="Laufende Dashboard-Abfrage abbrechen">Laden abbrechen</button>
-            <button class="btn_sm" id="raw_search_abort" style="width:auto; white-space:nowrap;" data-ui="dashboard_filterlist.btn_ausreisser_reset" title="Ausreißer-Suche abbrechen" disabled>Ausreißer-Abbruch</button>
             <button id="analysis_start_reset" class="btn_sm" style="width:auto; display:none;" data-ui="dashboard_caching.btn_startalter_loeschen">Startalter löschen</button>
             <button id="reset_filters" class="btn_sm" style="width:auto; white-space:nowrap;" data-ui="dashboard_caching.btn_reset" title="dashboard_caching.btn_reset">Reset</button>
             <button id="analysis_cache_delete_series" class="btn_sm" style="width:auto; white-space:nowrap;" data-ui="dashboard_caching.btn_loeschen" title="dashboard_caching.btn_loeschen" disabled>löschen</button>
@@ -431,12 +430,16 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
           <div id="load_status" data-ui="dashboard_caching.panel_status" title="dashboard_caching.panel_status" style="margin-top:8px;">
             <div id="load_status_txt" class="muted" style="font-size:11px;">Bereit.</div>
             <div id="load_status_time" class="muted" style="font-size:11px;"></div>
+            <div id="load_trace" class="muted mono" style="display:none; font-size:11px; margin-top:4px; align-items:center; gap:6px; flex-wrap:wrap;">
+              <span style="opacity:0.75;">Trace-ID:</span>
+              <span id="load_trace_id" title="Trace-ID" style="font-weight:700;"></span>
+              <button type="button" class="btn_sm" id="load_trace_copy" style="width:auto; padding:4px 8px; height:26px;" title="TraceID kopieren" aria-label="TraceID kopieren">⧉</button>
+            </div>
             <div style="height:8px;background:#eee;border-radius:4px;margin:4px 0;overflow:hidden;">
               <div id="load_progress_fill" style="height:100%;background:#4caf50;width:0%;transition:width 0.3s;"></div>
             </div>
             <div id="load_progress_text" class="muted" style="font-size:11px;margin-bottom:8px;">0%</div>
             <div id="load_checklist" style="font-size:12px; border:1px solid #eee; border-radius:8px; padding:8px 12px; background:#fafafa;"></div>
-          <div id="analysis_start_info" class="muted" style="font-size:12px; margin-top:6px;"></div>
           <div id="analysis_log" style="font-size:12px; border:1px solid #eee; border-radius:8px; padding:8px 12px; background:#fafafa; margin-top:6px;"></div>
           </div>
           <div id="analysis_cache_box" style="margin-top:14px; border:1px solid #eee; border-radius:12px; padding:12px; background:#fafafa;">
@@ -474,9 +477,14 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
         <div style="height:8px;background:#eee;border-radius:4px;margin:4px 0;overflow:hidden;">
           <div id="analysis_progress_fill" style="height:100%;background:#4caf50;width:0%;transition:width 0.3s;"></div>
         </div>
-         <div id="analysis_progress_text" class="muted" style="font-size:11px;margin-bottom:8px;">0%</div>
-         <div id="analysis_chunk_timeline" style="display:none; margin-bottom:10px;"></div>
-          <div id="analysis_checklist" data-ui="dashboard_analysis.panel_checklist" style="font-size:12px;margin-bottom:8px;"></div>
+          <div id="analysis_progress_text" class="muted" style="font-size:11px;margin-bottom:8px;">0%</div>
+          <div id="analysis_trace" class="muted mono" style="display:none; font-size:11px; margin-bottom:8px; align-items:center; gap:6px; flex-wrap:wrap;">
+            <span style="opacity:0.75;">Trace-ID:</span>
+            <span id="analysis_trace_id" title="Trace-ID" style="font-weight:700;"></span>
+            <button type="button" class="btn_sm" id="analysis_trace_copy" style="width:auto; padding:4px 8px; height:26px;" title="TraceID kopieren" aria-label="TraceID kopieren">⧉</button>
+          </div>
+          <div id="analysis_chunk_timeline" style="display:none; margin-bottom:10px;"></div>
+           <div id="analysis_checklist" data-ui="dashboard_analysis.panel_checklist" style="font-size:12px;margin-bottom:8px;"></div>
           <div id="analysis_found_info" data-ui="dashboard_analysis.txt_found_info" style="font-size:12px;margin-bottom:12px;"></div>
 
         <div style="font-size:13px;font-weight:600;margin-bottom:8px;">Ausreisser-Typen auswaehlen</div>
@@ -501,17 +509,24 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
       <summary><span class="ib_summary_row"><span>Ausreißer</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Ausreißer" data-info-body="Ausreißer ist ein eigener Dashboard-Bereich fuer Suche, Navigation und Tabelle der aktuell gefundenen Raw-Ausreißer.\n\nEnthaelt:\n- Suchlauf fuer die ausgewaehlte Serie\n- Navigation zum aeltesten/neuesten Treffer\n- Typauswahl und Parameter\n- Ausreißer-Tabelle mit Tabellenfunktionen\n\nNutzen:\n- gefundene Treffer getrennt von den Raw-Daten betrachten\n- Treffer filtern, pruefen und gezielt in die Raw-Tabelle uebernehmen" ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
       <div class="table_wrap" id="raw_outlier_table_wrap" style="margin-top:10px;">
       <div class="table_title">Ausreißer</div>
-      <div id="raw_search_bar" style="display:block; border:1px solid #eee; border-radius:12px; padding:10px 12px; margin-bottom:10px; background:#fafafa;">
-        <div id="raw_outlier_limit_hint" style="display:none; font-size:12px; color:#b07000; margin-bottom:8px; padding:6px 8px; background:#fff8e1; border-radius:6px; border:1px solid #ffe082;"></div>
-        <div class="muted">Filtere die Spalte <code>Ausreißer</code> direkt in der Tabellen-Filterzeile. Dort kannst du vorhandene Werte aus der Liste auswaehlen oder freien Text eingeben.</div>
-          <div id="raw_outlier_status" style="display:none; margin-top:8px; font-size:12px; opacity:0.85; align-items:center; gap:8px; flex-wrap:wrap;">
-          <span id="raw_outlier_spinner" aria-hidden="true" style="width:14px; height:14px; border-radius:50%; border:2px solid rgba(0,0,0,0.18); border-top-color:rgba(0,0,0,0.75); animation:spin 0.9s linear infinite;"></span>
-          <span id="raw_outlier_status_txt">Suche laeuft...</span>
-          <span id="raw_outlier_status_meta"></span>
-          <span id="raw_outlier_status_now"></span>
-          <span id="raw_outlier_status_time"></span>
-        </div>
-      </div>
+       <div id="raw_search_bar" style="display:block; border:1px solid #eee; border-radius:12px; padding:10px 12px; margin-bottom:10px; background:#fafafa;">
+         <div id="raw_outlier_limit_hint" style="display:none; font-size:12px; color:#b07000; margin-bottom:8px; padding:6px 8px; background:#fff8e1; border-radius:6px; border:1px solid #ffe082;"></div>
+         <div class="muted">Filtere die Spalte <code>Ausreißer</code> direkt in der Tabellen-Filterzeile. Dort kannst du vorhandene Werte aus der Liste auswaehlen oder freien Text eingeben.</div>
+         <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:10px;">
+           <button class="btn_sm" id="raw_search_run" type="button" style="width:auto;" data-ui="dashboard_outliers.btn_suchen" title="dashboard_outliers.btn_suchen">Ausreißer suchen</button>
+           <button class="btn_sm" id="raw_jump_oldest" type="button" style="width:auto;" data-ui="dashboard_outliers.btn_aeltester" title="dashboard_outliers.btn_aeltester" disabled>Aeltester</button>
+           <button class="btn_sm" id="raw_jump_newest" type="button" style="width:auto;" data-ui="dashboard_outliers.btn_neuester" title="dashboard_outliers.btn_neuester" disabled>Neuster</button>
+           <button class="btn_sm" id="raw_search_clear" type="button" style="width:auto;" data-ui="dashboard_outliers.btn_leeren" title="dashboard_outliers.btn_leeren" disabled>Leeren</button>
+           <button class="btn_sm" id="raw_search_abort" type="button" style="width:auto; display:none; white-space:nowrap;" data-ui="dashboard_outliers.btn_abbruch" title="dashboard_outliers.btn_abbruch" aria-label="Ausreißer-Suche abbrechen" disabled>Abbruch</button>
+         </div>
+           <div id="raw_outlier_status" style="display:none; margin-top:8px; font-size:12px; opacity:0.85; align-items:center; gap:8px; flex-wrap:wrap;">
+           <span id="raw_outlier_spinner" aria-hidden="true" style="width:14px; height:14px; border-radius:50%; border:2px solid rgba(0,0,0,0.18); border-top-color:rgba(0,0,0,0.75); animation:spin 0.9s linear infinite;"></span>
+           <span id="raw_outlier_status_txt">Suche laeuft...</span>
+           <span id="raw_outlier_status_meta"></span>
+           <span id="raw_outlier_status_now"></span>
+           <span id="raw_outlier_status_time"></span>
+         </div>
+       </div>
       <div class="table_head" style="min-width:0;">
         <div class="tbl_actions" data-ui="dashboard_outliers.row_table_actions" title="dashboard_outliers.row_table_actions">
           <button class="btn_sm" id="raw_outlier_autowidth" data-ui="dashboard_outliers.btn_autobreite" title="dashboard_outliers.btn_autobreite" aria-label="Spaltenbreite automatisch">
@@ -1150,6 +1165,12 @@ const $analysisSection = document.getElementById('analysis_section');
 const $outlierSection = document.getElementById('outlier_section');
 const $analysisStartInfo = document.getElementById('analysis_start_info');
 const $analysisStartReset = document.getElementById('analysis_start_reset');
+const $loadTrace = document.getElementById('load_trace');
+const $loadTraceId = document.getElementById('load_trace_id');
+const $loadTraceCopy = document.getElementById('load_trace_copy');
+const $analysisTrace = document.getElementById('analysis_trace');
+const $analysisTraceId = document.getElementById('analysis_trace_id');
+const $analysisTraceCopy = document.getElementById('analysis_trace_copy');
 
 const $rawSection = document.getElementById('raw_section');
 const $rawInfo = document.getElementById('raw_info');
@@ -3975,6 +3996,7 @@ async function loadUiConfig(){
     if(isFinite(odlp) && odlp >= 1 && odlp <= 1000) RAW_OUTLIER_DISPLAY_LIMIT_PER_TYPE = Math.trunc(odlp);
     if($rawOutlierDisplayLimitPerType) $rawOutlierDisplayLimitPerType.value = String(RAW_OUTLIER_DISPLAY_LIMIT_PER_TYPE);
     if(cfg.ui_analysis_cache_hidden_color) ANALYSIS_CACHE_HIDDEN_COLOR = String(cfg.ui_analysis_cache_hidden_color || ANALYSIS_CACHE_HIDDEN_COLOR);
+    if(cfg.ui_analysis_cache_missing_color) ANALYSIS_CACHE_MISSING_COLOR = String(cfg.ui_analysis_cache_missing_color || ANALYSIS_CACHE_MISSING_COLOR);
 
     // Outlier params (global config)
     try{
@@ -4618,19 +4640,61 @@ async function resolveDashboardSource(){
     measurement_filter: s.measurement || null,
   };
   if(tf && tf.start && tf.stop){ payload.range = 'custom'; payload.start = tf.start; payload.stop = tf.stop; }
+  const t0 = performance.now();
   const j = await api(
     "./api/resolve_signal",
     {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)},
     { key: "resolve_signal", status: "Ermittle Measurement/Field..." },
   );
+  try{
+    const dur = Math.round(performance.now() - t0);
+    _saveAnalysisEvent({
+      at: new Date().toISOString(),
+      kind: 'analysis_prepare',
+      step: 'prepare_resolve_signal.api',
+      status: 'ok',
+      detail: 'resolve_signal API (' + dur + ' ms)',
+      extra: { dur_ms: dur },
+    });
+  }catch(e){}
   const measurement = String(j.measurement || '').trim();
   const field = String(j.field || '').trim();
   if(measurement && (!$mf.value || String($mf.value || '').trim() === '')){
     if($mf) $mf.value = measurement;
   }
-  if(measurement) await loadDashboardFields(measurement, {silent: true});
+  if(measurement){
+    const t1 = performance.now();
+    await loadDashboardFields(measurement, {silent: true});
+    try{
+      const dur = Math.round(performance.now() - t1);
+      _saveAnalysisEvent({
+        at: new Date().toISOString(),
+        kind: 'analysis_prepare',
+        step: 'prepare_resolve_signal.fields',
+        status: 'ok',
+        detail: 'Dashboard Fields laden (' + dur + ' ms)',
+        extra: { dur_ms: dur },
+      });
+    }catch(e){}
+  }else{
+    try{ _saveAnalysisEvent({ at: new Date().toISOString(), kind:'analysis_prepare', step:'prepare_resolve_signal.fields', status:'ok', detail:'Dashboard Fields laden (0 ms) [skipped]', extra:{ dur_ms:0, skipped:true } }); }catch(e){}
+  }
   if(field && $f) $f.value = field;
-  await refreshDashboardSuggestions({silent: true});
+  {
+    const t2 = performance.now();
+    await refreshDashboardSuggestions({silent: true});
+    try{
+      const dur = Math.round(performance.now() - t2);
+      _saveAnalysisEvent({
+        at: new Date().toISOString(),
+        kind: 'analysis_prepare',
+        step: 'prepare_resolve_signal.suggestions',
+        status: 'ok',
+        detail: 'Dashboard Vorschlaege laden (' + dur + ' ms)',
+        extra: { dur_ms: dur },
+      });
+    }catch(e){}
+  }
   return j;
 }
 
@@ -4976,6 +5040,7 @@ let ANALYSIS_CACHE_RUNTIME = {
   fresh_plan: null,
 };
 let ANALYSIS_CACHE_HIDDEN_COLOR = {{ (cfg.get('ui_analysis_cache_hidden_color') or '#b0b0b0') | tojson }};
+let ANALYSIS_CACHE_MISSING_COLOR = {{ (cfg.get('ui_analysis_cache_missing_color') or '#b00020') | tojson }};
 const ANALYSIS_CACHE_SEGMENT_COLORS = [
   ['#d9f7d9', '#5ea56a'],
   ['#d9f0ff', '#5d86d6'],
@@ -6192,7 +6257,7 @@ function _updateAnalysisStatus(){
     if(eid) parts.push(eid);
     else if(fn) parts.push(fn);
     if(parts.length){
-      $analysisStatus.textContent = 'Analyse: ' + parts.join('/') + ' | Zeitraum: ' + rangeLabel;
+      $analysisStatus.textContent = 'Serie: ' + parts.join('/') + '\nZeitraum: ' + rangeLabel;
     }else{
       $analysisStatus.textContent = 'Analyse: Bitte Measurement und Field auswaehlen';
     }
@@ -6977,15 +7042,9 @@ function _analysisChecklistHtml(items, chunkLog){
     const metaText = [atText, durText].filter(Boolean).join(' ');
     const infoTitle = 'Analyse: ' + String(item.label || 'Schritt');
     const infoBody = _analysisStepInfoText(item);
-    const traceId = item && item.trace_id ? String(item.trace_id) : '';
-    const traceShort = traceId ? (traceId.length > 26 ? (traceId.slice(0, 12) + '…' + traceId.slice(-10)) : traceId) : '';
-    const traceHtml = traceId
-      ? ('<span class="checklist_trace" title="' + _escAttr(traceId) + '">' + _escHtml(traceShort) + '</span>'
-        + '<button type="button" class="checklist_trace_copy" data-trace-id="' + _escAttr(traceId) + '" title="TraceID kopieren" aria-label="TraceID kopieren">⧉</button>')
-      : '';
-    let html = '<div class="checklist_item"><span class="checklist_icon ' + iconClass + '">' + iconText + '</span><span class="checklist_dur">' + _escHtml(metaText) + '</span><span class="checklist_main"><span class="checklist_label">' + _escHtml(item.label || '') + '</span>' + traceHtml + '<button type="button" class="ib_info_icon" data-info-title="' + _escAttr(infoTitle) + '" data-info-body="' + _escAttr(infoBody) + '">' + ANALYSIS_INFO_ICON_SVG + '</button></span></div>';
+    let html = '<div class="checklist_item"><span class="checklist_icon ' + iconClass + '">' + iconText + '</span><span class="checklist_dur">' + _escHtml(metaText) + '</span><span class="checklist_main"><span class="checklist_label">' + _escHtml(item.label || '') + '</span><button type="button" class="ib_info_icon" data-info-title="' + _escAttr(infoTitle) + '" data-info-body="' + _escAttr(infoBody) + '">' + ANALYSIS_INFO_ICON_SVG + '</button></span></div>';
     if(item.sub){
-      html += '<div class="checklist_sub">' + _escHtml(item.sub) + '</div>';
+      html += '<div class="checklist_sub">' + _checklistSubHtml(String(item.sub || '')) + '</div>';
     }
     if(item.progress !== undefined && item.status === 'running'){
       const pct = Math.min(100, Math.max(0, Math.round(item.progress * 100)));
@@ -7003,6 +7062,52 @@ function _loadChecklistBaseItems(){
 function _loadChecklistReset(){
   LOAD_CHECKLIST_ITEMS = _loadChecklistBaseItems();
   _renderChecklist(LOAD_CHECKLIST_ITEMS);
+}
+
+let LOAD_CHECK_T0 = 0;
+let LOAD_CHECK_TOTAL_MS = null;
+
+let LAST_TRACE_ID = '';
+
+function _currentTraceId(){
+  try{
+    const tr = (window.InfluxBroTrace && window.InfluxBroTrace.current) ? window.InfluxBroTrace.current() : null;
+    const id = tr && tr.trace_id ? String(tr.trace_id) : '';
+    if(id){ LAST_TRACE_ID = id; return id; }
+  }catch(e){}
+  return String(LAST_TRACE_ID || '');
+}
+
+function _traceShortId(id){
+  const s = String(id || '');
+  if(!s) return '';
+  return s.length > 46 ? (s.slice(0, 18) + '…' + s.slice(-18)) : s;
+}
+
+function _renderTracePanels(){
+  try{
+    const id = _currentTraceId();
+    if($loadTrace && $loadTraceId){
+      if(id){
+        $loadTrace.style.display = 'flex';
+        $loadTraceId.textContent = _traceShortId(id);
+        $loadTraceId.title = id;
+      }else{
+        $loadTrace.style.display = 'none';
+        $loadTraceId.textContent = '';
+      }
+    }
+    if($analysisTrace && $analysisTraceId){
+      if(id){
+        $analysisTrace.style.display = 'flex';
+        $analysisTraceId.textContent = _traceShortId(id);
+        $analysisTraceId.title = id;
+      }else{
+        $analysisTrace.style.display = 'none';
+        $analysisTraceId.textContent = '';
+      }
+    }
+  }catch(e){}
 }
 
 function _loadChecklistLog(item){
@@ -7073,17 +7178,28 @@ function _loadChecklistHtml(items){
     const durText = String(Math.max(0, Math.round(Number(item && item.dur || 0)))) + ' ms';
     const atText = item.at ? _analysisStepClock(item.at) : '';
     const metaText = [atText, durText].filter(Boolean).join(' ');
-    const traceId = item && item.trace_id ? String(item.trace_id) : '';
-    const traceShort = traceId ? (traceId.length > 26 ? (traceId.slice(0, 12) + '…' + traceId.slice(-10)) : traceId) : '';
-    const traceHtml = traceId
-      ? ('<span class="checklist_trace" title="' + _escAttr(traceId) + '">' + _escHtml(traceShort) + '</span>'
-        + '<button type="button" class="checklist_trace_copy" data-trace-id="' + _escAttr(traceId) + '" title="TraceID kopieren" aria-label="TraceID kopieren">⧉</button>')
-      : '';
-    let html = '<div class="checklist_item"><span class="checklist_icon ' + iconClass + '">' + iconText + '</span><span class="checklist_dur">' + _escHtml(metaText) + '</span><span class="checklist_main"><span class="checklist_label">' + _escHtml(item.label || '') + '</span>' + traceHtml + '</span></div>';
-    if(item.sub) html += '<div class="checklist_sub">' + _escHtml(item.sub) + '</div>';
+    let html = '<div class="checklist_item"><span class="checklist_icon ' + iconClass + '">' + iconText + '</span><span class="checklist_dur">' + _escHtml(metaText) + '</span><span class="checklist_main"><span class="checklist_label">' + _escHtml(item.label || '') + '</span></span></div>';
+    if(item.sub) html += '<div class="checklist_sub">' + _checklistSubHtml(String(item.sub || '')) + '</div>';
     rows.push(html);
   });
   return rows.join('');
+}
+
+function _checklistSubHtml(text){
+  try{
+    const s = String(text || '');
+    if(!s) return '';
+    const parts = s.split(' || ').map(p=>String(p||'').trim()).filter(Boolean);
+    if(!parts.length) return _escHtml(s);
+    return parts.map((p)=>{
+      if(p.startsWith('Fehlend:')){
+        return '<span class="ib_missing" style="color:' + _escAttr(String(ANALYSIS_CACHE_MISSING_COLOR || '#b00020')) + '; font-weight:700;">' + _escHtml(p) + '</span>';
+      }
+      return _escHtml(p);
+    }).join(' <span style="opacity:0.6;">|</span> ');
+  }catch(e){
+    return _escHtml(String(text || ''));
+  }
 }
 
 function _formatCachePlanRanges(gaps, dirtyRanges){
@@ -7116,25 +7232,24 @@ function _renderChecklist(items){
   const done = rows.filter((item)=> String(item && item.status || '') === 'ok').length;
   const pct = Math.min(100, Math.max(0, Math.round((done / Math.max(1, rows.length)) * 100)));
   if($loadProgressFill) $loadProgressFill.style.width = pct + '%';
-  if($loadProgressText) $loadProgressText.textContent = pct + '%';
+  let totalMs = null;
+  try{
+    if(LOAD_CHECK_TOTAL_MS !== null && LOAD_CHECK_TOTAL_MS !== undefined) totalMs = Number(LOAD_CHECK_TOTAL_MS);
+    else if(LOAD_CHECK_T0) totalMs = Math.round(performance.now() - LOAD_CHECK_T0);
+  }catch(e){ totalMs = null; }
+  const totalTxt = (totalMs !== null && totalMs !== undefined && isFinite(Number(totalMs))) ? (' | gesamt: ' + Math.max(0, Math.round(Number(totalMs))) + ' ms') : '';
+  if($loadProgressText) $loadProgressText.textContent = pct + '%' + totalTxt;
+  try{ _renderTracePanels(); }catch(e){}
 }
 
 function _renderAnalysisChecklist(items, chunkLog){
   const $cl = document.getElementById('analysis_checklist');
   if(!$cl) return;
   $cl.innerHTML = _analysisChecklistHtml(items, chunkLog);
+  try{ _renderTracePanels(); }catch(e){}
 }
 
-document.addEventListener('click', async (ev)=>{
-  try{
-    const btn = ev && ev.target && ev.target.closest ? ev.target.closest('.checklist_trace_copy') : null;
-    if(!btn) return;
-    try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
-    const id = String(btn.getAttribute('data-trace-id') || '');
-    if(!id) return;
-    await copyTextToClipboard(id);
-  }catch(e){}
-});
+// (Trace copy was moved to the central trace panels)
 
 function _clearLoadPlanUi(){
   try{
@@ -7471,10 +7586,12 @@ const ANALYSIS_EVENT_HISTORY_MAX = 400;
 
 function _analysisContext(){
   try{
+    const traceId = _currentTraceId();
     return {
       page: 'dashboard',
       scope: String(ANALYSIS_ACTIVE_SCOPE || 'dashboard_analysis'),
       action: String(ANALYSIS_ACTIVE_ACTION || ''),
+      trace_id: traceId,
       measurement: String(ANALYSIS_STATE && ANALYSIS_STATE.measurement || ''),
       field: String(ANALYSIS_STATE && ANALYSIS_STATE.field || ''),
       entity_id: String(ANALYSIS_STATE && ANALYSIS_STATE.entity_id || ''),
@@ -7487,10 +7604,21 @@ function _analysisContext(){
 
 function _postAnalysisHistory(entry){
   try{
+    const merged = {..._analysisContext(), ...(entry || {})};
+    try{
+      const extra0 = (merged.extra && typeof merged.extra === 'object') ? {...merged.extra} : {};
+      let dur = null;
+      if(extra0.dur_ms !== undefined && extra0.dur_ms !== null) dur = extra0.dur_ms;
+      else if(merged.dur_ms !== undefined && merged.dur_ms !== null) dur = merged.dur_ms;
+      else if(merged.dur !== undefined && merged.dur !== null) dur = merged.dur;
+      if(dur === null || dur === undefined || !isFinite(Number(dur))) extra0.dur_ms = 0;
+      else extra0.dur_ms = Math.max(0, Math.round(Number(dur)));
+      merged.extra = extra0;
+    }catch(e){}
     fetch('./api/analysis_history_event', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({..._analysisContext(), ...(entry || {})}),
+      body: JSON.stringify(merged),
     }).catch(()=>{});
   }catch(e){}
 }
@@ -7498,6 +7626,16 @@ function _postAnalysisHistory(entry){
 function _saveAnalysisEvent(entry){
   try{
     const merged = {..._analysisContext(), ...(entry || {})};
+    try{
+      const extra0 = (merged.extra && typeof merged.extra === 'object') ? {...merged.extra} : {};
+      let dur = null;
+      if(extra0.dur_ms !== undefined && extra0.dur_ms !== null) dur = extra0.dur_ms;
+      else if(merged.dur_ms !== undefined && merged.dur_ms !== null) dur = merged.dur_ms;
+      else if(merged.dur !== undefined && merged.dur !== null) dur = merged.dur;
+      if(dur === null || dur === undefined || !isFinite(Number(dur))) extra0.dur_ms = 0;
+      else extra0.dur_ms = Math.max(0, Math.round(Number(dur)));
+      merged.extra = extra0;
+    }catch(e){}
     let history = [];
     const raw = localStorage.getItem(ANALYSIS_EVENT_HISTORY_KEY);
     if(raw) history = JSON.parse(raw);
@@ -7551,11 +7689,23 @@ function _analysisEventToTextLine(row){
     const at = _analysisStepClock(r.at || '') || fmtTs(String(r.at || ''));
     const scope = String(r.scope || extra.scope || '');
     const action = String(r.action || extra.action || '');
+    const traceId = String(r.trace_id || extra.trace_id || '');
+    const durMs = (extra.dur_ms !== undefined && extra.dur_ms !== null) ? String(extra.dur_ms) : '0';
     const kind = String(r.kind || '');
     const step = String(r.step || '');
     const status = String(r.status || '');
     const detail = String(r.detail || '');
-    return [at, scope, action, kind, step, status, detail].filter(Boolean).join(' | ');
+    return [
+      at,
+      scope,
+      action,
+      'trace_id=' + (traceId || '-'),
+      'dur_ms=' + (durMs || '0'),
+      kind,
+      step,
+      status,
+      detail,
+    ].filter(Boolean).join(' | ');
   }catch(e){
     return '';
   }
@@ -7573,6 +7723,22 @@ function _ensureFilteredLogModal(){
   dlg.style.padding = '0';
   dlg.innerHTML = '<div style="display:flex; flex-direction:column; min-height:70vh; max-height:85vh;"><div style="padding:14px 16px; border-bottom:1px solid #eee; display:flex; align-items:center; justify-content:space-between; gap:12px;"><div style="font-weight:700;">Gefiltertes Logging</div><button type="button" id="analysis_log_modal_close" class="btn_sm" style="width:auto;">Schliessen</button></div><div style="padding:12px 16px; display:flex; gap:10px; flex-wrap:wrap; border-bottom:1px solid #eee;"><label style="display:flex; flex-direction:column; gap:4px; font-size:12px;"><span>Ausloeser</span><select id="analysis_log_filter_action" style="min-width:220px;"><option value="">Alle</option><option value="analysis_run_with_cache">Analyse mit Cache</option><option value="analysis_run_without_cache">Analyse ohne Cache</option></select></label><label style="display:flex; flex-direction:column; gap:4px; font-size:12px;"><span>Bereichsfilter</span><select id="analysis_log_filter_scope" style="min-width:220px;"><option value="">Alle</option><option value="dashboard_analysis">Dashboard Analyse</option><option value="dashboard_caching">Dashboard Cache</option><option value="dashboard_outliers">Dashboard Ausreisser</option></select></label><label style="display:flex; flex-direction:column; gap:4px; font-size:12px; flex:1 1 260px;"><span>Textsuche</span><input id="analysis_log_filter_text" type="text" placeholder="Volltextsuche in den Logzeilen" /></label><button type="button" id="analysis_log_filter_refresh" class="btn_sm" style="width:auto; align-self:end;">Refresh</button></div><div style="padding:12px 16px; display:flex; flex-direction:column; gap:8px; min-height:0; flex:1 1 auto;"><div id="analysis_log_filter_meta" class="muted" style="font-size:12px;"></div><pre id="analysis_log_filter_pre" style="margin:0; flex:1 1 auto; min-height:0; overflow:auto; background:#fafafa; border:1px solid #eee; border-radius:10px; padding:12px; font-size:12px; line-height:1.45;"></pre></div></div>';
   document.body.appendChild(dlg);
+
+  // Insert a convenience button without rewriting the big HTML string.
+  try{
+    const $refresh = document.getElementById('analysis_log_filter_refresh');
+    if($refresh && !document.getElementById('analysis_log_filter_perf')){
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.id = 'analysis_log_filter_perf';
+      b.className = 'btn_sm';
+      b.style.width = 'auto';
+      b.style.alignSelf = 'end';
+      b.textContent = 'Performance Analyse';
+      $refresh.parentElement.insertBefore(b, $refresh.nextSibling);
+    }
+  }catch(e){}
+
   const close = document.getElementById('analysis_log_modal_close');
   if(close) close.addEventListener('click', ()=>{ try{ dlg.close(); }catch(e){ dlg.style.display='none'; } });
   return dlg;
@@ -7586,6 +7752,7 @@ async function openFilteredAnalysisLogsDialog(defaultScope, defaultAction){
   const $meta = document.getElementById('analysis_log_filter_meta');
   const $pre = document.getElementById('analysis_log_filter_pre');
   const $refresh = document.getElementById('analysis_log_filter_refresh');
+  const $perf = document.getElementById('analysis_log_filter_perf');
   if($scope && defaultScope !== undefined) $scope.value = String(defaultScope || '');
   if($action && defaultAction !== undefined) $action.value = String(defaultAction || '');
 
@@ -7640,6 +7807,17 @@ async function openFilteredAnalysisLogsDialog(defaultScope, defaultAction){
     try{ if($text) $text['on' + evt] = renderLogs; }catch(e){}
   });
   if($refresh) $refresh.onclick = renderLogs;
+  if($perf) $perf.onclick = ()=>{
+    try{
+      const id = _currentTraceId();
+      if(!id){
+        try{ if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error('Keine Trace-ID bekannt.'); else alert('Keine Trace-ID bekannt.'); }catch(e){}
+        return;
+      }
+      try{ if(typeof dlg.close === 'function') dlg.close(); else dlg.style.display = 'none'; }catch(e){ try{ dlg.style.display = 'none'; }catch(x){} }
+      location.href = './performance?trace_id=' + encodeURIComponent(String(id));
+    }catch(e){}
+  };
   await renderLogs();
   try{ if(typeof dlg.showModal === 'function') dlg.showModal(); else dlg.style.display = 'block'; }catch(e){ dlg.style.display = 'block'; }
 }
@@ -11137,6 +11315,8 @@ async function refreshCachingSection(){
   const prevAction = ANALYSIS_ACTIVE_ACTION;
   ANALYSIS_ACTIVE_SCOPE = 'dashboard_caching';
   ANALYSIS_ACTIVE_ACTION = 'cache_check';
+
+  try{ LOAD_CHECK_T0 = performance.now(); LOAD_CHECK_TOTAL_MS = null; }catch(e){ LOAD_CHECK_T0 = 0; LOAD_CHECK_TOTAL_MS = null; }
   const $summary = document.getElementById('analysis_confirm_cache_summary');
   const $timeline = document.getElementById('analysis_confirm_cache_timeline');
   const $changes = document.getElementById('analysis_confirm_cache_changes');
@@ -11192,7 +11372,14 @@ async function refreshCachingSection(){
       detail: 'Analysecache Segmente: ' + analysisSegs + ' | Neu lesen: ' + analysisGaps + ' | Geaendert: ' + analysisDirty + ' | Dauer: ' + analysisDur + ' ms' + (areaSummary ? ' | ' + areaSummary.replace(/ \|\| /g, ' | ') : ''),
       extra: { scope: 'dashboard_caching', action: 'cache_check', dur_ms: analysisDur, segments: analysisSegs, gaps: analysisGaps, dirty: analysisDirty },
     });
-    if($status) $status.textContent = [base.measurement + ' / ' + base.field, entityInfo, 'Zeitraum: ' + range, 'Ausreisser-Typen: ' + typeNames].filter(Boolean).join(' | ');
+    if($status){
+      const lines = [];
+      lines.push('Serie: ' + base.measurement + ' / ' + base.field);
+      if(entityInfo) lines.push(entityInfo);
+      lines.push('Zeitraum: ' + range);
+      if(typeNames) lines.push('Ausreisser-Typen: ' + typeNames);
+      $status.textContent = lines.join('\n');
+    }
     if($summary){
       if(analysisPlan){
         const segs = analysisSegs;
@@ -11224,7 +11411,7 @@ async function refreshCachingSection(){
           + '<span>Dashboard-Cache Segmente: <strong>' + dashSegs + '</strong></span>'
           + '</div>'
           + '<div style="margin-top:4px; font-size:11px; opacity:0.75;">Start: ' + _escHtml(fmtTs(win.start)) + ' | Ende: ' + _escHtml(fmtTs(win.stop)) + '</div>'
-          + (areaSummary ? ('<div style="margin-top:4px; font-size:11px;">' + _escHtml(areaSummary.replace(/ \|\| /g, ' | ')) + '</div>') : '')
+          + (areaSummary ? ('<div style="margin-top:4px; font-size:11px;">' + _checklistSubHtml(areaSummary.replace(/ \|\| /g, ' | ')) + '</div>') : '')
           + '<div style="margin-top:4px; font-size:11px;">' + _escHtml(foundTxt) + '</div>';
         const $changedInfo = document.getElementById('caching_changed_info');
         if($changedInfo) $changedInfo.onclick = ()=>showCachingSummaryInfo();
@@ -11304,6 +11491,13 @@ async function refreshCachingSection(){
     _loadChecklistSet('result', {status: 'ok', sub: analysisPlan ? ('Cache-Pruefung abgeschlossen. Segmente: ' + analysisSegs + ' | Neu lesen: ' + analysisGaps + ' | Geaendert: ' + analysisDirty) : 'Cache-Pruefung abgeschlossen. Kein Analyse-Cache gefunden.'});
   }catch(e){}
   finally{
+    try{
+      if(LOAD_CHECK_T0){
+        LOAD_CHECK_TOTAL_MS = Math.round(performance.now() - LOAD_CHECK_T0);
+        LOAD_CHECK_T0 = 0;
+        _renderChecklist(LOAD_CHECKLIST_ITEMS);
+      }
+    }catch(e){}
     ANALYSIS_ACTIVE_SCOPE = prevScope;
     ANALYSIS_ACTIVE_ACTION = prevAction;
   }
@@ -12622,6 +12816,8 @@ try{
       if(RAW_OUTLIER_ABORT) RAW_OUTLIER_ABORT.abort();
     }catch(e){}
   });
+  if($loadTraceCopy) $loadTraceCopy.addEventListener('click', async (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}; try{ const id = _currentTraceId(); if(id) await copyTextToClipboard(id); }catch(e){}; });
+  if($analysisTraceCopy) $analysisTraceCopy.addEventListener('click', async (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}; try{ const id = _currentTraceId(); if(id) await copyTextToClipboard(id); }catch(e){}; });
   if($rawOutlierTypeToggle){
     $rawOutlierTypeToggle.addEventListener('click', (ev)=>{
       ev.stopPropagation();

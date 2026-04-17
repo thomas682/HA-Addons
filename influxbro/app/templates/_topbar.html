@@ -882,6 +882,7 @@
       let currentEl = null;
       let overlay = null;
       let badge = null;
+      let scrim = null;
       let currentTargets = [];
       let currentTargetIndex = 0;
       let lastPointer = { x: null, y: null };
@@ -900,6 +901,20 @@
     }
 
     function ensureUi(){
+      if(!scrim){
+        scrim = document.createElement('div');
+        scrim.style.position = 'fixed';
+        scrim.style.inset = '0';
+        scrim.style.zIndex = '99999';
+        scrim.style.pointerEvents = 'auto';
+        scrim.style.background = 'transparent';
+        scrim.style.cursor = 'crosshair';
+        scrim.style.display = 'none';
+        // prevent long-press selection on mobile
+        scrim.style.userSelect = 'none';
+        scrim.style.webkitUserSelect = 'none';
+        document.body.appendChild(scrim);
+      }
       if(!overlay){
         overlay = document.createElement('div');
         overlay.style.position = 'fixed';
@@ -1022,7 +1037,7 @@
     function _isOwnPickerUi(el){
       try{
         if(!el) return true;
-        if(el === overlay || el === badge) return true;
+        if(el === overlay || el === badge || el === scrim) return true;
         const id = String(el.getAttribute && el.getAttribute('id') || '').trim();
         if(id === 'ui_picker_toggle' || id === 'ui_superpicker_toggle') return true;
         return !!(el.closest && el.closest('#pagecard_topbar'));
@@ -1135,6 +1150,7 @@
       lastPointer = { x: null, y: null };
       try{ if($btn) $btn.classList.remove('active'); }catch(e){}
       try{ if($superBtn) $superBtn.classList.remove('active'); }catch(e){}
+      try{ if(scrim) scrim.style.display = 'none'; }catch(e){}
       try{ if(overlay) overlay.style.display = 'none'; }catch(e){}
       try{ if(badge) badge.style.display = 'none'; }catch(e){}
       try{ restoreTitles(); }catch(e){}
@@ -1150,6 +1166,7 @@
       ensureUi();
       try{ suppressTitles(); }catch(e){}
       try{ if(readSuper()){ if($superBtn) $superBtn.classList.add('active'); if($btn) $btn.classList.remove('active'); } else { if($btn) $btn.classList.add('active'); if($superBtn) $superBtn.classList.remove('active'); } }catch(e){}
+      try{ if(scrim) scrim.style.display = 'block'; }catch(e){}
       document.addEventListener('mousemove', onMove, true);
       document.addEventListener('mousedown', onMouseDown, true);
       document.addEventListener('click', onClick, true);

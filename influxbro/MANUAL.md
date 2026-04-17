@@ -568,13 +568,14 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Die Hoehe der Titel-/Pagecard-Leiste schrumpft nach automatischen Erweiterungen wieder auf die kleinste vollstaendige Hoehe des aktuell sichtbaren Inhalts zurueck.
 - Button-Klicks werden fuer Supportzwecke jetzt global protokolliert. Wenn ein Button-Handler scheitert, landet der Fehler nicht nur im Browser, sondern auch im UI-Fehlerlog und im Add-on-Log.
 - Neu: App-weites Tracing erzeugt pro Button-Aktion eine eindeutige `trace_id` und korreliert UI-Events, API-Requests, Client-Netzwerkzeiten und Influx-Queries. Flux Queries enthalten zusaetzlich einen Kommentar `// trace_id=...`.
-- Neu: In den Dashboard-Checklisten (z.B. Analyse-Checklist) wird die aktuelle `trace_id` direkt angezeigt und kann per Copy-Button in die Zwischenablage kopiert werden.
+- Neu: Im Dashboard wird die aktuelle `trace_id` zentral angezeigt (Caching: Statuspanel `dashboard_caching.panel_status`, Analyse: unterhalb der Progress-Zeile) und kann dort per Copy-Button kopiert werden. Die Checklisten-Zeilen selbst bleiben dadurch kompakter.
 - Neuer Menuepunkt `Performanceanalyse`: zeigt den persistierten Action/Trace-Log (Limit/Filter), erlaubt Drilldown in Details und rendert den selektierten Trace zusaetzlich als Diagramm (Waterfall).
   - Links: Trace-Liste mit Start/Ende/Dauer, Seite, Ausloeser (Klartext + technische ID), Status und Counts.
   - Rechts: JSON-Details (scrollbar/resizable) plus Copy-Buttons (Zwischenablage, TraceID).
   - Diagramm: vollstaendige Analyseansicht (Zeitleiste, Waterfall Vollansicht/Zoom, Endpoint-Statistiken, Tooltip) basierend auf den Trace-Spans; Zoom per Markierung in der Vollansicht.
   - Diagramm: Optionaler Endpoint-Filter (Toggle + Dropdown) listet alle im aktuellen Trace sichtbaren `/api/...` Endpoints. Du kannst einzelne Endpoints deaktivieren; die Auswahl wird gespeichert. Wenn gefiltert wird, erscheint ein gut sichtbarer Hinweis "Gefiltert".
   - Layout: Vertikaler Splitter trennt Trace-Liste/Details (oben) und Diagramm (unten); Hoehe wird gespeichert.
+- Tipp: Im Dashboard-Dialog "Gefiltertes Logging" gibt es einen Button "Performance Analyse", der direkt mit der zuletzt bekannten `trace_id` in diese Seite springt.
 - Mit aktivem `superpicker` wird jetzt das direkt gehoverte Unterelement bevorzugt erfasst; dadurch lassen sich auch Elemente innerhalb eines groesseren `data-ui`-Containers gezielter identifizieren.
 - Der `S-Picker` prueft im Super-Modus wieder zuerst das direkt getroffene Element wie in den frueheren Dashboard-Versionen; dadurch lassen sich auch feinere Unterelemente wieder zuverlaessig selektieren.
 - Falls ein Element kein `data-ui`, aber eine stabile `id` besitzt, kann der `S-Picker` diese `id` ebenfalls direkt kopieren, z. B. `analysis_start_info`.
@@ -597,7 +598,9 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Die Dashboard-Section `Auswahl` heisst jetzt `Messwertauswahl`; der zusaetzliche sichtbare Text `Quelle` im Auswahlblock wurde entfernt.
 - In der Caching-Zone gibt es jetzt neben `Cache pruefen` den Button `kombinieren`, der zusammenhaengende Analyse-Cache-Segmente eines Messwerts zu neuen Segmenten zusammenfasst. Rechts neben `Reset` gibt es zusaetzlich `löschen`, um alle Analyse-Cache-Segmente der aktuellen Messwertauswahl zu entfernen.
 - `Cache pruefen` besitzt jetzt einen eigenen kleinen Fortschrittsblock mit Prozentanzeige, Checkliste (`Dashboard-Cache-Plan`, `Analyse-Cache-Plan`, `Bereiche bestimmen`, `Ergebnis`) und einem separaten `Logs`-Button direkt in der Caching-Actionsleiste.
+- In der Prozentanzeige von `Cache pruefen` wird zusaetzlich die Gesamtdauer der Cache-Pruefung in Millisekunden angezeigt.
 - Fehlende bzw. geaenderte Bereiche werden in der Caching-Checkliste und im Caching-Log nicht nur gezaehlt, sondern mit konkreten Zeitbereichen ausgegeben.
+- Hinweise vom Typ `Fehlend: ...` werden rot hervorgehoben; die Farbe ist in den Einstellungen unter UI parametrierbar (`Analysecache Fehlend Farbe`).
 - In der Cache-Timeline ist der `ol`-Button fuer neue Cache-Segmente jetzt standardmaessig aktiv und bleibt serienweit erhalten, auch nach erneutem `Cache pruefen`.
 - Die Zeilen `Neu lesen` werden im Zeitstrahl wie Cache-Zeilen mit `hl`/`ac`/`ol` dargestellt; `ol` ist dort immer deaktiviert.
 - Unter dem Dashboard-Zeitstrahl besitzt jede Cache-Zeile nun die kleinen Toggle-Buttons `hl` (nur optische Hervorhebung im Zeitstrahl) und `ac` (rein visuelles Aktiv/Ausblenden). Rechts daneben wird die Summe der Ausreißer in diesem Segment angezeigt.
@@ -614,7 +617,7 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Wenn ein Analyse-Cache-Segment seit seiner Erstellung durch History-Aenderungen als `geaendert` markiert ist, verwendet das serverseitige Kombinieren jetzt wieder denselben aktuellen Outlier-Endpoint wie die normale Analyse. Dadurch koennen Dirty-Segmente neu aufgebaut und kombiniert werden, statt mit einem Backend-`NameError` abzubrechen.
 - `dashboard_analysis.txt_inline_stats` zeigt jetzt Info-Symbole statt Haken. In der Ausreißer-Tabelle gibt es zusaetzlich direkte Buttons `ignorieren` und `nicht mehr ignorieren`. `dashboard_raw.btn_kopieren` kopiert alle sichtbaren Spalten und Inhalte der Raw-Tabelle als TSV in die Zwischenablage.
 - Die Dashboard-Seite verwendet jetzt ein strukturiertes `data-ui`-Schema im Format `page_section.role_action`, z. B. `dashboard_caching.btn_cache_pruefen`, `dashboard_analysis.btn_analyse_mit_cache` oder `dashboard_raw.tbl_rohdaten`. Das verbessert S-Picker, Seitensuche und spaetere projektweite Vereinheitlichung.
-- `analysis_start_info` sitzt jetzt direkt in der sichtbaren Caching-Zone unter `analysis_status`. Der alte Hinweis `tip.selection` wurde dort entfernt.
+- `analysis_start_info` sitzt jetzt direkt oben im Caching-Bereich (oberhalb der Action-Buttons). Der alte Hinweis `tip.selection` wurde dort entfernt.
 - `Analyse mit Cache` behaelt jetzt bereits bekannte Cache-Ausreisser und ergaenzt nur noch fehlende Bereiche, statt vorgeladene Treffer vor dem Suchlauf zu verwerfen.
 - Das strukturierte `data-ui`-Schema `page_section.role_action` gilt jetzt nicht mehr nur fuer das Dashboard, sondern auch fuer die restlichen Seiten und Shared-Templates.
 - Nach der globalen `data-ui`-Migration wurde ein versehentlich betroffener normaler JS-State-Key im Dashboard wieder bereinigt. Das Dashboard-Script ist damit wieder syntaktisch gueltig.

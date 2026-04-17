@@ -663,6 +663,15 @@
                 </div>
               </div>
               <div class="param_row">
+                <div class="param_label">Analysecache Fehlend Farbe<span class="param_hint">Farbe fuer Hinweise vom Typ "Fehlend: ..." (Luecken/Restbereiche).</span></div>
+                <div class="param_control">
+                  <div class="color_pick_row">
+                    <input id="ui_analysis_cache_missing_color_color" type="color" value="#B00020" />
+                    <input id="ui_analysis_cache_missing_color" placeholder="#RRGGBB" />
+                  </div>
+                </div>
+              </div>
+              <div class="param_row">
                 <div class="param_label">Status Schriftgroesse (px)<span class="param_hint">Sidebar Status Panel (Refresh/Eintraege).</span></div>
                 <div class="param_control">
                   <input id="ui_status_font_px" type="number" min="9" max="18" />
@@ -1357,6 +1366,7 @@ const ids = [
   "ui_query_max_points","ui_raw_max_points","ui_raw_center_max_points","ui_raw_center_range_default","ui_raw_center_min_points","ui_raw_target_chunk_ms","ui_analysis_max_age_years","ui_popup_pre_font_px","ui_popup_history_font_px",
   "ui_query_manual_max_points","ui_graph_jump_padding_intervals",
   "ui_font_size_px","ui_font_small_px","ui_pagecard_title_px","ui_page_search_highlight_color","ui_page_search_highlight_width_px","ui_page_search_highlight_duration_ms","ui_nav_helper_history_limit","ui_nav_helper_highlight_color","ui_nav_helper_highlight_duration_ms","ui_analysis_cache_hidden_color","ui_checkbox_scale",
+  "ui_analysis_cache_missing_color",
   "outlier_gap_seconds_default",
   "outlier_context_before_points",
   "outlier_context_after_points",
@@ -1411,6 +1421,7 @@ let CFG_DEFAULTS = null;
 const $pageSearchHlColor = document.getElementById('ui_page_search_highlight_color_color');
 const $navHelperHlColor = document.getElementById('ui_nav_helper_highlight_color_color');
 const $analysisCacheHiddenColor = document.getElementById('ui_analysis_cache_hidden_color_color');
+const $analysisCacheMissingColor = document.getElementById('ui_analysis_cache_missing_color_color');
 
 const $sectionBgColor = document.getElementById('ui_section_title_bg_color');
 const $sectionFgColor = document.getElementById('ui_section_title_fg_color');
@@ -1514,6 +1525,14 @@ function _syncUiColorPickersFromText(){
         if(/^#[0-9a-fA-F]{6}$/.test(s)) $analysisCacheHiddenColor.value = s;
       }
     }catch(e){}
+
+    // Analysis cache missing
+    try{
+      const s = el.ui_analysis_cache_missing_color ? String(el.ui_analysis_cache_missing_color.value || '').trim() : '';
+      if($analysisCacheMissingColor){
+        if(/^#[0-9a-fA-F]{6}$/.test(s)) $analysisCacheMissingColor.value = s;
+      }
+    }catch(e){}
   }catch(e){}
 }
 
@@ -1537,9 +1556,11 @@ try{ if(el.ui_status_bar_fg) el.ui_status_bar_fg.addEventListener('input', ()=>_
 try{ if($pageSearchHlColor && el.ui_page_search_highlight_color) $pageSearchHlColor.addEventListener('input', ()=>{ try{ el.ui_page_search_highlight_color.value = String($pageSearchHlColor.value || '').toUpperCase(); }catch(e){}; _syncUiColorPickersFromText(); }); }catch(e){}
 try{ if($navHelperHlColor && el.ui_nav_helper_highlight_color) $navHelperHlColor.addEventListener('input', ()=>{ try{ el.ui_nav_helper_highlight_color.value = String($navHelperHlColor.value || '').toUpperCase(); }catch(e){}; _syncUiColorPickersFromText(); }); }catch(e){}
 try{ if($analysisCacheHiddenColor && el.ui_analysis_cache_hidden_color) $analysisCacheHiddenColor.addEventListener('input', ()=>{ try{ el.ui_analysis_cache_hidden_color.value = String($analysisCacheHiddenColor.value || '').toUpperCase(); }catch(e){}; _syncUiColorPickersFromText(); }); }catch(e){}
+try{ if($analysisCacheMissingColor && el.ui_analysis_cache_missing_color) $analysisCacheMissingColor.addEventListener('input', ()=>{ try{ el.ui_analysis_cache_missing_color.value = String($analysisCacheMissingColor.value || '').toUpperCase(); }catch(e){}; _syncUiColorPickersFromText(); }); }catch(e){}
 try{ if(el.ui_page_search_highlight_color) el.ui_page_search_highlight_color.addEventListener('input', ()=>_syncUiColorPickersFromText()); }catch(e){}
 try{ if(el.ui_nav_helper_highlight_color) el.ui_nav_helper_highlight_color.addEventListener('input', ()=>_syncUiColorPickersFromText()); }catch(e){}
 try{ if(el.ui_analysis_cache_hidden_color) el.ui_analysis_cache_hidden_color.addEventListener('input', ()=>_syncUiColorPickersFromText()); }catch(e){}
+try{ if(el.ui_analysis_cache_missing_color) el.ui_analysis_cache_missing_color.addEventListener('input', ()=>_syncUiColorPickersFromText()); }catch(e){}
 
 function _syncJobColorPickersFromText(){
   try{ const v = el.ui_job_color_running ? String(el.ui_job_color_running.value || '').trim() : ''; if($jobRunColor && _isHexColor(v)) $jobRunColor.value = v; }catch(e){}
@@ -1902,6 +1923,7 @@ function setForm(cfg){
   _setVal(el.ui_nav_helper_highlight_color, cfg.ui_nav_helper_highlight_color ?? '#FF9900');
   _setVal(el.ui_nav_helper_highlight_duration_ms, cfg.ui_nav_helper_highlight_duration_ms ?? 1400);
   _setVal(el.ui_analysis_cache_hidden_color, cfg.ui_analysis_cache_hidden_color ?? '#b0b0b0');
+  _setVal(el.ui_analysis_cache_missing_color, cfg.ui_analysis_cache_missing_color ?? '#b00020');
   _setVal(el.ui_status_font_px, cfg.ui_status_font_px ?? 12);
   _setVal(el.ui_status_bar_height_px, cfg.ui_status_bar_height_px ?? 38);
   _setChecked(el.ui_status_show_sysinfo, !!cfg.ui_status_show_sysinfo);
@@ -2061,6 +2083,7 @@ function getForm(){
     ui_nav_helper_highlight_color: String(el.ui_nav_helper_highlight_color.value || '').trim(),
     ui_nav_helper_highlight_duration_ms: parseInt(el.ui_nav_helper_highlight_duration_ms.value, 10),
     ui_analysis_cache_hidden_color: String(el.ui_analysis_cache_hidden_color.value || '').trim(),
+    ui_analysis_cache_missing_color: String(el.ui_analysis_cache_missing_color.value || '').trim(),
     ui_status_font_px: parseInt(el.ui_status_font_px.value, 10),
     ui_status_bar_height_px: parseInt(el.ui_status_bar_height_px.value, 10),
     ui_status_show_sysinfo: _isChecked(el.ui_status_show_sysinfo),

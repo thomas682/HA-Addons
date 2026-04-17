@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.12.370
+
+### Enhancement
+
+- Dashboard: Caching-UX wurde verbessert (Gesamtdauer in `load_progress_text`, `analysis_start_info` oben im Caching-Bereich, zentrale Trace-ID + Copy in `dashboard_caching.panel_status`, Checklisten kompakter) und Hinweise vom Typ `Fehlend: ...` werden farbig hervorgehoben (Farbe konfigurierbar). ([#319](https://github.com/thomas682/HA-Addons/issues/319))
+- Dashboard: Gefiltertes Logging zeigt jetzt pro Zeile immer `trace_id` und `dur_ms`; der Dialog bietet einen direkten Sprung zur Performanceanalyse mit letzter bekannter Trace-ID. Performanceanalyse unterstuetzt `?trace_id=...` fuer direktes Laden eines Traces (auch ausserhalb der Recent-Liste). ([#319](https://github.com/thomas682/HA-Addons/issues/319))
+- UI Picker/S-Picker: deaktivierte Controls (disabled button/input/select) sind jetzt zuverlaessig pickbar. ([#319](https://github.com/thomas682/HA-Addons/issues/319))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: 2026.4.2
+
 ## 1.12.369
 
 ### Enhancement

@@ -289,6 +289,13 @@
   <script>
     let LAST_TRACES = [];
     let SELECTED_TRACE_ID = null;
+    let URL_TRACE_ID = null;
+
+    try{
+      const p = new URLSearchParams(String(location && location.search || ''));
+      const t = p.get('trace_id');
+      if(t) URL_TRACE_ID = String(t);
+    }catch(e){ URL_TRACE_ID = null; }
 
     const ACTION_LABELS = {
       'nav_main.btn_ui_picker_super': 'S-Picker',
@@ -1180,18 +1187,28 @@
         tb.appendChild(tr);
       });
 
-      // Keep selection after refresh
+      // URL preselect (works even if the trace is not in the recent list)
+      if(URL_TRACE_ID && (!SELECTED_TRACE_ID || String(SELECTED_TRACE_ID) !== String(URL_TRACE_ID))){
+        SELECTED_TRACE_ID = String(URL_TRACE_ID);
+      }
+
+      // Keep selection after refresh (or load direct by trace_id)
       if(SELECTED_TRACE_ID){
         const sel = filtered.find(x=>String(x && x.trace_id || '') === String(SELECTED_TRACE_ID));
         if(sel){
           const full = await loadDetail(String(SELECTED_TRACE_ID));
           try{ renderDiagram(full); }catch(e){}
         }else{
-          // selection no longer present
-          SELECTED_TRACE_ID = null;
-          try{ document.getElementById('detail').textContent = ''; }catch(e){}
-          try{ document.getElementById('detail_meta').textContent = 'Details'; }catch(e){}
-          try{ renderDiagram(null); }catch(e){}
+          try{
+            const full = await loadDetail(String(SELECTED_TRACE_ID));
+            try{ renderDiagram(full); }catch(e){}
+          }catch(e){
+            // selection no longer present / cannot be loaded
+            SELECTED_TRACE_ID = null;
+            try{ document.getElementById('detail').textContent = ''; }catch(e){}
+            try{ document.getElementById('detail_meta').textContent = 'Details'; }catch(e){}
+            try{ renderDiagram(null); }catch(e){}
+          }
         }
       }
     }

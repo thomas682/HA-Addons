@@ -1203,6 +1203,7 @@ DEFAULT_CFG = {
     "ui_outlier_visible_rows": 10,
     "ui_table_row_height_px": 13,
     "ui_analysis_cache_hidden_color": "#b0b0b0",
+    "ui_analysis_cache_missing_color": "#b00020",
     "ui_backup_table_row_height_px": 13,
     "ui_backup_visible_rows": 24,
     "ui_restore_visible_rows": 24,
@@ -14939,6 +14940,7 @@ def api_set_config():
     _clamp_color("ui_job_color_error", "#fff0f0")
     _clamp_color("ui_job_color_cancelled", "#f6f6f6")
     _clamp_color("ui_analysis_cache_hidden_color", "#b0b0b0")
+    _clamp_color("ui_analysis_cache_missing_color", "#b00020")
 
     _clamp_color_opt("ui_section_title_bg", allow_words=("transparent",))
     _clamp_color_opt("ui_section_title_fg", allow_words=("inherit",))
