@@ -5311,7 +5311,42 @@ function _bsUpper(arr, x){
 async function _ensureOutlierWindows(base, win, source){
   const rows = Array.isArray(RAW_OUTLIER_RESULTS) ? RAW_OUTLIER_RESULTS : [];
   _logOutlierWindowStats('status_before', rows, { source: String(source || '') });
-  const outlierListRaw = rows.filter((row) => row && row.time && row.point_index != null && Number(row.point_index) >= 0).map((row) => ({
+
+  // Fast path: if everything already has a window for the current context settings, skip.
+  try{
+    const nBefore0 = Math.max(1, Math.trunc(Number(UI_OUTLIER_CTX_BEFORE_POINTS || 10)));
+    const nAfter0 = Math.max(1, Math.trunc(Number(UI_OUTLIER_CTX_AFTER_POINTS || 10)));
+    const needs = rows.filter((row) => {
+      if(!row || !row.time) return false;
+      const w = row.window && typeof row.window === 'object' ? row.window : null;
+      if(!w) return true;
+      const has = (w.center_minutes || w.before_time || w.after_time) ? true : false;
+      if(!has) return true;
+      const nb = Number(w.n_before);
+      const na = Number(w.n_after);
+      // windows without n_before/n_after are considered stale
+      if(!(isFinite(nb) && isFinite(na))) return true;
+      return Math.trunc(nb) !== nBefore0 || Math.trunc(na) !== nAfter0;
+    });
+    if(!needs.length){
+      _logOutlierWindowStats('status_after', rows, { source: String(source || ''), computed_windows: 0, reason: 'all_present' });
+      return _outlierWindowStats(rows);
+    }
+  }catch(e){}
+  // Only compute windows for missing/stale items (avoid full recompute).
+  const nBeforeDesired = Math.max(1, Math.trunc(Number(UI_OUTLIER_CTX_BEFORE_POINTS || 10)));
+  const nAfterDesired = Math.max(1, Math.trunc(Number(UI_OUTLIER_CTX_AFTER_POINTS || 10)));
+  const outlierListRaw = rows.filter((row) => {
+    if(!(row && row.time && row.point_index != null && Number(row.point_index) >= 0)) return false;
+    const w = row.window && typeof row.window === 'object' ? row.window : null;
+    if(!w) return true;
+    const has = (w.center_minutes || w.before_time || w.after_time) ? true : false;
+    if(!has) return true;
+    const nb = Number(w.n_before);
+    const na = Number(w.n_after);
+    if(!(isFinite(nb) && isFinite(na))) return true;
+    return Math.trunc(nb) !== nBeforeDesired || Math.trunc(na) !== nAfterDesired;
+  }).map((row) => ({
     time: row.time,
     point_index: row.point_index,
   }));
@@ -5336,8 +5371,8 @@ async function _ensureOutlierWindows(base, win, source){
     return _outlierWindowStats(rows);
   }
   try{
-    const nBefore = Math.max(1, Math.trunc(Number(UI_OUTLIER_CTX_BEFORE_POINTS || 10)));
-    const nAfter = Math.max(1, Math.trunc(Number(UI_OUTLIER_CTX_AFTER_POINTS || 10)));
+    const nBefore = nBeforeDesired;
+    const nAfter = nAfterDesired;
     const outlierTimesMs = outlierList.map(o => Date.parse(String(o && o.time || ''))).filter(isFinite).sort((a,b)=>a-b);
     const wj = await api('./api/outlier_windows', {
       method:'POST',
@@ -5368,6 +5403,9 @@ async function _ensureOutlierWindows(base, win, source){
       const w = winMap[row.time];
       if(!w) return;
       row.window = {
+        algo_v: 1,
+        n_before: w.n_before,
+        n_after: w.n_after,
         center_minutes: w.center_minutes,
         before_minutes: w.before_minutes,
         after_minutes: w.after_minutes,
@@ -5386,6 +5424,45 @@ async function _ensureOutlierWindows(base, win, source){
     });
     const computedWindows = Array.isArray(wj && wj.windows) ? wj.windows.length : 0;
     _logOutlierWindowStats('status_after', rows, { source: String(source || ''), computed_windows: computedWindows });
+
+    // Persist backfilled windows into analysis_cache (so the next run is a cache hit).
+    try{
+      const updates = [];
+      (wj && Array.isArray(wj.windows) ? wj.windows : []).forEach((w) => {
+        if(!w || !w.time) return;
+        updates.push({
+          time: String(w.time || ''),
+          window: {
+            algo_v: 1,
+            n_before: Number(w.n_before || nBefore),
+            n_after: Number(w.n_after || nAfter),
+            center_minutes: w.center_minutes,
+            before_minutes: w.before_minutes,
+            after_minutes: w.after_minutes,
+            before_count: w.before_count,
+            after_count: w.after_count,
+            before_time: w.before_time,
+            after_time: w.after_time,
+          }
+        });
+      });
+      if(updates.length && base && base.measurement && base.field){
+        const cacheIds = (ANALYSIS_CACHE_RUNTIME && Array.isArray(ANALYSIS_CACHE_RUNTIME.cache_ids_used)) ? ANALYSIS_CACHE_RUNTIME.cache_ids_used : [];
+        await api('./api/analysis_cache/patch_windows', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({
+            measurement: base.measurement,
+            field: base.field,
+            entity_id: base.entity_id || '',
+            friendly_name: base.friendly_name || '',
+            cache_ids: cacheIds,
+            updates: updates,
+            windows_meta: { n_before: nBefore, n_after: nAfter, algo_v: 1, computed_at: new Date().toISOString() },
+          })
+        }, { key: 'analysis_cache_patch_windows_' + String(win.start || '') + '_' + String(win.stop || ''), silent: true });
+      }
+    }catch(e){}
 
     // Granular raw window log (bounded)
     try{
@@ -7819,6 +7896,13 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog, effective
     if(onProgress) onProgress(1, 'Cache: ' + RAW_OUTLIER_RESULTS.length + ' Ausreisser');
     _analysisChecklistSet('cache_read', {status: 'ok', sub: 'Keine fehlenden Restbereiche vorhanden.'});
     _analysisChecklistSet('cache_store', {status: 'ok', sub: 'Kein neues Cache-Segment erforderlich.'});
+
+    // For later window backfill, keep the involved cache ids.
+    try{
+      ANALYSIS_CACHE_RUNTIME.cache_ids_used = Array.isArray(serverPlan && serverPlan.segments)
+        ? (serverPlan.segments || []).map(s => String(s && s.cache_id || '')).filter(Boolean)
+        : [];
+    }catch(e){}
     return;
   }
   _logAnalysis('cache_miss', {});
@@ -7845,10 +7929,30 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog, effective
   RAW_OUTLIER_MAP = {};
   RAW_OUTLIER_SCANNED_TOTAL = 0;
 
+  // Raw-window config for this analysis run (kept stable across chunks).
+  const WIN_N_BEFORE = Math.max(1, Math.trunc(Number(UI_OUTLIER_CTX_BEFORE_POINTS || 10)));
+  const WIN_N_AFTER = Math.max(1, Math.trunc(Number(UI_OUTLIER_CTX_AFTER_POINTS || 10)));
+  const WINDOW_CFG = { n_before: WIN_N_BEFORE, n_after: WIN_N_AFTER, algo_v: 1 };
+  let WINDOW_STATE = null;
+  let pendingWindowUpdates = [];
+
+  function _cacheIdsAdd(id){
+    const s = String(id || '');
+    if(!s) return;
+    if(!ANALYSIS_CACHE_RUNTIME.cache_ids_used) ANALYSIS_CACHE_RUNTIME.cache_ids_used = [];
+    if(!Array.isArray(ANALYSIS_CACHE_RUNTIME.cache_ids_used)) ANALYSIS_CACHE_RUNTIME.cache_ids_used = [];
+    if(ANALYSIS_CACHE_RUNTIME.cache_ids_used.includes(s)) return;
+    ANALYSIS_CACHE_RUNTIME.cache_ids_used.push(s);
+  }
+
   const preloadSegments = Array.isArray(serverPlan && serverPlan.segments) ? serverPlan.segments : [];
+  try{
+    ANALYSIS_CACHE_RUNTIME.cache_ids_used = (preloadSegments || []).map(s => String(s && s.cache_id || '')).filter(Boolean);
+  }catch(e){ ANALYSIS_CACHE_RUNTIME.cache_ids_used = []; }
   if(preloadSegments.length && ANALYSIS_CACHE_PLAN_CHOICE && ANALYSIS_CACHE_PLAN_CHOICE.cacheStrategy !== 'refresh'){
     for(const seg of preloadSegments){
       try{
+        _cacheIdsAdd(seg && seg.cache_id);
         const pj = await api('./api/analysis_cache/segment', {
           method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({cache_id: seg.cache_id})
         }, { key: 'analysis_cache_segment_' + String(seg.cache_id || ''), silent: true });
@@ -8006,6 +8110,8 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog, effective
         max_step: params.max_step || '',
         gap_seconds: params.gap_seconds || '300',
         return_checkpoints: true,
+        window_cfg: WINDOW_CFG,
+        window_state: WINDOW_STATE,
       };
 
       const chunkT0 = performance.now();
@@ -8024,6 +8130,23 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog, effective
         _logAnalysis('fetch_response', {chunk: chunkIdx+1, status: r.status, ok: r.ok});
         j = await r.json().catch(()=>({ok:false, error:'Invalid JSON'}));
         _logAnalysis('fetch_json', {chunk: chunkIdx+1, ok: j.ok, scanned: j.scanned, rows: (j.rows||[]).length});
+
+        // Carry window state across chunks and apply window updates (chunk-boundary completion).
+        try{
+          if(j && j.window_state && typeof j.window_state === 'object') WINDOW_STATE = j.window_state;
+          pendingWindowUpdates = (j && Array.isArray(j.window_updates)) ? j.window_updates : [];
+          if(pendingWindowUpdates && pendingWindowUpdates.length){
+            pendingWindowUpdates.forEach((u) => {
+              if(!(u && u.time && u.window)) return;
+              const t = String(u.time || '');
+              if(!t) return;
+              if(RAW_OUTLIER_MAP && RAW_OUTLIER_MAP[t]) RAW_OUTLIER_MAP[t].window = u.window;
+              (RAW_OUTLIER_RESULTS || []).forEach((row) => {
+                if(row && String(row.time || '') === t) row.window = u.window;
+              });
+            });
+          }
+        }catch(e){ pendingWindowUpdates = []; }
       }catch(fetchErr){
         const chunkDur = Math.round(performance.now() - chunkT0);
         const isAbort = fetchErr.name === 'AbortError';
@@ -8188,8 +8311,14 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog, effective
               counter_base_value: j && Object.prototype.hasOwnProperty.call(j, 'counter_base_value') ? j.counter_base_value : null,
               scan_state: j && j.scan_state ? j.scan_state : null,
             },
+            windows_meta: { n_before: WIN_N_BEFORE, n_after: WIN_N_AFTER, algo_v: 1, computed_at: new Date().toISOString() },
           })
         }, { key: 'analysis_cache_store_' + String(aIso || '') + '_' + String(bIso || ''), silent: true });
+
+        try{
+          const cid = storeResp && storeResp.cache ? String(storeResp.cache.id || '') : '';
+          if(cid) _cacheIdsAdd(cid);
+        }catch(e){}
         _saveAnalysisEvent({
           at: new Date().toISOString(),
           kind: 'analysis_cache_store',
@@ -8220,6 +8349,27 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog, effective
         });
         _analysisChecklistSet('cache_store', {status: 'err', sub: 'Speichern fehlgeschlagen: ' + (e && e.message ? e.message : String(e))});
       }
+
+      // Persist window updates into analysis_cache (so next run is a cache hit).
+      try{
+        if(pendingWindowUpdates && pendingWindowUpdates.length){
+          const cacheIds = (ANALYSIS_CACHE_RUNTIME && Array.isArray(ANALYSIS_CACHE_RUNTIME.cache_ids_used)) ? ANALYSIS_CACHE_RUNTIME.cache_ids_used : [];
+          await api('./api/analysis_cache/patch_windows', {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({
+              measurement: base.measurement,
+              field: base.field,
+              entity_id: base.entity_id || '',
+              friendly_name: base.friendly_name || '',
+              cache_ids: cacheIds,
+              updates: pendingWindowUpdates,
+              windows_meta: { n_before: WIN_N_BEFORE, n_after: WIN_N_AFTER, algo_v: 1, computed_at: new Date().toISOString() },
+            })
+          }, { key: 'analysis_cache_patch_windows_updates_' + String(aIso || '') + '_' + String(bIso || ''), silent: true });
+        }
+      }catch(e){}
+      pendingWindowUpdates = [];
 
       if(RAW_OUTLIER_RESULTS.length >= UI_RAW_OUTLIER_SEARCH_LIMIT){
         RAW_OUTLIER_RESULTS = RAW_OUTLIER_RESULTS.slice(0, UI_RAW_OUTLIER_SEARCH_LIMIT);

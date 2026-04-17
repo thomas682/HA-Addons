@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.369
+
+### Enhancement
+
+- Analyse: Raw-Fenster (N Punkte davor/danach) werden jetzt bevorzugt waehrend des `/api/outliers` Scans berechnet und im Analyse-Cache persistent gespeichert. Chunk-Randfaelle werden ueber `window_state`/`window_updates` inkrementell vervollstaendigt und per `analysis_cache/patch_windows` gepatcht. Cache-Preload kann fehlende/veraltete Fenster gezielt nachberechnen und einmalig in den Cache schreiben. ([#318](https://github.com/thomas682/HA-Addons/issues/318))
+
+### Maintenance
+
+- Docs: Technisches Handbuch `TECHNICAL.md` (Caching + Ausreisser-Suche)
+- Tests: `python3 -m py_compile influxbro/app/app.py`, `pytest -q tests/test_api_outliers_window_state.py`
+- Tested with Home Assistant Core: 2026.4.2
+
 ## 1.12.368
 
 ### Enhancement

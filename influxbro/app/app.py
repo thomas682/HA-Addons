@@ -3428,6 +3428,7 @@ def _analysis_cache_store_segment(
     *,
     checkpoints: list[dict[str, Any]] | None = None,
     final_state: dict[str, Any] | None = None,
+    windows_meta: dict[str, Any] | None = None,
     patch_status: str | None = None,
     patch_error: str | None = None,
     patch_info: dict[str, Any] | None = None,
@@ -3458,6 +3459,20 @@ def _analysis_cache_store_segment(
                 "checkpoint_count": len(checkpoints if isinstance(checkpoints, list) else []),
             },
         }
+        if isinstance(windows_meta, dict) and windows_meta:
+            try:
+                payload["meta"]["windows_n_before"] = int(windows_meta.get("n_before") or 0) or None
+            except Exception:
+                payload["meta"]["windows_n_before"] = None
+            try:
+                payload["meta"]["windows_n_after"] = int(windows_meta.get("n_after") or 0) or None
+            except Exception:
+                payload["meta"]["windows_n_after"] = None
+            try:
+                payload["meta"]["windows_algo_v"] = int(windows_meta.get("algo_v") or 0) or None
+            except Exception:
+                payload["meta"]["windows_algo_v"] = None
+            payload["meta"]["windows_computed_at"] = str(windows_meta.get("computed_at") or "").strip() or None
         bytes_written = _analysis_cache_write_payload(cache_id, payload)
         if bytes_written <= 0:
             LOG.error(
@@ -13656,6 +13671,7 @@ def api_analysis_cache_store_segment():
     scanned = int(body.get("scanned") or 0)
     checkpoints = body.get("checkpoints") if isinstance(body.get("checkpoints"), list) else []
     final_state = body.get("final_state") if isinstance(body.get("final_state"), dict) else {}
+    windows_meta = body.get("windows_meta") if isinstance(body.get("windows_meta"), dict) else None
     if not measurement or not field or not start_iso or not stop_iso:
         return jsonify({"ok": False, "error": "measurement, field, start, stop required"}), 400
 
@@ -13683,6 +13699,7 @@ def api_analysis_cache_store_segment():
         scanned,
         checkpoints=checkpoints,
         final_state=final_state,
+        windows_meta=windows_meta,
     )
     if not meta:
         return jsonify({"ok": False, "error": "store failed"}), 500
@@ -13715,6 +13732,129 @@ def api_analysis_cache_store_segment():
     except Exception:
         pass
     return jsonify({"ok": True, "cache": meta})
+
+
+@app.post("/api/analysis_cache/patch_windows")
+def api_analysis_cache_patch_windows():
+    """Patch (persist) per-outlier raw windows into analysis_cache payload rows.
+
+    Used for incremental backfill (e.g. cache-preload with missing windows) and for
+    chunk-boundary completion where after-context becomes known later.
+
+    Important: does NOT update meta.updated_at (to avoid triggering history-change / dirty logic).
+    """
+
+    body = request.get_json(force=True) or {}
+    measurement = str(body.get("measurement") or "").strip()
+    field = str(body.get("field") or "").strip()
+    entity_id = str(body.get("entity_id") or "").strip() or None
+    friendly_name = str(body.get("friendly_name") or "").strip() or None
+    series_key = str(body.get("series_key") or "").strip() or None
+    cache_ids = body.get("cache_ids") if isinstance(body.get("cache_ids"), list) else []
+    updates_in = body.get("updates") if isinstance(body.get("updates"), list) else []
+    windows_meta = body.get("windows_meta") if isinstance(body.get("windows_meta"), dict) else None
+
+    if not series_key:
+        if not measurement or not field:
+            return jsonify({"ok": False, "error": "measurement, field required (or series_key)"}), 400
+        series_key = _analysis_cache_series_key(measurement, field, entity_id, friendly_name)
+
+    updates: dict[str, dict[str, Any]] = {}
+    for u in updates_in:
+        if not isinstance(u, dict):
+            continue
+        t = str(u.get("time") or "").strip()
+        w = u.get("window") if isinstance(u.get("window"), dict) else None
+        if not t or not w:
+            continue
+        updates[t] = dict(w)
+
+    if not updates:
+        return jsonify({"ok": True, "patched": 0, "segments": 0})
+    if len(updates) > 5000:
+        return jsonify({"ok": False, "error": "too many updates (max 5000)"}), 413
+
+    # Infer windows_meta from the first update if not provided.
+    if not isinstance(windows_meta, dict) or not windows_meta:
+        try:
+            first_w = next(iter(updates.values()))
+            windows_meta = {
+                "n_before": first_w.get("n_before"),
+                "n_after": first_w.get("n_after"),
+                "algo_v": first_w.get("algo_v"),
+                "computed_at": _utc_now_iso_ms(),
+            }
+        except Exception:
+            windows_meta = None
+
+    # Select candidate segments.
+    candidates: list[str] = []
+    if cache_ids:
+        for cid in cache_ids:
+            c = str(cid or "").strip()
+            if c:
+                candidates.append(c)
+    else:
+        for meta in _analysis_cache_list_meta():
+            try:
+                if str(meta.get("series_key") or "") != str(series_key or ""):
+                    continue
+                cid = str(meta.get("id") or "").strip()
+                if cid:
+                    candidates.append(cid)
+            except Exception:
+                continue
+
+    patched = 0
+    touched_segments = 0
+    for cache_id in list(dict.fromkeys(candidates)):
+        meta = _analysis_cache_load_meta(cache_id)
+        if not meta or str(meta.get("series_key") or "") != str(series_key or ""):
+            continue
+        payload = _analysis_cache_load_payload(cache_id)
+        if not payload or not bool(payload.get("ok")):
+            continue
+        rows = payload.get("rows") if isinstance(payload.get("rows"), list) else []
+        if not rows:
+            continue
+
+        by_time: dict[str, dict[str, Any]] = {}
+        for r in rows:
+            if isinstance(r, dict) and str(r.get("time") or "").strip():
+                by_time[str(r.get("time") or "").strip()] = r
+
+        changed = False
+        for t, w in updates.items():
+            r = by_time.get(t)
+            if not r:
+                continue
+            r["window"] = dict(w)
+            changed = True
+            patched += 1
+
+        if not changed:
+            continue
+
+        # Update payload meta so the UI can detect stale/mismatched window configs.
+        if isinstance(payload.get("meta"), dict) and isinstance(windows_meta, dict) and windows_meta:
+            try:
+                payload["meta"]["windows_n_before"] = int(windows_meta.get("n_before") or 0) or None
+            except Exception:
+                payload["meta"]["windows_n_before"] = None
+            try:
+                payload["meta"]["windows_n_after"] = int(windows_meta.get("n_after") or 0) or None
+            except Exception:
+                payload["meta"]["windows_n_after"] = None
+            try:
+                payload["meta"]["windows_algo_v"] = int(windows_meta.get("algo_v") or 0) or None
+            except Exception:
+                payload["meta"]["windows_algo_v"] = None
+            payload["meta"]["windows_computed_at"] = str(windows_meta.get("computed_at") or "").strip() or None
+
+        _analysis_cache_write_payload(cache_id, payload)
+        touched_segments += 1
+
+    return jsonify({"ok": True, "patched": patched, "segments": touched_segments, "series_key": series_key})
 
 
 @app.get("/api/analysis_cache/list")
@@ -21009,6 +21149,131 @@ def api_outliers():
     rows: list[dict[str, Any]] = []
     scanned = 0
     point_index = 0
+
+    # Optional: compute raw-context windows (N points before/after) during the scan.
+    # This avoids a later /api/outlier_windows full recompute and allows persisting windows
+    # into analysis_cache rows.
+    window_cfg = body.get("window_cfg") if isinstance(body.get("window_cfg"), dict) else None
+    compute_windows = bool(window_cfg)
+    try:
+        win_n_before = int((window_cfg or {}).get("n_before") or 0)
+    except Exception:
+        win_n_before = 0
+    try:
+        win_n_after = int((window_cfg or {}).get("n_after") or 0)
+    except Exception:
+        win_n_after = 0
+    win_n_before = max(0, min(5000, win_n_before))
+    win_n_after = max(0, min(5000, win_n_after))
+    compute_windows = compute_windows and win_n_before > 0 and win_n_after > 0
+    win_algo_v = 1
+    if compute_windows:
+        try:
+            win_algo_v = int((window_cfg or {}).get("algo_v") or 1)
+        except Exception:
+            win_algo_v = 1
+        win_algo_v = 1
+
+    window_state_in = body.get("window_state") if isinstance(body.get("window_state"), dict) else {}
+    window_updates: list[dict[str, Any]] = []
+    window_state_out: dict[str, Any] | None = None
+
+    # Window computation state (carried across chunk requests)
+    win_before_buf: list[str] = []
+    win_pending: dict[int, list[dict[str, Any]]] = {}
+    if compute_windows:
+        try:
+            point_index = int(window_state_in.get("point_index") or 0)
+        except Exception:
+            point_index = 0
+        try:
+            prev_buf = window_state_in.get("before_buf") if isinstance(window_state_in.get("before_buf"), list) else []
+            win_before_buf = [str(x) for x in prev_buf if str(x).strip()][-win_n_before:]
+        except Exception:
+            win_before_buf = []
+        try:
+            pending_in = window_state_in.get("pending") if isinstance(window_state_in.get("pending"), dict) else {}
+            for k, v in pending_in.items():
+                try:
+                    ti = int(k)
+                except Exception:
+                    continue
+                if not isinstance(v, list):
+                    continue
+                items = []
+                for it in v:
+                    if not isinstance(it, dict):
+                        continue
+                    t = str(it.get("time") or "").strip()
+                    if not t:
+                        continue
+                    items.append({
+                        "time": t,
+                        "center": str(it.get("center") or t).strip() or t,
+                        "before_time": str(it.get("before_time") or "").strip() or None,
+                        "before_count": int(it.get("before_count") or 0),
+                    })
+                if items:
+                    win_pending[ti] = items
+        except Exception:
+            win_pending = {}
+
+    def _win_flush_for_index(cur_idx: int, cur_iso: str) -> None:
+        """Resolve any pending outliers whose target index is reached."""
+
+        nonlocal window_updates
+        if not compute_windows:
+            return
+        items = win_pending.pop(int(cur_idx), None)
+        if not items:
+            return
+        for it in items:
+            center_iso = str(it.get("center") or it.get("time") or "").strip()
+            if not center_iso:
+                continue
+            before_iso = str(it.get("before_time") or "").strip() or None
+            before_count = int(it.get("before_count") or 0)
+            after_iso = cur_iso
+            after_count = int(win_n_after)
+            before_minutes = None
+            after_minutes = None
+            center_minutes = None
+            try:
+                if before_iso:
+                    bd = _parse_iso_datetime(before_iso)
+                    cd = _parse_iso_datetime(center_iso)
+                    if bd and cd:
+                        before_minutes = (cd - bd).total_seconds() / 60.0
+            except Exception:
+                before_minutes = None
+            try:
+                ad = _parse_iso_datetime(after_iso)
+                cd2 = _parse_iso_datetime(center_iso)
+                if ad and cd2:
+                    after_minutes = (ad - cd2).total_seconds() / 60.0
+            except Exception:
+                after_minutes = None
+            if before_minutes is not None and after_minutes is not None:
+                center_minutes = max(before_minutes, after_minutes)
+            elif before_minutes is not None:
+                center_minutes = before_minutes
+            elif after_minutes is not None:
+                center_minutes = after_minutes
+            window_updates.append({
+                "time": center_iso,
+                "window": {
+                    "n_before": int(win_n_before),
+                    "n_after": int(win_n_after),
+                    "algo_v": int(win_algo_v),
+                    "center_minutes": round(center_minutes, 2) if center_minutes is not None else None,
+                    "before_minutes": round(before_minutes, 2) if before_minutes is not None else None,
+                    "after_minutes": round(after_minutes, 2) if after_minutes is not None else None,
+                    "before_count": int(before_count),
+                    "after_count": int(after_count),
+                    "before_time": before_iso,
+                    "after_time": after_iso,
+                },
+            })
     return_checkpoints = bool(body.get("return_checkpoints", False))
     checkpoint_seconds = _analysis_cache_checkpoint_interval_seconds({
         "analysis_cache_checkpoint_seconds": body.get("checkpoint_seconds")
@@ -21074,7 +21339,7 @@ def api_outliers():
         })
 
     def _scan_span(qapi: Any, a: datetime, b: datetime, prev: float | None) -> float | None:
-        nonlocal scanned, rows, last_time_iso, counter_base_val, prev_time_dt, point_index, next_checkpoint_dt
+        nonlocal scanned, rows, last_time_iso, counter_base_val, prev_time_dt, point_index, next_checkpoint_dt, win_before_buf
 
         span_s = (b - a).total_seconds()
         chunk_t0 = time.monotonic()
@@ -21115,6 +21380,10 @@ from(bucket: "{cfg["bucket"]}")
             if iso:
                 last_time_iso = iso
 
+            if compute_windows and iso:
+                # First: resolve pending outliers whose after-target is this point.
+                _win_flush_for_index(point_index, iso)
+
             gap_detected = False
             gap_label = ""
             prev_for_delta = prev
@@ -21141,13 +21410,46 @@ from(bucket: "{cfg["bucket"]}")
                     fault_state["recovery_streak"] = 0
                     fault_state["last_reason"] = "ungueltiger Wert"
                 if include_null:
-                    rows.append({"time": iso, "value": None, "reason": "NULL", "type": "null", "point_index": point_index})
+                    row_obj: dict[str, Any] = {"time": iso, "value": None, "reason": "NULL", "type": "null", "point_index": point_index}
+                    if compute_windows and iso:
+                        before_iso = win_before_buf[0] if win_before_buf else None
+                        before_count = int(len(win_before_buf))
+                        row_obj["window"] = {
+                            "n_before": int(win_n_before),
+                            "n_after": int(win_n_after),
+                            "algo_v": int(win_algo_v),
+                            "center_minutes": None,
+                            "before_minutes": None,
+                            "after_minutes": None,
+                            "before_count": int(before_count),
+                            "after_count": 0,
+                            "before_time": before_iso,
+                            "after_time": None,
+                        }
+                        target = int(point_index) + int(win_n_after)
+                        win_pending.setdefault(target, []).append({
+                            "time": iso,
+                            "center": iso,
+                            "before_time": before_iso,
+                            "before_count": int(before_count),
+                        })
+                    rows.append(row_obj)
                     LOG.info("api.outlier_search found NULL at %s", iso)
                     if len(rows) >= limit:
                         return prev
+
+                if compute_windows and iso:
+                    # Include NULL points in the point-based context stream.
+                    win_before_buf.append(iso)
+                    if len(win_before_buf) > win_n_before:
+                        win_before_buf = win_before_buf[-win_n_before:]
                 continue
 
             if isinstance(v, bool) or not isinstance(v, (int, float)):
+                if compute_windows and iso:
+                    win_before_buf.append(iso)
+                    if len(win_before_buf) > win_n_before:
+                        win_before_buf = win_before_buf[-win_n_before:]
                 continue
 
             fv = float(v)
@@ -21289,16 +21591,47 @@ from(bucket: "{cfg["bucket"]}")
                 except Exception:
                     cls = "primary"
 
-                rows.append({
+                row_obj: dict[str, Any] = {
                     "time": iso,
                     "value": fv,
                     "reason": ", ".join(reasons),
                     "class": cls,
                     "types": unique_types,
                     "point_index": point_index,
-                })
+                }
+                if compute_windows and iso:
+                    # before-context comes from points strictly before the center point.
+                    before_iso = win_before_buf[0] if win_before_buf else None
+                    before_count = int(len(win_before_buf))
+                    row_obj["window"] = {
+                        "n_before": int(win_n_before),
+                        "n_after": int(win_n_after),
+                        "algo_v": int(win_algo_v),
+                        "center_minutes": None,
+                        "before_minutes": None,
+                        "after_minutes": None,
+                        "before_count": int(before_count),
+                        "after_count": 0,
+                        "before_time": before_iso,
+                        "after_time": None,
+                    }
+                    # after-context will be filled when N points after are reached.
+                    target = int(point_index) + int(win_n_after)
+                    win_pending.setdefault(target, []).append({
+                        "time": iso,
+                        "center": iso,
+                        "before_time": before_iso,
+                        "before_count": int(before_count),
+                    })
+                rows.append(row_obj)
                 if len(rows) >= limit:
                     return fv
+
+            if compute_windows and iso:
+                # Update before-buffer after processing this center point.
+                win_before_buf.append(iso)
+                if len(win_before_buf) > win_n_before:
+                    win_before_buf = win_before_buf[-win_n_before:]
 
             prev = fv
             if isinstance(t, datetime):
@@ -21353,6 +21686,18 @@ from(bucket: "{cfg["bucket"]}")
         if return_checkpoints:
             _append_checkpoint(stop_dt, prev_val)
 
+        if compute_windows:
+            # Note: we don't flush remaining pending items; if the analysis window ends,
+            # those outliers legitimately have no 'after' context within start/stop.
+            window_state_out = {
+                "algo_v": int(win_algo_v),
+                "n_before": int(win_n_before),
+                "n_after": int(win_n_after),
+                "point_index": int(point_index),
+                "before_buf": win_before_buf[-win_n_before:],
+                "pending": {str(k): v for k, v in win_pending.items()},
+            }
+
         try:
             _worklog_append_op(
                 purpose="analysis",
@@ -21388,6 +21733,8 @@ from(bucket: "{cfg["bucket"]}")
             "counter_base_value": counter_base_val,
             "scan_state": fault_state if fault_phase_enabled else None,
             "checkpoints": checkpoints,
+            "window_state": window_state_out,
+            "window_updates": window_updates,
         })
     except Exception as e:
         dur_ms = int((time.monotonic() - t0) * 1000)
