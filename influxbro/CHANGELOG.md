@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.12.375
+
+### Enhancement
+
+- Performanceanalyse: Neuer Tab "API Dokumentation" im Diagramm-Bereich (UI basiert auf `demo/api-docs.html`), mit Suche/Filter, Live Trace-Counts und Code-Beispielen. ([#324](https://github.com/thomas682/HA-Addons/issues/324))
+- API Docs: Add-on stellt eine Vollstaendigkeitsliste aller registrierten `/api/*` Routes als JSON bereit (`/api/api_docs`), inkl. best-effort Key-Extraktion aus Handlern. ([#324](https://github.com/thomas682/HA-Addons/issues/324))
+
+### Maintenance
+
+- Added `.agents.md` policy: API endpoints must be documented. ([#324](https://github.com/thomas682/HA-Addons/issues/324))
+- Tests: `python3 -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: 2026.4.2
+
 ## 1.12.374
 
 ### Enhancement

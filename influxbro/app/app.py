@@ -3,6 +3,7 @@ from collections import deque
 import fnmatch
 import gzip
 import hashlib
+import inspect
 import io
 import json
 import logging
@@ -7310,6 +7311,188 @@ def api_get_config_defaults():
     defaults["admin_token"] = ""
     defaults["password"] = ""
     return jsonify({"ok": True, "defaults": defaults})
+
+
+def _api_doc_group(path: str) -> tuple[str, str, str, str]:
+    """Returns (group, role, role_label, role_color_cssvar) for an API path."""
+
+    p = str(path or "")
+    if p.startswith("/api/backup") or p.startswith("/api/fullbackup") or p.startswith("/api/restore") or p.startswith("/api/backups"):
+        return ("Backup/Restore", "system", "\U0001F4E6 Backup", "var(--orange)")
+    if p.startswith("/api/cache/") or p.startswith("/api/stats_cache") or p.startswith("/api/dash_cache"):
+        return ("Cache", "analysis", "\U0001F9E0 Cache", "var(--cyan)")
+    if p.startswith("/api/analysis_cache/") or p.startswith("/api/analysis") or p.startswith("/api/outlier"):
+        return ("Analyse", "analysis", "\U0001F50D Analyse", "var(--cyan)")
+    if p.startswith("/api/trace") or p.startswith("/api/perf"):
+        return ("Tracing", "tracking", "\U0001F4CA Trace", "var(--green)")
+    if p.startswith("/api/ui_") or p.startswith("/api/ui") or p.startswith("/api/client"):
+        return ("UI/Client", "tracking", "\U0001F5A5\uFE0F UI", "var(--green)")
+    if p.startswith("/api/sys") or p.startswith("/api/storage"):
+        return ("System", "system", "\U0001F5A5\uFE0F System", "var(--orange)")
+    if p.startswith("/api/config"):
+        return ("Konfiguration", "system", "\u2699\uFE0F Config", "var(--orange)")
+    if p.startswith("/api/import") or p.startswith("/api/export"):
+        return ("Import/Export", "system", "\U0001F4E4 I/O", "var(--orange)")
+    return ("API", "query", "\U0001F517 API", "var(--accent)")
+
+
+def _api_doc_summary(method: str, path: str) -> str:
+    m = str(method or "").upper()
+    p = str(path or "")
+    if m == "GET":
+        return f"Liest Daten/Status fuer {p}."
+    if m == "POST":
+        return f"Fuehrt eine Aktion aus oder berechnet Daten fuer {p}."
+    if m == "DELETE":
+        return f"Loescht Ressource(n) unter {p}."
+    if m == "PUT":
+        return f"Aktualisiert Ressource(n) unter {p}."
+    return f"Endpoint {m} {p}."
+
+
+def _api_doc_description(method: str, path: str, keys_body: list[str], keys_args: list[str]) -> str:
+    """Generate a beginner-friendly + pro-friendly description from code hints."""
+
+    m = str(method or "").upper()
+    p = str(path or "")
+    group, role, role_label, _ = _api_doc_group(p)
+    body = ", ".join([f"<code>{k}</code>" for k in keys_body[:8]])
+    args = ", ".join([f"<code>{k}</code>" for k in keys_args[:8]])
+    intro = (
+        f"<strong>Einsteiger:</strong> Dieser Endpoint gehoert zur Gruppe <strong>{group}</strong> und macht "
+        f"eine klar abgegrenzte Teilaufgabe (wie ein Werkzeug im Werkzeugkasten)."
+    )
+    pro = (
+        f"<strong>Profi:</strong> {role_label} ({role}) Handler fuer <code>{m} {p}</code>. "
+        f"Die Antwort ist typischerweise ein JSON-Envelope mit <code>ok</code> sowie endpoint-spezifischen Daten."
+    )
+    hints = []
+    if keys_args:
+        hints.append(f"Query-Parameter (gesehen im Code): {args}.")
+    if keys_body and m in ("POST", "PUT", "DELETE"):
+        hints.append(f"JSON-Body-Felder (gesehen im Code): {body}.")
+    if not hints:
+        hints.append("Keine Parameter/Keys konnten automatisch aus dem Code extrahiert werden.")
+    return intro + "<br>" + pro + "<br>" + " ".join(hints)
+
+
+def _extract_keys_from_source(src: str) -> tuple[list[str], list[str]]:
+    """Best-effort extraction of request body / query arg keys from handler source."""
+
+    try:
+        s = str(src or "")
+    except Exception:
+        return ([], [])
+
+    # body.get("...")
+    body_keys = []
+    try:
+        for m in re.finditer(r"\bbody\.get\(\s*['\"]([^'\"]+)['\"]", s):
+            body_keys.append(m.group(1))
+    except Exception:
+        body_keys = []
+
+    # request.args.get("...")
+    args_keys = []
+    try:
+        for m in re.finditer(r"\brequest\.args\.get\(\s*['\"]([^'\"]+)['\"]", s):
+            args_keys.append(m.group(1))
+    except Exception:
+        args_keys = []
+
+    def _uniq(xs: list[str]) -> list[str]:
+        out: list[str] = []
+        seen = set()
+        for x in xs:
+            k = str(x or "").strip()
+            if not k or k in seen:
+                continue
+            seen.add(k)
+            out.append(k)
+        return out
+
+    return (_uniq(body_keys), _uniq(args_keys))
+
+
+@app.get("/api/api_docs")
+def api_api_docs():
+    """Returns best-effort API docs for all registered /api routes."""
+
+    allowed = {"GET", "POST", "PUT", "DELETE"}
+    routes: list[dict[str, Any]] = []
+    for rule in app.url_map.iter_rules():
+        try:
+            path = str(rule.rule)
+            if not path.startswith("/api/"):
+                continue
+            if path.startswith("/api/static"):
+                continue
+            methods = sorted([m for m in (rule.methods or set()) if m in allowed])
+            if not methods:
+                continue
+            routes.append({
+                "path": path,
+                "methods": methods,
+                "endpoint": str(rule.endpoint or ""),
+            })
+        except Exception:
+            continue
+
+    docs: list[dict[str, Any]] = []
+    for r in sorted(routes, key=lambda x: (x.get("path") or "", ",".join(x.get("methods") or []))):
+        path = str(r.get("path") or "")
+        endpoint_name = str(r.get("endpoint") or "")
+        fn = app.view_functions.get(endpoint_name)
+        src = ""
+        try:
+            if fn:
+                src = inspect.getsource(fn)
+        except Exception:
+            src = ""
+        keys_body, keys_args = _extract_keys_from_source(src)
+
+        for method in r.get("methods") or []:
+            group, role, role_label, role_color = _api_doc_group(path)
+            doc_id = (f"{str(method).lower()}-" + path.strip("/").replace("/", "-")).replace("--", "-")
+            docs.append({
+                "id": doc_id,
+                "method": method,
+                "path": path,
+                "summary": _api_doc_summary(method, path),
+                "description": _api_doc_description(method, path, keys_body, keys_args),
+                "group": group,
+                "tags": [role, group.lower().replace("/", "-"), str(method).lower()],
+                "role": role,
+                "roleLabel": role_label,
+                "roleColor": role_color,
+                "authRequired": False,
+                "request": {
+                    "contentType": "application/json" if str(method).upper() in ("POST", "PUT", "DELETE") else "(none)",
+                    "queryKeys": keys_args,
+                    "bodyKeys": keys_body,
+                },
+                "response": {
+                    "contentType": "application/json",
+                    "statusCodes": [
+                        {"code": 200, "desc": "ok"},
+                        {"code": 400, "desc": "Request/Parameter Fehler"},
+                        {"code": 500, "desc": "Interner Fehler"},
+                    ],
+                },
+            })
+
+    routes_method_count = 0
+    try:
+        routes_method_count = sum(len(r.get("methods") or []) for r in routes)
+    except Exception:
+        routes_method_count = len(docs)
+
+    return jsonify({
+        "ok": True,
+        "docs": docs,
+        "routes_count": int(routes_method_count),
+        "docs_count": int(len(docs)),
+    })
 
 
 @app.get("/api/config_export")

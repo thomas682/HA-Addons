@@ -577,6 +577,7 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
   - Diagramm: Demo-Layout (Endpoint-Chips + Method-Filter GET/POST + Aktionen) sowie Cards, Zeitleiste, Waterfall Vollansicht + Zoom, Endpoint-Statistiken und Tooltip, jeweils basierend auf den Realwerten des selektierten Traces.
   - Tabs: zusaetzlich gibt es den Tab `Korrelation` mit einer Korrelationsansicht (Abhaengigkeitsgraph, Matrix, Waterfall mit Linien). Die Heuristik-Schwellenwerte sind in den Einstellungen parametrierbar.
     - Dep-Graph Zoom: 0 = Auto-Fit (X+Y) auf die Anzeige; sonst fester Zoom in Prozent. Der Wert wird global gespeichert und ist in den Einstellungen sichtbar.
+  - Tabs: zusaetzlich gibt es den Tab `API Dokumentation` (interaktive Doku mit Suche/Filter und Live-Trace-Counts pro Endpoint).
   - Tooltips: Im Diagramm-Bereich sind Browser-Title-Tooltips bewusst unterdrueckt; die dunklen Tooltips zeigen stattdessen den UI-Key unten (z.B. `<Performanceanalyse: filterCount>`).
   - Cache-Hinweis: Wenn ein `/api/query` aus dem Dash-Cache bedient wird, wird dies im Trace protokolliert und im Waterfall-Tooltip als `Cache: hit` angezeigt.
   - Endpoint-Filter:

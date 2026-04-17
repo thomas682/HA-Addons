@@ -510,6 +510,7 @@
           <div class="perf_tabs" role="tablist" aria-label="Diagramm Tabs" style="margin-top:10px;">
             <button id="perf_tab_diagram" type="button" class="perf_tab active" data-tab="diagram" data-ui="perf_page.diagram.tab_diagram" title="perf_page.diagram.tab_diagram" aria-selected="true">Diagramm</button>
             <button id="perf_tab_corr" type="button" class="perf_tab" data-tab="corr" data-ui="perf_page.diagram.tab_correlation" title="perf_page.diagram.tab_correlation" aria-selected="false">Korrelation</button>
+            <button id="perf_tab_api" type="button" class="perf_tab" data-tab="api" data-ui="perf_page.diagram.tab_api_docs" title="perf_page.diagram.tab_api_docs" aria-selected="false">API Dokumentation</button>
           </div>
 
           <div class="perf_tab_panel" data-tab-panel="diagram">
@@ -521,6 +522,12 @@
           <div class="perf_tab_panel" data-tab-panel="corr" style="display:none;">
             <div id="corr" class="diag_wrap corr_wrap" style="margin-top:10px;">
               <div class="diag_sub">Kein Trace selektiert.</div>
+            </div>
+          </div>
+
+          <div class="perf_tab_panel" data-tab-panel="api" style="display:none;">
+            <div id="api_docs" class="diag_wrap" style="margin-top:10px;">
+              <div class="diag_sub">Laedt API Dokumentation...</div>
             </div>
           </div>
         </div>
@@ -2005,6 +2012,508 @@
       }catch(e){}
     }
 
+    // --- API Documentation tab (based on demo/api-docs.html, shadow DOM scoped) ---
+    let _API_DOCS_MOUNTED = false;
+    async function mountApiDocs(){
+      if(_API_DOCS_MOUNTED) return;
+      _API_DOCS_MOUNTED = true;
+
+      const host = document.getElementById('api_docs');
+      if(!host || !host.attachShadow){
+        try{ if(host) host.innerHTML = '<div class="diag_sub">API Dokumentation nicht verfuegbar.</div>'; }catch(e){}
+        return;
+      }
+
+      const shadow = host.attachShadow({mode:'open'});
+      shadow.innerHTML = `
+        <style>
+          :host{ display:block; }
+          .api-root{ --bg:#0d1117;--bg2:#161b22;--bg3:#21262d;--bg4:#292e36;--bg5:#1c2333;
+            --border:#30363d;--border-h:#484f58;--border-focus:#58a6ff;
+            --text:#e6edf3;--text2:#8b949e;--text3:#6e7681;
+            --accent:#58a6ff;--green:#3fb950;--orange:#d29922;--red:#f85149;--purple:#bc8cff;--pink:#f778ba;--cyan:#39d2c0;--yellow:#e3b341;
+            --r:10px;--rs:6px;--rr:20px;--tr:0.22s cubic-bezier(.4,0,.2,1);
+            --shadow:0 4px 16px rgba(0,0,0,.35);
+            --mono:'SF Mono','Cascadia Code','Fira Code','JetBrains Mono',monospace;
+            --sans:'Inter','SF Pro Display',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+            --sidebar-w:300px;
+            background:var(--bg); color:var(--text); font-family:var(--sans); font-size:13px;
+            border-radius:12px; border:1px solid var(--border);
+            overflow:hidden;
+          }
+          .layout{ display:flex; height: 820px; max-height: calc(100vh - 260px); min-height: 520px; }
+          @media(max-width: 980px){ .layout{ height:auto; max-height:none; min-height: 520px; } }
+          .sidebar{ width:var(--sidebar-w); background:var(--bg2); border-right:1px solid var(--border); display:flex; flex-direction:column; flex-shrink:0; }
+          @media(max-width: 900px){ .sidebar{ width: 240px; } }
+          .sidebar-head{ padding:16px 16px 12px; border-bottom:1px solid var(--border); }
+          .logo{ display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+          .logo-icon{ width:32px; height:32px; background:linear-gradient(135deg,var(--accent),var(--purple)); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:16px; font-weight:700; color:#fff; }
+          .logo-text{ font-size:16px; font-weight:700; letter-spacing:-.3px; }
+          .logo-text span{ color:var(--accent); }
+          .logo-badge{ font-size:9px; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:1px 6px; color:var(--text3); margin-left:6px; vertical-align:middle; }
+          .search-wrap{ position:relative; }
+          .search-input{ width:100%; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:8px 12px 8px 34px; color:var(--text); font-size:13px; outline:none; transition:var(--tr); }
+          .search-input:focus{ border-color:var(--accent); box-shadow:0 0 0 3px rgba(88,166,255,.12); }
+          .search-input::placeholder{ color:var(--text3); }
+          .search-icon{ position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--text3); pointer-events:none; }
+          .search-kbd{ position:absolute; right:8px; top:50%; transform:translateY(-50%); font-size:10px; color:var(--text3); background:var(--bg3); border:1px solid var(--border); border-radius:4px; padding:1px 5px; font-family:var(--mono); }
+          .sidebar-stats{ display:flex; gap:8px; margin-top:10px; }
+          .ss-item{ flex:1; text-align:center; padding:6px; background:var(--bg); border-radius:6px; border:1px solid transparent; }
+          .ss-item .sv{ font-size:16px; font-weight:700; color:var(--accent); display:block; }
+          .ss-item .sl{ font-size:9px; color:var(--text3); text-transform:uppercase; letter-spacing:.5px; }
+          .tag-filter{ padding:10px 16px; border-bottom:1px solid var(--border); display:flex; flex-wrap:wrap; gap:4px; }
+          .tag-chip{ font-size:10px; padding:3px 10px; border-radius:var(--rr); border:1px solid var(--border); color:var(--text2); cursor:pointer; transition:var(--tr); background:transparent; white-space:nowrap; }
+          .tag-chip:hover{ border-color:var(--accent); color:var(--accent); }
+          .tag-chip.on{ background:rgba(88,166,255,.12); border-color:var(--accent); color:var(--accent); }
+          .ep-list{ flex:1; overflow-y:auto; padding:8px; }
+          .ep-item{ display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:8px; cursor:pointer; transition:var(--tr); margin-bottom:2px; border:1px solid transparent; position:relative; }
+          .ep-item:hover{ background:var(--bg3); border-color:var(--border); }
+          .ep-item.active{ background:rgba(88,166,255,.08); border-color:rgba(88,166,255,.25); }
+          .ep-item.active::before{ content:''; position:absolute; left:0; top:6px; bottom:6px; width:3px; background:var(--accent); border-radius:0 2px 2px 0; }
+          .method-dot{ width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+          .method-dot.post{ background:var(--accent); }
+          .method-dot.get{ background:var(--green); }
+          .method-dot.put{ background:var(--orange); }
+          .method-dot.delete{ background:var(--red); }
+          .ep-info{ flex:1; min-width:0; }
+          .ep-path{ font-size:12px; font-family:var(--mono); font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+          .ep-sum{ font-size:10px; color:var(--text3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px; }
+          .trace-count{ font-size:9px; background:var(--bg); padding:1px 6px; border-radius:8px; color:var(--text3); font-weight:600; flex-shrink:0; font-family:var(--mono); }
+          .sidebar-foot{ padding:10px 16px; border-top:1px solid var(--border); font-size:10px; color:var(--text3); display:flex; justify-content:space-between; }
+
+          .main{ flex:1; overflow-y:auto; padding:0; }
+          .ep-detail{ max-width: 980px; margin:0 auto; padding: 24px 28px 70px; }
+          .breadcrumb{ font-size:11px; color:var(--text3); margin-bottom:16px; display:flex; align-items:center; gap:6px; }
+          .breadcrumb a{ color:var(--text2); text-decoration:none; }
+          .breadcrumb a:hover{ color:var(--accent); }
+          .ep-header{ margin-bottom:22px; padding-bottom:18px; border-bottom:1px solid var(--border); }
+          .method-badge{ display:inline-block; font-size:12px; font-weight:700; padding:4px 12px; border-radius:6px; font-family:var(--mono); margin-right:8px; }
+          .method-badge.post{ background:rgba(88,166,255,.12); color:var(--accent); }
+          .method-badge.get{ background:rgba(63,185,80,.12); color:var(--green); }
+          .method-badge.put{ background:rgba(210,153,34,.12); color:var(--orange); }
+          .method-badge.delete{ background:rgba(248,81,73,.12); color:var(--red); }
+          .ep-path-big{ font-size:22px; font-weight:700; font-family:var(--mono); letter-spacing:-.3px; }
+          .ep-meta{ display:flex; align-items:center; gap:10px; margin-top:10px; flex-wrap:wrap; }
+          .role-badge{ font-size:11px; padding:3px 10px; border-radius:var(--rr); font-weight:600; }
+          .group-badge{ font-size:11px; padding:3px 10px; border-radius:var(--rr); background:var(--bg3); border:1px solid var(--border); color:var(--text2); }
+          .tag{ font-size:10px; padding:2px 8px; border-radius:var(--rr); background:var(--bg); color:var(--text3); border:1px solid var(--border); }
+          .summary{ font-size:14px; color:var(--text2); margin-top:12px; line-height:1.6; }
+
+          .section{ margin-bottom:18px; }
+          .section-head{ display:flex; align-items:center; gap:8px; padding:10px 0; cursor:pointer; user-select:none; border-bottom:1px solid var(--border); margin-bottom:10px; }
+          .section-head:hover{ color:var(--accent); }
+          .section-head .chev{ font-size:10px; transition:transform .2s; color:var(--text3); width:16px; text-align:center; }
+          .section-head .chev.open{ transform: rotate(90deg); }
+          .section-head .sec-icon{ font-size:14px; }
+          .section-head .sec-title{ font-size:14px; font-weight:600; flex:1; }
+          .section-body{ overflow:hidden; transition:max-height .35s ease,opacity .25s; opacity:1; }
+          .section-body.collapsed{ max-height:0!important; opacity:0; margin:0; padding:0; }
+          .desc-block{ background:var(--bg2); border:1px solid var(--border); border-radius:var(--r); padding:14px 16px; line-height:1.7; color:var(--text2); }
+          .desc-block strong{ color:var(--text); }
+          .desc-block code{ font-family:var(--mono); color:var(--accent); }
+          .schema-table{ width:100%; border-collapse:collapse; font-size:12px; }
+          .schema-table th{ text-align:left; font-size:10px; text-transform:uppercase; letter-spacing:.5px; color:var(--text3); padding:8px 12px; border-bottom:2px solid var(--border); }
+          .schema-table td{ padding:10px 12px; border-bottom:1px solid rgba(48,54,61,.5); vertical-align:top; }
+          .field-name{ font-family:var(--mono); font-weight:600; color:var(--accent); }
+          .field-type{ font-family:var(--mono); font-size:11px; padding:2px 8px; border-radius:4px; background:var(--bg); color:var(--text2); }
+          .json-pre{ background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:12px 14px; font-family:var(--mono); font-size:12px; line-height:1.6; overflow-x:auto; color:var(--text2); white-space:pre; tab-size:2; }
+          .json-pre .jk{ color:var(--accent) } .json-pre .js{ color:var(--green) } .json-pre .jn{ color:var(--orange) } .json-pre .jb{ color:var(--purple) } .json-pre .jnull{ color:var(--text3) }
+          .copy-btn{ background:var(--bg3); border:1px solid var(--border); color:var(--text2); font-size:11px; padding:4px 10px; border-radius:6px; cursor:pointer; transition:var(--tr); display:inline-flex; align-items:center; gap:4px; }
+          .copy-btn:hover{ border-color:var(--accent); color:var(--accent); }
+          .copy-btn.copied{ background:rgba(63,185,80,.15); border-color:var(--green); color:var(--green); }
+          .code-tabs{ display:flex; gap:6px; margin-top:10px; }
+          .code-tab{ font-size:10px; padding:4px 10px; border-radius:999px; border:1px solid var(--border); background:transparent; color:var(--text2); cursor:pointer; }
+          .code-tab.on{ background:rgba(88,166,255,.12); border-color:var(--accent); color:var(--accent); }
+          .empty{ display:flex; align-items:center; justify-content:center; height:100%; color:var(--text3); padding: 40px; }
+        </style>
+
+        <div class="api-root">
+          <div class="layout">
+            <aside class="sidebar">
+              <div class="sidebar-head">
+                <div class="logo">
+                  <div class="logo-icon">IB</div>
+                  <div class="logo-text">Influx<span>BRO</span> <span class="logo-badge">API</span></div>
+                </div>
+                <div class="search-wrap">
+                  <div class="search-icon">🔎</div>
+                  <input id="api_q" class="search-input" placeholder="Suche (Pfad, Summary, Tags)" />
+                  <div class="search-kbd">⌘K</div>
+                </div>
+                <div class="sidebar-stats">
+                  <div class="ss-item"><span class="sv" id="st_eps">0</span><span class="sl">Endpoints</span></div>
+                  <div class="ss-item"><span class="sv" id="st_groups">0</span><span class="sl">Gruppen</span></div>
+                  <div class="ss-item"><span class="sv" id="st_trace">0</span><span class="sl">Im Trace</span></div>
+                </div>
+              </div>
+
+              <div class="tag-filter" id="api_tags"></div>
+              <div class="ep-list" id="api_list"></div>
+              <div class="sidebar-foot">
+                <span id="api_ver">v-</span>
+                <span>Enter: ok · ⌘K: Suche</span>
+              </div>
+            </aside>
+            <main class="main" id="api_main">
+              <div class="empty">Laedt API-Dokumentation...</div>
+            </main>
+          </div>
+        </div>
+      `;
+
+      const $ = (sel)=>shadow.querySelector(sel);
+      const $$ = (sel)=>Array.from(shadow.querySelectorAll(sel));
+
+      const state = {
+        docs: [],
+        routes_count: 0,
+        docs_count: 0,
+        q: '',
+        role: null,
+        activeId: null,
+      };
+
+      function _isIpv4(h){
+        return /^\d{1,3}(?:\.\d{1,3}){3}$/.test(String(h||''));
+      }
+      function _baseUrl(){
+        try{
+          if(_isIpv4(location.hostname)) return String(location.origin);
+        }catch(e){}
+        return 'http://192.168.2.200:8099';
+      }
+
+      function _escape(s){
+        return String(s||'').replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]||c));
+      }
+      function _hlJson(obj){
+        let raw = '';
+        try{ raw = JSON.stringify(obj, null, 2); }catch(e){ raw = String(obj||''); }
+        const esc = _escape(raw);
+        return esc
+          .replace(/\"([^\"]+)\"(?=\s*:)/g, '<span class="jk">"$1"</span>')
+          .replace(/:\s*\"([^\"]*)\"/g, ': <span class="js">"$1"</span>')
+          .replace(/\b(true|false)\b/g, '<span class="jb">$1</span>')
+          .replace(/\bnull\b/g, '<span class="jnull">null</span>')
+          .replace(/\b(-?\d+(?:\.\d+)?)\b/g, '<span class="jn">$1</span>');
+      }
+
+      function _methodDot(m){
+        const mm = String(m||'').toLowerCase();
+        return `<span class="method-dot ${mm}"></span>`;
+      }
+
+      function _docMatches(d){
+        const q = state.q.trim().toLowerCase();
+        if(q){
+          const hay = [d.path, d.summary, d.group, d.roleLabel, (d.tags||[]).join(' '), d.description].join(' ').toLowerCase();
+          if(!hay.includes(q)) return false;
+        }
+        if(state.role && String(d.role||'') !== String(state.role)) return false;
+        return true;
+      }
+
+      function _traceSpans(){
+        try{ return Array.isArray(window.__ib_perf_spans) ? window.__ib_perf_spans : []; }catch(e){ return []; }
+      }
+      function _traceCountFor(path){
+        try{
+          const xs = _traceSpans();
+          return xs.filter(s=>String(s.ep||'') === String(path||'')).length;
+        }catch(e){ return 0; }
+      }
+
+      function renderTags(){
+        const roles = Array.from(new Set(state.docs.map(d=>String(d.role||'')).filter(Boolean))).sort();
+        const host = $('#api_tags');
+        if(!host) return;
+        const roleLabels = {
+          query: '🔎 Query',
+          tracking: '📈 Tracking',
+          logging: '📝 Logging',
+          system: '🖥️ System',
+          analysis: '🧠 Analyse',
+        };
+        host.innerHTML = roles.map(r=>{
+          const on = (state.role === r);
+          return `<button type="button" class="tag-chip ${on?'on':''}" data-role="${_escape(r)}">${_escape(roleLabels[r] || r)}</button>`;
+        }).join('');
+        $$('#api_tags .tag-chip').forEach(btn=>{
+          btn.onclick = ()=>{
+            const r = String(btn.getAttribute('data-role')||'');
+            state.role = (state.role === r) ? null : r;
+            renderAll();
+          };
+        });
+      }
+
+      function renderStats(){
+        try{ $('#st_eps').textContent = String(state.routes_count || state.docs.length); }catch(e){}
+        try{ $('#st_groups').textContent = String(new Set(state.docs.map(d=>String(d.group||''))).size); }catch(e){}
+        try{ $('#st_trace').textContent = String(state.docs.filter(d=>_traceCountFor(d.path) > 0).length); }catch(e){}
+      }
+
+      function renderList(){
+        const host = $('#api_list');
+        if(!host) return;
+        const xs = state.docs.filter(_docMatches);
+        host.innerHTML = xs.map(d=>{
+          const active = (state.activeId === d.id);
+          const tc = _traceCountFor(d.path);
+          return `<div class="ep-item ${active?'active':''}" data-id="${_escape(d.id)}">
+            ${_methodDot(d.method)}
+            <div class="ep-info">
+              <div class="ep-path">${_escape(d.path)}</div>
+              <div class="ep-sum">${_escape(d.summary)}</div>
+            </div>
+            <div class="trace-count">${tc}</div>
+          </div>`;
+        }).join('') || '<div class="empty">Keine Ergebnisse.</div>';
+        $$('#api_list .ep-item').forEach(it=>{
+          it.onclick = ()=>{
+            state.activeId = String(it.getAttribute('data-id')||'');
+            renderAll();
+            try{ location.hash = '#api/' + encodeURIComponent(state.activeId); }catch(e){}
+          };
+        });
+      }
+
+      function _toggleSection(ev){
+        try{
+          const h = ev.currentTarget;
+          const body = h.nextElementSibling;
+          const chev = h.querySelector('.chev');
+          const on = body && body.classList.contains('collapsed');
+          if(body){ body.classList.toggle('collapsed', !on); }
+          if(chev){ chev.classList.toggle('open', on); }
+        }catch(e){}
+      }
+
+      function _codeBlock(id, title, text){
+        const safe = String(text||'');
+        return `<div class="section">
+          <div class="section-head"><span class="chev open">▶</span><span class="sec-icon">💻</span><div class="sec-title">${_escape(title)}</div></div>
+          <div class="section-body" style="max-height:9999px">
+            <div style="display:flex; justify-content:flex-end; margin:6px 0;">
+              <button class="copy-btn" data-copy="${_escape(safe)}" type="button">Copy</button>
+            </div>
+            <pre class="json-pre">${_escape(safe)}</pre>
+          </div>
+        </div>`;
+      }
+
+      function renderDetail(){
+        const main = $('#api_main');
+        if(!main) return;
+        const d = state.docs.find(x=>String(x.id) === String(state.activeId)) || state.docs[0] || null;
+        if(!d){ main.innerHTML = '<div class="empty">Keine Endpoints gefunden.</div>'; return; }
+        state.activeId = d.id;
+
+        const base = _baseUrl();
+        const traceCount = _traceCountFor(d.path);
+        const spans = _traceSpans().filter(s=>String(s.ep||'') === String(d.path||''));
+        const avg = spans.length ? Math.round(spans.reduce((a,s)=>a+Number(s.cDur||0),0)/spans.length) : null;
+
+        const reqKeys = (d.request && Array.isArray(d.request.queryKeys)) ? d.request.queryKeys : [];
+        const bodyKeys = (d.request && Array.isArray(d.request.bodyKeys)) ? d.request.bodyKeys : [];
+
+        const mkExample = ()=>{
+          const ex = {};
+          const put = (k,v)=>{ if(k && ex[k] === undefined) ex[k] = v; };
+          bodyKeys.forEach(k=>{
+            const kk = String(k);
+            if(kk.includes('entity')) put(kk, 'sensor.demo');
+            else if(kk.includes('friendly')) put(kk, 'Demo');
+            else if(kk.includes('range')) put(kk, '24h');
+            else if(kk.includes('start')) put(kk, '2026-04-17T00:00:00Z');
+            else if(kk.includes('stop')) put(kk, '2026-04-17T01:00:00Z');
+            else if(kk.includes('measurement')) put(kk, 'm');
+            else if(kk.includes('field')) put(kk, 'value');
+            else if(kk.includes('timeout')) put(kk, 10);
+            else if(kk.includes('limit')) put(kk, 200);
+            else put(kk, '...');
+          });
+          if(Object.keys(ex).length === 0 && String(d.method||'').toUpperCase() !== 'GET'){
+            put('entity_id', 'sensor.demo');
+            put('range', '24h');
+          }
+          return ex;
+        };
+
+        const bodyEx = mkExample();
+        const curl = (String(d.method||'').toUpperCase() === 'GET')
+          ? `curl -fsS -X GET "${base}${d.path}" | jq .`
+          : `curl -fsS -X ${String(d.method||'').toUpperCase()} "${base}${d.path}" \\\n+  -H 'Content-Type: application/json' \\\n+  -d '${JSON.stringify(bodyEx)}' | jq .`;
+        const js = (String(d.method||'').toUpperCase() === 'GET')
+          ? `const res = await fetch('${base}${d.path}');\nconst data = await res.json();\nconsole.log(data);`
+          : `const res = await fetch('${base}${d.path}', {\n  method: '${String(d.method||'').toUpperCase()}',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify(${JSON.stringify(bodyEx, null, 2)})\n});\nconst data = await res.json();\nconsole.log(data);`;
+        const py = (String(d.method||'').toUpperCase() === 'GET')
+          ? `import requests\nres = requests.get('${base}${d.path}', timeout=10)\nprint(res.json())`
+          : `import requests\nres = requests.${String(d.method||'').toLowerCase()}('${base}${d.path}', json=${JSON.stringify(bodyEx, null, 2)}, timeout=10)\nprint(res.json())`;
+
+        const reqRows = [];
+        reqKeys.forEach(k=>reqRows.push({name:k, type:'string', req:false, desc:'Query-Parameter (aus Handler extrahiert).'}));
+        bodyKeys.forEach(k=>reqRows.push({name:k, type:'any', req:false, desc:'Body-Feld (aus Handler extrahiert).'}));
+
+        const reqTable = reqRows.length ? (`<table class="schema-table"><thead><tr><th>Name</th><th>Typ</th><th>Req</th><th>Beschreibung</th></tr></thead><tbody>` +
+          reqRows.map(r=>`<tr><td><div class="field-name">${_escape(r.name)}</div></td><td><span class="field-type">${_escape(r.type)}</span></td><td>${r.req?'<span class="field-type" style="color:var(--red)">yes</span>':'<span class="field-type" style="color:var(--text3)">no</span>'}</td><td style="color:var(--text2)">${_escape(r.desc)}</td></tr>`).join('') +
+        `</tbody></table>`) : (`<div class="desc-block">Keine Parameter noetig (oder automatisch nicht erkennbar).</div>`);
+
+        const respEx = { ok: true };
+        const respPre = `<pre class="json-pre">${_hlJson(respEx)}</pre>`;
+
+        const traceRows = spans.slice(0, 30).map(s=>{
+          const dur = Math.round(Number(s.cDur||0));
+          return `<tr><td><div class="field-name">${_escape(String(s.id||''))}</div></td><td><span class="field-type">${dur}ms</span></td><td style="color:var(--text2)">${_escape(String(s.m||''))}</td></tr>`;
+        }).join('');
+
+        main.innerHTML = `
+          <div class="ep-detail">
+            <div class="breadcrumb"><a href="#">API</a> <span>›</span> <span>${_escape(d.group||'')}</span></div>
+
+            <div class="ep-header">
+              <span class="method-badge ${_escape(String(d.method||'').toLowerCase())}">${_escape(String(d.method||''))}</span>
+              <span class="ep-path-big">${_escape(d.path)}</span>
+              <div class="ep-meta">
+                <span class="role-badge" style="background:color-mix(in srgb, ${_escape(String(d.roleColor||'var(--accent)'))} 15%, transparent); border:1px solid color-mix(in srgb, ${_escape(String(d.roleColor||'var(--accent)'))} 30%, transparent); color:${_escape(String(d.roleColor||'var(--accent)'))}">${_escape(d.roleLabel||'')}</span>
+                <span class="group-badge">${_escape(d.group||'')}</span>
+                <span class="tag">Trace: ${traceCount}</span>
+                ${avg !== null ? `<span class="tag">Ø ${avg}ms</span>` : ''}
+              </div>
+              <div class="summary">${_escape(d.summary||'')}</div>
+            </div>
+
+            <div class="section">
+              <div class="section-head"><span class="chev open">▶</span><span class="sec-icon">💡</span><div class="sec-title">Hinweise</div></div>
+              <div class="section-body" style="max-height:9999px">
+                <div class="desc-block">${d.description || ''}</div>
+              </div>
+            </div>
+
+            <div class="section">
+              <div class="section-head"><span class="chev open">▶</span><span class="sec-icon">📤</span><div class="sec-title">Request</div></div>
+              <div class="section-body" style="max-height:9999px">
+                ${reqTable}
+                <div style="margin-top:10px">
+                  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+                    <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;font-weight:600">JSON Beispiel</div>
+                    <button class="copy-btn" data-copy="${_escape(JSON.stringify(bodyEx, null, 2))}" type="button">Copy</button>
+                  </div>
+                  <pre class="json-pre">${_hlJson(bodyEx)}</pre>
+                </div>
+              </div>
+            </div>
+
+            <div class="section">
+              <div class="section-head"><span class="chev open">▶</span><span class="sec-icon">📥</span><div class="sec-title">Response</div></div>
+              <div class="section-body" style="max-height:9999px">
+                <div class="desc-block">Antwort ist typischerweise JSON mit <code>ok</code> sowie endpoint-spezifischen Feldern.</div>
+                <div style="margin-top:10px">${respPre}</div>
+              </div>
+            </div>
+
+            <div class="section">
+              <div class="section-head"><span class="chev open">▶</span><span class="sec-icon">⏱</span><div class="sec-title">Timing & Performance</div></div>
+              <div class="section-body" style="max-height:9999px">
+                <div class="desc-block">Gemessen im aktuellen Trace: <strong>${traceCount}</strong> Aufrufe${avg!==null?(', Ø <strong>'+avg+'ms</strong>'):' (keine Messwerte)'}.</div>
+              </div>
+            </div>
+
+            <div class="section">
+              <div class="section-head"><span class="chev open">▶</span><span class="sec-icon">💻</span><div class="sec-title">Code-Beispiele</div></div>
+              <div class="section-body" style="max-height:9999px">
+                <div class="code-tabs">
+                  <button class="code-tab on" data-tab="curl" type="button">cURL</button>
+                  <button class="code-tab" data-tab="js" type="button">JavaScript</button>
+                  <button class="code-tab" data-tab="py" type="button">Python</button>
+                </div>
+                <div style="display:flex; justify-content:flex-end; margin:8px 0;">
+                  <button class="copy-btn" id="api_copy" type="button">Copy</button>
+                </div>
+                <pre class="json-pre" id="api_code">${_escape(curl)}</pre>
+              </div>
+            </div>
+
+            <div class="section" ${spans.length ? '' : 'style="display:none"'}>
+              <div class="section-head"><span class="chev open">▶</span><span class="sec-icon">📊</span><div class="sec-title">Trace-Referenz</div></div>
+              <div class="section-body" style="max-height:9999px">
+                <div class="desc-block">Spans dieses Endpoints im selektierten Trace (max 30).</div>
+                <table class="schema-table" style="margin-top:10px"><thead><tr><th>Span</th><th>Dauer</th><th>Methode</th></tr></thead><tbody>${traceRows}</tbody></table>
+              </div>
+            </div>
+          </div>
+        `;
+
+        // bind collapsibles
+        $$('#api_main .section-head').forEach(h=>{ h.onclick = _toggleSection; });
+        // bind copy buttons
+        $$('#api_main .copy-btn').forEach(btn=>{
+          btn.onclick = async ()=>{
+            const txt = String(btn.getAttribute('data-copy') || '');
+            const ok = await copyToClipboard(txt);
+            btn.classList.toggle('copied', ok);
+            const old = btn.textContent;
+            btn.textContent = ok ? '✅ Copied' : 'Copy';
+            setTimeout(()=>{ try{ btn.textContent = old; btn.classList.remove('copied'); }catch(e){} }, 2000);
+          };
+        });
+        // bind code tabs
+        const codeMap = { curl, js, py };
+        const $code = $('#api_main #api_code');
+        const $copy = $('#api_main #api_copy');
+        let cur = 'curl';
+        const setCode = (k)=>{
+          cur = k;
+          $$('#api_main .code-tab').forEach(b=>b.classList.toggle('on', String(b.getAttribute('data-tab'))===k));
+          if($code) $code.textContent = String(codeMap[k] || '');
+          if($copy) $copy.setAttribute('data-copy', String(codeMap[k] || ''));
+        };
+        $$('#api_main .code-tab').forEach(b=>{ b.onclick = ()=>setCode(String(b.getAttribute('data-tab')||'curl')); });
+        if($copy) $copy.setAttribute('data-copy', curl);
+      }
+
+      function renderAll(){
+        renderStats();
+        renderTags();
+        renderList();
+        renderDetail();
+        try{ $('#api_ver').textContent = 'v' + String((window && window.IB_ADDON_VERSION) ? window.IB_ADDON_VERSION : '-'); }catch(e){}
+      }
+
+      try{
+        const q = $('#api_q');
+        if(q){
+          q.oninput = ()=>{ state.q = String(q.value||''); renderAll(); };
+        }
+      }catch(e){}
+      try{
+        window.addEventListener('keydown', (ev)=>{
+          const isMac = String(navigator.platform||'').toLowerCase().includes('mac');
+          if((isMac && ev.metaKey && ev.key.toLowerCase() === 'k') || (!isMac && ev.ctrlKey && ev.key.toLowerCase() === 'k')){
+            try{ ev.preventDefault(); }catch(e){}
+            try{ const q = $('#api_q'); if(q) q.focus(); }catch(e){}
+          }
+        });
+      }catch(e){}
+
+      try{
+        const j = await api('./api/api_docs');
+        const docs = Array.isArray(j.docs) ? j.docs : [];
+        state.docs = docs;
+        try{ state.routes_count = Number(j.routes_count || 0) || 0; }catch(e){ state.routes_count = 0; }
+        try{ state.docs_count = Number(j.docs_count || 0) || 0; }catch(e){ state.docs_count = 0; }
+        try{
+          // hash routing
+          const h = String(location.hash || '');
+          if(h.startsWith('#api/')) state.activeId = decodeURIComponent(h.slice(5));
+        }catch(e){}
+        if(!state.activeId && state.docs.length) state.activeId = String(state.docs[0].id);
+        renderAll();
+      }catch(e){
+        try{ $('#api_main').innerHTML = '<div class="empty">Fehler beim Laden: ' + _escape(String(e && e.message ? e.message : e)) + '</div>'; }catch(x){}
+      }
+    }
+
     function renderDiagram(trace){
       const root = document.getElementById('diagram');
       if(!root) return;
@@ -2018,6 +2527,9 @@
 
       const ALL_SPANS = _traceToTemplateSpans(trace);
       const TOTAL = (trace.dur_ms !== null && trace.dur_ms !== undefined) ? Number(trace.dur_ms) : (ALL_SPANS.length ? Math.max.apply(null, ALL_SPANS.map(s=>Number(s.cEnd||0))) : 0);
+
+      try{ window.__ib_perf_trace = trace; }catch(e){}
+      try{ window.__ib_perf_spans = ALL_SPANS; }catch(e){}
 
       const queries = Array.isArray(trace.queries) ? trace.queries : [];
       const queriesBySpanId = new Map();
@@ -2770,13 +3282,15 @@
       const KEY = 'ib_perf_diagram_tab_v1';
       const $tabD = document.getElementById('perf_tab_diagram');
       const $tabC = document.getElementById('perf_tab_corr');
+      const $tabA = document.getElementById('perf_tab_api');
       const panels = Array.from(document.querySelectorAll('.perf_tab_panel'));
 
       const setTab = (tab)=>{
-        const t = (tab === 'corr') ? 'corr' : 'diagram';
+        const t = (tab === 'corr') ? 'corr' : ((tab === 'api') ? 'api' : 'diagram');
         try{ localStorage.setItem(KEY, t); }catch(e){}
         try{ if($tabD){ $tabD.classList.toggle('active', t === 'diagram'); $tabD.setAttribute('aria-selected', t === 'diagram' ? 'true' : 'false'); } }catch(e){}
         try{ if($tabC){ $tabC.classList.toggle('active', t === 'corr'); $tabC.setAttribute('aria-selected', t === 'corr' ? 'true' : 'false'); } }catch(e){}
+        try{ if($tabA){ $tabA.classList.toggle('active', t === 'api'); $tabA.setAttribute('aria-selected', t === 'api' ? 'true' : 'false'); } }catch(e){}
         panels.forEach(p=>{
           try{
             const k = String(p.getAttribute('data-tab-panel') || '');
@@ -2787,10 +3301,14 @@
         if(t === 'corr'){
           setTimeout(()=>{ try{ if(_CORR_CTX && _CORR_CTX.trace) renderCorrelation(_CORR_CTX.trace, _CORR_CTX.spans, _CORR_CTX.total, _CORR_CTX.epColors); }catch(e){} }, 0);
         }
+        if(t === 'api'){
+          setTimeout(()=>{ try{ mountApiDocs && mountApiDocs(); }catch(e){} }, 0);
+        }
       };
 
       try{ if($tabD) $tabD.addEventListener('click', ()=>setTab('diagram')); }catch(e){}
       try{ if($tabC) $tabC.addEventListener('click', ()=>setTab('corr')); }catch(e){}
+      try{ if($tabA) $tabA.addEventListener('click', ()=>setTab('api')); }catch(e){}
 
       let init = 'diagram';
       try{ init = String(localStorage.getItem(KEY) || 'diagram'); }catch(e){ init = 'diagram'; }
