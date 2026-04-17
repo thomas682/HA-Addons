@@ -572,7 +572,13 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Neuer Menuepunkt `Performanceanalyse`: zeigt den persistierten Action/Trace-Log (Limit/Filter), erlaubt Drilldown in Details und rendert den selektierten Trace zusaetzlich als Diagramm (Waterfall).
   - Links: Trace-Liste mit Start/Ende/Dauer, Seite, Ausloeser (Klartext + technische ID), Status und Counts.
   - Rechts: JSON-Details (scrollbar) plus Copy-Buttons (Zwischenablage, TraceID).
-  - Diagramm: Demo-Layout (Endpoint-Chips + Method-Filter GET/POST + Aktionen) sowie Cards, Zeitleiste, Waterfall Vollansicht + Zoom (0-600ms), Endpoint-Statistiken und Tooltip, jeweils basierend auf den Realwerten des selektierten Traces.
+  - Diagramm: Demo-Layout (Endpoint-Chips + Method-Filter GET/POST + Aktionen) sowie Cards, Zeitleiste, Waterfall Vollansicht + Zoom, Endpoint-Statistiken und Tooltip, jeweils basierend auf den Realwerten des selektierten Traces.
+  - Endpoint-Filter:
+    - Klick auf einen Chip oder direkt auf einen Waterfall-Balken toggelt den Endpoint (ein/aus).
+    - Suchfeld filtert die sichtbaren Endpoints im ChipGrid.
+    - Deaktivierte Endpoints werden gespeichert; wenn gefiltert, wird dies ueber beiden Waterfalls sichtbar angezeigt.
+    - Zeitachse zoomt automatisch auf den gefilterten Bereich (rechts +10% Padding); Zeitangaben in den Cards beziehen sich auf die gefilterten Endpoints.
+    - Export: Buttons "Zwischenablage ungefiltert" / "Zwischenablage gefiltert" kopieren die Waterfall-Datenbasis als JSON (inkl. Tooltip-Felder, Query falls vorhanden).
   - Layout: Vertikaler Splitter trennt Trace-Liste/Details (oben) und Diagramm (unten); Hoehe wird gespeichert. Die Seite darf vertikal scrollen (Diagramm wird komplett angezeigt).
 - Tipp: Im Dashboard-Dialog "Gefiltertes Logging" gibt es einen Button "Performance Analyse", der direkt mit der zuletzt bekannten `trace_id` in diese Seite springt.
 - Mit aktivem `superpicker` wird jetzt das direkt gehoverte Unterelement bevorzugt erfasst; dadurch lassen sich auch Elemente innerhalb eines groesseren `data-ui`-Containers gezielter identifizieren.

@@ -672,6 +672,7 @@
           const idSuffix = sidFull.includes(':') ? (':' + sidFull.split(':').pop()) : (':' + String(idx + 1));
           out.push({
             id: idSuffix,
+            span_id: sidFull,
             m,
             ep,
             cEnd: Number(cEnd),
@@ -709,7 +710,13 @@
                   <button class="filter-btn" id="btnNone" type="button">✕ Keine</button>
                   <button class="filter-btn" id="btnSlow" type="button">🐢 Langsame</button>
                   <button class="filter-btn" id="btnInvert" type="button">⇄ Invertieren</button>
+                  <div class="filter-divider"></div>
+                  <button class="filter-btn" id="btnCopyAll" type="button">Zwischenablage ungefiltert</button>
+                  <button class="filter-btn" id="btnCopyFiltered" type="button">Zwischenablage gefiltert</button>
                 </div>
+              </div>
+              <div style="margin-bottom:10px;">
+                <input id="epSearch" type="text" placeholder="Endpoint suchen (Volltext)" style="width:100%; height:34px; padding:6px 10px; border-radius:10px; border:1px solid var(--border); background:var(--bg3); color:var(--text); font-size:12px;" />
               </div>
               <div class="chip-grid" id="chipGrid"></div>
               <div class="filter-stats" id="filterStats"></div>
@@ -720,11 +727,11 @@
             <h2>⏱️ Zeitleiste <span class="badge" id="badgeTotal">-</span></h2>
             <div class="phase-bar-container" id="phaseBar"></div>
 
-            <h2>📊 Waterfall — Vollansicht <span class="badge" id="badgeFull">-</span></h2>
+            <h2>📊 Waterfall — Vollansicht <span class="badge" id="badgeFull">-</span> <span class="badge" id="badgeFullFilter" style="display:none; background:rgba(248,81,73,0.14); border-color:rgba(248,81,73,0.45); color:var(--red);">Gefiltert</span></h2>
             <div class="legend" id="legend"></div>
             <div class="waterfall-container" id="waterfallFull"></div>
 
-            <h2>🔎 Waterfall — Zoom Phase 1 + 2 <span class="badge" id="badgeZoom">-</span></h2>
+            <h2>🔎 Waterfall — Zoom Phase 1 + 2 <span class="badge" id="badgeZoom">-</span> <span class="badge" id="badgeZoomFilter" style="display:none; background:rgba(248,81,73,0.14); border-color:rgba(248,81,73,0.45); color:var(--red);">Gefiltert</span></h2>
             <div class="waterfall-container" id="waterfallZoom"></div>
 
             <h2>📈 Endpoint-Statistiken <span class="badge" id="badgeStats">-</span></h2>
@@ -1123,6 +1130,28 @@
       const ALL_SPANS = _traceToTemplateSpans(trace);
       const TOTAL = (trace.dur_ms !== null && trace.dur_ms !== undefined) ? Number(trace.dur_ms) : (ALL_SPANS.length ? Math.max.apply(null, ALL_SPANS.map(s=>Number(s.cEnd||0))) : 0);
 
+      const queries = Array.isArray(trace.queries) ? trace.queries : [];
+      const queriesBySpanId = new Map();
+      queries.forEach((q)=>{
+        try{
+          const sid = String(q && q.span_id || '').trim();
+          if(!sid) return;
+          const txt = String(q && q.query || '');
+          if(!txt) return;
+          queriesBySpanId.set(sid, txt);
+        }catch(e){}
+      });
+
+      // Enrich spans with query (if span_id matches)
+      ALL_SPANS.forEach((s)=>{
+        try{
+          const sid = String(s && s.span_id || '').trim();
+          if(!sid) return;
+          const q = queriesBySpanId.get(sid);
+          if(q) s.query = q;
+        }catch(e){}
+      });
+
       const _traceSuffix = (tid)=>{
         const s = String(tid || '');
         if(!s) return '';
@@ -1156,12 +1185,56 @@
       const filterState = {
         endpoints: new Set(Object.keys(ENDPOINTS)),
         methods: new Set(['GET','POST']),
+        ep_search: '',
       };
+
+      const STORE_DISABLED_EPS_KEY = 'ib_perf_disabled_eps';
+      const STORE_METHODS_KEY = 'ib_perf_methods';
+
+      const _loadPrefs = ()=>{
+        try{
+          const raw = localStorage.getItem(STORE_DISABLED_EPS_KEY);
+          const xs = raw ? JSON.parse(raw) : null;
+          if(Array.isArray(xs)){
+            xs.map(x=>String(x||'')).filter(Boolean).forEach((ep)=>{ try{ filterState.endpoints.delete(ep); }catch(e){} });
+          }
+        }catch(e){}
+        try{
+          const raw = localStorage.getItem(STORE_METHODS_KEY);
+          const xs = raw ? JSON.parse(raw) : null;
+          if(Array.isArray(xs)){
+            filterState.methods = new Set(xs.map(x=>String(x||'').toUpperCase()).filter(Boolean));
+          }
+        }catch(e){}
+      };
+
+      const _savePrefs = ()=>{
+        try{
+          const disabled = Object.keys(ENDPOINTS).filter(ep=>!filterState.endpoints.has(ep));
+          localStorage.setItem(STORE_DISABLED_EPS_KEY, JSON.stringify(disabled));
+        }catch(e){}
+        try{
+          localStorage.setItem(STORE_METHODS_KEY, JSON.stringify(Array.from(filterState.methods.values())));
+        }catch(e){}
+      };
+
+      _loadPrefs();
 
       const getFilteredSpans = ()=>{
         const eps = filterState.endpoints;
         const ms = filterState.methods;
         return ALL_SPANS.filter(s => eps.has(String(s.ep||'')) && ms.has(String(s.m||'').toUpperCase()));
+      };
+
+      const _filterActive = ()=>{
+        try{
+          const disabledN = Object.keys(ENDPOINTS).filter(ep=>!filterState.endpoints.has(ep)).length;
+          const methodsN = Array.from(filterState.methods.values()).length;
+          const q = String(filterState.ep_search || '').trim();
+          return disabledN > 0 || methodsN < 2 || !!q;
+        }catch(e){
+          return false;
+        }
       };
 
       const header = document.getElementById('tv_header');
@@ -1184,6 +1257,9 @@
       const $btnNone = document.getElementById('btnNone');
       const $btnSlow = document.getElementById('btnSlow');
       const $btnInvert = document.getElementById('btnInvert');
+      const $btnCopyAll = document.getElementById('btnCopyAll');
+      const $btnCopyFiltered = document.getElementById('btnCopyFiltered');
+      const $epSearch = document.getElementById('epSearch');
 
       const toggleMethod = (m)=>{
         const M = String(m||'').toUpperCase();
@@ -1197,6 +1273,16 @@
           $methodGet.classList.toggle('active', filterState.methods.has('GET'));
           $methodGet.classList.toggle('off', !filterState.methods.has('GET'));
         }
+        _savePrefs();
+        update();
+      };
+
+      const toggleEndpoint = (ep)=>{
+        const E = String(ep||'');
+        if(!E) return;
+        if(filterState.endpoints.has(E)) filterState.endpoints.delete(E);
+        else filterState.endpoints.add(E);
+        _savePrefs();
         update();
       };
 
@@ -1209,17 +1295,58 @@
         update();
       };
 
+      const _exportSpanRow = (s)=>{
+        const cStart = Number(s.cStart||0);
+        const cEnd = Number(s.cEnd||0);
+        const cDur = Number(s.cDur||0);
+        const sEnd = Number(s.sEnd||0);
+        const sDur = Number(s.sDur||0);
+        const netOut = ((sEnd - sDur) - cStart);
+        const netIn = (cDur - netOut - sDur);
+        return {
+          trace_id: String(trace.trace_id||''),
+          action: String(trace.action||''),
+          page: String(trace.page||''),
+          started_at: String(trace.started_at||''),
+          id: String(s.id||''),
+          span_id: String(s.span_id||''),
+          method: String(s.m||''),
+          endpoint: String(s.ep||''),
+          status_code: (s.status_code !== null && s.status_code !== undefined) ? Number(s.status_code) : null,
+          cStart_ms: cStart,
+          cEnd_ms: cEnd,
+          cDur_ms: cDur,
+          sEnd_ms: sEnd,
+          sDur_ms: sDur,
+          net_out_ms: Number(netOut.toFixed(3)),
+          net_in_ms: Number(netIn.toFixed(3)),
+          explanation: String(_epHelp(String(s.ep||'')) || ''),
+          query: s.query ? String(s.query) : '',
+        };
+      };
+
+      const _copyDataset = async (spans)=>{
+        const xs = (Array.isArray(spans) ? spans : []).map(_exportSpanRow);
+        await copyToClipboard(JSON.stringify(xs, null, 2));
+      };
+
       if($methodPost) $methodPost.onclick = ()=>toggleMethod('POST');
       if($methodGet) $methodGet.onclick = ()=>toggleMethod('GET');
-      if($btnAll) $btnAll.onclick = ()=>selectAll();
-      if($btnNone) $btnNone.onclick = ()=>selectNone();
-      if($btnSlow) $btnSlow.onclick = ()=>selectSlow();
-      if($btnInvert) $btnInvert.onclick = ()=>invertSelection();
+      if($btnAll) $btnAll.onclick = ()=>{ selectAll(); _savePrefs(); };
+      if($btnNone) $btnNone.onclick = ()=>{ selectNone(); _savePrefs(); };
+      if($btnSlow) $btnSlow.onclick = ()=>{ selectSlow(); _savePrefs(); };
+      if($btnInvert) $btnInvert.onclick = ()=>{ invertSelection(); _savePrefs(); };
+      if($btnCopyAll) $btnCopyAll.onclick = ()=>{ _copyDataset(ALL_SPANS).catch(()=>{}); };
+      if($btnCopyFiltered) $btnCopyFiltered.onclick = ()=>{ _copyDataset(getFilteredSpans()).catch(()=>{}); };
+      if($epSearch) $epSearch.oninput = ()=>{ try{ filterState.ep_search = String($epSearch.value||''); }catch(e){ filterState.ep_search = ''; } update(); };
 
       function renderChips(){
         const grid = document.getElementById('chipGrid');
         if(!grid) return;
-        const sorted = Object.values(ENDPOINTS).sort((a,b)=>b.totalClient - a.totalClient);
+        const q = String(filterState.ep_search || '').trim().toLowerCase();
+        const sorted = Object.values(ENDPOINTS)
+          .filter(e=>!q || String(e.ep||'').toLowerCase().includes(q))
+          .sort((a,b)=>b.totalClient - a.totalClient);
         grid.innerHTML = sorted.map(e=>{
           const color = EP_COLORS[e.ep] || '#58a6ff';
           const active = filterState.endpoints.has(e.ep);
@@ -1242,11 +1369,36 @@
           grid.querySelectorAll('.chip').forEach((el)=>{
             el.onclick = ()=>{
               const ep = String(el.getAttribute('data-ep') || '');
-              if(!ep) return;
-              if(filterState.endpoints.has(ep)) filterState.endpoints.delete(ep);
-              else filterState.endpoints.add(ep);
-              update();
+              toggleEndpoint(ep);
             };
+
+            el.addEventListener('mouseenter', (ev)=>{
+              try{
+                const ep = String(el.getAttribute('data-ep') || '');
+                if(!ep) return;
+                const ttEl = document.getElementById('tooltip');
+                if(!ttEl) return;
+                const help = String(_epHelp(ep) || '(unbekannt)');
+                // show first query for this endpoint (if any)
+                let qTxt = '';
+                try{
+                  const hit = ALL_SPANS.find(s=>String(s && s.ep || '') === ep && String(s && s.query || ''));
+                  if(hit && hit.query) qTxt = String(hit.query);
+                }catch(e){}
+                const qHtml = qTxt ? (`<hr style="border-color:var(--border);margin:6px 0"><div class="tt-row"><span class="k">Query</span><span class="v" style="max-width:220px; text-align:right;"><span style="font-size:10px; color:var(--text2); white-space:pre-wrap;">${_escapeHtml(qTxt)}</span></span></div>`) : '';
+                ttEl.innerHTML = `
+                  <div class="tt-title">${_escapeHtml(ep)}</div>
+                  <div class="tt-row"><span class="k">Erklaerung</span><span class="v" style="max-width:220px; text-align:right;">${_escapeHtml(help)}</span></div>
+                  ${qHtml}
+                `;
+                ttEl.classList.add('show');
+                const r = el.getBoundingClientRect();
+                const x = (ev && ev.clientX) ? ev.clientX : (r.left + 12);
+                ttEl.style.left = Math.min(x + 12, window.innerWidth - 420) + 'px';
+                ttEl.style.top = (r.bottom + 8) + 'px';
+              }catch(e){}
+            });
+            el.addEventListener('mouseleave', ()=>{ try{ const ttEl = document.getElementById('tooltip'); if(ttEl) ttEl.classList.remove('show'); }catch(e){}; });
           });
         }catch(e){}
       }
@@ -1275,7 +1427,16 @@
         const bottleneck = filtered.length ? filtered.reduce((a,s)=> (Number(s.cDur||0) > Number(a.cDur||0) ? s : a), filtered[0]) : null;
         const networkOH = totalClient - totalServer;
         const st = String(trace.status || 'running');
-        const totalLbl = String(Math.round(Number(TOTAL||0))).toLocaleString('de') + 'ms';
+        // Time span based on filtered endpoints
+        let spanMs = 0;
+        try{
+          if(filtered.length){
+            const lo = Math.min.apply(null, filtered.map(s=>Number(s && s.cStart || 0)));
+            const hi = Math.max.apply(null, filtered.map(s=>Number(s && s.cEnd || 0)));
+            spanMs = Math.max(0, hi - lo);
+          }
+        }catch(e){ spanMs = 0; }
+        const totalLbl = String(Math.round(Number(spanMs||0))).toLocaleString('de') + 'ms';
         const cards = [
           { label:'Gesamtdauer Trace', value: totalLbl, cls:(st==='ok'?'green':'orange'), sub:'Status: ' + st },
           { label:'Sichtbare Calls', value:String(filtered.length), cls:'blue', sub:`von ${ALL_SPANS.length} gesamt` },
@@ -1324,10 +1485,18 @@
       function renderPhaseBar(filtered){
         const badgeTotal = document.getElementById('badgeTotal');
         const box = document.getElementById('phaseBar');
-        if(badgeTotal) badgeTotal.textContent = String(Math.round(Number(TOTAL||0))).toLocaleString('de') + ' ms';
+        let spanMs = 0;
+        try{
+          if(filtered.length){
+            const lo = Math.min.apply(null, filtered.map(s=>Number(s && s.cStart || 0)));
+            const hi = Math.max.apply(null, filtered.map(s=>Number(s && s.cEnd || 0)));
+            spanMs = Math.max(0, hi - lo);
+          }
+        }catch(e){ spanMs = 0; }
+        if(badgeTotal) badgeTotal.textContent = String(Math.round(Number(spanMs||0))).toLocaleString('de') + ' ms';
         if(!box) return;
         const phases = _computePhases(filtered);
-        const t = Math.max(1, Number(TOTAL||0) || 1);
+        const t = Math.max(1, Number(spanMs||0) || 1);
         box.innerHTML = `
           <div class="phase-bar">${phases.map(p=>{
             const pct = (p.ms / t * 100);
@@ -1373,6 +1542,8 @@
         const netOut = ((Number(s.sEnd||0) - Number(s.sDur||0)) - Number(s.cStart||0));
         const netIn = (Number(s.cDur||0) - netOut - Number(s.sDur||0));
         const help = String(s.help || _epHelp(s.ep || '') || '(unbekannt)');
+        const qTxt = String(s.query || '');
+        const qHtml = qTxt ? (`<hr style="border-color:var(--border);margin:6px 0"><div class="tt-row"><span class="k">Query</span><span class="v" style="max-width:220px; text-align:right;"><span style="font-size:10px; color:var(--text2); white-space:pre-wrap;">${_escapeHtml(qTxt)}</span></span></div>`) : '';
         ttEl.innerHTML = `
           <div class="tt-title">${_escapeHtml(String(s.m||''))} ${_escapeHtml(String(s.ep||''))}</div>
           <div class="tt-row"><span class="k">Span ID</span><span class="v">${_escapeHtml(String(s.id||''))}</span></div>
@@ -1385,6 +1556,7 @@
           <div class="tt-row"><span class="k">Netzwerk ←</span><span class="v">${netIn.toFixed(1)}ms</span></div>
           <hr style="border-color:var(--border);margin:6px 0">
           <div class="tt-row"><span class="k">Erklaerung</span><span class="v" style="max-width:220px; text-align:right;">${_escapeHtml(help)}</span></div>
+          ${qHtml}
         `;
         ttEl.classList.add('show');
         const r = el.getBoundingClientRect();
@@ -1392,7 +1564,10 @@
         ttEl.style.top = (r.bottom + 8) + 'px';
       }
 
-      function renderWaterfall(container, spanList, timelineEnd){
+      function renderWaterfall(container, spanList, rangeStartAbs, rangeEndAbs){
+        const rangeStart = Math.max(0, Number(rangeStartAbs||0));
+        const rangeEnd = Math.max(rangeStart + 1, Number(rangeEndAbs||0));
+        const timelineEnd = (rangeEnd - rangeStart);
         const barWidth = _waterfallBarWidth(container);
         const scale = barWidth / Math.max(1, timelineEnd || 1);
 
@@ -1407,7 +1582,8 @@
         let html = `<div class="timeline-header"><div class="wf-label" style="font-size:11px;color:var(--text3)">Endpoint</div><div class="timeline-ticks" style="min-width:${barWidth}px">${ticksHtml}</div></div>`;
 
         spanList.forEach((s, i)=>{
-          const cStart = Number(s.cStart || 0) * scale;
+          const cStartRel = (Number(s.cStart || 0) - rangeStart);
+          const cStart = cStartRel * scale;
           const totalW = Number(s.cDur || 0) * scale;
           const sStartInSpan = Number(s.sEnd || 0) - Number(s.sDur || 0) - Number(s.cStart || 0);
           const netOut = Math.max(0, sStartInSpan);
@@ -1424,12 +1600,14 @@
 
           const spanData = {
             id: s.id, m: s.m, ep: ep, help: help,
+            span_id: String(s.span_id || ''),
+            query: s.query ? String(s.query) : '',
             cStart: Number(s.cStart||0), cEnd: Number(s.cEnd||0), cDur: Number(s.cDur||0),
             sEnd: Number(s.sEnd||0), sDur: Number(s.sDur||0)
           };
 
           html += `
-            <div class="waterfall-row" data-idx="${i}">
+            <div class="waterfall-row" data-idx="${i}" data-ep="${_escapeHtml(ep)}">
               <div class="wf-label">
                 <span class="idx">${_escapeHtml(String(s.id || ''))}</span>
                 <span class="method ${(String(s.m||'').toLowerCase()==='get')?'get':'post'}">${_escapeHtml(String(s.m||''))}</span>
@@ -1452,6 +1630,13 @@
           container.querySelectorAll('.wf-bar-wrap').forEach((el)=>{
             el.addEventListener('mouseenter', (ev)=>_showTT(ev, el));
             el.addEventListener('mouseleave', ()=>_hideTT());
+            el.addEventListener('click', (ev)=>{
+              try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+              try{
+                const s = JSON.parse(String(el.getAttribute('data-span') || '{}'));
+                toggleEndpoint(String(s.ep||''));
+              }catch(e){}
+            });
           });
         }catch(e){}
       }
@@ -1486,14 +1671,33 @@
       function updateBadges(filtered, zoomFiltered){
         const $full = document.getElementById('badgeFull');
         const $zoom = document.getElementById('badgeZoom');
+        const $fullFilter = document.getElementById('badgeFullFilter');
+        const $zoomFilter = document.getElementById('badgeZoomFilter');
+        const active = _filterActive();
         if($full) $full.textContent = String(filtered.length) + ' Requests';
-        if($zoom) $zoom.textContent = '0 – ' + String(Math.min(600, Math.round(Number(TOTAL||0)))) + ' ms';
+        if($zoom) $zoom.textContent = String(zoomFiltered.length) + ' Requests';
+        if($fullFilter) $fullFilter.style.display = active ? 'inline-flex' : 'none';
+        if($zoomFilter) $zoomFilter.style.display = active ? 'inline-flex' : 'none';
       }
 
       function update(){
         const filtered = getFilteredSpans();
-        const zoomMax = Math.min(600, Math.round(Number(TOTAL||0)));
-        const zoomFiltered = filtered.filter(s => Number(s.cStart||0) < zoomMax);
+        // Auto-zoom X range to first/last visible bar (+10% right padding)
+        let lo = 0;
+        let hi = 0;
+        try{
+          if(filtered.length){
+            lo = Math.min.apply(null, filtered.map(s=>Number(s && s.cStart || 0)));
+            hi = Math.max.apply(null, filtered.map(s=>Number(s && s.cEnd || 0)));
+          }
+        }catch(e){ lo = 0; hi = 0; }
+        const span = Math.max(1, hi - lo);
+        const rangeStart = Math.max(0, lo);
+        const rangeEnd = hi + (span * 0.10);
+
+        const zoomEndAbs = Math.min(rangeEnd, rangeStart + 600);
+        const zoomFiltered = filtered.filter(s => Number(s.cEnd||0) >= rangeStart && Number(s.cStart||0) <= zoomEndAbs);
+
         renderChips();
         renderFilterStats(filtered);
         renderCards(filtered);
@@ -1502,8 +1706,8 @@
         updateBadges(filtered, zoomFiltered);
         const wfFull = document.getElementById('waterfallFull');
         const wfZoom = document.getElementById('waterfallZoom');
-        if(wfFull) renderWaterfall(wfFull, filtered, Math.max(1, Number(TOTAL||0)));
-        if(wfZoom) renderWaterfall(wfZoom, zoomFiltered, Math.max(1, zoomMax));
+        if(wfFull) renderWaterfall(wfFull, filtered, rangeStart, rangeEnd);
+        if(wfZoom) renderWaterfall(wfZoom, zoomFiltered, rangeStart, zoomEndAbs + ((zoomEndAbs - rangeStart) * 0.10));
         renderStats(filtered);
       }
 

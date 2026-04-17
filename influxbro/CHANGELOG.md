@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.372
+
+### Enhancement
+
+- Dashboard: Trace-Copy kopiert jetzt exakt die angezeigte Trace-ID (nicht eine evtl. zuletzt im Hintergrund gelaufene). ([#321](https://github.com/thomas682/HA-Addons/issues/321))
+- Performanceanalyse: Endpoint-Filter wurde erweitert (Klick im Waterfall toggelt Endpoints, Suchfeld filtert ChipGrid, Tooltip auf Chips; Query-Text wird im Tooltip angezeigt). Deaktivierte Endpoints werden gespeichert; Filterstatus ist ueber beiden Waterfalls sichtbar. Zeitachsen und Zeitangaben zoomen/berechnen sich anhand gefilterter Endpoints (+10% Padding rechts). Export-Buttons kopieren Waterfall-Datenbasis ungefiltert/gefiltert in die Zwischenablage. ([#321](https://github.com/thomas682/HA-Addons/issues/321))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: 2026.4.2
+
 ## 1.12.371
 
 ### Enhancement

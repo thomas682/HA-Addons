@@ -12816,8 +12816,17 @@ try{
       if(RAW_OUTLIER_ABORT) RAW_OUTLIER_ABORT.abort();
     }catch(e){}
   });
-  if($loadTraceCopy) $loadTraceCopy.addEventListener('click', async (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}; try{ const id = _currentTraceId(); if(id) await copyTextToClipboard(id); }catch(e){}; });
-  if($analysisTraceCopy) $analysisTraceCopy.addEventListener('click', async (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}; try{ const id = _currentTraceId(); if(id) await copyTextToClipboard(id); }catch(e){}; });
+  const _displayedTraceId = ($el)=>{
+    try{
+      if(!$el) return '';
+      // Prefer the full trace id stored in the tooltip/title.
+      const t = String($el.getAttribute('title') || '').trim();
+      if(t) return t;
+      return String($el.textContent || '').trim();
+    }catch(e){ return ''; }
+  };
+  if($loadTraceCopy) $loadTraceCopy.addEventListener('click', async (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}; try{ const id = _displayedTraceId($loadTraceId); if(id) await copyTextToClipboard(id); }catch(e){}; });
+  if($analysisTraceCopy) $analysisTraceCopy.addEventListener('click', async (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}; try{ const id = _displayedTraceId($analysisTraceId); if(id) await copyTextToClipboard(id); }catch(e){}; });
   if($rawOutlierTypeToggle){
     $rawOutlierTypeToggle.addEventListener('click', (ev)=>{
       ev.stopPropagation();
