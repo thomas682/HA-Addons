@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.371
+
+### Enhancement
+
+- Performanceanalyse: Scroll-Container wurden korrigiert (Section-Root scrollt nicht, stattdessen `list_box`/`detail_box`; Diagramm-Section-Root ohne Scrollbar, Body darf scrollen). ([#320](https://github.com/thomas682/HA-Addons/issues/320))
+- Performanceanalyse: Diagramm wurde 1:1 an das Demo-Layout `demo/analyse_demo.html` angeglichen (inkl. Endpoint-Chips/Filterpanel, Cards, Phasebar, Waterfall Full/Zoom, Stats, Tooltip) und wird mit Realwerten des selektierten Traces befuellt. ([#320](https://github.com/thomas682/HA-Addons/issues/320))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: 2026.4.2
+
 ## 1.12.370
 
 ### Enhancement

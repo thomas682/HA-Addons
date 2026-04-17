@@ -58,9 +58,9 @@
       padding: 10px;
       background: #fff;
       overflow: auto;
-      resize: both;
-      min-height: 44vh;
-      max-height: 78vh;
+      resize: none;
+      min-height: 0;
+      max-height: none;
       min-width: 280px;
     }
     @media (max-width: 980px){
@@ -72,15 +72,16 @@
       margin-top: 12px;
       display: flex;
       flex-direction: column;
-      height: calc(100vh - 140px);
-      min-height: 620px;
+      /* Body may scroll; diagram is fully visible without a section scrollbar. */
+      height: auto;
+      min-height: 0;
     }
     @media (max-width: 980px){
       .perf_split { height: auto; min-height: 0; }
     }
     .perf_split > details.card { margin-top: 0; }
-    .perf_split_top { height: var(--perf_split_top, 33vh); min-height: 260px; overflow: auto; }
-    .perf_split_bottom { flex: 1; min-height: 260px; overflow: auto; }
+    .perf_split_top { height: var(--perf_split_top, 33vh); min-height: 260px; overflow: hidden; }
+    .perf_split_bottom { flex: 0 0 auto; min-height: 260px; overflow: visible; }
     .perf_splitter {
       height: 10px;
       margin: 12px 0;
@@ -91,25 +92,110 @@
     }
 
     /* Diagram: verbindliches Muster (analyse.html) scoped to .tv */
-    .diag_wrap { background:#0d1117; color:#e6edf3; border:1px solid #30363d; border-radius:12px; padding:16px; overflow:auto; }
+    .diag_wrap { background:#0d1117; color:#e6edf3; border:1px solid #30363d; border-radius:12px; padding:16px; overflow: visible; }
+
+    /* Prevent the diagram section root from becoming a scroll container */
+    details[data-ui="perf_page.diagram.section_root"] { overflow: visible; }
+
+    /* Enable internal scrolling in list + detail boxes (not on the whole section) */
+    details[data-ui="perf_page.section_root"] .card_body { display:flex; flex-direction:column; min-height:0; }
+    details[data-ui="perf_page.section_root"] .grid2 { flex:1 1 auto; min-height:0; align-items:stretch; }
+    details[data-ui="perf_page.section_root"] .pane_col { display:flex; flex-direction:column; min-height:0; }
+    details[data-ui="perf_page.section_root"] .pane_col .pane_box { flex:1 1 auto; min-height:0; }
     .diag_wrap .tv {
-      --bg: #0d1117; --bg2: #161b22; --bg3: #21262d;
-      --border: #30363d; --text: #e6edf3; --text2: #8b949e;
+      --bg: #0d1117; --bg2: #161b22; --bg3: #21262d; --bg4: #292e36;
+      --border: #30363d; --border-hover: #484f58;
+      --text: #e6edf3; --text2: #8b949e; --text3: #6e7681;
       --accent: #58a6ff; --green: #3fb950; --orange: #d29922;
-      --red: #f85149; --purple: #bc8cff; --pink: #f778ba;
+      --red: #f85149; --purple: #bc8cff; --pink: #f778ba; --cyan: #39d2c0;
       --network-out: #1f4a7a; --network-in: #1a3d5c;
       --server: #58a6ff; --server-slow: #d29922;
-      --wf-label-w: 260px;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --radius: 10px; --radius-sm: 6px;
+      --shadow: 0 2px 8px rgba(0,0,0,0.3);
+      --transition: 0.2s cubic-bezier(0.4,0,0.2,1);
+      --wf-label-w: 280px;
+      font-family: 'Inter','SF Pro Display',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
       font-size: 13px;
+      color: var(--text);
     }
+    .diag_wrap .tv code, .diag_wrap .tv .mono { font-family: 'SF Mono','Cascadia Code','Fira Code','JetBrains Mono',ui-monospace,monospace; }
+    .diag_wrap .tv * { box-sizing: border-box; }
+    .diag_wrap .tv .app { max-width: 1400px; margin: 0 auto; padding: 20px 24px 60px; }
+    .diag_wrap .tv .header { margin-bottom: 24px; }
+    .diag_wrap .tv h1 { font-size:22px; font-weight:700; margin-bottom:4px; display:flex; align-items:center; gap:10px; }
+    .diag_wrap .tv h1 .status-dot { width:10px; height:10px; border-radius:50%; background: var(--orange); animation: ibPulse 2s infinite; }
+    .diag_wrap .tv h1 .status-dot.ok { background: var(--green); }
+    .diag_wrap .tv h1 .status-dot.err { background: var(--red); }
+    @keyframes ibPulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    .diag_wrap .tv .subtitle { color:var(--text2); font-size:13px; display:flex; gap:16px; flex-wrap:wrap; }
+    .diag_wrap .tv .subtitle span { display:flex; align-items:center; gap:4px; }
     .diag_wrap .tv h1 { font-size:20px; font-weight:600; margin-bottom:4px; color:var(--text); }
     .diag_wrap .tv h2 { font-size:15px; font-weight:600; margin:24px 0 12px; color:var(--text); display:flex; align-items:center; gap:8px; }
     .diag_wrap .tv h2 .badge { font-size:11px; background:var(--bg3); border:1px solid var(--border); border-radius:12px; padding:2px 10px; color:var(--text2); font-weight:400; }
     .diag_wrap .tv .subtitle { color:var(--text2); font-size:13px; margin-bottom:14px; }
-    .diag_wrap .tv .tv_controls { display:flex; gap:10px; flex-wrap:wrap; margin:10px 0 6px; }
-    .diag_wrap .tv .tv_controls button { height: 34px; padding: 0 10px; border-radius: 10px; border:1px solid var(--border); background:var(--bg2); color:var(--text); cursor:pointer; }
-    .diag_wrap .tv .tv_controls button:hover { filter:brightness(1.1); }
+    /* Filter panel (demo/analyse_demo.html) */
+    .diag_wrap .tv .filter-panel {
+      background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius);
+      padding:16px 20px; margin-bottom:20px;
+      transition:var(--transition);
+    }
+    .diag_wrap .tv .filter-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; flex-wrap:wrap; gap:10px; }
+    .diag_wrap .tv .filter-title { font-size:13px; font-weight:600; color:var(--text); display:flex; align-items:center; gap:8px; }
+    .diag_wrap .tv .filter-title svg { opacity:0.6; }
+    .diag_wrap .tv .filter-subtitle { font-size:11px; color:var(--text3); margin-left:4px; font-weight:400; }
+    .diag_wrap .tv .filter-actions { display:flex; gap:6px; align-items:center; }
+    .diag_wrap .tv .filter-btn {
+      background:var(--bg3); border:1px solid var(--border); color:var(--text2);
+      font-size:11px; padding:4px 12px; border-radius:20px; cursor:pointer;
+      font-family:inherit; transition:var(--transition); white-space:nowrap;
+    }
+    .diag_wrap .tv .filter-btn:hover { border-color:var(--accent); color:var(--accent); background:rgba(88,166,255,0.08); }
+    .diag_wrap .tv .filter-btn.active { background:rgba(88,166,255,0.15); border-color:var(--accent); color:var(--accent); }
+    .diag_wrap .tv .filter-divider { width:1px; height:20px; background:var(--border); margin:0 4px; }
+    .diag_wrap .tv .method-filter { display:flex; gap:4px; align-items:center; margin-right:8px; }
+    .diag_wrap .tv .method-btn {
+      font-size:10px; font-weight:700; padding:3px 8px; border-radius:4px;
+      cursor:pointer; border:1px solid transparent; transition:var(--transition);
+      font-family:'SF Mono','Cascadia Code',monospace;
+      user-select:none;
+    }
+    .diag_wrap .tv .method-btn.post { background:rgba(88,166,255,0.1); color:var(--accent); }
+    .diag_wrap .tv .method-btn.post:hover, .diag_wrap .tv .method-btn.post.active { background:rgba(88,166,255,0.25); border-color:var(--accent); }
+    .diag_wrap .tv .method-btn.get { background:rgba(63,185,80,0.1); color:var(--green); }
+    .diag_wrap .tv .method-btn.get:hover, .diag_wrap .tv .method-btn.get.active { background:rgba(63,185,80,0.25); border-color:var(--green); }
+    .diag_wrap .tv .method-btn.off { opacity:0.3; }
+    .diag_wrap .tv .chip-grid { display:flex; flex-wrap:wrap; gap:6px; }
+    .diag_wrap .tv .chip {
+      display:flex; align-items:center; gap:7px;
+      background:var(--bg3); border:1px solid var(--border);
+      border-radius:20px; padding:5px 14px 5px 10px;
+      cursor:pointer; transition:all 0.25s cubic-bezier(0.4,0,0.2,1);
+      user-select:none; position:relative; overflow:hidden;
+    }
+    .diag_wrap .tv .chip::before {
+      content:''; position:absolute; inset:0;
+      background:linear-gradient(135deg, var(--chip-color, var(--accent)) 0%, transparent 60%);
+      opacity:0; transition:opacity 0.25s;
+    }
+    .diag_wrap .tv .chip:hover { border-color:var(--border-hover); transform:translateY(-1px); box-shadow:var(--shadow); }
+    .diag_wrap .tv .chip:hover::before { opacity:0.06; }
+    .diag_wrap .tv .chip.active { border-color:var(--chip-color, var(--accent)); }
+    .diag_wrap .tv .chip.active::before { opacity:0.12; }
+    .diag_wrap .tv .chip.inactive { opacity:0.3; border-color:transparent; transform:scale(0.97); }
+    .diag_wrap .tv .chip.inactive:hover { opacity:0.5; }
+    .diag_wrap .tv .chip-indicator { width:8px; height:8px; border-radius:50%; background:var(--chip-color, var(--accent)); transition:var(--transition); flex-shrink:0; position:relative; z-index:1; }
+    .diag_wrap .tv .chip.inactive .chip-indicator { background:var(--text3); }
+    .diag_wrap .tv .chip-content { display:flex; align-items:center; gap:6px; position:relative; z-index:1; }
+    .diag_wrap .tv .chip-endpoint { font-size:12px; color:var(--text); font-family:'SF Mono','Cascadia Code',monospace; transition:var(--transition); }
+    .diag_wrap .tv .chip.inactive .chip-endpoint { color:var(--text3); }
+    .diag_wrap .tv .chip-count { background:var(--bg); padding:1px 6px; border-radius:8px; font-size:10px; font-weight:600; color:var(--text2); transition:var(--transition); min-width:18px; text-align:center; }
+    .diag_wrap .tv .chip.active .chip-count { background:rgba(0,0,0,0.3); color:var(--chip-color, var(--accent)); }
+    .diag_wrap .tv .chip.inactive .chip-count { color:var(--text3); }
+    .diag_wrap .tv .chip-dur { font-size:10px; color:var(--text3); font-family:'SF Mono','Cascadia Code',monospace; }
+    .diag_wrap .tv .filter-stats { display:flex; gap:16px; margin-top:12px; padding-top:10px; border-top:1px solid var(--border); font-size:11px; color:var(--text3); flex-wrap:wrap; transition:var(--transition); }
+    .diag_wrap .tv .filter-stats .stat { display:flex; align-items:center; gap:4px; }
+    .diag_wrap .tv .filter-stats .stat-value { color:var(--text2); font-weight:600; font-family:'SF Mono','Cascadia Code',monospace; }
+    .diag_wrap .tv .filter-stats .stat-value.highlight { color:var(--accent); }
 
     .diag_wrap .tv .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:10px; margin-bottom:18px; }
     .diag_wrap .tv .card { background:var(--bg2); border:1px solid var(--border); border-radius:10px; padding:14px 16px; margin-top:0; }
@@ -219,8 +305,8 @@
             </div>
           </div>
 
-          <div class="grid2" style="margin-top:12px;">
-            <div>
+            <div class="grid2" style="margin-top:12px;">
+            <div class="pane_col">
               <div class="pane_head">
                 <div class="muted" id="meta"></div>
                 <div class="pane_actions">
@@ -250,7 +336,7 @@
               </div>
             </div>
 
-            <div>
+            <div class="pane_col">
               <div class="pane_head">
                 <div class="muted" id="detail_meta">Details</div>
                 <div class="pane_actions">
@@ -602,30 +688,50 @@
 
     function _renderDiagramShell(root){
       root.innerHTML = `
-        <div class="tv" id="tv_root">
-          <div id="tv_head"></div>
-          <div class="tv_controls">
-            <button type="button" id="tv_toggle_ui">UI-Events: aus</button>
-            <label class="mono" style="display:inline-flex; align-items:center; gap:8px; padding: 0 2px;">
-              <input type="checkbox" id="tv_ep_filter_on" style="height:auto; width:auto;" />
-              <span style="font-size:12px; color:var(--text2)">Endpoint-Filter</span>
-            </label>
-            <select id="tv_ep_select" multiple style="height:34px; padding:0 10px; border-radius:10px; border:1px solid var(--border); background:var(--bg2); color:var(--text); width: min(420px, 56vw);">
-            </select>
-            <span id="tv_ep_filtered_badge" class="badge" style="display:none; background:rgba(248,81,73,0.14); border-color:rgba(248,81,73,0.45); color:var(--red);">Gefiltert</span>
-            <button type="button" id="tv_zoom_reset">Zoom reset</button>
+        <div class="tv">
+          <div class="app">
+            <div class="header" id="tv_header"></div>
+
+            <div class="filter-panel" id="filterPanel">
+              <div class="filter-header">
+                <div class="filter-title">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M.75 3h14.5a.75.75 0 010 1.5H.75a.75.75 0 010-1.5zm2 4h10.5a.75.75 0 010 1.5H2.75a.75.75 0 010-1.5zm3 4h4.5a.75.75 0 010 1.5h-4.5a.75.75 0 010-1.5z"/></svg>
+                  Endpoint-Filter
+                  <span class="filter-subtitle" id="filterCount">-</span>
+                </div>
+                <div class="filter-actions">
+                  <div class="method-filter">
+                    <div class="method-btn post active" id="methodPost">POST</div>
+                    <div class="method-btn get active" id="methodGet">GET</div>
+                  </div>
+                  <div class="filter-divider"></div>
+                  <button class="filter-btn" id="btnAll" type="button">✓ Alle</button>
+                  <button class="filter-btn" id="btnNone" type="button">✕ Keine</button>
+                  <button class="filter-btn" id="btnSlow" type="button">🐢 Langsame</button>
+                  <button class="filter-btn" id="btnInvert" type="button">⇄ Invertieren</button>
+                </div>
+              </div>
+              <div class="chip-grid" id="chipGrid"></div>
+              <div class="filter-stats" id="filterStats"></div>
+            </div>
+
+            <div class="cards" id="cards"></div>
+
+            <h2>⏱️ Zeitleiste <span class="badge" id="badgeTotal">-</span></h2>
+            <div class="phase-bar-container" id="phaseBar"></div>
+
+            <h2>📊 Waterfall — Vollansicht <span class="badge" id="badgeFull">-</span></h2>
+            <div class="legend" id="legend"></div>
+            <div class="waterfall-container" id="waterfallFull"></div>
+
+            <h2>🔎 Waterfall — Zoom Phase 1 + 2 <span class="badge" id="badgeZoom">-</span></h2>
+            <div class="waterfall-container" id="waterfallZoom"></div>
+
+            <h2>📈 Endpoint-Statistiken <span class="badge" id="badgeStats">-</span></h2>
+            <div class="stats-grid" id="statsGrid"></div>
           </div>
-          <div class="cards" id="tv_cards"></div>
-          <h2>⏱️ Zeitleiste (Gesamt) <span class="badge" id="tv_badge_total">-</span></h2>
-          <div class="phase-bar-container" id="tv_phaseBar"></div>
-          <h2>📊 Waterfall — Vollansicht <span class="badge" id="tv_badge_full">-</span></h2>
-          <div class="legend" id="tv_legend"></div>
-          <div class="waterfall-container" id="tv_waterfallFull"></div>
-          <h2>🔎 Waterfall — Zoom <span class="badge" id="tv_badge_zoom">-</span></h2>
-          <div class="waterfall-container" id="tv_waterfallZoom"></div>
-          <h2>📈 Endpoint-Statistiken</h2>
-          <div class="stats-grid" id="tv_statsGrid"></div>
-          <div class="tooltip" id="tv_tooltip"></div>
+
+          <div class="tooltip" id="tooltip"></div>
         </div>
       `;
     }
@@ -1008,139 +1114,400 @@
       const root = document.getElementById('diagram');
       if(!root) return;
       if(!trace || !trace.trace_id){
-        root.innerHTML = '<div class="tv"><div class="subtitle">Kein Trace selektiert.</div></div>';
+        root.innerHTML = '<div class="tv"><div class="app"><div class="subtitle">Kein Trace selektiert.</div></div></div>';
         return;
       }
 
       _renderDiagramShell(root);
-      const tvRoot = document.getElementById('tv_root');
 
-      // restore label width
-      if(tvRoot){
+      const ALL_SPANS = _traceToTemplateSpans(trace);
+      const TOTAL = (trace.dur_ms !== null && trace.dur_ms !== undefined) ? Number(trace.dur_ms) : (ALL_SPANS.length ? Math.max.apply(null, ALL_SPANS.map(s=>Number(s.cEnd||0))) : 0);
+
+      const _traceSuffix = (tid)=>{
+        const s = String(tid || '');
+        if(!s) return '';
+        const parts = s.split('|');
+        const last = parts.length ? parts[parts.length - 1] : s;
+        return last.length > 10 ? last.slice(-10) : last;
+      };
+
+      // Distinct endpoints + stats
+      const ENDPOINTS = {};
+      ALL_SPANS.forEach((s)=>{
         try{
-          const w = parseInt(localStorage.getItem('ib_perf_wf_label_w') || '', 10);
-          if(isFinite(w) && w >= 180 && w <= 520) tvRoot.style.setProperty('--wf-label-w', w + 'px');
+          const ep = String(s.ep || '');
+          if(!ep) return;
+          if(!ENDPOINTS[ep]) ENDPOINTS[ep] = { ep, count:0, totalClient:0, totalServer:0, maxClient:0, methods: new Set() };
+          const e = ENDPOINTS[ep];
+          e.count += 1;
+          e.totalClient += Math.max(0, Number(s.cDur||0));
+          e.totalServer += Math.max(0, Number(s.sDur||0));
+          e.maxClient = Math.max(e.maxClient, Math.max(0, Number(s.cDur||0)));
+          e.methods.add(String(s.m || '').toUpperCase());
+        }catch(e){}
+      });
+
+      const palette = ['#58a6ff','#bc8cff','#3fb950','#f778ba','#d29922','#39d2c0','#f0883e','#a371f7','#ff7b72','#56d364'];
+      const EP_COLORS = {};
+      Object.values(ENDPOINTS).sort((a,b)=>b.totalClient - a.totalClient).forEach((e, i)=>{
+        EP_COLORS[e.ep] = palette[i % palette.length];
+      });
+
+      const filterState = {
+        endpoints: new Set(Object.keys(ENDPOINTS)),
+        methods: new Set(['GET','POST']),
+      };
+
+      const getFilteredSpans = ()=>{
+        const eps = filterState.endpoints;
+        const ms = filterState.methods;
+        return ALL_SPANS.filter(s => eps.has(String(s.ep||'')) && ms.has(String(s.m||'').toUpperCase()));
+      };
+
+      const header = document.getElementById('tv_header');
+      if(header){
+        const st = String(trace.status || 'running');
+        const dotCls = (st === 'ok') ? 'ok' : (st === 'err' ? 'err' : '');
+        header.innerHTML = `
+          <h1><span class="status-dot ${dotCls}"></span>Trace: <span class="mono">${_escapeHtml(String(trace.action || ''))}</span></h1>
+          <p class="subtitle">
+            <span>📄 ${_escapeHtml(String(trace.page || ''))}</span>
+            <span>🕘 ${_escapeHtml(_fmtUtcShort(String(trace.started_at || '')))}</span>
+            <span class="mono">🔗 ${_escapeHtml(_traceSuffix(String(trace.trace_id || '')))}</span>
+          </p>
+        `;
+      }
+
+      const $methodPost = document.getElementById('methodPost');
+      const $methodGet = document.getElementById('methodGet');
+      const $btnAll = document.getElementById('btnAll');
+      const $btnNone = document.getElementById('btnNone');
+      const $btnSlow = document.getElementById('btnSlow');
+      const $btnInvert = document.getElementById('btnInvert');
+
+      const toggleMethod = (m)=>{
+        const M = String(m||'').toUpperCase();
+        if(filterState.methods.has(M)) filterState.methods.delete(M);
+        else filterState.methods.add(M);
+        if($methodPost){
+          $methodPost.classList.toggle('active', filterState.methods.has('POST'));
+          $methodPost.classList.toggle('off', !filterState.methods.has('POST'));
+        }
+        if($methodGet){
+          $methodGet.classList.toggle('active', filterState.methods.has('GET'));
+          $methodGet.classList.toggle('off', !filterState.methods.has('GET'));
+        }
+        update();
+      };
+
+      const selectAll = ()=>{ Object.keys(ENDPOINTS).forEach(ep => filterState.endpoints.add(ep)); update(); };
+      const selectNone = ()=>{ filterState.endpoints.clear(); update(); };
+      const invertSelection = ()=>{ Object.keys(ENDPOINTS).forEach(ep => { if(filterState.endpoints.has(ep)) filterState.endpoints.delete(ep); else filterState.endpoints.add(ep); }); update(); };
+      const selectSlow = ()=>{
+        filterState.endpoints.clear();
+        Object.values(ENDPOINTS).forEach(e => { if(Number(e.maxClient||0) > 50) filterState.endpoints.add(e.ep); });
+        update();
+      };
+
+      if($methodPost) $methodPost.onclick = ()=>toggleMethod('POST');
+      if($methodGet) $methodGet.onclick = ()=>toggleMethod('GET');
+      if($btnAll) $btnAll.onclick = ()=>selectAll();
+      if($btnNone) $btnNone.onclick = ()=>selectNone();
+      if($btnSlow) $btnSlow.onclick = ()=>selectSlow();
+      if($btnInvert) $btnInvert.onclick = ()=>invertSelection();
+
+      function renderChips(){
+        const grid = document.getElementById('chipGrid');
+        if(!grid) return;
+        const sorted = Object.values(ENDPOINTS).sort((a,b)=>b.totalClient - a.totalClient);
+        grid.innerHTML = sorted.map(e=>{
+          const color = EP_COLORS[e.ep] || '#58a6ff';
+          const active = filterState.endpoints.has(e.ep);
+          const methodOk = Array.from(e.methods).some(m => filterState.methods.has(String(m||'').toUpperCase()));
+          const shortName = String(e.ep||'').replace('/api/','');
+          const cls = (active && methodOk) ? 'active' : 'inactive';
+          const durTxt = (Number(e.maxClient||0) > 100 ? '🐢 ' : '') + String(Math.round(Number(e.totalClient||0))) + 'ms';
+          return `
+            <div class="chip ${cls}" style="--chip-color:${_escapeHtml(color)}" data-ep="${_escapeHtml(e.ep)}">
+              <div class="chip-indicator"></div>
+              <div class="chip-content">
+                <span class="chip-endpoint">${_escapeHtml(shortName)}</span>
+                <span class="chip-count">${_escapeHtml(String(e.count||0))}×</span>
+                <span class="chip-dur">${_escapeHtml(durTxt)}</span>
+              </div>
+            </div>
+          `;
+        }).join('');
+        try{
+          grid.querySelectorAll('.chip').forEach((el)=>{
+            el.onclick = ()=>{
+              const ep = String(el.getAttribute('data-ep') || '');
+              if(!ep) return;
+              if(filterState.endpoints.has(ep)) filterState.endpoints.delete(ep);
+              else filterState.endpoints.add(ep);
+              update();
+            };
+          });
         }catch(e){}
       }
 
-      window.__TV_TRACE_CTX = { trace_id: trace.trace_id, action: trace.action, page: trace.page };
-
-      const spans = _traceToTemplateSpans(trace);
-      const total = (trace.dur_ms !== null && trace.dur_ms !== undefined) ? Number(trace.dur_ms) : (spans.length ? Math.max.apply(null, spans.map(s=>Number(s.cEnd||0))) : 0);
-      const uiEvents = Array.isArray(trace.ui_events) ? trace.ui_events : [];
-      const t0 = Date.parse(String(trace.started_at || ''));
-      const computeUiMarkers = ()=>{
-        if(!_tv_state.show_ui_events) return [];
-        if(!isFinite(t0)) return [];
-        return uiEvents.map(e=>Math.max(0, Date.parse(String(e.at||'')) - t0)).filter(x=>isFinite(x));
-      };
-
-      // header
-      const head = document.getElementById('tv_head');
-      if(head){
-        head.innerHTML = `<h1>Trace: ${_escapeHtml(String(trace.action || ''))}</h1>`
-          + `<div class="subtitle">${_escapeHtml(String(trace.page||''))} · ${_escapeHtml(_fmtUtcShort(trace.started_at||''))} · Trace-ID: ${_escapeHtml(String(trace.trace_id||''))}</div>`;
+      function renderFilterStats(filtered){
+        const total = Object.keys(ENDPOINTS).length;
+        const active = new Set(filtered.map(s=>String(s.ep||''))).size;
+        const totalMs = filtered.reduce((a,s)=>a + Math.max(0, Number(s.cDur||0)), 0);
+        const serverMs = filtered.reduce((a,s)=>a + Math.max(0, Number(s.sDur||0)), 0);
+        const $count = document.getElementById('filterCount');
+        const $stats = document.getElementById('filterStats');
+        if($count) $count.textContent = `${active} / ${total} Endpunkte aktiv`;
+        if($stats) $stats.innerHTML = `
+          <div class="stat"><span>Sichtbare Requests:</span> <span class="stat-value highlight">${_escapeHtml(String(filtered.length))}</span></div>
+          <div class="stat"><span>Client-Summe:</span> <span class="stat-value">${_escapeHtml(String(Math.round(totalMs)).toLocaleString('de'))}ms</span></div>
+          <div class="stat"><span>Server-Summe:</span> <span class="stat-value">${_escapeHtml(String(Math.round(serverMs)).toLocaleString('de'))}ms</span></div>
+          <div class="stat"><span>Ø pro Request:</span> <span class="stat-value">${_escapeHtml(String(filtered.length ? Math.round(totalMs/filtered.length) : 0))}ms</span></div>
+        `;
       }
 
-      const badgeTotal = document.getElementById('tv_badge_total');
-      const badgeFull = document.getElementById('tv_badge_full');
-      if(badgeTotal) badgeTotal.textContent = String(Math.round(total)) + ' ms';
+      function renderCards(filtered){
+        const el = document.getElementById('cards');
+        if(!el) return;
+        const totalClient = filtered.reduce((a,s)=>a + Math.max(0, Number(s.cDur||0)), 0);
+        const totalServer = filtered.reduce((a,s)=>a + Math.max(0, Number(s.sDur||0)), 0);
+        const bottleneck = filtered.length ? filtered.reduce((a,s)=> (Number(s.cDur||0) > Number(a.cDur||0) ? s : a), filtered[0]) : null;
+        const networkOH = totalClient - totalServer;
+        const st = String(trace.status || 'running');
+        const totalLbl = String(Math.round(Number(TOTAL||0))).toLocaleString('de') + 'ms';
+        const cards = [
+          { label:'Gesamtdauer Trace', value: totalLbl, cls:(st==='ok'?'green':'orange'), sub:'Status: ' + st },
+          { label:'Sichtbare Calls', value:String(filtered.length), cls:'blue', sub:`von ${ALL_SPANS.length} gesamt` },
+          { label:'Bottleneck', value: bottleneck ? (String(Math.round(Number(bottleneck.cDur||0))) + 'ms') : '–', cls:'orange', sub: bottleneck ? String(bottleneck.ep||'').replace('/api/','') : '–' },
+          { label:'Server-Zeit (Σ)', value:String(Math.round(totalServer))+'ms', cls:'blue', sub:`${TOTAL>0?(totalServer/TOTAL*100).toFixed(1):0}% der Trace-Zeit` },
+          { label:'Netzwerk-OH (Σ)', value:'~'+String(Math.round(networkOH))+'ms', cls:'purple', sub: filtered.length ? `Ø ${Math.round(networkOH/filtered.length)}ms` : '–' },
+          { label:'Client-Zeit (Σ)', value:String(Math.round(totalClient))+'ms', cls:'orange', sub: filtered.length ? `Ø ${Math.round(totalClient/filtered.length)}ms` : '–' },
+        ];
+        el.innerHTML = cards.map(c=>`<div class="card"><div class="label">${_escapeHtml(c.label)}</div><div class="value ${_escapeHtml(c.cls)}">${_escapeHtml(c.value)}</div><div class="sub">${_escapeHtml(c.sub)}</div></div>`).join('');
+      }
 
-      _renderLegend();
+      function _computePhases(filtered){
+        const xs = filtered.slice().sort((a,b)=>Number(a.cStart||0) - Number(b.cStart||0));
+        if(!xs.length) return [];
+        const gapMs = 250;
+        const bursts = [];
+        let cur = { start:Number(xs[0].cStart||0), end:Number(xs[0].cEnd||0) };
+        for(let i=1;i<xs.length;i+=1){
+          const s = xs[i];
+          const start = Number(s.cStart||0);
+          const end = Number(s.cEnd||0);
+          if(start - cur.end > gapMs){
+            bursts.push(cur);
+            cur = { start, end };
+          }else{
+            cur.end = Math.max(cur.end, end);
+          }
+        }
+        bursts.push(cur);
+        const phases = [];
+        for(let i=0;i<Math.min(3, bursts.length);i+=1){
+          const b = bursts[i];
+          const ms = Math.max(0, Math.round(b.end - b.start));
+          const cls = (i===0) ? 'p1' : (i===1 ? 'p3' : 'p4');
+          const color = (i===0) ? '#2563eb' : (i===1 ? '#16a34a' : '#9333ea');
+          phases.push({ label: (i===0 ? 'Phase 1+2: Requests' : ('Phase ' + (i+2) + ': Requests')), ms, cls, color });
+          const next = bursts[i+1];
+          if(next){
+            const pauseMs = Math.max(0, Math.round(next.start - b.end));
+            phases.push({ label: 'Pause ' + (i+1) + ' (Client)', ms: pauseMs, cls: (i===0?'pause1':'pause2'), color:'#21262d' });
+          }
+        }
+        return phases.filter(p=>p.ms > 0);
+      }
 
-      const full = document.getElementById('tv_waterfallFull');
-      const btnUi = document.getElementById('tv_toggle_ui');
-      const btnReset = document.getElementById('tv_zoom_reset');
-      const cbEpOn = document.getElementById('tv_ep_filter_on');
-      const selEp = document.getElementById('tv_ep_select');
-      const badgeFiltered = document.getElementById('tv_ep_filtered_badge');
+      function renderPhaseBar(filtered){
+        const badgeTotal = document.getElementById('badgeTotal');
+        const box = document.getElementById('phaseBar');
+        if(badgeTotal) badgeTotal.textContent = String(Math.round(Number(TOTAL||0))).toLocaleString('de') + ' ms';
+        if(!box) return;
+        const phases = _computePhases(filtered);
+        const t = Math.max(1, Number(TOTAL||0) || 1);
+        box.innerHTML = `
+          <div class="phase-bar">${phases.map(p=>{
+            const pct = (p.ms / t * 100);
+            const showLabel = pct > 8;
+            return `<div class="seg ${p.cls}" style="width:${pct}%">${showLabel ? (p.ms + 'ms') : ''}</div>`;
+          }).join('')}</div>
+          <div class="phase-labels">${phases.map(p=>`<div class="phase-label"><div class="phase-dot" style="background:${p.color}"></div>${_escapeHtml(p.label)} (${p.ms}ms · ${(p.ms/t*100).toFixed(1)}%)</div>`).join('')}</div>
+        `;
+      }
 
-      const syncEndpointSelect = ()=>{
-        if(!selEp) return;
-        const eps = _uniqueApiEndpoints(spans);
-        const disabled = new Set((Array.isArray(_tv_state.ep_disabled_eps) ? _tv_state.ep_disabled_eps : []).map(x=>String(x||'')));
-        selEp.innerHTML = '';
-        eps.forEach((ep)=>{
-          const opt = document.createElement('option');
-          opt.value = ep;
-          // Selected == disabled (so selection means "deactivate")
-          opt.selected = disabled.has(ep);
-          opt.textContent = ep;
-          selEp.appendChild(opt);
+      function renderLegend(){
+        const el = document.getElementById('legend');
+        if(!el) return;
+        el.innerHTML = `
+          <div class="legend-item"><div class="legend-swatch" style="background:var(--network-out)"></div>Request (Netzwerk →)</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:var(--server)"></div>Server-Verarbeitung</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:var(--server-slow)"></div>Server (langsam >100ms)</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:var(--network-in)"></div>Response (Netzwerk ←)</div>
+        `;
+      }
+
+      function _waterfallBarWidth(container){
+        try{
+          const tv = root.querySelector('.tv');
+          const labelW = tv ? parseFloat(getComputedStyle(tv).getPropertyValue('--wf-label-w')) : 280;
+          return Math.max(600, (container.clientWidth || 900) - (labelW || 280) - 40);
+        }catch(e){
+          return 600;
+        }
+      }
+
+      function _hideTT(){
+        const ttEl = document.getElementById('tooltip');
+        if(!ttEl) return;
+        ttEl.classList.remove('show');
+      }
+
+      function _showTT(ev, el){
+        const ttEl = document.getElementById('tooltip');
+        if(!ttEl) return;
+        let s;
+        try{ s = JSON.parse(String(el.getAttribute('data-span') || '{}')); }catch(e){ s = {}; }
+        const netOut = ((Number(s.sEnd||0) - Number(s.sDur||0)) - Number(s.cStart||0));
+        const netIn = (Number(s.cDur||0) - netOut - Number(s.sDur||0));
+        const help = String(s.help || _epHelp(s.ep || '') || '(unbekannt)');
+        ttEl.innerHTML = `
+          <div class="tt-title">${_escapeHtml(String(s.m||''))} ${_escapeHtml(String(s.ep||''))}</div>
+          <div class="tt-row"><span class="k">Span ID</span><span class="v">${_escapeHtml(String(s.id||''))}</span></div>
+          <div class="tt-row"><span class="k">Client-Start</span><span class="v">T+${Number(s.cStart||0).toFixed(1)}ms</span></div>
+          <div class="tt-row"><span class="k">Client-Ende</span><span class="v">T+${Number(s.cEnd||0).toFixed(1)}ms</span></div>
+          <div class="tt-row"><span class="k">Client-Dauer</span><span class="v" style="color:var(--accent)">${Math.round(Number(s.cDur||0))}ms</span></div>
+          <hr style="border-color:var(--border);margin:6px 0">
+          <div class="tt-row"><span class="k">Netzwerk →</span><span class="v">${netOut.toFixed(1)}ms</span></div>
+          <div class="tt-row"><span class="k">Server</span><span class="v" style="color:${Number(s.sDur||0)>100?'var(--orange)':'var(--green)'}">${Math.round(Number(s.sDur||0))}ms</span></div>
+          <div class="tt-row"><span class="k">Netzwerk ←</span><span class="v">${netIn.toFixed(1)}ms</span></div>
+          <hr style="border-color:var(--border);margin:6px 0">
+          <div class="tt-row"><span class="k">Erklaerung</span><span class="v" style="max-width:220px; text-align:right;">${_escapeHtml(help)}</span></div>
+        `;
+        ttEl.classList.add('show');
+        const r = el.getBoundingClientRect();
+        ttEl.style.left = Math.min((ev && ev.clientX ? ev.clientX : r.left) + 12, window.innerWidth - 420) + 'px';
+        ttEl.style.top = (r.bottom + 8) + 'px';
+      }
+
+      function renderWaterfall(container, spanList, timelineEnd){
+        const barWidth = _waterfallBarWidth(container);
+        const scale = barWidth / Math.max(1, timelineEnd || 1);
+
+        // Timeline ticks
+        const tickCount = 8;
+        let ticksHtml = '';
+        for(let i=0;i<=tickCount;i+=1){
+          const ms = Math.round((timelineEnd / tickCount) * i);
+          const x = ms * scale;
+          ticksHtml += `<div class="tick" style="left:${x}px">${ms >= 1000 ? (ms/1000).toFixed(1)+'s' : ms+'ms'}</div>`;
+        }
+        let html = `<div class="timeline-header"><div class="wf-label" style="font-size:11px;color:var(--text3)">Endpoint</div><div class="timeline-ticks" style="min-width:${barWidth}px">${ticksHtml}</div></div>`;
+
+        spanList.forEach((s, i)=>{
+          const cStart = Number(s.cStart || 0) * scale;
+          const totalW = Number(s.cDur || 0) * scale;
+          const sStartInSpan = Number(s.sEnd || 0) - Number(s.sDur || 0) - Number(s.cStart || 0);
+          const netOut = Math.max(0, sStartInSpan);
+          const serverDur = Math.max(0, Number(s.sDur || 0));
+          const netIn = Math.max(0, Number(s.cDur || 0) - netOut - serverDur);
+
+          const netOutW = Math.max(0.5, netOut * scale);
+          const serverW = Math.max(serverDur > 0 ? 1 : 0, serverDur * scale);
+          const netInW = Math.max(0.5, Math.max(0, totalW - netOutW - serverW));
+          const isSlow = serverDur > 100;
+          const ep = String(s.ep || '');
+          const help = _epHelp(ep);
+          _logMissingEndpointOnce(ep, { trace_id: trace.trace_id, action: trace.action, page: trace.page });
+
+          const spanData = {
+            id: s.id, m: s.m, ep: ep, help: help,
+            cStart: Number(s.cStart||0), cEnd: Number(s.cEnd||0), cDur: Number(s.cDur||0),
+            sEnd: Number(s.sEnd||0), sDur: Number(s.sDur||0)
+          };
+
+          html += `
+            <div class="waterfall-row" data-idx="${i}">
+              <div class="wf-label">
+                <span class="idx">${_escapeHtml(String(s.id || ''))}</span>
+                <span class="method ${(String(s.m||'').toLowerCase()==='get')?'get':'post'}">${_escapeHtml(String(s.m||''))}</span>
+                <span class="endpoint" title="${_escapeHtml(ep)}">${_escapeHtml(ep)}</span>
+              </div>
+              <div class="wf-bar-area" style="min-width:${barWidth}px">
+                <div class="wf-bar-wrap" style="left:${cStart}px;width:${Math.max(3,totalW)}px" data-span='${_escapeHtml(JSON.stringify(spanData))}'>
+                  <div class="wf-seg net-out" style="width:${netOutW}px"></div>
+                  <div class="wf-seg server ${isSlow?'slow':''}" style="width:${serverW}px"></div>
+                  <div class="wf-seg net-in" style="width:${netInW}px"></div>
+                </div>
+                <div class="wf-dur" style="left:${cStart + totalW + 6}px; display:${(totalW > 30)?'none':'block'};">${Math.round(Number(s.cDur||0))}ms</div>
+              </div>
+            </div>
+          `;
         });
-        selEp.disabled = !_tv_state.ep_filter_on;
 
-        if(badgeFiltered){
-          const active = _tv_state.ep_filter_on && disabled.size > 0;
-          badgeFiltered.style.display = active ? 'inline-flex' : 'none';
-          if(active) badgeFiltered.textContent = 'Gefiltert: ' + String(disabled.size) + ' deaktiviert';
-        }
-      };
-
-      const refreshViews = ()=>{
-        const uiMarkers = computeUiMarkers();
-        const spansF = _applyEndpointFilter(spans);
-
-        if(badgeFull){
-          badgeFull.textContent = _tv_state.ep_filter_on ? (String(spansF.length) + '/' + String(spans.length) + ' Requests') : ('alle ' + String(spans.length) + ' Requests');
-        }
-
-        if(btnUi) btnUi.textContent = _tv_state.show_ui_events ? 'UI-Events: an' : 'UI-Events: aus';
-        syncEndpointSelect();
-
-        _renderCards(trace, spans, total);
-        _renderPhaseBar(total, spans);
-
-        if(full){
-          _renderWaterfall(full, spansF, total, uiMarkers, true);
-          _attachResizer(tvRoot, refreshViews);
-          _attachZoomSelect(full, tvRoot, total, spans, uiMarkers);
-        }
-
-        _renderZoom(total, spans, uiMarkers);
-        _renderStats(spans);
-      };
-
-      if(cbEpOn){
-        cbEpOn.checked = !!_tv_state.ep_filter_on;
-        cbEpOn.onchange = ()=>{
-          _tv_state.ep_filter_on = !!cbEpOn.checked;
-          _saveTvPrefs();
-          refreshViews();
-        };
+        container.innerHTML = html;
+        try{
+          container.querySelectorAll('.wf-bar-wrap').forEach((el)=>{
+            el.addEventListener('mouseenter', (ev)=>_showTT(ev, el));
+            el.addEventListener('mouseleave', ()=>_hideTT());
+          });
+        }catch(e){}
       }
 
-      if(selEp){
-        selEp.onchange = ()=>{
-          try{
-            const disabled = Array.from(selEp.options).filter(o=>o.selected).map(o=>String(o.value||'')).filter(Boolean);
-            _tv_state.ep_disabled_eps = disabled;
-            _saveTvPrefs();
-          }catch(e){}
-          refreshViews();
-        };
+      function renderStats(filtered){
+        const el = document.getElementById('statsGrid');
+        const badge = document.getElementById('badgeStats');
+        if(!el) return;
+        const epGroups = {};
+        filtered.forEach(s=>{
+          const key = String(s.ep || '');
+          if(!epGroups[key]) epGroups[key] = { ep: key, calls: [], totalClient: 0, totalServer: 0, maxClient: 0 };
+          epGroups[key].calls.push(s);
+          epGroups[key].totalClient += Number(s.cDur||0);
+          epGroups[key].totalServer += Number(s.sDur||0);
+          epGroups[key].maxClient = Math.max(epGroups[key].maxClient, Number(s.cDur||0));
+        });
+        const vals = Object.values(epGroups);
+        if(badge) badge.textContent = String(vals.length) + ' Endpunkte';
+        const maxMs = vals.length ? Math.max.apply(null, vals.map(g=>g.maxClient)) : 1;
+        el.innerHTML = vals.sort((a,b)=>b.totalClient - a.totalClient).map(g=>{
+          const pct = (g.maxClient / Math.max(1, maxMs) * 100).toFixed(0);
+          const color = g.maxClient > 100 ? 'var(--orange)' : 'var(--accent)';
+          return `<div class="stat-card">
+            <div class="ep"><span title="${_escapeHtml(g.ep)}">${_escapeHtml(g.ep.replace('/api/',''))}</span><span class="count">${g.calls.length}×</span></div>
+            <div class="bar-bg"><div class="bar-fill" style="width:${pct}%;background:${color}"></div></div>
+            <div class="meta"><span>Max: ${Math.round(g.maxClient)}ms</span><span>Server Σ: ${Math.round(g.totalServer)}ms</span><span>Client Σ: ${Math.round(g.totalClient)}ms</span></div>
+          </div>`;
+        }).join('');
       }
 
-      if(btnUi){
-        btnUi.onclick = ()=>{
-          _tv_state.show_ui_events = !_tv_state.show_ui_events;
-          refreshViews();
-        };
+      function updateBadges(filtered, zoomFiltered){
+        const $full = document.getElementById('badgeFull');
+        const $zoom = document.getElementById('badgeZoom');
+        if($full) $full.textContent = String(filtered.length) + ' Requests';
+        if($zoom) $zoom.textContent = '0 – ' + String(Math.min(600, Math.round(Number(TOTAL||0)))) + ' ms';
       }
 
-      if(btnReset){
-        btnReset.onclick = ()=>{
-          _tv_state.zoom_start = 0;
-          _tv_state.zoom_end = Math.min(600, Math.round(total||0));
-          refreshViews();
-          try{
-            const sel = full ? full.querySelector('#tv_zoom_sel') : null;
-            if(sel) sel.style.display = 'none';
-          }catch(e){}
-        };
+      function update(){
+        const filtered = getFilteredSpans();
+        const zoomMax = Math.min(600, Math.round(Number(TOTAL||0)));
+        const zoomFiltered = filtered.filter(s => Number(s.cStart||0) < zoomMax);
+        renderChips();
+        renderFilterStats(filtered);
+        renderCards(filtered);
+        renderPhaseBar(filtered);
+        renderLegend();
+        updateBadges(filtered, zoomFiltered);
+        const wfFull = document.getElementById('waterfallFull');
+        const wfZoom = document.getElementById('waterfallZoom');
+        if(wfFull) renderWaterfall(wfFull, filtered, Math.max(1, Number(TOTAL||0)));
+        if(wfZoom) renderWaterfall(wfZoom, zoomFiltered, Math.max(1, zoomMax));
+        renderStats(filtered);
       }
 
-      refreshViews();
+      update();
     }
 
     async function load(){

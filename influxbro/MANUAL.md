@@ -571,10 +571,9 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Neu: Im Dashboard wird die aktuelle `trace_id` zentral angezeigt (Caching: Statuspanel `dashboard_caching.panel_status`, Analyse: unterhalb der Progress-Zeile) und kann dort per Copy-Button kopiert werden. Die Checklisten-Zeilen selbst bleiben dadurch kompakter.
 - Neuer Menuepunkt `Performanceanalyse`: zeigt den persistierten Action/Trace-Log (Limit/Filter), erlaubt Drilldown in Details und rendert den selektierten Trace zusaetzlich als Diagramm (Waterfall).
   - Links: Trace-Liste mit Start/Ende/Dauer, Seite, Ausloeser (Klartext + technische ID), Status und Counts.
-  - Rechts: JSON-Details (scrollbar/resizable) plus Copy-Buttons (Zwischenablage, TraceID).
-  - Diagramm: vollstaendige Analyseansicht (Zeitleiste, Waterfall Vollansicht/Zoom, Endpoint-Statistiken, Tooltip) basierend auf den Trace-Spans; Zoom per Markierung in der Vollansicht.
-  - Diagramm: Optionaler Endpoint-Filter (Toggle + Dropdown) listet alle im aktuellen Trace sichtbaren `/api/...` Endpoints. Du kannst einzelne Endpoints deaktivieren; die Auswahl wird gespeichert. Wenn gefiltert wird, erscheint ein gut sichtbarer Hinweis "Gefiltert".
-  - Layout: Vertikaler Splitter trennt Trace-Liste/Details (oben) und Diagramm (unten); Hoehe wird gespeichert.
+  - Rechts: JSON-Details (scrollbar) plus Copy-Buttons (Zwischenablage, TraceID).
+  - Diagramm: Demo-Layout (Endpoint-Chips + Method-Filter GET/POST + Aktionen) sowie Cards, Zeitleiste, Waterfall Vollansicht + Zoom (0-600ms), Endpoint-Statistiken und Tooltip, jeweils basierend auf den Realwerten des selektierten Traces.
+  - Layout: Vertikaler Splitter trennt Trace-Liste/Details (oben) und Diagramm (unten); Hoehe wird gespeichert. Die Seite darf vertikal scrollen (Diagramm wird komplett angezeigt).
 - Tipp: Im Dashboard-Dialog "Gefiltertes Logging" gibt es einen Button "Performance Analyse", der direkt mit der zuletzt bekannten `trace_id` in diese Seite springt.
 - Mit aktivem `superpicker` wird jetzt das direkt gehoverte Unterelement bevorzugt erfasst; dadurch lassen sich auch Elemente innerhalb eines groesseren `data-ui`-Containers gezielter identifizieren.
 - Der `S-Picker` prueft im Super-Modus wieder zuerst das direkt getroffene Element wie in den frueheren Dashboard-Versionen; dadurch lassen sich auch feinere Unterelemente wieder zuverlaessig selektieren.
