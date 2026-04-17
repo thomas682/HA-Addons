@@ -97,6 +97,126 @@
     /* Prevent the diagram section root from becoming a scroll container */
     details[data-ui="perf_page.diagram.section_root"] { overflow: visible; }
 
+    /* Tabs inside the diagram section */
+    .perf_tabs { display:flex; gap:8px; flex-wrap:wrap; }
+    .perf_tab {
+      height: 34px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid #ddd;
+      background: #fff;
+      font-size: 12px;
+      font-weight: 700;
+      opacity: 0.9;
+    }
+    .perf_tab:hover { border-color: #bbb; opacity: 1; }
+    .perf_tab.active { background: #0b0b0c; border-color:#0b0b0c; color:#fff; opacity: 1; }
+
+    /* Correlation tab (scoped) */
+    .corr_wrap { padding: 0; }
+    .corr_wrap .corr_view {
+      --bg:#0d1117;--bg2:#161b22;--bg3:#21262d;--bg4:#292e36;
+      --border:#30363d;--border-h:#484f58;--text:#e6edf3;--text2:#8b949e;--text3:#6e7681;
+      --accent:#58a6ff;--green:#3fb950;--orange:#d29922;--red:#f85149;--purple:#bc8cff;--pink:#f778ba;--cyan:#39d2c0;--yellow:#e3b341;
+      --nout:#1f4a7a;--nin:#1a3d5c;--srv:#58a6ff;--srv-slow:#d29922;
+      --r:10px;--rs:6px;--tr:0.2s cubic-bezier(.4,0,.2,1);
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter','SF Pro Display',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+      font-size: 13px;
+      padding: 20px 24px 60px;
+      border-radius: 12px;
+    }
+    .corr_wrap .corr_view .mono { font-family:'SF Mono','Cascadia Code','Fira Code',ui-monospace,monospace; }
+    .corr_wrap .corr_view h1 { font-size:22px;font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:10px }
+    .corr_wrap .corr_view h1 .dot { width:10px;height:10px;border-radius:50%;background:var(--orange);animation: corrPulse 2s infinite }
+    @keyframes corrPulse{0%,100%{opacity:1}50%{opacity:.4}}
+    .corr_wrap .corr_view .subtitle { color:var(--text2);font-size:13px;margin-bottom:24px }
+    .corr_wrap .corr_view h2 { font-size:15px;font-weight:600;margin:28px 0 12px;display:flex;align-items:center;gap:8px }
+    .corr_wrap .corr_view .badge { font-size:11px;background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:2px 10px;color:var(--text2);font-weight:400 }
+
+    .corr_wrap .corr_view .dep-graph{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:24px;margin-bottom:20px;overflow-x:auto}
+    .corr_wrap .corr_view .dep-svg{width:100%;min-width:900px}
+
+    .corr_wrap .corr_view .corr-table-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:20px;overflow-x:auto}
+    .corr_wrap .corr_view table.corr{width:100%;border-collapse:collapse;font-size:12px}
+    .corr_wrap .corr_view table.corr th{text-align:left;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;padding:8px 10px;border-bottom:2px solid var(--border);white-space:nowrap}
+    .corr_wrap .corr_view table.corr td{padding:8px 10px;border-bottom:1px solid rgba(48,54,61,.4);vertical-align:middle}
+    .corr_wrap .corr_view table.corr tr:hover td{background:rgba(88,166,255,.03)}
+    .corr_wrap .corr_view .ep-tag{display:inline-flex;align-items:center;gap:5px;background:var(--bg3);border-radius:4px;padding:2px 8px;font-size:11px}
+    .corr_wrap .corr_view .ep-tag .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+    .corr_wrap .corr_view .ep-tag .name{font-family:'SF Mono','Cascadia Code',monospace}
+    .corr_wrap .corr_view .arrow{color:var(--accent);font-weight:700;font-size:14px;margin:0 4px}
+    .corr_wrap .corr_view .gap-tag{display:inline-block;padding:1px 6px;border-radius:8px;font-size:10px;font-weight:600;font-family:'SF Mono','Cascadia Code',monospace}
+    .corr_wrap .corr_view .gap-tag.fast{background:rgba(63,185,80,.12);color:var(--green)}
+    .corr_wrap .corr_view .gap-tag.medium{background:rgba(210,153,34,.12);color:var(--orange)}
+    .corr_wrap .corr_view .gap-tag.slow{background:rgba(248,81,73,.12);color:var(--red)}
+    .corr_wrap .corr_view .type-tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600}
+    .corr_wrap .corr_view .type-tag.fanout{background:rgba(88,166,255,.12);color:var(--accent)}
+    .corr_wrap .corr_view .type-tag.causal{background:rgba(188,140,255,.12);color:var(--purple)}
+    .corr_wrap .corr_view .type-tag.timer{background:rgba(210,153,34,.12);color:var(--orange)}
+    .corr_wrap .corr_view .confidence{font-family:'SF Mono',monospace;font-weight:700}
+    .corr_wrap .corr_view .confidence.high{color:var(--green)}
+    .corr_wrap .corr_view .confidence.medium{color:var(--orange)}
+
+    .corr_wrap .corr_view .role-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px;margin-bottom:20px}
+    .corr_wrap .corr_view .role-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;transition:var(--tr)}
+    .corr_wrap .corr_view .role-card:hover{border-color:var(--border-h)}
+    .corr_wrap .corr_view .role-card .rc-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+    .corr_wrap .corr_view .role-card .rc-icon{font-size:18px}
+    .corr_wrap .corr_view .role-card .rc-ep{font-size:12px;font-weight:600;font-family:'SF Mono','Cascadia Code',monospace}
+    .corr_wrap .corr_view .role-card .rc-role{font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600;margin-left:auto}
+    .corr_wrap .corr_view .role-card .rc-desc{font-size:12px;color:var(--text2);line-height:1.5;margin-bottom:8px}
+    .corr_wrap .corr_view .role-card .rc-meta{display:flex;gap:12px;font-size:11px;color:var(--text3)}
+    .corr_wrap .corr_view .role-card .rc-meta span{display:flex;align-items:center;gap:3px}
+
+    .corr_wrap .corr_view .wf-container{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px;overflow-x:auto;margin-bottom:16px;position:relative}
+    .corr_wrap .corr_view .wf-row{display:flex;align-items:center;height:36px;border-bottom:1px solid rgba(48,54,61,.4)}
+    .corr_wrap .corr_view .wf-row:last-child{border-bottom:none}
+    .corr_wrap .corr_view .wf-row:hover{background:rgba(88,166,255,.04)}
+    .corr_wrap .corr_view .wf-lbl{min-width:290px;max-width:290px;padding-right:12px;display:flex;align-items:center;gap:6px;flex-shrink:0}
+    .corr_wrap .corr_view .wf-lbl .idx{color:var(--text3);font-size:11px;min-width:28px;text-align:right;font-family:'SF Mono',monospace}
+    .corr_wrap .corr_view .wf-lbl .method{font-size:10px;font-weight:700;padding:2px 6px;border-radius:3px;font-family:'SF Mono',monospace}
+    .corr_wrap .corr_view .wf-lbl .method.get{background:rgba(63,185,80,.12);color:var(--green)}
+    .corr_wrap .corr_view .wf-lbl .method.post{background:rgba(88,166,255,.12);color:var(--accent)}
+    .corr_wrap .corr_view .wf-lbl .epname{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:'SF Mono',monospace}
+    .corr_wrap .corr_view .wf-lbl .role-icon{font-size:10px;margin-left:2px}
+    .corr_wrap .corr_view .wf-bar-area{flex:1;position:relative;height:100%;min-width:700px}
+    .corr_wrap .corr_view .wf-bar{position:absolute;top:50%;transform:translateY(-50%);height:18px;display:flex;border-radius:4px;overflow:hidden;cursor:pointer;transition:filter .15s}
+    .corr_wrap .corr_view .wf-bar:hover{filter:brightness(1.3)}
+    .corr_wrap .corr_view .seg{height:100%}
+    .corr_wrap .corr_view .seg.no{background:var(--nout)}
+    .corr_wrap .corr_view .seg.sv{background:var(--srv)}
+    .corr_wrap .corr_view .seg.sv.slow{background:var(--srv-slow)}
+    .corr_wrap .corr_view .seg.ni{background:var(--nin)}
+    .corr_wrap .corr_view .wf-dur-label{position:absolute;top:50%;transform:translateY(-50%);font-size:10px;color:var(--text3);white-space:nowrap;font-family:'SF Mono',monospace}
+    .corr_wrap .corr_view .corr-svg{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:2;overflow:visible}
+
+    .corr_wrap .corr_view .tl-header{display:flex;height:26px;align-items:flex-end;margin-bottom:4px}
+    .corr_wrap .corr_view .tl-header .wf-lbl{font-size:11px;color:var(--text3)}
+    .corr_wrap .corr_view .tl-ticks{flex:1;position:relative;min-width:700px;height:100%}
+    .corr_wrap .corr_view .tick{position:absolute;bottom:0;font-size:10px;color:var(--text3);font-family:'SF Mono',monospace}
+    .corr_wrap .corr_view .tick::before{content:'';position:absolute;bottom:16px;left:0;width:1px;height:6px;background:var(--border)}
+
+    .corr_wrap .corr_view .legend{display:flex;gap:16px;flex-wrap:wrap;margin:12px 0}
+    .corr_wrap .corr_view .legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2)}
+    .corr_wrap .corr_view .legend-sw{width:14px;height:14px;border-radius:3px}
+
+    .corr_wrap .corr_view .tt{display:none;position:fixed;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px 16px;z-index:1000;pointer-events:none;box-shadow:0 12px 40px rgba(0,0,0,.5);max-width:420px}
+    .corr_wrap .corr_view .tt.show{display:block}
+    .corr_wrap .corr_view .tt .tt-t{font-weight:600;font-size:13px;margin-bottom:8px;color:var(--accent);font-family:'SF Mono',monospace}
+    .corr_wrap .corr_view .tt .tt-r{display:flex;justify-content:space-between;gap:16px;margin-bottom:3px}
+    .corr_wrap .corr_view .tt .tt-r .k{color:var(--text2)}
+    .corr_wrap .corr_view .tt .tt-r .v{font-weight:600;font-family:'SF Mono',monospace}
+    .corr_wrap .corr_view .tt hr{border:none;border-top:1px solid var(--border);margin:6px 0}
+
+    .corr_wrap .corr_view .toggle-row{display:flex;gap:8px;align-items:center;margin:12px 0}
+    .corr_wrap .corr_view .toggle-btn{background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:11px;padding:5px 14px;border-radius:20px;cursor:pointer;font-family:inherit;transition:var(--tr)}
+    .corr_wrap .corr_view .toggle-btn:hover{border-color:var(--accent);color:var(--accent)}
+    .corr_wrap .corr_view .toggle-btn.on{background:rgba(88,166,255,.15);border-color:var(--accent);color:var(--accent)}
+
+    @media(max-width:900px){ .corr_wrap .corr_view .wf-lbl{min-width:200px;max-width:200px} }
+
     /* Enable internal scrolling in list + detail boxes (not on the whole section) */
     details[data-ui="perf_page.section_root"] .card_body { display:flex; flex-direction:column; min-height:0; }
     details[data-ui="perf_page.section_root"] .grid2 { flex:1 1 auto; min-height:0; align-items:stretch; }
@@ -256,6 +376,7 @@
     .diag_wrap .tv .tooltip .tt-row { display:flex; justify-content:space-between; gap:16px; margin-bottom:3px; }
     .diag_wrap .tv .tooltip .tt-row .k { color:var(--text2); }
     .diag_wrap .tv .tooltip .tt-row .v { font-weight:600; }
+    .diag_wrap .tv .tooltip .tt-key { margin-top:6px; font-size:10px; color:var(--text3); text-align:right; font-family:'SF Mono','Cascadia Code',ui-monospace,monospace; }
 
     .diag_wrap .tv .stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:10px; }
     .diag_wrap .tv .stat-card { background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:12px 14px; }
@@ -361,8 +482,21 @@
         <summary><span class="ib_summary_row"><span>Diagramm</span></span></summary>
         <div class="card_body">
           <div class="muted">Grafische Zeitleiste (Waterfall) fuer den selektierten Trace.</div>
-          <div id="diagram" class="diag_wrap" style="margin-top:10px;">
-            <div class="diag_sub">Kein Trace selektiert.</div>
+          <div class="perf_tabs" role="tablist" aria-label="Diagramm Tabs" style="margin-top:10px;">
+            <button id="perf_tab_diagram" type="button" class="perf_tab active" data-tab="diagram" data-ui="perf_page.diagram.tab_diagram" title="perf_page.diagram.tab_diagram" aria-selected="true">Diagramm</button>
+            <button id="perf_tab_corr" type="button" class="perf_tab" data-tab="corr" data-ui="perf_page.diagram.tab_correlation" title="perf_page.diagram.tab_correlation" aria-selected="false">Korrelation</button>
+          </div>
+
+          <div class="perf_tab_panel" data-tab-panel="diagram">
+            <div id="diagram" class="diag_wrap" style="margin-top:10px;">
+              <div class="diag_sub">Kein Trace selektiert.</div>
+            </div>
+          </div>
+
+          <div class="perf_tab_panel" data-tab-panel="corr" style="display:none;">
+            <div id="corr" class="diag_wrap corr_wrap" style="margin-top:10px;">
+              <div class="diag_sub">Kein Trace selektiert.</div>
+            </div>
           </div>
         </div>
       </details>
@@ -1117,11 +1251,649 @@
       _renderWaterfall(zc, clipped, len, uiRel, false);
     }
 
+    // --- Correlation tab (based on demo/korrelationsdiagramm.html) ---
+    let PERF_CFG = { perf_corr_causal_gap_ms: 8, perf_corr_timer_gap_ms: 1000 };
+    let _PERF_CFG_LOADED = false;
+    async function ensurePerfCfg(){
+      if(_PERF_CFG_LOADED) return PERF_CFG;
+      try{
+        const j = await api('./api/config');
+        const c = (j && j.config) ? j.config : {};
+        const cg = Number(c.perf_corr_causal_gap_ms);
+        const tg = Number(c.perf_corr_timer_gap_ms);
+        if(isFinite(cg)) PERF_CFG.perf_corr_causal_gap_ms = Math.max(0, Math.min(200, Math.round(cg)));
+        if(isFinite(tg)) PERF_CFG.perf_corr_timer_gap_ms = Math.max(0, Math.min(200000, Math.round(tg)));
+      }catch(e){}
+      _PERF_CFG_LOADED = true;
+      return PERF_CFG;
+    }
+
+    let _corr_state = { showArrows: true, showPhases: true, isZoomed: false };
+    let _CORR_CTX = { trace: null, spans: [], total: 0, epColors: {} };
+    const _CORR_MISSING_SERVER_SEEN = new Set();
+
+    function _shortEp(ep){
+      const s = String(ep || '');
+      if(s.startsWith('/api/')) return s.slice(5);
+      return s;
+    }
+
+    function _roleForEp(ep){
+      const s = String(ep || '');
+      if(s.includes('cache/plan')) return { icon: '⚙️', role: 'Hauptlogik', cls: 'background:rgba(210,153,34,.15);color:#d29922' };
+      if(s.includes('analysis_cache/plan')) return { icon: '🔎', role: 'Folge-Query', cls: 'background:rgba(57,210,192,.15);color:#39d2c0' };
+      if(s.includes('analysis_history_event')) return { icon: '📝', role: 'Logging', cls: 'background:rgba(247,120,186,.15);color:#f778ba' };
+      if(s.includes('ui_event')) return { icon: '📈', role: 'UI-Tracking', cls: 'background:rgba(63,185,80,.15);color:#3fb950' };
+      if(s.includes('sysinfo')) return { icon: '🖥️', role: 'Polling', cls: 'background:rgba(240,136,62,.15);color:#f0883e' };
+      if(s.includes('series_oldest') || s.includes('raw_points') || s.includes('stats')) return { icon: '📊', role: 'Daten-Query', cls: 'background:rgba(88,166,255,.15);color:#58a6ff' };
+      return { icon: '🔗', role: 'Request', cls: 'background:rgba(88,166,255,.12);color:#58a6ff' };
+    }
+
+    function _renderCorrShell(root){
+      root.innerHTML = `
+        <div class="corr_view" id="corr_view">
+          <div style="margin-bottom:24px">
+            <h1><span class="dot"></span>Korrelationsanalyse: <span class="mono" id="corr_action">-</span></h1>
+            <p class="subtitle" id="corr_subtitle">-</p>
+          </div>
+
+          <h2>🏷️ Endpoint-Rollen <span class="badge" id="corr_role_badge">-</span></h2>
+          <div class="role-grid" id="corr_role_grid"></div>
+
+          <h2>🔗 Abhaengigkeitsgraph <span class="badge">Kausale Ketten</span></h2>
+          <div class="dep-graph" id="corr_dep_graph"></div>
+
+          <h2>📋 Korrelationsmatrix <span class="badge" id="corr_badge">-</span></h2>
+          <div class="corr-table-wrap" id="corr_table"></div>
+
+          <h2>📊 Waterfall mit Abhaengigkeitslinien <span class="badge" id="corr_wf_badge">-</span></h2>
+          <div class="toggle-row">
+            <button class="toggle-btn on" id="corr_tog_arrows" type="button">🔗 Korrelationslinien</button>
+            <button class="toggle-btn on" id="corr_tog_phases" type="button">🎨 Phasen-Farben</button>
+            <button class="toggle-btn" id="corr_tog_zoom" type="button">🔎 Zoom 0–600ms</button>
+          </div>
+          <div class="legend" id="corr_legend"></div>
+          <div class="wf-container" id="corr_wf" style="position:relative"></div>
+
+          <div class="tt" id="corr_tooltip"></div>
+        </div>
+      `;
+    }
+
+    function _corrGapClass(v){
+      // Accept number or strings like "12ms", "3.3s", "0–23ms".
+      let ms = null;
+      try{
+        if(typeof v === 'number') ms = v;
+        else {
+          const s = String(v || '');
+          const re = /(\d+(?:\.\d+)?)(\s*)(ms|s)?/gi;
+          let m;
+          let best = null;
+          while((m = re.exec(s))){
+            const num = parseFloat(m[1]);
+            const unit = String(m[3] || 'ms').toLowerCase();
+            if(!isFinite(num)) continue;
+            const cur = unit === 's' ? (num * 1000) : num;
+            if(best === null || cur > best) best = cur;
+          }
+          ms = (best === null) ? 0 : best;
+        }
+      }catch(e){ ms = 0; }
+      if(!isFinite(ms)) ms = 0;
+      if(ms >= PERF_CFG.perf_corr_timer_gap_ms) return 'slow';
+      if(ms >= Math.max(20, PERF_CFG.perf_corr_causal_gap_ms * 4)) return 'medium';
+      return 'fast';
+    }
+
+    function _computeCorr(trace, spans, total){
+      const xs = (Array.isArray(spans) ? spans.slice() : []).sort((a,b)=>Number(a.cStart||0) - Number(b.cStart||0));
+      xs.forEach((s, i)=>{ s._corr_i = i; });
+
+      // idle gap per request (diag value)
+      xs.forEach((s, i)=>{
+        try{
+          if(i <= 0){ s.idle_gap_ms_to_prev = null; return; }
+          const prev = xs[i-1];
+          const g = Number(s.cStart||0) - Number(prev.cEnd||0);
+          s.idle_gap_ms_to_prev = isFinite(g) ? Math.max(0, g) : null;
+        }catch(e){ s.idle_gap_ms_to_prev = null; }
+      });
+
+      const causalGap = Number(PERF_CFG.perf_corr_causal_gap_ms || 8);
+      const timerGap = Number(PERF_CFG.perf_corr_timer_gap_ms || 1000);
+      const fanoutWin = Math.max(25, causalGap * 4);
+      const minStart = xs.length ? Math.min.apply(null, xs.map(s=>Number(s.cStart||0))) : 0;
+      const fanout = xs.filter(s=>Number(s.cStart||0) <= (minStart + fanoutWin));
+      const fanoutIdx = new Set(fanout.map(s=>s._corr_i));
+
+      const edges = [];
+      for(let j = 0; j < xs.length; j += 1){
+        const cur = xs[j];
+        let best = null;
+        let bestGap = Infinity;
+        for(let i = 0; i < j; i += 1){
+          const prev = xs[i];
+          const gap = Number(cur.cStart||0) - Number(prev.cEnd||0);
+          if(!isFinite(gap) || gap < 0) continue;
+          if(gap < bestGap){ bestGap = gap; best = prev; }
+        }
+        if(best && isFinite(bestGap) && bestGap <= causalGap){
+          edges.push({ type: 'causal', from: best, to: cur, gap_ms: bestGap, conf: 'high', dash: false });
+          continue;
+        }
+        if(best && isFinite(bestGap) && bestGap >= timerGap){
+          edges.push({ type: 'timer', from: best, to: cur, gap_ms: bestGap, conf: 'medium', dash: true });
+          continue;
+        }
+
+        // Overlap heuristic: request started while another was still running
+        let overlap = null;
+        let overlapScore = -1;
+        for(let i = 0; i < j; i += 1){
+          const prev = xs[i];
+          const cs = Number(cur.cStart||0);
+          const ps = Number(prev.cStart||0);
+          const pe = Number(prev.cEnd||0);
+          if(!isFinite(cs) || !isFinite(ps) || !isFinite(pe)) continue;
+          if(cs < ps || cs > pe) continue;
+          const score = Number(prev.cDur||0);
+          if(score > overlapScore){ overlapScore = score; overlap = prev; }
+        }
+        if(overlap && overlapScore >= 50){
+          edges.push({ type: 'causal', from: overlap, to: cur, gap_ms: 0, conf: 'medium', dash: true });
+        }
+      }
+
+      return { spans: xs, fanoutIdx, edges, total: Number(total||0), trace };
+    }
+
+    function _renderDepGraph(ctx){
+      const host = document.getElementById('corr_dep_graph');
+      if(!host) return;
+      const spans = ctx.spans || [];
+      const edges = ctx.edges || [];
+      const fanoutIdx = ctx.fanoutIdx || new Set();
+
+      // Layout columns similar to demo (trigger -> fanout -> chain -> timers)
+      const triggerX = 60;
+      const col1X = 240;
+      const col2X = 480;
+      const col3X = 720;
+      const rowH = 50;
+
+      const timerGap = Number(PERF_CFG.perf_corr_timer_gap_ms || 1000);
+      const timerTargets = new Set(edges.filter(e=>e.type==='timer').map(e=>e.to._corr_i));
+      const nodes = [];
+      const trigger = { id: 'trigger', x: triggerX, y: 260, w: 150, h: 36, fill: '#d29922', label: '🖱️ Trigger' };
+      nodes.push(trigger);
+
+      let y1 = 60;
+      let y2 = 100;
+      let y3 = 120;
+      spans.forEach((s)=>{
+        const i = s._corr_i;
+        const ep = _shortEp(s.ep);
+        const base = String(ep || s.ep || '').slice(0, 22);
+        const lab = (String(s.id||'') + ' ' + base).trim();
+        const col = fanoutIdx.has(i) ? 1 : (timerTargets.has(i) ? 3 : 2);
+        const x = (col === 1) ? col1X : (col === 3 ? col3X : col2X);
+        const y = (col === 1) ? (y1) : (col === 3 ? (y3) : (y2));
+        if(col === 1) y1 += rowH;
+        else if(col === 3) y3 += rowH;
+        else y2 += rowH;
+        const fill = (ctx.epColors && ctx.epColors[s.ep]) ? String(ctx.epColors[s.ep]) : '#58a6ff';
+        nodes.push({ id: String(i), x, y, w: 190, h: 34, fill, label: lab });
+      });
+
+      const nm = {};
+      nodes.forEach(n=>{ nm[n.id] = n; });
+
+      // Derived edges
+      const svgEdges = [];
+      spans.forEach((s)=>{ if(fanoutIdx.has(s._corr_i)) svgEdges.push({ from: 'trigger', to: String(s._corr_i), color: '#58a6ff', dash: false, label: '' }); });
+      edges.forEach((e)=>{
+        const color = (e.type === 'timer') ? '#d29922' : (String(e.from && e.from.ep || '').includes('analysis') ? '#39d2c0' : '#bc8cff');
+        const label = (e.type === 'timer' && isFinite(e.gap_ms)) ? ('⏲ ' + (e.gap_ms >= 1000 ? (e.gap_ms/1000).toFixed(1) + 's' : Math.round(e.gap_ms) + 'ms')) : (e.type === 'causal' && isFinite(e.gap_ms) ? (Math.round(e.gap_ms) + 'ms') : '');
+        svgEdges.push({ from: String(e.from._corr_i), to: String(e.to._corr_i), color, dash: !!e.dash, label });
+      });
+
+      const w = 980;
+      const h = Math.max(520, Math.max.apply(null, nodes.map(n=>n.y + n.h + 40)));
+      let svg = `<svg class="dep-svg" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">`;
+      svg += `<defs>`;
+      svg += `<marker id="corr_ah" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#8b949e"/></marker>`;
+      svg += `</defs>`;
+
+      // Phase backgrounds (visual only)
+      svg += `<rect x="${col1X-20}" y="30" width="230" height="${h-80}" rx="8" fill="rgba(88,166,255,0.03)" stroke="rgba(88,166,255,0.1)" stroke-dasharray="4"/>`;
+      svg += `<text x="${col1X-15}" y="22" fill="#8b949e" font-size="10" font-family="Inter,sans-serif">Phase 1: Fan-Out</text>`;
+      svg += `<rect x="${col2X-20}" y="30" width="230" height="${h-80}" rx="8" fill="rgba(188,140,255,0.03)" stroke="rgba(188,140,255,0.1)" stroke-dasharray="4"/>`;
+      svg += `<text x="${col2X-15}" y="22" fill="#8b949e" font-size="10" font-family="Inter,sans-serif">Phase 2: Kausale Kette</text>`;
+      svg += `<rect x="${col3X-20}" y="30" width="230" height="${h-80}" rx="8" fill="rgba(210,153,34,0.03)" stroke="rgba(210,153,34,0.1)" stroke-dasharray="4"/>`;
+      svg += `<text x="${col3X-15}" y="22" fill="#8b949e" font-size="10" font-family="Inter,sans-serif">Phase 3: Timer/Pause</text>`;
+
+      // Edges
+      svgEdges.forEach(e=>{
+        const f = nm[e.from];
+        const t = nm[e.to];
+        if(!f || !t) return;
+        const x1 = f.x + f.w;
+        const y1 = f.y + f.h/2;
+        const x2 = t.x;
+        const y2 = t.y + t.h/2;
+        const dash = e.dash ? 'stroke-dasharray="6,4"' : '';
+        const cx = (x1 + x2) / 2;
+        svg += `<path d="M${x1} ${y1} C${cx} ${y1}, ${cx} ${y2}, ${x2} ${y2}" fill="none" stroke="${e.color}" stroke-width="1.5" ${dash} marker-end="url(#corr_ah)" opacity="0.6"/>`;
+        if(e.label){
+          const mx = (x1 + x2) / 2;
+          const my = (y1 + y2) / 2;
+          svg += `<text x="${mx}" y="${my-6}" fill="${e.color}" font-size="9" font-family="SF Mono,Cascadia Code,monospace" text-anchor="middle" opacity="0.85">${_escapeHtml(e.label)}</text>`;
+        }
+      });
+
+      // Nodes
+      nodes.forEach(n=>{
+        svg += `<rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="6" fill="#161b22" stroke="${n.fill}" stroke-width="1.5"/>`;
+        svg += `<text x="${n.x + n.w/2}" y="${n.y + n.h/2 + 4}" fill="${n.fill}" font-size="11" font-family="Inter,sans-serif" text-anchor="middle" font-weight="600">${_escapeHtml(n.label)}</text>`;
+      });
+
+      svg += `</svg>`;
+      host.innerHTML = svg;
+    }
+
+    function _renderCorrTable(ctx){
+      const host = document.getElementById('corr_table');
+      const badge = document.getElementById('corr_badge');
+      if(!host) return;
+
+      const spans = ctx.spans || [];
+      const edges = ctx.edges || [];
+      const fanoutIdx = ctx.fanoutIdx || new Set();
+
+      const rows = [];
+      const fanout = spans.filter(s=>fanoutIdx.has(s._corr_i));
+      if(fanout.length){
+        const starts = fanout.map(s=>Number(s.cStart||0)).filter(isFinite);
+        const a = starts.length ? Math.min.apply(null, starts) : 0;
+        const b = starts.length ? Math.max.apply(null, starts) : 0;
+        const g = Math.max(0, b - a);
+        rows.push({
+          type: 'fanout',
+          trigger: prettyAction(ctx.trace && ctx.trace.action),
+          targets: fanout,
+          gap: (fanout.length > 1) ? ('0–' + Math.round(g) + 'ms') : '0ms',
+          conf: 'high',
+          desc: 'Paralleler Start von ' + fanout.length + ' Requests',
+        });
+      }
+
+      // Group edges by (type, from)
+      const byKey = new Map();
+      edges.forEach(e=>{
+        try{
+          const k = String(e.type) + '|' + String(e.from && e.from._corr_i);
+          if(!byKey.has(k)) byKey.set(k, []);
+          byKey.get(k).push(e);
+        }catch(x){}
+      });
+      Array.from(byKey.values()).forEach(es=>{
+        if(!es.length) return;
+        const e0 = es[0];
+        const gaps = es.map(x=>Number(x.gap_ms||0)).filter(isFinite);
+        const gmin = gaps.length ? Math.min.apply(null, gaps) : 0;
+        const gmax = gaps.length ? Math.max.apply(null, gaps) : 0;
+        const gapTxt = (gmin === gmax) ? (Math.round(gmin) + 'ms') : (Math.round(gmin) + '–' + Math.round(gmax) + 'ms');
+        rows.push({
+          type: e0.type,
+          trigger: String(e0.from && e0.from.id ? e0.from.id : '') + ' ' + _shortEp(e0.from && e0.from.ep),
+          triggerEp: String(e0.from && e0.from.ep || ''),
+          targets: es.map(x=>x.to),
+          gap: (e0.type === 'timer' && gmax >= 1000) ? ((gmin/1000).toFixed(1) + '–' + (gmax/1000).toFixed(1) + 's') : gapTxt,
+          conf: e0.type === 'timer' ? 'medium' : (es.some(x=>x.conf==='medium') ? 'medium' : 'high'),
+          desc: (e0.type === 'timer') ? 'Timer / Polling / setTimeout' : 'Kausale Ausloesung (heuristisch)',
+        });
+      });
+
+      rows.sort((a,b)=>{
+        const ord = { fanout: 0, causal: 1, timer: 2 };
+        return (ord[a.type]||9) - (ord[b.type]||9);
+      });
+
+      if(badge) badge.textContent = String(rows.length) + ' Beziehungen';
+
+      let html = `<table class="corr"><thead><tr>
+        <th>Typ</th><th>Trigger</th><th></th><th>Ausloesung</th><th>Gap</th><th>Konfidenz</th><th>Beschreibung</th>
+      </tr></thead><tbody>`;
+      rows.forEach(r=>{
+        const typeLabel = { fanout:'Fan-Out', causal:'Kausal', timer:'Timer' }[r.type] || r.type;
+        const gapCls = _corrGapClass(r.gap);
+        const confLabel = (r.conf === 'high') ? '🟢 Hoch' : '🟡 Mittel';
+        const targets = (Array.isArray(r.targets) ? r.targets : []).map(t=>{
+          const ep = String(t && t.ep || '');
+          const c = (ctx.epColors && ctx.epColors[ep]) ? ctx.epColors[ep] : '#fff';
+          const name = (String(t && t.id || '') + ' ' + _shortEp(ep)).trim();
+          return `<span class="ep-tag"><span class="dot" style="background:${_escapeHtml(c)}"></span><span class="name">${_escapeHtml(name)}</span></span>`;
+        }).join(' ');
+        const gapTxt = String(r.gap || '');
+        html += `<tr>
+          <td><span class="type-tag ${_escapeHtml(String(r.type||''))}">${_escapeHtml(typeLabel)}</span></td>
+          <td><strong>${_escapeHtml(String(r.trigger||''))}</strong></td>
+          <td class="arrow">→</td>
+          <td>${targets}</td>
+          <td><span class="gap-tag ${_escapeHtml(_corrGapClass(gapTxt))}">${_escapeHtml(gapTxt)}</span></td>
+          <td><span class="confidence ${_escapeHtml(r.conf)}">${_escapeHtml(confLabel)}</span></td>
+          <td style="color:var(--text2);font-size:12px">${_escapeHtml(String(r.desc||''))}</td>
+        </tr>`;
+      });
+      html += `</tbody></table>`;
+      host.innerHTML = html;
+    }
+
+    function corrHideTT(){
+      try{ const tt = document.getElementById('corr_tooltip'); if(tt) tt.classList.remove('show'); }catch(e){}
+    }
+    function corrShowTT(ev, el){
+      try{
+        const idx = el && el.getAttribute ? Number(el.getAttribute('data-idx')) : NaN;
+        if(!isFinite(idx)) return;
+        const s = _CORR_CTX.spans && _CORR_CTX.spans[idx] ? _CORR_CTX.spans[idx] : null;
+        if(!s) return;
+        const tt = document.getElementById('corr_tooltip');
+        if(!tt) return;
+
+        let uiKey = '';
+        try{
+          const kEl = el.closest && el.closest('[data-ui], [id]');
+          if(kEl){
+            const dui = String(kEl.getAttribute('data-ui') || '').trim();
+            const id = String(kEl.getAttribute('id') || '').trim();
+            uiKey = dui || id;
+          }
+        }catch(e){ uiKey = ''; }
+        const keyHtml = uiKey ? (`<div class="tt-r"><span class="k">Key</span><span class="v">&lt;Performanceanalyse: ${_escapeHtml(uiKey)}&gt;</span></div>`) : '';
+
+        const trace = _CORR_CTX.trace || {};
+        const cStart = Number(s.cStart||0);
+        const cEnd = Number(s.cEnd||0);
+        const cDur = Number(s.cDur||0);
+        const sEnd = Number(s.sEnd||0);
+        const sDur = Number(s.sDur||0);
+        const netOut = ((sEnd - sDur) - cStart);
+        const netIn = (cDur - netOut - sDur);
+        const role = _roleForEp(s.ep);
+        const serverShare = (cDur > 0 && isFinite(sDur)) ? Math.round((Math.max(0,sDur) / cDur) * 100) : 0;
+        const idleGap = (s.idle_gap_ms_to_prev !== null && s.idle_gap_ms_to_prev !== undefined) ? Number(s.idle_gap_ms_to_prev) : null;
+        const q = String(s.query || '').trim();
+        const qLine = q ? q.split(/\r?\n/).map(x=>String(x||'').trim()).filter(Boolean)[0] : '';
+
+        tt.innerHTML = `
+          <div class="tt-t">${_escapeHtml(String(s.m||''))} ${_escapeHtml(String(s.ep||''))}</div>
+          <div class="tt-r"><span class="k">Trigger</span><span class="v">${_escapeHtml(prettyAction(trace.action))}</span></div>
+          <div class="tt-r"><span class="k">Span</span><span class="v">${_escapeHtml(String(s.id||''))}</span></div>
+          <div class="tt-r"><span class="k">Rolle</span><span class="v">${_escapeHtml(String(role.role))} ${_escapeHtml(String(role.icon))}</span></div>
+          <div class="tt-r"><span class="k">idle_gap_ms_to_prev</span><span class="v">${idleGap === null ? '–' : (Math.round(idleGap) + 'ms')}</span></div>
+          <div class="tt-r"><span class="k">server_share_pct</span><span class="v">${_escapeHtml(String(serverShare))}%</span></div>
+          <hr>
+          <div class="tt-r"><span class="k">Client-Start</span><span class="v">T+${_escapeHtml(cStart.toFixed(1))}ms</span></div>
+          <div class="tt-r"><span class="k">Client-Ende</span><span class="v">T+${_escapeHtml(cEnd.toFixed(1))}ms</span></div>
+          <div class="tt-r"><span class="k">Client-Dauer</span><span class="v" style="color:var(--accent)">${_escapeHtml(String(Math.round(cDur)))}ms</span></div>
+          <hr>
+          <div class="tt-r"><span class="k">Netzwerk →</span><span class="v">${_escapeHtml(String(Math.max(0, netOut).toFixed(1)))}ms</span></div>
+          <div class="tt-r"><span class="k">Server</span><span class="v" style="color:${sDur>100?'var(--orange)':'var(--green)'}">${_escapeHtml(String(Math.round(Math.max(0,sDur))))}ms</span></div>
+          <div class="tt-r"><span class="k">Netzwerk ←</span><span class="v">${_escapeHtml(String(Math.max(0, netIn).toFixed(1)))}ms</span></div>
+          ${qLine ? ('<hr><div class="tt-r"><span class="k">Query</span><span class="v" style="max-width:240px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + _escapeHtml(qLine) + '</span></div>') : ''}
+          ${keyHtml}
+        `;
+        tt.classList.add('show');
+        const x = ev && typeof ev.clientX === 'number' ? ev.clientX : 0;
+        const y = ev && typeof ev.clientY === 'number' ? ev.clientY : 0;
+        tt.style.left = Math.min(x + 12, window.innerWidth - 440) + 'px';
+        tt.style.top = Math.min(y + 20, window.innerHeight - 220) + 'px';
+      }catch(e){}
+    }
+
+    function _renderCorrLegend(){
+      const host = document.getElementById('corr_legend');
+      if(!host) return;
+      host.innerHTML = `
+        <div class="legend-item"><div class="legend-sw" style="background:var(--nout)"></div>Netzwerk →</div>
+        <div class="legend-item"><div class="legend-sw" style="background:var(--srv)"></div>Server</div>
+        <div class="legend-item"><div class="legend-sw" style="background:var(--srv-slow)"></div>Server >100ms</div>
+        <div class="legend-item"><div class="legend-sw" style="background:var(--nin)"></div>Netzwerk ←</div>
+        <div class="legend-item"><div class="legend-sw" style="background:#bc8cff;border-radius:0;height:2px;margin:6px 0"></div>Kausal</div>
+        <div class="legend-item"><div class="legend-sw" style="background:#d29922;border-radius:0;height:2px;margin:6px 0;border-top:2px dashed #d29922"></div>Timer/Pause</div>
+      `;
+    }
+
+    function _renderCorrelationWF(ctx){
+      const container = document.getElementById('corr_wf');
+      const badge = document.getElementById('corr_wf_badge');
+      if(!container) return;
+
+      const spans = ctx.spans || [];
+      const edges = ctx.edges || [];
+      const total = Number(ctx.total || 0);
+      const timelineEnd = _corr_state.isZoomed ? Math.min(600, Math.max(1, total)) : Math.max(1, total);
+      const spanList = _corr_state.isZoomed ? spans.filter(s=>Number(s.cStart||0) < timelineEnd) : spans;
+
+      const boxW = Math.max(800, Math.floor(container.getBoundingClientRect().width || 900));
+      const barWidth = Math.max(700, boxW - 310);
+      const scale = barWidth / timelineEnd;
+      const rowH = 36;
+
+      if(badge) badge.textContent = String(spanList.length) + ' Requests';
+
+      // Simple phase grouping (for background stripes)
+      const timerGap = Number(PERF_CFG.perf_corr_timer_gap_ms || 1000);
+      const timerTargets = new Set(edges.filter(e=>e.type==='timer').map(e=>e.to._corr_i));
+      const phases = spanList.map(s=>timerTargets.has(s._corr_i) ? 3 : 2);
+
+      // Ticks
+      const tickN = 8;
+      let ticks = '';
+      for(let i=0;i<=tickN;i++){
+        const ms = Math.round((timelineEnd / tickN) * i);
+        ticks += `<div class="tick" style="left:${ms*scale}px">${ms>=1000?(ms/1000).toFixed(1)+'s':ms+'ms'}</div>`;
+      }
+      let html = `<div class="tl-header"><div class="wf-lbl" style="font-size:11px;color:var(--text3)">Endpoint</div><div class="tl-ticks" style="min-width:${barWidth}px">${ticks}</div></div>`;
+
+      // Phase backgrounds
+      html += `<div style="position:relative">`;
+      if(_corr_state.showPhases){
+        let start = 0;
+        for(let i = 1; i <= phases.length; i += 1){
+          if(i === phases.length || phases[i] !== phases[i-1]){
+            const top = start * rowH;
+            const height = (i - start) * rowH;
+            const ph = phases[i-1];
+            const bg = (ph === 3) ? 'rgba(210,153,34,.06)' : 'rgba(188,140,255,.06)';
+            const bd = (ph === 3) ? 'rgba(210,153,34,.2)' : 'rgba(188,140,255,.2)';
+            html += `<div style="position:absolute;top:${top}px;left:0;right:0;height:${height}px;background:${bg};border-left:3px solid ${bd};pointer-events:none;z-index:0;border-radius:4px"></div>`;
+            start = i;
+          }
+        }
+      }
+
+      // Rows
+      spanList.forEach((s, rowIdx)=>{
+        const cS = Number(s.cStart||0) * scale;
+        const tW = Math.max(3, Number(s.cDur||0) * scale);
+        const netOut = Math.max(0, ((Number(s.sEnd||0) - Number(s.sDur||0)) - Number(s.cStart||0)));
+        const nOW = Math.max(0.5, netOut * scale);
+        const sD = Math.max(0, Number(s.sDur||0));
+        const sW = Math.max(sD > 0 ? 1 : 0, sD * scale);
+        const nIW = Math.max(0.5, Math.max(0, tW - nOW - sW));
+        const isSlow = sD > 100;
+        const col = (ctx.epColors && ctx.epColors[s.ep]) ? ctx.epColors[s.ep] : '#fff';
+        const role = _roleForEp(s.ep);
+        html += `<div class="wf-row" style="position:relative;z-index:1">
+          <div class="wf-lbl">
+            <span class="idx">${_escapeHtml(String(s.id||''))}</span>
+            <span class="method ${_escapeHtml(String(s.m||'').toLowerCase())}">${_escapeHtml(String(s.m||''))}</span>
+            <span class="epname" style="color:${_escapeHtml(String(col))}" title="${_escapeHtml(String(s.ep||''))}">${_escapeHtml(String(s.ep||''))}</span>
+            <span class="role-icon">${_escapeHtml(String(role.icon||''))}</span>
+          </div>
+          <div class="wf-bar-area" style="min-width:${barWidth}px">
+            <div class="wf-bar" style="left:${cS}px;width:${tW}px" data-idx="${_escapeHtml(String(s._corr_i))}" onmouseenter="corrShowTT(event,this)" onmouseleave="corrHideTT()">
+              <div class="seg no" style="width:${nOW}px"></div>
+              <div class="seg sv ${isSlow?'slow':''}" style="width:${sW}px"></div>
+              <div class="seg ni" style="width:${nIW}px"></div>
+            </div>
+          </div>
+        </div>`;
+      });
+
+      // SVG overlay for correlation arrows
+      if(_corr_state.showArrows){
+        const svgH = spanList.length * rowH + 30;
+        let svgStr = `<svg class="corr-svg" style="height:${svgH}px" viewBox="0 0 ${barWidth+320} ${svgH}" preserveAspectRatio="none">`;
+        svgStr += `<defs>`;
+        ['#bc8cff','#39d2c0','#d29922','#58a6ff'].forEach(c=>{ svgStr += `<marker id="corr_mar${c.slice(1)}" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="${c}"/></marker>`; });
+        svgStr += `</defs>`;
+
+        // Row map (for zoom)
+        const rowMap = {};
+        spanList.forEach((s,i)=>{ rowMap[s._corr_i] = i; });
+
+        edges.forEach((a)=>{
+          try{
+            if(!(a.from._corr_i in rowMap) || !(a.to._corr_i in rowMap)) return;
+            const fr = rowMap[a.from._corr_i];
+            const tr = rowMap[a.to._corr_i];
+            const fromSpan = a.from;
+            const toSpan = a.to;
+            const x1 = Math.min((Number(fromSpan.cEnd||0) * scale) + 290, barWidth + 280);
+            const y1 = fr * rowH + rowH/2 + 28;
+            const x2 = (Number(toSpan.cStart||0) * scale) + 290;
+            const y2 = tr * rowH + rowH/2 + 28;
+            const dash = a.dash ? 'stroke-dasharray="6,3"' : '';
+            const mid = (x1 + x2) / 2;
+            const color = (a.type === 'timer') ? '#d29922' : (String(a.from.ep||'').includes('analysis') ? '#39d2c0' : '#bc8cff');
+            svgStr += `<path d="M${x1} ${y1} C${mid} ${y1}, ${mid} ${y2}, ${x2} ${y2}" fill="none" stroke="${color}" stroke-width="1.5" ${dash} marker-end="url(#corr_mar${color.slice(1)})" opacity="0.5"/>`;
+          }catch(e){}
+        });
+        svgStr += `</svg>`;
+        html += svgStr;
+      }
+
+      html += `</div>`;
+      container.innerHTML = html;
+    }
+
+    function renderCorrelation(trace, spans, total, epColors){
+      const root = document.getElementById('corr');
+      if(!root) return;
+      if(!trace || !trace.trace_id){
+        root.innerHTML = '<div class="diag_sub">Kein Trace selektiert.</div>';
+        return;
+      }
+
+      if(!root.querySelector || !root.querySelector('#corr_view')) _renderCorrShell(root);
+
+      const ctx = _computeCorr(trace, spans, total);
+      ctx.epColors = epColors || {};
+      _CORR_CTX = { trace, spans: ctx.spans, total: ctx.total, epColors: ctx.epColors };
+
+      // Missing server spans (helps diagnose correlation gaps)
+      try{
+        ctx.spans.forEach(s=>{
+          const ep = String(s && s.ep || '');
+          if(!ep || !ep.startsWith('/api/')) return;
+          const sid = String(s && s.span_id || '');
+          if(!sid) return;
+          const hasServer = Number(s && s.sDur || 0) > 0;
+          if(hasServer) return;
+          const key = ep + '|' + sid;
+          if(_CORR_MISSING_SERVER_SEEN.has(key)) return;
+          _CORR_MISSING_SERVER_SEEN.add(key);
+          _clientLog('perf.corr.missing_server_span', { trace_id: String(trace.trace_id||''), endpoint: ep, span_id: sid });
+        });
+      }catch(e){}
+
+      // Header
+      try{
+        const $a = document.getElementById('corr_action');
+        const $s = document.getElementById('corr_subtitle');
+        if($a) $a.textContent = String(prettyAction(trace.action) || '-');
+        if($s) $s.textContent = 'Kausale Ketten und Abhaengigkeiten zwischen ' + String(ctx.spans.length) + ' Requests · Trace-ID: ' + String(trace.trace_id || '');
+      }catch(e){}
+
+      // Roles
+      try{
+        const byEp = {};
+        ctx.spans.forEach(s=>{
+          const ep = String(s.ep||'');
+          if(!ep) return;
+          if(!byEp[ep]) byEp[ep] = { ep, calls:0, totalMs:0, serverMs:0, maxServer:0 };
+          byEp[ep].calls += 1;
+          byEp[ep].totalMs += Math.max(0, Number(s.cDur||0));
+          byEp[ep].serverMs += Math.max(0, Number(s.sDur||0));
+          byEp[ep].maxServer = Math.max(byEp[ep].maxServer, Math.max(0, Number(s.sDur||0)));
+        });
+        const eps = Object.values(byEp).sort((a,b)=>b.serverMs - a.serverMs);
+        const $badge = document.getElementById('corr_role_badge');
+        const $grid = document.getElementById('corr_role_grid');
+        if($badge) $badge.textContent = String(eps.length) + ' Endpunkte klassifiziert';
+        if($grid){
+          $grid.innerHTML = eps.map(r=>{
+            const role = _roleForEp(r.ep);
+            const col = (ctx.epColors && ctx.epColors[r.ep]) ? ctx.epColors[r.ep] : '#fff';
+            const bottleneck = (r.serverMs >= Math.max(1, eps[0] ? eps[0].serverMs : 0) * 0.8) && (r.serverMs >= 100);
+            const desc = bottleneck ? 'Bottleneck-Kandidat: hoher Server-Anteil innerhalb des Trace.' : 'Aggregierte Zeiten fuer diesen Endpoint (Client vs Server).';
+            return `
+              <div class="role-card">
+                <div class="rc-head">
+                  <span class="rc-icon">${_escapeHtml(String(role.icon))}</span>
+                  <span class="rc-ep" style="color:${_escapeHtml(String(col))}">${_escapeHtml(_shortEp(r.ep))}</span>
+                  <span class="rc-role" style="${_escapeHtml(String(role.cls))}">${_escapeHtml(String(role.role))}</span>
+                </div>
+                <div class="rc-desc">${_escapeHtml(desc)}</div>
+                <div class="rc-meta">
+                  <span>📞 ${_escapeHtml(String(r.calls))}×</span>
+                  <span>⏱ ${_escapeHtml(String(Math.round(r.totalMs)))}ms</span>
+                  <span>⚙️ ${_escapeHtml(String(Math.round(r.serverMs)))}ms</span>
+                </div>
+              </div>
+            `;
+          }).join('');
+        }
+      }catch(e){}
+
+      _renderDepGraph(ctx);
+      _renderCorrTable(ctx);
+      _renderCorrLegend();
+      _renderCorrelationWF(ctx);
+
+      // Toggle bindings (once)
+      try{
+        const $a = document.getElementById('corr_tog_arrows');
+        const $p = document.getElementById('corr_tog_phases');
+        const $z = document.getElementById('corr_tog_zoom');
+        if($a && !$a.dataset.bound){
+          $a.dataset.bound = '1';
+          $a.addEventListener('click', ()=>{ _corr_state.showArrows = !_corr_state.showArrows; $a.classList.toggle('on', _corr_state.showArrows); _renderCorrelationWF(ctx); });
+        }
+        if($p && !$p.dataset.bound){
+          $p.dataset.bound = '1';
+          $p.addEventListener('click', ()=>{ _corr_state.showPhases = !_corr_state.showPhases; $p.classList.toggle('on', _corr_state.showPhases); _renderCorrelationWF(ctx); });
+        }
+        if($z && !$z.dataset.bound){
+          $z.dataset.bound = '1';
+          $z.addEventListener('click', ()=>{ _corr_state.isZoomed = !_corr_state.isZoomed; $z.classList.toggle('on', _corr_state.isZoomed); _renderCorrelationWF(ctx); });
+        }
+        window.removeEventListener('resize', window.__ib_corr_resize);
+        window.__ib_corr_resize = ()=>{ try{ _renderCorrelationWF(ctx); }catch(e){} };
+        window.addEventListener('resize', window.__ib_corr_resize);
+      }catch(e){}
+    }
+
     function renderDiagram(trace){
       const root = document.getElementById('diagram');
       if(!root) return;
       if(!trace || !trace.trace_id){
         root.innerHTML = '<div class="tv"><div class="app"><div class="subtitle">Kein Trace selektiert.</div></div></div>';
+        try{ const cr = document.getElementById('corr'); if(cr) cr.innerHTML = '<div class="diag_sub">Kein Trace selektiert.</div>'; }catch(e){}
         return;
       }
 
@@ -1152,6 +1924,9 @@
         }catch(e){}
       });
 
+      // Render correlation tab (best-effort); reload thresholds from settings once.
+      try{ renderCorrelation(trace, ALL_SPANS, TOTAL, {}); }catch(e){}
+
       const _traceSuffix = (tid)=>{
         const s = String(tid || '');
         if(!s) return '';
@@ -1181,6 +1956,9 @@
       Object.values(ENDPOINTS).sort((a,b)=>b.totalClient - a.totalClient).forEach((e, i)=>{
         EP_COLORS[e.ep] = palette[i % palette.length];
       });
+
+      try{ renderCorrelation(trace, ALL_SPANS, TOTAL, EP_COLORS); }catch(e){}
+      ensurePerfCfg().then(()=>{ try{ renderCorrelation(trace, ALL_SPANS, TOTAL, EP_COLORS); }catch(e){}; }).catch(()=>{});
 
       const filterState = {
         endpoints: new Set(Object.keys(ENDPOINTS)),
@@ -1386,10 +2164,22 @@
                   if(hit && hit.query) qTxt = String(hit.query);
                 }catch(e){}
                 const qHtml = qTxt ? (`<hr style="border-color:var(--border);margin:6px 0"><div class="tt-row"><span class="k">Query</span><span class="v" style="max-width:220px; text-align:right;"><span style="font-size:10px; color:var(--text2); white-space:pre-wrap;">${_escapeHtml(qTxt)}</span></span></div>`) : '';
+                let uiKey = '';
+                try{
+                  const kEl = el.closest && el.closest('[data-ui], [id]');
+                  if(kEl){
+                    const dui = String(kEl.getAttribute('data-ui') || '').trim();
+                    const id = String(kEl.getAttribute('id') || '').trim();
+                    uiKey = dui || id;
+                  }
+                }catch(e){ uiKey = ''; }
+                const keyHtml = uiKey ? (`<div class="tt-key">&lt;Performanceanalyse: ${_escapeHtml(uiKey)}&gt;</div>`) : '';
                 ttEl.innerHTML = `
                   <div class="tt-title">${_escapeHtml(ep)}</div>
+                  <div class="tt-row"><span class="k">Trigger</span><span class="v">${_escapeHtml(prettyAction(trace.action))}</span></div>
                   <div class="tt-row"><span class="k">Erklaerung</span><span class="v" style="max-width:220px; text-align:right;">${_escapeHtml(help)}</span></div>
                   ${qHtml}
+                  ${keyHtml}
                 `;
                 ttEl.classList.add('show');
                 const r = el.getBoundingClientRect();
@@ -1543,10 +2333,26 @@
         const netIn = (Number(s.cDur||0) - netOut - Number(s.sDur||0));
         const help = String(s.help || _epHelp(s.ep || '') || '(unbekannt)');
         const qTxt = String(s.query || '');
-        const qHtml = qTxt ? (`<hr style="border-color:var(--border);margin:6px 0"><div class="tt-row"><span class="k">Query</span><span class="v" style="max-width:220px; text-align:right;"><span style="font-size:10px; color:var(--text2); white-space:pre-wrap;">${_escapeHtml(qTxt)}</span></span></div>`) : '';
+        const qLine = qTxt ? (qTxt.split(/\r?\n/).map(x=>String(x||'').trim()).filter(Boolean)[0] || '') : '';
+        const qMeta = qLine ? (`<div class="tt-row"><span class="k">Query</span><span class="v" style="max-width:220px; text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${_escapeHtml(qLine)}</span></div>`) : '';
+        const qHtml = qTxt ? (`<hr style="border-color:var(--border);margin:6px 0">${qMeta}<div class="tt-row"><span class="k">Query-Lines</span><span class="v">${_escapeHtml(String(qTxt.split(/\r?\n/).length))}</span></div>`) : '';
+
+        let uiKey = '';
+        try{
+          const kEl = el.closest && el.closest('[data-ui], [id]');
+          if(kEl){
+            const dui = String(kEl.getAttribute('data-ui') || '').trim();
+            const id = String(kEl.getAttribute('id') || '').trim();
+            uiKey = dui || id;
+          }
+        }catch(e){ uiKey = ''; }
+        const keyHtml = uiKey ? (`<div class="tt-key">&lt;Performanceanalyse: ${_escapeHtml(uiKey)}&gt;</div>`) : '';
         ttEl.innerHTML = `
           <div class="tt-title">${_escapeHtml(String(s.m||''))} ${_escapeHtml(String(s.ep||''))}</div>
-          <div class="tt-row"><span class="k">Span ID</span><span class="v">${_escapeHtml(String(s.id||''))}</span></div>
+          <div class="tt-row"><span class="k">Trigger</span><span class="v">${_escapeHtml(prettyAction(trace.action))}</span></div>
+          <div class="tt-row"><span class="k">Seite</span><span class="v">${_escapeHtml(pageLabel(trace.page))}</span></div>
+          <div class="tt-row"><span class="k">Span</span><span class="v">${_escapeHtml(String(s.id||''))}</span></div>
+          ${s.span_id ? (`<div class="tt-row"><span class="k">span_id</span><span class="v" style="max-width:220px; text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${_escapeHtml(String(s.span_id||''))}</span></div>`) : ''}
           <div class="tt-row"><span class="k">Client-Start</span><span class="v">T+${Number(s.cStart||0).toFixed(1)}ms</span></div>
           <div class="tt-row"><span class="k">Client-Ende</span><span class="v">T+${Number(s.cEnd||0).toFixed(1)}ms</span></div>
           <div class="tt-row"><span class="k">Client-Dauer</span><span class="v" style="color:var(--accent)">${Math.round(Number(s.cDur||0))}ms</span></div>
@@ -1557,6 +2363,7 @@
           <hr style="border-color:var(--border);margin:6px 0">
           <div class="tt-row"><span class="k">Erklaerung</span><span class="v" style="max-width:220px; text-align:right;">${_escapeHtml(help)}</span></div>
           ${qHtml}
+          ${keyHtml}
         `;
         ttEl.classList.add('show');
         const r = el.getBoundingClientRect();
@@ -1832,6 +2639,38 @@
         await copyToClipboard(String(SELECTED_TRACE_ID));
       }catch(e){}
     });
+
+    // Diagramm/Korrelation tabs (pure UI state)
+    (function initPerfTabs(){
+      const KEY = 'ib_perf_diagram_tab_v1';
+      const $tabD = document.getElementById('perf_tab_diagram');
+      const $tabC = document.getElementById('perf_tab_corr');
+      const panels = Array.from(document.querySelectorAll('.perf_tab_panel'));
+
+      const setTab = (tab)=>{
+        const t = (tab === 'corr') ? 'corr' : 'diagram';
+        try{ localStorage.setItem(KEY, t); }catch(e){}
+        try{ if($tabD){ $tabD.classList.toggle('active', t === 'diagram'); $tabD.setAttribute('aria-selected', t === 'diagram' ? 'true' : 'false'); } }catch(e){}
+        try{ if($tabC){ $tabC.classList.toggle('active', t === 'corr'); $tabC.setAttribute('aria-selected', t === 'corr' ? 'true' : 'false'); } }catch(e){}
+        panels.forEach(p=>{
+          try{
+            const k = String(p.getAttribute('data-tab-panel') || '');
+            p.style.display = (k === t) ? '' : 'none';
+          }catch(e){}
+        });
+        // If correlation is visible, re-render once to refresh widths.
+        if(t === 'corr'){
+          setTimeout(()=>{ try{ if(_CORR_CTX && _CORR_CTX.trace) renderCorrelation(_CORR_CTX.trace, _CORR_CTX.spans, _CORR_CTX.total, _CORR_CTX.epColors); }catch(e){} }, 0);
+        }
+      };
+
+      try{ if($tabD) $tabD.addEventListener('click', ()=>setTab('diagram')); }catch(e){}
+      try{ if($tabC) $tabC.addEventListener('click', ()=>setTab('corr')); }catch(e){}
+
+      let init = 'diagram';
+      try{ init = String(localStorage.getItem(KEY) || 'diagram'); }catch(e){ init = 'diagram'; }
+      setTab(init);
+    })();
 
     document.getElementById('refresh').addEventListener('click', ()=>{ load().catch(()=>{}); });
     document.getElementById('q').addEventListener('keydown', (ev)=>{ if(ev.key === 'Enter') load().catch(()=>{}); });

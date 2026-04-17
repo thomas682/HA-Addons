@@ -654,6 +654,42 @@
                 </div>
               </div>
               <div class="param_row">
+                <div class="param_label">Picker Outline Auto<span class="param_hint">Wenn aktiv, wird die Outline-Farbe automatisch aus dem Hintergrund abgeleitet (live beim Hover). Wenn aus, wird zwischen den beiden festen Farben (heller/dunkler Hintergrund) umgeschaltet.</span></div>
+                <div class="param_control">
+                  <label class="ib_chk_row"><input type="checkbox" id="ui_picker_outline_auto" data-ui="config_settings.chk_ui_picker_outline_auto" title="settings.ui_picker_outline_auto" /><span></span></label>
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Picker Outline (heller Hintergrund)<span class="param_hint">Farbe fuer den Picker-Rahmen bei hellem Hintergrund (wenn Auto aus).</span></div>
+                <div class="param_control">
+                  <div class="color_pick_row">
+                    <input id="ui_picker_outline_light_bg_color" type="color" value="#FF00AA" />
+                    <input id="ui_picker_outline_light_bg" placeholder="#RRGGBB" />
+                  </div>
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Picker Outline (dunkler Hintergrund)<span class="param_hint">Farbe fuer den Picker-Rahmen bei dunklem Hintergrund (wenn Auto aus).</span></div>
+                <div class="param_control">
+                  <div class="color_pick_row">
+                    <input id="ui_picker_outline_dark_bg_color" type="color" value="#00E5FF" />
+                    <input id="ui_picker_outline_dark_bg" placeholder="#RRGGBB" />
+                  </div>
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Performance Korrelation: causal Gap (ms)<span class="param_hint">Maximaler Abstand (ms) zwischen Ende eines Requests und Start des naechsten, um eine kausale Beziehung zu vermuten.</span></div>
+                <div class="param_control">
+                  <input id="perf_corr_causal_gap_ms" type="number" min="0" max="200" />
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Performance Korrelation: timer Gap (ms)<span class="param_hint">Abstand (ms) ab dem eine Beziehung als Timer/Pause klassifiziert wird.</span></div>
+                <div class="param_control">
+                  <input id="perf_corr_timer_gap_ms" type="number" min="0" max="200000" />
+                </div>
+              </div>
+              <div class="param_row">
                 <div class="param_label">Analysecache ausgeblendet Farbe<span class="param_hint">Farbe fuer im Zeitstrahl visuell ausgeblendete Cache-Segmente.</span></div>
                 <div class="param_control">
                   <div class="color_pick_row">
@@ -1367,6 +1403,7 @@ const ids = [
   "ui_query_manual_max_points","ui_graph_jump_padding_intervals",
   "ui_font_size_px","ui_font_small_px","ui_pagecard_title_px","ui_page_search_highlight_color","ui_page_search_highlight_width_px","ui_page_search_highlight_duration_ms","ui_nav_helper_history_limit","ui_nav_helper_highlight_color","ui_nav_helper_highlight_duration_ms","ui_analysis_cache_hidden_color","ui_checkbox_scale",
   "ui_analysis_cache_missing_color",
+  "ui_picker_outline_auto","ui_picker_outline_light_bg","ui_picker_outline_dark_bg","perf_corr_causal_gap_ms","perf_corr_timer_gap_ms",
   "outlier_gap_seconds_default",
   "outlier_context_before_points",
   "outlier_context_after_points",
@@ -1422,6 +1459,8 @@ const $pageSearchHlColor = document.getElementById('ui_page_search_highlight_col
 const $navHelperHlColor = document.getElementById('ui_nav_helper_highlight_color_color');
 const $analysisCacheHiddenColor = document.getElementById('ui_analysis_cache_hidden_color_color');
 const $analysisCacheMissingColor = document.getElementById('ui_analysis_cache_missing_color_color');
+const $pickerLightColor = document.getElementById('ui_picker_outline_light_bg_color');
+const $pickerDarkColor = document.getElementById('ui_picker_outline_dark_bg_color');
 
 const $sectionBgColor = document.getElementById('ui_section_title_bg_color');
 const $sectionFgColor = document.getElementById('ui_section_title_fg_color');
@@ -1533,6 +1572,20 @@ function _syncUiColorPickersFromText(){
         if(/^#[0-9a-fA-F]{6}$/.test(s)) $analysisCacheMissingColor.value = s;
       }
     }catch(e){}
+
+    // Picker outline colors
+    try{
+      const s = el.ui_picker_outline_light_bg ? String(el.ui_picker_outline_light_bg.value || '').trim() : '';
+      if($pickerLightColor){
+        if(/^#[0-9a-fA-F]{6}$/.test(s)) $pickerLightColor.value = s;
+      }
+    }catch(e){}
+    try{
+      const s = el.ui_picker_outline_dark_bg ? String(el.ui_picker_outline_dark_bg.value || '').trim() : '';
+      if($pickerDarkColor){
+        if(/^#[0-9a-fA-F]{6}$/.test(s)) $pickerDarkColor.value = s;
+      }
+    }catch(e){}
   }catch(e){}
 }
 
@@ -1557,10 +1610,14 @@ try{ if($pageSearchHlColor && el.ui_page_search_highlight_color) $pageSearchHlCo
 try{ if($navHelperHlColor && el.ui_nav_helper_highlight_color) $navHelperHlColor.addEventListener('input', ()=>{ try{ el.ui_nav_helper_highlight_color.value = String($navHelperHlColor.value || '').toUpperCase(); }catch(e){}; _syncUiColorPickersFromText(); }); }catch(e){}
 try{ if($analysisCacheHiddenColor && el.ui_analysis_cache_hidden_color) $analysisCacheHiddenColor.addEventListener('input', ()=>{ try{ el.ui_analysis_cache_hidden_color.value = String($analysisCacheHiddenColor.value || '').toUpperCase(); }catch(e){}; _syncUiColorPickersFromText(); }); }catch(e){}
 try{ if($analysisCacheMissingColor && el.ui_analysis_cache_missing_color) $analysisCacheMissingColor.addEventListener('input', ()=>{ try{ el.ui_analysis_cache_missing_color.value = String($analysisCacheMissingColor.value || '').toUpperCase(); }catch(e){}; _syncUiColorPickersFromText(); }); }catch(e){}
+try{ if($pickerLightColor && el.ui_picker_outline_light_bg) $pickerLightColor.addEventListener('input', ()=>{ try{ el.ui_picker_outline_light_bg.value = String($pickerLightColor.value || '').toUpperCase(); }catch(e){}; _syncUiColorPickersFromText(); }); }catch(e){}
+try{ if($pickerDarkColor && el.ui_picker_outline_dark_bg) $pickerDarkColor.addEventListener('input', ()=>{ try{ el.ui_picker_outline_dark_bg.value = String($pickerDarkColor.value || '').toUpperCase(); }catch(e){}; _syncUiColorPickersFromText(); }); }catch(e){}
 try{ if(el.ui_page_search_highlight_color) el.ui_page_search_highlight_color.addEventListener('input', ()=>_syncUiColorPickersFromText()); }catch(e){}
 try{ if(el.ui_nav_helper_highlight_color) el.ui_nav_helper_highlight_color.addEventListener('input', ()=>_syncUiColorPickersFromText()); }catch(e){}
 try{ if(el.ui_analysis_cache_hidden_color) el.ui_analysis_cache_hidden_color.addEventListener('input', ()=>_syncUiColorPickersFromText()); }catch(e){}
 try{ if(el.ui_analysis_cache_missing_color) el.ui_analysis_cache_missing_color.addEventListener('input', ()=>_syncUiColorPickersFromText()); }catch(e){}
+try{ if(el.ui_picker_outline_light_bg) el.ui_picker_outline_light_bg.addEventListener('input', ()=>_syncUiColorPickersFromText()); }catch(e){}
+try{ if(el.ui_picker_outline_dark_bg) el.ui_picker_outline_dark_bg.addEventListener('input', ()=>_syncUiColorPickersFromText()); }catch(e){}
 
 function _syncJobColorPickersFromText(){
   try{ const v = el.ui_job_color_running ? String(el.ui_job_color_running.value || '').trim() : ''; if($jobRunColor && _isHexColor(v)) $jobRunColor.value = v; }catch(e){}
@@ -1924,6 +1981,11 @@ function setForm(cfg){
   _setVal(el.ui_nav_helper_highlight_duration_ms, cfg.ui_nav_helper_highlight_duration_ms ?? 1400);
   _setVal(el.ui_analysis_cache_hidden_color, cfg.ui_analysis_cache_hidden_color ?? '#b0b0b0');
   _setVal(el.ui_analysis_cache_missing_color, cfg.ui_analysis_cache_missing_color ?? '#b00020');
+  _setChecked(el.ui_picker_outline_auto, (cfg.ui_picker_outline_auto !== false));
+  _setVal(el.ui_picker_outline_light_bg, cfg.ui_picker_outline_light_bg ?? '#FF00AA');
+  _setVal(el.ui_picker_outline_dark_bg, cfg.ui_picker_outline_dark_bg ?? '#00E5FF');
+  _setVal(el.perf_corr_causal_gap_ms, (cfg.perf_corr_causal_gap_ms !== undefined && cfg.perf_corr_causal_gap_ms !== null) ? cfg.perf_corr_causal_gap_ms : 8);
+  _setVal(el.perf_corr_timer_gap_ms, (cfg.perf_corr_timer_gap_ms !== undefined && cfg.perf_corr_timer_gap_ms !== null) ? cfg.perf_corr_timer_gap_ms : 1000);
   _setVal(el.ui_status_font_px, cfg.ui_status_font_px ?? 12);
   _setVal(el.ui_status_bar_height_px, cfg.ui_status_bar_height_px ?? 38);
   _setChecked(el.ui_status_show_sysinfo, !!cfg.ui_status_show_sysinfo);
@@ -2084,6 +2146,11 @@ function getForm(){
     ui_nav_helper_highlight_duration_ms: parseInt(el.ui_nav_helper_highlight_duration_ms.value, 10),
     ui_analysis_cache_hidden_color: String(el.ui_analysis_cache_hidden_color.value || '').trim(),
     ui_analysis_cache_missing_color: String(el.ui_analysis_cache_missing_color.value || '').trim(),
+    ui_picker_outline_auto: _isChecked(el.ui_picker_outline_auto),
+    ui_picker_outline_light_bg: String(el.ui_picker_outline_light_bg.value || '').trim(),
+    ui_picker_outline_dark_bg: String(el.ui_picker_outline_dark_bg.value || '').trim(),
+    perf_corr_causal_gap_ms: parseInt(el.perf_corr_causal_gap_ms.value, 10),
+    perf_corr_timer_gap_ms: parseInt(el.perf_corr_timer_gap_ms.value, 10),
     ui_status_font_px: parseInt(el.ui_status_font_px.value, 10),
     ui_status_bar_height_px: parseInt(el.ui_status_bar_height_px.value, 10),
     ui_status_show_sysinfo: _isChecked(el.ui_status_show_sysinfo),

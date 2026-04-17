@@ -1202,6 +1202,10 @@ DEFAULT_CFG = {
     "ui_table_visible_rows": 20,
     "ui_outlier_visible_rows": 10,
     "ui_table_row_height_px": 13,
+    # Picker / S-Picker highlight
+    "ui_picker_outline_auto": True,
+    "ui_picker_outline_light_bg": "#FF00AA",
+    "ui_picker_outline_dark_bg": "#00E5FF",
     "ui_analysis_cache_hidden_color": "#b0b0b0",
     "ui_analysis_cache_missing_color": "#b00020",
     "ui_backup_table_row_height_px": 13,
@@ -1350,6 +1354,10 @@ DEFAULT_CFG = {
     "trace_persist": True,
     "trace_max_entries": 1000,
     "trace_max_days": 14,
+
+    # Performanceanalyse: correlation heuristics
+    "perf_corr_causal_gap_ms": 8,
+    "perf_corr_timer_gap_ms": 1000,
 
     # Worklog (Analyse/Statistik/Raw Operations; persistent under /data)
     "worklog_max_entries": 2000,
@@ -2009,6 +2017,24 @@ def load_cfg():
                 cfg.update(disk)
         except Exception:
             pass
+
+    # Normalize influx_version for all runtime callers.
+    # This is intentionally best-effort and does not persist anything.
+    try:
+        v = int(cfg.get("influx_version", 2) or 2)
+    except Exception:
+        v = 2
+    if v not in (1, 2):
+        v = 2
+    try:
+        db = str(cfg.get("database") or "").strip()
+    except Exception:
+        db = ""
+    has_v2 = bool(cfg.get("token")) and bool(cfg.get("org")) and bool(cfg.get("bucket"))
+    if v != 2 and (not db) and has_v2:
+        # Safety: prefer v2 to avoid confusing "v1 requires database" errors.
+        v = 2
+    cfg["influx_version"] = v
     return cfg
 
 
@@ -14939,6 +14965,8 @@ def api_set_config():
     _clamp_color("ui_job_color_done", "#eefaf1")
     _clamp_color("ui_job_color_error", "#fff0f0")
     _clamp_color("ui_job_color_cancelled", "#f6f6f6")
+    _clamp_color("ui_picker_outline_light_bg", "#FF00AA")
+    _clamp_color("ui_picker_outline_dark_bg", "#00E5FF")
     _clamp_color("ui_analysis_cache_hidden_color", "#b0b0b0")
     _clamp_color("ui_analysis_cache_missing_color", "#b00020")
 
@@ -14954,6 +14982,9 @@ def api_set_config():
     _clamp_int("ui_section_title_font_px", 13, 10, 22)
     _clamp_int("ui_section_level2_font_px", 12, 10, 22)
     _clamp_int("ui_section_level3_font_px", 11, 9, 20)
+
+    _clamp_int("perf_corr_causal_gap_ms", 8, 0, 200)
+    _clamp_int("perf_corr_timer_gap_ms", 1000, 0, 200000)
 
     try:
         cfg["import_measurement_transforms"] = str(cfg.get("import_measurement_transforms") or "").strip()
@@ -14994,6 +15025,8 @@ def api_set_config():
         cfg[key] = s in ("1", "true", "yes", "on")
 
     _bool("ui_status_show_sysinfo", False)
+
+    _bool("ui_picker_outline_auto", True)
 
     _bool("ui_tooltips_enabled", True)
 

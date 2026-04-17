@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.12.373
+
+### Enhancement
+
+- UI Picker/S-Picker: Outline-Farbe ist jetzt je nach Hintergrund (Auto, live beim Hover) gut sichtbar; Farben und Auto-Modus sind in den Einstellungen konfigurierbar. ([#322](https://github.com/thomas682/HA-Addons/issues/322))
+- Performanceanalyse: Diagramm-Bereich hat jetzt Tabs (Diagramm + neuer Tab "Korrelation"). Korrelation-Ansicht basiert auf `demo/korrelationsdiagramm.html` und nutzt echte Trace-Daten (inkl. nicht-API URLs); Heuristik-Schwellenwerte sind in den Einstellungen parametrierbar. ([#322](https://github.com/thomas682/HA-Addons/issues/322))
+- Performanceanalyse Tooltips: Browser-Title-Tooltips sind im Diagramm-Bereich unterdrueckt; stattdessen zeigen die dunklen Tooltips den UI-Key unten. Waterfall/Korrelation Tooltips wurden um Trigger/Query-Metadaten sowie Diagnosewerte erweitert. ([#322](https://github.com/thomas682/HA-Addons/issues/322))
+- Jobs&Cache: Seite scrollt wieder korrekt; Cache-Section ist visuell konsistent (kein doppelter Titel im Body). ([#322](https://github.com/thomas682/HA-Addons/issues/322))
+- Jobs: dash_cache Jobs erkennen v2 Config zuverlaessig und erzeugen keine falschen v1 "requires database" Fehler mehr. ([#322](https://github.com/thomas682/HA-Addons/issues/322))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: 2026.4.2
+
 ## 1.12.372
 
 ### Enhancement

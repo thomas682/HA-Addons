@@ -888,6 +888,95 @@
       let lastPointer = { x: null, y: null };
       let tooltipSuppressed = [];
 
+      // Picker outline config (loaded best-effort from /api/config on start)
+      let PICKER_CFG = {
+        ui_picker_outline_auto: true,
+        ui_picker_outline_light_bg: '#FF00AA',
+        ui_picker_outline_dark_bg: '#00E5FF',
+      };
+
+      async function _loadPickerCfg(){
+        try{
+          const r = await fetch('./api/config');
+          const j = await r.json();
+          const c = (j && j.config) ? j.config : null;
+          if(!c || typeof c !== 'object') return;
+          PICKER_CFG = {
+            ui_picker_outline_auto: (c.ui_picker_outline_auto !== false),
+            ui_picker_outline_light_bg: String(c.ui_picker_outline_light_bg || '#FF00AA').trim(),
+            ui_picker_outline_dark_bg: String(c.ui_picker_outline_dark_bg || '#00E5FF').trim(),
+          };
+        }catch(e){}
+      }
+
+      function _isHex6(s){
+        const t = String(s || '').trim();
+        return /^#[0-9a-fA-F]{6}$/.test(t);
+      }
+
+      function _hexToRgb(hex){
+        const h = String(hex || '').trim();
+        if(!_isHex6(h)) return null;
+        const v = parseInt(h.slice(1), 16);
+        return { r: (v >> 16) & 255, g: (v >> 8) & 255, b: v & 255 };
+      }
+
+      function _parseCssRgb(s){
+        try{
+          const m = String(s || '').trim().match(/^rgba?\(([^)]+)\)$/i);
+          if(!m) return null;
+          const parts = m[1].split(',').map(x=>String(x || '').trim());
+          if(parts.length < 3) return null;
+          const r = Math.max(0, Math.min(255, parseFloat(parts[0])));
+          const g = Math.max(0, Math.min(255, parseFloat(parts[1])));
+          const b = Math.max(0, Math.min(255, parseFloat(parts[2])));
+          const a = (parts.length >= 4) ? Math.max(0, Math.min(1, parseFloat(parts[3]))) : 1;
+          if(!isFinite(r) || !isFinite(g) || !isFinite(b) || !isFinite(a)) return null;
+          return { r, g, b, a };
+        }catch(e){ return null; }
+      }
+
+      function _bgRgbFor(el){
+        try{
+          let cur = el;
+          for(let i = 0; i < 16 && cur; i += 1){
+            const cs = window.getComputedStyle ? window.getComputedStyle(cur) : null;
+            const bg = cs ? String(cs.backgroundColor || '') : '';
+            const c = _parseCssRgb(bg);
+            if(c && c.a > 0.02) return c;
+            cur = cur.parentElement;
+          }
+        }catch(e){}
+        try{
+          const cs = window.getComputedStyle ? window.getComputedStyle(document.body) : null;
+          const c = _parseCssRgb(cs ? cs.backgroundColor : '');
+          if(c) return c;
+        }catch(e){}
+        return { r: 255, g: 255, b: 255, a: 1 };
+      }
+
+      function _luma(c){
+        try{ return 0.2126 * Number(c.r || 0) + 0.7152 * Number(c.g || 0) + 0.0722 * Number(c.b || 0); }
+        catch(e){ return 255; }
+      }
+
+      function _outlineHexFor(el){
+        try{
+          const light = _isHex6(PICKER_CFG.ui_picker_outline_light_bg) ? PICKER_CFG.ui_picker_outline_light_bg : '#FF00AA';
+          const dark = _isHex6(PICKER_CFG.ui_picker_outline_dark_bg) ? PICKER_CFG.ui_picker_outline_dark_bg : '#00E5FF';
+          if(PICKER_CFG.ui_picker_outline_auto){
+            const bg = _bgRgbFor(el);
+            const isLight = _luma(bg) >= 160;
+            return isLight ? light : dark;
+          }
+          // Manual mode: tie to overall scheme (stable), not per-element background.
+          const prefersDark = !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          return prefersDark ? dark : light;
+        }catch(e){
+          return '#FF00AA';
+        }
+      }
+
     function readSuper(){
       try{ return localStorage.getItem(LS_SUPER) === '1'; }catch(e){ return false; }
     }
@@ -1122,6 +1211,15 @@
       }
       const el = target.el;
       currentEl = el;
+
+      // Live outline color depending on background (auto) or scheme (manual).
+      try{
+        const hex = _outlineHexFor(el);
+        overlay.style.border = '2px solid ' + hex;
+        const rgb = _hexToRgb(hex);
+        if(rgb) overlay.style.background = 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',0.10)';
+      }catch(e){}
+
       const r = el.getBoundingClientRect();
       overlay.style.display = 'block';
       overlay.style.left = Math.max(0, r.left - 2) + 'px';
@@ -1161,9 +1259,10 @@
       document.removeEventListener('keydown', onKey, true);
     }
 
-    function start(){
+    async function start(){
       active = true;
       ensureUi();
+      try{ await _loadPickerCfg(); }catch(e){}
       try{ suppressTitles(); }catch(e){}
       try{ if(readSuper()){ if($superBtn) $superBtn.classList.add('active'); if($btn) $btn.classList.remove('active'); } else { if($btn) $btn.classList.add('active'); if($superBtn) $superBtn.classList.remove('active'); } }catch(e){}
       try{ if(scrim) scrim.style.display = 'block'; }catch(e){}
@@ -1235,14 +1334,14 @@
         writeSuper(false);
         applySuperUi();
         if(active) stop();
-        else start();
+        else start().catch(()=>{});
       });
       $superBtn.addEventListener('click', (ev)=>{
         try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
         writeSuper(true);
         applySuperUi();
         if(active) stop();
-        else start();
+        else start().catch(()=>{});
       });
       applySuperUi();
     }

@@ -564,6 +564,7 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Die neue Seite `Datenqualitaet` fuehrt durch Raw-, Clean- und Rollup-Buckets, zeigt Regelpflege und Bucket-/Task-Verwaltung und bietet einen Bereinigungs-Testlauf bzw. Bereinigungslauf direkt aus dem Add-on.
 - Buttons ueber das gesamte Add-on verwenden jetzt einen konsistenteren, an Material angelehnten Look mit runden Filled-/Tonal-Flaechen.
 - Der UI-Picker hat optional einen `superpicker`-Modus. Mit aktivierter Checkbox kann er auch Layout-Container oder andere Elemente ohne `data-ui` ueber Fallback-Metadaten erfassen.
+- Neu: Der Picker/S-Picker verwendet eine gut sichtbare Outline-Farbe. In den Einstellungen kann ein Auto-Modus aktiviert werden (live je nach Hintergrund), plus zwei konfigurierbare Farben fuer hellen/dunklen Hintergrund.
 - Die Checkbox `superpicker` nutzt dieselbe visuelle Groesse wie die normalen Dashboard-Checkboxen.
 - Die Hoehe der Titel-/Pagecard-Leiste schrumpft nach automatischen Erweiterungen wieder auf die kleinste vollstaendige Hoehe des aktuell sichtbaren Inhalts zurueck.
 - Button-Klicks werden fuer Supportzwecke jetzt global protokolliert. Wenn ein Button-Handler scheitert, landet der Fehler nicht nur im Browser, sondern auch im UI-Fehlerlog und im Add-on-Log.
@@ -573,6 +574,8 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
   - Links: Trace-Liste mit Start/Ende/Dauer, Seite, Ausloeser (Klartext + technische ID), Status und Counts.
   - Rechts: JSON-Details (scrollbar) plus Copy-Buttons (Zwischenablage, TraceID).
   - Diagramm: Demo-Layout (Endpoint-Chips + Method-Filter GET/POST + Aktionen) sowie Cards, Zeitleiste, Waterfall Vollansicht + Zoom, Endpoint-Statistiken und Tooltip, jeweils basierend auf den Realwerten des selektierten Traces.
+  - Tabs: zusaetzlich gibt es den Tab `Korrelation` mit einer Korrelationsansicht (Abhaengigkeitsgraph, Matrix, Waterfall mit Linien). Die Heuristik-Schwellenwerte sind in den Einstellungen parametrierbar.
+  - Tooltips: Im Diagramm-Bereich sind Browser-Title-Tooltips bewusst unterdrueckt; die dunklen Tooltips zeigen stattdessen den UI-Key unten (z.B. `<Performanceanalyse: filterCount>`).
   - Endpoint-Filter:
     - Klick auf einen Chip oder direkt auf einen Waterfall-Balken toggelt den Endpoint (ein/aus).
     - Suchfeld filtert die sichtbaren Endpoints im ChipGrid.

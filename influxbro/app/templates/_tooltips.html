@@ -622,6 +622,14 @@
     try{
       if(_pickerModeActive()) return;
       const root = document.querySelector('main.content') || document.body;
+
+      // Performanceanalyse: Diagramm/Korrelation section should not use browser title-tooltips.
+      // The diagram itself uses a custom dark tooltip.
+      const perfDiag = root.querySelector('details[data-ui="perf_page.diagram.section_root"]');
+      if(perfDiag){
+        try{ perfDiag.querySelectorAll('[title]').forEach(x=>{ try{ x.removeAttribute('title'); }catch(e){}; }); }catch(e){}
+      }
+
       const sel = [
         'button',
         'select',
@@ -632,6 +640,7 @@
       ].join(',');
       const nodes = Array.from(root.querySelectorAll(sel));
       nodes.forEach(el => {
+        try{ if(perfDiag && perfDiag.contains(el)) return; }catch(e){}
         const tag = String(el.tagName||'').toLowerCase();
         if(!tag) return;
         if(tag === 'script' || tag === 'style' || tag === 'meta' || tag === 'link' || tag === 'option') return;
