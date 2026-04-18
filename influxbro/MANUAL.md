@@ -60,6 +60,13 @@ Links findest du die Bereiche:
 
 Im Sidebar-Kopf wird ausserdem die aktuell laufende Add-on Version angezeigt.
 
+Neu: Sidebar (Desktop)
+
+- Auf Desktop kannst du die Sidebar per Splitbar in der Breite anpassen (Drag zwischen Sidebar und Inhalt).
+- Die Sidebar kann ueber den Button `<<` / `>>` ein- und ausgeklappt werden (eingeklappt: nur Icons).
+- Die Breite und der Collapse-Status werden gespeichert und koennen ueber UI-Profile getrennt werden (Profil speichern/anwenden).
+- Mobile bleibt unveraendert (1 Spalte, keine Splitbar).
+
 Neu: Top-Leiste (Profil + Zoom)
 
 - Ganz oben gibt es eine fixe Leiste (scrollt nicht mit), die immer sichtbar bleibt.

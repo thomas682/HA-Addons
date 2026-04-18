@@ -1,7 +1,7 @@
 <nav class="sidebar" aria-label="Navigation">
   <style>
     /* Standard sidebar look (shared across all pages). */
-    .shell { display:grid; grid-template-columns: 260px 1fr; min-height: 100vh; padding-top: 20px; box-sizing: border-box; }
+    .shell { display:grid; grid-template-columns: var(--ib-sidebar-w, 260px) 1fr; min-height: 100vh; padding-top: 20px; box-sizing: border-box; position: relative; }
     @media (max-width: 980px){ .shell { grid-template-columns: 1fr; } }
     nav.sidebar { padding: 14px; border-right: 1px solid #eee; }
     @media (max-width: 980px){ nav.sidebar { border-right: 0; border-bottom: 1px solid #eee; } }
@@ -12,6 +12,34 @@
     .nav_item:hover { background: #f6f6f6; }
     .nav_item.active { background: #0b0b0c; color: #fff; }
     .ico { width: 22px; height: 22px; display:inline-flex; align-items:center; justify-content:center; font-weight: 800; }
+
+    /* Sidebar tools (collapse/expand) */
+    .sidebar_top { display:flex; align-items:center; justify-content:space-between; gap: 10px; margin-bottom: 10px; }
+    #ib_sidebar_toggle { cursor:pointer; padding: 8px 10px; height: 32px; border: 1px solid #eee; border-radius: 12px; background: #fff; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-weight: 700; }
+    #ib_sidebar_toggle:hover { background: #f6f6f6; }
+    @media (max-width: 980px){ .sidebar_top { display:none; } }
+
+    /* Splitbar (desktop only) */
+    .ib_sidebar_splitter {
+      position: absolute;
+      top: calc(var(--ib-topbar-h, 0px) + var(--ib-pagecard-live-h, 0px) + 20px);
+      bottom: 0;
+      left: calc(var(--ib-sidebar-w, 260px) - 3px);
+      width: 6px;
+      cursor: col-resize;
+      z-index: 10010;
+      background: transparent;
+    }
+    .ib_sidebar_splitter:hover { background: rgba(0,0,0,0.06); }
+    @media (max-width: 980px){ .ib_sidebar_splitter { display:none; } }
+
+    /* Collapsed state (desktop only): icon-only nav */
+    @media (min-width: 981px){
+      .shell.ib_sidebar_collapsed nav.sidebar { padding: 10px 8px; }
+      .shell.ib_sidebar_collapsed nav.sidebar .nav_item { justify-content:center; padding: 10px 6px; }
+      .shell.ib_sidebar_collapsed nav.sidebar .nav_item > span:last-child { display:none; }
+      .shell.ib_sidebar_collapsed #influxbro_status_panel { display:none; }
+    }
 
     /* Desktop: keep sidebar fixed; scroll only content area. */
     @media (min-width: 981px){
@@ -45,6 +73,11 @@
     #influxbro_status_panel .item { white-space: nowrap; min-width: max-content; }
     #influxbro_status_panel .last { margin-top: 10px; font-size: var(--ui-status-font); overflow: auto; max-height: 84px; }
   </style>
+
+  <div class="sidebar_top" data-ui="nav_main.row_sidebar_tools" title="nav.sidebar.tools">
+    <button id="ib_sidebar_toggle" type="button" aria-label="Sidebar ein-/ausklappen" data-ui="nav_main.btn_sidebar_toggle" title="nav.sidebar.toggle">&lt;&lt;</button>
+  </div>
+
   <a class="nav_item {{ 'active' if nav == 'dashboard' else '' }}" href="./" data-ui="nav_main.panel_dashboard" title="nav.dashboard">
     <span class="ico" aria-hidden="true">D</span>
     <span>Dashboard</span>
@@ -660,6 +693,160 @@
       }catch(e){}
     }
 
+    // Sidebar splitter + collapse/expand (desktop only).
+    function initSidebarUi(){
+      try{
+        const navEl = document.querySelector('nav.sidebar');
+        if(!navEl) return;
+        const shell = navEl.closest ? navEl.closest('.shell') : null;
+        if(!shell) return;
+
+        // Mobile layout is single-column; do not apply sidebar collapse/split behavior.
+        try{
+          if(window.matchMedia && window.matchMedia('(max-width: 980px)').matches){
+            shell.classList.remove('ib_sidebar_collapsed');
+            return;
+          }
+        }catch(e){}
+
+        const $toggle = document.getElementById('ib_sidebar_toggle');
+        if(!$toggle) return;
+
+        const LS_W = 'influxbro_sidebar_w_px_v1';
+        const LS_COLL = 'influxbro_sidebar_collapsed_v1';
+
+        const COLLAPSED_W = 56;
+        const DEFAULT_W = 260;
+
+        function clamp(v){
+          const maxW = Math.min(520, Math.max(240, Math.floor((window.innerWidth || 1200) * 0.66)));
+          const minW = 160;
+          const x = Math.max(minW, Math.min(maxW, Math.round(Number(v || DEFAULT_W))));
+          return x;
+        }
+
+        function loadWidth(){
+          try{
+            const raw = localStorage.getItem(LS_W);
+            const v = Number(raw || '');
+            return (isFinite(v) && v > 0) ? clamp(v) : DEFAULT_W;
+          }catch(e){
+            return DEFAULT_W;
+          }
+        }
+
+        function loadCollapsed(){
+          try{ return (localStorage.getItem(LS_COLL) || '0') === '1'; }catch(e){ return false; }
+        }
+
+        function saveCollapsed(on){
+          try{ localStorage.setItem(LS_COLL, on ? '1' : '0'); }catch(e){}
+        }
+
+        function saveWidth(px){
+          try{ localStorage.setItem(LS_W, String(Math.round(Number(px || DEFAULT_W)))); }catch(e){}
+        }
+
+        function applyState(widthPx, collapsed){
+          try{
+            const w = collapsed ? COLLAPSED_W : clamp(widthPx);
+            shell.style.setProperty('--ib-sidebar-w', String(w) + 'px');
+            shell.classList.toggle('ib_sidebar_collapsed', !!collapsed);
+            $toggle.textContent = collapsed ? '>>' : '<<';
+          }catch(e){}
+        }
+
+        let expandedW = loadWidth();
+        let collapsed = loadCollapsed();
+        applyState(expandedW, collapsed);
+
+        // Splitter element (inserted once per page).
+        let splitter = document.getElementById('ib_sidebar_splitter');
+        if(!splitter){
+          splitter = document.createElement('div');
+          splitter.id = 'ib_sidebar_splitter';
+          splitter.className = 'ib_sidebar_splitter';
+          splitter.setAttribute('data-ui', 'nav_main.handle_sidebar_split');
+          splitter.setAttribute('title', 'nav.sidebar.split');
+          shell.appendChild(splitter);
+        }
+
+        function setDragging(on){
+          try{ document.body.style.userSelect = on ? 'none' : ''; }catch(e){}
+          try{ document.body.style.cursor = on ? 'col-resize' : ''; }catch(e){}
+        }
+
+        function startDrag(ev){
+          try{
+            if(window.matchMedia && window.matchMedia('(max-width: 980px)').matches) return;
+            try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+
+            if(collapsed){
+              collapsed = false;
+              saveCollapsed(false);
+              applyState(expandedW, false);
+            }
+
+            const startX = Number(ev && ev.clientX ? ev.clientX : 0);
+            const startW = expandedW;
+            setDragging(true);
+
+            function onMove(e2){
+              try{
+                const dx = Number(e2 && e2.clientX ? e2.clientX : 0) - startX;
+                expandedW = clamp(startW + dx);
+                applyState(expandedW, false);
+              }catch(e){}
+            }
+
+            function onUp(){
+              try{ window.removeEventListener('mousemove', onMove, true); }catch(e){}
+              try{ window.removeEventListener('mouseup', onUp, true); }catch(e){}
+              setDragging(false);
+              saveWidth(expandedW);
+            }
+
+            window.addEventListener('mousemove', onMove, true);
+            window.addEventListener('mouseup', onUp, true);
+          }catch(e){}
+        }
+
+        if(!splitter.__influxbro_bound){
+          splitter.__influxbro_bound = true;
+          splitter.addEventListener('mousedown', startDrag, true);
+        }
+
+        if(!$toggle.__influxbro_bound){
+          $toggle.__influxbro_bound = true;
+          $toggle.addEventListener('click', (ev)=>{
+            try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+            collapsed = !collapsed;
+            saveCollapsed(collapsed);
+            if(!collapsed){
+              expandedW = loadWidth();
+            }
+            applyState(expandedW, collapsed);
+          }, true);
+        }
+
+        // Keep width reasonable when resizing the window.
+        if(!window.__influxbro_sidebar_resize_bound){
+          window.__influxbro_sidebar_resize_bound = true;
+          window.addEventListener('resize', ()=>{
+            try{
+              if(collapsed){
+                applyState(expandedW, true);
+                return;
+              }
+              expandedW = clamp(expandedW);
+              applyState(expandedW, false);
+              saveWidth(expandedW);
+            }catch(e){}
+          }, {passive:true});
+        }
+      }catch(e){}
+    }
+
     // UI Profiles (global)
     async function loadProfiles(){
       try{
@@ -1163,9 +1350,10 @@
     try{
      // Start early so values restore before page scripts use them.
      ensureStatusBus();
-     try{ initProfilesUi(); }catch(e){}
-     if(TOOLTIP_ENABLED) applyTooltips();
-     else clearTitles();
+     try{ initSidebarUi(); }catch(e){}
+      try{ initProfilesUi(); }catch(e){}
+      if(TOOLTIP_ENABLED) applyTooltips();
+      else clearTitles();
      // Restore from server (best-effort) then apply to DOM.
       _restoreUiStateFromServer().then(()=>{
         try{ scanPersistence(); }catch(e){}

@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.378
+
+### Enhancement
+
+- UI: Sidebar ist auf Desktop einklappbar (Icon-Only) und per Splitbar in der Breite verstellbar; Breite und Collapse-Status werden gespeichert. ([#328](https://github.com/thomas682/HA-Addons/issues/328))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: 2026.4.2
+
 ## 1.12.377
 
 ### Bugfix
