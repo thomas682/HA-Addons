@@ -1216,6 +1216,9 @@ DEFAULT_CFG = {
     "ui_edit_details_visible_rows": 12,
     "ui_edit_graph_buffer_minutes": 30,
     "ui_edit_graph_max_points": 50000,
+    # Dashboard graph context (raw-window preview): extend the visible raw range by before/after buffer.
+    "ui_graph_ctx_before_minutes": 60,
+    "ui_graph_ctx_after_minutes": 60,
     "ui_query_max_points": 5000,
     "ui_raw_max_points": 20000,
     "ui_raw_center_max_points": 2000,
@@ -15347,6 +15350,8 @@ def api_set_config():
     _clamp_int("ui_edit_details_visible_rows", 12, 4, 80)
     _clamp_int("ui_edit_graph_buffer_minutes", 30, 0, 24 * 60)
     _clamp_int("ui_edit_graph_max_points", 50000, 1000, 200000)
+    _clamp_int("ui_graph_ctx_before_minutes", 60, 0, 24 * 60)
+    _clamp_int("ui_graph_ctx_after_minutes", 60, 0, 24 * 60)
     _clamp_int("ui_query_max_points", 5000, 500, 200000)
     _clamp_int("ui_raw_max_points", 20000, 1000, 200000)
     _clamp_int("ui_raw_center_max_points", 2000, 1, 200000)
@@ -18079,10 +18084,16 @@ def api_window_points():
         max_points = int(body.get("max_points") or cfg.get("ui_edit_graph_max_points") or 50000)
     except Exception:
         max_points = int(cfg.get("ui_edit_graph_max_points") or 50000)
-    if max_points < 1000:
-        max_points = 1000
+    # Allow small requests (e.g. pixel-bound previews); callers can still request higher.
+    if max_points < 50:
+        max_points = 50
     if max_points > 200000:
         max_points = 200000
+
+    # Downsample aggregation function (no averages for UI previews).
+    agg_fn = str(body.get("agg_fn") or "max").strip().lower()
+    if agg_fn not in ("max", "min"):
+        agg_fn = "max"
 
     if int(cfg.get("influx_version", 2)) != 2:
         return jsonify({"ok": False, "error": "window_points currently supports InfluxDB v2 only"}), 400
@@ -18106,8 +18117,8 @@ def api_window_points():
     agg = ""
     mode = "raw"
     if every_ms > 1:
-        agg = f'  |> aggregateWindow(every: {every_ms}ms, fn: max, createEmpty: false)\n'
-        mode = "downsample"
+        agg = f'  |> aggregateWindow(every: {every_ms}ms, fn: {agg_fn}, createEmpty: false)\n'
+        mode = f"downsample_{agg_fn}"
 
     q = f'''
 from(bucket: "{cfg["bucket"]}")
@@ -18139,6 +18150,7 @@ from(bucket: "{cfg["bucket"]}")
                 "mode": mode,
                 "every_ms": every_ms,
                 "max_points": max_points,
+                "agg_fn": agg_fn,
                 "query_language": "flux",
                 "query": q,
             },

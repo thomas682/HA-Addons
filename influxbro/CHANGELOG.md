@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.380
+
+### Enhancement
+
+- Dashboard/Graph: Neuer Kontext-Graph zeigt den aktuell in Raw sichtbaren Bereich plus konfigurierbaren Puffer davor/danach. Sampling ist pixel-gebunden und Verdichtung nutzt Min/Max statt Durchschnitt (umschaltbar). Graph-Interaktionen (Zoom/Selektion/Klick) wirken nur noch innerhalb des Graph-Bereichs und loesen keine Aktionen in anderen Panels aus. ([#325](https://github.com/thomas682/HA-Addons/issues/325))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: 2026.4.2
+
 ## 1.12.379
 
 ### Enhancement

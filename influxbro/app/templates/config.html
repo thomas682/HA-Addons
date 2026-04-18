@@ -580,6 +580,18 @@
                 </div>
               </div>
               <div class="param_row">
+                <div class="param_label">Graph Kontext davor (Minuten)<span class="param_hint">Zusatzbereich vor dem sichtbaren Raw-Fenster im Kontext-Graph (Default: 60).</span></div>
+                <div class="param_control">
+                  <input id="ui_graph_ctx_before_minutes" type="number" min="0" max="1440" />
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Graph Kontext danach (Minuten)<span class="param_hint">Zusatzbereich nach dem sichtbaren Raw-Fenster im Kontext-Graph (Default: 60).</span></div>
+                <div class="param_control">
+                  <input id="ui_graph_ctx_after_minutes" type="number" min="0" max="1440" />
+                </div>
+              </div>
+              <div class="param_row">
                 <div class="param_label">Graph max. Punkte<span class="param_hint">Limit fuer DB-Punkte im Bearbeitungs-Graph (Downsampling erfolgt automatisch).</span></div>
                 <div class="param_control">
                   <input id="ui_edit_graph_max_points" type="number" min="1000" max="200000" />
@@ -1403,7 +1415,7 @@ const ids = [
   "influx_version","scheme","host","port","verify_ssl","timeout_seconds",
   "org","bucket","token","admin_token",
   "database","username","password",
-  "ui_table_visible_rows","ui_outlier_visible_rows","ui_raw_outlier_display_limit_per_type","ui_raw_outlier_search_limit","ui_table_row_height_px","ui_edit_neighbors_n","ui_edit_details_visible_rows","ui_edit_graph_buffer_minutes","ui_edit_graph_max_points","ui_decimals",
+  "ui_table_visible_rows","ui_outlier_visible_rows","ui_raw_outlier_display_limit_per_type","ui_raw_outlier_search_limit","ui_table_row_height_px","ui_edit_neighbors_n","ui_edit_details_visible_rows","ui_edit_graph_buffer_minutes","ui_graph_ctx_before_minutes","ui_graph_ctx_after_minutes","ui_edit_graph_max_points","ui_decimals",
   "ui_backup_table_row_height_px","ui_backup_visible_rows","ui_restore_visible_rows",
   "ui_query_max_points","ui_raw_max_points","ui_raw_center_max_points","ui_raw_center_range_default","ui_raw_center_min_points","ui_raw_target_chunk_ms","ui_analysis_max_age_years","ui_popup_pre_font_px","ui_popup_history_font_px",
   "ui_query_manual_max_points","ui_graph_jump_padding_intervals",
@@ -1964,6 +1976,8 @@ function setForm(cfg){
   _safeSet(el.ui_edit_neighbors_n, 'value', cfg.ui_edit_neighbors_n ?? 5);
   _safeSet(el.ui_edit_details_visible_rows, 'value', cfg.ui_edit_details_visible_rows ?? 12);
   _safeSet(el.ui_edit_graph_buffer_minutes, 'value', cfg.ui_edit_graph_buffer_minutes ?? 30);
+  _safeSet(el.ui_graph_ctx_before_minutes, 'value', cfg.ui_graph_ctx_before_minutes ?? 60);
+  _safeSet(el.ui_graph_ctx_after_minutes, 'value', cfg.ui_graph_ctx_after_minutes ?? 60);
   _safeSet(el.ui_edit_graph_max_points, 'value', cfg.ui_edit_graph_max_points ?? 50000);
   _safeSet(el.ui_query_max_points, 'value', cfg.ui_query_max_points ?? 5000);
   _safeSet(el.ui_raw_max_points, 'value', cfg.ui_raw_max_points ?? 20000);
@@ -2128,6 +2142,8 @@ function getForm(){
     ui_edit_neighbors_n: parseInt(el.ui_edit_neighbors_n.value, 10),
     ui_edit_details_visible_rows: parseInt(el.ui_edit_details_visible_rows.value, 10),
     ui_edit_graph_buffer_minutes: parseInt(el.ui_edit_graph_buffer_minutes.value, 10),
+    ui_graph_ctx_before_minutes: parseInt(el.ui_graph_ctx_before_minutes.value, 10),
+    ui_graph_ctx_after_minutes: parseInt(el.ui_graph_ctx_after_minutes.value, 10),
     ui_edit_graph_max_points: parseInt(el.ui_edit_graph_max_points.value, 10),
     ui_query_max_points: parseInt(el.ui_query_max_points.value, 10),
     ui_raw_max_points: parseInt(el.ui_raw_max_points.value, 10),

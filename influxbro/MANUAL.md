@@ -264,6 +264,7 @@ Cache Nutzung:
 - Zoom/Pan ist moeglich.
 - Option `Messpunkte markieren`: schaltet runde Marker ein/aus.
 - Ziehen der Groesse: Unter dem Plot gibt es einen horizontalen Griff. Ziehen nach oben/unten aendert die Plot-Hoehe.
+- Neu: Kontext-Graph oberhalb des Hauptplots zeigt den aktuell in Raw sichtbaren Bereich plus konfigurierbaren Puffer davor/danach. Verdichtung nutzt Min/Max (keine Durchschnittswerte), umschaltbar ueber Checkboxen.
 
 Graph Query:
 
@@ -302,9 +303,9 @@ Hinweis:
 
 Raw Daten (DB):
 
-- Optional kannst du per Checkbox steuern, ob Raw Daten dem Zoom-Bereich im Graph folgen (oder dem Zeitraum aus der Zeitraum-Auswahl).
+- Zoom/Auswahl im Graph beeinflussen keine anderen Bereiche mehr automatisch (Raw/Tabelle bleiben unveraendert).
 - Feld `Bereich +-`: legt fest, wie viele Minuten vor und nach dem selektierten Messwert geladen werden. Der Wert wird im Browser gespeichert; die Obergrenze, Vorbelegung und Mindestdatenpunkte kommen aus den Einstellungen.
-- Klick auf einen Messpunkt im Graph markiert den Punkt und springt in der Raw-Tabelle zum passenden Zeitstempel (Zeile wird hervorgehoben).
+- Klick auf einen Messpunkt im Graph markiert den Punkt nur im Graph (keine automatische Navigation in Raw).
 - Wenn vor oder nach dem selektierten Messpunkt weniger als die konfigurierte Mindestanzahl von Rohpunkten gefunden wird, erweitert InfluxBro die Suche automatisch in 100-Minuten-Schritten, bis genug Punkte oder eine Zeitgrenze erreicht ist.
 - Der hervorgehobene Ankerpunkt im Raw-Bereich bleibt auch nach der Nachladung sichtbar.
 - `Wert kopieren` erfordert eine selektierte Raw-Zeile. Diese Zeile bleibt als Quelle markiert, bis du eine andere Quelle waehlst.
