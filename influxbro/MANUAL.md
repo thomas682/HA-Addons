@@ -356,6 +356,7 @@ Die fruehere Bearbeitungsliste wurde entfernt. Korrekturen erfolgen direkt in de
   - `Loeschen`: DB-Punkt loeschen (mit Bestaetigung)
   - `Undo`: letzte direkte Raw-Aenderung rueckgaengig machen (best-effort)
 - `Abbruch` in der Raw-Toolbar bricht laufende Raw-Ladevorgaenge ab.
+- Hinweis: Wenn eine Wert-Aenderung gegen Outlier-Regeln verstoesst (z.B. Grenzen oder Max-Sprung), blockiert InfluxBro standardmaessig und zeigt einen Dialog mit exakter Erklaerung. Mit `trotzdem aendern` kann die Aenderung explizit erzwungen werden.
 
 ## Statistik
 

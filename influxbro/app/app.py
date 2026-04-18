@@ -9409,6 +9409,238 @@ def _outlier_gap_seconds(cfg: dict[str, Any]) -> float:
         return 300.0
 
 
+def _outlier_bounds_defaults(cfg: dict[str, Any]) -> tuple[float | None, float | None]:
+    def _opt_num(key: str) -> float | None:
+        try:
+            raw = cfg.get(key)
+            s = "" if raw is None else str(raw).strip()
+            if not s:
+                return None
+            return float(s)
+        except Exception:
+            return None
+
+    return _opt_num("outlier_bounds_min_default"), _opt_num("outlier_bounds_max_default")
+
+
+def _flux_tag_filter_from_tags(tags: dict[str, str]) -> str:
+    """Build a safe Flux tag filter expression from a tag dict."""
+
+    extra = ""
+    if not isinstance(tags, dict):
+        return extra
+    for k, v in (tags or {}).items():
+        key = str(k or "").strip()
+        if not key:
+            continue
+        # keep this conservative; Flux identifiers can't be arbitrary.
+        if not re.match(r"^[a-zA-Z0-9_]+$", key):
+            continue
+        extra += f" and r.{key} == {_flux_str(str(v or ''))}"
+    return extra
+
+
+def _neighbors_v2(
+    cfg: dict[str, Any],
+    measurement: str,
+    field: str,
+    dt: datetime,
+    extra_filter: str,
+) -> dict[str, Any]:
+    """Return best-effort prev/next neighbor points around dt."""
+
+    windows_s = [3600, 6 * 3600, 24 * 3600, 7 * 24 * 3600]
+    prev: tuple[datetime, float] | None = None
+    nxt: tuple[datetime, float] | None = None
+
+    with v2_client(cfg) as c:
+        qapi = c.query_api()
+        for win_s in windows_s:
+            start = _dt_to_rfc3339_utc_full(dt - timedelta(seconds=int(win_s)))
+            stop = _dt_to_rfc3339_utc_full(dt + timedelta(seconds=int(win_s)))
+            q = f'''
+from(bucket: "{cfg["bucket"]}")
+  |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra_filter})
+  |> keep(columns: ["_time","_value"])
+  |> sort(columns: ["_time"], desc: false)
+  |> limit(n: 1000)
+'''
+            try:
+                tables = qapi.query(q, org=cfg["org"])
+            except Exception:
+                continue
+            rows: list[tuple[datetime, float]] = []
+            for t in tables or []:
+                for rec in getattr(t, "records", []) or []:
+                    ts = rec.get_time()
+                    val = rec.get_value()
+                    if not isinstance(ts, datetime):
+                        continue
+                    if isinstance(val, bool) or not isinstance(val, (int, float)):
+                        continue
+                    rows.append((ts.astimezone(timezone.utc), float(val)))
+            if not rows:
+                continue
+            rows.sort(key=lambda x: x[0])
+            for ts, val in rows:
+                if ts < dt:
+                    prev = (ts, val)
+                elif ts > dt and nxt is None:
+                    nxt = (ts, val)
+            if prev is not None or nxt is not None:
+                break
+
+    out: dict[str, Any] = {}
+    if prev is not None:
+        out["prev_time"] = _dt_to_rfc3339_utc_ms(prev[0])
+        out["prev_value"] = prev[1]
+    if nxt is not None:
+        out["next_time"] = _dt_to_rfc3339_utc_ms(nxt[0])
+        out["next_value"] = nxt[1]
+    return out
+
+
+def _neighbors_v1(
+    cfg: dict[str, Any],
+    measurement: str,
+    field: str,
+    ts: datetime,
+    tag_where: str,
+) -> dict[str, Any]:
+    out: dict[str, Any] = {}
+    if not cfg.get("database"):
+        return out
+    c = v1_client(cfg)
+    try:
+        t = _dt_to_rfc3339_utc(ts)
+        # previous
+        q_prev = f'SELECT "{field}" FROM "{measurement}" WHERE time < \'{t}\'{tag_where} ORDER BY time DESC LIMIT 1'
+        res = c.query(q_prev)
+        for _, pts in (res or {}).items():
+            for p in pts or []:
+                try:
+                    out["prev_time"] = str(p.get("time") or "")
+                    out["prev_value"] = float(p.get(field))
+                except Exception:
+                    pass
+            break
+        # next
+        q_next = f'SELECT "{field}" FROM "{measurement}" WHERE time > \'{t}\'{tag_where} ORDER BY time ASC LIMIT 1'
+        res = c.query(q_next)
+        for _, pts in (res or {}).items():
+            for p in pts or []:
+                try:
+                    out["next_time"] = str(p.get("time") or "")
+                    out["next_value"] = float(p.get(field))
+                except Exception:
+                    pass
+            break
+    finally:
+        try:
+            c.close()
+        except Exception:
+            pass
+    return out
+
+
+def _check_outlier_edit_rules(
+    cfg: dict[str, Any],
+    measurement: str,
+    field: str,
+    entity_id: str | None,
+    friendly_name: str | None,
+    ts: datetime,
+    new_value: float,
+    unit: str,
+    tags: dict[str, str] | None = None,
+) -> dict[str, Any]:
+    """Best-effort rule check used for write guardrails."""
+
+    min_v, max_v = _outlier_bounds_defaults(cfg)
+    step_th = 0.0
+    try:
+        step_th = float(_outlier_max_step(cfg, measurement, unit))
+    except Exception:
+        step_th = 0.0
+    if step_th < 0:
+        step_th = 0.0
+
+    violations: list[dict[str, Any]] = []
+
+    if min_v is not None and new_value < float(min_v):
+        violations.append({
+            "rule": "bounds_min",
+            "detail": f"new_value={new_value} < min={min_v}",
+            "min": float(min_v),
+            "new_value": float(new_value),
+        })
+    if max_v is not None and new_value > float(max_v):
+        violations.append({
+            "rule": "bounds_max",
+            "detail": f"new_value={new_value} > max={max_v}",
+            "max": float(max_v),
+            "new_value": float(new_value),
+        })
+
+    neighbors: dict[str, Any] = {}
+    try:
+        if int(cfg.get("influx_version", 2)) == 2:
+            if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+                return {"ok": True, "violations": [], "meta": {"skipped": "missing_v2_cfg"}}
+            extra = _flux_tag_filter_from_tags(tags or {}) if tags else flux_tag_filter(entity_id, friendly_name)
+            neighbors = _neighbors_v2(cfg, measurement, field, ts.astimezone(timezone.utc), extra)
+        else:
+            tag_where = influxql_tag_filter(entity_id, friendly_name)
+            neighbors = _neighbors_v1(cfg, measurement, field, ts, tag_where)
+    except Exception:
+        neighbors = {}
+
+    if step_th and neighbors:
+        try:
+            if "prev_value" in neighbors:
+                dv = abs(float(new_value) - float(neighbors["prev_value"]))
+                if dv > step_th:
+                    violations.append({
+                        "rule": "max_step_prev",
+                        "detail": f"abs(new-prev)={dv} > max_step={step_th}",
+                        "max_step": float(step_th),
+                        "delta": float(dv),
+                        "prev_time": neighbors.get("prev_time"),
+                        "prev_value": neighbors.get("prev_value"),
+                        "new_value": float(new_value),
+                    })
+        except Exception:
+            pass
+        try:
+            if "next_value" in neighbors:
+                dv = abs(float(new_value) - float(neighbors["next_value"]))
+                if dv > step_th:
+                    violations.append({
+                        "rule": "max_step_next",
+                        "detail": f"abs(new-next)={dv} > max_step={step_th}",
+                        "max_step": float(step_th),
+                        "delta": float(dv),
+                        "next_time": neighbors.get("next_time"),
+                        "next_value": neighbors.get("next_value"),
+                        "new_value": float(new_value),
+                    })
+        except Exception:
+            pass
+
+    return {
+        "ok": True,
+        "violations": violations,
+        "meta": {
+            "unit": str(unit or ""),
+            "max_step": float(step_th or 0.0),
+            "bounds_min": min_v,
+            "bounds_max": max_v,
+            **neighbors,
+        },
+    }
+
+
 def _list_backups(dir_path: Path, include_db_full: bool = False) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     if not dir_path.exists():
@@ -17673,6 +17905,9 @@ def api_raw_overwrite():
     entity_id = str(body.get("entity_id") or "").strip() or None
     friendly_name = str(body.get("friendly_name") or "").strip() or None
     time_str = str(body.get("time") or "").strip()
+    unit = str(body.get("unit") or "").strip()
+    force_raw = body.get("force", False)
+    force = force_raw is True or str(force_raw).strip().lower() in ("1", "true", "yes", "on")
     try:
         new_value = float(body.get("new_value"))
     except Exception:
@@ -17708,6 +17943,37 @@ from(bucket: "{cfg['bucket']}")
                         existing.append(rec)
                 if not existing:
                     return jsonify({"ok": False, "error": "Zeitpunkt nicht in DB gefunden"}), 404
+
+                # Outlier rule guardrails (can be overridden via force=true)
+                try:
+                    best_rec = None
+                    best_abs = None
+                    for rec in existing:
+                        rdt = rec.get_time()
+                        if not isinstance(rdt, datetime):
+                            continue
+                        delta = abs((rdt.astimezone(timezone.utc) - ts.astimezone(timezone.utc)).total_seconds())
+                        if best_abs is None or delta < best_abs:
+                            best_abs = delta
+                            best_rec = rec
+                    # Use the best record timestamp for neighbor context.
+                    ts_eff = best_rec.get_time().astimezone(timezone.utc) if best_rec else ts.astimezone(timezone.utc)
+                    chk = _check_outlier_edit_rules(cfg, measurement, field, entity_id, friendly_name, ts_eff, new_value, unit)
+                    viol = chk.get("violations") or []
+                    if viol and not force:
+                        return (
+                            jsonify({
+                                "ok": False,
+                                "error": "Outlier-Regel verletzt. Schreiben blockiert.",
+                                "violations": viol,
+                                "meta": chk.get("meta") or {},
+                                "can_force": True,
+                            }),
+                            409,
+                        )
+                except Exception:
+                    pass
+
                 wapi = c.write_api(write_options=SYNCHRONOUS)
                 point = Point(measurement).field(field, new_value).time(ts)
                 if entity_id:
@@ -17729,6 +17995,24 @@ from(bucket: "{cfg['bucket']}")
                     existing.extend(pts)
                 if not existing:
                     return jsonify({"ok": False, "error": "Zeitpunkt nicht in DB gefunden"}), 404
+
+                # Outlier rule guardrails (can be overridden via force=true)
+                try:
+                    chk = _check_outlier_edit_rules(cfg, measurement, field, entity_id, friendly_name, ts, new_value, unit)
+                    viol = chk.get("violations") or []
+                    if viol and not force:
+                        return (
+                            jsonify({
+                                "ok": False,
+                                "error": "Outlier-Regel verletzt. Schreiben blockiert.",
+                                "violations": viol,
+                                "meta": chk.get("meta") or {},
+                                "can_force": True,
+                            }),
+                            409,
+                        )
+                except Exception:
+                    pass
                 tags = {}
                 if entity_id:
                     tags["entity_id"] = entity_id
@@ -17754,7 +18038,7 @@ from(bucket: "{cfg['bucket']}")
             "action": "overwrite",
             "old_value": old_value,
             "new_value": new_value,
-            "reason": mode or "manual",
+            "reason": (f"{mode} [FORCED]" if force else (mode or "manual")),
             "ip": _req_ip(),
             "ua": _req_ua(),
         })
@@ -22709,6 +22993,9 @@ def apply_changes():
     trigger_source = str(body.get("trigger_source") or "").strip() or None
     trigger_action = str(body.get("trigger_action") or "").strip() or None
     trigger_button = str(body.get("trigger_button") or "").strip() or None
+    unit_default = str(body.get("unit") or "").strip()
+    force_raw = body.get("force", False)
+    force_default = force_raw is True or str(force_raw).strip().lower() in ("1", "true", "yes", "on")
 
     if not measurement or not field:
         return jsonify({"ok": False, "error": "measurement and field required"}), 400
@@ -22756,6 +23043,9 @@ def apply_changes():
                 return jsonify({"ok": False, "error": "change requires time"}), 400
 
             reason = str(ch.get("reason") or "").strip()[:200]
+            unit = str(ch.get("unit") or unit_default or "").strip()
+            force_raw = ch.get("force", False)
+            force = force_default or (force_raw is True or str(force_raw).strip().lower() in ("1", "true", "yes", "on"))
             try:
                 expected_decimals = int(ch.get("decimals", 0))
             except Exception:
@@ -22840,6 +23130,29 @@ from(bucket: "{cfg["bucket"]}")
                         new_val = float(new_raw)
                     except Exception:
                         return jsonify({"ok": False, "error": f"invalid float at {time_raw}"}), 400
+
+                # Outlier rule guardrails (can be overridden via force=true)
+                try:
+                    ts_eff = dt.astimezone(timezone.utc) if isinstance(dt, datetime) else dt
+                    chk = _check_outlier_edit_rules(cfg, measurement, field, entity_id, friendly_name, ts_eff, float(new_val), unit, tags)
+                    viol = chk.get("violations") or []
+                    if viol and not force:
+                        return (
+                            jsonify({
+                                "ok": False,
+                                "error": "Outlier-Regel verletzt. Schreiben blockiert.",
+                                "violations": viol,
+                                "meta": {"time": time_raw, **(chk.get("meta") or {})},
+                                "can_force": True,
+                            }),
+                            409,
+                        )
+                    if force and reason and "[FORCED]" not in reason:
+                        reason = (reason + " [FORCED]")[:200]
+                    elif force and not reason:
+                        reason = "[FORCED]"
+                except Exception:
+                    pass
 
                 p = Point(measurement)
                 for tk, tv in tags.items():

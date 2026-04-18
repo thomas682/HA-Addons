@@ -3006,7 +3006,12 @@ async function api(url, opts){
       throw new Error('Failed to fetch');
     }
     const j = await r.json().catch(()=>({ok:false,error:"Invalid JSON"}));
-    if(!r.ok || !j.ok) throw new Error(j.error || ("HTTP " + r.status));
+    if(!r.ok || !j.ok){
+      const er = new Error((j && j.error) ? String(j.error) : ("HTTP " + r.status));
+      try{ er.status = r.status; }catch(e){}
+      try{ er.payload = j; }catch(e){}
+      throw er;
+    }
     return j;
   }catch(e){
     if(e && (e.name === "AbortError" || String(e).includes("AbortError"))){
@@ -8698,6 +8703,89 @@ function showRawActionFeedback(title, text){
   }catch(e){}
 }
 
+function _isOutlierRuleBlock(e){
+  try{
+    return !!(e && Number(e.status) === 409 && e.payload && Array.isArray(e.payload.violations) && e.payload.violations.length);
+  }catch(x){
+    return false;
+  }
+}
+
+function _buildOutlierRulePrompt(payload, ctx){
+  try{
+    const p = payload || {};
+    const meta = (p && p.meta && typeof p.meta === 'object') ? p.meta : {};
+    const vios = Array.isArray(p.violations) ? p.violations : [];
+
+    const lines = [];
+    lines.push('Outlier-Regel verletzt');
+    lines.push('');
+    if(ctx && ctx.time) lines.push(`Zeitpunkt: ${fmtTs(ctx.time)}`);
+    if(ctx && ctx.old_value !== undefined) lines.push(`Alt: ${fmtNum(ctx.old_value)}`);
+    if(ctx && ctx.new_value !== undefined) lines.push(`Neu: ${fmtNum(ctx.new_value)}`);
+    lines.push('');
+
+    const unit = String(meta.unit || '').trim();
+    const maxStep = (meta.max_step !== undefined && meta.max_step !== null) ? Number(meta.max_step) : null;
+    const bmin = (meta.bounds_min !== undefined && meta.bounds_min !== null && String(meta.bounds_min).trim() !== '') ? Number(meta.bounds_min) : null;
+    const bmax = (meta.bounds_max !== undefined && meta.bounds_max !== null && String(meta.bounds_max).trim() !== '') ? Number(meta.bounds_max) : null;
+    if(unit || isFinite(maxStep) || isFinite(bmin) || isFinite(bmax)){
+      lines.push('Regel-Parameter:');
+      if(unit) lines.push(`- Einheit: ${unit}`);
+      if(isFinite(maxStep)) lines.push(`- Max Sprung: ${fmtNum(maxStep)}`);
+      if(isFinite(bmin)) lines.push(`- Min: ${fmtNum(bmin)}`);
+      if(isFinite(bmax)) lines.push(`- Max: ${fmtNum(bmax)}`);
+      lines.push('');
+    }
+
+    lines.push('Verstoesse:');
+    vios.forEach((v)=>{
+      const rule = String(v && v.rule ? v.rule : '').trim();
+      const detail = String(v && v.detail ? v.detail : '').trim();
+      const head = rule ? rule : 'rule';
+      lines.push(`- ${head}${detail ? (': ' + detail) : ''}`);
+    });
+
+    const prevT = meta.prev_time ? fmtTs(meta.prev_time) : '';
+    const prevV = (meta.prev_value !== undefined && meta.prev_value !== null) ? fmtNum(meta.prev_value) : '';
+    const nextT = meta.next_time ? fmtTs(meta.next_time) : '';
+    const nextV = (meta.next_value !== undefined && meta.next_value !== null) ? fmtNum(meta.next_value) : '';
+    if(prevT || nextT){
+      lines.push('');
+      lines.push('Nachbarn (best-effort):');
+      if(prevT) lines.push(`- Vorher: ${prevT}${prevV ? (' | ' + prevV) : ''}`);
+      if(nextT) lines.push(`- Nachher: ${nextT}${nextV ? (' | ' + nextV) : ''}`);
+    }
+
+    lines.push('');
+    lines.push('Trotzdem aendern?');
+    return lines.join('\n');
+  }catch(e){
+    return 'Outlier-Regel verletzt. Trotzdem aendern?';
+  }
+}
+
+function confirmOutlierRuleOverride(ctx, payload){
+  return new Promise((resolve)=>{
+    const title = 'Outlier-Regel';
+    const txt = _buildOutlierRulePrompt(payload, ctx);
+    try{
+      if(window.InfluxBroPopup && window.InfluxBroPopup.show){
+        window.InfluxBroPopup.show(title, txt, {
+          actions: [
+            { label: 'Abbruch', title: 'Abbruch', onClick: ()=>resolve(false) },
+            { label: 'trotzdem aendern', title: 'trotzdem aendern', onClick: ()=>resolve(true) },
+          ],
+          copyText: txt,
+          copyTitle: 'Zwischenablage',
+        });
+        return;
+      }
+    }catch(e){}
+    try{ resolve(confirm(txt)); }catch(e){ resolve(false); }
+  });
+}
+
 function buildRawOverwritePrompt(sourceRow, targetRow){
   return [
     'Wert kopieren',
@@ -8816,11 +8904,17 @@ async function triggerRawOverwrite(sourceKey, targetKey, opts){
   if(!(await confirmRawOverwrite(sourceRow, targetRow))) return false;
 
   const reason = (opts && opts.mode === 'dragdrop') ? 'Raw Drag-and-Drop overwrite' : 'Raw Copy-Paste overwrite';
-  await api('./api/apply_changes', {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
+  const unit = _currentEntityUnit();
+  const ctx = { time: String(targetRow.time || ''), old_value: targetRow.value, new_value: Number(newValue) };
+
+  const attempt = async (force)=>{
+    await api('./api/apply_changes', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
         confirm: true,
+        force: !!force,
+        unit: unit || '',
         measurement: base.measurement,
         field: base.field,
         entity_id: base.entity_id,
@@ -8831,13 +8925,33 @@ async function triggerRawOverwrite(sourceKey, targetKey, opts){
         trigger_button: (opts && opts.mode === 'dragdrop') ? 'raw_dragdrop' : 'raw_paste',
         changes: [{
           action: 'overwrite',
-        time: String(targetRow.time || ''),
-        new_value: newValue,
-        decimals: Math.max(0, _countDecimals(newValue)),
-        reason,
-      }],
-    })
-  });
+          time: String(targetRow.time || ''),
+          new_value: newValue,
+          decimals: Math.max(0, _countDecimals(newValue)),
+          reason,
+          unit: unit || '',
+          force: !!force,
+        }],
+      })
+    }, { silent: true });
+  };
+
+  try{
+    try{
+      await attempt(false);
+    }catch(e){
+      if(_isOutlierRuleBlock(e)){
+        const wantForce = await confirmOutlierRuleOverride(ctx, e.payload);
+        if(!wantForce) return false;
+        await attempt(true);
+      }else{
+        throw e;
+      }
+    }
+  }catch(e){
+    displayError(e);
+    return false;
+  }
 
   await refreshAfterDataMutation({ rerunOutliers: true });
   setRawSelectedKey(targetKey);
@@ -9022,9 +9136,12 @@ async function editRawValueInline(tr, row, tdV){
 }
 
 async function doRawOverwrite(base, time, newVal, oldVal, mode){
-  try{
-    _rawStatusStart('Ueberschreibe...');
-    const j = await api('./api/raw_overwrite', {
+  _rawStatusStart('Ueberschreibe...');
+  const unit = _currentEntityUnit();
+  const ctx = { time: String(time || ''), old_value: oldVal, new_value: newVal };
+
+  const attempt = async (force)=>{
+    await api('./api/raw_overwrite', {
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
@@ -9032,21 +9149,34 @@ async function doRawOverwrite(base, time, newVal, oldVal, mode){
         field: base.field,
         entity_id: base.entity_id || '',
         friendly_name: base.friendly_name || '',
+        unit: unit || '',
+        force: !!force,
         time: String(time || ''),
         new_value: newVal,
         old_value: oldVal,
         mode: mode || 'overwrite',
       })
-    });
-    if(j && j.ok){
-      ok('Wert ueberschrieben.');
-      showRawActionFeedback('Wert ueberschrieben', `Zeit: ${fmtTs(time)}\nAlt: ${fmtNum(oldVal)}\nNeu: ${fmtNum(newVal)}`);
-      // Update local cache
-      RAW_ROWS = (RAW_ROWS || []).map(r => rowKey(r) === rowKey({time}) ? Object.assign({}, r, {value: newVal}) : r);
-      renderRawTable();
-    }else{
-      err((j && j.error) ? j.error : 'Ueberschreiben fehlgeschlagen.');
+    }, { silent: true });
+  };
+
+  try{
+    try{
+      await attempt(false);
+    }catch(e){
+      if(_isOutlierRuleBlock(e)){
+        const wantForce = await confirmOutlierRuleOverride(ctx, e.payload);
+        if(!wantForce) return;
+        await attempt(true);
+      }else{
+        throw e;
+      }
     }
+
+    ok('Wert ueberschrieben.');
+    showRawActionFeedback('Wert ueberschrieben', `Zeit: ${fmtTs(time)}\nAlt: ${fmtNum(oldVal)}\nNeu: ${fmtNum(newVal)}`);
+    // Update local cache
+    RAW_ROWS = (RAW_ROWS || []).map(r => rowKey(r) === rowKey({time}) ? Object.assign({}, r, {value: newVal}) : r);
+    renderRawTable();
   }catch(e){
     displayError(e);
   }finally{

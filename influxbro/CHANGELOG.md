@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.377
+
+### Bugfix
+
+- Schreibschutz: Wert-Aenderungen (Raw Overwrite + apply_changes overwrite) werden serverseitig gegen die Outlier-Regeln geprueft (Bounds + Max-Sprung zu Nachbarn). Bei Verstoß blockiert InfluxBro standardmaessig (HTTP 409) und bietet im UI einen Dialog mit exakter Erklaerung plus Force-Override. ([#329](https://github.com/thomas682/HA-Addons/issues/329))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: 2026.4.2
+
 ## 1.12.376
 
 ### Bugfix
