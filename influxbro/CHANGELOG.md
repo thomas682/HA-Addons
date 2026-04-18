@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.379
+
+### Enhancement
+
+- UI: Seitensuche (Topbar) durchsucht jetzt auf jeder Seite auch wichtige sichtbare Textbereiche (nicht nur Controls) und springt zu Treffern. ([#327](https://github.com/thomas682/HA-Addons/issues/327))
+- Einstellungen: Parameter aus verschachtelten Untersektionen (z.B. Backup/Restore Details) werden direkt in die passenden Gruppen einsortiert; Picker/S-Picker kopiert zusaetzliche Metadaten (id/title/open/selector/section-path) fuer eindeutige UI-Zuordnung. ([#326](https://github.com/thomas682/HA-Addons/issues/326))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: 2026.4.2
+
 ## 1.12.378
 
 ### Enhancement

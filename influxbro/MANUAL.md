@@ -73,6 +73,8 @@ Neu: Top-Leiste (Profil + Zoom)
 - Enthalten:
   - Profil-Auswahl inkl. `Anwenden`, `Speichern`, `Info` und die aktuelle Version.
   - Zoom-Steuerung: `-` / `+` und die aktuelle Zoomstufe in `%`.
+  - Seitensuche: durchsucht Controls und wichtige sichtbare Texte auf der aktuellen Seite und springt zu Treffern.
+  - Picker / S-Picker: kopiert zusaetzliche Element-Metadaten (z.B. id/title/Section-Pfad), damit UI-Elemente eindeutig identifiziert werden koennen.
 - Zoom wird im Browser gespeichert (pro Browser/Client).
 
 ## Installation in Home Assistant

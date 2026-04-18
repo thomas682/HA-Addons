@@ -759,28 +759,35 @@
             }catch(e){}
           });
 
-          // Settings page: also index visible labels/hints so the search behaves like a fulltext search.
-          if(_isSettingsPage()){
-            try{
-              const txtSel = '.param_label, .param_hint, details > summary, .muted';
-              (main || document).querySelectorAll(txtSel).forEach((el)=>{
-                try{
-                  const txt = _norm(el.textContent || '');
-                  if(!txt) return;
-                  const sect = _sectionPathFor(el);
-                  const ui = _norm(el.getAttribute && el.getAttribute('data-ui'));
-                  const key = ui || ('text:' + txt.slice(0, 60));
-                  const parts = [];
-                  if(cfg.key) parts.push(key);
-                  if(cfg.visible_text) parts.push(txt);
-                  if(cfg.sections) parts.push(sect.join(' / '));
-                  const hay = parts.map(_lc).join(' | ');
-                  // Allow duplicates for pure text keys (so we can jump to exact element), but keep hay stable.
-                  out.push({el, ui: key, txt: txt, sect, hay, parts:{key, label:'', txt, direct_text:'', sections: sect.join(' / '), tooltip:''}});
-                }catch(e){}
-              });
-            }catch(e){}
-          }
+          // Also index important visible text blocks so the page search works on every page.
+          // Keep it bounded to avoid huge/slow DOM scans.
+          try{
+            const txtSel = _isSettingsPage()
+              ? '.param_label, .param_hint, details > summary, .table_title, .table_head, h1, h2, h3, .muted'
+              : 'details > summary, .table_title, .table_head, h1, h2, h3, .muted';
+            const scope = (main || document);
+            const maxTextNodes = _isSettingsPage() ? 2600 : 1200;
+            let nText = 0;
+            scope.querySelectorAll(txtSel).forEach((el)=>{
+              try{
+                if(nText >= maxTextNodes) return;
+                const txt = _norm(el.textContent || '');
+                if(!txt) return;
+                // Skip extremely long blobs (manual/changelog etc.)
+                if(txt.length > 3800) return;
+                const sect = _sectionPathFor(el);
+                const ui = _norm(el.getAttribute && el.getAttribute('data-ui'));
+                const key = ui || ('text:' + txt.slice(0, 60));
+                const parts = [];
+                if(cfg.key) parts.push(key);
+                if(cfg.visible_text) parts.push(txt);
+                if(cfg.sections) parts.push(sect.join(' / '));
+                const hay = parts.map(_lc).join(' | ');
+                out.push({el, ui: key, txt: txt, sect, hay, parts:{key, label:'', txt, direct_text:'', sections: sect.join(' / '), tooltip:''}});
+                nText += 1;
+              }catch(e){}
+            });
+          }catch(e){}
 
           return out;
         }catch(e){ return []; }
@@ -1298,12 +1305,102 @@
     async function _copyCurrentTarget(target, ev){
       if(!target || !target.el) return;
       try{ ev && ev.preventDefault && ev.preventDefault(); ev && ev.stopPropagation && ev.stopPropagation(); }catch(e){}
+      const el = target.el;
       const name = String(target.name || '').trim();
-      const text = '<' + (window.currentPageLabel ? window.currentPageLabel() : 'Seite') + ': ' + name + '>';
+
+      function _suppressedTitleFor(node){
+        try{
+          for(const pair of (tooltipSuppressed || [])){
+            if(pair && pair[0] === node) return String(pair[1] || '').trim();
+          }
+        }catch(e){}
+        return '';
+      }
+
+      function _normLine(s){
+        return String(s || '').replace(/\s+/g, ' ').trim();
+      }
+
+      function _sectionPathForPicker(node){
+        try{
+          const parts = [];
+          let cur = node;
+          for(let i=0;i<30;i+=1){
+            if(!cur) break;
+            const d = cur.closest ? cur.closest('details') : null;
+            if(!d) break;
+            const sum = d.querySelector('summary');
+            const t = _normLine(sum ? sum.textContent : '');
+            if(t) parts.unshift(t);
+            cur = d.parentElement;
+          }
+          return parts;
+        }catch(e){
+          return [];
+        }
+      }
+
+      function _bestTitle(node){
+        try{
+          const a = _normLine(node.getAttribute ? (node.getAttribute('aria-label') || '') : '');
+          if(a) return a;
+          const t = _normLine(node.getAttribute ? (node.getAttribute('title') || '') : '');
+          if(t) return t;
+          const s = _normLine(_suppressedTitleFor(node));
+          if(s) return s;
+          const nm = _normLine(node.getAttribute ? (node.getAttribute('name') || '') : '');
+          if(nm) return nm;
+          const ph = _normLine(node.getAttribute ? (node.getAttribute('placeholder') || '') : '');
+          if(ph) return ph;
+        }catch(e){}
+        return '';
+      }
+
+      const page = (window.currentPageLabel ? window.currentPageLabel() : 'Seite');
+      const dataUi = _normLine(el.getAttribute ? (el.getAttribute('data-ui') || '') : '');
+      const id = _normLine(el.getAttribute ? (el.getAttribute('id') || '') : '');
+      const tag = _normLine((el.tagName || '')).toLowerCase();
+      const typ = _normLine(el.getAttribute ? (el.getAttribute('type') || '') : '');
+      const role = _normLine(el.getAttribute ? (el.getAttribute('role') || '') : '');
+      const href = _normLine(el.getAttribute ? (el.getAttribute('href') || '') : '');
+      const title = _bestTitle(el);
+
+      let detailsMeta = null;
+      try{
+        const d = (tag === 'details') ? el : (el.closest ? el.closest('details') : null);
+        if(d){
+          const sum = d.querySelector('summary');
+          detailsMeta = {
+            id: _normLine(d.getAttribute ? (d.getAttribute('id') || '') : ''),
+            open: !!d.open,
+            summary: _normLine(sum ? sum.textContent : ''),
+          };
+        }
+      }catch(e){}
+
+      const selector = dataUi ? ('[data-ui="' + dataUi.replace(/"/g, '\\"') + '"]') : (id ? ('#' + id) : '');
+      const meta = {
+        page,
+        picked: name,
+        kind: String(target.kind || ''),
+        data_ui: dataUi,
+        id,
+        tag,
+        type: typ,
+        role,
+        href,
+        title,
+        section_path: _sectionPathForPicker(el),
+        selector,
+        details: detailsMeta,
+        at: (new Date()).toISOString(),
+      };
+
+      const text = '<' + page + ': ' + name + '>' + '\n' + JSON.stringify(meta, null, 2);
       const ok = await copyText(text);
       try{
         if(window.InfluxBroPopup && window.InfluxBroPopup.show){
-          window.InfluxBroPopup.show('UI Picker', ok ? ('Kopiert: ' + text) : ('Kopieren fehlgeschlagen: ' + text));
+          window.InfluxBroPopup.show('UI Picker', ok ? ('Kopiert: ' + '<' + page + ': ' + name + '>') : ('Kopieren fehlgeschlagen: ' + '<' + page + ': ' + name + '>'));
         }
       }catch(e){}
       stop();
