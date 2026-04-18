@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.376
+
+### Bugfix
+
+- Dashboard: Bearbeitungsliste wurde entfernt (inkl. zugehoeriger UI) und die Raw-Bedienung wurde vereinfacht (Raw-Status immer sichtbar, Abbruch fuer Raw-Ladevorgaenge, Inline-Edit per Doppelklick mit sauberem Revert). ([#330](https://github.com/thomas682/HA-Addons/issues/330))
+- Dashboard: Ausreißer-Suchleiste wurde entfernt; Outlier-Tabelle-Resize funktioniert wieder ueber den Shared-Resize-Helper. ([#330](https://github.com/thomas682/HA-Addons/issues/330))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: 2026.4.2
+
 ## 1.12.375
 
 ### Enhancement

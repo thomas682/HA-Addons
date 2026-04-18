@@ -44,7 +44,7 @@ Aktuelle UI (Beispiele):
 
 Links findest du die Bereiche:
 
-- Dashboard: Messwerte auswaehlen, Graph/Tabelle ansehen, Ausreisser finden und Werte direkt in der Bearbeitungsliste bearbeiten.
+- Dashboard: Messwerte auswaehlen, Graph/Raw ansehen, Ausreisser analysieren und Werte direkt in der Raw-Tabelle korrigieren.
 - Statistik: Gesamtstatistik ueber viele Serien anzeigen.
 - Monitor: Ueberwachte Messwert-Keys pruefen, Fault-Phasen verfolgen, offene Korrekturen verwalten und Template-Status abrufen.
 - Backup: Backups fuer einen einzelnen Messwert erstellen und verwalten.
@@ -173,9 +173,9 @@ Weitere Dashboard-Anpassungen:
 - Der fruehere Raw-Query-Bereich wurde entfernt. Oberhalb der Raw-Tabelle gibt es jetzt einen eigenen Refresh-Button fuer dieselbe sichtbare Raw-Sicht.
 - `Graph neu zeichnen` laedt die aktuelle Serie erneut aus InfluxDB und behaelt dabei den aktuellen Ausschnitt inklusive Overlays und Punktinfos bei.
 - Die fruehere Box `Quelle (aufgeloest)` wurde entfernt; im Dashboard bleibt nur noch die eigentliche Auswahlleiste.
-- Wenn du Raw-Werte oder vorgemerkte Aenderungen schreibst, werden Graph, Raw-Daten und eine aktive Ausreissersuche danach zusammen neu geladen; der aktuelle Ausschnitt bleibt dabei erhalten.
-- Bearbeitungsliste und Details-Liste haben jetzt ebenfalls einen horizontalen Hoehen-Resizer wie die anderen Tabellenbereiche.
-- Die Bearbeitungsliste hat keine Action-Spalte mehr; die Aktionen `Ueberschreiben`, `Loeschen`, `Uebernehmen` und `Undo` sitzen in der Toolbar oberhalb der Tabelle.
+- Wenn du Raw-Werte schreibst oder loeschst, werden Graph und Raw-Daten danach neu geladen; der aktuelle Ausschnitt bleibt dabei erhalten.
+- Neu: Raw-Statusleiste bleibt immer sichtbar und zeigt bei laufenden Raw-Ladevorgaengen einen Abbruch-Button.
+- Neu: Raw Inline-Edit in der Wert-Spalte erfolgt per Doppelklick (Escape/Blur bricht ab und stellt den alten Zelltext wieder her).
 - Raw-Wert-Ueberschreibungen bestaetigst du jetzt ueber einen InfluxBro-eigenen modalen Dialog statt ueber den Browser-Confirm.
 
 Hinweis: Zeitstempel werden im gesamten UI inklusive Millisekunden angezeigt.
@@ -245,11 +245,10 @@ Cache Nutzung:
 ### 3) Aktualisieren
 
 - Erst mit `Aktualisieren` werden Graph und Statistik geladen.
-- Die Bearbeitungsliste bleibt dabei leer und wird erst durch `Fehlersuche Ausreisser` gefuellt.
 - Sobald einmal geladen wurde, werden die Ergebnisse serverseitig gecacht (unter `/data/dash_cache`) und beim naechsten Aufruf des Dashboards wiederverwendet oder teilweise aus mehreren Cache-Segmenten zusammengesetzt.
-- Die Hauptbereiche im Dashboard folgen unterhalb von `Auswahl` in dieser Reihenfolge: `Graph`, `Raw Daten (DB)`, `Bearbeitungsliste`.
+- Die Hauptbereiche im Dashboard folgen unterhalb von `Auswahl` in dieser Reihenfolge: `Analyse`, `Ausreißer`, `Raw Daten (DB)`, `Graph`.
 - `Raw Daten (DB)` ist ein eigener Bereich direkt unter dem Graph und nicht innerhalb des Graph-Bereichs verschachtelt.
-- Die Dashboard-Hauptbereiche bleiben auch im Live-DOM innerhalb von `dashboard.page`; Browser-DevTools sollten `main.content` daher nicht mehr vor `Graph`/`Raw`/`Bearbeitungsliste` implizit schliessen.
+- Die Dashboard-Hauptbereiche bleiben auch im Live-DOM innerhalb von `dashboard.page`.
 
 ## Graph
 
@@ -288,12 +287,9 @@ Hinweis (Defaults/Persistenz):
 
 - Wenn kein UI-State gespeichert ist (neue Installation oder Browser-Storage geloescht), sind die Ableitungs-Checkboxen standardmaessig aktiviert (Hintergrund + Farbleiste + Ableitungs-Graph + absolut).
 
-Bearbeitungsliste + Bearbeitungsgraph:
+Hinweis:
 
-- Bearbeitungsliste: nach der Ausreisser-Analyse wird angezeigt, wie viele Punkte geprueft wurden und wie viele Ausreisser gefunden wurden.
-- Bearbeitungsgraph: zeigt `DB Punkte` und `Ausreisser` jeweils im Format `gesamt / Bereich` (Bereich = aktueller X-Zoom).
-- Hover ueber einem Messpunkt zeigt Zeit + Wert direkt am Messpunkt (lokales Client-Format).
-- Klick auf einen Messpunkt zeigt zusaetzlich oberhalb des Graphs die Auswahl (Zeit/Wert/Serie).
+- Die fruehere Bearbeitungsliste (inkl. Bearbeitungsgraph/Details) wurde entfernt. Korrekturen erfolgen direkt in der Raw-Tabelle.
 
 Raw Daten (DB):
 
@@ -307,7 +303,6 @@ Raw Daten (DB):
 - Alternativ kannst du eine Raw-Zeile per Drag-and-Drop auf eine andere Zeile ziehen; auch dann erscheint vor dem Ueberschreiben derselbe Bestaetigungsdialog.
 - Die Raw-Tabelle hat einen eigenen Refresh-Button und behaelt dabei denselben sichtbaren Zeitraum bzw. denselben graphgefuehrten Ausschnitt bei.
 - Die Buttons `Kopieren`, `Wert kopieren` und `Einfügen` zeigen zusaetzlich eine direkte Rueckmeldung im Popup.
-- Fuer die Ausreissersuche kannst du in den Einstellungen jetzt eine separate Mindesthoehe der Bearbeitungsliste festlegen, damit Treffer nach einem erneuten Scan sichtbar bleiben.
 - Die Raw-Tabelle hat einen fixierten Header (Titelzeile scrollt nicht mit).
 - Analyse-Section: Unterhalb der Quellauswahl gibt es einen eigenen Bereich `Analyse` mit Fortschrittsbalken, Checkliste, Chunk-Details und den gefundenen Ausreissern nach Typ.
 - Bei `Zeitraum = Alle` startet die Analyse nicht mehr pauschal bei 1970, sondern verwendet einen serverseitig gemerkten Analyse-Startwert pro Messwert. Standardmaessig wird auf `jetzt - Max. Alter der Datenanalyse (Jahre)` begrenzt; ist der aelteste bekannte Datensatz juenger, beginnt die Analyse dort.
@@ -347,70 +342,20 @@ Konzept fuer sehr grosse Tabellen (z.B. ~2 Mio Zeilen):
 - Zeitbasierte Navigation statt Seitenzahlen: in der Praxis ist "Tag/Zeitraum" fuer Zeitreihen schneller zu bedienen und stabiler.
 - Fuer einen schnellen Ueberblick: alternativ (oder zusaetzlich) eine "Preview" mit Downsampling/Reduktion anbieten (Graph ist bereits so optimiert).
 
-## Bearbeitungsliste (Ausreisser)
+## Bearbeitung (Raw Daten)
 
-- Linke Checkbox: Zeilen selektieren (Mehrfachauswahl moeglich).
-- `Zeit gefuehrt durch Graph`:
-  - EIN: Zoombereich im Graph bestimmt die Zeit-Einschraenkung der Tabelle.
-  - AUS: Tabelle zeigt wieder den Zeitraum aus der Zeitraum-Auswahl.
-- `Filter aktiv`: schaltet den Werte-Filter (Links/Verb/Rechts) an/aus.
-- `Grund Filter`: filtert die Ausreisserliste nach Text in der Spalte `Grund`.
-- `Klasse`: filtert nach `primaer`/`sekundaer`.
-- `Links`/`Verb.`/`Rechts`: einfache Regel um Werte als Fehler zu markieren (z.B. kleiner als 0 oder groesser als 999999).
+Die fruehere Bearbeitungsliste wurde entfernt. Korrekturen erfolgen direkt in der Raw-Tabelle (DB):
 
-Details pro Ausreisser:
-
-- Nach `Fehlersuche Ausreisser` werden pro Eintrag automatisch Details (Davor/Ziel/Danach) geladen.
-- Die Details sind pro Zeile als eingeklappter Block unterhalb der Zeile sichtbar (standardmaessig zugeklappt).
-
-Bearbeitung in der Bearbeitungsliste:
-
-- Pro Zeile in der Spalte `Aktion`: `Bearbeiten` aktiviert den Bearbeitungsmodus fuer diesen Punkt.
-- Sobald mindestens ein Punkt in Bearbeitung ist, werden zusaetzliche Spalten eingeblendet: `Alt`, `Neu`, `aelter`, `juenger`, `eigener Wert`.
-- `Bearbeitung aus`: beendet den Bearbeitungsmodus fuer die Zeile. Bei ungespeicherten Aenderungen kommt eine Bestaetigung.
-- `Undo`: stellt den Wert auf den Originalwert zurueck (vor der Bearbeitung).
-- `Aenderungen in Datenbank uebernehmen`: steht unterhalb der Liste und schreibt/loescht die vorgemerkten Aenderungen.
-
-Ueberschreiben-History:
-
-- Nach dem Ueberschreiben wird der Wert in der Bearbeitungsliste sofort aktualisiert.
-- Unter der Zeile erscheint eine eingerueckte History (letzte 3 Ueberschreibungen) mit Datum, Altwert, Neuwert und Button `restore`.
-
-Ausreisser-Fehlersuche:
-
-- `Optionen`: oeffnet Regeln fuer die Scan-Logik.
-- `NULL Werte`: markiert NULL/fehlende Werte.
-- `0-Werte`: markiert exakte 0.
-- `Grenzen` + `Min/Max`: markiert Werte ausserhalb eines Bereichs.
-- `Counter-Ausreisser (Spruenge)` + `Max Sprung`: erkennt Spruenge in Counter-Serien (Grenzen kommen aus den Einstellungen).
-- `Stoerphasensuche`: startet nach starkem Sprung oder ungueltigem Zustand eine persistente Stoerphase (`fault_active`), die erst nach einer Recovery-Regel wieder endet.
-- `Fehlersuche Ausreisser`: fuehrt den Scan im aktuellen Graph-Fenster aus.
-- `Abbruch`: bricht nur den laufenden Scan ab (Treffer bleiben stehen).
-
-Hinweis: Wenn Daten nach einem Seitenwechsel automatisch wiederhergestellt wurden, kann die Fehlersuche trotzdem direkt gestartet werden (Measurement/Field wird best-effort wiederhergestellt).
-
-Hinweis: Werte in Bearbeitung werden gelb markiert. Geaenderte (dirty) Zeilen werden gruen markiert.
-
-### In Datenbank uebernehmen
-
-- Bearbeitung passiert als Staging in der Tabelle:
-  - Spalte `Aktion`: `ueberschreiben` oder `loeschen`
-  - Spalte `Neuwert`: neuer Zahlenwert (nur bei `ueberschreiben`)
-- Klick auf eine Zeile zeigt rechts das Detailpanel (Davor/Ziel/Danach) und fokussiert den Edit-Graph.
-- Im Detailpanel kann ein Wert selektiert und per `Uebernehmen als neuer Wert` als Neuwert vorgemerkt werden.
-- Button: `Aenderungen in Datenbank uebernehmen` (ueber der Bearbeitungsliste)
-- Sicherheitsmechanismus:
-  - Aenderungen muessen im Dialog bestaetigt werden.
-  - Bulk-Loeschungen werden nur noch ueber Browser-Bestaetigungen abgesichert (z.B. Zeitraum loeschen, History Rollback, Import: Vorher loeschen).
-
-Wichtig: Die Aenderungen bleiben markiert, bis du sie wirklich uebernimmst.
-
-Neu (Ausreisser-Modus):
-
-- In der Spalte `Aktion` gibt es zusaetzlich den Direktbutton `uebernehmen` (schreibt sofort in die DB, mit Bestaetigung).
-- Nach erfolgreichem Schreiben erscheint `undo` (stellt den Ursprungswert wieder her; best-effort).
-
-Tipp: In der Toolbar gibt es Mehrfachaktionen (z.B. Werte davor uebernehmen oder Durchschnitt davor+danach), die automatisch `Aktion/Neuwert` fuellen.
+- Raw-Zeile anklicken: markiert die Zeile.
+- Wert-Spalte: Doppelklick startet Inline-Edit.
+  - Enter: uebernehmen
+  - Escape oder Blur: Abbruch, alter Zelltext wird wieder angezeigt
+- Aktionen ueber die Buttons oberhalb der Raw-Tabelle:
+  - `Wert kopieren` / `Einfuegen`: Zielwert mit Quellwert ueberschreiben (mit Bestaetigung)
+  - `Manuell`: neuen Wert fuer die markierte Zeile setzen
+  - `Loeschen`: DB-Punkt loeschen (mit Bestaetigung)
+  - `Undo`: letzte direkte Raw-Aenderung rueckgaengig machen (best-effort)
+- `Abbruch` in der Raw-Toolbar bricht laufende Raw-Ladevorgaenge ab.
 
 ## Statistik
 
@@ -843,7 +788,7 @@ UI:
   - Default: Hintergrund `#3287A8`, Text `#FFFFFF`. In den Einstellungen gibt es zusaetzlich Colorpicker.
 - `Bereich-Titel Ebene 2/3`: fuer die verschachtelten Settings-Sections gibt es jetzt eigene Hintergrund-/Textfarben und eigene Schriftgroessen.
 - `Filter ... Breite`: steuert die Layout-Breiten im Dashboard.
-- Dashboard-Details wie `Auswahl`, `Graph` und `Bearbeitungsliste` starten nach Erstinstallation wieder fest `geoeffnet`; dafuer gibt es keine separate Parametrierung mehr.
+- Dashboard-Details wie `Auswahl`, `Analyse`, `Ausreißer`, `Raw` und `Graph` starten nach Erstinstallation wieder fest `geoeffnet`; dafuer gibt es keine separate Parametrierung mehr.
 - Auswahlfelder (Filter/Zeiten):
   - Fontgroessen (Label / Feld / Beschreibung)
   - Auto-Breite (Default) oder manuelle Breite (px)

@@ -508,25 +508,8 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
     <details id="outlier_section" class="section" style="margin-top: 10px;" data-ui="dashboard_outliers.section_root" title="dashboard_outliers.section_root">
       <summary><span class="ib_summary_row"><span>Ausreißer</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Ausreißer" data-info-body="Ausreißer ist ein eigener Dashboard-Bereich fuer Suche, Navigation und Tabelle der aktuell gefundenen Raw-Ausreißer.\n\nEnthaelt:\n- Suchlauf fuer die ausgewaehlte Serie\n- Navigation zum aeltesten/neuesten Treffer\n- Typauswahl und Parameter\n- Ausreißer-Tabelle mit Tabellenfunktionen\n\nNutzen:\n- gefundene Treffer getrennt von den Raw-Daten betrachten\n- Treffer filtern, pruefen und gezielt in die Raw-Tabelle uebernehmen" ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
       <div class="table_wrap" id="raw_outlier_table_wrap" style="margin-top:10px;">
-      <div class="table_title">Ausreißer</div>
-       <div id="raw_search_bar" style="display:block; border:1px solid #eee; border-radius:12px; padding:10px 12px; margin-bottom:10px; background:#fafafa;">
-         <div id="raw_outlier_limit_hint" style="display:none; font-size:12px; color:#b07000; margin-bottom:8px; padding:6px 8px; background:#fff8e1; border-radius:6px; border:1px solid #ffe082;"></div>
-         <div class="muted">Filtere die Spalte <code>Ausreißer</code> direkt in der Tabellen-Filterzeile. Dort kannst du vorhandene Werte aus der Liste auswaehlen oder freien Text eingeben.</div>
-         <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:10px;">
-           <button class="btn_sm" id="raw_search_run" type="button" style="width:auto;" data-ui="dashboard_outliers.btn_suchen" title="dashboard_outliers.btn_suchen">Ausreißer suchen</button>
-           <button class="btn_sm" id="raw_jump_oldest" type="button" style="width:auto;" data-ui="dashboard_outliers.btn_aeltester" title="dashboard_outliers.btn_aeltester" disabled>Aeltester</button>
-           <button class="btn_sm" id="raw_jump_newest" type="button" style="width:auto;" data-ui="dashboard_outliers.btn_neuester" title="dashboard_outliers.btn_neuester" disabled>Neuster</button>
-           <button class="btn_sm" id="raw_search_clear" type="button" style="width:auto;" data-ui="dashboard_outliers.btn_leeren" title="dashboard_outliers.btn_leeren" disabled>Leeren</button>
-           <button class="btn_sm" id="raw_search_abort" type="button" style="width:auto; display:none; white-space:nowrap;" data-ui="dashboard_outliers.btn_abbruch" title="dashboard_outliers.btn_abbruch" aria-label="Ausreißer-Suche abbrechen" disabled>Abbruch</button>
-         </div>
-           <div id="raw_outlier_status" style="display:none; margin-top:8px; font-size:12px; opacity:0.85; align-items:center; gap:8px; flex-wrap:wrap;">
-           <span id="raw_outlier_spinner" aria-hidden="true" style="width:14px; height:14px; border-radius:50%; border:2px solid rgba(0,0,0,0.18); border-top-color:rgba(0,0,0,0.75); animation:spin 0.9s linear infinite;"></span>
-           <span id="raw_outlier_status_txt">Suche laeuft...</span>
-           <span id="raw_outlier_status_meta"></span>
-           <span id="raw_outlier_status_now"></span>
-           <span id="raw_outlier_status_time"></span>
-         </div>
-       </div>
+       <div class="table_title">Ausreißer</div>
+       <!-- Ausreißer-Suchleiste (#raw_search_bar) wurde entfernt (Issue #330). -->
       <div class="table_head" style="min-width:0;">
         <div class="tbl_actions" data-ui="dashboard_outliers.row_table_actions" title="dashboard_outliers.row_table_actions">
           <button class="btn_sm" id="raw_outlier_autowidth" data-ui="dashboard_outliers.btn_autobreite" title="dashboard_outliers.btn_autobreite" aria-label="Spaltenbreite automatisch">
@@ -578,23 +561,17 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
           </div>
         </div>
 
-      <div class="tbl_actions" style="justify-content:flex-start; margin-top: 8px; gap: 12px; flex-wrap:wrap;" data-ui="dashboard_raw.row_ausreisser_umfeld" title="dashboard_raw.row_ausreisser_umfeld">
-        <div style="display:flex; flex-direction:column; gap: 4px; min-width: 170px;">
-          <label for="raw_outlier_context_rows">Zeilen vor/nach Ausreisser</label>
-          <input id="raw_outlier_context_rows" type="number" min="1" max="500" step="1" value="10" style="height:34px; padding: 6px 10px; width: 140px;" />
-        </div>
-        <div class="muted" id="raw_outlier_context_hint">Anzahl Zeilen die vor und nach einem Ausreisser in der Raw-Tabelle angezeigt werden.</div>
-      </div>
+       <!-- UI: Zeilen vor/nach Ausreisser wurde entfernt (Issue #330). -->
 
-      <div id="raw_status" style="display:none; margin-top: 6px; font-size: 12px; opacity: 0.85; align-items:center; gap: 8px;" data-ui="dashboard_raw.panel_status" title="dashboard_raw.panel_status">
-        <span id="raw_spinner" aria-hidden="true" style="width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(0,0,0,0.18); border-top-color: rgba(0,0,0,0.75); animation: spin 0.9s linear infinite;"></span>
-        <span id="raw_status_txt">Raw laeuft...</span>
-        <span id="raw_status_time" style="opacity:0.85; white-space: nowrap;"></span>
-      </div>
+       <div id="raw_status" style="display:flex; margin-top: 6px; font-size: 12px; opacity: 0.85; align-items:center; gap: 8px;" data-ui="dashboard_raw.panel_status" title="dashboard_raw.panel_status">
+         <span id="raw_spinner" aria-hidden="true" style="display:none; width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(0,0,0,0.18); border-top-color: rgba(0,0,0,0.75); animation: spin 0.9s linear infinite;"></span>
+         <span id="raw_status_txt">Bereit.</span>
+         <span id="raw_status_time" style="opacity:0.85; white-space: nowrap;"></span>
+       </div>
 
-      <div class="tbl_actions" style="justify-content:flex-start; margin-top: 8px;" data-ui="dashboard_raw.row_actions" title="dashboard_raw.row_actions">
-        <button class="btn_sm" id="raw_refresh" type="button" data-ui="dashboard_raw.btn_aktualisieren" title="dashboard_raw.btn_aktualisieren" aria-label="Raw Daten aktualisieren"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M18.6091 5.89092L15.5 9H21.5V3L18.6091 5.89092ZM18.6091 5.89092C16.965 4.1131 14.6125 3 12 3C7.36745 3 3.55237 6.50005 3.05493 11M5.39092 18.1091L2.5 21V15H8.5L5.39092 18.1091ZM5.39092 18.1091C7.03504 19.8869 9.38753 21 12 21C16.6326 21 20.4476 17.5 20.9451 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
-        <button class="btn_sm" id="raw_all_time" type="button" data-ui="dashboard_raw.btn_zeitraum_alle" title="dashboard_raw.btn_zeitraum_alle" aria-label="Zeitraum Alle"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+       <div class="tbl_actions" style="justify-content:flex-start; margin-top: 8px;" data-ui="dashboard_raw.row_actions" title="dashboard_raw.row_actions">
+         <button class="btn_sm" id="raw_refresh" type="button" data-ui="dashboard_raw.btn_aktualisieren" title="dashboard_raw.btn_aktualisieren" aria-label="Raw Daten aktualisieren"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M18.6091 5.89092L15.5 9H21.5V3L18.6091 5.89092ZM18.6091 5.89092C16.965 4.1131 14.6125 3 12 3C7.36745 3 3.55237 6.50005 3.05493 11M5.39092 18.1091L2.5 21V15H8.5L5.39092 18.1091ZM5.39092 18.1091C7.03504 19.8869 9.38753 21 12 21C16.6326 21 20.4476 17.5 20.9451 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
+         <!-- Button Zeitraum Alle wurde entfernt (Issue #330). -->
         <button class="btn_sm" id="raw_autowidth" data-ui="dashboard_raw.btn_autobreite" title="dashboard_raw.btn_autobreite" aria-label="Spaltenbreite automatisch">
           <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <path d="M5 5v14M19 5v14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -621,8 +598,9 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
         <button class="btn_sm" id="raw_manual" data-ui="dashboard_raw.btn_manuell" title="dashboard_raw.btn_manuell" disabled>Manuell</button>
         <button class="btn_sm" id="raw_delete" data-ui="dashboard_raw.btn_loeschen" title="dashboard_raw.btn_loeschen" disabled>Löschen</button>
         <button class="btn_sm" id="raw_undo" data-ui="dashboard_raw.btn_undo" title="dashboard_raw.btn_undo" disabled>Undo</button>
-        <button class="btn_sm" id="raw_ignore" data-ui="dashboard_raw.btn_ignorieren" title="dashboard_raw.btn_ignorieren" disabled>Ignorieren</button>
-        <button class="btn_sm" id="raw_unignore" data-ui="dashboard_raw.btn_nicht_mehr_ignorieren" title="dashboard_raw.btn_nicht_mehr_ignorieren" disabled>Nicht mehr ignorieren</button>
+         <button class="btn_sm" id="raw_abort" data-ui="dashboard_raw.btn_abbruch" title="dashboard_raw.btn_abbruch" disabled>Abbruch</button>
+         <button class="btn_sm" id="raw_ignore" data-ui="dashboard_raw.btn_ignorieren" title="dashboard_raw.btn_ignorieren" disabled>Ignorieren</button>
+         <button class="btn_sm" id="raw_unignore" data-ui="dashboard_raw.btn_nicht_mehr_ignorieren" title="dashboard_raw.btn_nicht_mehr_ignorieren" disabled>Nicht mehr ignorieren</button>
         <button class="btn_sm" id="raw_info_btn" data-ui="dashboard_raw.btn_info" title="dashboard_raw.btn_info" disabled>Info</button>
         <button class="btn_sm" id="raw_query_open" data-ui="dashboard_raw.btn_query_anzeigen" title="dashboard_raw.btn_query_anzeigen"><svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="11" cy="15.5" r="1.5"></circle><path d="M12,12H10V8h2a2,2,0,0,0,0-4H10A2.0023,2.0023,0,0,0,8,6v.5H6V6a4.0045,4.0045,0,0,1,4-4h2a4,4,0,0,1,0,8Z"></path><path d="M22.4479,21.0337A10.971,10.971,0,0,0,19.9211,4.7446l-.999,1.73A8.9967,8.9967,0,1,1,5,14H3a10.9916,10.9916,0,0,0,18.0338,8.4478L28.5859,30,30,28.5859Z"></path></svg></button>
         <button class="btn_sm" id="raw_query_test" data-ui="dashboard_raw.btn_query_test" title="dashboard_raw.btn_query_test" aria-label="Query testen"><svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="#000000" width="18" height="18" aria-hidden="true" focusable="false"><path d="M6 10V9h9v1H6zm4-4h5v1h-5V6zm5-3v1H6V3h9zm-9 9v1h9v-1H6z"></path><path fill-rule="evenodd" clip-rule="evenodd" d="M1 2.795l.783-.419 5.371 3.581v.838l-5.371 3.581L1 9.957V2.795zm1.007.94v5.281l3.96-2.64-3.96-2.64z"></path></svg></button>
@@ -646,13 +624,13 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
     </details>
     <details id="graph_section" class="section" open data-ui="dashboard_graph.section_root" title="dashboard_graph.section_root">
       <summary><span class="ib_summary_row"><span class="section_title" style="margin:0;">Grafische Analyse</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Graph" data-info-body="Der Graph ist die zentrale Visualisierung der aktuell gewaehlten Serie.\n\nEnthaelt:\n- Zeitreihen-Plot mit Zoom und Auswahl\n- Marker fuer selektierte Punkte\n- Detail-Modi, Ableitungen und Zusatzinfos unter dem Plot\n- Raw-Synchronisation: ein Klick auf einen Punkt steuert die Raw-Tabelle\n\nNutzen:\n- zeitliche Analyse\n- Auswahl eines Ankerpunkts fuer Raw-Daten und Bearbeitung" ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
-      <div class="tbl_actions" data-ui="dashboard_graph.row_actions">
-        <label><input type="checkbox" id="graph_markers" class="row_sel" data-ui="dashboard_graph.chk_messpunkte_markieren"/>Messpunkte markieren</label>
-        <button class="btn_sm" id="graph_refresh" type="button" data-ui="dashboard_graph.btn_aktualisieren" title="dashboard_graph.btn_aktualisieren" aria-label="Graph neu zeichnen"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M18.6091 5.89092L15.5 9H21.5V3L18.6091 5.89092ZM18.6091 5.89092C16.965 4.1131 14.6125 3 12 3C7.36745 3 3.55237 6.50005 3.05493 11M5.39092 18.1091L2.5 21V15H8.5L5.39092 18.1091ZM5.39092 18.1091C7.03504 19.8869 9.38753 21 12 21C16.6326 21 20.4476 17.5 20.9451 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
-        <button class="btn_sm" id="graph_reset_time" type="button" data-ui="dashboard_graph.btn_zeitraum_reset" title="dashboard_graph.btn_zeitraum_reset" aria-label="Zeitraum zuruecksetzen"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M3 12a9 9 0 1 1 3 6.7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M3 7v5h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-        <button class="btn_sm" id="graph_query_open" type="button" data-ui="dashboard_graph.btn_query_anzeigen" title="dashboard_graph.btn_query_anzeigen" aria-label="Graph Query anzeigen"><svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="11" cy="15.5" r="1.5"></circle><path d="M12,12H10V8h2a2,2,0,0,0,0-4H10A2.0023,2.0023,0,0,0,8,6v.5H6V6a4.0045,4.0045,0,0,1,4-4h2a4,4,0,0,1,0,8Z"></path><path d="M22.4479,21.0337A10.971,10.971,0,0,0,19.9211,4.7446l-.999,1.73A8.9967,8.9967,0,1,1,5,14H3a10.9916,10.9916,0,0,0,18.0338,8.4478L28.5859,30,30,28.5859Z"></path></svg></button>
-        <button class="btn_sm" id="graph_query_test" type="button" data-ui="dashboard_graph.btn_query_test" title="dashboard_graph.btn_query_test" aria-label="Query testen"><svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="#000000" width="18" height="18" aria-hidden="true" focusable="false"><path d="M6 10V9h9v1H6zm4-4h5v1h-5V6zm5-3v1H6V3h9zm-9 9v1h9v-1H6z"></path><path fill-rule="evenodd" clip-rule="evenodd" d="M1 2.795l.783-.419 5.371 3.581v.838l-5.371 3.581L1 9.957V2.795zm1.007.94v5.281l3.96-2.64-3.96-2.64z"></path></svg></button>
-      </div>
+       <div class="tbl_actions" data-ui="dashboard_graph.row_actions">
+         <label><input type="checkbox" id="graph_markers" class="row_sel" data-ui="dashboard_graph.chk_messpunkte_markieren"/>Messpunkte markieren</label>
+         <button class="btn_sm" id="graph_refresh" type="button" data-ui="dashboard_graph.btn_aktualisieren" title="dashboard_graph.btn_aktualisieren" aria-label="Graph neu zeichnen"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M18.6091 5.89092L15.5 9H21.5V3L18.6091 5.89092ZM18.6091 5.89092C16.965 4.1131 14.6125 3 12 3C7.36745 3 3.55237 6.50005 3.05493 11M5.39092 18.1091L2.5 21V15H8.5L5.39092 18.1091ZM5.39092 18.1091C7.03504 19.8869 9.38753 21 12 21C16.6326 21 20.4476 17.5 20.9451 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
+         <!-- Button Zeitraum Reset wurde entfernt (Issue #330). -->
+         <button class="btn_sm" id="graph_query_open" type="button" data-ui="dashboard_graph.btn_query_anzeigen" title="dashboard_graph.btn_query_anzeigen" aria-label="Graph Query anzeigen"><svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="11" cy="15.5" r="1.5"></circle><path d="M12,12H10V8h2a2,2,0,0,0,0-4H10A2.0023,2.0023,0,0,0,8,6v.5H6V6a4.0045,4.0045,0,0,1,4-4h2a4,4,0,0,1,0,8Z"></path><path d="M22.4479,21.0337A10.971,10.971,0,0,0,19.9211,4.7446l-.999,1.73A8.9967,8.9967,0,1,1,5,14H3a10.9916,10.9916,0,0,0,18.0338,8.4478L28.5859,30,30,28.5859Z"></path></svg></button>
+         <button class="btn_sm" id="graph_query_test" type="button" data-ui="dashboard_graph.btn_query_test" title="dashboard_graph.btn_query_test" aria-label="Query testen"><svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="#000000" width="18" height="18" aria-hidden="true" focusable="false"><path d="M6 10V9h9v1H6zm4-4h5v1h-5V6zm5-3v1H6V3h9zm-9 9v1h9v-1H6z"></path><path fill-rule="evenodd" clip-rule="evenodd" d="M1 2.795l.783-.419 5.371 3.581v.838l-5.371 3.581L1 9.957V2.795zm1.007.94v5.281l3.96-2.64-3.96-2.64z"></path></svg></button>
+       </div>
 
       <div class="tbl_actions" style="justify-content:flex-start; margin-top: 8px; gap: 10px; flex-wrap:wrap;" data-ui="dashboard_graph.panel_detail" title="dashboard_graph.panel_detail">
         <label style="display:flex; align-items:center; gap: 8px;">
@@ -747,295 +725,9 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
       </div>
     </div>
 
-    <details id="filterlist_section" class="section" open data-ui="dashboard_filterlist.section_root" title="dashboard_filterlist.section_root">
-      <summary><span class="ib_summary_row"><span class="section_title" style="margin:0;">Bearbeitungsliste</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Bearbeitungsliste" data-info-body="Die Bearbeitungsliste sammelt vorgemerkte Aenderungen fuer Datenpunkte, bevor sie geschrieben werden.\n\nEnthaelt:\n- markierte Zeilen mit altem und neuem Wert\n- Aktionen zum Uebernehmen, Verwerfen, Mitteln oder Loeschen\n- Vorschau-Query fuer die spaetere Schreibaktion\n\nNutzen:\n- sichere Sammelbearbeitung mehrerer Punkte\n- Kontrolle vor dem eigentlichen Schreiben in InfluxDB" ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
-      <div class="table_wrap">
-        <div class="table_title">Bearbeitungsliste</div>
-        <div class="table_head">
-            <div>
-              <div class="muted" id="table_range"></div>
-              <div class="muted" id="table_info"></div>
-              <div class="muted" id="edit_info"></div>
-              <div class="muted" id="analysis_info"></div>
+    <!-- Bearbeitungsliste (dashboard_filterlist.section_root) wurde entfernt (Issue #330). -->
 
-              <div class="tbl_actions">
-                <label><input type="checkbox" id="tbl_time_from_graph" class="row_sel" data-ui="dashboard_filterlist.chk_zeit_aus_graph"/>Zeit gefuehrt durch Graph</label>
-                <label><input type="checkbox" id="tbl_enabled" class="row_sel" data-ui="dashboard_filterlist.chk_filter_aktiv"/> Filter aktiv</label>
-              </div>
-
-              <div class="muted" data-ui="dashboard_filterlist.txt_hint" title="dashboard_filterlist.txt_hint" style="margin-top: 8px;">Filter (DB-Scan) steuert, welche Punkte als "Ausreisser" markiert werden.</div>
-
-            <div class="row" style="margin-top:0;" data-ui="dashboard_filterlist.row_scan" title="dashboard_filterlist.row_scan">
-              <div style="min-width: 260px;">
-                <label>Filter (DB-Scan)</label>
-                <div class="ib_clear_row">
-                  <select id="scan_preset" data-ui="dashboard_filterlist.select_scan_preset" title="dashboard_filterlist.select_scan_preset">
-                  <option value="free">Filter frei</option>
-                  <option value="counter" selected>Counter Ausreisser</option>
-                  <option value="decrease">nicht ansteigende Spruenge</option>
-                  <option value="bounds">Grenzen</option>
-                  <option value="gap">Messwertlücke</option>
-                  <option value="fault_phase">Stoerphasensuche</option>
-                  <option value="null">NULL Werte</option>
-                  <option value="zero">0-Werte</option>
-                  <option value="all">alle werte</option>
-                  </select>
-                  <button type="button" class="ib_clear_btn" data-clear-for="scan_preset" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
-                </div>
-                <div class="muted">&nbsp;</div>
-              </div>
-
-              <div id="scan_counter" style="min-width: 220px; display:none;">
-                <label>Max Sprung (optional)</label>
-                <input id="out_max_step" placeholder="(auto)" data-ui="dashboard_filterlist.input_max_step" title="dashboard_filterlist.input_max_step" />
-                <div class="muted">Ueberschreibt das Einheit-Default aus Einstellungen.</div>
-              </div>
-
-              <div id="scan_gap" style="min-width: 220px; display:none;">
-                <label>Max Abstand (s)</label>
-                <input id="out_gap_seconds" placeholder="300" data-ui="dashboard_filterlist.input_gap_seconds" title="dashboard_filterlist.input_gap_seconds" />
-                <div class="muted">Groessere Abstaende gelten als Messwertlücke und nicht als normaler Sprung.</div>
-              </div>
-
-              <div id="scan_bounds" style="min-width: 320px; display:none;">
-                <label>Grenzen (Min/Max)</label>
-                <div class="row" style="margin-top:0;">
-                  <input id="out_min" placeholder="Min" data-ui="dashboard_filterlist.input_min" title="dashboard_filterlist.input_min" />
-                  <input id="out_max" placeholder="Max" data-ui="dashboard_filterlist.input_max" title="dashboard_filterlist.input_max" />
-                </div>
-              </div>
-            </div>
-
-           <div class="row" style="margin-top:0;" id="free_filter_row" data-ui="dashboard_filterlist.row_freifilter" title="dashboard_filterlist.row_freifilter">
-              <div style="min-width: 110px;">
-                <label>Links</label>
-                <div class="ib_clear_row">
-                <select id="tbl_a_op" data-ui="dashboard_filterlist.select_links_operator">
-                  <option value=">">&gt;</option>
-                  <option value=">=">&gt;=</option>
-                  <option value="<" selected>&lt;</option>
-                  <option value="<=">&lt;=</option>
-                </select>
-                <button type="button" class="ib_clear_btn" data-clear-for="tbl_a_op" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
-                </div>
-              </div>
-              <div style="min-width: 130px;">
-                <label>&nbsp;</label>
-                <div class="ib_clear_row">
-                  <input id="tbl_a_val" placeholder="0" data-ui="dashboard_filterlist.input_links_wert" />
-                  <button type="button" class="ib_clear_btn" data-clear-for="tbl_a_val" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
-                </div>
-              </div>
-
-              <div style="min-width: 110px;">
-                <label>Verb.</label>
-                <div class="ib_clear_row">
-                <select id="tbl_mode" data-ui="dashboard_filterlist.select_filter_modus">
-                  <option value="or" selected>oder</option>
-                  <option value="and">und</option>
-                </select>
-                <button type="button" class="ib_clear_btn" data-clear-for="tbl_mode" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
-                </div>
-              </div>
-
-              <div style="min-width: 110px;">
-                <label>Rechts</label>
-                <div class="ib_clear_row">
-                <select id="tbl_b_op" data-ui="dashboard_filterlist.select_rechts_operator">
-                  <option value=">" selected>&gt;</option>
-                  <option value=">=">&gt;=</option>
-                  <option value="<">&lt;</option>
-                  <option value="<=">&lt;=</option>
-                </select>
-                <button type="button" class="ib_clear_btn" data-clear-for="tbl_b_op" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
-                </div>
-              </div>
-              <div style="min-width: 130px;">
-                <label>&nbsp;</label>
-                <div class="ib_clear_row">
-                  <input id="tbl_b_val" placeholder="999999" data-ui="dashboard_filterlist.input_rechts_wert" />
-                  <button type="button" class="ib_clear_btn" data-clear-for="tbl_b_val" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
-                </div>
-             </div>
-           </div>
-
-           <div class="tbl_actions" style="justify-content:flex-start; margin-top: 10px;" data-ui="dashboard_filterlist.row_ausreisser_aktionen" title="dashboard_filterlist.row_ausreisser_aktionen">
-             <button class="btn_sm" id="outlier_scan" data-ui="dashboard_filterlist.btn_ausreisser_scan">Fehlersuche Ausreisser</button>
-             <button class="btn_sm" id="outlier_reset" data-ui="dashboard_filterlist.btn_ausreisser_reset">Abbruch</button>
-           </div>
-
-           <div id="outlier_status" data-ui="dashboard_filterlist.txt_ausreisser_status" title="dashboard_filterlist.txt_ausreisser_status">
-             <span id="outlier_spinner" aria-hidden="true"></span>
-             <span id="outlier_status_txt">Fehlersuche laeuft...</span>
-             <span id="outlier_status_meta"></span>
-             <span id="outlier_status_now"></span>
-             <span id="outlier_status_time"></span>
-           </div>
-         </div>
-       </div>
-            <div class="tbl_actions" id="edit_toolbar" style="justify-content:flex-start; margin-top: 10px; align-items:flex-start;" data-ui="dashboard_editlist.row_toolbar" title="dashboard_editlist.row_toolbar">
-              <label style="display:flex; align-items:center; gap: 6px; font-size: 12px; opacity: 0.85; padding-top: 2px;"><input type="checkbox" id="edit_show_graph" class="row_sel" data-ui="dashboard_editlist.chk_graph_anzeigen" title="dashboard_editlist.chk_graph_anzeigen"/>Graph</label>
-              <label style="display:flex; align-items:center; gap: 6px; font-size: 12px; opacity: 0.85; padding-top: 2px;"><input type="checkbox" id="tbl_multiselect" class="row_sel" data-ui="dashboard_editlist.chk_multiselect" title="dashboard_editlist.chk_multiselect"/>Multiselekt</label>
-              <button class="btn_sm" id="edit_toolbar_overwrite" data-ui="dashboard_editlist.btn_toolbar_eintrag_ueberschreiben" title="dashboard_editlist.btn_toolbar_eintrag_ueberschreiben" disabled>Ueberschreiben</button>
-              <button class="btn_sm" id="edit_toolbar_delete" data-ui="dashboard_editlist.btn_toolbar_eintrag_loeschen" title="dashboard_editlist.btn_toolbar_eintrag_loeschen" disabled>Loeschen</button>
-              <button class="btn_sm" id="edit_toolbar_apply_one" data-ui="dashboard_editlist.btn_toolbar_eintrag_anwenden" title="dashboard_editlist.btn_toolbar_eintrag_anwenden" disabled>Uebernehmen</button>
-              <button class="btn_sm" id="edit_toolbar_undo_one" data-ui="dashboard_editlist.btn_toolbar_eintrag_undo" title="dashboard_editlist.btn_toolbar_eintrag_undo" disabled>Undo</button>
-              <span class="muted" id="edit_toolbar_info" style="padding-top: 6px;"></span>
-              <span style="flex:1;"></span>
-            </div>
-        <div class="err" id="edit_apply_err" data-ui="dashboard_editlist.txt_anwenden_fehler" title="dashboard_editlist.txt_anwenden_fehler"></div>
-
-        <div id="edit_split" style="display:flex; gap: 0; align-items:stretch; margin-top: 10px;" data-ui="dashboard_editlist.panel_split" title="dashboard_editlist.panel_split">
-          <div id="edit_left" style="flex: 1 1 auto; min-width: 0;">
-
-           <div class="tbl_actions" style="justify-content:flex-start; margin-top: 10px; gap: 10px; flex-wrap:wrap; align-items:flex-end;">
-             <button class="btn_sm" id="tbl_autowidth" data-ui="dashboard_filterlist.btn_autobreite" title="dashboard_filterlist.btn_autobreite" aria-label="Spaltenbreite automatisch">
-               <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                 <path d="M5 5v14M19 5v14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                 <path d="M8 12h8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                 <path d="M10 10l-2 2 2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                 <path d="M14 10l2 2-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-               </svg>
-             </button>
-             <button class="btn_sm" id="tbl_windowwidth" data-ui="dashboard_filterlist.btn_fensterbreite" title="dashboard_filterlist.btn_fensterbreite" aria-label="Fensterbreite">
-               <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                 <rect x="4" y="6" width="16" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
-                 <path d="M12 12H6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                 <path d="M6 12l2-2M6 12l2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                 <path d="M12 12h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                 <path d="M18 12l-2-2M18 12l-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-               </svg>
-             </button>
-             <button class="btn_sm" id="tbl_clear" data-ui="dashboard_filterlist.btn_leeren" title="dashboard_filterlist.btn_leeren">Liste leeren</button>
-             <button class="btn_sm" id="edit_clear_staged" data-ui="dashboard_editlist.btn_staging_leeren" title="dashboard_editlist.btn_staging_leeren">Staging leeren</button>
-
-             <label><input type="checkbox" id="tbl_wrap" class="row_sel" data-ui="dashboard_filterlist.chk_umbruch" title="dashboard_filterlist.chk_umbruch"/>Umbruch</label>
-             <label><input type="checkbox" id="tbl_colfilter" class="row_sel" data-ui="dashboard_filterlist.chk_spaltenfilter" title="dashboard_filterlist.chk_spaltenfilter"/>Spaltenfilter</label>
-
-          <div style="min-width: 220px;">
-            <label style="display:block; font-size:12px; opacity:0.8;">Grund Filter</label>
-            <div class="ib_clear_row">
-              <input id="dashboard_graph.select_grund_filter" placeholder="enthaelt..." data-ui="dashboard_graph.select_grund_filter" title="dashboard_graph.select_grund_filter" style="height: 34px;" />
-              <button type="button" class="ib_clear_btn" data-clear-for="dashboard_graph.select_grund_filter" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
-            </div>
-          </div>
-          <div style="min-width: 180px;">
-            <label style="display:block; font-size:12px; opacity:0.8;">Klasse</label>
-            <div class="ib_clear_row">
-            <select id="class_filter" data-ui="dashboard_editlist.select_klasse_filter" title="dashboard_editlist.select_klasse_filter" style="height: 34px; min-width: 210px; padding: 4px 24px 4px 8px;">
-              <option value="all" selected>alle</option>
-              <option value="primary">primaer</option>
-              <option value="secondary">sekundaer</option>
-            </select>
-            <button type="button" class="ib_clear_btn" data-clear-for="class_filter" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
-            </div>
-          </div>
-        </div>
-
-        <div class="table_box" id="table_box" style="margin-top: 10px;">
-          <table id="tbl" class="list_tbl ib_tbl" data-ui="dashboard_editlist.tbl_bearbeitung" title="dashboard_editlist.tbl_bearbeitung">
-            <thead>
-              <tr>
-                <th style="width:20px;"><input type="checkbox" id="tbl_sel_all" class="row_sel" data-ui="dashboard_editlist.chk_alle_waehlen"/></th>
-                <th id="th_time" data-key="time" data-ui="dashboard_editlist.col_zeit">Zeit</th>
-                <th id="th_value" data-key="value" data-ui="dashboard_editlist.col_alt">Aktuell</th>
-                <th data-ui="dashboard_editlist.col_grund">Grund</th>
-                <th data-ui="dashboard_editlist.col_klasse">Klasse</th>
-                <th style="width:220px;" data-ui="dashboard_editlist.col_neu">Neuwert</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
-
-        <div class="tbl_actions" style="justify-content:flex-start; margin-top: 10px;">
-          <button class="btn_sm" id="edit_apply" data-ui="dashboard_editlist.btn_anwenden">Aenderungen in Datenbank uebernehmen</button>
-        </div>
-
-        <div class="muted" data-ui="dashboard_editlist.txt_hint" title="dashboard_editlist.txt_hint">Aktionen werden zuerst in der Tabelle vorgemerkt (<code>Aktion</code>/<code>Neuwert</code>). Erst mit <code>Aenderungen in Datenbank uebernehmen</code> wird geschrieben/geloescht.</div>
-
-          </div>
-
-          <div id="edit_split_handle" style="display:none; width: 10px; cursor: col-resize; position: relative;" data-ui="dashboard_editlist.panel_split_handle" title="dashboard_editlist.panel_split_handle">
-            <div style="position:absolute; inset: 0; background: transparent;"></div>
-            <div style="position:absolute; left: 4px; top: 10px; bottom: 10px; width: 2px; background: rgba(0,0,0,0.12);"></div>
-          </div>
-
-           <div id="edit_right" style="display:none; flex: 0 0 45%; min-width: 240px; padding-left: 12px; box-sizing: border-box;" data-ui="dashboard_editlist.panel_rechts" title="dashboard_editlist.panel_rechts">
-             <div class="card" id="details_panel" style="margin-top: 0; display:none;" data-ui="dashboard_editdetails.panel_root" title="dashboard_editdetails.panel_root">
-               <div style="display:flex; align-items:baseline; justify-content:space-between; gap: 10px;">
-                 <div style="font-weight:800;">Details</div>
-                 <button class="btn_sm" id="details_close" data-ui="dashboard_editdetails.btn_schliessen" title="dashboard_editdetails.btn_schliessen">Schliessen</button>
-               </div>
-
-               <div class="tbl_actions" style="justify-content:flex-start; margin-top: 8px; gap: 8px; flex-wrap:wrap; align-items:flex-end;">
-                 <button class="btn_sm" id="edit_btn_edit" disabled data-ui="dashboard_editlist.btn_bearbeiten" title="dashboard_editlist.btn_bearbeiten">Bearbeiten</button>
-                 <button class="btn_sm" id="edit_btn_take_before" disabled data-ui="dashboard_editlist.btn_vorwert_uebernehmen" title="dashboard_editlist.btn_vorwert_uebernehmen">Wert davor</button>
-                 <button class="btn_sm" id="edit_btn_take_avg" disabled data-ui="dashboard_editlist.btn_mittelwert_uebernehmen" title="dashboard_editlist.btn_mittelwert_uebernehmen">Avg davor+danach</button>
-                 <button class="btn_sm" id="edit_btn_stage_delete" disabled data-ui="dashboard_editlist.btn_loeschen_vormerken" title="dashboard_editlist.btn_loeschen_vormerken">Wert loeschen</button>
-                 <button class="btn_sm" id="details_take" disabled data-ui="dashboard_editdetails.btn_uebernehmen" title="dashboard_editdetails.btn_uebernehmen">Uebernehmen als neuer Wert</button>
-               </div>
-
-               <pre id="details_info" style="margin:8px 0 0 0; padding:10px 12px; border:1px solid #eee; border-radius:12px; background:#fafafa; white-space:pre-wrap; overflow:auto; max-height: 140px; font-size: 12px;"></pre>
-
-               <div class="table_box" id="details_box" style="margin-top: 10px; --max-rows: 10; max-height: 55vh;">
-                 <table class="list_tbl" data-ui="dashboard_editdetails.tbl_details" title="dashboard_editdetails.tbl_details">
-                   <thead><tr><th style="width: 74px;">Typ</th><th style="min-width: 170px;">Zeit</th><th>Wert</th></tr></thead>
-                   <tbody id="details_rows"></tbody>
-                 </table>
-               </div>
-             </div>
-
-             <div class="card" id="edit_graph_card" style="margin-top: 12px;" data-ui="dashboard_editlist.panel_rechts_graph" title="dashboard_editlist.panel_rechts_graph">
-               <div style="display:flex; align-items:baseline; justify-content:space-between; gap: 10px;">
-                 <div style="font-weight:800;">Graph (Bearbeitungsliste)</div>
-                 <button class="btn_sm" id="edit_graph_refresh" data-ui="dashboard_editlist.btn_graph_aktualisieren" title="dashboard_editlist.btn_graph_aktualisieren">Refresh</button>
-               </div>
-               <div class="muted" id="edit_graph_info" style="margin-top: 6px;"></div>
-               <div class="muted" id="edit_graph_counts" style="margin-top: 4px;"></div>
-               <div style="position:relative; margin-top: 8px;">
-                 <div id="edit_graph_plot" style="width: 100%; height: 320px;"></div>
-               </div>
-             </div>
-           </div>
-        </div>
-
-
-      </div>
-
-     </details>
-
-     <div id="apply_modal" style="display:none; position:fixed; inset:0; z-index: 9999; background: rgba(0,0,0,0.45);" data-ui="dashboard_editlist.dlg_anwenden" title="dashboard_editlist.dlg_anwenden">
-      <div style="max-width: 980px; margin: 6vh auto; background: #fff; border-radius: 16px; padding: 14px 14px 12px 14px; box-shadow: 0 12px 60px rgba(0,0,0,0.28);">
-        <div style="display:flex; justify-content:space-between; align-items:baseline; gap:12px;">
-          <div style="font-weight:800; font-size: 16px;">Schreiben bestaetigen</div>
-          <div style="display:flex; align-items:center; gap:8px;">
-            <button class="btn_sm" id="apply_modal_query_open" type="button" data-ui="dashboard_editlist.btn_dialog_query_anzeigen" title="dashboard_editlist.btn_dialog_query_anzeigen" aria-label="Pruef-Query anzeigen"><svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="11" cy="15.5" r="1.5"></circle><path d="M12,12H10V8h2a2,2,0,0,0,0-4H10A2.0023,2.0023,0,0,0,8,6v.5H6V6a4.0045,4.0045,0,0,1,4-4h2a4,4,0,0,1,0,8Z"></path><path d="M22.4479,21.0337A10.971,10.971,0,0,0,19.9211,4.7446l-.999,1.73A8.9967,8.9967,0,1,1,5,14H3a10.9916,10.9916,0,0,0,18.0338,8.4478L28.5859,30,30,28.5859Z"></path></svg></button>
-            <button class="btn_sm" id="apply_modal_close" data-ui="dashboard_editlist.btn_anwenden_modal_close" title="dashboard_editlist.btn_anwenden_modal_close">Schliessen</button>
-          </div>
-        </div>
-        <div class="muted" id="apply_modal_info" style="margin-top: 6px;"></div>
-
-         <div id="apply_modal_query_section" style="display:none;" data-ui="dashboard_editlist.panel_dialog_query" title="dashboard_editlist.panel_dialog_query">
-           <button class="btn_sm" id="apply_modal_copy_query" data-ui="dashboard_editlist.btn_dialog_query_kopieren" title="dashboard_editlist.btn_dialog_query_kopieren"></button>
-           <button class="btn_sm" id="apply_modal_query_history" type="button" data-ui="dashboard_editlist.btn_dialog_query_verlauf" title="dashboard_editlist.btn_dialog_query_verlauf"></button>
-          <div id="apply_modal_query_meta"></div>
-          <pre id="apply_modal_query">Noch keine Query vorhanden.</pre>
-        </div>
-
-          <div class="table_box" style="margin-top: 10px; max-height: 45vh;" data-ui="dashboard_editlist.tbl_dialog_vorschau" title="dashboard_editlist.tbl_dialog_vorschau">
-            <table>
-              <thead><tr><th>Zeit</th><th>Aktion</th><th>Alt</th><th>Neu</th></tr></thead>
-              <tbody id="apply_modal_rows"></tbody>
-            </table>
-          </div>
-
-        <div class="tbl_actions" style="justify-content:flex-end; margin-top: 10px;">
-          <button class="btn_sm" id="apply_modal_cancel" data-ui="dashboard_editlist.btn_dialog_abbrechen" title="dashboard_editlist.btn_dialog_abbrechen">Abbrechen</button>
-          <button class="btn_sm" id="apply_modal_confirm" data-ui="dashboard_editlist.btn_dialog_bestaetigen" title="dashboard_editlist.btn_dialog_bestaetigen">Jetzt schreiben</button>
-        </div>
-      </div>
-    </div>
+   <!-- Bearbeitungsliste wurde entfernt (Issue #330); dazu gehoerende Apply-Modal UI ebenfalls. -->
 
   <script src="./static/plotly.min.js"></script>
 
@@ -1248,6 +940,7 @@ const $rawManual = document.getElementById('raw_manual');
 const $rawDelete = document.getElementById('raw_delete');
 const $rawUndo = document.getElementById('raw_undo');
 const $rawIgnore = document.getElementById('raw_ignore');
+const $rawAbort = document.getElementById('raw_abort');
 const $rawUnignore = document.getElementById('raw_unignore');
 const $rawInfoBtn = document.getElementById('raw_info_btn');
 const $rawQueryOpen = document.getElementById('raw_query_open');
@@ -1284,6 +977,7 @@ const $analysisInfo = document.getElementById('analysis_inline_stats');
 const $editGraphCounts = document.getElementById('edit_graph_counts');
 
 const $rawStatus = document.getElementById('raw_status');
+const $rawSpinner = document.getElementById('raw_spinner');
 const $rawStatusTxt = document.getElementById('raw_status_txt');
 const $rawStatusTime = document.getElementById('raw_status_time');
 
@@ -3237,60 +2931,7 @@ function autoScaleYFromWindow(){
   }
 }
 
-async function resetGraphTimeRange(){
-  let oldestMs = null;
-  let newestMs = null;
-
-  if(LAST_TOTAL_BOUNDS && LAST_TOTAL_BOUNDS.oldest_time && LAST_TOTAL_BOUNDS.newest_time){
-    oldestMs = Date.parse(String(LAST_TOTAL_BOUNDS.oldest_time));
-    newestMs = Date.parse(String(LAST_TOTAL_BOUNDS.newest_time));
-  }
-
-  if(!isFinite(oldestMs) || !isFinite(newestMs)){
-    const base = currentFilters();
-    if(!base.measurement || !base.field){
-      err("Measurement oder Field fehlt.");
-      return;
-    }
-    try{
-      const payload = {
-        measurement: base.measurement,
-        field: base.field,
-        entity_id: base.entity_id,
-        friendly_name: base.friendly_name,
-        start: new Date(0).toISOString(),
-        stop: new Date().toISOString(),
-        limit: 1,
-        offset: 0,
-        include_total: true,
-      };
-      const j = await api("./api/raw_points", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)});
-      const meta = j.meta || {};
-      if(meta.oldest_time && meta.newest_time){
-        oldestMs = Date.parse(String(meta.oldest_time));
-        newestMs = Date.parse(String(meta.newest_time));
-      }
-    }catch(e){
-      err("Zeitraum zuruecksetzen: " + (e && e.message ? e.message : String(e)));
-      return;
-    }
-  }
-
-  if(!isFinite(oldestMs) || !isFinite(newestMs)){
-    err("Kein gueltiger Zeitraum verfuegbar.");
-    return;
-  }
-
-  TABLE_TIME.graph_start_ms = oldestMs;
-  TABLE_TIME.graph_stop_ms = newestMs;
-  saveState();
-  _SUPPRESS_RELAYOUT = true;
-  try {
-    await loadData();
-  } finally {
-    _SUPPRESS_RELAYOUT = false;
-  }
-}
+// resetGraphTimeRange entfernt (Issue #330): Zeitraum-Reset Button wurde entfernt.
 
 function _mergeAndDraw(newRows){
   const existing = LAST_ROWS || [];
@@ -5185,20 +4826,14 @@ function renderRawTable(){
     }catch(e){}
     const tdT = document.createElement('td');
     tdT.textContent = fmtTs(r.time);
-    const tdV = document.createElement('td');
-    tdV.textContent = fmtNum(r.value);
-    tdV.style.cursor = 'pointer';
-    tdV.title = 'Klicken zum Bearbeiten';
-    tdV.addEventListener('click', async (ev)=>{
-      try{ ev.stopPropagation(); }catch(e){}
-      await editRawValueInline(tr, r, tdV);
-    });
-    tdV.style.cursor = 'pointer';
-    tdV.title = 'Klicken zum Bearbeiten';
-    tdV.addEventListener('click', async (ev)=>{
-      try{ ev.stopPropagation(); }catch(e){}
-      await editRawValueInline(tr, r, tdV);
-    });
+  const tdV = document.createElement('td');
+  tdV.textContent = fmtNum(r.value);
+  tdV.style.cursor = 'pointer';
+  tdV.title = 'Doppelklick zum Bearbeiten';
+  tdV.addEventListener('dblclick', async (ev)=>{
+    try{ ev.stopPropagation(); }catch(e){}
+    await editRawValueInline(tr, r, tdV);
+  });
     const tdH = document.createElement('td');
     tdH.textContent = _rawHistoryCompact(rowKey(r));
     const tdO = document.createElement('td');
@@ -9041,6 +8676,7 @@ function updateRawToolbarState(){
     if($rawDelete) $rawDelete.disabled = !hasTarget;
     if($rawManual) $rawManual.disabled = !hasTarget;
     if($rawUndo) $rawUndo.disabled = !undoable;
+    if($rawAbort) $rawAbort.disabled = !_RAW_INFLIGHT;
     if($rawInfoBtn) $rawInfoBtn.disabled = !(hasTarget && _rawHistoryEntries(RAW_ROW_SELECTED_KEY).length);
     const filtered = getFilteredOutliers();
     const activeOutlier = (RAW_OUTLIER_INDEX >= 0 && RAW_OUTLIER_INDEX < filtered.length) ? filtered[RAW_OUTLIER_INDEX] : null;
@@ -9326,6 +8962,11 @@ function promptForValue(promptText, defaultVal){
 
 async function editRawValueInline(tr, row, tdV){
   if(!row || !tdV) return;
+  try{
+    if(tdV.dataset && tdV.dataset.editing === '1') return;
+    if(tdV.querySelector && tdV.querySelector('input')) return;
+    if(tdV.dataset) tdV.dataset.editing = '1';
+  }catch(e){}
   const oldText = tdV.textContent;
   const input = document.createElement('input');
   input.type = 'number';
@@ -9340,7 +8981,11 @@ async function editRawValueInline(tr, row, tdV){
   input.select();
 
   return new Promise((resolve)=>{
+    let done = false;
     const finish = async (confirmed)=>{
+      if(done) return;
+      done = true;
+      try{ if(tdV.dataset) delete tdV.dataset.editing; }catch(e){}
       tdV.textContent = oldText;
       if(!confirmed){ resolve(false); return; }
       const newVal = parseFloat(String(input.value || '').trim());
@@ -9508,45 +9153,14 @@ try{
 
 try{ updateRawToolbarState(); }catch(e){}
 
-async function setRawTimeToAll(){
-  const base = currentFilters();
-  if(!base.measurement || !base.field){
-    err("Measurement oder Field fehlt.");
-    return;
-  }
-  try{
-    const payload = {
-      measurement: base.measurement,
-      field: base.field,
-      entity_id: base.entity_id,
-      friendly_name: base.friendly_name,
-      start: new Date(0).toISOString(),
-      stop: new Date().toISOString(),
-      limit: 1,
-      offset: 0,
-      include_total: false,
-    };
-    const j = await api("./api/raw_points", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)});
-    const meta = j.meta || {};
-    if(meta.oldest_time && meta.newest_time){
-      const oldestMs = Date.parse(String(meta.oldest_time));
-      const newestMs = Date.parse(String(meta.newest_time));
-      if(isFinite(oldestMs) && isFinite(newestMs)){
-        TABLE_TIME.graph_start_ms = oldestMs;
-        TABLE_TIME.graph_stop_ms = newestMs;
-        saveState();
-      }
-    }
-  }catch(e){
-    err("Zeitraum Alle: " + (e && e.message ? e.message : String(e)));
-  }
-}
+// setRawTimeToAll entfernt (Issue #330): Zeitraum-Alle Button wurde entfernt.
 
 function _rawStatusStart(txt){
   try{
     if(!$rawStatus) return;
     _RAW_STATUS_T0 = performance.now();
     if($rawStatusTxt) $rawStatusTxt.textContent = String(txt || 'Raw laeuft...');
+    try{ if($rawSpinner) $rawSpinner.style.display = 'inline-flex'; }catch(e){}
     $rawStatus.style.display = 'flex';
     if(_RAW_STATUS_TIMER) clearInterval(_RAW_STATUS_TIMER);
     _RAW_STATUS_TIMER = setInterval(()=>{
@@ -9562,13 +9176,10 @@ function _rawStatusEnd(okDone, errText){
     if(_RAW_STATUS_TIMER) clearInterval(_RAW_STATUS_TIMER);
     _RAW_STATUS_TIMER = null;
     if($rawStatusTxt){
-      if(okDone) $rawStatusTxt.textContent = 'Fertig.';
+      if(okDone) $rawStatusTxt.textContent = (errText && String(errText).trim()) ? String(errText) : 'Bereit.';
       else $rawStatusTxt.textContent = errText ? ('Fehler: ' + String(errText)) : 'Fehler.';
     }
-    setTimeout(()=>{
-      try{ if($rawStatus) $rawStatus.style.display = 'none'; }catch(e){}
-      try{ if($rawStatusTime) $rawStatusTime.textContent = ''; }catch(e){}
-    }, 1400);
+    try{ if($rawSpinner) $rawSpinner.style.display = 'none'; }catch(e){}
   }catch(e){}
 }
 
@@ -9611,6 +9222,7 @@ async function loadRawFromGraph(reset){
   }
 
   _RAW_INFLIGHT = true;
+  try{ updateRawToolbarState(); }catch(e){}
   try{
     _rawStatusStart('Raw laedt...');
     try{ window.InfluxBroStatus && window.InfluxBroStatus.start && window.InfluxBroStatus.start('dashboard.raw', 'Raw laedt...'); }catch(e){}
@@ -9640,12 +9252,12 @@ async function loadRawFromGraph(reset){
       const centerMs = Date.parse(String(anchorIso || ''));
       if(isFinite(beforeMs) && isFinite(centerMs) && beforeMs <= centerMs) payload.start = new Date(beforeMs).toISOString();
       if(isFinite(afterMs) && isFinite(centerMs) && afterMs >= centerMs) payload.stop = new Date(afterMs + 1).toISOString();
-      j = await api("./api/raw_points", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)});
+      j = await api("./api/raw_points", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)}, {key:'dashboard.raw_points', silent:true});
     }else{
       payload.limit = RAW_WINDOW_LIMIT;
       payload.offset = RAW_OFFSET;
       payload.include_total = true;
-      j = await api("./api/raw_points", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)});
+      j = await api("./api/raw_points", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)}, {key:'dashboard.raw_points', silent:true});
     }
     const rows = j.rows || [];
     const meta = j.meta || null;
@@ -9681,11 +9293,17 @@ async function loadRawFromGraph(reset){
     try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done('dashboard.raw', `Raw: ${RAW_OFFSET}`); }catch(e){}
     _rawStatusEnd(true);
   }catch(e){
+    if(e && e.aborted){
+      try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done('dashboard.raw', 'Raw abgebrochen'); }catch(ex){}
+      _rawStatusEnd(true, 'Abgebrochen.');
+      return;
+    }
     // keep previous
     try{ window.InfluxBroStatus && window.InfluxBroStatus.fail && window.InfluxBroStatus.fail('dashboard.raw', String(e && e.message ? e.message : e)); }catch(ex){}
     _rawStatusEnd(false, (e && e.message) ? e.message : String(e));
   }finally{
     _RAW_INFLIGHT = false;
+    try{ updateRawToolbarState(); }catch(e){}
     try{ if(window.InfluxBroStatus && window.InfluxBroStatus.current && window.InfluxBroStatus.current() === 'dashboard.raw'){ window.InfluxBroStatus.done('dashboard.raw', 'Raw fertig'); } }catch(e){}
   }
 }
@@ -10017,6 +9635,8 @@ function _renderSelAll(checkboxEl, keysInView, selectedSet){
 }
 
 function renderTable(){
+  // Bearbeitungsliste wurde entfernt (Issue #330).
+  if(!$tbl || !$tblTable) return;
   applyFilterTableVisibleRows();
   let base = (FILTER_TABLE_CLEARED ? [] : _rowsForFilterTable().slice());
   base = _tableTimeFilteredRows(base);
@@ -10512,6 +10132,8 @@ function renderDetailsPanel(key){
 
 function showDetailsForKey(key){
   try{
+    // Details/Bearbeitungsliste wurde entfernt (Issue #330).
+    if(!$detailsPanel) return;
     const k = String(key || '');
     if(!k) return;
 
@@ -10885,10 +10507,6 @@ try{
     _stop(ev);
     loadData().catch(displayError);
   });
-  if($graphResetTime) $graphResetTime.addEventListener('click', (ev)=>{
-    try{ _stop(ev); }catch(e){}
-    resetGraphTimeRange().catch(displayError);
-  });
   if($editGraphRefresh) $editGraphRefresh.addEventListener('click', (ev)=>{ _stop(ev); refreshEditGraph().catch(displayError); });
 }catch(e){}
 
@@ -11154,7 +10772,7 @@ async function loadData(opts){
   }
   renderTableRange();
   renderRangeFromTo();
-  $tbl.innerHTML = "";
+  try{ if($tbl) $tbl.innerHTML = ""; }catch(e){}
   const filters = currentFilters();
   const seriesKey = [filters.measurement, filters.field, filters.entity_id || "", filters.friendly_name || ""].join("|");
   if(LAST_SERIES_KEY && seriesKey !== LAST_SERIES_KEY){
@@ -11981,6 +11599,14 @@ if($rawRefresh) $rawRefresh.addEventListener("click", (ev)=>{
     loadRawFromGraph(true).catch(displayError);
   }
 });
+if($rawAbort) $rawAbort.addEventListener('click', (ev)=>{
+  _stop(ev);
+  try{
+    const inflight = window.__INFLUXBRO_INFLIGHT;
+    const ctrl = inflight && inflight.keyed ? inflight.keyed.get('dashboard.raw_points') : null;
+    if(ctrl && ctrl.abort) ctrl.abort();
+  }catch(e){}
+});
 if($rawCopy) $rawCopy.addEventListener("click", async (ev)=>{
   _stop(ev);
   try{
@@ -12751,52 +12377,10 @@ try{
   try{ if(window.InfluxBroTableHeight && $tableBox) window.InfluxBroTableHeight.attach($tableBox, 'tbl', {minPx: 180}); }catch(e){}
   try{ if(window.InfluxBroTableHeight && $detailsBox) window.InfluxBroTableHeight.attach($detailsBox, 'details_box', {minPx: 180}); }catch(e){}
   try{ if(window.InfluxBroTableHeight && $rawOutlierBox) window.InfluxBroTableHeight.attach($rawOutlierBox, 'raw_outlier_tbl', {minPx: 120}); }catch(e){}
-  // Explicit resize handle for outlier table
-  try{
-    const $olResize = document.getElementById('raw_outlier_tbl_resize');
-    if($olResize && $rawOutlierBox){
-      const olResizeKey = 'influxbro.table_height.raw_outlier_tbl';
-      const olMinPx = 120;
-      const olMaxPx = Math.round(window.innerHeight * 0.85);
-      try{
-        const saved = Number(localStorage.getItem(olResizeKey) || 0);
-        if(isFinite(saved) && saved >= olMinPx) $rawOutlierBox.style.height = Math.round(saved) + 'px';
-      }catch(e){}
-      let olStartY = 0, olStartH = 0, olDragging = false;
-      $olResize.addEventListener('mousedown', (e)=>{
-        olStartY = e.clientY;
-        olStartH = $rawOutlierBox.getBoundingClientRect().height || olMinPx;
-        olDragging = true;
-        document.body.style.userSelect = 'none';
-        window.addEventListener('mousemove', olOnMove);
-        window.addEventListener('mouseup', olOnUp);
-      });
-      function olOnMove(e){
-        if(!olDragging) return;
-        const dy = e.clientY - olStartY;
-        let h = olStartH + dy;
-        if(h < olMinPx) h = olMinPx;
-        if(h > olMaxPx) h = olMaxPx;
-        $rawOutlierBox.style.height = Math.round(h) + 'px';
-        e.preventDefault();
-      }
-      function olOnUp(){
-        if(!olDragging) return;
-        olDragging = false;
-        document.body.style.userSelect = '';
-        window.removeEventListener('mousemove', olOnMove);
-        window.removeEventListener('mouseup', olOnUp);
-        try{
-          const h = Math.round($rawOutlierBox.getBoundingClientRect().height || 0);
-          if(h >= olMinPx) localStorage.setItem(olResizeKey, String(h));
-        }catch(e){}
-      }
-    }
-  }catch(e){}
+  // Outlier table resize uses the shared helper InfluxBroTableHeight.attach(...).
 }catch(e){}
 
 try{
-  if($rawSearchBar) $rawSearchBar.style.display = ($outlierSection && $outlierSection.open) ? 'block' : 'none';
   if($analysisAbort) $analysisAbort.addEventListener('click', ()=>{
     try{
       if(RAW_OUTLIER_ABORT) RAW_OUTLIER_ABORT.abort();
@@ -12807,15 +12391,7 @@ try{
       try{ updateAnalysisUI(); }catch(e){}
     }catch(e){}
   });
-  if($rawSearchRun) $rawSearchRun.addEventListener('click', ()=>{ runRawOutlierSearch().catch(()=>{}); });
-  if($rawJumpOldest) $rawJumpOldest.addEventListener('click', ()=>{ jumpToOldestOutlier().catch(()=>{}); });
-  if($rawJumpNewest) $rawJumpNewest.addEventListener('click', ()=>{ jumpToNewestOutlier().catch(()=>{}); });
-  if($rawSearchClear) $rawSearchClear.addEventListener('click', ()=>{ clearRawOutlierSearch(); });
-  if($rawSearchAbort) $rawSearchAbort.addEventListener('click', ()=>{
-    try{
-      if(RAW_OUTLIER_ABORT) RAW_OUTLIER_ABORT.abort();
-    }catch(e){}
-  });
+  // Ausreißer-Suchleiste wurde entfernt (Issue #330).
   const _displayedTraceId = ($el)=>{
     try{
       if(!$el) return '';
@@ -12881,20 +12457,7 @@ try{
       _updateOutlierNavStatus();
     });
   }
-  if($rawAllTime) $rawAllTime.addEventListener('click', ()=>{ setRawTimeToAll().catch(()=>{}); });
-  if($rawOutlierContextRows){
-    const saveRowsNow = ()=>{
-      const v = Math.max(1, Math.min(500, Number($rawOutlierContextRows.value) || 10));
-      RAW_OUTLIER_CONTEXT_ROWS = v;
-      $rawOutlierContextRows.value = String(v);
-      saveState();
-      if(RAW_SELECTED_MS !== null && RAW_OUTLIER_RESULTS.length > 0){
-        highlightOutlierAtIndex(RAW_OUTLIER_INDEX >= 0 ? RAW_OUTLIER_INDEX : 0).catch(()=>{});
-      }
-    };
-    $rawOutlierContextRows.addEventListener('input', saveRowsNow);
-    $rawOutlierContextRows.addEventListener('change', saveRowsNow);
-  }
+  // Zeitraum-Alle und Raw-Kontext-UI wurden entfernt (Issue #330).
   if($rawOutlierDisplayLimitPerType){
     const saveLimitNow = ()=>{
       const v = Math.max(1, Math.min(1000, Number($rawOutlierDisplayLimitPerType.value) || 100));
@@ -12907,11 +12470,7 @@ try{
     $rawOutlierDisplayLimitPerType.addEventListener('input', saveLimitNow);
     $rawOutlierDisplayLimitPerType.addEventListener('change', saveLimitNow);
   }
-  if($outlierSection){
-    $outlierSection.addEventListener('toggle', ()=>{
-      if($rawSearchBar) $rawSearchBar.style.display = $outlierSection.open ? 'block' : 'none';
-    });
-  }
+   // Ausreißer-Suchleiste entfernt (Issue #330).
   updateRawOutlierTypeToggleLabel();
 }catch(e){}
 
