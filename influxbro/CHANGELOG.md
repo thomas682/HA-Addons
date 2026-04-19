@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.384
+
+### Enhancement
+
+- Dashboard/Caching: In der Liste der Analysecache-Segmente gibt es pro Cache-Block einen Info-Button, der Dateiname und Dateigroesse (meta + data) sowie alle bekannten Metadaten anzeigt. ([#334](https://github.com/thomas682/HA-Addons/issues/334))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: 2026.4.3
+
 ## 1.12.383
 
 ### Enhancement

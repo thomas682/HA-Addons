@@ -7319,6 +7319,7 @@ function _analysisCacheTimelineHtml(plan){
       '<button type="button" data-cache-hl="' + _escHtml(id) + '" class="btn_xs" style="width:auto;min-width:28px;' + (ui.hl ? 'background:#ff9900;color:#fff;border-color:#ff9900;' : '') + '" data-ui="cache_timeline.btn_hl">hl</button>' +
       '<button type="button" data-cache-ac="' + _escHtml(id) + '" class="btn_xs" style="width:auto;min-width:28px;' + (ui.active ? '' : 'background:' + ANALYSIS_CACHE_HIDDEN_COLOR + ';color:#fff;border-color:' + ANALYSIS_CACHE_HIDDEN_COLOR + ';') + '" data-ui="cache_timeline.btn_ac">ac</button>' +
       '<button type="button" data-cache-ol="' + _escHtml(id) + '" class="btn_xs" style="width:auto;min-width:28px;' + (ui.ol ? 'background:' + bd + ';color:#fff;border-color:' + bd + ';' : '') + '" data-ui="cache_timeline.btn_ol">ol</button>' +
+      '<button type="button" class="ib_info_icon" data-cache-info="' + _escAttr(String(seg.cache_id || '')) + '" data-ui="cache_timeline.btn_info" title="Cache Details">' + (typeof ANALYSIS_INFO_ICON_SVG !== 'undefined' ? ANALYSIS_INFO_ICON_SVG : '?') + '</button>' +
       '<span style="display:inline-block;width:10px;height:10px;background:' + color + ';border:1px solid ' + border + ';border-radius:3px;"></span>' +
       '<span style="flex:1;">Cache ' + (idx + 1) + ': ' + _escHtml(fmtTs(seg.use_start || seg.covered_start)) + ' – ' + _escHtml(fmtTs(seg.use_stop || seg.covered_stop)) + ' (' + _escHtml(fmtTs(seg.updated_at || '')) + ')</span>' +
       '<span style="white-space:nowrap;">Treffer: ' + String(seg.outlier_count || 0) + '</span>' +
@@ -7360,6 +7361,67 @@ function _analysisCacheTimelineHtml(plan){
     + '<span><span style="display:inline-block;width:10px;height:10px;background:#ffe1e1;border:1px solid #d46a6a;border-radius:3px;margin-right:4px;"></span>Geaendert</span>'
     + '</div>'
     + (labels.length ? '<div style="display:flex;flex-direction:column;gap:4px;margin-top:8px;">' + labels.join('') + '</div>' : '');
+}
+
+async function showAnalysisCacheBlockInfo(plan, cacheId){
+  try{
+    const cid = String(cacheId || '').trim();
+    if(!cid) return;
+    const segs = (plan && Array.isArray(plan.segments)) ? plan.segments : [];
+    const segIdx = segs.findIndex(s => String(s && s.cache_id ? s.cache_id : '') === cid);
+    const seg = segIdx >= 0 ? segs[segIdx] : null;
+
+    const j = await api('./api/analysis_cache/block_info?cache_id=' + encodeURIComponent(cid), null, { key: 'analysis_cache_block_info_' + cid, silent: true });
+    const info = j && j.info ? j.info : {};
+
+    function _fmtBytes(n){
+      try{
+        const b = Number(n);
+        if(!(isFinite(b) && b >= 0)) return '-';
+        if(b < 1024) return Math.round(b) + ' B';
+        if(b < 1024*1024) return (b/1024).toFixed(1) + ' kB';
+        if(b < 1024*1024*1024) return (b/1024/1024).toFixed(1) + ' MB';
+        return (b/1024/1024/1024).toFixed(2) + ' GB';
+      }catch(e){
+        return '-';
+      }
+    }
+
+    const lines = [];
+    lines.push('Cache Block Details');
+    lines.push('');
+    lines.push('cache_id: ' + cid);
+    if(seg){
+      lines.push('Index: ' + String(segIdx + 1));
+      lines.push('use: ' + String(seg.use_start || seg.covered_start || '') + ' .. ' + String(seg.use_stop || seg.covered_stop || ''));
+      lines.push('covered: ' + String(seg.covered_start || '') + ' .. ' + String(seg.covered_stop || ''));
+      lines.push('updated_at: ' + String(seg.updated_at || ''));
+      lines.push('outlier_count: ' + String(seg.outlier_count || 0));
+      lines.push('checkpoint_count: ' + String(seg.checkpoint_count || 0));
+      lines.push('patch_status: ' + String(seg.patch_status || 'ok'));
+    }
+    lines.push('');
+    lines.push('Files:');
+    lines.push('- ' + String(info.meta_file || (cid + '.meta.json')) + ' | ' + (info.meta_exists ? _fmtBytes(info.meta_bytes) : 'missing'));
+    lines.push('- ' + String(info.data_file || (cid + '.data.json.gz')) + ' | ' + (info.data_exists ? _fmtBytes(info.data_bytes) : 'missing'));
+
+    try{
+      const meta = info.meta && typeof info.meta === 'object' ? info.meta : null;
+      if(meta){
+        lines.push('');
+        lines.push('Meta (known):');
+        Object.keys(meta).sort().forEach((k)=>{
+          const v = meta[k];
+          if(v === null || v === undefined || v === '') return;
+          lines.push('- ' + String(k) + ': ' + String(v));
+        });
+      }
+    }catch(e){}
+
+    if(window.InfluxBroPopup && window.InfluxBroPopup.show) window.InfluxBroPopup.show('Cache Details', lines.join('\n'));
+  }catch(e){
+    try{ if(window.InfluxBroPopup && window.InfluxBroPopup.show) window.InfluxBroPopup.show('Cache Details', String(e && e.message ? e.message : e)); }catch(x){}
+  }
 }
 
 function showCachingSummaryInfo(){
@@ -11417,6 +11479,15 @@ async function refreshCachingSection(){
               const cur = _analysisCacheSegUi(_loadAnalysisCacheUiState(analysisPlan), id);
               _analysisCacheSetSegUi(analysisPlan, id, { ol: !cur.ol });
               rerenderTimeline();
+            });
+          });
+
+          $timeline.querySelectorAll('[data-cache-info]').forEach((btn)=>{
+            btn.addEventListener('click', (ev)=>{
+              try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+              const cid = String(btn.getAttribute('data-cache-info') || '').trim();
+              if(!cid) return;
+              showAnalysisCacheBlockInfo(analysisPlan, cid);
             });
           });
         };

@@ -574,6 +574,7 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - In der Cache-Timeline ist der `ol`-Button fuer neue Cache-Segmente jetzt standardmaessig aktiv und bleibt serienweit erhalten, auch nach erneutem `Cache pruefen`.
 - Die Zeilen `Neu lesen` werden im Zeitstrahl wie Cache-Zeilen mit `hl`/`ac`/`ol` dargestellt; `ol` ist dort immer deaktiviert.
 - Unter dem Dashboard-Zeitstrahl besitzt jede Cache-Zeile nun die kleinen Toggle-Buttons `hl` (nur optische Hervorhebung im Zeitstrahl) und `ac` (rein visuelles Aktiv/Ausblenden). Rechts daneben wird die Summe der Ausreißer in diesem Segment angezeigt.
+- Neu: Pro Cache-Segment gibt es ein Info-Icon, das Dateiname und Groesse der Cache-Dateien sowie alle bekannten Segment-Metadaten anzeigt.
 - `hl` hebt ein Cache-Segment im Zeitstrahl optisch hervor, ohne Daten oder Statistiken zu filtern. `ac` blendet ein Segment nur visuell aus; die zugrunde liegenden Cache-Daten bleiben unverändert.
 - `Analyse mit Cache` behaelt vorgeladene Cache-Ausreisser jetzt bis zum Ende des Laufs. Dadurch erscheinen Cache-Treffer wieder direkt in `dashboard_outliers.tbl_ausreisser` und in `dashboard_analysis.txt_found_info`.
 - Die Picker `nav_main.btn_ui_picker` und `nav_main.btn_ui_picker_super` koennen jetzt auch deaktivierte Elemente kopieren. Waerend des Picker-Modus werden native `title`-Tooltips temporaer unterdrueckt, damit keine Stoer-Tooltips ueber der Auswahl auftauchen.
