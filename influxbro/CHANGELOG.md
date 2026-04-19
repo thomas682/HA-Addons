@@ -5,6 +5,7 @@
 ### Enhancement
 
 - UI: Wenn im Browser noch keine Zoomstufe gespeichert ist, wird beim ersten Laden eine Default-Zoomstufe passend zur Viewport-Breite gesetzt (mobil groesser, desktop 100%). ([#336](https://github.com/thomas682/HA-Addons/issues/336))
+- UI: Wenn im Browser noch keine Zoomstufe gespeichert ist, wird beim ersten Laden eine Default-Zoomstufe passend zur Viewport-Breite gesetzt (mobil groesser, desktop 100%). ([#335](https://github.com/thomas682/HA-Addons/issues/335))
 
 ### Maintenance
 
