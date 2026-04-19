@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.385
+
+### Enhancement
+
+- UI: Wenn im Browser noch keine Zoomstufe gespeichert ist, wird beim ersten Laden eine Default-Zoomstufe passend zur Viewport-Breite gesetzt (mobil groesser, desktop 100%). ([#336](https://github.com/thomas682/HA-Addons/issues/336))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: 2026.4.3
+
 ## 1.12.384
 
 ### Enhancement

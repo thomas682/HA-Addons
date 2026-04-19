@@ -342,6 +342,37 @@
       try{ return clamp(localStorage.getItem(LS_ZOOM) || 100); }catch(e){ return 100; }
     }
 
+    function _hasStoredZoom(){
+      try{ return localStorage.getItem(LS_ZOOM) !== null; }catch(e){ return true; }
+    }
+
+    function _recommendDefaultZoom(){
+      // Heuristic: if the user never set a zoom yet, pick a device-friendly default.
+      // This is browser-local (localStorage) and therefore per device.
+      try{
+        const w = Math.max(0, Math.min(
+          Number(window.innerWidth || 0) || 0,
+          Number(document.documentElement && document.documentElement.clientWidth ? document.documentElement.clientWidth : 0) || 0
+        ));
+        if(!isFinite(w) || w <= 0) return 100;
+        if(w <= 420) return 120; // iPhone portrait
+        if(w <= 480) return 115;
+        if(w <= 768) return 110;
+        if(w <= 980) return 105;
+        return 100;
+      }catch(e){
+        return 100;
+      }
+    }
+
+    function _ensureDefaultZoomOnce(){
+      try{
+        if(_hasStoredZoom()) return;
+        const z = _recommendDefaultZoom();
+        try{ localStorage.setItem(LS_ZOOM, String(clamp(z))); }catch(e){}
+      }catch(e){}
+    }
+
     function setZoom(pct){
       const z = clamp(pct);
       try{ localStorage.setItem(LS_ZOOM, String(z)); }catch(e){}
@@ -369,6 +400,7 @@
       const $m = document.getElementById('ib_zoom_out');
       const $p = document.getElementById('ib_zoom_in');
       if((!$m && !$p) || (($m && $m.dataset.ibZoomReady === '1') && ($p && $p.dataset.ibZoomReady === '1'))) return;
+      try{ _ensureDefaultZoomOnce(); }catch(e){}
       try{ setZoom(getZoom()); }catch(e){}
       if($m && $m.dataset.ibZoomReady !== '1'){
         $m.dataset.ibZoomReady = '1';

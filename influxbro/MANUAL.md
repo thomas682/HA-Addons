@@ -77,6 +77,7 @@ Neu: Top-Leiste (Profil + Zoom)
   - Seitensuche: durchsucht Controls und wichtige sichtbare Texte auf der aktuellen Seite und springt zu Treffern.
   - Picker / S-Picker: kopiert zusaetzliche Element-Metadaten (z.B. id/title/Section-Pfad), damit UI-Elemente eindeutig identifiziert werden koennen.
 - Zoom wird im Browser gespeichert (pro Browser/Client).
+- Neu: Wenn im Browser noch keine Zoomstufe gespeichert ist, wird beim ersten Laden automatisch eine passende Default-Zoomstufe je nach Viewport-Breite gesetzt (z.B. iPhone groesser, Desktop 100%). Danach kannst du wie gewohnt mit `-`/`+` anpassen.
 
 ## Installation in Home Assistant
 
