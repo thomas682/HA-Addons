@@ -177,6 +177,10 @@ COMBINE_LOCK = threading.RLock()
 ANALYSIS_CACHE_PATCH_JOBS: dict[str, dict[str, Any]] = {}
 ANALYSIS_CACHE_PATCH_LOCK = threading.RLock()
 
+# Nightly analysis refresh jobs
+ANALYSIS_NIGHTLY_JOBS: dict[str, dict[str, Any]] = {}
+ANALYSIS_NIGHTLY_LOCK = threading.RLock()
+
 ANALYSIS_CACHE_CHECKPOINT_SECONDS = 3600
 ANALYSIS_CACHE_PATCH_PADDING_SECONDS = 300
 ANALYSIS_CACHE_PATCH_MAX_SPAN_SECONDS = 7200
@@ -1443,6 +1447,16 @@ DEFAULT_CFG = {
     # Safety cap for scheduled full stats scans (prevents querying from epoch / huge ranges)
     "stats_full_max_days": 3650,
 
+    # Timer Job: analysis_nightly (nightly refresh of analysis cache for known series)
+    "analysis_nightly_enabled": True,
+    "analysis_nightly_auto_update": True,
+    "analysis_nightly_refresh_mode": "daily",
+    "analysis_nightly_refresh_hours": 24,
+    "analysis_nightly_refresh_daily_at": "03:30:00",
+    "analysis_nightly_refresh_weekday": 0,
+    # Time window covered by nightly refresh (stop=now, start=now-window)
+    "analysis_nightly_window_hours": 24,
+
     # Data quality / long-term buckets
     "quality_raw_bucket": "homeassistant_raw_30d",
     "quality_clean_bucket": "homeassistant_clean_180d",
@@ -1719,7 +1733,7 @@ def _timer_mark_started(timer_id: str, job_id: str | None = None) -> None:
         return
 
 
-def _timer_mark_finished(timer_id: str, state: str) -> None:
+def _timer_mark_finished(timer_id: str, state: str, extra: dict[str, Any] | None = None) -> None:
     try:
         tid = str(timer_id or "").strip()
         if not tid:
@@ -1732,9 +1746,32 @@ def _timer_mark_finished(timer_id: str, state: str) -> None:
         cur = cur if isinstance(cur, dict) else {}
         cur["last_run_at"] = _utc_now_iso_ms()
         cur["last_state"] = st_s
+
+        # Optional: enrich UI status with duration/error.
+        try:
+            if extra and isinstance(extra, dict):
+                if "duration_ms" in extra and extra.get("duration_ms") is not None:
+                    cur["last_duration_ms"] = int(max(0, int(extra.get("duration_ms") or 0)))
+                if "error" in extra and extra.get("error"):
+                    # Never persist secrets/tokens into UI-facing timer status.
+                    cur["last_error"] = _redact_secrets(str(extra.get("error") or "")).strip()[:500]
+                elif st_s != "error":
+                    # Clear stale error on successful runs.
+                    cur.pop("last_error", None)
+        except Exception:
+            pass
         st[tid] = cur
         _timers_state_save(st)
-        _timer_event_append(tid, "finished", {"state": st_s, "job_id": cur.get("last_job_id")})
+        ev_extra: dict[str, Any] = {"state": st_s, "job_id": cur.get("last_job_id")}
+        try:
+            if extra and isinstance(extra, dict):
+                if extra.get("duration_ms") is not None:
+                    ev_extra["duration_ms"] = int(max(0, int(extra.get("duration_ms") or 0)))
+                if extra.get("error"):
+                    ev_extra["error"] = _redact_secrets(str(extra.get("error") or "")).strip()[:500]
+        except Exception:
+            pass
+        _timer_event_append(tid, "finished", ev_extra)
     except Exception:
         return
 
@@ -5468,6 +5505,7 @@ def _dash_cache_job_public(job: dict[str, Any]) -> dict[str, Any]:
 def _dash_cache_job_thread(job_id: str, action: str, cache_id: str) -> None:
     def set_state(state: str, msg: str) -> None:
         timer_id = None
+        extra = None
         with DASH_CACHE_JOBS_LOCK:
             if job_id in DASH_CACHE_JOBS:
                 DASH_CACHE_JOBS[job_id]["state"] = state
@@ -5475,8 +5513,17 @@ def _dash_cache_job_thread(job_id: str, action: str, cache_id: str) -> None:
                 if state in ("done", "error", "cancelled"):
                     _job_set_finished(DASH_CACHE_JOBS[job_id])
                     timer_id = DASH_CACHE_JOBS[job_id].get("timer_id")
+                    try:
+                        started_mono = float(DASH_CACHE_JOBS[job_id].get("started_mono") or 0.0)
+                    except Exception:
+                        started_mono = 0.0
+                    dur_ms = int(max(0.0, (time.monotonic() - started_mono) * 1000.0)) if started_mono > 0 else None
+                    err = str(DASH_CACHE_JOBS[job_id].get("error") or "").strip() or None
+                    if state == "error" and not err:
+                        err = str(msg or "").strip() or None
+                    extra = {"duration_ms": dur_ms, "error": err}
         if timer_id and state in ("done", "error", "cancelled"):
-            _timer_mark_finished(str(timer_id), state)
+            _timer_mark_finished(str(timer_id), state, extra=extra)
 
     def set_error(msg: str) -> None:
         with DASH_CACHE_JOBS_LOCK:
@@ -13467,6 +13514,18 @@ def api_jobs():
         _jobs_history_upsert(pub)
         out.append(pub)
 
+    with ANALYSIS_NIGHTLY_LOCK:
+        an_items = list(ANALYSIS_NIGHTLY_JOBS.items())
+    for _, j in an_items:
+        pub = _analysis_nightly_job_public(j)
+        pub["type"] = "analysis_nightly"
+        pub["trigger_page"] = j.get("trigger_page")
+        pub["trigger_ip"] = j.get("trigger_ip")
+        pub["trigger_ua"] = j.get("trigger_ua")
+        pub["timer_id"] = j.get("timer_id")
+        _jobs_history_upsert(pub)
+        out.append(pub)
+
     with EXPORT_LOCK:
         e_items = list(EXPORT_JOBS.items())
     for _, j in e_items:
@@ -13573,6 +13632,15 @@ def api_jobs_cancel():
             ANALYSIS_CACHE_PATCH_JOBS[job_id]["cancelled"] = True
             try:
                 LOG.info("job_cancel type=analysis_cache_patch job_id=%s ip=%s ua=%s", job_id, _req_ip(), _req_ua())
+            except Exception:
+                pass
+            return jsonify({"ok": True})
+
+    with ANALYSIS_NIGHTLY_LOCK:
+        if job_id in ANALYSIS_NIGHTLY_JOBS:
+            ANALYSIS_NIGHTLY_JOBS[job_id]["cancelled"] = True
+            try:
+                LOG.info("job_cancel type=analysis_nightly job_id=%s ip=%s ua=%s", job_id, _req_ip(), _req_ua())
             except Exception:
                 pass
             return jsonify({"ok": True})
@@ -13723,6 +13791,8 @@ def _cache_mode_str(cfg: dict[str, Any], base: str) -> str:
             return ("daily", 24, "03:00:00", 0)
         if base == "stats_full":
             return ("manual", 24, "03:00:00", 0)
+        if base == "analysis_nightly":
+            return ("daily", 24, "03:30:00", 0)
         return ("daily", 24, "03:00:00", 0)
 
     try:
@@ -14179,6 +14249,8 @@ def api_analysis_cache_block_info():
             "cache_id": cache_id,
             "meta_file": meta_path.name,
             "data_file": data_path.name,
+            "meta_path": f"/data/analysis_cache/{meta_path.name}",
+            "data_path": f"/data/analysis_cache/{data_path.name}",
             "meta_exists": bool(meta_exists),
             "data_exists": bool(data_exists),
             "meta_bytes": meta_bytes,
@@ -14964,12 +15036,430 @@ def _cache_schedule_next_run_iso(cfg: dict[str, Any], base: str) -> str | None:
         return None
 
 
+def _analysis_nightly_job_public(job: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": job.get("id"),
+        "state": job.get("state"),
+        "message": job.get("message"),
+        "started_at": job.get("started_at"),
+        "updated_at": job.get("updated_at"),
+        "finished_at": job.get("finished_at"),
+        "elapsed": _job_elapsed_hms(job),
+        "current": job.get("current") or "",
+        "series_key": job.get("series_key") or "",
+        "measurement": job.get("measurement") or "",
+        "field": job.get("field") or "",
+        "entity_id": job.get("entity_id") or "",
+        "friendly_name": job.get("friendly_name") or "",
+        "trigger_page": job.get("trigger_page") or "",
+        "timer_id": job.get("timer_id") or "",
+        "cancelled": bool(job.get("cancelled")),
+        "error": job.get("error"),
+        "ready": job.get("state") in ("done", "error", "cancelled"),
+    }
+
+
+def _analysis_nightly_inflight(series_key: str) -> bool:
+    sk = str(series_key or "").strip()
+    if not sk:
+        return False
+    with ANALYSIS_NIGHTLY_LOCK:
+        for j in ANALYSIS_NIGHTLY_JOBS.values():
+            try:
+                if str(j.get("series_key") or "") != sk:
+                    continue
+                st = str(j.get("state") or "")
+                if st and st not in ("done", "error", "cancelled"):
+                    return True
+            except Exception:
+                continue
+    return False
+
+
+def _analysis_nightly_any_inflight() -> bool:
+    try:
+        with ANALYSIS_NIGHTLY_LOCK:
+            for j in ANALYSIS_NIGHTLY_JOBS.values():
+                try:
+                    st = str(j.get("state") or "")
+                    if st and st not in ("done", "error", "cancelled"):
+                        return True
+                except Exception:
+                    continue
+    except Exception:
+        return False
+    return False
+
+
+def _analysis_nightly_series_last_runs() -> dict[str, str]:
+    try:
+        st = _timers_state_get("analysis_nightly")
+        m = st.get("series_last_run") if isinstance(st, dict) else None
+        if not isinstance(m, dict):
+            return {}
+        out: dict[str, str] = {}
+        for k, v in m.items():
+            ks = str(k or "").strip()
+            vs = str(v or "").strip()
+            if ks and vs:
+                out[ks] = vs
+        return out
+    except Exception:
+        return {}
+
+
+def _analysis_nightly_set_series_last_run(series_key: str, at_iso: str) -> None:
+    try:
+        sk = str(series_key or "").strip()
+        if not sk:
+            return
+        st = _timers_state_load()
+        cur = st.get("analysis_nightly")
+        cur = cur if isinstance(cur, dict) else {}
+        m = cur.get("series_last_run")
+        m = m if isinstance(m, dict) else {}
+        m[sk] = str(at_iso or "").strip() or _utc_now_iso_ms()
+        # best-effort cap
+        if len(m) > 5000:
+            # keep some arbitrary tail by timestamp
+            try:
+                items = [(k, v) for k, v in m.items() if str(k).strip() and str(v).strip()]
+                items.sort(key=lambda kv: str(kv[1]))
+                m = dict(items[-4500:])
+            except Exception:
+                pass
+        cur["series_last_run"] = m
+        st["analysis_nightly"] = cur
+        _timers_state_save(st)
+    except Exception:
+        return
+
+
+def _analysis_nightly_due_boundary(cfg: dict[str, Any]) -> datetime | None:
+    try:
+        mode = str(cfg.get("analysis_nightly_refresh_mode") or "daily").strip().lower()
+        if mode not in ("hours", "daily", "weekly", "manual"):
+            mode = "daily"
+        if mode == "manual":
+            return None
+        if mode == "hours":
+            return None
+        at = str(cfg.get("analysis_nightly_refresh_daily_at") or "03:30:00").strip() or "03:30:00"
+        hh, mm, ss = _timer_parse_hms(at, (3, 30, 0))
+        wd = _timer_parse_weekday(cfg.get("analysis_nightly_refresh_weekday"), default=0)
+        now_local = datetime.now().astimezone()
+        return _timer_last_boundary_local(now_local, mode=mode, hh=hh, mm=mm, ss=ss, weekday=wd)
+    except Exception:
+        return None
+
+
+def _analysis_nightly_pick_series(cfg: dict[str, Any]) -> dict[str, Any] | None:
+    try:
+        if not bool(cfg.get("analysis_nightly_enabled", True)) or not bool(cfg.get("analysis_nightly_auto_update", True)):
+            return None
+
+        # Keep concurrency low: process one series at a time.
+        if _analysis_nightly_any_inflight():
+            return None
+
+        mode = str(cfg.get("analysis_nightly_refresh_mode") or "daily").strip().lower()
+        if mode not in ("hours", "daily", "weekly", "manual"):
+            mode = "daily"
+        if mode == "manual":
+            return None
+
+        rows = _analysis_cache_group_list(cfg)
+        if not rows:
+            return None
+
+        last_runs = _analysis_nightly_series_last_runs()
+        boundary = _analysis_nightly_due_boundary(cfg)
+        now_utc = datetime.now(timezone.utc)
+        due: list[tuple[float, dict[str, Any]]] = []
+
+        for row in rows:
+            try:
+                sk = str(row.get("series_key") or "").strip()
+                if not sk:
+                    continue
+                if _analysis_nightly_inflight(sk):
+                    continue
+
+                last_iso = last_runs.get(sk) or ""
+                last_dt = None
+                try:
+                    last_dt = _parse_iso_datetime(str(last_iso)) if last_iso else None
+                except Exception:
+                    last_dt = None
+
+                is_due = False
+                if mode == "hours":
+                    try:
+                        h = int(cfg.get("analysis_nightly_refresh_hours") or 24)
+                    except Exception:
+                        h = 24
+                    h = max(1, min(8760, h))
+                    if not last_dt:
+                        is_due = True
+                    else:
+                        is_due = (now_utc.timestamp() - last_dt.timestamp()) >= float(h * 3600)
+                else:
+                    if boundary is None:
+                        continue
+                    if not last_dt:
+                        is_due = True
+                    else:
+                        last_local = last_dt.astimezone(datetime.now().astimezone().tzinfo)
+                        is_due = last_local < boundary
+
+                if not is_due:
+                    continue
+
+                score = last_dt.timestamp() if last_dt else 0.0
+                due.append((score, row))
+            except Exception:
+                continue
+
+        if not due:
+            return None
+        due.sort(key=lambda it: it[0])
+        return due[0][1]
+    except Exception:
+        return None
+
+
+def _analysis_nightly_refresh_series(cfg: dict[str, Any], row: dict[str, Any]) -> dict[str, Any]:
+    """Run an analysis-cache refresh for one series (best-effort)."""
+
+    sk = str(row.get("series_key") or "").strip()
+    measurement = str(row.get("measurement") or "").strip()
+    field = str(row.get("field") or "").strip()
+    entity_id = str(row.get("entity_id") or "").strip() or None
+    friendly_name = str(row.get("friendly_name") or "").strip() or None
+    if not (sk and measurement and field):
+        raise _ApiError("invalid series", 400)
+
+    try:
+        h = int(cfg.get("analysis_nightly_window_hours") or 24)
+    except Exception:
+        h = 24
+    h = max(1, min(24 * 365, h))
+    stop_dt = datetime.now(timezone.utc)
+    start_dt = stop_dt - timedelta(hours=h)
+    start_iso = _dt_to_rfc3339_utc(start_dt)
+    stop_iso = _dt_to_rfc3339_utc(stop_dt)
+
+    plan = _analysis_cache_plan(cfg, measurement, field, entity_id, friendly_name, start_dt, stop_dt)
+    gaps = plan.get("gaps") if isinstance(plan.get("gaps"), list) else []
+    dirty = plan.get("dirty_ranges") if isinstance(plan.get("dirty_ranges"), list) else []
+    todo = []
+    for it in (gaps + dirty):
+        try:
+            a, b = it
+            if not a or not b:
+                continue
+            if b <= a:
+                continue
+            todo.append((a, b))
+        except Exception:
+            continue
+
+    stored = 0
+    scanned_total = 0
+    outliers_total = 0
+    for a, b in todo:
+        seg_start = _dt_to_rfc3339_utc(a)
+        seg_stop = _dt_to_rfc3339_utc(b)
+        rows2, scanned = _analysis_cache_fetch_segment(cfg, measurement, field, entity_id, friendly_name, seg_start, seg_stop)
+        _analysis_cache_store_segment(cfg, measurement, field, entity_id, friendly_name, seg_start, seg_stop, rows2, scanned)
+        stored += 1
+        scanned_total += int(scanned or 0)
+        outliers_total += len(rows2)
+
+    # Combine contiguous clean segments (best-effort)
+    try:
+        with app.test_request_context("/api/analysis_cache/combine", method="POST", json={"series_key": sk}):
+            resp = api_analysis_cache_combine()
+        if isinstance(resp, tuple):
+            resp0 = resp[0]
+        else:
+            resp0 = resp
+        data = resp0.get_json(silent=True) if hasattr(resp0, "get_json") else None
+        combined = int((data or {}).get("groups_combined") or 0)
+    except Exception:
+        combined = 0
+
+    return {
+        "series_key": sk,
+        "start": start_iso,
+        "stop": stop_iso,
+        "segments_stored": stored,
+        "scanned": scanned_total,
+        "outliers": outliers_total,
+        "groups_combined": combined,
+        "gaps": len(gaps),
+        "dirty": len(dirty),
+    }
+
+
+def _analysis_nightly_job_thread(job_id: str) -> None:
+    def set_state(state: str, msg: str, current: str | None = None) -> None:
+        timer_id = None
+        extra = None
+        with ANALYSIS_NIGHTLY_LOCK:
+            if job_id not in ANALYSIS_NIGHTLY_JOBS:
+                return
+            ANALYSIS_NIGHTLY_JOBS[job_id]["state"] = state
+            ANALYSIS_NIGHTLY_JOBS[job_id]["message"] = msg
+            ANALYSIS_NIGHTLY_JOBS[job_id]["updated_at"] = _utc_now_iso_ms()
+            if current is not None:
+                ANALYSIS_NIGHTLY_JOBS[job_id]["current"] = current
+            if state in ("done", "error", "cancelled"):
+                _job_set_finished(ANALYSIS_NIGHTLY_JOBS[job_id])
+                timer_id = ANALYSIS_NIGHTLY_JOBS[job_id].get("timer_id")
+                try:
+                    started_mono = float(ANALYSIS_NIGHTLY_JOBS[job_id].get("started_mono") or 0.0)
+                except Exception:
+                    started_mono = 0.0
+                dur_ms = int(max(0.0, (time.monotonic() - started_mono) * 1000.0)) if started_mono > 0 else None
+                err = str(ANALYSIS_NIGHTLY_JOBS[job_id].get("error") or "").strip() or None
+                if state == "error" and not err:
+                    err = str(msg or "").strip() or None
+                extra = {"duration_ms": dur_ms, "error": err}
+        if timer_id and state in ("done", "error", "cancelled"):
+            _timer_mark_finished(str(timer_id), state, extra=extra)
+
+    try:
+        with ANALYSIS_NIGHTLY_LOCK:
+            job = ANALYSIS_NIGHTLY_JOBS.get(job_id) or {}
+            if bool(job.get("cancelled")):
+                set_state("cancelled", "Abgebrochen")
+                return
+            series_row = job.get("series") if isinstance(job.get("series"), dict) else {}
+            series_key = str(job.get("series_key") or "").strip()
+
+        cfg = _overlay_from_yaml_if_enabled(load_cfg())
+        set_state("running", "Nightly Analyse-Refresh laeuft...", current=series_key)
+        t0 = time.monotonic()
+        res = _analysis_nightly_refresh_series(cfg, series_row)
+        dur_ms = int(max(0.0, (time.monotonic() - t0) * 1000.0))
+        _analysis_nightly_set_series_last_run(str(res.get("series_key") or series_key), _utc_now_iso_ms())
+
+        try:
+            _worklog_append_op(
+                purpose="analysis",
+                op="nightly_refresh",
+                status="ok",
+                detail=f"Nightly Analyse-Refresh: stored={int(res.get('segments_stored') or 0)} combined={int(res.get('groups_combined') or 0)}",
+                measurement=str(series_row.get("measurement") or ""),
+                field=str(series_row.get("field") or ""),
+                entity_id=str(series_row.get("entity_id") or ""),
+                friendly_name=str(series_row.get("friendly_name") or ""),
+                window_start=str(res.get("start") or ""),
+                window_stop=str(res.get("stop") or ""),
+                duration_ms=dur_ms,
+                source="scheduler",
+                reason_code="analysis_nightly",
+                counts={
+                    "segments_stored": int(res.get("segments_stored") or 0),
+                    "scanned": int(res.get("scanned") or 0),
+                    "outliers": int(res.get("outliers") or 0),
+                },
+                cache={"series_key": str(res.get("series_key") or series_key)},
+            )
+        except Exception:
+            pass
+
+        try:
+            _timer_event_append("analysis_nightly", "run", {
+                "state": "done",
+                "series_key": str(res.get("series_key") or series_key),
+                "duration_ms": dur_ms,
+                "segments_stored": int(res.get("segments_stored") or 0),
+                "scanned": int(res.get("scanned") or 0),
+                "outliers": int(res.get("outliers") or 0),
+                "job_id": job_id,
+            })
+        except Exception:
+            pass
+
+        set_state("done", f"OK: stored={int(res.get('segments_stored') or 0)} scanned={int(res.get('scanned') or 0)} outliers={int(res.get('outliers') or 0)}")
+    except Exception as e:
+        err = str(e) or e.__class__.__name__
+        with ANALYSIS_NIGHTLY_LOCK:
+            if job_id in ANALYSIS_NIGHTLY_JOBS:
+                ANALYSIS_NIGHTLY_JOBS[job_id]["error"] = err
+        try:
+            _timer_event_append("analysis_nightly", "run", {"state": "error", "error": err, "job_id": job_id})
+        except Exception:
+            pass
+        try:
+            _worklog_append_op(
+                purpose="analysis",
+                op="nightly_refresh",
+                status="err",
+                detail=f"Nightly Analyse-Refresh Fehler: {err}",
+                source="scheduler",
+                reason_code="analysis_nightly",
+            )
+        except Exception:
+            pass
+        set_state("error", err)
+
+
+def _analysis_nightly_start_job(series_row: dict[str, Any], trigger_page: str, timer_id: str | None = None) -> str:
+    sk = str(series_row.get("series_key") or "").strip()
+    if not sk:
+        raise _ApiError("series_key missing", 400)
+    if _analysis_nightly_inflight(sk):
+        raise _ApiError("series already inflight", 409)
+    job_id = uuid.uuid4().hex
+    now = _utc_now_iso_ms()
+    job = {
+        "id": job_id,
+        "type": "analysis_nightly",
+        "timer_id": str(timer_id or "analysis_nightly").strip() or "analysis_nightly",
+        "trigger_page": str(trigger_page or "").strip(),
+        "trigger_ip": _req_ip(),
+        "trigger_ua": _req_ua(),
+        "series_key": sk,
+        "measurement": series_row.get("measurement"),
+        "field": series_row.get("field"),
+        "entity_id": series_row.get("entity_id"),
+        "friendly_name": series_row.get("friendly_name"),
+        "series": dict(series_row),
+        "state": "pending",
+        "message": "Job wird gestartet...",
+        "current": sk,
+        "started_at": now,
+        "updated_at": now,
+        "started_mono": time.monotonic(),
+        "cancelled": False,
+        "error": None,
+    }
+    with ANALYSIS_NIGHTLY_LOCK:
+        ANALYSIS_NIGHTLY_JOBS[job_id] = job
+        # best-effort cleanup
+        cutoff = time.monotonic() - float(6 * 3600)
+        old = [k for k, v in ANALYSIS_NIGHTLY_JOBS.items() if float(v.get("started_mono") or 0) < cutoff]
+        for k in old:
+            ANALYSIS_NIGHTLY_JOBS.pop(k, None)
+    th = threading.Thread(target=_analysis_nightly_job_thread, args=(job_id,), daemon=True)
+    th.start()
+    try:
+        _timer_mark_started(str(timer_id or "analysis_nightly"), job_id=job_id)
+    except Exception:
+        pass
+    return job_id
+
+
 @app.get("/api/timers")
 def api_timers():
     cfg = load_cfg()
     st_dash = _timers_state_get("dash_cache")
     st_stats = _timers_state_get("stats_cache")
     st_full = _timers_state_get("stats_full")
+    st_an = _timers_state_get("analysis_nightly")
     timers = [
         {
             "id": "dash_cache",
@@ -14984,6 +15474,8 @@ def api_timers():
             "last_started_at": st_dash.get("last_started_at"),
             "last_run_at": st_dash.get("last_run_at"),
             "last_state": st_dash.get("last_state"),
+            "last_duration_ms": st_dash.get("last_duration_ms"),
+            "last_error": st_dash.get("last_error"),
             "comment": "Aktualisiert faellige Dashboard Cache Eintraege im Hintergrund (dirty/mismatch/stale).",
         },
         {
@@ -14999,6 +15491,8 @@ def api_timers():
             "last_started_at": st_stats.get("last_started_at"),
             "last_run_at": st_stats.get("last_run_at"),
             "last_state": st_stats.get("last_state"),
+            "last_duration_ms": st_stats.get("last_duration_ms"),
+            "last_error": st_stats.get("last_error"),
             "comment": "Aktualisiert faellige Statistik Cache Eintraege im Hintergrund (dirty/mismatch/stale).",
         },
         {
@@ -15014,7 +15508,26 @@ def api_timers():
             "last_started_at": st_full.get("last_started_at"),
             "last_run_at": st_full.get("last_run_at"),
             "last_state": st_full.get("last_state"),
+            "last_duration_ms": st_full.get("last_duration_ms"),
+            "last_error": st_full.get("last_error"),
             "comment": "Manueller Job: laedt Statistik komplett (inkl. Details wie count/min/max/mean) fuer alle Serien.",
+        },
+        {
+            "id": "analysis_nightly",
+            "enabled": bool(cfg.get("analysis_nightly_enabled", True)),
+            "auto_update": bool(cfg.get("analysis_nightly_auto_update", True)),
+            "refresh_mode": str(cfg.get("analysis_nightly_refresh_mode") or "daily").strip().lower(),
+            "refresh_hours": int(cfg.get("analysis_nightly_refresh_hours") or 24),
+            "refresh_daily_at": str(cfg.get("analysis_nightly_refresh_daily_at") or "03:30:00"),
+            "refresh_weekday": int(cfg.get("analysis_nightly_refresh_weekday") or 0),
+            "mode": _cache_mode_str(cfg, "analysis_nightly"),
+            "next_run_at": _cache_schedule_next_run_iso(cfg, "analysis_nightly"),
+            "last_started_at": st_an.get("last_started_at"),
+            "last_run_at": st_an.get("last_run_at"),
+            "last_state": st_an.get("last_state"),
+            "last_duration_ms": st_an.get("last_duration_ms"),
+            "last_error": st_an.get("last_error"),
+            "comment": "Nightly-Job: aktualisiert Analysecache fuer alle bereits analysierten Serien (1x pro Nacht).",
         },
     ]
     return jsonify({"ok": True, "timers": timers})
@@ -15023,7 +15536,7 @@ def api_timers():
 @app.get("/api/timers/history")
 def api_timers_history():
     tid = str(request.args.get("id") or "").strip()
-    if tid not in ("dash_cache", "stats_cache", "stats_full"):
+    if tid not in ("dash_cache", "stats_cache", "stats_full", "analysis_nightly"):
         return jsonify({"ok": False, "error": "invalid timer id"}), 400
 
     try:
@@ -15044,7 +15557,7 @@ def api_timers_history():
 def api_timers_schedule():
     body = request.get_json(force=True) or {}
     tid = str(body.get("id") or "").strip()
-    if tid not in ("dash_cache", "stats_cache", "stats_full"):
+    if tid not in ("dash_cache", "stats_cache", "stats_full", "analysis_nightly"):
         return jsonify({"ok": False, "error": "invalid timer id"}), 400
 
     mode = str(body.get("refresh_mode") or "").strip().lower()
@@ -15078,7 +15591,7 @@ def api_timers_schedule():
 
     else:
         # daily/weekly time
-        s = str(body.get("refresh_daily_at") or cfg.get(f"{tid}_refresh_daily_at") or ("00:00:00" if tid == "dash_cache" else "03:00:00")).strip()
+        s = str(body.get("refresh_daily_at") or cfg.get(f"{tid}_refresh_daily_at") or ("00:00:00" if tid == "dash_cache" else ("03:30:00" if tid == "analysis_nightly" else "03:00:00"))).strip()
         if not re.match(r"^\d{2}:\d{2}:\d{2}$", s):
             return jsonify({"ok": False, "error": "refresh_daily_at must be HH:MM:SS"}), 400
         try:
@@ -15111,11 +15624,86 @@ def api_timers_schedule():
     return api_timers()
 
 
+@app.post("/api/timers/auto_update")
+def api_timers_auto_update():
+    """Enable/disable automatic scheduled runs for one or more timers."""
+
+    body = request.get_json(force=True) or {}
+    ids_raw = body.get("ids")
+    if isinstance(ids_raw, str):
+        ids = [ids_raw]
+    elif isinstance(ids_raw, list):
+        ids = [str(x) for x in ids_raw]
+    else:
+        ids = []
+
+    enabled_raw = body.get("enabled", True)
+    enabled = enabled_raw is True or str(enabled_raw).strip().lower() in ("1", "true", "yes", "on")
+
+    valid = {"dash_cache", "stats_cache", "stats_full", "analysis_nightly"}
+    ids2 = [str(x or "").strip() for x in ids]
+    ids2 = [x for x in ids2 if x in valid]
+    if not ids2:
+        return jsonify({"ok": False, "error": "ids required"}), 400
+
+    cfg = load_cfg()
+    for tid in ids2:
+        if tid in ("dash_cache", "stats_cache", "analysis_nightly"):
+            cfg[f"{tid}_auto_update"] = bool(enabled)
+        elif tid == "stats_full":
+            cur_mode = str(cfg.get("stats_full_refresh_mode") or "manual").strip().lower() or "manual"
+            if not enabled:
+                # store previous mode (best-effort) so enable can restore it
+                if cur_mode != "manual":
+                    try:
+                        st = _timers_state_load()
+                        cur = st.get("stats_full")
+                        cur = cur if isinstance(cur, dict) else {}
+                        cur["prev_refresh_mode"] = cur_mode
+                        st["stats_full"] = cur
+                        _timers_state_save(st)
+                    except Exception:
+                        pass
+                cfg["stats_full_refresh_mode"] = "manual"
+            else:
+                # restore previous non-manual mode if available
+                prev = None
+                try:
+                    st = _timers_state_load()
+                    cur = st.get("stats_full")
+                    cur = cur if isinstance(cur, dict) else {}
+                    prev = str(cur.get("prev_refresh_mode") or "").strip().lower() or None
+                    if prev in ("hours", "daily", "weekly"):
+                        cfg["stats_full_refresh_mode"] = prev
+                    elif cur_mode == "manual":
+                        cfg["stats_full_refresh_mode"] = "daily"
+                    # clear after successful restore attempt
+                    if "prev_refresh_mode" in cur:
+                        cur.pop("prev_refresh_mode", None)
+                        st["stats_full"] = cur
+                        _timers_state_save(st)
+                except Exception:
+                    if cur_mode == "manual":
+                        cfg["stats_full_refresh_mode"] = "daily"
+
+        try:
+            _timer_event_append(tid, "auto_update", {"enabled": bool(enabled), "ip": _req_ip()})
+        except Exception:
+            pass
+
+    try:
+        save_cfg(cfg)
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 500
+
+    return api_timers()
+
+
 @app.post("/api/timers/start")
 def api_timers_start():
     body = request.get_json(force=True) or {}
     tid = str(body.get("id") or "").strip()
-    if tid not in ("dash_cache", "stats_cache", "stats_full"):
+    if tid not in ("dash_cache", "stats_cache", "stats_full", "analysis_nightly"):
         return jsonify({"ok": False, "error": "invalid timer id"}), 400
 
     cfg = _overlay_from_yaml_if_enabled(load_cfg())
@@ -15196,6 +15784,27 @@ def api_timers_start():
         except Exception as e:
             return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
 
+    if tid == "analysis_nightly":
+        try:
+            rows = _analysis_cache_group_list(cfg)
+            if not rows:
+                return jsonify({"ok": True, "started": False})
+            # Prefer a due series (ignore enabled/auto_update for manual start)
+            cfg2 = dict(cfg)
+            cfg2["analysis_nightly_enabled"] = True
+            cfg2["analysis_nightly_auto_update"] = True
+            pick = _analysis_nightly_pick_series(cfg2) or rows[0]
+            job_id = _analysis_nightly_start_job(pick, trigger_page="timers", timer_id=tid)
+            try:
+                _timer_event_append(tid, "manual_start", {"job_id": job_id, "series_key": str(pick.get("series_key") or "")})
+            except Exception:
+                pass
+            return jsonify({"ok": True, "started": True, "job_id": job_id, "series_key": str(pick.get("series_key") or "")})
+        except _ApiError as e:
+            return jsonify({"ok": False, "error": e.message}), e.status
+        except Exception as e:
+            return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
+
     # stats_full
     try:
         stop_dt = datetime.now(timezone.utc)
@@ -15236,7 +15845,7 @@ def api_timers_start():
 def api_timers_cancel():
     body = request.get_json(force=True) or {}
     tid = str(body.get("id") or "").strip()
-    if tid not in ("dash_cache", "stats_cache", "stats_full"):
+    if tid not in ("dash_cache", "stats_cache", "stats_full", "analysis_nightly"):
         return jsonify({"ok": False, "error": "invalid timer id"}), 400
 
     cancelled = 0
@@ -15251,6 +15860,19 @@ def api_timers_cancel():
                     st = str(j.get("state") or "")
                     if st and st not in ("done", "error", "cancelled"):
                         DASH_CACHE_JOBS[jid]["cancelled"] = True
+                        cancelled += 1
+                except Exception:
+                    continue
+        return jsonify({"ok": True, "cancelled": cancelled})
+
+    if tid == "analysis_nightly":
+        # best-effort cancel: mark inflight analysis_nightly jobs cancelled
+        with ANALYSIS_NIGHTLY_LOCK:
+            for jid, j in list(ANALYSIS_NIGHTLY_JOBS.items()):
+                try:
+                    st = str(j.get("state") or "")
+                    if st and st not in ("done", "error", "cancelled"):
+                        ANALYSIS_NIGHTLY_JOBS[jid]["cancelled"] = True
                         cancelled += 1
                 except Exception:
                     continue
@@ -18004,7 +18626,7 @@ def api_raw_overwrite():
     if not time_str:
         return jsonify({"ok": False, "error": "time required"}), 400
     try:
-        ts = _parse_time(time_str)
+        ts = _parse_iso_datetime(time_str)
     except Exception as e:
         return jsonify({"ok": False, "error": f"invalid time: {e}"}), 400
     try:
@@ -19260,6 +19882,7 @@ def _global_stats_job_thread(
 
     def set_state(state: str, msg: str) -> None:
         timer_id = None
+        extra = None
         with GLOBAL_STATS_LOCK:
             if job_id in GLOBAL_STATS_JOBS:
                 GLOBAL_STATS_JOBS[job_id]["state"] = state
@@ -19268,8 +19891,17 @@ def _global_stats_job_thread(
                 if state in ("done", "error", "cancelled"):
                     _job_set_finished(GLOBAL_STATS_JOBS[job_id])
                     timer_id = GLOBAL_STATS_JOBS[job_id].get("timer_id")
+                    try:
+                        started_mono = float(GLOBAL_STATS_JOBS[job_id].get("started_mono") or 0.0)
+                    except Exception:
+                        started_mono = 0.0
+                    dur_ms = int(max(0.0, (time.monotonic() - started_mono) * 1000.0)) if started_mono > 0 else None
+                    err = str(GLOBAL_STATS_JOBS[job_id].get("error") or "").strip() or None
+                    if state == "error" and not err:
+                        err = str(msg or "").strip() or None
+                    extra = {"duration_ms": dur_ms, "error": err}
         if timer_id and state in ("done", "error", "cancelled"):
-            _timer_mark_finished(str(timer_id), state)
+            _timer_mark_finished(str(timer_id), state, extra=extra)
 
     def should_cancel() -> bool:
         with GLOBAL_STATS_LOCK:
@@ -24853,6 +25485,57 @@ def _stats_full_scheduler_start() -> None:
 
 try:
     _stats_full_scheduler_start()
+except Exception:
+    pass
+
+
+_ANALYSIS_NIGHTLY_SCHED_STARTED = False
+
+
+def _analysis_nightly_scheduler_loop() -> None:
+    """Scheduled trigger for analysis_nightly series refresh (best-effort)."""
+
+    while True:
+        try:
+            cfg = _overlay_from_yaml_if_enabled(load_cfg())
+            if not bool(cfg.get("analysis_nightly_enabled", True)) or not bool(cfg.get("analysis_nightly_auto_update", True)):
+                time.sleep(60)
+                continue
+
+            pick = _analysis_nightly_pick_series(cfg)
+            if pick:
+                try:
+                    job_id = _analysis_nightly_start_job(pick, trigger_page="scheduler", timer_id="analysis_nightly")
+                    try:
+                        _timer_event_append("analysis_nightly", "scheduler_start", {
+                            "job_id": job_id,
+                            "series_key": str(pick.get("series_key") or ""),
+                        })
+                    except Exception:
+                        pass
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+        time.sleep(60)
+
+
+def _analysis_nightly_scheduler_start() -> None:
+    global _ANALYSIS_NIGHTLY_SCHED_STARTED
+    if _ANALYSIS_NIGHTLY_SCHED_STARTED:
+        return
+    _ANALYSIS_NIGHTLY_SCHED_STARTED = True
+    t = threading.Thread(target=_analysis_nightly_scheduler_loop, daemon=True)
+    t.start()
+    try:
+        LOG.info("analysis_nightly scheduler started")
+    except Exception:
+        pass
+
+
+try:
+    _analysis_nightly_scheduler_start()
 except Exception:
     pass
 

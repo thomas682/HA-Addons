@@ -363,6 +363,8 @@
               <button class="btn_xs" id="timers_history_btn" data-ui="jobs_timers.btn_table_history" title="timers.table.history" disabled>History</button>
               <button class="btn_xs" id="timers_start_btn" data-ui="jobs_timers.btn_table_start" title="timers.table.start" disabled>Start</button>
               <button class="btn_xs" id="timers_abort_btn" data-ui="jobs_timers.btn_table_abort" title="timers.table.abort" disabled>Abbruch</button>
+              <button class="btn_xs" id="timers_disable_btn" data-ui="jobs_timers.btn_table_disable" title="timers.table.disable" disabled>Deaktivieren</button>
+              <button class="btn_xs" id="timers_enable_btn" data-ui="jobs_timers.btn_table_enable" title="timers.table.enable" disabled>Aktivieren</button>
             </div>
             <div class="muted">Timer-Jobs sind sortierbar (Headerklick) und in der Hoehe anpassbar.</div>
           </div>
@@ -380,11 +382,37 @@
                 </tr>
              </thead>
              <tbody></tbody>
-            </table>
+           </table>
           </div>
         </div>
         </div>
       </details>
+
+      <dialog id="timers_history_dialog" style="width:min(980px, 96vw); border:1px solid #eee; border-radius:16px; padding:0;">
+        <div style="display:flex; flex-direction:column; min-height:70vh; max-height:85vh;">
+          <div style="padding:14px 16px; border-bottom:1px solid #eee; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+            <div style="font-weight:700;">Timer History</div>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <button type="button" id="timers_history_refresh" class="btn_xs" style="width:auto;">Refresh</button>
+              <button type="button" id="timers_history_close" class="btn_xs" style="width:auto;">Schliessen</button>
+            </div>
+          </div>
+          <div style="padding:12px 16px; display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; border-bottom:1px solid #eee;">
+            <div style="flex:1 1 360px; min-width:260px;">
+              <div class="muted" style="font-size:12px; margin-bottom:6px;">Filter (Timer IDs)</div>
+              <div id="timers_history_filter" style="display:flex; gap:10px; flex-wrap:wrap;"></div>
+            </div>
+            <div style="flex:1 1 260px; min-width:220px;">
+              <div class="muted" style="font-size:12px; margin-bottom:6px;">Textfilter</div>
+              <input id="timers_history_search" type="text" placeholder="Suche in den Zeilen" style="width:100%;" />
+            </div>
+          </div>
+          <div style="padding:12px 16px; min-height:0; flex:1 1 auto; display:flex; flex-direction:column; gap:8px;">
+            <div id="timers_history_meta" class="muted" style="font-size:12px;"></div>
+            <pre id="timers_history_pre" style="margin:0; flex:1 1 auto; min-height:0; overflow:auto; background:#fafafa; border:1px solid #eee; border-radius:10px; padding:12px; font-size:12px; line-height:1.45;"></pre>
+          </div>
+        </div>
+      </dialog>
 
       <details class="card" open data-ui="jobs_usage.section_root" title="usage.section.root">
         <summary><span class="ib_summary_row"><span>Cache Nutzung</span></span></summary>
@@ -545,8 +573,18 @@
       const $timersHistoryBtn = document.getElementById('timers_history_btn');
       const $timersStartBtn = document.getElementById('timers_start_btn');
       const $timersAbortBtn = document.getElementById('timers_abort_btn');
+      const $timersDisableBtn = document.getElementById('timers_disable_btn');
+      const $timersEnableBtn = document.getElementById('timers_enable_btn');
       const $timersSelectAllBtn = document.getElementById('timers_select_all_btn');
       const $timersSelectNoneBtn = document.getElementById('timers_select_none_btn');
+
+      const $timersHistoryDlg = document.getElementById('timers_history_dialog');
+      const $timersHistoryClose = document.getElementById('timers_history_close');
+      const $timersHistoryRefresh = document.getElementById('timers_history_refresh');
+      const $timersHistoryFilter = document.getElementById('timers_history_filter');
+      const $timersHistorySearch = document.getElementById('timers_history_search');
+      const $timersHistoryMeta = document.getElementById('timers_history_meta');
+      const $timersHistoryPre = document.getElementById('timers_history_pre');
 
       const $usageQ = document.getElementById('usage_q');
       const $usageRefresh = document.getElementById('usage_refresh');
@@ -892,9 +930,11 @@
           const st = selectedTimers();
           const t = st[0] || selectedTimer();
           if($timersModeBtn) $timersModeBtn.disabled = !t;
-          if($timersHistoryBtn) $timersHistoryBtn.disabled = !t;
+          if($timersHistoryBtn) $timersHistoryBtn.disabled = !st.length;
           if($timersStartBtn) $timersStartBtn.disabled = !st.length;
           if($timersAbortBtn) $timersAbortBtn.disabled = !st.length;
+          if($timersDisableBtn) $timersDisableBtn.disabled = !st.length;
+          if($timersEnableBtn) $timersEnableBtn.disabled = !st.length;
         }catch(e){}
       }
 
@@ -1183,6 +1223,125 @@
         if(window.InfluxBroPopup && window.InfluxBroPopup.show) window.InfluxBroPopup.show('Timer History', lines.join('\n'));
         else alert(lines.join('\n'));
       }
+
+      function _fmtMs(ms){
+        try{
+          const n = Number(ms);
+          if(!isFinite(n) || n < 0) return '';
+          if(n < 1000) return Math.round(n) + 'ms';
+          if(n < 60*1000) return (n/1000).toFixed(1) + 's';
+          const m = Math.round(n/1000);
+          const mm = Math.floor(m/60);
+          const ss = m % 60;
+          return mm + 'm ' + String(ss).padStart(2,'0') + 's';
+        }catch(e){
+          return '';
+        }
+      }
+
+      function _timerHistorySelectedIds(){
+        try{
+          const xs = Array.from(SELECTED_TIMER_IDS || []).map(x=>String(x||'').trim()).filter(Boolean);
+          if(xs.length) return xs;
+          return (LAST_TIMERS || []).map(t=>String(t && t.id ? t.id : '')).filter(Boolean);
+        }catch(e){
+          return [];
+        }
+      }
+
+      async function _loadTimersHistory(ids){
+        const out = [];
+        const xs = (ids || []).map(x=>String(x||'').trim()).filter(Boolean);
+        for(const id of xs){
+          try{
+            const jh = await api(`./api/timers/history?id=${encodeURIComponent(id)}&limit=80`, {});
+            const evs = Array.isArray(jh && jh.events) ? jh.events : [];
+            evs.forEach((e)=>{
+              if(e && typeof e === 'object') out.push(Object.assign({ timer_id: id }, e));
+            });
+          }catch(e){
+            out.push({ timer_id: id, at: new Date().toISOString(), kind: 'error', error: String(e && e.message ? e.message : e) });
+          }
+        }
+        out.sort((a,b)=>{
+          const ta = Date.parse(String(a && a.at ? a.at : ''));
+          const tb = Date.parse(String(b && b.at ? b.at : ''));
+          return (isFinite(tb)?tb:0) - (isFinite(ta)?ta:0);
+        });
+        return out;
+      }
+
+      async function openTimersHistoryDialog(){
+        if(!$timersHistoryDlg) return;
+        const initial = _timerHistorySelectedIds();
+        const all = (LAST_TIMERS || []).map(t=>String(t && t.id ? t.id : '')).filter(Boolean);
+        const selected = new Set(initial.length ? initial : all);
+
+        function renderFilters(){
+          if(!$timersHistoryFilter) return;
+          $timersHistoryFilter.innerHTML = '';
+          all.forEach((id)=>{
+            const lbl = document.createElement('label');
+            lbl.style.display = 'inline-flex';
+            lbl.style.gap = '6px';
+            lbl.style.alignItems = 'center';
+            lbl.style.fontSize = '12px';
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.checked = selected.has(id);
+            cb.addEventListener('change', ()=>{
+              if(cb.checked) selected.add(id); else selected.delete(id);
+              refresh().catch(()=>{});
+            });
+            const sp = document.createElement('span');
+            sp.className = 'mono';
+            sp.textContent = id;
+            lbl.appendChild(cb);
+            lbl.appendChild(sp);
+            $timersHistoryFilter.appendChild(lbl);
+          });
+        }
+
+        let LAST_LINES = [];
+        function render(){
+          const term = String($timersHistorySearch && $timersHistorySearch.value ? $timersHistorySearch.value : '').trim().toLowerCase();
+          const xs = term ? LAST_LINES.filter(l=>String(l||'').toLowerCase().includes(term)) : LAST_LINES;
+          if($timersHistoryPre) $timersHistoryPre.textContent = xs.join('\n');
+          if($timersHistoryMeta) $timersHistoryMeta.textContent = `Timer: ${selected.size}/${all.length} | Zeilen: ${xs.length}${term ? ' (gefiltert)' : ''}`;
+        }
+
+        async function refresh(){
+          const ids = Array.from(selected);
+          const evs = await _loadTimersHistory(ids);
+          const lines = [];
+          evs.forEach((e)=>{
+            const at = fmtTs(e && e.at ? e.at : '');
+            const tid = String(e && e.timer_id ? e.timer_id : '');
+            const kind = String(e && e.kind ? e.kind : '');
+            const state = String(e && e.state ? e.state : '');
+            const dur = (e && e.duration_ms !== undefined && e.duration_ms !== null) ? _fmtMs(e.duration_ms) : '';
+            const err = String(e && (e.error || e.err) ? (e.error || e.err) : '');
+            const jobId = String(e && e.job_id ? e.job_id : '');
+            const msg = String(e && e.message ? e.message : e && e.note ? e.note : '');
+            const parts = [at, tid, kind].filter(Boolean);
+            const extra = [state ? ('state=' + state) : '', dur ? ('dur=' + dur) : '', jobId ? ('job_id=' + jobId) : ''].filter(Boolean).join(' ');
+            let tail = msg;
+            if(err) tail = (tail ? (tail + ' | ') : '') + 'error=' + err;
+            const line = '- ' + parts.join(' | ') + (extra ? (' | ' + extra) : '') + (tail ? (' | ' + tail) : '');
+            lines.push(line);
+          });
+          LAST_LINES = lines;
+          render();
+        }
+
+        renderFilters();
+        try{ if($timersHistorySearch) $timersHistorySearch.oninput = ()=>render(); }catch(e){}
+        try{ if($timersHistoryClose) $timersHistoryClose.onclick = ()=>{ try{ $timersHistoryDlg.close(); }catch(e){} }; }catch(e){}
+        try{ if($timersHistoryRefresh) $timersHistoryRefresh.onclick = ()=>{ refresh().catch(()=>{}); }; }catch(e){}
+        try{ $timersHistoryDlg.addEventListener('click', (ev)=>{ if(ev.target === $timersHistoryDlg) $timersHistoryDlg.close(); }); }catch(e){}
+        try{ if(typeof $timersHistoryDlg.showModal === 'function') $timersHistoryDlg.showModal(); else $timersHistoryDlg.style.display='block'; }catch(e){ try{ $timersHistoryDlg.style.display='block'; }catch(x){} }
+        await refresh();
+      }
       async function startTimer(t){
         const id = String(t && t.id || '');
         if(!id) return;
@@ -1369,19 +1528,27 @@
         for(const t of xs){
           const tr = document.createElement('tr');
           const id = String(t.id || '');
+          try{
+            const stc = String(t.last_state || '');
+            if(stc) tr.classList.add('job_state_' + stc);
+          }catch(e){}
           tr.innerHTML = [
             `<td class="mono">${id}</td>`,
             `<td class="mono">${String((t.enabled ? 'true' : 'false'))} / auto=${String((t.auto_update ? 'true' : 'false'))}</td>`,
             `<td class="mono timer_mode_cell"></td>`,
-            `<td>${fmtTs(t.last_run_at)}${t.last_state ? (' / ' + String(t.last_state)) : ''}</td>`,
+            `<td>${fmtTs(t.last_run_at)}${t.last_state ? (' / ' + String(t.last_state)) : ''}${t.last_duration_ms ? (' / ' + _fmtMs(t.last_duration_ms)) : ''}${t.last_error ? (' / err') : ''}</td>`,
             `<td>${fmtTs(t.next_run_at)}</td>`,
             `<td>${String(t.comment||'')}</td>`
           ].join('');
           tr.setAttribute('data-timer-id', id);
           tr.addEventListener('click', ()=>{ SELECTED_TIMER_ID = id; toggleSelected(SELECTED_TIMER_IDS, id); applySelectedRows($timersBody, 'data-timer-id', SELECTED_TIMER_IDS); syncToolbarButtons(); });
           if(SELECTED_TIMER_IDS.has(id)) tr.classList.add('row_selected');
-          const tdMode = tr.children[3];
-          if(id === 'dash_cache' || id === 'stats_cache' || id === 'stats_full'){
+          const tdMode = tr.children[2];
+          if(id === 'dash_cache' || id === 'stats_cache' || id === 'stats_full' || id === 'analysis_nightly'){
+            const modeText = document.createElement('span');
+            modeText.className = 'mono';
+            tdMode.appendChild(modeText);
+
             const wrap = document.createElement('div');
             wrap.style.display = 'none';
             wrap.style.flexDirection = 'column';
@@ -1389,12 +1556,12 @@
             const modeSel = document.createElement('select');
             modeSel.className = 'btn_xs';
             ['hours','daily','weekly','manual'].forEach(v=>{ const o = document.createElement('option'); o.value = v; o.textContent = v; modeSel.appendChild(o); });
-            modeSel.value = String((t.refresh_mode || '')).trim() || (id === 'dash_cache' ? 'hours' : (id === 'stats_cache' ? 'daily' : 'manual'));
+            modeSel.value = String((t.refresh_mode || '')).trim() || (id === 'dash_cache' ? 'hours' : (id === 'stats_cache' ? 'daily' : (id === 'analysis_nightly' ? 'daily' : 'manual')));
             wrap.appendChild(modeSel);
             const detail = document.createElement('div');
             detail.style.display = 'flex'; detail.style.flexWrap = 'wrap'; detail.style.gap = '6px'; wrap.appendChild(detail);
             const hoursInput = document.createElement('input'); hoursInput.type = 'number'; hoursInput.min = '1'; hoursInput.step = '1'; hoursInput.value = String(t.refresh_hours != null ? t.refresh_hours : (id === 'dash_cache' ? 6 : 24)); hoursInput.className = 'btn_xs'; hoursInput.style.width = '88px';
-            const timeInput = document.createElement('input'); timeInput.type = 'time'; timeInput.step = '1'; timeInput.value = String((t.refresh_daily_at || '')).trim() || (id === 'dash_cache' ? '00:00:00' : '03:00:00'); timeInput.className = 'btn_xs'; timeInput.style.width = '120px';
+            const timeInput = document.createElement('input'); timeInput.type = 'time'; timeInput.step = '1'; timeInput.value = String((t.refresh_daily_at || '')).trim() || (id === 'dash_cache' ? '00:00:00' : (id === 'analysis_nightly' ? '03:30:00' : '03:00:00')); timeInput.className = 'btn_xs'; timeInput.style.width = '120px';
             const weekdaySel = document.createElement('select'); weekdaySel.className = 'btn_xs'; ['Mo','Di','Mi','Do','Fr','Sa','So'].forEach((lab, idx)=>{ const o = document.createElement('option'); o.value = String(idx); o.textContent = lab; weekdaySel.appendChild(o); }); weekdaySel.value = String(t.refresh_weekday != null ? t.refresh_weekday : 0);
             const syncModeUi = ()=>{
               detail.innerHTML = '';
@@ -1403,7 +1570,7 @@
               else if(m === 'daily'){ detail.appendChild(timeInput); }
               else if(m === 'weekly'){ detail.appendChild(weekdaySel); detail.appendChild(timeInput); }
               else { const hint = document.createElement('span'); hint.className = 'muted'; hint.textContent = 'Manueller Start in der Tabelle'; detail.appendChild(hint); }
-              tdMode.textContent = currentModeText();
+              modeText.textContent = currentModeText();
             };
             const currentModeText = ()=>{ const m = String(modeSel.value || 'manual'); if(m === 'hours') return `${m} (${String(hoursInput.value || '')}h)`; if(m === 'daily') return `${m} (${String(timeInput.value || '')})`; if(m === 'weekly') return `${m} (${String(weekdaySel.options[weekdaySel.selectedIndex] ? weekdaySel.options[weekdaySel.selectedIndex].textContent : '')} ${String(timeInput.value || '')})`; return 'manual'; };
             syncModeUi();
@@ -1411,7 +1578,7 @@
             hoursInput.addEventListener('change', async ()=>{ syncModeUi(); await save(); });
             timeInput.addEventListener('change', async ()=>{ syncModeUi(); await save(); });
             weekdaySel.addEventListener('change', async ()=>{ syncModeUi(); await save(); });
-            const save = async ()=>{ const payload = { id, refresh_mode: String(modeSel.value || 'manual') }; if(payload.refresh_mode === 'hours') payload.refresh_hours = parseInt(String(hoursInput.value || '24').trim() || '24', 10); else if(payload.refresh_mode === 'daily') payload.refresh_daily_at = String(timeInput.value || '03:00:00').trim(); else if(payload.refresh_mode === 'weekly'){ payload.refresh_weekday = parseInt(String(weekdaySel.value || '0').trim() || '0', 10); payload.refresh_daily_at = String(timeInput.value || '03:00:00').trim(); } await api('./api/timers/schedule', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)}); await loadTimers(); };
+            const save = async ()=>{ const payload = { id, refresh_mode: String(modeSel.value || 'manual') }; if(payload.refresh_mode === 'hours') payload.refresh_hours = parseInt(String(hoursInput.value || '24').trim() || '24', 10); else if(payload.refresh_mode === 'daily') payload.refresh_daily_at = String(timeInput.value || (id === 'analysis_nightly' ? '03:30:00' : '03:00:00')).trim(); else if(payload.refresh_mode === 'weekly'){ payload.refresh_weekday = parseInt(String(weekdaySel.value || '0').trim() || '0', 10); payload.refresh_daily_at = String(timeInput.value || (id === 'analysis_nightly' ? '03:30:00' : '03:00:00')).trim(); } await api('./api/timers/schedule', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)}); await loadTimers(); };
             TIMER_MODE_UI[id] = { wrap, save };
             tdMode.appendChild(wrap);
           }else{
@@ -1462,9 +1629,25 @@
         }catch(e){ analysisCacheErr(e && e.message ? e.message : String(e)); }
       };
       if($timersModeBtn) $timersModeBtn.onclick = async ()=>{ try{ const t = selectedTimer(); if(!t) return; const ui = TIMER_MODE_UI[String(t.id||'')]; if(!ui) return; const open = ui.wrap.style.display !== 'none'; ui.wrap.style.display = open ? 'none' : 'flex'; if(!open) return; await ui.save(); }catch(e){ timersErr(e && e.message ? e.message : String(e)); } };
-      if($timersHistoryBtn) $timersHistoryBtn.onclick = async ()=>{ try{ const t = selectedTimer(); if(t) await showTimerHistory(t); }catch(e){ timersErr(e && e.message ? e.message : String(e)); } };
+      if($timersHistoryBtn) $timersHistoryBtn.onclick = async ()=>{ try{ await openTimersHistoryDialog(); }catch(e){ timersErr(e && e.message ? e.message : String(e)); } };
       if($timersStartBtn) $timersStartBtn.onclick = async ()=>{ try{ for(const t of selectedTimers()){ await startTimer(t); } }catch(e){ timersErr(e && e.message ? e.message : String(e)); } };
       if($timersAbortBtn) $timersAbortBtn.onclick = async ()=>{ try{ for(const t of selectedTimers()){ await abortTimer(t); } }catch(e){ timersErr(e && e.message ? e.message : String(e)); } };
+      if($timersDisableBtn) $timersDisableBtn.onclick = async ()=>{
+        try{
+          const ids = selectedTimers().map(t=>String(t && t.id ? t.id : '')).filter(Boolean);
+          if(!ids.length) return;
+          await api('./api/timers/auto_update', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ids, enabled: false})});
+          await loadTimers();
+        }catch(e){ timersErr(e && e.message ? e.message : String(e)); }
+      };
+      if($timersEnableBtn) $timersEnableBtn.onclick = async ()=>{
+        try{
+          const ids = selectedTimers().map(t=>String(t && t.id ? t.id : '')).filter(Boolean);
+          if(!ids.length) return;
+          await api('./api/timers/auto_update', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ids, enabled: true})});
+          await loadTimers();
+        }catch(e){ timersErr(e && e.message ? e.message : String(e)); }
+      };
 
       $refresh.onclick = ()=>{ loadAll().catch(e => err(e && e.message ? e.message : String(e))); };
       $auto.onchange = ()=>{ loadAll().catch(()=>{}); };

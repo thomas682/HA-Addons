@@ -7402,8 +7402,8 @@ async function showAnalysisCacheBlockInfo(plan, cacheId){
     }
     lines.push('');
     lines.push('Files:');
-    lines.push('- ' + String(info.meta_file || (cid + '.meta.json')) + ' | ' + (info.meta_exists ? _fmtBytes(info.meta_bytes) : 'missing'));
-    lines.push('- ' + String(info.data_file || (cid + '.data.json.gz')) + ' | ' + (info.data_exists ? _fmtBytes(info.data_bytes) : 'missing'));
+    lines.push('- ' + String(info.meta_path || info.meta_file || (cid + '.meta.json')) + ' | ' + (info.meta_exists ? _fmtBytes(info.meta_bytes) : 'missing'));
+    lines.push('- ' + String(info.data_path || info.data_file || (cid + '.data.json.gz')) + ' | ' + (info.data_exists ? _fmtBytes(info.data_bytes) : 'missing'));
 
     try{
       const meta = info.meta && typeof info.meta === 'object' ? info.meta : null;

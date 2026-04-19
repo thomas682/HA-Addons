@@ -1640,20 +1640,33 @@
     async function doCopy(){
       try{ copyHint.textContent = ''; }catch(e){}
       const txt = String(CURRENT_COPY_TEXT || pre.textContent || '');
-      if(!txt) return;
+      if(!txt){
+        try{ copyHint.textContent = 'nichts zu kopieren'; }catch(e){}
+        return;
+      }
       try{
-        if(navigator && navigator.clipboard && navigator.clipboard.writeText){
-          await navigator.clipboard.writeText(txt);
-        }else{
-          // Fallback für ältere Browser oder unsichere Kontexte
+        // Modern API (usually requires secure context / permissions)
+        let did = false;
+        try{
+          if(navigator && navigator.clipboard && navigator.clipboard.writeText && window && window.isSecureContext){
+            await navigator.clipboard.writeText(txt);
+            did = true;
+          }
+        }catch(e){ did = false; }
+
+        if(!did){
+          // Fallback for restricted/embedded contexts (e.g. HA ingress iframe)
           const ta = document.createElement('textarea');
           ta.value = txt;
+          ta.setAttribute('readonly', '');
           ta.style.position = 'fixed';
           ta.style.left = '-9999px';
           ta.style.top = '0';
+          ta.style.opacity = '0';
           document.body.appendChild(ta);
           ta.focus();
           ta.select();
+          try{ ta.setSelectionRange(0, ta.value.length); }catch(e){}
           const success = document.execCommand('copy');
           document.body.removeChild(ta);
           if(!success) throw new Error('execCommand copy failed');

@@ -1431,48 +1431,11 @@
       const page = (window.currentPageLabel ? window.currentPageLabel() : 'Seite');
       const dataUi = _normLine(el.getAttribute ? (el.getAttribute('data-ui') || '') : '');
       const id = _normLine(el.getAttribute ? (el.getAttribute('id') || '') : '');
-      const tag = _normLine((el.tagName || '')).toLowerCase();
-      const typ = _normLine(el.getAttribute ? (el.getAttribute('type') || '') : '');
-      const role = _normLine(el.getAttribute ? (el.getAttribute('role') || '') : '');
-      const href = _normLine(el.getAttribute ? (el.getAttribute('href') || '') : '');
-      const title = _bestTitle(el);
-
-      let detailsMeta = null;
-      try{
-        const d = (tag === 'details') ? el : (el.closest ? el.closest('details') : null);
-        if(d){
-          const sum = d.querySelector('summary');
-          detailsMeta = {
-            id: _normLine(d.getAttribute ? (d.getAttribute('id') || '') : ''),
-            open: !!d.open,
-            summary: _normLine(sum ? sum.textContent : ''),
-          };
-        }
-      }catch(e){}
-
-      const selector = dataUi ? ('[data-ui="' + dataUi.replace(/"/g, '\\"') + '"]') : (id ? ('#' + id) : '');
-      const meta = {
-        page,
-        picked: name,
-        kind: String(target.kind || ''),
-        data_ui: dataUi,
-        id,
-        tag,
-        type: typ,
-        role,
-        href,
-        title,
-        section_path: _sectionPathForPicker(el),
-        selector,
-        details: detailsMeta,
-        at: (new Date()).toISOString(),
-      };
-
-      const text = '<' + page + ': ' + name + '>' + '\n' + JSON.stringify(meta, null, 2);
+      const text = '<' + [page, dataUi, id].join(',') + '>';
       const ok = await copyText(text);
       try{
         if(window.InfluxBroPopup && window.InfluxBroPopup.show){
-          window.InfluxBroPopup.show('UI Picker', ok ? ('Kopiert: ' + '<' + page + ': ' + name + '>') : ('Kopieren fehlgeschlagen: ' + '<' + page + ': ' + name + '>'));
+          window.InfluxBroPopup.show('UI Picker', ok ? ('Kopiert: ' + text) : ('Kopieren fehlgeschlagen: ' + text));
         }
       }catch(e){}
       stop();

@@ -1,10 +1,28 @@
 # Changelog
 
+## 1.12.386
+
+### Enhancement
+
+- Jobs & Cache: Timer-Jobs Toolbar hat neue Buttons "Deaktivieren"/"Aktivieren" zum Umschalten der Automatik fuer selektierte Timer; History-Dialog kann initial nach selektierten Timern filtern und der Filter ist im Dialog anpassbar; Timer-Zeilen zeigen Fehlerzustand (rot) und Laufdauer. ([#341](https://github.com/thomas682/HA-Addons/issues/341))
+- Scheduler: Neuer Nightly-Job `analysis_nightly` aktualisiert den Analysecache fuer alle bereits analysierten Serien (1x pro Nacht) und protokolliert OK/Fehler inkl. Dauer in History/Worklog. ([#338](https://github.com/thomas682/HA-Addons/issues/338))
+- Picker/S-Picker: Kopiert nur noch `<page,data-ui,id>` in die Zwischenablage (kein JSON mehr). ([#340](https://github.com/thomas682/HA-Addons/issues/340))
+- Dashboard: Analysecache Info-Dialog zeigt logische Dateipfade unter `/data/analysis_cache/...`.
+
+### Bugfix
+
+- Raw: Overwrite/Inline-Edit Zeitstempel-Parsing behoben (`_parse_time` war nicht definiert). ([#337](https://github.com/thomas682/HA-Addons/issues/337))
+- UI: Copy-to-Clipboard im Popup/Modal robuster (Fallback fuer Ingress/unsichere Kontexte), damit die Zwischenablage nicht leer bleibt. ([#339](https://github.com/thomas682/HA-Addons/issues/339))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`, `pytest tests/test_api_analysis_cache.py`, `pytest tests/test_api_raw_points_center.py`
+- Tested with Home Assistant Core: 2026.4.3
+
 ## 1.12.385
 
 ### Enhancement
 
-- UI: Wenn im Browser noch keine Zoomstufe gespeichert ist, wird beim ersten Laden eine Default-Zoomstufe passend zur Viewport-Breite gesetzt (mobil groesser, desktop 100%). ([#336](https://github.com/thomas682/HA-Addons/issues/336))
 - UI: Wenn im Browser noch keine Zoomstufe gespeichert ist, wird beim ersten Laden eine Default-Zoomstufe passend zur Viewport-Breite gesetzt (mobil groesser, desktop 100%). ([#335](https://github.com/thomas682/HA-Addons/issues/335))
 
 ### Maintenance

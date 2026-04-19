@@ -75,7 +75,7 @@ Neu: Top-Leiste (Profil + Zoom)
   - Profil-Auswahl inkl. `Anwenden`, `Speichern`, `Info` und die aktuelle Version.
   - Zoom-Steuerung: `-` / `+` und die aktuelle Zoomstufe in `%`.
   - Seitensuche: durchsucht Controls und wichtige sichtbare Texte auf der aktuellen Seite und springt zu Treffern.
-  - Picker / S-Picker: kopiert zusaetzliche Element-Metadaten (z.B. id/title/Section-Pfad), damit UI-Elemente eindeutig identifiziert werden koennen.
+  - Picker / S-Picker: kopiert eine kurze Elementkennung im Format `<page,data-ui,id>` in die Zwischenablage, damit UI-Elemente eindeutig identifiziert werden koennen.
 - Zoom wird im Browser gespeichert (pro Browser/Client).
 - Neu: Wenn im Browser noch keine Zoomstufe gespeichert ist, wird beim ersten Laden automatisch eine passende Default-Zoomstufe je nach Viewport-Breite gesetzt (z.B. iPhone groesser, Desktop 100%). Danach kannst du wie gewohnt mit `-`/`+` anpassen.
 
@@ -434,14 +434,17 @@ Timer Jobs:
 
 - Tabelle `Timer Jobs`: zeigt Intervall-/Nightly-Jobs mit naechstem Lauf (aus Einstellungen abgeleitet) und kurzer Erklaerung.
 - Timer-Tabelle: Aktionen laufen jetzt ueber die obere Toolbar nach Zeilenselektion.
-- Buttons: `Modus`, `History`, `Start`, `Abbruch`.
-- `last run`: zeigt den letzten Laufzeitpunkt (persistent).
+- Buttons: `Modus`, `History`, `Start`, `Abbruch`, `Deaktivieren`, `Aktivieren`.
+- `last run`: zeigt den letzten Laufzeitpunkt (persistent) inkl. Laufdauer; bei Fehler wird `err` angezeigt und die Zeile wird rot markiert.
 - `Modus`: erlaubt das Aendern der Scheduler-Parameter:
   - `hours`: alle N Stunden
   - `daily`: taeglich um HH:MM:SS
   - `weekly`: woechentlich (Wochentag 0=Mo..6=So) um HH:MM:SS
   - `manual`: nur manuell per `Start`
+- `History`: oeffnet einen Dialog mit zusammengefuehrter Timer-Historie fuer die selektierten Timer; Filter nach Timer-ID und Freitextsuche sind im Dialog moeglich.
+- `Deaktivieren`/`Aktivieren`: schaltet die Automatik (Auto-Start) fuer die selektierten Timer aus/an. Hinweis: Bei `stats_full` bedeutet `Deaktivieren` effektiv `manual`; beim Aktivieren wird der vorherige Modus (falls bekannt) wiederhergestellt.
 - Zusaetzlich: `stats_full` laedt Statistik komplett (inkl. Details wie count/min/max/mean) fuer alle Serien.
+- Neu: `analysis_nightly` aktualisiert nachts den Analysecache fuer bereits analysierte Serien (1x pro Nacht; best-effort).
 
 ## Backup (ein Messwert, alle Werte)
 
