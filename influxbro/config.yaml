@@ -2,7 +2,7 @@ name: InfluxBro
 description: >-
   Browse InfluxDB (table + mini graph), configure in UI, entity_id/friendly_name
   filters, and optionally delete ranges
-version: "1.12.382"
+version: "1.12.383"
 slug: influxbro
 url: "https://github.com/thomas682/HA-Addons/tree/main/influxbro"
 
@@ -16,7 +16,10 @@ startup: services
 boot: auto
 
 ports:
-  8099/tcp: 8099
+  8099/tcp: null
+
+ports_description:
+  8099/tcp: "Optional (Dev/Tests): Host-Port fuer direkten Zugriff ohne Ingress. Standard: deaktiviert."
 
 ingress: true
 ingress_port: 8099

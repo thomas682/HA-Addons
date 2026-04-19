@@ -509,6 +509,30 @@ LOG = logging.getLogger("influxbro")
 DETAIL_LOG = logging.getLogger("influxbro.details")
 
 
+@app.before_request
+def _csrf_gate_api_requests():
+    """Minimal CSRF hardening for state-changing API requests.
+
+    The InfluxBro UI adds `X-InfluxBro-Request: 1` to same-origin /api/* calls.
+    Without this header, cross-site form posts could trigger writes.
+
+    Note: This does not replace authentication. It only raises the bar for CSRF.
+    """
+
+    try:
+        if request.method not in ("POST", "PUT", "DELETE", "PATCH"):
+            return None
+        p = str(request.path or "")
+        if not p.startswith("/api/"):
+            return None
+        if str(request.headers.get("X-InfluxBro-Request") or "").strip() == "1":
+            return None
+        return jsonify({"ok": False, "error": "CSRF protection: missing X-InfluxBro-Request header"}), 403
+    except Exception:
+        # Fail open on unexpected errors to avoid breaking the UI.
+        return None
+
+
 def log_details(msg: str, *args: object) -> None:
     if not DETAILS_ENABLED:
         return

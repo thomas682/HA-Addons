@@ -591,7 +591,21 @@
         LAST_RESULTS = xs.slice();
         LAST_CURSOR = xs.length ? 0 : -1;
         if(!xs.length){ $results.style.display = 'none'; $results.innerHTML = ''; return; }
-        $results.innerHTML = xs.map((x,i)=>`<button type="button" data-idx="${i}"><div><strong>${x.ui || '(ohne data-ui)'}</strong></div><div style="font-size:12px; opacity:.75;">${x.txt || ''}</div></button>`).join('');
+
+        function _escHtml(s){
+          return String(s || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+        }
+
+        $results.innerHTML = xs.map((x,i)=>{
+          const ui = _escHtml(x && x.ui ? x.ui : '(ohne data-ui)');
+          const txt = _escHtml(x && x.txt ? x.txt : '');
+          return `<button type="button" data-idx="${i}"><div><strong>${ui}</strong></div><div style="font-size:12px; opacity:.75;">${txt}</div></button>`;
+        }).join('');
         $results.style.display = 'block';
         $results.querySelectorAll('button').forEach(btn=>btn.addEventListener('click', ()=>{
           const idx = Number(btn.getAttribute('data-idx') || -1);
@@ -795,10 +809,36 @@
 
       function previewSearchIndex(){
         try{
+          function _escHtml(s){
+            return String(s || '')
+              .replace(/&/g, '&amp;')
+              .replace(/</g, '&lt;')
+              .replace(/>/g, '&gt;')
+              .replace(/"/g, '&quot;')
+              .replace(/'/g, '&#39;');
+          }
           const q = _lc(($search && $search.value) || '');
           let xs = buildIndex();
           if(q) xs = xs.filter(x => x.hay.includes(q));
-          return xs.slice(0, 40);
+          return xs.slice(0, 40).map((x)=>{
+            try{
+              const safe_parts = {};
+              try{
+                Object.entries(x && x.parts ? x.parts : {}).forEach(([k,v])=>{
+                  safe_parts[_escHtml(k)] = _escHtml(v);
+                });
+              }catch(e){}
+              return {
+                ...x,
+                ui: _escHtml(x && x.ui ? x.ui : ''),
+                txt: _escHtml(x && x.txt ? x.txt : ''),
+                sect: (x && x.sect && x.sect.length) ? x.sect.map(_escHtml) : [],
+                parts: safe_parts,
+              };
+            }catch(e){
+              return x;
+            }
+          });
         }catch(e){ return []; }
       }
 

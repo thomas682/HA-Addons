@@ -33,6 +33,69 @@
 
 3 After implementation (Mandatory Completion Flow):
 
+3.0 Mandatory Security Review (Home Assistant Add-ons)
+
+For every change in a Home Assistant add-on, perform a mandatory security review BEFORE marking the task as complete.
+
+Scope (minimum):
+
+- `influxbro/config.yaml`
+- `influxbro/Dockerfile`
+- `influxbro/run.sh` and other startup scripts
+- backend API routes and request handlers
+- HTML/templates/frontend JavaScript
+- file operations
+- logging
+- dependency files such as `requirements.txt`, `pyproject.toml`, or `package.json`
+
+Required checks:
+
+- hardcoded secrets, tokens, passwords, API keys, or internal URLs
+- secrets or sensitive values written to logs
+- missing input validation for all external inputs
+- command injection risks (subprocess/shell)
+- path traversal and unsafe file access
+- XSS and unsafe DOM injection in frontend/templates
+- CSRF-relevant write/delete actions exposed unsafely
+- SSRF via user-controlled URLs/hosts/remote fetch
+- unsafe uploads/downloads/backup/restore/import/export
+- missing authentication/authorization checks
+- dangerous default settings
+- overly broad container privileges/host mounts/devices/exposed ports
+- information leakage in error messages
+- unsafe dynamic code execution (`eval`, `exec`, or equivalent)
+- outdated or obviously risky dependencies
+
+Home Assistant add-on specific review (least privilege):
+
+- verify whether the add-on configuration grants more permissions than necessary: `host_network`, `privileged`, `full_access`, `homeassistant_api`, `ingress`, `ports`, `map`, mounted host paths, docker socket access, attached devices
+- if a permission is not clearly required, flag it and propose a reduction
+
+External input rule:
+
+- treat ALL external input as untrusted by default: query params, JSON bodies, form fields, filenames, paths, sorting/filter values, env vars, HA option values, URLs/hosts/IDs/tokens
+
+Findings policy:
+
+- no generic security statements without code evidence
+- every finding MUST include: severity (critical/high/medium/low), affected file + function/area, risk explanation, realistic attack scenario, concrete remediation, patch suggestion (if feasible)
+
+Remediation policy:
+
+- if a security issue can be fixed safely and unambiguously, implement the fix directly
+- keep fixes minimal, low-risk, and traceable
+
+Completion gate:
+
+- do NOT mark complete until: security review performed, findings documented, safe fixes applied where appropriate, remaining risks listed explicitly
+
+Required final output:
+
+- security findings by severity
+- implemented fixes
+- remaining risks
+- recommended follow-up checks
+
 3.1 Run REQUIRED QA:
 
 - syntax check (mandatory)

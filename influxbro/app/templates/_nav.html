@@ -696,6 +696,44 @@
       }catch(e){}
     }
 
+    // CSRF/Origin hardening: mark all API requests as XHR from our UI.
+    // This is intentionally minimal and only touches same-origin /api/* calls.
+    function initApiRequestHeader(){
+      try{
+        const orig = window.fetch;
+        if(!orig || orig.__influxbro_patched) return;
+
+        function _urlStr(input){
+          try{
+            if(typeof input === 'string') return input;
+            if(input && typeof input.url === 'string') return input.url;
+          }catch(e){}
+          return '';
+        }
+
+        function _isApi(u){
+          const s = String(u || '');
+          return s.startsWith('./api/') || s.startsWith('/api/');
+        }
+
+        const patched = function(input, init){
+          try{
+            const u = _urlStr(input);
+            if(!_isApi(u)) return orig(input, init);
+            const i = init || {};
+            const hdrs = new Headers(i.headers || (input && input.headers ? input.headers : undefined) || {});
+            if(!hdrs.has('X-InfluxBro-Request')) hdrs.set('X-InfluxBro-Request', '1');
+            if(!hdrs.has('X-Requested-With')) hdrs.set('X-Requested-With', 'InfluxBro');
+            return orig(input, { ...i, headers: hdrs });
+          }catch(e){
+            return orig(input, init);
+          }
+        };
+        patched.__influxbro_patched = true;
+        window.fetch = patched;
+      }catch(e){}
+    }
+
     // Sidebar splitter + collapse/expand (desktop only).
     function initSidebarUi(){
       try{
@@ -1353,6 +1391,7 @@
     try{
      // Start early so values restore before page scripts use them.
      ensureStatusBus();
+     try{ initApiRequestHeader(); }catch(e){}
      try{ initSidebarUi(); }catch(e){}
       try{ initProfilesUi(); }catch(e){}
       if(TOOLTIP_ENABLED) applyTooltips();

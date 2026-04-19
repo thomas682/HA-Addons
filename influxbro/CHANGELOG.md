@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.383
+
+### Enhancement
+
+- Security/UI: Host-Port ist standardmaessig deaktiviert (optional aktivierbar in Supervisor Netzwerk). XSS-Haertung bei UI-Renderings und CSRF-Schutz fuer API-Schreibaktionen via Custom Header. Security-Review-Pflicht in AGENTS.md dokumentiert. ([#333](https://github.com/thomas682/HA-Addons/issues/333))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: 2026.4.3
+
 ## 1.12.382
 
 ### Bugfix

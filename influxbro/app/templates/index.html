@@ -4197,7 +4197,7 @@ function setDatalistOptions(listEl, items){
   try{
     if(!listEl) return;
     const xs = (items || []).map(x => String(x)).filter(Boolean);
-    listEl.innerHTML = xs.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"></option>`).join('');
+    listEl.innerHTML = xs.map(x=>`<option value="${_escAttr(x)}"></option>`).join('');
   }catch(e){}
 }
 
@@ -4420,7 +4420,7 @@ async function loadDashboardFields(measurement, opts){
   }
   const j = await api("./api/fields?measurement=" + encodeURIComponent(m), null, { key: "fields", status: "Lade Fields...", silent: !!o.silent });
   ALL_FIELDS = (j.fields || []).map(String).filter(Boolean);
-  if($fieldList) $fieldList.innerHTML = ALL_FIELDS.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"></option>`).join('');
+  if($fieldList) $fieldList.innerHTML = ALL_FIELDS.map(x=>`<option value="${_escAttr(x)}"></option>`).join('');
   _setSelCount($cntField, ALL_FIELDS.length);
   _selApplyWidthForInput($f, ALL_FIELDS);
   logSelectorLoad('field', ALL_FIELDS, { measurement_filter: m, friendly_name: String(($n && $n.value)||''), entity_id: String(($e && $e.value)||'') });
@@ -4436,13 +4436,13 @@ async function refreshDashboardSuggestions(opts){
   if(meas) common.measurement = meas;
   try{
     ALL_ENTITY = await dashboardLoadTagValues('entity_id', {...common, friendly_name: fn || ''});
-    if($entityList) $entityList.innerHTML = ALL_ENTITY.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"></option>`).join('');
+    if($entityList) $entityList.innerHTML = ALL_ENTITY.map(x=>`<option value="${_escAttr(x)}"></option>`).join('');
     _setSelCount($cntEid, ALL_ENTITY.length);
     _selApplyWidthForInput($e, ALL_ENTITY);
     try{ window.InfluxBroCascade && window.InfluxBroCascade.syncInput && window.InfluxBroCascade.syncInput($e, ALL_ENTITY, { requireSource: [$n, $mf, $f], preserveWhileFocused: true }); }catch(e){}
     logSelectorLoad('entity_id', ALL_ENTITY, { measurement_filter: meas, friendly_name: fn });
     ALL_FRIENDLY = await dashboardLoadTagValues('friendly_name', {...common, entity_id: eid || ''});
-    if($friendlyList) $friendlyList.innerHTML = ALL_FRIENDLY.map(x=>`<option value="${x.replace(/"/g,'&quot;')}"></option>`).join('');
+    if($friendlyList) $friendlyList.innerHTML = ALL_FRIENDLY.map(x=>`<option value="${_escAttr(x)}"></option>`).join('');
     _setSelCount($cntFn, ALL_FRIENDLY.length);
     _selApplyWidthForInput($n, ALL_FRIENDLY);
     try{ window.InfluxBroCascade && window.InfluxBroCascade.syncInput && window.InfluxBroCascade.syncInput($n, ALL_FRIENDLY, { requireSource: [$e, $mf, $f], preserveWhileFocused: true }); }catch(e){}

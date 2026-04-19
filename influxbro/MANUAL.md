@@ -95,6 +95,7 @@ Neu: Top-Leiste (Profil + Zoom)
 3) Web UI oeffnen
 
 - Im Add-on: `Open Web UI` (Ingress)
+- Optional (Dev/Tests): Du kannst zusaetzlich einen Host-Port im Add-on unter `Netzwerk` aktivieren und frei waehlen. Bei Port-Konflikt zeigt Home Assistant eine Fehlermeldung; waehle dann einen anderen Port und starte das Add-on neu.
 
 4) InfluxDB konfigurieren
 
