@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.382
+
+### Bugfix
+
+- Dashboard: Fix JS-Syntaxfehler beim Start (doppelte `const cb` Deklaration in `loadUiConfig()`). ([#332](https://github.com/thomas682/HA-Addons/issues/332))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: 2026.4.3
+
 ## 1.12.381
 
 ### Enhancement

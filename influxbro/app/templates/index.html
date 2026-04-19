@@ -3792,8 +3792,8 @@ async function loadUiConfig(){
     const bm = Number(cfg.ui_edit_graph_buffer_minutes);
     if(isFinite(bm) && bm >= 0 && bm <= 1440) UI_EDIT_GRAPH_BUFFER_MINUTES = Math.trunc(bm);
 
-    const cb = Number(cfg.ui_graph_ctx_before_minutes);
-    if(isFinite(cb) && cb >= 0 && cb <= 1440) UI_GRAPH_CTX_BEFORE_MINUTES = Math.trunc(cb);
+    const ctx_before = Number(cfg.ui_graph_ctx_before_minutes);
+    if(isFinite(ctx_before) && ctx_before >= 0 && ctx_before <= 1440) UI_GRAPH_CTX_BEFORE_MINUTES = Math.trunc(ctx_before);
     const ca = Number(cfg.ui_graph_ctx_after_minutes);
     if(isFinite(ca) && ca >= 0 && ca <= 1440) UI_GRAPH_CTX_AFTER_MINUTES = Math.trunc(ca);
 
