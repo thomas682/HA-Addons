@@ -64,6 +64,7 @@ Neu: Sidebar (Desktop)
 
 - Auf Desktop kannst du die Sidebar per Splitbar in der Breite anpassen (Drag zwischen Sidebar und Inhalt).
 - Die Sidebar kann ueber den Button `<<` / `>>` ein- und ausgeklappt werden (eingeklappt: nur Icons).
+- Die Menuepunkte verwenden jetzt konsistente SVG-Icons (statt Buchstaben).
 - Die Breite und der Collapse-Status werden gespeichert und koennen ueber UI-Profile getrennt werden (Profil speichern/anwenden).
 - Mobile bleibt unveraendert (1 Spalte, keine Splitbar).
 

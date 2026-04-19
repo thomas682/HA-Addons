@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.381
+
+### Enhancement
+
+- UI: Sidebar-Menu verwendet jetzt SVG-Icons (aus `demo/icons1.html`) pro Menuepunkt; Variants A/B/C gemaess Zuordnung. ([#331](https://github.com/thomas682/HA-Addons/issues/331))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: 2026.4.3
+
 ## 1.12.380
 
 ### Enhancement
