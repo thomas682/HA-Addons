@@ -1083,7 +1083,16 @@
 
     <details class="card" id="ui_page_history" data-ui="config_settings.section_root" title="settings.ui.page_history">
       <summary><span class="ib_summary_row"><span>History</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: History" data-info-body="Einstellungen fuer History-Seite (Anzeige/Limit/Logging)." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
-      <div class="card_body"><div class="section_note"><span class="muted">Derzeit keine zusaetzlichen UI-Settings fuer diese Seite.</span></div></div>
+      <div class="card_body">
+        <div class="grid">
+          <div class="param_row">
+            <div class="param_label">Undo-History Limit<span class="param_hint">Max. Anzahl Undo-Schritte (default 100).</span></div>
+            <div class="param_control">
+              <input id="undo_history_max" type="number" min="1" max="1000" data-ui="config_settings.input_undo_history_max" title="settings.undo_history_max" />
+            </div>
+          </div>
+        </div>
+      </div>
     </details>
 
     <details class="card" id="ui_page_export" data-ui="config_settings.section_root" title="settings.ui.page_export">
@@ -1442,6 +1451,7 @@ const ids = [
   ,"log_influx_queries"
   ,"log_cache_usage"
   ,"trace_enabled","trace_persist","trace_max_entries","trace_max_days"
+  ,"undo_history_max"
   ,"worklog_max_entries","worklog_max_days"
   // writes_enabled removed
   ,"backup_dir","backup_min_free_mb","storage_budget_mb"
@@ -2070,6 +2080,7 @@ function setForm(cfg){
   _setChecked(el.trace_persist, (cfg.trace_persist !== false));
   _safeSet(el.trace_max_entries, 'value', cfg.trace_max_entries ?? 1000);
   _safeSet(el.trace_max_days, 'value', cfg.trace_max_days ?? 14);
+  _safeSet(el.undo_history_max, 'value', cfg.undo_history_max ?? 100);
   _safeSet(el.worklog_max_entries, 'value', cfg.worklog_max_entries ?? 2000);
   _safeSet(el.worklog_max_days, 'value', cfg.worklog_max_days ?? 14);
 
@@ -2234,6 +2245,7 @@ function getForm(){
     trace_persist: _isChecked(el.trace_persist),
     trace_max_entries: parseInt(el.trace_max_entries.value, 10),
     trace_max_days: parseInt(el.trace_max_days.value, 10),
+    undo_history_max: parseInt(el.undo_history_max.value, 10),
     worklog_max_entries: parseInt(el.worklog_max_entries.value, 10),
     worklog_max_days: parseInt(el.worklog_max_days.value, 10),
 

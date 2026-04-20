@@ -613,7 +613,8 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
         <button class="btn_sm" id="raw_copy_row" data-ui="dashboard_raw.btn_zeile_kopieren" title="dashboard_raw.btn_zeile_kopieren" aria-label="Raw-Zeile kopieren"><svg fill="currentColor" viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><path d="M4 24h24v2H4z"></path><path d="M26 18H6v-4h20v4m2 0v-4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2H26a2 2 0 0 0 2-2Z"></path></svg><span>Zeile kopieren</span></button>
         <button class="btn_sm" id="raw_copy_value" data-ui="dashboard_raw.btn_wert_kopieren" title="dashboard_raw.btn_wert_kopieren">Wert kopieren</button>
         <button class="btn_sm" id="raw_paste" data-ui="dashboard_raw.btn_einfuegen" title="dashboard_raw.btn_einfuegen" disabled>Einfügen</button>
-        <button class="btn_sm" id="raw_manual" data-ui="dashboard_raw.btn_manuell" title="dashboard_raw.btn_manuell" disabled>Manuell</button>
+        <button class="btn_sm" id="raw_manual" data-ui="dashboard_raw.btn_manuell" title="dashboard_raw.btn_manuell" disabled>Editieren</button>
+        <button class="btn_sm" id="raw_apply" data-ui="dashboard_raw.btn_uebernehmen" title="dashboard_raw.btn_uebernehmen" disabled>Uebernehmen</button>
         <button class="btn_sm" id="raw_delete" data-ui="dashboard_raw.btn_loeschen" title="dashboard_raw.btn_loeschen" disabled>Löschen</button>
         <button class="btn_sm" id="raw_undo" data-ui="dashboard_raw.btn_undo" title="dashboard_raw.btn_undo" disabled>Undo</button>
          <button class="btn_sm" id="raw_abort" data-ui="dashboard_raw.btn_abbruch" title="dashboard_raw.btn_abbruch" disabled>Abbruch</button>
@@ -985,6 +986,7 @@ const $rawCopyRow = document.getElementById('raw_copy_row');
 const $rawCopyValue = document.getElementById('raw_copy_value');
 const $rawPaste = document.getElementById('raw_paste');
 const $rawManual = document.getElementById('raw_manual');
+const $rawApply = document.getElementById('raw_apply');
 const $rawDelete = document.getElementById('raw_delete');
 const $rawUndo = document.getElementById('raw_undo');
 const $rawIgnore = document.getElementById('raw_ignore');
@@ -5257,10 +5259,26 @@ function renderRawTable(){
   tdV.title = 'Doppelklick zum Bearbeiten';
   tdV.addEventListener('dblclick', async (ev)=>{
     try{ ev.stopPropagation(); }catch(e){}
+    // Double click enters edit mode and stages changes locally.
+    RAW_EDIT_MODE = true;
+    updateRawToolbarState();
     await editRawValueInline(tr, r, tdV);
   });
     const tdH = document.createElement('td');
-    tdH.textContent = _rawHistoryCompact(rowKey(r));
+    try{
+      const k = rowKey(r);
+      const staged = (RAW_EDIT_STAGED && k) ? RAW_EDIT_STAGED.get(String(k)) : null;
+      if(staged && staged.new_value_str !== undefined){
+        const oldTxt = (staged.old_value === null || staged.old_value === undefined) ? '' : fmtNum(staged.old_value);
+        const newTxt = fmtNum(staged.new_value_num);
+        tdH.textContent = 'edit ' + (oldTxt || '-') + ' -> ' + (newTxt || '-');
+        tdH.style.color = '#0b57d0';
+      }else{
+        tdH.textContent = _rawHistoryCompact(k);
+      }
+    }catch(e){
+      tdH.textContent = _rawHistoryCompact(rowKey(r));
+    }
     const tdO = document.createElement('td');
     const outlierInfo = RAW_OUTLIER_MAP ? RAW_OUTLIER_MAP[String(r.time) || ''] : null;
     if(outlierInfo){
@@ -9205,6 +9223,10 @@ let RAW_COPIED = null; // { key, raw_value, value_str, time }
 let RAW_DRAG_SOURCE_KEY = null;
 let RAW_DROP_TARGET_KEY = null;
 
+// Raw edit mode: stage multiple value changes before applying to DB.
+let RAW_EDIT_MODE = false;
+let RAW_EDIT_STAGED = new Map(); // key=time -> { time, old_value, new_value_str, new_value_num, decimals }
+
 function findRawRowByKey(key){
   const want = String(key || '');
   if(!want) return null;
@@ -9264,6 +9286,16 @@ function _syncSelectedOutlierWindowFromRawRows(anchorIso, rows){
     const filtered = getDisplayedOutliers();
     const row = filtered.find((it)=> String(it && it.time || '') === anchor) || (RAW_OUTLIER_RESULTS || []).find((it)=> String(it && it.time || '') === anchor);
     if(!row) return;
+
+    // Do not overwrite the stable window computed via /api/outlier_windows.
+    // Recomputing from a centered RAW_ROWS slice would shrink the window on every click.
+    try{
+      const w0 = (row.window && typeof row.window === 'object') ? row.window : null;
+      const nb0 = w0 ? Number(w0.n_before) : NaN;
+      const na0 = w0 ? Number(w0.n_after) : NaN;
+      if(w0 && (w0.algo_v || (isFinite(nb0) && isFinite(na0)))) return;
+    }catch(e){}
+
     const counts = countCenteredRows(rows, anchor);
     const beforeRows = (rows || []).filter((it)=> Date.parse(String(it && it.time || '')) < Date.parse(anchor));
     const afterRows = (rows || []).filter((it)=> Date.parse(String(it && it.time || '')) > Date.parse(anchor));
@@ -9334,7 +9366,9 @@ function updateRawToolbarState(){
     $rawCopyValue.disabled = !hasTarget;
     if($rawCopyRow) $rawCopyRow.disabled = !hasTarget;
     if($rawDelete) $rawDelete.disabled = !hasTarget;
-    if($rawManual) $rawManual.disabled = !hasTarget;
+    const canEdit = hasTarget || ((RAW_ROWS || []).length > 0);
+    if($rawManual) $rawManual.disabled = !canEdit;
+    if($rawApply) $rawApply.disabled = !(RAW_EDIT_MODE && RAW_EDIT_STAGED && RAW_EDIT_STAGED.size > 0);
     if($rawUndo) $rawUndo.disabled = !undoable;
     if($rawAbort) $rawAbort.disabled = !_RAW_INFLIGHT;
     if($rawInfoBtn) $rawInfoBtn.disabled = !(hasTarget && _rawHistoryEntries(RAW_ROW_SELECTED_KEY).length);
@@ -9349,6 +9383,20 @@ function updateRawToolbarState(){
     if($rawCopiedInfo){
       $rawCopiedInfo.textContent = hasCopied ? (`Quelle: ${fmtTs(RAW_COPIED.time)} | Wert: ${String(RAW_COPIED.value_str || '')}`) : '';
     }
+
+    // Surface edit-mode status in the existing raw status line.
+    try{
+      const $txt = document.getElementById('raw_status_txt');
+      if($txt){
+        const base = String($txt.textContent || '');
+        const n = RAW_EDIT_STAGED ? RAW_EDIT_STAGED.size : 0;
+        if(RAW_EDIT_MODE){
+          $txt.textContent = 'Editiermodus aktiv' + (n ? (' | Aenderungen: ' + String(n)) : '') + '.';
+        }else if(base.startsWith('Editiermodus aktiv')){
+          $txt.textContent = 'Bereit.';
+        }
+      }
+    }catch(e){}
   }catch(e){}
 }
 
@@ -9649,8 +9697,93 @@ try{
   if($rawManual) $rawManual.addEventListener('click', async (ev)=>{
     _stop(ev);
     try{
-      if(!RAW_ROW_SELECTED_KEY){ err('Bitte zuerst eine Raw-Zeile markieren.'); return; }
-      await showRawManualDialog(RAW_ROW_SELECTED_KEY);
+      RAW_EDIT_MODE = !RAW_EDIT_MODE;
+      if(!RAW_EDIT_MODE && RAW_EDIT_STAGED && RAW_EDIT_STAGED.size){
+        // If user toggles off with staged edits, discard them.
+        RAW_EDIT_STAGED = new Map();
+      }
+      updateRawToolbarState();
+
+      if(RAW_EDIT_MODE){
+        // Focus first visible outlier (or the selected row) and open inline editor.
+        const rows = Array.isArray(RAW_ROWS) ? RAW_ROWS : [];
+        let want = RAW_ROW_SELECTED_KEY ? String(RAW_ROW_SELECTED_KEY) : '';
+        if(!want){
+          const first = rows.find(r => RAW_OUTLIER_MAP && RAW_OUTLIER_MAP[String(r && r.time || '')]);
+          want = first ? rowKey(first) : '';
+        }
+        const tr = want ? document.querySelector(`#raw_tbl tbody tr[data-key="${rawSelectorKey(want)}"]`) : null;
+        const tdV = tr ? (tr.querySelectorAll('td')[1] || null) : null;
+        const row = want ? findRawRowByKey(want) : null;
+        if(tr && row && tdV){ await editRawValueInline(tr, row, tdV); }
+      }
+    }catch(e){ displayError(e); }
+  });
+}catch(e){}
+
+async function applyStagedRawEdits(){
+  const base = currentFilters();
+  if(!base || !base.measurement || !base.field){ err('Bitte zuerst eine gueltige Dashboard-Serie laden.'); return false; }
+  if(!RAW_EDIT_STAGED || !RAW_EDIT_STAGED.size){ err('Keine Aenderungen vorhanden.'); return false; }
+  const unit = _currentEntityUnit();
+  const changes = Array.from(RAW_EDIT_STAGED.values()).map((it)=>({
+    action: 'overwrite',
+    time: String(it.time || ''),
+    new_value: String(it.new_value_str || ''),
+    decimals: Number(it.decimals || 0),
+    reason: 'Raw Edit Mode',
+    unit: unit || '',
+  }));
+
+  const attempt = async (force)=>{
+    return await api('./api/apply_changes', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        confirm: true,
+        measurement: base.measurement,
+        field: base.field,
+        entity_id: base.entity_id,
+        friendly_name: base.friendly_name,
+        trigger_page: 'dashboard',
+        trigger_source: 'raw',
+        trigger_action: 'edit',
+        trigger_button: 'raw_apply',
+        changes: changes.map((c)=>Object.assign({}, c, { force: !!force })),
+      })
+    }, { silent: true });
+  };
+
+  try{
+    try{ await attempt(false); }
+    catch(e){
+      if(_isOutlierRuleBlock(e)){
+        const wantForce = await confirmOutlierRuleOverride({ time: 'multi', old_value: null, new_value: null }, e.payload);
+        if(!wantForce) return false;
+        await attempt(true);
+      }else{
+        throw e;
+      }
+    }
+  }catch(e){
+    displayError(e);
+    return false;
+  }
+
+  await refreshAfterDataMutation({ rerunOutliers: true });
+  RAW_EDIT_STAGED = new Map();
+  RAW_EDIT_MODE = false;
+  updateRawToolbarState();
+  ok('Aenderungen uebernommen.');
+  return true;
+}
+
+try{
+  if($rawApply) $rawApply.addEventListener('click', async (ev)=>{
+    _stop(ev);
+    try{
+      if(!RAW_EDIT_MODE){ err('Editiermodus ist nicht aktiv.'); return; }
+      await applyStagedRawEdits();
     }catch(e){ displayError(e); }
   });
 }catch(e){}
@@ -9758,9 +9891,32 @@ async function editRawValueInline(tr, row, tdV){
       tdV.textContent = oldText;
       if(!confirmed){ resolve(false); return; }
       const newVal = parseFloat(String(input.value || '').trim());
-      if(!isFinite(newVal)){ resolve(false); return; }
+      if(!isFinite(newVal)){
+        // Stay in edit mode when invalid.
+        try{ err('Ungueltiger Zahlenwert.'); }catch(e){}
+        try{ tdV.textContent = ''; tdV.appendChild(input); input.focus(); input.select(); }catch(e){}
+        done = false;
+        try{ if(tdV.dataset) tdV.dataset.editing = '1'; }catch(e){}
+        return;
+      }
       const oldVal = row.value !== null && row.value !== undefined ? Number(row.value) : null;
       if(isFinite(oldVal) && newVal === oldVal){ resolve(false); return; }
+
+      // In edit mode we stage changes locally; apply to DB happens via "Uebernehmen".
+      if(RAW_EDIT_MODE){
+        const key = rowKey(row);
+        const oldBase = (RAW_EDIT_STAGED && key && RAW_EDIT_STAGED.get(String(key))) ? RAW_EDIT_STAGED.get(String(key)).old_value : row.value;
+        const newStr = String(input.value || '').trim();
+        const decimals = Math.max(0, _countDecimals(newStr));
+        if(!RAW_EDIT_STAGED) RAW_EDIT_STAGED = new Map();
+        RAW_EDIT_STAGED.set(String(key), { time: String(row.time || ''), old_value: oldBase, new_value_str: newStr, new_value_num: newVal, decimals });
+        // Update visible value immediately.
+        try{ row.value = newVal; }catch(e){}
+        renderRawTable();
+        updateRawToolbarState();
+        resolve(true);
+        return;
+      }
 
       const ok = await confirmRawOverwrite(
         { time: 'manuell', value: newVal },
@@ -12470,13 +12626,10 @@ if($rawSection) $rawSection.addEventListener("toggle", ()=>{
 if($rawRefresh) $rawRefresh.addEventListener("click", (ev)=>{
   _stop(ev);
   // Refresh only the current raw window, not a full reset
-  if(RAW_LAST_KEY && RAW_ROWS.length > 0){
-    // Reload with same key but reset offset/rows to refresh current window
-    loadRawFromGraph(true).catch(displayError);
-  }else{
-    // No raw data loaded yet: load from scratch
-    loadRawFromGraph(true).catch(displayError);
-  }
+  loadRawFromGraph(true).then(()=>{
+    // Also rerun outlier scan for the current series/window.
+    try{ return runOutlierScan(); }catch(e){ return null; }
+  }).catch(displayError);
 });
 if($rawAbort) $rawAbort.addEventListener('click', (ev)=>{
   _stop(ev);

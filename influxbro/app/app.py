@@ -40,6 +40,14 @@ from influxdb import InfluxDBClient as InfluxDBClientV1
 
 import yaml # pyright: ignore[reportMissingModuleSource]
 
+# Keep this import working both when app.py is executed as a script and when it is
+# imported via tests using a custom import spec (which may not include this dir on sys.path).
+try:
+    from undo_manager import UndoManager
+except ModuleNotFoundError:
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from undo_manager import UndoManager
+
 CONFIG_DIR = Path(os.environ.get("CONFIG_DIR", "/config"))
 DATA_DIR = Path(os.environ.get("DATA_DIR", "/data"))
 
@@ -50,6 +58,10 @@ APP_DIR = Path(__file__).resolve().parent
 DEFAULT_BACKUP_DIR = CONFIG_DIR / "influxbro" / "backup"
 OLD_DEFAULT_BACKUP_DIR = DATA_DIR / "backups"
 FIXED_REPO_URL = "https://github.com/thomas682/HA-Addons"
+
+UNDO_HISTORY_DIR = CONFIG_DIR / "influxbro" / "history"
+UNDO_MANAGER_LOCK = threading.RLock()
+UNDO_MANAGER: UndoManager | None = None
 
 # default; may be overridden via UI config
 BACKUP_DIR = DEFAULT_BACKUP_DIR
@@ -1262,6 +1274,9 @@ DEFAULT_CFG = {
     "ui_query_manual_max_points": 200000,
     "ui_decimals": 3,
 
+    # Undo/Repeat (server-side persistent history)
+    "undo_history_max": 100,
+
     # Dashboard graph: highlight around detected jumps (in coarse intervals)
     "ui_graph_jump_padding_intervals": 1,
 
@@ -2276,6 +2291,46 @@ def backup_dir(cfg: dict[str, Any] | None = None) -> Path:
         _maybe_migrate_backups(load_cfg(), target)
     except Exception:
         pass
+
+
+def _undo_mgr(cfg: dict[str, Any]) -> UndoManager:
+    """Singleton undo manager (persistent under /config/influxbro/history)."""
+
+    global UNDO_MANAGER
+    with UNDO_MANAGER_LOCK:
+        if UNDO_MANAGER is None:
+            UNDO_MANAGER = UndoManager(UNDO_HISTORY_DIR, max_entries=int(cfg.get("undo_history_max", 100) or 100))
+        else:
+            try:
+                UNDO_MANAGER.set_max_entries(int(cfg.get("undo_history_max", 100) or 100))
+            except Exception:
+                pass
+        return UNDO_MANAGER
+
+
+def _undo_row_tags(row: dict[str, Any]) -> dict[str, str]:
+    tags: dict[str, str] = {}
+    for k, v in (row or {}).items():
+        if not k or str(k).startswith("_"):
+            continue
+        if k in ("tags",):
+            continue
+        if v is None:
+            continue
+        tags[str(k)] = str(v)
+    # allow nested tags dict too
+    try:
+        t2 = row.get("tags")
+        if isinstance(t2, dict):
+            for k, v in t2.items():
+                if not k or str(k).startswith("_"):
+                    continue
+                if v is None:
+                    continue
+                tags[str(k)] = str(v)
+    except Exception:
+        pass
+    return tags
     return target
 
 
@@ -18747,6 +18802,11 @@ from(bucket: "{cfg['bucket']}")
                     pass
 
                 wapi = c.write_api(write_options=SYNCHRONOUS)
+                try:
+                    if best_rec is not None and old_value is None:
+                        old_value = best_rec.get_value()
+                except Exception:
+                    pass
                 point = Point(measurement).field(field, new_value).time(ts)
                 if entity_id:
                     point = point.tag("entity_id", entity_id)
@@ -18767,6 +18827,14 @@ from(bucket: "{cfg['bucket']}")
                     existing.extend(pts)
                 if not existing:
                     return jsonify({"ok": False, "error": "Zeitpunkt nicht in DB gefunden"}), 404
+
+                try:
+                    if old_value is None:
+                        # best-effort: use first point
+                        first = existing[0]
+                        old_value = first.get(field) if isinstance(first, dict) else old_value
+                except Exception:
+                    pass
 
                 # Outlier rule guardrails (can be overridden via force=true)
                 try:
@@ -18814,6 +18882,27 @@ from(bucket: "{cfg['bucket']}")
             "ip": _req_ip(),
             "ua": _req_ua(),
         })
+
+        # Register Undo/Repeat entry (best-effort).
+        try:
+            tags = {}
+            if entity_id:
+                tags["entity_id"] = entity_id
+            if friendly_name:
+                tags["friendly_name"] = friendly_name
+            before_row = {"_time": time_str, "_measurement": measurement, "_field": field, "_value": old_value, **tags}
+            after_row = {"_time": time_str, "_measurement": measurement, "_field": field, "_value": new_value, **tags}
+            _undo_mgr(cfg).register_action(
+                action_type="update",
+                bucket=str(cfg.get("bucket") or ""),
+                measurement=measurement,
+                group_label=f"raw_overwrite:{mode}",
+                before_rows=[before_row],
+                after_rows=[after_row],
+                meta={"mode": mode, "entity_id": entity_id, "friendly_name": friendly_name, "field": field},
+            )
+        except Exception as e:
+            LOG.warning("raw_overwrite undo registration failed: %s", str(e) or e.__class__.__name__)
         _dash_cache_mark_dirty_series(measurement, field, entity_id, friendly_name, "raw_overwrite")
         _stats_cache_mark_dirty_series(measurement, field, entity_id, friendly_name, "raw_overwrite")
         patch_job_id = _analysis_cache_mark_dirty_series(cfg, measurement, field, entity_id, friendly_name, "raw_overwrite")
@@ -23885,12 +23974,14 @@ def apply_changes():
             parts.append(f'{k}="{_pred_escape(v)}"')
         return " AND ".join(parts)
 
-    applied = 0
+    planned: list[dict[str, Any]] = []
+
     with v2_client(cfg) as c:
         qapi = c.query_api()
         wapi = c.write_api(write_options=SYNCHRONOUS)
         dapi = c.delete_api()
 
+        # Preflight everything first to avoid partial apply.
         for ch in changes:
             if not isinstance(ch, dict):
                 return jsonify({"ok": False, "error": "each change must be an object"}), 400
@@ -23923,13 +24014,13 @@ def apply_changes():
             start = _dt_to_rfc3339_utc_full(dt - timedelta(seconds=2))
             stop = _dt_to_rfc3339_utc_full(dt + timedelta(seconds=2))
             q = f'''
-from(bucket: "{cfg["bucket"]}")
-  |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
-  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
-  |> group()
-  |> sort(columns: ["_time"])
-  |> limit(n: 50)
-'''
+ from(bucket: "{cfg["bucket"]}")
+   |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
+   |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
+   |> group()
+   |> sort(columns: ["_time"])
+   |> limit(n: 50)
+ '''
             tables = qapi.query(q, org=cfg["org"])
             best_rec = None
             best_abs = None
@@ -24015,19 +24106,89 @@ from(bucket: "{cfg["bucket"]}")
                 except Exception:
                     pass
 
-                p = Point(measurement)
-                for tk, tv in tags.items():
-                    p = p.tag(tk, tv)
-                p = p.field(field, new_val).time(dt, WritePrecision.NS)
-                wapi.write(bucket=cfg["bucket"], org=cfg["org"], record=p)
+            before_row = {
+                "_time": time_raw,
+                "_measurement": measurement,
+                "_field": field,
+                "_value": old_val,
+                **tags,
+            }
+            after_row = None
+            if action == "overwrite":
+                after_row = {
+                    "_time": time_raw,
+                    "_measurement": measurement,
+                    "_field": field,
+                    "_value": new_val,
+                    **tags,
+                }
 
-            if action == "delete":
-                # Narrow time window around the timestamp to delete the single point.
-                s = _dt_to_rfc3339_utc_ms(dt - timedelta(milliseconds=2))
-                e = _dt_to_rfc3339_utc_ms(dt + timedelta(milliseconds=2))
-                pred = _predicate(measurement, field, tags)
-                dapi.delete(start=s, stop=e, predicate=pred, bucket=cfg["bucket"], org=cfg["org"])
+            planned.append({
+                "action": action,
+                "time": time_raw,
+                "dt": dt,
+                "tags": tags,
+                "old_value": old_val,
+                "new_value": new_val,
+                "before_row": before_row,
+                "after_row": after_row,
+                "reason": reason,
+            })
 
+        # Apply with best-effort rollback on failures.
+        applied_rows: list[dict[str, Any]] = []
+        try:
+            for it in planned:
+                action = str(it.get("action") or "")
+                dt = it.get("dt")
+                tags = it.get("tags") or {}
+                if action == "overwrite":
+                    new_val = it.get("new_value")
+                    p = Point(measurement)
+                    for tk, tv in tags.items():
+                        p = p.tag(tk, tv)
+                    p = p.field(field, new_val).time(dt, WritePrecision.NS)
+                    wapi.write(bucket=cfg["bucket"], org=cfg["org"], record=p)
+                elif action == "delete":
+                    s = _dt_to_rfc3339_utc_ms(dt - timedelta(milliseconds=2))
+                    e = _dt_to_rfc3339_utc_ms(dt + timedelta(milliseconds=2))
+                    pred = _predicate(measurement, field, tags)
+                    dapi.delete(start=s, stop=e, predicate=pred, bucket=cfg["bucket"], org=cfg["org"])
+                else:
+                    raise RuntimeError("invalid action")
+                applied_rows.append(it)
+        except Exception as e:
+            # Best-effort rollback of already applied changes.
+            try:
+                for it in reversed(applied_rows):
+                    action = str(it.get("action") or "")
+                    dt = it.get("dt")
+                    tags = it.get("tags") or {}
+                    if action == "overwrite":
+                        old_val = it.get("old_value")
+                        p = Point(measurement)
+                        for tk, tv in tags.items():
+                            p = p.tag(tk, tv)
+                        p = p.field(field, old_val).time(dt, WritePrecision.NS)
+                        wapi.write(bucket=cfg["bucket"], org=cfg["org"], record=p)
+                    elif action == "delete":
+                        old_val = it.get("old_value")
+                        p = Point(measurement)
+                        for tk, tv in tags.items():
+                            p = p.tag(tk, tv)
+                        p = p.field(field, old_val).time(dt, WritePrecision.NS)
+                        wapi.write(bucket=cfg["bucket"], org=cfg["org"], record=p)
+            except Exception:
+                pass
+            return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 500
+
+    applied = len(planned)
+
+    # Append audit history entries + undo action only after successful full apply.
+    try:
+        before_rows = [it.get("before_row") for it in planned if isinstance(it.get("before_row"), dict)]
+        after_rows = [it.get("after_row") for it in planned if isinstance(it.get("after_row"), dict)]
+        for it in planned:
             _history_append({
                 "kind": "change",
                 "series": {
@@ -24035,13 +24196,13 @@ from(bucket: "{cfg["bucket"]}")
                     "field": field,
                     "entity_id": entity_id,
                     "friendly_name": friendly_name,
-                    "tags": tags,
+                    "tags": it.get("tags") or {},
                 },
-                "time": time_raw,
-                "action": action,
-                "old_value": old_val,
-                "new_value": new_val,
-                "reason": reason,
+                "time": str(it.get("time") or ""),
+                "action": str(it.get("action") or ""),
+                "old_value": it.get("old_value"),
+                "new_value": it.get("new_value"),
+                "reason": str(it.get("reason") or ""),
                 "trigger_page": trigger_page,
                 "trigger_source": trigger_source,
                 "trigger_action": trigger_action,
@@ -24050,7 +24211,32 @@ from(bucket: "{cfg["bucket"]}")
                 "ua": _req_ua(),
             })
 
-            applied += 1
+        # Undo/Repeat registration
+        try:
+            kinds = {str(it.get("action") or "") for it in planned}
+            action_type = "update" if kinds == {"overwrite"} else ("delete" if kinds == {"delete"} else "mixed")
+            label = f"{trigger_source or 'change'}:{trigger_button or trigger_action or ''} ({applied})".strip()
+            _undo_mgr(cfg).register_action(
+                action_type=action_type,
+                bucket=str(cfg.get("bucket") or ""),
+                measurement=measurement,
+                group_label=label,
+                before_rows=[r for r in before_rows if isinstance(r, dict)],
+                after_rows=[r for r in after_rows if isinstance(r, dict)],
+                meta={
+                    "trigger_page": trigger_page,
+                    "trigger_source": trigger_source,
+                    "trigger_action": trigger_action,
+                    "trigger_button": trigger_button,
+                    "field": field,
+                    "entity_id": entity_id,
+                    "friendly_name": friendly_name,
+                },
+            )
+        except Exception as e:
+            LOG.warning("apply_changes undo registration failed: %s", str(e) or e.__class__.__name__)
+    except Exception as e:
+        LOG.warning("apply_changes history append failed: %s", str(e) or e.__class__.__name__)
 
     try:
         if applied > 0:
@@ -24062,6 +24248,325 @@ from(bucket: "{cfg["bucket"]}")
     except Exception:
         patch_job_id = None
     return jsonify({"ok": True, "applied": applied, "message": f"Applied changes: {applied}", "patch_job_id": patch_job_id})
+
+
+@app.get("/api/undo/status")
+def api_undo_status():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    try:
+        st = _undo_mgr(cfg).status()
+        return jsonify({
+            "ok": True,
+            "compatible": st.compatible,
+            "locked": st.locked,
+            "locked_reason": st.locked_reason,
+            "undo_available": st.undo_available,
+            "repeat_available": st.repeat_available,
+            "undo_count": st.undo_count,
+            "repeat_count": st.repeat_count,
+            "last_undo_action": st.last_undo_action,
+            "last_repeat_action": st.last_repeat_action,
+        })
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 500
+
+
+@app.get("/api/undo/history")
+def api_undo_history():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    try:
+        try:
+            limit = int(request.args.get("limit") or 200)
+        except Exception:
+            limit = 200
+        rows = _undo_mgr(cfg).history(limit=limit)
+        return jsonify({"ok": True, "rows": rows})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 500
+
+
+@app.post("/api/undo/clear")
+def api_undo_clear():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    body = request.get_json(force=True) or {}
+    confirm = body.get("confirm", False)
+    ok_confirm = confirm is True or str(confirm).strip().lower() in ("1", "true", "yes", "on")
+    if not ok_confirm:
+        return jsonify({"ok": False, "error": "Confirmation required"}), 400
+    try:
+        _undo_mgr(cfg).clear()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 500
+
+
+def _undo_predicate(measurement_s: str, field_s: str, tags: dict[str, str]) -> str:
+    def _pred_escape(v: str) -> str:
+        return (v or "").replace("\\", "\\\\").replace('"', '\\"')
+
+    parts = [f'_measurement="{_pred_escape(measurement_s)}"', f'_field="{_pred_escape(field_s)}"']
+    for k, v in (tags or {}).items():
+        if not k:
+            continue
+        parts.append(f'{k}="{_pred_escape(v)}"')
+    return " AND ".join(parts)
+
+
+def _undo_fetch_value(qapi, cfg: dict[str, Any], measurement: str, field: str, dt: datetime, tags: dict[str, str]) -> tuple[bool, float | int | None]:
+    start = _dt_to_rfc3339_utc_full(dt - timedelta(seconds=2))
+    stop = _dt_to_rfc3339_utc_full(dt + timedelta(seconds=2))
+    extra_pred = ""
+    for k, v in (tags or {}).items():
+        extra_pred += f' and r["{k}"] == {_flux_str(v)}'
+    q = f'''
+from(bucket: "{cfg["bucket"]}")
+  |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra_pred})
+  |> group()
+  |> sort(columns: ["_time"])
+  |> limit(n: 20)
+'''
+    tables = qapi.query(q, org=cfg["org"])
+    best_rec = None
+    best_abs = None
+    for t in tables or []:
+        for rec in getattr(t, "records", []) or []:
+            rdt = rec.get_time()
+            if not isinstance(rdt, datetime):
+                continue
+            delta = abs((rdt.astimezone(timezone.utc) - dt).total_seconds())
+            if best_abs is None or delta < best_abs:
+                best_abs = delta
+                best_rec = rec
+    if best_rec is None or best_abs is None or best_abs > 1.0:
+        return False, None
+    v = best_rec.get_value()
+    if isinstance(v, bool) or not isinstance(v, (int, float)):
+        return True, None
+    return True, v
+
+
+class _UndoApplyError(RuntimeError):
+    def __init__(
+        self,
+        message: str,
+        mode: str,
+        applied_rows: list[dict[str, Any]],
+        failed_row: dict[str, Any] | None,
+    ):
+        super().__init__(message)
+        self.mode = str(mode or "")
+        self.applied_rows = applied_rows
+        self.failed_row = failed_row
+
+
+def _undo_row_key(row: dict[str, Any]) -> tuple[str, str, str, tuple[tuple[str, str], ...]]:
+    measurement = str(row.get("_measurement") or "").strip()
+    field = str(row.get("_field") or "").strip()
+    t = str(row.get("_time") or "").strip()
+    tags = _undo_row_tags(row)
+    return measurement, field, t, tuple(sorted((str(k), str(v)) for k, v in (tags or {}).items()))
+
+
+def _undo_verify_rows(
+    qapi,
+    cfg: dict[str, Any],
+    rows: list[dict[str, Any]],
+    *,
+    must_exist: bool,
+    must_match_value: bool,
+) -> None:
+    for row in rows or []:
+        if not isinstance(row, dict):
+            continue
+        measurement = str(row.get("_measurement") or "").strip()
+        field = str(row.get("_field") or "").strip()
+        time_raw = str(row.get("_time") or "").strip()
+        if not measurement or not field or not time_raw:
+            continue
+        dt = _parse_iso_datetime(time_raw)
+        tags = _undo_row_tags(row)
+
+        found, cur = _undo_fetch_value(qapi, cfg, measurement, field, dt, tags)
+        if must_exist and not found:
+            raise RuntimeError(f"Undo-Konflikt: Zeile fehlt ({measurement}/{field} @ {time_raw})")
+        if not must_exist and found:
+            raise RuntimeError(f"Undo-Konflikt: Zeile existiert bereits ({measurement}/{field} @ {time_raw})")
+
+        if must_match_value and must_exist:
+            want = row.get("_value")
+            if isinstance(want, bool):
+                continue
+            if isinstance(want, (int, float)):
+                if cur is None:
+                    raise RuntimeError(f"Undo-Konflikt: Wert hat sich geaendert ({measurement}/{field} @ {time_raw})")
+                try:
+                    if float(cur) != float(want):
+                        raise RuntimeError(
+                            f"Undo-Konflikt: Wert hat sich geaendert ({measurement}/{field} @ {time_raw})"
+                        )
+                except Exception:
+                    raise RuntimeError(
+                        f"Undo-Konflikt: Wert hat sich geaendert ({measurement}/{field} @ {time_raw})"
+                    )
+
+
+def _undo_apply_rows(cfg: dict[str, Any], rows: list[dict[str, Any]], mode: str) -> list[dict[str, Any]]:
+    if int(cfg.get("influx_version", 2)) != 2:
+        raise RuntimeError("undo currently supports InfluxDB v2 only")
+    if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+        raise RuntimeError("InfluxDB v2 requires token, org, bucket")
+    with v2_client(cfg) as c:
+        qapi = c.query_api()
+        wapi = c.write_api(write_options=SYNCHRONOUS)
+        dapi = c.delete_api()
+        applied: list[dict[str, Any]] = []
+        for row in rows or []:
+            if not isinstance(row, dict):
+                continue
+            measurement = str(row.get("_measurement") or "").strip()
+            field = str(row.get("_field") or "").strip()
+            time_raw = str(row.get("_time") or "").strip()
+            if not measurement or not field or not time_raw:
+                continue
+            dt = _parse_iso_datetime(time_raw)
+            tags = _undo_row_tags(row)
+            want_val = row.get("_value")
+
+            try:
+                if mode == "delete":
+                    s = _dt_to_rfc3339_utc_ms(dt - timedelta(milliseconds=2))
+                    e = _dt_to_rfc3339_utc_ms(dt + timedelta(milliseconds=2))
+                    pred = _undo_predicate(measurement, field, tags)
+                    dapi.delete(start=s, stop=e, predicate=pred, bucket=cfg["bucket"], org=cfg["org"])
+                elif mode == "write":
+                    if want_val is None:
+                        continue
+                    p = Point(measurement)
+                    for tk, tv in tags.items():
+                        p = p.tag(tk, tv)
+                    p = p.field(field, want_val).time(dt, WritePrecision.NS)
+                    wapi.write(bucket=cfg["bucket"], org=cfg["org"], record=p)
+                else:
+                    raise RuntimeError("invalid undo apply mode")
+                applied.append(row)
+            except Exception as e:
+                raise _UndoApplyError(f"Undo/Repeat apply failed (mode={mode})", mode, applied, row) from e
+
+        return applied
+
+
+def _undo_execute_action(cfg: dict[str, Any], action: dict[str, Any], direction: str) -> None:
+    if not isinstance(action, dict):
+        raise RuntimeError("invalid action")
+    direction = str(direction or "").strip().lower()
+    if direction not in ("undo", "repeat"):
+        raise RuntimeError("invalid direction")
+
+    before_rows = action.get("before_rows") if isinstance(action.get("before_rows"), list) else []
+    after_rows = action.get("after_rows") if isinstance(action.get("after_rows"), list) else []
+    atype = str(action.get("action_type") or "update")
+
+    # Decide operations.
+    if direction == "undo":
+        if atype == "delete":
+            to_delete: list[dict[str, Any]] = []
+            to_write = [r for r in before_rows if isinstance(r, dict)]
+        elif atype == "insert":
+            to_delete = [r for r in after_rows if isinstance(r, dict)]
+            to_write = []
+        else:  # update/mixed
+            to_delete = [r for r in after_rows if isinstance(r, dict)]
+            to_write = [r for r in before_rows if isinstance(r, dict)]
+    else:  # repeat
+        if atype == "delete":
+            to_delete = [r for r in before_rows if isinstance(r, dict)]
+            to_write = []
+        elif atype == "insert":
+            to_delete = []
+            to_write = [r for r in after_rows if isinstance(r, dict)]
+        else:  # update/mixed
+            to_delete = [r for r in before_rows if isinstance(r, dict)]
+            to_write = [r for r in after_rows if isinstance(r, dict)]
+
+    # Conflict check: verify expected current rows.
+    if int(cfg.get("influx_version", 2)) != 2:
+        raise RuntimeError("undo currently supports InfluxDB v2 only")
+    if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+        raise RuntimeError("InfluxDB v2 requires token, org, bucket")
+    with v2_client(cfg) as c:
+        qapi = c.query_api()
+        # rows we are about to delete must exist and should match stored value where possible
+        _undo_verify_rows(qapi, cfg, to_delete, must_exist=True, must_match_value=True)
+
+        # rows we are about to write should not already exist if they are not part of the delete-set
+        delete_keys = {_undo_row_key(r) for r in to_delete if isinstance(r, dict)}
+        write_need_absent = [r for r in to_write if isinstance(r, dict) and _undo_row_key(r) not in delete_keys]
+        if write_need_absent:
+            _undo_verify_rows(qapi, cfg, write_need_absent, must_exist=False, must_match_value=False)
+
+    # Apply with rollback on partial phase failure.
+    deleted_rows: list[dict[str, Any]] = []
+    try:
+        if to_delete:
+            deleted_rows = _undo_apply_rows(cfg, to_delete, mode="delete")
+        if to_write:
+            _undo_apply_rows(cfg, to_write, mode="write")
+    except _UndoApplyError as e:
+        # Best-effort rollback.
+        if e.mode == "delete" and e.applied_rows:
+            try:
+                _undo_apply_rows(cfg, [r for r in e.applied_rows if isinstance(r, dict)], mode="write")
+            except Exception:
+                pass
+        elif e.mode == "write":
+            try:
+                _undo_apply_rows(cfg, [r for r in e.applied_rows if isinstance(r, dict)], mode="delete")
+            except Exception:
+                pass
+            try:
+                if deleted_rows:
+                    _undo_apply_rows(cfg, deleted_rows, mode="write")
+            except Exception:
+                pass
+        raise
+
+
+@app.post("/api/undo/undo")
+def api_undo_undo():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    mgr = _undo_mgr(cfg)
+    action = mgr.pop_undo()
+    if not action:
+        return jsonify({"ok": False, "error": "no undo available"}), 404
+    try:
+        _undo_execute_action(cfg, action, direction="undo")
+        action["undone"] = True
+        action["repeat_available"] = True
+        mgr.push_redo(action)
+        return jsonify({"ok": True, "action": action})
+    except Exception as e:
+        # Put back on undo stack
+        mgr.push_undo(action)
+        return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 409
+
+
+@app.post("/api/undo/repeat")
+def api_undo_repeat():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    mgr = _undo_mgr(cfg)
+    action = mgr.pop_redo()
+    if not action:
+        return jsonify({"ok": False, "error": "no repeat available"}), 404
+    try:
+        _undo_execute_action(cfg, action, direction="repeat")
+        action["undone"] = False
+        action["repeat_available"] = False
+        mgr.push_undo(action)
+        return jsonify({"ok": True, "action": action})
+    except Exception as e:
+        mgr.push_redo(action)
+        return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 409
 
 
 @app.get("/api/history_list")

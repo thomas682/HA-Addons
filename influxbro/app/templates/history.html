@@ -70,6 +70,19 @@
         <div class="row" data-ui="history_main.panel_actions" title="history.actions">
           <div>
             <label>&nbsp;</label>
+            <button id="undo_btn" class="btn_sm" data-ui="history_undo.btn_undo" title="history_undo.btn_undo" disabled>Undo</button>
+          </div>
+          <div>
+            <label>&nbsp;</label>
+            <button id="repeat_btn" class="btn_sm" data-ui="history_undo.btn_repeat" title="history_undo.btn_repeat" disabled>Repeat</button>
+          </div>
+          <div>
+            <label>&nbsp;</label>
+            <button id="undo_clear" class="btn_sm" data-ui="history_undo.btn_clear" title="history_undo.btn_clear">Undo-History loeschen</button>
+          </div>
+          <div class="muted" id="undo_status" style="min-width: 320px; flex:1; padding-top: 6px;">Undo/Repeat: -</div>
+          <div>
+            <label>&nbsp;</label>
             <button id="refresh" data-ui="history_main.btn_refresh" title="history.refresh">Refresh</button>
           </div>
           <div>
@@ -162,6 +175,11 @@
     const $preset = document.getElementById('preset');
     const $rollbackPreset = document.getElementById('rollback_preset');
     const $rollbackSelected = document.getElementById('rollback_selected');
+
+    const $undoBtn = document.getElementById('undo_btn');
+    const $repeatBtn = document.getElementById('repeat_btn');
+    const $undoClear = document.getElementById('undo_clear');
+    const $undoStatus = document.getElementById('undo_status');
 
     const $histBox = document.getElementById('hist_box');
     const $histAutoWidth = document.getElementById('hist_autowidth');
@@ -258,6 +276,7 @@
 
     async function load(){
       err(''); ok('');
+      try{ await refreshUndoStatus(); }catch(e){}
       const qs = new URLSearchParams({
         q: ($q.value||'').trim(),
         action: ($action.value||'').trim(),
@@ -267,6 +286,49 @@
       LIST = j.rows || [];
       SELECTED.clear();
       render();
+    }
+
+    async function refreshUndoStatus(){
+      try{
+        const j = await api('./api/undo/status');
+        const locked = !!j.locked;
+        const undoN = Number(j.undo_count || 0);
+        const repN = Number(j.repeat_count || 0);
+        if($undoBtn) $undoBtn.disabled = locked || !j.undo_available;
+        if($repeatBtn) $repeatBtn.disabled = locked || !j.repeat_available;
+        if($undoStatus){
+          if(locked){
+            $undoStatus.textContent = 'Undo/Repeat gesperrt: ' + String(j.locked_reason || 'incompatible');
+          }else{
+            $undoStatus.textContent = 'Undo/Repeat: Undo=' + String(undoN) + ' | Repeat=' + String(repN);
+          }
+        }
+        if(locked && String(j.locked_reason || '').toLowerCase().includes('inkompatible')){
+          const want = confirm('Undo-History ist inkompatibel. Loeschen?\n\nWenn nein, bleiben Undo/Repeat gesperrt.');
+          if(want){
+            await api('./api/undo/clear', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({confirm: true})});
+            return await refreshUndoStatus();
+          }
+        }
+      }catch(e){
+        if($undoStatus) $undoStatus.textContent = 'Undo/Repeat: Status konnte nicht geladen werden.';
+      }
+    }
+
+    async function doUndo(){
+      const msg = 'Letzte Schreibaktion rueckgaengig machen?';
+      if(!confirm(msg)) return;
+      const j = await api('./api/undo/undo', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({})});
+      ok('Undo ausgefuehrt.');
+      await refreshUndoStatus();
+    }
+
+    async function doRepeat(){
+      const msg = 'Letzte per Undo zurueckgenommene Aktion erneut ausfuehren (Repeat)?';
+      if(!confirm(msg)) return;
+      const j = await api('./api/undo/repeat', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({})});
+      ok('Repeat ausgefuehrt.');
+      await refreshUndoStatus();
     }
 
     async function rollbackIds(ids){
@@ -291,6 +353,9 @@
     }
 
     $refresh.addEventListener('click', (ev)=>{ ev.preventDefault(); ev.stopPropagation(); load().catch(e=>err(String(e.message||e))); });
+    if($undoBtn) $undoBtn.addEventListener('click', (ev)=>{ ev.preventDefault(); ev.stopPropagation(); doUndo().catch(e=>err(String(e.message||e))); });
+    if($repeatBtn) $repeatBtn.addEventListener('click', (ev)=>{ ev.preventDefault(); ev.stopPropagation(); doRepeat().catch(e=>err(String(e.message||e))); });
+    if($undoClear) $undoClear.addEventListener('click', (ev)=>{ ev.preventDefault(); ev.stopPropagation(); if(!confirm('Undo-History wirklich komplett loeschen?')) return; api('./api/undo/clear', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({confirm:true})}).then(()=>{ ok('Undo-History geloescht.'); refreshUndoStatus().catch(()=>{}); }).catch(e=>err(String(e.message||e))); });
     [$q,$action].forEach(el=>{ el.addEventListener('change', ()=>load().catch(()=>{})); });
     $selAll.addEventListener('change', ()=>{
       const ids = (LIST || []).map(x=>String(x.id||'')).filter(Boolean);

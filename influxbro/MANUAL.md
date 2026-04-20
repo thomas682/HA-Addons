@@ -370,14 +370,17 @@ Die fruehere Bearbeitungsliste wurde entfernt. Korrekturen erfolgen direkt in de
 
 - Raw-Zeile anklicken: markiert die Zeile.
 - Wert-Spalte: Doppelklick startet Inline-Edit.
-  - Enter: uebernehmen
-  - Escape oder Blur: Abbruch, alter Zelltext wird wieder angezeigt
+  - Doppelklick aktiviert den Editiermodus automatisch.
+  - Enter: uebernimmt die Eingabe lokal (staged) und zeigt die Aenderung sofort in der Spalte `Aenderung` an.
+  - Escape oder Blur: Abbruch, alter Zelltext wird wieder angezeigt.
 - Aktionen ueber die Buttons oberhalb der Raw-Tabelle:
   - `Wert kopieren` / `Einfuegen`: Zielwert mit Quellwert ueberschreiben (mit Bestaetigung)
-  - `Manuell`: neuen Wert fuer die markierte Zeile setzen
+  - `Editieren`: Editiermodus ein/aus (staged Aenderungen werden erst bei `Uebernehmen` geschrieben)
+  - `Uebernehmen`: schreibt alle staged Aenderungen in die DB, prueft erst dann Outlier-Regeln und startet danach die Ausreisserpruefung erneut
   - `Loeschen`: DB-Punkt loeschen (mit Bestaetigung)
   - `Undo`: letzte direkte Raw-Aenderung rueckgaengig machen (best-effort)
 - `Abbruch` in der Raw-Toolbar bricht laufende Raw-Ladevorgaenge ab.
+- Hinweis: Im Editiermodus wird oberhalb der Tabelle `Editiermodus aktiv` angezeigt. `Uebernehmen` ist nur aktiv, wenn Aenderungen staged sind.
 - Hinweis: Wenn eine Wert-Aenderung gegen Outlier-Regeln verstoesst (z.B. Grenzen oder Max-Sprung), blockiert InfluxBro standardmaessig und zeigt einen Dialog mit exakter Erklaerung. Mit `trotzdem aendern` kann die Aenderung explizit erzwungen werden.
 
 ## Statistik
@@ -748,6 +751,10 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
   - selektierte Eintraege
   - oder Zeitraum-Presets (z.B. letzte 15 Minuten)
 - Sicherheit: Rollback erfordert eine normale Sicherheitsabfrage im Browser.
+- Undo/Repeat:
+  - `Undo`: letzte schreibende Aktion (ueberschreiben/loeschen) rueckgaengig machen.
+  - `Repeat`: zuvor per Undo zurueckgenommene Aktion erneut ausfuehren (Redo).
+  - Wenn die Undo-History-Datei inkompatibel ist, fragt die UI beim Laden, ob sie geloescht werden soll. Bei "nein" bleiben Undo/Repeat gesperrt, bis du `Undo-History loeschen` ausfuehrst.
 
 Hinweis (neu)
 
@@ -800,6 +807,7 @@ UI:
 - `Bugreport Log-Historie (Stunden)`: begrenzt die Log-Historie im Debug-Report auf die letzten X Stunden.
 - `Tracing: Max Alter (Tage)`: Traces werden abgeschnitten, sobald entweder max. Eintraege oder max. Tage erreicht sind.
 - `Worklog: Max Eintraege` und `Worklog: Max Alter (Tage)`: Worklog wird abgeschnitten, sobald entweder max. Eintraege oder max. Tage erreicht sind.
+- `Undo-History Limit`: maximale Anzahl gespeicherter Undo-Schritte fuer Undo/Repeat (Default: 100).
 - `Min freier Cachespeicher (MB)`: Sicherheitsbudget fuer freien Speicher (wird in `Diagnose` als Limit/Prognose genutzt).
 - `Min. freier Speicher (MB)`: Backup-Schwelle; muss groesser sein als `Min freier Cachespeicher`.
 - Dashboard-Autotuning nutzt fuer benutzerdefinierte Zeitraeume jetzt immer UTC-Zeitstempel mit Zeitzone, damit die Server-Pruefung stabil funktioniert.

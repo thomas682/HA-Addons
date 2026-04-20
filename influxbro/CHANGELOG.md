@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.12.397
+
+### Bugfix
+
+- Dashboard/Raw: Raw-Kontext in der Ausreisser-Tabelle bleibt stabil und schrumpft nicht mehr bei wiederholter Selektion; zusaetzlich gibt es einen echten Editiermodus (staged Inline-Edits mit `Editieren` + `Uebernehmen`), und `Aktualisieren` startet die Ausreisserpruefung fuer den Bereich erneut. ([#352](https://github.com/thomas682/HA-Addons/issues/352))
+
+### Enhancement
+
+- History: Serverseitiges Undo/Repeat (Redo als "Repeat") fuer schreibende Messwertaktionen inkl. persistenter Undo-History unter `/config/influxbro/history`, Konfliktpruefung sowie Sperre/Reset bei inkompatibler History. Neues Setting: `undo_history_max` (Default 100). ([#354](https://github.com/thomas682/HA-Addons/issues/354))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`, `pytest -q`
+- Tested with Home Assistant Core: 2026.4.3
+
 ## 1.12.396
 
 ### Enhancement
