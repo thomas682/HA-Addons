@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.395
+
+### Enhancement
+
+- UI: Tooltips werden jetzt als eigenes HTML Tooltip-Overlay angezeigt (statt ausschliesslich Browser-`title`). Zusaetzlich werden kleine Text-Buttons (`.btn_sm`) bei exakt passenden Labels global auf Icon-only umgestellt (Label bleibt als `aria-label`/Tooltip erhalten). ([#353](https://github.com/thomas682/HA-Addons/issues/353))
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`, `pytest tests/test_api_ui_support.py`
+- Tested with Home Assistant Core: 2026.4.3
+
 ## 1.12.394
 
 ### Enhancement

@@ -986,6 +986,12 @@ def test_global_button_logging_and_button_error_reporting_exist():
     assert "window.InfluxBroButtons = { log: _log, reportError };" in tooltips
 
 
+def test_tooltips_use_custom_html_tooltip_layer():
+    tooltips = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
+    assert "ib_html_tooltip" in tooltips
+    assert "HTML custom tooltip" in tooltips
+
+
 def test_popup_uses_global_decode_helper_for_query_and_meta_texts():
     tooltips = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
     assert "window.InfluxBroDecodeInfoText ? window.InfluxBroDecodeInfoText(String(msg || '')) : String(msg || '')" in tooltips
