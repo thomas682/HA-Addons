@@ -996,6 +996,13 @@ def test_popup_uses_global_decode_helper_for_query_and_meta_texts():
     assert "window.InfluxBroQueryHistory = { add, show, list };" in tooltips
 
 
+def test_table_sort_parses_de_datetime_format():
+    tbl = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_table_cols.html").read_text()
+    assert "de-DE datetime" in tbl
+    assert "dd.mm.yyyy" in tbl
+    assert r"(\d{2})\.(\d{2})\.(\d{4})" in tbl
+
+
 def test_dashboard_query_and_stats_buttons_report_dialog_errors_instead_of_swallowing():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     assert "throw new Error('Dialogsystem fuer Dashboard Query ist nicht verfuegbar');" in body

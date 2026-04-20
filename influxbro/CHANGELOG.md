@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.393
+
+### Bugfix
+
+- Tabellen: Client-Sortierung parst de-DE Zeitstempel (`dd.mm.yyyy HH:MM:SS(.mmm)`) jetzt robust, statt auf unzuverlaessiges `Date.parse` zu setzen. ([#353](https://github.com/thomas682/HA-Addons/issues/353))
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`, `pytest tests/test_api_ui_support.py`
+- Tested with Home Assistant Core: 2026.4.3
+
 ## 1.12.392
 
 ### Bugfix

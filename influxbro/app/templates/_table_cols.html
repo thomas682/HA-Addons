@@ -714,6 +714,26 @@ thead tr.ib_filter_row input, thead tr.ib_filter_row select { width: 100%; heigh
     const t = _norm(s);
     if(!t) return {t:'s', v:''};
 
+    // de-DE datetime: dd.mm.yyyy[ HH:MM:SS[.mmm]]
+    // Date.parse() is not reliable for this format.
+    try{
+      const m = t.match(/^(\d{2})\.(\d{2})\.(\d{4})(?:\s+(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,3}))?)?$/);
+      if(m){
+        const dd = Number(m[1]);
+        const mm = Number(m[2]);
+        const yyyy = Number(m[3]);
+        const hh = Number(m[4] || 0);
+        const mi = Number(m[5] || 0);
+        const ss = Number(m[6] || 0);
+        let ms = Number(m[7] || 0);
+        if(isFinite(ms) && ms > 0 && String(m[7] || '').length === 1) ms = ms * 100;
+        else if(isFinite(ms) && ms > 0 && String(m[7] || '').length === 2) ms = ms * 10;
+        const dt = new Date(yyyy, mm - 1, dd, hh, mi, ss, ms);
+        const ts = dt.getTime();
+        if(isFinite(ts) && ts > 0) return {t:'d', v: ts};
+      }
+    }catch(e){}
+
     // ISO / RFC-ish dates
     const ms = Date.parse(t);
     if(isFinite(ms) && ms > 0) return {t:'d', v: ms};
