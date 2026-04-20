@@ -287,7 +287,7 @@ def test_dashboard_outlier_section_is_separate_and_above_raw_section():
     assert '<span>Ausreißer</span>' in body
     assert body.index('id="outlier_section"') < body.index('id="raw_section"')
     assert 'id="raw_outlier_row_count" style="font-size:12px; opacity:0.7; margin-top:8px;"' in body
-    assert 'style="--max-rows: 5; min-width:0; width:100%; box-sizing:border-box;"' in body
+    assert 'style="--max-rows: 15; min-width:0; width:100%; box-sizing:border-box;"' in body
 
 
 def test_outlier_table_header_is_explicitly_sticky_and_search_bar_tracks_outlier_section():

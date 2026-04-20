@@ -157,6 +157,10 @@ thead tr.ib_filter_row input, thead tr.ib_filter_row select { width: 100%; heigh
       window.addEventListener('mouseup', onUp);
     });
 
+    // Prevent table-sort click handlers on the parent <th>.
+    rz.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}; });
+    rz.addEventListener('dblclick', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}; });
+
     th.style.position = 'relative';
     th.appendChild(rz);
   }
@@ -600,7 +604,11 @@ thead tr.ib_filter_row input, thead tr.ib_filter_row select { width: 100%; heigh
 
     try{
       const saved = Number(localStorage.getItem(key) || 0);
-      if(isFinite(saved) && saved >= minPx) boxEl.style.height = Math.round(saved) + 'px';
+      if(isFinite(saved) && saved >= minPx){
+        boxEl.style.height = Math.round(saved) + 'px';
+        // If a manual height is set, disable the row-based max-height clamp.
+        boxEl.style.maxHeight = 'none';
+      }
     }catch(e){}
 
     // Create handle after the box (if not present)
@@ -632,6 +640,7 @@ thead tr.ib_filter_row input, thead tr.ib_filter_row select { width: 100%; heigh
       if(h < minPx) h = minPx;
       if(h > maxPx) h = maxPx;
       boxEl.style.height = Math.round(h) + 'px';
+      boxEl.style.maxHeight = 'none';
       try{ ev.preventDefault(); }catch(e){}
     }
 
@@ -654,6 +663,7 @@ thead tr.ib_filter_row input, thead tr.ib_filter_row select { width: 100%; heigh
       dragging = true;
       startY = (ev && (ev.touches && ev.touches[0] ? ev.touches[0].clientY : ev.clientY)) || 0;
       startH = boxEl.getBoundingClientRect().height;
+      try{ boxEl.style.maxHeight = 'none'; }catch(e){}
       document.body.style.userSelect = 'none';
       window.addEventListener('mousemove', onMove);
       window.addEventListener('mouseup', onUp);
@@ -1304,7 +1314,8 @@ thead tr.ib_filter_row input, thead tr.ib_filter_row select { width: 100%; heigh
       // Prefer adding the button to a nearby .table_head.
       const wrap = tbl.closest('.table_wrap');
       const head = wrap ? wrap.querySelector('.table_head') : null;
-      const host = head || (wrap || tbl.parentElement);
+      const right = head ? head.querySelector('.tbl_right') : null;
+      const host = right || head || (wrap || tbl.parentElement);
       if(!host) return;
 
       const existing = host.querySelector && host.querySelector(`button[data-table-info="${tid}"]`);

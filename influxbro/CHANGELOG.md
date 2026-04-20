@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.389
+
+### Bugfix
+
+- Dashboard/Ausreißer: Outlier-Tabelle startet mit 15 sichtbaren Zeilen (statt 5), Row-Counter ist kompakt (`filtered / total`), Tabellenhoehe-Resize greift auch dann sauber, wenn zuvor ein Row-basiertes `max-height` aktiv war, und Spalten-Resize triggert keinen Sort-Klick mehr. ([#351](https://github.com/thomas682/HA-Addons/issues/351))
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`, `pytest tests/test_api_ui_support.py`
+- Tested with Home Assistant Core: 2026.4.3
+
 ## 1.12.388
 
 ### Bugfix
