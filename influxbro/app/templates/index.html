@@ -2098,6 +2098,15 @@ function cacheRestoreIfAvailable(){
                     rerenderTimeline();
                   });
                 });
+
+                $timeline.querySelectorAll('[data-cache-oltype]').forEach((btn)=>{
+                  btn.addEventListener('click', ()=>{
+                    const t = String(btn.getAttribute('data-cache-oltype') || '');
+                    if(!t) return;
+                    _cacheTimelineToggleHiddenOutlierType(plan, t);
+                    rerenderTimeline();
+                  });
+                });
               }catch(e){}
 
               // Cache block info buttons
@@ -7491,6 +7500,58 @@ function _analysisCacheSetSegUi(plan, id, patch){
   return state[id];
 }
 
+function _cacheTimelineOutlierTypeKey(plan){
+  try{
+    const k = String((plan && plan.series_key) || '').trim();
+    return 'influxbro.cache_timeline.hidden_types.v1.' + k;
+  }catch(e){
+    return 'influxbro.cache_timeline.hidden_types.v1';
+  }
+}
+
+function _cacheTimelineOutlierTypes(){
+  return ['counter','decrease','bounds','gap','fault_phase','null','zero','ignored'];
+}
+
+function _cacheTimelineOutlierTypeLabels(){
+  return {counter:'Counter',decrease:'Counter Abfall',bounds:'Grenzen',gap:'Messwertluecke',fault_phase:'Stoerphase',null:'NULL',zero:'0-Werte',ignored:'Ignoriert'};
+}
+
+function _cacheTimelineOutlierTypeColor(t){
+  const type = String(t || '').trim();
+  const map = {
+    counter: '#2563eb',
+    decrease: '#7c3aed',
+    bounds: '#dc2626',
+    gap: '#f59e0b',
+    fault_phase: '#b45309',
+    null: '#6b7280',
+    zero: '#10b981',
+    ignored: '#9ca3af',
+  };
+  return map[type] || '#6b7280';
+}
+
+function _cacheTimelineLoadHiddenOutlierTypes(plan){
+  try{
+    const raw = localStorage.getItem(_cacheTimelineOutlierTypeKey(plan));
+    const xs = raw ? JSON.parse(raw) : [];
+    if(Array.isArray(xs)) return new Set(xs.map(x=>String(x||'').trim()).filter(Boolean));
+  }catch(e){}
+  return new Set();
+}
+
+function _cacheTimelineToggleHiddenOutlierType(plan, t){
+  const type = String(t || '').trim();
+  if(!type) return;
+  const allowed = new Set(_cacheTimelineOutlierTypes());
+  if(!allowed.has(type)) return;
+  const hidden = _cacheTimelineLoadHiddenOutlierTypes(plan);
+  if(hidden.has(type)) hidden.delete(type);
+  else hidden.add(type);
+  try{ localStorage.setItem(_cacheTimelineOutlierTypeKey(plan), JSON.stringify(Array.from(hidden))); }catch(e){}
+}
+
 function _analysisCacheTimelineSegHtml(startIso, stopIso, totalStartMs, totalStopMs, color, borderColor, highlighted, label){
   try{
     const s = Date.parse(String(startIso || ''));
@@ -7511,6 +7572,19 @@ function _analysisCacheTimelineHtml(plan){
   const parts = [];
   const labels = [];
   const vis = _loadAnalysisCacheUiState(plan);
+  const hiddenOlTypes = _cacheTimelineLoadHiddenOutlierTypes(plan);
+  const typeLabels = _cacheTimelineOutlierTypeLabels();
+
+  // UI-only: outlier type visibility for the timeline markers.
+  const typeBtns = _cacheTimelineOutlierTypes().map((t)=>{
+    const off = hiddenOlTypes.has(t);
+    const col = _cacheTimelineOutlierTypeColor(t);
+    const lab = typeLabels[t] || t;
+    return '<button type="button" class="btn_xs" data-cache-oltype="' + _escAttr(t) + '"'
+      + ' style="width:auto;min-width:28px;' + (off ? 'opacity:0.45;text-decoration:line-through;' : ('background:' + col + ';color:#fff;border-color:' + col + ';')) + '"'
+      + ' title="Outlier-Typ im Zeitstrahl ' + (off ? 'einblenden' : 'ausblenden') + '">' + _escHtml(lab) + '</button>';
+  }).join('');
+
   (plan.segments || []).forEach((seg, idx) => {
     const id = 'seg|' + String(seg.cache_id || idx);
     const ui = _analysisCacheSegUi(vis, id);
@@ -7521,18 +7595,24 @@ function _analysisCacheTimelineHtml(plan){
     if(ui.ol){
       const details = Array.isArray(seg.outlier_details) ? seg.outlier_details : [];
       const times = details.length ? null : (Array.isArray(seg.outlier_times) ? seg.outlier_times : []);
-      const typeLabels = {counter:'Counter',decrease:'Counter Abfall',bounds:'Grenzen',gap:'Messwertluecke',fault_phase:'Stoerphase',null:'NULL',zero:'0-Werte',ignored:'Ignoriert'};
       const items = details.length ? details : (times || []).map(t => ({time: t}));
       items.forEach((item)=>{
         const ts = String(item.time || '');
         const ms = Date.parse(ts);
         if(!(isFinite(ms) && stopMs > startMs)) return;
-        const left = Math.max(0, Math.min(100, ((ms - startMs) / (stopMs - startMs)) * 100));
+
         const typesArr = Array.isArray(item.types) ? item.types : [];
+        const enabledByType = typesArr.length ? typesArr.some((t)=>!hiddenOlTypes.has(String(t||'').trim())) : true;
+        if(!enabledByType) return;
+
+        const primary = (typesArr.find((t)=>!hiddenOlTypes.has(String(t||'').trim())) || typesArr[0] || '').toString();
+        const typeColor = _cacheTimelineOutlierTypeColor(primary);
+
+        const left = Math.max(0, Math.min(100, ((ms - startMs) / (stopMs - startMs)) * 100));
         const typeStr = typesArr.map(t => typeLabels[t] || t).join(', ') || '';
         const valStr = (item.value !== undefined && item.value !== null) ? (' | Wert: ' + String(item.value)) : '';
         const tip = 'Ausreisser: ' + fmtTs(ts) + (typeStr ? ' | Typ: ' + typeStr : '') + valStr;
-        const olColor = ui.active ? bd : ANALYSIS_CACHE_HIDDEN_COLOR;
+        const olColor = ui.active ? typeColor : ANALYSIS_CACHE_HIDDEN_COLOR;
         parts.push('<div class="ib-ol-marker" data-ol-tip="' + _escAttr(tip) + '" style="position:absolute;left:' + left.toFixed(3) + '%;top:0;bottom:0;width:4px;margin-left:-2px;background:' + olColor + ';opacity:0.7;border-radius:1px;cursor:pointer;transition:opacity 0.15s,width 0.15s;"></div>');
       });
     }
@@ -7575,7 +7655,11 @@ function _analysisCacheTimelineHtml(plan){
     }).length;
     labels.push('<div style="font-size:11px;"><span style="display:inline-block;width:10px;height:10px;background:#ffe1e1;border:1px solid #d46a6a;border-radius:3px;margin-right:6px;"></span>Geaendert ' + (idx + 1) + ': ' + _escHtml(fmtTs(gap.start)) + ' – ' + _escHtml(fmtTs(gap.stop)) + ' | Messwertaenderungen: ' + String(changeCount) + '</div>');
   });
-  return '<div style="position:relative;height:28px;border:1px solid #ddd;border-radius:8px;background:#fff;overflow:hidden;">' + parts.join('') + '</div>'
+  return '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px;font-size:11px;">'
+    + '<span style="opacity:0.75;">Ausreisser im Zeitstrahl:</span>'
+    + typeBtns
+    + '</div>'
+    + '<div style="position:relative;height:28px;border:1px solid #ddd;border-radius:8px;background:#fff;overflow:hidden;">' + parts.join('') + '</div>'
     + '<div style="display:flex;justify-content:space-between;gap:12px;margin-top:6px;font-size:11px;opacity:0.75;"><span>' + _escHtml(fmtTs(req.start)) + '</span><span>' + _escHtml(fmtTs(req.stop)) + '</span></div>'
     + '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:6px;font-size:11px;">'
     + '<span><span style="display:inline-block;width:10px;height:10px;background:#d9f7d9;border:1px solid #5ea56a;border-radius:3px;margin-right:4px;"></span>Cache</span>'
@@ -11793,6 +11877,15 @@ async function refreshCachingSection(){
               if(id.startsWith('gap|')) return;
               const cur = _analysisCacheSegUi(_loadAnalysisCacheUiState(analysisPlan), id);
               _analysisCacheSetSegUi(analysisPlan, id, { ol: !cur.ol });
+              rerenderTimeline();
+            });
+          });
+
+          $timeline.querySelectorAll('[data-cache-oltype]').forEach((btn)=>{
+            btn.addEventListener('click', ()=>{
+              const t = String(btn.getAttribute('data-cache-oltype') || '');
+              if(!t) return;
+              _cacheTimelineToggleHiddenOutlierType(analysisPlan, t);
               rerenderTimeline();
             });
           });

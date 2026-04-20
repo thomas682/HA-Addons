@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.394
+
+### Enhancement
+
+- Dashboard/Caching: Ausreisser-Marker im Analysecache-Zeitstrahl sind jetzt nach Typ eingefaerbt und koennen pro Typ ein-/ausgeblendet werden (wirkt nur auf den Zeitstrahl, nicht auf Tabellen/Counts). ([#353](https://github.com/thomas682/HA-Addons/issues/353))
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`, `pytest tests/test_api_ui_support.py`
+- Tested with Home Assistant Core: 2026.4.3
+
 ## 1.12.393
 
 ### Bugfix
