@@ -1,5 +1,30 @@
 # Changelog
 
+## 1.12.387
+
+### Bugfix
+
+- Topbar/HA Ingress: `page_view` und `ui_event` POSTs senden die CSRF-Header (`X-InfluxBro-Request`, `X-Requested-With`) jetzt explizit, unabhaengig vom globalen fetch-Monkey-Patch aus `_nav.html`. Damit entfaellt die 403-Ablehnung unter HA Ingress auch dann, wenn der Topbar-Code vor dem Monkey-Patch ausgefuehrt wird oder ein Proxy den Header entfernt. Client-seitige `page_view`-Fehler werden zusaetzlich per `./api/client_log` ins Add-on-Log gemeldet. ([#342](https://github.com/thomas682/HA-Addons/issues/342))
+- Dashboard/Caching: Info-Button im Analysecache-Zeitstrahl (`cache_timeline.btn_info`) zeigt wieder Details an. Ursache war, dass der globale `ib_info_icon`-Delegator in `_tooltips.html` den Klick vor dem spezifischen Handler abfing und mit leerem `data-info-title/body` ein leeres Popup anzeigte. Fix: der globale Delegator ueberspringt Buttons mit `data-cache-info` bzw. `data-info-skip-global` oder ohne `data-info-title/body`. Der Cache-Detail-Handler hat zusaetzlich Debounce, robustere Fehlerbehandlung (Meldung bei Netz-/API-Fehler) und loggt Fehler an `./api/client_log`. ([#343](https://github.com/thomas682/HA-Addons/issues/343))
+
+### Enhancement
+
+- Dashboard/Caching: Analysecache-Zeitstrahl modernisiert. Ausreisser-Markierungen sind nun breiter, abgerundet und zeigen beim Hover einen Tooltip mit Zeitstempel, Typ und Wert. Backend liefert zusaetzlich `outlier_details` (Zeit, Typen, Wert) pro Segment; das bestehende `outlier_times`-Feld bleibt fuer Rueckwaertskompatibilitaet erhalten. ([#346](https://github.com/thomas682/HA-Addons/issues/346))
+- Dashboard/Analyse: Button-Leiste der `analysis_section` nutzt jetzt das standardisierte `table_wrap` / `tbl_actions` Pattern aus Template.md, konsistent mit anderen Toolbars. ([#344](https://github.com/thomas682/HA-Addons/issues/344))
+- Dashboard/Analyse: Typen-Auswahl (gewaehlt/abgewaehlt) im Chip-Grid-Pattern mit Farbindikator, Hover-Effekten und Active/Inactive States, konsistent mit der Performanceanalyse. ([#345](https://github.com/thomas682/HA-Addons/issues/345))
+- Dashboard: Analyse-Zustand (Cache-Plan-Auswahl, Status-Text, Caching-Summary) wird in `sessionStorage` persistiert und beim erneuten Oeffnen sofort wiederhergestellt. Zusaetzlich validiert das UI asynchron gegen den Server (Hybrid-Modus) und aktualisiert die Anzeige still, falls sich der Serverzustand geaendert hat. ([#347](https://github.com/thomas682/HA-Addons/issues/347))
+- Picker/S-Picker: Erweiterter Multi-Pick-Modus. Shift+Klick auf Picker oder S-Picker startet die Mehrfachauswahl. Unterhalb der Pagecard erscheint eine Statusleiste mit den erfassten Elementen als anklickbare Chips (Klick = Entfernen). Buttons: "Ende" (kopiert alles als `<page,data-ui,id>;<page,data-ui,id>;...`), "Letztes loeschen", "Abbruch". Picked-Elemente erhalten solange sie in der Liste sind einen farbigen Rahmen; ESC bricht ab. ([#348](https://github.com/thomas682/HA-Addons/issues/348))
+
+### Security
+
+- Topbar-Fetches (`page_view`, `ui_event`, `client_log`) setzen explizit `credentials: 'same-origin'` und die CSRF-Header, um HA Ingress Proxies tolerant zu bleiben.
+- `#347` Wiederherstellung der Caching-Summary aus `sessionStorage` verwendet eine defensive HTML-Saeuberung (Entfernen von `<script>`, `<iframe>`, `on*`-Handlern, `javascript:` URLs) und begrenzt die maximale Groesse auf 200.000 Zeichen, auch wenn die Snapshot-Quelle same-origin ist.
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`, `pytest tests/` (142 passed, 37 pre-existing failures unrelated to dieser Aenderung — unveraenderter Ausgangszustand).
+- Tested with Home Assistant Core: 2026.4.3
+
 ## 1.12.386
 
 ### Enhancement

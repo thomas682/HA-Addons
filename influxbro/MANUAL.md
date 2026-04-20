@@ -76,6 +76,7 @@ Neu: Top-Leiste (Profil + Zoom)
   - Zoom-Steuerung: `-` / `+` und die aktuelle Zoomstufe in `%`.
   - Seitensuche: durchsucht Controls und wichtige sichtbare Texte auf der aktuellen Seite und springt zu Treffern.
   - Picker / S-Picker: kopiert eine kurze Elementkennung im Format `<page,data-ui,id>` in die Zwischenablage, damit UI-Elemente eindeutig identifiziert werden koennen.
+  - Picker / S-Picker Multi-Pick (Shift+Klick): startet einen Mehrfach-Pick. Unter der Pagecard erscheint eine Statusleiste mit den erfassten Elementen als anklickbare Chips (Klick = Entfernen). Buttons `Ende` (kopiert alles als `<a,b,c>;<d,e,f>;...`), `Letztes loeschen`, `Abbruch`. ESC bricht ebenfalls ab; Picked-Elemente bleiben solange farbig umrandet, wie sie in der Liste sind.
 - Zoom wird im Browser gespeichert (pro Browser/Client).
 - Neu: Wenn im Browser noch keine Zoomstufe gespeichert ist, wird beim ersten Laden automatisch eine passende Default-Zoomstufe je nach Viewport-Breite gesetzt (z.B. iPhone groesser, Desktop 100%). Danach kannst du wie gewohnt mit `-`/`+` anpassen.
 
@@ -320,7 +321,10 @@ Raw Daten (DB):
 - Analyse-Section: Unterhalb der Quellauswahl gibt es einen eigenen Bereich `Analyse` mit Fortschrittsbalken, Checkliste, Chunk-Details und den gefundenen Ausreissern nach Typ.
 - Bei `Zeitraum = Alle` startet die Analyse nicht mehr pauschal bei 1970, sondern verwendet einen serverseitig gemerkten Analyse-Startwert pro Messwert. Standardmaessig wird auf `jetzt - Max. Alter der Datenanalyse (Jahre)` begrenzt; ist der aelteste bekannte Datensatz juenger, beginnt die Analyse dort.
 - Unter der Quellauswahl wird dazu `Analyse-Start`, `Ältester bekannter Datensatz` und `Ermittelt am` angezeigt. Mit `Startalter löschen` kannst du den gespeicherten Startwert fuer den aktuellen Messwert zuruecksetzen.
-- Die Ausreisser-Typen werden in der Analyse-Section ueber zwei Listen verwaltet: `Abgewählte Typen` und `Gewählte Typen`. Nur die rechts stehenden Typen werden analysiert.
+- Die Ausreisser-Typen werden in der Analyse-Section ueber zwei Chip-Listen verwaltet: `Abgewählte Typen` und `Gewählte Typen`. Nur die rechts stehenden Typen werden analysiert. Die Chips zeigen einen Farbindikator pro Typ, Hover-Effekte und unterschiedliche Active/Inactive-States (konsistent mit der Performanceanalyse).
+- Die Button-Leiste der Analyse-Section verwendet jetzt das standardisierte `table_wrap` / `tbl_actions` Pattern (siehe Template.md), damit Abstand/Design konsistent zu anderen Toolbars sind.
+- Der Analysecache-Zeitstrahl zeigt Ausreisser-Markierungen jetzt mit Tooltip: beim Hover erscheint ein kompakter Tooltip mit Zeitstempel, Typ(en) und Wert. Die Markierungen sind leicht vergroessert, abgerundet und zeigen einen weichen Uebergang beim Hovern.
+- Dashboard-Zustand beim Seitenwechsel: Der zuletzt geladene Analyse-Cache-Plan, der Status-Text und die Caching-Summary werden im `sessionStorage` zwischengespeichert. Beim erneuten Oeffnen der Dashboard-Seite werden sie sofort wiederhergestellt, und das UI validiert im Hintergrund gegen den Server (Hybrid-Modus); bei veraenderten Serverdaten wird die Anzeige still aktualisiert.
 - Die Analyse-History (`Analyse-Verlauf`) zeigt die komplette Analyse inklusive Fortschritt, Chunks, Typ-Auswahl und Ergebnis-Zusammenfassung.
 - Die Analyse-Sektion besitzt jetzt eigene Buttons fuer `Analyse-Abbruch`, `Query anzeigen`, `Query testen` und `Gesamtstatistik`.
 - Bei `Analyse mit Cache` werden grosse Restbereiche vor dem ersten Fetch in Tages-Chunks zerlegt. Die Chunk-Groesse passt sich weiter an die Zielzeit `ui_raw_target_chunk_ms` an und versucht Fehler mit kleineren Chunks bis zu drei Mal erneut.

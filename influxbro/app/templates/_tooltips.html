@@ -742,6 +742,15 @@
       const t = ev && ev.target ? ev.target : null;
       const btn = t && t.closest ? t.closest('button.ib_info_icon') : null;
       if(!btn) return;
+      // Skip the global delegator when the button has a specific handler bound by
+      // the page, signalled either by a dedicated attribute or by the absence of
+      // both data-info-title and data-info-body while carrying a specific payload
+      // (e.g. data-cache-info for the cache timeline info button in #343).
+      const hasTitle = !!btn.getAttribute('data-info-title');
+      const hasBody = !!btn.getAttribute('data-info-body');
+      const skipGlobal = btn.hasAttribute('data-info-skip-global') || !!btn.getAttribute('data-cache-info');
+      if(skipGlobal) return;
+      if(!hasTitle && !hasBody) return;
       ev.preventDefault();
       ev.stopPropagation();
       _show(btn);

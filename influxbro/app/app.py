@@ -4431,6 +4431,33 @@ def _analysis_outlier_times(rows: list[dict[str, Any]]) -> list[str]:
     return out
 
 
+def _analysis_outlier_details(rows: list[dict[str, Any]], limit: int = 500) -> list[dict[str, Any]]:
+    """Return compact outlier details for timeline tooltip rendering."""
+    out: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for row in rows or []:
+        if not isinstance(row, dict):
+            continue
+        ts = str(row.get("time") or "").strip()
+        if not ts or ts in seen:
+            continue
+        seen.add(ts)
+        types_raw = row.get("types") if isinstance(row.get("types"), list) else []
+        types_s = [str(t or "").strip() for t in types_raw if str(t or "").strip()]
+        detail: dict[str, Any] = {"time": ts, "types": types_s}
+        val = row.get("value")
+        if val is not None:
+            try:
+                detail["value"] = float(val)
+            except (TypeError, ValueError):
+                detail["value"] = str(val)
+        out.append(detail)
+        if len(out) >= limit:
+            break
+    out.sort(key=lambda d: str(d.get("time") or ""))
+    return out
+
+
 def _analysis_cache_resolve_segment_reuse(
     cfg: dict[str, Any],
     meta: dict[str, Any],
@@ -14139,6 +14166,7 @@ def api_analysis_cache_plan():
             "checkpoint_count": int(meta.get("checkpoint_count") or 0),
             "type_counts": _analysis_type_counts(filtered_rows),
             "outlier_times": _analysis_outlier_times(filtered_rows),
+            "outlier_details": _analysis_outlier_details(filtered_rows),
         })
     out_gaps = [{"start": _dt_to_rfc3339_utc(a), "stop": _dt_to_rfc3339_utc(b)} for a, b in (plan.get("gaps") or [])]
     out_dirty = [{"start": _dt_to_rfc3339_utc(a), "stop": _dt_to_rfc3339_utc(b)} for a, b in (plan.get("dirty_ranges") or [])]

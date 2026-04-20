@@ -236,6 +236,24 @@
 
     .section { margin-top: 14px; }
     .section_title { font-weight: 700; margin: 14px 0 6px 0; }
+
+    /* Chip-grid for outlier type selection */
+    .ib-chip-grid { display:flex; flex-wrap:wrap; gap:6px; }
+    .ib-chip { display:inline-flex; align-items:center; gap:6px; background:#f8f8f8; border:1px solid #ddd; border-radius:20px; padding:4px 14px 4px 10px; cursor:pointer; transition:all 0.2s ease; user-select:none; position:relative; overflow:hidden; font-size:12px; }
+    .ib-chip::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg, var(--ib-chip-color, #5ea56a) 0%, transparent 60%); opacity:0; transition:opacity 0.2s; }
+    .ib-chip:hover { border-color:#999; transform:translateY(-1px); box-shadow:0 2px 6px rgba(0,0,0,0.08); }
+    .ib-chip:hover::before { opacity:0.06; }
+    .ib-chip.ib-chip-active { border-color:var(--ib-chip-color, #5ea56a); }
+    .ib-chip.ib-chip-active::before { opacity:0.12; }
+    .ib-chip.ib-chip-inactive { opacity:0.4; border-color:transparent; transform:scale(0.97); }
+    .ib-chip.ib-chip-inactive:hover { opacity:0.6; }
+    .ib-chip-dot { width:8px; height:8px; border-radius:50%; background:var(--ib-chip-color, #5ea56a); flex-shrink:0; position:relative; z-index:1; transition:background 0.2s; }
+    .ib-chip.ib-chip-inactive .ib-chip-dot { background:#999; }
+    .ib-chip-label { position:relative; z-index:1; font-family:inherit; }
+
+    /* Outlier markers in cache timeline */
+    .ib-ol-marker:hover { opacity:1 !important; width:6px !important; margin-left:-3px !important; z-index:2; }
+    .ib-ol-tooltip { position:fixed; z-index:100010; background:#1a1a2e; color:#fff; font-size:11px; line-height:1.5; padding:6px 10px; border-radius:8px; pointer-events:none; max-width:360px; white-space:pre-line; box-shadow:0 4px 12px rgba(0,0,0,0.25); opacity:0; transition:opacity 0.15s; }
     .stats_tbl { border-collapse: collapse; width: 100%; }
     .stats_tbl td { border: 1px solid #eee; padding: 0 6px; font-size: 11px; line-height: 1.2; vertical-align: middle; }
     .stats_tbl td.k { width: 220px; opacity: 0.75; }
@@ -460,7 +478,9 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
     <details id="analysis_section" class="section" open data-ui="dashboard_analysis.section_root" title="dashboard_analysis.section_root">
       <summary><span class="ib_summary_row"><span>Analyse</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Analyse" data-info-body="Ausreisser-Analyse ueber den gewaehlten Zeitraum.\n\nZeigt:\n- Quellparameter und Zeitraum\n- Fortschrittsbalken (0-100%)\n- Checkliste der Analyseetappen\n- Aktueller Chunk mit Zeitbereich und Dauer\n- Intervall-Info mit Timeout-Warnung\n- Gefundene Ausreisser nach Typ" ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
        <div class="card_body">
-         <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
+        <div class="table_wrap" id="analysis_actions_wrap" data-ui="dashboard_analysis.table_wrap_actions" title="dashboard_analysis.table_wrap_actions">
+          <div class="table_head" style="min-width:0;">
+            <div class="tbl_actions" data-ui="dashboard_analysis.row_actions" title="dashboard_analysis.row_actions">
            <button id="analysis_run_with_cache" class="btn_sm" style="width:auto;" data-ui="dashboard_analysis.btn_analyse_mit_cache">Analyse mit Cache</button>
            <button id="analysis_run_without_cache" class="btn_sm" style="width:auto;" data-ui="dashboard_analysis.btn_analyse_ohne_cache">Analyse ohne Cache</button>
            <button id="analysis_abort" class="btn_sm" style="width:auto; display:none;" data-ui="dashboard_analysis.btn_abbruch">Analyse-Abbruch</button>
@@ -468,7 +488,9 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
            <button id="analysis_query_test" type="button" class="btn_sm" style="width:auto; min-width:34px; padding:6px 8px;" data-ui="dashboard_analysis.btn_query_test" aria-label="Analyse Query testen" title="dashboard_analysis.btn_query_test"><svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="#000000" width="18" height="18" aria-hidden="true" focusable="false"><path d="M6 10V9h9v1H6zm4-4h5v1h-5V6zm5-3v1H6V3h9zm-9 9v1h9v-1H6z"></path><path fill-rule="evenodd" clip-rule="evenodd" d="M1 2.795l.783-.419 5.371 3.581v.838l-5.371 3.581L1 9.957V2.795zm1.007.94v5.281l3.96-2.64-3.96-2.64z"></path></svg></button>
            <button id="analysis_stats_total" type="button" class="btn_sm" style="width:auto; min-width:34px; padding:6px 8px;" data-ui="dashboard_analysis.btn_gesamtstatistik_anzeigen" aria-label="Analyse Gesamtstatistik anzeigen" title="dashboard_analysis.btn_gesamtstatistik_anzeigen"><svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><path d="M5,9h18v1H5V9z M5,13h8v9H5V13z M6,21h6v-7H6V21z M16,14h7v-1h-7V14z M16,16h7v-1h-7V16z M16,20h7v-1 h-7V20z M16,18h7v-1h-7V18z M16,22h7v-1h-7V22z M32,7v17c0,2.206-1.794,4-4,4H4c-2.206,0-4-1.794-4-4V5c0-0.552,0.448-1,1-1h26 c0.552,0,1,0.448,1,1v1h3C31.552,6,32,6.448,32,7z M30,8h-3v14h-1V7V6H2v18c0,1.103,0.897,2,2,2h24c1.103,0,2-0.897,2-2V8z"></path></svg></button>
            <button id="analysis_logs_open" type="button" class="btn_sm" style="width:auto;" data-ui="dashboard_analysis.btn_logs">Logs</button>
+            </div>
           </div>
+        </div>
           <div id="analysis_inline_stats" class="muted" data-ui="dashboard_analysis.txt_inline_stats" style="font-size:12px;margin-bottom:8px;"></div>
          <div id="analysis_stats_panel" style="display:none; border:1px solid #eee; border-radius:12px; padding:12px 14px; margin-bottom:10px; background:#fafafa; font-size:13px; line-height:1.7;">
            <div style="font-weight:600; margin-bottom:6px;">Messwert-Information</div>
@@ -492,14 +514,14 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
           <button class="btn_sm" id="analysis_types_reset" style="width:auto;" data-ui="dashboard_analysis.btn_typen_reset">Reset</button>
           <label style="display:flex;align-items:center;gap:6px;font-size:12px;"><input type="checkbox" id="analysis_types_show_ignored" data-ui="dashboard_analysis.chk_ignoriert"/>Ignoriert</label>
         </div>
-        <div style="display:flex;gap:12px;margin-bottom:8px;">
-          <div style="flex:1;">
-            <div style="font-size:11px;opacity:0.7;margin-bottom:4px;">Gewaehlte Typen</div>
-            <div id="analysis_types_selected" data-ui="dashboard_analysis.panel_typen_gewaehlt" style="border:1px solid #eee;border-radius:8px;padding:8px;min-height:40px;"></div>
+        <div style="display:flex;gap:12px;margin-bottom:8px;flex-wrap:wrap;">
+          <div style="flex:1 1 200px; min-width:180px;">
+            <div style="font-size:11px;opacity:0.7;margin-bottom:6px;">Gewaehlte Typen</div>
+            <div id="analysis_types_selected" class="ib-chip-grid" data-ui="dashboard_analysis.panel_typen_gewaehlt" style="border:1px solid #eee;border-radius:12px;padding:10px;min-height:40px;"></div>
           </div>
-          <div style="flex:1;">
-            <div style="font-size:11px;opacity:0.7;margin-bottom:4px;">Abgewaehlte Typen</div>
-            <div id="analysis_types_unselected" data-ui="dashboard_analysis.panel_typen_abgewaehlt" style="border:1px solid #eee;border-radius:8px;padding:8px;min-height:40px;"></div>
+          <div style="flex:1 1 200px; min-width:180px;">
+            <div style="font-size:11px;opacity:0.7;margin-bottom:6px;">Abgewaehlte Typen</div>
+            <div id="analysis_types_unselected" class="ib-chip-grid" data-ui="dashboard_analysis.panel_typen_abgewaehlt" style="border:1px solid #eee;border-radius:12px;padding:10px;min-height:40px;"></div>
           </div>
         </div>
       </div>
@@ -1901,6 +1923,9 @@ function cacheSaveNow(){
       outlier_rows: OUTLIER_ROWS || [],
       selected_keys: Array.from(FILTER_SELECTED || []),
       staged: Array.from(EDIT_LIST.values ? EDIT_LIST.values() : []),
+      analysis_cache_plan_choice: ANALYSIS_CACHE_PLAN_CHOICE || null,
+      analysis_status_text: (function(){ try{ const el = document.getElementById('analysis_status'); return el ? el.textContent : ''; }catch(e){ return ''; } })(),
+      analysis_summary_html: (function(){ try{ const el = document.getElementById('analysis_confirm_cache_summary'); return el ? el.innerHTML : ''; }catch(e){ return ''; } })(),
     };
     sessionStorage.setItem(key, JSON.stringify(payload));
     try{ sessionStorage.setItem(SS_CACHE_LAST, JSON.stringify(payload)); }catch(e){}
@@ -1983,6 +2008,88 @@ function cacheRestoreIfAvailable(){
     }catch(e){}
 
     try{ refreshEditGraph().catch(()=>{}); }catch(e){}
+
+    // #347 Hybrid restore of dashboard analysis state:
+    // 1) Instant restore from sessionStorage snapshot (fast visual continuity).
+    // 2) Async server revalidation: re-fetch the cache plan for the current
+    //    filters and replace the DOM if server data differs.
+    try{
+      if(j && typeof j === 'object'){
+        if(j.analysis_cache_plan_choice && typeof j.analysis_cache_plan_choice === 'object'){
+          ANALYSIS_CACHE_PLAN_CHOICE = Object.assign(
+            { cacheStrategy: 'reuse', plan: null },
+            j.analysis_cache_plan_choice,
+          );
+        }
+        if(typeof j.analysis_status_text === 'string'){
+          try{
+            const el = document.getElementById('analysis_status');
+            if(el) el.textContent = j.analysis_status_text;
+          }catch(e){}
+        }
+        if(typeof j.analysis_summary_html === 'string'){
+          try{
+            const el = document.getElementById('analysis_confirm_cache_summary');
+            if(el){
+              // Defensive sanitization before reinjection: sessionStorage is same-origin
+              // and the snapshot came from our own render, but we still drop script/iframe
+              // and inline event handlers in case a prior render ever contained user-derived
+              // content. Size-capped to avoid pathological payloads.
+              const raw = String(j.analysis_summary_html).slice(0, 200000);
+              const cleaned = raw
+                .replace(/<\s*script[\s\S]*?<\s*\/\s*script\s*>/gi, '')
+                .replace(/<\s*iframe[\s\S]*?<\s*\/\s*iframe\s*>/gi, '')
+                .replace(/\son[a-z]+\s*=\s*"[^"]*"/gi, '')
+                .replace(/\son[a-z]+\s*=\s*'[^']*'/gi, '')
+                .replace(/\son[a-z]+\s*=\s*[^\s>]+/gi, '')
+                .replace(/javascript:/gi, '');
+              el.innerHTML = cleaned;
+            }
+          }catch(e){}
+        }
+      }
+    }catch(e){}
+
+    // Async server revalidation for #347: compare restored snapshot against a
+    // fresh server plan; if it differs, replace quietly. Best-effort only.
+    try{
+      const base = (typeof currentFilters === 'function') ? currentFilters() : null;
+      if(base && base.measurement && base.field && typeof fetchAnalysisCachePlan === 'function'){
+        const restoredSig = (function(){
+          try{
+            const p = ANALYSIS_CACHE_PLAN_CHOICE && ANALYSIS_CACHE_PLAN_CHOICE.plan ? ANALYSIS_CACHE_PLAN_CHOICE.plan : null;
+            if(!p) return '';
+            return JSON.stringify([
+              (p.segments || []).map(s => String(s.cache_id || '') + '|' + String(s.updated_at || '')),
+              (p.gaps || []).length,
+              (p.dirty_ranges || []).length,
+            ]);
+          }catch(e){ return ''; }
+        })();
+        (async ()=>{
+          try{
+            const win = (typeof resolveEffectiveAnalysisWindow === 'function')
+              ? await resolveEffectiveAnalysisWindow()
+              : null;
+            if(!win || !win.start || !win.stop) return;
+            const fresh = await fetchAnalysisCachePlan(base, win);
+            if(!fresh) return;
+            const freshSig = JSON.stringify([
+              (fresh.segments || []).map(s => String(s.cache_id || '') + '|' + String(s.updated_at || '')),
+              (fresh.gaps || []).length,
+              (fresh.dirty_ranges || []).length,
+            ]);
+            if(freshSig && freshSig !== restoredSig){
+              ANALYSIS_CACHE_PLAN_CHOICE = Object.assign({}, ANALYSIS_CACHE_PLAN_CHOICE || {}, { plan: fresh });
+              try{ if(typeof refreshCachingSection === 'function') refreshCachingSection(); }catch(e){}
+            }
+          }catch(e){
+            // Silent: hybrid revalidation is best-effort only.
+          }
+        })();
+      }
+    }catch(e){}
+
     return true;
   }catch(e){
     return false;
@@ -6225,16 +6332,24 @@ function renderAnalysisTypeLists(){
       if(!$unselected || !$selected) return;
       if($showIgnored) $showIgnored.checked = !!ANALYSIS_SHOW_IGNORED;
 
+      const _chipColors = {counter:'#5ea56a',decrease:'#d47d57',bounds:'#5d86d6',gap:'#8b66d1',fault_phase:'#d7a545',null:'#4da790',zero:'#d46a6a',ignored:'#999'};
+      function _chipHtml(t, label, active){
+        const color = _chipColors[t] || '#5ea56a';
+        const cls = active ? 'ib-chip ib-chip-active' : 'ib-chip ib-chip-inactive';
+        return '<div class="' + cls + '" style="--ib-chip-color:' + color + ';" data-type="' + t + '" data-list="' + (active ? 'selected' : 'unselected') + '" title="Klicken zum ' + (active ? 'Abwaehlen' : 'Auswaehlen') + '">'
+          + '<div class="ib-chip-dot"></div>'
+          + '<span class="ib-chip-label">' + label + '</span>'
+          + '</div>';
+      }
+
       $selected.innerHTML = ANALYSIS_SELECTED_TYPES.map(t => {
         const type = ALL_OUTLIER_TYPES.find(x => x.value === t);
-        const label = type ? type.label : t;
-        return '<div style="padding:4px 8px;margin:2px 0;background:#e8f5e9;border-radius:4px;cursor:pointer;font-size:12px;" data-type="' + t + '" data-list="selected">' + label + '</div>';
+        return _chipHtml(t, type ? type.label : t, true);
       }).join('') || '<div style="opacity:0.5;font-size:11px;">Keine</div>';
 
       $unselected.innerHTML = ANALYSIS_UNSELECTED_TYPES.map(t => {
         const type = ALL_OUTLIER_TYPES.find(x => x.value === t);
-        const label = type ? type.label : t;
-        return '<div style="padding:4px 8px;margin:2px 0;background:#f5f5f5;border-radius:4px;cursor:pointer;font-size:12px;" data-type="' + t + '" data-list="unselected">' + label + '</div>';
+        return _chipHtml(t, type ? type.label : t, false);
       }).join('') || '<div style="opacity:0.5;font-size:11px;">Keine</div>';
 
       // Add click handlers
@@ -7307,11 +7422,21 @@ function _analysisCacheTimelineHtml(plan){
     const border = ui.active ? bd : ANALYSIS_CACHE_HIDDEN_COLOR;
     parts.push(_analysisCacheTimelineSegHtml(seg.use_start || seg.covered_start, seg.use_stop || seg.covered_stop, startMs, stopMs, color, border, ui.hl, 'Cache ' + (idx + 1)));
     if(ui.ol){
-      (Array.isArray(seg.outlier_times) ? seg.outlier_times : []).forEach((ts)=>{
-        const ms = Date.parse(String(ts || ''));
+      const details = Array.isArray(seg.outlier_details) ? seg.outlier_details : [];
+      const times = details.length ? null : (Array.isArray(seg.outlier_times) ? seg.outlier_times : []);
+      const typeLabels = {counter:'Counter',decrease:'Counter Abfall',bounds:'Grenzen',gap:'Messwertluecke',fault_phase:'Stoerphase',null:'NULL',zero:'0-Werte',ignored:'Ignoriert'};
+      const items = details.length ? details : (times || []).map(t => ({time: t}));
+      items.forEach((item)=>{
+        const ts = String(item.time || '');
+        const ms = Date.parse(ts);
         if(!(isFinite(ms) && stopMs > startMs)) return;
         const left = Math.max(0, Math.min(100, ((ms - startMs) / (stopMs - startMs)) * 100));
-        parts.push('<div title="Ausreißer: ' + _escHtml(fmtTs(ts)) + '" style="position:absolute;left:' + left.toFixed(3) + '%;top:0;bottom:0;width:0;border-left:2px solid ' + (ui.active ? bd : ANALYSIS_CACHE_HIDDEN_COLOR) + ';"></div>');
+        const typesArr = Array.isArray(item.types) ? item.types : [];
+        const typeStr = typesArr.map(t => typeLabels[t] || t).join(', ') || '';
+        const valStr = (item.value !== undefined && item.value !== null) ? (' | Wert: ' + String(item.value)) : '';
+        const tip = 'Ausreisser: ' + fmtTs(ts) + (typeStr ? ' | Typ: ' + typeStr : '') + valStr;
+        const olColor = ui.active ? bd : ANALYSIS_CACHE_HIDDEN_COLOR;
+        parts.push('<div class="ib-ol-marker" data-ol-tip="' + _escAttr(tip) + '" style="position:absolute;left:' + left.toFixed(3) + '%;top:0;bottom:0;width:4px;margin-left:-2px;background:' + olColor + ';opacity:0.7;border-radius:1px;cursor:pointer;transition:opacity 0.15s,width 0.15s;"></div>');
       });
     }
     labels.push(
@@ -7363,16 +7488,63 @@ function _analysisCacheTimelineHtml(plan){
     + (labels.length ? '<div style="display:flex;flex-direction:column;gap:4px;margin-top:8px;">' + labels.join('') + '</div>' : '');
 }
 
+// Debounce guard for the cache timeline info button (#343):
+// prevents double-fires from touch/click and concurrent popups.
+window.__ibCacheInfoBusy = window.__ibCacheInfoBusy || false;
+
 async function showAnalysisCacheBlockInfo(plan, cacheId){
+  if(window.__ibCacheInfoBusy) return;
+  window.__ibCacheInfoBusy = true;
+  // Safety-release in case of unexpected errors so the button stays usable.
+  const _releaseBusy = ()=>{ try{ window.__ibCacheInfoBusy = false; }catch(e){} };
+  setTimeout(_releaseBusy, 3000);
   try{
     const cid = String(cacheId || '').trim();
-    if(!cid) return;
+    // Robust fallback popup helper (works even if InfluxBroPopup is not yet loaded).
+    const _showPopup = (title, body)=>{
+      try{
+        if(window.InfluxBroPopup && window.InfluxBroPopup.show){
+          window.InfluxBroPopup.show(title, body);
+          return;
+        }
+      }catch(e){}
+      try{ alert(title + '\n\n' + body); }catch(x){}
+    };
+    if(!cid){
+      _showPopup('Cache Details', 'Keine Cache-ID vorhanden. Bitte waehle ein Cache-Segment aus dem Zeitstrahl aus.');
+      return;
+    }
     const segs = (plan && Array.isArray(plan.segments)) ? plan.segments : [];
     const segIdx = segs.findIndex(s => String(s && s.cache_id ? s.cache_id : '') === cid);
     const seg = segIdx >= 0 ? segs[segIdx] : null;
 
-    const j = await api('./api/analysis_cache/block_info?cache_id=' + encodeURIComponent(cid), null, { key: 'analysis_cache_block_info_' + cid, silent: true });
-    const info = j && j.info ? j.info : {};
+    let j = null;
+    let apiError = null;
+    try{
+      j = await api('./api/analysis_cache/block_info?cache_id=' + encodeURIComponent(cid), null, { silent: true });
+    }catch(apiErr){
+      // Capture error so we can show a meaningful message and log it to the backend.
+      apiError = apiErr;
+      j = null;
+      try{
+        fetch('./api/client_log', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-InfluxBro-Request': '1',
+            'X-Requested-With': 'InfluxBro',
+          },
+          body: JSON.stringify({
+            level: 'warning',
+            source: 'cache_timeline.btn_info',
+            message: 'block_info fetch failed: ' + String(apiErr && apiErr.message ? apiErr.message : apiErr),
+            cache_id: cid,
+          }),
+          credentials: 'same-origin',
+        }).catch(()=>{});
+      }catch(e){}
+    }
+    const info = (j && j.info) ? j.info : {};
 
     function _fmtBytes(n){
       try{
@@ -7418,9 +7590,33 @@ async function showAnalysisCacheBlockInfo(plan, cacheId){
       }
     }catch(e){}
 
-    if(window.InfluxBroPopup && window.InfluxBroPopup.show) window.InfluxBroPopup.show('Cache Details', lines.join('\n'));
+    if(apiError){
+      lines.push('');
+      lines.push('Hinweis: Serverdetails konnten nicht geladen werden (' + String(apiError && apiError.message ? apiError.message : apiError) + '). Angezeigt werden nur lokal bekannte Informationen.');
+    }
+
+    _showPopup('Cache Details', lines.join('\n'));
   }catch(e){
-    try{ if(window.InfluxBroPopup && window.InfluxBroPopup.show) window.InfluxBroPopup.show('Cache Details', String(e && e.message ? e.message : e)); }catch(x){}
+    const msg = 'Cache Details Fehler: ' + String(e && e.message ? e.message : e);
+    try{
+      if(window.InfluxBroPopup && window.InfluxBroPopup.show) window.InfluxBroPopup.show('Cache Details', msg);
+      else alert(msg);
+    }catch(x){}
+    // Also log to backend so failures are visible in the add-on log.
+    try{
+      fetch('./api/client_log', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-InfluxBro-Request': '1',
+          'X-Requested-With': 'InfluxBro',
+        },
+        body: JSON.stringify({level: 'error', source: 'cache_timeline.btn_info', message: msg}),
+        credentials: 'same-origin',
+      }).catch(()=>{});
+    }catch(_){}
+  }finally{
+    _releaseBusy();
   }
 }
 
@@ -11489,6 +11685,23 @@ async function refreshCachingSection(){
               if(!cid) return;
               showAnalysisCacheBlockInfo(analysisPlan, cid);
             });
+          });
+
+          // Outlier marker tooltips
+          let _olTip = document.getElementById('ib_ol_tooltip');
+          if(!_olTip){ _olTip = document.createElement('div'); _olTip.id = 'ib_ol_tooltip'; _olTip.className = 'ib-ol-tooltip'; document.body.appendChild(_olTip); }
+          $timeline.querySelectorAll('.ib-ol-marker[data-ol-tip]').forEach((el)=>{
+            el.addEventListener('mouseenter', (ev)=>{
+              const tip = String(el.getAttribute('data-ol-tip') || '');
+              if(!tip) return;
+              _olTip.textContent = tip;
+              _olTip.style.opacity = '1';
+              const r = el.getBoundingClientRect();
+              _olTip.style.left = Math.min(window.innerWidth - 380, Math.max(8, r.left - 60)) + 'px';
+              _olTip.style.top = (r.top - _olTip.offsetHeight - 8) + 'px';
+              if(parseFloat(_olTip.style.top) < 4) _olTip.style.top = (r.bottom + 8) + 'px';
+            });
+            el.addEventListener('mouseleave', ()=>{ _olTip.style.opacity = '0'; });
           });
         };
         rerenderTimeline();

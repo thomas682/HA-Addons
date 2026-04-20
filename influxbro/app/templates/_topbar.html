@@ -967,6 +967,14 @@
       let lastPointer = { x: null, y: null };
       let tooltipSuppressed = [];
 
+      // #348 Extended multi-pick mode state.
+      // Activated via Shift+Click on Picker or S-Picker button.
+      // Collects multiple picked elements; "Ende" copies as comma-separated single line.
+      let multiMode = false;
+      let multiBar = null;
+      let multiItems = []; // [{ key, display, el, outlineEl }]
+      const MULTI_OUTLINE_ATTR = 'data-ib-multipick-outline';
+
       // Picker outline config (loaded best-effort from /api/config on start)
       let PICKER_CFG = {
         ui_picker_outline_auto: true,
@@ -1206,6 +1214,7 @@
       try{
         if(!el) return true;
         if(el === overlay || el === badge || el === scrim) return true;
+        if(multiBar && el.closest && el.closest('#ib_multipick_bar')) return true;
         const id = String(el.getAttribute && el.getAttribute('id') || '').trim();
         if(id === 'ui_picker_toggle' || id === 'ui_superpicker_toggle') return true;
         return !!(el.closest && el.closest('#pagecard_topbar'));
@@ -1319,6 +1328,188 @@
       badge.style.top = Math.max(8, Math.min(window.innerHeight - 60, y)) + 'px';
     }
 
+    // ----- #348 Multi-pick helpers -----
+    function _multiKeyFor(target){
+      try{
+        const page = (window.currentPageLabel ? window.currentPageLabel() : 'Seite');
+        const el = target && target.el ? target.el : null;
+        const dataUi = el && el.getAttribute ? String(el.getAttribute('data-ui') || '').trim() : '';
+        const id = el && el.getAttribute ? String(el.getAttribute('id') || '').trim() : '';
+        return page + '|' + dataUi + '|' + id;
+      }catch(e){ return ''; }
+    }
+
+    function _multiDisplayFor(target){
+      try{
+        const page = (window.currentPageLabel ? window.currentPageLabel() : 'Seite');
+        const el = target && target.el ? target.el : null;
+        const dataUi = el && el.getAttribute ? String(el.getAttribute('data-ui') || '').trim() : '';
+        const id = el && el.getAttribute ? String(el.getAttribute('id') || '').trim() : '';
+        return '<' + [page, dataUi, id].join(',') + '>';
+      }catch(e){ return ''; }
+    }
+
+    function _multiOutlineApply(el){
+      try{
+        if(!el || !el.setAttribute) return;
+        if(el.hasAttribute(MULTI_OUTLINE_ATTR)) return;
+        el.setAttribute(MULTI_OUTLINE_ATTR, '1');
+        const prev = el.getAttribute('style') || '';
+        el.setAttribute('data-ib-multipick-prevstyle', prev);
+        const hex = _outlineHexFor(el);
+        el.style.outline = '2px solid ' + hex;
+        el.style.outlineOffset = '2px';
+      }catch(e){}
+    }
+
+    function _multiOutlineRemove(el){
+      try{
+        if(!el || !el.removeAttribute) return;
+        if(!el.hasAttribute(MULTI_OUTLINE_ATTR)) return;
+        const prev = el.getAttribute('data-ib-multipick-prevstyle') || '';
+        el.removeAttribute(MULTI_OUTLINE_ATTR);
+        el.removeAttribute('data-ib-multipick-prevstyle');
+        el.setAttribute('style', prev);
+      }catch(e){}
+    }
+
+    function _multiOutlineRemoveAll(){
+      try{
+        document.querySelectorAll('[' + MULTI_OUTLINE_ATTR + ']').forEach(_multiOutlineRemove);
+      }catch(e){}
+    }
+
+    function _multiBarEnsure(){
+      if(multiBar) return multiBar;
+      multiBar = document.createElement('div');
+      multiBar.id = 'ib_multipick_bar';
+      // Placed below pagecard (sticky topbar). Uses existing CSS vars for spacing.
+      multiBar.style.position = 'fixed';
+      multiBar.style.left = '12px';
+      multiBar.style.right = '12px';
+      multiBar.style.top = 'calc(var(--ib-topbar-h, 52px) + var(--ib-pagecard-live-h, 0px) + 4px)';
+      // Must be above scrim (99999) and overlay (100000) so chip/button clicks reach it.
+      multiBar.style.zIndex = '100002';
+      multiBar.style.background = '#1a1a2e';
+      multiBar.style.color = '#fff';
+      multiBar.style.border = '1px solid #333';
+      multiBar.style.borderRadius = '10px';
+      multiBar.style.padding = '8px 10px';
+      multiBar.style.boxShadow = '0 4px 14px rgba(0,0,0,0.25)';
+      multiBar.style.fontSize = '12px';
+      multiBar.style.lineHeight = '1.4';
+      multiBar.style.display = 'none';
+      multiBar.style.pointerEvents = 'auto';
+      multiBar.setAttribute('data-ui', 'picker_multi.panel_bar');
+      multiBar.setAttribute('title', 'picker_multi.panel_bar');
+      document.body.appendChild(multiBar);
+      return multiBar;
+    }
+
+    function _multiBarRender(){
+      _multiBarEnsure();
+      const chips = multiItems.map((it, idx)=>{
+        const safe = String(it.display || '')
+          .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        return '<span class="ib_mp_chip" data-mp-idx="' + idx + '" style="display:inline-flex;align-items:center;gap:4px;background:#2a2a44;border:1px solid #444;border-radius:14px;padding:2px 8px;margin:2px;cursor:pointer;" title="Klicken zum Entfernen">'
+          + '<span>' + safe + '</span>'
+          + '<span style="opacity:0.7;">x</span>'
+          + '</span>';
+      }).join('');
+      const count = multiItems.length;
+      multiBar.innerHTML =
+        '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'
+        + '<strong data-ui="picker_multi.lbl_title">Multi-Pick (' + count + ')</strong>'
+        + '<div id="ib_mp_chips" style="flex:1 1 auto;min-width:0;">' + (chips || '<em style="opacity:0.6;">Noch kein Element ausgewaehlt</em>') + '</div>'
+        + '<button type="button" id="ib_mp_end" class="btn_sm" data-ui="picker_multi.btn_ende" style="width:auto;">Ende</button>'
+        + '<button type="button" id="ib_mp_pop" class="btn_sm" data-ui="picker_multi.btn_letztes_loeschen" style="width:auto;">Letztes loeschen</button>'
+        + '<button type="button" id="ib_mp_cancel" class="btn_sm" data-ui="picker_multi.btn_abbruch" style="width:auto;">Abbruch</button>'
+        + '</div>';
+      multiBar.style.display = 'block';
+
+      // Wire chip click to toggle/remove.
+      try{
+        multiBar.querySelectorAll('.ib_mp_chip').forEach((chip)=>{
+          chip.addEventListener('click', (ev)=>{
+            try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+            const idx = Number(chip.getAttribute('data-mp-idx'));
+            if(!isFinite(idx) || idx < 0 || idx >= multiItems.length) return;
+            const removed = multiItems.splice(idx, 1)[0];
+            try{ if(removed && removed.el) _multiOutlineRemove(removed.el); }catch(e){}
+            _multiBarRender();
+          });
+        });
+      }catch(e){}
+
+      // Wire action buttons.
+      try{
+        const _b = (id)=>multiBar.querySelector('#' + id);
+        const endBtn = _b('ib_mp_end');
+        const popBtn = _b('ib_mp_pop');
+        const cancelBtn = _b('ib_mp_cancel');
+        if(endBtn) endBtn.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} _multiFinish(); });
+        if(popBtn) popBtn.addEventListener('click', (ev)=>{
+          try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+          if(!multiItems.length) return;
+          const removed = multiItems.pop();
+          try{ if(removed && removed.el) _multiOutlineRemove(removed.el); }catch(e){}
+          _multiBarRender();
+        });
+        if(cancelBtn) cancelBtn.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} _multiCancel(); });
+      }catch(e){}
+    }
+
+    function _multiBarHide(){
+      try{ if(multiBar) multiBar.style.display = 'none'; }catch(e){}
+    }
+
+    async function _multiFinish(){
+      try{
+        const text = multiItems.map(it => String(it.display || '')).filter(Boolean).join(';');
+        if(!text){
+          try{ if(window.InfluxBroPopup && window.InfluxBroPopup.show) window.InfluxBroPopup.show('UI Picker (Multi)', 'Kein Element ausgewaehlt.'); }catch(e){}
+        }else{
+          const ok = await copyText(text);
+          try{
+            if(window.InfluxBroPopup && window.InfluxBroPopup.show){
+              window.InfluxBroPopup.show('UI Picker (Multi)', ok ? ('Kopiert (' + multiItems.length + ' Elemente): ' + text) : ('Kopieren fehlgeschlagen: ' + text));
+            }
+          }catch(e){}
+        }
+      }catch(e){}
+      _multiCleanupAndStop();
+    }
+
+    function _multiCancel(){
+      _multiCleanupAndStop();
+    }
+
+    function _multiCleanupAndStop(){
+      try{ _multiOutlineRemoveAll(); }catch(e){}
+      multiItems = [];
+      multiMode = false;
+      _multiBarHide();
+      stop();
+    }
+
+    function _multiAddOrToggle(target){
+      if(!target || !target.el) return;
+      const key = _multiKeyFor(target);
+      if(!key) return;
+      const existingIdx = multiItems.findIndex(it => it.key === key);
+      if(existingIdx >= 0){
+        // Toggle off: remove from list.
+        const removed = multiItems.splice(existingIdx, 1)[0];
+        try{ if(removed && removed.el) _multiOutlineRemove(removed.el); }catch(e){}
+      }else{
+        const display = _multiDisplayFor(target);
+        if(!display) return;
+        multiItems.push({ key, display, el: target.el });
+        try{ _multiOutlineApply(target.el); }catch(e){}
+      }
+      _multiBarRender();
+    }
+
     function stop(){
       active = false;
       currentEl = null;
@@ -1354,6 +1545,8 @@
 
     function onMove(ev){
       if(!active) return;
+      // Do not track pointer hover over our own multi-pick bar.
+      try{ if(ev && ev.target && ev.target.closest && ev.target.closest('#ib_multipick_bar')){ overlay.style.display='none'; badge.style.display='none'; return; } }catch(e){}
       lastPointer = { x: ev.clientX, y: ev.clientY };
       currentTargetIndex = 0;
       renderTarget(pickTarget(ev.target, ev), ev);
@@ -1377,6 +1570,11 @@
     async function _copyCurrentTarget(target, ev){
       if(!target || !target.el) return;
       try{ ev && ev.preventDefault && ev.preventDefault(); ev && ev.stopPropagation && ev.stopPropagation(); }catch(e){}
+      // #348 In multi-pick mode, add/toggle the target and keep picking.
+      if(multiMode){
+        _multiAddOrToggle(target);
+        return;
+      }
       const el = target.el;
       const name = String(target.name || '').trim();
 
@@ -1444,6 +1642,8 @@
     function onMouseDown(ev){
       try{
         if(!active) return;
+        // Let clicks on the multi-pick bar through to its own handlers.
+        if(ev && ev.target && ev.target.closest && ev.target.closest('#ib_multipick_bar')) return;
         const t = pickTarget(ev.target, ev);
         if(!t || !t.el) return;
         _copyCurrentTarget(t, ev).catch(()=>{});
@@ -1452,28 +1652,49 @@
 
     async function onClick(ev){
       if(!active) return;
+      if(ev && ev.target && ev.target.closest && ev.target.closest('#ib_multipick_bar')) return;
       const t = pickTarget(ev.target, ev);
       if(!t || !t.el) return;
       await _copyCurrentTarget(t, ev);
     }
 
     function onKey(ev){
-      try{ if(ev && ev.key === 'Escape') stop(); }catch(e){}
+      try{
+        if(ev && ev.key === 'Escape'){
+          if(multiMode) _multiCancel();
+          else stop();
+        }
+      }catch(e){}
     }
 
       $btn.addEventListener('click', (ev)=>{
         try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
         writeSuper(false);
         applySuperUi();
-        if(active) stop();
-        else start().catch(()=>{});
+        // #348 Shift+Click activates extended multi-pick mode.
+        const wantMulti = !!(ev && ev.shiftKey);
+        if(active){
+          if(multiMode){ _multiCancel(); return; }
+          stop();
+          return;
+        }
+        multiMode = wantMulti;
+        if(multiMode){ multiItems = []; _multiBarRender(); }
+        start().catch(()=>{});
       });
       $superBtn.addEventListener('click', (ev)=>{
         try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
         writeSuper(true);
         applySuperUi();
-        if(active) stop();
-        else start().catch(()=>{});
+        const wantMulti = !!(ev && ev.shiftKey);
+        if(active){
+          if(multiMode){ _multiCancel(); return; }
+          stop();
+          return;
+        }
+        multiMode = wantMulti;
+        if(multiMode){ multiItems = []; _multiBarRender(); }
+        start().catch(()=>{});
       });
       applySuperUi();
     }
@@ -1761,14 +1982,38 @@
     }, true);
   }catch(e){}
 
-// Report page view on load
+// Report page view on load.
+// IMPORTANT: Set CSRF-relevant headers explicitly here. _topbar.html is included
+// before _nav.html, so the global fetch monkey-patch from _nav.html that normally
+// injects X-InfluxBro-Request is NOT yet active when this inline script runs.
+// We also add X-Requested-With for defense-in-depth against proxies that may
+// strip non-standard headers under HA Ingress.
 try{
-  const page = (window.location && window.location.pathname) ? String(window.location.pathname) : '';
+  const _pvPage = (window.currentPageLabel ? window.currentPageLabel() : '') || (window.location && window.location.pathname ? String(window.location.pathname).split('/').filter(Boolean).pop() : '');
   fetch('./api/page_view', {
     method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({page: page}),
-  }).catch(()=>{});
+    headers: {
+      'Content-Type': 'application/json',
+      'X-InfluxBro-Request': '1',
+      'X-Requested-With': 'InfluxBro',
+    },
+    body: JSON.stringify({page: _pvPage}),
+    credentials: 'same-origin',
+  }).catch((err)=>{
+    // Report client-side failure to backend log per AGENTS.md Support & Logging rule.
+    try{
+      fetch('./api/client_log', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-InfluxBro-Request': '1',
+          'X-Requested-With': 'InfluxBro',
+        },
+        body: JSON.stringify({level: 'warning', source: 'page_view', message: String(err && err.message || err)}),
+        credentials: 'same-origin',
+      }).catch(()=>{});
+    }catch(e){}
+  });
 }catch(e){}
 
 // Global action reporter for UI interactions
@@ -1779,10 +2024,16 @@ try{
     if(_ACTION_THROTTLE) clearTimeout(_ACTION_THROTTLE);
     _ACTION_THROTTLE = setTimeout(()=>{
       const page = (window.location && window.location.pathname) ? String(window.location.pathname) : '';
+      // Explicit CSRF headers: _topbar.html inline code may run before _nav.html monkey-patch is active.
       fetch('./api/ui_event', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          'X-InfluxBro-Request': '1',
+          'X-Requested-With': 'InfluxBro',
+        },
         body: JSON.stringify({type: type, ui: id, text: String(value || ''), page: page}),
+        credentials: 'same-origin',
       }).catch(()=>{});
     }, 300);
   }
