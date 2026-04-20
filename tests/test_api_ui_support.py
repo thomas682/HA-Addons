@@ -969,8 +969,8 @@ def test_picker_supports_superpicker_fallback_mode():
     assert "if(el && el.nodeType === Node.TEXT_NODE) el = el.parentElement;" in topbar
     assert "if(readSuper()){" in topbar
     assert "if(ui) return { el, name: ui, kind: 'data-ui' };" in topbar
-    assert "return { el, name: _fallbackNameFor(el), kind: 'fallback' };" in topbar
-    assert "const display = target.kind === 'fallback' ? ('fallback: <' + (name || 'element') + '>') : ('<' + (name || '(kein data-ui)') + '>');" in topbar
+    assert "return { el, name: _fallbackCssFor(el), kind: 'fallback' };" in topbar
+    assert "const display = target.kind === 'fallback' ? ('fallback:' + (name || 'element')) : ('<' + (name || '(kein data-ui)') + '>');" in topbar
     assert "badge.textContent = display;" in topbar
     assert "if(readSuper()){ if($superBtn) $superBtn.classList.add('active');" in topbar
 

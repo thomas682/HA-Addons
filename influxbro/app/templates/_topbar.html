@@ -1178,6 +1178,22 @@
       }catch(e){ return 'element'; }
     }
 
+    function _fallbackCssFor(el){
+      try{
+        if(!el || !el.tagName) return 'element';
+        const tag = String(el.tagName || '').toLowerCase() || 'element';
+        const id = String(el.getAttribute('id') || '').trim();
+        if(id) return tag + '#' + id;
+        const cls = String(el.className || '').trim().split(/\s+/).filter(Boolean).slice(0, 3);
+        if(cls.length) return tag + '.' + cls.join('.');
+        const role = String(el.getAttribute('role') || '').trim();
+        if(role) return tag + '[role=' + role + ']';
+        return tag;
+      }catch(e){
+        return 'element';
+      }
+    }
+
     function _targetsFromEvent(ev){
       try{
         const x = ev && typeof ev.clientX === 'number' ? ev.clientX : null;
@@ -1194,7 +1210,7 @@
         if(ui) return { el, name: ui, kind: 'data-ui' };
         const id = String(el.getAttribute && el.getAttribute('id') || '').trim();
         if(id) return { el, name: id, kind: 'id' };
-        return { el, name: _fallbackNameFor(el), kind: 'fallback' };
+        return { el, name: _fallbackCssFor(el), kind: 'fallback' };
       }catch(e){ return null; }
     }
 
@@ -1316,7 +1332,7 @@
       overlay.style.height = Math.max(0, r.height + 4) + 'px';
       const name = String(target.name || '').trim();
       const disabledTag = target.disabled ? ' [disabled]' : '';
-      const display = target.kind === 'fallback' ? ('fallback: <' + (name || 'element') + '>') : ('<' + (name || '(kein data-ui)') + '>');
+      const display = target.kind === 'fallback' ? ('fallback:' + (name || 'element')) : ('<' + (name || '(kein data-ui)') + '>');
       const pos = currentTargets.length > 1 ? (' (' + (currentTargetIndex + 1) + '/' + currentTargets.length + ')') : '';
       const hint = currentTargets.length > 1 ? ' | Mausrad: Treffer wechseln' : '';
       badge.textContent = display;
@@ -1332,6 +1348,10 @@
     function _multiKeyFor(target){
       try{
         const page = (window.currentPageLabel ? window.currentPageLabel() : 'Seite');
+        if(target && target.kind === 'fallback'){
+          const css = String(target.name || '').trim() || 'element';
+          return page + '|fallback:' + css + '|';
+        }
         const el = target && target.el ? target.el : null;
         const dataUi = el && el.getAttribute ? String(el.getAttribute('data-ui') || '').trim() : '';
         const id = el && el.getAttribute ? String(el.getAttribute('id') || '').trim() : '';
@@ -1342,6 +1362,10 @@
     function _multiDisplayFor(target){
       try{
         const page = (window.currentPageLabel ? window.currentPageLabel() : 'Seite');
+        if(target && target.kind === 'fallback'){
+          const css = String(target.name || '').trim() || 'element';
+          return '<' + [page, ('fallback:' + css), ''].join(',') + '>';
+        }
         const el = target && target.el ? target.el : null;
         const dataUi = el && el.getAttribute ? String(el.getAttribute('data-ui') || '').trim() : '';
         const id = el && el.getAttribute ? String(el.getAttribute('id') || '').trim() : '';

@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.392
+
+### Bugfix
+
+- S-Picker: Fallback-Ausgabe ist jetzt stabil als `fallback:<css>` (keine leeren Platzhalter wie `<Logs,,>` mehr) und wird im Multi-Pick ebenso im `<page,data-ui,id>` Format abgebildet. ([#353](https://github.com/thomas682/HA-Addons/issues/353))
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`, `pytest tests/test_api_ui_support.py`
+- Tested with Home Assistant Core: 2026.4.3
+
 ## 1.12.391
 
 ### Bugfix
