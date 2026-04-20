@@ -973,7 +973,8 @@ def test_topbar_uses_separate_pagecard_min_and_live_heights():
 def test_picker_supports_superpicker_fallback_mode():
     topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
     assert "id=\"ui_superpicker_toggle\"" in topbar
-    assert '>S-Picker<' in topbar
+    # UI switched to icon-only buttons (aria-label is the stable text anchor).
+    assert 'aria-label="S-Picker"' in topbar
     assert "const LS_SUPER = 'influxbro.ui_picker.super.v1';" in topbar
     assert "if(el && el.nodeType === Node.TEXT_NODE) el = el.parentElement;" in topbar
     assert "if(readSuper()){" in topbar

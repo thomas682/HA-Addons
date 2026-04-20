@@ -1916,6 +1916,27 @@ function cacheSaveDebounced(){
 function cacheSaveNow(){
   try{
     const key = _cacheKeyForCurrent();
+
+    const rowsNow = Array.isArray(LAST_ROWS) ? LAST_ROWS : [];
+    const outNow = Array.isArray(OUTLIER_ROWS) ? OUTLIER_ROWS : [];
+    const queryNow = ($queryPre ? String($queryPre.textContent || '') : '');
+    const summaryHtmlNow = (function(){ try{ const el = document.getElementById('analysis_confirm_cache_summary'); return el ? String(el.innerHTML || '') : ''; }catch(e){ return ''; } })();
+
+    // Avoid overwriting a good snapshot with an empty one during early renders/navigation.
+    const hasMeaningful = (rowsNow.length > 0) || (outNow.length > 0) || (queryNow.trim().length > 0) || (summaryHtmlNow.trim().length > 0);
+    if(!hasMeaningful){
+      return;
+    }
+
+    // Keep snapshots bounded to reduce sessionStorage quota issues.
+    const MAX_LAST_ROWS = 6000;
+    const MAX_OUTLIER_ROWS = 4000;
+    const MAX_SUMMARY_HTML = 200000;
+
+    const safeRows = rowsNow.length > MAX_LAST_ROWS ? rowsNow.slice(0, MAX_LAST_ROWS) : rowsNow;
+    const safeOut = outNow.length > MAX_OUTLIER_ROWS ? outNow.slice(0, MAX_OUTLIER_ROWS) : outNow;
+    const safeSummaryHtml = summaryHtmlNow.length > MAX_SUMMARY_HTML ? summaryHtmlNow.slice(0, MAX_SUMMARY_HTML) : summaryHtmlNow;
+
     const payload = {
       v: 1,
       at_ms: Date.now(),
@@ -1935,17 +1956,19 @@ function cacheSaveNow(){
       deriv_outlier_thr: $derivOutlierThr ? Number($derivOutlierThr.value || 90) : 90,
       reason_filter: $reasonFilter ? String($reasonFilter.value || "") : "",
       class_filter: $classFilter ? String($classFilter.value || "all") : "all",
-      last_rows: LAST_ROWS || [],
-      last_query: ($queryPre ? String($queryPre.textContent || '') : ''),
+      last_rows: safeRows,
+      last_query: queryNow,
       outlier_active: !!OUTLIER_ACTIVE,
-      outlier_rows: OUTLIER_ROWS || [],
+      outlier_rows: safeOut,
       selected_keys: Array.from(FILTER_SELECTED || []),
       staged: Array.from(EDIT_LIST.values ? EDIT_LIST.values() : []),
       analysis_cache_plan_choice: ANALYSIS_CACHE_PLAN_CHOICE || null,
       analysis_status_text: (function(){ try{ const el = document.getElementById('analysis_status'); return el ? el.textContent : ''; }catch(e){ return ''; } })(),
-      analysis_summary_html: (function(){ try{ const el = document.getElementById('analysis_confirm_cache_summary'); return el ? el.innerHTML : ''; }catch(e){ return ''; } })(),
+      analysis_summary_html: safeSummaryHtml,
     };
-    sessionStorage.setItem(key, JSON.stringify(payload));
+
+    // Best-effort: if quota is exceeded, keep the previous last snapshot.
+    try{ sessionStorage.setItem(key, JSON.stringify(payload)); }catch(e){}
     try{ sessionStorage.setItem(SS_CACHE_LAST, JSON.stringify(payload)); }catch(e){}
   }catch(e){}
 }

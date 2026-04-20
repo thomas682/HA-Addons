@@ -73,6 +73,7 @@ Neu: Top-Leiste (Profil + Zoom)
 - Ganz oben gibt es eine fixe Leiste (scrollt nicht mit), die immer sichtbar bleibt.
 - Enthalten:
   - Profil-Auswahl inkl. `Anwenden`, `Speichern`, `Info` und die aktuelle Version.
+    - Hinweis: Die Buttons `Anwenden`, `Speichern`, `Info`, `Picker` und `S-Picker` sind in der Topbar icon-only (Tooltip/aria-label bleibt erhalten).
   - Zoom-Steuerung: `-` / `+` und die aktuelle Zoomstufe in `%`.
   - Seitensuche: durchsucht Controls und wichtige sichtbare Texte auf der aktuellen Seite und springt zu Treffern.
   - Picker / S-Picker: kopiert eine kurze Elementkennung im Format `<page,data-ui,id[,oltype]>` in die Zwischenablage, damit UI-Elemente eindeutig identifiziert werden koennen.
@@ -329,6 +330,7 @@ Raw Daten (DB):
 - Die Button-Leiste der Analyse-Section verwendet jetzt das standardisierte `table_wrap` / `tbl_actions` Pattern (siehe Template.md), damit Abstand/Design konsistent zu anderen Toolbars sind.
 - Der Analysecache-Zeitstrahl zeigt Ausreisser-Markierungen jetzt mit Tooltip: beim Hover erscheint ein kompakter Tooltip mit Zeitstempel, Typ(en) und Wert. Die Markierungen sind leicht vergroessert, abgerundet und zeigen einen weichen Uebergang beim Hovern.
 - Dashboard-Zustand beim Seitenwechsel: Der zuletzt geladene Analyse-Cache-Plan, der Status-Text sowie Caching-Summary/Timeline/Aenderungen werden im `sessionStorage` zwischengespeichert. Beim erneuten Oeffnen der Dashboard-Seite werden sie sofort wiederhergestellt, und das UI validiert im Hintergrund gegen den Server (Hybrid-Modus); bei veraenderten Serverdaten wird die Anzeige still aktualisiert.
+  - Robustheit: InfluxBro ueberschreibt den letzten gueltigen Snapshot nicht mehr durch fruehe/leere Renders (z.B. direkt nach Navigation), und Snapshot-Daten sind groessenbegrenzt.
 - Die Analyse-History (`Analyse-Verlauf`) zeigt die komplette Analyse inklusive Fortschritt, Chunks, Typ-Auswahl und Ergebnis-Zusammenfassung.
 - Die Analyse-Sektion besitzt jetzt eigene Buttons fuer `abbrechen`, `Query anzeigen`, `Query testen` und `Gesamtstatistik`.
   - `abbrechen` ist nur bei laufender Analyse aktiv und bricht sowohl Analyse mit Cache als auch ohne Cache ab.

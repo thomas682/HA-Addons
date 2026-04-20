@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.12.398
+
+### Bugfix
+
+- Dashboard: Snapshot-Persistenz fuer Cache-Check/Ergebnisse ist robuster (kein Ueberschreiben des letzten gueltigen Snapshots durch fruehe/leere Renders; Snapshot-Groessen sind begrenzt, um sessionStorage-Quota-Probleme zu reduzieren). ([#356](https://github.com/thomas682/HA-Addons/issues/356))
+
+### Enhancement
+
+- Topbar (Dashboard): Profile-Buttons sind jetzt icon-only und nutzen neue Icons fuer `Anwenden`, `Speichern`, `Info`, `Picker` und `S-Picker` (dark-mode via `currentColor`). ([#357](https://github.com/thomas682/HA-Addons/issues/357))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`, `pytest -q`
+- Tested with Home Assistant Core: 2026.4.3
+
 ## 1.12.397
 
 ### Bugfix
