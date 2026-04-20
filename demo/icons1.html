@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InfluxBRO — Icon-Auswahl (3 Varianten)</title>
+<style>
+:root{
+  --bg:#0d1117;--bg2:#161b22;--bg3:#21262d;--bg4:#292e36;
+  --border:#30363d;--border-h:#484f58;
+  --text:#e6edf3;--text2:#8b949e;--text3:#6e7681;
+  --accent:#58a6ff;--green:#3fb950;--orange:#d29922;--red:#f85149;--purple:#bc8cff;--pink:#f778ba;--cyan:#39d2c0;
+  --mono:'SF Mono','Cascadia Code','Fira Code',monospace;
+  --sans:'Inter','SF Pro Display',-apple-system,sans-serif;
+  --tr:.22s cubic-bezier(.4,0,.2,1);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:13px;padding:24px 32px 80px}
+h1{font-size:22px;font-weight:700;margin-bottom:4px}
+.sub{color:var(--text2);font-size:13px;margin-bottom:8px}
+
+/* Summary bar */
+.summary{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:28px}
+.sum-chip{font-size:11px;padding:5px 14px;border-radius:20px;background:var(--bg2);border:1px solid var(--border);color:var(--text2);display:flex;align-items:center;gap:5px}
+.sum-chip .sv{font-weight:700;color:var(--accent)}
+
+/* Jump Nav */
+.jump-nav{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:24px;padding:12px;background:var(--bg2);border:1px solid var(--border);border-radius:10px}
+.jump-btn{font-size:10px;padding:4px 10px;border-radius:6px;background:var(--bg);border:1px solid var(--border);color:var(--text2);cursor:pointer;font-family:var(--sans);transition:var(--tr);text-decoration:none;white-space:nowrap}
+.jump-btn:hover{border-color:var(--accent);color:var(--accent)}
+
+/* Menu item row */
+.mi{margin-bottom:24px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden;scroll-margin-top:16px}
+.mi-head{display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid var(--border);background:var(--bg3)}
+.mi-num{font-size:11px;font-weight:700;font-family:var(--mono);color:var(--text3);background:var(--bg);padding:2px 8px;border-radius:6px;min-width:28px;text-align:center}
+.mi-name{font-size:15px;font-weight:700;flex:1}
+.mi-old{font-size:11px;color:var(--text3);font-family:var(--mono)}
+.mi-role{font-size:10px;padding:3px 10px;border-radius:12px;font-weight:600}
+
+/* 3 variant cards */
+.mi-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:0}
+.vc{padding:24px 20px;display:flex;flex-direction:column;align-items:center;gap:12px;border-right:1px solid var(--border);cursor:pointer;transition:all .25s;position:relative;min-height:180px}
+.vc:last-child{border-right:none}
+.vc:hover{background:rgba(88,166,255,.03)}
+.vc.picked{background:rgba(88,166,255,.06)}
+.vc.picked::after{content:'✅ Gewählt';position:absolute;top:8px;right:8px;font-size:9px;background:rgba(63,185,80,.15);color:var(--green);padding:2px 8px;border-radius:8px;font-weight:600}
+
+/* Variant label */
+.vc-label{font-size:10px;font-weight:700;padding:2px 10px;border-radius:10px;text-transform:uppercase;letter-spacing:.5px}
+.vc-label.a{background:rgba(88,166,255,.1);color:var(--accent)}
+.vc-label.b{background:rgba(188,140,255,.1);color:var(--purple)}
+.vc-label.c{background:rgba(210,153,34,.1);color:var(--orange)}
+
+/* Icon display */
+.vc-icon{width:44px;height:44px;transition:transform .2s}
+.vc:hover .vc-icon{transform:scale(1.15)}
+.vc-icon svg{width:44px;height:44px}
+
+/* Description */
+.vc-desc{font-size:11px;color:var(--text2);text-align:center;line-height:1.4;max-width:200px}
+
+/* Size previews */
+.vc-sizes{display:flex;align-items:center;gap:10px;margin-top:auto;padding-top:8px}
+.vc-sz{display:flex;align-items:center;justify-content:center;opacity:.6}
+.vc-sz svg{display:block}
+
+/* Copy button */
+.vc-copy{position:absolute;bottom:8px;right:8px;font-size:9px;background:var(--bg3);border:1px solid var(--border);color:var(--text3);padding:2px 8px;border-radius:6px;cursor:pointer;opacity:0;transition:var(--tr);font-family:var(--sans)}
+.vc:hover .vc-copy{opacity:1}
+.vc-copy:hover{border-color:var(--accent);color:var(--accent)}
+
+/* Sidebar preview */
+.preview-sidebar{position:fixed;right:24px;top:24px;width:260px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:0;z-index:50;box-shadow:0 12px 40px rgba(0,0,0,.5);max-height:calc(100vh - 48px);overflow-y:auto;display:none}
+.preview-sidebar.show{display:block}
+.ps-head{padding:12px 16px;border-bottom:1px solid var(--border);font-size:12px;font-weight:700;display:flex;align-items:center;gap:8px;position:sticky;top:0;background:var(--bg2);z-index:2}
+.ps-close{margin-left:auto;cursor:pointer;font-size:14px;color:var(--text3);transition:var(--tr)}
+.ps-close:hover{color:var(--red)}
+.psi{display:flex;align-items:center;gap:10px;padding:9px 16px;transition:var(--tr);border-left:3px solid transparent}
+.psi:first-of-type{border-left-color:var(--accent);background:rgba(88,166,255,.06)}
+.psi .psi-icon{width:20px;height:20px;flex-shrink:0;opacity:.55}
+.psi:first-of-type .psi-icon{opacity:1}
+.psi .psi-name{font-size:12px;color:var(--text2)}
+.psi:first-of-type .psi-name{color:var(--text);font-weight:600}
+.ps-sep{height:1px;background:var(--border);margin:4px 16px}
+
+/* Toggle */
+.preview-toggle{position:fixed;right:24px;top:24px;z-index:49;background:var(--bg3);border:1px solid var(--border);color:var(--text2);padding:8px 14px;border-radius:10px;cursor:pointer;font-family:var(--sans);font-size:12px;transition:var(--tr);display:flex;align-items:center;gap:6px}
+.preview-toggle:hover{border-color:var(--accent);color:var(--accent)}
+
+.copy-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--green);color:#000;padding:8px 20px;border-radius:10px;font-size:12px;font-weight:600;opacity:0;transition:opacity .3s;pointer-events:none;z-index:200}
+.copy-toast.show{opacity:1}
+
+@media(max-width:900px){.mi-cards{grid-template-columns:1fr}.vc{border-right:none;border-bottom:1px solid var(--border)}.vc:last-child{border-bottom:none}.preview-sidebar{display:none!important}}
+</style>
+</head>
+<body>
+
+<h1>🎨 Icon-Auswahl — 3 Varianten pro Menüpunkt</h1>
+<p class="sub">Klicke auf eine Variante um sie auszuwählen · Rechts siehst du die Live-Vorschau in der Sidebar</p>
+
+<div class="summary">
+  <div class="sum-chip"><span class="sv">18</span> Menüpunkte</div>
+  <div class="sum-chip"><span class="sv">54</span> Icons total</div>
+  <div class="sum-chip"><span class="sv">24×24</span> ViewBox</div>
+  <div class="sum-chip">Stroke 1.8px · Round Caps</div>
+</div>
+
+<div class="jump-nav" id="jumpNav"></div>
+
+<div id="catalog"></div>
+
+<button class="preview-toggle" id="previewToggle" onclick="togglePreview()">📱 Sidebar-Vorschau</button>
+<div class="preview-sidebar" id="previewSidebar">
+  <div class="ps-head">📱 Sidebar-Vorschau <span class="ps-close" onclick="togglePreview()">✕</span></div>
+  <div id="previewItems"></div>
+</div>
+
+<div class="copy-toast" id="toast">✅ SVG kopiert!</div>
+
+<script>
+// ════════════════════════════════════════════════════════════
+//  ALL 18 MENU ITEMS × 3 VARIANTS = 54 ICONS
+// ════════════════════════════════════════════════════════════
+const ITEMS = [
+
+// ───────── 1. Dashboard ─────────
+{
+  key:'dashboard', name:'Dashboard', old:'D',
+  role:'core', roleColor:'#58a6ff', roleBg:'rgba(88,166,255,.1)',
+  color:'#58a6ff',
+  variants:[
+    {
+      label:'Bento-Grid',
+      desc:'Asymmetrische Kacheln — modernes Dashboard-Layout',
+      svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="4" rx="1.5"/><rect x="14" y="11" width="7" height="10" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg>`
+    },
+    {
+      label:'Grid mit Pulse',
+      desc:'4 gleiche Kacheln — aktives Element markiert',
+      svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/><rect x="4.5" y="4.5" width="5" height="5" rx="1" fill="currentColor" opacity=".15"/></svg>`
+    },
+    {
+      label:'Panorama',
+      desc:'Breite + schmale Zeilen — Analytik-Feeling',
+      svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="6" rx="1.5"/><rect x="3" y="12" width="8" height="9" rx="1.5"/><rect x="14" y="12" width="7" height="4" rx="1.5"/><rect x="14" y="18.5" width="7" height="2.5" rx="1"/></svg>`
+    }
+  ]
+},
+
+// ───────── 2. Statistik ─────────
+{
+  key:'statistik', name:'Statistik', old:'T',
+  role:'core', roleColor:'#3fb950', roleBg:'rgba(63,185,80,.1)',
+  color:'#3fb950',
+  variants:[
+    {
+      label:'Balken + Dots',
+      desc:'Vertikale Bars mit Punkten — Diagramm-Klassiker',
+      svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20h18"/><path d="M6 16V10"/><path d="M10 16V5"/><path d="M14 16V12"/><path d="M18 16V8"/><circle cx="10" cy="5" r="1.2" fill="currentColor" stroke="none" opacity=".5"/><circle cx="18" cy="8" r="1.2" fill="currentColor" stroke="none" opacity=".5"/></svg>`
+    },
+    {
+      label:'Trend-Linie',
+      desc:'Aufsteigende Kurve — zeigt Wachstum/Trend',
+      svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20h18"/><path d="M3 17.5l4-3 3 2 4-5 4-3.5 3-1"/><circle cx="7" cy="14.5" r="1.5" fill="currentColor" opacity=".2"/><circle cx="14" cy="8.5" r="1.5" fill="currentColor" opacity=".2"/><circle cx="21" cy="4" r="1.5" fill="currentColor" opacity=".2"/></svg>`
+    },
+    {
+      label:'Pie + Bar',
+      desc:'Kreis- und Balken-Kombo — vielseitige Statistik',
+      svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="10" r="6"/><path d="M9 4v6h6"/><path d="M19 10v10"/><path d="M22 13v7"/><path d="M16 15v5"/><path d="M16 20h8" opacity=".4"/></svg>`
+    }
+  ]
+},
+
+// ───────── 3. Datenqualität ─────────
+{
+  key:'datenqualitaet', name:'Datenqualität', old:'Q',
+  role:'data', roleColor:'#39d2c0', roleBg:'rgba(57,210,192,.1)',
+  color:'#39d2c0',
+  variants:[
+    {
+      label:'Schild + Check',
+      desc:'Schutzschild mit Häkchen — Validierung & Sicherheit',
+      svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3L4 7v5c0 5.25 3.4 10.2 8 11.6 4.6-1.4 8-6.35 8-11.6V7l-8-4z"/><path d="M9 12l2 2 4-4" stroke-width="2"/></svg>`
+    },
+    {
+      label:'Lupe + Stern',
+      desc:'Qualitätsprüfung — Daten inspizieren',
+      svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="6.5"/><path d="M21 21l-4.35-4.35"/><path d="M10 7.5l1.2 2.5 2.8.4-2 2 .5 2.8L10 13.8l-2.5 1.4.5-2.8-2-2 2.8-.4L10 7.5z" fill="currentColor" opacity=".15"/></svg>`
+    },
+    {
+      label:'Gauge + Check',
+      desc:'Qualitätsanzeige — Messinstrument mit Bewertung',
+      svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4.93 4.93a10 10 0 1014.14 0"/><path d="M12 2v2"/><path d="M12 12l4-6" stroke-width="2"/><circle cx="18" cy="18" r="3.5" fill="var(--bg,#0d1117)" stroke="currentColor"/><path d="M16.5 18l1 1 2-2" stroke-width="1.8"/></svg>`
+    }
+  ]
+},
+
+// ───────── 4. Monitor ─────────
+{
+  key:'monitor', name:'Monitor', old:'O',
+  role:'core', roleColor:'#58a6ff', roleBg:'rgba(88,166,255,.1)',
+  color:'#58a6ff',
+  variants:[
+    {
+      label:'Screen + Graph',
+      desc:'Bildschirm mit Live-Kurve und grünem Status-Dot',
+      svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/><path d="M6 11l2.5-2.5 2 1.5 3-3.5 4 4" stroke-width="1.5"/><circle cx="18" cy="7" r="1.5" fill="#3fb950" stroke="none"/></svg>`
+    },
+    {
+      label:'Auge / Watch',
+      desc:'Beobachtungs-Auge — Überwachung und Alarmierung',
+      svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3.5"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg>`
+    },
+    {
+      label:'Radar / Pulse',
+      desc:'Radar-Sweep — aktives Monitoring mit Scan-Linie',
+      svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5" opacity=".4"/><circle cx="12" cy="12" r="1.5" fill="currentColor" opacity=".6"/><path d="M12 12l5-6" stroke-width="2" opacity=".7"/><circle cx="15" cy="9" r="2" fill="currentColor" opacity=".1"/></svg>`
+    }
+  ]
+},
+
+// ───────── 5. Backup ─────────
+{
+  key:'backup', name:'Backup', old:'B',
+  role:'backup', roleColor:'#d29922', roleBg:'rgba(210,153,34,.1)',
+  color:'#d29922',
+  variants:[
+    {
+      label:'Festplatte + Pfeil',
+      desc:'Daten werden auf Speichermedium gesichert',
+      svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 15h18" opacity=".4"/><circle cx="17" cy="17.5" r="1" fill="currentColor" opacity=".5"/><path d="M12 9v-5" stroke-width="2"/><path d="M9 7l3-3 3 3"/></svg>`
+    },
+    {
+      label:'Tresor / Safe',
+      desc:'Daten sicher einschließen — Archiv und Schutz',
+      svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1.5" fill="currentColor" opacity=".3"/><path d="M12 8v1"/><path d="M12 15v1"/><path d="M8 12h1"/><path d="M15 12h1"/><path d="M3 20h1.5M19.5 20H21" opacity=".5"/></svg>`
+    },
+    {
+      label:'Stapel + Schild',
+      desc:'Datenbank-Stapel mit Schutz-Indikator',
+      svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="10" cy="6" rx="7" ry="3"/><path d="M3 6v5c0 1.66 3.13 3 7 3s7-1.34 7-3V6"/><path d="M3 11v5c0 1.66 3.13 3 7 3s7-1.34 7-3v-5"/><circle cx="19" cy="17" r="4" fill="var(--bg,#0d1117)" stroke="currentColor"/><path d="M19 15v2.5l1.5 1" stroke-width="1.5"/></svg>`
+    }
+  ]
+},
+
+// ───────── 6. Restore ─────────
+{
+  key:'restore', name:'Restore', old:'R',
+  role:'backup', roleColor:'#d29922', roleBg:'rgba(210,153,34,.1)',
+  color:'#d29922',
+  variants:[
+    {
+      label:'Uhr zurück',
+      desc:'Zeit zurückdrehen — Daten wiederherstellen',
+      svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 119 9"/><path d="M3 7v5h5"/><path d="M12 7v5l3 2"/></svg>`
+    },
+    {
+      label:'Box + Upload',
+      desc:'Daten aus Archiv zurückholen',
+      svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-2-4H5L3 8"/><rect x="3" y="8" width="18" height="12" rx="1.5"/><path d="M3 8h18" stroke-width="1.5"/><path d="M12 18v-6"/><path d="M9 15l3-3 3 3"/></svg>`
+    },
+    {
+      label:'Refresh-Loop',
+      desc:'Kreislauf — Daten werden wiederhergestellt',
+      svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4v6h6"/><path d="M23 20v-6h-6"/><path d="M20.49 9A9 9 0 005.64 5.64L1 10"/><path d="M3.51 15A9 9 0 0018.36 18.36L23 14"/></svg>`
+    }
+  ]
+},
+
+// ───────── 7. Kombinieren ─────────
+{
+  key:'kombinieren', name:'Kombinieren', old:'C',
+  role:'tools', roleColor:'#bc8cff', roleBg:'rgba(188,140,255,.1)',
+  color:'#bc8cff',
+  variants:[
+    {
+      label:'Merge-Baum',
+      desc:'Zwei Quellen fließen in ein Ziel zusammen',
+      svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><circle cx="12" cy="19" r="3"/><path d="M7.5 8.5L11 16.5"/><path d="M16.5 8.5L13 16.5"/></svg>`
+    },
+    {
+      label:'Puzzle',
+      desc:'Teile zusammenfügen — Daten kombinieren',
+      svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h4v3a2 2 0 104 0V4h4v4h-3a2 2 0 100 4h3v4h-4v-3a2 2 0 10-4 0v3H6v-4h3a2 2 0 100-4H6V4z"/></svg>`
+    },
+    {
+      label:'Git-Merge',
+      desc:'Branches verschmelzen — wie Git-Merge',
+      svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="18" r="2.5"/><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="12" r="2.5"/><path d="M6 8.5v7"/><path d="M6 8.5c0 4 5 6 9.5 3.5" stroke-width="1.5"/></svg>`
+    }
+  ]
+},
+
+// ───────── 8. Export ─────────
+{
+  key:'export', name:'Export', old:'X',
+  role:'tools', roleColor:'#bc8cff', roleBg:'rgba(188,140,255,.1)',
+  color:'#bc8cff',
+  variants:[
+    {
+      label:'Pfeil raus',
+      desc:'Daten herausschicken — klassisches Export-Symbol',
+      svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M8 7l4-4 4 4"/><path d="M4 14v4a2 2 0 002 2h12a2 2 0 002-2v-4"/></svg>`
+    },
+    {
+      label:'Datei + Pfeil',
+      desc:'Dokument wird exportiert',
+      svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V7l-6-4z"/><path d="M14 3v4h4"/><path d="M10 13h8"/><path d="M15 10l3 3-3 3"/></svg>`
+    },
+    {
+      label:'Share-Out',
+      desc:'Daten teilen / nach außen senden',
+      svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="12" r="3"/><circle cx="18" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><path d="M8.7 10.7l6.6-3.4"/><path d="M8.7 13.3l6.6 3.4"/></svg>`
+    }
+  ]
+},
+
+// ───────── 9. Import ─────────
+{
+  key:'import', name:'Import', old:'M',
+  role:'tools', roleColor:'#bc8cff', roleBg:'rgba(188,140,255,.1)',
+  color:'#bc8cff',
+  variants:[
+    {
+      label:'Pfeil rein',
+      desc:'Daten hereinladen — klassisches Import-Symbol',
+      svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="M8 11l4 4 4-4"/><path d="M4 14v4a2 2 0 002 2h12a2 2 0 002-2v-4"/></svg>`
+    },
+    {
+      label:'Datei + Pfeil',
+      desc:'Dokument wird importiert',
+      svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V7l-6-4z"/><path d="M14 3v4h4"/><path d="M18 13h-8"/><path d="M13 10l-3 3 3 3"/></svg>`
+    },
+    {
+      label:'Inbox',
+      desc:'Posteingang — Daten empfangen',
+      svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/></svg>`
+    }
+  ]
+},
+
+// ───────── 10. Logs ─────────
+{
+  key:'logs', name:'Logs', old:'L',
+  role:'system', roleColor:'#f85149', roleBg:'rgba(248,81,73,.1)',
+  color:'#f85149',
+  variants:[
+    {
+      label:'Terminal',
+      desc:'Konsole/Terminal mit Text-Zeilen und Blink-Cursor',
+      svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8l3 3-3 3"/><path d="M13 16h4"/></svg>`
+    },
+    {
+      label:'Scroll-Liste',
+      desc:'Lange scrollbare Liste — Log-Einträge',
+      svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V6a1 1 0 011-1z"/><path d="M4 5l1-2h14l1 2"/><path d="M7 9h2" opacity=".5"/><path d="M7 12h8"/><path d="M7 15h5" opacity=".5"/><circle cx="17" cy="14" r="1.5" fill="currentColor" opacity=".4"/></svg>`
+    },
+    {
+      label:'Stack-Paper',
+      desc:'Gestapelte Protokolle — Log-Archiv',
+      svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="6" width="14" height="15" rx="1.5"/><path d="M7 3h10a1.5 1.5 0 011.5 1.5V6" opacity=".4"/><path d="M8.5 10h7"/><path d="M8.5 13h5" opacity=".5"/><path d="M8.5 16h3" opacity=".3"/></svg>`
+    }
+  ]
+},
+
+// ───────── 11. Performanceanalyse ─────────
+{
+  key:'performance', name:'Performanceanalyse', old:'P',
+  role:'core', roleColor:'#58a6ff', roleBg:'rgba(88,166,255,.1)',
+  color:'#58a6ff',
+  variants:[
+    {
+      label:'Tachometer',
+      desc:'Geschwindigkeitsanzeige — Nadel zeigt Performance',
+      svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21a9 9 0 110-18 9 9 0 010 18z" stroke-dasharray="42.41 14.14"/><path d="M12 12l3.5-5" stroke-width="2.2"/><circle cx="12" cy="12" r="1.5" fill="currentColor" opacity=".4"/></svg>`
+    },
+    {
+      label:'Rakete',
+      desc:'Geschwindigkeit und Optimierung',
+      svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 00-2.91-.09z"/><path d="M12 15l-3-3"/><path d="M18 3s-4 2-8.5 6.5l-1 4 4-1C17 8 19 3.5 19 3.5"/><path d="M9 15l-3 3" opacity=".4"/></svg>`
+    },
+    {
+      label:'Blitz / Schnell',
+      desc:'Blitzschnelle Analyse — Performance-Fokus',
+      svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4 14h7l-1 8 10-12h-7l1-8z" fill="currentColor" opacity=".08"/><path d="M13 2L4 14h7l-1 8 10-12h-7l1-8z"/></svg>`
+    }
+  ]
+},
+
+// ───────── 12. Jobs & Cache ─────────
+{
+  key:'jobs', name:'Jobs & Cache', old:'J',
+  role:'system', roleColor:'#d29922', roleBg:'rgba(210,153,34,.1)',
+  color:'#d29922',
+  variants:[
+    {
+      label:'Zahnräder',
+      desc:'Laufende Prozesse — ineinandergreifende Räder',
+      svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="2.5"/><path d="M9 5v-.5M9 13.5V13M5 9h-.5M13.5 9H13M6.17 6.17l-.35-.35M12.18 12.18l-.35-.35M6.17 11.83l-.35.35M12.18 5.82l-.35.35"/><circle cx="17" cy="16" r="2"/><path d="M17 13v-.3M17 18.5v-.3M14 16h-.3M20.3 16h-.3M15 14l-.2-.2M19.2 18.2l-.2-.2M15 18l-.2.2M19.2 13.8l-.2.2"/></svg>`
+    },
+    {
+      label:'Datenbank + Uhr',
+      desc:'Cache-Speicher mit zeitgesteuertem Job',
+      svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="10" cy="6" rx="7" ry="2.5"/><path d="M3 6v4.5c0 1.38 3.13 2.5 7 2.5"/><path d="M3 10.5V15c0 1.38 3.13 2.5 7 2.5"/><path d="M17 6v2"/><circle cx="17" cy="16" r="5"/><path d="M17 14v2.5l2 1" stroke-width="1.8"/></svg>`
+    },
+    {
+      label:'Prozess-Queue',
+      desc:'Aufgaben-Warteschlange — Stacked Tasks',
+      svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="14" height="4" rx="1.5"/><rect x="3" y="11" width="14" height="4" rx="1.5" opacity=".6"/><rect x="3" y="17" width="14" height="4" rx="1.5" opacity=".3"/><circle cx="20" cy="13" r="0" fill="#3fb950" stroke="none"><animate attributeName="r" values="0;2;0" dur="2.5s" repeatCount="indefinite"/></circle></svg>`
+    }
+  ]
+},
+
+// ───────── 13. History ─────────
+{
+  key:'history', name:'History', old:'H',
+  role:'data', roleColor:'#3fb950', roleBg:'rgba(63,185,80,.1)',
+  color:'#3fb950',
+  variants:[
+    {
+      label:'Uhr Classic',
+      desc:'Klassische Uhr — Zeitverlauf und Chronik',
+      svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4.5 2.5" stroke-width="2"/></svg>`
+    },
+    {
+      label:'Zeitleiste',
+      desc:'Chronologische Abfolge — Events auf Zeitachse',
+      svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><circle cx="12" cy="6" r="2" fill="currentColor" opacity=".2"/><circle cx="12" cy="12" r="2" fill="currentColor" opacity=".2"/><circle cx="12" cy="18" r="2" fill="currentColor" opacity=".2"/><path d="M14 6h4"/><path d="M14 12h5"/><path d="M14 18h3"/><path d="M10 6H7" opacity=".4"/><path d="M10 12H6" opacity=".4"/></svg>`
+    },
+    {
+      label:'Rückblick-Pfeil',
+      desc:'In die Vergangenheit schauen — History-Browse',
+      svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="13" r="8"/><path d="M5 5v5h5"/><path d="M5 10A9.4 9.4 0 0113 5"/><path d="M13 9v4l3 2" stroke-width="1.8"/></svg>`
+    }
+  ]
+},
+
+// ───────── 14. Diagnose ─────────
+{
+  key:'diagnose', name:'Diagnose', old:'I',
+  role:'system', roleColor:'#f85149', roleBg:'rgba(248,81,73,.1)',
+  color:'#f85149',
+  variants:[
+    {
+      label:'EKG-Linie',
+      desc:'Herzschlag-Kurve — System-Gesundheitsprüfung',
+      svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2-6 3 12 2.5-8 1.5 2H21"/></svg>`
+    },
+    {
+      label:'Stethoskop',
+      desc:'Medizinische Diagnose — System abhören',
+      svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4v7a5 5 0 0010 0V4"/><path d="M4 4H2"/><path d="M14 4h2"/><circle cx="19" cy="14" r="2.5"/><path d="M19 16.5V19a3 3 0 01-3 3h-2a3 3 0 01-3-3v-2"/></svg>`
+    },
+    {
+      label:'Bug / Debug',
+      desc:'Käfer finden — Fehler aufspüren',
+      svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="9" width="8" height="10" rx="4"/><path d="M12 9V6"/><path d="M9 6l1.5 1.5"/><path d="M15 6l-1.5 1.5"/><path d="M5 11h3"/><path d="M16 11h3"/><path d="M5 15h3"/><path d="M16 15h3"/><path d="M6 18l2-1"/><path d="M18 18l-2-1"/><path d="M12 13v3" stroke-width="1.5" opacity=".5"/></svg>`
+    }
+  ]
+},
+
+// ───────── 15. Changelog ─────────
+{
+  key:'changelog', name:'Changelog', old:'i',
+  role:'help', roleColor:'#39d2c0', roleBg:'rgba(57,210,192,.1)',
+  color:'#39d2c0',
+  variants:[
+    {
+      label:'Diff-Dokument',
+      desc:'Datei mit farbigen Änderungszeilen (grün/rot)',
+      svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V7l-6-4z"/><path d="M14 3v4h4"/><path d="M8.5 10h1" stroke="#3fb950" stroke-width="2.5"/><path d="M11.5 10h4" opacity=".5"/><path d="M8.5 13.5h1" stroke="#3fb950" stroke-width="2.5"/><path d="M11.5 13.5h3" opacity=".5"/><path d="M8.5 17h1" stroke="#f85149" stroke-width="2.5"/><path d="M11.5 17h2" opacity=".5"/></svg>`
+    },
+    {
+      label:'Git-Commits',
+      desc:'Commit-History-Graph — Versions-Kette',
+      svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="5" r="2.5"/><circle cx="8" cy="12" r="2.5"/><circle cx="8" cy="19" r="2.5"/><path d="M8 7.5v2"/><path d="M8 14.5v2"/><path d="M12 5h5" opacity=".5"/><path d="M12 12h7"/><path d="M12 19h4" opacity=".5"/></svg>`
+    },
+    {
+      label:'Release-Tag',
+      desc:'Versions-Label — getaggte Releases',
+      svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12l9.5-9.5c.4-.4 1-.6 1.6-.6H19a2 2 0 012 2v5.9c0 .6-.2 1.2-.6 1.6L11 21"/><path d="M2 12l9 9"/><circle cx="16" cy="7" r="1.5" fill="currentColor" opacity=".4"/><path d="M7 17l3-3" opacity=".3"/></svg>`
+    }
+  ]
+},
+
+// ───────── 16. Handbuch ─────────
+{
+  key:'handbuch', name:'Handbuch', old:'?',
+  role:'help', roleColor:'#39d2c0', roleBg:'rgba(57,210,192,.1)',
+  color:'#39d2c0',
+  variants:[
+    {
+      label:'Offenes Buch',
+      desc:'Aufgeschlagenes Buch — Lesen und Nachschlagen',
+      svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h6a4 4 0 014 4v12a3 3 0 00-3-3H2V4z"/><path d="M22 4h-6a4 4 0 00-4 4v12a3 3 0 013-3h7V4z"/><path d="M6 8h2" opacity=".4"/><path d="M6 11h2" opacity=".3"/><path d="M16 8h2" opacity=".4"/><path d="M16 11h2" opacity=".3"/></svg>`
+    },
+    {
+      label:'Hilfe-Kreis',
+      desc:'Fragezeichen im Kreis — direkte Hilfe',
+      svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 9a3 3 0 013-3 3 3 0 013 3c0 2-3 3-3 4.5"/><circle cx="12" cy="17" r=".8" fill="currentColor"/></svg>`
+    },
+    {
+      label:'Lesezeichen',
+      desc:'Bookmark — wichtige Stellen merken',
+      svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4a2 2 0 012-2h12a2 2 0 012 2v18l-8-4-8 4V4z"/><path d="M8 7h8" opacity=".4"/><path d="M8 10.5h5" opacity=".3"/></svg>`
+    }
+  ]
+},
+
+// ───────── 17. Profilverwaltung ─────────
+{
+  key:'profil', name:'Profilverwaltung', old:'P',
+  role:'system', roleColor:'#f778ba', roleBg:'rgba(247,120,186,.1)',
+  color:'#f778ba',
+  variants:[
+    {
+      label:'Person + Plus',
+      desc:'Benutzer mit Hinzufügen-Aktion',
+      svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="8" r="4"/><path d="M2 20c0-3.87 3.58-7 8-7 1.03 0 2.01.15 2.91.42"/><path d="M18 14v6"/><path d="M15 17h6"/></svg>`
+    },
+    {
+      label:'Person + Gear',
+      desc:'Benutzer-Einstellungen — Profil konfigurieren',
+      svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="8" r="4"/><path d="M2 20c0-3.87 3.58-7 8-7 .87 0 1.71.1 2.5.28"/><circle cx="18.5" cy="17.5" r="2"/><path d="M18.5 14.5v1"/><path d="M18.5 19.5v1"/><path d="M15.5 17.5h1"/><path d="M20.5 17.5h1"/></svg>`
+    },
+    {
+      label:'ID-Card',
+      desc:'Ausweis/Profil-Karte — Identitätsverwaltung',
+      svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2.5"/><circle cx="8.5" cy="11" r="2.5"/><path d="M4.5 17c0-1.66 1.79-3 4-3s4 1.34 4 3"/><path d="M15 9h4" opacity=".5"/><path d="M16 12h3" opacity=".4"/><path d="M15 15h4" opacity=".3"/></svg>`
+    }
+  ]
+},
+
+// ───────── 18. Einstellungen ─────────
+{
+  key:'einstellungen', name:'Einstellungen', old:'S',
+  role:'system', roleColor:'#8b949e', roleBg:'rgba(139,148,158,.1)',
+  color:'#8b949e',
+  variants:[
+    {
+      label:'Zahnrad',
+      desc:'Klassisches Einstellungs-Symbol — universell',
+      svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>`
+    },
+    {
+      label:'Schieberegler',
+      desc:'Drei Regler — Feineinstellungen und Konfiguration',
+      svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h4"/><path d="M12 6h8"/><circle cx="10" cy="6" r="2"/><path d="M4 12h10"/><path d="M18 12h2"/><circle cx="16" cy="12" r="2"/><path d="M4 18h1"/><path d="M9 18h11"/><circle cx="7" cy="18" r="2"/></svg>`
+    },
+    {
+      label:'Schraubenschlüssel',
+      desc:'Werkzeug — System feinjustieren',
+      svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94L6.73 20.2a2.1 2.1 0 01-2.93-2.93l6.73-6.73A6 6 0 016.3 2.53l3.77 3.77z"/></svg>`
+    }
+  ]
+}
+
+]; // END ITEMS
+
+// ════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════
+const picked = {};
+ITEMS.forEach(it => { picked[it.key] = 0; }); // default: variant A
+
+// ════════════════════════════════════════
+//  RENDER CATALOG
+// ════════════════════════════════════════
+function renderCatalog() {
+  const labels = ['a','b','c'];
+  const labelNames = ['Variante A','Variante B','Variante C'];
+
+  document.getElementById('catalog').innerHTML = ITEMS.map((it, idx) => `
+    <div class="mi" id="item-${it.key}">
+      <div class="mi-head">
+        <span class="mi-num">${idx+1}</span>
+        <span class="mi-name">${it.name}</span>
+        <span class="mi-old">bisher: „${it.old}"</span>
+        <span class="mi-role" style="background:${it.roleBg};color:${it.roleColor}">${it.role}</span>
+      </div>
+      <div class="mi-cards">
+        ${it.variants.map((v, vi) => `
+          <div class="vc ${picked[it.key]===vi?'picked':''}" onclick="pick('${it.key}',${vi})">
+            <span class="vc-label ${labels[vi]}">${labelNames[vi]}</span>
+            <div class="vc-icon" style="color:${it.color}">${v.svg}</div>
+            <div style="font-size:12px;font-weight:600">${v.label}</div>
+            <div class="vc-desc">${v.desc}</div>
+            <div class="vc-sizes">
+              <div class="vc-sz" style="color:${it.color};width:16px;height:16px">${v.svg.replace('viewBox','style="width:16px;height:16px" viewBox')}</div>
+              <div class="vc-sz" style="color:${it.color};width:24px;height:24px">${v.svg.replace('viewBox','style="width:24px;height:24px" viewBox')}</div>
+              <div class="vc-sz" style="color:${it.color};width:32px;height:32px">${v.svg.replace('viewBox','style="width:32px;height:32px" viewBox')}</div>
+            </div>
+            <button class="vc-copy" onclick="event.stopPropagation();copySVG('${it.key}',${vi})">📋 SVG</button>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderJumpNav() {
+  document.getElementById('jumpNav').innerHTML = ITEMS.map((it, i) =>
+    `<a class="jump-btn" href="#item-${it.key}">${i+1}. ${it.name}</a>`
+  ).join('');
+}
+
+// ════════════════════════════════════════
+//  PICK & PREVIEW
+// ════════════════════════════════════════
+function pick(key, vi) {
+  picked[key] = vi;
+  renderCatalog();
+  renderPreview();
+}
+
+function renderPreview() {
+  const groups = [
+    { items: ['dashboard','statistik','datenqualitaet','monitor'] },
+    { items: ['backup','restore','kombinieren','export','import'] },
+    { items: ['logs','performance','jobs','history','diagnose'] },
+    { items: ['changelog','handbuch','profil','einstellungen'] },
+  ];
+  let html = '';
+  groups.forEach((g, gi) => {
+    if (gi > 0) html += '<div class="ps-sep"></div>';
+    g.items.forEach((key, i) => {
+      const it = ITEMS.find(x => x.key === key);
+      const v = it.variants[picked[key]];
+      const small = v.svg.replace(/width="[^"]*"/g,'').replace(/height="[^"]*"/g,'');
+      const isFirst = gi === 0 && i === 0;
+      html += `<div class="psi" ${isFirst?'style="border-left-color:'+it.color+';background:'+it.roleColor+'11"':''}>
+        <div class="psi-icon" style="color:${isFirst?it.color:''}">${small}</div>
+        <span class="psi-name" ${isFirst?'style="color:var(--text);font-weight:600"':''}>${it.name}</span>
+      </div>`;
+    });
+  });
+  document.getElementById('previewItems').innerHTML = html;
+}
+
+let previewVisible = false;
+function togglePreview() {
+  previewVisible = !previewVisible;
+  document.getElementById('previewSidebar').classList.toggle('show', previewVisible);
+  document.getElementById('previewToggle').style.display = previewVisible ? 'none' : '';
+}
+
+// ════════════════════════════════════════
+//  COPY
+// ════════════════════════════════════════
+function copySVG(key, vi) {
+  const it = ITEMS.find(x => x.key === key);
+  const svg = it.variants[vi].svg.trim();
+  try {
+    navigator.clipboard.writeText(svg);
+    const toast = document.getElementById('toast');
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 1500);
+  } catch(e) {}
+}
+
+// ════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════
+renderJumpNav();
+renderCatalog();
+renderPreview();
+</script>
+</body>
+</html>

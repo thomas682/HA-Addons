@@ -1,0 +1,1107 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InfluxBRO — API-Dokumentation</title>
+<style>
+/* ════════════════════════════════════════════
+   ROOT / THEME
+   ════════════════════════════════════════════ */
+:root {
+  --bg:#0d1117;--bg2:#161b22;--bg3:#21262d;--bg4:#292e36;--bg5:#1c2333;
+  --border:#30363d;--border-h:#484f58;--border-focus:#58a6ff;
+  --text:#e6edf3;--text2:#8b949e;--text3:#6e7681;
+  --accent:#58a6ff;--green:#3fb950;--orange:#d29922;--red:#f85149;--purple:#bc8cff;--pink:#f778ba;--cyan:#39d2c0;--yellow:#e3b341;
+  --r:10px;--rs:6px;--rr:20px;
+  --tr:0.22s cubic-bezier(.4,0,.2,1);
+  --shadow:0 4px 16px rgba(0,0,0,.35);
+  --shadow-lg:0 12px 40px rgba(0,0,0,.5);
+  --mono:'SF Mono','Cascadia Code','Fira Code','JetBrains Mono',monospace;
+  --sans:'Inter','SF Pro Display',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --sidebar-w:300px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:13px;min-height:100vh;overflow:hidden}
+
+/* ════════ LAYOUT ════════ */
+.layout{display:flex;height:100vh}
+
+/* ════════ SIDEBAR ════════ */
+.sidebar{width:var(--sidebar-w);background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;transition:var(--tr)}
+
+.sidebar-head{padding:16px 16px 12px;border-bottom:1px solid var(--border)}
+.logo{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.logo-icon{width:32px;height:32px;background:linear-gradient(135deg,var(--accent),var(--purple));border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff}
+.logo-text{font-size:16px;font-weight:700;letter-spacing:-.3px}
+.logo-text span{color:var(--accent)}
+.logo-badge{font-size:9px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:1px 6px;color:var(--text3);margin-left:6px;vertical-align:middle}
+
+/* Search */
+.search-wrap{position:relative}
+.search-input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 12px 8px 34px;color:var(--text);font-size:13px;font-family:var(--sans);outline:none;transition:var(--tr)}
+.search-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(88,166,255,.12)}
+.search-input::placeholder{color:var(--text3)}
+.search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text3);pointer-events:none}
+.search-kbd{position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:10px;color:var(--text3);background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:1px 5px;font-family:var(--mono)}
+
+/* Stats */
+.sidebar-stats{display:flex;gap:8px;margin-top:10px}
+.ss-item{flex:1;text-align:center;padding:6px;background:var(--bg);border-radius:6px;border:1px solid transparent}
+.ss-item .sv{font-size:16px;font-weight:700;color:var(--accent);display:block}
+.ss-item .sl{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px}
+
+/* Tag Filter */
+.tag-filter{padding:10px 16px;border-bottom:1px solid var(--border);display:flex;flex-wrap:wrap;gap:4px}
+.tag-chip{font-size:10px;padding:3px 10px;border-radius:var(--rr);border:1px solid var(--border);color:var(--text2);cursor:pointer;transition:var(--tr);background:transparent;font-family:var(--sans);white-space:nowrap}
+.tag-chip:hover{border-color:var(--accent);color:var(--accent)}
+.tag-chip.on{background:rgba(88,166,255,.12);border-color:var(--accent);color:var(--accent)}
+.tag-chip.role-query{--tc:var(--accent)}.tag-chip.role-tracking{--tc:var(--green)}.tag-chip.role-logging{--tc:var(--pink)}.tag-chip.role-system{--tc:var(--orange)}.tag-chip.role-analysis{--tc:var(--cyan)}
+.tag-chip[data-type="role"].on{background:color-mix(in srgb,var(--tc) 12%,transparent);border-color:var(--tc);color:var(--tc)}
+
+/* Endpoint List */
+.ep-list{flex:1;overflow-y:auto;padding:8px}
+.ep-list::-webkit-scrollbar{width:6px}.ep-list::-webkit-scrollbar-thumb{background:var(--bg3);border-radius:3px}
+
+.ep-group{margin-bottom:4px}
+.ep-group-head{font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--text3);padding:8px 10px 4px;font-weight:600;display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none}
+.ep-group-head:hover{color:var(--text2)}
+.ep-group-head .chevron{transition:transform .2s;font-size:8px}
+.ep-group-head .chevron.open{transform:rotate(90deg)}
+.ep-group-count{margin-left:auto;font-size:9px;color:var(--text3);font-weight:400}
+
+.ep-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;cursor:pointer;transition:var(--tr);margin-bottom:2px;border:1px solid transparent;position:relative}
+.ep-item:hover{background:var(--bg3);border-color:var(--border)}
+.ep-item.active{background:rgba(88,166,255,.08);border-color:rgba(88,166,255,.25)}
+.ep-item.active::before{content:'';position:absolute;left:0;top:6px;bottom:6px;width:3px;background:var(--accent);border-radius:0 2px 2px 0}
+.ep-item .method-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.ep-item .method-dot.post{background:var(--accent)}.ep-item .method-dot.get{background:var(--green)}.ep-item .method-dot.put{background:var(--orange)}.ep-item .method-dot.delete{background:var(--red)}
+.ep-item .ep-info{flex:1;min-width:0}
+.ep-item .ep-path{font-size:12px;font-family:var(--mono);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
+.ep-item.active .ep-path{color:var(--accent)}
+.ep-item .ep-sum{font-size:10px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.ep-item .ep-role-icon{font-size:12px;flex-shrink:0;opacity:.5}
+.ep-item.active .ep-role-icon{opacity:1}
+.ep-item .trace-count{font-size:9px;background:var(--bg);padding:1px 6px;border-radius:8px;color:var(--text3);font-weight:600;flex-shrink:0;font-family:var(--mono)}
+.ep-item.active .trace-count{background:rgba(88,166,255,.15);color:var(--accent)}
+
+/* Hidden items from filter */
+.ep-item.hidden,.ep-group.hidden{display:none}
+
+/* Sidebar Footer */
+.sidebar-foot{padding:10px 16px;border-top:1px solid var(--border);font-size:10px;color:var(--text3);display:flex;justify-content:space-between}
+
+/* ════════ MAIN CONTENT ════════ */
+.main{flex:1;overflow-y:auto;padding:0}
+.main::-webkit-scrollbar{width:8px}.main::-webkit-scrollbar-thumb{background:var(--bg3);border-radius:4px}
+
+/* Empty state */
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text3)}
+.empty-state .big-icon{font-size:48px;margin-bottom:16px;opacity:.3}
+.empty-state .msg{font-size:16px;margin-bottom:8px;font-weight:600;color:var(--text2)}
+.empty-state .hint{font-size:13px}
+
+/* ════════ ENDPOINT DETAIL ════════ */
+.ep-detail{max-width:900px;margin:0 auto;padding:32px 40px 80px}
+
+/* Breadcrumb */
+.breadcrumb{font-size:11px;color:var(--text3);margin-bottom:16px;display:flex;align-items:center;gap:6px}
+.breadcrumb a{color:var(--text2);text-decoration:none;transition:var(--tr)}
+.breadcrumb a:hover{color:var(--accent)}
+
+/* Header */
+.ep-header{margin-bottom:28px;padding-bottom:20px;border-bottom:1px solid var(--border)}
+.ep-header .method-badge{display:inline-block;font-size:12px;font-weight:700;padding:4px 12px;border-radius:6px;font-family:var(--mono);margin-right:8px;vertical-align:middle}
+.ep-header .method-badge.post{background:rgba(88,166,255,.12);color:var(--accent)}.ep-header .method-badge.get{background:rgba(63,185,80,.12);color:var(--green)}
+.ep-header .ep-path-big{font-size:24px;font-weight:700;font-family:var(--mono);letter-spacing:-.3px;vertical-align:middle}
+.ep-header .ep-meta{display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap}
+.ep-header .role-badge{font-size:11px;padding:3px 10px;border-radius:var(--rr);font-weight:600}
+.ep-header .group-badge{font-size:11px;padding:3px 10px;border-radius:var(--rr);background:var(--bg3);border:1px solid var(--border);color:var(--text2)}
+.ep-header .tag{font-size:10px;padding:2px 8px;border-radius:var(--rr);background:var(--bg);color:var(--text3);border:1px solid var(--border)}
+.ep-header .summary{font-size:15px;color:var(--text2);margin-top:12px;line-height:1.6}
+
+/* Section */
+.section{margin-bottom:24px}
+.section-head{display:flex;align-items:center;gap:8px;padding:10px 0;cursor:pointer;user-select:none;border-bottom:1px solid var(--border);margin-bottom:12px;transition:var(--tr)}
+.section-head:hover{color:var(--accent)}
+.section-head .chev{font-size:10px;transition:transform .2s;color:var(--text3);width:16px;text-align:center}
+.section-head .chev.open{transform:rotate(90deg)}
+.section-head .sec-icon{font-size:14px}
+.section-head .sec-title{font-size:14px;font-weight:600;flex:1}
+.section-head .sec-badge{font-size:10px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:1px 8px;color:var(--text3)}
+.section-body{overflow:hidden;transition:max-height .35s ease,opacity .25s;opacity:1}
+.section-body.collapsed{max-height:0!important;opacity:0;margin:0;padding:0}
+
+/* Description block */
+.desc-block{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px 20px;line-height:1.7;color:var(--text2);font-size:13px}
+.desc-block strong{color:var(--text)}
+.desc-block .note{margin-top:10px;padding:10px 14px;background:rgba(88,166,255,.04);border-left:3px solid var(--accent);border-radius:0 6px 6px 0;font-size:12px;color:var(--accent)}
+.desc-block .note.warn{background:rgba(210,153,34,.04);border-color:var(--orange);color:var(--orange)}
+
+/* Schema Table */
+.schema-table{width:100%;border-collapse:collapse;font-size:12px}
+.schema-table th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);padding:8px 12px;border-bottom:2px solid var(--border);font-weight:600}
+.schema-table td{padding:10px 12px;border-bottom:1px solid rgba(48,54,61,.5);vertical-align:top}
+.schema-table tr:last-child td{border-bottom:none}
+.schema-table tr:hover td{background:rgba(88,166,255,.02)}
+.field-name{font-family:var(--mono);font-weight:600;color:var(--accent);font-size:12px}
+.field-type{font-family:var(--mono);font-size:11px;padding:2px 8px;border-radius:4px;background:var(--bg);color:var(--text2)}
+.field-req{font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px}
+.field-req.yes{background:rgba(248,81,73,.1);color:var(--red)}.field-req.no{background:var(--bg);color:var(--text3)}
+.field-desc{color:var(--text2);line-height:1.5}
+.field-example{font-family:var(--mono);font-size:11px;color:var(--text3);margin-top:2px}
+.field-enum{display:flex;gap:3px;flex-wrap:wrap;margin-top:3px}
+.field-enum span{font-size:10px;font-family:var(--mono);padding:1px 6px;border-radius:4px;background:var(--bg);color:var(--purple)}
+.field-default{font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:2px}
+
+/* JSON Block */
+.json-block{position:relative;margin-top:10px;margin-bottom:10px}
+.json-label{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:4px;font-weight:600}
+.json-pre{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px 16px;font-family:var(--mono);font-size:12px;line-height:1.6;overflow-x:auto;color:var(--text2);white-space:pre;tab-size:2}
+.json-pre .jk{color:var(--accent)}.json-pre .js{color:var(--green)}.json-pre .jn{color:var(--orange)}.json-pre .jb{color:var(--purple)}.json-pre .jnull{color:var(--text3)}
+
+/* Copy button */
+.copy-btn{position:absolute;top:26px;right:8px;background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:11px;padding:4px 10px;border-radius:6px;cursor:pointer;font-family:var(--sans);transition:var(--tr);display:flex;align-items:center;gap:4px;z-index:2}
+.copy-btn:hover{border-color:var(--accent);color:var(--accent)}
+.copy-btn.copied{background:rgba(63,185,80,.15);border-color:var(--green);color:var(--green)}
+
+/* Status Codes */
+.status-list{display:grid;gap:6px}
+.status-item{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--bg);border-radius:6px;border:1px solid var(--border)}
+.status-code{font-family:var(--mono);font-weight:700;font-size:13px;min-width:36px}
+.status-code.c2{color:var(--green)}.status-code.c4{color:var(--orange)}.status-code.c5{color:var(--red)}
+.status-desc{color:var(--text2);font-size:12px;flex:1}
+
+/* Timing */
+.timing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.timing-card{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px 14px;text-align:center}
+.timing-card .tv{font-size:24px;font-weight:700;font-family:var(--mono)}
+.timing-card .tv.fast{color:var(--green)}.timing-card .tv.med{color:var(--orange)}.timing-card .tv.slow{color:var(--red)}
+.timing-card .tl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+.timing-bar{display:flex;height:28px;border-radius:6px;overflow:hidden;background:var(--bg);border:1px solid var(--border);margin-bottom:10px}
+.timing-bar .tb-seg{display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);transition:width .5s}
+.timing-hint{font-size:12px;color:var(--text2);padding:10px 14px;background:var(--bg);border-radius:8px;border-left:3px solid var(--orange);line-height:1.5}
+
+/* Correlations */
+.corr-flow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px;background:var(--bg);border-radius:8px;border:1px solid var(--border);margin-bottom:10px}
+.corr-node{padding:5px 12px;border-radius:8px;font-size:11px;font-family:var(--mono);font-weight:600;border:1px solid;cursor:pointer;transition:var(--tr)}
+.corr-node:hover{filter:brightness(1.3);transform:translateY(-1px)}
+.corr-arrow{color:var(--text3);font-size:16px}
+.corr-self{border:2px solid;box-shadow:0 0 12px rgba(88,166,255,.15)}
+.corr-list{display:grid;gap:6px}
+.corr-row{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:6px;background:var(--bg);font-size:12px}
+.corr-row .cr-type{font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;min-width:56px;text-align:center;text-transform:uppercase}
+.corr-row .cr-type.dep{background:rgba(88,166,255,.1);color:var(--accent)}.corr-row .cr-type.trig{background:rgba(188,140,255,.1);color:var(--purple)}.corr-row .cr-type.par{background:rgba(63,185,80,.1);color:var(--green)}
+
+/* Errors */
+.error-list{display:grid;gap:8px}
+.error-card{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px 16px}
+.error-card .ec-symptom{font-weight:600;color:var(--orange);font-size:12px;margin-bottom:4px;display:flex;align-items:center;gap:6px}
+.error-card .ec-cause{font-size:12px;color:var(--text2);margin-bottom:4px}
+.error-card .ec-fix{font-size:12px;color:var(--green);display:flex;align-items:center;gap:4px}
+
+/* Code examples */
+.code-tabs{display:flex;gap:0;margin-bottom:0;border-bottom:1px solid var(--border)}
+.code-tab{padding:8px 16px;font-size:12px;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;transition:var(--tr);font-family:var(--sans);background:transparent;border-top:none;border-left:none;border-right:none}
+.code-tab:hover{color:var(--text2)}
+.code-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.code-content{position:relative}
+.code-pre{background:var(--bg);border:1px solid var(--border);border-top:none;border-radius:0 0 8px 8px;padding:14px 16px;font-family:var(--mono);font-size:12px;line-height:1.6;overflow-x:auto;color:var(--text2);white-space:pre;tab-size:2}
+.code-pre .kw{color:var(--purple)}.code-pre .str{color:var(--green)}.code-pre .cm{color:var(--text3)}.code-pre .fn{color:var(--accent)}.code-pre .num{color:var(--orange)}
+
+/* Trace Reference */
+.trace-ref{background:var(--bg);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.trace-ref-row{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid rgba(48,54,61,.4);transition:var(--tr);cursor:pointer}
+.trace-ref-row:last-child{border-bottom:none}
+.trace-ref-row:hover{background:rgba(88,166,255,.04)}
+.trace-ref-row .tr-id{font-family:var(--mono);font-weight:600;min-width:32px;color:var(--accent)}
+.trace-ref-row .tr-time{font-family:var(--mono);font-size:11px;color:var(--text3)}
+.trace-ref-row .tr-bar{flex:1;height:12px;background:var(--bg3);border-radius:3px;overflow:hidden;max-width:200px}
+.trace-ref-row .tr-bar-fill{height:100%;border-radius:3px}
+.trace-ref-row .tr-dur{font-family:var(--mono);font-size:12px;font-weight:600;min-width:52px;text-align:right}
+.trace-ref-row .tr-icons{font-size:11px}
+.trace-ref-row .tr-action{font-size:11px;padding:3px 10px;border-radius:var(--rr);background:var(--bg3);border:1px solid var(--border);color:var(--text2);cursor:pointer;transition:var(--tr);white-space:nowrap;font-family:var(--sans)}
+.trace-ref-row .tr-action:hover{border-color:var(--accent);color:var(--accent)}
+
+/* ════════ SCROLLBAR ════════ */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--bg3);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--border-h)}
+
+/* ════════ ANIMATIONS ════════ */
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.ep-detail>*{animation:fadeIn .3s ease forwards}
+.ep-detail>*:nth-child(1){animation-delay:.0s}.ep-detail>*:nth-child(2){animation-delay:.04s}.ep-detail>*:nth-child(3){animation-delay:.08s}
+.ep-detail>*:nth-child(4){animation-delay:.12s}.ep-detail>*:nth-child(5){animation-delay:.16s}.ep-detail>*:nth-child(6){animation-delay:.2s}
+.ep-detail>*:nth-child(7){animation-delay:.24s}.ep-detail>*:nth-child(8){animation-delay:.28s}.ep-detail>*:nth-child(9){animation-delay:.32s}
+
+/* ════════ RESPONSIVE ════════ */
+@media(max-width:900px){
+  .sidebar{width:260px}
+  .ep-detail{padding:20px}
+  .timing-grid{grid-template-columns:1fr}
+}
+@media(max-width:700px){
+  .sidebar{position:absolute;z-index:100;left:-260px;transition:left .3s}
+  .sidebar.open{left:0;box-shadow:var(--shadow-lg)}
+  .mobile-toggle{display:block!important}
+}
+.mobile-toggle{display:none;position:fixed;top:12px;left:12px;z-index:101;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 10px;cursor:pointer;color:var(--text);font-size:16px}
+</style>
+</head>
+<body>
+
+<button class="mobile-toggle" onclick="document.querySelector('.sidebar').classList.toggle('open')">☰</button>
+
+<div class="layout">
+<!-- ════════ SIDEBAR ════════ -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-head">
+    <div class="logo">
+      <div class="logo-icon">B</div>
+      <div class="logo-text">Influx<span>BRO</span> <span class="logo-badge">API v1</span></div>
+    </div>
+    <div class="search-wrap">
+      <svg class="search-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M11.5 7a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zm-.82 4.74a6 6 0 111.06-1.06l3.04 3.04a.75.75 0 11-1.06 1.06l-3.04-3.04z"/></svg>
+      <input class="search-input" id="searchInput" type="text" placeholder="Endpoint suchen..." autocomplete="off">
+      <span class="search-kbd">⌘K</span>
+    </div>
+    <div class="sidebar-stats">
+      <div class="ss-item"><span class="sv" id="statTotal">7</span><span class="sl">Endpoints</span></div>
+      <div class="ss-item"><span class="sv" id="statGroups">5</span><span class="sl">Gruppen</span></div>
+      <div class="ss-item"><span class="sv" id="statTraceHits">13</span><span class="sl">Im Trace</span></div>
+    </div>
+  </div>
+  <div class="tag-filter" id="tagFilter"></div>
+  <div class="ep-list" id="epList"></div>
+  <div class="sidebar-foot">
+    <span>InfluxBRO · <span id="footVersion">v1.0.0</span></span>
+    <span>↑↓ navigieren · ↵ öffnen</span>
+  </div>
+</aside>
+
+<!-- ════════ MAIN ════════ -->
+<main class="main" id="mainContent">
+  <div class="empty-state" id="emptyState">
+    <div class="big-icon">📖</div>
+    <div class="msg">Endpoint auswählen</div>
+    <div class="hint">Wähle einen Endpoint in der Sidebar oder drücke <kbd style="background:var(--bg3);padding:2px 6px;border-radius:4px;font-family:var(--mono);font-size:11px;border:1px solid var(--border)">⌘K</kbd> zum Suchen</div>
+  </div>
+  <div id="detailContainer" style="display:none"></div>
+</main>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+//  API_DOCS — Vollständige Dokumentation aller 7 Endpoints
+// ══════════════════════════════════════════════════════════════
+const API_DOCS = [
+  {
+    id:'cache-plan', method:'POST', path:'/api/cache/plan',
+    summary:'Cache-Plan berechnen',
+    description:'Plant Cache-Reads: Ermittelt welche Zeitfenster der selektierten Serie bereits im Cache vorliegen und welche Lücken (Gaps) vom InfluxDB-Backend nachgeladen werden müssen. Zentrale Funktion der Caching-Strategie — fast immer auf dem <strong>kritischen Pfad</strong>.',
+    group:'Caching', tags:['cache','plan','core','performance'], role:'query', roleLabel:'⚙️ Hauptlogik',
+    roleColor:'var(--orange)', authRequired:true,
+    request:{
+      contentType:'application/json',
+      bodySchema:[
+        {name:'series_id', type:'string',  req:true,  desc:'ID der Zeitserie',            example:'sensor_temp_01'},
+        {name:'time_from', type:'string',  req:true,  desc:'ISO-8601 Start-Zeitpunkt',    example:'2026-04-01T00:00:00Z'},
+        {name:'time_to',   type:'string',  req:true,  desc:'ISO-8601 End-Zeitpunkt',      example:'2026-04-17T12:00:00Z'},
+        {name:'granularity',type:'string', req:false, desc:'Aggregationsstufe',            example:'auto', enums:['raw','1m','5m','1h','1d'], def:'auto'},
+        {name:'force_reload',type:'boolean',req:false,desc:'Cache ignorieren und neu laden',example:'false', def:'false'},
+      ],
+      bodyExample:{series_id:'sensor_temp_01',time_from:'2026-04-01T00:00:00Z',time_to:'2026-04-17T12:00:00Z',granularity:'auto'}
+    },
+    response:{
+      contentType:'application/json',
+      schema:[
+        {name:'status',       type:'string',  desc:'"ok" (alles gecacht), "partial" (Lücken), "miss" (nichts gecacht)'},
+        {name:'cached_ranges',type:'array',   desc:'Zeitfenster die aus Cache bedient werden [{from, to, points}]'},
+        {name:'gap_ranges',   type:'array',   desc:'Zeitfenster die nachgeladen werden müssen [{from, to, points}]'},
+        {name:'dirty_ranges', type:'array',   desc:'Zeitfenster mit veralteten Cache-Daten (Invalidierung nötig)'},
+        {name:'total_points', type:'integer', desc:'Geschätzte Gesamtanzahl Datenpunkte'},
+        {name:'cache_hit_pct',type:'number',  desc:'Cache-Trefferquote (0.0 – 1.0)'},
+      ],
+      example:{status:'partial',cached_ranges:[{from:'2026-04-01T00:00:00Z',to:'2026-04-15T00:00:00Z',points:20160}],gap_ranges:[{from:'2026-04-15T00:00:00Z',to:'2026-04-17T12:00:00Z',points:3456}],dirty_ranges:[],total_points:23616,cache_hit_pct:0.854},
+      statusCodes:[
+        {code:200,desc:'Plan erfolgreich erstellt'},
+        {code:400,desc:'Fehlende/ungültige Parameter (series_id, time_from, time_to)'},
+        {code:404,desc:'Serie nicht gefunden'},
+        {code:500,desc:'Interner Fehler bei Cache-Berechnung'},
+        {code:504,desc:'Timeout — InfluxDB/Cache-Backend nicht erreichbar'},
+      ]
+    },
+    timing:{typicalMs:400,p95Ms:800,timeoutMs:5000,bottleneck:'DB-Query auf cache_segments Tabelle. Wird langsam bei großen Zeiträumen (>30 Tage) oder vielen Series-Tags.'},
+    correlations:{
+      dependsOn:['series-oldest'],
+      triggers:['analysis-history-event','analysis-cache-plan'],
+      parallelWith:['ui-event','sysinfo'],
+      usedIn:['btn_cache_pruefen','auto_refresh'],
+      criticalPath:true,
+      phase:'Phase 2 — Hauptabfrage'
+    },
+    errors:[
+      {symptom:'504 Timeout',cause:'InfluxDB überlastet oder nicht erreichbar',fix:'Zeitraum einschränken oder Cache warm fahren (Prefetch)'},
+      {symptom:'Dauer >2s',cause:'Zu viele Series/Tags im Zeitraum',fix:'Granularity erhöhen oder Series-Filter einschränken'},
+      {symptom:'cache_hit_pct = 0',cause:'Cache wurde invalidiert oder nie befüllt',fix:'Cache-Prefetch manuell auslösen oder Retention prüfen'},
+    ],
+    examples:{
+      curl:`curl -X POST https://influxbro.local/api/cache/plan \\
+  -H 'Content-Type: application/json' \\
+  -H 'Authorization: Bearer \$TOKEN' \\
+  -d '{
+    "series_id": "sensor_temp_01",
+    "time_from": "2026-04-01T00:00:00Z",
+    "time_to":   "2026-04-17T12:00:00Z",
+    "granularity": "auto"
+  }'`,
+      javascript:`const response = await fetch('/api/cache/plan', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    series_id:   'sensor_temp_01',
+    time_from:   '2026-04-01T00:00:00Z',
+    time_to:     '2026-04-17T12:00:00Z',
+    granularity: 'auto'
+  })
+});
+const plan = await response.json();
+console.log(\`Cache-Hit: \${(plan.cache_hit_pct * 100).toFixed(1)}%\`);`,
+      python:`import requests
+
+res = requests.post(
+    'https://influxbro.local/api/cache/plan',
+    json={
+        'series_id':   'sensor_temp_01',
+        'time_from':   '2026-04-01T00:00:00Z',
+        'time_to':     '2026-04-17T12:00:00Z',
+        'granularity': 'auto'
+    },
+    headers={'Authorization': f'Bearer {TOKEN}'}
+)
+plan = res.json()
+print(f"Cache-Hit: {plan['cache_hit_pct']:.1%}")`
+    },
+    notes:'⚙️ Dieser Endpoint ist fast immer auf dem kritischen Pfad. Eine Cache-Hit-Rate unter 70% deutet auf fehlende Vorberechnung hin. Empfehlung: Prefetch-Jobs für häufig abgefragte Zeiträume einrichten.'
+  },
+  {
+    id:'series-oldest', method:'POST', path:'/api/series_oldest',
+    summary:'Ältesten Datenpunkt ermitteln',
+    description:'Ermittelt den ältesten bekannten Zeitstempel der aktuell selektierten Serie. Wird benötigt um den gültigen Zeitraum für Cache-Planung und Visualisierung zu bestimmen (Bounds/Oldest).',
+    group:'Daten', tags:['series','bounds','query'], role:'query', roleLabel:'📊 Daten-Query',
+    roleColor:'var(--accent)', authRequired:true,
+    request:{
+      contentType:'application/json',
+      bodySchema:[
+        {name:'series_id',type:'string',req:true,desc:'ID der Zeitserie',example:'sensor_temp_01'},
+      ],
+      bodyExample:{series_id:'sensor_temp_01'}
+    },
+    response:{
+      contentType:'application/json',
+      schema:[
+        {name:'oldest_timestamp',type:'string',desc:'ISO-8601 ältester Datenpunkt'},
+        {name:'newest_timestamp',type:'string',desc:'ISO-8601 neuester Datenpunkt'},
+        {name:'total_points',type:'integer',desc:'Gesamtanzahl Datenpunkte in der Serie'},
+        {name:'retention_days',type:'integer',desc:'Konfigurierte Retention in Tagen'},
+      ],
+      example:{oldest_timestamp:'2025-01-15T00:00:00Z',newest_timestamp:'2026-04-17T11:45:00Z',total_points:657840,retention_days:365},
+      statusCodes:[
+        {code:200,desc:'Bounds erfolgreich ermittelt'},
+        {code:404,desc:'Serie nicht gefunden oder leer'},
+        {code:500,desc:'Interner Fehler'},
+      ]
+    },
+    timing:{typicalMs:15,p95Ms:50,timeoutMs:3000,bottleneck:'Schnelle Metadaten-Abfrage. Nur bei sehr vielen Tags (>10.000) langsamer.'},
+    correlations:{dependsOn:[],triggers:['cache-plan'],parallelWith:['ui-event','cache-usage-ui-event','analysis-history-event'],usedIn:['btn_cache_pruefen'],criticalPath:true,phase:'Phase 1 — Fan-Out'},
+    errors:[{symptom:'404 Not Found',cause:'series_id existiert nicht oder wurde gelöscht',fix:'Series-Liste neu laden / ID prüfen'}],
+    examples:{
+      curl:`curl -X POST https://influxbro.local/api/series_oldest \\
+  -H 'Content-Type: application/json' \\
+  -d '{"series_id": "sensor_temp_01"}'`,
+      javascript:`const res = await fetch('/api/series_oldest', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ series_id: 'sensor_temp_01' })
+});
+const bounds = await res.json();`,
+      python:`res = requests.post('/api/series_oldest', json={'series_id': 'sensor_temp_01'})
+bounds = res.json()`
+    },
+    notes:'📊 Wird im initialen Fan-Out parallel mit den Tracking-Calls gefeuert. Das Ergebnis (oldest_timestamp) fließt als Eingabe in /api/cache/plan.'
+  },
+  {
+    id:'ui-event', method:'POST', path:'/api/ui_event',
+    summary:'UI-Ereignis protokollieren',
+    description:'Protokolliert ein UI-Ereignis serverseitig und korreliert es mit der aktuellen trace_id. Dient der Nachvollziehbarkeit von User-Interaktionen (Button-Clicks, State-Wechsel, Navigation) für Support und Diagnose.',
+    group:'Tracking', tags:['ui','tracking','event','audit'], role:'tracking', roleLabel:'📈 UI-Tracking',
+    roleColor:'var(--green)', authRequired:true,
+    request:{
+      contentType:'application/json',
+      bodySchema:[
+        {name:'action',type:'string',req:true,desc:'Name der Aktion',example:'btn_cache_pruefen'},
+        {name:'state',type:'string',req:false,desc:'UI-Zustand',example:'loading',enums:['init','loading','done','error']},
+        {name:'page',type:'string',req:false,desc:'Aktuelle Seite',example:'dashboard_page.main'},
+        {name:'metadata',type:'object',req:false,desc:'Zusätzliche Key-Value-Paare',example:'{}'},
+      ],
+      bodyExample:{action:'btn_cache_pruefen',state:'loading',page:'dashboard_page.main',metadata:{series:'sensor_temp_01'}}
+    },
+    response:{
+      contentType:'application/json',
+      schema:[
+        {name:'event_id',type:'string',desc:'Eindeutige Event-ID'},
+        {name:'recorded_at',type:'string',desc:'Server-Timestamp der Aufzeichnung'},
+      ],
+      example:{event_id:'evt_a8f3c2',recorded_at:'2026-04-17T11:45:37.460Z'},
+      statusCodes:[{code:200,desc:'Event aufgezeichnet'},{code:400,desc:'action fehlt'},{code:500,desc:'Server-Fehler'}]
+    },
+    timing:{typicalMs:30,p95Ms:80,timeoutMs:3000,bottleneck:'Normalerweise schnell (DB-Insert). Langsam bei hoher Event-Last oder Lock-Contention.'},
+    correlations:{dependsOn:[],triggers:[],parallelWith:['cache-plan','series-oldest'],usedIn:['btn_cache_pruefen','alle_actions'],criticalPath:false,phase:'Phase 1 (start), Phase 2 (mid), Phase 4 (done)'},
+    errors:[{symptom:'Hohe Latenz (>200ms)',cause:'Event-Tabelle zu groß / fehlender Index',fix:'Event-Log rotieren oder Index auf recorded_at prüfen'}],
+    examples:{
+      curl:`curl -X POST https://influxbro.local/api/ui_event \\
+  -H 'Content-Type: application/json' \\
+  -d '{"action":"btn_cache_pruefen","state":"loading"}'`,
+      javascript:`await fetch('/api/ui_event', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    action: 'btn_cache_pruefen',
+    state: 'loading'
+  })
+});`,
+      python:`requests.post('/api/ui_event', json={
+    'action': 'btn_cache_pruefen',
+    'state':  'loading'
+})`
+    },
+    notes:'📈 Wird bis zu 3× pro Action aufgerufen (start/mid/done). Fire-and-Forget — kein User wartet auf die Response.'
+  },
+  {
+    id:'cache-usage-ui-event', method:'POST', path:'/api/cache_usage/ui_event',
+    summary:'Cache-Nutzung tracken',
+    description:'Spezifisches UI-Event für die Cache-Nutzungsanalyse. Meldet dem Server welche Cache-Operationen vom User ausgelöst wurden, um Cache-Effizienz und Nutzungsmuster auszuwerten.',
+    group:'Tracking', tags:['cache','tracking','metrics','analytics'], role:'tracking', roleLabel:'📊 Cache-Metriken',
+    roleColor:'var(--purple)', authRequired:true,
+    request:{
+      contentType:'application/json',
+      bodySchema:[
+        {name:'action',type:'string',req:true,desc:'Name der Cache-Aktion',example:'cache_pruefen'},
+        {name:'series_id',type:'string',req:false,desc:'Betroffene Serie',example:'sensor_temp_01'},
+        {name:'cache_state',type:'string',req:false,desc:'Aktueller Cache-Zustand',example:'partial',enums:['hot','warm','cold','partial','miss']},
+      ],
+      bodyExample:{action:'cache_pruefen',series_id:'sensor_temp_01',cache_state:'partial'}
+    },
+    response:{
+      contentType:'application/json',
+      schema:[{name:'recorded',type:'boolean',desc:'Event erfolgreich aufgezeichnet'}],
+      example:{recorded:true},
+      statusCodes:[{code:200,desc:'Aufgezeichnet'},{code:400,desc:'action fehlt'}]
+    },
+    timing:{typicalMs:20,p95Ms:60,timeoutMs:3000,bottleneck:'Leichtgewichtiger Insert. Normalerweise unkritisch.'},
+    correlations:{dependsOn:[],triggers:[],parallelWith:['series-oldest','ui-event','analysis-history-event'],usedIn:['btn_cache_pruefen'],criticalPath:false,phase:'Phase 1 — Fan-Out'},
+    errors:[],
+    examples:{
+      curl:`curl -X POST https://influxbro.local/api/cache_usage/ui_event \\
+  -H 'Content-Type: application/json' \\
+  -d '{"action":"cache_pruefen","series_id":"sensor_temp_01"}'`,
+      javascript:`await fetch('/api/cache_usage/ui_event', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ action: 'cache_pruefen' })
+});`,
+      python:`requests.post('/api/cache_usage/ui_event', json={'action': 'cache_pruefen'})`
+    },
+    notes:'📊 Nur 1× pro Action. Ergebnis wird nicht weiterverwendet — reines Analytics-Event.'
+  },
+  {
+    id:'analysis-history-event', method:'POST', path:'/api/analysis_history_event',
+    summary:'Worklog-Eintrag schreiben',
+    description:'Schreibt einen Eintrag ins Analyse-Worklog (History Event) für Diagnose und Support. Wird bei jedem wichtigen Schritt aufgerufen: Start, nach cache/plan, nach Analyse, für jedes Ergebnis-Segment. Bildet den <strong>Audit-Trail</strong> einer Aktion.',
+    group:'Logging', tags:['history','audit','logging','worklog','diagnostic'], role:'logging', roleLabel:'📝 Logging',
+    roleColor:'var(--pink)', authRequired:true,
+    request:{
+      contentType:'application/json',
+      bodySchema:[
+        {name:'step',type:'string',req:true,desc:'Schritt im Workflow',example:'cache_plan_done',enums:['started','cache_plan_done','analysis_done','result_segment','completed','error']},
+        {name:'action',type:'string',req:false,desc:'Übergeordnete Aktion',example:'btn_cache_pruefen'},
+        {name:'details',type:'object',req:false,desc:'Schritt-spezifische Details',example:'{}'},
+        {name:'duration_ms',type:'integer',req:false,desc:'Dauer des abgeschlossenen Schritts',example:'447'},
+      ],
+      bodyExample:{step:'cache_plan_done',action:'btn_cache_pruefen',details:{cache_hit_pct:0.854,gaps:1},duration_ms:447}
+    },
+    response:{
+      contentType:'application/json',
+      schema:[
+        {name:'history_id',type:'string',desc:'ID des Worklog-Eintrags'},
+        {name:'sequence',type:'integer',desc:'Laufende Nummer innerhalb der Action'},
+      ],
+      example:{history_id:'hist_f82a01',sequence:3},
+      statusCodes:[{code:200,desc:'Eintrag geschrieben'},{code:500,desc:'Schreibfehler'}]
+    },
+    timing:{typicalMs:8,p95Ms:25,timeoutMs:2000,bottleneck:'Sehr schnell (Single Insert). Bei der ersten Instanz (step:started) gelegentlich langsamer wegen Table-Lock.'},
+    correlations:{dependsOn:['cache-plan','analysis-cache-plan'],triggers:[],parallelWith:[],usedIn:['btn_cache_pruefen','alle_actions'],criticalPath:false,phase:'Phase 1 (start), Phase 3 (results)'},
+    errors:[{symptom:'sDur = 246ms (Phase 1)',cause:'Erster DB-Write wärmt Connection-Pool auf',fix:'Keep-Alive / Pooling optimieren'}],
+    examples:{
+      curl:`curl -X POST https://influxbro.local/api/analysis_history_event \\
+  -H 'Content-Type: application/json' \\
+  -d '{"step":"cache_plan_done","action":"btn_cache_pruefen","duration_ms":447}'`,
+      javascript:`await fetch('/api/analysis_history_event', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    step: 'cache_plan_done',
+    action: 'btn_cache_pruefen',
+    duration_ms: 447
+  })
+});`,
+      python:`requests.post('/api/analysis_history_event', json={
+    'step': 'cache_plan_done',
+    'action': 'btn_cache_pruefen',
+    'duration_ms': 447
+})`
+    },
+    notes:'📝 Am häufigsten aufgerufener Endpoint (5× pro Action). Die Calls in Phase 3 (result_segment) laufen parallel via Promise.all().'
+  },
+  {
+    id:'analysis-cache-plan', method:'POST', path:'/api/analysis_cache/plan',
+    summary:'Analyse-Cache-Segmente planen',
+    description:'Plant Analyse-Cache-Segmente (Cache/Gaps/Dirty) für den gewählten Zeitraum. Nutzt das Ergebnis von <code>/api/cache/plan</code> um die Analyse-spezifische Cache-Strategie zu berechnen — insbesondere welche vorberechneten Analyse-Resultate (Aggregationen, Statistiken) noch gültig sind.',
+    group:'Analyse', tags:['analysis','cache','plan','segments'], role:'analysis', roleLabel:'🔎 Analyse',
+    roleColor:'var(--cyan)', authRequired:true,
+    request:{
+      contentType:'application/json',
+      bodySchema:[
+        {name:'series_id',type:'string',req:true,desc:'ID der Zeitserie',example:'sensor_temp_01'},
+        {name:'cache_plan',type:'object',req:true,desc:'Ergebnis von /api/cache/plan',example:'{...}'},
+        {name:'analysis_types',type:'array',req:false,desc:'Gewünschte Analysetypen',example:'["stats","trend","anomaly"]',enums:['stats','trend','anomaly','forecast']},
+      ],
+      bodyExample:{series_id:'sensor_temp_01',cache_plan:{status:'partial',cached_ranges:[],gap_ranges:[]},analysis_types:['stats','trend']}
+    },
+    response:{
+      contentType:'application/json',
+      schema:[
+        {name:'segments',type:'array',desc:'Analyse-Segmente [{type, from, to, cached, stale}]'},
+        {name:'total_segments',type:'integer',desc:'Anzahl Segmente'},
+        {name:'analysis_cache_hit_pct',type:'number',desc:'Analyse-Cache-Trefferquote'},
+      ],
+      example:{segments:[{type:'stats',from:'2026-04-01T00:00:00Z',to:'2026-04-15T00:00:00Z',cached:true,stale:false},{type:'stats',from:'2026-04-15T00:00:00Z',to:'2026-04-17T12:00:00Z',cached:false,stale:false}],total_segments:2,analysis_cache_hit_pct:0.5},
+      statusCodes:[{code:200,desc:'Plan erstellt'},{code:400,desc:'cache_plan fehlt oder ungültig'},{code:500,desc:'Interner Fehler'}]
+    },
+    timing:{typicalMs:12,p95Ms:40,timeoutMs:3000,bottleneck:'Berechnung auf Basis von cache/plan-Ergebnis. Schnell da keine DB-Query.'},
+    correlations:{dependsOn:['cache-plan'],triggers:['analysis-history-event'],parallelWith:['analysis-history-event'],usedIn:['btn_cache_pruefen'],criticalPath:true,phase:'Phase 3 — Analyse-Kette'},
+    errors:[{symptom:'400 Bad Request',cause:'cache_plan-Objekt fehlt im Body',fix:'/api/cache/plan muss zuerst erfolgreich aufgerufen werden'}],
+    examples:{
+      curl:`curl -X POST https://influxbro.local/api/analysis_cache/plan \\
+  -H 'Content-Type: application/json' \\
+  -d '{"series_id":"sensor_temp_01","cache_plan":{...},"analysis_types":["stats"]}'`,
+      javascript:`const analysisPlan = await fetch('/api/analysis_cache/plan', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    series_id: 'sensor_temp_01',
+    cache_plan: cachePlanResult,
+    analysis_types: ['stats', 'trend']
+  })
+}).then(r => r.json());`,
+      python:`analysis = requests.post('/api/analysis_cache/plan', json={
+    'series_id': 'sensor_temp_01',
+    'cache_plan': cache_plan_result,
+    'analysis_types': ['stats', 'trend']
+}).json()`
+    },
+    notes:'🔎 Wird direkt nach /api/cache/plan aufgerufen (kausale Kette). Das Ergebnis triggert 3× /api/analysis_history_event (eines pro Segment).'
+  },
+  {
+    id:'sysinfo', method:'GET', path:'/api/sysinfo',
+    summary:'Systeminfo laden',
+    description:'Lädt aktuelle Systeminformationen (CPU-Auslastung, RAM-Nutzung, Disk-Belegung, InfluxDB-Status) für die Statusanzeige im Dashboard und Diagnose-Zwecke.',
+    group:'System', tags:['system','health','monitoring','status'], role:'system', roleLabel:'🖥️ System-Info',
+    roleColor:'var(--orange)', authRequired:false,
+    request:{
+      contentType:'none',
+      bodySchema:[],
+      bodyExample:null
+    },
+    response:{
+      contentType:'application/json',
+      schema:[
+        {name:'cpu_percent',type:'number',desc:'CPU-Auslastung in Prozent (0–100)'},
+        {name:'ram_used_gb',type:'number',desc:'RAM-Verbrauch in GB'},
+        {name:'ram_total_gb',type:'number',desc:'Gesamter RAM in GB'},
+        {name:'disk_used_gb',type:'number',desc:'Festplatten-Belegung in GB'},
+        {name:'disk_total_gb',type:'number',desc:'Gesamte Festplatte in GB'},
+        {name:'influxdb_status',type:'string',desc:'"online" | "degraded" | "offline"'},
+        {name:'uptime_hours',type:'number',desc:'Betriebszeit seit letztem Restart'},
+      ],
+      example:{cpu_percent:23.4,ram_used_gb:12.8,ram_total_gb:32.0,disk_used_gb:156.2,disk_total_gb:512.0,influxdb_status:'online',uptime_hours:742.5},
+      statusCodes:[{code:200,desc:'Systeminfo erfolgreich'},{code:503,desc:'Service nicht verfügbar'}]
+    },
+    timing:{typicalMs:50,p95Ms:200,timeoutMs:5000,bottleneck:'Sammelt Daten von mehreren Subsystem. CPU-Sampling kann 100ms+ dauern.'},
+    correlations:{dependsOn:[],triggers:[],parallelWith:['cache-plan'],usedIn:['btn_cache_pruefen','dashboard_refresh','health_check'],criticalPath:false,phase:'Phase 2 — parallel zur Hauptabfrage'},
+    errors:[{symptom:'503 Service Unavailable',cause:'Backend-Service down',fix:'Service-Health prüfen, ggf. Restart des Monitoring-Agents'}],
+    examples:{
+      curl:`curl -X GET https://influxbro.local/api/sysinfo`,
+      javascript:`const sysinfo = await fetch('/api/sysinfo').then(r => r.json());
+console.log(\`CPU: \${sysinfo.cpu_percent}%\`);`,
+      python:`sysinfo = requests.get('/api/sysinfo').json()
+print(f"CPU: {sysinfo['cpu_percent']}%")`
+    },
+    notes:'🖥️ Einziger GET-Endpoint. Kein Auth nötig — kann auch von externen Monitoring-Tools (Grafana, Prometheus) abgefragt werden.'
+  }
+];
+
+// ── Trace spans for cross-reference ──
+const TRACE_SPANS = [
+  {id:':1',m:'POST',ep:'/api/ui_event',cStart:18,cEnd:253,cDur:235,sDur:225,nOut:-2,nIn:12},
+  {id:':2',m:'POST',ep:'/api/cache_usage/ui_event',cStart:40,cEnd:241,cDur:201,sDur:190,nOut:-23,nIn:34},
+  {id:':3',m:'POST',ep:'/api/analysis_history_event',cStart:16,cEnd:275,cDur:259,sDur:246,nOut:2,nIn:11},
+  {id:':4',m:'POST',ep:'/api/series_oldest',cStart:23,cEnd:216,cDur:193,sDur:2,nOut:-4,nIn:195},
+  {id:':5',m:'POST',ep:'/api/cache/plan',cStart:212,cEnd:659,cDur:447,sDur:415,nOut:23,nIn:9},
+  {id:':6',m:'POST',ep:'/api/ui_event',cStart:321,cEnd:490,cDur:169,sDur:31,nOut:121,nIn:17},
+  {id:':7',m:'GET', ep:'/api/sysinfo',cStart:489,cEnd:659,cDur:170,sDur:144,nOut:18,nIn:8},
+  {id:':8',m:'POST',ep:'/api/analysis_history_event',cStart:663,cEnd:670,cDur:7,sDur:0,nOut:-2,nIn:9},
+  {id:':9',m:'POST',ep:'/api/analysis_cache/plan',cStart:664,cEnd:679,cDur:15,sDur:6,nOut:-1,nIn:10},
+  {id:':10',m:'POST',ep:'/api/analysis_history_event',cStart:682,cEnd:698,cDur:16,sDur:1,nOut:0,nIn:15},
+  {id:':11',m:'POST',ep:'/api/analysis_history_event',cStart:684,cEnd:699,cDur:15,sDur:0,nOut:-1,nIn:16},
+  {id:':12',m:'POST',ep:'/api/analysis_history_event',cStart:686,cEnd:700,cDur:14,sDur:0,nOut:-1,nIn:15},
+  {id:':13',m:'POST',ep:'/api/ui_event',cStart:2113,cEnd:2332,cDur:219,sDur:1,nOut:5,nIn:213},
+];
+
+// ══════════════════════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════════════════════
+let activeEp = null;
+let activeTagFilters = new Set();
+let searchQuery = '';
+let focusedItemIdx = -1;
+
+// ══════════════════════════════════════════════════════════════
+//  SIDEBAR RENDERING
+// ══════════════════════════════════════════════════════════════
+function getAllTags() {
+  const roles = new Set(), tags = new Set();
+  API_DOCS.forEach(d => { roles.add(d.role); d.tags.forEach(t => tags.add(t)); });
+  return { roles: [...roles], tags: [...tags].sort() };
+}
+
+function renderTagFilter() {
+  const { roles } = getAllTags();
+  const roleLabels = { query:'🔵 Query', tracking:'🟢 Tracking', logging:'🩷 Logging', system:'🟠 System', analysis:'🔵 Analyse' };
+  document.getElementById('tagFilter').innerHTML =
+    roles.map(r => `<button class="tag-chip role-${r}" data-type="role" data-val="${r}" onclick="toggleTag('${r}')">${roleLabels[r]||r}</button>`).join('') +
+    `<button class="tag-chip" data-type="special" data-val="critical" onclick="toggleTag('critical')">🔴 Critical</button>`;
+}
+
+function toggleTag(tag) {
+  if (activeTagFilters.has(tag)) activeTagFilters.delete(tag); else activeTagFilters.add(tag);
+  renderSidebar();
+}
+
+function getTraceCount(ep) {
+  return TRACE_SPANS.filter(s => s.ep === ep.path).length;
+}
+
+function matchesFilter(doc) {
+  // Search
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase();
+    const hay = [doc.path, doc.summary, doc.description, doc.group, ...doc.tags, doc.role].join(' ').toLowerCase();
+    if (!hay.includes(q)) return false;
+  }
+  // Tags
+  if (activeTagFilters.size === 0) return true;
+  for (const f of activeTagFilters) {
+    if (f === 'critical' && doc.correlations.criticalPath) return true;
+    if (doc.role === f) return true;
+  }
+  return false;
+}
+
+function renderSidebar() {
+  // Update tag chips
+  document.querySelectorAll('.tag-chip').forEach(el => {
+    const val = el.dataset.val;
+    el.classList.toggle('on', activeTagFilters.has(val));
+  });
+
+  const groups = {};
+  API_DOCS.forEach(doc => {
+    if (!groups[doc.group]) groups[doc.group] = [];
+    groups[doc.group].push(doc);
+  });
+
+  let html = '';
+  for (const [group, docs] of Object.entries(groups)) {
+    const visibleDocs = docs.filter(matchesFilter);
+    const hidden = visibleDocs.length === 0;
+    html += `<div class="ep-group ${hidden ? 'hidden' : ''}">`;
+    html += `<div class="ep-group-head"><span class="chevron open">▶</span>${group}<span class="ep-group-count">${visibleDocs.length}</span></div>`;
+    docs.forEach(doc => {
+      const vis = matchesFilter(doc);
+      const isActive = activeEp === doc.id;
+      const count = getTraceCount(doc);
+      html += `<div class="ep-item ${isActive ? 'active' : ''} ${!vis ? 'hidden' : ''}" data-id="${doc.id}" onclick="selectEndpoint('${doc.id}')">
+        <div class="method-dot ${doc.method.toLowerCase()}"></div>
+        <div class="ep-info">
+          <div class="ep-path">${doc.path.replace('/api/','')}</div>
+          <div class="ep-sum">${doc.summary}</div>
+        </div>
+        <span class="ep-role-icon">${doc.roleLabel.split(' ')[0]}</span>
+        ${count > 0 ? `<span class="trace-count">${count}×</span>` : ''}
+      </div>`;
+    });
+    html += `</div>`;
+  }
+  document.getElementById('epList').innerHTML = html;
+
+  // Update stats
+  const vis = API_DOCS.filter(matchesFilter);
+  document.getElementById('statTotal').textContent = vis.length;
+}
+
+// ══════════════════════════════════════════════════════════════
+//  DETAIL RENDERING
+// ══════════════════════════════════════════════════════════════
+function syntaxJSON(obj) {
+  return JSON.stringify(obj, null, 2)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"([^"]+)":/g, '<span class="jk">"$1"</span>:')
+    .replace(/: "([^"]*)"/g, ': <span class="js">"$1"</span>')
+    .replace(/: (\d+\.?\d*)/g, ': <span class="jn">$1</span>')
+    .replace(/: (true|false)/g, ': <span class="jb">$1</span>')
+    .replace(/: (null)/g, ': <span class="jnull">$1</span>');
+}
+
+function syntaxCode(code, lang) {
+  let s = code.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  // Strings
+  s = s.replace(/(["'`])(?:(?!\1).)*?\1/g, m => `<span class="str">${m}</span>`);
+  // Keywords
+  const kws = lang==='python'
+    ? ['import','from','def','return','await','async','print','True','False','None','f']
+    : ['const','let','var','await','async','function','return','console','new','true','false','null'];
+  kws.forEach(k => {
+    s = s.replace(new RegExp(`\\b(${k})\\b`,'g'), '<span class="kw">$1</span>');
+  });
+  // Comments
+  s = s.replace(/(\/\/.*$|#.*$)/gm, '<span class="cm">$1</span>');
+  // Functions
+  s = s.replace(/\b(\w+)\s*\(/g, '<span class="fn">$1</span>(');
+  // Numbers (standalone)
+  s = s.replace(/\b(\d+\.?\d*)\b/g, '<span class="num">$1</span>');
+  return s;
+}
+
+function selectEndpoint(id) {
+  activeEp = id;
+  const doc = API_DOCS.find(d => d.id === id);
+  if (!doc) return;
+  renderSidebar();
+  document.getElementById('emptyState').style.display = 'none';
+  const container = document.getElementById('detailContainer');
+  container.style.display = 'block';
+
+  const traceSpans = TRACE_SPANS.filter(s => s.ep === doc.path);
+  const maxDur = Math.max(...TRACE_SPANS.map(s => s.cDur), 1);
+
+  let html = `<div class="ep-detail">`;
+
+  // Breadcrumb
+  html += `<div class="breadcrumb"><a href="#" onclick="deselectEndpoint();return false">📖 API</a> <span>›</span> <span>${doc.group}</span> <span>›</span> <span style="color:var(--text)">${doc.path}</span></div>`;
+
+  // Header
+  html += `<div class="ep-header">
+    <span class="method-badge ${doc.method.toLowerCase()}">${doc.method}</span>
+    <span class="ep-path-big">${doc.path}</span>
+    <div class="ep-meta">
+      <span class="role-badge" style="background:${doc.roleColor}22;color:${doc.roleColor};border:1px solid ${doc.roleColor}44">${doc.roleLabel}</span>
+      <span class="group-badge">${doc.group}</span>
+      ${doc.tags.map(t => `<span class="tag">${t}</span>`).join('')}
+      ${doc.correlations.criticalPath ? '<span class="tag" style="background:rgba(248,81,73,.1);color:var(--red);border-color:rgba(248,81,73,.3)">🔴 Critical Path</span>' : ''}
+      ${doc.authRequired ? '<span class="tag" style="border-color:rgba(210,153,34,.3);color:var(--orange)">🔒 Auth</span>' : '<span class="tag" style="border-color:rgba(63,185,80,.3);color:var(--green)">🔓 Public</span>'}
+    </div>
+    <div class="summary">${doc.description}</div>
+  </div>`;
+
+  // ── Description + Notes ──
+  if (doc.notes) {
+    html += makeSection('desc', '💡', 'Hinweise', '', `<div class="desc-block"><div class="note">${doc.notes}</div></div>`);
+  }
+
+  // ── Request ──
+  if (doc.request.bodySchema.length > 0) {
+    let reqBody = `<table class="schema-table"><thead><tr><th>Parameter</th><th>Typ</th><th>Pflicht</th><th>Beschreibung</th></tr></thead><tbody>`;
+    doc.request.bodySchema.forEach(f => {
+      reqBody += `<tr>
+        <td><span class="field-name">${f.name}</span></td>
+        <td><span class="field-type">${f.type}</span></td>
+        <td><span class="field-req ${f.req ? 'yes' : 'no'}">${f.req ? 'required' : 'optional'}</span></td>
+        <td><span class="field-desc">${f.desc}</span>
+          ${f.example ? `<div class="field-example">Bsp: ${f.example}</div>` : ''}
+          ${f.enums ? `<div class="field-enum">${f.enums.map(e => `<span>${e}</span>`).join('')}</div>` : ''}
+          ${f.def ? `<div class="field-default">Default: ${f.def}</div>` : ''}
+        </td></tr>`;
+    });
+    reqBody += `</tbody></table>`;
+    if (doc.request.bodyExample) {
+      reqBody += `<div class="json-block"><div class="json-label">Request Body — Beispiel</div><button class="copy-btn" onclick="copyJSON(this, '${doc.id}-req')">📋 Kopieren</button><pre class="json-pre" id="${doc.id}-req">${syntaxJSON(doc.request.bodyExample)}</pre></div>`;
+    }
+    html += makeSection('request', '📤', 'Request', `${doc.request.contentType}`, reqBody);
+  } else {
+    html += makeSection('request', '📤', 'Request', 'Keine Parameter', `<div class="desc-block" style="color:var(--text3)">Dieser Endpoint hat keine Request-Parameter. Einfach <code style="background:var(--bg);padding:2px 6px;border-radius:4px">${doc.method} ${doc.path}</code> aufrufen.</div>`);
+  }
+
+  // ── Response ──
+  let resBody = `<table class="schema-table"><thead><tr><th>Feld</th><th>Typ</th><th>Beschreibung</th></tr></thead><tbody>`;
+  doc.response.schema.forEach(f => {
+    resBody += `<tr><td><span class="field-name">${f.name}</span></td><td><span class="field-type">${f.type}</span></td><td><span class="field-desc">${f.desc}</span></td></tr>`;
+  });
+  resBody += `</tbody></table>`;
+  resBody += `<div class="json-block"><div class="json-label">Response — Beispiel</div><button class="copy-btn" onclick="copyJSON(this,'${doc.id}-res')">📋 Kopieren</button><pre class="json-pre" id="${doc.id}-res">${syntaxJSON(doc.response.example)}</pre></div>`;
+  resBody += `<div style="margin-top:12px"><div class="json-label">Status Codes</div><div class="status-list">`;
+  doc.response.statusCodes.forEach(sc => {
+    const cls = sc.code < 300 ? 'c2' : sc.code < 500 ? 'c4' : 'c5';
+    resBody += `<div class="status-item"><span class="status-code ${cls}">${sc.code}</span><span class="status-desc">${sc.desc}</span></div>`;
+  });
+  resBody += `</div></div>`;
+  html += makeSection('response', '📥', 'Response', doc.response.contentType, resBody);
+
+  // ── Timing ──
+  const t = doc.timing;
+  const tMax = t.timeoutMs;
+  const pTyp = (t.typicalMs / tMax * 100).toFixed(0);
+  const pP95 = (t.p95Ms / tMax * 100).toFixed(0);
+  const typCls = t.typicalMs < 50 ? 'fast' : t.typicalMs < 200 ? 'med' : 'slow';
+  const p95Cls = t.p95Ms < 100 ? 'fast' : t.p95Ms < 500 ? 'med' : 'slow';
+
+  let timingBody = `<div class="timing-grid">
+    <div class="timing-card"><div class="tv ${typCls}">${t.typicalMs}ms</div><div class="tl">Typical</div></div>
+    <div class="timing-card"><div class="tv ${p95Cls}">${t.p95Ms}ms</div><div class="tl">P95</div></div>
+    <div class="timing-card"><div class="tv" style="color:var(--text2)">${(t.timeoutMs/1000).toFixed(0)}s</div><div class="tl">Timeout</div></div>
+  </div>`;
+  timingBody += `<div class="timing-bar">
+    <div class="tb-seg" style="width:${pTyp}%;background:var(--green)">${t.typicalMs}ms</div>
+    <div class="tb-seg" style="width:${Math.max(1,pP95-pTyp)}%;background:var(--orange)">${t.p95Ms}ms</div>
+    <div class="tb-seg" style="width:${Math.max(1,100-pP95)}%;background:var(--bg3)"></div>
+  </div>`;
+  if (t.bottleneck) {
+    timingBody += `<div class="timing-hint">⚡ <strong>Bottleneck-Hinweis:</strong> ${t.bottleneck}</div>`;
+  }
+  html += makeSection('timing', '⏱', 'Timing & Performance', '', timingBody);
+
+  // ── Correlations ──
+  const c = doc.correlations;
+  const self = doc;
+  let corrBody = `<div class="corr-flow">`;
+  if (c.dependsOn.length) {
+    c.dependsOn.forEach(depId => {
+      const dep = API_DOCS.find(d => d.id === depId);
+      if (dep) corrBody += `<div class="corr-node" style="border-color:${dep.roleColor};color:${dep.roleColor};background:${dep.roleColor}11" onclick="selectEndpoint('${dep.id}')">${dep.roleLabel.split(' ')[0]} ${dep.path.replace('/api/','')}</div>`;
+    });
+    corrBody += `<span class="corr-arrow">→</span>`;
+  }
+  corrBody += `<div class="corr-node corr-self" style="border-color:${self.roleColor};color:${self.roleColor};background:${self.roleColor}11">${self.roleLabel.split(' ')[0]} ${self.path.replace('/api/','')}</div>`;
+  if (c.triggers.length) {
+    corrBody += `<span class="corr-arrow">→</span>`;
+    c.triggers.forEach(trigId => {
+      const trig = API_DOCS.find(d => d.id === trigId);
+      if (trig) corrBody += `<div class="corr-node" style="border-color:${trig.roleColor};color:${trig.roleColor};background:${trig.roleColor}11" onclick="selectEndpoint('${trig.id}')">${trig.roleLabel.split(' ')[0]} ${trig.path.replace('/api/','')}</div>`;
+    });
+  }
+  corrBody += `</div>`;
+
+  corrBody += `<div class="corr-list">`;
+  c.dependsOn.forEach(id => {
+    const d = API_DOCS.find(x => x.id === id);
+    if (d) corrBody += `<div class="corr-row"><span class="cr-type dep">↗ benötigt</span><span style="font-family:var(--mono);font-size:12px;color:${d.roleColor};cursor:pointer" onclick="selectEndpoint('${d.id}')">${d.path}</span><span style="color:var(--text3);font-size:11px;margin-left:auto">${d.summary}</span></div>`;
+  });
+  c.triggers.forEach(id => {
+    const d = API_DOCS.find(x => x.id === id);
+    if (d) corrBody += `<div class="corr-row"><span class="cr-type trig">↘ triggert</span><span style="font-family:var(--mono);font-size:12px;color:${d.roleColor};cursor:pointer" onclick="selectEndpoint('${d.id}')">${d.path}</span><span style="color:var(--text3);font-size:11px;margin-left:auto">${d.summary}</span></div>`;
+  });
+  c.parallelWith.forEach(id => {
+    const d = API_DOCS.find(x => x.id === id);
+    if (d) corrBody += `<div class="corr-row"><span class="cr-type par">⇄ parallel</span><span style="font-family:var(--mono);font-size:12px;color:${d.roleColor};cursor:pointer" onclick="selectEndpoint('${d.id}')">${d.path}</span><span style="color:var(--text3);font-size:11px;margin-left:auto">${d.summary}</span></div>`;
+  });
+  corrBody += `</div>`;
+  if (c.phase) corrBody += `<div style="margin-top:8px;font-size:12px;color:var(--text3)">📍 Position im Trace: <strong style="color:var(--text2)">${c.phase}</strong></div>`;
+  html += makeSection('correlations', '🔗', 'Korrelationen', '', corrBody);
+
+  // ── Errors ──
+  if (doc.errors.length) {
+    let errBody = `<div class="error-list">`;
+    doc.errors.forEach(e => {
+      errBody += `<div class="error-card">
+        <div class="ec-symptom">⚠️ ${e.symptom}</div>
+        <div class="ec-cause"><strong>Ursache:</strong> ${e.cause}</div>
+        <div class="ec-fix">✅ <strong>Lösung:</strong> ${e.fix}</div>
+      </div>`;
+    });
+    errBody += `</div>`;
+    html += makeSection('errors', '🐛', 'Fehler & Troubleshooting', `${doc.errors.length} bekannt`, errBody);
+  }
+
+  // ── Code Examples ──
+  let codeBody = `<div class="code-tabs" id="codeTabs-${doc.id}">
+    <button class="code-tab active" onclick="switchCodeTab('${doc.id}','curl')">cURL</button>
+    <button class="code-tab" onclick="switchCodeTab('${doc.id}','javascript')">JavaScript</button>
+    <button class="code-tab" onclick="switchCodeTab('${doc.id}','python')">Python</button>
+  </div>`;
+  codeBody += `<div class="code-content">
+    <button class="copy-btn" style="top:8px" onclick="copyCode(this,'${doc.id}')">📋 Kopieren</button>
+    <pre class="code-pre" id="codeBlock-${doc.id}">${syntaxCode(doc.examples.curl, 'bash')}</pre>
+  </div>`;
+  html += makeSection('examples', '💻', 'Code-Beispiele', '', codeBody);
+
+  // ── Trace Reference ──
+  if (traceSpans.length) {
+    let trBody = `<div class="trace-ref">`;
+    traceSpans.forEach(s => {
+      const barPct = (s.cDur / maxDur * 100).toFixed(0);
+      const barColor = s.sDur > 100 ? 'var(--orange)' : s.sDur > 30 ? 'var(--accent)' : 'var(--green)';
+      const icons = [];
+      if (s.nOut < 0) icons.push('⚠️');
+      if (s.sDur > 100) icons.push('🐢');
+      const isCrit = doc.correlations.criticalPath;
+      if (isCrit) icons.push('🔴');
+
+      trBody += `<div class="trace-ref-row">
+        <span class="tr-id">${s.id}</span>
+        <span class="tr-time">T+${s.cStart}ms → T+${s.cEnd}ms</span>
+        <div class="tr-bar"><div class="tr-bar-fill" style="width:${barPct}%;background:${barColor}"></div></div>
+        <span class="tr-dur" style="color:${barColor}">${s.cDur}ms</span>
+        <span class="tr-icons">${icons.join(' ')}</span>
+        <span class="tr-action" title="Im Waterfall anzeigen">📊 Zum Trace</span>
+      </div>`;
+    });
+    trBody += `</div>`;
+    html += makeSection('trace', '📊', 'Trace-Referenz', `${traceSpans.length} Spans`, trBody);
+  }
+
+  html += `</div>`;
+  container.innerHTML = html;
+  document.getElementById('mainContent').scrollTop = 0;
+
+  // Fix hash
+  window.location.hash = `api/${doc.id}`;
+}
+
+function makeSection(key, icon, title, badge, body) {
+  return `<div class="section" id="sec-${key}">
+    <div class="section-head" onclick="toggleSection('${key}')">
+      <span class="chev open" id="chev-${key}">▶</span>
+      <span class="sec-icon">${icon}</span>
+      <span class="sec-title">${title}</span>
+      ${badge ? `<span class="sec-badge">${badge}</span>` : ''}
+    </div>
+    <div class="section-body" id="body-${key}">${body}</div>
+  </div>`;
+}
+
+function toggleSection(key) {
+  const body = document.getElementById('body-' + key);
+  const chev = document.getElementById('chev-' + key);
+  body.classList.toggle('collapsed');
+  chev.classList.toggle('open');
+}
+
+function deselectEndpoint() {
+  activeEp = null;
+  document.getElementById('emptyState').style.display = '';
+  document.getElementById('detailContainer').style.display = 'none';
+  renderSidebar();
+  window.location.hash = '';
+}
+
+// ── Code tab switching ──
+const activeCodeTab = {};
+function switchCodeTab(docId, lang) {
+  activeCodeTab[docId] = lang;
+  const doc = API_DOCS.find(d => d.id === docId);
+  const block = document.getElementById('codeBlock-' + docId);
+  const tabs = document.getElementById('codeTabs-' + docId);
+  tabs.querySelectorAll('.code-tab').forEach(t => t.classList.remove('active'));
+  [...tabs.children].find(t => t.textContent.toLowerCase().includes(lang === 'javascript' ? 'java' : lang)).classList.add('active');
+  const langMap = { curl: 'bash', javascript: 'javascript', python: 'python' };
+  block.innerHTML = syntaxCode(doc.examples[lang], langMap[lang]);
+}
+
+// ── Copy ──
+function copyJSON(btn, preId) {
+  const pre = document.getElementById(preId);
+  navigator.clipboard.writeText(pre.textContent).then(() => {
+    btn.innerHTML = '✅ Kopiert!'; btn.classList.add('copied');
+    setTimeout(() => { btn.innerHTML = '📋 Kopieren'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+function copyCode(btn, docId) {
+  const doc = API_DOCS.find(d => d.id === docId);
+  const lang = activeCodeTab[docId] || 'curl';
+  navigator.clipboard.writeText(doc.examples[lang]).then(() => {
+    btn.innerHTML = '✅ Kopiert!'; btn.classList.add('copied');
+    setTimeout(() => { btn.innerHTML = '📋 Kopieren'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+//  SEARCH
+// ══════════════════════════════════════════════════════════════
+const searchInput = document.getElementById('searchInput');
+searchInput.addEventListener('input', e => {
+  searchQuery = e.target.value;
+  renderSidebar();
+});
+
+// ⌘K shortcut
+document.addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+    e.preventDefault();
+    searchInput.focus();
+    searchInput.select();
+  }
+  if (e.key === 'Escape') {
+    searchInput.blur();
+    searchInput.value = '';
+    searchQuery = '';
+    renderSidebar();
+  }
+  // Arrow navigation
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    const items = [...document.querySelectorAll('.ep-item:not(.hidden)')];
+    if (!items.length) return;
+    e.preventDefault();
+    if (e.key === 'ArrowDown') focusedItemIdx = Math.min(focusedItemIdx + 1, items.length - 1);
+    else focusedItemIdx = Math.max(focusedItemIdx - 1, 0);
+    items[focusedItemIdx]?.scrollIntoView({ block: 'nearest' });
+    selectEndpoint(items[focusedItemIdx]?.dataset.id);
+  }
+});
+
+// ══════════════════════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════════════════════
+renderTagFilter();
+renderSidebar();
+
+// Hash routing
+function handleHash() {
+  const hash = window.location.hash.replace('#', '');
+  if (hash.startsWith('api/')) {
+    const id = hash.replace('api/', '');
+    if (API_DOCS.find(d => d.id === id)) selectEndpoint(id);
+  }
+}
+window.addEventListener('hashchange', handleHash);
+handleHash();
+
+// Auto-select first if none active
+if (!activeEp && window.innerWidth > 700) {
+  selectEndpoint(API_DOCS[0].id);
+}
+</script>
+</body>
+</html>

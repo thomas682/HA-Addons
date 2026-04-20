@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trace — btn_cache_pruefen (mit Filter)</title>
+<style>
+  :root {
+    --bg: #0d1117; --bg2: #161b22; --bg3: #21262d; --bg4: #292e36;
+    --border: #30363d; --border-hover: #484f58;
+    --text: #e6edf3; --text2: #8b949e; --text3: #6e7681;
+    --accent: #58a6ff; --green: #3fb950; --orange: #d29922;
+    --red: #f85149; --purple: #bc8cff; --pink: #f778ba; --cyan: #39d2c0;
+    --network-out: #1f4a7a; --network-in: #1a3d5c;
+    --server: #58a6ff; --server-slow: #d29922;
+    --radius: 10px; --radius-sm: 6px;
+    --shadow: 0 2px 8px rgba(0,0,0,0.3);
+    --transition: 0.2s cubic-bezier(0.4,0,0.2,1);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:'Inter','SF Pro Display',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; font-size:13px; padding:0; min-height:100vh; }
+  .app { max-width:1400px; margin:0 auto; padding:20px 24px 60px; }
+  code, .mono { font-family:'SF Mono','Cascadia Code','Fira Code','JetBrains Mono',monospace; }
+
+  /* Header */
+  .header { margin-bottom:24px; }
+  h1 { font-size:22px; font-weight:700; margin-bottom:4px; display:flex; align-items:center; gap:10px; }
+  h1 .status-dot { width:10px; height:10px; border-radius:50%; background:var(--orange); animation:pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .subtitle { color:var(--text2); font-size:13px; display:flex; gap:16px; flex-wrap:wrap; }
+  .subtitle span { display:flex; align-items:center; gap:4px; }
+
+  h2 { font-size:15px; font-weight:600; margin:28px 0 12px; color:var(--text); display:flex; align-items:center; gap:8px; }
+  h2 .badge { font-size:11px; background:var(--bg3); border:1px solid var(--border); border-radius:12px; padding:2px 10px; color:var(--text2); font-weight:400; font-family:inherit; transition:var(--transition); }
+
+  /* ═══════════════════════════════════════════════════
+     FILTER PANEL
+     ═══════════════════════════════════════════════════ */
+  .filter-panel {
+    background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius);
+    padding:16px 20px; margin-bottom:20px;
+    transition:var(--transition);
+  }
+  .filter-header {
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:14px; flex-wrap:wrap; gap:10px;
+  }
+  .filter-title {
+    font-size:13px; font-weight:600; color:var(--text);
+    display:flex; align-items:center; gap:8px;
+  }
+  .filter-title svg { opacity:0.6; }
+  .filter-subtitle { font-size:11px; color:var(--text3); margin-left:4px; font-weight:400; }
+  .filter-actions {
+    display:flex; gap:6px; align-items:center;
+  }
+  .filter-btn {
+    background:var(--bg3); border:1px solid var(--border); color:var(--text2);
+    font-size:11px; padding:4px 12px; border-radius:20px; cursor:pointer;
+    font-family:inherit; transition:var(--transition); white-space:nowrap;
+  }
+  .filter-btn:hover { border-color:var(--accent); color:var(--accent); background:rgba(88,166,255,0.08); }
+  .filter-btn.active { background:rgba(88,166,255,0.15); border-color:var(--accent); color:var(--accent); }
+  .filter-divider { width:1px; height:20px; background:var(--border); margin:0 4px; }
+
+  /* Method Filter Buttons */
+  .method-filter { display:flex; gap:4px; align-items:center; margin-right:8px; }
+  .method-btn {
+    font-size:10px; font-weight:700; padding:3px 8px; border-radius:4px;
+    cursor:pointer; border:1px solid transparent; transition:var(--transition);
+    font-family:'SF Mono','Cascadia Code',monospace;
+  }
+  .method-btn.post { background:rgba(88,166,255,0.1); color:var(--accent); }
+  .method-btn.post:hover, .method-btn.post.active { background:rgba(88,166,255,0.25); border-color:var(--accent); }
+  .method-btn.get { background:rgba(63,185,80,0.1); color:var(--green); }
+  .method-btn.get:hover, .method-btn.get.active { background:rgba(63,185,80,0.25); border-color:var(--green); }
+  .method-btn.off { opacity:0.3; }
+
+  /* Endpoint Chips */
+  .chip-grid {
+    display:flex; flex-wrap:wrap; gap:6px;
+  }
+  .chip {
+    display:flex; align-items:center; gap:7px;
+    background:var(--bg3); border:1px solid var(--border);
+    border-radius:20px; padding:5px 14px 5px 10px;
+    cursor:pointer; transition:all 0.25s cubic-bezier(0.4,0,0.2,1);
+    user-select:none; position:relative; overflow:hidden;
+  }
+  .chip::before {
+    content:''; position:absolute; inset:0;
+    background:linear-gradient(135deg, var(--chip-color, var(--accent)) 0%, transparent 60%);
+    opacity:0; transition:opacity 0.25s;
+  }
+  .chip:hover { border-color:var(--border-hover); transform:translateY(-1px); box-shadow:var(--shadow); }
+  .chip:hover::before { opacity:0.06; }
+  .chip.active { border-color:var(--chip-color, var(--accent)); }
+  .chip.active::before { opacity:0.12; }
+  .chip.inactive { opacity:0.3; border-color:transparent; transform:scale(0.97); }
+  .chip.inactive:hover { opacity:0.5; }
+
+  .chip-indicator {
+    width:8px; height:8px; border-radius:50%;
+    background:var(--chip-color, var(--accent));
+    transition:var(--transition); flex-shrink:0;
+    position:relative; z-index:1;
+  }
+  .chip.inactive .chip-indicator { background:var(--text3); }
+
+  .chip-content { display:flex; align-items:center; gap:6px; position:relative; z-index:1; }
+  .chip-endpoint {
+    font-size:12px; color:var(--text); font-family:'SF Mono','Cascadia Code',monospace;
+    transition:var(--transition);
+  }
+  .chip.inactive .chip-endpoint { color:var(--text3); }
+
+  .chip-meta {
+    display:flex; align-items:center; gap:4px;
+    font-size:10px; color:var(--text3);
+    transition:var(--transition);
+  }
+  .chip-count {
+    background:var(--bg); padding:1px 6px; border-radius:8px;
+    font-size:10px; font-weight:600; color:var(--text2);
+    transition:var(--transition); min-width:18px; text-align:center;
+  }
+  .chip.active .chip-count { background:rgba(0,0,0,0.3); color:var(--chip-color, var(--accent)); }
+  .chip.inactive .chip-count { color:var(--text3); }
+  .chip-dur {
+    font-size:10px; color:var(--text3);
+    font-family:'SF Mono','Cascadia Code',monospace;
+  }
+
+  /* Quick stats line */
+  .filter-stats {
+    display:flex; gap:16px; margin-top:12px; padding-top:10px;
+    border-top:1px solid var(--border); font-size:11px; color:var(--text3);
+    flex-wrap:wrap; transition:var(--transition);
+  }
+  .filter-stats .stat { display:flex; align-items:center; gap:4px; }
+  .filter-stats .stat-value { color:var(--text2); font-weight:600; font-family:'SF Mono','Cascadia Code',monospace; }
+  .filter-stats .stat-value.highlight { color:var(--accent); }
+
+  /* ═══════════════════════════════════════════════════
+     SUMMARY CARDS
+     ═══════════════════════════════════════════════════ */
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(155px,1fr)); gap:10px; margin-bottom:24px; }
+  .card {
+    background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius);
+    padding:14px 16px; transition:var(--transition);
+  }
+  .card .label { font-size:11px; color:var(--text2); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px; }
+  .card .value { font-size:22px; font-weight:700; transition:var(--transition); }
+  .card .value.green { color:var(--green); } .card .value.orange { color:var(--orange); }
+  .card .value.blue { color:var(--accent); } .card .value.purple { color:var(--purple); }
+  .card .sub { font-size:11px; color:var(--text2); margin-top:2px; transition:var(--transition); }
+
+  /* ═══════════════════════════════════════════════════
+     PHASE BAR
+     ═══════════════════════════════════════════════════ */
+  .phase-bar-container { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:16px; margin-bottom:16px; }
+  .phase-bar { display:flex; height:36px; border-radius:var(--radius-sm); overflow:hidden; margin:8px 0; }
+  .phase-bar .seg { display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:600; color:white; transition:all 0.3s; cursor:pointer; }
+  .phase-bar .seg:hover { filter:brightness(1.2); }
+  .phase-bar .seg.p1 { background:#2563eb; } .phase-bar .seg.pause1 { background:var(--bg3); color:var(--text2); }
+  .phase-bar .seg.p3 { background:#16a34a; } .phase-bar .seg.pause2 { background:var(--bg3); color:var(--text2); }
+  .phase-bar .seg.p4 { background:#9333ea; }
+  .phase-labels { display:flex; gap:16px; flex-wrap:wrap; margin-top:8px; }
+  .phase-label { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text2); }
+  .phase-dot { width:10px; height:10px; border-radius:50%; }
+
+  /* ═══════════════════════════════════════════════════
+     WATERFALL
+     ═══════════════════════════════════════════════════ */
+  .waterfall-container {
+    background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius);
+    padding:16px; overflow-x:auto; margin-bottom:16px; transition:var(--transition);
+  }
+  .waterfall-empty {
+    text-align:center; padding:40px 20px; color:var(--text3);
+    font-size:14px;
+  }
+  .waterfall-empty svg { opacity:0.3; margin-bottom:12px; display:block; margin:0 auto 12px; }
+  .waterfall-row {
+    display:flex; align-items:center; height:34px;
+    border-bottom:1px solid rgba(48,54,61,0.5);
+    transition:all 0.3s cubic-bezier(0.4,0,0.2,1);
+    animation:fadeInRow 0.3s ease forwards;
+  }
+  @keyframes fadeInRow { from { opacity:0; transform:translateX(-8px); } to { opacity:1; transform:translateX(0); } }
+  .waterfall-row:last-child { border-bottom:none; }
+  .waterfall-row:hover { background:rgba(88,166,255,0.04); }
+  .wf-label { min-width:280px; max-width:280px; padding-right:12px; display:flex; align-items:center; gap:6px; flex-shrink:0; }
+  .wf-label .idx { color:var(--text3); font-size:11px; min-width:28px; text-align:right; font-family:'SF Mono','Cascadia Code',monospace; }
+  .wf-label .method { font-size:10px; font-weight:700; padding:2px 6px; border-radius:3px; font-family:'SF Mono','Cascadia Code',monospace; }
+  .wf-label .method.get { background:rgba(63,185,80,0.12); color:var(--green); }
+  .wf-label .method.post { background:rgba(88,166,255,0.12); color:var(--accent); }
+  .wf-label .endpoint { color:var(--text); font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:'SF Mono','Cascadia Code',monospace; }
+  .wf-bar-area { flex:1; position:relative; height:100%; min-width:600px; }
+  .wf-bar-wrap {
+    position:absolute; top:50%; transform:translateY(-50%); height:18px;
+    display:flex; border-radius:4px; overflow:hidden; cursor:pointer;
+    transition:filter 0.15s;
+  }
+  .wf-bar-wrap:hover { filter:brightness(1.3); }
+  .wf-seg { height:100%; }
+  .wf-seg.net-out { background:var(--network-out); }
+  .wf-seg.server { background:var(--server); }
+  .wf-seg.server.slow { background:var(--server-slow); }
+  .wf-seg.net-in { background:var(--network-in); }
+  .wf-dur { position:absolute; top:50%; transform:translateY(-50%); font-size:10px; color:var(--text3); white-space:nowrap; font-family:'SF Mono','Cascadia Code',monospace; }
+
+  /* Timeline header */
+  .timeline-header { display:flex; height:26px; align-items:flex-end; margin-bottom:4px; }
+  .timeline-header .wf-label { font-size:11px; color:var(--text3); }
+  .timeline-ticks { flex:1; position:relative; min-width:600px; height:100%; }
+  .tick { position:absolute; bottom:0; font-size:10px; color:var(--text3); font-family:'SF Mono','Cascadia Code',monospace; }
+  .tick::before { content:''; position:absolute; bottom:16px; left:0; width:1px; height:6px; background:var(--border); }
+
+  /* Legend */
+  .legend { display:flex; gap:20px; flex-wrap:wrap; margin:12px 0; }
+  .legend-item { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text2); }
+  .legend-swatch { width:14px; height:14px; border-radius:3px; }
+
+  /* Tooltip */
+  .tooltip {
+    display:none; position:fixed; background:var(--bg3); border:1px solid var(--border);
+    border-radius:8px; padding:12px 16px; z-index:1000; pointer-events:none;
+    box-shadow:0 12px 40px rgba(0,0,0,0.5); max-width:340px;
+    backdrop-filter:blur(12px);
+  }
+  .tooltip.show { display:block; }
+  .tooltip .tt-title { font-weight:600; font-size:13px; margin-bottom:8px; color:var(--accent); font-family:'SF Mono','Cascadia Code',monospace; }
+  .tooltip .tt-row { display:flex; justify-content:space-between; gap:16px; margin-bottom:3px; }
+  .tooltip .tt-row .k { color:var(--text2); } .tooltip .tt-row .v { font-weight:600; font-family:'SF Mono','Cascadia Code',monospace; }
+  .tooltip hr { border:none; border-top:1px solid var(--border); margin:6px 0; }
+
+  /* Endpoint Stats */
+  .stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:10px; }
+  .stat-card { background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:12px 14px; transition:var(--transition); }
+  .stat-card.hidden { display:none; }
+  .stat-card .ep { font-size:12px; color:var(--accent); margin-bottom:6px; display:flex; justify-content:space-between; font-family:'SF Mono','Cascadia Code',monospace; }
+  .stat-card .ep .count { color:var(--text2); font-size:11px; }
+  .bar-bg { background:var(--bg3); border-radius:4px; height:8px; overflow:hidden; margin-bottom:6px; }
+  .bar-fill { height:100%; border-radius:4px; transition:width 0.6s ease; }
+  .stat-card .meta { display:flex; justify-content:space-between; font-size:11px; color:var(--text2); font-family:'SF Mono','Cascadia Code',monospace; }
+
+  /* No-results message */
+  .no-results { text-align:center; padding:48px 20px; color:var(--text3); }
+  .no-results .icon { font-size:36px; margin-bottom:12px; opacity:0.4; }
+  .no-results .msg { font-size:14px; margin-bottom:8px; }
+  .no-results .hint { font-size:12px; color:var(--text3); }
+
+  /* Scroll indicator */
+  .scroll-hint {
+    display:none; text-align:center; font-size:11px; color:var(--text3);
+    padding:4px; margin-top:-12px; margin-bottom:8px;
+  }
+
+  @media (max-width:900px) {
+    .wf-label { min-width:200px; max-width:200px; }
+    .filter-header { flex-direction:column; align-items:flex-start; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ═══ HEADER ═══ -->
+<div class="header">
+  <h1>
+    <span class="status-dot"></span>
+    Trace: <span class="mono">btn_cache_pruefen</span>
+  </h1>
+  <p class="subtitle">
+    <span>📄 dashboard_page.main</span>
+    <span>🕘 2026-04-16 09:04:03 UTC</span>
+    <span class="mono">🔗 829e3a47</span>
+  </p>
+</div>
+
+<!-- ═══ FILTER PANEL ═══ -->
+<div class="filter-panel" id="filterPanel">
+  <div class="filter-header">
+    <div class="filter-title">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M.75 3h14.5a.75.75 0 010 1.5H.75a.75.75 0 010-1.5zm2 4h10.5a.75.75 0 010 1.5H2.75a.75.75 0 010-1.5zm3 4h4.5a.75.75 0 010 1.5h-4.5a.75.75 0 010-1.5z"/></svg>
+      Endpoint-Filter
+      <span class="filter-subtitle" id="filterCount">6 / 6 Endpunkte aktiv</span>
+    </div>
+    <div class="filter-actions">
+      <div class="method-filter">
+        <div class="method-btn post active" id="methodPost" onclick="toggleMethod('POST')">POST</div>
+        <div class="method-btn get active" id="methodGet" onclick="toggleMethod('GET')">GET</div>
+      </div>
+      <div class="filter-divider"></div>
+      <button class="filter-btn" onclick="selectAll()">✓ Alle</button>
+      <button class="filter-btn" onclick="selectNone()">✕ Keine</button>
+      <button class="filter-btn" onclick="selectSlow()">🐢 Langsame</button>
+      <button class="filter-btn" onclick="invertSelection()">⇄ Invertieren</button>
+    </div>
+  </div>
+  <div class="chip-grid" id="chipGrid"></div>
+  <div class="filter-stats" id="filterStats"></div>
+</div>
+
+<!-- ═══ CARDS ═══ -->
+<div class="cards" id="cards"></div>
+
+<!-- ═══ PHASE BAR ═══ -->
+<h2>⏱️ Zeitleiste <span class="badge" id="badgeTotal">8.051 ms</span></h2>
+<div class="phase-bar-container" id="phaseBar"></div>
+
+<!-- ═══ WATERFALL FULL ═══ -->
+<h2>📊 Waterfall — Vollansicht <span class="badge" id="badgeFull">13 Requests</span></h2>
+<div class="legend" id="legend"></div>
+<div class="waterfall-container" id="waterfallFull"></div>
+
+<!-- ═══ WATERFALL ZOOM ═══ -->
+<h2>🔎 Waterfall — Zoom Phase 1 + 2 <span class="badge" id="badgeZoom">0 – 600 ms</span></h2>
+<div class="waterfall-container" id="waterfallZoom"></div>
+
+<!-- ═══ STATS ═══ -->
+<h2>📈 Endpoint-Statistiken <span class="badge" id="badgeStats">6 Endpunkte</span></h2>
+<div class="stats-grid" id="statsGrid"></div>
+
+</div><!-- .app -->
+
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+// ════════════════════════════════════════════════
+//  DATA
+// ════════════════════════════════════════════════
+const T0 = new Date('2026-04-16T09:04:03.592Z').getTime();
+const TOTAL = 8051;
+
+const ALL_SPANS = [
+  { id:':4',  m:'POST', ep:'/api/series_oldest',          cEnd:34.652,  cDur:15,  sEnd:21.218,  sDur:0   },
+  { id:':2',  m:'POST', ep:'/api/cache_usage/ui_event',   cEnd:47.214,  cDur:19,  sEnd:22.132,  sDur:4   },
+  { id:':1',  m:'POST', ep:'/api/ui_event',               cEnd:54.151,  cDur:19,  sEnd:22.967,  sDur:3   },
+  { id:':3',  m:'POST', ep:'/api/analysis_history_event', cEnd:78.551,  cDur:66,  sEnd:72.998,  sDur:53  },
+  { id:':6',  m:'POST', ep:'/api/ui_event',               cEnd:371.632, cDur:54,  sEnd:354.508, sDur:31  },
+  { id:':5',  m:'POST', ep:'/api/cache/plan',             cEnd:524.622, cDur:495, sEnd:515.973, sDur:474 },
+  { id:':7',  m:'POST', ep:'/api/analysis_history_event', cEnd:533.619, cDur:9,   sEnd:528.746, sDur:1   },
+  { id:':8',  m:'POST', ep:'/api/analysis_cache/plan',    cEnd:542.571, cDur:16,  sEnd:534.374, sDur:6   },
+  { id:':9',  m:'POST', ep:'/api/analysis_history_event', cEnd:555.700, cDur:10,  sEnd:546.248, sDur:0   },
+  { id:':10', m:'POST', ep:'/api/analysis_history_event', cEnd:556.306, cDur:9,   sEnd:546.536, sDur:1   },
+  { id:':11', m:'POST', ep:'/api/analysis_history_event', cEnd:556.908, cDur:8,   sEnd:548.199, sDur:0   },
+  { id:':12', m:'GET',  ep:'/api/sysinfo',                cEnd:4665.335,cDur:103, sEnd:4564.608,sDur:1   },
+  { id:':13', m:'POST', ep:'/api/ui_event',               cEnd:8051.297,cDur:78,  sEnd:7974.158,sDur:1   },
+];
+ALL_SPANS.forEach(s => { s.cStart = s.cEnd - s.cDur; });
+
+// Distinct endpoints with colors
+const EP_COLORS = {
+  '/api/series_oldest':          '#58a6ff',
+  '/api/cache_usage/ui_event':   '#bc8cff',
+  '/api/ui_event':               '#3fb950',
+  '/api/analysis_history_event': '#f778ba',
+  '/api/cache/plan':             '#d29922',
+  '/api/analysis_cache/plan':    '#39d2c0',
+  '/api/sysinfo':                '#f0883e',
+};
+
+// Build unique endpoints from data
+const ENDPOINTS = {};
+ALL_SPANS.forEach(s => {
+  if (!ENDPOINTS[s.ep]) {
+    ENDPOINTS[s.ep] = { ep:s.ep, count:0, totalClient:0, totalServer:0, maxClient:0, methods:new Set() };
+  }
+  const e = ENDPOINTS[s.ep];
+  e.count++;
+  e.totalClient += s.cDur;
+  e.totalServer += s.sDur;
+  e.maxClient = Math.max(e.maxClient, s.cDur);
+  e.methods.add(s.m);
+});
+
+// ════════════════════════════════════════════════
+//  FILTER STATE
+// ════════════════════════════════════════════════
+const filterState = {
+  endpoints: new Set(Object.keys(ENDPOINTS)),
+  methods: new Set(['GET','POST']),
+};
+
+// ════════════════════════════════════════════════
+//  CHIP GRID
+// ════════════════════════════════════════════════
+function renderChips() {
+  const grid = document.getElementById('chipGrid');
+  const sorted = Object.values(ENDPOINTS).sort((a,b) => b.totalClient - a.totalClient);
+
+  grid.innerHTML = sorted.map(e => {
+    const color = EP_COLORS[e.ep] || '#58a6ff';
+    const active = filterState.endpoints.has(e.ep);
+    const methodOk = [...e.methods].some(m => filterState.methods.has(m));
+    const shortName = e.ep.replace('/api/','');
+    const cls = active && methodOk ? 'active' : 'inactive';
+    return `
+      <div class="chip ${cls}" style="--chip-color:${color}"
+           data-ep="${e.ep}" onclick="toggleEndpoint('${e.ep}')">
+        <div class="chip-indicator"></div>
+        <div class="chip-content">
+          <span class="chip-endpoint">${shortName}</span>
+          <span class="chip-count">${e.count}×</span>
+          <span class="chip-dur">${e.maxClient > 100 ? '🐢 ' : ''}${e.totalClient}ms</span>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════════════
+//  FILTER ACTIONS
+// ════════════════════════════════════════════════
+function toggleEndpoint(ep) {
+  if (filterState.endpoints.has(ep)) filterState.endpoints.delete(ep);
+  else filterState.endpoints.add(ep);
+  update();
+}
+
+function toggleMethod(m) {
+  if (filterState.methods.has(m)) filterState.methods.delete(m);
+  else filterState.methods.add(m);
+  // Update method button styles
+  document.getElementById('methodPost').classList.toggle('active', filterState.methods.has('POST'));
+  document.getElementById('methodPost').classList.toggle('off', !filterState.methods.has('POST'));
+  document.getElementById('methodGet').classList.toggle('active', filterState.methods.has('GET'));
+  document.getElementById('methodGet').classList.toggle('off', !filterState.methods.has('GET'));
+  update();
+}
+
+function selectAll() { Object.keys(ENDPOINTS).forEach(ep => filterState.endpoints.add(ep)); update(); }
+function selectNone() { filterState.endpoints.clear(); update(); }
+function selectSlow() {
+  filterState.endpoints.clear();
+  Object.values(ENDPOINTS).forEach(e => { if (e.maxClient > 50) filterState.endpoints.add(e.ep); });
+  update();
+}
+function invertSelection() {
+  Object.keys(ENDPOINTS).forEach(ep => {
+    if (filterState.endpoints.has(ep)) filterState.endpoints.delete(ep);
+    else filterState.endpoints.add(ep);
+  });
+  update();
+}
+
+// ════════════════════════════════════════════════
+//  FILTERED DATA
+// ════════════════════════════════════════════════
+function getFilteredSpans() {
+  return ALL_SPANS.filter(s =>
+    filterState.endpoints.has(s.ep) && filterState.methods.has(s.m)
+  );
+}
+
+// ════════════════════════════════════════════════
+//  UPDATE ALL
+// ════════════════════════════════════════════════
+function update() {
+  const filtered = getFilteredSpans();
+  renderChips();
+  renderFilterStats(filtered);
+  renderCards(filtered);
+  renderPhaseBar(filtered);
+  renderWaterfall(document.getElementById('waterfallFull'), filtered, TOTAL);
+  const zoomFiltered = filtered.filter(s => s.cStart < 600);
+  renderWaterfall(document.getElementById('waterfallZoom'), zoomFiltered, 600);
+  renderStats(filtered);
+  updateBadges(filtered, zoomFiltered);
+}
+
+// ════════════════════════════════════════════════
+//  FILTER STATS
+// ════════════════════════════════════════════════
+function renderFilterStats(filtered) {
+  const total = Object.keys(ENDPOINTS).length;
+  const active = new Set(filtered.map(s => s.ep)).size;
+  const totalMs = filtered.reduce((a,s) => a + s.cDur, 0);
+  const serverMs = filtered.reduce((a,s) => a + s.sDur, 0);
+
+  document.getElementById('filterCount').textContent = `${active} / ${total} Endpunkte aktiv`;
+  document.getElementById('filterStats').innerHTML = `
+    <div class="stat"><span>Sichtbare Requests:</span> <span class="stat-value highlight">${filtered.length}</span></div>
+    <div class="stat"><span>Client-Summe:</span> <span class="stat-value">${totalMs.toLocaleString('de')}ms</span></div>
+    <div class="stat"><span>Server-Summe:</span> <span class="stat-value">${serverMs.toLocaleString('de')}ms</span></div>
+    <div class="stat"><span>Ø pro Request:</span> <span class="stat-value">${filtered.length ? Math.round(totalMs/filtered.length) : 0}ms</span></div>
+  `;
+}
+
+// ════════════════════════════════════════════════
+//  CARDS (react to filter)
+// ════════════════════════════════════════════════
+function renderCards(filtered) {
+  const totalClient = filtered.reduce((a,s) => a + s.cDur, 0);
+  const totalServer = filtered.reduce((a,s) => a + s.sDur, 0);
+  const bottleneck = filtered.length ? filtered.reduce((a,s) => s.cDur > a.cDur ? s : a, filtered[0]) : null;
+  const networkOH = totalClient - totalServer;
+
+  document.getElementById('cards').innerHTML = [
+    { label:'Gesamtdauer Trace', value:'8.051ms', cls:'orange', sub:'Status: running' },
+    { label:'Sichtbare Calls', value:String(filtered.length), cls:'blue', sub:`von ${ALL_SPANS.length} gesamt` },
+    { label:'Bottleneck', value: bottleneck ? bottleneck.cDur+'ms' : '–', cls:'orange', sub: bottleneck ? bottleneck.ep.replace('/api/','') : '–' },
+    { label:'Server-Zeit (Σ)', value:totalServer+'ms', cls:'blue', sub:`${TOTAL>0?(totalServer/TOTAL*100).toFixed(1):0}% der Trace-Zeit` },
+    { label:'Netzwerk-OH (Σ)', value:'~'+networkOH+'ms', cls:'purple', sub: filtered.length ? `Ø ${Math.round(networkOH/filtered.length)}ms` : '–' },
+    { label:'Client-Zeit (Σ)', value:totalClient+'ms', cls:'orange', sub: filtered.length ? `Ø ${Math.round(totalClient/filtered.length)}ms` : '–' },
+  ].map(c => `<div class="card"><div class="label">${c.label}</div><div class="value ${c.cls}">${c.value}</div><div class="sub">${c.sub}</div></div>`).join('');
+}
+
+// ════════════════════════════════════════════════
+//  PHASE BAR
+// ════════════════════════════════════════════════
+function renderPhaseBar(filtered) {
+  const phases = [
+    { label:'Phase 1+2: API-Calls', ms:557, cls:'p1', color:'#2563eb' },
+    { label:'Pause 1 (Client)', ms:4005, cls:'pause1', color:'#21262d' },
+    { label:'Phase 3: sysinfo', ms:103, cls:'p3', color:'#16a34a' },
+    { label:'Pause 2 (Client)', ms:3308, cls:'pause2', color:'#21262d' },
+    { label:'Phase 4: ui_event', ms:78, cls:'p4', color:'#9333ea' },
+  ];
+  // Dim phases that have no visible spans
+  const hasPhase1 = filtered.some(s => s.cEnd <= 600);
+  const hasPhase3 = filtered.some(s => s.ep === '/api/sysinfo');
+  const hasPhase4 = filtered.some(s => s.cStart > 7000);
+
+  document.getElementById('phaseBar').innerHTML = `
+    <div class="phase-bar">${phases.map(p => {
+      const pct = p.ms / TOTAL * 100;
+      const dimmed = (p.cls==='p1' && !hasPhase1) || (p.cls==='p3' && !hasPhase3) || (p.cls==='p4' && !hasPhase4);
+      return `<div class="seg ${p.cls}" style="width:${pct}%;${dimmed?'opacity:0.25':''}">${pct>5 ? p.ms+'ms' : ''}</div>`;
+    }).join('')}</div>
+    <div class="phase-labels">${phases.map(p=>`<div class="phase-label"><div class="phase-dot" style="background:${p.color}"></div>${p.label} (${p.ms}ms · ${(p.ms/TOTAL*100).toFixed(1)}%)</div>`).join('')}</div>
+  `;
+}
+
+// ════════════════════════════════════════════════
+//  WATERFALL
+// ════════════════════════════════════════════════
+function renderWaterfall(container, spanList, timelineEnd) {
+  if (spanList.length === 0) {
+    container.innerHTML = `
+      <div class="no-results">
+        <div class="icon">🔍</div>
+        <div class="msg">Keine Requests für aktive Filter</div>
+        <div class="hint">Wähle Endpunkte im Filter oben aus</div>
+      </div>`;
+    return;
+  }
+
+  const barWidth = Math.max(600, container.clientWidth - 300);
+  const scale = barWidth / timelineEnd;
+
+  const tickCount = 8;
+  let ticksHtml = '';
+  for (let i = 0; i <= tickCount; i++) {
+    const ms = Math.round(timelineEnd / tickCount * i);
+    ticksHtml += `<div class="tick" style="left:${(ms*scale)}px">${ms>=1000?(ms/1000).toFixed(1)+'s':ms+'ms'}</div>`;
+  }
+
+  let html = `<div class="timeline-header"><div class="wf-label" style="font-size:11px;color:var(--text3)">Endpoint</div><div class="timeline-ticks" style="min-width:${barWidth}px">${ticksHtml}</div></div>`;
+
+  spanList.forEach((s, i) => {
+    const cStart = s.cStart * scale;
+    const totalW = s.cDur * scale;
+    const sStartInSpan = s.sEnd - s.sDur - s.cStart;
+    const netOut = Math.max(0, sStartInSpan);
+    const serverDur = s.sDur;
+    const netOutW = Math.max(0.5, netOut * scale);
+    const serverW = Math.max(s.sDur > 0 ? 1 : 0, serverDur * scale);
+    const netInW = Math.max(0.5, Math.max(0, totalW - netOutW - serverW));
+    const isSlow = s.sDur > 100;
+    const epColor = EP_COLORS[s.ep] || '#58a6ff';
+
+    html += `
+      <div class="waterfall-row" style="animation-delay:${i*30}ms">
+        <div class="wf-label">
+          <span class="idx">${s.id}</span>
+          <span class="method ${s.m.toLowerCase()}">${s.m}</span>
+          <span class="endpoint" title="${s.ep}" style="color:${epColor}">${s.ep}</span>
+        </div>
+        <div class="wf-bar-area" style="min-width:${barWidth}px">
+          <div class="wf-bar-wrap" style="left:${cStart}px;width:${Math.max(3,totalW)}px"
+               data-span='${JSON.stringify(s)}' onmouseenter="showTT(event,this)" onmouseleave="hideTT()">
+            <div class="wf-seg net-out" style="width:${netOutW}px"></div>
+            <div class="wf-seg server ${isSlow?'slow':''}" style="width:${serverW}px"></div>
+            <div class="wf-seg net-in" style="width:${netInW}px"></div>
+          </div>
+          ${totalW>30?'':`<div class="wf-dur" style="left:${cStart+totalW+6}px">${s.cDur}ms</div>`}
+        </div>
+      </div>`;
+  });
+
+  container.innerHTML = html;
+}
+
+// ════════════════════════════════════════════════
+//  BADGES
+// ════════════════════════════════════════════════
+function updateBadges(filtered, zoomFiltered) {
+  document.getElementById('badgeFull').textContent = `${filtered.length} Requests`;
+  document.getElementById('badgeZoom').textContent = `${zoomFiltered.length} Requests · 0 – 600 ms`;
+  const activeEps = new Set(filtered.map(s=>s.ep)).size;
+  document.getElementById('badgeStats').textContent = `${activeEps} Endpunkte`;
+}
+
+// ════════════════════════════════════════════════
+//  STATS
+// ════════════════════════════════════════════════
+function renderStats(filtered) {
+  const epGroups = {};
+  filtered.forEach(s => {
+    if (!epGroups[s.ep]) epGroups[s.ep]={ep:s.ep,calls:[],totalClient:0,totalServer:0,maxClient:0};
+    const g = epGroups[s.ep];
+    g.calls.push(s); g.totalClient+=s.cDur; g.totalServer+=s.sDur;
+    g.maxClient=Math.max(g.maxClient,s.cDur);
+  });
+  const maxMs = Math.max(1,...Object.values(epGroups).map(g=>g.maxClient));
+
+  const grid = document.getElementById('statsGrid');
+  if (Object.keys(epGroups).length === 0) {
+    grid.innerHTML = `<div class="no-results" style="grid-column:1/-1"><div class="icon">📈</div><div class="msg">Keine Statistiken</div></div>`;
+    return;
+  }
+
+  grid.innerHTML = Object.values(epGroups).sort((a,b)=>b.totalClient-a.totalClient).map(g=>{
+    const pct=(g.maxClient/maxMs*100).toFixed(0);
+    const color=EP_COLORS[g.ep]||'var(--accent)';
+    return `<div class="stat-card">
+      <div class="ep"><span style="color:${color}">${g.ep}</span><span class="count">${g.calls.length}× aufgerufen</span></div>
+      <div class="bar-bg"><div class="bar-fill" style="width:${pct}%;background:${color}"></div></div>
+      <div class="meta"><span>Max: ${g.maxClient}ms</span><span>Server Σ: ${g.totalServer}ms</span><span>Client Σ: ${g.totalClient}ms</span></div>
+    </div>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════════════
+//  TOOLTIP
+// ════════════════════════════════════════════════
+const ttEl = document.getElementById('tooltip');
+function showTT(e, el) {
+  const s = JSON.parse(el.dataset.span);
+  const netOut = ((s.sEnd - s.sDur) - s.cStart).toFixed(1);
+  const netIn = (s.cDur - netOut - s.sDur).toFixed(1);
+  ttEl.innerHTML = `
+    <div class="tt-title">${s.m} ${s.ep}</div>
+    <div class="tt-row"><span class="k">Span ID</span><span class="v">${s.id}</span></div>
+    <div class="tt-row"><span class="k">Client-Start</span><span class="v">T+${s.cStart.toFixed(1)}ms</span></div>
+    <div class="tt-row"><span class="k">Client-Ende</span><span class="v">T+${s.cEnd.toFixed(1)}ms</span></div>
+    <div class="tt-row"><span class="k">Client-Dauer</span><span class="v" style="color:var(--accent)">${s.cDur}ms</span></div>
+    <hr>
+    <div class="tt-row"><span class="k">Netzwerk →</span><span class="v">${netOut}ms</span></div>
+    <div class="tt-row"><span class="k">Server</span><span class="v" style="color:${s.sDur>100?'var(--orange)':'var(--green)'}">${s.sDur}ms</span></div>
+    <div class="tt-row"><span class="k">Netzwerk ←</span><span class="v">${netIn}ms</span></div>`;
+  ttEl.classList.add('show');
+  ttEl.style.left = Math.min(e.clientX+12, window.innerWidth-360)+'px';
+  ttEl.style.top = (e.clientY+20)+'px';
+}
+function hideTT(){ ttEl.classList.remove('show'); }
+
+// ════════════════════════════════════════════════
+//  LEGEND
+// ════════════════════════════════════════════════
+document.getElementById('legend').innerHTML = `
+  <div class="legend-item"><div class="legend-swatch" style="background:var(--network-out)"></div>Request (Netzwerk →)</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:var(--server)"></div>Server-Verarbeitung</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:var(--server-slow)"></div>Server >100ms 🐢</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:var(--network-in)"></div>Response (Netzwerk ←)</div>
+`;
+
+// ════════════════════════════════════════════════
+//  KEYBOARD SHORTCUTS
+// ════════════════════════════════════════════════
+document.addEventListener('keydown', e => {
+  if (e.key === 'a' && !e.ctrlKey && !e.metaKey) { selectAll(); }
+  if (e.key === 'n') { selectNone(); }
+  if (e.key === 's') { selectSlow(); }
+  if (e.key === 'i') { invertSelection(); }
+});
+
+// ════════════════════════════════════════════════
+//  INITIAL RENDER
+// ════════════════════════════════════════════════
+update();
+
+// Resize
+window.addEventListener('resize', () => {
+  const filtered = getFilteredSpans();
+  renderWaterfall(document.getElementById('waterfallFull'), filtered, TOTAL);
+  renderWaterfall(document.getElementById('waterfallZoom'), filtered.filter(s=>s.cStart<600), 600);
+});
+</script>
+</body>
+</html>

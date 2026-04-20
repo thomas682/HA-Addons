@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trace Korrelation — btn_cache_pruefen</title>
+<style>
+  :root {
+    --bg:#0d1117;--bg2:#161b22;--bg3:#21262d;--bg4:#292e36;
+    --border:#30363d;--border-h:#484f58;--text:#e6edf3;--text2:#8b949e;--text3:#6e7681;
+    --accent:#58a6ff;--green:#3fb950;--orange:#d29922;--red:#f85149;--purple:#bc8cff;--pink:#f778ba;--cyan:#39d2c0;--yellow:#e3b341;
+    --nout:#1f4a7a;--nin:#1a3d5c;--srv:#58a6ff;--srv-slow:#d29922;
+    --r:10px;--rs:6px;--tr:0.2s cubic-bezier(.4,0,.2,1);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--text);font-family:'Inter','SF Pro Display',-apple-system,sans-serif;font-size:13px;padding:0;min-height:100vh}
+  .app{max-width:1440px;margin:0 auto;padding:20px 24px 60px}
+  .mono{font-family:'SF Mono','Cascadia Code','Fira Code',monospace}
+
+  h1{font-size:22px;font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:10px}
+  h1 .dot{width:10px;height:10px;border-radius:50%;background:var(--orange);animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+  .subtitle{color:var(--text2);font-size:13px;margin-bottom:24px}
+
+  h2{font-size:15px;font-weight:600;margin:28px 0 12px;display:flex;align-items:center;gap:8px}
+  .badge{font-size:11px;background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:2px 10px;color:var(--text2);font-weight:400}
+
+  /* ═══ DEPENDENCY GRAPH ═══ */
+  .dep-graph{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:24px;margin-bottom:20px;overflow-x:auto}
+  .dep-svg{width:100%;min-width:900px}
+
+  /* ═══ CORRELATION TABLE ═══ */
+  .corr-table-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:20px;overflow-x:auto}
+  table.corr{width:100%;border-collapse:collapse;font-size:12px}
+  table.corr th{text-align:left;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;padding:8px 10px;border-bottom:2px solid var(--border);white-space:nowrap}
+  table.corr td{padding:8px 10px;border-bottom:1px solid rgba(48,54,61,.4);vertical-align:middle}
+  table.corr tr:hover td{background:rgba(88,166,255,.03)}
+  .ep-tag{display:inline-flex;align-items:center;gap:5px;background:var(--bg3);border-radius:4px;padding:2px 8px;font-size:11px}
+  .ep-tag .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+  .ep-tag .name{font-family:'SF Mono','Cascadia Code',monospace}
+  .arrow{color:var(--accent);font-weight:700;font-size:14px;margin:0 4px}
+  .gap-tag{display:inline-block;padding:1px 6px;border-radius:8px;font-size:10px;font-weight:600;font-family:'SF Mono','Cascadia Code',monospace}
+  .gap-tag.fast{background:rgba(63,185,80,.12);color:var(--green)}
+  .gap-tag.medium{background:rgba(210,153,34,.12);color:var(--orange)}
+  .gap-tag.slow{background:rgba(248,81,73,.12);color:var(--red)}
+  .type-tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600}
+  .type-tag.fanout{background:rgba(88,166,255,.12);color:var(--accent)}
+  .type-tag.causal{background:rgba(188,140,255,.12);color:var(--purple)}
+  .type-tag.timer{background:rgba(210,153,34,.12);color:var(--orange)}
+  .confidence{font-family:'SF Mono',monospace;font-weight:700}
+  .confidence.high{color:var(--green)}
+  .confidence.medium{color:var(--orange)}
+
+  /* ═══ ENDPOINT ROLE CARDS ═══ */
+  .role-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px;margin-bottom:20px}
+  .role-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;transition:var(--tr)}
+  .role-card:hover{border-color:var(--border-h)}
+  .role-card .rc-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .role-card .rc-icon{font-size:18px}
+  .role-card .rc-ep{font-size:12px;font-weight:600;font-family:'SF Mono','Cascadia Code',monospace}
+  .role-card .rc-role{font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600;margin-left:auto}
+  .role-card .rc-desc{font-size:12px;color:var(--text2);line-height:1.5;margin-bottom:8px}
+  .role-card .rc-meta{display:flex;gap:12px;font-size:11px;color:var(--text3)}
+  .role-card .rc-meta span{display:flex;align-items:center;gap:3px}
+
+  /* ═══ WATERFALL WITH CORRELATION LINES ═══ */
+  .wf-container{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px;overflow-x:auto;margin-bottom:16px;position:relative}
+  .wf-row{display:flex;align-items:center;height:36px;border-bottom:1px solid rgba(48,54,61,.4)}
+  .wf-row:last-child{border-bottom:none}
+  .wf-row:hover{background:rgba(88,166,255,.04)}
+  .wf-lbl{min-width:290px;max-width:290px;padding-right:12px;display:flex;align-items:center;gap:6px;flex-shrink:0}
+  .wf-lbl .idx{color:var(--text3);font-size:11px;min-width:28px;text-align:right;font-family:'SF Mono',monospace}
+  .wf-lbl .method{font-size:10px;font-weight:700;padding:2px 6px;border-radius:3px;font-family:'SF Mono',monospace}
+  .wf-lbl .method.get{background:rgba(63,185,80,.12);color:var(--green)}
+  .wf-lbl .method.post{background:rgba(88,166,255,.12);color:var(--accent)}
+  .wf-lbl .epname{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:'SF Mono',monospace}
+  .wf-lbl .role-icon{font-size:10px;margin-left:2px}
+  .wf-bar-area{flex:1;position:relative;height:100%;min-width:700px}
+  .wf-bar{position:absolute;top:50%;transform:translateY(-50%);height:18px;display:flex;border-radius:4px;overflow:hidden;cursor:pointer;transition:filter .15s}
+  .wf-bar:hover{filter:brightness(1.3)}
+  .seg{height:100%}
+  .seg.no{background:var(--nout)}.seg.sv{background:var(--srv)}.seg.sv.slow{background:var(--srv-slow)}.seg.ni{background:var(--nin)}
+  .wf-dur-label{position:absolute;top:50%;transform:translateY(-50%);font-size:10px;color:var(--text3);white-space:nowrap;font-family:'SF Mono',monospace}
+
+  /* Correlation arrows on waterfall */
+  .corr-line{position:absolute;pointer-events:none;z-index:2}
+  .corr-svg{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:2;overflow:visible}
+
+  /* Timeline */
+  .tl-header{display:flex;height:26px;align-items:flex-end;margin-bottom:4px}
+  .tl-header .wf-lbl{font-size:11px;color:var(--text3)}
+  .tl-ticks{flex:1;position:relative;min-width:700px;height:100%}
+  .tick{position:absolute;bottom:0;font-size:10px;color:var(--text3);font-family:'SF Mono',monospace}
+  .tick::before{content:'';position:absolute;bottom:16px;left:0;width:1px;height:6px;background:var(--border)}
+
+  /* Legend */
+  .legend{display:flex;gap:16px;flex-wrap:wrap;margin:12px 0}
+  .legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2)}
+  .legend-sw{width:14px;height:14px;border-radius:3px}
+
+  /* Tooltip */
+  .tt{display:none;position:fixed;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px 16px;z-index:1000;pointer-events:none;box-shadow:0 12px 40px rgba(0,0,0,.5);max-width:360px}
+  .tt.show{display:block}
+  .tt .tt-t{font-weight:600;font-size:13px;margin-bottom:8px;color:var(--accent);font-family:'SF Mono',monospace}
+  .tt .tt-r{display:flex;justify-content:space-between;gap:16px;margin-bottom:3px}
+  .tt .tt-r .k{color:var(--text2)}.tt .tt-r .v{font-weight:600;font-family:'SF Mono',monospace}
+  .tt hr{border:none;border-top:1px solid var(--border);margin:6px 0}
+
+  /* Toggle */
+  .toggle-row{display:flex;gap:8px;align-items:center;margin:12px 0}
+  .toggle-btn{background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:11px;padding:5px 14px;border-radius:20px;cursor:pointer;font-family:inherit;transition:var(--tr)}
+  .toggle-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .toggle-btn.on{background:rgba(88,166,255,.15);border-color:var(--accent);color:var(--accent)}
+
+  @media(max-width:900px){.wf-lbl{min-width:200px;max-width:200px}}
+</style>
+</head>
+<body>
+<div class="app">
+
+<div style="margin-bottom:24px">
+  <h1><span class="dot"></span>Korrelationsanalyse: <span class="mono">btn_cache_pruefen</span></h1>
+  <p class="subtitle">Kausale Ketten und Abhängigkeiten zwischen 13 Requests · Trace-ID: 829e3a47</p>
+</div>
+
+<!-- ═══ ENDPOINT ROLES ═══ -->
+<h2>🏷️ Endpoint-Rollen <span class="badge">7 Endpunkte klassifiziert</span></h2>
+<div class="role-grid" id="roleGrid"></div>
+
+<!-- ═══ DEPENDENCY GRAPH ═══ -->
+<h2>🔗 Abhängigkeitsgraph <span class="badge">Kausale Ketten</span></h2>
+<div class="dep-graph" id="depGraph"></div>
+
+<!-- ═══ CORRELATION TABLE ═══ -->
+<h2>📋 Korrelationsmatrix <span class="badge" id="corrBadge">8 Korrelationen</span></h2>
+<div class="corr-table-wrap" id="corrTable"></div>
+
+<!-- ═══ WATERFALL WITH ARROWS ═══ -->
+<h2>📊 Waterfall mit Abhängigkeitslinien <span class="badge">13 Requests</span></h2>
+<div class="toggle-row">
+  <button class="toggle-btn on" id="togArrows" onclick="toggleArrows()">🔗 Korrelationslinien</button>
+  <button class="toggle-btn on" id="togPhases" onclick="togglePhases()">🎨 Phasen-Farben</button>
+  <button class="toggle-btn" id="togZoom" onclick="toggleZoom()">🔎 Zoom 0–600ms</button>
+</div>
+<div class="legend" id="legend"></div>
+<div class="wf-container" id="waterfallCorr" style="position:relative"></div>
+
+</div>
+<div class="tt" id="tooltip"></div>
+
+<script>
+// ════════════════════════════
+//  DATA
+// ════════════════════════════
+const TOTAL=8051;
+const S=[
+  {id:':3', n:0, m:'POST',ep:'/api/analysis_history_event',cEnd:78.551,cDur:66,sEnd:72.998,sDur:53},
+  {id:':4', n:1, m:'POST',ep:'/api/series_oldest',cEnd:34.652,cDur:15,sEnd:21.218,sDur:0},
+  {id:':2', n:2, m:'POST',ep:'/api/cache_usage/ui_event',cEnd:47.214,cDur:19,sEnd:22.132,sDur:4},
+  {id:':5', n:3, m:'POST',ep:'/api/cache/plan',cEnd:524.622,cDur:495,sEnd:515.973,sDur:474},
+  {id:':1', n:4, m:'POST',ep:'/api/ui_event',cEnd:54.151,cDur:19,sEnd:22.967,sDur:3},
+  {id:':6', n:5, m:'POST',ep:'/api/ui_event',cEnd:371.632,cDur:54,sEnd:354.508,sDur:31},
+  {id:':7', n:6, m:'POST',ep:'/api/analysis_history_event',cEnd:533.619,cDur:9,sEnd:528.746,sDur:1},
+  {id:':8', n:7, m:'POST',ep:'/api/analysis_cache/plan',cEnd:542.571,cDur:16,sEnd:534.374,sDur:6},
+  {id:':9', n:8, m:'POST',ep:'/api/analysis_history_event',cEnd:555.700,cDur:10,sEnd:546.248,sDur:0},
+  {id:':10',n:9, m:'POST',ep:'/api/analysis_history_event',cEnd:556.306,cDur:9,sEnd:546.536,sDur:1},
+  {id:':11',n:10,m:'POST',ep:'/api/analysis_history_event',cEnd:556.908,cDur:8,sEnd:548.199,sDur:0},
+  {id:':12',n:11,m:'GET', ep:'/api/sysinfo',cEnd:4665.335,cDur:103,sEnd:4564.608,sDur:1},
+  {id:':13',n:12,m:'POST',ep:'/api/ui_event',cEnd:8051.297,cDur:78,sEnd:7974.158,sDur:1},
+];
+S.forEach(s=>{s.cStart=s.cEnd-s.cDur});
+
+const EPC={
+  '/api/series_oldest':'#58a6ff','/api/cache_usage/ui_event':'#bc8cff',
+  '/api/ui_event':'#3fb950','/api/analysis_history_event':'#f778ba',
+  '/api/cache/plan':'#d29922','/api/analysis_cache/plan':'#39d2c0',
+  '/api/sysinfo':'#f0883e'
+};
+
+// ════════════════════════════
+//  CORRELATIONS
+// ════════════════════════════
+const CORRELATIONS=[
+  {from:null,to:[0,1,2,3,4],type:'fanout',label:'Button → Fan-Out',gap:0,conf:'high',
+   desc:'Button-Click löst 5 parallele Requests aus'},
+  {from:3,to:[6],type:'causal',label:'cache/plan → history log',gap:0.6,conf:'high',
+   desc:'Response von cache/plan triggert History-Logging'},
+  {from:3,to:[7],type:'causal',label:'cache/plan → analysis_cache/plan',gap:2,conf:'high',
+   desc:'cache/plan-Ergebnis wird an analysis_cache/plan übergeben'},
+  {from:3,to:[5],type:'causal',label:'cache/plan (mid) → ui_event',gap:0,conf:'medium',
+   desc:'Zwischenstatus während cache/plan läuft (Progress?)'},
+  {from:7,to:[8,9,10],type:'causal',label:'analysis_cache/plan → 3× history',gap:3,conf:'high',
+   desc:'Analyse-Ergebnisse werden einzeln geloggt (Promise.all)'},
+  {from:10,to:[11],type:'timer',label:'Pause → sysinfo',gap:4005,conf:'medium',
+   desc:'Timer oder Polling nach ~4s Pause'},
+  {from:11,to:[12],type:'timer',label:'Pause → final ui_event',gap:3308,conf:'medium',
+   desc:'Abschluss-Event nach erneutem Warten'},
+];
+
+// ════════════════════════════
+//  ENDPOINT ROLES
+// ════════════════════════════
+const ROLES=[
+  {ep:'/api/cache/plan',icon:'⚙️',role:'Hauptlogik',roleCls:'background:rgba(210,153,34,.15);color:#d29922',
+   desc:'Kernfunktion: Berechnet den Cache-Plan. Mit 474ms Server-Zeit der <strong>Bottleneck</strong> des gesamten Trace. Blockiert Phase 2.',
+   calls:1,totalMs:495,serverMs:474},
+  {ep:'/api/analysis_cache/plan',icon:'🔎',role:'Folge-Query',roleCls:'background:rgba(57,210,192,.15);color:#39d2c0',
+   desc:'Analysiert das Ergebnis von <code>/api/cache/plan</code>. Wird erst nach dessen Response ausgelöst. Triggert anschließend 3× History-Logging.',
+   calls:1,totalMs:16,serverMs:6},
+  {ep:'/api/series_oldest',icon:'📊',role:'Daten-Query',roleCls:'background:rgba(88,166,255,.15);color:#58a6ff',
+   desc:'Lädt die ältesten Serien. Wird im initialen Fan-Out parallel gefeuert. Ergebnis vermutlich für cache/plan-Kontext.',
+   calls:1,totalMs:15,serverMs:0},
+  {ep:'/api/analysis_history_event',icon:'📝',role:'Logging',roleCls:'background:rgba(247,120,186,.15);color:#f778ba',
+   desc:'Audit-Trail: Wird bei jedem Schritt aufgerufen (Start, nach cache/plan, nach Analyse, 3× für Ergebnisse). <strong>5× aufgerufen</strong> als passiver Logger.',
+   calls:5,totalMs:102,serverMs:55},
+  {ep:'/api/ui_event',icon:'📈',role:'UI-Tracking',roleCls:'background:rgba(63,185,80,.15);color:#3fb950',
+   desc:'Meldet UI-Zustand: Initial (Button), Zwischenstatus (Loading), Final (Done). State-Machine-Pattern.',
+   calls:3,totalMs:151,serverMs:35},
+  {ep:'/api/cache_usage/ui_event',icon:'📊',role:'Metriken',roleCls:'background:rgba(188,140,255,.15);color:#bc8cff',
+   desc:'Spezifisches Cache-Usage-Tracking. Einmal im Fan-Out gefeuert.',
+   calls:1,totalMs:19,serverMs:4},
+  {ep:'/api/sysinfo',icon:'🖥️',role:'Polling',roleCls:'background:rgba(240,136,62,.15);color:#f0883e',
+   desc:'Systeminfo-Abfrage nach ~4s Pause. Vermutlich Timer-basiertes Polling oder verzögerter Health-Check.',
+   calls:1,totalMs:103,serverMs:1},
+];
+
+// ════════════════════════════
+//  RENDER ROLE GRID
+// ════════════════════════════
+document.getElementById('roleGrid').innerHTML=ROLES.map(r=>`
+  <div class="role-card">
+    <div class="rc-head">
+      <span class="rc-icon">${r.icon}</span>
+      <span class="rc-ep" style="color:${EPC[r.ep]||'#fff'}">${r.ep.replace('/api/','')}</span>
+      <span class="rc-role" style="${r.roleCls}">${r.role}</span>
+    </div>
+    <div class="rc-desc">${r.desc}</div>
+    <div class="rc-meta">
+      <span>📞 ${r.calls}× Calls</span>
+      <span>⏱ ${r.totalMs}ms Client</span>
+      <span>⚙️ ${r.serverMs}ms Server</span>
+    </div>
+  </div>`).join('');
+
+// ════════════════════════════
+//  RENDER DEPENDENCY GRAPH (SVG)
+// ════════════════════════════
+function renderDepGraph(){
+  const w=920,h=520;
+  const nodes=[
+    {id:'btn',   x:60, y:260,label:'🖱️ Button Click',w:120,h:36,fill:'#d29922'},
+    {id:':3',    x:240,y:60, label:'📝 history (start)',w:140,h:32,fill:'#f778ba'},
+    {id:':4',    x:240,y:120,label:'📊 series_oldest',w:140,h:32,fill:'#58a6ff'},
+    {id:':2',    x:240,y:180,label:'📊 cache_usage',w:140,h:32,fill:'#bc8cff'},
+    {id:':5',    x:240,y:260,label:'⚙️ cache/plan (495ms)',w:170,h:36,fill:'#d29922'},
+    {id:':1',    x:240,y:340,label:'📈 ui_event (start)',w:140,h:32,fill:'#3fb950'},
+    {id:':6',    x:240,y:400,label:'📈 ui_event (mid)',w:140,h:32,fill:'#3fb950'},
+    {id:':7',    x:480,y:200,label:'📝 history (plan done)',w:160,h:32,fill:'#f778ba'},
+    {id:':8',    x:480,y:270,label:'🔎 analysis_cache/plan',w:170,h:32,fill:'#39d2c0'},
+    {id:':9',    x:700,y:220,label:'📝 history (res 1)',w:130,h:32,fill:'#f778ba'},
+    {id:':10',   x:700,y:270,label:'📝 history (res 2)',w:130,h:32,fill:'#f778ba'},
+    {id:':11',   x:700,y:320,label:'📝 history (res 3)',w:130,h:32,fill:'#f778ba'},
+    {id:':12',   x:540,y:420,label:'🖥️ sysinfo',w:120,h:32,fill:'#f0883e'},
+    {id:':13',   x:720,y:420,label:'📈 ui_event (done)',w:140,h:32,fill:'#3fb950'},
+  ];
+  const edges=[
+    {from:'btn',to:':3',color:'#58a6ff',dash:false},
+    {from:'btn',to:':4',color:'#58a6ff',dash:false},
+    {from:'btn',to:':2',color:'#58a6ff',dash:false},
+    {from:'btn',to:':5',color:'#58a6ff',dash:false},
+    {from:'btn',to:':1',color:'#58a6ff',dash:false},
+    {from:':5',to:':6',color:'#d29922',dash:true,label:'mid'},
+    {from:':5',to:':7',color:'#bc8cff',dash:false,label:'<1ms'},
+    {from:':5',to:':8',color:'#bc8cff',dash:false,label:'2ms'},
+    {from:':8',to:':9',color:'#39d2c0',dash:false,label:'3ms'},
+    {from:':8',to:':10',color:'#39d2c0',dash:false},
+    {from:':8',to:':11',color:'#39d2c0',dash:false},
+    {from:':11',to:':12',color:'#d29922',dash:true,label:'⏲ 4s'},
+    {from:':12',to:':13',color:'#d29922',dash:true,label:'⏲ 3.3s'},
+  ];
+
+  const nm={}; nodes.forEach(n=>nm[n.id]=n);
+  let svg=`<svg class="dep-svg" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">`;
+  svg+=`<defs><marker id="ah" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#8b949e"/></marker>`;
+  svg+=`<marker id="ah-blue" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#58a6ff"/></marker>`;
+  svg+=`<marker id="ah-purple" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#bc8cff"/></marker>`;
+  svg+=`<marker id="ah-cyan" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#39d2c0"/></marker>`;
+  svg+=`<marker id="ah-orange" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#d29922"/></marker></defs>`;
+
+  // Phase backgrounds
+  svg+=`<rect x="220" y="30" width="180" height="420" rx="8" fill="rgba(88,166,255,0.03)" stroke="rgba(88,166,255,0.1)" stroke-dasharray="4"/>`;
+  svg+=`<text x="225" y="22" fill="#8b949e" font-size="10" font-family="Inter,sans-serif">Phase 1: Fan-Out</text>`;
+  svg+=`<rect x="450" y="170" width="210" height="160" rx="8" fill="rgba(188,140,255,0.03)" stroke="rgba(188,140,255,0.1)" stroke-dasharray="4"/>`;
+  svg+=`<text x="455" y="165" fill="#8b949e" font-size="10" font-family="Inter,sans-serif">Phase 2: Kausale Kette</text>`;
+  svg+=`<rect x="670" y="195" width="180" height="175" rx="8" fill="rgba(247,120,186,0.03)" stroke="rgba(247,120,186,0.1)" stroke-dasharray="4"/>`;
+  svg+=`<text x="675" y="190" fill="#8b949e" font-size="10" font-family="Inter,sans-serif">Phase 2c: Result-Logging</text>`;
+  svg+=`<rect x="510" y="395" width="370" height="72" rx="8" fill="rgba(210,153,34,0.03)" stroke="rgba(210,153,34,0.1)" stroke-dasharray="4"/>`;
+  svg+=`<text x="515" y="390" fill="#8b949e" font-size="10" font-family="Inter,sans-serif">Phase 3+4: Timer/Polling</text>`;
+
+  // Edges
+  edges.forEach(e=>{
+    const f=nm[e.from],t=nm[e.to];
+    const x1=f.x+f.w/2,y1=f.y+f.h/2,x2=t.x,y2=t.y+t.h/2;
+    const marker=e.color==='#58a6ff'?'ah-blue':e.color==='#bc8cff'?'ah-purple':e.color==='#39d2c0'?'ah-cyan':'ah-orange';
+    const dash=e.dash?'stroke-dasharray="6,4"':'';
+    // Curved path
+    const cx=(x1+x2)/2;
+    svg+=`<path d="M${f.x+f.w} ${y1} C${cx} ${y1}, ${cx} ${y2}, ${x2} ${y2}" fill="none" stroke="${e.color}" stroke-width="1.5" ${dash} marker-end="url(#${marker})" opacity="0.6"/>`;
+    if(e.label){
+      const mx=(f.x+f.w+x2)/2, my=(y1+y2)/2;
+      svg+=`<text x="${mx}" y="${my-6}" fill="${e.color}" font-size="9" font-family="SF Mono,Cascadia Code,monospace" text-anchor="middle" opacity="0.8">${e.label}</text>`;
+    }
+  });
+
+  // Nodes
+  nodes.forEach(n=>{
+    svg+=`<rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="6" fill="#161b22" stroke="${n.fill}" stroke-width="1.5"/>`;
+    svg+=`<text x="${n.x+n.w/2}" y="${n.y+n.h/2+4}" fill="${n.fill}" font-size="11" font-family="Inter,sans-serif" text-anchor="middle" font-weight="600">${n.label}</text>`;
+  });
+
+  svg+=`</svg>`;
+  document.getElementById('depGraph').innerHTML=svg;
+}
+renderDepGraph();
+
+// ════════════════════════════
+//  RENDER CORRELATION TABLE
+// ════════════════════════════
+function renderCorrTable(){
+  const rows=[];
+  // Fan-Out
+  rows.push({type:'fanout',trigger:'🖱️ Button Click',targets:S.filter((_,i)=>[0,1,2,3,4].includes(i)),gap:'0–23ms',conf:'high',desc:'Paralleler Start von 5 Requests'});
+  // Causal chains
+  rows.push({type:'causal',trigger:':5 cache/plan',triggerEp:'/api/cache/plan',targets:[S[6]],gap:'<1ms',conf:'high',desc:'Response triggert History-Log'});
+  rows.push({type:'causal',trigger:':5 cache/plan',triggerEp:'/api/cache/plan',targets:[S[7]],gap:'2ms',conf:'high',desc:'Ergebnis → Analyse-Query'});
+  rows.push({type:'causal',trigger:':5 cache/plan',triggerEp:'/api/cache/plan',targets:[S[5]],gap:'~0ms',conf:'medium',desc:'Zwischenstatus (noch laufend)'});
+  rows.push({type:'causal',trigger:':8 analysis_cache/plan',triggerEp:'/api/analysis_cache/plan',targets:[S[8],S[9],S[10]],gap:'3–6ms',conf:'high',desc:'3× Result-Logging (Promise.all)'});
+  rows.push({type:'timer',trigger:'Phase 2 Ende',targets:[S[11]],gap:'4.005ms',conf:'medium',desc:'Timer / Polling / setTimeout'});
+  rows.push({type:'timer',trigger:':12 sysinfo',triggerEp:'/api/sysinfo',targets:[S[12]],gap:'3.308ms',conf:'medium',desc:'Finales Tracking nach Pause'});
+
+  let html=`<table class="corr"><thead><tr>
+    <th>Typ</th><th>Trigger</th><th></th><th>Auslösung</th><th>Gap</th><th>Konfidenz</th><th>Beschreibung</th>
+  </tr></thead><tbody>`;
+
+  rows.forEach(r=>{
+    const typeCls=r.type;
+    const typeLabel={fanout:'Fan-Out',causal:'Kausal',timer:'Timer'}[r.type];
+    const gapCls=r.gap.includes('4')||r.gap.includes('3.3')?'slow':r.gap.includes('23')||r.gap.includes('6')?'medium':'fast';
+    const targets=r.targets.map(t=>{
+      const c=EPC[t.ep]||'#fff';
+      return `<span class="ep-tag"><span class="dot" style="background:${c}"></span><span class="name">${t.id} ${t.ep.replace('/api/','')}</span></span>`;
+    }).join(' ');
+
+    html+=`<tr>
+      <td><span class="type-tag ${typeCls}">${typeLabel}</span></td>
+      <td><strong>${r.trigger}</strong></td>
+      <td class="arrow">→</td>
+      <td>${targets}</td>
+      <td><span class="gap-tag ${gapCls}">${r.gap}</span></td>
+      <td><span class="confidence ${r.conf}">${r.conf==='high'?'🟢 Hoch':'🟡 Mittel'}</span></td>
+      <td style="color:var(--text2);font-size:12px">${r.desc}</td>
+    </tr>`;
+  });
+  html+=`</tbody></table>`;
+  document.getElementById('corrTable').innerHTML=html;
+}
+renderCorrTable();
+
+// ════════════════════════════
+//  WATERFALL WITH ARROWS
+// ════════════════════════════
+let showArrows=true, showPhases=true, isZoomed=false;
+
+function toggleArrows(){ showArrows=!showArrows; document.getElementById('togArrows').classList.toggle('on',showArrows); renderCorrelationWF(); }
+function togglePhases(){ showPhases=!showPhases; document.getElementById('togPhases').classList.toggle('on',showPhases); renderCorrelationWF(); }
+function toggleZoom(){ isZoomed=!isZoomed; document.getElementById('togZoom').classList.toggle('on',isZoomed); renderCorrelationWF(); }
+
+// Phase assignments
+const PHASE_OF=[1,1,1,1,1,2,2,2,2,2,2,3,4];
+const PHASE_COLORS={1:'rgba(37,99,235,.06)',2:'rgba(188,140,255,.06)',3:'rgba(22,163,74,.06)',4:'rgba(147,51,234,.06)'};
+const PHASE_BORDERS={1:'rgba(37,99,235,.2)',2:'rgba(188,140,255,.2)',3:'rgba(22,163,74,.2)',4:'rgba(147,51,234,.2)'};
+
+// Correlation arrows (span indices in S array → row index in waterfall)
+const WF_ARROWS=[
+  {fromRow:3,toRow:6, color:'#bc8cff',label:'causal'},
+  {fromRow:3,toRow:7, color:'#bc8cff',label:'causal'},
+  {fromRow:3,toRow:5, color:'#d29922',label:'mid',dash:true},
+  {fromRow:7,toRow:8, color:'#39d2c0',label:'causal'},
+  {fromRow:7,toRow:9, color:'#39d2c0',label:'causal'},
+  {fromRow:7,toRow:10,color:'#39d2c0',label:'causal'},
+  {fromRow:10,toRow:11,color:'#d29922',label:'timer',dash:true},
+  {fromRow:11,toRow:12,color:'#d29922',label:'timer',dash:true},
+];
+
+function renderCorrelationWF(){
+  const container=document.getElementById('waterfallCorr');
+  const spanList=isZoomed?S.filter(s=>s.cStart<600):S;
+  const timelineEnd=isZoomed?600:TOTAL;
+  const barWidth=Math.max(700,container.clientWidth-310);
+  const scale=barWidth/timelineEnd;
+  const rowH=36;
+
+  // Ticks
+  const tickN=8;
+  let ticks='';
+  for(let i=0;i<=tickN;i++){
+    const ms=Math.round(timelineEnd/tickN*i);
+    ticks+=`<div class="tick" style="left:${ms*scale}px">${ms>=1000?(ms/1000).toFixed(1)+'s':ms+'ms'}</div>`;
+  }
+
+  let html=`<div class="tl-header"><div class="wf-lbl" style="font-size:11px;color:var(--text3)">Endpoint</div><div class="tl-ticks" style="min-width:${barWidth}px">${ticks}</div></div>`;
+
+  // Phase backgrounds
+  if(showPhases){
+    let phaseStart=null,lastPhase=null;
+    const phaseRanges=[];
+    spanList.forEach((s,i)=>{
+      const origIdx=S.indexOf(s);
+      const ph=PHASE_OF[origIdx];
+      if(ph!==lastPhase){
+        if(phaseStart!==null) phaseRanges.push({phase:lastPhase,startRow:phaseStart,endRow:i-1});
+        phaseStart=i; lastPhase=ph;
+      }
+    });
+    if(phaseStart!==null) phaseRanges.push({phase:lastPhase,startRow:phaseStart,endRow:spanList.length-1});
+    // Add strip backgrounds per phase
+    html+=`<div style="position:relative">`;
+    phaseRanges.forEach(pr=>{
+      const top=pr.startRow*rowH;
+      const height=(pr.endRow-pr.startRow+1)*rowH;
+      html+=`<div style="position:absolute;top:${top}px;left:0;right:0;height:${height}px;background:${PHASE_COLORS[pr.phase]};border-left:3px solid ${PHASE_BORDERS[pr.phase]};pointer-events:none;z-index:0;border-radius:4px"></div>`;
+    });
+  } else {
+    html+=`<div style="position:relative">`;
+  }
+
+  // Rows
+  spanList.forEach((s,i)=>{
+    const cS=s.cStart*scale;
+    const tW=s.cDur*scale;
+    const sInS=s.sEnd-s.sDur-s.cStart;
+    const nO=Math.max(0,sInS);
+    const sD=s.sDur;
+    const nOW=Math.max(.5,nO*scale);
+    const sW=Math.max(sD>0?1:0,sD*scale);
+    const nIW=Math.max(.5,Math.max(0,tW-nOW-sW));
+    const isSlow=s.sDur>100;
+    const col=EPC[s.ep]||'#fff';
+    const origIdx=S.indexOf(s);
+    const roleIcon={'/api/cache/plan':'⚙️','/api/analysis_cache/plan':'🔎','/api/series_oldest':'📊','/api/analysis_history_event':'📝','/api/ui_event':'📈','/api/cache_usage/ui_event':'📊','/api/sysinfo':'🖥️'}[s.ep]||'';
+
+    html+=`<div class="wf-row" data-orig="${origIdx}" style="position:relative;z-index:1">
+      <div class="wf-lbl">
+        <span class="idx">${s.id}</span>
+        <span class="method ${s.m.toLowerCase()}">${s.m}</span>
+        <span class="epname" style="color:${col}" title="${s.ep}">${s.ep}</span>
+        <span class="role-icon">${roleIcon}</span>
+      </div>
+      <div class="wf-bar-area" style="min-width:${barWidth}px">
+        <div class="wf-bar" style="left:${cS}px;width:${Math.max(3,tW)}px" data-span='${JSON.stringify(s)}' onmouseenter="showTT(event,this)" onmouseleave="hideTT()">
+          <div class="seg no" style="width:${nOW}px"></div>
+          <div class="seg sv ${isSlow?'slow':''}" style="width:${sW}px"></div>
+          <div class="seg ni" style="width:${nIW}px"></div>
+        </div>
+        ${tW>30?'':`<div class="wf-dur-label" style="left:${cS+tW+6}px">${s.cDur}ms</div>`}
+      </div>
+    </div>`;
+  });
+
+  // SVG overlay for correlation arrows
+  if(showArrows){
+    const svgH=spanList.length*rowH+30;
+    let svgStr=`<svg class="corr-svg" style="height:${svgH}px" viewBox="0 0 1200 ${svgH}" preserveAspectRatio="none">`;
+    svgStr+=`<defs>`;
+    ['#bc8cff','#39d2c0','#d29922','#58a6ff'].forEach(c=>{
+      svgStr+=`<marker id="mar${c.slice(1)}" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="${c}"/></marker>`;
+    });
+    svgStr+=`</defs>`;
+
+    // Build row index map for filtered list
+    const rowMap={};
+    spanList.forEach((s,i)=>{rowMap[S.indexOf(s)]=i});
+
+    WF_ARROWS.forEach(a=>{
+      if(!(a.fromRow in rowMap) || !(a.toRow in rowMap)) return;
+      const fr=rowMap[a.fromRow], tr=rowMap[a.toRow];
+      const fromSpan=S[a.fromRow], toSpan=S[a.toRow];
+      // Arrow from end of trigger bar → start of target bar
+      const x1=Math.min((fromSpan.cEnd*(barWidth/timelineEnd))+290, barWidth+280);
+      const y1=fr*rowH+rowH/2+28;
+      const x2=(toSpan.cStart*(barWidth/timelineEnd))+290;
+      const y2=tr*rowH+rowH/2+28;
+      const dash=a.dash?'stroke-dasharray="6,3"':'';
+      const mid=(x1+x2)/2;
+
+      svgStr+=`<path d="M${x1} ${y1} C${mid} ${y1}, ${mid} ${y2}, ${x2} ${y2}" fill="none" stroke="${a.color}" stroke-width="1.5" ${dash} marker-end="url(#mar${a.color.slice(1)})" opacity="0.5"/>`;
+    });
+    svgStr+=`</svg>`;
+    html+=svgStr;
+  }
+
+  html+=`</div>`; // close relative wrapper
+  container.innerHTML=html;
+}
+
+// Legend
+document.getElementById('legend').innerHTML=`
+  <div class="legend-item"><div class="legend-sw" style="background:var(--nout)"></div>Netzwerk →</div>
+  <div class="legend-item"><div class="legend-sw" style="background:var(--srv)"></div>Server</div>
+  <div class="legend-item"><div class="legend-sw" style="background:var(--srv-slow)"></div>Server >100ms</div>
+  <div class="legend-item"><div class="legend-sw" style="background:var(--nin)"></div>Netzwerk ←</div>
+  <div class="legend-item"><div class="legend-sw" style="background:#bc8cff;border-radius:0;height:2px;margin:6px 0"></div>Kausal (cache/plan)</div>
+  <div class="legend-item"><div class="legend-sw" style="background:#39d2c0;border-radius:0;height:2px;margin:6px 0"></div>Kausal (analysis)</div>
+  <div class="legend-item"><div class="legend-sw" style="background:#d29922;border-radius:0;height:2px;margin:6px 0;border-top:2px dashed #d29922"></div>Timer/Pause</div>
+`;
+
+renderCorrelationWF();
+
+// Tooltip
+const ttEl=document.getElementById('tooltip');
+function showTT(e,el){
+  const s=JSON.parse(el.dataset.span);
+  const nO=((s.sEnd-s.sDur)-s.cStart).toFixed(1);
+  const nI=(s.cDur-nO-s.sDur).toFixed(1);
+  const phase=PHASE_OF[S.indexOf(S.find(x=>x.id===s.id))];
+  const roleName=ROLES.find(r=>r.ep===s.ep);
+  ttEl.innerHTML=`
+    <div class="tt-t">${s.m} ${s.ep}</div>
+    <div class="tt-r"><span class="k">Rolle</span><span class="v">${roleName?roleName.role+' '+roleName.icon:'–'}</span></div>
+    <div class="tt-r"><span class="k">Phase</span><span class="v">${phase}</span></div>
+    <div class="tt-r"><span class="k">Span</span><span class="v">${s.id}</span></div>
+    <hr>
+    <div class="tt-r"><span class="k">Client-Start</span><span class="v">T+${s.cStart.toFixed(1)}ms</span></div>
+    <div class="tt-r"><span class="k">Client-Ende</span><span class="v">T+${s.cEnd.toFixed(1)}ms</span></div>
+    <div class="tt-r"><span class="k">Client-Dauer</span><span class="v" style="color:var(--accent)">${s.cDur}ms</span></div>
+    <hr>
+    <div class="tt-r"><span class="k">Netzwerk →</span><span class="v">${nO}ms</span></div>
+    <div class="tt-r"><span class="k">Server</span><span class="v" style="color:${s.sDur>100?'var(--orange)':'var(--green)'}">${s.sDur}ms</span></div>
+    <div class="tt-r"><span class="k">Netzwerk ←</span><span class="v">${nI}ms</span></div>`;
+  ttEl.classList.add('show');
+  ttEl.style.left=Math.min(e.clientX+12,window.innerWidth-380)+'px';
+  ttEl.style.top=(e.clientY+20)+'px';
+}
+function hideTT(){ttEl.classList.remove('show')}
+
+window.addEventListener('resize',renderCorrelationWF);
+</script>
+</body>
+</html>
