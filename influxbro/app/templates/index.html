@@ -2049,6 +2049,101 @@ function cacheRestoreIfAvailable(){
             }
           }catch(e){}
         }
+
+        // Restore caching timeline + changes without hitting the server again.
+        // The snapshot already contains ANALYSIS_CACHE_PLAN_CHOICE.plan; we can
+        // re-render the DOM from that plan and re-attach handlers.
+        try{
+          const plan = (ANALYSIS_CACHE_PLAN_CHOICE && ANALYSIS_CACHE_PLAN_CHOICE.plan) ? ANALYSIS_CACHE_PLAN_CHOICE.plan : null;
+          const $timeline = document.getElementById('analysis_confirm_cache_timeline');
+          const $changes = document.getElementById('analysis_confirm_cache_changes');
+
+          // Re-wire the "changed" info button from restored HTML.
+          try{
+            const $changedInfo = document.getElementById('caching_changed_info');
+            if($changedInfo) $changedInfo.onclick = ()=>showCachingSummaryInfo();
+          }catch(e){}
+
+          if(plan && $timeline){
+            const rerenderTimeline = ()=>{
+              try{ $timeline.innerHTML = _analysisCacheTimelineHtml(plan); }catch(e){ $timeline.innerHTML = ''; }
+
+              // Segment UI toggles
+              try{
+                $timeline.querySelectorAll('[data-cache-hl]').forEach((btn)=>{
+                  btn.addEventListener('click', ()=>{
+                    const id = String(btn.getAttribute('data-cache-hl') || '');
+                    if(!id) return;
+                    const cur = _analysisCacheSegUi(_loadAnalysisCacheUiState(plan), id);
+                    _analysisCacheSetSegUi(plan, id, { hl: !cur.hl });
+                    rerenderTimeline();
+                  });
+                });
+                $timeline.querySelectorAll('[data-cache-ac]').forEach((btn)=>{
+                  btn.addEventListener('click', ()=>{
+                    const id = String(btn.getAttribute('data-cache-ac') || '');
+                    if(!id) return;
+                    const cur = _analysisCacheSegUi(_loadAnalysisCacheUiState(plan), id);
+                    _analysisCacheSetSegUi(plan, id, { active: !cur.active });
+                    rerenderTimeline();
+                  });
+                });
+                $timeline.querySelectorAll('[data-cache-ol]').forEach((btn)=>{
+                  btn.addEventListener('click', ()=>{
+                    const id = String(btn.getAttribute('data-cache-ol') || '');
+                    if(!id) return;
+                    if(id.startsWith('gap|')) return;
+                    const cur = _analysisCacheSegUi(_loadAnalysisCacheUiState(plan), id);
+                    _analysisCacheSetSegUi(plan, id, { ol: !cur.ol });
+                    rerenderTimeline();
+                  });
+                });
+              }catch(e){}
+
+              // Cache block info buttons
+              try{
+                $timeline.querySelectorAll('[data-cache-info]').forEach((btn)=>{
+                  btn.addEventListener('click', (ev)=>{
+                    try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+                    const cid = String(btn.getAttribute('data-cache-info') || '').trim();
+                    if(!cid) return;
+                    showAnalysisCacheBlockInfo(plan, cid);
+                  });
+                });
+              }catch(e){}
+
+              // Outlier marker tooltips
+              try{
+                let _olTip = document.getElementById('ib_ol_tooltip');
+                if(!_olTip){ _olTip = document.createElement('div'); _olTip.id = 'ib_ol_tooltip'; _olTip.className = 'ib-ol-tooltip'; document.body.appendChild(_olTip); }
+                $timeline.querySelectorAll('.ib-ol-marker[data-ol-tip]').forEach((el)=>{
+                  el.addEventListener('mouseenter', ()=>{
+                    const tip = String(el.getAttribute('data-ol-tip') || '');
+                    if(!tip) return;
+                    _olTip.textContent = tip;
+                    _olTip.style.opacity = '1';
+                    const r = el.getBoundingClientRect();
+                    _olTip.style.left = Math.min(window.innerWidth - 380, Math.max(8, r.left - 60)) + 'px';
+                    _olTip.style.top = (r.top - _olTip.offsetHeight - 8) + 'px';
+                    if(parseFloat(_olTip.style.top) < 4) _olTip.style.top = (r.bottom + 8) + 'px';
+                  });
+                  el.addEventListener('mouseleave', ()=>{ _olTip.style.opacity = '0'; });
+                });
+              }catch(e){}
+            };
+
+            rerenderTimeline();
+          }
+
+          if(plan && $changes){
+            const rows = (plan && Array.isArray(plan.changes)) ? plan.changes.slice(0, 8) : [];
+            $changes.innerHTML = rows.length ? rows.map((row)=>{
+              const oldVal = (row.old_value === null || row.old_value === undefined) ? '-' : fmtNum(row.old_value);
+              const newVal = (row.new_value === null || row.new_value === undefined) ? '-' : fmtNum(row.new_value);
+              return '<div style="font-size:11px;color:#b00020;margin-top:4px;">Geaendert: ' + _escHtml(fmtTs(row.time)) + ' | Alt: ' + _escHtml(oldVal) + ' | Neu: ' + _escHtml(newVal) + ' | ' + _escHtml(String(row.reason || row.action || '-')) + '</div>';
+            }).join('') : '';
+          }
+        }catch(e){}
       }
     }catch(e){}
 

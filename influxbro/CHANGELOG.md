@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.390
+
+### Bugfix
+
+- Dashboard/Caching: Hybrid-Restore aus `sessionStorage` stellt nach Reload wieder Timeline und Aenderungs-Liste aus dem gespeicherten Cache-Plan her (inkl. Handler fuer Toggles/Info), statt nur die Summary anzuzeigen. ([#353](https://github.com/thomas682/HA-Addons/issues/353))
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`, `pytest tests/test_api_ui_support.py::test_dashboard_cache_restore_renders_timeline_and_changes_from_restored_plan`
+- Tested with Home Assistant Core: 2026.4.3
+
 ## 1.12.389
 
 ### Bugfix

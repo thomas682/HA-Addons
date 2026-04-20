@@ -629,6 +629,17 @@ def test_dashboard_caching_section_has_visible_cache_targets_and_no_old_dialog()
     assert 'id="analysis_confirm_dialog"' not in body
 
 
+def test_dashboard_cache_restore_renders_timeline_and_changes_from_restored_plan():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    # Hybrid restore (#347) must restore not only the summary HTML but also
+    # re-render timeline + changes from the restored plan (no extra server hit).
+    assert "function cacheRestoreIfAvailable()" in body
+    assert "document.getElementById('analysis_confirm_cache_timeline')" in body
+    assert "document.getElementById('analysis_confirm_cache_changes')" in body
+    assert "_analysisCacheTimelineHtml(plan)" in body
+    assert "(plan && Array.isArray(plan.changes)) ? plan.changes.slice(0, 8)" in body
+
+
 def test_dashboard_caching_section_has_info_button_timeline_labels_and_summary_actions():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     assert '<div class="ib_summary_actions"><button type="button" class="ib_info_icon" id="caching_summary_info"' in body
