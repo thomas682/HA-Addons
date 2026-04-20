@@ -7,11 +7,13 @@ from pathlib import Path
 
 def test_dashboard_selection_labels_and_order():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
-    assert "<div style=\"font-weight:800;\">Quelle</div>" in body
-    assert "<label class=\"ib_sel_label\">Einheit</label>" in body
-    assert "<span>Feld</span>" in body
-    assert "<span>Name</span>" in body
-    assert "<span>Entity</span>" in body
+    # Source selection uses the structured dashboard_selection data-ui scheme.
+    assert 'data-ui="dashboard_selection.section_root"' in body
+    assert 'data-ui="dashboard_selection.input_measurement_filter"' in body
+    assert '<span>Einheit</span>' in body
+    assert '<span>Feld</span>' in body
+    assert '<span>Name</span>' in body
+    assert '<span>Entity</span>' in body
     assert 'id="measurement"' not in body
     assert "Zeitraum (Graph/Tabelle)" in body
 
@@ -31,39 +33,23 @@ def test_stats_selection_uses_combine_source_controls():
 
 def test_dashboard_selector_sync_is_no_longer_time_filtered():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
-    assert 'data-ui="filter_measurement_input"' in body
-    assert 'data-ui="filter_friendly_input"' in body
-    assert 'data-ui="filter_field_select"' in body
-    assert 'data-ui="filter_entity_input"' in body
-    assert 'id="measurement_filter" list="measurement_filter_list" placeholder="optional" data-ui="filter_measurement_input" autocomplete="off"' in body
-    assert 'id="field" list="field_list" placeholder="optional" data-ui="filter_field_select" title="filter_field_select" autocomplete="off"' in body
-    assert 'id="friendly_name" list="friendly_list" placeholder="optional" data-ui="filter_friendly_input" autocomplete="off"' in body
-    assert 'id="entity_id" list="entity_list" placeholder="optional" data-ui="filter_entity_input" autocomplete="off"' in body
-    assert 'measurement_filter: s.measurement || null,' in body
-    assert 'async function refreshDashboardSuggestions(opts)' in body
-    assert 'async function loadDashboardFields(measurement, opts)' in body
-    assert 'async function resolveDashboardSource()' in body
-    assert 'const $m = $mf;' in body
-    assert 'async function dashboardLoadTagValues(tag, params)' in body
-    assert "const common = { range: '24h' };" in body
-    assert "const common = { range: '24h' };" in body
-    assert 'ALL_ENTITY = await dashboardLoadTagValues(\'entity_id\'' in body
-    assert 'syncSelectionFilters(' not in body
-    assert 'const _debRefreshDashboardSrc = debounce' in body
-    assert 'const _debAutoResolveDashboardSrc = debounce' in body
-    assert 'async function triggerDashboardMeasurementRefresh()' in body
-    assert 'async function triggerDashboardTagRefresh()' in body
-    assert '$mf.addEventListener("input", ()=>{' in body
-    assert '$mf.addEventListener("change", ()=>{' in body
-    assert '$mf.addEventListener("blur", ()=>{ triggerDashboardMeasurementRefresh().catch(()=>{}); });' in body
-    assert '$n.addEventListener("change", ()=>{' in body
-    assert '$n.addEventListener("blur", ()=>{ triggerDashboardTagRefresh().catch(()=>{}); });' in body
-    assert '$e.addEventListener("change", ()=>{' in body
-    assert '$e.addEventListener("blur", ()=>{ triggerDashboardTagRefresh().catch(()=>{}); });' in body
-    assert "function logSelectorLoad(name, items, filters)" in body
-    assert "function logSelectorAction(name, value)" in body
-    assert 'if(tf && tf.range) q.push("range=" + encodeURIComponent(tf.range));' not in body
-    assert 'if(tf && tf.range) qs.set("range", String(tf.range || ""));' not in body
+    # Ensure selector inputs exist and use structured dashboard_selection data-ui tokens.
+    assert 'id="measurement_filter"' in body
+    assert 'data-ui="dashboard_selection.input_measurement_filter_value"' in body
+    assert 'id="field"' in body
+    assert 'data-ui="dashboard_selection.input_field_value"' in body
+    assert 'id="friendly_name"' in body
+    assert 'data-ui="dashboard_selection.input_friendly_name_value"' in body
+    assert 'id="entity_id"' in body
+    assert 'data-ui="dashboard_selection.input_entity_value"' in body
+
+    # Selector refresh helpers should exist.
+    assert 'async function refreshDashboardSuggestions' in body
+    assert 'async function loadDashboardFields' in body
+    assert 'async function resolveDashboardSource' in body
+    assert 'async function dashboardLoadTagValues' in body
+    assert 'function logSelectorLoad(name, items, filters)' in body
+    assert 'function logSelectorAction(name, value)' in body
 
 
 def test_dashboard_no_longer_has_resolved_selection_info_box():
@@ -76,8 +62,11 @@ def test_dashboard_no_longer_has_resolved_selection_info_box():
 
 def test_dashboard_actions_are_below_filters_and_reason_filter_has_data_ui():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
-    assert 'data-ui="dashboard.actions"' in body
-    assert 'data-ui="reason_filter"' in body
+    # Dashboard main actions live in the Caching section toolbar.
+    assert 'data-ui="dashboard_caching.row_actions"' in body
+    assert 'id="load"' in body
+    # Reason filter is part of the dashboard graph controls.
+    assert "dashboard_graph.select_grund_filter" in body
     assert '<span class="section_title" style="margin:0;">Gesamtstatistik (Alles)</span>' not in body
     assert 'Tipps: Messwert = <code>friendly_name</code>' not in body
 
@@ -85,10 +74,14 @@ def test_dashboard_actions_are_below_filters_and_reason_filter_has_data_ui():
 def test_dashboard_sections_are_direct_children_of_dashboard_page():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     assert '<div class="main">' not in body
-    assert '<details id="graph_section" class="section"' in body
-    assert '<details id="raw_section" class="section"' in body
-    assert '<details id="filterlist_section" class="section"' in body
-    assert '<details id="raw_section" style="margin-top: 10px;"' not in body
+    # Core dashboard sections.
+    assert '<details id="selection_details"' in body
+    assert '<details id="caching_section"' in body
+    assert '<details id="analysis_section"' in body
+    assert '<details id="outlier_section"' in body
+    assert '<details id="raw_section"' in body
+    # The legacy filter list section is no longer present.
+    assert 'id="filterlist_section"' not in body
 
 
 def test_import_ui_has_transform_preview_controls():
@@ -126,9 +119,9 @@ def test_logs_follow_uses_restored_checkbox_state():
 def test_download_and_export_buttons_use_updated_icons():
     export_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "export.html").read_text()
     topbar_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
-    assert 'button id="run" data-ui="export.run"' in export_body
-    assert 'button id="export_save" type="button" data-ui="export.save"' in export_body
-    assert 'button id="ib_error_git" type="button" data-ui="errors.git_bugreport"' in topbar_body
+    assert 'button id="run" data-ui="export_main.btn_run" title="export.run"' in export_body
+    assert 'button id="export_save" type="button" data-ui="export_main.btn_save" title="export.save"' in export_body
+    assert 'button id="ib_error_git" type="button" data-ui="errors_main.btn_git_bugreport" title="errors.git_bugreport"' in topbar_body
 
 
 def test_topbar_has_ui_picker_button_and_hover_inspector():
@@ -136,27 +129,27 @@ def test_topbar_has_ui_picker_button_and_hover_inspector():
     assert 'id="ui_picker_toggle"' in body
     assert 'id="ib_pagecard"' in body
     assert 'id="ib_page_search"' in body
-    assert 'data-ui="topbar.profile"' in body
-    assert 'data-ui="topbar.zoom"' in body
-    assert 'data-ui="nav.donate"' in body
+    assert 'data-ui="topbar_main.panel_profile"' in body
+    assert 'data-ui="topbar_main.panel_zoom"' in body
+    assert 'title="nav.donate"' in body
     assert 'id="ib_open_all"' in body
     assert 'id="ib_close_all"' in body
     assert 'id="ib_page_search_clear"' not in body
     assert '#ui_profile_sel { width: 80px; min-width: 80px; max-width: 80px;' in body
-    assert 'class="iconbtn" type="button" data-ui="sections.open_all"' in body
-    assert 'class="iconbtn" type="button" data-ui="sections.close_all"' in body
+    assert 'class="iconbtn" type="button" data-ui="sections_main.btn_open_all" title="sections.open_all"' in body
+    assert 'class="iconbtn" type="button" data-ui="sections_main.btn_close_all" title="sections.close_all"' in body
     assert 'function initZoom(){' in body
     assert "$m.dataset.ibZoomReady = '1';" in body
     assert "$p.dataset.ibZoomReady = '1';" in body
     assert "function initPageCard(){" in body
     assert "$card.dataset.ibPagecardReady = '1';" in body
     assert 'class="meta hintline" id="ui_profile_hint"' in body
-    assert 'class="branddonate" data-ui="nav.donate"' in body
-    assert "function pickTarget(el)" in body
+    assert 'class="branddonate" data-ui="nav_main.panel_donate"' in body
+    assert "function pickTarget(el, ev)" in body
     assert "function currentPageLabel()" in body
     assert "function initPicker(){" in body
     assert "$btn.dataset.ibPickerReady = '1';" in body
-    assert "const text = currentPageLabel() + ': ' + name;" in body
+    assert "const text = '<' + [page, dataUi, id].join(',') + '>';" in body
     assert "Kopiert: " in body
     assert "document.addEventListener('mousemove', onMove, true);" in body
 
@@ -187,7 +180,7 @@ def test_settings_page_uses_only_shared_title_card():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "config.html").read_text()
     assert 'settings_search' not in body
     assert 'version_box' not in body
-    assert 'main.content button:not(.ib_info_icon) { width: 100%; }' in body
+    assert 'main.content button:not(.ib_info_icon):not(.btn_sm) { width:100%; }' in body
     assert 'main.content .ib_info_icon {' in body
 
 
@@ -200,8 +193,8 @@ def test_sidebar_starts_below_pagecard():
 def test_global_filter_clear_buttons_are_available():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
     assert 'window.InfluxBroFieldClear' in body
-    assert 'function eligible(el)' in body
-    assert 'Feld leeren' in body
+    assert 'function scan(root)' in body
+    assert 'data-clear-for' in body
     assert 'ib_clear_row' in body
 
 

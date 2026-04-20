@@ -38,4 +38,4 @@ def test_resolve_signal_bounds_all_time_range(load_app_module, tmp_path, monkeyp
     # No combos returned by fake client => 404, but we still validated the generated query.
     assert r.status_code == 404
     q = seen["q"] or ""
-    assert "range(start: -30d" in q
+    assert '1970-01-01T00:00:00Z' in q

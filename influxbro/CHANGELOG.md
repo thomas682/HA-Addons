@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.12.388
+
+### Bugfix
+
+- Dashboard/Analyse: `/api/outlier_windows` berechnet before/after Fenster wieder deterministisch (Center-Punkt wird sicher ausgeschlossen), normalisiert Sort/Limit lokal (robust gegen FakeQueryApi in Tests) und loest `point_index` aus dem Zeitstempel auf. ([#349](https://github.com/thomas682/HA-Addons/issues/349))
+- Selector-Defaults: Selector-Endpunkte und `resolve_signal` nutzen ohne explizites `range/start/stop` wieder All-Time (`1970-01-01T00:00:00Z`) statt implizit 24h bzw. 30d Safety-Clamp. ([#349](https://github.com/thomas682/HA-Addons/issues/349))
+
+### Maintenance
+
+- Tests: brittle UI-Assertions/obsolete Endpoints aktualisiert, `pytest tests/` wieder gruen. ([#350](https://github.com/thomas682/HA-Addons/issues/350))
+- Tests: `python -m py_compile influxbro/app/app.py`, `pytest tests/`
+- Tested with Home Assistant Core: 2026.4.3
+
 ## 1.12.387
 
 ### Bugfix

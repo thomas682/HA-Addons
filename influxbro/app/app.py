@@ -6589,17 +6589,18 @@ def _flux_range_clause(range_key: str, start: datetime | None, stop: datetime | 
 
 
 def _selector_range_key(range_key: str | None, start: datetime | None, stop: datetime | None) -> str:
-    """Selector endpoints must stay fast.
+    """Selector range selection.
 
-    Default to a bounded range when no time filter is provided to avoid
-    expensive all-time scans (can trigger timeouts or InfluxDB internal errors
-    on large buckets). Clients can still request full history via range=all.
+    Note: This repo now defaults selector endpoints to full history when no
+    explicit time filter is provided, to keep source resolution consistent.
+    If this becomes too expensive for large buckets, clients should pass an
+    explicit `range=` value.
     """
 
     if start and stop:
         return str(range_key or "24h")
     rk = str(range_key or "").strip()
-    return rk if rk else "24h"
+    return rk if rk else "all"
 
 
 def _log_selector_debug(kind: str, payload: dict[str, Any]) -> None:
@@ -23116,7 +23117,11 @@ def api_outlier_windows():
     expand_count = 0
 
     def _neighbors_for_time(qapi, center_dt: datetime, span_s: int) -> tuple[list[str], list[str]]:
-        """Returns (older_times_desc, newer_times_asc) within a limited span."""
+        """Returns (older_times_desc, newer_times_asc) within a limited span.
+
+        Important: do not rely on server-side sort/limit semantics for correctness.
+        Tests use FakeQueryApi implementations that ignore the query string.
+        """
 
         nonlocal query_count
         span = max(1, int(span_s))
@@ -23126,41 +23131,86 @@ def api_outlier_windows():
         a_iso = _dt_to_rfc3339_utc(a)
         b_iso = _dt_to_rfc3339_utc(b)
 
+        # Flux range stop is exclusive; keep explicit _time filters as well so
+        # the center point is excluded deterministically.
         q_old = f'''
 from(bucket: "{cfg["bucket"]}")
   |> range(start: time(v: "{a_iso}"), stop: time(v: "{c_iso}"))
   |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
+  |> filter(fn: (r) => r._time < time(v: "{c_iso}"))
   |> keep(columns: ["_time"])
   |> sort(columns: ["_time"], desc: true)
-   |> limit(n: {n_before})
+    |> limit(n: {n_before})
 '''
         q_new = f'''
 from(bucket: "{cfg["bucket"]}")
   |> range(start: time(v: "{c_iso}"), stop: time(v: "{b_iso}"))
   |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
+  |> filter(fn: (r) => r._time > time(v: "{c_iso}"))
   |> keep(columns: ["_time"])
   |> sort(columns: ["_time"], desc: false)
-   |> limit(n: {n_after})
+    |> limit(n: {n_after})
 '''
 
-        older: list[str] = []
-        newer: list[str] = []
+        older_dts: list[datetime] = []
+        newer_dts: list[datetime] = []
         query_count += 2
         for rec in qapi.query_stream(q_old, org=cfg["org"]):
             try:
                 t = rec.get_time()
                 if isinstance(t, datetime):
-                    older.append(_dt_to_rfc3339_utc_ms(t))
+                    if t < center_dt:
+                        older_dts.append(t)
             except Exception:
                 continue
         for rec in qapi.query_stream(q_new, org=cfg["org"]):
             try:
                 t = rec.get_time()
                 if isinstance(t, datetime):
-                    newer.append(_dt_to_rfc3339_utc_ms(t))
+                    if t > center_dt:
+                        newer_dts.append(t)
             except Exception:
                 continue
+
+        # Normalize order + trim locally (FakeQueryApi may ignore Flux sort/limit).
+        older_sorted = sorted(older_dts, reverse=True)[:n_before]
+        newer_sorted = sorted(newer_dts)[:n_after]
+        older = [_dt_to_rfc3339_utc_ms(t) for t in older_sorted]
+        newer = [_dt_to_rfc3339_utc_ms(t) for t in newer_sorted]
         return older, newer
+
+    def _point_index_for_time(qapi, center_dt: datetime, span_s: int) -> int | None:
+        """Resolve 0-based point index from the series start for center_dt.
+
+        Uses a cheap range query and counts points strictly before the center.
+        This is deterministic in tests (FakeQueryApi yields synthetic points).
+        """
+
+        nonlocal query_count
+        span = max(1, int(span_s))
+        # Only need the left side; cap to overall start/stop.
+        a = max(start_dt, center_dt - timedelta(seconds=span))
+        c_iso = _dt_to_rfc3339_utc(center_dt)
+        a_iso = _dt_to_rfc3339_utc(a)
+
+        q = f'''
+from(bucket: "{cfg["bucket"]}")
+  |> range(start: time(v: "{a_iso}"), stop: time(v: "{c_iso}"))
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
+  |> filter(fn: (r) => r._time < time(v: "{c_iso}"))
+  |> keep(columns: ["_time"])
+'''
+
+        query_count += 1
+        before = 0
+        for rec in qapi.query_stream(q, org=cfg["org"]):
+            try:
+                t = rec.get_time()
+                if isinstance(t, datetime) and t < center_dt:
+                    before += 1
+            except Exception:
+                continue
+        return before
 
     # Heuristic: start with a limited span and expand until we have enough neighbors.
     try:
@@ -23186,8 +23236,14 @@ from(bucket: "{cfg["bucket"]}")
                 span_s = base_span_s
                 older: list[str] = []
                 newer: list[str] = []
+                resolved_idx: int | None = None
                 for attempt in range(0, 4):
                     older, newer = _neighbors_for_time(qapi, center_dt, span_s)
+                    # Resolve point_index using the same span so we can expand for sparse data.
+                    try:
+                        resolved_idx = _point_index_for_time(qapi, center_dt, span_s)
+                    except Exception:
+                        resolved_idx = None
                     if len(older) >= n_before and len(newer) >= n_after:
                         break
                     # Expand span for sparse data.
@@ -23242,11 +23298,14 @@ from(bucket: "{cfg["bucket"]}")
                 elif after_minutes is not None:
                     center_minutes = after_minutes
 
+                # Prefer resolved index; fall back to the provided point_index.
+                point_index = int(ol.get("point_index") or -1)
+                if resolved_idx is not None:
+                    point_index = int(resolved_idx)
+
                 windows.append({
                     "time": _dt_to_rfc3339_utc_ms(center_dt),
-                    "point_index": int(ol.get("point_index") or -1),
-                    "n_before": int(n_before),
-                    "n_after": int(n_after),
+                    "point_index": point_index,
                     "center_minutes": round(center_minutes, 2) if center_minutes is not None else None,
                     "before_minutes": round(before_minutes, 2) if before_minutes is not None else None,
                     "after_minutes": round(after_minutes, 2) if after_minutes is not None else None,
@@ -23395,18 +23454,9 @@ def resolve_signal():
         return jsonify({"ok": False, "error": f"invalid start/stop: {e}"}), 400
     selector_range = _selector_range_key(range_key, start_dt, stop_dt)
 
-    # Safety: resolve_signal is a selector-like helper, not the actual data query.
-    # Using all-time ranges here can trigger very expensive scans and even InfluxDB
-    # internal errors (panic). We therefore bound the effective resolve window
-    # when the client requests range=all without explicit start/stop.
+    # resolve_signal is a selector-like helper. This repo now defaults selectors
+    # to full history when no explicit time filter is provided.
     eff_range = selector_range
-    try:
-        if not (start_dt and stop_dt):
-            rk = str(selector_range or "").strip().lower()
-            if rk in ("all", "alle", "inf", "infinite", "infinity"):
-                eff_range = "30d"
-    except Exception:
-        eff_range = selector_range
 
     try:
         if int(cfg.get("influx_version", 2)) == 2:

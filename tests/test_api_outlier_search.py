@@ -44,12 +44,12 @@ def test_outlier_search_keeps_millisecond_precision(load_app_module, tmp_path):
 
     app_mod.v2_client = lambda cfg: FakeClient()
 
+    # /api/outlier_search was removed; outlier scanning is exposed via /api/outliers.
     r = client.post(
-        "/api/outlier_search",
+        "/api/outliers",
         json={
             "measurement": "m",
             "field": "value",
-            "range": "custom",
             "start": "2026-04-06T08:00:00.000Z",
             "stop": "2026-04-06T09:00:00.000Z",
             "search_types": ["zero"],
@@ -113,8 +113,9 @@ def test_outlier_search_treats_large_time_gap_as_gap_not_step(load_app_module, t
 
     app_mod.v2_client = lambda cfg: FakeClient()
 
+    # /api/outlier_search was removed; outlier scanning is exposed via /api/outliers.
     r = client.post(
-        "/api/outlier_search",
+        "/api/outliers",
         json={
             "measurement": "Wh",
             "field": "value",
