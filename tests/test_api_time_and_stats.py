@@ -149,7 +149,10 @@ def test_topbar_has_ui_picker_button_and_hover_inspector():
     assert "function currentPageLabel()" in body
     assert "function initPicker(){" in body
     assert "$btn.dataset.ibPickerReady = '1';" in body
-    assert "const text = '<' + [page, dataUi, id].join(',') + '>';" in body
+    # Picker copy now optionally includes data-cache-oltype (value only) as 4th part.
+    assert "const parts = [page, dataUi, id];" in body
+    assert "if(olType) parts.push(olType);" in body
+    assert "const text = '<' + parts.join(',') + '>';" in body
     assert "Kopiert: " in body
     assert "document.addEventListener('mousemove', onMove, true);" in body
 

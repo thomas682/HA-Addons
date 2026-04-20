@@ -2752,17 +2752,142 @@ function restructureSettings(){
         _cfgRetitle(sections.ui_shell, 'Oberflaeche', 'config_settings.group_surface_content');
         const body = _cfgBody(sections.ui_shell);
         if(body){
-          if(sections.ui_table) body.appendChild(sections.ui_table);
-          if(sections.ui_layout) body.appendChild(sections.ui_layout);
+          // Keep surface settings focused on global UI behavior.
         }
       }
       if(sections.ui_dashboard){
         _cfgRetitle(sections.ui_dashboard, 'Dashboard', 'config_settings.group_dashboard_content');
         const body = _cfgBody(sections.ui_dashboard);
         if(body){
-          if(sections.ui_cache) body.appendChild(sections.ui_cache);
-          if(sections.ui_stats_cache) body.appendChild(sections.ui_stats_cache);
-          if(sections.ui_edit) body.appendChild(sections.ui_edit);
+          // Dashboard subsections (group + re-orderable, persisted globally)
+          const scope = 'settings_dashboard_subsections';
+
+          function _mkSub(id, title, dataUi){
+            const sec = _cfgMakeSection(title, dataUi, '');
+            sec.id = id;
+            try{ sec.classList.add('cfg_dash_subsection'); }catch(e){}
+            return sec;
+          }
+          function _grid(sec){
+            const b = _cfgBody(sec);
+            if(!b) return null;
+            const g = document.createElement('div');
+            g.className = 'grid';
+            b.appendChild(g);
+            return g;
+          }
+          function _actions(sec){
+            try{
+              const row = sec.querySelector(':scope > summary .ib_summary_row');
+              if(!row) return null;
+              let a = row.querySelector(':scope > .ib_summary_actions');
+              if(!a){
+                a = document.createElement('div');
+                a.className = 'ib_summary_actions';
+                row.appendChild(a);
+              }
+              return a;
+            }catch(e){ return null; }
+          }
+          async function _saveOrder(){
+            try{
+              const ids = Array.from(body.querySelectorAll(':scope > details.cfg_dash_subsection')).map(d=>String(d.id||'')).filter(Boolean);
+              await api('./api/app_state/set', {
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({scope: scope, state: {order: ids}})
+              });
+            }catch(e){}
+          }
+          function _installMover(sec){
+            const a = _actions(sec);
+            if(!a) return;
+            if(a.querySelector(':scope > button[data-move="up"]')) return;
+            const up = document.createElement('button');
+            up.type = 'button';
+            up.textContent = '↑';
+            up.className = 'btn_sm';
+            up.style.width = 'auto';
+            up.style.padding = '4px 8px';
+            up.style.height = '26px';
+            up.title = 'Nach oben';
+            up.setAttribute('data-move', 'up');
+            const down = document.createElement('button');
+            down.type = 'button';
+            down.textContent = '↓';
+            down.className = 'btn_sm';
+            down.style.width = 'auto';
+            down.style.padding = '4px 8px';
+            down.style.height = '26px';
+            down.title = 'Nach unten';
+            down.setAttribute('data-move', 'down');
+            up.addEventListener('click', (ev)=>{
+              try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+              const prev = sec.previousElementSibling;
+              if(prev) body.insertBefore(sec, prev);
+              _saveOrder().catch(()=>{});
+            });
+            down.addEventListener('click', (ev)=>{
+              try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+              const next = sec.nextElementSibling;
+              if(next) body.insertBefore(next, sec);
+              _saveOrder().catch(()=>{});
+            });
+            a.appendChild(up);
+            a.appendChild(down);
+          }
+
+          const secSel = _mkSub('cfg_dash_selection', 'Messwertauswahl', 'config_settings.dashboard.section_selection');
+          const secCaching = _mkSub('cfg_dash_caching', 'Caching', 'config_settings.dashboard.section_caching');
+          const secAnalysis = _mkSub('cfg_dash_analysis', 'Analyse', 'config_settings.dashboard.section_analysis');
+          const secOutliers = _mkSub('cfg_dash_outliers', 'Ausreißer', 'config_settings.dashboard.section_outliers');
+          const secRaw = _mkSub('cfg_dash_raw', 'Raw Daten Analyse', 'config_settings.dashboard.section_raw');
+          const secGraph = _mkSub('cfg_dash_graph', 'Grafische Analyse', 'config_settings.dashboard.section_graph');
+
+          const gridSel = _grid(secSel);
+          const gridCaching = _grid(secCaching);
+          const gridAnalysis = _grid(secAnalysis);
+          const gridOutliers = _grid(secOutliers);
+          const gridRaw = _grid(secRaw);
+          const gridGraph = _grid(secGraph);
+
+          [secSel, secCaching, secAnalysis, secOutliers, secRaw, secGraph].forEach((sec)=>{
+            body.appendChild(sec);
+            _installMover(sec);
+          });
+
+          // Move existing cards into subsections
+          if(sections.ui_layout) _cfgBody(secSel).appendChild(sections.ui_layout);
+          if(sections.ui_cache) _cfgBody(secCaching).appendChild(sections.ui_cache);
+          if(sections.ui_stats_cache) _cfgBody(secCaching).appendChild(sections.ui_stats_cache);
+          if(sections.ui_table) _cfgBody(secRaw).appendChild(sections.ui_table);
+          if(sections.ui_edit) _cfgBody(secGraph).appendChild(sections.ui_edit);
+
+          // Move key param rows into the more specific subsection grids
+          ['ui_sel_field_font_px','ui_sel_label_font_px','ui_sel_desc_font_px','ui_sel_auto_width','ui_sel_width_px'].forEach((id)=>{ if(gridSel) _cfgMoveParamRow(id, gridSel); });
+          ['ui_analysis_cache_hidden_color','ui_analysis_cache_missing_color'].forEach((id)=>{ if(gridCaching) _cfgMoveParamRow(id, gridCaching); });
+
+          ['ui_analysis_max_age_years','ui_raw_target_chunk_ms'].forEach((id)=>{ if(gridAnalysis) _cfgMoveParamRow(id, gridAnalysis); });
+          ['ui_outlier_visible_rows','ui_raw_outlier_display_limit_per_type','ui_raw_outlier_search_limit'].forEach((id)=>{ if(gridOutliers) _cfgMoveParamRow(id, gridOutliers); });
+          ['ui_raw_max_points','ui_raw_center_max_points','ui_raw_center_range_default','ui_raw_center_min_points'].forEach((id)=>{ if(gridRaw) _cfgMoveParamRow(id, gridRaw); });
+          ['ui_query_max_points','ui_query_manual_max_points','ui_graph_jump_padding_intervals','ui_edit_graph_max_points','ui_edit_graph_buffer_minutes','ui_graph_ctx_before_minutes','ui_graph_ctx_after_minutes'].forEach((id)=>{ if(gridGraph) _cfgMoveParamRow(id, gridGraph); });
+          ['ui_raw_autotune_settings'].forEach((id)=>{ if(gridSel) _cfgMoveParamRow(id, gridSel); });
+
+          // Place algorithm defaults into the Dashboard Outliers section (global, not profile-based).
+          try{ if(sections.outliers) _cfgBody(secOutliers).appendChild(sections.outliers); }catch(e){}
+
+          // Apply persisted subsection order (global/server-side)
+          (async ()=>{
+            try{
+              const j = await api('./api/app_state?scope=' + encodeURIComponent(scope));
+              const order = (j && j.state && Array.isArray(j.state.order)) ? j.state.order : null;
+              if(!order || !order.length) return;
+              order.forEach((id)=>{
+                const el = document.getElementById(String(id||''));
+                if(el && el.parentNode === body) body.appendChild(el);
+              });
+            }catch(e){}
+          })();
         }
       }
       if(sections.jobs){
@@ -2778,7 +2903,7 @@ function restructureSettings(){
       ['Anbindung', 'config_settings.group_connection', [sections.yaml, sections.conn, sections.v2, sections.v1]],
       ['Dashboard', 'config_settings.group_dashboard', [sections.ui_dashboard]],
       ['Statistik', 'config_settings.group_stats', [sections.stats]],
-      ['Datenqualitaet', 'config_settings.group_quality', [_cfgEnsureSectionNote(sections.outliers)]],
+      ['Datenqualitaet', 'config_settings.group_quality', []],
       ['Monitor', 'config_settings.group_monitor', []],
       ['Backup', 'config_settings.group_backup', [_cfgEnsureSectionNote(sections.ui_backups || sections.backup)]],
       ['Restore', 'config_settings.group_restore', [_cfgEnsureSectionNote(sections.ui_restore || sections.restore)]],

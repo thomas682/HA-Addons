@@ -265,7 +265,11 @@ def test_raw_outlier_table_uses_template_structure_and_helpers():
 def test_raw_outlier_params_dialog_has_explanations_and_recovery_override():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     assert 'id="raw_outlier_params_reset"' in body
-    assert 'placeholder="leer = automatisch aus Measurement/Einheit"' in body
+    assert 'id="raw_param_max_step_w"' in body
+    assert 'id="raw_param_max_step_kw"' in body
+    assert 'id="raw_param_max_step_wh"' in body
+    assert 'id="raw_param_max_step_kwh"' in body
+    assert 'placeholder="Default"' in body
     assert 'placeholder="leer = keine Untergrenze"' in body
     assert 'placeholder="leer = keine Obergrenze"' in body
     assert 'placeholder="leer = Standard 2"' in body
@@ -360,7 +364,11 @@ def test_summary_actions_are_inline_in_topbar_and_back_icon_uses_return_svg():
 def test_picker_supports_disabled_targets_and_angle_bracket_labels():
     topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
     assert 'document.elementsFromPoint' in topbar
-    assert "const text = '<' + [page, dataUi, id].join(',') + '>';" in topbar
+    # Picker copy payload is angle-bracket based, optionally extended with extra selector values.
+    assert (
+        "const text = '<' + [page, dataUi, id].join(',') + '>';" in topbar
+        or ("const parts = [page, dataUi, id];" in topbar and "const text = '<' + parts.join(',') + '>';" in topbar)
+    )
     assert "'<' + (name || '(kein data-ui)') + '>'" in topbar
 
 
@@ -970,7 +978,9 @@ def test_picker_supports_superpicker_fallback_mode():
     assert "if(el && el.nodeType === Node.TEXT_NODE) el = el.parentElement;" in topbar
     assert "if(readSuper()){" in topbar
     assert "if(ui) return { el, name: ui, kind: 'data-ui' };" in topbar
-    assert "return { el, name: _fallbackCssFor(el), kind: 'fallback' };" in topbar
+    assert "function _fallbackTextSnippetFor(el){" in topbar
+    assert "const css = _fallbackCssFor(el);" in topbar
+    assert "kind: 'fallback'" in topbar
     assert "const display = target.kind === 'fallback' ? ('fallback:' + (name || 'element')) : ('<' + (name || '(kein data-ui)') + '>');" in topbar
     assert "badge.textContent = display;" in topbar
     assert "if(readSuper()){ if($superBtn) $superBtn.classList.add('active');" in topbar

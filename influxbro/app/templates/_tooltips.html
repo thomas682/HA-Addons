@@ -1610,14 +1610,17 @@
         const xs = _historyEntries(scope);
         const q = String(query || '').trim().toLowerCase();
         const filtered = !q ? xs : xs.filter((it)=>{
-          const hay = [it && it.at, it && it.started_at_client, it && it.started_at_source, it && it.label, it && it.query, it && it.response, it && it.trigger_page, it && it.trigger_button, it && it.trigger_program, it && it.trace_id, it && it.action].map(v => String(v || '').toLowerCase()).join('\n');
+          const hay = [it && it.at, it && it.started_at_client, it && it.started_at_source, it && it.label, it && it.query, it && it.response, it && it.trigger_page, it && it.trigger_button, it && it.trigger_program, it && it.trace_id, it && it.action, (it && it.dur_ms !== undefined ? String(it.dur_ms) : '')].map(v => String(v || '').toLowerCase()).join('\n');
           return hay.includes(q);
         });
         return filtered.slice().reverse().map((it, idx)=>{
           const parts = [];
-          parts.push(`#${idx + 1} | ${_historyDisplayTime(it, clientTime)}${it && it.label ? ' | ' + String(it.label) : ''}`);
+          const dur = (it && it.dur_ms !== null && it.dur_ms !== undefined && isFinite(Number(it.dur_ms))) ? Math.max(0, Math.round(Number(it.dur_ms))) : null;
+          const durTxt = (dur !== null) ? (' | ' + String(dur) + ' ms') : '';
+          parts.push(`#${idx + 1} | ${_historyDisplayTime(it, clientTime)}${it && it.label ? ' | ' + String(it.label) : ''}${durTxt}`);
           const trigger = _fmtTrigger(it);
           if(trigger) parts.push('ausgeloest durch: ' + trigger);
+          if(dur !== null) parts.push('Dauer: ' + String(dur) + ' ms');
           parts.push('query:');
           parts.push(String(it && it.query ? it.query : '(leer)'));
           if(it && it.response){
@@ -1734,7 +1737,7 @@
             hint.textContent = txt ? (String((_historyEntries(scope).filter((it)=>{
               const q = String(search.value || '').trim().toLowerCase();
               if(!q) return true;
-              const hay = [it && it.at, it && it.started_at_client, it && it.started_at_source, it && it.label, it && it.query, it && it.response, it && it.trigger_page, it && it.trigger_button, it && it.trigger_program].map(v => String(v || '').toLowerCase()).join('\n');
+              const hay = [it && it.at, it && it.started_at_client, it && it.started_at_source, it && it.label, it && it.query, it && it.response, it && it.trigger_page, it && it.trigger_button, it && it.trigger_program, it && it.trace_id, it && it.action, (it && it.dur_ms !== undefined ? String(it.dur_ms) : '')].map(v => String(v || '').toLowerCase()).join('\n');
               return hay.includes(q);
             }).length)) + ' Eintraege') : 'keine Eintraege';
           }catch(e){ historyPre.textContent = '(keine Eintraege)'; }
@@ -2421,21 +2424,23 @@
      window.InfluxBroDialogs = {
        queryIcon: QUERY_ICON,
        historyIcon: HISTORY_ICON,
-        openQuery: (opts)=>{
-          const o = opts || {};
-          const parts = [];
-          if(o.meta) parts.push(String(o.meta));
-          if(o.label) parts.push(String(o.label));
-          const latest = _latestHistoryEntry(String(o.scope || ''), String(o.text || ''));
-          const latestClientAt = latest ? _fmtLocalTs(latest.started_at_client || latest.at_client || latest.at) : '';
-          const latestTrigger = _fmtTrigger(latest);
-          if(latestClientAt) parts.push('Ausgeloest: ' + latestClientAt);
-          if(latestTrigger) parts.push('Ausloeser: ' + latestTrigger);
-          const actions = [];
-          if(o.scope){
-             actions.push({
-               label: 'Refresh',
-               title: 'History aktualisieren',
+         openQuery: (opts)=>{
+           const o = opts || {};
+           const parts = [];
+           if(o.meta) parts.push(String(o.meta));
+           if(o.label) parts.push(String(o.label));
+           const latest = _latestHistoryEntry(String(o.scope || ''), String(o.text || ''));
+           const latestClientAt = latest ? _fmtLocalTs(latest.started_at_client || latest.at_client || latest.at) : '';
+           const latestTrigger = _fmtTrigger(latest);
+           const latestDurMs = (latest && latest.dur_ms !== null && latest.dur_ms !== undefined && isFinite(Number(latest.dur_ms))) ? Math.max(0, Math.round(Number(latest.dur_ms))) : null;
+           if(latestClientAt) parts.push('Ausgeloest: ' + latestClientAt);
+           if(latestTrigger) parts.push('Ausloeser: ' + latestTrigger);
+           if(latestDurMs !== null) parts.push('Dauer: ' + String(latestDurMs) + ' ms');
+           const actions = [];
+           if(o.scope){
+              actions.push({
+                label: 'Refresh',
+                title: 'History aktualisieren',
                icon: HISTORY_REFRESH_ICON,
                onClick: ()=>{ try{ _renderHistory(String(o.scope)); }catch(e){} },
              });
@@ -2989,6 +2994,14 @@
     const sourceIso = String((startedAtOrMeta && typeof startedAtOrMeta === 'object' && !Array.isArray(startedAtOrMeta)) ? (meta.started_at_source || meta.startedAtIso || '') : (startedAtOrMeta || meta.started_at_source || meta.startedAtIso || '')).trim();
     let clientIso = '';
     try{ clientIso = new Date().toISOString(); }catch(e){ clientIso = sourceIso || ''; }
+
+    let durMs = null;
+    try{
+      const v = (meta && (meta.dur_ms !== undefined ? meta.dur_ms : (meta.durMs !== undefined ? meta.durMs : (meta.duration_ms !== undefined ? meta.duration_ms : meta.durationMs))));
+      const n = Number(v);
+      if(isFinite(n)) durMs = Math.max(0, Math.round(n));
+    }catch(e){ durMs = null; }
+
     const ent = {
       at: String(sourceIso || clientIso),
       at_client: clientIso,
@@ -3004,6 +3017,7 @@
       trace_id: String(meta.trace_id || ''),
       span_id: String(meta.span_id || ''),
       action: String(meta.action || ''),
+      dur_ms: durMs,
     };
     const xs = _load(scope);
     const prev = xs.length ? xs[xs.length - 1] : null;

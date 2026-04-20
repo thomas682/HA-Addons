@@ -250,6 +250,7 @@
     .ib-chip-dot { width:8px; height:8px; border-radius:50%; background:var(--ib-chip-color, #5ea56a); flex-shrink:0; position:relative; z-index:1; transition:background 0.2s; }
     .ib-chip.ib-chip-inactive .ib-chip-dot { background:#999; }
     .ib-chip-label { position:relative; z-index:1; font-family:inherit; }
+    .ib-chip-strike .ib-chip-label { text-decoration: line-through; }
 
     /* Outlier markers in cache timeline */
     .ib-ol-marker:hover { opacity:1 !important; width:6px !important; margin-left:-3px !important; z-index:2; }
@@ -483,7 +484,7 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
             <div class="tbl_actions" data-ui="dashboard_analysis.row_actions" title="dashboard_analysis.row_actions">
            <button id="analysis_run_with_cache" class="btn_sm" style="width:auto;" data-ui="dashboard_analysis.btn_analyse_mit_cache">Analyse mit Cache</button>
            <button id="analysis_run_without_cache" class="btn_sm" style="width:auto;" data-ui="dashboard_analysis.btn_analyse_ohne_cache">Analyse ohne Cache</button>
-           <button id="analysis_abort" class="btn_sm" style="width:auto; display:none;" data-ui="dashboard_analysis.btn_abbruch">Analyse-Abbruch</button>
+           <button id="analysis_abort" class="btn_sm" style="width:auto;" data-ui="dashboard_analysis.btn_abbruch" disabled>abbrechen</button>
            <button id="analysis_query_open" type="button" class="btn_sm" style="width:auto; min-width:34px; padding:6px 8px;" data-ui="dashboard_analysis.btn_query_anzeigen" aria-label="Analyse Query anzeigen" title="dashboard_analysis.btn_query_anzeigen"><svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="11" cy="15.5" r="1.5"></circle><path d="M12,12H10V8h2a2,2,0,0,0,0-4H10A2.0023,2.0023,0,0,0,8,6v.5H6V6a4.0045,4.0045,0,0,1,4-4h2a4,4,0,0,1,0,8Z"></path><path d="M22.4479,21.0337A10.971,10.971,0,0,0,19.9211,4.7446l-.999,1.73A8.9967,8.9967,0,1,1,5,14H3a10.9916,10.9916,0,0,0,18.0338,8.4478L28.5859,30,30,28.5859Z"></path></svg></button>
            <button id="analysis_query_test" type="button" class="btn_sm" style="width:auto; min-width:34px; padding:6px 8px;" data-ui="dashboard_analysis.btn_query_test" aria-label="Analyse Query testen" title="dashboard_analysis.btn_query_test"><svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="#000000" width="18" height="18" aria-hidden="true" focusable="false"><path d="M6 10V9h9v1H6zm4-4h5v1h-5V6zm5-3v1H6V3h9zm-9 9v1h9v-1H6z"></path><path fill-rule="evenodd" clip-rule="evenodd" d="M1 2.795l.783-.419 5.371 3.581v.838l-5.371 3.581L1 9.957V2.795zm1.007.94v5.281l3.96-2.64-3.96-2.64z"></path></svg></button>
            <button id="analysis_stats_total" type="button" class="btn_sm" style="width:auto; min-width:34px; padding:6px 8px;" data-ui="dashboard_analysis.btn_gesamtstatistik_anzeigen" aria-label="Analyse Gesamtstatistik anzeigen" title="dashboard_analysis.btn_gesamtstatistik_anzeigen"><svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><path d="M5,9h18v1H5V9z M5,13h8v9H5V13z M6,21h6v-7H6V21z M16,14h7v-1h-7V14z M16,16h7v-1h-7V16z M16,20h7v-1 h-7V20z M16,18h7v-1h-7V18z M16,22h7v-1h-7V22z M32,7v17c0,2.206-1.794,4-4,4H4c-2.206,0-4-1.794-4-4V5c0-0.552,0.448-1,1-1h26 c0.552,0,1,0.448,1,1v1h3C31.552,6,32,6.448,32,7z M30,8h-3v14h-1V7V6H2v18c0,1.103,0.897,2,2,2h24c1.103,0,2-0.897,2-2V8z"></path></svg></button>
@@ -514,15 +515,8 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
           <button class="btn_sm" id="analysis_types_reset" style="width:auto;" data-ui="dashboard_analysis.btn_typen_reset">Reset</button>
           <label style="display:flex;align-items:center;gap:6px;font-size:12px;"><input type="checkbox" id="analysis_types_show_ignored" data-ui="dashboard_analysis.chk_ignoriert"/>Ignoriert</label>
         </div>
-        <div style="display:flex;gap:12px;margin-bottom:8px;flex-wrap:wrap;">
-          <div style="flex:1 1 200px; min-width:180px;">
-            <div style="font-size:11px;opacity:0.7;margin-bottom:6px;">Gewaehlte Typen</div>
-            <div id="analysis_types_selected" class="ib-chip-grid" data-ui="dashboard_analysis.panel_typen_gewaehlt" style="border:1px solid #eee;border-radius:12px;padding:10px;min-height:40px;"></div>
-          </div>
-          <div style="flex:1 1 200px; min-width:180px;">
-            <div style="font-size:11px;opacity:0.7;margin-bottom:6px;">Abgewaehlte Typen</div>
-            <div id="analysis_types_unselected" class="ib-chip-grid" data-ui="dashboard_analysis.panel_typen_abgewaehlt" style="border:1px solid #eee;border-radius:12px;padding:10px;min-height:40px;"></div>
-          </div>
+        <div style="margin-bottom:8px;">
+          <div id="analysis_types_selected" class="ib-chip-grid" data-ui="dashboard_analysis.panel_typen_gewaehlt" style="border:1px solid #eee;border-radius:12px;padding:10px;min-height:40px;"></div>
         </div>
       </div>
     </details>
@@ -726,10 +720,27 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
           <button class="btn_sm" id="raw_outlier_params_close" type="button">Schliessen</button>
         </div>
         <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:14px;">
-          <div style="border:1px solid #e7e7e7; border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:8px;">
-            <label for="raw_param_max_step" style="font-weight:700;">Counter: Max Sprung</label>
-            <input id="raw_param_max_step" type="number" step="any" placeholder="leer = automatisch aus Measurement/Einheit" style="width:100%;" />
-            <div class="muted" style="font-size:12px; line-height:1.45;">Maximal erlaubter positiver Sprung zwischen zwei aufeinanderfolgenden Punkten. Leerlassen nutzt den automatisch aus Measurement/Einheit abgeleiteten Standard.</div>
+          <div style="border:1px solid #e7e7e7; border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:10px;">
+            <div style="font-weight:700;">Counter: Max Sprung</div>
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:10px;">
+              <div style="display:flex; flex-direction:column; gap:6px;">
+                <label for="raw_param_max_step_w" style="font-weight:700; font-size:12px;">W</label>
+                <input id="raw_param_max_step_w" type="number" step="any" placeholder="Default" style="width:100%;" />
+              </div>
+              <div style="display:flex; flex-direction:column; gap:6px;">
+                <label for="raw_param_max_step_kw" style="font-weight:700; font-size:12px;">kW</label>
+                <input id="raw_param_max_step_kw" type="number" step="any" placeholder="Default" style="width:100%;" />
+              </div>
+              <div style="display:flex; flex-direction:column; gap:6px;">
+                <label for="raw_param_max_step_wh" style="font-weight:700; font-size:12px;">Wh</label>
+                <input id="raw_param_max_step_wh" type="number" step="any" placeholder="Default" style="width:100%;" />
+              </div>
+              <div style="display:flex; flex-direction:column; gap:6px;">
+                <label for="raw_param_max_step_kwh" style="font-weight:700; font-size:12px;">kWh</label>
+                <input id="raw_param_max_step_kwh" type="number" step="any" placeholder="Default" style="width:100%;" />
+              </div>
+            </div>
+            <div class="muted" style="font-size:12px; line-height:1.45;">Maximal erlaubter positiver Sprung zwischen zwei aufeinanderfolgenden Punkten. Werte gelten global pro Einheit.</div>
           </div>
           <div style="border:1px solid #e7e7e7; border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:8px;">
             <label for="raw_param_min" style="font-weight:700;">Grenzen: Min</label>
@@ -918,7 +929,10 @@ const $rawOutlierParamsDialog = document.getElementById('raw_outlier_params_dial
 const $rawOutlierParamsClose = document.getElementById('raw_outlier_params_close');
 const $rawOutlierParamsSave = document.getElementById('raw_outlier_params_save');
 const $rawOutlierParamsReset = document.getElementById('raw_outlier_params_reset');
-const $rawParamMaxStep = document.getElementById('raw_param_max_step');
+const $rawParamMaxStepW = document.getElementById('raw_param_max_step_w');
+const $rawParamMaxStepKw = document.getElementById('raw_param_max_step_kw');
+const $rawParamMaxStepWh = document.getElementById('raw_param_max_step_wh');
+const $rawParamMaxStepKwh = document.getElementById('raw_param_max_step_kwh');
 const $rawParamMin = document.getElementById('raw_param_min');
 const $rawParamMax = document.getElementById('raw_param_max');
 const $rawParamRecoveryStreak = document.getElementById('raw_param_recovery_streak');
@@ -2555,6 +2569,7 @@ let OUTLIER_ACTIVE = false;
 let OUTLIER_ROWS = [];
 
 let LOAD_INFLIGHT = false;
+let CACHE_CHECK_INFLIGHT = false;
 let LOAD_T0 = 0;
 let LOAD_TIMER = null;
 let LOAD_QUERY_MS = null;
@@ -3520,6 +3535,7 @@ function setLastQuery(q, triggeredAtIso, durationMs){
           trigger_button: (tr && tr.action_ui) ? String(tr.action_ui) : 'dashboard.load',
           trace_id: (tr && tr.trace_id) ? String(tr.trace_id) : '',
           action: (tr && tr.action_ui) ? String(tr.action_ui) : '',
+          dur_ms: durationMs,
         });
       }
     }catch(e){}
@@ -4871,6 +4887,7 @@ let ANALYSIS_CACHE_PLAN_CHOICE = { cacheStrategy: 'reuse', plan: null };
 let ANALYSIS_ACTIVE_SCOPE = 'dashboard_analysis';
 let ANALYSIS_ACTIVE_ACTION = '';
 let ANALYSIS_INFLIGHT = false;
+let ANALYSIS_ABORT_REQUESTED = false;
 
 function _setAnalysisRunButtonsDisabled(disabled){
   try{
@@ -5878,8 +5895,10 @@ function _effectiveMaxStepForUnit(unit){
 
 async function openOutlierParamsDialog(){
   try{ await loadUiConfig(); }catch(e){}
-  const unit = _currentEntityUnit();
-  try{ if($rawParamMaxStep) $rawParamMaxStep.value = String(_effectiveMaxStepForUnit(unit) || ''); }catch(e){}
+  try{ if($rawParamMaxStepW) $rawParamMaxStepW.value = String(OUTLIER_STEP_CFG && OUTLIER_STEP_CFG.w !== undefined ? OUTLIER_STEP_CFG.w : 30000); }catch(e){}
+  try{ if($rawParamMaxStepKw) $rawParamMaxStepKw.value = String(OUTLIER_STEP_CFG && OUTLIER_STEP_CFG.kw !== undefined ? OUTLIER_STEP_CFG.kw : 30); }catch(e){}
+  try{ if($rawParamMaxStepWh) $rawParamMaxStepWh.value = String(OUTLIER_STEP_CFG && OUTLIER_STEP_CFG.wh !== undefined ? OUTLIER_STEP_CFG.wh : 30000); }catch(e){}
+  try{ if($rawParamMaxStepKwh) $rawParamMaxStepKwh.value = String(OUTLIER_STEP_CFG && OUTLIER_STEP_CFG.kwh !== undefined ? OUTLIER_STEP_CFG.kwh : 30); }catch(e){}
   try{ if($rawParamMin) $rawParamMin.value = String(OUTLIER_PARAM_CFG.min || '').trim(); }catch(e){}
   try{ if($rawParamMax) $rawParamMax.value = String(OUTLIER_PARAM_CFG.max || '').trim(); }catch(e){}
   try{ if($rawParamRecoveryStreak) $rawParamRecoveryStreak.value = String(OUTLIER_PARAM_CFG.recovery_streak || '2').trim(); }catch(e){}
@@ -5916,27 +5935,18 @@ async function saveOutlierParamsDialog({useDefaults}={}){
       patch.outlier_gap_seconds_default = (s === '') ? (d.outlier_gap_seconds_default || 300) : parseInt(s, 10);
     }
 
-    // Max step: write back into the global unit thresholds (not a per-run override)
-    if($rawParamMaxStep){
-      const s = wantDefaults ? '' : String($rawParamMaxStep.value || '').trim();
-      const ul = String(unit || '').trim().toLowerCase();
-      if(ul === 'w') patch.outlier_max_step_w = (s === '') ? (d.outlier_max_step_w || 30000) : parseFloat(s);
-      else if(ul === 'kw') patch.outlier_max_step_kw = (s === '') ? (d.outlier_max_step_kw || 30) : parseFloat(s);
-      else if(ul === 'wh') patch.outlier_max_step_wh = (s === '') ? (d.outlier_max_step_wh || 30000) : parseFloat(s);
-      else if(ul === 'kwh') patch.outlier_max_step_kwh = (s === '') ? (d.outlier_max_step_kwh || 30) : parseFloat(s);
-      else{
-        const m = _parseUnitStepMapText(OUTLIER_STEP_CFG.units || '');
-        if(String(unit || '').trim()){
-          if(s === ''){
-            try{ delete m[String(unit || '').trim()]; }catch(e){}
-          }else{
-            const v = parseFloat(s);
-            if(isFinite(v)) m[String(unit || '').trim()] = v;
-          }
-        }
-        patch.outlier_max_step_units = _unitStepMapToText(m);
-      }
+    // Max step defaults (global per unit)
+    function _numOrDefault($el, defVal, label){
+      const raw = wantDefaults ? '' : String($el && $el.value !== undefined ? $el.value : '').trim();
+      if(raw === '') return defVal;
+      const v = parseFloat(raw);
+      if(!isFinite(v)) throw new Error(String(label || 'Wert') + ' ist ungueltig.');
+      return v;
     }
+    if($rawParamMaxStepW) patch.outlier_max_step_w = _numOrDefault($rawParamMaxStepW, d.outlier_max_step_w || 30000, 'Max Sprung (W)');
+    if($rawParamMaxStepKw) patch.outlier_max_step_kw = _numOrDefault($rawParamMaxStepKw, d.outlier_max_step_kw || 30, 'Max Sprung (kW)');
+    if($rawParamMaxStepWh) patch.outlier_max_step_wh = _numOrDefault($rawParamMaxStepWh, d.outlier_max_step_wh || 30000, 'Max Sprung (Wh)');
+    if($rawParamMaxStepKwh) patch.outlier_max_step_kwh = _numOrDefault($rawParamMaxStepKwh, d.outlier_max_step_kwh || 30, 'Max Sprung (kWh)');
 
     await api('./api/config', {
       method: 'POST',
@@ -6394,7 +6404,11 @@ function updateAnalysisUI(){
     if($fill) $fill.style.width = pct + '%';
     const $ptxt = document.getElementById('analysis_progress_text');
     if($ptxt) $ptxt.textContent = pct + '% (' + s.currentChunk + '/' + s.totalChunks + ' Chunks)';
-    if($analysisAbort) $analysisAbort.style.display = (s.status === 'running') ? 'inline-block' : 'none';
+    const running = (s.status === 'running') || !!ANALYSIS_INFLIGHT;
+    if($analysisAbort){
+      $analysisAbort.style.display = 'inline-block';
+      $analysisAbort.disabled = !(running && !ANALYSIS_ABORT_REQUESTED);
+    }
 
     // 3. Checkliste
     const $cl = document.getElementById('analysis_checklist');
@@ -6433,51 +6447,48 @@ function updateAnalysisUI(){
 function renderAnalysisTypeLists(){
   try{
       const $selected = document.getElementById('analysis_types_selected');
-      const $unselected = document.getElementById('analysis_types_unselected');
       const $showIgnored = document.getElementById('analysis_types_show_ignored');
-      if(!$unselected || !$selected) return;
+      if(!$selected) return;
       if($showIgnored) $showIgnored.checked = !!ANALYSIS_SHOW_IGNORED;
 
       const _chipColors = {counter:'#5ea56a',decrease:'#d47d57',bounds:'#5d86d6',gap:'#8b66d1',fault_phase:'#d7a545',null:'#4da790',zero:'#d46a6a',ignored:'#999'};
       function _chipHtml(t, label, active){
         const color = _chipColors[t] || '#5ea56a';
-        const cls = active ? 'ib-chip ib-chip-active' : 'ib-chip ib-chip-inactive';
-        return '<div class="' + cls + '" style="--ib-chip-color:' + color + ';" data-type="' + t + '" data-list="' + (active ? 'selected' : 'unselected') + '" title="Klicken zum ' + (active ? 'Abwaehlen' : 'Auswaehlen') + '">'
+        const cls = active ? 'ib-chip ib-chip-active' : 'ib-chip ib-chip-inactive ib-chip-strike';
+        return '<div class="' + cls + '" style="--ib-chip-color:' + color + ';" data-ui="dashboard_analysis.chip_type.' + t + '" data-type="' + t + '" data-active="' + (active ? '1' : '0') + '" title="Klicken zum ' + (active ? 'Abwaehlen' : 'Auswaehlen') + '">'
           + '<div class="ib-chip-dot"></div>'
           + '<span class="ib-chip-label">' + label + '</span>'
           + '</div>';
       }
 
-      $selected.innerHTML = ANALYSIS_SELECTED_TYPES.map(t => {
+      const chips = [];
+      ANALYSIS_SELECTED_TYPES.forEach((t)=>{
         const type = ALL_OUTLIER_TYPES.find(x => x.value === t);
-        return _chipHtml(t, type ? type.label : t, true);
-      }).join('') || '<div style="opacity:0.5;font-size:11px;">Keine</div>';
-
-      $unselected.innerHTML = ANALYSIS_UNSELECTED_TYPES.map(t => {
+        chips.push(_chipHtml(t, type ? type.label : t, true));
+      });
+      ANALYSIS_UNSELECTED_TYPES.forEach((t)=>{
         const type = ALL_OUTLIER_TYPES.find(x => x.value === t);
-        return _chipHtml(t, type ? type.label : t, false);
-      }).join('') || '<div style="opacity:0.5;font-size:11px;">Keine</div>';
+        chips.push(_chipHtml(t, type ? type.label : t, false));
+      });
+      $selected.innerHTML = chips.join('') || '<div style="opacity:0.5;font-size:11px;">Keine</div>';
 
-      // Add click handlers
+      // Add click handlers (toggle active/unselected in one panel)
       $selected.querySelectorAll('[data-type]').forEach(el => {
         el.addEventListener('click', ()=>{
-          const type = el.getAttribute('data-type');
-          ANALYSIS_SELECTED_TYPES = ANALYSIS_SELECTED_TYPES.filter(t => t !== type);
-          ANALYSIS_UNSELECTED_TYPES = ANALYSIS_UNSELECTED_TYPES.filter(t => t !== type);
-          if(!ANALYSIS_UNSELECTED_TYPES.includes(type)) ANALYSIS_UNSELECTED_TYPES.push(type);
-          ANALYSIS_UNSELECTED_TYPES.sort();
-          saveAnalysisTypes();
-          renderAnalysisTypeLists();
-          renderOutlierOverviewTable();
-        });
-      });
-      $unselected.querySelectorAll('[data-type]').forEach(el => {
-        el.addEventListener('click', ()=>{
-          const type = el.getAttribute('data-type');
-          ANALYSIS_UNSELECTED_TYPES = ANALYSIS_UNSELECTED_TYPES.filter(t => t !== type);
-          ANALYSIS_SELECTED_TYPES = ANALYSIS_SELECTED_TYPES.filter(t => t !== type);
-          ANALYSIS_SELECTED_TYPES.push(type);
-          ANALYSIS_SELECTED_TYPES.sort();
+          const type = String(el.getAttribute('data-type') || '').trim();
+          if(!type) return;
+          const active = String(el.getAttribute('data-active') || '') === '1';
+          if(active){
+            ANALYSIS_SELECTED_TYPES = ANALYSIS_SELECTED_TYPES.filter(t => t !== type);
+            ANALYSIS_UNSELECTED_TYPES = ANALYSIS_UNSELECTED_TYPES.filter(t => t !== type);
+            if(!ANALYSIS_UNSELECTED_TYPES.includes(type)) ANALYSIS_UNSELECTED_TYPES.push(type);
+            ANALYSIS_UNSELECTED_TYPES.sort();
+          }else{
+            ANALYSIS_UNSELECTED_TYPES = ANALYSIS_UNSELECTED_TYPES.filter(t => t !== type);
+            ANALYSIS_SELECTED_TYPES = ANALYSIS_SELECTED_TYPES.filter(t => t !== type);
+            ANALYSIS_SELECTED_TYPES.push(type);
+            ANALYSIS_SELECTED_TYPES.sort();
+          }
           saveAnalysisTypes();
           renderAnalysisTypeLists();
           renderOutlierOverviewTable();
@@ -6997,6 +7008,14 @@ async function runAnalysis(){
     });
   }catch(e){
     const dur = Math.round(performance.now() - t0);
+    if((e && e.aborted) || ANALYSIS_ABORT_REQUESTED){
+      _logAnalysis('search_abort', {dur: dur});
+      _setStep('search', 'err', {label: 'Ausreisser-Suche ausfuehren', dur: dur, sub: 'Abgebrochen.'});
+      allOk = false;
+      ANALYSIS_STATE.status = 'idle';
+      updateAnalysisUI();
+      return;
+    }
     _logAnalysis('search_error', {error: e && e.message ? e.message : String(e), stack: e && e.stack ? e.stack : ''});
     _setStep('search', 'err', {label: 'Ausreisser-Suche ausfuehren', dur: dur, sub: e && e.message ? e.message : String(e)});
     allOk = false;
@@ -7580,9 +7599,13 @@ function _analysisCacheTimelineHtml(plan){
     const off = hiddenOlTypes.has(t);
     const col = _cacheTimelineOutlierTypeColor(t);
     const lab = typeLabels[t] || t;
-    return '<button type="button" class="btn_xs" data-cache-oltype="' + _escAttr(t) + '"'
-      + ' style="width:auto;min-width:28px;' + (off ? 'opacity:0.45;text-decoration:line-through;' : ('background:' + col + ';color:#fff;border-color:' + col + ';')) + '"'
-      + ' title="Outlier-Typ im Zeitstrahl ' + (off ? 'einblenden' : 'ausblenden') + '">' + _escHtml(lab) + '</button>';
+    const cls = off ? 'ib-chip ib-chip-inactive ib-chip-strike' : 'ib-chip ib-chip-active';
+    return '<button type="button" class="' + cls + '" data-cache-oltype="' + _escAttr(t) + '" data-ui="cache_timeline.btn_oltype.' + _escAttr(t) + '"'
+      + ' style="--ib-chip-color:' + col + ';width:auto;padding:4px 12px 4px 10px;"'
+      + ' title="Outlier-Typ im Zeitstrahl ' + (off ? 'einblenden' : 'ausblenden') + '">'
+      + '<span class="ib-chip-dot"></span>'
+      + '<span class="ib-chip-label">' + _escHtml(lab) + '</span>'
+      + '</button>';
   }).join('');
 
   (plan.segments || []).forEach((seg, idx) => {
@@ -7618,9 +7641,15 @@ function _analysisCacheTimelineHtml(plan){
     }
     labels.push(
       '<div style="display:flex;align-items:center;gap:8px;font-size:11px;' + (!ui.active ? 'text-decoration:line-through;color:' + ANALYSIS_CACHE_HIDDEN_COLOR + ';' : '') + '">' +
-      '<button type="button" data-cache-hl="' + _escHtml(id) + '" class="btn_xs" style="width:auto;min-width:28px;' + (ui.hl ? 'background:#ff9900;color:#fff;border-color:#ff9900;' : '') + '" data-ui="cache_timeline.btn_hl">hl</button>' +
-      '<button type="button" data-cache-ac="' + _escHtml(id) + '" class="btn_xs" style="width:auto;min-width:28px;' + (ui.active ? '' : 'background:' + ANALYSIS_CACHE_HIDDEN_COLOR + ';color:#fff;border-color:' + ANALYSIS_CACHE_HIDDEN_COLOR + ';') + '" data-ui="cache_timeline.btn_ac">ac</button>' +
-      '<button type="button" data-cache-ol="' + _escHtml(id) + '" class="btn_xs" style="width:auto;min-width:28px;' + (ui.ol ? 'background:' + bd + ';color:#fff;border-color:' + bd + ';' : '') + '" data-ui="cache_timeline.btn_ol">ol</button>' +
+      '<button type="button" data-cache-hl="' + _escHtml(id) + '" class="' + (ui.hl ? 'ib-chip ib-chip-active' : 'ib-chip') + '" style="--ib-chip-color:#ff9900;width:auto;padding:2px 10px 2px 8px;font-size:11px;" data-ui="cache_timeline.btn_hl" title="Highlight">' +
+        '<span class="ib-chip-dot"></span><span class="ib-chip-label">hl</span>' +
+      '</button>' +
+      '<button type="button" data-cache-ac="' + _escHtml(id) + '" class="' + (ui.active ? 'ib-chip ib-chip-active' : 'ib-chip ib-chip-inactive') + '" style="--ib-chip-color:' + bd + ';width:auto;padding:2px 10px 2px 8px;font-size:11px;" data-ui="cache_timeline.btn_ac" title="Aktiv">' +
+        '<span class="ib-chip-dot"></span><span class="ib-chip-label">ac</span>' +
+      '</button>' +
+      '<button type="button" data-cache-ol="' + _escHtml(id) + '" class="' + (ui.ol ? 'ib-chip ib-chip-active' : 'ib-chip') + '" style="--ib-chip-color:' + bd + ';width:auto;padding:2px 10px 2px 8px;font-size:11px;" data-ui="cache_timeline.btn_ol" title="Outlier">' +
+        '<span class="ib-chip-dot"></span><span class="ib-chip-label">ol</span>' +
+      '</button>' +
       '<button type="button" class="ib_info_icon" data-cache-info="' + _escAttr(String(seg.cache_id || '')) + '" data-ui="cache_timeline.btn_info" title="Cache Details">' + (typeof ANALYSIS_INFO_ICON_SVG !== 'undefined' ? ANALYSIS_INFO_ICON_SVG : '?') + '</button>' +
       '<span style="display:inline-block;width:10px;height:10px;background:' + color + ';border:1px solid ' + border + ';border-radius:3px;"></span>' +
       '<span style="flex:1;">Cache ' + (idx + 1) + ': ' + _escHtml(fmtTs(seg.use_start || seg.covered_start)) + ' – ' + _escHtml(fmtTs(seg.use_stop || seg.covered_stop)) + ' (' + _escHtml(fmtTs(seg.updated_at || '')) + ')</span>' +
@@ -7637,9 +7666,15 @@ function _analysisCacheTimelineHtml(plan){
     parts.push(_analysisCacheTimelineSegHtml(gap.start, gap.stop, startMs, stopMs, color, border, ui.hl, 'Neu lesen ' + (idx + 1)));
     labels.push(
       '<div style="display:flex;align-items:center;gap:8px;font-size:11px;' + (!ui.active ? 'text-decoration:line-through;color:' + ANALYSIS_CACHE_HIDDEN_COLOR + ';' : '') + '">' +
-      '<button type="button" data-cache-hl="' + _escHtml(id) + '" class="btn_xs" style="width:auto;min-width:28px;' + (ui.hl ? 'background:#ff9900;color:#fff;border-color:#ff9900;' : '') + '" data-ui="cache_timeline.btn_hl">hl</button>' +
-      '<button type="button" data-cache-ac="' + _escHtml(id) + '" class="btn_xs" style="width:auto;min-width:28px;' + (ui.active ? '' : 'background:' + ANALYSIS_CACHE_HIDDEN_COLOR + ';color:#fff;border-color:' + ANALYSIS_CACHE_HIDDEN_COLOR + ';') + '" data-ui="cache_timeline.btn_ac">ac</button>' +
-      '<button type="button" data-cache-ol="' + _escHtml(id) + '" class="btn_xs" style="width:auto;min-width:28px;background:#ddd;color:#777;border-color:#ddd;cursor:not-allowed;" data-ui="cache_timeline.btn_ol" disabled>ol</button>' +
+      '<button type="button" data-cache-hl="' + _escHtml(id) + '" class="' + (ui.hl ? 'ib-chip ib-chip-active' : 'ib-chip') + '" style="--ib-chip-color:#ff9900;width:auto;padding:2px 10px 2px 8px;font-size:11px;" data-ui="cache_timeline.btn_hl" title="Highlight">' +
+        '<span class="ib-chip-dot"></span><span class="ib-chip-label">hl</span>' +
+      '</button>' +
+      '<button type="button" data-cache-ac="' + _escHtml(id) + '" class="' + (ui.active ? 'ib-chip ib-chip-active' : 'ib-chip ib-chip-inactive') + '" style="--ib-chip-color:' + bd + ';width:auto;padding:2px 10px 2px 8px;font-size:11px;" data-ui="cache_timeline.btn_ac" title="Aktiv">' +
+        '<span class="ib-chip-dot"></span><span class="ib-chip-label">ac</span>' +
+      '</button>' +
+      '<button type="button" data-cache-ol="' + _escHtml(id) + '" class="ib-chip ib-chip-inactive" style="--ib-chip-color:' + bd + ';width:auto;padding:2px 10px 2px 8px;font-size:11px;cursor:not-allowed;" data-ui="cache_timeline.btn_ol" title="Outlier" disabled>' +
+        '<span class="ib-chip-dot"></span><span class="ib-chip-label">ol</span>' +
+      '</button>' +
       '<span style="display:inline-block;width:10px;height:10px;background:' + color + ';border:1px solid ' + border + ';border-radius:3px;"></span>' +
       '<span style="flex:1;">Neu lesen ' + (idx + 1) + ': ' + _escHtml(fmtTs(gap.start)) + ' – ' + _escHtml(fmtTs(gap.stop)) + '</span>' +
       '</div>'
@@ -11589,6 +11624,7 @@ async function loadData(opts){
         trigger_button: (tr && tr.action_ui) ? String(tr.action_ui) : 'dashboard.load',
         trace_id: (tr && tr.trace_id) ? String(tr.trace_id) : '',
         action: (tr && tr.action_ui) ? String(tr.action_ui) : '',
+        dur_ms: dur,
       });
     }
   }catch(e){}
@@ -11726,6 +11762,9 @@ async function refreshCachingSection(){
     err("Bitte zuerst Measurement und Field auswaehlen.");
     return;
   }
+  if(CACHE_CHECK_INFLIGHT) return;
+  CACHE_CHECK_INFLIGHT = true;
+  try{ if($btnLoad) $btnLoad.disabled = true; }catch(e){}
   const prevScope = ANALYSIS_ACTIVE_SCOPE;
   const prevAction = ANALYSIS_ACTIVE_ACTION;
   ANALYSIS_ACTIVE_SCOPE = 'dashboard_caching';
@@ -11941,6 +11980,8 @@ async function refreshCachingSection(){
     _loadChecklistSet('result', {status: 'ok', sub: analysisPlan ? ('Cache-Pruefung abgeschlossen. Segmente: ' + analysisSegs + ' | Neu lesen: ' + analysisGaps + ' | Geaendert: ' + analysisDirty) : 'Cache-Pruefung abgeschlossen. Kein Analyse-Cache gefunden.'});
   }catch(e){}
   finally{
+    CACHE_CHECK_INFLIGHT = false;
+    try{ if($btnLoad) $btnLoad.disabled = false; }catch(e){}
     try{
       if(LOAD_CHECK_T0){
         LOAD_CHECK_TOTAL_MS = Math.round(performance.now() - LOAD_CHECK_T0);
@@ -12010,11 +12051,13 @@ async function runDashboardAnalysisFlow(){
 
 async function startDashboardAnalysis(cacheStrategy){
   if(ANALYSIS_INFLIGHT){
-    err('Analyse laeuft bereits. Bitte warten oder Analyse-Abbruch druecken.');
+    err('Analyse laeuft bereits. Bitte warten oder abbrechen druecken.');
     return;
   }
   ANALYSIS_INFLIGHT = true;
+  ANALYSIS_ABORT_REQUESTED = false;
   _setAnalysisRunButtonsDisabled(true);
+  try{ updateAnalysisUI(); }catch(e){}
   try{
     const base = currentFilters();
     ANALYSIS_ACTIVE_SCOPE = 'dashboard_analysis';
@@ -12098,6 +12141,10 @@ async function startDashboardAnalysis(cacheStrategy){
     }
     _analysisChecklistSet('complete', {status: 'ok', sub: 'Analyseflow inklusive Nacharbeiten abgeschlossen.'});
   }catch(e){
+    if((e && e.aborted) || ANALYSIS_ABORT_REQUESTED){
+      _analysisChecklistSet('complete', {status: 'err', sub: 'Analyse wurde abgebrochen.'});
+      return;
+    }
     _analysisChecklistSet('cache_plan', {status: 'err', sub: e && e.message ? e.message : String(e)});
     _analysisChecklistSet('complete', {status: 'err', sub: e && e.message ? e.message : String(e)});
     displayError(e);
@@ -13225,8 +13272,11 @@ try{
 try{
   if($analysisAbort) $analysisAbort.addEventListener('click', ()=>{
     try{
-      if(RAW_OUTLIER_ABORT) RAW_OUTLIER_ABORT.abort();
-      _analysisChecklistSet('search', {status:'err', sub:'Analyse wurde manuell abgebrochen.'});
+      ANALYSIS_ABORT_REQUESTED = true;
+      try{ if($analysisAbort) $analysisAbort.disabled = true; }catch(e){}
+      try{ if(RAW_OUTLIER_ABORT) RAW_OUTLIER_ABORT.abort(); }catch(e){}
+      try{ abortAllRequests('analysis_abort'); }catch(e){}
+      _analysisChecklistSet('search', {status:'err', sub:'Abbruch angefordert.'});
       ANALYSIS_INFLIGHT = false;
       _setAnalysisRunButtonsDisabled(false);
       try{ ANALYSIS_STATE.status = 'idle'; }catch(e){}

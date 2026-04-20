@@ -75,8 +75,9 @@ Neu: Top-Leiste (Profil + Zoom)
   - Profil-Auswahl inkl. `Anwenden`, `Speichern`, `Info` und die aktuelle Version.
   - Zoom-Steuerung: `-` / `+` und die aktuelle Zoomstufe in `%`.
   - Seitensuche: durchsucht Controls und wichtige sichtbare Texte auf der aktuellen Seite und springt zu Treffern.
-  - Picker / S-Picker: kopiert eine kurze Elementkennung im Format `<page,data-ui,id>` in die Zwischenablage, damit UI-Elemente eindeutig identifiziert werden koennen.
-  - Picker / S-Picker Multi-Pick (Shift+Klick): startet einen Mehrfach-Pick. Unter der Pagecard erscheint eine Statusleiste mit den erfassten Elementen als anklickbare Chips (Klick = Entfernen). Buttons `Ende` (kopiert alles als `<a,b,c>;<d,e,f>;...`), `Letztes loeschen`, `Abbruch`. ESC bricht ebenfalls ab; Picked-Elemente bleiben solange farbig umrandet, wie sie in der Liste sind.
+  - Picker / S-Picker: kopiert eine kurze Elementkennung im Format `<page,data-ui,id[,oltype]>` in die Zwischenablage, damit UI-Elemente eindeutig identifiziert werden koennen.
+    - `oltype` wird nur angehaengt, wenn das Element ein `data-cache-oltype` Attribut besitzt (es wird nur der Wert kopiert, kein Key-Name).
+  - Picker / S-Picker Multi-Pick (Shift+Klick): startet einen Mehrfach-Pick. Unter der Pagecard erscheint eine Statusleiste mit den erfassten Elementen als anklickbare Chips (Klick = Entfernen). Buttons `Ende` (kopiert alles als `<a,b,c>;<d,e,f,g>;...`), `Letztes loeschen`, `Abbruch`. ESC bricht ebenfalls ab; Picked-Elemente bleiben solange farbig umrandet, wie sie in der Liste sind.
 - Zoom wird im Browser gespeichert (pro Browser/Client).
 - Neu: Wenn im Browser noch keine Zoomstufe gespeichert ist, wird beim ersten Laden automatisch eine passende Default-Zoomstufe je nach Viewport-Breite gesetzt (z.B. iPhone groesser, Desktop 100%). Danach kannst du wie gewohnt mit `-`/`+` anpassen.
 
@@ -274,7 +275,7 @@ Graph Query:
 
 - Bereich `Graph Query`: zeigt den zuletzt genutzten Influx Query-String (aus Dashboard-Abfragen).
   - Die Query-Box bleibt immer sichtbar, auch bevor schon eine Abfrage gelaufen ist.
-  - Neu: Query Details zeigt Zeitstempel und hat eine History.
+  - Neu: Query Details zeigt Zeitstempel, Dauer (`dur_ms` in Millisekunden) und hat eine History.
 - Button `Query kopieren`: kopiert den Query in die Zwischenablage (z.B. fuer den Influx Explorer).
 - Auswahl `Dashboard / Bearbeitungsgraph`: schaltet die angezeigte Query-Quelle um (Hauptgraph vs. rechter Bearbeitungsgraph).
 - Button `Query testen`: oeffnet einen modalen Dialog zum Ausfuehren beliebiger Queries (Flux/InfluxQL). Die aktuelle Query wird dabei direkt uebernommen.
@@ -321,12 +322,16 @@ Raw Daten (DB):
 - Analyse-Section: Unterhalb der Quellauswahl gibt es einen eigenen Bereich `Analyse` mit Fortschrittsbalken, Checkliste, Chunk-Details und den gefundenen Ausreissern nach Typ.
 - Bei `Zeitraum = Alle` startet die Analyse nicht mehr pauschal bei 1970, sondern verwendet einen serverseitig gemerkten Analyse-Startwert pro Messwert. Standardmaessig wird auf `jetzt - Max. Alter der Datenanalyse (Jahre)` begrenzt; ist der aelteste bekannte Datensatz juenger, beginnt die Analyse dort.
 - Unter der Quellauswahl wird dazu `Analyse-Start`, `Ältester bekannter Datensatz` und `Ermittelt am` angezeigt. Mit `Startalter löschen` kannst du den gespeicherten Startwert fuer den aktuellen Messwert zuruecksetzen.
-- Die Ausreisser-Typen werden in der Analyse-Section ueber zwei Chip-Listen verwaltet: `Abgewählte Typen` und `Gewählte Typen`. Nur die rechts stehenden Typen werden analysiert. Die Chips zeigen einen Farbindikator pro Typ, Hover-Effekte und unterschiedliche Active/Inactive-States (konsistent mit der Performanceanalyse).
+- Die Ausreisser-Typen werden in der Analyse-Section in EINEM Chip-Panel angezeigt.
+  - Aktive Typen sind normal dargestellt.
+  - Abgewaehlte Typen bleiben sichtbar, sind aber grau und durchgestrichen.
+  - Nur aktive (nicht durchgestrichene) Typen werden analysiert.
 - Die Button-Leiste der Analyse-Section verwendet jetzt das standardisierte `table_wrap` / `tbl_actions` Pattern (siehe Template.md), damit Abstand/Design konsistent zu anderen Toolbars sind.
 - Der Analysecache-Zeitstrahl zeigt Ausreisser-Markierungen jetzt mit Tooltip: beim Hover erscheint ein kompakter Tooltip mit Zeitstempel, Typ(en) und Wert. Die Markierungen sind leicht vergroessert, abgerundet und zeigen einen weichen Uebergang beim Hovern.
 - Dashboard-Zustand beim Seitenwechsel: Der zuletzt geladene Analyse-Cache-Plan, der Status-Text sowie Caching-Summary/Timeline/Aenderungen werden im `sessionStorage` zwischengespeichert. Beim erneuten Oeffnen der Dashboard-Seite werden sie sofort wiederhergestellt, und das UI validiert im Hintergrund gegen den Server (Hybrid-Modus); bei veraenderten Serverdaten wird die Anzeige still aktualisiert.
 - Die Analyse-History (`Analyse-Verlauf`) zeigt die komplette Analyse inklusive Fortschritt, Chunks, Typ-Auswahl und Ergebnis-Zusammenfassung.
-- Die Analyse-Sektion besitzt jetzt eigene Buttons fuer `Analyse-Abbruch`, `Query anzeigen`, `Query testen` und `Gesamtstatistik`.
+- Die Analyse-Sektion besitzt jetzt eigene Buttons fuer `abbrechen`, `Query anzeigen`, `Query testen` und `Gesamtstatistik`.
+  - `abbrechen` ist nur bei laufender Analyse aktiv und bricht sowohl Analyse mit Cache als auch ohne Cache ab.
 - Bei `Analyse mit Cache` werden grosse Restbereiche vor dem ersten Fetch in Tages-Chunks zerlegt. Die Chunk-Groesse passt sich weiter an die Zielzeit `ui_raw_target_chunk_ms` an und versucht Fehler mit kleineren Chunks bis zu drei Mal erneut.
 - Die Analyse zeigt zusaetzlich einen durchgaengigen farbigen Chunk-Zeitstrahl ohne Zwischenabstaende mit Prozentanzeige nach abgedeckter Zeitspanne. In der Checkliste werden Zeitstempel und Dauer links vor dem Schritttext angezeigt; Chunk-Infos bleiben kompakt als `x/y`, letzter Chunk und Gesamtdauer sichtbar.
 - Der Schritt `Analyse vorbereiten` wird jetzt in sichtbare Detailschritte aufgeteilt (`UI-Zustand speichern`, `Serie aufloesen`, `Entity-ID ergaenzen`, `Daten laden`, `Analysefenster bestimmen`, `Cache-Status pruefen`). Jeder Teilschritt wird mit Dauer-Messung ins Analyse-Log geschrieben und ist unter `Logs` einsehbar.
@@ -567,7 +572,7 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Die Typ-Auswahl wurde korrigiert: Ein Klick verschiebt einen Typ jetzt wirklich zwischen `Gewaehlte Typen` und `Abgewaehlte Typen`. Mit `Reset` werden alle Standardtypen wieder aktiviert. Die Checkbox `Ignoriert` blendet zusaetzlich bereits ignorierte Treffer in der Ausreißer-Tabelle ein.
 - Im `raw_search_bar` laesst sich `Max je Typ` einstellen. Intern ermittelt die Analyse weiterhin alle Treffer, in der GUI werden pro Typ jedoch nur bis zu diesem Grenzwert angezeigt. Derselbe Grenzwert ist auch in den Einstellungen verfuegbar.
 - Vor `section.analysis` gibt es jetzt eine eigene Section `Caching`. Dort werden Cache-Pruefung, Zeitstrahl, History/Abbruch und die allgemeinen Analyse-Aktionen gebuendelt. Die eigentliche Analyse wird darunter direkt mit `Analyse mit Cache` oder `Analyse ohne Cache` gestartet.
-- Waehren eine Analyse laeuft, sind `Analyse mit Cache` und `Analyse ohne Cache` gesperrt, damit kein zweiter Lauf parallel gestartet wird. Mit `Analyse-Abbruch` kannst du sofort abbrechen und danach erneut starten.
+- Waehren eine Analyse laeuft, sind `Analyse mit Cache` und `Analyse ohne Cache` gesperrt, damit kein zweiter Lauf parallel gestartet wird. Mit `abbrechen` kannst du sofort abbrechen und danach erneut starten.
 - Die Cache-Pruefung ueber `dashboard.AnalyseStart` schreibt jetzt auch ihre sichtbaren Segmente, Luecken und geaenderten Werte in den Analyse-Verlauf. Der alte versteckte Analyse-Dialog wurde dabei durch die sichtbare `Caching`-Section ersetzt.
 - Die Caching-Section besitzt jetzt rechts im Titel eine `.ib_summary_actions`-Zone mit Info-Button. Zusaetzlich erklaert ein `?` direkt neben `Geaendert` in der Summary die Bedeutung von Cache, Neu lesen und geaenderten Bereichen.
 - Unter dem Cache-Zeitstrahl werden jetzt Start-/Endzeiten sowie die Zeiten der einzelnen Cache-, Gap- und Geaendert-Segmente sichtbar angezeigt.
@@ -641,10 +646,11 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Raw-Fenster werden nach der ersten Berechnung fuer einen Zeitraum im Analyse-Cache mitgespeichert. Bei Cache-Preload werden fehlende oder veraltete Fenster inkrementell nachgezogen und in den Cache gepatcht.
 - Die Punktanzahl fuer diesen Kontext ist jetzt getrennt einstellbar: `outlier_context_before_points` und `outlier_context_after_points` (Einstellungen -> Ausreisser).
 - Diese Werte werden auch beim lokalen Reparieren von dirty Analyse-Cache Segmenten als punktbasierter Kontext/Puffer verwendet (statt fixer Sekunden-Padding).
-- Picker und Super-Picker kopieren Elementkennungen jetzt im Format `<Seite: element>` und koennen auch deaktivierte Elemente besser erfassen.
+- Picker und Super-Picker kopieren Elementkennungen jetzt im Format `<page,data-ui,id[,oltype]>` und koennen auch deaktivierte Elemente besser erfassen.
 - Auf der Einstellungsseite wurden der alte Summary-Pfeil und der Dashboard-Ruecksprung-Button entfernt; ausserdem wurde das Layout fuer breite Eingaben robuster gemacht.
 - `page.title.card` besitzt jetzt eine Navigationshilfe mit Verlauf sowie Vor-/Zurueck-Buttons. Ueber die Parametrierhilfe lassen sich verknuepfte Elemente gezielt zu ihren Einstellungen springen und dort farbig markieren.
 - Die Einstellungen werden jetzt in Hauptbereiche fuer `Datenbank`, `Allgemein` und menuebezogene Bereiche gegliedert. Mehrfach genutzte Parameter liegen unter `Allgemein`; Fachbereiche koennen stattdessen auf globale Parameter verlinken.
+- Neu: Innerhalb von `Einstellungen -> Dashboard` ist die UI in Unterbereiche gegliedert (`Messwertauswahl`, `Caching`, `Analyse`, `Ausreißer`, `Raw Daten Analyse`, `Grafische Analyse`). Die Reihenfolge der Unterbereiche kann per ↑/↓ geaendert werden und wird global (serverseitig) gespeichert.
 - Die Raw-Tabelle besitzt jetzt eine kompakte Spalte `Aenderung`. Darin werden passende History-Eintraege je DB-Wert kurz zusammengefasst.
 - Die Ausreißer-Tabelle im Raw-Bereich ist jetzt wie die anderen Listen als eigener Tabellenblock aufgebaut: mit Titel, Tabelleninfo und Standardfunktionen fuer Spaltenbreite, Umbruch, Spaltenfilter und Hoehenanpassung.
 - Die gemeinsamen Tabellenhelfer enthalten jetzt auch `Zeile kopieren`: in der Zwischenablage landen `...`, die Titelzeile, die markierte Zeile und ein abschliessendes `...`. Im Dashboard ist dieser Button aktuell fuer Raw- und Ausreißer-Tabelle direkt im Action-Bereich vorhanden.
@@ -657,6 +663,7 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Der Zaehler `raw_outlier_row_count` steht jetzt direkt ueber der Ausreißer-Tabelle; die fruehere rechte Nebenspalte wurde entfernt, damit die Tabelle nicht mehr breiter als ihr Elterncontainer wird.
 - Die Ausreißer-Tabelle bleibt jetzt auch bei breiteren Inhalten innerhalb ihres Wrappers und ihr Hoehengriff arbeitet wieder konsistent mit nur einer aktiven Resize-Logik.
 - Der Dialog `Ausreißer-Parameter` erklaert jeden Parameter direkt unter dem Eingabefeld. Die Werte werden global gespeichert (wie in den Einstellungen). Leere Felder deaktivieren optionale Grenzen oder setzen wieder den Default.
+- `Counter: Max Sprung` ist im Dialog getrennt nach Einheit editierbar (`W`, `kW`, `Wh`, `kWh`) und wird als globaler Default pro Einheit gespeichert.
 - `Recovery-Streak` wirkt auf die Dashboard-Ausreißeranalyse: Erst nach der eingestellten Anzahl gueltiger Werte in Folge gilt eine Stoerphase wieder als beendet.
 - Ueber der Raw-Tabelle gibt es zusaetzlich `Löschen`, `Undo` und `Info`. `Löschen` loescht den selektierten DB-Wert nach Rueckfrage. `Undo` macht genau die letzte direkte Button-Aenderung (`Einfügen` oder `Löschen`) fuer den selektierten Raw-Wert rueckgaengig. `Info` zeigt die komplette Aenderungshistorie des selektierten Raw-Werts im Popup.
 - Im Bereich `raw.actions` gibt es jetzt zusaetzlich einen Button `Query`, der die zuletzt verwendete Raw-Abfrage im gemeinsamen Query-Dialog anzeigt.
@@ -664,6 +671,7 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Der gemeinsame Popup-Splitter laesst sich jetzt deutlich freier nach oben und unten ziehen. Sowohl Haupttext als auch History behalten nur noch eine kleine Resthoehe, damit der Dialog flexibler an den jeweiligen Inhalt angepasst werden kann.
 - Der untere Query-History-Bereich wird als reine Textansicht dargestellt, aehnlich den Logfiles. Ueber dem Textfeld gibt es ein eigenes Suchfeld und eine eigene Checkbox `Umbruch` fuer die History-Anzeige.
 - Query-Dialoge zeigen die History jetzt immer automatisch an. Der Dialog zeigt zusaetzlich, wann die aktuelle Query ausgeloest wurde und wodurch sie ausgeloest wurde. Im unteren History-Bereich steuert `Client time`, ob Zeiten lokal im Browser formatiert oder als rohe ISO-Zeit angezeigt werden.
+- Zusaetzlich zeigt der Dialog (oben) die Dauer der letzten passenden Ausfuehrung als Millisekunden (`dur_ms`).
 - Die Checkbox `Client time` verwendet dieselbe kompakte Darstellung wie `Umbruch`.
 - Die Steuerleiste ueber der Query-History bleibt kompakt links ausgerichtet, damit beide Checkboxen visuell gleich bleiben.
 - Die untere Query-History inklusive horizontalem Trenner ist im Query-Dialog jetzt immer sichtbar; sie muss nicht mehr separat eingeblendet werden.

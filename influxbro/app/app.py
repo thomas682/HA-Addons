@@ -1860,6 +1860,26 @@ def _ui_state_val_ok(val: str) -> bool:
     return len(v) <= 10000
 
 
+def _app_state_scope_ok(scope: str) -> bool:
+    # /api/app_state is a trust boundary: keep scope bounded and file-safe.
+    try:
+        s = str(scope or "")
+    except Exception:
+        return False
+    if not s or len(s) > 120:
+        return False
+    return bool(re.match(r"^[a-zA-Z0-9_\-:\./]+$", s))
+
+
+def _app_state_size_ok(state: dict[str, Any]) -> bool:
+    # Prevent unbounded persistence via oversized payloads (DoS / disk growth).
+    try:
+        raw = json.dumps(state or {}, ensure_ascii=True)
+    except Exception:
+        return False
+    return len(raw) <= 20000
+
+
 def _profile_id_from_label(label: str) -> str:
     raw = str(label or "").strip()
     if not raw:
@@ -21411,6 +21431,8 @@ def api_ui_state_prune():
 @app.get("/api/app_state")
 def api_app_state_get():
     scope = str(request.args.get("scope") or "").strip()
+    if scope and not _app_state_scope_ok(scope):
+        return jsonify({"ok": False, "error": "invalid scope"}), 400
     st = _app_state_load()
     if not scope:
         return jsonify({"ok": True, "state": st})
@@ -21425,8 +21447,12 @@ def api_app_state_set():
     state = body.get("state") if isinstance(body.get("state"), dict) else None
     if not scope:
         return jsonify({"ok": False, "error": "scope required"}), 400
+    if not _app_state_scope_ok(scope):
+        return jsonify({"ok": False, "error": "invalid scope"}), 400
     if state is None:
         return jsonify({"ok": False, "error": "state must be an object"}), 400
+    if not _app_state_size_ok(state):
+        return jsonify({"ok": False, "error": "state too large"}), 413
     st = _app_state_load()
     st[scope] = state
     _app_state_save(st)

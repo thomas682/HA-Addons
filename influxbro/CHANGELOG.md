@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.396
+
+### Enhancement
+
+- Dashboard/UX: Query-Verlauf und Query-Dialoge zeigen Laufzeiten jetzt als `dur_ms` in Millisekunden; Analyse-Typen werden in einem Panel als Chips dargestellt (abgewaehlte Typen durchgestrichen), Cache-Timeline-Toggles nutzen denselben Chip-Style und Analyse kann per "abbrechen" sauber gestoppt werden. ([#355](https://github.com/thomas682/HA-Addons/issues/355))
+- Picker/Settings: Picker kopiert bei Cache-Outlier-Typ Buttons zusaetzlich den `data-cache-oltype` Wert; S-Picker Fallback ist informativer (CSS + kurzer Text) und dynamische Chips/Buttons erhalten stabile `data-ui` Tokens. Settings-Dashboard ist in Subsections gegliedert und deren Reihenfolge wird global (serverseitig) gespeichert. ([#355](https://github.com/thomas682/HA-Addons/issues/355))
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`, `pytest tests/test_api_ui_support.py`
+- Tested with Home Assistant Core: 2026.4.3
+
 ## 1.12.395
 
 ### Enhancement
