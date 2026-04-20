@@ -2513,9 +2513,25 @@ def _analysis_history_append(entry: dict[str, Any]) -> None:
             lk = str(k).lower()
             if "token" in lk or "password" in lk or "confirm_phrase" in lk:
                 e.pop(k, None)
-        for k in ("kind", "step", "page", "measurement", "field", "entity_id", "friendly_name", "detail", "status"):
+        for k in (
+            "kind",
+            "step",
+            "page",
+            "measurement",
+            "field",
+            "entity_id",
+            "friendly_name",
+            "detail",
+            "status",
+            "trace_id",
+        ):
             if k in e and e[k] is not None:
                 e[k] = str(e[k])[:2000]
+        try:
+            if e.get("dur_ms") is not None:
+                e["dur_ms"] = int(max(0, int(e.get("dur_ms") or 0)))
+        except Exception:
+            pass
         with ANALYSIS_HISTORY_LOCK:
             ANALYSIS_HISTORY_MEM.append(e)
             _worklog_prune_mem_locked(cutoff_dt=cutoff_dt)
@@ -21866,6 +21882,19 @@ def api_analysis_history_event():
     except Exception:
         body = {}
     try:
+        trace_id = str(body.get("trace_id") or "").strip()[:240]
+
+        dur_ms: int | None = None
+        try:
+            if body.get("dur_ms") is not None:
+                dur_ms = int(max(0, int(body.get("dur_ms") or 0)))
+            else:
+                extra0 = body.get("extra") if isinstance(body.get("extra"), dict) else None
+                if extra0 and extra0.get("dur_ms") is not None:
+                    dur_ms = int(max(0, int(extra0.get("dur_ms") or 0)))
+        except Exception:
+            dur_ms = None
+
         entry = {
             "kind": str(body.get("kind") or "analysis").strip()[:80],
             "step": str(body.get("step") or "").strip()[:120],
@@ -21876,6 +21905,8 @@ def api_analysis_history_event():
             "friendly_name": str(body.get("friendly_name") or "").strip()[:200],
             "detail": str(body.get("detail") or "").strip()[:4000],
             "status": str(body.get("status") or "").strip()[:40],
+            "trace_id": trace_id,
+            "dur_ms": dur_ms,
             "summary": body.get("summary") if isinstance(body.get("summary"), dict) else None,
             "extra": body.get("extra") if isinstance(body.get("extra"), dict) else None,
             "ip": _req_ip(),
@@ -21884,12 +21915,14 @@ def api_analysis_history_event():
         _analysis_history_append(entry)
         try:
             LOG.info(
-                "analysis_event kind=%s step=%s status=%s detail=%s extra=%s",
+                "analysis_event trace_id=%s dur_ms=%s kind=%s step=%s status=%s detail=%s extra=%s",
+                str(entry.get("trace_id") or "-"),
+                str(entry.get("dur_ms") if entry.get("dur_ms") is not None else 0),
                 str(entry.get("kind") or ""),
                 str(entry.get("step") or ""),
                 str(entry.get("status") or ""),
-                str(entry.get("detail") or "")[:400],
-                _json_short(entry.get("extra") if isinstance(entry.get("extra"), dict) else {}, 1200),
+                _redact_secrets(str(entry.get("detail") or "")[:400]),
+                _redact_secrets(_json_short(entry.get("extra") if isinstance(entry.get("extra"), dict) else {}, 1200)),
             )
         except Exception:
             pass

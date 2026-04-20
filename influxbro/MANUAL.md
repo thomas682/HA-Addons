@@ -632,6 +632,7 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Wenn fuer `Analyse` kein `Cache verwenden`-Dialog erscheint, wird der Grund jetzt im Dashboard sichtbarer protokolliert.
 - Browser-Debugmeldungen fuer Analyse-Ablauf und UI-Hilfsprotokolle laufen intern jetzt ueber einen neutralen Client-Log-Endpunkt, damit sie in den Browser-Netzwerktools nicht mehr wie Fehler-Requests aussehen.
 - Der Dialog `Analyse-Verlauf` nutzt jetzt eine serverseitige Analyse-History. Dadurch sind Analyse-Ereignisse, Cache-Entscheidungen und Markierungsaktionen nicht mehr nur browserlokal, sondern zentral im Add-on erfassbar und im Dialog sichtbar.
+- Jeder Eintrag im Analyse-Verlauf enthaelt jetzt korrekt `trace_id` und `dur_ms` (Dauer), damit du die Aktion direkt in der Performanceanalyse und im Logfile wiederfinden kannst.
 - Die Eintraege im Dialog `Analyse-Verlauf` werden jetzt als formatierte Karten dargestellt. Zeitstempel, Eventtyp und wichtige Detailwerte werden lesbar angezeigt, statt HTML-Markup oder JSON-Rohtext auszugeben.
 - `Analyse` im Dashboard nutzt jetzt wieder den eigentlichen Dashboard-Ladepfad inklusive Cache-Pruefung und fuellt danach die Gesamtstatistik neu. Wenn eine Ausreißer-Suche laeuft, befindet sich der zugehoerige Abbruch-Button direkt im Aktionsbereich des Dashboards.
 - `Analyse mit Cache` veraendert den Caching-Bereich nicht mehr automatisch. Der Bereich `Caching` aktualisiert sich nur noch bei expliziten Aktionen wie `Cache pruefen` oder `kombinieren`.

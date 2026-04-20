@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.391
+
+### Bugfix
+
+- Analyse/Worklog: `/api/analysis_history_event` speichert `trace_id` und `dur_ms` als Top-Level-Felder und loggt sie auch in die Add-on Logs, sodass History/Performance sauber korrelierbar sind. Zusaetzlich erzeugt das Dashboard fuer langsame "Daten laden" Phasen (Query/Statistik) eigene Detail-Events. ([#353](https://github.com/thomas682/HA-Addons/issues/353))
+
+### Maintenance
+
+- Tests: `python -m py_compile influxbro/app/app.py`, `pytest tests/test_api_analysis_history.py`, `pytest tests/test_api_ui_support.py`
+- Tested with Home Assistant Core: 2026.4.3
+
 ## 1.12.390
 
 ### Bugfix

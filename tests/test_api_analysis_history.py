@@ -17,6 +17,8 @@ def test_analysis_history_event_endpoint_and_fetch(load_app_module, tmp_path):
             "measurement": "m",
             "field": "value",
             "detail": "validate ok",
+            "trace_id": "t-123",
+            "dur_ms": 42,
         },
     )
     j1 = r1.get_json()
@@ -42,3 +44,9 @@ def test_analysis_history_event_endpoint_and_fetch(load_app_module, tmp_path):
     assert len(j3["rows"]) >= 2
     assert any(str(row.get("kind")) == "analysis" for row in j3["rows"])
     assert any(str(row.get("kind")) == "analysis_summary" for row in j3["rows"])
+
+    # trace_id + dur_ms must be stored as top-level fields.
+    row0 = next((row for row in j3["rows"] if str(row.get("kind")) == "analysis"), None)
+    assert row0 is not None
+    assert str(row0.get("trace_id")) == "t-123"
+    assert int(row0.get("dur_ms") or 0) == 42

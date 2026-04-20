@@ -11476,6 +11476,23 @@ async function loadData(opts){
   const dur = performance.now() - q0;
   LOAD_QUERY_MS = dur;
   setLastQuery(j.query || "", startedAtIso, dur);
+
+  // Extra diagnostics: for long loads, add a dedicated log entry.
+  try{
+    const durMs = Math.round(Number(dur) || 0);
+    if(durMs >= 1500){
+      const cnt = Array.isArray(j && j.rows) ? j.rows.length : 0;
+      const totalPts = (j && j.meta && j.meta.total_points !== undefined) ? Number(j.meta.total_points) : null;
+      _saveAnalysisEvent({
+        at: new Date().toISOString(),
+        kind: 'analysis_load',
+        step: 'api_query',
+        status: 'ok',
+        detail: 'Daten laden: Query fertig (' + durMs + ' ms) | rows=' + cnt + (totalPts !== null && isFinite(totalPts) ? (' | total_points=' + String(totalPts)) : ''),
+        extra: { dur_ms: durMs, rows: cnt, total_points: (totalPts !== null && isFinite(totalPts)) ? totalPts : null },
+      });
+    }
+  }catch(e){}
   try{
     const cnt = Array.isArray(j.rows) ? j.rows.length : 0;
     const totalPts = (j && j.meta && j.meta.total_points !== undefined) ? String(j.meta.total_points) : '';
@@ -11541,7 +11558,21 @@ async function loadData(opts){
   draw(rows);
   autoScaleYFromWindow();
   try{ _updateGraphDetailUi(); _applyOverlays(); _updateGraphPointsInfo(); }catch(e){}
+  const statsT0 = performance.now();
   await loadStats();
+  try{
+    const statsDur = Math.round(performance.now() - statsT0);
+    if(statsDur >= 1500){
+      _saveAnalysisEvent({
+        at: new Date().toISOString(),
+        kind: 'analysis_load',
+        step: 'load_stats',
+        status: 'ok',
+        detail: 'Daten laden: Statistik laden (' + statsDur + ' ms)',
+        extra: { dur_ms: statsDur },
+      });
+    }
+  }catch(e){}
 }
 
 async function _prepareStep(name, label, fn){
