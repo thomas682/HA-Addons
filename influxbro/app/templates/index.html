@@ -118,7 +118,7 @@
       gap: 6px;
     }
     #load_status > * { width: 100%; }
-    #load_checklist { font-size:12px; border:1px solid #eee; border-radius:8px; padding:8px 12px; background:#fafafa; margin-top:6px; }
+    #load_checklist { font-size:12px; margin-top:6px; }
     .checklist_item { display:flex; align-items:center; gap:8px; padding:3px 0; }
     .checklist_icon { width:16px; height:16px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; flex:0 0 auto; }
     .checklist_icon.running { background:#eee; border:2px solid rgba(0,0,0,0.18); border-top-color:rgba(0,0,0,0.75); animation:spin 0.9s linear infinite; }
@@ -136,6 +136,115 @@
     .checklist_trace_copy { width:24px; height:24px; padding:0; border:1px solid #ddd; background:#fff; border-radius:10px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; flex: 0 0 auto; }
     .checklist_trace_copy:hover { background:#f6f6f6; }
     #load_status_time { opacity: 0.85; white-space: nowrap; }
+
+    /* Modern compact flow/checklist (Issue #365) */
+    .ib_flow {
+      --color-background-primary: #ffffff;
+      --color-background-secondary: #f8fafc;
+      --color-background-success: #eafaf1;
+      --color-background-danger: #fff0f0;
+      --color-background-warning: #fff7ed;
+      --color-border-tertiary: #e7e7e7;
+      --color-border-secondary: #d6d6d6;
+      --color-border-primary: #cbd5e1;
+      --color-text-primary: #111111;
+      --color-text-secondary: rgba(0,0,0,0.68);
+      --color-text-tertiary: rgba(0,0,0,0.50);
+      --color-text-success: #17a34a;
+      --color-text-danger: #dc2626;
+      --color-text-warning: #f59e0b;
+      --border-radius-lg: 16px;
+      --border-radius-md: 12px;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+
+    .ib_flow_header {
+      background: var(--color-background-primary);
+      border: 0.5px solid var(--color-border-tertiary);
+      border-radius: var(--border-radius-lg);
+      padding: 12px 14px;
+      margin-bottom: 10px;
+    }
+    .ib_flow_headrow {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    .ib_flow_title { font-size: 15px; font-weight: 700; }
+    .ib_flow_meta { font-size: 13px; color: var(--color-text-secondary); margin-top: 2px; }
+    .ib_flow_btns { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+    .ib_flow_btns button { font-size: 12px; padding: 6px 12px; height: 30px; }
+
+    .ib_flow_prog { display: flex; align-items: center; gap: 10px; }
+    .ib_flow_prog_bar {
+      flex: 1;
+      height: 6px;
+      background: var(--color-background-secondary);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .ib_flow_prog_fill { height: 100%; width: 0%; background: var(--color-text-success); border-radius: 3px; transition: width 0.3s; }
+    .ib_flow_prog_pct { font-size: 12px; font-weight: 700; color: var(--color-text-secondary); min-width: 40px; text-align: right; }
+
+    .ib_flow_list { display: flex; flex-direction: column; gap: 4px; }
+    .ib_flow_step {
+      display: grid;
+      grid-template-columns: 20px 90px 60px 1fr auto;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 12px;
+      background: var(--color-background-primary);
+      border: 0.5px solid var(--color-border-tertiary);
+      border-radius: var(--border-radius-md);
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .ib_flow_step:hover { background: var(--color-background-secondary); border-color: var(--color-border-secondary); }
+    .ib_flow_step.open { border-color: var(--color-border-secondary); }
+
+    .ib_flow_status {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .ib_flow_time { font-size: 12px; color: var(--color-text-tertiary); font-variant-numeric: tabular-nums; font-family: var(--font-mono); }
+    .ib_flow_dur { font-size: 12px; color: var(--color-text-secondary); font-variant-numeric: tabular-nums; text-align: right; font-family: var(--font-mono); }
+    .ib_flow_label { font-size: 14px; color: var(--color-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ib_flow_chev { width: 16px; height: 16px; color: var(--color-text-tertiary); transition: transform 0.2s; flex-shrink: 0; }
+    .ib_flow_step.open .ib_flow_chev { transform: rotate(90deg); }
+
+    .ib_flow_bar_wrap { position: relative; width: 60px; height: 3px; background: var(--color-background-secondary); border-radius: 2px; overflow: hidden; }
+    .ib_flow_bar_fill { height: 100%; background: var(--color-border-primary); border-radius: 2px; }
+
+    .ib_flow_details {
+      padding: 10px 12px 12px 44px;
+      margin: -4px 0 4px 0;
+      background: var(--color-background-secondary);
+      border: 0.5px solid var(--color-border-tertiary);
+      border-top: none;
+      border-radius: 0 0 var(--border-radius-md) var(--border-radius-md);
+      font-size: 13px;
+      color: var(--color-text-secondary);
+      line-height: 1.6;
+      display: none;
+    }
+    .ib_flow_details.visible { display: block; }
+    .ib_flow_info_label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--color-text-tertiary);
+      margin-bottom: 2px;
+      margin-top: 8px;
+    }
+    .ib_flow_info_label:first-child { margin-top: 0; }
 
     #outlier_status { display:none; margin-top: 6px; font-size: 12px; opacity: 0.85; align-items:center; gap: 8px; }
     #outlier_status { flex-wrap: wrap; }
@@ -454,11 +563,11 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
               <span id="load_trace_id" title="Trace-ID" style="font-weight:700;"></span>
               <button type="button" class="btn_sm" id="load_trace_copy" style="width:auto; padding:4px 8px; height:26px;" title="TraceID kopieren" aria-label="TraceID kopieren">⧉</button>
             </div>
-            <div style="height:8px;background:#eee;border-radius:4px;margin:4px 0;overflow:hidden;">
+            <div style="height:8px;background:#eee;border-radius:4px;margin:4px 0;overflow:hidden; display:none;">
               <div id="load_progress_fill" style="height:100%;background:#4caf50;width:0%;transition:width 0.3s;"></div>
             </div>
-            <div id="load_progress_text" class="muted" style="font-size:11px;margin-bottom:8px;">0%</div>
-            <div id="load_checklist" style="font-size:12px; border:1px solid #eee; border-radius:8px; padding:8px 12px; background:#fafafa;"></div>
+            <div id="load_progress_text" class="muted" style="font-size:11px;margin-bottom:8px; display:none;">0%</div>
+            <div id="load_checklist" style="margin-top:6px;"></div>
           <div id="analysis_log" style="font-size:12px; border:1px solid #eee; border-radius:8px; padding:8px 12px; background:#fafafa; margin-top:6px;"></div>
           </div>
           <div id="analysis_cache_box" style="margin-top:14px; border:1px solid #eee; border-radius:12px; padding:12px; background:#fafafa;">
@@ -497,10 +606,10 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
            <div style="font-weight:600; margin-bottom:6px;">Messwert-Information</div>
            <div id="analysis_stats_content"></div>
          </div>
-        <div style="height:8px;background:#eee;border-radius:4px;margin:4px 0;overflow:hidden;">
+        <div style="height:8px;background:#eee;border-radius:4px;margin:4px 0;overflow:hidden; display:none;">
           <div id="analysis_progress_fill" style="height:100%;background:#4caf50;width:0%;transition:width 0.3s;"></div>
         </div>
-          <div id="analysis_progress_text" class="muted" style="font-size:11px;margin-bottom:8px;">0%</div>
+          <div id="analysis_progress_text" class="muted" style="font-size:11px;margin-bottom:8px; display:none;">0%</div>
           <div id="analysis_trace" class="muted mono" style="display:none; font-size:11px; margin-bottom:8px; align-items:center; gap:6px; flex-wrap:wrap;">
             <span style="opacity:0.75;">Trace-ID:</span>
             <span id="analysis_trace_id" title="Trace-ID" style="font-weight:700;"></span>
@@ -7396,36 +7505,344 @@ function _formatCachePlanRanges(gaps, dirtyRanges){
   }
 }
 
+function _renderModernFlowChecklist(container, opts){
+  try{
+    const $root = container;
+    if(!$root) return;
+    const id = String(opts && opts.id ? opts.id : ($root.getAttribute('id') || 'flow'));
+    if(!window.__IB_FLOW_UI) window.__IB_FLOW_UI = {};
+    if(!window.__IB_FLOW_UI[id]) window.__IB_FLOW_UI[id] = { openAll: false, onlyErrors: false, openKeys: {} };
+    const ui = window.__IB_FLOW_UI[id];
+
+    const title = String(opts && opts.title ? opts.title : 'Flow');
+    const meta = String(opts && opts.meta ? opts.meta : '');
+    const pct = Math.min(100, Math.max(0, Number(opts && opts.pct !== undefined ? opts.pct : 0) || 0));
+    const steps0 = Array.isArray(opts && opts.steps) ? opts.steps : [];
+
+    const steps = steps0.filter((s)=>{
+      if(!ui.onlyErrors) return true;
+      return String(s && s.status || '') !== 'ok';
+    });
+
+    const maxMs = Math.max(0, ...steps.map(s=>Number(s && s.dur_ms || 0)).filter(x=>isFinite(x)));
+
+    function _statusSvg(status){
+      if(status === 'ok'){
+        return '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2.5 6.5L4.8 8.8L9.5 3.5" stroke="var(--color-text-success)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      }
+      if(status === 'err'){
+        return '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 3L9 9M9 3L3 9" stroke="var(--color-text-danger)" stroke-width="1.8" stroke-linecap="round"/></svg>';
+      }
+      if(status === 'running'){
+        return '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="6" cy="6" r="2" fill="var(--color-text-warning)"/></svg>';
+      }
+      return '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="6" cy="6" r="2" fill="var(--color-text-tertiary)"/></svg>';
+    }
+    function _statusBg(status){
+      if(status === 'ok') return 'var(--color-background-success)';
+      if(status === 'err') return 'var(--color-background-danger)';
+      if(status === 'running') return 'var(--color-background-warning)';
+      return 'var(--color-background-secondary)';
+    }
+    const chevron = '<svg class="ib_flow_chev" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 4L10 8L6 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    const infoIcon = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1"/><path d="M8 7V11.5M8 5V5.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>';
+
+    function _timeText(iso){
+      try{
+        if(typeof _analysisStepClock === 'function') return String(_analysisStepClock(iso) || '');
+      }catch(e){}
+      return '';
+    }
+
+    // Build DOM
+    $root.innerHTML = '';
+
+    const wrap = document.createElement('div');
+    wrap.className = 'ib_flow';
+
+    const header = document.createElement('div');
+    header.className = 'ib_flow_header';
+
+    const headRow = document.createElement('div');
+    headRow.className = 'ib_flow_headrow';
+
+    const left = document.createElement('div');
+    const t1 = document.createElement('div');
+    t1.className = 'ib_flow_title';
+    t1.textContent = title;
+    const t2 = document.createElement('div');
+    t2.className = 'ib_flow_meta';
+    if(meta){
+      t2.textContent = meta;
+    }else{
+      const done = steps0.filter((s)=> String(s && s.status || '') === 'ok').length;
+      t2.textContent = `${done}/${steps0.length} Schritte`;
+    }
+    left.appendChild(t1);
+    left.appendChild(t2);
+
+    const btns = document.createElement('div');
+    btns.className = 'ib_flow_btns';
+    const btnToggle = document.createElement('button');
+    btnToggle.type = 'button';
+    btnToggle.textContent = ui.openAll ? 'Alle einklappen' : 'Alle ausklappen';
+    const btnErr = document.createElement('button');
+    btnErr.type = 'button';
+    btnErr.textContent = ui.onlyErrors ? 'Alle zeigen' : 'Nur Fehler';
+    btns.appendChild(btnToggle);
+    btns.appendChild(btnErr);
+
+    headRow.appendChild(left);
+    headRow.appendChild(btns);
+
+    const prog = document.createElement('div');
+    prog.className = 'ib_flow_prog';
+    const bar = document.createElement('div');
+    bar.className = 'ib_flow_prog_bar';
+    const fill = document.createElement('div');
+    fill.className = 'ib_flow_prog_fill';
+    fill.style.width = pct + '%';
+    bar.appendChild(fill);
+    const pctEl = document.createElement('div');
+    pctEl.className = 'ib_flow_prog_pct';
+    pctEl.textContent = Math.round(pct) + '%';
+    prog.appendChild(bar);
+    prog.appendChild(pctEl);
+
+    header.appendChild(headRow);
+    header.appendChild(prog);
+
+    const list = document.createElement('div');
+    list.className = 'ib_flow_list';
+
+    function _isOpen(key){
+      const k = String(key || '');
+      return ui.openAll || !!ui.openKeys[k];
+    }
+
+    steps.forEach((s)=>{
+      const key = String(s && s.key || '');
+      const status = String(s && s.status || 'pending');
+      const open = _isOpen(key);
+      const durMs = Math.max(0, Math.round(Number(s && s.dur_ms || 0) || 0));
+      const barPct = (maxMs > 0 && isFinite(durMs)) ? Math.max(0, Math.min(100, (durMs / maxMs) * 100)) : 0;
+
+      const row = document.createElement('div');
+      row.className = 'ib_flow_step' + (open ? ' open' : '');
+      row.dataset.status = status;
+
+      const st = document.createElement('span');
+      st.className = 'ib_flow_status';
+      st.style.background = _statusBg(status);
+      st.innerHTML = _statusSvg(status);
+
+      const tm = document.createElement('span');
+      tm.className = 'ib_flow_time';
+      tm.textContent = _timeText(String(s && s.at || ''));
+
+      const barWrap = document.createElement('div');
+      barWrap.style.display = 'flex';
+      barWrap.style.alignItems = 'center';
+      barWrap.style.gap = '6px';
+      const dbw = document.createElement('div');
+      dbw.className = 'ib_flow_bar_wrap';
+      const dbf = document.createElement('div');
+      dbf.className = 'ib_flow_bar_fill';
+      dbf.style.width = barPct.toFixed(1) + '%';
+      dbw.appendChild(dbf);
+      barWrap.appendChild(dbw);
+
+      const lbl = document.createElement('span');
+      lbl.className = 'ib_flow_label';
+      lbl.textContent = String(s && s.label || '');
+
+      const right = document.createElement('span');
+      right.style.display = 'flex';
+      right.style.alignItems = 'center';
+      right.style.gap = '10px';
+      const dur = document.createElement('span');
+      dur.className = 'ib_flow_dur';
+      dur.textContent = durMs + ' ms';
+      const chev = document.createElement('span');
+      chev.innerHTML = chevron;
+      right.appendChild(dur);
+      right.appendChild(chev);
+
+      row.appendChild(st);
+      row.appendChild(tm);
+      row.appendChild(barWrap);
+      row.appendChild(lbl);
+      row.appendChild(right);
+
+      const det = document.createElement('div');
+      det.className = 'ib_flow_details' + (open ? ' visible' : '');
+
+      const labA = document.createElement('div');
+      labA.className = 'ib_flow_info_label';
+      labA.textContent = 'Ergebnis';
+      const res = document.createElement('div');
+      res.textContent = String(s && s.result || '');
+      const labB = document.createElement('div');
+      labB.className = 'ib_flow_info_label';
+      labB.textContent = 'Was dieser Schritt macht';
+      const info = document.createElement('div');
+      info.style.display = 'flex';
+      info.style.gap = '6px';
+      info.style.alignItems = 'flex-start';
+      const ico = document.createElement('span');
+      ico.style.color = 'var(--color-text-tertiary)';
+      ico.style.marginTop = '2px';
+      ico.innerHTML = infoIcon;
+      const txt = document.createElement('span');
+      txt.textContent = String(s && s.info || '');
+      info.appendChild(ico);
+      info.appendChild(txt);
+
+      det.appendChild(labA);
+      det.appendChild(res);
+      det.appendChild(labB);
+      det.appendChild(info);
+
+      row.addEventListener('click', ()=>{
+        try{
+          if(ui.openAll){
+            // Switch from global state to per-key state
+            ui.openAll = false;
+            ui.openKeys = {};
+          }
+          if(ui.openKeys[key]) delete ui.openKeys[key];
+          else ui.openKeys[key] = true;
+          _renderModernFlowChecklist($root, opts);
+        }catch(e){}
+      });
+
+      list.appendChild(row);
+      list.appendChild(det);
+    });
+
+    btnToggle.addEventListener('click', (ev)=>{
+      try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+      ui.openAll = !ui.openAll;
+      ui.openKeys = {};
+      _renderModernFlowChecklist($root, opts);
+    });
+    btnErr.addEventListener('click', (ev)=>{
+      try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+      ui.onlyErrors = !ui.onlyErrors;
+      _renderModernFlowChecklist($root, opts);
+    });
+
+    wrap.appendChild(header);
+    wrap.appendChild(list);
+    $root.appendChild(wrap);
+  }catch(e){}
+}
+
 function _renderChecklist(items){
   const $cl = document.getElementById('load_checklist');
   if(!$cl) return;
   const rows = Array.isArray(items) ? items : [];
   if(!rows.length){
-    $cl.style.display = 'none';
     $cl.innerHTML = '';
-    if($loadProgressFill) $loadProgressFill.style.width = '0%';
-    if($loadProgressText) $loadProgressText.textContent = '0%';
+    try{ if($loadStatusTxt) $loadStatusTxt.style.display = ''; }catch(e){}
+    try{ if($loadStatusTime) $loadStatusTime.style.display = ''; }catch(e){}
+    try{ _renderTracePanels(); }catch(e){}
     return;
   }
-  $cl.style.display = 'block';
-  $cl.innerHTML = _loadChecklistHtml(rows);
+
+  const LOAD_STEP_INFO = {
+    start: 'Startpunkt der Cache-Pruefung. Initialisiert Kontext und UI.',
+    dash_plan: 'Liest den Dashboard-Cache-Plan (Dash-Cache) und zeigt ggf. Aenderungen.',
+    analysis_plan: 'Liest den Analyse-Cache-Plan (Analysecache) fuer die aktuelle Auswahl.',
+    areas: 'Ermittelt fehlende/geaenderte Bereiche, die fuer eine frische Analyse relevant sind.',
+    result: 'Fasst das Ergebnis zusammen und aktualisiert die Anzeige.',
+  };
+
+  // Meta from existing load status line(s)
+  const statusTxt = (function(){ try{ return $loadStatusTxt ? String($loadStatusTxt.textContent || '').trim() : ''; }catch(e){ return ''; } })();
+  const statusTime = (function(){ try{ return $loadStatusTime ? String($loadStatusTime.textContent || '').trim() : ''; }catch(e){ return ''; } })();
+  const meta = [statusTxt, statusTime].filter(Boolean).join(' | ');
+
   const done = rows.filter((item)=> String(item && item.status || '') === 'ok').length;
   const pct = Math.min(100, Math.max(0, Math.round((done / Math.max(1, rows.length)) * 100)));
-  if($loadProgressFill) $loadProgressFill.style.width = pct + '%';
-  let totalMs = null;
-  try{
-    if(LOAD_CHECK_TOTAL_MS !== null && LOAD_CHECK_TOTAL_MS !== undefined) totalMs = Number(LOAD_CHECK_TOTAL_MS);
-    else if(LOAD_CHECK_T0) totalMs = Math.round(performance.now() - LOAD_CHECK_T0);
-  }catch(e){ totalMs = null; }
-  const totalTxt = (totalMs !== null && totalMs !== undefined && isFinite(Number(totalMs))) ? (' | gesamt: ' + Math.max(0, Math.round(Number(totalMs))) + ' ms') : '';
-  if($loadProgressText) $loadProgressText.textContent = pct + '%' + totalTxt;
+
+  _renderModernFlowChecklist($cl, {
+    id: 'load_checklist',
+    title: 'Cacheflow',
+    meta: meta,
+    pct: pct,
+    steps: rows.map((it)=>{
+      const key = String(it && it.key || '');
+      const label = String(it && it.label ? it.label : (LOAD_STEP_LABELS[key] || key));
+      const status = String(it && it.status || 'pending');
+      const at = String(it && it.at || '');
+      const dur = (it && it.dur !== null && it.dur !== undefined && isFinite(Number(it.dur))) ? Math.max(0, Math.round(Number(it.dur))) : 0;
+      const sub = String(it && it.sub || '');
+      return {
+        key,
+        label,
+        status,
+        at,
+        dur_ms: dur,
+        result: sub,
+        info: String(LOAD_STEP_INFO[key] || ''),
+      };
+    }),
+  });
+
+  // The modern flow component already renders the status meta.
+  try{ if($loadStatusTxt) $loadStatusTxt.style.display = 'none'; }catch(e){}
+  try{ if($loadStatusTime) $loadStatusTime.style.display = 'none'; }catch(e){}
+
   try{ _renderTracePanels(); }catch(e){}
 }
 
 function _renderAnalysisChecklist(items, chunkLog){
   const $cl = document.getElementById('analysis_checklist');
   if(!$cl) return;
-  $cl.innerHTML = _analysisChecklistHtml(items, chunkLog);
+  const rows = Array.isArray(items) ? items : [];
+  if(!rows.length){
+    $cl.innerHTML = '';
+    try{ _renderTracePanels(); }catch(e){}
+    return;
+  }
+
+  const pct = (typeof _analysisOverallProgress === 'function') ? _analysisOverallProgress() : 0;
+  const meta = (function(){
+    try{
+      const done = rows.filter((it)=> String(it && it.status || '') === 'ok').length;
+      const totalMs = rows.reduce((acc, it)=> acc + ((it && it.dur !== null && it.dur !== undefined && isFinite(Number(it.dur))) ? Number(it.dur) : 0), 0);
+      const t = (totalMs >= 1000) ? (Math.round((totalMs / 1000) * 10) / 10).toFixed(1).replace('.', ',') + ' s' : (Math.round(totalMs) + ' ms');
+      return `${done}/${rows.length} Schritte · ${t} gesamt`;
+    }catch(e){
+      return '';
+    }
+  })();
+
+  _renderModernFlowChecklist($cl, {
+    id: 'analysis_checklist',
+    title: 'Analyseflow',
+    meta: meta,
+    pct: pct,
+    steps: rows.map((it)=>{
+      const key = String(it && it.key || '');
+      const label = String(it && it.label || '');
+      const status = String(it && it.status || 'pending');
+      const at = String(it && it.at || it.started_at || '');
+      const dur = (it && it.dur !== null && it.dur !== undefined && isFinite(Number(it.dur))) ? Math.max(0, Math.round(Number(it.dur))) : 0;
+      const sub = String(it && it.sub || '');
+      return {
+        key,
+        label,
+        status,
+        at,
+        dur_ms: dur,
+        result: sub,
+        info: (typeof _analysisStepInfoText === 'function') ? String(_analysisStepInfoText(it) || '') : '',
+      };
+    }),
+  });
+
   try{ _renderTracePanels(); }catch(e){}
 }
 

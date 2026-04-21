@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.408
+
+### Enhancement
+
+- Dashboard: `analysis_checklist` nutzt jetzt die moderne kompakte Abarbeitungsliste (ausklappbare Details, Progress-Header, Fehler-Filter) und dasselbe Design wird fuer `load_status`/Cacheflow verwendet. ([#365](https://github.com/thomas682/HA-Addons/issues/365))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`, `pytest -q tests/test_api_ui_support.py`, `npx playwright test tests/e2e/dashboard.spec.js`
+- Tested with Home Assistant Core: 2026.4.3
+
 ## 1.12.407
 
 ### Bugfix

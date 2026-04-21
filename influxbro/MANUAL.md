@@ -323,6 +323,8 @@ Raw Daten (DB):
 - Die Buttons `Kopieren`, `Wert kopieren` und `Einfügen` zeigen zusaetzlich eine direkte Rueckmeldung im Popup.
 - Die Raw-Tabelle hat einen fixierten Header (Titelzeile scrollt nicht mit).
 - Analyse-Section: Unterhalb der Quellauswahl gibt es einen eigenen Bereich `Analyse` mit Fortschrittsbalken, Checkliste, Chunk-Details und den gefundenen Ausreissern nach Typ.
+- Die Checkliste ist als moderne kompakte Abarbeitungsliste umgesetzt (ausklappbare Details pro Schritt, Progress-Header, "Alle ausklappen" und "Nur Fehler").
+- Das Caching-Statuspanel (`load_status`) nutzt dasselbe Design fuer den Cacheflow.
 - Bei `Zeitraum = Alle` startet die Analyse nicht mehr pauschal bei 1970, sondern verwendet einen serverseitig gemerkten Analyse-Startwert pro Messwert. Standardmaessig wird auf `jetzt - Max. Alter der Datenanalyse (Jahre)` begrenzt; ist der aelteste bekannte Datensatz juenger, beginnt die Analyse dort.
 - Unter der Quellauswahl wird dazu `Analyse-Start`, `Ältester bekannter Datensatz` und `Ermittelt am` angezeigt. Mit `Startalter löschen` kannst du den gespeicherten Startwert fuer den aktuellen Messwert zuruecksetzen.
 - Die Ausreisser-Typen werden im Bereich `Ausreisser` in EINEM Chip-Panel angezeigt (Filter/Analyse).
