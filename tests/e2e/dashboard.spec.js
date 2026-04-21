@@ -6,6 +6,31 @@ test.describe('Dashboard', () => {
     await expect(page).toHaveTitle(/InfluxBro/);
   });
 
+  test('topbar can be collapsed on iPhone', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/');
+
+    // Defensive: close any overlay dialog that could intercept taps.
+    await page.evaluate(() => {
+      try {
+        const d = document.getElementById('influxbro_popup_root');
+        if (d && d.open) {
+          try { d.close(); } catch (e) {}
+          try { d.style.display = 'none'; } catch (e) {}
+        }
+      } catch (e) {}
+    });
+
+    const toggle = page.locator('#ib_topbar_mobile_toggle');
+    await expect(toggle).toBeVisible();
+
+    const panel = page.locator('#ib_topbar_mobile_panel');
+    await expect(panel).toBeHidden();
+
+    await toggle.click();
+    await expect(panel).toBeVisible();
+  });
+
   test('restores cached dashboard panels after navigation', async ({ page }) => {
     const payload = {
       v: 1,

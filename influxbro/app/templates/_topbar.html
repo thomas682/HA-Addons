@@ -180,6 +180,7 @@
     .ib_pagecard .actions button { height:34px; padding:6px 10px; }
     .ib_pagecard .actions .iconbtn { width:34px; padding:0; display:inline-flex; align-items:center; justify-content:center; }
     .ib_pagecard .actions .iconbtn svg { width:18px; height:18px; }
+    .ib_pagecard .actions .ib_topbar_mobile_toggle { display:none; }
     .ib_pagecard .actions .topbar_profile_group { display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end; min-width:0; width:100%; }
     .ib_pagecard .actions .topbar_profile_group .zoom { display:flex; align-items:center; gap:8px; padding-left:10px; border-left:1px solid rgba(0,0,0,0.08); }
     .ib_pagecard .actions .topbar_profile_group .ib_clear_row { flex:1 1 180px; min-width:0; max-width:320px; min-height:34px; }
@@ -227,6 +228,13 @@
       .ib_pagecard .actions .topbar_profile_group .ib_clear_row { flex:1 0 100%; max-width:none; }
       .ib_pagecard .title { width:100%; }
       .ib_pagecard .branddonate { width:100%; }
+    }
+
+    /* iPhone / small mobile: collapse/expand the heavy actions row */
+    @media (max-width: 480px){
+      :root { --ib-pagecard-min-h: 84px; --ib-pagecard-live-h: 84px; }
+      .ib_pagecard .actions .ib_topbar_mobile_toggle { display:inline-flex; }
+      #ib_topbar_mobile_panel[hidden] { display:none !important; }
     }
 
     /* Shared UI: section info icon next to titles */
@@ -449,10 +457,60 @@
       const $paramHelp = document.getElementById('ib_param_help_toggle');
       const $results = document.getElementById('ib_pagecard_results');
       const $searchModal = document.getElementById('ib_page_search_modal');
+      const $mobileToggle = document.getElementById('ib_topbar_mobile_toggle');
+      const $mobilePanel = document.getElementById('ib_topbar_mobile_panel');
       if(!$card || $card.dataset.ibPagecardReady === '1') return;
       $card.dataset.ibPagecardReady = '1';
 
       const main = document.querySelector('main.content');
+
+      // iPhone: allow collapsing the large topbar action group.
+      (function(){
+        const LS_KEY = 'influxbro.topbar.mobile.open.v1';
+        function _isSmallMobile(){
+          try{ return !!(window.matchMedia && window.matchMedia('(max-width: 480px)').matches); }catch(e){ return false; }
+        }
+        function _readOpen(){
+          try{ return localStorage.getItem(LS_KEY) === '1'; }catch(e){ return false; }
+        }
+        function _writeOpen(v){
+          try{ localStorage.setItem(LS_KEY, v ? '1' : '0'); }catch(e){}
+        }
+        function _apply(){
+          try{
+            if(!$mobileToggle || !$mobilePanel) return;
+            const small = _isSmallMobile();
+            if(!small){
+              $mobilePanel.hidden = false;
+              $mobileToggle.setAttribute('aria-expanded', 'true');
+              try{ $mobileToggle.classList.remove('active'); }catch(e){}
+              try{ if(window.InfluxBroTopbarLayout && window.InfluxBroTopbarLayout.update) window.InfluxBroTopbarLayout.update(); }catch(e){}
+              return;
+            }
+            const open = _readOpen();
+            $mobilePanel.hidden = !open;
+            $mobileToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+            try{ $mobileToggle.classList.toggle('active', open); }catch(e){}
+            try{ if(window.InfluxBroTopbarLayout && window.InfluxBroTopbarLayout.update) window.InfluxBroTopbarLayout.update(); }catch(e){}
+          }catch(e){}
+        }
+        try{
+          if($mobileToggle && $mobilePanel){
+            $mobileToggle.addEventListener('click', ()=>{
+              try{ _writeOpen($mobilePanel.hidden); }catch(e){}
+              _apply();
+            });
+          }
+        }catch(e){}
+        try{
+          const mq = window.matchMedia ? window.matchMedia('(max-width: 480px)') : null;
+          if(mq){
+            if(mq.addEventListener) mq.addEventListener('change', _apply);
+            else if(mq.addListener) mq.addListener(_apply);
+          }
+        }catch(e){}
+        _apply();
+      })();
 
       function setAllDetailsOpen(root, wantOpen){
         try{
@@ -1846,7 +1904,12 @@
     </div>
   </div>
   <div class="actions">
-    <div class="topbar_profile_group" data-ui="topbar_main.panel_profile" title="topbar.profile">
+    <button id="ib_topbar_mobile_toggle" type="button" class="iconbtn ib_topbar_mobile_toggle" data-ui="topbar_mobile.btn_toggle" title="Topbar umschalten" aria-label="Topbar umschalten" aria-controls="ib_topbar_mobile_panel" aria-expanded="false">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
+        <path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </button>
+    <div id="ib_topbar_mobile_panel" class="topbar_profile_group" data-ui="topbar_main.panel_profile" title="topbar.profile">
       <select id="ui_profile_sel" data-ui="nav_profile.select_select" title="nav.profile.select"></select>
       <button id="ui_profile_apply" type="button" class="iconbtn" data-ui="nav_profile.btn_apply" title="Anwenden" aria-label="Anwenden">
         <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">

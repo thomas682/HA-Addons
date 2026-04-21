@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.409
+
+### Enhancement
+
+- Topbar: Auf sehr schmalen Breiten (iPhone) kann der rechte Block (Profil/Picker/Zoom/Suche/Buttons) ueber einen Toggle ein- und ausgeklappt werden. ([#368](https://github.com/thomas682/HA-Addons/issues/368))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`, `pytest -q tests/test_api_ui_support.py`, `pytest -q tests/test_api_time_and_stats.py`, `npx playwright test tests/e2e/dashboard.spec.js`
+- Tested with Home Assistant Core: 2026.4.3
+
 ## 1.12.408
 
 ### Enhancement
