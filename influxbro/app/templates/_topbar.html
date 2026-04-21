@@ -2080,21 +2080,15 @@
 <script>
   // Prevent buttons/links inside section summaries from toggling the details element.
   try{
+    // IMPORTANT: do NOT use capture here, otherwise summary-interactions stop working
+    // (event won't reach the target button). Bubble-phase preventDefault is enough.
     document.addEventListener('click', (ev)=>{
       try{
         const t = ev && ev.target && ev.target.closest ? ev.target.closest('summary button, summary a, summary input, summary select, summary textarea, summary label') : null;
         if(!t) return;
         ev.preventDefault();
-        ev.stopPropagation();
       }catch(e){}
-    }, true);
-    document.addEventListener('mousedown', (ev)=>{
-      try{
-        const t = ev && ev.target && ev.target.closest ? ev.target.closest('summary button, summary a, summary input, summary select, summary textarea, summary label') : null;
-        if(!t) return;
-        ev.stopPropagation();
-      }catch(e){}
-    }, true);
+    });
   }catch(e){}
 
 // Report page view on load.

@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.401
+
+### Bugfix
+
+- Dashboard: Summary-Interaktionen (Buttons/Links innerhalb von `summary`) sind wieder klickbar; der globale Stopper blockiert keine Target-Events mehr. ([#359](https://github.com/thomas682/HA-Addons/issues/359), [#360](https://github.com/thomas682/HA-Addons/issues/360))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`, `pytest -q`
+- Tested with Home Assistant Core: 2026.4.3
+
 ## 1.12.400
 
 ### Bugfix
