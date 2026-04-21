@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.12.406
+
+### Bugfix
+
+- Diagnose: `storage_tbl` sortiert Groessen jetzt korrekt (unabhaengig von der Einheit/Anzeige) und `mtime` wird lesbar formatiert; Diagnose-Tabellen zeigen wieder sichtbare Kopf-/Zeilen-/Spaltenlinien. Trend-Graph nutzt eine solid Linie und zeigt X-/Y-Achsenbeschriftungen. ([#358](https://github.com/thomas682/HA-Addons/issues/358))
+
+### Security
+
+- Diagnose: Tabellen-Rendering verwendet jetzt `textContent` statt `innerHTML`, um XSS ueber Dateinamen/Pfade/Log-Details zu vermeiden. ([#358](https://github.com/thomas682/HA-Addons/issues/358))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`
+- Tested with Home Assistant Core: 2026.4.3
+
 ## 1.12.405
 
 ### Bugfix
