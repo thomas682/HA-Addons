@@ -619,6 +619,27 @@ from flask import Flask, jsonify, request
 - Ensure the label set exists in GitHub (create once in the GitHub UI); the issue templates assume these labels are available.
 - When implementing, link PRs to issues and close them via `Fixes #<id>`.
 
+### GitHub Issue Status Label Consistency (MANDATORY)
+
+- Exactly ONE status label may exist on an issue at any time:
+  - `status/open`
+  - `status/in_progress`
+  - `status/done`
+  - `status/cancelled`
+- Status labels are mutually exclusive. The agent MUST remove any previous status label before setting a new one.
+- A reopened issue MUST NEVER keep `status/done` or `status/cancelled`.
+- When an issue is reopened:
+  - remove `status/done`
+  - remove `status/cancelled`
+  - set `status/open` by default
+  - set `status/in_progress` only if work is actively resumed immediately
+- A closed issue MUST NOT remain with `status/open` or `status/in_progress`.
+- When closing an issue:
+  - use `status/done` if the work is completed
+  - use `status/cancelled` only if the issue is intentionally not implemented / declined
+- If GitHub state and status label ever diverge, the agent MUST treat that as an inconsistency and correct the label state immediately.
+- Repository automation should enforce this label consistency, but the agent MUST NOT rely on automation alone and must still set the correct status explicitly.
+
 ### GitHub Issues: Check, Select, Sync
 
 - Always check for open GitHub Issues when starting work on new items (unless the user explicitly points to a specific issue).
