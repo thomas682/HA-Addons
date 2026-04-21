@@ -328,6 +328,10 @@
     #raw_tbl tr.raw_src td { background: rgba(16, 185, 129, 0.16); }
     /* Selected raw row (for copy/paste actions) */
     #raw_tbl tr.raw_sel td { outline: 2px solid rgba(36,99,235,0.35); outline-offset: -2px; }
+    /* Smart correction range markers */
+    #raw_tbl tr.raw_range_start td { box-shadow: inset 0 0 0 2px rgba(16,185,129,0.55); }
+    #raw_tbl tr.raw_range_end td { box-shadow: inset 0 0 0 2px rgba(220,38,38,0.50); }
+    #raw_tbl tr.raw_range_inner td { background: rgba(16,185,129,0.06); }
     #raw_tbl tr.raw_drop_target td { box-shadow: inset 0 0 0 2px rgba(14, 116, 144, 0.35); }
     /* Focus highlight for inputs with missing required value */
     .err_focus { outline: 2px solid rgba(198,40,40,0.92) !important; box-shadow: 0 0 6px rgba(198,40,40,0.18); }
@@ -743,8 +747,15 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
         <button class="btn_sm" id="raw_info_btn" data-ui="dashboard_raw.btn_info" title="dashboard_raw.btn_info" disabled>Info</button>
         <button class="btn_sm" id="raw_query_open" data-ui="dashboard_raw.btn_query_anzeigen" title="dashboard_raw.btn_query_anzeigen"><svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="11" cy="15.5" r="1.5"></circle><path d="M12,12H10V8h2a2,2,0,0,0,0-4H10A2.0023,2.0023,0,0,0,8,6v.5H6V6a4.0045,4.0045,0,0,1,4-4h2a4,4,0,0,1,0,8Z"></path><path d="M22.4479,21.0337A10.971,10.971,0,0,0,19.9211,4.7446l-.999,1.73A8.9967,8.9967,0,1,1,5,14H3a10.9916,10.9916,0,0,0,18.0338,8.4478L28.5859,30,30,28.5859Z"></path></svg></button>
         <button class="btn_sm" id="raw_query_test" data-ui="dashboard_raw.btn_query_test" title="dashboard_raw.btn_query_test" aria-label="Query testen"><svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="#000000" width="18" height="18" aria-hidden="true" focusable="false"><path d="M6 10V9h9v1H6zm4-4h5v1h-5V6zm5-3v1H6V3h9zm-9 9v1h9v-1H6z"></path><path fill-rule="evenodd" clip-rule="evenodd" d="M1 2.795l.783-.419 5.371 3.581v.838l-5.371 3.581L1 9.957V2.795zm1.007.94v5.281l3.96-2.64-3.96-2.64z"></path></svg></button>
-        <span id="raw_copied_info" class="muted" style="margin-left:6px;"></span>
-      </div>
+         <span id="raw_copied_info" class="muted" style="margin-left:6px;"></span>
+       </div>
+
+       <div class="tbl_actions" style="justify-content:flex-start; margin-top: 6px;" data-ui="dashboard_raw.row_actions_smart" title="dashboard_raw.row_actions_smart">
+         <span class="muted" style="font-weight:800;">Intelligente Korrektur</span>
+         <button class="btn_sm" id="raw_linear_range" type="button" data-ui="dashboard_raw.btn_linear_range" title="dashboard_raw.btn_linear_range" disabled>Linearer Reihe</button>
+         <button class="btn_sm" id="raw_copy_first_range" type="button" data-ui="dashboard_raw.btn_copy_first_range" title="dashboard_raw.btn_copy_first_range" disabled>Erstwert kopieren</button>
+         <span id="raw_smart_status" class="muted" style="margin-left:6px;"></span>
+       </div>
 
       <div class="table_title" style="margin-top:12px;">Raw Daten</div>
       <div class="table_head" style="margin-bottom:6px;">
@@ -1117,6 +1128,9 @@ const $rawUnignore = document.getElementById('raw_unignore');
 const $rawInfoBtn = document.getElementById('raw_info_btn');
 const $rawQueryOpen = document.getElementById('raw_query_open');
 const $rawCopiedInfo = document.getElementById('raw_copied_info');
+const $rawLinearRange = document.getElementById('raw_linear_range');
+const $rawCopyFirstRange = document.getElementById('raw_copy_first_range');
+const $rawSmartStatus = document.getElementById('raw_smart_status');
 
 const $graphQuerySection = document.getElementById('graph_query_section');
 const $graphCopyQuery = document.getElementById('graph_copy_query');
@@ -2978,10 +2992,44 @@ function _rawUndoableEntry(key){
   try{ return RAW_UNDOABLE_BY_KEY.get(String(key || '')) || null; }catch(e){ return null; }
 }
 
+function _rawHistoryBlockIds(blockId){
+  try{
+    const want = String(blockId || '').trim();
+    if(!want) return [];
+    const ids = [];
+    const seen = new Set();
+    RAW_HISTORY_BY_KEY.forEach((list)=>{
+      (Array.isArray(list) ? list : []).forEach((it)=>{
+        try{
+          if(String(it && it.change_block_id || '') !== want) return;
+          const id = String(it && it.id || '').trim();
+          const act = String(it && it.action || '').trim().toLowerCase();
+          if(!id) return;
+          if(act !== 'overwrite' && act !== 'delete') return;
+          if(seen.has(id)) return;
+          seen.add(id);
+          ids.push(id);
+        }catch(e){}
+      });
+    });
+    return ids;
+  }catch(e){
+    return [];
+  }
+}
+
 function _rawHistoryCompact(key){
   const entries = _rawHistoryEntries(key);
   if(!entries.length) return '';
   const it = entries[0] || {};
+  const blockId = String(it.change_block_id || '').trim();
+  if(blockId){
+    const bKind = String(it.change_block_kind || it.trigger_button || '').trim();
+    const n = (it.change_block_size !== null && it.change_block_size !== undefined) ? Number(it.change_block_size) : null;
+    const when = fmtTs(it.at || it.time || '');
+    const cnt = (isFinite(n) && n > 0) ? String(Math.trunc(n)) : String(entries.length);
+    return `block ${bKind || 'change'} (${cnt})${when ? ' | ' + when : ''}`.trim();
+  }
   const act = String(it.action || '').trim();
   const oldTxt = (it.old_value === null || it.old_value === undefined) ? '' : fmtNum(it.old_value);
   const newTxt = (it.new_value === null || it.new_value === undefined) ? '' : fmtNum(it.new_value);
@@ -2994,6 +3042,33 @@ function _rawHistoryCompact(key){
 function _rawHistoryDetailsText(key){
   const entries = _rawHistoryEntries(key);
   if(!entries.length) return 'Keine History zu diesem Raw-Wert vorhanden.';
+  try{
+    const it0 = entries[0] || {};
+    const bid = String(it0.change_block_id || '').trim();
+    if(bid){
+      const bKind = String(it0.change_block_kind || it0.trigger_button || '').trim();
+      const n = (it0.change_block_size !== null && it0.change_block_size !== undefined) ? Number(it0.change_block_size) : null;
+      const cnt = (isFinite(n) && n > 0) ? String(Math.trunc(n)) : String(entries.length);
+      const head = [
+        'Block-Aenderung',
+        `Block: ${bKind || '-'}`,
+        `Anzahl: ${cnt}`,
+        '',
+      ].join('\n');
+      return head + entries.map((it, idx)=>[
+        `#${idx + 1}`,
+        `Datum: ${fmtTs(it.at || '')}`,
+        `Zeitpunkt: ${fmtTs(it.time || '')}`,
+        `Aktion: ${String(it.action || '')}`,
+        `Alt: ${(it.old_value === null || it.old_value === undefined) ? '-' : fmtNum(it.old_value)}`,
+        `Neu: ${(it.new_value === null || it.new_value === undefined) ? '-' : fmtNum(it.new_value)}`,
+        `Grund: ${String(it.reason || '-')}`,
+        `Ausloeser: ${String(it.trigger_button || it.trigger_action || '-')}`,
+        `Bereich: ${String(it.trigger_source || '-')}`,
+        `Seite: ${String(it.trigger_page || '-')}`,
+      ].join('\n')).join('\n\n');
+    }
+  }catch(e){}
   return entries.map((it, idx)=>[
     `#${idx + 1}`,
     `Datum: ${fmtTs(it.at || '')}`,
@@ -5086,6 +5161,13 @@ let _RAW_INFLIGHT = false;
 let RAW_OFFSET = 0;
 let RAW_ANCHOR_ISO = null;
 const RAW_WINDOW_LIMIT = 5000;
+
+// Smart corrections (range-based)
+let RAW_SMART_MODE = null; // { kind: 'linear'|'copy_first', step: 'start'|'end' }
+let RAW_SMART_START_KEY = null;
+let RAW_SMART_END_KEY = null;
+let RAW_SMART_START_TIME = null; // ISO string of the first marked point
+let RAW_SMART_END_TIME = null;
 let RAW_OUTLIER_RESULTS = [];
 let RAW_OUTLIER_INDEX = -1;
 let RAW_OUTLIER_SELECTED_TIME = null;
@@ -5489,6 +5571,10 @@ function renderRawTable(){
     }
   }catch(e){}
 
+  const smartStartMs = RAW_SMART_START_KEY ? Date.parse(String(RAW_SMART_START_KEY || '')) : NaN;
+  const smartEndMs = RAW_SMART_END_KEY ? Date.parse(String(RAW_SMART_END_KEY || '')) : NaN;
+  const smartHasRange = (isFinite(smartStartMs) && isFinite(smartEndMs) && smartStartMs < smartEndMs);
+
   // If no rows, show minimum 3 empty rows
   if((RAW_ROWS || []).length === 0){
     for(let i = 0; i < 3; i++){
@@ -5511,6 +5597,9 @@ function renderRawTable(){
       if(bestMs !== null && isFinite(ms) && ms === bestMs) tr.classList.add('raw_hl');
       if(RAW_ROW_SELECTED_KEY && String(RAW_ROW_SELECTED_KEY) === String(key)) tr.classList.add('raw_sel');
       if(RAW_COPIED && String(RAW_COPIED.key || '') === String(key)) tr.classList.add('raw_src');
+      if(RAW_SMART_START_KEY && String(RAW_SMART_START_KEY) === String(key)) tr.classList.add('raw_range_start');
+      if(RAW_SMART_END_KEY && String(RAW_SMART_END_KEY) === String(key)) tr.classList.add('raw_range_end');
+      if(smartHasRange && isFinite(ms) && ms > smartStartMs && ms < smartEndMs) tr.classList.add('raw_range_inner');
     }catch(e){}
     const tdT = document.createElement('td');
     tdT.textContent = fmtTs(r.time);
@@ -5555,7 +5644,12 @@ function renderRawTable(){
       try{ _stop(ev); }catch(e){}
       const target = ev && ev.target;
       if(target && target.tagName){ const tag = String(target.tagName).toLowerCase(); if(tag === 'button' || tag === 'input' || tag === 'select') return; }
-      setRawSelectedKey(tr.dataset.key || '');
+      const key = String(tr.dataset.key || '');
+      if(RAW_SMART_MODE && RAW_SMART_MODE.step){
+        try{ rawSmartPickRow(key); }catch(e){ displayError(e); }
+        return;
+      }
+      setRawSelectedKey(key);
     });
 
     tr.addEventListener('dragstart', (ev)=>{
@@ -9917,6 +10011,319 @@ function setRawSelectedKey(key){
   updateRawToolbarState();
 }
 
+function _rawSmartClearMode(){
+  RAW_SMART_MODE = null;
+}
+
+function _rawSmartClearRange(){
+  RAW_SMART_START_KEY = null;
+  RAW_SMART_END_KEY = null;
+  RAW_SMART_START_TIME = null;
+  RAW_SMART_END_TIME = null;
+  try{ renderRawTable(); }catch(e){}
+}
+
+function _rawSmartStatusText(){
+  try{
+    const kind = RAW_SMART_MODE && RAW_SMART_MODE.kind ? String(RAW_SMART_MODE.kind) : '';
+    const step = RAW_SMART_MODE && RAW_SMART_MODE.step ? String(RAW_SMART_MODE.step) : '';
+    if(step === 'start') return 'Startwert markieren (Raw-Tabelle anklicken).';
+    if(step === 'end') return 'Endwert markieren (Raw-Tabelle anklicken).';
+
+    const s = RAW_SMART_START_KEY ? String(RAW_SMART_START_KEY) : '';
+    const e = RAW_SMART_END_KEY ? String(RAW_SMART_END_KEY) : '';
+    if(!s && !e) return '';
+    if(s && !e) return `Start: ${fmtTs(s)} | Ende: (fehlt)`;
+    if(!s && e) return `Start: (fehlt) | Ende: ${fmtTs(e)}`;
+    const rows = Array.isArray(RAW_ROWS) ? RAW_ROWS : [];
+    const si = rows.findIndex(r => String(rowKey(r)) === s);
+    const ei = rows.findIndex(r => String(rowKey(r)) === e);
+    if(si >= 0 && ei >= 0 && ei > si){
+      const inner = Math.max(0, (ei - si - 1));
+      const modeTxt = (kind === 'linear') ? 'Linear' : (kind === 'copy_first' ? 'Erstwert' : '');
+      return `${modeTxt ? (modeTxt + ' | ') : ''}Bereich: ${fmtTs(s)} bis ${fmtTs(e)} | innere Werte: ${inner}`;
+    }
+    return `Bereich: ${fmtTs(s)} bis ${fmtTs(e)}`;
+  }catch(e){
+    return '';
+  }
+}
+
+function _rawSmartEnsureReady(){
+  if(_RAW_INFLIGHT){ err('Raw ist gerade beschaeftigt.'); return false; }
+  if(RAW_EDIT_MODE){ err('Bitte zuerst den Editiermodus verlassen (Editieren-Button).'); return false; }
+  const base = currentFilters();
+  if(!base || !base.measurement || !base.field || (!base.entity_id && !base.friendly_name)){
+    err('Bitte zuerst eine gueltige Dashboard-Serie laden (entity_id oder friendly_name).');
+    return false;
+  }
+  if(!(RAW_ROWS || []).length){ err('Keine Raw-Daten geladen.'); return false; }
+  return true;
+}
+
+function rawSmartStart(kind){
+  try{
+    if(!_rawSmartEnsureReady()) return;
+    const k = (kind === 'copy_first') ? 'copy_first' : 'linear';
+    RAW_SMART_MODE = { kind: k, step: 'start' };
+    RAW_SMART_START_KEY = null;
+    RAW_SMART_END_KEY = null;
+    RAW_SMART_START_TIME = null;
+    RAW_SMART_END_TIME = null;
+    if($rawSmartStatus) $rawSmartStatus.textContent = _rawSmartStatusText();
+    try{ renderRawTable(); }catch(e){}
+
+    const title = (k === 'linear') ? 'Intelligente Korrektur: Linearer Reihe' : 'Intelligente Korrektur: Erstwert kopieren';
+    const txt = [
+      '1. Klicke in der Raw-Tabelle auf den Startwert.',
+      '2. Klicke danach auf den Endwert.',
+      '',
+      'Hinweis:',
+      '- Start/Ende bleiben unveraendert.',
+      '- Nur die inneren Werte werden geaendert.',
+    ].join('\n');
+    if(window.InfluxBroPopup && window.InfluxBroPopup.show){
+      window.InfluxBroPopup.show(title, txt, {
+        actions: [
+          { label: 'Abbrechen', title: 'Abbrechen', onClick: ()=>{ _rawSmartClearMode(); if($rawSmartStatus) $rawSmartStatus.textContent = _rawSmartStatusText(); } },
+        ],
+      });
+    }
+  }catch(e){
+    displayError(e);
+  }
+}
+
+function _rawSmartResolveRange(){
+  const rows = Array.isArray(RAW_ROWS) ? RAW_ROWS : [];
+  const sKey = RAW_SMART_START_KEY ? String(RAW_SMART_START_KEY) : '';
+  const eKey = RAW_SMART_END_KEY ? String(RAW_SMART_END_KEY) : '';
+  if(!sKey || !eKey) return { ok:false, error:'missing_start_or_end' };
+  const si = rows.findIndex(r => String(rowKey(r)) === sKey);
+  const ei = rows.findIndex(r => String(rowKey(r)) === eKey);
+  if(si < 0 || ei < 0) return { ok:false, error:'range_not_in_current_rows' };
+  if(ei <= si) return { ok:false, error:'end_must_be_after_start' };
+  const start = rows[si];
+  const end = rows[ei];
+  const startMs = Date.parse(String(start.time || ''));
+  const endMs = Date.parse(String(end.time || ''));
+  if(!(isFinite(startMs) && isFinite(endMs) && endMs > startMs)) return { ok:false, error:'invalid_time_range' };
+  const startVal = Number(start.value);
+  const endVal = Number(end.value);
+  if(!(isFinite(startVal) && isFinite(endVal))) return { ok:false, error:'start_or_end_not_numeric' };
+  const innerRows = rows.slice(si + 1, ei);
+  if(!innerRows.length) return { ok:false, error:'no_inner_rows' };
+  const maxInner = 1000;
+  if(innerRows.length > maxInner) return { ok:false, error:`too_many_rows:${innerRows.length}` };
+
+  let allInt = Number.isInteger(startVal) && Number.isInteger(endVal);
+  innerRows.forEach(r => {
+    const v = Number(r.value);
+    if(!isFinite(v)) allInt = false;
+    if(isFinite(v) && !Number.isInteger(v)) allInt = false;
+  });
+  const decimals = allInt ? 0 : Math.max(0, Math.trunc(Number(UI_DECIMALS || 0)));
+  return { ok:true, start, end, innerRows, startMs, endMs, startVal, endVal, decimals, allInt };
+}
+
+async function _rawSmartPreview(kind){
+  const r = _rawSmartResolveRange();
+  if(!r.ok){
+    const msg = String(r.error || 'range_invalid');
+    if(msg.startsWith('too_many_rows:')){
+      err('Zu viele Messwerte im Bereich: ' + msg.split(':')[1] + ' (Limit: 1000). Bitte kleineren Bereich waehlen.');
+    }else if(msg === 'end_must_be_after_start'){
+      err('Endwert muss nach dem Startwert liegen.');
+    }else if(msg === 'start_or_end_not_numeric'){
+      err('Start/Endwert muessen numerisch sein.');
+    }else{
+      err('Unguenstiger Bereich: ' + msg);
+    }
+    return false;
+  }
+
+  const k = (kind === 'copy_first') ? 'copy_first' : 'linear';
+  const title = (k === 'linear') ? 'Vorschau: Linearer Reihe' : 'Vorschau: Erstwert kopieren';
+  const unit = _currentEntityUnit();
+
+  const lines = [];
+  lines.push(title);
+  lines.push('');
+  lines.push('Start: ' + fmtTs(r.start.time) + ' | Wert: ' + fmtNumNoRound(r.startVal, r.decimals));
+  lines.push('Ende:  ' + fmtTs(r.end.time) + ' | Wert: ' + fmtNumNoRound(r.endVal, r.decimals));
+  lines.push('Innere Werte: ' + String(r.innerRows.length));
+  if(unit) lines.push('Einheit: ' + String(unit));
+  lines.push('');
+  lines.push('Zeit\tAlt\tNeu');
+
+  const changes = [];
+  for(const row of (r.innerRows || [])){
+    const ms = Date.parse(String(row.time || ''));
+    const oldVal = Number(row.value);
+    if(!(isFinite(ms) && isFinite(oldVal))){
+      err('Nicht-numerischer innerer Wert im Bereich: ' + fmtTs(row.time));
+      return false;
+    }
+
+    let newVal = null;
+    if(k === 'linear'){
+      const ratio = (ms - r.startMs) / (r.endMs - r.startMs);
+      newVal = r.startVal + ratio * (r.endVal - r.startVal);
+    }else{
+      newVal = r.startVal;
+    }
+    if(!isFinite(newVal)){
+      err('Interpolation fehlgeschlagen bei: ' + fmtTs(row.time));
+      return false;
+    }
+
+    let newStr = '';
+    if(r.decimals === 0){
+      newStr = String(Math.round(newVal));
+      newVal = Number(newStr);
+    }else{
+      newStr = Number(newVal).toFixed(r.decimals);
+      newVal = Number(newStr);
+    }
+    changes.push({
+      action: 'overwrite',
+      time: String(row.time || ''),
+      new_value: newStr,
+      decimals: r.decimals,
+      reason: (k === 'linear') ? 'Smart correction: linear interpolation' : 'Smart correction: copy first value',
+      unit: unit || '',
+    });
+    lines.push(fmtTs(row.time) + '\t' + fmtNumNoRound(oldVal, r.decimals) + '\t' + fmtNumNoRound(newVal, r.decimals));
+  }
+
+  const previewText = lines.join('\n');
+  const want = await new Promise((resolve)=>{
+    if(window.InfluxBroPopup && window.InfluxBroPopup.show){
+      window.InfluxBroPopup.show('Intelligente Korrektur', previewText, {
+        actions: [
+          { label: 'Abbrechen', title: 'Abbrechen', onClick: ()=>resolve(false) },
+          { label: 'Uebernehmen', title: 'Uebernehmen', onClick: ()=>resolve(true) },
+        ],
+        copyText: previewText,
+        copyTitle: 'Vorschau kopieren',
+      });
+    }else{
+      resolve(confirm(previewText + '\n\nUebernehmen?'));
+    }
+  });
+  if(!want) return false;
+  return await rawSmartApplyChanges(k, changes);
+}
+
+async function rawSmartApplyChanges(kind, changes){
+  const base = currentFilters();
+  if(RAW_EDIT_MODE){ err('Bitte zuerst den Editiermodus verlassen.'); return false; }
+  if(!base || !base.measurement || !base.field || (!base.entity_id && !base.friendly_name)){
+    err('Bitte zuerst eine gueltige Dashboard-Serie laden.');
+    return false;
+  }
+  if(!Array.isArray(changes) || !changes.length){ err('Keine Aenderungen vorhanden.'); return false; }
+
+  _rawStatusStart('Uebernehme Korrektur...');
+  _RAW_INFLIGHT = true;
+  updateRawToolbarState();
+
+  const attempt = async (force)=>{
+    return await api('./api/apply_changes', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        confirm: true,
+        measurement: base.measurement,
+        field: base.field,
+        entity_id: base.entity_id,
+        friendly_name: base.friendly_name,
+        trigger_page: 'dashboard',
+        trigger_source: 'raw',
+        trigger_action: 'smart_correction',
+        trigger_button: (kind === 'copy_first') ? 'raw_copy_first_range' : 'raw_linear_range',
+        changes: (changes || []).map((c)=>Object.assign({}, c, { force: !!force })),
+      }),
+    }, { silent: true });
+  };
+
+  try{
+    try{ await attempt(false); }
+    catch(e){
+      if(_isOutlierRuleBlock(e)){
+        const wantForce = await confirmOutlierRuleOverride({ time: 'multi', old_value: null, new_value: null }, e.payload);
+        if(!wantForce) return false;
+        await attempt(true);
+      }else{
+        throw e;
+      }
+    }
+  }catch(e){
+    displayError(e);
+    return false;
+  }finally{
+    _RAW_INFLIGHT = false;
+    _rawStatusEnd(true, '');
+    updateRawToolbarState();
+  }
+
+  await refreshAfterDataMutation({ rerunOutliers: true });
+  _rawSmartClearMode();
+  _rawSmartClearRange();
+  ok('Korrektur uebernommen.');
+  return true;
+}
+
+function rawSmartPickRow(key){
+  const k = String(key || '').trim();
+  if(!k) return;
+  const row = (RAW_ROWS || []).find(r => String(rowKey(r)) === k) || null;
+  if(!row){ err('Zeile nicht gefunden.'); return; }
+  const v = Number(row.value);
+  if(!isFinite(v)){ err('Bitte einen numerischen Messwert markieren.'); return; }
+
+  if(!RAW_SMART_MODE || !RAW_SMART_MODE.step) return;
+  if(RAW_SMART_MODE.step === 'start'){
+    RAW_SMART_START_KEY = k;
+    RAW_SMART_START_TIME = String(row.time || k);
+    RAW_SMART_MODE.step = 'end';
+    if($rawSmartStatus) $rawSmartStatus.textContent = _rawSmartStatusText();
+    try{ renderRawTable(); }catch(e){}
+    try{
+      if(window.InfluxBroPopup && window.InfluxBroPopup.show){
+        window.InfluxBroPopup.show('Intelligente Korrektur', 'Startwert gesetzt. Bitte jetzt Endwert markieren (Raw-Tabelle anklicken).', {
+          actions: [
+            { label: 'Abbrechen', title: 'Abbrechen', onClick: ()=>{ _rawSmartClearMode(); if($rawSmartStatus) $rawSmartStatus.textContent = _rawSmartStatusText(); } },
+          ],
+        });
+      }
+    }catch(e){}
+    return;
+  }
+
+  if(RAW_SMART_MODE.step === 'end'){
+    const prevEndKey = RAW_SMART_END_KEY;
+    const prevEndTime = RAW_SMART_END_TIME;
+    RAW_SMART_END_KEY = k;
+    RAW_SMART_END_TIME = String(row.time || k);
+
+    const r = _rawSmartResolveRange();
+    if(!r.ok){
+      RAW_SMART_END_KEY = prevEndKey;
+      RAW_SMART_END_TIME = prevEndTime;
+      if(String(r.error || '') === 'end_must_be_after_start') err('Endwert muss nach dem Startwert liegen.');
+      else err('Ungueltiger Bereich.');
+      return;
+    }
+
+    const kind = String(RAW_SMART_MODE.kind || 'linear');
+    _rawSmartClearMode();
+    if($rawSmartStatus) $rawSmartStatus.textContent = _rawSmartStatusText();
+    try{ renderRawTable(); }catch(e){}
+    _rawSmartPreview(kind).catch((e)=>displayError(e));
+  }
+}
+
 function _setRawDropTarget(key){
   RAW_DROP_TARGET_KEY = key ? String(key) : null;
   Array.from(document.querySelectorAll('#raw_tbl tbody tr.raw_drop_target')).forEach(x=>x.classList.remove('raw_drop_target'));
@@ -9953,6 +10360,15 @@ function updateRawToolbarState(){
     if($rawCopiedInfo){
       $rawCopiedInfo.textContent = hasCopied ? (`Quelle: ${fmtTs(RAW_COPIED.time)} | Wert: ${String(RAW_COPIED.value_str || '')}`) : '';
     }
+
+    // Smart correction buttons
+    try{
+      const hasRows = !!((RAW_ROWS || []).length);
+      const disabled = !hasRows || _RAW_INFLIGHT || RAW_EDIT_MODE;
+      if($rawLinearRange) $rawLinearRange.disabled = disabled;
+      if($rawCopyFirstRange) $rawCopyFirstRange.disabled = disabled;
+      if($rawSmartStatus) $rawSmartStatus.textContent = _rawSmartStatusText();
+    }catch(e){}
 
     // Surface edit-mode status in the existing raw status line.
     try{
@@ -10260,6 +10676,20 @@ try{
       if(!RAW_ROW_SELECTED_KEY){ err('Bitte Ziel-Zeile markieren.'); return; }
       await triggerRawOverwrite(RAW_COPIED.key, RAW_ROW_SELECTED_KEY, {mode:'button'});
     }catch(e){ displayError(e); }
+  });
+}catch(e){}
+
+try{
+  if($rawLinearRange) $rawLinearRange.addEventListener('click', (ev)=>{
+    _stop(ev);
+    rawSmartStart('linear');
+  });
+}catch(e){}
+
+try{
+  if($rawCopyFirstRange) $rawCopyFirstRange.addEventListener('click', (ev)=>{
+    _stop(ev);
+    rawSmartStart('copy_first');
   });
 }catch(e){}
 
@@ -10612,6 +11042,52 @@ try{
       if(!key){ err('Bitte zuerst eine Raw-Zeile markieren.'); return; }
       const entries = _rawHistoryEntries(key).filter(h => h.action === 'overwrite' || h.action === 'delete');
       if(!entries.length){ err('Keine direkte Raw-Aenderung fuer Undo vorhanden.'); return; }
+
+      // If the newest entry belongs to a change-block, roll back the whole block.
+      try{
+        const newest = entries[0] || {};
+        const bid = String(newest.change_block_id || '').trim();
+        if(bid){
+          const ids = _rawHistoryBlockIds(bid);
+          if(!ids.length){ err('Undo-Block nicht vollstaendig geladen.'); return; }
+          const bKind = String(newest.change_block_kind || newest.trigger_button || '').trim();
+          const cnt = (newest.change_block_size !== null && newest.change_block_size !== undefined) ? Number(newest.change_block_size) : ids.length;
+          const txt = [
+            'Raw Undo (Block)',
+            '',
+            `Block: ${bKind || '-'}`,
+            `Aenderungen: ${isFinite(cnt) ? Math.trunc(cnt) : ids.length}`,
+            '',
+            'Soll der gesamte Block rueckgaengig gemacht werden?'
+          ].join('\n');
+          let want = false;
+          if(window.InfluxBroPopup && window.InfluxBroPopup.show){
+            want = await new Promise((resolve)=>{
+              window.InfluxBroPopup.show('Raw Undo', txt, {
+                actions: [
+                  { label: 'Abbrechen', title: 'Abbrechen', onClick: ()=>resolve(false) },
+                  { label: 'OK', title: 'OK', onClick: ()=>resolve(true) },
+                ],
+                copyText: txt,
+                copyTitle: 'Zwischenablage',
+              });
+            });
+          }else{
+            want = confirm(txt);
+          }
+          if(!want) return;
+          await api('./api/history_rollback', {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ confirm: true, ids })
+          });
+          await refreshAfterDataMutation({ rerunOutliers: true });
+          setRawSelectedKey(key);
+          ok('Raw-Block wurde rueckgaengig gemacht.');
+          return;
+        }
+      }catch(e){}
+
       if(entries.length === 1){
         const hist = entries[0];
         const txt = buildRawUndoPrompt(hist);

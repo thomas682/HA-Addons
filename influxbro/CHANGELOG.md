@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.412
+
+### Enhancement
+
+- Dashboard Raw: Neue Aktionsleiste "Intelligente Korrektur" mit Block-Aenderungen fuer ausgewaehlte Bereiche (Linear-Interpolation oder Erstwert kopieren), inkl. Vorschau-Dialog und Undo als Block. ([#372](https://github.com/thomas682/HA-Addons/issues/372))
+
+### Maintenance
+
+- API: `apply_changes` begrenzt die Anzahl Aenderungen pro Request (max 2000)
+- Tests: `python3 -m py_compile influxbro/app/app.py`, `pytest -q tests/test_api_ui_support.py`, `pytest -q tests/test_dashboard_script_integrity.py`, `npx playwright test tests/e2e/dashboard.spec.js`
+- Tested with Home Assistant Core: 2026.4.3
+
 ## 1.12.411
 
 ### Enhancement

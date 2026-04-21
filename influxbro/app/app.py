@@ -24489,6 +24489,8 @@ def apply_changes():
         return jsonify({"ok": False, "error": "measurement and field required"}), 400
     if not isinstance(changes, list) or not changes:
         return jsonify({"ok": False, "error": "changes must be a non-empty list"}), 400
+    if len(changes) > 2000:
+        return jsonify({"ok": False, "error": "too many changes (max 2000)"}), 400
 
     if int(cfg.get("influx_version", 2)) != 2:
         return jsonify({"ok": False, "error": "apply_changes currently supports InfluxDB v2 only"}), 400
@@ -24726,6 +24728,28 @@ def apply_changes():
     try:
         before_rows = [it.get("before_row") for it in planned if isinstance(it.get("before_row"), dict)]
         after_rows = [it.get("after_row") for it in planned if isinstance(it.get("after_row"), dict)]
+
+        smart_btns = {"raw_linear_range", "raw_copy_first_range"}
+        is_smart_block = (
+            (trigger_page or "") == "dashboard"
+            and (trigger_source or "") == "raw"
+            and (trigger_action or "") == "smart_correction"
+            and (trigger_button or "") in smart_btns
+        )
+        block_id = uuid.uuid4().hex if (is_smart_block or applied > 1) else ""
+        block_kind = (trigger_button or trigger_action or trigger_source or "") if block_id else ""
+        try:
+            dts = [it.get("dt") for it in planned if isinstance(it.get("dt"), datetime)]
+            if dts:
+                block_start = _dt_to_rfc3339_utc_full(min(dts).astimezone(timezone.utc))
+                block_end = _dt_to_rfc3339_utc_full(max(dts).astimezone(timezone.utc))
+            else:
+                block_start = ""
+                block_end = ""
+        except Exception:
+            block_start = ""
+            block_end = ""
+
         for it in planned:
             _history_append({
                 "kind": "change",
@@ -24741,6 +24765,17 @@ def apply_changes():
                 "old_value": it.get("old_value"),
                 "new_value": it.get("new_value"),
                 "reason": str(it.get("reason") or ""),
+                **(
+                    {
+                        "change_block_id": block_id,
+                        "change_block_kind": block_kind,
+                        "change_block_size": applied,
+                        "change_block_start": block_start,
+                        "change_block_end": block_end,
+                    }
+                    if block_id
+                    else {}
+                ),
                 "trigger_page": trigger_page,
                 "trigger_source": trigger_source,
                 "trigger_action": trigger_action,
@@ -25216,13 +25251,18 @@ def api_raw_history_summary():
                 "new_value": it.get("new_value"),
                 "reason": str(it.get("reason") or ""),
                 "ref_id": str(it.get("ref_id") or ""),
+                "change_block_id": str(it.get("change_block_id") or ""),
+                "change_block_kind": str(it.get("change_block_kind") or ""),
+                "change_block_size": it.get("change_block_size"),
+                "change_block_start": str(it.get("change_block_start") or ""),
+                "change_block_end": str(it.get("change_block_end") or ""),
                 **trigger,
             }
             is_raw_change = (
                 trigger["trigger_page"] == "dashboard"
                 and trigger["trigger_source"] == "raw"
                 and str(it.get("action") or "").strip().lower() in ("overwrite", "delete")
-                and trigger["trigger_button"] in ("raw_paste", "raw_delete")
+                and trigger["trigger_button"] in ("raw_paste", "raw_delete", "raw_linear_range", "raw_copy_first_range")
                 and str(it.get("id") or "").strip() not in rolled_back_refs
             )
             for raw_key, norm in raw_time_map.items():

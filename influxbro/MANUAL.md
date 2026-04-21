@@ -387,7 +387,9 @@ Die fruehere Bearbeitungsliste wurde entfernt. Korrekturen erfolgen direkt in de
   - `Editieren`: Editiermodus ein/aus (staged Aenderungen werden erst bei `Uebernehmen` geschrieben)
   - `Uebernehmen`: schreibt alle staged Aenderungen in die DB, prueft erst dann Outlier-Regeln und startet danach die Ausreisserpruefung erneut
   - `Loeschen`: DB-Punkt loeschen (mit Bestaetigung)
-  - `Undo`: letzte direkte Raw-Aenderung rueckgaengig machen (best-effort)
+  - `Intelligente Korrektur: Linearer Reihe`: Button klicken, dann Startwert und Endwert in der Raw-Tabelle anklicken. Danach erscheint eine Vorschau-Tabelle; die inneren Werte werden per linearer Interpolation ueberschrieben (Start/Ende bleiben unveraendert).
+  - `Intelligente Korrektur: Erstwert kopieren`: Button klicken, dann Startwert und Endwert anklicken. Danach Vorschau; die inneren Werte werden mit dem Startwert ueberschrieben (Start/Ende bleiben unveraendert).
+  - `Undo`: letzte direkte Raw-Aenderung rueckgaengig machen (best-effort). Bei Block-Aenderungen (Intelligente Korrektur) wird der gesamte Block rueckgaengig gemacht, wenn du eine der geaenderten inneren Zeilen selektierst.
 - `Abbruch` in der Raw-Toolbar bricht laufende Raw-Ladevorgaenge ab.
 - Hinweis: Im Editiermodus wird oberhalb der Tabelle `Editiermodus aktiv` angezeigt. `Uebernehmen` ist nur aktiv, wenn Aenderungen staged sind.
 - Hinweis: Wenn eine Wert-Aenderung gegen Outlier-Regeln verstoesst (z.B. Grenzen oder Max-Sprung), blockiert InfluxBro standardmaessig und zeigt einen Dialog mit exakter Erklaerung. Mit `trotzdem aendern` kann die Aenderung explizit erzwungen werden.

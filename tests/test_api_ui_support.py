@@ -451,6 +451,9 @@ def test_dashboard_raw_actions_and_titles_are_updated():
     assert 'Raw Daten Analyse' in body
     assert 'id="raw_delete"' in body
     assert 'id="raw_undo"' in body
+    assert 'data-ui="dashboard_raw.row_actions_smart"' in body
+    assert 'id="raw_linear_range"' in body
+    assert 'id="raw_copy_first_range"' in body
     assert 'id="raw_info_btn"' in body
     assert '>Änderung<' in body
 
