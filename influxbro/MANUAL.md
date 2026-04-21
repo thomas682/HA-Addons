@@ -840,6 +840,11 @@ UI:
 - `Repository URL` und `PayPal Donate URL` sind feste interne Werte und nicht mehr in der Settings-UI editierbar.
 - Die Log-Farbparameter fuer `ERROR` und `WARN` verwenden jetzt denselben kombinierten Color-Picker/Textfeld-Stil wie die anderen Farbparameter der Oberflaeche.
 - Die Farbparameter `Seitensuche Highlight Farbe`, `Navigationshilfe Highlight Farbe` und `Analysecache ausgeblendet Farbe` verwenden ebenfalls den kombinierten Color-Picker/Textfeld-Stil.
+- Iconbilder: In `Einstellungen -> UI -> Iconbilder` gibt es eine Tabelle aller bekannten UI-Elemente (data-ui Keys, project-wide Inventar).
+- Iconbilder: Pro Key kann eine Override-SVG hinterlegt werden (Doppelklick auf die SVG-Zelle / Edit-Button) oder per Reset entfernt werden.
+- Iconbilder: Speicherung erfolgt im aktiven UI-Profil (PC/MOBIL).
+- Iconbilder: Sicherheit: SVG wird serverseitig sanitisiert (XSS-Schutz) und ist groessenbegrenzt; Preview zeigt den gespeicherten Stand.
+- Iconbilder: Anwendung: Overrides werden sofort auf passende Buttons angewendet (ohne Reload, best-effort).
 
 Fehleranzeige:
 

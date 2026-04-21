@@ -948,7 +948,7 @@
   }catch(e){}
 })();
 
-// Global icon-only buttons (exact text matches on small buttons).
+// Global icon overrides (data-ui based) + icon-only buttons.
 (function(){
   function _norm(s){ return String(s || '').replace(/\s+/g, ' ').trim(); }
   const ICONS = {
@@ -972,39 +972,152 @@
     'loeschen': ICONS.trash,
   };
 
-  function _iconize(root){
+  const ORIG = new WeakMap();
+  const OV = { items: {}, loaded: false, loading: null };
+
+  function _parseSvg(svgHtml){
+    try{
+      const t = document.createElement('template');
+      t.innerHTML = String(svgHtml || '').trim();
+      const svg = t.content && t.content.querySelector ? t.content.querySelector('svg') : null;
+      return svg ? svg : null;
+    }catch(e){
+      return null;
+    }
+  }
+
+  function _storeOrig(btn){
+    try{
+      if(!btn || ORIG.has(btn)) return;
+      ORIG.set(btn, {
+        html: String(btn.innerHTML || ''),
+        aria: btn.hasAttribute('aria-label') ? String(btn.getAttribute('aria-label') || '') : null,
+        title: btn.hasAttribute('title') ? String(btn.getAttribute('title') || '') : null,
+      });
+    }catch(e){}
+  }
+
+  function _restore(btn){
+    try{
+      const o = ORIG.get(btn);
+      if(!o) return;
+      btn.innerHTML = String(o.html || '');
+      if(o.aria === null) btn.removeAttribute('aria-label');
+      else btn.setAttribute('aria-label', String(o.aria || ''));
+      if(o.title === null) btn.removeAttribute('title');
+      else btn.setAttribute('title', String(o.title || ''));
+      btn.removeAttribute('data-ib-icon-ov');
+      btn.removeAttribute('data-ib-iconized');
+      ORIG.delete(btn);
+    }catch(e){}
+  }
+
+  function _applySvg(btn, svgHtml, labelForAria){
+    try{
+      if(!btn) return;
+      const svg = _parseSvg(svgHtml);
+      if(!svg) return;
+      _storeOrig(btn);
+
+      // If there is already an SVG inside, replace the first one.
+      const existing = btn.querySelector ? btn.querySelector('svg') : null;
+      if(existing && existing.parentNode){
+        existing.replaceWith(svg);
+      }else{
+        // Keep existing label content if present.
+        const hasElChild = Array.from(btn.childNodes || []).some(n => n && n.nodeType === Node.ELEMENT_NODE);
+        if(!hasElChild){
+          btn.innerHTML = '';
+          btn.appendChild(svg);
+        }else{
+          btn.insertBefore(svg, btn.firstChild);
+        }
+      }
+
+      const aria = _norm(btn.getAttribute('aria-label'));
+      const title = _norm(btn.getAttribute('title'));
+      const lbl = _norm(labelForAria || aria || btn.textContent);
+      if(!aria && lbl) btn.setAttribute('aria-label', lbl);
+      if(!title && lbl) btn.setAttribute('title', lbl);
+      btn.setAttribute('data-ib-icon-ov', '1');
+    }catch(e){}
+  }
+
+  function _apply(root){
     try{
       const scope = root || (document.querySelector('main.content') || document.body);
-      scope.querySelectorAll('button.btn_sm').forEach((btn)=>{
+      scope.querySelectorAll('button[data-ui],button.btn_sm').forEach((btn)=>{
         try{
-          if(btn.hasAttribute('data-ib-iconized')) return;
-          if(btn.querySelector && btn.querySelector('svg')) return;
-          // Only iconize pure-text buttons.
-          const hasElChild = Array.from(btn.childNodes || []).some(n => n && n.nodeType === Node.ELEMENT_NODE);
-          if(hasElChild) return;
-          const txt = _norm(btn.textContent);
-          if(!txt || !MAP[txt]) return;
-          const title = _norm(btn.getAttribute('title'));
-          if(!btn.getAttribute('aria-label')) btn.setAttribute('aria-label', txt);
-          if(!title) btn.setAttribute('title', txt);
-          btn.innerHTML = MAP[txt];
-          btn.setAttribute('data-ib-iconized', '1');
+          const uiKey = _norm(btn.getAttribute('data-ui'));
+          const ov = uiKey && OV.items ? OV.items[uiKey] : null;
+          if(ov){
+            _applySvg(btn, ov, uiKey);
+            return;
+          }
+
+          // Fallback: old behavior (exact text match on pure-text small buttons).
+          if(btn.classList && btn.classList.contains('btn_sm')){
+            if(btn.querySelector && btn.querySelector('svg')) return;
+            const hasElChild = Array.from(btn.childNodes || []).some(n => n && n.nodeType === Node.ELEMENT_NODE);
+            if(hasElChild) return;
+            const txt = _norm(btn.textContent);
+            if(txt && MAP[txt]){
+              _storeOrig(btn);
+              if(!btn.getAttribute('aria-label')) btn.setAttribute('aria-label', txt);
+              if(!_norm(btn.getAttribute('title'))) btn.setAttribute('title', txt);
+              btn.innerHTML = MAP[txt];
+              btn.setAttribute('data-ib-iconized', '1');
+              return;
+            }
+          }
+
+          // If it was overridden/iconized before but there is no rule anymore: restore.
+          if(btn.hasAttribute('data-ib-icon-ov') || btn.hasAttribute('data-ib-iconized')) _restore(btn);
         }catch(e){}
       });
     }catch(e){}
   }
 
+  async function _load(){
+    try{
+      if(OV.loading) return OV.loading;
+      OV.loading = fetch('./api/icon_svg')
+        .then(r=>r.json())
+        .then(j=>{
+          if(j && j.ok && j.items && typeof j.items === 'object') OV.items = j.items;
+          OV.loaded = true;
+        })
+        .catch(()=>{})
+        .finally(()=>{ OV.loading = null; });
+      return OV.loading;
+    }catch(e){
+      return null;
+    }
+  }
+
+  // Exported hook: reload overrides and re-apply.
   try{
-    if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ()=>_iconize(null));
-    else _iconize(null);
+    window.InfluxBroApplyIconOverrides = function(root){
+      try{
+        return _load().then(()=>_apply(root)).catch(()=>_apply(root));
+      }catch(e){
+        try{ _apply(root); }catch(x){}
+      }
+    };
   }catch(e){}
 
-  // Keep it in sync with dynamic UI changes.
+  try{
+    const run = ()=>{ try{ _load().then(()=>_apply(null)).catch(()=>_apply(null)); }catch(e){ try{ _apply(null); }catch(x){} } };
+    if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run);
+    else run();
+  }catch(e){}
+
+  // Keep it in sync with dynamic UI changes (no reload).
   try{
     let t = null;
     const obs = new MutationObserver(()=>{
       if(t) return;
-      t = setTimeout(()=>{ t = null; _iconize(null); }, 120);
+      t = setTimeout(()=>{ t = null; _apply(null); }, 120);
     });
     obs.observe(document.body, { childList:true, subtree:true });
   }catch(e){}

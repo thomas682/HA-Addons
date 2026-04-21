@@ -1057,3 +1057,69 @@ def test_config_tooltips_include_page_search_highlight_settings():
     assert "settings.ui_page_search_highlight_color" in body
     assert "settings.ui_page_search_highlight_width_px" in body
     assert "settings.ui_page_search_highlight_duration_ms" in body
+
+
+def test_settings_iconbilder_section_exists():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "config.html").read_text()
+    assert 'id="ui_iconbilder"' in body
+    assert 'id="icons_tbl"' in body
+    assert 'id="icon_svg_modal"' in body
+    assert "initIconbilder" in body
+
+
+def test_tooltips_expose_icon_override_apply_hook():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
+    assert "window.InfluxBroApplyIconOverrides" in body
+    assert "fetch('./api/icon_svg')" in body
+
+
+def test_api_icon_svg_sanitizes_and_persists(load_app_module, tmp_path):
+    cfg_root = tmp_path / "config"
+    data_root = tmp_path / "data"
+
+    app_mod = load_app_module(config_dir=cfg_root, data_dir=data_root)
+    client = app_mod.app.test_client()
+
+    # Start empty
+    r = client.get("/api/icon_svg")
+    assert r.status_code == 200
+    assert r.get_json()["ok"] is True
+    assert r.get_json()["items"] == {}
+
+    svg = '<svg viewBox="0 0 24 24" onload="alert(1)"><script>alert(1)</script><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="2"/></svg>'
+    r = client.post("/api/icon_svg/set", json={"key": "dashboard_raw.btn_kopieren", "svg": svg})
+    assert r.status_code == 200
+    assert r.get_json()["ok"] is True
+
+    r = client.get("/api/icon_svg")
+    j = r.get_json()
+    assert j["ok"] is True
+    saved = j["items"]["dashboard_raw.btn_kopieren"]
+    assert "script" not in saved.lower()
+    assert "onload" not in saved.lower()
+    assert "<svg" in saved.lower()
+    assert "<path" in saved.lower()
+
+    # Delete
+    r = client.post("/api/icon_svg/set", json={"key": "dashboard_raw.btn_kopieren", "svg": None})
+    assert r.status_code == 200
+    r = client.get("/api/icon_svg")
+    assert r.get_json()["items"] == {}
+
+
+def test_api_ui_inventory_returns_items(load_app_module, tmp_path):
+    cfg_root = tmp_path / "config"
+    data_root = tmp_path / "data"
+
+    app_mod = load_app_module(config_dir=cfg_root, data_dir=data_root)
+    client = app_mod.app.test_client()
+
+    r = client.get("/api/ui_inventory")
+    assert r.status_code == 200
+    j = r.get_json()
+    assert j["ok"] is True
+    assert isinstance(j["items"], list)
+    assert j["total"] == len(j["items"])
+    # Must include at least a few known keys.
+    keys = {str(x.get("key") or "") for x in j["items"] if isinstance(x, dict)}
+    assert "config_page.main" in keys

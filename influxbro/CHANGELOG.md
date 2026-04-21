@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.402
+
+### Enhancement
+
+- Einstellungen: Neues Kapitel `Iconbilder` (project-wide Inventar der `data-ui` Keys) mit SVG-Editor pro Key inkl. Preview, Sanitization + Groessenlimit; Speicherung im aktiven UI-Profil und sofortige Anwendung auf Buttons. ([#361](https://github.com/thomas682/HA-Addons/issues/361))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`, `pytest -q`
+- Tested with Home Assistant Core: 2026.4.3
+
 ## 1.12.401
 
 ### Bugfix

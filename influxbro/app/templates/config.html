@@ -334,6 +334,65 @@
           </div>
         </div>
 
+        <details class="card" id="ui_iconbilder" open data-ui="config_settings.section_root" title="settings.ui.icons">
+          <summary><span class="ib_summary_row"><span>Iconbilder</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Iconbilder" data-info-body="In diesem Kapitel kannst du pro UI-Element (data-ui Key) ein Icon (SVG) hinterlegen.\n\nFeatures:\n- Project-wide Inventar aller data-ui Keys (aus den Templates gescannt, best-effort)\n- SVG Editiermodus per Doppelklick\n- Serverseitige Sanitization (XSS-Schutz) + Groessenlimit\n- Speicherung im aktiven UI-Profil (PC/MOBIL)\n- Sofortige Anwendung (Icons werden live neu gerendert)\n\nHinweis:\n- Nur komplette SVGs im Format &lt;svg ...&gt;...&lt;/svg&gt; einfuegen.\n- Preview zeigt den gespeicherten (sanitisierten) Stand." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
+          <div class="card_body">
+            <div class="grid">
+              <div class="param_row">
+                <div class="param_label">Filter<span class="param_hint">Suche in Key/Label/Area.</span></div>
+                <div class="param_control">
+                  <input id="icons_search" placeholder="z.B. dashboard_raw.btn_kopieren" class="mono" data-ui="config_settings.input_icons_search" title="settings.icons.search" />
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Area</div>
+                <div class="param_control">
+                  <select id="icons_area" data-ui="config_settings.sel_icons_area" title="settings.icons.area">
+                    <option value="">Alle</option>
+                  </select>
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Nur ueberschrieben</div>
+                <div class="param_control">
+                  <label class="ib_chk_row"><input type="checkbox" id="icons_only_overrides" data-ui="config_settings.chk_icons_only_overrides" title="settings.icons.only_overrides" /><span></span></label>
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Neu laden</div>
+                <div class="param_control">
+                  <button id="icons_reload" class="btn_sm" type="button" data-ui="config_settings.btn_icons_reload" title="settings.icons.reload">Reload</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="table_wrap" data-ui="config_settings.panel_icons_table_wrap" title="settings.icons.table.wrap">
+              <div class="table_title">Icon-Mapping (UI-Profil)</div>
+              <div class="table_head">
+                <div class="tbl_actions">
+                  <span class="muted" id="icons_status">...</span>
+                </div>
+              </div>
+              <div id="icons_tbl_box" style="border:1px solid #eee; border-radius:12px; overflow:auto; max-height:520px; margin-top:10px;">
+                <table id="icons_tbl" class="cfg_tbl" data-ui="config_settings.tbl_icons" title="settings.icons.table">
+                  <thead>
+                    <tr>
+                      <th style="width:14ch;">Area</th>
+                      <th>data-ui Key</th>
+                      <th>Label</th>
+                      <th style="width:32ch;">SVG (Override)</th>
+                      <th style="width:10ch;">Preview</th>
+                      <th style="width:16ch;">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+              <div class="err" id="icons_err" style="display:none;"></div>
+            </div>
+          </div>
+        </details>
+
         <details class="card" id="ui_table" open data-ui="config_settings.section_root" title="settings.ui.table">
           <summary><span class="ib_summary_row"><span>Tabellen</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Tabellen" data-info-body="Globale Tabellen-Defaults (Master-Template).\n\nBeispiele:\n- sichtbare Zeilen (Hoehe)\n- Spalten/Umbruch/Filter\n- Checkbox-Skalierung\n\nDiese Werte betreffen u.a. Backup/Restore/Jobs/History Tabellen." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
           <div class="card_body">
@@ -1496,6 +1555,270 @@ let CFG_DEFAULTS = null;
 // UI-State backed settings (profile-based)
 const UI_DOC_OPEN_MODE_KEY = 'influxbro.ui.tooltip_doc_open_mode';
 const $uiDocOpenMode = document.getElementById('ui_tooltip_doc_open_mode');
+
+// Iconbilder (SVG overrides per data-ui, stored in UI profile)
+const $iconsSearch = document.getElementById('icons_search');
+const $iconsArea = document.getElementById('icons_area');
+const $iconsOnlyOverrides = document.getElementById('icons_only_overrides');
+const $iconsReload = document.getElementById('icons_reload');
+const $iconsTbl = document.getElementById('icons_tbl');
+const $iconsStatus = document.getElementById('icons_status');
+const $iconsErr = document.getElementById('icons_err');
+
+const $iconSvgModal = document.getElementById('icon_svg_modal');
+const $iconSvgTitle = document.getElementById('icon_svg_modal_title');
+const $iconSvgSub = document.getElementById('icon_svg_modal_sub');
+const $iconSvgText = document.getElementById('icon_svg_text');
+const $iconSvgErr = document.getElementById('icon_svg_modal_err');
+const $iconSvgPreview = document.getElementById('icon_svg_modal_preview');
+const $iconSvgCancel = document.getElementById('icon_svg_cancel');
+const $iconSvgSave = document.getElementById('icon_svg_save');
+const $iconSvgReset = document.getElementById('icon_svg_reset');
+
+let _ICON_INV = [];
+let _ICON_OVERRIDES = {};
+let _ICON_EDIT_KEY = '';
+
+function _iconsSetErr(msg){
+  try{
+    if(!$iconsErr) return;
+    const m = String(msg || '').trim();
+    if(!m){ $iconsErr.style.display='none'; $iconsErr.textContent=''; return; }
+    $iconsErr.textContent = m;
+    $iconsErr.style.display = 'block';
+  }catch(e){}
+}
+
+function _iconsSetStatus(msg){
+  try{ if($iconsStatus) $iconsStatus.textContent = String(msg || ''); }catch(e){}
+}
+
+function _iconModalSetErr(msg){
+  try{
+    if(!$iconSvgErr) return;
+    const m = String(msg || '').trim();
+    if(!m){ $iconSvgErr.style.display='none'; $iconSvgErr.textContent=''; return; }
+    $iconSvgErr.textContent = m;
+    $iconSvgErr.style.display = 'block';
+  }catch(e){}
+}
+
+function _iconModalOpen(key){
+  try{
+    _ICON_EDIT_KEY = String(key || '').trim();
+    if(!$iconSvgModal || !$iconSvgText) return;
+    _iconModalSetErr('');
+    const inv = (_ICON_INV || []).find(x => x && String(x.key||'') === _ICON_EDIT_KEY) || null;
+    const label = inv && inv.label ? String(inv.label) : '';
+    const area = inv && inv.area ? String(inv.area) : '';
+    try{ if($iconSvgTitle) $iconSvgTitle.textContent = 'Icon SVG: ' + _ICON_EDIT_KEY; }catch(e){}
+    try{ if($iconSvgSub) $iconSvgSub.textContent = (area ? (area + ' | ') : '') + (label || ''); }catch(e){}
+    const cur = (_ICON_OVERRIDES && _ICON_EDIT_KEY && _ICON_OVERRIDES[_ICON_EDIT_KEY]) ? String(_ICON_OVERRIDES[_ICON_EDIT_KEY]||'') : '';
+    try{ $iconSvgText.value = cur; }catch(e){}
+    try{
+      if($iconSvgPreview){
+        $iconSvgPreview.innerHTML = '';
+        if(cur) $iconSvgPreview.innerHTML = cur;
+      }
+    }catch(e){}
+    try{ $iconSvgModal.style.display = 'block'; }catch(e){}
+  }catch(e){}
+}
+
+function _iconModalClose(){
+  try{ _ICON_EDIT_KEY = ''; }catch(e){}
+  try{ _iconModalSetErr(''); }catch(e){}
+  try{ if($iconSvgModal) $iconSvgModal.style.display = 'none'; }catch(e){}
+}
+
+async function _iconsFetchJson(url, opts){
+  const r = await fetch(url, opts || {});
+  const j = await r.json().catch(()=>null);
+  if(!j || !j.ok) throw new Error((j && j.error) ? j.error : ('Request failed: ' + String(url || '')));
+  return j;
+}
+
+async function _iconsLoad(){
+  if(!$iconsTbl) return;
+  _iconsSetErr('');
+  _iconsSetStatus('Lade...');
+  const inv = await _iconsFetchJson('./api/ui_inventory', {});
+  const ov = await _iconsFetchJson('./api/icon_svg', {});
+  _ICON_INV = Array.isArray(inv.items) ? inv.items : [];
+  _ICON_OVERRIDES = (ov.items && typeof ov.items === 'object') ? ov.items : {};
+  try{
+    if($iconsArea){
+      const seen = {};
+      const areas = [];
+      (_ICON_INV||[]).forEach(x=>{
+        const a = x && x.area ? String(x.area) : '';
+        if(!a) return;
+        if(seen[a]) return;
+        seen[a] = 1;
+        areas.push(a);
+      });
+      areas.sort();
+      // keep first option (Alle)
+      $iconsArea.innerHTML = '<option value="">Alle</option>' + areas.map(a=>'<option value="'+String(a).replace(/"/g,'&quot;')+'">'+a+'</option>').join('');
+    }
+  }catch(e){}
+  _iconsRender();
+}
+
+function _iconsRender(){
+  try{
+    if(!$iconsTbl) return;
+    const q = $iconsSearch ? String($iconsSearch.value || '').trim().toLowerCase() : '';
+    const area = $iconsArea ? String($iconsArea.value || '').trim() : '';
+    const onlyOv = $iconsOnlyOverrides ? !!$iconsOnlyOverrides.checked : false;
+
+    const rows = [];
+    (_ICON_INV || []).forEach(it => {
+      if(!it || !it.key) return;
+      const k = String(it.key || '');
+      const a = String(it.area || '');
+      const l = String(it.label || '');
+      const hasOv = !!(_ICON_OVERRIDES && _ICON_OVERRIDES[k]);
+      if(onlyOv && !hasOv) return;
+      if(area && a !== area) return;
+      if(q){
+        const s = (a + ' ' + k + ' ' + l).toLowerCase();
+        if(s.indexOf(q) === -1) return;
+      }
+      rows.push({area: a, key: k, label: l, hasOv: hasOv});
+    });
+
+    const tbody = $iconsTbl.querySelector('tbody');
+    if(!tbody) return;
+    tbody.innerHTML = '';
+
+    const frag = document.createDocumentFragment();
+    rows.forEach(r => {
+      const tr = document.createElement('tr');
+
+      const tdArea = document.createElement('td');
+      tdArea.textContent = r.area;
+      tr.appendChild(tdArea);
+
+      const tdKey = document.createElement('td');
+      tdKey.textContent = r.key;
+      tdKey.className = 'mono';
+      tr.appendChild(tdKey);
+
+      const tdLabel = document.createElement('td');
+      tdLabel.textContent = r.label;
+      tr.appendChild(tdLabel);
+
+      const tdSvg = document.createElement('td');
+      tdSvg.className = 'mono';
+      tdSvg.style.cursor = 'pointer';
+      const cur = (_ICON_OVERRIDES && _ICON_OVERRIDES[r.key]) ? String(_ICON_OVERRIDES[r.key]||'') : '';
+      tdSvg.textContent = cur ? (cur.length > 120 ? (cur.slice(0, 120) + '...') : cur) : '';
+      tdSvg.title = 'Doppelklick: editieren';
+      tdSvg.addEventListener('dblclick', ()=>_iconModalOpen(r.key));
+      tr.appendChild(tdSvg);
+
+      const tdPrev = document.createElement('td');
+      const pv = document.createElement('div');
+      pv.style.width = '28px';
+      pv.style.height = '28px';
+      pv.style.display = 'flex';
+      pv.style.alignItems = 'center';
+      pv.style.justifyContent = 'center';
+      pv.style.border = '1px solid #eee';
+      pv.style.borderRadius = '8px';
+      pv.style.background = '#fafafa';
+      try{ if(cur) pv.innerHTML = cur; }catch(e){}
+      tdPrev.appendChild(pv);
+      tr.appendChild(tdPrev);
+
+      const tdAct = document.createElement('td');
+      tdAct.style.whiteSpace = 'nowrap';
+
+      const btnEdit = document.createElement('button');
+      btnEdit.type = 'button';
+      btnEdit.className = 'btn_sm';
+      btnEdit.textContent = 'Edit';
+      btnEdit.addEventListener('click', ()=>_iconModalOpen(r.key));
+      tdAct.appendChild(btnEdit);
+
+      const btnReset = document.createElement('button');
+      btnReset.type = 'button';
+      btnReset.className = 'btn_sm';
+      btnReset.textContent = 'Reset';
+      btnReset.style.marginLeft = '6px';
+      btnReset.disabled = !r.hasOv;
+      btnReset.addEventListener('click', async ()=>{
+        try{
+          _iconsSetErr('');
+          await _iconsFetchJson('./api/icon_svg/set', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({key: r.key, svg: null})});
+          await _iconsLoad();
+          try{ if(window.InfluxBroApplyIconOverrides) window.InfluxBroApplyIconOverrides(); }catch(e){}
+        }catch(e){
+          _iconsSetErr(String(e || 'Reset failed'));
+        }
+      });
+      tdAct.appendChild(btnReset);
+      tr.appendChild(tdAct);
+
+      frag.appendChild(tr);
+    });
+    tbody.appendChild(frag);
+
+    const totalInv = (_ICON_INV || []).length;
+    const totalOv = _ICON_OVERRIDES ? Object.keys(_ICON_OVERRIDES).length : 0;
+    _iconsSetStatus('Eintraege: ' + String(rows.length) + ' (Inventar: ' + totalInv + ', Overrides: ' + totalOv + ')');
+  }catch(e){
+    _iconsSetErr(String(e || 'Render failed'));
+  }
+}
+
+async function _iconModalSave(){
+  try{
+    if(!_ICON_EDIT_KEY) return;
+    _iconModalSetErr('');
+    const svg = $iconSvgText ? String($iconSvgText.value || '') : '';
+    await _iconsFetchJson('./api/icon_svg/set', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({key: _ICON_EDIT_KEY, svg: svg})});
+    await _iconsLoad();
+    const cur = (_ICON_OVERRIDES && _ICON_EDIT_KEY && _ICON_OVERRIDES[_ICON_EDIT_KEY]) ? String(_ICON_OVERRIDES[_ICON_EDIT_KEY]||'') : '';
+    try{ if($iconSvgText) $iconSvgText.value = cur; }catch(e){}
+    try{ if($iconSvgPreview){ $iconSvgPreview.innerHTML = ''; if(cur) $iconSvgPreview.innerHTML = cur; } }catch(e){}
+    try{ if(window.InfluxBroApplyIconOverrides) window.InfluxBroApplyIconOverrides(); }catch(e){}
+  }catch(e){
+    _iconModalSetErr(String(e || 'Save failed'));
+  }
+}
+
+async function _iconModalReset(){
+  try{
+    if(!_ICON_EDIT_KEY) return;
+    _iconModalSetErr('');
+    await _iconsFetchJson('./api/icon_svg/set', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({key: _ICON_EDIT_KEY, svg: null})});
+    await _iconsLoad();
+    try{ if($iconSvgText) $iconSvgText.value = ''; }catch(e){}
+    try{ if($iconSvgPreview) $iconSvgPreview.innerHTML = ''; }catch(e){}
+    try{ if(window.InfluxBroApplyIconOverrides) window.InfluxBroApplyIconOverrides(); }catch(e){}
+  }catch(e){
+    _iconModalSetErr(String(e || 'Reset failed'));
+  }
+}
+
+function initIconbilder(){
+  try{
+    if(!$iconsTbl) return;
+    try{ if($iconsSearch) $iconsSearch.addEventListener('input', ()=>_iconsRender()); }catch(e){}
+    try{ if($iconsArea) $iconsArea.addEventListener('change', ()=>_iconsRender()); }catch(e){}
+    try{ if($iconsOnlyOverrides) $iconsOnlyOverrides.addEventListener('change', ()=>_iconsRender()); }catch(e){}
+    try{ if($iconsReload) $iconsReload.addEventListener('click', ()=>_iconsLoad().catch(e=>_iconsSetErr(String(e||'Reload failed')))); }catch(e){}
+
+    try{ if($iconSvgCancel) $iconSvgCancel.addEventListener('click', _iconModalClose); }catch(e){}
+    try{ if($iconSvgSave) $iconSvgSave.addEventListener('click', _iconModalSave); }catch(e){}
+    try{ if($iconSvgReset) $iconSvgReset.addEventListener('click', _iconModalReset); }catch(e){}
+    try{ if($iconSvgModal) $iconSvgModal.addEventListener('click', (ev)=>{ try{ if(ev && ev.target === $iconSvgModal) _iconModalClose(); }catch(e){} }); }catch(e){}
+
+    _iconsLoad().catch(e=>_iconsSetErr(String(e||'Iconbilder load failed')));
+  }catch(e){}
+}
 
 // Section title color pickers (sync with text inputs; text inputs also allow words)
 const $pageSearchHlColor = document.getElementById('ui_page_search_highlight_color_color');
@@ -3011,6 +3334,8 @@ function restructureSettings(){
 
 try{ if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', restructureSettings, {once:true}); else restructureSettings(); }catch(e){}
 
+try{ if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initIconbilder, {once:true}); else initIconbilder(); }catch(e){}
+
 load().catch(e=>{
   try{ reportConfigError('Settings initial load failed', { stage: 'load' }, e && e.stack ? e.stack : String(e || '')); }catch(x){}
   err(String(e));
@@ -3105,6 +3430,35 @@ try{
     <div style="font-weight:800;font-size:16px;margin-bottom:8px;">Verbindung erfolgreich</div>
     <div class="modal_body" style="margin-bottom:14px;color:#0a7a28;"></div>
     <div style="display:flex;justify-content:center;gap:8px;"><button id="test_success_close" class="btn_sm" type="button">OK</button></div>
+  </div>
+</div>
+
+<!-- Icon SVG editor modal -->
+<div id="icon_svg_modal" style="display:none; position:fixed; inset:0; z-index:12010; background: rgba(0,0,0,0.45);">
+  <div style="max-width:980px;margin:6vh auto;background:#fff;border-radius:12px;padding:16px;box-shadow:0 16px 60px rgba(0,0,0,0.3);">
+    <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">
+      <div>
+        <div id="icon_svg_modal_title" style="font-weight:900;font-size:16px;margin-bottom:4px;">Icon SVG</div>
+        <div id="icon_svg_modal_sub" class="muted" style="margin-bottom:10px;"></div>
+      </div>
+      <button id="icon_svg_cancel" class="btn_sm" type="button">Schliessen</button>
+    </div>
+    <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-start;">
+      <div style="flex:1 1 620px; min-width:280px;">
+        <textarea id="icon_svg_text" class="mono" spellcheck="false" style="width:100%;min-height:280px;resize:vertical;box-sizing:border-box;padding:10px;border:1px solid #ddd;border-radius:10px;"></textarea>
+        <div class="err" id="icon_svg_modal_err" style="display:none;margin-top:8px;"></div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
+          <button id="icon_svg_save" class="btn_sm" type="button">Speichern</button>
+          <button id="icon_svg_reset" class="btn_sm" type="button">Reset</button>
+        </div>
+        <div class="muted" style="margin-top:8px;">Hinweis: Serverseitige Sanitization kann Elemente/Attribute entfernen. Max. ~10k Zeichen.</div>
+      </div>
+      <div style="flex:0 0 260px; min-width:220px;">
+        <div style="font-weight:800;font-size:13px;margin-bottom:8px;">Preview</div>
+        <div id="icon_svg_modal_preview" style="width:72px;height:72px;border:1px solid #eee;border-radius:12px;display:flex;align-items:center;justify-content:center;background:#fafafa;"></div>
+        <div class="muted" style="margin-top:10px;">Preview rendert die gespeicherte Override-SVG (inline).</div>
+      </div>
+    </div>
   </div>
 </div>
 

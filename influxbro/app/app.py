@@ -24,6 +24,7 @@ import uuid
 import urllib.error
 import urllib.request
 import urllib.parse
+import xml.etree.ElementTree as ET
 import zipfile
 from datetime import datetime, timedelta, timezone
 from contextlib import contextmanager
@@ -2074,6 +2075,335 @@ def _active_profile_set(pid: str) -> None:
         )
     except Exception:
         return
+
+
+def _ui_inventory_area_for_template(name: str) -> str:
+    n = str(name or "").strip().lower()
+    if n in ("index.html",):
+        return "Dashboard"
+    if n in ("stats.html",):
+        return "Statistik"
+    if n in ("logs.html",):
+        return "Logs"
+    if n in ("backup.html",):
+        return "Backup"
+    if n in ("restore.html",):
+        return "Restore"
+    if n in ("import.html",):
+        return "Import"
+    if n in ("export.html",):
+        return "Export"
+    if n in ("combine.html",):
+        return "Combine"
+    if n in ("jobs.html",):
+        return "Jobs"
+    if n in ("monitor.html",):
+        return "Monitor"
+    if n in ("history.html",):
+        return "History"
+    if n in ("dbinfo.html",):
+        return "Diagnose"
+    if n in ("performance.html",):
+        return "Performance"
+    if n in ("quality.html",):
+        return "Quality"
+    if n in ("config.html",):
+        return "Einstellungen"
+    if n in ("profiles.html",):
+        return "Profile"
+    if n in ("manual.html",):
+        return "Manual"
+    if n in ("info.html",):
+        return "Info"
+    return "Shared" if n.startswith("_") else (n.rsplit(".", 1)[0] or "Unknown")
+
+
+def _ui_inventory_build() -> list[dict[str, Any]]:
+    """Best-effort inventory of all data-ui keys used in templates.
+
+    This is used by the settings 'Iconbilder' editor to present a project-wide table.
+    We do not attempt a full HTML parse; instead we use a small heuristic window.
+    """
+
+    templates_dir = (Path(__file__).resolve().parent / "templates")
+    if not templates_dir.exists() or not templates_dir.is_dir():
+        return []
+
+    # data-ui key in attributes (single or double quotes)
+    re_dui = re.compile(r"data-ui\s*=\s*['\"]([^'\"]+)['\"]")
+    re_aria = re.compile(r"aria-label\s*=\s*['\"]([^'\"]+)['\"]")
+    re_title = re.compile(r"title\s*=\s*['\"]([^'\"]+)['\"]")
+    re_span = re.compile(r"<span[^>]*>([^<]{1,120})</span>")
+
+    by_key: dict[str, dict[str, Any]] = {}
+
+    files = sorted([p for p in templates_dir.iterdir() if p.is_file() and p.suffix == ".html"], key=lambda p: p.name)
+    for p in files:
+        try:
+            raw = p.read_text(encoding="utf-8", errors="replace")
+        except Exception:
+            continue
+        lines = raw.splitlines()
+        for i, line in enumerate(lines, start=1):
+            if "data-ui" not in line:
+                continue
+            # include a small forward window to catch attributes and nearby <span> labels
+            win = line
+            try:
+                # up to 3 next lines
+                idx0 = i  # 1-based
+                for j in range(idx0, min(len(lines), idx0 + 3)):
+                    win += "\n" + lines[j]
+            except Exception:
+                pass
+
+            for m in re_dui.finditer(win):
+                key = str(m.group(1) or "").strip()
+                if not key:
+                    continue
+                # Keep inventory bounded; we only care about reasonable keys.
+                if len(key) > 160:
+                    continue
+
+                area = _ui_inventory_area_for_template(p.name)
+
+                # Prefer aria-label (user-facing) over title (often i18n token).
+                aria = ""
+                title = ""
+                label = ""
+                try:
+                    am = re_aria.search(win)
+                    aria = str(am.group(1) or "").strip() if am else ""
+                except Exception:
+                    aria = ""
+                try:
+                    tm = re_title.search(win)
+                    title = str(tm.group(1) or "").strip() if tm else ""
+                except Exception:
+                    title = ""
+                try:
+                    sm = re_span.search(win)
+                    label = str(sm.group(1) or "").strip() if sm else ""
+                except Exception:
+                    label = ""
+                best_label = aria or label or ""
+                best_label = best_label[:120]
+
+                cur = by_key.get(key) or {
+                    "key": key,
+                    "areas": [],
+                    "labels": [],
+                    "files": [],
+                    "examples": [],
+                }
+                if area and area not in cur["areas"]:
+                    cur["areas"].append(area)
+                if best_label and best_label not in cur["labels"]:
+                    cur["labels"].append(best_label)
+                if p.name not in cur["files"]:
+                    cur["files"].append(p.name)
+                if len(cur["examples"]) < 3:
+                    cur["examples"].append({
+                        "file": p.name,
+                        "line": int(i),
+                        "area": area,
+                        "aria_label": aria or None,
+                        "title": title or None,
+                        "label": label or None,
+                    })
+                by_key[key] = cur
+
+    out: list[dict[str, Any]] = []
+    for k, v in by_key.items():
+        try:
+            areas = v.get("areas") if isinstance(v.get("areas"), list) else []
+            labels = v.get("labels") if isinstance(v.get("labels"), list) else []
+            out.append({
+                "key": str(k),
+                "area": str(areas[0]) if areas else "",
+                "areas": areas,
+                "label": str(labels[0]) if labels else "",
+                "labels": labels,
+                "files": v.get("files") if isinstance(v.get("files"), list) else [],
+                "examples": v.get("examples") if isinstance(v.get("examples"), list) else [],
+            })
+        except Exception:
+            continue
+
+    # Keep response bounded.
+    out = sorted(out, key=lambda r: (str(r.get("area") or ""), str(r.get("key") or "")))
+    return out[:4000]
+
+
+ICON_SVG_PREFIX = "influxbro.icons.svg."
+ICON_SVG_MAX_LEN = 10000
+
+
+def _svg_local_name(tag: str) -> str:
+    try:
+        t = str(tag or "")
+    except Exception:
+        return ""
+    if "}" in t:
+        return t.rsplit("}", 1)[-1]
+    return t
+
+
+def _svg_attr_ok(name: str, value: str) -> bool:
+    n = str(name or "").strip()
+    if not n:
+        return False
+    nl = n.lower()
+    if nl.startswith("on"):
+        return False
+    if "href" in nl or "xlink" in nl:
+        return False
+    if nl == "style":
+        return False
+
+    allowed = {
+        "viewbox",
+        "width",
+        "height",
+        "fill",
+        "stroke",
+        "stroke-width",
+        "stroke-linecap",
+        "stroke-linejoin",
+        "stroke-miterlimit",
+        "stroke-dasharray",
+        "stroke-dashoffset",
+        "opacity",
+        "d",
+        "cx",
+        "cy",
+        "r",
+        "x",
+        "y",
+        "rx",
+        "ry",
+        "points",
+        "transform",
+        "fill-rule",
+        "clip-rule",
+        "clip-path",
+        "mask",
+        "id",
+        "offset",
+        "stop-color",
+        "stop-opacity",
+        "gradientunits",
+        "gradienttransform",
+        "x1",
+        "y1",
+        "x2",
+        "y2",
+        "fx",
+        "fy",
+    }
+    if nl not in allowed:
+        return False
+
+    # If the value references an URL, only allow internal references.
+    try:
+        vl = str(value or "").strip().lower()
+    except Exception:
+        return False
+    if "url(" in vl:
+        return "url(#" in vl and "http" not in vl and "https" not in vl
+    return True
+
+
+def _svg_sanitize(svg_raw: str) -> tuple[str | None, str | None, int | None]:
+    """Sanitize user-provided SVG for inline rendering.
+
+    Returns (svg, error, http_status).
+    """
+
+    s = str(svg_raw or "").strip()
+    if not s:
+        return None, "svg required", 400
+    if len(s) > ICON_SVG_MAX_LEN * 2:
+        return None, f"svg too large (max {ICON_SVG_MAX_LEN} chars)", 413
+
+    low = s.lower()
+    if "<!doctype" in low or "<!entity" in low:
+        return None, "doctype/entity not allowed", 400
+
+    try:
+        root = ET.fromstring(s)
+    except Exception:
+        return None, "invalid svg xml", 400
+
+    if _svg_local_name(root.tag).lower() != "svg":
+        return None, "root element must be <svg>", 400
+
+    allowed_tags = {
+        "svg",
+        "g",
+        "path",
+        "circle",
+        "rect",
+        "line",
+        "polyline",
+        "polygon",
+        "ellipse",
+        "defs",
+        "clippath",
+        "mask",
+        "lineargradient",
+        "radialgradient",
+        "stop",
+        "title",
+        "desc",
+    }
+
+    def _copy_el(el: ET.Element) -> ET.Element | None:
+        name = _svg_local_name(el.tag).strip()
+        if not name:
+            return None
+        nl = name.lower()
+        if nl not in allowed_tags:
+            return None
+        out_el = ET.Element(name)
+
+        # Copy allowed attributes only.
+        for ak, av in (el.attrib or {}).items():
+            try:
+                if not _svg_attr_ok(ak, av):
+                    continue
+                out_el.set(str(ak), str(av))
+            except Exception:
+                continue
+
+        # Copy children.
+        for ch in list(el):
+            c2 = _copy_el(ch)
+            if c2 is not None:
+                out_el.append(c2)
+        return out_el
+
+    clean = _copy_el(root)
+    if clean is None:
+        return None, "svg sanitization failed", 400
+    if "xmlns" not in clean.attrib:
+        clean.set("xmlns", "http://www.w3.org/2000/svg")
+
+    try:
+        out = ET.tostring(clean, encoding="unicode", method="xml")
+    except Exception:
+        return None, "could not serialize svg", 400
+
+    out = str(out or "").strip()
+    if not out:
+        return None, "empty svg after sanitize", 400
+    if len(out) > ICON_SVG_MAX_LEN:
+        return None, f"svg too large after sanitize (max {ICON_SVG_MAX_LEN} chars)", 413
+    return out, None, None
+
+
+def _icon_svg_state_key(ui_key: str) -> str:
+    return f"{ICON_SVG_PREFIX}{str(ui_key or '').strip()}"
 
 
 def _dash_last_save(payload: dict[str, Any]) -> None:
@@ -21437,6 +21767,125 @@ def api_ui_state_get():
         keys = sorted(out.keys())[:5000]
         out = {k: out[k] for k in keys}
     return jsonify({"ok": True, "items": out, "total": len(out)})
+
+
+@app.get("/api/ui_inventory")
+def api_ui_inventory_get():
+    """Project-wide UI inventory (best-effort).
+
+    Used by Settings -> Iconbilder.
+    """
+
+    try:
+        items = _ui_inventory_build()
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 500
+    return jsonify({"ok": True, "items": items, "total": len(items)})
+
+
+@app.get("/api/icon_svg")
+def api_icon_svg_list():
+    """Return all icon SVG overrides for the active UI profile."""
+
+    st = _ui_state_load()
+    out: dict[str, str] = {}
+    for k, v in st.items():
+        try:
+            if not isinstance(k, str) or not isinstance(v, str):
+                continue
+            if not k.startswith(ICON_SVG_PREFIX):
+                continue
+            ui_key = k[len(ICON_SVG_PREFIX):]
+            if ui_key:
+                out[ui_key] = v
+        except Exception:
+            continue
+    if len(out) > 3000:
+        keys = sorted(out.keys())[:3000]
+        out = {k: out[k] for k in keys}
+    return jsonify({"ok": True, "items": out, "total": len(out)})
+
+
+@app.post("/api/icon_svg/set")
+def api_icon_svg_set():
+    """Set (or delete) icon SVG overrides.
+
+    Input format:
+    - {"key": "...data-ui...", "svg": "<svg...>...</svg>"}
+    - {"items": {"<data-ui>": "<svg...>", "<data-ui2>": null}}
+    """
+
+    body = request.get_json(force=True) or {}
+    items = body.get("items") if isinstance(body, dict) else None
+    if items is None:
+        k = body.get("key") if isinstance(body, dict) else None
+        v = body.get("svg") if isinstance(body, dict) else None
+        items = {k: v} if k else {}
+
+    if not isinstance(items, dict):
+        return jsonify({"ok": False, "error": "items must be an object"}), 400
+
+    st = _ui_state_load()
+    changed = 0
+    deleted = 0
+    rejected = 0
+
+    for ui_key0, svg0 in items.items():
+        try:
+            ui_key = str(ui_key0 or "").strip()
+        except Exception:
+            rejected += 1
+            continue
+        if not ui_key or len(ui_key) > 160:
+            rejected += 1
+            continue
+
+        state_key = _icon_svg_state_key(ui_key)
+        if not _ui_state_key_ok(state_key):
+            rejected += 1
+            continue
+
+        # Delete
+        if svg0 is None or (isinstance(svg0, str) and not svg0.strip()):
+            if state_key in st:
+                st.pop(state_key, None)
+                deleted += 1
+            continue
+
+        if not isinstance(svg0, str):
+            rejected += 1
+            continue
+
+        svg, err, status = _svg_sanitize(svg0)
+        if err:
+            # Hard fail for single item writes (more user-friendly).
+            if len(items) == 1:
+                return jsonify({"ok": False, "error": err}), int(status or 400)
+            rejected += 1
+            continue
+        if svg is None:
+            rejected += 1
+            continue
+        if not _ui_state_val_ok(svg):
+            if len(items) == 1:
+                return jsonify({"ok": False, "error": "svg too large"}), 413
+            rejected += 1
+            continue
+
+        if st.get(state_key) != svg:
+            st[state_key] = svg
+            changed += 1
+
+    if changed or deleted:
+        _ui_state_save(st)
+
+    return jsonify({
+        "ok": True,
+        "changed": changed,
+        "deleted": deleted,
+        "rejected": rejected,
+        "total": len(st),
+    })
 
 
 @app.post("/api/ui_state/set")
