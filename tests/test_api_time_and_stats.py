@@ -152,7 +152,9 @@ def test_topbar_has_ui_picker_button_and_hover_inspector():
     # Picker copy now optionally includes data-cache-oltype (value only) as 4th part.
     assert "const parts = [page, dataUi, id];" in body
     assert "if(olType) parts.push(olType);" in body
-    assert "const text = '<' + parts.join(',') + '>';" in body
+    # Picker copy supports fallback targets (no data-ui/id) and still uses angle brackets.
+    assert "let text = ''" in body
+    assert "text = '<' + parts.join(',') + '>'" in body
     assert "Kopiert: " in body
     assert "document.addEventListener('mousemove', onMove, true);" in body
 

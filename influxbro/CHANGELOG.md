@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.12.399
+
+### Bugfix
+
+- Dashboard: Statusleiste unten (`errors_main.panel_statusbar`) ist auch bei Wrap/Mobile vertikal sauber ausgerichtet; Tooltips sind konsistent (kein Doppel-Tooltip) und zeigen unten immer den Element-Key als `<data-ui>`. Tooltips enthalten zusaetzlich einen Doku-Button (oeffnet `Handbuch`, Suchbegriff = Key; Open-Mode konfigurierbar). ([#360](https://github.com/thomas682/HA-Addons/issues/360))
+- Picker: S-Picker/Picker kopieren bei Fallback-Elementen (ohne data-ui/id) jetzt einen expliziten `Fallback:` Marker statt `<Dashboard,,>`. ([#359](https://github.com/thomas682/HA-Addons/issues/359))
+- Dashboard/Caching: Der Button `löschen` (`dashboard_caching.btn_loeschen`) wird wieder korrekt als Icon-only Button erkannt. ([#360](https://github.com/thomas682/HA-Addons/issues/360))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`, `pytest -q`
+- Tested with Home Assistant Core: 2026.4.3
+
 ## 1.12.398
 
 ### Bugfix

@@ -275,6 +275,8 @@
     // Nav / Status
     'nav.status.refresh': 'Aktualisiert die Anzeige und loescht abgeschlossene Status-Eintraege.',
     'nav.ui_picker': 'Aktiviert einen Hover-Inspektor. Element mit der Maus anfahren, klicken und den data-ui Namen in die Zwischenablage kopieren. Im S-Picker kannst du mit dem Mausrad durch mehrere Treffer unter dem Mauszeiger wechseln. ESC beendet den Modus.',
+    'nav_main.btn_ui_picker': 'Aktiviert den UI-Picker (Hover-Inspektor). Element anfahren, klicken und die Elementkennung kopieren. Shift+Klick: aktiviert Multiselekt (Multi-Pick). ESC beendet den Modus.',
+    'nav_main.btn_ui_picker_super': 'Aktiviert den S-Picker (Superpicker). Im Super-Modus werden auch Fallback-Elemente ohne data-ui/id erfasst. Shift+Klick: aktiviert Multiselekt (Multi-Pick). ESC beendet den Modus.',
     'nav.monitor': 'Oeffnet die Monitoring-Seite fuer Ausreisser, kritische Messwerte und offene Korrekturen.',
     'errors_main.btn_bugreport': 'Oeffnet direkt aus der Statusleiste den Bugreport fuer den zuletzt sichtbaren Fehler.',
     'errors_main.btn_logs5': 'Zeigt die letzten 5 Minuten Add-on-Logs direkt aus der Statusleiste.',
@@ -445,7 +447,7 @@
     const t = _norm(title);
     const k = _norm(key);
     if(!k) return t;
-    const suffix = `(${k})`;
+    const suffix = `<${k}>`;
     if(t.includes(suffix)) return t;
     return (t ? (t + '\n' + suffix) : suffix);
   }
@@ -564,6 +566,7 @@
     if(!t) return true;
     if(k && (t === k || t === ('#' + k) || t === ('data-ui:' + k))) return true;
     if(k && t === ('(' + k + ')')) return true;
+    if(k && t === ('<' + k + '>')) return true;
     return false;
   }
 
@@ -702,6 +705,20 @@
     const enabled = true;
     if(!enabled) return;
 
+    const DOC_STATE_KEY = 'influxbro.ui.tooltip_doc_open_mode';
+    let DOC_OPEN_MODE = 'new_tab';
+
+    async function _loadDocOpenMode(){
+      try{
+        const r = await fetch('./api/ui_state?prefix=' + encodeURIComponent(DOC_STATE_KEY));
+        const j = await r.json().catch(()=>null);
+        const items = (j && j.items) ? j.items : {};
+        const v = String(items[DOC_STATE_KEY] || '').trim();
+        if(v === 'same_tab' || v === 'new_tab' || v === 'modal') DOC_OPEN_MODE = v;
+      }catch(e){}
+    }
+    _loadDocOpenMode().catch(()=>{});
+
     // Only enable on hover-capable pointer devices.
     try{
       if(window.matchMedia && !window.matchMedia('(hover:hover) and (pointer:fine)').matches) return;
@@ -711,7 +728,14 @@
       try{ return !!document.querySelector('#ui_picker_toggle.active, #ui_superpicker_toggle.active'); }catch(e){ return false; }
     }
     function _norm(s){ return String(s || '').replace(/\s+/g, ' ').trim(); }
-    function _esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    function _esc(s){
+      return String(s||'')
+        .replace(/&/g,'&amp;')
+        .replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;')
+        .replace(/'/g,'&#39;');
+    }
 
     let tip = null;
     let lastEl = null;
@@ -732,11 +756,81 @@
       tip.style.fontSize = '12px';
       tip.style.lineHeight = '1.35';
       tip.style.boxShadow = '0 10px 26px rgba(0,0,0,0.28)';
-      tip.style.pointerEvents = 'none';
+      tip.style.pointerEvents = 'auto';
       tip.style.opacity = '0';
       tip.style.transition = 'opacity 0.08s ease';
       document.body.appendChild(tip);
+
+      // Doc button click.
+      tip.addEventListener('click', (ev)=>{
+        try{
+          const tgt = ev && ev.target ? ev.target : null;
+          const btn = tgt && tgt.closest ? tgt.closest('[data-ib-doc-key]') : null;
+          if(!btn) return;
+          const key = String(btn.getAttribute('data-ib-doc-key') || '').trim();
+          if(!key) return;
+          try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+          _openDoc(key);
+        }catch(e){}
+      }, true);
+
       return tip;
+    }
+
+    function _docHrefFor(key){
+      try{ return './manual?q=' + encodeURIComponent(String(key || '').trim()); }catch(e){ return './manual'; }
+    }
+
+    function _ensureDocModal(){
+      let root = document.getElementById('ib_doc_modal');
+      if(root) return root;
+      root = document.createElement('div');
+      root.id = 'ib_doc_modal';
+      root.style.display = 'none';
+      root.style.position = 'fixed';
+      root.style.inset = '0';
+      root.style.zIndex = '2147483646';
+      root.style.background = 'rgba(0,0,0,0.45)';
+      root.innerHTML = `
+        <div style="position:absolute; inset:6vh 4vw; background:#fff; border-radius:14px; box-shadow:0 18px 80px rgba(0,0,0,0.35); overflow:hidden; display:flex; flex-direction:column;">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 12px; border-bottom:1px solid #eee;">
+            <div style="font-weight:800;">Dokumentation</div>
+            <div style="display:flex; gap:8px;">
+              <button id="ib_doc_modal_open" type="button" class="btn_sm" style="width:auto;">Neuer Tab</button>
+              <button id="ib_doc_modal_close" type="button" class="btn_sm" style="width:auto;">Schliessen</button>
+            </div>
+          </div>
+          <iframe id="ib_doc_modal_iframe" style="flex:1 1 auto; width:100%; border:0;" src="about:blank"></iframe>
+        </div>
+      `;
+      document.body.appendChild(root);
+      try{
+        const close = root.querySelector('#ib_doc_modal_close');
+        if(close) close.addEventListener('click', ()=>{ try{ root.style.display='none'; }catch(e){}; });
+      }catch(e){}
+      return root;
+    }
+
+    function _openDoc(key){
+      const href = _docHrefFor(key);
+      const mode = String(DOC_OPEN_MODE || 'new_tab');
+      if(mode === 'same_tab'){
+        try{ location.href = href; }catch(e){}
+        return;
+      }
+      if(mode === 'modal'){
+        const root = _ensureDocModal();
+        try{ root.style.display = 'block'; }catch(e){}
+        try{ const iframe = root.querySelector('#ib_doc_modal_iframe'); if(iframe) iframe.src = href; }catch(e){}
+        try{
+          const open = root.querySelector('#ib_doc_modal_open');
+          if(open){
+            open.onclick = ()=>{ try{ window.open(href, '_blank', 'noopener'); }catch(e){} };
+          }
+        }catch(e){}
+        return;
+      }
+      try{ window.open(href, '_blank', 'noopener'); }catch(e){}
     }
 
     function _hide(){
@@ -754,18 +848,32 @@
       lastTitle = '';
     }
 
+    const DOC_SVG = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false"><path fill-rule="evenodd" clip-rule="evenodd" d="M4 5.5H9C10.1046 5.5 11 6.39543 11 7.5V16.5C11 17.0523 10.5523 17.5 10 17.5H4C3.44772 17.5 3 17.0523 3 16.5V6.5C3 5.94772 3.44772 5.5 4 5.5ZM14 19.5C13.6494 19.5 13.3128 19.4398 13 19.3293V19.5C13 20.0523 12.5523 20.5 12 20.5C11.4477 20.5 11 20.0523 11 19.5V19.3293C10.6872 19.4398 10.3506 19.5 10 19.5H4C2.34315 19.5 1 18.1569 1 16.5V6.5C1 4.84315 2.34315 3.5 4 3.5H9C10.1947 3.5 11.2671 4.02376 12 4.85418C12.7329 4.02376 13.8053 3.5 15 3.5H20C21.6569 3.5 23 4.84315 23 6.5V16.5C23 18.1569 21.6569 19.5 20 19.5H14ZM13 7.5V16.5C13 17.0523 13.4477 17.5 14 17.5H20C20.5523 17.5 21 17.0523 21 16.5V6.5C21 5.94772 20.5523 5.5 20 5.5H15C13.8954 5.5 13 6.39543 13 7.5ZM5 7.5H9V9.5H5V7.5ZM15 7.5H19V9.5H15V7.5ZM19 10.5H15V12.5H19V10.5ZM5 10.5H9V12.5H5V10.5ZM19 13.5H15V15.5H19V13.5ZM5 13.5H9V15.5H5V13.5Z" fill="currentColor"></path></svg>';
+
     function _render(text){
       const s = String(text || '').trim();
       if(!s) return '';
-      const lines = s.split(/\n/).map(x=>String(x||'')).filter(x=>x !== '');
+      const lines = s.split(/\n/).map(x=>String(x||'').trim()).filter(x=>x !== '');
       if(!lines.length) return _esc(s);
-      const out = [];
-      lines.forEach((ln, idx)=>{
-        const esc = _esc(ln);
-        if(idx === 0) out.push('<div style="font-weight:700;">' + esc + '</div>');
-        else out.push('<div style="opacity:0.9;">' + esc + '</div>');
-      });
-      return out.join('');
+
+      let keyLine = '';
+      let desc = '';
+      if(lines.length >= 2 && /^<[^>]+>$/.test(lines[lines.length - 1])){
+        keyLine = lines[lines.length - 1];
+        desc = lines.slice(0, lines.length - 1).join(' ');
+      }else{
+        desc = lines.join(' ');
+      }
+      desc = _esc(desc);
+      const keyRaw = keyLine ? keyLine.replace(/^<|>$/g, '') : '';
+
+      const docBtn = keyRaw
+        ? (`<button type=\"button\" data-ib-doc-key=\"${_esc(keyRaw)}\" style=\"display:inline-flex;align-items:center;justify-content:center;gap:0;border:1px solid rgba(255,255,255,0.18);background:rgba(255,255,255,0.06);color:#fff;border-radius:10px;padding:6px 7px;cursor:pointer;\" title=\"Dokumentation\" aria-label=\"Dokumentation\">${DOC_SVG}</button>`)
+        : '';
+
+      const top = `<div style=\"display:flex; align-items:flex-start; gap:8px;\"><div style=\"font-weight:700; flex:1 1 auto;\">${desc}</div>${docBtn}</div>`;
+      const bot = keyLine ? (`<div style=\"margin-top:4px; font-size:11px; opacity:0.75;\">${_esc(keyLine)}</div>`) : '';
+      return top + bot;
     }
 
     function _pos(ev){
@@ -788,9 +896,11 @@
       try{
         const t = ev && ev.target ? ev.target : null;
         if(!t || !t.closest) return null;
+        // Keep tooltip stable while hovering its own content.
+        if(tip && (t === tip || (t.closest && t.closest('#ib_html_tooltip')))) return lastEl;
         const el = t.closest('[title]');
         if(!el) return null;
-        if(el.closest && el.closest('#pagecard_topbar')) return null; // avoid fighting topbar hover UI
+        if(el.closest && el.closest('#ib_pagecard')) return null; // avoid fighting the fixed topbar/pagecard hover UI
         return el;
       }catch(e){
         return null;
@@ -802,13 +912,16 @@
         if(_pickerModeActive()) { _hide(); return; }
         const el = _targetFrom(ev);
         if(!el){ _hide(); return; }
-        const title = String(el.getAttribute('title') || '').trim();
+        const rawTitle = String(el.getAttribute('title') || '');
+        const title = rawTitle.trim() || ((el === lastEl) ? String(lastTitle || '').trim() : '');
         if(!title){ _hide(); return; }
 
         if(el !== lastEl){
           _hide();
           lastEl = el;
           lastTitle = title;
+          // Suppress the browser tooltip immediately, but keep [title] so our selector still matches.
+          try{ lastEl.setAttribute('title', ''); }catch(e){}
           showT = setTimeout(()=>{
             try{
               if(!lastEl) return;
@@ -816,8 +929,6 @@
               if(!s) return;
               const box = _ensure();
               box.innerHTML = _render(s);
-              // Suppress the browser tooltip while our tooltip is visible.
-              try{ lastEl.removeAttribute('title'); }catch(e){}
               _pos(ev);
               box.style.opacity = '1';
             }catch(e){}
@@ -844,6 +955,7 @@
     info: '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 10.8v6.2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="7.5" r="1.3" fill="currentColor"/></svg>',
     x: '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
     refresh: '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M20 6v6h-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 18v-6h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 12a8 8 0 0 0-14.2-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M4 12a8 8 0 0 0 14.2 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+    trash: '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
   };
   const MAP = {
     'Speichern': ICONS.save,
@@ -852,6 +964,10 @@
     'Schliessen': ICONS.x,
     'Abbruch': ICONS.x,
     'Aktualisieren': ICONS.refresh,
+    'Löschen': ICONS.trash,
+    'löschen': ICONS.trash,
+    'Loeschen': ICONS.trash,
+    'loeschen': ICONS.trash,
   };
 
   function _iconize(root){

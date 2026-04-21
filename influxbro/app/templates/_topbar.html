@@ -101,7 +101,8 @@
     .ib_bottombar .chip.unk { border-color: #ddd; background: #fafafa; color: rgba(0,0,0,0.72); }
     @media (max-width: 980px){
       :root { --ib-bottombar-h: 46px; }
-      .ib_bottombar { flex-wrap: wrap; height: var(--ib-bottombar-h); align-items: flex-start; }
+      /* Keep vertical centering even when wrapping (prevents OK/ERR chips from looking off-center). */
+      .ib_bottombar { flex-wrap: wrap; height: var(--ib-bottombar-h); align-items: center; align-content: flex-start; }
       .ib_bottombar .msg { width: 100%; }
     }
     .ib_topbar {
@@ -1676,9 +1677,20 @@
       const dataUi = _normLine(el.getAttribute ? (el.getAttribute('data-ui') || '') : '');
       const id = _normLine(el.getAttribute ? (el.getAttribute('id') || '') : '');
       const olType = _normLine(el.getAttribute ? (el.getAttribute('data-cache-oltype') || '') : '');
-      const parts = [page, dataUi, id];
-      if(olType) parts.push(olType);
-      const text = '<' + parts.join(',') + '>';
+
+      let text = '';
+      if(target && target.kind === 'fallback'){
+        // Keep the picker output stable even when we have no data-ui / id.
+        // Requested format example: <Dashboard,,,Fallback: btn.ib_cfg_icon>
+        let fb = String(target.name || '').trim();
+        try{ fb = fb.split('|')[0].trim(); }catch(e){}
+        try{ fb = fb.replace(/^button\./, 'btn.'); }catch(e){}
+        text = '<' + [page, '', '', ('Fallback: ' + (fb || 'element'))].join(',') + '>';
+      }else{
+        const parts = [page, dataUi, id];
+        if(olType) parts.push(olType);
+        text = '<' + parts.join(',') + '>';
+      }
       const ok = await copyText(text);
       try{
         if(window.InfluxBroPopup && window.InfluxBroPopup.show){

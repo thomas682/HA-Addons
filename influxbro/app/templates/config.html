@@ -321,6 +321,17 @@
               <label class="ib_chk_row"><input type="checkbox" id="ui_tooltips_enabled" data-ui="config_settings.chk_ui_tooltips_enabled" title="settings.ui_tooltips_enabled" /><span></span></label>
             </div>
           </div>
+
+          <div class="param_row">
+            <div class="param_label">Tooltip Doku oeffnen<span class="param_hint">Wie der Dokumentations-Button im Tooltip oeffnet. Default: neuer Tab. (UI-Profil)</span></div>
+            <div class="param_control">
+              <select id="ui_tooltip_doc_open_mode" data-ui="config_settings.sel_ui_tooltip_doc_open_mode" title="ui.tooltip_doc_open_mode">
+                <option value="new_tab">Neuer Tab (Default)</option>
+                <option value="same_tab">Gleicher Tab</option>
+                <option value="modal">Modal</option>
+              </select>
+            </div>
+          </div>
         </div>
 
         <details class="card" id="ui_table" open data-ui="config_settings.section_root" title="settings.ui.table">
@@ -1482,6 +1493,10 @@ const $cfgImportFile = document.getElementById('cfg_import_file');
 const $cfgDefaults = document.getElementById('cfg_defaults');
 let CFG_DEFAULTS = null;
 
+// UI-State backed settings (profile-based)
+const UI_DOC_OPEN_MODE_KEY = 'influxbro.ui.tooltip_doc_open_mode';
+const $uiDocOpenMode = document.getElementById('ui_tooltip_doc_open_mode');
+
 // Section title color pickers (sync with text inputs; text inputs also allow words)
 const $pageSearchHlColor = document.getElementById('ui_page_search_highlight_color_color');
 const $navHelperHlColor = document.getElementById('ui_nav_helper_highlight_color_color');
@@ -2352,8 +2367,36 @@ async function load(){
   try{ applySelAutoUi(); }catch(e){}
   try{ await loadSelComputedWidth(); }catch(e){ reportConfigError('Settings loadSelComputedWidth failed', { stage: 'loadSelComputedWidth' }, e && e.stack ? e.stack : String(e || '')); }
 
+  try{ await loadUiDocOpenMode(); }catch(e){}
+
   const card = document.getElementById("loadyaml_card");
   if(card) card.style.display = "none";
+}
+
+async function loadUiDocOpenMode(){
+  try{
+    if(!$uiDocOpenMode) return;
+    const j = await api('./api/ui_state?prefix=' + encodeURIComponent(UI_DOC_OPEN_MODE_KEY));
+    const items = (j && j.items) ? j.items : {};
+    const v = String(items[UI_DOC_OPEN_MODE_KEY] || '').trim();
+    if(v === 'same_tab' || v === 'new_tab' || v === 'modal') $uiDocOpenMode.value = v;
+    else $uiDocOpenMode.value = 'new_tab';
+  }catch(e){
+    try{ if($uiDocOpenMode) $uiDocOpenMode.value = 'new_tab'; }catch(x){}
+  }
+}
+
+async function saveUiDocOpenMode(){
+  try{
+    if(!$uiDocOpenMode) return;
+    const v = String($uiDocOpenMode.value || '').trim();
+    const out = (v === 'same_tab' || v === 'new_tab' || v === 'modal') ? v : 'new_tab';
+    await api('./api/ui_state/set', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ key: UI_DOC_OPEN_MODE_KEY, value: out })
+    });
+  }catch(e){}
 }
 
 function applySelAutoUi(){
@@ -2643,9 +2686,14 @@ try{
     if(!id) return;
     // skip non-setting/operational controls
     if(['save','test','find_yaml','read_yaml','admin_token_test','cfg_import_file'].includes(id)) return;
+    // skip UI-state backed settings (not part of /api/config)
+    if(['ui_tooltip_doc_open_mode'].includes(id)) return;
     elm.addEventListener('change', ()=>{ scheduleAutoSave(); });
   });
 }catch(e){}
+
+// UI-state backed settings
+try{ if($uiDocOpenMode) $uiDocOpenMode.addEventListener('change', ()=>{ saveUiDocOpenMode().catch(()=>{}); }); }catch(e){}
 
 function _cfgSectionNote(text){
   const wrap = document.createElement('div');

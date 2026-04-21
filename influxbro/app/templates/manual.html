@@ -295,6 +295,15 @@
       if($manualSearch) $manualSearch.addEventListener('input', runManualSearch);
       if($manualPrev) $manualPrev.addEventListener('click', ()=>activateHit(MANUAL_CURSOR - 1));
       if($manualNext) $manualNext.addEventListener('click', ()=>activateHit(MANUAL_CURSOR + 1));
+
+      // Allow deep links from tooltips: ./manual?q=<data-ui>
+      try{
+        const q0 = new URLSearchParams(String(location && location.search || '')).get('q');
+        if(q0 && $manualSearch){
+          $manualSearch.value = String(q0);
+          runManualSearch();
+        }
+      }catch(e){}
       </script>
 
       {% include "_tooltips.html" %}

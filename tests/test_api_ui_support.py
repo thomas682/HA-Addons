@@ -365,10 +365,10 @@ def test_picker_supports_disabled_targets_and_angle_bracket_labels():
     topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
     assert 'document.elementsFromPoint' in topbar
     # Picker copy payload is angle-bracket based, optionally extended with extra selector values.
-    assert (
-        "const text = '<' + [page, dataUi, id].join(',') + '>';" in topbar
-        or ("const parts = [page, dataUi, id];" in topbar and "const text = '<' + parts.join(',') + '>';" in topbar)
-    )
+    assert "const parts = [page, dataUi, id];" in topbar
+    assert "let text = ''" in topbar
+    assert "text = '<' + parts.join(',') + '>'" in topbar
+    assert "Fallback:" in topbar
     assert "'<' + (name || '(kein data-ui)') + '>'" in topbar
 
 

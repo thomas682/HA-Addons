@@ -171,7 +171,7 @@ Hinweis:
 - `Donate`/`PayPal`: Link zur freiwilligen Unterstuetzung.
 - Zusaetzlich gibt es einen "Buy me a coffee" Spendenlink.
 
-Tipp: Wenn du mit der Maus ueber einem Button/Checkbox/Auswahlfeld bleibst, zeigt der Tooltip eine kurze Erklaerung plus den internen UI-Key in Klammern (z.B. `Dieser Button aktualisiert die Liste (dashboard.load)`). Damit kannst du mir exakt sagen, welches Element du meinst.
+Tipp: Wenn du mit der Maus ueber einem Button/Checkbox/Auswahlfeld bleibst, zeigt der Tooltip eine kurze Erklaerung und unten den internen UI-Key im Format `<data-ui>` (z.B. `<dashboard.load>`). Damit kannst du mir exakt sagen, welches Element du meinst.
 
 Die Seitensuche in der Titelzeile (`page.search`) springt jetzt wieder mit sichtbarem Trefferrahmen zum gewaehlten Element. Farbe, Rahmenbreite und Sichtdauer kannst du in den Einstellungen anpassen.
 - Neben dem Suchfeld gibt es jetzt `Zurueck`/`Weiter` fuer Treffer-Navigation sowie ein Such-Zahnrad mit Filterdialog.
@@ -355,6 +355,7 @@ Raw Daten (DB):
 - Jobs & Cache: Die Tabellen in Jobs, Cache, Analyse-Cache, Timer und Cache-Nutzung unterstuetzen jetzt Mehrfachauswahl per Zeilenklick sowie `selektiere alle` / `selektiere keine` in der jeweiligen Tabellenleiste. In der Analyse-Cache-Tabelle wurden `entity_id` und `friendly_name` als eigene Spalten aufgeteilt, `Groesse` umbenannt und `series` ans Tabellenende verschoben.
 - Tooltips werden als eigenes HTML-Overlay angezeigt. Im Picker- und S-Picker-Modus sind sie weiterhin unterdrueckt, damit der Hover-Inspektor nicht gestoert wird.
 - Tabellen-Tooltips zeigen bei Tabellenzellen den sichtbaren Zelltext; der UI-Key steht weiterhin im Tooltip-Suffix.
+- Tooltips besitzen zusaetzlich einen Doku-Button, der das Handbuch oeffnet und nach dem jeweiligen UI-Key sucht (Open-Mode: gleicher Tab / neuer Tab / modal; konfigurierbar in den Einstellungen).
 - Weitere Bereiche sind jetzt als einklappbare Sections umgesetzt, darunter `Template-Status` im Monitor, die Backupliste/FullBackupliste sowie die grossen Bereiche in `Jobs & Cache`.
 - Die Log-Redaction maskiert zusaetzlich Begriffe wie `admin_token`, `secret`, `private_key`, `public_key` und `access_key` aggressiver.
 
