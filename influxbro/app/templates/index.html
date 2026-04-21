@@ -901,6 +901,8 @@ const $graphResetTime = document.getElementById('graph_reset_time');
 const $graphQueryOpen = document.getElementById('graph_query_open');
 const $analysisSection = document.getElementById('analysis_section');
 const $outlierSection = document.getElementById('outlier_section');
+const $cachingSection = document.getElementById('caching_section');
+const $graphSection = document.getElementById('graph_section');
 const $analysisStartInfo = document.getElementById('analysis_start_info');
 const $analysisStartReset = document.getElementById('analysis_start_reset');
 const $loadTrace = document.getElementById('load_trace');
@@ -1879,6 +1881,9 @@ function saveState(){
       graph_view_stop_ms: GRAPH_VIEW.stop_ms,
       analysis_open: !!($analysisSection && $analysisSection.open),
       outlier_open: !!($outlierSection && $outlierSection.open),
+      caching_open: !!($cachingSection && $cachingSection.open),
+      raw_open: !!($rawSection && $rawSection.open),
+      graph_open: !!($graphSection && $graphSection.open),
       raw_center_range: RAW_CENTER_RANGE,
       raw_outlier_context_rows: RAW_OUTLIER_CONTEXT_ROWS,
       raw_outlier_visible_rows: RAW_OUTLIER_VISIBLE_ROWS,
@@ -1921,9 +1926,15 @@ function cacheSaveNow(){
     const outNow = Array.isArray(OUTLIER_ROWS) ? OUTLIER_ROWS : [];
     const queryNow = ($queryPre ? String($queryPre.textContent || '') : '');
     const summaryHtmlNow = (function(){ try{ const el = document.getElementById('analysis_confirm_cache_summary'); return el ? String(el.innerHTML || '') : ''; }catch(e){ return ''; } })();
+    const loadStatusTxtNow = (function(){ try{ return $loadStatusTxt ? String($loadStatusTxt.textContent || '') : ''; }catch(e){ return ''; } })();
+    const loadStatusTimeNow = (function(){ try{ return $loadStatusTime ? String($loadStatusTime.textContent || '') : ''; }catch(e){ return ''; } })();
+    const rawRowsNow = (function(){ try{ return Array.isArray(RAW_ROWS) ? RAW_ROWS : []; }catch(e){ return []; } })();
+    const rawOutlierResultsNow = (function(){ try{ return Array.isArray(RAW_OUTLIER_RESULTS) ? RAW_OUTLIER_RESULTS : []; }catch(e){ return []; } })();
 
     // Avoid overwriting a good snapshot with an empty one during early renders/navigation.
-    const hasMeaningful = (rowsNow.length > 0) || (outNow.length > 0) || (queryNow.trim().length > 0) || (summaryHtmlNow.trim().length > 0);
+    const hasMeaningful = (rowsNow.length > 0) || (outNow.length > 0) || (queryNow.trim().length > 0) || (summaryHtmlNow.trim().length > 0)
+      || (loadStatusTxtNow.trim().length > 0 && loadStatusTxtNow.trim() !== 'Bereit.') || (loadStatusTimeNow.trim().length > 0)
+      || (rawRowsNow.length > 0) || (rawOutlierResultsNow.length > 0);
     if(!hasMeaningful){
       return;
     }
@@ -1931,10 +1942,14 @@ function cacheSaveNow(){
     // Keep snapshots bounded to reduce sessionStorage quota issues.
     const MAX_LAST_ROWS = 6000;
     const MAX_OUTLIER_ROWS = 4000;
+    const MAX_RAW_ROWS = 6000;
+    const MAX_RAW_OUTLIER_RESULTS = 4000;
     const MAX_SUMMARY_HTML = 200000;
 
     const safeRows = rowsNow.length > MAX_LAST_ROWS ? rowsNow.slice(0, MAX_LAST_ROWS) : rowsNow;
     const safeOut = outNow.length > MAX_OUTLIER_ROWS ? outNow.slice(0, MAX_OUTLIER_ROWS) : outNow;
+    const safeRaw = rawRowsNow.length > MAX_RAW_ROWS ? rawRowsNow.slice(0, MAX_RAW_ROWS) : rawRowsNow;
+    const safeRawOutlierResults = rawOutlierResultsNow.length > MAX_RAW_OUTLIER_RESULTS ? rawOutlierResultsNow.slice(0, MAX_RAW_OUTLIER_RESULTS) : rawOutlierResultsNow;
     const safeSummaryHtml = summaryHtmlNow.length > MAX_SUMMARY_HTML ? summaryHtmlNow.slice(0, MAX_SUMMARY_HTML) : summaryHtmlNow;
 
     const payload = {
@@ -1964,6 +1979,18 @@ function cacheSaveNow(){
       staged: Array.from(EDIT_LIST.values ? EDIT_LIST.values() : []),
       analysis_cache_plan_choice: ANALYSIS_CACHE_PLAN_CHOICE || null,
       analysis_status_text: (function(){ try{ const el = document.getElementById('analysis_status'); return el ? el.textContent : ''; }catch(e){ return ''; } })(),
+      load_status_txt: loadStatusTxtNow,
+      load_status_time: loadStatusTimeNow,
+      analysis_state: (function(){ try{ return JSON.parse(JSON.stringify(ANALYSIS_STATE || {})); }catch(e){ return {}; } })(),
+      analysis_checklist_items: (function(){ try{ return (Array.isArray(ANALYSIS_CHECKLIST_ITEMS) ? ANALYSIS_CHECKLIST_ITEMS.slice(0, 120) : []); }catch(e){ return []; } })(),
+      analysis_chunk_log: (function(){ try{ return (Array.isArray(ANALYSIS_CHUNK_LOG) ? ANALYSIS_CHUNK_LOG.slice(0, 200) : []); }catch(e){ return []; } })(),
+      raw_rows: safeRaw,
+      raw_selected_ms: (function(){ try{ return (RAW_SELECTED_MS === null || RAW_SELECTED_MS === undefined) ? null : Number(RAW_SELECTED_MS); }catch(e){ return null; } })(),
+      raw_outlier_index: (function(){ try{ return (RAW_OUTLIER_INDEX === null || RAW_OUTLIER_INDEX === undefined) ? null : Number(RAW_OUTLIER_INDEX); }catch(e){ return null; } })(),
+      raw_outlier_selected_time: (function(){ try{ return RAW_OUTLIER_SELECTED_TIME ? String(RAW_OUTLIER_SELECTED_TIME) : null; }catch(e){ return null; } })(),
+      raw_outlier_results: safeRawOutlierResults,
+      raw_outlier_meta_text: (function(){ try{ return String(RAW_OUTLIER_META_TEXT || ''); }catch(e){ return ''; } })(),
+      raw_outlier_scanned_total: (function(){ try{ return Number(RAW_OUTLIER_SCANNED_TOTAL || 0); }catch(e){ return 0; } })(),
       analysis_summary_html: safeSummaryHtml,
     };
 
@@ -1999,6 +2026,41 @@ function cacheRestoreIfAvailable(){
 
     if(Array.isArray(j.last_rows)) LAST_ROWS = j.last_rows;
     if(typeof j.last_query === 'string') setLastQuery(j.last_query);
+
+    // Restore caching load status panel.
+    try{ if($loadStatusTxt && typeof j.load_status_txt === 'string') $loadStatusTxt.textContent = j.load_status_txt; }catch(e){}
+    try{ if($loadStatusTime && typeof j.load_status_time === 'string') $loadStatusTime.textContent = j.load_status_time; }catch(e){}
+
+    // Restore analysis UI state for continuity across page navigation.
+    try{
+      if(j.analysis_state && typeof j.analysis_state === 'object') Object.assign(ANALYSIS_STATE, j.analysis_state);
+    }catch(e){}
+    try{ ANALYSIS_CHECKLIST_ITEMS = Array.isArray(j.analysis_checklist_items) ? j.analysis_checklist_items : (Array.isArray(ANALYSIS_CHECKLIST_ITEMS) ? ANALYSIS_CHECKLIST_ITEMS : []); }catch(e){}
+    try{ ANALYSIS_CHUNK_LOG = Array.isArray(j.analysis_chunk_log) ? j.analysis_chunk_log : (Array.isArray(ANALYSIS_CHUNK_LOG) ? ANALYSIS_CHUNK_LOG : []); }catch(e){}
+
+    // Restore Raw section data (best-effort).
+    try{ RAW_ROWS = Array.isArray(j.raw_rows) ? j.raw_rows : (Array.isArray(RAW_ROWS) ? RAW_ROWS : []); }catch(e){}
+    try{ RAW_SELECTED_MS = (j.raw_selected_ms === null || j.raw_selected_ms === undefined) ? null : Number(j.raw_selected_ms); }catch(e){}
+    try{ RAW_OUTLIER_INDEX = (j.raw_outlier_index === null || j.raw_outlier_index === undefined) ? RAW_OUTLIER_INDEX : Number(j.raw_outlier_index); }catch(e){}
+    try{ RAW_OUTLIER_SELECTED_TIME = (typeof j.raw_outlier_selected_time === 'string' && j.raw_outlier_selected_time) ? String(j.raw_outlier_selected_time) : RAW_OUTLIER_SELECTED_TIME; }catch(e){}
+    try{ RAW_OUTLIER_RESULTS = Array.isArray(j.raw_outlier_results) ? j.raw_outlier_results : (Array.isArray(RAW_OUTLIER_RESULTS) ? RAW_OUTLIER_RESULTS : []); }catch(e){}
+    try{ RAW_OUTLIER_META_TEXT = (typeof j.raw_outlier_meta_text === 'string') ? String(j.raw_outlier_meta_text) : RAW_OUTLIER_META_TEXT; }catch(e){}
+    try{ RAW_OUTLIER_SCANNED_TOTAL = (j.raw_outlier_scanned_total !== undefined) ? Number(j.raw_outlier_scanned_total) : RAW_OUTLIER_SCANNED_TOTAL; }catch(e){}
+
+    // Rebuild outlier map from restored results.
+    try{
+      RAW_OUTLIER_MAP = {};
+      (RAW_OUTLIER_RESULTS || []).forEach((row) => {
+        if(!row || !row.time) return;
+        const k = String(row.time);
+        RAW_OUTLIER_MAP[k] = {
+          reason: row.reason || '',
+          types: row.types || [],
+          point_index: row.point_index,
+          window: row.window || null,
+        };
+      });
+    }catch(e){ RAW_OUTLIER_MAP = RAW_OUTLIER_MAP || {}; }
 
     try{
       if($graphDetailMode && j.graph_detail_mode) $graphDetailMode.value = String(j.graph_detail_mode);
@@ -2049,6 +2111,15 @@ function cacheRestoreIfAvailable(){
     }catch(e){}
 
     try{ refreshEditGraph().catch(()=>{}); }catch(e){}
+
+    // Re-render derived UI fragments from restored state.
+    try{ renderAnalysisTypeLists(); }catch(e){}
+    try{ updateAnalysisUI(); }catch(e){}
+    try{ stopRawOutlierUi(true); }catch(e){}
+    try{ renderOutlierOverviewTable(); }catch(e){}
+    try{ renderRawTable(); }catch(e){}
+    try{ _updateOutlierNavStatus(); }catch(e){}
+    try{ updateRawToolbarState(); }catch(e){}
 
     // #347 Hybrid restore of dashboard analysis state:
     // 1) Instant restore from sessionStorage snapshot (fast visual continuity).
@@ -13132,6 +13203,10 @@ try{
     if($start && globalSel.start) $start.value = globalSel.start;
     if($stop && globalSel.stop) $stop.value = globalSel.stop;
     try{ if($analysisSection && st.analysis_open !== undefined) $analysisSection.open = !!st.analysis_open; }catch(e){}
+    try{ if($outlierSection && st.outlier_open !== undefined) $outlierSection.open = !!st.outlier_open; }catch(e){}
+    try{ if($cachingSection && st.caching_open !== undefined) $cachingSection.open = !!st.caching_open; }catch(e){}
+    try{ if($rawSection && st.raw_open !== undefined) $rawSection.open = !!st.raw_open; }catch(e){}
+    try{ if($graphSection && st.graph_open !== undefined) $graphSection.open = !!st.graph_open; }catch(e){}
     $custom.style.display = ($r.value === "custom") ? "block" : "none";
     // Render range display after restoring state
     try{ renderTableRange(); renderRangeFromTo(); }catch(e){}
@@ -13233,6 +13308,11 @@ try{
     if(!$stop.value) $stop.value = toLocalDatetimeValue(now);
     if(!$r.value) $r.value = "24h";
 
+    // Restore cached dashboard data as early as possible so the UI stays stable
+    // even if selector queries fail or are slow.
+    let restored = false;
+    try{ restored = cacheRestoreIfAvailable(); }catch(e){ restored = false; }
+
     // Load measurements first so dropdowns have options
     await loadMeasurements({silent: true});
 
@@ -13258,7 +13338,6 @@ try{
     saveState();
 
     // Restore cached data so the dashboard keeps results across page switches.
-    const restored = cacheRestoreIfAvailable();
     if(!restored){
       const serverRestored = await cachePeekServerIfAvailable();
       if(!serverRestored){
@@ -13300,6 +13379,18 @@ try{
 
 try{
   if($outlierSection) $outlierSection.addEventListener('toggle', ()=>{ try{ saveState(); }catch(e){}; });
+}catch(e){}
+
+try{
+  if($cachingSection) $cachingSection.addEventListener('toggle', ()=>{ try{ saveState(); }catch(e){}; });
+}catch(e){}
+
+try{
+  if($rawSection) $rawSection.addEventListener('toggle', ()=>{ try{ saveState(); }catch(e){}; });
+}catch(e){}
+
+try{
+  if($graphSection) $graphSection.addEventListener('toggle', ()=>{ try{ saveState(); }catch(e){}; });
 }catch(e){}
 
 </script>

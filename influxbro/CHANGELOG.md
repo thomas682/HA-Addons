@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.405
+
+### Bugfix
+
+- Dashboard: Beim Verlassen der Seite und erneuten Aufruf werden jetzt alle relevanten Panels/States wiederhergestellt (u.a. Caching `load_status`, Analyse-Checkliste/Status, Ausreisser/Raw/Graph State). Playwright-Coverage ergaenzt. ([#363](https://github.com/thomas682/HA-Addons/issues/363))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`, `pytest -q tests/test_api_ui_support.py`, `npx playwright test tests/e2e/dashboard.spec.js`
+- Tested with Home Assistant Core: 2026.4.3
+
 ## 1.12.404
 
 ### Bugfix
