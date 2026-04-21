@@ -233,6 +233,16 @@
     /* iPhone / small mobile: collapse/expand the heavy actions row */
     @media (max-width: 480px){
       :root { --ib-pagecard-min-h: 84px; --ib-pagecard-live-h: 84px; }
+      .ib_pagecard .brandwrap { width:100%; flex-wrap:nowrap; align-items:flex-start; }
+      .ib_pagecard .brandbox { flex: 1 1 auto; }
+      .ib_pagecard .branddonate {
+        width: auto;
+        margin-left: auto;
+        flex-wrap: nowrap;
+        gap: 6px;
+        align-self: flex-start;
+      }
+      .ib_pagecard .branddonate img { height: 22px !important; max-height: 22px !important; }
       .ib_pagecard .actions .ib_topbar_mobile_toggle { display:inline-flex; }
       #ib_topbar_mobile_panel[hidden] { display:none !important; }
     }

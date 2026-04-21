@@ -21,6 +21,28 @@ test.describe('Dashboard', () => {
       } catch (e) {}
     });
 
+    // Donate panel should be on the same row as the brand on iPhone.
+    const donateLayout = await page.evaluate(() => {
+      try {
+        const brand = document.querySelector('.ib_pagecard .brand');
+        const donate = document.querySelector('.ib_pagecard .branddonate');
+        if (!brand || !donate) return null;
+        const b = brand.getBoundingClientRect();
+        const d = donate.getBoundingClientRect();
+        return {
+          brandTop: Math.round(b.top),
+          brandLeft: Math.round(b.left),
+          donateTop: Math.round(d.top),
+          donateLeft: Math.round(d.left),
+        };
+      } catch (e) {
+        return null;
+      }
+    });
+    expect(donateLayout).not.toBeNull();
+    expect(donateLayout.donateLeft).toBeGreaterThan(donateLayout.brandLeft);
+    expect(Math.abs(donateLayout.donateTop - donateLayout.brandTop)).toBeLessThanOrEqual(20);
+
     const toggle = page.locator('#ib_topbar_mobile_toggle');
     await expect(toggle).toBeVisible();
 

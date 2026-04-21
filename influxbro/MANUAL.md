@@ -72,6 +72,7 @@ Neu: Top-Leiste (Profil + Zoom)
 
 - Ganz oben gibt es eine fixe Leiste (scrollt nicht mit), die immer sichtbar bleibt.
 - Auf sehr schmalen Breiten (z.B. iPhone) kannst du den rechten Block (Profil/Picker/Zoom/Suche/Buttons) ueber den Menu-Button ein- und ausklappen. Der Zustand wird im Browser gespeichert.
+- Auf iPhone wird `nav.donate` rechts neben dem Brand angezeigt (statt als eigene Zeile), damit die Titelzeile kompakter bleibt.
 - Enthalten:
   - Profil-Auswahl inkl. `Anwenden`, `Speichern`, `Info` und die aktuelle Version.
     - Hinweis: Die Buttons `Anwenden`, `Speichern`, `Info`, `Picker` und `S-Picker` sind in der Topbar icon-only (Tooltip/aria-label bleibt erhalten).
