@@ -202,6 +202,8 @@ Hinweis: Zeitstempel werden im gesamten UI inklusive Millisekunden angezeigt.
 - Spalten koennen ueber den Spalten-Button (neben dem Info-Icon) ein-/ausgeblendet werden (wird gespeichert).
 - Das Info-Icon (i) erklaert je Tabelle Sinn/Zweck, Spalten und Aktionen.
 - Zusaetzlich haben viele Bereiche neben dem Bereichstitel ein Info-Icon, das die komplette Sektion ausfuehrlich erklaert (Popup ist resizable, hat Umbruch + Copy).
+- Bereichsaktionen (Info/Zu Einstellungen) stehen nicht mehr in der Summary-Titelzeile, sondern als eigene Zeile direkt im Section-Body (mit kurzer Beschreibung).
+- Tabellen-Kopfzeilen koennen global in den Einstellungen farblich angepasst werden (Hintergrund/Textfarbe). Leere Tabellen zeigen mindestens eine konfigurierbare Anzahl leerer Zeilen.
 - Die Summary-Balken fuer einklappbare Bereiche laufen jetzt ueber die komplette Summary-Zeile inklusive Auf-/Zuklappsymbol und verwenden ein einheitliches Balken-Layout.
 
 ## UI-Profile
@@ -323,7 +325,7 @@ Raw Daten (DB):
 - Analyse-Section: Unterhalb der Quellauswahl gibt es einen eigenen Bereich `Analyse` mit Fortschrittsbalken, Checkliste, Chunk-Details und den gefundenen Ausreissern nach Typ.
 - Bei `Zeitraum = Alle` startet die Analyse nicht mehr pauschal bei 1970, sondern verwendet einen serverseitig gemerkten Analyse-Startwert pro Messwert. Standardmaessig wird auf `jetzt - Max. Alter der Datenanalyse (Jahre)` begrenzt; ist der aelteste bekannte Datensatz juenger, beginnt die Analyse dort.
 - Unter der Quellauswahl wird dazu `Analyse-Start`, `Ältester bekannter Datensatz` und `Ermittelt am` angezeigt. Mit `Startalter löschen` kannst du den gespeicherten Startwert fuer den aktuellen Messwert zuruecksetzen.
-- Die Ausreisser-Typen werden in der Analyse-Section in EINEM Chip-Panel angezeigt.
+- Die Ausreisser-Typen werden im Bereich `Ausreisser` in EINEM Chip-Panel angezeigt (Filter/Analyse).
   - Aktive Typen sind normal dargestellt.
   - Abgewaehlte Typen bleiben sichtbar, sind aber grau und durchgestrichen.
   - Nur aktive (nicht durchgestrichene) Typen werden analysiert.
@@ -573,9 +575,9 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Die Dashboard-Analyse besitzt jetzt zusaetzlich einen persistenten serverseitigen `Analysecache`. Im Startdialog zeigt ein Zeitstrahl, welche Segmente aus dem Cache kommen, welche Bereiche neu gelesen werden und welche Cache-Segmente wegen nachtraeglicher Wertaenderungen rot neu aufgebaut werden.
 - Der `Analysecache` wird immer mit allen Ausreißer-Typen aufgebaut (`bounds`, `counter`, `decrease`, `fault_phase`, `null`, `zero`), damit spaetere Analysen vorhandene Ergebnisse wiederverwenden koennen. Die aktuell im Dashboard gewaehlten Typen filtern danach nur noch die sichtbare Auswertung.
 - Auf `Cache & Jobs` gibt es einen neuen Bereich `Analysecache`. Dort werden alle gecachten Serien mit Zeitstrahl, Trefferzahl, Groesse sowie Aktionen zum Loeschen oder kompletten Neuaufbau angezeigt.
-- Der Analyse-Button heisst jetzt `dashboard.AnalyseStart`. Direkt unter dem Titel `Analyse` sitzen nun der Aktionsblock und der Hinweistext; auch die Typ-Auswahl wurde nach oben in denselben Bereich verschoben.
+- Der Analyse-Button heisst jetzt `dashboard.AnalyseStart`. Direkt unter dem Titel `Analyse` sitzen nun der Aktionsblock und der Hinweistext; die Typ-Auswahl sitzt im Bereich `Ausreisser` oberhalb der Tabellenaktionen.
 - Die Analyse zeigt die wichtigsten Gesamtstatistiken direkt im Analyse-Bereich als kompakte Liste. Doppelte Zeitraum-/Stats-Angaben werden nicht mehr parallel in `analysis_info` wiederholt.
-- Die Typ-Auswahl wurde korrigiert: Ein Klick verschiebt einen Typ jetzt wirklich zwischen `Gewaehlte Typen` und `Abgewaehlte Typen`. Mit `Reset` werden alle Standardtypen wieder aktiviert. Die Checkbox `Ignoriert` blendet zusaetzlich bereits ignorierte Treffer in der Ausreißer-Tabelle ein.
+- Die Typ-Auswahl wurde korrigiert: Ein Klick verschiebt einen Typ jetzt wirklich zwischen `Gewaehlte Typen` und `Abgewaehlte Typen`.
 - Im `raw_search_bar` laesst sich `Max je Typ` einstellen. Intern ermittelt die Analyse weiterhin alle Treffer, in der GUI werden pro Typ jedoch nur bis zu diesem Grenzwert angezeigt. Derselbe Grenzwert ist auch in den Einstellungen verfuegbar.
 - Vor `section.analysis` gibt es jetzt eine eigene Section `Caching`. Dort werden Cache-Pruefung, Zeitstrahl, History/Abbruch und die allgemeinen Analyse-Aktionen gebuendelt. Die eigentliche Analyse wird darunter direkt mit `Analyse mit Cache` oder `Analyse ohne Cache` gestartet.
 - Waehren eine Analyse laeuft, sind `Analyse mit Cache` und `Analyse ohne Cache` gesperrt, damit kein zweiter Lauf parallel gestartet wird. Mit `abbrechen` kannst du sofort abbrechen und danach erneut starten.

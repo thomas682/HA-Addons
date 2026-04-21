@@ -1251,6 +1251,9 @@ DEFAULT_CFG = {
     "ui_table_visible_rows": 20,
     "ui_outlier_visible_rows": 10,
     "ui_table_row_height_px": 13,
+    "ui_table_header_bg": "#0B1F3A",
+    "ui_table_header_fg": "#FFFFFF",
+    "ui_table_min_empty_rows": 5,
     # Picker / S-Picker highlight
     "ui_picker_outline_auto": True,
     "ui_picker_outline_light_bg": "#FF00AA",
@@ -16505,6 +16508,7 @@ def api_set_config():
     _clamp_int("ui_status_font_px", 12, 9, 18)
     _clamp_int("ui_status_bar_height_px", 38, 28, 90)
     _clamp_int("ui_table_row_height_px", 13, 9, 60)
+    _clamp_int("ui_table_min_empty_rows", 5, 0, 50)
     _clamp_int("ui_backup_table_row_height_px", 13, 9, 60)
     _clamp_int("ui_backup_visible_rows", 24, 5, 200)
     _clamp_int("ui_restore_visible_rows", 24, 5, 200)
@@ -16579,6 +16583,9 @@ def api_set_config():
     _clamp_color("ui_picker_outline_dark_bg", "#00E5FF")
     _clamp_color("ui_analysis_cache_hidden_color", "#b0b0b0")
     _clamp_color("ui_analysis_cache_missing_color", "#b00020")
+
+    _clamp_color("ui_table_header_bg", "#0B1F3A")
+    _clamp_color("ui_table_header_fg", "#FFFFFF")
 
     _clamp_color_opt("ui_section_title_bg", allow_words=("transparent",))
     _clamp_color_opt("ui_section_title_fg", allow_words=("inherit",))

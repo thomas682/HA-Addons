@@ -4,7 +4,13 @@ table.ib_tbl th, table.ib_tbl td { white-space: nowrap; overflow: hidden; text-o
 table.ib_tbl.ib_wrap th, table.ib_tbl.ib_wrap td { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
 
 /* Sticky header (applies when table scrolls inside a box) */
-table.ib_tbl thead th { position: sticky; top: 0; z-index: 1; background: #f6f6f6; }
+table.ib_tbl thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--ib-table-head-bg, #f6f6f6);
+  color: var(--ib-table-head-fg, inherit);
+}
 
 /* Sort indicators (generic + aria-sort) */
 table.ib_tbl thead th[aria-sort="ascending"]::after { content: " \25B2"; opacity: 0.65; font-size: 11px; }
@@ -748,10 +754,52 @@ thead tr.ib_filter_row input, thead tr.ib_filter_row select { width: 100%; heigh
     return {t:'s', v: t.toLowerCase()};
   }
 
+  function _minRows(){
+    try{
+      const v = String(getComputedStyle(document.documentElement).getPropertyValue('--ib-table-min-empty-rows') || '').trim();
+      const n = parseInt(v, 10);
+      return (isFinite(n) && n >= 0) ? n : 5;
+    }catch(e){
+      return 5;
+    }
+  }
+
+  function _ensureMinRows(tbl){
+    try{
+      const min = _minRows();
+      if(!(isFinite(min) && min > 0)) return;
+      const tbody = tbl.querySelector('tbody');
+      if(!tbody) return;
+
+      // Drop prior padding rows (if any)
+      try{
+        Array.from(tbody.querySelectorAll('tr[data-ib-empty="1"]')).forEach((tr)=>tr.remove());
+      }catch(e){}
+
+      const real = Array.from(tbody.querySelectorAll('tr')).filter((tr)=> String(tr.getAttribute('data-ib-empty') || '') !== '1');
+      const need = min - real.length;
+      if(need <= 0) return;
+
+      const ths = Array.from(tbl.querySelectorAll('thead tr:first-child th'));
+      const colCount = ths.length ? ths.length : (real.length ? (real[0].children ? real[0].children.length : 0) : 0);
+      if(!(colCount > 0)) return;
+      for(let i = 0; i < need; i++){
+        const tr = document.createElement('tr');
+        tr.setAttribute('data-ib-empty', '1');
+        for(let c = 0; c < colCount; c++){
+          const td = document.createElement('td');
+          td.textContent = '';
+          tr.appendChild(td);
+        }
+        tbody.appendChild(tr);
+      }
+    }catch(e){}
+  }
+
   function apply(tbl, st){
     const tbody = tbl.querySelector('tbody');
     if(!tbody) return;
-    const rows = Array.from(tbody.querySelectorAll('tr'));
+    const rows = Array.from(tbody.querySelectorAll('tr')).filter((tr)=> String(tr.getAttribute('data-ib-empty') || '') !== '1');
     if(!rows.length) return;
 
     const idx = Number(st && st.idx);
@@ -782,6 +830,9 @@ thead tr.ib_filter_row input, thead tr.ib_filter_row select { width: 100%; heigh
     const frag = document.createDocumentFragment();
     withKey.forEach(x=>frag.appendChild(x.tr));
     tbody.appendChild(frag);
+
+    // Re-pad to min rows after sorting.
+    _ensureMinRows(tbl);
 
     // Mark header
     try{
@@ -834,6 +885,9 @@ thead tr.ib_filter_row input, thead tr.ib_filter_row select { width: 100%; heigh
     // Restore sort
     const st = _read(tbl);
     if(st && isFinite(Number(st.idx))) apply(tbl, st);
+
+    // Ensure minimum visible empty rows even for empty tables.
+    _ensureMinRows(tbl);
   }
 
   function inject(){

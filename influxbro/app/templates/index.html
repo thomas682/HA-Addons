@@ -510,14 +510,7 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
            <div id="analysis_checklist" data-ui="dashboard_analysis.panel_checklist" style="font-size:12px;margin-bottom:8px;"></div>
           <div id="analysis_found_info" data-ui="dashboard_analysis.txt_found_info" style="font-size:12px;margin-bottom:12px;"></div>
 
-        <div style="font-size:13px;font-weight:600;margin-bottom:8px;">Ausreisser-Typen auswaehlen</div>
-        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
-          <button class="btn_sm" id="analysis_types_reset" style="width:auto;" data-ui="dashboard_analysis.btn_typen_reset">Reset</button>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;"><input type="checkbox" id="analysis_types_show_ignored" data-ui="dashboard_analysis.chk_ignoriert"/>Ignoriert</label>
-        </div>
-        <div style="margin-bottom:8px;">
-          <div id="analysis_types_selected" class="ib-chip-grid" data-ui="dashboard_analysis.panel_typen_gewaehlt" style="border:1px solid #eee;border-radius:12px;padding:10px;min-height:40px;"></div>
-        </div>
+        <!-- Ausreisser-Typen Auswahl wurde in die Ausreisser-Section verschoben (Issue #362). -->
       </div>
     </details>
 
@@ -525,6 +518,12 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
       <summary><span class="ib_summary_row"><span>Ausreißer</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Ausreißer" data-info-body="Ausreißer ist ein eigener Dashboard-Bereich fuer Suche, Navigation und Tabelle der aktuell gefundenen Raw-Ausreißer.\n\nEnthaelt:\n- Suchlauf fuer die ausgewaehlte Serie\n- Navigation zum aeltesten/neuesten Treffer\n- Typauswahl und Parameter\n- Ausreißer-Tabelle mit Tabellenfunktionen\n\nNutzen:\n- gefundene Treffer getrennt von den Raw-Daten betrachten\n- Treffer filtern, pruefen und gezielt in die Raw-Tabelle uebernehmen" ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
       <div class="table_wrap" id="raw_outlier_table_wrap" style="margin-top:10px;">
        <div class="table_title">Ausreißer</div>
+
+        <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:flex-start; margin-top:10px;" data-ui="dashboard_outliers.row_types" title="dashboard_outliers.row_types">
+          <div class="muted" style="font-size:12px; line-height:1.4;">Ausreisser-Typen (Analyse/Filter)</div>
+          <div id="analysis_types_selected" class="ib-chip-grid" data-ui="dashboard_analysis.panel_typen_gewaehlt" title="dashboard_analysis.panel_typen_gewaehlt" style="border:1px solid #eee;border-radius:12px;padding:10px;min-height:40px; flex:1 1 520px;"></div>
+        </div>
+
         <!-- Ausreißer-Suchleiste (#raw_search_bar) wurde entfernt (Issue #330). -->
       <div class="table_head" style="min-width:0;">
         <div class="tbl_actions" data-ui="dashboard_outliers.row_table_actions" title="dashboard_outliers.row_table_actions">
@@ -6559,9 +6558,7 @@ function updateAnalysisUI(){
 function renderAnalysisTypeLists(){
   try{
       const $selected = document.getElementById('analysis_types_selected');
-      const $showIgnored = document.getElementById('analysis_types_show_ignored');
       if(!$selected) return;
-      if($showIgnored) $showIgnored.checked = !!ANALYSIS_SHOW_IGNORED;
 
       const _chipColors = {counter:'#5ea56a',decrease:'#d47d57',bounds:'#5d86d6',gap:'#8b66d1',fault_phase:'#d7a545',null:'#4da790',zero:'#d46a6a',ignored:'#999'};
       function _chipHtml(t, label, active){
@@ -6614,7 +6611,6 @@ function saveAnalysisTypes(){
     localStorage.setItem('analysis_types', JSON.stringify({
       selected: ANALYSIS_SELECTED_TYPES,
       unselected: ANALYSIS_UNSELECTED_TYPES,
-      show_ignored: !!ANALYSIS_SHOW_IGNORED,
     }));
   }catch(e){}
   try{ saveGlobalDashboardSelection().catch(()=>{}); }catch(e){}
@@ -6659,8 +6655,10 @@ function isIgnoredOutlier(row){
 }
 
 function getRawOutlierFilterTypes(){
+  // UI checkbox for ignored was removed (Issue #362). Keep ignored rows visible
+  // so users can still unignore them.
   const out = ANALYSIS_SELECTED_TYPES.slice();
-  if(ANALYSIS_SHOW_IGNORED && !out.includes('ignored')) out.push('ignored');
+  if(!out.includes('ignored')) out.push('ignored');
   return out;
 }
 
@@ -9157,6 +9155,7 @@ function renderOutlierOverviewTable(){
   if(!filtered.length){
     for(let i = 0; i < 5; i++){
       const tr = document.createElement('tr');
+      tr.setAttribute('data-ib-empty', '1');
       tr.innerHTML = '<td></td><td></td><td></td><td></td><td></td>';
       $rawOutlierBody.appendChild(tr);
     }
@@ -9222,6 +9221,7 @@ function renderOutlierOverviewTable(){
   });
   for(let i = filtered.length; i < 5; i++){
     const tr = document.createElement('tr');
+    tr.setAttribute('data-ib-empty', '1');
     tr.innerHTML = '<td></td><td></td><td></td><td></td><td></td>';
     $rawOutlierBody.appendChild(tr);
   }
@@ -10792,6 +10792,7 @@ function renderTable(){
   const visibleCols = 6;
   for(let i = rows.length; i < 5; i++){
     const tr = document.createElement('tr');
+    tr.setAttribute('data-ib-empty', '1');
     for(let c = 0; c < visibleCols; c++){
       tr.appendChild(document.createElement('td'));
     }
@@ -13596,26 +13597,7 @@ try{
       if(ev.target === $rawOutlierParamsDialog) closeOutlierParamsDialog();
     });
   }
-  const $analysisTypesReset = document.getElementById('analysis_types_reset');
-  const $analysisTypesShowIgnored = document.getElementById('analysis_types_show_ignored');
-  if($analysisTypesReset) $analysisTypesReset.addEventListener('click', ()=>{
-    ANALYSIS_SELECTED_TYPES = ['counter', 'decrease', 'bounds', 'fault_phase', 'null', 'zero'];
-    ANALYSIS_UNSELECTED_TYPES = [];
-    ANALYSIS_SHOW_IGNORED = false;
-    if($analysisTypesShowIgnored) $analysisTypesShowIgnored.checked = false;
-    saveAnalysisTypes();
-    renderAnalysisTypeLists();
-    renderOutlierOverviewTable();
-  });
-  if($analysisTypesShowIgnored){
-    $analysisTypesShowIgnored.checked = !!ANALYSIS_SHOW_IGNORED;
-    $analysisTypesShowIgnored.addEventListener('change', ()=>{
-      ANALYSIS_SHOW_IGNORED = !!$analysisTypesShowIgnored.checked;
-      saveAnalysisTypes();
-      renderOutlierOverviewTable();
-      _updateOutlierNavStatus();
-    });
-  }
+  // Ausreisser-Typen Reset + Ignoriert-Checkbox wurden aus der UI entfernt (Issue #362).
   // Zeitraum-Alle und Raw-Kontext-UI wurden entfernt (Issue #330).
   if($rawOutlierDisplayLimitPerType){
     const saveLimitNow = ()=>{

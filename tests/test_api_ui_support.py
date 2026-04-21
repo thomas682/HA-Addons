@@ -618,8 +618,9 @@ def test_dashboard_issue219_analysis_controls_and_limits_exist():
     assert 'id="analysis_start_info"' in body
     assert 'id="analysis_run_with_cache"' in body
     assert 'id="analysis_run_without_cache"' in body
-    assert 'id="analysis_types_reset"' in body
-    assert 'id="analysis_types_show_ignored"' in body
+    # Type selection lives in the outliers section (Issue #362)
+    assert 'id="analysis_types_selected"' in body
+    assert 'dashboard_outliers.row_types' in body
     assert 'function getDisplayedOutliers()' in body
     assert 'function aggregateFaultPhaseRows(rows)' in body
     assert 'for(let i = rows.length; i < 5; i++){' in body

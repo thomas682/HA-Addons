@@ -21,6 +21,9 @@
       --ib-page-search-hl-color: {{ (cfg.get('ui_page_search_highlight_color') or '#FF9900') if cfg else '#FF9900' }};
       --ib-page-search-hl-width: {{ (cfg.get('ui_page_search_highlight_width_px') or 5) | int }}px;
       --ib-page-search-hl-duration-ms: {{ (cfg.get('ui_page_search_highlight_duration_ms') or 8000) | int }}ms;
+      --ib-table-head-bg: {{ (cfg.get('ui_table_header_bg') or '#0B1F3A') if cfg else '#0B1F3A' }};
+      --ib-table-head-fg: {{ (cfg.get('ui_table_header_fg') or '#FFFFFF') if cfg else '#FFFFFF' }};
+      --ib-table-min-empty-rows: {{ (cfg.get('ui_table_min_empty_rows') or 5) | int }};
       --ib-nav-helper-history-limit: {{ (cfg.get('ui_nav_helper_history_limit') or 10) | int }};
       --ib-nav-helper-hl-color: {{ (cfg.get('ui_nav_helper_highlight_color') or '#FF9900') if cfg else '#FF9900' }};
       --ib-nav-helper-hl-duration-ms: {{ (cfg.get('ui_nav_helper_highlight_duration_ms') or 1400) | int }}ms;
@@ -42,6 +45,20 @@
       padding-bottom: calc(var(--ib-bottombar-h) + env(safe-area-inset-bottom, 0px));
     }
     .muted { font-size: var(--ui-font-small-zoomed); }
+
+    .ib_section_desc_row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 8px 0 10px 0;
+      padding: 8px 10px;
+      border: 1px solid #e7e7e7;
+      border-radius: 12px;
+      background: #fafafa;
+    }
+    .ib_section_desc { font-size: 12px; opacity: 0.78; line-height: 1.4; }
+    .ib_section_desc_actions { display: inline-flex; align-items: center; gap: 8px; flex: 0 0 auto; }
     body button {
       border-radius: 999px;
       border: 1px solid var(--ib-btn-border);
@@ -2028,6 +2045,57 @@
     }catch(e){}
   };
 
+  window.InfluxBroMoveSectionHeaderActionsToBody = function(){
+    try{
+      document.querySelectorAll('main.content details > summary').forEach((summary)=>{
+        const details = summary && summary.parentElement ? summary.parentElement : null;
+        if(!details) return;
+        const row = summary.querySelector('.ib_summary_row');
+        if(!row) return;
+
+        const infoBtn = row.querySelector('.ib_info_icon');
+        const cfgBtn = row.querySelector('.ib_cfg_icon');
+        if(!infoBtn && !cfgBtn) return;
+
+        const body = details.querySelector(':scope > summary + *');
+        if(!body) return;
+        if(details.querySelector(':scope > .ib_section_desc_row')) return;
+
+        const descRow = document.createElement('div');
+        descRow.className = 'ib_section_desc_row';
+        const desc = document.createElement('div');
+        desc.className = 'ib_section_desc';
+
+        let full = '';
+        try{
+          if(infoBtn){
+            const raw = String(infoBtn.getAttribute('data-info-body') || '').trim();
+            full = raw.split(/\r?\n/).map(x=>String(x||'').trim()).filter(Boolean)[0] || String(infoBtn.getAttribute('data-info-title') || '').trim();
+          }
+        }catch(e){ full = ''; }
+        let short = String(full || '').trim();
+        if(short.length > 180) short = short.slice(0, 177) + '...';
+        desc.textContent = short;
+        if(full) desc.title = full;
+
+        const actions = document.createElement('div');
+        actions.className = 'ib_section_desc_actions';
+        try{ if(cfgBtn) actions.appendChild(cfgBtn); }catch(e){}
+        try{ if(infoBtn) actions.appendChild(infoBtn); }catch(e){}
+
+        descRow.appendChild(desc);
+        descRow.appendChild(actions);
+
+        try{ body.insertBefore(descRow, body.firstChild); }catch(e){ try{ body.appendChild(descRow); }catch(x){} }
+
+        try{
+          const sActions = row.querySelector(':scope > .ib_summary_actions');
+          if(sActions && !sActions.children.length) sActions.remove();
+        }catch(e){}
+      });
+    }catch(e){}
+  };
+
   document.addEventListener('DOMContentLoaded', ()=>{
     try{
       if(!(window.location && window.location.pathname && window.location.pathname.includes('config'))){
@@ -2073,6 +2141,7 @@
         });
       }
       if(window.InfluxBroNormalizeSummaryActions) window.InfluxBroNormalizeSummaryActions();
+      if(window.InfluxBroMoveSectionHeaderActionsToBody) window.InfluxBroMoveSectionHeaderActionsToBody();
     }catch(e){}
   });
 </script>

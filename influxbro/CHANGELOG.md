@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.12.407
+
+### Bugfix
+
+- UI: `ib_cfg_icon` + Info-Button werden nicht mehr in der Summary-Titelzeile angezeigt, sondern als Zeile im Section-Body (mit Kurzbeschreibung). ([#362](https://github.com/thomas682/HA-Addons/issues/362))
+- Tabellen: Kopfzeilen-Design (Hintergrund/Textfarbe) ist global parametrierbar und leere Tabellen zeigen mindestens N Zeilen (global). ([#362](https://github.com/thomas682/HA-Addons/issues/362))
+- Dashboard: Ausreisser-Typen-Panel (`analysis_types_selected`) wurde vor die Ausreisser-Tabellenaktionen verschoben; Reset-Button und "Ignoriert" Checkbox wurden aus der UI entfernt. ([#362](https://github.com/thomas682/HA-Addons/issues/362))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`, `pytest -q tests/test_api_ui_support.py`, `npx playwright test tests/e2e/dashboard.spec.js`
+- Tested with Home Assistant Core: 2026.4.3
+
 ## 1.12.406
 
 ### Bugfix
