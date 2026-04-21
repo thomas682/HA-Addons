@@ -1,0 +1,103 @@
+name: Issue status label sync
+
+on:
+  issues:
+    types:
+      - opened
+      - reopened
+      - closed
+      - labeled
+      - unlabeled
+
+permissions:
+  issues: write
+
+jobs:
+  sync-status-label:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sync issue status labels
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const statusLabels = [
+              "status/open",
+              "status/in_progress",
+              "status/done",
+              "status/cancelled",
+            ];
+
+            const issue = context.payload.issue;
+            const action = context.payload.action;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const issue_number = issue.number;
+
+            const labelNames = (issue.labels || [])
+              .map(label => typeof label === "string" ? label : label.name)
+              .filter(Boolean);
+
+            const currentStatusLabels = labelNames.filter(name => statusLabels.includes(name));
+            const changedLabel = context.payload.label?.name || null;
+
+            let desiredStatus = null;
+
+            if (action === "opened" || action === "reopened") {
+              desiredStatus = "status/open";
+            } else if (action === "closed") {
+              desiredStatus = currentStatusLabels.includes("status/cancelled")
+                ? "status/cancelled"
+                : "status/done";
+            } else if (action === "labeled") {
+              if (statusLabels.includes(changedLabel)) {
+                desiredStatus = changedLabel;
+              } else if (currentStatusLabels.length === 1) {
+                desiredStatus = currentStatusLabels[0];
+              } else if (currentStatusLabels.length > 1) {
+                desiredStatus = currentStatusLabels[0];
+              }
+            } else if (action === "unlabeled") {
+              const remaining = currentStatusLabels.filter(name => name !== changedLabel);
+              if (remaining.length === 1) {
+                desiredStatus = remaining[0];
+              } else if (remaining.length === 0) {
+                desiredStatus = issue.state === "open" ? "status/open" : "status/done";
+              } else {
+                desiredStatus = remaining[0];
+              }
+            }
+
+            if (!desiredStatus) {
+              core.info("No status change needed.");
+              return;
+            }
+
+            for (const label of currentStatusLabels) {
+              if (label !== desiredStatus) {
+                try {
+                  await github.rest.issues.removeLabel({
+                    owner,
+                    repo,
+                    issue_number,
+                    name: label,
+                  });
+                  core.info(`Removed ${label}`);
+                } catch (error) {
+                  if (error.status !== 404) {
+                    throw error;
+                  }
+                }
+              }
+            }
+
+            if (!currentStatusLabels.includes(desiredStatus)) {
+              await github.rest.issues.addLabels({
+                owner,
+                repo,
+                issue_number,
+                labels: [desiredStatus],
+              });
+              core.info(`Added ${desiredStatus}`);
+            } else {
+              core.info(`Keeping ${desiredStatus}`);
+            }
