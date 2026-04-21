@@ -1577,7 +1577,9 @@ const $iconSvgReset = document.getElementById('icon_svg_reset');
 
 let _ICON_INV = [];
 let _ICON_OVERRIDES = {};
+let _ICON_DEFAULT = {};
 let _ICON_EDIT_KEY = '';
+let _ICON_INIT_TRIES = 0;
 
 function _iconsSetErr(msg){
   try{
@@ -1612,8 +1614,10 @@ function _iconModalOpen(key){
     const label = inv && inv.label ? String(inv.label) : '';
     const area = inv && inv.area ? String(inv.area) : '';
     try{ if($iconSvgTitle) $iconSvgTitle.textContent = 'Icon SVG: ' + _ICON_EDIT_KEY; }catch(e){}
-    try{ if($iconSvgSub) $iconSvgSub.textContent = (area ? (area + ' | ') : '') + (label || ''); }catch(e){}
-    const cur = (_ICON_OVERRIDES && _ICON_EDIT_KEY && _ICON_OVERRIDES[_ICON_EDIT_KEY]) ? String(_ICON_OVERRIDES[_ICON_EDIT_KEY]||'') : '';
+    const hasOv = !!(_ICON_OVERRIDES && _ICON_EDIT_KEY && _ICON_OVERRIDES[_ICON_EDIT_KEY]);
+    const def = (_ICON_DEFAULT && _ICON_EDIT_KEY && _ICON_DEFAULT[_ICON_EDIT_KEY]) ? String(_ICON_DEFAULT[_ICON_EDIT_KEY]||'') : '';
+    const cur = hasOv ? String(_ICON_OVERRIDES[_ICON_EDIT_KEY]||'') : def;
+    try{ if($iconSvgSub) $iconSvgSub.textContent = (area ? (area + ' | ') : '') + (label || '') + (hasOv ? ' | Override aktiv' : ' | Default (kein Override)'); }catch(e){}
     try{ $iconSvgText.value = cur; }catch(e){}
     try{
       if($iconSvgPreview){
@@ -1646,6 +1650,16 @@ async function _iconsLoad(){
   const ov = await _iconsFetchJson('./api/icon_svg', {});
   _ICON_INV = Array.isArray(inv.items) ? inv.items : [];
   _ICON_OVERRIDES = (ov.items && typeof ov.items === 'object') ? ov.items : {};
+  try{
+    _ICON_DEFAULT = {};
+    (_ICON_INV||[]).forEach(x=>{
+      try{
+        const k = x && x.key ? String(x.key) : '';
+        const s = x && x.svg ? String(x.svg) : '';
+        if(k && s) _ICON_DEFAULT[k] = s;
+      }catch(e){}
+    });
+  }catch(e){}
   try{
     if($iconsArea){
       const seen = {};
@@ -1712,8 +1726,10 @@ function _iconsRender(){
       const tdSvg = document.createElement('td');
       tdSvg.className = 'mono';
       tdSvg.style.cursor = 'pointer';
-      const cur = (_ICON_OVERRIDES && _ICON_OVERRIDES[r.key]) ? String(_ICON_OVERRIDES[r.key]||'') : '';
-      tdSvg.textContent = cur ? (cur.length > 120 ? (cur.slice(0, 120) + '...') : cur) : '';
+      const ov = (_ICON_OVERRIDES && _ICON_OVERRIDES[r.key]) ? String(_ICON_OVERRIDES[r.key]||'') : '';
+      const def = (_ICON_DEFAULT && _ICON_DEFAULT[r.key]) ? String(_ICON_DEFAULT[r.key]||'') : '';
+      const eff = ov || def || '';
+      tdSvg.textContent = eff ? (eff.length > 120 ? (eff.slice(0, 120) + '...') : eff) : '';
       tdSvg.title = 'Doppelklick: editieren';
       tdSvg.addEventListener('dblclick', ()=>_iconModalOpen(r.key));
       tr.appendChild(tdSvg);
@@ -1728,7 +1744,7 @@ function _iconsRender(){
       pv.style.border = '1px solid #eee';
       pv.style.borderRadius = '8px';
       pv.style.background = '#fafafa';
-      try{ if(cur) pv.innerHTML = cur; }catch(e){}
+      try{ if(eff) pv.innerHTML = eff; }catch(e){}
       tdPrev.appendChild(pv);
       tr.appendChild(tdPrev);
 
@@ -1805,7 +1821,13 @@ async function _iconModalReset(){
 
 function initIconbilder(){
   try{
-    if(!$iconsTbl) return;
+    if(!$iconsTbl){
+      if(_ICON_INIT_TRIES < 10){
+        _ICON_INIT_TRIES += 1;
+        setTimeout(initIconbilder, 220);
+      }
+      return;
+    }
     try{ if($iconsSearch) $iconsSearch.addEventListener('input', ()=>_iconsRender()); }catch(e){}
     try{ if($iconsArea) $iconsArea.addEventListener('change', ()=>_iconsRender()); }catch(e){}
     try{ if($iconsOnlyOverrides) $iconsOnlyOverrides.addEventListener('change', ()=>_iconsRender()); }catch(e){}
@@ -3095,6 +3117,7 @@ function restructureSettings(){
     const saveCard = document.querySelector('.save_card');
     if(!main || !saveCard || main.dataset.restructured250 === '1'){
       try{ if(window.InfluxBroNormalizeSummaryActions) window.InfluxBroNormalizeSummaryActions(); }catch(e){}
+      try{ if(window.initIconbilder) window.initIconbilder(); else if(typeof initIconbilder === 'function') initIconbilder(); }catch(e){}
       return;
     }
     main.dataset.restructured250 = '1';
@@ -3327,14 +3350,13 @@ function restructureSettings(){
     try{ if(window.InfluxBroNormalizeSummaryActions) window.InfluxBroNormalizeSummaryActions(); }catch(e){
       reportConfigError('restructureSettings NormalizeSummaryActions failed', {}, e && e.stack ? e.stack : String(e || ''));
     }
+    try{ if(window.initIconbilder) window.initIconbilder(); else if(typeof initIconbilder === 'function') initIconbilder(); }catch(e){}
   }catch(e){
     reportConfigError('restructureSettings failed', {}, e && e.stack ? e.stack : String(e || ''));
   }
 }
 
 try{ if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', restructureSettings, {once:true}); else restructureSettings(); }catch(e){}
-
-try{ if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initIconbilder, {once:true}); else initIconbilder(); }catch(e){}
 
 load().catch(e=>{
   try{ reportConfigError('Settings initial load failed', { stage: 'load' }, e && e.stack ? e.stack : String(e || '')); }catch(x){}

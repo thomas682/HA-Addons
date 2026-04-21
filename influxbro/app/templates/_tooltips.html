@@ -699,7 +699,7 @@
 })();
 
 // HTML custom tooltip (renders the existing title content).
-// Keeps the title attribute for accessibility, but suppresses the browser tooltip while hovering.
+// Native browser tooltips are disabled by moving `title` -> `data-ib-title`.
 (function(){
   try{
     const enabled = true;
@@ -741,6 +741,24 @@
     let lastEl = null;
     let lastTitle = '';
     let showT = null;
+
+    // Hard-disable native browser tooltips: move title -> data-ib-title and remove title attr.
+    function _stealTitle(el){
+      try{
+        if(!el || !el.getAttribute) return '';
+        const t = String(el.getAttribute('title') || '').trim();
+        if(!t) return String(el.getAttribute('data-ib-title') || '').trim();
+        try{ el.setAttribute('data-ib-title', t); }catch(e){}
+        try{ el.removeAttribute('title'); }catch(e){}
+        return t;
+      }catch(e){
+        return '';
+      }
+    }
+
+    function _storedTitle(el){
+      try{ return String(el && el.getAttribute ? (el.getAttribute('data-ib-title') || '') : '').trim(); }catch(e){ return ''; }
+    }
 
     function _ensure(){
       if(tip) return tip;
@@ -838,13 +856,6 @@
       try{ if(showT) clearTimeout(showT); }catch(e){}
       showT = null;
       try{ if(tip){ tip.style.opacity = '0'; tip.style.pointerEvents = 'none'; } }catch(e){}
-      // Restore the native title when leaving.
-      try{
-        if(lastEl && lastTitle !== null && lastTitle !== undefined){
-          if(lastTitle) lastEl.setAttribute('title', lastTitle);
-          else lastEl.removeAttribute('title');
-        }
-      }catch(e){}
       lastEl = null;
       lastTitle = '';
     }
@@ -899,7 +910,7 @@
         if(!t || !t.closest) return null;
         // Keep tooltip stable while hovering its own content.
         if(tip && (t === tip || (t.closest && t.closest('#ib_html_tooltip')))) return lastEl;
-        const el = t.closest('[title]');
+        const el = t.closest('[data-ib-title],[title]');
         if(!el) return null;
         if(el.closest && el.closest('#ib_pagecard')) return null; // avoid fighting the fixed topbar/pagecard hover UI
         return el;
@@ -908,21 +919,28 @@
       }
     }
 
+    // Capture mouseover early enough to prevent native tooltips from triggering.
+    document.addEventListener('mouseover', (ev)=>{
+      try{
+        const el = _targetFrom(ev);
+        if(!el) return;
+        _stealTitle(el);
+      }catch(e){}
+    }, true);
+
     document.addEventListener('mousemove', (ev)=>{
       try{
         if(_pickerModeActive()) { _hide(); return; }
         const el = _targetFrom(ev);
         if(!el){ _hide(); return; }
-        const rawTitle = String(el.getAttribute('title') || '');
-        const title = rawTitle.trim() || ((el === lastEl) ? String(lastTitle || '').trim() : '');
+        const rawTitle = _stealTitle(el);
+        const title = rawTitle.trim() || _storedTitle(el) || ((el === lastEl) ? String(lastTitle || '').trim() : '');
         if(!title){ _hide(); return; }
 
         if(el !== lastEl){
           _hide();
           lastEl = el;
           lastTitle = title;
-          // Suppress the browser tooltip immediately, but keep [title] so our selector still matches.
-          try{ lastEl.setAttribute('title', ''); }catch(e){}
           showT = setTimeout(()=>{
             try{
               if(!lastEl) return;

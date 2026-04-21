@@ -2134,6 +2134,7 @@ def _ui_inventory_build() -> list[dict[str, Any]]:
     re_aria = re.compile(r"aria-label\s*=\s*['\"]([^'\"]+)['\"]")
     re_title = re.compile(r"title\s*=\s*['\"]([^'\"]+)['\"]")
     re_span = re.compile(r"<span[^>]*>([^<]{1,120})</span>")
+    re_svg = re.compile(r"(<svg\b[\s\S]{0,8000}</svg>)", re.IGNORECASE)
 
     by_key: dict[str, dict[str, Any]] = {}
 
@@ -2171,6 +2172,7 @@ def _ui_inventory_build() -> list[dict[str, Any]]:
                 aria = ""
                 title = ""
                 label = ""
+                svg = ""
                 try:
                     am = re_aria.search(win)
                     aria = str(am.group(1) or "").strip() if am else ""
@@ -2186,6 +2188,13 @@ def _ui_inventory_build() -> list[dict[str, Any]]:
                     label = str(sm.group(1) or "").strip() if sm else ""
                 except Exception:
                     label = ""
+                try:
+                    xm = re_svg.search(win)
+                    svg = str(xm.group(1) or "").strip() if xm else ""
+                    if len(svg) > 9000:
+                        svg = ""
+                except Exception:
+                    svg = ""
                 best_label = aria or label or ""
                 best_label = best_label[:120]
 
@@ -2193,6 +2202,7 @@ def _ui_inventory_build() -> list[dict[str, Any]]:
                     "key": key,
                     "areas": [],
                     "labels": [],
+                    "svgs": [],
                     "files": [],
                     "examples": [],
                 }
@@ -2200,6 +2210,8 @@ def _ui_inventory_build() -> list[dict[str, Any]]:
                     cur["areas"].append(area)
                 if best_label and best_label not in cur["labels"]:
                     cur["labels"].append(best_label)
+                if svg and svg not in cur["svgs"] and len(cur["svgs"]) < 1:
+                    cur["svgs"].append(svg)
                 if p.name not in cur["files"]:
                     cur["files"].append(p.name)
                 if len(cur["examples"]) < 3:
@@ -2218,12 +2230,14 @@ def _ui_inventory_build() -> list[dict[str, Any]]:
         try:
             areas = v.get("areas") if isinstance(v.get("areas"), list) else []
             labels = v.get("labels") if isinstance(v.get("labels"), list) else []
+            svgs = v.get("svgs") if isinstance(v.get("svgs"), list) else []
             out.append({
                 "key": str(k),
                 "area": str(areas[0]) if areas else "",
                 "areas": areas,
                 "label": str(labels[0]) if labels else "",
                 "labels": labels,
+                "svg": str(svgs[0]) if svgs else "",
                 "files": v.get("files") if isinstance(v.get("files"), list) else [],
                 "examples": v.get("examples") if isinstance(v.get("examples"), list) else [],
             })

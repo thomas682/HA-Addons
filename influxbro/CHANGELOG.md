@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.12.403
+
+### Bugfix
+
+- Tooltips: Native Browser-Tooltips (grau) werden jetzt konsequent deaktiviert (title -> data-ib-title), damit kein Doppel-Tooltip mehr erscheinen kann. ([#360](https://github.com/thomas682/HA-Addons/issues/360))
+
+### Enhancement
+
+- Einstellungen: `Iconbilder` zeigt jetzt auch Default-/effektive Icons in Preview/SVG und der Editor ist robuster initialisiert (nach Settings-Restructure); Edit/Doppelklick funktionieren wieder zuverlaessig. ([#366](https://github.com/thomas682/HA-Addons/issues/366))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`, `pytest -q`
+- Tested with Home Assistant Core: 2026.4.3
+
 ## 1.12.402
 
 ### Enhancement
