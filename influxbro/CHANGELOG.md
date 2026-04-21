@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.411
+
+### Enhancement
+
+- UI: Schriftgroessen sind jetzt auf 4 GUI-Gruppen und 3 Tabellen-Gruppen zusammengefasst (Einstellungen nennen die betroffenen Kategorien explizit). Zoom +/- skaliert die gesamte UI proportional (Controls/Abstaende/Tabellen/Graphen). ([#371](https://github.com/thomas682/HA-Addons/issues/371))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`, `pytest -q tests/test_api_ui_support.py`, `pytest -q tests/test_api_time_and_stats.py`, `npx playwright test tests/e2e/dashboard.spec.js`
+- Tested with Home Assistant Core: 2026.4.3
+
 ## 1.12.410
 
 ### Enhancement

@@ -6,15 +6,25 @@
   <title>InfluxBro</title>
   <style>
     :root {
-      --ui-font: 14px;
-      --ui-font-small: 11px;
+      --ib-zoom-scale: 1;
+      /* Grouped font sizes (4x GUI + 3x tables) */
+      --ib-font-gui-title: 16px;
+      --ib-font-gui-heading: 14px;
+      --ib-font-gui-body: 12px;
+      --ib-font-gui-meta: 10px;
+      --ib-font-tbl-title: 12px;
+      --ib-font-tbl-head: 11px;
+      --ib-font-tbl-cell: 10px;
+
+      --ui-font: var(--ib-font-gui-body);
+      --ui-font-small: var(--ib-font-gui-meta);
       --ui-cb-scale: 0.85;
       --ui-label-w: 170px;
       --ui-ctrl-w: 320px;
       --ui-search-w: 160px;
-      --ib-sel-font: 13px;
-      --ib-sel-label-font: 12px;
-      --ib-sel-desc-font: 11px;
+      --ib-sel-font: var(--ib-font-gui-body);
+      --ib-sel-label-font: var(--ib-font-gui-meta);
+      --ib-sel-desc-font: var(--ib-font-gui-meta);
       --ib-sel-manual-w: 260px;
       /* Table density: effective row height is at most +20% above font size. */
       --ui-table-line-height: 1.2;
@@ -24,33 +34,33 @@
 
     .shell { display:grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
     @media (max-width: 980px){ .shell { grid-template-columns: 1fr; } }
-    .sidebar { padding: 14px; border-right: 1px solid #eee; }
+    .sidebar { padding: calc(14px * var(--ib-zoom-scale)); border-right: 1px solid #eee; }
     @media (max-width: 980px){ .sidebar { border-right: 0; border-bottom: 1px solid #eee; } }
     .brand { margin-bottom: 10px; }
-    .brand_title { font-weight: 800; font-size: 18px; }
-    .brand_meta { opacity: 0.7; font-size: 12px; margin-top: 2px; }
-    .nav_item { display:flex; align-items:center; gap: 10px; padding: 10px 10px; border-radius: 12px; text-decoration:none; color: inherit; }
-    .nav_item { font-size: 16px; }
+    .brand_title { font-weight: 800; font-size: var(--ib-font-gui-heading); }
+    .brand_meta { opacity: 0.7; font-size: var(--ib-font-gui-meta); margin-top: 2px; }
+    .nav_item { display:flex; align-items:center; gap: calc(10px * var(--ib-zoom-scale)); padding: calc(10px * var(--ib-zoom-scale)) calc(10px * var(--ib-zoom-scale)); border-radius: calc(12px * var(--ib-zoom-scale)); text-decoration:none; color: inherit; }
+    .nav_item { font-size: var(--ib-font-gui-heading); }
     .nav_item:hover { background: #f6f6f6; }
     .nav_item.active { background: #0b0b0c; color: #fff; }
-    .ico { width: 22px; height: 22px; display:inline-flex; align-items:center; justify-content:center; font-weight: 800; }
+    .ico { width: calc(22px * var(--ib-zoom-scale)); height: calc(22px * var(--ib-zoom-scale)); display:inline-flex; align-items:center; justify-content:center; font-weight: 800; }
 
-    .content { padding: 16px; }
+    .content { padding: calc(16px * var(--ib-zoom-scale)); }
     .row { display:flex; gap:12px; flex-wrap:wrap; align-items:end; }
     .grid { display:grid; grid-template-columns: repeat(2, minmax(260px, 1fr)); gap: 12px; margin-top: 12px; align-items:end; }
     @media (max-width: 860px){ .grid { grid-template-columns: 1fr; } }
     .control { min-width: 0; }
     .control.span2 { grid-column: 1 / -1; }
-    label { display:block; font-size:12px; opacity:0.8; }
+    label { display:block; font-size: var(--ib-font-gui-meta); opacity:0.8; }
     .label_row { display:flex; justify-content:space-between; gap: 10px; align-items:baseline; }
     #range_from_to { white-space: nowrap; }
-    select, button, input { padding:10px 12px; height: 40px; box-sizing: border-box; }
+    select, button, input { padding: calc(10px * var(--ib-zoom-scale)) calc(12px * var(--ib-zoom-scale)); height: calc(40px * var(--ib-zoom-scale)); box-sizing: border-box; }
     select, input { width: 100%; }
     input[type="checkbox"] {
       width: auto;
     }
     input[type="datetime-local"] { width: 100%; }
-    input.search { height: 34px; padding: 8px 10px; }
+    input.search { height: calc(34px * var(--ib-zoom-scale)); padding: calc(8px * var(--ib-zoom-scale)) calc(10px * var(--ib-zoom-scale)); }
     .stack { display:flex; flex-direction:column; gap:6px; }
 
     /* Selection fields (master template) */
@@ -96,10 +106,11 @@
       .ib_sel_stack input, .ib_sel_stack select { width: 100% !important; max-width: 100%; }
     }
     table { border-collapse: collapse; width: 100%; margin-top: 12px; }
-    th, td { border: 1px solid #ddd; padding: 0 6px; font-size: 12px; line-height: 1.2; vertical-align: middle; }
-    th { background:#f4f4f4; text-align:left; }
-    .graph_frame { width: 100%; max-width: 100%; border: 1px solid #ddd; border-radius: 10px; padding: 10px; margin-top: 12px; box-sizing: border-box; }
-    canvas { width: 100%; height: 180px; border: 0; margin-top: 0; border-radius: 10px; }
+    th, td { border: 1px solid #ddd; padding: 0 6px; line-height: 1.2; vertical-align: middle; }
+    th { background:#f4f4f4; text-align:left; font-size: var(--ib-font-tbl-head); }
+    td { font-size: var(--ib-font-tbl-cell); }
+    .graph_frame { width: 100%; max-width: 100%; border: 1px solid #ddd; border-radius: calc(10px * var(--ib-zoom-scale)); padding: calc(10px * var(--ib-zoom-scale)); margin-top: calc(12px * var(--ib-zoom-scale)); box-sizing: border-box; }
+    canvas { width: 100%; height: calc(180px * var(--ib-zoom-scale)); border: 0; margin-top: 0; border-radius: calc(10px * var(--ib-zoom-scale)); }
     #chart_plotly { width: 100%; height: var(--graph-h, 220px); border: 0; margin-top: 0; border-radius: 10px; display:none; }
     .err { color: #b00020; margin-top: 8px; white-space: pre-wrap; }
     .ok { color: #0a7a28; margin-top: 8px; white-space: pre-wrap; }
@@ -278,10 +289,11 @@
       .filter_pair input.search { width: 100%; }
     }
 
-    .main { display:block; margin-top: 12px; }
-    .table_wrap { border: 1px solid #ddd; border-radius: 10px; padding: 10px; margin-top: 12px; }
-    .table_head { display:flex; justify-content:space-between; gap: 12px; align-items:baseline; flex-wrap:wrap; }
-    .table_box { --max-rows: 100; --lh: var(--ui-table-line-height, 1.2); font-size: var(--ui-font-small); max-height: calc(var(--max-rows) * 1em * var(--lh) + 42px); overflow:auto; border: 1px solid #eee; border-radius: 10px; margin-top: 8px; }
+    .main { display:block; margin-top: calc(12px * var(--ib-zoom-scale)); }
+    .table_wrap { border: 1px solid #ddd; border-radius: calc(10px * var(--ib-zoom-scale)); padding: calc(10px * var(--ib-zoom-scale)); margin-top: calc(12px * var(--ib-zoom-scale)); }
+    .table_title { font-size: var(--ib-font-tbl-title); font-weight: 800; }
+    .table_head { display:flex; justify-content:space-between; gap: calc(12px * var(--ib-zoom-scale)); align-items:baseline; flex-wrap:wrap; }
+    .table_box { --max-rows: 100; --lh: var(--ui-table-line-height, 1.2); font-size: var(--ib-font-tbl-cell); max-height: calc(var(--max-rows) * 1em * var(--lh) + calc(42px * var(--ib-zoom-scale))); overflow:auto; border: 1px solid #eee; border-radius: calc(10px * var(--ib-zoom-scale)); margin-top: calc(8px * var(--ib-zoom-scale)); }
     .table_box table { margin-top: 0; }
     table.list_tbl th, table.list_tbl td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .table_box th, .table_box td { font-size: inherit; padding: 0 6px; line-height: var(--lh); height: auto; vertical-align: middle; }
@@ -291,7 +303,7 @@
     #raw_tbl, #raw_tbl th, #raw_tbl td,
     #raw_outlier_tbl, #raw_outlier_tbl th, #raw_outlier_tbl td {
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      font-size: var(--ui-font-small) !important;
+      font-size: var(--ib-font-tbl-cell) !important;
       line-height: var(--ui-table-line-height, 1.2);
     }
     #raw_tbl thead { position: sticky; top: 0; z-index: 2; }
@@ -334,9 +346,9 @@
     .tbl_actions { display:flex; gap: 10px; align-items:center; flex-wrap:wrap; margin-top: 6px; }
     .tbl_actions details { margin: 0; }
     .tbl_actions summary { cursor: pointer; }
-    .tbl_actions label { display:flex; gap: 6px; align-items:center; font-size: 12px; opacity: 0.85; }
+    .tbl_actions label { display:flex; gap: 6px; align-items:center; font-size: var(--ib-font-tbl-title); opacity: 0.85; }
     .tbl_actions input[type="checkbox"] { width: auto; height: auto; padding: 0; }
-    .btn_sm { height: 34px; padding: 6px 10px; }
+    .btn_sm { height: calc(34px * var(--ib-zoom-scale)); padding: calc(6px * var(--ib-zoom-scale)) calc(10px * var(--ib-zoom-scale)); }
     tr.selected { background: #e8f1ff; }
     tr.in_edit { background: #fff7d9; }
     tr.dirty { background: #e8ffe8; }
@@ -762,7 +774,7 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
        <div class="tbl_actions" style="justify-content:flex-start; margin-top: 8px; gap: 10px; flex-wrap:wrap;" data-ui="dashboard_graph.panel_detail" title="dashboard_graph.panel_detail">
         <label style="display:flex; align-items:center; gap: 8px;">
           <span class="muted" style="min-width: 76px;">Details</span>
-          <select id="graph_detail_mode" class="btn_sm" data-ui="dashboard_graph.panel_detail_mode" title="dashboard_graph.panel_detail_mode" style="height:34px; padding: 6px 10px;">
+          <select id="graph_detail_mode" class="btn_sm" data-ui="dashboard_graph.panel_detail_mode" title="dashboard_graph.panel_detail_mode">
             <option value="dynamic" selected>Dynamisch</option>
             <option value="manual">Manuell</option>
           </select>
@@ -788,7 +800,7 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
       </div>
        <div id="graph_query_section" style="display:none;" data-ui="dashboard_graph.panel_query" title="dashboard_graph.panel_query">
          <button class="btn_sm" id="graph_copy_query" data-ui="dashboard_graph.btn_query_kopieren" title="dashboard_graph.btn_query_kopieren"></button>
-         <select class="btn_sm" id="graph_query_source" data-ui="dashboard_graph.select_query_quelle" title="dashboard_graph.select_query_quelle" style="height:34px; padding: 6px 10px;">
+         <select class="btn_sm" id="graph_query_source" data-ui="dashboard_graph.select_query_quelle" title="dashboard_graph.select_query_quelle">
            <option value="dashboard" selected>Dashboard</option>
            <option value="edit_graph">Bearbeitungsgraph</option>
          </select>
@@ -814,8 +826,8 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
            <div id="chart_plotly"></div>
            <canvas id="chart" width="800" height="200"></canvas>
         <div id="deriv_strip_plot" style="display:none; width: 100%; height: 60px; margin-top: 8px; pointer-events:none;"></div>
-        <div id="deriv_graph_plot" style="display:none; width: 100%; height: 140px; margin-top: 8px; pointer-events:none;"></div>
-        <div id="graph_resize" data-ui="dashboard_graph.handle_resize" title="dashboard_graph.handle_resize" style="height: 12px; cursor: ns-resize; margin-top: 8px; border-radius: 999px; background: linear-gradient(90deg, #eee, #f8f8f8);"></div>
+        <div id="deriv_graph_plot" style="display:none; width: 100%; height: calc(140px * var(--ib-zoom-scale)); margin-top: calc(8px * var(--ib-zoom-scale)); pointer-events:none;"></div>
+        <div id="graph_resize" data-ui="dashboard_graph.handle_resize" title="dashboard_graph.handle_resize" style="height: calc(12px * var(--ib-zoom-scale)); cursor: ns-resize; margin-top: calc(8px * var(--ib-zoom-scale)); border-radius: 999px; background: linear-gradient(90deg, #eee, #f8f8f8);"></div>
       </div>
     </details>
 
@@ -4293,21 +4305,43 @@ async function loadUiConfig(){
       };
     }catch(e){}
 
-    const fs = Number(cfg.ui_font_size_px);
-    if(isFinite(fs) && fs >= 10 && fs <= 22) document.documentElement.style.setProperty("--ui-font", fs + "px");
-    const fss = Number(cfg.ui_font_small_px);
-    if(isFinite(fss) && fss >= 9 && fss <= 18){
-      UI_FONT_SMALL_FALLBACK = Math.trunc(fss);
-      document.documentElement.style.setProperty("--ui-font-small", fss + "px");
+    const gTitle = Number(cfg.ui_gui_title_px);
+    if(isFinite(gTitle) && gTitle >= 8 && gTitle <= 16) document.documentElement.style.setProperty("--ib-font-gui-title", Math.trunc(gTitle) + "px");
+    const gHeading = Number(cfg.ui_gui_heading_px);
+    if(isFinite(gHeading) && gHeading >= 8 && gHeading <= 16) document.documentElement.style.setProperty("--ib-font-gui-heading", Math.trunc(gHeading) + "px");
+    const gBody = Number(cfg.ui_gui_body_px);
+    if(isFinite(gBody) && gBody >= 8 && gBody <= 16) document.documentElement.style.setProperty("--ib-font-gui-body", Math.trunc(gBody) + "px");
+    const gMeta = Number(cfg.ui_gui_meta_px);
+    if(isFinite(gMeta) && gMeta >= 8 && gMeta <= 16){
+      UI_FONT_SMALL_FALLBACK = Math.trunc(gMeta);
+      document.documentElement.style.setProperty("--ib-font-gui-meta", Math.trunc(gMeta) + "px");
+    }
+    const tTitle = Number(cfg.ui_tbl_title_px);
+    if(isFinite(tTitle) && tTitle >= 8 && tTitle <= 16) document.documentElement.style.setProperty("--ib-font-tbl-title", Math.trunc(tTitle) + "px");
+    const tHead = Number(cfg.ui_tbl_head_px);
+    if(isFinite(tHead) && tHead >= 8 && tHead <= 16) document.documentElement.style.setProperty("--ib-font-tbl-head", Math.trunc(tHead) + "px");
+    const tCell = Number(cfg.ui_tbl_cell_px);
+    if(isFinite(tCell) && tCell >= 8 && tCell <= 16) document.documentElement.style.setProperty("--ib-font-tbl-cell", Math.trunc(tCell) + "px");
+
+    // Keep legacy vars in sync (used across templates).
+    if(isFinite(gBody) && gBody >= 8 && gBody <= 16) document.documentElement.style.setProperty("--ui-font", Math.trunc(gBody) + "px");
+    if(isFinite(gMeta) && gMeta >= 8 && gMeta <= 16) document.documentElement.style.setProperty("--ui-font-small", Math.trunc(gMeta) + "px");
+
+    // Selection fields follow the grouped sizes.
+    if(isFinite(gBody) && gBody >= 8 && gBody <= 16) document.documentElement.style.setProperty('--ib-sel-font', Math.trunc(gBody) + 'px');
+    if(isFinite(gMeta) && gMeta >= 8 && gMeta <= 16){
+      document.documentElement.style.setProperty('--ib-sel-label-font', Math.trunc(gMeta) + 'px');
+      document.documentElement.style.setProperty('--ib-sel-desc-font', Math.trunc(gMeta) + 'px');
     }
 
-    // Table density: user sets desired px height; effective row height is clamped to max +20% above font size.
+    // Table density: user sets desired px height; effective row height is clamped to max +20% above cell font size.
     try{
       const rh = Number(cfg.ui_table_row_height_px);
-      const fontPx = (isFinite(fss) && fss >= 9 && fss <= 18) ? fss : UI_FONT_SMALL_FALLBACK;
-      const wantPx = (isFinite(rh) && rh > 0) ? rh : (fontPx * 1.2);
-      const effPx = Math.min(fontPx * 1.2, Math.max(fontPx, wantPx));
-      const lh = effPx / fontPx;
+      const fontPx = (isFinite(tCell) && tCell >= 8 && tCell <= 16) ? tCell : Number(getComputedStyle(document.documentElement).getPropertyValue('--ib-font-tbl-cell').replace('px',''));
+      const fontPxSafe = (isFinite(fontPx) && fontPx > 0) ? fontPx : 10;
+      const wantPx = (isFinite(rh) && rh > 0) ? rh : (fontPxSafe * 1.2);
+      const effPx = Math.min(fontPxSafe * 1.2, Math.max(fontPxSafe, wantPx));
+      const lh = effPx / fontPxSafe;
       if(isFinite(lh) && lh >= 1.0 && lh <= 1.2){
         document.documentElement.style.setProperty("--ui-table-line-height", lh.toFixed(3));
       }
@@ -4325,12 +4359,6 @@ async function loadUiConfig(){
     const sw = Number(cfg.ui_filter_search_width_px);
     if(isFinite(sw) && sw >= 80 && sw <= 420) document.documentElement.style.setProperty("--ui-search-w", sw + "px");
 
-    const sff = Number(cfg.ui_sel_field_font_px);
-    if(isFinite(sff) && sff >= 9 && sff <= 22) document.documentElement.style.setProperty('--ib-sel-font', sff + 'px');
-    const slf = Number(cfg.ui_sel_label_font_px);
-    if(isFinite(slf) && slf >= 9 && slf <= 22) document.documentElement.style.setProperty('--ib-sel-label-font', slf + 'px');
-    const sdf = Number(cfg.ui_sel_desc_font_px);
-    if(isFinite(sdf) && sdf >= 9 && sdf <= 22) document.documentElement.style.setProperty('--ib-sel-desc-font', sdf + 'px');
     const smw = Number(cfg.ui_sel_width_px);
     if(isFinite(smw) && smw >= 120 && smw <= 900) document.documentElement.style.setProperty('--ib-sel-manual-w', Math.round(smw) + 'px');
     _SEL_AUTO_WIDTH = !!cfg.ui_sel_auto_width;
@@ -4344,7 +4372,16 @@ function loadGraphHeight(){
     const v = Number(localStorage.getItem(GRAPH_H_KEY));
     if(isFinite(v) && v >= 200 && v <= 900){
       GRAPH_H_PX = v;
-      document.documentElement.style.setProperty('--graph-h', Math.round(v) + 'px');
+      const sc = (function(){
+        try{
+          const raw = getComputedStyle(document.documentElement).getPropertyValue('--ib-zoom-scale').trim();
+          const n = Number(raw || '1');
+          return (isFinite(n) && n > 0.1 && n < 6) ? n : 1;
+        }catch(e){
+          return 1;
+        }
+      })();
+      document.documentElement.style.setProperty('--graph-h', Math.round(v * sc) + 'px');
     }
   }catch(e){}
 }
@@ -4352,6 +4389,19 @@ function loadGraphHeight(){
 function saveGraphHeight(v){
   try{ localStorage.setItem(GRAPH_H_KEY, String(Math.round(v))); }catch(e){}
 }
+
+// Called by the topbar zoom control.
+window.InfluxBroOnZoomChange = function(scale, pct){
+  try{
+    const sc = (isFinite(Number(scale)) && Number(scale) > 0.1 && Number(scale) < 6) ? Number(scale) : 1;
+    if(isFinite(GRAPH_H_PX) && GRAPH_H_PX > 0){
+      document.documentElement.style.setProperty('--graph-h', Math.round(GRAPH_H_PX * sc) + 'px');
+      if(window.Plotly && $plotly){
+        try{ window.Plotly.relayout($plotly, {height: Math.round(GRAPH_H_PX * sc)}); }catch(e){}
+      }
+    }
+  }catch(e){}
+};
 
 function initGraphResize(){
   if(!$graphResize) return;
@@ -4363,13 +4413,22 @@ function initGraphResize(){
     if(!dragging) return;
     const y = (ev && (ev.touches && ev.touches[0] ? ev.touches[0].clientY : ev.clientY)) || 0;
     const dy = y - startY;
-    let h = startH + dy;
+    const sc = (function(){
+      try{
+        const raw = getComputedStyle(document.documentElement).getPropertyValue('--ib-zoom-scale').trim();
+        const n = Number(raw || '1');
+        return (isFinite(n) && n > 0.1 && n < 6) ? n : 1;
+      }catch(e){
+        return 1;
+      }
+    })();
+    let h = startH + (dy / Math.max(0.1, sc));
     if(h < 200) h = 200;
     if(h > 900) h = 900;
     GRAPH_H_PX = h;
-    document.documentElement.style.setProperty('--graph-h', Math.round(h) + 'px');
+    document.documentElement.style.setProperty('--graph-h', Math.round(h * sc) + 'px');
     if(window.Plotly && $plotly){
-      try{ window.Plotly.relayout($plotly, {height: Math.round(h)}); }catch(e){}
+      try{ window.Plotly.relayout($plotly, {height: Math.round(h * sc)}); }catch(e){}
     }
   }
 

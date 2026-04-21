@@ -501,18 +501,7 @@
                     <input id="ui_analysis_max_age_years" type="number" min="1" max="50" />
                   </div>
                 </div>
-              <div class="param_row">
-                <div class="param_label">Popup Text Schriftgroesse (px)<span class="param_hint">Standard fuer <code>influxbro_popup_pre</code>, z. B. fuer Info-, Query- und Log-Dialoge (Default: 10).</span></div>
-                <div class="param_control">
-                  <input id="ui_popup_pre_font_px" type="number" min="8" max="24" />
-                </div>
-              </div>
-              <div class="param_row">
-                <div class="param_label">Popup History Schriftgroesse (px)<span class="param_hint">Standard fuer die untere Query-History im Popup (Default: 10).</span></div>
-                <div class="param_control">
-                  <input id="ui_popup_history_font_px" type="number" min="8" max="24" />
-                </div>
-              </div>
+              <div class="section_note"><span class="muted">Popup-Text und Query-History folgen jetzt der Schriftgroesse aus "GUI Gruppe 4: Meta / Hilfetext".</span></div>
               <div class="param_row param_full">
                 <div class="param_label">Auto-Tuning</div>
                 <div class="param_control">
@@ -702,21 +691,46 @@
           <div class="card_body">
             <div class="grid">
               <div class="param_row">
-                <div class="param_label">Basis Schriftgroesse (px)<span class="param_hint">Standard: 14.</span></div>
+                <div class="param_label">GUI Gruppe 1: Titelzeile / Haupttitel (px)<span class="param_hint">Seitentitel in der festen Titelkarte, Brand-Titel (InfluxBro), grosse Kopfzeilen. Default: 16.</span></div>
                 <div class="param_control">
-                  <input id="ui_font_size_px" type="number" min="10" max="22" />
+                  <input id="ui_gui_title_px" class="cfg_num_wide" type="number" min="8" max="16" />
                 </div>
               </div>
               <div class="param_row">
-                <div class="param_label">Kleine Schriftgroesse (px)<span class="param_hint">z.B. fuer Statistik/Infotexte.</span></div>
+                <div class="param_label">GUI Gruppe 2: Ueberschriften / Navigation (px)<span class="param_hint">Bereichstitel (Details/Sektionen), Karten-/Paneltitel, Menuepunkte. Default: 14.</span></div>
                 <div class="param_control">
-                  <input id="ui_font_small_px" type="number" min="9" max="18" />
+                  <input id="ui_gui_heading_px" class="cfg_num_wide" type="number" min="8" max="16" />
                 </div>
               </div>
               <div class="param_row">
-                <div class="param_label">Seitentitel Schriftgroesse (px)<span class="param_hint">Groesse des Seitentitels in der festen Titelkarte.</span></div>
+                <div class="param_label">GUI Gruppe 3: Controls / Standardtext (px)<span class="param_hint">Alle Buttontexte, Input-/Select-Texte, normale Labels, Standardtext in Dialogen. Default: 12.</span></div>
                 <div class="param_control">
-                  <input id="ui_pagecard_title_px" type="number" min="18" max="48" />
+                  <input id="ui_gui_body_px" class="cfg_num_wide" type="number" min="8" max="16" />
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">GUI Gruppe 4: Meta / Hilfetext (px)<span class="param_hint">Beschreibungen, "muted" Texte, Version/Byline, kleine Statusinfos, Popup-Text. Default: 10.</span></div>
+                <div class="param_control">
+                  <input id="ui_gui_meta_px" class="cfg_num_wide" type="number" min="8" max="16" />
+                </div>
+              </div>
+              <div class="section_note"><span class="muted">Tabellen haben eigene Gruppen (3x) und bleiben damit kompakt. Zoom +/- skaliert die komplette UI proportional.</span></div>
+              <div class="param_row">
+                <div class="param_label">Tabelle Gruppe 1: Tabellenueberschrift / Toolbar (px)<span class="param_hint">Tabellentitel, Toolbar-Labels/Hinweise ueber Tabellen. Default: 12.</span></div>
+                <div class="param_control">
+                  <input id="ui_tbl_title_px" class="cfg_num_wide" type="number" min="8" max="16" />
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Tabelle Gruppe 2: Tabellenkopf (px)<span class="param_hint">Spaltenueberschriften (th), Filterkopfzeilen. Default: 11.</span></div>
+                <div class="param_control">
+                  <input id="ui_tbl_head_px" class="cfg_num_wide" type="number" min="8" max="16" />
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Tabelle Gruppe 3: Tabellenzellen (px)<span class="param_hint">Zelltexte (td), dichte Listen/History/Stats-Zellen. Default: 10.</span></div>
+                <div class="param_control">
+                  <input id="ui_tbl_cell_px" class="cfg_num_wide" type="number" min="8" max="16" />
                 </div>
               </div>
               <div class="param_row">
@@ -822,12 +836,6 @@
                 </div>
               </div>
               <div class="param_row">
-                <div class="param_label">Status Schriftgroesse (px)<span class="param_hint">Sidebar Status Panel (Refresh/Eintraege).</span></div>
-                <div class="param_control">
-                  <input id="ui_status_font_px" type="number" min="9" max="18" />
-                </div>
-              </div>
-              <div class="param_row">
                 <div class="param_label">Untere Statusleiste Hoehe (px)<span class="param_hint">Feste Hoehe der unteren Statusleiste auf allen Seiten.</span></div>
                 <div class="param_control">
                   <input id="ui_status_bar_height_px" type="number" min="28" max="90" />
@@ -864,12 +872,7 @@
                   </div>
                 </div>
               </div>
-              <div class="param_row">
-                <div class="param_label">Bereich-Titel (Details): Schriftgroesse (px)<span class="param_hint">Schriftgroesse der einklappbaren Bereichstitel (Details/Sektionen).</span></div>
-                <div class="param_control">
-                  <input id="ui_section_title_font_px" class="cfg_num_wide" type="number" min="10" max="22" data-ui="config_settings.input_ui_section_title_font_px" title="settings.ui_section_title_font_px" />
-                </div>
-              </div>
+              <div class="section_note"><span class="muted">Bereichstitel-Schriftgroessen folgen jetzt den GUI Gruppen (Ueberschriften/Meta).</span></div>
               <div class="param_row">
                 <div class="param_label">Bereich-Titel Ebene 2: Hintergrund<span class="param_hint">Farbe fuer die zweite Section-Ebene der Einstellungen.</span></div>
                 <div class="param_control">
@@ -889,12 +892,6 @@
                 </div>
               </div>
               <div class="param_row">
-                <div class="param_label">Bereich-Titel Ebene 2: Schriftgroesse (px)</div>
-                <div class="param_control">
-                  <input id="ui_section_level2_font_px" class="cfg_num_wide" type="number" min="10" max="22" />
-                </div>
-              </div>
-              <div class="param_row">
                 <div class="param_label">Bereich-Titel Ebene 3: Hintergrund<span class="param_hint">Farbe fuer die dritte Section-Ebene der Einstellungen.</span></div>
                 <div class="param_control">
                   <div class="color_pick_row">
@@ -910,12 +907,6 @@
                     <input id="ui_section_level3_fg_color" type="color" value="#FFFFFF" />
                     <input id="ui_section_level3_fg" placeholder="#RRGGBB" />
                   </div>
-                </div>
-              </div>
-              <div class="param_row">
-                <div class="param_label">Bereich-Titel Ebene 3: Schriftgroesse (px)</div>
-                <div class="param_control">
-                  <input id="ui_section_level3_font_px" class="cfg_num_wide" type="number" min="9" max="20" />
                 </div>
               </div>
               <div class="param_row">
@@ -954,25 +945,7 @@
                   <input id="ui_filter_search_width_px" class="cfg_num_wide" type="number" min="80" max="420" />
                 </div>
               </div>
-              <div class="section_note"><span class="muted">Auswahlfelder (Filter/Zeiten)</span></div>
-              <div class="param_row">
-                <div class="param_label">Textgroesse im Feld (px)<span class="param_hint">Schriftgroesse in Auswahlfeldern (Input/Select).</span></div>
-                <div class="param_control">
-                  <input id="ui_sel_field_font_px" class="cfg_num_wide" type="number" min="9" max="22" />
-                </div>
-              </div>
-              <div class="param_row">
-                <div class="param_label">Textgroesse Name + Anzahl (px)<span class="param_hint">Label oberhalb des Felds.</span></div>
-                <div class="param_control">
-                  <input id="ui_sel_label_font_px" type="number" min="9" max="22" />
-                </div>
-              </div>
-              <div class="param_row">
-                <div class="param_label">Textgroesse Kurzbeschreibung (px)<span class="param_hint">Kurztext unterhalb des Felds.</span></div>
-                <div class="param_control">
-                  <input id="ui_sel_desc_font_px" type="number" min="9" max="22" />
-                </div>
-              </div>
+              <div class="section_note"><span class="muted">Auswahlfelder (Filter/Zeiten) folgen jetzt den GUI Schriftgruppen (Controls/Meta).</span></div>
               <div class="param_row">
                 <div class="param_label">Breite automatisch</div>
                 <div class="param_control">
@@ -1515,9 +1488,10 @@ const ids = [
   "database","username","password",
   "ui_table_visible_rows","ui_outlier_visible_rows","ui_raw_outlier_display_limit_per_type","ui_raw_outlier_search_limit","ui_table_row_height_px","ui_table_header_bg","ui_table_header_fg","ui_table_min_empty_rows","ui_edit_neighbors_n","ui_edit_details_visible_rows","ui_edit_graph_buffer_minutes","ui_graph_ctx_before_minutes","ui_graph_ctx_after_minutes","ui_edit_graph_max_points","ui_decimals",
   "ui_backup_table_row_height_px","ui_backup_visible_rows","ui_restore_visible_rows",
-  "ui_query_max_points","ui_raw_max_points","ui_raw_center_max_points","ui_raw_center_range_default","ui_raw_center_min_points","ui_raw_target_chunk_ms","ui_analysis_max_age_years","ui_popup_pre_font_px","ui_popup_history_font_px",
+  "ui_query_max_points","ui_raw_max_points","ui_raw_center_max_points","ui_raw_center_range_default","ui_raw_center_min_points","ui_raw_target_chunk_ms","ui_analysis_max_age_years",
   "ui_query_manual_max_points","ui_graph_jump_padding_intervals",
-  "ui_font_size_px","ui_font_small_px","ui_pagecard_title_px","ui_page_search_highlight_color","ui_page_search_highlight_width_px","ui_page_search_highlight_duration_ms","ui_nav_helper_history_limit","ui_nav_helper_highlight_color","ui_nav_helper_highlight_duration_ms","ui_analysis_cache_hidden_color","ui_checkbox_scale",
+  "ui_gui_title_px","ui_gui_heading_px","ui_gui_body_px","ui_gui_meta_px","ui_tbl_title_px","ui_tbl_head_px","ui_tbl_cell_px",
+  "ui_page_search_highlight_color","ui_page_search_highlight_width_px","ui_page_search_highlight_duration_ms","ui_nav_helper_history_limit","ui_nav_helper_highlight_color","ui_nav_helper_highlight_duration_ms","ui_analysis_cache_hidden_color","ui_checkbox_scale",
   "ui_analysis_cache_missing_color",
   "ui_picker_outline_auto","ui_picker_outline_light_bg","ui_picker_outline_dark_bg","perf_corr_causal_gap_ms","perf_corr_timer_gap_ms","perf_corr_dep_zoom_pct",
   "outlier_gap_seconds_default",
@@ -1526,12 +1500,11 @@ const ids = [
   "outlier_bounds_min_default",
   "outlier_bounds_max_default",
   "outlier_recovery_valid_streak_default",
-  "ui_section_title_bg","ui_section_title_fg","ui_section_level2_bg","ui_section_level2_fg","ui_section_level2_font_px","ui_section_level3_bg","ui_section_level3_fg","ui_section_level3_font_px",
-  "ui_section_title_font_px",
-  "ui_status_font_px","ui_status_bar_height_px","ui_status_bar_bg","ui_status_bar_fg",
+  "ui_section_title_bg","ui_section_title_fg","ui_section_level2_bg","ui_section_level2_fg","ui_section_level3_bg","ui_section_level3_fg",
+  "ui_status_bar_height_px","ui_status_bar_bg","ui_status_bar_fg",
   "ui_status_show_sysinfo",
   "ui_filter_label_width_px","ui_filter_control_width_px","ui_filter_search_width_px"
-  ,"ui_sel_field_font_px","ui_sel_label_font_px","ui_sel_desc_font_px","ui_sel_auto_width","ui_sel_width_px"
+  ,"ui_sel_auto_width","ui_sel_width_px"
   ,"jobs_max_runtime_seconds","ui_job_color_running","ui_job_color_done","ui_job_color_error","ui_job_color_cancelled"
   ,"ui_tooltips_enabled"
   ,"restore_preview_lines"
@@ -2397,13 +2370,16 @@ function setForm(cfg){
   _safeSet(el.ui_raw_center_min_points, 'value', cfg.ui_raw_center_min_points ?? 10);
   _setVal(el.ui_raw_target_chunk_ms, cfg.ui_raw_target_chunk_ms ?? 5000);
   _setVal(el.ui_analysis_max_age_years, cfg.ui_analysis_max_age_years ?? 5);
-  _setVal(el.ui_popup_pre_font_px, cfg.ui_popup_pre_font_px ?? 10);
-  _setVal(el.ui_popup_history_font_px, cfg.ui_popup_history_font_px ?? 10);
   _setVal(el.ui_decimals, cfg.ui_decimals ?? 3);
 
-  _setVal(el.ui_font_size_px, cfg.ui_font_size_px ?? 14);
-  _setVal(el.ui_font_small_px, cfg.ui_font_small_px ?? 11);
-  _setVal(el.ui_pagecard_title_px, cfg.ui_pagecard_title_px ?? 30);
+  _setVal(el.ui_gui_title_px, cfg.ui_gui_title_px ?? 16);
+  _setVal(el.ui_gui_heading_px, cfg.ui_gui_heading_px ?? 14);
+  _setVal(el.ui_gui_body_px, cfg.ui_gui_body_px ?? 12);
+  _setVal(el.ui_gui_meta_px, cfg.ui_gui_meta_px ?? 10);
+  _setVal(el.ui_tbl_title_px, cfg.ui_tbl_title_px ?? 12);
+  _setVal(el.ui_tbl_head_px, cfg.ui_tbl_head_px ?? 11);
+  _setVal(el.ui_tbl_cell_px, cfg.ui_tbl_cell_px ?? 10);
+
   _setVal(el.ui_page_search_highlight_color, cfg.ui_page_search_highlight_color ?? '#FF9900');
   _setVal(el.ui_page_search_highlight_width_px, cfg.ui_page_search_highlight_width_px ?? 5);
   _setVal(el.ui_page_search_highlight_duration_ms, cfg.ui_page_search_highlight_duration_ms ?? 8000);
@@ -2418,19 +2394,15 @@ function setForm(cfg){
   _setVal(el.perf_corr_causal_gap_ms, (cfg.perf_corr_causal_gap_ms !== undefined && cfg.perf_corr_causal_gap_ms !== null) ? cfg.perf_corr_causal_gap_ms : 8);
   _setVal(el.perf_corr_timer_gap_ms, (cfg.perf_corr_timer_gap_ms !== undefined && cfg.perf_corr_timer_gap_ms !== null) ? cfg.perf_corr_timer_gap_ms : 1000);
   _setVal(el.perf_corr_dep_zoom_pct, (cfg.perf_corr_dep_zoom_pct !== undefined && cfg.perf_corr_dep_zoom_pct !== null) ? cfg.perf_corr_dep_zoom_pct : 0);
-  _setVal(el.ui_status_font_px, cfg.ui_status_font_px ?? 12);
   _setVal(el.ui_status_bar_height_px, cfg.ui_status_bar_height_px ?? 38);
   _setChecked(el.ui_status_show_sysinfo, !!cfg.ui_status_show_sysinfo);
   _setVal(el.ui_checkbox_scale, cfg.ui_checkbox_scale ?? 0.85);
   _setVal(el.ui_section_title_bg, cfg.ui_section_title_bg ?? '#3287A8');
   _setVal(el.ui_section_title_fg, cfg.ui_section_title_fg ?? '#FFFFFF');
-  _setVal(el.ui_section_title_font_px, cfg.ui_section_title_font_px ?? 13);
   _setVal(el.ui_section_level2_bg, cfg.ui_section_level2_bg ?? '#8BA293');
   _setVal(el.ui_section_level2_fg, cfg.ui_section_level2_fg ?? '#FFFFFF');
-  _setVal(el.ui_section_level2_font_px, cfg.ui_section_level2_font_px ?? 12);
   _setVal(el.ui_section_level3_bg, cfg.ui_section_level3_bg ?? '#B8B17F');
   _setVal(el.ui_section_level3_fg, cfg.ui_section_level3_fg ?? '#FFFFFF');
-  _setVal(el.ui_section_level3_font_px, cfg.ui_section_level3_font_px ?? 11);
   _setVal(el.ui_status_bar_bg, cfg.ui_status_bar_bg ?? '#FFFFFF');
   _setVal(el.ui_status_bar_fg, cfg.ui_status_bar_fg ?? '#111111');
   _syncSectionColorPickersFromText();
@@ -2441,9 +2413,6 @@ function setForm(cfg){
   _setVal(el.ui_filter_control_width_px, cfg.ui_filter_control_width_px ?? 320);
   _safeSet(el.ui_filter_search_width_px, 'value', cfg.ui_filter_search_width_px ?? 160);
 
-  _safeSet(el.ui_sel_field_font_px, 'value', cfg.ui_sel_field_font_px ?? 13);
-  _safeSet(el.ui_sel_label_font_px, 'value', cfg.ui_sel_label_font_px ?? 12);
-  _safeSet(el.ui_sel_desc_font_px, 'value', cfg.ui_sel_desc_font_px ?? 11);
   _setChecked(el.ui_sel_auto_width, !!cfg.ui_sel_auto_width);
   _safeSet(el.ui_sel_width_px, 'value', cfg.ui_sel_width_px ?? 260);
 
@@ -2568,15 +2537,18 @@ function getForm(){
     ui_raw_center_min_points: parseInt(el.ui_raw_center_min_points.value, 10),
     ui_raw_target_chunk_ms: parseInt(el.ui_raw_target_chunk_ms.value, 10),
     ui_analysis_max_age_years: parseInt(el.ui_analysis_max_age_years.value, 10),
-    ui_popup_pre_font_px: parseInt(el.ui_popup_pre_font_px.value, 10),
-    ui_popup_history_font_px: parseInt(el.ui_popup_history_font_px.value, 10),
     ui_query_manual_max_points: parseInt(el.ui_query_manual_max_points.value, 10),
     ui_graph_jump_padding_intervals: parseInt(el.ui_graph_jump_padding_intervals.value, 10),
     ui_decimals: parseInt(el.ui_decimals.value, 10),
 
-    ui_font_size_px: parseInt(el.ui_font_size_px.value, 10),
-    ui_font_small_px: parseInt(el.ui_font_small_px.value, 10),
-    ui_pagecard_title_px: parseInt(el.ui_pagecard_title_px.value, 10),
+    ui_gui_title_px: parseInt(el.ui_gui_title_px.value, 10),
+    ui_gui_heading_px: parseInt(el.ui_gui_heading_px.value, 10),
+    ui_gui_body_px: parseInt(el.ui_gui_body_px.value, 10),
+    ui_gui_meta_px: parseInt(el.ui_gui_meta_px.value, 10),
+    ui_tbl_title_px: parseInt(el.ui_tbl_title_px.value, 10),
+    ui_tbl_head_px: parseInt(el.ui_tbl_head_px.value, 10),
+    ui_tbl_cell_px: parseInt(el.ui_tbl_cell_px.value, 10),
+
     ui_page_search_highlight_color: String(el.ui_page_search_highlight_color.value || '').trim(),
     ui_page_search_highlight_width_px: parseInt(el.ui_page_search_highlight_width_px.value, 10),
     ui_page_search_highlight_duration_ms: parseInt(el.ui_page_search_highlight_duration_ms.value, 10),
@@ -2591,28 +2563,21 @@ function getForm(){
     perf_corr_causal_gap_ms: parseInt(el.perf_corr_causal_gap_ms.value, 10),
     perf_corr_timer_gap_ms: parseInt(el.perf_corr_timer_gap_ms.value, 10),
     perf_corr_dep_zoom_pct: parseInt(el.perf_corr_dep_zoom_pct.value, 10),
-    ui_status_font_px: parseInt(el.ui_status_font_px.value, 10),
     ui_status_bar_height_px: parseInt(el.ui_status_bar_height_px.value, 10),
     ui_status_show_sysinfo: _isChecked(el.ui_status_show_sysinfo),
     ui_checkbox_scale: parseFloat(el.ui_checkbox_scale.value),
     ui_section_title_bg: String(el.ui_section_title_bg.value || '').trim(),
     ui_section_title_fg: String(el.ui_section_title_fg.value || '').trim(),
-    ui_section_title_font_px: parseInt(el.ui_section_title_font_px.value, 10),
     ui_section_level2_bg: String(el.ui_section_level2_bg.value || '').trim(),
     ui_section_level2_fg: String(el.ui_section_level2_fg.value || '').trim(),
-    ui_section_level2_font_px: parseInt(el.ui_section_level2_font_px.value, 10),
     ui_section_level3_bg: String(el.ui_section_level3_bg.value || '').trim(),
     ui_section_level3_fg: String(el.ui_section_level3_fg.value || '').trim(),
-    ui_section_level3_font_px: parseInt(el.ui_section_level3_font_px.value, 10),
     ui_status_bar_bg: String(el.ui_status_bar_bg.value || '').trim(),
     ui_status_bar_fg: String(el.ui_status_bar_fg.value || '').trim(),
     ui_filter_label_width_px: parseInt(el.ui_filter_label_width_px.value, 10),
     ui_filter_control_width_px: parseInt(el.ui_filter_control_width_px.value, 10),
     ui_filter_search_width_px: parseInt(el.ui_filter_search_width_px.value, 10),
 
-    ui_sel_field_font_px: parseInt(el.ui_sel_field_font_px.value, 10),
-    ui_sel_label_font_px: parseInt(el.ui_sel_label_font_px.value, 10),
-    ui_sel_desc_font_px: parseInt(el.ui_sel_desc_font_px.value, 10),
     ui_sel_auto_width: _isChecked(el.ui_sel_auto_width),
     ui_sel_width_px: parseInt(el.ui_sel_width_px.value, 10),
 
@@ -3159,7 +3124,7 @@ function restructureSettings(){
     // Legacy grouping anchors kept for navigation/test compatibility:
     // _cfgMakeSection('Datenbank', 'settings.section.database', '')
     // _cfgMakeSection('Allgemein', 'settings.section.general', '')
-    // _cfgLinkRow('Globale Darstellung & Auswahl', '#ui_font_size_px')
+    // _cfgLinkRow('Globale Darstellung & Auswahl', '#ui_gui_body_px')
     const main = document.querySelector('main.content');
     const saveCard = document.querySelector('.save_card');
     if(!main || main.dataset.restructured250 === '1'){
@@ -3317,7 +3282,7 @@ function restructureSettings(){
           if(sections.ui_edit) _cfgBody(secGraph).appendChild(sections.ui_edit);
 
           // Move key param rows into the more specific subsection grids
-          ['ui_sel_field_font_px','ui_sel_label_font_px','ui_sel_desc_font_px','ui_sel_auto_width','ui_sel_width_px'].forEach((id)=>{ if(gridSel) _cfgMoveParamRow(id, gridSel); });
+          ['ui_sel_auto_width','ui_sel_width_px'].forEach((id)=>{ if(gridSel) _cfgMoveParamRow(id, gridSel); });
           ['ui_analysis_cache_hidden_color','ui_analysis_cache_missing_color'].forEach((id)=>{ if(gridCaching) _cfgMoveParamRow(id, gridCaching); });
 
           ['ui_analysis_max_age_years','ui_raw_target_chunk_ms'].forEach((id)=>{ if(gridAnalysis) _cfgMoveParamRow(id, gridAnalysis); });

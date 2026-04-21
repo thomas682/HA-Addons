@@ -1284,15 +1284,27 @@ DEFAULT_CFG = {
     # Dashboard graph: highlight around detected jumps (in coarse intervals)
     "ui_graph_jump_padding_intervals": 1,
 
-    "ui_font_size_px": 14,
-    "ui_font_small_px": 11,
+    # UI fonts (grouped)
+    # Goal: only 4 GUI sizes + 3 table sizes.
+    # Defaults intentionally stay within 8..16px.
+    "ui_gui_title_px": 16,
+    "ui_gui_heading_px": 14,
+    "ui_gui_body_px": 12,
+    "ui_gui_meta_px": 10,
+    "ui_tbl_title_px": 12,
+    "ui_tbl_head_px": 11,
+    "ui_tbl_cell_px": 10,
+
+    # Legacy per-element font knobs (derived from grouped sizes; kept for backward-compat)
+    "ui_font_size_px": 12,
+    "ui_font_small_px": 10,
     "ui_popup_pre_font_px": 10,
     "ui_popup_history_font_px": 10,
-    "ui_pagecard_title_px": 30,
+    "ui_pagecard_title_px": 16,
     "ui_page_search_highlight_color": "#FF9900",
     "ui_page_search_highlight_width_px": 5,
     "ui_page_search_highlight_duration_ms": 8000,
-    "ui_status_font_px": 12,
+    "ui_status_font_px": 10,
     "ui_status_show_sysinfo": False,
     "ui_status_bar_height_px": 38,
     "ui_status_bar_bg": "#FFFFFF",
@@ -1303,21 +1315,21 @@ DEFAULT_CFG = {
     # Defaults chosen for better readability.
     "ui_section_title_bg": "#3287a8",
     "ui_section_title_fg": "#FFFFFF",
-    "ui_section_title_font_px": 13,
+    "ui_section_title_font_px": 14,
     "ui_section_level2_bg": "#8BA293",
     "ui_section_level2_fg": "#FFFFFF",
     "ui_section_level2_font_px": 12,
     "ui_section_level3_bg": "#B8B17F",
     "ui_section_level3_fg": "#FFFFFF",
-    "ui_section_level3_font_px": 11,
+    "ui_section_level3_font_px": 10,
     "ui_filter_label_width_px": 170,
     "ui_filter_control_width_px": 320,
     "ui_filter_search_width_px": 160,
 
     # Selection fields (master template for filter/time selection)
-    "ui_sel_field_font_px": 13,
-    "ui_sel_label_font_px": 12,
-    "ui_sel_desc_font_px": 11,
+    "ui_sel_field_font_px": 12,
+    "ui_sel_label_font_px": 10,
+    "ui_sel_desc_font_px": 10,
     "ui_sel_auto_width": True,
     "ui_sel_width_px": 260,
 
@@ -2513,7 +2525,72 @@ def load_cfg():
         # Safety: prefer v2 to avoid confusing "v1 requires database" errors.
         v = 2
     cfg["influx_version"] = v
+
+    # Keep UI font keys consistent even if config is old.
+    try:
+        _apply_ui_font_groups(cfg)
+    except Exception:
+        pass
     return cfg
+
+
+def _clamp_int_cfg(cfg: dict[str, Any], key: str, default: int, lo: int, hi: int) -> None:
+    try:
+        cfg[key] = int(cfg.get(key, default))
+    except Exception:
+        cfg[key] = default
+    if cfg[key] < lo:
+        cfg[key] = lo
+    if cfg[key] > hi:
+        cfg[key] = hi
+
+
+def _apply_ui_font_groups(cfg: dict[str, Any]) -> None:
+    """Normalize the grouped font sizes and derive legacy keys.
+
+    This is intentionally best-effort and does not persist anything.
+    """
+
+    # Migration (best-effort): if grouped keys are missing, derive them from legacy knobs.
+    if cfg.get("ui_gui_title_px") is None:
+        cfg["ui_gui_title_px"] = cfg.get("ui_pagecard_title_px", DEFAULT_CFG.get("ui_gui_title_px", 16))
+    if cfg.get("ui_gui_heading_px") is None:
+        cfg["ui_gui_heading_px"] = cfg.get("ui_section_title_font_px", DEFAULT_CFG.get("ui_gui_heading_px", 14))
+    if cfg.get("ui_gui_body_px") is None:
+        cfg["ui_gui_body_px"] = cfg.get("ui_font_size_px", DEFAULT_CFG.get("ui_gui_body_px", 12))
+    if cfg.get("ui_gui_meta_px") is None:
+        cfg["ui_gui_meta_px"] = cfg.get("ui_font_small_px", DEFAULT_CFG.get("ui_gui_meta_px", 10))
+
+    if cfg.get("ui_tbl_title_px") is None:
+        cfg["ui_tbl_title_px"] = DEFAULT_CFG.get("ui_tbl_title_px", 12)
+    if cfg.get("ui_tbl_head_px") is None:
+        cfg["ui_tbl_head_px"] = DEFAULT_CFG.get("ui_tbl_head_px", 11)
+    if cfg.get("ui_tbl_cell_px") is None:
+        # Old tables mostly used ui_font_small_px.
+        cfg["ui_tbl_cell_px"] = cfg.get("ui_font_small_px", DEFAULT_CFG.get("ui_tbl_cell_px", 10))
+
+    # Clamp to a compact safe range.
+    _clamp_int_cfg(cfg, "ui_gui_title_px", 16, 8, 16)
+    _clamp_int_cfg(cfg, "ui_gui_heading_px", 14, 8, 16)
+    _clamp_int_cfg(cfg, "ui_gui_body_px", 12, 8, 16)
+    _clamp_int_cfg(cfg, "ui_gui_meta_px", 10, 8, 16)
+    _clamp_int_cfg(cfg, "ui_tbl_title_px", 12, 8, 16)
+    _clamp_int_cfg(cfg, "ui_tbl_head_px", 11, 8, 16)
+    _clamp_int_cfg(cfg, "ui_tbl_cell_px", 10, 8, 16)
+
+    # Derive legacy keys so existing templates/JS keep working.
+    cfg["ui_font_size_px"] = int(cfg.get("ui_gui_body_px") or 12)
+    cfg["ui_font_small_px"] = int(cfg.get("ui_gui_meta_px") or 10)
+    cfg["ui_popup_pre_font_px"] = int(cfg.get("ui_gui_meta_px") or 10)
+    cfg["ui_popup_history_font_px"] = int(cfg.get("ui_gui_meta_px") or 10)
+    cfg["ui_pagecard_title_px"] = int(cfg.get("ui_gui_title_px") or 16)
+    cfg["ui_status_font_px"] = int(cfg.get("ui_gui_meta_px") or 10)
+    cfg["ui_section_title_font_px"] = int(cfg.get("ui_gui_heading_px") or 14)
+    cfg["ui_section_level2_font_px"] = int(cfg.get("ui_gui_body_px") or 12)
+    cfg["ui_section_level3_font_px"] = int(cfg.get("ui_gui_meta_px") or 10)
+    cfg["ui_sel_field_font_px"] = int(cfg.get("ui_gui_body_px") or 12)
+    cfg["ui_sel_label_font_px"] = int(cfg.get("ui_gui_meta_px") or 10)
+    cfg["ui_sel_desc_font_px"] = int(cfg.get("ui_gui_meta_px") or 10)
 
 
 def _path_is_within(root: Path, p: Path) -> bool:
@@ -16498,14 +16575,10 @@ def api_set_config():
         if cfg[key] > hi:
             cfg[key] = hi
 
-    _clamp_int("ui_font_size_px", 14, 10, 22)
-    _clamp_int("ui_font_small_px", 11, 9, 18)
-    _clamp_int("ui_popup_pre_font_px", 10, 8, 24)
-    _clamp_int("ui_popup_history_font_px", 10, 8, 24)
-    _clamp_int("ui_pagecard_title_px", 30, 18, 48)
+    # UI font sizes are grouped; legacy font keys are derived from the groups.
+    _apply_ui_font_groups(cfg)
     _clamp_int("ui_page_search_highlight_width_px", 5, 1, 12)
     _clamp_int("ui_page_search_highlight_duration_ms", 8000, 200, 10000)
-    _clamp_int("ui_status_font_px", 12, 9, 18)
     _clamp_int("ui_status_bar_height_px", 38, 28, 90)
     _clamp_int("ui_table_row_height_px", 13, 9, 60)
     _clamp_int("ui_table_min_empty_rows", 5, 0, 50)
@@ -16536,9 +16609,6 @@ def api_set_config():
     _clamp_int("ui_filter_search_width_px", 160, 80, 420)
 
     # Selection fields (master template)
-    _clamp_int("ui_sel_field_font_px", 13, 9, 22)
-    _clamp_int("ui_sel_label_font_px", 12, 9, 22)
-    _clamp_int("ui_sel_desc_font_px", 11, 9, 22)
     _clamp_int("ui_sel_width_px", 260, 120, 900)
 
     _clamp_int("jobs_max_runtime_seconds", 0, 0, 7 * 24 * 60 * 60)
@@ -16596,9 +16666,7 @@ def api_set_config():
     _clamp_color("ui_page_search_highlight_color", "#FF9900")
     _clamp_color("ui_status_bar_bg", "#FFFFFF")
     _clamp_color("ui_status_bar_fg", "#111111")
-    _clamp_int("ui_section_title_font_px", 13, 10, 22)
-    _clamp_int("ui_section_level2_font_px", 12, 10, 22)
-    _clamp_int("ui_section_level3_font_px", 11, 9, 20)
+    # Section fonts are derived from grouped UI sizes.
 
     _clamp_int("perf_corr_causal_gap_ms", 8, 0, 200)
     _clamp_int("perf_corr_timer_gap_ms", 1000, 0, 200000)

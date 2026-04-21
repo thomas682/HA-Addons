@@ -81,7 +81,7 @@ Neu: Top-Leiste (Profil + Zoom)
   - Picker / S-Picker: kopiert eine kurze Elementkennung im Format `<page,data-ui,id[,oltype]>` in die Zwischenablage, damit UI-Elemente eindeutig identifiziert werden koennen.
     - `oltype` wird nur angehaengt, wenn das Element ein `data-cache-oltype` Attribut besitzt (es wird nur der Wert kopiert, kein Key-Name).
   - Picker / S-Picker Multi-Pick (Shift+Klick): startet einen Mehrfach-Pick. Unter der Pagecard erscheint eine Statusleiste mit den erfassten Elementen als anklickbare Chips (Klick = Entfernen). Buttons `Ende` (kopiert alles als `<a,b,c>;<d,e,f,g>;...`), `Letztes loeschen`, `Abbruch`. ESC bricht ebenfalls ab; Picked-Elemente bleiben solange farbig umrandet, wie sie in der Liste sind.
-- Zoom wird im Browser gespeichert (pro Browser/Client).
+- Zoom wird im Browser gespeichert (pro Browser/Client) und skaliert die komplette UI proportional (auch Tabellen/Graphen/Buttongroessen).
 - Neu: Wenn im Browser noch keine Zoomstufe gespeichert ist, wird beim ersten Laden automatisch eine passende Default-Zoomstufe je nach Viewport-Breite gesetzt (z.B. iPhone groesser, Desktop 100%). Danach kannst du wie gewohnt mit `-`/`+` anpassen.
 
 ## Installation in Home Assistant
@@ -830,21 +830,27 @@ UI:
 - `Sichtbare Zeilen (Backup-Liste)`: Hoehe der Backup-Liste in Zeilen (scrollt bei mehr Eintraegen).
 - `Sichtbare Zeilen (Restore-Liste)`: Hoehe der Restore-Backup-Liste in Zeilen (scrollt bei mehr Eintraegen).
 - `Min. freier Speicher (MB)`: wenn kleiner als diese Schwelle, wird das Erstellen eines Backups abgelehnt (0 = deaktiviert).
-- `Basis/Kleine Schriftgroesse`: UI Typografie.
-- `Seitentitel Schriftgroesse (px)`: Groesse des Titels in der festen Titelkarte.
+- Schriftgroessen (Gruppen): UI Typografie ist jetzt auf 4 GUI-Gruppen und 3 Tabellen-Gruppen zusammengefasst (jeweils 8..16px).
+  - GUI Gruppe 1: Titelzeile/Haupttitel
+  - GUI Gruppe 2: Ueberschriften/Navigation
+  - GUI Gruppe 3: Controls/Standardtext (alle Buttontexte, Input-/Select-Texte, normale Labels)
+  - GUI Gruppe 4: Meta/Hilfetexte (muted, Version/Byline, Popup-Text)
+  - Tabelle Gruppe 1: Tabellenueberschrift/Toolbar
+  - Tabelle Gruppe 2: Tabellenkopf
+  - Tabelle Gruppe 3: Tabellenzellen
 - `Seitensuche Highlight Farbe`: Farbe fuer Treffer aus `page.search` sowie fuer die Markierung/Navigation in Popup- und Logs-Volltextsuchen.
 - `Seitensuche Highlight Breite (px)`: Rahmenbreite fuer Treffer aus `page.search`.
 - `Seitensuche Highlight Dauer (ms)`: Sichtdauer des Trefferrahmens nach dem Sprung.
 - Hinweis: Auf der Einstellungsseite springt die Volltextsuche jetzt gezielt zum konkreten Textelement (Label/Hint) statt ganze Gruppen-Bloecke zu markieren.
-- Die Felder `ui_filter_label_width_px`, `ui_filter_control_width_px`, `ui_filter_search_width_px` und `ui_sel_field_font_px` verwenden eine breitere numerische Darstellung, damit Werte auch beim Hoch-/Runterzaehlen sichtbar bleiben.
+- Die Felder `ui_filter_label_width_px`, `ui_filter_control_width_px`, `ui_filter_search_width_px` sowie die neuen Gruppengroessen verwenden eine breitere numerische Darstellung, damit Werte auch beim Hoch-/Runterzaehlen sichtbar bleiben.
 - `Checkbox Groesse (Scale)`: Checkbox-Scaling fuer bessere Bedienbarkeit.
 - `Bereich-Titel (Details): Hintergrund/Textfarbe`: Farben der einklappbaren Bereichstitel (Details/Sektionen). Leer = Standard; erlaubt: `transparent`/`inherit` oder `#RRGGBB`.
   - Default: Hintergrund `#3287A8`, Text `#FFFFFF`. In den Einstellungen gibt es zusaetzlich Colorpicker.
-- `Bereich-Titel Ebene 2/3`: fuer die verschachtelten Settings-Sections gibt es jetzt eigene Hintergrund-/Textfarben und eigene Schriftgroessen.
+- `Bereich-Titel Ebene 2/3`: fuer die verschachtelten Settings-Sections gibt es eigene Hintergrund-/Textfarben (Schriftgroesse folgt den GUI Gruppen).
 - `Filter ... Breite`: steuert die Layout-Breiten im Dashboard.
 - Dashboard-Details wie `Auswahl`, `Analyse`, `Ausreißer`, `Raw` und `Graph` starten nach Erstinstallation wieder fest `geoeffnet`; dafuer gibt es keine separate Parametrierung mehr.
 - Auswahlfelder (Filter/Zeiten):
-  - Fontgroessen (Label / Feld / Beschreibung)
+  - Schriftgroesse folgt den GUI Gruppen (Controls/Meta)
   - Auto-Breite (Default) oder manuelle Breite (px)
   - Wenn Auto aktiv ist, wird die zuletzt berechnete Breite als Vorschlagswert angezeigt.
 - `Repository URL` und `PayPal Donate URL` sind feste interne Werte und nicht mehr in der Settings-UI editierbar.

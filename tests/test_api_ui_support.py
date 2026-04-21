@@ -59,7 +59,8 @@ def test_config_clamps_new_ui_fields(load_app_module, tmp_path):
     r = client.post(
         "/api/config",
         json={
-            "ui_pagecard_title_px": 99,
+            "ui_gui_title_px": 99,
+            "ui_gui_body_px": 1,
             "ui_raw_center_max_points": 0,
             "ui_raw_center_range_default": -5,
             "ui_raw_center_min_points": 0,
@@ -69,7 +70,9 @@ def test_config_clamps_new_ui_fields(load_app_module, tmp_path):
     assert r.get_json()["ok"] is True
 
     cfg = app_mod.load_cfg()
-    assert cfg["ui_pagecard_title_px"] == 48
+    assert cfg["ui_gui_title_px"] == 16
+    assert cfg["ui_gui_body_px"] == 8
+    assert cfg["ui_pagecard_title_px"] == 16
     assert cfg["ui_raw_center_max_points"] == 1
     assert cfg["ui_raw_center_range_default"] == 0
     assert cfg["ui_raw_center_min_points"] == 1
@@ -92,7 +95,7 @@ def test_settings_numeric_fields_keep_values_visible():
     assert 'id="ui_filter_label_width_px" class="cfg_num_wide"' in body
     assert 'id="ui_filter_control_width_px" class="cfg_num_wide"' in body
     assert 'id="ui_filter_search_width_px" class="cfg_num_wide"' in body
-    assert 'id="ui_sel_field_font_px" class="cfg_num_wide"' in body
+    assert 'id="ui_gui_body_px" class="cfg_num_wide"' in body
 
 
 def test_info_popup_decodes_escaped_linebreaks():
@@ -238,7 +241,7 @@ def test_raw_and_outlier_tables_share_same_font_size_rule():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     assert '#raw_tbl, #raw_tbl th, #raw_tbl td,' in body
     assert '#raw_outlier_tbl, #raw_outlier_tbl th, #raw_outlier_tbl td {' in body
-    assert 'font-size: var(--ui-font-small) !important;' in body
+    assert 'font-size: var(--ib-font-tbl-cell) !important;' in body
     assert "tdO.style.fontSize = '11px';" not in body
     assert "selEl.style.width = '';" in body
     assert "inputEl.style.width = px + 'px';" not in body
@@ -439,7 +442,7 @@ def test_settings_restructure_script_and_general_navigation_params_exist():
     assert 'ui_nav_helper_history_limit' in config
     assert 'ui_nav_helper_highlight_color' in config
     assert 'ui_nav_helper_highlight_duration_ms' in config
-    assert "_cfgLinkRow('Globale Darstellung & Auswahl', '#ui_font_size_px')" in config
+    assert "_cfgLinkRow('Globale Darstellung & Auswahl', '#ui_gui_body_px')" in config
 
 
 def test_dashboard_raw_actions_and_titles_are_updated():
@@ -459,8 +462,7 @@ def test_popup_copy_icon_and_font_setting_are_present():
     assert 'stroke="#1C274C"' in tooltips
     assert 'ui_popup_pre_font_px' in tooltips
     assert 'ui_popup_history_font_px' in tooltips
-    assert 'ui_popup_pre_font_px' in config
-    assert 'ui_popup_history_font_px' in config
+    assert 'Popup-Text und Query-History folgen jetzt der Schriftgroesse aus "GUI Gruppe 4: Meta / Hilfetext".' in config
     assert 'ui_popup_pre_font_px' in app_py
     assert 'ui_popup_history_font_px' in app_py
 

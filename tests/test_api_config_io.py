@@ -11,13 +11,22 @@ def test_config_defaults_endpoint_exposes_section_title_defaults_without_secrets
     d = j.get("defaults")
     assert isinstance(d, dict)
 
-    assert d.get("ui_section_title_font_px") == 13
+    assert d.get("ui_section_title_font_px") == 14
     assert d.get("ui_section_level2_bg") == "#8BA293"
     assert d.get("ui_section_level2_fg") == "#FFFFFF"
     assert d.get("ui_section_level2_font_px") == 12
     assert d.get("ui_section_level3_bg") == "#B8B17F"
     assert d.get("ui_section_level3_fg") == "#FFFFFF"
-    assert d.get("ui_section_level3_font_px") == 11
+    assert d.get("ui_section_level3_font_px") == 10
+
+    # Grouped font defaults
+    assert d.get("ui_gui_title_px") == 16
+    assert d.get("ui_gui_heading_px") == 14
+    assert d.get("ui_gui_body_px") == 12
+    assert d.get("ui_gui_meta_px") == 10
+    assert d.get("ui_tbl_title_px") == 12
+    assert d.get("ui_tbl_head_px") == 11
+    assert d.get("ui_tbl_cell_px") == 10
 
     assert d.get("outlier_bounds_min_default") == ""
     assert d.get("outlier_bounds_max_default") == ""

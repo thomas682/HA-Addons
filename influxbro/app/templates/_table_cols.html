@@ -3,6 +3,11 @@
 table.ib_tbl th, table.ib_tbl td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 table.ib_tbl.ib_wrap th, table.ib_tbl.ib_wrap td { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
 
+/* Shared table fonts (3 groups: title/head/cell) */
+.table_title { font-size: var(--ib-font-tbl-title, 12px); font-weight: 800; }
+table.ib_tbl thead th { font-size: var(--ib-font-tbl-head, 11px); }
+table.ib_tbl tbody td { font-size: var(--ib-font-tbl-cell, 10px); }
+
 /* Sticky header (applies when table scrolls inside a box) */
 table.ib_tbl thead th {
   position: sticky;
@@ -13,14 +18,14 @@ table.ib_tbl thead th {
 }
 
 /* Sort indicators (generic + aria-sort) */
-table.ib_tbl thead th[aria-sort="ascending"]::after { content: " \25B2"; opacity: 0.65; font-size: 11px; }
-table.ib_tbl thead th[aria-sort="descending"]::after { content: " \25BC"; opacity: 0.65; font-size: 11px; }
-table.ib_tbl thead th[data-ib-sort="asc"]::after { content: " \25B2"; opacity: 0.65; font-size: 11px; }
-table.ib_tbl thead th[data-ib-sort="desc"]::after { content: " \25BC"; opacity: 0.65; font-size: 11px; }
+table.ib_tbl thead th[aria-sort="ascending"]::after { content: " \25B2"; opacity: 0.65; font-size: var(--ib-font-tbl-head, 11px); }
+table.ib_tbl thead th[aria-sort="descending"]::after { content: " \25BC"; opacity: 0.65; font-size: var(--ib-font-tbl-head, 11px); }
+table.ib_tbl thead th[data-ib-sort="asc"]::after { content: " \25B2"; opacity: 0.65; font-size: var(--ib-font-tbl-head, 11px); }
+table.ib_tbl thead th[data-ib-sort="desc"]::after { content: " \25BC"; opacity: 0.65; font-size: var(--ib-font-tbl-head, 11px); }
 
 /* Filter row inside thead */
 thead tr.ib_filter_row th { background: #fcfcfc; position: sticky; top: 0; z-index: 2; }
-thead tr.ib_filter_row input, thead tr.ib_filter_row select { width: 100%; height: 26px; padding: 2px 6px; box-sizing: border-box; font-size: 11px; }
+thead tr.ib_filter_row input, thead tr.ib_filter_row select { width: 100%; height: calc(26px * var(--ib-zoom-scale, 1)); padding: calc(2px * var(--ib-zoom-scale, 1)) calc(6px * var(--ib-zoom-scale, 1)); box-sizing: border-box; font-size: var(--ib-font-tbl-cell, 10px); }
 </style>
 
 <script>
@@ -31,6 +36,16 @@ thead tr.ib_filter_row input, thead tr.ib_filter_row select { width: 100%; heigh
 
   function _norm(s){
     return String(s || '').trim();
+  }
+
+  function _zoomScale(){
+    try{
+      const raw = getComputedStyle(document.documentElement).getPropertyValue('--ib-zoom-scale').trim();
+      const n = Number(raw || '1');
+      return (isFinite(n) && n > 0.1 && n < 6) ? n : 1;
+    }catch(e){
+      return 1;
+    }
   }
 
   function _pageKey(){
@@ -93,11 +108,12 @@ thead tr.ib_filter_row input, thead tr.ib_filter_row select { width: 100%; heigh
     try{
       const id = _getTableId(tbl);
       if(!id) return;
+      const sc = _zoomScale();
       const out = {};
       const ths = Array.from(tbl.querySelectorAll('thead th'));
       ths.forEach((th, idx)=>{
         const k = _colKey(th, idx);
-        const w = Math.round(th.getBoundingClientRect().width);
+        const w = Math.round((th.getBoundingClientRect().width || 0) / Math.max(0.1, sc));
         out[k] = w;
       });
       localStorage.setItem(_lsKeyV2(id), JSON.stringify(out));
@@ -108,11 +124,12 @@ thead tr.ib_filter_row input, thead tr.ib_filter_row select { width: 100%; heigh
     try{
       const saved = _readWidths(tbl);
       if(!saved) return;
+      const sc = _zoomScale();
       const ths = Array.from(tbl.querySelectorAll('thead th'));
       ths.forEach((th, idx)=>{
         const k = _colKey(th, idx);
         const w = Number(saved[k]);
-        if(isFinite(w) && w >= 40 && w <= 1600) th.style.width = Math.round(w) + 'px';
+        if(isFinite(w) && w >= 40 && w <= 1600) th.style.width = Math.round(w * sc) + 'px';
       });
     }catch(e){}
   }
@@ -301,11 +318,21 @@ thead tr.ib_filter_row input, thead tr.ib_filter_row select { width: 100%; heigh
     }catch(e){}
   }
 
+  function refreshScale(){
+    // Re-apply saved base widths with the current zoom scale.
+    try{
+      document.querySelectorAll('table').forEach((tbl)=>{
+        try{ if(_getTableId(tbl)) applySavedWidths(tbl); }catch(e){}
+      });
+    }catch(e){}
+  }
+
   window.InfluxBroTableCols = {
     init,
     autoFit,
     windowFit,
     applySavedWidths,
+    refreshScale,
   };
 })();
 </script>
@@ -588,6 +615,16 @@ thead tr.ib_filter_row input, thead tr.ib_filter_row select { width: 100%; heigh
 
   function _norm(s){ return String(s || '').trim(); }
 
+  function _zoomScale(){
+    try{
+      const raw = getComputedStyle(document.documentElement).getPropertyValue('--ib-zoom-scale').trim();
+      const n = Number(raw || '1');
+      return (isFinite(n) && n > 0.1 && n < 6) ? n : 1;
+    }catch(e){
+      return 1;
+    }
+  }
+
   function _keyFor(tableId){
     try{
       const id = _norm(tableId) || 'unknown';
@@ -600,6 +637,24 @@ thead tr.ib_filter_row input, thead tr.ib_filter_row select { width: 100%; heigh
     }
   }
 
+  const _ATTACHED = [];
+
+  function refreshScale(){
+    try{
+      const sc = _zoomScale();
+      _ATTACHED.forEach((r)=>{
+        try{
+          if(!r || !r.boxEl) return;
+          const saved = Number(localStorage.getItem(r.key) || 0);
+          if(isFinite(saved) && saved >= r.minPx){
+            r.boxEl.style.height = Math.round(saved * sc) + 'px';
+            r.boxEl.style.maxHeight = 'none';
+          }
+        }catch(e){}
+      });
+    }catch(e){}
+  }
+
   function attach(boxEl, tableId, opts){
     if(!boxEl) return;
     const tid = _norm(tableId) || _norm(boxEl.getAttribute('data-table-id')) || '';
@@ -609,9 +664,14 @@ thead tr.ib_filter_row input, thead tr.ib_filter_row select { width: 100%; heigh
     const maxPx = (opts && isFinite(Number(opts.maxPx))) ? Math.max(minPx, Math.trunc(Number(opts.maxPx))) : Math.round(window.innerHeight * 0.9);
 
     try{
+      if(!_ATTACHED.some((r)=>r && r.boxEl === boxEl && r.key === key)) _ATTACHED.push({boxEl, key, minPx});
+    }catch(e){}
+
+    try{
       const saved = Number(localStorage.getItem(key) || 0);
       if(isFinite(saved) && saved >= minPx){
-        boxEl.style.height = Math.round(saved) + 'px';
+        const sc = _zoomScale();
+        boxEl.style.height = Math.round(saved * sc) + 'px';
         // If a manual height is set, disable the row-based max-height clamp.
         boxEl.style.maxHeight = 'none';
       }
@@ -626,9 +686,9 @@ thead tr.ib_filter_row input, thead tr.ib_filter_row select { width: 100%; heigh
       handle = document.createElement('div');
       handle.className = 'ib_tbl_resize';
       handle.setAttribute('data-for', tid);
-      handle.style.height = '12px';
+      handle.style.height = Math.round(12 * _zoomScale()) + 'px';
       handle.style.cursor = 'ns-resize';
-      handle.style.marginTop = '8px';
+      handle.style.marginTop = Math.round(8 * _zoomScale()) + 'px';
       handle.style.borderRadius = '999px';
       handle.style.background = 'linear-gradient(90deg, #eee, #f8f8f8)';
       try{ boxEl.insertAdjacentElement('afterend', handle); }catch(e){ boxEl.parentElement && boxEl.parentElement.appendChild(handle); }
@@ -642,10 +702,11 @@ thead tr.ib_filter_row input, thead tr.ib_filter_row select { width: 100%; heigh
       if(!dragging) return;
       const y = (ev && (ev.touches && ev.touches[0] ? ev.touches[0].clientY : ev.clientY)) || 0;
       const dy = y - startY;
-      let h = startH + dy;
+      const sc = _zoomScale();
+      let h = startH + (dy / Math.max(0.1, sc));
       if(h < minPx) h = minPx;
       if(h > maxPx) h = maxPx;
-      boxEl.style.height = Math.round(h) + 'px';
+      boxEl.style.height = Math.round(h * sc) + 'px';
       boxEl.style.maxHeight = 'none';
       try{ ev.preventDefault(); }catch(e){}
     }
@@ -659,7 +720,8 @@ thead tr.ib_filter_row input, thead tr.ib_filter_row select { width: 100%; heigh
       window.removeEventListener('touchmove', onMove);
       window.removeEventListener('touchend', onUp);
       try{
-        const h = Math.round(boxEl.getBoundingClientRect().height || 0);
+        const sc = _zoomScale();
+        const h = Math.round((boxEl.getBoundingClientRect().height || 0) / Math.max(0.1, sc));
         if(h >= minPx) localStorage.setItem(key, String(h));
       }catch(e){}
     }
@@ -668,7 +730,7 @@ thead tr.ib_filter_row input, thead tr.ib_filter_row select { width: 100%; heigh
       try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
       dragging = true;
       startY = (ev && (ev.touches && ev.touches[0] ? ev.touches[0].clientY : ev.clientY)) || 0;
-      startH = boxEl.getBoundingClientRect().height;
+      startH = (boxEl.getBoundingClientRect().height || 0) / Math.max(0.1, _zoomScale());
       try{ boxEl.style.maxHeight = 'none'; }catch(e){}
       document.body.style.userSelect = 'none';
       window.addEventListener('mousemove', onMove);
@@ -681,7 +743,7 @@ thead tr.ib_filter_row input, thead tr.ib_filter_row select { width: 100%; heigh
     handle.addEventListener('touchstart', onDown, {passive:false});
   }
 
-  window.InfluxBroTableHeight = { attach };
+  window.InfluxBroTableHeight = { attach, refreshScale };
 })();
 </script>
 
