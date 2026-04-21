@@ -145,9 +145,8 @@
     .color_pick_row input[type="color"] { width:44px; height:36px; padding:0; flex:0 0 auto; }
     .color_pick_row input[type="text"] { flex:1 1 auto; min-width:0; }
     /* status bar color pickers use the same fixed width as other pickers */
-    /* Save card special */
-    .save_card { border:1px solid #ddd; border-radius:10px; padding:12px; margin-top:12px; }
-    .save_card .btn_sm { width:auto; }
+    /* Status card */
+    #autosave_card .btn_sm { width:auto; }
   </style>
 </head>
 <body>
@@ -1437,24 +1436,17 @@
             <button id="cfg_defaults" type="button" class="btn_sm" data-ui="config_settings.btn_defaults" title="settings.config.defaults" style="width:auto;">Default</button>
           </div>
         </div>
-        <div class="section_note"><span class="muted">Import uebernimmt Einstellungen sofort und speichert sie global (wie "Speichern").</span></div>
+        <div class="section_note"><span class="muted">Import uebernimmt Einstellungen sofort und speichert sie global.</span></div>
       </div>
     </div>
   </details>
 
   <!-- Diagnose (Storage/Worklog) moved to /dbinfo -->
 
-  <div class="save_card">
-    <div class="grid">
-      <div class="param_row param_full">
-        <div class="param_label">Speichern</div>
-        <div class="param_control">
-          <button id="save" data-ui="config_settings.btn_save" title="settings.save" class="btn_sm">Speichern</button>
-        </div>
-      </div>
-      <div id="err" class="err"></div>
-      <div id="ok" class="ok"></div>
-    </div>
+  <div id="autosave_card" class="card" data-ui="config_settings.panel_autosave" title="settings.autosave">
+    <div class="muted">Aenderungen werden automatisch gespeichert.</div>
+    <div id="err" class="err"></div>
+    <div id="ok" class="ok"></div>
   </div>
 
 <script>
@@ -2780,9 +2772,11 @@ async function loadYaml(){
   const txt = document.getElementById("loadyaml_txt");
   if(card && txt){
     card.style.display = "block";
-    txt.textContent = "InfluxDB Konfiguration geladen aus: " + j.source + ". Bitte prüfen/anpassen und anschließend 'Speichern' klicken.";
+    txt.textContent = "InfluxDB Konfiguration geladen aus: " + j.source + ". Bitte pruefen/anpassen; Aenderungen werden automatisch gespeichert.";
   }
-  ok("InfluxDB Einstellungen geladen (noch nicht gespeichert).");
+  ok("InfluxDB Einstellungen geladen. Aenderungen werden automatisch gespeichert.");
+  // Autosave the imported YAML config best-effort.
+  try{ scheduleAutoSave(); }catch(e){}
 }
 
 async function findYaml(){
@@ -2889,11 +2883,9 @@ async function testConn(){
   try{
     const $findYaml = document.getElementById("find_yaml");
     const $readYaml = document.getElementById("read_yaml");
-    const $saveBtn = document.getElementById("save");
     const $testBtn = document.getElementById("test");
     if($findYaml) $findYaml.addEventListener("click", ()=>findYaml().catch(e=>err(String(e))));
     if($readYaml) $readYaml.addEventListener("click", ()=>loadYaml().catch(e=>err(String(e))));
-    if($saveBtn) $saveBtn.addEventListener("click", ()=>save().catch(e=>err(String(e))));
     if($testBtn) $testBtn.addEventListener("click", ()=>testConn().catch(e=>err(String(e))));
 
     if($cfgExport) $cfgExport.addEventListener('click', async ()=>{
@@ -3026,14 +3018,16 @@ try{
 
 // Auto-save settings on change for all inputs/selects (except explicit action buttons)
 try{
-  document.querySelectorAll('main.content input, main.content select').forEach(elm => {
+  document.querySelectorAll('main.content input, main.content select, main.content textarea').forEach(elm => {
     const id = String(elm.id || '');
     if(!id) return;
     // skip non-setting/operational controls
-    if(['save','test','find_yaml','read_yaml','admin_token_test','cfg_import_file'].includes(id)) return;
+    if(['test','find_yaml','read_yaml','admin_token_test','cfg_import_file','icons_search','icons_area','icons_only_overrides','icons_reload','icon_svg_text'].includes(id)) return;
     // skip UI-state backed settings (not part of /api/config)
     if(['ui_tooltip_doc_open_mode'].includes(id)) return;
+    // change is reliable for selects/checkboxes; input provides immediate save for text/number fields.
     elm.addEventListener('change', ()=>{ scheduleAutoSave(); });
+    elm.addEventListener('input', ()=>{ scheduleAutoSave(); });
   });
 }catch(e){}
 
@@ -3115,7 +3109,7 @@ function restructureSettings(){
     // _cfgLinkRow('Globale Darstellung & Auswahl', '#ui_font_size_px')
     const main = document.querySelector('main.content');
     const saveCard = document.querySelector('.save_card');
-    if(!main || !saveCard || main.dataset.restructured250 === '1'){
+    if(!main || main.dataset.restructured250 === '1'){
       try{ if(window.InfluxBroNormalizeSummaryActions) window.InfluxBroNormalizeSummaryActions(); }catch(e){}
       try{ if(window.initIconbilder) window.initIconbilder(); else if(typeof initIconbilder === 'function') initIconbilder(); }catch(e){}
       return;
@@ -3336,7 +3330,10 @@ function restructureSettings(){
         }
         // saveCard may have been detached or moved during restructuring;
         // re-check before each insert to avoid insertBefore DOM errors.
-        const refNode = (saveCard && saveCard.parentNode === main) ? saveCard : null;
+        const autosaveCard = document.getElementById('autosave_card');
+        const refNode = (saveCard && saveCard.parentNode === main)
+          ? saveCard
+          : ((autosaveCard && autosaveCard.parentNode === main) ? autosaveCard : null);
         if(refNode){
           main.insertBefore(sec, refNode);
         }else{

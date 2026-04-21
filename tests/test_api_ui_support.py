@@ -783,7 +783,7 @@ def test_non_dashboard_pages_use_structured_data_ui_samples():
     topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
     assert 'data-ui="jobs_main.btn_refresh"' in jobs
     assert 'data-ui="jobs_cache.tbl_table"' in jobs
-    assert 'data-ui="config_settings.btn_save"' in config
+    assert 'data-ui="config_settings.panel_autosave"' in config
     assert 'data-ui="config_settings.chk_dash_cache_enabled"' in config
     assert 'data-ui="stats_main.btn_load"' in stats
     assert 'data-ui="stats_table.panel_wrap"' in stats

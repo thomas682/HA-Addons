@@ -769,6 +769,7 @@ Hinweis (neu)
 - Oben gibt es ein Suchfeld, das Einstellungen findet und per Klick zum passenden Feld springt (Bereiche werden automatisch aufgeklappt).
 - Das Suchfeld bleibt beim Scrollen sichtbar.
 - Layout: pro Abschnitt als 1-spaltige Parameterliste (ein Parameter pro Block mit Beschreibung).
+- Speichern: Es gibt keinen separaten "Speichern"-Button mehr. Aenderungen werden automatisch gespeichert (debounced), sobald du Felder aenderst.
 
 Neu:
 

@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.404
+
+### Bugfix
+
+- Einstellungen: Speichern-Button wurde entfernt; Aenderungen werden jetzt sofort (debounced) automatisch gespeichert (input/change) und YAML-Import triggert ebenfalls Auto-Save. ([#364](https://github.com/thomas682/HA-Addons/issues/364))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`, `pytest -q`
+- Tested with Home Assistant Core: 2026.4.3
+
 ## 1.12.403
 
 ### Bugfix
