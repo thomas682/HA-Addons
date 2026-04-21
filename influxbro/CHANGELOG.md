@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.400
+
+### Bugfix
+
+- Tooltips: Das Tooltip-Overlay blockiert keine Klicks mehr, wenn es unsichtbar ist; dadurch funktionieren Buttons in Summary-Actions (z.B. `ib_cfg_icon` -> Einstellungen) wieder zuverlaessig. ([#360](https://github.com/thomas682/HA-Addons/issues/360), [#359](https://github.com/thomas682/HA-Addons/issues/359))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`, `pytest -q`
+- Tested with Home Assistant Core: 2026.4.3
+
 ## 1.12.399
 
 ### Bugfix
