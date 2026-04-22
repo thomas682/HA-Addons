@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.417
+
+### Enhancement
+
+- Dashboard: InfoZeile (`div.ib_section_desc_row`) sitzt jetzt direkt unter der Summary und nutzt damit immer die volle Summary-Breite. ([#373](https://github.com/thomas682/HA-Addons/issues/373))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`, `pytest -q tests/test_api_ui_support.py`
+- Tested with Home Assistant Core: 2026.4.3
+
 ## 1.12.416
 
 ### Bugfix

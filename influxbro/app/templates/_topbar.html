@@ -2252,7 +2252,8 @@
         descRow.appendChild(desc);
         descRow.appendChild(actions);
 
-        try{ body.insertBefore(descRow, body.firstChild); }catch(e){ try{ body.appendChild(descRow); }catch(x){} }
+        // Put the desc row directly under the summary so it spans the same full width.
+        try{ details.insertBefore(descRow, body); }catch(e){ try{ body.insertBefore(descRow, body.firstChild); }catch(x){ try{ body.appendChild(descRow); }catch(y){} } }
 
         try{
           const sActions = row.querySelector(':scope > .ib_summary_actions');

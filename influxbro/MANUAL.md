@@ -205,7 +205,7 @@ Hinweis: Zeitstempel werden im gesamten UI inklusive Millisekunden angezeigt.
 - Spalten koennen ueber den Spalten-Button (neben dem Info-Icon) ein-/ausgeblendet werden (wird gespeichert).
 - Das Info-Icon (i) erklaert je Tabelle Sinn/Zweck, Spalten und Aktionen.
 - Zusaetzlich haben viele Bereiche neben dem Bereichstitel ein Info-Icon, das die komplette Sektion ausfuehrlich erklaert (Popup ist resizable, hat Umbruch + Copy).
-- Bereichsaktionen (Info/Zu Einstellungen) stehen nicht mehr in der Summary-Titelzeile, sondern als eigene Zeile direkt im Section-Body (mit kurzer Beschreibung).
+- Bereichsaktionen (Info/Zu Einstellungen) stehen nicht mehr in der Summary-Titelzeile, sondern als eigene Zeile direkt im Section-Body (mit kurzer Beschreibung). Diese Infozeile nutzt immer die volle Summary-Breite.
 - Tabellen-Kopfzeilen koennen global in den Einstellungen farblich angepasst werden (Hintergrund/Textfarbe). Leere Tabellen zeigen mindestens eine konfigurierbare Anzahl leerer Zeilen.
 - Die Summary-Balken fuer einklappbare Bereiche laufen jetzt ueber die komplette Summary-Zeile inklusive Auf-/Zuklappsymbol und verwenden ein einheitliches Balken-Layout.
 
