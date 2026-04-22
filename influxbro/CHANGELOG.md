@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.415
+
+### Bugfix
+
+- Einstellungen: Iconbilder Tabelle nach Template-Layout; Actions-Spalte entfernt, Zeilenselektion und Toolbar-Buttons `Edit`/`Undo`/`Jump`. SVG Override wird direkt in der Tabelle editiert. ([#379](https://github.com/thomas682/HA-Addons/issues/379))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`, `pytest -q tests/test_api_ui_support.py`, `npx playwright test tests/e2e/dashboard.spec.js -g "Settings Page"`
+- Tested with Home Assistant Core: 2026.4.3
+
 ## 1.12.414
 
 ### Bugfix

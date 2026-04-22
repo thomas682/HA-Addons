@@ -860,7 +860,11 @@ UI:
 - Die Log-Farbparameter fuer `ERROR` und `WARN` verwenden jetzt denselben kombinierten Color-Picker/Textfeld-Stil wie die anderen Farbparameter der Oberflaeche.
 - Die Farbparameter `Seitensuche Highlight Farbe`, `Navigationshilfe Highlight Farbe` und `Analysecache ausgeblendet Farbe` verwenden ebenfalls den kombinierten Color-Picker/Textfeld-Stil.
 - Iconbilder: In `Einstellungen -> UI -> Iconbilder` gibt es eine Tabelle aller bekannten UI-Elemente (data-ui Keys, project-wide Inventar).
-- Iconbilder: Pro Key kann eine Override-SVG hinterlegt werden (Doppelklick auf die SVG-Zelle / Edit-Button) oder per Reset entfernt werden.
+- Iconbilder: Pro Key kann eine Override-SVG hinterlegt werden (Zeile markieren, `Edit` klicken oder Doppelklick auf die SVG-Zelle). Speichern erfolgt per Blur oder Ctrl+Enter.
+- Iconbilder: Toolbar:
+  - `Edit`: editieren der selektierten Zeile direkt in der Tabelle
+  - `Undo`: letzten Wert vor der Aenderung fuer die selektierte Zeile wiederherstellen
+  - `Jump`: oeffnet die Zielseite in neuem Tab und springt zum `data-ui` Element
 - Iconbilder: Preview und SVG-Zelle zeigen auch ohne Override das Default-/effektive Icon (Override ueberschreibt dieses).
 - Iconbilder: Speicherung erfolgt im aktiven UI-Profil (PC/MOBIL).
 - Iconbilder: Sicherheit: SVG wird serverseitig sanitisiert (XSS-Schutz) und ist groessenbegrenzt; Preview zeigt den gespeicherten Stand.

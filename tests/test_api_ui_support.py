@@ -1080,6 +1080,9 @@ def test_settings_iconbilder_section_exists():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "config.html").read_text()
     assert 'id="ui_iconbilder"' in body
     assert 'id="icons_tbl"' in body
+    assert 'id="icons_edit"' in body
+    assert 'id="icons_undo"' in body
+    assert 'id="icons_jump"' in body
     assert 'id="icon_svg_modal"' in body
     assert "initIconbilder" in body
 

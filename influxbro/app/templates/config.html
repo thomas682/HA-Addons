@@ -140,6 +140,22 @@
     main.content .tbl_actions { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
     main.content .tbl_actions label { display:flex; gap:6px; align-items:center; font-size:12px; opacity:0.85; }
     main.content .tbl_actions input[type="checkbox"] { width:auto; height:auto; padding:0; margin:0; }
+
+    /* Iconbilder table: row selection + inline edit */
+    #icons_tbl tr.ib_row_sel td { outline: 2px solid rgba(36,99,235,0.35); outline-offset: -2px; }
+    #icons_tbl td.ib_icon_svg_cell { cursor: pointer; }
+    #icons_tbl textarea.ib_icon_svg_edit {
+      width: 100%;
+      min-height: 120px;
+      resize: vertical;
+      box-sizing: border-box;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-variant-numeric: tabular-nums;
+      line-height: 1.25;
+    }
     /* Color picker row */
     .color_pick_row { display:flex; gap:8px; align-items:center; }
     .color_pick_row input[type="color"] { width:44px; height:36px; padding:0; flex:0 0 auto; }
@@ -369,11 +385,14 @@
               <div class="table_title">Icon-Mapping (UI-Profil)</div>
               <div class="table_head">
                 <div class="tbl_actions">
+                  <button id="icons_edit" class="btn_sm" type="button" data-ui="config_settings.btn_icons_edit" title="settings.icons.edit">Edit</button>
+                  <button id="icons_undo" class="btn_sm" type="button" data-ui="config_settings.btn_icons_undo" title="settings.icons.undo" disabled>Undo</button>
+                  <button id="icons_jump" class="btn_sm" type="button" data-ui="config_settings.btn_icons_jump" title="settings.icons.jump" disabled>Jump</button>
                   <span class="muted" id="icons_status">...</span>
                 </div>
               </div>
               <div id="icons_tbl_box" style="border:1px solid #eee; border-radius:12px; overflow:auto; max-height:520px; margin-top:10px;">
-                <table id="icons_tbl" class="cfg_tbl" data-ui="config_settings.tbl_icons" title="settings.icons.table">
+                <table id="icons_tbl" class="cfg_tbl ib_tbl" data-ui="config_settings.tbl_icons" title="settings.icons.table">
                   <thead>
                     <tr>
                       <th style="width:14ch;">Area</th>
@@ -381,7 +400,6 @@
                       <th>Label</th>
                       <th style="width:32ch;">SVG (Override)</th>
                       <th style="width:10ch;">Preview</th>
-                      <th style="width:16ch;">Actions</th>
                     </tr>
                   </thead>
                   <tbody></tbody>
@@ -1553,6 +1571,9 @@ const $iconsSearch = document.getElementById('icons_search');
 const $iconsArea = document.getElementById('icons_area');
 const $iconsOnlyOverrides = document.getElementById('icons_only_overrides');
 const $iconsReload = document.getElementById('icons_reload');
+const $iconsEdit = document.getElementById('icons_edit');
+const $iconsUndo = document.getElementById('icons_undo');
+const $iconsJump = document.getElementById('icons_jump');
 const $iconsTbl = document.getElementById('icons_tbl');
 const $iconsStatus = document.getElementById('icons_status');
 const $iconsErr = document.getElementById('icons_err');
@@ -1572,6 +1593,130 @@ let _ICON_OVERRIDES = {};
 let _ICON_DEFAULT = {};
 let _ICON_EDIT_KEY = '';
 let _ICON_INIT_TRIES = 0;
+let _ICON_SELECTED_KEY = '';
+let _ICON_EDITING_KEY = '';
+let _ICON_EDIT_BEFORE = null;
+let _ICON_UNDO_LAST = {}; // key -> previous svg (string|null)
+
+function _iconsToolbarUpdate(){
+  try{
+    const k = String(_ICON_SELECTED_KEY || '').trim();
+    const hasSel = !!k;
+    if($iconsJump) $iconsJump.disabled = !hasSel;
+    const canUndo = hasSel && Object.prototype.hasOwnProperty.call(_ICON_UNDO_LAST || {}, k);
+    if($iconsUndo) $iconsUndo.disabled = !canUndo;
+  }catch(e){}
+}
+
+function _iconsSelect(key){
+  try{
+    const k = String(key || '').trim();
+    _ICON_SELECTED_KEY = k;
+    _iconsToolbarUpdate();
+    _iconsRender();
+  }catch(e){}
+}
+
+function _iconsPathForArea(area){
+  const a = String(area || '').trim();
+  if(a === 'Dashboard') return './';
+  if(a === 'Statistik') return './stats';
+  if(a === 'Logs') return './logs';
+  if(a === 'Backup') return './backup';
+  if(a === 'Restore') return './restore';
+  if(a === 'Import') return './import';
+  if(a === 'Export') return './export';
+  if(a === 'Combine') return './combine';
+  if(a === 'Jobs') return './jobs';
+  if(a === 'Monitor') return './monitor';
+  if(a === 'History') return './history';
+  if(a === 'Diagnose') return './dbinfo';
+  if(a === 'Performance') return './performance';
+  if(a === 'Quality') return './quality';
+  if(a === 'Einstellungen') return './config';
+  if(a === 'Profile') return './profiles';
+  if(a === 'Manual') return './manual';
+  if(a === 'Info') return './info';
+  return './';
+}
+
+function _iconsJumpSelected(){
+  try{
+    const k = String(_ICON_SELECTED_KEY || '').trim();
+    if(!k){ _iconsSetErr('Bitte zuerst eine Zeile markieren.'); return; }
+    const inv = (_ICON_INV || []).find(x => x && String(x.key||'') === k) || null;
+    const area = inv && inv.area ? String(inv.area) : '';
+    const path = _iconsPathForArea(area);
+    try{
+      localStorage.setItem('influxbro.nav.helper.pending.v1', JSON.stringify({
+        path,
+        ui: k,
+        page: area || 'Seite',
+        label: 'Icon jump',
+      }));
+    }catch(e){}
+    try{ window.open(path, '_blank', 'noopener'); }catch(e){ try{ window.open(path, '_blank'); }catch(x){} }
+  }catch(e){}
+}
+
+function _iconsBeginInlineEdit(key){
+  try{
+    const k = String(key || '').trim();
+    if(!k) return;
+    _iconsSetErr('');
+    _ICON_EDITING_KEY = k;
+    _iconsSelect(k);
+  }catch(e){}
+}
+
+function _iconsCancelInlineEdit(){
+  try{
+    _ICON_EDITING_KEY = '';
+    _ICON_EDIT_BEFORE = null;
+    _iconsRender();
+  }catch(e){}
+}
+
+async function _iconsSaveInlineEdit(newSvg){
+  try{
+    const k = String(_ICON_EDITING_KEY || _ICON_SELECTED_KEY || '').trim();
+    if(!k){ _iconsSetErr('Bitte zuerst eine Zeile markieren.'); return; }
+    _iconsSetErr('');
+    const before = (_ICON_OVERRIDES && _ICON_OVERRIDES[k]) ? String(_ICON_OVERRIDES[k]||'') : '';
+    const sv = String(newSvg || '').trim();
+    const payload = { key: k, svg: sv ? sv : null };
+    await _iconsFetchJson('./api/icon_svg/set', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+    // Register undo only if something actually changed.
+    const after = sv;
+    if(String(before || '') !== String(after || '')){
+      _ICON_UNDO_LAST = _ICON_UNDO_LAST || {};
+      _ICON_UNDO_LAST[k] = before ? before : null;
+    }
+    _ICON_EDITING_KEY = '';
+    _ICON_EDIT_BEFORE = null;
+    await _iconsLoad();
+    try{ if(window.InfluxBroApplyIconOverrides) window.InfluxBroApplyIconOverrides(); }catch(e){}
+    _iconsToolbarUpdate();
+  }catch(e){
+    _iconsSetErr(String(e || 'Save failed'));
+  }
+}
+
+async function _iconsUndoSelected(){
+  try{
+    const k = String(_ICON_SELECTED_KEY || '').trim();
+    if(!k){ _iconsSetErr('Bitte zuerst eine Zeile markieren.'); return; }
+    if(!_ICON_UNDO_LAST || !Object.prototype.hasOwnProperty.call(_ICON_UNDO_LAST, k)) return;
+    const prev = _ICON_UNDO_LAST[k];
+    delete _ICON_UNDO_LAST[k];
+    await _iconsFetchJson('./api/icon_svg/set', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({key: k, svg: prev ? String(prev) : null})});
+    await _iconsLoad();
+    try{ if(window.InfluxBroApplyIconOverrides) window.InfluxBroApplyIconOverrides(); }catch(e){}
+    _iconsToolbarUpdate();
+  }catch(e){
+    _iconsSetErr(String(e || 'Undo failed'));
+  }
+}
 
 function _iconsSetErr(msg){
   try{
@@ -1701,6 +1846,9 @@ function _iconsRender(){
     const frag = document.createDocumentFragment();
     rows.forEach(r => {
       const tr = document.createElement('tr');
+      tr.dataset.key = String(r.key || '');
+      if(_ICON_SELECTED_KEY && String(_ICON_SELECTED_KEY) === String(r.key)) tr.classList.add('ib_row_sel');
+      tr.addEventListener('click', ()=>_iconsSelect(r.key));
 
       const tdArea = document.createElement('td');
       tdArea.textContent = r.area;
@@ -1716,14 +1864,40 @@ function _iconsRender(){
       tr.appendChild(tdLabel);
 
       const tdSvg = document.createElement('td');
-      tdSvg.className = 'mono';
-      tdSvg.style.cursor = 'pointer';
+      tdSvg.className = 'mono ib_icon_svg_cell';
       const ov = (_ICON_OVERRIDES && _ICON_OVERRIDES[r.key]) ? String(_ICON_OVERRIDES[r.key]||'') : '';
       const def = (_ICON_DEFAULT && _ICON_DEFAULT[r.key]) ? String(_ICON_DEFAULT[r.key]||'') : '';
       const eff = ov || def || '';
-      tdSvg.textContent = eff ? (eff.length > 120 ? (eff.slice(0, 120) + '...') : eff) : '';
-      tdSvg.title = 'Doppelklick: editieren';
-      tdSvg.addEventListener('dblclick', ()=>_iconModalOpen(r.key));
+
+      if(_ICON_EDITING_KEY && String(_ICON_EDITING_KEY) === String(r.key)){
+        const ta = document.createElement('textarea');
+        ta.className = 'ib_icon_svg_edit';
+        ta.spellcheck = false;
+        ta.value = String(ov || '');
+        ta.addEventListener('keydown', (ev)=>{
+          try{
+            if(ev && ev.key === 'Escape'){
+              ev.preventDefault();
+              _iconsCancelInlineEdit();
+              return;
+            }
+            if(ev && ev.key === 'Enter' && (ev.ctrlKey || ev.metaKey)){
+              ev.preventDefault();
+              _iconsSaveInlineEdit(String(ta.value || ''));
+              return;
+            }
+          }catch(e){}
+        });
+        ta.addEventListener('blur', ()=>{
+          // Save on blur (best-effort), matches the "edit in table" behavior.
+          _iconsSaveInlineEdit(String(ta.value || ''));
+        });
+        tdSvg.appendChild(ta);
+        setTimeout(()=>{ try{ ta.focus(); ta.selectionStart = ta.value.length; ta.selectionEnd = ta.value.length; }catch(e){} }, 0);
+      }else{
+        tdSvg.textContent = ov ? (ov.length > 120 ? (ov.slice(0, 120) + '...') : ov) : '';
+        tdSvg.addEventListener('dblclick', ()=>_iconsBeginInlineEdit(r.key));
+      }
       tr.appendChild(tdSvg);
 
       const tdPrev = document.createElement('td');
@@ -1740,35 +1914,6 @@ function _iconsRender(){
       tdPrev.appendChild(pv);
       tr.appendChild(tdPrev);
 
-      const tdAct = document.createElement('td');
-      tdAct.style.whiteSpace = 'nowrap';
-
-      const btnEdit = document.createElement('button');
-      btnEdit.type = 'button';
-      btnEdit.className = 'btn_sm';
-      btnEdit.textContent = 'Edit';
-      btnEdit.addEventListener('click', ()=>_iconModalOpen(r.key));
-      tdAct.appendChild(btnEdit);
-
-      const btnReset = document.createElement('button');
-      btnReset.type = 'button';
-      btnReset.className = 'btn_sm';
-      btnReset.textContent = 'Reset';
-      btnReset.style.marginLeft = '6px';
-      btnReset.disabled = !r.hasOv;
-      btnReset.addEventListener('click', async ()=>{
-        try{
-          _iconsSetErr('');
-          await _iconsFetchJson('./api/icon_svg/set', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({key: r.key, svg: null})});
-          await _iconsLoad();
-          try{ if(window.InfluxBroApplyIconOverrides) window.InfluxBroApplyIconOverrides(); }catch(e){}
-        }catch(e){
-          _iconsSetErr(String(e || 'Reset failed'));
-        }
-      });
-      tdAct.appendChild(btnReset);
-      tr.appendChild(tdAct);
-
       frag.appendChild(tr);
     });
     tbody.appendChild(frag);
@@ -1776,6 +1921,7 @@ function _iconsRender(){
     const totalInv = (_ICON_INV || []).length;
     const totalOv = _ICON_OVERRIDES ? Object.keys(_ICON_OVERRIDES).length : 0;
     _iconsSetStatus('Eintraege: ' + String(rows.length) + ' (Inventar: ' + totalInv + ', Overrides: ' + totalOv + ')');
+    _iconsToolbarUpdate();
   }catch(e){
     _iconsSetErr(String(e || 'Render failed'));
   }
@@ -1824,6 +1970,25 @@ function initIconbilder(){
     try{ if($iconsArea) $iconsArea.addEventListener('change', ()=>_iconsRender()); }catch(e){}
     try{ if($iconsOnlyOverrides) $iconsOnlyOverrides.addEventListener('change', ()=>_iconsRender()); }catch(e){}
     try{ if($iconsReload) $iconsReload.addEventListener('click', ()=>_iconsLoad().catch(e=>_iconsSetErr(String(e||'Reload failed')))); }catch(e){}
+
+    try{
+      if($iconsEdit) $iconsEdit.addEventListener('click', ()=>{
+        try{
+          _iconsSetErr('');
+          const k = String(_ICON_SELECTED_KEY || '').trim();
+          if(!k){ _iconsSetErr('Bitte zuerst eine Zeile markieren.'); return; }
+          if(_ICON_EDITING_KEY && String(_ICON_EDITING_KEY) === k){
+            const ta = document.querySelector('#icons_tbl tr.ib_row_sel textarea.ib_icon_svg_edit');
+            if(ta) _iconsSaveInlineEdit(String(ta.value || ''));
+            return;
+          }
+          _iconsBeginInlineEdit(k);
+        }catch(e){}
+      });
+    }catch(e){}
+
+    try{ if($iconsUndo) $iconsUndo.addEventListener('click', ()=>{ _iconsUndoSelected(); }); }catch(e){}
+    try{ if($iconsJump) $iconsJump.addEventListener('click', ()=>{ _iconsJumpSelected(); }); }catch(e){}
 
     try{ if($iconSvgCancel) $iconSvgCancel.addEventListener('click', _iconModalClose); }catch(e){}
     try{ if($iconSvgSave) $iconSvgSave.addEventListener('click', _iconModalSave); }catch(e){}
