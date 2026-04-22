@@ -575,7 +575,7 @@
       const k = _norm(key);
       const kind = _uiKind(el);
       const d = _formatDescForKind(kind, desc, el);
-      const existing = _norm(el.getAttribute('title'));
+      const existing = _norm(el.getAttribute('data-ib-title')) || _norm(el.getAttribute('title'));
       let base = existing;
 
       // If missing or auto-key title, replace with description.
@@ -592,13 +592,18 @@
        // Keep tooltips short (max. 2 lines) and append the key in parentheses on the second line.
        base = _short(base, 110);
        base = _ensureKeySuffix(base, k);
-       if(base) el.setAttribute('title', base);
+       if(base) el.setAttribute('data-ib-title', base);
+       // Never keep native browser tooltips.
+       try{ if(el.hasAttribute('title')) el.removeAttribute('title'); }catch(e){}
 
-       // For checkbox inputs inside a label, mirror title onto the label.
+       // For checkbox inputs inside a label, mirror tooltip onto the label.
        if(kind === 'checkbox'){
          try{
            const lab = el.closest('label');
-           if(lab && !lab.getAttribute('title')) lab.setAttribute('title', base);
+           if(lab){
+             if(base && !lab.getAttribute('data-ib-title')) lab.setAttribute('data-ib-title', base);
+             try{ if(lab.hasAttribute('title')) lab.removeAttribute('title'); }catch(e){}
+           }
          }catch(e){}
        }
     }catch(e){}
@@ -760,6 +765,14 @@
       try{ return String(el && el.getAttribute ? (el.getAttribute('data-ib-title') || '') : '').trim(); }catch(e){ return ''; }
     }
 
+    function _stealAllTitles(root){
+      try{
+        const scope = root || document;
+        if(!scope || !scope.querySelectorAll) return;
+        scope.querySelectorAll('[title]').forEach((el)=>{ try{ _stealTitle(el); }catch(e){}; });
+      }catch(e){}
+    }
+
     function _ensure(){
       if(tip) return tip;
       tip = document.createElement('div');
@@ -880,7 +893,7 @@
       const keyRaw = keyLine ? keyLine.replace(/^<|>$/g, '') : '';
 
       const docBtn = keyRaw
-        ? (`<button type=\"button\" data-ib-doc-key=\"${_esc(keyRaw)}\" style=\"display:inline-flex;align-items:center;justify-content:center;gap:0;border:1px solid rgba(255,255,255,0.18);background:rgba(255,255,255,0.06);color:#fff;border-radius:10px;padding:6px 7px;cursor:pointer;\" title=\"Dokumentation\" aria-label=\"Dokumentation\">${DOC_SVG}</button>`)
+        ? (`<button type=\"button\" data-ib-doc-key=\"${_esc(keyRaw)}\" style=\"display:inline-flex;align-items:center;justify-content:center;gap:0;border:1px solid rgba(255,255,255,0.18);background:rgba(255,255,255,0.06);color:#fff;border-radius:10px;padding:6px 7px;cursor:pointer;\" aria-label=\"Dokumentation\">${DOC_SVG}</button>`)
         : '';
 
       const top = `<div style=\"display:flex; align-items:flex-start; gap:8px;\"><div style=\"font-weight:700; flex:1 1 auto;\">${desc}</div>${docBtn}</div>`;
@@ -927,6 +940,34 @@
         _stealTitle(el);
       }catch(e){}
     }, true);
+
+    // Proactively remove all native title-tooltips and keep it that way.
+    try{
+      if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ()=>{ _stealAllTitles(document.body); });
+      else _stealAllTitles(document.body);
+    }catch(e){}
+    try{
+      const mo = new MutationObserver((mut)=>{
+        try{
+          (mut||[]).forEach((m)=>{
+            if(m.type === 'attributes' && m.attributeName === 'title'){
+              try{ _stealTitle(m.target); }catch(e){}
+              return;
+            }
+            if(m.type === 'childList'){
+              (m.addedNodes||[]).forEach((n)=>{
+                try{
+                  if(!n || n.nodeType !== 1) return;
+                  if(n.hasAttribute && n.hasAttribute('title')) _stealTitle(n);
+                  if(n.querySelectorAll) n.querySelectorAll('[title]').forEach((x)=>{ try{ _stealTitle(x); }catch(e){}; });
+                }catch(e){}
+              });
+            }
+          });
+        }catch(e){}
+      });
+      mo.observe(document.documentElement || document.body, { childList:true, subtree:true, attributes:true, attributeFilter:['title'] });
+    }catch(e){}
 
     document.addEventListener('mousemove', (ev)=>{
       try{
@@ -1011,6 +1052,7 @@
         html: String(btn.innerHTML || ''),
         aria: btn.hasAttribute('aria-label') ? String(btn.getAttribute('aria-label') || '') : null,
         title: btn.hasAttribute('title') ? String(btn.getAttribute('title') || '') : null,
+        tip: btn.hasAttribute('data-ib-title') ? String(btn.getAttribute('data-ib-title') || '') : null,
       });
     }catch(e){}
   }
@@ -1022,8 +1064,18 @@
       btn.innerHTML = String(o.html || '');
       if(o.aria === null) btn.removeAttribute('aria-label');
       else btn.setAttribute('aria-label', String(o.aria || ''));
-      if(o.title === null) btn.removeAttribute('title');
-      else btn.setAttribute('title', String(o.title || ''));
+      if(o.tip === null){
+        if(o.title !== null && o.title !== undefined){
+          // Migrate legacy title storage to custom tooltip storage.
+          try{ btn.setAttribute('data-ib-title', String(o.title || '')); }catch(e){}
+        }else{
+          btn.removeAttribute('data-ib-title');
+        }
+      }else{
+        try{ btn.setAttribute('data-ib-title', String(o.tip || '')); }catch(e){}
+      }
+      // Never restore native browser tooltips.
+      try{ if(btn.hasAttribute('title')) btn.removeAttribute('title'); }catch(e){}
       btn.removeAttribute('data-ib-icon-ov');
       btn.removeAttribute('data-ib-iconized');
       ORIG.delete(btn);
@@ -1053,10 +1105,11 @@
       }
 
       const aria = _norm(btn.getAttribute('aria-label'));
-      const title = _norm(btn.getAttribute('title'));
+      const title = _norm(btn.getAttribute('data-ib-title')) || _norm(btn.getAttribute('title'));
       const lbl = _norm(labelForAria || aria || btn.textContent);
       if(!aria && lbl) btn.setAttribute('aria-label', lbl);
-      if(!title && lbl) btn.setAttribute('title', lbl);
+      if(!title && lbl) btn.setAttribute('data-ib-title', lbl);
+      try{ if(btn.hasAttribute('title')) btn.removeAttribute('title'); }catch(e){}
       btn.setAttribute('data-ib-icon-ov', '1');
     }catch(e){}
   }
@@ -1082,7 +1135,8 @@
             if(txt && MAP[txt]){
               _storeOrig(btn);
               if(!btn.getAttribute('aria-label')) btn.setAttribute('aria-label', txt);
-              if(!_norm(btn.getAttribute('title'))) btn.setAttribute('title', txt);
+              if(!_norm(btn.getAttribute('data-ib-title')) && !_norm(btn.getAttribute('title'))) btn.setAttribute('data-ib-title', txt);
+              try{ if(btn.hasAttribute('title')) btn.removeAttribute('title'); }catch(e){}
               btn.innerHTML = MAP[txt];
               btn.setAttribute('data-ib-iconized', '1');
               return;

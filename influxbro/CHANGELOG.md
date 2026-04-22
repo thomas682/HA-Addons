@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.416
+
+### Bugfix
+
+- Tooltips: native Browser-Tooltips (grau) werden jetzt global und robust unterdrueckt (auch wenn JS irgendwo ein `title` setzt). Alle Tooltips laufen nur noch ueber das dunkle HTML-Overlay. ([#360](https://github.com/thomas682/HA-Addons/issues/360))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`, `pytest -q tests/test_api_ui_support.py tests/test_api_time_and_stats.py`
+- Tested with Home Assistant Core: 2026.4.3
+
 ## 1.12.415
 
 ### Bugfix

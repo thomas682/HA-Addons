@@ -361,6 +361,7 @@ Raw Daten (DB):
 - Das Suchfeld in der rechten Titelzeile ist jetzt flexibler und darf bei kleiner Fensterbreite auf minimale Breite schrumpfen, damit es nicht mehr von den folgenden Buttons ueberdeckt wird.
 - Jobs & Cache: Die Tabellen in Jobs, Cache, Analyse-Cache, Timer und Cache-Nutzung unterstuetzen jetzt Mehrfachauswahl per Zeilenklick sowie `selektiere alle` / `selektiere keine` in der jeweiligen Tabellenleiste. In der Analyse-Cache-Tabelle wurden `entity_id` und `friendly_name` als eigene Spalten aufgeteilt, `Groesse` umbenannt und `series` ans Tabellenende verschoben.
 - Tooltips werden als eigenes HTML-Overlay angezeigt. Im Picker- und S-Picker-Modus sind sie weiterhin unterdrueckt, damit der Hover-Inspektor nicht gestoert wird.
+- Native Browser-Tooltips (grau) sind global deaktiviert, damit es keine Doppel-Tooltips geben kann.
 - Tabellen-Tooltips zeigen bei Tabellenzellen den sichtbaren Zelltext; der UI-Key steht weiterhin im Tooltip-Suffix.
 - Tooltips besitzen zusaetzlich einen Doku-Button, der das Handbuch oeffnet und nach dem jeweiligen UI-Key sucht (Open-Mode: gleicher Tab / neuer Tab / modal; konfigurierbar in den Einstellungen).
 - Weitere Bereiche sind jetzt als einklappbare Sections umgesetzt, darunter `Template-Status` im Monitor, die Backupliste/FullBackupliste sowie die grossen Bereiche in `Jobs & Cache`.
@@ -605,11 +606,11 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Neu: Pro Cache-Segment gibt es ein Info-Icon, das Dateiname und Groesse der Cache-Dateien sowie alle bekannten Segment-Metadaten anzeigt.
 - `hl` hebt ein Cache-Segment im Zeitstrahl optisch hervor, ohne Daten oder Statistiken zu filtern. `ac` blendet ein Segment nur visuell aus; die zugrunde liegenden Cache-Daten bleiben unverändert.
 - `Analyse mit Cache` behaelt vorgeladene Cache-Ausreisser jetzt bis zum Ende des Laufs. Dadurch erscheinen Cache-Treffer wieder direkt in `dashboard_outliers.tbl_ausreisser` und in `dashboard_analysis.txt_found_info`.
-- Die Picker `nav_main.btn_ui_picker` und `nav_main.btn_ui_picker_super` koennen jetzt auch deaktivierte Elemente kopieren. Waerend des Picker-Modus werden native `title`-Tooltips temporaer unterdrueckt, damit keine Stoer-Tooltips ueber der Auswahl auftauchen.
+- Die Picker `nav_main.btn_ui_picker` und `nav_main.btn_ui_picker_super` koennen jetzt auch deaktivierte Elemente kopieren. Waerend des Picker-Modus sind Tooltips (Overlay) unterdrueckt, damit der Hover-Inspektor nicht gestoert wird.
 - Groessere Zeitabstaende zwischen zwei Messpunkten koennen jetzt als eigener Ausreißer-Typ `Messwertlücke` erkannt werden. Solche Luecken werden nicht mehr automatisch als normaler Counter-Sprung oder als fortgesetzte Stoerphase bewertet.
 - Fuer `Messwertlücke` gibt es einen globalen Schwellwert `outlier_gap_seconds_default` in den Einstellungen sowie Dashboard-Overrides in der Ausreißer-Parametrierung und im Filter-Scan.
 - Die Statistik-Seite faengt abgelaufene `global_stats`-Jobs jetzt sauber ab. Alte Job-IDs werden lokal geloescht und die Ansicht faellt still auf Cache-/Snapshot-Daten zurueck, statt bei jedem Seitenaufruf mit einem 404 fuer ein altes Job-Ergebnis zu starten.
-- Native Tooltips sind jetzt bewusst kurz gehalten: kurze Funktionsbeschreibung plus Elementname in Klammern. Waerend `Picker` oder `S-Picker` aktiv sind, werden native Browser-Tooltips nicht angezeigt.
+- Tooltips sind bewusst kurz gehalten: oben eine Funktionsbeschreibung, unten der UI-Key in spitzen Klammern (z.B. `<dashboard_caching.btn_cache_pruefen>`).
 - Unter der Cache-Summary des Dashboards wird jetzt zusaetzlich `Gefunden:` mit den im Cache bekannten Ausreißern je Typ angezeigt. Pro Cache-Segment gibt es daneben den Toggle `ol`, der vertikale Marker fuer alle Ausreißer-Zeitpunkte dieses Segments im Zeitstrahl einblendet.
 - Die `ol` Marker im Zeitstrahl sind jetzt nach Ausreisser-Typ eingefaerbt und koennen oberhalb des Zeitstrahls pro Typ ein-/ausgeblendet werden (wirkt nur auf den Zeitstrahl, nicht auf Tabellen/Counts).
 - Nach `Analyse mit Cache` oder `Analyse ohne Cache` werden zusammenhaengende Analyse-Cache-Segmente jetzt automatisch kombiniert. Das entspricht dem manuellen Dashboard-Button `kombinieren`.
