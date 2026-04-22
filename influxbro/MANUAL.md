@@ -67,6 +67,7 @@ Neu: Sidebar (Desktop)
 - Die Menuepunkte verwenden jetzt konsistente SVG-Icons (statt Buchstaben).
 - Die Breite und der Collapse-Status werden gespeichert und koennen ueber UI-Profile getrennt werden (Profil speichern/anwenden).
 - Mobile: Die Navigation wird als Drawer (Hamburger) genutzt und ueber den Button in der Titelzeile ein-/ausgeblendet.
+  - Hinweis: Der Drawer startet beim erneuten Oeffnen der App wieder geschlossen (damit der Inhalt sofort sichtbar ist).
 
 Neu: Top-Leiste (Profil + Zoom)
 

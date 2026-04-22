@@ -1486,6 +1486,7 @@
       try{
         const sh = _shell();
         if(sh) sh.classList.remove('ib_nav_mobile_open');
+        try{ sessionStorage.setItem('influxbro.nav.mobile.open.v1', '0'); }catch(e){}
         try{ localStorage.setItem('influxbro.nav.mobile.open.v1', '0'); }catch(e){}
         try{
           const btn = document.getElementById('ib_nav_mobile_toggle');
@@ -1502,6 +1503,7 @@
         try{
           const sh = _shell();
           if(sh) sh.classList.remove('ib_nav_mobile_open');
+          try{ sessionStorage.setItem('influxbro.nav.mobile.open.v1', '0'); }catch(e){}
           try{ localStorage.setItem('influxbro.nav.mobile.open.v1', '0'); }catch(e){}
           try{
             const btn = document.getElementById('ib_nav_mobile_toggle');

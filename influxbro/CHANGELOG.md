@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.422
+
+### Bugfix
+
+- Mobile Navigation: der Sidebar-Drawer verdeckt beim App-Start nicht mehr den Hauptinhalt (Open-State wird nicht mehr dauerhaft persistiert). ([#382](https://github.com/thomas682/HA-Addons/issues/382))
+
+### Maintenance
+
+- Tests: `.venv/bin/python -m py_compile influxbro/app/app.py`, `.venv/bin/python -m pytest -q tests/test_dashboard_script_integrity.py tests/test_api_ui_support.py`
+- Tested with Home Assistant Core: 2026.4.3
+
 ## 1.12.421
 
 ### Enhancement
