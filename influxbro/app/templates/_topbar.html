@@ -53,7 +53,8 @@
     /* Global zoom (font-based) - avoids breaking Plotly click hit-testing */
     body {
       font-size: var(--ui-font-zoomed);
-      padding-top: calc(var(--ib-topbar-h) + var(--ib-pagecard-live-h));
+      overflow-x: hidden;
+      padding-top: calc(env(safe-area-inset-top, 0px) + var(--ib-topbar-h) + var(--ib-pagecard-live-h));
       padding-bottom: calc(var(--ib-bottombar-h) + env(safe-area-inset-bottom, 0px));
     }
     .muted { font-size: var(--ui-font-small-zoomed); }
@@ -96,13 +97,15 @@
       position: fixed;
       left: 0;
       right: 0;
-      bottom: 0;
+      bottom: env(safe-area-inset-bottom, 0px);
       z-index: 9999;
       height: calc(var(--ib-bottombar-h) * var(--ib-zoom-scale));
       display: flex;
       align-items: center;
       gap: calc(10px * var(--ib-zoom-scale));
       padding: calc(6px * var(--ib-zoom-scale)) calc(12px * var(--ib-zoom-scale));
+      padding-left: calc((12px * var(--ib-zoom-scale)) + env(safe-area-inset-left, 0px));
+      padding-right: calc((12px * var(--ib-zoom-scale)) + env(safe-area-inset-right, 0px));
       box-sizing: border-box;
       background: var(--ib-statusbar-bg);
       color: var(--ib-statusbar-fg);
@@ -136,7 +139,7 @@
     }
     .ib_topbar {
       position: fixed;
-      top: 0;
+      top: env(safe-area-inset-top, 0px);
       left: 0;
       right: 0;
       z-index: 10000;
@@ -165,7 +168,7 @@
     .ib_topbar .zoom .pct { font-variant-numeric: tabular-nums; min-width: calc(56px * var(--ib-zoom-scale)); text-align:center; }
     .ib_pagecard {
       position: fixed;
-      top: 0;
+      top: env(safe-area-inset-top, 0px);
       left: 0;
       right: 0;
       z-index: 9998;
@@ -175,6 +178,8 @@
       justify-content:space-between;
       gap: calc(12px * var(--ib-zoom-scale));
       padding: calc(10px * var(--ib-zoom-scale)) calc(12px * var(--ib-zoom-scale));
+      padding-left: calc((12px * var(--ib-zoom-scale)) + env(safe-area-inset-left, 0px));
+      padding-right: calc((12px * var(--ib-zoom-scale)) + env(safe-area-inset-right, 0px));
       box-sizing:border-box;
       background: var(--ib-section-title-bg);
       color: var(--ib-section-title-fg);
@@ -193,6 +198,7 @@
     .ib_pagecard .actions .iconbtn { width: calc(34px * var(--ib-zoom-scale)); padding:0; display:inline-flex; align-items:center; justify-content:center; }
     .ib_pagecard .actions .iconbtn svg { width:18px; height:18px; }
     .ib_pagecard .actions .ib_topbar_mobile_toggle { display:none; }
+    .ib_pagecard .actions .ib_nav_mobile_toggle { display:none; }
     .ib_pagecard .actions .topbar_profile_group { display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end; min-width:0; width:100%; }
     .ib_pagecard .actions .topbar_profile_group .zoom { display:flex; align-items:center; gap:8px; padding-left:10px; border-left:1px solid rgba(0,0,0,0.08); }
     .ib_pagecard .actions .topbar_profile_group .ib_clear_row { flex:1 1 180px; min-width:0; max-width:320px; min-height:34px; }
@@ -256,7 +262,21 @@
       }
       .ib_pagecard .branddonate img { height: calc(22px * var(--ib-zoom-scale)) !important; max-height: calc(22px * var(--ib-zoom-scale)) !important; }
       .ib_pagecard .actions .ib_topbar_mobile_toggle { display:inline-flex; }
+      .ib_pagecard .actions .ib_nav_mobile_toggle { display:inline-flex; }
       #ib_topbar_mobile_panel[hidden] { display:none !important; }
+
+      /* iOS Safari: prevent input focus auto-zoom */
+      input, select, textarea { font-size: 16px !important; }
+
+      /* Touch targets (Apple HIG) */
+      .ib_pagecard .actions button,
+      .ib_pagecard .actions input,
+      .ib_pagecard .actions select,
+      .ib_topbar button,
+      .ib_topbar select {
+        height: max(calc(34px * var(--ib-zoom-scale)), 44px);
+      }
+      .ib_pagecard .actions .iconbtn { width: max(calc(34px * var(--ib-zoom-scale)), 44px); }
     }
 
     /* Shared UI: section info icon next to titles */
@@ -484,10 +504,63 @@
       const $searchModal = document.getElementById('ib_page_search_modal');
       const $mobileToggle = document.getElementById('ib_topbar_mobile_toggle');
       const $mobilePanel = document.getElementById('ib_topbar_mobile_panel');
+      const $navMobileToggle = document.getElementById('ib_nav_mobile_toggle');
       if(!$card || $card.dataset.ibPagecardReady === '1') return;
       $card.dataset.ibPagecardReady = '1';
 
       const main = document.querySelector('main.content');
+
+      // Mobile nav drawer toggle (used by _nav.html via a shell class).
+      (function(){
+        const LS_KEY = 'influxbro.nav.mobile.open.v1';
+        function _isMobile(){
+          try{ return !!(window.matchMedia && window.matchMedia('(max-width: 980px)').matches); }catch(e){ return false; }
+        }
+        function _readOpen(){
+          try{ return localStorage.getItem(LS_KEY) === '1'; }catch(e){ return false; }
+        }
+        function _writeOpen(v){
+          try{ localStorage.setItem(LS_KEY, v ? '1' : '0'); }catch(e){}
+        }
+        function _shell(){
+          try{ return document.querySelector('.shell'); }catch(e){ return null; }
+        }
+        function _apply(){
+          try{
+            const sh = _shell();
+            if(!sh || !$navMobileToggle) return;
+            const mob = _isMobile();
+            if(!mob){
+              sh.classList.remove('ib_nav_mobile_open');
+              $navMobileToggle.setAttribute('aria-expanded', 'false');
+              return;
+            }
+            const open = _readOpen();
+            sh.classList.toggle('ib_nav_mobile_open', open);
+            $navMobileToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+          }catch(e){}
+        }
+        try{
+          if($navMobileToggle){
+            $navMobileToggle.addEventListener('click', (ev)=>{
+              try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+              const sh = _shell();
+              if(!sh) return;
+              const next = !sh.classList.contains('ib_nav_mobile_open');
+              _writeOpen(next);
+              _apply();
+            });
+          }
+        }catch(e){}
+        try{
+          const mq = window.matchMedia ? window.matchMedia('(max-width: 980px)') : null;
+          if(mq){
+            if(mq.addEventListener) mq.addEventListener('change', _apply);
+            else if(mq.addListener) mq.addListener(_apply);
+          }
+        }catch(e){}
+        _apply();
+      })();
 
       // iPhone: allow collapsing the large topbar action group.
       (function(){
@@ -1929,6 +2002,11 @@
     </div>
   </div>
   <div class="actions">
+    <button id="ib_nav_mobile_toggle" type="button" class="iconbtn ib_nav_mobile_toggle" data-ui="nav_main.btn_mobile_toggle" title="Navigation" aria-label="Navigation" aria-controls="ib_nav_mobile_drawer" aria-expanded="false">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
+        <path d="M4 6h7M4 12h16M4 18h10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </button>
     <button id="ib_topbar_mobile_toggle" type="button" class="iconbtn ib_topbar_mobile_toggle" data-ui="topbar_mobile.btn_toggle" title="Topbar umschalten" aria-label="Topbar umschalten" aria-controls="ib_topbar_mobile_panel" aria-expanded="false">
       <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
         <path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>

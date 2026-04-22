@@ -1,4 +1,4 @@
-<nav class="sidebar" aria-label="Navigation">
+<nav class="sidebar" id="ib_nav_mobile_drawer" aria-label="Navigation">
   <style>
     /* Standard sidebar look (shared across all pages). */
     .shell { display:grid; grid-template-columns: var(--ib-sidebar-w, 260px) 1fr; min-height: 100vh; padding-top: 20px; box-sizing: border-box; position: relative; }
@@ -55,9 +55,51 @@
     /* Mobile: normal page scrolling. */
     @media (max-width: 980px){
       body { overflow: auto; }
-      .shell { height: auto; }
-      .shell > nav.sidebar { position: static; height: auto; overflow: visible; }
-      .shell > main.content { height: auto; overflow: visible; padding-bottom: calc(var(--ib-bottombar-h, 0px) + 18px); box-sizing: border-box; }
+      .shell { height: auto; padding-top: 0; }
+
+      /* Hamburger drawer: sidebar becomes an off-canvas overlay. */
+      .shell > nav.sidebar {
+        position: fixed;
+        left: 0;
+        top: calc(env(safe-area-inset-top, 0px) + var(--ib-topbar-h, 0px) + var(--ib-pagecard-live-h, 0px));
+        bottom: calc(env(safe-area-inset-bottom, 0px));
+        width: min(320px, 86vw);
+        max-width: 86vw;
+        background: #fff;
+        border-right: 1px solid #eee;
+        padding-left: calc(14px + env(safe-area-inset-left, 0px));
+        padding-right: calc(14px + env(safe-area-inset-right, 0px));
+        overflow: auto;
+        -webkit-overflow-scrolling: touch;
+        transform: translateX(-105%);
+        transition: transform 180ms ease;
+        z-index: 10020;
+      }
+      .shell.ib_nav_mobile_open > nav.sidebar { transform: translateX(0); box-shadow: 0 12px 40px rgba(0,0,0,0.18); }
+
+      #ib_nav_mobile_overlay {
+        position: fixed;
+        left: 0;
+        right: 0;
+        top: calc(env(safe-area-inset-top, 0px) + var(--ib-topbar-h, 0px) + var(--ib-pagecard-live-h, 0px));
+        bottom: calc(env(safe-area-inset-bottom, 0px));
+        background: rgba(0,0,0,0.28);
+        display: none;
+        z-index: 10015;
+      }
+      .shell.ib_nav_mobile_open #ib_nav_mobile_overlay { display: block; }
+
+      .shell > main.content {
+        height: auto;
+        overflow: visible;
+        padding-bottom: calc(var(--ib-bottombar-h, 0px) + 18px);
+        box-sizing: border-box;
+        max-width: 100%;
+        overflow-x: hidden;
+      }
+
+      /* Touch targets */
+      .nav_item { padding: 12px 12px; min-height: 44px; }
     }
 
     #influxbro_status_panel { margin-top: 12px; padding-top: 10px; border-top: 1px solid #eee; --ui-status-font: {{ (cfg.get('ui_status_font_px') or 12) | int }}px; }
@@ -67,14 +109,18 @@
     #influxbro_status_panel .hg { width: 14px; height: 14px; display:inline-flex; align-items:center; justify-content:center; }
     #influxbro_status_panel .hg svg { width: 14px; height: 14px; opacity: 0.75; }
     #influxbro_status_panel .muted { font-size: 12px; opacity: 0.75; }
-    #influxbro_status_panel .list { margin-top: 8px; max-height: 180px; overflow-y: auto; overflow-x: auto; }
+    #influxbro_status_panel .list { margin-top: 8px; max-height: 180px; overflow-y: auto; overflow-x: auto; -webkit-overflow-scrolling: touch; }
     #influxbro_status_panel .item { display:flex; align-items:baseline; justify-content:space-between; gap: 10px; padding: 4px 0; border-bottom: 1px dashed rgba(0,0,0,0.08); }
     #influxbro_status_panel .item:last-child { border-bottom: 0; }
     #influxbro_status_panel .k { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: var(--ui-status-font); opacity: 0.7; }
     #influxbro_status_panel .t { font-size: var(--ui-status-font); white-space: nowrap; overflow: visible; text-overflow: clip; }
     #influxbro_status_panel .tm { font-size: var(--ui-status-font); opacity: 0.75; white-space: nowrap; }
     #influxbro_status_panel .item { white-space: nowrap; min-width: max-content; }
-    #influxbro_status_panel .last { margin-top: 10px; font-size: var(--ui-status-font); overflow: auto; max-height: 84px; }
+    @media (max-width: 980px){
+      /* Avoid forcing horizontal page scroll on iPhone. */
+      #influxbro_status_panel .item { min-width: 0; }
+    }
+    #influxbro_status_panel .last { margin-top: 10px; font-size: var(--ui-status-font); overflow: auto; max-height: 84px; -webkit-overflow-scrolling: touch; }
   </style>
 
   <div class="sidebar_top" data-ui="nav_main.row_sidebar_tools" title="nav.sidebar.tools">
@@ -1426,3 +1472,44 @@
   })();
   </script>
 </nav>
+
+<div id="ib_nav_mobile_overlay" aria-hidden="true"></div>
+
+<script>
+(function(){
+  function _shell(){
+    try{ return document.querySelector('.shell'); }catch(e){ return null; }
+  }
+  const overlay = document.getElementById('ib_nav_mobile_overlay');
+  if(overlay){
+    overlay.addEventListener('click', ()=>{
+      try{
+        const sh = _shell();
+        if(sh) sh.classList.remove('ib_nav_mobile_open');
+        try{ localStorage.setItem('influxbro.nav.mobile.open.v1', '0'); }catch(e){}
+        try{
+          const btn = document.getElementById('ib_nav_mobile_toggle');
+          if(btn) btn.setAttribute('aria-expanded', 'false');
+        }catch(e){}
+      }catch(e){}
+    });
+  }
+
+  // Close drawer on navigation tap.
+  try{
+    document.querySelectorAll('nav.sidebar a.nav_item').forEach((a)=>{
+      a.addEventListener('click', ()=>{
+        try{
+          const sh = _shell();
+          if(sh) sh.classList.remove('ib_nav_mobile_open');
+          try{ localStorage.setItem('influxbro.nav.mobile.open.v1', '0'); }catch(e){}
+          try{
+            const btn = document.getElementById('ib_nav_mobile_toggle');
+            if(btn) btn.setAttribute('aria-expanded', 'false');
+          }catch(e){}
+        }catch(e){}
+      });
+    });
+  }catch(e){}
+})();
+</script>

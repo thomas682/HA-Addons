@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.413
+
+### Enhancement
+
+- iPhone adaption: Safe-Area Insets (top/left/right/bottom), iOS Input-Font >= 16px (verhindert Auto-Zoom), 44px Touch-Targets und mobile Navigation als Drawer (Hamburger) ueber die Titelzeile. ([#370](https://github.com/thomas682/HA-Addons/issues/370))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`, `pytest -q tests/test_api_ui_support.py`, `pytest -q tests/test_dashboard_script_integrity.py`, `npx playwright test tests/e2e/dashboard.spec.js`
+- Tested with Home Assistant Core: 2026.4.3
+
 ## 1.12.412
 
 ### Enhancement

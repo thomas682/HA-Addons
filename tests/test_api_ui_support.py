@@ -969,7 +969,7 @@ def test_topbar_uses_separate_pagecard_min_and_live_heights():
     topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
     assert '--ib-pagecard-min-h: 74px;' in topbar
     assert '--ib-pagecard-live-h: 74px;' in topbar
-    assert 'padding-top: calc(var(--ib-topbar-h) + var(--ib-pagecard-live-h));' in topbar
+    assert 'padding-top: calc(env(safe-area-inset-top, 0px) + var(--ib-topbar-h) + var(--ib-pagecard-live-h));' in topbar
     assert 'min-height: var(--ib-pagecard-min-h);' in topbar
     assert "pc.style.minHeight = 'var(--ib-pagecard-min-h)';" in topbar
     assert "document.documentElement.style.setProperty('--ib-pagecard-live-h'" in topbar
