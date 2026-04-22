@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.420
+
+### Bugfix
+
+- Backup API: Fix 500 bei `/api/backups` durch fehlendes `return` in `backup_dir()` (konnte zu `None` und damit zu Server-Error beim Listen von Backups fuehren). ([#380](https://github.com/thomas682/HA-Addons/issues/380))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`, `pytest -q tests/test_api_time_and_stats.py tests/test_api_yaml_flow.py`
+- Tested with Home Assistant Core: 2026.4.3
+
 ## 1.12.419
 
 ### Bugfix

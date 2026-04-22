@@ -2716,6 +2716,8 @@ def backup_dir(cfg: dict[str, Any] | None = None) -> Path:
     except Exception:
         pass
 
+    return target
+
 
 def _undo_mgr(cfg: dict[str, Any]) -> UndoManager:
     """Singleton undo manager (persistent under /config/influxbro/history)."""
