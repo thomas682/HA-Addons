@@ -111,10 +111,18 @@
   <div class="shell">
     {% include "_nav.html" %}
     <main class="content" data-ui="restore_page.main" title="restore.page">
-       <h2>Restore</h2>
-       <div class="muted">Quelle: Backup auswaehlen. Ziel: Messwert auswaehlen. Restore schreibt Daten (vorhandene Punkte koennen ueberschrieben werden).</div>
+        <h2>Restore</h2>
+        <div class="muted">Quelle: Backup auswaehlen. Ziel: Messwert auswaehlen. Restore schreibt Daten (vorhandene Punkte koennen ueberschrieben werden).</div>
 
-       <div class="page_grid">
+        <div class="row" style="margin-top: 10px; align-items:flex-end;" data-ui="restore_main.panel_storage_target" title="restore.storage_target">
+          <div style="min-width: 260px;">
+            <label>Speicherort</label>
+            <select id="restore_target" data-ui="restore_main.select_storage_target" title="restore.storage_target.select" style="min-width: 260px;"></select>
+          </div>
+          <div class="muted" id="restore_target_info" style="padding-bottom: 6px;"></div>
+        </div>
+
+        <div class="page_grid">
 
           <details class="card" open data-ui="restore_main.section_root" title="restore.source" style="--restore_visible_rows: {{ (cfg.get('ui_restore_visible_rows') or 24) | int }};">
             <summary><span class="ib_summary_row"><span>Quelle (Backup)</span><button type="button" class="ib_info_icon" data-info-title="Restore: Quelle" data-info-body="Waehle genau ein Backup als Quelle fuer den Restore aus." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
@@ -421,12 +429,14 @@
        const $run = document.getElementById('run');
          const $srcToTarget = document.getElementById('source_to_target');
        const $tgtSame = document.getElementById('tgt_same_as_src');
-        const $reload = document.getElementById('reload');
-       const $backupDownload = document.getElementById('backup_download');
-        const $restoreAutoWidth = document.getElementById('restore_autowidth');
-        const $restoreWindowWidth = document.getElementById('restore_windowwidth');
-        const $restoreWrap = document.getElementById('restore_wrap');
-         const $restoreColFilter = document.getElementById('restore_colfilter');
+         const $reload = document.getElementById('reload');
+        const $backupDownload = document.getElementById('backup_download');
+        const $restoreTarget = document.getElementById('restore_target');
+        const $restoreTargetInfo = document.getElementById('restore_target_info');
+         const $restoreAutoWidth = document.getElementById('restore_autowidth');
+         const $restoreWindowWidth = document.getElementById('restore_windowwidth');
+         const $restoreWrap = document.getElementById('restore_wrap');
+          const $restoreColFilter = document.getElementById('restore_colfilter');
 
          // FullRestore (DB full)
          const $fullRestoreReload = document.getElementById('fullrestore_reload');
@@ -495,6 +505,8 @@
 
          let HA_PLATFORM = 'unknown';
          let HAS_INFLUX_CLI = false;
+
+         let BACKUP_TARGETS = [];
 
         let CFG = { influx_version: 2, bucket: '' };
 
@@ -802,6 +814,54 @@
         }
       }
 
+      function curTargetId(){
+        try{ return $restoreTarget ? String($restoreTarget.value || '').trim() : ''; }catch(e){ return ''; }
+      }
+
+      function _renderTargetInfo(){
+        try{
+          if(!$restoreTargetInfo) return;
+          const id = curTargetId();
+          const t = (BACKUP_TARGETS || []).find(x => String(x && x.id || '') === id) || null;
+          if(!t){ $restoreTargetInfo.textContent = ''; return; }
+          const ok = !!t.available;
+          const name = String(t.name || '');
+          const path = String(t.path || '');
+          const err = String(t.error || '');
+          $restoreTargetInfo.textContent = ok ? (`${name}: ${path}`) : (`${name}: nicht erreichbar (${path})` + (err ? (': ' + err) : ''));
+        }catch(e){}
+      }
+
+      async function loadTargets(){
+        try{
+          if(!$restoreTarget) return;
+          const j = await api('./api/backup_targets');
+          BACKUP_TARGETS = Array.isArray(j.targets) ? j.targets : [];
+          const defId = String(j.default || '').trim();
+          $restoreTarget.innerHTML = '';
+          (BACKUP_TARGETS || []).forEach((t)=>{
+            try{
+              const opt = document.createElement('option');
+              opt.value = String(t.id || '');
+              opt.textContent = String(t.name || t.id || 'Target');
+              if(t.available === false){
+                opt.disabled = true;
+                opt.textContent += ' (nicht erreichbar)';
+              }
+              $restoreTarget.appendChild(opt);
+            }catch(e){}
+          });
+          if(defId){
+            try{ $restoreTarget.value = defId; }catch(e){}
+          }
+          _renderTargetInfo();
+        }catch(e){
+          try{ BACKUP_TARGETS = []; }catch(x){}
+        }
+      }
+
+      try{ if($restoreTarget) $restoreTarget.addEventListener('change', ()=>{ _renderTargetInfo(); loadBackups().catch(()=>{}); loadFullBackups().catch(()=>{}); }); }catch(e){}
+
       function selBackup(){
         const id = String(SELECTED_ID || '').trim();
         return (BACKUPS || []).find(b => String(b.id||'') === id) || null;
@@ -947,11 +1007,14 @@
         }
 
        async function loadFullBackups(){
-         const j = await api('./api/fullbackups_all');
-         FULLBACKUPS = j.backups || [];
-         if(!FULL_SELECTED_ID && FULLBACKUPS.length) FULL_SELECTED_ID = String(FULLBACKUPS[0].id||'');
-         renderFullBackups();
-       }
+          const qs = new URLSearchParams();
+          const t = curTargetId();
+          if(t) qs.set('target', t);
+          const j = await api('./api/fullbackups_all' + (qs.toString() ? ('?' + qs.toString()) : ''));
+          FULLBACKUPS = j.backups || [];
+          if(!FULL_SELECTED_ID && FULLBACKUPS.length) FULL_SELECTED_ID = String(FULLBACKUPS[0].id||'');
+          renderFullBackups();
+        }
 
         async function runFullRestore(){
           err(''); ok('');
@@ -969,16 +1032,17 @@
 
          startFullRestoreUi('FullRestore wird gestartet...');
          try{
-            const started = await api('./api/fullrestore_job/start', {
-              method:'POST',
-              headers:{'Content-Type':'application/json'},
-               body: JSON.stringify({
-                 id,
-                 confirm: true,
-                 target_bucket: ($nativeTargetBucket ? String($nativeTargetBucket.value || '').trim() : ''),
-                 overwrite: !!($nativeOverwrite && $nativeOverwrite.checked)
-               })
-             });
+              const started = await api('./api/fullrestore_job/start', {
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                 body: JSON.stringify({
+                   id,
+                    confirm: true,
+                   target: curTargetId(),
+                    target_bucket: ($nativeTargetBucket ? String($nativeTargetBucket.value || '').trim() : ''),
+                    overwrite: !!($nativeOverwrite && $nativeOverwrite.checked)
+                 })
+               });
            FULLRESTORE_JOB_ID = String(started.job_id || '');
            if(!FULLRESTORE_JOB_ID) throw new Error('fullrestore job_id missing');
 
@@ -1035,7 +1099,7 @@
          const id = String(FULL_SELECTED_ID || '').trim();
          if(!id) throw new Error('Bitte ein FullBackup auswaehlen.');
          if(!confirm('FullBackup wirklich loeschen?\n\n' + id)) return;
-         await api('./api/fullbackup_delete', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id })});
+          await api('./api/fullbackup_delete', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id, target: curTargetId() })});
          ok('FullBackup geloescht: ' + id);
          FULL_SELECTED_ID = '';
          await loadFullBackups();
@@ -1109,7 +1173,10 @@
 
       async function loadBackupLocation(){
         try{
-          const j = await api('./api/backup_location');
+          const qs = new URLSearchParams();
+          const t = curTargetId();
+          if(t) qs.set('target', t);
+          const j = await api('./api/backup_location' + (qs.toString() ? ('?' + qs.toString()) : ''));
           const p = j && j.container_path ? String(j.container_path) : '';
           BACKUP_LOC_TXT = p ? (' | dir: ' + p) : '';
         }catch(e){
@@ -1197,7 +1264,10 @@
       }
 
       async function loadBackups(){
-        const j = await api('./api/backups_all');
+        const qs = new URLSearchParams();
+        const t = curTargetId();
+        if(t) qs.set('target', t);
+        const j = await api('./api/backups_all' + (qs.toString() ? ('?' + qs.toString()) : ''));
         BACKUPS = j.backups || [];
         await loadBackupLocation();
         if(!SELECTED_ID && BACKUPS.length) SELECTED_ID = String(BACKUPS[0].id||'');
@@ -1462,6 +1532,7 @@
           const payload = {
             id,
             confirm: true,
+            target: curTargetId(),
             target_measurement: LAST_TARGET.measurement,
             target_field: LAST_TARGET.field,
             target_entity_id: LAST_TARGET.entity_id,
@@ -1592,7 +1663,7 @@
         try{ if(ev) { ev.preventDefault(); ev.stopPropagation(); } }catch(e){}
         const id = String(SELECTED_ID || '').trim();
         if(!id) return;
-        try{ location.href = `./api/backup_download?id=${encodeURIComponent(id)}`; }catch(e){}
+        try{ location.href = `./api/backup_download?id=${encodeURIComponent(id)}&target=${encodeURIComponent(String(curTargetId()||''))}`; }catch(e){}
       });
       if($srcToTarget) $srcToTarget.addEventListener('click', ()=>copySourceToTarget());
       try{
@@ -1606,7 +1677,7 @@
         try{ if(ev) { ev.preventDefault(); ev.stopPropagation(); } }catch(e){}
         const id = String(FULL_SELECTED_ID || '').trim();
         if(!id) return;
-        try{ location.href = `./api/fullbackup_download?id=${encodeURIComponent(id)}`; }catch(e){}
+        try{ location.href = `./api/fullbackup_download?id=${encodeURIComponent(id)}&target=${encodeURIComponent(String(curTargetId()||''))}`; }catch(e){}
       }); }catch(e){}
       try{ if($fullRestoreDelete) $fullRestoreDelete.addEventListener('click', ()=>deleteFullBackup().catch(e=>err(String(e && e.message ? e.message : e)))); }catch(e){}
       try{ if($fullRestoreRun) $fullRestoreRun.addEventListener('click', ()=>runFullRestore().catch(e=>err(String(e && e.message ? e.message : e)))); }catch(e){}
@@ -1673,8 +1744,12 @@
         });
       }catch(e){}
 
-      loadBackups().catch(e=>err(String(e && e.message ? e.message : e)));
-      loadFullBackups().catch(()=>{});
+      loadTargets()
+        .then(()=>Promise.all([
+          loadBackups(),
+          loadFullBackups().catch(()=>{}),
+        ]))
+        .catch(e=>err(String(e && e.message ? e.message : e)));
       loadTargetLists().then(()=>{ renderPlan(); }).catch(()=>{});
 
       // table UI helpers are wired after shared helpers are loaded (see bottom script)

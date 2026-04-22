@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.421
+
+### Enhancement
+
+- Backup/Restore: Speicherziel-Auswahl ("Lokal" + "Share") via neuer Konfiguration `backup_targets`, inkl. Erkennung vorhandener `/share/*` Mounts und Umschaltbarkeit in Backup/Restore UI. ([#381](https://github.com/thomas682/HA-Addons/issues/381))
+
+### Maintenance
+
+- Tests: `.venv/bin/python -m py_compile influxbro/app/app.py`, `.venv/bin/python -m pytest -q tests/test_api_ui_support.py tests/test_api_config_io.py tests/test_dashboard_script_integrity.py`
+- Tested with Home Assistant Core: 2026.4.3
+
 ## 1.12.420
 
 ### Bugfix

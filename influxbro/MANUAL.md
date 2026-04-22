@@ -484,6 +484,8 @@ Timer Jobs:
 ## Backup (ein Messwert, alle Werte)
 
 - Backups werden fuer den aktuell ausgewaehlten Messwert erstellt und enthalten alle Werte dieses Messwertes.
+- Neu: `Speicherort` (Dropdown) schaltet zwischen konfigurierten Zielen (z.B. Lokal und `/share/...`). Nicht erreichbare Ziele sind ausgegraut.
+- Alle Aktionen auf der Backup-Seite (Liste, Erstellen, Download, Loeschen, FullBackup) beziehen sich immer auf den aktuell gewaehlten Speicherort.
 - Die Erstellung laeuft als Background-Job: du siehst Laufzeit und Groesse waehrend des Exports, und kannst per `Abbruch` stoppen.
 - In der Backup-Liste siehst du:
   - Name des Messwertes
@@ -520,6 +522,8 @@ Neu: FullBackup (InfluxDB komplett)
 ## Restore
 
 - Waehle ein Backup aus der Liste fuer den Messwert.
+- Neu: `Speicherort` (Dropdown) schaltet, aus welchem Zielverzeichnis die Backupliste geladen wird. Nicht erreichbare Ziele sind ausgegraut.
+- Download/Restore/FullRestore nutzen immer den aktuell gewaehlten Speicherort.
 - Download: `Download` laedt das selektierte Backup als ZIP herunter (Meta + Line Protocol).
 - Restore schreibt die Werte zurueck, ohne doppelte Messpunkte zu erzeugen (idempotent, weil gleiche Zeitpunkte/Tags/Field ueberschrieben werden).
 - Restore fragt bei destruktiven Aktionen nur noch per Browser-Dialog nach Bestaetigung.

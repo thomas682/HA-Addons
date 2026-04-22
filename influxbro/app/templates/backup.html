@@ -109,6 +109,14 @@
       <div class="muted">Backups fuer einen einzelnen Messwert (immer alle Werte dieses Messwertes).</div>
       <div class="space_box" id="space" data-ui="backup_main.panel_space" title="backup.space" style="display:none; margin-top:8px;"></div>
 
+      <div class="row" style="margin-top: 10px; align-items:flex-end;" data-ui="backup_main.panel_storage_target" title="backup.storage_target">
+        <div style="min-width: 260px;">
+          <label>Speicherort</label>
+          <select id="backup_target" data-ui="backup_main.select_storage_target" title="backup.storage_target.select" style="min-width: 260px;"></select>
+        </div>
+        <div class="muted" id="backup_target_info" style="padding-bottom: 6px;"></div>
+      </div>
+
       <div class="card" style="--backup_visible_rows: {{ (cfg.get('ui_backup_visible_rows') or 24) | int }};">
         <details id="selection_details" open data-ui="backup_selection.section_root" title="section.selection">
           <summary><span class="ib_summary_row"><span>Einzelbackup</span><button type="button" class="ib_info_icon" data-info-title="Backup: Einzelbackup" data-info-body="In diesem Bereich erstellst du Backups fuer genau einen Messwert (eine Serie) und verwaltest die Backupliste.\n\nAblauf:\n1) Auswahl setzen (measurement optional, entity_id/friendly_name fuer eindeutige Serie).\n2) Backup starten (Messwert-Backup oder Zeitbereich-Backup).\n3) Job-Status beobachten (Laufzeit/Groesse/Query).\n4) In der Backupliste selektieren, Download (nur bei genau 1 Auswahl) oder Loeschen (mehrfach).\n\nHinweise:\n- Backups werden als ZIP gespeichert (Meta JSON + Line Protocol).\n- Die Tabelle unterstuetzt Umbruch, Spaltenfilter, Auto-Fit/Window-Fit und Zeilenhoehe." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
@@ -449,6 +457,58 @@
       const $fullBackupCancel = document.getElementById('fullbackup_cancel');
       const $fullBackupDelete = document.getElementById('fullbackup_delete');
       const $fullBackupDownload = document.getElementById('fullbackup_download');
+      const $backupTarget = document.getElementById('backup_target');
+      const $backupTargetInfo = document.getElementById('backup_target_info');
+
+      let BACKUP_TARGETS = [];
+
+      function curTargetId(){
+        try{ return $backupTarget ? String($backupTarget.value || '').trim() : ''; }catch(e){ return ''; }
+      }
+
+      function _renderTargetInfo(){
+        try{
+          if(!$backupTargetInfo) return;
+          const id = curTargetId();
+          const t = (BACKUP_TARGETS || []).find(x => String(x && x.id || '') === id) || null;
+          if(!t){ $backupTargetInfo.textContent = ''; return; }
+          const ok = !!t.available;
+          const name = String(t.name || '');
+          const path = String(t.path || '');
+          const err = String(t.error || '');
+          $backupTargetInfo.textContent = ok ? (`${name}: ${path}`) : (`${name}: nicht erreichbar (${path})` + (err ? (': ' + err) : ''));
+        }catch(e){}
+      }
+
+      async function loadTargets(){
+        try{
+          if(!$backupTarget) return;
+          const j = await api('./api/backup_targets');
+          BACKUP_TARGETS = Array.isArray(j.targets) ? j.targets : [];
+          const defId = String(j.default || '').trim();
+          $backupTarget.innerHTML = '';
+          (BACKUP_TARGETS || []).forEach((t)=>{
+            try{
+              const opt = document.createElement('option');
+              opt.value = String(t.id || '');
+              opt.textContent = String(t.name || t.id || 'Target');
+              if(t.available === false){
+                opt.disabled = true;
+                opt.textContent += ' (nicht erreichbar)';
+              }
+              $backupTarget.appendChild(opt);
+            }catch(e){}
+          });
+          if(defId){
+            try{ $backupTarget.value = defId; }catch(e){}
+          }
+          _renderTargetInfo();
+        }catch(e){
+          try{ BACKUP_TARGETS = []; }catch(x){}
+        }
+      }
+
+      try{ if($backupTarget) $backupTarget.addEventListener('change', ()=>{ _renderTargetInfo(); loadList().catch(()=>{}); }); }catch(e){}
       const $fullBackupRows = document.getElementById('fullbackup_rows');
       const $fullBackupQueryDetails = document.getElementById('fullbackup_query_details');
       const $fullBackupQueryPre = document.getElementById('fullbackup_query_pre');
@@ -804,7 +864,10 @@
 
       async function loadFullBackupList(){
         try{
-          const j = await api('./api/fullbackups_all');
+          const qs = new URLSearchParams();
+          const t = curTargetId();
+          if(t) qs.set('target', t);
+          const j = await api('./api/fullbackups_all' + (qs.toString() ? ('?' + qs.toString()) : ''));
           FULLBACKUPS = j.backups || [];
           renderFullBackups(FULLBACKUPS);
         }catch(e){
@@ -826,13 +889,16 @@
           const started = await api('./api/fullbackup_job/start', {
             method:'POST',
             headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({ format: ($fullBackupMode ? String($fullBackupMode.value || 'lp') : 'lp') })
+            body: JSON.stringify({ format: ($fullBackupMode ? String($fullBackupMode.value || 'lp') : 'lp'), target: curTargetId() })
           });
           FULL_JOB_ID = String(started.job_id || '');
           if(!FULL_JOB_ID) throw new Error('fullbackup job_id missing');
 
           try{
-            const jLoc = await api('./api/backup_location');
+            const qs = new URLSearchParams();
+            const t = curTargetId();
+            if(t) qs.set('target', t);
+            const jLoc = await api('./api/backup_location' + (qs.toString() ? ('?' + qs.toString()) : ''));
             const dir = String(jLoc.container_path || '/data/backups');
             const bid = String(started.backup_id || '');
             const fn = bid ? (bid + '.zip') : '';
@@ -906,7 +972,7 @@
         if(!confirm(msg)) return;
         let del = 0;
         for(const id of ids){
-          await api('./api/fullbackup_delete', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id })});
+          await api('./api/fullbackup_delete', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id, target: curTargetId() })});
           del++;
         }
         ok(`FullBackups geloescht: ${del}`);
@@ -1518,7 +1584,10 @@
       async function loadList(){
         err(""); ok("");
         try{
-          const jLoc = await api("./api/backup_location");
+          const qs = new URLSearchParams();
+          const t = curTargetId();
+          if(t) qs.set('target', t);
+          const jLoc = await api("./api/backup_location" + (qs.toString() ? ('?' + qs.toString()) : ''));
           if($loc){
             $loc.textContent = `Speicherort (Add-on): ${jLoc.container_path || "/data/backups"}`;
           }
@@ -1547,7 +1616,10 @@
         }
         renderZoomTxt();
         renderActionHints();
-        const j = await api("./api/backups_all");
+        const qs2 = new URLSearchParams();
+        const t2 = curTargetId();
+        if(t2) qs2.set('target', t2);
+        const j = await api("./api/backups_all" + (qs2.toString() ? ('?' + qs2.toString()) : ''));
         BACKUPS = j.backups || [];
         renderList();
       }
@@ -1558,7 +1630,7 @@
         const statusKey = 'backup.create';
         try{
           await resolveTarget();
-          const payload = { ...LAST_TARGET, kind: 'full' };
+          const payload = { ...LAST_TARGET, kind: 'full', target: curTargetId() };
           const started = await api("./api/backup_job/start", {
             method:"POST",
             headers:{"Content-Type":"application/json"},
@@ -1625,7 +1697,7 @@
           await resolveTarget();
           const win = getGraphWindowFromState();
           if(!win) throw new Error("Kein Graph-Zeitraum vorhanden. Bitte im Dashboard Daten laden und ggf. zoomen.");
-          const payload = { ...LAST_TARGET, kind: 'range', start: win.start, stop: win.stop };
+          const payload = { ...LAST_TARGET, kind: 'range', start: win.start, stop: win.stop, target: curTargetId() };
           const started = await api("./api/backup_job/start", {
             method:"POST",
             headers:{"Content-Type":"application/json"},
@@ -1775,7 +1847,7 @@
         if(!confirm(msg)) return;
         let del = 0;
         for(const id of ids){
-          await api("./api/backup_delete", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ id })});
+          await api("./api/backup_delete", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ id, target: curTargetId() })});
           del++;
         }
         ok(`Backups geloescht: ${del}`);
@@ -1822,7 +1894,7 @@
         try{
           const one = (SELECTED_IDS && SELECTED_IDS.size === 1) ? Array.from(SELECTED_IDS)[0] : '';
           if(!one) return;
-          fetch(`./api/backup_download?id=${encodeURIComponent(String(one))}`, { method: 'GET' })
+          fetch(`./api/backup_download?id=${encodeURIComponent(String(one))}&target=${encodeURIComponent(String(curTargetId()||''))}`, { method: 'GET' })
             .then(resp => _saveResponseAsFile(resp))
             .catch(e=>err(String(e && e.message ? e.message : e)));
         }catch(e){}
@@ -1838,7 +1910,7 @@
         const one = (FULL_SELECTED_IDS && FULL_SELECTED_IDS.size === 1) ? Array.from(FULL_SELECTED_IDS)[0] : '';
         if(!one) return;
         try{
-          fetch(`./api/fullbackup_download?id=${encodeURIComponent(String(one))}`, { method: 'GET' })
+          fetch(`./api/fullbackup_download?id=${encodeURIComponent(String(one))}&target=${encodeURIComponent(String(curTargetId()||''))}`, { method: 'GET' })
             .then(resp => _saveResponseAsFile(resp))
             .catch(e=>err(String(e && e.message ? e.message : e)));
         }catch(e){}
@@ -2043,9 +2115,10 @@
           if($e && !$e.value && init.eid) $e.value = String(init.eid);
         }catch(e){}
 
-        loadCliSupport().catch(()=>{});
+          loadCliSupport().catch(()=>{});
 
-         loadTargetLists()
+          loadTargets()
+            .then(()=>loadTargetLists())
             .then(()=>refreshEntityIdsForFriendly())
             .then(()=>autoPickEntityId())
             .then(()=>resolveAndLoad())

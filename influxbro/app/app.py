@@ -51,6 +51,7 @@ except ModuleNotFoundError:
 
 CONFIG_DIR = Path(os.environ.get("CONFIG_DIR", "/config"))
 DATA_DIR = Path(os.environ.get("DATA_DIR", "/data"))
+SHARE_DIR = Path(os.environ.get("SHARE_DIR", "/share"))
 
 PROCESS_STARTED_AT = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 PROCESS_STARTED_MONO = time.monotonic()
@@ -1366,8 +1367,10 @@ DEFAULT_CFG = {
     # Tooltips
     "ui_tooltips_enabled": True,
 
-    # Backups (must live under /config or /data)
+    # Backups (must live under /config, /data or /share)
     "backup_dir": str(DEFAULT_BACKUP_DIR),
+    # Backup/Restore targets (optional). If set, Backup/Restore UIs can switch between targets.
+    # Note: Keep this optional to preserve legacy behavior using "backup_dir".
     # Refuse creating a backup if free space is below this threshold (0 = disabled)
     "backup_min_free_mb": 10,
     # Safety budget: keep at least this much space free for caches (/data) (0 = disabled)
@@ -2678,7 +2681,7 @@ def _maybe_migrate_backups(cfg: dict[str, Any], target_dir: Path) -> None:
 
 
 def backup_dir(cfg: dict[str, Any] | None = None) -> Path:
-    """Return the configured backup directory (constrained under /config or /data)."""
+    """Return the configured backup directory (constrained under /config, /data or /share)."""
 
     try:
         c = cfg or load_cfg()
@@ -2702,7 +2705,8 @@ def backup_dir(cfg: dict[str, Any] | None = None) -> Path:
             p = p.resolve()
             cfg_root = CONFIG_DIR.resolve()
             data_root = DATA_DIR.resolve()
-            if _path_is_within(cfg_root, p) or _path_is_within(data_root, p):
+            share_root = SHARE_DIR.resolve()
+            if _path_is_within(cfg_root, p) or _path_is_within(data_root, p) or _path_is_within(share_root, p):
                 target = p
             else:
                 target = BACKUP_DIR
@@ -2717,6 +2721,177 @@ def backup_dir(cfg: dict[str, Any] | None = None) -> Path:
         pass
 
     return target
+
+
+def _backup_target_id(name: str, idx: int) -> str:
+    s = str(name or "").strip().lower()
+    s = re.sub(r"[^a-z0-9]+", "_", s).strip("_")
+    if not s:
+        s = "target"
+    return f"{s}_{int(idx)}"
+
+
+def _backup_target_path(raw: str) -> Path:
+    """Normalize a backup target path (constrained under /config, /data or /share)."""
+
+    s = str(raw or "").strip()
+    if not s:
+        return DEFAULT_BACKUP_DIR
+    try:
+        p = Path(s)
+        if not p.is_absolute():
+            p = CONFIG_DIR / s
+        p = p.resolve()
+        cfg_root = CONFIG_DIR.resolve()
+        data_root = DATA_DIR.resolve()
+        share_root = SHARE_DIR.resolve()
+        if _path_is_within(cfg_root, p) or _path_is_within(data_root, p) or _path_is_within(share_root, p):
+            return p
+    except Exception:
+        return DEFAULT_BACKUP_DIR
+    return DEFAULT_BACKUP_DIR
+
+
+_DIR_WRITABLE_CACHE: dict[str, tuple[float, bool, str | None]] = {}
+
+
+def _ensure_local_backups_alias(target_dir: Path) -> None:
+    """Best-effort: provide the legacy local path `/data/backups`.
+
+    This keeps the UI's "Lokal" target aligned with the historical location while
+    preserving the actual configured backup directory.
+    """
+
+    try:
+        alias = DATA_DIR / "backups"
+        if alias.exists():
+            return
+        try:
+            target_dir.mkdir(parents=True, exist_ok=True)
+        except Exception:
+            pass
+        try:
+            DATA_DIR.mkdir(parents=True, exist_ok=True)
+        except Exception:
+            pass
+        os.symlink(str(target_dir), str(alias))
+    except Exception:
+        return
+
+
+def _ensure_dir_writable(p: Path) -> tuple[bool, str | None]:
+    """Return (available, error). Creates the directory if possible.
+
+    Uses a short TTL cache to avoid frequent probe file I/O.
+    """
+
+    key = str(p)
+    now = time.monotonic()
+    cached = _DIR_WRITABLE_CACHE.get(key)
+    if cached and (now - float(cached[0]) < 30.0):
+        return bool(cached[1]), cached[2]
+
+    try:
+        p.mkdir(parents=True, exist_ok=True)
+    except Exception as e:
+        _DIR_WRITABLE_CACHE[key] = (now, False, str(e))
+        return False, str(e)
+
+    # Best-effort fast check
+    try:
+        if os.access(str(p), os.W_OK | os.X_OK):
+            _DIR_WRITABLE_CACHE[key] = (now, True, None)
+            return True, None
+    except Exception:
+        pass
+
+    # Probe write once per TTL window to confirm actual writeability.
+    try:
+        probe = p / (".ib_write_probe_" + uuid.uuid4().hex)
+        probe.write_text("ok", encoding="utf-8")
+        probe.unlink(missing_ok=True)
+        _DIR_WRITABLE_CACHE[key] = (now, True, None)
+        return True, None
+    except Exception as e:
+        _DIR_WRITABLE_CACHE[key] = (now, False, str(e))
+        return False, str(e)
+
+
+def backup_targets(cfg: dict[str, Any] | None = None) -> tuple[list[dict[str, Any]], str | None]:
+    """Return (targets, default_target_id).
+
+    Targets are normalized and include availability info.
+    """
+
+    c = cfg or load_cfg()
+    raw = c.get("backup_targets")
+    items: list[dict[str, Any]] = raw if isinstance(raw, list) else []
+
+    # Preserve legacy behavior by defaulting to the resolved backup_dir.
+    if not items:
+        _ensure_local_backups_alias(backup_dir(c))
+        items = [
+            {"name": "Lokal", "path": "/data/backups"},
+            {"name": "QNAP", "path": "/share/QNAP_Addeon_Speicher/influxbro"},
+        ]
+
+    out: list[dict[str, Any]] = []
+    for idx, it in enumerate(items):
+        if not isinstance(it, dict):
+            continue
+        name = str(it.get("name") or "").strip() or f"Target {idx+1}"
+        path_raw = str(it.get("path") or "").strip()
+        if not path_raw:
+            continue
+        p = _backup_target_path(path_raw)
+        ok, err = _ensure_dir_writable(p)
+        out.append({
+            "id": _backup_target_id(name, idx),
+            "name": name,
+            "path": str(p),
+            "available": bool(ok),
+            "error": (str(err)[:400] if err else None),
+        })
+
+    if not out:
+        p = backup_dir(c)
+        ok, err = _ensure_dir_writable(p)
+        out = [{
+            "id": "lokal_0",
+            "name": "Lokal",
+            "path": str(p),
+            "available": bool(ok),
+            "error": (str(err)[:400] if err else None),
+        }]
+
+    default_id = None
+    for t in out:
+        if t.get("available"):
+            default_id = str(t.get("id") or "") or None
+            break
+    if default_id is None and out:
+        default_id = str(out[0].get("id") or "") or None
+    return out, default_id
+
+
+def backup_dir_for_target(cfg: dict[str, Any], target: str | None) -> Path:
+    targets, default_id = backup_targets(cfg)
+    want = str(target or "").strip()
+    pick = None
+    if want:
+        for t in targets:
+            if want == str(t.get("id") or "") or want == str(t.get("name") or ""):
+                pick = t
+                break
+    if pick is None and default_id:
+        for t in targets:
+            if default_id == str(t.get("id") or ""):
+                pick = t
+                break
+    if pick is None and targets:
+        pick = targets[0]
+    p = _backup_target_path(str((pick or {}).get("path") or ""))
+    return p
 
 
 def _undo_mgr(cfg: dict[str, Any]) -> UndoManager:
@@ -2760,13 +2935,12 @@ def _undo_row_tags(row: dict[str, Any]) -> dict[str, str]:
     return target
 
 
-def _backup_disk_usage_bytes(cfg: dict[str, Any]) -> dict[str, int] | None:
-    """Return disk usage for the backup directory (best-effort)."""
+def _backup_disk_usage_bytes(dir_path: Path) -> dict[str, int] | None:
+    """Return disk usage for a backup directory (best-effort)."""
 
     try:
-        bdir = backup_dir(cfg)
-        bdir.mkdir(parents=True, exist_ok=True)
-        du = shutil.disk_usage(str(bdir))
+        dir_path.mkdir(parents=True, exist_ok=True)
+        du = shutil.disk_usage(str(dir_path))
         return {"total": int(du.total), "used": int(du.used), "free": int(du.free)}
     except Exception:
         return None
@@ -2792,8 +2966,8 @@ def _addon_data_usage_bytes() -> int | None:
         return None
 
 
-def _backup_require_free_space(cfg: dict[str, Any]) -> tuple[bool, str | None]:
-    """Return (ok, error_message) according to backup_min_free_mb."""
+def _backup_require_free_space(cfg: dict[str, Any], dir_path: Path) -> tuple[bool, str | None]:
+    """Return (ok, error_message) according to backup_min_free_mb for a target dir."""
 
     try:
         min_mb = int(cfg.get("backup_min_free_mb", 0) or 0)
@@ -2802,7 +2976,7 @@ def _backup_require_free_space(cfg: dict[str, Any]) -> tuple[bool, str | None]:
     if min_mb <= 0:
         return True, None
 
-    du = _backup_disk_usage_bytes(cfg)
+    du = _backup_disk_usage_bytes(dir_path)
     if not du:
         return True, None
     free = int(du.get("free") or 0)
@@ -2817,6 +2991,23 @@ try:
     configure_logging(load_cfg())
 except Exception:
     # Worst case: Flask still logs to stderr.
+    pass
+
+# Backup targets: create directories best-effort (do not block startup).
+try:
+    _tgs, _def = backup_targets(load_cfg())
+    for t in _tgs:
+        if t.get("available") is False:
+            try:
+                LOG.warning(
+                    "backup_target_unavailable name=%s path=%s err=%s",
+                    str(t.get("name") or ""),
+                    str(t.get("path") or ""),
+                    str(t.get("error") or ""),
+                )
+            except Exception:
+                pass
+except Exception:
     pass
 
 
@@ -9865,7 +10056,8 @@ def _backup_create_range(
     Best-effort helper used by combine for rollback safety.
     """
 
-    ok_free, msg = _backup_require_free_space(cfg)
+    bdir = backup_dir_for_target(cfg, None)
+    ok_free, msg = _backup_require_free_space(cfg, bdir)
     if not ok_free:
         raise RuntimeError(msg)
 
@@ -9885,7 +10077,6 @@ def _backup_create_range(
     if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
         raise RuntimeError("InfluxDB v2 requires token, org, bucket")
 
-    bdir = backup_dir(cfg)
     bdir.mkdir(parents=True, exist_ok=True)
 
     ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
@@ -10471,6 +10662,7 @@ def _backup_job_public(job: dict[str, Any]) -> dict[str, Any]:
 def _backup_job_thread(
     job_id: str,
     cfg: dict[str, Any],
+    bdir: Path,
     backup_kind: str,
     backup_id: str,
     measurement: str,
@@ -10531,7 +10723,6 @@ def _backup_job_thread(
                 return True
             return False
 
-    bdir = backup_dir(cfg)
     bdir.mkdir(parents=True, exist_ok=True)
     meta_path, lp_path = _backup_files(bdir, backup_id)
 
@@ -10701,7 +10892,7 @@ def _fullbackup_job_public(job: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _fullbackup_job_thread(job_id: str, cfg: dict[str, Any], backup_id: str) -> None:
+def _fullbackup_job_thread(job_id: str, cfg: dict[str, Any], bdir: Path, backup_id: str) -> None:
     with FULLBACKUP_LOCK:
         job = FULLBACKUP_JOBS.get(job_id)
     if not job:
@@ -10757,7 +10948,6 @@ def _fullbackup_job_thread(job_id: str, cfg: dict[str, Any], backup_id: str) -> 
                 return True
             return False
 
-    bdir = backup_dir(cfg)
     bdir.mkdir(parents=True, exist_ok=True)
     meta_path, lp_path = _fullbackup_files(bdir, backup_id)
 
@@ -11264,7 +11454,7 @@ def _fullrestore_job_public(job: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _fullrestore_job_thread(job_id: str, cfg: dict[str, Any], backup_id: str) -> None:
+def _fullrestore_job_thread(job_id: str, cfg: dict[str, Any], bdir: Path, backup_id: str) -> None:
     with FULLRESTORE_LOCK:
         job = FULLRESTORE_JOBS.get(job_id)
     if not job:
@@ -11340,7 +11530,6 @@ def _fullrestore_job_thread(job_id: str, cfg: dict[str, Any], backup_id: str) ->
         set_error(f"FullRestore wird fuer influx_version={influx_v} nicht unterstuetzt.")
         return
 
-    bdir = backup_dir(cfg)
     meta = _read_backup_meta(bdir, backup_id) or {}
     if str(meta.get("kind") or "") != "db_full":
         set_state("error", "Backup ungueltig")
@@ -11708,10 +11897,35 @@ def _dt_to_ns(dt: datetime) -> int:
     return int(dt.astimezone(timezone.utc).timestamp() * 1_000_000_000)
 
 
+@app.get("/api/backup_targets")
+def api_backup_targets():
+    cfg = load_cfg()
+    targets, default_id = backup_targets(cfg)
+    return jsonify({"ok": True, "targets": targets, "default": default_id})
+
+
+@app.get("/api/share_mounts")
+def api_share_mounts():
+    mounts: list[dict[str, Any]] = []
+    try:
+        root = SHARE_DIR
+        if root.exists() and root.is_dir():
+            for p in sorted(root.iterdir()):
+                try:
+                    if not p.is_dir():
+                        continue
+                    mounts.append({"name": p.name, "path": str(p)})
+                except Exception:
+                    continue
+    except Exception:
+        mounts = []
+    return jsonify({"ok": True, "mounts": mounts})
+
+
 @app.get("/api/backups")
 def api_backups():
     cfg = load_cfg()
-    bdir = backup_dir(cfg)
+    bdir = backup_dir_for_target(cfg, request.args.get("target"))
 
     measurement = (request.args.get("measurement") or "").strip()
     field = (request.args.get("field") or "").strip()
@@ -11741,7 +11955,7 @@ def api_backups():
 @app.get("/api/backups_all")
 def api_backups_all():
     cfg = load_cfg()
-    bdir = backup_dir(cfg)
+    bdir = backup_dir_for_target(cfg, request.args.get("target"))
     backups = _list_backups(bdir)
     return jsonify({"ok": True, "backups": backups})
 
@@ -11749,7 +11963,7 @@ def api_backups_all():
 @app.get("/api/fullbackups_all")
 def api_fullbackups_all():
     cfg = load_cfg()
-    bdir = backup_dir(cfg)
+    bdir = backup_dir_for_target(cfg, request.args.get("target"))
     backups = [b for b in _list_backups(bdir, include_db_full=True) if str(b.get("kind") or "") == "db_full"]
     return jsonify({"ok": True, "backups": backups})
 
@@ -11758,7 +11972,8 @@ def api_fullbackups_all():
 def api_fullbackup_job_start():
     cfg = _overlay_from_yaml_if_enabled(load_cfg())
     body = request.get_json(force=True) or {}
-    ok_free, msg = _backup_require_free_space(cfg)
+    bdir = backup_dir_for_target(cfg, body.get("target"))
+    ok_free, msg = _backup_require_free_space(cfg, bdir)
     if not ok_free:
         return jsonify({"ok": False, "error": msg}), 507
 
@@ -11836,7 +12051,6 @@ def api_fullbackup_job_start():
     else:
         backup_id = f"fullbackup__db_full__v{influx_v}__{ts}"
 
-    bdir = backup_dir(cfg)
     bdir.mkdir(parents=True, exist_ok=True)
     meta_path, lp_path = _fullbackup_files(bdir, backup_id)
     if _backup_zip_path(bdir, backup_id).exists() or meta_path.exists() or lp_path.exists():
@@ -11880,7 +12094,7 @@ def api_fullbackup_job_start():
     except Exception:
         pass
 
-    t = threading.Thread(target=_fullbackup_job_thread, args=(job_id, cfg, backup_id), daemon=True)
+    t = threading.Thread(target=_fullbackup_job_thread, args=(job_id, cfg, bdir, backup_id), daemon=True)
     t.start()
     return jsonify({"ok": True, "job_id": job_id, "backup_id": backup_id})
 
@@ -11918,7 +12132,7 @@ def api_fullbackup_job_cancel():
 @app.get("/api/fullbackup_download")
 def api_fullbackup_download():
     cfg = load_cfg()
-    bdir = backup_dir(cfg)
+    bdir = backup_dir_for_target(cfg, request.args.get("target"))
     backup_id = str(request.args.get("id") or "").strip()
     if not backup_id:
         return jsonify({"ok": False, "error": "id required"}), 400
@@ -11960,7 +12174,7 @@ def api_fullbackup_delete():
     if _backup_safe(backup_id) != backup_id:
         return jsonify({"ok": False, "error": "invalid id"}), 400
     cfg = load_cfg()
-    bdir = backup_dir(cfg)
+    bdir = backup_dir_for_target(cfg, body.get("target"))
     bdir.mkdir(parents=True, exist_ok=True)
 
     meta = _read_backup_meta(bdir, backup_id) or {}
@@ -12012,7 +12226,7 @@ def api_fullrestore_job_start():
     else:
         return jsonify({"ok": False, "error": f"unsupported influx_version: {influx_v}"}), 400
 
-    bdir = backup_dir(cfg)
+    bdir = backup_dir_for_target(cfg, body.get("target"))
     meta = _read_backup_meta(bdir, backup_id)
     if not meta:
         return jsonify({"ok": False, "error": "backup not found"}), 404
@@ -12096,7 +12310,7 @@ def api_fullrestore_job_start():
     except Exception:
         pass
 
-    t = threading.Thread(target=_fullrestore_job_thread, args=(job_id, cfg, backup_id), daemon=True)
+    t = threading.Thread(target=_fullrestore_job_thread, args=(job_id, cfg, bdir, backup_id), daemon=True)
     t.start()
     return jsonify({"ok": True, "job_id": job_id})
 
@@ -12134,11 +12348,11 @@ def api_fullrestore_job_cancel():
 @app.post("/api/backup_create")
 def api_backup_create():
     cfg = _overlay_from_yaml_if_enabled(load_cfg())
-    bdir = backup_dir(cfg)
-    ok_free, msg = _backup_require_free_space(cfg)
+    body = request.get_json(force=True) or {}
+    bdir = backup_dir_for_target(cfg, body.get("target"))
+    ok_free, msg = _backup_require_free_space(cfg, bdir)
     if not ok_free:
         return jsonify({"ok": False, "error": msg}), 507
-    body = request.get_json(force=True) or {}
     measurement = (body.get("measurement") or "").strip()
     field = (body.get("field") or "").strip()
     entity_id = (body.get("entity_id") or "").strip() or None
@@ -12274,8 +12488,8 @@ from(bucket: "{cfg["bucket"]}")
 @app.get("/api/backup_location")
 def api_backup_location():
     cfg = load_cfg()
-    bdir = backup_dir(cfg)
-    du = _backup_disk_usage_bytes(cfg)
+    bdir = backup_dir_for_target(cfg, request.args.get("target"))
+    du = _backup_disk_usage_bytes(bdir)
     addon_used = _addon_data_usage_bytes()
     return jsonify({
         "ok": True,
@@ -12290,7 +12504,7 @@ def api_backup_location():
 @app.get("/api/backup_download")
 def api_backup_download():
     cfg = load_cfg()
-    bdir = backup_dir(cfg)
+    bdir = backup_dir_for_target(cfg, request.args.get("target"))
     backup_id = str(request.args.get("id") or "").strip()
     if not backup_id:
         return jsonify({"ok": False, "error": "id required"}), 400
@@ -12328,7 +12542,8 @@ def api_backup_job_start():
     cfg = _overlay_from_yaml_if_enabled(load_cfg())
     body = request.get_json(force=True) or {}
 
-    ok_free, msg = _backup_require_free_space(cfg)
+    bdir = backup_dir_for_target(cfg, body.get("target"))
+    ok_free, msg = _backup_require_free_space(cfg, bdir)
     if not ok_free:
         return jsonify({"ok": False, "error": msg}), 507
 
@@ -12366,7 +12581,6 @@ def api_backup_job_start():
     ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     backup_id = _backup_safe(display) + "__" + kind + "__" + ts
 
-    bdir = backup_dir(cfg)
     bdir.mkdir(parents=True, exist_ok=True)
     meta_path, lp_path = _backup_files(bdir, backup_id)
     if _backup_zip_path(bdir, backup_id).exists() or meta_path.exists() or lp_path.exists():
@@ -12422,7 +12636,7 @@ def api_backup_job_start():
 
     t = threading.Thread(
         target=_backup_job_thread,
-        args=(job_id, cfg, kind, backup_id, measurement, field, entity_id, friendly_name, start_dt, stop_dt),
+        args=(job_id, cfg, bdir, kind, backup_id, measurement, field, entity_id, friendly_name, start_dt, stop_dt),
         daemon=True,
     )
     t.start()
@@ -12462,11 +12676,11 @@ def api_backup_job_cancel():
 @app.post("/api/backup_create_range")
 def api_backup_create_range():
     cfg = _overlay_from_yaml_if_enabled(load_cfg())
-    bdir = backup_dir(cfg)
-    ok_free, msg = _backup_require_free_space(cfg)
+    body = request.get_json(force=True) or {}
+    bdir = backup_dir_for_target(cfg, body.get("target"))
+    ok_free, msg = _backup_require_free_space(cfg, bdir)
     if not ok_free:
         return jsonify({"ok": False, "error": msg}), 507
-    body = request.get_json(force=True) or {}
     measurement = (body.get("measurement") or "").strip()
     field = (body.get("field") or "").strip()
     entity_id = (body.get("entity_id") or "").strip() or None
@@ -12605,7 +12819,7 @@ def api_backup_delete():
     if _backup_safe(backup_id) != backup_id:
         return jsonify({"ok": False, "error": "invalid id"}), 400
     cfg = load_cfg()
-    bdir = backup_dir(cfg)
+    bdir = backup_dir_for_target(cfg, body.get("target"))
     bdir.mkdir(parents=True, exist_ok=True)
 
     meta = _read_backup_meta(bdir, backup_id) or {}
@@ -12650,13 +12864,22 @@ def api_backup_restore():
             "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
         }), 400
 
-    bdir = backup_dir(cfg)
+    bdir = backup_dir_for_target(cfg, body.get("target"))
     meta = _read_backup_meta(bdir, backup_id) or {}
     if str(meta.get("kind") or "") == "db_full":
         return jsonify({"ok": False, "error": "this is a fullbackup; use /api/fullrestore_job/start"}), 400
 
+    # Preflight: ensure the payload exists and is readable.
+    zpath = _backup_zip_path(bdir, backup_id)
+    if zpath.exists():
+        try:
+            with zipfile.ZipFile(zpath, mode="r") as z:
+                bad = z.testzip()
+                if bad:
+                    return jsonify({"ok": False, "error": f"backup corrupt (zip): {bad}"}), 400
+        except Exception as e:
+            return jsonify({"ok": False, "error": f"backup corrupt (zip): {_short_influx_error(e)}"}), 400
     try:
-        # Ensure the payload exists (zip or legacy)
         with _open_backup_lp_text(bdir, backup_id, is_fullbackup=False):
             pass
     except Exception:
@@ -12735,7 +12958,7 @@ def api_backup_copy():
             "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
         }), 400
 
-    bdir = backup_dir(cfg)
+    bdir = backup_dir_for_target(cfg, body.get("target"))
     try:
         # Ensure the payload exists (zip or legacy)
         with _open_backup_lp_text(bdir, backup_id, is_fullbackup=False):
@@ -12941,6 +13164,7 @@ def _restore_copy_job_public(job: dict[str, Any]) -> dict[str, Any]:
 def _restore_copy_job_thread(
     job_id: str,
     cfg: dict[str, Any],
+    bdir: Path,
     backup_id: str,
     target_measurement: str,
     target_field: str,
@@ -12977,15 +13201,16 @@ def _restore_copy_job_thread(
 
     set_state("running", "Starte...")
 
-    bdir = backup_dir(cfg)
-    meta_path, lp_path = _backup_files(bdir, backup_id)
-    if not lp_path.exists():
-        set_state("error", "Fehler")
-        set_error("backup not found")
-        return
-
+    # Determine total size best-effort (zip preferred).
+    total_bytes = None
     try:
-        total_bytes = int(lp_path.stat().st_size)
+        zpath = _backup_zip_path(bdir, backup_id)
+        if zpath.exists():
+            total_bytes = int(zpath.stat().st_size)
+        else:
+            _meta_path, lp_path = _backup_files(bdir, backup_id)
+            if lp_path.exists():
+                total_bytes = int(lp_path.stat().st_size)
     except Exception:
         total_bytes = None
     set_progress(total_bytes=total_bytes)
@@ -13139,16 +13364,20 @@ def _restore_copy_job_thread(
         with v2_client(cfg) as c:
             wapi = c.write_api(write_options=SYNCHRONOUS)
             set_state("running", "Lese Backup...")
-            with lp_path.open("rb") as f:
-                for raw_b in f:
+            with _open_backup_lp_text(bdir, backup_id, is_fullbackup=False) as f:
+                for raw in f:
                     with RESTORE_COPY_LOCK:
                         j = RESTORE_COPY_JOBS.get(job_id) or {}
                         if bool(j.get("cancelled")):
                             set_state("cancelled", "Abgebrochen")
                             return
 
-                    read_bytes += len(raw_b)
-                    raw = raw_b.decode("utf-8", errors="replace")
+                    try:
+                        read_bytes += len(raw.encode("utf-8"))
+                    except Exception:
+                        read_bytes += len(str(raw or ""))
+
+                    raw = str(raw or "").strip("\n")
 
                     ts_ns = _raw_ts_ns(raw)
                     if ts_ns is not None:
@@ -13251,7 +13480,7 @@ def api_restore_job_start():
     if _backup_safe(backup_id) != backup_id:
         return jsonify({"ok": False, "error": "invalid id"}), 400
 
-    bdir = backup_dir(cfg)
+    bdir = backup_dir_for_target(cfg, body.get("target"))
     meta = _read_backup_meta(bdir, backup_id) or {}
     if str(meta.get("kind") or "") == "db_full":
         return jsonify({"ok": False, "error": "selected backup is a fullbackup; use FullRestore"}), 400
@@ -13344,6 +13573,7 @@ def api_restore_job_start():
         args=(
             job_id,
             cfg,
+            bdir,
             backup_id,
             target_measurement,
             target_field,
@@ -16685,6 +16915,25 @@ def api_set_config():
     except Exception:
         cfg["backup_dir"] = str(DEFAULT_CFG.get("backup_dir") or "/data/backups")
     cfg["backup_dir"] = str(backup_dir(cfg))
+
+    # Backup targets (optional): normalize + constrain paths under /config, /data or /share.
+    if "backup_targets" in cfg:
+        try:
+            raw_targets = cfg.get("backup_targets")
+            items: list[dict[str, Any]] = raw_targets if isinstance(raw_targets, list) else []
+            norm: list[dict[str, Any]] = []
+            for it in items[:20]:
+                if not isinstance(it, dict):
+                    continue
+                name = str(it.get("name") or "").strip()[:60] or "Target"
+                path_raw = str(it.get("path") or "").strip()
+                if not path_raw:
+                    continue
+                p = _backup_target_path(path_raw)
+                norm.append({"name": name, "path": str(p)})
+            cfg["backup_targets"] = norm
+        except Exception:
+            cfg["backup_targets"] = []
 
     _clamp_int("backup_min_free_mb", 0, 0, 500000)
     _clamp_int("storage_budget_mb", 5, 0, 500000)
@@ -25335,7 +25584,7 @@ def api_history_rollback():
         }), 400
 
     def _restore_backup_into_client(c: InfluxDBClient, backup_id: str) -> int:
-        bdir = backup_dir(cfg)
+        bdir = backup_dir_for_target(cfg, None)
         try:
             with _open_backup_lp_text(bdir, backup_id, is_fullbackup=False):
                 pass
@@ -26223,7 +26472,7 @@ def api_import_start():
             return jsonify({"ok": False, "error": "cannot derive time range for backup"}), 400
         try:
             # Reuse the backup_create_range logic (inline).
-            bdir = backup_dir(cfg)
+            bdir = backup_dir_for_target(cfg, None)
             bdir.mkdir(parents=True, exist_ok=True)
             display = friendly_name or entity_id or f"{measurement}_{field}"
             ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")

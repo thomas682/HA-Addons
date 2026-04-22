@@ -1095,11 +1095,47 @@
           <div class="card_body">
             <div class="grid">
               <div class="param_row param_full">
-                <div class="param_label">Backup Verzeichnis (unter <code>/config</code> oder <code>/data</code>)<span class="param_hint">Default: <code>/config/influxbro/backup</code> (im HA Filebrowser sichtbar). Relative Pfade werden unter <code>/config</code> abgelegt. Aus Sicherheitsgruenden sind nur Pfade unter <code>/config</code> oder <code>/data</code> erlaubt.</span></div>
+                <div class="param_label">Backup Verzeichnis (unter <code>/config</code>, <code>/data</code> oder <code>/share</code>)<span class="param_hint">Default: <code>/config/influxbro/backup</code> (im HA Filebrowser sichtbar). Relative Pfade werden unter <code>/config</code> abgelegt. Aus Sicherheitsgruenden sind nur Pfade unter <code>/config</code>, <code>/data</code> oder <code>/share</code> erlaubt.</span></div>
                 <div class="param_control">
                   <input id="backup_dir" />
                 </div>
               </div>
+
+              <details class="card" id="ui_backups_external_storage" open data-ui="config_settings.section_backups_external_storage" title="settings.backups.external_storage">
+                <summary><span class="ib_summary_row"><span>Externe Backup und Restore Speicher</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Externe Backup/Restore Speicher" data-info-body="Hier kannst du vorhandene HA Share-Mounts unter /share erkennen und InfluxBro so konfigurieren, dass Backup/Restore zwischen Lokal und Share umschaltbar ist." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
+                <div class="card_body">
+                  <div class="grid">
+                    <div class="section_note">
+                      <div class="muted">
+                        In Home Assistant kannst du unter <code>Einstellungen -> System -> Speicher</code> eine Netzwerkfreigabe vom Typ <code>Share</code> anlegen.
+                        Der Mount erscheint dann im Add-on unter <code>/share/&lt;NAME&gt;</code>.
+                        InfluxBro kann Share-Mounts nicht selbst anlegen; hier siehst du nur, was bereits vorhanden ist.
+                      </div>
+                    </div>
+
+                    <div class="param_row param_full">
+                      <div class="param_label">Gefundene Share-Mounts unter <code>/share</code><span class="param_hint">Wenn leer: zuerst in HA einen Share anlegen. Danach InfluxBro neu laden.</span></div>
+                      <div class="param_control">
+                        <div id="share_mounts_status" class="muted" style="margin-bottom:6px;"></div>
+                        <table class="cfg_tbl" id="share_mounts_tbl" style="max-width: 920px;">
+                          <thead><tr><th>Name</th><th>Pfad</th></tr></thead>
+                          <tbody id="share_mounts_body"></tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <div class="param_row param_full">
+                      <div class="param_label">Konfiguration anwenden<span class="param_hint">Setzt intern <code>backup_targets</code> auf "Lokal" (<code>/data/backups</code>) plus den ersten gefundenen Share (<code>/share/.../influxbro</code>). Danach kannst du auf den Backup/Restore Seiten den Speicherort umschalten.</span></div>
+                      <div class="param_control">
+                        <div class="btn_stack">
+                          <button id="use_share_for_backups" type="button" data-ui="config_settings.btn_use_share_for_backups" title="settings.backups.use_share">Share Speicher fuer Backup und Restore verwenden</button>
+                        </div>
+                        <div id="share_apply_result" class="muted" style="margin-top:6px;"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </details>
               <div class="param_row">
                 <div class="param_label">Tabellenzeilen Hoehe (px, Backup)<span class="param_hint">Wirkt nur auf die Backup-Tabelle.</span></div>
                 <div class="param_control">
@@ -2869,6 +2905,59 @@ async function ensureDefaultsLoaded(){
   return CFG_DEFAULTS;
 }
 
+async function loadShareMountsUi(){
+  const $status = document.getElementById('share_mounts_status');
+  const $body = document.getElementById('share_mounts_body');
+  try{
+    if(!$body) return;
+    if($status) $status.textContent = 'Lade Share-Mounts...';
+    const j = await api('./api/share_mounts');
+    const mounts = Array.isArray(j.mounts) ? j.mounts : [];
+    $body.innerHTML = '';
+    mounts.forEach((m)=>{
+      try{
+        const tr = document.createElement('tr');
+        const tdA = document.createElement('td'); tdA.textContent = String(m.name || '');
+        const tdB = document.createElement('td'); tdB.textContent = String(m.path || '');
+        tr.appendChild(tdA); tr.appendChild(tdB);
+        $body.appendChild(tr);
+      }catch(e){}
+    });
+    if($status) $status.textContent = mounts.length ? (`Gefunden: ${mounts.length}`) : 'Keine Mounts gefunden.';
+  }catch(e){
+    try{ if($status) $status.textContent = 'Fehler beim Laden der Share-Mounts.'; }catch(x){}
+  }
+}
+
+async function applyFirstShareAsBackupTarget(){
+  const $res = document.getElementById('share_apply_result');
+  try{
+    if($res) $res.textContent = 'Pruefe /share...';
+    const j = await api('./api/share_mounts');
+    const mounts = Array.isArray(j.mounts) ? j.mounts : [];
+    if(!mounts.length) throw new Error('Kein Share-Mount unter /share gefunden. Bitte zuerst in Home Assistant anlegen.');
+    const m0 = mounts[0];
+    const name = String(m0.name || 'Share').trim() || 'Share';
+    const base = String(m0.path || '').trim();
+    if(!base) throw new Error('Share-Pfad fehlt.');
+
+    const targets = [
+      { name: 'Lokal', path: '/data/backups' },
+      { name: name, path: base.replace(/\/+$/,'') + '/influxbro' },
+    ];
+
+    await api('./api/config', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ backup_targets: targets }),
+    });
+
+    if($res) $res.textContent = 'Gespeichert. Backup/Restore Seiten neu laden und Speicherort umschalten.';
+  }catch(e){
+    if($res) $res.textContent = String(e && e.message ? e.message : e);
+  }
+}
+
 async function load(){
   err(""); ok("");
   const j = await api("./api/config");
@@ -2888,6 +2977,16 @@ async function load(){
   try{ await loadSelComputedWidth(); }catch(e){ reportConfigError('Settings loadSelComputedWidth failed', { stage: 'loadSelComputedWidth' }, e && e.stack ? e.stack : String(e || '')); }
 
   try{ await loadUiDocOpenMode(); }catch(e){}
+
+  try{ await loadShareMountsUi(); }catch(e){}
+
+  try{
+    const btn = document.getElementById('use_share_for_backups');
+    if(btn && !btn.__ib_bound){
+      btn.__ib_bound = true;
+      btn.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} applyFirstShareAsBackupTarget(); });
+    }
+  }catch(e){}
 
   const card = document.getElementById("loadyaml_card");
   if(card) card.style.display = "none";
