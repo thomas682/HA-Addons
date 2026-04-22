@@ -1,0 +1,14 @@
+# Tombstone registry for removed UI/components
+# Each removal MUST be documented here
+
+- path: "example/path/to/removed_component.html"
+  tombstone_id: "TS-YYYY-0001"
+  reason: "Example removal – replace with real reason"
+  owner: "thomas"
+  impacted_selectors: []
+  impacted_actions: []
+  migration_plan: "Describe replacement or fallback"
+  route_plan:
+    removed: []
+    redirects: []
+  ci_reference: "issue-id"
