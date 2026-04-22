@@ -882,6 +882,7 @@ Fehleranzeige:
 Fehlerfenster (Popup):
 
 - Button `Logs (5min)`: zeigt einen best-effort Log-Auszug der letzten 5 Minuten.
+- Volltextsuche im Popup bezieht sich immer auf den aktuell angezeigten Inhalt (z.B. nach Umschalten auf `Logs (5min)`).
 - Button `Jump Logs`: springt zur Logs-Seite des Add-ons.
 
 Jobs / Timer Jobs:

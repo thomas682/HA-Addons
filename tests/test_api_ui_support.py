@@ -458,6 +458,12 @@ def test_dashboard_raw_actions_and_titles_are_updated():
     assert '>Änderung<' in body
 
 
+def test_dashboard_graph_refresh_uses_refresh_all_with_status():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert 'id="graph_refresh"' in body
+    assert 'refreshAllWithStatus()' in body
+
+
 def test_popup_copy_icon_and_font_setting_are_present():
     tooltips = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
     config = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "config.html").read_text()
@@ -484,6 +490,11 @@ def test_query_history_uses_existing_popup_history_area():
     assert "HISTORY_WRAP_KEY = 'influxbro.popup.history.wrap.v1'" in tooltips
     assert "HISTORY_CLIENT_TIME_KEY = 'influxbro.popup.history.client_time.v1'" in tooltips
     assert "window.InfluxBroPopup.show('Query History', 'Wähle unten einen History-Eintrag aus.'" in tooltips or "window.InfluxBroPopup.show('Query History', 'Waehle unten einen History-Eintrag aus.'" in tooltips
+
+
+def test_popup_search_uses_current_visible_text():
+    tooltips = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
+    assert 'CURRENT_POPUP_VISIBLE_TEXT' in tooltips
 
 
 def test_dashboard_raw_query_button_and_query_history_metadata_exist():

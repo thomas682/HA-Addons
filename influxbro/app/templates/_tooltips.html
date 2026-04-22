@@ -1325,6 +1325,7 @@
   let CURRENT_POPUP_BASE_TEXT = '';
   let CURRENT_POPUP_LOG_TEXT = '';
   let CURRENT_POPUP_LOGS_ACTIVE = false;
+  let CURRENT_POPUP_VISIBLE_TEXT = '';
   let CURRENT_ACTIONS = [];
   let CURRENT_HISTORY_SCOPE = '';
   let SPLIT_DRAG = null;
@@ -2425,6 +2426,7 @@
         if(CURRENT_POPUP_LOGS_ACTIVE){
           preEl.textContent = String(CURRENT_POPUP_BASE_TEXT || '');
           CURRENT_COPY_TEXT = String(CURRENT_POPUP_BASE_TEXT || '');
+          CURRENT_POPUP_VISIBLE_TEXT = String(CURRENT_POPUP_BASE_TEXT || '');
           CURRENT_POPUP_LOGS_ACTIVE = false;
           try{ logsBtn.style.background = ''; logsBtn.style.borderColor = ''; logsBtn.style.fontWeight = '400'; }catch(e){}
           return;
@@ -2437,6 +2439,7 @@
             CURRENT_POPUP_LOG_TEXT = m;
             CURRENT_COPY_TEXT = m;
             preEl.textContent = m;
+            CURRENT_POPUP_VISIBLE_TEXT = m;
             CURRENT_POPUP_LOGS_ACTIVE = true;
             try{ logsBtn.style.background = '#dfeaff'; logsBtn.style.borderColor = '#7aa7ff'; logsBtn.style.fontWeight = '700'; }catch(e){}
             return;
@@ -2445,6 +2448,7 @@
           CURRENT_POPUP_LOG_TEXT = t || '(leer)';
           CURRENT_COPY_TEXT = CURRENT_POPUP_LOG_TEXT;
           preEl.textContent = CURRENT_POPUP_LOG_TEXT;
+          CURRENT_POPUP_VISIBLE_TEXT = CURRENT_POPUP_LOG_TEXT;
           CURRENT_POPUP_LOGS_ACTIVE = true;
           try{ logsBtn.style.background = '#dfeaff'; logsBtn.style.borderColor = '#7aa7ff'; logsBtn.style.fontWeight = '700'; }catch(e){}
         }catch(e){
@@ -2561,6 +2565,7 @@
       CURRENT_POPUP_BASE_TEXT = normalizedText;
       CURRENT_POPUP_LOG_TEXT = '';
       CURRENT_POPUP_LOGS_ACTIVE = false;
+      CURRENT_POPUP_VISIBLE_TEXT = htmlMode ? normalizedText : normalizedMsg;
       CURRENT_COPY_TEXT = String(opts && opts.copyText !== undefined ? opts.copyText : (htmlMode ? normalizedText : normalizedMsg) || '');
       try{ if(logsBtn){ logsBtn.style.background = ''; logsBtn.style.borderColor = ''; logsBtn.style.fontWeight = '400'; } }catch(e){}
       if(copyBtn){
@@ -2593,19 +2598,28 @@
         let marks = [];
         let idx = -1;
         function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+        function _baseForSearch(){
+          try{
+            const t = String(CURRENT_POPUP_VISIBLE_TEXT || '').trim();
+            if(t) return t;
+          }catch(e){}
+          try{ return String(pre && pre.textContent ? pre.textContent : ''); }catch(e){ return ''; }
+        }
+
         function renderSearch(){
           if(!pre) return;
           if(htmlMode) return;
           const term = String(searchInput && searchInput.value ? searchInput.value : '').trim();
           const fillColor = _popupHighlightFillColor();
+          const baseText = _baseForSearch();
           if(!term){
-            pre.innerHTML = esc(normalizedMsg);
+            pre.innerHTML = esc(baseText);
             marks = [];
             idx = -1;
             return;
           }
           const re = new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'ig');
-          pre.innerHTML = esc(normalizedMsg).replace(re, m => '<mark style="background:' + fillColor + ';">' + esc(m) + '</mark>');
+          pre.innerHTML = esc(baseText).replace(re, m => '<mark style="background:' + fillColor + ';">' + esc(m) + '</mark>');
           marks = Array.from(pre.querySelectorAll('mark'));
           idx = marks.length ? 0 : -1;
           jump(0);

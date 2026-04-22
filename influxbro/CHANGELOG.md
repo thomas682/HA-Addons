@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.414
+
+### Bugfix
+
+- Dashboard Graph: Refresh-Button nutzt den gleichen guarded Load-Flow wie "Aktualisieren" und verhindert damit Mehrfachklick-Fetch-Fehler ("Failed to fetch"). ([#378](https://github.com/thomas682/HA-Addons/issues/378))
+- Popup: Volltextsuche sucht immer im aktuell angezeigten Inhalt (z.B. nach "Logs (5min)"). ([#377](https://github.com/thomas682/HA-Addons/issues/377))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`, `pytest -q tests/test_api_ui_support.py`, `pytest -q tests/test_dashboard_script_integrity.py`, `npx playwright test tests/e2e/dashboard.spec.js`
+- Tested with Home Assistant Core: 2026.4.3
+
 ## 1.12.413
 
 ### Enhancement

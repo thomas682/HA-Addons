@@ -2667,6 +2667,7 @@ function startLoadUi(){
     LOAD_INFLIGHT = true;
     PIN_LOAD_STATUS = true;
     if($btnLoad) $btnLoad.disabled = true;
+    try{ if($graphRefresh) $graphRefresh.disabled = true; }catch(e){}
     if($btnCancelLoad){ $btnCancelLoad.disabled = false; $btnCancelLoad.style.display = ''; }
     statusBegin("Abfrage laeuft...");
     try{ window.InfluxBroStatus && window.InfluxBroStatus.start && window.InfluxBroStatus.start('dashboard.query', 'Abfrage laeuft...'); }catch(e){}
@@ -2680,6 +2681,7 @@ function stopLoadUi(okDone, errText){
   try{
     statusEnd(!!okDone, errText);
     if($btnLoad) $btnLoad.disabled = false;
+    try{ if($graphRefresh) $graphRefresh.disabled = false; }catch(e){}
     if($btnCancelLoad){ $btnCancelLoad.disabled = true; $btnCancelLoad.style.display = 'none'; }
     try{
       if(okDone) window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done('dashboard.query', 'Abfrage fertig.');
@@ -12509,7 +12511,9 @@ async function refreshEditGraph(){
 try{
   if($graphRefresh) $graphRefresh.addEventListener('click', (ev)=>{
     _stop(ev);
-    loadData().catch(displayError);
+    // Prevent overlapping fetches which can result in browser-level "Failed to fetch".
+    if(LOAD_INFLIGHT) return;
+    refreshAllWithStatus().catch(displayError);
   });
   if($editGraphRefresh) $editGraphRefresh.addEventListener('click', (ev)=>{ _stop(ev); refreshEditGraph().catch(displayError); });
 }catch(e){}
