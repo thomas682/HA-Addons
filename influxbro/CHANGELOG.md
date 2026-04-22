@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.425
+
+### Bugfix
+
+- Desktop Navigation/Layout: `ib_nav_mobile_overlay` wird per JS auf `body` gemountet (nicht mehr als Grid-Child in `.shell`), damit der Overlay-DIV nicht die 2. Grid-Spalte belegt und `main.content` scheinbar "verschwindet". ([#383](https://github.com/thomas682/HA-Addons/issues/383))
+
+### Maintenance
+
+- Tests: `.venv/bin/python -m py_compile influxbro/app/app.py`, `.venv/bin/python -m pytest -q tests/test_dashboard_script_integrity.py tests/test_api_ui_support.py`, `npx playwright test tests/e2e/dashboard.spec.js -g "desktop keeps main content visible across widths"`
+- Tested with Home Assistant Core: 2026.4.3
+
 ## 1.12.424
 
 ### Bugfix

@@ -9,6 +9,9 @@
     .shell { display:grid; grid-template-columns: var(--ib-sidebar-w, 260px) minmax(0, 1fr); min-height: 100vh; padding-top: 20px; box-sizing: border-box; position: relative; }
     .shell > main.content { min-width: 0; }
     @media (max-width: 980px){ .shell { grid-template-columns: 1fr; } }
+
+    /* Mobile drawer overlay (mounted on <body> by JS; never inside the grid). */
+    #ib_nav_mobile_overlay { position: fixed; inset: 0; display: none; pointer-events: none; }
     nav.sidebar { padding: 14px; border-right: 1px solid #eee; }
     @media (max-width: 980px){ nav.sidebar { border-right: 0; border-bottom: 1px solid #eee; } }
     .brand { margin-bottom: 10px; }
@@ -52,24 +55,28 @@
 
     /* Desktop: keep sidebar fixed; scroll only content area. */
     @media (min-width: 981px){
-      html, body { height: 100%; }
-      body { overflow: hidden; }
-      .shell { height: 100vh; min-height: 100vh; }
       /*
-        Safety fallback:
-        If the computed top offsets get out of sync (e.g. pagecard height mis-measured),
-        the calc() can become <= 0 and effectively hide the whole main area.
-        Use max() to guarantee a visible scroll area on desktop.
+        Robust desktop behavior:
+        Use normal page scrolling (like mobile) so the main content cannot disappear due
+        to an out-of-sync height calculation (topbar/pagecard CSS vars are measured by JS).
+        Keep the sidebar sticky and independently scrollable if it overflows.
       */
+      html, body { height: auto; }
+      body { overflow: auto; }
+      .shell { height: auto; min-height: 100vh; }
       .shell > nav.sidebar {
+        grid-column: 1;
+        grid-row: 1;
         position: sticky;
         top: calc(var(--ib-topbar-h, 0px) + var(--ib-pagecard-live-h, 0px) + 20px);
-        height: max(240px, calc(100vh - (var(--ib-topbar-h, 0px) + var(--ib-pagecard-live-h, 0px) + 20px)));
+        max-height: calc(100vh - (var(--ib-topbar-h, 0px) + var(--ib-pagecard-live-h, 0px) + 20px));
         overflow: auto;
       }
       .shell > main.content {
-        height: max(240px, calc(100vh - (var(--ib-topbar-h, 0px) + var(--ib-pagecard-live-h, 0px) + 20px)));
-        overflow: auto;
+        grid-column: 2;
+        grid-row: 1;
+        height: auto;
+        overflow: visible;
         padding-bottom: calc(var(--ib-bottombar-h, 0px) + 18px);
         box-sizing: border-box;
       }
@@ -108,8 +115,9 @@
         background: rgba(0,0,0,0.28);
         display: none;
         z-index: 10015;
+        pointer-events: auto;
       }
-      .shell.ib_nav_mobile_open #ib_nav_mobile_overlay { display: block; }
+      body.ib_nav_mobile_open #ib_nav_mobile_overlay { display: block; }
 
       .shell > main.content {
         height: auto;
@@ -1495,19 +1503,26 @@
   </script>
 </nav>
 
-<div id="ib_nav_mobile_overlay" aria-hidden="true"></div>
-
 <script>
 (function(){
   function _shell(){
     try{ return document.querySelector('.shell'); }catch(e){ return null; }
   }
-  const overlay = document.getElementById('ib_nav_mobile_overlay');
+  let overlay = document.getElementById('ib_nav_mobile_overlay');
+  if(!overlay){
+    try{
+      overlay = document.createElement('div');
+      overlay.id = 'ib_nav_mobile_overlay';
+      overlay.setAttribute('aria-hidden', 'true');
+      document.body.appendChild(overlay);
+    }catch(e){ overlay = null; }
+  }
   if(overlay){
     overlay.addEventListener('click', ()=>{
       try{
         const sh = _shell();
         if(sh) sh.classList.remove('ib_nav_mobile_open');
+        try{ document.body.classList.remove('ib_nav_mobile_open'); }catch(e){}
         try{ sessionStorage.setItem('influxbro.nav.mobile.open.v1', '0'); }catch(e){}
         try{ localStorage.setItem('influxbro.nav.mobile.open.v1', '0'); }catch(e){}
         try{
@@ -1525,6 +1540,7 @@
         try{
           const sh = _shell();
           if(sh) sh.classList.remove('ib_nav_mobile_open');
+          try{ document.body.classList.remove('ib_nav_mobile_open'); }catch(e){}
           try{ sessionStorage.setItem('influxbro.nav.mobile.open.v1', '0'); }catch(e){}
           try{ localStorage.setItem('influxbro.nav.mobile.open.v1', '0'); }catch(e){}
           try{

@@ -6,6 +6,59 @@ test.describe('Dashboard', () => {
     await expect(page).toHaveTitle(/InfluxBro/);
   });
 
+  test('desktop keeps main content visible across widths', async ({ page }) => {
+    // Defensive: close any overlay dialog that could affect measurements.
+    async function closePopup() {
+      await page.evaluate(() => {
+        try {
+          const d = document.getElementById('influxbro_popup_root');
+          if (d && d.open) {
+            try { d.close(); } catch (e) {}
+            try { d.style.display = 'none'; } catch (e) {}
+          }
+        } catch (e) {}
+      });
+    }
+
+    for (const w of [1600, 1400, 1230, 1100, 1000]) {
+      await page.setViewportSize({ width: w, height: 900 });
+      await page.goto('/');
+      await closePopup();
+
+      const layout = await page.evaluate(() => {
+        try {
+          const main = document.querySelector('main.content');
+          const nav = document.querySelector('nav.sidebar');
+          const shell = document.querySelector('.shell');
+          if (!main || !nav || !shell) return null;
+          const mb = main.getBoundingClientRect();
+          const nb = nav.getBoundingClientRect();
+          const sb = shell.getBoundingClientRect();
+          const st = getComputedStyle(shell);
+          return {
+            shellW: Math.round(sb.width),
+            gridCols: String(st.gridTemplateColumns || ''),
+            mainW: Math.round(mb.width),
+            mainH: Math.round(mb.height),
+            mainTop: Math.round(mb.top),
+            navW: Math.round(nb.width),
+            navH: Math.round(nb.height),
+          };
+        } catch (e) {
+          return null;
+        }
+      });
+
+      expect(layout, `layout missing at width=${w}`).not.toBeNull();
+      expect(layout.shellW, `shell width at ${w}`).toBeGreaterThan(600);
+      expect(layout.navW, `nav width at ${w}`).toBeGreaterThan(120);
+      // Main area must be visible and non-trivial.
+      expect(layout.mainW, `main width at ${w} (grid=${layout.gridCols})`).toBeGreaterThan(320);
+      expect(layout.mainH, `main height at ${w}`).toBeGreaterThan(200);
+      expect(layout.mainTop, `main top at ${w}`).toBeLessThan(360);
+    }
+  });
+
   test('topbar can be collapsed on iPhone', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/');

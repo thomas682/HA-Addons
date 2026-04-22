@@ -547,11 +547,13 @@
             const mob = _isMobile();
             if(!mob){
               sh.classList.remove('ib_nav_mobile_open');
+              try{ document.body.classList.remove('ib_nav_mobile_open'); }catch(e){}
               $navMobileToggle.setAttribute('aria-expanded', 'false');
               return;
             }
             const open = _readOpen();
             sh.classList.toggle('ib_nav_mobile_open', open);
+            try{ document.body.classList.toggle('ib_nav_mobile_open', open); }catch(e){}
             $navMobileToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
           }catch(e){}
         }
