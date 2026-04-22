@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.424
+
+### Bugfix
+
+- Desktop Layout: Fallback `height: max(240px, ...)` fuer Sidebar/Content, damit der Inhalt auch dann sichtbar bleibt, wenn Topbar/Pagecard-Hoehenvariablen kurzfristig falsch gemessen werden. ([#383](https://github.com/thomas682/HA-Addons/issues/383))
+
+### Maintenance
+
+- Tests: `.venv/bin/python -m py_compile influxbro/app/app.py`, `.venv/bin/python -m pytest -q tests/test_dashboard_script_integrity.py tests/test_api_ui_support.py`
+- Tested with Home Assistant Core: 2026.4.3
+
 ## 1.12.423
 
 ### Bugfix
