@@ -16,6 +16,19 @@ body:
         Include logs and steps to reproduce the problem.
 
   - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: How urgent is this bug?
+      options:
+        - P1 - Critical: blocks usage / work cannot continue
+        - P2 - High: major function broken, workaround missing
+        - P3 - Medium: important issue, workaround exists
+        - P4 - Low: minor issue or cosmetic problem
+    validations:
+      required: true
+      
+  - type: dropdown
     id: feature
     attributes:
       label: Feature / Function used
