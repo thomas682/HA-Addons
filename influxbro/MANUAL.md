@@ -366,6 +366,14 @@ Raw Daten (DB):
 - Native Browser-Tooltips (grau) sind global deaktiviert, damit es keine Doppel-Tooltips geben kann.
 - Tabellen-Tooltips zeigen bei Tabellenzellen den sichtbaren Zelltext; der UI-Key steht weiterhin im Tooltip-Suffix.
 - Tooltips besitzen zusaetzlich einen Doku-Button, der das Handbuch oeffnet und nach dem jeweiligen UI-Key sucht (Open-Mode: gleicher Tab / neuer Tab / modal; konfigurierbar in den Einstellungen).
+
+So erreichst du den Tooltip-Doku-Link:
+
+1) Maus ueber ein Element bewegen, bis der dunkle Tooltip sichtbar ist.
+2) Wenn der Tooltip unten einen UI-Key in spitzen Klammern zeigt (z.B. `<dashboard_caching.btn_cache_pruefen>`), erscheint oben rechts ein kleines Buch-Icon.
+3) Auf das Buch-Icon klicken: das Handbuch oeffnet sich direkt auf der Suche nach diesem UI-Key.
+
+Hinweis: Wenn kein UI-Key im Tooltip vorhanden ist, gibt es auch keinen Doku-Button.
 - Weitere Bereiche sind jetzt als einklappbare Sections umgesetzt, darunter `Template-Status` im Monitor, die Backupliste/FullBackupliste sowie die grossen Bereiche in `Jobs & Cache`.
 - Die Log-Redaction maskiert zusaetzlich Begriffe wie `admin_token`, `secret`, `private_key`, `public_key` und `access_key` aggressiver.
 
