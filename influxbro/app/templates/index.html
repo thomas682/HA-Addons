@@ -14210,9 +14210,21 @@ try{
 
     // Restore graph viewport (graph-only UI state). Fallback to legacy keys.
     try{
-      const a = Number((st.graph_view_start_ms !== undefined) ? st.graph_view_start_ms : st.graph_window_start_ms);
-      const b = Number((st.graph_view_stop_ms !== undefined) ? st.graph_view_stop_ms : st.graph_window_stop_ms);
-      if(isFinite(a) && isFinite(b) && Math.abs(a-b) > 500){
+      const _num = (v)=>{
+        try{
+          if(v === null || v === undefined) return NaN;
+          const s = String(v).trim();
+          if(!s || s === 'null' || s === 'undefined') return NaN;
+          const n = Number(v);
+          return isFinite(n) ? n : NaN;
+        }catch(e){
+          return NaN;
+        }
+      };
+
+      const a = _num((st.graph_view_start_ms !== undefined) ? st.graph_view_start_ms : st.graph_window_start_ms);
+      const b = _num((st.graph_view_stop_ms !== undefined) ? st.graph_view_stop_ms : st.graph_window_stop_ms);
+      if(isFinite(a) && isFinite(b) && a > 0 && b > 0 && Math.abs(a-b) > 500){
         GRAPH_VIEW.start_ms = a;
         GRAPH_VIEW.stop_ms = b;
       }
@@ -14220,9 +14232,20 @@ try{
 
     // Legacy (table-from-graph) state: keep restoring, but graph interactions no longer update it.
     try{
-      const a = Number(st.graph_window_start_ms);
-      const b = Number(st.graph_window_stop_ms);
-      if(isFinite(a) && isFinite(b) && Math.abs(a-b) > 500){
+      const _num = (v)=>{
+        try{
+          if(v === null || v === undefined) return NaN;
+          const s = String(v).trim();
+          if(!s || s === 'null' || s === 'undefined') return NaN;
+          const n = Number(v);
+          return isFinite(n) ? n : NaN;
+        }catch(e){
+          return NaN;
+        }
+      };
+      const a = _num(st.graph_window_start_ms);
+      const b = _num(st.graph_window_stop_ms);
+      if(isFinite(a) && isFinite(b) && a > 0 && b > 0 && Math.abs(a-b) > 500){
         TABLE_TIME.graph_start_ms = a;
         TABLE_TIME.graph_stop_ms = b;
       }

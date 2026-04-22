@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.418
+
+### Enhancement
+
+- Dashboard Graph: beim Wiederherstellen des gespeicherten Graph-Zeitraums werden leere/null Werte nicht mehr zu `0` (1970) umgewandelt; die X-Achse startet damit immer im Messwertbereich. ([#376](https://github.com/thomas682/HA-Addons/issues/376))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`, `pytest -q tests/test_api_ui_support.py tests/test_dashboard_script_integrity.py`
+- Tested with Home Assistant Core: 2026.4.3
+
 ## 1.12.417
 
 ### Enhancement

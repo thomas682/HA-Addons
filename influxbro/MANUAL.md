@@ -273,6 +273,7 @@ Cache Nutzung:
 ## Graph
 
 - Zoom/Pan ist moeglich.
+- Die X-Achse startet immer im Messwertbereich (kein ungewolltes 1970-Fenster durch leere gespeicherte Zoom-Werte).
 - Option `Messpunkte markieren`: schaltet runde Marker ein/aus.
 - Ziehen der Groesse: Unter dem Plot gibt es einen horizontalen Griff. Ziehen nach oben/unten aendert die Plot-Hoehe.
 - Neu: Kontext-Graph oberhalb des Hauptplots zeigt den aktuell in Raw sichtbaren Bereich plus konfigurierbaren Puffer davor/danach. Verdichtung nutzt Min/Max (keine Durchschnittswerte), umschaltbar ueber Checkboxen.
