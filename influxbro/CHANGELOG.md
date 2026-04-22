@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.12.419
+
+### Bugfix
+
+- Dashboard Ausreißer: rechte Kopf-/Status-Spalte entfernt; Zeilenzaehler (`raw_outlier_row_count`) steht jetzt oberhalb der Tabelle; Info-Icon sitzt in der Tabellen-Action-Leiste. ([#375](https://github.com/thomas682/HA-Addons/issues/375))
+- Dashboard: `analysis_status` entfernt; Flow-Checklists zeigen Laufzeit (`ib_flow_dur`) direkt neben der Startzeit (`ib_flow_time`). ([#375](https://github.com/thomas682/HA-Addons/issues/375))
+- Raw Daten (DB): `raw_info_inline` ist linksbuendig (keine `space-between`-Ausrichtung mehr). ([#375](https://github.com/thomas682/HA-Addons/issues/375))
+
+### Maintenance
+
+- Tests: `python3 -m py_compile influxbro/app/app.py`, `pytest -q tests/test_api_ui_support.py tests/test_dashboard_script_integrity.py tests/test_api_time_and_stats.py`
+- Tested with Home Assistant Core: 2026.4.3
+
 ## 1.12.418
 
 ### Enhancement

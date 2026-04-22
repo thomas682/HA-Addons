@@ -2247,10 +2247,21 @@
         const actions = document.createElement('div');
         actions.className = 'ib_section_desc_actions';
         try{ if(cfgBtn) actions.appendChild(cfgBtn); }catch(e){}
-        try{ if(infoBtn) actions.appendChild(infoBtn); }catch(e){}
+        try{
+          if(infoBtn){
+            const did = String(details.id || '').trim();
+            if(did === 'outlier_section'){
+              const outActions = details.querySelector('#raw_outlier_table_wrap .tbl_actions');
+              if(outActions) outActions.insertBefore(infoBtn, outActions.firstChild);
+              else actions.appendChild(infoBtn);
+            }else{
+              actions.appendChild(infoBtn);
+            }
+          }
+        }catch(e){}
 
         descRow.appendChild(desc);
-        descRow.appendChild(actions);
+        if(actions.children && actions.children.length) descRow.appendChild(actions);
 
         // Put the desc row directly under the summary so it spans the same full width.
         try{ details.insertBefore(descRow, body); }catch(e){ try{ body.insertBefore(descRow, body.firstChild); }catch(x){ try{ body.appendChild(descRow); }catch(y){} } }

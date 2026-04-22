@@ -203,7 +203,7 @@
     .ib_flow_list { display: flex; flex-direction: column; gap: 4px; }
     .ib_flow_step {
       display: grid;
-      grid-template-columns: 20px 90px 60px 1fr auto;
+      grid-template-columns: 20px 170px 60px 1fr auto;
       align-items: center;
       gap: 12px;
       padding: 8px 12px;
@@ -556,7 +556,6 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
       <div class="card_body">
         <div id="analysis_start_info" class="muted" style="font-size:12px; margin-bottom:8px;"></div>
         <div class="control" data-ui="dashboard_caching.row_actions" title="dashboard_caching.row_actions">
-          <div id="analysis_status" class="muted" style="font-size:12px; line-height:1.45; white-space:pre-line; margin-bottom:6px; min-height:18px;"></div>
           <div style="display:flex; gap: 8px; align-items: stretch; flex-wrap:wrap;">
             <button id="load" class="btn_sm" style="height:34px; padding:8px 10px; flex:0 0 auto; width:auto;" data-ui="dashboard_caching.btn_cache_pruefen">Cache pruefen</button>
             <button id="analysis_cache_combine" class="btn_sm" style="height:34px; padding:8px 10px; flex:0 0 auto; width:auto;" data-ui="dashboard_caching.btn_kombinieren" disabled>kombinieren</button>
@@ -643,6 +642,7 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
       <summary><span class="ib_summary_row"><span>Ausreißer</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Ausreißer" data-info-body="Ausreißer ist ein eigener Dashboard-Bereich fuer Suche, Navigation und Tabelle der aktuell gefundenen Raw-Ausreißer.\n\nEnthaelt:\n- Suchlauf fuer die ausgewaehlte Serie\n- Navigation zum aeltesten/neuesten Treffer\n- Typauswahl und Parameter\n- Ausreißer-Tabelle mit Tabellenfunktionen\n\nNutzen:\n- gefundene Treffer getrennt von den Raw-Daten betrachten\n- Treffer filtern, pruefen und gezielt in die Raw-Tabelle uebernehmen" ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
       <div class="table_wrap" id="raw_outlier_table_wrap" style="margin-top:10px;">
        <div class="table_title">Ausreißer</div>
+       <div id="raw_outlier_row_count" class="muted" style="font-size:12px; opacity:0.7; margin-top:6px;"></div>
 
         <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:flex-start; margin-top:10px;" data-ui="dashboard_outliers.row_types" title="dashboard_outliers.row_types">
           <div class="muted" style="font-size:12px; line-height:1.4;">Ausreisser-Typen (Analyse/Filter)</div>
@@ -676,10 +676,7 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
            <button class="btn_sm" id="outlier_ignore" data-ui="dashboard_outliers.btn_ignorieren" title="dashboard_outliers.btn_ignorieren" disabled>ignorieren</button>
            <button class="btn_sm" id="outlier_unignore" data-ui="dashboard_outliers.btn_nicht_mehr_ignorieren" title="dashboard_outliers.btn_nicht_mehr_ignorieren" disabled>nicht mehr ignorieren</button>
          </div>
-        <div class="tbl_right" style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:flex-end;">
-          <div id="raw_outlier_row_count" style="font-size:12px; opacity:0.7; margin-top:8px;"></div>
-        </div>
-         <div id="raw_outlier_overview_box" style="margin-top:10px;">
+          <div id="raw_outlier_overview_box" style="margin-top:10px;">
            <div class="table_box" id="raw_outlier_overview" style="--max-rows: 15; min-width:0; width:100%; box-sizing:border-box;">
              <datalist id="raw_outlier_reason_options"></datalist>
              <table id="raw_outlier_tbl" class="list_tbl ib_tbl" data-ui="dashboard_outliers.tbl_ausreisser" title="dashboard_outliers.tbl_ausreisser">
@@ -758,8 +755,7 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
        </div>
 
       <div class="table_title" style="margin-top:12px;">Raw Daten</div>
-      <div class="table_head" style="margin-bottom:6px;">
-        <div class="tbl_actions"></div>
+      <div class="table_head" style="margin-bottom:6px; justify-content:flex-start;">
         <div class="muted" id="raw_info_inline"></div>
       </div>
       <div id="raw_row_count" style="font-size:12px; opacity:0.7; margin-bottom:4px;"></div>
@@ -7795,6 +7791,18 @@ function _renderModernFlowChecklist(container, opts){
       tm.className = 'ib_flow_time';
       tm.textContent = _timeText(String(s && s.at || ''));
 
+      const dur = document.createElement('span');
+      dur.className = 'ib_flow_dur';
+      dur.textContent = durMs + ' ms';
+
+      const timeWrap = document.createElement('span');
+      timeWrap.style.display = 'flex';
+      timeWrap.style.alignItems = 'center';
+      timeWrap.style.gap = '10px';
+      timeWrap.style.justifyContent = 'space-between';
+      timeWrap.appendChild(tm);
+      timeWrap.appendChild(dur);
+
       const barWrap = document.createElement('div');
       barWrap.style.display = 'flex';
       barWrap.style.alignItems = 'center';
@@ -7811,23 +7819,15 @@ function _renderModernFlowChecklist(container, opts){
       lbl.className = 'ib_flow_label';
       lbl.textContent = String(s && s.label || '');
 
-      const right = document.createElement('span');
-      right.style.display = 'flex';
-      right.style.alignItems = 'center';
-      right.style.gap = '10px';
-      const dur = document.createElement('span');
-      dur.className = 'ib_flow_dur';
-      dur.textContent = durMs + ' ms';
       const chev = document.createElement('span');
+      chev.className = 'ib_flow_chev';
       chev.innerHTML = chevron;
-      right.appendChild(dur);
-      right.appendChild(chev);
 
       row.appendChild(st);
-      row.appendChild(tm);
+      row.appendChild(timeWrap);
       row.appendChild(barWrap);
       row.appendChild(lbl);
-      row.appendChild(right);
+      row.appendChild(chev);
 
       const det = document.createElement('div');
       det.className = 'ib_flow_details' + (open ? ' visible' : '');
