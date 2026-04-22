@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.423
+
+### Bugfix
+
+- Desktop Layout: `shell` Grid nutzt jetzt `minmax(0, 1fr)` + `main.content { min-width:0; }`, damit breite Inhalte (Dashboard/Statistik) den Hauptbereich nicht aus dem Viewport druecken. ([#383](https://github.com/thomas682/HA-Addons/issues/383))
+
+### Maintenance
+
+- Tests: `.venv/bin/python -m py_compile influxbro/app/app.py`, `.venv/bin/python -m pytest -q tests/test_dashboard_script_integrity.py tests/test_api_ui_support.py`
+- Tested with Home Assistant Core: 2026.4.3
+
 ## 1.12.422
 
 ### Bugfix

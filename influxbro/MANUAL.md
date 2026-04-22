@@ -66,6 +66,7 @@ Neu: Sidebar (Desktop)
 - Die Sidebar kann ueber den Button `<<` / `>>` ein- und ausgeklappt werden (eingeklappt: nur Icons).
 - Die Menuepunkte verwenden jetzt konsistente SVG-Icons (statt Buchstaben).
 - Die Breite und der Collapse-Status werden gespeichert und koennen ueber UI-Profile getrennt werden (Profil speichern/anwenden).
+- Falls Dashboard/Statistik auf Desktop scheinbar "weg" sind: es lag an einer Grid-MinSize-Interaktion bei sehr breiten Tabellen; das Layout erzwingt jetzt, dass der Content-Bereich nicht aus dem Viewport gedrueckt werden kann.
 - Mobile: Die Navigation wird als Drawer (Hamburger) genutzt und ueber den Button in der Titelzeile ein-/ausgeblendet.
   - Hinweis: Der Drawer startet beim erneuten Oeffnen der App wieder geschlossen (damit der Inhalt sofort sichtbar ist).
 
