@@ -20,11 +20,15 @@ body:
     attributes:
       label: Priority
       description: How urgent is this bug?
+              - P1 Critical (blocks usage / work cannot continue)
+              - P2 High (major function broken, workaround missing)
+              - P3 Medium (important issue, workaround exists)
+              - P4 Low (minor issue or cosmetic problem)
       options:
-        - P1 - Critical: blocks usage / work cannot continue
-        - P2 - High: major function broken, workaround missing
-        - P3 - Medium: important issue, workaround exists
-        - P4 - Low: minor issue or cosmetic problem
+        - P1 Critical
+        - P2 High
+        - P3 Medium
+        - P4 Low
     validations:
       required: true
       
