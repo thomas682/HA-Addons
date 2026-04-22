@@ -640,6 +640,31 @@ from flask import Flask, jsonify, request
 - If GitHub state and status label ever diverge, the agent MUST treat that as an inconsistency and correct the label state immediately.
 - Repository automation should enforce this label consistency, but the agent MUST NOT rely on automation alone and must still set the correct status explicitly.
 
+### Prioritätsgesteuerte Issue-Abarbeitung
+
+Falls GitHub-Issues eine Priorität besitzen, ist diese bei der Auswahl und Reihenfolge der Bearbeitung verbindlich zu beachten.
+
+#### Pflichtregeln
+
+- Bearbeite offene Issues immer in Reihenfolge ihrer Priorität, höchster zuerst.
+- Issues ohne Priorität dürfen erst bearbeitet werden, wenn keine höher priorisierten offenen Issues mehr sinnvoll bearbeitbar sind.
+- Gleichpriorisierte Issues sind nach fachlicher Abhängigkeit, danach Alter, danach Umsetzungsaufwand sinnvoll zu ordnen.
+- Eine Abweichung von der Prioritätsreihenfolge ist nur zulässig bei technischer Blockade, fehlenden Informationen oder ausdrücklicher Nutzeranweisung.
+- Jede Abweichung ist kurz zu begründen.
+
+#### Standard-Mapping
+
+- `P1`, `Critical`, `Highest`, `1` → sofort bevorzugt
+- `P2`, `High`, `2` → nach P1
+- `P3`, `Medium`, `Normal`, `3` → nach P2
+- `P4`, `Low`, `4` → nach P3
+- keine Priorität → zuletzt
+
+#### Umsetzungspflicht
+
+- Vor Start einer Sammelbearbeitung ist die offene Issue-Liste auf Prioritätsangaben zu prüfen und entsprechend zu sortieren.
+- Die Bearbeitung darf nicht unsortiert oder zufällig begonnen werden, wenn Prioritäten vorhanden sind.
+
 ### GitHub Issues: Check, Select, Sync
 
 - Always check for open GitHub Issues when starting work on new items (unless the user explicitly points to a specific issue).
