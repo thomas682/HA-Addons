@@ -400,7 +400,28 @@
             <div class="table_wrap" data-ui="config_settings.panel_icons_table_wrap" title="settings.icons.table.wrap">
               <div class="table_title">Icon-Mapping (UI-Profil)</div>
               <div class="table_head">
-                <div class="tbl_actions">
+                <div class="tbl_actions" data-ui="config_settings.row_icons_actions" title="config_settings.row_icons_actions">
+                  <button class="btn_sm" id="icons_autowidth" type="button" data-ui="config_settings.btn_icons_autobreite" data-ib-pickkey="config_settings.btn_icons_autobreite" title="config_settings.btn_icons_autobreite" aria-label="Spaltenbreite automatisch">
+                    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                      <path d="M5 5v14M19 5v14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                      <path d="M8 12h8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                      <path d="M10 10l-2 2 2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                      <path d="M14 10l2 2-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </button>
+                  <button class="btn_sm" id="icons_windowwidth" type="button" data-ui="config_settings.btn_icons_fensterbreite" data-ib-pickkey="config_settings.btn_icons_fensterbreite" title="config_settings.btn_icons_fensterbreite" aria-label="Fensterbreite">
+                    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                      <rect x="4" y="6" width="16" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
+                      <path d="M12 12H6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                      <path d="M6 12l2-2M6 12l2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                      <path d="M12 12h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                      <path d="M18 12l-2-2M18 12l-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </button>
+
+                  <label><input type="checkbox" id="icons_wrap" class="row_sel" data-ui="config_settings.chk_icons_umbruch" data-ib-pickkey="config_settings.chk_icons_umbruch" title="config_settings.chk_icons_umbruch"/>Umbruch</label>
+                  <label><input type="checkbox" id="icons_colfilter" class="row_sel" data-ui="config_settings.chk_icons_spaltenfilter" data-ib-pickkey="config_settings.chk_icons_spaltenfilter" title="config_settings.chk_icons_spaltenfilter"/>Spaltenfilter</label>
+
                   <button id="icons_edit" class="btn_sm" type="button" data-ui="config_settings.btn_icons_edit" title="settings.icons.edit">Edit</button>
                   <button id="icons_undo" class="btn_sm" type="button" data-ui="config_settings.btn_icons_undo" title="settings.icons.undo" disabled>Undo</button>
                   <button id="icons_jump" class="btn_sm" type="button" data-ui="config_settings.btn_icons_jump" title="settings.icons.jump" disabled>Jump</button>
@@ -1625,6 +1646,10 @@ const $iconsReload = document.getElementById('icons_reload');
 const $iconsEdit = document.getElementById('icons_edit');
 const $iconsUndo = document.getElementById('icons_undo');
 const $iconsJump = document.getElementById('icons_jump');
+const $iconsAutoWidth = document.getElementById('icons_autowidth');
+const $iconsWinWidth = document.getElementById('icons_windowwidth');
+const $iconsWrap = document.getElementById('icons_wrap');
+const $iconsColFilter = document.getElementById('icons_colfilter');
 const $iconsTbl = document.getElementById('icons_tbl');
 const $iconsStatus = document.getElementById('icons_status');
 const $iconsErr = document.getElementById('icons_err');
@@ -1946,7 +1971,9 @@ function _iconsRender(){
         tdSvg.appendChild(ta);
         setTimeout(()=>{ try{ ta.focus(); ta.selectionStart = ta.value.length; ta.selectionEnd = ta.value.length; }catch(e){} }, 0);
       }else{
-        tdSvg.textContent = ov ? (ov.length > 120 ? (ov.slice(0, 120) + '...') : ov) : '';
+        const show = eff || '';
+        tdSvg.textContent = show ? (show.length > 120 ? (show.slice(0, 120) + '...') : show) : '';
+        try{ tdSvg.title = ov ? 'Override' : (def ? 'Default' : ''); }catch(e){}
         tdSvg.addEventListener('dblclick', ()=>_iconsBeginInlineEdit(r.key));
       }
       tr.appendChild(tdSvg);
@@ -1967,12 +1994,15 @@ function _iconsRender(){
 
       frag.appendChild(tr);
     });
-    tbody.appendChild(frag);
+      tbody.appendChild(frag);
 
-    const totalInv = (_ICON_INV || []).length;
-    const totalOv = _ICON_OVERRIDES ? Object.keys(_ICON_OVERRIDES).length : 0;
-    _iconsSetStatus('Eintraege: ' + String(rows.length) + ' (Inventar: ' + totalInv + ', Overrides: ' + totalOv + ')');
-    _iconsToolbarUpdate();
+     // Keep filters effective after re-render.
+     try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.apply('#icons_tbl'); }catch(e){}
+
+     const totalInv = (_ICON_INV || []).length;
+     const totalOv = _ICON_OVERRIDES ? Object.keys(_ICON_OVERRIDES).length : 0;
+     _iconsSetStatus('Eintraege: ' + String(rows.length) + ' (Inventar: ' + totalInv + ', Overrides: ' + totalOv + ')');
+     _iconsToolbarUpdate();
   }catch(e){
     _iconsSetErr(String(e || 'Render failed'));
   }
@@ -2017,6 +2047,35 @@ function initIconbilder(){
       }
       return;
     }
+
+    if(window.__IB_ICONBILDER_INITED) return;
+    window.__IB_ICONBILDER_INITED = true;
+
+    // Table standard helpers (Issue #397)
+    try{ if(window.InfluxBroTableCols) window.InfluxBroTableCols.init('#icons_tbl'); }catch(e){}
+    try{ if(window.InfluxBroTableFilter) window.InfluxBroTableFilter.init('#icons_tbl', {startHidden: true}); }catch(e){}
+
+    // Restore wrap/filter preferences (best-effort)
+    try{
+      const w = localStorage.getItem('influxbro.icons_tbl.wrap') || '';
+      const on = (w === '1');
+      if($iconsWrap) $iconsWrap.checked = on;
+      if(window.InfluxBroTableWrap) window.InfluxBroTableWrap.setWrap('#icons_tbl', on);
+    }catch(e){}
+    try{
+      const f = localStorage.getItem('influxbro.icons_tbl.colfilter') || '';
+      const on = (f === '1');
+      if($iconsColFilter) $iconsColFilter.checked = on;
+      if(window.InfluxBroTableFilter) window.InfluxBroTableFilter.setVisible('#icons_tbl', on);
+    }catch(e){}
+
+    try{
+      if($iconsAutoWidth) $iconsAutoWidth.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}; try{ window.InfluxBroTableCols && window.InfluxBroTableCols.autoFit('#icons_tbl', {maxRows: 200}); }catch(e){}; });
+      if($iconsWinWidth) $iconsWinWidth.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}; try{ window.InfluxBroTableCols && window.InfluxBroTableCols.windowFit('#icons_tbl', {minW: 120}); }catch(e){}; });
+      if($iconsWrap) $iconsWrap.addEventListener('change', ()=>{ const on = !!$iconsWrap.checked; try{ localStorage.setItem('influxbro.icons_tbl.wrap', on ? '1' : '0'); }catch(e){}; try{ window.InfluxBroTableWrap && window.InfluxBroTableWrap.setWrap('#icons_tbl', on); }catch(e){}; });
+      if($iconsColFilter) $iconsColFilter.addEventListener('change', ()=>{ const on = !!$iconsColFilter.checked; try{ localStorage.setItem('influxbro.icons_tbl.colfilter', on ? '1' : '0'); }catch(e){}; try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.setVisible('#icons_tbl', on); }catch(e){}; });
+    }catch(e){}
+
     try{ if($iconsSearch) $iconsSearch.addEventListener('input', ()=>_iconsRender()); }catch(e){}
     try{ if($iconsArea) $iconsArea.addEventListener('change', ()=>_iconsRender()); }catch(e){}
     try{ if($iconsOnlyOverrides) $iconsOnlyOverrides.addEventListener('change', ()=>_iconsRender()); }catch(e){}

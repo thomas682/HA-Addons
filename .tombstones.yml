@@ -42,3 +42,18 @@
     removed: []
     redirects: []
   ci_reference: "#392"
+
+- path: "influxbro/app/templates/index.html"
+  tombstone_id: "TS-2026-0004"
+  reason: "Remove Ausreißer section header info button; place Info into the Ausreißer table action bar instead (#397)"
+  owner: "thomas"
+  impacted_selectors:
+    - "#outlier_section summary .ib_info_icon"
+    - "[data-ui=dashboard_outliers.section_root] summary .ib_info_icon"
+  impacted_actions:
+    - "Dashboard -> Ausreißer: Info (Section-Header)"
+  migration_plan: "Info remains available as the first button in dashboard_outliers.row_table_actions (left of Autobreite)."
+  route_plan:
+    removed: []
+    redirects: []
+  ci_reference: "#397"

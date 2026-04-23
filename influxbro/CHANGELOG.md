@@ -34,6 +34,16 @@
 
 - QA: `python3 -m py_compile influxbro/app/app.py` (pytest in dieser Umgebung nicht verfuegbar).
 
+## 1.12.432
+
+### Bugfix
+
+- GUI: Ausreißer-Info Button wurde aus dem Section-Header entfernt und fest in die Ausreißer-Tabellen-Actionbar verschoben (links neben Autobreite); Settings: `config_settings.tbl_icons` hat jetzt eine echte Tabellen-Actionbar (Auto-/Fensterbreite, Umbruch, Spaltenfilter) und Spaltenbreite ist wieder veraenderbar; Spalte "SVG (Override)" zeigt jetzt den effektiven SVG-Code (Override oder Default) statt nur Overrides. ([#397](https://github.com/thomas682/HA-Addons/issues/397))
+
+### Maintenance
+
+- QA: `python3 -m py_compile influxbro/app/app.py` (pytest in dieser Umgebung nicht verfuegbar).
+
 ## 1.12.428
 
 ### Enhancement

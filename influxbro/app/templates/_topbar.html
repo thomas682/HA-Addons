@@ -2517,9 +2517,15 @@
         const row = summary.querySelector('.ib_summary_row');
         if(!row) return;
 
+        // Info button can live either in the section summary row, or (for some
+        // sections like Outliers) in the section-specific action bar.
         const infoBtn = row.querySelector('.ib_info_icon');
         const cfgBtn = row.querySelector('.ib_cfg_icon');
-        if(!infoBtn && !cfgBtn) return;
+        const did = String(details.id || '').trim();
+        const infoSourceBtn = infoBtn || (did === 'outlier_section'
+          ? details.querySelector('#raw_outlier_table_wrap .tbl_actions .ib_info_icon')
+          : null);
+        if(!infoSourceBtn && !cfgBtn) return;
 
         const body = details.querySelector(':scope > summary + *');
         if(!body) return;
@@ -2532,9 +2538,9 @@
 
         let full = '';
         try{
-          if(infoBtn){
-            const raw = String(infoBtn.getAttribute('data-info-body') || '').trim();
-            full = raw.split(/\r?\n/).map(x=>String(x||'').trim()).filter(Boolean)[0] || String(infoBtn.getAttribute('data-info-title') || '').trim();
+          if(infoSourceBtn){
+            const raw = String(infoSourceBtn.getAttribute('data-info-body') || '').trim();
+            full = raw.split(/\r?\n/).map(x=>String(x||'').trim()).filter(Boolean)[0] || String(infoSourceBtn.getAttribute('data-info-title') || '').trim();
           }
         }catch(e){ full = ''; }
         let short = String(full || '').trim();
@@ -2545,17 +2551,10 @@
         const actions = document.createElement('div');
         actions.className = 'ib_section_desc_actions';
         try{ if(cfgBtn) actions.appendChild(cfgBtn); }catch(e){}
+        // Keep the info button where it is; do not move it into the desc row
+        // for the Outliers section (Issue #397).
         try{
-          if(infoBtn){
-            const did = String(details.id || '').trim();
-            if(did === 'outlier_section'){
-              const outActions = details.querySelector('#raw_outlier_table_wrap .tbl_actions');
-              if(outActions) outActions.insertBefore(infoBtn, outActions.firstChild);
-              else actions.appendChild(infoBtn);
-            }else{
-              actions.appendChild(infoBtn);
-            }
-          }
+          if(infoBtn && did !== 'outlier_section') actions.appendChild(infoBtn);
         }catch(e){}
 
         descRow.appendChild(desc);
