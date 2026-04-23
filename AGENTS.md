@@ -1,5 +1,10 @@
 <<FULL FILE OMITTED FOR BREVITY>>
 
+## Env Snippet
+
+- Home Assistant Core Version abfragen:
+  - `curl -s -H "Authorization: Bearer $SUPERVISOR_TOKEN" http://192.168.2.200:8123/api/config | jq -r '.version'`
+
 ## UI-Komponenten-Entfernung (Tombstones Pflichtprozess)
 
 Beim Entfernen von UI-Komponenten (HTML, JS, CSS, Backend-Funktionen) muss zwingend ein nachvollziehbarer "Tombstone" hinterlassen werden.
@@ -126,3 +131,24 @@ Wenn ein Auftrag das Entfernen, Ersetzen oder Stilllegen von UI-Elementen, Templ
 - API entfernen ohne Migration
 - Silent Breaking Changes
 
+## UI Picker Eindeutigkeit (Pickkey Pflicht)
+
+Damit UI-Elemente in Issues/Chat immer 100% eindeutig referenzierbar sind, gilt ab jetzt:
+
+- Jedes sichtbare, support-relevante UI-Element MUSS eine stabile `data-ui` Kennung besitzen.
+- Jedes sichtbare UI-Element MUSS zusaetzlich eine eindeutige `data-ib-pickkey` Kennung besitzen.
+- Das gilt fuer alle Typen:
+  - Buttons, Links, Inputs, Selects, Checkboxen, Labels
+  - Sektionen (`details/summary`), Cards, Panels
+  - Tabellen inkl. Toolbars, Resize-Handles, Filterleisten, Rowcounts
+  - Dialoge/Popups/Overlays
+  - dynamisch erzeugte UI (per JS/`innerHTML`/DOM APIs)
+- Dynamisch erzeugte sichtbare Elemente MUESSEN `data-ui` und `data-ib-pickkey` beim Erzeugen setzen.
+- S-Picker Ausgabe muss den kanonischen Referenztext liefern: `<PICK:<Page>|<pickkey>>`.
+- Fallback-Referenzen ohne Pickkey sind nur Migrationszustand und nicht akzeptabel als Endzustand.
+- `unknown` ist nur als Fallback erlaubt.
+
+Pflicht bei UI-Aenderungen:
+
+- Wenn du sichtbare UI-Elemente anfasst, musst du bestehende betroffene Elemente mit auf `data-ib-pickkey` nachziehen.
+- Wenn du UI-Elemente entfernst: Tombstone-Prozess bleibt weiterhin Pflicht.

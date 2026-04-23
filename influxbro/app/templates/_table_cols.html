@@ -1260,6 +1260,12 @@ thead tr.ib_filter_row input, thead tr.ib_filter_row select { width: 100%; heigh
     const wrap = tbl.closest('.table_wrap');
     const head = wrap ? wrap.querySelector('.table_head') : null;
     if(!head) return null;
+
+     // TOMBSTONE: TS-2026-0002 – Removed rowcount indicator for specific tables via opt-out.
+     try{
+       if(tbl && tbl.getAttribute && tbl.getAttribute('data-ib-hide-rowcounts') === '1') return null;
+       if(wrap && wrap.getAttribute && wrap.getAttribute('data-ib-hide-rowcounts') === '1') return null;
+     }catch(e){}
     let host = head.querySelector('[data-ib-rowcounts]');
     if(host) return host;
 
@@ -1274,6 +1280,11 @@ thead tr.ib_filter_row input, thead tr.ib_filter_row select { width: 100%; heigh
     // Append a dedicated span so we do not overwrite other dynamic info.
     host = document.createElement('span');
     host.setAttribute('data-ib-rowcounts', '1');
+    try{
+      const tid = _norm(tbl.getAttribute('id'));
+      if(tid) host.setAttribute('data-ib-pickkey', 'table.' + tid + '.rowcount');
+      if(tid) host.setAttribute('data-ui', 'table_rowcount.' + tid);
+    }catch(e){}
     host.style.marginLeft = '10px';
     host.style.whiteSpace = 'nowrap';
     muted.appendChild(host);

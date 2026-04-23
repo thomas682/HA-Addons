@@ -486,6 +486,127 @@
     if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initZoom, { once: true });
     else initZoom();
   })();
+
+  // Auto-assign canonical pickkeys for existing UI.
+  // Ensures every visible UI element can be referenced via S-Picker.
+  (function(){
+    function _normKey(s){
+      try{ return String(s || '').trim().replace(/\s+/g,' '); }catch(e){ return ''; }
+    }
+    function _hashFNV1a(str){
+      try{
+        let h = 0x811c9dc5;
+        for(let i=0;i<str.length;i+=1){
+          h ^= str.charCodeAt(i);
+          // h *= 16777619
+          h = (h + ((h<<1) + (h<<4) + (h<<7) + (h<<8) + (h<<24))) >>> 0;
+        }
+        return ('00000000' + h.toString(16)).slice(-8);
+      }catch(e){ return '00000000'; }
+    }
+    function _pageKey(){
+      try{
+        const p = String(location && location.pathname ? location.pathname : '').replace(/\/+$/,'');
+        const seg = p.split('/').filter(Boolean).pop() || 'dashboard';
+        if(seg === '6ce7c04c_influxbro') return 'dashboard';
+        return String(seg || 'page').toLowerCase();
+      }catch(e){ return 'page'; }
+    }
+    function _anchorKeyFor(el){
+      try{
+        const a = el.closest && el.closest('[data-ib-pickkey],[data-ui],[id]');
+        if(!a) return '';
+        const pk = _normKey(a.getAttribute && a.getAttribute('data-ib-pickkey'));
+        if(pk) return pk;
+        const ui = _normKey(a.getAttribute && a.getAttribute('data-ui'));
+        if(ui) return 'ui.' + ui;
+        const id = _normKey(a.getAttribute && a.getAttribute('id'));
+        if(id) return 'id.' + id;
+      }catch(e){}
+      return '';
+    }
+    function _pathSig(el, root){
+      try{
+        const parts = [];
+        let cur = el;
+        for(let i=0;i<12;i+=1){
+          if(!cur || cur === document.body || cur === document.documentElement) break;
+          if(root && cur === root) break;
+          const tag = String(cur.tagName || '').toLowerCase();
+          let n = 1;
+          try{
+            let sib = cur;
+            while((sib = sib.previousElementSibling)){
+              if(String(sib.tagName||'').toLowerCase() === tag) n += 1;
+            }
+          }catch(e){}
+          parts.unshift(tag + ':' + n);
+          cur = cur.parentElement;
+        }
+        return parts.join('/');
+      }catch(e){ return ''; }
+    }
+    function _ensurePickkey(el){
+      try{
+        if(!el || !el.getAttribute || !el.setAttribute) return;
+        if(el.getAttribute('data-ib-pickkey')) return;
+        const ui = _normKey(el.getAttribute('data-ui'));
+        const id = _normKey(el.getAttribute('id'));
+        const page = _pageKey();
+        if(ui){ el.setAttribute('data-ib-pickkey', page + '.' + ui); return; }
+        if(id){ el.setAttribute('data-ib-pickkey', page + '.id.' + id); return; }
+
+        const anchor = el.closest && el.closest('[data-ui],[id],[data-ib-pickkey]');
+        const base = _anchorKeyFor(el) || (page + '.auto');
+        const sig = _pathSig(el, anchor);
+        const tag = String(el.tagName || 'el').toLowerCase();
+        const h = _hashFNV1a(base + '|' + tag + '|' + sig);
+        el.setAttribute('data-ib-pickkey', base + '.auto.' + tag + '.' + h);
+      }catch(e){}
+    }
+
+    function apply(){
+      try{
+        const sel = [
+          '[data-ui]',
+          '[id]',
+          'button',
+          'a',
+          'input',
+          'select',
+          'textarea',
+          'label',
+          'details',
+          'summary',
+          'table',
+          '.table_wrap',
+          '.table_head',
+          '.table_box',
+          '.tbl_actions',
+          '.ib_pagecard',
+          '.ib_topbar',
+          'nav.sidebar',
+          '.nav_item',
+        ].join(',');
+        document.querySelectorAll(sel).forEach(_ensurePickkey);
+      }catch(e){}
+    }
+
+    let _raf = 0;
+    function _schedule(){
+      try{
+        if(_raf) cancelAnimationFrame(_raf);
+        _raf = requestAnimationFrame(()=>{ _raf = 0; apply(); });
+      }catch(e){ apply(); }
+    }
+
+    try{ window.InfluxBroPickKey = { apply, schedule: _schedule }; }catch(e){}
+    if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ()=>apply(), {once:true});
+    else apply();
+
+    // Keep pickkeys on dynamically injected UI (best-effort, throttled).
+    try{ new MutationObserver(()=>_schedule()).observe(document.body, {childList:true, subtree:true}); }catch(e){}
+  })();
   </script>
   <script>
   (function(){
@@ -1142,6 +1263,7 @@
   <script>
   (function(){
     function initPicker(){
+      try{ if(window.InfluxBroPickKey && window.InfluxBroPickKey.apply) window.InfluxBroPickKey.apply(); }catch(e){}
       const $btn = document.getElementById('ui_picker_toggle');
       const $superBtn = document.getElementById('ui_superpicker_toggle');
       if(!$btn || !$superBtn || $btn.dataset.ibPickerReady === '1') return;
@@ -1413,6 +1535,8 @@
     function _targetMetaFor(el){
       try{
         if(!el || !el.tagName) return null;
+        const pk = String(el.getAttribute && el.getAttribute('data-ib-pickkey') || '').trim();
+        if(pk) return { el, name: pk, kind: 'pickkey' };
         const ui = String(el.getAttribute && el.getAttribute('data-ui') || '').trim();
         if(ui) return { el, name: ui, kind: 'data-ui' };
         const id = String(el.getAttribute && el.getAttribute('id') || '').trim();
@@ -1489,6 +1613,8 @@
           return _resolveTarget(el, ev);
         }
         for(const cand of (stack.length ? stack : [el])){
+          const withPk = cand.closest && cand.closest('[data-ib-pickkey]');
+          if(withPk) return { el: withPk, name: String(withPk.getAttribute('data-ib-pickkey') || '').trim(), kind: 'pickkey' };
           const withUi = cand.closest && cand.closest('[data-ui]');
           if(withUi) return { el: withUi, name: String(withUi.getAttribute('data-ui') || '').trim(), kind: 'data-ui' };
         }
@@ -1541,7 +1667,7 @@
       overlay.style.height = Math.max(0, r.height + 4) + 'px';
       const name = String(target.name || '').trim();
       const disabledTag = target.disabled ? ' [disabled]' : '';
-      const display = target.kind === 'fallback' ? ('fallback:' + (name || 'element')) : ('<' + (name || '(kein data-ui)') + '>');
+      const display = target.kind === 'pickkey' ? ('<PICK:' + (name || 'unknown') + '>') : (target.kind === 'fallback' ? ('fallback:' + (name || 'element')) : ('<' + (name || '(kein data-ui)') + '>'));
       const pos = currentTargets.length > 1 ? (' (' + (currentTargetIndex + 1) + '/' + currentTargets.length + ')') : '';
       const hint = currentTargets.length > 1 ? ' | Mausrad: Treffer wechseln' : '';
       badge.textContent = display;
@@ -1562,10 +1688,11 @@
           return page + '|fallback:' + css + '|';
         }
         const el = target && target.el ? target.el : null;
+        const pk = el && el.getAttribute ? String(el.getAttribute('data-ib-pickkey') || '').trim() : '';
         const dataUi = el && el.getAttribute ? String(el.getAttribute('data-ui') || '').trim() : '';
         const id = el && el.getAttribute ? String(el.getAttribute('id') || '').trim() : '';
         const olType = el && el.getAttribute ? String(el.getAttribute('data-cache-oltype') || '').trim() : '';
-        return page + '|' + dataUi + '|' + id + '|' + olType;
+        return page + '|' + pk + '|' + dataUi + '|' + id + '|' + olType;
       }catch(e){ return ''; }
     }
 
@@ -1577,9 +1704,11 @@
           return '<' + [page, ('fallback:' + css), ''].join(',') + '>';
         }
         const el = target && target.el ? target.el : null;
+        const pk = el && el.getAttribute ? String(el.getAttribute('data-ib-pickkey') || '').trim() : '';
         const dataUi = el && el.getAttribute ? String(el.getAttribute('data-ui') || '').trim() : '';
         const id = el && el.getAttribute ? String(el.getAttribute('id') || '').trim() : '';
         const olType = el && el.getAttribute ? String(el.getAttribute('data-cache-oltype') || '').trim() : '';
+        if(pk) return '<PICK:' + page + '|' + pk + '>';
         const parts = [page, dataUi, id];
         if(olType) parts.push(olType);
         return '<' + parts.join(',') + '>';
@@ -1864,6 +1993,7 @@
       }
 
       const page = (window.currentPageLabel ? window.currentPageLabel() : 'Seite');
+      const pickkey = _normLine(el.getAttribute ? (el.getAttribute('data-ib-pickkey') || '') : '');
       const dataUi = _normLine(el.getAttribute ? (el.getAttribute('data-ui') || '') : '');
       const id = _normLine(el.getAttribute ? (el.getAttribute('id') || '') : '');
       const olType = _normLine(el.getAttribute ? (el.getAttribute('data-cache-oltype') || '') : '');
@@ -1876,6 +2006,9 @@
         try{ fb = fb.split('|')[0].trim(); }catch(e){}
         try{ fb = fb.replace(/^button\./, 'btn.'); }catch(e){}
         text = '<' + [page, '', '', ('Fallback: ' + (fb || 'element'))].join(',') + '>';
+      }else if(pickkey){
+        // Canonical reference for chat/support.
+        text = '<PICK:' + page + '|' + pickkey + '>';
       }else{
         const parts = [page, dataUi, id];
         if(olType) parts.push(olType);

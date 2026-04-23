@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.12.427
+
+### Enhancement
+
+- UI Picker: kanonische, eindeutige Referenzen via `data-ib-pickkey`; S-Picker kopiert jetzt `<PICK:<Page>|<pickkey>>` und vergibt Pickkeys automatisch auch fuer bestehende UI-Elemente. ([#391](https://github.com/thomas682/HA-Addons/issues/391))
+- Dashboard: Rowcount-Anzeige wird fuer die Ausreisser-Tabelle (`raw_outlier_tbl`) ausgeblendet (Opt-out). ([#391](https://github.com/thomas682/HA-Addons/issues/391))
+
+### Docs
+
+- `Template.md` und `AGENTS.md`: Pickkey-Pflicht fuer alle sichtbaren UI-Elementtypen dokumentiert.
+
+### Maintenance
+
+- Tests: `.venv/bin/python -m py_compile influxbro/app/app.py`, `.venv/bin/python -m pytest -q tests/test_api_ui_support.py`, `npx playwright test tests/e2e/dashboard.spec.js -g "desktop keeps main content visible across widths"`
+
 ## 1.12.426
 
 ### Enhancement

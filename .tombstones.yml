@@ -12,3 +12,18 @@
     removed: []
     redirects: []
   ci_reference: "issue-id"
+
+- path: "influxbro/app/templates/_table_cols.html"
+  tombstone_id: "TS-2026-0002"
+  reason: "Remove rowcount indicator for the Outlier table header (raw_outlier_tbl) to reduce noise in Dashboard UI"
+  owner: "thomas"
+  impacted_selectors:
+    - "#raw_outlier_tbl [data-ib-rowcounts]"
+    - "[data-ib-rowcounts]"
+  impacted_actions:
+    - "Dashboard -> Ausreisser Tabelle: Rowcount Anzeige"
+  migration_plan: "No replacement; rowcount remains available for other tables. Outlier table opts out via data-ib-hide-rowcounts=1."
+  route_plan:
+    removed: []
+    redirects: []
+  ci_reference: "#391"

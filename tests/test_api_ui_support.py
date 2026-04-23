@@ -371,12 +371,18 @@ def test_summary_actions_are_inline_in_topbar_and_back_icon_uses_return_svg():
 def test_picker_supports_disabled_targets_and_angle_bracket_labels():
     topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
     assert 'document.elementsFromPoint' in topbar
-    # Picker copy payload is angle-bracket based, optionally extended with extra selector values.
-    assert "const parts = [page, dataUi, id];" in topbar
-    assert "let text = ''" in topbar
-    assert "text = '<' + parts.join(',') + '>'" in topbar
+    # Picker prefers canonical pickkeys and copies <PICK:...|...>
+    assert "data-ib-pickkey" in topbar
+    assert "text = '<PICK:' + page + '|' + pickkey + '>'" in topbar
     assert "Fallback:" in topbar
-    assert "'<' + (name || '(kein data-ui)') + '>'" in topbar
+    assert "'(kein data-ui)'" in topbar
+
+
+def test_outlier_table_rowcount_is_opt_out():
+    table_helpers = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_table_cols.html").read_text()
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert 'data-ib-hide-rowcounts="1"' in body
+    assert "tbl.getAttribute('data-ib-hide-rowcounts') === '1'" in table_helpers
 
 
 def test_dashboard_load_runs_cache_path_and_stats_reload():
@@ -725,6 +731,7 @@ def test_dashboard_caching_panel_has_logs_button_progress_and_range_details():
     assert 'scope: \'dashboard_caching\'' in body
     assert "curl -s -H \"Authorization: Bearer $SUPERVISOR_TOKEN\" http://192.168.2.200:8123/api/config | jq -r '.version'" in agents
     assert 'unknown` ist nur als Fallback erlaubt' in agents
+    assert 'data-ib-pickkey' in agents
 
 
 def test_dashboard_outlier_params_dialog_is_global_config_based():
@@ -780,6 +787,8 @@ def test_dashboard_uses_structured_data_ui_naming_scheme_samples():
     assert 'data-ui="dashboard_graph.btn_aktualisieren"' in body
     assert 'data-ui="dashboard_selection.section_root"' in body
     assert '`page_section.role_action`' in tmpl
+    assert 'data-ib-pickkey' in tmpl
+    assert '<PICK:' in tmpl
 
 
 def test_dashboard_issue223_removed_tip_selection_and_moved_start_info():
@@ -1003,7 +1012,8 @@ def test_picker_supports_superpicker_fallback_mode():
     assert "function _fallbackTextSnippetFor(el){" in topbar
     assert "const css = _fallbackCssFor(el);" in topbar
     assert "kind: 'fallback'" in topbar
-    assert "const display = target.kind === 'fallback' ? ('fallback:' + (name || 'element')) : ('<' + (name || '(kein data-ui)') + '>');" in topbar
+    assert "target.kind === 'pickkey'" in topbar
+    assert "fallback:" in topbar
     assert "badge.textContent = display;" in topbar
     assert "if(readSuper()){ if($superBtn) $superBtn.classList.add('active');" in topbar
 

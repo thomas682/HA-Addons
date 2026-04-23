@@ -83,9 +83,9 @@ Neu: Top-Leiste (Profil + Zoom)
     - Hinweis: Die Buttons `Anwenden`, `Speichern`, `Info`, `Picker` und `S-Picker` sind in der Topbar icon-only (Tooltip/aria-label bleibt erhalten).
   - Zoom-Steuerung: `-` / `+` und die aktuelle Zoomstufe in `%`.
   - Seitensuche: durchsucht Controls und wichtige sichtbare Texte auf der aktuellen Seite und springt zu Treffern.
-  - Picker / S-Picker: kopiert eine kurze Elementkennung im Format `<page,data-ui,id[,oltype]>` in die Zwischenablage, damit UI-Elemente eindeutig identifiziert werden koennen.
+  - Picker / S-Picker: kopiert eine kanonische Elementkennung im Format `<PICK:<Page>|<pickkey>>` in die Zwischenablage, damit UI-Elemente im Chat/Issues 100% eindeutig identifiziert werden koennen.
     - `oltype` wird nur angehaengt, wenn das Element ein `data-cache-oltype` Attribut besitzt (es wird nur der Wert kopiert, kein Key-Name).
-  - Picker / S-Picker Multi-Pick (Shift+Klick): startet einen Mehrfach-Pick. Unter der Pagecard erscheint eine Statusleiste mit den erfassten Elementen als anklickbare Chips (Klick = Entfernen). Buttons `Ende` (kopiert alles als `<a,b,c>;<d,e,f,g>;...`), `Letztes loeschen`, `Abbruch`. ESC bricht ebenfalls ab; Picked-Elemente bleiben solange farbig umrandet, wie sie in der Liste sind.
+  - Picker / S-Picker Multi-Pick (Shift+Klick): startet einen Mehrfach-Pick. Unter der Pagecard erscheint eine Statusleiste mit den erfassten Elemente als anklickbare Chips (Klick = Entfernen). `Ende` kopiert die Liste als mehrere `<PICK:...>` Eintraege.
   - Neu: Button `Verschieben` (Icon mit 2 Quadraten + Pfeil). Dieser oeffnet den Einstellungen-Organizer.
     - Wenn du eine Aktion auswaehlst und nicht auf der Seite `Einstellungen` bist, wird automatisch nach `Einstellungen` gewechselt.
     - Funktionen: Parameterzeilen zwischen Bereichen verschieben, Hauptpunkte/Unterpunkte anlegen oder loeschen.
@@ -685,7 +685,7 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Raw-Fenster werden nach der ersten Berechnung fuer einen Zeitraum im Analyse-Cache mitgespeichert. Bei Cache-Preload werden fehlende oder veraltete Fenster inkrementell nachgezogen und in den Cache gepatcht.
 - Die Punktanzahl fuer diesen Kontext ist jetzt getrennt einstellbar: `outlier_context_before_points` und `outlier_context_after_points` (Einstellungen -> Ausreisser).
 - Diese Werte werden auch beim lokalen Reparieren von dirty Analyse-Cache Segmenten als punktbasierter Kontext/Puffer verwendet (statt fixer Sekunden-Padding).
-- Picker und Super-Picker kopieren Elementkennungen jetzt im Format `<page,data-ui,id[,oltype]>` und koennen auch deaktivierte Elemente besser erfassen.
+- Picker und Super-Picker kopieren Elementkennungen jetzt im Format `<PICK:<Page>|<pickkey>>` und koennen auch deaktivierte Elemente besser erfassen.
 - Auf der Einstellungsseite wurden der alte Summary-Pfeil und der Dashboard-Ruecksprung-Button entfernt; ausserdem wurde das Layout fuer breite Eingaben robuster gemacht.
 - `page.title.card` besitzt jetzt eine Navigationshilfe mit Verlauf sowie Vor-/Zurueck-Buttons. Ueber die Parametrierhilfe lassen sich verknuepfte Elemente gezielt zu ihren Einstellungen springen und dort farbig markieren.
 - Die Einstellungen werden jetzt in Hauptbereiche fuer `Datenbank`, `Allgemein` und menuebezogene Bereiche gegliedert. Mehrfach genutzte Parameter liegen unter `Allgemein`; Fachbereiche koennen stattdessen auf globale Parameter verlinken.
@@ -1156,7 +1156,7 @@ Ausreisser:
 
 ## Release Notes (1.12.90)
 
-- Allgemein: Der Picker kopiert jetzt das Format `Menüname: data-ui`, z. B. `Import: import.analyze`.
+- Allgemein: Der Picker kopiert jetzt kanonische Referenzen (`<PICK:<Page>|<pickkey>>`).
 
 ## Release Notes (1.12.91)
 
