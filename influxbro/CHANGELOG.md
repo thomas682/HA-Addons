@@ -24,6 +24,16 @@
 
 - QA: `python3 -m py_compile influxbro/app/app.py` (pytest in dieser Umgebung nicht verfuegbar).
 
+## 1.12.431
+
+### Enhancement
+
+- Dashboard Raw: neuer Vorschau-/Bestaetigungsdialog (Tabelle Alt/Neu) fuer Korrekturen; Smart-Korrektur und Editiermodus nutzen jetzt `/api/change_preview` bevor geschrieben wird. Neuer Button `Automatikkorrektur` (Basis: Nachbar-Interpolation) inkl. Vorschau. Undo fuer Change-Blocks zeigt jetzt ebenfalls eine Undo-Vorschau (via `/api/change_blocks/undo_preview`) vor dem Rollback. ([#395](https://github.com/thomas682/HA-Addons/issues/395))
+
+### Maintenance
+
+- QA: `python3 -m py_compile influxbro/app/app.py` (pytest in dieser Umgebung nicht verfuegbar).
+
 ## 1.12.428
 
 ### Enhancement

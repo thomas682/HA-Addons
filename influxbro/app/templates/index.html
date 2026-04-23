@@ -117,6 +117,13 @@
     .muted { opacity: 0.7; font-size: var(--ui-font-small); }
     a { color: inherit; }
 
+    /* Change preview dialog (generic) */
+    .ib_change_row_changed { background: #fff7ed; }
+    .ib_change_row_delete { background: #fff0f0; }
+    .ib_change_row_same { opacity: 0.72; }
+    .ib_change_cell_action { font-weight: 800; }
+    .ib_change_cell_reason { max-width: 560px; }
+  
     /* Dashboard: Caching status panel (always visible, left-aligned) */
     #load_status {
       margin-top: 6px;
@@ -747,12 +754,13 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
          <span id="raw_copied_info" class="muted" style="margin-left:6px;"></span>
        </div>
 
-       <div class="tbl_actions" style="justify-content:flex-start; margin-top: 6px;" data-ui="dashboard_raw.row_actions_smart" title="dashboard_raw.row_actions_smart">
-         <span class="muted" style="font-weight:800;">Intelligente Korrektur</span>
-         <button class="btn_sm" id="raw_linear_range" type="button" data-ui="dashboard_raw.btn_linear_range" title="dashboard_raw.btn_linear_range" disabled>Linearer Reihe</button>
-         <button class="btn_sm" id="raw_copy_first_range" type="button" data-ui="dashboard_raw.btn_copy_first_range" title="dashboard_raw.btn_copy_first_range" disabled>Erstwert kopieren</button>
-         <span id="raw_smart_status" class="muted" style="margin-left:6px;"></span>
-       </div>
+        <div class="tbl_actions" style="justify-content:flex-start; margin-top: 6px;" data-ui="dashboard_raw.row_actions_smart" title="dashboard_raw.row_actions_smart">
+          <span class="muted" style="font-weight:800;">Intelligente Korrektur</span>
+          <button class="btn_sm" id="raw_linear_range" type="button" data-ui="dashboard_raw.btn_linear_range" title="dashboard_raw.btn_linear_range" disabled>Linearer Reihe</button>
+          <button class="btn_sm" id="raw_copy_first_range" type="button" data-ui="dashboard_raw.btn_copy_first_range" title="dashboard_raw.btn_copy_first_range" disabled>Erstwert kopieren</button>
+          <button class="btn_sm" id="raw_auto_correct" type="button" data-ui="dashboard_raw.btn_auto_correct" data-ib-pickkey="dashboard_raw.btn_auto_correct" title="dashboard_raw.btn_auto_correct" disabled>Automatikkorrektur</button>
+          <span id="raw_smart_status" class="muted" style="margin-left:6px;"></span>
+        </div>
 
       <div class="table_title" style="margin-top:12px;">Raw Daten</div>
       <div class="table_head" style="margin-bottom:6px; justify-content:flex-start;">
@@ -913,6 +921,32 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
         <div style="margin-top:16px; display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
           <button class="btn_sm" id="raw_outlier_params_reset" type="button">Standardwerte</button>
           <button class="btn_sm" id="raw_outlier_params_save" type="button">Speichern</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Generic change preview / undo preview dialog (Issue #395) -->
+    <div id="change_preview_dialog" style="display:none; position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.45); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;" data-ui="dialog_change_preview.root" data-ib-pickkey="dialog_change_preview.root">
+      <div style="background:#fff; border-radius:16px; padding:16px; max-width:980px; width:min(980px, 100%); max-height:90vh; overflow:auto; box-shadow:0 12px 60px rgba(0,0,0,0.28);">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:10px;">
+          <div>
+            <div id="change_preview_title" style="font-weight:900; font-size:16px;" data-ui="dialog_change_preview.txt_title" data-ib-pickkey="dialog_change_preview.txt_title">Vorschau</div>
+            <div class="muted" id="change_preview_meta" style="margin-top:4px; font-size:12px; line-height:1.4;" data-ui="dialog_change_preview.txt_meta" data-ib-pickkey="dialog_change_preview.txt_meta"></div>
+            <div class="muted" id="change_preview_desc" style="margin-top:6px; font-size:12px; line-height:1.4;" data-ui="dialog_change_preview.txt_desc" data-ib-pickkey="dialog_change_preview.txt_desc"></div>
+          </div>
+          <button class="btn_sm" id="change_preview_close" type="button" data-ui="dialog_change_preview.btn_close" data-ib-pickkey="dialog_change_preview.btn_close">Schliessen</button>
+        </div>
+
+        <div class="table_box" id="change_preview_box" style="--max-rows: 18; margin-top:8px;" data-ui="dialog_change_preview.panel_table" data-ib-pickkey="dialog_change_preview.panel_table">
+          <table id="change_preview_tbl" class="list_tbl ib_tbl" data-ui="dialog_change_preview.tbl_rows" data-ib-pickkey="dialog_change_preview.tbl_rows" title="dialog_change_preview.tbl_rows">
+            <thead><tr><th style="min-width: 170px;">Zeit</th><th style="min-width: 120px;">Aktion</th><th style="min-width: 120px;">Alt</th><th style="min-width: 120px;">Neu</th><th style="min-width: 140px;">Rolle</th><th>Grund</th></tr></thead>
+            <tbody id="change_preview_body"></tbody>
+          </table>
+        </div>
+
+        <div style="margin-top:12px; display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
+          <button class="btn_sm" id="change_preview_cancel" type="button" data-ui="dialog_change_preview.btn_cancel" data-ib-pickkey="dialog_change_preview.btn_cancel">Abbrechen</button>
+          <button class="btn_sm" id="change_preview_ok" type="button" data-ui="dialog_change_preview.btn_ok" data-ib-pickkey="dialog_change_preview.btn_ok">OK ausfuehren</button>
         </div>
       </div>
     </div>
@@ -1146,6 +1180,7 @@ const $rawQueryOpen = document.getElementById('raw_query_open');
 const $rawCopiedInfo = document.getElementById('raw_copied_info');
 const $rawLinearRange = document.getElementById('raw_linear_range');
 const $rawCopyFirstRange = document.getElementById('raw_copy_first_range');
+const $rawAutoCorrect = document.getElementById('raw_auto_correct');
 const $rawSmartStatus = document.getElementById('raw_smart_status');
 
 const $graphQuerySection = document.getElementById('graph_query_section');
@@ -1244,6 +1279,15 @@ const $applyModalQueryHistory = document.getElementById('apply_modal_query_histo
 const $applyModalRows = document.getElementById('apply_modal_rows');
 const $applyModalCancel = document.getElementById('apply_modal_cancel');
 const $applyModalConfirm = document.getElementById('apply_modal_confirm');
+
+const $changePreviewDialog = document.getElementById('change_preview_dialog');
+const $changePreviewTitle = document.getElementById('change_preview_title');
+const $changePreviewMeta = document.getElementById('change_preview_meta');
+const $changePreviewDesc = document.getElementById('change_preview_desc');
+const $changePreviewBody = document.getElementById('change_preview_body');
+const $changePreviewClose = document.getElementById('change_preview_close');
+const $changePreviewCancel = document.getElementById('change_preview_cancel');
+const $changePreviewOk = document.getElementById('change_preview_ok');
 
 let UI_DECIMALS = 3;
 let UI_TABLE_VISIBLE_ROWS = 20;
@@ -10458,32 +10502,89 @@ async function _rawSmartPreview(kind){
       new_value: newStr,
       decimals: r.decimals,
       reason: (k === 'linear') ? 'Smart correction: linear interpolation' : 'Smart correction: copy first value',
+      row_role: 'inner',
       unit: unit || '',
     });
     lines.push(fmtTs(row.time) + '\t' + fmtNumNoRound(oldVal, r.decimals) + '\t' + fmtNumNoRound(newVal, r.decimals));
   }
 
-  const previewText = lines.join('\n');
-  const want = await new Promise((resolve)=>{
-    if(window.InfluxBroPopup && window.InfluxBroPopup.show){
-      window.InfluxBroPopup.show('Intelligente Korrektur', previewText, {
-        actions: [
-          { label: 'Abbrechen', title: 'Abbrechen', onClick: ()=>resolve(false) },
-          { label: 'Uebernehmen', title: 'Uebernehmen', onClick: ()=>resolve(true) },
-        ],
-        copyText: previewText,
-        copyTitle: 'Vorschau kopieren',
-      });
-    }else{
-      resolve(confirm(previewText + '\n\nUebernehmen?'));
+  const base = currentFilters();
+  if(!base || !base.measurement || !base.field || (!base.entity_id && !base.friendly_name)){
+    err('Bitte zuerst eine gueltige Dashboard-Serie laden.');
+    return false;
+  }
+
+  const meta = {
+    trigger_page: 'dashboard',
+    trigger_source: 'raw',
+    trigger_action: 'smart_correction',
+    trigger_button: (k === 'copy_first') ? 'raw_copy_first_range' : 'raw_linear_range',
+    source_action: 'smart_correction',
+    detected_outlier_type: '',
+    strategy_id: (k === 'copy_first') ? 'raw_smart_copy_first' : 'raw_smart_linear',
+    strategy_description: (k === 'copy_first')
+      ? 'Ersetzt innere Werte durch den Startwert (Konstante).'
+      : 'Ersetzt innere Werte durch lineare Interpolation zwischen Start und Ende.',
+  };
+
+  const preview = await (async ()=>{
+    const payload0 = {
+      measurement: base.measurement,
+      field: base.field,
+      entity_id: base.entity_id,
+      friendly_name: base.friendly_name,
+      unit: unit || '',
+      force: false,
+      detected_outlier_type: meta.detected_outlier_type,
+      strategy_id: meta.strategy_id,
+      strategy_description: meta.strategy_description,
+      source_action: meta.source_action,
+      trigger_page: meta.trigger_page,
+      trigger_source: meta.trigger_source,
+      trigger_action: meta.trigger_action,
+      trigger_button: meta.trigger_button,
+      changes,
+    };
+    try{
+      const j = await api('./api/change_preview', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(payload0),
+      }, { key: 'change_preview:smart:' + meta.strategy_id, silent: true });
+      return (j && j.preview) ? j.preview : null;
+    }catch(e){
+      if(_isOutlierRuleBlock(e)){
+        const wantForce = await confirmOutlierRuleOverride({ time: 'multi', old_value: null, new_value: null }, e.payload);
+        if(!wantForce) return null;
+        const payload = Object.assign({}, payload0, { force: true, changes: changes.map(c=>Object.assign({}, c, { force: true })) });
+        const j2 = await api('./api/change_preview', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify(payload),
+        }, { key: 'change_preview:smart:' + meta.strategy_id + ':forced', silent: true });
+        const pv = (j2 && j2.preview) ? j2.preview : null;
+        if(pv) pv.__forced = true;
+        return pv;
+      }
+      throw e;
     }
-  });
+  })().catch((e)=>{ displayError(e); return null; });
+
+  if(!preview){
+    // user cancelled force override or preview failed
+    return false;
+  }
+
+  const want = await openChangePreviewDialog(preview, 'apply');
   if(!want) return false;
-  return await rawSmartApplyChanges(k, changes);
+  return await rawSmartApplyChanges(k, changes, { meta, force: !!preview.__forced });
 }
 
-async function rawSmartApplyChanges(kind, changes){
+async function rawSmartApplyChanges(kind, changes, opts){
   const base = currentFilters();
+  const o = opts && typeof opts === 'object' ? opts : {};
+  const meta = o.meta && typeof o.meta === 'object' ? o.meta : {};
+  const forceFromPreview = !!o.force;
   if(RAW_EDIT_MODE){ err('Bitte zuerst den Editiermodus verlassen.'); return false; }
   if(!base || !base.measurement || !base.field || (!base.entity_id && !base.friendly_name)){
     err('Bitte zuerst eine gueltige Dashboard-Serie laden.');
@@ -10509,13 +10610,17 @@ async function rawSmartApplyChanges(kind, changes){
         trigger_source: 'raw',
         trigger_action: 'smart_correction',
         trigger_button: (kind === 'copy_first') ? 'raw_copy_first_range' : 'raw_linear_range',
+        detected_outlier_type: String(meta.detected_outlier_type || ''),
+        strategy_id: String(meta.strategy_id || ''),
+        strategy_description: String(meta.strategy_description || ''),
+        source_action: String(meta.source_action || ''),
         changes: (changes || []).map((c)=>Object.assign({}, c, { force: !!force })),
       }),
     }, { silent: true });
   };
 
   try{
-    try{ await attempt(false); }
+    try{ await attempt(forceFromPreview); }
     catch(e){
       if(_isOutlierRuleBlock(e)){
         const wantForce = await confirmOutlierRuleOverride({ time: 'multi', old_value: null, new_value: null }, e.payload);
@@ -10634,6 +10739,8 @@ function updateRawToolbarState(){
       const disabled = !hasRows || _RAW_INFLIGHT || RAW_EDIT_MODE;
       if($rawLinearRange) $rawLinearRange.disabled = disabled;
       if($rawCopyFirstRange) $rawCopyFirstRange.disabled = disabled;
+      // Auto correction works on the selected row only
+      if($rawAutoCorrect) $rawAutoCorrect.disabled = disabled || !hasTarget;
       if($rawSmartStatus) $rawSmartStatus.textContent = _rawSmartStatusText();
     }catch(e){}
 
@@ -10961,6 +11068,200 @@ try{
 }catch(e){}
 
 try{
+  if($rawAutoCorrect) $rawAutoCorrect.addEventListener('click', async (ev)=>{
+    _stop(ev);
+    try{
+      if(RAW_EDIT_MODE){ err('Bitte zuerst den Editiermodus verlassen.'); return; }
+      const key = String(RAW_ROW_SELECTED_KEY || '').trim();
+      if(!key){ err('Bitte zuerst eine Raw-Zeile markieren.'); return; }
+      const base = currentFilters();
+      if(!base || !base.measurement || !base.field || (!base.entity_id && !base.friendly_name)){
+        err('Bitte zuerst eine gueltige Dashboard-Serie laden.');
+        return;
+      }
+      const rows = Array.isArray(RAW_ROWS) ? RAW_ROWS : [];
+      const idx = rows.findIndex(r => String(rowKey(r)) === key);
+      if(idx < 0){ err('Zeile nicht geladen.'); return; }
+
+      const cur = rows[idx];
+      const curMs = Date.parse(String(cur && cur.time ? cur.time : key));
+      if(!isFinite(curMs)){ err('Ungueltiger Zeitstempel.'); return; }
+
+      // Find nearest numeric neighbors
+      let prev = null;
+      for(let i=idx-1;i>=0;i--){
+        const v = toFiniteNumber(rows[i] && rows[i].value);
+        const t = Date.parse(String(rows[i] && rows[i].time ? rows[i].time : ''));
+        if(isFinite(t) && v !== null){ prev = { time: rows[i].time, ms: t, v }; break; }
+      }
+      let next = null;
+      for(let i=idx+1;i<rows.length;i++){
+        const v = toFiniteNumber(rows[i] && rows[i].value);
+        const t = Date.parse(String(rows[i] && rows[i].time ? rows[i].time : ''));
+        if(isFinite(t) && v !== null){ next = { time: rows[i].time, ms: t, v }; break; }
+      }
+      if(!prev && !next){ err('Keine Nachbarwerte im Raw-Fenster gefunden.'); return; }
+
+      let newVal = null;
+      if(prev && next && isFinite(next.ms - prev.ms) && next.ms > prev.ms){
+        const ratio = (curMs - prev.ms) / (next.ms - prev.ms);
+        newVal = prev.v + ratio * (next.v - prev.v);
+      }else if(prev){
+        newVal = prev.v;
+      }else if(next){
+        newVal = next.v;
+      }
+      if(!(newVal !== null && isFinite(Number(newVal)))){ err('Automatikkorrektur: Berechnung fehlgeschlagen.'); return; }
+
+      const oldVal = toFiniteNumber(cur.value);
+      const unit = _currentEntityUnit();
+      const allInt = (oldVal !== null && Number.isInteger(oldVal))
+        && (prev ? Number.isInteger(prev.v) : true)
+        && (next ? Number.isInteger(next.v) : true);
+      const decimals = allInt ? 0 : Math.max(0, Math.trunc(Number(UI_DECIMALS || 0)));
+      const newStr = (decimals === 0) ? String(Math.round(Number(newVal))) : Number(newVal).toFixed(decimals);
+
+      // No-op guard
+      try{
+        const nNum = Number(newStr);
+        if(oldVal !== null && isFinite(nNum) && nNum === Number(oldVal)){
+          err('Automatikkorrektur: keine Aenderung notwendig.');
+          return;
+        }
+      }catch(e){}
+
+      // Best-effort detected outlier type from current selection
+      let outType = '';
+      try{
+        const o = (RAW_OUTLIER_MAP && RAW_OUTLIER_MAP[key]) ? RAW_OUTLIER_MAP[key] : null;
+        if(o && Array.isArray(o.types) && o.types.length) outType = String(o.types[0] || '');
+      }catch(e){}
+
+      const meta = {
+        trigger_page: 'dashboard',
+        trigger_source: 'raw',
+        trigger_action: 'automatic_correction',
+        trigger_button: 'raw_auto_correct',
+        source_action: 'automatic_correction',
+        detected_outlier_type: outType,
+        strategy_id: 'auto_neighbor_interp',
+        strategy_description: 'Basis-Automatikkorrektur: ersetzt den selektierten Wert durch Interpolation aus den naechsten gueltigen Nachbarpunkten (im sichtbaren Raw-Fenster).',
+      };
+
+      const changes = [{
+        action: 'overwrite',
+        time: String(cur.time || key),
+        new_value: String(newStr),
+        decimals,
+        reason: 'Automatic correction: neighbor interpolation',
+        row_role: 'target',
+        unit: unit || '',
+      }];
+
+      let preview = null;
+      let forceFromPreview = false;
+      try{
+        const payload0 = {
+          measurement: base.measurement,
+          field: base.field,
+          entity_id: base.entity_id,
+          friendly_name: base.friendly_name,
+          unit: unit || '',
+          force: false,
+          detected_outlier_type: meta.detected_outlier_type,
+          strategy_id: meta.strategy_id,
+          strategy_description: meta.strategy_description,
+          source_action: meta.source_action,
+          trigger_page: meta.trigger_page,
+          trigger_source: meta.trigger_source,
+          trigger_action: meta.trigger_action,
+          trigger_button: meta.trigger_button,
+          changes,
+        };
+        try{
+          const j = await api('./api/change_preview', {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify(payload0),
+          }, { key: 'change_preview:auto_correct', silent: true });
+          preview = j && j.preview ? j.preview : null;
+        }catch(e){
+          if(_isOutlierRuleBlock(e)){
+            const wantForce = await confirmOutlierRuleOverride({ time: String(cur.time || key), old_value: oldVal, new_value: Number(newStr) }, e.payload);
+            if(!wantForce) return;
+            const payload = Object.assign({}, payload0, { force: true, changes: changes.map(c=>Object.assign({}, c, { force: true })) });
+            const j2 = await api('./api/change_preview', {
+              method:'POST',
+              headers:{'Content-Type':'application/json'},
+              body: JSON.stringify(payload),
+            }, { key: 'change_preview:auto_correct:forced', silent: true });
+            preview = j2 && j2.preview ? j2.preview : null;
+            forceFromPreview = true;
+          }else{
+            throw e;
+          }
+        }
+      }catch(e){
+        displayError(e);
+        return;
+      }
+      if(!preview){ err('Keine Vorschau verfuegbar.'); return; }
+      const want = await openChangePreviewDialog(preview, 'apply');
+      if(!want) return;
+
+      _rawStatusStart('Uebernehme Automatikkorrektur...');
+      _RAW_INFLIGHT = true;
+      updateRawToolbarState();
+      try{
+        const attempt = async (force)=>{
+          return await api('./api/apply_changes', {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({
+              confirm: true,
+              measurement: base.measurement,
+              field: base.field,
+              entity_id: base.entity_id,
+              friendly_name: base.friendly_name,
+              trigger_page: meta.trigger_page,
+              trigger_source: meta.trigger_source,
+              trigger_action: meta.trigger_action,
+              trigger_button: meta.trigger_button,
+              detected_outlier_type: String(meta.detected_outlier_type || ''),
+              strategy_id: String(meta.strategy_id || ''),
+              strategy_description: String(meta.strategy_description || ''),
+              source_action: String(meta.source_action || ''),
+              changes: changes.map((c)=>Object.assign({}, c, { force: !!force })),
+            }),
+          }, { silent: true });
+        };
+        try{ await attempt(forceFromPreview); }
+        catch(e){
+          if(_isOutlierRuleBlock(e)){
+            const wantForce = await confirmOutlierRuleOverride({ time: String(cur.time || key), old_value: oldVal, new_value: Number(newStr) }, e.payload);
+            if(!wantForce) return;
+            await attempt(true);
+          }else{
+            throw e;
+          }
+        }
+        await refreshAfterDataMutation({ rerunOutliers: true });
+        setRawSelectedKey(key);
+        ok('Automatikkorrektur uebernommen.');
+      }catch(e){
+        displayError(e);
+      }finally{
+        _RAW_INFLIGHT = false;
+        _rawStatusEnd(true, '');
+        updateRawToolbarState();
+      }
+    }catch(e){
+      displayError(e);
+    }
+  });
+}catch(e){}
+
+try{
   if($rawManual) $rawManual.addEventListener('click', async (ev)=>{
     _stop(ev);
     try{
@@ -10999,8 +11300,61 @@ async function applyStagedRawEdits(){
     new_value: String(it.new_value_str || ''),
     decimals: Number(it.decimals || 0),
     reason: 'Raw Edit Mode',
+    row_role: 'edit',
     unit: unit || '',
   }));
+
+  // Mandatory preview (Issue #395)
+  let preview = null;
+  let forceFromPreview = false;
+  try{
+    const payload0 = {
+      measurement: base.measurement,
+      field: base.field,
+      entity_id: base.entity_id,
+      friendly_name: base.friendly_name,
+      unit: unit || '',
+      force: false,
+      detected_outlier_type: '',
+      strategy_id: 'raw_edit_mode',
+      strategy_description: 'Wendet die aktuell im Editiermodus gestagten Werte an.',
+      source_action: 'manual_correction',
+      trigger_page: 'dashboard',
+      trigger_source: 'raw',
+      trigger_action: 'edit',
+      trigger_button: 'raw_apply',
+      changes,
+    };
+    try{
+      const j = await api('./api/change_preview', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(payload0),
+      }, { key: 'change_preview:raw_apply', silent: true });
+      preview = j && j.preview ? j.preview : null;
+    }catch(e){
+      if(_isOutlierRuleBlock(e)){
+        const wantForce = await confirmOutlierRuleOverride({ time: 'multi', old_value: null, new_value: null }, e.payload);
+        if(!wantForce) return false;
+        const payload = Object.assign({}, payload0, { force: true, changes: changes.map(c=>Object.assign({}, c, { force: true })) });
+        const j2 = await api('./api/change_preview', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify(payload),
+        }, { key: 'change_preview:raw_apply:forced', silent: true });
+        preview = j2 && j2.preview ? j2.preview : null;
+        forceFromPreview = true;
+      }else{
+        throw e;
+      }
+    }
+  }catch(e){
+    displayError(e);
+    return false;
+  }
+  if(!preview){ err('Keine Vorschau verfuegbar.'); return false; }
+  const want = await openChangePreviewDialog(preview, 'apply');
+  if(!want) return false;
 
   const attempt = async (force)=>{
     return await api('./api/apply_changes', {
@@ -11016,13 +11370,17 @@ async function applyStagedRawEdits(){
         trigger_source: 'raw',
         trigger_action: 'edit',
         trigger_button: 'raw_apply',
+        detected_outlier_type: '',
+        strategy_id: 'raw_edit_mode',
+        strategy_description: 'Wendet die aktuell im Editiermodus gestagten Werte an.',
+        source_action: 'manual_correction',
         changes: changes.map((c)=>Object.assign({}, c, { force: !!force })),
       })
     }, { silent: true });
   };
 
   try{
-    try{ await attempt(false); }
+    try{ await attempt(forceFromPreview); }
     catch(e){
       if(_isOutlierRuleBlock(e)){
         const wantForce = await confirmOutlierRuleOverride({ time: 'multi', old_value: null, new_value: null }, e.payload);
@@ -11315,38 +11673,28 @@ try{
         const newest = entries[0] || {};
         const bid = String(newest.change_block_id || '').trim();
         if(bid){
-          const ids = _rawHistoryBlockIds(bid);
-          if(!ids.length){ err('Undo-Block nicht vollstaendig geladen.'); return; }
-          const bKind = String(newest.change_block_kind || newest.trigger_button || '').trim();
-          const cnt = (newest.change_block_size !== null && newest.change_block_size !== undefined) ? Number(newest.change_block_size) : ids.length;
-          const txt = [
-            'Raw Undo (Block)',
-            '',
-            `Block: ${bKind || '-'}`,
-            `Aenderungen: ${isFinite(cnt) ? Math.trunc(cnt) : ids.length}`,
-            '',
-            'Soll der gesamte Block rueckgaengig gemacht werden?'
-          ].join('\n');
-          let want = false;
-          if(window.InfluxBroPopup && window.InfluxBroPopup.show){
-            want = await new Promise((resolve)=>{
-              window.InfluxBroPopup.show('Raw Undo', txt, {
-                actions: [
-                  { label: 'Abbrechen', title: 'Abbrechen', onClick: ()=>resolve(false) },
-                  { label: 'OK', title: 'OK', onClick: ()=>resolve(true) },
-                ],
-                copyText: txt,
-                copyTitle: 'Zwischenablage',
-              });
-            });
-          }else{
-            want = confirm(txt);
-          }
+          const base = currentFilters();
+          const undoPrev = await api('./api/change_blocks/undo_preview', {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({
+              change_block_id: bid,
+              measurement: base.measurement,
+              field: base.field,
+              entity_id: base.entity_id,
+              friendly_name: base.friendly_name,
+            }),
+          }, { key: 'undo_preview:' + bid, silent: true });
+          const pv = undoPrev && undoPrev.preview ? undoPrev.preview : null;
+          if(!pv || !Array.isArray(pv.rollback_ids) || !pv.rollback_ids.length){ err('Undo-Vorschau nicht verfuegbar.'); return; }
+
+          const want = await openChangePreviewDialog(pv, 'undo');
           if(!want) return;
+
           await api('./api/history_rollback', {
             method:'POST',
             headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({ confirm: true, ids })
+            body: JSON.stringify({ confirm: true, ids: pv.rollback_ids })
           });
           await refreshAfterDataMutation({ rerunOutliers: true });
           setRawSelectedKey(key);
@@ -12800,6 +13148,9 @@ try{
 
 let _APPLY_DIALOG_RESOLVE = null;
 
+let _CHANGE_PREVIEW_RESOLVE = null;
+let _CHANGE_PREVIEW_LAST = null;
+
 function _buildApplyPreviewQuery(base, dirty){
   try{
     const ms = (dirty || []).map(e => Date.parse(String(e.time || ""))).filter(t => isFinite(t));
@@ -12837,6 +13188,130 @@ function closeApplyDialog(want){
   _APPLY_DIALOG_RESOLVE = null;
   try{ if(typeof r === "function") r(!!want); }catch(e){}
 }
+
+function closeChangePreviewDialog(want){
+  try{ if($changePreviewDialog) $changePreviewDialog.style.display = 'none'; }catch(e){}
+  const r = _CHANGE_PREVIEW_RESOLVE;
+  _CHANGE_PREVIEW_RESOLVE = null;
+  _CHANGE_PREVIEW_LAST = null;
+  try{ if(typeof r === 'function') r(!!want); }catch(e){}
+}
+
+function _fmtStrategyLine(preview){
+  try{
+    const p = preview || {};
+    const parts = [];
+    const ot = String(p.detected_outlier_type || '').trim();
+    const sid = String(p.strategy_id || '').trim();
+    if(ot) parts.push('Typ: ' + ot);
+    if(sid) parts.push('Strategie: ' + sid);
+    return parts.join(' | ');
+  }catch(e){
+    return '';
+  }
+}
+
+function openChangePreviewDialog(preview, mode){
+  const p = preview || {};
+  const m = String(mode || 'apply');
+  return new Promise((resolve)=>{
+    _CHANGE_PREVIEW_RESOLVE = resolve;
+    _CHANGE_PREVIEW_LAST = { preview: p, mode: m };
+
+    try{
+      if($changePreviewTitle) $changePreviewTitle.textContent = (m === 'undo') ? 'Undo Vorschau' : 'Aenderungsvorschau';
+    }catch(e){}
+
+    try{
+      const s = p.series || {};
+      const meas = String(s.measurement || '').trim();
+      const fld = String(s.field || '').trim();
+      const eid = String(s.entity_id || '').trim();
+      const fn = String(s.friendly_name || '').trim();
+      const tr = p.time_range || {};
+      const t0 = tr.start ? fmtTs(String(tr.start)) : '';
+      const t1 = tr.stop ? fmtTs(String(tr.stop)) : '';
+      const cnt = p.counts && p.counts.total !== undefined ? String(p.counts.total) : '';
+      const series = (meas || fld) ? (meas + '/' + fld) : '';
+      const tags = (eid || fn) ? ((eid ? ('entity_id=' + eid) : '') + (eid && fn ? ' ' : '') + (fn ? ('friendly_name=' + fn) : '')) : '';
+      const timeTxt = (t0 && t1) ? (' | Zeitraum: ' + t0 + ' bis ' + t1) : '';
+      const head = [
+        series ? ('Serie: ' + series) : '',
+        tags ? ('Tags: ' + tags) : '',
+        cnt ? ('Aenderungen: ' + cnt) : '',
+      ].filter(Boolean).join(' | ');
+      if($changePreviewMeta) $changePreviewMeta.textContent = (head + timeTxt).trim();
+    }catch(e){
+      try{ if($changePreviewMeta) $changePreviewMeta.textContent = ''; }catch(x){}
+    }
+
+    try{
+      const line1 = _fmtStrategyLine(p);
+      const line2 = String(p.strategy_description || '').trim();
+      const parts = [];
+      if(line1) parts.push(line1);
+      if(line2) parts.push(line2);
+      if($changePreviewDesc) $changePreviewDesc.textContent = parts.join('\n');
+    }catch(e){
+      try{ if($changePreviewDesc) $changePreviewDesc.textContent = ''; }catch(x){}
+    }
+
+    try{
+      if($changePreviewOk) $changePreviewOk.textContent = (m === 'undo') ? 'OK rueckgaengig machen' : 'OK ausfuehren';
+    }catch(e){}
+
+    try{
+      if($changePreviewBody){
+        $changePreviewBody.innerHTML = '';
+        const rows = Array.isArray(p.rows) ? p.rows : [];
+        const max = 800;
+        const slice = rows.length > max ? rows.slice(0, max) : rows;
+        slice.forEach((r)=>{
+          const tr = document.createElement('tr');
+          const action = String(r.action || '').trim().toLowerCase();
+          const oldV = (r.old_value !== undefined) ? r.old_value : (r.before_value !== undefined ? r.before_value : null);
+          const newV = (r.new_value !== undefined) ? r.new_value : (r.after_value !== undefined ? r.after_value : null);
+          const changed = (action === 'delete') || (oldV !== newV);
+          if(action === 'delete') tr.classList.add('ib_change_row_delete');
+          else if(changed) tr.classList.add('ib_change_row_changed');
+          else tr.classList.add('ib_change_row_same');
+
+          const tdT = document.createElement('td'); tdT.textContent = fmtTs(String(r.timestamp || ''));
+          const tdA = document.createElement('td'); tdA.textContent = action || '-'; tdA.className = 'ib_change_cell_action';
+          const tdO = document.createElement('td'); tdO.textContent = (oldV === null || oldV === undefined) ? '-' : fmtNum(oldV);
+          const tdN = document.createElement('td'); tdN.textContent = (action === 'delete') ? '' : ((newV === null || newV === undefined) ? '-' : fmtNum(newV));
+          const tdR = document.createElement('td'); tdR.textContent = String(r.row_role || '').trim();
+          const tdWhy = document.createElement('td'); tdWhy.textContent = String(r.change_reason || '').trim(); tdWhy.className = 'ib_change_cell_reason';
+          tr.appendChild(tdT); tr.appendChild(tdA); tr.appendChild(tdO); tr.appendChild(tdN); tr.appendChild(tdR); tr.appendChild(tdWhy);
+          $changePreviewBody.appendChild(tr);
+        });
+
+        if(rows.length > max){
+          const tr = document.createElement('tr');
+          const td = document.createElement('td');
+          td.colSpan = 6;
+          td.className = 'muted';
+          td.textContent = `Hinweis: Vorschau gekuerzt (${max} von ${rows.length} Zeilen).`;
+          tr.appendChild(td);
+          $changePreviewBody.appendChild(tr);
+        }
+      }
+    }catch(e){}
+
+    try{ if($changePreviewDialog) $changePreviewDialog.style.display = 'flex'; }catch(e){}
+  });
+}
+
+try{
+  if($changePreviewClose) $changePreviewClose.addEventListener('click', ()=>closeChangePreviewDialog(false));
+  if($changePreviewCancel) $changePreviewCancel.addEventListener('click', ()=>closeChangePreviewDialog(false));
+  if($changePreviewOk) $changePreviewOk.addEventListener('click', ()=>closeChangePreviewDialog(true));
+  if($changePreviewDialog) $changePreviewDialog.addEventListener('click', (ev)=>{
+    try{
+      if(ev && ev.target === $changePreviewDialog) closeChangePreviewDialog(false);
+    }catch(e){}
+  });
+}catch(e){}
 
 function openApplyDialog(dirty){
   return new Promise((resolve) => {
