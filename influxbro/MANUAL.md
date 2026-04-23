@@ -823,6 +823,8 @@ Neu:
 - Einstellungen: Neuer Block `Default / Import / Export`.
   - `Export`: laedt die aktuellen Einstellungen als JSON-Datei herunter.
   - `Import`: liest eine JSON-Datei ein und uebernimmt die enthaltenen Werte (unbekannte Keys werden ignoriert; serverseitige Validierung bleibt aktiv).
+    - Hinweis: Der Standard-Export enthaelt nur portable, persistente `/config`-Einstellungen. Fluechtige UI-Zustaende (z.B. alte `ui_open_*` Marker) werden nicht exportiert.
+    - `settings_layout` (Einstellungen-Organizer: Zuordnungen) ist Teil des Exports/Imports.
   - `Default`: setzt alle Einstellungen auf Defaultwerte zurueck und speichert sie.
   - Unter jedem Eingabefeld wird zusaetzlich der Defaultwert als `Default = ...` angezeigt.
 

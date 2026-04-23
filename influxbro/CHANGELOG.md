@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.12.428
+
+### Enhancement
+
+- Einstellungen Export/Import: deterministischer Key-Satz (nur portable `/config`-Settings), fehlende sichtbare Keys (Navigationshilfe, Tooltip-Doc-Mode, Log-Farben) sind enthalten; interne/transiente Keys (z.B. `ui_open_*`, `backup_migrated_to_config`) werden nicht mehr exportiert. ([#393](https://github.com/thomas682/HA-Addons/issues/393))
+
+### Maintenance
+
+- Tests: `.venv/bin/python -m py_compile influxbro/app/app.py`, `.venv/bin/python -m pytest -q tests/test_api_config_io.py`
+
 ## 1.12.427
 
 ### Enhancement

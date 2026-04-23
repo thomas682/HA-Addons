@@ -1309,6 +1309,10 @@ DEFAULT_CFG = {
     "ui_page_search_highlight_color": "#FF9900",
     "ui_page_search_highlight_width_px": 5,
     "ui_page_search_highlight_duration_ms": 8000,
+    # Navigation helper (history highlight)
+    "ui_nav_helper_history_limit": 10,
+    "ui_nav_helper_highlight_color": "#FF9900",
+    "ui_nav_helper_highlight_duration_ms": 1400,
     "ui_status_font_px": 10,
     "ui_status_show_sysinfo": False,
     "ui_status_bar_height_px": 38,
@@ -1371,6 +1375,10 @@ DEFAULT_CFG = {
     # Tooltips
     "ui_tooltips_enabled": True,
 
+    # Tooltip documentation open mode (portable setting; exported/imported)
+    # Allowed: new_tab, same_tab, modal
+    "ui_tooltip_doc_open_mode": "new_tab",
+
     # Backups (must live under /config, /data or /share)
     "backup_dir": str(DEFAULT_BACKUP_DIR),
     # Backup/Restore targets (optional). If set, Backup/Restore UIs can switch between targets.
@@ -1425,6 +1433,12 @@ DEFAULT_CFG = {
     "log_http_requests": False,
     "log_influx_queries": False,
     "log_cache_usage": False,
+
+    # UI log colors (used in client log view)
+    "ui_log_error_bg": "#FFE0E0",
+    "ui_log_error_fg": "#B00020",
+    "ui_log_warn_bg": "#FFF8E1",
+    "ui_log_warn_fg": "#B07000",
 
     # Tracing / Performanceanalyse (persistent action log)
     "trace_enabled": True,
@@ -8328,7 +8342,25 @@ def api_config_export():
     """Exports the current settings as a JSON file."""
 
     cfg = load_cfg()
-    txt = json.dumps(cfg, indent=2, sort_keys=True, ensure_ascii=True) + "\n"
+
+    # Export only portable, user-facing settings. Never export internal/transient keys.
+    exclude_keys = {
+        # internal one-time migration marker
+        "backup_migrated_to_config",
+    }
+    exclude_prefixes = (
+        # transient UI open state keys from older versions
+        "ui_open_",
+    )
+    out: dict[str, Any] = {}
+    for k in sorted(DEFAULT_CFG.keys()):
+        if k in exclude_keys:
+            continue
+        if any(str(k).startswith(p) for p in exclude_prefixes):
+            continue
+        out[k] = cfg.get(k)
+
+    txt = json.dumps(out, indent=2, sort_keys=True, ensure_ascii=True) + "\n"
     resp = make_response(txt)
     resp.headers["Content-Type"] = "application/json; charset=utf-8"
     resp.headers["Content-Disposition"] = "attachment; filename=\"influxbro_settings.json\""
@@ -17075,6 +17107,8 @@ def api_set_config():
     _apply_ui_font_groups(cfg)
     _clamp_int("ui_page_search_highlight_width_px", 5, 1, 12)
     _clamp_int("ui_page_search_highlight_duration_ms", 8000, 200, 10000)
+    _clamp_int("ui_nav_helper_history_limit", 10, 1, 100)
+    _clamp_int("ui_nav_helper_highlight_duration_ms", 1400, 200, 10000)
     _clamp_int("ui_status_bar_height_px", 38, 28, 90)
     _clamp_int("ui_table_row_height_px", 13, 9, 60)
     _clamp_int("ui_table_min_empty_rows", 5, 0, 50)
@@ -17153,6 +17187,20 @@ def api_set_config():
     _clamp_color("ui_table_header_bg", "#0B1F3A")
     _clamp_color("ui_table_header_fg", "#FFFFFF")
 
+    _clamp_color("ui_log_error_bg", "#FFE0E0")
+    _clamp_color("ui_log_error_fg", "#B00020")
+    _clamp_color("ui_log_warn_bg", "#FFF8E1")
+    _clamp_color("ui_log_warn_fg", "#B07000")
+
+    # Tooltip doc open mode
+    try:
+        m = str(cfg.get("ui_tooltip_doc_open_mode") or "").strip()
+    except Exception:
+        m = ""
+    if m not in ("new_tab", "same_tab", "modal"):
+        m = "new_tab"
+    cfg["ui_tooltip_doc_open_mode"] = m
+
     # Settings layout overrides (global UI structure for /config).
     # Keep the structure small and strictly typed (no HTML).
     try:
@@ -17171,6 +17219,7 @@ def api_set_config():
     _clamp_color("ui_section_level3_bg", "#B8B17F")
     _clamp_color("ui_section_level3_fg", "#FFFFFF")
     _clamp_color("ui_page_search_highlight_color", "#FF9900")
+    _clamp_color("ui_nav_helper_highlight_color", "#FF9900")
     _clamp_color("ui_status_bar_bg", "#FFFFFF")
     _clamp_color("ui_status_bar_fg", "#111111")
     # Section fonts are derived from grouped UI sizes.

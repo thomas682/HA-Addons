@@ -354,7 +354,7 @@
           </div>
 
           <div class="param_row">
-            <div class="param_label">Tooltip Doku oeffnen<span class="param_hint">Wie der Dokumentations-Button im Tooltip oeffnet. Default: neuer Tab. (UI-Profil)</span></div>
+            <div class="param_label">Tooltip Doku oeffnen<span class="param_hint">Wie der Dokumentations-Button im Tooltip oeffnet. Default: neuer Tab.</span></div>
             <div class="param_control">
               <select id="ui_tooltip_doc_open_mode" data-ui="config_settings.sel_ui_tooltip_doc_open_mode" title="ui.tooltip_doc_open_mode">
                 <option value="new_tab">Neuer Tab (Default)</option>
@@ -1577,6 +1577,7 @@ const ids = [
   ,"ui_sel_auto_width","ui_sel_width_px"
   ,"jobs_max_runtime_seconds","ui_job_color_running","ui_job_color_done","ui_job_color_error","ui_job_color_cancelled"
   ,"ui_tooltips_enabled"
+  ,"ui_tooltip_doc_open_mode"
   ,"restore_preview_lines"
   ,"import_measurement_transforms"
   ,"log_to_file","log_profile","log_max_mb","log_backup_count","log_max_age_days","bugreport_log_history_hours","log_http_requests"
@@ -1614,8 +1615,6 @@ const $cfgImportFile = document.getElementById('cfg_import_file');
 const $cfgDefaults = document.getElementById('cfg_defaults');
 let CFG_DEFAULTS = null;
 
-// UI-State backed settings (profile-based)
-const UI_DOC_OPEN_MODE_KEY = 'influxbro.ui.tooltip_doc_open_mode';
 const $uiDocOpenMode = document.getElementById('ui_tooltip_doc_open_mode');
 
 // Iconbilder (SVG overrides per data-ui, stored in UI profile)
@@ -2992,7 +2991,7 @@ async function load(){
   try{ applySelAutoUi(); }catch(e){}
   try{ await loadSelComputedWidth(); }catch(e){ reportConfigError('Settings loadSelComputedWidth failed', { stage: 'loadSelComputedWidth' }, e && e.stack ? e.stack : String(e || '')); }
 
-  try{ await loadUiDocOpenMode(); }catch(e){}
+  // ui_tooltip_doc_open_mode is now a portable config setting (no UI-state key).
 
   try{ await loadShareMountsUi(); }catch(e){}
 
@@ -3008,31 +3007,7 @@ async function load(){
   if(card) card.style.display = "none";
 }
 
-async function loadUiDocOpenMode(){
-  try{
-    if(!$uiDocOpenMode) return;
-    const j = await api('./api/ui_state?prefix=' + encodeURIComponent(UI_DOC_OPEN_MODE_KEY));
-    const items = (j && j.items) ? j.items : {};
-    const v = String(items[UI_DOC_OPEN_MODE_KEY] || '').trim();
-    if(v === 'same_tab' || v === 'new_tab' || v === 'modal') $uiDocOpenMode.value = v;
-    else $uiDocOpenMode.value = 'new_tab';
-  }catch(e){
-    try{ if($uiDocOpenMode) $uiDocOpenMode.value = 'new_tab'; }catch(x){}
-  }
-}
 
-async function saveUiDocOpenMode(){
-  try{
-    if(!$uiDocOpenMode) return;
-    const v = String($uiDocOpenMode.value || '').trim();
-    const out = (v === 'same_tab' || v === 'new_tab' || v === 'modal') ? v : 'new_tab';
-    await api('./api/ui_state/set', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ key: UI_DOC_OPEN_MODE_KEY, value: out })
-    });
-  }catch(e){}
-}
 
 function applySelAutoUi(){
   try{
@@ -3321,16 +3296,14 @@ try{
     if(!id) return;
     // skip non-setting/operational controls
     if(['test','find_yaml','read_yaml','admin_token_test','cfg_import_file','icons_search','icons_area','icons_only_overrides','icons_reload','icon_svg_text'].includes(id)) return;
-    // skip UI-state backed settings (not part of /api/config)
-    if(['ui_tooltip_doc_open_mode'].includes(id)) return;
+    // ui_tooltip_doc_open_mode is part of /api/config
     // change is reliable for selects/checkboxes; input provides immediate save for text/number fields.
     elm.addEventListener('change', ()=>{ scheduleAutoSave(); });
     elm.addEventListener('input', ()=>{ scheduleAutoSave(); });
   });
 }catch(e){}
 
-// UI-state backed settings
-try{ if($uiDocOpenMode) $uiDocOpenMode.addEventListener('change', ()=>{ saveUiDocOpenMode().catch(()=>{}); }); }catch(e){}
+
 
 function _cfgSectionNote(text){
   const wrap = document.createElement('div');

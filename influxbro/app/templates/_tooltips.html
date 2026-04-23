@@ -711,19 +711,11 @@
     const enabled = true;
     if(!enabled) return;
 
-    const DOC_STATE_KEY = 'influxbro.ui.tooltip_doc_open_mode';
-    let DOC_OPEN_MODE = 'new_tab';
-
-    async function _loadDocOpenMode(){
-      try{
-        const r = await fetch('./api/ui_state?prefix=' + encodeURIComponent(DOC_STATE_KEY));
-        const j = await r.json().catch(()=>null);
-        const items = (j && j.items) ? j.items : {};
-        const v = String(items[DOC_STATE_KEY] || '').trim();
-        if(v === 'same_tab' || v === 'new_tab' || v === 'modal') DOC_OPEN_MODE = v;
-      }catch(e){}
-    }
-    _loadDocOpenMode().catch(()=>{});
+    // Portable setting: comes from /api/config and is exported/imported.
+    let DOC_OPEN_MODE = '{{ (cfg.get("ui_tooltip_doc_open_mode") or "new_tab") if cfg else "new_tab" }}';
+    try{
+      if(DOC_OPEN_MODE !== 'new_tab' && DOC_OPEN_MODE !== 'same_tab' && DOC_OPEN_MODE !== 'modal') DOC_OPEN_MODE = 'new_tab';
+    }catch(e){ DOC_OPEN_MODE = 'new_tab'; }
 
     // Only enable on hover-capable pointer devices.
     try{
