@@ -4104,7 +4104,7 @@ def _analysis_cache_key(
         "friendly_name": str(friendly_name or "").strip() or None,
         "start": str(start_iso or "").strip(),
         "stop": str(stop_iso or "").strip(),
-        "search_types": ["bounds", "counter", "decrease", "fault_phase", "null", "zero"],
+        "search_types": ["bounds", "counter", "decrease", "counterreset", "fault_phase", "null", "zero"],
     }
 
 
@@ -4371,7 +4371,7 @@ def _analysis_cache_store_segment(
             "last_patch_change_start": patch_meta.get("change_start"),
             "last_patch_change_stop": patch_meta.get("change_stop"),
             "checkpoint_count": len(checkpoints if isinstance(checkpoints, list) else []),
-            "search_types": ["bounds", "counter", "decrease", "fault_phase", "null", "zero"],
+            "search_types": ["bounds", "counter", "decrease", "counterreset", "fault_phase", "null", "zero"],
         }
         _analysis_cache_write_meta(meta)
         LOG.info(
@@ -5126,6 +5126,7 @@ def _analysis_type_counts(rows: list[dict[str, Any]]) -> dict[str, int]:
     counts = {
         "counter": 0,
         "decrease": 0,
+        "counterreset": 0,
         "bounds": 0,
         "fault_phase": 0,
         "null": 0,
@@ -5483,7 +5484,7 @@ def _analysis_cache_fetch_segment_result(
         "friendly_name": str(friendly_name or ""),
         "start": str(start_iso or ""),
         "stop": str(stop_iso or ""),
-        "search_types": ["bounds", "counter", "decrease", "fault_phase", "null", "zero"],
+        "search_types": ["bounds", "counter", "decrease", "counterreset", "fault_phase", "null", "zero"],
         "limit": int(cfg.get("ui_raw_outlier_search_limit", 5000) or 5000),
         "return_checkpoints": bool(return_checkpoints),
         "checkpoint_seconds": _analysis_cache_checkpoint_interval_seconds(cfg),
@@ -23645,8 +23646,13 @@ def api_outliers():
     bounds_enabled = "bounds" in search_types or bool(body.get("bounds_enabled", False))
     min_v = body.get("min")
     max_v = body.get("max")
-    counter_enabled = "counter" in search_types or bool(body.get("counter_enabled", False))
-    counter_decrease = "decrease" in search_types or bool(body.get("counter_decrease", True))
+    counter_enabled = (
+        ("counter" in search_types)
+        or ("decrease" in search_types)
+        or ("counterreset" in search_types)
+        or bool(body.get("counter_enabled", False))
+    )
+    counter_decrease = ("decrease" in search_types) or ("counterreset" in search_types) or bool(body.get("counter_decrease", True))
     counter_max_step = "counter" in search_types or bool(body.get("counter_max_step", True))
     fault_phase_enabled = "fault_phase" in search_types or bool(body.get("fault_phase_enabled", False))
 
@@ -23838,6 +23844,13 @@ def api_outliers():
     prev_time_dt: datetime | None = None
     last_time_iso: str | None = None
     counter_base_val: float | None = body.get("counter_base_value")
+
+    # Counterreset detection (Issue #390): track fault/spike points and confirm a reset
+    # only if a plausible new, smaller, monotonic sequence starts after a fault or strong drop.
+    counter_last_plausible: float | None = prev_val
+    counter_fault_row_idxs: list[int] = []
+    counter_fault_seen: bool = False
+    counterreset_candidate: dict[str, Any] | None = None
     try:
         pt = body.get("prev_time")
         if pt is not None and str(pt).strip() != "":
@@ -23894,6 +23907,7 @@ def api_outliers():
 
     def _scan_span(qapi: Any, a: datetime, b: datetime, prev: float | None) -> float | None:
         nonlocal scanned, rows, last_time_iso, counter_base_val, prev_time_dt, point_index, next_checkpoint_dt, win_before_buf
+        nonlocal counter_last_plausible, counter_fault_row_idxs, counter_fault_seen, counterreset_candidate
 
         span_s = (b - a).total_seconds()
         chunk_t0 = time.monotonic()
@@ -24038,6 +24052,44 @@ from(bucket: "{cfg["bucket"]}")
                 if max_step is not None and d > float(max_step):
                     reasons.append(f"step > {max_step} {unit or ''}".strip())
 
+            # Detect common counter special values (often represent rollover/invalid spikes).
+            # Keep it as a counter-type reason so it shows up clearly.
+            if counter_enabled and finite:
+                try:
+                    if fv in (4294967295.0, 65535.0, -1.0):
+                        if "counter special value" not in reasons:
+                            reasons.append("counter special value")
+                except Exception:
+                    pass
+
+            # Prepare Counterreset candidate start decision (applied after row append, so we can mutate it later).
+            reset_candidate_start = False
+            reset_before_value: float | None = None
+            if counter_enabled and finite and iso and prev_for_delta is not None and counter_decrease:
+                try:
+                    # The best "before" anchor is the last plausible counter value (not a fault/spike).
+                    reset_before_value = counter_last_plausible if counter_last_plausible is not None else float(prev_for_delta)
+                    if reset_before_value is not None and fv < float(reset_before_value):
+                        fault_or_spike = counter_fault_seen or any(r.startswith("step >") for r in reasons) or ("counter special value" in reasons)
+                        strong_drop = False
+                        try:
+                            drop = float(reset_before_value) - fv
+                            if max_step is not None:
+                                strong_drop = drop > (float(max_step) * 3.0)
+                            else:
+                                strong_drop = drop > (abs(float(reset_before_value)) * 0.2)
+                        except Exception:
+                            strong_drop = False
+                        significantly_lower = False
+                        try:
+                            significantly_lower = fv <= (float(reset_before_value) * 0.9)
+                        except Exception:
+                            significantly_lower = False
+                        if fault_or_spike or (strong_drop and significantly_lower):
+                            reset_candidate_start = True
+                except Exception:
+                    reset_candidate_start = False
+
             if fault_phase_enabled:
                 phase_reasons: list[str] = []
                 if not finite:
@@ -24122,8 +24174,10 @@ from(bucket: "{cfg["bucket"]}")
                     elif "< min" in r or "> max" in r:
                         type_labels.append("bounds")
                     elif "counter decrease" in r:
-                        type_labels.append("counter")
+                        type_labels.append("decrease")
                     elif "step >" in r:
+                        type_labels.append("counter")
+                    elif "counter special value" in r:
                         type_labels.append("counter")
                     elif "fault_active" in r or "recovering" in r:
                         type_labels.append("fault_phase")
@@ -24178,8 +24232,122 @@ from(bucket: "{cfg["bucket"]}")
                         "before_count": int(before_count),
                     })
                 rows.append(row_obj)
+
+                # Track counter faults for potential Counterreset confirmation.
+                try:
+                    if counter_enabled and iso:
+                        is_fault = any(rr.startswith("step >") for rr in reasons) or ("counter special value" in reasons)
+                        if is_fault:
+                            counter_fault_seen = True
+                            counter_fault_row_idxs.append(len(rows) - 1)
+                except Exception:
+                    pass
+
+                # Start Counterreset candidate on a decrease point.
+                try:
+                    if reset_candidate_start and counter_enabled and iso and reset_before_value is not None:
+                        counterreset_candidate = {
+                            "start_time": iso,
+                            "before_value": float(reset_before_value),
+                            "start_value": float(fv),
+                            "last_value": float(fv),
+                            "ok_streak": 1,
+                            "outlier_row_idx": int(len(rows) - 1),
+                            "fault_row_idxs": list(counter_fault_row_idxs),
+                        }
+                except Exception:
+                    pass
+
                 if len(rows) >= limit:
                     return fv
+
+            # Confirm/cancel Counterreset candidate using subsequent points (including non-outlier points).
+            try:
+                cand = counterreset_candidate
+                if cand and counter_enabled and iso and iso != str(cand.get("start_time") or ""):
+                    before_val = float(cand.get("before_value"))
+                    last_val = float(cand.get("last_value"))
+                    ok = True
+
+                    # Any additional counter decrease before confirmation breaks the pattern.
+                    if any(rr == "counter decrease" for rr in reasons):
+                        ok = False
+                    # Counter faults/spikes after the supposed reset start also break the pattern.
+                    if any(rr.startswith("step >") for rr in reasons) or ("counter special value" in reasons):
+                        ok = False
+                    # Must be finite and monotonic non-decreasing from the reset start.
+                    if not finite or fv < last_val:
+                        ok = False
+                    # Step size must stay plausible.
+                    if ok and max_step is not None:
+                        try:
+                            if (fv - last_val) > float(max_step):
+                                ok = False
+                        except Exception:
+                            pass
+                    # Must not return close to the previous (pre-reset) level.
+                    if ok and max_step is not None:
+                        try:
+                            if fv >= (before_val - float(max_step)):
+                                ok = False
+                        except Exception:
+                            pass
+
+                    if not ok:
+                        counterreset_candidate = None
+                    else:
+                        cand["ok_streak"] = int(cand.get("ok_streak") or 0) + 1
+                        cand["last_value"] = float(fv)
+                        # Confirm after 3 plausible points (reset point + two following)
+                        if int(cand.get("ok_streak") or 0) >= 3:
+                            ridx = int(cand.get("outlier_row_idx") or -1)
+                            if 0 <= ridx < len(rows) and isinstance(rows[ridx], dict):
+                                r0 = rows[ridx]
+                                cur_types = list(r0.get("types") or []) if isinstance(r0.get("types"), list) else []
+                                # Replace plain decrease with counterreset
+                                cur_types = [t for t in cur_types if t != "decrease"]
+                                if "counterreset" not in cur_types:
+                                    cur_types.insert(0, "counterreset")
+                                r0["types"] = cur_types
+                                r0["counterreset_role"] = "reset_begin"
+                                r0["counterreset_before_value"] = before_val
+                                r0["counterreset_begin_time"] = str(cand.get("start_time") or "")
+                                # Make the type visible in UIs that show the reason string.
+                                r0["reason"] = "Counterreset (Reset-Beginn)"
+
+                            # Tag previously seen fault/spike outliers as part of this reset.
+                            for fi in (cand.get("fault_row_idxs") or []):
+                                try:
+                                    i0 = int(fi)
+                                except Exception:
+                                    continue
+                                if 0 <= i0 < len(rows) and isinstance(rows[i0], dict):
+                                    rr = rows[i0]
+                                    tts = list(rr.get("types") or []) if isinstance(rr.get("types"), list) else []
+                                    if "counterreset" not in tts:
+                                        tts.insert(0, "counterreset")
+                                    rr["types"] = tts
+                                    rr["counterreset_role"] = "pre_fault"
+                                    rr["counterreset_before_value"] = before_val
+                                    rr["counterreset_begin_time"] = str(cand.get("start_time") or "")
+                                    rr["reason"] = "Counterreset (Vorfehler)"
+
+                            counterreset_candidate = None
+                            counter_fault_seen = False
+                            counter_fault_row_idxs = []
+            except Exception:
+                pass
+
+            # Update last plausible counter value (resets fault tracking after a clean point).
+            try:
+                if counter_enabled and finite:
+                    counter_reasons = any((rr == "counter decrease" or rr.startswith("step >") or rr == "counter special value") for rr in reasons)
+                    if not counter_reasons:
+                        counter_last_plausible = float(fv)
+                        counter_fault_seen = False
+                        counter_fault_row_idxs = []
+            except Exception:
+                pass
 
             if compute_windows and iso:
                 # Update before-buffer after processing this center point.

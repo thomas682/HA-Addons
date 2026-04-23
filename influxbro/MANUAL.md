@@ -411,6 +411,7 @@ Die fruehere Bearbeitungsliste wurde entfernt. Korrekturen erfolgen direkt in de
   - `Loeschen`: DB-Punkt loeschen (mit Bestaetigung)
   - `Intelligente Korrektur: Linearer Reihe`: Button klicken, dann Startwert und Endwert in der Raw-Tabelle anklicken. Danach erscheint eine Vorschau-Tabelle; die inneren Werte werden per linearer Interpolation ueberschrieben (Start/Ende bleiben unveraendert).
   - `Intelligente Korrektur: Erstwert kopieren`: Button klicken, dann Startwert und Endwert anklicken. Danach Vorschau; die inneren Werte werden mit dem Startwert ueberschrieben (Start/Ende bleiben unveraendert).
+  - `Automatikkorrektur`: zeigt immer eine Vorschau. Standard: ersetzt den selektierten Wert per Nachbar-Interpolation (im sichtbaren Raw-Fenster). Bei erkanntem `Counterreset` werden die pre-fault Spike-Werte im sichtbaren Raw-Fenster auf den letzten plausiblen Wert vor dem Reset gesetzt (Reset-Beginn bleibt unveraendert).
   - `Undo`: letzte direkte Raw-Aenderung rueckgaengig machen (best-effort). Bei Block-Aenderungen (Intelligente Korrektur) wird der gesamte Block rueckgaengig gemacht, wenn du eine der geaenderten inneren Zeilen selektierst.
 - `Abbruch` in der Raw-Toolbar bricht laufende Raw-Ladevorgaenge ab.
 - Hinweis: Im Editiermodus wird oberhalb der Tabelle `Editiermodus aktiv` angezeigt. `Uebernehmen` ist nur aktiv, wenn Aenderungen staged sind.

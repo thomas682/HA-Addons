@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.12.433
+
+### Enhancement
+
+- Ausreisser: Counterreset-Erkennung in der Suche (Reset-Beginn + Vorfehler-Spikes werden als `counterreset` markiert); GUI: neuer Typ `Counterreset` in der Typauswahl/Anzeige; Raw: `Automatikkorrektur` ist typbasiert und bereinigt bei `Counterreset` die pre-fault Spike-Werte (Reset bleibt erhalten) inkl. Pflicht-Vorschau. ([#390](https://github.com/thomas682/HA-Addons/issues/390))
+
+### Docs
+
+- `MANUAL.md`: `Automatikkorrektur` Verhalten fuer `Counterreset` dokumentiert. ([#390](https://github.com/thomas682/HA-Addons/issues/390))
+
+### Maintenance
+
+- QA: `python3 -m py_compile influxbro/app/app.py` (pytest in dieser Umgebung nicht verfuegbar).
+
 ## 1.12.429
 
 ### Enhancement

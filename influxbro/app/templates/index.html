@@ -2392,6 +2392,9 @@ function cacheRestoreIfAvailable(){
           types: row.types || [],
           point_index: row.point_index,
           window: row.window || null,
+          counterreset_role: row.counterreset_role || '',
+          counterreset_before_value: row.counterreset_before_value,
+          counterreset_begin_time: row.counterreset_begin_time || '',
         };
       });
     }catch(e){ RAW_OUTLIER_MAP = RAW_OUTLIER_MAP || {}; }
@@ -5497,6 +5500,7 @@ let RAW_OUTLIER_MARKED_TYPE = '';
 const ALL_OUTLIER_TYPES = [
   {value: 'counter', label: 'Counter'},
   {value: 'decrease', label: 'Counter Abfall'},
+  {value: 'counterreset', label: 'Counterreset'},
   {value: 'bounds', label: 'Grenzen'},
   {value: 'gap', label: 'Messwertlücke'},
   {value: 'fault_phase', label: 'Stoerphase'},
@@ -5505,7 +5509,7 @@ const ALL_OUTLIER_TYPES = [
   {value: 'ignored', label: 'Ignoriert'},
 ];
 
-let ANALYSIS_SELECTED_TYPES = ['counter', 'decrease', 'bounds', 'gap', 'fault_phase', 'null', 'zero'];
+let ANALYSIS_SELECTED_TYPES = ['counter', 'decrease', 'counterreset', 'bounds', 'gap', 'fault_phase', 'null', 'zero'];
 let ANALYSIS_UNSELECTED_TYPES = [];
 let ANALYSIS_SHOW_IGNORED = false;
 let IGNORED_OUTLIERS_STATE = {};
@@ -5668,6 +5672,7 @@ const ANALYSIS_STEP_INFO_TEXTS = {
     'Das betrifft insbesondere die Typen:',
     '- Counter',
     '- Counter Abfall',
+    '- Counterreset',
     '- Grenzen',
     '- Messwertluecken / Stoerphase',
     '- NULL / 0-Werte / ignored',
@@ -6226,7 +6231,15 @@ async function _ensureOutlierWindows(base, win, source){
       };
       if(!RAW_OUTLIER_MAP) RAW_OUTLIER_MAP = {};
       if(!RAW_OUTLIER_MAP[String(row.time)]){
-        RAW_OUTLIER_MAP[String(row.time)] = { reason: row.reason || '', types: row.types || [], point_index: row.point_index, window: row.window };
+        RAW_OUTLIER_MAP[String(row.time)] = {
+          reason: row.reason || '',
+          types: row.types || [],
+          point_index: row.point_index,
+          window: row.window,
+          counterreset_role: row.counterreset_role || '',
+          counterreset_before_value: row.counterreset_before_value,
+          counterreset_begin_time: row.counterreset_begin_time || '',
+        };
       }else{
         RAW_OUTLIER_MAP[String(row.time)].point_index = row.point_index;
         RAW_OUTLIER_MAP[String(row.time)].window = row.window;
@@ -6501,7 +6514,7 @@ function getDisplayedOutliers(){
     if($hint){
       const exceededKeys = Object.keys(exceededTypes);
       if(exceededKeys.length){
-        const typeLabels = {counter: 'Counter Ausreisser', decrease: 'Counter Abfall', bounds: 'Grenzen', gap: 'Messwertlücke', fault_phase: 'Stoerphasensuche', null: 'NULL Werte', zero: '0-Werte'};
+        const typeLabels = {counter: 'Counter Ausreisser', decrease: 'Counter Abfall', counterreset: 'Counterreset', bounds: 'Grenzen', gap: 'Messwertlücke', fault_phase: 'Stoerphasensuche', null: 'NULL Werte', zero: '0-Werte'};
         const parts = exceededKeys.map(k => (typeLabels[k] || k) + ': ' + exceededTypes[k] + ' gefunden, ' + limit + ' angezeigt');
         $hint.textContent = 'Hinweis: ' + parts.join(' | ') + '. Grenze kann in den Einstellungen unter ui_raw_outlier_display_limit_per_type angepasst werden.';
         $hint.style.display = 'block';
@@ -6916,6 +6929,9 @@ async function runRawOutlierSearch_DISABLED_LEGACY(){
             types: row.types || [],
             point_index: row.point_index,
             window: row.window || null,
+            counterreset_role: row.counterreset_role || '',
+            counterreset_before_value: row.counterreset_before_value,
+            counterreset_begin_time: row.counterreset_begin_time || '',
           };
         }
       }
@@ -7067,7 +7083,7 @@ async function resolveEffectiveAnalysisWindow(){
 function updateAnalysisUI(){
   try{
     const s = ANALYSIS_STATE;
-    const typeLabels = {counter: 'Counter', decrease: 'Counter Abfall', bounds: 'Grenzen', gap: 'Messwertlücke', fault_phase: 'Stoerphase', null: 'NULL', zero: '0-Werte'};
+    const typeLabels = {counter: 'Counter', decrease: 'Counter Abfall', counterreset: 'Counterreset', bounds: 'Grenzen', gap: 'Messwertlücke', fault_phase: 'Stoerphase', null: 'NULL', zero: '0-Werte'};
     const typeNames = (s.types || []).map(t => typeLabels[t] || t).join(', ');
 
     // 1. Quellinfos + Gesamtzeitraum + aktueller Zeitraum
@@ -7134,7 +7150,7 @@ function renderAnalysisTypeLists(){
       const $selected = document.getElementById('analysis_types_selected');
       if(!$selected) return;
 
-      const _chipColors = {counter:'#5ea56a',decrease:'#d47d57',bounds:'#5d86d6',gap:'#8b66d1',fault_phase:'#d7a545',null:'#4da790',zero:'#d46a6a',ignored:'#999'};
+      const _chipColors = {counter:'#5ea56a',decrease:'#d47d57',counterreset:'#2563eb',bounds:'#5d86d6',gap:'#8b66d1',fault_phase:'#d7a545',null:'#4da790',zero:'#d46a6a',ignored:'#999'};
       function _chipHtml(t, label, active){
         const color = _chipColors[t] || '#5ea56a';
         const cls = active ? 'ib-chip ib-chip-active' : 'ib-chip ib-chip-inactive ib-chip-strike';
@@ -7237,7 +7253,7 @@ function getRawOutlierFilterTypes(){
 }
 
 function getAnalysisCacheTypes(){
-  return ['bounds', 'counter', 'decrease', 'fault_phase', 'null', 'zero'];
+  return ['bounds', 'counter', 'decrease', 'counterreset', 'fault_phase', 'null', 'zero'];
 }
 
 function _logAnalysis(step, data){
@@ -7613,7 +7629,7 @@ async function runAnalysis(){
   }
   _setStep('window', 'ok', {sub: fmtTs(win.start) + ' bis ' + fmtTs(win.stop)});
 
-  const typeLabels = {counter: 'Counter', decrease: 'Counter Abfall', bounds: 'Grenzen', gap: 'Messwertlücke', fault_phase: 'Stoerphase', null: 'NULL', zero: '0-Werte'};
+  const typeLabels = {counter: 'Counter', decrease: 'Counter Abfall', counterreset: 'Counterreset', bounds: 'Grenzen', gap: 'Messwertlücke', fault_phase: 'Stoerphase', null: 'NULL', zero: '0-Werte'};
   const typeNames = types.map(t => typeLabels[t] || t).join(', ');
   _logAnalysis('types', {types: types});
   _setStep('types', types.length > 0 ? 'ok' : 'err', {sub: typeNames || 'Keine Typen aktiv.'});
@@ -8525,11 +8541,11 @@ function _cacheTimelineOutlierTypeKey(plan){
 }
 
 function _cacheTimelineOutlierTypes(){
-  return ['counter','decrease','bounds','gap','fault_phase','null','zero','ignored'];
+  return ['counter','decrease','counterreset','bounds','gap','fault_phase','null','zero','ignored'];
 }
 
 function _cacheTimelineOutlierTypeLabels(){
-  return {counter:'Counter',decrease:'Counter Abfall',bounds:'Grenzen',gap:'Messwertluecke',fault_phase:'Stoerphase',null:'NULL',zero:'0-Werte',ignored:'Ignoriert'};
+  return {counter:'Counter',decrease:'Counter Abfall',counterreset:'Counterreset',bounds:'Grenzen',gap:'Messwertluecke',fault_phase:'Stoerphase',null:'NULL',zero:'0-Werte',ignored:'Ignoriert'};
 }
 
 function _cacheTimelineOutlierTypeColor(t){
@@ -9219,7 +9235,7 @@ async function _showAnalysisHistory(){
     return;
   }
 
-  const typeLabels = {counter: 'Counter', decrease: 'Counter Abfall', bounds: 'Grenzen', gap: 'Messwertlücke', fault_phase: 'Stoerphase', null: 'NULL', zero: '0-Werte'};
+  const typeLabels = {counter: 'Counter', decrease: 'Counter Abfall', counterreset: 'Counterreset', bounds: 'Grenzen', gap: 'Messwertlücke', fault_phase: 'Stoerphase', null: 'NULL', zero: '0-Werte'};
 
   let text = '';
   if(events.length){
@@ -9443,6 +9459,9 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog, effective
               types: row.types || [],
               point_index: row.point_index,
               window: row.window || null,
+              counterreset_role: row.counterreset_role || '',
+              counterreset_before_value: row.counterreset_before_value,
+              counterreset_begin_time: row.counterreset_begin_time || '',
             };
           }
         });
@@ -11092,6 +11111,16 @@ try{
       const curMs = Date.parse(String(cur && cur.time ? cur.time : key));
       if(!isFinite(curMs)){ err('Ungueltiger Zeitstempel.'); return; }
 
+      // Detect outlier type for the selected raw row (Issue #390)
+      const selOut = (RAW_OUTLIER_MAP && RAW_OUTLIER_MAP[key]) ? RAW_OUTLIER_MAP[key] : null;
+      const selTypes = (selOut && Array.isArray(selOut.types))
+        ? selOut.types.map(x=>String(x||'').trim()).filter(Boolean)
+        : [];
+      const typePrio = ['counterreset','counter','decrease','bounds','gap','fault_phase','null','zero'];
+      let outType = '';
+      for(const t of typePrio){ if(selTypes.includes(t)){ outType = t; break; } }
+      if(!outType && selTypes.length) outType = String(selTypes[0] || '');
+
       // Find nearest numeric neighbors
       let prev = null;
       for(let i=idx-1;i>=0;i--){
@@ -11107,61 +11136,119 @@ try{
       }
       if(!prev && !next){ err('Keine Nachbarwerte im Raw-Fenster gefunden.'); return; }
 
-      let newVal = null;
-      if(prev && next && isFinite(next.ms - prev.ms) && next.ms > prev.ms){
-        const ratio = (curMs - prev.ms) / (next.ms - prev.ms);
-        newVal = prev.v + ratio * (next.v - prev.v);
-      }else if(prev){
-        newVal = prev.v;
-      }else if(next){
-        newVal = next.v;
-      }
-      if(!(newVal !== null && isFinite(Number(newVal)))){ err('Automatikkorrektur: Berechnung fehlgeschlagen.'); return; }
-
-      const oldVal = toFiniteNumber(cur.value);
       const unit = _currentEntityUnit();
-      const allInt = (oldVal !== null && Number.isInteger(oldVal))
-        && (prev ? Number.isInteger(prev.v) : true)
-        && (next ? Number.isInteger(next.v) : true);
-      const decimals = allInt ? 0 : Math.max(0, Math.trunc(Number(UI_DECIMALS || 0)));
-      const newStr = (decimals === 0) ? String(Math.round(Number(newVal))) : Number(newVal).toFixed(decimals);
+      let changes = [];
+      let meta = null;
+      let promptRow = { time: String(cur.time || key), old_value: toFiniteNumber(cur.value), new_value: null };
 
-      // No-op guard
-      try{
-        const nNum = Number(newStr);
-        if(oldVal !== null && isFinite(nNum) && nNum === Number(oldVal)){
-          err('Automatikkorrektur: keine Aenderung notwendig.');
-          return;
+      if(outType === 'counterreset'){
+        const beginTime = selOut && selOut.counterreset_begin_time ? String(selOut.counterreset_begin_time || '').trim() : '';
+        let beforeVal = (selOut && selOut.counterreset_before_value !== undefined) ? toFiniteNumber(selOut.counterreset_before_value) : null;
+        if(beforeVal === null) beforeVal = prev ? prev.v : null;
+        if(beforeVal === null){ err('Automatikkorrektur (Counterreset): kein Referenzwert vor dem Reset gefunden.'); return; }
+
+        const targets = [];
+        for(const r of rows){
+          const k0 = String(rowKey(r) || '').trim();
+          if(!k0) continue;
+          const o0 = (RAW_OUTLIER_MAP && RAW_OUTLIER_MAP[k0]) ? RAW_OUTLIER_MAP[k0] : null;
+          if(!o0) continue;
+          const role = String(o0.counterreset_role || '').trim();
+          const bt = String(o0.counterreset_begin_time || '').trim();
+          if(role !== 'pre_fault') continue;
+          if(beginTime && bt && bt !== beginTime) continue;
+          targets.push(k0);
         }
-      }catch(e){}
 
-      // Best-effort detected outlier type from current selection
-      let outType = '';
-      try{
-        const o = (RAW_OUTLIER_MAP && RAW_OUTLIER_MAP[key]) ? RAW_OUTLIER_MAP[key] : null;
-        if(o && Array.isArray(o.types) && o.types.length) outType = String(o.types[0] || '');
-      }catch(e){}
+        if(!targets.length){ err('Automatikkorrektur (Counterreset): keine pre-fault Werte im sichtbaren Raw-Fenster gefunden.'); return; }
 
-      const meta = {
-        trigger_page: 'dashboard',
-        trigger_source: 'raw',
-        trigger_action: 'automatic_correction',
-        trigger_button: 'raw_auto_correct',
-        source_action: 'automatic_correction',
-        detected_outlier_type: outType,
-        strategy_id: 'auto_neighbor_interp',
-        strategy_description: 'Basis-Automatikkorrektur: ersetzt den selektierten Wert durch Interpolation aus den naechsten gueltigen Nachbarpunkten (im sichtbaren Raw-Fenster).',
-      };
+        let allInt = Number.isInteger(beforeVal);
+        targets.forEach(k0=>{
+          const rr = findRawRowByKey(k0);
+          const v = toFiniteNumber(rr && rr.value);
+          if(v === null || !Number.isInteger(v)) allInt = false;
+        });
+        const decimals = allInt ? 0 : Math.max(0, Math.trunc(Number(UI_DECIMALS || 0)));
+        const newStr = (decimals === 0) ? String(Math.round(Number(beforeVal))) : Number(beforeVal).toFixed(decimals);
 
-      const changes = [{
-        action: 'overwrite',
-        time: String(cur.time || key),
-        new_value: String(newStr),
-        decimals,
-        reason: 'Automatic correction: neighbor interpolation',
-        row_role: 'target',
-        unit: unit || '',
-      }];
+        targets.forEach(k0=>{
+          const rr = findRawRowByKey(k0);
+          if(!rr) return;
+          const oldV = toFiniteNumber(rr.value);
+          try{ if(oldV !== null && Number(newStr) === Number(oldV)) return; }catch(e){}
+          changes.push({
+            action: 'overwrite',
+            time: String(rr.time || k0),
+            new_value: String(newStr),
+            decimals,
+            reason: 'Counterreset: cleanup pre-fault spike',
+            row_role: 'pre_fault',
+            unit: unit || '',
+          });
+        });
+
+        if(!changes.length){ err('Automatikkorrektur (Counterreset): keine Aenderungen notwendig.'); return; }
+
+        promptRow = { time: 'multi', old_value: null, new_value: null };
+        meta = {
+          trigger_page: 'dashboard',
+          trigger_source: 'raw',
+          trigger_action: 'automatic_correction',
+          trigger_button: 'raw_auto_correct',
+          source_action: 'automatic_correction',
+          detected_outlier_type: 'counterreset',
+          strategy_id: 'counterreset_cleanup_prefault',
+          strategy_description: 'Counterreset erkannt: Reset bleibt erhalten. Unplausible Zwischenwerte/Spikes vor dem Reset werden auf den letzten plausiblen Wert vor dem Fehler gesetzt.',
+        };
+      }else{
+        let newVal = null;
+        if(prev && next && isFinite(next.ms - prev.ms) && next.ms > prev.ms){
+          const ratio = (curMs - prev.ms) / (next.ms - prev.ms);
+          newVal = prev.v + ratio * (next.v - prev.v);
+        }else if(prev){
+          newVal = prev.v;
+        }else if(next){
+          newVal = next.v;
+        }
+        if(!(newVal !== null && isFinite(Number(newVal)))){ err('Automatikkorrektur: Berechnung fehlgeschlagen.'); return; }
+
+        const oldVal = toFiniteNumber(cur.value);
+        const allInt = (oldVal !== null && Number.isInteger(oldVal))
+          && (prev ? Number.isInteger(prev.v) : true)
+          && (next ? Number.isInteger(next.v) : true);
+        const decimals = allInt ? 0 : Math.max(0, Math.trunc(Number(UI_DECIMALS || 0)));
+        const newStr = (decimals === 0) ? String(Math.round(Number(newVal))) : Number(newVal).toFixed(decimals);
+
+        // No-op guard
+        try{
+          const nNum = Number(newStr);
+          if(oldVal !== null && isFinite(nNum) && nNum === Number(oldVal)){
+            err('Automatikkorrektur: keine Aenderung notwendig.');
+            return;
+          }
+        }catch(e){}
+
+        changes = [{
+          action: 'overwrite',
+          time: String(cur.time || key),
+          new_value: String(newStr),
+          decimals,
+          reason: 'Automatic correction: neighbor interpolation',
+          row_role: 'target',
+          unit: unit || '',
+        }];
+        promptRow = { time: String(cur.time || key), old_value: oldVal, new_value: Number(newStr) };
+        meta = {
+          trigger_page: 'dashboard',
+          trigger_source: 'raw',
+          trigger_action: 'automatic_correction',
+          trigger_button: 'raw_auto_correct',
+          source_action: 'automatic_correction',
+          detected_outlier_type: String(outType || ''),
+          strategy_id: 'auto_neighbor_interp',
+          strategy_description: 'Basis-Automatikkorrektur: ersetzt den selektierten Wert durch Interpolation aus den naechsten gueltigen Nachbarpunkten (im sichtbaren Raw-Fenster).',
+        };
+      }
 
       let preview = null;
       let forceFromPreview = false;
@@ -11192,7 +11279,7 @@ try{
           preview = j && j.preview ? j.preview : null;
         }catch(e){
           if(_isOutlierRuleBlock(e)){
-            const wantForce = await confirmOutlierRuleOverride({ time: String(cur.time || key), old_value: oldVal, new_value: Number(newStr) }, e.payload);
+            const wantForce = await confirmOutlierRuleOverride(promptRow, e.payload);
             if(!wantForce) return;
             const payload = Object.assign({}, payload0, { force: true, changes: changes.map(c=>Object.assign({}, c, { force: true })) });
             const j2 = await api('./api/change_preview', {
@@ -11243,7 +11330,7 @@ try{
         try{ await attempt(forceFromPreview); }
         catch(e){
           if(_isOutlierRuleBlock(e)){
-            const wantForce = await confirmOutlierRuleOverride({ time: String(cur.time || key), old_value: oldVal, new_value: Number(newStr) }, e.payload);
+            const wantForce = await confirmOutlierRuleOverride(promptRow, e.payload);
             if(!wantForce) return;
             await attempt(true);
           }else{
@@ -13747,7 +13834,7 @@ async function refreshCachingSection(){
   const $deleteBtn = document.getElementById('analysis_cache_delete_series');
 
   const types = getRawOutlierFilterTypes();
-  const typeLabels = {counter: 'Counter Ausreisser', decrease: 'Counter Abfall', bounds: 'Grenzen', gap: 'Messwertlücke', fault_phase: 'Stoerphasensuche', null: 'NULL Werte', zero: '0-Werte'};
+  const typeLabels = {counter: 'Counter Ausreisser', decrease: 'Counter Abfall', counterreset: 'Counterreset', bounds: 'Grenzen', gap: 'Messwertlücke', fault_phase: 'Stoerphasensuche', null: 'NULL Werte', zero: '0-Werte'};
   const typeNames = types.map(t => typeLabels[t] || t).join(', ');
   const range = base.range || '24h';
   const entityInfo = base.entity_id ? ('Entity ID: ' + base.entity_id) : (base.friendly_name ? ('Friendly Name: ' + base.friendly_name) : '');
@@ -13810,6 +13897,7 @@ async function refreshCachingSection(){
         const typeCounts = analysisPlan.cached_outlier_type_counts || {};
         const foundTxt = 'Gefunden: Counter: ' + String(typeCounts.counter || 0)
           + ' | Counter Abfall: ' + String(typeCounts.decrease || 0)
+          + ' | Counterreset: ' + String(typeCounts.counterreset || 0)
           + ' | Grenzen: ' + String(typeCounts.bounds || 0)
           + ' | Messwertlücke: ' + String(typeCounts.gap || 0)
           + ' | Stoerphase: ' + String(typeCounts.fault_phase || 0)
