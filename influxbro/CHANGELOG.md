@@ -14,6 +14,16 @@
 
 - QA: `python3 -m py_compile influxbro/app/app.py` (pytest in dieser Umgebung nicht verfuegbar).
 
+## 1.12.434
+
+### Enhancement
+
+- Dashboard Raw: neuer Button `Reparatur-Assistent` (Wizard) fuer typische Datenreparaturen im aktuell sichtbaren Raw-Fenster. Presets fuer bekannte Ausreisser-Typen, Pflicht-Vorschau via `/api/change_preview`, Bulk-Ausfuehrung als Undo-Block via `/api/apply_changes`. ([#385](https://github.com/thomas682/HA-Addons/issues/385))
+
+### Maintenance
+
+- QA: JS/Template-Update (kein neuer Backend-Code).
+
 ## 1.12.429
 
 ### Enhancement

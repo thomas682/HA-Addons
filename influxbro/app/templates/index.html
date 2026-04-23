@@ -761,11 +761,12 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
 
         <div class="tbl_actions" style="justify-content:flex-start; margin-top: 6px;" data-ui="dashboard_raw.row_actions_smart" title="dashboard_raw.row_actions_smart">
           <span class="muted" style="font-weight:800;">Intelligente Korrektur</span>
-          <button class="btn_sm" id="raw_linear_range" type="button" data-ui="dashboard_raw.btn_linear_range" title="dashboard_raw.btn_linear_range" disabled>Linearer Reihe</button>
-          <button class="btn_sm" id="raw_copy_first_range" type="button" data-ui="dashboard_raw.btn_copy_first_range" title="dashboard_raw.btn_copy_first_range" disabled>Erstwert kopieren</button>
-          <button class="btn_sm" id="raw_auto_correct" type="button" data-ui="dashboard_raw.btn_auto_correct" data-ib-pickkey="dashboard_raw.btn_auto_correct" title="dashboard_raw.btn_auto_correct" disabled>Automatikkorrektur</button>
-          <span id="raw_smart_status" class="muted" style="margin-left:6px;"></span>
-        </div>
+           <button class="btn_sm" id="raw_linear_range" type="button" data-ui="dashboard_raw.btn_linear_range" data-ib-pickkey="dashboard_raw.btn_linear_range" title="dashboard_raw.btn_linear_range" disabled>Linearer Reihe</button>
+           <button class="btn_sm" id="raw_copy_first_range" type="button" data-ui="dashboard_raw.btn_copy_first_range" data-ib-pickkey="dashboard_raw.btn_copy_first_range" title="dashboard_raw.btn_copy_first_range" disabled>Erstwert kopieren</button>
+           <button class="btn_sm" id="raw_repair_wizard" type="button" data-ui="dashboard_raw.btn_repair_wizard" data-ib-pickkey="dashboard_raw.btn_repair_wizard" title="dashboard_raw.btn_repair_wizard" disabled>Reparatur-Assistent</button>
+           <button class="btn_sm" id="raw_auto_correct" type="button" data-ui="dashboard_raw.btn_auto_correct" data-ib-pickkey="dashboard_raw.btn_auto_correct" title="dashboard_raw.btn_auto_correct" disabled>Automatikkorrektur</button>
+           <span id="raw_smart_status" class="muted" style="margin-left:6px;"></span>
+         </div>
 
       <div class="table_title" style="margin-top:12px;">Raw Daten</div>
       <div class="table_head" style="margin-bottom:6px; justify-content:flex-start;">
@@ -952,6 +953,51 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
         <div style="margin-top:12px; display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
           <button class="btn_sm" id="change_preview_cancel" type="button" data-ui="dialog_change_preview.btn_cancel" data-ib-pickkey="dialog_change_preview.btn_cancel">Abbrechen</button>
           <button class="btn_sm" id="change_preview_ok" type="button" data-ui="dialog_change_preview.btn_ok" data-ib-pickkey="dialog_change_preview.btn_ok">OK ausfuehren</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Repair wizard (Issue #385) -->
+    <div id="repair_wizard_dialog" style="display:none; position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.45); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;" data-ui="dialog_repair_wizard.root" data-ib-pickkey="dialog_repair_wizard.root">
+      <div style="background:#fff; border-radius:16px; padding:16px; max-width:980px; width:min(980px, 100%); max-height:90vh; overflow:auto; box-shadow:0 12px 60px rgba(0,0,0,0.28);">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:10px;">
+          <div>
+            <div style="font-weight:900; font-size:16px;" data-ui="dialog_repair_wizard.txt_title" data-ib-pickkey="dialog_repair_wizard.txt_title">Reparatur-Assistent</div>
+            <div class="muted" id="repair_wizard_meta" style="margin-top:4px; font-size:12px; line-height:1.4;" data-ui="dialog_repair_wizard.txt_meta" data-ib-pickkey="dialog_repair_wizard.txt_meta"></div>
+            <div class="muted" id="repair_wizard_hint" style="margin-top:6px; font-size:12px; line-height:1.4;" data-ui="dialog_repair_wizard.txt_hint" data-ib-pickkey="dialog_repair_wizard.txt_hint">Scope: es wird nur das aktuell sichtbare Raw-Fenster repariert (keine Schreibaktion ohne Vorschau).
+            </div>
+          </div>
+          <button class="btn_sm" id="repair_wizard_close" type="button" data-ui="dialog_repair_wizard.btn_close" data-ib-pickkey="dialog_repair_wizard.btn_close">Schliessen</button>
+        </div>
+
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:12px;">
+          <div style="border:1px solid #e7e7e7; border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:10px;">
+            <div style="font-weight:800;" data-ui="dialog_repair_wizard.txt_preset" data-ib-pickkey="dialog_repair_wizard.txt_preset">Preset</div>
+            <select id="repair_wizard_preset" class="btn_sm" style="width:100%;" data-ui="dialog_repair_wizard.select_preset" data-ib-pickkey="dialog_repair_wizard.select_preset">
+              <option value="auto" selected>Auto (aus Outliers)</option>
+              <option value="repair_counterreset">Counterreset (pre-fault bereinigen)</option>
+              <option value="repair_counter">Counter (Max-Sprung) interpolieren</option>
+              <option value="repair_decrease">Counter Abfall interpolieren</option>
+              <option value="repair_bounds">Grenzen interpolieren</option>
+              <option value="repair_fault_phase">Stoerphase interpolieren</option>
+              <option value="repair_null">NULL-Burst interpolieren</option>
+              <option value="repair_zero">0-Werte interpolieren</option>
+              <option value="repair_flatline">Flatline / Duplicate-Spam bereinigen</option>
+              <option value="repair_gap">Messwertluecke (Hinweis)</option>
+            </select>
+            <div class="muted" id="repair_wizard_plan" style="font-size:12px; line-height:1.45; white-space:pre-wrap;" data-ui="dialog_repair_wizard.txt_plan" data-ib-pickkey="dialog_repair_wizard.txt_plan"></div>
+          </div>
+
+          <div style="border:1px solid #e7e7e7; border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:10px;">
+            <div style="font-weight:800;" data-ui="dialog_repair_wizard.txt_query" data-ib-pickkey="dialog_repair_wizard.txt_query">Query (Preview)</div>
+            <pre id="repair_wizard_query" style="margin:0; padding:10px; border-radius:12px; background:#f7f7f7; border:1px solid #eee; font-size:11px; max-height:220px; overflow:auto;" data-ui="dialog_repair_wizard.pre_query" data-ib-pickkey="dialog_repair_wizard.pre_query"></pre>
+            <div class="muted" id="repair_wizard_result" style="font-size:12px; line-height:1.45; white-space:pre-wrap;" data-ui="dialog_repair_wizard.txt_result" data-ib-pickkey="dialog_repair_wizard.txt_result"></div>
+          </div>
+        </div>
+
+        <div style="margin-top:12px; display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
+          <button class="btn_sm" id="repair_wizard_preview" type="button" data-ui="dialog_repair_wizard.btn_preview" data-ib-pickkey="dialog_repair_wizard.btn_preview">Vorschau</button>
+          <button class="btn_sm" id="repair_wizard_apply" type="button" data-ui="dialog_repair_wizard.btn_apply" data-ib-pickkey="dialog_repair_wizard.btn_apply" disabled>Ausfuehren</button>
         </div>
       </div>
     </div>
@@ -1186,6 +1232,7 @@ const $rawCopiedInfo = document.getElementById('raw_copied_info');
 const $rawLinearRange = document.getElementById('raw_linear_range');
 const $rawCopyFirstRange = document.getElementById('raw_copy_first_range');
 const $rawAutoCorrect = document.getElementById('raw_auto_correct');
+const $rawRepairWizard = document.getElementById('raw_repair_wizard');
 const $rawSmartStatus = document.getElementById('raw_smart_status');
 
 const $graphQuerySection = document.getElementById('graph_query_section');
@@ -1293,6 +1340,17 @@ const $changePreviewBody = document.getElementById('change_preview_body');
 const $changePreviewClose = document.getElementById('change_preview_close');
 const $changePreviewCancel = document.getElementById('change_preview_cancel');
 const $changePreviewOk = document.getElementById('change_preview_ok');
+
+const $repairWizardDialog = document.getElementById('repair_wizard_dialog');
+const $repairWizardMeta = document.getElementById('repair_wizard_meta');
+const $repairWizardHint = document.getElementById('repair_wizard_hint');
+const $repairWizardClose = document.getElementById('repair_wizard_close');
+const $repairWizardPreset = document.getElementById('repair_wizard_preset');
+const $repairWizardPlan = document.getElementById('repair_wizard_plan');
+const $repairWizardQuery = document.getElementById('repair_wizard_query');
+const $repairWizardResult = document.getElementById('repair_wizard_result');
+const $repairWizardPreview = document.getElementById('repair_wizard_preview');
+const $repairWizardApply = document.getElementById('repair_wizard_apply');
 
 let UI_DECIMALS = 3;
 let UI_TABLE_VISIBLE_ROWS = 20;
@@ -10757,16 +10815,17 @@ function updateRawToolbarState(){
       $rawCopiedInfo.textContent = hasCopied ? (`Quelle: ${fmtTs(RAW_COPIED.time)} | Wert: ${String(RAW_COPIED.value_str || '')}`) : '';
     }
 
-    // Smart correction buttons
-    try{
-      const hasRows = !!((RAW_ROWS || []).length);
-      const disabled = !hasRows || _RAW_INFLIGHT || RAW_EDIT_MODE;
-      if($rawLinearRange) $rawLinearRange.disabled = disabled;
-      if($rawCopyFirstRange) $rawCopyFirstRange.disabled = disabled;
-      // Auto correction works on the selected row only
-      if($rawAutoCorrect) $rawAutoCorrect.disabled = disabled || !hasTarget;
-      if($rawSmartStatus) $rawSmartStatus.textContent = _rawSmartStatusText();
-    }catch(e){}
+      // Smart correction buttons
+      try{
+        const hasRows = !!((RAW_ROWS || []).length);
+        const disabled = !hasRows || _RAW_INFLIGHT || RAW_EDIT_MODE;
+        if($rawLinearRange) $rawLinearRange.disabled = disabled;
+        if($rawCopyFirstRange) $rawCopyFirstRange.disabled = disabled;
+        if($rawRepairWizard) $rawRepairWizard.disabled = disabled;
+        // Auto correction works on the selected row only
+        if($rawAutoCorrect) $rawAutoCorrect.disabled = disabled || !hasTarget;
+        if($rawSmartStatus) $rawSmartStatus.textContent = _rawSmartStatusText();
+      }catch(e){}
 
     // Surface edit-mode status in the existing raw status line.
     try{
@@ -11088,6 +11147,16 @@ try{
   if($rawCopyFirstRange) $rawCopyFirstRange.addEventListener('click', (ev)=>{
     _stop(ev);
     rawSmartStart('copy_first');
+  });
+}catch(e){}
+
+try{
+  if($rawRepairWizard) $rawRepairWizard.addEventListener('click', (ev)=>{
+    _stop(ev);
+    try{
+      if(RAW_EDIT_MODE){ err('Bitte zuerst den Editiermodus verlassen.'); return; }
+      openRepairWizard();
+    }catch(e){ displayError(e); }
   });
 }catch(e){}
 
@@ -13243,6 +13312,530 @@ let _APPLY_DIALOG_RESOLVE = null;
 let _CHANGE_PREVIEW_RESOLVE = null;
 let _CHANGE_PREVIEW_LAST = null;
 
+let _REPAIR_WIZ_LAST = null;
+
+function _rawVisibleWindowSummary(){
+  try{
+    const base = currentFilters();
+    const rows = Array.isArray(RAW_ROWS) ? RAW_ROWS : [];
+    const ms = rows.map(r => Date.parse(String(r && r.time ? r.time : ''))).filter(t => isFinite(t));
+    const t0 = ms.length ? new Date(Math.min(...ms)).toISOString() : '';
+    const t1 = ms.length ? new Date(Math.max(...ms)).toISOString() : '';
+    const series = (base && base.measurement && base.field) ? (String(base.measurement) + '/' + String(base.field)) : '';
+    const tags = base ? ((base.entity_id ? ('entity_id=' + base.entity_id) : '') + (base.entity_id && base.friendly_name ? ' ' : '') + (base.friendly_name ? ('friendly_name=' + base.friendly_name) : '')) : '';
+    return {
+      base,
+      rows,
+      start: t0,
+      stop: t1,
+      series,
+      tags,
+    };
+  }catch(e){
+    return { base: null, rows: [], start: '', stop: '', series: '', tags: '' };
+  }
+}
+
+function _repairReasonForPreset(preset){
+  const p = String(preset || '').trim();
+  if(p === 'repair_counterreset') return 'repair_counter_rollover';
+  if(p === 'repair_counter') return 'repair_counter_rollover';
+  if(p === 'repair_decrease') return 'repair_counter_rollover';
+  if(p === 'repair_bounds') return 'repair_bounds';
+  if(p === 'repair_fault_phase') return 'repair_fault_phase';
+  if(p === 'repair_null') return 'repair_null_burst';
+  if(p === 'repair_zero') return 'repair_zero_burst';
+  if(p === 'repair_flatline') return 'repair_cleanup_flatline';
+  if(p === 'repair_gap') return 'repair_gap_hint';
+  return 'repair_wizard';
+}
+
+function _repairStrategyMeta(preset){
+  const p = String(preset || '').trim();
+  const outTypeMap = {
+    repair_counterreset: 'counterreset',
+    repair_counter: 'counter',
+    repair_decrease: 'decrease',
+    repair_bounds: 'bounds',
+    repair_fault_phase: 'fault_phase',
+    repair_null: 'null',
+    repair_zero: 'zero',
+    repair_flatline: 'flatline',
+    repair_gap: 'gap',
+  };
+  const descMap = {
+    repair_counterreset: 'Counterreset erkannt: Reset bleibt erhalten. pre-fault Spike-Werte werden auf den letzten plausiblen Wert vor dem Reset gesetzt (nur sichtbares Raw-Fenster).',
+    repair_counter: 'Counter-Ausreisser (Max-Sprung) werden per Nachbar-Interpolation im sichtbaren Raw-Fenster ueberschrieben.',
+    repair_decrease: 'Counter-Abfaelle werden per Nachbar-Interpolation im sichtbaren Raw-Fenster ueberschrieben.',
+    repair_bounds: 'Grenzverletzungen werden per Nachbar-Interpolation im sichtbaren Raw-Fenster ueberschrieben.',
+    repair_fault_phase: 'Stoerphase-Ausreisser werden per Nachbar-Interpolation im sichtbaren Raw-Fenster ueberschrieben.',
+    repair_null: 'NULL-Werte werden per Nachbar-Interpolation im sichtbaren Raw-Fenster ueberschrieben (sofern beide Nachbarn existieren).',
+    repair_zero: '0-Werte werden per Nachbar-Interpolation im sichtbaren Raw-Fenster ueberschrieben (sofern beide Nachbarn existieren).',
+    repair_flatline: 'Flatline/Duplicate-Spam: lange Runs gleicher Werte werden im sichtbaren Raw-Fenster innen per linearer Interpolation geglaettet.',
+    repair_gap: 'Messwertluecke ist primaer ein Diagnose-Typ (fehlende Datenpunkte). Dieser Preset fuehrt keine Schreibaktion aus.',
+  };
+  return {
+    detected_outlier_type: outTypeMap[p] || '',
+    strategy_id: p || 'repair_wizard',
+    strategy_description: descMap[p] || 'Reparatur-Assistent (nur sichtbares Raw-Fenster).',
+    source_action: 'repair_wizard',
+    trigger_page: 'dashboard',
+    trigger_source: 'raw',
+    trigger_action: 'repair',
+    trigger_button: 'raw_repair_wizard',
+  };
+}
+
+function _findNeighborNumeric(rows, idx, dir){
+  try{
+    if(!Array.isArray(rows)) return null;
+    const n = rows.length;
+    if(!isFinite(idx)) return null;
+    const step = (dir < 0) ? -1 : 1;
+    for(let i = idx + step; i >= 0 && i < n; i += step){
+      const r = rows[i];
+      const v = toFiniteNumber(r && r.value);
+      const t = Date.parse(String(r && r.time ? r.time : ''));
+      if(isFinite(t) && v !== null) return { i, ms: t, v, time: String(r.time || '') };
+    }
+  }catch(e){}
+  return null;
+}
+
+function _fmtNewStrForValue(v, decimals){
+  const d = Math.max(0, Math.trunc(Number(decimals || 0)));
+  if(d === 0) return String(Math.round(Number(v)));
+  return Number(v).toFixed(d);
+}
+
+function _buildInterpOverwrite(rows, idx, unit, reason){
+  const cur = rows[idx];
+  const key = String(rowKey(cur) || '').trim();
+  if(!key) return null;
+  const curMs = Date.parse(String(cur && cur.time ? cur.time : key));
+  if(!isFinite(curMs)) return null;
+  const prev = _findNeighborNumeric(rows, idx, -1);
+  const next = _findNeighborNumeric(rows, idx, 1);
+  if(!prev && !next) return null;
+
+  let newVal = null;
+  if(prev && next && isFinite(next.ms - prev.ms) && next.ms > prev.ms){
+    const ratio = (curMs - prev.ms) / (next.ms - prev.ms);
+    newVal = prev.v + ratio * (next.v - prev.v);
+  }else if(prev){
+    newVal = prev.v;
+  }else if(next){
+    newVal = next.v;
+  }
+  if(!(newVal !== null && isFinite(Number(newVal)))) return null;
+
+  const oldVal = toFiniteNumber(cur.value);
+  const allInt = (oldVal !== null && Number.isInteger(oldVal))
+    && (prev ? Number.isInteger(prev.v) : true)
+    && (next ? Number.isInteger(next.v) : true);
+  const decimals = allInt ? 0 : Math.max(0, Math.trunc(Number(UI_DECIMALS || 0)));
+  const newStr = _fmtNewStrForValue(newVal, decimals);
+
+  try{
+    if(oldVal !== null && Number(newStr) === Number(oldVal)) return null;
+  }catch(e){}
+
+  return {
+    action: 'overwrite',
+    time: String(cur.time || key),
+    new_value: String(newStr),
+    decimals,
+    reason: String(reason || '').trim(),
+    row_role: 'repair',
+    unit: unit || '',
+  };
+}
+
+function _buildRepairPlan(presetRaw){
+  const w = _rawVisibleWindowSummary();
+  const base = w.base;
+  const rows = w.rows;
+  const unit = _currentEntityUnit();
+  const preset = String(presetRaw || 'auto').trim();
+  const outMap = RAW_OUTLIER_MAP || {};
+
+  if(!base || !base.measurement || !base.field || (!base.entity_id && !base.friendly_name)){
+    return { ok:false, error:'Bitte zuerst eine gueltige Dashboard-Serie laden.', changes:[], meta:null, query:'' };
+  }
+  if(!rows.length){
+    return { ok:false, error:'Keine Raw-Zeilen geladen.', changes:[], meta:null, query:'' };
+  }
+
+  let effPreset = preset;
+  if(preset === 'auto'){
+    const prio = ['counterreset','counter','decrease','bounds','fault_phase','null','zero','gap'];
+    let found = '';
+    for(const r of rows){
+      const k0 = String(rowKey(r) || '').trim();
+      const o0 = k0 ? outMap[k0] : null;
+      const ts = (o0 && Array.isArray(o0.types)) ? o0.types.map(x=>String(x||'').trim()).filter(Boolean) : [];
+      for(const t of prio){ if(ts.includes(t)){ found = t; break; } }
+      if(found) break;
+    }
+    const map = {
+      counterreset: 'repair_counterreset',
+      counter: 'repair_counter',
+      decrease: 'repair_decrease',
+      bounds: 'repair_bounds',
+      fault_phase: 'repair_fault_phase',
+      null: 'repair_null',
+      zero: 'repair_zero',
+      gap: 'repair_gap',
+    };
+    effPreset = map[found] || 'repair_flatline';
+  }
+
+  const reason = _repairReasonForPreset(effPreset);
+  const meta = _repairStrategyMeta(effPreset);
+  let changes = [];
+
+  if(effPreset === 'repair_gap'){
+    const q = '';
+    return {
+      ok:true,
+      warning:'Messwertluecke ist in der Regel fehlende Datenbasis. Mit den aktuellen Backend-Aktionen (overwrite/delete) wird hier bewusst nichts automatisch geschrieben. Nutze Import/Copy, wenn du fehlende Punkte nachziehen willst.',
+      changes:[],
+      meta,
+      query:q,
+      effPreset,
+    };
+  }
+
+  if(effPreset === 'repair_counterreset'){
+    // Group by counterreset_begin_time and apply each group's before_value to its pre_fault rows.
+    const groups = {};
+    for(const r of rows){
+      const k0 = String(rowKey(r) || '').trim();
+      if(!k0) continue;
+      const o0 = outMap[k0];
+      if(!o0) continue;
+      const role = String(o0.counterreset_role || '').trim();
+      if(role !== 'pre_fault') continue;
+      const bt = String(o0.counterreset_begin_time || '').trim() || 'unknown';
+      if(!groups[bt]) groups[bt] = { before: null, keys: [] };
+      groups[bt].keys.push(k0);
+      const b0 = (o0.counterreset_before_value !== undefined) ? toFiniteNumber(o0.counterreset_before_value) : null;
+      if(groups[bt].before === null && b0 !== null) groups[bt].before = b0;
+    }
+    // Fallback: if before missing, try to read it from any reset_begin row for that begin_time.
+    for(const bt of Object.keys(groups)){
+      if(groups[bt].before !== null) continue;
+      for(const r of rows){
+        const k0 = String(rowKey(r) || '').trim();
+        const o0 = k0 ? outMap[k0] : null;
+        if(!o0) continue;
+        if(String(o0.counterreset_role || '').trim() !== 'reset_begin') continue;
+        const bt0 = String(o0.counterreset_begin_time || '').trim() || 'unknown';
+        if(bt0 !== bt) continue;
+        const b0 = (o0.counterreset_before_value !== undefined) ? toFiniteNumber(o0.counterreset_before_value) : null;
+        if(b0 !== null){ groups[bt].before = b0; break; }
+      }
+    }
+    for(const bt of Object.keys(groups)){
+      const beforeVal = groups[bt].before;
+      if(beforeVal === null) continue;
+      let allInt = Number.isInteger(beforeVal);
+      for(const k0 of groups[bt].keys){
+        const rr = findRawRowByKey(k0);
+        const v = toFiniteNumber(rr && rr.value);
+        if(v === null || !Number.isInteger(v)) allInt = false;
+      }
+      const decimals = allInt ? 0 : Math.max(0, Math.trunc(Number(UI_DECIMALS || 0)));
+      const newStr = _fmtNewStrForValue(beforeVal, decimals);
+      for(const k0 of groups[bt].keys){
+        const rr = findRawRowByKey(k0);
+        if(!rr) continue;
+        const oldV = toFiniteNumber(rr.value);
+        try{ if(oldV !== null && Number(newStr) === Number(oldV)) continue; }catch(e){}
+        changes.push({
+          action: 'overwrite',
+          time: String(rr.time || k0),
+          new_value: String(newStr),
+          decimals,
+          reason,
+          row_role: 'pre_fault',
+          unit: unit || '',
+        });
+      }
+    }
+  }else if(effPreset === 'repair_flatline'){
+    // Detect long runs of identical numeric values and smooth interior via linear interpolation.
+    const vals = rows.map(r => toFiniteNumber(r && r.value));
+    const ms = rows.map(r => Date.parse(String(r && r.time ? r.time : '')));
+    const n = rows.length;
+    let i = 0;
+    while(i < n){
+      const v0 = vals[i];
+      if(v0 === null || !isFinite(ms[i])){ i++; continue; }
+      let j = i + 1;
+      while(j < n && vals[j] !== null && vals[j] === v0 && isFinite(ms[j])) j++;
+      const len = j - i;
+      if(len >= 4){
+        const prev = (i-1 >= 0) ? { v: vals[i-1], ms: ms[i-1] } : null;
+        const next = (j < n) ? { v: vals[j], ms: ms[j] } : null;
+        if(prev && next && prev.v !== null && next.v !== null && isFinite(prev.ms) && isFinite(next.ms) && Number(prev.v) !== Number(v0) && Number(next.v) !== Number(v0)){
+          // Change interior points only.
+          const allInt = Number.isInteger(prev.v) && Number.isInteger(next.v) && Number.isInteger(v0);
+          const decimals = allInt ? 0 : Math.max(0, Math.trunc(Number(UI_DECIMALS || 0)));
+          for(let k=i+1;k<=j-2;k++){
+            const ratio = (k - i) / (len - 1);
+            const nv = Number(prev.v) + ratio * (Number(next.v) - Number(prev.v));
+            const newStr = _fmtNewStrForValue(nv, decimals);
+            const key = String(rowKey(rows[k]) || '').trim();
+            if(!key) continue;
+            const oldV = toFiniteNumber(rows[k].value);
+            try{ if(oldV !== null && Number(newStr) === Number(oldV)) continue; }catch(e){}
+            changes.push({
+              action:'overwrite',
+              time: String(rows[k].time || key),
+              new_value: String(newStr),
+              decimals,
+              reason,
+              row_role: 'flatline',
+              unit: unit || '',
+            });
+          }
+        }
+      }
+      i = j;
+    }
+  }else{
+    // Generic: for the selected outlier type, interpolate per row.
+    const typeMap = {
+      repair_counter: 'counter',
+      repair_decrease: 'decrease',
+      repair_bounds: 'bounds',
+      repair_fault_phase: 'fault_phase',
+      repair_null: 'null',
+      repair_zero: 'zero',
+    };
+    const wantType = typeMap[effPreset] || '';
+    for(let idx=0; idx<rows.length; idx++){
+      const r = rows[idx];
+      const k0 = String(rowKey(r) || '').trim();
+      if(!k0) continue;
+      const o0 = outMap[k0];
+      const ts = (o0 && Array.isArray(o0.types)) ? o0.types.map(x=>String(x||'').trim()).filter(Boolean) : [];
+      if(wantType && !ts.includes(wantType)) continue;
+      const ch = _buildInterpOverwrite(rows, idx, unit || '', reason);
+      if(ch) changes.push(ch);
+    }
+  }
+
+  // Enforce visible-window constraint implicitly (only RAW_ROWS are used).
+  const q = (changes && changes.length) ? _buildApplyPreviewQuery(base, changes.map(c=>({time:c.time}))) : '';
+  return { ok:true, changes, meta, query:q, effPreset };
+}
+
+function _repairWizardSetText(el, txt){ try{ if(el) el.textContent = String(txt || ''); }catch(e){} }
+
+function closeRepairWizard(){
+  try{ if($repairWizardDialog) $repairWizardDialog.style.display = 'none'; }catch(e){}
+  _REPAIR_WIZ_LAST = null;
+  try{ if($repairWizardApply) $repairWizardApply.disabled = true; }catch(e){}
+}
+
+function openRepairWizard(){
+  const w = _rawVisibleWindowSummary();
+  const base = w.base;
+  if(!base || !base.measurement || !base.field || (!base.entity_id && !base.friendly_name)){
+    err('Bitte zuerst eine gueltige Dashboard-Serie laden.');
+    return;
+  }
+  if(!w.rows.length){
+    err('Keine Raw-Zeilen geladen.');
+    return;
+  }
+  const t0 = w.start ? fmtTs(w.start) : '';
+  const t1 = w.stop ? fmtTs(w.stop) : '';
+  const meta = [
+    w.series ? ('Serie: ' + w.series) : '',
+    w.tags ? ('Tags: ' + w.tags) : '',
+    (t0 && t1) ? ('Sichtbar: ' + t0 + ' bis ' + t1) : '',
+    ('Zeilen: ' + String(w.rows.length)),
+  ].filter(Boolean).join(' | ');
+  _repairWizardSetText($repairWizardMeta, meta);
+  _repairWizardSetText($repairWizardResult, '');
+  _repairWizardSetText($repairWizardQuery, '');
+  _repairWizardSetText($repairWizardPlan, '');
+  try{ if($repairWizardApply) $repairWizardApply.disabled = true; }catch(e){}
+  _REPAIR_WIZ_LAST = null;
+  try{ if($repairWizardDialog) $repairWizardDialog.style.display = 'flex'; }catch(e){}
+
+  // Auto-preset suggestion
+  try{
+    if($repairWizardPreset) $repairWizardPreset.value = 'auto';
+  }catch(e){}
+  try{
+    if($repairWizardHint){
+      $repairWizardHint.textContent = 'Scope: es wird nur das aktuell sichtbare Raw-Fenster repariert (keine Schreibaktion ohne Vorschau).';
+    }
+  }catch(e){}
+}
+
+async function _repairWizardPreview(){
+  const preset = $repairWizardPreset ? String($repairWizardPreset.value || 'auto') : 'auto';
+  const plan = _buildRepairPlan(preset);
+  if(!plan.ok){
+    _repairWizardSetText($repairWizardPlan, String(plan.error || 'Plan konnte nicht erstellt werden.'));
+    try{ if($repairWizardApply) $repairWizardApply.disabled = true; }catch(e){}
+    return;
+  }
+
+  _REPAIR_WIZ_LAST = plan;
+  const ch = Array.isArray(plan.changes) ? plan.changes : [];
+  const warn = plan.warning ? ('\n\nHinweis: ' + String(plan.warning)) : '';
+  const summary = [
+    'Preset: ' + String(plan.effPreset || preset),
+    'Dry-Run: ja (Change Preview)',
+    'Aktion(en): ' + (ch.length ? 'overwrite' : 'keine'),
+    'Betroffene Punkte: ' + String(ch.length),
+    'Reason: ' + _repairReasonForPreset(plan.effPreset || preset),
+  ].join('\n') + warn;
+  _repairWizardSetText($repairWizardPlan, summary);
+  _repairWizardSetText($repairWizardQuery, String(plan.query || ''));
+  _repairWizardSetText($repairWizardResult, '');
+
+  if(!ch.length){
+    try{ if($repairWizardApply) $repairWizardApply.disabled = true; }catch(e){}
+    return;
+  }
+
+  // Mandatory preview
+  const w = _rawVisibleWindowSummary();
+  const base = w.base;
+  const unit = _currentEntityUnit();
+  const meta = plan.meta || _repairStrategyMeta(plan.effPreset || preset);
+  let preview = null;
+  let forceFromPreview = false;
+  try{
+    const payload0 = {
+      measurement: base.measurement,
+      field: base.field,
+      entity_id: base.entity_id,
+      friendly_name: base.friendly_name,
+      unit: unit || '',
+      force: false,
+      detected_outlier_type: meta.detected_outlier_type,
+      strategy_id: meta.strategy_id,
+      strategy_description: meta.strategy_description,
+      source_action: meta.source_action,
+      trigger_page: meta.trigger_page,
+      trigger_source: meta.trigger_source,
+      trigger_action: meta.trigger_action,
+      trigger_button: meta.trigger_button,
+      changes: ch,
+    };
+    try{
+      const j = await api('./api/change_preview', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(payload0),
+      }, { key: 'change_preview:repair:' + String(meta.strategy_id || ''), silent: true });
+      preview = j && j.preview ? j.preview : null;
+    }catch(e){
+      if(_isOutlierRuleBlock(e)){
+        const wantForce = await confirmOutlierRuleOverride({ time: 'multi', old_value: null, new_value: null }, e.payload);
+        if(!wantForce) return;
+        const payload = Object.assign({}, payload0, { force: true, changes: ch.map(c=>Object.assign({}, c, { force: true })) });
+        const j2 = await api('./api/change_preview', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify(payload),
+        }, { key: 'change_preview:repair:' + String(meta.strategy_id || '') + ':forced', silent: true });
+        preview = j2 && j2.preview ? j2.preview : null;
+        forceFromPreview = true;
+      }else{
+        throw e;
+      }
+    }
+  }catch(e){
+    displayError(e);
+    try{ if($repairWizardApply) $repairWizardApply.disabled = true; }catch(x){}
+    return;
+  }
+
+  if(!preview){
+    _repairWizardSetText($repairWizardResult, 'Keine Vorschau verfuegbar.');
+    try{ if($repairWizardApply) $repairWizardApply.disabled = true; }catch(e){}
+    return;
+  }
+
+  const want = await openChangePreviewDialog(preview, 'apply');
+  if(!want){
+    try{ if($repairWizardApply) $repairWizardApply.disabled = true; }catch(e){}
+    return;
+  }
+
+  plan._force = !!forceFromPreview;
+  _REPAIR_WIZ_LAST = plan;
+  try{ if($repairWizardApply) $repairWizardApply.disabled = false; }catch(e){}
+  _repairWizardSetText($repairWizardResult, 'Vorschau bestaetigt. Bereit zur Ausfuehrung.');
+}
+
+async function _repairWizardApply(){
+  const plan = _REPAIR_WIZ_LAST;
+  if(!plan || !plan.ok){ err('Bitte zuerst Vorschau ausfuehren.'); return; }
+  const ch = Array.isArray(plan.changes) ? plan.changes : [];
+  if(!ch.length){ err('Keine Aenderungen geplant.'); return; }
+
+  const w = _rawVisibleWindowSummary();
+  const base = w.base;
+  const unit = _currentEntityUnit();
+  const meta = plan.meta || _repairStrategyMeta(plan.effPreset || 'repair_wizard');
+
+  try{ if($repairWizardApply) $repairWizardApply.disabled = true; }catch(e){}
+  _repairWizardSetText($repairWizardResult, 'Ausfuehrung laeuft...');
+
+  try{
+    const attempt = async (force)=>{
+      return await api('./api/apply_changes', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          confirm: true,
+          measurement: base.measurement,
+          field: base.field,
+          entity_id: base.entity_id,
+          friendly_name: base.friendly_name,
+          trigger_page: meta.trigger_page,
+          trigger_source: meta.trigger_source,
+          trigger_action: meta.trigger_action,
+          trigger_button: meta.trigger_button,
+          detected_outlier_type: String(meta.detected_outlier_type || ''),
+          strategy_id: String(meta.strategy_id || ''),
+          strategy_description: String(meta.strategy_description || ''),
+          source_action: String(meta.source_action || ''),
+          changes: ch.map(c=>Object.assign({}, c, { force: !!force })),
+        }),
+      }, { silent: true });
+    };
+
+    try{ await attempt(!!plan._force); }
+    catch(e){
+      if(_isOutlierRuleBlock(e)){
+        const wantForce = await confirmOutlierRuleOverride({ time: 'multi', old_value: null, new_value: null }, e.payload);
+        if(!wantForce) return;
+        await attempt(true);
+      }else{
+        throw e;
+      }
+    }
+
+    await refreshAfterDataMutation({ rerunOutliers: true });
+    _repairWizardSetText($repairWizardResult, 'OK. Aenderungen wurden geschrieben. Undo ist ueber die Raw-Undo-Funktion (Block) moeglich.');
+  }catch(e){
+    displayError(e);
+  }finally{
+    try{ if($repairWizardApply) $repairWizardApply.disabled = true; }catch(x){}
+  }
+}
+
 function _buildApplyPreviewQuery(base, dirty){
   try{
     const ms = (dirty || []).map(e => Date.parse(String(e.time || ""))).filter(t => isFinite(t));
@@ -13403,6 +13996,15 @@ try{
       if(ev && ev.target === $changePreviewDialog) closeChangePreviewDialog(false);
     }catch(e){}
   });
+}catch(e){}
+
+try{
+  if($repairWizardClose) $repairWizardClose.addEventListener('click', ()=>closeRepairWizard());
+  if($repairWizardDialog) $repairWizardDialog.addEventListener('click', (ev)=>{
+    try{ if(ev && ev.target === $repairWizardDialog) closeRepairWizard(); }catch(e){}
+  });
+  if($repairWizardPreview) $repairWizardPreview.addEventListener('click', (ev)=>{ _stop(ev); _repairWizardPreview().catch(displayError); });
+  if($repairWizardApply) $repairWizardApply.addEventListener('click', (ev)=>{ _stop(ev); _repairWizardApply().catch(displayError); });
 }catch(e){}
 
 function openApplyDialog(dirty){
