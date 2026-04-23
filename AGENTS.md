@@ -167,6 +167,8 @@ Damit UI-Elemente in Issues/Chat immer 100% eindeutig referenzierbar sind, gilt 
   - dynamisch erzeugte UI (per JS/`innerHTML`/DOM APIs)
 - Dynamisch erzeugte sichtbare Elemente MUESSEN `data-ui` und `data-ib-pickkey` beim Erzeugen setzen.
 - S-Picker Ausgabe muss den kanonischen Referenztext liefern: `<PICK:<Page>|<pickkey>>`.
+- Neu (v1): Support-Referenzen verwenden das 2-stufige Modell `pk` (Produkt-Key) + `ik` (Instanz-Key): `<PICK:<Page>|v=1;pk=<pk>;ik=<ik>>`.
+- `data-ib-pickkey` entspricht `pk` (stabil/release-tauglich), `data-ib-instancekey` entspricht `ik` (zur Laufzeit eindeutig).
 - Fallback-Referenzen ohne Pickkey sind nur Migrationszustand und nicht akzeptabel als Endzustand.
 - `unknown` ist nur als Fallback erlaubt.
 

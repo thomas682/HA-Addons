@@ -373,7 +373,10 @@ def test_picker_supports_disabled_targets_and_angle_bracket_labels():
     assert 'document.elementsFromPoint' in topbar
     # Picker prefers canonical pickkeys and copies <PICK:...|...>
     assert "data-ib-pickkey" in topbar
-    assert "text = '<PICK:' + page + '|' + pickkey + '>'" in topbar
+    # v=1 pick format contains pk + ik
+    assert "_fmtPickV1" in topbar
+    assert "v=1;pk=" in topbar
+    assert "data-ib-instancekey" in topbar
     assert "Fallback:" in topbar
     assert "'(kein data-ui)'" in topbar
 
@@ -732,6 +735,8 @@ def test_dashboard_caching_panel_has_logs_button_progress_and_range_details():
     assert "curl -s -H \"Authorization: Bearer $SUPERVISOR_TOKEN\" http://192.168.2.200:8123/api/config | jq -r '.version'" in agents
     assert 'unknown` ist nur als Fallback erlaubt' in agents
     assert 'data-ib-pickkey' in agents
+    assert 'data-ib-instancekey' in agents
+    assert 'v=1;pk=' in agents
 
 
 def test_dashboard_outlier_params_dialog_is_global_config_based():
@@ -921,6 +926,14 @@ def test_page_search_has_navigation_and_filter_dialog():
     assert '$searchModal.onclick = null;' in body
     assert 'direct_text' in body
     assert "addEventListener('focus', ()=>{ if(String($search.value || '').trim()) runSearch(); });" in body
+
+
+def test_page_search_supports_direct_pick_string_input():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    assert 'function _parsePickString' in body
+    assert 'function _handlePickInput' in body
+    assert 'Page-Mismatch' in body
+    assert 'data-ib-instancekey' in body
 
 
 def test_dashboard_field_label_has_count_span():

@@ -487,9 +487,9 @@
     else initZoom();
   })();
 
-  // Auto-assign canonical pickkeys for existing UI.
-  // Ensures every visible UI element can be referenced via S-Picker.
-  (function(){
+   // Auto-assign pickkeys/instancekeys for existing UI.
+   // Pickkey is the stable product key (pk). Instancekey is the runtime-unique key (ik).
+   (function(){
     function _normKey(s){
       try{ return String(s || '').trim().replace(/\s+/g,' '); }catch(e){ return ''; }
     }
@@ -546,27 +546,109 @@
         return parts.join('/');
       }catch(e){ return ''; }
     }
-    function _ensurePickkey(el){
-      try{
-        if(!el || !el.getAttribute || !el.setAttribute) return;
-        if(el.getAttribute('data-ib-pickkey')) return;
-        const ui = _normKey(el.getAttribute('data-ui'));
-        const id = _normKey(el.getAttribute('id'));
-        const page = _pageKey();
-        if(ui){ el.setAttribute('data-ib-pickkey', page + '.' + ui); return; }
-        if(id){ el.setAttribute('data-ib-pickkey', page + '.id.' + id); return; }
+     function _ensurePickkey(el){
+       try{
+         if(!el || !el.getAttribute || !el.setAttribute) return;
+         if(el.getAttribute('data-ib-pickkey')) return;
+         const ui = _normKey(el.getAttribute('data-ui'));
+         const id = _normKey(el.getAttribute('id'));
+         const page = _pageKey();
+         if(ui){ el.setAttribute('data-ib-pickkey', page + '.' + ui); el.setAttribute('data-ib-pickkey-auto', '1'); return; }
+         if(id){ el.setAttribute('data-ib-pickkey', page + '.id.' + id); el.setAttribute('data-ib-pickkey-auto', '1'); return; }
 
         const anchor = el.closest && el.closest('[data-ui],[id],[data-ib-pickkey]');
         const base = _anchorKeyFor(el) || (page + '.auto');
         const sig = _pathSig(el, anchor);
-        const tag = String(el.tagName || 'el').toLowerCase();
-        const h = _hashFNV1a(base + '|' + tag + '|' + sig);
-        el.setAttribute('data-ib-pickkey', base + '.auto.' + tag + '.' + h);
-      }catch(e){}
-    }
+         const tag = String(el.tagName || 'el').toLowerCase();
+         const h = _hashFNV1a(base + '|' + tag + '|' + sig);
+         el.setAttribute('data-ib-pickkey', base + '.auto.' + tag + '.' + h);
+         el.setAttribute('data-ib-pickkey-auto', '1');
+       }catch(e){}
+     }
 
-    function apply(){
-      try{
+     function _ensureInstancekey(el){
+       try{
+         if(!el || !el.getAttribute || !el.setAttribute) return;
+         if(el.getAttribute('data-ib-instancekey')) return;
+         const pk = _normKey(el.getAttribute('data-ib-pickkey'));
+         if(!pk) return;
+         const item = _normKey(el.getAttribute('data-ib-itemkey'));
+         if(item){
+           el.setAttribute('data-ib-instancekey', pk + '[item=' + encodeURIComponent(item) + ']');
+           return;
+         }
+         el.setAttribute('data-ib-instancekey', pk);
+         el.setAttribute('data-ib-instancekey-auto', '1');
+       }catch(e){}
+     }
+
+     function _dedupeAutoInstancekeys(){
+       try{
+         const groups = {};
+         document.querySelectorAll('[data-ib-instancekey]').forEach((el)=>{
+           try{
+             if(!el || !el.getAttribute) return;
+             const ik = _normKey(el.getAttribute('data-ib-instancekey'));
+             if(!ik) return;
+             if(!groups[ik]) groups[ik] = [];
+             groups[ik].push(el);
+           }catch(e){}
+         });
+         Object.keys(groups).forEach((ik)=>{
+           const xs = groups[ik] || [];
+           if(xs.length <= 1) return;
+           // Only fix up auto-generated instancekeys. Explicit instancekeys remain untouched.
+           xs.forEach((el)=>{
+             try{
+               if(String(el.getAttribute('data-ib-instancekey-auto') || '') !== '1') return;
+               const anchor = el.closest && el.closest('[data-ui],[id],[data-ib-pickkey]');
+               const base = _anchorKeyFor(el) || (_pageKey() + '.auto');
+               const sig = _pathSig(el, anchor);
+               const tag = String(el.tagName || 'el').toLowerCase();
+               const h = _hashFNV1a(base + '|ik|' + ik + '|' + tag + '|' + sig);
+               el.setAttribute('data-ib-instancekey', ik + '.auto.' + tag + '.' + h);
+             }catch(e){}
+           });
+         });
+       }catch(e){}
+     }
+
+     let _loggedPickStats = false;
+     function _validatePickRegistry(){
+       try{
+         const pkMap = {};
+         const ikMap = {};
+         let autoPk = 0;
+         let autoIk = 0;
+         document.querySelectorAll('[data-ib-pickkey]').forEach((el)=>{
+           try{
+             const pk = _normKey(el.getAttribute('data-ib-pickkey'));
+             if(!pk) return;
+             pkMap[pk] = (pkMap[pk] || 0) + 1;
+             if(String(el.getAttribute('data-ib-pickkey-auto') || '') === '1') autoPk += 1;
+           }catch(e){}
+         });
+         document.querySelectorAll('[data-ib-instancekey]').forEach((el)=>{
+           try{
+             const ik = _normKey(el.getAttribute('data-ib-instancekey'));
+             if(!ik) return;
+             ikMap[ik] = (ikMap[ik] || 0) + 1;
+             if(String(el.getAttribute('data-ib-instancekey-auto') || '') === '1') autoIk += 1;
+           }catch(e){}
+         });
+         const pkDup = Object.keys(pkMap).filter(k=>pkMap[k] > 1);
+         const ikDup = Object.keys(ikMap).filter(k=>ikMap[k] > 1);
+         if(pkDup.length) console.error('[InfluxBro] pickkey collision(s):', pkDup.slice(0, 20));
+         if(ikDup.length) console.error('[InfluxBro] instancekey collision(s):', ikDup.slice(0, 20));
+         if(!_loggedPickStats){
+           _loggedPickStats = true;
+           if(autoPk || autoIk) console.warn('[InfluxBro] auto pickkeys:', autoPk, 'auto instancekeys:', autoIk);
+         }
+       }catch(e){}
+     }
+
+     function apply(){
+       try{
         const sel = [
           '[data-ui]',
           '[id]',
@@ -588,9 +670,11 @@
           'nav.sidebar',
           '.nav_item',
         ].join(',');
-        document.querySelectorAll(sel).forEach(_ensurePickkey);
-      }catch(e){}
-    }
+         document.querySelectorAll(sel).forEach((el)=>{ _ensurePickkey(el); _ensureInstancekey(el); });
+         _dedupeAutoInstancekeys();
+         _validatePickRegistry();
+       }catch(e){}
+     }
 
     let _raf = 0;
     function _schedule(){
@@ -961,6 +1045,112 @@
     function _norm(s){ return String(s || '').trim(); }
     function _lc(s){ return _norm(s).toLowerCase(); }
 
+    function _isLikelyPickString(s){
+      const t = _norm(s);
+      return /^<\s*PICK\s*:/i.test(t);
+    }
+
+    function _parsePickString(raw){
+      const t0 = _norm(raw);
+      if(!t0) return { ok:false, error:'leer' };
+      const t = t0.replace(/^\s+|\s+$/g, '');
+      if(!/^<\s*PICK\s*:/i.test(t) || !/>\s*$/.test(t)){
+        return { ok:false, error:'format' };
+      }
+      // Strip <PICK: and trailing >
+      const inner = t.replace(/^<\s*PICK\s*:/i, '').replace(/>\s*$/,'');
+      const pipe = inner.indexOf('|');
+      if(pipe < 0) return { ok:false, error:'missing_pipe' };
+      if(inner.indexOf('|', pipe + 1) >= 0) return { ok:false, error:'too_many_pipes' };
+      const page = _norm(inner.slice(0, pipe));
+      const payload = _norm(inner.slice(pipe + 1));
+      if(!page || !payload) return { ok:false, error:'empty_parts' };
+
+      // v=1 format: v=1;pk=...;ik=...
+      if(/^v\s*=\s*1\b/i.test(payload)){
+        const parts = payload.split(';').map(x=>_norm(x)).filter(Boolean);
+        const kv = {};
+        parts.forEach((p)=>{
+          const eq = p.indexOf('=');
+          if(eq < 0) return;
+          const k = _lc(p.slice(0, eq));
+          const v = p.slice(eq + 1);
+          if(!k) return;
+          kv[k] = v;
+        });
+        const pkEnc = kv.pk !== undefined ? String(kv.pk || '') : '';
+        const ikEnc = kv.ik !== undefined ? String(kv.ik || '') : '';
+        let pk = '';
+        let ik = '';
+        try{ pk = decodeURIComponent(pkEnc); }catch(e){ pk = pkEnc; }
+        try{ ik = decodeURIComponent(ikEnc); }catch(e){ ik = ikEnc; }
+        pk = _norm(pk);
+        ik = _norm(ik) || pk;
+        if(!pk) return { ok:false, error:'missing_pk' };
+        return { ok:true, v:1, page, pk, ik, raw:t0 };
+      }
+
+      // Legacy format: <PICK:Page|pickkey>
+      const pk = payload;
+      if(!pk) return { ok:false, error:'missing_pk' };
+      return { ok:true, v:0, page, pk, ik: pk, raw:t0 };
+    }
+
+    function _pickMsg(title, text, isErr){
+      try{
+        if(window.InfluxBroPopup && window.InfluxBroPopup.show){
+          if(isErr && window.InfluxBroPopup.error) window.InfluxBroPopup.error(String(text||''));
+          else window.InfluxBroPopup.show(String(title||'Pickkey'), String(text||''));
+          return;
+        }
+      }catch(e){}
+      try{ alert(String(text||'')); }catch(e){}
+    }
+
+    function _cssEsc(s){
+      try{ return (window.CSS && CSS.escape) ? CSS.escape(String(s||'')) : String(s||'').replace(/"/g, '\\"'); }
+      catch(e){ return String(s||'').replace(/"/g, '\\"'); }
+    }
+
+    function _jumpToEl(el){
+      try{
+        if(!el) return;
+        _openParentDetails(el);
+        el.scrollIntoView({behavior:'smooth', block:'center'});
+        const dur = Math.max(200, Number(getComputedStyle(document.documentElement).getPropertyValue('--ib-page-search-hl-duration-ms').replace('ms','').trim() || '1400'));
+        el.classList.add('jump_hl');
+        setTimeout(()=>{ try{ el.classList.remove('jump_hl'); }catch(e){} }, dur);
+      }catch(e){}
+    }
+
+    function _handlePickInput(raw){
+      const parsed = _parsePickString(raw);
+      if(!parsed.ok){
+        const ex = '<PICK:Dashboard|v=1;pk=page_main.input_search;ik=page_main.input_search>';
+        _pickMsg('Pickkey', 'Ungueltiger Pickkey-String. Erwartetes Format: ' + ex + '\n\nLegacy wird ebenfalls akzeptiert: <PICK:Dashboard|page_main.input_search>', true);
+        return;
+      }
+
+      const curPage = (window.currentPageLabel ? window.currentPageLabel() : 'Seite');
+      if(_lc(parsed.page) !== _lc(curPage)){
+        _pickMsg('Pickkey', 'Page-Mismatch: Pickkey gehoert zu "' + parsed.page + '", aktuelle Seite ist "' + curPage + '".', true);
+        return;
+      }
+
+      let hit = null;
+      try{ hit = document.querySelector('[data-ib-instancekey="' + _cssEsc(parsed.ik) + '"]'); }catch(e){ hit = null; }
+      if(!hit){
+        try{ hit = document.querySelector('[data-ib-pickkey="' + _cssEsc(parsed.pk) + '"]'); }catch(e){ hit = null; }
+      }
+      if(!hit){
+        _pickMsg('Pickkey', 'Kein Element gefunden fuer pk=' + parsed.pk + (parsed.ik ? (' | ik=' + parsed.ik) : ''), true);
+        return;
+      }
+
+      _jumpToEl(hit);
+      _pickMsg('Pickkey', 'Gefunden: ' + (parsed.v === 1 ? ('v=1 pk=' + parsed.pk) : ('legacy pk=' + parsed.pk)));
+    }
+
     function _isSettingsPage(){
       try{ return String('{{ nav }}' || '') === 'settings'; }catch(e){ return false; }
     }
@@ -1242,6 +1432,16 @@
         }catch(e){ renderResults([]); }
       }
 
+      try{ if($search) $search.addEventListener('keydown', (ev)=>{
+        try{
+          if(!ev || String(ev.key || '') !== 'Enter') return;
+          const raw = String($search.value || '');
+          if(!_isLikelyPickString(raw)) return;
+          ev.preventDefault();
+          ev.stopPropagation();
+          _handlePickInput(raw);
+        }catch(e){}
+      }); }catch(e){}
       try{ if($search) $search.addEventListener('input', runSearch); }catch(e){}
       try{ if($search) $search.addEventListener('focus', ()=>{ if(String($search.value || '').trim()) runSearch(); }); }catch(e){}
       try{ if($prev) $prev.addEventListener('click', ()=>stepResult(-1)); }catch(e){}
@@ -1689,11 +1889,23 @@
         }
         const el = target && target.el ? target.el : null;
         const pk = el && el.getAttribute ? String(el.getAttribute('data-ib-pickkey') || '').trim() : '';
+        const ik = el && el.getAttribute ? String(el.getAttribute('data-ib-instancekey') || '').trim() : '';
         const dataUi = el && el.getAttribute ? String(el.getAttribute('data-ui') || '').trim() : '';
         const id = el && el.getAttribute ? String(el.getAttribute('id') || '').trim() : '';
         const olType = el && el.getAttribute ? String(el.getAttribute('data-cache-oltype') || '').trim() : '';
-        return page + '|' + pk + '|' + dataUi + '|' + id + '|' + olType;
+        return page + '|' + pk + '|' + ik + '|' + dataUi + '|' + id + '|' + olType;
       }catch(e){ return ''; }
+    }
+
+    function _encPickVal(s){
+      try{ return encodeURIComponent(String(s || '').trim()); }catch(e){ return ''; }
+    }
+
+    function _fmtPickV1(page, pk, ik){
+      const p = String(page || '').trim() || 'Seite';
+      const a = String(pk || '').trim();
+      const b = String(ik || '').trim() || a;
+      return '<PICK:' + p + '|v=1;pk=' + _encPickVal(a) + ';ik=' + _encPickVal(b) + '>';
     }
 
     function _multiDisplayFor(target){
@@ -1705,10 +1917,11 @@
         }
         const el = target && target.el ? target.el : null;
         const pk = el && el.getAttribute ? String(el.getAttribute('data-ib-pickkey') || '').trim() : '';
+        const ik = el && el.getAttribute ? String(el.getAttribute('data-ib-instancekey') || '').trim() : '';
         const dataUi = el && el.getAttribute ? String(el.getAttribute('data-ui') || '').trim() : '';
         const id = el && el.getAttribute ? String(el.getAttribute('id') || '').trim() : '';
         const olType = el && el.getAttribute ? String(el.getAttribute('data-cache-oltype') || '').trim() : '';
-        if(pk) return '<PICK:' + page + '|' + pk + '>';
+        if(pk) return _fmtPickV1(page, pk, ik);
         const parts = [page, dataUi, id];
         if(olType) parts.push(olType);
         return '<' + parts.join(',') + '>';
@@ -1993,10 +2206,11 @@
       }
 
       const page = (window.currentPageLabel ? window.currentPageLabel() : 'Seite');
-      const pickkey = _normLine(el.getAttribute ? (el.getAttribute('data-ib-pickkey') || '') : '');
-      const dataUi = _normLine(el.getAttribute ? (el.getAttribute('data-ui') || '') : '');
-      const id = _normLine(el.getAttribute ? (el.getAttribute('id') || '') : '');
-      const olType = _normLine(el.getAttribute ? (el.getAttribute('data-cache-oltype') || '') : '');
+       const pickkey = _normLine(el.getAttribute ? (el.getAttribute('data-ib-pickkey') || '') : '');
+       const instkey = _normLine(el.getAttribute ? (el.getAttribute('data-ib-instancekey') || '') : '');
+       const dataUi = _normLine(el.getAttribute ? (el.getAttribute('data-ui') || '') : '');
+       const id = _normLine(el.getAttribute ? (el.getAttribute('id') || '') : '');
+       const olType = _normLine(el.getAttribute ? (el.getAttribute('data-cache-oltype') || '') : '');
 
       let text = '';
       if(target && target.kind === 'fallback'){
@@ -2006,14 +2220,14 @@
         try{ fb = fb.split('|')[0].trim(); }catch(e){}
         try{ fb = fb.replace(/^button\./, 'btn.'); }catch(e){}
         text = '<' + [page, '', '', ('Fallback: ' + (fb || 'element'))].join(',') + '>';
-      }else if(pickkey){
-        // Canonical reference for chat/support.
-        text = '<PICK:' + page + '|' + pickkey + '>';
-      }else{
-        const parts = [page, dataUi, id];
-        if(olType) parts.push(olType);
-        text = '<' + parts.join(',') + '>';
-      }
+       }else if(pickkey){
+         // Canonical reference for chat/support (v=1: pk + ik)
+         text = _fmtPickV1(page, pickkey, instkey || pickkey);
+       }else{
+         const parts = [page, dataUi, id];
+         if(olType) parts.push(olType);
+         text = '<' + parts.join(',') + '>';
+       }
       const ok = await copyText(text);
       try{
         if(window.InfluxBroPopup && window.InfluxBroPopup.show){

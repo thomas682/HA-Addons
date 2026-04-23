@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.436
+
+### Enhancement
+
+- Picker/S-Picker: neues Referenzformat mit 2-stufigem Modell `pk` + `ik`: `<PICK:<Page>|v=1;pk=...;ik=...>`. `data-ib-pickkey` ist `pk`, `data-ib-instancekey` ist `ik` (runtime-eindeutig). Legacy-Strings `<PICK:<Page>|<pickkey>>` bleiben lesbar. ([#399](https://github.com/thomas682/HA-Addons/issues/399))
+- Topbar: direkte Pick-String Eingabe im Suchfeld (Enter) inkl. Validierung, klarer Fehlermeldungen, Page-Mismatch und exakter Navigation/Highlight. ([#398](https://github.com/thomas682/HA-Addons/issues/398))
+
+### Maintenance
+
+- AGENTS.md: Pickkey-Regeln um `pk`/`ik` (v1) erweitert.
+
 ## 1.12.435
 
 ### Enhancement

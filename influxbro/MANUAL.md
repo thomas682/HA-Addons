@@ -83,7 +83,8 @@ Neu: Top-Leiste (Profil + Zoom)
     - Hinweis: Die Buttons `Anwenden`, `Speichern`, `Picker` und `S-Picker` sind in der Topbar icon-only (Tooltip/aria-label bleibt erhalten).
   - Zoom-Steuerung: `-` / `+` und die aktuelle Zoomstufe in `%`.
   - Seitensuche: durchsucht Controls und wichtige sichtbare Texte auf der aktuellen Seite und springt zu Treffern.
-  - Picker / S-Picker: kopiert eine kanonische Elementkennung im Format `<PICK:<Page>|<pickkey>>` in die Zwischenablage, damit UI-Elemente im Chat/Issues 100% eindeutig identifiziert werden koennen.
+    - Direkte Pick-Eingabe: Wenn du einen String wie `<PICK:...|...>` eingibst und Enter drueckst, wird exakt dieses Element gesucht (Page-Mismatch / Nichttreffer wird klar gemeldet).
+  - Picker / S-Picker: kopiert eine kanonische Elementkennung in die Zwischenablage. Neu: Vollformat mit stabiler Produktkennung + exakter Instanzkennung: `<PICK:<Page>|v=1;pk=<product_key>;ik=<instance_key>>`. Legacy-Referenzen ohne `v=1` bleiben lesbar.
     - `oltype` wird nur angehaengt, wenn das Element ein `data-cache-oltype` Attribut besitzt (es wird nur der Wert kopiert, kein Key-Name).
   - Picker / S-Picker Multi-Pick (Shift+Klick): startet einen Mehrfach-Pick. Unter der Pagecard erscheint eine Statusleiste mit den erfassten Elemente als anklickbare Chips (Klick = Entfernen). `Ende` kopiert die Liste als mehrere `<PICK:...>` Eintraege.
   - Neu: Button `Verschieben` (Icon mit 2 Quadraten + Pfeil). Dieser oeffnet den Einstellungen-Organizer.
