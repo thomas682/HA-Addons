@@ -79,8 +79,8 @@ Neu: Top-Leiste (Profil + Zoom)
 - Auf iPhone wird `nav.donate` rechts neben dem Brand angezeigt (statt als eigene Zeile), damit die Titelzeile kompakter bleibt.
 - iOS Hinweis: Eingabefelder nutzen auf iPhone mindestens 16px Schriftgroesse, damit Safari beim Antippen nicht automatisch hineinzoomt.
 - Enthalten:
-  - Profil-Auswahl inkl. `Anwenden`, `Speichern`, `Info` und die aktuelle Version.
-    - Hinweis: Die Buttons `Anwenden`, `Speichern`, `Info`, `Picker` und `S-Picker` sind in der Topbar icon-only (Tooltip/aria-label bleibt erhalten).
+  - Profil-Auswahl inkl. `Anwenden`, `Speichern` und die aktuelle Version.
+    - Hinweis: Die Buttons `Anwenden`, `Speichern`, `Picker` und `S-Picker` sind in der Topbar icon-only (Tooltip/aria-label bleibt erhalten).
   - Zoom-Steuerung: `-` / `+` und die aktuelle Zoomstufe in `%`.
   - Seitensuche: durchsucht Controls und wichtige sichtbare Texte auf der aktuellen Seite und springt zu Treffern.
   - Picker / S-Picker: kopiert eine kanonische Elementkennung im Format `<PICK:<Page>|<pickkey>>` in die Zwischenablage, damit UI-Elemente im Chat/Issues 100% eindeutig identifiziert werden koennen.
@@ -198,7 +198,7 @@ Weitere Dashboard-Anpassungen:
 - `Dashboard Query`, `Gesamtstatistik (Alles)` und `Statistik Zeitraum (Graph/Tabelle)` werden jetzt ueber modale Dialoge geoeffnet.
 - Dieselbe modale Dialoglogik gilt jetzt auch konsistent fuer Statistik-, Backup- und FullBackup-Querys; Copy, History und Logs laufen dort ueber denselben Dialog.
 - Der fruehere Raw-Query-Bereich wurde entfernt. Oberhalb der Raw-Tabelle gibt es jetzt einen eigenen Refresh-Button fuer dieselbe sichtbare Raw-Sicht.
-- `Graph neu zeichnen` laedt die aktuelle Serie erneut aus InfluxDB und behaelt dabei den aktuellen Ausschnitt inklusive Overlays und Punktinfos bei.
+- `Graph neu zeichnen` zeichnet nur den Kontext-Graph (oben) fuer das aktuell sichtbare Raw-Zeitfenster neu.
 - Die fruehere Box `Quelle (aufgeloest)` wurde entfernt; im Dashboard bleibt nur noch die eigentliche Auswahlleiste.
 - Wenn du Raw-Werte schreibst oder loeschst, werden Graph und Raw-Daten danach neu geladen; der aktuelle Ausschnitt bleibt dabei erhalten.
 - Neu: Raw-Statusleiste bleibt immer sichtbar und zeigt bei laufenden Raw-Ladevorgaengen einen Abbruch-Button.
@@ -284,9 +284,10 @@ Cache Nutzung:
 
 - Zoom/Pan ist moeglich.
 - Die X-Achse startet immer im Messwertbereich (kein ungewolltes 1970-Fenster durch leere gespeicherte Zoom-Werte).
-- Option `Messpunkte markieren`: schaltet runde Marker ein/aus.
+- Option `Messpunkte markieren`: wirkt nur auf den Kontext-Graph (oben) und schaltet dort runde Marker auf Min/Max ein/aus.
 - Ziehen der Groesse: Unter dem Plot gibt es einen horizontalen Griff. Ziehen nach oben/unten aendert die Plot-Hoehe.
 - Neu: Kontext-Graph oberhalb des Hauptplots zeigt den aktuell in Raw sichtbaren Bereich plus konfigurierbaren Puffer davor/danach. Verdichtung nutzt Min/Max (keine Durchschnittswerte), umschaltbar ueber Checkboxen.
+- Neu: Zusaetzliche Min/Max-Leiste fuer den Haupt-Graph (unten). Die Checkboxen wirken nur auf den Haupt-Graph und aktualisieren die Darstellung sofort.
 
 Graph Query:
 

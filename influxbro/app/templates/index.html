@@ -770,72 +770,91 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
     </details>
     <details id="graph_section" class="section" open data-ui="dashboard_graph.section_root" title="dashboard_graph.section_root">
        <summary><span class="ib_summary_row"><span class="section_title" style="margin:0;">Grafische Analyse</span><button type="button" class="ib_info_icon" data-info-title="Dashboard: Graph" data-info-body="Der Graph ist die zentrale Visualisierung der aktuell gewaehlten Serie.\n\nEnthaelt:\n- Zeitreihen-Plot mit Zoom und Auswahl\n- Marker fuer selektierte Punkte\n- Detail-Modi, Ableitungen und Zusatzinfos unter dem Plot\n- Kontext-Graph: zeigt den aktuell in Raw sichtbaren Bereich plus konfigurierbaren Puffer\n\nHinweis:\n- Zoom/Auswahl wirken nur im Graphbereich (keine automatische Steuerung anderer Bereiche)." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
-       <div class="tbl_actions" data-ui="dashboard_graph.row_actions">
-         <label><input type="checkbox" id="graph_markers" class="row_sel" data-ui="dashboard_graph.chk_messpunkte_markieren"/>Messpunkte markieren</label>
-         <button class="btn_sm" id="graph_refresh" type="button" data-ui="dashboard_graph.btn_aktualisieren" title="dashboard_graph.btn_aktualisieren" aria-label="Graph neu zeichnen"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M18.6091 5.89092L15.5 9H21.5V3L18.6091 5.89092ZM18.6091 5.89092C16.965 4.1131 14.6125 3 12 3C7.36745 3 3.55237 6.50005 3.05493 11M5.39092 18.1091L2.5 21V15H8.5L5.39092 18.1091ZM5.39092 18.1091C7.03504 19.8869 9.38753 21 12 21C16.6326 21 20.4476 17.5 20.9451 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
-         <!-- Button Zeitraum Reset wurde entfernt (Issue #330). -->
-         <button class="btn_sm" id="graph_query_open" type="button" data-ui="dashboard_graph.btn_query_anzeigen" title="dashboard_graph.btn_query_anzeigen" aria-label="Graph Query anzeigen"><svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="11" cy="15.5" r="1.5"></circle><path d="M12,12H10V8h2a2,2,0,0,0,0-4H10A2.0023,2.0023,0,0,0,8,6v.5H6V6a4.0045,4.0045,0,0,1,4-4h2a4,4,0,0,1,0,8Z"></path><path d="M22.4479,21.0337A10.971,10.971,0,0,0,19.9211,4.7446l-.999,1.73A8.9967,8.9967,0,1,1,5,14H3a10.9916,10.9916,0,0,0,18.0338,8.4478L28.5859,30,30,28.5859Z"></path></svg></button>
-         <button class="btn_sm" id="graph_query_test" type="button" data-ui="dashboard_graph.btn_query_test" title="dashboard_graph.btn_query_test" aria-label="Query testen"><svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="#000000" width="18" height="18" aria-hidden="true" focusable="false"><path d="M6 10V9h9v1H6zm4-4h5v1h-5V6zm5-3v1H6V3h9zm-9 9v1h9v-1H6z"></path><path fill-rule="evenodd" clip-rule="evenodd" d="M1 2.795l.783-.419 5.371 3.581v.838l-5.371 3.581L1 9.957V2.795zm1.007.94v5.281l3.96-2.64-3.96-2.64z"></path></svg></button>
-       </div>
 
-       <div class="tbl_actions" style="justify-content:flex-start; margin-top: 8px; gap: 10px; flex-wrap:wrap;" data-ui="dashboard_graph.panel_detail" title="dashboard_graph.panel_detail">
-        <label style="display:flex; align-items:center; gap: 8px;">
-          <span class="muted" style="min-width: 76px;">Details</span>
-          <select id="graph_detail_mode" class="btn_sm" data-ui="dashboard_graph.panel_detail_mode" title="dashboard_graph.panel_detail_mode">
-            <option value="dynamic" selected>Dynamisch</option>
-            <option value="manual">Manuell</option>
-          </select>
-        </label>
+       <!-- Selection info applies to BOTH graphs; keep it directly under the section header. -->
+       <div class="muted" id="graph_selected_info" style="margin: 8px 0 10px 0; font-weight: 650;" data-ui="dashboard_graph.txt_auswahl" title="dashboard_graph.txt_auswahl" data-ib-pickkey="dashboard_graph.txt_auswahl"></div>
 
-        <label id="graph_manual_density_wrap" style="display:none; align-items:center; gap: 8px;">
-          <span class="muted">Punktdichte</span>
-          <input id="graph_manual_density" type="range" min="1" max="100" value="100" style="width: 180px;" />
-          <span class="muted" id="graph_manual_density_lbl">100%</span>
-        </label>
+        <div class="tbl_actions" data-ui="dashboard_graph.row_actions">
+          <label><input type="checkbox" id="graph_markers" class="row_sel" data-ui="dashboard_graph.chk_messpunkte_markieren"/>Messpunkte markieren</label>
+          <button class="btn_sm" id="graph_refresh" type="button" data-ui="dashboard_graph.btn_aktualisieren" title="dashboard_graph.btn_aktualisieren" aria-label="Graph neu zeichnen"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M18.6091 5.89092L15.5 9H21.5V3L18.6091 5.89092ZM18.6091 5.89092C16.965 4.1131 14.6125 3 12 3C7.36745 3 3.55237 6.50005 3.05493 11M5.39092 18.1091L2.5 21V15H8.5L5.39092 18.1091ZM5.39092 18.1091C7.03504 19.8869 9.38753 21 12 21C16.6326 21 20.4476 17.5 20.9451 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
+          <!-- Button Zeitraum Reset wurde entfernt (Issue #330). -->
+          <button class="btn_sm" id="graph_query_open" type="button" data-ui="dashboard_graph.btn_query_anzeigen" title="dashboard_graph.btn_query_anzeigen" aria-label="Graph Query anzeigen"><svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="11" cy="15.5" r="1.5"></circle><path d="M12,12H10V8h2a2,2,0,0,0,0-4H10A2.0023,2.0023,0,0,0,8,6v.5H6V6a4.0045,4.0045,0,0,1,4-4h2a4,4,0,0,1,0,8Z"></path><path d="M22.4479,21.0337A10.971,10.971,0,0,0,19.9211,4.7446l-.999,1.73A8.9967,8.9967,0,1,1,5,14H3a10.9916,10.9916,0,0,0,18.0338,8.4478L28.5859,30,30,28.5859Z"></path></svg></button>
+          <button class="btn_sm" id="graph_query_test" type="button" data-ui="dashboard_graph.btn_query_test" title="dashboard_graph.btn_query_test" aria-label="Query testen"><svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="#000000" width="18" height="18" aria-hidden="true" focusable="false"><path d="M6 10V9h9v1H6zm4-4h5v1h-5V6zm5-3v1H6V3h9zm-9 9v1h9v-1H6z"></path><path fill-rule="evenodd" clip-rule="evenodd" d="M1 2.795l.783-.419 5.371 3.581v.838l-5.371 3.581L1 9.957V2.795zm1.007.94v5.281l3.96-2.64-3.96-2.64z"></path></svg></button>
+        </div>
 
-        <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_bg" class="row_sel" checked data-ui="dashboard_graph.chk_ableitung_hintergrund" title="dashboard_graph.chk_ableitung_hintergrund"/>Ableitung: Hintergrund</label>
-        <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_strip" class="row_sel" checked data-ui="dashboard_graph.chk_ableitung_farbleiste" title="dashboard_graph.chk_ableitung_farbleiste"/>Ableitung: Farbleiste</label>
-        <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_graph" class="row_sel" checked data-ui="dashboard_graph.chk_ableitung_graph" title="dashboard_graph.chk_ableitung_graph"/>Ableitungs-Graph</label>
-        <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_abs" class="row_sel" checked data-ui="dashboard_graph.chk_ableitung_absolut" title="dashboard_graph.chk_ableitung_absolut"/>absolut</label>
-        <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_signed" class="row_sel" data-ui="dashboard_graph.chk_ableitung_signiert" title="dashboard_graph.chk_ableitung_signiert"/>signiert</label>
-
-        <label id="deriv_outlier_wrap" style="display:none; align-items:center; gap: 8px;">
-          <span class="muted">Ableitung Outlier</span>
-          <input id="deriv_outlier_thr" type="range" min="0" max="100" value="90" style="width: 160px;" />
-          <span class="muted" id="deriv_outlier_lbl">90%</span>
-        </label>
-      </div>
        <div id="graph_query_section" style="display:none;" data-ui="dashboard_graph.panel_query" title="dashboard_graph.panel_query">
-         <button class="btn_sm" id="graph_copy_query" data-ui="dashboard_graph.btn_query_kopieren" title="dashboard_graph.btn_query_kopieren"></button>
-         <select class="btn_sm" id="graph_query_source" data-ui="dashboard_graph.select_query_quelle" title="dashboard_graph.select_query_quelle">
-           <option value="dashboard" selected>Dashboard</option>
-           <option value="edit_graph">Bearbeitungsgraph</option>
-         </select>
-         <button class="btn_sm" id="graph_query_history" type="button" data-ui="dashboard_graph.btn_query_verlauf" title="dashboard_graph.btn_query_verlauf"></button>
-         <div id="graph_query_meta"></div>
-         <div id="graph_query_label"></div>
-         <pre id="graph_query">Noch keine Query vorhanden.</pre>
-       </div>
+          <button class="btn_sm" id="graph_copy_query" data-ui="dashboard_graph.btn_query_kopieren" title="dashboard_graph.btn_query_kopieren"></button>
+          <select class="btn_sm" id="graph_query_source" data-ui="dashboard_graph.select_query_quelle" title="dashboard_graph.select_query_quelle">
+            <option value="dashboard" selected>Dashboard</option>
+            <option value="edit_graph">Bearbeitungsgraph</option>
+          </select>
+          <button class="btn_sm" id="graph_query_history" type="button" data-ui="dashboard_graph.btn_query_verlauf" title="dashboard_graph.btn_query_verlauf"></button>
+          <div id="graph_query_meta"></div>
+          <div id="graph_query_label"></div>
+          <pre id="graph_query">Noch keine Query vorhanden.</pre>
+        </div>
 
-       <div class="tbl_actions" style="justify-content:flex-start; margin-top: 8px; gap: 10px; flex-wrap:wrap; align-items:center;" data-ui="dashboard_graph.panel_context" title="dashboard_graph.panel_context">
-         <span class="muted" style="min-width: 76px;">Kontext</span>
-         <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="graph_ctx_min" class="row_sel" checked data-ui="dashboard_graph.chk_ctx_min" title="dashboard_graph.chk_ctx_min"/>Min</label>
-         <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="graph_ctx_max" class="row_sel" checked data-ui="dashboard_graph.chk_ctx_max" title="dashboard_graph.chk_ctx_max"/>Max</label>
-         <span class="muted" id="graph_ctx_info" style="font-size:12px; opacity:0.75;"></span>
-       </div>
-       <div class="graph_frame" id="graph_ctx_frame" data-ui="dashboard_graph.panel_context_frame" title="dashboard_graph.panel_context_frame" style="position:relative;">
-         <div id="graph_ctx_plot"></div>
-       </div>
-        <div class="muted" data-ui="dashboard_graph.txt_hint" title="dashboard_graph.txt_hint">Zoomen/Pan im Plot. Doppelklick setzt Zoom zurueck. Griff unten zieht die Hoehe.</div>
-        <div class="muted" id="graph_points_info" style="margin-top: 6px;"></div>
-        <div class="muted" id="graph_selected_info" style="margin-top: 6px; font-weight: 650;" data-ui="dashboard_graph.txt_auswahl" title="dashboard_graph.txt_auswahl"></div>
-         <div class="graph_frame" data-ui="dashboard_graph.panel_frame" title="dashboard_graph.panel_frame" style="position:relative;">
-           <div id="chart_plotly"></div>
-           <canvas id="chart" width="800" height="200"></canvas>
-        <div id="deriv_strip_plot" style="display:none; width: 100%; height: 60px; margin-top: 8px; pointer-events:none;"></div>
-        <div id="deriv_graph_plot" style="display:none; width: 100%; height: calc(140px * var(--ib-zoom-scale)); margin-top: calc(8px * var(--ib-zoom-scale)); pointer-events:none;"></div>
+       <!-- Upper graph: context preview for the current Raw window -->
+        <div class="tbl_actions" style="justify-content:flex-start; margin-top: 8px; gap: 10px; flex-wrap:wrap; align-items:center;" data-ui="dashboard_graph.panel_context" title="dashboard_graph.panel_context">
+          <span class="muted" style="min-width: 76px;">Kontext</span>
+          <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="graph_ctx_min" class="row_sel" checked data-ui="dashboard_graph.chk_ctx_min" title="dashboard_graph.chk_ctx_min"/>Min</label>
+          <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="graph_ctx_max" class="row_sel" checked data-ui="dashboard_graph.chk_ctx_max" title="dashboard_graph.chk_ctx_max"/>Max</label>
+          <span class="muted" id="graph_ctx_info" style="font-size:12px; opacity:0.75;"></span>
+        </div>
+        <div class="graph_frame" id="graph_ctx_frame" data-ui="dashboard_graph.panel_context_frame" title="dashboard_graph.panel_context_frame" style="position:relative;">
+          <div id="graph_ctx_plot"></div>
+        </div>
+
+        <div id="graph_ctx_resize" data-ui="dashboard_graph.handle_resize_ctx" title="dashboard_graph.handle_resize_ctx" data-ib-pickkey="dashboard_graph.handle_resize_ctx" style="height: calc(12px * var(--ib-zoom-scale)); cursor: ns-resize; margin-top: calc(8px * var(--ib-zoom-scale)); border-radius: 999px; background: linear-gradient(90deg, #eee, #f8f8f8);"></div>
+        <div class="muted" id="graph_ctx_hint" data-ui="dashboard_graph.txt_hint_ctx" title="dashboard_graph.txt_hint_ctx" data-ib-pickkey="dashboard_graph.txt_hint_ctx">Kontext-Graph: zeigt den aktuell in Raw sichtbaren Zeitraum (inkl. Puffer) und markiert die Auswahl.</div>
+
+        <!-- Lower graph: main series plot (default: full Zeitbereich von/bis) -->
+        <div class="tbl_actions" style="justify-content:flex-start; margin-top: 10px; gap: 10px; flex-wrap:wrap; align-items:center;" data-ui="dashboard_graph.panel_main" title="dashboard_graph.panel_main">
+          <span class="muted" style="min-width: 76px;">Graph</span>
+          <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="graph_main_min" class="row_sel" data-ui="dashboard_graph.chk_main_min" title="dashboard_graph.chk_main_min" data-ib-pickkey="dashboard_graph.chk_main_min"/>Min</label>
+          <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="graph_main_max" class="row_sel" checked data-ui="dashboard_graph.chk_main_max" title="dashboard_graph.chk_main_max" data-ib-pickkey="dashboard_graph.chk_main_max"/>Max</label>
+          <span class="muted" id="graph_main_info" style="font-size:12px; opacity:0.75;" data-ui="dashboard_graph.txt_main_info" title="dashboard_graph.txt_main_info" data-ib-pickkey="dashboard_graph.txt_main_info"></span>
+        </div>
+
+        <div class="graph_frame" data-ui="dashboard_graph.panel_frame" title="dashboard_graph.panel_frame" style="position:relative;">
+          <!-- Detail controls belong to the main graph; keep them visually over the plot. -->
+          <div class="tbl_actions" style="position:absolute; top: 10px; left: 10px; right: 10px; z-index: 4; justify-content:flex-start; gap: 10px; flex-wrap:wrap; align-items:center; padding: 8px 10px; border-radius: 12px; background: rgba(255,255,255,0.92); border: 1px solid rgba(0,0,0,0.08); backdrop-filter: blur(6px);" data-ui="dashboard_graph.panel_detail" title="dashboard_graph.panel_detail">
+            <label style="display:flex; align-items:center; gap: 8px;">
+              <span class="muted" style="min-width: 76px;">Details</span>
+              <select id="graph_detail_mode" class="btn_sm" data-ui="dashboard_graph.panel_detail_mode" title="dashboard_graph.panel_detail_mode">
+                <option value="dynamic" selected>Dynamisch</option>
+                <option value="manual">Manuell</option>
+              </select>
+            </label>
+
+            <label id="graph_manual_density_wrap" style="display:none; align-items:center; gap: 8px;">
+              <span class="muted">Punktdichte</span>
+              <input id="graph_manual_density" type="range" min="1" max="100" value="100" style="width: 180px;" />
+              <span class="muted" id="graph_manual_density_lbl">100%</span>
+            </label>
+
+            <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_bg" class="row_sel" checked data-ui="dashboard_graph.chk_ableitung_hintergrund" title="dashboard_graph.chk_ableitung_hintergrund"/>Ableitung: Hintergrund</label>
+            <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_strip" class="row_sel" checked data-ui="dashboard_graph.chk_ableitung_farbleiste" title="dashboard_graph.chk_ableitung_farbleiste"/>Ableitung: Farbleiste</label>
+            <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_graph" class="row_sel" checked data-ui="dashboard_graph.chk_ableitung_graph" title="dashboard_graph.chk_ableitung_graph"/>Ableitungs-Graph</label>
+            <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_abs" class="row_sel" checked data-ui="dashboard_graph.chk_ableitung_absolut" title="dashboard_graph.chk_ableitung_absolut"/>absolut</label>
+            <label style="display:flex; align-items:center; gap: 8px;"><input type="checkbox" id="deriv_signed" class="row_sel" data-ui="dashboard_graph.chk_ableitung_signiert" title="dashboard_graph.chk_ableitung_signiert"/>signiert</label>
+
+            <label id="deriv_outlier_wrap" style="display:none; align-items:center; gap: 8px;">
+              <span class="muted">Ableitung Outlier</span>
+              <input id="deriv_outlier_thr" type="range" min="0" max="100" value="90" style="width: 160px;" />
+              <span class="muted" id="deriv_outlier_lbl">90%</span>
+            </label>
+          </div>
+
+          <div id="chart_plotly"></div>
+          <canvas id="chart" width="800" height="200"></canvas>
+          <div id="deriv_strip_plot" style="display:none; width: 100%; height: 60px; margin-top: 8px; pointer-events:none;"></div>
+          <div id="deriv_graph_plot" style="display:none; width: 100%; height: calc(140px * var(--ib-zoom-scale)); margin-top: calc(8px * var(--ib-zoom-scale)); pointer-events:none;"></div>
+        </div>
+
         <div id="graph_resize" data-ui="dashboard_graph.handle_resize" title="dashboard_graph.handle_resize" style="height: calc(12px * var(--ib-zoom-scale)); cursor: ns-resize; margin-top: calc(8px * var(--ib-zoom-scale)); border-radius: 999px; background: linear-gradient(90deg, #eee, #f8f8f8);"></div>
-      </div>
+        <div class="muted" id="graph_main_hint" data-ui="dashboard_graph.txt_hint" title="dashboard_graph.txt_hint" data-ib-pickkey="dashboard_graph.txt_hint">Haupt-Graph: Zoomen/Pan im Plot. Doppelklick setzt Zoom zurueck. Griff unten zieht die Hoehe.</div>
+        <div class="muted" id="graph_points_info" style="margin-top: 6px;" data-ui="dashboard_graph.txt_points" title="dashboard_graph.txt_points" data-ib-pickkey="dashboard_graph.txt_points"></div>
     </details>
 
     <div id="raw_outlier_params_dialog" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;">
@@ -1021,9 +1040,10 @@ const $tagChoicesRows = document.getElementById('tag_choices_rows');
 
 const canvas = document.getElementById('chart');
 const ctx = canvas.getContext('2d');
-const $plotly = document.getElementById('chart_plotly');
-const $graphResize = document.getElementById('graph_resize');
-const $graphRefresh = document.getElementById('graph_refresh');
+ const $plotly = document.getElementById('chart_plotly');
+ const $graphResize = document.getElementById('graph_resize');
+ const $graphCtxResize = document.getElementById('graph_ctx_resize');
+ const $graphRefresh = document.getElementById('graph_refresh');
 const $graphResetTime = document.getElementById('graph_reset_time');
 const $graphQueryOpen = document.getElementById('graph_query_open');
 const $analysisSection = document.getElementById('analysis_section');
@@ -1155,10 +1175,13 @@ const $derivOutlierLbl = document.getElementById('deriv_outlier_lbl');
 
 const $graphPointsInfo = document.getElementById('graph_points_info');
 const $graphSelectedInfo = document.getElementById('graph_selected_info');
-const $graphCtxMin = document.getElementById('graph_ctx_min');
-const $graphCtxMax = document.getElementById('graph_ctx_max');
-const $graphCtxInfo = document.getElementById('graph_ctx_info');
-const $graphCtxPlot = document.getElementById('graph_ctx_plot');
+ const $graphCtxMin = document.getElementById('graph_ctx_min');
+ const $graphCtxMax = document.getElementById('graph_ctx_max');
+ const $graphCtxInfo = document.getElementById('graph_ctx_info');
+ const $graphCtxPlot = document.getElementById('graph_ctx_plot');
+ const $graphMainMin = document.getElementById('graph_main_min');
+ const $graphMainMax = document.getElementById('graph_main_max');
+ const $graphMainInfo = document.getElementById('graph_main_info');
 const $analysisInfo = document.getElementById('analysis_inline_stats');
 const $editGraphCounts = document.getElementById('edit_graph_counts');
 
@@ -1167,8 +1190,11 @@ const $rawSpinner = document.getElementById('raw_spinner');
 const $rawStatusTxt = document.getElementById('raw_status_txt');
 const $rawStatusTime = document.getElementById('raw_status_time');
 
-const GRAPH_H_KEY = 'influxbro_graph_height_px';
-let GRAPH_H_PX = null;
+ const GRAPH_H_KEY = 'influxbro_graph_height_px';
+ let GRAPH_H_PX = null;
+
+ const GRAPH_CTX_H_KEY = 'influxbro_graph_ctx_height_px';
+ let GRAPH_CTX_H_PX = null;
 
 const $editToolbarInfo = document.getElementById('edit_toolbar_info');
 const $btnEditDetails = document.getElementById('edit_btn_details');
@@ -1785,6 +1811,16 @@ function _applyOverlays(){
 let _GRAPH_CTX_LAST_KEY = '';
 let _GRAPH_CTX_INFLIGHT = false;
 
+function _zoomScale(){
+  try{
+    const raw = getComputedStyle(document.documentElement).getPropertyValue('--ib-zoom-scale').trim();
+    const n = Number(raw || '1');
+    return (isFinite(n) && n > 0.1 && n < 6) ? n : 1;
+  }catch(e){
+    return 1;
+  }
+}
+
 function _rawVisibleBoundsMs(){
   try{
     const rows = Array.isArray(RAW_ROWS) ? RAW_ROWS : [];
@@ -1829,10 +1865,13 @@ function _ctxWindowFromRaw(bounds, centerMs){
   }
 }
 
-async function refreshGraphContext(){
+async function refreshGraphContext(opts){
   try{
     if(!$graphCtxPlot || !window.Plotly) return;
     if(!$graphSection || !$graphSection.open) return;
+
+    const o = opts && typeof opts === 'object' ? opts : {};
+    const force = !!o.force;
 
     const base = currentFilters();
     if(!base || !base.measurement || !base.field || (!base.entity_id && !base.friendly_name)){
@@ -1863,8 +1902,8 @@ async function refreshGraphContext(){
 
     const startIso = new Date(Number(win.start_ms)).toISOString();
     const stopIso = new Date(Number(win.stop_ms)).toISOString();
-    const key = [base.measurement, base.field, base.entity_id || '', base.friendly_name || '', startIso, stopIso, String(fns)].join('|');
-    if(_GRAPH_CTX_INFLIGHT && key === _GRAPH_CTX_LAST_KEY) return;
+    const key = [base.measurement, base.field, base.entity_id || '', base.friendly_name || '', startIso, stopIso, String(fns), String(!!GRAPH_MARKERS)].join('|');
+    if(!force && _GRAPH_CTX_INFLIGHT && key === _GRAPH_CTX_LAST_KEY) return;
     _GRAPH_CTX_LAST_KEY = key;
 
     const maxPoints = _ctxMaxPoints();
@@ -1915,11 +1954,12 @@ async function refreshGraphContext(){
         });
         traces.push({
           type: 'scatter',
-          mode: 'lines',
+          mode: GRAPH_MARKERS ? 'lines+markers' : 'lines',
           name: (fn === 'min') ? 'Min' : 'Max',
           x,
           y,
           line: { color: (fn === 'min') ? '#2c7fb8' : '#c62828', width: 1.4, simplify: false, shape: 'linear' },
+          marker: { size: 5, symbol: 'circle', color: (fn === 'min') ? '#2c7fb8' : '#c62828' },
           hovertemplate: '%{x|%d.%m.%y %H:%M:%S.%L}<br>%{y}<extra></extra>',
           showlegend: true,
         });
@@ -1948,9 +1988,11 @@ async function refreshGraphContext(){
         layer: 'above',
       }];
 
+      const sc = _zoomScale();
+      const baseH = (GRAPH_CTX_H_PX && isFinite(GRAPH_CTX_H_PX)) ? Math.round(GRAPH_CTX_H_PX) : 180;
       const layout = {
         margin: { l: 52, r: 10, t: 10, b: 42 },
-        height: 180,
+        height: Math.round(baseH * sc),
         autosize: true,
         xaxis: { type: 'date', fixedrange: true },
         yaxis: { automargin: true, fixedrange: true },
@@ -1959,6 +2001,9 @@ async function refreshGraphContext(){
         legend: {orientation: 'h', x: 0, xanchor: 'left', y: -0.25, yanchor: 'top', font: {size: 11}},
       };
 
+      if(force){
+        try{ window.Plotly.purge($graphCtxPlot); }catch(e){}
+      }
       window.Plotly.react($graphCtxPlot, traces, layout, {displayModeBar:false, responsive:true, staticPlot:true});
       try{
         if($graphCtxInfo){
@@ -1972,6 +2017,114 @@ async function refreshGraphContext(){
     }
   }catch(e){
     _GRAPH_CTX_INFLIGHT = false;
+  }
+}
+
+let _GRAPH_MAIN_AGG = { key: '', min: null, max: null, inflight: false };
+
+function _mainAggMaxPoints(){
+  try{
+    const w = $plotly ? $plotly.getBoundingClientRect().width : 0;
+    const px = Math.floor(isFinite(w) ? w : 0);
+    if(px > 80) return Math.max(80, Math.min(200000, px));
+  }catch(e){}
+  return 1200;
+}
+
+function _mainWindowIso(){
+  try{
+    const r = rangeToStartStop();
+    if(r && r.all){
+      const s = LAST_TOTAL_BOUNDS && LAST_TOTAL_BOUNDS.oldest_time ? String(LAST_TOTAL_BOUNDS.oldest_time) : '';
+      const e = LAST_TOTAL_BOUNDS && LAST_TOTAL_BOUNDS.newest_time ? String(LAST_TOTAL_BOUNDS.newest_time) : '';
+      if(s && e) return { start: new Date(Date.parse(s)).toISOString(), stop: new Date(Date.parse(e)).toISOString() };
+      // Fallback: allow API to decide for unbounded
+      return { start: '', stop: '' };
+    }
+    const start = (r && r.start) ? r.start : null;
+    const stop = (r && r.stop) ? r.stop : null;
+    if(start && stop && isFinite(start.getTime()) && isFinite(stop.getTime())) return { start: start.toISOString(), stop: stop.toISOString() };
+    return null;
+  }catch(e){
+    return null;
+  }
+}
+
+async function refreshGraphMainAgg(opts){
+  try{
+    const o = opts && typeof opts === 'object' ? opts : {};
+    const force = !!o.force;
+    if(!$plotly || !window.Plotly) return;
+    if(!$graphMainMin || !$graphMainMax) return;
+
+    const wantMin = !!$graphMainMin.checked;
+    const wantMax = !!$graphMainMax.checked;
+    if(!wantMin && !wantMax){
+      _GRAPH_MAIN_AGG.min = null;
+      _GRAPH_MAIN_AGG.max = null;
+      _GRAPH_MAIN_AGG.key = '';
+      try{ if($graphMainInfo) $graphMainInfo.textContent = ''; }catch(e){}
+      return;
+    }
+
+    const base = currentFilters();
+    if(!base || !base.measurement || !base.field || (!base.entity_id && !base.friendly_name)) return;
+    const win = _mainWindowIso();
+    if(!win) return;
+    const maxPoints = _mainAggMaxPoints();
+    const key = [base.measurement, base.field, base.entity_id || '', base.friendly_name || '', win.start || '', win.stop || '', maxPoints, wantMin, wantMax].join('|');
+    if(!force && key === _GRAPH_MAIN_AGG.key && (_GRAPH_MAIN_AGG.min || _GRAPH_MAIN_AGG.max)) return;
+    _GRAPH_MAIN_AGG.key = key;
+
+    const fns = [];
+    if(wantMin) fns.push('min');
+    if(wantMax) fns.push('max');
+
+    _GRAPH_MAIN_AGG.inflight = true;
+    try{
+      const out = { min: null, max: null };
+      for(const fn of fns){
+        const payload = {
+          measurement: base.measurement,
+          field: base.field,
+          entity_id: base.entity_id,
+          friendly_name: base.friendly_name,
+          start: win.start || undefined,
+          stop: win.stop || undefined,
+          max_points: maxPoints,
+          agg_fn: fn,
+        };
+        const j = await api('./api/window_points', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify(payload),
+        }, { key: 'graph_main_agg:' + fn, silent: true });
+        const pts = (j && Array.isArray(j.rows)) ? j.rows : [];
+        const x = [];
+        const y = [];
+        pts.forEach(p=>{
+          const ms = Date.parse(String(p && p.time ? p.time : ''));
+          const v = toFiniteNumber(p && p.value);
+          if(!(isFinite(ms) && v !== null)) return;
+          x.push(new Date(ms));
+          y.push(v);
+        });
+        out[fn] = { x, y };
+      }
+      _GRAPH_MAIN_AGG.min = out.min;
+      _GRAPH_MAIN_AGG.max = out.max;
+      try{
+        if($graphMainInfo){
+          const s = win.start ? fmtTs(win.start) : '';
+          const e = win.stop ? fmtTs(win.stop) : '';
+          $graphMainInfo.textContent = (s && e) ? (`Zeitfenster: ${s} bis ${e} | max_points: ${maxPoints}`) : (`max_points: ${maxPoints}`);
+        }
+      }catch(e){}
+    }finally{
+      _GRAPH_MAIN_AGG.inflight = false;
+    }
+  }catch(e){
+    _GRAPH_MAIN_AGG.inflight = false;
   }
 }
 
@@ -1995,6 +2148,8 @@ function saveState(){
       sort_dir: TABLE_SORT.dir,
       tbl_time_from_graph: TABLE_TIME.from_graph,
       graph_markers: GRAPH_MARKERS,
+      graph_main_min: !!($graphMainMin && $graphMainMin.checked),
+      graph_main_max: !!($graphMainMax && $graphMainMax.checked),
       graph_detail_mode: $graphDetailMode ? String($graphDetailMode.value || 'dynamic') : 'dynamic',
       graph_manual_density: $graphManualDensity ? Number($graphManualDensity.value || 100) : 100,
       deriv_bg: !!($derivBg && $derivBg.checked),
@@ -3448,19 +3603,53 @@ function drawPlotly(rows){
     }
   }catch(e){}
 
-  const data = [{
+  const data = [];
+
+  // Optional main-graph min/max overlays (Issue #392)
+  try{
+    const wantMin = !!($graphMainMin && $graphMainMin.checked);
+    const wantMax = !!($graphMainMax && $graphMainMax.checked);
+    if(wantMin && _GRAPH_MAIN_AGG && _GRAPH_MAIN_AGG.min && Array.isArray(_GRAPH_MAIN_AGG.min.x) && _GRAPH_MAIN_AGG.min.x.length){
+      data.push({
+        x: _GRAPH_MAIN_AGG.min.x,
+        y: _GRAPH_MAIN_AGG.min.y,
+        type: 'scatter',
+        mode: 'lines',
+        name: 'Min',
+        line: { color: '#2c7fb8', width: 1.2, simplify: false, shape: 'linear' },
+        hovertemplate: "%{x|%d.%m.%y %H:%M:%S.%L}<br>Min=%{y}<extra></extra>",
+        showlegend: true,
+      });
+    }
+    if(wantMax && _GRAPH_MAIN_AGG && _GRAPH_MAIN_AGG.max && Array.isArray(_GRAPH_MAIN_AGG.max.x) && _GRAPH_MAIN_AGG.max.x.length){
+      data.push({
+        x: _GRAPH_MAIN_AGG.max.x,
+        y: _GRAPH_MAIN_AGG.max.y,
+        type: 'scatter',
+        mode: 'lines',
+        name: 'Max',
+        line: { color: '#c62828', width: 1.2, simplify: false, shape: 'linear' },
+        hovertemplate: "%{x|%d.%m.%y %H:%M:%S.%L}<br>Max=%{y}<extra></extra>",
+        showlegend: true,
+      });
+    }
+  }catch(e){}
+
+  // Main series trace (markers no longer apply here; markers are context-only)
+  data.push({
     x,
     y,
     type: "scatter",
-    mode: GRAPH_MARKERS ? "lines+markers" : "lines",
+    mode: "lines",
     // Disable Plotly line simplification (keeps sharp spikes / outliers visible).
     line: { color: "#1f77b4", width: 1.5, simplify: false, shape: "linear" },
-    marker: { size: 6, symbol: "circle", color: "#1f77b4" },
     hovertemplate: "%{x|%d.%m.%y %H:%M:%S.%L}<br>%{y}<extra></extra>",
     customdata,
     name: "Wert",
-  },
-  {
+  });
+
+  // Selection marker (keep as LAST trace; index is tracked dynamically)
+  data.push({
     x: (isFinite(Number(GRAPH_SELECTED_MS)) && GRAPH_SELECTED_Y !== null && GRAPH_SELECTED_Y !== undefined) ? [new Date(Number(GRAPH_SELECTED_MS))] : [],
     y: (isFinite(Number(GRAPH_SELECTED_MS)) && GRAPH_SELECTED_Y !== null && GRAPH_SELECTED_Y !== undefined) ? [Number(GRAPH_SELECTED_Y)] : [],
     type: "scatter",
@@ -3469,7 +3658,10 @@ function drawPlotly(rows){
     hoverinfo: "skip",
     showlegend: false,
     name: "selected",
-  }];
+  });
+
+  // Track selection trace index (it depends on optional overlays).
+  try{ window.__IB_PLOTLY_SEL_TRACE_IDX = Math.max(0, data.length - 1); }catch(e){}
 
   const layout = {
     margin: { l: 52, r: 10, t: 10, b: 64 },
@@ -3491,6 +3683,17 @@ function drawPlotly(rows){
     if(isFinite(a) && isFinite(b)){
       const lo = Math.min(a,b);
       const hi = Math.max(a,b);
+      // If persisted window is outside current dataset, reset to full visible range.
+      try{
+        if(FULL_GRAPH_BOUNDS && isFinite(FULL_GRAPH_BOUNDS.min) && isFinite(FULL_GRAPH_BOUNDS.max)){
+          const outOfBounds = (lo < FULL_GRAPH_BOUNDS.min - 1000) || (hi > FULL_GRAPH_BOUNDS.max + 1000) || !(hi > lo);
+          if(outOfBounds){
+            GRAPH_VIEW.start_ms = FULL_GRAPH_BOUNDS.min;
+            GRAPH_VIEW.stop_ms = FULL_GRAPH_BOUNDS.max;
+            saveState();
+          }
+        }
+      }catch(e){}
       if(FULL_GRAPH_BOUNDS && isFinite(FULL_GRAPH_BOUNDS.min) && isFinite(FULL_GRAPH_BOUNDS.max)){
         const isFull = (Math.abs(lo - FULL_GRAPH_BOUNDS.min) <= 1000) && (Math.abs(hi - FULL_GRAPH_BOUNDS.max) <= 1000);
         if(!isFull){
@@ -4049,17 +4252,18 @@ function _updateGraphSelectedInfo(){
 function _updateGraphSelectionTrace(){
   try{
     if(!$plotly || !window.Plotly) return;
-    // trace index 1 is reserved for selection marker (see drawPlotly)
+    const idx = (window.__IB_PLOTLY_SEL_TRACE_IDX !== null && window.__IB_PLOTLY_SEL_TRACE_IDX !== undefined) ? Number(window.__IB_PLOTLY_SEL_TRACE_IDX) : 1;
+    if(!(isFinite(idx) && idx >= 0)) return;
     if(!(isFinite(Number(GRAPH_SELECTED_MS)) && GRAPH_SELECTED_Y !== null && GRAPH_SELECTED_Y !== undefined)){
-      window.Plotly.restyle($plotly, {x: [[]], y: [[]]}, [1]);
+      window.Plotly.restyle($plotly, {x: [[]], y: [[]]}, [idx]);
       return;
     }
     const d = new Date(Number(GRAPH_SELECTED_MS));
     if(!isFinite(d.getTime())){
-      window.Plotly.restyle($plotly, {x: [[]], y: [[]]}, [1]);
+      window.Plotly.restyle($plotly, {x: [[]], y: [[]]}, [idx]);
       return;
     }
-    window.Plotly.restyle($plotly, {x: [[d]], y: [[Number(GRAPH_SELECTED_Y)]]}, [1]);
+    window.Plotly.restyle($plotly, {x: [[d]], y: [[Number(GRAPH_SELECTED_Y)]]}, [idx]);
   }catch(e){}
 }
 
@@ -4459,6 +4663,19 @@ function loadGraphHeight(){
   }catch(e){}
 }
 
+function loadGraphCtxHeight(){
+  try{
+    const v = Number(localStorage.getItem(GRAPH_CTX_H_KEY));
+    if(isFinite(v) && v >= 140 && v <= 600){
+      GRAPH_CTX_H_PX = v;
+    }
+  }catch(e){}
+}
+
+function saveGraphCtxHeight(v){
+  try{ localStorage.setItem(GRAPH_CTX_H_KEY, String(Math.round(v))); }catch(e){}
+}
+
 function saveGraphHeight(v){
   try{ localStorage.setItem(GRAPH_H_KEY, String(Math.round(v))); }catch(e){}
 }
@@ -4533,6 +4750,54 @@ function initGraphResize(){
 
   $graphResize.addEventListener('mousedown', onDown);
   $graphResize.addEventListener('touchstart', onDown, {passive:false});
+}
+
+function initGraphCtxResize(){
+  if(!$graphCtxResize) return;
+  let startY = 0;
+  let startH = 0;
+  let dragging = false;
+
+  function onMove(ev){
+    if(!dragging) return;
+    const y = (ev && (ev.touches && ev.touches[0] ? ev.touches[0].clientY : ev.clientY)) || 0;
+    const dy = y - startY;
+    const sc = _zoomScale();
+    let h = startH + (dy / Math.max(0.1, sc));
+    if(h < 140) h = 140;
+    if(h > 600) h = 600;
+    GRAPH_CTX_H_PX = h;
+    refreshGraphContext({force:true}).catch(()=>{});
+  }
+
+  function onUp(){
+    if(!dragging) return;
+    dragging = false;
+    document.body.style.userSelect = '';
+    if(GRAPH_CTX_H_PX && isFinite(GRAPH_CTX_H_PX)) saveGraphCtxHeight(GRAPH_CTX_H_PX);
+    window.removeEventListener('mousemove', onMove);
+    window.removeEventListener('mouseup', onUp);
+    window.removeEventListener('touchmove', onMove);
+    window.removeEventListener('touchend', onUp);
+  }
+
+  function onDown(ev){
+    try{
+      const y = (ev && (ev.touches && ev.touches[0] ? ev.touches[0].clientY : ev.clientY)) || 0;
+      startY = y;
+      startH = (GRAPH_CTX_H_PX && isFinite(GRAPH_CTX_H_PX)) ? GRAPH_CTX_H_PX : 180;
+      dragging = true;
+      document.body.style.userSelect = 'none';
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+      window.addEventListener('touchmove', onMove, {passive:false});
+      window.addEventListener('touchend', onUp);
+      ev.preventDefault();
+    }catch(e){}
+  }
+
+  $graphCtxResize.addEventListener('mousedown', onDown);
+  $graphCtxResize.addEventListener('touchstart', onDown, {passive:false});
 }
 
 const RAW_ROWS_KEY = 'influxbro_raw_rows_visible_v1';
@@ -10350,7 +10615,7 @@ function updateRawToolbarState(){
     if($rawApply) $rawApply.disabled = !(RAW_EDIT_MODE && RAW_EDIT_STAGED && RAW_EDIT_STAGED.size > 0);
     if($rawUndo) $rawUndo.disabled = !undoable;
     if($rawAbort) $rawAbort.disabled = !_RAW_INFLIGHT;
-    if($rawInfoBtn) $rawInfoBtn.disabled = !(hasTarget && _rawHistoryEntries(RAW_ROW_SELECTED_KEY).length);
+    if($rawInfoBtn) $rawInfoBtn.disabled = !hasTarget;
     const filtered = getFilteredOutliers();
     const activeOutlier = (RAW_OUTLIER_INDEX >= 0 && RAW_OUTLIER_INDEX < filtered.length) ? filtered[RAW_OUTLIER_INDEX] : null;
     if($rawOutlierCopyRow) $rawOutlierCopyRow.disabled = !activeOutlier;
@@ -11412,6 +11677,8 @@ try{
   if($derivOutlierThr) $derivOutlierThr.value = (st.deriv_outlier_thr !== undefined) ? String(st.deriv_outlier_thr) : '90';
   if($graphCtxMin) $graphCtxMin.checked = (st.graph_ctx_min !== undefined) ? !!st.graph_ctx_min : true;
   if($graphCtxMax) $graphCtxMax.checked = (st.graph_ctx_max !== undefined) ? !!st.graph_ctx_max : true;
+  if($graphMainMin) $graphMainMin.checked = (st.graph_main_min !== undefined) ? !!st.graph_main_min : false;
+  if($graphMainMax) $graphMainMax.checked = (st.graph_main_max !== undefined) ? !!st.graph_main_max : true;
   if($reasonFilter) $reasonFilter.value = (st.dashboard_graph.select_grund_filter !== undefined) ? String(st.dashboard_graph.select_grund_filter || "") : "";
   if($classFilter) $classFilter.value = (st.class_filter !== undefined) ? String(st.class_filter || "all") : "all";
   try{ TABLE_REASON_FILTER = $reasonFilter ? String($reasonFilter.value || "") : ""; }catch(e){ TABLE_REASON_FILTER = ""; }
@@ -11419,6 +11686,7 @@ try{
   try{ _normalizeDerivToggles(null); }catch(e){}
   try{ _updateGraphDetailUi(); }catch(e){}
   try{ refreshGraphContext(); }catch(e){}
+  try{ refreshGraphMainAgg({force:true}); }catch(e){}
 }catch(e){}
 
 try{
@@ -11461,10 +11729,23 @@ try{
       }
     }catch(e){}
     saveState();
-    try{ refreshGraphContext(); }catch(e){}
+    try{ refreshGraphContext({force:true}); }catch(e){}
   };
   [$graphCtxMin, $graphCtxMax].forEach(el=>{
     try{ if(el) el.addEventListener('change', onCtxToggle); }catch(e){}
+  });
+
+  const onMainAggToggle = ()=>{
+    try{
+      if($graphMainMin && $graphMainMax && !$graphMainMin.checked && !$graphMainMax.checked){
+        $graphMainMax.checked = true;
+      }
+    }catch(e){}
+    saveState();
+    refreshGraphMainAgg({force:true}).then(()=>{ try{ if(LAST_ROWS && LAST_ROWS.length) draw(LAST_ROWS); }catch(e){}; }).catch(()=>{});
+  };
+  [$graphMainMin, $graphMainMax].forEach(el=>{
+    try{ if(el) el.addEventListener('change', onMainAggToggle); }catch(e){}
   });
 
   try{
@@ -12511,9 +12792,8 @@ async function refreshEditGraph(){
 try{
   if($graphRefresh) $graphRefresh.addEventListener('click', (ev)=>{
     _stop(ev);
-    // Prevent overlapping fetches which can result in browser-level "Failed to fetch".
-    if(LOAD_INFLIGHT) return;
-    refreshAllWithStatus().catch(displayError);
+    // Only refresh the context graph (upper preview).
+    refreshGraphContext({force:true}).catch(()=>{});
   });
   if($editGraphRefresh) $editGraphRefresh.addEventListener('click', (ev)=>{ _stop(ev); refreshEditGraph().catch(displayError); });
 }catch(e){}
@@ -12885,6 +13165,7 @@ async function loadData(opts){
   draw(rows);
   autoScaleYFromWindow();
   try{ _updateGraphDetailUi(); _applyOverlays(); _updateGraphPointsInfo(); }catch(e){}
+  try{ refreshGraphMainAgg({force:false}).then(()=>{ try{ draw(rows); }catch(e){}; }).catch(()=>{}); }catch(e){}
   const statsT0 = performance.now();
   await loadStats();
   try{
@@ -13667,7 +13948,8 @@ if($scanPreset) $scanPreset.addEventListener("change", ()=>{
 if($graphMarkers) $graphMarkers.addEventListener("change", ()=>{
   GRAPH_MARKERS = !!$graphMarkers.checked;
   saveState();
-  draw(LAST_ROWS);
+  // Markers apply only to the context graph.
+  refreshGraphContext({force:true}).catch(()=>{});
 });
 
 // Raw data table
@@ -13681,6 +13963,47 @@ if($rawRefresh) $rawRefresh.addEventListener("click", (ev)=>{
     // Also rerun outlier scan for the current series/window.
     try{ return runOutlierScan(); }catch(e){ return null; }
   }).catch(displayError);
+});
+
+if($rawInfoBtn) $rawInfoBtn.addEventListener('click', async (ev)=>{
+  _stop(ev);
+  try{
+    const key = String(RAW_ROW_SELECTED_KEY || '').trim();
+    if(!key){ err('Bitte zuerst eine Raw-Zeile markieren.'); return; }
+    const row = findRawRowByKey(key);
+    const histTxt = _rawHistoryDetailsText(key);
+
+    const out = [];
+    out.push('Raw Info');
+    out.push('');
+    out.push('Zeit: ' + (row && row.time ? fmtTs(row.time) : fmtTs(key)));
+    out.push('Wert: ' + (row ? fmtNum(row.value) : '-'));
+    try{
+      const it = RAW_OUTLIER_MAP && RAW_OUTLIER_MAP[key] ? RAW_OUTLIER_MAP[key] : null;
+      if(it){
+        const types = Array.isArray(it.types) ? it.types.map(x=>String(x||'')).filter(Boolean) : [];
+        out.push('Ausreisser: ' + (types.length ? types.join(', ') : '-'));
+        if(it.reason) out.push('Grund: ' + String(it.reason));
+      }
+    }catch(e){}
+    out.push('');
+    out.push(histTxt);
+
+    const txt = out.join('\n');
+    if(window.InfluxBroPopup && window.InfluxBroPopup.show){
+      await new Promise((resolve)=>{
+        window.InfluxBroPopup.show('Raw Info', txt, {
+          actions: [{ label: 'OK', title: 'OK', onClick: ()=>resolve(true) }],
+          copyText: txt,
+          copyTitle: 'Zwischenablage',
+        });
+      });
+    }else{
+      alert(txt);
+    }
+  }catch(e){
+    displayError(e);
+  }
 });
 if($rawAbort) $rawAbort.addEventListener('click', (ev)=>{
   _stop(ev);
@@ -14143,7 +14466,9 @@ try{
       try{ _selInitHelpButtons(); }catch(e){}
       loadVersion().catch(()=>{});
     loadGraphHeight();
+    loadGraphCtxHeight();
     initGraphResize();
+    initGraphCtxResize();
     loadRawRows();
     initRawResize();
     initEditSplit();

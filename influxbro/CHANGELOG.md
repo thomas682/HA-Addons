@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.12.429
+
+### Enhancement
+
+- Dashboard Graph: Kontext- und Haupt-Graph klar getrennt (Marker/Refresh nur Kontext), Detailleiste liegt ueber dem Haupt-Graph, zusaetzliche Min/Max-Leiste fuer den Haupt-Graph, Auswahl-Infozeile ist global fuer beide Graphen. Raw: `Info`-Button zeigt wieder einen Dialog mit Details/History. ([#392](https://github.com/thomas682/HA-Addons/issues/392))
+
+### Docs
+
+- `MANUAL.md`: Topbar-Profil-Info Button entfernt; Graph-Beschreibung an neue Kontext/Haupt-Graph Logik angepasst. ([#392](https://github.com/thomas682/HA-Addons/issues/392))
+
+### Maintenance
+
+- QA: `python3 -m py_compile influxbro/app/app.py` (pytest in dieser Umgebung nicht verfuegbar).
+
 ## 1.12.428
 
 ### Enhancement

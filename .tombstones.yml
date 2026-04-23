@@ -27,3 +27,18 @@
     removed: []
     redirects: []
   ci_reference: "#391"
+
+- path: "influxbro/app/templates/_topbar.html"
+  tombstone_id: "TS-2026-0003"
+  reason: "Remove topbar Profile-Info button (ui_profile_info) per Dashboard Graph UI changes (#392)"
+  owner: "thomas"
+  impacted_selectors:
+    - "#ui_profile_info"
+    - "[data-ui=nav_profile.btn_info]"
+  impacted_actions:
+    - "Topbar: Profil-Info anzeigen"
+  migration_plan: "Use per-section info/help icons and MANUAL/Info pages; no dedicated topbar profile-info entry point."
+  route_plan:
+    removed: []
+    redirects: []
+  ci_reference: "#392"

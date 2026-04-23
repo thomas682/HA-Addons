@@ -1173,9 +1173,8 @@
       const $sel = document.getElementById('ui_profile_sel');
       const $apply = document.getElementById('ui_profile_apply');
       const $save = document.getElementById('ui_profile_save');
-      const $info = document.getElementById('ui_profile_info');
       const $hint = document.getElementById('ui_profile_hint');
-      if(!$sel || !$apply || !$save || !$info) return;
+      if(!$sel || !$apply || !$save) return;
 
       const j = await loadProfiles();
       if(!j) return;
@@ -1224,16 +1223,7 @@
           $hint.textContent = 'Aktiv: ' + (lbl || '-') + ' | Version: {{ addon_version }}';
         }
       };
-      $info.onclick = async (ev)=>{
-        try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
-        const id = String($sel.value||'').trim();
-        if(!id) return;
-        const r = await fetch('./api/ui_profiles/get?id=' + encodeURIComponent(id));
-        const g = await r.json().catch(()=>({ok:false}));
-        if(!r.ok || !g || !g.ok) return;
-        const p = g.profile || {};
-        showProfileInfo(p.label || p.id || id, p.items || {});
-      };
+      // Profile info button was removed (Issue #392).
     }
 
     function watchEl(el){
