@@ -25056,6 +25056,10 @@ def apply_changes():
     trigger_source = str(body.get("trigger_source") or "").strip() or None
     trigger_action = str(body.get("trigger_action") or "").strip() or None
     trigger_button = str(body.get("trigger_button") or "").strip() or None
+    detected_outlier_type = str(body.get("detected_outlier_type") or "").strip() or None
+    strategy_id = str(body.get("strategy_id") or "").strip() or None
+    strategy_description = str(body.get("strategy_description") or "").strip() or None
+    source_action = str(body.get("source_action") or "").strip() or None
     unit_default = str(body.get("unit") or "").strip()
     force_raw = body.get("force", False)
     force_default = force_raw is True or str(force_raw).strip().lower() in ("1", "true", "yes", "on")
@@ -25340,6 +25344,10 @@ def apply_changes():
                 "old_value": it.get("old_value"),
                 "new_value": it.get("new_value"),
                 "reason": str(it.get("reason") or ""),
+                "detected_outlier_type": detected_outlier_type or "",
+                "strategy_id": strategy_id or "",
+                "strategy_description": strategy_description or "",
+                "source_action": source_action or "",
                 **(
                     {
                         "change_block_id": block_id,
@@ -25376,6 +25384,10 @@ def apply_changes():
                     "trigger_source": trigger_source,
                     "trigger_action": trigger_action,
                     "trigger_button": trigger_button,
+                    "detected_outlier_type": detected_outlier_type,
+                    "strategy_id": strategy_id,
+                    "strategy_description": strategy_description,
+                    "source_action": source_action,
                     "field": field,
                     "entity_id": entity_id,
                     "friendly_name": friendly_name,
@@ -25396,6 +25408,448 @@ def apply_changes():
     except Exception:
         patch_job_id = None
     return jsonify({"ok": True, "applied": applied, "message": f"Applied changes: {applied}", "patch_job_id": patch_job_id})
+
+
+def _history_rolled_back_refs(rows: list[dict[str, Any]]) -> set[str]:
+    try:
+        return {
+            str(it.get("ref_id") or "").strip()
+            for it in rows
+            if isinstance(it, dict) and str(it.get("action") or "").strip().lower() == "rollback"
+        }
+    except Exception:
+        return set()
+
+
+def _history_change_entries_for_block(
+    rows: list[dict[str, Any]],
+    *,
+    change_block_id: str,
+    measurement: str | None,
+    field: str | None,
+    entity_id: str | None,
+    friendly_name: str | None,
+) -> list[dict[str, Any]]:
+    bid = str(change_block_id or "").strip()
+    if not bid:
+        return []
+    rolled_back = _history_rolled_back_refs(rows)
+    out: list[dict[str, Any]] = []
+    for it in rows or []:
+        if not isinstance(it, dict):
+            continue
+        if str(it.get("kind") or "").strip() != "change":
+            continue
+        if str(it.get("change_block_id") or "").strip() != bid:
+            continue
+        act = str(it.get("action") or "").strip().lower()
+        if act not in ("overwrite", "delete"):
+            continue
+        if str(it.get("id") or "").strip() in rolled_back:
+            continue
+        if measurement is not None or field is not None or entity_id is not None or friendly_name is not None:
+            s = it.get("series") or {}
+            if measurement is not None and str(s.get("measurement") or "").strip() != str(measurement or "").strip():
+                continue
+            if field is not None and str(s.get("field") or "").strip() != str(field or "").strip():
+                continue
+            if str(s.get("entity_id") or "").strip() != str(entity_id or "").strip():
+                continue
+            if str(s.get("friendly_name") or "").strip() != str(friendly_name or "").strip():
+                continue
+        out.append(it)
+    return out
+
+
+@app.post("/api/change_preview")
+def api_change_preview():
+    """Build a preview plan for a set of changes (dry-run, no writes).
+
+    This endpoint is the backend foundation for #394/#390: strategies generate a plan,
+    UI confirms, then the same payload can be executed via /api/apply_changes.
+    """
+
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    body = request.get_json(force=True) or {}
+
+    measurement = (body.get("measurement") or "").strip()
+    field = (body.get("field") or "").strip()
+    entity_id = (body.get("entity_id") or "").strip() or None
+    friendly_name = (body.get("friendly_name") or "").strip() or None
+    changes = body.get("changes")
+    trigger_page = str(body.get("trigger_page") or "").strip() or None
+    trigger_source = str(body.get("trigger_source") or "").strip() or None
+    trigger_action = str(body.get("trigger_action") or "").strip() or None
+    trigger_button = str(body.get("trigger_button") or "").strip() or None
+    detected_outlier_type = str(body.get("detected_outlier_type") or "").strip() or None
+    strategy_id = str(body.get("strategy_id") or "").strip() or None
+    strategy_description = str(body.get("strategy_description") or "").strip() or None
+    source_action = str(body.get("source_action") or "").strip() or None
+    unit_default = str(body.get("unit") or "").strip()
+    force_raw = body.get("force", False)
+    force_default = force_raw is True or str(force_raw).strip().lower() in ("1", "true", "yes", "on")
+
+    if not measurement or not field:
+        return jsonify({"ok": False, "error": "measurement and field required"}), 400
+    if not isinstance(changes, list) or not changes:
+        return jsonify({"ok": False, "error": "changes must be a non-empty list"}), 400
+    if len(changes) > 2000:
+        return jsonify({"ok": False, "error": "too many changes (max 2000)"}), 400
+
+    if int(cfg.get("influx_version", 2)) != 2:
+        return jsonify({"ok": False, "error": "change_preview currently supports InfluxDB v2 only"}), 400
+    if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+        return jsonify({
+            "ok": False,
+            "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
+        }), 400
+
+    extra = flux_tag_filter(entity_id, friendly_name)
+
+    planned: list[dict[str, Any]] = []
+    with v2_client(cfg) as c:
+        qapi = c.query_api()
+
+        for ch in changes:
+            if not isinstance(ch, dict):
+                return jsonify({"ok": False, "error": "each change must be an object"}), 400
+
+            action = str(ch.get("action") or "").strip().lower()
+            if action not in ("overwrite", "delete"):
+                return jsonify({"ok": False, "error": "invalid action"}), 400
+
+            time_raw = (ch.get("time") or "").strip()
+            if not time_raw:
+                return jsonify({"ok": False, "error": "change requires time"}), 400
+
+            reason = str(ch.get("reason") or "").strip()[:200]
+            row_role = str(ch.get("row_role") or ch.get("role") or "").strip()[:60] or None
+            unit = str(ch.get("unit") or unit_default or "").strip()
+            force_row = ch.get("force", False)
+            force = force_default or (force_row is True or str(force_row).strip().lower() in ("1", "true", "yes", "on"))
+            try:
+                expected_decimals = int(ch.get("decimals", 0))
+            except Exception:
+                expected_decimals = 0
+            if expected_decimals < 0 or expected_decimals > 12:
+                expected_decimals = 0
+
+            try:
+                dt = _parse_iso_datetime(time_raw)
+            except Exception as ex:
+                return jsonify({"ok": False, "error": f"invalid time: {ex}"}), 400
+
+            # Find original point (preserve full tag set; get old value)
+            start = _dt_to_rfc3339_utc_full(dt - timedelta(seconds=2))
+            stop = _dt_to_rfc3339_utc_full(dt + timedelta(seconds=2))
+            q = f'''
+from(bucket: "{cfg["bucket"]}")
+  |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
+  |> group()
+  |> sort(columns: ["_time"])
+  |> limit(n: 50)
+'''
+            tables = qapi.query(q, org=cfg["org"])
+            best_rec = None
+            best_abs = None
+            for t in tables or []:
+                for rec in getattr(t, "records", []) or []:
+                    rdt = rec.get_time()
+                    if not isinstance(rdt, datetime):
+                        continue
+                    delta = abs((rdt.astimezone(timezone.utc) - dt).total_seconds())
+                    if best_abs is None or delta < best_abs:
+                        best_abs = delta
+                        best_rec = rec
+
+            if best_rec is None or best_abs is None or best_abs > 1.0:
+                return jsonify({"ok": False, "error": f"original point not found near: {time_raw}"}), 404
+
+            old_val = best_rec.get_value()
+            if isinstance(old_val, bool) or not isinstance(old_val, (int, float)):
+                return jsonify({"ok": False, "error": f"unsupported field type at {time_raw}"}), 400
+
+            tags: dict[str, str] = {}
+            for k, v in (getattr(best_rec, "values", {}) or {}).items():
+                if k in ("result", "table"):
+                    continue
+                if str(k).startswith("_"):
+                    continue
+                if v is None:
+                    continue
+                tags[str(k)] = str(v)
+
+            new_val: int | float | None = None
+            if action == "overwrite":
+                new_raw = (ch.get("new_value") or "").strip()
+                if not new_raw:
+                    return jsonify({"ok": False, "error": "overwrite requires new_value"}), 400
+                if _count_decimals(new_raw) != expected_decimals:
+                    return jsonify({"ok": False, "error": f"invalid decimals for {time_raw}: expected {expected_decimals}"}), 400
+                if isinstance(old_val, int) and not isinstance(old_val, bool):
+                    if expected_decimals != 0 or "." in new_raw:
+                        return jsonify({"ok": False, "error": f"field is integer at {time_raw}; decimals must be 0"}), 400
+                    try:
+                        new_val = int(new_raw)
+                    except Exception:
+                        return jsonify({"ok": False, "error": f"invalid integer at {time_raw}"}), 400
+                else:
+                    try:
+                        new_val = float(new_raw)
+                    except Exception:
+                        return jsonify({"ok": False, "error": f"invalid float at {time_raw}"}), 400
+
+                # Outlier rule guardrails (can be overridden via force=true)
+                try:
+                    ts_eff = dt.astimezone(timezone.utc) if isinstance(dt, datetime) else dt
+                    chk = _check_outlier_edit_rules(cfg, measurement, field, entity_id, friendly_name, ts_eff, float(new_val), unit, tags)
+                    viol = chk.get("violations") or []
+                    if viol and not force:
+                        return jsonify({
+                            "ok": False,
+                            "error": "Outlier-Regel verletzt. Schreiben blockiert.",
+                            "violations": viol,
+                            "meta": {"time": time_raw, **(chk.get("meta") or {})},
+                            "can_force": True,
+                        }), 409
+                    if force and reason and "[FORCED]" not in reason:
+                        reason = (reason + " [FORCED]")[:200]
+                    elif force and not reason:
+                        reason = "[FORCED]"
+                except Exception:
+                    pass
+
+            planned.append({
+                "action": action,
+                "time": time_raw,
+                "tags": tags,
+                "old_value": old_val,
+                "new_value": new_val,
+                "reason": reason,
+                "row_role": row_role,
+            })
+
+    # Derive time range for UI display
+    try:
+        dts = []
+        for it in planned:
+            try:
+                dts.append(_parse_iso_datetime(str(it.get("time") or "")))
+            except Exception:
+                pass
+        if dts:
+            start_iso = _dt_to_rfc3339_utc_full(min(dts).astimezone(timezone.utc))
+            stop_iso = _dt_to_rfc3339_utc_full(max(dts).astimezone(timezone.utc))
+        else:
+            start_iso = ""
+            stop_iso = ""
+    except Exception:
+        start_iso = ""
+        stop_iso = ""
+
+    preview_id = uuid.uuid4().hex
+    created_at = datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+    cnt_overwrite = sum(1 for it in planned if str(it.get("action") or "") == "overwrite")
+    cnt_delete = sum(1 for it in planned if str(it.get("action") or "") == "delete")
+
+    return jsonify({
+        "ok": True,
+        "preview": {
+            "preview_id": preview_id,
+            "created_at": created_at,
+            "series": {
+                "measurement": measurement,
+                "field": field,
+                "entity_id": entity_id,
+                "friendly_name": friendly_name,
+            },
+            "time_range": {"start": start_iso, "stop": stop_iso},
+            "detected_outlier_type": detected_outlier_type or "",
+            "strategy_id": strategy_id or "",
+            "strategy_description": strategy_description or "",
+            "source_action": source_action or "",
+            "trigger_page": trigger_page or "",
+            "trigger_source": trigger_source or "",
+            "trigger_action": trigger_action or "",
+            "trigger_button": trigger_button or "",
+            "counts": {"total": len(planned), "overwrite": cnt_overwrite, "delete": cnt_delete},
+            "rows": [
+                {
+                    "timestamp": str(it.get("time") or ""),
+                    "action": str(it.get("action") or ""),
+                    "old_value": it.get("old_value"),
+                    "new_value": it.get("new_value"),
+                    "change_reason": str(it.get("reason") or ""),
+                    "row_role": str(it.get("row_role") or ""),
+                    "tags": it.get("tags") or {},
+                }
+                for it in planned
+            ],
+        },
+    })
+
+
+@app.get("/api/change_blocks")
+def api_change_blocks():
+    """List persisted change blocks derived from the audit history."""
+
+    try:
+        limit_raw = request.args.get("limit")
+        limit = int(limit_raw) if limit_raw is not None else 50
+    except Exception:
+        limit = 50
+    limit = max(1, min(500, limit))
+
+    measurement = request.args.get("measurement")
+    field = request.args.get("field")
+    entity_id = request.args.get("entity_id")
+    friendly_name = request.args.get("friendly_name")
+    include_ids = str(request.args.get("include_ids") or "").strip().lower() in ("1", "true", "yes", "on")
+
+    rows = _history_read_all()
+    rolled_back = _history_rolled_back_refs(rows)
+    blocks: dict[str, dict[str, Any]] = {}
+
+    # Newest first
+    for it in reversed(rows):
+        if not isinstance(it, dict):
+            continue
+        if str(it.get("kind") or "").strip() != "change":
+            continue
+        bid = str(it.get("change_block_id") or "").strip()
+        if not bid:
+            continue
+
+        # Enforce limit: once we already have enough blocks, only keep counting
+        # entries for blocks we already included.
+        if bid not in blocks and len(blocks) >= limit:
+            continue
+        s = it.get("series") or {}
+        if measurement is not None and str(s.get("measurement") or "").strip() != str(measurement or "").strip():
+            continue
+        if field is not None and str(s.get("field") or "").strip() != str(field or "").strip():
+            continue
+        if entity_id is not None and str(s.get("entity_id") or "").strip() != str(entity_id or "").strip():
+            continue
+        if friendly_name is not None and str(s.get("friendly_name") or "").strip() != str(friendly_name or "").strip():
+            continue
+
+        b = blocks.get(bid)
+        if b is None:
+            b = {
+                "change_block_id": bid,
+                "change_block_kind": str(it.get("change_block_kind") or ""),
+                "change_block_size": it.get("change_block_size"),
+                "change_block_start": str(it.get("change_block_start") or ""),
+                "change_block_end": str(it.get("change_block_end") or ""),
+                "created_at": str(it.get("at") or ""),
+                "series": {
+                    "measurement": str(s.get("measurement") or ""),
+                    "field": str(s.get("field") or ""),
+                    "entity_id": str(s.get("entity_id") or "") or None,
+                    "friendly_name": str(s.get("friendly_name") or "") or None,
+                },
+                "detected_outlier_type": str(it.get("detected_outlier_type") or ""),
+                "strategy_id": str(it.get("strategy_id") or ""),
+                "strategy_description": str(it.get("strategy_description") or ""),
+                "source_action": str(it.get("source_action") or ""),
+                "trigger": _history_trigger_meta(it),
+                "counts": {"total": 0, "overwrite": 0, "delete": 0, "rolled_back": 0},
+                **({"ids": []} if include_ids else {}),
+            }
+            blocks[bid] = b
+
+        act = str(it.get("action") or "").strip().lower()
+        b["counts"]["total"] += 1
+        if act in ("overwrite", "delete"):
+            b["counts"][act] += 1
+        if str(it.get("id") or "").strip() in rolled_back:
+            b["counts"]["rolled_back"] += 1
+        if include_ids and isinstance(b.get("ids"), list):
+            if len(b["ids"]) < 2500:
+                b["ids"].append(str(it.get("id") or ""))
+
+    # Keep insertion order (newest first); limit is already enforced above.
+    out = list(blocks.values())
+    return jsonify({"ok": True, "rows": out})
+
+
+@app.post("/api/change_blocks/undo_preview")
+def api_change_blocks_undo_preview():
+    """Build an undo preview plan for a given change block.
+
+    Returns the history entry ids that should be rolled back via /api/history_rollback.
+    """
+
+    body = request.get_json(force=True) or {}
+    bid = str(body.get("change_block_id") or "").strip()
+    if not bid:
+        return jsonify({"ok": False, "error": "change_block_id required"}), 400
+    if len(bid) > 80:
+        return jsonify({"ok": False, "error": "change_block_id too long"}), 400
+
+    measurement = body.get("measurement")
+    field = body.get("field")
+    entity_id = body.get("entity_id")
+    friendly_name = body.get("friendly_name")
+
+    rows = _history_read_all()
+    entries = _history_change_entries_for_block(
+        rows,
+        change_block_id=bid,
+        measurement=str(measurement).strip() if measurement is not None else None,
+        field=str(field).strip() if field is not None else None,
+        entity_id=str(entity_id).strip() if entity_id is not None else None,
+        friendly_name=str(friendly_name).strip() if friendly_name is not None else None,
+    )
+    if not entries:
+        return jsonify({"ok": False, "error": "change block not found (or already rolled back)"}), 404
+
+    # Stable order for UI (oldest -> newest by time)
+    try:
+        entries.sort(key=lambda x: str(x.get("time") or ""))
+    except Exception:
+        pass
+
+    first = entries[0]
+    s = first.get("series") or {}
+    preview_id = uuid.uuid4().hex
+    created_at = datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+
+    rollback_ids = [str(it.get("id") or "") for it in entries if str(it.get("id") or "").strip()]
+
+    return jsonify({
+        "ok": True,
+        "preview": {
+            "preview_id": preview_id,
+            "created_at": created_at,
+            "mode": "undo",
+            "source_change_block_id": bid,
+            "series": {
+                "measurement": str(s.get("measurement") or ""),
+                "field": str(s.get("field") or ""),
+                "entity_id": str(s.get("entity_id") or "") or None,
+                "friendly_name": str(s.get("friendly_name") or "") or None,
+            },
+            "strategy_id": str(first.get("strategy_id") or ""),
+            "strategy_description": str(first.get("strategy_description") or ""),
+            "detected_outlier_type": str(first.get("detected_outlier_type") or ""),
+            "source_action": str(first.get("source_action") or ""),
+            "trigger": _history_trigger_meta(first),
+            "rollback_ids": rollback_ids,
+            "rows": [
+                {
+                    "timestamp": str(it.get("time") or ""),
+                    "action": str(it.get("action") or ""),
+                    "before_value": it.get("new_value"),
+                    "after_value": it.get("old_value"),
+                    "change_reason": str(it.get("reason") or ""),
+                }
+                for it in entries
+            ],
+        },
+    })
 
 
 @app.get("/api/undo/status")

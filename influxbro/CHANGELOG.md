@@ -14,6 +14,16 @@
 
 - QA: `python3 -m py_compile influxbro/app/app.py` (pytest in dieser Umgebung nicht verfuegbar).
 
+## 1.12.430
+
+### Enhancement
+
+- Backend: technische Basis fuer Vorschauplaene/Change-Blocks/Undo-Preview eingefuehrt: neue API-Endpunkte `/api/change_preview`, `/api/change_blocks`, `/api/change_blocks/undo_preview`; `apply_changes` schreibt zusaetzliche Metadaten (`detected_outlier_type`, `strategy_*`, `source_action`) in die persistente History und in Undo-Meta. ([#394](https://github.com/thomas682/HA-Addons/issues/394))
+
+### Maintenance
+
+- QA: `python3 -m py_compile influxbro/app/app.py` (pytest in dieser Umgebung nicht verfuegbar).
+
 ## 1.12.428
 
 ### Enhancement
