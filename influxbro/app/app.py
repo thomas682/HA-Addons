@@ -1254,6 +1254,10 @@ DEFAULT_CFG = {
     "ui_table_row_height_px": 13,
     "ui_table_header_bg": "#0B1F3A",
     "ui_table_header_fg": "#FFFFFF",
+
+    # Global (device-independent) settings page layout overrides.
+    # Stored as a small JSON-like object; used by the Settings Organizer UI.
+    "settings_layout": {},
     "ui_table_min_empty_rows": 5,
     # Picker / S-Picker highlight
     "ui_picker_outline_auto": True,
@@ -8363,6 +8367,266 @@ def _resolve_host_ip(host: str) -> str | None:
     h = (host or "").strip()
     if not h:
         return None
+    try:
+        return socket.gethostbyname(h)
+    except Exception:
+        return None
+
+
+def _settings_layout_default() -> dict[str, Any]:
+    return {
+        "v": 1,
+        "custom_groups": [],
+        "custom_subgroups": [],
+        "assign": {},
+    }
+
+
+def _settings_layout_allowed_setting_ids() -> set[str]:
+    # All persisted config keys are allowed as setting ids.
+    # Additionally allow a small set of UI-state backed settings ids used on /config.
+    ids = {str(k) for k in DEFAULT_CFG.keys() if isinstance(k, str)}
+    ids.update({
+        "ui_tooltip_doc_open_mode",
+    })
+    return ids
+
+
+def _settings_layout_allowed_group_ids() -> set[str]:
+    # Base groups created in config.html's restructureSettings() (data-ui values).
+    return {
+        "config_settings.group_surface",
+        "config_settings.group_connection",
+        "config_settings.group_dashboard",
+        "config_settings.group_stats",
+        "config_settings.group_quality",
+        "config_settings.group_monitor",
+        "config_settings.group_backup",
+        "config_settings.group_restore",
+        "config_settings.group_combine",
+        "config_settings.group_export",
+        "config_settings.group_import",
+        "config_settings.group_logs",
+        "config_settings.group_jobs_cache",
+        "config_settings.group_history",
+        "config_settings.group_diagnostics",
+        "config_settings.group_changelog",
+        "config_settings.group_manual",
+        "config_settings.group_profiles",
+        "config_settings.group_settings",
+    }
+
+
+def _settings_layout_sanitize(raw: object) -> dict[str, Any]:
+    """Validate and normalize settings_layout from untrusted input."""
+
+    if not isinstance(raw, dict):
+        return {}
+
+    out: dict[str, Any] = {"v": 1, "custom_groups": [], "custom_subgroups": [], "assign": {}}
+    try:
+        v = int(raw.get("v") or 1)
+    except Exception:
+        v = 1
+    if v != 1:
+        v = 1
+    out["v"] = v
+
+    def _safe_id(x: object, max_len: int = 80) -> str:
+        try:
+            s = str(x or "").strip()
+        except Exception:
+            return ""
+        s = s[:max_len]
+        if not re.match(r"^[a-zA-Z0-9_\-\.]+$", s):
+            return ""
+        return s
+
+    def _safe_title(x: object) -> str:
+        try:
+            s = str(x or "").strip()
+        except Exception:
+            return ""
+        # keep titles short and plain
+        s = re.sub(r"\s+", " ", s)[:80]
+        return s
+
+    # custom groups
+    cgs = raw.get("custom_groups")
+    if isinstance(cgs, list):
+        for it in cgs[:50]:
+            if not isinstance(it, dict):
+                continue
+            gid = _safe_id(it.get("id"))
+            title = _safe_title(it.get("title"))
+            after = _safe_id(it.get("after"), max_len=120)
+            if not gid or not title:
+                continue
+            out["custom_groups"].append({"id": gid, "title": title, "after": after})
+
+    # custom subgroups
+    sgs = raw.get("custom_subgroups")
+    if isinstance(sgs, list):
+        for it in sgs[:200]:
+            if not isinstance(it, dict):
+                continue
+            sid = _safe_id(it.get("id"))
+            title = _safe_title(it.get("title"))
+            group = _safe_id(it.get("group"), max_len=120)
+            after = _safe_id(it.get("after"), max_len=120)
+            if not sid or not title or not group:
+                continue
+            out["custom_subgroups"].append({"id": sid, "title": title, "group": group, "after": after})
+
+    # assignments
+    assigns = raw.get("assign")
+    if isinstance(assigns, dict):
+        norm_assign: dict[str, Any] = {}
+        allowed_ids = _settings_layout_allowed_setting_ids()
+        for k0, v0 in list(assigns.items())[:2000]:
+            sid = _safe_id(k0, max_len=120)
+            if not sid or sid not in allowed_ids or not isinstance(v0, dict):
+                continue
+            grp = _safe_id(v0.get("group"), max_len=120)
+            sub = _safe_id(v0.get("subgroup"), max_len=120)
+            if not grp:
+                continue
+            item: dict[str, str] = {"group": grp}
+            if sub:
+                item["subgroup"] = sub
+            norm_assign[sid] = item
+        out["assign"] = norm_assign
+
+    # size guard
+    try:
+        if len(json.dumps(out, ensure_ascii=True)) > 200000:
+            return {}
+    except Exception:
+        return {}
+    return out
+
+
+@app.get("/api/settings_layout")
+def api_settings_layout_get():
+    cfg = load_cfg()
+    raw = cfg.get("settings_layout")
+    layout = _settings_layout_sanitize(raw)
+    if not layout:
+        layout = _settings_layout_default()
+    return jsonify({"ok": True, "layout": layout})
+
+
+@app.post("/api/settings_layout")
+def api_settings_layout_set():
+    body = request.get_json(force=True) or {}
+    raw = body.get("layout")
+    label = str(body.get("label") or "settings_layout").strip()[:120]
+
+    next_layout = _settings_layout_sanitize(raw)
+    if not next_layout:
+        next_layout = _settings_layout_default()
+
+    # Validate group refs: assignments may only target base groups or custom groups in payload.
+    try:
+        base_groups = _settings_layout_allowed_group_ids()
+        custom_groups = {
+            str(it.get("id") or "")
+            for it in (next_layout.get("custom_groups") or [])
+            if isinstance(it, dict)
+        }
+        allowed_groups = base_groups | custom_groups
+        assign = next_layout.get("assign") if isinstance(next_layout.get("assign"), dict) else {}
+        for sid, tgt in list(assign.items()):
+            if not isinstance(tgt, dict):
+                continue
+            g = str(tgt.get("group") or "").strip()
+            if g and g not in allowed_groups:
+                return jsonify({"ok": False, "error": f"invalid target group: {g}"}), 400
+    except Exception:
+        return jsonify({"ok": False, "error": "invalid layout"}), 400
+
+    cfg = load_cfg()
+    prev = _settings_layout_sanitize(cfg.get("settings_layout")) or _settings_layout_default()
+
+    cfg["settings_layout"] = next_layout
+    try:
+        save_cfg(cfg)
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 500
+
+    # Store a one-step undo snapshot globally.
+    try:
+        st = _app_state_load()
+        st["settings_layout_undo"] = {
+            "v": 1,
+            "label": label,
+            "at": datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z"),
+            "before": prev,
+            "after": next_layout,
+        }
+        _app_state_save(st)
+    except Exception:
+        pass
+
+    try:
+        _history_append({
+            "kind": "settings_layout",
+            "action": "update",
+            "label": label,
+            "ip": _req_ip(),
+            "ua": _req_ua(),
+        })
+    except Exception:
+        pass
+
+    return jsonify({"ok": True})
+
+
+@app.post("/api/settings_layout/undo")
+def api_settings_layout_undo():
+    st = _app_state_load()
+    undo = st.get("settings_layout_undo") if isinstance(st, dict) else None
+    if not isinstance(undo, dict) or not isinstance(undo.get("before"), dict) or not isinstance(undo.get("after"), dict):
+        return jsonify({"ok": False, "error": "no undo available"}), 404
+
+    cfg = load_cfg()
+    cur = _settings_layout_sanitize(cfg.get("settings_layout")) or _settings_layout_default()
+    before = _settings_layout_sanitize(undo.get("before")) or _settings_layout_default()
+    after = _settings_layout_sanitize(undo.get("after")) or _settings_layout_default()
+
+    # If current matches "after", undo to "before"; otherwise re-apply "after".
+    want = before if cur == after else after
+    cfg["settings_layout"] = want
+    try:
+        save_cfg(cfg)
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 500
+
+    try:
+        st = _app_state_load()
+        st["settings_layout_undo"] = {
+            "v": 1,
+            "label": str(undo.get("label") or "settings_layout")[:120],
+            "at": datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z"),
+            "before": before,
+            "after": after,
+        }
+        _app_state_save(st)
+    except Exception:
+        pass
+
+    try:
+        _history_append({
+            "kind": "settings_layout",
+            "action": "undo" if want == before else "repeat",
+            "label": str(undo.get("label") or "settings_layout")[:120],
+            "ip": _req_ip(),
+            "ua": _req_ua(),
+        })
+    except Exception:
+        pass
+
+    return jsonify({"ok": True, "applied": "before" if want == before else "after"})
     try:
         return socket.gethostbyname(h)
     except Exception:
@@ -16888,6 +17152,17 @@ def api_set_config():
 
     _clamp_color("ui_table_header_bg", "#0B1F3A")
     _clamp_color("ui_table_header_fg", "#FFFFFF")
+
+    # Settings layout overrides (global UI structure for /config).
+    # Keep the structure small and strictly typed (no HTML).
+    try:
+        raw_layout = cfg.get("settings_layout")
+        if not isinstance(raw_layout, dict):
+            cfg["settings_layout"] = {}
+        else:
+            cfg["settings_layout"] = _settings_layout_sanitize(raw_layout) or {}
+    except Exception:
+        cfg["settings_layout"] = {}
 
     _clamp_color_opt("ui_section_title_bg", allow_words=("transparent",))
     _clamp_color_opt("ui_section_title_fg", allow_words=("inherit",))

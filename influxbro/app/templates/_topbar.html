@@ -2066,6 +2066,14 @@
       <button id="ib_nav_back" type="button" data-ui="nav_history.btn_back" title="nav.history.back" aria-label="Vorheriges Element">◀</button>
       <button id="ib_nav_forward" type="button" data-ui="nav_history.btn_forward" title="nav.history.forward" aria-label="Naechstes Element">▶</button>
       <button id="ib_param_help_toggle" type="button" data-ui="nav_main.btn_param_help" title="nav.param_help">Param-Hilfe</button>
+      <button id="ib_settings_move" type="button" class="iconbtn" data-ui="nav_main.btn_settings_move" title="settings.organizer" aria-label="Verschieben">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18" aria-hidden="true" focusable="false">
+          <rect x="14" y="4" width="6" height="6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></rect>
+          <rect x="14" y="14" width="6" height="6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></rect>
+          <path d="M10 5C8.4087 5 6.88258 5.63214 5.75736 6.75736C4.63214 7.88258 4 9.4087 4 11C4 12.5913 4.63214 14.1174 5.75736 15.2426C6.88258 16.3679 8.4087 17 10 17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+          <path d="M8.396 18.8285L10.9256 17.3884L9.48551 14.8587" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+        </svg>
+      </button>
       <div class="zoom" data-ui="topbar_main.panel_zoom" title="topbar.zoom">
         <span class="meta">Zoom</span>
         <button id="ib_zoom_out" type="button" aria-label="Zoom out" data-ui="topbar_zoom.btn_out" title="topbar.zoom.out">-</button>
@@ -2107,7 +2115,7 @@
 </div>
 
 <script>
-(function(){
+  (function(){
   const $bar = document.getElementById('ib_error_bar');
   const $t = document.getElementById('ib_error_time');
   const $m = document.getElementById('ib_error_msg');
@@ -2204,7 +2212,153 @@
 
   try{ setTimeout(()=>{ pollInflux().catch(()=>{}); }, 200); }catch(e){}
   try{ setInterval(()=>{ pollInflux().catch(()=>{}); }, 30000); }catch(e){}
-})();
+  })();
+
+  // Settings organizer (global button; runs on /config).
+  (function(){
+    const PENDING_KEY = 'influxbro.settings.organizer.pending.v1';
+    function _isConfigPage(){
+      try{
+        const p = String(window.location && window.location.pathname ? window.location.pathname : '');
+        return p.endsWith('/config') || p.endsWith('/config/');
+      }catch(e){ return false; }
+    }
+    function _ensureModal(){
+      let root = document.getElementById('ib_settings_organizer_modal');
+      if(root) return root;
+      root = document.createElement('div');
+      root.id = 'ib_settings_organizer_modal';
+      root.style.display = 'none';
+      root.style.position = 'fixed';
+      root.style.inset = '0';
+      root.style.zIndex = '12050';
+      root.style.background = 'rgba(0,0,0,0.35)';
+      root.innerHTML = `
+        <div style="max-width:860px;margin:6vh auto;background:#fff;border-radius:12px;padding:16px;box-shadow:0 16px 60px rgba(0,0,0,0.3);">
+          <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">
+            <div>
+              <div style="font-weight:900;font-size:16px;margin-bottom:4px;">Einstellungen: Verschieben</div>
+              <div class="muted" style="margin-bottom:10px;">Funktion auswaehlen. Falls die Einstellungsseite nicht offen ist, wird sie automatisch geoeffnet.</div>
+            </div>
+            <button id="ib_settings_organizer_close" class="btn_sm" type="button">Schliessen</button>
+          </div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start;">
+            <div style="flex:0 0 320px; min-width:260px;">
+              <label class="muted" style="display:block;margin-bottom:4px;">Aktion</label>
+              <select id="ib_settings_organizer_action" style="width:100%;">
+                <option value="move_param">a) Verschieben von Parametern</option>
+                <option value="create_group">b) Erzeuge Hauptpunkt Einstellungen</option>
+                <option value="delete_group">c) Loesche Hauptpunkt</option>
+                <option value="create_subgroup">d) Erzeuge Unterpunkt</option>
+                <option value="delete_subgroup">e) Loesche Unterpunkt</option>
+              </select>
+              <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+                <button id="ib_settings_organizer_start" class="btn_sm" type="button">Start</button>
+                <button id="ib_settings_organizer_undo" class="btn_sm" type="button">Undo</button>
+              </div>
+              <div id="ib_settings_organizer_err" class="err" style="display:none;margin-top:10px;"></div>
+            </div>
+            <div style="flex:1 1 420px; min-width:280px;">
+              <div id="ib_settings_organizer_help" class="mono" style="white-space:pre-wrap;border:1px solid #eee;border-radius:12px;padding:12px;min-height:200px;background:#fafafa;"></div>
+            </div>
+          </div>
+        </div>`;
+      document.body.appendChild(root);
+      return root;
+    }
+    function _helpText(kind){
+      if(kind === 'move_param'){
+        return 'a) Diese Funktion erlaubt es Einstellungen auf der Seite Einstellungen in einen anderen Bereich zu verschieben.\n\nAblauf:\n- Danach wird eine S-Picker Funktion aktiviert.\n- Zuerst den Wert anklicken, den man verschieben will.\n- Danach ein Hauptpunkt oder ein Unterpunkt anklicken.\n- Anschliessend kommt eine Bestaetigung, ob der Wert aus dem Quellbereich in den Zielbereich verschoben werden soll.\n\nEs wird immer die gesamte Parameterzeile verschoben (Text links + Erlaeuterung + Werte rechts).';
+      }
+      if(kind === 'create_group'){
+        return 'b) Erzeuge Hauptpunkt erzeugt einen neuen Hauptpunkt in den Einstellungen.\nDu kannst angeben, an welcher Stelle er eingefuegt werden soll.';
+      }
+      if(kind === 'delete_group'){
+        return 'c) Loeschen loescht einen ausgewaehlten Hauptpunkt.\nEin Hauptpunkt kann nur geloescht werden, wenn er keine Parameterzeilen (und keine Unterpunkte mit Parametern) enthaelt.';
+      }
+      if(kind === 'create_subgroup'){
+        return 'd) Erzeuge Unterpunkt erzeugt einen neuen Unterpunkt.\nDu waehlst den Hauptpunkt und die Position darin.';
+      }
+      if(kind === 'delete_subgroup'){
+        return 'e) Loeschen loescht einen ausgewaehlten Unterpunkt.\nEin Unterpunkt kann nur geloescht werden, wenn er keine Parameterzeilen enthaelt.';
+      }
+      return '';
+    }
+    function _showErr(root, msg){
+      try{
+        const el = root.querySelector('#ib_settings_organizer_err');
+        if(!el) return;
+        const s = String(msg || '').trim();
+        el.textContent = s;
+        el.style.display = s ? 'block' : 'none';
+      }catch(e){}
+    }
+    function open(){
+      const root = _ensureModal();
+      _showErr(root, '');
+      try{ root.style.display = 'block'; }catch(e){}
+      const sel = root.querySelector('#ib_settings_organizer_action');
+      const help = root.querySelector('#ib_settings_organizer_help');
+      if(help) help.textContent = _helpText(sel ? String(sel.value||'') : 'move_param');
+    }
+    function close(){
+      const root = document.getElementById('ib_settings_organizer_modal');
+      if(root) root.style.display = 'none';
+    }
+    function _startAction(kind){
+      const root = _ensureModal();
+      _showErr(root, '');
+      const action = String(kind || '');
+      try{ sessionStorage.setItem(PENDING_KEY, JSON.stringify({ action: action, at: Date.now() })); }catch(e){}
+      if(!_isConfigPage()){
+        try{ window.location.href = './config#settings_organizer'; }catch(e){}
+        return;
+      }
+      try{
+        if(window.InfluxBroSettingsOrganizer && window.InfluxBroSettingsOrganizer.start){
+          window.InfluxBroSettingsOrganizer.start(action);
+          close();
+          return;
+        }
+      }catch(e){}
+      _showErr(root, 'Einstellungen Organizer ist auf dieser Seite nicht verfuegbar.');
+    }
+    function _undo(){
+      const root = _ensureModal();
+      _showErr(root, '');
+      try{ sessionStorage.setItem(PENDING_KEY, JSON.stringify({ action: 'undo', at: Date.now() })); }catch(e){}
+      if(!_isConfigPage()){
+        try{ window.location.href = './config#settings_organizer'; }catch(e){}
+        return;
+      }
+      try{
+        if(window.InfluxBroSettingsOrganizer && window.InfluxBroSettingsOrganizer.undo){
+          window.InfluxBroSettingsOrganizer.undo();
+          close();
+          return;
+        }
+      }catch(e){}
+      _showErr(root, 'Undo ist auf dieser Seite nicht verfuegbar.');
+    }
+
+    try{
+      const btn = document.getElementById('ib_settings_move');
+      if(btn) btn.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}; open(); });
+    }catch(e){}
+
+    try{
+      const root = _ensureModal();
+      const closeBtn = root.querySelector('#ib_settings_organizer_close');
+      if(closeBtn) closeBtn.addEventListener('click', ()=>close());
+      const sel = root.querySelector('#ib_settings_organizer_action');
+      const help = root.querySelector('#ib_settings_organizer_help');
+      if(sel && help) sel.addEventListener('change', ()=>{ try{ help.textContent = _helpText(String(sel.value||'')); }catch(e){}; });
+      const startBtn = root.querySelector('#ib_settings_organizer_start');
+      if(startBtn && sel) startBtn.addEventListener('click', ()=>_startAction(String(sel.value||'')));
+      const undoBtn = root.querySelector('#ib_settings_organizer_undo');
+      if(undoBtn) undoBtn.addEventListener('click', ()=>_undo());
+    }catch(e){}
+  })();
 </script>
 
 <script>

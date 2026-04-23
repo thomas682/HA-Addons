@@ -303,7 +303,8 @@ def test_dashboard_outlier_section_is_separate_and_above_raw_section():
 def test_outlier_table_header_is_explicitly_sticky_and_search_bar_tracks_outlier_section():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     assert '#raw_outlier_tbl thead { position: sticky; top: 0; z-index: 2; }' in body
-    assert '#raw_outlier_tbl thead th { background: #fafafa; }' in body
+    assert 'var(--ib-table-head-bg' in body
+    assert '#raw_outlier_tbl thead th { background: var(--ib-table-head-bg, #0B1F3A); color: var(--ib-table-head-fg, #FFFFFF); }' in body
     assert 'Ausreißer-Suchleiste (#raw_search_bar) wurde entfernt (Issue #330).' in body
     assert "$outlierSection.addEventListener('toggle', ()=>{" in body
 

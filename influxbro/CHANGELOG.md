@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.426
+
+### Enhancement
+
+- Einstellungen: neuer Topbar-Button `Verschieben` inkl. Auswahl a-e (Parameterzeilen zwischen Bereichen verschieben, Haupt-/Unterpunkte anlegen/loeschen) mit globaler Speicherung und Undo. Export/Import der Einstellungen sichert die Zuordnungen mit. ([#389](https://github.com/thomas682/HA-Addons/issues/389))
+- Dashboard Tabellen: Kopfzeilenfarben der Raw-Tabellen folgen jetzt global `ui_table_header_bg`/`ui_table_header_fg` (Template). ([#389](https://github.com/thomas682/HA-Addons/issues/389))
+
+### Maintenance
+
+- Tests: `.venv/bin/python -m py_compile influxbro/app/app.py`, `.venv/bin/python -m pytest -q tests/test_api_ui_support.py`, `npx playwright test tests/e2e/dashboard.spec.js -g "desktop keeps main content visible across widths"`
+- Tested with Home Assistant Core: 2026.4.3
+
 ## 1.12.425
 
 ### Bugfix

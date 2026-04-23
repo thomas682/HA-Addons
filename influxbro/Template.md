@@ -134,6 +134,10 @@ Notes
 - Sticky header row (fixed while scrolling vertically inside the list box).
   - The header must not scroll away when the list scrolls in Y.
   - The scroll area height is adjustable and persisted (see Table height).
+  - Header colors are global and configurable:
+    - Background: `ui_table_header_bg`
+    - Text: `ui_table_header_fg`
+    - Pages should use CSS vars `--ib-table-head-bg` / `--ib-table-head-fg` (defined in `_topbar.html`).
 - Sorting: every column is sortable (client-side).
   - Click on the header toggles asc/desc.
   - Must be persisted per list.

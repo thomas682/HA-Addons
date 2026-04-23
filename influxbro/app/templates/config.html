@@ -118,6 +118,22 @@
     main.content input.cfg_num_wide[type="number"] { min-width:12ch; padding-right:40px; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace; font-variant-numeric:tabular-nums; }
     /* Requested: no extra min-width/padding-right for this control */
     #ui_filter_control_width_px { min-width:0; padding-right:10px; }
+
+    /* Settings Organizer picker highlight */
+    .ib_so_pick_hl { outline: 2px solid rgba(36,99,235,0.55) !important; outline-offset: -2px; box-shadow: 0 0 0 3px rgba(36,99,235,0.10) !important; }
+    .ib_so_pick_hint {
+      position: fixed;
+      right: 14px;
+      top: calc(14px + env(safe-area-inset-top, 0px));
+      z-index: 12060;
+      background: rgba(255,255,255,0.96);
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      padding: 10px 12px;
+      max-width: min(520px, calc(100vw - 28px));
+      box-shadow: 0 12px 50px rgba(0,0,0,0.18);
+      font-size: 13px;
+    }
     main.content button:not(.ib_info_icon):not(.btn_sm) { width:100%; }
     main.content .ib_info_icon { width:22px; height:22px; padding:0; border-radius:999px; border:1px solid rgba(0,0,0,0.18); background:#fff; color:#111; cursor:pointer; font-weight:900; line-height:20px; text-align:center; flex:0 0 auto; user-select:none; }
     main.content .err { color:#b00020; margin-top:8px; white-space:pre-wrap; }
@@ -3636,6 +3652,579 @@ function restructureSettings(){
 }
 
 try{ if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', restructureSettings, {once:true}); else restructureSettings(); }catch(e){}
+
+// Settings Organizer (global; invoked from topbar modal)
+try{
+  (function(){
+    const PENDING_KEY = 'influxbro.settings.organizer.pending.v1';
+    let _pickMode = '';
+    let _pickPrev = null;
+    let _pickMove = null;
+    let _pickClick = null;
+    let _pickKey = '';
+    let _pickSrc = null;
+    let _layoutCache = null;
+
+    function _hintShow(text){
+      try{
+        let el = document.getElementById('ib_so_pick_hint');
+        if(!el){
+          el = document.createElement('div');
+          el.id = 'ib_so_pick_hint';
+          el.className = 'ib_so_pick_hint';
+          document.body.appendChild(el);
+        }
+        el.textContent = String(text || '');
+        el.style.display = 'block';
+      }catch(e){}
+    }
+    function _hintHide(){
+      try{ const el = document.getElementById('ib_so_pick_hint'); if(el) el.style.display = 'none'; }catch(e){}
+    }
+    function _stop(ev){ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} }
+    function _closest(el, sel){ try{ return el && el.closest ? el.closest(sel) : null; }catch(e){ return null; } }
+
+    function _clearHl(){
+      try{ if(_pickPrev) _pickPrev.classList.remove('ib_so_pick_hl'); }catch(e){}
+      _pickPrev = null;
+    }
+
+    function _pickCandidateFromPoint(x, y){
+      let el = null;
+      try{ el = document.elementFromPoint(x, y); }catch(e){ el = null; }
+      if(!el) return null;
+
+      if(_pickMode === 'pick_param'){
+        return _closest(el, '.param_row[data-setting-id]');
+      }
+      if(_pickMode === 'pick_group'){
+        // Prefer a subgroup if the user clicks inside it.
+        const sub = _closest(el, 'details.card[data-settings-subgroup]');
+        if(sub) return sub;
+        return _closest(el, 'details.card[data-settings-group]');
+      }
+      return null;
+    }
+
+    function _startPicker(mode, key){
+      _pickMode = String(mode || '');
+      _pickKey = String(key || '');
+      _clearHl();
+      _hintShow(_pickMode === 'pick_param'
+        ? 'Settings Organizer: Parameterzeile anklicken (ESC = Abbruch)'
+        : 'Settings Organizer: Ziel-Hauptpunkt/Unterpunkt anklicken (ESC = Abbruch)');
+
+      _pickMove = (ev)=>{
+        try{
+          const cand = _pickCandidateFromPoint(ev.clientX, ev.clientY);
+          if(cand !== _pickPrev){
+            _clearHl();
+            _pickPrev = cand;
+            if(_pickPrev) _pickPrev.classList.add('ib_so_pick_hl');
+          }
+        }catch(e){}
+      };
+      _pickClick = (ev)=>{
+        try{
+          const cand = _pickCandidateFromPoint(ev.clientX, ev.clientY);
+          if(!cand) return;
+          _stop(ev);
+          _finishPick(cand);
+        }catch(e){}
+      };
+      const _keyDown = (ev)=>{
+        try{
+          if(String(ev.key || '') === 'Escape'){
+            _stop(ev);
+            _pickerStop();
+          }
+        }catch(e){}
+      };
+      _pickerStop._keyDown = _keyDown;
+
+      document.addEventListener('mousemove', _pickMove, true);
+      document.addEventListener('click', _pickClick, true);
+      document.addEventListener('keydown', _keyDown, true);
+    }
+
+    function _pickerStop(){
+      try{ if(_pickMove) document.removeEventListener('mousemove', _pickMove, true); }catch(e){}
+      try{ if(_pickClick) document.removeEventListener('click', _pickClick, true); }catch(e){}
+      try{ if(_pickerStop._keyDown) document.removeEventListener('keydown', _pickerStop._keyDown, true); }catch(e){}
+      _pickMove = null;
+      _pickClick = null;
+      _pickMode = '';
+      _pickKey = '';
+      _clearHl();
+      _hintHide();
+    }
+
+    function _ensureGrid(container){
+      try{
+        if(!container) return null;
+        let grid = container.querySelector(':scope > .grid');
+        if(!grid){
+          grid = document.createElement('div');
+          grid.className = 'grid';
+          container.insertBefore(grid, container.firstChild);
+        }
+        return grid;
+      }catch(e){ return null; }
+    }
+
+    function _groupLabel(node){
+      try{
+        const sum = node.querySelector(':scope > summary .ib_summary_row > span:first-child');
+        return String(sum ? (sum.textContent || '') : '').trim();
+      }catch(e){ return ''; }
+    }
+
+    function _settingLabel(row){
+      try{
+        const lab = row.querySelector(':scope > .param_label');
+        const txt = String(lab ? (lab.childNodes && lab.childNodes.length ? lab.childNodes[0].textContent : lab.textContent) : '');
+        return String(txt || '').replace(/\s+/g,' ').trim();
+      }catch(e){ return ''; }
+    }
+
+    async function _api(path, opts){
+      const r = await fetch(path, Object.assign({ headers: { 'Content-Type': 'application/json' } }, (opts||{})));
+      const j = await r.json().catch(()=>null);
+      if(!r.ok || !j || j.ok !== true){
+        throw new Error((j && j.error) ? j.error : ('HTTP ' + r.status));
+      }
+      return j;
+    }
+
+    async function _loadLayout(){
+      const j = await _api('./api/settings_layout');
+      _layoutCache = j.layout || null;
+      return _layoutCache;
+    }
+
+    function _layoutDefault(){
+      return { v: 1, custom_groups: [], custom_subgroups: [], assign: {} };
+    }
+
+    async function _saveLayout(layout, label){
+      await _api('./api/settings_layout', { method:'POST', body: JSON.stringify({ layout: layout || {}, label: String(label||'settings_layout') }) });
+      _layoutCache = layout;
+    }
+
+    async function _undo(){
+      await _api('./api/settings_layout/undo', { method:'POST', body: JSON.stringify({}) });
+      await _loadLayout();
+      try{ applyLayout(); }catch(e){}
+    }
+
+    function _annotateDom(){
+      const main = document.querySelector('main.content');
+      if(!main) return;
+
+      // Mark top-level groups created by restructureSettings.
+      Array.from(main.querySelectorAll(':scope > details.card[data-ui^="config_settings.group_"]')).forEach((d)=>{
+        try{
+          const gid = String(d.getAttribute('data-ui') || '').trim();
+          if(!gid) return;
+          d.setAttribute('data-settings-group', gid);
+          d.dataset.settingsGroup = gid;
+          d.dataset.settingsGroupBase = '1';
+        }catch(e){}
+      });
+
+      // Mark subgroups (nested details) by id or data-ui.
+      Array.from(main.querySelectorAll('details.card[data-settings-group] details.card')).forEach((d)=>{
+        try{
+          const sid = String(d.id || d.getAttribute('data-ui') || '').trim();
+          if(!sid) return;
+          d.setAttribute('data-settings-subgroup', sid);
+          d.dataset.settingsSubgroup = sid;
+          d.dataset.settingsSubgroupBase = '1';
+        }catch(e){}
+      });
+
+      // Mark parameter rows using the first control id.
+      Array.from(main.querySelectorAll('.param_row')).forEach((row)=>{
+        try{
+          if(row.getAttribute('data-setting-id')) return;
+          const ctrl = row.querySelector('input[id], select[id], textarea[id]');
+          const id = ctrl ? String(ctrl.id || '').trim() : '';
+          if(!id) return;
+          row.setAttribute('data-setting-id', id);
+          row.dataset.settingId = id;
+        }catch(e){}
+      });
+    }
+
+    function _findGroup(id){
+      try{ return document.querySelector('details.card[data-settings-group="' + CSS.escape(String(id||'')) + '"]'); }catch(e){ return null; }
+    }
+    function _findSubgroup(id){
+      try{ return document.querySelector('details.card[data-settings-subgroup="' + CSS.escape(String(id||'')) + '"]'); }catch(e){ return null; }
+    }
+
+    function _makeCustomGroup(g){
+      const id = String(g.id || '').trim();
+      const title = String(g.title || '').trim();
+      if(!id || !title) return null;
+      const safeTitle = title
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+      const details = document.createElement('details');
+      details.className = 'card';
+      details.open = true;
+      details.id = 'cfg_custom_group_' + id;
+      const dataUi = 'config_settings.group_custom_' + id;
+      details.setAttribute('data-ui', dataUi);
+      details.setAttribute('title', dataUi);
+      details.setAttribute('data-settings-group', id);
+      details.dataset.settingsGroup = id;
+      details.dataset.settingsGroupCustom = '1';
+      details.innerHTML = '<summary><span class="ib_summary_row"><span>' + safeTitle + '</span></span></summary><div class="card_body"></div>';
+      // Provide a grid for moved params.
+      const body = details.querySelector(':scope > .card_body');
+      if(body) _ensureGrid(body);
+      return details;
+    }
+
+    function _makeCustomSubgroup(sg){
+      const id = String(sg.id || '').trim();
+      const title = String(sg.title || '').trim();
+      if(!id || !title) return null;
+      const safeTitle = title
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+      const details = document.createElement('details');
+      details.className = 'card';
+      details.open = true;
+      details.id = 'cfg_custom_subgroup_' + id;
+      const dataUi = 'config_settings.subgroup_custom_' + id;
+      details.setAttribute('data-ui', dataUi);
+      details.setAttribute('title', dataUi);
+      details.setAttribute('data-settings-subgroup', id);
+      details.dataset.settingsSubgroup = id;
+      details.dataset.settingsSubgroupCustom = '1';
+      details.innerHTML = '<summary><span class="ib_summary_row"><span>' + safeTitle + '</span></span></summary><div class="card_body"></div>';
+      const body = details.querySelector(':scope > .card_body');
+      if(body) _ensureGrid(body);
+      return details;
+    }
+
+    function applyLayout(){
+      try{ _annotateDom(); }catch(e){}
+
+      const layout = _layoutCache || _layoutDefault();
+      const main = document.querySelector('main.content');
+      if(!main) return;
+
+      // Ensure custom groups exist.
+      try{
+        const groups = Array.isArray(layout.custom_groups) ? layout.custom_groups : [];
+        groups.forEach((g)=>{
+          const gid = String(g && g.id ? g.id : '').trim();
+          if(!gid) return;
+          if(_findGroup(gid)) return;
+          const node = _makeCustomGroup(g);
+          if(!node) return;
+          const after = String(g.after || '').trim();
+          if(after){
+            const ref = _findGroup(after);
+            if(ref && ref.parentElement === main){
+              main.insertBefore(node, ref.nextSibling);
+              return;
+            }
+          }
+          main.appendChild(node);
+        });
+      }catch(e){}
+
+      // Ensure custom subgroups exist.
+      try{
+        const subs = Array.isArray(layout.custom_subgroups) ? layout.custom_subgroups : [];
+        subs.forEach((sg)=>{
+          const sid = String(sg && sg.id ? sg.id : '').trim();
+          const gid = String(sg && sg.group ? sg.group : '').trim();
+          if(!sid || !gid) return;
+          if(_findSubgroup(sid)) return;
+          const host = _findGroup(gid);
+          if(!host) return;
+          const body = host.querySelector(':scope > .card_body');
+          if(!body) return;
+          const node = _makeCustomSubgroup(sg);
+          if(!node) return;
+          const after = String(sg.after || '').trim();
+          if(after){
+            const ref = _findSubgroup(after);
+            if(ref && ref.parentElement === body){
+              body.insertBefore(node, ref.nextSibling);
+              return;
+            }
+          }
+          body.appendChild(node);
+        });
+      }catch(e){}
+
+      // Apply assignments.
+      try{
+        const assign = layout.assign && typeof layout.assign === 'object' ? layout.assign : {};
+        Object.keys(assign).forEach((sid)=>{
+          const row = document.querySelector('.param_row[data-setting-id="' + CSS.escape(String(sid||'')) + '"]');
+          if(!row) return;
+          const tgt = assign[sid] || {};
+          const gid = String(tgt.group || '').trim();
+          const sub = String(tgt.subgroup || '').trim();
+          if(!gid) return;
+          const gnode = _findGroup(gid);
+          if(!gnode) return;
+          let destBody = null;
+          if(sub){
+            const snode = _findSubgroup(sub);
+            if(snode && gnode.contains(snode)){
+              destBody = snode.querySelector(':scope > .card_body');
+            }
+          }
+          if(!destBody) destBody = gnode.querySelector(':scope > .card_body');
+          if(!destBody) return;
+          const grid = _ensureGrid(destBody);
+          if(grid) grid.appendChild(row);
+        });
+      }catch(e){}
+    }
+
+    async function _finishPick(node){
+      const mode = _pickMode;
+      const key = _pickKey;
+      _pickerStop();
+
+      if(key === 'move_param'){
+        if(mode === 'pick_param'){
+          const sid = String(node.getAttribute('data-setting-id') || '').trim();
+          if(!sid){
+            try{ if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error('Ungueltige Parameterzeile.'); }catch(e){}
+            return;
+          }
+          _pickSrc = node;
+          _pickSrc._settingId = sid;
+          _startPicker('pick_group', 'move_param_target');
+          return;
+        }
+      }
+
+      if(key === 'move_param_target'){
+        const srcRow = _pickSrc;
+        const sid = srcRow && srcRow._settingId ? String(srcRow._settingId) : '';
+        if(!srcRow || !sid){
+          try{ if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error('Quelle nicht gesetzt.'); }catch(e){}
+          return;
+        }
+        // Determine target.
+        const gid = String(node.getAttribute('data-settings-group') || '').trim();
+        const sub = String(node.getAttribute('data-settings-subgroup') || '').trim();
+        const tgtGroup = gid || (sub ? String((_closest(node, 'details.card[data-settings-group]') || {}).getAttribute && _closest(node, 'details.card[data-settings-group]').getAttribute('data-settings-group') || '').trim() : '');
+        const tgtSub = sub || '';
+        if(!tgtGroup){
+          try{ if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error('Ungueltiges Ziel.'); }catch(e){}
+          return;
+        }
+        // Hard validation: selected nodes must be on settings page.
+        const main = document.querySelector('main.content');
+        if(!main || !main.contains(srcRow) || !main.contains(node)){
+          try{ if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error('Auswahl ist nicht auf der Einstellungsseite.'); }catch(e){}
+          return;
+        }
+
+        const srcGroupNode = _closest(srcRow, 'details.card[data-settings-group]');
+        const srcSubNode = _closest(srcRow, 'details.card[data-settings-subgroup]');
+        const srcG = srcGroupNode ? String(srcGroupNode.getAttribute('data-settings-group')||'').trim() : '';
+        const srcS = srcSubNode ? String(srcSubNode.getAttribute('data-settings-subgroup')||'').trim() : '';
+        const srcGL = srcGroupNode ? _groupLabel(srcGroupNode) : '';
+        const srcSL = srcSubNode ? _groupLabel(srcSubNode) : '';
+        const tgtGroupNode = _findGroup(tgtGroup);
+        const tgtSubNode = tgtSub ? _findSubgroup(tgtSub) : null;
+        const tgtGL = tgtGroupNode ? _groupLabel(tgtGroupNode) : '';
+        const tgtSL = tgtSubNode ? _groupLabel(tgtSubNode) : '';
+        const label = _settingLabel(srcRow) || sid;
+
+        const srcPath = srcGL + (srcSL ? ('/' + srcSL) : '');
+        const tgtPath = tgtGL + (tgtSL ? ('/' + tgtSL) : '');
+        if(!confirm('Parameter "' + label + '"\n\nverschieben von\n' + srcPath + '\n\nnach\n' + tgtPath + '\n\nOK?')){
+          return;
+        }
+
+        if(!_layoutCache) await _loadLayout();
+        const layout = _layoutCache || _layoutDefault();
+        layout.assign = layout.assign && typeof layout.assign === 'object' ? layout.assign : {};
+        layout.assign[sid] = tgtSub ? { group: tgtGroup, subgroup: tgtSub } : { group: tgtGroup };
+        await _saveLayout(layout, 'move ' + sid);
+        applyLayout();
+        try{ if(window.InfluxBroPopup && window.InfluxBroPopup.show) window.InfluxBroPopup.show('Verschoben', 'OK: ' + label + '\n-> ' + tgtPath); }catch(e){}
+        return;
+      }
+
+      if(key === 'delete_group_pick'){
+        const gid = String(node.getAttribute('data-settings-group') || '').trim();
+        if(!gid || node.dataset.settingsGroupCustom !== '1'){
+          try{ if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error('Nur benutzerdefinierte Hauptpunkte koennen geloescht werden.'); }catch(e){}
+          return;
+        }
+        // must be empty
+        const hasParams = !!node.querySelector('.param_row[data-setting-id]');
+        if(hasParams){
+          try{ if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error('Hauptpunkt enthaelt noch Parameterzeilen.'); }catch(e){}
+          return;
+        }
+        if(!confirm('Hauptpunkt "' + (_groupLabel(node) || gid) + '" wirklich loeschen?')) return;
+        if(!_layoutCache) await _loadLayout();
+        const layout = _layoutCache || _layoutDefault();
+        layout.custom_groups = (Array.isArray(layout.custom_groups) ? layout.custom_groups : []).filter(x=>String(x && x.id ? x.id : '') !== gid);
+        layout.custom_subgroups = (Array.isArray(layout.custom_subgroups) ? layout.custom_subgroups : []).filter(x=>String(x && x.group ? x.group : '') !== gid);
+        const assign = layout.assign && typeof layout.assign === 'object' ? layout.assign : {};
+        Object.keys(assign).forEach((k)=>{ const v = assign[k]||{}; if(String(v.group||'') === gid) delete assign[k]; });
+        layout.assign = assign;
+        await _saveLayout(layout, 'delete group ' + gid);
+        applyLayout();
+        try{ node.remove(); }catch(e){}
+        return;
+      }
+
+      if(key === 'create_subgroup_pick_group'){
+        const gid = String(node.getAttribute('data-settings-group') || '').trim();
+        if(!gid){
+          try{ if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error('Ungueltiger Hauptpunkt.'); }catch(e){}
+          return;
+        }
+        const title = prompt('Unterpunkt Titel', 'Neuer Unterpunkt');
+        if(!title) return;
+        const sid = 'sg_' + Math.random().toString(16).slice(2, 10);
+        if(!_layoutCache) await _loadLayout();
+        const layout = _layoutCache || _layoutDefault();
+        layout.custom_subgroups = Array.isArray(layout.custom_subgroups) ? layout.custom_subgroups : [];
+        layout.custom_subgroups.push({ id: sid, title: String(title||'').trim(), group: gid, after: '' });
+        await _saveLayout(layout, 'create subgroup ' + sid);
+        applyLayout();
+        return;
+      }
+
+      if(key === 'delete_subgroup_pick'){
+        const sid = String(node.getAttribute('data-settings-subgroup') || '').trim();
+        if(!sid || node.dataset.settingsSubgroupCustom !== '1'){
+          try{ if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error('Nur benutzerdefinierte Unterpunkte koennen geloescht werden.'); }catch(e){}
+          return;
+        }
+        const hasParams = !!node.querySelector('.param_row[data-setting-id]');
+        if(hasParams){
+          try{ if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error('Unterpunkt enthaelt noch Parameterzeilen.'); }catch(e){}
+          return;
+        }
+        if(!confirm('Unterpunkt "' + (_groupLabel(node) || sid) + '" wirklich loeschen?')) return;
+        if(!_layoutCache) await _loadLayout();
+        const layout = _layoutCache || _layoutDefault();
+        layout.custom_subgroups = (Array.isArray(layout.custom_subgroups) ? layout.custom_subgroups : []).filter(x=>String(x && x.id ? x.id : '') !== sid);
+        const assign = layout.assign && typeof layout.assign === 'object' ? layout.assign : {};
+        Object.keys(assign).forEach((k)=>{ const v = assign[k]||{}; if(String(v.subgroup||'') === sid) delete v.subgroup; });
+        layout.assign = assign;
+        await _saveLayout(layout, 'delete subgroup ' + sid);
+        applyLayout();
+        try{ node.remove(); }catch(e){}
+        return;
+      }
+    }
+
+    async function start(action){
+      const a = String(action || '').trim();
+      await _loadLayout().catch(()=>{ _layoutCache = _layoutDefault(); });
+      applyLayout();
+
+      if(a === 'undo'){
+        await _undo();
+        return;
+      }
+      if(a === 'move_param'){
+        _pickSrc = null;
+        _startPicker('pick_param', 'move_param');
+        return;
+      }
+      if(a === 'create_group'){
+        const title = prompt('Hauptpunkt Titel', 'Neuer Hauptpunkt');
+        if(!title) return;
+        const gid = 'g_' + Math.random().toString(16).slice(2, 10);
+        // Insert after a chosen existing group.
+        const groups = Array.from(document.querySelectorAll('details.card[data-settings-group]'));
+        const names = groups.map((g,i)=>String(i+1)+') '+(_groupLabel(g)||String(g.getAttribute('data-settings-group')||''))).join('\n');
+        const pick = prompt('Nach welchem Hauptpunkt einfuegen? (Nummer)\n\n' + names, '1');
+        let after = '';
+        try{ const idx = Math.max(1, Math.min(groups.length, parseInt(String(pick||'1'),10) || 1)) - 1; after = String(groups[idx].getAttribute('data-settings-group')||'').trim(); }catch(e){}
+        const layout = _layoutCache || _layoutDefault();
+        layout.custom_groups = Array.isArray(layout.custom_groups) ? layout.custom_groups : [];
+        layout.custom_groups.push({ id: gid, title: String(title||'').trim(), after: after });
+        await _saveLayout(layout, 'create group ' + gid);
+        applyLayout();
+        return;
+      }
+      if(a === 'delete_group'){
+        _startPicker('pick_group', 'delete_group_pick');
+        return;
+      }
+      if(a === 'create_subgroup'){
+        _startPicker('pick_group', 'create_subgroup_pick_group');
+        return;
+      }
+      if(a === 'delete_subgroup'){
+        _startPicker('pick_group', 'delete_subgroup_pick');
+        return;
+      }
+    }
+
+    async function _consumePending(){
+      let pend = null;
+      try{ pend = JSON.parse(sessionStorage.getItem(PENDING_KEY) || 'null'); }catch(e){ pend = null; }
+      try{ sessionStorage.removeItem(PENDING_KEY); }catch(e){}
+      if(!pend || typeof pend !== 'object') return;
+      const action = String(pend.action || '').trim();
+      if(!action) return;
+      start(action).catch(()=>{});
+    }
+
+    window.InfluxBroSettingsOrganizer = {
+      start: (a)=>start(a),
+      undo: ()=>_undo().catch(()=>{}),
+      apply: ()=>{ try{ applyLayout(); }catch(e){} },
+    };
+
+    function _waitForRestructure(maxTries){
+      let n = 0;
+      const tick = ()=>{
+        n += 1;
+        try{
+          const main = document.querySelector('main.content');
+          const ready = !!(main && main.dataset && main.dataset.restructured250 === '1');
+          if(ready){
+            _loadLayout().then(()=>applyLayout()).catch(()=>{});
+            _consumePending().catch(()=>{});
+            return;
+          }
+        }catch(e){}
+        if(n >= (maxTries || 40)){
+          // Last resort: still allow actions; they will validate DOM presence.
+          _loadLayout().then(()=>applyLayout()).catch(()=>{});
+          _consumePending().catch(()=>{});
+          return;
+        }
+        setTimeout(tick, 50);
+      };
+      tick();
+    }
+
+    // Apply only after restructureSettings finished.
+    _waitForRestructure(40);
+  })();
+}catch(e){}
 
 load().catch(e=>{
   try{ reportConfigError('Settings initial load failed', { stage: 'load' }, e && e.stack ? e.stack : String(e || '')); }catch(x){}
