@@ -38,6 +38,13 @@ Beim Entfernen von UI-Komponenten (HTML, JS, CSS, Backend-Funktionen) muss zwing
 - API Smoke Tests
 - UI Test im HA System
 
+### Version / Docs Pflicht
+
+- Wenn sich Laufzeit- oder UI-Verhalten aendert (auch durch Entfernen/Stilllegen):
+  - Version bump
+  - `CHANGELOG.md` aktualisieren
+  - `MANUAL.md` aktualisieren (falls Benutzerfuehrung/Workflows betroffen)
+
 ### GitHub Integration
 
 - Issue muss Tombstone-ID referenzieren
@@ -106,6 +113,21 @@ Wenn ein Auftrag das Entfernen, Ersetzen oder Stilllegen von UI-Elementen, Templ
   - entfernte Folgefunktionen
   - bewusst beibehaltene Restfunktionen mit kurzer Begründung
   - Migrations- oder Redirect-Hinweise
+
+### Verification Checklist (Pflicht)
+
+- Repo: `.tombstones.yml` Eintrag vorhanden, `tombstone_id` eindeutig
+- Code: `// TOMBSTONE: <id>` Kommentar an der Entfernungs-/Opt-out-Stelle
+- Abhaengigkeiten:
+  - keine toten Selektoren/CSS-Klassen
+  - keine toten JS-Handler/Listener
+  - keine UI-Calls auf entfernte API-Endpunkte
+  - Ingress/Routes: keine 404s, ggf. Redirect/Migration dokumentiert
+- QA:
+  - `py_compile`
+  - relevante `pytest`
+  - UI Smoke Test unter Home Assistant Ingress
+- Workflow: HA main-first (rebase auf `origin/main` vor Push, keine stillen Breaking Changes)
 
 #### Automatik-Regel für OpenCode
 
