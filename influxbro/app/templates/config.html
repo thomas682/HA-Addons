@@ -3835,7 +3835,30 @@ try{
     }
 
     function _layoutDefault(){
-      return { v: 1, custom_groups: [], custom_subgroups: [], assign: {} };
+      return {
+        v: 1,
+        custom_groups: [],
+        custom_subgroups: [],
+        assign: {},
+        group_order: [],
+        group_titles: {},
+        subgroup_parent: {},
+        subgroup_order: {},
+        subgroup_titles: {},
+      };
+    }
+
+    function _layoutEnsure(layout){
+      const l = layout && typeof layout === 'object' ? layout : _layoutDefault();
+      l.custom_groups = Array.isArray(l.custom_groups) ? l.custom_groups : [];
+      l.custom_subgroups = Array.isArray(l.custom_subgroups) ? l.custom_subgroups : [];
+      l.assign = (l.assign && typeof l.assign === 'object') ? l.assign : {};
+      l.group_order = Array.isArray(l.group_order) ? l.group_order : [];
+      l.group_titles = (l.group_titles && typeof l.group_titles === 'object') ? l.group_titles : {};
+      l.subgroup_parent = (l.subgroup_parent && typeof l.subgroup_parent === 'object') ? l.subgroup_parent : {};
+      l.subgroup_order = (l.subgroup_order && typeof l.subgroup_order === 'object') ? l.subgroup_order : {};
+      l.subgroup_titles = (l.subgroup_titles && typeof l.subgroup_titles === 'object') ? l.subgroup_titles : {};
+      return l;
     }
 
     async function _saveLayout(layout, label){
@@ -3895,6 +3918,80 @@ try{
       try{ return document.querySelector('details.card[data-settings-subgroup="' + CSS.escape(String(id||'')) + '"]'); }catch(e){ return null; }
     }
 
+    function _isDirectSubgroupOfGroupBody(subNode){
+      try{
+        if(!subNode) return false;
+        const g = _closest(subNode, 'details.card[data-settings-group]');
+        if(!g) return false;
+        const body = g.querySelector(':scope > .card_body');
+        if(!body) return false;
+        return subNode.parentElement === body;
+      }catch(e){
+        return false;
+      }
+    }
+
+    function _setSummaryTitle(detailsNode, title){
+      try{
+        const t = String(title || '').trim();
+        if(!detailsNode || !t) return;
+        const sum = detailsNode.querySelector(':scope > summary .ib_summary_row > span:first-child');
+        if(sum) sum.textContent = t;
+      }catch(e){}
+    }
+
+    function _reorderGroupsByOrder(main, refNode, orderIds){
+      try{
+        if(!main) return;
+        const nodes = Array.from(main.querySelectorAll(':scope > details.card[data-settings-group]'));
+        if(!nodes.length) return;
+        const byId = {};
+        nodes.forEach(n=>{ try{ const gid = String(n.getAttribute('data-settings-group')||'').trim(); if(gid) byId[gid] = n; }catch(e){} });
+        const used = {};
+        const out = [];
+        (orderIds || []).forEach((gid0)=>{
+          const gid = String(gid0||'').trim();
+          if(!gid || used[gid]) return;
+          const n = byId[gid];
+          if(!n) return;
+          used[gid] = 1;
+          out.push(n);
+        });
+        // Append remaining groups preserving current DOM order.
+        nodes.forEach(n=>{ const gid = String(n.getAttribute('data-settings-group')||'').trim(); if(!gid || used[gid]) return; used[gid] = 1; out.push(n); });
+        out.forEach((n)=>{
+          try{
+            if(refNode && refNode.parentNode === main) main.insertBefore(n, refNode);
+            else main.appendChild(n);
+          }catch(e){}
+        });
+      }catch(e){}
+    }
+
+    function _reorderDirectSubgroupsByOrder(groupNode, orderIds){
+      try{
+        if(!groupNode) return;
+        const body = groupNode.querySelector(':scope > .card_body');
+        if(!body) return;
+        const subs = Array.from(body.querySelectorAll(':scope > details.card[data-settings-subgroup]'));
+        if(!subs.length) return;
+        const byId = {};
+        subs.forEach(n=>{ try{ const sid = String(n.getAttribute('data-settings-subgroup')||'').trim(); if(sid) byId[sid] = n; }catch(e){} });
+        const used = {};
+        const out = [];
+        (orderIds || []).forEach((sid0)=>{
+          const sid = String(sid0||'').trim();
+          if(!sid || used[sid]) return;
+          const n = byId[sid];
+          if(!n) return;
+          used[sid] = 1;
+          out.push(n);
+        });
+        subs.forEach(n=>{ const sid = String(n.getAttribute('data-settings-subgroup')||'').trim(); if(!sid || used[sid]) return; used[sid] = 1; out.push(n); });
+        out.forEach(n=>{ try{ body.appendChild(n); }catch(e){} });
+      }catch(e){}
+    }
+
     function _makeCustomGroup(g){
       const id = String(g.id || '').trim();
       const title = String(g.title || '').trim();
@@ -3951,9 +4048,16 @@ try{
     function applyLayout(){
       try{ _annotateDom(); }catch(e){}
 
-      const layout = _layoutCache || _layoutDefault();
+      const layout = _layoutEnsure(_layoutCache || _layoutDefault());
       const main = document.querySelector('main.content');
       if(!main) return;
+
+      // Remember ref node (keep save/autosave at bottom).
+      const saveCard = document.querySelector('.save_card');
+      const autosaveCard = document.getElementById('autosave_card');
+      const refNode = (saveCard && saveCard.parentNode === main)
+        ? saveCard
+        : ((autosaveCard && autosaveCard.parentNode === main) ? autosaveCard : null);
 
       // Ensure custom groups exist.
       try{
@@ -4026,6 +4130,48 @@ try{
           const grid = _ensureGrid(destBody);
           if(grid) grid.appendChild(row);
         });
+      }catch(e){}
+
+      // Apply subgroup parent moves (only direct subgroups of a group body).
+      try{
+        const sp = (layout.subgroup_parent && typeof layout.subgroup_parent === 'object') ? layout.subgroup_parent : {};
+        Object.keys(sp).forEach((sid)=>{
+          try{
+            const gid = String(sp[sid] || '').trim();
+            if(!sid || !gid) return;
+            const snode = _findSubgroup(sid);
+            if(!snode) return;
+            if(!_isDirectSubgroupOfGroupBody(snode)) return;
+            const gnode = _findGroup(gid);
+            if(!gnode) return;
+            const body = gnode.querySelector(':scope > .card_body');
+            if(!body) return;
+            body.appendChild(snode);
+          }catch(e){}
+        });
+      }catch(e){}
+
+      // Reorder groups (optional, persisted).
+      try{ if(Array.isArray(layout.group_order) && layout.group_order.length) _reorderGroupsByOrder(main, refNode, layout.group_order); }catch(e){}
+
+      // Reorder direct subgroups within their group body.
+      try{
+        const so = (layout.subgroup_order && typeof layout.subgroup_order === 'object') ? layout.subgroup_order : {};
+        Object.keys(so).forEach((gid)=>{
+          const gnode = _findGroup(gid);
+          if(!gnode) return;
+          _reorderDirectSubgroupsByOrder(gnode, Array.isArray(so[gid]) ? so[gid] : []);
+        });
+      }catch(e){}
+
+      // Apply display-only titles last.
+      try{
+        const gt = (layout.group_titles && typeof layout.group_titles === 'object') ? layout.group_titles : {};
+        Object.keys(gt).forEach((gid)=>{ const gnode = _findGroup(gid); if(gnode) _setSummaryTitle(gnode, gt[gid]); });
+      }catch(e){}
+      try{
+        const st = (layout.subgroup_titles && typeof layout.subgroup_titles === 'object') ? layout.subgroup_titles : {};
+        Object.keys(st).forEach((sid)=>{ const snode = _findSubgroup(sid); if(snode && _isDirectSubgroupOfGroupBody(snode)) _setSummaryTitle(snode, st[sid]); });
       }catch(e){}
     }
 
@@ -4100,33 +4246,46 @@ try{
       }
 
       if(key === 'delete_group_pick'){
-        const gid = String(node.getAttribute('data-settings-group') || '').trim();
-        if(!gid || node.dataset.settingsGroupCustom !== '1'){
-          try{ if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error('Nur benutzerdefinierte Hauptpunkte koennen geloescht werden.'); }catch(e){}
+        const gnode = _closest(node, 'details.card[data-settings-group]') || node;
+        const gid = String(gnode.getAttribute('data-settings-group') || '').trim();
+        if(!gid){
+          try{ if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error('Ungueltiger Hauptpunkt.'); }catch(e){}
           return;
         }
-        // must be empty
-        const hasParams = !!node.querySelector('.param_row[data-setting-id]');
+        if(gnode.dataset.settingsGroupCustom !== '1'){
+          try{ if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error('Dieser Hauptpunkt ist ein Systempunkt und darf nicht geloescht werden.'); }catch(e){}
+          return;
+        }
+        // must be truly empty: no params and no subgroups
+        const hasParams = !!gnode.querySelector('.param_row[data-setting-id]');
         if(hasParams){
           try{ if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error('Hauptpunkt enthaelt noch Parameterzeilen.'); }catch(e){}
           return;
         }
-        if(!confirm('Hauptpunkt "' + (_groupLabel(node) || gid) + '" wirklich loeschen?')) return;
+        const hasSub = !!gnode.querySelector(':scope > .card_body > details.card[data-settings-subgroup]');
+        if(hasSub){
+          try{ if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error('Hauptpunkt enthaelt noch Unterpunkte (bitte zuerst loeschen).'); }catch(e){}
+          return;
+        }
+        if(!confirm('Hauptpunkt "' + (_groupLabel(gnode) || gid) + '" wirklich loeschen?')) return;
         if(!_layoutCache) await _loadLayout();
-        const layout = _layoutCache || _layoutDefault();
+        const layout = _layoutEnsure(_layoutCache || _layoutDefault());
         layout.custom_groups = (Array.isArray(layout.custom_groups) ? layout.custom_groups : []).filter(x=>String(x && x.id ? x.id : '') !== gid);
         layout.custom_subgroups = (Array.isArray(layout.custom_subgroups) ? layout.custom_subgroups : []).filter(x=>String(x && x.group ? x.group : '') !== gid);
         const assign = layout.assign && typeof layout.assign === 'object' ? layout.assign : {};
         Object.keys(assign).forEach((k)=>{ const v = assign[k]||{}; if(String(v.group||'') === gid) delete assign[k]; });
         layout.assign = assign;
+        try{ if(layout.group_titles) delete layout.group_titles[gid]; }catch(e){}
+        try{ layout.group_order = (layout.group_order||[]).filter(x=>String(x||'') !== gid); }catch(e){}
         await _saveLayout(layout, 'delete group ' + gid);
         applyLayout();
-        try{ node.remove(); }catch(e){}
+        try{ gnode.remove(); }catch(e){}
         return;
       }
 
       if(key === 'create_subgroup_pick_group'){
-        const gid = String(node.getAttribute('data-settings-group') || '').trim();
+        const gnode = _closest(node, 'details.card[data-settings-group]') || node;
+        const gid = String(gnode.getAttribute('data-settings-group') || '').trim();
         if(!gid){
           try{ if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error('Ungueltiger Hauptpunkt.'); }catch(e){}
           return;
@@ -4135,9 +4294,16 @@ try{
         if(!title) return;
         const sid = 'sg_' + Math.random().toString(16).slice(2, 10);
         if(!_layoutCache) await _loadLayout();
-        const layout = _layoutCache || _layoutDefault();
+        const layout = _layoutEnsure(_layoutCache || _layoutDefault());
         layout.custom_subgroups = Array.isArray(layout.custom_subgroups) ? layout.custom_subgroups : [];
         layout.custom_subgroups.push({ id: sid, title: String(title||'').trim(), group: gid, after: '' });
+        layout.subgroup_titles = layout.subgroup_titles && typeof layout.subgroup_titles === 'object' ? layout.subgroup_titles : {};
+        layout.subgroup_titles[sid] = String(title||'').trim();
+        layout.subgroup_parent = layout.subgroup_parent && typeof layout.subgroup_parent === 'object' ? layout.subgroup_parent : {};
+        layout.subgroup_parent[sid] = gid;
+        layout.subgroup_order = layout.subgroup_order && typeof layout.subgroup_order === 'object' ? layout.subgroup_order : {};
+        layout.subgroup_order[gid] = Array.isArray(layout.subgroup_order[gid]) ? layout.subgroup_order[gid] : [];
+        if(!layout.subgroup_order[gid].includes(sid)) layout.subgroup_order[gid].push(sid);
         await _saveLayout(layout, 'create subgroup ' + sid);
         applyLayout();
         return;
@@ -4145,8 +4311,16 @@ try{
 
       if(key === 'delete_subgroup_pick'){
         const sid = String(node.getAttribute('data-settings-subgroup') || '').trim();
-        if(!sid || node.dataset.settingsSubgroupCustom !== '1'){
-          try{ if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error('Nur benutzerdefinierte Unterpunkte koennen geloescht werden.'); }catch(e){}
+        if(!sid){
+          try{ if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error('Ungueltiger Unterpunkt.'); }catch(e){}
+          return;
+        }
+        if(node.dataset.settingsSubgroupCustom !== '1'){
+          try{ if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error('Dieser Unterpunkt ist ein Systempunkt und darf nicht geloescht werden.'); }catch(e){}
+          return;
+        }
+        if(!_isDirectSubgroupOfGroupBody(node)){
+          try{ if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error('Dieser Unterpunkt liegt in einer festen Unterstruktur und darf nicht geloescht werden.'); }catch(e){}
           return;
         }
         const hasParams = !!node.querySelector('.param_row[data-setting-id]');
@@ -4156,14 +4330,205 @@ try{
         }
         if(!confirm('Unterpunkt "' + (_groupLabel(node) || sid) + '" wirklich loeschen?')) return;
         if(!_layoutCache) await _loadLayout();
-        const layout = _layoutCache || _layoutDefault();
+        const layout = _layoutEnsure(_layoutCache || _layoutDefault());
         layout.custom_subgroups = (Array.isArray(layout.custom_subgroups) ? layout.custom_subgroups : []).filter(x=>String(x && x.id ? x.id : '') !== sid);
         const assign = layout.assign && typeof layout.assign === 'object' ? layout.assign : {};
         Object.keys(assign).forEach((k)=>{ const v = assign[k]||{}; if(String(v.subgroup||'') === sid) delete v.subgroup; });
         layout.assign = assign;
+        try{ if(layout.subgroup_titles) delete layout.subgroup_titles[sid]; }catch(e){}
+        try{ if(layout.subgroup_parent) delete layout.subgroup_parent[sid]; }catch(e){}
+        try{
+          const g = _closest(node, 'details.card[data-settings-group]');
+          const gid = g ? String(g.getAttribute('data-settings-group')||'').trim() : '';
+          if(gid && layout.subgroup_order && Array.isArray(layout.subgroup_order[gid])) layout.subgroup_order[gid] = layout.subgroup_order[gid].filter(x=>String(x||'') !== sid);
+        }catch(e){}
         await _saveLayout(layout, 'delete subgroup ' + sid);
         applyLayout();
         try{ node.remove(); }catch(e){}
+        return;
+      }
+
+      if(key === 'rename_group_pick'){
+        const gnode = _closest(node, 'details.card[data-settings-group]') || node;
+        const gid = String(gnode.getAttribute('data-settings-group') || '').trim();
+        if(!gid){
+          try{ if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error('Ungueltiger Hauptpunkt.'); }catch(e){}
+          return;
+        }
+        const cur = _groupLabel(gnode) || gid;
+        const title = prompt('Hauptpunkt umbenennen', cur);
+        if(!title) return;
+        if(!_layoutCache) await _loadLayout();
+        const layout = _layoutEnsure(_layoutCache || _layoutDefault());
+        layout.group_titles = layout.group_titles && typeof layout.group_titles === 'object' ? layout.group_titles : {};
+        layout.group_titles[gid] = String(title||'').trim();
+        // Keep custom_groups list consistent for persisted custom group metadata.
+        try{
+          layout.custom_groups = Array.isArray(layout.custom_groups) ? layout.custom_groups : [];
+          layout.custom_groups.forEach((g)=>{ if(g && String(g.id||'') === gid) g.title = String(title||'').trim(); });
+        }catch(e){}
+        await _saveLayout(layout, 'rename group ' + gid);
+        applyLayout();
+        return;
+      }
+
+      if(key === 'rename_subgroup_pick'){
+        const sid = String(node.getAttribute('data-settings-subgroup') || '').trim();
+        if(!sid){
+          try{ if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error('Ungueltiger Unterpunkt.'); }catch(e){}
+          return;
+        }
+        if(!_isDirectSubgroupOfGroupBody(node)){
+          try{ if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error('Dieser Unterpunkt liegt in einer festen Unterstruktur und darf nicht umbenannt werden.'); }catch(e){}
+          return;
+        }
+        const cur = _groupLabel(node) || sid;
+        const title = prompt('Unterpunkt umbenennen', cur);
+        if(!title) return;
+        if(!_layoutCache) await _loadLayout();
+        const layout = _layoutEnsure(_layoutCache || _layoutDefault());
+        layout.subgroup_titles = layout.subgroup_titles && typeof layout.subgroup_titles === 'object' ? layout.subgroup_titles : {};
+        layout.subgroup_titles[sid] = String(title||'').trim();
+        try{
+          layout.custom_subgroups = Array.isArray(layout.custom_subgroups) ? layout.custom_subgroups : [];
+          layout.custom_subgroups.forEach((sg)=>{ if(sg && String(sg.id||'') === sid) sg.title = String(title||'').trim(); });
+        }catch(e){}
+        await _saveLayout(layout, 'rename subgroup ' + sid);
+        applyLayout();
+        return;
+      }
+
+      if(key === 'move_group_pick'){
+        const gnode = _closest(node, 'details.card[data-settings-group]') || node;
+        const gid = String(gnode.getAttribute('data-settings-group') || '').trim();
+        if(!gid){
+          try{ if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error('Ungueltiger Hauptpunkt.'); }catch(e){}
+          return;
+        }
+        _pickSrc = gnode;
+        _pickSrc._groupId = gid;
+        _startPicker('pick_group', 'move_group_target');
+        return;
+      }
+
+      if(key === 'move_group_target'){
+        const srcNode = _pickSrc;
+        const srcGid = srcNode && srcNode._groupId ? String(srcNode._groupId) : '';
+        if(!srcNode || !srcGid){
+          try{ if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error('Quelle nicht gesetzt.'); }catch(e){}
+          return;
+        }
+        const tgtNode = _closest(node, 'details.card[data-settings-group]') || node;
+        const tgtGid = String(tgtNode.getAttribute('data-settings-group') || '').trim();
+        if(!tgtGid){
+          try{ if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error('Ungueltiges Ziel.'); }catch(e){}
+          return;
+        }
+        if(srcGid === tgtGid){
+          try{ if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error('Quelle und Ziel sind identisch.'); }catch(e){}
+          return;
+        }
+        const pos = prompt('Position', 'nach');
+        const wantBefore = String(pos||'').toLowerCase().startsWith('vor');
+        const main = document.querySelector('main.content');
+        if(!main || !main.contains(srcNode) || !main.contains(tgtNode)){
+          try{ if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error('Auswahl ist nicht auf der Einstellungsseite.'); }catch(e){}
+          return;
+        }
+        const srcLabel = _groupLabel(srcNode) || srcGid;
+        const tgtLabel = _groupLabel(tgtNode) || tgtGid;
+        if(!confirm('Hauptpunkt "' + srcLabel + '"\n\nverschieben ' + (wantBefore ? 'vor' : 'nach') + '\n' + tgtLabel + '\n\nOK?')) return;
+        if(!_layoutCache) await _loadLayout();
+        const layout = _layoutEnsure(_layoutCache || _layoutDefault());
+        const all = Array.from(document.querySelectorAll('main.content > details.card[data-settings-group]'))
+          .map(n=>String(n.getAttribute('data-settings-group')||'').trim())
+          .filter(Boolean);
+        let order = Array.isArray(layout.group_order) && layout.group_order.length ? layout.group_order.slice() : all.slice();
+        order = order.filter(x=>String(x||'') !== srcGid);
+        const idx = order.findIndex(x=>String(x||'') === tgtGid);
+        const insertAt = idx < 0 ? order.length : (wantBefore ? idx : (idx + 1));
+        order.splice(insertAt, 0, srcGid);
+        layout.group_order = order;
+        await _saveLayout(layout, 'move group ' + srcGid);
+        applyLayout();
+        return;
+      }
+
+      if(key === 'move_subgroup_pick'){
+        const sid = String(node.getAttribute('data-settings-subgroup') || '').trim();
+        if(!sid){
+          try{ if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error('Bitte einen Unterpunkt anklicken.'); }catch(e){}
+          return;
+        }
+        if(!_isDirectSubgroupOfGroupBody(node)){
+          try{ if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error('Dieser Unterpunkt liegt in einer festen Unterstruktur und darf nicht verschoben werden.'); }catch(e){}
+          return;
+        }
+        _pickSrc = node;
+        _pickSrc._subgroupId = sid;
+        _startPicker('pick_group', 'move_subgroup_target');
+        return;
+      }
+
+      if(key === 'move_subgroup_target'){
+        const srcNode = _pickSrc;
+        const sid = srcNode && srcNode._subgroupId ? String(srcNode._subgroupId) : '';
+        if(!srcNode || !sid){
+          try{ if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error('Quelle nicht gesetzt.'); }catch(e){}
+          return;
+        }
+
+        const srcGroupNode = _closest(srcNode, 'details.card[data-settings-group]');
+        const srcGid = srcGroupNode ? String(srcGroupNode.getAttribute('data-settings-group')||'').trim() : '';
+        if(!srcGid){
+          try{ if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error('Quelle: Hauptpunkt nicht gefunden.'); }catch(e){}
+          return;
+        }
+
+        const tgtSub = String(node.getAttribute('data-settings-subgroup') || '').trim();
+        const tgtGroupNode = _closest(node, 'details.card[data-settings-group]');
+        const tgtGid = tgtGroupNode ? String(tgtGroupNode.getAttribute('data-settings-group')||'').trim() : '';
+        if(!tgtGid){
+          try{ if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error('Ungueltiges Ziel.'); }catch(e){}
+          return;
+        }
+        if(tgtSub && !_isDirectSubgroupOfGroupBody(node)){
+          try{ if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error('Ziel-Unterpunkt liegt in einer festen Unterstruktur. Bitte Hauptpunkt oder einen direkten Unterpunkt waehlen.'); }catch(e){}
+          return;
+        }
+        if(String(tgtSub||'') === sid){
+          try{ if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error('Quelle und Ziel sind identisch.'); }catch(e){}
+          return;
+        }
+
+        const pos = prompt('Position', 'nach');
+        const wantBefore = String(pos||'').toLowerCase().startsWith('vor');
+        const srcLabel = _groupLabel(srcNode) || sid;
+        const tgtLabel = tgtSub ? (_groupLabel(node) || tgtSub) : (_groupLabel(tgtGroupNode) || tgtGid);
+        if(!confirm('Unterpunkt "' + srcLabel + '"\n\nverschieben ' + (wantBefore ? 'vor' : 'nach') + '\n' + tgtLabel + '\n\nOK?')) return;
+
+        if(!_layoutCache) await _loadLayout();
+        const layout = _layoutEnsure(_layoutCache || _layoutDefault());
+        layout.subgroup_parent = layout.subgroup_parent && typeof layout.subgroup_parent === 'object' ? layout.subgroup_parent : {};
+        layout.subgroup_parent[sid] = tgtGid;
+        layout.subgroup_order = layout.subgroup_order && typeof layout.subgroup_order === 'object' ? layout.subgroup_order : {};
+
+        const srcList = Array.isArray(layout.subgroup_order[srcGid]) ? layout.subgroup_order[srcGid].slice() :
+          Array.from((srcGroupNode && srcGroupNode.querySelector(':scope > .card_body') ? srcGroupNode.querySelector(':scope > .card_body').querySelectorAll(':scope > details.card[data-settings-subgroup]') : [])).map(n=>String(n.getAttribute('data-settings-subgroup')||'').trim()).filter(Boolean);
+        const tgtList = Array.isArray(layout.subgroup_order[tgtGid]) ? layout.subgroup_order[tgtGid].slice() :
+          Array.from((tgtGroupNode && tgtGroupNode.querySelector(':scope > .card_body') ? tgtGroupNode.querySelector(':scope > .card_body').querySelectorAll(':scope > details.card[data-settings-subgroup]') : [])).map(n=>String(n.getAttribute('data-settings-subgroup')||'').trim()).filter(Boolean);
+
+        const srcClean = srcList.filter(x=>String(x||'') !== sid);
+        let tgtClean = tgtList.filter(x=>String(x||'') !== sid);
+        let idx = -1;
+        if(tgtSub) idx = tgtClean.findIndex(x=>String(x||'') === tgtSub);
+        const insertAt = idx < 0 ? tgtClean.length : (wantBefore ? idx : (idx + 1));
+        tgtClean.splice(insertAt, 0, sid);
+
+        layout.subgroup_order[srcGid] = srcClean;
+        layout.subgroup_order[tgtGid] = tgtClean;
+        await _saveLayout(layout, 'move subgroup ' + sid);
+        applyLayout();
         return;
       }
     }
@@ -4182,6 +4547,24 @@ try{
         _startPicker('pick_param', 'move_param');
         return;
       }
+      if(a === 'move_group'){
+        _pickSrc = null;
+        _startPicker('pick_group', 'move_group_pick');
+        return;
+      }
+      if(a === 'rename_group'){
+        _startPicker('pick_group', 'rename_group_pick');
+        return;
+      }
+      if(a === 'move_subgroup'){
+        _pickSrc = null;
+        _startPicker('pick_group', 'move_subgroup_pick');
+        return;
+      }
+      if(a === 'rename_subgroup'){
+        _startPicker('pick_group', 'rename_subgroup_pick');
+        return;
+      }
       if(a === 'create_group'){
         const title = prompt('Hauptpunkt Titel', 'Neuer Hauptpunkt');
         if(!title) return;
@@ -4192,9 +4575,17 @@ try{
         const pick = prompt('Nach welchem Hauptpunkt einfuegen? (Nummer)\n\n' + names, '1');
         let after = '';
         try{ const idx = Math.max(1, Math.min(groups.length, parseInt(String(pick||'1'),10) || 1)) - 1; after = String(groups[idx].getAttribute('data-settings-group')||'').trim(); }catch(e){}
-        const layout = _layoutCache || _layoutDefault();
+        const layout = _layoutEnsure(_layoutCache || _layoutDefault());
         layout.custom_groups = Array.isArray(layout.custom_groups) ? layout.custom_groups : [];
         layout.custom_groups.push({ id: gid, title: String(title||'').trim(), after: after });
+        layout.group_titles = layout.group_titles && typeof layout.group_titles === 'object' ? layout.group_titles : {};
+        layout.group_titles[gid] = String(title||'').trim();
+        layout.group_order = Array.isArray(layout.group_order) ? layout.group_order : [];
+        if(layout.group_order.length){
+          const idx = layout.group_order.findIndex(x=>String(x||'') === after);
+          const insertAt = idx < 0 ? layout.group_order.length : (idx + 1);
+          if(!layout.group_order.includes(gid)) layout.group_order.splice(insertAt, 0, gid);
+        }
         await _saveLayout(layout, 'create group ' + gid);
         applyLayout();
         return;

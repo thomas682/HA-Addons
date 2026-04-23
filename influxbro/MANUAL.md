@@ -88,8 +88,8 @@ Neu: Top-Leiste (Profil + Zoom)
   - Picker / S-Picker Multi-Pick (Shift+Klick): startet einen Mehrfach-Pick. Unter der Pagecard erscheint eine Statusleiste mit den erfassten Elemente als anklickbare Chips (Klick = Entfernen). `Ende` kopiert die Liste als mehrere `<PICK:...>` Eintraege.
   - Neu: Button `Verschieben` (Icon mit 2 Quadraten + Pfeil). Dieser oeffnet den Einstellungen-Organizer.
     - Wenn du eine Aktion auswaehlst und nicht auf der Seite `Einstellungen` bist, wird automatisch nach `Einstellungen` gewechselt.
-    - Funktionen: Parameterzeilen zwischen Bereichen verschieben, Hauptpunkte/Unterpunkte anlegen oder loeschen.
-    - Undo: stellt die letzte Layout-Aenderung wieder her.
+    - Funktionen: Parameterzeilen zwischen Bereichen verschieben; Hauptpunkte/Unterpunkte verschieben oder umbenennen; benutzerdefinierte Hauptpunkte/Unterpunkte erzeugen; loeschen nur wenn wirklich leer (Systempunkte sind gesperrt).
+    - Undo: stellt die letzte Layout-Aenderung wieder her (ein Schritt).
     - Export/Import der Einstellungen sichert die Layout-Zuordnung mit.
 - Zoom wird im Browser gespeichert (pro Browser/Client) und skaliert die komplette UI proportional (auch Tabellen/Graphen/Buttongroessen).
 - Neu: Wenn im Browser noch keine Zoomstufe gespeichert ist, wird beim ersten Laden automatisch eine passende Default-Zoomstufe je nach Viewport-Breite gesetzt (z.B. iPhone groesser, Desktop 100%). Danach kannst du wie gewohnt mit `-`/`+` anpassen.

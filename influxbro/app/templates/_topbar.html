@@ -2360,28 +2360,32 @@
       root.style.inset = '0';
       root.style.zIndex = '12050';
       root.style.background = 'rgba(0,0,0,0.35)';
-      root.innerHTML = `
-        <div style="max-width:860px;margin:6vh auto;background:#fff;border-radius:12px;padding:16px;box-shadow:0 16px 60px rgba(0,0,0,0.3);">
+       root.innerHTML = `
+        <div style="max-width:860px;margin:6vh auto;background:#fff;border-radius:12px;padding:16px;box-shadow:0 16px 60px rgba(0,0,0,0.3);" data-ui="settings_organizer.dialog" data-ib-pickkey="settings_organizer.dialog">
           <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">
             <div>
-              <div style="font-weight:900;font-size:16px;margin-bottom:4px;">Einstellungen: Verschieben</div>
+              <div style="font-weight:900;font-size:16px;margin-bottom:4px;" data-ui="settings_organizer.txt_title" data-ib-pickkey="settings_organizer.txt_title">Einstellungen: Organizer</div>
               <div class="muted" style="margin-bottom:10px;">Funktion auswaehlen. Falls die Einstellungsseite nicht offen ist, wird sie automatisch geoeffnet.</div>
             </div>
-            <button id="ib_settings_organizer_close" class="btn_sm" type="button">Schliessen</button>
+            <button id="ib_settings_organizer_close" class="btn_sm" type="button" data-ui="settings_organizer.btn_close" data-ib-pickkey="settings_organizer.btn_close">Schliessen</button>
           </div>
           <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start;">
             <div style="flex:0 0 320px; min-width:260px;">
               <label class="muted" style="display:block;margin-bottom:4px;">Aktion</label>
-              <select id="ib_settings_organizer_action" style="width:100%;">
+              <select id="ib_settings_organizer_action" style="width:100%;" data-ui="settings_organizer.select_action" data-ib-pickkey="settings_organizer.select_action">
                 <option value="move_param">a) Verschieben von Parametern</option>
-                <option value="create_group">b) Erzeuge Hauptpunkt Einstellungen</option>
-                <option value="delete_group">c) Loesche Hauptpunkt</option>
-                <option value="create_subgroup">d) Erzeuge Unterpunkt</option>
-                <option value="delete_subgroup">e) Loesche Unterpunkt</option>
+                <option value="move_group">b) Verschieben von Hauptpunkten</option>
+                <option value="rename_group">c) Umbenennen von Hauptpunkten</option>
+                <option value="delete_group">d) Loesche Hauptpunkt (nur leer)</option>
+                <option value="create_group">e) Erzeuge Hauptpunkt</option>
+                <option value="move_subgroup">f) Verschieben von Unterpunkten</option>
+                <option value="rename_subgroup">g) Umbenennen von Unterpunkten</option>
+                <option value="delete_subgroup">h) Loesche Unterpunkt (nur leer)</option>
+                <option value="create_subgroup">i) Erzeuge Unterpunkt</option>
               </select>
               <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
-                <button id="ib_settings_organizer_start" class="btn_sm" type="button">Start</button>
-                <button id="ib_settings_organizer_undo" class="btn_sm" type="button">Undo</button>
+                <button id="ib_settings_organizer_start" class="btn_sm" type="button" data-ui="settings_organizer.btn_start" data-ib-pickkey="settings_organizer.btn_start">Start</button>
+                <button id="ib_settings_organizer_undo" class="btn_sm" type="button" data-ui="settings_organizer.btn_undo" data-ib-pickkey="settings_organizer.btn_undo">Undo</button>
               </div>
               <div id="ib_settings_organizer_err" class="err" style="display:none;margin-top:10px;"></div>
             </div>
@@ -2397,17 +2401,29 @@
       if(kind === 'move_param'){
         return 'a) Diese Funktion erlaubt es Einstellungen auf der Seite Einstellungen in einen anderen Bereich zu verschieben.\n\nAblauf:\n- Danach wird eine S-Picker Funktion aktiviert.\n- Zuerst den Wert anklicken, den man verschieben will.\n- Danach ein Hauptpunkt oder ein Unterpunkt anklicken.\n- Anschliessend kommt eine Bestaetigung, ob der Wert aus dem Quellbereich in den Zielbereich verschoben werden soll.\n\nEs wird immer die gesamte Parameterzeile verschoben (Text links + Erlaeuterung + Werte rechts).';
       }
+      if(kind === 'move_group'){
+        return 'b) Verschieben von Hauptpunkten ordnet die Hauptpunkte in den Einstellungen neu.\n\nAblauf:\n- Zuerst den zu verschiebenden Hauptpunkt anklicken.\n- Danach den Ziel-Hauptpunkt anklicken.\n- Position eingeben: "vor" oder "nach".';
+      }
+      if(kind === 'rename_group'){
+        return 'c) Umbenennen von Hauptpunkten aendert nur den sichtbaren Titel (interne IDs bleiben stabil).\n\nAblauf:\n- Hauptpunkt anklicken\n- Neuen Titel eingeben';
+      }
       if(kind === 'create_group'){
-        return 'b) Erzeuge Hauptpunkt erzeugt einen neuen Hauptpunkt in den Einstellungen.\nDu kannst angeben, an welcher Stelle er eingefuegt werden soll.';
+        return 'e) Erzeuge Hauptpunkt erzeugt einen neuen Hauptpunkt in den Einstellungen.\nDu kannst angeben, an welcher Stelle er eingefuegt werden soll.';
       }
       if(kind === 'delete_group'){
-        return 'c) Loeschen loescht einen ausgewaehlten Hauptpunkt.\nEin Hauptpunkt kann nur geloescht werden, wenn er keine Parameterzeilen (und keine Unterpunkte mit Parametern) enthaelt.';
+        return 'd) Loeschen loescht einen ausgewaehlten Hauptpunkt.\nRegel: nur wirklich leer (keine Parameterzeilen, keine Unterpunkte).\nSystempunkte sind gesperrt und koennen nicht geloescht werden.';
       }
       if(kind === 'create_subgroup'){
-        return 'd) Erzeuge Unterpunkt erzeugt einen neuen Unterpunkt.\nDu waehlst den Hauptpunkt und die Position darin.';
+        return 'i) Erzeuge Unterpunkt erzeugt einen neuen Unterpunkt.\nDu waehlst den Hauptpunkt und die Position darin.';
+      }
+      if(kind === 'move_subgroup'){
+        return 'f) Verschieben von Unterpunkten ordnet Unterpunkte innerhalb eines Hauptpunkts neu (optional auch in einen anderen Hauptpunkt).\n\nAblauf:\n- Zuerst den zu verschiebenden Unterpunkt anklicken (nur direkte Unterpunkte).\n- Danach Ziel-Hauptpunkt oder Ziel-Unterpunkt anklicken.\n- Position eingeben: "vor" oder "nach".';
+      }
+      if(kind === 'rename_subgroup'){
+        return 'g) Umbenennen von Unterpunkten aendert nur den sichtbaren Titel (interne IDs bleiben stabil).\n\nAblauf:\n- Unterpunkt anklicken (nur direkte Unterpunkte)\n- Neuen Titel eingeben';
       }
       if(kind === 'delete_subgroup'){
-        return 'e) Loeschen loescht einen ausgewaehlten Unterpunkt.\nEin Unterpunkt kann nur geloescht werden, wenn er keine Parameterzeilen enthaelt.';
+        return 'h) Loeschen loescht einen ausgewaehlten Unterpunkt.\nRegel: nur leer (keine Parameterzeilen).\nSystem-/Unterstrukturpunkte sind gesperrt.';
       }
       return '';
     }

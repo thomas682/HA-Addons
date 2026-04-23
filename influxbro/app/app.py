@@ -8412,6 +8412,13 @@ def _settings_layout_default() -> dict[str, Any]:
         "custom_groups": [],
         "custom_subgroups": [],
         "assign": {},
+        # Optional organizer state (Issue #396): reordering/renaming of visible groups/subgroups.
+        # Titles are display-only; IDs remain stable.
+        "group_order": [],
+        "group_titles": {},
+        "subgroup_parent": {},
+        "subgroup_order": {},
+        "subgroup_titles": {},
     }
 
 
@@ -8456,7 +8463,17 @@ def _settings_layout_sanitize(raw: object) -> dict[str, Any]:
     if not isinstance(raw, dict):
         return {}
 
-    out: dict[str, Any] = {"v": 1, "custom_groups": [], "custom_subgroups": [], "assign": {}}
+    out: dict[str, Any] = {
+        "v": 1,
+        "custom_groups": [],
+        "custom_subgroups": [],
+        "assign": {},
+        "group_order": [],
+        "group_titles": {},
+        "subgroup_parent": {},
+        "subgroup_order": {},
+        "subgroup_titles": {},
+    }
     try:
         v = int(raw.get("v") or 1)
     except Exception:
@@ -8530,6 +8547,89 @@ def _settings_layout_sanitize(raw: object) -> dict[str, Any]:
             norm_assign[sid] = item
         out["assign"] = norm_assign
 
+    # Organizer: group ordering + titles (supports base groups and custom groups)
+    try:
+        base_groups = _settings_layout_allowed_group_ids()
+        custom_groups = {
+            str(it.get("id") or "")
+            for it in (out.get("custom_groups") or [])
+            if isinstance(it, dict)
+        }
+        allowed_groups = base_groups | custom_groups
+    except Exception:
+        allowed_groups = set()
+
+    try:
+        go = raw.get("group_order")
+        if isinstance(go, list) and allowed_groups:
+            seen = set()
+            for it in go[:400]:
+                gid = _safe_id(it, max_len=120)
+                if not gid or gid not in allowed_groups or gid in seen:
+                    continue
+                seen.add(gid)
+                out["group_order"].append(gid)
+    except Exception:
+        pass
+
+    try:
+        gt = raw.get("group_titles")
+        if isinstance(gt, dict) and allowed_groups:
+            for k0, v0 in list(gt.items())[:400]:
+                gid = _safe_id(k0, max_len=120)
+                title = _safe_title(v0)
+                if not gid or gid not in allowed_groups or not title:
+                    continue
+                out["group_titles"][gid] = title
+    except Exception:
+        pass
+
+    # Organizer: subgroup ordering + titles + optional parent group move (best-effort)
+    # Note: subgroup IDs are UI-derived; only the parent group ref is validated.
+    try:
+        sp = raw.get("subgroup_parent")
+        if isinstance(sp, dict) and allowed_groups:
+            for sid0, gid0 in list(sp.items())[:1200]:
+                sid = _safe_id(sid0, max_len=120)
+                gid = _safe_id(gid0, max_len=120)
+                if not sid or not gid or gid not in allowed_groups:
+                    continue
+                out["subgroup_parent"][sid] = gid
+    except Exception:
+        pass
+
+    try:
+        st = raw.get("subgroup_titles")
+        if isinstance(st, dict):
+            for sid0, title0 in list(st.items())[:1200]:
+                sid = _safe_id(sid0, max_len=120)
+                title = _safe_title(title0)
+                if not sid or not title:
+                    continue
+                out["subgroup_titles"][sid] = title
+    except Exception:
+        pass
+
+    try:
+        so = raw.get("subgroup_order")
+        if isinstance(so, dict) and allowed_groups:
+            for gid0, lst0 in list(so.items())[:300]:
+                gid = _safe_id(gid0, max_len=120)
+                if not gid or gid not in allowed_groups or not isinstance(lst0, list):
+                    continue
+                seen = set()
+                lst: list[str] = []
+                for it in lst0[:800]:
+                    sid = _safe_id(it, max_len=120)
+                    if not sid or sid in seen:
+                        continue
+                    seen.add(sid)
+                    lst.append(sid)
+                if lst:
+                    out["subgroup_order"][gid] = lst
+    except Exception:
+        pass
+
     # size guard
     try:
         if len(json.dumps(out, ensure_ascii=True)) > 200000:
@@ -8568,6 +8668,28 @@ def api_settings_layout_set():
             if isinstance(it, dict)
         }
         allowed_groups = base_groups | custom_groups
+
+        # group_order must only reference allowed group IDs
+        group_order = next_layout.get("group_order") if isinstance(next_layout.get("group_order"), list) else []
+        for gid in group_order[:600]:
+            g = str(gid or "").strip()
+            if g and g not in allowed_groups:
+                return jsonify({"ok": False, "error": f"invalid group_order id: {g}"}), 400
+
+        # subgroup parent mapping must only reference allowed groups
+        sp = next_layout.get("subgroup_parent") if isinstance(next_layout.get("subgroup_parent"), dict) else {}
+        for sid, gid in list(sp.items())[:2000]:
+            g = str(gid or "").strip()
+            if g and g not in allowed_groups:
+                return jsonify({"ok": False, "error": f"invalid subgroup_parent group: {g}"}), 400
+
+        # subgroup_order keys must be allowed groups
+        so = next_layout.get("subgroup_order") if isinstance(next_layout.get("subgroup_order"), dict) else {}
+        for gid in list(so.keys())[:800]:
+            g = str(gid or "").strip()
+            if g and g not in allowed_groups:
+                return jsonify({"ok": False, "error": f"invalid subgroup_order group: {g}"}), 400
+
         assign = next_layout.get("assign") if isinstance(next_layout.get("assign"), dict) else {}
         for sid, tgt in list(assign.items()):
             if not isinstance(tgt, dict):
