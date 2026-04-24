@@ -41,12 +41,43 @@
   {% include "_topbar.html" %}
   <div class="shell">
     {% include "_nav.html" %}
-    <main class="content" data-ui="monitor_page.main" title="monitor.page">
+    <main class="content" data-ui="monitor_page.main" data-ib-pickkey="monitor_page.main" title="monitor.page">
       <h2>Monitor</h2>
       <div class="muted">Eigenstaendige Monitoring-Seite fuer Ausreisser, offene Korrekturen, kritische Messwerte und Template-Daten.</div>
 
       <div id="err" class="err"></div>
       <div id="ok" class="ok"></div>
+
+      <div class="card" data-ui="monitor_inbox.panel_card" data-ib-pickkey="monitor_inbox.panel_card" title="monitor.inbox">
+        <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:baseline;">
+          <div>
+            <div style="font-weight:900; font-size:16px;">Inbox</div>
+            <div class="muted">Auffaelligkeiten aus Watchlists/Health-Scans. Delta-Ansicht: offene Items werden fortgeschrieben, statt jedes Mal neu zu erzeugen.</div>
+          </div>
+          <div class="muted" id="inbox_meta" data-ui="monitor_inbox.txt_meta" data-ib-pickkey="monitor_inbox.txt_meta" title="monitor.inbox.meta"></div>
+        </div>
+        <div class="row" data-ui="monitor_inbox.panel_controls" data-ib-pickkey="monitor_inbox.panel_controls" title="monitor.inbox.controls">
+          <button id="inbox_refresh" class="btn_sm" data-ui="monitor_inbox.btn_refresh" data-ib-pickkey="monitor_inbox.btn_refresh" title="monitor.inbox.refresh">Refresh</button>
+          <input id="inbox_q" placeholder="Suche..." style="min-width:260px;" data-ui="monitor_inbox.input_q" data-ib-pickkey="monitor_inbox.input_q" title="monitor.inbox.q" />
+          <select id="inbox_filter" data-ui="monitor_inbox.select_filter" data-ib-pickkey="monitor_inbox.select_filter" title="monitor.inbox.filter">
+            <option value="">alle (open)</option>
+            <option value="new">nur neu</option>
+            <option value="ack">nur bestaetigt</option>
+            <option value="muted">nur gemutet</option>
+            <option value="done">nur erledigt</option>
+          </select>
+        </div>
+        <div class="table_wrap" data-ui="monitor_inbox.panel_wrap" data-ib-pickkey="monitor_inbox.panel_wrap" title="monitor.inbox.table">
+          <div class="table_box" style="max-height:52vh;">
+            <table id="inbox_tbl" class="ib_tbl" data-ui="monitor_inbox.tbl_table" data-ib-pickkey="monitor_inbox.tbl_table" title="monitor.inbox.tbl">
+              <thead>
+                <tr><th>Severity</th><th>Watchlist</th><th>Kind</th><th>Key</th><th>Grund</th><th>First</th><th>Last</th><th>Count</th><th>Status</th><th>Aktionen</th></tr>
+              </thead>
+              <tbody id="inbox_rows"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
 
       <details class="card" open data-ui="monitor_config.section_root" title="monitor.section.config">
         <summary><span class="ib_summary_row"><span>Monitoring Konfiguration</span><button type="button" class="ib_info_icon" data-info-title="Monitoring: Konfiguration" data-info-body="Hier definierst du die ueberwachten Messwerte, Grenzwerte, Recovery-Regeln und Korrekturmodi.\n\nJede Zeile repraesentiert einen ueberwachten Messwert-Key." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
@@ -238,6 +269,12 @@
     const $eventsInfo = document.getElementById('events_info');
     const $templateJson = document.getElementById('template_json');
 
+    const $inboxMeta = document.getElementById('inbox_meta');
+    const $inboxRefresh = document.getElementById('inbox_refresh');
+    const $inboxQ = document.getElementById('inbox_q');
+    const $inboxFilter = document.getElementById('inbox_filter');
+    const $inboxRows = document.getElementById('inbox_rows');
+
     let CFG = { global: { critical_repeat_threshold: 3, default_recovery_valid_streak: 2 }, monitors: [] };
 
     function err(msg){ $err.textContent = msg || ''; }
@@ -246,6 +283,114 @@
     function fmtTs(iso){ try{ if(!iso) return ''; const d = new Date(String(iso)); return isFinite(d.getTime()) ? d.toLocaleString() : String(iso); }catch(e){ return String(iso || ''); } }
     function chip(txt, cls){ return `<span class="chip ${cls||''}">${txt}</span>`; }
     async function api(url, opts){ const r = await fetch(url, opts); const j = await r.json().catch(()=>({ok:false,error:'Invalid JSON'})); if(!r.ok || !j.ok) throw new Error(j.error || ('HTTP ' + r.status)); return j; }
+
+    function sevChip(sev){
+      const s = String(sev||'').toLowerCase();
+      if(s === 'crit' || s === 'critical') return chip('CRIT','err');
+      if(s === 'warn' || s === 'warning') return chip('WARN','warn');
+      return chip('INFO','ok');
+    }
+    function statusChip(st){
+      const s = String(st||'').toLowerCase();
+      if(s === 'new') return chip('neu','err');
+      if(s === 'ack') return chip('bestaetigt','warn');
+      if(s === 'muted') return chip('gemutet','warn');
+      if(s === 'done') return chip('erledigt','ok');
+      return chip(s||'-','');
+    }
+
+    async function loadInbox(){
+      if(!$inboxRows) return;
+      $inboxRows.innerHTML = '';
+      try{ if($inboxMeta) $inboxMeta.textContent = 'Lade...'; }catch(e){}
+      const q = String($inboxQ && $inboxQ.value ? $inboxQ.value : '').trim();
+      const f = String($inboxFilter && $inboxFilter.value ? $inboxFilter.value : '').trim();
+      const qs = new URLSearchParams();
+      if(q) qs.set('q', q);
+      if(f) qs.set('status', f);
+
+      let j;
+      try{
+        j = await api('./api/watchlists/inbox?' + qs.toString());
+      }catch(e){
+        try{ if($inboxMeta) $inboxMeta.textContent = 'Fehler: ' + (e && e.message ? e.message : String(e)); }catch(x){}
+        return;
+      }
+      const rows = Array.isArray(j.rows) ? j.rows : [];
+      const sum = (j.summary && typeof j.summary === 'object') ? j.summary : {};
+      try{ if($inboxMeta) $inboxMeta.textContent = `open=${sum.open||0} new=${sum.new||0} critical=${sum.critical||0} | shown=${rows.length}`; }catch(e){}
+
+      rows.slice(0, 300).forEach((r)=>{
+        const tr = document.createElement('tr');
+        const sev = String(r.severity||'');
+        const st = String(r.status||'');
+        const kind = String(r.kind||'');
+        const key = String(r.key||'');
+        const reason = String(r.reason_label || r.reason || '');
+        const wl = String(r.watchlist_name || r.watchlist_id || '');
+        const firstAt = fmtTs(r.first_at || r.created_at || '');
+        const lastAt = fmtTs(r.last_at || r.updated_at || '');
+        const cnt = (r.count !== null && r.count !== undefined) ? String(r.count) : '';
+
+        const tdSev = document.createElement('td'); tdSev.innerHTML = sevChip(sev);
+        const tdWl = document.createElement('td'); tdWl.textContent = wl;
+        const tdK = document.createElement('td'); tdK.textContent = kind;
+        const tdKey = document.createElement('td'); tdKey.className = 'mono'; tdKey.textContent = key;
+        const tdR = document.createElement('td'); tdR.textContent = reason;
+        const tdF = document.createElement('td'); tdF.textContent = firstAt;
+        const tdL = document.createElement('td'); tdL.textContent = lastAt;
+        const tdC = document.createElement('td'); tdC.style.textAlign='right'; tdC.textContent = cnt;
+        const tdS = document.createElement('td'); tdS.innerHTML = statusChip(st);
+        const tdA = document.createElement('td'); tdA.style.whiteSpace = 'nowrap';
+
+        const bOpen = document.createElement('button'); bOpen.className = 'btn_sm'; bOpen.textContent = 'Open';
+        const bAck = document.createElement('button'); bAck.className = 'btn_sm'; bAck.textContent = 'Ack';
+        const bMute = document.createElement('button'); bMute.className = 'btn_sm'; bMute.textContent = 'Mute';
+        const bDone = document.createElement('button'); bDone.className = 'btn_sm'; bDone.textContent = 'Done';
+
+        bAck.onclick = async ()=>{ await api('./api/watchlists/inbox/mark', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id: r.id, action: 'ack'})}); await loadInbox(); };
+        bDone.onclick = async ()=>{ await api('./api/watchlists/inbox/mark', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id: r.id, action: 'done'})}); await loadInbox(); };
+        bMute.onclick = async ()=>{ const mins = prompt('Snooze Minuten (leer = dauerhaft mute)', '60'); if(mins === null) return; const n = String(mins||'').trim(); const payload = {id: r.id, action: 'mute'}; if(n && isFinite(Number(n))) payload.snooze_minutes = parseInt(n, 10); await api('./api/watchlists/inbox/mark', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)}); await loadInbox(); };
+        bOpen.onclick = ()=>{
+          try{
+            if(kind === 'series' && r.entry && typeof r.entry === 'object'){
+              const e = r.entry;
+              const qs2 = new URLSearchParams({
+                measurement: String(e.measurement||''),
+                field: String(e.field||''),
+                entity_id: String(e.entity_id||''),
+                friendly_name: String(e.friendly_name||''),
+              });
+              window.location.href = './?' + qs2.toString();
+            }else{
+              // stay on monitor; apply q filter
+              if($pendingQ) $pendingQ.value = key;
+              if($criticalQ) $criticalQ.value = key;
+              if($eventsQ) $eventsQ.value = key;
+              loadAll().catch(()=>{});
+            }
+          }catch(e){}
+        };
+
+        tdA.appendChild(bOpen);
+        tdA.appendChild(bAck);
+        tdA.appendChild(bMute);
+        tdA.appendChild(bDone);
+
+        tr.appendChild(tdSev);
+        tr.appendChild(tdWl);
+        tr.appendChild(tdK);
+        tr.appendChild(tdKey);
+        tr.appendChild(tdR);
+        tr.appendChild(tdF);
+        tr.appendChild(tdL);
+        tr.appendChild(tdC);
+        tr.appendChild(tdS);
+        tr.appendChild(tdA);
+        if(String(sev).toLowerCase() === 'crit') tr.style.background = '#fff0f0';
+        $inboxRows.appendChild(tr);
+      });
+    }
 
     function monitorRow(mon){
       const tr = document.createElement('tr');
@@ -390,7 +535,30 @@
     [$pendingQ,$criticalQ,$eventsQ].forEach(el => el.addEventListener('input', ()=>loadAll().catch(e=>err(String(e.message || e)))));
     $eventsKind.addEventListener('change', ()=>loadAll().catch(e=>err(String(e.message || e))));
 
+    try{ if($inboxRefresh) $inboxRefresh.addEventListener('click', ()=>loadInbox().catch(e=>err(String(e.message || e)))); }catch(e){}
+    try{ if($inboxFilter) $inboxFilter.addEventListener('change', ()=>loadInbox().catch(()=>{})); }catch(e){}
+    try{ if($inboxQ) $inboxQ.addEventListener('input', ()=>loadInbox().catch(()=>{})); }catch(e){}
+
     loadAll().catch(e=>err(String(e.message || e)));
+
+    // Deep link helpers (topbar inbox jump)
+    try{
+      const u = new URL(String(window.location.href||''));
+      const tab = String(u.searchParams.get('tab')||'');
+      const focus = String(u.searchParams.get('focus')||'');
+      if(tab === 'inbox' || focus === '1'){
+        const el = document.getElementById('inbox_tbl');
+        if(el && el.scrollIntoView) el.scrollIntoView({behavior:'smooth', block:'start'});
+      }
+      const q = String(u.searchParams.get('q')||'').trim();
+      if(q){
+        if($pendingQ) $pendingQ.value = q;
+        if($criticalQ) $criticalQ.value = q;
+        if($eventsQ) $eventsQ.value = q;
+      }
+    }catch(e){}
+
+    loadInbox().catch(()=>{});
   </script>
 </body>
 </html>

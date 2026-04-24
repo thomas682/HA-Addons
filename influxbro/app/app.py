@@ -107,6 +107,12 @@ MONITOR_CFG_PATH = DATA_DIR / "influxbro_monitoring_config.json"
 MONITOR_STATE_PATH = DATA_DIR / "influxbro_monitoring_state.json"
 MONITOR_PENDING_PATH = DATA_DIR / "influxbro_monitoring_pending.json"
 MONITOR_EVENTS_PATH = DATA_DIR / "influxbro_monitoring_events.jsonl"
+
+# Watchlists / Inbox (Monitor extension, persisted under /data)
+WATCHLIST_LOCK = threading.RLock()
+WATCHLISTS_PATH = DATA_DIR / "influxbro_watchlists.json"
+WATCHLIST_RUNS_PATH = DATA_DIR / "influxbro_watchlist_runs.jsonl"
+WATCHLIST_INBOX_PATH = DATA_DIR / "influxbro_watchlist_inbox.json"
 JOBS_HISTORY_PATH = DATA_DIR / "influxbro_jobs_history.json"
 
 # Timers state (last run timestamps, persisted under /data)
@@ -3478,6 +3484,744 @@ MONITOR_REASON_LABELS = {
     "ungueltiger_wert": "ungueltiger Wert",
     "fault_active": "fault_active",
 }
+
+
+_WATCHLIST_ID_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$")
+
+
+def _watchlist_load_json(path: Path, default: Any) -> Any:
+    try:
+        if not path.exists():
+            return default
+        raw = path.read_text(encoding="utf-8", errors="replace")
+        data = json.loads(raw) if raw else default
+        return data if isinstance(data, type(default)) else default
+    except Exception:
+        return default
+
+
+def _watchlist_save_json(path: Path, data: Any) -> None:
+    with WATCHLIST_LOCK:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(data, indent=2, sort_keys=True, ensure_ascii=True), encoding="utf-8")
+
+
+def _watchlists_load() -> list[dict[str, Any]]:
+    xs = _watchlist_load_json(WATCHLISTS_PATH, [])
+    out: list[dict[str, Any]] = []
+    for it in xs if isinstance(xs, list) else []:
+        if isinstance(it, dict):
+            out.append(it)
+    return out
+
+
+def _watchlists_save(xs: list[dict[str, Any]]) -> None:
+    _watchlist_save_json(WATCHLISTS_PATH, xs)
+
+
+def _watchlist_inbox_load() -> list[dict[str, Any]]:
+    xs = _watchlist_load_json(WATCHLIST_INBOX_PATH, [])
+    out: list[dict[str, Any]] = []
+    for it in xs if isinstance(xs, list) else []:
+        if isinstance(it, dict):
+            out.append(it)
+    return out
+
+
+def _watchlist_inbox_save(xs: list[dict[str, Any]]) -> None:
+    _watchlist_save_json(WATCHLIST_INBOX_PATH, xs)
+
+
+def _watchlist_runs_append(entry: dict[str, Any]) -> None:
+    try:
+        e = dict(entry or {})
+        e.setdefault("id", uuid.uuid4().hex)
+        e.setdefault("at", _utc_now_iso_ms())
+        line = json.dumps(e, ensure_ascii=True)
+        with WATCHLIST_LOCK:
+            WATCHLIST_RUNS_PATH.parent.mkdir(parents=True, exist_ok=True)
+            with WATCHLIST_RUNS_PATH.open("a", encoding="utf-8") as f:
+                f.write(line + "\n")
+    except Exception:
+        return
+
+
+def _watchlist_runs_tail(limit: int = 200) -> list[dict[str, Any]]:
+    try:
+        lim = min(2000, max(1, int(limit or 200)))
+    except Exception:
+        lim = 200
+    try:
+        if not WATCHLIST_RUNS_PATH.exists():
+            return []
+        lines = WATCHLIST_RUNS_PATH.read_text(encoding="utf-8", errors="replace").splitlines()
+        out: list[dict[str, Any]] = []
+        for ln in lines[-lim:]:
+            try:
+                j = json.loads(ln)
+            except Exception:
+                continue
+            if isinstance(j, dict):
+                out.append(j)
+        return out
+    except Exception:
+        return []
+
+
+def _watchlist_timer_id(wid: str) -> str:
+    return "watchlist:" + str(wid or "").strip()
+
+
+def _watchlist_norm_id(raw: str) -> str:
+    s = str(raw or "").strip()
+    if s and _WATCHLIST_ID_RE.match(s):
+        return s
+    # best-effort stable-ish id
+    if not s:
+        s = uuid.uuid4().hex[:10]
+    s2 = re.sub(r"[^a-zA-Z0-9._-]+", "_", s).strip("._-")
+    if not s2:
+        s2 = uuid.uuid4().hex[:10]
+    if len(s2) > 64:
+        s2 = s2[:64]
+    if not _WATCHLIST_ID_RE.match(s2):
+        s2 = ("wl_" + uuid.uuid4().hex[:10])
+    return s2
+
+
+def _watchlist_normalize(item: dict[str, Any]) -> dict[str, Any]:
+    wid = _watchlist_norm_id(str(item.get("id") or ""))
+
+    def _bool(name: str, default: bool = False) -> bool:
+        raw = item.get(name, default)
+        if isinstance(raw, bool):
+            return raw
+        return str(raw).strip().lower() in ("1", "true", "yes", "on")
+
+    def _int(name: str, default: int, lo: int, hi: int) -> int:
+        try:
+            v = int(item.get(name, default))
+        except Exception:
+            v = default
+        return max(lo, min(hi, v))
+
+    mode = str(item.get("refresh_mode") or "manual").strip().lower() or "manual"
+    if mode not in ("manual", "hours", "daily", "weekly"):
+        mode = "manual"
+
+    daily_at = str(item.get("refresh_daily_at") or "03:00:00").strip() or "03:00:00"
+    if not re.match(r"^\d{2}:\d{2}:\d{2}$", daily_at):
+        daily_at = "03:00:00"
+    wd = _timer_parse_weekday(item.get("refresh_weekday"), default=0)
+
+    entries_raw = item.get("entries")
+    entries: list[dict[str, Any]] = []
+    if isinstance(entries_raw, list):
+        for e in entries_raw:
+            if not isinstance(e, dict):
+                continue
+            k = str(e.get("kind") or "").strip().lower() or "monitor"
+            if k not in ("monitor", "series"):
+                k = "monitor"
+            ent: dict[str, Any] = {"kind": k}
+            if k == "monitor":
+                ent["key"] = str(e.get("key") or "").strip()
+            else:
+                ent["measurement"] = str(e.get("measurement") or "").strip()
+                ent["field"] = str(e.get("field") or "").strip()
+                ent["entity_id"] = str(e.get("entity_id") or "").strip()
+                ent["friendly_name"] = str(e.get("friendly_name") or "").strip()
+                ent["series_key"] = _analysis_series_key(ent["measurement"], ent["field"], ent["entity_id"] or None, ent["friendly_name"] or None)
+            entries.append(ent)
+    # Allow simple text form entries_text: one per line.
+    elif isinstance(item.get("entries_text"), str):
+        for ln in str(item.get("entries_text") or "").splitlines():
+            s = ln.strip()
+            if not s or s.startswith("#"):
+                continue
+            # Heuristic: series key has pipes; otherwise treat as monitor key.
+            if "|" in s:
+                parts = s.split("|")
+                m = str(parts[0] if len(parts) > 0 else "").strip()
+                f = str(parts[1] if len(parts) > 1 else "").strip()
+                eid = str(parts[2] if len(parts) > 2 else "").strip()
+                fn = str(parts[3] if len(parts) > 3 else "").strip()
+                entries.append({
+                    "kind": "series",
+                    "measurement": m,
+                    "field": f,
+                    "entity_id": eid,
+                    "friendly_name": fn,
+                    "series_key": _analysis_series_key(m, f, eid or None, fn or None),
+                })
+            else:
+                entries.append({"kind": "monitor", "key": s})
+
+    snooze_until = str(item.get("snooze_until") or "").strip() or None
+    if snooze_until:
+        try:
+            _trace_parse_iso(snooze_until)
+        except Exception:
+            snooze_until = None
+
+    out = {
+        "id": wid,
+        "name": str(item.get("name") or wid).strip()[:120],
+        "description": str(item.get("description") or "").strip()[:800],
+        "enabled": _bool("enabled", True),
+        "auto_update": _bool("auto_update", True),
+        "refresh_mode": mode,
+        "refresh_hours": _int("refresh_hours", 24, 1, 8760),
+        "refresh_daily_at": daily_at,
+        "refresh_weekday": int(wd),
+        "window_hours": _int("window_hours", 24, 1, 24 * 3650),
+        "stale_minutes": _int("stale_minutes", 60, 1, 60 * 24 * 3650),
+        "entries": entries,
+        "snooze_until": snooze_until,
+        "workflow": str(item.get("workflow") or "").strip()[:4000],
+    }
+    return out
+
+
+def _watchlists_normalize_and_save(payload: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    seen: set[str] = set()
+    out: list[dict[str, Any]] = []
+    for it in payload:
+        if not isinstance(it, dict):
+            continue
+        w = _watchlist_normalize(it)
+        if w["id"] in seen:
+            continue
+        seen.add(w["id"])
+        out.append(w)
+    _watchlists_save(out)
+    return out
+
+
+def _watchlist_find(wid: str) -> dict[str, Any] | None:
+    want = str(wid or "").strip()
+    for w in _watchlists_load():
+        if isinstance(w, dict) and str(w.get("id") or "") == want:
+            return w
+    return None
+
+
+def _watchlist_due_now(w: dict[str, Any]) -> bool:
+    try:
+        if not bool(w.get("enabled", True)) or not bool(w.get("auto_update", True)):
+            return False
+        snooze_until = str(w.get("snooze_until") or "").strip()
+        if snooze_until:
+            try:
+                sd = _trace_parse_iso(snooze_until)
+                if sd and datetime.now(timezone.utc) < sd:
+                    return False
+            except Exception:
+                pass
+
+        mode = str(w.get("refresh_mode") or "manual").strip().lower()
+        if mode not in ("hours", "daily", "weekly", "manual"):
+            mode = "manual"
+        if mode == "manual":
+            return False
+
+        tid = _watchlist_timer_id(str(w.get("id") or ""))
+        st = _timers_state_get(tid)
+        last_run = _parse_iso_datetime(str(st.get("last_run_at") or "").strip())
+        last_ts = last_run.timestamp() if last_run else 0.0
+
+        if mode == "hours":
+            try:
+                h = int(w.get("refresh_hours") or 24)
+            except Exception:
+                h = 24
+            if h <= 0:
+                return False
+            if last_ts <= 0:
+                return True
+            return (datetime.now(timezone.utc).timestamp() - last_ts) >= float(h * 3600)
+
+        at = str(w.get("refresh_daily_at") or "03:00:00").strip() or "03:00:00"
+        hh, mm, ss = _timer_parse_hms(at, (3, 0, 0))
+        wd = _timer_parse_weekday(w.get("refresh_weekday"), default=0)
+        now_local = datetime.now().astimezone()
+        boundary = _timer_last_boundary_local(now_local, mode=mode, hh=hh, mm=mm, ss=ss, weekday=wd)
+        if not boundary:
+            return False
+        if last_ts <= 0:
+            return True
+        last_local = datetime.fromtimestamp(last_ts, tz=timezone.utc).astimezone(now_local.tzinfo)
+        return last_local < boundary
+    except Exception:
+        return False
+
+
+def _watchlist_schedule_next_run_iso(w: dict[str, Any]) -> str | None:
+    try:
+        mode = str(w.get("refresh_mode") or "manual").strip().lower()
+        if mode not in ("hours", "daily", "weekly", "manual"):
+            mode = "manual"
+        if mode == "manual":
+            return None
+
+        tid = _watchlist_timer_id(str(w.get("id") or ""))
+        st = _timers_state_get(tid)
+        last_run = _parse_iso_datetime(str(st.get("last_run_at") or "").strip())
+        last_dt = last_run if last_run else None
+
+        if mode == "hours":
+            try:
+                h = int(w.get("refresh_hours") or 24)
+            except Exception:
+                h = 24
+            if h <= 0:
+                return None
+            base = last_dt if last_dt else datetime.now(timezone.utc)
+            nxt = base + timedelta(hours=h)
+            return nxt.astimezone(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+
+        at = str(w.get("refresh_daily_at") or "03:00:00").strip() or "03:00:00"
+        hh, mm, ss = _timer_parse_hms(at, (3, 0, 0))
+        wd = _timer_parse_weekday(w.get("refresh_weekday"), default=0)
+        now_local = datetime.now().astimezone()
+
+        # If we have a last run, compute next boundary after it.
+        ref = (last_dt.astimezone(now_local.tzinfo) if last_dt else now_local)
+        run = ref.replace(hour=hh, minute=mm, second=ss, microsecond=0)
+        if mode == "daily":
+            if run <= ref:
+                run = run + timedelta(days=1)
+            return run.astimezone(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+
+        # weekly
+        delta = (wd - run.weekday()) % 7
+        run = run + timedelta(days=delta)
+        if run <= ref:
+            run = run + timedelta(days=7)
+        return run.astimezone(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+    except Exception:
+        return None
+
+
+def _watchlist_inbox_summary(xs: list[dict[str, Any]]) -> dict[str, Any]:
+    open_items = [it for it in xs if isinstance(it, dict) and str(it.get("status") or "new") not in ("done", "muted")]
+    new_items = [it for it in open_items if str(it.get("status") or "new") == "new"]
+    crit_items = [it for it in open_items if str(it.get("severity") or "").lower() in ("crit", "critical")]
+    return {
+        "open": len(open_items),
+        "new": len(new_items),
+        "critical": len(crit_items),
+    }
+
+
+def _watchlist_eval_workflow_severity(workflow: str, entry: dict[str, Any], reason: str, base: str) -> str:
+    """Best-effort tiny DSL: allow mapping to severity only.
+
+    Supported (case-insensitive):
+    - WENN KEY BEINHALTET <text> DANN SEVERITY <crit|warn|info>
+    - WENN REASON IST <text> DANN SEVERITY <...>
+    """
+
+    try:
+        wf = str(workflow or "").strip()
+        if not wf:
+            return base
+        key_txt = ""
+        if str(entry.get("kind") or "") == "monitor":
+            key_txt = str(entry.get("key") or "")
+        else:
+            key_txt = str(entry.get("series_key") or "")
+        rtxt = str(reason or "")
+        for ln in wf.splitlines():
+            s = ln.strip()
+            if not s or s.startswith("#"):
+                continue
+            u = s.upper()
+            if "DANN" not in u or "SEVERITY" not in u or "WENN" not in u:
+                continue
+            # very small parse
+            # WENN KEY BEINHALTET X DANN SEVERITY Y
+            if "WENN" in u and "KEY" in u and "BEINHALTET" in u and "DANN" in u:
+                try:
+                    cond = s.split("DANN")[0]
+                    tail = s.split("DANN", 1)[1]
+                    want = cond.split("BEINHALTET", 1)[1].strip().strip('"')
+                    sev = tail.split("SEVERITY", 1)[1].strip().split()[0].strip().lower()
+                    if want and want.lower() in key_txt.lower():
+                        if sev in ("crit", "critical"):
+                            return "crit"
+                        if sev in ("warn", "warning"):
+                            return "warn"
+                        if sev in ("info",):
+                            return "info"
+                except Exception:
+                    continue
+            # WENN REASON IST X DANN SEVERITY Y
+            if "WENN" in u and "REASON" in u and "IST" in u and "DANN" in u:
+                try:
+                    cond = s.split("DANN")[0]
+                    tail = s.split("DANN", 1)[1]
+                    want = cond.split("IST", 1)[1].strip().strip('"')
+                    sev = tail.split("SEVERITY", 1)[1].strip().split()[0].strip().lower()
+                    if want and want.lower() == rtxt.lower():
+                        if sev in ("crit", "critical"):
+                            return "crit"
+                        if sev in ("warn", "warning"):
+                            return "warn"
+                        if sev in ("info",):
+                            return "info"
+                except Exception:
+                    continue
+        return base
+    except Exception:
+        return base
+
+
+WATCHLIST_RUN_LOCK = threading.RLock()
+WATCHLIST_RUN_INFLIGHT: dict[str, dict[str, Any]] = {}
+
+
+def _watchlist_run_inflight(timer_id: str) -> bool:
+    with WATCHLIST_RUN_LOCK:
+        for j in WATCHLIST_RUN_INFLIGHT.values():
+            try:
+                if str(j.get("timer_id") or "") != str(timer_id or ""):
+                    continue
+                st = str(j.get("state") or "")
+                if st and st not in ("done", "error", "cancelled"):
+                    return True
+            except Exception:
+                continue
+    return False
+
+
+def _watchlist_run_thread(run_id: str) -> None:
+    def set_state(state: str, msg: str, extra: dict[str, Any] | None = None) -> None:
+        timer_id = None
+        with WATCHLIST_RUN_LOCK:
+            if run_id not in WATCHLIST_RUN_INFLIGHT:
+                return
+            WATCHLIST_RUN_INFLIGHT[run_id]["state"] = state
+            WATCHLIST_RUN_INFLIGHT[run_id]["message"] = msg
+            WATCHLIST_RUN_INFLIGHT[run_id]["updated_at"] = _utc_now_iso_ms()
+            if extra and isinstance(extra, dict):
+                WATCHLIST_RUN_INFLIGHT[run_id]["extra"] = extra
+            timer_id = WATCHLIST_RUN_INFLIGHT[run_id].get("timer_id")
+        if timer_id and state in ("done", "error", "cancelled"):
+            try:
+                _timer_mark_finished(str(timer_id), state, extra=extra)
+            except Exception:
+                pass
+
+    started_mono = time.monotonic()
+    try:
+        with WATCHLIST_RUN_LOCK:
+            job = WATCHLIST_RUN_INFLIGHT.get(run_id) or {}
+            if bool(job.get("cancelled")):
+                set_state("cancelled", "Abgebrochen")
+                return
+            wid = str(job.get("watchlist_id") or "").strip()
+            w = _watchlist_find(wid)
+            if not w:
+                set_state("error", "Watchlist nicht gefunden")
+                return
+            timer_id = str(job.get("timer_id") or "")
+
+        set_state("running", "Watchlist Scan laeuft...", extra={"watchlist_id": wid})
+
+        # Prepare data sources.
+        cfg_mon = _monitor_load_config()
+        state_all = _monitor_load_state()
+        pending = _monitor_load_pending()
+        inbox = _watchlist_inbox_load()
+        now = _utc_now_iso_ms()
+
+        # Helper: merge or create inbox item (delta behavior).
+        def upsert_item(sev: str, entry: dict[str, Any], reason: str, reason_label: str, first_at: str | None, last_at: str | None) -> tuple[str, str]:
+            nonlocal inbox
+            wl_id = wid
+            wl_name = str(w.get("name") or wl_id)
+            kind = str(entry.get("kind") or "")
+            key = str(entry.get("key") or entry.get("series_key") or "")
+            dedupe = json.dumps({"wl": wl_id, "kind": kind, "key": key, "reason": reason}, ensure_ascii=True, sort_keys=True)
+            for it in inbox:
+                if not isinstance(it, dict):
+                    continue
+                if str(it.get("dedupe") or "") != dedupe:
+                    continue
+                if str(it.get("status") or "new") in ("done", "muted"):
+                    continue
+                it["updated_at"] = now
+                it["last_at"] = last_at or it.get("last_at")
+                it["count"] = int(it.get("count") or 0) + 1
+                it["severity"] = sev
+                it.setdefault("watchlist_name", wl_name)
+                return ("updated", str(it.get("id") or ""))
+
+            item_id = uuid.uuid4().hex
+            inbox.append({
+                "id": item_id,
+                "dedupe": dedupe,
+                "created_at": now,
+                "updated_at": now,
+                "severity": sev,
+                "status": "new",
+                "watchlist_id": wl_id,
+                "watchlist_name": wl_name,
+                "kind": kind,
+                "key": key,
+                "reason": reason,
+                "reason_label": reason_label,
+                "first_at": first_at,
+                "last_at": last_at,
+                "count": 1,
+                "entry": entry,
+                "run_id": run_id,
+            })
+            return ("created", item_id)
+
+        created = 0
+        updated = 0
+        findings: list[dict[str, Any]] = []
+
+        # Series checks (Influx): gather series entries
+        series_entries = [e for e in (w.get("entries") or []) if isinstance(e, dict) and str(e.get("kind") or "") == "series"]
+        series_last: dict[str, dict[str, Any]] = {}
+        if series_entries:
+            cfg = _overlay_from_yaml_if_enabled(load_cfg())
+            if int(cfg.get("influx_version", 2)) == 2 and (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+                try:
+                    stop_dt = datetime.now(timezone.utc)
+                    start_dt = stop_dt - timedelta(hours=max(1, int(w.get("window_hours") or 24)))
+                    start = _dt_to_rfc3339_utc(start_dt)
+                    stop = _dt_to_rfc3339_utc(stop_dt)
+                    # Build OR predicate for selected series.
+                    parts: list[str] = []
+                    for e in series_entries[:200]:
+                        m = str(e.get("measurement") or "").strip()
+                        f = str(e.get("field") or "").strip()
+                        eid = str(e.get("entity_id") or "").strip()
+                        fn = str(e.get("friendly_name") or "").strip()
+                        if not (m and f):
+                            continue
+                        conds = [f"r._measurement == {_flux_str(m)}", f"r._field == {_flux_str(f)}"]
+                        if eid:
+                            conds.append(f"r.entity_id == {_flux_str(eid)}")
+                        if fn:
+                            conds.append(f"r.friendly_name == {_flux_str(fn)}")
+                        parts.append("(" + " and ".join(conds) + ")")
+                    pred = " or ".join(parts)
+                    if pred:
+                        q = f'''
+from(bucket: "{cfg["bucket"]}")
+  |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
+  |> filter(fn: (r) => {pred})
+  |> keep(columns: ["_measurement","_field","entity_id","friendly_name","_time","_value"])
+  |> group(columns: ["_measurement","_field","entity_id","friendly_name"])
+  |> last()
+'''
+                        with v2_client(cfg) as c:
+                            tables = c.query_api().query(q, org=cfg["org"])
+                            for t in tables or []:
+                                for rec in getattr(t, "records", []) or []:
+                                    vals = getattr(rec, "values", {}) or {}
+                                    m = str(vals.get("_measurement") or "")
+                                    f = str(vals.get("_field") or "")
+                                    eid = str(vals.get("entity_id") or "")
+                                    fn = str(vals.get("friendly_name") or "")
+                                    sk = _analysis_series_key(m, f, eid or None, fn or None)
+                                    ts = rec.get_time() or vals.get("_time")
+                                    ts_s = _dt_to_rfc3339_utc(ts) if isinstance(ts, datetime) else (str(ts).strip() if ts else None)
+                                    series_last[sk] = {"newest_time": ts_s, "last_value": rec.get_value()}
+                except Exception:
+                    series_last = {}
+
+        stale_minutes = int(w.get("stale_minutes") or 60)
+        stale_cut = datetime.now(timezone.utc) - timedelta(minutes=max(1, stale_minutes))
+
+        # Evaluate entries
+        for e in (w.get("entries") or []):
+            if not isinstance(e, dict):
+                continue
+            kind = str(e.get("kind") or "")
+            if kind == "monitor":
+                mk = str(e.get("key") or "").strip()
+                if not mk:
+                    continue
+                st = state_all.get(mk) if isinstance(state_all.get(mk), dict) else {}
+                mon = _monitor_get_item(cfg_mon, mk) or {}
+                label = str(mon.get("label") or mk)
+                sev = "info"
+                reason = ""
+                reason_label = ""
+                if int(st.get("pending_count") or 0) > 0:
+                    sev = "warn"
+                    reason = "pending"
+                    reason_label = "Pending Korrekturen"
+                if bool(st.get("critical")):
+                    sev = "crit"
+                    reason = "critical"
+                    reason_label = "kritisch"
+                if bool(st.get("fault_active")) and not reason:
+                    sev = "warn"
+                    reason = "fault_active"
+                    reason_label = "Stoerphase aktiv"
+
+                # No new updates: use last_event_at as best-effort freshness.
+                last_at = str(st.get("last_event_at") or "").strip() or None
+                try:
+                    dt0 = _trace_parse_iso(last_at) if last_at else None
+                    if dt0 and dt0 < stale_cut:
+                        sev = "crit" if sev != "crit" else sev
+                        if not reason:
+                            reason = "stale"
+                            reason_label = f"keine Updates seit > {stale_minutes}min"
+                except Exception:
+                    pass
+
+                if reason:
+                    sev = _watchlist_eval_workflow_severity(str(w.get("workflow") or ""), e, reason, sev)
+                    findings.append({"severity": sev, "kind": "monitor", "key": mk, "label": label, "reason": reason})
+                    act, _iid = upsert_item(sev, {"kind": "monitor", "key": mk, "label": label}, reason, reason_label, last_at, last_at)
+                    if act == "created":
+                        created += 1
+                    else:
+                        updated += 1
+
+            elif kind == "series":
+                sk = str(e.get("series_key") or "").strip() or _analysis_series_key(
+                    str(e.get("measurement") or ""),
+                    str(e.get("field") or ""),
+                    str(e.get("entity_id") or "") or None,
+                    str(e.get("friendly_name") or "") or None,
+                )
+                if not sk:
+                    continue
+                last = series_last.get(sk) or {}
+                newest = str(last.get("newest_time") or "").strip() or None
+                sev = "info"
+                reason = ""
+                reason_label = ""
+                if not newest:
+                    sev = "crit"
+                    reason = "no_data"
+                    reason_label = "keine Daten im Zeitfenster"
+                else:
+                    try:
+                        dt0 = _trace_parse_iso(newest)
+                        if dt0 and dt0 < stale_cut:
+                            sev = "crit"
+                            reason = "stale"
+                            reason_label = f"keine Daten seit > {stale_minutes}min"
+                    except Exception:
+                        pass
+                if reason:
+                    sev = _watchlist_eval_workflow_severity(str(w.get("workflow") or ""), e, reason, sev)
+                    entry0 = {
+                        "kind": "series",
+                        "series_key": sk,
+                        "measurement": str(e.get("measurement") or ""),
+                        "field": str(e.get("field") or ""),
+                        "entity_id": str(e.get("entity_id") or ""),
+                        "friendly_name": str(e.get("friendly_name") or ""),
+                    }
+                    findings.append({"severity": sev, "kind": "series", "key": sk, "reason": reason, "newest_time": newest})
+                    act, _iid = upsert_item(sev, entry0, reason, reason_label, newest, newest)
+                    if act == "created":
+                        created += 1
+                    else:
+                        updated += 1
+
+        # Persist inbox changes
+        _watchlist_inbox_save(inbox)
+
+        dur_ms = int(max(0.0, (time.monotonic() - started_mono) * 1000.0))
+        run_row = {
+            "id": run_id,
+            "watchlist_id": wid,
+            "watchlist_name": str(w.get("name") or wid),
+            "timer_id": timer_id,
+            "started_at": str(job.get("started_at") or now),
+            "finished_at": _utc_now_iso_ms(),
+            "duration_ms": dur_ms,
+            "findings": len(findings),
+            "created": created,
+            "updated": updated,
+            "state": "done",
+        }
+        _watchlist_runs_append(run_row)
+        try:
+            _timer_event_append(str(timer_id), "run", {
+                "state": "done",
+                "duration_ms": dur_ms,
+                "findings": len(findings),
+                "created": created,
+                "updated": updated,
+                "run_id": run_id,
+            })
+        except Exception:
+            pass
+        set_state("done", f"OK: findings={len(findings)} created={created} updated={updated}", extra={"duration_ms": dur_ms, "findings": len(findings)})
+    except Exception as e:
+        err = str(e) or e.__class__.__name__
+        try:
+            _watchlist_runs_append({"id": run_id, "state": "error", "error": err, "watchlist_id": str(WATCHLIST_RUN_INFLIGHT.get(run_id, {}).get("watchlist_id") or ""), "finished_at": _utc_now_iso_ms()})
+        except Exception:
+            pass
+        try:
+            with WATCHLIST_RUN_LOCK:
+                tid = str(WATCHLIST_RUN_INFLIGHT.get(run_id, {}).get("timer_id") or "")
+            if tid:
+                _timer_event_append(tid, "run", {"state": "error", "error": err, "run_id": run_id})
+        except Exception:
+            pass
+        set_state("error", err, extra={"error": err, "duration_ms": int(max(0.0, (time.monotonic() - started_mono) * 1000.0))})
+    finally:
+        # keep recent inflight rows small
+        with WATCHLIST_RUN_LOCK:
+            if run_id in WATCHLIST_RUN_INFLIGHT:
+                WATCHLIST_RUN_INFLIGHT[run_id]["finished_at"] = _utc_now_iso_ms()
+                # best-effort cleanup of old finished entries
+                cutoff = time.monotonic() - float(6 * 3600)
+                old = [k for k, v in WATCHLIST_RUN_INFLIGHT.items() if float(v.get("started_mono") or 0) < cutoff]
+                for k in old:
+                    WATCHLIST_RUN_INFLIGHT.pop(k, None)
+
+
+def _watchlist_start_run(wid: str, *, trigger_page: str, timer_id: str | None = None) -> str:
+    w = _watchlist_find(wid)
+    if not w:
+        raise _ApiError("watchlist not found", 404)
+    tid = str(timer_id or _watchlist_timer_id(wid)).strip() or _watchlist_timer_id(wid)
+    if _watchlist_run_inflight(tid):
+        raise _ApiError("watchlist already inflight", 409)
+    run_id = uuid.uuid4().hex
+    now = _utc_now_iso_ms()
+    job = {
+        "id": run_id,
+        "type": "watchlist_run",
+        "timer_id": tid,
+        "watchlist_id": str(wid),
+        "watchlist_name": str(w.get("name") or wid),
+        "trigger_page": str(trigger_page or "").strip(),
+        "trigger_ip": _req_ip(),
+        "trigger_ua": _req_ua(),
+        "state": "pending",
+        "message": "Run wird gestartet...",
+        "started_at": now,
+        "updated_at": now,
+        "started_mono": time.monotonic(),
+        "cancelled": False,
+    }
+    with WATCHLIST_RUN_LOCK:
+        WATCHLIST_RUN_INFLIGHT[run_id] = job
+    try:
+        _timer_mark_started(tid, job_id=run_id)
+    except Exception:
+        pass
+    th = threading.Thread(target=_watchlist_run_thread, args=(run_id,), daemon=True)
+    th.start()
+    return run_id
 
 
 def _monitor_default_config() -> dict[str, Any]:
@@ -17160,6 +17904,36 @@ def api_timers():
             "comment": "Nightly-Job: aktualisiert Analysecache fuer alle bereits analysierten Serien (1x pro Nacht).",
         },
     ]
+
+    # Watchlists (dynamic timers)
+    try:
+        for w in _watchlists_load():
+            if not isinstance(w, dict):
+                continue
+            wid = str(w.get("id") or "").strip()
+            if not wid:
+                continue
+            tid = _watchlist_timer_id(wid)
+            st = _timers_state_get(tid)
+            timers.append({
+                "id": tid,
+                "enabled": bool(w.get("enabled", True)),
+                "auto_update": bool(w.get("auto_update", True)),
+                "refresh_mode": str(w.get("refresh_mode") or "manual"),
+                "refresh_hours": int(w.get("refresh_hours") or 24),
+                "refresh_daily_at": str(w.get("refresh_daily_at") or "03:00:00"),
+                "refresh_weekday": int(w.get("refresh_weekday") or 0),
+                "mode": str(w.get("refresh_mode") or "manual"),
+                "next_run_at": _watchlist_schedule_next_run_iso(w),
+                "last_started_at": st.get("last_started_at"),
+                "last_run_at": st.get("last_run_at"),
+                "last_state": st.get("last_state"),
+                "last_duration_ms": st.get("last_duration_ms"),
+                "last_error": st.get("last_error"),
+                "comment": f"Watchlist: {str(w.get('name') or wid)}",
+            })
+    except Exception:
+        pass
     return jsonify({"ok": True, "timers": timers})
 
 
@@ -17167,7 +17941,9 @@ def api_timers():
 def api_timers_history():
     tid = str(request.args.get("id") or "").strip()
     if tid not in ("dash_cache", "stats_cache", "stats_full", "analysis_nightly"):
-        return jsonify({"ok": False, "error": "invalid timer id"}), 400
+        # allow watchlist timers
+        if not tid.startswith("watchlist:"):
+            return jsonify({"ok": False, "error": "invalid timer id"}), 400
 
     try:
         limit = int(request.args.get("limit") or 50)
@@ -17188,6 +17964,48 @@ def api_timers_schedule():
     body = request.get_json(force=True) or {}
     tid = str(body.get("id") or "").strip()
     if tid not in ("dash_cache", "stats_cache", "stats_full", "analysis_nightly"):
+        # watchlists store schedule in watchlist file (not config.yaml)
+        if tid.startswith("watchlist:"):
+            wid = tid.split(":", 1)[1].strip()
+            xs = _watchlists_load()
+            hit = None
+            for w in xs:
+                if isinstance(w, dict) and str(w.get("id") or "") == wid:
+                    hit = w
+                    break
+            if not hit:
+                return jsonify({"ok": False, "error": "watchlist not found"}), 404
+
+            mode = str(body.get("refresh_mode") or "").strip().lower()
+            if mode not in ("hours", "daily", "weekly", "manual"):
+                return jsonify({"ok": False, "error": "refresh_mode must be hours|daily|weekly|manual"}), 400
+            hit["refresh_mode"] = mode
+            if mode == "hours":
+                try:
+                    h = int(body.get("refresh_hours") or hit.get("refresh_hours") or 24)
+                except Exception:
+                    h = 24
+                hit["refresh_hours"] = max(1, min(8760, int(h)))
+            elif mode in ("daily", "weekly"):
+                s = str(body.get("refresh_daily_at") or hit.get("refresh_daily_at") or "03:00:00").strip()
+                if not re.match(r"^\d{2}:\d{2}:\d{2}$", s):
+                    return jsonify({"ok": False, "error": "refresh_daily_at must be HH:MM:SS"}), 400
+                hit["refresh_daily_at"] = s
+                if mode == "weekly":
+                    hit["refresh_weekday"] = int(_timer_parse_weekday(body.get("refresh_weekday"), default=int(hit.get("refresh_weekday") or 0)))
+
+            _watchlists_save(xs)
+            try:
+                _timer_event_append(tid, "schedule", {
+                    "mode": mode,
+                    "refresh_hours": hit.get("refresh_hours"),
+                    "refresh_daily_at": hit.get("refresh_daily_at"),
+                    "refresh_weekday": hit.get("refresh_weekday"),
+                })
+            except Exception:
+                pass
+            return api_timers()
+
         return jsonify({"ok": False, "error": "invalid timer id"}), 400
 
     mode = str(body.get("refresh_mode") or "").strip().lower()
@@ -17272,12 +18090,25 @@ def api_timers_auto_update():
 
     valid = {"dash_cache", "stats_cache", "stats_full", "analysis_nightly"}
     ids2 = [str(x or "").strip() for x in ids]
-    ids2 = [x for x in ids2 if x in valid]
+    ids2 = [x for x in ids2 if (x in valid) or x.startswith("watchlist:")]
     if not ids2:
         return jsonify({"ok": False, "error": "ids required"}), 400
 
     cfg = load_cfg()
     for tid in ids2:
+        if tid.startswith("watchlist:"):
+            wid = tid.split(":", 1)[1].strip()
+            xs = _watchlists_load()
+            for w in xs:
+                if isinstance(w, dict) and str(w.get("id") or "") == wid:
+                    w["auto_update"] = bool(enabled)
+                    break
+            _watchlists_save(xs)
+            try:
+                _timer_event_append(tid, "auto_update", {"enabled": bool(enabled), "ip": _req_ip()})
+            except Exception:
+                pass
+            continue
         if tid in ("dash_cache", "stats_cache", "analysis_nightly"):
             cfg[f"{tid}_auto_update"] = bool(enabled)
         elif tid == "stats_full":
@@ -17334,6 +18165,19 @@ def api_timers_start():
     body = request.get_json(force=True) or {}
     tid = str(body.get("id") or "").strip()
     if tid not in ("dash_cache", "stats_cache", "stats_full", "analysis_nightly"):
+        if tid.startswith("watchlist:"):
+            wid = tid.split(":", 1)[1].strip()
+            try:
+                run_id = _watchlist_start_run(wid, trigger_page="timers", timer_id=tid)
+                try:
+                    _timer_event_append(tid, "manual_start", {"run_id": run_id})
+                except Exception:
+                    pass
+                return jsonify({"ok": True, "started": True, "run_id": run_id})
+            except _ApiError as e:
+                return jsonify({"ok": False, "error": e.message}), e.status
+            except Exception as e:
+                return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 500
         return jsonify({"ok": False, "error": "invalid timer id"}), 400
 
     cfg = _overlay_from_yaml_if_enabled(load_cfg())
@@ -17476,6 +18320,20 @@ def api_timers_cancel():
     body = request.get_json(force=True) or {}
     tid = str(body.get("id") or "").strip()
     if tid not in ("dash_cache", "stats_cache", "stats_full", "analysis_nightly"):
+        if tid.startswith("watchlist:"):
+            cancelled = 0
+            with WATCHLIST_RUN_LOCK:
+                for jid, j in list(WATCHLIST_RUN_INFLIGHT.items()):
+                    try:
+                        if str(j.get("timer_id") or "") != tid:
+                            continue
+                        st = str(j.get("state") or "")
+                        if st and st not in ("done", "error", "cancelled"):
+                            WATCHLIST_RUN_INFLIGHT[jid]["cancelled"] = True
+                            cancelled += 1
+                    except Exception:
+                        continue
+            return jsonify({"ok": True, "cancelled": cancelled})
         return jsonify({"ok": False, "error": "invalid timer id"}), 400
 
     cancelled = 0
@@ -19638,6 +20496,136 @@ def api_monitoring_critical():
 def api_monitoring_templates():
     snap = _monitor_template_snapshot()
     return jsonify({"ok": True, **snap})
+
+
+@app.get("/api/watchlists")
+def api_watchlists_list():
+    xs = _watchlists_load()
+    inbox = _watchlist_inbox_load()
+    return jsonify({
+        "ok": True,
+        "watchlists": xs,
+        "inbox_summary": _watchlist_inbox_summary(inbox),
+    })
+
+
+@app.post("/api/watchlists")
+def api_watchlists_save():
+    body = request.get_json(force=True) or {}
+    raw = body.get("watchlists")
+    if not isinstance(raw, list):
+        return jsonify({"ok": False, "error": "watchlists must be a list"}), 400
+    try:
+        xs = _watchlists_normalize_and_save([it for it in raw if isinstance(it, dict)])
+        return jsonify({"ok": True, "watchlists": xs})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 400
+
+
+@app.post("/api/watchlists/run")
+def api_watchlists_run():
+    body = request.get_json(force=True) or {}
+    wid = str(body.get("id") or "").strip()
+    ids_raw = body.get("ids")
+    ids: list[str] = []
+    if wid:
+        ids = [wid]
+    elif isinstance(ids_raw, list):
+        ids = [str(x or "").strip() for x in ids_raw]
+    ids = [x for x in ids if x]
+    if not ids:
+        return jsonify({"ok": False, "error": "id or ids required"}), 400
+
+    started: list[dict[str, Any]] = []
+    for wid0 in ids[:20]:
+        try:
+            run_id = _watchlist_start_run(wid0, trigger_page="monitor")
+            started.append({"watchlist_id": wid0, "run_id": run_id})
+        except _ApiError as e:
+            started.append({"watchlist_id": wid0, "error": e.message, "status": e.status})
+        except Exception as e:
+            started.append({"watchlist_id": wid0, "error": str(e) or e.__class__.__name__})
+    return jsonify({"ok": True, "started": started})
+
+
+@app.get("/api/watchlists/runs")
+def api_watchlists_runs():
+    wid = str(request.args.get("id") or request.args.get("watchlist_id") or "").strip()
+    try:
+        limit = int(request.args.get("limit") or 200)
+    except Exception:
+        limit = 200
+    limit = min(2000, max(1, limit))
+    rows = _watchlist_runs_tail(limit)
+    if wid:
+        rows = [r for r in rows if isinstance(r, dict) and str(r.get("watchlist_id") or "") == wid]
+    return jsonify({"ok": True, "rows": rows[-limit:]})
+
+
+@app.get("/api/watchlists/inbox")
+def api_watchlists_inbox():
+    q = str(request.args.get("q") or "").strip().lower()
+    only = str(request.args.get("status") or "").strip().lower()
+    xs = _watchlist_inbox_load()
+    out: list[dict[str, Any]] = []
+    for it in xs:
+        if not isinstance(it, dict):
+            continue
+        st = str(it.get("status") or "new").strip().lower() or "new"
+        if only and st != only:
+            continue
+        txt = json.dumps(it, ensure_ascii=True).lower()
+        if q and q not in txt:
+            continue
+        out.append(it)
+    out.sort(key=lambda r: str(r.get("updated_at") or r.get("created_at") or ""), reverse=True)
+    return jsonify({"ok": True, "rows": out, "summary": _watchlist_inbox_summary(xs)})
+
+
+@app.post("/api/watchlists/inbox/mark")
+def api_watchlists_inbox_mark():
+    body = request.get_json(force=True) or {}
+    iid = str(body.get("id") or "").strip()
+    action = str(body.get("action") or "").strip().lower()
+    snooze_minutes = body.get("snooze_minutes")
+    if action not in ("ack", "done", "mute", "unmute", "new"):
+        return jsonify({"ok": False, "error": "action must be ack|done|mute|unmute|new"}), 400
+    xs = _watchlist_inbox_load()
+    hit = None
+    for it in xs:
+        if isinstance(it, dict) and str(it.get("id") or "") == iid:
+            hit = it
+            break
+    if not hit:
+        return jsonify({"ok": False, "error": "item not found"}), 404
+    now = _utc_now_iso_ms()
+    hit["updated_at"] = now
+    if action == "ack":
+        hit["status"] = "ack"
+    elif action == "done":
+        hit["status"] = "done"
+    elif action == "mute":
+        hit["status"] = "muted"
+        try:
+            mins = int(snooze_minutes or 0)
+        except Exception:
+            mins = 0
+        if mins > 0:
+            until = datetime.now(timezone.utc) + timedelta(minutes=max(1, mins))
+            hit["snooze_until"] = _dt_to_rfc3339_utc(until)
+    elif action == "unmute":
+        hit["status"] = "new"
+        hit.pop("snooze_until", None)
+    elif action == "new":
+        hit["status"] = "new"
+    _watchlist_inbox_save(xs)
+    return jsonify({"ok": True, "row": hit, "summary": _watchlist_inbox_summary(xs)})
+
+
+@app.get("/api/watchlists/inbox_summary")
+def api_watchlists_inbox_summary():
+    xs = _watchlist_inbox_load()
+    return jsonify({"ok": True, "summary": _watchlist_inbox_summary(xs)})
 
 
 @app.post("/api/raw_points")
@@ -29155,6 +30143,60 @@ def _analysis_nightly_scheduler_start() -> None:
 
 try:
     _analysis_nightly_scheduler_start()
+except Exception:
+    pass
+
+
+_WATCHLIST_SCHED_STARTED = False
+
+
+def _watchlist_scheduler_loop() -> None:
+    """Scheduled trigger for watchlist runs (best-effort)."""
+
+    while True:
+        try:
+            xs = _watchlists_load()
+            for w in xs:
+                if not isinstance(w, dict):
+                    continue
+                wid = str(w.get("id") or "").strip()
+                if not wid:
+                    continue
+                tid = _watchlist_timer_id(wid)
+                if not bool(w.get("enabled", True)) or not bool(w.get("auto_update", True)):
+                    continue
+                if not _watchlist_due_now(w):
+                    continue
+                if _watchlist_run_inflight(tid):
+                    continue
+                try:
+                    run_id = _watchlist_start_run(wid, trigger_page="scheduler", timer_id=tid)
+                    try:
+                        _timer_event_append(tid, "scheduler_start", {"run_id": run_id, "watchlist_id": wid})
+                    except Exception:
+                        pass
+                except Exception:
+                    continue
+        except Exception:
+            pass
+        time.sleep(60)
+
+
+def _watchlist_scheduler_start() -> None:
+    global _WATCHLIST_SCHED_STARTED
+    if _WATCHLIST_SCHED_STARTED:
+        return
+    _WATCHLIST_SCHED_STARTED = True
+    t = threading.Thread(target=_watchlist_scheduler_loop, daemon=True)
+    t.start()
+    try:
+        LOG.info("watchlist scheduler started")
+    except Exception:
+        pass
+
+
+try:
+    _watchlist_scheduler_start()
 except Exception:
     pass
 

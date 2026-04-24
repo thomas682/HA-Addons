@@ -5316,6 +5316,31 @@ async function loadMeasurements(opts){
   }
 }
 
+// Support: allow deep-linking from Monitor/Inbox to a specific series.
+// URL params: measurement, field, entity_id, friendly_name
+async function applyDashboardQueryParams(){
+  try{
+    const u = new URL(String(window.location.href||''));
+    const m = String(u.searchParams.get('measurement') || '').trim();
+    const f = String(u.searchParams.get('field') || '').trim();
+    const eid = String(u.searchParams.get('entity_id') || '').trim();
+    const fn = String(u.searchParams.get('friendly_name') || '').trim();
+    if(!(m && f && (eid || fn))) return false;
+    if($mf) $mf.value = m;
+    await loadDashboardFields(m, { silent: true });
+    if($f) $f.value = f;
+    // best-effort suggestions
+    try{ await refreshDashboardSuggestions({ silent: true }); }catch(e){}
+    if($e && eid) $e.value = eid;
+    if($n && fn) $n.value = fn;
+    // Load data automatically
+    try{ await loadData({ cacheStrategy: 'default' }); }catch(e){}
+    return true;
+  }catch(e){
+    return false;
+  }
+}
+
 async function dashboardLoadTagValues(tag, params){
   let url = './api/tag_values?tag=' + encodeURIComponent(String(tag||''));
   const qp = new URLSearchParams();
@@ -15797,6 +15822,9 @@ try{
     try{ _renderGraphQueryPanel(); }catch(e){}
 
     try{ _updateGraphDetailUi(); }catch(e){}
+
+    // Allow deep-link auto-load (e.g. from Monitor Inbox).
+    try{ await applyDashboardQueryParams(); }catch(e){}
 
     // Do not auto-load data on page open (manual via button).
   } catch(e){ displayError(e); }

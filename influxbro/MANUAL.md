@@ -141,6 +141,10 @@ Neu: Top-Leiste (Profil + Zoom)
   - `/api/monitoring/events`, `/api/monitoring/pending`, `/api/monitoring/critical`: Listen fuer UI, Visu und Support.
   - `/api/monitoring/templates`: strukturierte JSON-Daten fuer globale Zaehler und pro Messwert den aktuellen Monitoring-Zustand.
 
+Neu:
+
+- Watchlists/Health-Scans: im Monitor gibt es eine Inbox mit auffaelligen Items (Delta-Ansicht). Watchlists sind persistent und koennen geplant laufen (hours/daily/weekly/manual) und erscheinen zusaetzlich unter `Jobs & Cache -> Timer Jobs`.
+
 ## Dashboard (typischer Ablauf)
 
 ### 1) Messwert auswaehlen

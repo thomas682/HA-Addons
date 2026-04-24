@@ -234,6 +234,27 @@
       box-shadow:0 2px 8px rgba(11,87,208,0.28);
       cursor:pointer;
     }
+
+    .ib_badge {
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      min-width: 18px;
+      height: 18px;
+      padding: 0 5px;
+      border-radius: 999px;
+      background: #dc2626;
+      color: #fff;
+      font-size: 11px;
+      line-height: 18px;
+      text-align: center;
+      font-weight: 800;
+      box-shadow: 0 2px 8px rgba(220,38,38,0.28);
+      display: none;
+      pointer-events: none;
+    }
+    .ib_badge_warn { background: #f59e0b; box-shadow: 0 2px 8px rgba(245,158,11,0.28); }
+    .ib_badge_info { background: #0b57d0; box-shadow: 0 2px 8px rgba(11,87,208,0.28); }
     .ib_page_search_modal_chk { display:flex; gap:8px; align-items:center; min-height:32px; }
     .ib_page_search_modal_chk input[type="checkbox"] { width:16px; height:16px; flex:0 0 16px; }
     @media (max-width: 980px){
@@ -2406,6 +2427,11 @@
       </button>
       <button id="ib_nav_back" type="button" data-ui="nav_history.btn_back" title="nav.history.back" aria-label="Vorheriges Element">◀</button>
       <button id="ib_nav_forward" type="button" data-ui="nav_history.btn_forward" title="nav.history.forward" aria-label="Naechstes Element">▶</button>
+
+      <button id="ib_inbox_btn" type="button" data-ui="topbar_inbox.btn_open" data-ib-pickkey="topbar_inbox.btn_open" title="Inbox" aria-label="Inbox" style="position:relative; width:auto;">
+        Inbox
+        <span id="ib_inbox_badge" class="ib_badge" data-ui="topbar_inbox.badge" data-ib-pickkey="topbar_inbox.badge" title="Inbox Badge"></span>
+      </button>
       <button id="ib_param_help_toggle" type="button" data-ui="nav_main.btn_param_help" title="nav.param_help">Param-Hilfe</button>
       <button id="ib_settings_move" type="button" class="iconbtn" data-ui="nav_main.btn_settings_move" title="settings.organizer" aria-label="Verschieben">
         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18" aria-hidden="true" focusable="false">
@@ -2553,6 +2579,48 @@
 
   try{ setTimeout(()=>{ pollInflux().catch(()=>{}); }, 200); }catch(e){}
   try{ setInterval(()=>{ pollInflux().catch(()=>{}); }, 30000); }catch(e){}
+
+  async function pollInbox(){
+    const $btn = document.getElementById('ib_inbox_btn');
+    const $bdg = document.getElementById('ib_inbox_badge');
+    if(!$btn || !$bdg) return;
+    try{
+      const r = await fetch('./api/watchlists/inbox_summary');
+      const j = await r.json().catch(()=>null);
+      if(!j || !j.ok){
+        $bdg.style.display = 'none';
+        return;
+      }
+      const s = (j.summary && typeof j.summary === 'object') ? j.summary : {};
+      const open = Number(s.open || 0);
+      const crit = Number(s.critical || 0);
+      const neu = Number(s.new || 0);
+      const show = Math.max(open, 0);
+      if(show <= 0){
+        $bdg.style.display = 'none';
+      }else{
+        $bdg.textContent = String(show);
+        $bdg.classList.remove('ib_badge_warn','ib_badge_info');
+        if(crit > 0){}
+        else if(neu > 0) $bdg.classList.add('ib_badge_warn');
+        else $bdg.classList.add('ib_badge_info');
+        $bdg.style.display = 'inline-block';
+      }
+      $btn.title = `Inbox: open=${open} new=${neu} critical=${crit}`;
+    }catch(e){
+      try{ $bdg.style.display = 'none'; }catch(x){}
+    }
+  }
+
+  try{
+    const $btn = document.getElementById('ib_inbox_btn');
+    if($btn) $btn.addEventListener('click', (ev)=>{
+      try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+      try{ window.location.href = './monitor?tab=inbox&focus=1'; }catch(e){}
+    });
+  }catch(e){}
+  try{ setTimeout(()=>{ pollInbox().catch(()=>{}); }, 450); }catch(e){}
+  try{ setInterval(()=>{ pollInbox().catch(()=>{}); }, 30000); }catch(e){}
   })();
 
   // Settings organizer (global button; runs on /config).

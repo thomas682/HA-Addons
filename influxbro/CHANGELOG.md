@@ -11,6 +11,18 @@
 - API: neue Endpunkte `/api/series_inventory` und `/api/series_inventory_export`.
 - QA: `python3 -m py_compile influxbro/app/app.py` (pytest in dieser Umgebung nicht verfuegbar).
 
+## 1.12.441
+
+### Enhancement
+
+- Monitor: Watchlists/Health-Scans (persistente Watchlists, geplante Laeufe via Timer Jobs, Inbox mit Delta-Logik). Inbox ist als auffaellige Karte im Monitor sichtbar und zusaetzlich global als Topbar-Badge verlinkt (Jump zu Monitor Inbox).
+
+### Maintenance
+
+- API: neue Endpunkte `/api/watchlists`, `/api/watchlists/run`, `/api/watchlists/runs`, `/api/watchlists/inbox`, `/api/watchlists/inbox/mark`, `/api/watchlists/inbox_summary`.
+- Timer-Jobs: Watchlists erscheinen zusaetzlich in `/api/timers` und koennen dort (Modus/History/Start) genutzt werden.
+- QA: `python3 -m py_compile influxbro/app/app.py`.
+
 ## 1.12.439
 
 ### Enhancement
