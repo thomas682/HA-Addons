@@ -168,6 +168,18 @@
         </div>
         <div>
           <label>&nbsp;</label>
+          <button id="support_bundle" type="button" data-ui="logs_main.btn_support_bundle" data-ib-pickkey="logs_main.btn_support_bundle" title="logs.support_bundle" aria-label="Support bundle">
+            <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M7 4h10l2 3v13a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V7l2-3Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+              <path d="M9 12h6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+              <path d="M9 16h6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+              <path d="M9 8h6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+            </svg>
+            <span style="margin-left:6px;">Support-Bundle</span>
+          </button>
+        </div>
+        <div>
+          <label>&nbsp;</label>
           <button id="clear" data-ui="logs_main.btn_clear" title="logs.clear" aria-label="Clear view">
             <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
               <path d="M3 6h18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -208,6 +220,62 @@
         </div>
       </details>
 
+      <div id="support_bundle_dialog" style="display:none; position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.45); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;" data-ui="logs_support_bundle.dialog" data-ib-pickkey="logs_support_bundle.dialog">
+        <div style="background:#fff; border-radius:16px; padding:16px; max-width:980px; width:min(980px, 100%); max-height:90vh; overflow:auto; box-shadow:0 12px 60px rgba(0,0,0,0.28);">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:10px;">
+            <div>
+              <div style="font-weight:900; font-size:16px;" data-ui="logs_support_bundle.txt_title" data-ib-pickkey="logs_support_bundle.txt_title">Support-Bundle</div>
+              <div class="muted" style="margin-top:4px; font-size:12px; line-height:1.4;" data-ui="logs_support_bundle.txt_hint" data-ib-pickkey="logs_support_bundle.txt_hint">ZIP-Bundle fuer Support/Issues. Redaction passiert serverseitig.</div>
+            </div>
+            <button class="btn_sm" id="support_bundle_close" type="button" data-ui="logs_support_bundle.btn_close" data-ib-pickkey="logs_support_bundle.btn_close">Schliessen</button>
+          </div>
+
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:12px;">
+            <div style="border:1px solid #e7e7e7; border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:10px;">
+              <div style="font-weight:800;" data-ui="logs_support_bundle.txt_cfg" data-ib-pickkey="logs_support_bundle.txt_cfg">Konfiguration</div>
+              <div class="row" style="margin-top:0;">
+                <div style="flex:1; min-width:120px;">
+                  <label>Zeitfenster (h)</label>
+                  <input id="support_bundle_hours" type="number" min="1" max="168" value="24" data-ui="logs_support_bundle.input_hours" data-ib-pickkey="logs_support_bundle.input_hours" />
+                </div>
+                <div style="flex:1; min-width:180px;">
+                  <label>Anonymisierung</label>
+                  <select id="support_bundle_profile" data-ui="logs_support_bundle.select_profile" data-ib-pickkey="logs_support_bundle.select_profile">
+                    <option value="roh">roh</option>
+                    <option value="anonymisiert" selected>anonymisiert</option>
+                    <option value="stark_anonymisiert">stark anonymisiert</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="muted" style="font-size:12px;">Inhalt</div>
+              <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px 12px; font-size:12px;">
+                <label style="display:flex; gap:8px; align-items:center;"><input id="sb_addon_logs" type="checkbox" checked /> Add-on Logs</label>
+                <label style="display:flex; gap:8px; align-items:center;"><input id="sb_supervisor_logs" type="checkbox" checked /> Supervisor Logs</label>
+                <label style="display:flex; gap:8px; align-items:center;"><input id="sb_ui_actions" type="checkbox" checked /> Bedieneraktionen</label>
+                <label style="display:flex; gap:8px; align-items:center;"><input id="sb_jobs" type="checkbox" checked /> Jobs/Timer</label>
+                <label style="display:flex; gap:8px; align-items:center;"><input id="sb_history" type="checkbox" checked /> History</label>
+                <label style="display:flex; gap:8px; align-items:center;"><input id="sb_monitor" type="checkbox" checked /> Monitor</label>
+                <label style="display:flex; gap:8px; align-items:center;"><input id="sb_cache_meta" type="checkbox" checked /> Cache-Meta</label>
+                <label style="display:flex; gap:8px; align-items:center;"><input id="sb_context" type="checkbox" checked /> Kontext</label>
+                <label style="display:flex; gap:8px; align-items:center;"><input id="sb_settings" type="checkbox" checked /> Settings Snapshot</label>
+                <label style="display:flex; gap:8px; align-items:center;"><input id="sb_browser_errors" type="checkbox" checked /> Browser-Fehler</label>
+              </div>
+            </div>
+
+            <div style="border:1px solid #e7e7e7; border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:10px;">
+              <div style="font-weight:800;" data-ui="logs_support_bundle.txt_preview" data-ib-pickkey="logs_support_bundle.txt_preview">Vorschau</div>
+              <div class="muted" id="support_bundle_preview" style="font-size:12px; line-height:1.45; white-space:pre-wrap;" data-ui="logs_support_bundle.txt_preview_body" data-ib-pickkey="logs_support_bundle.txt_preview_body">Noch keine Vorschau.</div>
+            </div>
+          </div>
+
+          <div style="margin-top:12px; display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
+            <button class="btn_sm" id="support_bundle_preview_btn" type="button" data-ui="logs_support_bundle.btn_preview" data-ib-pickkey="logs_support_bundle.btn_preview">Vorschau</button>
+            <button class="btn_sm" id="support_bundle_download_btn" type="button" data-ui="logs_support_bundle.btn_download" data-ib-pickkey="logs_support_bundle.btn_download" disabled>Download ZIP</button>
+          </div>
+        </div>
+      </div>
+
       <script>
       const $source = document.getElementById('source');
       const $viewProfile = document.getElementById('view_profile');
@@ -224,6 +292,7 @@
       const $clear = document.getElementById('clear');
       const $export = document.getElementById('export');
       const $debugReport = document.getElementById('debug_report');
+      const $supportBundle = document.getElementById('support_bundle');
       const $wrap = document.getElementById('wrap');
       const $q = document.getElementById('q');
       const $qMark = document.getElementById('q_mark');
@@ -232,6 +301,26 @@
       const $err = document.getElementById('err');
       const $logbox = document.getElementById('logbox');
       const $logpre = document.getElementById('logpre');
+
+      const $sbDialog = document.getElementById('support_bundle_dialog');
+      const $sbClose = document.getElementById('support_bundle_close');
+      const $sbHours = document.getElementById('support_bundle_hours');
+      const $sbProfile = document.getElementById('support_bundle_profile');
+      const $sbPreview = document.getElementById('support_bundle_preview');
+      const $sbPreviewBtn = document.getElementById('support_bundle_preview_btn');
+      const $sbDownloadBtn = document.getElementById('support_bundle_download_btn');
+      const $sbAddonLogs = document.getElementById('sb_addon_logs');
+      const $sbSupervisorLogs = document.getElementById('sb_supervisor_logs');
+      const $sbUiActions = document.getElementById('sb_ui_actions');
+      const $sbJobs = document.getElementById('sb_jobs');
+      const $sbHistory = document.getElementById('sb_history');
+      const $sbMonitor = document.getElementById('sb_monitor');
+      const $sbCacheMeta = document.getElementById('sb_cache_meta');
+      const $sbContext = document.getElementById('sb_context');
+      const $sbSettings = document.getElementById('sb_settings');
+      const $sbBrowserErrors = document.getElementById('sb_browser_errors');
+
+      let _SB_LAST = null;
 
       let FOLLOW = true;
       let RAW = "";
@@ -656,6 +745,130 @@
         }, 0);
       }
 
+      function _supportBundlePayload(){
+        const hours = Number($sbHours && $sbHours.value ? $sbHours.value : 24);
+        const profile = String($sbProfile && $sbProfile.value ? $sbProfile.value : 'anonymisiert');
+        return {
+          time_window_hours: isFinite(hours) ? Math.max(1, Math.min(168, Math.trunc(hours))) : 24,
+          profile,
+          tail: Number($tail && $tail.value ? $tail.value : 2000) || 2000,
+          include: {
+            addon_logs: !!($sbAddonLogs && $sbAddonLogs.checked),
+            supervisor_logs: !!($sbSupervisorLogs && $sbSupervisorLogs.checked),
+            ui_actions: !!($sbUiActions && $sbUiActions.checked),
+            jobs: !!($sbJobs && $sbJobs.checked),
+            history: !!($sbHistory && $sbHistory.checked),
+            monitor: !!($sbMonitor && $sbMonitor.checked),
+            cache_meta: !!($sbCacheMeta && $sbCacheMeta.checked),
+            context: !!($sbContext && $sbContext.checked),
+            settings_snapshot: !!($sbSettings && $sbSettings.checked),
+            browser_errors: !!($sbBrowserErrors && $sbBrowserErrors.checked),
+          },
+          context: {
+            page: 'logs',
+          },
+          issue: {
+            title: '',
+            description: '',
+            steps: '',
+            function: 'Logs',
+          },
+          client: {
+            exported_at: new Date().toISOString(),
+            page: 'logs',
+            href: String(location && location.href ? location.href : ''),
+            user_agent: String(navigator && navigator.userAgent ? navigator.userAgent : ''),
+            ui: {
+              source: String($source && $source.value ? $source.value : ''),
+              view_profile: String($viewProfile && $viewProfile.value ? $viewProfile.value : ''),
+              server_profile: String($serverProfile && $serverProfile.value ? $serverProfile.value : ''),
+              server_influx_queries: !!($serverInfluxQueries && $serverInfluxQueries.checked),
+              tail: Number($tail && $tail.value ? $tail.value : 2000),
+              wrap: !!($wrap && $wrap.checked),
+              search: String($q && $q.value ? $q.value : ''),
+            },
+            client_errors: (window.InfluxBroClientLog && window.InfluxBroClientLog.getBuffer) ? window.InfluxBroClientLog.getBuffer() : [],
+            local_storage: snapshotLocalStorage(),
+          },
+        };
+      }
+
+      function openSupportBundle(){
+        try{ if($sbPreview) $sbPreview.textContent = 'Noch keine Vorschau.'; }catch(e){}
+        try{ if($sbDownloadBtn) $sbDownloadBtn.disabled = true; }catch(e){}
+        _SB_LAST = null;
+        try{ if($sbDialog) $sbDialog.style.display = 'flex'; }catch(e){}
+      }
+
+      function closeSupportBundle(){
+        try{ if($sbDialog) $sbDialog.style.display = 'none'; }catch(e){}
+        _SB_LAST = null;
+      }
+
+      async function supportBundlePreview(){
+        err('');
+        const payload = _supportBundlePayload();
+        let r;
+        try{
+          r = await fetch('./api/support_bundle/preview', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+        }catch(e){
+          try{ window.InfluxBroClientLog && window.InfluxBroClientLog.fetchError && window.InfluxBroClientLog.fetchError('./api/support_bundle/preview', payload, e); }catch(x){}
+          throw new Error('Failed to fetch');
+        }
+        const j = await r.json().catch(()=>({ok:false,error:'Invalid JSON'}));
+        if(!r.ok || !j.ok) throw new Error(j.error || ('HTTP ' + r.status));
+        _SB_LAST = payload;
+        const arts = Array.isArray(j.artifacts) ? j.artifacts : [];
+        const lines = [];
+        lines.push('Profil: ' + String(j.profile || ''));
+        lines.push('Zeitfenster: ' + String(j.time_window_hours || '') + 'h');
+        lines.push('Geschaetzte Groesse: ' + String(j.estimated_human || j.estimated_bytes || ''));
+        lines.push('');
+        lines.push('Inhalt:');
+        arts.slice(0, 80).forEach((a)=>{
+          const n = a && a.name ? String(a.name) : '';
+          const s = a && a.estimated_bytes !== undefined ? String(a.estimated_bytes) : '';
+          lines.push('- ' + n + (s ? (' (' + s + ' B)') : ''));
+        });
+        const warns = Array.isArray(j.warnings) ? j.warnings : [];
+        if(warns.length){
+          lines.push('');
+          lines.push('Warnings:');
+          warns.slice(0, 50).forEach(w=>lines.push('- ' + String(w)));
+        }
+        if($sbPreview) $sbPreview.textContent = lines.join('\n');
+        if($sbDownloadBtn) $sbDownloadBtn.disabled = false;
+      }
+
+      async function supportBundleDownload(){
+        err('');
+        const payload = _SB_LAST || _supportBundlePayload();
+        let r;
+        try{
+          r = await fetch('./api/support_bundle/download', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+        }catch(e){
+          try{ window.InfluxBroClientLog && window.InfluxBroClientLog.fetchError && window.InfluxBroClientLog.fetchError('./api/support_bundle/download', payload, e); }catch(x){}
+          throw new Error('Failed to fetch');
+        }
+        if(!r.ok){
+          const t = await r.text().catch(()=> '');
+          throw new Error(t || ('HTTP ' + r.status));
+        }
+        const blob = await r.blob();
+        const cd = r.headers.get('content-disposition');
+        const fn = _filenameFromContentDisposition(cd) || 'influxbro_support_bundle.zip';
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = fn;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(()=>{
+          try{ URL.revokeObjectURL(a.href); }catch(e){}
+          try{ a.remove(); }catch(e){}
+        }, 0);
+        closeSupportBundle();
+      }
+
       function setFollow(v){
         FOLLOW = !!v;
         try{ if($follow) $follow.checked = FOLLOW; }catch(e){}
@@ -711,6 +924,14 @@
       if($export) $export.addEventListener('click', ()=>exportBundle().catch(e=>err(String(e && e.message ? e.message : e))));
 
       if($debugReport) $debugReport.addEventListener('click', ()=>debugReport().catch(e=>err(String(e && e.message ? e.message : e))));
+
+      try{
+        if($supportBundle) $supportBundle.addEventListener('click', ()=>openSupportBundle());
+        if($sbClose) $sbClose.addEventListener('click', ()=>closeSupportBundle());
+        if($sbDialog) $sbDialog.addEventListener('click', (ev)=>{ try{ if(ev && ev.target === $sbDialog) closeSupportBundle(); }catch(e){} });
+        if($sbPreviewBtn) $sbPreviewBtn.addEventListener('click', ()=>supportBundlePreview().catch(e=>err(String(e && e.message ? e.message : e))));
+        if($sbDownloadBtn) $sbDownloadBtn.addEventListener('click', ()=>supportBundleDownload().catch(e=>err(String(e && e.message ? e.message : e))));
+      }catch(e){}
 
       applyWrap();
       loadViewProfile();

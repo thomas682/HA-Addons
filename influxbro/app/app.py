@@ -10100,6 +10100,183 @@ def _md_code_block(lang: str, s: str) -> str:
     return f"```{lang}\n{t}\n```\n"
 
 
+def _support_bundle_profile(raw: Any) -> str:
+    p = str(raw or "anonymisiert").strip().lower()
+    if p not in ("roh", "anonymisiert", "stark_anonymisiert"):
+        p = "anonymisiert"
+    return p
+
+
+def _support_bundle_hash(s: str, salt: str = "influxbro") -> str:
+    try:
+        h = hashlib.sha256((salt + ":" + (s or "")).encode("utf-8", errors="ignore")).hexdigest()
+        return h[:16]
+    except Exception:
+        return "0000000000000000"
+
+
+def _support_bundle_redact_text(txt: str, profile: str) -> str:
+    # Server-side redaction. Always remove secrets. For anonymized profiles,
+    # also remove IPs and obvious hostnames best-effort.
+    t = _redact_secrets(txt or "")
+    if profile == "roh":
+        return t
+    try:
+        # IPv4
+        t = re.sub(r"\b(?:\d{1,3}\.){3}\d{1,3}\b", "<ip>", t)
+        # Ingress tokens and long hex strings
+        t = re.sub(r"/api/hassio_ingress/[0-9a-fA-F]{10,}", "/api/hassio_ingress/<token>", t)
+        # URLs with credentials
+        t = re.sub(r"(https?://)([^\s/:]+):([^\s/@]+)@", r"\1<user>:<pass>@", t)
+    except Exception:
+        pass
+    if profile == "stark_anonymisiert":
+        try:
+            # Remove long numeric values (best-effort)
+            t = re.sub(r"\b\d{5,}\b", "<num>", t)
+        except Exception:
+            pass
+    return t
+
+
+def _support_bundle_redact_obj(obj: Any, profile: str) -> Any:
+    # Best-effort structured redaction.
+    if profile == "roh":
+        return obj
+    try:
+        if isinstance(obj, dict):
+            out: dict[str, Any] = {}
+            for k, v in obj.items():
+                ks = str(k)
+                if ks in ("entity_id", "friendly_name", "measurement", "field", "key", "label"):
+                    s = str(v or "").strip()
+                    out[ks] = ("h_" + _support_bundle_hash(s)) if s else ""
+                elif ks in ("token", "admin_token", "password"):
+                    out[ks] = "********"
+                else:
+                    out[ks] = _support_bundle_redact_obj(v, profile)
+            return out
+        if isinstance(obj, list):
+            return [_support_bundle_redact_obj(v, profile) for v in obj[:20000]]
+        if isinstance(obj, str):
+            return _support_bundle_redact_text(obj, profile)
+        return obj
+    except Exception:
+        return obj
+
+
+def _support_bundle_manifest(addon_ver: str, profile: str, time_window_hours: int, artifacts: list[str]) -> dict[str, Any]:
+    # Reuse bugreport_meta data best-effort.
+    try:
+        meta = api_bugreport_meta().get_json()  # type: ignore[attr-defined]
+    except Exception:
+        meta = {"ok": False}
+    ha = meta.get("ha") if isinstance(meta, dict) else None
+    influx = meta.get("influx") if isinstance(meta, dict) else None
+    return {
+        "bundle_version": 1,
+        "generated_at": _utc_now_iso_ms(),
+        "addon_version": addon_ver,
+        "profile": profile,
+        "time_window_hours": time_window_hours,
+        "ha": ha if isinstance(ha, dict) else {},
+        "influx": influx if isinstance(influx, dict) else {},
+        "artifacts": artifacts,
+    }
+
+
+def _support_bundle_build_report_md(manifest: dict[str, Any], warnings: list[str]) -> str:
+    lines: list[str] = []
+    lines.append("# InfluxBro Support Bundle\n")
+    try:
+        lines.append(f"Generated at: `{manifest.get('generated_at')}`\n")
+        lines.append(f"Add-on version: `{manifest.get('addon_version')}`\n")
+        lines.append(f"Profile: `{manifest.get('profile')}`\n")
+        lines.append(f"Time window: `{manifest.get('time_window_hours')}h`\n")
+    except Exception:
+        pass
+    if warnings:
+        lines.append("## Warnings\n")
+        for w in warnings:
+            lines.append(f"- {w}")
+        lines.append("")
+    lines.append("## Contents\n")
+    arts = manifest.get("artifacts")
+    if isinstance(arts, list):
+        for a in arts:
+            lines.append(f"- `{a}`")
+    lines.append("")
+    lines.append("## Notes\n")
+    lines.append("- Secrets werden serverseitig redigiert.\n")
+    lines.append("- Zahlen/Logs sind best-effort und ggf. gekuerzt.\n")
+    return "\n".join(lines)
+
+
+def _support_parse_log_dt(raw: str) -> datetime | None:
+    s = str(raw or "").strip()
+    if not s:
+        return None
+    patterns = [
+        r"^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?)",
+        r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:,\d{3,6})?)",
+    ]
+    for pat in patterns:
+        m = re.match(pat, s)
+        if not m:
+            continue
+        token = str(m.group(1) or "").replace(",", ".")
+        if token.endswith("Z"):
+            token = token[:-1] + "+00:00"
+        try:
+            dt = datetime.fromisoformat(token)
+        except Exception:
+            continue
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc)
+    return None
+
+
+def _support_filter_log_text_since(txt: str, hours: int, profile: str) -> str:
+    lines = (txt or "").splitlines()
+    if not lines:
+        return ""
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=max(1, int(hours or 1)))
+    out: list[str] = []
+    keep = False
+    for line in lines:
+        dt = _support_parse_log_dt(line)
+        if dt is not None:
+            keep = dt >= cutoff
+        if keep:
+            out.append(line)
+    return _support_bundle_redact_text("\n".join(out), profile)
+
+
+def _support_tail_file(path: Path, want_lines: int, profile: str) -> str:
+    try:
+        if not path.exists():
+            return ""
+        txt = path.read_text(encoding="utf-8", errors="replace")
+    except Exception as e:
+        return _support_bundle_redact_text(f"ERROR reading {path}: {e}", profile)
+    lines = (txt or "").splitlines()
+    if want_lines and len(lines) > want_lines:
+        lines = lines[-want_lines:]
+    return _support_bundle_redact_text("\n".join(lines), profile)
+
+
+def _support_safe_json(obj: Any, profile: str, max_len: int = 2_000_000) -> str:
+    try:
+        red = _support_bundle_redact_obj(obj, profile)
+        s = json.dumps(red, indent=2, sort_keys=True, ensure_ascii=True)
+    except Exception:
+        s = json.dumps({"error": "json_failed"}, ensure_ascii=True)
+    if len(s) > max_len:
+        s = s[:max_len] + "\n... (truncated)"
+    return s
+
+
 @app.post("/api/debug_report")
 def api_debug_report():
     """Export a GitHub-friendly debug report as Markdown.
@@ -10336,6 +10513,264 @@ def api_debug_report():
     resp.headers["Content-Type"] = "text/markdown; charset=utf-8"
     resp.headers["Content-Disposition"] = f"attachment; filename=\"{fn}\""
     return resp
+
+
+def _support_bundle_collect(body: dict[str, Any]) -> tuple[dict[str, bytes], dict[str, Any], list[str]]:
+    """Build support bundle artifacts in-memory.
+
+    Returns: (artifacts_bytes, manifest, warnings)
+    """
+
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    include = body.get("include") if isinstance(body.get("include"), dict) else {}
+    profile = _support_bundle_profile(body.get("profile"))
+
+    try:
+        hours = int(body.get("time_window_hours") or 24)
+    except Exception:
+        hours = 24
+    hours = max(1, min(168, hours))
+
+    try:
+        tail = int(body.get("tail") or 2000)
+    except Exception:
+        tail = 2000
+    tail = min(20000, max(0, tail))
+
+    warnings: list[str] = []
+    addon_ver = ADDON_VERSION
+
+    # Core inputs
+    client = body.get("client") if isinstance(body.get("client"), dict) else {}
+    issue = body.get("issue") if isinstance(body.get("issue"), dict) else {}
+    context = body.get("context") if isinstance(body.get("context"), dict) else {}
+
+    # Diagnostics (best-effort)
+    jobs = None
+    caches = None
+    monitor = None
+    history = None
+    logs_diag = None
+    influx_info = None
+
+    try:
+        influx_info = api_influx_info().get_json()  # type: ignore[attr-defined]
+    except Exception:
+        influx_info = None
+
+    try:
+        logs_diag = api_logs_diag().get_json()  # type: ignore[attr-defined]
+    except Exception:
+        logs_diag = None
+
+    if bool(include.get("jobs")):
+        try:
+            jobs = api_jobs().get_json()  # type: ignore[attr-defined]
+        except Exception:
+            jobs = None
+            warnings.append("Jobs nicht verfuegbar")
+
+    if bool(include.get("cache_meta")):
+        try:
+            caches = api_cache_list().get_json()  # type: ignore[attr-defined]
+        except Exception:
+            caches = None
+            warnings.append("Cache-Meta nicht verfuegbar")
+
+    if bool(include.get("monitor")):
+        try:
+            snap = _monitor_template_snapshot()
+            monitor = {
+                "snapshot": snap,
+                "config": _monitor_load_config(),
+            }
+        except Exception:
+            monitor = None
+            warnings.append("Monitor-Daten nicht verfuegbar")
+
+    if bool(include.get("history")):
+        try:
+            history = _history_read_all()[-2000:]
+        except Exception:
+            history = None
+            warnings.append("History nicht verfuegbar")
+
+    # Logs
+    addon_logs_txt = ""
+    supervisor_logs_txt = ""
+    if bool(include.get("addon_logs")):
+        try:
+            addon_logs_txt = _support_filter_log_text_since(_support_tail_file(LOG_FILE, tail, profile), hours, profile)
+        except Exception:
+            addon_logs_txt = ""
+            warnings.append("Add-on Logs nicht verfuegbar")
+
+    if bool(include.get("supervisor_logs")):
+        try:
+            st, txt = _supervisor_get(f"/addons/self/logs?lines={tail}", timeout_s=12)
+            if st == 200:
+                sup_txt = txt
+                try:
+                    j0 = _json_best_effort(txt)
+                    if j0 and isinstance(j0.get("data"), str):
+                        sup_txt = str(j0.get("data") or "")
+                except Exception:
+                    sup_txt = txt
+                supervisor_logs_txt = _support_filter_log_text_since(_support_bundle_redact_text(sup_txt, profile), hours, profile)
+            else:
+                supervisor_logs_txt = _support_bundle_redact_text(f"HTTP {st}: {txt}", profile)
+                warnings.append("Supervisor Logs nicht verfuegbar")
+        except Exception as e:
+            supervisor_logs_txt = _support_bundle_redact_text(f"ERROR: {e}", profile)
+            warnings.append("Supervisor Logs nicht verfuegbar")
+
+    # Settings snapshot (redacted)
+    settings = None
+    if bool(include.get("settings_snapshot")):
+        try:
+            settings = {
+                "config": cfg,
+                "runtime": read_runtime_cfg(),
+            }
+        except Exception:
+            settings = None
+            warnings.append("Settings Snapshot nicht verfuegbar")
+
+    # UI actions
+    ui_actions = None
+    if bool(include.get("ui_actions")):
+        try:
+            ui_actions = _ui_action_tail(200)
+        except Exception:
+            ui_actions = None
+            warnings.append("Bedieneraktionen nicht verfuegbar")
+
+    # Assemble artifacts
+    artifacts: dict[str, bytes] = {}
+    names: list[str] = []
+
+    # Manifest + report are always present.
+    names.append("manifest.json")
+
+    if bool(include.get("context")):
+        artifacts["context.json"] = _support_safe_json({
+            "context": context,
+            "issue": issue,
+            "client": client,
+        }, profile).encode("utf-8")
+        names.append("context.json")
+
+    if addon_logs_txt:
+        artifacts["logs.txt"] = addon_logs_txt.encode("utf-8")
+        names.append("logs.txt")
+
+    if supervisor_logs_txt:
+        artifacts["supervisor_logs.txt"] = supervisor_logs_txt.encode("utf-8")
+        names.append("supervisor_logs.txt")
+
+    if ui_actions is not None:
+        artifacts["actions.json"] = _support_safe_json(ui_actions, profile).encode("utf-8")
+        names.append("actions.json")
+
+    if history is not None:
+        artifacts["history.json"] = _support_safe_json(history, profile).encode("utf-8")
+        names.append("history.json")
+
+    if monitor is not None:
+        artifacts["monitor.json"] = _support_safe_json(monitor, profile).encode("utf-8")
+        names.append("monitor.json")
+
+    if caches is not None:
+        artifacts["cache_meta.json"] = _support_safe_json(caches, profile).encode("utf-8")
+        names.append("cache_meta.json")
+
+    if jobs is not None:
+        artifacts["jobs.json"] = _support_safe_json(jobs, profile).encode("utf-8")
+        names.append("jobs.json")
+
+    if logs_diag is not None or influx_info is not None:
+        artifacts["diagnostics.json"] = _support_safe_json({"logs_diag": logs_diag, "influx_info": influx_info}, profile).encode("utf-8")
+        names.append("diagnostics.json")
+
+    if settings is not None:
+        # Ensure secrets are redacted.
+        try:
+            settings = _support_bundle_redact_obj(settings, profile)
+        except Exception:
+            pass
+        artifacts["settings.json"] = _support_safe_json(settings, profile).encode("utf-8")
+        names.append("settings.json")
+
+    if bool(include.get("browser_errors")):
+        be = client.get("client_errors") if isinstance(client, dict) else None
+        if be is not None:
+            artifacts["browser_errors.json"] = _support_safe_json(be, profile).encode("utf-8")
+            names.append("browser_errors.json")
+
+    manifest = _support_bundle_manifest(addon_ver, profile, hours, names)
+    artifacts["manifest.json"] = _support_safe_json(manifest, profile).encode("utf-8")
+
+    report_md = _support_bundle_build_report_md(manifest, warnings)
+    artifacts["report.md"] = _support_bundle_redact_text(report_md, profile).encode("utf-8")
+    names.append("report.md")
+    # Keep manifest's artifact list stable: report.md is always present.
+    manifest["artifacts"] = names
+    artifacts["manifest.json"] = _support_safe_json(manifest, profile).encode("utf-8")
+
+    return artifacts, manifest, warnings
+
+
+@app.post("/api/support_bundle/preview")
+def api_support_bundle_preview():
+    body = request.get_json(force=True) or {}
+    if not isinstance(body, dict):
+        return jsonify({"ok": False, "error": "invalid body"}), 400
+    try:
+        artifacts, manifest, warnings = _support_bundle_collect(body)
+        items = []
+        total = 0
+        for name, b in artifacts.items():
+            size = len(b or b"")
+            total += size
+            items.append({"name": name, "required": name in ("manifest.json", "report.md"), "estimated_bytes": size})
+        items.sort(key=lambda x: int(x.get("estimated_bytes") or 0), reverse=True)
+        return jsonify({
+            "ok": True,
+            "profile": manifest.get("profile"),
+            "time_window_hours": manifest.get("time_window_hours"),
+            "estimated_bytes": total,
+            "estimated_human": _fmt_bytes(total),
+            "artifacts": items,
+            "warnings": warnings,
+        })
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 500
+
+
+@app.post("/api/support_bundle/download")
+def api_support_bundle_download():
+    body = request.get_json(force=True) or {}
+    if not isinstance(body, dict):
+        return jsonify({"ok": False, "error": "invalid body"}), 400
+    try:
+        artifacts, manifest, warnings = _support_bundle_collect(body)
+        # Build ZIP in memory.
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, mode="w", compression=zipfile.ZIP_DEFLATED) as z:
+            for name, b in artifacts.items():
+                z.writestr(name, b)
+        buf.seek(0)
+        addon_ver = str(manifest.get("addon_version") or ADDON_VERSION)
+        ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        fn = f"influxbro_support_bundle_{addon_ver}_{ts}.zip"
+        resp = make_response(buf.getvalue())
+        resp.headers["Content-Type"] = "application/zip"
+        resp.headers["Content-Disposition"] = f"attachment; filename=\"{fn}\""
+        if warnings:
+            resp.headers["X-InfluxBro-Warnings"] = str(len(warnings))
+        return resp
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 500
 
 
 def _backup_safe(s: str) -> str:

@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.12.439
+
+### Enhancement
+
+- Logs/Bugreport: Support-Bundle als ZIP (Preview + Download) mit konfigurierbaren Inhalten und serverseitiger Redaction. In Logs als neuer Button verfuegbar; im Git Bugreport-Flow optional zusaetzlich erzeugbar. ([#388](https://github.com/thomas682/HA-Addons/issues/388))
+
+### Maintenance
+
+- API: neue Endpunkte `/api/support_bundle/preview` und `/api/support_bundle/download`.
+
 ## 1.12.438
 
 ### Enhancement

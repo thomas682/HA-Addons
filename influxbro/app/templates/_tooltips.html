@@ -1797,6 +1797,14 @@
         <div style="font-size:12px; opacity:0.85; margin-bottom:8px;">Bitte haenge das heruntergeladene Logfile bzw. den Debug-Report in GitHub manuell ueber <code>Add files</code> an.</div>
         <img id="influxbro_issue_attach_img" alt="GitHub Add files Hinweis" style="display:block; max-width:100%; border:1px solid #ddd; border-radius:10px;" src="https://raw.githubusercontent.com/thomas682/HA-Addons/main/influxbro/images/issue_addFile.png" />
       </div>
+      <div id="influxbro_issue_support_bundle_box" style="display:none; border:1px solid #eee; border-radius:12px; padding:12px; background:#fafafa;">
+        <div style="font-weight:700; margin-bottom:6px;">Support-Bundle (ZIP)</div>
+        <label style="display:flex; gap:8px; align-items:center; font-size:12px; opacity:0.9;">
+          <input id="influxbro_issue_support_bundle" type="checkbox" checked />
+          Support-Bundle erzeugen und als ZIP anhaengen (serverseitig redigiert)
+        </label>
+        <div class="muted" style="margin-top:6px; font-size:12px;">Das Bundle wird direkt heruntergeladen. Bitte die ZIP-Datei im Issue ueber <code>Add files</code> anhaengen.</div>
+      </div>
       <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
         <button type="button" id="influxbro_issue_submit" style="cursor:pointer; padding:10px 12px;">Absenden / Issue anlegen</button>
         <span id="influxbro_issue_status" style="font-size:12px; opacity:0.75;"></span>
@@ -2292,7 +2300,72 @@
       return fn;
     }
 
-    function _buildIssueBody(kind, userText, msg, meta, debugFilename, functionName){
+    async function _downloadSupportBundle(issueTitle, msg, functionName){
+      const payload = {
+        time_window_hours: 24,
+        profile: 'anonymisiert',
+        tail: 2000,
+        include: {
+          addon_logs: true,
+          supervisor_logs: true,
+          ui_actions: true,
+          jobs: true,
+          history: true,
+          monitor: true,
+          cache_meta: true,
+          context: true,
+          settings_snapshot: true,
+          browser_errors: true,
+        },
+        issue: {
+          title: String(issueTitle || ''),
+          description: String(msg || ''),
+          function: String(functionName || ''),
+          steps: '',
+        },
+        client: {
+          exported_at: new Date().toISOString(),
+          page: 'popup',
+          href: String(location && location.href ? location.href : ''),
+          user_agent: String(navigator && navigator.userAgent ? navigator.userAgent : ''),
+          popup: {
+            title: String(document.getElementById('influxbro_popup_title') ? document.getElementById('influxbro_popup_title').textContent : ''),
+          },
+          client_errors: (window.InfluxBroClientLog && window.InfluxBroClientLog.getBuffer) ? window.InfluxBroClientLog.getBuffer() : [],
+          local_storage: _snapshotLocalStorage(),
+        },
+        context: {
+          page: 'popup',
+        }
+      };
+
+      let r;
+      try{
+        r = await fetch('./api/support_bundle/download', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+      }catch(e){
+        try{ window.InfluxBroClientLog && window.InfluxBroClientLog.fetchError && window.InfluxBroClientLog.fetchError('./api/support_bundle/download', payload, e); }catch(x){}
+        throw new Error('Failed to fetch');
+      }
+      if(!r.ok){
+        const t = await r.text().catch(()=> '');
+        throw new Error(t || ('HTTP ' + r.status));
+      }
+      const blob = await r.blob();
+      const cd = r.headers.get('content-disposition');
+      const fn = _filenameFromContentDisposition(cd) || 'influxbro_support_bundle.zip';
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = fn;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(()=>{
+        try{ URL.revokeObjectURL(a.href); }catch(e){}
+        try{ a.remove(); }catch(e){}
+      }, 0);
+      return fn;
+    }
+
+    function _buildIssueBody(kind, userText, msg, meta, debugFilename, supportBundleFilename, functionName){
       const addonV = meta && meta.addon_version ? String(meta.addon_version) : '';
       const haCore = meta && meta.ha && meta.ha.core ? String(meta.ha.core) : '';
       const haSup = meta && meta.ha && meta.ha.supervisor ? String(meta.ha.supervisor) : '';
@@ -2347,6 +2420,10 @@
         body += '### Debug report Anhang\n\n';
         body += '- Bitte die heruntergeladene Datei `influxbro_debug_report_*.md` anhaengen.\n';
         if(debugFilename) body += '- Bereits erzeugter Dateiname: `' + String(debugFilename) + '`\n';
+        body += '\n';
+        body += '### Support-Bundle (ZIP)\n\n';
+        body += '- Optional: Support-Bundle ZIP anhaengen (serverseitig redigiert).\n';
+        if(supportBundleFilename) body += '- Bereits erzeugter Dateiname: `' + String(supportBundleFilename) + '`\n';
       }
       return body;
     }
@@ -2360,6 +2437,8 @@
       const functionEl = document.getElementById('influxbro_issue_function');
       const hintEl = document.getElementById('influxbro_issue_hint');
       const attachHelpEl = document.getElementById('influxbro_issue_attach_help');
+      const bundleBoxEl = document.getElementById('influxbro_issue_support_bundle_box');
+      const bundleChkEl = document.getElementById('influxbro_issue_support_bundle');
       const statusEl = document.getElementById('influxbro_issue_status');
       const cancelEl = document.getElementById('influxbro_issue_cancel');
       const submitEl = document.getElementById('influxbro_issue_submit');
@@ -2384,11 +2463,13 @@
           labelEl.textContent = 'Erweiterung beschreiben';
           hintEl.textContent = 'Bitte die gewuenschte Erweiterung kurz beschreiben. Das Feld darf nicht leer bleiben.';
           if(attachHelpEl) attachHelpEl.style.display = 'none';
+          if(bundleBoxEl) bundleBoxEl.style.display = 'none';
           textEl.value = textState.enhancement || '';
         }else{
           labelEl.textContent = 'Fehlerbeschreibung';
           hintEl.textContent = 'Bug erstellt ein Issue mit Label type/bug und laedt zusaetzlich einen Debug report herunter.';
           if(attachHelpEl) attachHelpEl.style.display = 'block';
+          if(bundleBoxEl) bundleBoxEl.style.display = 'block';
           textEl.value = textState.bug || defaultBugText;
         }
         textEl.dataset.mode = kind;
@@ -2427,12 +2508,22 @@
         statusEl.textContent = (kind === 'bug') ? 'Debug report...' : 'Issue wird vorbereitet...';
 
         let fn = '';
+        let zipFn = '';
         if(kind === 'bug'){
           try{ fn = await _downloadDebugReport(title.replace(/^\[Bug\]:\s*/, ''), msg, functionName); }catch(e){ try{ window.InfluxBroClientLog && window.InfluxBroClientLog.reportError && window.InfluxBroClientLog.reportError('Bugreport: debug_report failed', { err: String(e && e.message ? e.message : e) }, (e && e.stack) ? String(e.stack) : ''); }catch(x){} }
+          try{
+            const want = !!(bundleChkEl && bundleChkEl.checked);
+            if(want){
+              statusEl.textContent = 'Support-Bundle...';
+              zipFn = await _downloadSupportBundle(title.replace(/^\[Bug\]:\s*/, ''), msg, functionName);
+            }
+          }catch(e){
+            try{ window.InfluxBroClientLog && window.InfluxBroClientLog.reportError && window.InfluxBroClientLog.reportError('Bugreport: support_bundle failed', { err: String(e && e.message ? e.message : e) }, (e && e.stack) ? String(e.stack) : ''); }catch(x){}
+          }
         }
 
         const labels = (kind === 'enhancement') ? 'type/enhancement' : 'type/bug';
-        const body = _buildIssueBody(kind, userText, msg, meta, fn, functionName);
+        const body = _buildIssueBody(kind, userText, msg, meta, fn, zipFn, functionName);
         const url = baseUrl + '?labels=' + encodeURIComponent(labels) + '&title=' + encodeURIComponent(title) + '&body=' + encodeURIComponent(body);
         try{
           if(win) win.location.href = url;

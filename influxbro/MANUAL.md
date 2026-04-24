@@ -444,6 +444,7 @@ Die fruehere Bearbeitungsliste wurde entfernt. Korrekturen erfolgen direkt in de
   - Copy/Download fuer Support oder Analyse
 - Export: erstellt ein Debug-Bundle (JSON, inkl. Client-Fehler wie "Failed to fetch").
 - Debug report: erstellt einen GitHub-freundlichen Report als Markdown-Datei (empfohlen fuer Issue/Kommentar).
+- Support-Bundle: erstellt ein ZIP mit konfigurierbaren Inhalten (Zeitfenster, Logs, Aktionen, Jobs/History/Monitor, Cache-Meta, Settings Snapshot) inkl. serverseitiger Redaction. Vorschau zeigt Inhalt + Groessenschaetzung.
 - Default: `neuster` + `Follow: ein`.
 - Der `Follow`-Schalter wird beim erneuten Oeffnen der Seite mit seinem zuletzt gespeicherten Zustand wiederhergestellt.
 
