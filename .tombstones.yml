@@ -52,8 +52,23 @@
     - "[data-ui=dashboard_outliers.section_root] summary .ib_info_icon"
   impacted_actions:
     - "Dashboard -> Ausreißer: Info (Section-Header)"
-  migration_plan: "Info remains available as the first button in dashboard_outliers.row_table_actions (left of Autobreite)."
+  migration_plan: "Info button was later removed from the Outliers action bar as well (TS-2026-0005). No UI replacement; use MANUAL/Docs."
   route_plan:
     removed: []
     redirects: []
   ci_reference: "#397"
+
+- path: "influxbro/app/templates/index.html"
+  tombstone_id: "TS-2026-0005"
+  reason: "Remove Ausreißer info button from Dashboard Outliers action bar (user request)"
+  owner: "thomas"
+  impacted_selectors:
+    - "[data-ui=dashboard_outliers.btn_info]"
+    - "#raw_outlier_table_wrap .tbl_actions .ib_info_icon[data-ui=dashboard_outliers.btn_info]"
+  impacted_actions:
+    - "Dashboard -> Ausreißer: Info (Actionbar)"
+  migration_plan: "No replacement. Section description row no longer derives text from this button; refer to MANUAL/Docs."
+  route_plan:
+    removed: []
+    redirects: []
+  ci_reference: "user-request-2026-04-24"

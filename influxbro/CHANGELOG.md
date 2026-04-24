@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.12.437
+
+### Enhancement
+
+- Dashboard Ausreißer: Info-Button in der Tabellen-Aktionsleiste entfernt (TS-2026-0005). Die Abschnittsbeschreibung wird nicht mehr aus diesem Button abgeleitet. (User-Request)
+
+### Maintenance
+
+- Tombstone: `.tombstones.yml` aktualisiert (TS-2026-0005) und TS-2026-0004 Migration-Text angepasst.
+
 ## 1.12.436
 
 ### Enhancement

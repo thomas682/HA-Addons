@@ -2747,14 +2747,11 @@
         const row = summary.querySelector('.ib_summary_row');
         if(!row) return;
 
-        // Info button can live either in the section summary row, or (for some
-        // sections like Outliers) in the section-specific action bar.
+        // Info button can live in the section summary row.
         const infoBtn = row.querySelector('.ib_info_icon');
         const cfgBtn = row.querySelector('.ib_cfg_icon');
         const did = String(details.id || '').trim();
-        const infoSourceBtn = infoBtn || (did === 'outlier_section'
-          ? details.querySelector('#raw_outlier_table_wrap .tbl_actions .ib_info_icon')
-          : null);
+        const infoSourceBtn = infoBtn;
         if(!infoSourceBtn && !cfgBtn) return;
 
         const body = details.querySelector(':scope > summary + *');
@@ -2781,10 +2778,9 @@
         const actions = document.createElement('div');
         actions.className = 'ib_section_desc_actions';
         try{ if(cfgBtn) actions.appendChild(cfgBtn); }catch(e){}
-        // Keep the info button where it is; do not move it into the desc row
-        // for the Outliers section (Issue #397).
+        // Keep the info button where it is; do not move it into the desc row.
         try{
-          if(infoBtn && did !== 'outlier_section') actions.appendChild(infoBtn);
+          if(infoBtn) actions.appendChild(infoBtn);
         }catch(e){}
 
         descRow.appendChild(desc);
