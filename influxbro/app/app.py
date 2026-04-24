@@ -3493,7 +3493,8 @@ def _watchlist_load_json(path: Path, default: Any) -> Any:
     try:
         if not path.exists():
             return default
-        raw = path.read_text(encoding="utf-8", errors="replace")
+        with WATCHLIST_LOCK:
+            raw = path.read_text(encoding="utf-8", errors="replace")
         data = json.loads(raw) if raw else default
         return data if isinstance(data, type(default)) else default
     except Exception:
@@ -3529,7 +3530,15 @@ def _watchlist_inbox_load() -> list[dict[str, Any]]:
 
 
 def _watchlist_inbox_save(xs: list[dict[str, Any]]) -> None:
-    _watchlist_save_json(WATCHLIST_INBOX_PATH, xs)
+    # Bound growth: keep the most recent entries (best-effort).
+    try:
+        xs2 = [it for it in (xs or []) if isinstance(it, dict)]
+        xs2.sort(key=lambda r: str(r.get("updated_at") or r.get("created_at") or ""), reverse=True)
+        if len(xs2) > 2000:
+            xs2 = xs2[:2000]
+        _watchlist_save_json(WATCHLIST_INBOX_PATH, xs2)
+    except Exception:
+        _watchlist_save_json(WATCHLIST_INBOX_PATH, xs)
 
 
 def _watchlist_runs_append(entry: dict[str, Any]) -> None:
@@ -3935,6 +3944,7 @@ def _watchlist_run_thread(run_id: str) -> None:
         pending = _monitor_load_pending()
         inbox = _watchlist_inbox_load()
         now = _utc_now_iso_ms()
+        now_dt = datetime.now(timezone.utc)
 
         # Helper: merge or create inbox item (delta behavior).
         def upsert_item(sev: str, entry: dict[str, Any], reason: str, reason_label: str, first_at: str | None, last_at: str | None) -> tuple[str, str]:
@@ -3949,7 +3959,24 @@ def _watchlist_run_thread(run_id: str) -> None:
                     continue
                 if str(it.get("dedupe") or "") != dedupe:
                     continue
-                if str(it.get("status") or "new") in ("done", "muted"):
+                st0 = str(it.get("status") or "new").strip().lower() or "new"
+                if st0 == "muted":
+                    # Mute must suppress re-appearance. If snooze_until is set and expired, reopen.
+                    snooze = str(it.get("snooze_until") or "").strip() or None
+                    if not snooze:
+                        return ("suppressed", str(it.get("id") or ""))
+                    try:
+                        sd = _trace_parse_iso(snooze)
+                        if sd and now_dt < sd:
+                            return ("suppressed", str(it.get("id") or ""))
+                        # Snooze expired -> reopen
+                        it.pop("snooze_until", None)
+                        it["status"] = "new"
+                        st0 = "new"
+                    except Exception:
+                        return ("suppressed", str(it.get("id") or ""))
+                if st0 == "done":
+                    # done items are not updated; recurrence creates a new entry (new id)
                     continue
                 it["updated_at"] = now
                 it["last_at"] = last_at or it.get("last_at")
@@ -20572,8 +20599,13 @@ def api_watchlists_inbox():
         if not isinstance(it, dict):
             continue
         st = str(it.get("status") or "new").strip().lower() or "new"
-        if only and st != only:
-            continue
+        if only:
+            if st != only:
+                continue
+        else:
+            # Default: only open entries.
+            if st in ("done", "muted"):
+                continue
         txt = json.dumps(it, ensure_ascii=True).lower()
         if q and q not in txt:
             continue

@@ -23,6 +23,16 @@
 - Timer-Jobs: Watchlists erscheinen zusaetzlich in `/api/timers` und koennen dort (Modus/History/Start) genutzt werden.
 - QA: `python3 -m py_compile influxbro/app/app.py`.
 
+## 1.12.442
+
+### Fix
+
+- Watchlists/Inbox: `Mute/Snooze` unterdrueckt Wiederauftauchen korrekt (Snooze-Expiry reaktiviert), Inbox Default-Filter zeigt wirklich nur offene Items.
+
+### Enhancement
+
+- Monitor: Minimal-UI fuer Watchlists + Runs (Edit/Save/Run Selected) ergaenzt.
+
 ## 1.12.439
 
 ### Enhancement

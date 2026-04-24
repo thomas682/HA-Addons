@@ -71,13 +71,60 @@
           <div class="table_box" style="max-height:52vh;">
             <table id="inbox_tbl" class="ib_tbl" data-ui="monitor_inbox.tbl_table" data-ib-pickkey="monitor_inbox.tbl_table" title="monitor.inbox.tbl">
               <thead>
-                <tr><th>Severity</th><th>Watchlist</th><th>Kind</th><th>Key</th><th>Grund</th><th>First</th><th>Last</th><th>Count</th><th>Status</th><th>Aktionen</th></tr>
+                <tr><th>Severity</th><th>Watchlist</th><th>Kind</th><th>Key</th><th>Grund</th><th>First</th><th>Last</th><th>Count</th><th>Status</th><th>Snooze</th><th>Aktionen</th></tr>
               </thead>
               <tbody id="inbox_rows"></tbody>
             </table>
           </div>
         </div>
       </div>
+
+      <details class="card" open data-ui="monitor_watchlists.section_root" data-ib-pickkey="monitor_watchlists.section_root" title="monitor.watchlists">
+        <summary><span class="ib_summary_row"><span>Watchlists</span></span></summary>
+        <div class="card_body">
+          <div class="muted">Minimal-UI fuer Watchlists: bearbeiten, speichern, und Runs starten. (Workflow/Health-Scan Ausbau folgt.)</div>
+          <div class="row" data-ui="monitor_watchlists.panel_controls" data-ib-pickkey="monitor_watchlists.panel_controls" title="monitor.watchlists.controls">
+            <button id="wl_refresh" class="btn_sm" data-ui="monitor_watchlists.btn_refresh" data-ib-pickkey="monitor_watchlists.btn_refresh" title="watchlists.refresh">Refresh</button>
+            <button id="wl_add" class="btn_sm" data-ui="monitor_watchlists.btn_add" data-ib-pickkey="monitor_watchlists.btn_add" title="watchlists.add">Add</button>
+            <button id="wl_save" class="btn_sm" data-ui="monitor_watchlists.btn_save" data-ib-pickkey="monitor_watchlists.btn_save" title="watchlists.save">Save</button>
+            <button id="wl_run" class="btn_sm" data-ui="monitor_watchlists.btn_run" data-ib-pickkey="monitor_watchlists.btn_run" title="watchlists.run">Run Selected</button>
+            <span class="muted" id="wl_meta" data-ui="monitor_watchlists.txt_meta" data-ib-pickkey="monitor_watchlists.txt_meta" title="watchlists.meta"></span>
+          </div>
+          <div class="table_wrap" data-ui="monitor_watchlists.panel_table" data-ib-pickkey="monitor_watchlists.panel_table" title="watchlists.table">
+            <div class="table_box" style="max-height:42vh;">
+              <table id="wl_tbl" class="ib_tbl" data-ui="monitor_watchlists.tbl_table" data-ib-pickkey="monitor_watchlists.tbl_table" title="watchlists.tbl">
+                <thead>
+                  <tr>
+                    <th>Sel</th><th>id</th><th>name</th><th>enabled</th><th>auto</th><th>mode</th><th>hours</th><th>daily_at</th><th>weekday</th><th>window_h</th><th>stale_min</th><th>entries (one per line)</th><th>workflow (optional)</th>
+                  </tr>
+                </thead>
+                <tbody id="wl_rows"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <details class="card" data-ui="monitor_runs.section_root" data-ib-pickkey="monitor_runs.section_root" title="monitor.runs">
+        <summary><span class="ib_summary_row"><span>Watchlist Runs</span></span></summary>
+        <div class="card_body">
+          <div class="row" data-ui="monitor_runs.panel_controls" data-ib-pickkey="monitor_runs.panel_controls" title="monitor.runs.controls">
+            <button id="runs_refresh" class="btn_sm" data-ui="monitor_runs.btn_refresh" data-ib-pickkey="monitor_runs.btn_refresh" title="runs.refresh">Refresh</button>
+            <input id="runs_q" placeholder="Suche..." style="min-width:260px;" data-ui="monitor_runs.input_q" data-ib-pickkey="monitor_runs.input_q" title="runs.q" />
+            <span class="muted" id="runs_meta" data-ui="monitor_runs.txt_meta" data-ib-pickkey="monitor_runs.txt_meta" title="runs.meta"></span>
+          </div>
+          <div class="table_wrap" data-ui="monitor_runs.panel_table" data-ib-pickkey="monitor_runs.panel_table" title="runs.table">
+            <div class="table_box" style="max-height:42vh;">
+              <table id="runs_tbl" class="ib_tbl" data-ui="monitor_runs.tbl_table" data-ib-pickkey="monitor_runs.tbl_table" title="runs.tbl">
+                <thead>
+                  <tr><th>at</th><th>watchlist</th><th>state</th><th>findings</th><th>created</th><th>updated</th><th>duration_ms</th><th>run_id</th></tr>
+                </thead>
+                <tbody id="runs_rows"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </details>
 
       <details class="card" open data-ui="monitor_config.section_root" title="monitor.section.config">
         <summary><span class="ib_summary_row"><span>Monitoring Konfiguration</span><button type="button" class="ib_info_icon" data-info-title="Monitoring: Konfiguration" data-info-body="Hier definierst du die ueberwachten Messwerte, Grenzwerte, Recovery-Regeln und Korrekturmodi.\n\nJede Zeile repraesentiert einen ueberwachten Messwert-Key." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
@@ -275,6 +322,21 @@
     const $inboxFilter = document.getElementById('inbox_filter');
     const $inboxRows = document.getElementById('inbox_rows');
 
+    const $wlMeta = document.getElementById('wl_meta');
+    const $wlRefresh = document.getElementById('wl_refresh');
+    const $wlAdd = document.getElementById('wl_add');
+    const $wlSave = document.getElementById('wl_save');
+    const $wlRun = document.getElementById('wl_run');
+    const $wlRows = document.getElementById('wl_rows');
+
+    const $runsRefresh = document.getElementById('runs_refresh');
+    const $runsQ = document.getElementById('runs_q');
+    const $runsMeta = document.getElementById('runs_meta');
+    const $runsRows = document.getElementById('runs_rows');
+
+    let LAST_WATCHLISTS = [];
+    let LAST_RUNS = [];
+
     let CFG = { global: { critical_repeat_threshold: 3, default_recovery_valid_streak: 2 }, monitors: [] };
 
     function err(msg){ $err.textContent = msg || ''; }
@@ -341,6 +403,7 @@
         const tdL = document.createElement('td'); tdL.textContent = lastAt;
         const tdC = document.createElement('td'); tdC.style.textAlign='right'; tdC.textContent = cnt;
         const tdS = document.createElement('td'); tdS.innerHTML = statusChip(st);
+        const tdZ = document.createElement('td'); tdZ.className = 'mono'; tdZ.textContent = r.snooze_until ? fmtTs(r.snooze_until) : '';
         const tdA = document.createElement('td'); tdA.style.whiteSpace = 'nowrap';
 
         const bOpen = document.createElement('button'); bOpen.className = 'btn_sm'; bOpen.textContent = 'Open';
@@ -386,10 +449,108 @@
         tr.appendChild(tdL);
         tr.appendChild(tdC);
         tr.appendChild(tdS);
+        tr.appendChild(tdZ);
         tr.appendChild(tdA);
         if(String(sev).toLowerCase() === 'crit') tr.style.background = '#fff0f0';
         $inboxRows.appendChild(tr);
       });
+    }
+
+    function _wlRow(w){
+      const tr = document.createElement('tr');
+      const wid = String(w.id||'');
+      tr.setAttribute('data-wl-id', wid);
+      tr.innerHTML = [
+        `<td style="text-align:center;"><input type="checkbox" class="wl_sel" /></td>`,
+        `<td class="mono"><input class="wl_id" value="${String(wid).replace(/"/g,'&quot;')}" /></td>`,
+        `<td><input class="wl_name" value="${String(w.name||'').replace(/"/g,'&quot;')}" /></td>`,
+        `<td style="text-align:center;"><input type="checkbox" class="wl_enabled" ${w.enabled!==false?'checked':''} /></td>`,
+        `<td style="text-align:center;"><input type="checkbox" class="wl_auto" ${w.auto_update!==false?'checked':''} /></td>`,
+        `<td><select class="wl_mode"><option value="manual">manual</option><option value="hours">hours</option><option value="daily">daily</option><option value="weekly">weekly</option></select></td>`,
+        `<td><input class="wl_hours" type="number" min="1" max="8760" value="${String(w.refresh_hours||24)}" /></td>`,
+        `<td><input class="wl_daily" value="${String(w.refresh_daily_at||'03:00:00').replace(/"/g,'&quot;')}" /></td>`,
+        `<td><input class="wl_wd" type="number" min="0" max="6" value="${String((w.refresh_weekday!==undefined)?w.refresh_weekday:0)}" /></td>`,
+        `<td><input class="wl_window" type="number" min="1" max="87600" value="${String(w.window_hours||24)}" /></td>`,
+        `<td><input class="wl_stale" type="number" min="1" max="525600" value="${String(w.stale_minutes||60)}" /></td>`,
+        `<td><textarea class="wl_entries" rows="3" style="min-width:260px;">${String((w.entries||[]).map(e=>{
+          try{
+            if(String(e.kind||'')==='series') return [e.measurement||'', e.field||'', e.entity_id||'', e.friendly_name||''].join('|');
+            return String(e.key||'');
+          }catch(x){ return ''; }
+        }).filter(Boolean).join('\n'))}</textarea></td>`,
+        `<td><textarea class="wl_workflow" rows="3" style="min-width:240px;">${String(w.workflow||'')}</textarea></td>`,
+      ].join('');
+      try{ tr.querySelector('select.wl_mode').value = String(w.refresh_mode||'manual'); }catch(e){}
+      return tr;
+    }
+
+    function collectWatchlistsFromUI(){
+      const out = [];
+      const trs = Array.from(($wlRows||document.createElement('tbody')).querySelectorAll('tr'));
+      trs.forEach(tr=>{
+        try{
+          const id = String((tr.querySelector('.wl_id')||{}).value||'').trim();
+          const name = String((tr.querySelector('.wl_name')||{}).value||'').trim();
+          const enabled = !!(tr.querySelector('.wl_enabled')||{}).checked;
+          const auto_update = !!(tr.querySelector('.wl_auto')||{}).checked;
+          const refresh_mode = String((tr.querySelector('.wl_mode')||{}).value||'manual').trim();
+          const refresh_hours = parseInt(String((tr.querySelector('.wl_hours')||{}).value||'24'),10);
+          const refresh_daily_at = String((tr.querySelector('.wl_daily')||{}).value||'03:00:00').trim();
+          const refresh_weekday = parseInt(String((tr.querySelector('.wl_wd')||{}).value||'0'),10);
+          const window_hours = parseInt(String((tr.querySelector('.wl_window')||{}).value||'24'),10);
+          const stale_minutes = parseInt(String((tr.querySelector('.wl_stale')||{}).value||'60'),10);
+          const entries_text = String((tr.querySelector('.wl_entries')||{}).value||'');
+          const workflow = String((tr.querySelector('.wl_workflow')||{}).value||'');
+          out.push({ id, name, enabled, auto_update, refresh_mode, refresh_hours, refresh_daily_at, refresh_weekday, window_hours, stale_minutes, entries_text, workflow });
+        }catch(e){}
+      });
+      return out;
+    }
+
+    async function loadWatchlists(){
+      if(!$wlRows) return;
+      try{ if($wlMeta) $wlMeta.textContent = 'Lade...'; }catch(e){}
+      $wlRows.innerHTML = '';
+      let j;
+      try{ j = await api('./api/watchlists'); }catch(e){ try{ if($wlMeta) $wlMeta.textContent = 'Fehler: ' + (e&&e.message?e.message:String(e)); }catch(x){}; return; }
+      LAST_WATCHLISTS = Array.isArray(j.watchlists) ? j.watchlists : [];
+      LAST_WATCHLISTS.forEach(w=>{ try{ $wlRows.appendChild(_wlRow(w||{})); }catch(e){}; });
+      try{ if($wlMeta) $wlMeta.textContent = `watchlists=${LAST_WATCHLISTS.length}`; }catch(e){}
+    }
+
+    async function saveWatchlists(){
+      const xs = collectWatchlistsFromUI();
+      let j;
+      try{ j = await api('./api/watchlists', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({watchlists: xs})}); }catch(e){ err(String(e&&e.message?e.message:e)); return; }
+      ok('Watchlists gespeichert.');
+      LAST_WATCHLISTS = Array.isArray(j.watchlists) ? j.watchlists : [];
+      await loadWatchlists();
+    }
+
+    async function runSelectedWatchlists(){
+      const trs = Array.from(($wlRows||document.createElement('tbody')).querySelectorAll('tr'));
+      const ids = trs.filter(tr => (tr.querySelector('.wl_sel')||{}).checked).map(tr => String((tr.querySelector('.wl_id')||{}).value||'').trim()).filter(Boolean);
+      if(!ids.length){ err('Keine Watchlist selektiert.'); return; }
+      try{ await api('./api/watchlists/run', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ids})}); ok('Run gestartet.'); }catch(e){ err(String(e&&e.message?e.message:e)); }
+      await loadInbox();
+      await loadRuns();
+    }
+
+    async function loadRuns(){
+      if(!$runsRows) return;
+      $runsRows.innerHTML = '';
+      try{ if($runsMeta) $runsMeta.textContent = 'Lade...'; }catch(e){}
+      const q = String($runsQ && $runsQ.value ? $runsQ.value : '').trim().toLowerCase();
+      let j;
+      try{ j = await api('./api/watchlists/runs?limit=200'); }catch(e){ try{ if($runsMeta) $runsMeta.textContent = 'Fehler: ' + (e&&e.message?e.message:String(e)); }catch(x){}; return; }
+      LAST_RUNS = Array.isArray(j.rows) ? j.rows : [];
+      const rows = q ? LAST_RUNS.filter(r => JSON.stringify(r||{}).toLowerCase().includes(q)) : LAST_RUNS;
+      rows.slice().reverse().slice(0, 200).forEach(r=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${fmtTs(r.at||r.finished_at||'')}</td><td>${String(r.watchlist_name||r.watchlist_id||'')}</td><td>${String(r.state||'')}</td><td style="text-align:right;">${String(r.findings||'')}</td><td style="text-align:right;">${String(r.created||'')}</td><td style="text-align:right;">${String(r.updated||'')}</td><td style="text-align:right;">${String(r.duration_ms||'')}</td><td class="mono">${String(r.id||r.run_id||'')}</td>`;
+        $runsRows.appendChild(tr);
+      });
+      try{ if($runsMeta) $runsMeta.textContent = `runs=${rows.length}`; }catch(e){}
     }
 
     function monitorRow(mon){
@@ -539,6 +700,14 @@
     try{ if($inboxFilter) $inboxFilter.addEventListener('change', ()=>loadInbox().catch(()=>{})); }catch(e){}
     try{ if($inboxQ) $inboxQ.addEventListener('input', ()=>loadInbox().catch(()=>{})); }catch(e){}
 
+    try{ if($wlRefresh) $wlRefresh.addEventListener('click', ()=>loadWatchlists().catch(e=>err(String(e.message||e)))); }catch(e){}
+    try{ if($wlAdd) $wlAdd.addEventListener('click', ()=>{ try{ if(!$wlRows) return; $wlRows.appendChild(_wlRow({id:'', name:'', enabled:true, auto_update:true, refresh_mode:'manual', refresh_hours:24, refresh_daily_at:'03:00:00', refresh_weekday:0, window_hours:24, stale_minutes:60, entries:[], workflow:''})); }catch(e){}; }); }catch(e){}
+    try{ if($wlSave) $wlSave.addEventListener('click', ()=>saveWatchlists().catch(e=>err(String(e.message||e)))); }catch(e){}
+    try{ if($wlRun) $wlRun.addEventListener('click', ()=>runSelectedWatchlists().catch(e=>err(String(e.message||e)))); }catch(e){}
+
+    try{ if($runsRefresh) $runsRefresh.addEventListener('click', ()=>loadRuns().catch(e=>err(String(e.message||e)))); }catch(e){}
+    try{ if($runsQ) $runsQ.addEventListener('input', ()=>loadRuns().catch(()=>{})); }catch(e){}
+
     loadAll().catch(e=>err(String(e.message || e)));
 
     // Deep link helpers (topbar inbox jump)
@@ -559,6 +728,8 @@
     }catch(e){}
 
     loadInbox().catch(()=>{});
+    loadWatchlists().catch(()=>{});
+    loadRuns().catch(()=>{});
   </script>
 </body>
 </html>
