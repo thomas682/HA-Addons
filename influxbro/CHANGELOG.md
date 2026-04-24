@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.438
+
+### Enhancement
+
+- Tabellen-Standard: dynamische Action-Leiste fuer Tabellen (Spec-gesteuert) mit Statuszeile direkt unter den Buttons. Fuer `raw_outlier_tbl` (Dashboard Ausreißer) werden jetzt alle Tabellen-Buttons dynamisch erzeugt und in einer festen Reihenfolge angeordnet: Aktualisieren, Abbruch, Tabelleninfo, Spalten ein-/ausblenden, Autobreite, Fensterbreite, Umbruch, Spaltenfilter, Kopieren, Zeile kopieren, Export (CSV). (User-Request)
+- Tabellen: Export-Button (CSV) hinzugefuegt.
+- Tabellen: Spalten-Resizer arbeitet jetzt am Spaltenrand und veraendert nur die beiden Nachbarspalten (konstante Gesamtbreite am Zugpunkt).
+
+### Maintenance
+
+- Tooltips/Spec: Tabelleninfo fuer `raw_outlier_tbl` aktualisiert.
+
 ## 1.12.437
 
 ### Enhancement

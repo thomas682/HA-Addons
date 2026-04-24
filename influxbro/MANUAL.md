@@ -214,7 +214,7 @@ Hinweis: Zeitstempel werden im gesamten UI inklusive Millisekunden angezeigt.
 - Ueber jeder Tabelle werden Zeilen angezeigt als `gefiltert / gesamt` (Rows).
 - Spalten koennen ueber den Spalten-Button ein-/ausgeblendet werden (wird gespeichert).
 - Das Info-Icon (i) erklaert je Tabelle Sinn/Zweck, Spalten und Aktionen (falls vorhanden).
-- Hinweis: im Dashboard-Bereich `Ausreißer` gibt es kein eigenes Tabellen-Info-Icon mehr.
+- Hinweis: im Dashboard-Bereich `Ausreißer` wird die Tabelleninfo (sowie Spalten ein-/ausblenden) in der Action-Leiste direkt ueber der Tabelle angezeigt.
 - Zusaetzlich haben viele Bereiche neben dem Bereichstitel ein Info-Icon, das die komplette Sektion ausfuehrlich erklaert (Popup ist resizable, hat Umbruch + Copy).
 - Bereichsaktionen (Info/Zu Einstellungen) stehen nicht mehr in der Summary-Titelzeile, sondern als eigene Zeile direkt im Section-Body (mit kurzer Beschreibung). Diese Infozeile nutzt immer die volle Summary-Breite.
 - Tabellen-Kopfzeilen koennen global in den Einstellungen farblich angepasst werden (Hintergrund/Textfarbe). Leere Tabellen zeigen mindestens eine konfigurierbare Anzahl leerer Zeilen.
