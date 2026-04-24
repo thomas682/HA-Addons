@@ -23628,6 +23628,651 @@ def api_storage_usage():
     })
 
 
+def _series_inventory_window(days: int) -> tuple[datetime, datetime]:
+    stop = datetime.now(timezone.utc)
+    start = stop - timedelta(days=max(1, int(days or 30)))
+    return start, stop
+
+
+def _series_inventory_series_page(
+    cfg: dict[str, Any],
+    *,
+    start_dt: datetime,
+    stop_dt: datetime,
+    limit: int,
+    offset: int,
+    field_filter: str | None,
+    q: str | None,
+) -> list[dict[str, Any]]:
+    if int(cfg.get("influx_version", 2)) != 2:
+        raise _ApiError("series_inventory currently supports InfluxDB v2 only", 400)
+    if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+        raise _ApiError("InfluxDB v2 requires token, org, bucket", 400)
+
+    start = _dt_to_rfc3339_utc(start_dt)
+    stop = _dt_to_rfc3339_utc(stop_dt)
+    ff = str(field_filter or "").strip()
+    ff_clause = f"|> filter(fn: (r) => r._field == {_flux_str(ff)})" if ff else ""
+    qtxt = str(q or "").strip().lower()
+
+    query = f'''
+from(bucket: "{cfg["bucket"]}")
+  |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
+  |> filter(fn: (r) => exists r._measurement and exists r._field)
+  {ff_clause}
+  |> keep(columns: ["_measurement","_field","entity_id","friendly_name","_time","_value"])
+  |> group(columns: ["_measurement","_field","entity_id","friendly_name"])
+  |> last()
+  |> group()
+  |> sort(columns: ["_time"], desc: true)
+  |> limit(n: {int(limit)}, offset: {int(offset)})
+'''
+
+    rows: list[dict[str, Any]] = []
+    with v2_client(cfg) as c:
+        tables = c.query_api().query(query, org=cfg["org"])
+        for t in tables or []:
+            for rec in getattr(t, "records", []) or []:
+                vals = getattr(rec, "values", {}) or {}
+                m = str(vals.get("_measurement") or "")
+                f = str(vals.get("_field") or "")
+                eid = str(vals.get("entity_id") or "")
+                fn = str(vals.get("friendly_name") or "")
+                newest = rec.get_time() or vals.get("_time")
+                newest_s = None
+                if isinstance(newest, datetime):
+                    newest_s = _dt_to_rfc3339_utc(newest)
+                elif isinstance(newest, str) and newest.strip():
+                    newest_s = newest.strip()
+
+                row = {
+                    "measurement": m,
+                    "field": f,
+                    "entity_id": eid,
+                    "friendly_name": fn,
+                    "newest_time": newest_s,
+                    "last_value": rec.get_value(),
+                }
+                if qtxt:
+                    blob = (m + " " + f + " " + eid + " " + fn).lower()
+                    if qtxt not in blob:
+                        continue
+                rows.append(row)
+
+    return rows
+
+
+def _series_inventory_enrich_details(
+    cfg: dict[str, Any],
+    *,
+    start_dt: datetime,
+    stop_dt: datetime,
+    keys: list[dict[str, str]],
+) -> dict[str, dict[str, Any]]:
+    # Reuse the same reduce-based query used by /api/global_series_details.
+    if not keys:
+        return {}
+    start = _dt_to_rfc3339_utc(start_dt)
+    stop = _dt_to_rfc3339_utc(stop_dt)
+
+    parts: list[str] = []
+    for it in keys:
+        m = str(it.get("measurement") or "").strip()
+        f = str(it.get("field") or "").strip()
+        eid = str(it.get("entity_id") or "").strip()
+        fn = str(it.get("friendly_name") or "").strip()
+        if not m or not f:
+            continue
+        conds = [f"r._measurement == {_flux_str(m)}", f"r._field == {_flux_str(f)}"]
+        if eid:
+            conds.append(f"r.entity_id == {_flux_str(eid)}")
+        if fn:
+            conds.append(f"r.friendly_name == {_flux_str(fn)}")
+        parts.append("(" + " and ".join(conds) + ")")
+    if not parts:
+        return {}
+
+    predicate = " or ".join(parts)
+    q = f'''
+data = from(bucket: "{cfg["bucket"]}")
+  |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
+  |> filter(fn: (r) => {predicate})
+  |> keep(columns: ["_measurement","_field","entity_id","friendly_name","_time","_value"])
+  |> group(columns: ["_measurement","_field","entity_id","friendly_name"])
+
+data
+  |> reduce(
+    identity: {{seen: false, count: 0, sum: 0.0, min: 0.0, max: 0.0, oldest_time: time(v: "1970-01-01T00:00:00Z"), newest_time: time(v: "1970-01-01T00:00:00Z"), last_value: 0.0}},
+    fn: (r, accumulator) => ({
+      seen: true,
+      count: accumulator.count + 1,
+      sum: accumulator.sum + float(v: r._value),
+      min: if accumulator.seen == false then float(v: r._value) else if float(v: r._value) < accumulator.min then float(v: r._value) else accumulator.min,
+      max: if accumulator.seen == false then float(v: r._value) else if float(v: r._value) > accumulator.max then float(v: r._value) else accumulator.max,
+      oldest_time: if accumulator.seen == false then r._time else if r._time < accumulator.oldest_time then r._time else accumulator.oldest_time,
+      newest_time: if accumulator.seen == false then r._time else if r._time > accumulator.newest_time then r._time else accumulator.newest_time,
+      last_value: if accumulator.seen == false then float(v: r._value) else if r._time >= accumulator.newest_time then float(v: r._value) else accumulator.last_value,
+    })
+  )
+  |> map(fn: (r) => ({
+    _measurement: r._measurement,
+    _field: r._field,
+    entity_id: r.entity_id,
+    friendly_name: r.friendly_name,
+    count: r.count,
+    min: r.min,
+    max: r.max,
+    mean: if r.count > 0 then r.sum / float(v: r.count) else 0.0,
+    oldest_time: r.oldest_time,
+    newest_time: r.newest_time,
+    last_value: r.last_value,
+  }))
+  |> keep(columns: ["_measurement","_field","entity_id","friendly_name","count","min","max","mean","oldest_time","newest_time","last_value"])
+'''
+
+    out: dict[str, dict[str, Any]] = {}
+    with v2_client(cfg) as c:
+        tables = c.query_api().query(q, org=cfg["org"])
+        for t in tables or []:
+            for rec in getattr(t, "records", []) or []:
+                vals = getattr(rec, "values", {}) or {}
+                m = str(vals.get("_measurement") or "")
+                f = str(vals.get("_field") or "")
+                eid = str(vals.get("entity_id") or "")
+                fn = str(vals.get("friendly_name") or "")
+                key = json.dumps({"m": m, "f": f, "eid": eid, "fn": fn}, ensure_ascii=True, sort_keys=True)
+                out[key] = {
+                    "count": int(vals.get("count") or 0),
+                    "min": vals.get("min"),
+                    "max": vals.get("max"),
+                    "mean": vals.get("mean"),
+                    "oldest_time": str(vals.get("oldest_time") or "") or None,
+                    "newest_time": str(vals.get("newest_time") or "") or None,
+                    "last_value": vals.get("last_value"),
+                }
+    return out
+
+
+def _series_inventory_loudest_counts(
+    cfg: dict[str, Any],
+    *,
+    start_dt: datetime,
+    stop_dt: datetime,
+    days: int,
+    field_filter: str | None,
+    q: str | None,
+    limit: int,
+) -> list[dict[str, Any]]:
+    """Return top series by point count in window (best-effort, v2 only)."""
+    start = _dt_to_rfc3339_utc(start_dt)
+    stop = _dt_to_rfc3339_utc(stop_dt)
+    ff = str(field_filter or "").strip()
+    ff_clause = f"|> filter(fn: (r) => r._field == {_flux_str(ff)})" if ff else ""
+    qtxt = str(q or "").strip().lower()
+
+    query = f'''
+from(bucket: "{cfg["bucket"]}")
+  |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
+  |> filter(fn: (r) => exists r._measurement and exists r._field)
+  {ff_clause}
+  |> keep(columns: ["_measurement","_field","entity_id","friendly_name","_time"])
+  |> group(columns: ["_measurement","_field","entity_id","friendly_name"])
+  |> reduce(
+    identity: {{count: 0, newest_time: time(v: "1970-01-01T00:00:00Z")}},
+    fn: (r, accumulator) => ({
+      count: accumulator.count + 1,
+      newest_time: if r._time > accumulator.newest_time then r._time else accumulator.newest_time,
+    })
+  )
+  |> map(fn: (r) => ({
+    _measurement: r._measurement,
+    _field: r._field,
+    entity_id: r.entity_id,
+    friendly_name: r.friendly_name,
+    count: r.count,
+    newest_time: r.newest_time,
+  }))
+  |> keep(columns: ["_measurement","_field","entity_id","friendly_name","count","newest_time"])
+  |> group()
+  |> sort(columns: ["count"], desc: true)
+  |> limit(n: {int(limit)})
+'''
+
+    out: list[dict[str, Any]] = []
+    with v2_client(cfg) as c:
+        tables = c.query_api().query(query, org=cfg["org"])
+        for t in tables or []:
+            for rec in getattr(t, "records", []) or []:
+                vals = getattr(rec, "values", {}) or {}
+                m = str(vals.get("_measurement") or "")
+                f = str(vals.get("_field") or "")
+                eid = str(vals.get("entity_id") or "")
+                fn = str(vals.get("friendly_name") or "")
+                try:
+                    cnt_i = int(vals.get("count") or 0)
+                except Exception:
+                    cnt_i = 0
+
+                newest_s = str(vals.get("newest_time") or "").strip() or None
+
+                if qtxt:
+                    blob = (m + " " + f + " " + eid + " " + fn).lower()
+                    if qtxt not in blob:
+                        continue
+                out.append(
+                    {
+                        "measurement": m,
+                        "field": f,
+                        "entity_id": eid,
+                        "friendly_name": fn,
+                        "count": cnt_i,
+                        "per_day": round(float(cnt_i) / max(1.0, float(days)), 3),
+                        "newest_time": newest_s,
+                    }
+                )
+    return out
+
+
+def _build_series_inventory(
+    cfg: dict[str, Any],
+    *,
+    days: int,
+    limit: int,
+    offset: int,
+    state: str,
+    q: str,
+    field_filter: str | None,
+    stale_days: int,
+    enrich_n: int,
+) -> dict[str, Any]:
+    start_dt, stop_dt = _series_inventory_window(days)
+
+    rows = _series_inventory_series_page(
+        cfg,
+        start_dt=start_dt,
+        stop_dt=stop_dt,
+        limit=limit,
+        offset=offset,
+        field_filter=field_filter,
+        q=q,
+    )
+
+    # Enrich a small subset with count/min/max/mean (best-effort; can fail for non-numeric values).
+    if enrich_n > 0:
+        try:
+            want_keys = [
+                {
+                    "measurement": str(r.get("measurement") or ""),
+                    "field": str(r.get("field") or ""),
+                    "entity_id": str(r.get("entity_id") or ""),
+                    "friendly_name": str(r.get("friendly_name") or ""),
+                }
+                for r in rows[:enrich_n]
+            ]
+            det = _series_inventory_enrich_details(cfg, start_dt=start_dt, stop_dt=stop_dt, keys=want_keys)
+            for r in rows[:enrich_n]:
+                k = json.dumps(
+                    {
+                        "m": str(r.get("measurement") or ""),
+                        "f": str(r.get("field") or ""),
+                        "eid": str(r.get("entity_id") or ""),
+                        "fn": str(r.get("friendly_name") or ""),
+                    },
+                    ensure_ascii=True,
+                    sort_keys=True,
+                )
+                if k in det:
+                    r.update(det[k])
+        except Exception:
+            pass
+
+    now = datetime.now(timezone.utc)
+    stale_cut = now - timedelta(days=max(1, min(3650, int(stale_days or 30))))
+
+    # Derived views
+    mapping_issues: list[dict[str, Any]] = []
+    by_fn: dict[str, set[str]] = {}
+    meas_stats: dict[str, dict[str, Any]] = {}
+    loudest: list[dict[str, Any]] = []
+    stale: list[dict[str, Any]] = []
+
+    # Loudest series should not depend on the paging sample.
+    try:
+        loudest = _series_inventory_loudest_counts(
+            cfg,
+            start_dt=start_dt,
+            stop_dt=stop_dt,
+            days=days,
+            field_filter=field_filter,
+            q=q,
+            limit=50,
+        )
+    except Exception:
+        loudest = []
+
+    for r in rows:
+        m = str(r.get("measurement") or "")
+        f = str(r.get("field") or "")
+        eid = str(r.get("entity_id") or "")
+        fn = str(r.get("friendly_name") or "")
+        newest_s = str(r.get("newest_time") or "").strip() or None
+        newest_dt = None
+        try:
+            if newest_s:
+                newest_dt = _trace_parse_iso(newest_s)
+        except Exception:
+            newest_dt = None
+
+        flags: list[str] = []
+
+        mapping_issue = False
+        if eid and not fn:
+            mapping_issue = True
+            mapping_issues.append(
+                {
+                    "issue_type": "entity_without_friendly_name",
+                    "measurement": m,
+                    "field": f,
+                    "entity_id": eid,
+                    "friendly_name": fn,
+                    "reason": "friendly_name fehlt",
+                }
+            )
+        if fn and not eid:
+            mapping_issue = True
+            mapping_issues.append(
+                {
+                    "issue_type": "friendly_without_entity",
+                    "measurement": m,
+                    "field": f,
+                    "entity_id": eid,
+                    "friendly_name": fn,
+                    "reason": "entity_id fehlt",
+                }
+            )
+        if mapping_issue:
+            flags.append("mapping_issue")
+        if fn and eid:
+            by_fn.setdefault(fn, set()).add(eid)
+
+        ms = meas_stats.setdefault(m, {"measurement": m, "fields": set(), "last_activity": None, "series_count": 0})
+        ms["fields"].add(f)
+        ms["series_count"] = int(ms.get("series_count") or 0) + 1
+        if newest_dt is not None:
+            cur = ms.get("last_activity")
+            if not isinstance(cur, datetime) or newest_dt > cur:
+                ms["last_activity"] = newest_dt
+
+        if newest_dt is not None and newest_dt < stale_cut:
+            flags.append("stale")
+            stale.append(
+                {
+                    "measurement": m,
+                    "field": f,
+                    "entity_id": eid,
+                    "friendly_name": fn,
+                    "last_activity": newest_s,
+                    "reason": f"keine Daten seit > {int((now - newest_dt).days)} Tagen",
+                }
+            )
+
+        # Attach row-level flags (used by state filter in UI).
+        r["risk_flags"] = flags
+
+    for fn, eids in by_fn.items():
+        if len(eids) > 1:
+            mapping_issues.append(
+                {
+                    "issue_type": "multiple_entity_ids_per_friendly_name",
+                    "friendly_name": fn,
+                    "entity_ids": sorted(list(eids))[:50],
+                    "reason": "mehrere entity_id pro friendly_name",
+                }
+            )
+
+    # Convert measurement overview
+    measurements: list[dict[str, Any]] = []
+    for m, ms in meas_stats.items():
+        la = ms.get("last_activity")
+        la_s = _dt_to_rfc3339_utc(la) if isinstance(la, datetime) else None
+        measurements.append(
+            {
+                "measurement": m,
+                "series_count": int(ms.get("series_count") or 0),
+                "fields": sorted(list(ms.get("fields") or [])),
+                "last_activity": la_s,
+                "bucket": str(cfg.get("bucket") or ""),
+                "best_effort": True,
+            }
+        )
+    measurements.sort(key=lambda r: str(r.get("last_activity") or ""), reverse=True)
+
+    loudest.sort(key=lambda r: int(r.get("count") or 0), reverse=True)
+    loudest = loudest[:50]
+    stale = stale[:200]
+    mapping_issues = mapping_issues[:200]
+
+    advisor: list[dict[str, Any]] = []
+    if loudest:
+        top = loudest[0]
+        advisor.append(
+            {
+                "severity": "warn",
+                "category": "growth",
+                "target": f"{top.get('measurement')}/{top.get('field')}",
+                "reason": "Hohe Schreibrate im betrachteten Zeitfenster (best effort).",
+                "recommended_actions": ["export", "backup", "combine"],
+            }
+        )
+    if mapping_issues:
+        advisor.append(
+            {
+                "severity": "warn",
+                "category": "mapping",
+                "target": "mapping",
+                "reason": "Mapping-Auffaelligkeiten gefunden (best effort).",
+                "recommended_actions": ["dashboard", "stats"],
+            }
+        )
+
+    # State filter (UI convenience)
+    state0 = str(state or "").strip().lower()
+    if state0:
+        def _state_keep(r0: dict[str, Any]) -> bool:
+            if state0 == "stale":
+                try:
+                    dt0 = _trace_parse_iso(str(r0.get("newest_time") or ""))
+                    return bool(dt0 and dt0 < stale_cut)
+                except Exception:
+                    return False
+            if state0 == "high-risk":
+                flags = set([str(x) for x in (r0.get("risk_flags") or [])])
+                return ("stale" in flags) or ("mapping_issue" in flags)
+            return True
+
+        rows = [r for r in rows if _state_keep(r)]
+
+    summary = {
+        "measurements": len(measurements),
+        "rows": len(rows),
+        "mapping_issue_count": len(mapping_issues),
+        "stale_count": len(stale),
+        "advisor_count": len(advisor),
+    }
+
+    return {
+        "ok": True,
+        "generated_at": _utc_now_iso_ms(),
+        "best_effort": True,
+        "filters": {
+            "days": days,
+            "limit": limit,
+            "offset": offset,
+            "state": state0,
+            "q": q,
+            "field": field_filter,
+            "stale_days": int(stale_days or 30),
+        },
+        "summary": summary,
+        "measurements": measurements[:200],
+        "loudest": loudest,
+        "mapping_issues": mapping_issues,
+        "stale": stale,
+        "rows": rows,
+        "advisor": advisor,
+    }
+
+
+@app.get("/api/series_inventory")
+def api_series_inventory():
+    """Diagnose: best-effort series inventory for a recent time window."""
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    try:
+        days = int(request.args.get("days", "30"))
+    except Exception:
+        days = 30
+    days = max(1, min(3650, days))
+    try:
+        limit = int(request.args.get("limit", "200"))
+    except Exception:
+        limit = 200
+    limit = max(1, min(500, limit))
+    try:
+        offset = int(request.args.get("offset", "0"))
+    except Exception:
+        offset = 0
+    offset = max(0, offset)
+
+    state = str(request.args.get("state") or "").strip().lower()
+    q = str(request.args.get("q") or "").strip()
+    field_filter = str(request.args.get("field") or "").strip() or None
+    try:
+        stale_days = int(request.args.get("stale_days", "30"))
+    except Exception:
+        stale_days = 30
+    stale_days = max(1, min(3650, stale_days))
+
+    try:
+        j = _build_series_inventory(
+            cfg,
+            days=days,
+            limit=limit,
+            offset=offset,
+            state=state,
+            q=q,
+            field_filter=field_filter,
+            stale_days=stale_days,
+            enrich_n=50,
+        )
+    except _ApiError as e:
+        return jsonify({"ok": False, "error": e.message}), int(e.status)
+    except Exception as e:
+        return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
+    return jsonify(j)
+
+
+@app.get("/api/series_inventory_export")
+def api_series_inventory_export():
+    fmt = str(request.args.get("format") or "json").strip().lower()
+    if fmt not in ("json", "csv", "md"):
+        fmt = "json"
+
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    try:
+        days = int(request.args.get("days", "30"))
+    except Exception:
+        days = 30
+    days = max(1, min(3650, days))
+    try:
+        limit = int(request.args.get("limit", "5000"))
+    except Exception:
+        limit = 5000
+    limit = max(1, min(20000, limit))
+    try:
+        offset = int(request.args.get("offset", "0"))
+    except Exception:
+        offset = 0
+    offset = max(0, offset)
+    state = str(request.args.get("state") or "").strip().lower()
+    q = str(request.args.get("q") or "").strip()
+    field_filter = str(request.args.get("field") or "").strip() or None
+    try:
+        stale_days = int(request.args.get("stale_days", "30"))
+    except Exception:
+        stale_days = 30
+    stale_days = max(1, min(3650, stale_days))
+
+    try:
+        j = _build_series_inventory(
+            cfg,
+            days=days,
+            limit=limit,
+            offset=offset,
+            state=state,
+            q=q,
+            field_filter=field_filter,
+            stale_days=stale_days,
+            enrich_n=0,
+        )
+    except _ApiError as e:
+        return jsonify({"ok": False, "error": e.message}), int(e.status)
+    except Exception as e:
+        return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
+
+    ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    ver = ADDON_VERSION
+    if fmt == "json":
+        data = json.dumps(j, indent=2, sort_keys=True, ensure_ascii=True)
+        resp = make_response(data)
+        resp.headers["Content-Type"] = "application/json; charset=utf-8"
+        resp.headers["Content-Disposition"] = f"attachment; filename=\"influxbro_series_inventory_{ver}_{ts}.json\""
+        return resp
+
+    if fmt == "md":
+        lines: list[str] = []
+        lines.append("# InfluxBro Series Inventory (best effort)\n")
+        lines.append(f"Generated at: `{j.get('generated_at')}`\n")
+        s = j.get("summary") if isinstance(j.get("summary"), dict) else {}
+        lines.append("## Summary\n")
+        for k in ("measurements", "rows", "mapping_issue_count", "stale_count"):
+            lines.append(f"- {k}: {s.get(k)}")
+        lines.append("\n## Loudest (Top)\n")
+        for r in (j.get("loudest") if isinstance(j.get("loudest"), list) else [])[:20]:
+            if not isinstance(r, dict):
+                continue
+            lines.append(f"- {r.get('measurement')}/{r.get('field')} {r.get('entity_id') or r.get('friendly_name')}: count={r.get('count')} per_day={r.get('per_day')}")
+        data = "\n".join(lines) + "\n"
+        resp = make_response(data)
+        resp.headers["Content-Type"] = "text/markdown; charset=utf-8"
+        resp.headers["Content-Disposition"] = f"attachment; filename=\"influxbro_series_inventory_{ver}_{ts}.md\""
+        return resp
+
+    # csv
+    rows = j.get("rows") if isinstance(j.get("rows"), list) else []
+    out = io.StringIO()
+    w = csv.writer(out)
+    w.writerow(["measurement", "field", "entity_id", "friendly_name", "newest_time", "count", "min", "max", "mean"])
+    for r in rows[:20000]:
+        if not isinstance(r, dict):
+            continue
+        w.writerow([
+            str(r.get("measurement") or ""),
+            str(r.get("field") or ""),
+            str(r.get("entity_id") or ""),
+            str(r.get("friendly_name") or ""),
+            str(r.get("newest_time") or ""),
+            str(r.get("count") if r.get("count") is not None else ""),
+            str(r.get("min") if r.get("min") is not None else ""),
+            str(r.get("max") if r.get("max") is not None else ""),
+            str(r.get("mean") if r.get("mean") is not None else ""),
+        ])
+    data = out.getvalue()
+    resp = make_response(data)
+    resp.headers["Content-Type"] = "text/csv; charset=utf-8"
+    resp.headers["Content-Disposition"] = f"attachment; filename=\"influxbro_series_inventory_{ver}_{ts}.csv\""
+    return resp
+
+
 @app.post("/api/cache_usage/ui_event")
 def api_cache_usage_ui_event():
     """Record a UI-level cache usage event (e.g., button clicks) for the usage table."""

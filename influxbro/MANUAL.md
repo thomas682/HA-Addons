@@ -728,6 +728,7 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Menuepunkt `Diagnose` zeigt Best-effort Status (Add-on, Influx Verbindung, Systemlast) und einige KPIs.
 - Erweiterte KPIs werden aus InfluxDB `GET /metrics` gelesen (falls erreichbar). Wenn `/metrics` nicht verfuegbar ist, zeigt die Seite trotzdem die Basis-Infos.
 - Speicher-Inventar: Groesse wird korrekt sortiert (unabhaengig von der Anzeigeeinheit) und `mtime` wird lesbar dargestellt.
+- Series Inventory / Storage Advisor (best effort): zeigt eine Uebersicht der aktivsten Serien im gewaehlten Zeitraum, die lautesten Serien (Top), Mapping-Auffaelligkeiten, Stale-Kandidaten und ein Sample der Inventory-Rows; Export als JSON/CSV/MD.
 - Diagnose-Tabellen: Kopfzeile, Zeilen- und Spaltenlinien sind sichtbar.
 - Trendansicht (Speicher): solid Linie + X-/Y-Achsenbeschriftung.
 

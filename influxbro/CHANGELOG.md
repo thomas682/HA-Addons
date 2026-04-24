@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.440
+
+### Enhancement
+
+- Diagnose: neue Best-effort "Series Inventory / Storage Advisor" Ansicht inkl. Measurements-Uebersicht, lauteste Serien (Schreibrate im Zeitfenster), Mapping-Probleme, Stale-Liste und Export (JSON/CSV/MD). ([#387](https://github.com/thomas682/HA-Addons/issues/387))
+
+### Maintenance
+
+- API: neue Endpunkte `/api/series_inventory` und `/api/series_inventory_export`.
+- QA: `python3 -m py_compile influxbro/app/app.py` (pytest in dieser Umgebung nicht verfuegbar).
+
 ## 1.12.439
 
 ### Enhancement

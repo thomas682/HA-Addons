@@ -59,19 +59,19 @@
   {% include "_topbar.html" %}
   <div class="shell">
     {% include "_nav.html" %}
-    <main class="content" data-ui="dbinfo_page.main" title="dbinfo.page">
+    <main class="content" data-ui="dbinfo_page.main" data-ib-pickkey="dbinfo_page.main" title="dbinfo.page">
       <h2>InfluxDB Diagnose</h2>
       <div class="muted">
         Repository: {% if repo_url %}<a href="{{ repo_url }}" target="_blank" rel="noreferrer">{{ repo_url }}</a>{% else %}<span>(nicht konfiguriert)</span>{% endif %}
       </div>
 
-      <div class="card" data-ui="dbinfo_summary.panel_card" title="dbinfo.summary.card">
+      <div class="card" data-ui="dbinfo_summary.panel_card" data-ib-pickkey="dbinfo_summary.panel_card" title="dbinfo.summary.card">
         <div class="headrow">
           <div>
             <div class="title">InfluxBro – Diagnose</div>
             <div class="muted">Best-effort Status + KPIs (Add-on + InfluxDB). Je nach Influx-Konfiguration sind nicht alle Werte verfuegbar.</div>
           </div>
-          <div class="meta" data-ui="dbinfo_summary.panel_meta" title="dbinfo.summary.meta">
+          <div class="meta" data-ui="dbinfo_summary.panel_meta" data-ib-pickkey="dbinfo_summary.panel_meta" title="dbinfo.summary.meta">
             <div class="k">Version</div><div class="v" id="meta_version">-</div>
             <div class="k">Build</div><div class="v" id="meta_build">-</div>
             <div class="k">Architektur</div><div class="v" id="meta_arch">-</div>
@@ -80,15 +80,15 @@
           </div>
         </div>
 
-        <div class="row" style="margin-top: 10px;" data-ui="dbinfo_summary.panel_controls" title="dbinfo.summary.controls">
+        <div class="row" style="margin-top: 10px;" data-ui="dbinfo_summary.panel_controls" data-ib-pickkey="dbinfo_summary.panel_controls" title="dbinfo.summary.controls">
           <div style="display:flex; gap:10px; align-items:center;">
-            <button id="refresh" type="button" class="btn_xs" data-ui="dbinfo_main.btn_refresh" title="dbinfo.refresh">Aktualisieren</button>
-            <button id="dbinfo_query_test" type="button" class="btn_xs" data-ui="dbinfo_main.btn_query_test" title="dbinfo.query_test" aria-label="Query testen"><svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="#000000" width="16" height="16" aria-hidden="true" focusable="false"><path d="M6 10V9h9v1H6zm4-4h5v1h-5V6zm5-3v1H6V3h9zm-9 9v1h9v-1H6z"></path><path fill-rule="evenodd" clip-rule="evenodd" d="M1 2.795l.783-.419 5.371 3.581v.838l-5.371 3.581L1 9.957V2.795zm1.007.94v5.281l3.96-2.64-3.96-2.64z"></path></svg> Query testen</button>
+            <button id="refresh" type="button" class="btn_xs" data-ui="dbinfo_main.btn_refresh" data-ib-pickkey="dbinfo_main.btn_refresh" title="dbinfo.refresh">Aktualisieren</button>
+            <button id="dbinfo_query_test" type="button" class="btn_xs" data-ui="dbinfo_main.btn_query_test" data-ib-pickkey="dbinfo_main.btn_query_test" title="dbinfo.query_test" aria-label="Query testen"><svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="#000000" width="16" height="16" aria-hidden="true" focusable="false"><path d="M6 10V9h9v1H6zm4-4h5v1h-5V6zm5-3v1H6V3h9zm-9 9v1h9v-1H6z"></path><path fill-rule="evenodd" clip-rule="evenodd" d="M1 2.795l.783-.419 5.371 3.581v.838l-5.371 3.581L1 9.957V2.795zm1.007.94v5.281l3.96-2.64-3.96-2.64z"></path></svg> Query testen</button>
           </div>
           <div class="muted" id="hint" style="padding-top: 10px;"></div>
         </div>
 
-        <div class="grid4" data-ui="dbinfo_summary.panel_kpis" title="dbinfo.summary.kpis">
+        <div class="grid4" data-ui="dbinfo_summary.panel_kpis" data-ib-pickkey="dbinfo_summary.panel_kpis" title="dbinfo.summary.kpis">
           <div class="kpi"><div class="k">Addon Status</div><div class="v"><span class="pill"><span class="dot" id="st_addon_dot"></span><span id="st_addon">-</span></span></div></div>
           <div class="kpi"><div class="k">Influx Verbindung</div><div class="v"><span class="pill"><span class="dot" id="st_influx_dot"></span><span id="st_influx">-</span></span></div></div>
           <div class="kpi"><div class="k">Letzter Cleanup-Lauf</div><div class="v"><span class="pill"><span class="dot neutral" id="st_cleanup_dot"></span><span id="st_cleanup">noch nie</span></span></div></div>
@@ -98,12 +98,12 @@
         <div id="err" class="err"></div>
       </div>
 
-      <div class="card" data-ui="dbinfo_health.panel_card" title="dbinfo.health.card">
+      <div class="card" data-ui="dbinfo_health.panel_card" data-ib-pickkey="dbinfo_health.panel_card" title="dbinfo.health.card">
         <div style="font-weight:800;">Health Summary</div>
         <div class="muted" style="margin-top: 4px;">InfluxDB-/Go-Metriken sind nur verfuegbar, wenn <code>/metrics</code> erreichbar ist. Bei InfluxDB v1 kann die erweiterte Diagnose eingeschraenkt sein.</div>
 
-        <div class="grid2" data-ui="dbinfo_health.panel_grid" title="dbinfo.health.grid">
-          <div class="kpi" data-ui="dbinfo_health.panel_ram" title="dbinfo.health.ram">
+        <div class="grid2" data-ui="dbinfo_health.panel_grid" data-ib-pickkey="dbinfo_health.panel_grid" title="dbinfo.health.grid">
+          <div class="kpi" data-ui="dbinfo_health.panel_ram" data-ib-pickkey="dbinfo_health.panel_ram" title="dbinfo.health.ram">
             <div class="k">RAM</div>
             <div class="kv">
               <div class="k">RAM aktuell</div><div class="v" id="ram_alloc">-</div>
@@ -113,7 +113,7 @@
             </div>
           </div>
 
-          <div class="kpi" data-ui="dbinfo_health.panel_goro" title="dbinfo.health.goro">
+          <div class="kpi" data-ui="dbinfo_health.panel_goro" data-ib-pickkey="dbinfo_health.panel_goro" title="dbinfo.health.goro">
             <div class="k">Goroutines</div>
             <div class="kv">
               <div class="k">Goroutines</div><div class="v" id="goro">-</div>
@@ -122,7 +122,7 @@
             </div>
           </div>
 
-          <div class="kpi" data-ui="dbinfo_health.panel_gc" title="dbinfo.health.gc">
+          <div class="kpi" data-ui="dbinfo_health.panel_gc" data-ib-pickkey="dbinfo_health.panel_gc" title="dbinfo.health.gc">
             <div class="k">Garbage Collector</div>
             <div class="kv">
               <div class="k">GC Pause avg</div><div class="v" id="gc_avg">-</div>
@@ -131,7 +131,7 @@
             </div>
           </div>
 
-          <div class="kpi" data-ui="dbinfo_health.panel_req" title="dbinfo.health.req">
+          <div class="kpi" data-ui="dbinfo_health.panel_req" data-ib-pickkey="dbinfo_health.panel_req" title="dbinfo.health.req">
             <div class="k">Influx Request Health</div>
             <div class="kv">
               <div class="k">HTTP Requests total</div><div class="v" id="http_total">-</div>
@@ -142,18 +142,18 @@
         </div>
       </div>
 
-      <div class="card" data-ui="dbinfo_storage.panel_card" title="dbinfo.storage.card">
+      <div class="card" data-ui="dbinfo_storage.panel_card" data-ib-pickkey="dbinfo_storage.panel_card" title="dbinfo.storage.card">
         <div style="font-weight:800;">Diagnose: Speicher</div>
         <div class="muted" style="margin-top: 4px;">Inventar aller von InfluxBro geschriebenen Daten (inkl. Backup-Verzeichnis) sowie Verlauf/Prognose.</div>
 
-        <div class="grid4" style="margin-top: 10px;" data-ui="dbinfo_storage.panel_kpis" title="dbinfo.storage.kpis">
+        <div class="grid4" style="margin-top: 10px;" data-ui="dbinfo_storage.panel_kpis" data-ib-pickkey="dbinfo_storage.panel_kpis" title="dbinfo.storage.kpis">
           <div class="kpi"><div class="k">Inventar (Summe)</div><div class="v" id="st_total">-</div></div>
           <div class="kpi"><div class="k">Disk total (Anzeige)</div><div class="v" id="st_disk_total">-</div></div>
           <div class="kpi"><div class="k">Min freier Cachespeicher</div><div class="v" id="st_budget">-</div></div>
           <div class="kpi"><div class="k">Prognose bis Limit</div><div class="v" id="st_eta">-</div></div>
         </div>
 
-        <div class="card" style="margin-top: 10px;" data-ui="dbinfo_storage.panel_trend" title="dbinfo.storage.trend">
+        <div class="card" style="margin-top: 10px;" data-ui="dbinfo_storage.panel_trend" data-ib-pickkey="dbinfo_storage.panel_trend" title="dbinfo.storage.trend">
           <div style="display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; align-items:baseline;">
             <div style="font-weight:800;">Verlauf (12 Monate)</div>
             <div class="muted" id="st_trend_meta">-</div>
@@ -161,13 +161,13 @@
           <svg id="st_spark" viewBox="0 0 800 120" preserveAspectRatio="none" style="width:100%; height:120px; display:block; margin-top:8px; background:#fafafa; border:1px solid #eee; border-radius:12px;"></svg>
         </div>
 
-        <div class="row" style="margin-top: 10px;" data-ui="dbinfo_storage.panel_controls" title="dbinfo.storage.controls">
-          <button id="storage_refresh" type="button" class="btn_xs" data-ui="dbinfo_storage.btn_refresh" title="dbinfo.storage.refresh">Aktualisieren</button>
+        <div class="row" style="margin-top: 10px;" data-ui="dbinfo_storage.panel_controls" data-ib-pickkey="dbinfo_storage.panel_controls" title="dbinfo.storage.controls">
+          <button id="storage_refresh" type="button" class="btn_xs" data-ui="dbinfo_storage.btn_refresh" data-ib-pickkey="dbinfo_storage.btn_refresh" title="dbinfo.storage.refresh">Aktualisieren</button>
           <div class="muted" id="storage_meta" style="padding-top: 10px;"></div>
         </div>
 
         <div class="table_wrap" style="margin-top:10px;">
-          <table class="cfg_tbl" id="storage_tbl" data-ui="dbinfo_storage.tbl" title="dbinfo.storage.table">
+          <table class="cfg_tbl" id="storage_tbl" data-ui="dbinfo_storage.tbl" data-ib-pickkey="dbinfo_storage.tbl" title="dbinfo.storage.table">
             <thead>
               <tr>
                 <th>Name</th>
@@ -183,15 +183,15 @@
         </div>
       </div>
 
-      <div class="card" data-ui="dbinfo_worklog.panel_card" title="dbinfo.worklog.card">
+      <div class="card" data-ui="dbinfo_worklog.panel_card" data-ib-pickkey="dbinfo_worklog.panel_card" title="dbinfo.worklog.card">
         <div style="font-weight:800;">Diagnose: Worklog</div>
         <div class="muted" style="margin-top: 4px;">Letzte Analyse/Statistik/Raw Operationen inkl. Zeitfenster, Grund und Dauer (ms).</div>
 
-        <div class="row" style="margin-top: 10px;" data-ui="dbinfo_worklog.panel_controls" title="dbinfo.worklog.controls">
-          <button id="worklog_refresh" type="button" class="btn_xs" data-ui="dbinfo_worklog.btn_refresh" title="dbinfo.worklog.refresh">Aktualisieren</button>
+        <div class="row" style="margin-top: 10px;" data-ui="dbinfo_worklog.panel_controls" data-ib-pickkey="dbinfo_worklog.panel_controls" title="dbinfo.worklog.controls">
+          <button id="worklog_refresh" type="button" class="btn_xs" data-ui="dbinfo_worklog.btn_refresh" data-ib-pickkey="dbinfo_worklog.btn_refresh" title="dbinfo.worklog.refresh">Aktualisieren</button>
           <label style="display:flex; flex-direction:column; gap:4px; font-size:12px;">
             <span>Bereich</span>
-            <select id="worklog_purpose" style="min-width:180px;">
+            <select id="worklog_purpose" style="min-width:180px;" data-ui="dbinfo_worklog.select_purpose" data-ib-pickkey="dbinfo_worklog.select_purpose" title="dbinfo.worklog.purpose">
               <option value="">Alle</option>
               <option value="analysis">Analyse</option>
               <option value="stats">Statistik</option>
@@ -200,17 +200,126 @@
           </label>
           <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; flex:1 1 240px;">
             <span>Suche</span>
-            <input id="worklog_q" type="text" placeholder="Text (detail/reason/op)" />
+            <input id="worklog_q" type="text" placeholder="Text (detail/reason/op)" data-ui="dbinfo_worklog.input_q" data-ib-pickkey="dbinfo_worklog.input_q" title="dbinfo.worklog.q" />
           </label>
           <div class="muted" id="worklog_meta" style="padding-top: 10px;"></div>
         </div>
 
         <div class="table_wrap" style="margin-top:10px;">
-          <table class="cfg_tbl" id="worklog_tbl" data-ui="dbinfo_worklog.tbl" title="dbinfo.worklog.table">
+          <table class="cfg_tbl" id="worklog_tbl" data-ui="dbinfo_worklog.tbl" data-ib-pickkey="dbinfo_worklog.tbl" title="dbinfo.worklog.table">
             <thead><tr><th>Zeit</th><th>Zweck</th><th>Op</th><th>Quelle</th><th>Zeitraum</th><th>Grund</th><th>ms</th><th>Detail</th></tr></thead>
             <tbody></tbody>
           </table>
         </div>
+      </div>
+
+      <div class="card" data-ui="dbinfo_series.panel_card" data-ib-pickkey="dbinfo_series.panel_card" title="dbinfo.series.card">
+        <div style="font-weight:800;">Series Inventory / Storage Advisor</div>
+        <div class="muted" style="margin-top: 4px;">Best effort: Auswertungen basieren auf einem konfigurierbaren Zeitfenster und sind nicht zwingend exakt (Influx-Abhaengigkeiten, Limitierungen, Sampling).</div>
+
+        <div class="row" style="margin-top: 10px;" data-ui="dbinfo_series.panel_controls" data-ib-pickkey="dbinfo_series.panel_controls" title="dbinfo.series.controls">
+          <button id="series_refresh" type="button" class="btn_xs" data-ui="dbinfo_series.btn_refresh" data-ib-pickkey="dbinfo_series.btn_refresh" title="dbinfo.series.refresh">Aktualisieren</button>
+          <label style="display:flex; flex-direction:column; gap:4px; font-size:12px;">
+            <span>Zeitraum (Tage)</span>
+            <input id="series_days" type="number" min="1" max="3650" value="30" data-ui="dbinfo_series.input_days" data-ib-pickkey="dbinfo_series.input_days" title="dbinfo.series.days" />
+          </label>
+          <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; flex:1 1 240px;">
+            <span>Suche (measurement/entity/friendly)</span>
+            <input id="series_q" type="text" placeholder="Textfilter" data-ui="dbinfo_series.input_q" data-ib-pickkey="dbinfo_series.input_q" title="dbinfo.series.q" />
+          </label>
+          <label style="display:flex; flex-direction:column; gap:4px; font-size:12px;">
+            <span>Status</span>
+            <select id="series_state" data-ui="dbinfo_series.select_state" data-ib-pickkey="dbinfo_series.select_state" title="dbinfo.series.state">
+              <option value="">alle</option>
+              <option value="stale">stale</option>
+              <option value="high-risk">high-risk</option>
+            </select>
+          </label>
+          <label style="display:flex; flex-direction:column; gap:4px; font-size:12px;">
+            <span>Export</span>
+            <div style="display:flex; gap:8px;">
+              <button id="series_export_json" type="button" class="btn_xs" style="height:30px;" data-ui="dbinfo_series.btn_export_json" data-ib-pickkey="dbinfo_series.btn_export_json" title="dbinfo.series.export.json">JSON</button>
+              <button id="series_export_csv" type="button" class="btn_xs" style="height:30px;" data-ui="dbinfo_series.btn_export_csv" data-ib-pickkey="dbinfo_series.btn_export_csv" title="dbinfo.series.export.csv">CSV</button>
+              <button id="series_export_md" type="button" class="btn_xs" style="height:30px;" data-ui="dbinfo_series.btn_export_md" data-ib-pickkey="dbinfo_series.btn_export_md" title="dbinfo.series.export.md">MD</button>
+            </div>
+          </label>
+          <label style="display:flex; flex-direction:column; gap:4px; font-size:12px;">
+            <span>Quick Actions</span>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button id="series_open_dashboard" type="button" class="btn_xs" style="height:30px;" data-ui="dbinfo_series.btn_open_dashboard" data-ib-pickkey="dbinfo_series.btn_open_dashboard" title="dbinfo.series.open.dashboard">Dashboard</button>
+              <button id="series_open_stats" type="button" class="btn_xs" style="height:30px;" data-ui="dbinfo_series.btn_open_stats" data-ib-pickkey="dbinfo_series.btn_open_stats" title="dbinfo.series.open.stats">Statistik</button>
+              <button id="series_open_export" type="button" class="btn_xs" style="height:30px;" data-ui="dbinfo_series.btn_open_export" data-ib-pickkey="dbinfo_series.btn_open_export" title="dbinfo.series.open.export">Export</button>
+              <button id="series_open_backup" type="button" class="btn_xs" style="height:30px;" data-ui="dbinfo_series.btn_open_backup" data-ib-pickkey="dbinfo_series.btn_open_backup" title="dbinfo.series.open.backup">Backup</button>
+              <button id="series_open_combine" type="button" class="btn_xs" style="height:30px;" data-ui="dbinfo_series.btn_open_combine" data-ib-pickkey="dbinfo_series.btn_open_combine" title="dbinfo.series.open.combine">Kombinieren</button>
+            </div>
+          </label>
+          <div class="muted" id="series_meta" style="padding-top: 10px;" data-ui="dbinfo_series.txt_meta" data-ib-pickkey="dbinfo_series.txt_meta" title="dbinfo.series.meta"></div>
+        </div>
+
+        <div class="table_wrap" style="margin-top:10px;">
+          <div style="font-weight:800;">Advisor</div>
+          <div class="muted" id="series_advisor" style="margin-top:6px; white-space:pre-wrap;" data-ui="dbinfo_series.txt_advisor" data-ib-pickkey="dbinfo_series.txt_advisor" title="dbinfo.series.advisor"></div>
+        </div>
+
+        <details class="card" style="margin-top:10px;" open>
+          <summary><span class="ib_summary_row"><span>Measurements Uebersicht</span></span></summary>
+          <div class="card_body">
+            <div class="table_wrap" style="margin-top:10px;">
+              <table class="cfg_tbl" id="series_meas_tbl" data-ui="dbinfo_series.tbl_measurements" data-ib-pickkey="dbinfo_series.tbl_measurements" title="dbinfo.series.measurements">
+                <thead><tr><th>Measurement</th><th>Fields</th><th>Letzte Aktivitaet</th><th>Bucket</th><th>Hinweis</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </details>
+
+        <details class="card" style="margin-top:10px;" open>
+          <summary><span class="ib_summary_row"><span>Lauteste Serien (Top)</span></span></summary>
+          <div class="card_body">
+            <div class="table_wrap" style="margin-top:10px;">
+              <table class="cfg_tbl" id="series_loud_tbl" data-ui="dbinfo_series.tbl_loudest" data-ib-pickkey="dbinfo_series.tbl_loudest" title="dbinfo.series.loudest">
+                <thead><tr><th>Measurement</th><th>Field</th><th>entity_id</th><th>friendly_name</th><th>count</th><th>per_day</th><th>newest</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </details>
+
+        <details class="card" style="margin-top:10px;">
+          <summary><span class="ib_summary_row"><span>Mapping-Probleme</span></span></summary>
+          <div class="card_body">
+            <div class="table_wrap" style="margin-top:10px;">
+              <table class="cfg_tbl" id="series_map_tbl" data-ui="dbinfo_series.tbl_mapping" data-ib-pickkey="dbinfo_series.tbl_mapping" title="dbinfo.series.mapping">
+                <thead><tr><th>Typ</th><th>Measurement</th><th>Field</th><th>entity_id</th><th>friendly_name</th><th>Grund</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </details>
+
+        <details class="card" style="margin-top:10px;">
+          <summary><span class="ib_summary_row"><span>Stale (best effort)</span></span></summary>
+          <div class="card_body">
+            <div class="table_wrap" style="margin-top:10px;">
+              <table class="cfg_tbl" id="series_stale_tbl" data-ui="dbinfo_series.tbl_stale" data-ib-pickkey="dbinfo_series.tbl_stale" title="dbinfo.series.stale">
+                <thead><tr><th>Measurement</th><th>Field</th><th>entity_id</th><th>friendly_name</th><th>Letzte Aktivitaet</th><th>Grund</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </details>
+
+        <details class="card" style="margin-top:10px;">
+          <summary><span class="ib_summary_row"><span>Inventory Rows (Sample)</span></span></summary>
+          <div class="card_body">
+            <div class="table_wrap" style="margin-top:10px;">
+              <table class="cfg_tbl" id="series_rows_tbl" data-ui="dbinfo_series.tbl_rows" data-ib-pickkey="dbinfo_series.tbl_rows" title="dbinfo.series.rows">
+                <thead><tr><th>Measurement</th><th>Field</th><th>entity_id</th><th>friendly_name</th><th>newest</th><th>count</th><th>min</th><th>max</th><th>mean</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </details>
       </div>
 
       <script>
@@ -838,6 +947,232 @@
 
       try{ refreshStorage().catch(()=>{}); }catch(e){}
       try{ refreshWorklog().catch(()=>{}); }catch(e){}
+
+      async function refreshSeriesInventory(){
+        const $meta = document.getElementById('series_meta');
+        const $advisor = document.getElementById('series_advisor');
+        const $days = document.getElementById('series_days');
+        const $q = document.getElementById('series_q');
+        const $state = document.getElementById('series_state');
+        const days = $days ? String($days.value || '30') : '30';
+        const q = $q ? String($q.value || '').trim() : '';
+        const state = $state ? String($state.value || '').trim() : '';
+
+        const tbls = {
+          meas: document.getElementById('series_meas_tbl'),
+          loud: document.getElementById('series_loud_tbl'),
+          map: document.getElementById('series_map_tbl'),
+          stale: document.getElementById('series_stale_tbl'),
+          rows: document.getElementById('series_rows_tbl'),
+        };
+        const bodies = {
+          meas: tbls.meas ? tbls.meas.querySelector('tbody') : null,
+          loud: tbls.loud ? tbls.loud.querySelector('tbody') : null,
+          map: tbls.map ? tbls.map.querySelector('tbody') : null,
+          stale: tbls.stale ? tbls.stale.querySelector('tbody') : null,
+          rows: tbls.rows ? tbls.rows.querySelector('tbody') : null,
+        };
+
+        try{ if($meta) $meta.textContent = 'Lade...'; }catch(e){}
+        try{ if($advisor) $advisor.textContent = ''; }catch(e){}
+        Object.values(bodies).forEach((b)=>{ try{ if(b) b.innerHTML = ''; }catch(e){} });
+
+        let j;
+        try{
+          const p = new URLSearchParams();
+          p.set('days', days);
+          p.set('limit', '200');
+          p.set('offset', '0');
+          if(q) p.set('q', q);
+          if(state) p.set('state', state);
+          j = await jget('./api/series_inventory?' + p.toString());
+        }catch(e){
+          try{ if($meta) $meta.textContent = 'Fehler: ' + (e && e.message ? e.message : String(e)); }catch(x){}
+          return;
+        }
+
+        try{
+          const s = (j && j.summary && typeof j.summary === 'object') ? j.summary : {};
+          const parts = [];
+          parts.push('Generated: ' + String(j.generated_at || ''));
+          parts.push('rows: ' + String(s.rows || 0));
+          parts.push('measurements: ' + String(s.measurements || 0));
+          parts.push('mapping: ' + String(s.mapping_issue_count || 0));
+          parts.push('stale: ' + String(s.stale_count || 0));
+          if($meta) $meta.textContent = parts.join(' | ');
+        }catch(e){}
+
+        try{
+          const adv = Array.isArray(j.advisor) ? j.advisor : [];
+          if($advisor){
+            if(!adv.length) $advisor.textContent = '(kein Hinweis)';
+            else{
+              const lines = adv.slice(0, 20).map((a)=>{
+                const sev = String(a.severity || '').toUpperCase();
+                const cat = String(a.category || '');
+                const tgt = String(a.target || '');
+                const reason = String(a.reason || '');
+                const act = Array.isArray(a.recommended_actions) ? a.recommended_actions.join(', ') : '';
+                return '[' + sev + (cat ? ('/' + cat) : '') + '] ' + (tgt ? (tgt + ': ') : '') + reason + (act ? (' (actions: ' + act + ')') : '');
+              });
+              $advisor.textContent = lines.join('\n');
+            }
+          }
+        }catch(e){}
+
+        try{
+          const xs = Array.isArray(j.measurements) ? j.measurements : [];
+          xs.slice(0, 200).forEach((it)=>{
+            if(!bodies.meas) return;
+            const tr = document.createElement('tr');
+            const tdM = document.createElement('td'); tdM.textContent = String(it.measurement || '');
+            const tdF = document.createElement('td'); tdF.textContent = Array.isArray(it.fields) ? it.fields.join(', ') : String(it.fields || '');
+            const tdLa = document.createElement('td'); tdLa.textContent = it.last_activity ? fmtTs(it.last_activity) : '';
+            const tdB = document.createElement('td'); tdB.textContent = String(it.bucket || '');
+            const tdH = document.createElement('td'); tdH.textContent = 'series=' + String(it.series_count || 0) + ' | best_effort';
+            tr.appendChild(tdM); tr.appendChild(tdF); tr.appendChild(tdLa); tr.appendChild(tdB); tr.appendChild(tdH);
+            bodies.meas.appendChild(tr);
+          });
+        }catch(e){}
+
+        try{
+          const xs = Array.isArray(j.loudest) ? j.loudest : [];
+          xs.slice(0, 50).forEach((it)=>{
+            if(!bodies.loud) return;
+            const tr = document.createElement('tr');
+            const tdM = document.createElement('td'); tdM.textContent = String(it.measurement || '');
+            const tdF = document.createElement('td'); tdF.textContent = String(it.field || '');
+            const tdE = document.createElement('td'); tdE.textContent = String(it.entity_id || '');
+            const tdN = document.createElement('td'); tdN.textContent = String(it.friendly_name || '');
+            const tdC = document.createElement('td'); tdC.style.textAlign='right'; tdC.textContent = String(it.count || '');
+            const tdP = document.createElement('td'); tdP.style.textAlign='right'; tdP.textContent = String(it.per_day || '');
+            const tdT = document.createElement('td'); tdT.textContent = it.newest_time ? fmtTs(it.newest_time) : '';
+            tr.appendChild(tdM); tr.appendChild(tdF); tr.appendChild(tdE); tr.appendChild(tdN); tr.appendChild(tdC); tr.appendChild(tdP); tr.appendChild(tdT);
+            bodies.loud.appendChild(tr);
+          });
+        }catch(e){}
+
+        try{
+          const xs = Array.isArray(j.mapping_issues) ? j.mapping_issues : [];
+          xs.slice(0, 200).forEach((it)=>{
+            if(!bodies.map) return;
+            const tr = document.createElement('tr');
+            const tdT = document.createElement('td'); tdT.textContent = String(it.issue_type || '');
+            const tdM = document.createElement('td'); tdM.textContent = String(it.measurement || '');
+            const tdF = document.createElement('td'); tdF.textContent = String(it.field || '');
+            const tdE = document.createElement('td'); tdE.textContent = String(it.entity_id || '');
+            const tdN = document.createElement('td'); tdN.textContent = String(it.friendly_name || '');
+            const tdR = document.createElement('td'); tdR.textContent = String(it.reason || '');
+            tr.appendChild(tdT); tr.appendChild(tdM); tr.appendChild(tdF); tr.appendChild(tdE); tr.appendChild(tdN); tr.appendChild(tdR);
+            bodies.map.appendChild(tr);
+          });
+        }catch(e){}
+
+        try{
+          const xs = Array.isArray(j.stale) ? j.stale : [];
+          xs.slice(0, 200).forEach((it)=>{
+            if(!bodies.stale) return;
+            const tr = document.createElement('tr');
+            const tdM = document.createElement('td'); tdM.textContent = String(it.measurement || '');
+            const tdF = document.createElement('td'); tdF.textContent = String(it.field || '');
+            const tdE = document.createElement('td'); tdE.textContent = String(it.entity_id || '');
+            const tdN = document.createElement('td'); tdN.textContent = String(it.friendly_name || '');
+            const tdT = document.createElement('td'); tdT.textContent = it.last_activity ? fmtTs(it.last_activity) : '';
+            const tdR = document.createElement('td'); tdR.textContent = String(it.reason || '');
+            tr.appendChild(tdM); tr.appendChild(tdF); tr.appendChild(tdE); tr.appendChild(tdN); tr.appendChild(tdT); tr.appendChild(tdR);
+            bodies.stale.appendChild(tr);
+          });
+        }catch(e){}
+
+        try{
+          const xs = Array.isArray(j.rows) ? j.rows : [];
+          xs.slice(0, 200).forEach((it)=>{
+            if(!bodies.rows) return;
+            const tr = document.createElement('tr');
+            const tdM = document.createElement('td'); tdM.textContent = String(it.measurement || '');
+            const tdF = document.createElement('td'); tdF.textContent = String(it.field || '');
+            const tdE = document.createElement('td'); tdE.textContent = String(it.entity_id || '');
+            const tdN = document.createElement('td'); tdN.textContent = String(it.friendly_name || '');
+            const tdT = document.createElement('td'); tdT.textContent = it.newest_time ? fmtTs(it.newest_time) : '';
+            const tdC = document.createElement('td'); tdC.style.textAlign='right'; tdC.textContent = (it.count !== null && it.count !== undefined) ? String(it.count) : '';
+            const tdMin = document.createElement('td'); tdMin.style.textAlign='right'; tdMin.textContent = (it.min !== null && it.min !== undefined) ? String(it.min) : '';
+            const tdMax = document.createElement('td'); tdMax.style.textAlign='right'; tdMax.textContent = (it.max !== null && it.max !== undefined) ? String(it.max) : '';
+            const tdMean = document.createElement('td'); tdMean.style.textAlign='right'; tdMean.textContent = (it.mean !== null && it.mean !== undefined) ? String(it.mean) : '';
+            tr.appendChild(tdM); tr.appendChild(tdF); tr.appendChild(tdE); tr.appendChild(tdN); tr.appendChild(tdT); tr.appendChild(tdC); tr.appendChild(tdMin); tr.appendChild(tdMax); tr.appendChild(tdMean);
+            bodies.rows.appendChild(tr);
+          });
+        }catch(e){}
+
+        try{ window.InfluxBroTableSort && window.InfluxBroTableSort.init('#series_meas_tbl'); }catch(e){}
+        try{ window.InfluxBroTableSort && window.InfluxBroTableSort.init('#series_loud_tbl'); }catch(e){}
+        try{ window.InfluxBroTableSort && window.InfluxBroTableSort.init('#series_map_tbl'); }catch(e){}
+        try{ window.InfluxBroTableSort && window.InfluxBroTableSort.init('#series_stale_tbl'); }catch(e){}
+        try{ window.InfluxBroTableSort && window.InfluxBroTableSort.init('#series_rows_tbl'); }catch(e){}
+      }
+
+      function _seriesParamsForExport(){
+        const $days = document.getElementById('series_days');
+        const $q = document.getElementById('series_q');
+        const $state = document.getElementById('series_state');
+        const p = new URLSearchParams();
+        p.set('days', $days ? String($days.value || '30') : '30');
+        p.set('limit', '5000');
+        if($q && String($q.value || '').trim()) p.set('q', String($q.value || '').trim());
+        if($state && String($state.value || '').trim()) p.set('state', String($state.value || '').trim());
+        return p;
+      }
+
+      function downloadSeriesExport(fmt){
+        try{
+          const p = _seriesParamsForExport();
+          p.set('format', String(fmt || 'json'));
+          const url = './api/series_inventory_export?' + p.toString();
+          const a = document.createElement('a');
+          a.href = url;
+          a.target = '_blank';
+          a.rel = 'noreferrer';
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+        }catch(e){}
+      }
+
+      try{
+        const b = document.getElementById('series_refresh');
+        const d = document.getElementById('series_days');
+        const q = document.getElementById('series_q');
+        const s = document.getElementById('series_state');
+        const ej = document.getElementById('series_export_json');
+        const ec = document.getElementById('series_export_csv');
+        const em = document.getElementById('series_export_md');
+        const od = document.getElementById('series_open_dashboard');
+        const os = document.getElementById('series_open_stats');
+        const oe = document.getElementById('series_open_export');
+        const ob = document.getElementById('series_open_backup');
+        const oc = document.getElementById('series_open_combine');
+
+        if(b) b.onclick = ()=>{ refreshSeriesInventory().catch(()=>{}); };
+        if(d) d.onchange = ()=>{ refreshSeriesInventory().catch(()=>{}); };
+        if(s) s.onchange = ()=>{ refreshSeriesInventory().catch(()=>{}); };
+        if(q){
+          let t = null;
+          q.oninput = ()=>{
+            try{ if(t) clearTimeout(t); }catch(e){}
+            t = setTimeout(()=>{ refreshSeriesInventory().catch(()=>{}); }, 350);
+          };
+        }
+        if(ej) ej.onclick = ()=>{ downloadSeriesExport('json'); };
+        if(ec) ec.onclick = ()=>{ downloadSeriesExport('csv'); };
+        if(em) em.onclick = ()=>{ downloadSeriesExport('md'); };
+
+        if(od) od.onclick = ()=>{ window.location.href = './'; };
+        if(os) os.onclick = ()=>{ window.location.href = './stats'; };
+        if(oe) oe.onclick = ()=>{ window.location.href = './export'; };
+        if(ob) ob.onclick = ()=>{ window.location.href = './backup'; };
+        if(oc) oc.onclick = ()=>{ window.location.href = './combine'; };
+      }catch(e){}
+
+      try{ refreshSeriesInventory().catch(()=>{}); }catch(e){}
       </script>
 
       {% include "_table_cols.html" %}
