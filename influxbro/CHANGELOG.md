@@ -53,6 +53,16 @@
 
 - API: neue Endpunkte `/api/dq/repair/generate`, `/api/dq/repair/plans`, `/api/dq/repair/proposals`, `/api/dq/repair/proposal`.
 
+## 1.12.445
+
+### Enhancement
+
+- Datenpflege Center Phase 3: Freigabe-Warteschlange, Automatikprofile und AutoRules (A/B/C/D Klassifikation) inkl. Protokollierung. Ausfuehrung bleibt explizit gesperrt, bis #400 integriert ist. ([#409](https://github.com/thomas682/HA-Addons/issues/409))
+
+### Maintenance
+
+- API: neue Endpunkte `/api/dq/phase3/state`, `/api/dq/phase3/profile/save`, `/api/dq/phase3/rules/save`, `/api/dq/phase3/approve`.
+
 ## 1.12.439
 
 ### Enhancement

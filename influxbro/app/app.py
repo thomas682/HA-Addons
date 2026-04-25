@@ -120,6 +120,9 @@ DQ_LOCK = threading.RLock()
 DQ_RUNS_DIR = DATA_DIR / "dq" / "quality_runs"
 DQ_PROPOSALS_DIR = DATA_DIR / "dq" / "repair_proposals"
 DQ_PLANS_DIR = DATA_DIR / "dq" / "repair_plans"
+DQ_APPROVALS_DIR = DATA_DIR / "dq" / "approvals"
+DQ_PROFILES_PATH = DATA_DIR / "dq" / "profiles.json"
+DQ_RULES_PATH = DATA_DIR / "dq" / "auto_rules.json"
 
 # Timers state (last run timestamps, persisted under /data)
 TIMERS_STATE_LOCK = threading.RLock()
@@ -21596,6 +21599,323 @@ def api_dq_repair_proposal_get():
     if not p:
         return jsonify({"ok": False, "error": "proposal not found"}), 404
     return jsonify({"ok": True, "proposal": p})
+
+
+# ------------------------------
+# Data Quality Center (DQ) Phase 3
+# Approvals, Profiles, AutoRules (NO execution; requires #400 for productive writes)
+# ------------------------------
+
+DQ_APPROVAL_SCHEMA_VERSION = 1
+DQ_PROFILE_SCHEMA_VERSION = 1
+DQ_AUTORULE_SCHEMA_VERSION = 1
+
+
+def _dq_now_user_source() -> dict[str, Any]:
+    return {"ip": _req_ip(), "ua": _req_ua()}
+
+
+def _dq_profiles_default() -> list[dict[str, Any]]:
+    now = _utc_now_iso_ms()
+    return [{
+        "id": "default",
+        "schema_version": DQ_PROFILE_SCHEMA_VERSION,
+        "created_at": now,
+        "updated_at": now,
+        "source": {"system": True},
+        "status": "active",
+        "name": "Default",
+        "mode": "Nur Analyse",
+        "limits": {
+            "max_points_per_run": 200,
+            "max_changes_per_run": 0,
+            "max_percent_change": 0,
+            "allow_delete": False,
+        },
+        "policy": {
+            "auto_class_thresholds": {
+                "A": {"risk_max": 0.15, "confidence_min": 0.85},
+                "B": {"risk_max": 0.35, "confidence_min": 0.75},
+                "C": {"risk_max": 0.75, "confidence_min": 0.50},
+            }
+        },
+    }]
+
+
+def _dq_profiles_load() -> list[dict[str, Any]]:
+    try:
+        if not DQ_PROFILES_PATH.exists():
+            return _dq_profiles_default()
+        with DQ_LOCK:
+            raw = DQ_PROFILES_PATH.read_text(encoding="utf-8", errors="replace")
+        j = json.loads(raw) if raw else None
+        if isinstance(j, dict) and isinstance(j.get("profiles"), list):
+            out = [x for x in (j.get("profiles") or []) if isinstance(x, dict)]
+            return out if out else _dq_profiles_default()
+        if isinstance(j, list):
+            out = [x for x in j if isinstance(x, dict)]
+            return out if out else _dq_profiles_default()
+        return _dq_profiles_default()
+    except Exception:
+        return _dq_profiles_default()
+
+
+def _dq_profiles_save(xs: list[dict[str, Any]]) -> None:
+    try:
+        now = _utc_now_iso_ms()
+        out: list[dict[str, Any]] = []
+        for x in xs:
+            if not isinstance(x, dict):
+                continue
+            pid = str(x.get("id") or "").strip() or uuid.uuid4().hex
+            item = dict(x)
+            item["id"] = pid
+            item.setdefault("schema_version", DQ_PROFILE_SCHEMA_VERSION)
+            item.setdefault("created_at", now)
+            item["updated_at"] = now
+            item.setdefault("source", _dq_now_user_source())
+            item.setdefault("status", "active")
+            out.append(item)
+        _dq_write_json(DQ_PROFILES_PATH, {"profiles": out, "saved_at": now})
+    except Exception:
+        return
+
+
+def _dq_rules_default() -> list[dict[str, Any]]:
+    now = _utc_now_iso_ms()
+    return [
+        {
+            "id": "rule_investigate_only",
+            "schema_version": DQ_AUTORULE_SCHEMA_VERSION,
+            "created_at": now,
+            "updated_at": now,
+            "source": {"system": True},
+            "status": "active",
+            "match": {"proposal_kind": "investigate_in_dashboard"},
+            "set_class": "D",
+            "note": "Investigation only",
+        }
+    ]
+
+
+def _dq_rules_load() -> list[dict[str, Any]]:
+    try:
+        if not DQ_RULES_PATH.exists():
+            return _dq_rules_default()
+        with DQ_LOCK:
+            raw = DQ_RULES_PATH.read_text(encoding="utf-8", errors="replace")
+        j = json.loads(raw) if raw else None
+        if isinstance(j, dict) and isinstance(j.get("rules"), list):
+            out = [x for x in (j.get("rules") or []) if isinstance(x, dict)]
+            return out if out else _dq_rules_default()
+        if isinstance(j, list):
+            out = [x for x in j if isinstance(x, dict)]
+            return out if out else _dq_rules_default()
+        return _dq_rules_default()
+    except Exception:
+        return _dq_rules_default()
+
+
+def _dq_rules_save(xs: list[dict[str, Any]]) -> None:
+    try:
+        now = _utc_now_iso_ms()
+        out: list[dict[str, Any]] = []
+        for x in xs:
+            if not isinstance(x, dict):
+                continue
+            rid = str(x.get("id") or "").strip() or uuid.uuid4().hex
+            item = dict(x)
+            item["id"] = rid
+            item.setdefault("schema_version", DQ_AUTORULE_SCHEMA_VERSION)
+            item.setdefault("created_at", now)
+            item["updated_at"] = now
+            item.setdefault("source", _dq_now_user_source())
+            item.setdefault("status", "active")
+            out.append(item)
+        _dq_write_json(DQ_RULES_PATH, {"rules": out, "saved_at": now})
+    except Exception:
+        return
+
+
+def _dq_profile_active(profiles: list[dict[str, Any]]) -> dict[str, Any]:
+    for p in profiles:
+        if isinstance(p, dict) and str(p.get("status") or "") == "active":
+            return p
+    return profiles[0] if profiles else {}
+
+
+def _dq_suggest_class(profile: dict[str, Any], rules: list[dict[str, Any]], proposal: dict[str, Any]) -> tuple[str, list[str]]:
+    notes: list[str] = []
+    kind = str(proposal.get("proposal_kind") or "")
+    risk = proposal.get("risk") if isinstance(proposal.get("risk"), dict) else {}
+    try:
+        risk_lvl = float(risk.get("level") or 0.0)
+    except Exception:
+        risk_lvl = 0.0
+    try:
+        conf = float(proposal.get("confidence") or 0.0)
+    except Exception:
+        conf = 0.0
+
+    # Rules first (best-effort; rule errors must not block)
+    for r in rules or []:
+        try:
+            if not isinstance(r, dict) or str(r.get("status") or "") != "active":
+                continue
+            match = r.get("match") if isinstance(r.get("match"), dict) else {}
+            mk = str(match.get("proposal_kind") or "").strip()
+            if mk and mk != kind:
+                continue
+            cls = str(r.get("set_class") or "").strip().upper()
+            if cls in ("A", "B", "C", "D"):
+                notes.append(f"rule:{r.get('id')} -> {cls}")
+                return cls, notes
+        except Exception:
+            continue
+
+    th = ((profile.get("policy") or {}).get("auto_class_thresholds") or {}) if isinstance(profile.get("policy"), dict) else {}
+    try:
+        a = th.get("A") if isinstance(th, dict) else None
+        b = th.get("B") if isinstance(th, dict) else None
+        c = th.get("C") if isinstance(th, dict) else None
+        if isinstance(a, dict) and risk_lvl <= float(a.get("risk_max") or 0.0) and conf >= float(a.get("confidence_min") or 1.0):
+            notes.append("threshold:A")
+            return "A", notes
+        if isinstance(b, dict) and risk_lvl <= float(b.get("risk_max") or 0.0) and conf >= float(b.get("confidence_min") or 1.0):
+            notes.append("threshold:B")
+            return "B", notes
+        if isinstance(c, dict) and risk_lvl <= float(c.get("risk_max") or 1.0) and conf >= float(c.get("confidence_min") or 0.0):
+            notes.append("threshold:C")
+            return "C", notes
+    except Exception:
+        pass
+    notes.append("fallback:D")
+    return "D", notes
+
+
+def _dq_approvals_list(limit: int = 500) -> list[dict[str, Any]]:
+    xs = _dq_list_dir(DQ_APPROVALS_DIR, limit=limit)
+    xs.sort(key=lambda r: str(r.get("created_at") or ""), reverse=True)
+    return xs
+
+
+def _dq_latest_approval_by_proposal(limit: int = 2000) -> dict[str, dict[str, Any]]:
+    out: dict[str, dict[str, Any]] = {}
+    for a in _dq_approvals_list(limit):
+        if not isinstance(a, dict):
+            continue
+        pid = str(a.get("proposal_id") or "").strip()
+        if not pid or pid in out:
+            continue
+        out[pid] = a
+    return out
+
+
+@app.get("/api/dq/phase3/state")
+def api_dq_phase3_state():
+    profiles = _dq_profiles_load()
+    rules = _dq_rules_load()
+
+    prof = _dq_profile_active(profiles)
+    approvals = _dq_latest_approval_by_proposal()
+
+    # Queue = proposals that are not approved/rejected yet
+    props = _dq_list_dir(DQ_PROPOSALS_DIR, limit=500)
+    queue: list[dict[str, Any]] = []
+    for p in props:
+        if not isinstance(p, dict):
+            continue
+        pid = str(p.get("id") or "").strip()
+        last = approvals.get(pid)
+        if last and str(last.get("status") or "") in ("approved", "rejected"):
+            continue
+        cls, notes = _dq_suggest_class(prof, rules, p)
+        queue.append({
+            "id": pid,
+            "series_key": p.get("series_key"),
+            "proposal_kind": p.get("proposal_kind"),
+            "title": p.get("title"),
+            "risk": p.get("risk"),
+            "confidence": p.get("confidence"),
+            "suggested_class": cls,
+            "suggest_notes": notes,
+            "preview": p.get("preview"),
+        })
+    queue.sort(key=lambda r: float((r.get("risk") or {}).get("level") or 0.0), reverse=True)
+
+    return jsonify({
+        "ok": True,
+        "profiles": profiles,
+        "active_profile": prof,
+        "rules": rules,
+        "queue": queue[:300],
+        "approvals": list(approvals.values())[:200],
+        "execution_enabled": False,
+        "execution_blocked_reason": "Produktive Ausfuehrung ist ohne #400 (ChangeBlock-Haertung) gesperrt.",
+    })
+
+
+@app.post("/api/dq/phase3/profile/save")
+def api_dq_phase3_profile_save():
+    body = request.get_json(force=True) or {}
+    xs = body.get("profiles") if isinstance(body, dict) else None
+    if not isinstance(xs, list):
+        return jsonify({"ok": False, "error": "profiles must be a list"}), 400
+    # store wrapper for forward-compat
+    now = _utc_now_iso_ms()
+    out = {"schema_version": 1, "saved_at": now, "profiles": xs}
+    _dq_write_json(DQ_PROFILES_PATH, out)
+    return jsonify({"ok": True})
+
+
+@app.post("/api/dq/phase3/rules/save")
+def api_dq_phase3_rules_save():
+    body = request.get_json(force=True) or {}
+    xs = body.get("rules") if isinstance(body, dict) else None
+    if not isinstance(xs, list):
+        return jsonify({"ok": False, "error": "rules must be a list"}), 400
+    now = _utc_now_iso_ms()
+    out = {"schema_version": 1, "saved_at": now, "rules": xs}
+    _dq_write_json(DQ_RULES_PATH, out)
+    return jsonify({"ok": True})
+
+
+@app.post("/api/dq/phase3/approve")
+def api_dq_phase3_approve():
+    body = request.get_json(force=True) or {}
+    pid = str(body.get("proposal_id") or "").strip()
+    cls = str(body.get("class") or "").strip().upper()
+    status = str(body.get("status") or "approved").strip().lower()
+    reason = str(body.get("reason") or "").strip()[:800]
+    if not pid:
+        return jsonify({"ok": False, "error": "proposal_id required"}), 400
+    if cls not in ("A", "B", "C", "D"):
+        return jsonify({"ok": False, "error": "class must be A|B|C|D"}), 400
+    if status not in ("approved", "rejected"):
+        return jsonify({"ok": False, "error": "status must be approved|rejected"}), 400
+    prop = _dq_read_json(_dq_proposal_path(pid))
+    if not prop:
+        return jsonify({"ok": False, "error": "proposal not found"}), 404
+
+    now = _utc_now_iso_ms()
+    aid = uuid.uuid4().hex
+    approval = {
+        "id": aid,
+        "schema_version": DQ_APPROVAL_SCHEMA_VERSION,
+        "created_at": now,
+        "updated_at": now,
+        "source": _dq_now_user_source(),
+        "status": status,
+        "proposal_id": pid,
+        "plan_id": prop.get("plan_id"),
+        "run_id": prop.get("run_id"),
+        "class": cls,
+        "reason": reason,
+        "risk": prop.get("risk"),
+        "confidence": prop.get("confidence"),
+    }
+    _dq_write_json(DQ_APPROVALS_DIR / f"{aid}.json", approval)
+    return jsonify({"ok": True, "approval": approval, "execution_enabled": False})
 
 
 @app.post("/api/raw_points")

@@ -115,6 +115,57 @@
         </div>
       </div>
 
+      <div class="card" data-ui="dq_phase3.panel_card" data-ib-pickkey="dq_phase3.panel_card" title="dq.phase3">
+        <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:baseline;">
+          <div style="font-weight:900; font-size:16px;" data-ui="dq_phase3.txt_title" data-ib-pickkey="dq_phase3.txt_title" title="dq.phase3.title">Freigaben &amp; Automatikprofile (Phase 3)</div>
+          <div class="muted" id="phase3_meta" data-ui="dq_phase3.txt_meta" data-ib-pickkey="dq_phase3.txt_meta" title="dq.phase3.meta"></div>
+        </div>
+        <div class="muted" id="phase3_block" data-ui="dq_phase3.txt_block" data-ib-pickkey="dq_phase3.txt_block" title="dq.phase3.block"></div>
+
+        <div class="row" data-ui="dq_phase3.panel_controls" data-ib-pickkey="dq_phase3.panel_controls" title="dq.phase3.controls">
+          <button id="dq_phase3_reload" class="btn_sm" data-ui="dq_phase3.btn_reload" data-ib-pickkey="dq_phase3.btn_reload" title="dq.phase3.reload">Reload Phase 3</button>
+        </div>
+
+        <div class="table_wrap" data-ui="dq_phase3.queue_wrap" data-ib-pickkey="dq_phase3.queue_wrap" title="dq.phase3.queue">
+          <div style="font-weight:800;">Freigabe-Warteschlange</div>
+          <div class="table_box" style="max-height:42vh;">
+            <table id="dq_queue_tbl" data-ui="dq_phase3.queue_tbl" data-ib-pickkey="dq_phase3.queue_tbl" title="dq.phase3.queue.tbl">
+              <thead>
+                <tr><th>Proposal</th><th>Risk</th><th>Conf</th><th>Suggested</th><th>Notes</th><th>Aktionen</th></tr>
+              </thead>
+              <tbody id="dq_queue_rows"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="row" style="align-items:flex-start;" data-ui="dq_phase3.panel_json" data-ib-pickkey="dq_phase3.panel_json" title="dq.phase3.json">
+          <div style="flex:1 1 420px; min-width: 280px;">
+            <div style="font-weight:800;">Profile (JSON)</div>
+            <textarea id="dq_profiles_json" rows="10" class="mono" data-ui="dq_phase3.ta_profiles" data-ib-pickkey="dq_phase3.ta_profiles" title="dq.phase3.profiles"></textarea>
+            <div class="row" style="margin-top:6px;">
+              <button id="dq_profiles_save" class="btn_sm" data-ui="dq_phase3.btn_profiles_save" data-ib-pickkey="dq_phase3.btn_profiles_save" title="dq.phase3.profiles.save">Save Profiles</button>
+            </div>
+          </div>
+          <div style="flex:1 1 420px; min-width: 280px;">
+            <div style="font-weight:800;">AutoRules (JSON)</div>
+            <textarea id="dq_rules_json" rows="10" class="mono" data-ui="dq_phase3.ta_rules" data-ib-pickkey="dq_phase3.ta_rules" title="dq.phase3.rules"></textarea>
+            <div class="row" style="margin-top:6px;">
+              <button id="dq_rules_save" class="btn_sm" data-ui="dq_phase3.btn_rules_save" data-ib-pickkey="dq_phase3.btn_rules_save" title="dq.phase3.rules.save">Save Rules</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="table_wrap" data-ui="dq_phase3.approvals_wrap" data-ib-pickkey="dq_phase3.approvals_wrap" title="dq.phase3.approvals">
+          <div style="font-weight:800;">Letzte Freigaben (Log)</div>
+          <div class="table_box" style="max-height:24vh;">
+            <table id="dq_approvals_tbl" data-ui="dq_phase3.approvals_tbl" data-ib-pickkey="dq_phase3.approvals_tbl" title="dq.phase3.approvals.tbl">
+              <thead><tr><th>at</th><th>proposal</th><th>status</th><th>class</th><th>reason</th></tr></thead>
+              <tbody id="dq_approvals_rows"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <div class="dlg_backdrop" id="dq_dlg" data-ui="dq_detail.dialog" data-ib-pickkey="dq_detail.dialog" title="dq.detail">
         <div class="dlg">
           <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start;">
@@ -154,9 +205,20 @@
       const $propReload = document.getElementById('dq_props_reload');
       const $propRows = document.getElementById('dq_props_rows');
 
+      const $p3Meta = document.getElementById('phase3_meta');
+      const $p3Block = document.getElementById('phase3_block');
+      const $p3Reload = document.getElementById('dq_phase3_reload');
+      const $queueRows = document.getElementById('dq_queue_rows');
+      const $profilesJson = document.getElementById('dq_profiles_json');
+      const $rulesJson = document.getElementById('dq_rules_json');
+      const $profilesSave = document.getElementById('dq_profiles_save');
+      const $rulesSave = document.getElementById('dq_rules_save');
+      const $approvalsRows = document.getElementById('dq_approvals_rows');
+
       let ACTIVE_RUN_ID = null;
       let ACTIVE_RUN = null;
       let ACTIVE_PROPOSALS = [];
+      let PHASE3_STATE = null;
 
       function err(msg){ try{ $err.textContent = msg || ''; }catch(e){} }
       function ok(msg){ try{ $ok.textContent = msg || ''; }catch(e){} }
@@ -345,6 +407,108 @@
         await loadProposals();
       }
 
+      async function loadPhase3(){
+        if(!$queueRows) return;
+        $queueRows.innerHTML = '';
+        try{ if($approvalsRows) $approvalsRows.innerHTML = ''; }catch(e){}
+        let j;
+        try{ j = await api('./api/dq/phase3/state'); }catch(e){ err('Phase3 Fehler: ' + e.message); return; }
+        PHASE3_STATE = j;
+        try{ if($p3Meta) $p3Meta.textContent = `queue=${(j.queue||[]).length} execution_enabled=${j.execution_enabled}`; }catch(e){}
+        try{ if($p3Block) $p3Block.textContent = String(j.execution_blocked_reason||''); }catch(e){}
+        try{ if($profilesJson) $profilesJson.value = JSON.stringify(j.profiles||[], null, 2); }catch(e){}
+        try{ if($rulesJson) $rulesJson.value = JSON.stringify(j.rules||[], null, 2); }catch(e){}
+
+        const q = Array.isArray(j.queue) ? j.queue : [];
+        q.slice(0, 300).forEach((it, idx)=>{
+          const tr = document.createElement('tr');
+          const pk = String(it.id||('q_' + idx));
+          tr.setAttribute('data-ui','dq_phase3.queue_row');
+          tr.setAttribute('data-ib-pickkey','dq_phase3.queue_row.' + pk);
+          const tdP = document.createElement('td'); tdP.textContent = String(it.title||it.proposal_kind||it.id||'');
+          const tdR = document.createElement('td'); tdR.textContent = _riskTxt(it.risk);
+          const tdC = document.createElement('td'); tdC.style.textAlign='right'; tdC.textContent = (it.confidence!==null&&it.confidence!==undefined)?String(it.confidence):'';
+          const tdS = document.createElement('td');
+          const sel = document.createElement('select');
+          ['A','B','C','D'].forEach(x=>{ const o=document.createElement('option'); o.value=x; o.textContent=x; sel.appendChild(o); });
+          sel.value = String(it.suggested_class||'D');
+          tdS.appendChild(sel);
+          const tdN = document.createElement('td'); tdN.textContent = Array.isArray(it.suggest_notes)?it.suggest_notes.join(', '):String(it.suggest_notes||'');
+          const tdA = document.createElement('td'); tdA.style.whiteSpace='nowrap';
+
+          const bApp = document.createElement('button'); bApp.className='btn_sm'; bApp.textContent='Approve';
+          const bRej = document.createElement('button'); bRej.className='btn_sm'; bRej.textContent='Reject';
+          const bPrev = document.createElement('button'); bPrev.className='btn_sm'; bPrev.textContent='Preview';
+
+          bPrev.onclick = async ()=>{
+            try{
+              const prev = (it.preview && typeof it.preview === 'object') ? it.preview : null;
+              if(prev && String(prev.type||'') === 'change_preview' && prev.payload){
+                const j2 = await api('./api/change_preview', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(prev.payload)});
+                if($dlgTitle) $dlgTitle.textContent = 'Preview: ' + String(it.proposal_kind||'');
+                if($dlgBody) $dlgBody.textContent = JSON.stringify(j2, null, 2);
+                if($dlg) $dlg.style.display = 'block';
+              }else if(prev && prev.href){
+                window.location.href = String(prev.href);
+              }else{
+                err('Kein Preview.');
+              }
+            }catch(e){ err('Preview Fehler: ' + (e&&e.message?e.message:String(e))); }
+          };
+
+          bApp.onclick = async ()=>{
+            const reason = prompt('Begruendung (optional)', '');
+            try{ await api('./api/dq/phase3/approve', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({proposal_id: String(it.id||''), class: sel.value, status: 'approved', reason: reason||''})}); ok('Approved.'); }catch(e){ err(e.message); }
+            await loadPhase3();
+          };
+          bRej.onclick = async ()=>{
+            const reason = prompt('Begruendung (optional)', '');
+            try{ await api('./api/dq/phase3/approve', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({proposal_id: String(it.id||''), class: sel.value, status: 'rejected', reason: reason||''})}); ok('Rejected.'); }catch(e){ err(e.message); }
+            await loadPhase3();
+          };
+
+          tdA.appendChild(bPrev);
+          tdA.appendChild(bApp);
+          tdA.appendChild(bRej);
+
+          tr.appendChild(tdP);
+          tr.appendChild(tdR);
+          tr.appendChild(tdC);
+          tr.appendChild(tdS);
+          tr.appendChild(tdN);
+          tr.appendChild(tdA);
+          $queueRows.appendChild(tr);
+        });
+
+        const ap = Array.isArray(j.approvals) ? j.approvals : [];
+        ap.slice(0, 200).forEach((a, idx)=>{
+          if(!$approvalsRows) return;
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td>${fmtTs(a.created_at||'')}</td><td class="mono">${String(a.proposal_id||'')}</td><td>${String(a.status||'')}</td><td>${String(a.class||'')}</td><td>${String(a.reason||'')}</td>`;
+          $approvalsRows.appendChild(tr);
+        });
+      }
+
+      async function saveProfiles(){
+        try{
+          const xs = JSON.parse(String($profilesJson && $profilesJson.value ? $profilesJson.value : '[]'));
+          if(!Array.isArray(xs)) throw new Error('profiles JSON muss eine Liste sein');
+          await api('./api/dq/phase3/profile/save', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({profiles: xs})});
+          ok('Profiles gespeichert.');
+          await loadPhase3();
+        }catch(e){ err('Profiles Save Fehler: ' + (e&&e.message?e.message:String(e))); }
+      }
+
+      async function saveRules(){
+        try{
+          const xs = JSON.parse(String($rulesJson && $rulesJson.value ? $rulesJson.value : '[]'));
+          if(!Array.isArray(xs)) throw new Error('rules JSON muss eine Liste sein');
+          await api('./api/dq/phase3/rules/save', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({rules: xs})});
+          ok('Rules gespeichert.');
+          await loadPhase3();
+        }catch(e){ err('Rules Save Fehler: ' + (e&&e.message?e.message:String(e))); }
+      }
+
       async function pollRun(runId){
         let j;
         try{
@@ -438,6 +602,12 @@
 
       try{ if($propGen) $propGen.onclick = ()=>{ generateProposals().catch(()=>{}); }; }catch(e){}
       try{ if($propReload) $propReload.onclick = ()=>{ loadProposals().catch(()=>{}); }; }catch(e){}
+
+      try{ if($p3Reload) $p3Reload.onclick = ()=>{ loadPhase3().catch(()=>{}); }; }catch(e){}
+      try{ if($profilesSave) $profilesSave.onclick = ()=>{ saveProfiles().catch(()=>{}); }; }catch(e){}
+      try{ if($rulesSave) $rulesSave.onclick = ()=>{ saveRules().catch(()=>{}); }; }catch(e){}
+
+      try{ loadPhase3().catch(()=>{}); }catch(e){}
       </script>
     </main>
   </div>
