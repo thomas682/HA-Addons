@@ -33,6 +33,16 @@
 
 - Monitor: Minimal-UI fuer Watchlists + Runs (Edit/Save/Run Selected) ergaenzt.
 
+## 1.12.443
+
+### Enhancement
+
+- Datenpflege Center Phase 1: neue Seite `Datenpflege` inkl. QualityRun/Findings, Score (0-100), Ampelstatus und read-only Analyse mit HA-Metadaten als Primaersignal (Quelle: Home Assistant). Export als JSON/Markdown, Jump zum Dashboard und Supportdaten-Download. ([#407](https://github.com/thomas682/HA-Addons/issues/407))
+
+### Maintenance
+
+- API: neue Endpunkte `/api/dq/quality_run/start`, `/api/dq/quality_run`, `/api/dq/quality_runs`, `/api/dq/quality_run/export`.
+
 ## 1.12.439
 
 ### Enhancement

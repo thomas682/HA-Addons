@@ -115,6 +115,10 @@ WATCHLIST_RUNS_PATH = DATA_DIR / "influxbro_watchlist_runs.jsonl"
 WATCHLIST_INBOX_PATH = DATA_DIR / "influxbro_watchlist_inbox.json"
 JOBS_HISTORY_PATH = DATA_DIR / "influxbro_jobs_history.json"
 
+# Data Quality Center (DQ) Phase 1 artifacts (persisted under /data)
+DQ_LOCK = threading.RLock()
+DQ_RUNS_DIR = DATA_DIR / "dq" / "quality_runs"
+
 # Timers state (last run timestamps, persisted under /data)
 TIMERS_STATE_LOCK = threading.RLock()
 TIMERS_STATE_PATH = DATA_DIR / "influxbro_timers_state.json"
@@ -2149,6 +2153,8 @@ def _ui_inventory_area_for_template(name: str) -> str:
         return "Performance"
     if n in ("quality.html",):
         return "Quality"
+    if n in ("dq.html",):
+        return "DQ"
     if n in ("config.html",):
         return "Einstellungen"
     if n in ("profiles.html",):
@@ -8688,6 +8694,12 @@ def stats_page():
 def quality_page():
     cfg = load_cfg()
     return render_template("quality.html", cfg=cfg, allow_delete=True, nav="quality")
+
+
+@app.get("/dq")
+def dq_page():
+    cfg = load_cfg()
+    return render_template("dq.html", cfg=cfg, allow_delete=True, nav="dq")
 
 
 @app.get("/logs")
@@ -20658,6 +20670,581 @@ def api_watchlists_inbox_mark():
 def api_watchlists_inbox_summary():
     xs = _watchlist_inbox_load()
     return jsonify({"ok": True, "summary": _watchlist_inbox_summary(xs)})
+
+
+# ------------------------------
+# Data Quality Center (DQ) Phase 1
+# ------------------------------
+
+DQ_RUN_SCHEMA_VERSION = 1
+DQ_FINDING_SCHEMA_VERSION = 1
+
+DQ_RUNS_INFLIGHT: dict[str, dict[str, Any]] = {}
+
+
+def _dq_run_path(run_id: str) -> Path:
+    rid = str(run_id or "").strip() or "unknown"
+    return (DQ_RUNS_DIR / f"{rid}.json")
+
+
+def _dq_run_save(run: dict[str, Any]) -> None:
+    try:
+        rid = str(run.get("id") or "").strip() or uuid.uuid4().hex
+        run["id"] = rid
+        run.setdefault("schema_version", DQ_RUN_SCHEMA_VERSION)
+        run["updated_at"] = _utc_now_iso_ms()
+
+        DQ_RUNS_DIR.mkdir(parents=True, exist_ok=True)
+        p = _dq_run_path(rid)
+        tmp = p.with_suffix(p.suffix + ".tmp")
+        raw = json.dumps(run, indent=2, sort_keys=True, ensure_ascii=True)
+        with DQ_LOCK:
+            tmp.write_text(raw, encoding="utf-8")
+            tmp.replace(p)
+    except Exception:
+        return
+
+
+def _dq_run_load(run_id: str) -> dict[str, Any] | None:
+    try:
+        p = _dq_run_path(run_id)
+        if not p.exists():
+            return None
+        with DQ_LOCK:
+            raw = p.read_text(encoding="utf-8", errors="replace")
+        j = json.loads(raw) if raw else None
+        return j if isinstance(j, dict) else None
+    except Exception:
+        return None
+
+
+def _dq_runs_list(limit: int = 50) -> list[dict[str, Any]]:
+    try:
+        lim = min(200, max(1, int(limit or 50)))
+    except Exception:
+        lim = 50
+    try:
+        if not DQ_RUNS_DIR.exists():
+            return []
+        ps = [p for p in DQ_RUNS_DIR.iterdir() if p.is_file() and p.suffix == ".json"]
+        ps.sort(key=lambda p: float(p.stat().st_mtime if p.exists() else 0), reverse=True)
+        out: list[dict[str, Any]] = []
+        for p in ps[:lim]:
+            try:
+                raw = p.read_text(encoding="utf-8", errors="replace")
+                j = json.loads(raw) if raw else None
+                if not isinstance(j, dict):
+                    continue
+                out.append({
+                    "id": j.get("id"),
+                    "schema_version": j.get("schema_version"),
+                    "state": j.get("state"),
+                    "started_at": j.get("started_at"),
+                    "updated_at": j.get("updated_at"),
+                    "summary": j.get("summary"),
+                    "params": j.get("params"),
+                    "error": j.get("error"),
+                })
+            except Exception:
+                continue
+        return out
+    except Exception:
+        return []
+
+
+def _dq_score_from_findings(findings: list[dict[str, Any]]) -> tuple[int, str, list[dict[str, Any]]]:
+    score = 100
+    breakdown: list[dict[str, Any]] = []
+    for f in findings:
+        sev = str(f.get("severity") or "info").strip().lower()
+        kind = str(f.get("kind") or "").strip()
+        if sev in ("crit", "critical"):
+            delta = 25
+        elif sev in ("warn", "warning"):
+            delta = 12
+        else:
+            delta = 5
+        score -= delta
+        breakdown.append({"kind": kind, "severity": sev, "delta": -delta, "reason": str(f.get("message") or "")[:180]})
+    score = max(0, min(100, score))
+    if score >= 80:
+        st = "green"
+    elif score >= 50:
+        st = "yellow"
+    else:
+        st = "red"
+    return score, st, breakdown
+
+
+def _dq_ha_meta(entity_id: str, cache: dict[str, dict[str, Any]]) -> dict[str, Any]:
+    eid = str(entity_id or "").strip()
+    if not eid:
+        return {"ok": True, "available": False, "error": "entity_id required", "entity": None}
+    if eid in cache:
+        return cache[eid]
+    resolved, rerr = _resolve_ha_entity_id(eid)
+    if not resolved:
+        cache[eid] = {"ok": True, "available": False, "error": rerr or "invalid entity_id", "entity": None}
+        return cache[eid]
+    try:
+        status, txt = _supervisor_get("/core/api/states/" + urllib.parse.quote(resolved, safe=""), timeout_s=8)
+        if status != 200:
+            cache[eid] = {"ok": True, "available": False, "error": f"HTTP {status}" if status else txt, "entity": None}
+            return cache[eid]
+        data = json.loads(txt) if txt else {}
+        attrs = (data.get("attributes") or {}) if isinstance(data, dict) else {}
+        ent = {
+            "entity_id": data.get("entity_id") if isinstance(data, dict) else resolved,
+            "state": data.get("state") if isinstance(data, dict) else None,
+            "friendly_name": attrs.get("friendly_name"),
+            "device_class": attrs.get("device_class"),
+            "state_class": attrs.get("state_class"),
+            "unit_of_measurement": attrs.get("unit_of_measurement"),
+            "icon": attrs.get("icon"),
+            "attributes": attrs,
+            "resolved_entity_id": resolved,
+        }
+        cache[eid] = {"ok": True, "available": True, "error": None, "entity": ent}
+        return cache[eid]
+    except Exception as e:
+        cache[eid] = {"ok": True, "available": False, "error": str(e) or e.__class__.__name__, "entity": None}
+        return cache[eid]
+
+
+def _dq_flux_base(cfg: dict[str, Any], *, start: str, stop: str, m: str, f: str, eid: str | None, fn: str | None) -> str:
+    parts = [
+        f"from(bucket: \"{cfg['bucket']}\")",
+        f"  |> range(start: time(v: \"{start}\"), stop: time(v: \"{stop}\"))",
+        f"  |> filter(fn: (r) => r._measurement == {_flux_str(m)})",
+        f"  |> filter(fn: (r) => r._field == {_flux_str(f)})",
+    ]
+    if eid:
+        parts.append(f"  |> filter(fn: (r) => r.entity_id == {_flux_str(eid)})")
+    if fn:
+        parts.append(f"  |> filter(fn: (r) => r.friendly_name == {_flux_str(fn)})")
+    parts.append("  |> keep(columns: ['_time','_value','_measurement','_field','entity_id','friendly_name'])")
+    parts.append("  |> sort(columns: ['_time'])")
+    return "\n".join(parts) + "\n"
+
+
+def _dq_analyze_one(cfg: dict[str, Any], *, start_dt: datetime, stop_dt: datetime, series: dict[str, Any], ha: dict[str, Any] | None, stale_minutes: int) -> dict[str, Any]:
+    m = str(series.get("measurement") or "").strip()
+    f = str(series.get("field") or "").strip()
+    eid = str(series.get("entity_id") or "").strip() or None
+    fn = str(series.get("friendly_name") or "").strip() or None
+    sk = _analysis_series_key(m, f, eid, fn)
+    label = sk
+
+    findings: list[dict[str, Any]] = []
+    recs: list[str] = []
+    stats: dict[str, Any] = {}
+
+    # HA metadata findings (primary signal)
+    ha_av = bool(ha and ha.get("available"))
+    ent = (ha.get("entity") if isinstance(ha, dict) else None) if ha_av else None
+    dc = str(ent.get("device_class") or "") if isinstance(ent, dict) else ""
+    sc = str(ent.get("state_class") or "") if isinstance(ent, dict) else ""
+    uom = str(ent.get("unit_of_measurement") or "") if isinstance(ent, dict) else ""
+    if eid and not ha_av:
+        findings.append({"schema_version": DQ_FINDING_SCHEMA_VERSION, "kind": "ha_missing", "severity": "warn", "message": "HA Metadaten nicht verfuegbar", "evidence": {"entity_id": eid, "error": ha.get('error') if isinstance(ha, dict) else None}})
+        recs.append("Home Assistant Erreichbarkeit/Token pruefen (HA-Metadaten).")
+    if eid and ha_av:
+        if not dc:
+            findings.append({"schema_version": DQ_FINDING_SCHEMA_VERSION, "kind": "ha_device_class_missing", "severity": "info", "message": "HA device_class fehlt", "evidence": {"entity_id": eid}})
+            recs.append("device_class in HA pruefen/setzen.")
+        if not sc:
+            findings.append({"schema_version": DQ_FINDING_SCHEMA_VERSION, "kind": "ha_state_class_missing", "severity": "info", "message": "HA state_class fehlt", "evidence": {"entity_id": eid}})
+            recs.append("state_class in HA pruefen/setzen.")
+        if not uom:
+            findings.append({"schema_version": DQ_FINDING_SCHEMA_VERSION, "kind": "ha_uom_missing", "severity": "info", "message": "HA unit_of_measurement fehlt", "evidence": {"entity_id": eid}})
+            recs.append("unit_of_measurement in HA pruefen/setzen.")
+        label = str(ent.get("friendly_name") or sk)
+
+    # Influx read-only analysis
+    if int(cfg.get("influx_version", 2)) != 2 or not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+        findings.append({"schema_version": DQ_FINDING_SCHEMA_VERSION, "kind": "influx_unavailable", "severity": "warn", "message": "Influx v2 Konfiguration nicht verfuegbar", "evidence": {"influx_version": cfg.get('influx_version')}})
+        recs.append("Influx v2 Verbindung/Token/Org/Bucket pruefen.")
+        score, status, breakdown = _dq_score_from_findings(findings)
+        return {
+            "schema_version": 1,
+            "series_key": sk,
+            "label": label,
+            "measurement": m,
+            "field": f,
+            "entity_id": eid,
+            "friendly_name": fn,
+            "ha": ha,
+            "stats": stats,
+            "findings": findings,
+            "recommendations": recs[:10],
+            "score": score,
+            "status": status,
+            "score_breakdown": breakdown,
+        }
+
+    start = _dt_to_rfc3339_utc(start_dt)
+    stop = _dt_to_rfc3339_utc(stop_dt)
+    base = _dq_flux_base(cfg, start=start, stop=stop, m=m, f=f, eid=eid, fn=fn)
+
+    with v2_client(cfg) as c:
+        qapi = c.query_api()
+
+        # count/first/last (works for any _value type)
+        try:
+            q = base + "  |> count()\n"
+            tables = qapi.query(q, org=cfg["org"])
+            for t in tables or []:
+                for rec in getattr(t, "records", []) or []:
+                    stats["count"] = int(rec.get_value() or 0)
+        except Exception:
+            stats["count"] = None
+        try:
+            q = base + "  |> first()\n"
+            tables = qapi.query(q, org=cfg["org"])
+            for t in tables or []:
+                for rec in getattr(t, "records", []) or []:
+                    stats["oldest_time"] = _dt_to_rfc3339_utc(rec.get_time()) if isinstance(rec.get_time(), datetime) else rec.get_time()
+                    stats["oldest_value"] = rec.get_value()
+        except Exception:
+            pass
+        try:
+            q = base + "  |> last()\n"
+            tables = qapi.query(q, org=cfg["org"])
+            for t in tables or []:
+                for rec in getattr(t, "records", []) or []:
+                    stats["newest_time"] = _dt_to_rfc3339_utc(rec.get_time()) if isinstance(rec.get_time(), datetime) else rec.get_time()
+                    stats["newest_value"] = rec.get_value()
+        except Exception:
+            pass
+
+        # max gap in seconds (time-only)
+        try:
+            q = base + "  |> elapsed(unit: 1s)\n  |> max(column: 'elapsed')\n"
+            tables = qapi.query(q, org=cfg["org"])
+            for t in tables or []:
+                for rec in getattr(t, "records", []) or []:
+                    stats["max_gap_seconds"] = int(rec.get_value() or 0)
+        except Exception:
+            pass
+
+        # numeric-only checks (best-effort)
+        try:
+            q = base + "  |> map(fn: (r) => ({r with _value: float(v: r._value)}))\n  |> filter(fn: (r) => r._value < 0.0)\n  |> count()\n"
+            tables = qapi.query(q, org=cfg["org"])
+            for t in tables or []:
+                for rec in getattr(t, "records", []) or []:
+                    stats["negative_count"] = int(rec.get_value() or 0)
+        except Exception:
+            stats["negative_count"] = None
+
+        try:
+            q = base + "  |> map(fn: (r) => ({r with _value: float(v: r._value)}))\n  |> filter(fn: (r) => r._value == 0.0)\n  |> count()\n"
+            tables = qapi.query(q, org=cfg["org"])
+            for t in tables or []:
+                for rec in getattr(t, "records", []) or []:
+                    stats["zero_count"] = int(rec.get_value() or 0)
+        except Exception:
+            stats["zero_count"] = None
+
+        # counter-reset hint: negative differences in window
+        try:
+            q = base + "  |> map(fn: (r) => ({r with _value: float(v: r._value)}))\n  |> limit(n: 2000)\n  |> difference(nonNegative: false)\n  |> filter(fn: (r) => r._value < 0.0)\n  |> count()\n"
+            tables = qapi.query(q, org=cfg["org"])
+            for t in tables or []:
+                for rec in getattr(t, "records", []) or []:
+                    stats["neg_diff_count"] = int(rec.get_value() or 0)
+        except Exception:
+            stats["neg_diff_count"] = None
+
+    # Findings from stats
+    newest_s = str(stats.get("newest_time") or "").strip() or None
+    if newest_s:
+        try:
+            dt0 = _trace_parse_iso(newest_s)
+            if dt0 and dt0 < (datetime.now(timezone.utc) - timedelta(minutes=max(1, int(stale_minutes or 60)))):
+                findings.append({"schema_version": DQ_FINDING_SCHEMA_VERSION, "kind": "stale", "severity": "crit", "message": f"keine Daten seit > {int(stale_minutes)}min", "evidence": {"newest_time": newest_s}})
+                recs.append("Pruefe Influx Schreibfrequenz / HA Update / Netz.")
+        except Exception:
+            pass
+
+    try:
+        mg = int(stats.get("max_gap_seconds") or 0)
+        if mg >= int(max(1, stale_minutes)) * 60:
+            sev = "warn" if mg < int(max(1, stale_minutes)) * 120 else "crit"
+            findings.append({"schema_version": DQ_FINDING_SCHEMA_VERSION, "kind": "gaps", "severity": sev, "message": "Luecken im Zeitfenster", "evidence": {"max_gap_seconds": mg}})
+            recs.append("Datenluecken analysieren (Recorder/HA/Influx).")
+    except Exception:
+        pass
+
+    try:
+        neg = stats.get("negative_count")
+        if isinstance(neg, int) and neg > 0:
+            sev = "warn"
+            if sc in ("total_increasing", "total"):
+                sev = "crit"
+            findings.append({"schema_version": DQ_FINDING_SCHEMA_VERSION, "kind": "negative_values", "severity": sev, "message": "negative Werte im Zeitfenster", "evidence": {"negative_count": neg, "state_class": sc}})
+            recs.append("Negative Werte pruefen (Sensor, Template, Einheit).")
+    except Exception:
+        pass
+
+    try:
+        zd = stats.get("zero_count")
+        cnt = stats.get("count")
+        if isinstance(zd, int) and isinstance(cnt, int) and cnt > 0:
+            ratio = float(zd) / float(cnt)
+            if ratio >= 0.5 and zd >= 10:
+                findings.append({"schema_version": DQ_FINDING_SCHEMA_VERSION, "kind": "zero_spikes", "severity": "warn", "message": "ungewoehnlich viele Nullwerte", "evidence": {"zero_count": zd, "count": cnt, "ratio": round(ratio, 3)}})
+                recs.append("Nullwerte/Ungueltig-Regeln pruefen (Template/Integration).")
+    except Exception:
+        pass
+
+    try:
+        nd = stats.get("neg_diff_count")
+        if isinstance(nd, int) and nd > 0 and sc in ("total_increasing", "total"):
+            findings.append({"schema_version": DQ_FINDING_SCHEMA_VERSION, "kind": "counter_reset_hint", "severity": "crit", "message": "Hinweis auf Counter-Reset (negative Differenzen)", "evidence": {"neg_diff_count": nd, "state_class": sc}})
+            recs.append("Counter-Reset pruefen; ggf. state_class/Integration korrigieren.")
+    except Exception:
+        pass
+
+    score, status, breakdown = _dq_score_from_findings(findings)
+    return {
+        "schema_version": 1,
+        "series_key": sk,
+        "label": label,
+        "measurement": m,
+        "field": f,
+        "entity_id": eid,
+        "friendly_name": fn,
+        "ha": ha,
+        "stats": stats,
+        "findings": findings,
+        "recommendations": recs[:10],
+        "score": score,
+        "status": status,
+        "score_breakdown": breakdown,
+    }
+
+
+def _dq_quality_run_thread(run_id: str) -> None:
+    rid = str(run_id or "").strip()
+    run = _dq_run_load(rid) or {"id": rid}
+    run["state"] = "running"
+    run["updated_at"] = _utc_now_iso_ms()
+    _dq_run_save(run)
+
+    try:
+        cfg = _overlay_from_yaml_if_enabled(load_cfg())
+        params = run.get("params") if isinstance(run.get("params"), dict) else {}
+        try:
+            days = int(params.get("days") or 30)
+        except Exception:
+            days = 30
+        days = max(1, min(3650, days))
+        try:
+            limit = int(params.get("limit") or 200)
+        except Exception:
+            limit = 200
+        limit = max(1, min(1000, limit))
+        q = str(params.get("q") or "").strip()
+        try:
+            stale_minutes = int(params.get("stale_minutes") or 60)
+        except Exception:
+            stale_minutes = 60
+        stale_minutes = max(1, min(525600, stale_minutes))
+
+        stop_dt = datetime.now(timezone.utc)
+        start_dt = stop_dt - timedelta(days=days)
+
+        # Base series set (best-effort): use existing inventory query (read-only).
+        inv = _build_series_inventory(
+            cfg,
+            days=days,
+            limit=limit,
+            offset=0,
+            state="",
+            q=q,
+            field_filter=None,
+            stale_days=max(1, min(3650, int(max(1, stale_minutes) / (60 * 24)))) if stale_minutes else 30,
+            enrich_n=0,
+        )
+        rows = inv.get("rows") if isinstance(inv, dict) and isinstance(inv.get("rows"), list) else []
+
+        ha_cache: dict[str, dict[str, Any]] = {}
+        items: list[dict[str, Any]] = []
+        errors = 0
+
+        for i, r in enumerate(rows[:limit]):
+            if not isinstance(r, dict):
+                continue
+            try:
+                eid = str(r.get("entity_id") or "").strip()
+                ha = _dq_ha_meta(eid, ha_cache) if eid else {"ok": True, "available": False, "error": "no entity_id", "entity": None}
+                it = _dq_analyze_one(cfg, start_dt=start_dt, stop_dt=stop_dt, series=r, ha=ha, stale_minutes=stale_minutes)
+                items.append(it)
+            except Exception as e:
+                errors += 1
+                items.append({
+                    "schema_version": 1,
+                    "series_key": _analysis_series_key(str(r.get('measurement') or ''), str(r.get('field') or ''), str(r.get('entity_id') or '') or None, str(r.get('friendly_name') or '') or None),
+                    "label": str(r.get("measurement") or "") + "/" + str(r.get("field") or ""),
+                    "measurement": r.get("measurement"),
+                    "field": r.get("field"),
+                    "entity_id": r.get("entity_id"),
+                    "friendly_name": r.get("friendly_name"),
+                    "ha": None,
+                    "stats": {},
+                    "findings": [{"schema_version": DQ_FINDING_SCHEMA_VERSION, "kind": "analyze_error", "severity": "warn", "message": str(e) or e.__class__.__name__, "evidence": {"index": i}}],
+                    "recommendations": ["Serie separat pruefen; Fehler blockiert den Lauf nicht."],
+                    "score": 50,
+                    "status": "yellow",
+                    "score_breakdown": [],
+                })
+                continue
+
+            if i % 20 == 0:
+                run["updated_at"] = _utc_now_iso_ms()
+                run["state"] = "running"
+                run["progress"] = {"done": i + 1, "total": min(len(rows), limit)}
+                _dq_run_save(run)
+
+        # Summaries
+        green = len([x for x in items if isinstance(x, dict) and str(x.get("status") or "") == "green"])
+        yellow = len([x for x in items if isinstance(x, dict) and str(x.get("status") or "") == "yellow"])
+        red = len([x for x in items if isinstance(x, dict) and str(x.get("status") or "") == "red"])
+        run["items"] = items
+        run["summary"] = {
+            "items": len(items),
+            "green": green,
+            "yellow": yellow,
+            "red": red,
+            "errors": int(errors),
+        }
+        run["state"] = "done"
+        run["finished_at"] = _utc_now_iso_ms()
+        _dq_run_save(run)
+    except Exception as e:
+        run["state"] = "error"
+        run["error"] = str(e) or e.__class__.__name__
+        run["finished_at"] = _utc_now_iso_ms()
+        _dq_run_save(run)
+    finally:
+        with DQ_LOCK:
+            DQ_RUNS_INFLIGHT.pop(rid, None)
+
+
+def _dq_quality_run_start(params: dict[str, Any]) -> str:
+    rid = uuid.uuid4().hex
+
+    def _int(name: str, default: int, lo: int, hi: int) -> int:
+        try:
+            v = int(params.get(name) if isinstance(params, dict) else default)
+        except Exception:
+            v = default
+        return max(lo, min(hi, v))
+
+    run = {
+        "id": rid,
+        "schema_version": DQ_RUN_SCHEMA_VERSION,
+        "created_at": _utc_now_iso_ms(),
+        "started_at": _utc_now_iso_ms(),
+        "updated_at": _utc_now_iso_ms(),
+        "state": "starting",
+        "params": {
+            "days": _int("days", 30, 1, 3650),
+            "limit": _int("limit", 200, 1, 1000),
+            "q": str(params.get("q") or "").strip(),
+            "stale_minutes": _int("stale_minutes", 60, 1, 525600),
+        },
+        "items": [],
+        "summary": {},
+    }
+    _dq_run_save(run)
+    with DQ_LOCK:
+        DQ_RUNS_INFLIGHT[rid] = {"id": rid, "state": "starting", "started_at": run["started_at"]}
+    th = threading.Thread(target=_dq_quality_run_thread, args=(rid,), daemon=True)
+    th.start()
+    return rid
+
+
+@app.post("/api/dq/quality_run/start")
+def api_dq_quality_run_start():
+    body = request.get_json(force=True) or {}
+    try:
+        rid = _dq_quality_run_start(body if isinstance(body, dict) else {})
+        return jsonify({"ok": True, "run_id": rid})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 500
+
+
+@app.get("/api/dq/quality_run")
+def api_dq_quality_run_get():
+    rid = str(request.args.get("id") or "").strip()
+    if not rid:
+        return jsonify({"ok": False, "error": "id required"}), 400
+    run = _dq_run_load(rid)
+    if not run:
+        return jsonify({"ok": False, "error": "run not found"}), 404
+    return jsonify({"ok": True, "run": run})
+
+
+@app.get("/api/dq/quality_runs")
+def api_dq_quality_runs_list():
+    try:
+        limit = int(request.args.get("limit") or 50)
+    except Exception:
+        limit = 50
+    return jsonify({"ok": True, "runs": _dq_runs_list(limit)})
+
+
+@app.get("/api/dq/quality_run/export")
+def api_dq_quality_run_export():
+    rid = str(request.args.get("id") or "").strip()
+    fmt = str(request.args.get("format") or "json").strip().lower()
+    if fmt not in ("json", "md"):
+        fmt = "json"
+    run = _dq_run_load(rid)
+    if not run:
+        return jsonify({"ok": False, "error": "run not found"}), 404
+
+    addon_ver = ADDON_VERSION
+    ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    if fmt == "json":
+        raw = json.dumps(run, indent=2, sort_keys=True, ensure_ascii=True)
+        fn = f"influxbro_dq_quality_run_{addon_ver}_{rid}_{ts}.json"
+        resp = make_response(raw)
+        resp.headers["Content-Type"] = "application/json; charset=utf-8"
+        resp.headers["Content-Disposition"] = f"attachment; filename=\"{fn}\""
+        return resp
+
+    # md
+    lines: list[str] = []
+    lines.append(f"# InfluxBro Datenpflege Report (Phase 1)\n")
+    lines.append(f"- Run: `{rid}`")
+    lines.append(f"- Version: `{addon_ver}`")
+    lines.append(f"- Started: `{run.get('started_at')}`")
+    lines.append(f"- Finished: `{run.get('finished_at')}`")
+    lines.append(f"- Params: `{json.dumps(run.get('params') or {}, ensure_ascii=True)}`\n")
+    summ = run.get("summary") if isinstance(run.get("summary"), dict) else {}
+    lines.append("## Summary")
+    for k in ("items", "green", "yellow", "red", "errors"):
+        lines.append(f"- {k}: {summ.get(k)}")
+    lines.append("\n## Items")
+    items = run.get("items") if isinstance(run.get("items"), list) else []
+    for it in items[:500]:
+        if not isinstance(it, dict):
+            continue
+        lines.append(f"- `{it.get('status')}` score={it.get('score')} {it.get('series_key')}")
+        fs = it.get("findings") if isinstance(it.get("findings"), list) else []
+        for f0 in fs[:10]:
+            if not isinstance(f0, dict):
+                continue
+            lines.append(f"  - {f0.get('severity')}: {f0.get('kind')}: {str(f0.get('message') or '')}")
+    md = "\n".join(lines) + "\n"
+    fn = f"influxbro_dq_quality_run_{addon_ver}_{rid}_{ts}.md"
+    resp = make_response(md)
+    resp.headers["Content-Type"] = "text/markdown; charset=utf-8"
+    resp.headers["Content-Disposition"] = f"attachment; filename=\"{fn}\""
+    return resp
 
 
 @app.post("/api/raw_points")

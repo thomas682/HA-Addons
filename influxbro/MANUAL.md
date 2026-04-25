@@ -581,6 +581,7 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Dieser Hintergrund-Rebuild startet dabei mit den bereits im Cache bekannten Serien und sucht nur noch nach neuen Serien seit dem letzten Cache-Ende.
 - Fuer gleitende Zeitraeume gibt es jetzt zusaetzlich einen ersten Trim+Append-Schritt: Nur Serien, die im herausfallenden linken Rand oder im neuen rechten Rand auftreten, werden neu berechnet; unveraenderte Serien bleiben aus dem Cache erhalten.
 - Die neue Seite `Datenqualitaet` fuehrt durch Raw-, Clean- und Rollup-Buckets, zeigt Regelpflege und Bucket-/Task-Verwaltung und bietet einen Bereinigungs-Testlauf bzw. Bereinigungslauf direkt aus dem Add-on.
+- Neu: Seite `Datenpflege` (Data Quality Center Phase 1) fuehrt eine read-only Qualitaetsanalyse pro Messwert aus (Score/Ampel/Findings) und zeigt HA-Metadaten explizit als Quelle "Home Assistant". Exportierbarer Bericht und Jump zum Dashboard.
 - Buttons ueber das gesamte Add-on verwenden jetzt einen konsistenteren, an Material angelehnten Look mit runden Filled-/Tonal-Flaechen.
 - Der UI-Picker hat optional einen `superpicker`-Modus. Mit aktivierter Checkbox kann er auch Layout-Container oder andere Elemente ohne `data-ui` ueber Fallback-Metadaten erfassen.
 - Neu: Der Picker/S-Picker verwendet eine gut sichtbare Outline-Farbe. In den Einstellungen kann ein Auto-Modus aktiviert werden (live je nach Hintergrund), plus zwei konfigurierbare Farben fuer hellen/dunklen Hintergrund.

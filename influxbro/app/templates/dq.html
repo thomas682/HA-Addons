@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>InfluxBro - Datenpflege</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; }
+    .content { padding: 16px; }
+    h2 { margin: 0; }
+    .muted { opacity: 0.75; font-size: 12px; }
+    .row { display:flex; gap:10px; flex-wrap:wrap; align-items:end; margin-top:10px; }
+    main.content label { display:block; font-size:12px; opacity:.8; }
+    main.content input, main.content select, main.content button, main.content textarea { padding:10px 12px; box-sizing:border-box; }
+    main.content input, main.content select, main.content textarea { width:100%; }
+    main.content button { cursor:pointer; }
+    .btn_sm { height:34px; padding:6px 10px; }
+    .card { border:1px solid #ddd; border-radius:12px; padding:12px; margin-top:12px; }
+    .err { color:#b00020; margin-top:8px; white-space:pre-wrap; }
+    .ok { color:#0a7a28; margin-top:8px; white-space:pre-wrap; }
+    .table_wrap { border:1px solid #eee; border-radius:12px; padding:10px; margin-top:10px; }
+    .table_box { max-height:52vh; overflow:auto; border:1px solid #eee; border-radius:12px; margin-top:10px; }
+    table { border-collapse:collapse; width:100%; margin-top:0; }
+    th, td { border:1px solid #eee; padding:6px; font-size:12px; text-align:left; vertical-align:top; }
+    th { background:#f6f6f6; position:sticky; top:0; z-index:1; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+    .chip { display:inline-flex; align-items:center; padding:2px 8px; border-radius:999px; border:1px solid #ddd; font-size:12px; }
+    .chip.ok { background:#eefaf1; border-color:#b6e2c0; color:#0a7a28; }
+    .chip.warn { background:#fff6e8; border-color:#f2d199; color:#9a5b00; }
+    .chip.err { background:#fff0f0; border-color:#f2b0b0; color:#b00020; }
+    .dlg_backdrop { position:fixed; inset:0; display:none; background: rgba(0,0,0,0.35); z-index: 12050; }
+    .dlg { max-width: 980px; margin: 6vh auto; background:#fff; border-radius: 12px; padding: 14px; box-shadow: 0 16px 60px rgba(0,0,0,0.30); }
+  </style>
+</head>
+<body>
+  {% include "_topbar.html" %}
+  <div class="shell">
+    {% include "_nav.html" %}
+    <main class="content" data-ui="dq_page.main" data-ib-pickkey="dq_page.main" title="dq.page">
+      <h2>Datenpflege Center (Phase 1)</h2>
+      <div class="muted">Qualitaetsanalyse ohne Datenaenderung. HA-Metadaten sind Primärsignal und werden als Quelle "Home Assistant" gekennzeichnet.</div>
+
+      <div id="err" class="err" data-ui="dq_page.err" data-ib-pickkey="dq_page.err" title="dq.err"></div>
+      <div id="ok" class="ok" data-ui="dq_page.ok" data-ib-pickkey="dq_page.ok" title="dq.ok"></div>
+
+      <div class="card" data-ui="dq_run.panel_card" data-ib-pickkey="dq_run.panel_card" title="dq.run">
+        <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:baseline;">
+          <div>
+            <div style="font-weight:900; font-size:16px;" data-ui="dq_run.txt_title" data-ib-pickkey="dq_run.txt_title" title="dq.run.title">Analyse</div>
+            <div class="muted">Diese Phase schreibt nichts nach Influx und aendert keine YAML-Dateien.</div>
+          </div>
+          <div class="muted mono" id="run_meta" data-ui="dq_run.txt_meta" data-ib-pickkey="dq_run.txt_meta" title="dq.run.meta"></div>
+        </div>
+
+        <div class="row" data-ui="dq_run.panel_controls" data-ib-pickkey="dq_run.panel_controls" title="dq.run.controls">
+          <div style="min-width: 160px;">
+            <label>Fenster (Tage)</label>
+            <input id="dq_days" type="number" min="1" max="3650" value="30" data-ui="dq_run.input_days" data-ib-pickkey="dq_run.input_days" title="dq.days" />
+          </div>
+          <div style="min-width: 160px;">
+            <label>Limit (Serien)</label>
+            <input id="dq_limit" type="number" min="1" max="1000" value="200" data-ui="dq_run.input_limit" data-ib-pickkey="dq_run.input_limit" title="dq.limit" />
+          </div>
+          <div style="min-width: 260px;">
+            <label>Suche (optional)</label>
+            <input id="dq_q" placeholder="measurement/field/entity_id/friendly_name" data-ui="dq_run.input_q" data-ib-pickkey="dq_run.input_q" title="dq.q" />
+          </div>
+          <div style="min-width: 220px;">
+            <label>Stale Schwellwert (Minuten)</label>
+            <input id="dq_stale" type="number" min="1" max="525600" value="60" data-ui="dq_run.input_stale" data-ib-pickkey="dq_run.input_stale" title="dq.stale" />
+          </div>
+          <button id="dq_start" class="btn_sm" data-ui="dq_run.btn_start" data-ib-pickkey="dq_run.btn_start" title="dq.start">Analyse starten</button>
+          <button id="dq_export" class="btn_sm" data-ui="dq_run.btn_export" data-ib-pickkey="dq_run.btn_export" title="dq.export">Bericht exportieren (JSON)</button>
+          <button id="dq_support" class="btn_sm" data-ui="dq_run.btn_support" data-ib-pickkey="dq_run.btn_support" title="dq.support">Supportdaten erzeugen</button>
+        </div>
+      </div>
+
+      <div class="card" data-ui="dq_results.panel_card" data-ib-pickkey="dq_results.panel_card" title="dq.results">
+        <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:baseline;">
+          <div style="font-weight:900; font-size:16px;" data-ui="dq_results.txt_title" data-ib-pickkey="dq_results.txt_title" title="dq.results.title">Uebersicht</div>
+          <div class="muted" id="results_meta" data-ui="dq_results.txt_meta" data-ib-pickkey="dq_results.txt_meta" title="dq.results.meta"></div>
+        </div>
+        <div class="table_wrap" data-ui="dq_results.panel_table" data-ib-pickkey="dq_results.panel_table" title="dq.results.table">
+          <div class="table_box">
+            <table id="dq_tbl" data-ui="dq_results.tbl" data-ib-pickkey="dq_results.tbl" title="dq.tbl">
+              <thead>
+                <tr>
+                  <th>Status</th><th>Score</th><th>Messwert</th><th>HA Typ (Quelle: Home Assistant)</th><th>Findings</th><th>Empfehlung</th><th>Aktionen</th>
+                </tr>
+              </thead>
+              <tbody id="dq_rows"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="dlg_backdrop" id="dq_dlg" data-ui="dq_detail.dialog" data-ib-pickkey="dq_detail.dialog" title="dq.detail">
+        <div class="dlg">
+          <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start;">
+            <div>
+              <div style="font-weight:900; font-size:16px;" id="dq_dlg_title" class="mono" data-ui="dq_detail.txt_title" data-ib-pickkey="dq_detail.txt_title" title="dq.detail.title"></div>
+              <div class="muted">Details zu Findings, Score und HA-Metadaten.</div>
+            </div>
+            <button id="dq_dlg_close" class="btn_sm" type="button" data-ui="dq_detail.btn_close" data-ib-pickkey="dq_detail.btn_close" title="dq.detail.close">Schliessen</button>
+          </div>
+          <div style="margin-top:10px;" class="mono">
+            <pre id="dq_dlg_body" style="max-height:60vh; overflow:auto; border:1px solid #eee; border-radius:12px; padding:10px; background:#fafafa;" data-ui="dq_detail.pre_body" data-ib-pickkey="dq_detail.pre_body" title="dq.detail.body"></pre>
+          </div>
+        </div>
+      </div>
+
+      <script>
+      const $err = document.getElementById('err');
+      const $ok = document.getElementById('ok');
+      const $meta = document.getElementById('run_meta');
+      const $resultsMeta = document.getElementById('results_meta');
+      const $rows = document.getElementById('dq_rows');
+      const $dlg = document.getElementById('dq_dlg');
+      const $dlgTitle = document.getElementById('dq_dlg_title');
+      const $dlgBody = document.getElementById('dq_dlg_body');
+
+      const $days = document.getElementById('dq_days');
+      const $limit = document.getElementById('dq_limit');
+      const $q = document.getElementById('dq_q');
+      const $stale = document.getElementById('dq_stale');
+      const $start = document.getElementById('dq_start');
+      const $export = document.getElementById('dq_export');
+      const $support = document.getElementById('dq_support');
+      const $dlgClose = document.getElementById('dq_dlg_close');
+
+      let ACTIVE_RUN_ID = null;
+      let ACTIVE_RUN = null;
+
+      function err(msg){ try{ $err.textContent = msg || ''; }catch(e){} }
+      function ok(msg){ try{ $ok.textContent = msg || ''; }catch(e){} }
+      function chip(txt, cls){ return `<span class="chip ${cls||''}">${txt}</span>`; }
+      function fmtTs(iso){ try{ if(!iso) return ''; const d = new Date(String(iso)); return isFinite(d.getTime()) ? d.toLocaleString() : String(iso); }catch(e){ return String(iso||''); } }
+
+      async function api(url, opts){
+        const r = await fetch(url, opts);
+        const j = await r.json().catch(()=>({ok:false,error:'Invalid JSON'}));
+        if(!r.ok || !j.ok) throw new Error(j.error || ('HTTP ' + r.status));
+        return j;
+      }
+
+      function renderRun(run){
+        ACTIVE_RUN = run;
+        if($rows) $rows.innerHTML = '';
+        const items = (run && Array.isArray(run.items)) ? run.items : [];
+        const s = (run && run.summary && typeof run.summary === 'object') ? run.summary : {};
+        try{ if($resultsMeta) $resultsMeta.textContent = `items=${items.length} green=${s.green||0} yellow=${s.yellow||0} red=${s.red||0} errors=${s.errors||0}`; }catch(e){}
+        items.forEach((it, idx)=>{
+          const tr = document.createElement('tr');
+          const pk = String(it.series_key || ('dq_row_' + idx));
+          tr.setAttribute('data-ui', 'dq_results.row');
+          tr.setAttribute('data-ib-pickkey', 'dq_results.row.' + pk);
+
+          const st = String(it.status || '');
+          const stChip = (st==='green') ? chip('GRUEN','ok') : ((st==='yellow') ? chip('GELB','warn') : chip('ROT','err'));
+          const score = (it.score!==null && it.score!==undefined) ? String(it.score) : '';
+          const name = String(it.label || it.series_key || '');
+          const ha = (it.ha && it.ha.entity && typeof it.ha.entity === 'object') ? it.ha.entity : null;
+          const haType = ha ? (`${String(ha.device_class||'-')}/${String(ha.state_class||'-')} ${String(ha.unit_of_measurement||'')}`) : '(HA nicht verfuegbar)';
+          const finds = Array.isArray(it.findings) ? it.findings : [];
+          const findTxt = finds.slice(0, 5).map(f=>String(f.kind||'') + ':' + String(f.severity||'')).join(', ');
+          const rec = Array.isArray(it.recommendations) ? it.recommendations.join('; ') : String(it.recommendations||'');
+
+          const tdSt = document.createElement('td'); tdSt.innerHTML = stChip;
+          const tdSc = document.createElement('td'); tdSc.style.textAlign='right'; tdSc.textContent = score;
+          const tdNm = document.createElement('td'); tdNm.className = 'mono'; tdNm.textContent = name;
+          const tdHa = document.createElement('td'); tdHa.textContent = haType;
+          const tdF = document.createElement('td'); tdF.textContent = findTxt;
+          const tdR = document.createElement('td'); tdR.textContent = rec;
+          const tdA = document.createElement('td'); tdA.style.whiteSpace='nowrap';
+
+          const bDet = document.createElement('button'); bDet.className = 'btn_sm'; bDet.textContent = 'Details';
+          bDet.setAttribute('data-ui','dq_results.btn_details');
+          bDet.setAttribute('data-ib-pickkey','dq_results.btn_details.' + pk);
+          bDet.onclick = ()=>{
+            try{
+              if($dlgTitle) $dlgTitle.textContent = name;
+              if($dlgBody) $dlgBody.textContent = JSON.stringify(it, null, 2);
+              if($dlg) $dlg.style.display = 'block';
+            }catch(e){}
+          };
+
+          const bDash = document.createElement('button'); bDash.className='btn_sm'; bDash.textContent = 'Dashboard';
+          bDash.setAttribute('data-ui','dq_results.btn_dashboard');
+          bDash.setAttribute('data-ib-pickkey','dq_results.btn_dashboard.' + pk);
+          bDash.onclick = ()=>{
+            try{
+              const qs = new URLSearchParams({
+                measurement: String(it.measurement||''),
+                field: String(it.field||''),
+                entity_id: String(it.entity_id||''),
+                friendly_name: String(it.friendly_name||''),
+              });
+              window.location.href = './?' + qs.toString();
+            }catch(e){}
+          };
+
+          tdA.appendChild(bDet);
+          tdA.appendChild(bDash);
+
+          tr.appendChild(tdSt);
+          tr.appendChild(tdSc);
+          tr.appendChild(tdNm);
+          tr.appendChild(tdHa);
+          tr.appendChild(tdF);
+          tr.appendChild(tdR);
+          tr.appendChild(tdA);
+          $rows.appendChild(tr);
+        });
+      }
+
+      async function pollRun(runId){
+        let j;
+        try{
+          j = await api('./api/dq/quality_run?id=' + encodeURIComponent(String(runId||'')));
+        }catch(e){
+          err(e.message);
+          return;
+        }
+        const run = j.run || null;
+        if(!run){ err('Run nicht verfuegbar'); return; }
+        const st = String(run.state||'');
+        try{ if($meta) $meta.textContent = `run=${run.id||''} state=${st} started=${fmtTs(run.started_at)} updated=${fmtTs(run.updated_at)}`; }catch(e){}
+        if(st === 'done' || st === 'error'){
+          renderRun(run);
+          if(st === 'done') ok('Analyse abgeschlossen.');
+          else err('Analyse Fehler: ' + String(run.error||''));
+          return;
+        }
+        setTimeout(()=>{ pollRun(runId).catch(()=>{}); }, 800);
+      }
+
+      async function startRun(){
+        err('');
+        ok('');
+        const payload = {
+          days: Number($days && $days.value ? $days.value : 30),
+          limit: Number($limit && $limit.value ? $limit.value : 200),
+          q: String($q && $q.value ? $q.value : '').trim(),
+          stale_minutes: Number($stale && $stale.value ? $stale.value : 60),
+        };
+        try{
+          const j = await api('./api/dq/quality_run/start', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+          ACTIVE_RUN_ID = j.run_id;
+          ok('Analyse gestartet.');
+          pollRun(ACTIVE_RUN_ID).catch(()=>{});
+        }catch(e){
+          err(e.message);
+        }
+      }
+
+      function exportRun(){
+        if(!ACTIVE_RUN_ID){ err('Kein Run aktiv.'); return; }
+        const url = './api/dq/quality_run/export?id=' + encodeURIComponent(String(ACTIVE_RUN_ID)) + '&format=json';
+        const a = document.createElement('a');
+        a.href = url; a.target = '_blank'; a.rel = 'noreferrer';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      }
+
+      async function supportBundle(){
+        try{
+          const body = {
+            profile: 'anonymized',
+            time_window_hours: 24,
+            tail: 2000,
+            include: { addon_logs: true, supervisor_logs: true, jobs: true, monitor: true, cache_meta: true, history: true },
+            context: { page: 'dq', dq_run_id: String(ACTIVE_RUN_ID||'') },
+          };
+          const r = await fetch('./api/support_bundle/download', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+          if(!r.ok){
+            const t = await r.text().catch(()=>('HTTP ' + r.status));
+            throw new Error(t || ('HTTP ' + r.status));
+          }
+          const blob = await r.blob();
+          const cd = r.headers.get('content-disposition') || '';
+          let fn = 'influxbro_support_bundle.zip';
+          try{
+            const m = /filename="([^"]+)"/i.exec(cd);
+            if(m && m[1]) fn = m[1];
+          }catch(e){}
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url; a.download = fn;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(()=>{ try{ URL.revokeObjectURL(url); }catch(e){} }, 2000);
+        }catch(e){
+          err('Supportdaten Fehler: ' + (e && e.message ? e.message : String(e)));
+        }
+      }
+
+      try{ if($dlgClose) $dlgClose.onclick = ()=>{ try{ if($dlg) $dlg.style.display='none'; }catch(e){}; }; }catch(e){}
+      try{ if($dlg) $dlg.addEventListener('click', (ev)=>{ if(ev && ev.target === $dlg) $dlg.style.display='none'; }); }catch(e){}
+
+      try{ if($start) $start.onclick = ()=>{ startRun().catch(()=>{}); }; }catch(e){}
+      try{ if($export) $export.onclick = ()=>{ exportRun(); }; }catch(e){}
+      try{ if($support) $support.onclick = ()=>{ supportBundle().catch(()=>{}); }; }catch(e){}
+      </script>
+    </main>
+  </div>
+</body>
+</html>
