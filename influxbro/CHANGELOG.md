@@ -43,6 +43,16 @@
 
 - API: neue Endpunkte `/api/dq/quality_run/start`, `/api/dq/quality_run`, `/api/dq/quality_runs`, `/api/dq/quality_run/export`.
 
+## 1.12.444
+
+### Enhancement
+
+- Datenpflege Center Phase 2: Repair Proposals + Repair Plans aus Phase-1-Findings ableiten (Preview-only). Proposals zeigen Risiko/Confidence und bereiten Preview-Payloads fuer `/api/change_preview` vor (keine Ausfuehrung). ([#408](https://github.com/thomas682/HA-Addons/issues/408))
+
+### Maintenance
+
+- API: neue Endpunkte `/api/dq/repair/generate`, `/api/dq/repair/plans`, `/api/dq/repair/proposals`, `/api/dq/repair/proposal`.
+
 ## 1.12.439
 
 ### Enhancement

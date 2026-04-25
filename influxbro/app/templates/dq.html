@@ -94,6 +94,27 @@
         </div>
       </div>
 
+      <div class="card" data-ui="dq_proposals.panel_card" data-ib-pickkey="dq_proposals.panel_card" title="dq.proposals">
+        <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:baseline;">
+          <div style="font-weight:900; font-size:16px;" data-ui="dq_proposals.txt_title" data-ib-pickkey="dq_proposals.txt_title" title="dq.proposals.title">Repair Proposals (Phase 2, Preview-only)</div>
+          <div class="muted" id="prop_meta" data-ui="dq_proposals.txt_meta" data-ib-pickkey="dq_proposals.txt_meta" title="dq.proposals.meta"></div>
+        </div>
+        <div class="row" data-ui="dq_proposals.panel_controls" data-ib-pickkey="dq_proposals.panel_controls" title="dq.proposals.controls">
+          <button id="dq_props_gen" class="btn_sm" data-ui="dq_proposals.btn_generate" data-ib-pickkey="dq_proposals.btn_generate" title="dq.proposals.generate">Vorschlaege erzeugen</button>
+          <button id="dq_props_reload" class="btn_sm" data-ui="dq_proposals.btn_reload" data-ib-pickkey="dq_proposals.btn_reload" title="dq.proposals.reload">Reload</button>
+        </div>
+        <div class="table_wrap" data-ui="dq_proposals.panel_table" data-ib-pickkey="dq_proposals.panel_table" title="dq.proposals.table">
+          <div class="table_box" style="max-height:42vh;">
+            <table id="dq_props_tbl" data-ui="dq_proposals.tbl" data-ib-pickkey="dq_proposals.tbl" title="dq.props.tbl">
+              <thead>
+                <tr><th>Kind</th><th>Title</th><th>Risk</th><th>Confidence</th><th>Preview</th><th>Aktionen</th></tr>
+              </thead>
+              <tbody id="dq_props_rows"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <div class="dlg_backdrop" id="dq_dlg" data-ui="dq_detail.dialog" data-ib-pickkey="dq_detail.dialog" title="dq.detail">
         <div class="dlg">
           <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start;">
@@ -128,8 +149,14 @@
       const $support = document.getElementById('dq_support');
       const $dlgClose = document.getElementById('dq_dlg_close');
 
+      const $propMeta = document.getElementById('prop_meta');
+      const $propGen = document.getElementById('dq_props_gen');
+      const $propReload = document.getElementById('dq_props_reload');
+      const $propRows = document.getElementById('dq_props_rows');
+
       let ACTIVE_RUN_ID = null;
       let ACTIVE_RUN = null;
+      let ACTIVE_PROPOSALS = [];
 
       function err(msg){ try{ $err.textContent = msg || ''; }catch(e){} }
       function ok(msg){ try{ $ok.textContent = msg || ''; }catch(e){} }
@@ -213,6 +240,111 @@
         });
       }
 
+      function _riskTxt(r){
+        try{
+          if(!r || typeof r !== 'object') return '';
+          const c = String(r.class||'');
+          const lvl = (r.level!==null && r.level!==undefined) ? String(r.level) : '';
+          return (c ? (c + ' ') : '') + (lvl ? ('lvl=' + lvl) : '');
+        }catch(e){ return ''; }
+      }
+
+      async function loadProposals(){
+        if(!$propRows) return;
+        $propRows.innerHTML = '';
+        if(!ACTIVE_RUN_ID){
+          try{ if($propMeta) $propMeta.textContent = 'Kein Run aktiv.'; }catch(e){}
+          return;
+        }
+        let j;
+        try{
+          j = await api('./api/dq/repair/proposals?run_id=' + encodeURIComponent(String(ACTIVE_RUN_ID)));
+        }catch(e){
+          try{ if($propMeta) $propMeta.textContent = 'Fehler: ' + (e&&e.message?e.message:String(e)); }catch(x){}
+          return;
+        }
+        ACTIVE_PROPOSALS = Array.isArray(j.proposals) ? j.proposals : [];
+        try{ if($propMeta) $propMeta.textContent = `proposals=${ACTIVE_PROPOSALS.length}`; }catch(e){}
+
+        ACTIVE_PROPOSALS.forEach((p, idx)=>{
+          const tr = document.createElement('tr');
+          const pk = String(p.id || ('prop_' + idx));
+          tr.setAttribute('data-ui','dq_proposals.row');
+          tr.setAttribute('data-ib-pickkey','dq_proposals.row.' + pk);
+
+          const kind = String(p.proposal_kind||'');
+          const title = String(p.title||'');
+          const risk = _riskTxt(p.risk);
+          const conf = (p.confidence!==null && p.confidence!==undefined) ? String(p.confidence) : '';
+          const prev = (p.preview && typeof p.preview === 'object') ? p.preview : null;
+          const ptype = prev ? String(prev.type||'') : '';
+
+          const tdK = document.createElement('td'); tdK.textContent = kind;
+          const tdT = document.createElement('td'); tdT.textContent = title;
+          const tdR = document.createElement('td'); tdR.textContent = risk;
+          const tdC = document.createElement('td'); tdC.style.textAlign='right'; tdC.textContent = conf;
+          const tdP = document.createElement('td'); tdP.textContent = ptype;
+          const tdA = document.createElement('td'); tdA.style.whiteSpace='nowrap';
+
+          const bDet = document.createElement('button'); bDet.className='btn_sm'; bDet.textContent='Details';
+          bDet.setAttribute('data-ui','dq_proposals.btn_details');
+          bDet.setAttribute('data-ib-pickkey','dq_proposals.btn_details.' + pk);
+          bDet.onclick = ()=>{
+            try{
+              if($dlgTitle) $dlgTitle.textContent = 'Proposal ' + pk;
+              if($dlgBody) $dlgBody.textContent = JSON.stringify(p, null, 2);
+              if($dlg) $dlg.style.display = 'block';
+            }catch(e){}
+          };
+
+          const bPrev = document.createElement('button'); bPrev.className='btn_sm'; bPrev.textContent='Preview';
+          bPrev.setAttribute('data-ui','dq_proposals.btn_preview');
+          bPrev.setAttribute('data-ib-pickkey','dq_proposals.btn_preview.' + pk);
+          bPrev.onclick = async ()=>{
+            try{
+              if(!prev){ err('Kein Preview verfuegbar.'); return; }
+              if(String(prev.type||'') === 'dashboard_link' && prev.href){
+                window.location.href = String(prev.href);
+                return;
+              }
+              if(String(prev.type||'') === 'change_preview' && prev.payload){
+                const j2 = await api('./api/change_preview', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(prev.payload)});
+                if($dlgTitle) $dlgTitle.textContent = 'Preview: ' + kind;
+                if($dlgBody) $dlgBody.textContent = JSON.stringify(j2, null, 2);
+                if($dlg) $dlg.style.display = 'block';
+                return;
+              }
+              err('Preview Typ nicht unterstuetzt: ' + String(prev.type||''));
+            }catch(e){
+              err('Preview Fehler: ' + (e&&e.message?e.message:String(e)));
+            }
+          };
+
+          tdA.appendChild(bDet);
+          tdA.appendChild(bPrev);
+          tr.appendChild(tdK);
+          tr.appendChild(tdT);
+          tr.appendChild(tdR);
+          tr.appendChild(tdC);
+          tr.appendChild(tdP);
+          tr.appendChild(tdA);
+          $propRows.appendChild(tr);
+        });
+      }
+
+      async function generateProposals(){
+        if(!ACTIVE_RUN_ID){ err('Kein Run aktiv.'); return; }
+        err('');
+        ok('');
+        try{
+          const j = await api('./api/dq/repair/generate', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({run_id: ACTIVE_RUN_ID})});
+          ok('Proposals erzeugt: ' + String((j && j.proposals) ? j.proposals.length : '')); 
+        }catch(e){
+          err(e.message);
+        }
+        await loadProposals();
+      }
+
       async function pollRun(runId){
         let j;
         try{
@@ -227,6 +359,7 @@
         try{ if($meta) $meta.textContent = `run=${run.id||''} state=${st} started=${fmtTs(run.started_at)} updated=${fmtTs(run.updated_at)}`; }catch(e){}
         if(st === 'done' || st === 'error'){
           renderRun(run);
+          try{ loadProposals().catch(()=>{}); }catch(e){}
           if(st === 'done') ok('Analyse abgeschlossen.');
           else err('Analyse Fehler: ' + String(run.error||''));
           return;
@@ -302,6 +435,9 @@
       try{ if($start) $start.onclick = ()=>{ startRun().catch(()=>{}); }; }catch(e){}
       try{ if($export) $export.onclick = ()=>{ exportRun(); }; }catch(e){}
       try{ if($support) $support.onclick = ()=>{ supportBundle().catch(()=>{}); }; }catch(e){}
+
+      try{ if($propGen) $propGen.onclick = ()=>{ generateProposals().catch(()=>{}); }; }catch(e){}
+      try{ if($propReload) $propReload.onclick = ()=>{ loadProposals().catch(()=>{}); }; }catch(e){}
       </script>
     </main>
   </div>

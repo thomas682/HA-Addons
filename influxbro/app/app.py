@@ -118,6 +118,8 @@ JOBS_HISTORY_PATH = DATA_DIR / "influxbro_jobs_history.json"
 # Data Quality Center (DQ) Phase 1 artifacts (persisted under /data)
 DQ_LOCK = threading.RLock()
 DQ_RUNS_DIR = DATA_DIR / "dq" / "quality_runs"
+DQ_PROPOSALS_DIR = DATA_DIR / "dq" / "repair_proposals"
+DQ_PLANS_DIR = DATA_DIR / "dq" / "repair_plans"
 
 # Timers state (last run timestamps, persisted under /data)
 TIMERS_STATE_LOCK = threading.RLock()
@@ -21245,6 +21247,355 @@ def api_dq_quality_run_export():
     resp.headers["Content-Type"] = "text/markdown; charset=utf-8"
     resp.headers["Content-Disposition"] = f"attachment; filename=\"{fn}\""
     return resp
+
+
+# ------------------------------
+# Data Quality Center (DQ) Phase 2
+# Repair Proposals / Plans (preview only, no execution)
+# ------------------------------
+
+DQ_PROPOSAL_SCHEMA_VERSION = 1
+DQ_PLAN_SCHEMA_VERSION = 1
+
+
+def _dq_proposal_path(pid: str) -> Path:
+    return (DQ_PROPOSALS_DIR / f"{str(pid or '').strip() or 'unknown'}.json")
+
+
+def _dq_plan_path(plid: str) -> Path:
+    return (DQ_PLANS_DIR / f"{str(plid or '').strip() or 'unknown'}.json")
+
+
+def _dq_write_json(path: Path, obj: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    raw = json.dumps(obj, indent=2, sort_keys=True, ensure_ascii=True)
+    with DQ_LOCK:
+        tmp.write_text(raw, encoding="utf-8")
+        tmp.replace(path)
+
+
+def _dq_read_json(path: Path) -> dict[str, Any] | None:
+    try:
+        if not path.exists():
+            return None
+        with DQ_LOCK:
+            raw = path.read_text(encoding="utf-8", errors="replace")
+        j = json.loads(raw) if raw else None
+        return j if isinstance(j, dict) else None
+    except Exception:
+        return None
+
+
+def _dq_list_dir(dir_path: Path, *, limit: int = 200) -> list[dict[str, Any]]:
+    try:
+        lim = min(2000, max(1, int(limit or 200)))
+    except Exception:
+        lim = 200
+    try:
+        if not dir_path.exists():
+            return []
+        ps = [p for p in dir_path.iterdir() if p.is_file() and p.suffix == ".json"]
+        ps.sort(key=lambda p: float(p.stat().st_mtime if p.exists() else 0), reverse=True)
+        out: list[dict[str, Any]] = []
+        for p in ps[:lim]:
+            j = _dq_read_json(p)
+            if not j:
+                continue
+            out.append(j)
+        return out
+    except Exception:
+        return []
+
+
+def _dq_flux_times_for_condition(
+    cfg: dict[str, Any],
+    *,
+    start_dt: datetime,
+    stop_dt: datetime,
+    measurement: str,
+    field: str,
+    entity_id: str | None,
+    friendly_name: str | None,
+    kind: str,
+    limit: int,
+) -> list[dict[str, Any]]:
+    """Return candidate timestamps for a proposal (read-only).
+
+    kind:
+      - negative_values
+      - counter_reset_hint
+      - zero_spikes
+    """
+
+    if int(cfg.get("influx_version", 2)) != 2 or not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+        return []
+
+    start = _dt_to_rfc3339_utc(start_dt)
+    stop = _dt_to_rfc3339_utc(stop_dt)
+    base = _dq_flux_base(cfg, start=start, stop=stop, m=measurement, f=field, eid=entity_id, fn=friendly_name)
+
+    lim = max(1, min(200, int(limit or 50)))
+    q = ""
+    if kind == "negative_values":
+        q = base + "  |> map(fn: (r) => ({r with _value: float(v: r._value)}))\n  |> filter(fn: (r) => r._value < 0.0)\n  |> keep(columns: ['_time','_value'])\n  |> limit(n: %d)\n" % lim
+    elif kind == "zero_spikes":
+        q = base + "  |> map(fn: (r) => ({r with _value: float(v: r._value)}))\n  |> filter(fn: (r) => r._value == 0.0)\n  |> keep(columns: ['_time','_value'])\n  |> limit(n: %d)\n" % lim
+    elif kind == "counter_reset_hint":
+        q = base + "  |> map(fn: (r) => ({r with _value: float(v: r._value)}))\n  |> limit(n: 5000)\n  |> difference(nonNegative: false)\n  |> filter(fn: (r) => r._value < 0.0)\n  |> keep(columns: ['_time','_value'])\n  |> limit(n: %d)\n" % lim
+    else:
+        return []
+
+    out: list[dict[str, Any]] = []
+    with v2_client(cfg) as c:
+        qapi = c.query_api()
+        tables = qapi.query(q, org=cfg["org"])
+        for t in tables or []:
+            for rec in getattr(t, "records", []) or []:
+                dt = rec.get_time()
+                if isinstance(dt, datetime):
+                    out.append({"time": _dt_to_rfc3339_utc_full(dt), "value": rec.get_value()})
+    return out
+
+
+def _dq_generate_proposals_for_run(run: dict[str, Any]) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    params = run.get("params") if isinstance(run.get("params"), dict) else {}
+    try:
+        days = int(params.get("days") or 30)
+    except Exception:
+        days = 30
+    days = max(1, min(3650, days))
+    try:
+        stale_minutes = int(params.get("stale_minutes") or 60)
+    except Exception:
+        stale_minutes = 60
+    stale_minutes = max(1, min(525600, stale_minutes))
+    stop_dt = datetime.now(timezone.utc)
+    start_dt = stop_dt - timedelta(days=days)
+
+    items = run.get("items") if isinstance(run.get("items"), list) else []
+    proposals: list[dict[str, Any]] = []
+
+    for it in items:
+        if not isinstance(it, dict):
+            continue
+        m = str(it.get("measurement") or "").strip()
+        f = str(it.get("field") or "").strip()
+        if not (m and f):
+            continue
+        eid = str(it.get("entity_id") or "").strip() or None
+        fn = str(it.get("friendly_name") or "").strip() or None
+        sk = str(it.get("series_key") or _analysis_series_key(m, f, eid, fn))
+
+        finds = it.get("findings") if isinstance(it.get("findings"), list) else []
+        kinds = {str(f0.get("kind") or "") for f0 in finds if isinstance(f0, dict)}
+        if not kinds:
+            continue
+
+        # Proposal: delete negative points (previewable)
+        if "negative_values" in kinds:
+            cands = []
+            try:
+                cands = _dq_flux_times_for_condition(cfg, start_dt=start_dt, stop_dt=stop_dt, measurement=m, field=f, entity_id=eid, friendly_name=fn, kind="negative_values", limit=50)
+            except Exception:
+                cands = []
+            if cands:
+                changes = [{"action": "delete", "time": x.get("time"), "reason": "dq:negative_values"} for x in cands if isinstance(x, dict) and x.get("time")]
+                pid = uuid.uuid4().hex
+                proposals.append({
+                    "id": pid,
+                    "schema_version": DQ_PROPOSAL_SCHEMA_VERSION,
+                    "created_at": _utc_now_iso_ms(),
+                    "updated_at": _utc_now_iso_ms(),
+                    "run_id": run.get("id"),
+                    "series_key": sk,
+                    "measurement": m,
+                    "field": f,
+                    "entity_id": eid,
+                    "friendly_name": fn,
+                    "proposal_kind": "delete_negative_points",
+                    "title": "Negative Punkte loeschen (Vorschlag)",
+                    "risk": {"class": "C", "reason": "Loeschen ist irreversibel ohne Undo; Phase 2 ist Preview-only.", "level": 0.8},
+                    "confidence": 0.7,
+                    "preview": {
+                        "type": "change_preview",
+                        "endpoint": "/api/change_preview",
+                        "payload": {
+                            "measurement": m,
+                            "field": f,
+                            "entity_id": eid,
+                            "friendly_name": fn,
+                            "changes": changes[:200],
+                            "trigger_page": "dq",
+                            "trigger_source": "dq_phase2",
+                            "strategy_id": "dq.delete_negative_points",
+                            "strategy_description": "Delete points with _value < 0 in analysis window (preview only).",
+                        },
+                    },
+                    "note": "Phase 2: keine Ausfuehrung. Nur Preview vorbereiten.",
+                })
+
+        # Proposal: delete counter reset points (previewable)
+        if "counter_reset_hint" in kinds:
+            cands = []
+            try:
+                cands = _dq_flux_times_for_condition(cfg, start_dt=start_dt, stop_dt=stop_dt, measurement=m, field=f, entity_id=eid, friendly_name=fn, kind="counter_reset_hint", limit=50)
+            except Exception:
+                cands = []
+            if cands:
+                changes = [{"action": "delete", "time": x.get("time"), "reason": "dq:counter_reset_hint"} for x in cands if isinstance(x, dict) and x.get("time")]
+                pid = uuid.uuid4().hex
+                proposals.append({
+                    "id": pid,
+                    "schema_version": DQ_PROPOSAL_SCHEMA_VERSION,
+                    "created_at": _utc_now_iso_ms(),
+                    "updated_at": _utc_now_iso_ms(),
+                    "run_id": run.get("id"),
+                    "series_key": sk,
+                    "measurement": m,
+                    "field": f,
+                    "entity_id": eid,
+                    "friendly_name": fn,
+                    "proposal_kind": "delete_counter_reset_points",
+                    "title": "Counter-Reset Punkte loeschen (Vorschlag)",
+                    "risk": {"class": "C", "reason": "Loeschen kann Auswertungen aendern; erst Preview und spaetere Freigabe/Ausfuehrung.", "level": 0.85},
+                    "confidence": 0.6,
+                    "preview": {
+                        "type": "change_preview",
+                        "endpoint": "/api/change_preview",
+                        "payload": {
+                            "measurement": m,
+                            "field": f,
+                            "entity_id": eid,
+                            "friendly_name": fn,
+                            "changes": changes[:200],
+                            "trigger_page": "dq",
+                            "trigger_source": "dq_phase2",
+                            "strategy_id": "dq.delete_counter_reset_points",
+                            "strategy_description": "Delete points at timestamps where difference() < 0 (preview only).",
+                        },
+                    },
+                    "note": "Phase 2: keine Ausfuehrung. Nur Preview vorbereiten.",
+                })
+
+        # Proposal: investigate gaps/stale via dashboard (informational)
+        if "gaps" in kinds or "stale" in kinds:
+            pid = uuid.uuid4().hex
+            proposals.append({
+                "id": pid,
+                "schema_version": DQ_PROPOSAL_SCHEMA_VERSION,
+                "created_at": _utc_now_iso_ms(),
+                "updated_at": _utc_now_iso_ms(),
+                "run_id": run.get("id"),
+                "series_key": sk,
+                "measurement": m,
+                "field": f,
+                "entity_id": eid,
+                "friendly_name": fn,
+                "proposal_kind": "investigate_in_dashboard",
+                "title": "Im Dashboard untersuchen (Vorschlag)",
+                "risk": {"class": "D", "reason": "Keine Datenaenderung (nur Investigation).", "level": 0.05},
+                "confidence": 0.9,
+                "preview": {
+                    "type": "dashboard_link",
+                    "href": "./?" + urllib.parse.urlencode({
+                        "measurement": m,
+                        "field": f,
+                        "entity_id": eid or "",
+                        "friendly_name": fn or "",
+                    }),
+                },
+                "note": f"Empfehlung: Fenster={days}d, stale={stale_minutes}min",
+            })
+
+    plan_id = uuid.uuid4().hex
+    plan = {
+        "id": plan_id,
+        "schema_version": DQ_PLAN_SCHEMA_VERSION,
+        "created_at": _utc_now_iso_ms(),
+        "updated_at": _utc_now_iso_ms(),
+        "run_id": run.get("id"),
+        "title": "RepairPlan (Phase 2, Preview-only)",
+        "proposal_ids": [p.get("id") for p in proposals if isinstance(p, dict)],
+        "summary": {
+            "proposals": len(proposals),
+            "risk_max": max([float((p.get("risk") or {}).get("level") or 0.0) for p in proposals if isinstance(p, dict)] + [0.0]),
+        },
+    }
+    return proposals, plan
+
+
+@app.post("/api/dq/repair/generate")
+def api_dq_repair_generate():
+    body = request.get_json(force=True) or {}
+    run_id = str((body.get("run_id") if isinstance(body, dict) else "") or "").strip()
+    if not run_id:
+        return jsonify({"ok": False, "error": "run_id required"}), 400
+    run = _dq_run_load(run_id)
+    if not run:
+        return jsonify({"ok": False, "error": "run not found"}), 404
+    if str(run.get("state") or "") != "done":
+        return jsonify({"ok": False, "error": "run not done"}), 409
+
+    proposals, plan = _dq_generate_proposals_for_run(run)
+    for p in proposals:
+        if not isinstance(p, dict):
+            continue
+        _dq_write_json(_dq_proposal_path(str(p.get("id") or "")), p)
+    _dq_write_json(_dq_plan_path(str(plan.get("id") or "")), plan)
+    return jsonify({"ok": True, "plan": {"id": plan.get("id"), "proposal_ids": plan.get("proposal_ids"), "summary": plan.get("summary")}, "proposals": [{"id": p.get("id"), "proposal_kind": p.get("proposal_kind"), "title": p.get("title"), "risk": p.get("risk"), "confidence": p.get("confidence"), "preview": p.get("preview"), "series_key": p.get("series_key")} for p in proposals if isinstance(p, dict)]})
+
+
+@app.get("/api/dq/repair/plans")
+def api_dq_repair_plans_list():
+    run_id = str(request.args.get("run_id") or "").strip() or None
+    xs = _dq_list_dir(DQ_PLANS_DIR, limit=200)
+    if run_id:
+        xs = [p for p in xs if isinstance(p, dict) and str(p.get("run_id") or "") == run_id]
+    xs.sort(key=lambda r: str(r.get("created_at") or ""), reverse=True)
+    return jsonify({"ok": True, "plans": xs})
+
+
+@app.get("/api/dq/repair/proposals")
+def api_dq_repair_proposals_list():
+    run_id = str(request.args.get("run_id") or "").strip() or None
+    plan_id = str(request.args.get("plan_id") or "").strip() or None
+    xs = _dq_list_dir(DQ_PROPOSALS_DIR, limit=500)
+    if run_id:
+        xs = [p for p in xs if isinstance(p, dict) and str(p.get("run_id") or "") == run_id]
+    if plan_id:
+        pl = _dq_read_json(_dq_plan_path(plan_id))
+        ids = set(pl.get("proposal_ids") or []) if isinstance(pl, dict) else set()
+        xs = [p for p in xs if isinstance(p, dict) and p.get("id") in ids]
+    xs.sort(key=lambda r: str(r.get("created_at") or ""), reverse=True)
+    # reduce payload
+    out = []
+    for p in xs:
+        if not isinstance(p, dict):
+            continue
+        out.append({
+            "id": p.get("id"),
+            "run_id": p.get("run_id"),
+            "series_key": p.get("series_key"),
+            "proposal_kind": p.get("proposal_kind"),
+            "title": p.get("title"),
+            "risk": p.get("risk"),
+            "confidence": p.get("confidence"),
+            "preview": p.get("preview"),
+        })
+    return jsonify({"ok": True, "proposals": out})
+
+
+@app.get("/api/dq/repair/proposal")
+def api_dq_repair_proposal_get():
+    pid = str(request.args.get("id") or "").strip()
+    if not pid:
+        return jsonify({"ok": False, "error": "id required"}), 400
+    p = _dq_read_json(_dq_proposal_path(pid))
+    if not p:
+        return jsonify({"ok": False, "error": "proposal not found"}), 404
+    return jsonify({"ok": True, "proposal": p})
 
 
 @app.post("/api/raw_points")
