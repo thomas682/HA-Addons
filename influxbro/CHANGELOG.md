@@ -10,6 +10,16 @@
 
 - API: neue read-only Endpunkte `/api/change_blocks_v2` und `/api/change_block` (Storage-basiert, unabhängig von Influx).
 
+## 1.12.448
+
+### Enhancement
+
+- Change-Service Engine: execute/undo/repeat fuer ChangeBlocks inkl. Konfliktpruefung (ok/conflict/missing/ambiguous/type_mismatch/already_applied) und idempotentem Verhalten. ([#402](https://github.com/thomas682/HA-Addons/issues/402))
+
+### Maintenance
+
+- API: neue Endpunkte `/api/change_block/validate`, `/api/change_block/execute`, `/api/change_block/undo`, `/api/change_block/repeat`.
+
 ## 1.12.440
 
 ### Enhancement

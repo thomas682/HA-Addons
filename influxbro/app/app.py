@@ -29904,6 +29904,439 @@ def api_change_block_get():
     return jsonify({"ok": True, "block": b})
 
 
+def _cb_point_value(p: dict[str, Any] | None) -> float | int | None:
+    if not isinstance(p, dict):
+        return None
+    v = p.get("_value")
+    if v is None:
+        return None
+    if isinstance(v, bool) or not isinstance(v, (int, float)):
+        return None
+    return v
+
+
+def _cb_values_equal(a: Any, b: Any) -> bool:
+    if a is None or b is None:
+        return a is None and b is None
+    if isinstance(a, bool) or isinstance(b, bool):
+        return False
+    if isinstance(a, (int, float)) and isinstance(b, (int, float)):
+        try:
+            return float(a) == float(b)
+        except Exception:
+            return False
+    return False
+
+
+def _cb_expected_point_for(direction: str, item: dict[str, Any]) -> dict[str, Any] | None:
+    op = str(item.get("op") or "").strip().lower()
+    d = str(direction or "").strip().lower()
+    if d not in ("execute", "undo", "repeat"):
+        raise ValueError("invalid direction")
+    if op not in ("create", "update", "delete"):
+        raise ValueError("invalid op")
+
+    if d == "execute":
+        return item.get("old_point") if op in ("update", "delete") else None
+    if d == "undo":
+        if op == "delete":
+            return None
+        return item.get("new_point")
+    # repeat
+    return item.get("old_point") if op in ("update", "delete") else None
+
+
+def _cb_target_state_for(direction: str, item: dict[str, Any]) -> tuple[str, dict[str, Any] | None]:
+    """Return (mode, point).
+
+    mode:
+      - write: write point
+      - delete: delete point
+    """
+
+    op = str(item.get("op") or "").strip().lower()
+    d = str(direction or "").strip().lower()
+    if d == "execute":
+        if op in ("create", "update"):
+            return "write", item.get("new_point")
+        return "delete", None
+    if d == "undo":
+        if op == "create":
+            return "delete", None
+        # update/delete -> restore old
+        return "write", item.get("old_point")
+    # repeat
+    if op in ("create", "update"):
+        return "write", item.get("new_point")
+    return "delete", None
+
+
+def _cb_eval_item_state(direction: str, item: dict[str, Any], cur: dict[str, Any] | None) -> dict[str, Any]:
+    """Pure evaluation of an item, used by validate/engine and unit tests."""
+
+    d = str(direction or "").strip().lower()
+    exp = _cb_expected_point_for(d, item)
+    mode, tgt = _cb_target_state_for(d, item)
+
+    exp_exists = exp is not None
+    cur_exists = cur is not None
+
+    # Already applied check (idempotency)
+    if mode == "delete":
+        if not cur_exists:
+            return {"state": "already_applied"}
+    elif mode == "write":
+        want = _cb_point_value(tgt)
+        got = _cb_point_value(cur) if cur_exists else None
+        if want is not None and got is not None and _cb_values_equal(want, got):
+            return {"state": "already_applied"}
+
+    if exp_exists:
+        if not cur_exists:
+            return {"state": "missing"}
+        want = _cb_point_value(exp)
+        got = _cb_point_value(cur)
+        if want is None or got is None:
+            return {"state": "type_mismatch"}
+        if not _cb_values_equal(want, got):
+            return {"state": "conflict", "expected": want, "current": got}
+        return {"state": "ok"}
+
+    # expected missing
+    if cur_exists:
+        got = _cb_point_value(cur)
+        if got is None:
+            return {"state": "type_mismatch"}
+        return {"state": "conflict", "expected": None, "current": got}
+    return {"state": "ok"}
+
+
+def _cb_fetch_current_point(qapi, cfg: dict[str, Any], pid: dict[str, Any]) -> tuple[str, dict[str, Any] | None]:
+    """Fetch the current point for a point_identity.
+
+    Returns:
+      (state, point)
+      state: ok|missing|ambiguous|type_mismatch
+
+    point is a simplified row dict with at least _time/_value and tag_set.
+    """
+
+    pidn = _cb_norm_point_identity(pid)
+    measurement = str(pidn.get("measurement") or "")
+    field = str(pidn.get("field") or "")
+    tags = pidn.get("tag_set") if isinstance(pidn.get("tag_set"), dict) else {}
+
+    dt = _parse_iso_datetime(str(pidn.get("timestamp") or ""))
+    if not isinstance(dt, datetime):
+        return "missing", None
+    dt = dt.astimezone(timezone.utc)
+
+    start = _dt_to_rfc3339_utc_full(dt - timedelta(seconds=2))
+    stop = _dt_to_rfc3339_utc_full(dt + timedelta(seconds=2))
+    extra_pred = ""
+    for k, v in (tags or {}).items():
+        if not k:
+            continue
+        extra_pred += f' and r["{str(k)}"] == {_flux_str(str(v))}'
+
+    q = f'''
+from(bucket: "{cfg["bucket"]}")
+  |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra_pred})
+  |> group()
+  |> sort(columns: ["_time"])
+  |> limit(n: 20)
+'''
+    tables = qapi.query(q, org=cfg["org"])
+    recs: list[Any] = []
+    for t in tables or []:
+        for rec in getattr(t, "records", []) or []:
+            recs.append(rec)
+    if not recs:
+        return "missing", None
+
+    # Prefer exact timestamp match; otherwise best delta within 1s.
+    exact: list[Any] = []
+    best = None
+    best_abs = None
+    for rec in recs:
+        rdt = rec.get_time()
+        if not isinstance(rdt, datetime):
+            continue
+        rdt = rdt.astimezone(timezone.utc)
+        if rdt == dt:
+            exact.append(rec)
+            continue
+        delta = abs((rdt - dt).total_seconds())
+        if best_abs is None or delta < best_abs:
+            best_abs = delta
+            best = rec
+    if len(exact) > 1:
+        return "ambiguous", None
+    if len(exact) == 1:
+        best = exact[0]
+        best_abs = 0.0
+    if best is None or best_abs is None or best_abs > 1.0:
+        return "missing", None
+
+    cur_val = best.get_value()
+    if isinstance(cur_val, bool) or not isinstance(cur_val, (int, float)):
+        return "type_mismatch", None
+    out = {
+        "_time": _dt_to_rfc3339_utc_full(best.get_time().astimezone(timezone.utc)),
+        "_measurement": measurement,
+        "_field": field,
+        "_value": cur_val,
+        **(tags or {}),
+    }
+    return "ok", out
+
+
+def validate_change_block(block_id: str, *, direction: str) -> dict[str, Any]:
+    bid = _cb_require_block_id(block_id)
+    d = str(direction or "").strip().lower()
+    if d not in ("execute", "undo", "repeat"):
+        raise ValueError("direction must be execute|undo|repeat")
+
+    b = load_change_block(bid, include_items=True)
+    if not b:
+        raise FileNotFoundError("change block not found")
+    items = b.get("items") if isinstance(b.get("items"), list) else []
+
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    if int(cfg.get("influx_version", 2)) != 2:
+        raise RuntimeError("change engine currently supports InfluxDB v2 only")
+    if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+        raise RuntimeError("InfluxDB v2 requires token, org, bucket")
+
+    results: list[dict[str, Any]] = []
+    ok_all = True
+    with v2_client(cfg) as c:
+        qapi = c.query_api()
+        for it in items:
+            if not isinstance(it, dict):
+                continue
+            try:
+                validate_change_item_schema(it)
+            except Exception as e:
+                ok_all = False
+                results.append({"item_id": it.get("item_id"), "state": "conflict", "error": str(e)})
+                continue
+            pid = it.get("point_identity") if isinstance(it.get("point_identity"), dict) else {}
+            st, cur = _cb_fetch_current_point(qapi, cfg, pid)
+            if st in ("ambiguous", "type_mismatch"):
+                ok_all = False
+                results.append({"item_id": it.get("item_id"), "state": st, "identity": pid})
+                continue
+            # st ok|missing maps to cur point
+            ev = _cb_eval_item_state(d, it, cur)
+            state = str(ev.get("state") or "conflict")
+            if state not in ("ok", "already_applied"):
+                ok_all = False
+            results.append({
+                "item_id": it.get("item_id"),
+                "op": it.get("op"),
+                "state": state,
+                "identity": pid,
+                **({"details": ev} if state in ("conflict",) else {}),
+            })
+
+    summary = {
+        "ok": ok_all,
+        "total": len(results),
+        "ok_count": len([r for r in results if r.get("state") == "ok"]),
+        "already_applied": len([r for r in results if r.get("state") == "already_applied"]),
+        "conflicts": len([r for r in results if r.get("state") not in ("ok", "already_applied")]),
+    }
+    return {"block_id": bid, "direction": d, "summary": summary, "results": results}
+
+
+def _cb_delete_exact(dapi, cfg: dict[str, Any], pid: dict[str, Any]) -> None:
+    pidn = _cb_norm_point_identity(pid)
+    measurement = str(pidn.get("measurement") or "")
+    field = str(pidn.get("field") or "")
+    tags = pidn.get("tag_set") if isinstance(pidn.get("tag_set"), dict) else {}
+    dt = _parse_iso_datetime(str(pidn.get("timestamp") or ""))
+    if not isinstance(dt, datetime):
+        raise RuntimeError("invalid timestamp")
+    dt = dt.astimezone(timezone.utc)
+    s = _dt_to_rfc3339_utc_ms(dt - timedelta(milliseconds=2))
+    e = _dt_to_rfc3339_utc_ms(dt + timedelta(milliseconds=2))
+
+    def _pred_escape(v: str) -> str:
+        return (v or "").replace("\\", "\\\\").replace('"', '\\"')
+
+    parts = [f'_measurement="{_pred_escape(measurement)}"', f'_field="{_pred_escape(field)}"']
+    for k, v in (tags or {}).items():
+        if not k:
+            continue
+        parts.append(f'{str(k)}="{_pred_escape(str(v))}"')
+    pred = " AND ".join(parts)
+    dapi.delete(start=s, stop=e, predicate=pred, bucket=cfg["bucket"], org=cfg["org"])
+
+
+def _cb_write_exact(wapi, cfg: dict[str, Any], pid: dict[str, Any], point: dict[str, Any]) -> None:
+    pidn = _cb_norm_point_identity(pid)
+    measurement = str(pidn.get("measurement") or "")
+    field = str(pidn.get("field") or "")
+    tags = pidn.get("tag_set") if isinstance(pidn.get("tag_set"), dict) else {}
+    dt = _parse_iso_datetime(str(pidn.get("timestamp") or ""))
+    if not isinstance(dt, datetime):
+        raise RuntimeError("invalid timestamp")
+    dt = dt.astimezone(timezone.utc)
+    v = _cb_point_value(point)
+    if v is None:
+        raise RuntimeError("unsupported _value type")
+    p = Point(measurement)
+    for tk, tv in (tags or {}).items():
+        p = p.tag(str(tk), str(tv))
+    p = p.field(field, v).time(dt, WritePrecision.NS)
+    wapi.write(bucket=cfg["bucket"], org=cfg["org"], record=p)
+
+
+def _cb_set_block_status(block_id: str, *, status: str | None = None, undo_status: str | None = None, repeat_status: str | None = None) -> None:
+    bid = _cb_require_block_id(block_id)
+    b = load_change_block(bid, include_items=False)
+    if not b:
+        return
+    if status is not None:
+        b["status"] = str(status)
+    if undo_status is not None:
+        b["undo_status"] = str(undo_status)
+    if repeat_status is not None:
+        b["repeat_status"] = str(repeat_status)
+    # Re-save meta without touching payload
+    try:
+        validate_change_block_schema(b)
+    except Exception:
+        return
+    meta_path = _cb_meta_path(bid, str(b.get("created_at") or ""))
+    _cb_atomic_write_text(meta_path, json.dumps(b, ensure_ascii=True, sort_keys=True, indent=2))
+
+
+def _cb_apply(block_id: str, *, direction: str) -> dict[str, Any]:
+    bid = _cb_require_block_id(block_id)
+    d = str(direction or "").strip().lower()
+
+    v = validate_change_block(bid, direction=d)
+    if not v.get("summary", {}).get("ok"):
+        return {"ok": False, "error": "conflict", "validation": v}
+
+    b = load_change_block(bid, include_items=True)
+    if not b:
+        return {"ok": False, "error": "not found"}
+    items = b.get("items") if isinstance(b.get("items"), list) else []
+
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    applied = 0
+    with v2_client(cfg) as c:
+        wapi = c.write_api(write_options=SYNCHRONOUS)
+        dapi = c.delete_api()
+        # Map item_id -> state for skip
+        states = {str(r.get("item_id") or ""): str(r.get("state") or "") for r in (v.get("results") or []) if isinstance(r, dict)}
+        for it in items:
+            if not isinstance(it, dict):
+                continue
+            iid = str(it.get("item_id") or "")
+            if states.get(iid) == "already_applied":
+                continue
+            pid = it.get("point_identity") if isinstance(it.get("point_identity"), dict) else {}
+            mode, tgt = _cb_target_state_for(d, it)
+            if mode == "delete":
+                _cb_delete_exact(dapi, cfg, pid)
+                applied += 1
+            else:
+                _cb_write_exact(wapi, cfg, pid, tgt if isinstance(tgt, dict) else {})
+                applied += 1
+
+    # best-effort block status update
+    try:
+        if d == "execute":
+            _cb_set_block_status(bid, status="applied")
+        elif d == "undo":
+            _cb_set_block_status(bid, undo_status="applied")
+        else:
+            _cb_set_block_status(bid, repeat_status="applied")
+    except Exception:
+        pass
+
+    return {"ok": True, "applied": applied, "validation": v}
+
+
+def execute_change_block(block_id: str) -> dict[str, Any]:
+    return _cb_apply(block_id, direction="execute")
+
+
+def undo_change_block(block_id: str) -> dict[str, Any]:
+    return _cb_apply(block_id, direction="undo")
+
+
+def repeat_change_block(block_id: str) -> dict[str, Any]:
+    return _cb_apply(block_id, direction="repeat")
+
+
+@app.post("/api/change_block/validate")
+def api_change_block_validate():
+    body = request.get_json(force=True) or {}
+    bid = str(body.get("id") or "").strip()
+    direction = str(body.get("direction") or "execute").strip().lower()
+    if not bid:
+        return jsonify({"ok": False, "error": "id required"}), 400
+    try:
+        v = validate_change_block(bid, direction=direction)
+        return jsonify({"ok": True, "validation": v})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 400
+
+
+@app.post("/api/change_block/execute")
+def api_change_block_execute():
+    body = request.get_json(force=True) or {}
+    bid = str(body.get("id") or "").strip()
+    confirm = body.get("confirm", False)
+    ok_confirm = confirm is True or str(confirm).strip().lower() in ("1", "true", "yes", "on")
+    if not bid:
+        return jsonify({"ok": False, "error": "id required"}), 400
+    if not ok_confirm:
+        return jsonify({"ok": False, "error": "Confirmation required"}), 400
+    out = execute_change_block(bid)
+    if not out.get("ok"):
+        return jsonify(out), 409
+    return jsonify(out)
+
+
+@app.post("/api/change_block/undo")
+def api_change_block_undo():
+    body = request.get_json(force=True) or {}
+    bid = str(body.get("id") or "").strip()
+    confirm = body.get("confirm", False)
+    ok_confirm = confirm is True or str(confirm).strip().lower() in ("1", "true", "yes", "on")
+    if not bid:
+        return jsonify({"ok": False, "error": "id required"}), 400
+    if not ok_confirm:
+        return jsonify({"ok": False, "error": "Confirmation required"}), 400
+    out = undo_change_block(bid)
+    if not out.get("ok"):
+        return jsonify(out), 409
+    return jsonify(out)
+
+
+@app.post("/api/change_block/repeat")
+def api_change_block_repeat():
+    body = request.get_json(force=True) or {}
+    bid = str(body.get("id") or "").strip()
+    confirm = body.get("confirm", False)
+    ok_confirm = confirm is True or str(confirm).strip().lower() in ("1", "true", "yes", "on")
+    if not bid:
+        return jsonify({"ok": False, "error": "id required"}), 400
+    if not ok_confirm:
+        return jsonify({"ok": False, "error": "Confirmation required"}), 400
+    out = repeat_change_block(bid)
+    if not out.get("ok"):
+        return jsonify(out), 409
+    return jsonify(out)
+
+
 @app.post("/api/change_preview")
 def api_change_preview():
     """Build a preview plan for a set of changes (dry-run, no writes).
