@@ -63,6 +63,16 @@
 
 - API: neue Endpunkte `/api/dq/phase3/state`, `/api/dq/phase3/profile/save`, `/api/dq/phase3/rules/save`, `/api/dq/phase3/approve`.
 
+## 1.12.446
+
+### Enhancement
+
+- Datenpflege Center Phase 4: HA-Metadaten-Vorschlaege (Quelle: Home Assistant) inkl. YAML Snippets und Patch-Dateien als Preview/Export. Keine automatische Aenderung unter `/config`, keine HA Reloads. ([#410](https://github.com/thomas682/HA-Addons/issues/410))
+
+### Maintenance
+
+- API: neue Endpunkte `/api/dq/ha/generate`, `/api/dq/ha/proposals`, `/api/dq/ha/proposal`, `/api/dq/ha/patch`.
+
 ## 1.12.439
 
 ### Enhancement

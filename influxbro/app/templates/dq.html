@@ -166,6 +166,26 @@
         </div>
       </div>
 
+      <div class="card" data-ui="dq_phase4.panel_card" data-ib-pickkey="dq_phase4.panel_card" title="dq.phase4">
+        <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:baseline;">
+          <div style="font-weight:900; font-size:16px;" data-ui="dq_phase4.txt_title" data-ib-pickkey="dq_phase4.txt_title" title="dq.phase4.title">HA Parametrierung (Phase 4, Vorschlaege)</div>
+          <div class="muted" id="ha_meta" data-ui="dq_phase4.txt_meta" data-ib-pickkey="dq_phase4.txt_meta" title="dq.phase4.meta"></div>
+        </div>
+        <div class="muted">Generiert YAML-Vorschlaege und Patch-Dateien als Preview. Es wird NICHT nach /config geschrieben und nichts automatisch angewendet.</div>
+        <div class="row" data-ui="dq_phase4.panel_controls" data-ib-pickkey="dq_phase4.panel_controls" title="dq.phase4.controls">
+          <button id="dq_ha_gen" class="btn_sm" data-ui="dq_phase4.btn_generate" data-ib-pickkey="dq_phase4.btn_generate" title="dq.ha.generate">Vorschlaege erzeugen</button>
+          <button id="dq_ha_reload" class="btn_sm" data-ui="dq_phase4.btn_reload" data-ib-pickkey="dq_phase4.btn_reload" title="dq.ha.reload">Reload</button>
+        </div>
+        <div class="table_wrap" data-ui="dq_phase4.panel_table" data-ib-pickkey="dq_phase4.panel_table" title="dq.phase4.table">
+          <div class="table_box" style="max-height:42vh;">
+            <table id="dq_ha_tbl" data-ui="dq_phase4.tbl" data-ib-pickkey="dq_phase4.tbl" title="dq.ha.tbl">
+              <thead><tr><th>Entity</th><th>Findings</th><th>YAML Snippet</th><th>Patch</th><th>Aktionen</th></tr></thead>
+              <tbody id="dq_ha_rows"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <div class="dlg_backdrop" id="dq_dlg" data-ui="dq_detail.dialog" data-ib-pickkey="dq_detail.dialog" title="dq.detail">
         <div class="dlg">
           <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start;">
@@ -215,10 +235,16 @@
       const $rulesSave = document.getElementById('dq_rules_save');
       const $approvalsRows = document.getElementById('dq_approvals_rows');
 
+      const $haMeta = document.getElementById('ha_meta');
+      const $haGen = document.getElementById('dq_ha_gen');
+      const $haReload = document.getElementById('dq_ha_reload');
+      const $haRows = document.getElementById('dq_ha_rows');
+
       let ACTIVE_RUN_ID = null;
       let ACTIVE_RUN = null;
       let ACTIVE_PROPOSALS = [];
       let PHASE3_STATE = null;
+      let HA_PROPOSALS = [];
 
       function err(msg){ try{ $err.textContent = msg || ''; }catch(e){} }
       function ok(msg){ try{ $ok.textContent = msg || ''; }catch(e){} }
@@ -509,6 +535,68 @@
         }catch(e){ err('Rules Save Fehler: ' + (e&&e.message?e.message:String(e))); }
       }
 
+      async function loadHAProposals(){
+        if(!$haRows) return;
+        $haRows.innerHTML = '';
+        if(!ACTIVE_RUN_ID){
+          try{ if($haMeta) $haMeta.textContent = 'Kein Run aktiv.'; }catch(e){}
+          return;
+        }
+        let j;
+        try{ j = await api('./api/dq/ha/proposals?run_id=' + encodeURIComponent(String(ACTIVE_RUN_ID))); }catch(e){ err('HA Proposals Fehler: ' + e.message); return; }
+        HA_PROPOSALS = Array.isArray(j.proposals) ? j.proposals : [];
+        try{ if($haMeta) $haMeta.textContent = `proposals=${HA_PROPOSALS.length}`; }catch(e){}
+
+        HA_PROPOSALS.forEach((p, idx)=>{
+          const tr = document.createElement('tr');
+          const pk = String(p.id||('ha_' + idx));
+          tr.setAttribute('data-ui','dq_phase4.row');
+          tr.setAttribute('data-ib-pickkey','dq_phase4.row.' + pk);
+          const eid = String(p.entity_id||'');
+          const finds = Array.isArray(p.findings) ? p.findings : [];
+          const ft = finds.slice(0,8).map(f=>String(f.kind||'') + ':' + String(f.severity||'')).join(', ');
+          const ys = (p.yaml_suggestion && typeof p.yaml_suggestion === 'object') ? p.yaml_suggestion : null;
+          const snippet = ys ? String(ys.snippet||'') : '';
+          const patch = (p.yaml_patch_proposal && typeof p.yaml_patch_proposal === 'object') ? p.yaml_patch_proposal : null;
+          const patchId = patch ? String(patch.id||'') : '';
+
+          const tdE = document.createElement('td'); tdE.className='mono'; tdE.textContent = eid;
+          const tdF = document.createElement('td'); tdF.textContent = ft;
+          const tdY = document.createElement('td'); tdY.className='mono'; tdY.textContent = snippet;
+          const tdP = document.createElement('td'); tdP.className='mono'; tdP.textContent = patchId;
+          const tdA = document.createElement('td'); tdA.style.whiteSpace='nowrap';
+
+          const bCopy = document.createElement('button'); bCopy.className='btn_sm'; bCopy.textContent='Copy';
+          bCopy.onclick = async ()=>{ try{ await navigator.clipboard.writeText(snippet||''); ok('In Zwischenablage.'); }catch(e){ err('Copy fehlgeschlagen.'); } };
+
+          const bDl = document.createElement('button'); bDl.className='btn_sm'; bDl.textContent='Download Patch';
+          bDl.onclick = ()=>{ if(!patchId){ err('Kein Patch.'); return; } const a=document.createElement('a'); a.href='./api/dq/ha/patch?id=' + encodeURIComponent(patchId); a.target='_blank'; a.rel='noreferrer'; document.body.appendChild(a); a.click(); a.remove(); };
+
+          const bDet = document.createElement('button'); bDet.className='btn_sm'; bDet.textContent='Details';
+          bDet.onclick = ()=>{ try{ if($dlgTitle) $dlgTitle.textContent = 'HA Proposal ' + eid; if($dlgBody) $dlgBody.textContent = JSON.stringify(p, null, 2); if($dlg) $dlg.style.display='block'; }catch(e){} };
+
+          tdA.appendChild(bDet);
+          tdA.appendChild(bCopy);
+          tdA.appendChild(bDl);
+
+          tr.appendChild(tdE);
+          tr.appendChild(tdF);
+          tr.appendChild(tdY);
+          tr.appendChild(tdP);
+          tr.appendChild(tdA);
+          $haRows.appendChild(tr);
+        });
+      }
+
+      async function generateHAProposals(){
+        if(!ACTIVE_RUN_ID){ err('Kein Run aktiv.'); return; }
+        try{
+          const j = await api('./api/dq/ha/generate', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({run_id: ACTIVE_RUN_ID})});
+          ok('HA Vorschlaege erzeugt: ' + String(j.count||0));
+        }catch(e){ err('HA Generate Fehler: ' + e.message); }
+        await loadHAProposals();
+      }
+
       async function pollRun(runId){
         let j;
         try{
@@ -524,6 +612,7 @@
         if(st === 'done' || st === 'error'){
           renderRun(run);
           try{ loadProposals().catch(()=>{}); }catch(e){}
+          try{ loadHAProposals().catch(()=>{}); }catch(e){}
           if(st === 'done') ok('Analyse abgeschlossen.');
           else err('Analyse Fehler: ' + String(run.error||''));
           return;
@@ -606,6 +695,11 @@
       try{ if($p3Reload) $p3Reload.onclick = ()=>{ loadPhase3().catch(()=>{}); }; }catch(e){}
       try{ if($profilesSave) $profilesSave.onclick = ()=>{ saveProfiles().catch(()=>{}); }; }catch(e){}
       try{ if($rulesSave) $rulesSave.onclick = ()=>{ saveRules().catch(()=>{}); }; }catch(e){}
+
+      try{ if($haGen) $haGen.onclick = ()=>{ generateHAProposals().catch(()=>{}); }; }catch(e){}
+      try{ if($haReload) $haReload.onclick = ()=>{ loadHAProposals().catch(()=>{}); }; }catch(e){}
+
+      try{ loadHAProposals().catch(()=>{}); }catch(e){}
 
       try{ loadPhase3().catch(()=>{}); }catch(e){}
       </script>

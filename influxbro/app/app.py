@@ -124,6 +124,11 @@ DQ_APPROVALS_DIR = DATA_DIR / "dq" / "approvals"
 DQ_PROFILES_PATH = DATA_DIR / "dq" / "profiles.json"
 DQ_RULES_PATH = DATA_DIR / "dq" / "auto_rules.json"
 
+# DQ Phase 4: HA metadata snapshots / proposals / YAML patch suggestions
+DQ_HA_SNAP_DIR = DATA_DIR / "dq" / "ha_metadata_snapshots"
+DQ_HA_PROPOSALS_DIR = DATA_DIR / "dq" / "ha_config_proposals"
+DQ_YAML_PATCH_DIR = DATA_DIR / "dq" / "yaml_patch_proposals"
+
 # Timers state (last run timestamps, persisted under /data)
 TIMERS_STATE_LOCK = threading.RLock()
 TIMERS_STATE_PATH = DATA_DIR / "influxbro_timers_state.json"
@@ -21916,6 +21921,230 @@ def api_dq_phase3_approve():
     }
     _dq_write_json(DQ_APPROVALS_DIR / f"{aid}.json", approval)
     return jsonify({"ok": True, "approval": approval, "execution_enabled": False})
+
+
+# ------------------------------
+# Data Quality Center (DQ) Phase 4
+# HA metadata + YAML optimization proposals (suggestions only)
+# ------------------------------
+
+DQ_HA_SNAPSHOT_SCHEMA_VERSION = 1
+DQ_HA_FINDING_SCHEMA_VERSION = 1
+DQ_HA_PROPOSAL_SCHEMA_VERSION = 1
+DQ_YAML_PATCH_SCHEMA_VERSION = 1
+
+
+def _dq_uom_device_class_hint(uom: str) -> str | None:
+    u = str(uom or "").strip().lower()
+    if not u:
+        return None
+    if u in ("kwh", "wh", "mwh"):
+        return "energy"
+    if u in ("w", "kw"):
+        return "power"
+    if u in ("a", "ma"):
+        return "current"
+    if u in ("v", "mv"):
+        return "voltage"
+    if u in ("c", "°c", "degc"):
+        return "temperature"
+    if u in ("%", "percent"):
+        return "humidity"
+    return None
+
+
+def _dq_yaml_snippet(device_class: str | None, state_class: str | None, unit: str | None) -> str:
+    lines: list[str] = []
+    if device_class:
+        lines.append(f"device_class: {device_class}")
+    if state_class:
+        lines.append(f"state_class: {state_class}")
+    if unit:
+        lines.append(f"unit_of_measurement: {unit}")
+    return "\n".join(lines) + "\n"
+
+
+def _dq_write_yaml_patch(patch_id: str, entity_id: str, snippet: str) -> Path:
+    DQ_YAML_PATCH_DIR.mkdir(parents=True, exist_ok=True)
+    p = DQ_YAML_PATCH_DIR / f"{patch_id}.yaml"
+    tmp = p.with_suffix(p.suffix + ".tmp")
+    content = "# YAML Patch Proposal (NOT applied automatically)\n" + f"# entity_id: {entity_id}\n" + snippet
+    with DQ_LOCK:
+        tmp.write_text(content, encoding="utf-8")
+        tmp.replace(p)
+    return p
+
+
+def _dq_phase4_generate_for_run(run: dict[str, Any]) -> list[dict[str, Any]]:
+    """Generate HA config proposals based on HA metadata + Phase1 stats/findings.
+
+    Creates snapshots + proposals under /data/dq (suggestions only).
+    """
+
+    out: list[dict[str, Any]] = []
+    run_id = str(run.get("id") or "").strip()
+    items = run.get("items") if isinstance(run.get("items"), list) else []
+
+    for it in items:
+        if not isinstance(it, dict):
+            continue
+        ha = it.get("ha") if isinstance(it.get("ha"), dict) else None
+        if not (ha and bool(ha.get("available")) and isinstance(ha.get("entity"), dict)):
+            continue
+        ent = ha.get("entity")
+        eid = str(ent.get("resolved_entity_id") or ent.get("entity_id") or "").strip()
+        if not eid:
+            continue
+
+        # Snapshot
+        snap_id = uuid.uuid4().hex
+        snap = {
+            "id": snap_id,
+            "schema_version": DQ_HA_SNAPSHOT_SCHEMA_VERSION,
+            "created_at": _utc_now_iso_ms(),
+            "updated_at": _utc_now_iso_ms(),
+            "source": _dq_now_user_source(),
+            "status": "active",
+            "run_id": run_id,
+            "series_key": it.get("series_key"),
+            "entity_id": eid,
+            "ha_entity": ent,
+        }
+        _dq_write_json(DQ_HA_SNAP_DIR / f"{snap_id}.json", snap)
+
+        # Findings & suggestions
+        findings: list[dict[str, Any]] = []
+        suggest_dc = str(ent.get("device_class") or "").strip() or None
+        suggest_sc = str(ent.get("state_class") or "").strip() or None
+        suggest_uom = str(ent.get("unit_of_measurement") or "").strip() or None
+
+        # Derive suggestions from unit
+        dc_hint = _dq_uom_device_class_hint(suggest_uom or "")
+        if dc_hint and not suggest_dc:
+            findings.append({"id": uuid.uuid4().hex, "schema_version": DQ_HA_FINDING_SCHEMA_VERSION, "kind": "missing_device_class", "severity": "warn", "message": "device_class fehlt", "evidence": {"unit": suggest_uom, "hint": dc_hint}})
+            suggest_dc = dc_hint
+        if dc_hint and suggest_dc and suggest_dc != dc_hint:
+            findings.append({"id": uuid.uuid4().hex, "schema_version": DQ_HA_FINDING_SCHEMA_VERSION, "kind": "device_class_mismatch", "severity": "warn", "message": "device_class passt evtl. nicht zur Einheit", "evidence": {"unit": suggest_uom, "device_class": suggest_dc, "hint": dc_hint}})
+
+        # Counter heuristics from Phase1 stats
+        stats = it.get("stats") if isinstance(it.get("stats"), dict) else {}
+        neg_diff = stats.get("neg_diff_count")
+        neg_vals = stats.get("negative_count")
+        if not suggest_sc:
+            # If we saw counter-reset hints or negative diffs, total_increasing is likely.
+            if isinstance(neg_diff, int) and neg_diff > 0:
+                findings.append({"id": uuid.uuid4().hex, "schema_version": DQ_HA_FINDING_SCHEMA_VERSION, "kind": "missing_state_class", "severity": "warn", "message": "state_class fehlt (Counter Verhalten erkannt)", "evidence": {"neg_diff_count": neg_diff}})
+                suggest_sc = "total_increasing"
+            # If series has no negatives and no counter resets, still suggest total_increasing for energy-like units.
+            elif (suggest_uom or "").strip().lower() in ("kwh", "wh", "mwh") and (not isinstance(neg_vals, int) or neg_vals == 0):
+                findings.append({"id": uuid.uuid4().hex, "schema_version": DQ_HA_FINDING_SCHEMA_VERSION, "kind": "missing_state_class", "severity": "info", "message": "state_class fehlt (Einheit deutet auf Zaehler)", "evidence": {"unit": suggest_uom}})
+                suggest_sc = "total_increasing"
+
+        # If state_class is total_increasing but we saw negative values -> finding
+        if suggest_sc in ("total_increasing", "total") and isinstance(neg_vals, int) and neg_vals > 0:
+            findings.append({"id": uuid.uuid4().hex, "schema_version": DQ_HA_FINDING_SCHEMA_VERSION, "kind": "state_class_conflict", "severity": "warn", "message": "negative Werte widersprechen total_increasing", "evidence": {"negative_count": neg_vals, "state_class": suggest_sc}})
+
+        if not findings and not (suggest_dc or suggest_sc or suggest_uom):
+            continue
+
+        snippet = _dq_yaml_snippet(suggest_dc, suggest_sc, suggest_uom)
+        patch_id = uuid.uuid4().hex
+        _dq_write_yaml_patch(patch_id, eid, snippet)
+
+        prop_id = uuid.uuid4().hex
+        prop = {
+            "id": prop_id,
+            "schema_version": DQ_HA_PROPOSAL_SCHEMA_VERSION,
+            "created_at": _utc_now_iso_ms(),
+            "updated_at": _utc_now_iso_ms(),
+            "source": _dq_now_user_source(),
+            "status": "active",
+            "run_id": run_id,
+            "series_key": it.get("series_key"),
+            "entity_id": eid,
+            "findings": findings,
+            "yaml_suggestion": {
+                "device_class": suggest_dc,
+                "state_class": suggest_sc,
+                "unit_of_measurement": suggest_uom,
+                "snippet": snippet,
+            },
+            "yaml_patch_proposal": {
+                "id": patch_id,
+                "schema_version": DQ_YAML_PATCH_SCHEMA_VERSION,
+                "path": str((DQ_YAML_PATCH_DIR / f"{patch_id}.yaml")),
+                "note": "Nur Vorschlag; NICHT automatisch angewendet.",
+            },
+        }
+        _dq_write_json(DQ_HA_PROPOSALS_DIR / f"{prop_id}.json", prop)
+        out.append({"id": prop_id, "entity_id": eid, "series_key": it.get("series_key"), "yaml": prop.get("yaml_suggestion"), "findings": findings, "patch_id": patch_id})
+
+    return out
+
+
+@app.post("/api/dq/ha/generate")
+def api_dq_ha_generate():
+    body = request.get_json(force=True) or {}
+    run_id = str(body.get("run_id") or "").strip()
+    if not run_id:
+        return jsonify({"ok": False, "error": "run_id required"}), 400
+    run = _dq_run_load(run_id)
+    if not run:
+        return jsonify({"ok": False, "error": "run not found"}), 404
+    if str(run.get("state") or "") != "done":
+        return jsonify({"ok": False, "error": "run not done"}), 409
+    props = _dq_phase4_generate_for_run(run)
+    return jsonify({"ok": True, "count": len(props), "proposals": props})
+
+
+@app.get("/api/dq/ha/proposals")
+def api_dq_ha_proposals_list():
+    run_id = str(request.args.get("run_id") or "").strip() or None
+    xs = _dq_list_dir(DQ_HA_PROPOSALS_DIR, limit=500)
+    if run_id:
+        xs = [p for p in xs if isinstance(p, dict) and str(p.get("run_id") or "") == run_id]
+    xs.sort(key=lambda r: str(r.get("created_at") or ""), reverse=True)
+    out = []
+    for p in xs:
+        if not isinstance(p, dict):
+            continue
+        out.append({
+            "id": p.get("id"),
+            "run_id": p.get("run_id"),
+            "entity_id": p.get("entity_id"),
+            "series_key": p.get("series_key"),
+            "yaml_suggestion": p.get("yaml_suggestion"),
+            "yaml_patch_proposal": p.get("yaml_patch_proposal"),
+            "findings": p.get("findings"),
+        })
+    return jsonify({"ok": True, "proposals": out})
+
+
+@app.get("/api/dq/ha/proposal")
+def api_dq_ha_proposal_get():
+    pid = str(request.args.get("id") or "").strip()
+    if not pid:
+        return jsonify({"ok": False, "error": "id required"}), 400
+    p = _dq_read_json(DQ_HA_PROPOSALS_DIR / f"{pid}.json")
+    if not p:
+        return jsonify({"ok": False, "error": "proposal not found"}), 404
+    return jsonify({"ok": True, "proposal": p})
+
+
+@app.get("/api/dq/ha/patch")
+def api_dq_ha_patch_download():
+    pid = str(request.args.get("id") or "").strip()
+    if not pid:
+        return jsonify({"ok": False, "error": "id required"}), 400
+    p = DQ_YAML_PATCH_DIR / f"{pid}.yaml"
+    if not p.exists():
+        return jsonify({"ok": False, "error": "patch not found"}), 404
+    raw = p.read_text(encoding="utf-8", errors="replace")
+    fn = f"influxbro_dq_yaml_patch_{pid}.yaml"
+    resp = make_response(raw)
+    resp.headers["Content-Type"] = "text/yaml; charset=utf-8"
+    resp.headers["Content-Disposition"] = f"attachment; filename=\"{fn}\""
+    return resp
 
 
 @app.post("/api/raw_points")
