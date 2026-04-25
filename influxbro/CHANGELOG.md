@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.12.447
+
+### Enhancement
+
+- Change-Service Basis: persistente ChangeBlocks (Schema v1) inkl. ChangeItems und vollständiger Point Identity. Payloads werden unter `/data/change_blocks` gespeichert (inline oder als JSON-Gzip), inkl. zentraler Save/Load/List/Validate-Funktionen. ([#401](https://github.com/thomas682/HA-Addons/issues/401))
+
+### Maintenance
+
+- API: neue read-only Endpunkte `/api/change_blocks_v2` und `/api/change_block` (Storage-basiert, unabhängig von Influx).
+
 ## 1.12.440
 
 ### Enhancement

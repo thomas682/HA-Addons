@@ -129,6 +129,17 @@ DQ_HA_SNAP_DIR = DATA_DIR / "dq" / "ha_metadata_snapshots"
 DQ_HA_PROPOSALS_DIR = DATA_DIR / "dq" / "ha_config_proposals"
 DQ_YAML_PATCH_DIR = DATA_DIR / "dq" / "yaml_patch_proposals"
 
+# ChangeBlocks (central change-service storage; Issue #401)
+CHANGE_BLOCKS_LOCK = threading.RLock()
+CHANGE_BLOCKS_DIR = DATA_DIR / "change_blocks"
+CHANGE_BLOCKS_INDEX_DIR = CHANGE_BLOCKS_DIR / "index"
+CHANGE_BLOCK_SCHEMA_VERSION = 1
+CHANGE_ITEM_SCHEMA_VERSION = 1
+
+# Payload policy
+CHANGE_BLOCK_INLINE_MAX_ITEMS = 120
+CHANGE_BLOCK_INLINE_MAX_BYTES = 250_000
+
 # Timers state (last run timestamps, persisted under /data)
 TIMERS_STATE_LOCK = threading.RLock()
 TIMERS_STATE_PATH = DATA_DIR / "influxbro_timers_state.json"
@@ -29336,6 +29347,561 @@ def _history_change_entries_for_block(
                 continue
         out.append(it)
     return out
+
+
+# ------------------------------
+# ChangeBlocks Core (Issue #401)
+# ------------------------------
+
+_CHANGE_BLOCK_ID_RE = re.compile(r"^[a-fA-F0-9]{16,64}$")
+
+
+def _cb_require_block_id(block_id: str) -> str:
+    bid = str(block_id or "").strip()
+    if not bid:
+        raise ValueError("block_id required")
+    # MVP: we only allow hex UUIDs (keeps filenames safe)
+    if not _CHANGE_BLOCK_ID_RE.match(bid):
+        raise ValueError("invalid block_id")
+    return bid
+
+
+def _cb_parse_created_at(created_at: str) -> datetime:
+    dt = _parse_iso_datetime(str(created_at or "").strip())
+    if not isinstance(dt, datetime):
+        raise ValueError("invalid created_at")
+    return dt.astimezone(timezone.utc)
+
+
+def _cb_year_dir(created_at: str) -> Path:
+    dt = _cb_parse_created_at(created_at)
+    return CHANGE_BLOCKS_DIR / f"{dt.year:04d}"
+
+
+def _cb_meta_path(block_id: str, created_at: str) -> Path:
+    bid = _cb_require_block_id(block_id)
+    return _cb_year_dir(created_at) / f"block_{bid}.json"
+
+
+def _cb_payload_path(block_id: str, created_at: str) -> Path:
+    bid = _cb_require_block_id(block_id)
+    return _cb_year_dir(created_at) / f"block_{bid}.payload.json.gz"
+
+
+def _cb_index_path(block_id: str) -> Path:
+    bid = _cb_require_block_id(block_id)
+    return CHANGE_BLOCKS_INDEX_DIR / f"{bid}.json"
+
+
+def _cb_atomic_write_text(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    with CHANGE_BLOCKS_LOCK:
+        tmp.write_text(text, encoding="utf-8")
+        tmp.replace(path)
+
+
+def _cb_atomic_write_gzip_json(path: Path, obj: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    raw = json.dumps(obj, ensure_ascii=True, sort_keys=True)
+    with CHANGE_BLOCKS_LOCK:
+        with gzip.open(tmp, "wt", encoding="utf-8") as f:
+            f.write(raw)
+        tmp.replace(path)
+
+
+def _cb_read_json(path: Path) -> dict[str, Any] | None:
+    try:
+        if not path.exists():
+            return None
+        with CHANGE_BLOCKS_LOCK:
+            raw = path.read_text(encoding="utf-8", errors="replace")
+        j = json.loads(raw) if raw else None
+        return j if isinstance(j, dict) else None
+    except Exception:
+        return None
+
+
+def _cb_read_gzip_json(path: Path) -> dict[str, Any] | None:
+    try:
+        if not path.exists():
+            return None
+        with CHANGE_BLOCKS_LOCK:
+            with gzip.open(path, "rt", encoding="utf-8", errors="replace") as f:
+                raw = f.read()
+        j = json.loads(raw) if raw else None
+        return j if isinstance(j, dict) else None
+    except Exception:
+        return None
+
+
+def _cb_norm_tag_set(tags: dict[str, Any] | None) -> dict[str, str]:
+    out: dict[str, str] = {}
+    if not isinstance(tags, dict):
+        return out
+    for k, v in tags.items():
+        kk = str(k or "").strip()
+        if not kk:
+            continue
+        if v is None:
+            continue
+        out[kk] = str(v)
+    # keep stable key order when serialized
+    return {k: out[k] for k in sorted(out.keys())}
+
+
+def _cb_norm_point_identity(pid: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(pid, dict):
+        raise ValueError("point_identity must be object")
+    ts = str(pid.get("timestamp") or "").strip()
+    if not ts:
+        raise ValueError("point_identity.timestamp required")
+    dt = _parse_iso_datetime(ts)
+    if not isinstance(dt, datetime):
+        raise ValueError("point_identity.timestamp invalid")
+    ts_norm = _dt_to_rfc3339_utc_full(dt.astimezone(timezone.utc))
+
+    return {
+        "bucket": str(pid.get("bucket") or "").strip(),
+        "org": str(pid.get("org") or "").strip(),
+        "measurement": str(pid.get("measurement") or "").strip(),
+        "field": str(pid.get("field") or "").strip(),
+        "timestamp": ts_norm,
+        "tag_set": _cb_norm_tag_set(pid.get("tag_set") if isinstance(pid.get("tag_set"), dict) else {}),
+    }
+
+
+def _cb_norm_point(point: dict[str, Any] | None) -> dict[str, Any] | None:
+    if point is None:
+        return None
+    if not isinstance(point, dict):
+        raise ValueError("point must be object")
+    # keep as-is, but normalize common keys if present
+    out = dict(point)
+    if "_time" in out:
+        try:
+            dt = _parse_iso_datetime(str(out.get("_time") or "").strip())
+            if isinstance(dt, datetime):
+                out["_time"] = _dt_to_rfc3339_utc_full(dt.astimezone(timezone.utc))
+        except Exception:
+            pass
+    return out
+
+
+def normalize_change_item(item: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(item, dict):
+        raise ValueError("item must be object")
+    op = str(item.get("op") or "").strip().lower()
+    if op not in ("create", "update", "delete"):
+        raise ValueError("op must be create|update|delete")
+    bid = _cb_require_block_id(str(item.get("block_id") or ""))
+    iid = str(item.get("item_id") or "").strip() or uuid.uuid4().hex
+    pid = _cb_norm_point_identity(item.get("point_identity") or {})
+    old_p = _cb_norm_point(item.get("old_point") if "old_point" in item else None)
+    new_p = _cb_norm_point(item.get("new_point") if "new_point" in item else None)
+    exp_p = _cb_norm_point(item.get("expected_current_point") if "expected_current_point" in item else None)
+    pol = str(item.get("conflict_policy") or "strict").strip().lower() or "strict"
+    if pol not in ("strict",):
+        pol = "strict"
+
+    out = {
+        "schema_version": int(item.get("schema_version") or CHANGE_ITEM_SCHEMA_VERSION),
+        "item_id": iid,
+        "block_id": bid,
+        "op": op,
+        "point_identity": pid,
+        "old_point": old_p,
+        "new_point": new_p,
+        "expected_current_point": exp_p,
+        "conflict_policy": pol,
+    }
+    return out
+
+
+def validate_change_item_schema(item: dict[str, Any]) -> None:
+    if not isinstance(item, dict):
+        raise ValueError("item must be object")
+    if int(item.get("schema_version") or 0) < 1:
+        raise ValueError("item.schema_version required")
+    _cb_require_block_id(str(item.get("block_id") or ""))
+    if not str(item.get("item_id") or "").strip():
+        raise ValueError("item_id required")
+    op = str(item.get("op") or "").strip().lower()
+    if op not in ("create", "update", "delete"):
+        raise ValueError("op must be create|update|delete")
+    pid = item.get("point_identity")
+    pidn = _cb_norm_point_identity(pid if isinstance(pid, dict) else {})
+    if not pidn.get("bucket"):
+        raise ValueError("point_identity.bucket required")
+    if not pidn.get("org"):
+        raise ValueError("point_identity.org required")
+    if not pidn.get("measurement"):
+        raise ValueError("point_identity.measurement required")
+    if not pidn.get("field"):
+        raise ValueError("point_identity.field required")
+
+    old_p = item.get("old_point")
+    new_p = item.get("new_point")
+    if op == "create":
+        if old_p is not None:
+            raise ValueError("create requires old_point=null")
+        if new_p is None:
+            raise ValueError("create requires new_point")
+    if op == "update":
+        if old_p is None or new_p is None:
+            raise ValueError("update requires old_point and new_point")
+    if op == "delete":
+        if old_p is None:
+            raise ValueError("delete requires old_point")
+        if new_p is not None:
+            raise ValueError("delete requires new_point=null")
+
+    pol = str(item.get("conflict_policy") or "").strip().lower()
+    if not pol:
+        raise ValueError("conflict_policy required")
+
+
+def normalize_change_block(block: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(block, dict):
+        raise ValueError("block must be object")
+    bid = str(block.get("block_id") or "").strip() or uuid.uuid4().hex
+    bid = _cb_require_block_id(bid)
+    created_at = str(block.get("created_at") or "").strip() or _utc_now_iso_ms()
+    created_dt = _cb_parse_created_at(created_at)
+    created_at = _dt_to_rfc3339_utc_full(created_dt)
+
+    src = block.get("source") if isinstance(block.get("source"), dict) else {}
+    # stable subset
+    source = {
+        "user_id": src.get("user_id"),
+        "ip": str(src.get("ip") or "").strip() or None,
+        "ua": str(src.get("ua") or "").strip() or None,
+        "trigger_page": str(src.get("trigger_page") or "").strip() or None,
+        "trigger_source": str(src.get("trigger_source") or "").strip() or None,
+        "trigger_action": str(src.get("trigger_action") or "").strip() or None,
+        "trigger_button": str(src.get("trigger_button") or "").strip() or None,
+    }
+
+    op_src = str(block.get("operation_source") or "").strip() or "api"
+    reason = str(block.get("reason") or "").strip()[:800]
+
+    status = str(block.get("status") or "created").strip().lower() or "created"
+    undo_status = str(block.get("undo_status") or "not_run").strip().lower() or "not_run"
+    repeat_status = str(block.get("repeat_status") or "not_run").strip().lower() or "not_run"
+
+    payload_mode = str(block.get("payload_mode") or "inline").strip().lower() or "inline"
+    if payload_mode not in ("inline", "gzip"):
+        payload_mode = "inline"
+    payload_ref = str(block.get("payload_ref") or "").strip() or None
+    payload_inline = block.get("payload_inline") if isinstance(block.get("payload_inline"), list) else None
+
+    try:
+        affected = int(block.get("affected_count") or 0)
+    except Exception:
+        affected = 0
+    if affected < 0:
+        affected = 0
+
+    out = {
+        "schema_version": int(block.get("schema_version") or CHANGE_BLOCK_SCHEMA_VERSION),
+        "block_id": bid,
+        "created_at": created_at,
+        "source": source,
+        "operation_source": op_src,
+        "reason": reason,
+        "status": status,
+        "undo_status": undo_status,
+        "repeat_status": repeat_status,
+        "affected_count": affected,
+        "payload_mode": payload_mode,
+        "payload_ref": payload_ref,
+        "payload_inline": payload_inline,
+    }
+
+    # optional meta
+    if isinstance(block.get("series_summary"), dict):
+        out["series_summary"] = dict(block.get("series_summary") or {})
+    if isinstance(block.get("meta"), dict):
+        out["meta"] = dict(block.get("meta") or {})
+    return out
+
+
+def validate_change_block_schema(block: dict[str, Any]) -> None:
+    if not isinstance(block, dict):
+        raise ValueError("block must be object")
+    if int(block.get("schema_version") or 0) < 1:
+        raise ValueError("schema_version required")
+    _cb_require_block_id(str(block.get("block_id") or ""))
+    _cb_parse_created_at(str(block.get("created_at") or ""))
+    if not isinstance(block.get("source"), dict):
+        raise ValueError("source must be object")
+    if not str(block.get("operation_source") or "").strip():
+        raise ValueError("operation_source required")
+    if not str(block.get("status") or "").strip():
+        raise ValueError("status required")
+    if not str(block.get("undo_status") or "").strip():
+        raise ValueError("undo_status required")
+    if not str(block.get("repeat_status") or "").strip():
+        raise ValueError("repeat_status required")
+    try:
+        n = int(block.get("affected_count") or 0)
+    except Exception:
+        raise ValueError("affected_count invalid")
+    if n < 0:
+        raise ValueError("affected_count invalid")
+
+    mode = str(block.get("payload_mode") or "").strip().lower()
+    if mode not in ("inline", "gzip"):
+        raise ValueError("payload_mode must be inline|gzip")
+    if mode == "inline":
+        xs = block.get("payload_inline")
+        if not isinstance(xs, list):
+            raise ValueError("payload_inline required for inline")
+        if len(xs) != n:
+            # allow mismatch only if affected_count==0 and list empty
+            if not (n == 0 and len(xs) == 0):
+                raise ValueError("affected_count must match payload_inline length")
+    else:
+        if not str(block.get("payload_ref") or "").strip():
+            raise ValueError("payload_ref required for gzip")
+
+
+def write_change_payload(block_id: str, created_at: str, items: list[dict[str, Any]]) -> dict[str, Any]:
+    bid = _cb_require_block_id(block_id)
+    created_at_norm = _dt_to_rfc3339_utc_full(_cb_parse_created_at(created_at))
+    xs = [normalize_change_item(it) for it in (items or []) if isinstance(it, dict)]
+    for it in xs:
+        validate_change_item_schema(it)
+
+    raw = json.dumps({"schema_version": 1, "block_id": bid, "items": xs}, ensure_ascii=True, sort_keys=True)
+    if len(xs) <= int(CHANGE_BLOCK_INLINE_MAX_ITEMS) and len(raw) <= int(CHANGE_BLOCK_INLINE_MAX_BYTES):
+        return {"payload_mode": "inline", "payload_inline": xs, "payload_ref": None, "created_at": created_at_norm}
+
+    # gzip payload
+    p = _cb_payload_path(bid, created_at_norm)
+    payload_ref = str(p.relative_to(CHANGE_BLOCKS_DIR))
+    _cb_atomic_write_gzip_json(p, {"schema_version": 1, "block_id": bid, "items": xs})
+    return {"payload_mode": "gzip", "payload_inline": None, "payload_ref": payload_ref, "created_at": created_at_norm}
+
+
+def read_change_payload(block_id: str) -> list[dict[str, Any]]:
+    bid = _cb_require_block_id(block_id)
+    idx = _cb_read_json(_cb_index_path(bid))
+    if not idx:
+        raise FileNotFoundError("change block index not found")
+    meta_ref = str(idx.get("meta_ref") or "").strip()
+    if not meta_ref:
+        raise RuntimeError("index missing meta_ref")
+    meta_path = (CHANGE_BLOCKS_DIR / meta_ref).resolve()
+    if CHANGE_BLOCKS_DIR.resolve() not in meta_path.parents:
+        raise RuntimeError("path traversal")
+    meta = _cb_read_json(meta_path)
+    if not meta:
+        raise FileNotFoundError("change block meta not found")
+    validate_change_block_schema(meta)
+
+    mode = str(meta.get("payload_mode") or "").strip().lower()
+    if mode == "inline":
+        xs = meta.get("payload_inline")
+        if not isinstance(xs, list):
+            return []
+        out = [normalize_change_item(it) for it in xs if isinstance(it, dict)]
+        for it in out:
+            validate_change_item_schema(it)
+        return out
+
+    ref = str(meta.get("payload_ref") or "").strip()
+    if not ref:
+        return []
+    pp = (CHANGE_BLOCKS_DIR / ref).resolve()
+    if CHANGE_BLOCKS_DIR.resolve() not in pp.parents:
+        raise RuntimeError("path traversal")
+    payload = _cb_read_gzip_json(pp)
+    if not payload:
+        return []
+    items = payload.get("items") if isinstance(payload.get("items"), list) else []
+    out = [normalize_change_item(it) for it in items if isinstance(it, dict)]
+    for it in out:
+        validate_change_item_schema(it)
+    return out
+
+
+def save_change_block(block: dict[str, Any], *, items: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+    b0 = normalize_change_block(block)
+    bid = str(b0.get("block_id") or "")
+    created_at = str(b0.get("created_at") or "")
+
+    xs: list[dict[str, Any]]
+    if items is not None:
+        xs = [normalize_change_item(it) for it in items if isinstance(it, dict)]
+    else:
+        xs = [normalize_change_item(it) for it in (b0.get("payload_inline") or []) if isinstance(it, dict)] if isinstance(b0.get("payload_inline"), list) else []
+
+    # Validate all items
+    for it in xs:
+        # ensure correct block_id
+        it["block_id"] = bid
+        validate_change_item_schema(it)
+
+    b0["affected_count"] = len(xs)
+
+    # Decide payload
+    pinfo = write_change_payload(bid, created_at, xs)
+    b0["created_at"] = pinfo.get("created_at")
+    b0["payload_mode"] = pinfo.get("payload_mode")
+    b0["payload_inline"] = pinfo.get("payload_inline")
+    b0["payload_ref"] = pinfo.get("payload_ref")
+
+    validate_change_block_schema(b0)
+
+    meta_path = _cb_meta_path(bid, str(b0.get("created_at") or ""))
+    meta_ref = str(meta_path.relative_to(CHANGE_BLOCKS_DIR))
+    _cb_atomic_write_text(meta_path, json.dumps(b0, ensure_ascii=True, sort_keys=True, indent=2))
+
+    # Index points to meta
+    idx = {
+        "block_id": bid,
+        "created_at": str(b0.get("created_at") or ""),
+        "meta_ref": meta_ref,
+        "schema_version": 1,
+    }
+    _cb_atomic_write_text(_cb_index_path(bid), json.dumps(idx, ensure_ascii=True, sort_keys=True, indent=2))
+    return b0
+
+
+def load_change_block(block_id: str, *, include_items: bool = False) -> dict[str, Any] | None:
+    bid = _cb_require_block_id(block_id)
+    idx = _cb_read_json(_cb_index_path(bid))
+    if not idx:
+        return None
+    meta_ref = str(idx.get("meta_ref") or "").strip()
+    if not meta_ref:
+        return None
+    meta_path = (CHANGE_BLOCKS_DIR / meta_ref).resolve()
+    if CHANGE_BLOCKS_DIR.resolve() not in meta_path.parents:
+        return None
+    meta = _cb_read_json(meta_path)
+    if not meta:
+        return None
+    validate_change_block_schema(meta)
+    if include_items:
+        try:
+            items = read_change_payload(bid)
+        except Exception:
+            items = []
+        # Provide items even if payload_mode=gzip
+        meta = dict(meta)
+        meta["items"] = items
+    return meta
+
+
+def list_change_blocks(filters: dict[str, Any] | None = None, *, limit: int = 50) -> list[dict[str, Any]]:
+    try:
+        lim = min(500, max(1, int(limit or 50)))
+    except Exception:
+        lim = 50
+
+    f = filters if isinstance(filters, dict) else {}
+    op_source = str(f.get("operation_source") or "").strip().lower() or None
+    measurement = str(f.get("measurement") or "").strip() or None
+    field = str(f.get("field") or "").strip() or None
+    entity_id = str(f.get("entity_id") or "").strip() or None
+    friendly_name = str(f.get("friendly_name") or "").strip() or None
+    status = str(f.get("status") or "").strip().lower() or None
+
+    if not CHANGE_BLOCKS_INDEX_DIR.exists():
+        return []
+    ps = [p for p in CHANGE_BLOCKS_INDEX_DIR.iterdir() if p.is_file() and p.suffix == ".json"]
+    ps.sort(key=lambda p: float(p.stat().st_mtime if p.exists() else 0), reverse=True)
+
+    out: list[dict[str, Any]] = []
+    for p in ps:
+        if len(out) >= lim:
+            break
+        idx = _cb_read_json(p)
+        if not idx:
+            continue
+        bid = str(idx.get("block_id") or "").strip()
+        meta_ref = str(idx.get("meta_ref") or "").strip()
+        if not bid or not meta_ref:
+            continue
+        meta_path = (CHANGE_BLOCKS_DIR / meta_ref).resolve()
+        if CHANGE_BLOCKS_DIR.resolve() not in meta_path.parents:
+            continue
+        meta = _cb_read_json(meta_path)
+        if not meta:
+            continue
+
+        try:
+            validate_change_block_schema(meta)
+        except Exception:
+            # invalid blocks are not listed
+            continue
+
+        if op_source and str(meta.get("operation_source") or "").strip().lower() != op_source:
+            continue
+        if status and str(meta.get("status") or "").strip().lower() != status:
+            continue
+        s = meta.get("series_summary") if isinstance(meta.get("series_summary"), dict) else {}
+        if measurement and str(s.get("measurement") or "").strip() != measurement:
+            continue
+        if field and str(s.get("field") or "").strip() != field:
+            continue
+        if entity_id is not None and str(s.get("entity_id") or "").strip() != entity_id:
+            continue
+        if friendly_name is not None and str(s.get("friendly_name") or "").strip() != friendly_name:
+            continue
+        out.append(meta)
+
+    return out
+
+
+@app.get("/api/change_blocks_v2")
+def api_change_blocks_v2():
+    """List persisted ChangeBlocks from /data/change_blocks (Issue #401).
+
+    This endpoint is read-only and independent of Influx connectivity.
+    """
+
+    try:
+        limit = int(request.args.get("limit") or 50)
+    except Exception:
+        limit = 50
+    limit = max(1, min(500, limit))
+    f = {
+        "operation_source": request.args.get("operation_source"),
+        "status": request.args.get("status"),
+        "measurement": request.args.get("measurement"),
+        "field": request.args.get("field"),
+        "entity_id": request.args.get("entity_id"),
+        "friendly_name": request.args.get("friendly_name"),
+    }
+    rows = list_change_blocks(f, limit=limit)
+    # reduce: never include payload in list
+    pub = []
+    for b in rows:
+        if not isinstance(b, dict):
+            continue
+        bb = dict(b)
+        bb.pop("payload_inline", None)
+        pub.append(bb)
+    return jsonify({"ok": True, "rows": pub})
+
+
+@app.get("/api/change_block")
+def api_change_block_get():
+    bid = str(request.args.get("id") or "").strip()
+    if not bid:
+        return jsonify({"ok": False, "error": "id required"}), 400
+    include_items = str(request.args.get("include_items") or "").strip().lower() in ("1", "true", "yes", "on")
+    try:
+        b = load_change_block(bid, include_items=include_items)
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 400
+    if not b:
+        return jsonify({"ok": False, "error": "not found"}), 404
+    return jsonify({"ok": True, "block": b})
 
 
 @app.post("/api/change_preview")
