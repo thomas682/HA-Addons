@@ -23967,6 +23967,208 @@ def api_dq_migration_candidates():
     })
 
 
+def _dq_points_from_bucket_v2(
+    cfg: dict[str, Any],
+    *,
+    bucket: str,
+    measurement: str,
+    field: str,
+    entity_id: str | None,
+    friendly_name: str | None,
+    start_dt: datetime,
+    stop_dt: datetime,
+    max_points: int,
+    agg_fn: str = "max",
+) -> dict[str, Any]:
+    """Fetch time/value rows from a given bucket (best-effort), with optional downsampling."""
+
+    extra = flux_tag_filter(entity_id, friendly_name)
+    dur_ms = max(0.0, (stop_dt - start_dt).total_seconds() * 1000.0)
+    every_ms = int(math.ceil(dur_ms / float(max_points))) if (dur_ms > 0 and max_points > 0) else 1
+    if every_ms < 1:
+        every_ms = 1
+
+    agg_fn = str(agg_fn or "max").strip().lower()
+    if agg_fn not in ("max", "min"):
+        agg_fn = "max"
+
+    start = _dt_to_rfc3339_utc(start_dt)
+    stop = _dt_to_rfc3339_utc(stop_dt)
+
+    agg = ""
+    mode = "raw"
+    if every_ms > 1:
+        agg = f'  |> aggregateWindow(every: {every_ms}ms, fn: {agg_fn}, createEmpty: false)\n'
+        mode = f"downsample_{agg_fn}"
+
+    q = f'''
+from(bucket: "{bucket}")
+  |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
+{agg}  |> keep(columns: ["_time","_value"])
+  |> sort(columns: ["_time"], desc: false)
+  |> limit(n: {int(max_points)})
+'''
+
+    rows: list[dict[str, Any]] = []
+    non_numeric = 0
+    with v2_client(cfg) as c:
+        qapi = c.query_api()
+        for rec in qapi.query_stream(q, org=cfg["org"]):
+            try:
+                ts = rec.get_time()
+                val = rec.get_value()
+                if not isinstance(ts, datetime):
+                    continue
+                # Normalize to numeric where possible.
+                if isinstance(val, bool):
+                    val2: float | int = 1 if val else 0
+                elif isinstance(val, (int, float)):
+                    val2 = val
+                else:
+                    non_numeric += 1
+                    continue
+                rows.append({"time": _dt_to_rfc3339_utc_ms(ts), "value": val2})
+            except Exception:
+                continue
+
+    return {
+        "bucket": bucket,
+        "measurement": measurement,
+        "field": field,
+        "rows": rows,
+        "meta": {
+            "mode": mode,
+            "every_ms": every_ms,
+            "max_points": int(max_points),
+            "agg_fn": agg_fn,
+            "non_numeric_skipped": int(non_numeric),
+            "query_language": "flux",
+            "query": q.strip(),
+        },
+    }
+
+
+def _rollup_window_key(win: str) -> str:
+    s = re.sub(r"[^0-9A-Za-z]+", "_", str(win or "")).strip("_")
+    return s or "win"
+
+
+@app.post("/api/dq/multi_resolution")
+def api_dq_multi_resolution():
+    """Read-only multi-resolution graph data (Raw/Clean/Rollup).
+
+    Part of Epic #406 (Module: Multi-Resolution Graph).
+    """
+
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    if int(cfg.get("influx_version", 2) or 2) != 2:
+        return jsonify({"ok": False, "error": "InfluxDB v2 required"}), 400
+    if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+        return jsonify({"ok": False, "error": "InfluxDB v2 requires token, org, bucket"}), 400
+
+    body = request.get_json(force=True) or {}
+    measurement = str(body.get("measurement") or "").strip()
+    field = str(body.get("field") or "").strip()
+    entity_id = str(body.get("entity_id") or "").strip() or None
+    friendly_name = str(body.get("friendly_name") or "").strip() or None
+    if not measurement or not field:
+        return jsonify({"ok": False, "error": "measurement and field required"}), 400
+
+    # Range: explicit start/stop or derived from days.
+    start_dt = None
+    stop_dt = None
+    if body.get("start") and body.get("stop"):
+        try:
+            start_dt, stop_dt = _get_start_stop_from_payload(body)
+        except Exception as e:
+            return jsonify({"ok": False, "error": f"invalid start/stop: {e}"}), 400
+    if not start_dt or not stop_dt:
+        try:
+            days = int(body.get("days") or 30)
+        except Exception:
+            days = 30
+        days = max(1, min(3650, days))
+        stop_dt = datetime.now(timezone.utc)
+        start_dt = stop_dt - timedelta(days=days)
+
+    try:
+        max_points = int(body.get("max_points") or 1200)
+    except Exception:
+        max_points = 1200
+    max_points = max(50, min(20000, max_points))
+
+    qcfg = _quality_cfg_view(cfg)
+    raw_bucket = str(qcfg.get("raw_bucket") or cfg.get("quality_raw_bucket") or "").strip()
+    clean_bucket = str(qcfg.get("clean_bucket") or cfg.get("quality_clean_bucket") or "").strip()
+    rollup_bucket = str(qcfg.get("rollup_bucket") or cfg.get("quality_rollup_bucket") or "").strip()
+
+    out: dict[str, Any] = {
+        "ok": True,
+        "range": {"start": _dt_to_rfc3339_utc_full(start_dt), "stop": _dt_to_rfc3339_utc_full(stop_dt)},
+        "series": {"measurement": measurement, "field": field, "entity_id": entity_id, "friendly_name": friendly_name},
+        "quality": {"raw_bucket": raw_bucket, "clean_bucket": clean_bucket, "rollup_bucket": rollup_bucket, "rollups": qcfg.get("rollups")},
+        "raw": None,
+        "clean": None,
+        "rollup": {"bucket": rollup_bucket, "levels": []},
+    }
+
+    # Raw/Clean
+    try:
+        if raw_bucket:
+            out["raw"] = _dq_points_from_bucket_v2(cfg, bucket=raw_bucket, measurement=measurement, field=field, entity_id=entity_id, friendly_name=friendly_name, start_dt=start_dt, stop_dt=stop_dt, max_points=max_points, agg_fn="max")
+    except Exception as e:
+        out["raw"] = {"bucket": raw_bucket, "error": _short_influx_error(e)}
+    try:
+        if clean_bucket:
+            out["clean"] = _dq_points_from_bucket_v2(cfg, bucket=clean_bucket, measurement=measurement, field=field, entity_id=entity_id, friendly_name=friendly_name, start_dt=start_dt, stop_dt=stop_dt, max_points=max_points, agg_fn="max")
+    except Exception as e:
+        out["clean"] = {"bucket": clean_bucket, "error": _short_influx_error(e)}
+
+    # Rollup: try to pick a sensible field per window.
+    levels = qcfg.get("rollups") if isinstance(qcfg.get("rollups"), list) else []
+    for lv in levels:
+        if not isinstance(lv, dict):
+            continue
+        win = str(lv.get("window") or "").strip()
+        name = str(lv.get("name") or win).strip() or win
+        if not win:
+            continue
+        win_s = _rollup_window_key(win)
+        tried = [
+            f"{field}__mean__{win_s}",
+            f"{field}__last__{win_s}",
+            f"{field}__max__{win_s}",
+            f"{field}__min__{win_s}",
+        ]
+        chosen = None
+        chosen_res = None
+        err = None
+        if rollup_bucket:
+            for cand in tried:
+                try:
+                    res = _dq_points_from_bucket_v2(cfg, bucket=rollup_bucket, measurement=measurement, field=cand, entity_id=entity_id, friendly_name=friendly_name, start_dt=start_dt, stop_dt=stop_dt, max_points=max_points, agg_fn="max")
+                    if isinstance(res, dict) and isinstance(res.get("rows"), list) and len(res.get("rows")):
+                        chosen = cand
+                        chosen_res = res
+                        break
+                except Exception as e:
+                    err = _short_influx_error(e)
+                    continue
+
+        out["rollup"]["levels"].append({
+            "name": name,
+            "window": win,
+            "window_key": win_s,
+            "field_chosen": chosen,
+            "fields_tried": tried,
+            "data": chosen_res,
+            "error": err,
+        })
+
+    return jsonify(out)
+
+
 @app.get("/api/dq/quality_run/export")
 def api_dq_quality_run_export():
     rid = str(request.args.get("id") or "").strip()
