@@ -1286,6 +1286,12 @@ DEFAULT_CFG = {
     "ui_table_header_bg": "#0B1F3A",
     "ui_table_header_fg": "#FFFFFF",
 
+    # Theme / design tokens (MVP)
+    # Values: system|light|dark|dark_blue|high_contrast
+    "ui_theme_mode": "system",
+    # Values: blue|green|orange|violet|red|cyan
+    "ui_theme_accent": "blue",
+
     # Global (device-independent) settings page layout overrides.
     # Stored as a small JSON-like object; used by the Settings Organizer UI.
     "settings_layout": {},
@@ -19455,6 +19461,22 @@ def api_set_config():
     if m not in ("new_tab", "same_tab", "modal"):
         m = "new_tab"
     cfg["ui_tooltip_doc_open_mode"] = m
+
+    # Theme mode / accent (global)
+    try:
+        tm = str(cfg.get("ui_theme_mode") or "system").strip().lower()
+    except Exception:
+        tm = "system"
+    if tm not in ("system", "light", "dark", "dark_blue", "high_contrast"):
+        tm = "system"
+    cfg["ui_theme_mode"] = tm
+    try:
+        ta = str(cfg.get("ui_theme_accent") or "blue").strip().lower()
+    except Exception:
+        ta = "blue"
+    if ta not in ("blue", "green", "orange", "violet", "red", "cyan"):
+        ta = "blue"
+    cfg["ui_theme_accent"] = ta
 
     # Settings layout overrides (global UI structure for /config).
     # Keep the structure small and strictly typed (no HTML).

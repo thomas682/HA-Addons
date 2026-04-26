@@ -1808,20 +1808,20 @@ function _applyOverlays(){
             showscale: false,
             hovertemplate: '%{x}<br>abs(d/dt)=%{z}<extra></extra>',
           }];
-          const layout = {
-            margin: {l: 52, r: 10, t: 2, b: 18},
-            height: 60,
-            xaxis: {
-              type:'date',
-              showgrid:false,
-              zeroline:false,
-              showticklabels:false,
-              fixedrange: true,
-              autorange: !(winLo !== null && winHi !== null),
-              range: (winLo !== null && winHi !== null) ? [new Date(winLo), new Date(winHi)] : undefined,
-            },
-            yaxis: {showticklabels:false, showgrid:false, zeroline:false},
-          };
+           const layout = _ibPlotlyTheme({
+             margin: {l: 52, r: 10, t: 2, b: 18},
+             height: 60,
+             xaxis: {
+               type:'date',
+               showgrid:false,
+               zeroline:false,
+               showticklabels:false,
+               fixedrange: true,
+               autorange: !(winLo !== null && winHi !== null),
+               range: (winLo !== null && winHi !== null) ? [new Date(winLo), new Date(winHi)] : undefined,
+             },
+             yaxis: {showticklabels:false, showgrid:false, zeroline:false},
+           });
           try{ window.Plotly.react($derivStripPlot, data, layout, {displayModeBar:false, responsive:true, staticPlot:true}); }catch(e){}
         }
       }
@@ -1874,7 +1874,7 @@ function _applyOverlays(){
             hovertemplate: '%{x|%d.%m.%y %H:%M:%S.%L}<br>Outlier d/dt=%{y}<extra></extra>',
           });
         }
-        const layout = {
+        const layout = _ibPlotlyTheme({
           margin: {l: 52, r: 10, t: 6, b: 64},
           height: 140,
           xaxis: {
@@ -1886,7 +1886,7 @@ function _applyOverlays(){
           yaxis: {automargin:true, title: (wantSigned ? 'd/dt' : 'abs(d/dt)'), fixedrange: true},
           showlegend: true,
           legend: {orientation: 'h', x: 0, xanchor: 'left', y: -0.35, yanchor: 'top', font: {size: 11}},
-        };
+        });
         try{ window.Plotly.react($derivGraphPlot, data, layout, {displayModeBar:false, responsive:true, staticPlot:true}); }catch(e){}
       }
     }
@@ -1905,6 +1905,43 @@ function _zoomScale(){
   }catch(e){
     return 1;
   }
+}
+
+function _ibCssVar(name, fallback){
+  try{
+    const v = getComputedStyle(document.documentElement).getPropertyValue(String(name||'')).trim();
+    return v || String(fallback||'');
+  }catch(e){
+    return String(fallback||'');
+  }
+}
+
+function _ibPlotlyTheme(layout){
+  // Keep Plotly readable across themes (#405).
+  const l = (layout && typeof layout === 'object') ? layout : {};
+  const bg = _ibCssVar('--ib-surface', '#ffffff') || '#ffffff';
+  const fg = _ibCssVar('--ib-text', '#111827') || '#111827';
+  const grid = _ibCssVar('--ib-border', '#d7dce2') || '#d7dce2';
+  const font = Object.assign({ color: fg }, (l.font && typeof l.font === 'object') ? l.font : {});
+  function patchAxis(ax){
+    const a = (ax && typeof ax === 'object') ? ax : {};
+    const tickfont = Object.assign({ color: fg }, (a.tickfont && typeof a.tickfont === 'object') ? a.tickfont : {});
+    const titlefont = Object.assign({ color: fg }, (a.titlefont && typeof a.titlefont === 'object') ? a.titlefont : {});
+    return Object.assign({
+      gridcolor: a.gridcolor !== undefined ? a.gridcolor : grid,
+      zerolinecolor: a.zerolinecolor !== undefined ? a.zerolinecolor : grid,
+      linecolor: a.linecolor !== undefined ? a.linecolor : grid,
+      tickfont,
+      titlefont,
+    }, a);
+  }
+  return Object.assign({
+    paper_bgcolor: l.paper_bgcolor !== undefined ? l.paper_bgcolor : bg,
+    plot_bgcolor: l.plot_bgcolor !== undefined ? l.plot_bgcolor : bg,
+    font,
+    xaxis: patchAxis(l.xaxis),
+    yaxis: patchAxis(l.yaxis),
+  }, l);
 }
 
 function _rawVisibleBoundsMs(){
@@ -2076,16 +2113,16 @@ async function refreshGraphContext(opts){
 
       const sc = _zoomScale();
       const baseH = (GRAPH_CTX_H_PX && isFinite(GRAPH_CTX_H_PX)) ? Math.round(GRAPH_CTX_H_PX) : 180;
-      const layout = {
-        margin: { l: 52, r: 10, t: 10, b: 42 },
-        height: Math.round(baseH * sc),
-        autosize: true,
-        xaxis: { type: 'date', fixedrange: true },
-        yaxis: { automargin: true, fixedrange: true },
-        shapes,
-        showlegend: true,
-        legend: {orientation: 'h', x: 0, xanchor: 'left', y: -0.25, yanchor: 'top', font: {size: 11}},
-      };
+       const layout = _ibPlotlyTheme({
+         margin: { l: 52, r: 10, t: 10, b: 42 },
+         height: Math.round(baseH * sc),
+         autosize: true,
+         xaxis: { type: 'date', fixedrange: true },
+         yaxis: { automargin: true, fixedrange: true },
+         shapes,
+         showlegend: true,
+         legend: {orientation: 'h', x: 0, xanchor: 'left', y: -0.25, yanchor: 'top', font: {size: 11}},
+       });
 
       if(force){
         try{ window.Plotly.purge($graphCtxPlot); }catch(e){}
@@ -13261,7 +13298,7 @@ async function refreshEditGraph(){
       }
     }
   }catch(e){}
-  const layout = {
+  const layout = _ibPlotlyTheme({
     margin: {l: 48, r: 12, t: 10, b: 36},
     height: 320,
     xaxis: {
@@ -13274,7 +13311,7 @@ async function refreshEditGraph(){
     yaxis: {title: ''},
     showlegend: true,
     legend: {orientation: 'h'},
-  };
+  });
   try{
     if(window.Plotly && $editGraphPlot){
       await window.Plotly.newPlot($editGraphPlot, traces, layout, {displayModeBar: false, responsive: true});

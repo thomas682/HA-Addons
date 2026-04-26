@@ -26,6 +26,12 @@
 
 - ChangeBlocks UI: History-Seite zeigt jetzt eine ChangeBlocks-Liste inkl. Detailansicht, Undo/Repeat Preview (validate) und Konfliktanzeige. API `/api/change_block` kann Items optional paginieren (`items_offset/items_limit`). ([#404](https://github.com/thomas682/HA-Addons/issues/404))
 
+## 1.12.451
+
+### Enhancement
+
+- Theme-System (MVP): globales Farbschema (`ui_theme_mode`) + Akzentfarbe (`ui_theme_accent`) inkl. Sofortwirkung ohne Neustart. Basis-UI nutzt zentrale Tokens (Background/Surface/Text/Border/Inputs/Buttons/Tables) und Plotly-Layouts werden theming-sensitiv gesetzt. ([#405](https://github.com/thomas682/HA-Addons/issues/405))
+
 ## 1.12.449
 
 ### Enhancement
