@@ -1070,9 +1070,52 @@
         });
       }catch(e){}
 
-      // initial suggestion lists (best-effort)
-      try{ refreshSuggestions('src').catch(()=>{}); }catch(e){}
-      try{ refreshSuggestions('tgt').catch(()=>{}); }catch(e){}
+      async function applyQueryPrefill(){
+        let qp;
+        try{ qp = new URLSearchParams(String(location && location.search ? location.search : '')); }
+        catch(e){ qp = new URLSearchParams(); }
+
+        function gv(k){ try{ return String(qp.get(k) || '').trim(); }catch(e){ return ''; } }
+        function setVal(el, v){ try{ if(el && v) el.value = v; }catch(e){} }
+
+        const dir = gv('direction');
+        if(dir === 'src_to_tgt' || dir === 'tgt_to_src'){
+          try{ if($direction) $direction.value = dir; }catch(e){}
+        }
+
+        // Common convenience keys
+        const meas = gv('measurement');
+        const field = gv('field');
+
+        const sm = gv('src_measurement') || meas;
+        const sf = gv('src_field') || field;
+        const se = gv('src_entity_id');
+        const sn = gv('src_friendly_name');
+
+        const tm = gv('tgt_measurement') || meas;
+        const tf = gv('tgt_field') || field;
+        const te = gv('tgt_entity_id');
+        const tn = gv('tgt_friendly_name');
+
+        if(sm){ setVal($srcM, sm); try{ await loadFields(sm, $srcFieldList); }catch(e){} }
+        if(sf) setVal($srcF, sf);
+        if(se) setVal($srcE, se);
+        if(sn) setVal($srcN, sn);
+
+        if(tm){ setVal($tgtM, tm); try{ await loadFields(tm, $tgtFieldList); }catch(e){} }
+        if(tf) setVal($tgtF, tf);
+        if(te) setVal($tgtE, te);
+        if(tn) setVal($tgtN, tn);
+      }
+
+      (async function init(){
+        try{ await applyQueryPrefill(); }catch(e){}
+        // initial suggestion lists (best-effort)
+        try{ refreshSuggestions('src').catch(()=>{}); }catch(e){}
+        try{ refreshSuggestions('tgt').catch(()=>{}); }catch(e){}
+        try{ _initSelectionsFromInputs(); }catch(e){}
+        try{ _renderSelTexts(); }catch(e){}
+      })();
       </script>
     </main>
   </div>

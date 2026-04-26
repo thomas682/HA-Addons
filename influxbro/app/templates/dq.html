@@ -731,7 +731,31 @@
           const bOpen = document.createElement('button');
           bOpen.className='btn_sm';
           bOpen.textContent='Open Combine';
-          bOpen.onclick = ()=>{ try{ window.location.href = './combine'; }catch(e){} };
+          bOpen.onclick = ()=>{
+            try{
+              const qs = new URLSearchParams();
+              qs.set('direction', 'src_to_tgt');
+              qs.set('src_measurement', String(it.measurement||''));
+              qs.set('src_field', String(it.field||''));
+              qs.set('src_entity_id', srcE);
+              qs.set('src_friendly_name', fn);
+              qs.set('tgt_measurement', String(it.measurement||''));
+              qs.set('tgt_field', String(it.field||''));
+              qs.set('tgt_entity_id', tgtE);
+              qs.set('tgt_friendly_name', fn);
+              window.location.href = './combine?' + qs.toString();
+            }catch(e){
+              try{ window.location.href = './combine'; }catch(x){}
+            }
+          };
+
+          try{
+            const pk = String(it.measurement||'') + '/' + String(it.field||'') + '|' + srcE + '->' + tgtE;
+            bCopy.setAttribute('data-ui', 'dq_merge.btn_copy_json');
+            bCopy.setAttribute('data-ib-pickkey', 'dq_merge.btn_copy_json.' + pk);
+            bOpen.setAttribute('data-ui', 'dq_merge.btn_open_combine');
+            bOpen.setAttribute('data-ib-pickkey', 'dq_merge.btn_open_combine.' + pk);
+          }catch(e){}
 
           tdA.appendChild(bCopy);
           tdA.appendChild(bOpen);
