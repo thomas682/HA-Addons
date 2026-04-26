@@ -18,6 +18,12 @@
 
 - Datenpflege (DQ): "Zusammenfuehren" Kandidaten koennen jetzt `Kombinieren` mit vorausgefuellten Feldern oeffnen (Query-Prefill in `/combine`). Teil von Epic [#406](https://github.com/thomas682/HA-Addons/issues/406).
 
+## 1.12.458
+
+### Enhancement
+
+- Datenpflege (DQ): neue API `/api/dq/migration_candidates` und UI-Karte "Migration (Kandidaten)" fuer entity_id ohne Domain (object_id), die auf eine konkrete HA Entity aufgeloest werden koennen. Teil von Epic [#406](https://github.com/thomas682/HA-Addons/issues/406).
+
 ## 1.12.454
 
 ### Enhancement
