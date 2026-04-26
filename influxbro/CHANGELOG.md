@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.12.459
+
+### Enhancement
+
+- Datenpflege (DQ): Multi-Resolution Graph im Detaildialog (Raw/Clean/Rollup Vergleich) via neuer API `/api/dq/multi_resolution`. Teil von Epic [#406](https://github.com/thomas682/HA-Addons/issues/406).
+
 ## 1.12.455
 
 ### Enhancement

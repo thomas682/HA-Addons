@@ -30,6 +30,11 @@
     .chip.err { background:#fff0f0; border-color:#f2b0b0; color:#b00020; }
     .dlg_backdrop { position:fixed; inset:0; display:none; background: rgba(0,0,0,0.35); z-index: 12050; }
     .dlg { max-width: 980px; margin: 6vh auto; background:#fff; border-radius: 12px; padding: 14px; box-shadow: 0 16px 60px rgba(0,0,0,0.30); }
+    .dq_graph { border:1px solid #eee; border-radius:12px; padding:10px; background:#fafafa; }
+    .dq_graph canvas { width:100%; height:180px; display:block; background:#fff; border:1px solid #eee; border-radius:10px; }
+    .dq_legend { display:flex; gap:10px; flex-wrap:wrap; align-items:center; font-size:12px; margin:8px 0 10px 0; }
+    .dq_leg_item { display:inline-flex; gap:6px; align-items:center; }
+    .dq_leg_dot { width:10px; height:10px; border-radius:999px; display:inline-block; border:1px solid rgba(0,0,0,0.2); }
   </style>
 </head>
 <body>
@@ -270,6 +275,13 @@
             </div>
             <button id="dq_dlg_close" class="btn_sm" type="button" data-ui="dq_detail.btn_close" data-ib-pickkey="dq_detail.btn_close" title="dq.detail.close">Schliessen</button>
           </div>
+          <div style="margin-top:10px;">
+            <div class="dq_graph" data-ui="dq_detail.graph_wrap" data-ib-pickkey="dq_detail.graph_wrap" title="dq.detail.graph">
+              <div class="muted" id="dq_graph_meta" data-ui="dq_detail.graph_meta" data-ib-pickkey="dq_detail.graph_meta" title="dq.detail.graph.meta"></div>
+              <div class="dq_legend" id="dq_graph_legend" data-ui="dq_detail.graph_legend" data-ib-pickkey="dq_detail.graph_legend" title="dq.detail.graph.legend"></div>
+              <canvas id="dq_graph_canvas" width="920" height="180" data-ui="dq_detail.graph_canvas" data-ib-pickkey="dq_detail.graph_canvas" title="dq.detail.graph.canvas"></canvas>
+            </div>
+          </div>
           <div style="margin-top:10px;" class="mono">
             <pre id="dq_dlg_body" style="max-height:60vh; overflow:auto; border:1px solid #eee; border-radius:12px; padding:10px; background:#fafafa;" data-ui="dq_detail.pre_body" data-ib-pickkey="dq_detail.pre_body" title="dq.detail.body"></pre>
           </div>
@@ -285,6 +297,9 @@
       const $dlg = document.getElementById('dq_dlg');
       const $dlgTitle = document.getElementById('dq_dlg_title');
       const $dlgBody = document.getElementById('dq_dlg_body');
+      const $gMeta = document.getElementById('dq_graph_meta');
+      const $gLegend = document.getElementById('dq_graph_legend');
+      const $gCanvas = document.getElementById('dq_graph_canvas');
 
       const $days = document.getElementById('dq_days');
       const $limit = document.getElementById('dq_limit');
@@ -341,6 +356,175 @@
       function chip(txt, cls){ return `<span class="chip ${cls||''}">${txt}</span>`; }
       function fmtTs(iso){ try{ if(!iso) return ''; const d = new Date(String(iso)); return isFinite(d.getTime()) ? d.toLocaleString() : String(iso); }catch(e){ return String(iso||''); } }
 
+      function _isoMs(iso){ try{ const d = new Date(String(iso||'')); const ms = d.getTime(); return isFinite(ms) ? ms : null; }catch(e){ return null; } }
+
+      function _drawMultiGraph(series){
+        const c = $gCanvas;
+        if(!c) return;
+        const ctx = c.getContext('2d');
+        if(!ctx) return;
+        const w = c.width, h = c.height;
+        ctx.clearRect(0,0,w,h);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0,0,w,h);
+
+        const sers = (series||[]).filter(s => s && Array.isArray(s.rows) && s.rows.length);
+        if(!sers.length){
+          ctx.fillStyle = '#666';
+          ctx.font = '12px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace';
+          ctx.fillText('keine Daten', 12, 22);
+          return;
+        }
+
+        let xmin = null, xmax = null, ymin = null, ymax = null;
+        sers.forEach(s => {
+          (s.rows||[]).forEach(r => {
+            const t = _isoMs(r.time);
+            const v = (r.value!==null && r.value!==undefined) ? Number(r.value) : NaN;
+            if(t===null || !isFinite(v)) return;
+            if(xmin===null || t<xmin) xmin=t;
+            if(xmax===null || t>xmax) xmax=t;
+            if(ymin===null || v<ymin) ymin=v;
+            if(ymax===null || v>ymax) ymax=v;
+          });
+        });
+        if(xmin===null || xmax===null || ymin===null || ymax===null || xmax<=xmin){
+          ctx.fillStyle = '#666';
+          ctx.font = '12px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace';
+          ctx.fillText('keine numerischen Daten', 12, 22);
+          return;
+        }
+
+        const padL = 42, padR = 10, padT = 8, padB = 20;
+        const pw = Math.max(1, w - padL - padR);
+        const ph = Math.max(1, h - padT - padB);
+
+        // add small y padding
+        const ySpan = (ymax - ymin) || 1;
+        ymin = ymin - ySpan * 0.05;
+        ymax = ymax + ySpan * 0.05;
+
+        function xToPx(t){ return padL + ((t - xmin) / (xmax - xmin)) * pw; }
+        function yToPx(v){ return padT + (1 - ((v - ymin) / (ymax - ymin))) * ph; }
+
+        // grid
+        ctx.strokeStyle = 'rgba(0,0,0,0.06)';
+        ctx.lineWidth = 1;
+        for(let i=0;i<=4;i++){
+          const y = padT + (ph*i/4);
+          ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(padL+pw, y); ctx.stroke();
+        }
+        for(let i=0;i<=4;i++){
+          const x = padL + (pw*i/4);
+          ctx.beginPath(); ctx.moveTo(x, padT); ctx.lineTo(x, padT+ph); ctx.stroke();
+        }
+
+        // axes labels (minimal)
+        ctx.fillStyle = 'rgba(0,0,0,0.55)';
+        ctx.font = '11px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace';
+        ctx.fillText(String(ymax.toFixed(2)), 6, padT + 10);
+        ctx.fillText(String(ymin.toFixed(2)), 6, padT + ph);
+
+        // series
+        sers.forEach(s => {
+          const col = String(s.color||'#1450aa');
+          ctx.strokeStyle = col;
+          ctx.lineWidth = 1.4;
+          ctx.beginPath();
+          let started = false;
+          (s.rows||[]).forEach(r => {
+            const t = _isoMs(r.time);
+            const v = (r.value!==null && r.value!==undefined) ? Number(r.value) : NaN;
+            if(t===null || !isFinite(v)) return;
+            const x = xToPx(t);
+            const y = yToPx(v);
+            if(!started){ ctx.moveTo(x,y); started=true; }
+            else ctx.lineTo(x,y);
+          });
+          ctx.stroke();
+        });
+      }
+
+      function _setLegend(items){
+        try{ if(!$gLegend) return; $gLegend.innerHTML=''; }catch(e){ return; }
+        (items||[]).forEach(it => {
+          const d = document.createElement('span');
+          d.className='dq_leg_item';
+          const dot = document.createElement('span'); dot.className='dq_leg_dot'; dot.style.background = String(it.color||'#999');
+          const txt = document.createElement('span'); txt.textContent = String(it.label||'');
+          d.appendChild(dot); d.appendChild(txt);
+          $gLegend.appendChild(d);
+        });
+      }
+
+      function _resetGraph(msg){
+        try{ if($gMeta) $gMeta.textContent = msg || ''; }catch(e){}
+        try{ _setLegend([]); }catch(e){}
+        try{ _drawMultiGraph([]); }catch(e){}
+      }
+
+      async function openDetails(it){
+        const name = String(it.label || it.series_key || 'Details');
+        try{
+          if($dlgTitle) $dlgTitle.textContent = name;
+          if($dlgBody) $dlgBody.textContent = JSON.stringify(it, null, 2);
+          _resetGraph('Multi-Resolution: lade...');
+          if($dlg) $dlg.style.display = 'block';
+        }catch(e){}
+
+        // Build range from active run params (days) as best-effort.
+        let days = 30;
+        try{ days = Number(ACTIVE_RUN && ACTIVE_RUN.params ? ACTIVE_RUN.params.days : 30) || 30; }catch(e){ days = 30; }
+        days = Math.max(1, Math.min(3650, days));
+
+        const payload = {
+          measurement: String(it.measurement||''),
+          field: String(it.field||''),
+          entity_id: String(it.entity_id||''),
+          friendly_name: String(it.friendly_name||''),
+          days: days,
+          max_points: 1200,
+        };
+
+        let j;
+        try{
+          j = await api('./api/dq/multi_resolution', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+        }catch(e){
+          try{ _resetGraph('Multi-Resolution: ' + (e && e.message ? e.message : String(e))); }catch(x){}
+          return;
+        }
+
+        const leg = [];
+        const series = [];
+
+        function addOne(label, color, block){
+          if(!block || !Array.isArray(block.rows)) return;
+          leg.push({label: label + ' (' + String(block.rows.length) + ')', color});
+          series.push({label, color, rows: block.rows});
+        }
+
+        addOne('Raw', '#999999', j.raw);
+        addOne('Clean', '#1450aa', j.clean);
+        try{
+          const levels = j.rollup && Array.isArray(j.rollup.levels) ? j.rollup.levels : [];
+          const cols = ['#0a7a28', '#9a5b00', '#7a1fa2', '#aa2e1f', '#0f7f8f'];
+          levels.forEach((lv, idx) => {
+            if(lv && lv.data && Array.isArray(lv.data.rows) && lv.data.rows.length){
+              const nm = String(lv.window||lv.name||('rollup'+idx));
+              addOne('Rollup ' + nm, cols[idx % cols.length], lv.data);
+            }
+          });
+        }catch(e){}
+
+        _setLegend(leg);
+        _drawMultiGraph(series);
+
+        try{
+          const r = j.range || {};
+          if($gMeta) $gMeta.textContent = `Multi-Resolution: ${String(r.start||'')} .. ${String(r.stop||'')}`;
+        }catch(e){}
+      }
+
       async function api(url, opts){
         const r = await fetch(url, opts);
         const j = await r.json().catch(()=>({ok:false,error:'Invalid JSON'}));
@@ -381,13 +565,7 @@
           const bDet = document.createElement('button'); bDet.className = 'btn_sm'; bDet.textContent = 'Details';
           bDet.setAttribute('data-ui','dq_results.btn_details');
           bDet.setAttribute('data-ib-pickkey','dq_results.btn_details.' + pk);
-          bDet.onclick = ()=>{
-            try{
-              if($dlgTitle) $dlgTitle.textContent = name;
-              if($dlgBody) $dlgBody.textContent = JSON.stringify(it, null, 2);
-              if($dlg) $dlg.style.display = 'block';
-            }catch(e){}
-          };
+          bDet.onclick = ()=>{ openDetails(it).catch(()=>{}); };
 
           const bDash = document.createElement('button'); bDash.className='btn_sm'; bDash.textContent = 'Dashboard';
           bDash.setAttribute('data-ui','dq_results.btn_dashboard');
@@ -469,6 +647,7 @@
           bDet.setAttribute('data-ib-pickkey','dq_proposals.btn_details.' + pk);
           bDet.onclick = ()=>{
             try{
+              _resetGraph('');
               if($dlgTitle) $dlgTitle.textContent = 'Proposal ' + pk;
               if($dlgBody) $dlgBody.textContent = JSON.stringify(p, null, 2);
               if($dlg) $dlg.style.display = 'block';
@@ -487,6 +666,7 @@
               }
               if(String(prev.type||'') === 'change_preview' && prev.payload){
                 const j2 = await api('./api/change_preview', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(prev.payload)});
+                _resetGraph('');
                 if($dlgTitle) $dlgTitle.textContent = 'Preview: ' + kind;
                 if($dlgBody) $dlgBody.textContent = JSON.stringify(j2, null, 2);
                 if($dlg) $dlg.style.display = 'block';
@@ -663,7 +843,7 @@
           bDl.onclick = ()=>{ if(!patchId){ err('Kein Patch.'); return; } const a=document.createElement('a'); a.href='./api/dq/ha/patch?id=' + encodeURIComponent(patchId); a.target='_blank'; a.rel='noreferrer'; document.body.appendChild(a); a.click(); a.remove(); };
 
           const bDet = document.createElement('button'); bDet.className='btn_sm'; bDet.textContent='Details';
-          bDet.onclick = ()=>{ try{ if($dlgTitle) $dlgTitle.textContent = 'HA Proposal ' + eid; if($dlgBody) $dlgBody.textContent = JSON.stringify(p, null, 2); if($dlg) $dlg.style.display='block'; }catch(e){} };
+          bDet.onclick = ()=>{ try{ _resetGraph(''); if($dlgTitle) $dlgTitle.textContent = 'HA Proposal ' + eid; if($dlgBody) $dlgBody.textContent = JSON.stringify(p, null, 2); if($dlg) $dlg.style.display='block'; }catch(e){} };
 
           tdA.appendChild(bDet);
           tdA.appendChild(bCopy);
