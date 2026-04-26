@@ -13565,52 +13565,9 @@ def _fullrestore_job_thread(job_id: str, cfg: dict[str, Any], bdir: Path, backup
             flush_child()
             _cb_patch_block_meta(parent_id, {"child_blocks": list(child_ids), "applied": applied, "read_lines": read_lines})
         elif influx_v == 1:
-            c = v1_client(cfg)
-            try:
-                try:
-                    c.switch_database(cfg.get("database"))
-                except Exception:
-                    pass
-
-                batch: list[str] = []
-                with _open_backup_lp_text(bdir, backup_id, is_fullbackup=True) as f:
-                    for line in f:
-                        if is_cancelled():
-                            set_state("cancelled", "Abgebrochen")
-                            raise RuntimeError("cancelled")
-                        s = line.strip("\n")
-                        if not s.strip():
-                            continue
-                        read_lines += 1
-                        batch.append(s)
-                        if len(batch) >= 2000:
-                            c.write_points(
-                                batch,
-                                database=cfg.get("database"),
-                                protocol="line",
-                                time_precision="n",
-                            )
-                            applied += len(batch)
-                            batch = []
-
-                        now = time.monotonic()
-                        if (now - last_tick) >= 0.25:
-                            set_progress(read_lines=read_lines, applied=applied)
-                            last_tick = now
-
-                    if batch:
-                        c.write_points(
-                            batch,
-                            database=cfg.get("database"),
-                            protocol="line",
-                            time_precision="n",
-                        )
-                        applied += len(batch)
-            finally:
-                try:
-                    c.close()
-                except Exception:
-                    pass
+            set_state("error", "Nicht unterstuetzt")
+            set_error("FullRestore wird nur fuer InfluxDB v2 unterstuetzt (Change-Service).")
+            return
 
         set_progress(read_lines=read_lines, applied=applied)
         set_state("done", f"Restored points: {applied}")
@@ -14209,11 +14166,10 @@ def api_fullrestore_job_start():
                 "error": "InfluxDB v2 requires org. Bitte in /config YAML einlesen und speichern.",
             }), 400
     elif influx_v == 1:
-        if not cfg.get("database"):
-            return jsonify({
-                "ok": False,
-                "error": "InfluxDB v1 requires database. Bitte in Einstellungen konfigurieren.",
-            }), 400
+        return jsonify({
+            "ok": False,
+            "error": "FullRestore ist nur fuer InfluxDB v2 unterstuetzt (Change-Service).",
+        }), 400
     else:
         return jsonify({"ok": False, "error": f"unsupported influx_version: {influx_v}"}), 400
 
@@ -23597,6 +23553,8 @@ from(bucket: "{cfg['bucket']}")
 @app.post("/api/raw_overwrite")
 def api_raw_overwrite():
     cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    if int(cfg.get("influx_version", 2) or 2) != 2:
+        return jsonify({"ok": False, "error": "Schreiboperationen sind nur fuer InfluxDB v2 unterstuetzt (Change-Service)."}), 400
     body = request.get_json(force=True) or {}
     measurement = str(body.get("measurement") or "").strip()
     field = str(body.get("field") or "").strip()
@@ -23623,7 +23581,7 @@ def api_raw_overwrite():
     try:
         block_id = ""
         undo_tags: dict[str, str] = {}
-        if int(cfg.get("influx_version", 2)) == 2:
+        if True:
             extra = flux_tag_filter(entity_id, friendly_name)
             start = _dt_to_rfc3339_utc(ts - timedelta(seconds=1))
             stop = _dt_to_rfc3339_utc(ts + timedelta(seconds=1))
@@ -23768,59 +23726,7 @@ def api_raw_overwrite():
                 # Use normalized values for history/undo
                 time_str = time_eff
                 old_value = old_f
-        else:
-            start = _dt_to_rfc3339_utc(ts - timedelta(seconds=1))
-            stop = _dt_to_rfc3339_utc(ts + timedelta(seconds=1))
-            tag_where = influxql_tag_filter(entity_id, friendly_name)
-            q = f'SELECT "{field}" FROM "{measurement}" WHERE time >= \'{start}\' AND time <= \'{stop}\'{tag_where} ORDER BY time ASC LIMIT 5'
-            c = v1_client(cfg)
-            try:
-                res = c.query(q)
-                existing = []
-                for _, pts in res.items():
-                    existing.extend(pts)
-                if not existing:
-                    return jsonify({"ok": False, "error": "Zeitpunkt nicht in DB gefunden"}), 404
-
-                try:
-                    if old_value is None:
-                        # best-effort: use first point
-                        first = existing[0]
-                        old_value = first.get(field) if isinstance(first, dict) else old_value
-                except Exception:
-                    pass
-
-                # Outlier rule guardrails (can be overridden via force=true)
-                try:
-                    chk = _check_outlier_edit_rules(cfg, measurement, field, entity_id, friendly_name, ts, new_value, unit)
-                    viol = chk.get("violations") or []
-                    if viol and not force:
-                        return (
-                            jsonify({
-                                "ok": False,
-                                "error": "Outlier-Regel verletzt. Schreiben blockiert.",
-                                "violations": viol,
-                                "meta": chk.get("meta") or {},
-                                "can_force": True,
-                            }),
-                            409,
-                        )
-                except Exception:
-                    pass
-                tags = {}
-                if entity_id:
-                    tags["entity_id"] = entity_id
-                if friendly_name:
-                    tags["friendly_name"] = friendly_name
-                json_body = {"measurement": measurement, "tags": tags, "time": _dt_to_rfc3339_utc(ts), "fields": {field: new_value}}
-                c.write_points([json_body])
-            finally:
-                try:
-                    c.close()
-                except Exception:
-                    pass
-
-            undo_tags = dict(tags)
+        # v1 write path removed: only InfluxDB v2 is supported for writes.
         _history_append({
             "kind": "change",
             "series": {
@@ -33574,6 +33480,8 @@ from(bucket: "{cfg["bucket"]}")
 @app.post("/api/delete")
 def delete():
     cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    if int(cfg.get("influx_version", 2) or 2) != 2:
+        return jsonify({"ok": False, "error": "Schreiboperationen sind nur fuer InfluxDB v2 unterstuetzt (Change-Service)."}), 400
     body = request.get_json(force=True) or {}
     measurement = body.get("measurement", "")
     field = body.get("field", "")

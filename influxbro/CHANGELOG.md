@@ -32,6 +32,12 @@
 
 - Theme-System (MVP): globales Farbschema (`ui_theme_mode`) + Akzentfarbe (`ui_theme_accent`) inkl. Sofortwirkung ohne Neustart. Basis-UI nutzt zentrale Tokens (Background/Surface/Text/Border/Inputs/Buttons/Tables) und Plotly-Layouts werden theming-sensitiv gesetzt. ([#405](https://github.com/thomas682/HA-Addons/issues/405))
 
+## 1.12.452
+
+### Maintenance
+
+- Change-Service Härtung: Schreiboperationen sind jetzt konsequent auf InfluxDB v2 beschraenkt. v1-Schreibpfade (z.B. raw_overwrite/fullrestore) sind deaktiviert, um direkte Influx Writes ausserhalb des Change-Service zu vermeiden. Undo-Status blendet Aktionen mit `undo_supported=false` aus. ([#400](https://github.com/thomas682/HA-Addons/issues/400))
+
 ## 1.12.449
 
 ### Enhancement

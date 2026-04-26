@@ -128,6 +128,16 @@ class UndoManager:
             locked = not self._compatible
             undo_count = len(self._undo)
             redo_count = len(self._redo)
+
+            def _undo_supported(a: dict[str, Any] | None) -> bool:
+                if not a or not isinstance(a, dict):
+                    return False
+                meta = a.get("meta") if isinstance(a.get("meta"), dict) else {}
+                # default True
+                if meta.get("undo_supported") is False:
+                    return False
+                return True
+
             return UndoStatus(
                 ok=True,
                 compatible=bool(self._compatible),
@@ -135,7 +145,7 @@ class UndoManager:
                 locked_reason=str(self._locked_reason or ""),
                 undo_count=undo_count,
                 repeat_count=redo_count,
-                undo_available=bool(undo_count > 0 and not locked),
+                undo_available=bool(undo_count > 0 and not locked and _undo_supported(self._undo[-1] if self._undo else None)),
                 repeat_available=bool(redo_count > 0 and not locked),
                 last_undo_action=self._undo[-1] if self._undo else None,
                 last_repeat_action=self._redo[-1] if self._redo else None,
