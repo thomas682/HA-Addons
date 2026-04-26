@@ -30928,11 +30928,38 @@ def api_change_block_get():
         return jsonify({"ok": False, "error": "id required"}), 400
     include_items = str(request.args.get("include_items") or "").strip().lower() in ("1", "true", "yes", "on")
     try:
+        items_offset = int(request.args.get("items_offset") or 0)
+    except Exception:
+        items_offset = 0
+    try:
+        items_limit = int(request.args.get("items_limit") or (200 if include_items else 0))
+    except Exception:
+        items_limit = 200 if include_items else 0
+    items_offset = max(0, items_offset)
+    items_limit = max(0, min(5000, items_limit))
+    try:
         b = load_change_block(bid, include_items=include_items)
     except Exception as e:
         return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 400
     if not b:
         return jsonify({"ok": False, "error": "not found"}), 404
+
+    # Reduce payload size for large blocks.
+    if include_items:
+        items = b.get("items") if isinstance(b.get("items"), list) else []
+        total = len(items)
+        if items_limit <= 0:
+            b = dict(b)
+            b["items_total"] = total
+            b["items_offset"] = items_offset
+            b["items_limit"] = 0
+            b["items"] = []
+        else:
+            b = dict(b)
+            b["items_total"] = total
+            b["items_offset"] = items_offset
+            b["items_limit"] = items_limit
+            b["items"] = items[items_offset : items_offset + items_limit]
     return jsonify({"ok": True, "block": b})
 
 

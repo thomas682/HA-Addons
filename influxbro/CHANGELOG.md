@@ -20,6 +20,12 @@
 
 - API: neue Endpunkte `/api/change_block/validate`, `/api/change_block/execute`, `/api/change_block/undo`, `/api/change_block/repeat`.
 
+## 1.12.450
+
+### Enhancement
+
+- ChangeBlocks UI: History-Seite zeigt jetzt eine ChangeBlocks-Liste inkl. Detailansicht, Undo/Repeat Preview (validate) und Konfliktanzeige. API `/api/change_block` kann Items optional paginieren (`items_offset/items_limit`). ([#404](https://github.com/thomas682/HA-Addons/issues/404))
+
 ## 1.12.449
 
 ### Enhancement

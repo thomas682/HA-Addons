@@ -160,6 +160,96 @@
         </div>
         </div>
       </details>
+
+      <details class="card" open data-ui="history_cb.section_root" data-ib-pickkey="history_cb.section_root" title="history.change_blocks">
+        <summary><span class="ib_summary_row"><span>ChangeBlocks</span><button type="button" class="ib_info_icon" data-info-title="ChangeBlocks" data-info-body="Zeigt persistente ChangeBlocks (Change-Service) inkl. Preview (validate) und Undo/Repeat." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
+        <div class="card_body">
+          <div class="row" data-ui="history_cb.panel_filters" data-ib-pickkey="history_cb.panel_filters" title="history.change_blocks.filters" style="align-items:end;">
+            <div style="min-width: 220px; flex: 1 1 360px;">
+              <label>Suche (id / reason / measurement)</label>
+              <div class="ib_clear_row">
+                <input id="cb_q" placeholder="block_id, reason, operation_source..." data-ui="history_cb.input_search" data-ib-pickkey="history_cb.input_search" title="history.change_blocks.search" style="width:100%;" />
+                <button type="button" class="ib_clear_btn" data-clear-for="cb_q" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M6 6l12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+              </div>
+            </div>
+            <div style="min-width: 180px;">
+              <label>operation_source</label>
+              <input id="cb_op" placeholder="optional" data-ui="history_cb.input_op" data-ib-pickkey="history_cb.input_op" title="history.change_blocks.op" style="width:100%;" />
+            </div>
+            <div style="min-width: 140px;">
+              <label>Status</label>
+              <select id="cb_status" data-ui="history_cb.select_status" data-ib-pickkey="history_cb.select_status" title="history.change_blocks.status" style="width:100%;">
+                <option value="">alle</option>
+                <option value="created">created</option>
+                <option value="applied">applied</option>
+              </select>
+            </div>
+            <div style="min-width: 110px;">
+              <label>Limit</label>
+              <select id="cb_limit" data-ui="history_cb.select_limit" data-ib-pickkey="history_cb.select_limit" title="history.change_blocks.limit" style="width:100%;">
+                <option value="50" selected>50</option>
+                <option value="100">100</option>
+                <option value="200">200</option>
+                <option value="500">500</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="row" data-ui="history_cb.panel_actions" data-ib-pickkey="history_cb.panel_actions" title="history.change_blocks.actions">
+            <div>
+              <label>&nbsp;</label>
+              <button id="cb_refresh" class="btn_sm" data-ui="history_cb.btn_refresh" data-ib-pickkey="history_cb.btn_refresh" title="history.change_blocks.refresh">Refresh</button>
+            </div>
+            <div>
+              <label>&nbsp;</label>
+              <button id="cb_details" class="btn_sm" data-ui="history_cb.btn_details" data-ib-pickkey="history_cb.btn_details" title="history.change_blocks.details" disabled>Details</button>
+            </div>
+            <div>
+              <label>&nbsp;</label>
+              <button id="cb_preview_undo" class="btn_sm" data-ui="history_cb.btn_preview_undo" data-ib-pickkey="history_cb.btn_preview_undo" title="history.change_blocks.preview_undo" disabled>Undo Preview</button>
+            </div>
+            <div>
+              <label>&nbsp;</label>
+              <button id="cb_preview_repeat" class="btn_sm" data-ui="history_cb.btn_preview_repeat" data-ib-pickkey="history_cb.btn_preview_repeat" title="history.change_blocks.preview_repeat" disabled>Repeat Preview</button>
+            </div>
+            <div>
+              <label>&nbsp;</label>
+              <button id="cb_undo" class="btn_sm" data-ui="history_cb.btn_undo" data-ib-pickkey="history_cb.btn_undo" title="history.change_blocks.undo" disabled>Undo</button>
+            </div>
+            <div>
+              <label>&nbsp;</label>
+              <button id="cb_repeat" class="btn_sm" data-ui="history_cb.btn_repeat" data-ib-pickkey="history_cb.btn_repeat" title="history.change_blocks.repeat" disabled>Repeat</button>
+            </div>
+            <div class="muted" id="cb_info" style="min-width: 320px; flex:1; padding-top: 6px;">-</div>
+          </div>
+
+          <div class="table_wrap" data-ui="history_cb_table.panel_wrap" data-ib-pickkey="history_cb_table.panel_wrap" title="history.change_blocks.table">
+            <div class="table_title">ChangeBlocks Liste</div>
+            <div class="table_head" data-ui="history_cb_table.panel_head" data-ib-pickkey="history_cb_table.panel_head" title="history.change_blocks.table.head">
+              <div class="muted">Preview zeigt Konflikte (strict). Bulk-Blocks koennen "blind" sein.</div>
+            </div>
+
+            <div class="table_box" id="cb_box" data-ui="history_cb_table.panel_box" data-ib-pickkey="history_cb_table.panel_box" title="history.change_blocks.table.box">
+              <table id="cb_tbl" class="ib_tbl" data-ui="history_cb.tbl" data-ib-pickkey="history_cb.tbl" title="history.change_blocks.table">
+                <thead>
+                  <tr>
+                    <th style="width: 34px;"><input type="checkbox" id="cb_sel_all" data-ui="history_cb.chk_select_all" data-ib-pickkey="history_cb.chk_select_all" title="history.change_blocks.select_all"/></th>
+                    <th style="width: 170px;">created_at</th>
+                    <th style="width: 260px;">block_id</th>
+                    <th style="width: 160px;">operation_source</th>
+                    <th style="width: 110px;">affected</th>
+                    <th style="width: 110px;">undo_status</th>
+                    <th style="width: 110px;">repeat_status</th>
+                    <th style="width: 140px;">conflict_status</th>
+                    <th>reason</th>
+                  </tr>
+                </thead>
+                <tbody id="cb_rows"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </details>
     </main>
   </div>
 
@@ -189,6 +279,233 @@
 
     let LIST = [];
     const SELECTED = new Set();
+
+    // ChangeBlocks UI (#404)
+    const $cbQ = document.getElementById('cb_q');
+    const $cbOp = document.getElementById('cb_op');
+    const $cbStatus = document.getElementById('cb_status');
+    const $cbLimit = document.getElementById('cb_limit');
+    const $cbRefresh = document.getElementById('cb_refresh');
+    const $cbDetails = document.getElementById('cb_details');
+    const $cbPreviewUndo = document.getElementById('cb_preview_undo');
+    const $cbPreviewRepeat = document.getElementById('cb_preview_repeat');
+    const $cbUndo = document.getElementById('cb_undo');
+    const $cbRepeat = document.getElementById('cb_repeat');
+    const $cbInfo = document.getElementById('cb_info');
+    const $cbRows = document.getElementById('cb_rows');
+    const $cbSelAll = document.getElementById('cb_sel_all');
+
+    let CB_LIST = [];
+    const CB_SELECTED = new Set();
+    const CB_PREVIEWS = new Map(); // block_id -> {undo,repeat}
+
+    function _cbPickSelectedOne(){
+      const a = Array.from(CB_SELECTED || []).filter(Boolean);
+      return a.length === 1 ? String(a[0]) : '';
+    }
+
+    function _cbApplyButtons(){
+      const one = _cbPickSelectedOne();
+      const on = !!one;
+      if($cbDetails) $cbDetails.disabled = !on;
+      if($cbPreviewUndo) $cbPreviewUndo.disabled = !on;
+      if($cbPreviewRepeat) $cbPreviewRepeat.disabled = !on;
+      if($cbUndo) $cbUndo.disabled = !on;
+      if($cbRepeat) $cbRepeat.disabled = !on;
+      if($cbInfo) $cbInfo.textContent = on ? ('Auswahl: ' + one) : ('Auswahl: -');
+    }
+
+    function _cbMatchesQuery(b, q){
+      const s = String(q || '').trim().toLowerCase();
+      if(!s) return true;
+      const ss = (b && b.series_summary) ? b.series_summary : {};
+      const parts = [
+        String(b && b.block_id || ''),
+        String(b && b.reason || ''),
+        String(b && b.operation_source || ''),
+        String(ss.measurement || ''),
+        String(ss.field || ''),
+        String(ss.entity_id || ''),
+        String(ss.friendly_name || ''),
+      ].join(' ').toLowerCase();
+      return parts.indexOf(s) >= 0;
+    }
+
+    function _cbConflictStatusFor(bid){
+      const p = CB_PREVIEWS.get(String(bid||'')) || {};
+      const u = p.undo || null;
+      const r = p.repeat || null;
+      function one(v){
+        try{ if(!v || !v.summary) return ''; }catch(e){ return ''; }
+        return v.summary.ok ? 'ok' : ('conflicts:' + String(v.summary.conflicts || 0));
+      }
+      const a = one(u);
+      const b = one(r);
+      if(!a && !b) return '-';
+      if(a && b) return 'undo:' + a + ' | rep:' + b;
+      return a ? ('undo:' + a) : ('rep:' + b);
+    }
+
+    function cbRender(){
+      if(!$cbRows) return;
+      $cbRows.innerHTML = '';
+      const q = String($cbQ && $cbQ.value ? $cbQ.value : '').trim();
+      const shown = (CB_LIST || []).filter(b => _cbMatchesQuery(b, q));
+      shown.forEach(b => {
+        const bid = String(b && b.block_id || '');
+        const tr = document.createElement('tr');
+        if(bid && CB_SELECTED.has(bid)) tr.classList.add('selected');
+
+        const tdSel = document.createElement('td');
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = !!(bid && CB_SELECTED.has(bid));
+        cb.addEventListener('click', (ev)=>{ try{ ev.stopPropagation(); }catch(e){} });
+        cb.addEventListener('change', ()=>{
+          if(!bid) return;
+          if(cb.checked) CB_SELECTED.add(bid); else CB_SELECTED.delete(bid);
+          _cbApplyButtons();
+          cbRender();
+        });
+        tdSel.appendChild(cb);
+        tr.appendChild(tdSel);
+
+        const tdCreated = document.createElement('td');
+        tdCreated.textContent = fmtTs(b && b.created_at);
+        tr.appendChild(tdCreated);
+
+        const tdId = document.createElement('td');
+        tdId.textContent = bid;
+        tr.appendChild(tdId);
+
+        const tdOp = document.createElement('td');
+        tdOp.textContent = String(b && b.operation_source || '');
+        tr.appendChild(tdOp);
+
+        const tdAff = document.createElement('td');
+        tdAff.textContent = String(b && b.affected_count !== undefined ? b.affected_count : '');
+        tr.appendChild(tdAff);
+
+        const tdUs = document.createElement('td');
+        tdUs.textContent = String(b && b.undo_status || '');
+        tr.appendChild(tdUs);
+
+        const tdRs = document.createElement('td');
+        tdRs.textContent = String(b && b.repeat_status || '');
+        tr.appendChild(tdRs);
+
+        const tdCs = document.createElement('td');
+        tdCs.textContent = _cbConflictStatusFor(bid);
+        tr.appendChild(tdCs);
+
+        const tdReason = document.createElement('td');
+        tdReason.textContent = String(b && b.reason || '');
+        tr.appendChild(tdReason);
+
+        tr.addEventListener('click', ()=>{
+          if(!bid) return;
+          CB_SELECTED.clear();
+          CB_SELECTED.add(bid);
+          _cbApplyButtons();
+          cbRender();
+        });
+
+        $cbRows.appendChild(tr);
+      });
+      if($cbInfo) $cbInfo.textContent = `ChangeBlocks: ${shown.length}`;
+      _cbApplyButtons();
+    }
+
+    async function cbLoad(){
+      const lim = Number($cbLimit && $cbLimit.value ? $cbLimit.value : 50) || 50;
+      const op = String($cbOp && $cbOp.value ? $cbOp.value : '').trim();
+      const st = String($cbStatus && $cbStatus.value ? $cbStatus.value : '').trim();
+      const qs = new URLSearchParams();
+      qs.set('limit', String(lim));
+      if(op) qs.set('operation_source', op);
+      if(st) qs.set('status', st);
+      const j = await api('./api/change_blocks_v2' + (qs.toString() ? ('?' + qs.toString()) : ''));
+      CB_LIST = j.rows || [];
+      CB_SELECTED.clear();
+      cbRender();
+    }
+
+    function _cbHtmlEsc(s){
+      return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    async function cbShowDetails(){
+      const bid = _cbPickSelectedOne();
+      if(!bid) return;
+      const j = await api('./api/change_block?id=' + encodeURIComponent(bid));
+      const b = j.block || {};
+      const ss = b.series_summary || {};
+      const meta = b.meta || {};
+      const child = Array.isArray(meta.child_blocks) ? meta.child_blocks.map(x=>String(x||'').trim()).filter(Boolean) : [];
+      let html = '';
+      html += '<div style="font-size:12px;line-height:1.35;">';
+      html += '<div><b>block_id</b>: <code>' + _cbHtmlEsc(b.block_id) + '</code></div>';
+      html += '<div><b>created_at</b>: ' + _cbHtmlEsc(String(b.created_at||'')) + '</div>';
+      html += '<div><b>operation_source</b>: ' + _cbHtmlEsc(String(b.operation_source||'')) + '</div>';
+      html += '<div><b>reason</b>: ' + _cbHtmlEsc(String(b.reason||'')) + '</div>';
+      html += '<div><b>affected_count</b>: ' + _cbHtmlEsc(String(b.affected_count||'')) + '</div>';
+      html += '<div><b>status</b>: ' + _cbHtmlEsc(String(b.status||'')) + ' | <b>undo</b>: ' + _cbHtmlEsc(String(b.undo_status||'')) + ' | <b>repeat</b>: ' + _cbHtmlEsc(String(b.repeat_status||'')) + '</div>';
+      html += '<div style="margin-top:8px;"><b>series</b>: ' + _cbHtmlEsc([ss.measurement, ss.field, ss.entity_id, ss.friendly_name].filter(Boolean).join(' | ')) + '</div>';
+      if(child.length){
+        html += '<div style="margin-top:8px;"><b>child_blocks</b> (' + String(child.length) + '):</div>';
+        html += '<div class="mono" style="white-space:pre-wrap;">' + _cbHtmlEsc(child.join('\n')) + '</div>';
+      }
+      html += '</div>';
+
+      const actions = [
+        { label:'Undo Preview', onClick: ()=>{ cbPreview('undo').catch(e=>err(String(e.message||e))); } },
+        { label:'Repeat Preview', onClick: ()=>{ cbPreview('repeat').catch(e=>err(String(e.message||e))); } },
+      ];
+      if(window.InfluxBroPopup && window.InfluxBroPopup.show){
+        window.InfluxBroPopup.show('ChangeBlock Details', html, { bodyHtml:true, actions });
+      }else{
+        alert('ChangeBlock: ' + bid);
+      }
+    }
+
+    async function cbPreview(direction){
+      const bid = _cbPickSelectedOne();
+      if(!bid) return;
+      const dir = String(direction||'').trim().toLowerCase();
+      const j = await api('./api/change_block/validate', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: bid, direction: dir })});
+      const v = j.validation || {};
+      const p = CB_PREVIEWS.get(bid) || {};
+      if(dir === 'undo') p.undo = v;
+      else p.repeat = v;
+      CB_PREVIEWS.set(bid, p);
+      cbRender();
+
+      try{
+        const s = v.summary || {};
+        const msg = (dir.toUpperCase() + ' Preview') + '\n' +
+          'ok=' + String(!!s.ok) + ' total=' + String(s.total||0) +
+          ' ok=' + String(s.ok_count||0) +
+          ' already=' + String(s.already_applied||0) +
+          ' conflicts=' + String(s.conflicts||0);
+        if(window.InfluxBroPopup && window.InfluxBroPopup.show){
+          window.InfluxBroPopup.show('Preview: ' + dir, msg, { copyText: JSON.stringify(v, null, 2) });
+        }else{
+          ok(msg);
+        }
+      }catch(e){}
+    }
+
+    async function cbDo(action){
+      const bid = _cbPickSelectedOne();
+      if(!bid) return;
+      const a = String(action||'').trim().toLowerCase();
+      const m = (a === 'undo') ? 'Undo wirklich ausfuehren?' : 'Repeat wirklich ausfuehren?';
+      if(!confirm(m + '\n\nChangeBlock: ' + bid)) return;
+      const ep = (a === 'undo') ? './api/change_block/undo' : './api/change_block/repeat';
+      await api(ep, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: bid, confirm:true })});
+      ok(a.toUpperCase() + ' ausgefuehrt.');
+      await cbLoad();
+    }
 
     function err(s){ $err.textContent = s || ''; if(s) { try{ alert(s); }catch(e){} } }
     function ok(s){ $ok.textContent = s || ''; }
@@ -365,7 +682,25 @@
     $rollbackSelected.addEventListener('click', (ev)=>{ ev.preventDefault(); ev.stopPropagation(); rollbackIds(Array.from(SELECTED)).catch(e=>err(String(e.message||e))); });
     $rollbackPreset.addEventListener('click', (ev)=>{ ev.preventDefault(); ev.stopPropagation(); rollbackPreset($preset.value).catch(e=>err(String(e.message||e))); });
 
+    if($cbRefresh) $cbRefresh.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} cbLoad().catch(e=>err(String(e.message||e))); });
+    if($cbDetails) $cbDetails.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} cbShowDetails().catch(e=>err(String(e.message||e))); });
+    if($cbPreviewUndo) $cbPreviewUndo.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} cbPreview('undo').catch(e=>err(String(e.message||e))); });
+    if($cbPreviewRepeat) $cbPreviewRepeat.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} cbPreview('repeat').catch(e=>err(String(e.message||e))); });
+    if($cbUndo) $cbUndo.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} cbDo('undo').catch(e=>err(String(e.message||e))); });
+    if($cbRepeat) $cbRepeat.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} cbDo('repeat').catch(e=>err(String(e.message||e))); });
+    if($cbSelAll) $cbSelAll.addEventListener('change', ()=>{
+      const on = !!$cbSelAll.checked;
+      const ids = (CB_LIST || []).map(b=>String(b && b.block_id || '')).filter(Boolean);
+      if(on) ids.forEach(id=>CB_SELECTED.add(id)); else ids.forEach(id=>CB_SELECTED.delete(id));
+      cbRender();
+    });
+    if($cbQ) $cbQ.addEventListener('input', ()=>cbRender());
+    if($cbOp) $cbOp.addEventListener('change', ()=>cbLoad().catch(()=>{}));
+    if($cbStatus) $cbStatus.addEventListener('change', ()=>cbLoad().catch(()=>{}));
+    if($cbLimit) $cbLimit.addEventListener('change', ()=>cbLoad().catch(()=>{}));
+
     load().catch(()=>{});
+    cbLoad().catch(()=>{});
   </script>
 
   {% include "_table_cols.html" %}
