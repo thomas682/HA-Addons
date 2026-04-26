@@ -24169,6 +24169,48 @@ def api_dq_multi_resolution():
     return jsonify(out)
 
 
+@app.get("/api/dq/debug")
+def api_dq_debug():
+    """Server-side debug bundle for DQ UI (lightweight, JSON).
+
+    Part of Epic #406 (Module: Debug/Support).
+    """
+
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    qcfg = _quality_cfg_view(cfg)
+
+    def _j(fn):
+        try:
+            return fn().get_json()  # type: ignore[attr-defined]
+        except Exception:
+            return None
+
+    return jsonify({
+        "ok": True,
+        "now": _utc_now_iso_ms(),
+        "addon": {
+            "version": ADDON_VERSION,
+        },
+        "influx": {
+            "configured": bool(cfg.get("token") and cfg.get("org") and cfg.get("bucket")),
+            "version": cfg.get("influx_version"),
+            "bucket": cfg.get("bucket"),
+            "org": cfg.get("org"),
+        },
+        "quality": qcfg,
+        "dq": {
+            "latest_runs": _dq_runs_list(20),
+        },
+        "api": {
+            "info": _j(api_info),
+            "ha_debug": _j(api_ha_debug),
+            "influx_info": _j(api_influx_info),
+            "logs_diag": _j(api_logs_diag),
+            "jobs": _j(api_jobs),
+        },
+    })
+
+
 @app.get("/api/dq/quality_run/export")
 def api_dq_quality_run_export():
     rid = str(request.args.get("id") or "").strip()
