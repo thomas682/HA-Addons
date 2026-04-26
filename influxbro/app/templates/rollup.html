@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>InfluxBro - Verdichtung</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; }
+    main.content { padding: 16px; }
+    h2 { margin: 0; }
+    .muted { opacity: 0.75; font-size: 12px; }
+    .row { display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; }
+    .card { border:1px solid #ddd; border-radius:12px; padding:12px; margin-top:12px; }
+    label { display:block; font-size:12px; opacity:0.85; margin-bottom:4px; }
+    input, select, textarea, button { box-sizing:border-box; }
+    input, select, textarea { width:100%; padding:10px 12px; min-height:40px; }
+    textarea { min-height: 180px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 12px; }
+    button { min-height: 40px; padding:10px 12px; cursor:pointer; }
+    .ok { color:#0a7a28; white-space:pre-wrap; }
+    .err { color:#b00020; white-space:pre-wrap; }
+    .pill { display:inline-flex; align-items:center; padding:2px 10px; border-radius:999px; background:#f2f6ff; border:1px solid #dbe5ff; font-size:12px; }
+    pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 12px; }
+  </style>
+</head>
+<body>
+  {% include "_topbar.html" %}
+  <div class="shell">
+    {% include "_nav.html" %}
+    <main class="content" data-ui="rollup_page.main" data-ib-pickkey="rollup_page.main" title="rollup.page">
+      <h2>Verdichtung</h2>
+      <div class="muted">Clean -> Rollup mit Pflicht-Backup. Optional kann die Quelle im Zeitraum geloescht werden (nach erfolgreichem Write). Restore stellt Clean aus dem Backup wieder her.</div>
+
+      <div id="msg_ok" class="ok" style="margin-top:10px;"></div>
+      <div id="msg_err" class="err" style="margin-top:6px;"></div>
+
+      <section class="card" data-ui="rollup_profiles.section" data-ib-pickkey="rollup_profiles.section" title="rollup.profiles">
+        <div class="row">
+          <div style="min-width: 260px; flex: 0 1 360px;">
+            <label>Profil</label>
+            <select id="profile_id" data-ui="rollup_profiles.select_profile" data-ib-pickkey="rollup_profiles.select_profile" title="rollup.profile.select"></select>
+          </div>
+          <div>
+            <label>&nbsp;</label>
+            <button id="profiles_reload" type="button" data-ui="rollup_profiles.btn_reload" data-ib-pickkey="rollup_profiles.btn_reload" title="rollup.profiles.reload">Profile laden</button>
+          </div>
+          <div>
+            <label>&nbsp;</label>
+            <button id="profile_save" type="button" data-ui="rollup_profiles.btn_save" data-ib-pickkey="rollup_profiles.btn_save" title="rollup.profile.save">Profil speichern</button>
+          </div>
+          <div style="flex: 1 1 auto; min-width: 220px;">
+            <label class="muted">Hinweis</label>
+            <div class="muted">Profil-JSON bearbeiten, dann speichern. Aenderungen wirken fuer Scheduler und manuelle Runs.</div>
+          </div>
+        </div>
+        <div style="margin-top:10px;">
+          <label>Profil JSON</label>
+          <textarea id="profile_json" spellcheck="false" data-ui="rollup_profiles.textarea_profile" data-ib-pickkey="rollup_profiles.textarea_profile" title="rollup.profile.json"></textarea>
+        </div>
+      </section>
+
+      <section class="card" data-ui="rollup_run.section" data-ib-pickkey="rollup_run.section" title="rollup.run">
+        <div class="row">
+          <div style="min-width: 280px; flex: 0 1 360px;">
+            <label>Start (ISO, UTC)</label>
+            <input id="start" placeholder="2026-04-26T00:00:00Z" data-ui="rollup_run.input_start" data-ib-pickkey="rollup_run.input_start" title="rollup.start" />
+          </div>
+          <div style="min-width: 280px; flex: 0 1 360px;">
+            <label>Stop (ISO, UTC)</label>
+            <input id="stop" placeholder="2026-04-26T12:00:00Z" data-ui="rollup_run.input_stop" data-ib-pickkey="rollup_run.input_stop" title="rollup.stop" />
+          </div>
+          <div style="min-width: 260px;">
+            <label>Optionen</label>
+            <label style="display:flex; align-items:center; gap: 8px; font-size: 12px; opacity:0.9;">
+              <input id="delete_source_after" type="checkbox" style="width:auto; min-height:auto;" data-ui="rollup_run.cb_delete_source" data-ib-pickkey="rollup_run.cb_delete_source" title="rollup.delete_source_after" />
+              Quelle nach Erfolg loeschen
+            </label>
+            <label style="display:flex; align-items:center; gap: 8px; font-size: 12px; opacity:0.9; margin-top: 6px;">
+              <input id="allow_unknown_types" type="checkbox" style="width:auto; min-height:auto;" data-ui="rollup_run.cb_allow_unknown" data-ib-pickkey="rollup_run.cb_allow_unknown" title="rollup.allow_unknown_types" />
+              Unsichere Typen zulassen
+            </label>
+          </div>
+        </div>
+        <div class="row" style="margin-top:10px;">
+          <button id="preview" type="button" data-ui="rollup_run.btn_preview" data-ib-pickkey="rollup_run.btn_preview" title="rollup.preview">Preview</button>
+          <button id="backup_only" type="button" data-ui="rollup_run.btn_backup" data-ib-pickkey="rollup_run.btn_backup" title="rollup.backup">Backup erstellen</button>
+          <button id="run" type="button" data-ui="rollup_run.btn_run" data-ib-pickkey="rollup_run.btn_run" title="rollup.run">Run starten</button>
+          <button id="cancel" type="button" data-ui="rollup_run.btn_cancel" data-ib-pickkey="rollup_run.btn_cancel" title="rollup.cancel">Job abbrechen</button>
+          <span class="pill" id="job_pill" data-ui="rollup_run.pill_status" data-ib-pickkey="rollup_run.pill_status" title="rollup.status">idle</span>
+        </div>
+        <div style="margin-top:10px;">
+          <div class="muted">Preview / Runs</div>
+          <pre id="run_out" data-ui="rollup_run.pre_output" data-ib-pickkey="rollup_run.pre_output" title="rollup.output"></pre>
+        </div>
+      </section>
+
+      <section class="card" data-ui="rollup_restore.section" data-ib-pickkey="rollup_restore.section" title="rollup.restore">
+        <div class="row">
+          <div style="min-width: 320px; flex: 1 1 520px;">
+            <label>Restore Point</label>
+            <select id="restore_point" data-ui="rollup_restore.select_point" data-ib-pickkey="rollup_restore.select_point" title="rollup.restore.point"></select>
+          </div>
+          <div>
+            <label>&nbsp;</label>
+            <button id="restore_reload" type="button" data-ui="rollup_restore.btn_reload" data-ib-pickkey="rollup_restore.btn_reload" title="rollup.restore.reload">Restore Points laden</button>
+          </div>
+          <div>
+            <label>&nbsp;</label>
+            <button id="restore_preview" type="button" data-ui="rollup_restore.btn_preview" data-ib-pickkey="rollup_restore.btn_preview" title="rollup.restore.preview">Restore Preview</button>
+          </div>
+          <div>
+            <label>&nbsp;</label>
+            <button id="restore_run" type="button" data-ui="rollup_restore.btn_run" data-ib-pickkey="rollup_restore.btn_run" title="rollup.restore.run">Restore starten</button>
+          </div>
+        </div>
+        <div style="margin-top:10px;">
+          <div class="muted">Restore Output</div>
+          <pre id="restore_out" data-ui="rollup_restore.pre_output" data-ib-pickkey="rollup_restore.pre_output" title="rollup.restore.output"></pre>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script>
+    const okEl = document.getElementById('msg_ok');
+    const errEl = document.getElementById('msg_err');
+    const profileSel = document.getElementById('profile_id');
+    const profileJson = document.getElementById('profile_json');
+    const startEl = document.getElementById('start');
+    const stopEl = document.getElementById('stop');
+    const delEl = document.getElementById('delete_source_after');
+    const allowUnkEl = document.getElementById('allow_unknown_types');
+    const runOut = document.getElementById('run_out');
+    const restoreOut = document.getElementById('restore_out');
+    const jobPill = document.getElementById('job_pill');
+    const restoreSel = document.getElementById('restore_point');
+
+    let PROFILES = [];
+    let JOB_ID = null;
+    let POLL_T = null;
+    let RESTORE_JOB_ID = null;
+    let RESTORE_POLL_T = null;
+
+    function setOk(msg){ okEl.textContent = msg || ''; }
+    function setErr(msg){ errEl.textContent = msg || ''; }
+    function setPill(v){ jobPill.textContent = v || 'idle'; }
+
+    async function api(url, method='GET', body=null){
+      const opt = { method, headers: {} };
+      // Keep this explicit even though _nav.html patches fetch globally.
+      opt.headers['X-InfluxBro-Request'] = '1';
+      opt.headers['X-Requested-With'] = 'InfluxBro';
+      if(body){ opt.headers['Content-Type'] = 'application/json'; opt.body = JSON.stringify(body); }
+      const r = await fetch(url, opt);
+      const j = await r.json().catch(() => ({}));
+      if(!r.ok || j.ok === false){ throw new Error(j.error || ('HTTP ' + r.status)); }
+      return j;
+    }
+
+    function selectedProfile(){
+      const id = (profileSel.value || 'default').trim() || 'default';
+      return PROFILES.find(p => String(p.id||'') === id) || PROFILES[0] || null;
+    }
+
+    function fillProfileUI(){
+      const p = selectedProfile();
+      if(!p) return;
+      profileJson.value = JSON.stringify(p, null, 2);
+      delEl.checked = !!p.delete_source_after_default;
+      allowUnkEl.checked = false;
+    }
+
+    async function loadProfiles(){
+      setOk(''); setErr('');
+      const j = await api('./api/rollup/profiles');
+      PROFILES = Array.isArray(j.profiles) ? j.profiles : [];
+      profileSel.innerHTML = '';
+      for(const p of PROFILES){
+        const o = document.createElement('option');
+        o.value = p.id;
+        o.textContent = (p.name || p.id) + (p.enabled === false ? ' (disabled)' : '');
+        profileSel.appendChild(o);
+      }
+      if(!profileSel.value && PROFILES.length) profileSel.value = PROFILES[0].id;
+      fillProfileUI();
+    }
+
+    async function saveProfile(){
+      setOk(''); setErr('');
+      let p;
+      try { p = JSON.parse(profileJson.value || '{}'); }
+      catch(e){ setErr('Profil JSON ungueltig: ' + e); return; }
+      const j = await api('./api/rollup/profile/save', 'POST', { profile: p });
+      PROFILES = Array.isArray(j.profiles) ? j.profiles : PROFILES;
+      setOk('Profil gespeichert');
+      await loadProfiles();
+    }
+
+    function payloadRange(){
+      const s = (startEl.value || '').trim();
+      const e = (stopEl.value || '').trim();
+      const out = {};
+      if(s && e){ out.start = s; out.stop = e; }
+      return out;
+    }
+
+    async function preview(){
+      setOk(''); setErr('');
+      const body = { profile_id: profileSel.value, ...payloadRange() };
+      const j = await api('./api/rollup/preview', 'POST', body);
+      runOut.textContent = JSON.stringify(j, null, 2);
+      if((!startEl.value || !stopEl.value) && j.range && j.range.start && j.range.stop){
+        startEl.value = j.range.start;
+        stopEl.value = j.range.stop;
+      }
+    }
+
+    async function backupOnly(){
+      setOk(''); setErr('');
+      const body = { profile_id: profileSel.value, trigger_page: 'rollup', ...payloadRange() };
+      const j = await api('./api/rollup/backup', 'POST', body);
+      runOut.textContent = JSON.stringify(j, null, 2);
+      setOk('Backup erstellt: ' + (j.backup && j.backup.id ? j.backup.id : 'ok'));
+    }
+
+    function stopPoll(){
+      if(POLL_T){ clearInterval(POLL_T); POLL_T = null; }
+    }
+
+    async function poll(){
+      if(!JOB_ID) return;
+      try {
+        const j = await api('./api/rollup/job/status?job_id=' + encodeURIComponent(JOB_ID));
+        runOut.textContent = JSON.stringify(j, null, 2);
+        const st = j.status || {};
+        setPill(st.state || '');
+        if(st.ready){ stopPoll(); }
+      } catch(e){
+        stopPoll();
+        setErr(String(e));
+      }
+    }
+
+    async function run(){
+      setOk(''); setErr('');
+      const body = {
+        confirm: true,
+        profile_id: profileSel.value,
+        delete_source_after: !!delEl.checked,
+        allow_unknown_types: !!allowUnkEl.checked,
+        trigger_page: 'rollup',
+        ...payloadRange(),
+      };
+      const j = await api('./api/rollup/run', 'POST', body);
+      JOB_ID = j.job_id;
+      setOk('Job gestartet: ' + JOB_ID);
+      setPill('pending');
+      stopPoll();
+      POLL_T = setInterval(poll, 1000);
+      await poll();
+    }
+
+    async function cancel(){
+      setOk(''); setErr('');
+      if(!JOB_ID){ setErr('Kein aktiver Job'); return; }
+      await api('./api/rollup/job/cancel', 'POST', { job_id: JOB_ID });
+      setOk('Cancel angefordert');
+    }
+
+    async function loadRestorePoints(){
+      setOk(''); setErr('');
+      const j = await api('./api/rollup/restore_points');
+      const xs = Array.isArray(j.restore_points) ? j.restore_points : [];
+      restoreSel.innerHTML = '';
+      for(const it of xs){
+        const o = document.createElement('option');
+        o.value = it.backup_id;
+        o.textContent = (it.created_at || '') + ' | ' + (it.profile_id || '') + ' | ' + (it.backup_id || '');
+        restoreSel.appendChild(o);
+      }
+      if(xs.length){ restoreSel.value = xs[0].backup_id; }
+      restoreOut.textContent = JSON.stringify(j, null, 2);
+    }
+
+    function stopRestorePoll(){
+      if(RESTORE_POLL_T){ clearInterval(RESTORE_POLL_T); RESTORE_POLL_T = null; }
+    }
+
+    async function pollRestore(){
+      if(!RESTORE_JOB_ID) return;
+      try {
+        const j = await api('./api/rollup/job/status?job_id=' + encodeURIComponent(RESTORE_JOB_ID));
+        restoreOut.textContent = JSON.stringify(j, null, 2);
+        const st = j.status || {};
+        if(st.ready){ stopRestorePoll(); }
+      } catch(e){
+        stopRestorePoll();
+        setErr(String(e));
+      }
+    }
+
+    async function restorePreview(){
+      setOk(''); setErr('');
+      const bid = (restoreSel.value || '').trim();
+      if(!bid){ setErr('Kein Backup gewaehlt'); return; }
+      const j = await api('./api/rollup/restore_preview', 'POST', { backup_id: bid });
+      restoreOut.textContent = JSON.stringify(j, null, 2);
+    }
+
+    async function restoreRun(){
+      setOk(''); setErr('');
+      const bid = (restoreSel.value || '').trim();
+      if(!bid){ setErr('Kein Backup gewaehlt'); return; }
+      const j = await api('./api/rollup/restore', 'POST', { confirm: true, backup_id: bid });
+      RESTORE_JOB_ID = j.job_id;
+      setOk('Restore Job gestartet: ' + RESTORE_JOB_ID);
+      stopRestorePoll();
+      RESTORE_POLL_T = setInterval(pollRestore, 1000);
+      await pollRestore();
+    }
+
+    document.getElementById('profiles_reload').addEventListener('click', () => loadProfiles().catch(e => setErr(String(e))));
+    document.getElementById('profile_save').addEventListener('click', () => saveProfile().catch(e => setErr(String(e))));
+    profileSel.addEventListener('change', () => { fillProfileUI(); setOk(''); setErr(''); });
+    document.getElementById('preview').addEventListener('click', () => preview().catch(e => setErr(String(e))));
+    document.getElementById('backup_only').addEventListener('click', () => backupOnly().catch(e => setErr(String(e))));
+    document.getElementById('run').addEventListener('click', () => run().catch(e => setErr(String(e))));
+    document.getElementById('cancel').addEventListener('click', () => cancel().catch(e => setErr(String(e))));
+    document.getElementById('restore_reload').addEventListener('click', () => loadRestorePoints().catch(e => setErr(String(e))));
+    document.getElementById('restore_preview').addEventListener('click', () => restorePreview().catch(e => setErr(String(e))));
+    document.getElementById('restore_run').addEventListener('click', () => restoreRun().catch(e => setErr(String(e))));
+
+    (async () => {
+      try {
+        await loadProfiles();
+        await preview();
+        await loadRestorePoints();
+      } catch(e){ setErr(String(e)); }
+    })();
+  </script>
+</body>
+</html>

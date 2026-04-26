@@ -129,6 +129,17 @@ DQ_HA_SNAP_DIR = DATA_DIR / "dq" / "ha_metadata_snapshots"
 DQ_HA_PROPOSALS_DIR = DATA_DIR / "dq" / "ha_config_proposals"
 DQ_YAML_PATCH_DIR = DATA_DIR / "dq" / "yaml_patch_proposals"
 
+# Rollup / Downsampling (Issue #412)
+ROLLUP_LOCK = threading.RLock()
+ROLLUP_PROFILES_PATH = DATA_DIR / "rollup_profiles.json"
+ROLLUP_RUNS_DIR = DATA_DIR / "rollup" / "runs"
+ROLLUP_BACKUPS_DIR = DATA_DIR / "rollup" / "backups"
+ROLLUP_SCHEMA_VERSION = 1
+ROLLUP_PROFILE_SCHEMA_VERSION = 1
+ROLLUP_RUN_SCHEMA_VERSION = 1
+ROLLUP_BACKUP_SCHEMA_VERSION = 1
+ROLLUP_JOBS: dict[str, dict[str, Any]] = {}
+
 # ChangeBlocks (central change-service storage; Issue #401)
 CHANGE_BLOCKS_LOCK = threading.RLock()
 CHANGE_BLOCKS_DIR = DATA_DIR / "change_blocks"
@@ -1545,6 +1556,14 @@ DEFAULT_CFG = {
     "analysis_nightly_refresh_weekday": 0,
     # Time window covered by nightly refresh (stop=now, start=now-window)
     "analysis_nightly_window_hours": 24,
+
+    # Timer Job: rollup (automatic downsampling with mandatory backup)
+    "rollup_enabled": True,
+    "rollup_auto_update": False,
+    "rollup_refresh_mode": "manual",
+    "rollup_refresh_hours": 24,
+    "rollup_refresh_daily_at": "04:00:00",
+    "rollup_refresh_weekday": 0,
 
     # Data quality / long-term buckets
     "quality_raw_bucket": "homeassistant_raw_30d",
@@ -8723,6 +8742,12 @@ def quality_page():
     return render_template("quality.html", cfg=cfg, allow_delete=True, nav="quality")
 
 
+@app.get("/rollup")
+def rollup_page():
+    cfg = load_cfg()
+    return render_template("rollup.html", cfg=cfg, allow_delete=True, nav="rollup")
+
+
 @app.get("/dq")
 def dq_page():
     cfg = load_cfg()
@@ -10289,10 +10314,23 @@ def api_quality_config_set():
 def api_quality_buckets_status():
     cfg = _overlay_from_yaml_if_enabled(load_cfg())
     qcfg = _quality_cfg_view(cfg)
+
+    # Friendly failure mode: this endpoint is auto-called by quality.html.
+    # Return a 400 with a clear message if Influx is not configured yet.
+    if int(cfg.get("influx_version", 2) or 2) != 2:
+        return jsonify({"ok": False, "error": "Datenqualitaet erfordert InfluxDB v2", "config": qcfg}), 400
+    token = str(cfg.get("admin_token") or cfg.get("token") or "").strip()
+    org = str(cfg.get("org") or "").strip()
+    if not token or not org:
+        return jsonify({
+            "ok": False,
+            "error": "InfluxDB v2 nicht konfiguriert: token/admin_token und org erforderlich",
+            "config": qcfg,
+        }), 400
     try:
         buckets = _quality_list_buckets(cfg)
     except Exception as e:
-        return jsonify({"ok": False, "error": _short_influx_error(e), "config": qcfg}), 500
+        return jsonify({"ok": False, "error": _short_influx_error(e), "config": qcfg}), 502
     return jsonify({"ok": True, "config": qcfg, "buckets": buckets, "desired": _quality_bucket_specs(cfg)})
 
 
@@ -10410,6 +10448,1586 @@ def api_quality_log():
     except Exception:
         rows = []
     return jsonify({"ok": True, "rows": rows})
+
+
+def _rollup_dirs_ensure() -> None:
+    for p in (ROLLUP_RUNS_DIR, ROLLUP_BACKUPS_DIR):
+        try:
+            p.mkdir(parents=True, exist_ok=True)
+        except Exception:
+            pass
+
+
+def _rollup_default_profile(cfg: dict[str, Any]) -> dict[str, Any]:
+    q = _quality_cfg_view(cfg)
+    # Default agg sets (B2)
+    return {
+        "schema_version": ROLLUP_PROFILE_SCHEMA_VERSION,
+        "id": "default",
+        "name": "Default Rollup",
+        "enabled": True,
+        "source_bucket": str(q.get("clean_bucket") or ""),
+        "target_bucket": str(q.get("rollup_bucket") or ""),
+        "lateness_minutes": int(q.get("lateness_minutes") or 10),
+        # If true, we only include series that match a quality rule with rollup=true.
+        "use_quality_rules": True,
+        # Only used when use_quality_rules=false. If false, numeric series are blocked
+        # as "unknown_numeric_type" (counter vs gauge is ambiguous).
+        "assume_numeric_gauge": False,
+        "delete_source_after_default": False,
+        "levels": [
+            {
+                "name": str(l.get("name") or l.get("window") or ""),
+                "source_after_days": int(l.get("source_after_days") or 30),
+                "backfill_days": 7,
+                "window": str(l.get("window") or "15m"),
+                "type_aggs": {
+                    # Keep defaults conservative: counter MUST NOT use mean.
+                    "counter": ["last", "min", "max"],
+                    "gauge": ["mean", "min", "max", "last"],
+                    "binary": ["last"],
+                    "discrete_state": ["last"],
+                },
+            }
+            for l in (q.get("rollups") or [])
+            if isinstance(l, dict) and str(l.get("name") or l.get("window") or "").strip()
+        ],
+        "updated_at": _utc_now_iso_ms(),
+    }
+
+
+def _rollup_profiles_load(cfg: dict[str, Any]) -> list[dict[str, Any]]:
+    try:
+        if ROLLUP_PROFILES_PATH.exists():
+            raw = ROLLUP_PROFILES_PATH.read_text(encoding="utf-8", errors="replace")
+            val = json.loads(raw)
+            if isinstance(val, list):
+                xs = [it for it in val if isinstance(it, dict)]
+                if xs:
+                    return xs
+    except Exception:
+        pass
+    return [_rollup_default_profile(cfg)]
+
+
+def _rollup_profiles_save(xs: list[dict[str, Any]]) -> None:
+    ROLLUP_PROFILES_PATH.parent.mkdir(parents=True, exist_ok=True)
+    ROLLUP_PROFILES_PATH.write_text(json.dumps(xs, ensure_ascii=True, sort_keys=True, indent=2), encoding="utf-8")
+
+
+def _rollup_validate_profile(p: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(p, dict):
+        raise ValueError("profile must be object")
+    out = dict(p)
+    pid = str(out.get("id") or "").strip()
+    if not pid:
+        raise ValueError("id required")
+    if not re.match(r"^[a-zA-Z0-9_\-]{1,64}$", pid):
+        raise ValueError("id invalid")
+    out["schema_version"] = ROLLUP_PROFILE_SCHEMA_VERSION
+    out["id"] = pid
+    out["name"] = str(out.get("name") or pid)
+    out["enabled"] = bool(out.get("enabled", True))
+    out["use_quality_rules"] = bool(out.get("use_quality_rules", True))
+    out["assume_numeric_gauge"] = bool(out.get("assume_numeric_gauge", False))
+    out["delete_source_after_default"] = bool(out.get("delete_source_after_default", False))
+
+    src = str(out.get("source_bucket") or "").strip()
+    tgt = str(out.get("target_bucket") or "").strip()
+    if not src or not tgt:
+        raise ValueError("source_bucket and target_bucket required")
+    if src == tgt:
+        raise ValueError("source_bucket must differ from target_bucket")
+    out["source_bucket"] = src
+    out["target_bucket"] = tgt
+    try:
+        out["lateness_minutes"] = int(out.get("lateness_minutes") or 10)
+    except Exception:
+        out["lateness_minutes"] = 10
+    out["lateness_minutes"] = max(0, min(180, int(out["lateness_minutes"])))
+
+    lv = out.get("levels") if isinstance(out.get("levels"), list) else []
+    win_re = re.compile(r"^(?:\d+(?:ms|s|m|h|d|w))+$")
+    levels = []
+    for it in lv:
+        if not isinstance(it, dict):
+            continue
+        nm = str(it.get("name") or it.get("window") or "").strip()
+        win = str(it.get("window") or "").strip()
+        if not nm or not win:
+            continue
+        if not win_re.match(win):
+            raise ValueError("window invalid (expected flux duration like 15m, 1h, 1h30m)")
+        try:
+            sad = int(it.get("source_after_days") or 30)
+        except Exception:
+            sad = 30
+        try:
+            bfd = int(it.get("backfill_days") or 7)
+        except Exception:
+            bfd = 7
+        sad = max(1, min(36500, sad))
+        bfd = max(1, min(3650, bfd))
+        ta = it.get("type_aggs") if isinstance(it.get("type_aggs"), dict) else {}
+        type_aggs: dict[str, list[str]] = {}
+        for k in ("counter", "gauge", "binary", "discrete_state"):
+            xs = ta.get(k)
+            xs = xs if isinstance(xs, list) else []
+            vals = []
+            for x in xs:
+                s = str(x or "").strip().lower()
+                if s in ("mean", "min", "max", "last", "count", "spread"):
+                    if s not in vals:
+                        vals.append(s)
+            if not vals:
+                vals = ["last"]
+            type_aggs[k] = vals
+        levels.append({
+            "name": nm,
+            "source_after_days": sad,
+            "backfill_days": bfd,
+            "window": win,
+            "type_aggs": type_aggs,
+        })
+    if not levels:
+        raise ValueError("levels required")
+    out["levels"] = levels
+    out["updated_at"] = _utc_now_iso_ms()
+    return out
+
+
+@app.get("/api/rollup/profiles")
+def api_rollup_profiles():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    return jsonify({"ok": True, "profiles": _rollup_profiles_load(cfg), "quality": _quality_cfg_view(cfg)})
+
+
+@app.post("/api/rollup/profile/save")
+def api_rollup_profile_save():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    body = request.get_json(force=True) or {}
+    p = body.get("profile") if isinstance(body.get("profile"), dict) else None
+    if not p:
+        return jsonify({"ok": False, "error": "profile required"}), 400
+    try:
+        p2 = _rollup_validate_profile(p)
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 400
+
+    xs = _rollup_profiles_load(cfg)
+    out = []
+    replaced = False
+    for it in xs:
+        if isinstance(it, dict) and str(it.get("id") or "") == str(p2.get("id") or ""):
+            out.append(p2)
+            replaced = True
+        else:
+            out.append(it)
+    if not replaced:
+        out.append(p2)
+    try:
+        _rollup_profiles_save(out)
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 500
+    return jsonify({"ok": True, "profiles": out})
+
+
+def _rollup_run_path(run_id: str) -> Path:
+    rid = str(run_id or "").strip()
+    return ROLLUP_RUNS_DIR / (rid + ".json")
+
+
+def _rollup_run_load(run_id: str) -> dict[str, Any] | None:
+    rid = str(run_id or "").strip()
+    if not rid:
+        return None
+    p = _rollup_run_path(rid)
+    if not p.exists():
+        return None
+    try:
+        return json.loads(p.read_text(encoding="utf-8", errors="replace"))
+    except Exception:
+        return None
+
+
+def _rollup_run_save(run: dict[str, Any]) -> None:
+    _rollup_dirs_ensure()
+    rid = str(run.get("id") or "").strip()
+    if not rid:
+        return
+    p = _rollup_run_path(rid)
+    p.write_text(json.dumps(run, ensure_ascii=True, sort_keys=True, indent=2), encoding="utf-8")
+
+
+def _rollup_runs_list(limit: int = 50) -> list[dict[str, Any]]:
+    _rollup_dirs_ensure()
+    xs: list[dict[str, Any]] = []
+    try:
+        files = sorted(ROLLUP_RUNS_DIR.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+        for p in files[: max(1, min(500, int(limit or 50)))]:
+            try:
+                v = json.loads(p.read_text(encoding="utf-8", errors="replace"))
+                if isinstance(v, dict):
+                    xs.append(v)
+            except Exception:
+                continue
+    except Exception:
+        return []
+    return xs
+
+
+def _rollup_quality_rules(cfg: dict[str, Any]) -> list[dict[str, Any]]:
+    try:
+        q = _quality_cfg_view(cfg)
+        rules = q.get("rules") if isinstance(q.get("rules"), list) else []
+        return [r for r in rules if isinstance(r, dict) and bool(r.get("enabled", True))]
+    except Exception:
+        return []
+
+
+def _rollup_rule_for_series(rules: list[dict[str, Any]], measurement: str, entity_id: str) -> dict[str, Any] | None:
+    for r in rules:
+        try:
+            if not isinstance(r, dict):
+                continue
+            if not bool(r.get("rollup", True)):
+                continue
+            if _quality_rule_matches(r, entity_id, measurement):
+                return r
+        except Exception:
+            continue
+    return None
+
+
+def _rollup_series_plan(
+    cfg: dict[str, Any],
+    profile: dict[str, Any],
+    *,
+    max_days: int = 3650,
+    q: str = "",
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Return (included_series, blocked_series).
+
+    Safety: if type cannot be determined confidently, block unless the user
+    explicitly allows unknown types.
+    """
+
+    src_bucket = str(profile.get("source_bucket") or "").strip()
+    cfg2 = dict(cfg)
+    if src_bucket:
+        cfg2["bucket"] = src_bucket
+
+    now = datetime.now(timezone.utc)
+    start_dt, stop_dt = (now - timedelta(days=max(1, min(36500, int(max_days or 3650))))), now
+    rows = _series_inventory_series_page(cfg2, start_dt=start_dt, stop_dt=stop_dt, limit=5000, offset=0, field_filter=None, q=str(q or ""))
+
+    rules = _rollup_quality_rules(cfg)
+    allowed = {"counter", "gauge", "binary", "discrete_state"}
+
+    included: list[dict[str, Any]] = []
+    blocked: list[dict[str, Any]] = []
+
+    use_rules = bool(profile.get("use_quality_rules", True))
+    assume_numeric_gauge = bool(profile.get("assume_numeric_gauge", False))
+
+    for r in rows:
+        if not isinstance(r, dict):
+            continue
+        m = str(r.get("measurement") or "").strip()
+        f = str(r.get("field") or "").strip()
+        eid = str(r.get("entity_id") or "").strip()
+        fn = str(r.get("friendly_name") or "").strip()
+        lv = r.get("last_value")
+        if not m or not f:
+            continue
+        if not eid and not fn:
+            continue
+
+        typ = "unknown"
+        typ_src = ""
+        reason = ""
+
+        if use_rules:
+            hit = _rollup_rule_for_series(rules, m, eid)
+            if not hit:
+                reason = "no_quality_rule"
+            else:
+                typ = str(hit.get("type") or "").strip().lower() or "unknown"
+                typ_src = "quality_rule"
+                if typ not in allowed:
+                    reason = "unknown_type"
+        else:
+            # Best-effort inference (still strict for numeric, because counter vs gauge matters).
+            if isinstance(lv, bool):
+                typ = "binary"
+                typ_src = "last_value_type"
+            elif isinstance(lv, (int, float)):
+                if assume_numeric_gauge:
+                    typ = "gauge"
+                    typ_src = "last_value_type"
+                else:
+                    reason = "unknown_numeric_type"
+            elif isinstance(lv, str) and lv.strip():
+                typ = "discrete_state"
+                typ_src = "last_value_type"
+            else:
+                reason = "unknown_value_type"
+
+        if reason:
+            blocked.append({
+                "measurement": m,
+                "field": f,
+                "entity_id": eid,
+                "friendly_name": fn,
+                "reason": reason,
+                "type": typ if typ in allowed else "unknown",
+                "type_source": typ_src,
+            })
+            continue
+
+        if typ not in allowed:
+            blocked.append({
+                "measurement": m,
+                "field": f,
+                "entity_id": eid,
+                "friendly_name": fn,
+                "reason": "unknown_type",
+                "type": "unknown",
+                "type_source": typ_src,
+            })
+            continue
+
+        included.append({
+            "measurement": m,
+            "field": f,
+            "entity_id": eid,
+            "friendly_name": fn,
+            "type": typ,
+            "type_source": typ_src,
+        })
+
+    return included, blocked
+
+
+def _rollup_series_candidates(cfg: dict[str, Any], profile: dict[str, Any], *, max_days: int = 3650, q: str = "") -> list[dict[str, Any]]:
+    xs, _blocked = _rollup_series_plan(cfg, profile, max_days=max_days, q=q)
+    return xs
+
+
+def _rollup_backup_paths(backup_id: str) -> tuple[Path, Path, Path, Path]:
+    bid = _backup_safe(str(backup_id or ""))
+    meta_path, lp_path = _backup_files(ROLLUP_BACKUPS_DIR, bid)
+    zpath = _backup_zip_path(ROLLUP_BACKUPS_DIR, bid)
+    payload_dir = ROLLUP_BACKUPS_DIR / (bid + ".payload")
+    return meta_path, lp_path, zpath, payload_dir
+
+
+@contextmanager
+def _rollup_open_backup_lp_text(backup_id: str):
+    """Open rollup backup payload as text (ensures zip is closed).
+
+    Important: this must be a real context manager (not a generator that is
+    advanced via next()), otherwise the ZipFile stays open until GC.
+    """
+
+    bid = _backup_safe(str(backup_id or ""))
+    _rollup_dirs_ensure()
+    _meta_path, lp_path, zpath, _payload_dir = _rollup_backup_paths(bid)
+
+    if zpath.exists():
+        z: zipfile.ZipFile | None = None
+        f_bin = None
+        f_txt = None
+        try:
+            z = zipfile.ZipFile(zpath, mode="r")
+            f_bin = z.open("payload/data.lp", mode="r")
+            f_txt = io.TextIOWrapper(f_bin, encoding="utf-8", errors="replace")
+            yield f_txt
+        finally:
+            try:
+                if f_txt is not None:
+                    f_txt.close()
+            except Exception:
+                pass
+            try:
+                if f_bin is not None:
+                    f_bin.close()
+            except Exception:
+                pass
+            try:
+                if z is not None:
+                    z.close()
+            except Exception:
+                pass
+        return
+
+    if lp_path.exists():
+        with lp_path.open("r", encoding="utf-8", errors="replace") as f2:
+            yield f2
+        return
+
+    raise FileNotFoundError("backup payload not found")
+
+
+def _rollup_plan_level_windows(
+    prof: dict[str, Any],
+    *,
+    now_utc: datetime,
+    start_override: datetime | None,
+    stop_override: datetime | None,
+) -> tuple[list[dict[str, Any]], datetime, datetime]:
+    """Plan per-level windows and also return union start/stop.
+
+    If overrides are provided, they apply to all levels.
+    Otherwise we derive per-level windows from source_after_days/backfill_days
+    relative to (now - lateness).
+    """
+
+    levels = prof.get("levels") if isinstance(prof.get("levels"), list) else []
+    try:
+        lateness_min = int(prof.get("lateness_minutes") or 0)
+    except Exception:
+        lateness_min = 0
+    lateness_min = max(0, min(180, lateness_min))
+
+    if start_override and stop_override:
+        start_utc = start_override.astimezone(timezone.utc)
+        stop_utc = stop_override.astimezone(timezone.utc)
+        if stop_utc <= start_utc:
+            raise ValueError("stop must be after start")
+        plan = []
+        for lv in levels:
+            if not isinstance(lv, dict):
+                continue
+            plan.append({
+                "name": str(lv.get("name") or lv.get("window") or ""),
+                "window": str(lv.get("window") or ""),
+                "start_dt": start_utc,
+                "stop_dt": stop_utc,
+            })
+        if not plan:
+            raise ValueError("levels required")
+        return plan, start_utc, stop_utc
+
+    # Default plan: per-level windows.
+    eff_stop = (now_utc - timedelta(minutes=lateness_min)).astimezone(timezone.utc)
+    plan = []
+    for lv in levels:
+        if not isinstance(lv, dict):
+            continue
+        try:
+            sad = int(lv.get("source_after_days") or 30)
+        except Exception:
+            sad = 30
+        try:
+            bfd = int(lv.get("backfill_days") or 7)
+        except Exception:
+            bfd = 7
+        sad = max(1, min(36500, sad))
+        bfd = max(1, min(3650, bfd))
+        stop_dt = eff_stop - timedelta(days=sad)
+        start_dt = stop_dt - timedelta(days=bfd)
+        if stop_dt <= start_dt:
+            continue
+        plan.append({
+            "name": str(lv.get("name") or lv.get("window") or ""),
+            "window": str(lv.get("window") or ""),
+            "start_dt": start_dt,
+            "stop_dt": stop_dt,
+        })
+
+    if not plan:
+        raise ValueError("levels required")
+
+    start_u = min(p["start_dt"] for p in plan)
+    stop_u = max(p["stop_dt"] for p in plan)
+    return plan, start_u, stop_u
+
+
+def _rollup_backup_create(
+    cfg: dict[str, Any],
+    *,
+    backup_id: str,
+    source_bucket: str,
+    series: list[dict[str, Any]],
+    start_dt: datetime,
+    stop_dt: datetime,
+    meta_extra: dict[str, Any],
+) -> dict[str, Any]:
+    _rollup_dirs_ensure()
+    ROLLUP_BACKUPS_DIR.mkdir(parents=True, exist_ok=True)
+    bid = _backup_safe(backup_id)
+    meta_path, lp_path, zpath, payload_dir = _rollup_backup_paths(bid)
+    if zpath.exists() or meta_path.exists() or lp_path.exists() or payload_dir.exists():
+        raise RuntimeError("backup id collision")
+
+    sha = hashlib.sha256()
+    count = 0
+    per_series: list[dict[str, Any]] = []
+    payload_dir.mkdir(parents=True, exist_ok=True)
+    data_lp = payload_dir / "data.lp"
+
+    start = _dt_to_rfc3339_utc_full(start_dt)
+    stop = _dt_to_rfc3339_utc_full(stop_dt)
+    with v2_client(cfg) as c:
+        qapi = c.query_api()
+        with data_lp.open("wb") as fo:
+            for s in series:
+                m = str(s.get("measurement") or "").strip()
+                f = str(s.get("field") or "").strip()
+                eid = str(s.get("entity_id") or "").strip()
+                fn = str(s.get("friendly_name") or "").strip()
+                if not m or not f:
+                    continue
+                extra = flux_tag_filter(eid, fn)
+                q = f'''
+from(bucket: "{source_bucket}")
+  |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
+  |> filter(fn: (r) => r._measurement == {_flux_str(m)} and r._field == {_flux_str(f)}{extra})
+  |> sort(columns: ["_time"])
+'''
+                pts = 0
+                for rec in qapi.query_stream(q, org=cfg["org"]):
+                    try:
+                        t = rec.get_time()
+                        v = rec.get_value()
+                        if v is None:
+                            continue
+                        p = Point(str(rec.values.get("_measurement") or m))
+                        for k, tv in (rec.values or {}).items():
+                            if k in ("result", "table"):
+                                continue
+                            if str(k).startswith("_"):
+                                continue
+                            if tv is None:
+                                continue
+                            p = p.tag(str(k), str(tv))
+                        p = p.field(str(rec.values.get("_field") or f), v)
+                        if isinstance(t, datetime):
+                            p = p.time(t, WritePrecision.NS)
+                        lp = p.to_line_protocol()
+                        if not lp:
+                            continue
+                        b = (lp + "\n").encode("utf-8", errors="replace")
+                        fo.write(b)
+                        sha.update(b)
+                        pts += 1
+                        count += 1
+                    except Exception:
+                        continue
+                per_series.append({"measurement": m, "field": f, "entity_id": eid, "friendly_name": fn, "points": pts})
+
+    meta = {
+        "schema_version": ROLLUP_BACKUP_SCHEMA_VERSION,
+        "id": bid,
+        "created_at": _utc_now_iso_ms(),
+        "kind": "rollup_backup",
+        "source_bucket": source_bucket,
+        "start": start,
+        "stop": stop,
+        "point_count": count,
+        "sha256": sha.hexdigest(),
+        "series": per_series,
+        "meta": meta_extra or {},
+    }
+    meta_path.write_text(json.dumps(meta, ensure_ascii=True, sort_keys=True, indent=2), encoding="utf-8")
+    # Pack as zip and remove raw payload tree
+    _backup_pack_zip_tree(ROLLUP_BACKUPS_DIR, bid, meta_path=meta_path, payload_dir=payload_dir, payload_arc_prefix="payload")
+    return meta
+
+
+def _rollup_backup_validate(backup_id: str) -> dict[str, Any]:
+    bid = _backup_safe(str(backup_id or ""))
+    meta_path, _lp_path, zpath, _payload_dir = _rollup_backup_paths(bid)
+    if zpath.exists():
+        with zipfile.ZipFile(zpath, mode="r") as z:
+            bad = z.testzip()
+            if bad:
+                raise RuntimeError(f"backup corrupt (zip): {bad}")
+            raw = z.read(bid + ".json").decode("utf-8", errors="replace") if (bid + ".json") in z.namelist() else None
+            if not raw:
+                # fallback: first json in root
+                for nm in z.namelist():
+                    if nm.endswith(".json") and "/" not in nm:
+                        raw = z.read(nm).decode("utf-8", errors="replace")
+                        break
+            if not raw:
+                raise RuntimeError("backup meta missing")
+            meta = json.loads(raw)
+            if not isinstance(meta, dict):
+                raise RuntimeError("backup meta invalid")
+            # Verify sha256
+            want = str(meta.get("sha256") or "")
+            if not want:
+                raise RuntimeError("backup sha256 missing")
+            h = hashlib.sha256()
+            with z.open("payload/data.lp", mode="r") as f:
+                for chunk in iter(lambda: f.read(1 << 20), b""):
+                    h.update(chunk)
+            if h.hexdigest() != want:
+                raise RuntimeError("backup sha256 mismatch")
+            return meta
+
+    if meta_path.exists():
+        meta = json.loads(meta_path.read_text(encoding="utf-8", errors="replace"))
+        if not isinstance(meta, dict):
+            raise RuntimeError("backup meta invalid")
+        return meta
+    raise FileNotFoundError("backup not found")
+
+
+def _rollup_job_public(job: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": job.get("id"),
+        "type": job.get("type"),
+        "state": job.get("state"),
+        "message": job.get("message"),
+        "started_at": job.get("started_at"),
+        "elapsed": _job_elapsed_hms(job),
+        "profile_id": job.get("profile_id"),
+        "run_id": job.get("run_id"),
+        "backup_id": job.get("backup_id"),
+        "change_block_id": job.get("change_block_id"),
+        "delete_change_block_id": job.get("delete_change_block_id"),
+        "restore_change_block_id": job.get("restore_change_block_id"),
+        "applied": int(job.get("applied") or 0),
+        "deleted": int(job.get("deleted") or 0),
+        "restored": int(job.get("restored") or 0),
+        "cancelled": bool(job.get("cancelled")),
+        "error": job.get("error"),
+        "ready": str(job.get("state") or "") in ("done", "error", "cancelled"),
+    }
+
+
+@app.get("/api/rollup/job/status")
+def api_rollup_job_status():
+    job_id = str(request.args.get("job_id") or "").strip()
+    if not job_id:
+        return jsonify({"ok": False, "error": "job_id required"}), 400
+    with ROLLUP_LOCK:
+        j = ROLLUP_JOBS.get(job_id)
+    if not j:
+        return jsonify({"ok": False, "error": "job not found"}), 404
+    return jsonify({"ok": True, "status": _rollup_job_public(j)})
+
+
+@app.get("/api/rollup/runs")
+def api_rollup_runs():
+    try:
+        limit = int(request.args.get("limit") or 50)
+    except Exception:
+        limit = 50
+    runs = _rollup_runs_list(limit=limit)
+    inflight = []
+    with ROLLUP_LOCK:
+        for j in ROLLUP_JOBS.values():
+            try:
+                st = str(j.get("state") or "")
+                if st and st not in ("done", "error", "cancelled"):
+                    inflight.append(_rollup_job_public(j))
+            except Exception:
+                continue
+    return jsonify({"ok": True, "runs": runs, "inflight": inflight})
+
+
+@app.post("/api/rollup/preview")
+def api_rollup_preview():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    if int(cfg.get("influx_version", 2) or 2) != 2:
+        return jsonify({"ok": False, "error": "rollup supports InfluxDB v2 only"}), 400
+    if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+        return jsonify({"ok": False, "error": "InfluxDB v2 requires token, org, bucket"}), 400
+    body = request.get_json(force=True) or {}
+    profile_id = str(body.get("profile_id") or "default").strip() or "default"
+    profiles = _rollup_profiles_load(cfg)
+    prof = next((p for p in profiles if isinstance(p, dict) and str(p.get("id") or "") == profile_id), None)
+    if not prof:
+        return jsonify({"ok": False, "error": "profile not found"}), 404
+    levels = prof.get("levels") if isinstance(prof.get("levels"), list) else []
+    start_dt, stop_dt = (None, None)
+    try:
+        start_dt, stop_dt = _get_start_stop_from_payload(body)
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 400
+    now = datetime.now(timezone.utc)
+    try:
+        plan, union_start, union_stop = _rollup_plan_level_windows(
+            prof,
+            now_utc=now,
+            start_override=start_dt,
+            stop_override=stop_dt,
+        )
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 400
+
+    plan_levels = [
+        {
+            "name": str(p.get("name") or ""),
+            "window": str(p.get("window") or ""),
+            "start": _dt_to_rfc3339_utc_full(p["start_dt"]),
+            "stop": _dt_to_rfc3339_utc_full(p["stop_dt"]),
+        }
+        for p in plan
+    ]
+    series, blocked = _rollup_series_plan(cfg, prof)
+    return jsonify({
+        "ok": True,
+        "profile_id": profile_id,
+        "series_count": len(series),
+        "blocked_count": len(blocked),
+        "blocked_sample": blocked[:20],
+        "range": {
+            "start": _dt_to_rfc3339_utc_full(union_start),
+            "stop": _dt_to_rfc3339_utc_full(union_stop),
+        },
+        "levels": plan_levels,
+        "delete_source_after_default": bool(prof.get("delete_source_after_default", False)),
+    })
+
+
+@app.post("/api/rollup/backup")
+def api_rollup_backup():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    if int(cfg.get("influx_version", 2) or 2) != 2:
+        return jsonify({"ok": False, "error": "rollup supports InfluxDB v2 only"}), 400
+    if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+        return jsonify({"ok": False, "error": "InfluxDB v2 requires token, org, bucket"}), 400
+
+    body = request.get_json(force=True) or {}
+    profile_id = str(body.get("profile_id") or "default").strip() or "default"
+    profiles = _rollup_profiles_load(cfg)
+    prof = next((p for p in profiles if isinstance(p, dict) and str(p.get("id") or "") == profile_id), None)
+    if not prof:
+        return jsonify({"ok": False, "error": "profile not found"}), 404
+
+    try:
+        start_dt, stop_dt = _get_start_stop_from_payload(body)
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 400
+
+    src = str(prof.get("source_bucket") or "").strip()
+    if not src:
+        return jsonify({"ok": False, "error": "source_bucket missing"}), 400
+
+    series, blocked = _rollup_series_plan(cfg, prof, q=str(body.get("q") or ""))
+    if not series:
+        return jsonify({"ok": False, "error": "no series matched", "blocked_count": len(blocked), "blocked_sample": blocked[:20]}), 400
+
+    # If no explicit range was provided, derive one from profile levels.
+    if start_dt is None and stop_dt is None:
+        try:
+            plan, start_dt_u, stop_dt_u = _rollup_plan_level_windows(
+                prof,
+                now_utc=datetime.now(timezone.utc),
+                start_override=None,
+                stop_override=None,
+            )
+            start_dt, stop_dt = start_dt_u, stop_dt_u
+            # Keep plan for meta (debugging).
+            body = dict(body)
+            body["_planned_levels"] = [
+                {
+                    "name": str(p.get("name") or ""),
+                    "window": str(p.get("window") or ""),
+                    "start": _dt_to_rfc3339_utc_full(p["start_dt"]),
+                    "stop": _dt_to_rfc3339_utc_full(p["stop_dt"]),
+                }
+                for p in plan
+            ]
+        except Exception as e:
+            return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 400
+
+    if not start_dt or not stop_dt:
+        return jsonify({"ok": False, "error": "start and stop required"}), 400
+
+    ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    backup_id = _backup_safe(f"rollup__{profile_id}__{ts}")
+    try:
+        meta = _rollup_backup_create(
+            cfg,
+            backup_id=backup_id,
+            source_bucket=src,
+            series=series,
+            start_dt=start_dt,
+            stop_dt=stop_dt,
+            meta_extra={
+                "profile_id": profile_id,
+                "levels_plan": body.get("_planned_levels"),
+                "trigger_page": str(body.get("trigger_page") or "rollup"),
+                "trigger_ip": _req_ip(),
+                "trigger_ua": _req_ua(),
+            },
+        )
+        # Validate immediately
+        _rollup_backup_validate(backup_id)
+        return jsonify({"ok": True, "backup": meta})
+    except Exception as e:
+        return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
+
+
+def _rollup_exec_child(parent_id: str, *, operation_source: str, reason: str, series_summary: dict[str, Any], items: list[dict[str, Any]], meta: dict[str, Any]) -> tuple[str, dict[str, Any]]:
+    cid = uuid.uuid4().hex
+    cb = {
+        "schema_version": CHANGE_BLOCK_SCHEMA_VERSION,
+        "block_id": cid,
+        "created_at": _utc_now_iso_ms(),
+        "source": {"user_id": None, "ip": None, "ua": None, "trigger_page": "rollup", "trigger_source": operation_source, "trigger_action": reason, "trigger_button": None},
+        "operation_source": operation_source,
+        "reason": reason,
+        "status": "created",
+        "undo_status": "not_run",
+        "repeat_status": "not_run",
+        "affected_count": len(items),
+        "series_summary": series_summary or {},
+        "meta": {"parent_block_id": parent_id, **(meta or {})},
+    }
+    save_change_block(cb, items=items)
+    out = execute_change_block(cid)
+    return cid, out
+
+
+def _rollup_time_iso(dt: datetime) -> str:
+    return _dt_to_rfc3339_utc_full(dt.astimezone(timezone.utc))
+
+
+def _rollup_tags_from_rec(rec) -> dict[str, str]:
+    tags: dict[str, str] = {}
+    try:
+        vals = getattr(rec, "values", {}) or {}
+        for k, v in vals.items():
+            if k in ("result", "table"):
+                continue
+            if str(k).startswith("_"):
+                continue
+            if v is None:
+                continue
+            tags[str(k)] = str(v)
+    except Exception:
+        return {}
+    return tags
+
+
+def _rollup_flux_agg_query(
+    *,
+    bucket: str,
+    start_iso: str,
+    stop_iso: str,
+    measurement: str,
+    field: str,
+    extra: str,
+    window: str,
+    fn: str,
+) -> str:
+    return f'''
+from(bucket: "{bucket}")
+  |> range(start: time(v: "{start_iso}"), stop: time(v: "{stop_iso}"))
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
+  |> aggregateWindow(every: {window}, fn: {fn}, createEmpty: false)
+  |> sort(columns: ["_time"])
+'''
+
+
+def _rollup_flux_raw_query(*, bucket: str, start_iso: str, stop_iso: str, measurement: str, field: str, extra: str) -> str:
+    return f'''
+from(bucket: "{bucket}")
+  |> range(start: time(v: "{start_iso}"), stop: time(v: "{stop_iso}"))
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
+  |> sort(columns: ["_time"])
+'''
+
+
+def _rollup_job_set(job_id: str, **kw: Any) -> None:
+    with ROLLUP_LOCK:
+        if job_id not in ROLLUP_JOBS:
+            return
+        j = ROLLUP_JOBS[job_id]
+        for k, v in kw.items():
+            j[k] = v
+        j["updated_at"] = _utc_now_iso_ms()
+        if str(j.get("state") or "") in ("done", "error", "cancelled"):
+            _job_set_finished(j)
+
+
+def _rollup_job_thread(job_id: str) -> None:
+    with ROLLUP_LOCK:
+        job = ROLLUP_JOBS.get(job_id) or {}
+
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    try:
+        if int(cfg.get("influx_version", 2) or 2) != 2:
+            raise RuntimeError("rollup supports InfluxDB v2 only")
+        if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+            raise RuntimeError("token/org/bucket required")
+        _rollup_job_set(job_id, state="running", message="Backup wird erstellt...")
+
+        profile_id = str(job.get("profile_id") or "default")
+        profiles = _rollup_profiles_load(cfg)
+        prof = next((p for p in profiles if isinstance(p, dict) and str(p.get("id") or "") == profile_id), None)
+        if not prof:
+            raise RuntimeError("profile not found")
+
+        src = str(prof.get("source_bucket") or "").strip()
+        tgt = str(prof.get("target_bucket") or "").strip()
+        if not src or not tgt:
+            raise RuntimeError("source/target bucket missing")
+
+        start_dt = None
+        stop_dt = None
+        if job.get("start") and job.get("stop"):
+            start_dt = _parse_iso_datetime(str(job.get("start") or ""))
+            stop_dt = _parse_iso_datetime(str(job.get("stop") or ""))
+            if not isinstance(start_dt, datetime) or not isinstance(stop_dt, datetime):
+                raise RuntimeError("start/stop invalid")
+            start_dt = start_dt.astimezone(timezone.utc)
+            stop_dt = stop_dt.astimezone(timezone.utc)
+
+        allow_unknown = bool(job.get("allow_unknown_types", False))
+        series, blocked = _rollup_series_plan(cfg, prof)
+        if not series:
+            raise RuntimeError("no series matched")
+        if blocked and not allow_unknown:
+            raise RuntimeError("unknown/unsafe series types blocked")
+
+        now = datetime.now(timezone.utc)
+        plan, union_start, union_stop = _rollup_plan_level_windows(
+            prof,
+            now_utc=now,
+            start_override=start_dt,
+            stop_override=stop_dt,
+        )
+
+        ts = now.strftime("%Y%m%dT%H%M%SZ")
+        backup_id = _backup_safe(f"rollup__{profile_id}__{ts}")
+        meta = _rollup_backup_create(
+            cfg,
+            backup_id=backup_id,
+            source_bucket=src,
+            series=series,
+            start_dt=union_start,
+            stop_dt=union_stop,
+            meta_extra={
+                "profile_id": profile_id,
+                "levels_plan": [
+                    {
+                        "name": str(p.get("name") or ""),
+                        "window": str(p.get("window") or ""),
+                        "start": _dt_to_rfc3339_utc_full(p["start_dt"]),
+                        "stop": _dt_to_rfc3339_utc_full(p["stop_dt"]),
+                    }
+                    for p in plan
+                ],
+                "delete_source_after": bool(job.get("delete_source_after")),
+                "trigger_page": str(job.get("trigger_page") or "rollup"),
+                "trigger_ip": job.get("trigger_ip"),
+                "trigger_ua": job.get("trigger_ua"),
+            },
+        )
+        _rollup_backup_validate(backup_id)
+        _rollup_job_set(job_id, backup_id=backup_id, state="running", message="Rollup wird berechnet...")
+
+        # Parent ChangeBlock for writes
+        parent_id = uuid.uuid4().hex
+        parent = {
+            "schema_version": CHANGE_BLOCK_SCHEMA_VERSION,
+            "block_id": parent_id,
+            "created_at": _utc_now_iso_ms(),
+            "source": {"user_id": None, "ip": job.get("trigger_ip"), "ua": job.get("trigger_ua"), "trigger_page": str(job.get("trigger_page") or "rollup"), "trigger_source": "rollup", "trigger_action": "run", "trigger_button": None},
+            "operation_source": "rollup_run",
+            "reason": f"rollup:{profile_id}",
+            "status": "created",
+            "undo_status": "not_run",
+            "repeat_status": "not_run",
+            "affected_count": 0,
+            "payload_mode": "inline",
+            "payload_inline": [],
+            "meta": {"child_blocks": [], "undo_supported": False, "backup_id": backup_id, "profile_id": profile_id},
+        }
+        save_change_block(parent, items=[])
+        _rollup_job_set(job_id, change_block_id=parent_id)
+
+        child_ids: list[str] = []
+        applied = 0
+
+        levels = prof.get("levels") if isinstance(prof.get("levels"), list) else []
+
+        max_items = 5000
+        with v2_client(cfg) as c:
+            qapi = c.query_api()
+            for p, lv in zip(plan, levels):
+                if not isinstance(lv, dict):
+                    continue
+                win = str(lv.get("window") or p.get("window") or "").strip()
+                if not win:
+                    continue
+                try:
+                    start_iso = _rollup_time_iso(p["start_dt"])
+                    stop_iso = _rollup_time_iso(p["stop_dt"])
+                except Exception:
+                    start_iso = _rollup_time_iso(union_start)
+                    stop_iso = _rollup_time_iso(union_stop)
+                type_aggs = lv.get("type_aggs") if isinstance(lv.get("type_aggs"), dict) else {}
+
+                for s in series:
+                    if job.get("cancelled"):
+                        _rollup_job_set(job_id, state="cancelled", message="Abgebrochen")
+                        return
+                    m = str(s.get("measurement") or "").strip()
+                    f = str(s.get("field") or "").strip()
+                    eid = str(s.get("entity_id") or "").strip()
+                    fn = str(s.get("friendly_name") or "").strip()
+                    typ = str(s.get("type") or "gauge")
+                    aggs = type_aggs.get(typ) if isinstance(type_aggs.get(typ), list) else ["last"]
+                    extra = flux_tag_filter(eid, fn)
+
+                    for agg in aggs:
+                        # Ensure different levels don't collide (e.g. 15m vs 1h at the same _time).
+                        win_s = re.sub(r"[^0-9A-Za-z]+", "_", str(win or "")).strip("_")
+                        if not win_s:
+                            win_s = "win"
+                        out_field = f"{f}__{str(agg)}__{win_s}"
+                        q = _rollup_flux_agg_query(bucket=src, start_iso=start_iso, stop_iso=stop_iso, measurement=m, field=f, extra=extra, window=win, fn=str(agg))
+                        items: list[dict[str, Any]] = []
+                        for rec in qapi.query_stream(q, org=cfg["org"]):
+                            try:
+                                t = rec.get_time()
+                                v = rec.get_value()
+                                if v is None or not isinstance(t, datetime):
+                                    continue
+                                tags = _rollup_tags_from_rec(rec)
+                                ts_iso = _rollup_time_iso(t)
+                                row = {"_time": ts_iso, "_measurement": m, "_field": out_field, "_value": v, **tags}
+                                pid = {"bucket": tgt, "org": str(cfg.get("org") or ""), "measurement": m, "field": out_field, "timestamp": ts_iso, "tag_set": tags}
+                                items.append({
+                                    "schema_version": CHANGE_ITEM_SCHEMA_VERSION,
+                                    "item_id": uuid.uuid4().hex,
+                                    "block_id": "",
+                                    "op": "update",
+                                    "point_identity": pid,
+                                    "old_point": None,
+                                    "new_point": row,
+                                    "conflict_policy": "blind",
+                                })
+                                if len(items) >= max_items:
+                                    cid, out = _rollup_exec_child(parent_id, operation_source="rollup_write", reason=f"{win}:{agg}", series_summary={"measurement": m, "field": f, "entity_id": eid, "friendly_name": fn}, items=items, meta={"window": win, "agg": agg})
+                                    child_ids.append(cid)
+                                    _cb_patch_block_meta(parent_id, {"child_blocks": list(child_ids)})
+                                    if not out.get("ok"):
+                                        raise RuntimeError("rollup write failed")
+                                    applied += int(out.get("applied") or 0)
+                                    _rollup_job_set(job_id, applied=applied)
+                                    items = []
+                            except Exception:
+                                continue
+                        if items:
+                            cid, out = _rollup_exec_child(parent_id, operation_source="rollup_write", reason=f"{win}:{agg}", series_summary={"measurement": m, "field": f, "entity_id": eid, "friendly_name": fn}, items=items, meta={"window": win, "agg": agg})
+                            child_ids.append(cid)
+                            _cb_patch_block_meta(parent_id, {"child_blocks": list(child_ids)})
+                            if not out.get("ok"):
+                                raise RuntimeError("rollup write failed")
+                            applied += int(out.get("applied") or 0)
+                            _rollup_job_set(job_id, applied=applied)
+
+        _cb_patch_block_meta(parent_id, {"child_blocks": list(child_ids), "applied": applied})
+
+        deleted = 0
+        del_parent_id = ""
+        if bool(job.get("delete_source_after")):
+            _rollup_job_set(job_id, state="running", message="Quelle wird geloescht...")
+            del_parent_id = uuid.uuid4().hex
+            del_parent = {
+                "schema_version": CHANGE_BLOCK_SCHEMA_VERSION,
+                "block_id": del_parent_id,
+                "created_at": _utc_now_iso_ms(),
+                "source": parent["source"],
+                "operation_source": "rollup_delete_source",
+                "reason": f"rollup_delete:{profile_id}",
+                "status": "created",
+                "undo_status": "not_run",
+                "repeat_status": "not_run",
+                "affected_count": 0,
+                "payload_mode": "inline",
+                "payload_inline": [],
+                "meta": {"child_blocks": [], "undo_supported": False, "backup_id": backup_id, "profile_id": profile_id},
+            }
+            save_change_block(del_parent, items=[])
+            _rollup_job_set(job_id, delete_change_block_id=del_parent_id)
+            del_child_ids: list[str] = []
+            max_items = 5000
+            start_iso = _rollup_time_iso(union_start)
+            stop_iso = _rollup_time_iso(union_stop)
+            with v2_client(cfg) as c:
+                qapi = c.query_api()
+                for s in series:
+                    if job.get("cancelled"):
+                        _rollup_job_set(job_id, state="cancelled", message="Abgebrochen")
+                        return
+                    m = str(s.get("measurement") or "").strip()
+                    f = str(s.get("field") or "").strip()
+                    eid = str(s.get("entity_id") or "").strip()
+                    fn = str(s.get("friendly_name") or "").strip()
+                    extra = flux_tag_filter(eid, fn)
+                    q = _rollup_flux_raw_query(bucket=src, start_iso=start_iso, stop_iso=stop_iso, measurement=m, field=f, extra=extra)
+                    items: list[dict[str, Any]] = []
+                    for rec in qapi.query_stream(q, org=cfg["org"]):
+                        try:
+                            t = rec.get_time()
+                            if not isinstance(t, datetime):
+                                continue
+                            tags = _rollup_tags_from_rec(rec)
+                            ts_iso = _rollup_time_iso(t)
+                            pid = {"bucket": src, "org": str(cfg.get("org") or ""), "measurement": m, "field": f, "timestamp": ts_iso, "tag_set": tags}
+                            items.append({
+                                "schema_version": CHANGE_ITEM_SCHEMA_VERSION,
+                                "item_id": uuid.uuid4().hex,
+                                "block_id": "",
+                                "op": "delete",
+                                "point_identity": pid,
+                                "old_point": None,
+                                "new_point": None,
+                                "conflict_policy": "blind",
+                            })
+                            if len(items) >= max_items:
+                                cid, out = _rollup_exec_child(del_parent_id, operation_source="rollup_delete", reason="delete_source", series_summary={"measurement": m, "field": f, "entity_id": eid, "friendly_name": fn}, items=items, meta={})
+                                del_child_ids.append(cid)
+                                _cb_patch_block_meta(del_parent_id, {"child_blocks": list(del_child_ids)})
+                                if not out.get("ok"):
+                                    raise RuntimeError("delete failed")
+                                deleted += int(out.get("applied") or 0)
+                                _rollup_job_set(job_id, deleted=deleted)
+                                items = []
+                        except Exception:
+                            continue
+                    if items:
+                        cid, out = _rollup_exec_child(del_parent_id, operation_source="rollup_delete", reason="delete_source", series_summary={"measurement": m, "field": f, "entity_id": eid, "friendly_name": fn}, items=items, meta={})
+                        del_child_ids.append(cid)
+                        _cb_patch_block_meta(del_parent_id, {"child_blocks": list(del_child_ids)})
+                        if not out.get("ok"):
+                            raise RuntimeError("delete failed")
+                        deleted += int(out.get("applied") or 0)
+                        _rollup_job_set(job_id, deleted=deleted)
+            _cb_patch_block_meta(del_parent_id, {"child_blocks": list(del_child_ids), "deleted": deleted})
+
+        run_id = str(job.get("run_id") or "").strip() or uuid.uuid4().hex
+        run = {
+            "schema_version": ROLLUP_RUN_SCHEMA_VERSION,
+            "id": run_id,
+            "created_at": job.get("started_at"),
+            "finished_at": _utc_now_iso_ms(),
+            "state": "done",
+            "profile_id": profile_id,
+            "start": _rollup_time_iso(union_start),
+            "stop": _rollup_time_iso(union_stop),
+            "levels_plan": meta.get("meta", {}).get("levels_plan"),
+            "backup_id": backup_id,
+            "backup_meta": meta,
+            "change_block_id": parent_id,
+            "delete_change_block_id": del_parent_id,
+            "delete_source_after": bool(job.get("delete_source_after")),
+            "applied": applied,
+            "deleted": deleted,
+        }
+        _rollup_run_save(run)
+        _rollup_job_set(job_id, state="done", message="Fertig", run_id=run_id)
+        try:
+            started_mono = float(job.get("started_mono") or 0.0)
+        except Exception:
+            started_mono = 0.0
+        try:
+            dur_ms = int(max(0.0, (time.monotonic() - started_mono) * 1000.0)) if started_mono > 0 else None
+        except Exception:
+            dur_ms = None
+        try:
+            _timer_mark_finished(str(job.get("timer_id") or "rollup"), "done", {"duration_ms": dur_ms})
+        except Exception:
+            pass
+    except Exception as e:
+        _rollup_job_set(job_id, state="error", error=_short_influx_error(e), message="Fehler")
+        try:
+            started_mono = float(job.get("started_mono") or 0.0)
+        except Exception:
+            started_mono = 0.0
+        try:
+            dur_ms = int(max(0.0, (time.monotonic() - started_mono) * 1000.0)) if started_mono > 0 else None
+        except Exception:
+            dur_ms = None
+        try:
+            _timer_mark_finished(str(job.get("timer_id") or "rollup"), "error", {"duration_ms": dur_ms, "error": _short_influx_error(e)})
+        except Exception:
+            pass
+
+
+@app.post("/api/rollup/run")
+def api_rollup_run():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    if int(cfg.get("influx_version", 2) or 2) != 2:
+        return jsonify({"ok": False, "error": "rollup supports InfluxDB v2 only"}), 400
+    if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+        return jsonify({"ok": False, "error": "InfluxDB v2 requires token, org, bucket"}), 400
+    body = request.get_json(force=True) or {}
+    confirm = body.get("confirm", False)
+    ok_confirm = confirm is True or str(confirm).strip().lower() in ("1", "true", "yes", "on")
+    if not ok_confirm:
+        return jsonify({"ok": False, "error": "Bestaetigung erforderlich (confirm=true)"}), 400
+
+    allow_unknown = bool(body.get("allow_unknown_types", False))
+    profile_id = str(body.get("profile_id") or "default").strip() or "default"
+    try:
+        start_dt, stop_dt = _get_start_stop_from_payload(body)
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 400
+    delete_source_after = body.get("delete_source_after")
+    delete_source_after = bool(delete_source_after) if delete_source_after is not None else False
+
+    profiles = _rollup_profiles_load(cfg)
+    prof = next((p for p in profiles if isinstance(p, dict) and str(p.get("id") or "") == profile_id), None)
+    if not prof:
+        return jsonify({"ok": False, "error": "profile not found"}), 404
+
+    # start/stop are optional; if absent we derive a safe union window from profile levels.
+    if start_dt is None and stop_dt is None:
+        try:
+            _plan, union_start, union_stop = _rollup_plan_level_windows(
+                prof,
+                now_utc=datetime.now(timezone.utc),
+                start_override=None,
+                stop_override=None,
+            )
+            start_dt, stop_dt = union_start, union_stop
+        except Exception as e:
+            return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 400
+
+    if not start_dt or not stop_dt:
+        return jsonify({"ok": False, "error": "start and stop required"}), 400
+
+    # Preflight: series + type safety
+    try:
+        series, blocked = _rollup_series_plan(cfg, prof, q=str(body.get("q") or ""))
+    except Exception as e:
+        return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
+    if not series:
+        return jsonify({"ok": False, "error": "no series matched", "blocked_count": len(blocked), "blocked_sample": blocked[:20]}), 400
+    if blocked and not allow_unknown:
+        return jsonify({
+            "ok": False,
+            "error": "Unsichere Messwerttypen erkannt. Bitte Profile/Regeln ergaenzen oder allow_unknown_types=true setzen.",
+            "blocked_count": len(blocked),
+            "blocked_sample": blocked[:20],
+        }), 400
+
+    job_id = uuid.uuid4().hex
+    run_id = uuid.uuid4().hex
+    now = _utc_now_iso_ms()
+    job = {
+        "id": job_id,
+        "type": "rollup_run",
+        "timer_id": str(body.get("timer_id") or "rollup").strip() or "rollup",
+        "state": "pending",
+        "message": "Job wird gestartet...",
+        "started_at": now,
+        "updated_at": now,
+        "started_mono": time.monotonic(),
+        "cancelled": False,
+        "error": None,
+        "profile_id": profile_id,
+        "run_id": run_id,
+        "start": _dt_to_rfc3339_utc_full(start_dt.astimezone(timezone.utc)),
+        "stop": _dt_to_rfc3339_utc_full(stop_dt.astimezone(timezone.utc)),
+        "delete_source_after": delete_source_after,
+        "allow_unknown_types": allow_unknown,
+        "trigger_page": str(body.get("trigger_page") or "rollup"),
+        "trigger_ip": _req_ip(),
+        "trigger_ua": _req_ua(),
+    }
+    with ROLLUP_LOCK:
+        ROLLUP_JOBS[job_id] = job
+        # best-effort cleanup
+        cutoff = time.monotonic() - float(6 * 3600)
+        old = [k for k, v in ROLLUP_JOBS.items() if float(v.get("started_mono") or 0) < cutoff]
+        for k in old:
+            ROLLUP_JOBS.pop(k, None)
+    th = threading.Thread(target=_rollup_job_thread, args=(job_id,), daemon=True)
+    th.start()
+    try:
+        _timer_mark_started(str(job.get("timer_id") or "rollup"), job_id=job_id)
+    except Exception:
+        pass
+    return jsonify({"ok": True, "job_id": job_id, "run_id": run_id})
+
+
+@app.post("/api/rollup/job/cancel")
+def api_rollup_job_cancel():
+    body = request.get_json(force=True) or {}
+    job_id = str(body.get("job_id") or "").strip()
+    if not job_id:
+        return jsonify({"ok": False, "error": "job_id required"}), 400
+    with ROLLUP_LOCK:
+        j = ROLLUP_JOBS.get(job_id)
+        if not j:
+            return jsonify({"ok": False, "error": "job not found"}), 404
+        j["cancelled"] = True
+    return jsonify({"ok": True})
+
+
+@app.get("/api/rollup/restore_points")
+def api_rollup_restore_points():
+    xs = _rollup_runs_list(limit=200)
+    pts = []
+    for r in xs:
+        if not isinstance(r, dict):
+            continue
+        bid = str(r.get("backup_id") or "").strip()
+        if not bid:
+            continue
+        pts.append({
+            "run_id": r.get("id"),
+            "profile_id": r.get("profile_id"),
+            "created_at": r.get("created_at"),
+            "start": r.get("start"),
+            "stop": r.get("stop"),
+            "backup_id": bid,
+            "delete_source_after": bool(r.get("delete_source_after")),
+            "applied": int(r.get("applied") or 0),
+            "deleted": int(r.get("deleted") or 0),
+        })
+    return jsonify({"ok": True, "restore_points": pts})
+
+
+@app.post("/api/rollup/restore_preview")
+def api_rollup_restore_preview():
+    body = request.get_json(force=True) or {}
+    backup_id = str(body.get("backup_id") or "").strip()
+    if not backup_id and body.get("run_id"):
+        run = _rollup_run_load(str(body.get("run_id") or "")) or {}
+        backup_id = str(run.get("backup_id") or "").strip()
+    if not backup_id:
+        return jsonify({"ok": False, "error": "backup_id or run_id required"}), 400
+    try:
+        meta = _rollup_backup_validate(backup_id)
+    except Exception as e:
+        return jsonify({"ok": False, "error": _short_influx_error(e)}), 400
+    return jsonify({"ok": True, "backup": meta, "warning": "Restore loescht Rollup-Daten im Zeitraum und stellt Clean aus Backup wieder her."})
+
+
+def _rollup_restore_job_thread(job_id: str) -> None:
+    with ROLLUP_LOCK:
+        job = ROLLUP_JOBS.get(job_id) or {}
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    try:
+        if int(cfg.get("influx_version", 2) or 2) != 2:
+            raise RuntimeError("rollup supports InfluxDB v2 only")
+        backup_id = str(job.get("backup_id") or "").strip()
+        if not backup_id:
+            raise RuntimeError("backup_id missing")
+        meta = _rollup_backup_validate(backup_id)
+        src = str(meta.get("source_bucket") or "").strip()
+        if not src:
+            raise RuntimeError("source_bucket missing")
+
+        start_dt = _parse_iso_datetime(str(meta.get("start") or ""))
+        stop_dt = _parse_iso_datetime(str(meta.get("stop") or ""))
+        if not isinstance(start_dt, datetime) or not isinstance(stop_dt, datetime):
+            raise RuntimeError("backup time invalid")
+
+        # Restore by overwriting the range: delete existing source points, then write backup.
+        _rollup_job_set(job_id, state="running", message="Restore: Quelle bereinigen...")
+        del_parent_id = uuid.uuid4().hex
+        del_parent = {
+            "schema_version": CHANGE_BLOCK_SCHEMA_VERSION,
+            "block_id": del_parent_id,
+            "created_at": _utc_now_iso_ms(),
+            "source": {"user_id": None, "ip": job.get("trigger_ip"), "ua": job.get("trigger_ua"), "trigger_page": "rollup", "trigger_source": "rollup_restore", "trigger_action": "delete_source", "trigger_button": None},
+            "operation_source": "rollup_restore",
+            "reason": f"rollup_restore_delete:{backup_id}",
+            "status": "created",
+            "undo_status": "not_run",
+            "repeat_status": "not_run",
+            "affected_count": 0,
+            "payload_mode": "inline",
+            "payload_inline": [],
+            "meta": {"child_blocks": [], "undo_supported": False, "backup_id": backup_id},
+        }
+        save_change_block(del_parent, items=[])
+
+        max_items = 5000
+        del_child_ids: list[str] = []
+        deleted = 0
+        start_iso = _dt_to_rfc3339_utc_full(start_dt.astimezone(timezone.utc))
+        stop_iso = _dt_to_rfc3339_utc_full(stop_dt.astimezone(timezone.utc))
+        series = meta.get("series") if isinstance(meta.get("series"), list) else []
+        with v2_client(cfg) as c:
+            qapi = c.query_api()
+            for s in series:
+                if job.get("cancelled"):
+                    _rollup_job_set(job_id, state="cancelled", message="Abgebrochen")
+                    return
+                m = str((s or {}).get("measurement") or "").strip()
+                f = str((s or {}).get("field") or "").strip()
+                eid = str((s or {}).get("entity_id") or "").strip()
+                fn = str((s or {}).get("friendly_name") or "").strip()
+                if not m or not f:
+                    continue
+                q = _rollup_flux_raw_query(bucket=src, start_iso=start_iso, stop_iso=stop_iso, measurement=m, field=f, extra=flux_tag_filter(eid, fn))
+                items: list[dict[str, Any]] = []
+                for rec in qapi.query_stream(q, org=cfg["org"]):
+                    try:
+                        t = rec.get_time()
+                        if not isinstance(t, datetime):
+                            continue
+                        tags = _rollup_tags_from_rec(rec)
+                        ts_iso = _rollup_time_iso(t)
+                        pid = {"bucket": src, "org": str(cfg.get("org") or ""), "measurement": m, "field": f, "timestamp": ts_iso, "tag_set": tags}
+                        items.append({
+                            "schema_version": CHANGE_ITEM_SCHEMA_VERSION,
+                            "item_id": uuid.uuid4().hex,
+                            "block_id": "",
+                            "op": "delete",
+                            "point_identity": pid,
+                            "old_point": None,
+                            "new_point": None,
+                            "conflict_policy": "blind",
+                        })
+                        if len(items) >= max_items:
+                            cid, out = _rollup_exec_child(del_parent_id, operation_source="rollup_restore_delete", reason="delete_source", series_summary={"measurement": m, "field": f, "entity_id": eid, "friendly_name": fn}, items=items, meta={})
+                            del_child_ids.append(cid)
+                            _cb_patch_block_meta(del_parent_id, {"child_blocks": list(del_child_ids)})
+                            if not out.get("ok"):
+                                raise RuntimeError("delete failed")
+                            deleted += int(out.get("applied") or 0)
+                            _rollup_job_set(job_id, deleted=deleted)
+                            items = []
+                    except Exception:
+                        continue
+                if items:
+                    cid, out = _rollup_exec_child(del_parent_id, operation_source="rollup_restore_delete", reason="delete_source", series_summary={"measurement": m, "field": f, "entity_id": eid, "friendly_name": fn}, items=items, meta={})
+                    del_child_ids.append(cid)
+                    _cb_patch_block_meta(del_parent_id, {"child_blocks": list(del_child_ids)})
+                    if not out.get("ok"):
+                        raise RuntimeError("delete failed")
+                    deleted += int(out.get("applied") or 0)
+                    _rollup_job_set(job_id, deleted=deleted)
+        _cb_patch_block_meta(del_parent_id, {"child_blocks": list(del_child_ids), "deleted": deleted})
+
+        # Restore points from backup
+        _rollup_job_set(job_id, state="running", message="Restore: Backup zurueckschreiben...")
+        parent_id = uuid.uuid4().hex
+        parent = {
+            "schema_version": CHANGE_BLOCK_SCHEMA_VERSION,
+            "block_id": parent_id,
+            "created_at": _utc_now_iso_ms(),
+            "source": del_parent["source"],
+            "operation_source": "rollup_restore",
+            "reason": f"rollup_restore:{backup_id}",
+            "status": "created",
+            "undo_status": "not_run",
+            "repeat_status": "not_run",
+            "affected_count": 0,
+            "payload_mode": "inline",
+            "payload_inline": [],
+            "meta": {"child_blocks": [], "undo_supported": False, "backup_id": backup_id},
+        }
+        save_change_block(parent, items=[])
+        _rollup_job_set(job_id, restore_change_block_id=parent_id)
+
+        child_ids: list[str] = []
+        restored = 0
+        items: list[dict[str, Any]] = []
+        with _rollup_open_backup_lp_text(backup_id) as f:
+            for ln in f:
+                if job.get("cancelled"):
+                    _rollup_job_set(job_id, state="cancelled", message="Abgebrochen")
+                    return
+                pts = _lp_parse_points_from_line(ln)
+                for p in pts:
+                    ts = str(p.get("_time") or "").strip()
+                    meas = str(p.get("_measurement") or "").strip()
+                    fld = str(p.get("_field") or "").strip()
+                    if not ts or not meas or not fld:
+                        continue
+                    tags = {k: str(v) for k, v in p.items() if k and not str(k).startswith("_") and v is not None}
+                    pid = {"bucket": src, "org": str(cfg.get("org") or ""), "measurement": meas, "field": fld, "timestamp": ts, "tag_set": tags}
+                    items.append({
+                        "schema_version": CHANGE_ITEM_SCHEMA_VERSION,
+                        "item_id": uuid.uuid4().hex,
+                        "block_id": "",
+                        "op": "update",
+                        "point_identity": pid,
+                        "old_point": None,
+                        "new_point": p,
+                        "conflict_policy": "blind",
+                    })
+                    if len(items) >= max_items:
+                        cid, out = _rollup_exec_child(parent_id, operation_source="rollup_restore_write", reason="restore", series_summary={}, items=items, meta={})
+                        child_ids.append(cid)
+                        _cb_patch_block_meta(parent_id, {"child_blocks": list(child_ids)})
+                        if not out.get("ok"):
+                            raise RuntimeError("restore write failed")
+                        restored += int(out.get("applied") or 0)
+                        _rollup_job_set(job_id, restored=restored)
+                        items = []
+        if items:
+            cid, out = _rollup_exec_child(parent_id, operation_source="rollup_restore_write", reason="restore", series_summary={}, items=items, meta={})
+            child_ids.append(cid)
+            _cb_patch_block_meta(parent_id, {"child_blocks": list(child_ids)})
+            if not out.get("ok"):
+                raise RuntimeError("restore write failed")
+            restored += int(out.get("applied") or 0)
+            _rollup_job_set(job_id, restored=restored)
+        _cb_patch_block_meta(parent_id, {"child_blocks": list(child_ids), "restored": restored})
+
+        _rollup_job_set(job_id, state="done", message="Restore fertig")
+    except Exception as e:
+        _rollup_job_set(job_id, state="error", error=_short_influx_error(e), message="Fehler")
+
+
+@app.post("/api/rollup/restore")
+def api_rollup_restore():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    if int(cfg.get("influx_version", 2) or 2) != 2:
+        return jsonify({"ok": False, "error": "restore supports InfluxDB v2 only"}), 400
+    if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+        return jsonify({"ok": False, "error": "InfluxDB v2 requires token, org, bucket"}), 400
+    body = request.get_json(force=True) or {}
+    confirm = body.get("confirm", False)
+    ok_confirm = confirm is True or str(confirm).strip().lower() in ("1", "true", "yes", "on")
+    if not ok_confirm:
+        return jsonify({"ok": False, "error": "Bestaetigung erforderlich (confirm=true)"}), 400
+    backup_id = str(body.get("backup_id") or "").strip()
+    if not backup_id and body.get("run_id"):
+        run = _rollup_run_load(str(body.get("run_id") or "")) or {}
+        backup_id = str(run.get("backup_id") or "").strip()
+    if not backup_id:
+        return jsonify({"ok": False, "error": "backup_id or run_id required"}), 400
+    # validate now
+    try:
+        _rollup_backup_validate(backup_id)
+    except Exception as e:
+        return jsonify({"ok": False, "error": _short_influx_error(e)}), 400
+    job_id = uuid.uuid4().hex
+    now = _utc_now_iso_ms()
+    job = {
+        "id": job_id,
+        "type": "rollup_restore",
+        "state": "pending",
+        "message": "Job wird gestartet...",
+        "started_at": now,
+        "updated_at": now,
+        "started_mono": time.monotonic(),
+        "cancelled": False,
+        "error": None,
+        "backup_id": backup_id,
+        "trigger_ip": _req_ip(),
+        "trigger_ua": _req_ua(),
+    }
+    with ROLLUP_LOCK:
+        ROLLUP_JOBS[job_id] = job
+        # best-effort cleanup
+        cutoff = time.monotonic() - float(6 * 3600)
+        old = [k for k, v in ROLLUP_JOBS.items() if float(v.get("started_mono") or 0) < cutoff]
+        for k in old:
+            ROLLUP_JOBS.pop(k, None)
+    th = threading.Thread(target=_rollup_restore_job_thread, args=(job_id,), daemon=True)
+    th.start()
+    return jsonify({"ok": True, "job_id": job_id})
 
 
 _ENTITY_ID_RE = re.compile(r"^[A-Za-z0-9_]+\.[A-Za-z0-9_]+$")
@@ -16967,6 +18585,8 @@ def _cache_mode_str(cfg: dict[str, Any], base: str) -> str:
             return ("manual", 24, "03:00:00", 0)
         if base == "analysis_nightly":
             return ("daily", 24, "03:30:00", 0)
+        if base == "rollup":
+            return ("manual", 24, "04:00:00", 0)
         return ("daily", 24, "03:00:00", 0)
 
     try:
@@ -18635,6 +20255,7 @@ def api_timers():
     st_stats = _timers_state_get("stats_cache")
     st_full = _timers_state_get("stats_full")
     st_an = _timers_state_get("analysis_nightly")
+    st_roll = _timers_state_get("rollup")
     timers = [
         {
             "id": "dash_cache",
@@ -18704,6 +20325,23 @@ def api_timers():
             "last_error": st_an.get("last_error"),
             "comment": "Nightly-Job: aktualisiert Analysecache fuer alle bereits analysierten Serien (1x pro Nacht).",
         },
+        {
+            "id": "rollup",
+            "enabled": bool(cfg.get("rollup_enabled", True)),
+            "auto_update": bool(cfg.get("rollup_auto_update", False)),
+            "refresh_mode": str(cfg.get("rollup_refresh_mode") or "manual").strip().lower(),
+            "refresh_hours": int(cfg.get("rollup_refresh_hours") or 24),
+            "refresh_daily_at": str(cfg.get("rollup_refresh_daily_at") or "04:00:00"),
+            "refresh_weekday": int(cfg.get("rollup_refresh_weekday") or 0),
+            "mode": _cache_mode_str(cfg, "rollup"),
+            "next_run_at": _cache_schedule_next_run_iso(cfg, "rollup"),
+            "last_started_at": st_roll.get("last_started_at"),
+            "last_run_at": st_roll.get("last_run_at"),
+            "last_state": st_roll.get("last_state"),
+            "last_duration_ms": st_roll.get("last_duration_ms"),
+            "last_error": st_roll.get("last_error"),
+            "comment": "Verdichtet Clean -> Rollup mit Pflicht-Backup und optionalem Delete der Quelle.",
+        },
     ]
 
     # Watchlists (dynamic timers)
@@ -18741,7 +20379,7 @@ def api_timers():
 @app.get("/api/timers/history")
 def api_timers_history():
     tid = str(request.args.get("id") or "").strip()
-    if tid not in ("dash_cache", "stats_cache", "stats_full", "analysis_nightly"):
+    if tid not in ("dash_cache", "stats_cache", "stats_full", "analysis_nightly", "rollup"):
         # allow watchlist timers
         if not tid.startswith("watchlist:"):
             return jsonify({"ok": False, "error": "invalid timer id"}), 400
@@ -18764,7 +20402,7 @@ def api_timers_history():
 def api_timers_schedule():
     body = request.get_json(force=True) or {}
     tid = str(body.get("id") or "").strip()
-    if tid not in ("dash_cache", "stats_cache", "stats_full", "analysis_nightly"):
+    if tid not in ("dash_cache", "stats_cache", "stats_full", "analysis_nightly", "rollup"):
         # watchlists store schedule in watchlist file (not config.yaml)
         if tid.startswith("watchlist:"):
             wid = tid.split(":", 1)[1].strip()
@@ -18840,7 +20478,13 @@ def api_timers_schedule():
 
     else:
         # daily/weekly time
-        s = str(body.get("refresh_daily_at") or cfg.get(f"{tid}_refresh_daily_at") or ("00:00:00" if tid == "dash_cache" else ("03:30:00" if tid == "analysis_nightly" else "03:00:00"))).strip()
+        s = str(body.get("refresh_daily_at") or cfg.get(f"{tid}_refresh_daily_at") or (
+            "00:00:00" if tid == "dash_cache" else (
+                "03:30:00" if tid == "analysis_nightly" else (
+                    "04:00:00" if tid == "rollup" else "03:00:00"
+                )
+            )
+        )).strip()
         if not re.match(r"^\d{2}:\d{2}:\d{2}$", s):
             return jsonify({"ok": False, "error": "refresh_daily_at must be HH:MM:SS"}), 400
         try:
@@ -18889,7 +20533,7 @@ def api_timers_auto_update():
     enabled_raw = body.get("enabled", True)
     enabled = enabled_raw is True or str(enabled_raw).strip().lower() in ("1", "true", "yes", "on")
 
-    valid = {"dash_cache", "stats_cache", "stats_full", "analysis_nightly"}
+    valid = {"dash_cache", "stats_cache", "stats_full", "analysis_nightly", "rollup"}
     ids2 = [str(x or "").strip() for x in ids]
     ids2 = [x for x in ids2 if (x in valid) or x.startswith("watchlist:")]
     if not ids2:
@@ -18910,7 +20554,7 @@ def api_timers_auto_update():
             except Exception:
                 pass
             continue
-        if tid in ("dash_cache", "stats_cache", "analysis_nightly"):
+        if tid in ("dash_cache", "stats_cache", "analysis_nightly", "rollup"):
             cfg[f"{tid}_auto_update"] = bool(enabled)
         elif tid == "stats_full":
             cur_mode = str(cfg.get("stats_full_refresh_mode") or "manual").strip().lower() or "manual"
@@ -18965,7 +20609,7 @@ def api_timers_auto_update():
 def api_timers_start():
     body = request.get_json(force=True) or {}
     tid = str(body.get("id") or "").strip()
-    if tid not in ("dash_cache", "stats_cache", "stats_full", "analysis_nightly"):
+    if tid not in ("dash_cache", "stats_cache", "stats_full", "analysis_nightly", "rollup"):
         if tid.startswith("watchlist:"):
             wid = tid.split(":", 1)[1].strip()
             try:
@@ -19080,6 +20724,71 @@ def api_timers_start():
         except Exception as e:
             return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
 
+    if tid == "rollup":
+        if not bool(cfg.get("rollup_enabled", True)):
+            return jsonify({"ok": False, "error": "rollup disabled"}), 400
+        if int(cfg.get("influx_version", 2) or 2) != 2:
+            return jsonify({"ok": False, "error": "rollup supports InfluxDB v2 only"}), 400
+
+        # Pick first enabled profile (best-effort).
+        profiles = _rollup_profiles_load(cfg)
+        prof = next((p for p in profiles if isinstance(p, dict) and bool(p.get("enabled", True))), None)
+        if not prof:
+            return jsonify({"ok": False, "error": "no enabled rollup profile"}), 400
+        profile_id = str(prof.get("id") or "default").strip() or "default"
+        delete_source_after = bool(prof.get("delete_source_after_default", False))
+
+        # Let rollup pick its default range from profile levels.
+        try:
+            _plan, union_start, union_stop = _rollup_plan_level_windows(
+                prof,
+                now_utc=datetime.now(timezone.utc),
+                start_override=None,
+                stop_override=None,
+            )
+        except Exception as e:
+            return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 400
+
+        job_id = uuid.uuid4().hex
+        run_id = uuid.uuid4().hex
+        now_iso = _utc_now_iso_ms()
+        job = {
+            "id": job_id,
+            "type": "rollup_run",
+            "timer_id": tid,
+            "state": "pending",
+            "message": "Job wird gestartet...",
+            "started_at": now_iso,
+            "updated_at": now_iso,
+            "started_mono": time.monotonic(),
+            "cancelled": False,
+            "error": None,
+            "profile_id": profile_id,
+            "run_id": run_id,
+            "start": _dt_to_rfc3339_utc_full(union_start),
+            "stop": _dt_to_rfc3339_utc_full(union_stop),
+            "delete_source_after": delete_source_after,
+            "trigger_page": "timers",
+            "trigger_ip": _req_ip(),
+            "trigger_ua": _req_ua(),
+        }
+        with ROLLUP_LOCK:
+            ROLLUP_JOBS[job_id] = job
+        th = threading.Thread(target=_rollup_job_thread, args=(job_id,), daemon=True)
+        th.start()
+        try:
+            _timer_event_append(tid, "manual_start", {"job_id": job_id, "profile_id": profile_id})
+        except Exception:
+            pass
+        try:
+            _timer_mark_started(tid, job_id=job_id)
+        except Exception:
+            pass
+        return jsonify({"ok": True, "started": True, "job_id": job_id, "profile_id": profile_id})
+
+    if tid != "stats_full":
+        return jsonify({"ok": False, "error": "invalid timer id"}), 400
+
     # stats_full
     try:
         stop_dt = datetime.now(timezone.utc)
@@ -19120,7 +20829,7 @@ def api_timers_start():
 def api_timers_cancel():
     body = request.get_json(force=True) or {}
     tid = str(body.get("id") or "").strip()
-    if tid not in ("dash_cache", "stats_cache", "stats_full", "analysis_nightly"):
+    if tid not in ("dash_cache", "stats_cache", "stats_full", "analysis_nightly", "rollup"):
         if tid.startswith("watchlist:"):
             cancelled = 0
             with WATCHLIST_RUN_LOCK:
@@ -19162,6 +20871,18 @@ def api_timers_cancel():
                     st = str(j.get("state") or "")
                     if st and st not in ("done", "error", "cancelled"):
                         ANALYSIS_NIGHTLY_JOBS[jid]["cancelled"] = True
+                        cancelled += 1
+                except Exception:
+                    continue
+        return jsonify({"ok": True, "cancelled": cancelled})
+
+    if tid == "rollup":
+        with ROLLUP_LOCK:
+            for jid, j in list(ROLLUP_JOBS.items()):
+                try:
+                    st = str(j.get("state") or "")
+                    if st and st not in ("done", "error", "cancelled"):
+                        ROLLUP_JOBS[jid]["cancelled"] = True
                         cancelled += 1
                 except Exception:
                     continue
@@ -34047,6 +35768,161 @@ def _analysis_nightly_scheduler_start() -> None:
 
 try:
     _analysis_nightly_scheduler_start()
+except Exception:
+    pass
+
+
+_ROLLUP_SCHED_STARTED = False
+
+
+def _rollup_due_now(cfg: dict[str, Any]) -> bool:
+    try:
+        mode = str(cfg.get("rollup_refresh_mode") or "manual").strip().lower()
+        if mode not in ("hours", "daily", "weekly", "manual"):
+            mode = "manual"
+        if mode == "manual":
+            return False
+
+        st = _timers_state_get("rollup")
+        last_ts = 0.0
+        try:
+            last_run = _parse_iso_datetime(str(st.get("last_run_at") or "").strip())
+            last_ts = last_run.timestamp() if last_run else 0.0
+        except Exception:
+            last_ts = 0.0
+
+        if mode == "hours":
+            try:
+                h = int(cfg.get("rollup_refresh_hours") or 24)
+            except Exception:
+                h = 24
+            if h <= 0:
+                return False
+            if last_ts <= 0:
+                return True
+            return (datetime.now(timezone.utc).timestamp() - last_ts) >= float(h * 3600)
+
+        at = str(cfg.get("rollup_refresh_daily_at") or "04:00:00").strip() or "04:00:00"
+        hh, mm, ss = _timer_parse_hms(at, (4, 0, 0))
+        wd = _timer_parse_weekday(cfg.get("rollup_refresh_weekday"), default=0)
+
+        now_local = datetime.now().astimezone()
+        boundary = _timer_last_boundary_local(now_local, mode=mode, hh=hh, mm=mm, ss=ss, weekday=wd)
+        if not boundary:
+            return False
+        if last_ts <= 0:
+            return True
+        last_local = datetime.fromtimestamp(last_ts, tz=timezone.utc).astimezone(now_local.tzinfo)
+        return last_local < boundary
+    except Exception:
+        return False
+
+
+def _rollup_inflight() -> bool:
+    with ROLLUP_LOCK:
+        for j in ROLLUP_JOBS.values():
+            try:
+                st = str(j.get("state") or "")
+                if st and st not in ("done", "error", "cancelled"):
+                    return True
+            except Exception:
+                continue
+    return False
+
+
+def _rollup_scheduler_loop() -> None:
+    """Scheduled trigger for rollup runs (best-effort)."""
+
+    while True:
+        try:
+            cfg = _overlay_from_yaml_if_enabled(load_cfg())
+            if not bool(cfg.get("rollup_enabled", True)) or not bool(cfg.get("rollup_auto_update", False)):
+                time.sleep(60)
+                continue
+            if int(cfg.get("influx_version", 2) or 2) != 2:
+                time.sleep(60)
+                continue
+            if not _rollup_due_now(cfg):
+                time.sleep(60)
+                continue
+            if _rollup_inflight():
+                time.sleep(60)
+                continue
+
+            profiles = _rollup_profiles_load(cfg)
+            prof = next((p for p in profiles if isinstance(p, dict) and bool(p.get("enabled", True))), None)
+            if not prof:
+                time.sleep(60)
+                continue
+            profile_id = str(prof.get("id") or "default").strip() or "default"
+            delete_source_after = bool(prof.get("delete_source_after_default", False))
+
+            try:
+                _plan, union_start, union_stop = _rollup_plan_level_windows(
+                    prof,
+                    now_utc=datetime.now(timezone.utc),
+                    start_override=None,
+                    stop_override=None,
+                )
+            except Exception:
+                time.sleep(60)
+                continue
+
+            job_id = uuid.uuid4().hex
+            run_id = uuid.uuid4().hex
+            now_iso = _utc_now_iso_ms()
+            job = {
+                "id": job_id,
+                "type": "rollup_run",
+                "timer_id": "rollup",
+                "state": "pending",
+                "message": "Job wird gestartet...",
+                "started_at": now_iso,
+                "updated_at": now_iso,
+                "started_mono": time.monotonic(),
+                "cancelled": False,
+                "error": None,
+                "profile_id": profile_id,
+                "run_id": run_id,
+                "start": _dt_to_rfc3339_utc_full(union_start),
+                "stop": _dt_to_rfc3339_utc_full(union_stop),
+                "delete_source_after": delete_source_after,
+                "trigger_page": "scheduler",
+                "trigger_ip": None,
+                "trigger_ua": None,
+            }
+            with ROLLUP_LOCK:
+                ROLLUP_JOBS[job_id] = job
+            th = threading.Thread(target=_rollup_job_thread, args=(job_id,), daemon=True)
+            th.start()
+            try:
+                _timer_mark_started("rollup", job_id=job_id)
+            except Exception:
+                pass
+            try:
+                _timer_event_append("rollup", "scheduler_start", {"job_id": job_id, "profile_id": profile_id})
+            except Exception:
+                pass
+        except Exception:
+            pass
+        time.sleep(60)
+
+
+def _rollup_scheduler_start() -> None:
+    global _ROLLUP_SCHED_STARTED
+    if _ROLLUP_SCHED_STARTED:
+        return
+    _ROLLUP_SCHED_STARTED = True
+    t = threading.Thread(target=_rollup_scheduler_loop, daemon=True)
+    t.start()
+    try:
+        LOG.info("rollup scheduler started")
+    except Exception:
+        pass
+
+
+try:
+    _rollup_scheduler_start()
 except Exception:
     pass
 

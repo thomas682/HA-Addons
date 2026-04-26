@@ -46,6 +46,9 @@ Links findest du die Bereiche:
 
 - Dashboard: Messwerte auswaehlen, Graph/Raw ansehen, Ausreisser analysieren und Werte direkt in der Raw-Tabelle korrigieren.
 - Statistik: Gesamtstatistik ueber viele Serien anzeigen.
+- Datenqualitaet: Raw/Clean/Rollup Architektur verwalten (Buckets/Regeln/Debug) und Query-Beispiele nutzen.
+- Verdichtung: Clean -> Rollup automatisch verdichten (Pflicht-Backup, Run/Restore).
+- Datenpflege: Qualitaetsanalyse und Vorschlaege fuer Reparaturen (Center).
 - Monitor: Ueberwachte Messwert-Keys pruefen, Fault-Phasen verfolgen, offene Korrekturen verwalten und Template-Status abrufen.
 - Backup: Backups fuer einen einzelnen Messwert erstellen und verwalten.
 - Restore: Ein vorhandenes Backup fuer einen Messwert wiederherstellen.

@@ -68,6 +68,24 @@ Dirty-Reparatur (Patch):
 - Pfad: `/data/influxbro_cache_usage.jsonl`
 - Zweck: Zeitliche Protokollierung von Cache-Planung/Treffern/Misses/Stores/Merges.
 
+### 2.5 Verdichtung / Rollup (Downsampling)
+
+- UI: Seite `Verdichtung` (`/rollup`).
+- Zweck: Clean -> Rollup Downsampling fuer Langzeitdaten, mit Pflicht-Backup vor jeder Verdichtung und One-Click Restore.
+
+Persistenz unter `/data`:
+
+- Profile: `/data/rollup_profiles.json`
+- Runs: `/data/rollup/runs/<run_id>.json`
+- Backups: `/data/rollup/backups/<backup_id>.zip`
+  - Enthalten: Meta-JSON + Payload `payload/data.lp` (Line Protocol)
+  - Integritaet: sha256 wird bei Erstellung berechnet und bei Restore/Preview validiert.
+
+Ausfuehrung:
+
+- Rollup Writes/Deletes/Restore laufen ueber ChangeBlocks (persistente Items, chunking via `child_blocks`).
+- Optional: Quelle kann nach erfolgreichem Write im Zeitfenster geloescht werden (exakte Deletes).
+
 ## 3. Analyse: Ausreisser-Suche (Outlier Scan)
 
 ### 3.1 Einstiegspunkte (UI)
