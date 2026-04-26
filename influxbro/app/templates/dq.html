@@ -80,6 +80,19 @@
         </div>
       </div>
 
+      <div class="card" data-ui="dq_debug.panel_card" data-ib-pickkey="dq_debug.panel_card" title="dq.debug">
+        <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:baseline;">
+          <div style="font-weight:900; font-size:16px;" data-ui="dq_debug.txt_title" data-ib-pickkey="dq_debug.txt_title" title="dq.debug.title">Debug/Support</div>
+          <div class="muted mono" id="dbg_meta" data-ui="dq_debug.txt_meta" data-ib-pickkey="dq_debug.txt_meta" title="dq.debug.meta"></div>
+        </div>
+        <div class="row" data-ui="dq_debug.panel_controls" data-ib-pickkey="dq_debug.panel_controls" title="dq.debug.controls">
+          <button id="dbg_reload" class="btn_sm" data-ui="dq_debug.btn_reload" data-ib-pickkey="dq_debug.btn_reload" title="dq.debug.reload">Reload</button>
+        </div>
+        <div class="mono" style="margin-top:10px;">
+          <pre id="dbg_out" style="max-height:34vh; overflow:auto; border:1px solid #eee; border-radius:12px; padding:10px; background:#fafafa;" data-ui="dq_debug.pre_out" data-ib-pickkey="dq_debug.pre_out" title="dq.debug.out"></pre>
+        </div>
+      </div>
+
       <div class="card" data-ui="dq_results.panel_card" data-ib-pickkey="dq_results.panel_card" title="dq.results">
         <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:baseline;">
           <div style="font-weight:900; font-size:16px;" data-ui="dq_results.txt_title" data-ib-pickkey="dq_results.txt_title" title="dq.results.title">Uebersicht</div>
@@ -309,6 +322,10 @@
       const $export = document.getElementById('dq_export');
       const $support = document.getElementById('dq_support');
       const $dlgClose = document.getElementById('dq_dlg_close');
+
+      const $dbgMeta = document.getElementById('dbg_meta');
+      const $dbgReload = document.getElementById('dbg_reload');
+      const $dbgOut = document.getElementById('dbg_out');
 
       const $propMeta = document.getElementById('prop_meta');
       const $propGen = document.getElementById('dq_props_gen');
@@ -1040,6 +1057,23 @@
         try{ if($migMeta) $migMeta.textContent = `Run ${String(j.run_id||'-')} | Kandidaten ${xs.length}`; }catch(e){}
       }
 
+      async function loadDebug(){
+        let j;
+        try{ j = await api('./api/dq/debug'); }
+        catch(e){
+          try{ if($dbgMeta) $dbgMeta.textContent = 'Fehler: ' + (e && e.message ? e.message : String(e)); }catch(x){}
+          try{ if($dbgOut) $dbgOut.textContent = ''; }catch(x){}
+          return;
+        }
+        try{
+          const v = j && j.addon ? String((j.addon.version)||'') : '';
+          const infl = j && j.influx ? j.influx : null;
+          const inflOk = infl ? (String(!!infl.configured)) : '';
+          if($dbgMeta) $dbgMeta.textContent = `v=${v} influx_configured=${inflOk}`;
+        }catch(e){}
+        try{ if($dbgOut) $dbgOut.textContent = JSON.stringify(j, null, 2); }catch(e){}
+      }
+
       async function pollRun(runId){
         let j;
         try{
@@ -1150,6 +1184,10 @@
       try{ if($mergeReload) $mergeReload.onclick = ()=>{ loadMergeCandidates().catch(e=>err('Merge: ' + (e && e.message ? e.message : String(e)))); }; }catch(e){}
 
       try{ if($migReload) $migReload.onclick = ()=>{ loadMigrationCandidates().catch(e=>err('Migration: ' + (e && e.message ? e.message : String(e)))); }; }catch(e){}
+
+      try{ if($dbgReload) $dbgReload.onclick = ()=>{ loadDebug().catch(()=>{}); }; }catch(e){}
+
+      try{ loadDebug().catch(()=>{}); }catch(e){}
 
       try{ loadHAProposals().catch(()=>{}); }catch(e){}
 
