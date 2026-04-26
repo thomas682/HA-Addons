@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.12.455
+
+### Enhancement
+
+- Datenpflege (DQ): neue API `/api/dq/orphans` und UI-Karte "Verwaiste Messwerte (HA fehlt)" basierend auf dem letzten DQ-Lauf (Finding `ha_missing`). Teil von Epic [#406](https://github.com/thomas682/HA-Addons/issues/406).
+
 ## 1.12.454
 
 ### Enhancement
