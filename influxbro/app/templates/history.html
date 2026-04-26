@@ -434,14 +434,66 @@
       return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     }
 
-    async function cbShowDetails(){
+    function _cbVal(v){
+      try{ return (v === null || v === undefined) ? '' : String(v); }catch(e){ return ''; }
+    }
+
+    function _cbPickValueFromPoint(p){
+      try{ if(!p || typeof p !== 'object') return ''; }catch(e){ return ''; }
+      const v = p._value;
+      return _cbVal(v);
+    }
+
+    function _cbShortTagsFromPoint(p){
+      try{ if(!p || typeof p !== 'object') return ''; }catch(e){ return ''; }
+      const out = [];
+      Object.keys(p).forEach(k=>{
+        if(!k) return;
+        if(k[0] === '_') return;
+        if(k === 'result' || k === 'table') return;
+        const v = p[k];
+        if(v === null || v === undefined) return;
+        out.push(String(k) + '=' + String(v));
+      });
+      out.sort();
+      return out.join(',');
+    }
+
+    function _cbPreviewMapFor(bid, dir){
+      const p = CB_PREVIEWS.get(String(bid||'')) || {};
+      const v = (dir === 'undo') ? (p.undo || null) : (p.repeat || null);
+      const map = new Map();
+      try{
+        const rs = (v && v.results) ? v.results : [];
+        (rs || []).forEach(r=>{
+          if(!r || typeof r !== 'object') return;
+          const iid = String(r.item_id || '').trim();
+          if(!iid) return;
+          map.set(iid, r);
+        });
+      }catch(e){}
+      return map;
+    }
+
+    async function cbShowDetails(opts){
       const bid = _cbPickSelectedOne();
       if(!bid) return;
-      const j = await api('./api/change_block?id=' + encodeURIComponent(bid));
+      const o = opts || {};
+      const off = Number(o.offset || 0) || 0;
+      const lim = Number(o.limit || 200) || 200;
+      const j = await api('./api/change_block?id=' + encodeURIComponent(bid) + '&include_items=1&items_offset=' + encodeURIComponent(String(off)) + '&items_limit=' + encodeURIComponent(String(lim)));
       const b = j.block || {};
       const ss = b.series_summary || {};
       const meta = b.meta || {};
       const child = Array.isArray(meta.child_blocks) ? meta.child_blocks.map(x=>String(x||'').trim()).filter(Boolean) : [];
+      const items = Array.isArray(b.items) ? b.items : [];
+      const total = Number(b.items_total || 0) || items.length;
+      const offset = Number(b.items_offset || 0) || off;
+      const limit = Number(b.items_limit || 0) || lim;
+
+      const undoMap = _cbPreviewMapFor(bid, 'undo');
+      const repMap = _cbPreviewMapFor(bid, 'repeat');
+
       let html = '';
       html += '<div style="font-size:12px;line-height:1.35;">';
       html += '<div><b>block_id</b>: <code>' + _cbHtmlEsc(b.block_id) + '</code></div>';
@@ -452,17 +504,80 @@
       html += '<div><b>status</b>: ' + _cbHtmlEsc(String(b.status||'')) + ' | <b>undo</b>: ' + _cbHtmlEsc(String(b.undo_status||'')) + ' | <b>repeat</b>: ' + _cbHtmlEsc(String(b.repeat_status||'')) + '</div>';
       html += '<div style="margin-top:8px;"><b>series</b>: ' + _cbHtmlEsc([ss.measurement, ss.field, ss.entity_id, ss.friendly_name].filter(Boolean).join(' | ')) + '</div>';
       if(child.length){
-        html += '<div style="margin-top:8px;"><b>child_blocks</b> (' + String(child.length) + '):</div>';
-        html += '<div class="mono" style="white-space:pre-wrap;">' + _cbHtmlEsc(child.join('\n')) + '</div>';
+        html += '<div style="margin-top:8px;"><b>child_blocks</b> (' + String(child.length) + ')</div>';
       }
+      html += '<div style="margin-top:8px;"><b>items</b>: ' + String(total) + ' (zeigt ' + String(items.length) + ' ab offset ' + String(offset) + ')</div>';
+
+      html += '<div style="margin-top:10px; border:1px solid rgba(0,0,0,0.12); border-radius:10px; overflow:auto; max-height:52vh;">';
+      html += '<table class="ib_tbl" style="min-width:960px;">';
+      html += '<thead><tr>';
+      html += '<th style="width:120px;">item</th>';
+      html += '<th style="width:70px;">op</th>';
+      html += '<th style="width:170px;">time</th>';
+      html += '<th style="width:160px;">measurement</th>';
+      html += '<th style="width:140px;">field</th>';
+      html += '<th style="width:240px;">tags</th>';
+      html += '<th style="width:110px;">old</th>';
+      html += '<th style="width:110px;">new</th>';
+      html += '<th style="width:140px;">undo preview</th>';
+      html += '<th style="width:140px;">repeat preview</th>';
+      html += '</tr></thead>';
+      html += '<tbody>';
+      items.forEach((it, idx)=>{
+        if(!it || typeof it !== 'object') return;
+        const iid = String(it.item_id || '').trim();
+        const op = String(it.op || '');
+        const pid = (it.point_identity && typeof it.point_identity === 'object') ? it.point_identity : {};
+        const ts = String(pid.timestamp || '');
+        const meas = String(pid.measurement || '');
+        const fld = String(pid.field || '');
+        const tags = (pid.tag_set && typeof pid.tag_set === 'object') ? pid.tag_set : {};
+        const tagsTxt = Object.keys(tags).sort().map(k=>String(k)+'='+String(tags[k])).join(',');
+        const oldv = _cbPickValueFromPoint(it.old_point);
+        const newv = _cbPickValueFromPoint(it.new_point);
+
+        const u = iid ? (undoMap.get(iid) || null) : null;
+        const r = iid ? (repMap.get(iid) || null) : null;
+        function _fmtPrev(p){
+          if(!p) return '-';
+          const st = String(p.state || '');
+          const cur = (p.current_value !== undefined) ? (' cur=' + _cbVal(p.current_value)) : '';
+          const exp = (p.expected_value !== undefined) ? (' exp=' + _cbVal(p.expected_value)) : '';
+          return st + cur + exp;
+        }
+
+        const uTxt = _fmtPrev(u);
+        const rTxt = _fmtPrev(r);
+
+        html += '<tr>';
+        html += '<td>' + _cbHtmlEsc(iid ? iid.slice(0,8) : ('#' + String(offset + idx + 1))) + '</td>';
+        html += '<td>' + _cbHtmlEsc(op) + '</td>';
+        html += '<td>' + _cbHtmlEsc(ts) + '</td>';
+        html += '<td>' + _cbHtmlEsc(meas) + '</td>';
+        html += '<td>' + _cbHtmlEsc(fld) + '</td>';
+        html += '<td style="max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="' + _cbHtmlEsc(tagsTxt) + '">' + _cbHtmlEsc(tagsTxt) + '</td>';
+        html += '<td>' + _cbHtmlEsc(oldv) + '</td>';
+        html += '<td>' + _cbHtmlEsc(newv) + '</td>';
+        html += '<td>' + _cbHtmlEsc(uTxt) + '</td>';
+        html += '<td>' + _cbHtmlEsc(rTxt) + '</td>';
+        html += '</tr>';
+      });
+      html += '</tbody></table></div>';
       html += '</div>';
 
       const actions = [
-        { label:'Undo Preview', onClick: ()=>{ cbPreview('undo').catch(e=>err(String(e.message||e))); } },
-        { label:'Repeat Preview', onClick: ()=>{ cbPreview('repeat').catch(e=>err(String(e.message||e))); } },
+        { label:'Undo Preview', onClick: ()=>{ cbPreview('undo').then(()=>cbShowDetails({offset: offset, limit: limit})).catch(e=>err(String(e.message||e))); } },
+        { label:'Repeat Preview', onClick: ()=>{ cbPreview('repeat').then(()=>cbShowDetails({offset: offset, limit: limit})).catch(e=>err(String(e.message||e))); } },
       ];
+      if((offset + items.length) < total){
+        actions.push({ label:'Naechste Items', onClick: ()=>{ cbShowDetails({offset: offset + items.length, limit: limit}).catch(e=>err(String(e.message||e))); } });
+      }
+      if(offset > 0){
+        actions.push({ label:'Vorherige Items', onClick: ()=>{ cbShowDetails({offset: Math.max(0, offset - limit), limit: limit}).catch(e=>err(String(e.message||e))); } });
+      }
+
       if(window.InfluxBroPopup && window.InfluxBroPopup.show){
-        window.InfluxBroPopup.show('ChangeBlock Details', html, { bodyHtml:true, actions });
+        window.InfluxBroPopup.show('ChangeBlock Details', html, { bodyHtml:true, actions, copyText: JSON.stringify(b, null, 2) });
       }else{
         alert('ChangeBlock: ' + bid);
       }

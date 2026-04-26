@@ -31129,8 +31129,11 @@ def validate_change_block(block_id: str, *, direction: str) -> dict[str, Any]:
                     "item_id": it.get("item_id"),
                     "op": it.get("op"),
                     "state": "ok",
-                    "identity": it.get("point_identity") if isinstance(it.get("point_identity"), dict) else {},
+                    "identity": _cb_norm_point_identity(it.get("point_identity") if isinstance(it.get("point_identity"), dict) else {}),
                     "policy": "blind",
+                    "expected_value": None,
+                    "current_value": None,
+                    "current_point": None,
                 })
                 continue
 
@@ -31138,19 +31141,34 @@ def validate_change_block(block_id: str, *, direction: str) -> dict[str, Any]:
             st, cur = _cb_fetch_current_point(qapi, cfg, pid)
             if st in ("ambiguous", "type_mismatch"):
                 ok_all = False
-                results.append({"item_id": it.get("item_id"), "state": st, "identity": pid})
+                exp_p = _cb_expected_point_for(d, it)
+                results.append({
+                    "item_id": it.get("item_id"),
+                    "op": it.get("op"),
+                    "state": st,
+                    "policy": "strict",
+                    "identity": _cb_norm_point_identity(pid),
+                    "expected_value": _cb_point_value(exp_p) if isinstance(exp_p, dict) else None,
+                    "current_value": None,
+                    "current_point": None,
+                })
                 continue
             # st ok|missing maps to cur point
             ev = _cb_eval_item_state(d, it, cur)
             state = str(ev.get("state") or "conflict")
             if state not in ("ok", "already_applied"):
                 ok_all = False
+            exp_p = _cb_expected_point_for(d, it)
             results.append({
                 "item_id": it.get("item_id"),
                 "op": it.get("op"),
                 "state": state,
-                "identity": pid,
-                **({"details": ev} if state in ("conflict",) else {}),
+                "policy": "strict",
+                "identity": _cb_norm_point_identity(pid),
+                "expected_value": _cb_point_value(exp_p) if isinstance(exp_p, dict) else None,
+                "current_value": _cb_point_value(cur) if isinstance(cur, dict) else None,
+                "current_point": cur,
+                **({"details": ev} if state in ("conflict", "missing") else {}),
             })
 
     summary = {
