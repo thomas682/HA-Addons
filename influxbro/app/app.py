@@ -23695,6 +23695,77 @@ def api_dq_quality_runs_list():
     return jsonify({"ok": True, "runs": _dq_runs_list(limit)})
 
 
+@app.get("/api/dq/orphans")
+def api_dq_orphans():
+    """List orphan candidates (series with ha_missing) from a DQ quality run.
+
+    This is a lightweight view for Epic #406 (Module: Verwaiste Messwerte).
+    """
+
+    rid = str(request.args.get("run_id") or "").strip()
+    try:
+        limit = int(request.args.get("limit") or 200)
+    except Exception:
+        limit = 200
+    limit = max(1, min(2000, limit))
+
+    if not rid:
+        # Prefer latest done run.
+        for r in _dq_runs_list(50):
+            if isinstance(r, dict) and str(r.get("state") or "") == "done" and str(r.get("id") or ""):
+                rid = str(r.get("id") or "")
+                break
+
+    if not rid:
+        return jsonify({"ok": True, "run_id": None, "orphans": [], "total": 0, "error": "no dq run found"})
+
+    run = _dq_run_load(rid)
+    if not run:
+        return jsonify({"ok": False, "error": "run not found"}), 404
+
+    items = run.get("items") if isinstance(run.get("items"), list) else []
+    out: list[dict[str, Any]] = []
+    for it in items:
+        if not isinstance(it, dict):
+            continue
+        eid = str(it.get("entity_id") or "").strip()
+        if not eid:
+            continue
+        findings = it.get("findings") if isinstance(it.get("findings"), list) else []
+        ha_missing = next((f for f in findings if isinstance(f, dict) and str(f.get("kind") or "") == "ha_missing"), None)
+        if not ha_missing:
+            continue
+        ha_err = None
+        try:
+            ev = ha_missing.get("evidence") if isinstance(ha_missing.get("evidence"), dict) else {}
+            ha_err = ev.get("error")
+        except Exception:
+            ha_err = None
+        stats = it.get("stats") if isinstance(it.get("stats"), dict) else {}
+        out.append({
+            "series_key": it.get("series_key"),
+            "measurement": it.get("measurement"),
+            "field": it.get("field"),
+            "entity_id": eid,
+            "friendly_name": it.get("friendly_name"),
+            "newest_time": stats.get("newest_time"),
+            "score": it.get("score"),
+            "status": it.get("status"),
+            "ha_error": ha_err,
+            "recommendations": it.get("recommendations"),
+        })
+        if len(out) >= limit:
+            break
+
+    return jsonify({
+        "ok": True,
+        "run_id": rid,
+        "run_state": run.get("state"),
+        "orphans": out,
+        "total": len(out),
+    })
+
+
 @app.get("/api/dq/quality_run/export")
 def api_dq_quality_run_export():
     rid = str(request.args.get("id") or "").strip()

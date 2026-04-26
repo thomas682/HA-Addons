@@ -94,6 +94,31 @@
         </div>
       </div>
 
+      <div class="card" data-ui="dq_orphans.panel_card" data-ib-pickkey="dq_orphans.panel_card" title="dq.orphans">
+        <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:baseline;">
+          <div style="font-weight:900; font-size:16px;" data-ui="dq_orphans.txt_title" data-ib-pickkey="dq_orphans.txt_title" title="dq.orphans.title">Verwaiste Messwerte (HA fehlt)</div>
+          <div class="muted" id="orph_meta" data-ui="dq_orphans.txt_meta" data-ib-pickkey="dq_orphans.txt_meta" title="dq.orphans.meta"></div>
+        </div>
+        <div class="muted">Zeigt Serien aus dem letzten DQ-Lauf, bei denen die HA Metadaten nicht verfuegbar waren (Finding: `ha_missing`).</div>
+        <div class="row" data-ui="dq_orphans.panel_controls" data-ib-pickkey="dq_orphans.panel_controls" title="dq.orphans.controls">
+          <div style="min-width: 160px;">
+            <label>Limit</label>
+            <input id="orph_limit" type="number" min="1" max="2000" value="200" data-ui="dq_orphans.input_limit" data-ib-pickkey="dq_orphans.input_limit" title="dq.orphans.limit" />
+          </div>
+          <button id="orph_reload" class="btn_sm" data-ui="dq_orphans.btn_reload" data-ib-pickkey="dq_orphans.btn_reload" title="dq.orphans.reload">Aus aktivem Lauf laden</button>
+        </div>
+        <div class="table_wrap" data-ui="dq_orphans.panel_table" data-ib-pickkey="dq_orphans.panel_table" title="dq.orphans.table">
+          <div class="table_box" style="max-height:42vh;">
+            <table id="dq_orph_tbl" data-ui="dq_orphans.tbl" data-ib-pickkey="dq_orphans.tbl" title="dq.orphans.tbl">
+              <thead>
+                <tr><th>Entity</th><th>Messwert</th><th>Newest</th><th>HA Fehler</th><th>Empfehlung</th></tr>
+              </thead>
+              <tbody id="orph_rows"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <div class="card" data-ui="dq_proposals.panel_card" data-ib-pickkey="dq_proposals.panel_card" title="dq.proposals">
         <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:baseline;">
           <div style="font-weight:900; font-size:16px;" data-ui="dq_proposals.txt_title" data-ib-pickkey="dq_proposals.txt_title" title="dq.proposals.title">Repair Proposals (Phase 2, Preview-only)</div>
@@ -239,6 +264,11 @@
       const $haGen = document.getElementById('dq_ha_gen');
       const $haReload = document.getElementById('dq_ha_reload');
       const $haRows = document.getElementById('dq_ha_rows');
+
+      const $orphMeta = document.getElementById('orph_meta');
+      const $orphLimit = document.getElementById('orph_limit');
+      const $orphReload = document.getElementById('orph_reload');
+      const $orphRows = document.getElementById('orph_rows');
 
       let ACTIVE_RUN_ID = null;
       let ACTIVE_RUN = null;
@@ -597,6 +627,34 @@
         await loadHAProposals();
       }
 
+      async function loadOrphans(){
+        let lim = 200;
+        try{ lim = Number($orphLimit && $orphLimit.value ? $orphLimit.value : 200) || 200; }catch(e){ lim = 200; }
+        lim = Math.max(1, Math.min(2000, lim));
+        const qs = new URLSearchParams();
+        qs.set('limit', String(lim));
+        if(ACTIVE_RUN_ID) qs.set('run_id', String(ACTIVE_RUN_ID));
+
+        let j;
+        try{
+          j = await api('./api/dq/orphans?' + qs.toString());
+        }catch(e){
+          try{ if($orphMeta) $orphMeta.textContent = ''; }catch(x){}
+          throw e;
+        }
+
+        const xs = Array.isArray(j.orphans) ? j.orphans : [];
+        try{ if($orphRows) $orphRows.innerHTML = ''; }catch(e){}
+        xs.forEach(it => {
+          const tr = document.createElement('tr');
+          const meas = String(it.measurement||'') + '/' + String(it.field||'');
+          const rec = Array.isArray(it.recommendations) ? it.recommendations.slice(0,2).join(' | ') : '';
+          tr.innerHTML = `<td class="mono">${String(it.entity_id||'')}</td><td class="mono">${meas}</td><td class="mono">${String(it.newest_time||'')}</td><td>${String(it.ha_error||'')}</td><td>${rec}</td>`;
+          try{ if($orphRows) $orphRows.appendChild(tr); }catch(e){}
+        });
+        try{ if($orphMeta) $orphMeta.textContent = `Run ${String(j.run_id||'-')} | Orphans ${xs.length}`; }catch(e){}
+      }
+
       async function pollRun(runId){
         let j;
         try{
@@ -613,6 +671,7 @@
           renderRun(run);
           try{ loadProposals().catch(()=>{}); }catch(e){}
           try{ loadHAProposals().catch(()=>{}); }catch(e){}
+          try{ if(st === 'done') loadOrphans().catch(()=>{}); }catch(e){}
           if(st === 'done') ok('Analyse abgeschlossen.');
           else err('Analyse Fehler: ' + String(run.error||''));
           return;
@@ -698,6 +757,8 @@
 
       try{ if($haGen) $haGen.onclick = ()=>{ generateHAProposals().catch(()=>{}); }; }catch(e){}
       try{ if($haReload) $haReload.onclick = ()=>{ loadHAProposals().catch(()=>{}); }; }catch(e){}
+
+      try{ if($orphReload) $orphReload.onclick = ()=>{ loadOrphans().catch(e=>err('Orphans: ' + (e && e.message ? e.message : String(e)))); }; }catch(e){}
 
       try{ loadHAProposals().catch(()=>{}); }catch(e){}
 
