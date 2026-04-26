@@ -285,16 +285,23 @@
         }
 
         async function loadBuckets(){
-          const j = await api('./api/quality/buckets/status');
-          $bucketRows.innerHTML = '';
-          const existing = new Map((j.buckets || []).map(b => [b.name, b]));
-          (j.desired || []).forEach(spec => {
-            const ex = existing.get(spec.name);
-            const tr = document.createElement('tr');
-            tr.innerHTML = `<td>${spec.kind}</td><td>${spec.name}</td><td>${spec.retention_days || 0} d</td><td>${ex ? ('vorhanden' + (ex.retention_days !== null ? ' (' + ex.retention_days + ' d)' : '')) : 'fehlt'}</td>`;
-            $bucketRows.appendChild(tr);
-          });
-          $bucketInfo.textContent = `Gefundene Buckets: ${(j.buckets || []).length}`;
+          try{
+            const j = await api('./api/quality/buckets/status');
+            $bucketRows.innerHTML = '';
+            const existing = new Map((j.buckets || []).map(b => [b.name, b]));
+            (j.desired || []).forEach(spec => {
+              const ex = existing.get(spec.name);
+              const tr = document.createElement('tr');
+              tr.innerHTML = `<td>${spec.kind}</td><td>${spec.name}</td><td>${spec.retention_days || 0} d</td><td>${ex ? ('vorhanden' + (ex.retention_days !== null ? ' (' + ex.retention_days + ' d)' : '')) : 'fehlt'}</td>`;
+              $bucketRows.appendChild(tr);
+            });
+            $bucketInfo.textContent = `Gefundene Buckets: ${(j.buckets || []).length}`;
+          }catch(e){
+            // Do not fail the whole page init if Influx is not configured yet.
+            $bucketRows.innerHTML = '';
+            $bucketInfo.textContent = '';
+            err(e && e.message ? e.message : String(e));
+          }
         }
 
         async function previewRules(){

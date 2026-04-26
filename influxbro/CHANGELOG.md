@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.454
+
+### Enhancement
+
+- Verdichtung (Rollup): neue Seite `Verdichtung` fuer Clean -> Rollup Downsampling mit Pflicht-Backup (ZIP + sha256), Preview, Run-Historie und One-Click Restore inkl. Restore-Preview. Rollup nutzt ChangeBlocks fuer Writes/Deletes/Restore und kann optional die Quelle im Zeitfenster loeschen (nach erfolgreichem Write). ([#412](https://github.com/thomas682/HA-Addons/issues/412))
+
+### Maintenance
+
+- Timer: `rollup` ist in `/api/timers` integriert (Schedule/Start/Cancel) und kann optional automatisch laufen (`rollup_auto_update` + `rollup_refresh_mode`).
+- API: neue Endpunkte `/api/rollup/*` (Profiles/Preview/Backup/Run/Restore/Jobs).
+- QA: `python3 -m py_compile influxbro/app/app.py`.
+
 ## 1.12.447
 
 ### Enhancement
