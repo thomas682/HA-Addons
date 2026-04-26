@@ -12,6 +12,12 @@
 
 - Datenpflege (DQ): neue API `/api/dq/merge_candidates` und UI-Karte "Zusammenfuehren (Kandidaten)" fuer Umbenennungs-/Merge-Hinweise (gleicher `friendly_name`, aber HA fehlt vs. HA ok). Teil von Epic [#406](https://github.com/thomas682/HA-Addons/issues/406).
 
+## 1.12.457
+
+### Enhancement
+
+- Datenpflege (DQ): "Zusammenfuehren" Kandidaten koennen jetzt `Kombinieren` mit vorausgefuellten Feldern oeffnen (Query-Prefill in `/combine`). Teil von Epic [#406](https://github.com/thomas682/HA-Addons/issues/406).
+
 ## 1.12.454
 
 ### Enhancement
