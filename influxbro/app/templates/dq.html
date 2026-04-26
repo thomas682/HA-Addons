@@ -119,6 +119,31 @@
         </div>
       </div>
 
+      <div class="card" data-ui="dq_merge.panel_card" data-ib-pickkey="dq_merge.panel_card" title="dq.merge">
+        <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:baseline;">
+          <div style="font-weight:900; font-size:16px;" data-ui="dq_merge.txt_title" data-ib-pickkey="dq_merge.txt_title" title="dq.merge.title">Zusammenfuehren (Kandidaten)</div>
+          <div class="muted" id="merge_meta" data-ui="dq_merge.txt_meta" data-ib-pickkey="dq_merge.txt_meta" title="dq.merge.meta"></div>
+        </div>
+        <div class="muted">Heuristik: gleicher `friendly_name` + gleicher Messwert/Field, aber eine Seite HA-verfuegbar und die andere HA-fehlt (typisch nach Entity-ID Umbenennung).</div>
+        <div class="row" data-ui="dq_merge.panel_controls" data-ib-pickkey="dq_merge.panel_controls" title="dq.merge.controls">
+          <div style="min-width: 160px;">
+            <label>Limit</label>
+            <input id="merge_limit" type="number" min="1" max="2000" value="200" data-ui="dq_merge.input_limit" data-ib-pickkey="dq_merge.input_limit" title="dq.merge.limit" />
+          </div>
+          <button id="merge_reload" class="btn_sm" data-ui="dq_merge.btn_reload" data-ib-pickkey="dq_merge.btn_reload" title="dq.merge.reload">Aus aktivem Lauf laden</button>
+        </div>
+        <div class="table_wrap" data-ui="dq_merge.panel_table" data-ib-pickkey="dq_merge.panel_table" title="dq.merge.table">
+          <div class="table_box" style="max-height:42vh;">
+            <table id="dq_merge_tbl" data-ui="dq_merge.tbl" data-ib-pickkey="dq_merge.tbl" title="dq.merge.tbl">
+              <thead>
+                <tr><th>Friendly Name</th><th>Messwert</th><th>Quelle (HA fehlt)</th><th>Ziel (HA ok)</th><th>Aktionen</th></tr>
+              </thead>
+              <tbody id="merge_rows"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <div class="card" data-ui="dq_proposals.panel_card" data-ib-pickkey="dq_proposals.panel_card" title="dq.proposals">
         <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:baseline;">
           <div style="font-weight:900; font-size:16px;" data-ui="dq_proposals.txt_title" data-ib-pickkey="dq_proposals.txt_title" title="dq.proposals.title">Repair Proposals (Phase 2, Preview-only)</div>
@@ -269,6 +294,11 @@
       const $orphLimit = document.getElementById('orph_limit');
       const $orphReload = document.getElementById('orph_reload');
       const $orphRows = document.getElementById('orph_rows');
+
+      const $mergeMeta = document.getElementById('merge_meta');
+      const $mergeLimit = document.getElementById('merge_limit');
+      const $mergeReload = document.getElementById('merge_reload');
+      const $mergeRows = document.getElementById('merge_rows');
 
       let ACTIVE_RUN_ID = null;
       let ACTIVE_RUN = null;
@@ -655,6 +685,67 @@
         try{ if($orphMeta) $orphMeta.textContent = `Run ${String(j.run_id||'-')} | Orphans ${xs.length}`; }catch(e){}
       }
 
+      async function loadMergeCandidates(){
+        let lim = 200;
+        try{ lim = Number($mergeLimit && $mergeLimit.value ? $mergeLimit.value : 200) || 200; }catch(e){ lim = 200; }
+        lim = Math.max(1, Math.min(2000, lim));
+        const qs = new URLSearchParams();
+        qs.set('limit', String(lim));
+        if(ACTIVE_RUN_ID) qs.set('run_id', String(ACTIVE_RUN_ID));
+
+        const j = await api('./api/dq/merge_candidates?' + qs.toString());
+        const xs = Array.isArray(j.candidates) ? j.candidates : [];
+        try{ if($mergeRows) $mergeRows.innerHTML = ''; }catch(e){}
+        xs.forEach((it, idx) => {
+          const tr = document.createElement('tr');
+          const fn = String(it.friendly_name||'');
+          const meas = String(it.measurement||'') + '/' + String(it.field||'');
+          const srcE = (it.source && it.source.entity_id) ? String(it.source.entity_id) : '';
+          const tgtE = (it.target && it.target.entity_id) ? String(it.target.entity_id) : '';
+          const srcErr = (it.source && it.source.ha_error) ? String(it.source.ha_error) : '';
+
+          const tdFn = document.createElement('td'); tdFn.textContent = fn;
+          const tdM = document.createElement('td'); tdM.className='mono'; tdM.textContent = meas;
+          const tdS = document.createElement('td'); tdS.className='mono'; tdS.textContent = srcE + (srcErr ? ('\n' + srcErr) : ''); tdS.style.whiteSpace='pre-wrap';
+          const tdT = document.createElement('td'); tdT.className='mono'; tdT.textContent = tgtE;
+          const tdA = document.createElement('td'); tdA.style.whiteSpace='nowrap';
+
+          const bCopy = document.createElement('button');
+          bCopy.className='btn_sm';
+          bCopy.textContent='Copy JSON';
+          bCopy.onclick = async ()=>{
+            const payload = {
+              v: 1,
+              page: 'dq',
+              kind: 'merge_candidate',
+              measurement: String(it.measurement||''),
+              field: String(it.field||''),
+              source_entity_id: srcE,
+              target_entity_id: tgtE,
+              friendly_name: fn,
+            };
+            try{ await navigator.clipboard.writeText(JSON.stringify(payload, null, 2)); ok('In Zwischenablage kopiert.'); }
+            catch(e){ err('Clipboard Fehler.'); }
+          };
+
+          const bOpen = document.createElement('button');
+          bOpen.className='btn_sm';
+          bOpen.textContent='Open Combine';
+          bOpen.onclick = ()=>{ try{ window.location.href = './combine'; }catch(e){} };
+
+          tdA.appendChild(bCopy);
+          tdA.appendChild(bOpen);
+
+          tr.appendChild(tdFn);
+          tr.appendChild(tdM);
+          tr.appendChild(tdS);
+          tr.appendChild(tdT);
+          tr.appendChild(tdA);
+          try{ if($mergeRows) $mergeRows.appendChild(tr); }catch(e){}
+        });
+        try{ if($mergeMeta) $mergeMeta.textContent = `Run ${String(j.run_id||'-')} | Kandidaten ${xs.length}`; }catch(e){}
+      }
+
       async function pollRun(runId){
         let j;
         try{
@@ -672,6 +763,7 @@
           try{ loadProposals().catch(()=>{}); }catch(e){}
           try{ loadHAProposals().catch(()=>{}); }catch(e){}
           try{ if(st === 'done') loadOrphans().catch(()=>{}); }catch(e){}
+          try{ if(st === 'done') loadMergeCandidates().catch(()=>{}); }catch(e){}
           if(st === 'done') ok('Analyse abgeschlossen.');
           else err('Analyse Fehler: ' + String(run.error||''));
           return;
@@ -759,6 +851,8 @@
       try{ if($haReload) $haReload.onclick = ()=>{ loadHAProposals().catch(()=>{}); }; }catch(e){}
 
       try{ if($orphReload) $orphReload.onclick = ()=>{ loadOrphans().catch(e=>err('Orphans: ' + (e && e.message ? e.message : String(e)))); }; }catch(e){}
+
+      try{ if($mergeReload) $mergeReload.onclick = ()=>{ loadMergeCandidates().catch(e=>err('Merge: ' + (e && e.message ? e.message : String(e)))); }; }catch(e){}
 
       try{ loadHAProposals().catch(()=>{}); }catch(e){}
 

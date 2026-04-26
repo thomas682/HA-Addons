@@ -23766,6 +23766,128 @@ def api_dq_orphans():
     })
 
 
+@app.get("/api/dq/merge_candidates")
+def api_dq_merge_candidates():
+    """Suggest merge candidates for entity_id renames (best-effort).
+
+    Heuristic:
+    - within one DQ run, find pairs with same measurement+field+friendly_name
+    - one side HA available, other side HA missing
+
+    This is a supporting view for Epic #406 (Module: Zusammenfuehren).
+    """
+
+    rid = str(request.args.get("run_id") or "").strip()
+    try:
+        limit = int(request.args.get("limit") or 200)
+    except Exception:
+        limit = 200
+    limit = max(1, min(2000, limit))
+
+    if not rid:
+        for r in _dq_runs_list(50):
+            if isinstance(r, dict) and str(r.get("state") or "") == "done" and str(r.get("id") or ""):
+                rid = str(r.get("id") or "")
+                break
+
+    if not rid:
+        return jsonify({"ok": True, "run_id": None, "candidates": [], "total": 0, "error": "no dq run found"})
+
+    run = _dq_run_load(rid)
+    if not run:
+        return jsonify({"ok": False, "error": "run not found"}), 404
+
+    items = run.get("items") if isinstance(run.get("items"), list) else []
+
+    def _ha_av(it: dict[str, Any]) -> bool:
+        try:
+            ha = it.get("ha") if isinstance(it.get("ha"), dict) else {}
+            return bool(ha.get("available"))
+        except Exception:
+            return False
+
+    # Key by (measurement, field, friendly_name)
+    by_key: dict[tuple[str, str, str], list[dict[str, Any]]] = {}
+    for it in items:
+        if not isinstance(it, dict):
+            continue
+        m = str(it.get("measurement") or "").strip()
+        f = str(it.get("field") or "").strip()
+        fn = str(it.get("friendly_name") or "").strip()
+        eid = str(it.get("entity_id") or "").strip()
+        if not m or not f or not fn or not eid:
+            continue
+        by_key.setdefault((m, f, fn), []).append(it)
+
+    out: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for (m, f, fn), xs in by_key.items():
+        if len(xs) < 2:
+            continue
+        av = [x for x in xs if _ha_av(x)]
+        miss = [x for x in xs if not _ha_av(x)]
+        if not av or not miss:
+            continue
+
+        # Prefer highest score target among HA-available.
+        av.sort(key=lambda x: int(x.get("score") or 0), reverse=True)
+        tgt = av[0]
+
+        # Collect sources (ha_missing) as candidates.
+        for src in miss:
+            src_e = str(src.get("entity_id") or "").strip()
+            tgt_e = str(tgt.get("entity_id") or "").strip()
+            if not src_e or not tgt_e or src_e == tgt_e:
+                continue
+            key2 = f"{m}|{f}|{fn}|{src_e}|{tgt_e}"
+            if key2 in seen:
+                continue
+            seen.add(key2)
+
+            # Extract HA error (if present)
+            ha_err = None
+            try:
+                finds = src.get("findings") if isinstance(src.get("findings"), list) else []
+                hm = next((ff for ff in finds if isinstance(ff, dict) and str(ff.get("kind") or "") == "ha_missing"), None)
+                if hm and isinstance(hm.get("evidence"), dict):
+                    ha_err = hm.get("evidence", {}).get("error")
+            except Exception:
+                ha_err = None
+
+            out.append({
+                "measurement": m,
+                "field": f,
+                "friendly_name": fn,
+                "source": {
+                    "entity_id": src_e,
+                    "series_key": src.get("series_key"),
+                    "newest_time": (src.get("stats") or {}).get("newest_time") if isinstance(src.get("stats"), dict) else None,
+                    "score": src.get("score"),
+                    "ha_error": ha_err,
+                },
+                "target": {
+                    "entity_id": tgt_e,
+                    "series_key": tgt.get("series_key"),
+                    "newest_time": (tgt.get("stats") or {}).get("newest_time") if isinstance(tgt.get("stats"), dict) else None,
+                    "score": tgt.get("score"),
+                },
+                "hint": "Umbenennung vermutet (gleicher friendly_name; Quelle HA-fehlt)",
+            })
+
+            if len(out) >= limit:
+                break
+        if len(out) >= limit:
+            break
+
+    return jsonify({
+        "ok": True,
+        "run_id": rid,
+        "run_state": run.get("state"),
+        "candidates": out,
+        "total": len(out),
+    })
+
+
 @app.get("/api/dq/quality_run/export")
 def api_dq_quality_run_export():
     rid = str(request.args.get("id") or "").strip()

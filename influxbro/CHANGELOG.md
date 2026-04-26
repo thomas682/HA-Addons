@@ -6,6 +6,12 @@
 
 - Datenpflege (DQ): neue API `/api/dq/orphans` und UI-Karte "Verwaiste Messwerte (HA fehlt)" basierend auf dem letzten DQ-Lauf (Finding `ha_missing`). Teil von Epic [#406](https://github.com/thomas682/HA-Addons/issues/406).
 
+## 1.12.456
+
+### Enhancement
+
+- Datenpflege (DQ): neue API `/api/dq/merge_candidates` und UI-Karte "Zusammenfuehren (Kandidaten)" fuer Umbenennungs-/Merge-Hinweise (gleicher `friendly_name`, aber HA fehlt vs. HA ok). Teil von Epic [#406](https://github.com/thomas682/HA-Addons/issues/406).
+
 ## 1.12.454
 
 ### Enhancement
