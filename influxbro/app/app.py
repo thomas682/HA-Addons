@@ -10130,7 +10130,6 @@ from(bucket: "{raw_bucket}")
     lines = []
     with v2_client(cfg) as c:
         qapi = c.query_api()
-        wapi = c.write_api(write_options=SYNCHRONOUS) if not dry_run else None
         series_rows: dict[tuple[str, str, str, str], list[Any]] = {}
         for rec in qapi.query_stream(q, org=cfg["org"]):
             vals = getattr(rec, "values", {}) or {}
@@ -10142,7 +10141,7 @@ from(bucket: "{raw_bucket}")
                 continue
             summary["series"] += 1
             last_valid = None
-            write_batch = []
+            write_items: list[dict[str, Any]] = []
             for rec in recs:
                 summary["points"] += 1
                 dt = rec.get_time()
@@ -10193,16 +10192,62 @@ from(bucket: "{raw_bucket}")
                     if out_val != raw_val:
                         summary["corrected"] += 1
                 last_valid = out_val
-                if not dry_run and wapi is not None and isinstance(dt, datetime):
-                    p = Point(str(measurement)).field(str(field), out_val).time(dt, WritePrecision.NS)
+                if not dry_run and isinstance(dt, datetime):
+                    ts = _dt_to_rfc3339_utc_full(dt.astimezone(timezone.utc))
+                    tags: dict[str, str] = {}
                     if entity_id:
-                        p = p.tag("entity_id", entity_id)
+                        tags["entity_id"] = str(entity_id)
                     if friendly_name:
-                        p = p.tag("friendly_name", friendly_name)
-                    write_batch.append(p)
-            if write_batch and not dry_run and wapi is not None:
-                wapi.write(bucket=clean_bucket, org=cfg["org"], record=write_batch, write_precision=WritePrecision.NS)
-                summary["written"] += len(write_batch)
+                        tags["friendly_name"] = str(friendly_name)
+                    row = {
+                        "_time": ts,
+                        "_measurement": str(measurement),
+                        "_field": str(field),
+                        "_value": out_val,
+                        **tags,
+                    }
+                    pid = {
+                        "bucket": clean_bucket,
+                        "org": str(cfg.get("org") or ""),
+                        "measurement": str(measurement),
+                        "field": str(field),
+                        "timestamp": ts,
+                        "tag_set": tags,
+                    }
+                    write_items.append({
+                        "schema_version": CHANGE_ITEM_SCHEMA_VERSION,
+                        "item_id": uuid.uuid4().hex,
+                        "block_id": "",
+                        "op": "update",
+                        "point_identity": pid,
+                        "old_point": None,
+                        "new_point": row,
+                        "conflict_policy": "blind",
+                    })
+
+            if write_items and not dry_run:
+                bid = uuid.uuid4().hex
+                cb = {
+                    "schema_version": CHANGE_BLOCK_SCHEMA_VERSION,
+                    "block_id": bid,
+                    "created_at": _utc_now_iso_ms(),
+                    "source": {"user_id": None, "ip": None, "ua": None, "trigger_page": "quality", "trigger_source": "cleanup", "trigger_action": "apply", "trigger_button": None},
+                    "operation_source": "quality_cleanup",
+                    "reason": "quality_cleanup",
+                    "status": "created",
+                    "undo_status": "not_run",
+                    "repeat_status": "not_run",
+                    "affected_count": len(write_items),
+                    "series_summary": {"measurement": measurement, "field": field, "entity_id": entity_id, "friendly_name": friendly_name},
+                    "meta": {"raw_bucket": raw_bucket, "clean_bucket": clean_bucket, "undo_supported": False},
+                }
+                save_change_block(cb, items=write_items)
+                out = execute_change_block(bid)
+                if out.get("ok"):
+                    try:
+                        summary["written"] += int(out.get("applied") or 0)
+                    except Exception:
+                        pass
             lines.append({"measurement": measurement, "field": field, "entity_id": entity_id, "friendly_name": friendly_name, "points": len(recs)})
     try:
         QUALITY_CLEANUP_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -13100,6 +13145,7 @@ def _fullrestore_job_public(job: dict[str, Any]) -> dict[str, Any]:
         "message": job.get("message"),
         "started_at": job.get("started_at"),
         "elapsed": _job_elapsed_hms(job),
+        "change_block_id": job.get("change_block_id"),
         "format": str(job.get("format") or "lp"),
         "target_bucket": job.get("target_bucket"),
         "overwrite": bool(job.get("overwrite")),
@@ -13138,6 +13184,12 @@ def _fullrestore_job_thread(job_id: str, cfg: dict[str, Any], bdir: Path, backup
                 return
             for k, v in kw.items():
                 j[k] = v
+
+    # Allow fullrestore to attach a persisted ChangeBlock id.
+    try:
+        set_progress(change_block_id=None)
+    except Exception:
+        pass
 
     def is_cancelled() -> bool:
         with FULLRESTORE_LOCK:
@@ -13403,42 +13455,109 @@ def _fullrestore_job_thread(job_id: str, cfg: dict[str, Any], bdir: Path, backup
 
     try:
         if influx_v == 2:
-            with v2_client(cfg) as c:
-                wapi = c.write_api(write_options=SYNCHRONOUS)
-                batch: list[str] = []
-                with _open_backup_lp_text(bdir, backup_id, is_fullbackup=True) as f:
-                    for line in f:
-                        if is_cancelled():
-                            set_state("cancelled", "Abgebrochen")
-                            raise RuntimeError("cancelled")
-                        s = line.strip("\n")
-                        if not s.strip():
+            parent_id = uuid.uuid4().hex
+            parent = {
+                "schema_version": CHANGE_BLOCK_SCHEMA_VERSION,
+                "block_id": parent_id,
+                "created_at": _utc_now_iso_ms(),
+                "source": {"user_id": None, "ip": None, "ua": None, "trigger_page": "restore", "trigger_source": "fullrestore", "trigger_action": "restore", "trigger_button": None},
+                "operation_source": "fullrestore",
+                "reason": f"fullrestore:{backup_id}",
+                "status": "created",
+                "undo_status": "not_run",
+                "repeat_status": "not_run",
+                "affected_count": 0,
+                "payload_mode": "inline",
+                "payload_inline": [],
+                "meta": {"child_blocks": [], "undo_supported": False, "backup_id": backup_id},
+            }
+            save_change_block(parent, items=[])
+            try:
+                set_progress(change_block_id=parent_id)
+            except Exception:
+                pass
+
+            child_ids: list[str] = []
+            child_items: list[dict[str, Any]] = []
+            chunk_idx = 0
+
+            def flush_child() -> None:
+                nonlocal chunk_idx, child_items, applied
+                if not child_items:
+                    return
+                cid = uuid.uuid4().hex
+                cb = {
+                    "schema_version": CHANGE_BLOCK_SCHEMA_VERSION,
+                    "block_id": cid,
+                    "created_at": _utc_now_iso_ms(),
+                    "source": parent["source"],
+                    "operation_source": "fullrestore",
+                    "reason": f"fullrestore:{backup_id}#{chunk_idx}",
+                    "status": "created",
+                    "undo_status": "not_run",
+                    "repeat_status": "not_run",
+                    "affected_count": len(child_items),
+                    "meta": {"parent_block_id": parent_id, "chunk_index": chunk_idx, "undo_supported": False},
+                }
+                save_change_block(cb, items=child_items)
+                out = execute_change_block(cid)
+                if not out.get("ok"):
+                    raise RuntimeError("restore conflict")
+                try:
+                    applied += int(out.get("applied") or 0)
+                except Exception:
+                    pass
+                child_ids.append(cid)
+                chunk_idx += 1
+                child_items = []
+                _cb_patch_block_meta(parent_id, {"child_blocks": list(child_ids)})
+
+            max_items = 5000
+            with _open_backup_lp_text(bdir, backup_id, is_fullbackup=True) as f:
+                for line in f:
+                    if is_cancelled():
+                        set_state("cancelled", "Abgebrochen")
+                        raise RuntimeError("cancelled")
+                    s = str(line or "").strip("\n")
+                    if not s.strip():
+                        continue
+                    read_lines += 1
+                    pts = _lp_parse_points_from_line(s)
+                    for p in pts:
+                        ts = str(p.get("_time") or "").strip()
+                        meas = str(p.get("_measurement") or "").strip()
+                        fld = str(p.get("_field") or "").strip()
+                        if not ts or not meas or not fld:
                             continue
-                        read_lines += 1
-                        batch.append(s)
-                        if len(batch) >= 2000:
-                            wapi.write(
-                                bucket=cfg["bucket"],
-                                org=cfg["org"],
-                                record=batch,
-                                write_precision=WritePrecision.NS,
-                            )
-                            applied += len(batch)
-                            batch = []
+                        tags = {k: str(v) for k, v in p.items() if k and not str(k).startswith("_") and v is not None}
+                        pid = {
+                            "bucket": str(cfg.get("bucket") or ""),
+                            "org": str(cfg.get("org") or ""),
+                            "measurement": meas,
+                            "field": fld,
+                            "timestamp": ts,
+                            "tag_set": tags,
+                        }
+                        child_items.append({
+                            "schema_version": CHANGE_ITEM_SCHEMA_VERSION,
+                            "item_id": uuid.uuid4().hex,
+                            "block_id": "",
+                            "op": "update",
+                            "point_identity": pid,
+                            "old_point": None,
+                            "new_point": p,
+                            "conflict_policy": "blind",
+                        })
+                        if len(child_items) >= max_items:
+                            flush_child()
 
-                        now = time.monotonic()
-                        if (now - last_tick) >= 0.25:
-                            set_progress(read_lines=read_lines, applied=applied)
-                            last_tick = now
+                    now = time.monotonic()
+                    if (now - last_tick) >= 0.25:
+                        set_progress(read_lines=read_lines, applied=applied)
+                        last_tick = now
 
-                    if batch:
-                        wapi.write(
-                            bucket=cfg["bucket"],
-                            org=cfg["org"],
-                            record=batch,
-                            write_precision=WritePrecision.NS,
-                        )
-                        applied += len(batch)
+            flush_child()
+            _cb_patch_block_meta(parent_id, {"child_blocks": list(child_ids), "applied": applied, "read_lines": read_lines})
         elif influx_v == 1:
             c = v1_client(cfg)
             try:
@@ -13553,6 +13672,214 @@ def _lp_format_field_value(v: Any, field_type: str | None) -> str | None:
 
 def _dt_to_ns(dt: datetime) -> int:
     return int(dt.astimezone(timezone.utc).timestamp() * 1_000_000_000)
+
+
+def _lp_unescape(s: str) -> str:
+    """Unescape Influx line protocol keys/tag values (best-effort)."""
+
+    out: list[str] = []
+    esc = False
+    for c in str(s or ""):
+        if esc:
+            out.append(c)
+            esc = False
+            continue
+        if c == "\\":
+            esc = True
+            continue
+        out.append(c)
+    # trailing backslash is dropped (best-effort)
+    return "".join(out)
+
+
+def _lp_split_unescaped(s: str, ch: str) -> list[str]:
+    out: list[str] = []
+    cur: list[str] = []
+    esc = False
+    for c in str(s or ""):
+        if esc:
+            cur.append(c)
+            esc = False
+            continue
+        if c == "\\":
+            esc = True
+            continue
+        if c == ch:
+            out.append("".join(cur))
+            cur = []
+            continue
+        cur.append(c)
+    out.append("".join(cur))
+    return out
+
+
+def _lp_find_unescaped(s: str, ch: str) -> int:
+    esc = False
+    for i, c in enumerate(str(s or "")):
+        if esc:
+            esc = False
+            continue
+        if c == "\\":
+            esc = True
+            continue
+        if c == ch:
+            return i
+    return -1
+
+
+def _ns_to_dt(ns: int) -> datetime:
+    # Avoid float precision loss.
+    sec = int(ns // 1_000_000_000)
+    nsec = int(ns % 1_000_000_000)
+    return datetime.fromtimestamp(sec, tz=timezone.utc).replace(microsecond=int(nsec // 1000))
+
+
+def _lp_split_fieldset(s: str) -> list[str]:
+    """Split a fieldset on commas, respecting quoted strings."""
+
+    out: list[str] = []
+    cur: list[str] = []
+    esc = False
+    in_q = False
+    for c in str(s or ""):
+        if esc:
+            cur.append(c)
+            esc = False
+            continue
+        if c == "\\":
+            esc = True
+            cur.append(c)
+            continue
+        if c == '"':
+            in_q = not in_q
+            cur.append(c)
+            continue
+        if c == "," and not in_q:
+            out.append("".join(cur))
+            cur = []
+            continue
+        cur.append(c)
+    out.append("".join(cur))
+    return out
+
+
+def _lp_parse_field_value(raw: str) -> int | float | bool | str | None:
+    s = str(raw or "")
+    if not s:
+        return None
+    s = s.strip()
+    if not s:
+        return None
+
+    # String field values are double-quoted.
+    if len(s) >= 2 and s[0] == '"' and s[-1] == '"':
+        inner = s[1:-1]
+        # Unescape backslashes and quotes (best-effort).
+        out: list[str] = []
+        esc = False
+        for c in inner:
+            if esc:
+                out.append(c)
+                esc = False
+            elif c == "\\":
+                esc = True
+            else:
+                out.append(c)
+        return "".join(out)
+
+    lo = s.lower()
+    if lo in ("true", "t"):
+        return True
+    if lo in ("false", "f"):
+        return False
+
+    # integers: 123i
+    if s.endswith("i") and s[:-1].lstrip("-").isdigit():
+        try:
+            return int(s[:-1])
+        except Exception:
+            return None
+    # unsigned ints: 123u (treat as int)
+    if s.endswith("u") and s[:-1].isdigit():
+        try:
+            return int(s[:-1])
+        except Exception:
+            return None
+
+    try:
+        v = float(s)
+        if not math.isfinite(v):
+            return None
+        return v
+    except Exception:
+        return None
+
+
+def _lp_parse_points_from_line(line: str) -> list[dict[str, Any]]:
+    """Parse a (numeric) line protocol line into point dicts.
+
+    Returns one dict per field in the fieldset.
+    """
+
+    s = str(line or "").strip("\r\n")
+    if not s.strip():
+        return []
+
+    j = s.rfind(" ")
+    if j <= 0:
+        return []
+    ts_raw = s[j + 1 :].strip()
+    if not ts_raw.isdigit():
+        return []
+    try:
+        ts_ns = int(ts_raw)
+    except Exception:
+        return []
+
+    rest = s[:j]
+    i = _lp_find_unescaped(rest, " ")
+    if i <= 0:
+        return []
+    mt = rest[:i]
+    fieldset = rest[i + 1 :].strip()
+    if not fieldset:
+        return []
+
+    parts = _lp_split_unescaped(mt, ",")
+    if not parts:
+        return []
+    measurement = _lp_unescape(parts[0])
+
+    tags: dict[str, str] = {}
+    for tok in parts[1:]:
+        kpos = _lp_find_unescaped(tok, "=")
+        if kpos <= 0:
+            continue
+        k = _lp_unescape(tok[:kpos])
+        v = _lp_unescape(tok[kpos + 1 :])
+        if k:
+            tags[k] = v
+
+    dt = _ns_to_dt(ts_ns)
+    time_iso = _dt_to_rfc3339_utc_full(dt)
+
+    out: list[dict[str, Any]] = []
+    for ftok in _lp_split_fieldset(fieldset):
+        epos = _lp_find_unescaped(ftok, "=")
+        if epos <= 0:
+            continue
+        fk = _lp_unescape(ftok[:epos])
+        fv = _lp_parse_field_value(ftok[epos + 1 :])
+        if not fk or fv is None:
+            continue
+        out.append({
+            "_time": time_iso,
+            "_measurement": measurement,
+            "_field": fk,
+            "_value": fv,
+            **tags,
+        })
+    return out
 
 
 @app.get("/api/backup_targets")
@@ -14544,25 +14871,152 @@ def api_backup_restore():
         return jsonify({"ok": False, "error": "backup not found"}), 404
 
     try:
-        with v2_client(cfg) as c:
-            wapi = c.write_api(write_options=SYNCHRONOUS)
-            batch: list[str] = []
-            applied = 0
-            with _open_backup_lp_text(bdir, backup_id, is_fullbackup=False) as f:
-                for line in f:
-                    line = line.strip("\n")
-                    if not line.strip():
-                        continue
-                    batch.append(line)
-                    if len(batch) >= 2000:
-                        wapi.write(bucket=cfg["bucket"], org=cfg["org"], record=batch, write_precision=WritePrecision.NS)
-                        applied += len(batch)
-                        batch = []
-                if batch:
-                    wapi.write(bucket=cfg["bucket"], org=cfg["org"], record=batch, write_precision=WritePrecision.NS)
-                    applied += len(batch)
+        parent_id = uuid.uuid4().hex
+        parent = {
+            "schema_version": CHANGE_BLOCK_SCHEMA_VERSION,
+            "block_id": parent_id,
+            "created_at": _utc_now_iso_ms(),
+            "source": {
+                "user_id": None,
+                "ip": _req_ip(),
+                "ua": _req_ua(),
+                "trigger_page": "backups",
+                "trigger_source": "backup_restore",
+                "trigger_action": "restore",
+                "trigger_button": None,
+            },
+            "operation_source": "backup_restore",
+            "reason": f"backup_restore:{backup_id}",
+            "status": "created",
+            "undo_status": "not_run",
+            "repeat_status": "not_run",
+            "affected_count": 0,
+            "payload_mode": "inline",
+            "payload_inline": [],
+            "series_summary": {
+                "measurement": str(meta.get("measurement") or ""),
+                "field": str(meta.get("field") or ""),
+                "entity_id": meta.get("entity_id"),
+                "friendly_name": meta.get("friendly_name"),
+            },
+            "meta": {
+                "backup_id": backup_id,
+                "target": body.get("target"),
+                "child_blocks": [],
+                "undo_supported": False,
+            },
+        }
+        save_change_block(parent, items=[])
 
-        return jsonify({"ok": True, "message": f"Restored points: {applied}", "applied": applied})
+        child_ids: list[str] = []
+        child_items: list[dict[str, Any]] = []
+        chunk_idx = 0
+        applied = 0
+        skipped = 0
+
+        def flush_child() -> None:
+            nonlocal chunk_idx, child_items, applied
+            if not child_items:
+                return
+            cid = uuid.uuid4().hex
+            cb = {
+                "schema_version": CHANGE_BLOCK_SCHEMA_VERSION,
+                "block_id": cid,
+                "created_at": _utc_now_iso_ms(),
+                "source": parent["source"],
+                "operation_source": "backup_restore",
+                "reason": f"backup_restore:{backup_id}#{chunk_idx}",
+                "status": "created",
+                "undo_status": "not_run",
+                "repeat_status": "not_run",
+                "affected_count": len(child_items),
+                "series_summary": parent.get("series_summary") or {},
+                "meta": {
+                    "parent_block_id": parent_id,
+                    "chunk_index": chunk_idx,
+                    "undo_supported": False,
+                },
+            }
+            save_change_block(cb, items=child_items)
+            out = execute_change_block(cid)
+            if not out.get("ok"):
+                raise RuntimeError("restore conflict")
+            try:
+                applied += int(out.get("applied") or 0)
+            except Exception:
+                pass
+            child_ids.append(cid)
+            chunk_idx += 1
+            child_items = []
+            _cb_patch_block_meta(parent_id, {"child_blocks": list(child_ids)})
+
+        max_items = 5000
+        with _open_backup_lp_text(bdir, backup_id, is_fullbackup=False) as f:
+            for raw in f:
+                pts = _lp_parse_points_from_line(raw)
+                if not pts:
+                    skipped += 1
+                    continue
+                for p in pts:
+                    ts = str(p.get("_time") or "").strip()
+                    meas = str(p.get("_measurement") or "").strip()
+                    fld = str(p.get("_field") or "").strip()
+                    if not ts or not meas or not fld:
+                        skipped += 1
+                        continue
+                    tags = {k: str(v) for k, v in p.items() if k and not str(k).startswith("_") and v is not None}
+                    pid = {
+                        "bucket": str(cfg.get("bucket") or ""),
+                        "org": str(cfg.get("org") or ""),
+                        "measurement": meas,
+                        "field": fld,
+                        "timestamp": ts,
+                        "tag_set": tags,
+                    }
+                    child_items.append({
+                        "schema_version": CHANGE_ITEM_SCHEMA_VERSION,
+                        "item_id": uuid.uuid4().hex,
+                        "block_id": "",
+                        "op": "update",
+                        "point_identity": pid,
+                        "old_point": None,
+                        "new_point": p,
+                        "conflict_policy": "blind",
+                    })
+                    if len(child_items) >= max_items:
+                        flush_child()
+
+        flush_child()
+
+        # Promote child blocks list to the parent block.
+        _cb_patch_block_meta(parent_id, {
+            "child_blocks": list(child_ids),
+            "applied": applied,
+            "skipped": skipped,
+        })
+
+        # Register ref-only Undo entry (undo not supported, but repeat is).
+        try:
+            _undo_mgr(cfg).register_action(
+                action_type="update",
+                bucket=str(cfg.get("bucket") or ""),
+                measurement=str(meta.get("measurement") or "backup"),
+                group_label=f"backup_restore ({applied})",
+                before_rows=[],
+                after_rows=[],
+                meta={"change_block_id": parent_id, "backup_id": backup_id, "undo_supported": False},
+            )
+        except Exception:
+            pass
+
+        return jsonify({
+            "ok": True,
+            "message": f"Restored points: {applied}",
+            "applied": applied,
+            "skipped": skipped,
+            "change_block_id": parent_id,
+            "child_blocks": child_ids,
+        })
     except Exception as e:
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
 
@@ -14760,27 +15214,148 @@ def api_backup_copy():
         return f"{new_mt} {new_fieldset} {ts_raw}"
 
     try:
-        with v2_client(cfg) as c:
-            wapi = c.write_api(write_options=SYNCHRONOUS)
-            batch: list[str] = []
-            applied = 0
-            skipped = 0
-            with _open_backup_lp_text(bdir, backup_id, is_fullbackup=False) as f:
-                for raw in f:
-                    out = _rewrite_line(raw)
-                    if not out:
+        parent_id = uuid.uuid4().hex
+        parent = {
+            "schema_version": CHANGE_BLOCK_SCHEMA_VERSION,
+            "block_id": parent_id,
+            "created_at": _utc_now_iso_ms(),
+            "source": {
+                "user_id": None,
+                "ip": _req_ip(),
+                "ua": _req_ua(),
+                "trigger_page": "backups",
+                "trigger_source": "backup_copy",
+                "trigger_action": "copy",
+                "trigger_button": None,
+            },
+            "operation_source": "backup_copy",
+            "reason": f"backup_copy:{backup_id}",
+            "status": "created",
+            "undo_status": "not_run",
+            "repeat_status": "not_run",
+            "affected_count": 0,
+            "payload_mode": "inline",
+            "payload_inline": [],
+            "series_summary": {
+                "measurement": target_measurement,
+                "field": target_field,
+                "entity_id": target_entity_id,
+                "friendly_name": target_friendly_name,
+            },
+            "meta": {
+                "backup_id": backup_id,
+                "child_blocks": [],
+                "undo_supported": False,
+            },
+        }
+        save_change_block(parent, items=[])
+
+        child_ids: list[str] = []
+        child_items: list[dict[str, Any]] = []
+        chunk_idx = 0
+        applied = 0
+        skipped = 0
+
+        def flush_child() -> None:
+            nonlocal chunk_idx, child_items, applied
+            if not child_items:
+                return
+            cid = uuid.uuid4().hex
+            cb = {
+                "schema_version": CHANGE_BLOCK_SCHEMA_VERSION,
+                "block_id": cid,
+                "created_at": _utc_now_iso_ms(),
+                "source": parent["source"],
+                "operation_source": "backup_copy",
+                "reason": f"backup_copy:{backup_id}#{chunk_idx}",
+                "status": "created",
+                "undo_status": "not_run",
+                "repeat_status": "not_run",
+                "affected_count": len(child_items),
+                "series_summary": parent.get("series_summary") or {},
+                "meta": {
+                    "parent_block_id": parent_id,
+                    "chunk_index": chunk_idx,
+                    "undo_supported": False,
+                },
+            }
+            save_change_block(cb, items=child_items)
+            out = execute_change_block(cid)
+            if not out.get("ok"):
+                raise RuntimeError("copy conflict")
+            try:
+                applied += int(out.get("applied") or 0)
+            except Exception:
+                pass
+            child_ids.append(cid)
+            chunk_idx += 1
+            child_items = []
+            _cb_patch_block_meta(parent_id, {"child_blocks": list(child_ids)})
+
+        max_items = 5000
+        with _open_backup_lp_text(bdir, backup_id, is_fullbackup=False) as f:
+            for raw in f:
+                out = _rewrite_line(raw)
+                if not out:
+                    skipped += 1
+                    continue
+                if preview_limit > 0 and len(preview_lines) < preview_limit:
+                    preview_lines.append(out)
+
+                pts = _lp_parse_points_from_line(out)
+                if not pts:
+                    skipped += 1
+                    continue
+                for p in pts:
+                    ts = str(p.get("_time") or "").strip()
+                    meas = str(p.get("_measurement") or "").strip()
+                    fld = str(p.get("_field") or "").strip()
+                    if not ts or not meas or not fld:
                         skipped += 1
                         continue
-                    if preview_limit > 0 and len(preview_lines) < preview_limit:
-                        preview_lines.append(out)
-                    batch.append(out)
-                    if len(batch) >= 2000:
-                        wapi.write(bucket=cfg["bucket"], org=cfg["org"], record=batch, write_precision=WritePrecision.NS)
-                        applied += len(batch)
-                        batch = []
-                if batch:
-                    wapi.write(bucket=cfg["bucket"], org=cfg["org"], record=batch, write_precision=WritePrecision.NS)
-                    applied += len(batch)
+                    tags = {k: str(v) for k, v in p.items() if k and not str(k).startswith("_") and v is not None}
+                    pid = {
+                        "bucket": str(cfg.get("bucket") or ""),
+                        "org": str(cfg.get("org") or ""),
+                        "measurement": meas,
+                        "field": fld,
+                        "timestamp": ts,
+                        "tag_set": tags,
+                    }
+                    child_items.append({
+                        "schema_version": CHANGE_ITEM_SCHEMA_VERSION,
+                        "item_id": uuid.uuid4().hex,
+                        "block_id": "",
+                        "op": "update",
+                        "point_identity": pid,
+                        "old_point": None,
+                        "new_point": p,
+                        "conflict_policy": "blind",
+                    })
+                    if len(child_items) >= max_items:
+                        flush_child()
+
+        flush_child()
+        _cb_patch_block_meta(parent_id, {"child_blocks": list(child_ids), "applied": applied, "skipped": skipped})
+
+        try:
+            _undo_mgr(cfg).register_action(
+                action_type="update",
+                bucket=str(cfg.get("bucket") or ""),
+                measurement=str(target_measurement or "backup"),
+                group_label=f"backup_copy ({applied})",
+                before_rows=[],
+                after_rows=[],
+                meta={
+                    "change_block_id": parent_id,
+                    "backup_id": backup_id,
+                    "undo_supported": False,
+                    "target_measurement": target_measurement,
+                    "target_field": target_field,
+                },
+            )
+        except Exception:
+            pass
 
         return jsonify({
             "ok": True,
@@ -14789,6 +15364,8 @@ def api_backup_copy():
             "skipped": skipped,
             "preview_limit": preview_limit,
             "preview_lines": preview_lines,
+            "change_block_id": parent_id,
+            "child_blocks": child_ids,
         })
     except Exception as e:
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
@@ -14806,6 +15383,7 @@ def _restore_copy_job_public(job: dict[str, Any]) -> dict[str, Any]:
         "message": job.get("message"),
         "started_at": job.get("started_at"),
         "elapsed": _job_elapsed_hms(job),
+        "change_block_id": job.get("change_block_id"),
         "applied": int(job.get("applied") or 0),
         "skipped": int(job.get("skipped") or 0),
         "read_bytes": read_b,
@@ -15019,16 +15597,82 @@ def _restore_copy_job_thread(
     last_tick = time.monotonic()
 
     try:
-        with v2_client(cfg) as c:
-            wapi = c.write_api(write_options=SYNCHRONOUS)
-            set_state("running", "Lese Backup...")
-            with _open_backup_lp_text(bdir, backup_id, is_fullbackup=False) as f:
-                for raw in f:
-                    with RESTORE_COPY_LOCK:
-                        j = RESTORE_COPY_JOBS.get(job_id) or {}
-                        if bool(j.get("cancelled")):
-                            set_state("cancelled", "Abgebrochen")
-                            return
+        parent_id = uuid.uuid4().hex
+        parent = {
+            "schema_version": CHANGE_BLOCK_SCHEMA_VERSION,
+            "block_id": parent_id,
+            "created_at": _utc_now_iso_ms(),
+            "source": {"user_id": None, "ip": None, "ua": None, "trigger_page": "restore", "trigger_source": "restore_copy_job", "trigger_action": "copy", "trigger_button": None},
+            "operation_source": "restore_copy_job",
+            "reason": f"restore_copy_job:{backup_id}",
+            "status": "created",
+            "undo_status": "not_run",
+            "repeat_status": "not_run",
+            "affected_count": 0,
+            "payload_mode": "inline",
+            "payload_inline": [],
+            "series_summary": {
+                "measurement": target_measurement,
+                "field": target_field,
+                "entity_id": target_entity_id,
+                "friendly_name": target_friendly_name,
+            },
+            "meta": {"child_blocks": [], "undo_supported": False, "backup_id": backup_id},
+        }
+        save_change_block(parent, items=[])
+        with RESTORE_COPY_LOCK:
+            if job_id in RESTORE_COPY_JOBS:
+                RESTORE_COPY_JOBS[job_id]["change_block_id"] = parent_id
+
+        child_ids: list[str] = []
+        child_items: list[dict[str, Any]] = []
+        chunk_idx = 0
+        last_ts_ns_in_chunk: int | None = None
+
+        def flush_child() -> None:
+            nonlocal chunk_idx, child_items, applied, last_written_time_ms, last_ts_ns_in_chunk
+            if not child_items:
+                return
+            cid = uuid.uuid4().hex
+            cb = {
+                "schema_version": CHANGE_BLOCK_SCHEMA_VERSION,
+                "block_id": cid,
+                "created_at": _utc_now_iso_ms(),
+                "source": parent["source"],
+                "operation_source": "restore_copy_job",
+                "reason": f"restore_copy_job:{backup_id}#{chunk_idx}",
+                "status": "created",
+                "undo_status": "not_run",
+                "repeat_status": "not_run",
+                "affected_count": len(child_items),
+                "series_summary": parent.get("series_summary") or {},
+                "meta": {"parent_block_id": parent_id, "chunk_index": chunk_idx, "undo_supported": False},
+            }
+            save_change_block(cb, items=child_items)
+            out = execute_change_block(cid)
+            if not out.get("ok"):
+                raise RuntimeError("copy conflict")
+            try:
+                applied += int(out.get("applied") or 0)
+            except Exception:
+                pass
+            if last_ts_ns_in_chunk is not None:
+                last_written_time_ms = int(last_ts_ns_in_chunk // 1_000_000)
+            child_ids.append(cid)
+            chunk_idx += 1
+            child_items = []
+            last_ts_ns_in_chunk = None
+            _cb_patch_block_meta(parent_id, {"child_blocks": list(child_ids)})
+
+        max_items = 5000
+        set_state("running", "Lese Backup...")
+        with _open_backup_lp_text(bdir, backup_id, is_fullbackup=False) as f:
+            for raw in f:
+                with RESTORE_COPY_LOCK:
+                    j = RESTORE_COPY_JOBS.get(job_id) or {}
+                    if bool(j.get("cancelled")):
+                        set_state("cancelled", "Abgebrochen")
+                        return
 
                     try:
                         read_bytes += len(raw.encode("utf-8"))
@@ -15047,7 +15691,36 @@ def _restore_copy_job_thread(
                     else:
                         if preview_limit > 0 and len(preview_lines) < preview_limit:
                             preview_lines.append(out)
-                        batch.append(out)
+                        ts2 = _raw_ts_ns(out)
+                        if ts2 is not None:
+                            last_ts_ns_in_chunk = ts2
+
+                        pts = _lp_parse_points_from_line(out)
+                        for p in pts:
+                            ts = str(p.get("_time") or "").strip()
+                            meas = str(p.get("_measurement") or "").strip()
+                            fld = str(p.get("_field") or "").strip()
+                            if not ts or not meas or not fld:
+                                continue
+                            tags = {k: str(v) for k, v in p.items() if k and not str(k).startswith("_") and v is not None}
+                            pid = {
+                                "bucket": str(cfg.get("bucket") or ""),
+                                "org": str(cfg.get("org") or ""),
+                                "measurement": meas,
+                                "field": fld,
+                                "timestamp": ts,
+                                "tag_set": tags,
+                            }
+                            child_items.append({
+                                "schema_version": CHANGE_ITEM_SCHEMA_VERSION,
+                                "item_id": uuid.uuid4().hex,
+                                "block_id": "",
+                                "op": "update",
+                                "point_identity": pid,
+                                "old_point": None,
+                                "new_point": p,
+                                "conflict_policy": "blind",
+                            })
 
                     now = time.monotonic()
                     if (now - last_tick) >= 0.25:
@@ -15060,20 +15733,9 @@ def _restore_copy_job_thread(
                         )
                         last_tick = now
 
-                    if len(batch) >= 2000:
-                        set_state("running", "Schreibe in InfluxDB...")
-                        wapi.write(
-                            bucket=cfg["bucket"],
-                            org=cfg["org"],
-                            record=batch,
-                            write_precision=WritePrecision.NS,
-                        )
-                        applied += len(batch)
-                        # last point timestamp in the batch
-                        ts_last = _raw_ts_ns(batch[-1])
-                        if ts_last is not None:
-                            last_written_time_ms = int(ts_last // 1_000_000)
-                        batch = []
+                    if len(child_items) >= max_items:
+                        set_state("running", "Schreibe via Change-Service...")
+                        flush_child()
                         set_progress(
                             read_bytes=read_bytes,
                             applied=applied,
@@ -15082,26 +15744,18 @@ def _restore_copy_job_thread(
                             last_written_time_ms=last_written_time_ms,
                         )
 
-                if batch:
-                    set_state("running", "Schreibe in InfluxDB...")
-                    wapi.write(
-                        bucket=cfg["bucket"],
-                        org=cfg["org"],
-                        record=batch,
-                        write_precision=WritePrecision.NS,
-                    )
-                    applied += len(batch)
-                    ts_last = _raw_ts_ns(batch[-1])
-                    if ts_last is not None:
-                        last_written_time_ms = int(ts_last // 1_000_000)
-                    batch = []
-                    set_progress(
-                        read_bytes=read_bytes,
-                        applied=applied,
-                        skipped=skipped,
-                        current_time_ms=current_time_ms,
-                        last_written_time_ms=last_written_time_ms,
-                    )
+            if child_items:
+                set_state("running", "Schreibe via Change-Service...")
+                flush_child()
+                set_progress(
+                    read_bytes=read_bytes,
+                    applied=applied,
+                    skipped=skipped,
+                    current_time_ms=current_time_ms,
+                    last_written_time_ms=last_written_time_ms,
+                )
+
+        _cb_patch_block_meta(parent_id, {"child_blocks": list(child_ids), "applied": applied, "skipped": skipped})
 
         with RESTORE_COPY_LOCK:
             if job_id in RESTORE_COPY_JOBS:
@@ -15300,6 +15954,7 @@ def _combine_job_public(job: dict[str, Any]) -> dict[str, Any]:
         "message": job.get("message"),
         "started_at": job.get("started_at"),
         "elapsed": _job_elapsed_hms(job),
+        "change_block_id": job.get("change_block_id"),
         "read": int(job.get("read") or 0),
         "written": int(job.get("written") or 0),
         "skipped": int(job.get("skipped") or 0),
@@ -15435,27 +16090,135 @@ from(bucket: "{cfg["bucket"]}")
         return
 
     # Optional: delete target range first (destructive).
+    parent_id = uuid.uuid4().hex
+    undo_supported = bool(delete_target_first)
+    parent = {
+        "schema_version": CHANGE_BLOCK_SCHEMA_VERSION,
+        "block_id": parent_id,
+        "created_at": _utc_now_iso_ms(),
+        "source": {"user_id": None, "ip": None, "ua": None, "trigger_page": "combine", "trigger_source": "combine_job", "trigger_action": "copy", "trigger_button": None},
+        "operation_source": "combine_copy",
+        "reason": "combine_copy",
+        "status": "created",
+        "undo_status": "not_run",
+        "repeat_status": "not_run",
+        "affected_count": 0,
+        "payload_mode": "inline",
+        "payload_inline": [],
+        "series_summary": {"measurement": tgt_m, "field": tgt_f, "entity_id": tgt_eid, "friendly_name": tgt_fn},
+        "meta": {
+            "child_blocks": [],
+            "undo_supported": undo_supported,
+            "backup_id": backup_id,
+            "backup_before": bool(backup_before),
+            "delete_target_first": bool(delete_target_first),
+            "source": {"measurement": src_m, "field": src_f, "entity_id": src_eid, "friendly_name": src_fn},
+            "target": {"measurement": tgt_m, "field": tgt_f, "entity_id": tgt_eid, "friendly_name": tgt_fn},
+            "range": {"start": _dt_to_rfc3339_utc_full(start_dt), "stop": _dt_to_rfc3339_utc_full(stop_dt)},
+        },
+    }
+    save_change_block(parent, items=[])
+    try:
+        set_progress(change_block_id=parent_id)
+    except Exception:
+        pass
+
+    child_ids: list[str] = []
+    chunk_idx = 0
+
+    def exec_child(items: list[dict[str, Any]], *, kind: str) -> int:
+        nonlocal chunk_idx
+        if not items:
+            return 0
+        cid = uuid.uuid4().hex
+        cb = {
+            "schema_version": CHANGE_BLOCK_SCHEMA_VERSION,
+            "block_id": cid,
+            "created_at": _utc_now_iso_ms(),
+            "source": parent["source"],
+            "operation_source": "combine_copy",
+            "reason": f"combine_copy:{kind}#{chunk_idx}",
+            "status": "created",
+            "undo_status": "not_run",
+            "repeat_status": "not_run",
+            "affected_count": len(items),
+            "series_summary": parent.get("series_summary") or {},
+            "meta": {"parent_block_id": parent_id, "chunk_index": chunk_idx, "kind": kind, "undo_supported": undo_supported},
+        }
+        save_change_block(cb, items=items)
+        out = execute_change_block(cid)
+        if not out.get("ok"):
+            raise RuntimeError("combine conflict")
+        child_ids.append(cid)
+        chunk_idx += 1
+        _cb_patch_block_meta(parent_id, {"child_blocks": list(child_ids)})
+        try:
+            return int(out.get("applied") or 0)
+        except Exception:
+            return 0
+
+    max_items = 5000
+
+    # Optional: delete target range first (destructive) via exact deletes.
     try:
         if delete_target_first:
             set_state("running", "Loesche Zielbereich...")
-            predicate = f"_measurement={_flux_str(tgt_m)} AND _field={_flux_str(tgt_f)}"
-            if tgt_eid:
-                predicate += f" AND entity_id={_flux_str(tgt_eid)}"
-            if tgt_fn:
-                predicate += f" AND friendly_name={_flux_str(tgt_fn)}"
+            extra_t = flux_tag_filter(tgt_eid, tgt_fn)
+            q_del = f'''
+from(bucket: "{cfg["bucket"]}")
+  |> range(start: time(v: "{_dt_to_rfc3339_utc_full(start_dt)}"), stop: time(v: "{_dt_to_rfc3339_utc_full(stop_dt)}"))
+  |> filter(fn: (r) => r._measurement == {_flux_str(tgt_m)} and r._field == {_flux_str(tgt_f)}{extra_t})
+  |> group()
+  |> sort(columns: ["_time"])
+'''
+            del_items: list[dict[str, Any]] = []
             with v2_client(cfg) as c:
-                c.delete_api().delete(start=start_dt, stop=stop_dt, predicate=predicate, bucket=cfg["bucket"], org=cfg["org"])
+                qapi = c.query_api()
+                for rec in qapi.query_stream(q_del, org=cfg["org"]):
+                    if is_cancelled():
+                        set_state("cancelled", "Abgebrochen")
+                        return
+                    t = rec.get_time()
+                    v = rec.get_value()
+                    if not isinstance(t, datetime):
+                        continue
+                    tags: dict[str, str] = {}
+                    for k, tv in (rec.values or {}).items():
+                        if k in ("result", "table"):
+                            continue
+                        if str(k).startswith("_"):
+                            continue
+                        if tv is None:
+                            continue
+                        tags[str(k)] = str(tv)
+                    ts = _dt_to_rfc3339_utc_full(t.astimezone(timezone.utc))
+                    pid = {"bucket": str(cfg.get("bucket") or ""), "org": str(cfg.get("org") or ""), "measurement": tgt_m, "field": tgt_f, "timestamp": ts, "tag_set": tags}
+                    old_row = {"_time": ts, "_measurement": tgt_m, "_field": tgt_f, "_value": v, **tags}
+                    del_items.append({
+                        "schema_version": CHANGE_ITEM_SCHEMA_VERSION,
+                        "item_id": uuid.uuid4().hex,
+                        "block_id": "",
+                        "op": "delete",
+                        "point_identity": pid,
+                        "old_point": old_row,
+                        "new_point": None,
+                        "conflict_policy": "blind",
+                    })
+                    if len(del_items) >= max_items:
+                        exec_child(del_items, kind="delete")
+                        del_items = []
+            exec_child(del_items, kind="delete")
     except Exception as e:
         set_error(f"delete_target_first failed: {_short_influx_error(e)}")
         set_state("error", "Fehler")
         return
 
+    # Copy as ChangeBlocks writes.
     try:
         with v2_client(cfg) as c:
             qapi = c.query_api()
-            wapi = c.write_api(write_options=SYNCHRONOUS)
-
-            batch: list[Point] = []
+            op_write = "create" if delete_target_first else "update"
+            wr_items: list[dict[str, Any]] = []
             for rec in qapi.query_stream(q, org=cfg["org"]):
                 if is_cancelled():
                     set_state("cancelled", "Abgebrochen")
@@ -15467,38 +16230,42 @@ from(bucket: "{cfg["bucket"]}")
                     if not isinstance(ts, datetime):
                         skipped += 1
                         continue
-                    if isinstance(val, bool) or not isinstance(val, (int, float)):
+                    if val is None:
                         skipped += 1
                         continue
 
-                    p = Point(tgt_m)
-
-                    # Preserve tags from source row (best-effort), then override entity_id/friendly_name.
-                    try:
-                        for k, tv in (rec.values or {}).items():
-                            if k in ("result", "table"):
-                                continue
-                            if str(k).startswith("_"):
-                                continue
-                            if tv is None:
-                                continue
-                            # keep as tag
-                            p = p.tag(str(k), str(tv))
-                    except Exception:
-                        pass
-
+                    tags: dict[str, str] = {}
+                    for k, tv in (rec.values or {}).items():
+                        if k in ("result", "table"):
+                            continue
+                        if str(k).startswith("_"):
+                            continue
+                        if tv is None:
+                            continue
+                        tags[str(k)] = str(tv)
                     if tgt_eid:
-                        p = p.tag("entity_id", tgt_eid)
+                        tags["entity_id"] = str(tgt_eid)
                     if tgt_fn:
-                        p = p.tag("friendly_name", tgt_fn)
+                        tags["friendly_name"] = str(tgt_fn)
 
-                    p = p.field(tgt_f, val).time(ts, WritePrecision.NS)
-                    batch.append(p)
-                    if len(batch) >= 2000:
-                        wapi.write(bucket=cfg["bucket"], org=cfg["org"], record=batch)
-                        written += len(batch)
-                        last_written_time_ms = int(ts.timestamp() * 1000)
-                        batch = []
+                    ts_iso = _dt_to_rfc3339_utc_full(ts.astimezone(timezone.utc))
+                    row = {"_time": ts_iso, "_measurement": tgt_m, "_field": tgt_f, "_value": val, **tags}
+                    pid = {"bucket": str(cfg.get("bucket") or ""), "org": str(cfg.get("org") or ""), "measurement": tgt_m, "field": tgt_f, "timestamp": ts_iso, "tag_set": tags}
+                    wr_items.append({
+                        "schema_version": CHANGE_ITEM_SCHEMA_VERSION,
+                        "item_id": uuid.uuid4().hex,
+                        "block_id": "",
+                        "op": op_write,
+                        "point_identity": pid,
+                        "old_point": None,
+                        "new_point": row,
+                        "conflict_policy": "blind",
+                    })
+                    last_written_time_ms = int(ts.timestamp() * 1000)
+                    if len(wr_items) >= max_items:
+                        w = exec_child(wr_items, kind="write")
+                        written += w
+                        wr_items = []
                 except Exception:
                     skipped += 1
                     continue
@@ -15506,19 +16273,17 @@ from(bucket: "{cfg["bucket"]}")
                 if read % 1000 == 0:
                     cur_ms = None
                     try:
-                        if isinstance(ts, datetime):
-                            cur_ms = int(ts.timestamp() * 1000)
+                        cur_ms = int(ts.timestamp() * 1000) if isinstance(ts, datetime) else None
                     except Exception:
                         cur_ms = None
                     set_progress(read=read, written=written, skipped=skipped, current_time_ms=cur_ms, last_written_time_ms=last_written_time_ms)
                     set_state("running", f"Kopiere... {read}")
 
-            if batch:
-                try:
-                    wapi.write(bucket=cfg["bucket"], org=cfg["org"], record=batch)
-                    written += len(batch)
-                except Exception:
-                    pass
+            if wr_items:
+                w = exec_child(wr_items, kind="write")
+                written += w
+
+        _cb_patch_block_meta(parent_id, {"child_blocks": list(child_ids), "read": read, "written": written, "skipped": skipped})
 
         set_progress(read=read, written=written, skipped=skipped, last_written_time_ms=last_written_time_ms)
 
@@ -15543,9 +16308,23 @@ from(bucket: "{cfg["bucket"]}")
                 "read": read,
                 "written": written,
                 "skipped": skipped,
+                "change_block_id": parent_id,
                 "ip": _req_ip(),
                 "ua": _req_ua(),
             })
+        except Exception:
+            pass
+
+        try:
+            _undo_mgr(cfg).register_action(
+                action_type="update",
+                bucket=str(cfg.get("bucket") or ""),
+                measurement=tgt_m,
+                group_label=f"combine_copy ({written})",
+                before_rows=[],
+                after_rows=[],
+                meta={"change_block_id": parent_id, "undo_supported": undo_supported, "backup_id": backup_id},
+            )
         except Exception:
             pass
 
@@ -22820,18 +23599,19 @@ def api_raw_overwrite():
     except Exception as e:
         return jsonify({"ok": False, "error": f"invalid time: {e}"}), 400
     try:
+        block_id = ""
+        undo_tags: dict[str, str] = {}
         if int(cfg.get("influx_version", 2)) == 2:
             extra = flux_tag_filter(entity_id, friendly_name)
             start = _dt_to_rfc3339_utc(ts - timedelta(seconds=1))
             stop = _dt_to_rfc3339_utc(ts + timedelta(seconds=1))
             q = f'''
-from(bucket: "{cfg['bucket']}")
-  |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
-  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
-  |> keep(columns: ["_time","_value"])
-  |> sort(columns: ["_time"], desc: false)
-  |> limit(n: 5)
-'''
+ from(bucket: "{cfg['bucket']}")
+   |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
+   |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
+   |> sort(columns: ["_time"], desc: false)
+   |> limit(n: 5)
+ '''
             with v2_client(cfg) as c:
                 tables = c.query_api().query(q, org=cfg["org"])
                 existing = []
@@ -22871,19 +23651,101 @@ from(bucket: "{cfg['bucket']}")
                 except Exception:
                     pass
 
-                wapi = c.write_api(write_options=SYNCHRONOUS)
+                if best_rec is None:
+                    return jsonify({"ok": False, "error": "Zeitpunkt nicht in DB gefunden"}), 404
+
+                dt_eff = best_rec.get_time() if isinstance(best_rec.get_time(), datetime) else ts
+                dt_eff = dt_eff.astimezone(timezone.utc) if isinstance(dt_eff, datetime) else ts.astimezone(timezone.utc)
+                time_eff = _dt_to_rfc3339_utc_full(dt_eff)
+
                 try:
-                    if best_rec is not None and old_value is None:
+                    if old_value is None:
                         old_value = best_rec.get_value()
                 except Exception:
                     pass
-                point = Point(measurement).field(field, new_value).time(ts)
-                if entity_id:
-                    point = point.tag("entity_id", entity_id)
-                if friendly_name:
-                    point = point.tag("friendly_name", friendly_name)
-                wapi.write(cfg["bucket"], cfg["org"], point)
-                wapi.close()
+
+                try:
+                    old_f = float(old_value) if old_value is not None else None
+                except Exception:
+                    old_f = None
+                if old_f is None:
+                    return jsonify({"ok": False, "error": "old_value missing/invalid"}), 400
+
+                # Preserve full tag set from the record.
+                tags: dict[str, str] = {}
+                for k, v in (getattr(best_rec, "values", {}) or {}).items():
+                    if k in ("result", "table"):
+                        continue
+                    if str(k).startswith("_"):
+                        continue
+                    if v is None:
+                        continue
+                    tags[str(k)] = str(v)
+
+                undo_tags = dict(tags)
+
+                block_id = uuid.uuid4().hex
+                pid = {
+                    "bucket": str(cfg.get("bucket") or ""),
+                    "org": str(cfg.get("org") or ""),
+                    "measurement": measurement,
+                    "field": field,
+                    "timestamp": time_eff,
+                    "tag_set": tags,
+                }
+                before_row = {"_time": time_eff, "_measurement": measurement, "_field": field, "_value": old_f, **tags}
+                after_row = {"_time": time_eff, "_measurement": measurement, "_field": field, "_value": float(new_value), **tags}
+
+                cb = {
+                    "schema_version": CHANGE_BLOCK_SCHEMA_VERSION,
+                    "block_id": block_id,
+                    "created_at": _utc_now_iso_ms(),
+                    "source": {
+                        "user_id": None,
+                        "ip": _req_ip(),
+                        "ua": _req_ua(),
+                        "trigger_page": "raw",
+                        "trigger_source": "raw_overwrite",
+                        "trigger_action": mode,
+                        "trigger_button": None,
+                    },
+                    "operation_source": "raw_overwrite",
+                    "reason": (f"{mode} [FORCED]" if force else (mode or "manual")),
+                    "status": "created",
+                    "undo_status": "not_run",
+                    "repeat_status": "not_run",
+                    "affected_count": 1,
+                    "series_summary": {
+                        "measurement": measurement,
+                        "field": field,
+                        "entity_id": entity_id,
+                        "friendly_name": friendly_name,
+                    },
+                    "meta": {"mode": mode, "forced": bool(force)},
+                }
+
+                save_change_block(
+                    cb,
+                    items=[
+                        {
+                            "schema_version": CHANGE_ITEM_SCHEMA_VERSION,
+                            "item_id": uuid.uuid4().hex,
+                            "block_id": block_id,
+                            "op": "update",
+                            "point_identity": pid,
+                            "old_point": before_row,
+                            "new_point": after_row,
+                            "conflict_policy": "strict",
+                        }
+                    ],
+                )
+                out = execute_change_block(block_id)
+                if not out.get("ok"):
+                    return jsonify({"ok": False, "error": "conflict", "change_block_id": block_id, "validation": out.get("validation")}), 409
+
+                # Use normalized values for history/undo
+                time_str = time_eff
+                old_value = old_f
         else:
             start = _dt_to_rfc3339_utc(ts - timedelta(seconds=1))
             stop = _dt_to_rfc3339_utc(ts + timedelta(seconds=1))
@@ -22935,6 +23797,8 @@ from(bucket: "{cfg['bucket']}")
                     c.close()
                 except Exception:
                     pass
+
+            undo_tags = dict(tags)
         _history_append({
             "kind": "change",
             "series": {
@@ -22949,19 +23813,19 @@ from(bucket: "{cfg['bucket']}")
             "old_value": old_value,
             "new_value": new_value,
             "reason": (f"{mode} [FORCED]" if force else (mode or "manual")),
+            "change_block_id": (block_id if int(cfg.get("influx_version", 2)) == 2 else ""),
+            "change_block_kind": f"raw_overwrite:{mode}",
+            "change_block_size": 1,
+            "change_block_start": time_str,
+            "change_block_end": time_str,
             "ip": _req_ip(),
             "ua": _req_ua(),
         })
 
         # Register Undo/Repeat entry (best-effort).
         try:
-            tags = {}
-            if entity_id:
-                tags["entity_id"] = entity_id
-            if friendly_name:
-                tags["friendly_name"] = friendly_name
-            before_row = {"_time": time_str, "_measurement": measurement, "_field": field, "_value": old_value, **tags}
-            after_row = {"_time": time_str, "_measurement": measurement, "_field": field, "_value": new_value, **tags}
+            before_row = {"_time": time_str, "_measurement": measurement, "_field": field, "_value": old_value, **(undo_tags or {})}
+            after_row = {"_time": time_str, "_measurement": measurement, "_field": field, "_value": new_value, **(undo_tags or {})}
             _undo_mgr(cfg).register_action(
                 action_type="update",
                 bucket=str(cfg.get("bucket") or ""),
@@ -22969,7 +23833,13 @@ from(bucket: "{cfg['bucket']}")
                 group_label=f"raw_overwrite:{mode}",
                 before_rows=[before_row],
                 after_rows=[after_row],
-                meta={"mode": mode, "entity_id": entity_id, "friendly_name": friendly_name, "field": field},
+                meta={
+                    "mode": mode,
+                    "entity_id": entity_id,
+                    "friendly_name": friendly_name,
+                    "field": field,
+                    **({"change_block_id": block_id} if int(cfg.get("influx_version", 2)) == 2 else {}),
+                },
             )
         except Exception as e:
             LOG.warning("raw_overwrite undo registration failed: %s", str(e) or e.__class__.__name__)
@@ -28790,10 +29660,12 @@ def apply_edits():
             return -1
 
     try:
+        planned: list[dict[str, Any]] = []
+        before_rows: list[dict[str, Any]] = []
+        after_rows: list[dict[str, Any]] = []
+
         with v2_client(cfg) as c:
             qapi = c.query_api()
-            wapi = c.write_api(write_options=SYNCHRONOUS)
-            applied = 0
 
             for e in edits:
                 if not isinstance(e, dict):
@@ -28824,13 +29696,13 @@ def apply_edits():
                 start = _dt_to_rfc3339_utc_full(dt - timedelta(seconds=2))
                 stop = _dt_to_rfc3339_utc_full(dt + timedelta(seconds=2))
                 q = f'''
-from(bucket: "{cfg["bucket"]}")
-  |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
-  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
-  |> group()
-  |> sort(columns: ["_time"])
-  |> limit(n: 50)
-'''
+ from(bucket: "{cfg["bucket"]}")
+   |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
+   |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
+   |> group()
+   |> sort(columns: ["_time"])
+   |> limit(n: 50)
+ '''
                 log_query("apply_edits find_orig (flux)", q)
                 tables = qapi.query(q, org=cfg["org"])
 
@@ -28889,30 +29761,163 @@ from(bucket: "{cfg["bucket"]}")
                     # Influx tags are strings; coerce here.
                     tags[str(k)] = str(v)
 
-                p = Point(measurement)
-                for tk, tv in tags.items():
-                    p = p.tag(tk, tv)
-                p = p.field(field, new_val).time(dt, WritePrecision.NS)
-                log_details(
-                    "apply_edits write point time=%s orig=%s new=%s tags=%s",
-                    _dt_to_rfc3339_utc_full(dt),
-                    orig_val,
-                    new_val,
-                    ",".join(sorted(tags.keys())),
-                )
-                wapi.write(bucket=cfg["bucket"], org=cfg["org"], record=p)
-                applied += 1
+                # Use the actual record timestamp to ensure we edit the existing point.
+                ts_eff = best_rec.get_time() if isinstance(best_rec.get_time(), datetime) else dt
+                ts_eff = ts_eff.astimezone(timezone.utc)
+                time_eff = _dt_to_rfc3339_utc_full(ts_eff)
 
-            try:
-                if applied > 0:
-                    _dash_cache_mark_dirty_series(measurement, field, entity_id, friendly_name, "apply_edits")
-                    _stats_cache_mark_dirty_series(measurement, field, entity_id, friendly_name, "apply_edits")
-                    patch_job_id = _analysis_cache_mark_dirty_series(cfg, measurement, field, entity_id, friendly_name, "apply_edits")
+                # Preserve numeric field type (int vs float)
+                if isinstance(orig_val, int) and not isinstance(orig_val, bool):
+                    old_typed: int | float = int(orig_val)
+                    new_typed: int | float = int(new_val)
                 else:
-                    patch_job_id = None
-            except Exception:
+                    old_typed = float(orig_val)
+                    new_typed = float(new_val)
+
+                before_row = {"_time": time_eff, "_measurement": measurement, "_field": field, "_value": old_typed, **tags}
+                after_row = {"_time": time_eff, "_measurement": measurement, "_field": field, "_value": new_typed, **tags}
+                planned.append({
+                    "time": time_eff,
+                    "tags": tags,
+                    "old_value": old_typed,
+                    "new_value": new_typed,
+                    "before_row": before_row,
+                    "after_row": after_row,
+                    "reason": "apply_edits",
+                })
+                before_rows.append(before_row)
+                after_rows.append(after_row)
+
+        if not planned:
+            return jsonify({"ok": True, "message": "Applied edits: 0", "applied": 0, "patch_job_id": None})
+
+        block_id = uuid.uuid4().hex
+        change_items: list[dict[str, Any]] = []
+        for it in planned:
+            pid = {
+                "bucket": str(cfg.get("bucket") or ""),
+                "org": str(cfg.get("org") or ""),
+                "measurement": measurement,
+                "field": field,
+                "timestamp": str(it.get("time") or ""),
+                "tag_set": it.get("tags") if isinstance(it.get("tags"), dict) else {},
+            }
+            change_items.append({
+                "schema_version": CHANGE_ITEM_SCHEMA_VERSION,
+                "item_id": uuid.uuid4().hex,
+                "block_id": block_id,
+                "op": "update",
+                "point_identity": pid,
+                "old_point": it.get("before_row"),
+                "new_point": it.get("after_row"),
+                "conflict_policy": "strict",
+            })
+
+        # Compute block range for UI.
+        try:
+            times = [str(it.get("time") or "") for it in planned if str(it.get("time") or "").strip()]
+            block_start = min(times) if times else ""
+            block_end = max(times) if times else ""
+        except Exception:
+            block_start = ""
+            block_end = ""
+
+        cb = {
+            "schema_version": CHANGE_BLOCK_SCHEMA_VERSION,
+            "block_id": block_id,
+            "created_at": _utc_now_iso_ms(),
+            "source": {
+                "user_id": None,
+                "ip": _req_ip(),
+                "ua": _req_ua(),
+                "trigger_page": "dashboard",
+                "trigger_source": "apply_edits",
+                "trigger_action": "apply_edits",
+                "trigger_button": None,
+            },
+            "operation_source": "apply_edits",
+            "reason": "apply_edits",
+            "status": "created",
+            "undo_status": "not_run",
+            "repeat_status": "not_run",
+            "affected_count": len(change_items),
+            "series_summary": {
+                "measurement": measurement,
+                "field": field,
+                "entity_id": entity_id,
+                "friendly_name": friendly_name,
+            },
+        }
+
+        save_change_block(cb, items=change_items)
+        out = execute_change_block(block_id)
+        if not out.get("ok"):
+            return jsonify({"ok": False, "error": "conflict", "change_block_id": block_id, "validation": out.get("validation")}), 409
+        applied = int(out.get("applied") or 0)
+
+        # Audit history
+        try:
+            for it in planned:
+                _history_append({
+                    "kind": "change",
+                    "series": {
+                        "measurement": measurement,
+                        "field": field,
+                        "entity_id": entity_id,
+                        "friendly_name": friendly_name,
+                        "tags": it.get("tags") or {},
+                    },
+                    "time": str(it.get("time") or ""),
+                    "action": "overwrite",
+                    "old_value": it.get("old_value"),
+                    "new_value": it.get("new_value"),
+                    "reason": "apply_edits",
+                    "change_block_id": block_id,
+                    "change_block_kind": "apply_edits",
+                    "change_block_size": len(planned),
+                    "change_block_start": block_start,
+                    "change_block_end": block_end,
+                    "trigger_page": "dashboard",
+                    "trigger_source": "apply_edits",
+                    "trigger_action": "apply_edits",
+                    "trigger_button": None,
+                    "ip": _req_ip(),
+                    "ua": _req_ua(),
+                })
+        except Exception as e:
+            LOG.warning("apply_edits history append failed: %s", str(e) or e.__class__.__name__)
+
+        # Undo/Repeat registration (best-effort)
+        try:
+            _undo_mgr(cfg).register_action(
+                action_type="update",
+                bucket=str(cfg.get("bucket") or ""),
+                measurement=measurement,
+                group_label=f"apply_edits ({applied})",
+                before_rows=[r for r in before_rows if isinstance(r, dict)],
+                after_rows=[r for r in after_rows if isinstance(r, dict)],
+                meta={
+                    "field": field,
+                    "entity_id": entity_id,
+                    "friendly_name": friendly_name,
+                    "change_block_id": block_id,
+                    "change_block_kind": "apply_edits",
+                    "change_block_size": len(planned),
+                },
+            )
+        except Exception as e:
+            LOG.warning("apply_edits undo registration failed: %s", str(e) or e.__class__.__name__)
+
+        try:
+            if applied > 0:
+                _dash_cache_mark_dirty_series(measurement, field, entity_id, friendly_name, "apply_edits")
+                _stats_cache_mark_dirty_series(measurement, field, entity_id, friendly_name, "apply_edits")
+                patch_job_id = _analysis_cache_mark_dirty_series(cfg, measurement, field, entity_id, friendly_name, "apply_edits")
+            else:
                 patch_job_id = None
-            return jsonify({"ok": True, "message": f"Applied edits: {applied}", "applied": applied, "patch_job_id": patch_job_id})
+        except Exception:
+            patch_job_id = None
+        return jsonify({"ok": True, "message": f"Applied edits: {applied}", "applied": applied, "patch_job_id": patch_job_id, "change_block_id": block_id})
     except Exception as ex:
         return jsonify({"ok": False, "error": _short_influx_error(ex)}), 500
 
@@ -28970,23 +29975,10 @@ def apply_changes():
 
     extra = flux_tag_filter(entity_id, friendly_name)
 
-    def _pred_escape(v: str) -> str:
-        return (v or "").replace("\\", "\\\\").replace('"', '\\"')
-
-    def _predicate(measurement_s: str, field_s: str, tags: dict[str, str]) -> str:
-        parts = [f'_measurement="{_pred_escape(measurement_s)}"', f'_field="{_pred_escape(field_s)}"']
-        for k, v in (tags or {}).items():
-            if not k:
-                continue
-            parts.append(f'{k}="{_pred_escape(v)}"')
-        return " AND ".join(parts)
-
     planned: list[dict[str, Any]] = []
 
     with v2_client(cfg) as c:
         qapi = c.query_api()
-        wapi = c.write_api(write_options=SYNCHRONOUS)
-        dapi = c.delete_api()
 
         # Preflight everything first to avoid partial apply.
         for ch in changes:
@@ -29142,69 +30134,106 @@ def apply_changes():
                 "reason": reason,
             })
 
-        # Apply with best-effort rollback on failures.
-        applied_rows: list[dict[str, Any]] = []
-        try:
-            for it in planned:
-                action = str(it.get("action") or "")
-                dt = it.get("dt")
-                tags = it.get("tags") or {}
-                if action == "overwrite":
-                    new_val = it.get("new_value")
-                    p = Point(measurement)
-                    for tk, tv in tags.items():
-                        p = p.tag(tk, tv)
-                    p = p.field(field, new_val).time(dt, WritePrecision.NS)
-                    wapi.write(bucket=cfg["bucket"], org=cfg["org"], record=p)
-                elif action == "delete":
-                    s = _dt_to_rfc3339_utc_ms(dt - timedelta(milliseconds=2))
-                    e = _dt_to_rfc3339_utc_ms(dt + timedelta(milliseconds=2))
-                    pred = _predicate(measurement, field, tags)
-                    dapi.delete(start=s, stop=e, predicate=pred, bucket=cfg["bucket"], org=cfg["org"])
-                else:
-                    raise RuntimeError("invalid action")
-                applied_rows.append(it)
-        except Exception as e:
-            # Best-effort rollback of already applied changes.
-            try:
-                for it in reversed(applied_rows):
-                    action = str(it.get("action") or "")
-                    dt = it.get("dt")
-                    tags = it.get("tags") or {}
-                    if action == "overwrite":
-                        old_val = it.get("old_value")
-                        p = Point(measurement)
-                        for tk, tv in tags.items():
-                            p = p.tag(tk, tv)
-                        p = p.field(field, old_val).time(dt, WritePrecision.NS)
-                        wapi.write(bucket=cfg["bucket"], org=cfg["org"], record=p)
-                    elif action == "delete":
-                        old_val = it.get("old_value")
-                        p = Point(measurement)
-                        for tk, tv in tags.items():
-                            p = p.tag(tk, tv)
-                        p = p.field(field, old_val).time(dt, WritePrecision.NS)
-                        wapi.write(bucket=cfg["bucket"], org=cfg["org"], record=p)
-            except Exception:
-                pass
-            return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 500
+    # Change-Service: persist a ChangeBlock and execute it via the engine.
+    block_id = uuid.uuid4().hex
+    block_kind = str(trigger_button or trigger_action or trigger_source or "").strip()
+    block_reason = ""
+    for it in planned:
+        r = str(it.get("reason") or "").strip()
+        if r:
+            block_reason = r
+            break
+    if not block_reason:
+        block_reason = str(source_action or trigger_action or trigger_source or "apply_changes").strip()
 
-    applied = len(planned)
+    def _op_source() -> str:
+        if (trigger_source or "") == "raw":
+            kinds = {str(it.get("action") or "").strip().lower() for it in planned}
+            if kinds == {"delete"}:
+                return "raw_delete"
+            return "raw_edit"
+        return str(trigger_action or trigger_source or "api").strip() or "api"
+
+    change_items: list[dict[str, Any]] = []
+    for it in planned:
+        act = str(it.get("action") or "").strip().lower()
+        t_raw = str(it.get("time") or "").strip()
+        tags = it.get("tags") if isinstance(it.get("tags"), dict) else {}
+        before_row = it.get("before_row") if isinstance(it.get("before_row"), dict) else None
+        after_row = it.get("after_row") if isinstance(it.get("after_row"), dict) else None
+        if act not in ("overwrite", "delete"):
+            continue
+        op = "update" if act == "overwrite" else "delete"
+        pid = {
+            "bucket": str(cfg.get("bucket") or ""),
+            "org": str(cfg.get("org") or ""),
+            "measurement": measurement,
+            "field": field,
+            "timestamp": t_raw,
+            "tag_set": tags,
+        }
+        change_items.append({
+            "schema_version": CHANGE_ITEM_SCHEMA_VERSION,
+            "item_id": uuid.uuid4().hex,
+            "block_id": block_id,
+            "op": op,
+            "point_identity": pid,
+            "old_point": before_row,
+            "new_point": after_row if op == "update" else None,
+            "conflict_policy": "strict",
+        })
+
+    cb = {
+        "schema_version": CHANGE_BLOCK_SCHEMA_VERSION,
+        "block_id": block_id,
+        "created_at": _utc_now_iso_ms(),
+        "source": {
+            "user_id": None,
+            "ip": _req_ip(),
+            "ua": _req_ua(),
+            "trigger_page": trigger_page,
+            "trigger_source": trigger_source,
+            "trigger_action": trigger_action,
+            "trigger_button": trigger_button,
+        },
+        "operation_source": _op_source(),
+        "reason": block_reason,
+        "status": "created",
+        "undo_status": "not_run",
+        "repeat_status": "not_run",
+        "affected_count": len(change_items),
+        "series_summary": {
+            "measurement": measurement,
+            "field": field,
+            "entity_id": entity_id,
+            "friendly_name": friendly_name,
+        },
+        "meta": {
+            "detected_outlier_type": detected_outlier_type,
+            "strategy_id": strategy_id,
+            "strategy_description": strategy_description,
+            "source_action": source_action,
+            "block_kind": block_kind,
+        },
+    }
+
+    try:
+        save_change_block(cb, items=change_items)
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 500
+
+    out = execute_change_block(block_id)
+    if not out.get("ok"):
+        return jsonify({"ok": False, "error": "conflict", "change_block_id": block_id, "validation": out.get("validation")}), 409
+
+    applied = int(out.get("applied") or 0)
 
     # Append audit history entries + undo action only after successful full apply.
     try:
         before_rows = [it.get("before_row") for it in planned if isinstance(it.get("before_row"), dict)]
         after_rows = [it.get("after_row") for it in planned if isinstance(it.get("after_row"), dict)]
 
-        smart_btns = {"raw_linear_range", "raw_copy_first_range"}
-        is_smart_block = (
-            (trigger_page or "") == "dashboard"
-            and (trigger_source or "") == "raw"
-            and (trigger_action or "") == "smart_correction"
-            and (trigger_button or "") in smart_btns
-        )
-        block_id = uuid.uuid4().hex if (is_smart_block or applied > 1) else ""
-        block_kind = (trigger_button or trigger_action or trigger_source or "") if block_id else ""
+        # History markers keep existing UI behavior; all changes now always have a ChangeBlock.
         try:
             dts = [it.get("dt") for it in planned if isinstance(it.get("dt"), datetime)]
             if dts:
@@ -29236,17 +30265,11 @@ def apply_changes():
                 "strategy_id": strategy_id or "",
                 "strategy_description": strategy_description or "",
                 "source_action": source_action or "",
-                **(
-                    {
-                        "change_block_id": block_id,
-                        "change_block_kind": block_kind,
-                        "change_block_size": applied,
-                        "change_block_start": block_start,
-                        "change_block_end": block_end,
-                    }
-                    if block_id
-                    else {}
-                ),
+                "change_block_id": block_id,
+                "change_block_kind": block_kind,
+                "change_block_size": len(planned),
+                "change_block_start": block_start,
+                "change_block_end": block_end,
                 "trigger_page": trigger_page,
                 "trigger_source": trigger_source,
                 "trigger_action": trigger_action,
@@ -29279,6 +30302,9 @@ def apply_changes():
                     "field": field,
                     "entity_id": entity_id,
                     "friendly_name": friendly_name,
+                    "change_block_id": block_id,
+                    "change_block_kind": block_kind,
+                    "change_block_size": len(planned),
                 },
             )
         except Exception as e:
@@ -29502,7 +30528,7 @@ def normalize_change_item(item: dict[str, Any]) -> dict[str, Any]:
     new_p = _cb_norm_point(item.get("new_point") if "new_point" in item else None)
     exp_p = _cb_norm_point(item.get("expected_current_point") if "expected_current_point" in item else None)
     pol = str(item.get("conflict_policy") or "strict").strip().lower() or "strict"
-    if pol not in ("strict",):
+    if pol not in ("strict", "blind"):
         pol = "strict"
 
     out = {
@@ -29543,23 +30569,29 @@ def validate_change_item_schema(item: dict[str, Any]) -> None:
 
     old_p = item.get("old_point")
     new_p = item.get("new_point")
+    pol = str(item.get("conflict_policy") or "").strip().lower()
+    if not pol:
+        raise ValueError("conflict_policy required")
+    if pol not in ("strict", "blind"):
+        raise ValueError("conflict_policy invalid")
+
     if op == "create":
         if old_p is not None:
             raise ValueError("create requires old_point=null")
         if new_p is None:
             raise ValueError("create requires new_point")
     if op == "update":
-        if old_p is None or new_p is None:
-            raise ValueError("update requires old_point and new_point")
+        if pol == "strict":
+            if old_p is None or new_p is None:
+                raise ValueError("update requires old_point and new_point")
+        else:
+            if new_p is None:
+                raise ValueError("update requires new_point")
     if op == "delete":
-        if old_p is None:
+        if pol == "strict" and old_p is None:
             raise ValueError("delete requires old_point")
         if new_p is not None:
             raise ValueError("delete requires new_point=null")
-
-    pol = str(item.get("conflict_policy") or "").strip().lower()
-    if not pol:
-        raise ValueError("conflict_policy required")
 
 
 def normalize_change_block(block: dict[str, Any]) -> dict[str, Any]:
@@ -29904,20 +30936,28 @@ def api_change_block_get():
     return jsonify({"ok": True, "block": b})
 
 
-def _cb_point_value(p: dict[str, Any] | None) -> float | int | None:
+def _cb_point_value(p: dict[str, Any] | None) -> int | float | bool | str | None:
     if not isinstance(p, dict):
         return None
     v = p.get("_value")
     if v is None:
         return None
-    if isinstance(v, bool) or not isinstance(v, (int, float)):
-        return None
-    return v
+    if isinstance(v, (int, float)) and not isinstance(v, bool):
+        return v
+    if isinstance(v, bool):
+        return bool(v)
+    if isinstance(v, str):
+        return v
+    if isinstance(v, (bytes, bytearray)):
+        return bytes(v).decode("utf-8", errors="replace")
+    return None
 
 
 def _cb_values_equal(a: Any, b: Any) -> bool:
     if a is None or b is None:
         return a is None and b is None
+    if isinstance(a, bool) and isinstance(b, bool):
+        return bool(a) == bool(b)
     if isinstance(a, bool) or isinstance(b, bool):
         return False
     if isinstance(a, (int, float)) and isinstance(b, (int, float)):
@@ -29925,6 +30965,8 @@ def _cb_values_equal(a: Any, b: Any) -> bool:
             return float(a) == float(b)
         except Exception:
             return False
+    if isinstance(a, str) and isinstance(b, str):
+        return a == b
     return False
 
 
@@ -30022,6 +31064,8 @@ def _cb_fetch_current_point(qapi, cfg: dict[str, Any], pid: dict[str, Any]) -> t
     """
 
     pidn = _cb_norm_point_identity(pid)
+    bucket = str(pidn.get("bucket") or cfg.get("bucket") or "")
+    org = str(pidn.get("org") or cfg.get("org") or "")
     measurement = str(pidn.get("measurement") or "")
     field = str(pidn.get("field") or "")
     tags = pidn.get("tag_set") if isinstance(pidn.get("tag_set"), dict) else {}
@@ -30040,14 +31084,14 @@ def _cb_fetch_current_point(qapi, cfg: dict[str, Any], pid: dict[str, Any]) -> t
         extra_pred += f' and r["{str(k)}"] == {_flux_str(str(v))}'
 
     q = f'''
-from(bucket: "{cfg["bucket"]}")
+ from(bucket: "{bucket}")
   |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
   |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra_pred})
   |> group()
   |> sort(columns: ["_time"])
   |> limit(n: 20)
 '''
-    tables = qapi.query(q, org=cfg["org"])
+    tables = qapi.query(q, org=org)
     recs: list[Any] = []
     for t in tables or []:
         for rec in getattr(t, "records", []) or []:
@@ -30080,7 +31124,7 @@ from(bucket: "{cfg["bucket"]}")
         return "missing", None
 
     cur_val = best.get_value()
-    if isinstance(cur_val, bool) or not isinstance(cur_val, (int, float)):
+    if isinstance(cur_val, (dict, list)):
         return "type_mismatch", None
     out = {
         "_time": _dt_to_rfc3339_utc_full(best.get_time().astimezone(timezone.utc)),
@@ -30122,6 +31166,19 @@ def validate_change_block(block_id: str, *, direction: str) -> dict[str, Any]:
                 ok_all = False
                 results.append({"item_id": it.get("item_id"), "state": "conflict", "error": str(e)})
                 continue
+
+            # Blind mode: skip all preflight checks (for bulk operations).
+            pol = str(it.get("conflict_policy") or "").strip().lower()
+            if pol == "blind":
+                results.append({
+                    "item_id": it.get("item_id"),
+                    "op": it.get("op"),
+                    "state": "ok",
+                    "identity": it.get("point_identity") if isinstance(it.get("point_identity"), dict) else {},
+                    "policy": "blind",
+                })
+                continue
+
             pid = it.get("point_identity") if isinstance(it.get("point_identity"), dict) else {}
             st, cur = _cb_fetch_current_point(qapi, cfg, pid)
             if st in ("ambiguous", "type_mismatch"):
@@ -30153,6 +31210,8 @@ def validate_change_block(block_id: str, *, direction: str) -> dict[str, Any]:
 
 def _cb_delete_exact(dapi, cfg: dict[str, Any], pid: dict[str, Any]) -> None:
     pidn = _cb_norm_point_identity(pid)
+    bucket = str(pidn.get("bucket") or cfg.get("bucket") or "")
+    org = str(pidn.get("org") or cfg.get("org") or "")
     measurement = str(pidn.get("measurement") or "")
     field = str(pidn.get("field") or "")
     tags = pidn.get("tag_set") if isinstance(pidn.get("tag_set"), dict) else {}
@@ -30172,11 +31231,13 @@ def _cb_delete_exact(dapi, cfg: dict[str, Any], pid: dict[str, Any]) -> None:
             continue
         parts.append(f'{str(k)}="{_pred_escape(str(v))}"')
     pred = " AND ".join(parts)
-    dapi.delete(start=s, stop=e, predicate=pred, bucket=cfg["bucket"], org=cfg["org"])
+    dapi.delete(start=s, stop=e, predicate=pred, bucket=bucket, org=org)
 
 
 def _cb_write_exact(wapi, cfg: dict[str, Any], pid: dict[str, Any], point: dict[str, Any]) -> None:
     pidn = _cb_norm_point_identity(pid)
+    bucket = str(pidn.get("bucket") or cfg.get("bucket") or "")
+    org = str(pidn.get("org") or cfg.get("org") or "")
     measurement = str(pidn.get("measurement") or "")
     field = str(pidn.get("field") or "")
     tags = pidn.get("tag_set") if isinstance(pidn.get("tag_set"), dict) else {}
@@ -30191,7 +31252,7 @@ def _cb_write_exact(wapi, cfg: dict[str, Any], pid: dict[str, Any], point: dict[
     for tk, tv in (tags or {}).items():
         p = p.tag(str(tk), str(tv))
     p = p.field(field, v).time(dt, WritePrecision.NS)
-    wapi.write(bucket=cfg["bucket"], org=cfg["org"], record=p)
+    wapi.write(bucket=bucket, org=org, record=p)
 
 
 def _cb_set_block_status(block_id: str, *, status: str | None = None, undo_status: str | None = None, repeat_status: str | None = None) -> None:
@@ -30214,9 +31275,78 @@ def _cb_set_block_status(block_id: str, *, status: str | None = None, undo_statu
     _cb_atomic_write_text(meta_path, json.dumps(b, ensure_ascii=True, sort_keys=True, indent=2))
 
 
+def _cb_patch_block_meta(block_id: str, patch: dict[str, Any]) -> None:
+    """Best-effort patch of block.meta (keeps payload unchanged)."""
+
+    bid = _cb_require_block_id(block_id)
+    b = load_change_block(bid, include_items=False)
+    if not b:
+        return
+    if not isinstance(patch, dict):
+        return
+    meta = b.get("meta") if isinstance(b.get("meta"), dict) else {}
+    meta2 = dict(meta)
+    for k, v in patch.items():
+        meta2[str(k)] = v
+    b["meta"] = meta2
+    try:
+        validate_change_block_schema(b)
+    except Exception:
+        return
+    meta_path = _cb_meta_path(bid, str(b.get("created_at") or ""))
+    _cb_atomic_write_text(meta_path, json.dumps(b, ensure_ascii=True, sort_keys=True, indent=2))
+
+
 def _cb_apply(block_id: str, *, direction: str) -> dict[str, Any]:
     bid = _cb_require_block_id(block_id)
     d = str(direction or "").strip().lower()
+
+    b_meta = load_change_block(bid, include_items=False)
+    if not b_meta:
+        return {"ok": False, "error": "not found"}
+    bmeta = b_meta.get("meta") if isinstance(b_meta.get("meta"), dict) else {}
+
+    # Group blocks: execute/undo/repeat a list of child blocks.
+    child_blocks = bmeta.get("child_blocks") if isinstance(bmeta.get("child_blocks"), list) else []
+    child_ids = [str(x).strip() for x in child_blocks if str(x).strip()]
+    if child_ids:
+        # Undo may be explicitly disabled for bulk operations.
+        if d == "undo" and bmeta.get("undo_supported") is False:
+            return {"ok": False, "error": "undo_not_supported", "block_id": bid}
+
+        applied_total = 0
+        # execute/repeat in forward order; undo in reverse order
+        seq = child_ids if d in ("execute", "repeat") else list(reversed(child_ids))
+        for cid in seq:
+            out = execute_change_block(cid) if d == "execute" else (undo_change_block(cid) if d == "undo" else repeat_change_block(cid))
+            if not out.get("ok"):
+                return {
+                    "ok": False,
+                    "error": "child_failed",
+                    "block_id": bid,
+                    "child_block_id": cid,
+                    "child_result": out,
+                }
+            try:
+                applied_total += int(out.get("applied") or 0)
+            except Exception:
+                pass
+
+        try:
+            if d == "execute":
+                _cb_set_block_status(bid, status="applied")
+            elif d == "undo":
+                _cb_set_block_status(bid, undo_status="applied")
+            else:
+                _cb_set_block_status(bid, repeat_status="applied")
+        except Exception:
+            pass
+
+        return {"ok": True, "applied": applied_total, "child_blocks": child_ids}
+
+    # Single blocks: respect opt-out for undo/repeat.
+    if d == "undo" and bmeta.get("undo_supported") is False:
+        return {"ok": False, "error": "undo_not_supported", "block_id": bid}
 
     v = validate_change_block(bid, direction=d)
     if not v.get("summary", {}).get("ok"):
@@ -30232,6 +31362,22 @@ def _cb_apply(block_id: str, *, direction: str) -> dict[str, Any]:
     with v2_client(cfg) as c:
         wapi = c.write_api(write_options=SYNCHRONOUS)
         dapi = c.delete_api()
+
+        write_batch: list[Point] = []
+        batch_bucket: str | None = None
+        batch_org: str | None = None
+
+        def flush_writes() -> None:
+            nonlocal write_batch, batch_bucket, batch_org
+            if not write_batch:
+                return
+            bkt = str(batch_bucket or cfg.get("bucket") or "")
+            org = str(batch_org or cfg.get("org") or "")
+            wapi.write(bucket=bkt, org=org, record=write_batch, write_precision=WritePrecision.NS)
+            write_batch = []
+            batch_bucket = None
+            batch_org = None
+
         # Map item_id -> state for skip
         states = {str(r.get("item_id") or ""): str(r.get("state") or "") for r in (v.get("results") or []) if isinstance(r, dict)}
         for it in items:
@@ -30240,14 +31386,45 @@ def _cb_apply(block_id: str, *, direction: str) -> dict[str, Any]:
             iid = str(it.get("item_id") or "")
             if states.get(iid) == "already_applied":
                 continue
+
             pid = it.get("point_identity") if isinstance(it.get("point_identity"), dict) else {}
             mode, tgt = _cb_target_state_for(d, it)
             if mode == "delete":
+                flush_writes()
                 _cb_delete_exact(dapi, cfg, pid)
                 applied += 1
-            else:
-                _cb_write_exact(wapi, cfg, pid, tgt if isinstance(tgt, dict) else {})
-                applied += 1
+                continue
+
+            # write
+            pidn = _cb_norm_point_identity(pid)
+            item_bucket = str(pidn.get("bucket") or cfg.get("bucket") or "")
+            item_org = str(pidn.get("org") or cfg.get("org") or "")
+            dt = _parse_iso_datetime(str(pidn.get("timestamp") or ""))
+            if not isinstance(dt, datetime):
+                raise RuntimeError("invalid timestamp")
+            dt = dt.astimezone(timezone.utc)
+            val = _cb_point_value(tgt if isinstance(tgt, dict) else {})
+            if val is None:
+                raise RuntimeError("unsupported _value type")
+            p = Point(str(pidn.get("measurement") or ""))
+            tags = pidn.get("tag_set") if isinstance(pidn.get("tag_set"), dict) else {}
+            for tk, tv in (tags or {}).items():
+                p = p.tag(str(tk), str(tv))
+            p = p.field(str(pidn.get("field") or ""), val).time(dt, WritePrecision.NS)
+
+            # Keep batch per (bucket, org)
+            if write_batch and (batch_bucket != item_bucket or batch_org != item_org):
+                flush_writes()
+            if batch_bucket is None:
+                batch_bucket = item_bucket
+            if batch_org is None:
+                batch_org = item_org
+            write_batch.append(p)
+            if len(write_batch) >= 2000:
+                flush_writes()
+            applied += 1
+
+        flush_writes()
 
     # best-effort block status update
     try:
@@ -30824,20 +32001,6 @@ from(bucket: "{cfg["bucket"]}")
     return True, v
 
 
-class _UndoApplyError(RuntimeError):
-    def __init__(
-        self,
-        message: str,
-        mode: str,
-        applied_rows: list[dict[str, Any]],
-        failed_row: dict[str, Any] | None,
-    ):
-        super().__init__(message)
-        self.mode = str(mode or "")
-        self.applied_rows = applied_rows
-        self.failed_row = failed_row
-
-
 def _undo_row_key(row: dict[str, Any]) -> tuple[str, str, str, tuple[tuple[str, str], ...]]:
     measurement = str(row.get("_measurement") or "").strip()
     field = str(row.get("_field") or "").strip()
@@ -30890,48 +32053,8 @@ def _undo_verify_rows(
 
 
 def _undo_apply_rows(cfg: dict[str, Any], rows: list[dict[str, Any]], mode: str) -> list[dict[str, Any]]:
-    if int(cfg.get("influx_version", 2)) != 2:
-        raise RuntimeError("undo currently supports InfluxDB v2 only")
-    if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
-        raise RuntimeError("InfluxDB v2 requires token, org, bucket")
-    with v2_client(cfg) as c:
-        qapi = c.query_api()
-        wapi = c.write_api(write_options=SYNCHRONOUS)
-        dapi = c.delete_api()
-        applied: list[dict[str, Any]] = []
-        for row in rows or []:
-            if not isinstance(row, dict):
-                continue
-            measurement = str(row.get("_measurement") or "").strip()
-            field = str(row.get("_field") or "").strip()
-            time_raw = str(row.get("_time") or "").strip()
-            if not measurement or not field or not time_raw:
-                continue
-            dt = _parse_iso_datetime(time_raw)
-            tags = _undo_row_tags(row)
-            want_val = row.get("_value")
-
-            try:
-                if mode == "delete":
-                    s = _dt_to_rfc3339_utc_ms(dt - timedelta(milliseconds=2))
-                    e = _dt_to_rfc3339_utc_ms(dt + timedelta(milliseconds=2))
-                    pred = _undo_predicate(measurement, field, tags)
-                    dapi.delete(start=s, stop=e, predicate=pred, bucket=cfg["bucket"], org=cfg["org"])
-                elif mode == "write":
-                    if want_val is None:
-                        continue
-                    p = Point(measurement)
-                    for tk, tv in tags.items():
-                        p = p.tag(tk, tv)
-                    p = p.field(field, want_val).time(dt, WritePrecision.NS)
-                    wapi.write(bucket=cfg["bucket"], org=cfg["org"], record=p)
-                else:
-                    raise RuntimeError("invalid undo apply mode")
-                applied.append(row)
-            except Exception as e:
-                raise _UndoApplyError(f"Undo/Repeat apply failed (mode={mode})", mode, applied, row) from e
-
-        return applied
+    # Deprecated: Undo/Repeat must go through the Change-Service.
+    raise RuntimeError("deprecated: use ChangeBlocks engine")
 
 
 def _undo_execute_action(cfg: dict[str, Any], action: dict[str, Any], direction: str) -> None:
@@ -30943,71 +32066,86 @@ def _undo_execute_action(cfg: dict[str, Any], action: dict[str, Any], direction:
 
     before_rows = action.get("before_rows") if isinstance(action.get("before_rows"), list) else []
     after_rows = action.get("after_rows") if isinstance(action.get("after_rows"), list) else []
-    atype = str(action.get("action_type") or "update")
 
-    # Decide operations.
-    if direction == "undo":
-        if atype == "delete":
-            to_delete: list[dict[str, Any]] = []
-            to_write = [r for r in before_rows if isinstance(r, dict)]
-        elif atype == "insert":
-            to_delete = [r for r in after_rows if isinstance(r, dict)]
-            to_write = []
-        else:  # update/mixed
-            to_delete = [r for r in after_rows if isinstance(r, dict)]
-            to_write = [r for r in before_rows if isinstance(r, dict)]
-    else:  # repeat
-        if atype == "delete":
-            to_delete = [r for r in before_rows if isinstance(r, dict)]
-            to_write = []
-        elif atype == "insert":
-            to_delete = []
-            to_write = [r for r in after_rows if isinstance(r, dict)]
-        else:  # update/mixed
-            to_delete = [r for r in before_rows if isinstance(r, dict)]
-            to_write = [r for r in after_rows if isinstance(r, dict)]
+    meta = action.get("meta") if isinstance(action.get("meta"), dict) else {}
+    bid = str(meta.get("change_block_id") or action.get("change_block_id") or "").strip()
 
-    # Conflict check: verify expected current rows.
-    if int(cfg.get("influx_version", 2)) != 2:
-        raise RuntimeError("undo currently supports InfluxDB v2 only")
-    if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
-        raise RuntimeError("InfluxDB v2 requires token, org, bucket")
-    with v2_client(cfg) as c:
-        qapi = c.query_api()
-        # rows we are about to delete must exist and should match stored value where possible
-        _undo_verify_rows(qapi, cfg, to_delete, must_exist=True, must_match_value=True)
+    # Preferred path: reuse the persisted ChangeBlock created by the write path.
+    if bid:
+        try:
+            if load_change_block(bid, include_items=False):
+                out = undo_change_block(bid) if direction == "undo" else repeat_change_block(bid)
+                if not out.get("ok"):
+                    raise RuntimeError("undo/repeat conflict")
+                return
+        except Exception:
+            # Fall back to synthesizing a block from before/after rows.
+            pass
 
-        # rows we are about to write should not already exist if they are not part of the delete-set
-        delete_keys = {_undo_row_key(r) for r in to_delete if isinstance(r, dict)}
-        write_need_absent = [r for r in to_write if isinstance(r, dict) and _undo_row_key(r) not in delete_keys]
-        if write_need_absent:
-            _undo_verify_rows(qapi, cfg, write_need_absent, must_exist=False, must_match_value=False)
+    if not bid:
+        bid = uuid.uuid4().hex
+        # Persist for future repeats (UndoManager stores `meta`).
+        meta = dict(meta)
+        meta["change_block_id"] = bid
+        action["meta"] = meta
+        action["change_block_id"] = bid
 
-    # Apply with rollback on partial phase failure.
-    deleted_rows: list[dict[str, Any]] = []
-    try:
-        if to_delete:
-            deleted_rows = _undo_apply_rows(cfg, to_delete, mode="delete")
-        if to_write:
-            _undo_apply_rows(cfg, to_write, mode="write")
-    except _UndoApplyError as e:
-        # Best-effort rollback.
-        if e.mode == "delete" and e.applied_rows:
-            try:
-                _undo_apply_rows(cfg, [r for r in e.applied_rows if isinstance(r, dict)], mode="write")
-            except Exception:
-                pass
-        elif e.mode == "write":
-            try:
-                _undo_apply_rows(cfg, [r for r in e.applied_rows if isinstance(r, dict)], mode="delete")
-            except Exception:
-                pass
-            try:
-                if deleted_rows:
-                    _undo_apply_rows(cfg, deleted_rows, mode="write")
-            except Exception:
-                pass
-        raise
+    items: list[dict[str, Any]] = []
+    max_n = min(5000, max(len(before_rows), len(after_rows)))
+    for i in range(max_n):
+        b = before_rows[i] if i < len(before_rows) and isinstance(before_rows[i], dict) else None
+        a = after_rows[i] if i < len(after_rows) and isinstance(after_rows[i], dict) else None
+        row = a if a is not None else b
+        if row is None:
+            continue
+        measurement = str(row.get("_measurement") or "").strip()
+        field = str(row.get("_field") or "").strip()
+        ts = str(row.get("_time") or "").strip()
+        if not measurement or not field or not ts:
+            continue
+        tags = _undo_row_tags(row)
+        op = "update"
+        if b is None and a is not None:
+            op = "create"
+        elif b is not None and a is None:
+            op = "delete"
+
+        pid = {
+            "bucket": str(cfg.get("bucket") or ""),
+            "org": str(cfg.get("org") or ""),
+            "measurement": measurement,
+            "field": field,
+            "timestamp": ts,
+            "tag_set": tags,
+        }
+        items.append({
+            "schema_version": CHANGE_ITEM_SCHEMA_VERSION,
+            "item_id": uuid.uuid4().hex,
+            "block_id": bid,
+            "op": op,
+            "point_identity": pid,
+            "old_point": b,
+            "new_point": a,
+            "conflict_policy": "strict",
+        })
+
+    cb = {
+        "schema_version": CHANGE_BLOCK_SCHEMA_VERSION,
+        "block_id": bid,
+        "created_at": _utc_now_iso_ms(),
+        "source": {"user_id": None, "ip": _req_ip(), "ua": _req_ua(), "trigger_page": "history", "trigger_source": "undo_mgr", "trigger_action": direction},
+        "operation_source": "undo_mgr",
+        "reason": "undo_mgr",
+        "status": "created",
+        "undo_status": "not_run",
+        "repeat_status": "not_run",
+        "affected_count": len(items),
+        "series_summary": {},
+    }
+    save_change_block(cb, items=items)
+    out = undo_change_block(bid) if direction == "undo" else repeat_change_block(bid)
+    if not out.get("ok"):
+        raise RuntimeError("undo/repeat conflict")
 
 
 @app.post("/api/undo/undo")
@@ -31229,159 +32367,114 @@ def api_history_rollback():
     # Rollback newest first
     wanted.sort(key=lambda x: str(x.get("at") or ""), reverse=True)
 
-    if int(cfg.get("influx_version", 2)) != 2:
-        return jsonify({"ok": False, "error": "history rollback currently supports InfluxDB v2 only"}), 400
-    if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
-        return jsonify({
-            "ok": False,
-            "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
-        }), 400
+    # Change-Service rollback: build a ChangeBlock representing the original changes,
+    # then undo it via the engine. (No direct writes here.)
+    for it in wanted:
+        if str(it.get("action") or "").strip().lower() == "combine_copy":
+            return jsonify({
+                "ok": False,
+                "error": "combine_copy rollback not supported yet (requires Change-Service bulk support)",
+            }), 400
 
-    def _restore_backup_into_client(c: InfluxDBClient, backup_id: str) -> int:
-        bdir = backup_dir_for_target(cfg, None)
+    block_id = uuid.uuid4().hex
+    change_items: list[dict[str, Any]] = []
+    for it in wanted:
+        action = str(it.get("action") or "").strip().lower()
+        if action not in ("overwrite", "delete"):
+            continue
+        s = it.get("series") if isinstance(it.get("series"), dict) else {}
+        measurement = str(s.get("measurement") or "").strip()
+        field = str(s.get("field") or "").strip()
+        tags = s.get("tags") if isinstance(s.get("tags"), dict) else {}
+        t_raw = str(it.get("time") or "").strip()
+        if not measurement or not field or not t_raw:
+            continue
+        old_val = it.get("old_value")
+        new_val = it.get("new_value")
+        if old_val is None:
+            continue
+
+        before_row = {"_time": t_raw, "_measurement": measurement, "_field": field, "_value": old_val, **tags}
+        after_row = None
+        if action == "overwrite":
+            after_row = {"_time": t_raw, "_measurement": measurement, "_field": field, "_value": new_val, **tags}
+
+        pid = {
+            "bucket": str(cfg.get("bucket") or ""),
+            "org": str(cfg.get("org") or ""),
+            "measurement": measurement,
+            "field": field,
+            "timestamp": t_raw,
+            "tag_set": tags,
+        }
+        change_items.append({
+            "schema_version": CHANGE_ITEM_SCHEMA_VERSION,
+            "item_id": uuid.uuid4().hex,
+            "block_id": block_id,
+            "op": "update" if action == "overwrite" else "delete",
+            "point_identity": pid,
+            "old_point": before_row,
+            "new_point": after_row,
+            "conflict_policy": "strict",
+            "meta": {"history_ref_id": str(it.get("id") or "")},
+        })
+
+    cb = {
+        "schema_version": CHANGE_BLOCK_SCHEMA_VERSION,
+        "block_id": block_id,
+        "created_at": _utc_now_iso_ms(),
+        "source": {"user_id": None, "ip": _req_ip(), "ua": _req_ua(), "trigger_page": "history", "trigger_source": "history_rollback"},
+        "operation_source": "history_rollback",
+        "reason": "Rollback",
+        "status": "created",
+        "undo_status": "not_run",
+        "repeat_status": "not_run",
+        "affected_count": len(change_items),
+        "series_summary": {},
+    }
+    try:
+        save_change_block(cb, items=change_items)
+        out = undo_change_block(block_id)
+        if not out.get("ok"):
+            return jsonify({"ok": False, "error": "conflict", "validation": out.get("validation"), "change_block_id": block_id}), 409
+        applied = int(out.get("applied") or 0)
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 500
+
+    # Record rollback events in history (audit)
+    for it in wanted:
+        action = str(it.get("action") or "").strip().lower()
+        if action not in ("overwrite", "delete"):
+            continue
+        s = it.get("series") if isinstance(it.get("series"), dict) else {}
+        measurement = str(s.get("measurement") or "").strip()
+        field = str(s.get("field") or "").strip()
+        tags = s.get("tags") if isinstance(s.get("tags"), dict) else {}
+        t_raw = str(it.get("time") or "").strip()
+        _history_append({
+            "kind": "rollback",
+            "ref_id": it.get("id"),
+            "series": {
+                "measurement": measurement,
+                "field": field,
+                "entity_id": s.get("entity_id"),
+                "friendly_name": s.get("friendly_name"),
+                "tags": tags,
+            },
+            "time": t_raw,
+            "action": "rollback",
+            "old_value": it.get("new_value"),
+            "new_value": it.get("old_value"),
+            "reason": "Rollback",
+            "change_block_id": block_id,
+            "ip": _req_ip(),
+            "ua": _req_ua(),
+        })
+
         try:
-            with _open_backup_lp_text(bdir, backup_id, is_fullbackup=False):
-                pass
+            dirty_series.add((measurement, field, str(s.get("entity_id") or "").strip() or None, str(s.get("friendly_name") or "").strip() or None))
         except Exception:
-            raise RuntimeError("backup not found")
-
-        wapi = c.write_api(write_options=SYNCHRONOUS)
-        batch: list[str] = []
-        applied_local = 0
-        with _open_backup_lp_text(bdir, backup_id, is_fullbackup=False) as f:
-            for line in f:
-                line = line.strip("\n")
-                if not line.strip():
-                    continue
-                batch.append(line)
-                if len(batch) >= 2000:
-                    wapi.write(bucket=cfg["bucket"], org=cfg["org"], record=batch, write_precision=WritePrecision.NS)
-                    applied_local += len(batch)
-                    batch = []
-            if batch:
-                wapi.write(bucket=cfg["bucket"], org=cfg["org"], record=batch, write_precision=WritePrecision.NS)
-                applied_local += len(batch)
-        return applied_local
-
-    applied = 0
-    with v2_client(cfg) as c:
-        wapi = c.write_api(write_options=SYNCHRONOUS)
-
-        for it in wanted:
-            action = str(it.get("action") or "").strip().lower()
-
-            if action == "combine_copy":
-                # Roll back by deleting the affected target range and restoring a range-backup.
-                try:
-                    s = it.get("series") or {}
-                    measurement = str(s.get("measurement") or "").strip()
-                    field = str(s.get("field") or "").strip()
-                    entity_id = str(s.get("entity_id") or "").strip() or None
-                    friendly_name = str(s.get("friendly_name") or "").strip() or None
-                    if not measurement or not field:
-                        continue
-                    if not entity_id and not friendly_name:
-                        continue
-
-                    start_s = str(it.get("start") or "").strip()
-                    stop_s = str(it.get("stop") or "").strip()
-                    start_dt = _parse_iso_datetime(start_s)
-                    stop_dt = _parse_iso_datetime(stop_s)
-                    if not start_dt or not stop_dt:
-                        continue
-
-                    backup_id = str(it.get("backup_id") or "").strip()
-                    if not backup_id:
-                        continue
-
-                    predicate = f"_measurement={_flux_str(measurement)} AND _field={_flux_str(field)}"
-                    if entity_id:
-                        predicate += f" AND entity_id={_flux_str(entity_id)}"
-                    if friendly_name:
-                        predicate += f" AND friendly_name={_flux_str(friendly_name)}"
-                    c.delete_api().delete(start=start_dt, stop=stop_dt, predicate=predicate, bucket=cfg["bucket"], org=cfg["org"])
-
-                    restored = _restore_backup_into_client(c, backup_id)
-
-                    _history_append({
-                        "kind": "rollback",
-                        "ref_id": it.get("id"),
-                        "series": {
-                            "measurement": measurement,
-                            "field": field,
-                            "entity_id": entity_id,
-                            "friendly_name": friendly_name,
-                            "tags": {"entity_id": entity_id, "friendly_name": friendly_name},
-                        },
-                        "start": start_s,
-                        "stop": stop_s,
-                        "action": "rollback",
-                        "reason": "Rollback combine_copy",
-                        "backup_id": backup_id,
-                        "restored": restored,
-                        "ip": _req_ip(),
-                        "ua": _req_ua(),
-                    })
-
-                    applied += restored
-                    try:
-                        dirty_series.add((measurement, field, entity_id, friendly_name))
-                    except Exception:
-                        pass
-                except Exception:
-                    continue
-                continue
-
-            if action not in ("overwrite", "delete"):
-                # Ignore other entries (e.g., rollbacks)
-                continue
-            s = it.get("series") or {}
-            measurement = str(s.get("measurement") or "").strip()
-            field = str(s.get("field") or "").strip()
-            tags = s.get("tags") or {}
-            if not isinstance(tags, dict):
-                tags = {}
-            t_raw = str(it.get("time") or "").strip()
-            try:
-                dt = _parse_iso_datetime(t_raw)
-            except Exception:
-                continue
-            old_val = it.get("old_value")
-            if old_val is None:
-                continue
-
-            p = Point(measurement)
-            for tk, tv in tags.items():
-                if tk and tv is not None:
-                    p = p.tag(str(tk), str(tv))
-            p = p.field(field, old_val).time(dt, WritePrecision.NS)
-            wapi.write(bucket=cfg["bucket"], org=cfg["org"], record=p)
-
-            _history_append({
-                "kind": "rollback",
-                "ref_id": it.get("id"),
-                "series": {
-                    "measurement": measurement,
-                    "field": field,
-                    "entity_id": s.get("entity_id"),
-                    "friendly_name": s.get("friendly_name"),
-                    "tags": tags,
-                },
-                "time": t_raw,
-                "action": "rollback",
-                "old_value": it.get("new_value"),
-                "new_value": old_val,
-                "reason": "Rollback",
-                "ip": _req_ip(),
-                "ua": _req_ua(),
-            })
-
-            applied += 1
-
-            try:
-                dirty_series.add((measurement, field, str(s.get("entity_id") or "").strip() or None, str(s.get("friendly_name") or "").strip() or None))
-            except Exception:
-                pass
+            pass
 
     try:
         for m, f, eid, fn in dirty_series:
@@ -31391,7 +32484,7 @@ def api_history_rollback():
     except Exception:
         pass
 
-    return jsonify({"ok": True, "applied": applied, "message": f"Rollback applied: {applied}"})
+    return jsonify({"ok": True, "applied": applied, "message": f"Rollback applied: {applied}", "change_block_id": block_id})
 
 
 def _safe_data_file(root: Path, name: str) -> Path:
@@ -32193,27 +33286,190 @@ from(bucket: "{cfg["bucket"]}")
             return jsonify({"ok": False, "error": f"backup_before failed: {_short_influx_error(e)}"}), 500
 
     try:
-        with v2_client(cfg) as c:
-            if delete_first:
-                predicate = f"_measurement={_flux_str(measurement)} AND _field={_flux_str(field)}"
-                if entity_id:
-                    predicate += f" AND entity_id={_flux_str(entity_id)}"
-                if friendly_name:
-                    predicate += f" AND friendly_name={_flux_str(friendly_name)}"
-                c.delete_api().delete(start=oldest_utc, stop=newest_utc, predicate=predicate, bucket=cfg["bucket"], org=cfg["org"])
+        parent_id = uuid.uuid4().hex
+        undo_supported = bool(delete_first)
+        parent = {
+            "schema_version": CHANGE_BLOCK_SCHEMA_VERSION,
+            "block_id": parent_id,
+            "created_at": _utc_now_iso_ms(),
+            "source": {
+                "user_id": None,
+                "ip": _req_ip(),
+                "ua": _req_ua(),
+                "trigger_page": "import",
+                "trigger_source": "import_start",
+                "trigger_action": "import",
+                "trigger_button": None,
+            },
+            "operation_source": "import_start",
+            "reason": "import",
+            "status": "created",
+            "undo_status": "not_run",
+            "repeat_status": "not_run",
+            "affected_count": 0,
+            "payload_mode": "inline",
+            "payload_inline": [],
+            "series_summary": {
+                "measurement": measurement,
+                "field": field,
+                "entity_id": entity_id,
+                "friendly_name": friendly_name,
+            },
+            "meta": {
+                "child_blocks": [],
+                "undo_supported": undo_supported,
+                "delete_first": bool(delete_first),
+                "backup_before": bool(backup_before),
+                "backup_id": (backup_meta or {}).get("id") if backup_meta else None,
+            },
+        }
+        save_change_block(parent, items=[])
 
-            wapi = c.write_api(write_options=SYNCHRONOUS)
-            batch: list[Point] = []
-            imported = 0
-            for p in points:
-                batch.append(p)
-                if len(batch) >= 500:
-                    wapi.write(bucket=cfg["bucket"], org=cfg["org"], record=batch, write_precision=WritePrecision.NS)
-                    imported += len(batch)
-                    batch = []
-            if batch:
-                wapi.write(bucket=cfg["bucket"], org=cfg["org"], record=batch, write_precision=WritePrecision.NS)
-                imported += len(batch)
+        child_ids: list[str] = []
+        chunk_idx = 0
+        imported = 0
+        deleted = 0
+
+        def exec_child(items: list[dict[str, Any]], *, kind: str) -> None:
+            nonlocal chunk_idx, imported, deleted
+            if not items:
+                return
+            cid = uuid.uuid4().hex
+            cb = {
+                "schema_version": CHANGE_BLOCK_SCHEMA_VERSION,
+                "block_id": cid,
+                "created_at": _utc_now_iso_ms(),
+                "source": parent["source"],
+                "operation_source": "import_start",
+                "reason": f"import:{kind}#{chunk_idx}",
+                "status": "created",
+                "undo_status": "not_run",
+                "repeat_status": "not_run",
+                "affected_count": len(items),
+                "series_summary": parent.get("series_summary") or {},
+                "meta": {
+                    "parent_block_id": parent_id,
+                    "chunk_index": chunk_idx,
+                    "kind": kind,
+                    "undo_supported": undo_supported,
+                },
+            }
+            save_change_block(cb, items=items)
+            out = execute_change_block(cid)
+            if not out.get("ok"):
+                raise RuntimeError("import conflict")
+            try:
+                n = int(out.get("applied") or 0)
+            except Exception:
+                n = 0
+            if kind == "delete":
+                deleted += n
+            else:
+                imported += n
+            child_ids.append(cid)
+            chunk_idx += 1
+            _cb_patch_block_meta(parent_id, {"child_blocks": list(child_ids)})
+
+        max_items = 5000
+
+        # Optional delete-first implemented as exact point deletes.
+        if delete_first:
+            extra = flux_tag_filter(entity_id, friendly_name)
+            q_del = f'''
+from(bucket: "{cfg["bucket"]}")
+  |> range(start: time(v: "{_dt_to_rfc3339_utc_full(oldest_utc)}"), stop: time(v: "{_dt_to_rfc3339_utc_full(newest_utc)}"))
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)}{extra})
+  |> group()
+  |> sort(columns: ["_time"])
+'''
+            del_items: list[dict[str, Any]] = []
+            with v2_client(cfg) as c:
+                qapi = c.query_api()
+                for rec in qapi.query_stream(q_del, org=cfg["org"]):
+                    t = rec.get_time()
+                    v = rec.get_value()
+                    if not isinstance(t, datetime):
+                        continue
+                    if isinstance(v, bool) or not isinstance(v, (int, float)):
+                        continue
+                    tags: dict[str, str] = {}
+                    for k, tv in (rec.values or {}).items():
+                        if k in ("result", "table"):
+                            continue
+                        if str(k).startswith("_"):
+                            continue
+                        if tv is None:
+                            continue
+                        tags[str(k)] = str(tv)
+                    ts = _dt_to_rfc3339_utc_full(t.astimezone(timezone.utc))
+                    pid = {
+                        "bucket": str(cfg.get("bucket") or ""),
+                        "org": str(cfg.get("org") or ""),
+                        "measurement": measurement,
+                        "field": field,
+                        "timestamp": ts,
+                        "tag_set": tags,
+                    }
+                    old_row = {"_time": ts, "_measurement": measurement, "_field": field, "_value": v, **tags}
+                    del_items.append({
+                        "schema_version": CHANGE_ITEM_SCHEMA_VERSION,
+                        "item_id": uuid.uuid4().hex,
+                        "block_id": "",
+                        "op": "delete",
+                        "point_identity": pid,
+                        "old_point": old_row,
+                        "new_point": None,
+                        "conflict_policy": "blind",
+                    })
+                    if len(del_items) >= max_items:
+                        exec_child(del_items, kind="delete")
+                        del_items = []
+            exec_child(del_items, kind="delete")
+
+        # Write/import points.
+        wr_items: list[dict[str, Any]] = []
+        op = "create" if delete_first else "update"
+        for p in points:
+            try:
+                lp = p.to_line_protocol()
+            except Exception:
+                lp = None
+            if not lp:
+                continue
+            pts = _lp_parse_points_from_line(lp)
+            if not pts:
+                continue
+            for row in pts:
+                ts = str(row.get("_time") or "").strip()
+                meas = str(row.get("_measurement") or "").strip()
+                fld = str(row.get("_field") or "").strip()
+                if not ts or not meas or not fld:
+                    continue
+                tags = {k: str(v) for k, v in row.items() if k and not str(k).startswith("_") and v is not None}
+                pid = {
+                    "bucket": str(cfg.get("bucket") or ""),
+                    "org": str(cfg.get("org") or ""),
+                    "measurement": meas,
+                    "field": fld,
+                    "timestamp": ts,
+                    "tag_set": tags,
+                }
+                wr_items.append({
+                    "schema_version": CHANGE_ITEM_SCHEMA_VERSION,
+                    "item_id": uuid.uuid4().hex,
+                    "block_id": "",
+                    "op": op,
+                    "point_identity": pid,
+                    "old_point": None,
+                    "new_point": row,
+                    "conflict_policy": "blind",
+                })
+                if len(wr_items) >= max_items:
+                    exec_child(wr_items, kind="write")
+                    wr_items = []
+        exec_child(wr_items, kind="write")
+
+        _cb_patch_block_meta(parent_id, {"child_blocks": list(child_ids), "imported": imported, "deleted": deleted})
 
         _history_append({
             "kind": "import",
@@ -32227,6 +33483,7 @@ from(bucket: "{cfg["bucket"]}")
             "delete_first": delete_first,
             "backup_before": backup_before,
             "backup_id": (backup_meta or {}).get("id") if backup_meta else None,
+            "change_block_id": parent_id,
             "reason": "Import",
             "ip": _req_ip(),
             "ua": _req_ua(),
@@ -32240,6 +33497,19 @@ from(bucket: "{cfg["bucket"]}")
         except Exception:
             pass
 
+        try:
+            _undo_mgr(cfg).register_action(
+                action_type="update",
+                bucket=str(cfg.get("bucket") or ""),
+                measurement=measurement,
+                group_label=f"import ({imported})",
+                before_rows=[],
+                after_rows=[],
+                meta={"change_block_id": parent_id, "undo_supported": undo_supported},
+            )
+        except Exception:
+            pass
+
         return jsonify({
             "ok": True,
             "imported": imported,
@@ -32247,6 +33517,7 @@ from(bucket: "{cfg["bucket"]}")
             "backup": backup_meta,
             "checks": plan["checks"],
             "message": f"Import fertig. Zeilen: {imported}",
+            "change_block_id": parent_id,
         })
     except Exception as e:
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
@@ -32283,22 +33554,162 @@ def delete():
                     "ok": False,
                     "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
                 }), 400
-            predicate = f"_measurement={_flux_str(measurement)}"
-            if field:
-                predicate += f" AND _field={_flux_str(field)}"
-            if entity_id:
-                predicate += f" AND entity_id={_flux_str(entity_id)}"
-            if friendly_name:
-                predicate += f" AND friendly_name={_flux_str(friendly_name)}"
+            # Change-Service delete: expand to exact point deletes.
+            parent_id = uuid.uuid4().hex
+            extra = flux_tag_filter(entity_id, friendly_name)
+            q = f'''
+from(bucket: "{cfg["bucket"]}")
+  |> range(start: time(v: "{_dt_to_rfc3339_utc_full(start)}"), stop: time(v: "{_dt_to_rfc3339_utc_full(stop)}"))
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)}{(' and r._field == ' + _flux_str(field)) if field else ''}{extra})
+  |> group()
+  |> sort(columns: ["_time"])
+'''
+
+            parent = {
+                "schema_version": CHANGE_BLOCK_SCHEMA_VERSION,
+                "block_id": parent_id,
+                "created_at": _utc_now_iso_ms(),
+                "source": {
+                    "user_id": None,
+                    "ip": _req_ip(),
+                    "ua": _req_ua(),
+                    "trigger_page": "raw",
+                    "trigger_source": "delete",
+                    "trigger_action": "delete",
+                    "trigger_button": None,
+                },
+                "operation_source": "delete",
+                "reason": f"delete:{range_key}",
+                "status": "created",
+                "undo_status": "not_run",
+                "repeat_status": "not_run",
+                "affected_count": 0,
+                "payload_mode": "inline",
+                "payload_inline": [],
+                "series_summary": {
+                    "measurement": measurement,
+                    "field": field,
+                    "entity_id": entity_id,
+                    "friendly_name": friendly_name,
+                },
+                "meta": {
+                    "child_blocks": [],
+                    "undo_supported": True,
+                    "range": {"start": _dt_to_rfc3339_utc_full(start), "stop": _dt_to_rfc3339_utc_full(stop)},
+                    "range_key": range_key,
+                },
+            }
+            save_change_block(parent, items=[])
+
+            child_ids: list[str] = []
+            chunk_idx = 0
+            deleted = 0
+
+            def exec_child(items: list[dict[str, Any]]) -> None:
+                nonlocal chunk_idx, deleted
+                if not items:
+                    return
+                cid = uuid.uuid4().hex
+                cb = {
+                    "schema_version": CHANGE_BLOCK_SCHEMA_VERSION,
+                    "block_id": cid,
+                    "created_at": _utc_now_iso_ms(),
+                    "source": parent["source"],
+                    "operation_source": "delete",
+                    "reason": f"delete:{range_key}#{chunk_idx}",
+                    "status": "created",
+                    "undo_status": "not_run",
+                    "repeat_status": "not_run",
+                    "affected_count": len(items),
+                    "series_summary": parent.get("series_summary") or {},
+                    "meta": {"parent_block_id": parent_id, "chunk_index": chunk_idx, "undo_supported": True},
+                }
+                save_change_block(cb, items=items)
+                out = execute_change_block(cid)
+                if not out.get("ok"):
+                    raise RuntimeError("delete conflict")
+                try:
+                    deleted += int(out.get("applied") or 0)
+                except Exception:
+                    pass
+                child_ids.append(cid)
+                chunk_idx += 1
+                _cb_patch_block_meta(parent_id, {"child_blocks": list(child_ids)})
+
+            max_items = 5000
+            items: list[dict[str, Any]] = []
             with v2_client(cfg) as c:
-                c.delete_api().delete(start=start, stop=stop, predicate=predicate, bucket=cfg["bucket"], org=cfg["org"])
+                qapi = c.query_api()
+                for rec in qapi.query_stream(q, org=cfg["org"]):
+                    t = rec.get_time()
+                    v = rec.get_value()
+                    if not isinstance(t, datetime):
+                        continue
+                    if isinstance(v, bool) or not isinstance(v, (int, float)):
+                        continue
+                    meas = str(rec.values.get("_measurement") or measurement)
+                    fld = str(rec.values.get("_field") or field)
+                    if not meas or not fld:
+                        continue
+                    tags: dict[str, str] = {}
+                    for k, tv in (rec.values or {}).items():
+                        if k in ("result", "table"):
+                            continue
+                        if str(k).startswith("_"):
+                            continue
+                        if tv is None:
+                            continue
+                        tags[str(k)] = str(tv)
+                    ts = _dt_to_rfc3339_utc_full(t.astimezone(timezone.utc))
+                    pid = {
+                        "bucket": str(cfg.get("bucket") or ""),
+                        "org": str(cfg.get("org") or ""),
+                        "measurement": meas,
+                        "field": fld,
+                        "timestamp": ts,
+                        "tag_set": tags,
+                    }
+                    old_row = {"_time": ts, "_measurement": meas, "_field": fld, "_value": v, **tags}
+                    items.append({
+                        "schema_version": CHANGE_ITEM_SCHEMA_VERSION,
+                        "item_id": uuid.uuid4().hex,
+                        "block_id": "",
+                        "op": "delete",
+                        "point_identity": pid,
+                        "old_point": old_row,
+                        "new_point": None,
+                        "conflict_policy": "blind",
+                    })
+                    if len(items) >= max_items:
+                        exec_child(items)
+                        items = []
+            exec_child(items)
+
+            _cb_patch_block_meta(parent_id, {"child_blocks": list(child_ids), "deleted": deleted})
+            try:
+                _undo_mgr(cfg).register_action(
+                    action_type="delete",
+                    bucket=str(cfg.get("bucket") or ""),
+                    measurement=measurement,
+                    group_label=f"delete ({deleted})",
+                    before_rows=[],
+                    after_rows=[],
+                    meta={"change_block_id": parent_id, "undo_supported": True},
+                )
+            except Exception:
+                pass
             try:
                 _dash_cache_mark_dirty_series(measurement, field, str(entity_id) if entity_id else None, str(friendly_name) if friendly_name else None, "delete")
                 _stats_cache_mark_dirty_series(measurement, field, str(entity_id) if entity_id else None, str(friendly_name) if friendly_name else None, "delete")
                 _analysis_cache_mark_dirty_series(cfg, measurement, field, str(entity_id) if entity_id else None, str(friendly_name) if friendly_name else None, "delete")
             except Exception:
                 pass
-            return jsonify({"ok": True, "message": f"Deleted v2: {predicate} in {cfg['bucket']} from {start.isoformat()} to {stop.isoformat()}"})
+            return jsonify({
+                "ok": True,
+                "deleted": deleted,
+                "change_block_id": parent_id,
+                "message": f"Deleted v2 points: {deleted} in {cfg['bucket']} from {start.isoformat()} to {stop.isoformat()}",
+            })
         else:
             if not cfg.get("database"):
                 return jsonify({"ok": False, "error": "InfluxDB v1 requires database. Bitte konfigurieren."}), 400

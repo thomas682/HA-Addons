@@ -17,6 +17,13 @@ def _looks_like_row(row: object) -> bool:
     return bool(row.get("_time")) and bool(row.get("_measurement")) and bool(row.get("_field"))
 
 
+def _has_change_block_ref(meta: object) -> bool:
+    if not isinstance(meta, dict):
+        return False
+    bid = str(meta.get("change_block_id") or "").strip()
+    return bool(bid)
+
+
 @dataclass
 class UndoStatus:
     ok: bool
@@ -85,8 +92,14 @@ class UndoManager:
                     after_rows = it.get("after_rows")
                     if not isinstance(before_rows, list) or not isinstance(after_rows, list):
                         raise ValueError("before_rows/after_rows must be lists")
-                    if any(not _looks_like_row(r) for r in before_rows + after_rows):
-                        raise ValueError("invalid row shape")
+                    meta = it.get("meta")
+                    if before_rows or after_rows:
+                        if any(not _looks_like_row(r) for r in before_rows + after_rows):
+                            raise ValueError("invalid row shape")
+                    else:
+                        # Allow ref-only entries that point at a persisted ChangeBlock.
+                        if not _has_change_block_ref(meta):
+                            raise ValueError("empty action without change_block_id")
                 self._undo = undo
                 self._redo = redo
             except Exception as e:
@@ -164,7 +177,8 @@ class UndoManager:
 
             before_rows = [r for r in (before_rows or []) if _looks_like_row(r)]
             after_rows = [r for r in (after_rows or []) if _looks_like_row(r)]
-            if not before_rows and not after_rows:
+            meta = meta or {}
+            if not before_rows and not after_rows and not _has_change_block_ref(meta):
                 raise ValueError("empty action")
 
             action = {
@@ -180,7 +194,7 @@ class UndoManager:
                 "label": str(group_label or ""),
                 "before_rows": before_rows,
                 "after_rows": after_rows,
-                "meta": meta or {},
+                "meta": meta,
             }
 
             self._undo.append(action)

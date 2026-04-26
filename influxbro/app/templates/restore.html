@@ -1046,21 +1046,22 @@
            FULLRESTORE_JOB_ID = String(started.job_id || '');
            if(!FULLRESTORE_JOB_ID) throw new Error('fullrestore job_id missing');
 
-           while(true){
-             const j = await api('./api/fullrestore_job/status?job_id=' + encodeURIComponent(FULLRESTORE_JOB_ID));
-             const st = j.status || {};
-             const msg = String(st.message || 'FullRestore laeuft...');
-             const applied = Number(st.applied || 0);
-             const read = Number(st.read_lines || 0);
-             const detail = [msg, (read ? ('Zeilen: ' + read) : ''), (applied ? ('applied: ' + applied) : '')].filter(Boolean).join(' | ');
-             try{ if($fullRestoreStatusTxt) $fullRestoreStatusTxt.textContent = detail; }catch(e){}
+            while(true){
+              const j = await api('./api/fullrestore_job/status?job_id=' + encodeURIComponent(FULLRESTORE_JOB_ID));
+              const st = j.status || {};
+              const msg = String(st.message || 'FullRestore laeuft...');
+              const applied = Number(st.applied || 0);
+              const read = Number(st.read_lines || 0);
+              const bid = String(st.change_block_id || '').trim();
+              const detail = [msg, (read ? ('Zeilen: ' + read) : ''), (applied ? ('applied: ' + applied) : '')].filter(Boolean).join(' | ');
+              try{ if($fullRestoreStatusTxt) $fullRestoreStatusTxt.textContent = detail; }catch(e){}
 
              const state = String(st.state || '');
-             if(state === 'done'){
-               ok('FullRestore fertig. applied=' + String(st.applied || 0));
-               stopFullRestoreUi(true, 'Fertig.');
-               return;
-             }
+              if(state === 'done'){
+                ok('FullRestore fertig. applied=' + String(st.applied || 0) + (bid ? ('\nChangeBlock: ' + bid) : ''));
+                stopFullRestoreUi(true, 'Fertig.');
+                return;
+              }
              if(state === 'cancelled'){
                ok('Abgebrochen.');
                stopFullRestoreUi(true, 'Abgebrochen.');
@@ -1556,8 +1557,8 @@
          }
 
          // Poll until done/error
-         while(true){
-           let st;
+          while(true){
+            let st;
            try{
              st = await pollOnce();
            }catch(e){
@@ -1577,6 +1578,10 @@
            }catch(e){}
 
             setRunStatusText(String(st.message || 'Restore laeuft...'));
+            try{
+              const bid = String(st.change_block_id || '').trim();
+              if(bid) RUN_CTX.change_block_id = bid;
+            }catch(e){}
             try{
               const pct = RUN_CTX && RUN_CTX.pct ? (' | ' + RUN_CTX.pct) : '';
               window.InfluxBroStatus && window.InfluxBroStatus.progress && window.InfluxBroStatus.progress(statusKey, String(st.message || 'Restore laeuft...') + pct);
@@ -1611,11 +1616,12 @@
            throw new Error('restore result not ready');
          }
 
-         const applied = Number(res.applied || 0);
-         const skipped = Number(res.skipped || 0);
-          ok(`Restore fertig. (applied=${applied}, skipped=${skipped})`);
-          setRunStatusText(`Fertig (applied=${applied}, skipped=${skipped}).`);
-          try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done(statusKey, `Restore fertig (applied=${applied}, skipped=${skipped}).`); }catch(e){}
+          const applied = Number(res.applied || 0);
+          const skipped = Number(res.skipped || 0);
+          const bid = String((RUN_CTX && RUN_CTX.change_block_id) || '').trim();
+           ok(`Restore fertig. (applied=${applied}, skipped=${skipped})` + (bid ? `\nChangeBlock: ${bid}` : ''));
+           setRunStatusText(`Fertig (applied=${applied}, skipped=${skipped}).`);
+           try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done(statusKey, `Restore fertig (applied=${applied}, skipped=${skipped}).`); }catch(e){}
 
          try{
            if($runDetails){

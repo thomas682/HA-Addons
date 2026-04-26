@@ -20,6 +20,12 @@
 
 - API: neue Endpunkte `/api/change_block/validate`, `/api/change_block/execute`, `/api/change_block/undo`, `/api/change_block/repeat`.
 
+## 1.12.449
+
+### Enhancement
+
+- Change-Service Migration: Bulk- und Range-Schreibpfade laufen jetzt ueber persistente ChangeBlocks (Chunking via `child_blocks`), inkl. Restore/Copy, Combine, Import und Delete. Undo/Repeat nutzt ChangeBlock-Referenzen (ref-only) statt direkte Writes. UI zeigt `change_block_id` bei relevanten Jobs/Aktionen. ([#403](https://github.com/thomas682/HA-Addons/issues/403))
+
 ## 1.12.440
 
 ### Enhancement

@@ -605,8 +605,9 @@
         try{ window.InfluxBroStatus && window.InfluxBroStatus.start && window.InfluxBroStatus.start('import.run', 'Import laeuft...'); }catch(e){}
         try{
           const j = await api('./api/import_start', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
-          $runHint.textContent = `Importiert: ${j.imported}`;
-          ok(j.message || 'Import fertig.');
+          const bid = String(j.change_block_id || '').trim();
+          $runHint.textContent = `Importiert: ${j.imported}` + (bid ? ` | ChangeBlock: ${bid}` : '');
+          ok((j.message || 'Import fertig.') + (bid ? `\nChangeBlock: ${bid}` : ''));
           try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done('import.run', j.message || 'Import fertig.'); }catch(e){}
         }catch(e){
           const s = String(e && e.message ? e.message : e);
