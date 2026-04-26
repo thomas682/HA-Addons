@@ -23888,6 +23888,85 @@ def api_dq_merge_candidates():
     })
 
 
+@app.get("/api/dq/migration_candidates")
+def api_dq_migration_candidates():
+    """Suggest simple migration candidates.
+
+    Current scope (MVP): entity_id without domain (object_id only) that can be
+    resolved to a concrete HA entity_id (e.g. "kitchen_temp" -> "sensor.kitchen_temp").
+
+    This supports Epic #406 (Module: Migration).
+    """
+
+    rid = str(request.args.get("run_id") or "").strip()
+    try:
+        limit = int(request.args.get("limit") or 200)
+    except Exception:
+        limit = 200
+    limit = max(1, min(2000, limit))
+
+    if not rid:
+        for r in _dq_runs_list(50):
+            if isinstance(r, dict) and str(r.get("state") or "") == "done" and str(r.get("id") or ""):
+                rid = str(r.get("id") or "")
+                break
+
+    if not rid:
+        return jsonify({"ok": True, "run_id": None, "candidates": [], "total": 0, "error": "no dq run found"})
+
+    run = _dq_run_load(rid)
+    if not run:
+        return jsonify({"ok": False, "error": "run not found"}), 404
+
+    items = run.get("items") if isinstance(run.get("items"), list) else []
+    out: list[dict[str, Any]] = []
+    seen: set[str] = set()
+
+    for it in items:
+        if not isinstance(it, dict):
+            continue
+        raw_eid = str(it.get("entity_id") or "").strip()
+        if not raw_eid:
+            continue
+        if "." in raw_eid:
+            continue
+        resolved, rerr = _resolve_ha_entity_id(raw_eid)
+        if not resolved or rerr:
+            continue
+        if resolved == raw_eid:
+            continue
+
+        m = str(it.get("measurement") or "").strip()
+        f = str(it.get("field") or "").strip()
+        fn = str(it.get("friendly_name") or "").strip()
+        if not m or not f:
+            continue
+
+        k = f"{m}|{f}|{raw_eid}|{resolved}|{fn}"
+        if k in seen:
+            continue
+        seen.add(k)
+
+        out.append({
+            "measurement": m,
+            "field": f,
+            "friendly_name": fn,
+            "source_entity_id": raw_eid,
+            "target_entity_id": resolved,
+            "hint": "entity_id ohne Domain kann auf HA Entity aufgeloest werden",
+        })
+        if len(out) >= limit:
+            break
+
+    return jsonify({
+        "ok": True,
+        "run_id": rid,
+        "run_state": run.get("state"),
+        "candidates": out,
+        "total": len(out),
+    })
+
+
 @app.get("/api/dq/quality_run/export")
 def api_dq_quality_run_export():
     rid = str(request.args.get("id") or "").strip()
