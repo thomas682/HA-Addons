@@ -410,9 +410,200 @@
       line-height: 1;
     }
     main.content details[open] > summary::before { transform: rotate(90deg); }
+
+    /* Theme system (MVP) (#405)
+       Applies via html[data-theme] + html[data-accent]. */
+    :root {
+      --ib-bg: #f7f8fa;
+      --ib-surface: #ffffff;
+      --ib-surface-2: #f1f3f6;
+      --ib-text: #1f2933;
+      --ib-text-muted: #6b7280;
+      --ib-border: #d7dce2;
+
+      --ib-primary: #2563eb;
+      --ib-primary-text: #ffffff;
+
+      --ib-success: #14803c;
+      --ib-warning: #b7791f;
+      --ib-danger: #c53030;
+      --ib-info: #2563eb;
+
+      /* Integrate existing per-UI header color knobs */
+      --ib-table-header-bg: var(--ib-table-head-bg);
+      --ib-table-header-text: var(--ib-table-head-fg);
+      --ib-table-row-hover: #e8f1ff;
+      --ib-table-selected: #dbeafe;
+
+      --ib-input-bg: #ffffff;
+      --ib-input-text: #111827;
+
+      --ib-button-bg: #eef3ff;
+      --ib-button-text: #103a7c;
+      --ib-button-border: #cad7f2;
+      --ib-button-hover-bg: #dce7ff;
+      --ib-button-active-bg: #cddcff;
+
+      /* Map existing button variables */
+      --ib-btn-bg: var(--ib-button-bg);
+      --ib-btn-fg: var(--ib-button-text);
+      --ib-btn-border: var(--ib-button-border);
+      --ib-btn-hover-bg: var(--ib-button-hover-bg);
+      --ib-btn-active-bg: var(--ib-button-active-bg);
+    }
+
+    html[data-theme="dark"] {
+      --ib-bg: #0f1115;
+      --ib-surface: #161a22;
+      --ib-surface-2: #1d2330;
+      --ib-text: #e5e7eb;
+      --ib-text-muted: #9aa4b2;
+      --ib-border: #2a3345;
+
+      --ib-table-row-hover: rgba(99, 102, 241, 0.14);
+      --ib-table-selected: rgba(59, 130, 246, 0.22);
+
+      --ib-input-bg: #121726;
+      --ib-input-text: #e5e7eb;
+
+      --ib-button-bg: #1c2436;
+      --ib-button-text: #e5e7eb;
+      --ib-button-border: #2a3345;
+      --ib-button-hover-bg: #25304a;
+      --ib-button-active-bg: #2c3a5b;
+    }
+
+    html[data-theme="dark_blue"] {
+      --ib-bg: #061325;
+      --ib-surface: #0b1b33;
+      --ib-surface-2: #102542;
+      --ib-text: #dbe7ff;
+      --ib-text-muted: #9bb0d6;
+      --ib-border: #1a355a;
+
+      --ib-table-row-hover: rgba(34, 211, 238, 0.10);
+      --ib-table-selected: rgba(59, 130, 246, 0.20);
+
+      --ib-input-bg: #081a33;
+      --ib-input-text: #dbe7ff;
+
+      --ib-button-bg: #0f2547;
+      --ib-button-text: #dbe7ff;
+      --ib-button-border: #1a355a;
+      --ib-button-hover-bg: #14305c;
+      --ib-button-active-bg: #183a6f;
+    }
+
+    html[data-theme="high_contrast"] {
+      --ib-bg: #000000;
+      --ib-surface: #000000;
+      --ib-surface-2: #0b0b0c;
+      --ib-text: #ffffff;
+      --ib-text-muted: #d1d5db;
+      --ib-border: #ffffff;
+
+      --ib-input-bg: #000000;
+      --ib-input-text: #ffffff;
+
+      --ib-button-bg: #ffffff;
+      --ib-button-text: #000000;
+      --ib-button-border: #ffffff;
+      --ib-button-hover-bg: #e5e7eb;
+      --ib-button-active-bg: #d1d5db;
+    }
+
+    html[data-accent="blue"] { --ib-primary: #2563eb; }
+    html[data-accent="green"] { --ib-primary: #16a34a; }
+    html[data-accent="orange"] { --ib-primary: #f97316; }
+    html[data-accent="violet"] { --ib-primary: #7c3aed; }
+    html[data-accent="red"] { --ib-primary: #ef4444; }
+    html[data-accent="cyan"] { --ib-primary: #06b6d4; }
+
+    body { background: var(--ib-bg) !important; color: var(--ib-text) !important; }
+    .muted { color: var(--ib-text-muted) !important; }
+
+    .card,
+    .table_wrap,
+    .table_box,
+    .space_box,
+    .status,
+    .ib_section_desc_row {
+      background: var(--ib-surface) !important;
+      border-color: var(--ib-border) !important;
+      color: var(--ib-text) !important;
+    }
+
+    input, select, textarea {
+      background: var(--ib-input-bg) !important;
+      color: var(--ib-input-text) !important;
+      border-color: var(--ib-border) !important;
+    }
+
+    th { background: var(--ib-table-header-bg) !important; color: var(--ib-table-header-text) !important; }
+    th, td { border-color: var(--ib-border) !important; }
+    tr.selected { background: var(--ib-table-selected) !important; }
+    tbody tr:hover td { background: var(--ib-table-row-hover) !important; }
+
+    .err { color: var(--ib-danger) !important; }
+    .ok { color: var(--ib-success) !important; }
+
+    .ib_topbar { background: color-mix(in srgb, var(--ib-surface) 96%, transparent) !important; border-bottom: 1px solid var(--ib-border) !important; }
+    .ib_topbar .zoom { border-left: 1px solid var(--ib-border) !important; }
+    .ib_cfg_icon, .ib_cfg_back_icon { background: var(--ib-surface) !important; color: var(--ib-text) !important; border-color: var(--ib-border) !important; }
   </style>
 
   <div style="display:none"></div>
+
+  <script>
+  (function(){
+    const CFG_MODE = String({{ ((cfg.get('ui_theme_mode') or 'system') if cfg else 'system') | tojson }} || 'system');
+    const CFG_ACC = String({{ ((cfg.get('ui_theme_accent') or 'blue') if cfg else 'blue') | tojson }} || 'blue');
+
+    let _mql = null;
+    let _onSystemChange = null;
+    function _applyTheme(theme){
+      try{ document.documentElement.setAttribute('data-theme', String(theme || 'light')); }catch(e){}
+    }
+    function _applyAccent(acc){
+      try{ document.documentElement.setAttribute('data-accent', String(acc || 'blue')); }catch(e){}
+    }
+    function apply(mode, accent){
+      const m = String(mode || 'system').trim().toLowerCase();
+      const a = String(accent || 'blue').trim().toLowerCase();
+      _applyAccent(a);
+
+      try{ if(_mql && _onSystemChange && _mql.removeEventListener) _mql.removeEventListener('change', _onSystemChange); }catch(e){}
+      try{ if(_mql && _onSystemChange && _mql.removeListener) _mql.removeListener(_onSystemChange); }catch(e){}
+      _mql = null;
+      _onSystemChange = null;
+
+      if(m === 'system'){
+        try{
+          _mql = window.matchMedia('(prefers-color-scheme: dark)');
+          const isDark = !!(_mql && _mql.matches);
+          _applyTheme(isDark ? 'dark' : 'light');
+          _onSystemChange = ()=>{ try{ _applyTheme(_mql && _mql.matches ? 'dark' : 'light'); }catch(e){} };
+          try{ if(_mql && _mql.addEventListener) _mql.addEventListener('change', _onSystemChange); }catch(e){}
+          try{ if(_mql && _mql.addListener) _mql.addListener(_onSystemChange); }catch(e){}
+        }catch(e){
+          _applyTheme('light');
+        }
+        return;
+      }
+      _applyTheme(m);
+    }
+
+    window.InfluxBroTheme = {
+      apply: apply,
+      get: ()=>({
+        mode: String(document.documentElement.getAttribute('data-theme') || ''),
+        accent: String(document.documentElement.getAttribute('data-accent') || ''),
+      }),
+    };
+
+    apply(CFG_MODE, CFG_ACC);
+  })();
+  </script>
 
   <script>
   (function(){

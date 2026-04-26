@@ -743,8 +743,33 @@
 
         <details class="card" id="ui_layout" open data-ui="config_settings.section_root" title="settings.ui.layout">
           <summary><span class="ib_summary_row"><span>Darstellung</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Darstellung" data-info-body="Optische/UX Einstellungen (z.B. Zoom, Tooltips, Auto-Breite der Auswahlfelder).\n\nHinweis:\n- Einige Werte werden im Browser gespeichert (UI-State), andere in /data (Addon-Config)." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
-          <div class="card_body">
-            <div class="grid">
+           <div class="card_body">
+             <div class="grid">
+              <div class="param_row" data-ui="config_ui_theme.row_mode" data-ib-pickkey="config_ui_theme.row_mode" title="settings.ui.theme.mode">
+                <div class="param_label">Farbschema<span class="param_hint">MVP: System, Hell, Dunkel, Dunkel Blau, Hoher Kontrast. Wirkt sofort (ohne Neustart).</span></div>
+                <div class="param_control">
+                  <select id="ui_theme_mode" data-ui="config_ui_theme.select_mode" data-ib-pickkey="config_ui_theme.select_mode" title="settings.ui.theme.mode" style="width:100%; max-width: 320px;">
+                    <option value="system">System</option>
+                    <option value="light">Hell</option>
+                    <option value="dark">Dunkel</option>
+                    <option value="dark_blue">Dunkel Blau</option>
+                    <option value="high_contrast">Hoher Kontrast</option>
+                  </select>
+                </div>
+              </div>
+              <div class="param_row" data-ui="config_ui_theme.row_accent" data-ib-pickkey="config_ui_theme.row_accent" title="settings.ui.theme.accent">
+                <div class="param_label">Akzentfarbe<span class="param_hint">Beeinflusst Primary/Highlights (Buttons, Markierungen).</span></div>
+                <div class="param_control">
+                  <select id="ui_theme_accent" data-ui="config_ui_theme.select_accent" data-ib-pickkey="config_ui_theme.select_accent" title="settings.ui.theme.accent" style="width:100%; max-width: 320px;">
+                    <option value="blue">Blau</option>
+                    <option value="green">Gruen</option>
+                    <option value="orange">Orange</option>
+                    <option value="violet">Violett</option>
+                    <option value="red">Rot</option>
+                    <option value="cyan">Cyan</option>
+                  </select>
+                </div>
+              </div>
               <div class="param_row">
                 <div class="param_label">GUI Gruppe 1: Titelzeile / Haupttitel (px)<span class="param_hint">Seitentitel in der festen Titelkarte, Brand-Titel (InfluxBro), grosse Kopfzeilen. Default: 16.</span></div>
                 <div class="param_control">
@@ -1582,7 +1607,7 @@ const ids = [
   "ui_query_max_points","ui_raw_max_points","ui_raw_center_max_points","ui_raw_center_range_default","ui_raw_center_min_points","ui_raw_target_chunk_ms","ui_analysis_max_age_years",
   "ui_query_manual_max_points","ui_graph_jump_padding_intervals",
   "ui_gui_title_px","ui_gui_heading_px","ui_gui_body_px","ui_gui_meta_px","ui_tbl_title_px","ui_tbl_head_px","ui_tbl_cell_px",
-  "ui_page_search_highlight_color","ui_page_search_highlight_width_px","ui_page_search_highlight_duration_ms","ui_nav_helper_history_limit","ui_nav_helper_highlight_color","ui_nav_helper_highlight_duration_ms","ui_analysis_cache_hidden_color","ui_checkbox_scale",
+  "ui_page_search_highlight_color","ui_page_search_highlight_width_px","ui_page_search_highlight_duration_ms","ui_nav_helper_history_limit","ui_nav_helper_highlight_color","ui_nav_helper_highlight_duration_ms","ui_analysis_cache_hidden_color","ui_checkbox_scale","ui_theme_mode","ui_theme_accent",
   "ui_analysis_cache_missing_color",
   "ui_picker_outline_auto","ui_picker_outline_light_bg","ui_picker_outline_dark_bg","perf_corr_causal_gap_ms","perf_corr_timer_gap_ms","perf_corr_dep_zoom_pct",
   "outlier_gap_seconds_default",
@@ -2648,6 +2673,10 @@ function setForm(cfg){
   _setVal(el.ui_analysis_max_age_years, cfg.ui_analysis_max_age_years ?? 5);
   _setVal(el.ui_decimals, cfg.ui_decimals ?? 3);
 
+  _safeSet(el.ui_theme_mode, 'value', String(cfg.ui_theme_mode ?? 'system'));
+  _safeSet(el.ui_theme_accent, 'value', String(cfg.ui_theme_accent ?? 'blue'));
+  try{ if(window.InfluxBroTheme && window.InfluxBroTheme.apply) window.InfluxBroTheme.apply(el.ui_theme_mode.value, el.ui_theme_accent.value); }catch(e){}
+
   _setVal(el.ui_gui_title_px, cfg.ui_gui_title_px ?? 16);
   _setVal(el.ui_gui_heading_px, cfg.ui_gui_heading_px ?? 14);
   _setVal(el.ui_gui_body_px, cfg.ui_gui_body_px ?? 12);
@@ -2816,6 +2845,9 @@ function getForm(){
     ui_query_manual_max_points: parseInt(el.ui_query_manual_max_points.value, 10),
     ui_graph_jump_padding_intervals: parseInt(el.ui_graph_jump_padding_intervals.value, 10),
     ui_decimals: parseInt(el.ui_decimals.value, 10),
+
+    ui_theme_mode: String(el.ui_theme_mode ? el.ui_theme_mode.value : 'system'),
+    ui_theme_accent: String(el.ui_theme_accent ? el.ui_theme_accent.value : 'blue'),
 
     ui_gui_title_px: parseInt(el.ui_gui_title_px.value, 10),
     ui_gui_heading_px: parseInt(el.ui_gui_heading_px.value, 10),
@@ -3361,6 +3393,12 @@ try{
     elm.addEventListener('change', ()=>{ scheduleAutoSave(); });
     elm.addEventListener('input', ()=>{ scheduleAutoSave(); });
   });
+}catch(e){}
+
+// Live-apply theme changes (instant feedback)
+try{
+  if(el.ui_theme_mode) el.ui_theme_mode.addEventListener('change', ()=>{ try{ window.InfluxBroTheme && window.InfluxBroTheme.apply && window.InfluxBroTheme.apply(el.ui_theme_mode.value, el.ui_theme_accent ? el.ui_theme_accent.value : 'blue'); }catch(e){} });
+  if(el.ui_theme_accent) el.ui_theme_accent.addEventListener('change', ()=>{ try{ window.InfluxBroTheme && window.InfluxBroTheme.apply && window.InfluxBroTheme.apply(el.ui_theme_mode ? el.ui_theme_mode.value : 'system', el.ui_theme_accent.value); }catch(e){} });
 }catch(e){}
 
 

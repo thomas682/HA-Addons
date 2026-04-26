@@ -20,6 +20,36 @@
 
 - API: neue Endpunkte `/api/change_block/validate`, `/api/change_block/execute`, `/api/change_block/undo`, `/api/change_block/repeat`.
 
+## 1.12.450
+
+### Enhancement
+
+- ChangeBlocks UI: History-Seite zeigt jetzt eine ChangeBlocks-Liste inkl. Detailansicht, Undo/Repeat Preview (validate) und Konfliktanzeige. API `/api/change_block` kann Items optional paginieren (`items_offset/items_limit`). ([#404](https://github.com/thomas682/HA-Addons/issues/404))
+
+## 1.12.451
+
+### Enhancement
+
+- Theme-System (MVP): globales Farbschema (`ui_theme_mode`) + Akzentfarbe (`ui_theme_accent`) inkl. Sofortwirkung ohne Neustart. Basis-UI nutzt zentrale Tokens (Background/Surface/Text/Border/Inputs/Buttons/Tables) und Plotly-Layouts werden theming-sensitiv gesetzt. ([#405](https://github.com/thomas682/HA-Addons/issues/405))
+
+## 1.12.453
+
+### Enhancement
+
+- ChangeBlocks UI: Detailansicht zeigt jetzt ChangeItems (Alt/Neu) und nutzt Preview-Ergebnisse fuer aktuellen DB-Wert (cur/exp) pro Item, inkl. Paging fuer grosse Blocks. Validate liefert dazu `current_value/current_point/expected_value` je Item. ([#404](https://github.com/thomas682/HA-Addons/issues/404))
+
+## 1.12.452
+
+### Maintenance
+
+- Change-Service Härtung: Schreiboperationen sind jetzt konsequent auf InfluxDB v2 beschraenkt. v1-Schreibpfade (z.B. raw_overwrite/fullrestore) sind deaktiviert, um direkte Influx Writes ausserhalb des Change-Service zu vermeiden. Undo-Status blendet Aktionen mit `undo_supported=false` aus. ([#400](https://github.com/thomas682/HA-Addons/issues/400))
+
+## 1.12.449
+
+### Enhancement
+
+- Change-Service Migration: Bulk- und Range-Schreibpfade laufen jetzt ueber persistente ChangeBlocks (Chunking via `child_blocks`), inkl. Restore/Copy, Combine, Import und Delete. Undo/Repeat nutzt ChangeBlock-Referenzen (ref-only) statt direkte Writes. UI zeigt `change_block_id` bei relevanten Jobs/Aktionen. ([#403](https://github.com/thomas682/HA-Addons/issues/403))
+
 ## 1.12.440
 
 ### Enhancement

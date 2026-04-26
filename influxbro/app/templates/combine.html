@@ -875,7 +875,8 @@
           stop: stopIso,
         })});
         JOB_ID = String(j.job_id || '');
-        setInfo(['Job gestartet: ' + JOB_ID, '']);
+        const bid = String(j.change_block_id || '').trim();
+        setInfo(['Job gestartet: ' + JOB_ID, bid ? ('ChangeBlock: ' + bid) : '']);
         beginPoll();
       }
 
@@ -895,9 +896,11 @@
             const el = String(st.elapsed || '');
             const applied = (st.written !== null && st.written !== undefined) ? String(st.written) : '';
             const skipped = (st.skipped !== null && st.skipped !== undefined) ? String(st.skipped) : '';
+            const bid = String(st.change_block_id || '').trim();
             setInfo([
               `Status: ${state} | Laufzeit: ${el}`,
               msg ? ('Aktion: ' + msg) : '',
+              bid ? ('ChangeBlock: ' + bid) : '',
               applied ? ('geschrieben: ' + applied) : '',
               skipped ? ('skipped: ' + skipped) : '',
             ]);
