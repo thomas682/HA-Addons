@@ -5,6 +5,93 @@
 - Home Assistant Core Version abfragen:
   - `curl -s -H "Authorization: Bearer $SUPERVISOR_TOKEN" http://192.168.2.200:8123/api/config | jq -r '.version'`
 
+## Live-System Tests (Version Check + Update via Playwright)
+
+Wenn Tests gegen das Live-System (Home Assistant Ingress) ausgefuehrt werden, MUSS vor dem Testlauf der Versionsstand von InfluxBro geprueft werden.
+
+Pflichtablauf:
+
+1. Erwartete Version bestimmen
+
+- Quelle: `influxbro/config.yaml` -> `version` (Repo-Stand).
+
+2. Live-Version pruefen
+
+- InfluxBro Web UI oeffnen (Ingress).
+- `GET ./api/info` (same-origin) ausfuehren und `version` vergleichen.
+
+3. Wenn Version nicht korrekt ist: Update automatisieren
+
+- Falls Live-Version != erwartete Version, MUSS per Playwright die Aktualisierung auf das neueste InfluxBro Release/Update im Home Assistant UI ausgefuehrt werden.
+- Danach Add-on neu starten (falls HA UI das nicht automatisch macht) und Version erneut via `./api/info` verifizieren.
+
+### Playwright Anweisung (Beispiel)
+
+Voraussetzungen (als Env-Variablen):
+
+- `HA_URL` (z.B. `http://192.168.2.200:8123`)
+- `HA_USERNAME`
+- `HA_PASSWORD`
+- `INFLUXBRO_EXPECT_VERSION` (z.B. `1.12.456`)
+
+Playwright Test-Skript (Snippet, best-effort):
+
+```ts
+// playwright/influxbro-update.spec.ts
+import { test, expect } from '@playwright/test'
+
+test('update InfluxBro if version mismatches', async ({ page }) => {
+  const HA_URL = process.env.HA_URL!
+  const USER = process.env.HA_USERNAME!
+  const PASS = process.env.HA_PASSWORD!
+  const EXPECT = process.env.INFLUXBRO_EXPECT_VERSION!
+
+  await page.goto(HA_URL, { waitUntil: 'domcontentloaded' })
+
+  // Login (works for fresh sessions; already-logged-in is fine)
+  if (await page.getByLabel('Username').isVisible().catch(() => false)) {
+    await page.getByLabel('Username').fill(USER)
+    await page.getByLabel('Password').fill(PASS)
+    await page.getByRole('button', { name: /log in/i }).click()
+  }
+
+  // Open Add-ons
+  await page.goto(`${HA_URL}/hassio/dashboard`, { waitUntil: 'domcontentloaded' })
+  await page.getByRole('link', { name: /add-ons/i }).click().catch(() => {})
+  await page.getByText('InfluxBro', { exact: false }).click()
+
+  // If an Update button is present, click it
+  const updateBtn = page.getByRole('button', { name: /^update$/i })
+  if (await updateBtn.isVisible().catch(() => false)) {
+    await updateBtn.click()
+    // Wait for update to finish (best-effort: wait until Update disappears)
+    await expect(updateBtn).toBeHidden({ timeout: 10 * 60 * 1000 })
+  }
+
+  // Start/Restart add-on (best-effort)
+  const startBtn = page.getByRole('button', { name: /^start$/i })
+  if (await startBtn.isVisible().catch(() => false)) {
+    await startBtn.click()
+  }
+
+  // Open Web UI and verify version via /api/info
+  await page.getByRole('button', { name: /open web ui/i }).click()
+  const popup = await page.waitForEvent('popup')
+  await popup.waitForLoadState('domcontentloaded')
+
+  const liveVer = await popup.evaluate(async () => {
+    const r = await fetch('./api/info')
+    const j = await r.json().catch(() => ({}))
+    return String((j && j.version) || '')
+  })
+  expect(liveVer).toBe(EXPECT)
+})
+```
+
+Hinweis:
+
+- Selektoren in HA koennen je nach Version variieren. Wenn die Automation scheitert, Testlauf abbrechen und manuell updaten (oder Selektoren anpassen) bevor Live-Tests fortgesetzt werden.
+
 ## UI-Komponenten-Entfernung (Tombstones Pflichtprozess)
 
 Beim Entfernen von UI-Komponenten (HTML, JS, CSS, Backend-Funktionen) muss zwingend ein nachvollziehbarer "Tombstone" hinterlassen werden.
