@@ -1219,3 +1219,28 @@ def test_api_ui_inventory_returns_items(load_app_module, tmp_path):
     # Must include at least a few known keys.
     keys = {str(x.get("key") or "") for x in j["items"] if isinstance(x, dict)}
     assert "config_page.main" in keys
+    assert "config_icon_svg.btn_close" in keys
+    assert "config_icon_svg.btn_superpicker" in keys
+    assert "dialog_change_preview.btn_close" in keys
+    assert "dialog_change_preview.btn_superpicker" in keys
+    assert "dialog_repair_wizard.btn_close" in keys
+    assert "dialog_repair_wizard.btn_superpicker" in keys
+    assert "export_target.btn_close" in keys
+    assert "export_target.btn_superpicker" in keys
+    assert "logs_support_bundle.btn_close" in keys
+    assert "logs_support_bundle.btn_superpicker" in keys
+    assert "dq_detail.btn_close" in keys
+    assert "dq_detail.btn_superpicker" in keys
+    assert "jobs_timers_history.btn_close" in keys
+    assert "jobs_timers_history.btn_superpicker" in keys
+    assert "docs_modal.btn_close" in keys
+    assert "docs_modal.btn_superpicker" in keys
+    assert "issue_composer.btn_close" in keys
+    assert "issue_composer.btn_superpicker" in keys
+    assert "settings_organizer.btn_close" in keys
+    assert "settings_organizer.btn_superpicker" in keys
+    assert "ib_page_search_modal.btn_close" in keys
+    assert "ib_page_search_modal.btn_superpicker" in keys
+    assert "analysis_log_modal.btn_close" in keys
+    assert "analysis_log_modal.btn_superpicker" in keys
+    assert "picker_multi.panel_bar" in keys

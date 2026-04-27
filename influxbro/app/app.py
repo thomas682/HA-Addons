@@ -2225,6 +2225,7 @@ def _ui_inventory_build() -> list[dict[str, Any]]:
 
     # data-ui key in attributes (single or double quotes)
     re_dui = re.compile(r"data-ui\s*=\s*['\"]([^'\"]+)['\"]")
+    re_dui_set = re.compile(r"setAttribute\(\s*['\"]data-ui['\"]\s*,\s*['\"]([^'\"]+)['\"]\s*\)")
     re_aria = re.compile(r"aria-label\s*=\s*['\"]([^'\"]+)['\"]")
     re_title = re.compile(r"title\s*=\s*['\"]([^'\"]+)['\"]")
     re_span = re.compile(r"<span[^>]*>([^<]{1,120})</span>")
@@ -2252,13 +2253,17 @@ def _ui_inventory_build() -> list[dict[str, Any]]:
             except Exception:
                 pass
 
-            for m in re_dui.finditer(win):
+            seen_win_keys: set[str] = set()
+            for m in list(re_dui.finditer(win)) + list(re_dui_set.finditer(win)):
                 key = str(m.group(1) or "").strip()
                 if not key:
                     continue
                 # Keep inventory bounded; we only care about reasonable keys.
                 if len(key) > 160:
                     continue
+                if key in seen_win_keys:
+                    continue
+                seen_win_keys.add(key)
 
                 area = _ui_inventory_area_for_template(p.name)
 
