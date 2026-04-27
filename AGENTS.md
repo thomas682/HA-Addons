@@ -315,3 +315,75 @@ Wenn der Nutzer waehrend der Ausfuehrung neue Anforderungen hinzufuegt, gilt:
 - Keine stillen Kontextwechsel
 - Keine halb abgebrochenen Arbeitsstraenge
 - Keine implizite Verdraengung laufender Aufgaben durch nachfolgende Nachrichten
+
+## Modus-Prioritaet und Ausfuehrungssperre
+
+Wenn eine Systemanweisung, ein System-Reminder oder eine Developer-Anweisung einen eingeschraenkten Modus vorgibt, gilt diese Anweisung immer vorrangig vor allen Regeln in dieser Datei.
+
+Dazu gehoeren insbesondere:
+
+- `Plan Mode`
+- `READ-ONLY`
+- Verbote fuer Edits, Commits, Pushes oder sonstige Systemaenderungen
+- sonstige ausdrueckliche Ausfuehrungssperren
+
+### Harte Regel
+
+Wenn `Plan Mode` oder `READ-ONLY` aktiv ist, darf der Agent:
+
+- lesen
+- suchen
+- analysieren
+- Rueckfragen stellen
+- einen Plan erstellen
+- offene Queue-Punkte ordnen
+
+Der Agent darf in diesem Modus NICHT:
+
+- Dateien aendern
+- `apply_patch` verwenden
+- schreibende Bash-Befehle ausfuehren
+- Versionen erhoehen
+- Commits erzeugen
+- Branches aendern
+- sonstige Systemaenderungen vornehmen
+
+Diese Sperre gilt auch dann, wenn:
+
+- der Nutzer direkt eine Aenderung verlangt
+- noch offene Queue-Punkte existieren
+- die laufende Abarbeitung noch nicht abgeschlossen ist
+- die Regeln zur Queue-Fortsetzung sonst fuer weiteres Arbeiten sprechen wuerden
+
+### Queue-Verhalten unter Modussperre
+
+Wenn eine Queue aktiv ist und gleichzeitig `Plan Mode` oder `READ-ONLY` gilt:
+
+- die Queue bleibt bestehen
+- sie wird nur noch als Plan-/Analyse-Queue weitergefuehrt
+- offene Punkte werden geordnet, nicht ausgefuehrt
+- neue Nutzeranweisungen werden in die Queue einsortiert, aber nicht implementiert
+
+Die Queue-Regel ist niemals eine Erlaubnis, eine aktive Modussperre zu umgehen.
+
+### Pflicht-Checkpoint vor jeder Ausfuehrung
+
+Vor jedem Edit, Commit oder sonstiger schreibender Aktion MUSS der Agent aktiv pruefen:
+
+1. Ist ein System- oder Developer-Hinweis aktiv, der nur Lesen/Planen erlaubt?
+2. Ist `Plan Mode` oder `READ-ONLY` aktiv?
+3. Gibt es ein ausdrueckliches Verbot fuer Modifikationen oder Commits?
+
+Wenn eine dieser Fragen mit `ja` beantwortet wird, MUSS der Agent jede Ausfuehrung unterlassen und darf nur planen, ordnen und rueckmelden.
+
+### Konfliktregel
+
+Bei Konflikten gilt immer diese Reihenfolge:
+
+1. Systemanweisungen
+2. Developer-Anweisungen
+3. Modus-Sperren wie `Plan Mode` / `READ-ONLY`
+4. Regeln dieser Datei
+5. Nutzerwunsch
+
+Nutzerwuensche oder Queue-Regeln duerfen niemals eine hoehere Prioritaet als eine aktive Modussperre erhalten.
