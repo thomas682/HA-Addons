@@ -8078,6 +8078,18 @@ def _dt_to_rfc3339_utc_ms(dt: datetime) -> str:
     return s.replace("+00:00", "Z")
 
 
+def _dt_to_rfc3339_utc_us(dt: datetime) -> str:
+    """RFC3339 UTC with microsecond precision.
+
+    Note: Python datetime can't represent true InfluxDB nanoseconds. This is still
+    enough to disambiguate the common case where UI rounding to milliseconds
+    collapses multiple points.
+    """
+
+    s = dt.astimezone(timezone.utc).isoformat(timespec="microseconds")
+    return s.replace("+00:00", "Z")
+
+
 _UI_LOCAL_TS_RE = re.compile(r"^(\d{2})\.(\d{2})\.(\d{4})\s+(\d{2}):(\d{2}):(\d{2})\.(\d{3})$")
 
 
@@ -25379,12 +25391,23 @@ from(bucket: "{cfg["bucket"]}")
                     q_stop = _dt_to_rfc3339_utc(q_stop_dt)
                     q = log_query("api.raw_points (flux center_minutes)", q)
                     tables = qapi.query(q, org=cfg["org"])
+                    # Track duplicates at the highest precision we can represent.
+                    seen_full: dict[str, int] = {}
                     for t in tables or []:
                         for r in getattr(t, "records", []) or []:
                             ts = r.get_time()
                             val = r.get_value()
                             if isinstance(ts, datetime):
-                                rows.append({"time": _dt_to_rfc3339_utc_ms(ts), "value": val})
+                                time_full = _dt_to_rfc3339_utc_us(ts)
+                                n_dup = seen_full.get(time_full, 0)
+                                seen_full[time_full] = n_dup + 1
+                                row_id = time_full if n_dup == 0 else f"{time_full}#dup{n_dup}"
+                                rows.append({
+                                    "row_id": row_id,
+                                    "time": _dt_to_rfc3339_utc_ms(ts),
+                                    "time_full": time_full,
+                                    "value": val,
+                                })
                     before_returned = len([r for r in rows if str(r.get("time") or "") <= _dt_to_rfc3339_utc_ms(center_dt)])
                     after_returned = max(0, len(rows) - before_returned)
                 elif mode == "center" and center_dt is not None and before_limit is not None and after_limit is not None:
@@ -25412,32 +25435,61 @@ from(bucket: "{cfg["bucket"]}")
                     newer: list[dict[str, Any]] = []
                     q_older = log_query("api.raw_points (flux older)", q_older)
                     q_newer = log_query("api.raw_points (flux newer)", q_newer)
+                    seen_full: dict[str, int] = {}
                     tables = qapi.query(q_older, org=cfg["org"])
                     for t in tables or []:
                         for r in getattr(t, "records", []) or []:
                             ts = r.get_time()
                             val = r.get_value()
                             if isinstance(ts, datetime):
-                                older.append({"time": _dt_to_rfc3339_utc_ms(ts), "value": val})
+                                time_full = _dt_to_rfc3339_utc_us(ts)
+                                n_dup = seen_full.get(time_full, 0)
+                                seen_full[time_full] = n_dup + 1
+                                row_id = time_full if n_dup == 0 else f"{time_full}#dup{n_dup}"
+                                older.append({
+                                    "row_id": row_id,
+                                    "time": _dt_to_rfc3339_utc_ms(ts),
+                                    "time_full": time_full,
+                                    "value": val,
+                                })
                     tables = qapi.query(q_newer, org=cfg["org"])
                     for t in tables or []:
                         for r in getattr(t, "records", []) or []:
                             ts = r.get_time()
                             val = r.get_value()
                             if isinstance(ts, datetime):
-                                newer.append({"time": _dt_to_rfc3339_utc_ms(ts), "value": val})
+                                time_full = _dt_to_rfc3339_utc_us(ts)
+                                n_dup = seen_full.get(time_full, 0)
+                                seen_full[time_full] = n_dup + 1
+                                row_id = time_full if n_dup == 0 else f"{time_full}#dup{n_dup}"
+                                newer.append({
+                                    "row_id": row_id,
+                                    "time": _dt_to_rfc3339_utc_ms(ts),
+                                    "time_full": time_full,
+                                    "value": val,
+                                })
                     older.reverse()  # ascending
                     before_returned = len(older)
                     after_returned = len(newer)
                     rows = older + newer
                 else:
+                    seen_full: dict[str, int] = {}
                     tables = qapi.query(q, org=cfg["org"])
                     for t in tables or []:
                         for r in getattr(t, "records", []) or []:
                             ts = r.get_time()
                             val = r.get_value()
                             if isinstance(ts, datetime):
-                                rows.append({"time": _dt_to_rfc3339_utc_ms(ts), "value": val})
+                                time_full = _dt_to_rfc3339_utc_us(ts)
+                                n_dup = seen_full.get(time_full, 0)
+                                seen_full[time_full] = n_dup + 1
+                                row_id = time_full if n_dup == 0 else f"{time_full}#dup{n_dup}"
+                                rows.append({
+                                    "row_id": row_id,
+                                    "time": _dt_to_rfc3339_utc_ms(ts),
+                                    "time_full": time_full,
+                                    "value": val,
+                                })
 
                 if include_total:
                     try:

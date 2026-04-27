@@ -954,6 +954,7 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
             <div style="font-weight:800;" data-ui="dialog_repair_wizard.txt_preset" data-ib-pickkey="dialog_repair_wizard.txt_preset">Preset</div>
             <select id="repair_wizard_preset" class="btn_sm" style="width:100%;" data-ui="dialog_repair_wizard.select_preset" data-ib-pickkey="dialog_repair_wizard.select_preset">
               <option value="auto" selected>Auto (aus Outliers)</option>
+              <option value="repair_duplicate_timestamp">Duplikat-Zeitstempel: einen Wert loeschen</option>
               <option value="repair_counterreset">Counterreset (pre-fault bereinigen)</option>
               <option value="repair_counter">Counter (Max-Sprung) interpolieren</option>
               <option value="repair_decrease">Counter Abfall interpolieren</option>
@@ -3252,7 +3253,15 @@ async function preloadOutlierDetails(maxTotal, awaitFirst){
 }
 
 function rowKey(row){
+  // Must be unique per visible raw row.
+  // row.time is only millisecond precision and can collide.
+  if(row && row.row_id) return String(row.row_id || '');
   return String(row && row.time ? row.time : "");
+}
+
+function rowTimeFull(row){
+  // The best time identifier we have for DB operations.
+  return String(row && (row.time_full || row.time) ? (row.time_full || row.time) : '');
 }
 
 let RAW_HISTORY_BY_KEY = new Map();
@@ -3367,7 +3376,7 @@ async function loadRawHistorySummary(base){
     RAW_HISTORY_BY_KEY = new Map();
     RAW_UNDOABLE_BY_KEY = new Map();
     const rows = Array.isArray(RAW_ROWS) ? RAW_ROWS : [];
-    const times = rows.map(r => String(r && r.time ? r.time : '')).filter(Boolean);
+    const times = rows.map(r => rowTimeFull(r)).filter(Boolean);
     if(!times.length || !base || !base.measurement || !base.field) return;
     const j = await api('./api/raw_history_summary', {
       method:'POST',
@@ -3383,7 +3392,7 @@ async function loadRawHistorySummary(base){
     const grouped = j && j.rows ? j.rows : {};
     const undoable = j && j.undoable ? j.undoable : {};
     rows.forEach(r => {
-      const key = rowKey(r);
+      const key = rowTimeFull(r);
       if(!key) return;
       const list = Array.isArray(grouped[key]) ? grouped[key] : [];
       RAW_HISTORY_BY_KEY.set(key, list);
@@ -5987,8 +5996,8 @@ function renderRawTable(){
     }
   }catch(e){}
 
-  const smartStartMs = RAW_SMART_START_KEY ? Date.parse(String(RAW_SMART_START_KEY || '')) : NaN;
-  const smartEndMs = RAW_SMART_END_KEY ? Date.parse(String(RAW_SMART_END_KEY || '')) : NaN;
+  const smartStartMs = RAW_SMART_START_TIME ? Date.parse(String(RAW_SMART_START_TIME || '')) : NaN;
+  const smartEndMs = RAW_SMART_END_TIME ? Date.parse(String(RAW_SMART_END_TIME || '')) : NaN;
   const smartHasRange = (isFinite(smartStartMs) && isFinite(smartEndMs) && smartStartMs < smartEndMs);
 
   // If no rows, show minimum 3 empty rows
@@ -6040,10 +6049,10 @@ function renderRawTable(){
         tdH.textContent = 'edit ' + (oldTxt || '-') + ' -> ' + (newTxt || '-');
         tdH.style.color = '#0b57d0';
       }else{
-        tdH.textContent = _rawHistoryCompact(k);
+        tdH.textContent = _rawHistoryCompact(rowTimeFull(r) || k);
       }
     }catch(e){
-      tdH.textContent = _rawHistoryCompact(rowKey(r));
+      tdH.textContent = _rawHistoryCompact(rowTimeFull(r) || rowKey(r));
     }
     const tdO = document.createElement('td');
     const outlierInfo = RAW_OUTLIER_MAP ? RAW_OUTLIER_MAP[String(r.time) || ''] : null;
@@ -10464,14 +10473,14 @@ function _rawSmartStatusText(){
     if(step === 'start') return 'Startwert markieren (Raw-Tabelle anklicken).';
     if(step === 'end') return 'Endwert markieren (Raw-Tabelle anklicken).';
 
-    const s = RAW_SMART_START_KEY ? String(RAW_SMART_START_KEY) : '';
-    const e = RAW_SMART_END_KEY ? String(RAW_SMART_END_KEY) : '';
+    const s = RAW_SMART_START_TIME ? String(RAW_SMART_START_TIME) : '';
+    const e = RAW_SMART_END_TIME ? String(RAW_SMART_END_TIME) : '';
     if(!s && !e) return '';
     if(s && !e) return `Start: ${fmtTs(s)} | Ende: (fehlt)`;
     if(!s && e) return `Start: (fehlt) | Ende: ${fmtTs(e)}`;
     const rows = Array.isArray(RAW_ROWS) ? RAW_ROWS : [];
-    const si = rows.findIndex(r => String(rowKey(r)) === s);
-    const ei = rows.findIndex(r => String(rowKey(r)) === e);
+    const si = rows.findIndex(r => String(rowKey(r)) === String(RAW_SMART_START_KEY || ''));
+    const ei = rows.findIndex(r => String(rowKey(r)) === String(RAW_SMART_END_KEY || ''));
     if(si >= 0 && ei >= 0 && ei > si){
       const inner = Math.max(0, (ei - si - 1));
       const modeTxt = (kind === 'linear') ? 'Linear' : (kind === 'copy_first' ? 'Erstwert' : '');
@@ -10621,7 +10630,7 @@ async function _rawSmartPreview(kind){
     }
     changes.push({
       action: 'overwrite',
-      time: String(row.time || ''),
+      time: rowTimeFull(row) || String(row.time || ''),
       new_value: newStr,
       decimals: r.decimals,
       reason: (k === 'linear') ? 'Smart correction: linear interpolation' : 'Smart correction: copy first value',
@@ -10833,7 +10842,8 @@ function updateRawToolbarState(){
     if(!$rawPaste || !$rawCopyValue) return;
     const hasCopied = !!(RAW_COPIED && RAW_COPIED.key !== undefined);
     const hasTarget = !!(RAW_ROW_SELECTED_KEY && String(RAW_ROW_SELECTED_KEY).trim());
-    const undoable = hasTarget ? _rawUndoableEntry(RAW_ROW_SELECTED_KEY) : null;
+    const selRow = hasTarget ? findRawRowByKey(RAW_ROW_SELECTED_KEY) : null;
+    const undoable = selRow ? _rawUndoableEntry(rowTimeFull(selRow) || '') : null;
     $rawPaste.disabled = !(hasCopied && hasTarget && String(RAW_ROW_SELECTED_KEY) !== String(RAW_COPIED && RAW_COPIED.key));
     $rawCopyValue.disabled = !hasTarget;
     if($rawCopyRow) $rawCopyRow.disabled = !hasTarget;
@@ -11092,7 +11102,7 @@ async function triggerRawOverwrite(sourceKey, targetKey, opts){
 
   const reason = (opts && opts.mode === 'dragdrop') ? 'Raw Drag-and-Drop overwrite' : 'Raw Copy-Paste overwrite';
   const unit = _currentEntityUnit();
-  const ctx = { time: String(targetRow.time || ''), old_value: targetRow.value, new_value: Number(newValue) };
+  const ctx = { time: rowTimeFull(targetRow) || String(targetRow.time || ''), old_value: targetRow.value, new_value: Number(newValue) };
 
   const attempt = async (force)=>{
     await api('./api/apply_changes', {
@@ -11112,7 +11122,7 @@ async function triggerRawOverwrite(sourceKey, targetKey, opts){
         trigger_button: (opts && opts.mode === 'dragdrop') ? 'raw_dragdrop' : 'raw_paste',
         changes: [{
           action: 'overwrite',
-          time: String(targetRow.time || ''),
+          time: rowTimeFull(targetRow) || String(targetRow.time || ''),
           new_value: newValue,
           decimals: Math.max(0, _countDecimals(newValue)),
           reason,
@@ -11157,7 +11167,7 @@ try{
       if(!key){ err('Bitte zuerst eine Raw-Zeile als Quelle markieren.'); return; }
       const row = findRawRowByKey(key);
       if(!row){ err('Zeile nicht geladen.'); return; }
-      RAW_COPIED = { key, raw_value: row.value, value_str: rawNumericValueString(row.value), time: row.time };
+      RAW_COPIED = { key, raw_value: row.value, value_str: rawNumericValueString(row.value), time: String(row.time || '') };
       try{ if(RAW_COPIED.value_str) await copyTextToClipboard(RAW_COPIED.value_str); }catch(e){}
       ok('Quellwert markiert.');
       renderRawTable();
@@ -11221,8 +11231,94 @@ try{
       const curMs = Date.parse(String(cur && cur.time ? cur.time : key));
       if(!isFinite(curMs)){ err('Ungueltiger Zeitstempel.'); return; }
 
+      // Duplicate timestamps (same displayed millisecond) can happen and break edits/overwrites.
+      // In that case, propose deleting ONE of the duplicates first.
+      try{
+        const tMsKey = String(cur && cur.time ? cur.time : '').trim();
+        if(tMsKey){
+          const dups = rows.filter(r => String(r && r.time ? r.time : '').trim() === tMsKey);
+          const uniqVals = new Set(dups.map(r=>toFiniteNumber(r && r.value)).filter(v=>v !== null).map(v=>String(v)));
+          if(dups.length >= 2 && uniqVals.size >= 2){
+            const unit = _currentEntityUnit();
+            const delTime = rowTimeFull(cur) || tMsKey;
+            const delVal = toFiniteNumber(cur.value);
+            const changes = [{
+              action: 'delete',
+              time: String(delTime),
+              reason: 'Duplicate timestamp: zwei Werte am selben Zeitpunkt',
+              row_role: 'duplicate',
+              unit: unit || '',
+            }];
+
+            const base0 = currentFilters();
+            const payload0 = {
+              measurement: base0.measurement,
+              field: base0.field,
+              entity_id: base0.entity_id,
+              friendly_name: base0.friendly_name,
+              unit: unit || '',
+              force: false,
+              detected_outlier_type: 'duplicate_timestamp',
+              strategy_id: 'raw_duplicate_timestamp_delete',
+              strategy_description: 'Erkennt zwei Raw-Werte mit gleichem (ms) Zeitstempel und schlaegt vor, einen davon zu loeschen (vor weiteren Korrekturen).',
+              source_action: 'automatic_correction',
+              trigger_page: 'dashboard',
+              trigger_source: 'raw',
+              trigger_action: 'automatic_correction',
+              trigger_button: 'raw_auto_correct',
+              changes,
+            };
+
+            const preview = await api('./api/change_preview', {
+              method:'POST',
+              headers:{'Content-Type':'application/json'},
+              body: JSON.stringify(payload0),
+            }, { key: 'change_preview:auto_correct:duplicate', silent: true }).then(j=> (j && j.preview) ? j.preview : null);
+
+            if(!preview){ err('Keine Vorschau verfuegbar.'); return; }
+            const want = await openChangePreviewDialog(preview, 'apply');
+            if(!want) return;
+
+            _rawStatusStart('Loesche Duplikat...');
+            _RAW_INFLIGHT = true;
+            updateRawToolbarState();
+            try{
+              await api('./api/apply_changes', {
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({
+                  confirm: true,
+                  measurement: base0.measurement,
+                  field: base0.field,
+                  entity_id: base0.entity_id,
+                  friendly_name: base0.friendly_name,
+                  trigger_page: 'dashboard',
+                  trigger_source: 'raw',
+                  trigger_action: 'automatic_correction',
+                  trigger_button: 'raw_auto_correct',
+                  detected_outlier_type: 'duplicate_timestamp',
+                  strategy_id: 'raw_duplicate_timestamp_delete',
+                  strategy_description: 'Duplicate timestamp delete',
+                  source_action: 'automatic_correction',
+                  changes,
+                }),
+              }, { silent: true });
+              await refreshAfterDataMutation({ rerunOutliers: true });
+              ok('Duplikat geloescht.');
+            }catch(e){
+              displayError(e);
+            }finally{
+              _RAW_INFLIGHT = false;
+              _rawStatusEnd(true, '');
+              updateRawToolbarState();
+            }
+            return;
+          }
+        }
+      }catch(e){}
+
       // Detect outlier type for the selected raw row (Issue #390)
-      const selOut = (RAW_OUTLIER_MAP && RAW_OUTLIER_MAP[key]) ? RAW_OUTLIER_MAP[key] : null;
+      const selOut = _findOutlierInfoByTime(rowTimeFull(cur) || String(cur && cur.time ? cur.time : ''));
       const selTypes = (selOut && Array.isArray(selOut.types))
         ? selOut.types.map(x=>String(x||'').trim()).filter(Boolean)
         : [];
@@ -11261,7 +11357,7 @@ try{
         for(const r of rows){
           const k0 = String(rowKey(r) || '').trim();
           if(!k0) continue;
-          const o0 = (RAW_OUTLIER_MAP && RAW_OUTLIER_MAP[k0]) ? RAW_OUTLIER_MAP[k0] : null;
+          const o0 = _findOutlierInfoByTime(rowTimeFull(r) || String(r && r.time ? r.time : ''));
           if(!o0) continue;
           const role = String(o0.counterreset_role || '').trim();
           const bt = String(o0.counterreset_begin_time || '').trim();
@@ -11288,7 +11384,7 @@ try{
           try{ if(oldV !== null && Number(newStr) === Number(oldV)) return; }catch(e){}
           changes.push({
             action: 'overwrite',
-            time: String(rr.time || k0),
+            time: rowTimeFull(rr) || String(rr.time || ''),
             new_value: String(newStr),
             decimals,
             reason: 'Counterreset: cleanup pre-fault spike',
@@ -11340,7 +11436,7 @@ try{
 
         changes = [{
           action: 'overwrite',
-          time: String(cur.time || key),
+          time: rowTimeFull(cur) || String(cur.time || ''),
           new_value: String(newStr),
           decimals,
           reason: 'Automatic correction: neighbor interpolation',
@@ -11669,7 +11765,7 @@ async function showRawManualDialog(key){
   );
   if(!ok) return;
 
-  await doRawOverwrite(base, row.time, numVal, row.value, 'manual');
+  await doRawOverwrite(base, rowTimeFull(row) || row.time, numVal, row.value, 'manual', rowKey(row));
 }
 
 function promptForValue(promptText, defaultVal){
@@ -11736,7 +11832,7 @@ async function editRawValueInline(tr, row, tdV){
         const newStr = String(input.value || '').trim();
         const decimals = Math.max(0, _countDecimals(newStr));
         if(!RAW_EDIT_STAGED) RAW_EDIT_STAGED = new Map();
-        RAW_EDIT_STAGED.set(String(key), { time: String(row.time || ''), old_value: oldBase, new_value_str: newStr, new_value_num: newVal, decimals });
+        RAW_EDIT_STAGED.set(String(key), { time: rowTimeFull(row) || String(row.time || ''), old_value: oldBase, new_value_str: newStr, new_value_num: newVal, decimals });
         // Update visible value immediately.
         try{ row.value = newVal; }catch(e){}
         renderRawTable();
@@ -11752,7 +11848,7 @@ async function editRawValueInline(tr, row, tdV){
       if(!ok){ resolve(false); return; }
 
       const base = currentFilters();
-      await doRawOverwrite(base, row.time, newVal, row.value, 'inline_edit');
+        await doRawOverwrite(base, rowTimeFull(row) || row.time, newVal, row.value, 'inline_edit', rowKey(row));
       resolve(true);
     };
 
@@ -11773,10 +11869,11 @@ async function editRawValueInline(tr, row, tdV){
   });
 }
 
-async function doRawOverwrite(base, time, newVal, oldVal, mode){
+async function doRawOverwrite(base, time, newVal, oldVal, mode, rowId){
   _rawStatusStart('Ueberschreibe...');
   const unit = _currentEntityUnit();
   const ctx = { time: String(time || ''), old_value: oldVal, new_value: newVal };
+  const rid = String(rowId || '').trim();
 
   const attempt = async (force)=>{
     await api('./api/raw_overwrite', {
@@ -11812,9 +11909,11 @@ async function doRawOverwrite(base, time, newVal, oldVal, mode){
 
     ok('Wert ueberschrieben.');
     showRawActionFeedback('Wert ueberschrieben', `Zeit: ${fmtTs(time)}\nAlt: ${fmtNum(oldVal)}\nNeu: ${fmtNum(newVal)}`);
-    // Update local cache
-    RAW_ROWS = (RAW_ROWS || []).map(r => rowKey(r) === rowKey({time}) ? Object.assign({}, r, {value: newVal}) : r);
-    renderRawTable();
+     // Update local cache (rowKey-based so duplicates are safe)
+     if(rid){
+       RAW_ROWS = (RAW_ROWS || []).map(r => rowKey(r) === rid ? Object.assign({}, r, {value: newVal}) : r);
+     }
+     renderRawTable();
   }catch(e){
     displayError(e);
   }finally{
@@ -11847,7 +11946,7 @@ try{
           trigger_button: 'raw_delete',
           changes: [{
             action: 'delete',
-            time: String(row.time || ''),
+            time: rowTimeFull(row) || String(row.time || ''),
             decimals: 0,
             reason: 'Raw Delete button',
           }],
@@ -11867,7 +11966,9 @@ try{
     try{
       const key = String(RAW_ROW_SELECTED_KEY || '');
       if(!key){ err('Bitte zuerst eine Raw-Zeile markieren.'); return; }
-      const entries = _rawHistoryEntries(key).filter(h => h.action === 'overwrite' || h.action === 'delete');
+      const selRow = findRawRowByKey(key);
+      const hk = selRow ? rowTimeFull(selRow) : '';
+      const entries = _rawHistoryEntries(hk).filter(h => h.action === 'overwrite' || h.action === 'delete');
       if(!entries.length){ err('Keine direkte Raw-Aenderung fuer Undo vorhanden.'); return; }
 
       // If the newest entry belongs to a change-block, roll back the whole block.
@@ -13379,6 +13480,7 @@ function _rawVisibleWindowSummary(){
 
 function _repairReasonForPreset(preset){
   const p = String(preset || '').trim();
+  if(p === 'repair_duplicate_timestamp') return 'repair_duplicate_timestamp';
   if(p === 'repair_counterreset') return 'repair_counter_rollover';
   if(p === 'repair_counter') return 'repair_counter_rollover';
   if(p === 'repair_decrease') return 'repair_counter_rollover';
@@ -13394,6 +13496,7 @@ function _repairReasonForPreset(preset){
 function _repairStrategyMeta(preset){
   const p = String(preset || '').trim();
   const outTypeMap = {
+    repair_duplicate_timestamp: 'duplicate_timestamp',
     repair_counterreset: 'counterreset',
     repair_counter: 'counter',
     repair_decrease: 'decrease',
@@ -13405,6 +13508,7 @@ function _repairStrategyMeta(preset){
     repair_gap: 'gap',
   };
   const descMap = {
+    repair_duplicate_timestamp: 'Erkennt mehrere Raw-Werte mit gleichem (ms) Zeitstempel und schlaegt vor, einen davon zu loeschen (nur sichtbares Raw-Fenster).',
     repair_counterreset: 'Counterreset erkannt: Reset bleibt erhalten. pre-fault Spike-Werte werden auf den letzten plausiblen Wert vor dem Reset gesetzt (nur sichtbares Raw-Fenster).',
     repair_counter: 'Counter-Ausreisser (Max-Sprung) werden per Nachbar-Interpolation im sichtbaren Raw-Fenster ueberschrieben.',
     repair_decrease: 'Counter-Abfaelle werden per Nachbar-Interpolation im sichtbaren Raw-Fenster ueberschrieben.',
@@ -13483,13 +13587,70 @@ function _buildInterpOverwrite(rows, idx, unit, reason){
 
   return {
     action: 'overwrite',
-    time: String(cur.time || key),
+    time: rowTimeFull(cur) || String(cur.time || key),
     new_value: String(newStr),
     decimals,
     reason: String(reason || '').trim(),
     row_role: 'repair',
     unit: unit || '',
   };
+}
+
+function _findDuplicateTimestampGroups(rows){
+  const xs = Array.isArray(rows) ? rows : [];
+  const byMs = new Map();
+  for(let i=0;i<xs.length;i++){
+    const t = String(xs[i] && xs[i].time ? xs[i].time : '').trim();
+    if(!t) continue;
+    if(!byMs.has(t)) byMs.set(t, []);
+    byMs.get(t).push(i);
+  }
+  const groups = [];
+  byMs.forEach((idxs, t)=>{
+    if(!Array.isArray(idxs) || idxs.length < 2) return;
+    const vals = idxs.map(i=>toFiniteNumber(xs[i] && xs[i].value));
+    const uniq = new Set(vals.filter(v=>v !== null).map(v=>String(v)));
+    if(uniq.size < 2) return; // ignore identical duplicates
+    groups.push({ time_ms: t, idxs: idxs.slice() });
+  });
+  // stable by time
+  groups.sort((a,b)=> String(a.time_ms).localeCompare(String(b.time_ms)));
+  return groups;
+}
+
+function _pickDuplicateDeleteIndex(rows, group){
+  const xs = Array.isArray(rows) ? rows : [];
+  const idxs = group && Array.isArray(group.idxs) ? group.idxs : [];
+  const tMs = group ? String(group.time_ms || '') : '';
+  if(!idxs.length || !tMs) return -1;
+
+  const inGroup = new Set(idxs);
+  const neighborOutside = (startIdx, dir)=>{
+    const step = (dir < 0) ? -1 : 1;
+    for(let i=startIdx+step;i>=0 && i<xs.length;i+=step){
+      if(inGroup.has(i)) continue;
+      const r = xs[i];
+      const v = toFiniteNumber(r && r.value);
+      const tt = String(r && r.time ? r.time : '').trim();
+      if(!tt || tt === tMs) continue;
+      if(v !== null) return v;
+    }
+    return null;
+  };
+
+  let bestIdx = idxs[0];
+  let bestScore = null;
+  for(const i of idxs){
+    const v = toFiniteNumber(xs[i] && xs[i].value);
+    if(v === null) continue;
+    const pv = neighborOutside(i, -1);
+    const nv = neighborOutside(i, 1);
+    const s1 = (pv !== null) ? Math.abs(Number(v) - Number(pv)) : null;
+    const s2 = (nv !== null) ? Math.abs(Number(v) - Number(nv)) : null;
+    const score = Math.max(s1 !== null ? s1 : 0, s2 !== null ? s2 : 0);
+    if(bestScore === null || score > bestScore){ bestScore = score; bestIdx = i; }
+  }
+  return Number.isInteger(bestIdx) ? bestIdx : -1;
 }
 
 function _buildRepairPlan(presetRaw){
@@ -13508,12 +13669,17 @@ function _buildRepairPlan(presetRaw){
   }
 
   let effPreset = preset;
+  // Highest-priority: duplicate timestamps in visible raw window.
+  const dupGroups = _findDuplicateTimestampGroups(rows);
+  if(preset === 'auto' && dupGroups.length){
+    effPreset = 'repair_duplicate_timestamp';
+  }
+
   if(preset === 'auto'){
     const prio = ['counterreset','counter','decrease','bounds','fault_phase','null','zero','gap'];
     let found = '';
     for(const r of rows){
-      const k0 = String(rowKey(r) || '').trim();
-      const o0 = k0 ? outMap[k0] : null;
+      const o0 = _findOutlierInfoByTime(String(r && r.time ? r.time : ''));
       const ts = (o0 && Array.isArray(o0.types)) ? o0.types.map(x=>String(x||'').trim()).filter(Boolean) : [];
       for(const t of prio){ if(ts.includes(t)){ found = t; break; } }
       if(found) break;
@@ -13528,12 +13694,41 @@ function _buildRepairPlan(presetRaw){
       zero: 'repair_zero',
       gap: 'repair_gap',
     };
-    effPreset = map[found] || 'repair_flatline';
+    if(!dupGroups.length) effPreset = map[found] || 'repair_flatline';
   }
 
   const reason = _repairReasonForPreset(effPreset);
   const meta = _repairStrategyMeta(effPreset);
   let changes = [];
+
+  if(effPreset === 'repair_duplicate_timestamp'){
+    const details = [];
+    const maxGroups = 50;
+    for(const g of dupGroups.slice(0, maxGroups)){
+      const pick = _pickDuplicateDeleteIndex(rows, g);
+      if(pick < 0) continue;
+      const r = rows[pick];
+      const tDisp = String(g.time_ms || '');
+      const vals = g.idxs.map(i=>fmtNum(rows[i] && rows[i].value)).join(' vs ');
+      details.push(`${fmtTs(tDisp)} | Werte: ${vals} | Vorschlag: loesche ${fmtNum(r && r.value)}`);
+      changes.push({
+        action: 'delete',
+        time: rowTimeFull(r) || String(r && r.time ? r.time : ''),
+        reason,
+        row_role: 'duplicate',
+        unit: unit || '',
+      });
+    }
+    const q = (changes && changes.length) ? _buildApplyPreviewQuery(base, changes.map(c=>({time:c.time}))) : '';
+    return {
+      ok:true,
+      warning: details.length ? ('Duplikat-Zeitstempel erkannt:\n' + details.slice(0, 10).join('\n') + (details.length > 10 ? `\n... (+${details.length - 10} weitere)` : '')) : 'Keine Duplikate mit unterschiedlichen Werten im sichtbaren Raw-Fenster gefunden.',
+      changes,
+      meta,
+      query:q,
+      effPreset,
+    };
+  }
 
   if(effPreset === 'repair_gap'){
     const q = '';
@@ -13553,7 +13748,7 @@ function _buildRepairPlan(presetRaw){
     for(const r of rows){
       const k0 = String(rowKey(r) || '').trim();
       if(!k0) continue;
-      const o0 = outMap[k0];
+      const o0 = _findOutlierInfoByTime(String(r && r.time ? r.time : ''));
       if(!o0) continue;
       const role = String(o0.counterreset_role || '').trim();
       if(role !== 'pre_fault') continue;
@@ -13568,7 +13763,7 @@ function _buildRepairPlan(presetRaw){
       if(groups[bt].before !== null) continue;
       for(const r of rows){
         const k0 = String(rowKey(r) || '').trim();
-        const o0 = k0 ? outMap[k0] : null;
+        const o0 = _findOutlierInfoByTime(String(r && r.time ? r.time : ''));
         if(!o0) continue;
         if(String(o0.counterreset_role || '').trim() !== 'reset_begin') continue;
         const bt0 = String(o0.counterreset_begin_time || '').trim() || 'unknown';
@@ -13595,7 +13790,7 @@ function _buildRepairPlan(presetRaw){
         try{ if(oldV !== null && Number(newStr) === Number(oldV)) continue; }catch(e){}
         changes.push({
           action: 'overwrite',
-          time: String(rr.time || k0),
+          time: rowTimeFull(rr) || String(rr.time || k0),
           new_value: String(newStr),
           decimals,
           reason,
@@ -13633,7 +13828,7 @@ function _buildRepairPlan(presetRaw){
             try{ if(oldV !== null && Number(newStr) === Number(oldV)) continue; }catch(e){}
             changes.push({
               action:'overwrite',
-              time: String(rows[k].time || key),
+              time: rowTimeFull(rows[k]) || String(rows[k].time || key),
               new_value: String(newStr),
               decimals,
               reason,
@@ -13660,7 +13855,7 @@ function _buildRepairPlan(presetRaw){
       const r = rows[idx];
       const k0 = String(rowKey(r) || '').trim();
       if(!k0) continue;
-      const o0 = outMap[k0];
+      const o0 = _findOutlierInfoByTime(String(r && r.time ? r.time : ''));
       const ts = (o0 && Array.isArray(o0.types)) ? o0.types.map(x=>String(x||'').trim()).filter(Boolean) : [];
       if(wantType && !ts.includes(wantType)) continue;
       const ch = _buildInterpOverwrite(rows, idx, unit || '', reason);
@@ -13730,11 +13925,12 @@ async function _repairWizardPreview(){
 
   _REPAIR_WIZ_LAST = plan;
   const ch = Array.isArray(plan.changes) ? plan.changes : [];
+  const kinds = Array.from(new Set(ch.map(x=>String(x && x.action || '').trim()).filter(Boolean)));
   const warn = plan.warning ? ('\n\nHinweis: ' + String(plan.warning)) : '';
   const summary = [
     'Preset: ' + String(plan.effPreset || preset),
     'Dry-Run: ja (Change Preview)',
-    'Aktion(en): ' + (ch.length ? 'overwrite' : 'keine'),
+    'Aktion(en): ' + (kinds.length ? kinds.join(', ') : 'keine'),
     'Betroffene Punkte: ' + String(ch.length),
     'Reason: ' + _repairReasonForPreset(plan.effPreset || preset),
   ].join('\n') + warn;

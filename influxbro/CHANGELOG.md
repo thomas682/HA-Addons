@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.12.461
+
+### Fix
+
+- Dashboard (Raw Daten): Doppelte Zeitstempel (ms-Anzeige) werden jetzt pro Zeile eindeutig behandelt (separate Markierung/Selection). Reparatur-Assistent und Automatikkorrektur erkennen diesen Fall und schlagen vor, einen der Duplikate zu loeschen.
+
 ## 1.12.459
 
 ### Enhancement
