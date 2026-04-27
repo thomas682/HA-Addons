@@ -228,11 +228,10 @@
         <div id="ok" class="ok"></div>
       </div>
 
-      <div id="target_modal" class="modal" aria-hidden="true" data-ui="export_target.panel_modal" title="export.target.modal">
+      <div id="target_modal" class="modal" aria-hidden="true" data-dialog-root="1" data-ui="export_target.panel_modal" title="export.target.modal">
         <div class="card">
           <div class="head">
             <div class="title">Export Ziel</div>
-            <button id="target_close" type="button">Schliessen</button>
           </div>
           <div class="muted" style="margin-top: 8px;">Waehle den Client-Ordner, in den die Export-Datei lokal geschrieben werden soll. Diese Funktion nutzt den Browser-Dateisystemzugriff und ist fuer Chromium-basierte Browser gedacht.</div>
           <div class="grid" style="margin-top: 12px;">
@@ -248,8 +247,10 @@
             </div>
           </div>
           <div class="actions">
-            <button id="target_cancel" type="button">Abbrechen</button>
-            <button id="target_ok" type="button">OK</button>
+            <button id="target_superpicker" type="button" class="ib_dialog_superpicker" data-open-superpicker="1" data-ui="export_target.btn_superpicker" data-ib-pickkey="export_target.btn_superpicker">S-Picker</button>
+            <button id="target_close" type="button" data-ui="export_target.btn_close" data-ib-pickkey="export_target.btn_close">Schliessen</button>
+            <button id="target_cancel" type="button" data-ui="export_target.btn_cancel" data-ib-pickkey="export_target.btn_cancel">Abbrechen</button>
+            <button id="target_ok" type="button" data-ui="export_target.btn_ok" data-ib-pickkey="export_target.btn_ok">OK</button>
           </div>
         </div>
       </div>

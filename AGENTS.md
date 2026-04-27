@@ -263,3 +263,55 @@ Pflicht bei UI-Aenderungen:
 
 - Wenn du sichtbare UI-Elemente anfasst, musst du bestehende betroffene Elemente mit auf `data-ib-pickkey` nachziehen.
 - Wenn du UI-Elemente entfernst: Tombstone-Prozess bleibt weiterhin Pflicht.
+
+## Laufende Abarbeitung und Queue-Regel
+
+Wenn waehrend einer laufenden Abarbeitung eine neue Nutzernachricht eingeht, gilt grundsaetzlich:
+
+- Eine bereits begonnene Abarbeitung wird nicht stillschweigend unterbrochen.
+- Offene Arbeit ist als aktive Queue zu behandeln und zuerst sauber zu ordnen und abzuarbeiten.
+- Neue Nutzernachrichten sind standardmaessig Queue-Eintraege, keine Interrupts.
+- Neue Nutzernachrichten werden standardmaessig als Erweiterung, Praezisierung oder Scope-Aenderung der bestehenden Queue behandelt, nicht als Abbruch des laufenden Vorgangs.
+- Vor einem Themenwechsel MUSS der Agent den aktuellen Stand explizit ordnen:
+  - erfolgreich abgeschlossene Teilschritte benennen
+  - fehlgeschlagene oder offene Teilschritte benennen
+  - daraus eine aktualisierte Reihenfolge fuer die weitere Abarbeitung bilden
+- Ein neuer Befehl darf die laufende Abarbeitung nur dann sofort ersetzen, wenn der Nutzer dies explizit als Abbruch formuliert.
+
+### Explizite Abbruchsignale
+
+Nur Formulierungen mit klarer Abbruchabsicht gelten als echte Unterbrechung, zum Beispiel:
+
+- `abbrechen`
+- `stop`
+- `halt`
+- `lass das`
+- `nicht weiter damit`
+- `stattdessen mache jetzt X`
+- `verwirf den aktuellen Ablauf`
+
+Fehlt ein solches Signal, ist die neue Nachricht als Zusatz, Praezisierung oder Scope-Erweiterung zur bestehenden Queue zu behandeln.
+
+### Pflichtverhalten bei Fehlern
+
+Wenn ein Schritt fehlschlaegt, darf der Agent nicht still auf einen neuen Ablauf umschalten. Stattdessen MUSS er:
+
+1. den Fehler klar benennen
+2. den bereits erfolgreich erledigten Teil vom offenen Rest trennen
+3. den offenen Rest in die Queue einsortieren
+4. erst danach neue Nutzeranweisungen in diese Queue einarbeiten
+
+### Pflichtverhalten bei Scope-Erweiterungen
+
+Wenn der Nutzer waehrend der Ausfuehrung neue Anforderungen hinzufuegt, gilt:
+
+1. die laufende Arbeit bleibt aktiv
+2. neue Anforderungen werden hinten an die Queue angehaengt oder sinnvoll einsortiert
+3. der Agent soll kurz benennen, was bereits in Arbeit war und wie die neue Anweisung eingeordnet wird
+4. nur bei ausdruecklichem Abbruch darf der Agent die bisherige Arbeit fallenlassen
+
+### Ziel
+
+- Keine stillen Kontextwechsel
+- Keine halb abgebrochenen Arbeitsstraenge
+- Keine implizite Verdraengung laufender Aufgaben durch nachfolgende Nachrichten

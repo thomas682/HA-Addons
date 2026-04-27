@@ -850,14 +850,13 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
         <div class="muted" id="graph_points_info" style="margin-top: 6px;" data-ui="dashboard_graph.txt_points" title="dashboard_graph.txt_points" data-ib-pickkey="dashboard_graph.txt_points"></div>
     </details>
 
-    <div id="raw_outlier_params_dialog" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;">
+    <div id="raw_outlier_params_dialog" data-dialog-root="1" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;">
       <div style="background:#fff; border-radius:16px; padding:20px; max-width:760px; width:min(760px, 100%); max-height:88vh; overflow:auto; box-shadow:0 12px 60px rgba(0,0,0,0.28);">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:16px;">
+        <div style="display:flex; align-items:flex-start; gap:12px; margin-bottom:16px;">
           <div>
             <h3 style="margin:0 0 6px 0;">Ausreisser-Parameter</h3>
             <div class="muted" style="font-size:13px; line-height:1.45;">Die Werte werden global gespeichert (wie in den Einstellungen). Leere Felder deaktivieren optionale Grenzen oder setzen wieder den Default.</div>
           </div>
-          <button class="btn_sm" id="raw_outlier_params_close" type="button">Schliessen</button>
         </div>
         <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:14px;">
           <div style="border:1px solid #e7e7e7; border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:10px;">
@@ -904,22 +903,23 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
           </div>
         </div>
         <div style="margin-top:16px; display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
-          <button class="btn_sm" id="raw_outlier_params_reset" type="button">Standardwerte</button>
-          <button class="btn_sm" id="raw_outlier_params_save" type="button">Speichern</button>
+          <button class="btn_sm ib_dialog_superpicker" id="raw_outlier_params_superpicker" type="button" data-open-superpicker="1" data-ui="dialog_raw_outlier_params.btn_superpicker" data-ib-pickkey="dialog_raw_outlier_params.btn_superpicker">S-Picker</button>
+          <button class="btn_sm" id="raw_outlier_params_close" type="button" data-ui="dialog_raw_outlier_params.btn_close" data-ib-pickkey="dialog_raw_outlier_params.btn_close">Schliessen</button>
+          <button class="btn_sm" id="raw_outlier_params_reset" type="button" data-ui="dialog_raw_outlier_params.btn_reset" data-ib-pickkey="dialog_raw_outlier_params.btn_reset">Standardwerte</button>
+          <button class="btn_sm" id="raw_outlier_params_save" type="button" data-ui="dialog_raw_outlier_params.btn_save" data-ib-pickkey="dialog_raw_outlier_params.btn_save">Speichern</button>
         </div>
       </div>
     </div>
 
     <!-- Generic change preview / undo preview dialog (Issue #395) -->
-    <div id="change_preview_dialog" style="display:none; position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.45); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;" data-ui="dialog_change_preview.root" data-ib-pickkey="dialog_change_preview.root">
+    <div id="change_preview_dialog" data-dialog-root="1" style="display:none; position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.45); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;" data-ui="dialog_change_preview.root" data-ib-pickkey="dialog_change_preview.root">
       <div style="background:#fff; border-radius:16px; padding:16px; max-width:980px; width:min(980px, 100%); max-height:90vh; overflow:auto; box-shadow:0 12px 60px rgba(0,0,0,0.28);">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:10px;">
+        <div style="display:flex; align-items:flex-start; gap:12px; margin-bottom:10px;">
           <div>
             <div id="change_preview_title" style="font-weight:900; font-size:16px;" data-ui="dialog_change_preview.txt_title" data-ib-pickkey="dialog_change_preview.txt_title">Vorschau</div>
             <div class="muted" id="change_preview_meta" style="margin-top:4px; font-size:12px; line-height:1.4;" data-ui="dialog_change_preview.txt_meta" data-ib-pickkey="dialog_change_preview.txt_meta"></div>
             <div class="muted" id="change_preview_desc" style="margin-top:6px; font-size:12px; line-height:1.4;" data-ui="dialog_change_preview.txt_desc" data-ib-pickkey="dialog_change_preview.txt_desc"></div>
           </div>
-          <button class="btn_sm" id="change_preview_close" type="button" data-ui="dialog_change_preview.btn_close" data-ib-pickkey="dialog_change_preview.btn_close">Schliessen</button>
         </div>
 
         <div class="table_box" id="change_preview_box" style="--max-rows: 18; margin-top:8px;" data-ui="dialog_change_preview.panel_table" data-ib-pickkey="dialog_change_preview.panel_table">
@@ -930,6 +930,8 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
         </div>
 
         <div style="margin-top:12px; display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
+          <button class="btn_sm ib_dialog_superpicker" id="change_preview_superpicker" type="button" data-open-superpicker="1" data-ui="dialog_change_preview.btn_superpicker" data-ib-pickkey="dialog_change_preview.btn_superpicker">S-Picker</button>
+          <button class="btn_sm" id="change_preview_close" type="button" data-ui="dialog_change_preview.btn_close" data-ib-pickkey="dialog_change_preview.btn_close">Schliessen</button>
           <button class="btn_sm" id="change_preview_cancel" type="button" data-ui="dialog_change_preview.btn_cancel" data-ib-pickkey="dialog_change_preview.btn_cancel">Abbrechen</button>
           <button class="btn_sm" id="change_preview_ok" type="button" data-ui="dialog_change_preview.btn_ok" data-ib-pickkey="dialog_change_preview.btn_ok">OK ausfuehren</button>
         </div>
@@ -937,16 +939,15 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
     </div>
 
     <!-- Repair wizard (Issue #385) -->
-    <div id="repair_wizard_dialog" style="display:none; position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.45); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;" data-ui="dialog_repair_wizard.root" data-ib-pickkey="dialog_repair_wizard.root">
+    <div id="repair_wizard_dialog" data-dialog-root="1" style="display:none; position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.45); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;" data-ui="dialog_repair_wizard.root" data-ib-pickkey="dialog_repair_wizard.root">
       <div style="background:#fff; border-radius:16px; padding:16px; max-width:980px; width:min(980px, 100%); max-height:90vh; overflow:auto; box-shadow:0 12px 60px rgba(0,0,0,0.28);">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:10px;">
+        <div style="display:flex; align-items:flex-start; gap:12px; margin-bottom:10px;">
           <div>
             <div style="font-weight:900; font-size:16px;" data-ui="dialog_repair_wizard.txt_title" data-ib-pickkey="dialog_repair_wizard.txt_title">Reparatur-Assistent</div>
             <div class="muted" id="repair_wizard_meta" style="margin-top:4px; font-size:12px; line-height:1.4;" data-ui="dialog_repair_wizard.txt_meta" data-ib-pickkey="dialog_repair_wizard.txt_meta"></div>
             <div class="muted" id="repair_wizard_hint" style="margin-top:6px; font-size:12px; line-height:1.4;" data-ui="dialog_repair_wizard.txt_hint" data-ib-pickkey="dialog_repair_wizard.txt_hint">Scope: es wird nur das aktuell sichtbare Raw-Fenster repariert (keine Schreibaktion ohne Vorschau).
             </div>
           </div>
-          <button class="btn_sm" id="repair_wizard_close" type="button" data-ui="dialog_repair_wizard.btn_close" data-ib-pickkey="dialog_repair_wizard.btn_close">Schliessen</button>
         </div>
 
         <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:12px;">
@@ -976,6 +977,8 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
         </div>
 
         <div style="margin-top:12px; display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
+          <button class="btn_sm ib_dialog_superpicker" id="repair_wizard_superpicker" type="button" data-open-superpicker="1" data-ui="dialog_repair_wizard.btn_superpicker" data-ib-pickkey="dialog_repair_wizard.btn_superpicker">S-Picker</button>
+          <button class="btn_sm" id="repair_wizard_close" type="button" data-ui="dialog_repair_wizard.btn_close" data-ib-pickkey="dialog_repair_wizard.btn_close">Schliessen</button>
           <button class="btn_sm" id="repair_wizard_preview" type="button" data-ui="dialog_repair_wizard.btn_preview" data-ib-pickkey="dialog_repair_wizard.btn_preview">Vorschau</button>
           <button class="btn_sm" id="repair_wizard_apply" type="button" data-ui="dialog_repair_wizard.btn_apply" data-ib-pickkey="dialog_repair_wizard.btn_apply" disabled>Ausfuehren</button>
         </div>
@@ -1504,7 +1507,43 @@ function setSelectOptions(selectEl, items, placeholder){
 }
 
 const LS_KEY = "influxbro_ui_state_v1";
+const FLOW_UI_KEY_PREFIX = "influxbro_flow_ui_v1:";
 // UI state is auto-persisted; no explicit "Darstellung speichern".
+
+function _normalizeFlowUiState(raw){
+  try{
+    const src = (raw && typeof raw === 'object') ? raw : {};
+    const openKeysSrc = (src.openKeys && typeof src.openKeys === 'object') ? src.openKeys : {};
+    const openKeys = {};
+    Object.keys(openKeysSrc).forEach((k)=>{
+      const key = String(k || '').trim();
+      if(key && openKeysSrc[k]) openKeys[key] = true;
+    });
+    return {
+      openAll: !!src.openAll,
+      onlyErrors: !!src.onlyErrors,
+      openKeys,
+    };
+  }catch(e){
+    return { openAll: false, onlyErrors: false, openKeys: {} };
+  }
+}
+
+function _loadFlowUiState(id){
+  try{
+    const raw = localStorage.getItem(FLOW_UI_KEY_PREFIX + String(id || 'flow'));
+    if(!raw) return _normalizeFlowUiState(null);
+    return _normalizeFlowUiState(JSON.parse(raw));
+  }catch(e){
+    return _normalizeFlowUiState(null);
+  }
+}
+
+function _saveFlowUiState(id, ui){
+  try{
+    localStorage.setItem(FLOW_UI_KEY_PREFIX + String(id || 'flow'), JSON.stringify(_normalizeFlowUiState(ui)));
+  }catch(e){}
+}
 
 function loadState(){
   try{
@@ -8148,8 +8187,10 @@ function _renderModernFlowChecklist(container, opts){
     if(!$root) return;
     const id = String(opts && opts.id ? opts.id : ($root.getAttribute('id') || 'flow'));
     if(!window.__IB_FLOW_UI) window.__IB_FLOW_UI = {};
-    if(!window.__IB_FLOW_UI[id]) window.__IB_FLOW_UI[id] = { openAll: false, onlyErrors: false, openKeys: {} };
-    const ui = window.__IB_FLOW_UI[id];
+    if(!window.__IB_FLOW_UI[id]) window.__IB_FLOW_UI[id] = _loadFlowUiState(id);
+    const ui = _normalizeFlowUiState(window.__IB_FLOW_UI[id]);
+    window.__IB_FLOW_UI[id] = ui;
+    const flowPickBase = 'dashboard.' + id;
 
     const title = String(opts && opts.title ? opts.title : 'Flow');
     const meta = String(opts && opts.meta ? opts.meta : '');
@@ -8223,9 +8264,15 @@ function _renderModernFlowChecklist(container, opts){
     const btnToggle = document.createElement('button');
     btnToggle.type = 'button';
     btnToggle.textContent = ui.openAll ? 'Alle einklappen' : 'Alle ausklappen';
+    btnToggle.setAttribute('data-ui', id + '.btn_toggle_all');
+    btnToggle.setAttribute('data-ib-pickkey', flowPickBase + '.btn_toggle_all');
+    btnToggle.setAttribute('data-ib-instancekey', flowPickBase + '.btn_toggle_all');
     const btnErr = document.createElement('button');
     btnErr.type = 'button';
     btnErr.textContent = ui.onlyErrors ? 'Alle zeigen' : 'Nur Fehler';
+    btnErr.setAttribute('data-ui', id + '.btn_only_errors');
+    btnErr.setAttribute('data-ib-pickkey', flowPickBase + '.btn_only_errors');
+    btnErr.setAttribute('data-ib-instancekey', flowPickBase + '.btn_only_errors');
     btns.appendChild(btnToggle);
     btns.appendChild(btnErr);
 
@@ -8259,6 +8306,7 @@ function _renderModernFlowChecklist(container, opts){
 
     steps.forEach((s)=>{
       const key = String(s && s.key || '');
+      const keyPick = encodeURIComponent(key || 'step');
       const status = String(s && s.status || 'pending');
       const open = _isOpen(key);
       const durMs = Math.max(0, Math.round(Number(s && s.dur_ms || 0) || 0));
@@ -8267,6 +8315,9 @@ function _renderModernFlowChecklist(container, opts){
       const row = document.createElement('div');
       row.className = 'ib_flow_step' + (open ? ' open' : '');
       row.dataset.status = status;
+      row.setAttribute('data-ui', id + '.row_step');
+      row.setAttribute('data-ib-pickkey', flowPickBase + '.row_step.' + keyPick);
+      row.setAttribute('data-ib-instancekey', flowPickBase + '.row_step.' + keyPick);
 
       const st = document.createElement('span');
       st.className = 'ib_flow_status';
@@ -8317,6 +8368,9 @@ function _renderModernFlowChecklist(container, opts){
 
       const det = document.createElement('div');
       det.className = 'ib_flow_details' + (open ? ' visible' : '');
+      det.setAttribute('data-ui', id + '.panel_step_details');
+      det.setAttribute('data-ib-pickkey', flowPickBase + '.panel_step_details.' + keyPick);
+      det.setAttribute('data-ib-instancekey', flowPickBase + '.panel_step_details.' + keyPick);
 
       const labA = document.createElement('div');
       labA.className = 'ib_flow_info_label';
@@ -8353,6 +8407,7 @@ function _renderModernFlowChecklist(container, opts){
           }
           if(ui.openKeys[key]) delete ui.openKeys[key];
           else ui.openKeys[key] = true;
+          _saveFlowUiState(id, ui);
           _renderModernFlowChecklist($root, opts);
         }catch(e){}
       });
@@ -8365,11 +8420,13 @@ function _renderModernFlowChecklist(container, opts){
       try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
       ui.openAll = !ui.openAll;
       ui.openKeys = {};
+      _saveFlowUiState(id, ui);
       _renderModernFlowChecklist($root, opts);
     });
     btnErr.addEventListener('click', (ev)=>{
       try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
       ui.onlyErrors = !ui.onlyErrors;
+      _saveFlowUiState(id, ui);
       _renderModernFlowChecklist($root, opts);
     });
 
@@ -8778,6 +8835,7 @@ function _analysisCacheTimelineHtml(plan){
 
   (plan.segments || []).forEach((seg, idx) => {
     const id = 'seg|' + String(seg.cache_id || idx);
+    const pickId = encodeURIComponent(id);
     const ui = _analysisCacheSegUi(vis, id);
     const [bg, bd] = _analysisCacheSegColor(idx);
     const color = ui.active ? bg : ANALYSIS_CACHE_HIDDEN_COLOR;
@@ -8809,16 +8867,16 @@ function _analysisCacheTimelineHtml(plan){
     }
     labels.push(
       '<div style="display:flex;align-items:center;gap:8px;font-size:11px;' + (!ui.active ? 'text-decoration:line-through;color:' + ANALYSIS_CACHE_HIDDEN_COLOR + ';' : '') + '">' +
-      '<button type="button" data-cache-hl="' + _escHtml(id) + '" class="' + (ui.hl ? 'ib-chip ib-chip-active' : 'ib-chip') + '" style="--ib-chip-color:#ff9900;width:auto;padding:2px 10px 2px 8px;font-size:11px;" data-ui="cache_timeline.btn_hl" data-ib-itemkey="' + _escAttr(String(id) + ':hl') + '" title="Highlight">' +
+      '<button type="button" data-cache-hl="' + _escHtml(id) + '" class="' + (ui.hl ? 'ib-chip ib-chip-active' : 'ib-chip') + '" style="--ib-chip-color:#ff9900;width:auto;padding:2px 10px 2px 8px;font-size:11px;" data-ui="cache_timeline.btn_hl" data-ib-pickkey="dashboard.cache_timeline.btn_hl.' + _escAttr(pickId) + '" data-ib-itemkey="' + _escAttr(String(id) + ':hl') + '" title="Highlight">' +
         '<span class="ib-chip-dot"></span><span class="ib-chip-label">hl</span>' +
       '</button>' +
-      '<button type="button" data-cache-ac="' + _escHtml(id) + '" class="' + (ui.active ? 'ib-chip ib-chip-active' : 'ib-chip ib-chip-inactive') + '" style="--ib-chip-color:' + bd + ';width:auto;padding:2px 10px 2px 8px;font-size:11px;" data-ui="cache_timeline.btn_ac" data-ib-itemkey="' + _escAttr(String(id) + ':ac') + '" title="Aktiv">' +
+      '<button type="button" data-cache-ac="' + _escHtml(id) + '" class="' + (ui.active ? 'ib-chip ib-chip-active' : 'ib-chip ib-chip-inactive') + '" style="--ib-chip-color:' + bd + ';width:auto;padding:2px 10px 2px 8px;font-size:11px;" data-ui="cache_timeline.btn_ac" data-ib-pickkey="dashboard.cache_timeline.btn_ac.' + _escAttr(pickId) + '" data-ib-itemkey="' + _escAttr(String(id) + ':ac') + '" title="Aktiv">' +
         '<span class="ib-chip-dot"></span><span class="ib-chip-label">ac</span>' +
       '</button>' +
-      '<button type="button" data-cache-ol="' + _escHtml(id) + '" class="' + (ui.ol ? 'ib-chip ib-chip-active' : 'ib-chip') + '" style="--ib-chip-color:' + bd + ';width:auto;padding:2px 10px 2px 8px;font-size:11px;" data-ui="cache_timeline.btn_ol" data-ib-itemkey="' + _escAttr(String(id) + ':ol') + '" title="Outlier">' +
+      '<button type="button" data-cache-ol="' + _escHtml(id) + '" class="' + (ui.ol ? 'ib-chip ib-chip-active' : 'ib-chip') + '" style="--ib-chip-color:' + bd + ';width:auto;padding:2px 10px 2px 8px;font-size:11px;" data-ui="cache_timeline.btn_ol" data-ib-pickkey="dashboard.cache_timeline.btn_ol.' + _escAttr(pickId) + '" data-ib-itemkey="' + _escAttr(String(id) + ':ol') + '" title="Outlier">' +
         '<span class="ib-chip-dot"></span><span class="ib-chip-label">ol</span>' +
       '</button>' +
-      '<button type="button" class="ib_info_icon" data-cache-info="' + _escAttr(String(seg.cache_id || '')) + '" data-ui="cache_timeline.btn_info" data-ib-itemkey="' + _escAttr(String(id) + ':info') + '" title="Cache Details">' + (typeof ANALYSIS_INFO_ICON_SVG !== 'undefined' ? ANALYSIS_INFO_ICON_SVG : '?') + '</button>' +
+      '<button type="button" class="ib_info_icon" data-cache-info="' + _escAttr(String(seg.cache_id || '')) + '" data-ui="cache_timeline.btn_info" data-ib-pickkey="dashboard.cache_timeline.btn_info.' + _escAttr(pickId) + '" data-ib-itemkey="' + _escAttr(String(id) + ':info') + '" title="Cache Details">' + (typeof ANALYSIS_INFO_ICON_SVG !== 'undefined' ? ANALYSIS_INFO_ICON_SVG : '?') + '</button>' +
       '<span style="display:inline-block;width:10px;height:10px;background:' + color + ';border:1px solid ' + border + ';border-radius:3px;"></span>' +
       '<span style="flex:1;">Cache ' + (idx + 1) + ': ' + _escHtml(fmtTs(seg.use_start || seg.covered_start)) + ' – ' + _escHtml(fmtTs(seg.use_stop || seg.covered_stop)) + ' (' + _escHtml(fmtTs(seg.updated_at || '')) + ')</span>' +
       '<span style="white-space:nowrap;">Treffer: ' + String(seg.outlier_count || 0) + '</span>' +
@@ -8827,6 +8885,7 @@ function _analysisCacheTimelineHtml(plan){
   });
   (plan.gaps || []).forEach((gap, idx) => {
     const id = 'gap|' + String(idx + 1);
+    const pickId = encodeURIComponent(id);
     const ui = _analysisCacheSegUi(vis, id);
     const [bg, bd] = ['#eef2ff', '#7a8be6'];
     const color = ui.active ? bg : ANALYSIS_CACHE_HIDDEN_COLOR;
@@ -8834,13 +8893,13 @@ function _analysisCacheTimelineHtml(plan){
     parts.push(_analysisCacheTimelineSegHtml(gap.start, gap.stop, startMs, stopMs, color, border, ui.hl, 'Neu lesen ' + (idx + 1)));
     labels.push(
       '<div style="display:flex;align-items:center;gap:8px;font-size:11px;' + (!ui.active ? 'text-decoration:line-through;color:' + ANALYSIS_CACHE_HIDDEN_COLOR + ';' : '') + '">' +
-      '<button type="button" data-cache-hl="' + _escHtml(id) + '" class="' + (ui.hl ? 'ib-chip ib-chip-active' : 'ib-chip') + '" style="--ib-chip-color:#ff9900;width:auto;padding:2px 10px 2px 8px;font-size:11px;" data-ui="cache_timeline.btn_hl" title="Highlight">' +
+      '<button type="button" data-cache-hl="' + _escHtml(id) + '" class="' + (ui.hl ? 'ib-chip ib-chip-active' : 'ib-chip') + '" style="--ib-chip-color:#ff9900;width:auto;padding:2px 10px 2px 8px;font-size:11px;" data-ui="cache_timeline.btn_hl" data-ib-pickkey="dashboard.cache_timeline.btn_hl.' + _escAttr(pickId) + '" data-ib-itemkey="' + _escAttr(String(id) + ':hl') + '" title="Highlight">' +
         '<span class="ib-chip-dot"></span><span class="ib-chip-label">hl</span>' +
       '</button>' +
-      '<button type="button" data-cache-ac="' + _escHtml(id) + '" class="' + (ui.active ? 'ib-chip ib-chip-active' : 'ib-chip ib-chip-inactive') + '" style="--ib-chip-color:' + bd + ';width:auto;padding:2px 10px 2px 8px;font-size:11px;" data-ui="cache_timeline.btn_ac" title="Aktiv">' +
+      '<button type="button" data-cache-ac="' + _escHtml(id) + '" class="' + (ui.active ? 'ib-chip ib-chip-active' : 'ib-chip ib-chip-inactive') + '" style="--ib-chip-color:' + bd + ';width:auto;padding:2px 10px 2px 8px;font-size:11px;" data-ui="cache_timeline.btn_ac" data-ib-pickkey="dashboard.cache_timeline.btn_ac.' + _escAttr(pickId) + '" data-ib-itemkey="' + _escAttr(String(id) + ':ac') + '" title="Aktiv">' +
         '<span class="ib-chip-dot"></span><span class="ib-chip-label">ac</span>' +
       '</button>' +
-      '<button type="button" data-cache-ol="' + _escHtml(id) + '" class="ib-chip ib-chip-inactive" style="--ib-chip-color:' + bd + ';width:auto;padding:2px 10px 2px 8px;font-size:11px;cursor:not-allowed;" data-ui="cache_timeline.btn_ol" title="Outlier" disabled>' +
+      '<button type="button" data-cache-ol="' + _escHtml(id) + '" class="ib-chip ib-chip-inactive" style="--ib-chip-color:' + bd + ';width:auto;padding:2px 10px 2px 8px;font-size:11px;cursor:not-allowed;" data-ui="cache_timeline.btn_ol" data-ib-pickkey="dashboard.cache_timeline.btn_ol.' + _escAttr(pickId) + '" data-ib-itemkey="' + _escAttr(String(id) + ':ol') + '" title="Outlier" disabled>' +
         '<span class="ib-chip-dot"></span><span class="ib-chip-label">ol</span>' +
       '</button>' +
       '<span style="display:inline-block;width:10px;height:10px;background:' + color + ';border:1px solid ' + border + ';border-radius:3px;"></span>' +
@@ -12325,16 +12384,17 @@ try{
       modal.style.zIndex = '10000';
       modal.style.background = 'rgba(0,0,0,0.45)';
       modal.innerHTML = `
-        <div style="max-width:900px;margin:6vh auto;background:#fff;border-radius:12px;padding:12px 14px;box-shadow:0 12px 60px rgba(0,0,0,0.28);">
-          <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
+        <div style="max-width:900px;margin:6vh auto;background:#fff;border-radius:12px;padding:12px 14px;box-shadow:0 12px 60px rgba(0,0,0,0.28);" data-dialog-root="1">
+          <div style="display:flex;align-items:center;gap:12px;">
             <div style="font-weight:800;font-size:16px;">Git Bugreport</div>
-            <button class="btn_sm" id="bugreport_close">Schliessen</button>
           </div>
           <div style="margin-top:8px;" class="muted">Vorbereitung fuer GitHub Issue. Bitte Beschreibung erg&auml;nzen bevor Sie auf 'Open on GitHub' klicken.</div>
           <textarea id="bugreport_text" style="width:100%;height:260px;margin-top:10px;padding:10px;border:1px solid #eee;border-radius:8px;font-family:monospace;"></textarea>
           <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px;">
-            <button class="btn_sm" id="bugreport_copy">In Zwischenablage kopieren</button>
-            <button class="btn_sm" id="bugreport_github">Open on GitHub</button>
+            <button class="btn_sm ib_dialog_superpicker" id="bugreport_superpicker" data-open-superpicker="1" data-ui="bugreport.btn_superpicker" data-ib-pickkey="bugreport.btn_superpicker">S-Picker</button>
+            <button class="btn_sm" id="bugreport_close" data-ui="bugreport.btn_close" data-ib-pickkey="bugreport.btn_close">Schliessen</button>
+            <button class="btn_sm" id="bugreport_copy" data-ui="bugreport.btn_copy" data-ib-pickkey="bugreport.btn_copy">In Zwischenablage kopieren</button>
+            <button class="btn_sm" id="bugreport_github" data-ui="bugreport.btn_github" data-ib-pickkey="bugreport.btn_github">Open on GitHub</button>
           </div>
         </div>
       `;

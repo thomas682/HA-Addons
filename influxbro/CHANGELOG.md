@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.12.463
+
+### Enhancement
+
+- Dialoge/Overlays: Aktionsbuttons mit `Schliessen`, `Abbrechen` und `OK` sitzen jetzt konsistent unten rechts; relevante Dialoge bieten zusaetzlich direkt einen `S-Picker`-Einstieg, ohne erst zur Topbar wechseln zu muessen.
+
 ## 1.12.462
 
 ### Fix

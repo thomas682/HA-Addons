@@ -500,6 +500,7 @@ Timer Jobs:
   - `weekly`: woechentlich (Wochentag 0=Mo..6=So) um HH:MM:SS
   - `manual`: nur manuell per `Start`
 - `History`: oeffnet einen Dialog mit zusammengefuehrter Timer-Historie fuer die selektierten Timer; Filter nach Timer-ID und Freitextsuche sind im Dialog moeglich.
+- Dialoge verwenden jetzt konsistent einen Footer unten rechts fuer `Schliessen`-, `Abbrechen`- und `OK`-Aktionen. In vielen Dialogen gibt es dort zusaetzlich direkt einen `S-Picker`, um UI-Elemente ohne Rueckweg in die Topbar zu referenzieren.
 - `Deaktivieren`/`Aktivieren`: schaltet die Automatik (Auto-Start) fuer die selektierten Timer aus/an. Hinweis: Bei `stats_full` bedeutet `Deaktivieren` effektiv `manual`; beim Aktivieren wird der vorherige Modus (falls bekannt) wiederhergestellt.
 - Zusaetzlich: `stats_full` laedt Statistik komplett (inkl. Details wie count/min/max/mean) fuer alle Serien.
 - Neu: `analysis_nightly` aktualisiert nachts den Analysecache fuer bereits analysierte Serien (1x pro Nacht; best-effort).

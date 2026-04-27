@@ -718,6 +718,11 @@ def test_dashboard_cache_timeline_has_hl_ac_toggles_and_combine_buttons():
     assert 'gap|' in body
     assert 'cursor:not-allowed' in body
     assert 'cached_outlier_type_counts' in body
+    assert 'data-ib-pickkey="dashboard.cache_timeline.btn_hl.' in body
+    assert 'data-ib-pickkey="dashboard.cache_timeline.btn_ac.' in body
+    assert 'data-ib-pickkey="dashboard.cache_timeline.btn_ol.' in body
+    assert 'data-ib-pickkey="dashboard.cache_timeline.btn_info.' in body
+    assert 'data-ib-itemkey="' in body
 
 
 def test_dashboard_caching_panel_has_logs_button_progress_and_range_details():
@@ -737,6 +742,50 @@ def test_dashboard_caching_panel_has_logs_button_progress_and_range_details():
     assert 'data-ib-pickkey' in agents
     assert 'data-ib-instancekey' in agents
     assert 'v=1;pk=' in agents
+
+
+def test_dashboard_flow_checklist_controls_persist_and_use_explicit_pickkeys():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert 'const FLOW_UI_KEY_PREFIX = "influxbro_flow_ui_v1:";' in body
+    assert 'if(!window.__IB_FLOW_UI[id]) window.__IB_FLOW_UI[id] = _loadFlowUiState(id);' in body
+    assert "btnToggle.setAttribute('data-ui', id + '.btn_toggle_all');" in body
+    assert "btnErr.setAttribute('data-ui', id + '.btn_only_errors');" in body
+    assert "row.setAttribute('data-ib-pickkey', flowPickBase + '.row_step.' + keyPick);" in body
+    assert "det.setAttribute('data-ib-pickkey', flowPickBase + '.panel_step_details.' + keyPick);" in body
+    assert '_saveFlowUiState(id, ui);' in body
+
+
+def test_dialog_actions_use_bottom_right_footer_and_explicit_pickkeys():
+    config_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "config.html").read_text()
+    export_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "export.html").read_text()
+    assert 'display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;' in config_body
+    assert 'data-ui="config_test_success.btn_ok" data-ib-pickkey="config_test_success.btn_ok"' in config_body
+    assert 'class="actions"' in export_body
+    assert 'data-ui="export_target.btn_close" data-ib-pickkey="export_target.btn_close"' in export_body
+    assert 'data-ui="export_target.btn_cancel" data-ib-pickkey="export_target.btn_cancel"' in export_body
+    assert 'data-ui="export_target.btn_ok" data-ib-pickkey="export_target.btn_ok"' in export_body
+
+
+def test_dialogs_expose_superpicker_and_footer_normalizer():
+    index_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    config_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "config.html").read_text()
+    logs_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "logs.html").read_text()
+    dq_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "dq.html").read_text()
+    jobs_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "jobs.html").read_text()
+    topbar_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    tooltips_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
+    assert 'data-dialog-root="1"' in index_body
+    assert 'data-open-superpicker="1"' in index_body
+    assert 'data-ui="config_icon_svg.btn_superpicker"' in config_body
+    assert 'data-ui="logs_support_bundle.btn_superpicker"' in logs_body
+    assert 'data-ui="dq_detail.btn_superpicker"' in dq_body
+    assert 'data-ui="jobs_timers_history.btn_superpicker"' in jobs_body
+    assert 'window.InfluxBroOpenSuperpickerFromDialog = function(dialogRoot)' in topbar_body
+    assert "btn.closest('[data-dialog-root=\"1\"], dialog, [role=\"dialog\"], .dlg_backdrop, .modal')" in topbar_body
+    assert "_ensureDialogFooter('#ib_page_search_modal', '#ib_page_search_modal_close');" in topbar_body
+    assert "_ensureDialogFooter('#analysis_log_modal', '#analysis_log_modal_close'" in topbar_body
+    assert 'data-ui="docs_modal.btn_superpicker"' in tooltips_body
+    assert 'data-ui="issue_composer.btn_superpicker"' in tooltips_body
 
 
 def test_dashboard_outlier_params_dialog_is_global_config_based():

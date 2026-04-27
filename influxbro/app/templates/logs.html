@@ -223,14 +223,13 @@
         </div>
       </details>
 
-      <div id="support_bundle_dialog" style="display:none; position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.45); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;" data-ui="logs_support_bundle.dialog" data-ib-pickkey="logs_support_bundle.dialog">
+      <div id="support_bundle_dialog" data-dialog-root="1" style="display:none; position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.45); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;" data-ui="logs_support_bundle.dialog" data-ib-pickkey="logs_support_bundle.dialog">
         <div style="background:#fff; border-radius:16px; padding:16px; max-width:980px; width:min(980px, 100%); max-height:90vh; overflow:auto; box-shadow:0 12px 60px rgba(0,0,0,0.28);">
-          <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:10px;">
+          <div style="display:flex; align-items:flex-start; gap:12px; margin-bottom:10px;">
             <div>
               <div style="font-weight:900; font-size:16px;" data-ui="logs_support_bundle.txt_title" data-ib-pickkey="logs_support_bundle.txt_title">Support-Bundle</div>
               <div class="muted" style="margin-top:4px; font-size:12px; line-height:1.4;" data-ui="logs_support_bundle.txt_hint" data-ib-pickkey="logs_support_bundle.txt_hint">ZIP-Bundle fuer Support/Issues. Redaction passiert serverseitig.</div>
             </div>
-            <button class="btn_sm" id="support_bundle_close" type="button" data-ui="logs_support_bundle.btn_close" data-ib-pickkey="logs_support_bundle.btn_close">Schliessen</button>
           </div>
 
           <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:12px;">
@@ -273,6 +272,8 @@
           </div>
 
           <div style="margin-top:12px; display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
+            <button class="btn_sm ib_dialog_superpicker" id="support_bundle_superpicker" type="button" data-open-superpicker="1" data-ui="logs_support_bundle.btn_superpicker" data-ib-pickkey="logs_support_bundle.btn_superpicker">S-Picker</button>
+            <button class="btn_sm" id="support_bundle_close" type="button" data-ui="logs_support_bundle.btn_close" data-ib-pickkey="logs_support_bundle.btn_close">Schliessen</button>
             <button class="btn_sm" id="support_bundle_preview_btn" type="button" data-ui="logs_support_bundle.btn_preview" data-ib-pickkey="logs_support_bundle.btn_preview">Vorschau</button>
             <button class="btn_sm" id="support_bundle_download_btn" type="button" data-ui="logs_support_bundle.btn_download" data-ib-pickkey="logs_support_bundle.btn_download" disabled>Download ZIP</button>
           </div>

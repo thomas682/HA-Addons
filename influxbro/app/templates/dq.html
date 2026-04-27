@@ -279,14 +279,13 @@
         </div>
       </div>
 
-      <div class="dlg_backdrop" id="dq_dlg" data-ui="dq_detail.dialog" data-ib-pickkey="dq_detail.dialog" title="dq.detail">
+      <div class="dlg_backdrop" id="dq_dlg" data-dialog-root="1" data-ui="dq_detail.dialog" data-ib-pickkey="dq_detail.dialog" title="dq.detail">
         <div class="dlg">
-          <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start;">
+          <div style="display:flex; gap:12px; align-items:flex-start;">
             <div>
               <div style="font-weight:900; font-size:16px;" id="dq_dlg_title" class="mono" data-ui="dq_detail.txt_title" data-ib-pickkey="dq_detail.txt_title" title="dq.detail.title"></div>
               <div class="muted">Details zu Findings, Score und HA-Metadaten.</div>
             </div>
-            <button id="dq_dlg_close" class="btn_sm" type="button" data-ui="dq_detail.btn_close" data-ib-pickkey="dq_detail.btn_close" title="dq.detail.close">Schliessen</button>
           </div>
           <div style="margin-top:10px;">
             <div class="dq_graph" data-ui="dq_detail.graph_wrap" data-ib-pickkey="dq_detail.graph_wrap" title="dq.detail.graph">
@@ -297,6 +296,10 @@
           </div>
           <div style="margin-top:10px;" class="mono">
             <pre id="dq_dlg_body" style="max-height:60vh; overflow:auto; border:1px solid #eee; border-radius:12px; padding:10px; background:#fafafa;" data-ui="dq_detail.pre_body" data-ib-pickkey="dq_detail.pre_body" title="dq.detail.body"></pre>
+          </div>
+          <div style="margin-top:10px; display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
+            <button id="dq_dlg_superpicker" class="btn_sm ib_dialog_superpicker" type="button" data-open-superpicker="1" data-ui="dq_detail.btn_superpicker" data-ib-pickkey="dq_detail.btn_superpicker">S-Picker</button>
+            <button id="dq_dlg_close" class="btn_sm" type="button" data-ui="dq_detail.btn_close" data-ib-pickkey="dq_detail.btn_close" title="dq.detail.close">Schliessen</button>
           </div>
         </div>
       </div>

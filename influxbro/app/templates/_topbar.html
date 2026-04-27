@@ -2506,11 +2506,112 @@
         if(multiMode){ multiItems = []; _multiBarRender(); }
         start().catch(()=>{});
       });
+      try{
+        window.InfluxBroOpenSuperpickerFromDialog = function(dialogRoot){
+          try{
+            let root = dialogRoot || null;
+            if(root && root.closest){
+              const overlay = root.closest('dialog, [id$="_dialog"], [id$="_modal"], .modal, .dlg_backdrop');
+              if(overlay) root = overlay;
+            }
+            if(root){
+              if(root.tagName === 'DIALOG' && typeof root.close === 'function') root.close();
+              else if(root.style) root.style.display = 'none';
+            }
+          }catch(e){}
+          try{
+            if(active && !readSuper()) stop();
+          }catch(e){}
+          try{ if(!readSuper()) writeSuper(true); }catch(e){}
+          try{ applySuperUi(); }catch(e){}
+          setTimeout(()=>{
+            try{ $superBtn.click(); }catch(e){}
+          }, 0);
+        };
+      }catch(e){}
+      try{
+        if(document.body && document.body.dataset.ibDialogSuperpickerBound !== '1'){
+          document.body.dataset.ibDialogSuperpickerBound = '1';
+          document.addEventListener('click', (ev)=>{
+            try{
+              const btn = ev && ev.target && ev.target.closest ? ev.target.closest('[data-open-superpicker="1"]') : null;
+              if(!btn) return;
+              ev.preventDefault();
+              ev.stopPropagation();
+              const root = btn.closest('[data-dialog-root="1"], dialog, [role="dialog"], .dlg_backdrop, .modal');
+              if(window.InfluxBroOpenSuperpickerFromDialog) window.InfluxBroOpenSuperpickerFromDialog(root);
+            }catch(e){}
+          }, true);
+        }
+      }catch(e){}
       applySuperUi();
     }
 
     if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initPicker, { once: true });
     else initPicker();
+  })();
+  </script>
+  <script>
+  (function(){
+    function _dialogPanel(root){
+      try{
+        if(!root) return null;
+        if(root.tagName === 'DIALOG') return root.firstElementChild || root;
+        return root.querySelector('[data-dialog-root="1"]') || root.firstElementChild || root;
+      }catch(e){ return null; }
+    }
+    function _superpickerKey(root){
+      try{
+        const raw = String((root && root.id) || 'dialog').trim().replace(/[^a-zA-Z0-9_-]+/g, '_');
+        return raw || 'dialog';
+      }catch(e){ return 'dialog'; }
+    }
+    function _ensureDialogFooter(rootOrSelector, closeSelector, opts){
+      try{
+        const root = (typeof rootOrSelector === 'string') ? document.querySelector(rootOrSelector) : rootOrSelector;
+        if(!root) return;
+        const panel = _dialogPanel(root);
+        if(!panel) return;
+        root.setAttribute('data-dialog-root', '1');
+        let footer = panel.querySelector('[data-dialog-footer="1"]');
+        if(!footer){
+          footer = document.createElement('div');
+          footer.setAttribute('data-dialog-footer', '1');
+          footer.style.display = 'flex';
+          footer.style.justifyContent = 'flex-end';
+          footer.style.gap = '8px';
+          footer.style.flexWrap = 'wrap';
+          footer.style.marginTop = '12px';
+          if(root.tagName === 'DIALOG') footer.style.padding = '0 16px 14px 16px';
+          panel.appendChild(footer);
+        }
+        if(opts && opts.superpicker !== false && !footer.querySelector('[data-open-superpicker="1"]')){
+          const key = _superpickerKey(root);
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.textContent = 'S-Picker';
+          btn.className = (opts && opts.buttonClass) ? opts.buttonClass : 'btn_sm ib_dialog_superpicker';
+          if(root.tagName === 'DIALOG' && !opts?.buttonClass) btn.className = 'btn_xs ib_dialog_superpicker';
+          btn.setAttribute('data-open-superpicker', '1');
+          btn.setAttribute('data-ui', key + '.btn_superpicker');
+          btn.setAttribute('data-ib-pickkey', key + '.btn_superpicker');
+          footer.appendChild(btn);
+        }
+        const closeBtn = closeSelector ? root.querySelector(closeSelector) : null;
+        if(closeBtn && closeBtn.parentElement !== footer) footer.appendChild(closeBtn);
+      }catch(e){}
+    }
+    function _normalizeDialogFooters(){
+      try{
+        _ensureDialogFooter('#ib_page_search_modal', '#ib_page_search_modal_close');
+        _ensureDialogFooter('#analysis_log_modal', '#analysis_log_modal_close', { buttonClass: 'btn_sm ib_dialog_superpicker' });
+      }catch(e){}
+    }
+    try{
+      if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _normalizeDialogFooters, { once: true });
+      else _normalizeDialogFooters();
+      new MutationObserver(_normalizeDialogFooters).observe(document.body, { childList: true, subtree: true });
+    }catch(e){}
   })();
   </script>
   <script>
@@ -2834,13 +2935,12 @@
       root.style.zIndex = '12050';
       root.style.background = 'rgba(0,0,0,0.35)';
        root.innerHTML = `
-        <div style="max-width:860px;margin:6vh auto;background:#fff;border-radius:12px;padding:16px;box-shadow:0 16px 60px rgba(0,0,0,0.3);" data-ui="settings_organizer.dialog" data-ib-pickkey="settings_organizer.dialog">
-          <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">
+        <div style="max-width:860px;margin:6vh auto;background:#fff;border-radius:12px;padding:16px;box-shadow:0 16px 60px rgba(0,0,0,0.3);" data-dialog-root="1" data-ui="settings_organizer.dialog" data-ib-pickkey="settings_organizer.dialog">
+          <div style="display:flex;gap:12px;align-items:flex-start;">
             <div>
               <div style="font-weight:900;font-size:16px;margin-bottom:4px;" data-ui="settings_organizer.txt_title" data-ib-pickkey="settings_organizer.txt_title">Einstellungen: Organizer</div>
               <div class="muted" style="margin-bottom:10px;">Funktion auswaehlen. Falls die Einstellungsseite nicht offen ist, wird sie automatisch geoeffnet.</div>
             </div>
-            <button id="ib_settings_organizer_close" class="btn_sm" type="button" data-ui="settings_organizer.btn_close" data-ib-pickkey="settings_organizer.btn_close">Schliessen</button>
           </div>
           <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start;">
             <div style="flex:0 0 320px; min-width:260px;">
@@ -2865,6 +2965,10 @@
             <div style="flex:1 1 420px; min-width:280px;">
               <div id="ib_settings_organizer_help" class="mono" style="white-space:pre-wrap;border:1px solid #eee;border-radius:12px;padding:12px;min-height:200px;background:#fafafa;"></div>
             </div>
+          </div>
+          <div style="display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-top:12px;">
+            <button id="ib_settings_organizer_superpicker" class="btn_sm ib_dialog_superpicker" type="button" data-open-superpicker="1" data-ui="settings_organizer.btn_superpicker" data-ib-pickkey="settings_organizer.btn_superpicker">S-Picker</button>
+            <button id="ib_settings_organizer_close" class="btn_sm" type="button" data-ui="settings_organizer.btn_close" data-ib-pickkey="settings_organizer.btn_close">Schliessen</button>
           </div>
         </div>`;
       document.body.appendChild(root);

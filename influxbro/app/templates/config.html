@@ -3314,7 +3314,7 @@ async function testConn(){
       modal.innerHTML = `<div style="max-width:480px;margin:10vh auto;background:#fff;border-radius:10px;padding:18px;box-shadow:0 16px 60px rgba(0,0,0,0.3); text-align:center;">
         <div style="font-weight:800;font-size:16px;margin-bottom:8px;">Verbindung erfolgreich</div>
         <div class="modal_body" style="margin-bottom:14px;color:#0a7a28;"></div>
-        <div style="display:flex;justify-content:center;gap:8px;"><button id="test_success_close" class="btn_sm" type="button">OK</button></div>
+        <div style="display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;"><button id="test_success_close" class="btn_sm" type="button" data-ui="config_test_success.btn_ok" data-ib-pickkey="config_test_success.btn_ok">OK</button></div>
       </div>`;
       document.body.appendChild(modal);
       try{
@@ -4882,27 +4882,28 @@ try{
   <div style="max-width:480px;margin:10vh auto;background:#fff;border-radius:10px;padding:18px;box-shadow:0 16px 60px rgba(0,0,0,0.3); text-align:center;">
     <div style="font-weight:800;font-size:16px;margin-bottom:8px;">Verbindung erfolgreich</div>
     <div class="modal_body" style="margin-bottom:14px;color:#0a7a28;"></div>
-    <div style="display:flex;justify-content:center;gap:8px;"><button id="test_success_close" class="btn_sm" type="button">OK</button></div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;"><button id="test_success_close" class="btn_sm" type="button" data-ui="config_test_success.btn_ok" data-ib-pickkey="config_test_success.btn_ok">OK</button></div>
   </div>
 </div>
 
 <!-- Icon SVG editor modal -->
-<div id="icon_svg_modal" style="display:none; position:fixed; inset:0; z-index:12010; background: rgba(0,0,0,0.45);">
+<div id="icon_svg_modal" data-dialog-root="1" style="display:none; position:fixed; inset:0; z-index:12010; background: rgba(0,0,0,0.45);">
   <div style="max-width:980px;margin:6vh auto;background:#fff;border-radius:12px;padding:16px;box-shadow:0 16px 60px rgba(0,0,0,0.3);">
-    <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">
+    <div style="display:flex;gap:12px;align-items:flex-start;">
       <div>
         <div id="icon_svg_modal_title" style="font-weight:900;font-size:16px;margin-bottom:4px;">Icon SVG</div>
         <div id="icon_svg_modal_sub" class="muted" style="margin-bottom:10px;"></div>
       </div>
-      <button id="icon_svg_cancel" class="btn_sm" type="button">Schliessen</button>
     </div>
     <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-start;">
       <div style="flex:1 1 620px; min-width:280px;">
         <textarea id="icon_svg_text" class="mono" spellcheck="false" style="width:100%;min-height:280px;resize:vertical;box-sizing:border-box;padding:10px;border:1px solid #ddd;border-radius:10px;"></textarea>
         <div class="err" id="icon_svg_modal_err" style="display:none;margin-top:8px;"></div>
-        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
-          <button id="icon_svg_save" class="btn_sm" type="button">Speichern</button>
-          <button id="icon_svg_reset" class="btn_sm" type="button">Reset</button>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; justify-content:flex-end;">
+          <button id="icon_svg_superpicker" class="btn_sm ib_dialog_superpicker" type="button" data-open-superpicker="1" data-ui="config_icon_svg.btn_superpicker" data-ib-pickkey="config_icon_svg.btn_superpicker">S-Picker</button>
+          <button id="icon_svg_cancel" class="btn_sm" type="button" data-ui="config_icon_svg.btn_close" data-ib-pickkey="config_icon_svg.btn_close">Schliessen</button>
+          <button id="icon_svg_reset" class="btn_sm" type="button" data-ui="config_icon_svg.btn_reset" data-ib-pickkey="config_icon_svg.btn_reset">Reset</button>
+          <button id="icon_svg_save" class="btn_sm" type="button" data-ui="config_icon_svg.btn_save" data-ib-pickkey="config_icon_svg.btn_save">Speichern</button>
         </div>
         <div class="muted" style="margin-top:8px;">Hinweis: Serverseitige Sanitization kann Elemente/Attribute entfernen. Max. ~10k Zeichen.</div>
       </div>
