@@ -448,6 +448,8 @@ Die fruehere Bearbeitungsliste wurde entfernt. Korrekturen erfolgen direkt in de
   - Buttons `aeltester`/`neuster` springen innerhalb der Ansicht nach oben/unten
 - Suche/Filter um Fehler schneller zu finden
 - Das Suchfeld besitzt einen dauerhaft sichtbaren Button `Feld leeren`.
+- Die obere Aktionsleiste ist jetzt in zwei Reihen getrennt: allgemeine Log-Aktionen oben, Suche/Markieren darunter.
+- Die Suchfelder `Suche` und `Markieren` behalten auch auf schmaleren Breiten eine kleine Mindestbreite und kollabieren nicht mehr vollstaendig.
   - Copy/Download fuer Support oder Analyse
 - Export: erstellt ein Debug-Bundle (JSON, inkl. Client-Fehler wie "Failed to fetch").
 - Debug report: erstellt einen GitHub-freundlichen Report als Markdown-Datei (empfohlen fuer Issue/Kommentar).
@@ -718,9 +720,13 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - `Counter: Max Sprung` ist im Dialog getrennt nach Einheit editierbar (`W`, `kW`, `Wh`, `kWh`) und wird als globaler Default pro Einheit gespeichert.
 - `Recovery-Streak` wirkt auf die Dashboard-Ausreißeranalyse: Erst nach der eingestellten Anzahl gueltiger Werte in Folge gilt eine Stoerphase wieder als beendet.
 - Ueber der Raw-Tabelle gibt es zusaetzlich `Löschen`, `Undo` und `Info`. `Löschen` loescht den selektierten DB-Wert nach Rueckfrage. `Undo` macht genau die letzte direkte Button-Aenderung (`Einfügen` oder `Löschen`) fuer den selektierten Raw-Wert rueckgaengig. `Info` zeigt die komplette Aenderungshistorie des selektierten Raw-Werts im Popup.
+- Nach `Löschen` wird die Raw-Tabelle sofort neu geladen. Die Selektion springt dabei auf die naechste verbleibende Zeile, alternativ auf die vorherige, wenn die geloeschte Zeile am Ende stand.
+- Der Raw-Info-Button zeigt jetzt ein reines Icon statt der bisherigen Textbeschriftung `Info`.
+- Im Hauptgraph ist der Zeitraum, den der Kontextgraph anzeigt, zusaetzlich als farbige Flaeche mit Randlinien markiert.
 - Im Bereich `raw.actions` gibt es jetzt zusaetzlich einen Button `Query`, der die zuletzt verwendete Raw-Abfrage im gemeinsamen Query-Dialog anzeigt.
 - Query-History wird im bestehenden Popup unterhalb des Haupttexts angezeigt. Der `History`-Button oeffnet den unteren Bereich mit verschiebbarem Trenner, statt einen zusaetzlichen Popup-Dialog zu erzeugen.
 - Der gemeinsame Popup-Splitter laesst sich jetzt deutlich freier nach oben und unten ziehen. Sowohl Haupttext als auch History behalten nur noch eine kleine Resthoehe, damit der Dialog flexibler an den jeweiligen Inhalt angepasst werden kann.
+- Das Popup-Suchfeld bleibt jetzt kompakter und hat keine feste Mindestbreite mehr; es streckt sich nicht mehr unnoetig ueber die gesamte Toolbar.
 - Der untere Query-History-Bereich wird als reine Textansicht dargestellt, aehnlich den Logfiles. Ueber dem Textfeld gibt es ein eigenes Suchfeld und eine eigene Checkbox `Umbruch` fuer die History-Anzeige.
 - Query-Dialoge zeigen die History jetzt immer automatisch an. Der Dialog zeigt zusaetzlich, wann die aktuelle Query ausgeloest wurde und wodurch sie ausgeloest wurde. Im unteren History-Bereich steuert `Client time`, ob Zeiten lokal im Browser formatiert oder als rohe ISO-Zeit angezeigt werden.
 - Zusaetzlich zeigt der Dialog (oben) die Dauer der letzten passenden Ausfuehrung als Millisekunden (`dur_ms`).
@@ -833,6 +839,8 @@ Neu:
 - `Jobs & Cache -> Analysecache` zeigt jetzt neben `dirty` auch `patch`/`failed`-Zaehler fuer Serien mit ausstehenden oder fehlgeschlagenen Analyse-Cache-Reparaturen sowie in der Segmentanzeige Details zu Patchmodus, Checkpoint und Kontextpunkten.
 - Ausreisser Tabelle: bestehende `_measurement` Zeilen sind nicht editierbar und werden automatisch aus bekannten Measurements vorbefuellt. Zusaetzlich gibt es `+ Zeile` / `- Zeile` (markierte Zeile), um eigene Regeln manuell zu pflegen.
 - Die Einstellungsseite ist jetzt in grobe Obergruppen gegliedert, u.a. `Oberflaeche`, `Anbindung`, `Dashboard`, `Statistik`, `Backup`, `Restore`, `Logs`, `Jobs & Cache`, `History`, `Diagnose` und `Einstellungen`. Bereiche ohne eigene Felder zeigen den Hinweis `Derzeit keine eigenen Einstellungen in diesem Bereich.`.
+- Im Bereich `Iconbilder` besitzt die bestehende Filtereingabe jetzt zusaetzlich `Zurueck`/`Weiter`. Damit kannst du zyklisch durch Trefferzellen der aktuell sichtbaren Icon-Tabelle springen; die aktive Zelle wird hervorgehoben.
+- Die beiden Icon-Toolbar-Buttons fuer Auto-/Fensterbreite bleiben kompakt und nutzen keine volle Buttonbreite mehr.
 - Speicher-/Worklog-Diagnose ist im Menuepunkt `Diagnose` (nicht mehr unter Einstellungen).
 - Einstellungen: Neuer Block `Default / Import / Export`.
   - `Export`: laedt die aktuellen Einstellungen als JSON-Datei herunter.

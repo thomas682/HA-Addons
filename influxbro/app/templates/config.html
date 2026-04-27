@@ -159,6 +159,8 @@
 
     /* Iconbilder table: row selection + inline edit */
     #icons_tbl tr.ib_row_sel td { outline: 2px solid rgba(36,99,235,0.35); outline-offset: -2px; }
+    #icons_tbl td.ib_icon_search_match { background: rgba(0, 196, 255, 0.10); }
+    #icons_tbl td.ib_icon_search_current { background: rgba(0, 196, 255, 0.22); box-shadow: inset 0 0 0 2px rgba(0, 196, 255, 0.55); }
     #icons_tbl td.ib_icon_svg_cell { cursor: pointer; }
     #icons_tbl textarea.ib_icon_svg_edit {
       width: 100%;
@@ -372,7 +374,11 @@
               <div class="param_row">
                 <div class="param_label">Filter<span class="param_hint">Suche in Key/Label/Area.</span></div>
                 <div class="param_control">
-                  <input id="icons_search" placeholder="z.B. dashboard_raw.btn_kopieren" class="mono" data-ui="config_settings.input_icons_search" title="settings.icons.search" />
+                  <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                    <input id="icons_search" placeholder="z.B. dashboard_raw.btn_kopieren" class="mono" data-ui="config_settings.input_icons_search" title="settings.icons.search" />
+                    <button id="icons_search_prev" class="btn_sm" type="button" data-ui="config_settings.btn_icons_search_prev" data-ib-pickkey="config_settings.btn_icons_search_prev" title="config_settings.btn_icons_search_prev">Zurueck</button>
+                    <button id="icons_search_next" class="btn_sm" type="button" data-ui="config_settings.btn_icons_search_next" data-ib-pickkey="config_settings.btn_icons_search_next" title="config_settings.btn_icons_search_next">Weiter</button>
+                  </div>
                 </div>
               </div>
               <div class="param_row">
@@ -401,7 +407,7 @@
               <div class="table_title">Icon-Mapping (UI-Profil)</div>
               <div class="table_head">
                 <div class="tbl_actions" data-ui="config_settings.row_icons_actions" title="config_settings.row_icons_actions">
-                  <button class="btn_sm" id="icons_autowidth" type="button" data-ui="config_settings.btn_icons_autobreite" data-ib-pickkey="config_settings.btn_icons_autobreite" title="config_settings.btn_icons_autobreite" aria-label="Spaltenbreite automatisch">
+                  <button class="btn_sm" id="icons_autowidth" type="button" data-ui="config_settings.btn_icons_autobreite" data-ib-pickkey="config_settings.btn_icons_autobreite" title="config_settings.btn_icons_autobreite" aria-label="Spaltenbreite automatisch" style="width:auto; flex:0 0 auto;">
                     <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                       <path d="M5 5v14M19 5v14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                       <path d="M8 12h8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -409,7 +415,7 @@
                       <path d="M14 10l2 2-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                   </button>
-                  <button class="btn_sm" id="icons_windowwidth" type="button" data-ui="config_settings.btn_icons_fensterbreite" data-ib-pickkey="config_settings.btn_icons_fensterbreite" title="config_settings.btn_icons_fensterbreite" aria-label="Fensterbreite">
+                  <button class="btn_sm" id="icons_windowwidth" type="button" data-ui="config_settings.btn_icons_fensterbreite" data-ib-pickkey="config_settings.btn_icons_fensterbreite" title="config_settings.btn_icons_fensterbreite" aria-label="Fensterbreite" style="width:auto; flex:0 0 auto;">
                     <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                       <rect x="4" y="6" width="16" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
                       <path d="M12 12H6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -1665,6 +1671,8 @@ const $uiDocOpenMode = document.getElementById('ui_tooltip_doc_open_mode');
 
 // Iconbilder (SVG overrides per data-ui, stored in UI profile)
 const $iconsSearch = document.getElementById('icons_search');
+const $iconsSearchPrev = document.getElementById('icons_search_prev');
+const $iconsSearchNext = document.getElementById('icons_search_next');
 const $iconsArea = document.getElementById('icons_area');
 const $iconsOnlyOverrides = document.getElementById('icons_only_overrides');
 const $iconsReload = document.getElementById('icons_reload');
@@ -1698,6 +1706,8 @@ let _ICON_SELECTED_KEY = '';
 let _ICON_EDITING_KEY = '';
 let _ICON_EDIT_BEFORE = null;
 let _ICON_UNDO_LAST = {}; // key -> previous svg (string|null)
+let _ICON_SEARCH_MATCHES = [];
+let _ICON_SEARCH_INDEX = -1;
 
 function _iconsToolbarUpdate(){
   try{
@@ -1706,6 +1716,91 @@ function _iconsToolbarUpdate(){
     if($iconsJump) $iconsJump.disabled = !hasSel;
     const canUndo = hasSel && Object.prototype.hasOwnProperty.call(_ICON_UNDO_LAST || {}, k);
     if($iconsUndo) $iconsUndo.disabled = !canUndo;
+  }catch(e){}
+}
+
+function _iconsClearSearchHighlights(){
+  try{
+    document.querySelectorAll('#icons_tbl td.ib_icon_search_match, #icons_tbl td.ib_icon_search_current').forEach((el)=>{
+      try{ el.classList.remove('ib_icon_search_match', 'ib_icon_search_current'); }catch(e){}
+    });
+  }catch(e){}
+}
+
+function _iconsCollectSearchMatches(){
+  const q = $iconsSearch ? String($iconsSearch.value || '').trim().toLowerCase() : '';
+  _iconsClearSearchHighlights();
+  _ICON_SEARCH_MATCHES = [];
+  _ICON_SEARCH_INDEX = -1;
+  if(!q || !$iconsTbl) return 0;
+  try{
+    const rows = Array.from($iconsTbl.querySelectorAll('tbody tr'));
+    rows.forEach((tr)=>{
+      const cells = Array.from(tr.querySelectorAll('td'));
+      cells.forEach((td, idx)=>{
+        const text = String(td.textContent || '').trim().toLowerCase();
+        if(!text || text.indexOf(q) === -1) return;
+        td.classList.add('ib_icon_search_match');
+        _ICON_SEARCH_MATCHES.push({ key: String(tr.dataset.key || ''), cellIndex: idx });
+      });
+    });
+  }catch(e){}
+  return _ICON_SEARCH_MATCHES.length;
+}
+
+function _iconsFocusSearchMatch(idx){
+  try{
+    if(!_ICON_SEARCH_MATCHES.length || !$iconsTbl) return false;
+    const n = _ICON_SEARCH_MATCHES.length;
+    const next = ((Number(idx) % n) + n) % n;
+    const hit = _ICON_SEARCH_MATCHES[next] || null;
+    if(!hit || !hit.key) return false;
+    _iconsClearSearchHighlights();
+    _ICON_SEARCH_MATCHES.forEach((m)=>{
+      try{
+        const tr = $iconsTbl.querySelector('tbody tr[data-key="' + String(m.key).replace(/"/g, '\\"') + '"]');
+        const td = tr && tr.children ? tr.children[m.cellIndex] : null;
+        if(td) td.classList.add('ib_icon_search_match');
+      }catch(e){}
+    });
+    const tr = $iconsTbl.querySelector('tbody tr[data-key="' + String(hit.key).replace(/"/g, '\\"') + '"]');
+    const td = tr && tr.children ? tr.children[hit.cellIndex] : null;
+    if(!tr || !td) return false;
+    td.classList.add('ib_icon_search_current');
+    _ICON_SEARCH_INDEX = next;
+    _iconsSelect(hit.key);
+    try{ td.scrollIntoView({ block:'nearest', inline:'nearest' }); }catch(e){}
+    return true;
+  }catch(e){
+    return false;
+  }
+}
+
+function _iconsUpdateSearchState(opts){
+  try{
+    const o = opts && typeof opts === 'object' ? opts : {};
+    const total = _iconsCollectSearchMatches();
+    if($iconsSearchPrev) $iconsSearchPrev.disabled = total <= 0;
+    if($iconsSearchNext) $iconsSearchNext.disabled = total <= 0;
+    if(total > 0){
+      const focus = (o.keepCurrent && _ICON_SEARCH_INDEX >= 0 && _ICON_SEARCH_INDEX < total) ? _ICON_SEARCH_INDEX : 0;
+      _iconsFocusSearchMatch(focus);
+    }
+    return total;
+  }catch(e){
+    return 0;
+  }
+}
+
+function _iconsSearchStep(dir){
+  try{
+    if(!_ICON_SEARCH_MATCHES.length){
+      _iconsUpdateSearchState();
+      return;
+    }
+    const step = Number(dir) < 0 ? -1 : 1;
+    const start = (_ICON_SEARCH_INDEX >= 0) ? _ICON_SEARCH_INDEX : 0;
+    _iconsFocusSearchMatch(start + step);
   }catch(e){}
 }
 
@@ -2022,13 +2117,17 @@ function _iconsRender(){
     });
       tbody.appendChild(frag);
 
+     const matchCount = _iconsUpdateSearchState({ keepCurrent: true });
+
      // Keep filters effective after re-render.
      try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.apply('#icons_tbl'); }catch(e){}
 
      const totalInv = (_ICON_INV || []).length;
-     const totalOv = _ICON_OVERRIDES ? Object.keys(_ICON_OVERRIDES).length : 0;
-     _iconsSetStatus('Eintraege: ' + String(rows.length) + ' (Inventar: ' + totalInv + ', Overrides: ' + totalOv + ')');
-     _iconsToolbarUpdate();
+      const totalOv = _ICON_OVERRIDES ? Object.keys(_ICON_OVERRIDES).length : 0;
+      let status = 'Eintraege: ' + String(rows.length) + ' (Inventar: ' + totalInv + ', Overrides: ' + totalOv + ')';
+      if(($iconsSearch ? String($iconsSearch.value || '').trim() : '') && matchCount >= 0) status += ' | Trefferzellen: ' + String(matchCount);
+      _iconsSetStatus(status);
+      _iconsToolbarUpdate();
   }catch(e){
     _iconsSetErr(String(e || 'Render failed'));
   }
@@ -2103,6 +2202,8 @@ function initIconbilder(){
     }catch(e){}
 
     try{ if($iconsSearch) $iconsSearch.addEventListener('input', ()=>_iconsRender()); }catch(e){}
+    try{ if($iconsSearchPrev) $iconsSearchPrev.addEventListener('click', ()=>_iconsSearchStep(-1)); }catch(e){}
+    try{ if($iconsSearchNext) $iconsSearchNext.addEventListener('click', ()=>_iconsSearchStep(1)); }catch(e){}
     try{ if($iconsArea) $iconsArea.addEventListener('change', ()=>_iconsRender()); }catch(e){}
     try{ if($iconsOnlyOverrides) $iconsOnlyOverrides.addEventListener('change', ()=>_iconsRender()); }catch(e){}
     try{ if($iconsReload) $iconsReload.addEventListener('click', ()=>_iconsLoad().catch(e=>_iconsSetErr(String(e||'Reload failed')))); }catch(e){}

@@ -732,7 +732,7 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
          <button class="btn_sm" id="raw_abort" data-ui="dashboard_raw.btn_abbruch" title="dashboard_raw.btn_abbruch" disabled>Abbruch</button>
          <button class="btn_sm" id="raw_ignore" data-ui="dashboard_raw.btn_ignorieren" title="dashboard_raw.btn_ignorieren" disabled>Ignorieren</button>
          <button class="btn_sm" id="raw_unignore" data-ui="dashboard_raw.btn_nicht_mehr_ignorieren" title="dashboard_raw.btn_nicht_mehr_ignorieren" disabled>Nicht mehr ignorieren</button>
-        <button class="btn_sm" id="raw_info_btn" data-ui="dashboard_raw.btn_info" title="dashboard_raw.btn_info" disabled>Info</button>
+        <button class="btn_sm" id="raw_info_btn" data-ui="dashboard_raw.btn_info" title="dashboard_raw.btn_info" aria-label="Raw Info" disabled><svg width="30" height="30" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><line x1="3" y1="6" x2="14" y2="6" stroke="#00c4ff" stroke-width="1.5" stroke-linecap="round" opacity="0.4"/><line x1="3" y1="9" x2="14" y2="9" stroke="#00c4ff" stroke-width="1.5" stroke-linecap="round" opacity="0.4"/><rect x="2" y="11" width="12" height="3" rx="0.8" fill="rgba(0,196,255,0.25)" stroke="#00c4ff" stroke-width="1.2"/><line x1="3" y1="12.5" x2="10" y2="12.5" stroke="#00c4ff" stroke-width="1.2" stroke-linecap="round"/><line x1="3" y1="17" x2="14" y2="17" stroke="#00c4ff" stroke-width="1.5" stroke-linecap="round" opacity="0.4"/><path d="M13 14.5 L13 21 L15.2 18.8 L17.8 23 L19.2 22.2 L16.6 17.8 L19.8 17.8 Z" fill="#00ffcc" stroke="#050d14" stroke-width="0.5"/></svg></button>
         <button class="btn_sm" id="raw_query_open" data-ui="dashboard_raw.btn_query_anzeigen" title="dashboard_raw.btn_query_anzeigen"><svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="11" cy="15.5" r="1.5"></circle><path d="M12,12H10V8h2a2,2,0,0,0,0-4H10A2.0023,2.0023,0,0,0,8,6v.5H6V6a4.0045,4.0045,0,0,1,4-4h2a4,4,0,0,1,0,8Z"></path><path d="M22.4479,21.0337A10.971,10.971,0,0,0,19.9211,4.7446l-.999,1.73A8.9967,8.9967,0,1,1,5,14H3a10.9916,10.9916,0,0,0,18.0338,8.4478L28.5859,30,30,28.5859Z"></path></svg></button>
         <button class="btn_sm" id="raw_query_test" data-ui="dashboard_raw.btn_query_test" title="dashboard_raw.btn_query_test" aria-label="Query testen"><svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="#000000" width="18" height="18" aria-hidden="true" focusable="false"><path d="M6 10V9h9v1H6zm4-4h5v1h-5V6zm5-3v1H6V3h9zm-9 9v1h9v-1H6z"></path><path fill-rule="evenodd" clip-rule="evenodd" d="M1 2.795l.783-.419 5.371 3.581v.838l-5.371 3.581L1 9.957V2.795zm1.007.94v5.281l3.96-2.64-3.96-2.64z"></path></svg></button>
          <span id="raw_copied_info" class="muted" style="margin-left:6px;"></span>
@@ -1739,6 +1739,41 @@ function _applyOverlays(){
       });
     }catch(e){}
 
+    try{
+      const ctxWin = _mainGraphContextWindow();
+      const startMs = ctxWin && isFinite(Number(ctxWin.start_ms)) ? Number(ctxWin.start_ms) : null;
+      const stopMs = ctxWin && isFinite(Number(ctxWin.stop_ms)) ? Number(ctxWin.stop_ms) : null;
+      if(startMs !== null && stopMs !== null && stopMs > startMs){
+        const shade = 'rgba(76, 110, 245, 0.12)';
+        const border = 'rgba(76, 110, 245, 0.78)';
+        shapes.push({
+          type: 'rect',
+          xref: 'x', yref: 'paper',
+          x0: new Date(startMs), x1: new Date(stopMs),
+          y0: 0, y1: 1,
+          fillcolor: shade,
+          line: {width: 0},
+          layer: 'below',
+        });
+        shapes.push({
+          type: 'line',
+          xref: 'x', yref: 'paper',
+          x0: new Date(startMs), x1: new Date(startMs),
+          y0: 0, y1: 1,
+          line: {color: border, width: 2},
+          layer: 'above',
+        });
+        shapes.push({
+          type: 'line',
+          xref: 'x', yref: 'paper',
+          x0: new Date(stopMs), x1: new Date(stopMs),
+          y0: 0, y1: 1,
+          line: {color: border, width: 2},
+          layer: 'above',
+        });
+      }
+    }catch(e){}
+
     if(wantBg && d.segments.length && d.maxAbs > 0){
       // Bin by time for background shading
       const xs = (rows||[]).map(r=>Date.parse(r && r.time ? String(r.time) : "")).filter(t=>isFinite(t));
@@ -1984,6 +2019,19 @@ function _ctxWindowFromRaw(bounds, centerMs){
       else stop += pad;
     }
     return { start_ms: start, stop_ms: stop, center_ms: c };
+  }catch(e){
+    return null;
+  }
+}
+
+function _mainGraphContextWindow(){
+  try{
+    const bounds = _rawVisibleBoundsMs();
+    if(!bounds) return null;
+    const centerMs = (RAW_SELECTED_MS !== null && RAW_SELECTED_MS !== undefined && isFinite(Number(RAW_SELECTED_MS)))
+      ? Number(RAW_SELECTED_MS)
+      : ((Number(bounds.min) + Number(bounds.max)) / 2);
+    return _ctxWindowFromRaw(bounds, centerMs);
   }catch(e){
     return null;
   }
@@ -8761,16 +8809,16 @@ function _analysisCacheTimelineHtml(plan){
     }
     labels.push(
       '<div style="display:flex;align-items:center;gap:8px;font-size:11px;' + (!ui.active ? 'text-decoration:line-through;color:' + ANALYSIS_CACHE_HIDDEN_COLOR + ';' : '') + '">' +
-      '<button type="button" data-cache-hl="' + _escHtml(id) + '" class="' + (ui.hl ? 'ib-chip ib-chip-active' : 'ib-chip') + '" style="--ib-chip-color:#ff9900;width:auto;padding:2px 10px 2px 8px;font-size:11px;" data-ui="cache_timeline.btn_hl" title="Highlight">' +
+      '<button type="button" data-cache-hl="' + _escHtml(id) + '" class="' + (ui.hl ? 'ib-chip ib-chip-active' : 'ib-chip') + '" style="--ib-chip-color:#ff9900;width:auto;padding:2px 10px 2px 8px;font-size:11px;" data-ui="cache_timeline.btn_hl" data-ib-itemkey="' + _escAttr(String(id) + ':hl') + '" title="Highlight">' +
         '<span class="ib-chip-dot"></span><span class="ib-chip-label">hl</span>' +
       '</button>' +
-      '<button type="button" data-cache-ac="' + _escHtml(id) + '" class="' + (ui.active ? 'ib-chip ib-chip-active' : 'ib-chip ib-chip-inactive') + '" style="--ib-chip-color:' + bd + ';width:auto;padding:2px 10px 2px 8px;font-size:11px;" data-ui="cache_timeline.btn_ac" title="Aktiv">' +
+      '<button type="button" data-cache-ac="' + _escHtml(id) + '" class="' + (ui.active ? 'ib-chip ib-chip-active' : 'ib-chip ib-chip-inactive') + '" style="--ib-chip-color:' + bd + ';width:auto;padding:2px 10px 2px 8px;font-size:11px;" data-ui="cache_timeline.btn_ac" data-ib-itemkey="' + _escAttr(String(id) + ':ac') + '" title="Aktiv">' +
         '<span class="ib-chip-dot"></span><span class="ib-chip-label">ac</span>' +
       '</button>' +
-      '<button type="button" data-cache-ol="' + _escHtml(id) + '" class="' + (ui.ol ? 'ib-chip ib-chip-active' : 'ib-chip') + '" style="--ib-chip-color:' + bd + ';width:auto;padding:2px 10px 2px 8px;font-size:11px;" data-ui="cache_timeline.btn_ol" title="Outlier">' +
+      '<button type="button" data-cache-ol="' + _escHtml(id) + '" class="' + (ui.ol ? 'ib-chip ib-chip-active' : 'ib-chip') + '" style="--ib-chip-color:' + bd + ';width:auto;padding:2px 10px 2px 8px;font-size:11px;" data-ui="cache_timeline.btn_ol" data-ib-itemkey="' + _escAttr(String(id) + ':ol') + '" title="Outlier">' +
         '<span class="ib-chip-dot"></span><span class="ib-chip-label">ol</span>' +
       '</button>' +
-      '<button type="button" class="ib_info_icon" data-cache-info="' + _escAttr(String(seg.cache_id || '')) + '" data-ui="cache_timeline.btn_info" title="Cache Details">' + (typeof ANALYSIS_INFO_ICON_SVG !== 'undefined' ? ANALYSIS_INFO_ICON_SVG : '?') + '</button>' +
+      '<button type="button" class="ib_info_icon" data-cache-info="' + _escAttr(String(seg.cache_id || '')) + '" data-ui="cache_timeline.btn_info" data-ib-itemkey="' + _escAttr(String(id) + ':info') + '" title="Cache Details">' + (typeof ANALYSIS_INFO_ICON_SVG !== 'undefined' ? ANALYSIS_INFO_ICON_SVG : '?') + '</button>' +
       '<span style="display:inline-block;width:10px;height:10px;background:' + color + ';border:1px solid ' + border + ';border-radius:3px;"></span>' +
       '<span style="flex:1;">Cache ' + (idx + 1) + ': ' + _escHtml(fmtTs(seg.use_start || seg.covered_start)) + ' – ' + _escHtml(fmtTs(seg.use_stop || seg.covered_stop)) + ' (' + _escHtml(fmtTs(seg.updated_at || '')) + ')</span>' +
       '<span style="white-space:nowrap;">Treffer: ' + String(seg.outlier_count || 0) + '</span>' +
@@ -10338,6 +10386,22 @@ function findRawRowByKey(key){
   const want = String(key || '');
   if(!want) return null;
   return (RAW_ROWS || []).find(r => rowKey(r) === want) || null;
+}
+
+function rawNeighborSelectionAfterDelete(key){
+  const want = String(key || '').trim();
+  const rows = Array.isArray(RAW_ROWS) ? RAW_ROWS : [];
+  if(!want || !rows.length) return { key: '', ms: null };
+  const idx = rows.findIndex(r => rowKey(r) === want);
+  if(idx < 0) return { key: '', ms: null };
+  const nextRow = rows[idx + 1] || rows[idx - 1] || null;
+  if(!nextRow) return { key: '', ms: null };
+  const nextKey = String(rowKey(nextRow) || '').trim();
+  const nextMs = Date.parse(String(nextRow && nextRow.time ? nextRow.time : ''));
+  return {
+    key: nextKey,
+    ms: isFinite(nextMs) ? nextMs : null,
+  };
 }
 
 function rawNumericValueString(v){
@@ -11926,6 +11990,7 @@ try{
     _stop(ev);
     try{
       if(!RAW_ROW_SELECTED_KEY){ err('Bitte zuerst eine Raw-Zeile markieren.'); return; }
+      const nextSel = rawNeighborSelectionAfterDelete(RAW_ROW_SELECTED_KEY);
       const row = findRawRowByKey(RAW_ROW_SELECTED_KEY);
       const base = currentFilters();
       if(!row){ err('Zeile nicht geladen.'); return; }
@@ -11952,8 +12017,12 @@ try{
           }],
         })
       });
-      await refreshAfterDataMutation({ rerunOutliers: true });
-      setRawSelectedKey(rowKey(row));
+      await refreshAfterDataMutation({
+        rerunOutliers: true,
+        preferRawKey: nextSel.key,
+        preferRawMs: nextSel.ms,
+        clearRawSelection: !(nextSel.key || nextSel.ms !== null),
+      });
       ok('Raw-Wert wurde geloescht.');
       showRawActionFeedback('Raw Wert geloescht', `Zeitpunkt: ${fmtTs(row.time)}\nWert: ${fmtNum(row.value)}`);
     }catch(e){ displayError(e); }
@@ -15165,6 +15234,10 @@ async function refreshAfterDataMutation(opts){
   const hadOutliers = rerunOutliers && !!OUTLIER_ACTIVE;
   const selectedRawKey = RAW_ROW_SELECTED_KEY ? String(RAW_ROW_SELECTED_KEY) : '';
   const selectedRawMs = (RAW_SELECTED_MS !== null && RAW_SELECTED_MS !== undefined && isFinite(Number(RAW_SELECTED_MS))) ? Number(RAW_SELECTED_MS) : null;
+  const preferRawKey = String(o.preferRawKey || '').trim();
+  const preferRawMs = (o.preferRawMs !== null && o.preferRawMs !== undefined && isFinite(Number(o.preferRawMs))) ? Number(o.preferRawMs) : null;
+  const clearRawSelection = !!o.clearRawSelection;
+  const explicitRawSelection = clearRawSelection || !!preferRawKey || preferRawMs !== null;
 
   await refreshAllWithStatus();
 
@@ -15172,8 +15245,20 @@ async function refreshAfterDataMutation(opts){
     try{ await runOutlierScan(); }catch(e){ displayError(e); }
   }
 
+  if($rawSection && $rawSection.open){
+    try{ await loadRawFromGraph(true); }catch(e){ displayError(e); }
+  }
+
   try{
-    if(selectedRawKey && findRawRowByKey(selectedRawKey)) setRawSelectedKey(selectedRawKey);
+    if(clearRawSelection){
+      setRawSelectedKey('');
+      return;
+    }
+    if(explicitRawSelection){
+      if(preferRawKey && findRawRowByKey(preferRawKey)) setRawSelectedKey(preferRawKey);
+      else if(preferRawMs !== null) _jumpToRawByMs(preferRawMs).catch(()=>{ try{ setRawSelectedKey(''); }catch(ex){}; });
+      else setRawSelectedKey('');
+    }else if(selectedRawKey && findRawRowByKey(selectedRawKey)) setRawSelectedKey(selectedRawKey);
     else if(selectedRawMs !== null) _jumpToRawByMs(selectedRawMs).catch(()=>{});
   }catch(e){}
 }

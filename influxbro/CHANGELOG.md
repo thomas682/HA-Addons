@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.462
+
+### Fix
+
+- Dashboard (Raw Daten): Nach dem Loeschen wird die Raw-Tabelle sofort neu geladen und springt auf die naechste verbleibende Zeile. Der Hauptgraph markiert zusaetzlich den aktuell im Kontextgraph sichtbaren Zeitraum.
+
+### Enhancement
+
+- Einstellungen (Iconbilder): Die bestehende Volltextsuche besitzt jetzt `Zurueck`/`Weiter` fuer Trefferzellen in der Icon-Tabelle; die Toolbar-Buttons fuer Auto-/Fensterbreite bleiben kompakt.
+- Logs / Popup: Die Logs-Aktionsleiste ist in zwei Reihen aufgeteilt, die beiden Suchfelder behalten eine Mindestbreite, und das Popup-Suchfeld nutzt keine feste Mindestbreite mehr.
+
 ## 1.12.461
 
 ### Fix
