@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.12.464
+
+### Fix
+
+- Einstellungen (Iconbilder): Die Icon-Tabelle listet jetzt auch Dialog-/Overlay-Buttons aus dynamisch erzeugten UIs vollstaendig auf, inklusive `Schliessen`- und `S-Picker`-Buttons der generischen Dialoge.
+
 ## 1.12.463
 
 ### Enhancement

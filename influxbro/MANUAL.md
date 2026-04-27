@@ -909,6 +909,7 @@ UI:
 - Die Log-Farbparameter fuer `ERROR` und `WARN` verwenden jetzt denselben kombinierten Color-Picker/Textfeld-Stil wie die anderen Farbparameter der Oberflaeche.
 - Die Farbparameter `Seitensuche Highlight Farbe`, `Navigationshilfe Highlight Farbe` und `Analysecache ausgeblendet Farbe` verwenden ebenfalls den kombinierten Color-Picker/Textfeld-Stil.
 - Iconbilder: In `Einstellungen -> UI -> Iconbilder` gibt es eine Tabelle aller bekannten UI-Elemente (data-ui Keys, project-wide Inventar).
+- Iconbilder: Dazu gehoeren jetzt auch Dialog-/Overlay-Buttons wie `Schliessen` und dialoginterne `S-Picker`, auch wenn die UIs erst zur Laufzeit erzeugt werden.
 - Iconbilder: Pro Key kann eine Override-SVG hinterlegt werden (Zeile markieren, `Edit` klicken oder Doppelklick auf die SVG-Zelle). Speichern erfolgt per Blur oder Ctrl+Enter.
 - Iconbilder: Toolbar:
   - `Edit`: editieren der selektierten Zeile direkt in der Tabelle
