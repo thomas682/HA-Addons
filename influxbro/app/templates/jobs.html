@@ -1153,7 +1153,10 @@
 
       async function cancelJobById(id){
         if(!id) return;
-        if(!confirm('Job abbrechen?\n\n' + id)) return;
+        if(window.InfluxBroConfirm && window.InfluxBroConfirm.ask){
+          const want = await window.InfluxBroConfirm.ask({ title: 'Job abbrechen', text: 'Job abbrechen?\n\n' + id, okLabel: 'OK', cancelLabel: 'Abbrechen', pickerKey: 'dialog_job_cancel_confirm.root', templateName: 'dialog_confirm_action' });
+          if(!want) return;
+        }else if(!confirm('Job abbrechen?\n\n' + id)) return;
         await api('./api/jobs/cancel', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({job_id: id})});
         await loadJobs();
       }
@@ -1202,7 +1205,11 @@
       }
       async function deleteCache(m){
         const cid = String(m && m.id || '');
-        if(!cid || !confirm('Cache loeschen?\n\n' + cid)) return;
+        if(!cid) return;
+        if(window.InfluxBroConfirm && window.InfluxBroConfirm.ask){
+          const want = await window.InfluxBroConfirm.ask({ title: 'Cache loeschen', text: 'Cache loeschen?\n\n' + cid, okLabel: 'OK', cancelLabel: 'Abbrechen', pickerKey: 'dialog_cache_delete_confirm.root', templateName: 'dialog_confirm_action' });
+          if(!want) return;
+        }else if(!confirm('Cache loeschen?\n\n' + cid)) return;
         if(String(m.cache_kind||'') === 'dash') await api('./api/cache/delete', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({cache_id: cid})});
         else await api('./api/stats_cache/delete', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({cache_id: cid})});
         await loadAll();
@@ -1355,7 +1362,11 @@
       }
       async function abortTimer(t){
         const id = String(t && t.id || '');
-        if(!id || !confirm('Timer Job abbrechen?\n\n' + id)) return;
+        if(!id) return;
+        if(window.InfluxBroConfirm && window.InfluxBroConfirm.ask){
+          const want = await window.InfluxBroConfirm.ask({ title: 'Timer Job abbrechen', text: 'Timer Job abbrechen?\n\n' + id, okLabel: 'OK', cancelLabel: 'Abbrechen', pickerKey: 'dialog_timer_job_cancel_confirm.root', templateName: 'dialog_confirm_action' });
+          if(!want) return;
+        }else if(!confirm('Timer Job abbrechen?\n\n' + id)) return;
         await api('./api/timers/cancel', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id})});
         await loadAll();
       }
@@ -1624,7 +1635,10 @@
         try{
           const xs = selectedAnalysisCaches();
           if(!xs.length) return;
-          if(!confirm('Analysecache fuer die selektierten Serien wirklich loeschen?')) return;
+          if(window.InfluxBroConfirm && window.InfluxBroConfirm.ask){
+            const want = await window.InfluxBroConfirm.ask({ title: 'Analysecache loeschen', text: 'Analysecache fuer die selektierten Serien wirklich loeschen?', okLabel: 'OK', cancelLabel: 'Abbrechen', pickerKey: 'dialog_analysis_cache_delete_selected_confirm.root', templateName: 'dialog_confirm_action' });
+            if(!want) return;
+          }else if(!confirm('Analysecache fuer die selektierten Serien wirklich loeschen?')) return;
           for(const m of xs){
             await api('./api/analysis_cache/delete', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({series_key: String(m.series_key || '')})});
           }
@@ -1663,7 +1677,10 @@
       if($analysisCacheQ) $analysisCacheQ.oninput = ()=>{ renderAnalysisCaches(LAST_ANALYSIS_CACHES); };
       if($analysisCacheDeleteAll) $analysisCacheDeleteAll.onclick = async ()=>{
         try{
-          if(!confirm('Analysecache komplett loeschen?')) return;
+          if(window.InfluxBroConfirm && window.InfluxBroConfirm.ask){
+            const want = await window.InfluxBroConfirm.ask({ title: 'Analysecache komplett loeschen', text: 'Analysecache komplett loeschen?', okLabel: 'OK', cancelLabel: 'Abbrechen', pickerKey: 'dialog_analysis_cache_delete_all_confirm.root', templateName: 'dialog_confirm_action' });
+            if(!want) return;
+          }else if(!confirm('Analysecache komplett loeschen?')) return;
           await api('./api/analysis_cache/delete', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({all: true})});
           await loadAnalysisCaches();
         }catch(e){ analysisCacheErr(e && e.message ? e.message : String(e)); }
@@ -1680,7 +1697,10 @@
       if($usageSelectNoneBtn) $usageSelectNoneBtn.onclick = ()=>{ clearAllVisible($usageBody, 'data-usage-key', SELECTED_USAGE_KEYS); };
       $cacheDeleteAll.onclick = async ()=>{
         try{
-          if(!confirm('Cache komplett loeschen?\n\nDas loescht nur Cache-Dateien unter /data, nicht die Datenbank.')) return;
+          if(window.InfluxBroConfirm && window.InfluxBroConfirm.ask){
+            const want = await window.InfluxBroConfirm.ask({ title: 'Cache komplett loeschen', text: 'Cache komplett loeschen?\n\nDas loescht nur Cache-Dateien unter /data, nicht die Datenbank.', okLabel: 'OK', cancelLabel: 'Abbrechen', pickerKey: 'dialog_cache_delete_all_confirm.root', templateName: 'dialog_confirm_action' });
+            if(!want) return;
+          }else if(!confirm('Cache komplett loeschen?\n\nDas loescht nur Cache-Dateien unter /data, nicht die Datenbank.')) return;
           await api('./api/cache/delete', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({all: true})});
           await api('./api/stats_cache/delete', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({all: true})});
           await loadAll();
@@ -1694,7 +1714,10 @@
       if($usageQ) $usageQ.oninput = ()=>{ renderUsage(LAST_USAGE); };
       if($usageClear) $usageClear.onclick = async ()=>{
         try{
-          if(!confirm('Cache Usage Log wirklich loeschen?')) return;
+          if(window.InfluxBroConfirm && window.InfluxBroConfirm.ask){
+            const want = await window.InfluxBroConfirm.ask({ title: 'Cache Usage Log loeschen', text: 'Cache Usage Log wirklich loeschen?', okLabel: 'OK', cancelLabel: 'Abbrechen', pickerKey: 'dialog_cache_usage_clear_confirm.root', templateName: 'dialog_confirm_action' });
+            if(!want) return;
+          }else if(!confirm('Cache Usage Log wirklich loeschen?')) return;
           await api('./api/cache_usage/clear', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({})});
           await loadUsage();
         }catch(e){

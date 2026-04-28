@@ -11109,15 +11109,15 @@ function confirmOutlierRuleOverride(ctx, payload){
     const title = 'Outlier-Regel';
     const txt = _buildOutlierRulePrompt(payload, ctx);
     try{
-      if(window.InfluxBroPopup && window.InfluxBroPopup.show){
-        window.InfluxBroPopup.show(title, txt, {
-          actions: [
-            { label: 'Abbruch', title: 'Abbruch', onClick: ()=>resolve(false) },
-            { label: 'trotzdem aendern', title: 'trotzdem aendern', onClick: ()=>resolve(true) },
-          ],
-          copyText: txt,
-          copyTitle: 'Zwischenablage',
-        });
+      if(window.InfluxBroConfirm && window.InfluxBroConfirm.ask){
+        window.InfluxBroConfirm.ask({
+          title,
+          text: txt,
+          okLabel: 'trotzdem aendern',
+          cancelLabel: 'Abbruch',
+          pickerKey: 'dialog_outlier_rule_confirm.root',
+          templateName: 'dialog_confirm_action'
+        }).then(resolve).catch(()=>resolve(false));
         return;
       }
     }catch(e){}
@@ -11139,15 +11139,15 @@ function buildRawOverwritePrompt(sourceRow, targetRow){
 function confirmRawOverwrite(sourceRow, targetRow){
   return new Promise((resolve)=>{
     try{
-      if(window.InfluxBroPopup && window.InfluxBroPopup.show){
-        window.InfluxBroPopup.show('Wert kopieren', buildRawOverwritePrompt(sourceRow, targetRow), {
-          actions: [
-            { label: 'Abbrechen', title: 'Abbrechen', onClick: ()=>resolve(false) },
-            { label: 'OK', title: 'OK', onClick: ()=>resolve(true) },
-          ],
-          copyText: buildRawOverwritePrompt(sourceRow, targetRow),
-          copyTitle: 'Zwischenablage',
-        });
+      if(window.InfluxBroConfirm && window.InfluxBroConfirm.ask){
+        window.InfluxBroConfirm.ask({
+          title: 'Wert kopieren',
+          text: buildRawOverwritePrompt(sourceRow, targetRow),
+          okLabel: 'OK',
+          cancelLabel: 'Abbrechen',
+          pickerKey: 'dialog_raw_overwrite_confirm.root',
+          templateName: 'dialog_confirm_action'
+        }).then(resolve).catch(()=>resolve(false));
         return;
       }
     }catch(e){}
@@ -11169,16 +11169,16 @@ function buildRawDeletePrompt(row){
 function confirmRawDelete(row){
   return new Promise((resolve)=>{
     try{
-      if(window.InfluxBroPopup && window.InfluxBroPopup.show){
+      if(window.InfluxBroConfirm && window.InfluxBroConfirm.ask){
         const txt = buildRawDeletePrompt(row);
-        window.InfluxBroPopup.show('Raw Wert loeschen', txt, {
-          actions: [
-            { label: 'Abbrechen', title: 'Abbrechen', onClick: ()=>resolve(false) },
-            { label: 'OK', title: 'OK', onClick: ()=>resolve(true) },
-          ],
-          copyText: txt,
-          copyTitle: 'Zwischenablage',
-        });
+        window.InfluxBroConfirm.ask({
+          title: 'Raw Wert loeschen',
+          text: txt,
+          okLabel: 'OK',
+          cancelLabel: 'Abbrechen',
+          pickerKey: 'dialog_raw_delete_confirm.root',
+          templateName: 'dialog_confirm_action'
+        }).then(resolve).catch(()=>resolve(false));
         return;
       }
     }catch(e){}
@@ -12168,6 +12168,8 @@ try{
               copyTitle: 'Zwischenablage',
             });
           });
+        }else if(window.InfluxBroConfirm && window.InfluxBroConfirm.ask){
+          want = await window.InfluxBroConfirm.ask({ title: 'Raw Undo', text: txt, okLabel: 'OK', cancelLabel: 'Abbrechen', pickerKey: 'dialog_raw_undo_confirm.root', templateName: 'dialog_confirm_action' });
         }else{
           want = confirm(txt);
         }
@@ -12951,7 +12953,10 @@ async function applyChangeForKey(key){
     const want = await openApplyDialog([e]);
     if(!want) return;
   }catch(x){
-    if(!confirm('Aenderung sofort in die Datenbank schreiben?\n\n' + k)) return;
+    if(window.InfluxBroConfirm && window.InfluxBroConfirm.ask){
+      const want = await window.InfluxBroConfirm.ask({ title: 'Aenderung schreiben', text: 'Aenderung sofort in die Datenbank schreiben?\n\n' + k, okLabel: 'OK', cancelLabel: 'Abbrechen', pickerKey: 'dialog_raw_write_confirm.root', templateName: 'dialog_confirm_action' });
+      if(!want) return;
+    }else if(!confirm('Aenderung sofort in die Datenbank schreiben?\n\n' + k)) return;
   }
 
   const action = String(e.action || '');
@@ -13001,7 +13006,10 @@ async function undoChangeForKey(key){
   const k = String(key || '');
   const e = EDIT_LIST.get(k);
   if(!e || !e.applied) throw new Error('Undo nicht verfuegbar.');
-  if(!confirm('Undo: Ursprungswert wiederherstellen?\n\n' + k)) return;
+  if(window.InfluxBroConfirm && window.InfluxBroConfirm.ask){
+    const want = await window.InfluxBroConfirm.ask({ title: 'Undo', text: 'Undo: Ursprungswert wiederherstellen?\n\n' + k, okLabel: 'OK', cancelLabel: 'Abbrechen', pickerKey: 'dialog_raw_undo_simple_confirm.root', templateName: 'dialog_confirm_action' });
+    if(!want) return;
+  }else if(!confirm('Undo: Ursprungswert wiederherstellen?\n\n' + k)) return;
 
   const oldVal = (e.last_applied_old_value !== null && e.last_applied_old_value !== undefined) ? Number(e.last_applied_old_value) : null;
   if(!(oldVal !== null && isFinite(oldVal))) throw new Error('Ursprungswert fehlt (best-effort).');
@@ -15939,7 +15947,7 @@ if($btnLoad) $btnLoad.addEventListener("click", (ev)=>{
   refreshCachingSection().catch(displayError);
 });
 if($analysisCacheCombineBtn) $analysisCacheCombineBtn.addEventListener('click', (ev)=>{ _stop(ev); combineAnalysisCacheForCurrentSelection().catch(displayError); });
-if($analysisCacheDeleteSeriesBtn) $analysisCacheDeleteSeriesBtn.addEventListener('click', (ev)=>{ _stop(ev); if(confirm('Alle Analyse-Cache-Segmente dieser Messwertauswahl loeschen?')) deleteAnalysisCacheForCurrentSelection().catch(displayError); });
+if($analysisCacheDeleteSeriesBtn) $analysisCacheDeleteSeriesBtn.addEventListener('click', async (ev)=>{ _stop(ev); let want=false; try{ if(window.InfluxBroConfirm && window.InfluxBroConfirm.ask) want = await window.InfluxBroConfirm.ask({ title: 'Analyse-Cache loeschen', text: 'Alle Analyse-Cache-Segmente dieser Messwertauswahl loeschen?', okLabel: 'OK', cancelLabel: 'Abbrechen', pickerKey: 'dialog_analysis_cache_delete_confirm.root', templateName: 'dialog_confirm_action' }); else want = confirm('Alle Analyse-Cache-Segmente dieser Messwertauswahl loeschen?'); }catch(e){ want = false; } if(want) deleteAnalysisCacheForCurrentSelection().catch(displayError); });
 if($analysisRunWithCache) $analysisRunWithCache.addEventListener('click', (ev)=>{ _stop(ev); startDashboardAnalysis('reuse'); });
 if($analysisRunWithoutCache) $analysisRunWithoutCache.addEventListener('click', (ev)=>{ _stop(ev); startDashboardAnalysis('refresh'); });
 if($btnCancelLoad) $btnCancelLoad.addEventListener("click", (ev)=>{ _stop(ev); cancelLoadNow(); });

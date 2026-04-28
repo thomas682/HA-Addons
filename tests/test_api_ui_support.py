@@ -1367,3 +1367,32 @@ def test_buttons_do_not_use_width_100_specific_rules():
     assert 'main.content button:not(.ib_info_icon):not(.btn_sm) { width:auto; }' in config_body
     assert '.ib_pagecard_results button { display:block; width:auto;' in topbar_body
     assert 'style="display:block; width:auto; text-align:left;' in export_body
+
+
+def test_confirm_dialog_template_and_popup_metadata_exist():
+    tooltips_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
+    assert 'let CONFIRM_REFS = null;' in tooltips_body
+    assert "function _dialogMetaText(pk, tpl)" in tooltips_body
+    assert "popupMetaFooter.id = 'influxbro_popup_meta_footer';" in tooltips_body
+    assert "confirmRoot.id = 'influxbro_confirm_root';" in tooltips_body
+    assert "confirmCancel.setAttribute('data-ui', 'dialog_confirm_action.btn_cancel');" in tooltips_body
+    assert "confirmOk.setAttribute('data-ui', 'dialog_confirm_action.btn_ok');" in tooltips_body
+    assert "window.InfluxBroConfirm = {" in tooltips_body
+
+
+def test_destructive_flows_use_confirm_dialog_api():
+    index_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    jobs_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "jobs.html").read_text()
+    backup_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "backup.html").read_text()
+    restore_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "restore.html").read_text()
+    assert "window.InfluxBroConfirm.ask({" in index_body
+    assert "pickerKey: 'dialog_raw_overwrite_confirm.root'" in index_body
+    assert "pickerKey: 'dialog_raw_delete_confirm.root'" in index_body
+    assert "pickerKey: 'dialog_analysis_cache_delete_confirm.root'" in index_body
+    assert "pickerKey: 'dialog_job_cancel_confirm.root'" in jobs_body
+    assert "pickerKey: 'dialog_cache_delete_confirm.root'" in jobs_body
+    assert "pickerKey: 'dialog_analysis_cache_delete_selected_confirm.root'" in jobs_body
+    assert "pickerKey: 'dialog_fullbackup_delete_confirm.root'" in backup_body
+    assert "pickerKey: 'dialog_backup_delete_confirm.root'" in backup_body
+    assert "pickerKey: 'dialog_fullrestore_confirm.root'" in restore_body
+    assert "pickerKey: 'dialog_restore_confirm.root'" in restore_body

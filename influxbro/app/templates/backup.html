@@ -969,7 +969,10 @@
         const msg = ids.length === 1
           ? ('FullBackup wirklich loeschen?\n\n' + labels[0])
           : ('FullBackups wirklich loeschen?\n\n' + labels.slice(0, 6).join('\n') + (labels.length > 6 ? `\n... (+${labels.length-6})` : ''));
-        if(!confirm(msg)) return;
+        if(window.InfluxBroConfirm && window.InfluxBroConfirm.ask){
+          const want = await window.InfluxBroConfirm.ask({ title: ids.length === 1 ? 'FullBackup loeschen' : 'FullBackups loeschen', text: msg, okLabel: 'OK', cancelLabel: 'Abbrechen', pickerKey: 'dialog_fullbackup_delete_confirm.root', templateName: 'dialog_confirm_action' });
+          if(!want) return;
+        }else if(!confirm(msg)) return;
         let del = 0;
         for(const id of ids){
           await api('./api/fullbackup_delete', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id, target: curTargetId() })});
@@ -1844,7 +1847,10 @@
         const msg = ids.length === 1
           ? ("Backup wirklich loeschen?\n\n" + labels[0])
           : ("Backups wirklich loeschen?\n\n" + labels.slice(0, 6).join("\n") + (labels.length > 6 ? `\n... (+${labels.length-6})` : ""));
-        if(!confirm(msg)) return;
+        if(window.InfluxBroConfirm && window.InfluxBroConfirm.ask){
+          const want = await window.InfluxBroConfirm.ask({ title: ids.length === 1 ? 'Backup loeschen' : 'Backups loeschen', text: msg, okLabel: 'OK', cancelLabel: 'Abbrechen', pickerKey: 'dialog_backup_delete_confirm.root', templateName: 'dialog_confirm_action' });
+          if(!want) return;
+        }else if(!confirm(msg)) return;
         let del = 0;
         for(const id of ids){
           await api("./api/backup_delete", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ id, target: curTargetId() })});

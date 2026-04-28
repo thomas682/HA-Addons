@@ -1028,7 +1028,10 @@
           const id = String(b.id || '').trim();
           if(!id) throw new Error('FullBackup id fehlt.');
           const msg = `FullRestore wirklich ausfuehren? Das kann alle Daten ueberschreiben.\n\nBackup: ${id}`;
-          if(!confirm(msg)) return;
+          if(window.InfluxBroConfirm && window.InfluxBroConfirm.ask){
+            const want = await window.InfluxBroConfirm.ask({ title: 'FullRestore bestaetigen', text: msg, okLabel: 'OK', cancelLabel: 'Abbrechen', pickerKey: 'dialog_fullrestore_confirm.root', templateName: 'dialog_confirm_action' });
+            if(!want) return;
+          }else if(!confirm(msg)) return;
 
          startFullRestoreUi('FullRestore wird gestartet...');
          try{
@@ -1099,7 +1102,10 @@
          err(''); ok('');
          const id = String(FULL_SELECTED_ID || '').trim();
          if(!id) throw new Error('Bitte ein FullBackup auswaehlen.');
-         if(!confirm('FullBackup wirklich loeschen?\n\n' + id)) return;
+         if(window.InfluxBroConfirm && window.InfluxBroConfirm.ask){
+           const want = await window.InfluxBroConfirm.ask({ title: 'FullBackup loeschen', text: 'FullBackup wirklich loeschen?\n\n' + id, okLabel: 'OK', cancelLabel: 'Abbrechen', pickerKey: 'dialog_restore_fullbackup_delete_confirm.root', templateName: 'dialog_confirm_action' });
+           if(!want) return;
+         }else if(!confirm('FullBackup wirklich loeschen?\n\n' + id)) return;
           await api('./api/fullbackup_delete', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id, target: curTargetId() })});
          ok('FullBackup geloescht: ' + id);
          FULL_SELECTED_ID = '';
@@ -1523,7 +1529,14 @@
            RUN_CTX.range = fmtTs(tf.start) + ' bis ' + fmtTs(tf.stop);
          }
          const msg = `Restore wirklich ueberschreiben? Datenverlust moeglich.\n\nBackup: ${id}\nZiel: ${LAST_TARGET.measurement}/${LAST_TARGET.field}`;
-          if(!confirm(msg)){
+          if(window.InfluxBroConfirm && window.InfluxBroConfirm.ask){
+            const want = await window.InfluxBroConfirm.ask({ title: 'Restore bestaetigen', text: msg, okLabel: 'OK', cancelLabel: 'Abbrechen', pickerKey: 'dialog_restore_confirm.root', templateName: 'dialog_confirm_action' });
+            if(!want){
+              stopRunUi(true, 'Abgebrochen.');
+              try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done(statusKey, 'Abgebrochen.'); }catch(e){}
+              return;
+            }
+          }else if(!confirm(msg)){
             stopRunUi(true, 'Abgebrochen.');
             try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done(statusKey, 'Abgebrochen.'); }catch(e){}
             return;

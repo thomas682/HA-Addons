@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.471
+
+### Enhancement
+
+- Dialoge: Reaktions-/Bestaetigungsdialoge nutzen jetzt einen separaten Confirm-Dialog statt des bisherigen Info-/Status-Popups. Die migrierten Raw-/Job-/Backup-/Restore-Aktionen zeigen `OK`/`Abbrechen` in einem eigenen Template und jeder Popup-/Confirm-Dialog blendet rechts unten seinen Picker-Key und den verwendeten Template-Namen ein. ([#420](https://github.com/thomas682/HA-Addons/issues/420))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.470
 
 ### Fix

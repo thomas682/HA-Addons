@@ -1390,7 +1390,15 @@
   let _latestHistoryEntry = ()=>null;
   let POPUP_REFS = null;
   let POPUP_SET_ACTIONS = ()=>{};
+  let CONFIRM_REFS = null;
+  let CONFIRM_RESOLVE = null;
   const POPUP_SIZE_PREFIX = 'influxbro.popup.size.v1.';
+
+  function _dialogMetaText(pk, tpl){
+    const key = String(pk || '').trim() || 'unknown';
+    const name = String(tpl || '').trim() || 'unknown';
+    return 'pk: ' + key + ' | tpl: ' + name;
+  }
 
   function _popupSizeKey(title){
     const raw = String(title || 'Hinweis').trim().toLowerCase();
@@ -1466,6 +1474,7 @@
           title: document.getElementById('influxbro_popup_title'),
           pre: document.getElementById('influxbro_popup_pre'),
           meta: document.getElementById('influxbro_popup_meta'),
+          metaFooter: document.getElementById('influxbro_popup_meta_footer'),
           copyBtn: document.getElementById('influxbro_popup_copy'),
           logsBtn: document.getElementById('influxbro_popup_logs'),
           settingsBtn: document.getElementById('influxbro_popup_settings'),
@@ -1731,7 +1740,96 @@
     card.appendChild(controls);
     card.appendChild(meta);
     card.appendChild(contentWrap);
+    const popupMetaFooter = document.createElement('div');
+    popupMetaFooter.id = 'influxbro_popup_meta_footer';
+    popupMetaFooter.style.fontSize = '10px';
+    popupMetaFooter.style.opacity = '0.65';
+    popupMetaFooter.style.textAlign = 'right';
+    popupMetaFooter.style.whiteSpace = 'nowrap';
+    popupMetaFooter.style.marginTop = '4px';
+    card.appendChild(popupMetaFooter);
     root.appendChild(card);
+
+    const confirmRoot = document.createElement('dialog');
+    confirmRoot.id = 'influxbro_confirm_root';
+    confirmRoot.style.zIndex = '10055';
+    confirmRoot.style.display = 'none';
+    confirmRoot.style.background = 'transparent';
+    confirmRoot.style.border = 'none';
+    confirmRoot.style.padding = '0';
+    confirmRoot.style.width = '100vw';
+    confirmRoot.style.maxWidth = '100vw';
+    confirmRoot.style.height = '100vh';
+    confirmRoot.style.maxHeight = '100vh';
+
+    const confirmCard = document.createElement('div');
+    confirmCard.id = 'influxbro_confirm_card';
+    confirmCard.setAttribute('data-dialog-root', '1');
+    confirmCard.style.maxWidth = 'min(640px, calc(100vw - 24px))';
+    confirmCard.style.margin = '10vh auto 12px auto';
+    confirmCard.style.background = '#fff';
+    confirmCard.style.borderRadius = '16px';
+    confirmCard.style.boxShadow = '0 12px 60px rgba(0,0,0,0.28)';
+    confirmCard.style.padding = '16px';
+    confirmCard.style.display = 'flex';
+    confirmCard.style.flexDirection = 'column';
+    confirmCard.style.gap = '12px';
+
+    const confirmTitle = document.createElement('div');
+    confirmTitle.id = 'influxbro_confirm_title';
+    confirmTitle.style.fontWeight = '800';
+    confirmTitle.style.fontSize = '16px';
+
+    const confirmBody = document.createElement('pre');
+    confirmBody.id = 'influxbro_confirm_body';
+    confirmBody.style.margin = '0';
+    confirmBody.style.padding = '10px 12px';
+    confirmBody.style.border = '1px solid #eee';
+    confirmBody.style.borderRadius = '12px';
+    confirmBody.style.background = '#fafafa';
+    confirmBody.style.whiteSpace = 'pre-wrap';
+    confirmBody.style.overflowWrap = 'anywhere';
+    confirmBody.style.maxHeight = '50vh';
+    confirmBody.style.overflow = 'auto';
+
+    const confirmActions = document.createElement('div');
+    confirmActions.id = 'influxbro_confirm_actions';
+    confirmActions.style.display = 'flex';
+    confirmActions.style.justifyContent = 'flex-end';
+    confirmActions.style.gap = '8px';
+    confirmActions.style.flexWrap = 'wrap';
+
+    const confirmCancel = document.createElement('button');
+    confirmCancel.id = 'influxbro_confirm_cancel';
+    confirmCancel.type = 'button';
+    confirmCancel.textContent = 'Abbrechen';
+    confirmCancel.setAttribute('data-ui', 'dialog_confirm_action.btn_cancel');
+    confirmCancel.setAttribute('data-ib-pickkey', 'dialog_confirm_action.btn_cancel');
+
+    const confirmOk = document.createElement('button');
+    confirmOk.id = 'influxbro_confirm_ok';
+    confirmOk.type = 'button';
+    confirmOk.textContent = 'OK';
+    confirmOk.setAttribute('data-ui', 'dialog_confirm_action.btn_ok');
+    confirmOk.setAttribute('data-ib-pickkey', 'dialog_confirm_action.btn_ok');
+
+    confirmActions.appendChild(confirmCancel);
+    confirmActions.appendChild(confirmOk);
+
+    const confirmMeta = document.createElement('div');
+    confirmMeta.id = 'influxbro_confirm_meta_footer';
+    confirmMeta.style.fontSize = '10px';
+    confirmMeta.style.opacity = '0.65';
+    confirmMeta.style.textAlign = 'right';
+    confirmMeta.style.whiteSpace = 'nowrap';
+
+    confirmCard.appendChild(confirmTitle);
+    confirmCard.appendChild(confirmBody);
+    confirmCard.appendChild(confirmActions);
+    confirmCard.appendChild(confirmMeta);
+    confirmRoot.appendChild(confirmCard);
+    document.body.appendChild(confirmRoot);
+    CONFIRM_REFS = { root: confirmRoot, card: confirmCard, title: confirmTitle, body: confirmBody, cancel: confirmCancel, ok: confirmOk, meta: confirmMeta };
 
     const composer = document.createElement('div');
     composer.id = 'influxbro_issue_composer';
@@ -2616,7 +2714,7 @@
     // Expose the bugreport action for other UI elements (e.g. bottom status bar)
     try{ window.InfluxBroBugreport = { run: (msg)=>_bugreportRun(msg) }; }catch(e){}
 
-    POPUP_REFS = { root, title, pre, meta, copyBtn, settingsBtn, logsBtn, split, historyBox };
+    POPUP_REFS = { root, title, pre, meta, metaFooter: popupMetaFooter, copyBtn, settingsBtn, logsBtn, split, historyBox };
 
     function close(){
       try{ CURRENT_POPUP_BASE_TITLE = ''; }catch(e){}
@@ -2793,6 +2891,10 @@
         if(searchNext) searchNext.onclick = (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} jump(1); };
       }catch(e){}
       try{
+        const metaFooter = refs.metaFooter || document.getElementById('influxbro_popup_meta_footer');
+        if(metaFooter) metaFooter.textContent = _dialogMetaText(opts && opts.pickerKey, opts && opts.templateName ? opts.templateName : 'dialog_info_popup');
+      }catch(e){}
+      try{
         if(settingsBtn){
           if(opts && opts.settings){
             settingsBtn.style.display = 'inline-block';
@@ -2825,6 +2927,55 @@
         LAST = { msg: s, at: now };
         try{ window.InfluxBroErrors && window.InfluxBroErrors.add && window.InfluxBroErrors.add(s, { kind:'popup' }); }catch(e){}
         _show('Fehler', s);
+      }
+    };
+
+    function _confirmClose(result){
+      try{
+        if(CONFIRM_REFS && CONFIRM_REFS.root){
+          const root = CONFIRM_REFS.root;
+          try{ if(typeof root.close === 'function' && root.open) root.close(); }catch(e){}
+          root.style.display = 'none';
+        }
+      }catch(e){}
+      try{
+        if(CONFIRM_RESOLVE){
+          const fn = CONFIRM_RESOLVE;
+          CONFIRM_RESOLVE = null;
+          fn(!!result);
+        }
+      }catch(e){}
+    }
+
+    window.InfluxBroConfirm = {
+      ask: (opts) => {
+        try{ _ensureUi(); }catch(e){}
+        const refs = CONFIRM_REFS || {};
+        return new Promise((resolve)=>{
+          CONFIRM_RESOLVE = resolve;
+          const title = String(opts && opts.title ? opts.title : 'Bestaetigung');
+          const body = String(opts && opts.text ? opts.text : '');
+          const pickerKey = String(opts && opts.pickerKey ? opts.pickerKey : 'dialog_confirm_action.root');
+          const templateName = String(opts && opts.templateName ? opts.templateName : 'dialog_confirm_action');
+          if(refs.title) refs.title.textContent = title;
+          if(refs.body) refs.body.textContent = body;
+          if(refs.cancel) refs.cancel.textContent = String(opts && opts.cancelLabel ? opts.cancelLabel : 'Abbrechen');
+          if(refs.ok) refs.ok.textContent = String(opts && opts.okLabel ? opts.okLabel : 'OK');
+          if(refs.meta) refs.meta.textContent = _dialogMetaText(pickerKey, templateName);
+          if(refs.card){
+            refs.card.setAttribute('data-ui', pickerKey);
+            refs.card.setAttribute('data-ib-pickkey', pickerKey);
+          }
+          if(refs.cancel) refs.cancel.onclick = ()=>_confirmClose(false);
+          if(refs.ok) refs.ok.onclick = ()=>_confirmClose(true);
+          try{
+            if(refs.root){
+              refs.root.style.display = 'block';
+              if(typeof refs.root.showModal === 'function' && !refs.root.open) refs.root.showModal();
+            }
+          }catch(e){ try{ if(refs.root) refs.root.style.display = 'block'; }catch(x){} }
+          setTimeout(()=>{ try{ if(refs.cancel) refs.cancel.focus(); }catch(e){} }, 0);
+        });
       }
     };
 

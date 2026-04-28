@@ -925,6 +925,8 @@ UI:
 - Iconbilder: Die Icon-Palette dedupliziert gleiche SVGs, damit identische Grafiken nicht mehrfach angezeigt werden.
 - Buttons: Bekannte button-spezifische `width:100%`-Sonderregeln in Icon-/Jump-/Dateiauswahlbereichen wurden entfernt, damit Buttons wieder ihre normale Breite behalten.
 - Backup: Query-Detailpaneele in Backup/FullBackup haben eigene Panel-Pickkeys und kollidieren nicht mehr mit den zugehoerigen Aktionsbuttons.
+- Dialoge: Reine Info-/Status-Dialoge verwenden weiterhin das bestehende Popup-Template. Aktionen mit Benutzerentscheidung (z. B. Loeschen, Ueberschreiben, Abbrechen) verwenden jetzt schrittweise ein eigenes Confirm-Dialog-Template mit `OK` und `Abbrechen`.
+- Dialoge: Rechts unten zeigt jeder Popup-/Confirm-Dialog in kleiner Schrift seinen Picker-Key (`pk`) und das verwendete Template (`tpl`) an.
 - Iconbilder: Speicherung erfolgt im aktiven UI-Profil (PC/MOBIL).
 - Iconbilder: Sicherheit: SVG wird serverseitig sanitisiert (XSS-Schutz) und ist groessenbegrenzt; Preview zeigt den gespeicherten Stand.
 - Iconbilder: Anwendung: Overrides werden sofort auf passende Buttons angewendet (ohne Reload, best-effort).
