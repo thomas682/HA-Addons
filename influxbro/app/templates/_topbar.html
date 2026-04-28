@@ -789,14 +789,40 @@
            el.setAttribute('data-ib-instancekey', pk + '[item=' + encodeURIComponent(item) + ']');
            return;
          }
-         el.setAttribute('data-ib-instancekey', pk);
-         el.setAttribute('data-ib-instancekey-auto', '1');
-       }catch(e){}
+          el.setAttribute('data-ib-instancekey', _autoInstancekeyFor(el, pk));
+          el.setAttribute('data-ib-instancekey-auto', '1');
+        }catch(e){}
+      }
+
+     function _autoInstancekeyFor(el, pk, salt){
+       try{
+         if(!el) return pk || '';
+         const basePk = _normKey(pk || (el.getAttribute && el.getAttribute('data-ib-pickkey')));
+         if(!basePk) return '';
+         const anchor = el.closest && el.closest('[data-ui],[id],[data-ib-pickkey]');
+         const sig = _pathSig(el, anchor);
+         const tag = String(el.tagName || 'el').toLowerCase();
+         const parent = el.parentElement;
+         let siblingIndex = 0;
+         if(parent && parent.children){
+           const sibs = Array.from(parent.children).filter((node)=>{
+             try{ return String(node.tagName || '').toLowerCase() === tag; }catch(e){ return false; }
+           });
+           siblingIndex = Math.max(0, sibs.indexOf(el));
+         }
+         const forAttr = _normKey(el.getAttribute && el.getAttribute('for'));
+         const role = _normKey(el.getAttribute && el.getAttribute('role'));
+         const title = _normKey(el.getAttribute && el.getAttribute('title'));
+         const h = _hashFNV1a(basePk + '|ik|' + tag + '|' + siblingIndex + '|' + sig + '|' + forAttr + '|' + role + '|' + title + '|' + String(salt || ''));
+         return basePk + '.auto.' + tag + '.' + h;
+       }catch(e){
+         return pk || '';
+       }
      }
 
      function _dedupeAutoInstancekeys(){
-       try{
-         const groups = {};
+        try{
+          const groups = {};
          document.querySelectorAll('[data-ib-instancekey]').forEach((el)=>{
            try{
              if(!el || !el.getAttribute) return;
@@ -810,20 +836,18 @@
            const xs = groups[ik] || [];
            if(xs.length <= 1) return;
            // Only fix up auto-generated instancekeys. Explicit instancekeys remain untouched.
-           xs.forEach((el)=>{
-             try{
-               if(String(el.getAttribute('data-ib-instancekey-auto') || '') !== '1') return;
-               const anchor = el.closest && el.closest('[data-ui],[id],[data-ib-pickkey]');
-               const base = _anchorKeyFor(el) || (_pageKey() + '.auto');
-               const sig = _pathSig(el, anchor);
-               const tag = String(el.tagName || 'el').toLowerCase();
-               const h = _hashFNV1a(base + '|ik|' + ik + '|' + tag + '|' + sig);
-               el.setAttribute('data-ib-instancekey', ik + '.auto.' + tag + '.' + h);
-             }catch(e){}
-           });
-         });
-       }catch(e){}
-     }
+            xs.forEach((el)=>{
+              try{
+                if(String(el.getAttribute('data-ib-instancekey-auto') || '') !== '1') return;
+                const pk = _normKey(el.getAttribute('data-ib-pickkey'));
+                if(!pk) return;
+                const idx = xs.indexOf(el);
+                el.setAttribute('data-ib-instancekey', _autoInstancekeyFor(el, pk, 'dedupe:' + idx));
+              }catch(e){}
+            });
+          });
+        }catch(e){}
+      }
 
      let _loggedPickStats = false;
      function _validatePickRegistry(){

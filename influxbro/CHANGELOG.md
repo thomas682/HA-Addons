@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.467
+
+### Fix
+
+- Einstellungen/Picker: Wiederholte Config-Sektionen verwenden jetzt eindeutige fachliche Bereichskeys statt mehrfach `config_settings.section_root`, und die automatische `instancekey`-Deduplizierung nutzt stabile Geschwister-/Pfad-Signaturen ohne endlose `.auto...auto...`-Ketten. ([#420](https://github.com/thomas682/HA-Addons/issues/420))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.466
 
 ### Enhancement

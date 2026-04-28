@@ -1299,3 +1299,23 @@ def test_readable_picker_fallback_uses_data_ui_and_explicit_dynamic_pickkeys():
     assert "close.setAttribute('data-ib-pickkey', 'analysis_log_modal.btn_close');" in index_body
     assert "refresh.setAttribute('data-ui', 'analysis_log_modal.btn_refresh');" in index_body
     assert "refresh.setAttribute('data-ib-pickkey', 'analysis_log_modal.btn_refresh');" in index_body
+    assert "el.setAttribute('data-ib-instancekey', _autoInstancekeyFor(el, pk));" in topbar_body
+    assert "return basePk + '.auto.' + tag + '.' + h;" in topbar_body
+    assert "el.setAttribute('data-ib-instancekey', _autoInstancekeyFor(el, pk, 'dedupe:' + idx));" in topbar_body
+    assert "ik + '.auto.' + tag + '.' + h" not in topbar_body
+
+
+def test_config_sections_use_unique_readable_pickkeys():
+    config_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "config.html").read_text()
+    assert 'data-ui="config_settings.section_yaml" data-ib-pickkey="config_settings.section_yaml"' in config_body
+    assert 'data-ui="config_settings.section_conn" data-ib-pickkey="config_settings.section_conn"' in config_body
+    assert 'data-ui="config_settings.section_v2" data-ib-pickkey="config_settings.section_v2"' in config_body
+    assert 'data-ui="config_settings.section_v1" data-ib-pickkey="config_settings.section_v1"' in config_body
+    assert 'data-ui="config_settings.section_ui" data-ib-pickkey="config_settings.section_ui"' in config_body
+    assert 'data-ui="config_settings.section_ui_dashboard" data-ib-pickkey="config_settings.section_ui_dashboard"' in config_body
+    assert 'data-ui="config_settings.section_ui_icons" data-ib-pickkey="config_settings.section_ui_icons"' in config_body
+    assert 'data-ui="config_settings.section_ui_table" data-ib-pickkey="config_settings.section_ui_table"' in config_body
+    assert 'data-ui="config_settings.section_ui_cache" data-ib-pickkey="config_settings.section_ui_cache"' in config_body
+    assert 'data-ui="config_settings.section_logs" data-ib-pickkey="config_settings.section_logs"' in config_body
+    assert 'data-ui="config_settings.section_outliers" data-ib-pickkey="config_settings.section_outliers"' in config_body
+    assert 'data-ui="config_settings.section_root" data-ib-pickkey="config_settings.section_root"' not in config_body
